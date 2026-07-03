@@ -1,7 +1,12 @@
 # Crossworlds Web
 
-Browser client for Crossworlds BCE — Vite + TypeScript + Three.js.  
-**Play now:** https://playcrossworlds.com/play/
+Browser client for Crossworlds BCE — Vite + TypeScript + Three.js.
+
+| | |
+|---|---|
+| 🌐 Home | https://playcrossworlds.com/ |
+| ▶ Play | https://playcrossworlds.com/play/ |
+| ⚔ Combat reference | https://playcrossworlds.com/combat/ |
 
 Talks directly to the existing Node/Express auth server — no server changes required for login, character, inventory, professions, or crafting.
 

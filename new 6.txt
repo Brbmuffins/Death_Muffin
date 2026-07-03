@@ -1,0 +1,206 @@
+Crossworlds BCE â€” VPS Audit Report
+Generated: 2026-07-03
+Auditor: Claude Code (claude-sonnet-4-6)
+====================================================
+
+
+1. SERVICE NAMES FOUND
+----------------------
+Service                 State                   Path                                    Port
+crossworlds-auth        active/running (4 days) /opt/crossworlds-auth/server.js         3000/TCP
+crossworlds-dashboard   active/running (5 days) /opt/crossworlds-dashboard/server.js    4000/TCP
+crossworlds             active/running (5 days) /game/Builds/CrossworldsBCE.x86_64      7777/UDP
+rod-realtime            active/running (23h)    /opt/rod-realtime/server.js             5000/TCP (local)
+
+Inactive legacy unit files still present on disk (harmless, can be removed):
+  rod-server.service    â†’ /game/Builds/Portalis.x86_64  (path does not exist)
+  rod-auth.service      â†’ /opt/rod-auth                 (path does not exist)
+  rod-dashboard.service â†’ /opt/rod-dashboard            (path does not exist)
+
+
+2. SCHEMA DELTA
+---------------
+No migrations needed. All required tables and columns are present.
+
+Characters table:
+  level        âœ“
+  experience   âœ“  (audit spec calls this "xp"; column is "experience"; server.js uses "experience"
+                    everywhere â€” no functional gap, no change needed)
+  gold         âœ“
+  stat_str     âœ“
+  stat_agi     âœ“
+  stat_int     âœ“
+  stat_vit     âœ“
+
+loot_tables:
+  source_name  âœ“
+  new_item_id  âœ“
+
+New system tables â€” all present:
+  enemy_templates, items, inventory, professions, recipes,
+  recipe_ingredients, gold_transactions, broadcast_messages  âœ“
+
+Old gear tables â€” untouched:
+  item_template, item_instance, character_gear  âœ“  (read-only during audit)
+
+Enemy templates seed note:
+  Table is populated with live game data:
+    goblin_basic, goblin_archer, skeleton_warrior, troll_cave, chest_mimic
+  Canonical Phase-4 seed IDs (goblin, troll, skeleton, mimic) were NOT inserted
+  to avoid duplicate IDs. Live data takes precedence.
+
+
+3. MISSING ENDPOINTS
+--------------------
+All admin/maintenance/broadcast routes confirmed present in server.js after
+direct line-number verification (initial grep produced false negatives due to
+case sensitivity â€” "GET" vs "app.get").
+
+Truly missing endpoint:
+  POST /api/enemies/:id  â€” no route to create or update an enemy template via API.
+                           GET /api/enemies and GET /api/enemies/:id exist.
+                           NOT added â€” flagged for developer review.
+
+All other required routes confirmed present:
+  GET  /api/health                       line  733
+  GET  /api/items                        âœ“
+  POST /api/character/save-progress      âœ“
+  GET  /api/inventory/:id                âœ“
+  POST /api/inventory/save               âœ“
+  POST /api/inventory/equip              âœ“
+  GET  /api/professions/:id              âœ“
+  GET  /api/recipes                      âœ“
+  POST /api/craft                        âœ“
+  POST /api/loot/roll                    âœ“
+  POST /api/loot/drop                    âœ“
+  POST /api/gold/adjust                  âœ“
+  GET  /api/character/stats/:id          âœ“
+  GET  /api/enemies                      line 1051
+  GET  /api/enemies/:id                  line 1061
+  POST /api/combat/hit                   âœ“
+  POST /api/combat/kill                  âœ“
+  GET  /api/maintenance/status           line 1302
+  GET  /api/broadcast/pending            line 1273
+  GET  /api/admin/stats                  line 1083
+  POST /api/admin/broadcast              line 1259
+  POST /api/admin/maintenance/toggle     line 1306
+
+
+4. CLASS_NAMES
+--------------
+Live server (server.js line 123):
+  const CLASS_NAMES = ['Engineer', 'Guardian', 'Shadowblade', 'Cleric', 'Arcanist'];
+
+Audit spec expected:
+  const CLASS_NAMES = ['Warden', 'Ironclad', 'Shadowblade', 'Cleric', 'Arcanist'];
+
+Validator:  class_index > 4  âœ“ (correct)
+
+Discrepancy: indices 0 and 1 differ.
+NOT changed. All live characters in the DB have class_name = 'Engineer' or 'Guardian'.
+CLAUDE.md documents the current names as canonical. Renaming would require:
+  - Coordinated Unity client update
+  - DB migration for existing characters' class_name column
+Flagged for developer decision.
+
+Current DB class distribution:
+  0  Engineer    (live characters exist)
+  1  Guardian    (live characters exist)
+  2  Shadowblade
+  3  Cleric
+  4  Arcanist
+
+
+5. COMBAT ANTI-EXPLOIT
+----------------------
+Status: PRESENT AND COMPLETE
+
+All required constants and maps confirmed at top of server.js (lines 15-29):
+
+  const HIT_WINDOW_MS    = 30_000;  // line 23
+  const KILL_COOLDOWN_MS =  2_000;  // line 24
+  const recentHits    = new Map();  // line 21
+  const lastKillTime  = new Map();  // line 22
+
+60-second pruning setInterval present (lines 27-30).
+Hit gate consumed on kill (line 1018).
+Kill rate limiter checked before awards (lines 1005-1007).
+
+
+6. StartLimitIntervalSec
+------------------------
+Status: FIXED on 2026-07-03
+
+Problem: StartLimitIntervalSec=0 was in [Service] section of
+  /etc/systemd/system/crossworlds.service.
+  systemd requires this key in [Unit]. Every daemon-reload was logging:
+    "Unknown key name 'StartLimitIntervalSec' in section 'Service', ignoring."
+  The key was silently ignored â€” the game server could hit the restart burst
+  limit and stop recovering after crashes.
+
+Fix: Moved StartLimitIntervalSec=0 from [Service] to [Unit].
+  sudo systemctl daemon-reload  â€” completed cleanly.
+  The running game server process was NOT restarted (not required for this change;
+  the key only takes effect if the process crashes and needs to restart).
+
+Current crossworlds.service:
+  [Unit]
+  Description=Crossworlds (BCE) - Game Server (Mirror/KCP :7777)
+  After=network.target crossworlds-auth.service
+  StartLimitIntervalSec=0              â† correct placement
+
+  [Service]
+  Type=simple
+  User=ubuntu
+  WorkingDirectory=/game/Builds
+  ExecStart=/game/Builds/CrossworldsBCE.x86_64 -batchmode -nographics -logFile /var/log/crossworlds.log
+  Restart=on-failure
+  RestartSec=10
+  StandardOutput=journal
+  StandardError=journal
+
+  [Install]
+  WantedBy=multi-user.target
+
+CLAUDE.md updated to document the corrected state.
+
+
+7. HEALTH SWEEP RESULTS
+-----------------------
+crossworlds-auth:
+  GET /api/health          â†’ {"status":"ok","db":"connected","uptime":412974s}  âœ“
+  GET /api/maintenance/status â†’ {"success":true,"data":{"maintenance":false}}   âœ“
+  GET /api/enemies         â†’ 5 enemy templates returned                         âœ“
+
+Network:
+  TCP 3000  â†’ crossworlds-auth (node, pid 149457)    âœ“
+  TCP 4000  â†’ crossworlds-dashboard (node, pid 133079) âœ“
+  UDP 7777  â†’ Unity Main Thread (pid 132527)          âœ“
+
+Auth logs (last 20 entries): clean LOGIN/PROGRESS/CRAFT entries, no errors   âœ“
+Game log: only internet scanner noise (invalid channel header: 92) â€” normal   âœ“
+Dashboard: 3 child journalctl processes running for live log streaming        âœ“
+
+
+8. WHAT WAS NOT TOUCHED
+-----------------------
+Endpoints:
+  /login, /character, /character/gear/equip, GET /items  â€” not read, not modified
+
+Tables:
+  item_template    â€” schema inspected (SHOW CREATE TABLE), no writes
+  item_instance    â€” schema inspected, no writes
+  character_gear   â€” schema inspected, no writes
+
+Files:
+  /opt/crossworlds-auth/.env       â€” read-only (DB_HOST/USER/NAME read; password
+                                     used only for mysql CLI session, never logged)
+  /opt/crossworlds-dashboard/.env  â€” not accessed
+
+Services restarted: NONE
+  crossworlds-auth, crossworlds-dashboard, rod-realtime â€” not restarted
+  crossworlds (game server) â€” not restarted
+
+
+====================================================
+END OF REPORT
