@@ -1,0 +1,26 @@
+# systemd unit for the Crossworlds realtime co-op service.
+# Deploy target: /etc/systemd/system/rod-realtime.service
+# NOT INSTALLED YET — part of the Phase 3 VPS deploy, pending user approval.
+[Unit]
+Description=Crossworlds realtime co-op service (Socket.io, port 5000)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/rod-realtime
+ExecStart=/usr/bin/node /opt/rod-realtime/server.js
+Restart=on-failure
+RestartSec=5
+# JWT secret is read in place from the auth server's env — never copied.
+Environment=ENV_FILE=/opt/rod-auth/.env
+Environment=REALTIME_PORT=5000
+Environment=REALTIME_HOST=127.0.0.1
+Environment=REALTIME_PATH=/rt/socket.io
+Environment=CORS_ORIGIN=https://playcrossworlds.com
+Environment=NODE_ENV=production
+# Binds 127.0.0.1 only (loopback) — reached via the Nginx wss reverse proxy,
+# never exposed directly. No new public firewall port required.
+
+[Install]
+WantedBy=multi-user.target

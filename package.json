@@ -1,0 +1,29 @@
+{
+  "name": "crossworlds-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.8.3",
+    "three": "^0.166.1"
+  },
+  "devDependencies": {
+    "@gltf-transform/cli": "^4.4.1",
+    "@gltf-transform/core": "^4.4.1",
+    "@gltf-transform/functions": "^4.4.1",
+    "@types/three": "^0.166.0",
+    "fbx2gltf": "^0.9.7-p1",
+    "meshoptimizer": "^1.2.0",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.0"
+  },
+  "allowScripts": {
+    "esbuild@0.21.5": true,
+    "sharp@0.34.5": true
+  }
+}
