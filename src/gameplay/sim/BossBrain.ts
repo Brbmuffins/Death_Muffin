@@ -6,7 +6,7 @@ import type { BossPhase, BossState } from './types';
 
 export const BOSS_ARENA = { x: 0, z: -116, r: 13 };
 export const BOSS_RADIUS = 1.6;
-const BASE_HP = 4200;
+const BASE_HP = 26000;
 
 interface Pending {
   kind: 'toll' | 'slam' | 'rain';
@@ -58,7 +58,7 @@ export class BossBrain {
     const s = this.state;
     const party = Math.max(1, this.sim.players.size);
     s.active = true;
-    s.maxHp = BASE_HP * enemyHpScale(s.level) * (1 + 0.6 * (party - 1));
+    s.maxHp = BASE_HP * enemyHpScale(s.level) * (1 + 0.8 * (party - 1));
     s.hp = s.maxHp;
     s.phase = 1;
     s.state = 'idle';
@@ -192,8 +192,8 @@ export class BossBrain {
         const targets: [number, number][] = players.map((p) => [p.x, p.z]);
         const extra = s.phase === 3 ? 4 : 2;
         for (let i = 0; i < extra; i++) {
-          const a = Math.random() * Math.PI * 2;
-          const r = 3 + Math.random() * (BOSS_ARENA.r - 4);
+          const a = this.sim.rand() * Math.PI * 2;
+          const r = 3 + this.sim.rand() * (BOSS_ARENA.r - 4);
           targets.push([BOSS_ARENA.x + Math.cos(a) * r, BOSS_ARENA.z + Math.sin(a) * r]);
         }
         this.telegraph('rain', s.x, s.z, 2.3, 1400, targets);

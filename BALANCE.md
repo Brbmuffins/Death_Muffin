@@ -69,8 +69,33 @@ unlock in 2.7–3.7 min, and push/max either harmless (Graves, Sanctum) or a
   caster is exposed (0 damage at intended, most deaths at max).
 - **Nave at max Wave Speed** still kills arrival-level bots within ~5 s of the greeting wave.
   It's acceptable for the reckless band, but it's the harshest spot in the game.
-- The **Prelate** isn't in the harness yet (tracked as a task in HANDOFF).
 - A human-played session is still needed to calibrate how far below the bot's efficiency real players land.
+
+## The Bell-Sworn Prelate (`npm run balance:boss`)
+
+`src/gameplay/balance/boss.ts` summons the Prelate with a full legion already raised and fights
+until it dies, the bot dies (a solo death resets the boss), or 6 minutes pass. Each discipline
+runs twice: **dodging** (steps out of toll/slam/rain circles after a 0.35 s reaction) and **not
+dodging**. The bot carries 4 major flasks (70%, 1.5 s cooldown) and drinks below 40% HP.
+
+**Targets:** at arrival level, a careful player wins in 2.5–3.5 min with some HP to spare, and one
+who ignores telegraphs dies. Geared players finish in about 2 min and can brute-force it with flasks.
+
+**First pass (2026-09-26):** base HP 4200 → 26000 (solo ≈ 95k at level 13). Party scaling is now
++80% per extra player (was +60%), because four players deal ~4× damage while the Prelate splits its
+attacks. Bell Rain uses the sim's seeded RNG (it used `Math.random`), so fights are reproducible.
+
+| Band | Dodge | Result (3 seeds × 4 disciplines) | Kill time | Min HP | Flasks |
+|---|---|---|---|---|---|
+| intended (lvl 13) | yes | 12/12 wins | 154–175 s | 31–39% | 0.3–1.3 |
+| intended | no | 0/12 — wipes with the boss at 3–17% | — | 0 | 4 |
+| geared (lvl 16) | yes | 12/12 | 110–122 s | 34–56% | 0–0.7 |
+| geared | no | 12/12 | 113–124 s | 29–35% | 3.3–4 |
+
+Before: every row won in 16–30 s. Direct hits (Needle and Marrow Spear, with Fracture) do ~75% of the
+damage and Withered ~20%. Adds from the processions barely matter (0–10% of damage taken), which
+makes them a candidate for a bigger role later. `src/gameplay/__tests__/balance.test.ts` guards the
+intended-band rows.
 
 ## Co-op session dashboard (planned)
 

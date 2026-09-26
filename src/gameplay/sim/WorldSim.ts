@@ -85,7 +85,7 @@ export class WorldSim {
 
   constructor(
     private nav: Nav,
-    private rand: () => number = Math.random,
+    readonly rand: () => number = Math.random,
   ) {
     this.boss = new BossBrain(this);
   }

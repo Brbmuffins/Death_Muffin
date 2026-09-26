@@ -54,6 +54,22 @@ const SP_NEEDLE = ABILITIES.bone_needle;
 const RESPAWN_S = 4;
 const RETURN_S = 8;
 
+/** The bot's character sheet: `gear` stat points per stat beyond base (a gear stand-in). */
+export function botCharacter(classIndex: number, level: number, gear: number): Character {
+  return {
+    id: 1,
+    class_index: classIndex,
+    class_name: '',
+    level,
+    experience: 0,
+    gold: 0,
+    stat_str: 5 + Math.round(gear * 0.3),
+    stat_agi: 5,
+    stat_int: 7 + gear,
+    stat_vit: 5 + gear,
+  };
+}
+
 export function runBalance(run: BalanceRun): BalanceResult {
   const rand = mulberry32(run.seed ?? 42);
   const nav = new Nav();
@@ -61,19 +77,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
   const sim = new WorldSim(nav, rand);
   sim.waveTier = run.waveTier;
   const disc = disciplineFor(run.classIndex);
-  const g = run.gearStats ?? 0;
-  const character: Character = {
-    id: 1,
-    class_index: run.classIndex,
-    class_name: '',
-    level: run.level,
-    experience: 0,
-    gold: 0,
-    stat_str: 5 + Math.round(g * 0.3),
-    stat_agi: 5,
-    stat_int: 7 + g,
-    stat_vit: 5 + g,
-  };
+  const character = botCharacter(run.classIndex, run.level, run.gearStats ?? 0);
   let stats = deriveStats(character, [], disc, run.damageTier);
   const area = AREAS[run.area];
   const home = { x: (area.rect.x0 + area.rect.x1) / 2, z: area.rect.z1 - 4 };
