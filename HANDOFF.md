@@ -2,7 +2,7 @@
 
 Living status document so any agent (or person) can pick the project up at any
 point. **Update the "Current state" and "In flight" sections whenever you stop.**
-Last updated: 2026-09-26 (necromancer redesign session: codex folded in, balance harness added).
+Last updated: 2026-09-26 (cloud session: environment set pieces built, first balance pass, combat-depth QA'd).
 
 ## 60-second orientation
 
@@ -22,8 +22,9 @@ Last updated: 2026-09-26 (necromancer redesign session: codex folded in, balance
 
 ```bash
 npm install                       # Node 24 (winget OpenJS.NodeJS.LTS if missing)
+(cd server/realtime && npm ci)     # test:server needs the realtime service's deps (dotenv, socket.io)
 npm run typecheck && npm test && npm run test:server
-npm run balance                   # headless farming/danger table (BALANCE_MINUTES=3 default)
+npm run balance                   # headless farming/danger table — targets + current numbers in BALANCE.md
 npm run dev                       # or preview "crossworlds-web" in .claude/launch.json
 # open http://localhost:5188/?offline  → register any name/password (local mock), pick a discipline
 # QA from the console: __cwDebug.god(); __cwDebug.goto('graves'); __cwDebug.advance(3); __cwDebug.counts()
@@ -52,54 +53,56 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 | In-game Codex (K), per-character discoveries, onboarding tips (Settings toggle) | ✅ | `ui/CodexPanel.ts`, `content/codex.ts`, `gameplay/codexJournal.ts`, `ui/Onboarding.ts` |
 | CI (typecheck, vitest, realtime tests, build on push/PR to master) | ✅ written, first run happens on push | `.github/workflows/ci.yml` |
 | Headless balance harness (bot drives the real WorldSim) | ✅ | `gameplay/balance/harness.ts`, `report.ts`, `npm run balance` |
+| Combat depth: Corpse Explosion, elite affixes, Grave Surges, Soul Harvest | ✅ in master + QA'd in-browser | `gameplay/sim/WorldSim.ts`, `AbilitySystem.ts`, `HUD.ts` |
+| Environment: nave water + puddles, per-area weather, distant silhouettes | ✅ QA'd in-browser (high + low) | `graphics/Water.ts`, `graphics/Atmosphere.ts`, `WorldView.ts`, `content/layout.ts` |
+| First balance pass (danger at intended band, tamer Wave Speed) | ✅ harness | `BALANCE.md`, `content/enemies.ts`, `content/areas.ts`, `content/upgrades.ts` |
 
 ## In flight (check before starting overlapping work)
 
-Three parallel agents were dispatched from commit `c475583`. Their full briefs are in
-[`docs/agent-briefs/`](docs/agent-briefs/README.md) and can be handed to a fresh agent unchanged.
-They ran as **git worktree agents on the original workstation** (`.claude/worktrees/`, gitignored)
-and cannot push; that session has no GitHub credentials. A branch reaches GitHub only when the
-user publishes it from GitHub Desktop, or when its work is folded into master's staged changes.
+Nothing is in flight. All three agent briefs in [`docs/agent-briefs/`](docs/agent-briefs/README.md) are done:
 
-| Brief | Branch | Status |
-|---|---|---|
-| Combat depth: Corpse Explosion (right-click), elite affixes, Grave Surges, Soul Harvest meter, server intent `detonate` | `cloud/combat-depth` | running, not yet in master |
-| Environment: Drowned Nave water, atmosphere particles, puddles, distant silhouettes | `cloud/environment` | running, not yet in master |
-| Codex (K), onboarding tips, GitHub Actions CI | `cloud/codex-onboarding` (`5dbf2aa`) | **folded into master's working tree** and QA'd in-browser. The codex toasts are now batched into one per discovery burst. The branch itself doesn't need publishing. |
+| Brief | Where it landed |
+|---|---|
+| Combat depth (`cloud/combat-depth`) | Folded into master in `08c62b0`; browser-QA'd 2026-09-26. |
+| Environment (`cloud/environment`) | The branch never reached GitHub, so it was rebuilt from the brief on the cloud branch `claude/adoring-knuth-hd1uox` (`5e5e382`). |
+| Codex + onboarding + CI (`cloud/codex-onboarding`) | Folded into master earlier. |
 
-**Picking this up on another workstation:**
-1. `git fetch origin && git branch -r`. For each brief whose work isn't in master (check the
-   table above and `git log`), look for `origin/cloud/<name>`.
-2. Branch exists: review it, then fold it in. Merge order: environment → combat-depth. Keep the
-   floor-gloss fix in `WorldView.ts` (floors use no roughness map; it caused glowing square
-   highlights). combat-depth and the codex work both touch `WorldScene.bindInput`,
-   `handleEvent`/`update` endings, `HUD.ts` (`.hud-menu`, `HudCallbacks.open`) and the
-   `.hud-menu` CSS, so expect small conflicts there.
-3. Branch missing: the agent's work never left the original machine. Re-dispatch its brief from
-   `docs/agent-briefs/` to a new agent, based on current master rather than `c475583`.
-4. After each merge run the full check suite, then in-browser QA (the briefs list what to check).
+**Cloud-session branch:** `claude/adoring-knuth-hd1uox` carries the environment work, the balance
+pass and these doc updates on top of master `08c62b0`. Cloud sessions commit and push (they have
+no GitHub Desktop). Merge it through GitHub, or pull it into GitHub Desktop.
 
 **Folding a finished local branch into master without committing** (this matches the
-stage-don't-commit rule): `git diff --binary c475583 <branch> > x.patch && git apply --3way x.patch`.
+stage-don't-commit rule): `git diff --binary <base> <branch> > x.patch && git apply --3way x.patch`.
 Run it from bash; PowerShell pipes rewrite line endings and corrupt the patch. `git merge`
 refuses while the index has staged changes.
 
 ## Known issues / next steps (priority order)
 
+**Needs the user (can't be done from a cloud container):**
 1. **Ear-test audio** in a visible browser (volumes, ambience crossfades, boss drum loop).
-2. **Merge the cloud branches** (above) and QA each feature in-browser.
-3. **Server storage for progression** — implement `server/proposals/necromancer-progress.md`
-   on the VPS, then switch `Progression` to it (migration steps are in the proposal).
-4. **Deploy:** realtime protocol v2 + client must ship together (`server/realtime/DEPLOY.md`,
-   `server/web-deploy/`). SSH from the dev machine was denied historically — the user runs the scripts.
-5. **Balance pass.** Use `npm run balance`. The first report (2026-09-26, 3 simulated minutes per
-   row) found far too little danger: at every area's intended band the bot takes ~0–46 damage/min,
-   stays near 100% HP, never dies, and gains 3–8 levels in 3 minutes. Thralls soak aggro and the
-   bot kills at range. Wave Speed tiers need to bring real pressure. The Prelate (≈15k HP at
-   level 13) still needs a real playtest. Treat the bot as an upper bound on player efficiency.
-6. Performance under a full horde on mid hardware (skinned enemies are individual meshes;
-   VAT crowd rendering is the next step if >~120 animated enemies are needed).
-7. `FUTURE_CONTENT.md` — the long-term backlog (new disciplines, spells, bosses, systems).
+2. **Server storage for progression.** Implement `server/proposals/necromancer-progress.md` on the
+   VPS, then switch `Progression` to it (migration steps are in the proposal).
+3. **Deploy.** Realtime protocol v2 and the client must ship together (`server/realtime/DEPLOY.md`,
+   `server/web-deploy/`). The user runs the scripts.
+4. **A human playtest of the new balance.** The bot is an upper bound on efficiency and never
+   dodges. Report how intended/push feel, and see "Open issues" in `BALANCE.md`.
+
+**Buildable next (code-only):**
+5. **Prelate balance.** Add a boss scenario to the harness (≈15k HP at level 13, never playtested)
+   and tune `BossBrain` to a 2–4 min solo fight at the geared band.
+6. **Co-op session dashboard** (user request). A host-side panel that controls session tuning:
+   Wave Speed, enemy HP/damage, density, elites, surges, arrival wave, roster weights. It must be
+   host-authoritative and relay a validated `tuning` field through realtime, and rewards must scale
+   with difficulty. Spec is in `FUTURE_CONTENT.md` → "Co-op session dashboard"; knobs in `BALANCE.md`.
+7. **Wave Speed milestones.** Tier 3: +1 elite per wave; tier 6: more frequent surges; tier 8:
+   "Nightfall" (everything Shrouded). See `FUTURE_CONTENT.md` 0.4.
+8. **Discipline balance.** Gravecaller is the weakest under pressure, and Ossuary swings the most
+   (`BALANCE.md`).
+9. **Performance under a full horde** on mid hardware (skinned enemies are individual meshes).
+   Profile first; VAT crowd rendering is the next step if >~120 animated enemies are needed.
+10. Grave Surges should erupt from mausoleum props (they currently use breaches).
+11. `FUTURE_CONTENT.md` 0.2: status matrix (Chill / Hemorrhage / Sanctified, icons exist), signature
+    spells at level 10, thrall variety. Relic runes need a server `item_type` proposal first.
 
 ## Gotchas that cost time before
 
@@ -114,3 +117,12 @@ refuses while the index has staged changes.
 - After editing `server/realtime/server.js` run `node tools/embed-realtime.mjs` (the deploy script embeds it).
 - Don't toggle light `visible` at runtime (changes shader light counts → recompiles/hitches).
 - sharp holds file handles on Windows — read into a Buffer before overwriting in place.
+- `npm run test:server` fails with `Cannot find module 'dotenv'` on a fresh clone. Run
+  `cd server/realtime && npm ci` first (CI already does this).
+- Headless QA in a cloud container: global Playwright + `--use-angle=swiftshader`. Drive time with
+  `__cwDebug.advance()`, and call `unlockAll()` before `goto()` into a locked area (otherwise
+  `goto` leaves you at the sealed gate). Seed `localStorage.cw_settings_v1 = {"tips":false}` to hide
+  onboarding cards in screenshots.
+- Water/decal layering: water renders at renderOrder 1, and Effects decals (telegraphs) at 2. Keep
+  that order or telegraphs sink under the nave's flood.
+

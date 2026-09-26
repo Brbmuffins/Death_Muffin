@@ -1,4 +1,4 @@
-import { AREAS, DOORS, type AreaId, type Rect } from './areas';
+import { AREAS, AREA_ORDER, DOORS, type AreaId, type Rect } from './areas';
 export type { Rect };
 import { mulberry32 } from '../gameplay/rng';
 
@@ -96,6 +96,26 @@ export interface Window {
   y: number;
 }
 
+/** A rain puddle in the graveyard soil: a tiny still mirror for the moon. */
+export interface Puddle {
+  x: number;
+  z: number;
+  r: number;
+  /** Ellipse stretch (x radius = r × sx) and heading. */
+  sx: number;
+  rot: number;
+  area: AreaId;
+}
+
+/** Scenery far beyond the walls: fog-tinted shapes, never walkable or collidable. */
+export interface Silhouette {
+  kind: 'spire' | 'tree' | 'ruin';
+  x: number;
+  z: number;
+  scale: number;
+  rot: number;
+}
+
 export interface WorldLayout {
   /** Flagstone paths laid over earthen floors. */
   paths: Rect[];
@@ -103,6 +123,10 @@ export interface WorldLayout {
   walls: WallSegment[];
   decals: Decal[];
   windows: Window[];
+  /** Shallow standing water (the Drowned Nave). Walkable — it only slows the eye, not the feet. */
+  water: Rect[];
+  puddles: Puddle[];
+  silhouettes: Silhouette[];
 }
 
 const inRect = (r: Rect, x: number, z: number, pad = 0) =>
@@ -313,5 +337,84 @@ export function generateLayout(seed = 1337): WorldLayout {
     windows.push({ x: 0, z: -129.9, w: 6.5, h: 11, facing: 0, y: 7.5 });
   }
 
-  return { paths, props, walls, decals, windows };
+  // Environment dressing draws from its own stream so adding it never moves a grave.
+  const envRand = mulberry32(seed ^ 0x5eed);
+  const water = naveWater();
+  const puddles = gravePuddles(envRand, props);
+  const silhouettes = distantSilhouettes(envRand);
+
+  return { paths, props, walls, decals, windows, water, puddles, silhouettes };
+}
+
+/**
+ * The Drowned Nave floods everywhere except the raised walkways along the two
+ * pillar rows and the dry landings at the entrance (waystone) and the altar.
+ */
+function naveWater(): Rect[] {
+  return [
+    { x0: -5.6, z0: -89, x1: 5.6, z1: -50.5 }, // the flooded central aisle, under the arches
+    { x0: -14.4, z0: -93.5, x1: -8.8, z1: -49.5 }, // west side aisle
+    { x0: 8.8, z0: -93.5, x1: 14.4, z1: -49.5 }, // east side aisle
+  ];
+}
+
+/** Everything the player walks up to and clicks — water and puddles keep clear of these. */
+function interactSpots() {
+  return AREA_ORDER.flatMap((id) => AREAS[id].interactables.map((i) => ({ x: i.x, z: i.z })));
+}
+
+function gravePuddles(rand: () => number, props: Placement[]): Puddle[] {
+  const a: AreaId = 'graves';
+  const r = AREAS[a].rect;
+  const spots = interactSpots();
+  const out: Puddle[] = [];
+  for (let tries = 0; tries < 200 && out.length < 12; tries++) {
+    const x = r.x0 + 2 + rand() * (r.x1 - r.x0 - 4);
+    const z = r.z0 + 2 + rand() * (r.z1 - r.z0 - 4);
+    const pr = 0.7 + rand() * 1.1;
+    const sx = 1 + rand() * 0.8;
+    const reach = pr * sx + 0.5;
+    if (props.some((p) => p.area === a && Math.hypot(p.x - x, p.z - z) < reach + 0.6)) continue;
+    if (spots.some((s) => Math.hypot(s.x - x, s.z - z) < reach + 1.5)) continue;
+    if (out.some((p) => Math.hypot(p.x - x, p.z - z) < reach + p.r * p.sx + 1)) continue;
+    out.push({ x, z, r: pr, sx, rot: rand() * Math.PI, area: a });
+  }
+  return out;
+}
+
+/** Nearest distance from a point to any walkable rect (areas + door corridors). */
+function distToWorld(x: number, z: number) {
+  const rects = [...AREA_ORDER.map((id) => AREAS[id].rect), ...DOORS.map((d) => d.rect)];
+  let best = Infinity;
+  for (const q of rects) {
+    const dx = Math.max(q.x0 - x, 0, x - q.x1);
+    const dz = Math.max(q.z0 - z, 0, z - q.z1);
+    best = Math.min(best, Math.hypot(dx, dz));
+  }
+  return best;
+}
+
+function distantSilhouettes(rand: () => number): Silhouette[] {
+  const out: Silhouette[] = [];
+  // A ruined cathedral skyline: spires hand-placed where the camera looks north past walls.
+  const spires: [number, number, number][] = [
+    [-38, -58, 1.25],
+    [30, -62, 1.05],
+    [-30, -134, 1.4],
+    [34, -126, 1.15],
+    [0, -150, 1.6],
+    [82, -24, 1.1],
+    [48, -58, 0.9],
+  ];
+  for (const [x, z, scale] of spires) out.push({ kind: 'spire', x, z, scale, rot: rand() * Math.PI * 2 });
+  // Broken walls and dead trees scattered in the ring beyond the walls.
+  for (let tries = 0; tries < 600 && out.length < 70; tries++) {
+    const x = -70 + rand() * 170;
+    const z = -165 + rand() * 215;
+    const d = distToWorld(x, z);
+    if (d < 7 || d > 40) continue;
+    if (out.some((s) => Math.hypot(s.x - x, s.z - z) < 5)) continue;
+    out.push({ kind: rand() < 0.78 ? 'tree' : 'ruin', x, z, scale: 0.8 + rand() * 0.9, rot: rand() * Math.PI * 2 });
+  }
+  return out;
 }

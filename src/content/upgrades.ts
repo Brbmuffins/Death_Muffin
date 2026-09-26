@@ -30,15 +30,15 @@ export interface WaveModifiers {
 
 export function waveModifiers(tier: number): WaveModifiers {
   return {
-    intervalMult: 1 / (1 + 0.16 * tier),
-    capMult: 1 + 0.12 * tier,
-    sizeMult: 1 + 0.12 * tier,
+    intervalMult: 1 / (1 + 0.12 * tier),
+    capMult: 1 + 0.09 * tier,
+    sizeMult: 1 + 0.06 * tier,
     rewardMult: 1 + 0.1 * tier,
     itemChanceMult: 1 + 0.06 * tier,
     eliteBonus: 0.008 * tier,
     enemyHpMult: 1 + 0.03 * tier,
-    enemyDamageMult: 1 + 0.05 * tier,
-    speedPct: Math.round(16 * tier),
+    enemyDamageMult: 1 + 0.035 * tier,
+    speedPct: Math.round(12 * tier),
   };
 }
 

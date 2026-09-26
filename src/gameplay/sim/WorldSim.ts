@@ -480,7 +480,8 @@ export class WorldSim {
     const cap = Math.round(def.cap * mods.capMult);
     const room = Math.min(cap - this.aliveIn(area), GLOBAL_ENEMY_CAP - this.enemies.size);
     if (room <= 0) return;
-    let count = Math.round(def.waveSize * mods.sizeMult * (first ? 1.6 : 1));
+    // The arrival wave is a fixed greeting; the Wave Speed dial only shapes what follows.
+    let count = Math.round(first ? def.waveSize * 1.3 : def.waveSize * mods.sizeMult);
     count = Math.min(count, room);
     const pool = this.fairBreaches(area);
     // Bigger waves split across breaches so they arrive from more than one side.

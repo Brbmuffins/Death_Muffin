@@ -135,9 +135,9 @@ One connected world. Each area's seal breaks when you've killed enough in the ar
 |---|---|---|---|
 | **The Chapterhouse** | — | always | Sanctuary. Reliquary, workbench, rite niches, waystone, Altar of Ascension. The dead cannot follow. |
 | **The Hollow Graves** | 1 | always | Moonlit graveyard of tombs, mausoleums and mourning statues. Robbers, hounds, the first penitents. |
-| **The Marrow Ossuary** | 5 | 200 kills in the Graves | Skull-walled aisles and bone floors. Deacons appear — protect your corpses. |
-| **The Drowned Nave** | 9 | 280 kills in the Ossuary | A cathedral nave of pillars and violet stained glass. Penitent choirs. |
-| **The Bell Sanctum** | 13 | 360 kills in the Nave | The Prelate's seat. Summon it at the Sundered Bell with 5 soul shards. |
+| **The Marrow Ossuary** | 5 | 300 kills in the Graves | Skull-walled aisles and bone floors. Deacons appear — protect your corpses. |
+| **The Drowned Nave** | 9 | 420 kills in the Ossuary | A cathedral nave of pillars and violet stained glass. Penitent choirs. |
+| **The Bell Sanctum** | 13 | 520 kills in the Nave | The Prelate's seat. Summon it at the Sundered Bell with 5 soul shards. |
 
 <table><tr>
 <td><img src="docs/screenshots/chapterhouse.webp" alt="The Chapterhouse" /><br/><sub><b>The Chapterhouse</b></sub></td>
@@ -175,7 +175,7 @@ Reward: a pile of gold, 3 soul shards and three relic rolls from the Sanctum's t
 <img src="public/art/ui/gold.png" width="22" /> **Gold** drops from everything and buys upgrades at the lower-right panel (the Altar hears you anywhere):
 
 - **Damage** — +8% spell power per tier (25 tiers). Cost 40 × 1.5ⁿ gold.
-- **Wave Speed** — faster waves (+16% per tier), more enemies at once (+12%), bigger waves, more gold (+10%), better item chances and more elites — but every enemy also hits 5% harder and has 3% more health per tier. 8 tiers, cost 120 × 1.75ⁿ.
+- **Wave Speed** — faster waves (+12% per tier), more enemies at once (+9%), bigger waves (+6%), more gold (+10%), better item chances and more elites — but every enemy also hits 3.5% harder and has 3% more health per tier. 8 tiers, cost 120 × 1.75ⁿ. The first wave that greets you in an area ignores the dial.
   Buy tiers, then **dial the active tier** up or down (−/+) — it's a risk lever, not just a timer.
 
 <img src="public/art/ui/soul_shard.png" width="22" /> **Soul shards** drop from elites (1–2) and the Prelate (3). Five summon the Prelate.

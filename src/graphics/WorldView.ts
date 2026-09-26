@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { AREAS, AREA_ORDER, DOORS, type AreaId, type DoorDef, type Theme } from '../content/areas';
-import { PROPS, type Placement, type PropId, type WorldLayout } from '../content/layout';
+import { PROPS, type Placement, type PropId, type Silhouette, type WorldLayout } from '../content/layout';
 import type { Nav } from '../gameplay/nav';
 import { mulberry32 } from '../gameplay/rng';
 import { assets } from './AssetCache';
@@ -9,6 +9,8 @@ import { fx } from './fxTextures';
 import { PROP_URL } from './modelPaths';
 import type { Effects } from './Effects';
 import { applyOcclusion } from './occlusion';
+import { Water } from './Water';
+import { Atmosphere } from './Atmosphere';
 
 const FLOOR_TEX: Record<Theme, { url: string; tile: number; color: number; rough: number }> = {
   chapter: { url: 'art/textures/flagstone.webp', tile: 7, color: 0x9a92a8, rough: 0.62 },
@@ -147,6 +149,50 @@ function fallbackGeometry(id: PropId): { geo: THREE.BufferGeometry; color: numbe
   return { geo: merged, color };
 }
 
+/** Far scenery, code-built: a broken cathedral spire, a dead tree, a fallen wall. */
+function silhouetteGeometry(sil: Silhouette, rand: () => number): THREE.BufferGeometry {
+  const g: THREE.BufferGeometry[] = [];
+  const box = (w: number, h: number, d: number, x = 0, y = 0, z = 0, rz = 0) =>
+    g.push(new THREE.BoxGeometry(w, h, d).translate(0, h / 2, 0).rotateZ(rz).translate(x, y, z));
+  const cyl = (rt: number, rb: number, h: number, x: number, y: number, z: number, rx: number, rz: number) =>
+    g.push(new THREE.CylinderGeometry(rt, rb, h, 5).translate(0, h / 2, 0).rotateX(rx).rotateZ(rz).translate(x, y, z));
+  switch (sil.kind) {
+    case 'spire': {
+      box(4.2, 18, 4.2);
+      box(3.4, 5, 3.4, 0, 18);
+      g.push(new THREE.ConeGeometry(2.6, 13, 4).rotateY(Math.PI / 4).translate(0, 29.5, 0));
+      // A shorter, broken twin and a flying buttress.
+      box(3, 9 + rand() * 5, 3, 5.6, 0, 1.2);
+      box(0.9, 9, 0.9, -3.4, 2, 0, -0.5);
+      box(8, 1.1, 2.6, -2, 0, 0);
+      break;
+    }
+    case 'tree': {
+      cyl(0.12, 0.42, 5.2, 0, 0, 0, 0, (rand() - 0.5) * 0.15);
+      for (let i = 0; i < 4; i++) {
+        const a = rand() * Math.PI * 2;
+        const y = 2.2 + rand() * 2.6;
+        cyl(0.03, 0.12, 1.6 + rand() * 1.6, Math.cos(a) * 0.1, y, Math.sin(a) * 0.1, Math.sin(a) * 0.9, Math.cos(a) * 0.9);
+      }
+      break;
+    }
+    case 'ruin': {
+      let x = -3;
+      while (x < 3) {
+        const w = 0.8 + rand() * 1.4;
+        box(w, 1 + rand() * 4, 0.9, x + w / 2);
+        x += w;
+      }
+      box(1.4, 0.7, 1.2, 1 + rand() * 3, 0, 1.4 + rand());
+      break;
+    }
+  }
+  const merged = mergeGeometries(g.map((x) => (x.index ? x.toNonIndexed() : x)), false)!;
+  for (const x of g) x.dispose();
+  merged.scale(sil.scale, sil.scale, sil.scale).rotateY(sil.rot).translate(sil.x, -0.1, sil.z);
+  return merged;
+}
+
 /**
  * Instanced batch of one prop kind. Starts with the code-built stand-in and
  * swaps to the generated GLB (every mesh instanced with the same transforms)
@@ -278,6 +324,9 @@ export class WorldView {
   private mist!: THREE.Points;
   private mistVel: Float32Array = new Float32Array(0);
   private braziers: LightSource[] = [];
+  private water: Water;
+  private atmosphere = new Atmosphere();
+  private focusArea: AreaId | null = null;
 
   constructor(
     scene: THREE.Scene,
@@ -294,6 +343,9 @@ export class WorldView {
     this.buildGates();
     this.buildFlames();
     this.buildMist();
+    this.buildSilhouettes();
+    this.water = new Water(layout.water, layout.puddles);
+    this.group.add(this.water.mesh, this.atmosphere.points);
     for (let i = 0; i < 5; i++) {
       const l = new THREE.PointLight(0xffb46b, 0, 8, 1.8);
       this.group.add(l);
@@ -629,6 +681,38 @@ export class WorldView {
     this.group.add(this.mist);
   }
 
+  private buildSilhouettes() {
+    const rand = mulberry32(4242);
+    const parts = this.layout.silhouettes.map((sil) => silhouetteGeometry(sil, rand));
+    if (!parts.length) return;
+    const merged = mergeGeometries(parts, false);
+    for (const p of parts) p.dispose();
+    if (!merged) return;
+    merged.computeVertexNormals();
+    // Nearly the fog colour: they read as shapes in the murk, never as detail.
+    const mat = new THREE.MeshLambertMaterial({ color: 0x2a2436, emissive: 0x0b0912 });
+    applyOcclusion(mat);
+    this.group.add(new THREE.Mesh(merged, mat));
+  }
+
+  /** Is this point standing in water (the nave's flood or a graveyard puddle)? */
+  isWet(x: number, z: number) {
+    return this.water.isWet(x, z);
+  }
+
+  /** A ripple ring spreading from (x, z); does nothing on dry ground. */
+  addRipple(x: number, z: number, strength = 1) {
+    this.water.addRipple(x, z, strength);
+  }
+
+  private areaAt(x: number, z: number): AreaId | null {
+    for (const id of AREA_ORDER) {
+      const r = AREAS[id].rect;
+      if (x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1) return id;
+    }
+    return null;
+  }
+
   update(dt: number, focusX: number, focusZ: number, camera: THREE.PerspectiveCamera, viewportHeight: number) {
     this.time += dt;
     const scale = (viewportHeight * 0.5) / Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
@@ -636,6 +720,14 @@ export class WorldView {
     fm.uniforms.uTime.value = this.time;
     fm.uniforms.uScale.value = scale;
     (this.mist.material as THREE.ShaderMaterial).uniforms.uScale.value = scale;
+
+    const area = this.areaAt(focusX, focusZ);
+    if (area && area !== this.focusArea) {
+      this.focusArea = area;
+      this.water.setMoon(AREAS[area].ambient.moon);
+    }
+    this.water.update(dt);
+    this.atmosphere.update(dt, area, focusX, focusZ, scale);
 
     // Drift mist.
     const mp = this.mist.geometry.attributes.position as THREE.BufferAttribute;
@@ -696,6 +788,8 @@ export class WorldView {
   }
 
   dispose() {
+    this.water.dispose();
+    this.atmosphere.dispose();
     this.group.traverse((o) => {
       const m = o as THREE.Mesh;
       m.geometry?.dispose?.();
