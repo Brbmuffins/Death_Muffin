@@ -89,7 +89,7 @@ Party synergy target: every class *produces* or *consumes* corpses so a
   Defaults come from `content/areas.ts`, `content/enemies.ts` and `waveModifiers`; presets can be
   previewed with `npm run balance` (see `BALANCE.md`). Rewards must scale with, or be capped by, the
   chosen difficulty so an easy preset can't be farmed for Wave-Speed-level loot.
-- **Status matrix expansion**: Chill (from Mourner), Hemorrhage (marrow), Sanctified (enemy priests) — the icons already exist in `public/art/status/`.
+- ✅ *shipped 2026-09-26* — **Status matrix expansion**: Chill (Mourner wraith hits: −30% move, −25% attack rate), Hemorrhage (Marrow Spear bleed), Sanctified (Crypt Deacons bless a wounded ally: −30% damage taken). Chill has no generated icon yet (inline SVG stand-in) — generate one with the asset pipeline.
 
 ### More bosses (one per area, each with a summoning key)
 | Area | Boss | Mechanic |

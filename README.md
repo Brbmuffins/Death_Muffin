@@ -202,7 +202,10 @@ Rarity is shown by colour *and* mark: · common, ◆ uncommon, ◆◆ rare, ◆�
 - **Needle first, spend second.** Bone Needle is free and refunds essence — keep it firing between rites.
 - **Fracture before the burst.** Marrow Spear through a line, *then* Litany: three Fracture stacks is +45% damage.
 - **Build the field, then cash it.** Let corpses pile up inside Miasma and around your thralls; Black Litany's power scales with everything it consumes (resonant corpses count double).
-- **Deacons die first.** A Deacon raising your corpses turns your fuel into enemies.
+- **Deacons die first.** A Deacon raising your corpses turns your fuel into enemies — and with no corpse
+  in reach it *Sanctifies* a wounded ally (pale gold halo: 30% less damage taken).
+- **Marrow Spear bleeds** (Hemorrhage, crimson drips), and the Mourner's wraiths **Chill** what they
+  strike (frost motes: slower feet, slower swings).
 - **Every corpse is a choice.** Exhume it (a thrall), bank it (Litany power), or burst it (Corpse
   Explosion, right now). Bursting is best when the pack is already on you or your legion is full.
 - **Read the elite before you fight it.** Bronze ring: step out. Olive drool: clear the corpses. Dim and

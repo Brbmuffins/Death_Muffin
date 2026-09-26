@@ -22,6 +22,7 @@ import {
 } from '../../content/abilities';
 import { NIGHTFALL_SHROUD_CHANCE, RESTLESS_SURGE_MULT, milestoneActive, waveModifiers } from '../../content/upgrades';
 import { DIFFICULTIES, type Difficulty } from '../../content/difficulty';
+import { CHILL, HEMORRHAGE, SANCTIFIED } from '../../content/statuses';
 import type { Nav } from '../nav';
 import { pickWeighted } from '../rng';
 import { BossBrain, BOSS_ARENA, BOSS_RADIUS } from './BossBrain';
@@ -172,7 +173,8 @@ export class WorldSim {
 
   /** Shrouded elites shrug off half of everything unless they stand in a player's rot. */
   damageTakenMult(e: Enemy) {
-    return e.affix === 'shrouded' && !this.inFriendlyMiasma(e) ? AFFIX_TUNING.shrouded.damageTakenMult : 1;
+    const shroud = e.affix === 'shrouded' && !this.inFriendlyMiasma(e) ? AFFIX_TUNING.shrouded.damageTakenMult : 1;
+    return shroud * ((e.sanctT ?? 0) > 0 ? SANCTIFIED.damageTakenMult : 1);
   }
 
   /** Inside a player-owned Miasma circle (or the rot pool a Corpse Explosion leaves)? */
@@ -193,6 +195,15 @@ export class WorldSim {
       const e = this.enemies.get(id);
       if (!e) continue;
       this.damageEnemy(e, h.dmg, h.by);
+      if (h.bleed && h.bleed > 0) {
+        // Hemorrhage: the strongest bleed wins; the host caps what a hit may claim.
+        const dps = Math.min(h.bleed, h.dmg * HEMORRHAGE.maxFrac);
+        if (dps >= (e.bleedDps ?? 0) || (e.bleedT ?? 0) <= 0) {
+          e.bleedDps = dps;
+          e.bleedOwner = h.by;
+        }
+        e.bleedT = HEMORRHAGE.durationS;
+      }
       if (h.fracture) {
         e.fracture = Math.min(FRACTURE.maxStacks, e.fracture + h.fracture);
         e.fractureT = FRACTURE.durationMs / 1000;
@@ -871,12 +882,28 @@ export class WorldSim {
     return best;
   }
 
+  /** The most wounded unblessed non-Deacon ally within reach. */
+  private sanctifyTarget(e: Enemy): Enemy | null {
+    let best: Enemy | null = null;
+    let bestFrac = 0.999;
+    for (const o of this.enemies.values()) {
+      if (o === e || o.def === 'deacon' || o.state === 'dead' || o.state === 'rising' || (o.sanctT ?? 0) > 0) continue;
+      if (Math.hypot(o.x - e.x, o.z - e.z) > SANCTIFIED.range) continue;
+      const frac = o.hp / o.maxHp;
+      if (frac < bestFrac) {
+        bestFrac = frac;
+        best = o;
+      }
+    }
+    return best;
+  }
+
   private moveEnemy(e: Enemy, tx: number, tz: number, dt: number, speedMult = 1) {
     const dx = tx - e.x;
     const dz = tz - e.z;
     const d = Math.hypot(dx, dz);
     if (d < 0.05) return;
-    const slow = e.slowT > 0 ? MIASMA_SLOW : 1;
+    const slow = (e.slowT > 0 ? MIASMA_SLOW : 1) * ((e.chillT ?? 0) > 0 ? CHILL.moveMult : 1);
     const step = Math.min(d, e.speed * speedMult * slow * dt);
     [e.x, e.z] = this.nav.resolveInArea(e.area, e.x + (dx / d) * step, e.z + (dz / d) * step, e.radius);
     e.facing = Math.atan2(dx, dz);
@@ -935,6 +962,20 @@ export class WorldSim {
       e.fractureT -= dt;
       if (e.fractureT <= 0) e.fracture = 0;
     }
+    if ((e.chillT ?? 0) > 0) e.chillT! -= dt;
+    if ((e.sanctT ?? 0) > 0) e.sanctT! -= dt;
+    if ((e.bleedT ?? 0) > 0 && (e.bleedDps ?? 0) > 0) {
+      e.bleedT! -= dt;
+      const dmg = e.bleedDps! * dt * this.damageTakenMult(e);
+      e.hp -= dmg;
+      e.lastHitBy = e.bleedOwner || e.lastHitBy;
+      const acc = (this.dotAccum.get(e.id) ?? 0) + dmg;
+      if (acc >= Math.max(4, e.maxHp * 0.06)) {
+        this.emit({ t: 'dmg', x: e.x, z: e.z, amount: Math.round(acc), kind: 'dot', by: e.bleedOwner ?? '' });
+        this.dotAccum.set(e.id, 0);
+      } else this.dotAccum.set(e.id, acc);
+      if (e.bleedT! <= 0) e.bleedDps = 0;
+    }
     if (e.witheredT > 0 && e.withered > 0) {
       e.witheredT -= dt;
       const dmg = e.withered * e.witheredDps * dt * this.damageTakenMult(e);
@@ -968,7 +1009,7 @@ export class WorldSim {
       }
       if (!activeAreas.has(e.area)) continue; // dormant: nobody here to hunt
       if (e.affix) this.tickAffix(e, dt);
-      e.attackCd -= dt;
+      e.attackCd -= dt * ((e.chillT ?? 0) > 0 ? CHILL.attackRateMult : 1);
       const def = ENEMIES[e.def];
 
       if (e.state === 'windup' || e.state === 'channel') {
@@ -996,6 +1037,13 @@ export class WorldSim {
           e.aimZ = corpse.z;
           this.emit({ t: 'telegraph', id: e.id, kind: 'raise', x: e.x, z: e.z, tx: corpse.x, tz: corpse.z, ms: 1500 });
           continue;
+        }
+        // No corpse to steal: bless the nearest wounded ally instead (Sanctified).
+        const ally = this.sanctifyTarget(e);
+        if (ally) {
+          ally.sanctT = SANCTIFIED.durationS;
+          e.attackCd = (def.cooldownMs / 1000) * SANCTIFIED.cooldownMult;
+          this.emit({ t: 'sanctify', id: e.id, target: ally.id, x: e.x, z: e.z, tx: ally.x, tz: ally.z });
         }
       }
 
@@ -1184,6 +1232,7 @@ export class WorldSim {
         const e = target;
         engage(e.x, e.z, e.radius, () => {
           const dealt = this.damageEnemy(e, t.damage, t.owner);
+          if (t.kind === 'wraith') e.chillT = CHILL.durationS;
           this.emit({ t: 'thrallHit', id: t.id, target: e.id, x: t.x, z: t.z, tx: e.x, tz: e.z, kind: t.kind, dmg: Math.round(dealt) });
         });
       } else if (bossTarget) {

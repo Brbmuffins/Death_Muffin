@@ -8,6 +8,7 @@ import { BOSS_RADIUS } from './sim/BossBrain';
 import type { BossState, Corpse, Enemy, Intent, SimEvent } from './sim/types';
 import type { Player } from './Player';
 import { audio } from '../audio/Audio';
+import { HEMORRHAGE } from '../content/statuses';
 
 export type CastResult = 'ok' | 'cooldown' | 'essence' | 'range' | 'no_target' | 'no_corpse' | 'dead';
 
@@ -198,7 +199,7 @@ export class AbilitySystem {
       if (along > 0 && along < range && across < halfW + e.radius) ids.push(e.id);
     }
     const dmg = this.sp * def.power;
-    if (ids.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids, dmg, fracture: 1 });
+    if (ids.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids, dmg, fracture: 1, bleed: dmg * HEMORRHAGE.dpsFrac });
     const b = this.ctx.boss();
     if (b.active) {
       const rx = b.x - p.x;

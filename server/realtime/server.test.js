@@ -63,3 +63,11 @@ test('matchmaking fills public worlds and isolates invite codes', () => {
   assert.equal(worlds.get(party).public, false, 'invite worlds are never auto-filled');
   assert.notEqual(pickWorld(), party);
 });
+
+test('hit bleed (Hemorrhage) is clamped to a quarter of the hit', () => {
+  assert.equal(validIntent({ t: 'hit', ids: [1], dmg: 100, bleed: 1e9 }).bleed, 25);
+  assert.equal(validIntent({ t: 'hit', ids: [1], dmg: 100, bleed: -5 }).bleed, 0);
+  assert.equal(validIntent({ t: 'hit', ids: [1], dmg: 100, bleed: 'x' }).bleed, 0);
+  assert.equal(validIntent({ t: 'hit', ids: [1], dmg: 100, bleed: 12 }).bleed, 12);
+  assert.equal('bleed' in validIntent({ t: 'hit', ids: [1], dmg: 100 }), false);
+});

@@ -8,6 +8,7 @@ import { fx } from './fxTextures';
 import { SPELL_FX } from '../content/abilities';
 import { audio } from '../audio/Audio';
 import type { CreatureSlug } from './modelPaths';
+import { STATUS_FX } from '../content/statuses';
 
 const ENEMY_SLUG: Record<EnemyId, CreatureSlug> = {
   robber: 'grave_robber',
@@ -442,6 +443,16 @@ export class EntityViews {
       }
       if (e.fracture > 0 && Math.random() < dt * 2 * e.fracture) {
         this.effects.emit({ x: e.x, y: 1.2, z: e.z, count: 1, color: SPELL_FX.needle.dust, spread: 0.3, speed: 0.6, up: 0.4, life: 0.5, size: 0.1, gravity: 5 });
+      }
+      // Status tells: marrow drips, frost motes, a priest-gold glint.
+      if ((e.bleedT ?? 0) > 0 && Math.random() < dt * 6) {
+        this.effects.emit({ x: e.x, y: 0.7 + Math.random() * 0.6, z: e.z, count: 1, color: Math.random() < 0.7 ? STATUS_FX.hemorrhage.crimson : STATUS_FX.hemorrhage.ember, spread: 0.3, speed: 0.1, up: -0.2, life: 0.6, size: 0.12, gravity: 8 });
+      }
+      if ((e.chillT ?? 0) > 0 && Math.random() < dt * 5) {
+        this.effects.emit({ x: e.x, y: 0.3 + Math.random() * 1.2, z: e.z, count: 1, color: STATUS_FX.chill.frost, spread: 0.45, speed: 0.15, up: 0.2, life: 0.8, size: 0.14, drag: 0.5 });
+      }
+      if ((e.sanctT ?? 0) > 0 && Math.random() < dt * 3) {
+        this.effects.emit({ x: e.x, y: 1.9 * e.scale, z: e.z, count: 1, color: STATUS_FX.sanctified.gold, spread: 0.35, speed: 0.1, up: 0.5, life: 0.7, size: 0.16 });
       }
       if (e.state === 'rising' && Math.random() < dt * 12) {
         this.effects.emitSmoke({ x: e.x, y: 0.1, z: e.z, count: 1, color: 0x2a2230, spread: 0.5, speed: 0.5, up: 0.6, life: 1, size: 0.9 });

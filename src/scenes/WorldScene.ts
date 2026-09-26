@@ -12,6 +12,7 @@ import { generateLayout } from '../content/layout';
 import { WAVE_MILESTONES, damageBonusPct, milestoneActive, waveModifiers } from '../content/upgrades';
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
 import { onSettingsChange, settings } from '../app/settings';
+import { STATUS_FX } from '../content/statuses';
 import { AbilitySystem, type CastResult, type CastTarget } from '../gameplay/AbilitySystem';
 import { deriveStats, xpToNext } from '../gameplay/characterStats';
 import { Inventory, rollBoss, rollItem, rollKill } from '../gameplay/loot';
@@ -47,6 +48,9 @@ import { CodexJournal, type CodexIds, type CodexKind } from '../gameplay/codexJo
 import { deadName } from '../content/codex';
 import { CURSOR } from '../ui/cursors';
 import { audio } from '../audio/Audio';
+
+/** Chill has no generated icon yet: a cold-blue frost sigil drawn inline. */
+const CHILL_ICON = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%23121a2e'/><g stroke='%239fc4ff' stroke-width='2.4' stroke-linecap='round'><path d='M16 5v22M6.5 10.5l19 11M6.5 21.5l19-11'/><path d='M13 7l3 3 3-3M13 25l3-3 3 3' fill='none'/></g></svg>";
 
 const SNAPSHOT_MS = 100;
 const MOVE_SEND_MS = 100;
@@ -878,6 +882,14 @@ export class WorldScene implements GameScene, RuntimeView {
           this.floating.spawn(this.player.x, 2.4, this.player.z, 'The corpse is gone', 'info');
         }
         break;
+      case 'sanctify': {
+        // Pale gold thread from the Deacon; a halo settles on the blessed.
+        const G = STATUS_FX.sanctified;
+        this.effects.beam({ x: ev.x, y: 1.9, z: ev.z }, () => ({ x: ev.tx, y: 1.6, z: ev.tz }), G.gold, 0.04, 0.5);
+        this.effects.decal({ tex: fx.ring(), color: G.gold, x: ev.tx, z: ev.tz, r: 1.1, duration: 0.8, opacity: 0.8, growFrom: 1.8 });
+        this.effects.emit({ x: ev.tx, y: 1.8, z: ev.tz, count: 10, color: G.pale, spread: 0.4, speed: 0.6, up: 0.8, life: 0.6, size: 0.18 });
+        break;
+      }
       case 'affix':
         if (ev.affix === 'hungering' && ev.amount) this.floating.spawn(ev.x, 2.4, ev.z, `+${ev.amount}`, 'dot');
         break;
@@ -1492,6 +1504,9 @@ export class WorldScene implements GameScene, RuntimeView {
       if (focusEnemy.fracture) statuses.push({ icon: 'art/status/fracture.png', label: 'Fracture', n: focusEnemy.fracture });
       if (focusEnemy.withered) statuses.push({ icon: 'art/status/withered.png', label: 'Withered', n: focusEnemy.withered });
       if (focusEnemy.slowT > 0) statuses.push({ icon: 'art/status/void-rot.png', label: 'Miasma', n: 1 });
+      if ((focusEnemy.bleedT ?? 0) > 0) statuses.push({ icon: 'art/status/hemorrhage.png', label: 'Hemorrhage', n: 1 });
+      if ((focusEnemy.chillT ?? 0) > 0) statuses.push({ icon: CHILL_ICON, label: 'Chilled', n: 1 });
+      if ((focusEnemy.sanctT ?? 0) > 0) statuses.push({ icon: 'art/status/sanctified.png', label: 'Sanctified', n: 1 });
       const affix = focusEnemy.affix ? ELITE_AFFIXES[focusEnemy.affix] : null;
       target = {
         name: d.name,

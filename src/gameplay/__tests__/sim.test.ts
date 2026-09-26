@@ -8,6 +8,7 @@ import { AFFIX_ORDER, AFFIX_TUNING, SURGE } from '../../content/enemies';
 import { DETONATE } from '../../content/abilities';
 import { RESTLESS_SURGE_MULT, waveModifiers } from '../../content/upgrades';
 import { generateLayout } from '../../content/layout';
+import { CHILL, HEMORRHAGE, SANCTIFIED } from '../../content/statuses';
 import type { EnemyRow } from '../../net/contracts';
 
 function world(seed = 1) {
@@ -462,5 +463,73 @@ describe('Grave Surges from crypts', () => {
     bare.startSurge('graves');
     const b = of(bare.step(0.05), 'surge')[0];
     expect(b.crypt).toBeUndefined();
+  });
+});
+
+describe('Status matrix', () => {
+  it('Hemorrhage: a spear hit bleeds its owner a capped share per second', () => {
+    const { sim } = world(6);
+    const e = sim.spawnEnemy('sac', 'graves', 0, -20, false, false);
+    const hp0 = e.hp;
+    sim.apply({ t: 'hit', by: 'p1', ids: [e.id], dmg: 10, bleed: 1e6 });
+    expect(e.bleedDps).toBeCloseTo(10 * HEMORRHAGE.maxFrac);
+    const afterHit = e.hp;
+    expect(hp0 - afterHit).toBeCloseTo(10);
+    sim.step(1);
+    expect(afterHit - e.hp).toBeCloseTo(10 * HEMORRHAGE.maxFrac, 1);
+    // It runs out.
+    for (let i = 0; i < 6; i++) sim.step(1);
+    expect(e.bleedDps).toBe(0);
+  });
+
+  it("Chill: the Mourner's wraith hits slow the dead", () => {
+    const { sim } = world(7);
+    const e = sim.spawnEnemy('robber', 'graves', 0, -19, false, false);
+    sim.addCorpse(0.5, -16, 'normal', 'robber', false, 0, 1, 'graves');
+    sim.apply({ ...exhume(0.5, -16), kind: 'wraith', damage: 1 });
+    let chilled = false;
+    for (let i = 0; i < 80 && !chilled; i++) {
+      sim.step(0.05);
+      chilled = (e.chillT ?? 0) > 0;
+    }
+    expect(chilled).toBe(true);
+    // Chilled feet: the same step covers less ground.
+    const a = sim.spawnEnemy('robber', 'graves', -10, -30, false, false);
+    const b = sim.spawnEnemy('robber', 'graves', 10, -30, false, false);
+    a.speed = b.speed = 3;
+    b.chillT = 5;
+    const [ax, az, bx, bz] = [a.x, a.z, b.x, b.z];
+    sim.step(0.2);
+    expect(Math.hypot(b.x - bx, b.z - bz)).toBeLessThan(Math.hypot(a.x - ax, a.z - az));
+    expect(CHILL.moveMult).toBeLessThan(1);
+  });
+
+  it('Sanctified: a Deacon with no corpse blesses a wounded ally, which then takes less damage', () => {
+    const { sim } = world(8);
+    const deacon = sim.spawnEnemy('deacon', 'graves', 0, -24, false, false);
+    const ally = sim.spawnEnemy('robber', 'graves', 1.5, -24, false, false);
+    ally.hp = ally.maxHp * 0.5;
+    deacon.attackCd = 0;
+    const ev = sim.step(0.05);
+    expect(of(ev, 'sanctify').some((s) => s.id === deacon.id && s.target === ally.id)).toBe(true);
+    expect(ally.sanctT).toBeGreaterThan(0);
+    const hp = ally.hp;
+    sim.apply({ t: 'hit', by: 'p1', ids: [ally.id], dmg: 10 });
+    expect(hp - ally.hp).toBeCloseTo(10 * SANCTIFIED.damageTakenMult);
+  });
+
+  it('statuses ride snapshot flags to guests', () => {
+    const { sim } = world(9);
+    const e = sim.spawnEnemy('robber', 'graves', 0, -20, false, false);
+    e.bleedT = 2;
+    e.bleedDps = 3;
+    e.chillT = 1;
+    e.sanctT = 1;
+    const mirror = new WorldMirror();
+    mirror.applySnapshot(makeSnapshot(sim, true));
+    const m = mirror.enemies.get(e.id)!;
+    expect(m.bleedT).toBeGreaterThan(0);
+    expect(m.chillT).toBeGreaterThan(0);
+    expect(m.sanctT).toBeGreaterThan(0);
   });
 });

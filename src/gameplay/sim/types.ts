@@ -47,6 +47,13 @@ export interface Enemy {
   flash: number;
   gait: number;
   moving: boolean;
+  /** Hemorrhage: bleed per second, seconds left, and who gets the kill. */
+  bleedT?: number;
+  bleedDps?: number;
+  bleedOwner?: string;
+  /** Chill (Mourner wraith hits) and Sanctified (Deacon blessing) seconds left. */
+  chillT?: number;
+  sanctT?: number;
   /** Elites roll one affix on spawn (replicated in snapshots). */
   affix?: EliteAffix;
   /** Host-only affix clock: seconds until the next toll / feeding. */
@@ -166,7 +173,7 @@ export interface BossState {
 // --- Intents: client → host requests (the host validates and applies) ---
 
 export type Intent =
-  | { t: 'hit'; by: string; ids: number[]; dmg: number; fracture?: number; boss?: boolean }
+  | { t: 'hit'; by: string; ids: number[]; dmg: number; fracture?: number; boss?: boolean; /** Hemorrhage bleed per second (clamped by the host). */ bleed?: number }
   | {
       t: 'miasma';
       by: string;
@@ -258,6 +265,8 @@ export type SimEvent =
     }
   /** Elite affix moments: a Bell-Tolled ring sounding, a Hungering feed, a Vengeful burst. */
   | { t: 'affix'; id: number; affix: EliteAffix; x: number; z: number; r?: number; tx?: number; tz?: number; amount?: number }
+  /** A Crypt Deacon blesses an ally (Sanctified). */
+  | { t: 'sanctify'; id: number; target: number; x: number; z: number; tx: number; tz: number }
   | { t: 'surge'; area: AreaId; x: number; z: number; durationMs: number; crypt?: boolean }
   | { t: 'surgeCleared'; area: AreaId; x: number; z: number }
   | { t: 'surgeFailed'; area: AreaId; x: number; z: number }

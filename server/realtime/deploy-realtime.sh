@@ -149,6 +149,8 @@ function validIntent(intent) {
       out.dmg = Math.min(Math.max(0, num(out.dmg)), 100000);
       out.fracture = Math.min(3, Math.max(0, num(out.fracture)));
       out.boss = !!out.boss;
+      // Hemorrhage (Marrow Spear): a bleed per second, never more than a quarter of the hit.
+      if ('bleed' in out) out.bleed = Math.min(Math.max(0, num(out.bleed)), out.dmg * 0.25);
       break;
     case 'miasma':
       out.r = Math.min(8, Math.max(0.5, num(out.r, 3)));

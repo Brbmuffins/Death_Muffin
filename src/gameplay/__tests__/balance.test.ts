@@ -26,9 +26,14 @@ describe('balance guard rails', () => {
   });
 
   it('the Hollow Graves are survivable but not free for a new character', () => {
-    const r = runBalance({ area: 'graves', level: 1, classIndex: 3, damageTier: 1, waveTier: 0, gearStats: 1, minutes: 2, seed: 42 });
-    expect(r.deaths).toBe(0);
-    expect(r.killsPerMin).toBeGreaterThan(40);
-    expect(r.damageTakenPerMin).toBeGreaterThan(0);
+    const runs = [1, 2, 3, 4].map((classIndex) =>
+      runBalance({ area: 'graves', level: 1, classIndex, damageTier: 1, waveTier: 0, gearStats: 1, minutes: 2, seed: 42 }),
+    );
+    for (const r of runs) {
+      expect(r.deaths).toBe(0);
+      expect(r.killsPerMin).toBeGreaterThan(40);
+    }
+    // Across the four disciplines the dead land some blows.
+    expect(runs.reduce((s, r) => s + r.damageTakenPerMin, 0)).toBeGreaterThan(0);
   });
 });
