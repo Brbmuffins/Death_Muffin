@@ -118,7 +118,8 @@ The loop today ends at the Prelate: once every area is open and Wave Speed is ma
 nothing left to chase. Ranked by replay value per effort; ★ = buildable client-side now
 (progression is browser-local until `server/proposals/necromancer-progress.md` ships).
 
-1. **★ Ascension (prestige).** Unlocks after the first Prelate kill; performed at the Altar.
+1. ✅ *shipped 2026-09-26 (client-side; +3 levels and +5% rewards per rank, 9 boons — see README "Ascension")* —
+   **★ Ascension (prestige).** Unlocks after the first Prelate kill; performed at the Altar.
    - **Resets** the browser-local layer only: Damage tiers, Wave Speed tiers, area unlocks and kill
      counts, soul shards. **Never** level, XP, gold or items. Those are server-owned, and resetting
      them would need server work and would feel punishing.

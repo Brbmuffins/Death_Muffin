@@ -119,6 +119,17 @@ new spawns. Harness: `BALANCE_DIFFICULTY=easy|hard npm run balance` (also `balan
 | Medium | 1 | 1 | 1 | see tables above | dodgers win in ~2.7 min; non-dodgers die |
 | Hard | 1.2 | 1.3 | 1.3 | Nave 56–96 %HP/min, occasional deaths; Sanctum 15–77 | dodgers win in ~3.4 min using every flask; non-dodgers die |
 
+## Ascension
+
+`content/ascension.ts`. Each rank adds +3 levels to every enemy, toxic pool and the Prelate, and +5%
+gold/XP. `BALANCE_ASCENSION=N` runs both harnesses with the bands anchored on the aged level. At matching
+level, Ascension III plays like the base game: Graves 0–21 %HP/min, Nave 22–36; the Prelate falls in
+~2.3 min for dodgers and still kills 3 of 4 disciplines who don't dodge. In practice characters arrive
+over-levelled for the early areas of a new run (level, gear and gold persist), which is intended: early
+seals go fast, and the aged late areas catch up. Ashes per run: 10 for the first Prelate kill,
++5 per extra kill (max 4), +2 per peak Wave Speed tier, +1 per 300 kills (max 15), ×(1 + 0.25·rank).
+Boons are per-character only: stats, costs, thrall cap, Soul Harvest, unlock thresholds.
+
 ## Co-op session dashboard (planned)
 
 Easy/Medium/Hard is the first slice of this. The remaining knobs (Wave Speed tier, enemy HP/damage multipliers, density, elite chance, surge

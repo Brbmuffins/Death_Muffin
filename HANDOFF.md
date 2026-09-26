@@ -66,6 +66,7 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 | Onboarding: welcome + 12 just-in-time tips, "Show tips again" | ✅ QA'd | `ui/Onboarding.ts` |
 | Horde perf: per-area prop batches + shadow LOD (−40% triangles at the cap) | ✅ measured | `WorldView`, `EntityViews.shadowLod`, `__cwDebug.perf()` |
 | Relic runes | 📝 server proposal only | `server/proposals/relic-runes.md` |
+| **Ascension** (prestige): Altar panel, Ashes, 9 Covenant Boons, +3 levels/rank, snapshot-synced rank | ✅ QA'd (full ascend + boon flow in browser) | `content/ascension.ts`, `progression.ts`, `ui/AscensionPanel.ts` |
 
 ## In flight (check before starting overlapping work)
 
@@ -98,10 +99,10 @@ refuses while the index has staged changes.
    dodges. Report how intended/push feel, and see "Open issues" in `BALANCE.md`.
 
 **Buildable next (code-only):**
-5. **Replay depth: pick a direction.** `FUTURE_CONTENT.md` → "Replay & endgame depth" proposes an
-   Ascension prestige loop (resets only the browser-local layer, grants Ashes for permanent boons,
-   raises world level per rank), daily rites, discipline talents, weekly omens and an endless
-   descent. Recommended first: Ascension.
+5. **Replay depth, continued.** Ascension shipped. Next from `FUTURE_CONTENT.md` → "Replay & endgame
+   depth": daily rites (date-seeded objectives paying Ashes), discipline talents (levels 5/15/20), weekly
+   omens, Prelate Echoes per rank. Server storage for rank/Ashes/boons belongs in the necro-progress
+   proposal (they are browser-local today, like the rest of `LocalProgress`).
 6. **Co-op session dashboard** (user request). Easy/Medium/Hard is the first slice. The rest (Wave
    Speed, HP/damage, density, elites, surges, arrival wave, roster weights) becomes a host panel
    relaying a validated `tuning` field. Spec: `FUTURE_CONTENT.md` → "Co-op session dashboard".

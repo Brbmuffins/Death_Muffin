@@ -417,3 +417,14 @@ Commits on `claude/adoring-knuth-hd1uox` after the environment/balance pass:
 - **Backlog**: replay/endgame proposals (Ascension prestige etc.) in FUTURE_CONTENT.
 Checks at the end: 80 vitest, 8 realtime, typecheck, production build all green.
 
+## Ascension — prestige loop (2026-09-26) ✅ tests + browser QA
+- `content/ascension.ts` (pure rules), `Progression` (rank, Ashes, boons, per-run record; save migration),
+  `WorldSim.ascension` (+3 enemy/boss levels per rank, in snapshots), `ui/AscensionPanel.ts` (Altar:
+  two-step Ascend listing resets/keeps, boon grid), portrait rank, onboarding tip, harness
+  `BALANCE_ASCENSION`, DEV hooks `prelateSlain()` / `altar()`.
+- Resets only the browser-local layer; level/XP/gold/items are never touched.
+- QA: ascended to rank I for 10 Ashes, bought Vigil + First Rites (HP 226 → 244, Damage tier 2), seals
+  closed, rank shown under the portrait. 86 vitest / 8 realtime / build green.
+- README rewritten for the whole session (statuses table, signature rites, thrall kinds, water/weather,
+  Ascension section, new-player section, dev commands) with six new screenshots in `docs/screenshots/`.
+
