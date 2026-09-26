@@ -111,6 +111,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private lastPrune = 0;
   private lineupTicks: ((dt: number) => void)[] = [];
   private stepT = 0;
+  private rippleT = 0;
+  private rippleCursor = 0;
   private zoneFx = new Map<number, Handle[]>();
   /** The cracked-crypt marker of the running Grave Surge. */
   private surgeFx: Handle | null = null;
@@ -805,6 +807,7 @@ export class WorldScene implements GameScene, RuntimeView {
     switch (ev.t) {
       case 'death':
         audio.play(ev.elite ? 'eliteDeath' : 'enemyDeath', ev.x, ev.z);
+        this.worldView.addRipple(ev.x, ev.z, ev.elite ? 2 : 1.4);
         this.onKill(ev);
         break;
       case 'hurt':
@@ -1313,6 +1316,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.views.pruneCorpses(this.corpsesMap());
     }
     this.zoneAmbience(dt);
+    this.wadeRipples(dt);
     this.prelate.sync(this.bossState(), dt);
     this.rig.update(dt, p.x, p.z);
     audio.setListener(p.x, p.z);
@@ -1334,6 +1338,31 @@ export class WorldScene implements GameScene, RuntimeView {
     this.floating.update(dt, this.rig.camera);
     this.tickOnboarding(now);
     this.updateHud(now);
+  }
+
+  /** Bodies wading through the nave's flood and the graveyard puddles ring the water. */
+  private wadeRipples(dt: number) {
+    this.rippleT -= dt;
+    if (this.rippleT > 0) return;
+    this.rippleT = 0.15;
+    this.rippleCursor++;
+    const p = this.player;
+    if (p.moving && this.rippleCursor % 2 === 0) this.worldView.addRipple(p.x, p.z, 0.9);
+    for (const r of this.remotes.values()) if (r.moving && this.rippleCursor % 3 === 0) this.worldView.addRipple(r.tx, r.tz, 0.8);
+    // One other wader per tick, round-robin, so a horde can't flood the 16 ripple slots.
+    const near = (b: { x: number; z: number; moving: boolean }) =>
+      b.moving && Math.abs(b.x - p.x) < 24 && Math.abs(b.z - p.z) < 20 && this.worldView.isWet(b.x, b.z);
+    let n = 0;
+    for (const e of this.enemiesMap().values()) if (near(e)) n++;
+    for (const t of this.thrallsMap().values()) if (near(t)) n++;
+    if (!n) return;
+    let pick = this.rippleCursor % n;
+    for (const b of [this.enemiesMap(), this.thrallsMap()]) {
+      for (const e of b.values()) {
+        if (!near(e)) continue;
+        if (pick-- === 0) return this.worldView.addRipple(e.x, e.z, 0.7);
+      }
+    }
   }
 
   /** Living zones churn: miasma sheds spores, toxic pools bubble. */
