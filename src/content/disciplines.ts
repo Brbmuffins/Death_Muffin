@@ -6,7 +6,8 @@
  * model) plays as a Gravecaller.
  */
 export type DisciplineId = 'ossuary' | 'gravecaller' | 'mourner' | 'rotweaver';
-export type ThrallKind = 'warrior' | 'shieldbearer' | 'wraith' | 'hound';
+/** warrior/shieldbearer/wraith come from the discipline; hound, archer, bonemage and plaguebearer from the corpse. */
+export type ThrallKind = 'warrior' | 'shieldbearer' | 'wraith' | 'hound' | 'archer' | 'bonemage' | 'plaguebearer';
 
 export interface DisciplineMods {
   thrallCap: number;

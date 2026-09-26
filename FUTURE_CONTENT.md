@@ -36,7 +36,7 @@ Socketable runes that change a spell's behaviour instead of its numbers:
 Server-side these are regular items with a new `item_type: 'rune'` plus a socket table — full spec in `server/proposals/relic-runes.md` (awaiting the VPS).
 
 ### Thrall variety
-- Skeleton archer (from Bellbound corpses), bone mage (from Deacon corpses — casts slow curses), plague bearer (from Carrion Sacs — explodes on death).
+- ✅ *shipped 2026-09-26* — Skeleton archer (from Bellbound corpses), bone mage (from Deacon corpses — its Bone Hex makes enemy blows 25% softer), plague bearer (from Carrion Sacs — bursts into a friendly rot pool when killed or sacrificed). The Mourner's wraiths still override. Bow/staff are code-built stand-ins.
 - Thrall gear: give thralls the copper/iron gear you'd otherwise salvage (weapon/armour slots on the thrall bar).
 
 ### Resource & feel

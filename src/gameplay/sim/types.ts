@@ -54,6 +54,8 @@ export interface Enemy {
   /** Chill (Mourner wraith hits) and Sanctified (Deacon blessing) seconds left. */
   chillT?: number;
   sanctT?: number;
+  /** Bone Hex (bone-mage thralls): this enemy's blows land softer. */
+  hexT?: number;
   /** Elites roll one affix on spawn (replicated in snapshots). */
   affix?: EliteAffix;
   /** Host-only affix clock: seconds until the next toll / feeding. */

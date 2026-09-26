@@ -836,9 +836,11 @@ export class WorldScene implements GameScene, RuntimeView {
         break;
       case 'thrallHit': {
         audio.play('boneHit', ev.tx, ev.tz);
-        const color = ev.kind === 'wraith' ? 0x8f9ed1 : 0xd8cfbd;
-        if (ev.kind === 'wraith') {
-          this.effects.projectile({ from: { x: ev.x, y: 1.3, z: ev.z }, to: () => ({ x: ev.tx, y: 1, z: ev.tz }), kind: 'orb', color, speed: 20 });
+        const color = ev.kind === 'wraith' ? 0x8f9ed1 : ev.kind === 'bonemage' ? STATUS_FX.hex.amber : 0xd8cfbd;
+        if (ev.kind === 'wraith' || ev.kind === 'bonemage') {
+          this.effects.projectile({ from: { x: ev.x, y: 1.3, z: ev.z }, to: () => ({ x: ev.tx, y: 1, z: ev.tz }), kind: 'orb', color, speed: ev.kind === 'bonemage' ? 14 : 20 });
+        } else if (ev.kind === 'archer') {
+          this.effects.projectile({ from: { x: ev.x, y: 1.3, z: ev.z }, to: () => ({ x: ev.tx, y: 1, z: ev.tz }), kind: 'needle', color, speed: 26, arc: 0.6 });
         } else this.effects.emit({ x: ev.tx, y: 1, z: ev.tz, count: 3, color, spread: 0.2, speed: 2, up: 0.8, life: 0.3, size: 0.15, gravity: 5 });
         if (ev.dmg > 0) this.floating.spawn(ev.tx, 1.4, ev.tz, String(ev.dmg), 'thrall');
         break;
@@ -1506,6 +1508,7 @@ export class WorldScene implements GameScene, RuntimeView {
       if (focusEnemy.slowT > 0) statuses.push({ icon: 'art/status/void-rot.png', label: 'Miasma', n: 1 });
       if ((focusEnemy.bleedT ?? 0) > 0) statuses.push({ icon: 'art/status/hemorrhage.png', label: 'Hemorrhage', n: 1 });
       if ((focusEnemy.chillT ?? 0) > 0) statuses.push({ icon: CHILL_ICON, label: 'Chilled', n: 1 });
+      if ((focusEnemy.hexT ?? 0) > 0) statuses.push({ icon: 'art/status/cursed.png', label: 'Bone Hex', n: 1 });
       if ((focusEnemy.sanctT ?? 0) > 0) statuses.push({ icon: 'art/status/sanctified.png', label: 'Sanctified', n: 1 });
       const affix = focusEnemy.affix ? ELITE_AFFIXES[focusEnemy.affix] : null;
       target = {

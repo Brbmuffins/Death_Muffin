@@ -8,7 +8,7 @@ import { AFFIX_ORDER, AFFIX_TUNING, SURGE } from '../../content/enemies';
 import { DETONATE } from '../../content/abilities';
 import { RESTLESS_SURGE_MULT, waveModifiers } from '../../content/upgrades';
 import { generateLayout } from '../../content/layout';
-import { CHILL, HEMORRHAGE, SANCTIFIED } from '../../content/statuses';
+import { BONE_HEX, CHILL, HEMORRHAGE, SANCTIFIED } from '../../content/statuses';
 import type { EnemyRow } from '../../net/contracts';
 
 function world(seed = 1) {
@@ -531,5 +531,57 @@ describe('Status matrix', () => {
     expect(m.bleedT).toBeGreaterThan(0);
     expect(m.chillT).toBeGreaterThan(0);
     expect(m.sanctT).toBeGreaterThan(0);
+  });
+});
+
+describe('Thrall variety', () => {
+  const raise = (sim: WorldSim, c: Corpse, kind: 'warrior' | 'wraith' = 'warrior') => {
+    const ev: SimEvent[] = [];
+    sim.apply({ ...exhume(c.x, c.z), kind });
+    ev.push(...sim.step(0.01));
+    return of(ev, 'thrall')[0];
+  };
+
+  it('a corpse remembers what it was', () => {
+    const { sim } = world(12);
+    expect(raise(sim, corpse(sim, 1, -16, 'resonant')).kind).toBe('archer');
+    expect(raise(sim, corpse(sim, 2, -16, 'toxic')).kind).toBe('plaguebearer');
+    sim.addCorpse(3, -16, 'normal', 'deacon', false, 0, 1, 'graves');
+    const deacon = [...sim.corpses.values()].find((c) => c.enemy === 'deacon')!;
+    expect(raise(sim, deacon).kind).toBe('bonemage');
+    expect(raise(sim, corpse(sim, 4, -16, 'normal')).kind).toBe('warrior');
+    // The Mourner's discipline overrides: everything rises a wraith.
+    const { sim: m } = world(13);
+    expect(raise(m, corpse(m, 1, -16, 'toxic'), 'wraith').kind).toBe('wraith');
+  });
+
+  it('a fallen plague bearer bursts and leaves a friendly rot pool', () => {
+    const { sim } = world(14);
+    const t = raise(sim, corpse(sim, 0, -18, 'toxic'));
+    const thrall = sim.thralls.get(t.id)!;
+    const e = sim.spawnEnemy('sac', 'graves', thrall.x + 1, thrall.z, false, false);
+    const hp = e.hp;
+    sim.killThrall(thrall, 'killed');
+    const ev = sim.step(0.01);
+    expect(e.hp).toBeLessThan(hp);
+    const rot = [...sim.zones.values()].find((z) => z.kind === 'rot');
+    expect(rot?.hostile).toBe(false);
+    expect(of(ev, 'burst').length).toBeGreaterThan(0);
+    // Crumbling (legion over cap) is quiet: no burst.
+    const t2 = raise(sim, corpse(sim, 5, -18, 'toxic'));
+    const zones = sim.zones.size;
+    sim.killThrall(sim.thralls.get(t2.id)!, 'crumbled');
+    expect(sim.zones.size).toBe(zones);
+  });
+
+  it("a bone mage's hex softens the enemy's blows", () => {
+    const { sim } = world(15);
+    const e = sim.spawnEnemy('robber', 'graves', 0, -19, false, false);
+    sim.addCorpse(0.5, -16, 'normal', 'deacon', false, 0, 1, 'graves');
+    raise(sim, [...sim.corpses.values()].find((c) => c.enemy === 'deacon')!);
+    for (let i = 0; i < 120 && !((e.hexT ?? 0) > 0); i++) sim.step(0.05);
+    expect(e.hexT).toBeGreaterThan(0);
+    const blow = (sim as unknown as { blow(e: unknown): number }).blow(e);
+    expect(blow).toBeCloseTo(e.damage * BONE_HEX.damageMult);
   });
 });

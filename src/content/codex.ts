@@ -52,7 +52,7 @@ export const CODEX_RITES: Record<AbilityId, RiteEntry> = {
   exhume: {
     fx: 'exhume',
     colour: 'Spirit teal',
-    tip: 'Claim bodies fast: corpses rot within half a minute, Carrion Sacs rupture in seconds, and Crypt Deacons steal whatever you leave. Penitent and elite corpses rise empowered, and Bone Hound corpses rise as hounds of your own.',
+    tip: 'Claim bodies fast: corpses rot within half a minute, Carrion Sacs rupture in seconds, and Crypt Deacons steal whatever you leave. Penitent and elite corpses rise empowered, and a corpse remembers what it was: hounds rise as hounds, Penitents as archers, Deacons as bone mages, Carrion Sacs as plague bearers.',
   },
   miasma: {
     fx: 'miasma',
@@ -143,21 +143,21 @@ export const CODEX_DEAD: Record<DeadId, DeadEntry> = {
     name: ENEMIES.penitent.name,
     role: ENEMIES.penitent.behavior,
     behaviour: 'Hangs back at range and tolls a cone of grave-sound after a long, bronze windup. Backs away if you close in.',
-    corpse: 'Resonant. The Litany counts it far above a common corpse, and a thrall raised from it rises empowered.',
+    corpse: 'Resonant. The Litany counts it far above a common corpse. Exhumed, it rises an empowered skeleton archer that looses bone arrows from range.',
     counter: 'Step out of the cone before it sounds; the telegraph is long. Then close the gap: at range it hits harder than anything else in the Graves.',
   },
   sac: {
     name: ENEMIES.sac.name,
     role: ENEMIES.sac.behavior,
     behaviour: 'Slow and swollen. It lumbers into reach and slams the ground in front of it.',
-    corpse: 'Toxic. It ruptures into a poison pool a few seconds after death unless you Exhume it or take it in a Litany first.',
+    corpse: 'Toxic. It ruptures into a poison pool a few seconds after death unless you claim it first. Exhumed, it rises a plague bearer that bursts into a rot pool of your own when it falls or is sacrificed.',
     counter: 'Kill it away from where you mean to stand, then claim the body at once or step clear before it bursts.',
   },
   deacon: {
     name: ENEMIES.deacon.name,
     role: ENEMIES.deacon.behavior,
     behaviour: 'A support caster. It hunts unclaimed corpses, channels a green beam over them and raises them as Risen. With nothing to steal, it curses you from range.',
-    corpse: 'An ordinary corpse, and one it can no longer take from you.',
+    corpse: 'One it can no longer take from you. Exhumed, it rises a bone mage whose amber hex makes enemy blows land softer.',
     counter: 'Kill it first. The green beam is your warning: the raise takes a moment, so claim the body or put the deacon down before it finishes.',
   },
   risen: {

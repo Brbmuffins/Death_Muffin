@@ -27,8 +27,26 @@ export const SANCTIFIED = {
   cooldownMult: 0.6,
 };
 
+export const BONE_HEX = {
+  /** Bone-mage thrall bolts: the hexed enemy's blows land softer. */
+  durationS: 3,
+  damageMult: 0.75,
+};
+
+/** Plague-bearer thralls burst into a friendly rot pool when they fall (or are sacrificed). */
+export const PLAGUE_BURST = {
+  radius: 2.6,
+  /** Burst damage as a multiple of the thrall's hit. */
+  damageMult: 2.5,
+  poolRadius: 2.4,
+  poolMs: 5000,
+  /** Pool withering dps as a share of the thrall's hit. */
+  poolDpsShare: 0.35,
+};
+
 export const STATUS_FX = {
   hemorrhage: { crimson: 0x8a2c3c, ember: 0xff6a2a },
   chill: { frost: 0x9fc4ff, deep: 0x5b7fd6 },
   sanctified: { gold: 0xf2d98a, pale: 0xfff3cf },
+  hex: { bone: 0xe0d6c2, amber: 0xd9a66b },
 };

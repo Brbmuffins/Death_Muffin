@@ -22,7 +22,8 @@ import {
 } from '../../content/abilities';
 import { NIGHTFALL_SHROUD_CHANCE, RESTLESS_SURGE_MULT, milestoneActive, waveModifiers } from '../../content/upgrades';
 import { DIFFICULTIES, type Difficulty } from '../../content/difficulty';
-import { CHILL, HEMORRHAGE, SANCTIFIED } from '../../content/statuses';
+import type { ThrallKind } from '../../content/disciplines';
+import { BONE_HEX, CHILL, HEMORRHAGE, PLAGUE_BURST, SANCTIFIED } from '../../content/statuses';
 import type { Nav } from '../nav';
 import { pickWeighted } from '../rng';
 import { BossBrain, BOSS_ARENA, BOSS_RADIUS } from './BossBrain';
@@ -56,7 +57,29 @@ const THRALL_BASE = {
   shieldbearer: { range: 1.3, interval: 1.25, speed: 5.2 },
   hound: { range: 1.2, interval: 0.7, speed: 7.2 },
   wraith: { range: 5.5, interval: 1.1, speed: 5.8 },
+  // Corpse-born specialists (FUTURE_CONTENT 0.2 thrall variety).
+  archer: { range: 7.5, interval: 1.3, speed: 5.4 },
+  bonemage: { range: 6.5, interval: 1.8, speed: 5.2 },
+  plaguebearer: { range: 1.3, interval: 1.2, speed: 4.8 },
 } as const;
+
+/** Which specialist a corpse rises as (disciplines' own kinds otherwise). */
+function thrallFromCorpse(c: Corpse, discipline: ThrallKind): ThrallKind {
+  if (discipline === 'wraith') return 'wraith';
+  if (c.kind === 'swift') return 'hound';
+  if (c.enemy === 'penitent') return 'archer';
+  if (c.enemy === 'deacon') return 'bonemage';
+  if (c.enemy === 'sac') return 'plaguebearer';
+  return discipline;
+}
+
+/** Relative hp / hit of each thrall kind against the caster's base thrall stats. */
+const THRALL_SCALE: Partial<Record<ThrallKind, { hp: number; dmg: number }>> = {
+  hound: { hp: 0.75, dmg: 1 },
+  archer: { hp: 0.7, dmg: 0.85 },
+  bonemage: { hp: 0.7, dmg: 0.7 },
+  plaguebearer: { hp: 1.1, dmg: 0.8 },
+};
 
 /**
  * The authoritative world. Runs on the room host (or solo). Everything that
@@ -257,7 +280,8 @@ export class WorldSim {
       crumbled = owned[0].id;
       this.killThrall(owned[0], 'crumbled');
     }
-    const kind = x.kind === 'wraith' ? 'wraith' : best.kind === 'swift' ? 'hound' : x.kind;
+    const kind = thrallFromCorpse(best, x.kind);
+    const scale = THRALL_SCALE[kind] ?? { hp: 1, dmg: 1 };
     const empowered = best.kind === 'resonant' || best.elite;
     const base = THRALL_BASE[kind];
     const slotsUsed = new Set(this.ownedThralls(x.by).map((t) => t.slot));
@@ -270,9 +294,9 @@ export class WorldSim {
       x: best.x,
       z: best.z,
       facing: best.facing,
-      hp: x.hp * (empowered ? 1.5 : 1) * (kind === 'hound' ? 0.75 : 1),
-      maxHp: x.hp * (empowered ? 1.5 : 1) * (kind === 'hound' ? 0.75 : 1),
-      damage: x.damage * (empowered ? 1.5 : 1),
+      hp: x.hp * (empowered ? 1.5 : 1) * scale.hp,
+      maxHp: x.hp * (empowered ? 1.5 : 1) * scale.hp,
+      damage: x.damage * (empowered ? 1.5 : 1) * scale.dmg,
       attackInterval: base.interval / x.attackSpeedMult,
       range: base.range,
       speed: base.speed,
@@ -429,6 +453,42 @@ export class WorldSim {
     if (!this.thralls.delete(t.id)) return;
     t.state = 'dead';
     this.emit({ t: 'thrallGone', id: t.id, owner: t.owner, x: t.x, z: t.z, reason });
+    if (t.kind === 'plaguebearer' && reason !== 'crumbled') this.plagueBurst(t);
+  }
+
+  /** A fallen plague bearer ruptures: rot damage around it and a friendly withering pool. */
+  private plagueBurst(t: Thrall) {
+    const dmg = t.damage * PLAGUE_BURST.damageMult;
+    for (const e of this.enemies.values()) {
+      if (e.state === 'dead' || Math.hypot(e.x - t.x, e.z - t.z) > PLAGUE_BURST.radius + e.radius) continue;
+      this.damageEnemy(e, dmg, t.owner);
+    }
+    const b = this.boss.state;
+    if (b.active && Math.hypot(b.x - t.x, b.z - t.z) <= PLAGUE_BURST.radius + BOSS_RADIUS) this.boss.damage(dmg, t.owner, 0);
+    this.emit({ t: 'burst', kind: 'bloom', x: t.x, z: t.z, r: PLAGUE_BURST.radius });
+    const zone: Zone = {
+      id: this.id(),
+      kind: 'rot',
+      owner: t.owner,
+      x: t.x,
+      z: t.z,
+      r: PLAGUE_BURST.poolRadius,
+      until: this.time + PLAGUE_BURST.poolMs / 1000,
+      bornAt: this.time,
+      tick: 0,
+      dps: t.damage * PLAGUE_BURST.poolDpsShare,
+      slow: MIASMA_SLOW,
+      witheredCap: DETONATE.rotWitheredCap,
+      bloom: false,
+      hostile: false,
+    };
+    this.zones.set(zone.id, zone);
+    this.emit({ t: 'zone', zone });
+  }
+
+  /** What an enemy's blow is worth right now (Bone Hex softens it). */
+  private blow(e: Enemy) {
+    return e.damage * ((e.hexT ?? 0) > 0 ? BONE_HEX.damageMult : 1);
   }
 
   // --- Spawning ---
@@ -835,7 +895,7 @@ export class WorldSim {
 
   private soundToll(e: Enemy, x: number, z: number) {
     const T = AFFIX_TUNING.bellTolled;
-    const dmg = e.damage * T.damageMult;
+    const dmg = this.blow(e) * T.damageMult;
     for (const p of this.players.values()) {
       if (p.alive && Math.hypot(p.x - x, p.z - z) <= T.r + PLAYER_RADIUS) {
         this.emit({ t: 'hurt', player: p.id, dmg, from: 'toll', x, z });
@@ -931,9 +991,9 @@ export class WorldSim {
         return (vx * dirX + vz * dirZ) / (d * len || 1) > Math.cos((30 * Math.PI) / 180);
       };
       for (const p of this.players.values()) {
-        if (p.alive && hits(p.x, p.z)) this.emit({ t: 'hurt', player: p.id, dmg: e.damage, from: 'cone', x: e.x, z: e.z });
+        if (p.alive && hits(p.x, p.z)) this.emit({ t: 'hurt', player: p.id, dmg: this.blow(e), from: 'cone', x: e.x, z: e.z });
       }
-      for (const t of [...this.thralls.values()]) if (hits(t.x, t.z)) this.hurtThrall(t, e.damage);
+      for (const t of [...this.thralls.values()]) if (hits(t.x, t.z)) this.hurtThrall(t, this.blow(e));
       return;
     }
     const reach = kind === 'slam' ? 1.9 : def.attackRange * 1.35 + 0.4;
@@ -941,14 +1001,14 @@ export class WorldSim {
     const cz = kind === 'slam' ? e.aimZ : e.z;
     const p = e.targetPlayer ? this.players.get(e.targetPlayer) : undefined;
     if (p && p.alive && Math.hypot(p.x - cx, p.z - cz) <= reach) {
-      this.emit({ t: 'hurt', player: p.id, dmg: e.damage, from: kind === 'curse' ? 'curse' : 'melee', x: e.x, z: e.z });
+      this.emit({ t: 'hurt', player: p.id, dmg: this.blow(e), from: kind === 'curse' ? 'curse' : 'melee', x: e.x, z: e.z });
     }
     const t = e.targetThrall !== null ? this.thralls.get(e.targetThrall) : undefined;
-    if (t && Math.hypot(t.x - cx, t.z - cz) <= reach) this.hurtThrall(t, e.damage);
+    if (t && Math.hypot(t.x - cx, t.z - cz) <= reach) this.hurtThrall(t, this.blow(e));
     if (kind === 'slam') {
       for (const other of this.players.values()) {
         if (other !== p && other.alive && Math.hypot(other.x - cx, other.z - cz) <= reach) {
-          this.emit({ t: 'hurt', player: other.id, dmg: e.damage, from: 'melee', x: e.x, z: e.z });
+          this.emit({ t: 'hurt', player: other.id, dmg: this.blow(e), from: 'melee', x: e.x, z: e.z });
         }
       }
     }
@@ -964,6 +1024,7 @@ export class WorldSim {
     }
     if ((e.chillT ?? 0) > 0) e.chillT! -= dt;
     if ((e.sanctT ?? 0) > 0) e.sanctT! -= dt;
+    if ((e.hexT ?? 0) > 0) e.hexT! -= dt;
     if ((e.bleedT ?? 0) > 0 && (e.bleedDps ?? 0) > 0) {
       e.bleedT! -= dt;
       const dmg = e.bleedDps! * dt * this.damageTakenMult(e);
@@ -1233,6 +1294,7 @@ export class WorldSim {
         engage(e.x, e.z, e.radius, () => {
           const dealt = this.damageEnemy(e, t.damage, t.owner);
           if (t.kind === 'wraith') e.chillT = CHILL.durationS;
+          else if (t.kind === 'bonemage') e.hexT = BONE_HEX.durationS;
           this.emit({ t: 'thrallHit', id: t.id, target: e.id, x: t.x, z: t.z, tx: e.x, tz: e.z, kind: t.kind, dmg: Math.round(dealt) });
         });
       } else if (bossTarget) {

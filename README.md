@@ -206,6 +206,8 @@ Rarity is shown by colour *and* mark: · common, ◆ uncommon, ◆◆ rare, ◆�
   in reach it *Sanctifies* a wounded ally (pale gold halo: 30% less damage taken).
 - **Marrow Spear bleeds** (Hemorrhage, crimson drips), and the Mourner's wraiths **Chill** what they
   strike (frost motes: slower feet, slower swings).
+- **A corpse remembers what it was.** Exhume a Penitent for a skeleton archer, a Deacon for a bone mage
+  (its hex softens enemy blows), a Carrion Sac for a plague bearer that bursts into your own rot pool.
 - **Every corpse is a choice.** Exhume it (a thrall), bank it (Litany power), or burst it (Corpse
   Explosion, right now). Bursting is best when the pack is already on you or your legion is full.
 - **Read the elite before you fight it.** Bronze ring: step out. Olive drool: clear the corpses. Dim and
