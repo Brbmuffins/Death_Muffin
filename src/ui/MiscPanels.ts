@@ -1,7 +1,8 @@
 import { settings, updateSettings, type Quality } from '../app/settings';
 import { AREAS, type AreaId } from '../content/areas';
+import { DIFFICULTIES, DIFFICULTY_ORDER, isDifficulty } from '../content/difficulty';
 
-abstract class SimplePanel {
+export abstract class SimplePanel {
   protected el: HTMLDivElement | null = null;
   constructor(protected root: HTMLElement) {}
   get isOpen() {
@@ -30,6 +31,7 @@ export class SettingsPanel extends SimplePanel {
     root: HTMLElement,
     private onLeave: () => void,
     private instanceCode: () => string | null,
+    private onResetTips?: () => void,
   ) {
     super(root);
   }
@@ -40,17 +42,23 @@ export class SettingsPanel extends SimplePanel {
     this.mount(
       'Settings',
       `<div class="cw-settings">
+        <label class="row">Difficulty
+          <select data-diff>${DIFFICULTY_ORDER.map((d) => `<option value="${d}">${DIFFICULTIES[d].name}</option>`).join('')}</select></label>
+        <p class="cw-settings-note" data-diffnote></p>
         <label class="row">Graphics
           <select data-q><option value="high">High (bloom, shadows)</option><option value="low">Low (fast)</option></select></label>
         <label class="row">Volume<input type="range" min="0" max="1" step="0.05" data-vol aria-label="Master volume" /></label>
         <label class="row">Reduce motion (no camera shake)<input type="checkbox" data-rm /></label>
         <label class="row">Damage numbers<input type="checkbox" data-dn /></label>
         <label class="row">Don't show tips<input type="checkbox" data-tips /></label>
+        ${this.onResetTips ? '<label class="row">New to the Covenant?<button type="button" class="cw-button" data-resettips>Show tips again</button></label>' : ''}
         ${code ? `<label class="row">Party world code<b style="font-family:var(--cw-font-numeric)">${code}</b></label>` : ''}
         <div class="cw-keys">
           <kbd>Click</kbd><span>Move · attack target (Bone Needle) · use</span>
           <kbd>Shift+Click</kbd><span>Cast Bone Needle without moving</span>
           <kbd>1–4</kbd><span>Marrow Spear · Exhume · Miasma · Black Litany (at cursor)</span>
+          <kbd>RMB · 5</kbd><span>Corpse Explosion (corpse nearest the cursor)</span>
+          <kbd>R · 6</kbd><span>Signature rite (unlocks at level 10)</span>
           <kbd>Q</kbd><span>Drink a healing flask</span>
           <kbd>T</kbd><span>Return to the Chapterhouse</span>
           <kbd>I C P M</kbd><span>Reliquary · Workbench · Rites · Waystones</span>
@@ -58,11 +66,21 @@ export class SettingsPanel extends SimplePanel {
           <kbd>WASD</kbd><span>Walk (fallback)</span>
           <kbd>Wheel</kbd><span>Zoom</span>
           <kbd>Enter</kbd><span>Chat</span>
+          <kbd>Altar</kbd><span>Click the Altar in the Chapterhouse to Ascend and buy Boons</span>
         </div>
         <hr class="cw-rule" />
         <button class="cw-button" data-leave>Leave the world</button>
       </div>`,
     );
+    const diff = this.el!.querySelector<HTMLSelectElement>('[data-diff]')!;
+    const note = this.el!.querySelector<HTMLElement>('[data-diffnote]')!;
+    const showNote = () => (note.textContent = `${DIFFICULTIES[settings.difficulty].blurb} In co-op, the world keeper's difficulty applies.`);
+    diff.value = settings.difficulty;
+    showNote();
+    diff.addEventListener('change', () => {
+      if (isDifficulty(diff.value)) updateSettings({ difficulty: diff.value });
+      showNote();
+    });
     const q = this.el!.querySelector<HTMLSelectElement>('[data-q]')!;
     q.value = settings.quality;
     q.addEventListener('change', () => updateSettings({ quality: q.value as Quality }));
@@ -78,6 +96,11 @@ export class SettingsPanel extends SimplePanel {
     const tips = this.el!.querySelector<HTMLInputElement>('[data-tips]')!;
     tips.checked = !settings.tips;
     tips.addEventListener('change', () => updateSettings({ tips: !tips.checked }));
+    this.el!.querySelector<HTMLButtonElement>('[data-resettips]')?.addEventListener('click', () => {
+      updateSettings({ tips: true });
+      tips.checked = false;
+      this.onResetTips?.();
+    });
     this.el!.querySelector('[data-leave]')!.addEventListener('click', () => this.onLeave());
   }
 }

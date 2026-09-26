@@ -11,6 +11,7 @@ import {
   type EnemyId,
 } from '../../content/enemies';
 import {
+  SIGNATURE,
   DETONATE,
   FRACTURE,
   LITANY_MAX_MULT,
@@ -20,7 +21,11 @@ import {
   MIASMA_SLOW,
   ABILITIES,
 } from '../../content/abilities';
-import { waveModifiers } from '../../content/upgrades';
+import { NIGHTFALL_SHROUD_CHANCE, RESTLESS_SURGE_MULT, milestoneActive, waveModifiers } from '../../content/upgrades';
+import { DIFFICULTIES, type Difficulty } from '../../content/difficulty';
+import { ascensionLevels } from '../../content/ascension';
+import type { ThrallKind } from '../../content/disciplines';
+import { BONE_HEX, CHILL, HEMORRHAGE, PLAGUE_BURST, SANCTIFIED } from '../../content/statuses';
 import type { Nav } from '../nav';
 import { pickWeighted } from '../rng';
 import { BossBrain, BOSS_ARENA, BOSS_RADIUS } from './BossBrain';
@@ -54,7 +59,39 @@ const THRALL_BASE = {
   shieldbearer: { range: 1.3, interval: 1.25, speed: 5.2 },
   hound: { range: 1.2, interval: 0.7, speed: 7.2 },
   wraith: { range: 5.5, interval: 1.1, speed: 5.8 },
+  // Corpse-born specialists (FUTURE_CONTENT 0.2 thrall variety).
+  archer: { range: 7.5, interval: 1.3, speed: 5.4 },
+  bonemage: { range: 6.5, interval: 1.8, speed: 5.2 },
+  plaguebearer: { range: 1.3, interval: 1.2, speed: 4.8 },
 } as const;
+
+/** Proper segment intersection (touching endpoints don't count). */
+function segmentsCross(ax: number, az: number, bx: number, bz: number, cx: number, cz: number, dx: number, dz: number) {
+  const o = (px: number, pz: number, qx: number, qz: number, rx: number, rz: number) => (qx - px) * (rz - pz) - (qz - pz) * (rx - px);
+  const d1 = o(cx, cz, dx, dz, ax, az);
+  const d2 = o(cx, cz, dx, dz, bx, bz);
+  const d3 = o(ax, az, bx, bz, cx, cz);
+  const d4 = o(ax, az, bx, bz, dx, dz);
+  return d1 * d2 < 0 && d3 * d4 < 0;
+}
+
+/** Which specialist a corpse rises as (disciplines' own kinds otherwise). */
+function thrallFromCorpse(c: Corpse, discipline: ThrallKind): ThrallKind {
+  if (discipline === 'wraith') return 'wraith';
+  if (c.kind === 'swift') return 'hound';
+  if (c.enemy === 'penitent') return 'archer';
+  if (c.enemy === 'deacon') return 'bonemage';
+  if (c.enemy === 'sac') return 'plaguebearer';
+  return discipline;
+}
+
+/** Relative hp / hit of each thrall kind against the caster's base thrall stats. */
+const THRALL_SCALE: Partial<Record<ThrallKind, { hp: number; dmg: number }>> = {
+  hound: { hp: 0.75, dmg: 1 },
+  archer: { hp: 0.7, dmg: 0.85 },
+  bonemage: { hp: 0.7, dmg: 0.7 },
+  plaguebearer: { hp: 1.1, dmg: 0.8 },
+};
 
 /**
  * The authoritative world. Runs on the room host (or solo). Everything that
@@ -71,6 +108,10 @@ export class WorldSim {
 
   /** Host's active wave-speed tier (drives every area this sim runs). */
   waveTier = 0;
+  /** Host's session difficulty: scales enemy/boss HP and damage for new spawns. */
+  difficulty: Difficulty = 'medium';
+  /** World keeper's Ascension rank: every enemy and the Prelate run this many ranks older. */
+  ascension = 0;
   time = 0;
   /** The running Grave Surge, if any. */
   surge: SurgeState | null = null;
@@ -80,12 +121,18 @@ export class WorldSim {
   private events: SimEvent[] = [];
   private nextId = 1;
   private waveTimers = new Map<AreaId, number>();
+  /** Regular waves spawned per area (Elite Vanguard alternates). */
+  private waveCounts = new Map<AreaId, number>();
+  /** Ossuary Walls standing right now (segments enemies can't cross). */
+  readonly walls = new Map<number, { id: number; owner: string; x0: number; z0: number; x1: number; z1: number; until: number }>();
+  /** Surge origins in front of crypt props (from the layout); breaches are the fallback. */
+  private crypts: { area: AreaId; x: number; z: number }[] = [];
   private dotAccum = new Map<number, number>();
   private bloomed = new Set<number>();
 
   constructor(
     private nav: Nav,
-    private rand: () => number = Math.random,
+    readonly rand: () => number = Math.random,
   ) {
     this.boss = new BossBrain(this);
   }
@@ -144,6 +191,8 @@ export class WorldSim {
         return this.boss.awaken(intent.by);
       case 'detonate':
         return this.applyDetonate(intent);
+      case 'signature':
+        return this.applySignature(intent);
       case 'recallThralls':
         for (const t of this.thralls.values()) {
           if (t.owner !== intent.by) continue;
@@ -165,7 +214,8 @@ export class WorldSim {
 
   /** Shrouded elites shrug off half of everything unless they stand in a player's rot. */
   damageTakenMult(e: Enemy) {
-    return e.affix === 'shrouded' && !this.inFriendlyMiasma(e) ? AFFIX_TUNING.shrouded.damageTakenMult : 1;
+    const shroud = e.affix === 'shrouded' && !this.inFriendlyMiasma(e) ? AFFIX_TUNING.shrouded.damageTakenMult : 1;
+    return shroud * ((e.sanctT ?? 0) > 0 ? SANCTIFIED.damageTakenMult : 1);
   }
 
   /** Inside a player-owned Miasma circle (or the rot pool a Corpse Explosion leaves)? */
@@ -186,6 +236,15 @@ export class WorldSim {
       const e = this.enemies.get(id);
       if (!e) continue;
       this.damageEnemy(e, h.dmg, h.by);
+      if (h.bleed && h.bleed > 0) {
+        // Hemorrhage: the strongest bleed wins; the host caps what a hit may claim.
+        const dps = Math.min(h.bleed, h.dmg * HEMORRHAGE.maxFrac);
+        if (dps >= (e.bleedDps ?? 0) || (e.bleedT ?? 0) <= 0) {
+          e.bleedDps = dps;
+          e.bleedOwner = h.by;
+        }
+        e.bleedT = HEMORRHAGE.durationS;
+      }
       if (h.fracture) {
         e.fracture = Math.min(FRACTURE.maxStacks, e.fracture + h.fracture);
         e.fractureT = FRACTURE.durationMs / 1000;
@@ -239,7 +298,8 @@ export class WorldSim {
       crumbled = owned[0].id;
       this.killThrall(owned[0], 'crumbled');
     }
-    const kind = x.kind === 'wraith' ? 'wraith' : best.kind === 'swift' ? 'hound' : x.kind;
+    const kind = thrallFromCorpse(best, x.kind);
+    const scale = THRALL_SCALE[kind] ?? { hp: 1, dmg: 1 };
     const empowered = best.kind === 'resonant' || best.elite;
     const base = THRALL_BASE[kind];
     const slotsUsed = new Set(this.ownedThralls(x.by).map((t) => t.slot));
@@ -252,9 +312,9 @@ export class WorldSim {
       x: best.x,
       z: best.z,
       facing: best.facing,
-      hp: x.hp * (empowered ? 1.5 : 1) * (kind === 'hound' ? 0.75 : 1),
-      maxHp: x.hp * (empowered ? 1.5 : 1) * (kind === 'hound' ? 0.75 : 1),
-      damage: x.damage * (empowered ? 1.5 : 1),
+      hp: x.hp * (empowered ? 1.5 : 1) * scale.hp,
+      maxHp: x.hp * (empowered ? 1.5 : 1) * scale.hp,
+      damage: x.damage * (empowered ? 1.5 : 1) * scale.dmg,
       attackInterval: base.interval / x.attackSpeedMult,
       range: base.range,
       speed: base.speed,
@@ -411,6 +471,209 @@ export class WorldSim {
     if (!this.thralls.delete(t.id)) return;
     t.state = 'dead';
     this.emit({ t: 'thrallGone', id: t.id, owner: t.owner, x: t.x, z: t.z, reason });
+    if (t.kind === 'plaguebearer' && reason !== 'crumbled') this.plagueBurst(t);
+  }
+
+  // --- Signature rites ---
+
+  private applySignature(g: Extract<Intent, { t: 'signature' }>) {
+    const caster = this.players.get(g.by);
+    // Aim is clamped around the caster's reported body (the client only proposes).
+    const clampAim = (range: number): [number, number] => {
+      if (!caster) return [g.x, g.z];
+      const dx = g.x - caster.x;
+      const dz = g.z - caster.z;
+      const d = Math.hypot(dx, dz);
+      return d <= range ? [g.x, g.z] : [caster.x + (dx / d) * range, caster.z + (dz / d) * range];
+    };
+    const sp = Math.min(1e5, Math.max(0, Number.isFinite(g.sp) ? g.sp : 0));
+    switch (g.sig) {
+      case 'wall': {
+        const W = SIGNATURE.wall;
+        const [cx, cz] = clampAim(W.maxCastRange);
+        let dx = g.dx;
+        let dz = g.dz;
+        const dl = Math.hypot(dx, dz);
+        if (!Number.isFinite(dl) || dl < 1e-6) [dx, dz] = [0, -1];
+        else [dx, dz] = [dx / dl, dz / dl];
+        // The wall runs across the aim line.
+        const px = -dz * (W.length / 2);
+        const pz = dx * (W.length / 2);
+        const wall = { id: this.id(), owner: g.by, x0: cx - px, z0: cz - pz, x1: cx + px, z1: cz + pz, until: this.time + W.durationS };
+        this.walls.set(wall.id, wall);
+        this.emit({ t: 'wall', id: wall.id, owner: g.by, x0: wall.x0, z0: wall.z0, x1: wall.x1, z1: wall.z1, ms: W.durationS * 1000 });
+        return;
+      }
+      case 'rend': {
+        const R = SIGNATURE.rend;
+        const [cx, cz] = clampAim(R.maxCastRange);
+        const legion = this.ownedThralls(g.by).filter((t) => t.state !== 'rising');
+        const leaps: [number, number, number, number][] = [];
+        const hit = new Set<number>();
+        legion.forEach((t, i) => {
+          const ang = (i / Math.max(1, legion.length)) * Math.PI * 2;
+          const [tx, tz] = this.nav.resolve(cx + Math.cos(ang) * 1.2, cz + Math.sin(ang) * 1.2, 0.4);
+          leaps.push([t.x, t.z, tx, tz]);
+          t.x = tx;
+          t.z = tz;
+          t.hp = Math.max(1, t.hp - t.maxHp * R.hpCost);
+          t.attackCd = 0.2;
+          for (const e of this.enemies.values()) {
+            if (e.state === 'dead' || Math.hypot(e.x - tx, e.z - tz) > R.cleaveRadius + e.radius) continue;
+            this.damageEnemy(e, t.damage * R.damageMult, g.by);
+            hit.add(e.id);
+          }
+          const b = this.boss.state;
+          if (b.active && Math.hypot(b.x - tx, b.z - tz) <= R.cleaveRadius + BOSS_RADIUS) this.boss.damage(t.damage * R.damageMult, g.by, 0);
+        });
+        this.emit({ t: 'rend', by: g.by, x: cx, z: cz, leaps, hits: hit.size });
+        return;
+      }
+      case 'dirge': {
+        const D = SIGNATURE.dirge;
+        const [cx, cz] = clampAim(1);
+        this.addZone({ kind: 'dirge', owner: g.by, x: cx, z: cz, r: D.radius, durationS: D.durationS, dps: sp * ABILITIES.dirge.power, witheredCap: 0 });
+        return;
+      }
+      case 'bloom': {
+        const B = SIGNATURE.bloom;
+        const [cx, cz] = clampAim(B.maxCastRange);
+        this.addZone({ kind: 'flower', owner: g.by, x: cx, z: cz, r: B.radius, durationS: B.durationS, dps: sp * ABILITIES.plague_bloom.power, witheredCap: B.witheredCap, gen: 0 });
+        return;
+      }
+    }
+  }
+
+  private addZone(o: { kind: Zone['kind']; owner: string; x: number; z: number; r: number; durationS: number; dps: number; witheredCap: number; gen?: number }) {
+    const zone: Zone = {
+      id: this.id(),
+      kind: o.kind,
+      owner: o.owner,
+      x: o.x,
+      z: o.z,
+      r: o.r,
+      until: this.time + o.durationS,
+      bornAt: this.time,
+      tick: 0,
+      dps: o.dps,
+      slow: MIASMA_SLOW,
+      witheredCap: o.witheredCap,
+      bloom: false,
+      hostile: false,
+      ...(o.kind === 'flower' ? { gen: o.gen ?? 0, spreadT: SIGNATURE.bloom.spreadEveryS } : {}),
+    };
+    this.zones.set(zone.id, zone);
+    this.emit({ t: 'zone', zone });
+    return zone;
+  }
+
+  /** Dirge: mend players and thralls inside each second; enemy casters inside stay Silenced. */
+  private tickDirge(z: Zone, pulse: boolean) {
+    const D = SIGNATURE.dirge;
+    for (const e of this.enemies.values()) {
+      if (e.state !== 'dead' && Math.hypot(e.x - z.x, e.z - z.z) <= z.r + e.radius) e.silenceT = D.silenceS;
+    }
+    if (!pulse) return;
+    for (const p of this.players.values()) {
+      if (p.alive && Math.hypot(p.x - z.x, p.z - z.z) <= z.r + PLAYER_RADIUS) this.emit({ t: 'heal', player: p.id, amount: z.dps, x: p.x, z: p.z });
+    }
+    for (const t of this.thralls.values()) {
+      if (t.state !== 'dead' && Math.hypot(t.x - z.x, t.z - z.z) <= z.r) t.hp = Math.min(t.maxHp, t.hp + t.maxHp * D.thrallHealFrac);
+    }
+  }
+
+  /** Plague Bloom: every few seconds a flower seeds the nearest corpse (consuming it) with a new bloom. */
+  private tickBloomSpread(z: Zone, dt: number) {
+    const B = SIGNATURE.bloom;
+    if ((z.gen ?? 0) >= B.maxGenerations) return;
+    z.spreadT = (z.spreadT ?? B.spreadEveryS) - dt;
+    if (z.spreadT > 0) return;
+    z.spreadT = B.spreadEveryS;
+    let best: Corpse | null = null;
+    let bestD = B.spreadReach;
+    for (const c of this.corpses.values()) {
+      const d = Math.hypot(c.x - z.x, c.z - z.z);
+      if (d > 0.5 && d < bestD) {
+        bestD = d;
+        best = c;
+      }
+    }
+    if (!best) return;
+    this.removeCorpse(best, 'consumed', z.owner);
+    this.addZone({ kind: 'flower', owner: z.owner, x: best.x, z: best.z, r: z.r, durationS: B.childDurationS, dps: z.dps, witheredCap: z.witheredCap, gen: (z.gen ?? 0) + 1 });
+  }
+
+  private updateWalls() {
+    for (const w of [...this.walls.values()]) {
+      if (this.time < w.until) continue;
+      this.walls.delete(w.id);
+      this.emit({ t: 'wallGone', id: w.id });
+    }
+  }
+
+  /** Does the segment a→b cross a standing wall? */
+  private wallBetween(ax: number, az: number, bx: number, bz: number) {
+    for (const w of this.walls.values()) if (segmentsCross(ax, az, bx, bz, w.x0, w.z0, w.x1, w.z1)) return true;
+    return false;
+  }
+
+  /** Keep a mover on the side of every wall it started on. */
+  private pushOffWalls(px: number, pz: number, x: number, z: number, radius: number): [number, number] {
+    const half = SIGNATURE.wall.thickness / 2 + radius;
+    for (const w of this.walls.values()) {
+      const wx = w.x1 - w.x0;
+      const wz = w.z1 - w.z0;
+      const len2 = wx * wx + wz * wz;
+      const t = Math.max(0, Math.min(1, ((x - w.x0) * wx + (z - w.z0) * wz) / len2));
+      const cx = w.x0 + wx * t;
+      const cz = w.z0 + wz * t;
+      const d = Math.hypot(x - cx, z - cz);
+      const crossed = segmentsCross(px, pz, x, z, w.x0, w.z0, w.x1, w.z1);
+      if (d >= half && !crossed) continue;
+      // Normal pointing to the side the mover came from.
+      const len = Math.sqrt(len2);
+      let nx = -wz / len;
+      let nz = wx / len;
+      if ((px - cx) * nx + (pz - cz) * nz < 0) [nx, nz] = [-nx, -nz];
+      x = cx + nx * half;
+      z = cz + nz * half;
+    }
+    return [x, z];
+  }
+
+  /** A fallen plague bearer ruptures: rot damage around it and a friendly withering pool. */
+  private plagueBurst(t: Thrall) {
+    const dmg = t.damage * PLAGUE_BURST.damageMult;
+    for (const e of this.enemies.values()) {
+      if (e.state === 'dead' || Math.hypot(e.x - t.x, e.z - t.z) > PLAGUE_BURST.radius + e.radius) continue;
+      this.damageEnemy(e, dmg, t.owner);
+    }
+    const b = this.boss.state;
+    if (b.active && Math.hypot(b.x - t.x, b.z - t.z) <= PLAGUE_BURST.radius + BOSS_RADIUS) this.boss.damage(dmg, t.owner, 0);
+    this.emit({ t: 'burst', kind: 'bloom', x: t.x, z: t.z, r: PLAGUE_BURST.radius });
+    const zone: Zone = {
+      id: this.id(),
+      kind: 'rot',
+      owner: t.owner,
+      x: t.x,
+      z: t.z,
+      r: PLAGUE_BURST.poolRadius,
+      until: this.time + PLAGUE_BURST.poolMs / 1000,
+      bornAt: this.time,
+      tick: 0,
+      dps: t.damage * PLAGUE_BURST.poolDpsShare,
+      slow: MIASMA_SLOW,
+      witheredCap: DETONATE.rotWitheredCap,
+      bloom: false,
+      hostile: false,
+    };
+    this.zones.set(zone.id, zone);
+    this.emit({ t: 'zone', zone });
+  }
+
+  /** What an enemy's blow is worth right now (Bone Hex softens it). */
+  private blow(e: Enemy) {
+    return e.damage * ((e.hexT ?? 0) > 0 ? BONE_HEX.damageMult : 1);
   }
 
   // --- Spawning ---
@@ -418,9 +681,10 @@ export class WorldSim {
   /** `affix` forces an elite affix (tests / debug); otherwise elites roll one. */
   spawnEnemy(def: EnemyId, area: AreaId, x: number, z: number, elite: boolean, rising = true, affix?: EliteAffix): Enemy {
     const d = ENEMIES[def];
-    const level = AREAS[area].level;
+    const level = AREAS[area].level + ascensionLevels(this.ascension);
     const wave = waveModifiers(this.waveTier);
-    const hp = d.hp * enemyHpScale(level) * wave.enemyHpMult * (elite ? ELITE.hpMult : 1) * this.partyHpScale();
+    const diff = DIFFICULTIES[this.difficulty];
+    const hp = d.hp * enemyHpScale(level) * wave.enemyHpMult * diff.enemyHpMult * (elite ? ELITE.hpMult : 1) * this.partyHpScale();
     const e: Enemy = {
       id: this.id(),
       def,
@@ -432,7 +696,7 @@ export class WorldSim {
       facing: this.rand() * Math.PI * 2,
       hp,
       maxHp: hp,
-      damage: d.damage * enemyDamageScale(level) * wave.enemyDamageMult * (elite ? ELITE.damageMult : 1),
+      damage: d.damage * enemyDamageScale(level) * wave.enemyDamageMult * diff.enemyDamageMult * (elite ? ELITE.damageMult : 1),
       speed: d.speed * (0.92 + this.rand() * 0.16),
       radius: d.radius * (elite ? 1.25 : 1),
       scale: d.scale * (elite ? ELITE.scale : 1),
@@ -458,6 +722,8 @@ export class WorldSim {
       moving: false,
     };
     if (elite) e.affix = affix ?? AFFIX_ORDER[Math.floor(this.rand() * AFFIX_ORDER.length)];
+    // Common dead only carry an affix when something grants it (Nightfall's Shroud).
+    else if (affix) e.affix = affix;
     this.enemies.set(e.id, e);
     this.emit({ t: 'spawn', id: e.id, def, x, z, elite, ...(e.affix ? { affix: e.affix } : {}) });
     return e;
@@ -488,9 +754,15 @@ export class WorldSim {
     const breachCount = Math.min(pool.length, count > 11 ? 3 : count > 5 ? 2 : 1);
     const chosen: [number, number][] = [];
     for (let i = 0; i < breachCount; i++) chosen.push(pool[Math.floor(this.rand() * pool.length)]);
+    // Elite Vanguard: every other wave after the greeting climbs out behind an elite.
+    const n = first ? 0 : (this.waveCounts.get(area) ?? 0) + 1;
+    if (!first) this.waveCounts.set(area, n);
+    const vanguard = !first && n % 2 === 1 && milestoneActive('vanguard', this.waveTier);
+    let hasElite = false;
     for (let i = 0; i < count; i++) {
       const [bx, bz] = chosen[i % chosen.length];
-      this.spawnAtBreach(area, bx, bz);
+      const e = this.spawnAtBreach(area, bx, bz, vanguard && !hasElite && i === count - 1);
+      if (e?.elite) hasElite = true;
     }
     for (const [x, z] of chosen) this.emit({ t: 'wave', area, count, x, z });
   }
@@ -509,7 +781,7 @@ export class WorldSim {
   }
 
   /** One wave member climbing out beside a breach (area roster, elite roll). */
-  private spawnAtBreach(area: AreaId, bx: number, bz: number): Enemy | null {
+  private spawnAtBreach(area: AreaId, bx: number, bz: number, forceElite = false): Enemy | null {
     const def = AREAS[area];
     const mods = waveModifiers(this.waveTier);
     const ang = this.rand() * Math.PI * 2;
@@ -517,8 +789,11 @@ export class WorldSim {
     const [x, z] = this.nav.resolveInArea(area, bx + Math.cos(ang) * rr, bz + Math.sin(ang) * rr, 0.5);
     const pick = pickWeighted(def.enemies, this.rand());
     if (!pick) return null;
-    const elite = pick.id !== 'risen' && this.rand() < def.eliteChance + mods.eliteBonus;
-    return this.spawnEnemy(pick.id, area, x, z, elite);
+    const roll = this.rand() < def.eliteChance + mods.eliteBonus + DIFFICULTIES[this.difficulty].eliteBonus;
+    const elite = pick.id !== 'risen' && (forceElite || roll);
+    // Nightfall: the common dead climb out Shrouded.
+    const shroud = !elite && milestoneActive('nightfall', this.waveTier) && this.rand() < NIGHTFALL_SHROUD_CHANCE ? 'shrouded' : undefined;
+    return this.spawnEnemy(pick.id, area, x, z, elite, true, shroud);
   }
 
   // --- Grave Surges ---
@@ -560,10 +835,20 @@ export class WorldSim {
     this.startSurge(eligible[Math.floor(this.rand() * eligible.length)]);
   }
 
+  setCrypts(crypts: { area: AreaId; x: number; z: number }[]) {
+    this.crypts = crypts.map(({ area, x, z }) => ({ area, x, z }));
+  }
+
   /** Open a surge now (also the DEV/QA entry point). */
   startSurge(area: AreaId) {
     if (this.surge || AREAS[area].safe || !AREAS[area].breaches.length) return;
-    const pool = this.fairBreaches(area);
+    // A crypt cracks open when one sits at a fair distance from everyone; otherwise a breach.
+    const players = this.playersIn(area);
+    const crypts = this.crypts.filter(
+      (c) => c.area === area && players.every((p) => Math.hypot(p.x - c.x, p.z - c.z) >= SPAWN_MIN_DIST && Math.hypot(p.x - c.x, p.z - c.z) <= SPAWN_MAX_DIST),
+    );
+    const crypt = crypts.length > 0;
+    const pool: [number, number][] = crypt ? crypts.map((c) => [c.x, c.z]) : this.fairBreaches(area);
     const [x, z] = pool[Math.floor(this.rand() * pool.length)];
     this.surge = {
       area,
@@ -576,7 +861,7 @@ export class WorldSim {
       spawned: 0,
       killed: 0,
     };
-    this.emit({ t: 'surge', area, x, z, durationMs: SURGE.durationS * 1000 });
+    this.emit({ t: 'surge', area, x, z, durationMs: SURGE.durationS * 1000, ...(crypt ? { crypt: true } : {}) });
   }
 
   private spawnSurgeWave(s: SurgeState) {
@@ -595,7 +880,8 @@ export class WorldSim {
 
   private endSurge() {
     this.surge = null;
-    this.surgeIn = SURGE.minIntervalS + this.rand() * (SURGE.maxIntervalS - SURGE.minIntervalS);
+    const restless = milestoneActive('restless', this.waveTier) ? RESTLESS_SURGE_MULT : 1;
+    this.surgeIn = (SURGE.minIntervalS + this.rand() * (SURGE.maxIntervalS - SURGE.minIntervalS)) * restless;
   }
 
   private updateWaves(dt: number) {
@@ -628,6 +914,7 @@ export class WorldSim {
     this.updateWaves(dt);
     this.updateSurge(dt);
     this.updateZones(dt);
+    this.updateWalls();
     this.updateEnemies(dt);
     this.updateThralls(dt);
     this.separate();
@@ -647,6 +934,11 @@ export class WorldSim {
       z.tick -= dt;
       const pulse = z.tick <= 0;
       if (pulse) z.tick = 1;
+      if (z.kind === 'dirge') {
+        this.tickDirge(z, pulse);
+        continue;
+      }
+      if (z.kind === 'flower') this.tickBloomSpread(z, dt);
       if (!z.hostile) {
         for (const e of this.enemies.values()) {
           if (e.state === 'dead' || Math.hypot(e.x - z.x, e.z - z.z) > z.r + e.radius) continue;
@@ -701,7 +993,7 @@ export class WorldSim {
     for (const c of [...this.corpses.values()]) {
       if (this.time >= c.ruptureAt) {
         this.removeCorpse(c, 'burst');
-        const level = AREAS[c.area].level;
+        const level = AREAS[c.area].level + ascensionLevels(this.ascension);
         const zone: Zone = {
           id: this.id(),
           kind: 'toxic',
@@ -794,7 +1086,7 @@ export class WorldSim {
 
   private soundToll(e: Enemy, x: number, z: number) {
     const T = AFFIX_TUNING.bellTolled;
-    const dmg = e.damage * T.damageMult;
+    const dmg = this.blow(e) * T.damageMult;
     for (const p of this.players.values()) {
       if (p.alive && Math.hypot(p.x - x, p.z - z) <= T.r + PLAYER_RADIUS) {
         this.emit({ t: 'hurt', player: p.id, dmg, from: 'toll', x, z });
@@ -841,14 +1133,33 @@ export class WorldSim {
     return best;
   }
 
+  /** The most wounded unblessed non-Deacon ally within reach. */
+  private sanctifyTarget(e: Enemy): Enemy | null {
+    let best: Enemy | null = null;
+    let bestFrac = 0.999;
+    for (const o of this.enemies.values()) {
+      if (o === e || o.def === 'deacon' || o.state === 'dead' || o.state === 'rising' || (o.sanctT ?? 0) > 0) continue;
+      if (Math.hypot(o.x - e.x, o.z - e.z) > SANCTIFIED.range) continue;
+      const frac = o.hp / o.maxHp;
+      if (frac < bestFrac) {
+        bestFrac = frac;
+        best = o;
+      }
+    }
+    return best;
+  }
+
   private moveEnemy(e: Enemy, tx: number, tz: number, dt: number, speedMult = 1) {
     const dx = tx - e.x;
     const dz = tz - e.z;
     const d = Math.hypot(dx, dz);
     if (d < 0.05) return;
-    const slow = e.slowT > 0 ? MIASMA_SLOW : 1;
+    const slow = (e.slowT > 0 ? MIASMA_SLOW : 1) * ((e.chillT ?? 0) > 0 ? CHILL.moveMult : 1);
     const step = Math.min(d, e.speed * speedMult * slow * dt);
+    const px = e.x;
+    const pz = e.z;
     [e.x, e.z] = this.nav.resolveInArea(e.area, e.x + (dx / d) * step, e.z + (dz / d) * step, e.radius);
+    if (this.walls.size) [e.x, e.z] = this.pushOffWalls(px, pz, e.x, e.z, e.radius);
     e.facing = Math.atan2(dx, dz);
     e.moving = true;
     e.gait += step * 2.4;
@@ -871,12 +1182,13 @@ export class WorldSim {
         const vz = z - e.z;
         const d = Math.hypot(vx, vz);
         if (d > def.attackRange + 0.4) return false;
+        if (this.wallBetween(e.x, e.z, x, z)) return false; // the cone breaks on an Ossuary Wall
         return (vx * dirX + vz * dirZ) / (d * len || 1) > Math.cos((30 * Math.PI) / 180);
       };
       for (const p of this.players.values()) {
-        if (p.alive && hits(p.x, p.z)) this.emit({ t: 'hurt', player: p.id, dmg: e.damage, from: 'cone', x: e.x, z: e.z });
+        if (p.alive && hits(p.x, p.z)) this.emit({ t: 'hurt', player: p.id, dmg: this.blow(e), from: 'cone', x: e.x, z: e.z });
       }
-      for (const t of [...this.thralls.values()]) if (hits(t.x, t.z)) this.hurtThrall(t, e.damage);
+      for (const t of [...this.thralls.values()]) if (hits(t.x, t.z)) this.hurtThrall(t, this.blow(e));
       return;
     }
     const reach = kind === 'slam' ? 1.9 : def.attackRange * 1.35 + 0.4;
@@ -884,14 +1196,14 @@ export class WorldSim {
     const cz = kind === 'slam' ? e.aimZ : e.z;
     const p = e.targetPlayer ? this.players.get(e.targetPlayer) : undefined;
     if (p && p.alive && Math.hypot(p.x - cx, p.z - cz) <= reach) {
-      this.emit({ t: 'hurt', player: p.id, dmg: e.damage, from: kind === 'curse' ? 'curse' : 'melee', x: e.x, z: e.z });
+      this.emit({ t: 'hurt', player: p.id, dmg: this.blow(e), from: kind === 'curse' ? 'curse' : 'melee', x: e.x, z: e.z });
     }
     const t = e.targetThrall !== null ? this.thralls.get(e.targetThrall) : undefined;
-    if (t && Math.hypot(t.x - cx, t.z - cz) <= reach) this.hurtThrall(t, e.damage);
+    if (t && Math.hypot(t.x - cx, t.z - cz) <= reach) this.hurtThrall(t, this.blow(e));
     if (kind === 'slam') {
       for (const other of this.players.values()) {
         if (other !== p && other.alive && Math.hypot(other.x - cx, other.z - cz) <= reach) {
-          this.emit({ t: 'hurt', player: other.id, dmg: e.damage, from: 'melee', x: e.x, z: e.z });
+          this.emit({ t: 'hurt', player: other.id, dmg: this.blow(e), from: 'melee', x: e.x, z: e.z });
         }
       }
     }
@@ -904,6 +1216,22 @@ export class WorldSim {
     if (e.fractureT > 0) {
       e.fractureT -= dt;
       if (e.fractureT <= 0) e.fracture = 0;
+    }
+    if ((e.chillT ?? 0) > 0) e.chillT! -= dt;
+    if ((e.sanctT ?? 0) > 0) e.sanctT! -= dt;
+    if ((e.hexT ?? 0) > 0) e.hexT! -= dt;
+    if ((e.silenceT ?? 0) > 0) e.silenceT! -= dt;
+    if ((e.bleedT ?? 0) > 0 && (e.bleedDps ?? 0) > 0) {
+      e.bleedT! -= dt;
+      const dmg = e.bleedDps! * dt * this.damageTakenMult(e);
+      e.hp -= dmg;
+      e.lastHitBy = e.bleedOwner || e.lastHitBy;
+      const acc = (this.dotAccum.get(e.id) ?? 0) + dmg;
+      if (acc >= Math.max(4, e.maxHp * 0.06)) {
+        this.emit({ t: 'dmg', x: e.x, z: e.z, amount: Math.round(acc), kind: 'dot', by: e.bleedOwner ?? '' });
+        this.dotAccum.set(e.id, 0);
+      } else this.dotAccum.set(e.id, acc);
+      if (e.bleedT! <= 0) e.bleedDps = 0;
     }
     if (e.witheredT > 0 && e.withered > 0) {
       e.witheredT -= dt;
@@ -938,7 +1266,7 @@ export class WorldSim {
       }
       if (!activeAreas.has(e.area)) continue; // dormant: nobody here to hunt
       if (e.affix) this.tickAffix(e, dt);
-      e.attackCd -= dt;
+      e.attackCd -= dt * ((e.chillT ?? 0) > 0 ? CHILL.attackRateMult : 1);
       const def = ENEMIES[e.def];
 
       if (e.state === 'windup' || e.state === 'channel') {
@@ -956,7 +1284,8 @@ export class WorldSim {
 
       // Deacons harvest any unclaimed corpse in reach, hunting or not — that
       // corpse competition is why they're the priority kill.
-      if (def.behavior === 'support' && e.attackCd <= 0) {
+      const silenced = (e.silenceT ?? 0) > 0;
+      if (def.behavior === 'support' && e.attackCd <= 0 && !silenced) {
         const corpse = this.nearestCorpse(e.x, e.z, 8);
         if (corpse) {
           e.state = 'channel';
@@ -966,6 +1295,13 @@ export class WorldSim {
           e.aimZ = corpse.z;
           this.emit({ t: 'telegraph', id: e.id, kind: 'raise', x: e.x, z: e.z, tx: corpse.x, tz: corpse.z, ms: 1500 });
           continue;
+        }
+        // No corpse to steal: bless the nearest wounded ally instead (Sanctified).
+        const ally = this.sanctifyTarget(e);
+        if (ally) {
+          ally.sanctT = SANCTIFIED.durationS;
+          e.attackCd = (def.cooldownMs / 1000) * SANCTIFIED.cooldownMult;
+          this.emit({ t: 'sanctify', id: e.id, target: ally.id, x: e.x, z: e.z, tx: ally.x, tz: ally.z });
         }
       }
 
@@ -1009,7 +1345,7 @@ export class WorldSim {
           break;
         }
         case 'caster': {
-          if (dist <= def.attackRange - 0.5 && e.attackCd <= 0) {
+          if (dist <= def.attackRange - 0.5 && e.attackCd <= 0 && !silenced) {
             e.state = 'windup';
             e.stateT = 0;
             e.aimX = target.x;
@@ -1022,7 +1358,7 @@ export class WorldSim {
           break;
         }
         case 'support': {
-          if (e.attackCd <= 0) {
+          if (e.attackCd <= 0 && !silenced) {
             const corpse = this.nearestCorpse(e.x, e.z, 8);
             if (corpse) {
               e.state = 'channel';
@@ -1154,6 +1490,8 @@ export class WorldSim {
         const e = target;
         engage(e.x, e.z, e.radius, () => {
           const dealt = this.damageEnemy(e, t.damage, t.owner);
+          if (t.kind === 'wraith') e.chillT = CHILL.durationS;
+          else if (t.kind === 'bonemage') e.hexT = BONE_HEX.durationS;
           this.emit({ t: 'thrallHit', id: t.id, target: e.id, x: t.x, z: t.z, tx: e.x, tz: e.z, kind: t.kind, dmg: Math.round(dealt) });
         });
       } else if (bossTarget) {

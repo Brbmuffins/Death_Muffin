@@ -1,6 +1,7 @@
 import type { BossState, Corpse, Intent, SimEvent, Zone } from '../gameplay/sim/types';
 import type { EnemyId } from '../content/enemies';
 import type { ThrallKind } from '../content/disciplines';
+import type { Difficulty } from '../content/difficulty';
 
 /**
  * Realtime wire contracts (Socket.io). The server (server/realtime/server.js)
@@ -58,6 +59,10 @@ export type ThrallRow = [number, string, ThrallKind, number, number, number, num
 export interface WorldSnapshot {
   t: number;
   waveTier: number;
+  /** Host's session difficulty (absent from older hosts → medium). */
+  difficulty?: Difficulty;
+  /** Host's Ascension rank (absent from older hosts → 0). */
+  ascension?: number;
   enemies: EnemyRow[];
   thralls: ThrallRow[];
   /** Full corpse + zone lists ride along every Nth snapshot for resync. */

@@ -8,6 +8,7 @@ import { fx } from './fxTextures';
 import { SPELL_FX } from '../content/abilities';
 import { audio } from '../audio/Audio';
 import type { CreatureSlug } from './modelPaths';
+import { STATUS_FX } from '../content/statuses';
 
 const ENEMY_SLUG: Record<EnemyId, CreatureSlug> = {
   robber: 'grave_robber',
@@ -23,6 +24,16 @@ const THRALL_SLUG: Record<ThrallKind, CreatureSlug> = {
   shieldbearer: 'skeleton_thrall',
   hound: 'bone_hound',
   wraith: 'skeleton_thrall',
+  archer: 'skeleton_thrall',
+  bonemage: 'skeleton_thrall',
+  plaguebearer: 'carrion_sac',
+};
+
+/** Tint / glow per thrall kind (colour language: bone ivory-amber, rot olive, spirit cold blue). */
+const THRALL_LOOK: Partial<Record<ThrallKind, { tint: number; emissive: number; glow: number; scale?: number; ring?: number }>> = {
+  archer: { tint: 0xf2e6cc, emissive: 0x6b4a1f, glow: 0.25 },
+  bonemage: { tint: 0xe6dccb, emissive: 0xb07a2a, glow: 0.35 },
+  plaguebearer: { tint: 0xb9c48a, emissive: 0x5a6a18, glow: 0.35, scale: 0.8, ring: 1.05 },
 };
 
 /** Nominal ground speed of each walk clip (u/s) — scales playback to avoid foot sliding. */
@@ -63,6 +74,8 @@ const A = SPELL_FX.affix;
 const D = SPELL_FX.detonate;
 
 /** Rough mouth/head height per rig, for drool and sparks. */
+/** Common enemies nearest the camera focus that keep their moon shadow. */
+const SHADOW_CASTERS = 12;
 const HEAD_Y = { humanoid: 1.3, robed: 1.35, quadruped: 0.75, bloat: 1.05 } as const;
 
 function killAffixFx(v: View) {
@@ -78,6 +91,29 @@ function boneSword() {
   const guard = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.05, 0.05), metal);
   guard.position.y = 0.08;
   g.add(blade, guard);
+  return g;
+}
+
+/** A recurve of fused rib bone with a sinew string (code-built; no asset). */
+function boneBow() {
+  const g = new THREE.Group();
+  const bone = new THREE.MeshStandardMaterial({ color: 0xd8cfbd, roughness: 0.7 });
+  const limb = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.025, 5, 14, Math.PI * 0.85), bone);
+  limb.rotation.z = Math.PI / 2 + Math.PI * 0.075;
+  const string = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.76, 3), new THREE.MeshBasicMaterial({ color: 0x9a8a70 }));
+  string.position.x = -0.1;
+  g.add(limb, string);
+  return g;
+}
+
+/** A femur staff crowned with an amber ember. */
+function boneStaff() {
+  const g = new THREE.Group();
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 1.3, 6), new THREE.MeshStandardMaterial({ color: 0xcfc3ad, roughness: 0.75 }));
+  shaft.position.y = 0.45;
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), new THREE.MeshStandardMaterial({ color: 0x5a3a14, emissive: 0xd9a66b, emissiveIntensity: 1.2 }));
+  orb.position.y = 1.15;
+  g.add(shaft, orb);
   return g;
 }
 
@@ -206,17 +242,19 @@ export class EntityViews {
 
   private makeThrall(t: Thrall): View {
     const wraith = t.kind === 'wraith';
+    const look = THRALL_LOOK[t.kind];
     const c = new Creature(THRALL_SLUG[t.kind], {
-      tint: wraith ? 0xb9c4ff : 0xf4ecff,
-      emissive: wraith ? 0x8f9ed1 : 0x1f8f86,
-      emissiveIntensity: wraith ? 1.1 : t.empowered ? 0.4 : 0.18,
+      tint: look?.tint ?? (wraith ? 0xb9c4ff : 0xf4ecff),
+      emissive: look?.emissive ?? (wraith ? 0x8f9ed1 : 0x1f8f86),
+      emissiveIntensity: wraith ? 1.1 : (look?.glow ?? 0.18) + (t.empowered ? 0.22 : 0),
       spectral: wraith,
-      scale: t.kind === 'shieldbearer' ? 1.1 : 1,
+      scale: look?.scale ?? (t.kind === 'shieldbearer' ? 1.1 : 1),
     });
     if (t.kind === 'warrior' || t.kind === 'shieldbearer') {
       c.attach('R_Hand', boneSword(), new THREE.Vector3(0, 0.25, 1));
       c.attach('L_Hand', roundShield(t.kind === 'shieldbearer' ? 0.5 : 0.32), new THREE.Vector3(0, 1, 0));
-    }
+    } else if (t.kind === 'archer') c.attach('L_Hand', boneBow(), new THREE.Vector3(0, 1, 0));
+    else if (t.kind === 'bonemage') c.attach('R_Hand', boneStaff(), new THREE.Vector3(0, 0.25, 1));
     this.group.add(c.root);
     const v: View = { c, x: t.x, z: t.z, facing: t.facing, lastState: '', kind: t.kind, animSkip: 0, animDt: 0, float: wraith };
     v.ring = this.effects.decal({
@@ -224,7 +262,7 @@ export class EntityViews {
       color: wraith ? 0x8fb4ff : SPELL_FX.exhume.spirit,
       x: t.x,
       z: t.z,
-      r: t.kind === 'hound' ? 0.9 : 0.75,
+      r: look?.ring ?? (t.kind === 'hound' ? 0.9 : 0.75),
       duration: 1e9,
       opacity: t.empowered ? 1 : 0.7,
       follow: () => ({ x: v.x, z: v.z }),
@@ -269,11 +307,12 @@ export class EntityViews {
         });
         if (best >= 0) {
           const v = this.dying.splice(best, 1)[0];
+          v.c.setCastShadow(false);
           this.corpses.set(c.id, v);
         } else {
           // Corpse without a dying body (a sacrificed thrall, or a late join): lay one down.
           const slug = ENEMY_SLUG[c.enemy];
-          const cr = new Creature(slug, { tint: c.enemy === 'risen' ? 0x8a8078 : 0xffffff });
+          const cr = new Creature(slug, { tint: c.enemy === 'risen' ? 0x8a8078 : 0xffffff, castShadow: false });
           cr.root.position.set(c.x, 0, c.z);
           cr.root.rotation.y = lookupCorpseFacing?.(c) ?? c.facing;
           cr.root.scale.setScalar(c.scale);
@@ -284,6 +323,7 @@ export class EntityViews {
             if (!cr.holdLastFrame('death')) cr.toppled = 1;
           };
           tryHold();
+          v.c.setCastShadow(false);
           this.corpses.set(c.id, v);
         }
         if (c.kind === 'toxic') {
@@ -395,6 +435,22 @@ export class EntityViews {
   }
 
   /** LOD: far creatures animate at a lower rate. */
+  /**
+   * Shadow LOD: only the nearest enemies (and every elite) cast moon shadows.
+   * A horde at the cap otherwise re-renders ~100 skinned bodies in the shadow pass.
+   */
+  private shadowLod(enemies: Map<number, Enemy>, fx0: number, fz0: number) {
+    const ranked: { v: View; d: number }[] = [];
+    for (const [id, e] of enemies) {
+      const v = this.enemies.get(id);
+      if (!v) continue;
+      if (e.elite) v.c.setCastShadow(true);
+      else ranked.push({ v, d: (e.x - fx0) ** 2 + (e.z - fz0) ** 2 });
+    }
+    ranked.sort((a, b) => a.d - b.d);
+    ranked.forEach((r, i) => r.v.c.setCastShadow(i < SHADOW_CASTERS));
+  }
+
   private tickAnim(v: View, dt: number, fx0: number, fz0: number) {
     const far = Math.abs(v.x - fx0) > 26 || Math.abs(v.z - fz0) > 22;
     v.animDt += dt;
@@ -414,6 +470,7 @@ export class EntityViews {
     focusZ: number,
   ) {
     this.frame++;
+    if (this.frame % 10 === 0) this.shadowLod(enemies, focusX, focusZ);
     for (const [id, e] of enemies) {
       let v = this.enemies.get(id);
       if (!v) {
@@ -442,6 +499,16 @@ export class EntityViews {
       }
       if (e.fracture > 0 && Math.random() < dt * 2 * e.fracture) {
         this.effects.emit({ x: e.x, y: 1.2, z: e.z, count: 1, color: SPELL_FX.needle.dust, spread: 0.3, speed: 0.6, up: 0.4, life: 0.5, size: 0.1, gravity: 5 });
+      }
+      // Status tells: marrow drips, frost motes, a priest-gold glint.
+      if ((e.bleedT ?? 0) > 0 && Math.random() < dt * 6) {
+        this.effects.emit({ x: e.x, y: 0.7 + Math.random() * 0.6, z: e.z, count: 1, color: Math.random() < 0.7 ? STATUS_FX.hemorrhage.crimson : STATUS_FX.hemorrhage.ember, spread: 0.3, speed: 0.1, up: -0.2, life: 0.6, size: 0.12, gravity: 8 });
+      }
+      if ((e.chillT ?? 0) > 0 && Math.random() < dt * 5) {
+        this.effects.emit({ x: e.x, y: 0.3 + Math.random() * 1.2, z: e.z, count: 1, color: STATUS_FX.chill.frost, spread: 0.45, speed: 0.15, up: 0.2, life: 0.8, size: 0.14, drag: 0.5 });
+      }
+      if ((e.sanctT ?? 0) > 0 && Math.random() < dt * 3) {
+        this.effects.emit({ x: e.x, y: 1.9 * e.scale, z: e.z, count: 1, color: STATUS_FX.sanctified.gold, spread: 0.35, speed: 0.1, up: 0.5, life: 0.7, size: 0.16 });
       }
       if (e.state === 'rising' && Math.random() < dt * 12) {
         this.effects.emitSmoke({ x: e.x, y: 0.1, z: e.z, count: 1, color: 0x2a2230, spread: 0.5, speed: 0.5, up: 0.6, life: 1, size: 0.9 });

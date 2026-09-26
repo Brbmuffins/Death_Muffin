@@ -89,7 +89,9 @@ const LIMITS = {
   chatPerSec: 3,
 };
 
-const INTENT_TYPES = new Set(['hit', 'miasma', 'exhume', 'litany', 'summonBoss', 'recallThralls', 'detonate']);
+const INTENT_TYPES = new Set(['hit', 'miasma', 'exhume', 'litany', 'summonBoss', 'recallThralls', 'detonate', 'signature']);
+/** Discipline signature rites; the host owns their shapes and clamps the aim around the caster. */
+const SIGNATURES = new Set(['wall', 'rend', 'dirge', 'bloom']);
 const WORLD_BOUND = 400; // |x|,|z| sanity bound in world units
 
 if (DEV_TRUST_TOKENS && process.env.NODE_ENV === 'production') {
@@ -149,6 +151,8 @@ function validIntent(intent) {
       out.dmg = Math.min(Math.max(0, num(out.dmg)), 100000);
       out.fracture = Math.min(3, Math.max(0, num(out.fracture)));
       out.boss = !!out.boss;
+      // Hemorrhage (Marrow Spear): a bleed per second, never more than a quarter of the hit.
+      if ('bleed' in out) out.bleed = Math.min(Math.max(0, num(out.bleed)), out.dmg * 0.25);
       break;
     case 'miasma':
       out.r = Math.min(8, Math.max(0.5, num(out.r, 3)));
@@ -168,6 +172,12 @@ function validIntent(intent) {
       out.r = Math.min(11, Math.max(1, num(out.r, 7)));
       out.spellPower = Math.min(1e5, Math.max(0, num(out.spellPower)));
       out.leaveCorpses = !!out.leaveCorpses;
+      break;
+    case 'signature':
+      if (!SIGNATURES.has(out.sig) || !inWorld(out.x) || !inWorld(out.z)) return null;
+      out.dx = Math.min(1e3, Math.max(-1e3, num(out.dx)));
+      out.dz = Math.min(1e3, Math.max(-1e3, num(out.dz)));
+      out.sp = Math.min(1e5, Math.max(0, num(out.sp)));
       break;
     case 'detonate':
       // Corpse Explosion: the host owns radius and corpse modifiers; the client

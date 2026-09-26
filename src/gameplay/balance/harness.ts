@@ -7,7 +7,9 @@ import { Nav } from '../nav';
 import { mulberry32 } from '../rng';
 import type { Corpse, Enemy, SimEvent } from '../sim/types';
 import { WorldSim } from '../sim/WorldSim';
+import { generateLayout } from '../../content/layout';
 import type { Character } from '../../net/types';
+import type { Difficulty } from '../../content/difficulty';
 
 /**
  * Headless balance harness: drives the real WorldSim with a scripted
@@ -25,6 +27,9 @@ export interface BalanceRun {
   seed?: number;
   /** Stat points per stat beyond base 5 (gear stand-in). */
   gearStats?: number;
+  difficulty?: Difficulty;
+  /** World Ascension rank (enemies run older). */
+  ascension?: number;
 }
 
 export interface BalanceResult {
@@ -50,9 +55,26 @@ export interface BalanceResult {
 }
 
 const SP_NEEDLE = ABILITIES.bone_needle;
+const CRYPTS = generateLayout().crypts;
 /** Death sends you to the Chapterhouse (4 s), then a waystone hop and a short walk back in. */
 const RESPAWN_S = 4;
 const RETURN_S = 8;
+
+/** The bot's character sheet: `gear` stat points per stat beyond base (a gear stand-in). */
+export function botCharacter(classIndex: number, level: number, gear: number): Character {
+  return {
+    id: 1,
+    class_index: classIndex,
+    class_name: '',
+    level,
+    experience: 0,
+    gold: 0,
+    stat_str: 5 + Math.round(gear * 0.3),
+    stat_agi: 5,
+    stat_int: 7 + gear,
+    stat_vit: 5 + gear,
+  };
+}
 
 export function runBalance(run: BalanceRun): BalanceResult {
   const rand = mulberry32(run.seed ?? 42);
@@ -60,20 +82,11 @@ export function runBalance(run: BalanceRun): BalanceResult {
   nav.setUnlocked(['ossuary', 'nave', 'sanctum']);
   const sim = new WorldSim(nav, rand);
   sim.waveTier = run.waveTier;
+  sim.difficulty = run.difficulty ?? 'medium';
+  sim.ascension = run.ascension ?? 0;
+  sim.setCrypts(CRYPTS);
   const disc = disciplineFor(run.classIndex);
-  const g = run.gearStats ?? 0;
-  const character: Character = {
-    id: 1,
-    class_index: run.classIndex,
-    class_name: '',
-    level: run.level,
-    experience: 0,
-    gold: 0,
-    stat_str: 5 + Math.round(g * 0.3),
-    stat_agi: 5,
-    stat_int: 7 + g,
-    stat_vit: 5 + g,
-  };
+  const character = botCharacter(run.classIndex, run.level, run.gearStats ?? 0);
   let stats = deriveStats(character, [], disc, run.damageTier);
   const area = AREAS[run.area];
   const home = { x: (area.rect.x0 + area.rect.x1) / 2, z: area.rect.z1 - 4 };
@@ -234,7 +247,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
         born.delete(ev.id);
         if (!p.alive) continue;
         kills++;
-        const r = rollKill(ev.def, ev.area, ev.level, ev.elite, run.waveTier, rand);
+        const r = rollKill(ev.def, ev.area, ev.level, ev.elite, run.waveTier, rand, sim.difficulty);
         gold += r.gold;
         xp += r.xp;
         shards += r.shards;

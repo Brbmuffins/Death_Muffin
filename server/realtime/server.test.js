@@ -63,3 +63,20 @@ test('matchmaking fills public worlds and isolates invite codes', () => {
   assert.equal(worlds.get(party).public, false, 'invite worlds are never auto-filled');
   assert.notEqual(pickWorld(), party);
 });
+
+test('hit bleed (Hemorrhage) is clamped to a quarter of the hit', () => {
+  assert.equal(validIntent({ t: 'hit', ids: [1], dmg: 100, bleed: 1e9 }).bleed, 25);
+  assert.equal(validIntent({ t: 'hit', ids: [1], dmg: 100, bleed: -5 }).bleed, 0);
+  assert.equal(validIntent({ t: 'hit', ids: [1], dmg: 100, bleed: 'x' }).bleed, 0);
+  assert.equal(validIntent({ t: 'hit', ids: [1], dmg: 100, bleed: 12 }).bleed, 12);
+  assert.equal('bleed' in validIntent({ t: 'hit', ids: [1], dmg: 100 }), false);
+});
+
+test('signature rites name a known rite, a point in the world, and clamp spell power', () => {
+  const ok = validIntent({ t: 'signature', by: 'x', sig: 'wall', x: 1, z: -20, dx: 1, dz: 0, sp: 1e9 });
+  assert.equal(ok.sig, 'wall');
+  assert.equal(ok.sp, 1e5);
+  assert.equal(validIntent({ t: 'signature', sig: 'meteor', x: 0, z: 0, dx: 0, dz: 0, sp: 1 }), null, 'unknown rite');
+  assert.equal(validIntent({ t: 'signature', sig: 'bloom', x: 1e9, z: 0, dx: 0, dz: 0, sp: 1 }), null, 'off-world');
+  assert.equal(validIntent({ t: 'signature', sig: 'dirge', x: 0, z: 0, dx: 'a', dz: null, sp: -5 }).sp, 0);
+});

@@ -6,6 +6,9 @@ import { mulberry32 } from '../rng';
 import type { Corpse, SimEvent } from '../sim/types';
 import { AFFIX_ORDER, AFFIX_TUNING, SURGE } from '../../content/enemies';
 import { DETONATE } from '../../content/abilities';
+import { RESTLESS_SURGE_MULT, waveModifiers } from '../../content/upgrades';
+import { generateLayout } from '../../content/layout';
+import { BONE_HEX, CHILL, HEMORRHAGE, SANCTIFIED } from '../../content/statuses';
 import type { EnemyRow } from '../../net/contracts';
 
 function world(seed = 1) {
@@ -379,5 +382,280 @@ describe('Grave Surges', () => {
     expect(sim.surge).toBeNull();
     // The surge's dead stay in the world; only the bookkeeping ends.
     expect([...ids].some((id) => sim.enemies.has(id))).toBe(true);
+  });
+});
+
+describe('Wave Speed milestones', () => {
+  /** Step until a regular (non-greeting) wave climbs out; return that step's spawns. */
+  function nextWave(tier: number, seed = 5) {
+    const { sim } = world(seed);
+    sim.waveTier = tier;
+    sim.markVisited('graves');
+    for (let i = 0; i < 400; i++) {
+      const ev = sim.step(0.05);
+      if (of(ev, 'wave').length) return { sim, spawns: of(ev, 'spawn') };
+    }
+    throw new Error('no wave');
+  }
+
+  it('Elite Vanguard (tier 3) puts an elite in the first regular wave (then every other one)', () => {
+    for (let seed = 0; seed < 3; seed++) {
+      const { spawns } = nextWave(3, seed + 11);
+      expect(spawns.some((s) => s.elite)).toBe(true);
+    }
+    // Below the milestone, a wave can be all commons.
+    const { spawns } = nextWave(2);
+    expect(spawns.filter((s) => s.elite).length).toBeLessThan(spawns.length);
+  });
+
+  it('Restless Crypts (tier 6) brings the next surge sooner', () => {
+    const { sim } = world(2);
+    sim.waveTier = 6;
+    (sim as unknown as { endSurge(): void }).endSurge();
+    expect(sim.surgeIn).toBeLessThanOrEqual(SURGE.maxIntervalS * RESTLESS_SURGE_MULT + 1e-9);
+    sim.waveTier = 5;
+    const lows = Array.from({ length: 20 }, () => {
+      (sim as unknown as { endSurge(): void }).endSurge();
+      return sim.surgeIn;
+    });
+    expect(Math.min(...lows)).toBeGreaterThanOrEqual(SURGE.minIntervalS);
+  });
+
+  it('Nightfall (tier 8) shrouds about half the common dead and pays more', () => {
+    let commons = 0;
+    let shrouded = 0;
+    let sim: WorldSim | null = null;
+    let id = -1;
+    for (let seed = 0; seed < 6; seed++) {
+      const r = nextWave(8, seed + 30);
+      for (const s of r.spawns.filter((x) => !x.elite)) {
+        commons++;
+        if (s.affix === 'shrouded') {
+          shrouded++;
+          sim = r.sim;
+          id = s.id;
+        } else expect(s.affix).toBeUndefined();
+      }
+    }
+    expect(shrouded / commons).toBeGreaterThan(0.25);
+    expect(shrouded / commons).toBeLessThan(0.75);
+    expect(waveModifiers(8).rewardMult - waveModifiers(7).rewardMult).toBeGreaterThan(0.3);
+    // The shroud survives the snapshot round trip.
+    const mirror = new WorldMirror();
+    mirror.applySnapshot(makeSnapshot(sim!, true));
+    expect(mirror.enemies.get(id)?.affix).toBe('shrouded');
+  });
+});
+
+describe('Grave Surges from crypts', () => {
+  it('break out of a fair crypt when one exists, else a breach', () => {
+    const { sim } = world(4);
+    const crypts = generateLayout().crypts;
+    sim.setCrypts(crypts);
+    const ev: SimEvent[] = [];
+    sim.startSurge('graves');
+    ev.push(...sim.step(0.05));
+    const s = of(ev, 'surge')[0];
+    expect(s.crypt).toBe(true);
+    expect(crypts.some((c) => c.area === 'graves' && c.x === s.x && c.z === s.z)).toBe(true);
+    // No crypts known (or none fair): the old breach behaviour.
+    const { sim: bare } = world(4);
+    bare.startSurge('graves');
+    const b = of(bare.step(0.05), 'surge')[0];
+    expect(b.crypt).toBeUndefined();
+  });
+});
+
+describe('Status matrix', () => {
+  it('Hemorrhage: a spear hit bleeds its owner a capped share per second', () => {
+    const { sim } = world(6);
+    const e = sim.spawnEnemy('sac', 'graves', 0, -20, false, false);
+    const hp0 = e.hp;
+    sim.apply({ t: 'hit', by: 'p1', ids: [e.id], dmg: 10, bleed: 1e6 });
+    expect(e.bleedDps).toBeCloseTo(10 * HEMORRHAGE.maxFrac);
+    const afterHit = e.hp;
+    expect(hp0 - afterHit).toBeCloseTo(10);
+    sim.step(1);
+    expect(afterHit - e.hp).toBeCloseTo(10 * HEMORRHAGE.maxFrac, 1);
+    // It runs out.
+    for (let i = 0; i < 6; i++) sim.step(1);
+    expect(e.bleedDps).toBe(0);
+  });
+
+  it("Chill: the Mourner's wraith hits slow the dead", () => {
+    const { sim } = world(7);
+    const e = sim.spawnEnemy('robber', 'graves', 0, -19, false, false);
+    sim.addCorpse(0.5, -16, 'normal', 'robber', false, 0, 1, 'graves');
+    sim.apply({ ...exhume(0.5, -16), kind: 'wraith', damage: 1 });
+    let chilled = false;
+    for (let i = 0; i < 80 && !chilled; i++) {
+      sim.step(0.05);
+      chilled = (e.chillT ?? 0) > 0;
+    }
+    expect(chilled).toBe(true);
+    // Chilled feet: the same step covers less ground.
+    const a = sim.spawnEnemy('robber', 'graves', -10, -30, false, false);
+    const b = sim.spawnEnemy('robber', 'graves', 10, -30, false, false);
+    a.speed = b.speed = 3;
+    b.chillT = 5;
+    const [ax, az, bx, bz] = [a.x, a.z, b.x, b.z];
+    sim.step(0.2);
+    expect(Math.hypot(b.x - bx, b.z - bz)).toBeLessThan(Math.hypot(a.x - ax, a.z - az));
+    expect(CHILL.moveMult).toBeLessThan(1);
+  });
+
+  it('Sanctified: a Deacon with no corpse blesses a wounded ally, which then takes less damage', () => {
+    const { sim } = world(8);
+    const deacon = sim.spawnEnemy('deacon', 'graves', 0, -24, false, false);
+    const ally = sim.spawnEnemy('robber', 'graves', 1.5, -24, false, false);
+    ally.hp = ally.maxHp * 0.5;
+    deacon.attackCd = 0;
+    const ev = sim.step(0.05);
+    expect(of(ev, 'sanctify').some((s) => s.id === deacon.id && s.target === ally.id)).toBe(true);
+    expect(ally.sanctT).toBeGreaterThan(0);
+    const hp = ally.hp;
+    sim.apply({ t: 'hit', by: 'p1', ids: [ally.id], dmg: 10 });
+    expect(hp - ally.hp).toBeCloseTo(10 * SANCTIFIED.damageTakenMult);
+  });
+
+  it('statuses ride snapshot flags to guests', () => {
+    const { sim } = world(9);
+    const e = sim.spawnEnemy('robber', 'graves', 0, -20, false, false);
+    e.bleedT = 2;
+    e.bleedDps = 3;
+    e.chillT = 1;
+    e.sanctT = 1;
+    const mirror = new WorldMirror();
+    mirror.applySnapshot(makeSnapshot(sim, true));
+    const m = mirror.enemies.get(e.id)!;
+    expect(m.bleedT).toBeGreaterThan(0);
+    expect(m.chillT).toBeGreaterThan(0);
+    expect(m.sanctT).toBeGreaterThan(0);
+  });
+});
+
+describe('Thrall variety', () => {
+  const raise = (sim: WorldSim, c: Corpse, kind: 'warrior' | 'wraith' = 'warrior') => {
+    const ev: SimEvent[] = [];
+    sim.apply({ ...exhume(c.x, c.z), kind });
+    ev.push(...sim.step(0.01));
+    return of(ev, 'thrall')[0];
+  };
+
+  it('a corpse remembers what it was', () => {
+    const { sim } = world(12);
+    expect(raise(sim, corpse(sim, 1, -16, 'resonant')).kind).toBe('archer');
+    expect(raise(sim, corpse(sim, 2, -16, 'toxic')).kind).toBe('plaguebearer');
+    sim.addCorpse(3, -16, 'normal', 'deacon', false, 0, 1, 'graves');
+    const deacon = [...sim.corpses.values()].find((c) => c.enemy === 'deacon')!;
+    expect(raise(sim, deacon).kind).toBe('bonemage');
+    expect(raise(sim, corpse(sim, 4, -16, 'normal')).kind).toBe('warrior');
+    // The Mourner's discipline overrides: everything rises a wraith.
+    const { sim: m } = world(13);
+    expect(raise(m, corpse(m, 1, -16, 'toxic'), 'wraith').kind).toBe('wraith');
+  });
+
+  it('a fallen plague bearer bursts and leaves a friendly rot pool', () => {
+    const { sim } = world(14);
+    const t = raise(sim, corpse(sim, 0, -18, 'toxic'));
+    const thrall = sim.thralls.get(t.id)!;
+    const e = sim.spawnEnemy('sac', 'graves', thrall.x + 1, thrall.z, false, false);
+    const hp = e.hp;
+    sim.killThrall(thrall, 'killed');
+    const ev = sim.step(0.01);
+    expect(e.hp).toBeLessThan(hp);
+    const rot = [...sim.zones.values()].find((z) => z.kind === 'rot');
+    expect(rot?.hostile).toBe(false);
+    expect(of(ev, 'burst').length).toBeGreaterThan(0);
+    // Crumbling (legion over cap) is quiet: no burst.
+    const t2 = raise(sim, corpse(sim, 5, -18, 'toxic'));
+    const zones = sim.zones.size;
+    sim.killThrall(sim.thralls.get(t2.id)!, 'crumbled');
+    expect(sim.zones.size).toBe(zones);
+  });
+
+  it("a bone mage's hex softens the enemy's blows", () => {
+    const { sim } = world(15);
+    const e = sim.spawnEnemy('robber', 'graves', 0, -19, false, false);
+    sim.addCorpse(0.5, -16, 'normal', 'deacon', false, 0, 1, 'graves');
+    raise(sim, [...sim.corpses.values()].find((c) => c.enemy === 'deacon')!);
+    for (let i = 0; i < 120 && !((e.hexT ?? 0) > 0); i++) sim.step(0.05);
+    expect(e.hexT).toBeGreaterThan(0);
+    const blow = (sim as unknown as { blow(e: unknown): number }).blow(e);
+    expect(blow).toBeCloseTo(e.damage * BONE_HEX.damageMult);
+  });
+});
+
+describe('Signature rites', () => {
+  const sig = (sim: WorldSim, s: 'wall' | 'rend' | 'dirge' | 'bloom', x: number, z: number, dx = 0, dz = -1, sp = 20) =>
+    sim.apply({ t: 'signature', by: 'p1', sig: s, x, z, dx, dz, sp });
+
+  it('Ossuary Wall stops the dead and breaks Penitent cones', () => {
+    const { sim } = world(21);
+    // Player at (0,-16); wall across the aim line 4m north.
+    sig(sim, 'wall', 0, -20, 0, -1);
+    const ev = sim.step(0.01);
+    expect(of(ev, 'wall').length).toBe(1);
+    const e = sim.spawnEnemy('robber', 'graves', 0, -26, false, false);
+    e.speed = 4;
+    for (let i = 0; i < 60; i++) sim.step(0.05);
+    expect(e.z).toBeLessThan(-20); // still on the far side
+    // A cone through the wall misses.
+    const pen = sim.spawnEnemy('penitent', 'graves', 0, -24, false, false);
+    pen.aimX = 0;
+    pen.aimZ = -16;
+    const hurts: SimEvent[] = [];
+    (sim as unknown as { strike(e: unknown, k: string): void }).strike(pen, 'cone');
+    hurts.push(...sim.step(0.01));
+    expect(of(hurts, 'hurt').filter((h) => h.from === 'cone').length).toBe(0);
+    // It crumbles on time.
+    let gone = false;
+    for (let i = 0; i < 80 && !gone; i++) gone = of(sim.step(0.1), 'wallGone').length > 0;
+    expect(gone).toBe(true);
+    expect(sim.walls.size).toBe(0);
+  });
+
+  it('Command: Rend leaps the legion onto the target and bills their health', () => {
+    const { sim } = world(22);
+    for (const x of [1, 2]) {
+      corpse(sim, x, -16);
+      sim.apply(exhume(x, -16));
+    }
+    for (let i = 0; i < 25; i++) sim.step(0.05); // rise
+    const target = sim.spawnEnemy('sac', 'graves', 0, -24, false, false);
+    const hp = target.hp;
+    sig(sim, 'rend', 0, -24);
+    const ev = sim.step(0.01);
+    const r = of(ev, 'rend')[0];
+    expect(r.leaps.length).toBe(2);
+    expect(target.hp).toBeLessThan(hp);
+    for (const t of sim.thralls.values()) {
+      expect(Math.hypot(t.x - 0, t.z + 24)).toBeLessThan(2);
+      expect(t.hp).toBeLessThan(t.maxHp);
+    }
+  });
+
+  it('Dirge mends the singer and Silences casters inside', () => {
+    const { sim } = world(23);
+    const pen = sim.spawnEnemy('penitent', 'graves', 2, -18, false, false);
+    pen.attackCd = 0;
+    sig(sim, 'dirge', 0, -16, 0, 0, 30);
+    const ev: SimEvent[] = [];
+    for (let i = 0; i < 30; i++) ev.push(...sim.step(0.05));
+    expect(of(ev, 'heal').some((h) => h.player === 'p1' && h.amount > 0)).toBe(true);
+    expect(pen.silenceT).toBeGreaterThan(0);
+    expect(of(ev, 'telegraph').filter((t) => t.id === pen.id).length).toBe(0);
+  });
+
+  it('Plague Bloom seeds the nearest corpse, chaining through the field', () => {
+    const { sim } = world(24);
+    const c1 = corpse(sim, 3, -20);
+    corpse(sim, 6, -20);
+    sig(sim, 'bloom', 0, -20);
+    for (let i = 0; i < 90; i++) sim.step(0.05); // 4.5 s: two spreads
+    const flowers = [...sim.zones.values()].filter((z) => z.kind === 'flower');
+    expect(flowers.length).toBeGreaterThanOrEqual(3);
+    expect(sim.corpses.has(c1.id)).toBe(false);
+    expect(Math.max(...flowers.map((f) => f.gen ?? 0))).toBe(2);
   });
 });

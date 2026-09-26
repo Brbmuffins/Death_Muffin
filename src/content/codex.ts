@@ -6,6 +6,8 @@ import {
   LITANY_PER_RESONANT,
   LITANY_PER_THRALL,
   NEEDLE_ESSENCE,
+  SIGNATURE,
+  SIGNATURE_LEVEL,
   SPELL_FX,
   type AbilityId,
 } from './abilities';
@@ -36,7 +38,18 @@ export interface RiteEntry {
   tip: string;
 }
 
-export const RITE_ORDER: AbilityId[] = ['bone_needle', 'marrow_spear', 'exhume', 'miasma', 'black_litany', 'corpse_explosion'];
+export const RITE_ORDER: AbilityId[] = [
+  'bone_needle',
+  'marrow_spear',
+  'exhume',
+  'miasma',
+  'black_litany',
+  'corpse_explosion',
+  'ossuary_wall',
+  'command_rend',
+  'dirge',
+  'plague_bloom',
+];
 
 export const CODEX_RITES: Record<AbilityId, RiteEntry> = {
   bone_needle: {
@@ -52,7 +65,7 @@ export const CODEX_RITES: Record<AbilityId, RiteEntry> = {
   exhume: {
     fx: 'exhume',
     colour: 'Spirit teal',
-    tip: 'Claim bodies fast: corpses rot within half a minute, Carrion Sacs rupture in seconds, and Crypt Deacons steal whatever you leave. Penitent and elite corpses rise empowered, and Bone Hound corpses rise as hounds of your own.',
+    tip: 'Claim bodies fast: corpses rot within half a minute, Carrion Sacs rupture in seconds, and Crypt Deacons steal whatever you leave. Penitent and elite corpses rise empowered, and a corpse remembers what it was: hounds rise as hounds, Penitents as archers, Deacons as bone mages, Carrion Sacs as plague bearers.',
   },
   miasma: {
     fx: 'miasma',
@@ -69,6 +82,26 @@ export const CODEX_RITES: Record<AbilityId, RiteEntry> = {
     colour: 'Ember and crimson',
     tip: `The rite for bodies you can't use. Burst a corpse under a pack that has reached you. A resonant Penitent corpse blasts ${DETONATE.resonantRadiusMult}× wider, an elite's hits ${DETONATE.eliteDamageMult}× as hard, and a Carrion Sac's leaves a rot pool that works for you. Each one you burst is a thrall you won't raise, and a body the Litany won't count.`,
   },
+  ossuary_wall: {
+    fx: 'wall',
+    colour: 'Bone ivory and amber',
+    tip: `Ossuary signature (level ${SIGNATURE_LEVEL}). Throw it across a door or between you and the Penitents: the dead pile up against it and cones break on it for ${SIGNATURE.wall.durationS} seconds. A wall plus a Miasma behind it is a killing floor.`,
+  },
+  command_rend: {
+    fx: 'rend',
+    colour: 'Spirit jade',
+    tip: `Gravecaller signature (level ${SIGNATURE_LEVEL}). Costs no essence — it costs your thralls ${Math.round(SIGNATURE.rend.hpCost * 100)}% of their health each. Send the whole legion onto a Deacon or a Penitent line, then Litany the wounded legion for full value.`,
+  },
+  dirge: {
+    fx: 'dirge',
+    colour: 'Cold funeral blue',
+    tip: `Mourner signature (level ${SIGNATURE_LEVEL}). Sing it when the casters open up: Penitents and Deacons inside the song can't start a spell, and you and your wraiths mend every second for ${SIGNATURE.dirge.durationS} seconds.`,
+  },
+  plague_bloom: {
+    fx: 'bloom',
+    colour: 'Chartreuse rot',
+    tip: `Rotweaver signature (level ${SIGNATURE_LEVEL}). Plant it next to a corpse pile: every ${SIGNATURE.bloom.spreadEveryS} seconds it seeds a new bloom on the nearest body, up to ${SIGNATURE.bloom.maxGenerations} generations deep. It eats the bodies it spreads through, so bloom what you won't raise.`,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -82,16 +115,16 @@ export interface DisciplineEntry {
 
 export const CODEX_DISCIPLINES: Record<DisciplineId, DisciplineEntry> = {
   ossuary: {
-    tip: 'Keep your shieldbearers alive and between you and the pack. Every thrall standing is armour you are wearing.',
+    tip: 'Keep your shieldbearers alive and between you and the pack. Every thrall standing is armour you are wearing. At level 10, Ossuary Wall (R) throws a bone wall across a door or a Penitent line.',
   },
   gravecaller: {
-    tip: 'Raise to the cap, then spend the legion in a Litany. The corpses your thralls leave behind start the next legion.',
+    tip: 'Raise to the cap, then spend the legion in a Litany. The corpses your thralls leave behind start the next legion. At level 10, Command: Rend (R) hurls the whole legion onto a Deacon for thrall health instead of essence.',
   },
   mourner: {
-    tip: 'Your wraiths fight from range, so you can too. Exhume whenever you are hurt; each corpse is a mouthful of health.',
+    tip: 'Your wraiths fight from range and Chill what they strike, so you can hang back too. Exhume whenever you are hurt; each corpse is a mouthful of health. At level 10, Dirge (R) mends you and silences casters.',
   },
   rotweaver: {
-    tip: 'Let the pack die inside your Miasma. Corpses in the rot burst on their own and spread Withered to whatever is still standing.',
+    tip: 'Let the pack die inside your Miasma. Corpses in the rot burst on their own and spread Withered to whatever is still standing. At level 10, Plague Bloom (R) chains rot flowers through the corpse field.',
   },
 };
 
@@ -143,22 +176,22 @@ export const CODEX_DEAD: Record<DeadId, DeadEntry> = {
     name: ENEMIES.penitent.name,
     role: ENEMIES.penitent.behavior,
     behaviour: 'Hangs back at range and tolls a cone of grave-sound after a long, bronze windup. Backs away if you close in.',
-    corpse: 'Resonant. The Litany counts it far above a common corpse, and a thrall raised from it rises empowered.',
+    corpse: 'Resonant. The Litany counts it far above a common corpse. Exhumed, it rises an empowered skeleton archer that looses bone arrows from range.',
     counter: 'Step out of the cone before it sounds; the telegraph is long. Then close the gap: at range it hits harder than anything else in the Graves.',
   },
   sac: {
     name: ENEMIES.sac.name,
     role: ENEMIES.sac.behavior,
     behaviour: 'Slow and swollen. It lumbers into reach and slams the ground in front of it.',
-    corpse: 'Toxic. It ruptures into a poison pool a few seconds after death unless you Exhume it or take it in a Litany first.',
+    corpse: 'Toxic. It ruptures into a poison pool a few seconds after death unless you claim it first. Exhumed, it rises a plague bearer that bursts into a rot pool of your own when it falls or is sacrificed.',
     counter: 'Kill it away from where you mean to stand, then claim the body at once or step clear before it bursts.',
   },
   deacon: {
     name: ENEMIES.deacon.name,
     role: ENEMIES.deacon.behavior,
-    behaviour: 'A support caster. It hunts unclaimed corpses, channels a green beam over them and raises them as Risen. With nothing to steal, it curses you from range.',
-    corpse: 'An ordinary corpse, and one it can no longer take from you.',
-    counter: 'Kill it first. The green beam is your warning: the raise takes a moment, so claim the body or put the deacon down before it finishes.',
+    behaviour: 'A support caster. It hunts unclaimed corpses, channels a green beam over them and raises them as Risen. With nothing to steal it Sanctifies a wounded ally (a pale gold halo: 30% less damage taken) or curses you from range.',
+    corpse: 'One it can no longer take from you. Exhumed, it rises a bone mage whose amber hex makes enemy blows land softer.',
+    counter: 'Kill it first. The green beam is your warning: the raise takes a moment, so claim the body or put the deacon down before it finishes. A Mourner\'s Dirge silences it; kill a Sanctified enemy after the halo fades.',
   },
   risen: {
     name: ENEMIES.risen.name,
@@ -172,7 +205,7 @@ export const CODEX_DEAD: Record<DeadId, DeadEntry> = {
     role: 'boss',
     behaviour: 'A cathedral corpse fused to a cracked processional bell. It tolls a ring around itself and slams the bell ahead; from its second phase it rains bell shards on marked circles. At 60% and 30% health a procession of Penitents and Risen files in from the aisles.',
     corpse: 'None. It sinks back beneath the Sundered Bell and waits for the next offering.',
-    counter: `Offer ${BOSS_SUMMON_SHARDS} soul shards at the Sundered Bell to wake it; elites carry them. Step out of the bronze ring before the toll, and save the Litany for when the procession falls.`,
+    counter: `Offer ${BOSS_SUMMON_SHARDS} soul shards at the Sundered Bell to wake it; elites carry them. Step out of the bronze ring before the toll, and save the Litany for when the procession falls. It is a long fight: carry flasks. Its first fall each run readies the Altar of Ascension.`,
   },
 };
 
@@ -196,7 +229,7 @@ export const CODEX_AREAS: Record<AreaId, AreaEntry> = {
     dangers: 'The first Crypt Deacons. Hounds and Sacs come thicker, and every corpse on the floor is now contested.',
   },
   nave: {
-    dangers: 'Penitents are the congregation here, tolling from every pew, and deacons walk among them. Watch for overlapping cones.',
+    dangers: 'The aisles are flooded; the pillar walkways stay dry. Penitents are the congregation here, tolling from every pew, and deacons walk among them. Watch for overlapping cones.',
   },
   sanctum: {
     dangers: 'The Sundered Bell and the Prelate who serves it. Penitents and deacons hold the aisles, and elites are more common here than anywhere else.',

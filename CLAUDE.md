@@ -42,6 +42,9 @@ changes are written up as proposals in `server/proposals/`.
 - Spell colours carry meaning (see `SPELL_FX` in `src/content/abilities.ts`);
   don't make new content "just violet".
 - Desktop web game first; narrow viewport only needs sanity checks.
+- Every new player-facing mechanic ships with its help: a Covenant counsel tip (`src/ui/Onboarding.ts`,
+  triggered the first time it matters), its Codex entry (`src/content/codex.ts`), the Settings key list
+  if it adds a key, and the README. Re-check existing tips when a mechanic changes.
 - Commits go through the user's GitHub Desktop flow — stage, don't commit.
 
 ## Layout

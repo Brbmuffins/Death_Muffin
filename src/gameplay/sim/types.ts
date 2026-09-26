@@ -47,6 +47,17 @@ export interface Enemy {
   flash: number;
   gait: number;
   moving: boolean;
+  /** Hemorrhage: bleed per second, seconds left, and who gets the kill. */
+  bleedT?: number;
+  bleedDps?: number;
+  bleedOwner?: string;
+  /** Chill (Mourner wraith hits) and Sanctified (Deacon blessing) seconds left. */
+  chillT?: number;
+  sanctT?: number;
+  /** Bone Hex (bone-mage thralls): this enemy's blows land softer. */
+  hexT?: number;
+  /** Silenced by a Mourner's Dirge: casters can't start a spell. */
+  silenceT?: number;
   /** Elites roll one affix on spawn (replicated in snapshots). */
   affix?: EliteAffix;
   /** Host-only affix clock: seconds until the next toll / feeding. */
@@ -99,7 +110,7 @@ export interface Corpse {
 }
 
 /** 'rot' = the friendly pool a detonated toxic corpse leaves behind. */
-export type ZoneKind = 'miasma' | 'toxic' | 'bell' | 'rot';
+export type ZoneKind = 'miasma' | 'toxic' | 'bell' | 'rot' | 'dirge' | 'flower';
 
 export type CorpseGoneReason = 'consumed' | 'expired' | 'raised' | 'burst' | 'litany' | 'devoured';
 
@@ -132,6 +143,9 @@ export interface Zone {
   bloom: boolean;
   /** Hostile zones damage players and thralls; friendly ones damage enemies. */
   hostile: boolean;
+  /** Plague Bloom: generation in the chain and seconds until it seeds the next corpse. */
+  gen?: number;
+  spreadT?: number;
 }
 
 export interface PlayerBody {
@@ -166,7 +180,7 @@ export interface BossState {
 // --- Intents: client → host requests (the host validates and applies) ---
 
 export type Intent =
-  | { t: 'hit'; by: string; ids: number[]; dmg: number; fracture?: number; boss?: boolean }
+  | { t: 'hit'; by: string; ids: number[]; dmg: number; fracture?: number; boss?: boolean; /** Hemorrhage bleed per second (clamped by the host). */ bleed?: number }
   | {
       t: 'miasma';
       by: string;
@@ -201,6 +215,8 @@ export type Intent =
     }
   | { t: 'summonBoss'; by: string }
   | { t: 'recallThralls'; by: string; x: number; z: number }
+  /** Discipline signature rites: aim point, aim direction and the caster's spell power. */
+  | { t: 'signature'; by: string; sig: 'wall' | 'rend' | 'dirge' | 'bloom'; x: number; z: number; dx: number; dz: number; sp: number }
   /** Corpse Explosion: `dmg` is the caster's spellPower × power (clamped by the sim). */
   | { t: 'detonate'; by: string; corpseId: number; dmg: number };
 
@@ -258,7 +274,16 @@ export type SimEvent =
     }
   /** Elite affix moments: a Bell-Tolled ring sounding, a Hungering feed, a Vengeful burst. */
   | { t: 'affix'; id: number; affix: EliteAffix; x: number; z: number; r?: number; tx?: number; tz?: number; amount?: number }
-  | { t: 'surge'; area: AreaId; x: number; z: number; durationMs: number }
+  /** Ossuary Wall raised / crumbled. */
+  | { t: 'wall'; id: number; owner: string; x0: number; z0: number; x1: number; z1: number; ms: number }
+  | { t: 'wallGone'; id: number }
+  /** Command: Rend — each leap [fromX, fromZ, toX, toZ]; `hits` enemies cleaved. */
+  | { t: 'rend'; by: string; x: number; z: number; leaps: [number, number, number, number][]; hits: number }
+  /** A friendly zone mending a player (Dirge). */
+  | { t: 'heal'; player: string; amount: number; x: number; z: number }
+  /** A Crypt Deacon blesses an ally (Sanctified). */
+  | { t: 'sanctify'; id: number; target: number; x: number; z: number; tx: number; tz: number }
+  | { t: 'surge'; area: AreaId; x: number; z: number; durationMs: number; crypt?: boolean }
   | { t: 'surgeCleared'; area: AreaId; x: number; z: number }
   | { t: 'surgeFailed'; area: AreaId; x: number; z: number }
   | { t: 'wave'; area: AreaId; count: number; x: number; z: number }

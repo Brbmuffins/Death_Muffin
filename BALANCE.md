@@ -69,11 +69,69 @@ unlock in 2.7–3.7 min, and push/max either harmless (Graves, Sanctum) or a
   caster is exposed (0 damage at intended, most deaths at max).
 - **Nave at max Wave Speed** still kills arrival-level bots within ~5 s of the greeting wave.
   It's acceptable for the reckless band, but it's the harshest spot in the game.
-- The **Prelate** isn't in the harness yet (tracked as a task in HANDOFF).
 - A human-played session is still needed to calibrate how far below the bot's efficiency real players land.
+
+## The Bell-Sworn Prelate (`npm run balance:boss`)
+
+`src/gameplay/balance/boss.ts` summons the Prelate with a full legion already raised and fights
+until it dies, the bot dies (a solo death resets the boss), or 6 minutes pass. Each discipline
+runs twice: **dodging** (steps out of toll/slam/rain circles after a 0.35 s reaction) and **not
+dodging**. The bot carries 4 major flasks (70%, 1.5 s cooldown) and drinks below 40% HP.
+
+**Targets:** at arrival level, a careful player wins in 2.5–3.5 min with some HP to spare, and one
+who ignores telegraphs dies. Geared players finish in about 2 min and can brute-force it with flasks.
+
+**First pass (2026-09-26):** base HP 4200 → 26000 (solo ≈ 95k at level 13). Party scaling is now
++80% per extra player (was +60%), because four players deal ~4× damage while the Prelate splits its
+attacks. Bell Rain uses the sim's seeded RNG (it used `Math.random`), so fights are reproducible.
+
+| Band | Dodge | Result (3 seeds × 4 disciplines) | Kill time | Min HP | Flasks |
+|---|---|---|---|---|---|
+| intended (lvl 13) | yes | 12/12 wins | 154–175 s | 31–39% | 0.3–1.3 |
+| intended | no | 0/12 — wipes with the boss at 3–17% | — | 0 | 4 |
+| geared (lvl 16) | yes | 12/12 | 110–122 s | 34–56% | 0–0.7 |
+| geared | no | 12/12 | 113–124 s | 29–35% | 3.3–4 |
+
+Before: every row won in 16–30 s. Direct hits (Needle and Marrow Spear, with Fracture) do ~75% of the
+damage and Withered ~20%. Adds from the processions barely matter (0–10% of damage taken), which
+makes them a candidate for a bigger role later. `src/gameplay/__tests__/balance.test.ts` guards the
+intended-band rows.
+
+## Wave Speed milestones
+
+At tier 3 **Elite Vanguard** guarantees an elite in every other regular wave. At tier 6 **Restless Crypts**
+multiplies the surge interval by 0.6. At tier 8 **Nightfall** shrouds 50% of common spawns and adds
++0.25 reward / +0.2 item chance. The first draft (an elite in *every* wave, *all* commons shrouded)
+pushed the push band to 0.5–8.5 deaths and dropped max-band gold below push. With the softened
+version, push is 0.5–9 deaths / 3 min (mostly 1–5) and max stays the reckless band (2–13.5 deaths,
+first death in 6–38 s).
+
+## Difficulty (Easy / Medium / Hard)
+
+`content/difficulty.ts`. Medium is everything above. Enemies and the Prelate get HP × and damage ×,
+kills/surges/Prelate give gold + XP ×, and Hard adds +2% elite chance. It's picked in Settings. The
+world keeper's value runs the sim and rides in snapshots (older hosts → medium), and changes apply to
+new spawns. Harness: `BALANCE_DIFFICULTY=easy|hard npm run balance` (also `balance:boss`).
+
+| | HP | Damage | Rewards | Farming (intended band) | Prelate (intended, 3 seeds) |
+|---|---|---|---|---|---|
+| Easy | 0.75 | 0.6 | 0.75 | Graves 1–11 %HP/min, Nave 18–48; no deaths even at push in the Graves | everyone wins in ~2 min, even without dodging |
+| Medium | 1 | 1 | 1 | see tables above | dodgers win in ~2.7 min; non-dodgers die |
+| Hard | 1.2 | 1.3 | 1.3 | Nave 56–96 %HP/min, occasional deaths; Sanctum 15–77 | dodgers win in ~3.4 min using every flask; non-dodgers die |
+
+## Ascension
+
+`content/ascension.ts`. Each rank adds +3 levels to every enemy, toxic pool and the Prelate, and +5%
+gold/XP. `BALANCE_ASCENSION=N` runs both harnesses with the bands anchored on the aged level. At matching
+level, Ascension III plays like the base game: Graves 0–21 %HP/min, Nave 22–36; the Prelate falls in
+~2.3 min for dodgers and still kills 3 of 4 disciplines who don't dodge. In practice characters arrive
+over-levelled for the early areas of a new run (level, gear and gold persist), which is intended: early
+seals go fast, and the aged late areas catch up. Ashes per run: 10 for the first Prelate kill,
++5 per extra kill (max 4), +2 per peak Wave Speed tier, +1 per 300 kills (max 15), ×(1 + 0.25·rank).
+Boons are per-character only: stats, costs, thrall cap, Soul Harvest, unlock thresholds.
 
 ## Co-op session dashboard (planned)
 
-These knobs (Wave Speed tier, enemy HP/damage multipliers, density, elite chance, surge
+Easy/Medium/Hard is the first slice of this. The remaining knobs (Wave Speed tier, enemy HP/damage multipliers, density, elite chance, surge
 frequency, arrival-wave size, roster weights) should become a **host-side session dashboard for
 co-op rooms**. See `FUTURE_CONTENT.md` → "Co-op session dashboard".

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ABILITIES, NEEDLE_ESSENCE, SOUL_HARVEST, SPELL_FX, type AbilityId } from '../content/abilities';
+import { ABILITIES, NEEDLE_ESSENCE, SIGNATURE_KIND, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, type AbilityId } from '../content/abilities';
 import type { Discipline } from '../content/disciplines';
 import type { Effects } from '../graphics/Effects';
 import type { NecromancerAvatar } from '../graphics/Avatars';
@@ -8,8 +8,9 @@ import { BOSS_RADIUS } from './sim/BossBrain';
 import type { BossState, Corpse, Enemy, Intent, SimEvent } from './sim/types';
 import type { Player } from './Player';
 import { audio } from '../audio/Audio';
+import { HEMORRHAGE } from '../content/statuses';
 
-export type CastResult = 'ok' | 'cooldown' | 'essence' | 'range' | 'no_target' | 'no_corpse' | 'dead';
+export type CastResult = 'ok' | 'cooldown' | 'essence' | 'range' | 'no_target' | 'no_corpse' | 'dead' | 'locked' | 'no_thralls';
 
 export interface CastTarget {
   x: number;
@@ -27,6 +28,8 @@ export interface AbilityContext {
   enemies(): Map<number, Enemy>;
   boss(): BossState;
   corpses(): Map<number, Corpse>;
+  /** How many thralls the caster commands (Command: Rend needs one). */
+  thrallCount(): number;
   send(intent: Intent): void;
   number(x: number, z: number, amount: number, kind: 'hit' | 'crit' | 'spear'): void;
   shake(amount: number): void;
@@ -105,6 +108,12 @@ export class AbilitySystem {
         break;
       case 'corpse_explosion':
         result = this.detonate(target);
+        break;
+      case 'ossuary_wall':
+      case 'command_rend':
+      case 'dirge':
+      case 'plague_bloom':
+        result = this.signature(id, target);
         break;
     }
     if (result === 'ok') {
@@ -198,7 +207,7 @@ export class AbilitySystem {
       if (along > 0 && along < range && across < halfW + e.radius) ids.push(e.id);
     }
     const dmg = this.sp * def.power;
-    if (ids.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids, dmg, fracture: 1 });
+    if (ids.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids, dmg, fracture: 1, bleed: dmg * HEMORRHAGE.dpsFrac });
     const b = this.ctx.boss();
     if (b.active) {
       const rx = b.x - p.x;
@@ -320,6 +329,31 @@ export class AbilitySystem {
         effects.emit({ x, y: 0.3, z, count: 30, color: M.rot, spread: r * 0.5, speed: 1.5, up: 1, life: 1.2, size: 0.25 });
       },
     });
+    return 'ok';
+  }
+
+  /** Discipline signature rites: aim + spell power to the host, a cast flourish here. */
+  private signature(id: AbilityId, t: CastTarget): CastResult {
+    const { player: p, avatar, effects } = this.ctx;
+    const sig = SIGNATURE_KIND[id]!;
+    if (p.stats.level < SIGNATURE_LEVEL) return 'locked';
+    if (sig === 'rend' && !this.ctx.thrallCount()) return 'no_thralls';
+    const def = ABILITIES[id];
+    let x = t.x;
+    let z = t.z;
+    const d = Math.hypot(x - p.x, z - p.z);
+    if (def.range > 0 && d > def.range) {
+      x = p.x + ((x - p.x) / d) * def.range;
+      z = p.z + ((z - p.z) / d) * def.range;
+    }
+    if (sig === 'dirge') [x, z] = [p.x, p.z];
+    else p.face(x, z);
+    p.rootedUntil = this.ctx.now() + 300;
+    avatar.cast('cast', 1.8);
+    this.ctx.send({ t: 'signature', by: this.ctx.selfId, sig, x, z, dx: x - p.x, dz: z - p.z, sp: this.sp });
+    const color = sig === 'wall' ? SPELL_FX.wall.amber : sig === 'rend' ? SPELL_FX.rend.jade : sig === 'dirge' ? SPELL_FX.dirge.frost : SPELL_FX.bloom.petal;
+    effects.emit({ x: p.x, y: 1.4, z: p.z, count: 24, color, spread: 0.4, speed: 1.6, up: 1.2, life: 0.6, size: 0.24 });
+    effects.lightFlash(p.x, 1.8, p.z, color, 24, 0.4);
     return 'ok';
   }
 

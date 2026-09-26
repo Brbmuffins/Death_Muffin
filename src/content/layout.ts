@@ -116,6 +116,14 @@ export interface Silhouette {
   rot: number;
 }
 
+/** Where a Grave Surge can break out: just in front of a mausoleum or sarcophagus. */
+export interface Crypt {
+  x: number;
+  z: number;
+  area: AreaId;
+  prop: 'mausoleum' | 'sarcophagus';
+}
+
 export interface WorldLayout {
   /** Flagstone paths laid over earthen floors. */
   paths: Rect[];
@@ -127,6 +135,8 @@ export interface WorldLayout {
   water: Rect[];
   puddles: Puddle[];
   silhouettes: Silhouette[];
+  /** Surge origins derived from the crypt props (unsafe areas only). */
+  crypts: Crypt[];
 }
 
 const inRect = (r: Rect, x: number, z: number, pad = 0) =>
@@ -343,7 +353,25 @@ export function generateLayout(seed = 1337): WorldLayout {
   const puddles = gravePuddles(envRand, props);
   const silhouettes = distantSilhouettes(envRand);
 
-  return { paths, props, walls, decals, windows, water, puddles, silhouettes };
+  const crypts = cryptsFrom(props);
+
+  return { paths, props, walls, decals, windows, water, puddles, silhouettes, crypts };
+}
+
+/** A point in front of each crypt prop, on the side facing its area's open middle. */
+function cryptsFrom(props: Placement[]): Crypt[] {
+  const out: Crypt[] = [];
+  for (const p of props) {
+    if ((p.prop !== 'mausoleum' && p.prop !== 'sarcophagus') || AREAS[p.area].safe) continue;
+    const r = AREAS[p.area].rect;
+    const dx = (r.x0 + r.x1) / 2 - p.x;
+    const dz = (r.z0 + r.z1) / 2 - p.z;
+    const d = Math.hypot(dx, dz) || 1;
+    const c = PROPS[p.prop].collider;
+    const reach = (c?.kind === 'box' ? Math.max(c.hw, c.hd) : 1) * p.scale + 1.2;
+    out.push({ x: p.x + (dx / d) * reach, z: p.z + (dz / d) * reach, area: p.area, prop: p.prop });
+  }
+  return out;
 }
 
 /**

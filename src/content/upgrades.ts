@@ -28,13 +28,44 @@ export interface WaveModifiers {
   speedPct: number;
 }
 
+/**
+ * The three diamonds on the Wave Speed bar are milestones: owning AND running
+ * the dial at that tier adds a wave affix (FUTURE_CONTENT 0.4).
+ */
+export type WaveMilestoneId = 'vanguard' | 'restless' | 'nightfall';
+export interface WaveMilestone {
+  id: WaveMilestoneId;
+  tier: number;
+  name: string;
+  blurb: string;
+}
+export const WAVE_MILESTONES: WaveMilestone[] = [
+  { id: 'vanguard', tier: 3, name: 'Elite Vanguard', blurb: 'Every other wave climbs out behind an elite.' },
+  { id: 'restless', tier: 6, name: 'Restless Crypts', blurb: 'Grave Surges break open 40% sooner.' },
+  {
+    id: 'nightfall',
+    tier: 8,
+    name: 'Nightfall',
+    blurb: 'The moon darkens. Half the common dead rise Shrouded (half damage outside your Miasma). +25% gold, more relics.',
+  },
+];
+/** Share of common spawns Nightfall shrouds. */
+export const NIGHTFALL_SHROUD_CHANCE = 0.5;
+/** Surge interval multiplier under Restless Crypts. */
+export const RESTLESS_SURGE_MULT = 0.6;
+
+export function milestoneActive(id: WaveMilestoneId, tier: number) {
+  return tier >= WAVE_MILESTONES.find((m) => m.id === id)!.tier;
+}
+
 export function waveModifiers(tier: number): WaveModifiers {
+  const nightfall = milestoneActive('nightfall', tier);
   return {
     intervalMult: 1 / (1 + 0.12 * tier),
     capMult: 1 + 0.09 * tier,
     sizeMult: 1 + 0.06 * tier,
-    rewardMult: 1 + 0.1 * tier,
-    itemChanceMult: 1 + 0.06 * tier,
+    rewardMult: 1 + 0.1 * tier + (nightfall ? 0.25 : 0),
+    itemChanceMult: 1 + 0.06 * tier + (nightfall ? 0.2 : 0),
     eliteBonus: 0.008 * tier,
     enemyHpMult: 1 + 0.03 * tier,
     enemyDamageMult: 1 + 0.035 * tier,

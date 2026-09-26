@@ -372,3 +372,79 @@ Intended-band damage taken went from 0–15 %HP/min to 4–54; push is dangerous
 3 min) instead of harmless-or-spiral; the bot opens each area in 3–5 min (was 2.7–3.7).
 Harness now respawns via the Chapterhouse and reports time-to-first-death.
 
+## Horde performance profile (2026-09-26) ✅ measured + two fixes
+`__cwDebug.perf()` (DEV) renders the scene once directly and reports draw calls / triangles,
+a scene census (skinned meshes, shadow casters), and CPU cost of `update()` and `sim.step()`.
+Wait ~2 s after spawning before calling it — creature GLBs attach asynchronously.
+Measured in headless Chromium (software GPU, so GPU *time* is meaningless there; counts are exact):
+
+| Scene | Triangles before → after | Draw calls | Shadow casters |
+|---|---|---|---|
+| Chapterhouse, idle | 622k → 415k | 86 → 97 | 23 → 32 (smaller, cullable batches) |
+| Nave, 34 enemies | 575k → 365k | 129 → 137 | — |
+| Nave horde, 94 enemies at the cap | 1.25M → 717k | 294 → 312 | 117 → 46 |
+| Horde + 30 corpses | 1.48M → 829k | 356 → 238 | 147 → 46 |
+
+- **CPU is not the bottleneck:** `sim.step` ≈ 0.1 ms and the whole game update ≈ 1.5 ms/frame with
+  94 animated enemies (animation LOD already skips far mixers).
+- **Fix 1 — per-area prop batches** (`WorldView.buildProps`): props were one instanced mesh per kind
+  spanning the whole world, so neither the camera nor the moon's shadow pass could cull anything.
+- **Fix 2 — shadow LOD** (`EntityViews.shadowLod`, `Creature.setCastShadow`): only the 12 common
+  enemies nearest the focus plus every elite cast moon shadows; corpses never do (they lie flat).
+- **VAT decision: not needed at the current cap** (72 enemies + ≤5 thralls per player ≈ 90 skinned
+  bodies). Revisit if the cap goes past ~120 or a real mid-range/integrated-GPU test shows skinning
+  as the cost. Next cheap levers if needed: shared materials for unflashed enemies (fewer programs /
+  uniforms uploads), and lowering `SHADOW_CASTERS` on the 'low' preset.
+- Still owed: a frame-time measurement on real mid hardware (needs the user's machine).
+
+## Cloud session, part 2 (2026-09-26) ✅ each with tests; browser-QA'd where visual
+Commits on `claude/adoring-knuth-hd1uox` after the environment/balance pass:
+- **Prelate balance**: boss harness (`npm run balance:boss`), BASE_HP 4200 → 26000, party scaling
+  +80%, seeded Bell Rain. Careful arrival-level players win in ~2.7 min; standing in telegraphs dies.
+- **Easy / Medium / Hard**: HP ×0.75/1/1.2, damage ×0.6/1/1.3, rewards ×0.75/1/1.3 (+2% elites on
+  Hard); host-authoritative, rides snapshots; Settings select; harness `BALANCE_DIFFICULTY`.
+- **Wave Speed milestones**: Elite Vanguard (tier 3, elite every other wave), Restless Crypts
+  (tier 6, surges ×0.6 interval), Nightfall (tier 8, half the commons Shrouded, +25% gold, dimmer moon).
+- **Surges from crypts**: `layout.crypts` in front of mausoleums/sarcophagi; breaches as fallback.
+- **Relic runes**: server proposal (`server/proposals/relic-runes.md`); progress proposal thresholds fixed.
+- **Status matrix**: Hemorrhage (spear bleed, clamped in sim + realtime), Chill (wraith hits),
+  Sanctified (Deacon blessing), plus Bone Hex and Silenced from the items below.
+- **Horde perf**: see the section above.
+- **Thrall variety**: Penitent → archer, Deacon → bone mage (Bone Hex), Sac → plague bearer (rot burst).
+- **Signature rites** (lvl 10, key R): Ossuary Wall, Command: Rend, Dirge, Plague Bloom via one
+  validated `signature` intent.
+- **Onboarding**: welcome card + 12 contextual tips; "Show tips again".
+- **Backlog**: replay/endgame proposals (Ascension prestige etc.) in FUTURE_CONTENT.
+Checks at the end: 80 vitest, 8 realtime, typecheck, production build all green.
+
+## Ascension — prestige loop (2026-09-26) ✅ tests + browser QA
+- `content/ascension.ts` (pure rules), `Progression` (rank, Ashes, boons, per-run record; save migration),
+  `WorldSim.ascension` (+3 enemy/boss levels per rank, in snapshots), `ui/AscensionPanel.ts` (Altar:
+  two-step Ascend listing resets/keeps, boon grid), portrait rank, onboarding tip, harness
+  `BALANCE_ASCENSION`, DEV hooks `prelateSlain()` / `altar()`.
+- Resets only the browser-local layer; level/XP/gold/items are never touched.
+- QA: ascended to rank I for 10 Ashes, bought Vigil + First Rites (HP 226 → 244, Damage tier 2), seals
+  closed, rank shown under the portrait. 86 vitest / 8 realtime / build green.
+- README rewritten for the whole session (statuses table, signature rites, thrall kinds, water/weather,
+  Ascension section, new-player section, dev commands) with six new screenshots in `docs/screenshots/`.
+
+
+## VPS storage handoff — necro progress (2026-09-26) ✅ tests + mock-backend browser QA
+- One rules module, `src/gameplay/necroRules.ts`, covers prices, seals opened by kills, Prelate summons, Ascension,
+  boons and the one-time browser import clamps. `npm run build:server-rules` bundles it to
+  `server/vps-handoff/necro-progress/necro-rules.cjs` for the Node auth server. A parity test keeps
+  the bundle in step with the source.
+- Package: `necro-progress-routes.cjs` (GET + 6 POST routes under `/api/necro-progress`, with ownership
+  guard, rate limit and `{success,data|error}` replies), `mysql-store.cjs` (row-locked transaction per
+  mutation, so gold is deducted server-side and atomically), `schema.sql` (one additive table), and
+  `necro-progress.test.cjs` (8 node:test cases).
+- Client: `Progression` has a server mode. It applies optimistically, sends deltas on the save flush, and
+  reconciles on every reply. It falls back to localStorage on a 404 or when the server is unreachable, and
+  uploads the browser save once. Server errors show as toasts. The DEV mock backend serves the same routes.
+- Brief for the Claude Code session on the VPS: `server/VPS_HANDOFF.md` (recon, backups, install,
+  verify, rollback, report-back).
+- Verified: 92 vitest / 16 server tests / build green. In the browser (mock server mode): ascended and
+  bought boons, and the server record ended at `asc:1, boons {vigil, first_rites}, dmg 2, migrated`.
+- Known limits (documented in the brief): gold is still earned client-side through `save-progress`, the import
+  trusts clamped browser data, and the DEV `prelateSlain()` hook can't credit a kill once a character is
+  server-backed (the server requires a paid summon).

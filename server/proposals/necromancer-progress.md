@@ -1,7 +1,10 @@
 # Proposal — server storage for necromancer progression
 
-**Status:** proposal only. Nothing here is deployed; the web client works
-without it (interim storage is the browser, user-approved 2026-09-26).
+**Status:** SUPERSEDED (2026-09-26) by the ready-to-install package in
+[`server/vps-handoff/necro-progress/`](../vps-handoff/necro-progress) and its brief
+[`server/VPS_HANDOFF.md`](../VPS_HANDOFF.md). The package keeps the whole record as one validated JSON
+row, adds Ascension/Ashes/boons, and makes the server own prices and gold. It is kept here
+for history only; follow the handoff.
 **Owner of the change:** the VPS (`/opt/rod-auth`). This repo never edits
 server endpoints — this document is the spec to implement there.
 
@@ -62,7 +65,8 @@ Errors are player-readable (`"Not enough gold (need 96)"`, `"Already at max tier
 `{ characterId, waveTierActive, soulShardsDelta, areaKillsDelta, bossKillsDelta }`
 Deltas, not absolutes; the server clamps each delta per call (e.g. ≤ 500
 kills, ≤ 20 shards) and derives `unlockedAreas` from its own thresholds:
-`ossuary: graves ≥ 60`, `nave: ossuary ≥ 80`, `sanctum: nave ≥ 100`.
+`ossuary: graves ≥ 300`, `nave: ossuary ≥ 420`, `sanctum: nave ≥ 520` (mirror
+`AREAS[*].unlock` in `src/content/areas.ts`; raised in the 2026-09-26 balance pass).
 
 ### `POST /api/necro-progress/summon-prelate`
 Deducts 5 shards atomically; returns the new balance. The client only sends
@@ -78,7 +82,7 @@ Deducts 5 shards atomically; returns the new balance. The client only sends
 3. `buyDamage` / `buyWave` call `purchase` and adopt the server's gold.
 
 ## New item types needed by FUTURE_CONTENT.md
-- `item_type = 'rune'` (spell modifiers) and `'thrall_gear'`. These need the
+- `item_type = 'rune'` (spell modifiers) — fully specified in `relic-runes.md` — and `'thrall_gear'`. These need the
   items enum extended and rows seeded; until then loot tables only reference
   ids the server already knows (`src/content/items.ts`, verified by
   `src/gameplay/__tests__/systems.test.ts`).

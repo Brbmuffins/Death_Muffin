@@ -1,4 +1,5 @@
 import type { AreaId } from '../../content/areas';
+import { isDifficulty, type Difficulty } from '../../content/difficulty';
 import { AFFIX_ORDER, type EliteAffix } from '../../content/enemies';
 import type { EnemyRow, ThrallRow, WorldSnapshot } from '../../net/contracts';
 import type { BossState, Corpse, Enemy, EnemyState, SimEvent, Thrall, ThrallState, Zone } from './types';
@@ -13,7 +14,8 @@ const affixFrom = (code: number | undefined): EliteAffix | undefined => (code ? 
 export function makeSnapshot(sim: WorldSim, full: boolean): WorldSnapshot {
   const enemies: EnemyRow[] = [];
   for (const e of sim.enemies.values()) {
-    const flags = (e.elite ? 1 : 0) | (e.moving ? 2 : 0) | (e.slowT > 0 ? 4 : 0);
+    // Bit 3 chill, 12 bleed, 13 sanctified, 14 bone hex, 15 silenced (older clients ignore unknown bits).
+    const flags = (e.elite ? 1 : 0) | (e.moving ? 2 : 0) | (e.slowT > 0 ? 4 : 0) | ((e.chillT ?? 0) > 0 ? 8 : 0) | ((e.bleedT ?? 0) > 0 ? 4096 : 0) | ((e.sanctT ?? 0) > 0 ? 8192 : 0) | ((e.hexT ?? 0) > 0 ? 16384 : 0) | ((e.silenceT ?? 0) > 0 ? 32768 : 0);
     enemies.push([e.id, e.def, r2(e.x), r2(e.z), r2(e.facing), Math.round(e.hp), Math.round(e.maxHp), E_STATES.indexOf(e.state), flags | (e.fracture << 4) | (e.withered << 8), r2(e.stateT), r2(e.speed), r2(e.scale), e.area, affixCode(e.affix)]);
   }
   const thralls: ThrallRow[] = [];
@@ -23,6 +25,8 @@ export function makeSnapshot(sim: WorldSim, full: boolean): WorldSnapshot {
   return {
     t: sim.time,
     waveTier: sim.waveTier,
+    difficulty: sim.difficulty,
+    ascension: sim.ascension,
     enemies,
     thralls,
     boss: { ...sim.bossState },
@@ -89,12 +93,16 @@ export class WorldMirror {
   readonly zones = new Map<number, Zone>();
   bossState: BossState | null = null;
   waveTier = 0;
+  difficulty: Difficulty = 'medium';
+  ascension = 0;
   time = 0;
   private targets = new Map<string, Target>();
 
   applySnapshot(s: WorldSnapshot) {
     this.time = s.t;
     this.waveTier = s.waveTier;
+    this.difficulty = isDifficulty(s.difficulty) ? s.difficulty : 'medium';
+    this.ascension = Number.isInteger(s.ascension) && s.ascension! >= 0 ? Math.min(20, s.ascension!) : 0;
     const seenE = new Set<number>();
     for (const row of s.enemies) {
       seenE.add(row[0]);
@@ -114,6 +122,11 @@ export class WorldMirror {
       e.elite = !!(flags & 1);
       e.moving = !!(flags & 2);
       e.slowT = flags & 4 ? 0.2 : 0;
+      e.chillT = flags & 8 ? 0.2 : 0;
+      e.bleedT = flags & 4096 ? 0.2 : 0;
+      e.sanctT = flags & 8192 ? 0.2 : 0;
+      e.hexT = flags & 16384 ? 0.2 : 0;
+      e.silenceT = flags & 32768 ? 0.2 : 0;
       e.fracture = (flags >> 4) & 15;
       e.withered = (flags >> 8) & 15;
       e.speed = row[10];
@@ -216,6 +229,8 @@ export class WorldMirror {
     for (const c of this.corpses.values()) sim.corpses.set(c.id, { ...c, bornAt: sim.time, expiresAt: sim.time + 20, ruptureAt: c.kind === 'toxic' ? sim.time + 4 : Infinity });
     if (this.bossState?.active) Object.assign(sim.bossState, this.bossState);
     sim.waveTier = this.waveTier;
+    sim.difficulty = this.difficulty;
+    sim.ascension = this.ascension;
     const ids = [...this.enemies.keys(), ...this.thralls.keys(), ...this.corpses.keys(), ...this.zones.keys()];
     sim.reserveIds(ids.length ? Math.max(...ids) : 0);
   }
