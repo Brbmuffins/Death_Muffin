@@ -112,6 +112,46 @@ Party synergy target: every class *produces* or *consumes* corpses so a
 
 ---
 
+## Replay & endgame depth (proposed 2026-09-26 — awaiting a pick)
+
+The loop today ends at the Prelate: once every area is open and Wave Speed is maxed there is
+nothing left to chase. Ranked by replay value per effort; ★ = buildable client-side now
+(progression is browser-local until `server/proposals/necromancer-progress.md` ships).
+
+1. **★ Ascension (prestige).** Unlocks after the first Prelate kill; performed at the Altar.
+   - **Resets** the browser-local layer only: Damage tiers, Wave Speed tiers, area unlocks and kill
+     counts, soul shards. **Never** level, XP, gold or items. Those are server-owned, and resetting
+     them would need server work and would feel punishing.
+   - **Grants Ashes** from the run: Prelate kills, the highest Wave Speed tier cleared, total kills.
+     Ashes buy permanent **Covenant Boons**, a small perk tree of *shape* changes, not just +%:
+     start each run with one thrall, corpses last 50% longer, the first Damage tier is free,
+     +1 thrall cap at Ascension 5, Soul Harvest needs 40 souls, or a fourth Wave Speed milestone.
+   - **Each Ascension rank raises the world:** enemies +2 levels per rank, rewards +10% per rank.
+     This is Diablo's Torment idea. It stacks with Easy/Medium/Hard and gives the balance harness a
+     new band.
+   - Server later: add `ascension_rank`, `ashes` and `boons` columns to the necro-progress proposal.
+2. **★ Daily rites (bounties).** Three objectives a day, seeded from the date so every player gets the
+   same ones, e.g. "Slay 60 in the Nave at Wave Speed ≥ 3", "Win a Grave Surge without a thrall
+   dying", "Kill the Prelate on Hard". They pay shards and Ashes, and give a reason to revisit
+   early areas.
+3. **★ Discipline talents.** At levels 5 / 15 / 20 pick one of two passives per discipline, e.g. an
+   Ossuary wall that damages vs. one that lasts longer. Two players of the same discipline then
+   play differently, which is cheap depth. Relic runes (`server/proposals/relic-runes.md`) are the
+   item-driven version once the server supports them.
+4. **★ Weekly world omens.** A rotating modifier seeded from the week: *Blood Moon* (double corpses,
+   double Deacons), *Drowned Week* (the Nave floods further and water slows everyone), *Tolling*
+   (every elite is Bell-Tolled). The same world plays differently each week.
+5. **Catacomb Depths (endless descent).** A procedural endless area below the Nave: each depth
+   is +1 enemy level and a new affix, with a depth leaderboard. The leaderboard needs server
+   storage; the descent itself doesn't.
+6. **Prelate Echoes.** Each Ascension rank gives the Prelate one extra mechanic from a pool (a second
+   bell, procession elites, rain that chases). The boss fight changes as you prestige.
+7. **Collection goals.** Codex completion and per-discipline mastery unlock cosmetic thrall tints
+   and portrait frames. This is low effort and rewards long-term players.
+
+Recommended order: **Ascension → Daily rites → Talents**, then omens. Ascension alone turns a
+~1–2 hour arc into a repeating one, and it fits the browser-local progression model as it stands.
+
 ## Technical prerequisites (track before building the above)
 
 - Server columns for upgrade tiers / shards / area kills (spec: `server/proposals/necromancer-progress.md`).
