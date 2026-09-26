@@ -1,6 +1,6 @@
 import { ABILITIES, HOTBAR, type HotbarSlot } from '../content/abilities';
 import type { EliteAffix } from '../content/enemies';
-import { DAMAGE_UPGRADE, WAVE_UPGRADE, milestones } from '../content/upgrades';
+import { DAMAGE_UPGRADE, WAVE_MILESTONES, WAVE_UPGRADE, milestones } from '../content/upgrades';
 import { MAX_PARTY_SIZE } from '../net/config';
 import { ICON } from './icons';
 import { Minimap, type MinimapFrame } from './Minimap';
@@ -183,7 +183,7 @@ export class HUD {
             <button data-dial="-1" aria-label="Lower active wave speed">−</button>
             <span class="tier" data-wavetier></span>
             <button data-dial="1" aria-label="Raise active wave speed">+</button>
-            <span style="margin-left:auto">more waves · more reward</span>
+            <span class="hud-milestone" data-milestone></span>
           </div>
         </div>
         <div class="hud-currency">
@@ -289,7 +289,20 @@ export class HUD {
     this.set('wave', `${f.waveOwned}|${f.waveActive}|${f.waveCost}|${f.gold >= (f.waveCost ?? Infinity)}`, () => {
       this.$('[data-wavepct]').textContent = `+${f.wavePct}%`;
       this.$('[data-wavebar]').style.width = `${(f.waveOwned / WAVE_UPGRADE.maxTier) * 100}%`;
-      this.$('[data-wavegems]').innerHTML = milestones(f.waveOwned, WAVE_UPGRADE.maxTier).map((on) => `<i class="${on ? 'on' : ''}"></i>`).join('');
+      this.$('[data-wavegems]').innerHTML = milestones(f.waveOwned, WAVE_UPGRADE.maxTier)
+        .map((on, i) => {
+          const m = WAVE_MILESTONES[i];
+          return `<i class="${on ? 'on' : ''}" title="${m ? esc(`Tier ${m.tier} — ${m.name}: ${m.blurb}`) : ''}"></i>`;
+        })
+        .join('');
+      // The dial's active milestones (or the next one to reach) in place of a generic hint.
+      const active = WAVE_MILESTONES.filter((m) => f.waveActive >= m.tier);
+      const next = WAVE_MILESTONES.find((m) => f.waveActive < m.tier);
+      const ms = this.$('[data-milestone]');
+      const top = active[active.length - 1];
+      ms.textContent = top ? `${top.name}${active.length > 1 ? ` +${active.length - 1}` : ''}` : next ? `${next.name} at tier ${next.tier}` : '';
+      ms.classList.toggle('on', active.length > 0);
+      ms.title = (active.length ? active : next ? [next] : []).map((m) => `${m.name} (tier ${m.tier}): ${m.blurb}`).join('\n');
       this.$('[data-wavecost]').textContent = f.waveCost === null ? 'Max' : `${f.waveCost.toLocaleString()}g`;
       this.$<HTMLButtonElement>('[data-buywave]').disabled = f.waveCost === null || f.gold < f.waveCost;
       this.$('[data-wavetier]').textContent = `Tier ${f.waveActive} / ${f.waveOwned}`;

@@ -177,6 +177,9 @@ Reward: a pile of gold, 3 soul shards and three relic rolls from the Sanctum's t
 - **Damage** — +8% spell power per tier (25 tiers). Cost 40 × 1.5ⁿ gold.
 - **Wave Speed** — faster waves (+12% per tier), more enemies at once (+9%), bigger waves (+6%), more gold (+10%), better item chances and more elites — but every enemy also hits 3.5% harder and has 3% more health per tier. 8 tiers, cost 120 × 1.75ⁿ. The first wave that greets you in an area ignores the dial.
   Buy tiers, then **dial the active tier** up or down (−/+) — it's a risk lever, not just a timer.
+  The three diamonds are **milestones** that switch on while the dial sits at or above them:
+  tier 3 *Elite Vanguard* (every other wave brings an elite), tier 6 *Restless Crypts* (Grave Surges
+  40% sooner), tier 8 *Nightfall* (the moon darkens, half the common dead rise Shrouded; +25% gold, more relics).
 
 **Difficulty** (Settings): *Easy* — enemies and the Prelate hit 40% softer with 25% less health, for 25% less gold and XP;
 *Medium* — the intended balance; *Hard* — 30% harder hits, 20% more health, more elites, 30% more gold and XP.

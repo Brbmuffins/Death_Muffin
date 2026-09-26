@@ -9,7 +9,7 @@ import { disciplineFor, type Discipline } from '../content/disciplines';
 import { AFFIX_TUNING, ELITE_AFFIXES, ENEMIES, type EliteAffix } from '../content/enemies';
 import { HEALING_FLASKS, itemMeta } from '../content/items';
 import { generateLayout } from '../content/layout';
-import { damageBonusPct, waveModifiers } from '../content/upgrades';
+import { WAVE_MILESTONES, damageBonusPct, milestoneActive, waveModifiers } from '../content/upgrades';
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
 import { onSettingsChange, settings } from '../app/settings';
 import { AbilitySystem, type CastResult, type CastTarget } from '../gameplay/AbilitySystem';
@@ -108,6 +108,9 @@ export class WorldScene implements GameScene, RuntimeView {
   private selfId = 'self';
   private remotes = new Map<string, Remote>();
   private lastSnapshot = 0;
+  /** World wave tier last frame (milestone banners) and the Nightfall light blend 0..1. */
+  private seenWaveTier = -1;
+  private nightK = 0;
   private snapshotCount = 0;
   private lastMoveSent = 0;
   private lastPrune = 0;
@@ -1353,12 +1356,32 @@ export class WorldScene implements GameScene, RuntimeView {
     updateOcclusion(this.rig.camera, this.occlusionFocus);
     this.moon.position.set(p.x - 14, 30, p.z + 12);
     this.moon.target.position.set(p.x, 0, p.z);
+    this.tickMilestones(dt);
     const vh = window.innerHeight * getRuntime().renderer.getPixelRatio();
     this.worldView.update(dt, p.x, p.z, this.rig.camera, vh);
     this.effects.update(dt, this.rig.camera, vh);
     this.floating.update(dt, this.rig.camera);
     this.tickOnboarding(now);
     this.updateHud(now);
+  }
+
+  /** Milestone banners when the world's Wave Speed crosses one, and Nightfall's darker moon. */
+  private tickMilestones(dt: number) {
+    const tier = this.bossWaveTier();
+    if (tier !== this.seenWaveTier) {
+      if (this.seenWaveTier >= 0) {
+        for (const m of WAVE_MILESTONES) {
+          if (tier >= m.tier && this.seenWaveTier < m.tier) this.hud.banner(m.name, m.blurb, 3200);
+          else if (tier < m.tier && this.seenWaveTier >= m.tier) this.hud.toast(`${m.name} fades`);
+        }
+      }
+      this.seenWaveTier = tier;
+    }
+    const target = milestoneActive('nightfall', tier) ? 1 : 0;
+    this.nightK += (target - this.nightK) * Math.min(1, dt * 0.8);
+    // Intensity only (never toggle light visibility — that recompiles shaders).
+    this.moon.intensity = 2.4 * (1 - 0.6 * this.nightK);
+    this.hemi.intensity = 0.95 * (1 - 0.3 * this.nightK);
   }
 
   /** Bodies wading through the nave's flood and the graveyard puddles ring the water. */

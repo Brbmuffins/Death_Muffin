@@ -500,6 +500,8 @@ button { font-family: inherit; }
 .hud-wave-dial button { width: 22px; height: 22px; padding: 0; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-bone-100); cursor: pointer; }
 .hud-wave-dial button:hover:not(:disabled) { border-color: var(--cw-border-active); }
 .hud-wave-dial button:disabled { opacity: 0.35; }
+.hud-wave-dial .hud-milestone { margin-left: auto; text-align: right; cursor: help; }
+.hud-wave-dial .hud-milestone.on { color: #d9a441; }
 .hud-wave-dial .tier { font-family: var(--cw-font-numeric); color: var(--cw-bone-100); min-width: 64px; text-align: center; }
 
 .hud-currency { display: flex; gap: 18px; align-items: center; padding: 4px 6px; font-family: var(--cw-font-numeric); font-size: 16px; font-weight: 600; color: var(--cw-bone-100); text-shadow: 0 1px 3px #000; }

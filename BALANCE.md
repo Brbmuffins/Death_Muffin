@@ -97,6 +97,15 @@ damage and Withered ~20%. Adds from the processions barely matter (0–10% of da
 makes them a candidate for a bigger role later. `src/gameplay/__tests__/balance.test.ts` guards the
 intended-band rows.
 
+## Wave Speed milestones
+
+At tier 3 **Elite Vanguard** guarantees an elite in every other regular wave. At tier 6 **Restless Crypts**
+multiplies the surge interval by 0.6. At tier 8 **Nightfall** shrouds 50% of common spawns and adds
++0.25 reward / +0.2 item chance. The first draft (an elite in *every* wave, *all* commons shrouded)
+pushed the push band to 0.5–8.5 deaths and dropped max-band gold below push. With the softened
+version, push is 0.5–9 deaths / 3 min (mostly 1–5) and max stays the reckless band (2–13.5 deaths,
+first death in 6–38 s).
+
 ## Difficulty (Easy / Medium / Hard)
 
 `content/difficulty.ts`. Medium is everything above. Enemies and the Prelate get HP × and damage ×,

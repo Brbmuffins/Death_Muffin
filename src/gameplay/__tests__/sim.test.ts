@@ -6,6 +6,7 @@ import { mulberry32 } from '../rng';
 import type { Corpse, SimEvent } from '../sim/types';
 import { AFFIX_ORDER, AFFIX_TUNING, SURGE } from '../../content/enemies';
 import { DETONATE } from '../../content/abilities';
+import { RESTLESS_SURGE_MULT, waveModifiers } from '../../content/upgrades';
 import type { EnemyRow } from '../../net/contracts';
 
 function world(seed = 1) {
@@ -379,5 +380,67 @@ describe('Grave Surges', () => {
     expect(sim.surge).toBeNull();
     // The surge's dead stay in the world; only the bookkeeping ends.
     expect([...ids].some((id) => sim.enemies.has(id))).toBe(true);
+  });
+});
+
+describe('Wave Speed milestones', () => {
+  /** Step until a regular (non-greeting) wave climbs out; return that step's spawns. */
+  function nextWave(tier: number, seed = 5) {
+    const { sim } = world(seed);
+    sim.waveTier = tier;
+    sim.markVisited('graves');
+    for (let i = 0; i < 400; i++) {
+      const ev = sim.step(0.05);
+      if (of(ev, 'wave').length) return { sim, spawns: of(ev, 'spawn') };
+    }
+    throw new Error('no wave');
+  }
+
+  it('Elite Vanguard (tier 3) puts an elite in the first regular wave (then every other one)', () => {
+    for (let seed = 0; seed < 3; seed++) {
+      const { spawns } = nextWave(3, seed + 11);
+      expect(spawns.some((s) => s.elite)).toBe(true);
+    }
+    // Below the milestone, a wave can be all commons.
+    const { spawns } = nextWave(2);
+    expect(spawns.filter((s) => s.elite).length).toBeLessThan(spawns.length);
+  });
+
+  it('Restless Crypts (tier 6) brings the next surge sooner', () => {
+    const { sim } = world(2);
+    sim.waveTier = 6;
+    (sim as unknown as { endSurge(): void }).endSurge();
+    expect(sim.surgeIn).toBeLessThanOrEqual(SURGE.maxIntervalS * RESTLESS_SURGE_MULT + 1e-9);
+    sim.waveTier = 5;
+    const lows = Array.from({ length: 20 }, () => {
+      (sim as unknown as { endSurge(): void }).endSurge();
+      return sim.surgeIn;
+    });
+    expect(Math.min(...lows)).toBeGreaterThanOrEqual(SURGE.minIntervalS);
+  });
+
+  it('Nightfall (tier 8) shrouds about half the common dead and pays more', () => {
+    let commons = 0;
+    let shrouded = 0;
+    let sim: WorldSim | null = null;
+    let id = -1;
+    for (let seed = 0; seed < 6; seed++) {
+      const r = nextWave(8, seed + 30);
+      for (const s of r.spawns.filter((x) => !x.elite)) {
+        commons++;
+        if (s.affix === 'shrouded') {
+          shrouded++;
+          sim = r.sim;
+          id = s.id;
+        } else expect(s.affix).toBeUndefined();
+      }
+    }
+    expect(shrouded / commons).toBeGreaterThan(0.25);
+    expect(shrouded / commons).toBeLessThan(0.75);
+    expect(waveModifiers(8).rewardMult - waveModifiers(7).rewardMult).toBeGreaterThan(0.3);
+    // The shroud survives the snapshot round trip.
+    const mirror = new WorldMirror();
+    mirror.applySnapshot(makeSnapshot(sim!, true));
+    expect(mirror.enemies.get(id)?.affix).toBe('shrouded');
   });
 });

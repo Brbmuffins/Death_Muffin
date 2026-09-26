@@ -20,7 +20,7 @@ import {
   MIASMA_SLOW,
   ABILITIES,
 } from '../../content/abilities';
-import { waveModifiers } from '../../content/upgrades';
+import { NIGHTFALL_SHROUD_CHANCE, RESTLESS_SURGE_MULT, milestoneActive, waveModifiers } from '../../content/upgrades';
 import { DIFFICULTIES, type Difficulty } from '../../content/difficulty';
 import type { Nav } from '../nav';
 import { pickWeighted } from '../rng';
@@ -83,6 +83,8 @@ export class WorldSim {
   private events: SimEvent[] = [];
   private nextId = 1;
   private waveTimers = new Map<AreaId, number>();
+  /** Regular waves spawned per area (Elite Vanguard alternates). */
+  private waveCounts = new Map<AreaId, number>();
   private dotAccum = new Map<number, number>();
   private bloomed = new Set<number>();
 
@@ -462,6 +464,8 @@ export class WorldSim {
       moving: false,
     };
     if (elite) e.affix = affix ?? AFFIX_ORDER[Math.floor(this.rand() * AFFIX_ORDER.length)];
+    // Common dead only carry an affix when something grants it (Nightfall's Shroud).
+    else if (affix) e.affix = affix;
     this.enemies.set(e.id, e);
     this.emit({ t: 'spawn', id: e.id, def, x, z, elite, ...(e.affix ? { affix: e.affix } : {}) });
     return e;
@@ -492,9 +496,15 @@ export class WorldSim {
     const breachCount = Math.min(pool.length, count > 11 ? 3 : count > 5 ? 2 : 1);
     const chosen: [number, number][] = [];
     for (let i = 0; i < breachCount; i++) chosen.push(pool[Math.floor(this.rand() * pool.length)]);
+    // Elite Vanguard: every other wave after the greeting climbs out behind an elite.
+    const n = first ? 0 : (this.waveCounts.get(area) ?? 0) + 1;
+    if (!first) this.waveCounts.set(area, n);
+    const vanguard = !first && n % 2 === 1 && milestoneActive('vanguard', this.waveTier);
+    let hasElite = false;
     for (let i = 0; i < count; i++) {
       const [bx, bz] = chosen[i % chosen.length];
-      this.spawnAtBreach(area, bx, bz);
+      const e = this.spawnAtBreach(area, bx, bz, vanguard && !hasElite && i === count - 1);
+      if (e?.elite) hasElite = true;
     }
     for (const [x, z] of chosen) this.emit({ t: 'wave', area, count, x, z });
   }
@@ -513,7 +523,7 @@ export class WorldSim {
   }
 
   /** One wave member climbing out beside a breach (area roster, elite roll). */
-  private spawnAtBreach(area: AreaId, bx: number, bz: number): Enemy | null {
+  private spawnAtBreach(area: AreaId, bx: number, bz: number, forceElite = false): Enemy | null {
     const def = AREAS[area];
     const mods = waveModifiers(this.waveTier);
     const ang = this.rand() * Math.PI * 2;
@@ -521,8 +531,11 @@ export class WorldSim {
     const [x, z] = this.nav.resolveInArea(area, bx + Math.cos(ang) * rr, bz + Math.sin(ang) * rr, 0.5);
     const pick = pickWeighted(def.enemies, this.rand());
     if (!pick) return null;
-    const elite = pick.id !== 'risen' && this.rand() < def.eliteChance + mods.eliteBonus + DIFFICULTIES[this.difficulty].eliteBonus;
-    return this.spawnEnemy(pick.id, area, x, z, elite);
+    const roll = this.rand() < def.eliteChance + mods.eliteBonus + DIFFICULTIES[this.difficulty].eliteBonus;
+    const elite = pick.id !== 'risen' && (forceElite || roll);
+    // Nightfall: the common dead climb out Shrouded.
+    const shroud = !elite && milestoneActive('nightfall', this.waveTier) && this.rand() < NIGHTFALL_SHROUD_CHANCE ? 'shrouded' : undefined;
+    return this.spawnEnemy(pick.id, area, x, z, elite, true, shroud);
   }
 
   // --- Grave Surges ---
@@ -599,7 +612,8 @@ export class WorldSim {
 
   private endSurge() {
     this.surge = null;
-    this.surgeIn = SURGE.minIntervalS + this.rand() * (SURGE.maxIntervalS - SURGE.minIntervalS);
+    const restless = milestoneActive('restless', this.waveTier) ? RESTLESS_SURGE_MULT : 1;
+    this.surgeIn = (SURGE.minIntervalS + this.rand() * (SURGE.maxIntervalS - SURGE.minIntervalS)) * restless;
   }
 
   private updateWaves(dt: number) {
