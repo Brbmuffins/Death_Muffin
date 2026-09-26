@@ -77,7 +77,7 @@ Party synergy target: every class *produces* or *consumes* corpses so a
 | **Censer Bearer** | aura buffer | smoke cloud grants nearby enemies armour | resonant |
 
 ### Encounter systems
-- ✅ *shipped (combat depth pack; surges open at area breaches, not the mausoleum props yet)* — **Grave Surges** (map events): a mausoleum cracks open and pours out a timed wave with a chest reward — optional risk bursts inside the farming loop.
+- ✅ *shipped (combat depth pack; since 2026-09-26 they break out of mausoleums/sarcophagi, breaches as fallback)* — **Grave Surges** (map events): a mausoleum cracks open and pours out a timed wave with a chest reward — optional risk bursts inside the farming loop.
 - ✅ *shipped (combat depth pack; Shrouded = half damage outside miasma)* — **Elite affixes**: Bell-Tolled (periodic stun ring), Hungering (eats corpses to heal), Shrouded (only visible in miasma), Vengeful (explodes into Risen).
 - ✅ *shipped 2026-09-26 (Elite Vanguard every other wave; Nightfall shrouds half the commons)* — **Wave Speed milestones** (the three diamonds): at each milestone, waves gain an affix (e.g. tier 3: elites +1, tier 6: surges more frequent, tier 8: "Nightfall" — the moon darkens and all enemies gain Shrouded).
 - **Co-op session dashboard** (requested 2026-09-26): a host-side panel for co-op rooms that

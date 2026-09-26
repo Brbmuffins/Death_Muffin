@@ -7,6 +7,7 @@ import type { Corpse, SimEvent } from '../sim/types';
 import { AFFIX_ORDER, AFFIX_TUNING, SURGE } from '../../content/enemies';
 import { DETONATE } from '../../content/abilities';
 import { RESTLESS_SURGE_MULT, waveModifiers } from '../../content/upgrades';
+import { generateLayout } from '../../content/layout';
 import type { EnemyRow } from '../../net/contracts';
 
 function world(seed = 1) {
@@ -442,5 +443,24 @@ describe('Wave Speed milestones', () => {
     const mirror = new WorldMirror();
     mirror.applySnapshot(makeSnapshot(sim!, true));
     expect(mirror.enemies.get(id)?.affix).toBe('shrouded');
+  });
+});
+
+describe('Grave Surges from crypts', () => {
+  it('break out of a fair crypt when one exists, else a breach', () => {
+    const { sim } = world(4);
+    const crypts = generateLayout().crypts;
+    sim.setCrypts(crypts);
+    const ev: SimEvent[] = [];
+    sim.startSurge('graves');
+    ev.push(...sim.step(0.05));
+    const s = of(ev, 'surge')[0];
+    expect(s.crypt).toBe(true);
+    expect(crypts.some((c) => c.area === 'graves' && c.x === s.x && c.z === s.z)).toBe(true);
+    // No crypts known (or none fair): the old breach behaviour.
+    const { sim: bare } = world(4);
+    bare.startSurge('graves');
+    const b = of(bare.step(0.05), 'surge')[0];
+    expect(b.crypt).toBeUndefined();
   });
 });

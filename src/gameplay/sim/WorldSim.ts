@@ -85,6 +85,8 @@ export class WorldSim {
   private waveTimers = new Map<AreaId, number>();
   /** Regular waves spawned per area (Elite Vanguard alternates). */
   private waveCounts = new Map<AreaId, number>();
+  /** Surge origins in front of crypt props (from the layout); breaches are the fallback. */
+  private crypts: { area: AreaId; x: number; z: number }[] = [];
   private dotAccum = new Map<number, number>();
   private bloomed = new Set<number>();
 
@@ -577,10 +579,20 @@ export class WorldSim {
     this.startSurge(eligible[Math.floor(this.rand() * eligible.length)]);
   }
 
+  setCrypts(crypts: { area: AreaId; x: number; z: number }[]) {
+    this.crypts = crypts.map(({ area, x, z }) => ({ area, x, z }));
+  }
+
   /** Open a surge now (also the DEV/QA entry point). */
   startSurge(area: AreaId) {
     if (this.surge || AREAS[area].safe || !AREAS[area].breaches.length) return;
-    const pool = this.fairBreaches(area);
+    // A crypt cracks open when one sits at a fair distance from everyone; otherwise a breach.
+    const players = this.playersIn(area);
+    const crypts = this.crypts.filter(
+      (c) => c.area === area && players.every((p) => Math.hypot(p.x - c.x, p.z - c.z) >= SPAWN_MIN_DIST && Math.hypot(p.x - c.x, p.z - c.z) <= SPAWN_MAX_DIST),
+    );
+    const crypt = crypts.length > 0;
+    const pool: [number, number][] = crypt ? crypts.map((c) => [c.x, c.z]) : this.fairBreaches(area);
     const [x, z] = pool[Math.floor(this.rand() * pool.length)];
     this.surge = {
       area,
@@ -593,7 +605,7 @@ export class WorldSim {
       spawned: 0,
       killed: 0,
     };
-    this.emit({ t: 'surge', area, x, z, durationMs: SURGE.durationS * 1000 });
+    this.emit({ t: 'surge', area, x, z, durationMs: SURGE.durationS * 1000, ...(crypt ? { crypt: true } : {}) });
   }
 
   private spawnSurgeWave(s: SurgeState) {

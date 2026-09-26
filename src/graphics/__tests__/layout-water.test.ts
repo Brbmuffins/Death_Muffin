@@ -71,3 +71,24 @@ describe('environment layout', () => {
     expect(again.props).toEqual(layout.props);
   });
 });
+
+describe('surge crypts', () => {
+  const layout = generateLayout();
+
+  it('sit in front of a crypt prop, inside an unsafe area, off every collider', () => {
+    expect(layout.crypts.length).toBeGreaterThanOrEqual(6);
+    for (const c of layout.crypts) {
+      expect(AREAS[c.area].safe).toBe(false);
+      expect(inside(AREAS[c.area].rect, c.x, c.z, -0.5)).toBe(true);
+      const src = layout.props.filter((p) => p.prop === c.prop && p.area === c.area);
+      expect(Math.min(...src.map((p) => Math.hypot(p.x - c.x, p.z - c.z)))).toBeLessThan(4.5);
+      for (const p of layout.props) {
+        const col = PROPS[p.prop].collider;
+        if (!col) continue;
+        const r = col.kind === 'circle' ? col.r : Math.min(col.hw, col.hd);
+        expect(Math.hypot(p.x - c.x, p.z - c.z), `${c.prop} crypt vs ${p.prop}`).toBeGreaterThan(r * p.scale);
+      }
+    }
+    expect(new Set(layout.crypts.map((c) => c.area))).toEqual(new Set(['graves', 'ossuary', 'nave']));
+  });
+});

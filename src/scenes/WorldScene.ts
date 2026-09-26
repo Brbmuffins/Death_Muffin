@@ -221,6 +221,7 @@ export class WorldScene implements GameScene, RuntimeView {
     });
 
     this.sim = new WorldSim(this.nav);
+    this.sim.setCrypts(this.layout.crypts);
     this.sim.waveTier = this.progression.local.waveTierActive;
     this.sim.difficulty = settings.difficulty;
 
@@ -784,6 +785,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private becomeAuthority(snapshot: WorldSnapshot | null) {
     if (this.sim && !this.mirror) return;
     const sim = new WorldSim(this.nav);
+    sim.setCrypts(this.layout.crypts);
     sim.waveTier = this.progression.local.waveTierActive;
     // Prefer our own mirror (it has every event applied); the server's stored
     // snapshot is only the fallback when we never mirrored anything.
@@ -1007,6 +1009,11 @@ export class WorldScene implements GameScene, RuntimeView {
     this.effects.decal({ tex: fx.ring(), color: S.glow, x: ev.x, z: ev.z, r: 5, duration: 1.2, opacity: 1, growFrom: 0.1 });
     this.effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 60, color: S.glow, spread: 1.2, speed: 3, up: 3, life: 1.2, size: 0.32 });
     this.effects.lightFlash(ev.x, 2, ev.z, S.glow, 60, 1.2);
+    if (ev.crypt) {
+      // The tomb's seal gives: grave-dust billows and bone chips scatter from its door.
+      this.effects.emitSmoke({ x: ev.x, y: 0.6, z: ev.z, count: 18, color: 0x4a4250, spread: 1.4, speed: 1.2, up: 1.4, life: 2.2, size: 2.2, shrink: -0.8 });
+      this.effects.emit({ x: ev.x, y: 1, z: ev.z, count: 30, color: SPELL_FX.detonate.bone, spread: 0.8, speed: 4, up: 3, life: 0.9, size: 0.14, gravity: 9 });
+    }
     audio.play('gate', ev.x, ev.z);
     if (ev.area === this.area) {
       this.hud.banner('Grave Surge', `A crypt cracks open in ${AREAS[ev.area].name} — hold it back for its offering`, 3400);

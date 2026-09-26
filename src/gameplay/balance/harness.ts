@@ -7,6 +7,7 @@ import { Nav } from '../nav';
 import { mulberry32 } from '../rng';
 import type { Corpse, Enemy, SimEvent } from '../sim/types';
 import { WorldSim } from '../sim/WorldSim';
+import { generateLayout } from '../../content/layout';
 import type { Character } from '../../net/types';
 import type { Difficulty } from '../../content/difficulty';
 
@@ -52,6 +53,7 @@ export interface BalanceResult {
 }
 
 const SP_NEEDLE = ABILITIES.bone_needle;
+const CRYPTS = generateLayout().crypts;
 /** Death sends you to the Chapterhouse (4 s), then a waystone hop and a short walk back in. */
 const RESPAWN_S = 4;
 const RETURN_S = 8;
@@ -79,6 +81,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
   const sim = new WorldSim(nav, rand);
   sim.waveTier = run.waveTier;
   sim.difficulty = run.difficulty ?? 'medium';
+  sim.setCrypts(CRYPTS);
   const disc = disciplineFor(run.classIndex);
   const character = botCharacter(run.classIndex, run.level, run.gearStats ?? 0);
   let stats = deriveStats(character, [], disc, run.damageTier);

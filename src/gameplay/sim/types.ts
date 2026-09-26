@@ -258,7 +258,7 @@ export type SimEvent =
     }
   /** Elite affix moments: a Bell-Tolled ring sounding, a Hungering feed, a Vengeful burst. */
   | { t: 'affix'; id: number; affix: EliteAffix; x: number; z: number; r?: number; tx?: number; tz?: number; amount?: number }
-  | { t: 'surge'; area: AreaId; x: number; z: number; durationMs: number }
+  | { t: 'surge'; area: AreaId; x: number; z: number; durationMs: number; crypt?: boolean }
   | { t: 'surgeCleared'; area: AreaId; x: number; z: number }
   | { t: 'surgeFailed'; area: AreaId; x: number; z: number }
   | { t: 'wave'; area: AreaId; count: number; x: number; z: number }
