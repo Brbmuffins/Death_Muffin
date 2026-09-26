@@ -1634,6 +1634,52 @@ export class WorldScene implements GameScene, RuntimeView {
       },
       counts: () => ({ ...this.views.counts(), loot: this.loot.count, remotes: this.remotes.size, frameMs: getRuntime().frameMs }),
       teleport: (x: number, z: number) => this.teleportTo(x, z),
+      /** Perf snapshot: one direct render's draw calls/triangles, scene census, and CPU update cost. */
+      perf: (benchFrames = 120) => {
+        const r = getRuntime().renderer;
+        r.info.autoReset = false;
+        r.info.reset();
+        r.render(this.scene, this.rig.camera);
+        const render = { calls: r.info.render.calls, triangles: r.info.render.triangles, points: r.info.render.points };
+        r.info.autoReset = true;
+        let skinned = 0;
+        let meshes = 0;
+        let instanced = 0;
+        let lights = 0;
+        const types: Record<string, number> = {};
+        let sceneTris = 0;
+        let casters = 0;
+        let casterTris = 0;
+        this.scene.traverse((o) => {
+          if (!o.visible) return;
+          types[o.type] = (types[o.type] ?? 0) + 1;
+          const g = (o as THREE.Mesh).geometry as THREE.BufferGeometry | undefined;
+          if ((o as THREE.Mesh).isMesh && g) {
+            const n = (g.index ? g.index.count : g.attributes.position.count) / 3;
+            sceneTris += n * ((o as THREE.InstancedMesh).isInstancedMesh ? (o as THREE.InstancedMesh).count : 1);
+          }
+          if ((o as THREE.Mesh).isMesh && o.castShadow && g) {
+            casters++;
+            casterTris += ((g.index ? g.index.count : g.attributes.position.count) / 3) * ((o as THREE.InstancedMesh).isInstancedMesh ? (o as THREE.InstancedMesh).count : 1);
+          }
+          if ((o as THREE.SkinnedMesh).isSkinnedMesh) skinned++;
+          else if ((o as THREE.InstancedMesh).isInstancedMesh) instanced++;
+          else if ((o as THREE.Mesh).isMesh) meshes++;
+          if ((o as THREE.Light).isLight) lights++;
+        });
+        // CPU: game update only (sim + views + effects), no rendering.
+        let now = this.now + 1;
+        const t0 = performance.now();
+        for (let i = 0; i < benchFrames; i++) this.update(1 / 60, (now += 1000 / 60));
+        const updateMs = (performance.now() - t0) / benchFrames;
+        let simMs = 0;
+        if (this.sim) {
+          const s0 = performance.now();
+          for (let i = 0; i < benchFrames; i++) this.sim.step(1 / 60);
+          simMs = (performance.now() - s0) / benchFrames;
+        }
+        return { ...render, sceneTris: Math.round(sceneTris), casters, casterTris: Math.round(casterTris), types, skinned, meshes, instanced, lights, programs: r.info.programs?.length ?? 0, geometries: r.info.memory.geometries, textures: r.info.memory.textures, updateMs, simMs, ...this.views.counts() };
+      },
       goto: (a: AreaId) => {
         const r = AREAS[a].rect;
         this.teleportTo((r.x0 + r.x1) / 2, (r.z0 + r.z1) / 2 + 4);

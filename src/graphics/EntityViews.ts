@@ -64,6 +64,8 @@ const A = SPELL_FX.affix;
 const D = SPELL_FX.detonate;
 
 /** Rough mouth/head height per rig, for drool and sparks. */
+/** Common enemies nearest the camera focus that keep their moon shadow. */
+const SHADOW_CASTERS = 12;
 const HEAD_Y = { humanoid: 1.3, robed: 1.35, quadruped: 0.75, bloat: 1.05 } as const;
 
 function killAffixFx(v: View) {
@@ -270,11 +272,12 @@ export class EntityViews {
         });
         if (best >= 0) {
           const v = this.dying.splice(best, 1)[0];
+          v.c.setCastShadow(false);
           this.corpses.set(c.id, v);
         } else {
           // Corpse without a dying body (a sacrificed thrall, or a late join): lay one down.
           const slug = ENEMY_SLUG[c.enemy];
-          const cr = new Creature(slug, { tint: c.enemy === 'risen' ? 0x8a8078 : 0xffffff });
+          const cr = new Creature(slug, { tint: c.enemy === 'risen' ? 0x8a8078 : 0xffffff, castShadow: false });
           cr.root.position.set(c.x, 0, c.z);
           cr.root.rotation.y = lookupCorpseFacing?.(c) ?? c.facing;
           cr.root.scale.setScalar(c.scale);
@@ -285,6 +288,7 @@ export class EntityViews {
             if (!cr.holdLastFrame('death')) cr.toppled = 1;
           };
           tryHold();
+          v.c.setCastShadow(false);
           this.corpses.set(c.id, v);
         }
         if (c.kind === 'toxic') {
@@ -396,6 +400,22 @@ export class EntityViews {
   }
 
   /** LOD: far creatures animate at a lower rate. */
+  /**
+   * Shadow LOD: only the nearest enemies (and every elite) cast moon shadows.
+   * A horde at the cap otherwise re-renders ~100 skinned bodies in the shadow pass.
+   */
+  private shadowLod(enemies: Map<number, Enemy>, fx0: number, fz0: number) {
+    const ranked: { v: View; d: number }[] = [];
+    for (const [id, e] of enemies) {
+      const v = this.enemies.get(id);
+      if (!v) continue;
+      if (e.elite) v.c.setCastShadow(true);
+      else ranked.push({ v, d: (e.x - fx0) ** 2 + (e.z - fz0) ** 2 });
+    }
+    ranked.sort((a, b) => a.d - b.d);
+    ranked.forEach((r, i) => r.v.c.setCastShadow(i < SHADOW_CASTERS));
+  }
+
   private tickAnim(v: View, dt: number, fx0: number, fz0: number) {
     const far = Math.abs(v.x - fx0) > 26 || Math.abs(v.z - fz0) > 22;
     v.animDt += dt;
@@ -415,6 +435,7 @@ export class EntityViews {
     focusZ: number,
   ) {
     this.frame++;
+    if (this.frame % 10 === 0) this.shadowLod(enemies, focusX, focusZ);
     for (const [id, e] of enemies) {
       let v = this.enemies.get(id);
       if (!v) {

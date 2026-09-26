@@ -432,11 +432,14 @@ export class WorldView {
   }
 
   private buildProps(nav: Nav) {
-    const byProp = new Map<PropId, Placement[]>();
+    // One batch per prop kind *per area*: world-wide batches have world-sized bounding spheres,
+    // so the camera and the moon's shadow pass could never cull a single far-off tombstone.
+    const byProp = new Map<string, Placement[]>();
     for (const p of this.layout.props) {
-      const list = byProp.get(p.prop) ?? [];
+      const key = `${p.prop}|${p.area}`;
+      const list = byProp.get(key) ?? [];
       list.push(p);
-      byProp.set(p.prop, list);
+      byProp.set(key, list);
       const spec = PROPS[p.prop];
       const c = spec.collider;
       if (c?.kind === 'circle') nav.addObstacle({ kind: 'circle', x: p.x, z: p.z, r: c.r * p.scale });
@@ -464,7 +467,8 @@ export class WorldView {
         if (src.brazier) this.braziers.push(src);
       }
     }
-    for (const [id, list] of byProp) {
+    for (const list of byProp.values()) {
+      const id = list[0].prop;
       const tall = PROPS[id].height > 1.5;
       this.group.add(new PropBatch(id, list, tall).group);
     }

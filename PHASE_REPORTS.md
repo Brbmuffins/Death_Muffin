@@ -372,3 +372,28 @@ Intended-band damage taken went from 0–15 %HP/min to 4–54; push is dangerous
 3 min) instead of harmless-or-spiral; the bot opens each area in 3–5 min (was 2.7–3.7).
 Harness now respawns via the Chapterhouse and reports time-to-first-death.
 
+## Horde performance profile (2026-09-26) ✅ measured + two fixes
+`__cwDebug.perf()` (DEV) renders the scene once directly and reports draw calls / triangles,
+a scene census (skinned meshes, shadow casters), and CPU cost of `update()` and `sim.step()`.
+Wait ~2 s after spawning before calling it — creature GLBs attach asynchronously.
+Measured in headless Chromium (software GPU, so GPU *time* is meaningless there; counts are exact):
+
+| Scene | Triangles before → after | Draw calls | Shadow casters |
+|---|---|---|---|
+| Chapterhouse, idle | 622k → 415k | 86 → 97 | 23 → 32 (smaller, cullable batches) |
+| Nave, 34 enemies | 575k → 365k | 129 → 137 | — |
+| Nave horde, 94 enemies at the cap | 1.25M → 717k | 294 → 312 | 117 → 46 |
+| Horde + 30 corpses | 1.48M → 829k | 356 → 238 | 147 → 46 |
+
+- **CPU is not the bottleneck:** `sim.step` ≈ 0.1 ms and the whole game update ≈ 1.5 ms/frame with
+  94 animated enemies (animation LOD already skips far mixers).
+- **Fix 1 — per-area prop batches** (`WorldView.buildProps`): props were one instanced mesh per kind
+  spanning the whole world, so neither the camera nor the moon's shadow pass could cull anything.
+- **Fix 2 — shadow LOD** (`EntityViews.shadowLod`, `Creature.setCastShadow`): only the 12 common
+  enemies nearest the focus plus every elite cast moon shadows; corpses never do (they lie flat).
+- **VAT decision: not needed at the current cap** (72 enemies + ≤5 thralls per player ≈ 90 skinned
+  bodies). Revisit if the cap goes past ~120 or a real mid-range/integrated-GPU test shows skinning
+  as the cost. Next cheap levers if needed: shared materials for unflashed enemies (fewer programs /
+  uniforms uploads), and lowering `SHADOW_CASTERS` on the 'low' preset.
+- Still owed: a frame-time measurement on real mid hardware (needs the user's machine).
+

@@ -40,6 +40,7 @@ export class Creature {
   readonly root = new THREE.Group();
   loaded = false;
   private model: THREE.Object3D | null = null;
+  private shadowOn: boolean;
   private mixer: THREE.AnimationMixer | null = null;
   private actions = new Map<string, THREE.AnimationAction>();
   private mats: THREE.MeshStandardMaterial[] = [];
@@ -64,6 +65,7 @@ export class Creature {
     readonly slug: CreatureSlug,
     private opts: CreatureOptions = {},
   ) {
+    this.shadowOn = opts.castShadow ?? true;
     const def = CREATURE_MODELS[slug];
     const fb = opts.fallback ? CREATURE_MODELS[opts.fallback] : null;
     void assets
@@ -77,7 +79,7 @@ export class Creature {
       model.traverse((o) => {
         const mesh = o as THREE.Mesh;
         if (!mesh.isMesh) return;
-        mesh.castShadow = opts.castShadow ?? true;
+        mesh.castShadow = this.shadowOn;
         const src = mesh.material as THREE.MeshStandardMaterial;
         const mat = src.clone();
         if (opts.tint) mat.color.multiply(new THREE.Color(opts.tint));
@@ -231,6 +233,15 @@ export class Creature {
         m.emissiveIntensity = this.baseEmissiveIntensity;
       }
     }
+  }
+
+  /** Toggle moon shadows for every mesh (shadow LOD); remembered until the model loads. */
+  setCastShadow(on: boolean) {
+    if (this.shadowOn === on) return;
+    this.shadowOn = on;
+    this.model?.traverse((o) => {
+      if ((o as THREE.Mesh).isMesh) o.castShadow = on && !this.opts.spectral;
+    });
   }
 
   setOpacity(o: number) {
