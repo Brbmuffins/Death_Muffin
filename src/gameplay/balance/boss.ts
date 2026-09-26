@@ -31,6 +31,7 @@ export interface BossRun {
   maxMinutes?: number;
   seed?: number;
   difficulty?: Difficulty;
+  ascension?: number;
 }
 
 export interface BossResult {
@@ -67,6 +68,7 @@ export function runBossFight(run: BossRun): BossResult {
   nav.setUnlocked(['ossuary', 'nave', 'sanctum']);
   const sim = new WorldSim(nav, rand);
   sim.difficulty = run.difficulty ?? 'medium';
+  sim.ascension = run.ascension ?? 0;
   const disc = disciplineFor(run.classIndex);
   const stats = deriveStats(botCharacter(run.classIndex, run.level, run.gearStats), [], disc, run.damageTier);
   const sp = stats.spellPower;

@@ -357,7 +357,7 @@ export class HUD {
   }
 
   party(members: PartyMember[]) {
-    const key = members.map((m) => `${m.id}${m.name}${Math.round(m.hpFrac * 20)}`).join('|');
+    const key = members.map((m) => `${m.id}${m.name}${m.discipline}${Math.round(m.hpFrac * 20)}`).join('|');
     this.set('party', key, () => {
       this.$('[data-party]').innerHTML = members
         .slice(0, MAX_PARTY_SIZE)

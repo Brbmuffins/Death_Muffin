@@ -23,6 +23,7 @@ import {
 } from '../../content/abilities';
 import { NIGHTFALL_SHROUD_CHANCE, RESTLESS_SURGE_MULT, milestoneActive, waveModifiers } from '../../content/upgrades';
 import { DIFFICULTIES, type Difficulty } from '../../content/difficulty';
+import { ascensionLevels } from '../../content/ascension';
 import type { ThrallKind } from '../../content/disciplines';
 import { BONE_HEX, CHILL, HEMORRHAGE, PLAGUE_BURST, SANCTIFIED } from '../../content/statuses';
 import type { Nav } from '../nav';
@@ -109,6 +110,8 @@ export class WorldSim {
   waveTier = 0;
   /** Host's session difficulty: scales enemy/boss HP and damage for new spawns. */
   difficulty: Difficulty = 'medium';
+  /** World keeper's Ascension rank: every enemy and the Prelate run this many ranks older. */
+  ascension = 0;
   time = 0;
   /** The running Grave Surge, if any. */
   surge: SurgeState | null = null;
@@ -678,7 +681,7 @@ export class WorldSim {
   /** `affix` forces an elite affix (tests / debug); otherwise elites roll one. */
   spawnEnemy(def: EnemyId, area: AreaId, x: number, z: number, elite: boolean, rising = true, affix?: EliteAffix): Enemy {
     const d = ENEMIES[def];
-    const level = AREAS[area].level;
+    const level = AREAS[area].level + ascensionLevels(this.ascension);
     const wave = waveModifiers(this.waveTier);
     const diff = DIFFICULTIES[this.difficulty];
     const hp = d.hp * enemyHpScale(level) * wave.enemyHpMult * diff.enemyHpMult * (elite ? ELITE.hpMult : 1) * this.partyHpScale();
@@ -990,7 +993,7 @@ export class WorldSim {
     for (const c of [...this.corpses.values()]) {
       if (this.time >= c.ruptureAt) {
         this.removeCorpse(c, 'burst');
-        const level = AREAS[c.area].level;
+        const level = AREAS[c.area].level + ascensionLevels(this.ascension);
         const zone: Zone = {
           id: this.id(),
           kind: 'toxic',

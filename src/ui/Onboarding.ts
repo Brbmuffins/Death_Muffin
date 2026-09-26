@@ -25,7 +25,8 @@ export type TipId =
   | 'relic'
   | 'codex'
   | 'signature'
-  | 'prelate';
+  | 'prelate'
+  | 'ascend';
 
 interface Tip {
   title: string;
@@ -97,6 +98,10 @@ export const TIPS: Record<TipId, Tip> = {
   signature: {
     title: 'Your signature rite awakens',
     body: 'Level 10: press <kbd>R</kbd> for your discipline\'s own rite. Hover the new slot to read what it does.',
+  },
+  ascend: {
+    title: 'The Altar of Ascension stirs',
+    body: 'The Prelate has fallen. At the Altar in the Chapterhouse you may <b>Ascend</b>: your tiers, shards and opened seals reset, but you keep your level, gold and relics, earn Ashes for permanent boons, and the dead grow older and richer.',
   },
   prelate: {
     title: 'Five soul shards',

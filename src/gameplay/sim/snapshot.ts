@@ -26,6 +26,7 @@ export function makeSnapshot(sim: WorldSim, full: boolean): WorldSnapshot {
     t: sim.time,
     waveTier: sim.waveTier,
     difficulty: sim.difficulty,
+    ascension: sim.ascension,
     enemies,
     thralls,
     boss: { ...sim.bossState },
@@ -93,6 +94,7 @@ export class WorldMirror {
   bossState: BossState | null = null;
   waveTier = 0;
   difficulty: Difficulty = 'medium';
+  ascension = 0;
   time = 0;
   private targets = new Map<string, Target>();
 
@@ -100,6 +102,7 @@ export class WorldMirror {
     this.time = s.t;
     this.waveTier = s.waveTier;
     this.difficulty = isDifficulty(s.difficulty) ? s.difficulty : 'medium';
+    this.ascension = Number.isInteger(s.ascension) && s.ascension! >= 0 ? Math.min(20, s.ascension!) : 0;
     const seenE = new Set<number>();
     for (const row of s.enemies) {
       seenE.add(row[0]);
@@ -227,6 +230,7 @@ export class WorldMirror {
     if (this.bossState?.active) Object.assign(sim.bossState, this.bossState);
     sim.waveTier = this.waveTier;
     sim.difficulty = this.difficulty;
+    sim.ascension = this.ascension;
     const ids = [...this.enemies.keys(), ...this.thralls.keys(), ...this.corpses.keys(), ...this.zones.keys()];
     sim.reserveIds(ids.length ? Math.max(...ids) : 0);
   }

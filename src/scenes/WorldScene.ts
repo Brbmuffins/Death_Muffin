@@ -11,6 +11,8 @@ import { HEALING_FLASKS, itemMeta } from '../content/items';
 import { generateLayout } from '../content/layout';
 import { WAVE_MILESTONES, damageBonusPct, milestoneActive, waveModifiers } from '../content/upgrades';
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
+import { BOONS, ascensionLevels, ascensionRewardMult, roman } from '../content/ascension';
+import { AscensionPanel } from '../ui/AscensionPanel';
 import { onSettingsChange, settings } from '../app/settings';
 import { STATUS_FX } from '../content/statuses';
 import { AbilitySystem, type CastResult, type CastTarget } from '../gameplay/AbilitySystem';
@@ -156,6 +158,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private settingsPanel!: SettingsPanel;
   private waystonePanel!: WaystonePanel;
   private codexPanel!: CodexPanel;
+  private ascensionPanel!: AscensionPanel;
   private codex!: CodexJournal;
   private onboarding!: Onboarding;
   private lastTipCheck = 0;
@@ -170,6 +173,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.discipline = disciplineFor(character.class_index);
     this.hotbar = [...HOTBAR, SIGNATURE_BY_DISCIPLINE[this.discipline.id]];
     this.progression = new Progression(character);
+    this.applyBoons();
     this.inventory = new Inventory(character.id);
   }
 
@@ -192,6 +196,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
     const stats = deriveStats(this.character, [], this.discipline, this.progression.local.damageTier);
     this.player = new Player(stats, this.nav);
+    this.player.soulsMax = Math.max(10, SOUL_HARVEST.souls - this.progression.boons.soulsDiscount);
     this.player.teleport(PLAYER_SPAWN.x, PLAYER_SPAWN.z);
     this.avatar = new NecromancerAvatar(this.scene, this.discipline.color, true, this.discipline.modelSlug);
     this.rig.snap(this.player.x, this.player.z);
@@ -234,6 +239,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.sim.setCrypts(this.layout.crypts);
     this.sim.waveTier = this.progression.local.waveTierActive;
     this.sim.difficulty = settings.difficulty;
+    this.sim.ascension = this.progression.local.ascension;
 
     this.abilities = new AbilitySystem({
       selfId: this.selfId,
@@ -390,6 +396,17 @@ export class WorldScene implements GameScene, RuntimeView {
     );
     this.codex = new CodexJournal(this.character.id);
     this.codexPanel = new CodexPanel(this.root, this.codex, this.discipline.id);
+    this.ascensionPanel = new AscensionPanel(
+      this.root,
+      this.progression,
+      () => this.doAscend(),
+      (id) => {
+        if (!this.progression.buyBoon(id)) return;
+        audio.play('shard');
+        this.applyBoons();
+        this.hud.toast(`${BOONS[id].name} — ${BOONS[id].blurb}`, 'good');
+      },
+    );
     this.onboarding = new Onboarding(this.root, this.character.id);
     this.scope.add(() => {
       this.codexPanel.dispose();
@@ -405,6 +422,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private closePanels() {
+    this.ascensionPanel?.close();
     this.inventoryPanel.close();
     this.forgePanel.close();
     this.professionsPanel.close();
@@ -413,9 +431,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.codexPanel.close();
   }
 
-  private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex') {
+  private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension') {
     audio.play('click');
-    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel }[p];
+    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel }[p];
     const wasOpen = panel.isOpen;
     this.closePanels();
     if (wasOpen) return;
@@ -424,6 +442,7 @@ export class WorldScene implements GameScene, RuntimeView {
     else if (p === 'forge') void this.forgePanel.open();
     else if (p === 'settings') this.settingsPanel.open();
     else if (p === 'codex') this.codexPanel.open();
+    else if (p === 'ascension') this.ascensionPanel.open();
     else this.waystonePanel.open();
   }
 
@@ -686,8 +705,8 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'waystone':
         return this.togglePanel('map');
       case 'upgrades':
-        this.hud.toast('The Altar hears you anywhere: empower Damage and quicken Waves at the lower right.', 'good');
-        return;
+        // Damage / Wave Speed are bought from the HUD anywhere; the Altar itself is where runs are burned.
+        return this.togglePanel('ascension');
       case 'boss': {
         const b = this.bossState();
         if (b.active) return;
@@ -825,6 +844,7 @@ export class WorldScene implements GameScene, RuntimeView {
     for (const e of sim.enemies.values()) sim.markVisited(e.area);
     // The new keeper's difficulty runs the world from here on (new spawns).
     sim.difficulty = settings.difficulty;
+    sim.ascension = this.progression.local.ascension;
     this.sim = sim;
     this.mirror = null;
     this.hud.chatLine(`You now keep the world (${DIFFICULTIES[sim.difficulty].name})`);
@@ -1133,7 +1153,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hud.banner('Surge Quelled', 'The crypt yields its offering', 3200);
     audio.play('levelUp');
     // Personal reward: a guaranteed item from the area's table plus bonus gold.
-    const level = AREAS[ev.area].level;
+    const level = AREAS[ev.area].level + ascensionLevels(this.worldAscension());
     const gold = Math.round((24 + 10 * level) * waveModifiers(this.bossWaveTier()).rewardMult * DIFFICULTIES[this.worldDifficulty()].rewardMult);
     this.loot.item(ev.x, ev.z, rollItem(ev.area));
     this.loot.gold(ev.x, ev.z, gold);
@@ -1148,11 +1168,14 @@ export class WorldScene implements GameScene, RuntimeView {
     const near = Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 38;
     if (!this.player.alive || !near) return;
     const reward = rollKill(ev.def, ev.area, ev.level, ev.elite, this.bossWaveTier(), Math.random, this.worldDifficulty());
+    const asc = ascensionRewardMult(this.worldAscension());
+    reward.gold = Math.round(reward.gold * asc);
+    reward.xp = Math.round(reward.xp * asc);
     this.loot.gold(ev.x, ev.z, reward.gold);
     if (reward.shards) this.loot.shard(ev.x, ev.z, reward.shards);
     for (const item of reward.items) this.loot.item(ev.x, ev.z, item);
     this.gainXp(reward.xp, ev.x, ev.z);
-    this.progression.recordKill(ev.area);
+    this.progression.recordKill(ev.area, this.bossWaveTier());
     this.checkUnlocks();
   }
 
@@ -1167,6 +1190,57 @@ export class WorldScene implements GameScene, RuntimeView {
       this.hud.toast(`Difficulty: ${DIFFICULTIES[d].name} — the next dead to rise feel it`, 'good');
     } else if (this.mirror && this.mirror.difficulty !== d) {
       this.hud.toast(`The world keeper's difficulty applies (${DIFFICULTIES[this.mirror.difficulty].name})`);
+    }
+  }
+
+  /** Burn the run at the Altar: reset the local layer, raise the rank, age the world. */
+  private doAscend() {
+    const earned = this.progression.ascend();
+    if (!earned) return;
+    const rank = this.progression.local.ascension;
+    this.nav.setUnlocked(this.progression.local.unlocked);
+    for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d));
+    if (this.sim && this.isAuthority()) {
+      this.sim.ascension = rank;
+      this.sim.waveTier = 0;
+      // The younger dead crumble; older ones climb out on the next visit.
+      for (const a of AREA_ORDER) if (!AREAS[a].safe) this.sim.clearArea(a);
+    }
+    this.applyBoons();
+    const altar = AREAS.chapterhouse.interactables.find((i) => i.kind === 'upgrades')!;
+    this.effects.emit({ x: altar.x, y: 0.4, z: altar.z, count: 120, color: 0xd9a441, spread: 1.2, speed: 1.4, up: 5, life: 1.8, size: 0.34 });
+    this.effects.decal({ tex: fx.sigil(), color: 0xd9a441, x: altar.x, z: altar.z, r: 4, duration: 2.4, opacity: 1, growFrom: 0.2, spin: 1.4 });
+    this.effects.lightFlash(altar.x, 3, altar.z, 0xd9a441, 90, 1.6);
+    this.rig.shake(0.4);
+    audio.play('levelUp');
+    this.hud.banner(`Ascension ${roman(rank)}`, `The dead rise ${ascensionLevels(rank)} levels older · +${earned} Ashes`, 4200);
+    void this.progression.flush();
+  }
+
+  /** The Ascension rank the world runs at: yours solo/as host, the host's as a guest. */
+  private worldAscension(): number {
+    return this.sim?.ascension ?? this.mirror?.ascension ?? this.progression.local.ascension;
+  }
+
+  /**
+   * Covenant Boons reshape this character: a private copy of the discipline's
+   * mods (thrall cap, health, essence) plus the Soul Harvest threshold.
+   */
+  private applyBoons() {
+    const base = disciplineFor(this.character.class_index);
+    const fx = this.progression.boons;
+    this.discipline = {
+      ...base,
+      mods: {
+        ...base.mods,
+        thrallCap: base.mods.thrallCap + fx.extraThralls,
+        maxHpMult: base.mods.maxHpMult * fx.maxHpMult,
+        essenceRegenMult: base.mods.essenceRegenMult * fx.essenceRegenMult,
+      },
+    };
+    if (this.player) {
+      this.player.soulsMax = Math.max(10, SOUL_HARVEST.souls - fx.soulsDiscount);
+      this.refreshStats();
     }
   }
 
@@ -1205,7 +1279,7 @@ export class WorldScene implements GameScene, RuntimeView {
     for (const id of AREA_ORDER) {
       const u = AREAS[id].unlock;
       if (!u || this.progression.isUnlocked(id)) continue;
-      if (this.progression.kills(u.area) >= u.kills && this.progression.unlock(id)) {
+      if (this.progression.kills(u.area) >= this.progression.unlockKills(u.kills) && this.progression.unlock(id)) {
         this.nav.setUnlocked(this.progression.local.unlocked);
         for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d));
         this.hud.banner('A seal breaks', `${AREAS[id].name} lies open`, 3800);
@@ -1319,8 +1393,8 @@ export class WorldScene implements GameScene, RuntimeView {
         for (const g of ['west', 'east', 'north']) this.worldView.setCandleGroup(g, true);
         if (ev.killer) {
           this.hud.banner('The Bell Falls Silent', 'The Prelate is unmade — for now', 4200);
-          this.progression.local.bossKills++;
-          this.progression.saveLocal();
+          this.progression.recordPrelateKill();
+          if (this.progression.canAscend()) this.onboarding.show('ascend', 5000);
           const reward = rollBoss(this.bossWaveTier(), Math.random, this.worldDifficulty());
           this.loot.gold(ev.x, ev.z, reward.gold);
           this.loot.shard(ev.x, ev.z, reward.shards);
@@ -1607,15 +1681,15 @@ export class WorldScene implements GameScene, RuntimeView {
     if (AREAS[here].safe) return 'Sanctuary. The dead cannot follow you here.';
     const next = AREA_ORDER.find((id) => AREAS[id].unlock?.area === here && !this.progression.isUnlocked(id));
     if (next) {
-      const u = AREAS[next].unlock!;
-      return `Slay <b>${Math.min(u.kills, this.progression.kills(here))}/${u.kills}</b> to unseal ${AREAS[next].name}`;
+      const need = this.progression.unlockKills(AREAS[next].unlock!.kills);
+      return `Slay <b>${Math.min(need, this.progression.kills(here))}/${need}</b> to unseal ${AREAS[next].name}`;
     }
     if (here === 'sanctum') {
       return this.bossState().active
         ? 'The Prelate walks.'
         : `Offer <b>${this.progression.local.shards}/${BOSS_SUMMON_SHARDS}</b> soul shards at the Sundered Bell`;
     }
-    return `<b>${this.progression.kills(here)}</b> slain here · Level ${AREAS[here].level} dead`;
+    return `<b>${this.progression.kills(here)}</b> slain here · Level ${AREAS[here].level + ascensionLevels(this.worldAscension())} dead`;
   }
 
   private lastMapDraw = 0;
@@ -1681,7 +1755,7 @@ export class WorldScene implements GameScene, RuntimeView {
         };
       }),
       souls: p.souls,
-      soulsMax: SOUL_HARVEST.souls,
+      soulsMax: p.soulsMax,
       thralls: myThralls.length,
       thrallCap: this.discipline.mods.thrallCap,
       gold: Math.floor(this.character.gold ?? 0),
@@ -1718,7 +1792,7 @@ export class WorldScene implements GameScene, RuntimeView {
         {
           id: this.selfId,
           name: `${this.character.class_name ? this.discipline.name : 'You'} (you)`,
-          discipline: this.discipline.epithet,
+          discipline: this.progression.local.ascension ? `${this.discipline.epithet} · Ascension ${roman(this.progression.local.ascension)}` : this.discipline.epithet,
           portrait: `art/portraits/${this.discipline.id}.webp`,
           hpFrac: p.hp / p.stats.maxHp,
         },
@@ -1765,6 +1839,12 @@ export class WorldScene implements GameScene, RuntimeView {
       },
       counts: () => ({ ...this.views.counts(), loot: this.loot.count, remotes: this.remotes.size, frameMs: getRuntime().frameMs }),
       teleport: (x: number, z: number) => this.teleportTo(x, z),
+      /** Ascension QA: count a Prelate kill for this run, then open the Altar. */
+      prelateSlain: () => {
+        this.progression.recordPrelateKill();
+        return this.progression.ashesOnAscend();
+      },
+      altar: () => this.togglePanel('ascension'),
       /** Perf snapshot: one direct render's draw calls/triangles, scene census, and CPU update cost. */
       perf: (benchFrames = 120) => {
         const r = getRuntime().renderer;
@@ -1833,7 +1913,7 @@ export class WorldScene implements GameScene, RuntimeView {
         if (a) this.sim?.startSurge(a);
         return this.sim?.surge ? { area: this.sim.surge.area, x: this.sim.surge.x, z: this.sim.surge.z } : null;
       },
-      souls: (n = SOUL_HARVEST.souls) => {
+      souls: (n = this.player.soulsMax) => {
         if (this.player.addSouls(n)) this.onSoulsCharged();
         return this.player.souls;
       },

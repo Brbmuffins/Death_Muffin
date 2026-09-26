@@ -25,6 +25,8 @@ export class Player {
   god = false;
   /** Soul Harvest meter (client-side): kills credited to you or your thralls. */
   souls = 0;
+  /** Souls needed to charge the meter (Soul Hunger boons lower it). */
+  soulsMax = SOUL_HARVEST.souls;
   /** Queued waypoints for click-to-move (door-aware). */
   private path: { x: number; z: number }[] = [];
   readonly cooldowns = new Map<string, number>();
@@ -76,13 +78,13 @@ export class Player {
 
   /** Full meter: the next Marrow Spear / Miasma / Black Litany is free and 50% larger. */
   get soulsCharged() {
-    return this.souls >= SOUL_HARVEST.souls;
+    return this.souls >= this.soulsMax;
   }
 
   /** Add harvested souls; returns true on the kill that fills the meter. */
   addSouls(n = 1): boolean {
     if (this.soulsCharged) return false;
-    this.souls = Math.min(SOUL_HARVEST.souls, this.souls + n);
+    this.souls = Math.min(this.soulsMax, this.souls + n);
     return this.soulsCharged;
   }
 

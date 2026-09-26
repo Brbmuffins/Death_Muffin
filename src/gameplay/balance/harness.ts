@@ -28,6 +28,8 @@ export interface BalanceRun {
   /** Stat points per stat beyond base 5 (gear stand-in). */
   gearStats?: number;
   difficulty?: Difficulty;
+  /** World Ascension rank (enemies run older). */
+  ascension?: number;
 }
 
 export interface BalanceResult {
@@ -81,6 +83,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
   const sim = new WorldSim(nav, rand);
   sim.waveTier = run.waveTier;
   sim.difficulty = run.difficulty ?? 'medium';
+  sim.ascension = run.ascension ?? 0;
   sim.setCrypts(CRYPTS);
   const disc = disciplineFor(run.classIndex);
   const character = botCharacter(run.classIndex, run.level, run.gearStats ?? 0);

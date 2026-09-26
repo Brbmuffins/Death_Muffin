@@ -857,3 +857,29 @@ button { font-family: inherit; }
 /* Signature rite slot before level 10. */
 .hud-slot button.locked { filter: grayscale(1) brightness(0.55); }
 .hud-slot button.locked::after { content: '10'; position: absolute; inset: auto 0 2px 0; text-align: center; font: 600 11px var(--cw-font-numeric); color: var(--cw-bone-300); }
+/* Altar of Ascension */
+.cw-panel-float.wide { width: 560px; }
+.cw-ascend { display: flex; flex-direction: column; gap: 10px; }
+.cw-ascend .head { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cw-ascend .head > div { background: var(--cw-inset); border: 1px solid var(--cw-border); padding: 6px 8px; display: flex; flex-direction: column; }
+.cw-ascend .head .k, .cw-ascend .run span { font-size: 11px; color: var(--cw-text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.cw-ascend .head b { font-family: var(--cw-font-display); font-size: 17px; color: var(--cw-bone-100); }
+.cw-ascend h3 { margin: 6px 0 0; font-family: var(--cw-font-display); font-weight: 600; font-size: 15px; color: var(--cw-bone-300); letter-spacing: 0.06em; }
+.cw-ascend .run { display: flex; gap: 14px; flex-wrap: wrap; }
+.cw-ascend .run b { color: var(--cw-bone-100); font-family: var(--cw-font-numeric); margin-left: 4px; }
+.cw-ascend .confirm { border: 1px solid #d9a441; background: color-mix(in srgb, #d9a441 8%, transparent); padding: 8px 10px; }
+.cw-ascend .confirm ul { margin: 6px 0; padding-left: 18px; font-size: 13px; line-height: 1.45; }
+.cw-ascend .confirm .lose { color: #e0a08a; }
+.cw-ascend .confirm .keep { color: #9fd9b8; }
+.cw-ascend .confirm .row { display: flex; gap: 8px; }
+.cw-ascend .note { color: var(--cw-text-muted); font-size: 13px; }
+.cw-ascend .boons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: 320px; overflow-y: auto; }
+.cw-ascend .boon { border: 1px solid var(--cw-border); background: var(--cw-inset); padding: 6px 8px; display: flex; flex-direction: column; gap: 4px; }
+.cw-ascend .boon.owned { border-color: #d9a441; }
+.cw-ascend .boon .bn { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 14px; }
+.cw-ascend .boon .bd { font-size: 12px; color: var(--cw-text-muted); line-height: 1.35; flex: 1; }
+.cw-ascend .boon .pips { display: flex; gap: 3px; }
+.cw-ascend .boon .pips i { width: 8px; height: 8px; transform: rotate(45deg); border: 1px solid #d9a441; }
+.cw-ascend .boon .pips i.on { background: #d9a441; }
+.cw-ascend .boon .cw-button { padding: 4px 8px; font-size: 12px; }
+@media (max-width: 620px) { .cw-ascend .boons { grid-template-columns: 1fr; } }

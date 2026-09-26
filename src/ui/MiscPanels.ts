@@ -2,7 +2,7 @@ import { settings, updateSettings, type Quality } from '../app/settings';
 import { AREAS, type AreaId } from '../content/areas';
 import { DIFFICULTIES, DIFFICULTY_ORDER, isDifficulty } from '../content/difficulty';
 
-abstract class SimplePanel {
+export abstract class SimplePanel {
   protected el: HTMLDivElement | null = null;
   constructor(protected root: HTMLElement) {}
   get isOpen() {

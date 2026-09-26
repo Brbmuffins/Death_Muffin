@@ -61,6 +61,8 @@ export interface WorldSnapshot {
   waveTier: number;
   /** Host's session difficulty (absent from older hosts → medium). */
   difficulty?: Difficulty;
+  /** Host's Ascension rank (absent from older hosts → 0). */
+  ascension?: number;
   enemies: EnemyRow[];
   thralls: ThrallRow[];
   /** Full corpse + zone lists ride along every Nth snapshot for resync. */

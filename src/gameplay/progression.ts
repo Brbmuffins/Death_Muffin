@@ -1,4 +1,5 @@
 import type { AreaId } from '../content/areas';
+import { ashesForRun, boonBlocked, boonCost, boonEffects, ASCENSION, type BoonId, type BoonEffects, type BoonRanks, type RunRecord } from '../content/ascension';
 import { DAMAGE_UPGRADE, WAVE_UPGRADE } from '../content/upgrades';
 import { saveProgress } from '../net/api';
 import type { Character } from '../net/types';
@@ -18,8 +19,14 @@ export interface LocalProgress {
   shards: number;
   areaKills: Partial<Record<AreaId, number>>;
   unlocked: AreaId[];
+  /** Lifetime counters (Ascension never resets these). */
   bossKills: number;
   totalKills: number;
+  /** Ascension: rank reached, unspent Ashes, bought Covenant Boons, and this run's record. */
+  ascension: number;
+  ashes: number;
+  boons: BoonRanks;
+  run: RunRecord;
 }
 
 const blank = (): LocalProgress => ({
@@ -32,6 +39,10 @@ const blank = (): LocalProgress => ({
   unlocked: ['chapterhouse', 'graves'],
   bossKills: 0,
   totalKills: 0,
+  ascension: 0,
+  ashes: 0,
+  boons: {},
+  run: { prelateKills: 0, peakWaveTier: 0, kills: 0 },
 });
 
 const key = (characterId: number) => `cw_progress_v1_${characterId}`;
@@ -39,7 +50,13 @@ const key = (characterId: number) => `cw_progress_v1_${characterId}`;
 export function loadLocalProgress(characterId: number): LocalProgress {
   try {
     const raw = localStorage.getItem(key(characterId));
-    if (raw) return { ...blank(), ...JSON.parse(raw) };
+    if (raw) {
+      const saved = JSON.parse(raw) as Partial<LocalProgress>;
+      const p = { ...blank(), ...saved };
+      // Saves from before Ascension: everything so far counts as the current run.
+      if (!saved.run) p.run = { prelateKills: p.bossKills, peakWaveTier: p.waveTierOwned, kills: p.totalKills };
+      return p;
+    }
   } catch {
     /* storage unavailable */
   }
@@ -108,11 +125,81 @@ export class Progression {
   // --- Upgrades (local) ---
 
   damageCost() {
-    return this.local.damageTier >= DAMAGE_UPGRADE.maxTier ? null : DAMAGE_UPGRADE.cost(this.local.damageTier);
+    if (this.local.damageTier >= DAMAGE_UPGRADE.maxTier) return null;
+    return Math.round(DAMAGE_UPGRADE.cost(this.local.damageTier) * this.boons.damageCostMult);
   }
 
   waveCost() {
-    return this.local.waveTierOwned >= WAVE_UPGRADE.maxTier ? null : WAVE_UPGRADE.cost(this.local.waveTierOwned);
+    if (this.local.waveTierOwned >= WAVE_UPGRADE.maxTier) return null;
+    return Math.round(WAVE_UPGRADE.cost(this.local.waveTierOwned) * this.boons.waveCostMult);
+  }
+
+  // --- Ascension (local) ---
+
+  get boons(): BoonEffects {
+    return boonEffects(this.local.boons);
+  }
+
+  /** Ashes the Altar would pay for this run right now (0 = not yet ready). */
+  ashesOnAscend() {
+    return this.local.ascension >= ASCENSION.maxRank ? 0 : ashesForRun(this.local.run, this.local.ascension);
+  }
+
+  canAscend() {
+    return this.ashesOnAscend() > 0;
+  }
+
+  /**
+   * Burn the run: tiers, shards, kills and seals reset; Ashes and rank rise;
+   * starting boons apply. Level, XP, gold and items are untouched.
+   */
+  ascend(): number {
+    const earned = this.ashesOnAscend();
+    if (!earned) return 0;
+    const l = this.local;
+    const fx = this.boons;
+    l.ascension += 1;
+    l.ashes += earned;
+    l.damageTier = fx.startDamageTier;
+    l.waveTierOwned = 0;
+    l.waveTierActive = 0;
+    l.shards = fx.startShards;
+    l.areaKills = {};
+    l.unlocked = ['chapterhouse', 'graves'];
+    l.run = { prelateKills: 0, peakWaveTier: 0, kills: 0 };
+    this.saveLocal();
+    this.markServerDirty(true);
+    return earned;
+  }
+
+  /** Why a boon can't be bought (null = it can). */
+  boonProblem(id: BoonId): string | null {
+    const blocked = boonBlocked(id, this.local.boons, this.local.ascension);
+    if (blocked) return blocked;
+    const cost = boonCost(id, this.local.boons)!;
+    return this.local.ashes < cost ? `Needs ${cost} Ashes` : null;
+  }
+
+  buyBoon(id: BoonId): boolean {
+    if (this.boonProblem(id)) return false;
+    const cost = boonCost(id, this.local.boons)!;
+    this.local.ashes -= cost;
+    this.local.boons[id] = (this.local.boons[id] ?? 0) + 1;
+    // Starting boons also take effect for the run in progress.
+    if (id === 'first_rites') this.local.damageTier = Math.max(this.local.damageTier, this.boons.startDamageTier);
+    this.saveLocal();
+    return true;
+  }
+
+  /** Kills needed in `area` to open the next seal (Swift Seals lowers it). */
+  unlockKills(base: number) {
+    return Math.max(1, Math.round(base * this.boons.unlockKillsMult));
+  }
+
+  recordPrelateKill() {
+    this.local.bossKills++;
+    this.local.run.prelateKills++;
+    this.saveLocal();
   }
 
   buyDamage(): boolean {
@@ -144,9 +231,11 @@ export class Progression {
 
   // --- Kills / unlocks / shards (local) ---
 
-  recordKill(area: AreaId) {
+  recordKill(area: AreaId, waveTier = this.local.waveTierActive) {
     this.local.areaKills[area] = (this.local.areaKills[area] ?? 0) + 1;
     this.local.totalKills++;
+    this.local.run.kills++;
+    this.local.run.peakWaveTier = Math.max(this.local.run.peakWaveTier, waveTier);
     this.saveLocalSoon();
   }
 
