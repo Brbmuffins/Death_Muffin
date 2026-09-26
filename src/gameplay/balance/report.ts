@@ -44,12 +44,15 @@ function averaged(run: BalanceRun): BalanceResult {
     avg[key] = results.reduce((s, r) => s + (r as unknown as Record<string, number>)[key], 0) / SEEDS;
   }
   avg.minHpPct = Math.min(...results.map((r) => r.minHpPct));
+  // Earliest first death across seeds (-1 only if every seed survived).
+  const deaths = results.map((r) => r.firstDeathSec).filter((s) => s >= 0);
+  avg.firstDeathSec = deaths.length ? Math.min(...deaths) : -1;
   return avg as unknown as BalanceResult;
 }
 
 const cols: [string, number][] = [
   ['area', 8], ['band', 9], ['disc', 12], ['lvl', 4], ['dmgT', 5], ['waveT', 6], ['kills/m', 8], ['gold/m', 7], ['xp/m', 6],
-  ['hurt%/m', 8], ['minHp', 6], ['avgHp', 6], ['deaths', 7], ['ttk s', 6], ['peak', 5], ['lvl+', 5], ['surge', 6], ['unlock m', 8],
+  ['hurt%/m', 8], ['minHp', 6], ['avgHp', 6], ['deaths', 7], ['1st†s', 6], ['ttk s', 6], ['peak', 5], ['lvl+', 5], ['surge', 6], ['unlock m', 8],
 ];
 const pad = (s: string | number, n: number) => String(s).padEnd(n);
 const rows: string[] = [cols.map(([h, n]) => pad(h, n)).join('')];
@@ -64,6 +67,7 @@ for (const area of areas) {
         area, band, names[classIndex], r.level, r.damageTier, r.waveTier,
         res.killsPerMin.toFixed(1), res.goldPerMin.toFixed(0), res.xpPerMin.toFixed(0),
         res.dmgPctPerMin.toFixed(0), res.minHpPct.toFixed(0), res.avgHpPct.toFixed(0), res.deaths.toFixed(SEEDS > 1 ? 1 : 0),
+        res.firstDeathSec < 0 ? '-' : res.firstDeathSec.toFixed(0),
         res.avgTtkSec.toFixed(1), res.peakEnemies.toFixed(0), res.levelsGained.toFixed(SEEDS > 1 ? 1 : 0),
         `${res.surgesCleared.toFixed(0)}/${(res.surgesCleared + res.surgesFailed).toFixed(0)}`,
         needed && res.killsPerMin ? (needed / res.killsPerMin).toFixed(1) : '-',
@@ -73,5 +77,5 @@ for (const area of areas) {
   }
 }
 console.log(`\nCrossworlds balance report: ${MINUTES} simulated minutes per row, ${SEEDS} seed(s)`);
-console.log('hurt%/m = damage taken per minute as % of max HP · unlock m = minutes of kills to open the next area\n');
+console.log('hurt%/m = damage taken per minute as % of max HP · 1st†s = seconds to first death · unlock m = minutes of kills to open the next area\n');
 console.log(rows.join('\n'));

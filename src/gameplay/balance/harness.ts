@@ -45,9 +45,14 @@ export interface BalanceResult {
   avgTtkSec: number;
   peakEnemies: number;
   levelsGained: number;
+  /** Seconds until the first death (-1 = survived the whole run). */
+  firstDeathSec: number;
 }
 
 const SP_NEEDLE = ABILITIES.bone_needle;
+/** Death sends you to the Chapterhouse (4 s), then a waystone hop and a short walk back in. */
+const RESPAWN_S = 4;
+const RETURN_S = 8;
 
 export function runBalance(run: BalanceRun): BalanceResult {
   const rand = mulberry32(run.seed ?? 42);
@@ -89,6 +94,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
   let minHp = 1;
   let surgesCleared = 0;
   let surgesFailed = 0;
+  let firstDeath = -1;
   const startMaxHp = stats.maxHp;
   const born = new Map<number, number>();
   const ttks: number[] = [];
@@ -249,7 +255,8 @@ export function runBalance(run: BalanceRun): BalanceResult {
         if (p.hp <= 0) {
           p.alive = false;
           deaths++;
-          deadUntil = t + 4;
+          deadUntil = t + RESPAWN_S + RETURN_S;
+          if (firstDeath < 0) firstDeath = t;
         }
       }
     }
@@ -276,6 +283,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
     avgTtkSec: ttks.length ? ttks.reduce((a, b) => a + b, 0) / ttks.length : 0,
     peakEnemies: peak,
     levelsGained: levels,
+    firstDeathSec: firstDeath,
   };
 }
 
