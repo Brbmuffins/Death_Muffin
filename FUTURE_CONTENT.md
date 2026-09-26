@@ -19,6 +19,7 @@ dead, **chartreuse/olive** = rot & poison, **violet** = signature ritual magic,
 ## Release 0.2 — "Deeper Rites" (depth for the current four disciplines)
 
 ### Per-discipline signature spells (one new active each, unlocked at level 10)
+✅ *shipped 2026-09-26 (key R / 6; Dirge is a 4s song zone rather than a channel; icons are retinted placeholders — generate real ones)*
 | Discipline | Spell | Targeting | Idea |
 |---|---|---|---|
 | Ossuary | **Ossuary Wall** | line | Raise a wall of fused bone that blocks enemies and projectiles for 6s; thralls behind it take 30% less damage. |

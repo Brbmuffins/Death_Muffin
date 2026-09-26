@@ -6,6 +6,8 @@ import {
   LITANY_PER_RESONANT,
   LITANY_PER_THRALL,
   NEEDLE_ESSENCE,
+  SIGNATURE,
+  SIGNATURE_LEVEL,
   SPELL_FX,
   type AbilityId,
 } from './abilities';
@@ -36,7 +38,18 @@ export interface RiteEntry {
   tip: string;
 }
 
-export const RITE_ORDER: AbilityId[] = ['bone_needle', 'marrow_spear', 'exhume', 'miasma', 'black_litany', 'corpse_explosion'];
+export const RITE_ORDER: AbilityId[] = [
+  'bone_needle',
+  'marrow_spear',
+  'exhume',
+  'miasma',
+  'black_litany',
+  'corpse_explosion',
+  'ossuary_wall',
+  'command_rend',
+  'dirge',
+  'plague_bloom',
+];
 
 export const CODEX_RITES: Record<AbilityId, RiteEntry> = {
   bone_needle: {
@@ -68,6 +81,26 @@ export const CODEX_RITES: Record<AbilityId, RiteEntry> = {
     fx: 'detonate',
     colour: 'Ember and crimson',
     tip: `The rite for bodies you can't use. Burst a corpse under a pack that has reached you. A resonant Penitent corpse blasts ${DETONATE.resonantRadiusMult}× wider, an elite's hits ${DETONATE.eliteDamageMult}× as hard, and a Carrion Sac's leaves a rot pool that works for you. Each one you burst is a thrall you won't raise, and a body the Litany won't count.`,
+  },
+  ossuary_wall: {
+    fx: 'wall',
+    colour: 'Bone ivory and amber',
+    tip: `Ossuary signature (level ${SIGNATURE_LEVEL}). Throw it across a door or between you and the Penitents: the dead pile up against it and cones break on it for ${SIGNATURE.wall.durationS} seconds. A wall plus a Miasma behind it is a killing floor.`,
+  },
+  command_rend: {
+    fx: 'rend',
+    colour: 'Spirit jade',
+    tip: `Gravecaller signature (level ${SIGNATURE_LEVEL}). Costs no essence — it costs your thralls ${Math.round(SIGNATURE.rend.hpCost * 100)}% of their health each. Send the whole legion onto a Deacon or a Penitent line, then Litany the wounded legion for full value.`,
+  },
+  dirge: {
+    fx: 'dirge',
+    colour: 'Cold funeral blue',
+    tip: `Mourner signature (level ${SIGNATURE_LEVEL}). Sing it when the casters open up: Penitents and Deacons inside the song can't start a spell, and you and your wraiths mend every second for ${SIGNATURE.dirge.durationS} seconds.`,
+  },
+  plague_bloom: {
+    fx: 'bloom',
+    colour: 'Chartreuse rot',
+    tip: `Rotweaver signature (level ${SIGNATURE_LEVEL}). Plant it next to a corpse pile: every ${SIGNATURE.bloom.spreadEveryS} seconds it seeds a new bloom on the nearest body, up to ${SIGNATURE.bloom.maxGenerations} generations deep. It eats the bodies it spreads through, so bloom what you won't raise.`,
   },
 };
 

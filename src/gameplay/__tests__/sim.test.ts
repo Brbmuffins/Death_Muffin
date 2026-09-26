@@ -585,3 +585,77 @@ describe('Thrall variety', () => {
     expect(blow).toBeCloseTo(e.damage * BONE_HEX.damageMult);
   });
 });
+
+describe('Signature rites', () => {
+  const sig = (sim: WorldSim, s: 'wall' | 'rend' | 'dirge' | 'bloom', x: number, z: number, dx = 0, dz = -1, sp = 20) =>
+    sim.apply({ t: 'signature', by: 'p1', sig: s, x, z, dx, dz, sp });
+
+  it('Ossuary Wall stops the dead and breaks Penitent cones', () => {
+    const { sim } = world(21);
+    // Player at (0,-16); wall across the aim line 4m north.
+    sig(sim, 'wall', 0, -20, 0, -1);
+    const ev = sim.step(0.01);
+    expect(of(ev, 'wall').length).toBe(1);
+    const e = sim.spawnEnemy('robber', 'graves', 0, -26, false, false);
+    e.speed = 4;
+    for (let i = 0; i < 60; i++) sim.step(0.05);
+    expect(e.z).toBeLessThan(-20); // still on the far side
+    // A cone through the wall misses.
+    const pen = sim.spawnEnemy('penitent', 'graves', 0, -24, false, false);
+    pen.aimX = 0;
+    pen.aimZ = -16;
+    const hurts: SimEvent[] = [];
+    (sim as unknown as { strike(e: unknown, k: string): void }).strike(pen, 'cone');
+    hurts.push(...sim.step(0.01));
+    expect(of(hurts, 'hurt').filter((h) => h.from === 'cone').length).toBe(0);
+    // It crumbles on time.
+    let gone = false;
+    for (let i = 0; i < 80 && !gone; i++) gone = of(sim.step(0.1), 'wallGone').length > 0;
+    expect(gone).toBe(true);
+    expect(sim.walls.size).toBe(0);
+  });
+
+  it('Command: Rend leaps the legion onto the target and bills their health', () => {
+    const { sim } = world(22);
+    for (const x of [1, 2]) {
+      corpse(sim, x, -16);
+      sim.apply(exhume(x, -16));
+    }
+    for (let i = 0; i < 25; i++) sim.step(0.05); // rise
+    const target = sim.spawnEnemy('sac', 'graves', 0, -24, false, false);
+    const hp = target.hp;
+    sig(sim, 'rend', 0, -24);
+    const ev = sim.step(0.01);
+    const r = of(ev, 'rend')[0];
+    expect(r.leaps.length).toBe(2);
+    expect(target.hp).toBeLessThan(hp);
+    for (const t of sim.thralls.values()) {
+      expect(Math.hypot(t.x - 0, t.z + 24)).toBeLessThan(2);
+      expect(t.hp).toBeLessThan(t.maxHp);
+    }
+  });
+
+  it('Dirge mends the singer and Silences casters inside', () => {
+    const { sim } = world(23);
+    const pen = sim.spawnEnemy('penitent', 'graves', 2, -18, false, false);
+    pen.attackCd = 0;
+    sig(sim, 'dirge', 0, -16, 0, 0, 30);
+    const ev: SimEvent[] = [];
+    for (let i = 0; i < 30; i++) ev.push(...sim.step(0.05));
+    expect(of(ev, 'heal').some((h) => h.player === 'p1' && h.amount > 0)).toBe(true);
+    expect(pen.silenceT).toBeGreaterThan(0);
+    expect(of(ev, 'telegraph').filter((t) => t.id === pen.id).length).toBe(0);
+  });
+
+  it('Plague Bloom seeds the nearest corpse, chaining through the field', () => {
+    const { sim } = world(24);
+    const c1 = corpse(sim, 3, -20);
+    corpse(sim, 6, -20);
+    sig(sim, 'bloom', 0, -20);
+    for (let i = 0; i < 90; i++) sim.step(0.05); // 4.5 s: two spreads
+    const flowers = [...sim.zones.values()].filter((z) => z.kind === 'flower');
+    expect(flowers.length).toBeGreaterThanOrEqual(3);
+    expect(sim.corpses.has(c1.id)).toBe(false);
+    expect(Math.max(...flowers.map((f) => f.gen ?? 0))).toBe(2);
+  });
+});

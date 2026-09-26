@@ -11,6 +11,7 @@ import {
   type EnemyId,
 } from '../../content/enemies';
 import {
+  SIGNATURE,
   DETONATE,
   FRACTURE,
   LITANY_MAX_MULT,
@@ -63,6 +64,16 @@ const THRALL_BASE = {
   plaguebearer: { range: 1.3, interval: 1.2, speed: 4.8 },
 } as const;
 
+/** Proper segment intersection (touching endpoints don't count). */
+function segmentsCross(ax: number, az: number, bx: number, bz: number, cx: number, cz: number, dx: number, dz: number) {
+  const o = (px: number, pz: number, qx: number, qz: number, rx: number, rz: number) => (qx - px) * (rz - pz) - (qz - pz) * (rx - px);
+  const d1 = o(cx, cz, dx, dz, ax, az);
+  const d2 = o(cx, cz, dx, dz, bx, bz);
+  const d3 = o(ax, az, bx, bz, cx, cz);
+  const d4 = o(ax, az, bx, bz, dx, dz);
+  return d1 * d2 < 0 && d3 * d4 < 0;
+}
+
 /** Which specialist a corpse rises as (disciplines' own kinds otherwise). */
 function thrallFromCorpse(c: Corpse, discipline: ThrallKind): ThrallKind {
   if (discipline === 'wraith') return 'wraith';
@@ -109,6 +120,8 @@ export class WorldSim {
   private waveTimers = new Map<AreaId, number>();
   /** Regular waves spawned per area (Elite Vanguard alternates). */
   private waveCounts = new Map<AreaId, number>();
+  /** Ossuary Walls standing right now (segments enemies can't cross). */
+  readonly walls = new Map<number, { id: number; owner: string; x0: number; z0: number; x1: number; z1: number; until: number }>();
   /** Surge origins in front of crypt props (from the layout); breaches are the fallback. */
   private crypts: { area: AreaId; x: number; z: number }[] = [];
   private dotAccum = new Map<number, number>();
@@ -175,6 +188,8 @@ export class WorldSim {
         return this.boss.awaken(intent.by);
       case 'detonate':
         return this.applyDetonate(intent);
+      case 'signature':
+        return this.applySignature(intent);
       case 'recallThralls':
         for (const t of this.thralls.values()) {
           if (t.owner !== intent.by) continue;
@@ -456,6 +471,173 @@ export class WorldSim {
     if (t.kind === 'plaguebearer' && reason !== 'crumbled') this.plagueBurst(t);
   }
 
+  // --- Signature rites ---
+
+  private applySignature(g: Extract<Intent, { t: 'signature' }>) {
+    const caster = this.players.get(g.by);
+    // Aim is clamped around the caster's reported body (the client only proposes).
+    const clampAim = (range: number): [number, number] => {
+      if (!caster) return [g.x, g.z];
+      const dx = g.x - caster.x;
+      const dz = g.z - caster.z;
+      const d = Math.hypot(dx, dz);
+      return d <= range ? [g.x, g.z] : [caster.x + (dx / d) * range, caster.z + (dz / d) * range];
+    };
+    const sp = Math.min(1e5, Math.max(0, Number.isFinite(g.sp) ? g.sp : 0));
+    switch (g.sig) {
+      case 'wall': {
+        const W = SIGNATURE.wall;
+        const [cx, cz] = clampAim(W.maxCastRange);
+        let dx = g.dx;
+        let dz = g.dz;
+        const dl = Math.hypot(dx, dz);
+        if (!Number.isFinite(dl) || dl < 1e-6) [dx, dz] = [0, -1];
+        else [dx, dz] = [dx / dl, dz / dl];
+        // The wall runs across the aim line.
+        const px = -dz * (W.length / 2);
+        const pz = dx * (W.length / 2);
+        const wall = { id: this.id(), owner: g.by, x0: cx - px, z0: cz - pz, x1: cx + px, z1: cz + pz, until: this.time + W.durationS };
+        this.walls.set(wall.id, wall);
+        this.emit({ t: 'wall', id: wall.id, owner: g.by, x0: wall.x0, z0: wall.z0, x1: wall.x1, z1: wall.z1, ms: W.durationS * 1000 });
+        return;
+      }
+      case 'rend': {
+        const R = SIGNATURE.rend;
+        const [cx, cz] = clampAim(R.maxCastRange);
+        const legion = this.ownedThralls(g.by).filter((t) => t.state !== 'rising');
+        const leaps: [number, number, number, number][] = [];
+        const hit = new Set<number>();
+        legion.forEach((t, i) => {
+          const ang = (i / Math.max(1, legion.length)) * Math.PI * 2;
+          const [tx, tz] = this.nav.resolve(cx + Math.cos(ang) * 1.2, cz + Math.sin(ang) * 1.2, 0.4);
+          leaps.push([t.x, t.z, tx, tz]);
+          t.x = tx;
+          t.z = tz;
+          t.hp = Math.max(1, t.hp - t.maxHp * R.hpCost);
+          t.attackCd = 0.2;
+          for (const e of this.enemies.values()) {
+            if (e.state === 'dead' || Math.hypot(e.x - tx, e.z - tz) > R.cleaveRadius + e.radius) continue;
+            this.damageEnemy(e, t.damage * R.damageMult, g.by);
+            hit.add(e.id);
+          }
+          const b = this.boss.state;
+          if (b.active && Math.hypot(b.x - tx, b.z - tz) <= R.cleaveRadius + BOSS_RADIUS) this.boss.damage(t.damage * R.damageMult, g.by, 0);
+        });
+        this.emit({ t: 'rend', by: g.by, x: cx, z: cz, leaps, hits: hit.size });
+        return;
+      }
+      case 'dirge': {
+        const D = SIGNATURE.dirge;
+        const [cx, cz] = clampAim(1);
+        this.addZone({ kind: 'dirge', owner: g.by, x: cx, z: cz, r: D.radius, durationS: D.durationS, dps: sp * ABILITIES.dirge.power, witheredCap: 0 });
+        return;
+      }
+      case 'bloom': {
+        const B = SIGNATURE.bloom;
+        const [cx, cz] = clampAim(B.maxCastRange);
+        this.addZone({ kind: 'flower', owner: g.by, x: cx, z: cz, r: B.radius, durationS: B.durationS, dps: sp * ABILITIES.plague_bloom.power, witheredCap: B.witheredCap, gen: 0 });
+        return;
+      }
+    }
+  }
+
+  private addZone(o: { kind: Zone['kind']; owner: string; x: number; z: number; r: number; durationS: number; dps: number; witheredCap: number; gen?: number }) {
+    const zone: Zone = {
+      id: this.id(),
+      kind: o.kind,
+      owner: o.owner,
+      x: o.x,
+      z: o.z,
+      r: o.r,
+      until: this.time + o.durationS,
+      bornAt: this.time,
+      tick: 0,
+      dps: o.dps,
+      slow: MIASMA_SLOW,
+      witheredCap: o.witheredCap,
+      bloom: false,
+      hostile: false,
+      ...(o.kind === 'flower' ? { gen: o.gen ?? 0, spreadT: SIGNATURE.bloom.spreadEveryS } : {}),
+    };
+    this.zones.set(zone.id, zone);
+    this.emit({ t: 'zone', zone });
+    return zone;
+  }
+
+  /** Dirge: mend players and thralls inside each second; enemy casters inside stay Silenced. */
+  private tickDirge(z: Zone, pulse: boolean) {
+    const D = SIGNATURE.dirge;
+    for (const e of this.enemies.values()) {
+      if (e.state !== 'dead' && Math.hypot(e.x - z.x, e.z - z.z) <= z.r + e.radius) e.silenceT = D.silenceS;
+    }
+    if (!pulse) return;
+    for (const p of this.players.values()) {
+      if (p.alive && Math.hypot(p.x - z.x, p.z - z.z) <= z.r + PLAYER_RADIUS) this.emit({ t: 'heal', player: p.id, amount: z.dps, x: p.x, z: p.z });
+    }
+    for (const t of this.thralls.values()) {
+      if (t.state !== 'dead' && Math.hypot(t.x - z.x, t.z - z.z) <= z.r) t.hp = Math.min(t.maxHp, t.hp + t.maxHp * D.thrallHealFrac);
+    }
+  }
+
+  /** Plague Bloom: every few seconds a flower seeds the nearest corpse (consuming it) with a new bloom. */
+  private tickBloomSpread(z: Zone, dt: number) {
+    const B = SIGNATURE.bloom;
+    if ((z.gen ?? 0) >= B.maxGenerations) return;
+    z.spreadT = (z.spreadT ?? B.spreadEveryS) - dt;
+    if (z.spreadT > 0) return;
+    z.spreadT = B.spreadEveryS;
+    let best: Corpse | null = null;
+    let bestD = B.spreadReach;
+    for (const c of this.corpses.values()) {
+      const d = Math.hypot(c.x - z.x, c.z - z.z);
+      if (d > 0.5 && d < bestD) {
+        bestD = d;
+        best = c;
+      }
+    }
+    if (!best) return;
+    this.removeCorpse(best, 'consumed', z.owner);
+    this.addZone({ kind: 'flower', owner: z.owner, x: best.x, z: best.z, r: z.r, durationS: B.childDurationS, dps: z.dps, witheredCap: z.witheredCap, gen: (z.gen ?? 0) + 1 });
+  }
+
+  private updateWalls() {
+    for (const w of [...this.walls.values()]) {
+      if (this.time < w.until) continue;
+      this.walls.delete(w.id);
+      this.emit({ t: 'wallGone', id: w.id });
+    }
+  }
+
+  /** Does the segment a→b cross a standing wall? */
+  private wallBetween(ax: number, az: number, bx: number, bz: number) {
+    for (const w of this.walls.values()) if (segmentsCross(ax, az, bx, bz, w.x0, w.z0, w.x1, w.z1)) return true;
+    return false;
+  }
+
+  /** Keep a mover on the side of every wall it started on. */
+  private pushOffWalls(px: number, pz: number, x: number, z: number, radius: number): [number, number] {
+    const half = SIGNATURE.wall.thickness / 2 + radius;
+    for (const w of this.walls.values()) {
+      const wx = w.x1 - w.x0;
+      const wz = w.z1 - w.z0;
+      const len2 = wx * wx + wz * wz;
+      const t = Math.max(0, Math.min(1, ((x - w.x0) * wx + (z - w.z0) * wz) / len2));
+      const cx = w.x0 + wx * t;
+      const cz = w.z0 + wz * t;
+      const d = Math.hypot(x - cx, z - cz);
+      const crossed = segmentsCross(px, pz, x, z, w.x0, w.z0, w.x1, w.z1);
+      if (d >= half && !crossed) continue;
+      // Normal pointing to the side the mover came from.
+      const len = Math.sqrt(len2);
+      let nx = -wz / len;
+      let nz = wx / len;
+      if ((px - cx) * nx + (pz - cz) * nz < 0) [nx, nz] = [-nx, -nz];
+      x = cx + nx * half;
+      z = cz + nz * half;
+    }
+    return [x, z];
+  }
+
   /** A fallen plague bearer ruptures: rot damage around it and a friendly withering pool. */
   private plagueBurst(t: Thrall) {
     const dmg = t.damage * PLAGUE_BURST.damageMult;
@@ -729,6 +911,7 @@ export class WorldSim {
     this.updateWaves(dt);
     this.updateSurge(dt);
     this.updateZones(dt);
+    this.updateWalls();
     this.updateEnemies(dt);
     this.updateThralls(dt);
     this.separate();
@@ -748,6 +931,11 @@ export class WorldSim {
       z.tick -= dt;
       const pulse = z.tick <= 0;
       if (pulse) z.tick = 1;
+      if (z.kind === 'dirge') {
+        this.tickDirge(z, pulse);
+        continue;
+      }
+      if (z.kind === 'flower') this.tickBloomSpread(z, dt);
       if (!z.hostile) {
         for (const e of this.enemies.values()) {
           if (e.state === 'dead' || Math.hypot(e.x - z.x, e.z - z.z) > z.r + e.radius) continue;
@@ -965,7 +1153,10 @@ export class WorldSim {
     if (d < 0.05) return;
     const slow = (e.slowT > 0 ? MIASMA_SLOW : 1) * ((e.chillT ?? 0) > 0 ? CHILL.moveMult : 1);
     const step = Math.min(d, e.speed * speedMult * slow * dt);
+    const px = e.x;
+    const pz = e.z;
     [e.x, e.z] = this.nav.resolveInArea(e.area, e.x + (dx / d) * step, e.z + (dz / d) * step, e.radius);
+    if (this.walls.size) [e.x, e.z] = this.pushOffWalls(px, pz, e.x, e.z, e.radius);
     e.facing = Math.atan2(dx, dz);
     e.moving = true;
     e.gait += step * 2.4;
@@ -988,6 +1179,7 @@ export class WorldSim {
         const vz = z - e.z;
         const d = Math.hypot(vx, vz);
         if (d > def.attackRange + 0.4) return false;
+        if (this.wallBetween(e.x, e.z, x, z)) return false; // the cone breaks on an Ossuary Wall
         return (vx * dirX + vz * dirZ) / (d * len || 1) > Math.cos((30 * Math.PI) / 180);
       };
       for (const p of this.players.values()) {
@@ -1025,6 +1217,7 @@ export class WorldSim {
     if ((e.chillT ?? 0) > 0) e.chillT! -= dt;
     if ((e.sanctT ?? 0) > 0) e.sanctT! -= dt;
     if ((e.hexT ?? 0) > 0) e.hexT! -= dt;
+    if ((e.silenceT ?? 0) > 0) e.silenceT! -= dt;
     if ((e.bleedT ?? 0) > 0 && (e.bleedDps ?? 0) > 0) {
       e.bleedT! -= dt;
       const dmg = e.bleedDps! * dt * this.damageTakenMult(e);
@@ -1088,7 +1281,8 @@ export class WorldSim {
 
       // Deacons harvest any unclaimed corpse in reach, hunting or not — that
       // corpse competition is why they're the priority kill.
-      if (def.behavior === 'support' && e.attackCd <= 0) {
+      const silenced = (e.silenceT ?? 0) > 0;
+      if (def.behavior === 'support' && e.attackCd <= 0 && !silenced) {
         const corpse = this.nearestCorpse(e.x, e.z, 8);
         if (corpse) {
           e.state = 'channel';
@@ -1148,7 +1342,7 @@ export class WorldSim {
           break;
         }
         case 'caster': {
-          if (dist <= def.attackRange - 0.5 && e.attackCd <= 0) {
+          if (dist <= def.attackRange - 0.5 && e.attackCd <= 0 && !silenced) {
             e.state = 'windup';
             e.stateT = 0;
             e.aimX = target.x;
@@ -1161,7 +1355,7 @@ export class WorldSim {
           break;
         }
         case 'support': {
-          if (e.attackCd <= 0) {
+          if (e.attackCd <= 0 && !silenced) {
             const corpse = this.nearestCorpse(e.x, e.z, 8);
             if (corpse) {
               e.state = 'channel';

@@ -1,4 +1,4 @@
-import { ABILITIES, HOTBAR, type HotbarSlot } from '../content/abilities';
+import { ABILITIES, HOTBAR, SIGNATURE_LEVEL, type AbilityId, type HotbarSlot } from '../content/abilities';
 import type { EliteAffix } from '../content/enemies';
 import { DAMAGE_UPGRADE, WAVE_MILESTONES, WAVE_UPGRADE, milestones } from '../content/upgrades';
 import { MAX_PARTY_SIZE } from '../net/config';
@@ -6,7 +6,7 @@ import { ICON } from './icons';
 import { Minimap, type MinimapFrame } from './Minimap';
 
 /** Key caps under each hotbar slot (slot 5 is the right-click action). */
-const SLOT_KEYS = ['1', '2', '3', '4', 'RMB'];
+const SLOT_KEYS = ['1', '2', '3', '4', 'RMB', 'R'];
 
 export interface HudCallbacks {
   cast(slot: HotbarSlot): void;
@@ -23,6 +23,8 @@ export interface SlotFrame {
   affordable: boolean;
   /** Soul Harvest is charged and this spell will be free + 50% larger. */
   empowered?: boolean;
+  /** Signature rite not yet unlocked (below SIGNATURE_LEVEL). */
+  locked?: boolean;
 }
 
 export interface HudFrame {
@@ -86,14 +88,16 @@ export class HUD {
   constructor(
     root: HTMLElement,
     private cb: HudCallbacks,
+    /** The slots in order: the shared kit plus this discipline's signature rite. */
+    private hotbar: AbilityId[] = HOTBAR,
   ) {
     this.el.className = 'hud';
-    const slots = HOTBAR.map((id, i) => {
+    const slots = this.hotbar.map((id, i) => {
       const a = ABILITIES[id];
       const alt = SLOT_KEYS[i] === 'RMB';
       return `
         <div class="hud-slot${alt ? ' alt' : ''}">
-          <button data-slot="${i + 1}" aria-label="${a.name} (${alt ? 'right-click or key 5' : `key ${i + 1}`})">
+          <button data-slot="${i + 1}" aria-label="${a.name} (${alt ? 'right-click or key 5' : a.slot === 6 ? 'key R or 6' : `key ${i + 1}`})">
             <img src="${a.icon}" alt="" draggable="false" />
             <span class="cd" data-cd="${i + 1}"></span>
             <span class="cdtext" data-cdt="${i + 1}"></span>
@@ -210,10 +214,10 @@ export class HUD {
       b.addEventListener('click', () => this.cb.dialWave(Number(b.dataset.dial))),
     );
     // Ability tooltips (name, cost, cooldown, description).
-    HOTBAR.forEach((id, i) => {
+    this.hotbar.forEach((id, i) => {
       const a = ABILITIES[id];
       const btn = this.$(`[data-slot="${i + 1}"]`);
-      btn.title = `${a.name} — ${a.essenceCost ? `${a.essenceCost} essence · ` : ''}${(a.cooldownMs / 1000).toFixed(1)}s\n${a.description}`;
+      btn.title = `${a.name} — ${a.essenceCost ? `${a.essenceCost} essence · ` : ''}${(a.cooldownMs / 1000).toFixed(1)}s\n${a.description}${a.slot === 6 ? `\nSignature rite — unlocks at level ${SIGNATURE_LEVEL}.` : ''}`;
     });
     const chat = this.$<HTMLInputElement>('[data-chatin]');
     chat.addEventListener('keydown', (e) => {
@@ -255,6 +259,7 @@ export class HUD {
       this.set(`cdt${n}`, txt, () => (this.$(`[data-cdt="${n}"]`).textContent = txt));
       this.set(`res${n}`, s.affordable, () => this.$(`[data-slot="${n}"]`).classList.toggle('nores', !s.affordable));
       this.set(`emp${n}`, !!s.empowered, () => this.$(`[data-slot="${n}"]`).classList.toggle('empowered', !!s.empowered));
+      this.set(`lock${n}`, !!s.locked, () => this.$(`[data-slot="${n}"]`).classList.toggle('locked', !!s.locked));
     });
 
     const soulFrac = Math.min(1, f.souls / f.soulsMax);

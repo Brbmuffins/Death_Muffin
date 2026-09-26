@@ -88,6 +88,12 @@ hotbar. At **50 souls**, the next Marrow Spear, Miasma Circle or Black Litany is
 
 ---
 
+
+**Signature rites** (level 10, key **R**) — one per discipline:
+*Ossuary Wall* (a 7 m wall of fused bone for 6 s: the dead can't pass, Penitent cones break on it),
+*Command: Rend* (the Gravecaller's legion leaps to the cursor and cleaves; costs thrall health, not essence),
+*Dirge* (the Mourner's 4 s bell-song: you and your thralls mend, enemy casters are Silenced),
+*Plague Bloom* (the Rotweaver's rot flower pulses Withered and seeds the nearest corpse, chaining through the field).
 ## Corpses are the economy
 
 Almost everything that dies leaves a body where it fell. Corpses last ~26 seconds.
@@ -229,6 +235,7 @@ Planned content (new disciplines, spells, bosses and systems) lives in [FUTURE_C
 | Shift + click | Cast Bone Needle without moving |
 | **1 2 3 4** | Marrow Spear · Exhume · Miasma Circle · Black Litany (aimed at the cursor) |
 | Right-click · **5** | Corpse Explosion on the corpse nearest the cursor (works while holding left-click to move) |
+| **R** · **6** | Your discipline's signature rite (unlocks at level 10) |
 | **Q** | Drink a healing flask |
 | **T** | Return to the Chapterhouse |
 | **I / C / P / M / K** | Reliquary · Workbench · Rites · Waystones · Codex (lore + everything you've met) |

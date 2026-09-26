@@ -854,3 +854,6 @@ button { font-family: inherit; }
   .cw-chat { display: none; }
   .hud-party { display: none; }
 }
+/* Signature rite slot before level 10. */
+.hud-slot button.locked { filter: grayscale(1) brightness(0.55); }
+.hud-slot button.locked::after { content: '10'; position: absolute; inset: auto 0 2px 0; text-align: center; font: 600 11px var(--cw-font-numeric); color: var(--cw-bone-300); }
