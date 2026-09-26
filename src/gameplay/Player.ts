@@ -53,6 +53,8 @@ export class Player {
   }
 
   moveTo(x: number, z: number) {
+    const destination = this.destination;
+    if (destination && Math.hypot(destination.x - x, destination.z - z) < 0.35) return;
     this.path = this.nav.route(this.x, this.z, x, z);
   }
 
@@ -113,14 +115,12 @@ export class Player {
       dx = (keyDir.x / len) * speed * dt;
       dz = (keyDir.z / len) * speed * dt;
     } else if (this.path.length) {
+      while (this.path.length && Math.hypot(this.path[0].x - this.x, this.path[0].z - this.z) < 0.2) this.path.shift();
+      if (!this.path.length) return false;
       const wp = this.path[0];
       const ddx = wp.x - this.x;
       const ddz = wp.z - this.z;
       const d = Math.hypot(ddx, ddz);
-      if (d < 0.2) {
-        this.path.shift();
-        return this.update(0, now, null);
-      }
       const step = Math.min(d, speed * dt);
       dx = (ddx / d) * step;
       dz = (ddz / d) * step;

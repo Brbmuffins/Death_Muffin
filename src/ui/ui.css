@@ -14,7 +14,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-#scene { position: fixed; inset: 0; display: block; }
+#scene { position: fixed; inset: 0; display: block; touch-action: none; user-select: none; }
 
 #ui-root { position: fixed; inset: 0; pointer-events: none; }
 #ui-root > * { pointer-events: auto; }
@@ -232,7 +232,7 @@ button { font-family: inherit; }
 /* HUD                                                                 */
 /* ------------------------------------------------------------------ */
 
-.hud { position: absolute; inset: 0; pointer-events: none; }
+#ui-root > .hud { position: absolute; inset: 0; pointer-events: none; }
 .hud > * { pointer-events: auto; }
 .hud .passive { pointer-events: none; }
 
@@ -583,7 +583,7 @@ button { font-family: inherit; }
 .hud-banner .rule { width: 260px; height: 1px; margin: 8px auto; background: linear-gradient(90deg, transparent, var(--cw-spell-300), transparent); }
 
 .hud-toasts { position: absolute; top: 130px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
-.hud-toast { padding: 8px 16px; background: rgba(7, 6, 10, 0.9); border: 1px solid var(--cw-border-strong); color: var(--cw-bone-100); font-size: 15px; animation: toast-in 0.25s ease, toast-out 0.5s ease 3.5s forwards; max-width: 70vw; text-align: center; }
+.hud-toast { padding: 8px 16px; background: rgba(7, 6, 10, 0.9); border: 1px solid var(--cw-border-strong); color: var(--cw-bone-100); font-size: 15px; animation: toast-in 0.25s ease, toast-out 0.5s ease var(--toast-ms, 8000ms) forwards; max-width: 70vw; text-align: center; }
 .hud-toast.err { border-color: color-mix(in srgb, var(--cw-danger) 60%, transparent); }
 .hud-toast.good { border-color: color-mix(in srgb, var(--cw-spell-400) 70%, transparent); }
 @keyframes toast-in { from { opacity: 0; transform: translateY(-6px); } }

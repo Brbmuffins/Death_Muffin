@@ -375,7 +375,9 @@ export class HUD {
     const box = this.$('[data-toasts]');
     box.appendChild(el);
     while (box.children.length > 4) box.firstChild?.remove();
-    setTimeout(() => el.remove(), 4100);
+    const duration = Math.max(8000, 2000 + text.split(/\s+/).length * 400);
+    el.style.setProperty('--toast-ms', `${duration}ms`);
+    setTimeout(() => el.remove(), duration + 700);
   }
 
   private bannerTimer = 0;

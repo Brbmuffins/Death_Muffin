@@ -64,7 +64,7 @@ export class GameRuntime {
 
   private applyQuality() {
     const high = settings.quality === 'high';
-    const ratio = high ? Math.min(window.devicePixelRatio, 2) : 1;
+    const ratio = high ? Math.min(window.devicePixelRatio, 1.5) : 1;
     this.renderer.setPixelRatio(ratio);
     this.composer.setPixelRatio(ratio);
     this.renderer.shadowMap.enabled = high;

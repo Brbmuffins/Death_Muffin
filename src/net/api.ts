@@ -34,8 +34,13 @@ let jwt: string | null = null;
 export function setToken(token: string | null) {
   jwt = token;
   try {
-    if (token) sessionStorage.setItem('cw_jwt', token);
-    else sessionStorage.removeItem('cw_jwt');
+    if (token) {
+      sessionStorage.setItem('dm_jwt', token);
+      if (localStorage.getItem('dm_jwt')) localStorage.setItem('dm_jwt', token);
+    } else {
+      sessionStorage.removeItem('dm_jwt');
+      localStorage.removeItem('dm_jwt');
+    }
   } catch {
     /* storage unavailable — token lives in memory for this page only */
   }
@@ -44,7 +49,7 @@ export function setToken(token: string | null) {
 export function getToken(): string | null {
   if (jwt) return jwt;
   try {
-    return sessionStorage.getItem('cw_jwt');
+    return sessionStorage.getItem('dm_jwt') || localStorage.getItem('dm_jwt');
   } catch {
     return null;
   }

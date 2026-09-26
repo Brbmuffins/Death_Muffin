@@ -134,6 +134,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private surgeFx: Handle | null = null;
 
   private keys = new Set<string>();
+  private nextSteerAt = 0;
   private mouse = { x: 0, y: 0, down: false, shift: false };
   private groundPoint = new THREE.Vector3();
   private hover: Hover = null;
@@ -204,6 +205,8 @@ export class WorldScene implements GameScene, RuntimeView {
     const follow = () => ({ x: this.player.x, z: this.player.z });
     this.effects.decal({ tex: fx.glow(), color: this.discipline.color, x: 0, z: 0, r: 2.2, duration: 1e9, opacity: 0.32, fadeIn: 0.01, follow });
     this.effects.decal({ tex: fx.ring(), color: this.discipline.color, x: 0, z: 0, r: 0.85, duration: 1e9, opacity: 0.55, fadeIn: 0.01, follow });
+    // A small ground reticle follows the mouse independently of the hero ring.
+    this.effects.decal({ tex: fx.ring(), color: 0xc6a4ff, x: 0, z: 0, r: 0.35, duration: 1e9, opacity: 0.5, fadeIn: 0.01, follow: () => ({ x: this.groundPoint.x, z: this.groundPoint.z }) });
     // Soul Harvest charged: a jade halo until the empowered spell is spent.
     this.effects.decal({
       tex: fx.ring(),
@@ -459,13 +462,18 @@ export class WorldScene implements GameScene, RuntimeView {
   // -------------------------------------------------------------------------
 
   private bindInput() {
+    this.mouse.x = window.innerWidth / 2;
+    this.mouse.y = window.innerHeight / 2;
+    this.scope.on(window, 'blur', () => { this.keys.clear(); this.mouse.down = false; });
     this.scope.on<KeyboardEvent>(window, 'keydown', (e) => {
-      if (document.activeElement instanceof HTMLInputElement) return;
+      if (document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement) return;
       const k = e.key.toLowerCase();
       if (k === 'enter') {
         this.hud.focusChat();
         return;
       }
+      if (/^[1-6]$/.test(k) || ['r', 'q', 't', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+      if (e.repeat && !['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) return;
       if (k >= '1' && k <= '6') this.castSlot(Number(k) as HotbarSlot);
       else if (k === 'r') this.castSlot(6);
       else if (k === 'q') this.drinkFlask();
@@ -493,12 +501,16 @@ export class WorldScene implements GameScene, RuntimeView {
     // held to steer — chorded presses don't produce a second pointerdown.
     this.scope.on<MouseEvent>(this.canvas, 'mousedown', (e) => {
       if (e.button !== 2) return;
+      e.preventDefault();
       this.mouse.x = e.clientX;
       this.mouse.y = e.clientY;
       this.castSlot(5);
     });
     this.scope.on<PointerEvent>(this.canvas, 'pointerdown', (e) => {
       if (e.button !== 0) return;
+      e.preventDefault();
+      this.canvas.setPointerCapture(e.pointerId);
+      this.nextSteerAt = this.now + 100;
       this.mouse.down = true;
       this.mouse.x = e.clientX;
       this.mouse.y = e.clientY;
@@ -511,12 +523,15 @@ export class WorldScene implements GameScene, RuntimeView {
     });
     this.scope.on<PointerEvent>(window, 'pointercancel', () => (this.mouse.down = false));
     this.scope.on<WheelEvent>(this.canvas, 'wheel', (e) => this.rig.onWheel(e), { passive: true });
-    this.scope.on<MouseEvent>(this.canvas, 'contextmenu', (e) => e.preventDefault());
+    this.scope.on<MouseEvent>(window, 'contextmenu', (e) => {
+      if (!(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) e.preventDefault();
+    });
   }
 
   private updateCursor() {
     const cam = this.rig.camera;
-    this.ndc.set((this.mouse.x / window.innerWidth) * 2 - 1, -(this.mouse.y / window.innerHeight) * 2 + 1);
+    const rect = this.canvas.getBoundingClientRect();
+    this.ndc.set(((this.mouse.x - rect.left) / rect.width) * 2 - 1, -((this.mouse.y - rect.top) / rect.height) * 2 + 1);
     this.raycaster.setFromCamera(this.ndc, cam);
     this.raycaster.ray.intersectPlane(this.groundPlane, this.groundPoint);
 
@@ -1441,7 +1456,8 @@ export class WorldScene implements GameScene, RuntimeView {
     this.updateCursor();
 
     // Hold-to-steer: dragging the mouse keeps re-targeting the ground.
-    if (this.mouse.down && p.alive && !this.attackTarget && !this.mouse.shift && !this.pendingInteract) {
+    if (this.mouse.down && p.alive && !this.attackTarget && !this.mouse.shift && !this.pendingInteract && now >= this.nextSteerAt) {
+      this.nextSteerAt = now + 100;
       p.moveTo(this.groundPoint.x, this.groundPoint.z);
     }
 

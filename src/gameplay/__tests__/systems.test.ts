@@ -155,3 +155,33 @@ describe('combat depth kit', () => {
     expect(p.souls).toBe(0);
   });
 });
+
+describe('click-to-move continuity', () => {
+  it('keeps the current door waypoints when the held destination is unchanged', () => {
+    let routes = 0;
+    const nav = {
+      route: () => { routes++; return [{ x: 0.1, z: 0 }, { x: 2, z: 0 }]; },
+      resolve: (x: number, z: number) => [x, z],
+      areaAt: () => 'chapterhouse',
+    } as unknown as Nav;
+    const player = new Player(deriveStats(char(), [], DISCIPLINES.gravecaller, 0), nav);
+    player.moveTo(2, 0);
+    player.update(0.1, 100, null);
+    player.moveTo(2.1, 0);
+    expect(routes).toBe(1);
+    expect(player.x).toBeGreaterThan(0.1);
+  });
+
+  it('uses the same frame to advance beyond an already reached waypoint', () => {
+    const nav = {
+      route: () => [{ x: 0.1, z: 0 }, { x: 2, z: 0 }],
+      resolve: (x: number, z: number) => [x, z],
+      areaAt: () => 'chapterhouse',
+    } as unknown as Nav;
+    const player = new Player(deriveStats(char(), [], DISCIPLINES.gravecaller, 0), nav);
+    player.moveTo(2, 0);
+    expect(player.update(0.1, 100, null)).toBe(true);
+    expect(player.moving).toBe(true);
+    expect(player.x).toBeGreaterThan(0.1);
+  });
+});

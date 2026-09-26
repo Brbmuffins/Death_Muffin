@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#07060a" />
+    <meta
+      name="description"
+      content="Discover Death Muffin, a dark fantasy action RPG about endless waves, forbidden magic, skeletal minions, and dangerous loot."
+    />
+    <title>About Death Muffin</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%2307060a'/%3E%3Cpath d='M16 4v24M8 10l8-5 8 5M9 22l7 6 7-6M7 16h18' fill='none' stroke='%239b5cff' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23c6a4ff'/%3E%3C/svg%3E"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Pirata+One&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link rel="preload" href="assets/covenant-bg.png" as="image" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="about-page">
+    <a class="skip-link" href="#about-main">Skip to content</a>
+
+    <header class="site-nav">
+      <a class="site-nav__brand" href="index.html" aria-label="Death Muffin login">
+        <span class="site-nav__mark" aria-hidden="true"></span>
+        <span>Death Muffin</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a class="site-nav__link" href="about.html" aria-current="page">About</a>
+        <a class="site-nav__link" href="classes.html">Classes</a>
+        <a class="site-nav__link" href="leaderboard.html">Leaderboard</a>
+        <a class="site-nav__enter" href="index.html">Enter</a>
+      </nav>
+    </header>
+
+    <main id="about-main">
+      <section class="about-hero" aria-labelledby="about-title">
+        <div class="about-hero__veil" aria-hidden="true"></div>
+        <div class="about-hero__content">
+          <p class="eyebrow">Muffin Developed</p>
+          <h1 id="about-title">Death Muffin</h1>
+          <p class="about-hero__lead">
+            Turn the dead into momentum in a relentless dark-fantasy world of forbidden magic,
+            escalating enemy waves, and dangerous loot.
+          </p>
+          <div class="about-hero__actions">
+            <a class="about-button about-button--primary" href="index.html">Enter the world</a>
+            <a class="about-button about-button--quiet" href="#the-game">Learn the rites</a>
+          </div>
+        </div>
+        <a class="scroll-mark" href="#the-game" aria-label="Continue to game description">
+          <span></span>
+        </a>
+      </section>
+
+      <section class="about-section intro-section" id="the-game">
+        <div class="section-heading">
+          <p class="eyebrow">The game</p>
+          <h2>Death is the resource.</h2>
+        </div>
+        <div class="intro-copy">
+          <p>
+            Death Muffin is an overhead action RPG set inside one connected, dying world. Roam
+            haunted graveyards, bone-filled crypts, and ruined cathedral halls alone or with a
+            small party. Kill what lives there. Take what it drops. Raise what remains.
+          </p>
+          <p>
+            There are no extraction timers or short mission resets. Keep farming, shape your
+            build, unlock deeper rooms, and decide how much pressure you can survive.
+          </p>
+        </div>
+        <dl class="game-pillars" aria-label="Core game pillars">
+          <div><dt>One</dt><dd>Connected world</dd></div>
+          <div><dt>Endless</dt><dd>Escalating waves</dd></div>
+          <div><dt>Every corpse</dt><dd>A tactical choice</dd></div>
+        </dl>
+      </section>
+
+      <section class="about-section showcase-section" aria-labelledby="farm-title">
+        <figure class="showcase-frame">
+          <img
+            src="assets/about-gameplay.png"
+            alt="Overhead Death Muffin gameplay concept showing connected graveyard, ossuary, and cathedral farming areas"
+            loading="lazy"
+          />
+          <figcaption>One world. Connected hunting grounds. No safe silence.</figcaption>
+        </figure>
+        <div class="showcase-copy">
+          <p class="eyebrow">The pressure</p>
+          <h2 id="farm-title">Control how fast the dead arrive.</h2>
+          <p>
+            Every kill feeds your next decision. Equip stronger drops, increase your damage, or
+            shorten the delay between waves. Faster waves mean denser fights, greater risk, and
+            richer rewards.
+          </p>
+          <p>
+            Push the pace too far and the room overwhelms you. Keep it low and your build grows
+            slowly. The difficulty dial belongs to the player.
+          </p>
+        </div>
+      </section>
+
+      <section class="about-section loop-section" aria-labelledby="loop-title">
+        <div class="section-heading section-heading--center">
+          <p class="eyebrow">The loop</p>
+          <h2 id="loop-title">Kill. Raise. Loot. Accelerate.</h2>
+        </div>
+        <ol class="loop-grid">
+          <li>
+            <span>01</span>
+            <h3>Break the wave</h3>
+            <p>Read enemy patterns, control the pack, and leave the floor covered in corpses.</p>
+          </li>
+          <li>
+            <span>02</span>
+            <h3>Use the fallen</h3>
+            <p>Raise thralls, harvest Grave Essence, or turn bodies into violent ritual fuel.</p>
+          </li>
+          <li>
+            <span>03</span>
+            <h3>Claim the loot</h3>
+            <p>Build around powerful drops and targeted relics from elites and area bosses.</p>
+          </li>
+          <li>
+            <span>04</span>
+            <h3>Turn the dial</h3>
+            <p>Buy damage and wave-speed upgrades, then see whether your build can keep up.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section class="about-section covenant-section" aria-labelledby="covenant-title">
+        <div class="covenant-copy">
+          <p class="eyebrow">Your covenant</p>
+          <h2 id="covenant-title">An army made from yesterday’s enemies.</h2>
+          <p>
+            Bone magic, corpse detonations, spectral wards, and temporary minions are parts of the
+            same combat economy. Every body can become power—but never in every form at once.
+          </p>
+          <ul class="rite-list">
+            <li><strong>Raise</strong> skeletal fighters that inherit traits from their corpses.</li>
+            <li><strong>Harvest</strong> Grave Essence to sustain your strongest spells.</li>
+            <li><strong>Sacrifice</strong> minions and bodies for devastating ritual bursts.</li>
+          </ul>
+        </div>
+        <figure class="covenant-art">
+          <img
+            src="assets/about-covenant.png"
+            alt="Necromancer and skeletal minion concept lineup in black armor and ultraviolet magic"
+            loading="lazy"
+          />
+        </figure>
+      </section>
+
+      <section class="about-section areas-section" aria-labelledby="areas-title">
+        <div class="section-heading section-heading--center">
+          <p class="eyebrow">The first descent</p>
+          <h2 id="areas-title">Three rooms beneath a dead cathedral.</h2>
+        </div>
+        <div class="area-grid">
+          <article>
+            <span>I</span>
+            <h3>Graveyard Court</h3>
+            <p>Open lanes, broken monuments, and the first restless packs clawing through the soil.</p>
+          </article>
+          <article>
+            <span>II</span>
+            <h3>The Ossuary</h3>
+            <p>Narrow passages, dense formations, bone hounds, and corpses that refuse to stay yours.</p>
+          </article>
+          <article>
+            <span>III</span>
+            <h3>Ruined Nave</h3>
+            <p>Elite processions, shattered ritual circles, and the bell that wakes the area boss.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="final-cta">
+        <p class="eyebrow">The gate is open</p>
+        <h2>The world is already dead.<br />Put it to work.</h2>
+        <a class="about-button about-button--primary" href="index.html">Enter Death Muffin</a>
+      </section>
+    </main>
+
+    <footer class="about-footer">
+      <a href="index.html">Death Muffin</a>
+      <span>Muffin Developed · <a class="footer-link" href="classes.html">Classes</a></span>
+      <span>© 2026</span>
+    </footer>
+  </body>
+</html>

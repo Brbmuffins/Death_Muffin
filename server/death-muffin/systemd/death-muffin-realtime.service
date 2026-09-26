@@ -1,0 +1,24 @@
+[Unit]
+Description=Death Muffin realtime co-op
+After=network.target death-muffin-auth.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/death-muffin/realtime
+ExecStart=/usr/bin/node server.js
+Environment=NODE_ENV=production
+Environment=ENV_FILE=/home/ubuntu/death-muffin/backend/.env
+Environment=REALTIME_HOST=127.0.0.1
+Environment=REALTIME_PORT=5191
+Environment=REALTIME_PATH=/death-muffin/rt/socket.io
+Environment=CORS_ORIGIN=https://playcrossworlds.com
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+
+[Install]
+WantedBy=multi-user.target

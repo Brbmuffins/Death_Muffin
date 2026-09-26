@@ -29,6 +29,10 @@ const dropBackdrop = () => {
 };
 
 function goLogin() {
+  if (import.meta.env.PROD) {
+    window.location.replace('/death-muffin/');
+    return;
+  }
   manager.goto(new LoginScene(getBackdrop(), resume));
 }
 

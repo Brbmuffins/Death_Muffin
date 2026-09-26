@@ -44,7 +44,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   move: {
     title: 'Walk among the dead',
-    body: '<kbd>Click</kbd> the ground to walk. <kbd>Click</kbd> an enemy to loose Bone Needles at it; every hit refills Grave Essence. <kbd>Shift</kbd>+<kbd>Click</kbd> casts without moving.',
+    body: '<kbd>Click</kbd> the ground to walk. <kbd>Click</kbd> an enemy to loose Bone Needles at it; every hit refills Grave Essence. Aim with the mouse and press <kbd>1</kbd>–<kbd>4</kbd> for rites. <kbd>Right-click</kbd> bursts corpses. <kbd>Shift</kbd>+<kbd>Click</kbd> attacks without moving.',
   },
   exhume: {
     title: 'A corpse lies near',
@@ -124,9 +124,9 @@ export const TIPS: Record<TipId, Tip> = {
   },
 };
 
-const SHOW_MS = 8000;
+const SHOW_MS = 25000;
 const GAP_MS = 500;
-const tipsKey = (characterId: number) => `cw_tips_v1_${characterId}`;
+const tipsKey = (characterId: number) => `dm_tips_v1_${characterId}`;
 const TIP_IDS = Object.keys(TIPS) as TipId[];
 
 export class Onboarding {
@@ -181,9 +181,9 @@ export class Onboarding {
     el.className = 'cw-plate cw-tip';
     el.setAttribute('role', 'status');
     el.setAttribute('aria-live', 'polite');
-    // Long counsel stays up longer: ~280ms per word, never under SHOW_MS.
+    // Give each card at least 25 seconds and longer counsel more reading time.
     const words = tip.body.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
-    const ms = Math.max(SHOW_MS, words * 280);
+    const ms = Math.max(SHOW_MS, 5000 + words * 600);
     el.style.setProperty('--tip-ms', `${ms}ms`);
     el.innerHTML = `
       <div class="kicker">Covenant counsel</div>
@@ -198,7 +198,21 @@ export class Onboarding {
     });
     this.root.appendChild(el);
     this.el = el;
-    this.hideTimer = this.later(() => this.dismiss(), ms);
+    let remaining = ms;
+    let startedAt = performance.now();
+    const timer = el.querySelector<HTMLElement>('.timer')!;
+    el.addEventListener('pointerenter', () => {
+      remaining = Math.max(0, remaining - (performance.now() - startedAt));
+      this.cancel(this.hideTimer);
+      timer.style.animationPlayState = 'paused';
+    });
+    el.addEventListener('pointerleave', () => {
+      if (this.el !== el) return;
+      startedAt = performance.now();
+      timer.style.animationPlayState = 'running';
+      this.hideTimer = this.later(() => this.dismiss(), remaining);
+    });
+    this.hideTimer = this.later(() => this.dismiss(), remaining);
   }
 
   private dismiss() {

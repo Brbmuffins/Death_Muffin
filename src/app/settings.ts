@@ -18,7 +18,7 @@ export interface Settings {
   difficulty: Difficulty;
 }
 
-const KEY = 'cw_settings_v1';
+const KEY = 'dm_settings_v1';
 
 function defaults(): Settings {
   let reduced = false;
