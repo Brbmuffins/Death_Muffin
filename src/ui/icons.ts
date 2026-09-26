@@ -11,4 +11,8 @@ export const ICON = {
   gear: svg('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>'),
   stone: svg('<path d="M9 21l1-16 2-2 2 2 1 16z"/><path d="M11 9l2 2-2 2 2 2"/><path d="M6 21h12"/>'),
   map: svg('<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/>'),
+  /** Closed book (the Codex): cover, page block, a bone cross on the boards. */
+  book: svg('<path d="M5 5a2 2 0 012-2h12v14H7a2 2 0 00-2 2z"/><path d="M5 19a2 2 0 002 2h12v-4"/><path d="M12 6.5v6M9.8 8.6h4.4"/>'),
+  /** Wax seal with ribbon tails (sealed Codex entries). */
+  seal: svg('<circle cx="12" cy="10" r="6"/><circle cx="12" cy="10" r="2.4"/><path d="M9 15.2L7.5 21l4.5-2.4 4.5 2.4-1.5-5.8"/>'),
 };

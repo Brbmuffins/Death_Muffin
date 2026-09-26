@@ -1,4 +1,5 @@
 import type { AreaId } from '../../content/areas';
+import { AFFIX_ORDER, type EliteAffix } from '../../content/enemies';
 import type { EnemyRow, ThrallRow, WorldSnapshot } from '../../net/contracts';
 import type { BossState, Corpse, Enemy, EnemyState, SimEvent, Thrall, ThrallState, Zone } from './types';
 import type { WorldSim } from './WorldSim';
@@ -6,12 +7,14 @@ import type { WorldSim } from './WorldSim';
 const E_STATES: EnemyState[] = ['rising', 'move', 'windup', 'recover', 'channel', 'dead'];
 const T_STATES: ThrallState[] = ['rising', 'idle', 'move', 'attack', 'dead'];
 const r2 = (n: number) => Math.round(n * 100) / 100;
+const affixCode = (a: EliteAffix | undefined) => (a ? AFFIX_ORDER.indexOf(a) + 1 : 0);
+const affixFrom = (code: number | undefined): EliteAffix | undefined => (code ? AFFIX_ORDER[code - 1] : undefined);
 
 export function makeSnapshot(sim: WorldSim, full: boolean): WorldSnapshot {
   const enemies: EnemyRow[] = [];
   for (const e of sim.enemies.values()) {
     const flags = (e.elite ? 1 : 0) | (e.moving ? 2 : 0) | (e.slowT > 0 ? 4 : 0);
-    enemies.push([e.id, e.def, r2(e.x), r2(e.z), r2(e.facing), Math.round(e.hp), Math.round(e.maxHp), E_STATES.indexOf(e.state), flags | (e.fracture << 4) | (e.withered << 8), r2(e.stateT), r2(e.speed), r2(e.scale), e.area]);
+    enemies.push([e.id, e.def, r2(e.x), r2(e.z), r2(e.facing), Math.round(e.hp), Math.round(e.maxHp), E_STATES.indexOf(e.state), flags | (e.fracture << 4) | (e.withered << 8), r2(e.stateT), r2(e.speed), r2(e.scale), e.area, affixCode(e.affix)]);
   }
   const thralls: ThrallRow[] = [];
   for (const t of sim.thralls.values()) {
@@ -63,6 +66,7 @@ function blankEnemy(row: EnemyRow): Enemy {
     flash: 0,
     gait: 0,
     moving: false,
+    affix: affixFrom(row[13]),
   };
 }
 
@@ -114,6 +118,7 @@ export class WorldMirror {
       e.withered = (flags >> 8) & 15;
       e.speed = row[10];
       e.scale = row[11];
+      e.affix = affixFrom(row[13]);
       this.targets.set(`e${e.id}`, { x: row[2], z: row[3], facing: row[4] });
     }
     for (const id of [...this.enemies.keys()]) if (!seenE.has(id)) this.enemies.delete(id);

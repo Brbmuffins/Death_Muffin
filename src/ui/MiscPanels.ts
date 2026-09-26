@@ -45,6 +45,7 @@ export class SettingsPanel extends SimplePanel {
         <label class="row">Volume<input type="range" min="0" max="1" step="0.05" data-vol aria-label="Master volume" /></label>
         <label class="row">Reduce motion (no camera shake)<input type="checkbox" data-rm /></label>
         <label class="row">Damage numbers<input type="checkbox" data-dn /></label>
+        <label class="row">Don't show tips<input type="checkbox" data-tips /></label>
         ${code ? `<label class="row">Party world code<b style="font-family:var(--cw-font-numeric)">${code}</b></label>` : ''}
         <div class="cw-keys">
           <kbd>Click</kbd><span>Move · attack target (Bone Needle) · use</span>
@@ -53,6 +54,7 @@ export class SettingsPanel extends SimplePanel {
           <kbd>Q</kbd><span>Drink a healing flask</span>
           <kbd>T</kbd><span>Return to the Chapterhouse</span>
           <kbd>I C P M</kbd><span>Reliquary · Workbench · Rites · Waystones</span>
+          <kbd>K</kbd><span>Codex</span>
           <kbd>WASD</kbd><span>Walk (fallback)</span>
           <kbd>Wheel</kbd><span>Zoom</span>
           <kbd>Enter</kbd><span>Chat</span>
@@ -73,6 +75,9 @@ export class SettingsPanel extends SimplePanel {
     const dn = this.el!.querySelector<HTMLInputElement>('[data-dn]')!;
     dn.checked = settings.damageNumbers;
     dn.addEventListener('change', () => updateSettings({ damageNumbers: dn.checked }));
+    const tips = this.el!.querySelector<HTMLInputElement>('[data-tips]')!;
+    tips.checked = !settings.tips;
+    tips.addEventListener('change', () => updateSettings({ tips: !tips.checked }));
     this.el!.querySelector('[data-leave]')!.addEventListener('click', () => this.onLeave());
   }
 }

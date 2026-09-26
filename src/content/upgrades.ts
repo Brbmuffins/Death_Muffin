@@ -21,6 +21,9 @@ export interface WaveModifiers {
   rewardMult: number;
   itemChanceMult: number;
   eliteBonus: number;
+  /** Faster waves are angrier waves: the dial raises danger per enemy, not just density. */
+  enemyHpMult: number;
+  enemyDamageMult: number;
   /** Shown in the HUD as "+N% Wave Speed". */
   speedPct: number;
 }
@@ -33,6 +36,8 @@ export function waveModifiers(tier: number): WaveModifiers {
     rewardMult: 1 + 0.1 * tier,
     itemChanceMult: 1 + 0.06 * tier,
     eliteBonus: 0.008 * tier,
+    enemyHpMult: 1 + 0.03 * tier,
+    enemyDamageMult: 1 + 0.05 * tier,
     speedPct: Math.round(16 * tier),
   };
 }

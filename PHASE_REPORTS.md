@@ -320,3 +320,23 @@ movement, dispose on leave/disconnect/unmount). ArenaScene already had local-pla
 3. **Code-split** the 575kB bundle (Vite chunk warning, noted for Phase 6).
 4. **Combat VFX upgrade**: use `hit-*.png` sprites as Three.js billboards
    (SpriteMaterial + AdditiveBlending) replacing plain ring/line geometry.
+
+## Combat depth pack (2026-09-26) ✅ sim + unit tests — in-browser gameplay QA pending
+Branch `cloud/combat-depth`. All host-authoritative via Intent → WorldSim → SimEvent.
+- **Corpse Explosion** (RMB, also key 5; hotbar slot 5): `detonate` intent names a corpse
+  and claims `spellPower × 1.8` (clamped by server + sim). Host owns the 3m radius;
+  resonant ×1.6 radius, elite ×2 damage, toxic leaves a friendly `rot` zone. 15 essence,
+  0.6s. Ember/crimson burst + bone shrapnel; refund on `ok:false`.
+- **Elite affixes** (every elite rolls one; snapshot `EnemyRow[13]` = affix index + 1):
+  Bell-Tolled (6s anchored bronze ring r=3 → `hurt from:'toll'` + 0.5s stun), Hungering
+  (every 4s, if wounded, devours a corpse ≤5m → +15% HP, `corpseGone reason:'devoured'`),
+  Shrouded (×0.5 damage taken unless inside a player's miasma/rot; dimmed until revealed),
+  Vengeful (3 Risen on death). Affix tag + blurb in the target frame.
+- **Grave Surges**: after 100s (then 90–150s) of combat in an open unsafe area, a breach
+  cracks open (`surge`), three waves at +1.5/7.5/13.5s; kill ≥80% before 20s →
+  `surgeCleared` (personal guaranteed `rollItem` + bonus gold), else `surgeFailed`.
+- **Soul Harvest** (client-only): kills credited to you/your thralls fill a 50-soul skull
+  meter above the slots; charged → next Marrow Spear / Miasma / Black Litany is free and
+  50% larger. Realtime litany radius clamp raised 10 → 11 for the empowered litany.
+- DEV hooks: `__cwDebug.spawn(def, true, affix)`, `.surge()`, `.souls(n)`, `.corpse(kind, elite)`.
+- Tests: +12 sim (detonate, each affix, surge lifecycle), +2 systems, +2 realtime.

@@ -7,3 +7,5 @@ dist/
 .ai-keys.local
 server/web-deploy/*.tar.gz
 art-src/
+.claude/worktrees/
+*.tsbuildinfo

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { EnemyId } from '../content/enemies';
+import { ENEMIES, type EliteAffix, type EnemyId } from '../content/enemies';
 import type { ThrallKind } from '../content/disciplines';
 import type { Corpse, Enemy, SimEvent, Thrall } from '../gameplay/sim/types';
 import { Creature } from './Creature';
@@ -45,11 +45,29 @@ interface View {
   kind?: ThrallKind;
   ring?: Handle;
   eliteAura?: Handle;
+  affix?: EliteAffix;
+  /** Persistent affix tells (rings / cracks that follow the elite). */
+  affixFx?: Handle[];
+  /** Shrouded elites fade toward this opacity (1 inside Miasma). */
+  shroud?: number;
+  /** Set by a Corpse Explosion: the body shatters instead of sinking with rot. */
+  shattered?: boolean;
   dieT?: number;
   sinkT?: number;
   animSkip: number;
   animDt: number;
   float?: boolean;
+}
+
+const A = SPELL_FX.affix;
+const D = SPELL_FX.detonate;
+
+/** Rough mouth/head height per rig, for drool and sparks. */
+const HEAD_Y = { humanoid: 1.3, robed: 1.35, quadruped: 0.75, bloat: 1.05 } as const;
+
+function killAffixFx(v: View) {
+  v.affixFx?.forEach((h) => h.kill());
+  v.affixFx = undefined;
 }
 
 function boneSword() {
@@ -127,7 +145,63 @@ export class EntityViews {
         follow: () => ({ x: v.x, z: v.z }),
       });
     }
+    if (e.affix) this.dressAffix(v, e);
     return v;
+  }
+
+  /** A readable, persistent tell for each elite affix. */
+  private dressAffix(v: View, e: Enemy) {
+    v.affix = e.affix;
+    const follow = () => ({ x: v.x, z: v.z });
+    const fxs: Handle[] = [];
+    switch (e.affix) {
+      case 'bellTolled':
+        // Bronze bell-ring pulse around the feet.
+        fxs.push(this.effects.decal({ tex: fx.ring(), color: A.bell, x: e.x, z: e.z, r: 1.55 * e.scale, duration: 1e9, opacity: 0.6, pulse: 2.5, follow }));
+        break;
+      case 'hungering':
+        // Olive slick where it slavers.
+        fxs.push(this.effects.decal({ tex: fx.glow(), color: A.drool, x: e.x, z: e.z, r: 1.2 * e.scale, duration: 1e9, opacity: 0.45, follow }));
+        break;
+      case 'shrouded':
+        // Grave-dusk pall; the body itself is dimmed in sync().
+        fxs.push(this.effects.decal({ tex: fx.glow(), color: A.shroud, x: e.x, z: e.z, r: 1.5 * e.scale, duration: 1e9, opacity: 0.7, blending: THREE.NormalBlending, follow }));
+        v.shroud = 1;
+        break;
+      case 'vengeful':
+        // Ember cracks spreading under it.
+        fxs.push(this.effects.decal({ tex: fx.cracks(), color: A.vengeful, x: e.x, z: e.z, r: 1.3 * e.scale, duration: 1e9, opacity: 0.75, pulse: 3, spin: 0.2, follow }));
+        break;
+    }
+    v.affixFx = fxs;
+  }
+
+  /** Per-frame affix particles / shroud fade. */
+  private tickAffix(v: View, e: Enemy, dt: number) {
+    const headY = HEAD_Y[ENEMIES[e.def].rig] * e.scale;
+    switch (e.affix) {
+      case 'hungering':
+        if (Math.random() < dt * 6) {
+          const f = v.facing;
+          this.effects.emit({ x: e.x + Math.sin(f) * 0.3 * e.scale, y: headY, z: e.z + Math.cos(f) * 0.3 * e.scale, count: 1, color: A.drool, spread: 0.06, speed: 0.1, up: -0.3, life: 0.7, size: 0.13, gravity: 7 });
+        }
+        break;
+      case 'vengeful':
+        if (Math.random() < dt * 4) {
+          this.effects.emit({ x: e.x, y: 0.3 + Math.random() * headY, z: e.z, count: 1, color: A.vengeful, spread: 0.35 * e.scale, speed: 0.2, up: 1.1, life: 0.7, size: 0.12 });
+        }
+        break;
+      case 'shrouded': {
+        // Revealed (opaque) only while it stands in a player's Miasma — the slow flag rides the snapshot.
+        const target = e.slowT > 0 ? 1 : 0.38;
+        v.shroud = (v.shroud ?? 1) + (target - (v.shroud ?? 1)) * Math.min(1, dt * 6);
+        v.c.setOpacity(v.shroud);
+        if (target < 1 && Math.random() < dt * 3) {
+          this.effects.emitSmoke({ x: e.x, y: 0.4 + Math.random() * headY, z: e.z, count: 1, color: A.shroud, spread: 0.4 * e.scale, speed: 0.15, up: 0.4, life: 1.2, size: 0.9, shrink: -0.6 });
+        }
+        break;
+      }
+    }
   }
 
   private makeThrall(t: Thrall): View {
@@ -170,6 +244,8 @@ export class EntityViews {
         if (!v) break;
         this.enemies.delete(ev.id);
         v.eliteAura?.kill();
+        killAffixFx(v);
+        if (v.shroud !== undefined && v.shroud < 1) v.c.setOpacity(1);
         v.dieT = 0;
         if (!v.c.playOnce('death')) v.c.toppled = 0.0001;
         this.dying.push(v);
@@ -230,11 +306,28 @@ export class EntityViews {
           this.effects.emit({ x: v.x, y: 0.4, z: v.z, count: 18, color: SPELL_FX.litany.core, spread: 0.6, speed: 0.8, up: 2.2, life: 0.8, size: 0.35 });
         } else if (ev.reason === 'raised') {
           this.effects.emit({ x: v.x, y: 0.4, z: v.z, count: 18, color: SPELL_FX.enemy.rot, spread: 0.6, speed: 0.8, up: 2, life: 1, size: 0.35 });
+        } else if (ev.reason === 'devoured') {
+          // Torn apart and swallowed: olive gore, no spirit left to rise.
+          this.effects.emit({ x: v.x, y: 0.4, z: v.z, count: 22, color: A.drool, spread: 0.5, speed: 1.6, up: 1.4, life: 0.7, size: 0.26, gravity: 5 });
+          this.effects.emitSmoke({ x: v.x, y: 0.3, z: v.z, count: 3, color: 0x2b3317, spread: 0.4, speed: 0.6, up: 0.4, life: 1, size: 1 });
+        } else if (ev.reason === 'burst' && v.shattered) {
+          // Corpse Explosion: the body is blown apart (the blast VFX plays from the 'detonated' event).
+          v.c.setOpacity(0);
+          v.sinkT = 0.8;
         } else if (ev.reason === 'burst') {
           this.effects.emit({ x: v.x, y: 0.5, z: v.z, count: 20, color: SPELL_FX.miasma.rot, spread: 0.6, speed: 2.5, up: 1.5, life: 0.7, size: 0.3 });
         }
         break;
       }
+      case 'detonated': {
+        if (!ev.ok) break;
+        const v = this.corpses.get(ev.corpseId);
+        if (v) v.shattered = true;
+        break;
+      }
+      case 'affix':
+        this.affixMoment(ev);
+        break;
       case 'thrallGone': {
         const v = this.thralls.get(ev.id);
         if (!v) break;
@@ -256,6 +349,41 @@ export class EntityViews {
         break;
       }
         break;
+    }
+  }
+
+  /** One-off affix beats reported by the host. */
+  private affixMoment(ev: Extract<SimEvent, { t: 'affix' }>) {
+    const { x, z } = ev;
+    switch (ev.affix) {
+      case 'bellTolled': {
+        const r = ev.r ?? 3;
+        audio.play('toll', x, z);
+        for (let k = 0; k < 3; k++) {
+          this.effects.decal({ tex: fx.ring(), color: A.bell, x, z, r: r * (0.75 + k * 0.2), duration: 0.5, opacity: 1 - k * 0.25, growFrom: 0.15, delay: k * 0.07 });
+        }
+        this.effects.emit({ x, y: 0.8, z, count: 36, color: A.bell, spread: r * 0.3, speed: 5, up: 0.8, life: 0.5, size: 0.28 });
+        this.effects.lightFlash(x, 1.5, z, A.bell, 30, 0.4);
+        break;
+      }
+      case 'hungering': {
+        const tx = ev.tx ?? x;
+        const tz = ev.tz ?? z;
+        audio.play('raise', tx, tz);
+        this.effects.beam({ x: tx, y: 0.3, z: tz }, () => ({ x, y: 1.1, z }), A.drool, 0.07, 0.45);
+        this.effects.emit({ x, y: 1.1, z, count: 14, color: A.drool, spread: 0.3, speed: 0.8, up: 0.4, life: 0.8, size: 0.2, gravity: 4 });
+        break;
+      }
+      case 'vengeful': {
+        const r = ev.r ?? 1.8;
+        audio.play('burst', x, z);
+        this.effects.decal({ tex: fx.cracks(), color: A.vengeful, x, z, r: r * 1.4, rot: Math.random() * 6, duration: 2, opacity: 0.9, growFrom: 0.3 });
+        this.effects.decal({ tex: fx.ring(), color: D.ember, x, z, r, duration: 0.5, opacity: 1, growFrom: 0.2 });
+        this.effects.emit({ x, y: 0.6, z, count: 40, color: A.vengeful, spread: 0.5, speed: 3.5, up: 2.2, life: 0.8, size: 0.3 });
+        this.effects.emitSmoke({ x, y: 0.4, z, count: 6, color: D.smoke, spread: 0.8, speed: 1, up: 0.8, life: 1.2, size: 1.3 });
+        this.effects.lightFlash(x, 1.2, z, A.vengeful, 32, 0.5);
+        break;
+      }
     }
   }
 
@@ -318,12 +446,16 @@ export class EntityViews {
       if (e.state === 'rising' && Math.random() < dt * 12) {
         this.effects.emitSmoke({ x: e.x, y: 0.1, z: e.z, count: 1, color: 0x2a2230, spread: 0.5, speed: 0.5, up: 0.6, life: 1, size: 0.9 });
       }
+      // A mirror may learn the affix after the view exists (late snapshot field).
+      if (e.affix && !v.affix) this.dressAffix(v, e);
+      if (v.affix) this.tickAffix(v, e, dt);
     }
     // Enemies that vanished without a death event (mirror resync, area clear).
     for (const [id, v] of this.enemies) {
       if (!enemies.has(id)) {
         this.enemies.delete(id);
         v.eliteAura?.kill();
+        killAffixFx(v);
         v.sinkT = 0;
         this.fading.push(v);
       }

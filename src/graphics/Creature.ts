@@ -51,6 +51,10 @@ export class Creature {
   private oneShot: THREE.AnimationAction | null = null;
   private pendingAttach: [string, THREE.Object3D, THREE.Vector3 | undefined][] = [];
   private calibrate: { obj: THREE.Object3D; dir: THREE.Vector3; frames: number }[] = [];
+  /** Calibrated attachments, re-checked while idle so a bad first pose self-heals. */
+  private attached: { obj: THREE.Object3D; dir: THREE.Vector3 }[] = [];
+  private settledT = 0;
+  private recheckT = 0;
   private disposed = false;
   private flashV = 0;
   /** Set by the owner when the model has no death clip (tip over instead). */
@@ -196,7 +200,11 @@ export class Creature {
       this.pendingAttach.push([boneName, obj, dir]);
       return;
     }
-    if (dir) this.calibrate.push({ obj, dir: dir.clone().normalize(), frames: 4 });
+    if (dir) {
+      const d = dir.clone().normalize();
+      this.calibrate.push({ obj, dir: d, frames: 4 });
+      this.attached.push({ obj, dir: d });
+    }
     let bone: THREE.Object3D | undefined;
     this.model.traverse((o) => {
       if (!bone && o.name === boneName) bone = o;
@@ -235,7 +243,31 @@ export class Creature {
 
   update(dt: number) {
     this.mixer?.update(dt);
-    if (this.calibrate.length && this.model) this.runCalibration();
+    if (!this.model) return;
+    const idle = this.actions.get('idle');
+    const settled = !this.oneShot && (!idle || (this.current === idle && idle.getEffectiveWeight() > 0.99));
+    this.settledT = settled ? this.settledT + dt : 0;
+    if (this.calibrate.length) this.runCalibration();
+    else if (this.attached.length && this.settledT > 0.6 && (this.recheckT -= dt) <= 0) {
+      this.recheckT = 2;
+      this.recheckAttachments();
+    }
+  }
+
+  /** Re-align any attachment whose +Y has drifted >25° from its intended direction. */
+  private recheckAttachments() {
+    this.root.updateMatrixWorld(true);
+    const rootQ = new THREE.Quaternion();
+    this.root.getWorldQuaternion(rootQ);
+    const worldUp = new THREE.Vector3();
+    const q = new THREE.Quaternion();
+    for (const a of this.attached) {
+      a.obj.getWorldQuaternion(q);
+      worldUp.set(0, 1, 0).applyQuaternion(q);
+      const want = a.dir.clone().applyQuaternion(rootQ);
+      if (worldUp.angleTo(want) > (25 * Math.PI) / 180) this.calibrate.push({ obj: a.obj, dir: a.dir, frames: 1 });
+    }
+    if (this.calibrate.length) this.runCalibration();
   }
 
   private runCalibration() {
@@ -243,8 +275,7 @@ export class Creature {
     const rootQ = new THREE.Quaternion();
     this.root.getWorldQuaternion(rootQ);
     // Only calibrate against a settled idle pose (not bind pose, not a one-shot).
-    const idle = this.actions.get('idle');
-    const settled = !this.oneShot && (!idle || (this.current === idle && idle.getEffectiveWeight() > 0.99));
+    const settled = this.settledT > 0.25;
     for (let i = this.calibrate.length - 1; i >= 0; i--) {
       const c = this.calibrate[i];
       if (!settled || --c.frames > 0) continue;

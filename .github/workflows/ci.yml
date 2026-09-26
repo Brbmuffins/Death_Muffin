@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/realtime/package-lock.json
+
+      - name: Install client dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Unit tests (game logic + content)
+        run: npx vitest run
+
+      - name: Install realtime server dependencies
+        working-directory: server/realtime
+        run: npm ci
+
+      - name: Realtime server tests
+        run: node --test server/realtime/server.test.js
+
+      - name: Production build
+        run: npm run build

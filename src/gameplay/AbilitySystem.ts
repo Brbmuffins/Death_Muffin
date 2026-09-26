@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { ABILITIES, NEEDLE_ESSENCE, SPELL_FX, type AbilityId } from '../content/abilities';
+import { ABILITIES, NEEDLE_ESSENCE, SOUL_HARVEST, SPELL_FX, type AbilityId } from '../content/abilities';
 import type { Discipline } from '../content/disciplines';
 import type { Effects } from '../graphics/Effects';
 import type { NecromancerAvatar } from '../graphics/Avatars';
 import { fx } from '../graphics/fxTextures';
 import { BOSS_RADIUS } from './sim/BossBrain';
-import type { BossState, Corpse, Enemy, Intent } from './sim/types';
+import type { BossState, Corpse, Enemy, Intent, SimEvent } from './sim/types';
 import type { Player } from './Player';
 import { audio } from '../audio/Audio';
 
@@ -39,6 +39,8 @@ const S = SPELL_FX.spear;
 const X = SPELL_FX.exhume;
 const M = SPELL_FX.miasma;
 const L = SPELL_FX.litany;
+const D = SPELL_FX.detonate;
+const SOUL = SPELL_FX.souls;
 
 /**
  * Casts the shared necromancer kit. Client-side targeting + VFX, then an
@@ -59,7 +61,12 @@ export class AbilitySystem {
 
   ready(id: AbilityId, now: number) {
     const p = this.ctx.player;
-    return p.alive && !p.onCooldown(id, now) && p.essence >= ABILITIES[id].essenceCost;
+    return p.alive && !p.onCooldown(id, now) && (this.empowered(id) || p.essence >= ABILITIES[id].essenceCost);
+  }
+
+  /** A full Soul Harvest meter makes this cast free and 50% larger. */
+  empowered(id: AbilityId) {
+    return this.ctx.player.soulsCharged && SOUL_HARVEST.spells.includes(id);
   }
 
   /** Distance the target is beyond the ability's reach (0 if in range). */
@@ -76,30 +83,48 @@ export class AbilitySystem {
     const def = ABILITIES[id];
     if (!p.alive) return 'dead';
     if (p.onCooldown(id, now)) return 'cooldown';
-    if (p.essence < def.essenceCost) return 'essence';
+    const empowered = this.empowered(id);
+    if (!empowered && p.essence < def.essenceCost) return 'essence';
+    const mult = empowered ? SOUL_HARVEST.areaMult : 1;
     let result: CastResult;
     switch (id) {
       case 'bone_needle':
         result = this.needle(target);
         break;
       case 'marrow_spear':
-        result = this.spear(target);
+        result = this.spear(target, mult);
         break;
       case 'exhume':
         result = this.exhume(target);
         break;
       case 'miasma':
-        result = this.miasma(target);
+        result = this.miasma(target, mult);
         break;
       case 'black_litany':
-        result = this.litany();
+        result = this.litany(mult);
+        break;
+      case 'corpse_explosion':
+        result = this.detonate(target);
         break;
     }
     if (result === 'ok') {
-      p.essence -= def.essenceCost;
+      if (empowered) {
+        p.spendSouls();
+        this.soulRelease();
+      } else p.essence -= def.essenceCost;
       p.cooldowns.set(id, now + def.cooldownMs);
     }
     return result;
+  }
+
+  /** The harvested souls pour out of the caster into the empowered spell. */
+  private soulRelease() {
+    const { player: p, effects } = this.ctx;
+    effects.decal({ tex: fx.ring(), color: SOUL.jade, x: p.x, z: p.z, r: 1.8, duration: 0.5, opacity: 1, growFrom: 0.3 });
+    effects.emit({ x: p.x, y: 0.4, z: p.z, count: 36, color: SOUL.jade, spread: 0.6, speed: 1.2, up: 3.2, life: 0.8, size: 0.3 });
+    effects.emit({ x: p.x, y: 1.4, z: p.z, count: 14, color: SOUL.pale, spread: 0.3, speed: 2.4, up: 1, life: 0.5, size: 0.22 });
+    effects.lightFlash(p.x, 1.6, p.z, SOUL.jade, 26, 0.45);
+    audio.play('shard', p.x, p.z);
   }
 
   private needle(t: CastTarget): CastResult {
@@ -148,9 +173,12 @@ export class AbilitySystem {
     return 'ok';
   }
 
-  private spear(t: CastTarget): CastResult {
+  /** `mult` > 1 when Soul Harvest empowers the cast (longer, wider line). */
+  private spear(t: CastTarget, mult = 1): CastResult {
     const { player: p, effects, avatar } = this.ctx;
     const def = ABILITIES.marrow_spear;
+    const range = def.range * mult;
+    const radius = def.radius * mult;
     let dx = t.x - p.x;
     let dz = t.z - p.z;
     const len = Math.hypot(dx, dz) || 1;
@@ -159,7 +187,7 @@ export class AbilitySystem {
     p.face(p.x + dx, p.z + dz);
     p.rootedUntil = this.ctx.now() + 220;
     avatar.cast('cast', 2.4);
-    const halfW = def.radius + 0.2;
+    const halfW = radius + 0.2;
     const ids: number[] = [];
     for (const e of this.ctx.enemies().values()) {
       if (e.state === 'dead') continue;
@@ -167,7 +195,7 @@ export class AbilitySystem {
       const rz = e.z - p.z;
       const along = rx * dx + rz * dz;
       const across = Math.abs(rx * dz - rz * dx);
-      if (along > 0 && along < def.range && across < halfW + e.radius) ids.push(e.id);
+      if (along > 0 && along < range && across < halfW + e.radius) ids.push(e.id);
     }
     const dmg = this.sp * def.power;
     if (ids.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids, dmg, fracture: 1 });
@@ -176,7 +204,7 @@ export class AbilitySystem {
       const rx = b.x - p.x;
       const rz = b.z - p.z;
       const along = rx * dx + rz * dz;
-      if (along > 0 && along < def.range + BOSS_RADIUS && Math.abs(rx * dz - rz * dx) < halfW + BOSS_RADIUS) {
+      if (along > 0 && along < range + BOSS_RADIUS && Math.abs(rx * dz - rz * dx) < halfW + BOSS_RADIUS) {
         this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, fracture: 1, boss: true });
         this.ctx.number(b.x, b.z, dmg, 'spear');
       }
@@ -185,11 +213,11 @@ export class AbilitySystem {
       const e = this.ctx.enemies().get(id);
       if (e) this.ctx.number(e.x, e.z, dmg, 'spear');
     }
-    effects.spikeLine(p.x, p.z, dx, dz, def.range, def.radius * 1.6);
-    effects.decal({ tex: fx.cracks(), color: S.crack, x: p.x + dx * def.range * 0.5, z: p.z + dz * def.range * 0.5, r: def.range * 0.5, sx: 0.22, rot: Math.atan2(dx, dz), duration: 1.1, opacity: 0.75 });
+    effects.spikeLine(p.x, p.z, dx, dz, range, radius * 1.6);
+    effects.decal({ tex: fx.cracks(), color: S.crack, x: p.x + dx * range * 0.5, z: p.z + dz * range * 0.5, r: range * 0.5, sx: 0.22 * mult, rot: Math.atan2(dx, dz), duration: 1.1, opacity: 0.75 });
     for (let i = 1; i < 11; i++) {
-      const x = p.x + dx * i * 1.1;
-      const z = p.z + dz * i * 1.1;
+      const x = p.x + dx * i * 1.1 * mult;
+      const z = p.z + dz * i * 1.1 * mult;
       effects.emitSmoke({ x, y: 0.2, z, count: 2, color: S.dust, spread: 0.5, speed: 0.9, up: 0.9, life: 1.1, size: 1.1, shrink: -0.6 });
       effects.emit({ x, y: 0.3, z, count: 3, color: i % 3 ? S.bone : S.marrow, spread: 0.3, speed: 1.6, up: 3, life: 0.6, size: 0.14, gravity: 9 });
     }
@@ -199,15 +227,18 @@ export class AbilitySystem {
     return 'ok';
   }
 
-  /** Nearest corpse to the cursor, else to the player. */
-  pickCorpse(t: CastTarget): Corpse | null {
+  /**
+   * Nearest corpse to the cursor (within `pickRadius`, and within `range` of
+   * the caster), else the nearest one to the player. Shared by Exhume and
+   * Corpse Explosion.
+   */
+  pickCorpse(t: CastTarget, pickRadius = ABILITIES.exhume.radius, range = ABILITIES.exhume.range): Corpse | null {
     const p = this.ctx.player;
-    const def = ABILITIES.exhume;
     let best: Corpse | null = null;
-    let bestD = def.radius;
+    let bestD = pickRadius;
     for (const c of this.ctx.corpses().values()) {
       const d = Math.hypot(c.x - t.x, c.z - t.z);
-      if (d < bestD && Math.hypot(c.x - p.x, c.z - p.z) <= def.range) {
+      if (d < bestD && Math.hypot(c.x - p.x, c.z - p.z) <= range) {
         bestD = d;
         best = c;
       }
@@ -251,7 +282,7 @@ export class AbilitySystem {
     return 'ok';
   }
 
-  private miasma(t: CastTarget): CastResult {
+  private miasma(t: CastTarget, mult = 1): CastResult {
     const { player: p, discipline, avatar, effects } = this.ctx;
     const def = ABILITIES.miasma;
     let x = t.x;
@@ -264,7 +295,7 @@ export class AbilitySystem {
     p.face(x, z);
     p.rootedUntil = this.ctx.now() + 200;
     avatar.cast('cast', 2.2);
-    const r = def.radius * discipline.mods.miasmaRadiusMult;
+    const r = def.radius * discipline.mods.miasmaRadiusMult * mult;
     this.ctx.send({
       t: 'miasma',
       by: this.ctx.selfId,
@@ -292,7 +323,7 @@ export class AbilitySystem {
     return 'ok';
   }
 
-  private litany(): CastResult {
+  private litany(mult = 1): CastResult {
     const { player: p, avatar, discipline } = this.ctx;
     const def = ABILITIES.black_litany;
     p.rootedUntil = this.ctx.now() + 450;
@@ -302,11 +333,59 @@ export class AbilitySystem {
       by: this.ctx.selfId,
       x: p.x,
       z: p.z,
-      r: def.radius,
+      r: def.radius * mult,
       spellPower: this.sp,
       leaveCorpses: discipline.mods.sacrificeLeavesCorpse,
     });
     return 'ok';
+  }
+
+  /** Corpse Explosion: name the corpse; the host owns radius and modifiers. */
+  private detonate(t: CastTarget): CastResult {
+    const { player: p, avatar, effects } = this.ctx;
+    const def = ABILITIES.corpse_explosion;
+    const c = this.pickCorpse(t, ABILITIES.exhume.radius, def.range);
+    if (!c) return 'no_corpse';
+    p.face(c.x, c.z);
+    p.rootedUntil = this.ctx.now() + 150;
+    avatar.cast('cast', 3);
+    this.ctx.send({ t: 'detonate', by: this.ctx.selfId, corpseId: c.id, dmg: this.sp * def.power });
+    const tip = avatar.tip();
+    effects.flash({ x: tip.x, y: tip.y, z: tip.z, color: D.hot, size: 0.7, duration: 0.14 });
+    effects.beam(tip, () => ({ x: c.x, y: 0.4, z: c.z }), D.ember, 0.05, 0.2);
+    effects.decal({ tex: fx.glow(), color: D.ember, x: c.x, z: c.z, r: 1.1, duration: 0.25, opacity: 0.9, growFrom: 0.4 });
+    return 'ok';
+  }
+
+  /** Everyone sees the blast when the host reports it (ember burst + bone shrapnel). */
+  onDetonated(ev: Extract<SimEvent, { t: 'detonated' }>, mine: boolean) {
+    if (!ev.ok) return;
+    const { effects } = this.ctx;
+    const { x, z, r } = ev;
+    audio.play('burst', x, z);
+    effects.flash({ x, y: 0.7, z, color: D.hot, size: r * 0.8, duration: 0.2 });
+    effects.decal({ tex: fx.ring(), color: D.ember, x, z, r, duration: 0.45, opacity: 1, growFrom: 0.15 });
+    effects.decal({ tex: fx.glow(), color: D.crimson, x, z, r: r * 0.9, duration: 0.7, opacity: 0.85, growFrom: 0.4 });
+    effects.decal({ tex: fx.cracks(), color: D.crimson, x, z, r: r * 0.75, rot: Math.random() * 6, duration: 1.6, opacity: 0.85, growFrom: 0.5 });
+    effects.emit({ x, y: 0.6, z, count: 46, color: D.ember, spread: 0.3, speed: r * 2.8, up: 1.6, life: 0.5, size: 0.34, drag: 1.5 });
+    // Bone shrapnel: ivory flecks that arc out and rain down.
+    effects.emit({ x, y: 0.7, z, count: 30, color: D.bone, spread: 0.25, speed: r * 2.3, up: 4.5, life: 0.9, size: 0.14, gravity: 14 });
+    effects.emit({ x, y: 0.4, z, count: 14, color: D.crimson, spread: 0.3, speed: 2, up: 2.4, life: 0.8, size: 0.26, gravity: 6 });
+    effects.emitSmoke({ x, y: 0.4, z, count: 7, color: D.smoke, spread: r * 0.35, speed: 1.4, up: 0.8, life: 1.3, size: 1.5, shrink: -0.8 });
+    effects.lightFlash(x, 1.2, z, D.ember, ev.elite ? 55 : 38, 0.45);
+    if (ev.corpseKind === 'resonant') {
+      // A resonant corpse rings as it goes — the wider blast gets a bronze echo.
+      effects.decal({ tex: fx.ring(), color: SPELL_FX.enemy.toll, x, z, r: r * 1.05, duration: 0.6, opacity: 0.8, growFrom: 0.2, delay: 0.06 });
+      audio.play('tollSmall', x, z);
+    }
+    if (ev.corpseKind === 'toxic') {
+      effects.emit({ x, y: 0.4, z, count: 24, color: M.rot, spread: 0.5, speed: 3, up: 1.4, life: 0.8, size: 0.3 });
+    }
+    if (ev.elite) {
+      effects.decal({ tex: fx.ring(), color: D.hot, x, z, r: r * 1.2, duration: 0.5, opacity: 0.9, growFrom: 0.1, delay: 0.08 });
+    }
+    this.ctx.shake((mine ? 0.18 : 0.08) + (ev.elite ? 0.1 : 0));
+    if (mine && ev.targets && ev.dmg) this.ctx.number(x, z, ev.dmg, ev.elite ? 'crit' : 'hit');
   }
 
   /** VFX + self-effects when the host reports the litany outcome. */

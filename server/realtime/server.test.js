@@ -27,6 +27,24 @@ test('clamps numeric abuse instead of trusting it', () => {
   assert.equal(ex.hp, 1e6);
 });
 
+test('detonate names an integer corpse and clamps its damage', () => {
+  const d = validIntent({ t: 'detonate', by: 'spoofed', corpseId: 42, dmg: 1e12 });
+  assert.equal(d.t, 'detonate');
+  assert.equal(d.corpseId, 42);
+  assert.equal(d.dmg, 100000);
+  assert.equal(validIntent({ t: 'detonate', corpseId: 7, dmg: -50 }).dmg, 0);
+  assert.equal(validIntent({ t: 'detonate', corpseId: 7, dmg: 'lots' }).dmg, 0);
+  assert.equal(validIntent({ t: 'detonate', corpseId: 1.5, dmg: 10 }), null, 'fractional corpse id');
+  assert.equal(validIntent({ t: 'detonate', corpseId: '3', dmg: 10 }), null, 'string corpse id');
+  assert.equal(validIntent({ t: 'detonate', corpseId: -1, dmg: 10 }), null, 'negative corpse id');
+  assert.equal(validIntent({ t: 'detonate', dmg: 10 }), null, 'missing corpse id');
+});
+
+test('an empowered litany fits the radius clamp', () => {
+  assert.equal(validIntent({ t: 'litany', x: 0, z: 0, r: 10.5, spellPower: 10 }).r, 10.5);
+  assert.equal(validIntent({ t: 'litany', x: 0, z: 0, r: 99, spellPower: 10 }).r, 11);
+});
+
 test('oversized intents are dropped', () => {
   assert.equal(validIntent({ t: 'hit', ids: Array.from({ length: 65 }, (_, i) => i), dmg: 1 }), null);
   assert.equal(validIntent({ t: 'summonBoss', junk: 'x'.repeat(5000) }), null);

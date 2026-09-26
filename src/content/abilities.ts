@@ -2,13 +2,15 @@
  * The shared necromancer kit. Data only — behaviour lives in
  * gameplay/AbilitySystem.ts. `power` multiplies the caster's spell power.
  */
-export type AbilityId = 'bone_needle' | 'marrow_spear' | 'exhume' | 'miasma' | 'black_litany';
+export type AbilityId = 'bone_needle' | 'marrow_spear' | 'exhume' | 'miasma' | 'black_litany' | 'corpse_explosion';
 export type Targeting = 'enemy' | 'direction' | 'corpse' | 'ground' | 'self';
+/** Hotbar position: 1–4 = number keys, 5 = right-click (also key 5). */
+export type HotbarSlot = 1 | 2 | 3 | 4 | 5;
 
 export interface AbilityDef {
   id: AbilityId;
-  /** 0 = primary (left click), 1–4 = hotbar keys. */
-  slot: 0 | 1 | 2 | 3 | 4;
+  /** 0 = primary (left click), 1–4 = hotbar keys, 5 = right-click. */
+  slot: 0 | HotbarSlot;
   name: string;
   description: string;
   icon: string;
@@ -86,9 +88,47 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     radius: 7,
     power: 1.5,
   },
+  corpse_explosion: {
+    id: 'corpse_explosion',
+    slot: 5,
+    name: 'Corpse Explosion',
+    description:
+      'Right-click a corpse to burst it in a 3m blast of marrow and bone. Resonant corpses blast wider, toxic corpses leave a rot pool, elite corpses hit twice as hard.',
+    // Placeholder art until a dedicated icon exists (the HUD re-tints it ember).
+    icon: 'art/abilities/necro-litany.png',
+    targeting: 'corpse',
+    cooldownMs: 600,
+    essenceCost: 15,
+    range: 13,
+    /** Blast radius; the sim owns it (clients never send a radius). */
+    radius: 3,
+    power: 1.8,
+  },
 };
 
-export const HOTBAR: AbilityId[] = ['marrow_spear', 'exhume', 'miasma', 'black_litany'];
+/** Hotbar order; index + 1 is the HotbarSlot. Slot 5 is the right-click action. */
+export const HOTBAR: AbilityId[] = ['marrow_spear', 'exhume', 'miasma', 'black_litany', 'corpse_explosion'];
+
+/** Corpse Explosion tuning (host-side; the intent only carries the caster's damage). */
+export const DETONATE = {
+  radius: 3,
+  resonantRadiusMult: 1.6,
+  eliteDamageMult: 2,
+  /** Sim-side clamp on the damage a client may claim (mirrors the realtime server). */
+  maxDamage: 100000,
+  /** Toxic corpses leave a friendly rot pool: radius, duration, dps as a share of the blast. */
+  rotRadius: 2.6,
+  rotDurationMs: 4000,
+  rotDpsShare: 0.12,
+  rotWitheredCap: 5,
+};
+
+/** Soul Harvest (client-side): kills fill the meter; when full the next big spell is free and 50% larger. */
+export const SOUL_HARVEST = {
+  souls: 50,
+  areaMult: 1.5,
+  spells: ['marrow_spear', 'miasma', 'black_litany'] as AbilityId[],
+};
 
 /** Litany scaling: added spell-power multiples per consumed corpse / thrall. */
 export const LITANY_PER_CORPSE = 0.6;
@@ -112,7 +152,15 @@ export const SPELL_FX = {
   exhume: { spirit: 0x6fe3c8, deep: 0x1f8f86, beam: 0x9ff5e0 },
   miasma: { rot: 0xa8c23a, deep: 0x4f6b1f, spore: 0x2b3317 },
   litany: { core: 0x9b5cff, hot: 0xe6d6ff, void: 0x160a24 },
+  /** Corpse Explosion — marrow: ember + dried crimson, with bone shrapnel. */
+  detonate: { ember: 0xff6a2a, hot: 0xffc58a, crimson: 0x8a2c3c, bone: 0xe0d6c2, smoke: 0x2a1614 },
+  /** Soul Harvest — spirit: jade/teal. */
+  souls: { jade: 0x6fe3c8, deep: 0x1f8f86, pale: 0x9ff5e0 },
   thrall: { spark: 0xe8dfcc, wraith: 0x8fb4ff },
   enemy: { toll: 0xd9a441, rot: 0x7fa05a, curse: 0x8a3a4a, slam: 0x9a6a3a, toxic: 0x6f8f3a },
+  /** Elite affix tells (bell = bronze, hunger = olive rot, shroud = grave dusk, vengeance = ember). */
+  affix: { bell: 0xd9a441, drool: 0x8a8f2a, shroud: 0x3a3448, vengeful: 0xe0552a },
+  /** Grave Surge — enemy bell/crypt bronze. */
+  surge: { crack: 0xc8923a, glow: 0xd9a441 },
   boss: { bronze: 0xd9a441, shard: 0xc8a06a, spirit: 0xb9c8ff },
 } as const;

@@ -89,7 +89,7 @@ const LIMITS = {
   chatPerSec: 3,
 };
 
-const INTENT_TYPES = new Set(['hit', 'miasma', 'exhume', 'litany', 'summonBoss', 'recallThralls']);
+const INTENT_TYPES = new Set(['hit', 'miasma', 'exhume', 'litany', 'summonBoss', 'recallThralls', 'detonate']);
 const WORLD_BOUND = 400; // |x|,|z| sanity bound in world units
 
 if (DEV_TRUST_TOKENS && process.env.NODE_ENV === 'production') {
@@ -164,9 +164,16 @@ function validIntent(intent) {
       out.attackSpeedMult = Math.min(3, Math.max(0.2, num(out.attackSpeedMult, 1)));
       break;
     case 'litany':
-      out.r = Math.min(10, Math.max(1, num(out.r, 7)));
+      // 7m base; a Soul Harvest-empowered litany is 50% larger (10.5m).
+      out.r = Math.min(11, Math.max(1, num(out.r, 7)));
       out.spellPower = Math.min(1e5, Math.max(0, num(out.spellPower)));
       out.leaveCorpses = !!out.leaveCorpses;
+      break;
+    case 'detonate':
+      // Corpse Explosion: the host owns radius and corpse modifiers; the client
+      // only names the corpse and claims its damage (clamped again by the sim).
+      if (!Number.isInteger(out.corpseId) || out.corpseId < 0) return null;
+      out.dmg = Math.min(Math.max(0, num(out.dmg)), 100000);
       break;
   }
   return out;

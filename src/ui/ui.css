@@ -326,6 +326,46 @@ button { font-family: inherit; }
   text-shadow: 0 1px 2px #000;
   pointer-events: none;
 }
+/* Right-click action (Corpse Explosion): set apart, marrow ember identity. */
+.hud-slot.alt { --marrow: #d0612e; padding-left: 12px; border-left: 1px solid var(--cw-border); }
+.hud-slot.alt button { border-color: color-mix(in srgb, var(--marrow) 55%, transparent); }
+.hud-slot.alt button:hover { border-color: var(--marrow); box-shadow: inset 0 0 0 2px #07060a, 0 0 18px color-mix(in srgb, var(--marrow) 45%, transparent); }
+/* Placeholder icon (litany art) re-tinted from violet to ember until dedicated art exists. */
+.hud-slot.alt button img { filter: hue-rotate(125deg) saturate(1.25) brightness(1.05); }
+.hud-slot.alt button.nores img { filter: hue-rotate(125deg) saturate(0.3) brightness(0.55); }
+.hud-slot.alt .cost { color: #f0b08a; }
+.hud-slot.alt .key { font-size: 10px; letter-spacing: 0.06em; color: #f0b08a; border-color: color-mix(in srgb, var(--marrow) 45%, transparent); }
+/* Soul Harvest charged: spells it empowers glow jade. */
+.hud-slot button.empowered {
+  border-color: #6fe3c8;
+  box-shadow: inset 0 0 0 2px #07060a, 0 0 16px rgba(111, 227, 200, 0.7);
+  animation: slot-empowered 1.4s ease-in-out infinite;
+}
+.hud-slot button.empowered .cost { color: #9ff5e0; text-decoration: line-through; }
+@keyframes slot-empowered { 50% { box-shadow: inset 0 0 0 2px #07060a, 0 0 6px rgba(111, 227, 200, 0.35); } }
+
+/* Soul Harvest skull meter (above the slots) — spirit jade/teal. */
+.hud-souls {
+  --soul: #6fe3c8;
+  --soul-deep: #1f8f86;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 62%;
+  margin: 0 auto 6px;
+  padding: 2px 8px;
+  background: rgba(7, 6, 10, 0.78);
+  border: 1px solid var(--cw-border);
+}
+.hud-souls .skull { flex: none; width: 18px; height: 18px; color: var(--cw-bone-300); display: grid; place-items: center; }
+.hud-souls .skull svg { width: 18px; height: 18px; }
+.hud-souls .track { position: relative; flex: 1; height: 5px; background: var(--cw-inset); border: 1px solid var(--cw-border); }
+.hud-souls .fill { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg, var(--soul-deep), var(--soul)); box-shadow: 0 0 8px color-mix(in srgb, var(--soul) 55%, transparent); transition: width 0.2s ease; }
+.hud-souls .n { flex: none; min-width: 48px; text-align: right; font-family: var(--cw-font-numeric); font-size: 12px; color: var(--cw-text-muted); }
+.hud-souls.full { border-color: color-mix(in srgb, var(--soul) 60%, transparent); box-shadow: 0 0 14px color-mix(in srgb, var(--soul) 35%, transparent); }
+.hud-souls.full .skull { color: #9ff5e0; filter: drop-shadow(0 0 6px rgba(111, 227, 200, 0.9)); animation: soul-pulse 1.2s ease-in-out infinite; }
+.hud-souls.full .n { color: #9ff5e0; letter-spacing: 0.08em; text-transform: uppercase; }
+@keyframes soul-pulse { 50% { transform: scale(1.15); } }
 
 .hud-orb-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .hud-orb {
@@ -484,8 +524,8 @@ button { font-family: inherit; }
 .hud-map .area { font-family: var(--cw-font-display); font-weight: 700; font-size: 16px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cw-bone-100); text-align: center; text-shadow: 0 1px 4px #000; }
 .hud-map .prog { font-size: 12px; color: var(--cw-text-muted); text-align: center; max-width: 220px; line-height: 1.3; }
 .hud-map .prog b { color: var(--cw-spell-300); font-family: var(--cw-font-numeric); }
-.hud-menu { display: flex; gap: 6px; }
-.hud-menu button { width: 40px; height: 36px; padding: 0; display: grid; place-items: center; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-bone-300); cursor: pointer; }
+.hud-menu { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.hud-menu button { width: 30px; height: 34px; padding: 0; display: grid; place-items: center; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-bone-300); cursor: pointer; }
 .hud-menu button:hover { border-color: var(--cw-border-active); color: var(--cw-bone-100); }
 .hud-menu svg { width: 20px; height: 20px; }
 
@@ -503,6 +543,12 @@ button { font-family: inherit; }
 .hud-target { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: min(440px, 50vw); text-align: center; }
 .hud-target .nm { font-family: var(--cw-font-display); font-weight: 700; font-size: 18px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cw-bone-100); text-shadow: 0 1px 4px #000; }
 .hud-target .nm .elite { color: var(--cw-spell-300); font-size: 13px; margin-left: 6px; letter-spacing: 0.12em; }
+/* Elite affix tag — each keeps its in-world tell colour. */
+.hud-target .nm .affix { font-size: 13px; margin-left: 8px; padding: 0 6px; letter-spacing: 0.12em; border: 1px solid currentColor; background: rgba(7, 6, 10, 0.7); }
+.hud-target .nm .affix-bellTolled { color: #d9a441; }
+.hud-target .nm .affix-hungering { color: #b3b84a; }
+.hud-target .nm .affix-shrouded { color: var(--cw-silver-400); }
+.hud-target .nm .affix-vengeful { color: #e0703a; }
 .hud-target .track { position: relative; height: 10px; margin-top: 4px; background: rgba(7, 6, 10, 0.9); border: 1px solid var(--cw-border-strong); }
 .hud-target .track .fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #4a1f3a, #8a3a6c); transition: width 0.12s ease; }
 .hud-target .statuses { display: flex; justify-content: center; gap: 6px; margin-top: 5px; min-height: 26px; }
@@ -544,7 +590,7 @@ button { font-family: inherit; }
 .hud-prompt {
   position: absolute;
   left: 50%;
-  bottom: 190px;
+  bottom: 220px; /* clears the Soul Harvest meter above the slots */
   transform: translateX(-50%);
   padding: 7px 14px;
   background: rgba(7, 6, 10, 0.88);
@@ -556,7 +602,7 @@ button { font-family: inherit; }
 }
 .hud-prompt kbd { font-family: var(--cw-font-numeric); border: 1px solid var(--cw-border-strong); padding: 0 5px; margin-right: 6px; color: var(--cw-spell-300); }
 
-.hud-hint { position: absolute; left: 50%; bottom: 168px; transform: translateX(-50%); font-size: 13px; color: var(--cw-text-faint); text-shadow: 0 1px 3px #000; pointer-events: none; white-space: nowrap; }
+.hud-hint { position: absolute; left: 50%; bottom: 196px; transform: translateX(-50%); font-size: 13px; color: var(--cw-text-faint); text-shadow: 0 1px 3px #000; pointer-events: none; white-space: nowrap; }
 
 .hud-death {
   position: absolute;
@@ -623,6 +669,8 @@ button { font-family: inherit; }
   padding: 14px 16px 16px;
   z-index: 5;
 }
+/* Scroll containers: keep the chipped corner inside, or its 1px overhang adds scrollbars. */
+.cw-panel-float::after { bottom: 0; right: 0; }
 .cw-panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .cw-panel-head .cw-title { font-size: 20px; }
 .cw-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
@@ -697,6 +745,75 @@ button { font-family: inherit; }
 .cw-waystones { display: flex; flex-direction: column; gap: 6px; }
 .cw-waystones button { text-align: left; display: flex; justify-content: space-between; }
 
+/* Codex (K): same reliquary panel, wider for prose */
+.cw-codex { width: 580px; }
+.cw-codex .cw-tabs { flex-wrap: wrap; }
+.cw-codex .cw-tabs button { flex: 1 1 auto; padding: 6px 4px; font-size: 13px; letter-spacing: 0.06em; white-space: nowrap; }
+.cw-codex-body { display: flex; flex-direction: column; gap: 8px; }
+.cw-codex-count { font-size: 12px; color: var(--cw-text-faint); letter-spacing: 0.08em; text-transform: uppercase; }
+.cw-codex-count b { font-family: var(--cw-font-numeric); color: var(--cw-spell-300); }
+.cw-codex-entry { display: flex; gap: 12px; padding: 10px 12px; background: var(--cw-inset); border: 1px solid var(--cw-border); }
+.cw-codex-entry .ico { flex: none; width: 52px; height: 52px; object-fit: cover; border: 1px solid var(--cw-border-strong); box-shadow: inset 0 0 0 2px #07060a; }
+.cw-codex-entry .portrait { flex: none; width: 72px; height: 96px; object-fit: cover; border: 1px solid var(--cw-border-strong); }
+.cw-codex-entry .txt { flex: 1; min-width: 0; font-size: 14px; line-height: 1.4; color: var(--cw-text-muted); }
+.cw-codex-entry .hd { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+.cw-codex-entry h3 { margin: 0; font-family: var(--cw-font-display); font-weight: 700; font-size: 18px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cw-bone-100); }
+.cw-codex-entry .meta { flex: none; font-family: var(--cw-font-numeric); font-size: 12px; color: var(--cw-spell-300); white-space: nowrap; }
+.cw-codex-entry p { margin: 0 0 6px; }
+.cw-codex-entry p:last-child { margin-bottom: 0; }
+.cw-codex-entry .tip { color: var(--cw-bone-300); }
+.cw-codex-entry .tip b { font-family: var(--cw-font-display); font-style: italic; color: var(--cw-bone-100); }
+.cw-codex-entry .quote { font-family: var(--cw-font-display); font-style: italic; font-size: 15px; color: var(--cw-text-faint); }
+.cw-codex-entry .swatch { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; color: var(--cw-text-faint); letter-spacing: 0.04em; }
+.cw-codex-entry .swatch .chips { display: flex; gap: 3px; }
+.cw-codex-entry .swatch i { width: 14px; height: 14px; display: block; border: 1px solid rgba(7, 6, 10, 0.9); box-shadow: 0 0 0 1px var(--cw-border); }
+.cw-codex-entry dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 6px 0 0; }
+.cw-codex-entry dt { font-family: var(--cw-font-display); font-weight: 600; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cw-silver-400); padding-top: 2px; }
+.cw-codex-entry dd { margin: 0; }
+.cw-codex-entry.disc .epithet { font-family: var(--cw-font-display); font-style: italic; font-size: 15px; color: var(--disc-color); margin: -2px 0 4px; }
+.cw-codex-entry.disc .passive { color: var(--cw-bone-300); }
+.cw-codex-entry.disc .passive b { color: var(--disc-color); }
+.cw-codex-entry.disc.mine { border-color: color-mix(in srgb, var(--disc-color) 55%, transparent); box-shadow: inset 0 0 18px -8px var(--disc-color); }
+.cw-codex-entry.sealed { align-items: center; opacity: 0.62; border-style: dashed; }
+.cw-codex-entry.sealed .seal { flex: none; width: 34px; height: 34px; display: grid; place-items: center; color: var(--cw-stone-500); }
+.cw-codex-entry.sealed .seal svg { width: 26px; height: 26px; }
+.cw-codex-entry.sealed h3 { color: var(--cw-text-faint); font-size: 15px; }
+.cw-codex-lore { padding: 4px 6px; font-size: 15px; line-height: 1.55; color: var(--cw-bone-300); }
+.cw-codex-lore h3 { margin: 0 0 10px; font-family: var(--cw-font-display); font-weight: 700; font-size: 20px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cw-bone-100); text-align: center; }
+.cw-codex-lore p { margin: 0 0 12px; }
+.cw-codex-lore p:first-of-type::first-letter { float: left; font-family: var(--cw-font-display); font-weight: 700; font-size: 44px; line-height: 0.9; padding: 4px 6px 0 0; color: var(--cw-spell-300); }
+
+/* First-time tips: small reliquary card above the hotbar, never modal */
+.cw-tip {
+  position: absolute;
+  left: 50%;
+  bottom: 264px; /* above the interact prompt (220px) and Soul Harvest meter */
+  transform: translateX(-50%);
+  width: min(380px, calc(100vw - 32px));
+  padding: 10px 14px 12px;
+  z-index: 4;
+  cursor: pointer;
+  overflow: hidden;
+  animation: tip-in 0.28s ease;
+}
+.cw-tip.out { opacity: 0; transform: translate(-50%, 6px); transition: opacity 0.2s ease, transform 0.2s ease; pointer-events: none; }
+@keyframes tip-in { from { opacity: 0; transform: translate(-50%, 8px); } }
+.cw-tip .kicker { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cw-spell-300); }
+.cw-tip .title { font-family: var(--cw-font-display); font-weight: 700; font-size: 18px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cw-bone-100); margin: 1px 0 4px; }
+.cw-tip .body { font-size: 14px; line-height: 1.4; color: var(--cw-bone-300); }
+.cw-tip .body b { color: var(--cw-bone-100); }
+.cw-tip kbd { font-family: var(--cw-font-numeric); font-size: 12px; color: var(--cw-spell-300); border: 1px solid var(--cw-border-strong); padding: 0 4px; }
+.cw-tip .foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 12px; color: var(--cw-text-faint); }
+.cw-tip .foot button { background: none; border: none; padding: 2px 0; color: var(--cw-text-muted); font-size: 12px; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.cw-tip .foot button:hover { color: var(--cw-bone-100); }
+.cw-tip .timer { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: linear-gradient(90deg, var(--cw-veil-500), var(--cw-spell-300)); transform-origin: left; animation: tip-timer var(--tip-ms, 8000ms) linear forwards; }
+@keyframes tip-timer { to { transform: scaleX(0); } }
+@media (max-width: 560px) {
+  .cw-codex-entry { gap: 10px; padding: 8px 10px; }
+  .cw-codex-entry .portrait { width: 54px; height: 72px; }
+  .cw-codex-entry .hd { flex-wrap: wrap; }
+}
+
 .cw-loading {
   position: absolute;
   inset: 0;
@@ -713,6 +830,11 @@ button { font-family: inherit; }
 .cw-loading.gone { opacity: 0; pointer-events: none; }
 
 /* Narrow-window sanity fallback (desktop is the target platform) */
+/* Five hotbar slots (the RMB slot) widen the altar: tighten it before it meets the upgrades plate. */
+@media (max-width: 1320px) {
+  .hud-slot button { width: 54px; height: 54px; }
+  .hud-slots { gap: 10px; }
+}
 @media (max-width: 900px) {
   .cw-disc-grid { grid-template-columns: repeat(2, 1fr); }
   .hud-upgrades { width: 240px; }

@@ -1,15 +1,19 @@
-import { ABILITIES, HOTBAR } from '../content/abilities';
+import { ABILITIES, HOTBAR, type HotbarSlot } from '../content/abilities';
+import type { EliteAffix } from '../content/enemies';
 import { DAMAGE_UPGRADE, WAVE_UPGRADE, milestones } from '../content/upgrades';
 import { MAX_PARTY_SIZE } from '../net/config';
 import { ICON } from './icons';
 import { Minimap, type MinimapFrame } from './Minimap';
 
+/** Key caps under each hotbar slot (slot 5 is the right-click action). */
+const SLOT_KEYS = ['1', '2', '3', '4', 'RMB'];
+
 export interface HudCallbacks {
-  cast(slot: 1 | 2 | 3 | 4): void;
+  cast(slot: HotbarSlot): void;
   buyDamage(): void;
   buyWave(): void;
   dialWave(delta: number): void;
-  open(panel: 'inventory' | 'forge' | 'professions' | 'settings' | 'map'): void;
+  open(panel: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex'): void;
   chat(text: string): void;
 }
 
@@ -17,6 +21,8 @@ export interface SlotFrame {
   left: number;
   total: number;
   affordable: boolean;
+  /** Soul Harvest is charged and this spell will be free + 50% larger. */
+  empowered?: boolean;
 }
 
 export interface HudFrame {
@@ -29,6 +35,8 @@ export interface HudFrame {
   xp: number;
   xpNext: number;
   slots: SlotFrame[];
+  souls: number;
+  soulsMax: number;
   thralls: number;
   thrallCap: number;
   gold: number;
@@ -43,7 +51,15 @@ export interface HudFrame {
   areaName: string;
   areaProgress: string;
   save: { text: string; warn: boolean };
-  target: null | { name: string; elite: boolean; hp: number; maxHp: number; statuses: { icon: string; label: string; n: number }[]; blurb: string };
+  target: null | {
+    name: string;
+    elite: boolean;
+    affix: { id: EliteAffix; name: string } | null;
+    hp: number;
+    maxHp: number;
+    statuses: { icon: string; label: string; n: number }[];
+    blurb: string;
+  };
   boss: null | { name: string; phase: number; hp: number; maxHp: number };
 }
 
@@ -74,15 +90,16 @@ export class HUD {
     this.el.className = 'hud';
     const slots = HOTBAR.map((id, i) => {
       const a = ABILITIES[id];
+      const alt = SLOT_KEYS[i] === 'RMB';
       return `
-        <div class="hud-slot">
-          <button data-slot="${i + 1}" aria-label="${a.name} (key ${i + 1})">
+        <div class="hud-slot${alt ? ' alt' : ''}">
+          <button data-slot="${i + 1}" aria-label="${a.name} (${alt ? 'right-click or key 5' : `key ${i + 1}`})">
             <img src="${a.icon}" alt="" draggable="false" />
             <span class="cd" data-cd="${i + 1}"></span>
             <span class="cdtext" data-cdt="${i + 1}"></span>
             ${a.essenceCost ? `<span class="cost">${a.essenceCost}</span>` : ''}
           </button>
-          <span class="key">${i + 1}</span>
+          <span class="key">${SLOT_KEYS[i] ?? i + 1}</span>
         </div>`;
     }).join('');
     this.el.innerHTML = `
@@ -109,6 +126,7 @@ export class HUD {
           <button data-open="forge" title="Workbench (C)" aria-label="Workbench">${ICON.anvil}</button>
           <button data-open="professions" title="Rites (P)" aria-label="Rites">${ICON.candle}</button>
           <button data-open="map" title="Waystones (M)" aria-label="Waystones">${ICON.stone}</button>
+          <button data-open="codex" title="Codex (K)" aria-label="Codex">${ICON.book}</button>
           <button data-open="settings" title="Settings (Esc)" aria-label="Settings">${ICON.gear}</button>
         </div>
       </div>
@@ -133,6 +151,11 @@ export class HUD {
           <div class="hud-orb-label" data-hptxt></div>
         </div>
         <div>
+          <div class="hud-souls" data-souls role="meter" aria-label="Soul Harvest" aria-valuemin="0" title="Soul Harvest — kills by you or your thralls fill the skull. When full, your next Marrow Spear, Miasma or Black Litany is free and 50% larger.">
+            <span class="skull">${ICON.skull}</span>
+            <div class="track"><div class="fill" data-soulfill></div></div>
+            <span class="n" data-soultxt></span>
+          </div>
           <div class="hud-slots-wrap"><div class="hud-slots">${slots}</div></div>
           <div class="hud-thralls" data-thralls aria-label="Thralls"></div>
         </div>
@@ -176,7 +199,7 @@ export class HUD {
     this.$('[data-mapframe]').appendChild(this.minimap.canvas);
 
     this.el.querySelectorAll<HTMLButtonElement>('[data-slot]').forEach((b) =>
-      b.addEventListener('click', () => this.cb.cast(Number(b.dataset.slot) as 1 | 2 | 3 | 4)),
+      b.addEventListener('click', () => this.cb.cast(Number(b.dataset.slot) as HotbarSlot)),
     );
     this.el.querySelectorAll<HTMLButtonElement>('[data-open]').forEach((b) =>
       b.addEventListener('click', () => this.cb.open(b.dataset.open as 'inventory')),
@@ -231,6 +254,17 @@ export class HUD {
       const txt = s.left > 0 ? (s.left >= 1000 ? Math.ceil(s.left / 1000).toString() : (s.left / 1000).toFixed(1)) : '';
       this.set(`cdt${n}`, txt, () => (this.$(`[data-cdt="${n}"]`).textContent = txt));
       this.set(`res${n}`, s.affordable, () => this.$(`[data-slot="${n}"]`).classList.toggle('nores', !s.affordable));
+      this.set(`emp${n}`, !!s.empowered, () => this.$(`[data-slot="${n}"]`).classList.toggle('empowered', !!s.empowered));
+    });
+
+    const soulFrac = Math.min(1, f.souls / f.soulsMax);
+    this.set('souls', `${f.souls}/${f.soulsMax}`, () => {
+      const el = this.$('[data-souls]');
+      el.classList.toggle('full', f.souls >= f.soulsMax);
+      el.setAttribute('aria-valuemax', String(f.soulsMax));
+      el.setAttribute('aria-valuenow', String(f.souls));
+      this.$('[data-soulfill]').style.width = `${soulFrac * 100}%`;
+      this.$('[data-soultxt]').textContent = f.souls >= f.soulsMax ? 'Harvest' : `${f.souls} / ${f.soulsMax}`;
     });
 
     this.set('thr', `${f.thralls}/${f.thrallCap}`, () => {
@@ -273,8 +307,9 @@ export class HUD {
     const t = f.boss ? null : f.target;
     this.set('tvis', !!t, () => (this.$('[data-target]').hidden = !t));
     if (t) {
-      this.set('tname', `${t.name}|${t.elite}`, () => {
-        this.$('[data-tname]').innerHTML = `${esc(t.name)}${t.elite ? '<span class="elite">◆ Elite</span>' : ''}`;
+      this.set('tname', `${t.name}|${t.elite}|${t.affix?.id ?? ''}`, () => {
+        const affix = t.affix ? `<span class="affix affix-${t.affix.id}">${esc(t.affix.name)}</span>` : '';
+        this.$('[data-tname]').innerHTML = `${esc(t.name)}${t.elite ? '<span class="elite">◆ Elite</span>' : ''}${affix}`;
         this.$('[data-tblurb]').textContent = t.blurb;
       });
       this.set('thp', Math.round((t.hp / t.maxHp) * 200), () => (this.$('[data-thp]').style.width = `${Math.max(0, (t.hp / t.maxHp) * 100)}%`));

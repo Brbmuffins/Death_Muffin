@@ -8,7 +8,18 @@ import { NecroBackdrop } from './graphics/NecroBackdrop';
 import { ApiError, getCharacter, getToken, setToken } from './net/api';
 import type { Character } from './net/types';
 
-initRuntime(document.getElementById('scene') as HTMLCanvasElement);
+const runtime = initRuntime(document.getElementById('scene') as HTMLCanvasElement);
+
+// DEV: README/QA screenshots — __cwShot('name') saves the current WebGL frame
+// to docs/screenshots/ via the dev-only tools/qa-shots-plugin.ts endpoint.
+if (import.meta.env.DEV) {
+  void import('./audio/Audio').then(({ audio }) => ((window as unknown as { __cwAudio: typeof audio }).__cwAudio = audio));
+  (window as unknown as { __cwShot: (name: string) => Promise<string> }).__cwShot = async (name) => {
+    const url = runtime.capture();
+    const res = await fetch(`/__qa/shot?name=${encodeURIComponent(name)}`, { method: 'POST', body: url });
+    return res.text();
+  };
+}
 const manager = new SceneManager();
 let backdrop: NecroBackdrop | null = null;
 const getBackdrop = () => (backdrop ??= new NecroBackdrop());

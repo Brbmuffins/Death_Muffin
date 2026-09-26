@@ -318,10 +318,8 @@ export class WorldView {
         const f = FLOOR_TEX[theme];
         const map = assets.texture(f.url, { repeat: 1 });
         m = new THREE.MeshStandardMaterial({ map, color: f.color, roughness: f.rough, metalness: 0.05, bumpMap: map, bumpScale: 2.2 });
-        if (theme !== 'graveyard') {
-          m.roughnessMap = map; // dark grout and puddles come out glossier — wet stone
-          m.roughness = 1.6;
-        }
+        // No roughnessMap: a per-tile gloss map clips point-light highlights to
+        // square tile shapes that bloom into glowing squares. Uniform damp stone reads better.
         mats.set(theme, m);
       }
       return m;

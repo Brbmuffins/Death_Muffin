@@ -1,6 +1,6 @@
 import type { AreaId } from '../../content/areas';
 import type { ThrallKind } from '../../content/disciplines';
-import type { CorpseKind, EnemyId } from '../../content/enemies';
+import type { CorpseKind, EliteAffix, EnemyId } from '../../content/enemies';
 
 /**
  * Authoritative world-simulation types. The room host (or the solo player)
@@ -47,6 +47,12 @@ export interface Enemy {
   flash: number;
   gait: number;
   moving: boolean;
+  /** Elites roll one affix on spawn (replicated in snapshots). */
+  affix?: EliteAffix;
+  /** Host-only affix clock: seconds until the next toll / feeding. */
+  affixCd?: number;
+  /** Host-only: a telegraphed Bell-Tolled ring waiting to sound. */
+  tollAt?: { t: number; x: number; z: number };
 }
 
 export type ThrallState = 'rising' | 'idle' | 'move' | 'attack' | 'dead';
@@ -92,7 +98,23 @@ export interface Corpse {
   ruptureAt: number;
 }
 
-export type ZoneKind = 'miasma' | 'toxic' | 'bell';
+/** 'rot' = the friendly pool a detonated toxic corpse leaves behind. */
+export type ZoneKind = 'miasma' | 'toxic' | 'bell' | 'rot';
+
+export type CorpseGoneReason = 'consumed' | 'expired' | 'raised' | 'burst' | 'litany' | 'devoured';
+
+/** An active Grave Surge (host-only bookkeeping). */
+export interface SurgeState {
+  area: AreaId;
+  x: number;
+  z: number;
+  startedAt: number;
+  endsAt: number;
+  wavesSpawned: number;
+  ids: Set<number>;
+  spawned: number;
+  killed: number;
+}
 
 export interface Zone {
   id: number;
@@ -178,12 +200,14 @@ export type Intent =
       leaveCorpses: boolean;
     }
   | { t: 'summonBoss'; by: string }
-  | { t: 'recallThralls'; by: string; x: number; z: number };
+  | { t: 'recallThralls'; by: string; x: number; z: number }
+  /** Corpse Explosion: `dmg` is the caster's spellPower × power (clamped by the sim). */
+  | { t: 'detonate'; by: string; corpseId: number; dmg: number };
 
 // --- Events: host → everyone (drive VFX, loot, XP, and damage to players) ---
 
 export type SimEvent =
-  | { t: 'spawn'; id: number; def: EnemyId; x: number; z: number; elite: boolean }
+  | { t: 'spawn'; id: number; def: EnemyId; x: number; z: number; elite: boolean; affix?: EliteAffix }
   | {
       t: 'death';
       id: number;
@@ -196,12 +220,12 @@ export type SimEvent =
       killer: string;
     }
   | { t: 'corpse'; corpse: Corpse }
-  | { t: 'corpseGone'; id: number; reason: 'consumed' | 'expired' | 'raised' | 'burst' | 'litany'; by?: string }
+  | { t: 'corpseGone'; id: number; reason: CorpseGoneReason; by?: string }
   | { t: 'thrall'; id: number; owner: string; kind: ThrallKind; x: number; z: number; empowered: boolean }
   | { t: 'thrallGone'; id: number; owner: string; x: number; z: number; reason: 'killed' | 'sacrificed' | 'crumbled' }
-  | { t: 'telegraph'; id: number; kind: 'cone' | 'raise' | 'curse' | 'slam'; x: number; z: number; tx: number; tz: number; ms: number }
+  | { t: 'telegraph'; id: number; kind: 'cone' | 'raise' | 'curse' | 'slam' | 'toll'; x: number; z: number; tx: number; tz: number; ms: number; r?: number }
   | { t: 'melee'; id: number; x: number; z: number; tx: number; tz: number }
-  | { t: 'hurt'; player: string; dmg: number; from: 'melee' | 'cone' | 'curse' | 'toxic' | 'boss'; x: number; z: number }
+  | { t: 'hurt'; player: string; dmg: number; from: 'melee' | 'cone' | 'curse' | 'toxic' | 'boss' | 'toll'; x: number; z: number }
   | { t: 'thrallHit'; id: number; target: number; x: number; z: number; tx: number; tz: number; kind: ThrallKind; dmg: number }
   | { t: 'zone'; zone: Zone }
   | { t: 'zoneGone'; id: number }
@@ -219,6 +243,24 @@ export type SimEvent =
       targets: number;
       tethers: [number, number][];
     }
+  | {
+      t: 'detonated';
+      by: string;
+      ok: boolean;
+      corpseId: number;
+      x: number;
+      z: number;
+      r: number;
+      corpseKind?: CorpseKind;
+      elite?: boolean;
+      targets?: number;
+      dmg?: number;
+    }
+  /** Elite affix moments: a Bell-Tolled ring sounding, a Hungering feed, a Vengeful burst. */
+  | { t: 'affix'; id: number; affix: EliteAffix; x: number; z: number; r?: number; tx?: number; tz?: number; amount?: number }
+  | { t: 'surge'; area: AreaId; x: number; z: number; durationMs: number }
+  | { t: 'surgeCleared'; area: AreaId; x: number; z: number }
+  | { t: 'surgeFailed'; area: AreaId; x: number; z: number }
   | { t: 'wave'; area: AreaId; count: number; x: number; z: number }
   | { t: 'dmg'; x: number; z: number; amount: number; kind: 'dot' | 'thrall' | 'burst' | 'litany' | 'hit'; by: string }
   | { t: 'boss'; kind: 'awaken' | 'phase' | 'toll' | 'slam' | 'rain' | 'summon' | 'defeated'; x: number; z: number; phase: BossPhase; targets?: [number, number][]; ms?: number; r?: number; killer?: string };

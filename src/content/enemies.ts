@@ -36,14 +36,14 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     name: 'Grave Robber',
     behavior: 'melee',
     rig: 'humanoid',
-    hp: 42,
+    hp: 48,
     speed: 2.6,
     radius: 0.45,
-    damage: 7,
+    damage: 9,
     attackRange: 1.3,
     windupMs: 420,
     cooldownMs: 1300,
-    xp: 6,
+    xp: 4,
     gold: [2, 5],
     corpse: 'normal',
     scale: 1,
@@ -55,14 +55,14 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     name: 'Bone Hound',
     behavior: 'flank',
     rig: 'quadruped',
-    hp: 26,
+    hp: 30,
     speed: 4.4,
     radius: 0.45,
-    damage: 5,
+    damage: 6,
     attackRange: 1.2,
     windupMs: 250,
     cooldownMs: 800,
-    xp: 5,
+    xp: 3,
     gold: [1, 4],
     corpse: 'swift',
     scale: 1,
@@ -74,14 +74,14 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     name: 'Bellbound Penitent',
     behavior: 'caster',
     rig: 'robed',
-    hp: 48,
+    hp: 56,
     speed: 1.9,
     radius: 0.5,
-    damage: 13,
+    damage: 16,
     attackRange: 7.5,
     windupMs: 1100,
     cooldownMs: 3200,
-    xp: 9,
+    xp: 6,
     gold: [3, 7],
     corpse: 'resonant',
     scale: 1.05,
@@ -92,14 +92,14 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     name: 'Carrion Sac',
     behavior: 'hazard',
     rig: 'bloat',
-    hp: 90,
+    hp: 100,
     speed: 1.3,
     radius: 0.8,
-    damage: 10,
+    damage: 12,
     attackRange: 1.6,
     windupMs: 700,
     cooldownMs: 1800,
-    xp: 12,
+    xp: 8,
     gold: [4, 9],
     corpse: 'toxic',
     scale: 1.2,
@@ -110,14 +110,14 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     name: 'Crypt Deacon',
     behavior: 'support',
     rig: 'robed',
-    hp: 70,
+    hp: 80,
     speed: 2.0,
     radius: 0.5,
-    damage: 6,
+    damage: 7,
     attackRange: 6,
     windupMs: 1500,
     cooldownMs: 5500,
-    xp: 14,
+    xp: 9,
     gold: [5, 10],
     corpse: 'normal',
     scale: 1.15,
@@ -128,14 +128,14 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     name: 'Risen',
     behavior: 'melee',
     rig: 'humanoid',
-    hp: 24,
+    hp: 26,
     speed: 2.9,
     radius: 0.42,
-    damage: 5,
+    damage: 6,
     attackRange: 1.2,
     windupMs: 380,
     cooldownMs: 1200,
-    xp: 3,
+    xp: 2,
     gold: [0, 1],
     corpse: 'none',
     scale: 0.95,
@@ -153,10 +153,47 @@ export const ELITE = {
   shardChance: 1,
 };
 
+/**
+ * Elite affixes (FUTURE_CONTENT "Encounter systems"): every elite rolls one on
+ * spawn. Behaviour lives in WorldSim; the index in AFFIX_ORDER (+1) is what
+ * snapshots carry, so only append to it.
+ */
+export type EliteAffix = 'bellTolled' | 'hungering' | 'shrouded' | 'vengeful';
+export const AFFIX_ORDER: EliteAffix[] = ['bellTolled', 'hungering', 'shrouded', 'vengeful'];
+
+export const ELITE_AFFIXES: Record<EliteAffix, { name: string; blurb: string }> = {
+  bellTolled: { name: 'Bell-Tolled', blurb: 'Every few seconds it tolls a stunning ring — step out of the bronze circle.' },
+  hungering: { name: 'Hungering', blurb: 'Devours nearby corpses to heal. Spend or burst them first.' },
+  shrouded: { name: 'Shrouded', blurb: 'Takes half damage unless it stands in your Miasma or a rot pool.' },
+  vengeful: { name: 'Vengeful', blurb: 'Bursts into three Risen when it dies.' },
+};
+
+export const AFFIX_TUNING = {
+  bellTolled: { intervalS: 6, windupS: 0.9, r: 3, damageMult: 0.6, stunMs: 500 },
+  hungering: { intervalS: 4, reach: 5, healFrac: 0.15 },
+  shrouded: { damageTakenMult: 0.5 },
+  vengeful: { risen: 3 },
+};
+
+/**
+ * Grave Surges: every 90–150s of combat a crypt cracks open and pours three
+ * rapid waves out over 20s. Kill ≥80% of what it spawned for a guaranteed item.
+ */
+export const SURGE = {
+  firstDelayS: 100,
+  minIntervalS: 90,
+  maxIntervalS: 150,
+  durationS: 20,
+  /** Seconds after the surge opens that each wave climbs out. */
+  waveAtS: [1.5, 7.5, 13.5],
+  waveSizeMult: 1.2,
+  clearFrac: 0.8,
+};
+
 /** Level scaling (areas set the level). */
 export function enemyHpScale(level: number) {
   return 1 + 0.22 * (level - 1);
 }
 export function enemyDamageScale(level: number) {
-  return 1 + 0.13 * (level - 1);
+  return 1 + 0.15 * (level - 1);
 }

@@ -144,6 +144,15 @@ export class GameRuntime {
 
   private qaClock = 0;
 
+  /** QA: render the current view and read the canvas back as a data URL. */
+  capture(type = 'image/webp', quality = 0.9): string | null {
+    const v = this.view;
+    if (!v) return null;
+    if (this.bloomEnabled) this.composer.render(1 / 60);
+    else this.renderer.render(v.scene, v.camera);
+    return this.renderer.domElement.toDataURL(type, quality);
+  }
+
   /** Monotonic clock shared by the RAF loop and advance(). */
   now() {
     return Math.max(performance.now(), this.qaClock);

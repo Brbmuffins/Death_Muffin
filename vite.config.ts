@@ -1,5 +1,6 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vite';
+import { qaShots } from './tools/qa-shots-plugin';
 
 // The live auth server has no CORS headers, so the dev server proxies all API
 // routes same-origin. Old endpoints live at the root (/login, /character, ...),
@@ -15,6 +16,7 @@ const DEPLOY_BASE = process.env.DEPLOY_BASE ?? './';
 
 export default defineConfig({
   base: DEPLOY_BASE,
+  plugins: [qaShots()],
   // vitest: game-logic unit tests only (the realtime server uses node:test).
   test: { include: ['src/**/*.test.ts'] },
   server: {

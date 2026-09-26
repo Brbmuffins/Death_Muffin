@@ -10,6 +10,8 @@ export interface Settings {
   reducedMotion: boolean;
   damageNumbers: boolean;
   volume: number; // 0..1
+  /** First-time onboarding tips (ui/Onboarding). */
+  tips: boolean;
 }
 
 const KEY = 'cw_settings_v1';
@@ -21,7 +23,7 @@ function defaults(): Settings {
   } catch {
     /* no matchMedia */
   }
-  return { quality: 'high', reducedMotion: reduced, damageNumbers: true, volume: 0.6 };
+  return { quality: 'high', reducedMotion: reduced, damageNumbers: true, volume: 0.6, tips: true };
 }
 
 function load(): Settings {

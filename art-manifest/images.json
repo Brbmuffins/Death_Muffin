@@ -1230,5 +1230,27 @@
     "rawHash": "sha256:6db1cae7f50f9c181f4b61ed2ced0ce8cf873eb6472b9cc7d0f71e9e456eaeb5",
     "outHash": "sha256:42065ec9b8c0626fa1203f28a86f8a9551f007e303e1a6a68b6b3438d8ddb599",
     "generatedAt": "2026-09-26T19:20:44.299Z"
+  },
+  "icon_corpse_explosion": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a corpse on dark cracked flagstones bursting outward in a violent blast, a ribcage and bone shards flying out from a white-hot ember core, ringed by a shockwave of orange-red fire and dark crimson marrow spatter, embers and smoke. Palette: white-hot core, ember orange (#ff6a2a), hot peach (#ffc58a), dried crimson (#8a2c3c), bone ivory, charcoal smoke. NO purple, NO violet, NO green. No text, no border, no letters.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "out": "public/art/abilities/necro-corpse-explosion.png",
+    "rawHash": "sha256:2ecad0a6e6a77ffef50041f969bb5b299a8b4c1283c746de6a153c5b01acff33",
+    "outHash": "sha256:71d94ccfdce53c862cbeb6bd429787ee2bac8336ba5284b5377e4c7919206f11",
+    "generatedAt": "2026-09-26T20:09:15.483Z"
   }
 }

@@ -3,16 +3,16 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import type { GameScene } from './SceneManager';
 import { getRuntime, type RuntimeView } from '../app/GameRuntime';
 import { Scope } from '../app/Scope';
-import { ABILITIES, HOTBAR, SPELL_FX, type AbilityId } from '../content/abilities';
+import { ABILITIES, HOTBAR, SOUL_HARVEST, SPELL_FX, type AbilityId, type HotbarSlot } from '../content/abilities';
 import { AREAS, AREA_ORDER, BOSS_SUMMON_SHARDS, DOORS, PLAYER_SPAWN, type AreaId, type Interactable } from '../content/areas';
 import { disciplineFor, type Discipline } from '../content/disciplines';
-import { ENEMIES } from '../content/enemies';
+import { AFFIX_TUNING, ELITE_AFFIXES, ENEMIES, type EliteAffix } from '../content/enemies';
 import { HEALING_FLASKS, itemMeta } from '../content/items';
 import { generateLayout } from '../content/layout';
 import { damageBonusPct, waveModifiers } from '../content/upgrades';
 import { AbilitySystem, type CastResult, type CastTarget } from '../gameplay/AbilitySystem';
 import { deriveStats, xpToNext } from '../gameplay/characterStats';
-import { Inventory, rollBoss, rollKill } from '../gameplay/loot';
+import { Inventory, rollBoss, rollItem, rollKill } from '../gameplay/loot';
 import { Nav } from '../gameplay/nav';
 import { Player } from '../gameplay/Player';
 import { Progression } from '../gameplay/progression';
@@ -39,6 +39,10 @@ import { HUD, type HudFrame } from '../ui/HUD';
 import { InventoryPanel } from '../ui/InventoryPanel';
 import { SettingsPanel, WaystonePanel } from '../ui/MiscPanels';
 import { ProfessionsPanel } from '../ui/ProfessionsPanel';
+import { CodexPanel } from '../ui/CodexPanel';
+import { Onboarding } from '../ui/Onboarding';
+import { CodexJournal, type CodexIds, type CodexKind } from '../gameplay/codexJournal';
+import { deadName } from '../content/codex';
 import { CURSOR } from '../ui/cursors';
 import { audio } from '../audio/Audio';
 
@@ -105,8 +109,11 @@ export class WorldScene implements GameScene, RuntimeView {
   private snapshotCount = 0;
   private lastMoveSent = 0;
   private lastPrune = 0;
+  private lineupTicks: ((dt: number) => void)[] = [];
   private stepT = 0;
   private zoneFx = new Map<number, Handle[]>();
+  /** The cracked-crypt marker of the running Grave Surge. */
+  private surgeFx: Handle | null = null;
 
   private keys = new Set<string>();
   private mouse = { x: 0, y: 0, down: false, shift: false };
@@ -132,6 +139,13 @@ export class WorldScene implements GameScene, RuntimeView {
   private professionsPanel!: ProfessionsPanel;
   private settingsPanel!: SettingsPanel;
   private waystonePanel!: WaystonePanel;
+  private codexPanel!: CodexPanel;
+  private codex!: CodexJournal;
+  private onboarding!: Onboarding;
+  private lastTipCheck = 0;
+  /** Codex discoveries waiting to be announced as one toast (entering an area finds several at once). */
+  private codexPending: string[] = [];
+  private codexPendingSince = -1;
 
   constructor(
     private character: Character,
@@ -168,6 +182,19 @@ export class WorldScene implements GameScene, RuntimeView {
     const follow = () => ({ x: this.player.x, z: this.player.z });
     this.effects.decal({ tex: fx.glow(), color: this.discipline.color, x: 0, z: 0, r: 2.2, duration: 1e9, opacity: 0.32, fadeIn: 0.01, follow });
     this.effects.decal({ tex: fx.ring(), color: this.discipline.color, x: 0, z: 0, r: 0.85, duration: 1e9, opacity: 0.55, fadeIn: 0.01, follow });
+    // Soul Harvest charged: a jade halo until the empowered spell is spent.
+    this.effects.decal({
+      tex: fx.ring(),
+      color: SPELL_FX.souls.jade,
+      x: 0,
+      z: 0,
+      r: 1.25,
+      duration: 1e9,
+      opacity: 0.75,
+      fadeIn: 0.01,
+      pulse: 5,
+      follow: () => (this.player.soulsCharged && this.player.alive ? follow() : null),
+    });
     // Target ring: bone-white under whatever the cursor (or auto-attack) is on.
     this.effects.decal({
       tex: fx.ring(),
@@ -222,6 +249,8 @@ export class WorldScene implements GameScene, RuntimeView {
     this.area = 'chapterhouse';
     this.hud.banner(AREAS.chapterhouse.name, AREAS.chapterhouse.subtitle);
     audio.setArea('chapterhouse');
+    this.codex.discover('area', 'chapterhouse');
+    this.onboarding.show('move', 1500);
     this.ready = true;
   }
 
@@ -331,7 +360,15 @@ export class WorldScene implements GameScene, RuntimeView {
       () => AREA_ORDER.filter((a) => this.progression.isUnlocked(a)),
       (a) => this.travel(a),
     );
-    this.hud.hint(OFFLINE ? 'OFFLINE DEV MODE — progress stays in this browser' : '');
+    this.codex = new CodexJournal(this.character.id);
+    this.codexPanel = new CodexPanel(this.root, this.codex, this.discipline.id);
+    this.onboarding = new Onboarding(this.root, this.character.id);
+    this.scope.add(() => {
+      this.codexPanel.dispose();
+      this.onboarding.dispose();
+    });
+    const rmb = 'Right-click a corpse: Corpse Explosion';
+    this.hud.hint(OFFLINE ? `OFFLINE DEV MODE — progress stays in this browser · ${rmb}` : rmb);
     this.scope.add(() => {
       this.closePanels();
       this.hud.dispose();
@@ -345,11 +382,12 @@ export class WorldScene implements GameScene, RuntimeView {
     this.professionsPanel.close();
     this.settingsPanel.close();
     this.waystonePanel.close();
+    this.codexPanel.close();
   }
 
-  private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map') {
+  private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex') {
     audio.play('click');
-    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel }[p];
+    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel }[p];
     const wasOpen = panel.isOpen;
     this.closePanels();
     if (wasOpen) return;
@@ -357,6 +395,7 @@ export class WorldScene implements GameScene, RuntimeView {
     else if (p === 'inventory') this.inventoryPanel.open();
     else if (p === 'forge') void this.forgePanel.open();
     else if (p === 'settings') this.settingsPanel.open();
+    else if (p === 'codex') this.codexPanel.open();
     else this.waystonePanel.open();
   }
 
@@ -376,13 +415,14 @@ export class WorldScene implements GameScene, RuntimeView {
         this.hud.focusChat();
         return;
       }
-      if (k >= '1' && k <= '4') this.castSlot(Number(k) as 1 | 2 | 3 | 4);
+      if (k >= '1' && k <= '5') this.castSlot(Number(k) as HotbarSlot);
       else if (k === 'q') this.drinkFlask();
       else if (k === 't') this.startRecall();
       else if (k === 'i' || k === 'b') this.togglePanel('inventory');
       else if (k === 'c') this.togglePanel('forge');
       else if (k === 'p') this.togglePanel('professions');
       else if (k === 'm') this.togglePanel('map');
+      else if (k === 'k') this.togglePanel('codex');
       else if (k === 'escape') this.togglePanel('settings');
       else this.keys.add(k);
       this.mouse.shift = e.shiftKey;
@@ -396,6 +436,15 @@ export class WorldScene implements GameScene, RuntimeView {
       this.mouse.y = e.clientY;
       this.mouse.shift = e.shiftKey;
     });
+    // Right-click: Corpse Explosion on the corpse nearest the cursor. Bound on
+    // mousedown (not pointerdown) so it still fires while the left button is
+    // held to steer — chorded presses don't produce a second pointerdown.
+    this.scope.on<MouseEvent>(this.canvas, 'mousedown', (e) => {
+      if (e.button !== 2) return;
+      this.mouse.x = e.clientX;
+      this.mouse.y = e.clientY;
+      this.castSlot(5);
+    });
     this.scope.on<PointerEvent>(this.canvas, 'pointerdown', (e) => {
       if (e.button !== 0) return;
       this.mouse.down = true;
@@ -404,7 +453,11 @@ export class WorldScene implements GameScene, RuntimeView {
       this.mouse.shift = e.shiftKey;
       this.onPrimaryClick();
     });
-    this.scope.on<PointerEvent>(window, 'pointerup', () => (this.mouse.down = false));
+    // Only the left button steers; releasing a chorded right-click must not stop it.
+    this.scope.on<MouseEvent>(window, 'mouseup', (e) => {
+      if (e.button === 0) this.mouse.down = false;
+    });
+    this.scope.on<PointerEvent>(window, 'pointercancel', () => (this.mouse.down = false));
     this.scope.on<WheelEvent>(this.canvas, 'wheel', (e) => this.rig.onWheel(e), { passive: true });
     this.scope.on<MouseEvent>(this.canvas, 'contextmenu', (e) => e.preventDefault());
   }
@@ -484,12 +537,14 @@ export class WorldScene implements GameScene, RuntimeView {
     this.effects.decal({ tex: fx.ring(), color: 0xc6a4ff, x: this.groundPoint.x, z: this.groundPoint.z, r: 0.45, duration: 0.35, opacity: 0.8, growFrom: 1.6 });
   }
 
-  private castSlot(slot: 1 | 2 | 3 | 4) {
+  private castSlot(slot: HotbarSlot) {
     if (!this.player?.alive) return;
     this.updateCursor();
     this.cancelRecall();
     const id = HOTBAR[slot - 1];
-    const target = this.cursorTarget();
+    if (!id) return;
+    // Corpse Explosion picks from the exact ground point, not a hovered enemy's position.
+    const target = id === 'corpse_explosion' ? { x: this.groundPoint.x, z: this.groundPoint.z } : this.cursorTarget();
     const res = this.abilities.cast(id, target, this.now);
     this.feedback(res, id);
     if (res === 'ok') this.hud.slotFlash(slot);
@@ -800,6 +855,29 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'litanyResult':
         this.abilities.onLitany(ev, ev.by === me);
         break;
+      case 'detonated':
+        if (ev.ok) this.abilities.onDetonated(ev, ev.by === me);
+        else if (ev.by === me) {
+          // The corpse was claimed first: refund like Exhume does.
+          this.player.essence = Math.min(this.player.stats.maxEssence, this.player.essence + ABILITIES.corpse_explosion.essenceCost);
+          this.player.cooldowns.delete('corpse_explosion');
+          this.floating.spawn(this.player.x, 2.4, this.player.z, 'The corpse is gone', 'info');
+        }
+        break;
+      case 'affix':
+        if (ev.affix === 'hungering' && ev.amount) this.floating.spawn(ev.x, 2.4, ev.z, `+${ev.amount}`, 'dot');
+        break;
+      case 'surge':
+        this.onSurge(ev);
+        break;
+      case 'surgeCleared':
+        this.onSurgeCleared(ev);
+        break;
+      case 'surgeFailed':
+        this.surgeFx?.kill();
+        this.surgeFx = null;
+        if (ev.area === this.area) this.hud.banner('The Surge Recedes', 'The crypt seals itself — its offering lost', 2600);
+        break;
       case 'wave':
         if (ev.area === this.area) {
           audio.play('wave', ev.x, ev.z);
@@ -814,13 +892,67 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'boss':
         this.onBossEvent(ev);
         break;
+      case 'spawn':
+        // Codex + onboarding: only what this player actually encounters.
+        if (Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 40) {
+          this.codexDiscover('dead', ev.def);
+          if (ev.def === 'deacon') this.onboarding.show('deacon');
+        }
+        break;
+      case 'corpse':
+        if (Math.hypot(ev.corpse.x - this.player.x, ev.corpse.z - this.player.z) < 12) this.onboarding.show('exhume');
+        break;
+    }
+  }
+
+  /** Records a Codex discovery; toasts only the first time. */
+  private codexDiscover<K extends CodexKind>(kind: K, id: CodexIds[K]) {
+    if (!this.codex.discover(kind, id)) return;
+    const name = kind === 'area' ? AREAS[id as AreaId].name : deadName(id as CodexIds['dead']);
+    this.codexPending.push(name);
+  }
+
+  /** Announces batched discoveries half a second after the first one lands. */
+  private flushCodexToasts(now: number) {
+    if (!this.codexPending.length) return;
+    if (this.codexPendingSince < 0) this.codexPendingSince = now;
+    if (now - this.codexPendingSince < 500) return;
+    const names = this.codexPending;
+    const list = names.length > 3 ? `${names.slice(0, 2).join(', ')} +${names.length - 2} more` : names.join(', ');
+    this.hud.toast(`Codex updated: ${list}`, 'good');
+    this.codexPending = [];
+    this.codexPendingSince = -1;
+  }
+
+  /** Throttled onboarding triggers that depend on state rather than events. */
+  private tickOnboarding(now: number) {
+    this.flushCodexToasts(now);
+    if (now - this.lastTipCheck < 400 || !this.player.alive) return;
+    this.lastTipCheck = now;
+    const cost = this.progression.waveCost();
+    if (cost !== null && (this.character.gold ?? 0) >= cost) this.onboarding.show('wave');
+    const { x, z } = this.player;
+    for (const d of DOORS) {
+      if (this.nav.isDoorOpen(d)) continue;
+      const dx = Math.max(d.rect.x0 - x, 0, x - d.rect.x1);
+      const dz = Math.max(d.rect.z0 - z, 0, z - d.rect.z1);
+      if (Math.hypot(dx, dz) < 6) {
+        this.onboarding.show('gate');
+        break;
+      }
     }
   }
 
   private telegraph(ev: Extract<SimEvent, { t: 'telegraph' }>) {
     const ms = ev.ms / 1000;
-    audio.play(ev.kind === 'cone' ? 'tollSmall' : ev.kind === 'raise' ? 'raise' : ev.kind === 'curse' ? 'curse' : 'boneHit', ev.x, ev.z);
-    if (ev.kind === 'cone') {
+    audio.play(ev.kind === 'cone' || ev.kind === 'toll' ? 'tollSmall' : ev.kind === 'raise' ? 'raise' : ev.kind === 'curse' ? 'curse' : 'boneHit', ev.x, ev.z);
+    if (ev.kind === 'toll') {
+      // Bell-Tolled elite: a bronze ring fills in; step out before it sounds.
+      const r = ev.r ?? AFFIX_TUNING.bellTolled.r;
+      const bell = SPELL_FX.affix.bell;
+      this.effects.decal({ tex: fx.disc(), color: bell, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.7, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.2 });
+      this.effects.decal({ tex: fx.ring(), color: bell, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.9, fadeOut: 0.05 });
+    } else if (ev.kind === 'cone') {
       const rot = Math.atan2(ev.tx - ev.x, ev.tz - ev.z);
       // Cone texture apex sits at the plane's bottom edge; shift so it starts at the caster.
       const E = SPELL_FX.enemy;
@@ -843,14 +975,52 @@ export class WorldScene implements GameScene, RuntimeView {
   private zoneVisual(z: Zone) {
     const dur = Math.max(0.1, z.until - (this.sim?.time ?? this.mirror?.time ?? 0));
     const color = z.kind === 'toxic' ? SPELL_FX.enemy.toxic : SPELL_FX.miasma.deep;
+    // Toxic (hostile) and rot (a detonated sac, now yours) pools are cracked ground; miasma is a sigil.
+    const pool = z.kind === 'toxic' || z.kind === 'rot';
     const handles = [
       this.effects.decal({ tex: fx.disc(), color, x: z.x, z: z.z, r: z.r, duration: dur, opacity: z.kind === 'toxic' ? 0.5 : 0.66, growFrom: 0.3, fadeOut: 0.6 }),
-      this.effects.decal({ tex: z.kind === 'toxic' ? fx.cracks() : fx.sigil(), color: z.kind === 'toxic' ? SPELL_FX.enemy.rot : SPELL_FX.miasma.rot, x: z.x, z: z.z, r: z.r * 0.95, duration: dur, opacity: 0.22, spin: z.kind === 'toxic' ? 0 : 0.6, fadeOut: 0.6 }),
+      this.effects.decal({ tex: pool ? fx.cracks() : fx.sigil(), color: z.kind === 'toxic' ? SPELL_FX.enemy.rot : SPELL_FX.miasma.rot, x: z.x, z: z.z, r: z.r * 0.95, duration: dur, opacity: 0.22, spin: pool ? 0 : 0.6, fadeOut: 0.6 }),
     ];
     this.zoneFx.set(z.id, handles);
   }
 
+  // --- Grave Surges ---
+
+  private onSurge(ev: Extract<SimEvent, { t: 'surge' }>) {
+    const S = SPELL_FX.surge;
+    const ms = ev.durationMs / 1000;
+    this.surgeFx?.kill();
+    // The cracked crypt stays marked for the surge's whole life.
+    this.surgeFx = this.effects.decal({ tex: fx.cracks(), color: S.crack, x: ev.x, z: ev.z, r: 3.6, duration: ms, opacity: 0.85, growFrom: 0.2, pulse: 2 });
+    this.effects.decal({ tex: fx.ring(), color: S.glow, x: ev.x, z: ev.z, r: 5, duration: 1.2, opacity: 1, growFrom: 0.1 });
+    this.effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 60, color: S.glow, spread: 1.2, speed: 3, up: 3, life: 1.2, size: 0.32 });
+    this.effects.lightFlash(ev.x, 2, ev.z, S.glow, 60, 1.2);
+    audio.play('gate', ev.x, ev.z);
+    if (ev.area === this.area) {
+      this.hud.banner('Grave Surge', `A crypt cracks open in ${AREAS[ev.area].name} — hold it back for its offering`, 3400);
+      this.rig.shake(0.35);
+    } else this.hud.toast(`A Grave Surge erupts in ${AREAS[ev.area].name}`, 'err');
+  }
+
+  private onSurgeCleared(ev: Extract<SimEvent, { t: 'surgeCleared' }>) {
+    this.surgeFx?.kill();
+    this.surgeFx = null;
+    const near = this.area === ev.area || Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 38;
+    if (!this.player.alive || !near) return;
+    this.hud.banner('Surge Quelled', 'The crypt yields its offering', 3200);
+    audio.play('levelUp');
+    // Personal reward: a guaranteed item from the area's table plus bonus gold.
+    const level = AREAS[ev.area].level;
+    const gold = Math.round((24 + 10 * level) * waveModifiers(this.bossWaveTier()).rewardMult);
+    this.loot.item(ev.x, ev.z, rollItem(ev.area));
+    this.loot.gold(ev.x, ev.z, gold);
+    this.effects.emit({ x: ev.x, y: 0.4, z: ev.z, count: 70, color: SPELL_FX.surge.glow, spread: 1, speed: 1.2, up: 4, life: 1.4, size: 0.34 });
+    this.effects.lightFlash(ev.x, 2, ev.z, SPELL_FX.surge.glow, 70, 1.2);
+  }
+
   private onKill(ev: Extract<SimEvent, { t: 'death' }>) {
+    // Soul Harvest: kills credited to you (thralls and DoTs credit their owner).
+    if (ev.killer === this.selfId && this.player.alive && this.player.addSouls(1)) this.onSoulsCharged();
     // Personal rewards for kills in (or right next to) your area.
     const near = Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 38;
     if (!this.player.alive || !near) return;
@@ -865,6 +1035,16 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private bossWaveTier() {
     return this.sim?.waveTier ?? this.mirror?.waveTier ?? 0;
+  }
+
+  private onSoulsCharged() {
+    const p = this.player;
+    const S = SPELL_FX.souls;
+    this.floating.spawn(p.x, 2.6, p.z, 'Soul Harvest', 'info');
+    this.hud.toast('Soul Harvest — your next Marrow Spear, Miasma or Black Litany is free and 50% larger', 'good');
+    audio.play('shard');
+    this.effects.emit({ x: p.x, y: 0.3, z: p.z, count: 50, color: S.jade, spread: 1.2, speed: 1.4, up: 3, life: 1, size: 0.3, inward: true });
+    this.effects.lightFlash(p.x, 1.5, p.z, S.jade, 30, 0.6);
   }
 
   private gainXp(xp: number, x: number, z: number) {
@@ -913,6 +1093,12 @@ export class WorldScene implements GameScene, RuntimeView {
     if (from === 'cone' || from === 'boss') {
       this.effects.emit({ x: this.player.x, y: 1, z: this.player.z, count: 10, color: SPELL_FX.enemy.curse, spread: 0.3, speed: 2, up: 1, life: 0.4, size: 0.25 });
     }
+    if (from === 'toll' && this.player.alive) {
+      // Bell-Tolled ring: a brief stun.
+      this.player.rootedUntil = Math.max(this.player.rootedUntil, now + AFFIX_TUNING.bellTolled.stunMs);
+      this.floating.spawn(this.player.x, 2.5, this.player.z, 'Stunned', 'info');
+      this.effects.emit({ x: this.player.x, y: 1.8, z: this.player.z, count: 12, color: SPELL_FX.affix.bell, spread: 0.3, speed: 1.2, up: 0.4, life: 0.5, size: 0.2 });
+    }
     if (!this.player.alive) this.onDeath();
   }
 
@@ -940,6 +1126,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const ms = (ev.ms ?? 0) / 1000;
     switch (ev.kind) {
       case 'awaken':
+        this.codexDiscover('dead', 'prelate');
         audio.play('bossAwaken', ev.x, ev.z);
         this.hud.banner('The Bell-Sworn Prelate', 'The Sundered Bell tolls for you', 3500);
         this.effects.lightFlash(ev.x, 3, ev.z, 0xa26bff, 90, 1.6);
@@ -1113,6 +1300,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
     // Visuals.
     this.avatar.update(dt, p.x, p.z, p.facing, p.moving, p.stats.moveSpeed);
+    for (const tick of this.lineupTicks) tick(dt);
     for (const r of this.remotes.values()) {
       const k = Math.min(1, dt * 10);
       const x = r.avatar.c.root.position.x + (r.tx - r.avatar.c.root.position.x) * k;
@@ -1144,6 +1332,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.worldView.update(dt, p.x, p.z, this.rig.camera, vh);
     this.effects.update(dt, this.rig.camera, vh);
     this.floating.update(dt, this.rig.camera);
+    this.tickOnboarding(now);
     this.updateHud(now);
   }
 
@@ -1159,7 +1348,7 @@ export class WorldScene implements GameScene, RuntimeView {
         const d = Math.sqrt(Math.random()) * z.r;
         const x = z.x + Math.cos(a) * d;
         const zz = z.z + Math.sin(a) * d;
-        if (z.kind === 'miasma') {
+        if (z.kind === 'miasma' || z.kind === 'rot') {
           this.effects.emit({ x, y: 0.2, z: zz, count: 1, color: SPELL_FX.miasma.rot, spread: 0.2, speed: 0.15, up: 0.9, life: 1.4, size: 0.22, drag: 0.5 });
           if (Math.random() < 0.6) this.effects.emitSmoke({ x, y: 0.3, z: zz, count: 1, color: 0x56662a, spread: 0.3, speed: 0.2, up: 0.3, life: 2, size: 1.6, shrink: -0.8, drag: 0.5 });
         } else if (z.kind === 'toxic') {
@@ -1185,6 +1374,7 @@ export class WorldScene implements GameScene, RuntimeView {
     audio.setArea(area);
     const def = AREAS[area];
     this.hud.banner(def.name, def.subtitle);
+    this.codexDiscover('area', area);
     (this.scene.fog as THREE.FogExp2).color.set(def.ambient.fog);
     this.hemi.color.set(def.ambient.hemiSky);
     this.hemi.groundColor.set(def.ambient.hemiGround);
@@ -1222,7 +1412,17 @@ export class WorldScene implements GameScene, RuntimeView {
       if (focusEnemy.fracture) statuses.push({ icon: 'art/status/fracture.png', label: 'Fracture', n: focusEnemy.fracture });
       if (focusEnemy.withered) statuses.push({ icon: 'art/status/withered.png', label: 'Withered', n: focusEnemy.withered });
       if (focusEnemy.slowT > 0) statuses.push({ icon: 'art/status/void-rot.png', label: 'Miasma', n: 1 });
-      target = { name: d.name, elite: focusEnemy.elite, hp: focusEnemy.hp, maxHp: focusEnemy.maxHp, statuses, blurb: d.blurb };
+      const affix = focusEnemy.affix ? ELITE_AFFIXES[focusEnemy.affix] : null;
+      target = {
+        name: d.name,
+        elite: focusEnemy.elite,
+        affix: focusEnemy.affix && affix ? { id: focusEnemy.affix, name: affix.name } : null,
+        hp: focusEnemy.hp,
+        maxHp: focusEnemy.maxHp,
+        statuses,
+        // The affix is the actionable read on an elite; the lore line otherwise.
+        blurb: affix ? affix.blurb : d.blurb,
+      };
     } else if (hover?.kind === 'interact') {
       this.hud.prompt(`<kbd>Click</kbd>${hover.it.label}`);
     }
@@ -1245,11 +1445,17 @@ export class WorldScene implements GameScene, RuntimeView {
       level: this.character.level,
       xp: this.character.experience,
       xpNext: xpToNext(this.character.level),
-      slots: HOTBAR.map((id) => ({
-        left: p.cooldownLeft(id, now),
-        total: ABILITIES[id].cooldownMs,
-        affordable: p.essence >= ABILITIES[id].essenceCost,
-      })),
+      slots: HOTBAR.map((id) => {
+        const empowered = this.abilities.empowered(id);
+        return {
+          left: p.cooldownLeft(id, now),
+          total: ABILITIES[id].cooldownMs,
+          affordable: empowered || p.essence >= ABILITIES[id].essenceCost,
+          empowered,
+        };
+      }),
+      souls: p.souls,
+      soulsMax: SOUL_HARVEST.souls,
       thralls: myThralls.length,
       thrallCap: this.discipline.mods.thrallCap,
       gold: Math.floor(this.character.gold ?? 0),
@@ -1345,16 +1551,45 @@ export class WorldScene implements GameScene, RuntimeView {
       gold: (n: number) => this.progression.addGold(n),
       shards: (n: number) => this.progression.addShards(n),
       xp: (n: number) => this.gainXp(n, this.player.x, this.player.z),
-      spawn: (def: keyof typeof ENEMIES, elite = false) => {
+      spawn: (def: keyof typeof ENEMIES, elite = false, affix?: EliteAffix) => {
         const a = this.player.area ?? 'graves';
-        return this.sim?.spawnEnemy(def, a, this.player.x + 3, this.player.z - 3, elite, false).id;
+        return this.sim?.spawnEnemy(def, a, this.player.x + 3, this.player.z - 3, elite, false, affix).id;
+      },
+      /** Open a Grave Surge in the current area right now. */
+      surge: () => {
+        const a = this.player.area;
+        if (a) this.sim?.startSurge(a);
+        return this.sim?.surge ? { area: this.sim.surge.area, x: this.sim.surge.x, z: this.sim.surge.z } : null;
+      },
+      souls: (n = SOUL_HARVEST.souls) => {
+        if (this.player.addSouls(n)) this.onSoulsCharged();
+        return this.player.souls;
+      },
+      /** Drop a corpse at the cursor's ground point (Corpse Explosion QA). */
+      corpse: (kind: 'normal' | 'resonant' | 'toxic' = 'normal', elite = false) => {
+        const a = this.player.area ?? 'graves';
+        const enemy = kind === 'resonant' ? 'penitent' : kind === 'toxic' ? 'sac' : 'robber';
+        this.sim?.addCorpse(this.groundPoint.x, this.groundPoint.z, kind, enemy, elite, 0, 1, a);
       },
       boss: () => {
         this.teleportTo(BOSS_ARENA.x, BOSS_ARENA.z + 8);
         this.sendIntent({ t: 'summonBoss', by: this.selfId });
       },
       god: (on = true) => (this.player.god = on),
-      cast: (slot: 1 | 2 | 3 | 4) => this.castSlot(slot),
+      /** README shot: the four discipline heroes standing in a row beside the player. */
+      lineup: () => {
+        const ids = ['ossuary', 'gravecaller', 'mourner', 'rotweaver'] as const;
+        return ids.map((id, i) => {
+          const d = disciplineFor([1, 2, 3, 4][i]);
+          const a = new NecromancerAvatar(this.scene, d.color, false, d.modelSlug);
+          const x = this.player.x - 3 + i * 2;
+          this.scope.add(() => a.dispose());
+          const tick = (dt: number) => a.update(dt, x, this.player.z + 1.8, 0, false, 5);
+          this.lineupTicks.push(tick);
+          return id;
+        });
+      },
+      cast: (slot: HotbarSlot) => this.castSlot(slot),
       attackNearest: () => {
         let best: Enemy | null = null;
         for (const e of this.enemiesMap().values()) if (!best || Math.hypot(e.x - this.player.x, e.z - this.player.z) < Math.hypot(best.x - this.player.x, best.z - this.player.z)) best = e;

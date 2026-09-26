@@ -40,8 +40,8 @@ Server-side these can be regular items with a new `item_type: 'rune'` (needs a s
 - Thrall gear: give thralls the copper/iron gear you'd otherwise salvage (weapon/armour slots on the thrall bar).
 
 ### Resource & feel
-- **Corpse Explosion** as a universal action on a key (5): the classic necromancer button; toxic/resonant corpses get special explosions.
-- **Soul Harvest** passive meter: kills fill a skull meter; when full, the next spell is empowered (free + 50% area).
+- ✅ *shipped (combat depth pack, see PHASE_REPORTS)* — **Corpse Explosion** as a universal action on a key (5): the classic necromancer button; toxic/resonant corpses get special explosions.
+- ✅ *shipped (combat depth pack)* — **Soul Harvest** passive meter: kills fill a skull meter; when full, the next spell is empowered (free + 50% area).
 - Controller support (twin-stick: left stick move, right stick aim, face buttons 1–4).
 
 ---
@@ -77,8 +77,8 @@ Party synergy target: every class *produces* or *consumes* corpses so a
 | **Censer Bearer** | aura buffer | smoke cloud grants nearby enemies armour | resonant |
 
 ### Encounter systems
-- **Grave Surges** (map events): a mausoleum cracks open and pours out a timed wave with a chest reward — optional risk bursts inside the farming loop.
-- **Elite affixes**: Bell-Tolled (periodic stun ring), Hungering (eats corpses to heal), Shrouded (only visible in miasma), Vengeful (explodes into Risen).
+- ✅ *shipped (combat depth pack; surges open at area breaches, not the mausoleum props yet)* — **Grave Surges** (map events): a mausoleum cracks open and pours out a timed wave with a chest reward — optional risk bursts inside the farming loop.
+- ✅ *shipped (combat depth pack; Shrouded = half damage outside miasma)* — **Elite affixes**: Bell-Tolled (periodic stun ring), Hungering (eats corpses to heal), Shrouded (only visible in miasma), Vengeful (explodes into Risen).
 - **Wave Speed milestones** (the three diamonds): at each milestone, waves gain an affix (e.g. tier 3: elites +1, tier 6: surges more frequent, tier 8: "Nightfall" — the moon darkens and all enemies gain Shrouded).
 - **Status matrix expansion**: Chill (from Mourner), Hemorrhage (marrow), Sanctified (enemy priests) — the icons already exist in `public/art/status/`.
 

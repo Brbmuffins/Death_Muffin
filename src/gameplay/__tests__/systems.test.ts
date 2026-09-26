@@ -8,6 +8,8 @@ import { AREAS, AREA_ORDER } from '../../content/areas';
 import { ITEMS } from '../../content/items';
 import { DISCIPLINES } from '../../content/disciplines';
 import { generateLayout } from '../../content/layout';
+import { ABILITIES, HOTBAR, SOUL_HARVEST } from '../../content/abilities';
+import { Player } from '../Player';
 import type { Character } from '../../net/types';
 
 const char = (over: Partial<Character> = {}): Character => ({
@@ -132,5 +134,24 @@ describe('progression math', () => {
     for (let i = 0; i < 23; i++) full = addToSlots(full, { item_id: 'helm_copper', quantity: 1 })!;
     expect(full).toHaveLength(24);
     expect(addToSlots(full, { item_id: 'helm_iron', quantity: 1 })).toBeNull();
+  });
+});
+
+describe('combat depth kit', () => {
+  it('hotbar slots line up with ability slots (5 = right-click Corpse Explosion)', () => {
+    HOTBAR.forEach((id, i) => expect(ABILITIES[id].slot).toBe(i + 1));
+    expect(HOTBAR[4]).toBe('corpse_explosion');
+  });
+
+  it('the Soul Harvest meter fills to a charge, holds it, and resets when spent', () => {
+    const p = new Player(deriveStats(char(), [], DISCIPLINES.gravecaller, 0), new Nav());
+    let fills = 0;
+    for (let i = 0; i < SOUL_HARVEST.souls + 10; i++) if (p.addSouls(1)) fills++;
+    expect(fills).toBe(1);
+    expect(p.soulsCharged).toBe(true);
+    expect(p.souls).toBe(SOUL_HARVEST.souls);
+    p.spendSouls();
+    expect(p.soulsCharged).toBe(false);
+    expect(p.souls).toBe(0);
   });
 });

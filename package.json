@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:server": "node --test server/realtime/server.test.js",
-    "build:characters": "node tools/build-characters.mjs"
+    "build:characters": "node tools/build-characters.mjs",
+    "balance": "vite-node src/gameplay/balance/report.ts"
   },
   "dependencies": {
     "@fontsource/alegreya-sans": "^5.3.0",

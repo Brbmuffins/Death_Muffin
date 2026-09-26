@@ -11,6 +11,8 @@ changes are written up as proposals in `server/proposals/`.
 
 ## Read before working
 
+**Start with `HANDOFF.md`** — current state, in-flight branches, next steps. Update it when you stop.
+
 | Doc | When |
 |---|---|
 | `NECROMANCER_REDESIGN_AUDIT.md` | the design direction this build implements |

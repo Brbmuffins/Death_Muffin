@@ -47,8 +47,11 @@ export interface PlayerMove {
   hpFrac: number;
 }
 
-/** Compact enemy row: [id, def, x, z, facing, hp, maxHp, stateIdx, flags, stateT, speed, scale, area] */
-export type EnemyRow = [number, EnemyId, number, number, number, number, number, number, number, number, number, number, string];
+/**
+ * Compact enemy row: [id, def, x, z, facing, hp, maxHp, stateIdx, flags, stateT, speed, scale, area, affix]
+ * `affix` = AFFIX_ORDER index + 1 (0 = none). Appended last so older rows (13 fields) still parse.
+ */
+export type EnemyRow = [number, EnemyId, number, number, number, number, number, number, number, number, number, number, string, number?];
 /** [id, owner, kind, x, z, facing, hp, maxHp, stateIdx, stateT, empowered, speed] */
 export type ThrallRow = [number, string, ThrallKind, number, number, number, number, number, number, number, number, number];
 
