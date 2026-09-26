@@ -31,6 +31,7 @@ export class SettingsPanel extends SimplePanel {
     root: HTMLElement,
     private onLeave: () => void,
     private instanceCode: () => string | null,
+    private onResetTips?: () => void,
   ) {
     super(root);
   }
@@ -50,6 +51,7 @@ export class SettingsPanel extends SimplePanel {
         <label class="row">Reduce motion (no camera shake)<input type="checkbox" data-rm /></label>
         <label class="row">Damage numbers<input type="checkbox" data-dn /></label>
         <label class="row">Don't show tips<input type="checkbox" data-tips /></label>
+        ${this.onResetTips ? '<label class="row">New to the Covenant?<button type="button" class="cw-button" data-resettips>Show tips again</button></label>' : ''}
         ${code ? `<label class="row">Party world code<b style="font-family:var(--cw-font-numeric)">${code}</b></label>` : ''}
         <div class="cw-keys">
           <kbd>Click</kbd><span>Move · attack target (Bone Needle) · use</span>
@@ -92,6 +94,11 @@ export class SettingsPanel extends SimplePanel {
     const tips = this.el!.querySelector<HTMLInputElement>('[data-tips]')!;
     tips.checked = !settings.tips;
     tips.addEventListener('change', () => updateSettings({ tips: !tips.checked }));
+    this.el!.querySelector<HTMLButtonElement>('[data-resettips]')?.addEventListener('click', () => {
+      updateSettings({ tips: true });
+      tips.checked = false;
+      this.onResetTips?.();
+    });
     this.el!.querySelector('[data-leave]')!.addEventListener('click', () => this.onLeave());
   }
 }

@@ -4,10 +4,28 @@ import { browserStorage, type StorageLike } from '../gameplay/codexJournal';
 /**
  * First-time contextual tips, shown once per character. A small reliquary card
  * above the hotbar: it never takes focus or pauses play, dismisses on click or
- * after 8s, and queues so two tips never stack. "Don't show tips" (here or in
+ * after 8s (longer cards stay longer), and queues so two tips never stack. "Don't show tips" (here or in
  * Settings) turns the whole sequence off via app/settings `tips`.
  */
-export type TipId = 'move' | 'exhume' | 'wave' | 'deacon' | 'gate';
+export type TipId =
+  | 'welcome'
+  | 'move'
+  | 'exhume'
+  | 'wave'
+  | 'deacon'
+  | 'gate'
+  // Just-in-time counsel for the rest of the kit and the loop.
+  | 'essence'
+  | 'thrall'
+  | 'litany'
+  | 'burst'
+  | 'hurt'
+  | 'elite'
+  | 'surge'
+  | 'relic'
+  | 'codex'
+  | 'signature'
+  | 'prelate';
 
 interface Tip {
   title: string;
@@ -16,6 +34,10 @@ interface Tip {
 }
 
 export const TIPS: Record<TipId, Tip> = {
+  welcome: {
+    title: 'The Chapterhouse',
+    body: 'Your sanctuary: the dead cannot follow you here. Around you stand the Reliquary, the Workbench, the Altar and a Waystone. The Hollow Graves lie <b>north</b>, through the open gate. <kbd>Esc</kbd> sets difficulty and graphics.',
+  },
   move: {
     title: 'Walk among the dead',
     body: '<kbd>Click</kbd> the ground to walk. <kbd>Click</kbd> an enemy to loose Bone Needles at it; every hit refills Grave Essence. <kbd>Shift</kbd>+<kbd>Click</kbd> casts without moving.',
@@ -35,6 +57,50 @@ export const TIPS: Record<TipId, Tip> = {
   gate: {
     title: 'A sealed door',
     body: 'This gate stays sealed until you have slain enough of the dead on this side. The count sits under the map, top right.',
+  },
+  essence: {
+    title: 'Grave Essence',
+    body: 'Rites cost essence (the blue orb). Bone Needle is free, and every needle hit refunds some, so keep a target under attack between rites.',
+  },
+  thrall: {
+    title: 'Your first thrall',
+    body: 'It follows you and fights what you fight. Raise more with <kbd>2</kbd> up to your cap (the skull count, lower right); past the cap your oldest crumbles. A corpse remembers what it was: Penitents rise as archers, Deacons as bone mages, Carrion Sacs as plague bearers.',
+  },
+  litany: {
+    title: 'Black Litany',
+    body: 'Press <kbd>4</kbd> to give everything within 7m (corpses and thralls) to one burst. The more you give, the harder it hits. Pull the pack onto a pile of bodies first.',
+  },
+  burst: {
+    title: 'Corpse Explosion',
+    body: '<kbd>Right-click</kbd> a corpse to burst it under a pack. Best when the dead are already on you, or your legion is full.',
+  },
+  hurt: {
+    title: 'Hurt?',
+    body: 'Press <kbd>Q</kbd> to drink a healing flask. <kbd>T</kbd> returns you to the Chapterhouse. Falling costs nothing but the walk back, and <kbd>−</kbd> on the Wave Speed dial eases the pressure.',
+  },
+  elite: {
+    title: 'An elite',
+    body: 'Elites glow and carry an affix; read its tag in the target frame (top) before you engage. They drop soul shards, and five shards summon the Prelate.',
+  },
+  surge: {
+    title: 'Grave Surge',
+    body: 'A crypt has cracked open. Kill most of what climbs out before it seals (about 20s) and it yields a guaranteed relic and bonus gold.',
+  },
+  relic: {
+    title: 'A relic',
+    body: 'Loot goes to your Reliquary (<kbd>I</kbd>). Equip gear there; the Workbench (<kbd>C</kbd>) turns ore and bars into more.',
+  },
+  codex: {
+    title: 'The Codex',
+    body: 'Press <kbd>K</kbd> for everything you have met: every rite, every kind of dead, and how to beat it.',
+  },
+  signature: {
+    title: 'Your signature rite awakens',
+    body: 'Level 10: press <kbd>R</kbd> for your discipline\'s own rite. Hover the new slot to read what it does.',
+  },
+  prelate: {
+    title: 'Five soul shards',
+    body: 'Enough to wake the Bell-Sworn Prelate. Offer them at the Sundered Bell in the Bell Sanctum, and learn to step out of its bronze rings.',
   },
 };
 
@@ -95,7 +161,10 @@ export class Onboarding {
     el.className = 'cw-plate cw-tip';
     el.setAttribute('role', 'status');
     el.setAttribute('aria-live', 'polite');
-    el.style.setProperty('--tip-ms', `${SHOW_MS}ms`);
+    // Long counsel stays up longer: ~280ms per word, never under SHOW_MS.
+    const words = tip.body.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
+    const ms = Math.max(SHOW_MS, words * 280);
+    el.style.setProperty('--tip-ms', `${ms}ms`);
     el.innerHTML = `
       <div class="kicker">Covenant counsel</div>
       <div class="title">${tip.title}</div>
@@ -109,7 +178,7 @@ export class Onboarding {
     });
     this.root.appendChild(el);
     this.el = el;
-    this.hideTimer = this.later(() => this.dismiss(), SHOW_MS);
+    this.hideTimer = this.later(() => this.dismiss(), ms);
   }
 
   private dismiss() {
@@ -125,6 +194,13 @@ export class Onboarding {
   private next() {
     const id = this.queue.shift();
     if (id && !this.el) this.present(id);
+  }
+
+  /** Forget which tips this character has seen, so the whole sequence plays again. */
+  reset() {
+    this.clear();
+    this.seen.clear();
+    this.persist();
   }
 
   /** Hide the current card and drop everything queued (tips turned off). */

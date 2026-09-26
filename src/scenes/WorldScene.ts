@@ -271,7 +271,10 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hud.banner(AREAS.chapterhouse.name, AREAS.chapterhouse.subtitle);
     audio.setArea('chapterhouse');
     this.codex.discover('area', 'chapterhouse');
-    this.onboarding.show('move', 1500);
+    // First steps: where you are, then how to move (queued, one card at a time).
+    this.onboarding.show('welcome', 900);
+    this.onboarding.show('move', 1600);
+    if (this.character.level >= SIGNATURE_LEVEL) this.onboarding.show('signature', 4000);
     this.ready = true;
   }
 
@@ -375,6 +378,10 @@ export class WorldScene implements GameScene, RuntimeView {
       this.root,
       () => this.onLeave(),
       () => this.realtime.instance,
+      () => {
+        this.onboarding.reset();
+        this.hud.toast('Covenant counsel will guide you again', 'good');
+      },
     );
     this.waystonePanel = new WaystonePanel(
       this.root,
@@ -593,7 +600,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.lastFeedback = now;
     const text =
       res === 'essence'
-        ? 'Not enough Grave Essence'
+        ? (this.onboarding.show('essence'), 'Not enough Grave Essence')
         : res === 'cooldown'
           ? `${ABILITIES[id].name} is not ready`
           : res === 'no_corpse'
@@ -975,6 +982,7 @@ export class WorldScene implements GameScene, RuntimeView {
         if (Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 40) {
           this.codexDiscover('dead', ev.def);
           if (ev.def === 'deacon') this.onboarding.show('deacon');
+          if (ev.elite) this.onboarding.show('elite');
         }
         break;
       case 'corpse':
@@ -1009,6 +1017,24 @@ export class WorldScene implements GameScene, RuntimeView {
     this.lastTipCheck = now;
     const cost = this.progression.waveCost();
     if (cost !== null && (this.character.gold ?? 0) >= cost) this.onboarding.show('wave');
+    // Kit counsel, as each moment first comes up.
+    const mine = [...this.thrallsMap().values()].filter((t) => t.owner === this.selfId).length;
+    if (mine >= 1) this.onboarding.show('thrall');
+    let corpsesNear = 0;
+    let packOnCorpse = false;
+    for (const c of this.corpsesMap().values()) {
+      if (Math.hypot(c.x - this.player.x, c.z - this.player.z) > 7) continue;
+      corpsesNear++;
+      if (!packOnCorpse) {
+        let n = 0;
+        for (const e of this.enemiesMap().values()) if (e.state !== 'dead' && Math.hypot(e.x - c.x, e.z - c.z) < 3) n++;
+        packOnCorpse = n >= 3;
+      }
+    }
+    if (mine + corpsesNear >= 4 && this.character.level >= 2) this.onboarding.show('litany');
+    if (packOnCorpse && this.progression.local.totalKills >= 15) this.onboarding.show('burst');
+    if (this.progression.local.totalKills >= 40) this.onboarding.show('codex');
+    if (this.progression.local.shards >= BOSS_SUMMON_SHARDS) this.onboarding.show('prelate');
     const { x, z } = this.player;
     for (const d of DOORS) {
       if (this.nav.isDoorOpen(d)) continue;
@@ -1094,6 +1120,7 @@ export class WorldScene implements GameScene, RuntimeView {
     audio.play('gate', ev.x, ev.z);
     if (ev.area === this.area) {
       this.hud.banner('Grave Surge', `A crypt cracks open in ${AREAS[ev.area].name} — hold it back for its offering`, 3400);
+      this.onboarding.show('surge', 1200);
       this.rig.shake(0.35);
     } else this.hud.toast(`A Grave Surge erupts in ${AREAS[ev.area].name}`, 'err');
   }
@@ -1166,6 +1193,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.player.hp = this.player.stats.maxHp;
       this.player.essence = this.player.stats.maxEssence;
       this.hud.banner(`Level ${this.character.level}`, 'The dead answer you more readily', 2600);
+      if (this.character.level >= SIGNATURE_LEVEL) this.onboarding.show('signature', 3000);
       audio.play('levelUp');
       this.effects.emit({ x: this.player.x, y: 0.2, z: this.player.z, count: 90, color: 0xf1d9a8, spread: 0.8, speed: 0.8, up: 5, life: 1.5, size: 0.35 });
       this.effects.decal({ tex: fx.sigil(), color: 0xe2c98f, x: this.player.x, z: this.player.z, r: 2.4, duration: 1.8, opacity: 1, growFrom: 0.2, spin: 1.2 });
@@ -1195,6 +1223,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const ward = this.discipline.mods.wardPerThrall * myThralls;
     const now = this.now;
     const taken = this.player.takeDamage(raw, ward, now);
+    if (this.player.hp < this.player.stats.maxHp * 0.5) this.onboarding.show('hurt');
     this.cancelRecall();
     if (taken >= 1) this.floating.spawn(this.player.x, 2, this.player.z, `-${Math.round(taken)}`, 'hurt');
     this.hud.hitFlash();
@@ -1406,7 +1435,10 @@ export class WorldScene implements GameScene, RuntimeView {
       this.progression.addShards(got.shards);
       this.floating.spawn(p.x, 2.3, p.z, `+${got.shards} soul shard${got.shards > 1 ? 's' : ''}`, 'shard');
     }
-    if (got.items.length) audio.play('item');
+    if (got.items.length) {
+      audio.play('item');
+      this.onboarding.show('relic');
+    }
     for (const item of got.items) this.hud.toast(`${itemMeta(item.item_id).name}${item.quantity > 1 ? ` ×${item.quantity}` : ''}`, 'good');
 
     // Visuals.
