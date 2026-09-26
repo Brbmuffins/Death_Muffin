@@ -1,5 +1,6 @@
 import { API_BASE } from './config';
 import type { Character, InventorySlot, Profession, Recipe } from './types';
+import type { NecroState, SaveInput } from '../gameplay/necroRules';
 
 /**
  * REST client for the existing Node/Express auth server.
@@ -196,3 +197,31 @@ export function saveProgress(payload: ProgressPayload, keepalive = false) {
     true,
   );
 }
+
+// --- Necromancer progression (server storage; see server/VPS_HANDOFF.md) ---
+// Older servers don't have these routes: a 404 on `necroGet` means "keep using
+// browser storage".
+
+
+/** What the server sends back (NecroState as the client may see it). */
+export type NecroProgress = NecroState;
+
+export interface NecroReply {
+  progress: NecroProgress;
+  gold?: number;
+  earned?: number;
+  cost?: number;
+}
+
+const necroPost = (path: string, body: object, keepalive = false) =>
+  unwrap<NecroReply>(request(`/api/necro-progress/${path}`, { method: 'POST', body: JSON.stringify(body), keepalive }, true));
+
+export const necroApi = {
+  get: (characterId: number) => unwrap<NecroReply>(request(`/api/necro-progress/${characterId}`, {}, true)),
+  save: (characterId: number, input: SaveInput, keepalive = false) => necroPost('save', { characterId, ...input }, keepalive),
+  purchase: (characterId: number, upgrade: 'damage' | 'wave') => necroPost('purchase', { characterId, upgrade }),
+  summonPrelate: (characterId: number) => necroPost('summon-prelate', { characterId }),
+  ascend: (characterId: number) => necroPost('ascend', { characterId }),
+  boon: (characterId: number, boonId: string) => necroPost('boon', { characterId, boonId }),
+  importLocal: (characterId: number, record: object) => necroPost('import', { characterId, record }),
+};

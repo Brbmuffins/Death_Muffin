@@ -360,12 +360,18 @@ npm run dev            # http://localhost:5188
 ```
 npm run typecheck      # tsc
 npm test               # game-logic unit tests (vitest)
-npm run test:server    # realtime service tests (node:test; run `npm ci` in server/realtime first)
+npm run test:server    # realtime + necro-progress server tests (node:test; run `npm ci` in server/realtime first)
 npm run build
 npm run balance        # headless bot farms every area × level band × discipline (BALANCE.md)
 npm run balance:boss   # headless Prelate fights, dodging and not
                        # env: BALANCE_SEEDS, BALANCE_AREAS, BALANCE_BANDS, BALANCE_DIFFICULTY, BALANCE_ASCENSION
+npm run build:server-rules   # re-bundle src/gameplay/necroRules.ts for the VPS package (after changing prices/unlocks/Ascension)
 ```
+
+**Where progress lives.** Level, XP and gold are saved through the existing auth server. Upgrade tiers, Soul Shards,
+area kills, seals, Ascension rank, Ashes and boons go to `/api/necro-progress/*` once the VPS installs it
+([server/VPS_HANDOFF.md](server/VPS_HANDOFF.md)). Until then they stay in the browser's localStorage. On the first connect
+the browser save is uploaded once, and after that the server's copy wins. Server `error` messages show as toasts.
 
 DEV console hooks (`window.__cwDebug`, offline dev only): `advance(s)`, `goto(area)`, `unlockAll()`, `god()`,
 `ring(def, n, r)`, `spawn(def, elite, affix)`, `surge()`, `souls()`, `xp(n)`, `perf()`, `prelateSlain()`, `altar()` and more.

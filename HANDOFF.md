@@ -2,7 +2,7 @@
 
 Living status document so any agent (or person) can pick the project up at any
 point. **Update the "Current state" and "In flight" sections whenever you stop.**
-Last updated: 2026-09-26 (cloud session: environment, balance + Prelate pass, difficulty, milestones, statuses, thrall variety, signature rites, onboarding, perf).
+Last updated: 2026-09-26 (cloud session: environment, balance + Prelate pass, difficulty, milestones, statuses, thrall variety, signature rites, onboarding, perf, Ascension, VPS storage handoff).
 
 ## 60-second orientation
 
@@ -41,7 +41,7 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 | World: 5 areas, sealed doors, waystones, recall | ✅ | `content/areas.ts`, `content/layout.ts`, `graphics/WorldView.ts`, `gameplay/nav.ts` |
 | Authoritative sim: waves, 6 enemy types, elites, corpses, thralls, zones, boss | ✅ tested | `gameplay/sim/` (+ `__tests__/sim.test.ts`) |
 | Necromancer kit (5 rites) + per-spell colour identity | ✅ | `gameplay/AbilitySystem.ts`, `content/abilities.ts` (`SPELL_FX`) |
-| Progression: XP/gold → server; tiers/shards/unlocks → localStorage | ✅ (interim) | `gameplay/progression.ts`; server spec `server/proposals/necromancer-progress.md` |
+| Progression: XP/gold → server; tiers/shards/unlocks/Ascension → server when `/api/necro-progress` exists, else localStorage | ✅ client + mock; **server side awaits the VPS** | `gameplay/progression.ts`, `gameplay/necroRules.ts`; VPS brief `server/VPS_HANDOFF.md` |
 | Loot / Reliquary / Workbench (3 professions) / Rites / Settings | ✅ | `gameplay/loot.ts`, `ui/*Panel.ts` |
 | HUD (orbs, slots, upgrades, minimap, target frame, boss bar) | ✅ | `ui/HUD.ts`, `ui/Minimap.ts`, `ui/ui.css` |
 | Co-op: instanced worlds, host authority, intents, host migration | ✅ tested live (2 tabs) | `server/realtime/server.js` (+tests), `net/realtime.ts`, `gameplay/sim/snapshot.ts` |
@@ -67,6 +67,7 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 | Horde perf: per-area prop batches + shadow LOD (−40% triangles at the cap) | ✅ measured | `WorldView`, `EntityViews.shadowLod`, `__cwDebug.perf()` |
 | Relic runes | 📝 server proposal only | `server/proposals/relic-runes.md` |
 | **Ascension** (prestige): Altar panel, Ashes, 9 Covenant Boons, +3 levels/rank, snapshot-synced rank | ✅ QA'd (full ascend + boon flow in browser) | `content/ascension.ts`, `progression.ts`, `ui/AscensionPanel.ts` |
+| **VPS storage package** (validated `/api/necro-progress/*` routes, MySQL store, schema, shared rules bundle, tests) | ✅ tested with an in-memory store + mock backend; not installed yet | `server/vps-handoff/necro-progress/`, `server/VPS_HANDOFF.md`, `npm run build:server-rules` |
 
 ## In flight (check before starting overlapping work)
 
@@ -91,8 +92,11 @@ refuses while the index has staged changes.
 
 **Needs the user (can't be done from a cloud container):**
 1. **Ear-test audio** in a visible browser (volumes, ambience crossfades, boss drum loop).
-2. **Server storage for progression.** Implement `server/proposals/necromancer-progress.md` on the
-   VPS, then switch `Progression` to it (migration steps are in the proposal).
+2. **Server storage for progression.** Hand `server/VPS_HANDOFF.md` to a Claude Code session on the
+   VPS. It installs `server/vps-handoff/necro-progress/` (additive routes + one new table) after
+   recon and backups. The client already switches to it on its own: `Progression.connect()` falls
+   back to localStorage on a 404, and on the first successful connect it uploads the browser save once,
+   after which the server's copy wins. The web client from this branch has to be deployed too.
 3. **Deploy.** Realtime protocol v2 and the client must ship together (`server/realtime/DEPLOY.md`,
    `server/web-deploy/`). The user runs the scripts.
 4. **A human playtest of the new balance.** The bot is an upper bound on efficiency and never
@@ -101,8 +105,9 @@ refuses while the index has staged changes.
 **Buildable next (code-only):**
 5. **Replay depth, continued.** Ascension shipped. Next from `FUTURE_CONTENT.md` → "Replay & endgame
    depth": daily rites (date-seeded objectives paying Ashes), discipline talents (levels 5/15/20), weekly
-   omens, Prelate Echoes per rank. Server storage for rank/Ashes/boons belongs in the necro-progress
-   proposal (they are browser-local today, like the rest of `LocalProgress`).
+   omens, Prelate Echoes per rank. Rank/Ashes/boons are already part of the VPS storage package.
+   Any new persistent field has to go through `necroRules.ts`, followed by `npm run build:server-rules` and
+   a re-install on the VPS.
 6. **Co-op session dashboard** (user request). Easy/Medium/Hard is the first slice. The rest (Wave
    Speed, HP/damage, density, elites, surges, arrival wave, roster weights) becomes a host panel
    relaying a validated `tuning` field. Spec: `FUTURE_CONTENT.md` → "Co-op session dashboard".
@@ -135,6 +140,9 @@ refuses while the index has staged changes.
   `__cwDebug.advance()`, and call `unlockAll()` before `goto()` into a locked area (otherwise
   `goto` leaves you at the sealed gate). Seed `localStorage.cw_settings_v1 = {"tips":false}` to hide
   onboarding cards in screenshots.
+- `src/gameplay/necroRules.ts` is bundled into `server/vps-handoff/necro-progress/necro-rules.cjs`.
+  After editing it (or anything it imports, e.g. `content/upgrades.ts`, `content/ascension.ts`, `content/areas.ts`),
+  run `npm run build:server-rules`. The parity test in `necroServer.test.ts` fails if the bundle is stale.
 - Water/decal layering: water renders at renderOrder 1, and Effects decals (telegraphs) at 2. Keep
   that order or telegraphs sink under the nave's flood.
 

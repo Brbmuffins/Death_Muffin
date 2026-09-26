@@ -11,6 +11,8 @@
  */
 import type { InventorySlot, Profession, Recipe, Rarity } from './types';
 import { ITEMS } from '../content/items';
+import * as necro from '../gameplay/necroRules';
+import type { NecroState } from '../gameplay/necroRules';
 
 class MockError extends Error {
   constructor(message: string, public status: number) {
@@ -88,6 +90,8 @@ interface StoredSlot {
 }
 
 interface MockAccount {
+  /** Server-side necromancer progression (mirrors character_necro_progress). */
+  necro?: NecroState;
   username: string;
   character: Record<string, any> | null;
   slots: StoredSlot[];
@@ -334,6 +338,35 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       if (body[k] !== undefined) c[k] = Number(body[k]);
     }
     return ok({ saved: true });
+  }
+
+  // --- Necromancer progression: same shared rules the VPS runs (server/vps-handoff). ---
+  if ((m = p.match(/^\/api\/necro-progress\/(\d+)$/)) && method === 'GET') {
+    ownCharacter(acc, m[1]);
+    acc.necro = necro.normalise(acc.necro ?? necro.blankState());
+    return ok({ progress: acc.necro, gold: acc.character!.gold });
+  }
+  if ((m = p.match(/^\/api\/necro-progress\/(save|purchase|summon-prelate|ascend|boon|import)$/)) && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const c = acc.character!;
+    const state = necro.normalise(acc.necro ?? necro.blankState());
+    const r =
+      m[1] === 'save'
+        ? necro.applySave(state, body)
+        : m[1] === 'purchase'
+          ? necro.purchase(state, Number(c.gold) || 0, body.upgrade)
+          : m[1] === 'summon-prelate'
+            ? necro.summonPrelate(state)
+            : m[1] === 'ascend'
+              ? necro.ascend(state)
+              : m[1] === 'boon'
+                ? necro.buyBoon(state, body.boonId)
+                : necro.importLocal(state, body.record);
+    if (!r.ok) throw new MockError(r.error, 400);
+    acc.necro = r.state;
+    const extra = r as { gold?: number; earned?: number; cost?: number };
+    if (extra.gold !== undefined) c.gold = extra.gold;
+    return ok({ progress: r.state, ...(extra.gold !== undefined ? { gold: extra.gold } : {}), ...(extra.earned !== undefined ? { earned: extra.earned } : {}), ...(extra.cost !== undefined ? { cost: extra.cost } : {}) });
   }
 
   throw new MockError(`Offline backend: no route for ${method} ${p}`, 404);

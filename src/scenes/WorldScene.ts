@@ -278,6 +278,10 @@ export class WorldScene implements GameScene, RuntimeView {
     audio.setArea('chapterhouse');
     this.codex.discover('area', 'chapterhouse');
     // First steps: where you are, then how to move (queued, one card at a time).
+    // Server-backed progression when the auth server has it; browser storage otherwise.
+    this.scope.add(this.progression.onError((msg) => this.hud.toast(msg, 'err')));
+    this.scope.add(this.progression.onSynced(() => this.onProgressSynced()));
+    void this.progression.connect();
     this.onboarding.show('welcome', 900);
     this.onboarding.show('move', 1600);
     if (this.character.level >= SIGNATURE_LEVEL) this.onboarding.show('signature', 4000);
@@ -1193,6 +1197,18 @@ export class WorldScene implements GameScene, RuntimeView {
     } else if (this.mirror && this.mirror.difficulty !== d) {
       this.hud.toast(`The world keeper's difficulty applies (${DIFFICULTIES[this.mirror.difficulty].name})`);
     }
+  }
+
+  /** Server state replaced the local copy: seals, tiers, boons or rank may have moved. */
+  private onProgressSynced() {
+    if (!this.worldView) return;
+    this.nav.setUnlocked(this.progression.local.unlocked);
+    for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d));
+    if (this.sim && this.isAuthority()) {
+      this.sim.ascension = this.progression.local.ascension;
+      this.sim.waveTier = this.progression.local.waveTierActive;
+    }
+    this.applyBoons();
   }
 
   /** Burn the run at the Altar: reset the local layer, raise the rank, age the world. */

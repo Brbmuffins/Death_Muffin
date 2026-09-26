@@ -9,10 +9,11 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:server": "node --test server/realtime/server.test.js",
+    "test:server": "node --test server/realtime/server.test.js server/vps-handoff/necro-progress/necro-progress.test.cjs",
     "build:characters": "node tools/build-characters.mjs",
     "balance": "vite-node src/gameplay/balance/report.ts",
-    "balance:boss": "vite-node src/gameplay/balance/bossReport.ts"
+    "balance:boss": "vite-node src/gameplay/balance/bossReport.ts",
+    "build:server-rules": "node tools/build-server-rules.mjs"
   },
   "dependencies": {
     "@fontsource/alegreya-sans": "^5.3.0",

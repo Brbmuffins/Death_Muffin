@@ -1,7 +1,10 @@
 # Proposal — server storage for necromancer progression
 
-**Status:** proposal only. Nothing here is deployed; the web client works
-without it (interim storage is the browser, user-approved 2026-09-26).
+**Status:** SUPERSEDED (2026-09-26) by the ready-to-install package in
+[`server/vps-handoff/necro-progress/`](../vps-handoff/necro-progress) and its brief
+[`server/VPS_HANDOFF.md`](../VPS_HANDOFF.md). The package keeps the whole record as one validated JSON
+row, adds Ascension/Ashes/boons, and makes the server own prices and gold. It is kept here
+for history only; follow the handoff.
 **Owner of the change:** the VPS (`/opt/rod-auth`). This repo never edits
 server endpoints — this document is the spec to implement there.
 

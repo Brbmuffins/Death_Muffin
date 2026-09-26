@@ -428,3 +428,23 @@ Checks at the end: 80 vitest, 8 realtime, typecheck, production build all green.
 - README rewritten for the whole session (statuses table, signature rites, thrall kinds, water/weather,
   Ascension section, new-player section, dev commands) with six new screenshots in `docs/screenshots/`.
 
+
+## VPS storage handoff — necro progress (2026-09-26) ✅ tests + mock-backend browser QA
+- One rules module, `src/gameplay/necroRules.ts`, covers prices, seals opened by kills, Prelate summons, Ascension,
+  boons and the one-time browser import clamps. `npm run build:server-rules` bundles it to
+  `server/vps-handoff/necro-progress/necro-rules.cjs` for the Node auth server. A parity test keeps
+  the bundle in step with the source.
+- Package: `necro-progress-routes.cjs` (GET + 6 POST routes under `/api/necro-progress`, with ownership
+  guard, rate limit and `{success,data|error}` replies), `mysql-store.cjs` (row-locked transaction per
+  mutation, so gold is deducted server-side and atomically), `schema.sql` (one additive table), and
+  `necro-progress.test.cjs` (8 node:test cases).
+- Client: `Progression` has a server mode. It applies optimistically, sends deltas on the save flush, and
+  reconciles on every reply. It falls back to localStorage on a 404 or when the server is unreachable, and
+  uploads the browser save once. Server errors show as toasts. The DEV mock backend serves the same routes.
+- Brief for the Claude Code session on the VPS: `server/VPS_HANDOFF.md` (recon, backups, install,
+  verify, rollback, report-back).
+- Verified: 92 vitest / 16 server tests / build green. In the browser (mock server mode): ascended and
+  bought boons, and the server record ended at `asc:1, boons {vigil, first_rites}, dmg 2, migrated`.
+- Known limits (documented in the brief): gold is still earned client-side through `save-progress`, the import
+  trusts clamped browser data, and the DEV `prelateSlain()` hook can't credit a kill once a character is
+  server-backed (the server requires a paid summon).
