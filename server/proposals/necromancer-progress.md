@@ -62,7 +62,8 @@ Errors are player-readable (`"Not enough gold (need 96)"`, `"Already at max tier
 `{ characterId, waveTierActive, soulShardsDelta, areaKillsDelta, bossKillsDelta }`
 Deltas, not absolutes; the server clamps each delta per call (e.g. ≤ 500
 kills, ≤ 20 shards) and derives `unlockedAreas` from its own thresholds:
-`ossuary: graves ≥ 60`, `nave: ossuary ≥ 80`, `sanctum: nave ≥ 100`.
+`ossuary: graves ≥ 300`, `nave: ossuary ≥ 420`, `sanctum: nave ≥ 520` (mirror
+`AREAS[*].unlock` in `src/content/areas.ts`; raised in the 2026-09-26 balance pass).
 
 ### `POST /api/necro-progress/summon-prelate`
 Deducts 5 shards atomically; returns the new balance. The client only sends
@@ -78,7 +79,7 @@ Deducts 5 shards atomically; returns the new balance. The client only sends
 3. `buyDamage` / `buyWave` call `purchase` and adopt the server's gold.
 
 ## New item types needed by FUTURE_CONTENT.md
-- `item_type = 'rune'` (spell modifiers) and `'thrall_gear'`. These need the
+- `item_type = 'rune'` (spell modifiers) — fully specified in `relic-runes.md` — and `'thrall_gear'`. These need the
   items enum extended and rows seeded; until then loot tables only reference
   ids the server already knows (`src/content/items.ts`, verified by
   `src/gameplay/__tests__/systems.test.ts`).

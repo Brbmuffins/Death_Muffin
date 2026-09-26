@@ -33,7 +33,7 @@ Socketable runes that change a spell's behaviour instead of its numbers:
 - Exhume: *Mass Grave* (raise from up to 3 corpses at once, each weaker), *Bone Colossus* (consume 5 corpses → one giant thrall).
 - Miasma: *Creeping Rot* (the circle drifts toward the nearest enemy), *Contagion* (withered enemies that die spread stacks).
 - Black Litany: *Hollow Choir* (no thrall sacrifice; smaller burst), *Requiem* (delayed 2s, double radius).
-Server-side these can be regular items with a new `item_type: 'rune'` (needs a server enum addition — see `server/proposals/`).
+Server-side these are regular items with a new `item_type: 'rune'` plus a socket table — full spec in `server/proposals/relic-runes.md` (awaiting the VPS).
 
 ### Thrall variety
 - Skeleton archer (from Bellbound corpses), bone mage (from Deacon corpses — casts slow curses), plague bearer (from Carrion Sacs — explodes on death).
