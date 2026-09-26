@@ -962,6 +962,7 @@ export class WorldScene implements GameScene, RuntimeView {
         }
         break;
       case 'sanctify': {
+        if (Math.hypot(ev.tx - this.player.x, ev.tz - this.player.z) < 18) this.onboarding.show('sanctify');
         // Pale gold thread from the Deacon; a halo settles on the blessed.
         const G = STATUS_FX.sanctified;
         this.effects.beam({ x: ev.x, y: 1.9, z: ev.z }, () => ({ x: ev.tx, y: 1.6, z: ev.tz }), G.gold, 0.04, 0.5);
@@ -1055,6 +1056,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (packOnCorpse && this.progression.local.totalKills >= 15) this.onboarding.show('burst');
     if (this.progression.local.totalKills >= 40) this.onboarding.show('codex');
     if (this.progression.local.shards >= BOSS_SUMMON_SHARDS) this.onboarding.show('prelate');
+    if (this.progression.local.ascension > 0 && this.progression.local.ashes > 0 && this.area === 'chapterhouse') this.onboarding.show('boons');
     const { x, z } = this.player;
     for (const d of DOORS) {
       if (this.nav.isDoorOpen(d)) continue;
@@ -1250,6 +1252,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private onSoulsCharged() {
+    this.onboarding.show('souls');
     const p = this.player;
     const S = SPELL_FX.souls;
     this.floating.spawn(p.x, 2.6, p.z, 'Soul Harvest', 'info');

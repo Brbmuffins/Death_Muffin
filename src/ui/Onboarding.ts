@@ -26,7 +26,10 @@ export type TipId =
   | 'codex'
   | 'signature'
   | 'prelate'
-  | 'ascend';
+  | 'ascend'
+  | 'souls'
+  | 'sanctify'
+  | 'boons';
 
 interface Tip {
   title: string;
@@ -49,7 +52,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   wave: {
     title: 'Wave Speed',
-    body: 'You can afford to <b>Quicken</b> the waves (lower right). Faster waves bring more dead and richer rewards. Use <kbd>−</kbd> to dial the active tier back down whenever the pressure is too much.',
+    body: 'You can afford to <b>Quicken</b> the waves (lower right). Faster waves bring more dead and richer rewards. The three diamonds are milestones (tiers 3, 6 and 8) that add wave affixes; hover them. Use <kbd>−</kbd> to dial the active tier back down whenever the pressure is too much.',
   },
   deacon: {
     title: 'Kill the Crypt Deacon first',
@@ -102,6 +105,18 @@ export const TIPS: Record<TipId, Tip> = {
   ascend: {
     title: 'The Altar of Ascension stirs',
     body: 'The Prelate has fallen. At the Altar in the Chapterhouse you may <b>Ascend</b>: your tiers, shards and opened seals reset, but you keep your level, gold and relics, earn Ashes for permanent boons, and the dead grow older and richer.',
+  },
+  souls: {
+    title: 'Soul Harvest',
+    body: 'The skull above your hotbar is full. Your next Marrow Spear, Miasma Circle or Black Litany is <b>free and 50% larger</b>; the empowered slots glow jade.',
+  },
+  sanctify: {
+    title: 'Sanctified',
+    body: 'That pale gold halo is a Deacon\'s blessing: the enemy takes 30% less damage while it lasts. Kill the Deacon, or turn your rites on something else until it fades.',
+  },
+  boons: {
+    title: 'Ashes to spend',
+    body: 'Your Ashes buy permanent <b>Covenant Boons</b> at the Altar of Ascension: more health, cheaper upgrades, a head start on every run, even another thrall at higher ranks.',
   },
   prelate: {
     title: 'Five soul shards',

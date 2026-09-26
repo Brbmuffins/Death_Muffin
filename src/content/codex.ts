@@ -115,16 +115,16 @@ export interface DisciplineEntry {
 
 export const CODEX_DISCIPLINES: Record<DisciplineId, DisciplineEntry> = {
   ossuary: {
-    tip: 'Keep your shieldbearers alive and between you and the pack. Every thrall standing is armour you are wearing.',
+    tip: 'Keep your shieldbearers alive and between you and the pack. Every thrall standing is armour you are wearing. At level 10, Ossuary Wall (R) throws a bone wall across a door or a Penitent line.',
   },
   gravecaller: {
-    tip: 'Raise to the cap, then spend the legion in a Litany. The corpses your thralls leave behind start the next legion.',
+    tip: 'Raise to the cap, then spend the legion in a Litany. The corpses your thralls leave behind start the next legion. At level 10, Command: Rend (R) hurls the whole legion onto a Deacon for thrall health instead of essence.',
   },
   mourner: {
-    tip: 'Your wraiths fight from range, so you can too. Exhume whenever you are hurt; each corpse is a mouthful of health.',
+    tip: 'Your wraiths fight from range and Chill what they strike, so you can hang back too. Exhume whenever you are hurt; each corpse is a mouthful of health. At level 10, Dirge (R) mends you and silences casters.',
   },
   rotweaver: {
-    tip: 'Let the pack die inside your Miasma. Corpses in the rot burst on their own and spread Withered to whatever is still standing.',
+    tip: 'Let the pack die inside your Miasma. Corpses in the rot burst on their own and spread Withered to whatever is still standing. At level 10, Plague Bloom (R) chains rot flowers through the corpse field.',
   },
 };
 
@@ -189,9 +189,9 @@ export const CODEX_DEAD: Record<DeadId, DeadEntry> = {
   deacon: {
     name: ENEMIES.deacon.name,
     role: ENEMIES.deacon.behavior,
-    behaviour: 'A support caster. It hunts unclaimed corpses, channels a green beam over them and raises them as Risen. With nothing to steal, it curses you from range.',
+    behaviour: 'A support caster. It hunts unclaimed corpses, channels a green beam over them and raises them as Risen. With nothing to steal it Sanctifies a wounded ally (a pale gold halo: 30% less damage taken) or curses you from range.',
     corpse: 'One it can no longer take from you. Exhumed, it rises a bone mage whose amber hex makes enemy blows land softer.',
-    counter: 'Kill it first. The green beam is your warning: the raise takes a moment, so claim the body or put the deacon down before it finishes.',
+    counter: 'Kill it first. The green beam is your warning: the raise takes a moment, so claim the body or put the deacon down before it finishes. A Mourner\'s Dirge silences it; kill a Sanctified enemy after the halo fades.',
   },
   risen: {
     name: ENEMIES.risen.name,
@@ -205,7 +205,7 @@ export const CODEX_DEAD: Record<DeadId, DeadEntry> = {
     role: 'boss',
     behaviour: 'A cathedral corpse fused to a cracked processional bell. It tolls a ring around itself and slams the bell ahead; from its second phase it rains bell shards on marked circles. At 60% and 30% health a procession of Penitents and Risen files in from the aisles.',
     corpse: 'None. It sinks back beneath the Sundered Bell and waits for the next offering.',
-    counter: `Offer ${BOSS_SUMMON_SHARDS} soul shards at the Sundered Bell to wake it; elites carry them. Step out of the bronze ring before the toll, and save the Litany for when the procession falls.`,
+    counter: `Offer ${BOSS_SUMMON_SHARDS} soul shards at the Sundered Bell to wake it; elites carry them. Step out of the bronze ring before the toll, and save the Litany for when the procession falls. It is a long fight: carry flasks. Its first fall each run readies the Altar of Ascension.`,
   },
 };
 
@@ -229,7 +229,7 @@ export const CODEX_AREAS: Record<AreaId, AreaEntry> = {
     dangers: 'The first Crypt Deacons. Hounds and Sacs come thicker, and every corpse on the floor is now contested.',
   },
   nave: {
-    dangers: 'Penitents are the congregation here, tolling from every pew, and deacons walk among them. Watch for overlapping cones.',
+    dangers: 'The aisles are flooded; the pillar walkways stay dry. Penitents are the congregation here, tolling from every pew, and deacons walk among them. Watch for overlapping cones.',
   },
   sanctum: {
     dangers: 'The Sundered Bell and the Prelate who serves it. Penitents and deacons hold the aisles, and elites are more common here than anywhere else.',

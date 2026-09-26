@@ -304,8 +304,8 @@ Planned content (new disciplines, spells, bosses and systems) lives in [FUTURE_C
 The game teaches itself as you go. **Covenant counsel** cards appear above the hotbar the first time
 something matters: a welcome in the Chapterhouse, how to move and needle, your first corpse and thrall,
 running out of essence, a Litany worth casting, a pack standing on a corpse, low health, your first elite,
-surge and relic, the Codex, your signature rite at level 10, five soul shards, and the Altar after your
-first Prelate kill. Each shows once per character, never pauses the game, and stays up long enough to
+surge and relic, a full Soul Harvest, a Sanctified enemy, the Codex, your signature rite at level 10,
+five soul shards, the Altar after your first Prelate kill, and Ashes waiting to be spent. Each shows once per character, never pauses the game, and stays up long enough to
 read. Turn them off (or **Show tips again**) in Settings (**Esc**). **K** opens the Codex any time.
 
 ![A Covenant counsel card welcoming a new necromancer to the Chapterhouse](docs/screenshots/covenant-counsel.webp)

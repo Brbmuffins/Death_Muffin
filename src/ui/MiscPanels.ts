@@ -58,6 +58,7 @@ export class SettingsPanel extends SimplePanel {
           <kbd>Shift+Click</kbd><span>Cast Bone Needle without moving</span>
           <kbd>1–4</kbd><span>Marrow Spear · Exhume · Miasma · Black Litany (at cursor)</span>
           <kbd>RMB · 5</kbd><span>Corpse Explosion (corpse nearest the cursor)</span>
+          <kbd>R · 6</kbd><span>Signature rite (unlocks at level 10)</span>
           <kbd>Q</kbd><span>Drink a healing flask</span>
           <kbd>T</kbd><span>Return to the Chapterhouse</span>
           <kbd>I C P M</kbd><span>Reliquary · Workbench · Rites · Waystones</span>
@@ -65,6 +66,7 @@ export class SettingsPanel extends SimplePanel {
           <kbd>WASD</kbd><span>Walk (fallback)</span>
           <kbd>Wheel</kbd><span>Zoom</span>
           <kbd>Enter</kbd><span>Chat</span>
+          <kbd>Altar</kbd><span>Click the Altar in the Chapterhouse to Ascend and buy Boons</span>
         </div>
         <hr class="cw-rule" />
         <button class="cw-button" data-leave>Leave the world</button>
