@@ -397,3 +397,23 @@ Measured in headless Chromium (software GPU, so GPU *time* is meaningless there;
   uniforms uploads), and lowering `SHADOW_CASTERS` on the 'low' preset.
 - Still owed: a frame-time measurement on real mid hardware (needs the user's machine).
 
+## Cloud session, part 2 (2026-09-26) ✅ each with tests; browser-QA'd where visual
+Commits on `claude/adoring-knuth-hd1uox` after the environment/balance pass:
+- **Prelate balance**: boss harness (`npm run balance:boss`), BASE_HP 4200 → 26000, party scaling
+  +80%, seeded Bell Rain. Careful arrival-level players win in ~2.7 min; standing in telegraphs dies.
+- **Easy / Medium / Hard**: HP ×0.75/1/1.2, damage ×0.6/1/1.3, rewards ×0.75/1/1.3 (+2% elites on
+  Hard); host-authoritative, rides snapshots; Settings select; harness `BALANCE_DIFFICULTY`.
+- **Wave Speed milestones**: Elite Vanguard (tier 3, elite every other wave), Restless Crypts
+  (tier 6, surges ×0.6 interval), Nightfall (tier 8, half the commons Shrouded, +25% gold, dimmer moon).
+- **Surges from crypts**: `layout.crypts` in front of mausoleums/sarcophagi; breaches as fallback.
+- **Relic runes**: server proposal (`server/proposals/relic-runes.md`); progress proposal thresholds fixed.
+- **Status matrix**: Hemorrhage (spear bleed, clamped in sim + realtime), Chill (wraith hits),
+  Sanctified (Deacon blessing), plus Bone Hex and Silenced from the items below.
+- **Horde perf**: see the section above.
+- **Thrall variety**: Penitent → archer, Deacon → bone mage (Bone Hex), Sac → plague bearer (rot burst).
+- **Signature rites** (lvl 10, key R): Ossuary Wall, Command: Rend, Dirge, Plague Bloom via one
+  validated `signature` intent.
+- **Onboarding**: welcome card + 12 contextual tips; "Show tips again".
+- **Backlog**: replay/endgame proposals (Ascension prestige etc.) in FUTURE_CONTENT.
+Checks at the end: 80 vitest, 8 realtime, typecheck, production build all green.
+

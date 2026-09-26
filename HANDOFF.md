@@ -2,7 +2,7 @@
 
 Living status document so any agent (or person) can pick the project up at any
 point. **Update the "Current state" and "In flight" sections whenever you stop.**
-Last updated: 2026-09-26 (cloud session: environment set pieces built, first balance pass, combat-depth QA'd).
+Last updated: 2026-09-26 (cloud session: environment, balance + Prelate pass, difficulty, milestones, statuses, thrall variety, signature rites, onboarding, perf).
 
 ## 60-second orientation
 
@@ -56,6 +56,16 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 | Combat depth: Corpse Explosion, elite affixes, Grave Surges, Soul Harvest | ✅ in master + QA'd in-browser | `gameplay/sim/WorldSim.ts`, `AbilitySystem.ts`, `HUD.ts` |
 | Environment: nave water + puddles, per-area weather, distant silhouettes | ✅ QA'd in-browser (high + low) | `graphics/Water.ts`, `graphics/Atmosphere.ts`, `WorldView.ts`, `content/layout.ts` |
 | First balance pass (danger at intended band, tamer Wave Speed) | ✅ harness | `BALANCE.md`, `content/enemies.ts`, `content/areas.ts`, `content/upgrades.ts` |
+| Prelate balance (boss harness `npm run balance:boss`, ~95k HP solo) | ✅ harness + guard-rail tests | `gameplay/balance/boss.ts`, `sim/BossBrain.ts` |
+| Easy / Medium / Hard difficulty (host-authoritative, in snapshots) | ✅ QA'd | `content/difficulty.ts`, Settings |
+| Wave Speed milestones: Elite Vanguard / Restless Crypts / Nightfall | ✅ QA'd | `content/upgrades.ts`, `WorldSim`, HUD dial |
+| Grave Surges from mausoleums/sarcophagi | ✅ QA'd | `layout.crypts`, `WorldSim.startSurge` |
+| Statuses: Hemorrhage, Chill, Sanctified, Bone Hex, Silenced | ✅ QA'd | `content/statuses.ts`, snapshot flag bits 3/12–15 |
+| Thrall variety: archer / bone mage / plague bearer (from the corpse) | ✅ QA'd | `WorldSim.applyExhume`, `EntityViews` |
+| Signature rites (lvl 10, key R): Ossuary Wall, Command: Rend, Dirge, Plague Bloom | ✅ QA'd (wall + locked slot in browser; all four sim-tested) | `content/abilities.ts`, `WorldSim.applySignature`, realtime `signature` intent |
+| Onboarding: welcome + 12 just-in-time tips, "Show tips again" | ✅ QA'd | `ui/Onboarding.ts` |
+| Horde perf: per-area prop batches + shadow LOD (−40% triangles at the cap) | ✅ measured | `WorldView`, `EntityViews.shadowLod`, `__cwDebug.perf()` |
+| Relic runes | 📝 server proposal only | `server/proposals/relic-runes.md` |
 
 ## In flight (check before starting overlapping work)
 
@@ -88,21 +98,22 @@ refuses while the index has staged changes.
    dodges. Report how intended/push feel, and see "Open issues" in `BALANCE.md`.
 
 **Buildable next (code-only):**
-5. **Prelate balance.** Add a boss scenario to the harness (≈15k HP at level 13, never playtested)
-   and tune `BossBrain` to a 2–4 min solo fight at the geared band.
-6. **Co-op session dashboard** (user request). A host-side panel that controls session tuning:
-   Wave Speed, enemy HP/damage, density, elites, surges, arrival wave, roster weights. It must be
-   host-authoritative and relay a validated `tuning` field through realtime, and rewards must scale
-   with difficulty. Spec is in `FUTURE_CONTENT.md` → "Co-op session dashboard"; knobs in `BALANCE.md`.
-7. **Wave Speed milestones.** Tier 3: +1 elite per wave; tier 6: more frequent surges; tier 8:
-   "Nightfall" (everything Shrouded). See `FUTURE_CONTENT.md` 0.4.
-8. **Discipline balance.** Gravecaller is the weakest under pressure, and Ossuary swings the most
-   (`BALANCE.md`).
-9. **Performance under a full horde** on mid hardware (skinned enemies are individual meshes).
-   Profile first; VAT crowd rendering is the next step if >~120 animated enemies are needed.
-10. Grave Surges should erupt from mausoleum props (they currently use breaches).
-11. `FUTURE_CONTENT.md` 0.2: status matrix (Chill / Hemorrhage / Sanctified, icons exist), signature
-    spells at level 10, thrall variety. Relic runes need a server `item_type` proposal first.
+5. **Replay depth: pick a direction.** `FUTURE_CONTENT.md` → "Replay & endgame depth" proposes an
+   Ascension prestige loop (resets only the browser-local layer, grants Ashes for permanent boons,
+   raises world level per rank), daily rites, discipline talents, weekly omens and an endless
+   descent. Recommended first: Ascension.
+6. **Co-op session dashboard** (user request). Easy/Medium/Hard is the first slice. The rest (Wave
+   Speed, HP/damage, density, elites, surges, arrival wave, roster weights) becomes a host panel
+   relaying a validated `tuning` field. Spec: `FUTURE_CONTENT.md` → "Co-op session dashboard".
+7. **Art for new content** (needs the Gemini/Tripo keys on the workstation, `ASSET_PIPELINE.md`):
+   icons for the four signature rites and Chill/Silenced (currently retinted or inline-SVG
+   placeholders), and real bow/staff models for archer and bone-mage thralls.
+8. **Discipline balance.** Gravecaller is the weakest under pressure and Ossuary swings the most
+   (`BALANCE.md`). Signature rites and thrall variety aren't in the farming bot yet, so add them to
+   `harness.ts` before tuning.
+9. **Realtime deploy note:** protocol additions this session are `signature` intents, `hit.bleed`,
+   and snapshot `difficulty` plus new flag bits. Older clients ignore them, but ship client and
+   realtime together (`server/realtime/DEPLOY.md`; `deploy-realtime.sh` is already re-embedded).
 
 ## Gotchas that cost time before
 
