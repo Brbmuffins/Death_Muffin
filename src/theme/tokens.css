@@ -1,0 +1,76 @@
+/*
+ * Crossworlds — necromancer theme tokens (seeded from necromancer-theme-tokens.css).
+ * Layered blacks and violet spell-light, separated by value and texture rather
+ * than one flat void. Bone is the restrained readability accent; blood is
+ * dried brown-black and never the primary glow.
+ */
+:root {
+  color-scheme: dark;
+
+  /* World materials */
+  --cw-void-950: #07060a;
+  --cw-obsidian-900: #0d0b11;
+  --cw-plum-850: #17101d;
+  --cw-plum-750: #25162f;
+  --cw-stone-700: #24202b;
+  --cw-stone-500: #5e5968;
+  --cw-bone-300: #d8cfbd;
+  --cw-bone-100: #f0e9dc;
+  --cw-silver-400: #96a0b5;
+  --cw-veil-500: #7c3aed;
+  --cw-spell-400: #9b5cff;
+  --cw-spell-300: #c6a4ff;
+  --cw-spirit-400: #8f9ed1;
+  --cw-iron-500: #4b4654;
+  --cw-blood-600: #4a2d35;
+  --cw-blood-500: #6e2f45;
+  --cw-rot-400: #8fa05a;
+
+  /* Semantic surfaces */
+  --cw-bg: var(--cw-void-950);
+  --cw-panel: color-mix(in srgb, var(--cw-obsidian-900) 90%, var(--cw-plum-850));
+  --cw-panel-raised: color-mix(in srgb, var(--cw-plum-850) 92%, transparent);
+  --cw-inset: color-mix(in srgb, #000 60%, var(--cw-plum-850));
+  --cw-border: color-mix(in srgb, var(--cw-bone-300) 20%, transparent);
+  --cw-border-strong: color-mix(in srgb, var(--cw-bone-300) 38%, transparent);
+  --cw-border-active: color-mix(in srgb, var(--cw-spell-400) 78%, var(--cw-bone-300));
+  --cw-text: var(--cw-bone-100);
+  --cw-text-muted: color-mix(in srgb, var(--cw-bone-300) 66%, transparent);
+  --cw-text-faint: color-mix(in srgb, var(--cw-bone-300) 42%, transparent);
+  --cw-accent: var(--cw-spell-400);
+  --cw-accent-soft: color-mix(in srgb, var(--cw-spell-400) 16%, transparent);
+  --cw-danger: #c77b8f;
+  --cw-ok: #a9c28a;
+  --cw-focus: var(--cw-spirit-400);
+
+  /* Shape: carved stone and reliquary metal, not glass-app pills */
+  --cw-radius-panel: 3px;
+  --cw-radius-control: 2px;
+  --cw-radius-slot: 1px;
+  --cw-shadow-panel: 0 22px 60px rgba(0, 0, 0, 0.62), inset 0 0 0 1px rgba(238, 231, 210, 0.035);
+  --cw-glow-spell: 0 0 22px color-mix(in srgb, var(--cw-spell-400) 32%, transparent);
+  --cw-engrave: linear-gradient(145deg, rgba(238, 231, 210, 0.03), transparent 30%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 3px);
+
+  /* Type — bundled via @fontsource (src/theme/fonts.ts) */
+  --cw-font-display: 'Cormorant Garamond', Georgia, serif;
+  --cw-font-body: 'Alegreya Sans', 'Segoe UI', system-ui, sans-serif;
+  --cw-font-numeric: 'IBM Plex Sans Condensed', 'Segoe UI', sans-serif;
+
+  /* Rarity (reinforced with ◆ marks for colour-independent reading) */
+  --cw-rarity-common: #b9b2a4;
+  --cw-rarity-uncommon: #8fb98a;
+  --cw-rarity-rare: #8fa6e8;
+  --cw-rarity-epic: #c6a4ff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

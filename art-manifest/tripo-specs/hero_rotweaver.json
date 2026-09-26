@@ -1,0 +1,23 @@
+{
+  "id": "hero_rotweaver",
+  "input": "art-src/concepts/hero_rotweaver.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 12000,
+    "texture_quality": "detailed"
+  },
+  "rig": {
+    "model": "v1.0-20240301",
+    "rig_type": "biped"
+  },
+  "animations": [
+    "preset:biped:idle",
+    "preset:biped:walk",
+    "preset:biped:run",
+    "preset:biped:cast_a_spell",
+    "preset:biped:hurt",
+    "preset:biped:dig",
+    "preset:biped:fall"
+  ],
+  "animationMode": "single"
+}

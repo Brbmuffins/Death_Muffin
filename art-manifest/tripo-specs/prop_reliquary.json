@@ -1,0 +1,9 @@
+{
+  "id": "prop_reliquary",
+  "input": "art-src/concepts/props/reliquary.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2000,
+    "texture_quality": "standard"
+  }
+}

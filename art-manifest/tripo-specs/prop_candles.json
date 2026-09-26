@@ -1,0 +1,9 @@
+{
+  "id": "prop_candles",
+  "input": "art-src/concepts/props/candles.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 1400,
+    "texture_quality": "standard"
+  }
+}

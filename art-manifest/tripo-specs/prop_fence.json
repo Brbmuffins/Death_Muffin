@@ -1,0 +1,9 @@
+{
+  "id": "prop_fence",
+  "input": "art-src/concepts/props/fence.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 1200,
+    "texture_quality": "standard"
+  }
+}

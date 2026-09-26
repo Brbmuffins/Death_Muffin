@@ -1,0 +1,30 @@
+[
+  {
+    "id": "concept_hero_ossuary",
+    "out": "art-src/concepts/hero_ossuary.png",
+    "refs": ["art-src/concepts/necromancer.png", "public/art/portraits/ossuary.webp"],
+    "aspect": "3:4",
+    "prompt": "Character source for 3D modeling. Redraw the hooded necromancer from the FIRST image as the Ossuary discipline shown in the SECOND image: same hood and face, dark robes, but with pale aged-ivory bone plates grown over the shoulders, chest and forearms like armour, bone vertebrae belt, fewer purple accents and more old-ivory. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally at shoulder height, EMPTY hands (no shield, no staff, no props, no magic), legs straight and slightly apart, robe hem above the ankles. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy painterly-realistic game art."
+  },
+  {
+    "id": "concept_hero_gravecaller",
+    "out": "art-src/concepts/hero_gravecaller.png",
+    "refs": ["art-src/concepts/necromancer.png", "public/art/portraits/gravecaller.webp"],
+    "aspect": "3:4",
+    "prompt": "Character source for 3D modeling. Redraw the hooded necromancer from the FIRST image as the Gravecaller discipline shown in the SECOND image: a commander of the dead — same hood and face, black and deep-violet war-robes with a tattered cape, a gorget and pauldrons of blackened iron, a sash of hanging finger bones, violet rune embroidery. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally, EMPTY hands (no staff, no banner, no props, no magic), legs straight and slightly apart, robe hem above the ankles. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy painterly-realistic game art."
+  },
+  {
+    "id": "concept_hero_mourner",
+    "out": "art-src/concepts/hero_mourner.png",
+    "refs": ["art-src/concepts/necromancer.png", "public/art/portraits/mourner.webp"],
+    "aspect": "3:4",
+    "prompt": "Character source for 3D modeling. Redraw the hooded necromancer from the FIRST image as the Mourner discipline shown in the SECOND image: same face, a pale grey mourning veil over the hood, layered black and cold silver-blue funeral vestments, many small silver bells and mourning ribbons, a silver reliquary pendant. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally, EMPTY hands (no bell in hand, no props, no ghosts, no magic), legs straight and slightly apart, vestment hem above the ankles. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy painterly-realistic game art."
+  },
+  {
+    "id": "concept_hero_rotweaver",
+    "out": "art-src/concepts/hero_rotweaver.png",
+    "refs": ["art-src/concepts/necromancer.png", "public/art/portraits/rotweaver.webp"],
+    "aspect": "3:4",
+    "prompt": "Character source for 3D modeling. Redraw the hooded necromancer from the FIRST image as the Rotweaver discipline shown in the SECOND image: same hood and face, moss-stained dark robes with sickly olive and chartreuse lichen growth, fungal growths on the shoulders, vials of rot on the belt, dried roots woven into the sleeves. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally, EMPTY hands (no props, no magic, no mist), legs straight and slightly apart, robe hem above the ankles. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy painterly-realistic game art."
+  }
+]

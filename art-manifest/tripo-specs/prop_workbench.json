@@ -1,0 +1,9 @@
+{
+  "id": "prop_workbench",
+  "input": "art-src/concepts/props/workbench.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2500,
+    "texture_quality": "standard"
+  }
+}

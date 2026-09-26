@@ -1,105 +1,93 @@
 import { equipItem } from '../net/api';
-import type { InventorySlot, Rarity } from '../net/types';
+import type { InventorySlot } from '../net/types';
 import { STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
+import { BAG_SIZE, type Inventory } from '../gameplay/loot';
+import { HEALING_FLASKS, RARITY_COLOR, RARITY_MARK, itemMeta } from '../content/items';
 
-export const BAG_COLS = 6;
-export const BAG_ROWS = 4;
-export const BAG_SIZE = BAG_COLS * BAG_ROWS; // matches Unity's 4×6 bag
-
-const RARITY_COLORS: Record<Rarity, string> = {
-  common: '#b8c2cc',
-  uncommon: '#4ade80',
-  rare: '#60a5fa',
-  epic: '#c084fc',
-};
-
-const TYPE_GLYPHS: Record<InventorySlot['item_type'], string> = {
+const TYPE_GLYPH: Record<string, string> = {
   weapon: '⚔',
   armor_head: '⛨',
-  armor_chest: '🛡',
+  armor_chest: '⛊',
   armor_legs: '⛊',
   ring: '◎',
   trinket: '✦',
   material: '◆',
 };
 
-// PNG icons keyed by item_id. Falls back to TYPE_GLYPHS for anything not listed.
-const ITEM_ICONS: Record<string, string> = {
-  copper_shard: 'art/items/material_copper_shard.png',
-  copper_bar:   'art/items/material_copper_bar.png',
-  copper_ring:  'art/items/ring_copper.png',
-};
-
 const EQUIPPABLE = new Set(['weapon', 'armor_head', 'armor_chest', 'armor_legs', 'ring', 'trinket']);
 
+export function itemIcon(slot: Pick<InventorySlot, 'item_id'>) {
+  const meta = itemMeta(slot.item_id);
+  return meta.icon ?? `art/items/${slot.item_id}.png`;
+}
+
 /**
- * 4×6 bag grid with hover tooltips and an equip/unequip detail bar.
- * Desktop: hover shows the tooltip, click selects. Touch: tap selects and
- * the detail bar doubles as the tooltip. Equip toggles go straight to
- * POST /api/inventory/equip; the server responds with the full updated
- * slot array, which becomes the new source of truth.
+ * The Reliquary: 4×6 bag, hover tooltips, equip/unequip. Equip goes straight
+ * to POST /api/inventory/equip and the server's slot array becomes truth.
  */
 export class InventoryPanel {
   private el: HTMLDivElement | null = null;
   private tooltip: HTMLDivElement | null = null;
-  private slots: InventorySlot[] = [];
-  private selectedIndex: number | null = null;
+  private selected: number | null = null;
   private busy = false;
+  private off: (() => void) | null = null;
 
   constructor(
     private root: HTMLElement,
     private characterId: number,
-    private onSlotsChanged: (slots: InventorySlot[]) => void,
+    private inventory: Inventory,
+    private statsLine: () => string,
+    private onUse: (itemId: string) => void,
   ) {}
 
   get isOpen() {
     return this.el !== null;
   }
 
-  setSlots(slots: InventorySlot[]) {
-    this.slots = slots;
-    if (this.el) this.renderGrid();
-  }
-
-  open(slots: InventorySlot[]) {
+  open() {
     if (this.el) return;
-    this.slots = slots;
     this.el = document.createElement('div');
-    this.el.className = 'cw-bag';
+    this.el.className = 'cw-plate cw-panel-float';
+    this.el.setAttribute('role', 'dialog');
+    this.el.setAttribute('aria-label', 'Reliquary');
     this.el.innerHTML = `
-      <div class="cw-bag-head">
-        <span class="cw-bag-title">Inventory</span>
-        <button class="cw-icon-btn" data-close aria-label="Close inventory">✕</button>
+      <div class="cw-panel-head">
+        <h2 class="cw-title">Reliquary</h2>
+        <button class="cw-icon-btn" data-close aria-label="Close reliquary">✕</button>
       </div>
+      <div class="cw-stats-line" data-stats></div>
       <div class="cw-bag-grid" role="grid"></div>
       <div class="cw-bag-detail" data-detail></div>
       <div class="cw-error" data-error></div>
     `;
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
     this.root.appendChild(this.el);
-
     this.tooltip = document.createElement('div');
     this.tooltip.className = 'cw-tooltip';
     this.tooltip.style.display = 'none';
     this.root.appendChild(this.tooltip);
-
-    this.renderGrid();
+    this.off = this.inventory.onChange(() => this.render());
+    this.render();
   }
 
   close() {
+    this.off?.();
+    this.off = null;
     this.el?.remove();
     this.el = null;
     this.tooltip?.remove();
     this.tooltip = null;
-    this.selectedIndex = null;
+    this.selected = null;
   }
 
-  private slotAt(index: number): InventorySlot | undefined {
-    return this.slots.find((s) => s.slot_index === index);
+  private slotAt(i: number) {
+    return this.inventory.all.find((s) => s.slot_index === i);
   }
 
-  private renderGrid() {
-    const grid = this.el!.querySelector<HTMLDivElement>('.cw-bag-grid')!;
+  render() {
+    if (!this.el) return;
+    this.el.querySelector('[data-stats]')!.innerHTML = this.statsLine();
+    const grid = this.el.querySelector<HTMLDivElement>('.cw-bag-grid')!;
     grid.innerHTML = '';
     for (let i = 0; i < BAG_SIZE; i++) {
       const slot = this.slotAt(i);
@@ -109,34 +97,36 @@ export class InventoryPanel {
       if (slot) {
         cell.classList.add('filled');
         if (slot.equipped) cell.classList.add('equipped');
-        cell.style.setProperty('--rarity', RARITY_COLORS[slot.rarity] ?? RARITY_COLORS.common);
-        const iconPng = ITEM_ICONS[slot.item_id];
-        cell.innerHTML = `
-          ${iconPng
-            ? `<img class="item-icon" src="${iconPng}" alt="${slot.name}" onerror="this.style.display='none'">`
-            : `<span class="glyph">${TYPE_GLYPHS[slot.item_type] ?? '◆'}</span>`}
-          ${slot.quantity > 1 ? `<span class="qty">${slot.quantity}</span>` : ''}
-          ${slot.equipped ? '<span class="eq">E</span>' : ''}
-        `;
+        cell.style.setProperty('--rarity', RARITY_COLOR[slot.rarity] ?? RARITY_COLOR.common);
+        cell.setAttribute('aria-label', `${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''}, ${slot.rarity}${slot.equipped ? ', equipped' : ''}`);
+        const img = document.createElement('img');
+        img.className = 'item-icon';
+        img.src = itemIcon(slot);
+        img.alt = '';
+        img.onerror = () => {
+          img.replaceWith(Object.assign(document.createElement('span'), { className: 'glyph', textContent: TYPE_GLYPH[slot.item_type] ?? '◆' }));
+        };
+        cell.appendChild(img);
+        cell.insertAdjacentHTML(
+          'beforeend',
+          `${slot.quantity > 1 ? `<span class="qty">${slot.quantity}</span>` : ''}${slot.equipped ? '<span class="eq">E</span>' : ''}<span class="rm">${RARITY_MARK[slot.rarity] ?? ''}</span>`,
+        );
         cell.addEventListener('pointerenter', (e) => this.showTooltip(slot, e));
         cell.addEventListener('pointermove', (e) => this.moveTooltip(e));
         cell.addEventListener('pointerleave', () => this.hideTooltip());
-        cell.addEventListener('click', () => this.select(i));
-      } else {
-        cell.disabled = true;
-      }
-      if (this.selectedIndex === i) cell.classList.add('selected');
+        cell.addEventListener('click', () => {
+          this.selected = this.selected === i ? null : i;
+          this.render();
+        });
+        cell.addEventListener('dblclick', () => this.primaryAction(slot));
+      } else cell.disabled = true;
+      if (this.selected === i) cell.classList.add('selected');
       grid.appendChild(cell);
     }
     this.renderDetail();
   }
 
-  private select(index: number) {
-    this.selectedIndex = this.selectedIndex === index ? null : index;
-    this.renderGrid();
-  }
-
-  private statLines(slot: InventorySlot): string {
+  private statLines(slot: InventorySlot) {
     if (!slot.stat_bonus) return '';
     return STAT_KEYS.filter((k) => slot.stat_bonus![k])
       .map((k) => `<div class="stat">+${slot.stat_bonus![k]} ${STAT_LABELS[k]}</div>`)
@@ -145,11 +135,13 @@ export class InventoryPanel {
 
   private showTooltip(slot: InventorySlot, e: PointerEvent) {
     if (!this.tooltip || e.pointerType === 'touch') return;
+    const meta = itemMeta(slot.item_id);
     this.tooltip.innerHTML = `
-      <div class="name" style="color:${RARITY_COLORS[slot.rarity]}">${slot.name}</div>
-      <div class="type">${slot.rarity} ${slot.item_type.replace('_', ' ')}</div>
+      <div class="name" style="color:${RARITY_COLOR[slot.rarity]}">${slot.name}</div>
+      <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${slot.item_type.replace('_', ' ')}</div>
       ${this.statLines(slot)}
-      <div class="sell">Sell: ${slot.sell_value}g</div>
+      ${meta.lore ? `<div class="lore">${meta.lore}</div>` : ''}
+      <div class="sell">Worth ${slot.sell_value}g</div>
     `;
     this.tooltip.style.display = 'block';
     this.moveTooltip(e);
@@ -157,12 +149,9 @@ export class InventoryPanel {
 
   private moveTooltip(e: PointerEvent) {
     if (!this.tooltip || this.tooltip.style.display === 'none') return;
-    const pad = 14;
-    const rect = this.tooltip.getBoundingClientRect();
-    const x = Math.min(e.clientX + pad, window.innerWidth - rect.width - 8);
-    const y = Math.min(e.clientY + pad, window.innerHeight - rect.height - 8);
-    this.tooltip.style.left = `${x}px`;
-    this.tooltip.style.top = `${y}px`;
+    const r = this.tooltip.getBoundingClientRect();
+    this.tooltip.style.left = `${Math.min(e.clientX + 14, window.innerWidth - r.width - 8)}px`;
+    this.tooltip.style.top = `${Math.min(e.clientY + 14, window.innerHeight - r.height - 8)}px`;
   }
 
   private hideTooltip() {
@@ -171,23 +160,30 @@ export class InventoryPanel {
 
   private renderDetail() {
     const detail = this.el!.querySelector<HTMLDivElement>('[data-detail]')!;
-    const slot = this.selectedIndex !== null ? this.slotAt(this.selectedIndex) : undefined;
+    const slot = this.selected !== null ? this.slotAt(this.selected) : undefined;
     if (!slot) {
-      detail.innerHTML = '<span class="hint">Select an item</span>';
+      detail.innerHTML = '<span class="cw-hint-text">Select a relic. Double-click to equip or drink.</span>';
       return;
     }
+    const meta = itemMeta(slot.item_id);
     const equippable = EQUIPPABLE.has(slot.item_type);
+    const drinkable = slot.item_id in HEALING_FLASKS;
     detail.innerHTML = `
       <div class="info">
-        <div class="name" style="color:${RARITY_COLORS[slot.rarity]}">${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''}</div>
-        <div class="type">${slot.rarity} ${slot.item_type.replace('_', ' ')}</div>
+        <div class="name" style="color:${RARITY_COLOR[slot.rarity]}">${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''}</div>
+        <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${slot.item_type.replace('_', ' ')}</div>
         ${this.statLines(slot)}
+        ${meta.lore ? `<div class="lore">${meta.lore}</div>` : ''}
       </div>
-      ${equippable ? `<button class="cw-button cw-equip-btn" data-equip>${slot.equipped ? 'Unequip' : 'Equip'}</button>` : ''}
+      ${equippable ? `<button class="cw-button small" data-act>${slot.equipped ? 'Unequip' : 'Equip'}</button>` : ''}
+      ${drinkable ? `<button class="cw-button small" data-act>Drink</button>` : ''}
     `;
-    detail
-      .querySelector('[data-equip]')
-      ?.addEventListener('click', () => this.toggleEquip(slot));
+    detail.querySelector('[data-act]')?.addEventListener('click', () => this.primaryAction(slot));
+  }
+
+  private primaryAction(slot: InventorySlot) {
+    if (slot.item_id in HEALING_FLASKS) this.onUse(slot.item_id);
+    else if (EQUIPPABLE.has(slot.item_type)) void this.toggleEquip(slot);
   }
 
   private setError(msg: string) {
@@ -200,20 +196,15 @@ export class InventoryPanel {
     this.busy = true;
     this.setError('');
     try {
-      let slots = this.slots;
+      // Unsaved pickups must land before equip so the server's array includes them.
+      await this.inventory.flush();
+      let slots = this.inventory.all;
       if (!slot.equipped) {
-        // Only one item per gear type — swap out a same-type equipped item first.
-        const conflict = slots.find(
-          (s) => s.equipped && s.item_type === slot.item_type && s.slot_index !== slot.slot_index,
-        );
-        if (conflict) {
-          slots = await equipItem(this.characterId, conflict.slot_index, 0);
-        }
+        const conflict = slots.find((s) => s.equipped && s.item_type === slot.item_type && s.slot_index !== slot.slot_index);
+        if (conflict) slots = await equipItem(this.characterId, conflict.slot_index, 0);
       }
       slots = await equipItem(this.characterId, slot.slot_index, slot.equipped ? 0 : 1);
-      this.slots = slots;
-      this.renderGrid();
-      this.onSlotsChanged(slots);
+      this.inventory.replace(slots);
     } catch (err) {
       this.setError(err instanceof Error ? err.message : 'Equip failed');
     } finally {

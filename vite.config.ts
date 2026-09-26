@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite';
 
 // The live auth server has no CORS headers, so the dev server proxies all API
@@ -14,6 +15,8 @@ const DEPLOY_BASE = process.env.DEPLOY_BASE ?? './';
 
 export default defineConfig({
   base: DEPLOY_BASE,
+  // vitest: game-logic unit tests only (the realtime server uses node:test).
+  test: { include: ['src/**/*.test.ts'] },
   server: {
     port: 5188,
     proxy: Object.fromEntries(

@@ -1,21 +1,26 @@
 import { craft, getProfessions, getRecipes } from '../net/api';
 import type { InventorySlot, Profession, Recipe } from '../net/types';
+import type { Inventory } from '../gameplay/loot';
+
+const PROFESSIONS = ['mining', 'fishing', 'woodcutting'] as const;
+const LABEL: Record<string, string> = { mining: 'Smelting', fishing: 'Tinctures', woodcutting: 'Coffin-wood' };
 
 /**
- * Forge — Mining recipes for now (the only seeded profession). Craft calls
- * POST /api/craft; the server validates skill and ingredients, and its error
- * strings are player-readable, shown verbatim.
+ * The Ossuary Workbench. Recipes come from GET /api/recipes per profession;
+ * crafting is POST /api/craft and the server's error strings are shown
+ * verbatim (they're player-readable by contract).
  */
 export class ForgePanel {
   private el: HTMLDivElement | null = null;
   private recipes: Recipe[] = [];
   private professions: Profession[] = [];
+  private tab: (typeof PROFESSIONS)[number] = 'mining';
   private busy = false;
 
   constructor(
     private root: HTMLElement,
     private characterId: number,
-    private getSlots: () => InventorySlot[],
+    private inventory: Inventory,
     private onCrafted: (inventory: InventorySlot[], profession: Profession) => void,
   ) {}
 
@@ -26,23 +31,34 @@ export class ForgePanel {
   async open() {
     if (this.el) return;
     this.el = document.createElement('div');
-    this.el.className = 'cw-forge';
+    this.el.className = 'cw-plate cw-panel-float';
+    this.el.setAttribute('role', 'dialog');
+    this.el.setAttribute('aria-label', 'Ossuary Workbench');
     this.el.innerHTML = `
-      <div class="cw-bag-head">
-        <span class="cw-bag-title">Forge</span>
-        <button class="cw-icon-btn" data-close aria-label="Close forge">✕</button>
+      <div class="cw-panel-head">
+        <h2 class="cw-title">Ossuary Workbench</h2>
+        <button class="cw-icon-btn" data-close aria-label="Close workbench">✕</button>
       </div>
-      <div class="cw-forge-list"><span class="hint">Loading recipes…</span></div>
+      <div class="cw-tabs">${PROFESSIONS.map((p) => `<button data-tab="${p}">${LABEL[p]}</button>`).join('')}</div>
+      <div class="cw-recipes"><span class="cw-hint-text">Loading recipes…</span></div>
       <div class="cw-error" data-error></div>
     `;
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
+    this.el.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) =>
+      b.addEventListener('click', () => {
+        this.tab = b.dataset.tab as typeof this.tab;
+        void this.load();
+      }),
+    );
     this.root.appendChild(this.el);
+    await this.load();
+  }
 
+  private async load() {
+    this.setError('');
+    this.el?.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === this.tab));
     try {
-      [this.recipes, this.professions] = await Promise.all([
-        getRecipes('mining'),
-        getProfessions(this.characterId),
-      ]);
+      [this.recipes, this.professions] = await Promise.all([getRecipes(this.tab), getProfessions(this.characterId)]);
       this.render();
     } catch (err) {
       this.setError(err instanceof Error ? err.message : 'Could not load recipes');
@@ -54,48 +70,39 @@ export class ForgePanel {
     this.el = null;
   }
 
-  private skillLevel(profession: string): number {
+  private skill(profession: string) {
     return this.professions.find((p) => p.profession_id === profession)?.skill_level ?? 0;
   }
 
-  private have(itemId: string): number {
-    return this.getSlots()
-      .filter((s) => s.item_id === itemId)
-      .reduce((sum, s) => sum + s.quantity, 0);
-  }
-
   private render() {
-    const list = this.el?.querySelector<HTMLDivElement>('.cw-forge-list');
+    const list = this.el?.querySelector<HTMLDivElement>('.cw-recipes');
     if (!list) return;
+    if (!this.recipes.length) {
+      list.innerHTML = '<span class="cw-hint-text">No recipes known for this rite.</span>';
+      return;
+    }
     list.innerHTML = this.recipes
       .map((r) => {
-        const skill = this.skillLevel(r.profession_id);
+        const skill = this.skill(r.profession_id);
         const skillOk = skill >= r.skill_level_required;
-        const ingredients = r.ingredients
+        const ings = r.ingredients
           .map((ing) => {
-            const have = this.have(ing.item_id);
-            const ok = have >= ing.quantity;
-            return `<span class="ing ${ok ? 'ok' : 'missing'}">${ing.quantity}× ${ing.name} <em>(${have})</em></span>`;
+            const have = this.inventory.count(ing.item_id);
+            return `<span class="ing ${have >= ing.quantity ? 'ok' : 'missing'}">${ing.quantity}× ${ing.name} <em>(${have})</em></span>`;
           })
           .join('');
-        const craftable = skillOk && r.ingredients.every((i) => this.have(i.item_id) >= i.quantity);
+        const craftable = skillOk && r.ingredients.every((i) => this.inventory.count(i.item_id) >= i.quantity);
         return `
           <div class="cw-recipe">
             <div class="info">
-              <div class="row">
-                <span class="name">${r.name}</span>
-                <span class="req ${skillOk ? 'ok' : 'missing'}">${r.profession_id} ${r.skill_level_required}</span>
-              </div>
-              <div class="ings">${ingredients}</div>
+              <div class="row"><span class="name">${r.name}</span><span class="req ${skillOk ? 'ok' : 'missing'}">${r.profession_id} ${r.skill_level_required}</span></div>
+              <div class="ings">${ings}</div>
             </div>
-            <button class="cw-button cw-craft-btn" data-craft="${r.id}" ${craftable && !this.busy ? '' : 'disabled'}>Craft</button>
-          </div>
-        `;
+            <button class="cw-button small" data-craft="${r.id}" ${craftable && !this.busy ? '' : 'disabled'}>Craft</button>
+          </div>`;
       })
       .join('');
-    list.querySelectorAll<HTMLButtonElement>('[data-craft]').forEach((btn) => {
-      btn.addEventListener('click', () => this.craft(btn.dataset.craft!));
-    });
+    list.querySelectorAll<HTMLButtonElement>('[data-craft]').forEach((b) => b.addEventListener('click', () => void this.doCraft(b.dataset.craft!)));
   }
 
   private setError(msg: string) {
@@ -103,16 +110,15 @@ export class ForgePanel {
     if (el) el.textContent = msg;
   }
 
-  private async craft(recipeId: string) {
+  private async doCraft(recipeId: string) {
     if (this.busy) return;
     this.busy = true;
     this.setError('');
     this.render();
     try {
+      await this.inventory.flush();
       const { updatedInventory, updatedProfession } = await craft(this.characterId, recipeId);
-      this.professions = this.professions.map((p) =>
-        p.profession_id === updatedProfession.profession_id ? updatedProfession : p,
-      );
+      this.professions = this.professions.map((p) => (p.profession_id === updatedProfession.profession_id ? updatedProfession : p));
       this.onCrafted(updatedInventory, updatedProfession);
     } catch (err) {
       this.setError(err instanceof Error ? err.message : 'Craft failed');

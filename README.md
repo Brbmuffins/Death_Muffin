@@ -1,34 +1,44 @@
-# Crossworlds Web
+# Crossworlds
 
-Browser client for Crossworlds BCE — Vite + TypeScript + Three.js, replacing the Unity client.
-Talks directly to the existing Node/Express auth server (`playcrossworlds.com:3000`) — no server changes required for login, character, inventory, professions, or crafting.
+A dark fantasy necromancer action RPG in the browser (Vite + TypeScript + Three.js).
+Explore one connected, desecrated realm — graveyard, ossuary, drowned nave, bell
+sanctum — farming endless waves, turning corpses into thralls and spell fuel,
+upgrading Damage and Wave Speed, and awakening the Bell-Sworn Prelate. Solo or
+with up to three friends. No extraction, no run resets.
 
-## Setup (run locally — this sandbox has no npm registry access)
+## Run it
 
 ```
 npm install
-npm run dev
+npm run dev            # http://localhost:5188
 ```
 
-Opens at http://localhost:5188. Point it at a different auth server with a `.env`:
+- `http://localhost:5188/?offline` — DEV-only offline mode: an in-browser mock of
+  the auth server, so you can play without the live backend.
+- Live server: the dev server proxies the REST API to `playcrossworlds.com:3000`
+  (override with `VITE_API_PROXY_TARGET`).
+- Co-op locally: `cd server/realtime && npm install && cp .env.example .env && node server.js`,
+  then `?offline&coop` in two tabs.
+
+## Controls
+
+Click to move / attack · Shift+click to cast in place · **1** Marrow Spear ·
+**2** Exhume · **3** Miasma Circle · **4** Black Litany · **Q** healing flask ·
+**T** return to the Chapterhouse · **I C P M** Reliquary, Workbench, Rites, Waystones ·
+Wheel zoom · Enter chat · Esc settings
+
+## Checks
 
 ```
-VITE_API_BASE=http://localhost:3000
+npm run typecheck
+npm test               # game-logic unit tests (vitest)
+npm run test:server    # realtime service tests (node:test)
+npm run build
 ```
 
-## Status
+## Docs
 
-Phase 0/1 scaffold: Login -> Character Select -> Hub, wired to the real auth API.
-See `ACTION_PLAN.md` (project root) for the full phased roadmap, including the
-Phase 3 realtime co-op layer (WebSocket, 4-player parties — Mirror/UDP has no
-browser equivalent, so this is new additive server work).
-
-## Structure
-
-```
-src/net/        REST client (existing endpoints) + realtime config stub
-src/scenes/     Login, CharacterSelect, Hub (SceneManager routes between them)
-src/gameplay/   class data, entity/combat logic (grows in Phase 2+)
-src/graphics/   renderer, lighting, materials, VFX (AAA polish pass, Phase 6)
-src/ui/         HUD/menu CSS, panels
-```
+`CLAUDE.md` (working context) · `PHASE_REPORTS.md` (what's built) ·
+`NECROMANCER_REDESIGN_AUDIT.md` (design direction) · `ASSET_PIPELINE.md`
+(Gemini → Tripo → GLB) · `FUTURE_CONTENT.md` (backlog) · `server/` (realtime,
+deploy, proposals).

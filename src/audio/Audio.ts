@@ -1,0 +1,557 @@
+import { onSettingsChange, settings } from '../app/settings';
+import type { AreaId } from '../content/areas';
+
+/**
+ * Procedural sound: every effect is synthesised with WebAudio (no files, no
+ * licensing, tiny download). Positional sounds are panned and attenuated
+ * relative to the listener (the hero). The context starts on the first user
+ * gesture, as browsers require.
+ */
+export type Sfx =
+  | 'needleCast'
+  | 'needleHit'
+  | 'spear'
+  | 'exhume'
+  | 'thrallRise'
+  | 'miasma'
+  | 'litany'
+  | 'boneHit'
+  | 'enemyDeath'
+  | 'eliteDeath'
+  | 'hurt'
+  | 'playerDeath'
+  | 'toll'
+  | 'tollSmall'
+  | 'curse'
+  | 'raise'
+  | 'burst'
+  | 'coin'
+  | 'shard'
+  | 'item'
+  | 'levelUp'
+  | 'gate'
+  | 'click'
+  | 'buy'
+  | 'wave'
+  | 'bossToll'
+  | 'bossSlam'
+  | 'bossAwaken'
+  | 'bossDefeat'
+  | 'step'
+  | 'error';
+
+const MIN_GAP: Partial<Record<Sfx, number>> = {
+  needleHit: 0.04,
+  boneHit: 0.05,
+  enemyDeath: 0.06,
+  coin: 0.05,
+  hurt: 0.12,
+  step: 0.2,
+  tollSmall: 0.25,
+  wave: 0.8,
+};
+
+const MAX_VOICES = 36;
+
+class AudioEngine {
+  private ctx: AudioContext | null = null;
+  private master!: GainNode;
+  private sfxBus!: GainNode;
+  private ambBus!: GainNode;
+  private verb!: ConvolverNode;
+  private verbSend!: GainNode;
+  private noise!: AudioBuffer;
+  private brown!: AudioBuffer;
+  private voices = 0;
+  private last = new Map<Sfx, number>();
+  private listener = { x: 0, z: 0 };
+  private ambience: { area: AreaId | null; nodes: AudioNode[]; gain: GainNode | null } = { area: null, nodes: [], gain: null };
+  private wantArea: AreaId | null = null;
+  private bossBed: GainNode | null = null;
+
+  constructor() {
+    const start = () => {
+      this.ensure();
+      window.removeEventListener('pointerdown', start);
+      window.removeEventListener('keydown', start);
+    };
+    window.addEventListener('pointerdown', start);
+    window.addEventListener('keydown', start);
+    onSettingsChange(() => this.applyVolume());
+  }
+
+  private ensure() {
+    if (this.ctx) {
+      if (this.ctx.state === 'suspended') void this.ctx.resume();
+      return;
+    }
+    try {
+      this.ctx = new AudioContext();
+    } catch {
+      return;
+    }
+    const c = this.ctx;
+    this.master = c.createGain();
+    this.master.connect(c.destination);
+    const comp = c.createDynamicsCompressor();
+    comp.threshold.value = -16;
+    comp.ratio.value = 4;
+    comp.connect(this.master);
+    this.sfxBus = c.createGain();
+    this.sfxBus.connect(comp);
+    this.ambBus = c.createGain();
+    this.ambBus.gain.value = 0.55;
+    this.ambBus.connect(comp);
+    this.verb = c.createConvolver();
+    this.verb.buffer = this.impulse(2.8, 2.2);
+    this.verbSend = c.createGain();
+    this.verbSend.gain.value = 0.32;
+    this.verbSend.connect(this.verb);
+    this.verb.connect(comp);
+    this.noise = this.makeNoise(false);
+    this.brown = this.makeNoise(true);
+    this.applyVolume();
+    if (this.wantArea) this.setArea(this.wantArea);
+  }
+
+  private applyVolume() {
+    if (this.master) this.master.gain.value = Math.pow(settings.volume, 1.5) * 0.9;
+  }
+
+  private makeNoise(brown: boolean) {
+    const c = this.ctx!;
+    const len = c.sampleRate * 2;
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const d = buf.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < len; i++) {
+      const w = Math.random() * 2 - 1;
+      if (brown) {
+        last = (last + 0.02 * w) / 1.02;
+        d[i] = last * 3.5;
+      } else d[i] = w;
+    }
+    return buf;
+  }
+
+  /** Cathedral-ish reverb tail. */
+  private impulse(seconds: number, decay: number) {
+    const c = this.ctx!;
+    const len = Math.floor(c.sampleRate * seconds);
+    const buf = c.createBuffer(2, len, c.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+    }
+    return buf;
+  }
+
+  setListener(x: number, z: number) {
+    this.listener.x = x;
+    this.listener.z = z;
+  }
+
+  // --- voice helpers -------------------------------------------------------
+
+  /** Output node for one sound: gain (distance) → pan → sfx bus (+ reverb send). */
+  private out(x: number | undefined, z: number | undefined, vol: number, wet = 0.4) {
+    const c = this.ctx!;
+    const g = c.createGain();
+    let v = vol;
+    let pan = 0;
+    if (x !== undefined && z !== undefined) {
+      const dx = x - this.listener.x;
+      const dz = z - this.listener.z;
+      const d = Math.hypot(dx, dz);
+      v *= 1 / (1 + (d / 9) ** 2);
+      pan = Math.max(-0.85, Math.min(0.85, dx / 14));
+    }
+    g.gain.value = v;
+    const p = c.createStereoPanner();
+    p.pan.value = pan;
+    g.connect(p);
+    p.connect(this.sfxBus);
+    const send = c.createGain();
+    send.gain.value = wet;
+    p.connect(send);
+    send.connect(this.verbSend);
+    return g;
+  }
+
+  private track(node: AudioScheduledSourceNode, stopAt: number) {
+    this.voices++;
+    node.onended = () => (this.voices = Math.max(0, this.voices - 1));
+    node.stop(stopAt);
+  }
+
+  private env(g: GainNode, t: number, a: number, peak: number, d: number) {
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + a);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + a + d);
+  }
+
+  private tone(dest: AudioNode, type: OscillatorType, f0: number, f1: number, t: number, a: number, d: number, peak: number) {
+    const c = this.ctx!;
+    const o = c.createOscillator();
+    o.type = type;
+    o.frequency.setValueAtTime(f0, t);
+    if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + a + d);
+    const g = c.createGain();
+    this.env(g, t, a, peak, d);
+    o.connect(g);
+    g.connect(dest);
+    o.start(t);
+    this.track(o, t + a + d + 0.05);
+  }
+
+  private burst(dest: AudioNode, t: number, dur: number, peak: number, filter: BiquadFilterType, f0: number, f1: number, q = 1, brown = false) {
+    const c = this.ctx!;
+    const s = c.createBufferSource();
+    s.buffer = brown ? this.brown : this.noise;
+    s.playbackRate.value = 0.8 + Math.random() * 0.4;
+    const bq = c.createBiquadFilter();
+    bq.type = filter;
+    bq.Q.value = q;
+    bq.frequency.setValueAtTime(f0, t);
+    bq.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+    const g = c.createGain();
+    this.env(g, t, Math.min(0.01, dur * 0.2), peak, dur);
+    s.connect(bq);
+    bq.connect(g);
+    g.connect(dest);
+    s.start(t, Math.random() * 1.5);
+    this.track(s, t + dur + 0.05);
+  }
+
+  /** Inharmonic bell partials (church-bell ratios). */
+  private bell(dest: AudioNode, t: number, f: number, dur: number, peak: number) {
+    const partials: [number, number][] = [
+      [0.5, 0.5],
+      [1, 1],
+      [1.19, 0.5],
+      [1.56, 0.35],
+      [2, 0.45],
+      [2.51, 0.3],
+      [2.66, 0.2],
+      [3.01, 0.15],
+    ];
+    for (const [ratio, amp] of partials) {
+      this.tone(dest, 'sine', f * ratio, f * ratio * 0.998, t, 0.004, dur * (1.1 - ratio * 0.18), peak * amp);
+    }
+    this.burst(dest, t, 0.06, peak * 0.4, 'highpass', 3000, 3000, 0.7);
+  }
+
+  // --- public --------------------------------------------------------------
+
+  play(name: Sfx, x?: number, z?: number, intensity = 1) {
+    if (!this.ctx || this.ctx.state !== 'running' || this.voices > MAX_VOICES) return;
+    const now = this.ctx.currentTime;
+    const gap = MIN_GAP[name];
+    if (gap && now - (this.last.get(name) ?? -1) < gap) return;
+    this.last.set(name, now);
+    const t = now + 0.005;
+    const r = () => 0.9 + Math.random() * 0.2;
+    switch (name) {
+      case 'needleCast': {
+        const o = this.out(x, z, 0.35, 0.2);
+        this.burst(o, t, 0.16, 0.6, 'bandpass', 2200 * r(), 6000, 2);
+        this.tone(o, 'triangle', 900 * r(), 1800, t, 0.005, 0.08, 0.12);
+        break;
+      }
+      case 'needleHit': {
+        const o = this.out(x, z, 0.45 * intensity, 0.25);
+        this.burst(o, t, 0.07, 0.9, 'bandpass', 2600 * r(), 1800, 3);
+        this.tone(o, 'square', 380 * r(), 180, t, 0.002, 0.05, 0.08);
+        break;
+      }
+      case 'boneHit': {
+        const o = this.out(x, z, 0.3, 0.2);
+        this.burst(o, t, 0.06, 0.8, 'bandpass', 1500 * r(), 900, 4);
+        break;
+      }
+      case 'spear': {
+        const o = this.out(x, z, 0.75, 0.35);
+        for (let i = 0; i < 6; i++) this.burst(o, t + i * 0.035, 0.12, 0.7, 'bandpass', 1200 + i * 250, 500, 2.5);
+        this.tone(o, 'sine', 90, 42, t, 0.005, 0.35, 0.8);
+        this.burst(o, t, 0.5, 0.35, 'lowpass', 600, 150, 0.7, true);
+        break;
+      }
+      case 'exhume': {
+        const o = this.out(x, z, 0.6, 0.6);
+        this.burst(o, t, 0.4, 0.45, 'lowpass', 900, 200, 0.8, true);
+        this.tone(o, 'sine', 220 * r(), 660, t + 0.05, 0.25, 0.6, 0.18);
+        this.tone(o, 'sine', 330 * r(), 990, t + 0.1, 0.25, 0.55, 0.12);
+        break;
+      }
+      case 'thrallRise': {
+        const o = this.out(x, z, 0.5, 0.5);
+        for (let i = 0; i < 5; i++) this.burst(o, t + i * 0.06 + Math.random() * 0.03, 0.05, 0.6, 'bandpass', 1800 + Math.random() * 900, 1200, 5);
+        this.tone(o, 'sine', 440, 880, t, 0.1, 0.5, 0.1);
+        break;
+      }
+      case 'miasma': {
+        const o = this.out(x, z, 0.55, 0.45);
+        this.burst(o, t, 1.1, 0.4, 'bandpass', 500, 1400, 1.2);
+        for (let i = 0; i < 9; i++) {
+          const f = 180 + Math.random() * 380;
+          this.tone(o, 'sine', f, f * 1.8, t + 0.1 + i * 0.09 + Math.random() * 0.05, 0.005, 0.07, 0.15);
+        }
+        break;
+      }
+      case 'litany': {
+        const o = this.out(x, z, 0.95 * intensity, 0.8);
+        // Inhale: reversed-feeling rise, then the boom.
+        this.burst(o, t, 0.28, 0.5, 'bandpass', 300, 3000, 1.5);
+        this.tone(o, 'sine', 70, 28, t + 0.2, 0.01, 1.4, 1);
+        this.burst(o, t + 0.2, 1.2, 0.6, 'lowpass', 1400, 120, 0.7, true);
+        for (const f of [110, 130.8, 164.8, 196]) this.tone(o, 'sawtooth', f * r() * 0.5, f * 0.5, t + 0.22, 0.12, 1.6, 0.05);
+        break;
+      }
+      case 'enemyDeath': {
+        const o = this.out(x, z, 0.45, 0.3);
+        this.burst(o, t, 0.18, 0.7, 'bandpass', 900 * r(), 300, 1.5);
+        this.tone(o, 'sine', 120, 60, t, 0.005, 0.2, 0.35);
+        break;
+      }
+      case 'eliteDeath': {
+        const o = this.out(x, z, 0.8, 0.6);
+        this.burst(o, t, 0.4, 0.7, 'lowpass', 1800, 200, 0.8, true);
+        this.tone(o, 'sine', 90, 35, t, 0.005, 0.6, 0.7);
+        this.bell(o, t + 0.05, 880, 1.1, 0.12);
+        break;
+      }
+      case 'hurt': {
+        const o = this.out(undefined, undefined, 0.5, 0.1);
+        this.burst(o, t, 0.12, 0.8, 'lowpass', 900, 250, 1);
+        this.tone(o, 'sine', 160, 90, t, 0.003, 0.12, 0.35);
+        break;
+      }
+      case 'playerDeath': {
+        const o = this.out(undefined, undefined, 0.8, 0.8);
+        this.bell(o, t, 196, 3.5, 0.35);
+        this.tone(o, 'sine', 55, 30, t, 0.02, 2.5, 0.5);
+        break;
+      }
+      case 'toll':
+      case 'bossToll': {
+        const big = name === 'bossToll';
+        const o = this.out(x, z, big ? 1 : 0.55, 0.9);
+        this.bell(o, t, big ? 98 : 196 * r(), big ? 4.5 : 2.4, big ? 0.55 : 0.3);
+        if (big) this.tone(o, 'sine', 49, 45, t, 0.01, 3, 0.5);
+        break;
+      }
+      case 'tollSmall': {
+        const o = this.out(x, z, 0.3, 0.7);
+        this.bell(o, t, 523 * r(), 1.2, 0.12);
+        break;
+      }
+      case 'curse': {
+        const o = this.out(x, z, 0.45, 0.5);
+        this.tone(o, 'sawtooth', 140, 70, t, 0.05, 0.4, 0.12);
+        this.burst(o, t, 0.35, 0.35, 'bandpass', 800, 300, 3);
+        break;
+      }
+      case 'raise': {
+        const o = this.out(x, z, 0.45, 0.6);
+        this.tone(o, 'sine', 180, 120, t, 0.3, 1.1, 0.14);
+        this.tone(o, 'sine', 187, 124, t, 0.3, 1.1, 0.12);
+        break;
+      }
+      case 'burst': {
+        const o = this.out(x, z, 0.6, 0.4);
+        this.burst(o, t, 0.35, 0.8, 'lowpass', 2200, 300, 0.8);
+        this.tone(o, 'sine', 110, 40, t, 0.003, 0.3, 0.5);
+        break;
+      }
+      case 'coin': {
+        const o = this.out(undefined, undefined, 0.22, 0.2);
+        const f = 1900 * r();
+        this.tone(o, 'sine', f, f, t, 0.002, 0.18, 0.4);
+        this.tone(o, 'sine', f * 1.5, f * 1.5, t + 0.04, 0.002, 0.14, 0.25);
+        break;
+      }
+      case 'shard': {
+        const o = this.out(undefined, undefined, 0.35, 0.6);
+        for (const [i, f] of [1318, 1760, 2637].entries()) this.tone(o, 'sine', f, f, t + i * 0.05, 0.003, 0.6, 0.18);
+        break;
+      }
+      case 'item': {
+        const o = this.out(undefined, undefined, 0.35, 0.5);
+        this.bell(o, t, 659, 0.9, 0.14);
+        break;
+      }
+      case 'levelUp': {
+        const o = this.out(undefined, undefined, 0.6, 0.8);
+        [262, 330, 392, 523].forEach((f, i) => this.bell(o, t + i * 0.12, f, 1.8, 0.18));
+        break;
+      }
+      case 'gate': {
+        const o = this.out(x, z, 0.9, 0.7);
+        this.burst(o, t, 2.2, 0.6, 'lowpass', 300, 80, 0.7, true);
+        for (let i = 0; i < 14; i++) this.burst(o, t + i * 0.13 + Math.random() * 0.05, 0.06, 0.4, 'bandpass', 2500 + Math.random() * 1500, 2000, 6);
+        this.bell(o, t + 0.1, 147, 3, 0.3);
+        break;
+      }
+      case 'click': {
+        const o = this.out(undefined, undefined, 0.18, 0.05);
+        this.burst(o, t, 0.03, 0.8, 'bandpass', 2400, 2000, 3);
+        break;
+      }
+      case 'buy': {
+        const o = this.out(undefined, undefined, 0.4, 0.6);
+        this.bell(o, t, 784, 1.2, 0.16);
+        this.tone(o, 'sine', 392, 392, t, 0.01, 0.5, 0.12);
+        break;
+      }
+      case 'error': {
+        const o = this.out(undefined, undefined, 0.2, 0.1);
+        this.tone(o, 'square', 150, 120, t, 0.005, 0.12, 0.08);
+        break;
+      }
+      case 'wave': {
+        const o = this.out(x, z, 0.5, 0.6);
+        this.burst(o, t, 1.2, 0.45, 'lowpass', 400, 90, 0.8, true);
+        this.tone(o, 'sine', 62, 48, t, 0.2, 1, 0.35);
+        break;
+      }
+      case 'bossSlam': {
+        const o = this.out(x, z, 1, 0.6);
+        this.tone(o, 'sine', 80, 30, t, 0.003, 0.7, 1);
+        this.burst(o, t, 0.6, 0.8, 'lowpass', 1600, 150, 0.8, true);
+        this.bell(o, t + 0.02, 130, 1.4, 0.2);
+        break;
+      }
+      case 'bossAwaken': {
+        const o = this.out(x, z, 1, 1);
+        this.bell(o, t, 73, 6, 0.6);
+        this.bell(o, t + 1.1, 98, 5, 0.5);
+        this.tone(o, 'sine', 36, 34, t, 0.5, 5, 0.6);
+        this.setBossBed(true);
+        break;
+      }
+      case 'bossDefeat': {
+        const o = this.out(x, z, 1, 1);
+        this.bell(o, t, 110, 7, 0.6);
+        this.burst(o, t, 3, 0.5, 'lowpass', 1000, 60, 0.7, true);
+        this.setBossBed(false);
+        break;
+      }
+      case 'step': {
+        const o = this.out(undefined, undefined, 0.07 * intensity, 0.05);
+        this.burst(o, t, 0.05, 0.9, 'lowpass', 700 * r(), 200, 1);
+        break;
+      }
+    }
+  }
+
+  // --- ambience ------------------------------------------------------------
+
+  /** Crossfade to the area's ambience bed. */
+  setArea(area: AreaId) {
+    this.wantArea = area;
+    if (!this.ctx || this.ambience.area === area) return;
+    const c = this.ctx;
+    const t = c.currentTime;
+    if (this.ambience.gain) {
+      const old = this.ambience;
+      old.gain!.gain.setTargetAtTime(0.0001, t, 0.8);
+      setTimeout(() => old.nodes.forEach((n) => (n as AudioScheduledSourceNode).stop?.()), 4000);
+    }
+    const gain = c.createGain();
+    gain.gain.value = 0.0001;
+    gain.gain.setTargetAtTime(1, t, 1.2);
+    gain.connect(this.ambBus);
+    const nodes: AudioNode[] = [];
+    const wind = (lp: number, amt: number) => {
+      const s = c.createBufferSource();
+      s.buffer = this.brown;
+      s.loop = true;
+      const f = c.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.value = lp;
+      const g = c.createGain();
+      g.gain.value = amt;
+      const lfo = c.createOscillator();
+      lfo.frequency.value = 0.07 + Math.random() * 0.05;
+      const lg = c.createGain();
+      lg.gain.value = lp * 0.5;
+      lfo.connect(lg);
+      lg.connect(f.frequency);
+      s.connect(f);
+      f.connect(g);
+      g.connect(gain);
+      s.start();
+      lfo.start();
+      nodes.push(s, lfo);
+    };
+    const drone = (f: number, amt: number) => {
+      for (const det of [-3, 4]) {
+        const o = c.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.value = f;
+        o.detune.value = det;
+        const lp = c.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = f * 3;
+        const g = c.createGain();
+        g.gain.value = amt;
+        o.connect(lp);
+        lp.connect(g);
+        g.connect(gain);
+        o.start();
+        nodes.push(o);
+      }
+    };
+    switch (area) {
+      case 'chapterhouse':
+        wind(300, 0.06);
+        drone(55, 0.018);
+        break;
+      case 'graves':
+        wind(700, 0.22);
+        wind(260, 0.12);
+        break;
+      case 'ossuary':
+        wind(350, 0.08);
+        drone(49, 0.03);
+        break;
+      case 'nave':
+        wind(450, 0.1);
+        drone(41.2, 0.026);
+        drone(61.7, 0.014);
+        break;
+      case 'sanctum':
+        wind(380, 0.08);
+        drone(36.7, 0.034);
+        break;
+    }
+    this.ambience = { area, nodes, gain };
+  }
+
+  /** A slow war-drum pulse under boss fights. */
+  private setBossBed(on: boolean) {
+    if (!this.ctx) return;
+    const c = this.ctx;
+    if (!on) {
+      this.bossBed?.gain.setTargetAtTime(0.0001, c.currentTime, 1);
+      this.bossBed = null;
+      return;
+    }
+    if (this.bossBed) return;
+    const bed = c.createGain();
+    bed.gain.value = 1;
+    bed.connect(this.ambBus);
+    this.bossBed = bed;
+    const beat = () => {
+      if (this.bossBed !== bed || !this.ctx) return;
+      const t = this.ctx.currentTime + 0.02;
+      for (const [off, f, v] of [[0, 62, 0.55], [0.42, 58, 0.35], [1.2, 62, 0.45]] as const) {
+        this.tone(bed, 'sine', f, 38, t + off, 0.004, 0.45, v);
+      }
+      setTimeout(beat, 1600);
+    };
+    beat();
+  }
+}
+
+export const audio = new AudioEngine();

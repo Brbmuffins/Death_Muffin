@@ -1,0 +1,9 @@
+{
+  "id": "prop_bell_altar",
+  "input": "art-src/concepts/props/bell_altar.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 3500,
+    "texture_quality": "standard"
+  }
+}

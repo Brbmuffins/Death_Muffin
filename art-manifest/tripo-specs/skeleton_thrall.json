@@ -1,0 +1,8 @@
+{
+  "id": "skeleton_thrall",
+  "input": "art-src/concepts/skeleton_thrall.png",
+  "generation": { "model": "P1-20260311", "face_limit": 5000, "texture_quality": "standard" },
+  "rig": { "model": "v1.0-20240301", "rig_type": "biped" },
+  "animations": ["preset:biped:idle", "preset:biped:walk", "preset:biped:run", "preset:biped:slash", "preset:biped:hurt", "preset:biped:fall"],
+  "animationMode": "single"
+}

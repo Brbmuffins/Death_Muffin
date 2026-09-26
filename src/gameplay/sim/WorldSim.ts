@@ -1,0 +1,972 @@
+import { AREAS, AREA_ORDER, GLOBAL_ENEMY_CAP, type AreaId } from '../../content/areas';
+import { ELITE, ENEMIES, enemyDamageScale, enemyHpScale, type EnemyId } from '../../content/enemies';
+import {
+  FRACTURE,
+  LITANY_MAX_MULT,
+  LITANY_PER_CORPSE,
+  LITANY_PER_RESONANT,
+  LITANY_PER_THRALL,
+  MIASMA_SLOW,
+  ABILITIES,
+} from '../../content/abilities';
+import { waveModifiers } from '../../content/upgrades';
+import type { Nav } from '../nav';
+import { pickWeighted } from '../rng';
+import { BossBrain, BOSS_ARENA, BOSS_RADIUS } from './BossBrain';
+import type { BossState, Corpse, Enemy, Intent, PlayerBody, SimEvent, Thrall, Zone } from './types';
+
+const AGGRO_RANGE = 15;
+const CORPSE_LIFETIME = 26;
+const TOXIC_RUPTURE = 5;
+const MAX_CORPSES = 45;
+const THRALL_LEASH = 13;
+const THRALL_TELEPORT = 24;
+const PLAYER_RADIUS = 0.45;
+const SPAWN_MIN_DIST = 9;
+const SPAWN_MAX_DIST = 30;
+const RISE_TIME = 1.1;
+const THRALL_RISE_TIME = 0.9;
+
+const THRALL_BASE = {
+  warrior: { range: 1.3, interval: 1.0, speed: 5.6 },
+  shieldbearer: { range: 1.3, interval: 1.25, speed: 5.2 },
+  hound: { range: 1.2, interval: 0.7, speed: 7.2 },
+  wraith: { range: 5.5, interval: 1.1, speed: 5.8 },
+} as const;
+
+/**
+ * The authoritative world. Runs on the room host (or solo). Everything that
+ * isn't a player body lives here: enemies, thralls, corpses, zones, waves and
+ * the Prelate. Clients talk to it through Intents; it answers with Events.
+ */
+export class WorldSim {
+  readonly enemies = new Map<number, Enemy>();
+  readonly thralls = new Map<number, Thrall>();
+  readonly corpses = new Map<number, Corpse>();
+  readonly zones = new Map<number, Zone>();
+  readonly players = new Map<string, PlayerBody>();
+  readonly boss: BossBrain;
+
+  /** Host's active wave-speed tier (drives every area this sim runs). */
+  waveTier = 0;
+  time = 0;
+
+  private events: SimEvent[] = [];
+  private nextId = 1;
+  private waveTimers = new Map<AreaId, number>();
+  private dotAccum = new Map<number, number>();
+  private bloomed = new Set<number>();
+
+  constructor(
+    private nav: Nav,
+    private rand: () => number = Math.random,
+  ) {
+    this.boss = new BossBrain(this);
+  }
+
+  id() {
+    return this.nextId++;
+  }
+
+  /** After seeding from a mirror (host migration) keep new ids above the old ones. */
+  reserveIds(maxUsed: number) {
+    this.nextId = Math.max(this.nextId, maxUsed + 1);
+  }
+
+  emit(ev: SimEvent) {
+    this.events.push(ev);
+  }
+
+  drain(): SimEvent[] {
+    const out = this.events;
+    this.events = [];
+    return out;
+  }
+
+  get bossState(): BossState {
+    return this.boss.state;
+  }
+
+  // --- Players ---
+
+  setPlayer(body: PlayerBody) {
+    this.players.set(body.id, body);
+  }
+
+  removePlayer(id: string) {
+    this.players.delete(id);
+    for (const t of [...this.thralls.values()]) if (t.owner === id) this.killThrall(t, 'crumbled');
+  }
+
+  playersIn(area: AreaId) {
+    return [...this.players.values()].filter((p) => p.alive && p.area === area);
+  }
+
+  // --- Intents ---
+
+  apply(intent: Intent) {
+    switch (intent.t) {
+      case 'hit':
+        return this.applyHit(intent);
+      case 'miasma':
+        return this.applyMiasma(intent);
+      case 'exhume':
+        return this.applyExhume(intent);
+      case 'litany':
+        return this.applyLitany(intent);
+      case 'summonBoss':
+        return this.boss.awaken(intent.by);
+      case 'recallThralls':
+        for (const t of this.thralls.values()) {
+          if (t.owner !== intent.by) continue;
+          t.x = intent.x + (this.rand() - 0.5) * 2;
+          t.z = intent.z + (this.rand() - 0.5) * 2;
+          t.target = null;
+        }
+    }
+  }
+
+  damageEnemy(e: Enemy, amount: number, by: string) {
+    if (e.state === 'dead' || e.hp <= 0) return 0;
+    const dmg = amount * (1 + FRACTURE.perStack * e.fracture);
+    e.hp -= dmg;
+    e.flash = 1;
+    e.lastHitBy = by;
+    return dmg;
+  }
+
+  private applyHit(h: Extract<Intent, { t: 'hit' }>) {
+    if (h.boss) {
+      this.boss.damage(h.dmg, h.by, h.fracture ?? 0);
+      return;
+    }
+    for (const id of h.ids) {
+      const e = this.enemies.get(id);
+      if (!e) continue;
+      this.damageEnemy(e, h.dmg, h.by);
+      if (h.fracture) {
+        e.fracture = Math.min(FRACTURE.maxStacks, e.fracture + h.fracture);
+        e.fractureT = FRACTURE.durationMs / 1000;
+      }
+    }
+  }
+
+  private applyMiasma(m: Extract<Intent, { t: 'miasma' }>) {
+    const zone: Zone = {
+      id: this.id(),
+      kind: 'miasma',
+      owner: m.by,
+      x: m.x,
+      z: m.z,
+      r: m.r,
+      until: this.time + m.durationMs / 1000,
+      bornAt: this.time,
+      tick: 0,
+      dps: m.dps,
+      slow: MIASMA_SLOW,
+      witheredCap: m.witheredCap,
+      bloom: m.bloom,
+      hostile: false,
+    };
+    this.zones.set(zone.id, zone);
+    this.emit({ t: 'zone', zone });
+  }
+
+  private ownedThralls(owner: string) {
+    return [...this.thralls.values()].filter((t) => t.owner === owner && t.state !== 'dead');
+  }
+
+  private applyExhume(x: Extract<Intent, { t: 'exhume' }>) {
+    let best: Corpse | null = null;
+    let bestD = Infinity;
+    for (const c of this.corpses.values()) {
+      const d = Math.hypot(c.x - x.x, c.z - x.z);
+      if (d <= x.r && d < bestD) {
+        best = c;
+        bestD = d;
+      }
+    }
+    if (!best) {
+      this.emit({ t: 'exhumed', by: x.by, ok: false, x: x.x, z: x.z });
+      return;
+    }
+    this.removeCorpse(best, 'consumed', x.by);
+    let crumbled: number | undefined;
+    const owned = this.ownedThralls(x.by).sort((a, b) => a.bornAt - b.bornAt);
+    if (owned.length >= x.cap) {
+      crumbled = owned[0].id;
+      this.killThrall(owned[0], 'crumbled');
+    }
+    const kind = x.kind === 'wraith' ? 'wraith' : best.kind === 'swift' ? 'hound' : x.kind;
+    const empowered = best.kind === 'resonant' || best.elite;
+    const base = THRALL_BASE[kind];
+    const slotsUsed = new Set(this.ownedThralls(x.by).map((t) => t.slot));
+    let slot = 0;
+    while (slotsUsed.has(slot)) slot++;
+    const t: Thrall = {
+      id: this.id(),
+      owner: x.by,
+      kind,
+      x: best.x,
+      z: best.z,
+      facing: best.facing,
+      hp: x.hp * (empowered ? 1.5 : 1) * (kind === 'hound' ? 0.75 : 1),
+      maxHp: x.hp * (empowered ? 1.5 : 1) * (kind === 'hound' ? 0.75 : 1),
+      damage: x.damage * (empowered ? 1.5 : 1),
+      attackInterval: base.interval / x.attackSpeedMult,
+      range: base.range,
+      speed: base.speed,
+      state: 'rising',
+      stateT: 0,
+      attackCd: 0.4,
+      target: null,
+      slot,
+      bornAt: this.time,
+      empowered,
+      flash: 0,
+      gait: 0,
+      moving: false,
+    };
+    this.thralls.set(t.id, t);
+    this.emit({ t: 'thrall', id: t.id, owner: t.owner, kind, x: t.x, z: t.z, empowered });
+    this.emit({ t: 'exhumed', by: x.by, ok: true, corpseKind: best.kind, x: best.x, z: best.z, crumbled });
+  }
+
+  private applyLitany(l: Extract<Intent, { t: 'litany' }>) {
+    let corpses = 0;
+    let resonant = 0;
+    const tethers: [number, number][] = [];
+    for (const c of [...this.corpses.values()]) {
+      if (Math.hypot(c.x - l.x, c.z - l.z) > l.r) continue;
+      if (c.kind === 'resonant') resonant++;
+      else corpses++;
+      tethers.push([c.x, c.z]);
+      this.removeCorpse(c, 'litany', l.by);
+    }
+    let thralls = 0;
+    for (const t of this.ownedThralls(l.by)) {
+      if (Math.hypot(t.x - l.x, t.z - l.z) > l.r) continue;
+      thralls++;
+      tethers.push([t.x, t.z]);
+      this.killThrall(t, 'sacrificed');
+      if (l.leaveCorpses) this.addCorpse(t.x, t.z, 'normal', 'risen', false, t.facing, 1, this.nav.areaAt(t.x, t.z) ?? 'graves');
+    }
+    const mult = Math.min(
+      LITANY_MAX_MULT,
+      ABILITIES.black_litany.power + LITANY_PER_CORPSE * corpses + LITANY_PER_RESONANT * resonant + LITANY_PER_THRALL * thralls,
+    );
+    const dmg = l.spellPower * mult;
+    let targets = 0;
+    for (const e of this.enemies.values()) {
+      if (e.state === 'dead' || Math.hypot(e.x - l.x, e.z - l.z) > l.r + e.radius) continue;
+      this.damageEnemy(e, dmg, l.by);
+      targets++;
+    }
+    if (this.boss.state.active && Math.hypot(this.boss.state.x - l.x, this.boss.state.z - l.z) <= l.r + BOSS_RADIUS) {
+      this.boss.damage(dmg, l.by, 0);
+      targets++;
+    }
+    this.emit({ t: 'litanyResult', by: l.by, x: l.x, z: l.z, r: l.r, corpses, resonant, thralls, targets, tethers });
+    if (targets) this.emit({ t: 'dmg', x: l.x, z: l.z, amount: Math.round(dmg), kind: 'litany', by: l.by });
+  }
+
+  // --- Corpses / thralls ---
+
+  addCorpse(x: number, z: number, kind: Corpse['kind'], enemy: EnemyId, elite: boolean, facing: number, scale: number, area: AreaId) {
+    if (kind === 'none') return;
+    if (this.corpses.size >= MAX_CORPSES) {
+      const oldest = [...this.corpses.values()].sort((a, b) => a.bornAt - b.bornAt)[0];
+      if (oldest) this.removeCorpse(oldest, 'expired');
+    }
+    const c: Corpse = {
+      id: this.id(),
+      x,
+      z,
+      kind,
+      enemy,
+      elite,
+      facing,
+      scale,
+      area,
+      bornAt: this.time,
+      expiresAt: this.time + CORPSE_LIFETIME,
+      ruptureAt: kind === 'toxic' ? this.time + TOXIC_RUPTURE : Infinity,
+    };
+    this.corpses.set(c.id, c);
+    this.emit({ t: 'corpse', corpse: c });
+  }
+
+  removeCorpse(c: Corpse, reason: 'consumed' | 'expired' | 'raised' | 'burst' | 'litany', by?: string) {
+    if (!this.corpses.delete(c.id)) return;
+    this.bloomed.delete(c.id);
+    this.emit({ t: 'corpseGone', id: c.id, reason, by });
+  }
+
+  killThrall(t: Thrall, reason: 'killed' | 'sacrificed' | 'crumbled') {
+    if (!this.thralls.delete(t.id)) return;
+    t.state = 'dead';
+    this.emit({ t: 'thrallGone', id: t.id, owner: t.owner, x: t.x, z: t.z, reason });
+  }
+
+  // --- Spawning ---
+
+  spawnEnemy(def: EnemyId, area: AreaId, x: number, z: number, elite: boolean, rising = true): Enemy {
+    const d = ENEMIES[def];
+    const level = AREAS[area].level;
+    const hp = d.hp * enemyHpScale(level) * (elite ? ELITE.hpMult : 1) * this.partyHpScale();
+    const e: Enemy = {
+      id: this.id(),
+      def,
+      area,
+      level,
+      elite,
+      x,
+      z,
+      facing: this.rand() * Math.PI * 2,
+      hp,
+      maxHp: hp,
+      damage: d.damage * enemyDamageScale(level) * (elite ? ELITE.damageMult : 1),
+      speed: d.speed * (0.92 + this.rand() * 0.16),
+      radius: d.radius * (elite ? 1.25 : 1),
+      scale: d.scale * (elite ? ELITE.scale : 1),
+      state: rising ? 'rising' : 'move',
+      stateT: 0,
+      attackCd: 0.5 + this.rand(),
+      targetPlayer: null,
+      targetThrall: null,
+      aimX: x,
+      aimZ: z,
+      channelCorpse: null,
+      flankSide: this.rand() < 0.5 ? -1 : 1,
+      fracture: 0,
+      fractureT: 0,
+      withered: 0,
+      witheredT: 0,
+      witheredDps: 0,
+      witheredOwner: '',
+      slowT: 0,
+      lastHitBy: '',
+      flash: 0,
+      gait: this.rand() * 10,
+      moving: false,
+    };
+    this.enemies.set(e.id, e);
+    this.emit({ t: 'spawn', id: e.id, def, x, z, elite });
+    return e;
+  }
+
+  private partyHpScale() {
+    const n = Math.max(1, this.players.size);
+    return 1 + 0.5 * (n - 1);
+  }
+
+  private aliveIn(area: AreaId) {
+    let n = 0;
+    for (const e of this.enemies.values()) if (e.area === area && e.state !== 'dead') n++;
+    return n;
+  }
+
+  private spawnWave(area: AreaId, first = false) {
+    const def = AREAS[area];
+    const mods = waveModifiers(this.waveTier);
+    const cap = Math.round(def.cap * mods.capMult);
+    const room = Math.min(cap - this.aliveIn(area), GLOBAL_ENEMY_CAP - this.enemies.size);
+    if (room <= 0) return;
+    let count = Math.round(def.waveSize * mods.sizeMult * (first ? 1.6 : 1));
+    count = Math.min(count, room);
+    const players = this.playersIn(area);
+    // Breaches at a fair distance from every player; fall back to any breach.
+    const ok = def.breaches.filter(([bx, bz]) =>
+      players.every((p) => {
+        const d = Math.hypot(p.x - bx, p.z - bz);
+        return d >= SPAWN_MIN_DIST && d <= SPAWN_MAX_DIST;
+      }),
+    );
+    const pool = ok.length ? ok : def.breaches;
+    const breachCount = Math.min(pool.length, count > 6 ? 2 : 1);
+    const chosen: [number, number][] = [];
+    for (let i = 0; i < breachCount; i++) chosen.push(pool[Math.floor(this.rand() * pool.length)]);
+    for (let i = 0; i < count; i++) {
+      const [bx, bz] = chosen[i % chosen.length];
+      const ang = this.rand() * Math.PI * 2;
+      const rr = 0.5 + this.rand() * 2.4;
+      const [x, z] = this.nav.resolveInArea(area, bx + Math.cos(ang) * rr, bz + Math.sin(ang) * rr, 0.5);
+      const pick = pickWeighted(def.enemies, this.rand());
+      if (!pick) continue;
+      const elite = pick.id !== 'risen' && this.rand() < def.eliteChance + mods.eliteBonus;
+      this.spawnEnemy(pick.id, area, x, z, elite);
+    }
+    for (const [x, z] of chosen) this.emit({ t: 'wave', area, count, x, z });
+  }
+
+  private updateWaves(dt: number) {
+    const mods = waveModifiers(this.waveTier);
+    for (const id of AREA_ORDER) {
+      const def = AREAS[id];
+      if (def.safe || !this.nav.isUnlocked(id)) continue;
+      if (!this.playersIn(id).length) continue;
+      if (id === 'sanctum' && this.boss.state.active) continue;
+      let t = this.waveTimers.get(id);
+      if (t === undefined) {
+        // First visit: open with a heavier wave so the area feels inhabited.
+        this.spawnWave(id, true);
+        this.waveTimers.set(id, (def.waveIntervalMs / 1000) * mods.intervalMult);
+        continue;
+      }
+      t -= dt;
+      if (t <= 0) {
+        this.spawnWave(id);
+        t = (def.waveIntervalMs / 1000) * mods.intervalMult;
+      }
+      this.waveTimers.set(id, t);
+    }
+  }
+
+  // --- Step ---
+
+  step(dt: number): SimEvent[] {
+    this.time += dt;
+    this.updateWaves(dt);
+    this.updateZones(dt);
+    this.updateEnemies(dt);
+    this.updateThralls(dt);
+    this.separate();
+    this.boss.update(dt);
+    this.updateCorpses();
+    this.collectDead();
+    return this.drain();
+  }
+
+  private updateZones(dt: number) {
+    for (const z of [...this.zones.values()]) {
+      if (this.time >= z.until) {
+        this.zones.delete(z.id);
+        this.emit({ t: 'zoneGone', id: z.id });
+        continue;
+      }
+      z.tick -= dt;
+      const pulse = z.tick <= 0;
+      if (pulse) z.tick = 1;
+      if (!z.hostile) {
+        for (const e of this.enemies.values()) {
+          if (e.state === 'dead' || Math.hypot(e.x - z.x, e.z - z.z) > z.r + e.radius) continue;
+          e.slowT = 0.3;
+          if (pulse) {
+            e.withered = Math.min(z.witheredCap, e.withered + 1);
+            e.witheredT = 5;
+            e.witheredDps = Math.max(e.witheredDps, z.dps);
+            e.witheredOwner = z.owner;
+          }
+        }
+        const b = this.boss.state;
+        if (b.active && pulse && Math.hypot(b.x - z.x, b.z - z.z) < z.r + BOSS_RADIUS) {
+          b.withered = Math.min(z.witheredCap, b.withered + 1);
+          b.witheredT = 5;
+          b.witheredDps = Math.max(b.witheredDps, z.dps);
+        }
+        if (z.bloom) {
+          for (const c of [...this.corpses.values()]) {
+            if (this.bloomed.has(c.id) || Math.hypot(c.x - z.x, c.z - z.z) > z.r) continue;
+            this.bloomed.add(c.id);
+            this.removeCorpse(c, 'burst', z.owner);
+            this.burst('bloom', c.x, c.z, 2.6, z.dps * 4, z.owner, z.witheredCap);
+          }
+        }
+      } else if (pulse) {
+        for (const p of this.players.values()) {
+          if (p.alive && Math.hypot(p.x - z.x, p.z - z.z) < z.r + PLAYER_RADIUS) {
+            this.emit({ t: 'hurt', player: p.id, dmg: z.dps, from: 'toxic', x: z.x, z: z.z });
+          }
+        }
+        for (const t of this.thralls.values()) {
+          if (Math.hypot(t.x - z.x, t.z - z.z) < z.r) this.hurtThrall(t, z.dps);
+        }
+      }
+    }
+  }
+
+  burst(kind: 'bloom' | 'toxic', x: number, z: number, r: number, dmg: number, by: string, witheredCap = 5) {
+    this.emit({ t: 'burst', kind, x, z, r });
+    for (const e of this.enemies.values()) {
+      if (e.state === 'dead' || Math.hypot(e.x - x, e.z - z) > r + e.radius) continue;
+      this.damageEnemy(e, dmg, by);
+      if (kind === 'bloom') {
+        e.withered = Math.min(witheredCap, e.withered + 1);
+        e.witheredT = 5;
+      }
+    }
+  }
+
+  private updateCorpses() {
+    for (const c of [...this.corpses.values()]) {
+      if (this.time >= c.ruptureAt) {
+        this.removeCorpse(c, 'burst');
+        const level = AREAS[c.area].level;
+        const zone: Zone = {
+          id: this.id(),
+          kind: 'toxic',
+          owner: '',
+          x: c.x,
+          z: c.z,
+          r: 2.4 * c.scale,
+          until: this.time + 5,
+          bornAt: this.time,
+          tick: 0.4,
+          dps: 6 * enemyDamageScale(level),
+          slow: 1,
+          witheredCap: 0,
+          bloom: false,
+          hostile: true,
+        };
+        this.zones.set(zone.id, zone);
+        this.emit({ t: 'zone', zone });
+        this.emit({ t: 'burst', kind: 'toxic', x: c.x, z: c.z, r: zone.r });
+      } else if (this.time >= c.expiresAt) {
+        this.removeCorpse(c, 'expired');
+      }
+    }
+  }
+
+  private collectDead() {
+    for (const e of [...this.enemies.values()]) {
+      if (e.hp > 0 || e.state === 'dead') continue;
+      e.state = 'dead';
+      this.enemies.delete(e.id);
+      this.dotAccum.delete(e.id);
+      const def = ENEMIES[e.def];
+      this.emit({
+        t: 'death',
+        id: e.id,
+        def: e.def,
+        x: e.x,
+        z: e.z,
+        elite: e.elite,
+        area: e.area,
+        level: e.level,
+        killer: e.lastHitBy,
+      });
+      this.addCorpse(e.x, e.z, def.corpse, e.def, e.elite, e.facing, e.scale, e.area);
+    }
+  }
+
+  // --- Enemy AI ---
+
+  private pickTarget(e: Enemy): { x: number; z: number; player?: PlayerBody; thrall?: Thrall } | null {
+    let best: { x: number; z: number; player?: PlayerBody; thrall?: Thrall } | null = null;
+    let bestD = AGGRO_RANGE;
+    for (const p of this.players.values()) {
+      if (!p.alive || p.area !== e.area) continue;
+      const d = Math.hypot(p.x - e.x, p.z - e.z);
+      if (d < bestD) {
+        bestD = d;
+        best = { x: p.x, z: p.z, player: p };
+      }
+    }
+    for (const t of this.thralls.values()) {
+      if (t.state === 'dead' || t.state === 'rising') continue;
+      // Shieldbearers draw aggression (Bone Ward).
+      const d = Math.hypot(t.x - e.x, t.z - e.z) * (t.kind === 'shieldbearer' ? 0.55 : 1.1);
+      if (d < bestD) {
+        bestD = d;
+        best = { x: t.x, z: t.z, thrall: t };
+      }
+    }
+    return best;
+  }
+
+  private moveEnemy(e: Enemy, tx: number, tz: number, dt: number, speedMult = 1) {
+    const dx = tx - e.x;
+    const dz = tz - e.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 0.05) return;
+    const slow = e.slowT > 0 ? MIASMA_SLOW : 1;
+    const step = Math.min(d, e.speed * speedMult * slow * dt);
+    [e.x, e.z] = this.nav.resolveInArea(e.area, e.x + (dx / d) * step, e.z + (dz / d) * step, e.radius);
+    e.facing = Math.atan2(dx, dz);
+    e.moving = true;
+    e.gait += step * 2.4;
+  }
+
+  private hurtThrall(t: Thrall, dmg: number) {
+    t.hp -= dmg;
+    t.flash = 1;
+    if (t.hp <= 0) this.killThrall(t, 'killed');
+  }
+
+  private strike(e: Enemy, kind: 'melee' | 'cone' | 'curse' | 'slam') {
+    const def = ENEMIES[e.def];
+    if (kind === 'cone') {
+      const dirX = e.aimX - e.x;
+      const dirZ = e.aimZ - e.z;
+      const len = Math.hypot(dirX, dirZ) || 1;
+      const hits = (x: number, z: number) => {
+        const vx = x - e.x;
+        const vz = z - e.z;
+        const d = Math.hypot(vx, vz);
+        if (d > def.attackRange + 0.4) return false;
+        return (vx * dirX + vz * dirZ) / (d * len || 1) > Math.cos((30 * Math.PI) / 180);
+      };
+      for (const p of this.players.values()) {
+        if (p.alive && hits(p.x, p.z)) this.emit({ t: 'hurt', player: p.id, dmg: e.damage, from: 'cone', x: e.x, z: e.z });
+      }
+      for (const t of [...this.thralls.values()]) if (hits(t.x, t.z)) this.hurtThrall(t, e.damage);
+      return;
+    }
+    const reach = kind === 'slam' ? 1.9 : def.attackRange * 1.35 + 0.4;
+    const cx = kind === 'slam' ? e.aimX : e.x;
+    const cz = kind === 'slam' ? e.aimZ : e.z;
+    const p = e.targetPlayer ? this.players.get(e.targetPlayer) : undefined;
+    if (p && p.alive && Math.hypot(p.x - cx, p.z - cz) <= reach) {
+      this.emit({ t: 'hurt', player: p.id, dmg: e.damage, from: kind === 'curse' ? 'curse' : 'melee', x: e.x, z: e.z });
+    }
+    const t = e.targetThrall !== null ? this.thralls.get(e.targetThrall) : undefined;
+    if (t && Math.hypot(t.x - cx, t.z - cz) <= reach) this.hurtThrall(t, e.damage);
+    if (kind === 'slam') {
+      for (const other of this.players.values()) {
+        if (other !== p && other.alive && Math.hypot(other.x - cx, other.z - cz) <= reach) {
+          this.emit({ t: 'hurt', player: other.id, dmg: e.damage, from: 'melee', x: e.x, z: e.z });
+        }
+      }
+    }
+    this.emit({ t: 'melee', id: e.id, x: e.x, z: e.z, tx: cx, tz: cz });
+  }
+
+  private tickStatuses(e: Enemy, dt: number) {
+    e.flash = Math.max(0, e.flash - dt * 8);
+    if (e.slowT > 0) e.slowT -= dt;
+    if (e.fractureT > 0) {
+      e.fractureT -= dt;
+      if (e.fractureT <= 0) e.fracture = 0;
+    }
+    if (e.witheredT > 0 && e.withered > 0) {
+      e.witheredT -= dt;
+      const dmg = e.withered * e.witheredDps * dt;
+      e.hp -= dmg;
+      e.lastHitBy = e.witheredOwner || e.lastHitBy;
+      const acc = (this.dotAccum.get(e.id) ?? 0) + dmg;
+      if (acc >= Math.max(4, e.maxHp * 0.06)) {
+        this.emit({ t: 'dmg', x: e.x, z: e.z, amount: Math.round(acc), kind: 'dot', by: e.witheredOwner });
+        this.dotAccum.set(e.id, 0);
+      } else this.dotAccum.set(e.id, acc);
+      if (e.witheredT <= 0) {
+        e.withered = 0;
+        e.witheredDps = 0;
+      }
+    }
+  }
+
+  private updateEnemies(dt: number) {
+    const activeAreas = new Set<AreaId>();
+    for (const p of this.players.values()) if (p.alive && p.area) activeAreas.add(p.area);
+    for (const e of this.enemies.values()) {
+      e.moving = false;
+      this.tickStatuses(e, dt);
+      e.stateT += dt;
+      if (e.state === 'rising') {
+        if (e.stateT >= RISE_TIME) {
+          e.state = 'move';
+          e.stateT = 0;
+        }
+        continue;
+      }
+      if (!activeAreas.has(e.area)) continue; // dormant: nobody here to hunt
+      e.attackCd -= dt;
+      const def = ENEMIES[e.def];
+
+      if (e.state === 'windup' || e.state === 'channel') {
+        const windup = (e.state === 'channel' ? 1.5 : def.windupMs / 1000) * (e.elite ? 0.85 : 1);
+        if (e.stateT >= windup) this.release(e);
+        continue;
+      }
+      if (e.state === 'recover') {
+        if (e.stateT >= 0.3) {
+          e.state = 'move';
+          e.stateT = 0;
+        }
+        continue;
+      }
+
+      // Deacons harvest any unclaimed corpse in reach, hunting or not — that
+      // corpse competition is why they're the priority kill.
+      if (def.behavior === 'support' && e.attackCd <= 0) {
+        const corpse = this.nearestCorpse(e.x, e.z, 8);
+        if (corpse) {
+          e.state = 'channel';
+          e.stateT = 0;
+          e.channelCorpse = corpse.id;
+          e.aimX = corpse.x;
+          e.aimZ = corpse.z;
+          this.emit({ t: 'telegraph', id: e.id, kind: 'raise', x: e.x, z: e.z, tx: corpse.x, tz: corpse.z, ms: 1500 });
+          continue;
+        }
+      }
+
+      const target = this.pickTarget(e);
+      e.targetPlayer = target?.player?.id ?? null;
+      e.targetThrall = target?.thrall?.id ?? null;
+      if (!target) {
+        // Shamble toward the nearest breach-side wander point.
+        if (this.rand() < dt * 0.3) e.facing += (this.rand() - 0.5) * 2;
+        this.moveEnemy(e, e.x + Math.sin(e.facing), e.z + Math.cos(e.facing), dt, 0.3);
+        continue;
+      }
+      const dist = Math.hypot(target.x - e.x, target.z - e.z);
+
+      switch (def.behavior) {
+        case 'melee':
+        case 'hazard':
+        case 'flank': {
+          if (dist <= def.attackRange + 0.35 && e.attackCd <= 0) {
+            e.state = 'windup';
+            e.stateT = 0;
+            e.aimX = target.x;
+            e.aimZ = target.z;
+            e.facing = Math.atan2(target.x - e.x, target.z - e.z);
+            if (def.behavior === 'hazard') {
+              this.emit({ t: 'telegraph', id: e.id, kind: 'slam', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
+            }
+          } else if (dist > def.attackRange * 0.8) {
+            let tx = target.x;
+            let tz = target.z;
+            if (def.behavior === 'flank' && dist > 2.5) {
+              // Curve around the target's side.
+              const px = -(target.z - e.z) / dist;
+              const pz = (target.x - e.x) / dist;
+              const off = Math.min(3, dist * 0.45) * e.flankSide;
+              tx += px * off;
+              tz += pz * off;
+            }
+            this.moveEnemy(e, tx, tz, dt);
+          }
+          break;
+        }
+        case 'caster': {
+          if (dist <= def.attackRange - 0.5 && e.attackCd <= 0) {
+            e.state = 'windup';
+            e.stateT = 0;
+            e.aimX = target.x;
+            e.aimZ = target.z;
+            e.facing = Math.atan2(target.x - e.x, target.z - e.z);
+            this.emit({ t: 'telegraph', id: e.id, kind: 'cone', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
+          } else if (dist > def.attackRange - 1.5) this.moveEnemy(e, target.x, target.z, dt);
+          else if (dist < 3.5) this.moveEnemy(e, e.x * 2 - target.x, e.z * 2 - target.z, dt, 0.8);
+          else e.facing = Math.atan2(target.x - e.x, target.z - e.z);
+          break;
+        }
+        case 'support': {
+          if (e.attackCd <= 0) {
+            const corpse = this.nearestCorpse(e.x, e.z, 8);
+            if (corpse) {
+              e.state = 'channel';
+              e.stateT = 0;
+              e.channelCorpse = corpse.id;
+              e.aimX = corpse.x;
+              e.aimZ = corpse.z;
+              this.emit({ t: 'telegraph', id: e.id, kind: 'raise', x: e.x, z: e.z, tx: corpse.x, tz: corpse.z, ms: 1500 });
+              break;
+            }
+            if (dist <= def.attackRange) {
+              e.state = 'windup';
+              e.stateT = 0;
+              e.aimX = target.x;
+              e.aimZ = target.z;
+              this.emit({ t: 'telegraph', id: e.id, kind: 'curse', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
+              break;
+            }
+          }
+          if (dist > def.attackRange - 0.5) this.moveEnemy(e, target.x, target.z, dt);
+          else if (dist < 4) this.moveEnemy(e, e.x * 2 - target.x, e.z * 2 - target.z, dt, 0.7);
+          break;
+        }
+      }
+    }
+  }
+
+  private nearestCorpse(x: number, z: number, r: number) {
+    let best: Corpse | null = null;
+    let bestD = r;
+    for (const c of this.corpses.values()) {
+      const d = Math.hypot(c.x - x, c.z - z);
+      if (d < bestD) {
+        bestD = d;
+        best = c;
+      }
+    }
+    return best;
+  }
+
+  private release(e: Enemy) {
+    const def = ENEMIES[e.def];
+    e.attackCd = (def.cooldownMs / 1000) * (e.elite ? 0.8 : 1);
+    e.state = 'recover';
+    e.stateT = 0;
+    if (e.channelCorpse !== null) {
+      const c = this.corpses.get(e.channelCorpse);
+      e.channelCorpse = null;
+      if (c) {
+        this.removeCorpse(c, 'raised');
+        this.spawnEnemy('risen', e.area, c.x, c.z, false);
+      }
+      return;
+    }
+    switch (def.behavior) {
+      case 'caster':
+        return this.strike(e, 'cone');
+      case 'support':
+        return this.strike(e, 'curse');
+      case 'hazard':
+        return this.strike(e, 'slam');
+      default:
+        return this.strike(e, 'melee');
+    }
+  }
+
+  // --- Thrall AI ---
+
+  private updateThralls(dt: number) {
+    for (const t of [...this.thralls.values()]) {
+      t.moving = false;
+      t.flash = Math.max(0, t.flash - dt * 5);
+      t.stateT += dt;
+      t.attackCd -= dt;
+      const owner = this.players.get(t.owner);
+      if (!owner || !owner.alive) {
+        this.killThrall(t, 'crumbled');
+        continue;
+      }
+      if (t.state === 'rising') {
+        if (t.stateT >= THRALL_RISE_TIME) {
+          t.state = 'idle';
+          t.stateT = 0;
+        }
+        continue;
+      }
+      const ownerDist = Math.hypot(owner.x - t.x, owner.z - t.z);
+      if (ownerDist > THRALL_TELEPORT) {
+        t.x = owner.x + (this.rand() - 0.5) * 2;
+        t.z = owner.z + (this.rand() - 0.5) * 2;
+        t.target = null;
+      }
+
+      let target = t.target !== null ? this.enemies.get(t.target) : undefined;
+      const bossTarget = this.boss.state.active && Math.hypot(this.boss.state.x - owner.x, this.boss.state.z - owner.z) < 16;
+      if (!target || target.state === 'dead' || Math.hypot(target.x - owner.x, target.z - owner.z) > THRALL_LEASH) {
+        target = undefined;
+        t.target = null;
+        let bestD = 10;
+        for (const e of this.enemies.values()) {
+          if (e.state === 'dead' || e.state === 'rising') continue;
+          if (Math.hypot(e.x - owner.x, e.z - owner.z) > THRALL_LEASH - 2) continue;
+          const d = Math.hypot(e.x - t.x, e.z - t.z);
+          if (d < bestD) {
+            bestD = d;
+            target = e;
+          }
+        }
+        if (target) t.target = target.id;
+      }
+
+      const engage = (tx: number, tz: number, radius: number, hit: () => void) => {
+        const d = Math.hypot(tx - t.x, tz - t.z);
+        if (d > t.range + radius) {
+          this.moveThrall(t, tx, tz, dt, 1);
+          t.state = 'move';
+        } else {
+          t.facing = Math.atan2(tx - t.x, tz - t.z);
+          if (t.attackCd <= 0) {
+            t.attackCd = t.attackInterval;
+            t.state = 'attack';
+            t.stateT = 0;
+            hit();
+          } else if (t.state !== 'attack' || t.stateT > 0.5) t.state = 'idle';
+        }
+      };
+
+      if (target) {
+        const e = target;
+        engage(e.x, e.z, e.radius, () => {
+          const dealt = this.damageEnemy(e, t.damage, t.owner);
+          this.emit({ t: 'thrallHit', id: t.id, target: e.id, x: t.x, z: t.z, tx: e.x, tz: e.z, kind: t.kind, dmg: Math.round(dealt) });
+        });
+      } else if (bossTarget) {
+        const b = this.boss.state;
+        engage(b.x, b.z, BOSS_RADIUS, () => {
+          this.boss.damage(t.damage, t.owner, 0);
+          this.emit({ t: 'thrallHit', id: t.id, target: -1, x: t.x, z: t.z, tx: b.x, tz: b.z, kind: t.kind, dmg: Math.round(t.damage) });
+        });
+      } else {
+        // Formation ring around the owner.
+        const count = Math.max(3, this.ownedThralls(t.owner).length);
+        const ang = (t.slot / count) * Math.PI * 2 + Math.PI;
+        const fx = owner.x + Math.sin(ang) * 1.9;
+        const fz = owner.z + Math.cos(ang) * 1.9;
+        const d = Math.hypot(fx - t.x, fz - t.z);
+        if (d > 0.5) {
+          this.moveThrall(t, fx, fz, dt, d > 6 ? 1.35 : 1);
+          t.state = 'move';
+        } else if (t.state === 'move') t.state = 'idle';
+      }
+    }
+  }
+
+  private moveThrall(t: Thrall, tx: number, tz: number, dt: number, mult: number) {
+    const dx = tx - t.x;
+    const dz = tz - t.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 0.05) return;
+    const step = Math.min(d, t.speed * mult * dt);
+    [t.x, t.z] = this.nav.resolve(t.x + (dx / d) * step, t.z + (dz / d) * step, 0.4);
+    t.facing = Math.atan2(dx, dz);
+    t.moving = true;
+    t.gait += step * 2.4;
+  }
+
+  /** Soft body separation: enemies ↔ enemies/thralls/players, thralls ↔ thralls. */
+  private separate() {
+    const bodies: { x: number; z: number; r: number; w: number; e?: Enemy; t?: Thrall }[] = [];
+    for (const e of this.enemies.values()) if (e.state !== 'rising') bodies.push({ x: e.x, z: e.z, r: e.radius, w: 1, e });
+    for (const t of this.thralls.values()) bodies.push({ x: t.x, z: t.z, r: 0.4, w: 0.6, t });
+    for (const p of this.players.values()) if (p.alive) bodies.push({ x: p.x, z: p.z, r: PLAYER_RADIUS, w: 0 });
+    for (let i = 0; i < bodies.length; i++) {
+      const a = bodies[i];
+      for (let j = i + 1; j < bodies.length; j++) {
+        const b = bodies[j];
+        const dx = b.x - a.x;
+        const dz = b.z - a.z;
+        const min = a.r + b.r;
+        if (Math.abs(dx) > min || Math.abs(dz) > min) continue;
+        const d = Math.hypot(dx, dz);
+        if (d >= min || d < 1e-4) continue;
+        const push = (min - d) * 0.5;
+        const nx = dx / d;
+        const nz = dz / d;
+        const total = a.w + b.w || 1;
+        const pa = (a.w / total) * push * 2;
+        const pb = (b.w / total) * push * 2;
+        a.x -= nx * pa;
+        a.z -= nz * pa;
+        b.x += nx * pb;
+        b.z += nz * pb;
+      }
+    }
+    for (const b of bodies) {
+      if (b.e) [b.e.x, b.e.z] = this.nav.resolveInArea(b.e.area, b.x, b.z, b.e.radius);
+      else if (b.t) [b.t.x, b.t.z] = this.nav.resolve(b.x, b.z, 0.4);
+    }
+  }
+
+  /** Treat an area as already visited (host migration: no opening wave). */
+  markVisited(area: AreaId) {
+    if (!this.waveTimers.has(area)) this.waveTimers.set(area, (AREAS[area].waveIntervalMs / 1000) * waveModifiers(this.waveTier).intervalMult);
+  }
+
+  /** Development helper: clear an area and reset its wave timer. */
+  clearArea(area: AreaId) {
+    for (const e of [...this.enemies.values()]) if (e.area === area) this.enemies.delete(e.id);
+    this.waveTimers.delete(area);
+  }
+
+  arenaCenter() {
+    return BOSS_ARENA;
+  }
+}

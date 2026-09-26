@@ -1,0 +1,9 @@
+{
+  "id": "prop_waystone",
+  "input": "art-src/concepts/props/waystone.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 1500,
+    "texture_quality": "standard"
+  }
+}

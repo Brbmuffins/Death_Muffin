@@ -1,52 +1,75 @@
 # Crossworlds Web — Claude Context
 
-Browser client for Crossworlds BCE (Vite + TypeScript + Three.js), replacing the Unity
-client. Talks to the existing Node/Express auth server — **never modify server endpoints
+Browser client for Crossworlds (Vite + TypeScript + Three.js): a dark-fantasy
+**necromancer** action RPG — one connected world (Chapterhouse → Hollow Graves →
+Marrow Ossuary → Drowned Nave → Bell Sanctum), continuous waves, corpses as a
+resource, thralls, Damage / Wave Speed upgrades, the Bell-Sworn Prelate.
+Talks to the existing Node/Express auth server — **never modify server endpoints
 from this repo**; the REST API and MySQL schema are owned by the VPS
-(see `D:\Crossworlds\_CONTEXT\CLAUDE.md` for the server side).
+(see `D:\Crossworlds\_CONTEXT\CLAUDE.md` for the server side). Server-side
+changes are written up as proposals in `server/proposals/`.
 
 ## Read before working
 
 | Doc | When |
 |---|---|
-| `ACTION_PLAN.md` | phase roadmap + what stays/changes vs Unity |
-| `PHASE_REPORTS.md` | what's already built and QA'd — **check before rebuilding anything** |
-| `ASSET_PIPELINE.md` | generating/optimizing/wiring 3D models — **read before any Tripo work** |
-| `SERVER_OPERATIONS.md` | realtime service + deploy scripts |
-| `TEST_ACCOUNTS.local.md` | live-server QA logins (gitignored) |
+| `NECROMANCER_REDESIGN_AUDIT.md` | the design direction this build implements |
+| `PHASE_REPORTS.md` | what's built and QA'd — **check before rebuilding anything** |
+| `ASSET_PIPELINE.md` | Gemini → Tripo v3 → GLB — **read before any generation** |
+| `FUTURE_CONTENT.md` | backlog: future disciplines, spells, enemies, bosses |
+| `SERVER_OPERATIONS.md` + `server/realtime/DEPLOY.md` | realtime service + deploy scripts |
+| `server/proposals/necromancer-progress.md` | server spec for browser-local progress |
 
 ## Ground rules
 
-- API keys are in `.ai-keys.local` (gitignored) — load into env per-invocation, never
-  commit, never bake into client code.
-- Raw AI-generated assets go in `art-src/` (gitignored). Only optimized output
-  (via `tools/build-models.mjs`) ships in `public/models/` (~2.5MB per character budget).
-- Server class indices: 0=Engineer, 1=Guardian, 2=Shadowblade (Bo-Gar),
-  3=Cleric (Brandolf), 4=Arcanist. Mirrors of this table exist in
-  `src/gameplay/classes.ts` and `src/graphics/modelPaths.ts` — keep in sync.
-- Realtime = Socket.io on port 5000 locally (`server/realtime/`); the client must keep
-  working solo when it's down.
+- API keys are in `.ai-keys.local` (gitignored) — tools load them per run; never
+  print, commit, or bake them into client code.
+- Raw AI outputs go in `art-src/` (gitignored). Only optimized output ships in
+  `public/models/`; generation records (prompts, task ids, credits) go in `art-manifest/`.
+- Server class indices: 0=Engineer, 1=Guardian, 2=Shadowblade, 3=Cleric,
+  4=Arcanist. The client presents them as disciplines 1=Ossuary, 2=Gravecaller,
+  3=Mourner, 4=Rotweaver (0 plays as Gravecaller). Mirrors: `src/gameplay/classes.ts`
+  (server names) and `src/content/disciplines.ts` (presentation) — keep in sync.
+- Loot may only use item ids the live server knows (`src/content/items.ts`;
+  a unit test enforces it).
+- Realtime = Socket.io on port 5000 locally (`server/realtime/`); the client must
+  keep working solo when it's down. After editing `server.js`, run
+  `node tools/embed-realtime.mjs` to refresh the deploy script.
 - Server `error` strings are player-readable — show them verbatim in UI.
+- Spell colours carry meaning (see `SPELL_FX` in `src/content/abilities.ts`);
+  don't make new content "just violet".
 - Desktop web game first; narrow viewport only needs sanity checks.
 - Commits go through the user's GitHub Desktop flow — stage, don't commit.
 
 ## Layout
 
 ```
-src/net/        REST client (existing endpoints) + Socket.io realtime client
-src/scenes/     Login, CharacterSelect, Hub, Arena, Boss (SceneManager routes)
-src/gameplay/   classes, movement, abilities, enemies, loot, stats, boss
-src/graphics/   renderer, CharacterModel (GLB rig + clip loader), modelPaths, backdrop
-src/ui/         HTML/CSS overlay panels (inventory, forge, professions) + ui.css
-tools/          build-models.mjs — raw Tripo → shippable GLBs (see ASSET_PIPELINE.md)
-art-src/        RAW AI asset outputs + Tripo task JSONs (gitignored, 1.7GB)
-public/models/  optimized shipped models   public/art/  2D art (icons, portraits, vfx)
-server/         realtime service + deploy packages (VPS deploy pending, SSH denied here)
+src/app/        GameRuntime (one renderer, bloom, advance() QA stepping), Scope, settings
+src/content/    data: disciplines, abilities (+SPELL_FX), enemies, areas, layout, items, upgrades
+src/gameplay/   sim/ (WorldSim, BossBrain, snapshot mirror), AbilitySystem, Player, nav,
+                progression (server + local), loot/Inventory, characterStats, __tests__/
+src/graphics/   Creature (GLB instances), EntityViews, WorldView, Effects, LootView,
+                Avatars, CameraRig, occlusion, NecroBackdrop, AssetCache, fxTextures
+src/net/        REST client (+DEV offline mock), realtime client, contracts
+src/scenes/     Login, CharacterSelect (disciplines), WorldScene (the game)
+src/ui/         HUD, Minimap, FloatingText, panels, cursors, ui.css; src/theme/ tokens + fonts
+tools/          ai/ (gemini.mjs, tripo.mjs), build-characters.mjs, make-seamless.mjs, embed-realtime.mjs
+art-manifest/   committed generation jobs/specs/records     art-src/ raw outputs (gitignored)
+server/         realtime service (+tests, deploy), web-deploy, proposals/
 ```
 
 ## Verification
 
-`npx tsc --noEmit`, then dev server on port 5188 and QA against the LIVE auth server
-(proxied via vite.config.ts). Preview screenshots time out on this app — use the
-`window.__cwDebug` hook (DEV-only, HubScene) + WebGL readPixels; details in
-ASSET_PIPELINE.md §4.
+1. `npm run typecheck && npm test && npm run test:server`
+2. Dev server (**crossworlds-web** in `.claude/launch.json`, port 5188 — uses
+   node.exe directly because npm may not be on the app's PATH).
+3. `http://localhost:5188/?offline` = DEV-only in-browser mock backend (no live
+   server, accounts in localStorage). Add `&coop` + start **crossworlds-realtime**
+   to test co-op across two tabs.
+4. Drive QA through `window.__cwDebug` (DEV only): `advance(s)` steps the game
+   deterministically (hidden preview panes throttle rAF — don't wait on the loop),
+   `counts()`, `net()`, `god()`, `goto(area)`, `unlockAll()`, `ring(def,n,r)`,
+   `freeze()`, `boss()`, `zoom(z)`, `aimAtNearest()`, `cast(slot)`. Screenshots work
+   after an `advance()`.
+5. Live-server QA uses accounts in `TEST_ACCOUNTS.local.md` (gitignored) — the
+   Vite proxy forwards REST calls to the VPS.

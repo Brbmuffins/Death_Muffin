@@ -1,0 +1,9 @@
+{
+  "id": "prop_mausoleum",
+  "input": "art-src/concepts/props/mausoleum.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 3500,
+    "texture_quality": "standard"
+  }
+}

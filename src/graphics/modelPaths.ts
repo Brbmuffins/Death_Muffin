@@ -1,43 +1,32 @@
 /**
- * Model path registry. Assets are built by `node tools/build-models.mjs`
- * from raw Tripo outputs in art-src/tripo/ (gitignored) into
- * public/models/<slug>/ with stable names: rig.glb + one GLB per clip.
+ * Model registry. v3 characters are built by `node tools/build-characters.mjs`
+ * from Tripo outputs in art-src/tripo/<slug>/ (gitignored) into one GLB per
+ * character with named clips: idle, walk, run, cast, attack, hurt, dig, death
+ * (whichever were generated). Heights are world units (the player is ~1.85).
  */
-
-export interface CharacterPaths {
-  rig: string;          // optimized skinned GLB
-  idle?: string;        // animation-only GLBs (geometry stripped)
-  walk?: string;
-  run?: string;
-  hurt?: string;
-  attack?: string;      // slash or shoot clip
+export interface CreatureModelDef {
+  url: string;
+  height: number;
 }
 
-const charPaths = (slug: string, attack?: 'slash' | 'shoot'): CharacterPaths => ({
-  rig:  `models/${slug}/rig.glb`,
-  idle: `models/${slug}/idle.glb`,
-  walk: `models/${slug}/walk.glb`,
-  run:  `models/${slug}/run.glb`,
-  hurt: `models/${slug}/hurt.glb`,
-  ...(attack ? { attack: `models/${slug}/${attack}.glb` } : {}),
-});
+const m = (slug: string, height: number): CreatureModelDef => ({ url: `models/${slug}/character.glb`, height });
 
-export const MODEL_PATHS: Record<string, CharacterPaths> = {
-  brandolf: charPaths('brandolf'),          // attack clip pending (10-credit retarget)
-  bogar:    charPaths('bogar', 'slash'),
-  guardian: charPaths('guardian', 'slash'),
-  arcanist: charPaths('arcanist', 'shoot'),
-  slime:    { rig: 'models/slime/rig.glb' },
-};
+export const CREATURE_MODELS = {
+  necromancer: m('necromancer', 1.85),
+  hero_ossuary: m('hero_ossuary', 1.88),
+  hero_gravecaller: m('hero_gravecaller', 1.88),
+  hero_mourner: m('hero_mourner', 1.85),
+  hero_rotweaver: m('hero_rotweaver', 1.85),
+  skeleton_thrall: m('skeleton_thrall', 1.75),
+  grave_robber: m('grave_robber', 1.7),
+  bone_hound: m('bone_hound', 1.05),
+  penitent: m('penitent', 1.85),
+  deacon: m('deacon', 2.1),
+  carrion_sac: m('carrion_sac', 1.75),
+  prelate: m('prelate', 4.6),
+} satisfies Record<string, CreatureModelDef>;
 
-/**
- * Map server class_index to model slug. Server CLASS_NAMES: 0=Engineer,
- * 1=Guardian, 2=Shadowblade (Bo-Gar), 3=Cleric (Brandolf), 4=Arcanist.
- * Engineer (0) has no model yet — callers fall back to the class capsule.
- */
-export const CLASS_TO_MODEL: Record<number, string> = {
-  1: 'guardian',
-  2: 'bogar',
-  3: 'brandolf',
-  4: 'arcanist',
-};
+export type CreatureSlug = keyof typeof CREATURE_MODELS;
+
+/** Static environment props (tools/build-characters.mjs → models/props/<id>.glb). */
+export const PROP_URL = (id: string) => `models/props/${id}.glb`;

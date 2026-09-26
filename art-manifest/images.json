@@ -1,0 +1,1234 @@
+{
+  "concept_necromancer": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Character turnaround source for 3D modeling. Redraw exactly this hooded necromancer (same face, hood, layered tattered black and deep-purple robes, bone charms, leather belts with small skulls, hanging bronze bells, bronze sigil medallion, violet rune embroidery) as a single full-body character, FRONT VIEW, strict T-pose: both arms straight out horizontally at shoulder height, palms down, EMPTY hands (no staff, no props, no magic effects), legs straight and slightly apart, feet flat. Entire body visible head to feet, centered, occupying most of the frame. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no glow, no smoke, no text, no other characters. Dark fantasy painterly-realistic game art, readable silhouette, robe hem above the ankles so the legs are distinct.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": {
+      "left": 370,
+      "top": 20,
+      "width": 410,
+      "height": 990
+    },
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/necromancer.png",
+    "rawHash": "sha256:bae233193d04d34e93b6ef2977df655a5c6175a6df02cc38931bcfc7ee7e3883",
+    "outHash": "sha256:84a7c17f7673d299d36f0442d86990ff91f9f866a693f0ae02061f0aad8a769c",
+    "generatedAt": "2026-09-26T18:20:26.166Z"
+  },
+  "concept_skeleton_thrall": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Character source for 3D modeling. Redraw exactly this skeleton warrior (aged ivory bones, dented iron helmet, tattered dark purple loincloth and rags, leather wraps and straps, faint violet runes) as a single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally at shoulder height, EMPTY hands (no sword, no shield), legs straight and slightly apart. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy game art, clean readable silhouette.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": {
+      "left": 10,
+      "top": 250,
+      "width": 330,
+      "height": 670
+    },
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/skeleton_thrall.png",
+    "rawHash": "sha256:6e87a6a3240438c5f918df1e405fdcf7df5c72bd9281cbe56a0f9df947f7250a",
+    "outHash": "sha256:4f7dc85644bc24a79dcc2a384854de5a335a3a0730a7b0e71dec7c189820aec6",
+    "generatedAt": "2026-09-26T18:20:34.609Z"
+  },
+  "concept_bone_hound": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Creature source for 3D modeling. Redraw exactly this skeletal hound (ivory bones, spiked spine, tattered purple cloth draped over the ribcage, leather straps and iron collar, glowing violet eye sockets) as a single full-body creature in a neutral standing pose, all four legs straight and visible, tail extended, three-quarter side view facing right. Entire body visible, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no smoke, no text, no other characters. Dark fantasy game art, clean readable silhouette.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": {
+      "left": 820,
+      "top": 500,
+      "width": 470,
+      "height": 420
+    },
+    "aspect": "4:3",
+    "post": null,
+    "out": "art-src/concepts/bone_hound.png",
+    "rawHash": "sha256:4ac1e2e91248390d2e30ae4f237f4873d312cc510d00983bfd31a6c3af2c7b99",
+    "outHash": "sha256:a6bac5baa7ac84c117036299d596896513449df9a639487ec2dd8dcbe4b79e79",
+    "generatedAt": "2026-09-26T18:20:43.031Z"
+  },
+  "concept_grave_robber": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Character source for 3D modeling. Redraw exactly this undead grave robber (grey-violet rotting skin with faint violet rune scars, ragged hood and shroud, filthy wrapped cloth bindings, a small bronze bell on a chain at the belt, bare feet) as a single full-body character, FRONT VIEW, standing upright in a strict T-pose: arms straight out horizontally, EMPTY hands, legs straight and slightly apart. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy game art, clean readable silhouette.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": {
+      "left": 1265,
+      "top": 240,
+      "width": 270,
+      "height": 690
+    },
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/grave_robber.png",
+    "rawHash": "sha256:dbc744592de45558ce8a86433902af4885bee4407c5ab1b1a8b7cb5dcab0a397",
+    "outHash": "sha256:31f7a0155997a061d24c94700f97e7ca2a102592e43dc6505c5553c6956537f3",
+    "generatedAt": "2026-09-26T18:20:52.198Z"
+  },
+  "concept_penitent": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new undead enemy: the Bellbound Penitent. A gaunt hooded flagellant corpse in soot-black and bruised-violet penitent robes, face hidden in shadow with two faint violet eye glints, a heavy cracked bronze church bell strapped to its back by chains and leather, iron shackles on the wrists, rope belt with prayer beads. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally, empty hands, legs straight and slightly apart, robe hem above the ankles. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/penitent.png",
+    "rawHash": "sha256:6ff45182b66e71715b12e56dce39b2f9df0b0c3a7eb689c47f347f1772139054",
+    "outHash": "sha256:3702627bf74a133f2eea5c0ff0eb7978b573d408497974c285c70b138ae0d314",
+    "generatedAt": "2026-09-26T18:21:01.457Z"
+  },
+  "concept_deacon": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new undead enemy: the Crypt Deacon. A tall emaciated undead priest with a tall pointed cracked mitre, layered black and violet vestments with tarnished silver embroidery, a bone rosary, a skull-face with sunken glowing violet eyes, long bony fingers. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally, empty hands, legs straight and slightly apart, vestments ending above the ankles. Entire body visible, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/deacon.png",
+    "rawHash": "sha256:47a69944a2123c2a927a542ec311366a13aaeacac6f923a18d2026a595ff725a",
+    "outHash": "sha256:d4d7177674a23263b309d7d2ef993f70b0f02d9b13842c4a2343c4e30577056b",
+    "generatedAt": "2026-09-26T18:21:11.268Z"
+  },
+  "concept_carrion_sac": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new undead enemy: the Carrion Sac. A grotesque bloated corpse swollen into a round sac of pale grey-violet flesh stitched with black thread, dotted with glowing sickly violet pustules, a small slumped head half-sunk into the body, two stubby arms and two short thick legs. Single full-body creature, front three-quarter view, standing. Entire body visible, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette, not gory.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/carrion_sac.png",
+    "rawHash": "sha256:533a804a5088059b9100e66ce112da76474702b3bef9d72a72f8a4403d25e0c1",
+    "outHash": "sha256:175e32a2dfc3cbb82503163ab0232d4a41d3882368b73458805da05a460af4e3",
+    "generatedAt": "2026-09-26T18:21:23.151Z"
+  },
+  "concept_prelate": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a boss: the Bell-Sworn Prelate. A towering undead cathedral bishop whose ribcage has fused into a huge cracked bronze processional bell (the bell forms the torso), tattered black and deep-purple ceremonial vestments with oxidised silver trim, a crown-like broken mitre, a gaunt skull face with violet eye light, long skeletal arms. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally, empty hands, legs visible and slightly apart below the vestments. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, imposing readable silhouette.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/prelate.png",
+    "rawHash": "sha256:026eaacdf53f7afc74693aedc8b289ae37908e3ce0e3e5f63177e4d86545eeb2",
+    "outHash": "sha256:e606f7dbdd905735029c3fd446b32a1b59b917dd7023d8b18dc6aa3cc43bd3f9",
+    "generatedAt": "2026-09-26T18:21:32.449Z"
+  },
+  "tex_grave_soil": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Seamless tileable game texture, perfectly tiling on all four edges, orthographic top-down (or straight-on for walls), flat even diffuse lighting with no directional shadows, no vignette, no text, no border, fills the entire frame edge to edge. Use the attached screenshot ONLY for mood and palette (layered near-blacks, soot, cold violet reflections, old bone). Subject: dark graveyard ground: near-black brown damp soil, patches of dead dark grass, scattered small pebbles, a few tiny bone fragments. Dark overall value.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        1024,
+        1024
+      ],
+      "format": "webp"
+    },
+    "out": "public/art/textures/grave_soil.webp",
+    "rawHash": "sha256:7cb3f562f92ad02eb82effec051e8f1bfee7d3124ece5c202ee0219d3b33c097",
+    "outHash": "sha256:d2b0075b902c6eb1ca5a59ac3fa814d71061e8e4e88b592882b38ae58414c926",
+    "generatedAt": "2026-09-26T18:33:48.506Z"
+  },
+  "tex_flagstone": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Seamless tileable game texture, perfectly tiling on all four edges, orthographic top-down (or straight-on for walls), flat even diffuse lighting with no directional shadows, no vignette, no text, no border, fills the entire frame edge to edge. Use the attached screenshot ONLY for mood and palette (layered near-blacks, soot, cold violet reflections, old bone). Subject: wet gothic cathedral floor: large irregular charcoal limestone flagstones with dark grout lines, worn chipped edges, faint silver salt bloom, a few shallow puddles reflecting cold violet light. Dark overall value.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        1024,
+        1024
+      ],
+      "format": "webp"
+    },
+    "out": "public/art/textures/flagstone.webp",
+    "rawHash": "sha256:00c130fd737b50bc040bc573cf43cd8338f490916355021d1c7f0217db1f3356",
+    "outHash": "sha256:ae2bab00db85f80432f6833569c88bf197146ce009bfe4c327cfa6286fe96703",
+    "generatedAt": "2026-09-26T18:33:57.368Z"
+  },
+  "tex_ossuary_floor": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Seamless tileable game texture, perfectly tiling on all four edges, orthographic top-down (or straight-on for walls), flat even diffuse lighting with no directional shadows, no vignette, no text, no border, fills the entire frame edge to edge. Use the attached screenshot ONLY for mood and palette (layered near-blacks, soot, cold violet reflections, old bone). Subject: ossuary crypt floor of packed dark earth and old stone with bone fragments, knuckle bones and a few small skulls pressed into it. Dark overall value.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        1024,
+        1024
+      ],
+      "format": "webp"
+    },
+    "out": "public/art/textures/ossuary_floor.webp",
+    "rawHash": "sha256:7bd8823ce26207e56899a6bb651b247827e54669a99c5445f3bf829c2f4e5394",
+    "outHash": "sha256:499da5f6aa5c82370e4a13a2fe4b96f994123f262f090fc62ed3846307d845e7",
+    "generatedAt": "2026-09-26T18:34:07.161Z"
+  },
+  "tex_stone_wall": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Seamless tileable game texture, perfectly tiling on all four edges, orthographic top-down (or straight-on for walls), flat even diffuse lighting with no directional shadows, no vignette, no text, no border, fills the entire frame edge to edge. Use the attached screenshot ONLY for mood and palette (layered near-blacks, soot, cold violet reflections, old bone). Subject: gothic crypt wall of fitted charcoal limestone blocks, soot stains, thin dead moss in the joints, straight-on front view. Dark overall value.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        1024,
+        1024
+      ],
+      "format": "webp"
+    },
+    "out": "public/art/textures/stone_wall.webp",
+    "rawHash": "sha256:4d38e61dbf3b15f23ae2e6a2c6566880b2c57a844c26d29af5eced3b702145b5",
+    "outHash": "sha256:fcee1d572d00fe207cc9ffcd9b560172bcba238f5124bb9d75edf7ccc6ae19eb",
+    "generatedAt": "2026-09-26T18:34:15.653Z"
+  },
+  "tex_skull_wall": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Seamless tileable game texture, perfectly tiling on all four edges, orthographic top-down (or straight-on for walls), flat even diffuse lighting with no directional shadows, no vignette, no text, no border, fills the entire frame edge to edge. Use the attached screenshot ONLY for mood and palette (layered near-blacks, soot, cold violet reflections, old bone). Subject: ossuary wall made of tightly stacked human skulls and long bones set in rows between dark stone, aged ivory and soot, straight-on front view, dense repeating pattern.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        1024,
+        1024
+      ],
+      "format": "webp"
+    },
+    "out": "public/art/textures/skull_wall.webp",
+    "rawHash": "sha256:ebd5d50744e1047ef1400e64a2058229ea7ecc5f3485048f696cb482029bd2e6",
+    "outHash": "sha256:eead8079ffbeee2ec04de38936182e2f30f52989a7514fd835c1bcc047c45b2a",
+    "generatedAt": "2026-09-26T18:34:24.760Z"
+  },
+  "tex_stained_glass": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "A single tall gothic lancet stained-glass window, straight-on front view, filling the frame, black background outside the arch. Deep violet, indigo and pale lilac glass with black lead lines, central motif of a hooded figure holding a bell above a skull, glowing as if lit from behind. No text.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "9:16",
+    "post": {
+      "format": "webp"
+    },
+    "out": "public/art/textures/stained_glass.webp",
+    "rawHash": "sha256:a2e07b90184202d731240df50e7909fef81b04f96289c81858c626624248aa10",
+    "outHash": "sha256:68172c25defb0090aee944e80d88f2f4fcc93105e49f2c07c9e06ab08016db19",
+    "generatedAt": "2026-09-26T18:34:34.357Z"
+  },
+  "icon_needle": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black carved-stone background. Subject: a single sharp needle of aged ivory bone flying diagonally, trailing warm amber-and-ivory light and fine white bone dust. Palette: ivory, bone white, warm amber glow — NO purple. No text, no border, no letters.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "out": "public/art/abilities/necro-needle.png",
+    "rawHash": "sha256:283970a216791290fcd6408b0ce033b5c2180b2b59ab7b1dfdd081cd09e36c05",
+    "outHash": "sha256:3aaadd9b6f16207ba9a3966d172d8cfca34c921d8a13dadc15396f208a732f36",
+    "generatedAt": "2026-09-26T19:10:49.312Z"
+  },
+  "icon_spear": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, near-black background. Subject: a straight line of jagged pale bone spikes erupting from cracked dark earth toward the viewer, the cracks glowing ember orange-red, dust and dark crimson marrow flecks. Palette: bone ivory, ember orange, dried crimson, dark earth brown — NO purple. No text, no border, no letters.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "out": "public/art/abilities/necro-spear.png",
+    "rawHash": "sha256:f3bf922adf8782d4b7dacb0b0a364ae1726fac6d2ddbdb68c52c33da6fad195b",
+    "outHash": "sha256:d0595805b2f1a5a86c6231407af0c5213d9fd28d11d8f72e1d7d3cfafd796683",
+    "generatedAt": "2026-09-26T19:10:58.179Z"
+  },
+  "icon_exhume": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, near-black background. Subject: a skeletal hand clawing up out of a grave mound, wreathed in pale jade-teal spirit fire rising from the soil. Palette: bone ivory, spectral jade and teal (#6fe3c8), deep teal shadows — NO purple. No text, no border, no letters.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "out": "public/art/abilities/necro-exhume.png",
+    "rawHash": "sha256:1f1e18005b8eb3ce3df6713af3d40d356722b07e769bd3aa003aec28a652911f",
+    "outHash": "sha256:26d2519cc49663a668da10df61c3cc21ef4ed6ab6a50a8604c84e35cc47ee939",
+    "generatedAt": "2026-09-26T19:11:06.189Z"
+  },
+  "icon_miasma": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, near-black background. Subject: a swirling circle of toxic rot mist on the ground, sickly chartreuse and olive green with dark drifting spores and a few small skulls half-sunk in the mist. Palette: acid chartreuse (#a8c23a), olive, murky black-green — NO purple. No text, no border, no letters.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "out": "public/art/abilities/necro-miasma.png",
+    "rawHash": "sha256:5db1e2ef55d5a7194c347cdcb17e1e4901cc90262a46ee8800cf98ca5817d884",
+    "outHash": "sha256:8fd2c5951d96662e195e9dea71564db891745ffe72f6654ba6f48d226f9f36f9",
+    "generatedAt": "2026-09-26T19:11:14.764Z"
+  },
+  "icon_litany": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly and highly readable at small size, strong central silhouette, deep near-black background with a subtle carved-stone vignette, violet spell light (#9b5cff to #c6a4ff) and old ivory bone as the only bright accents, no text, no border frame, no letters. Match the style of the ability icons in the attached screenshot HUD. Subject: three skulls orbiting a glowing ritual sigil circle, violet burst of energy",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "out": "public/art/abilities/necro-litany.png",
+    "rawHash": "sha256:133a11ba12f54483933a605e7cc5e2337e92d0bb11a09666a7f9967f5e2def4a",
+    "outHash": "sha256:c1ef4e01634f578eaf387fe96e13227029ca8563a1ac0549dbdd70974193d4dc",
+    "generatedAt": "2026-09-26T18:35:18.647Z"
+  },
+  "item_ore_copper": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a rough chunk of green-veined copper ore",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/ore_copper.png",
+    "rawHash": "sha256:328ffc17c4a461873343e6f55c9bb4476f53ed3ebe1318ae2cd6d3a05011471a",
+    "outHash": "sha256:e6b8c96cf83112bb0a34dff758bc5020082860ec0314482ab367e8a5d58f2f97",
+    "generatedAt": "2026-09-26T18:35:27.627Z"
+  },
+  "item_ore_tin": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a dull pale grey chunk of tin ore",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/ore_tin.png",
+    "rawHash": "sha256:8f0a18646bad843fd9fec2fc09874b7b027c9d707eca297f3135be70533043a5",
+    "outHash": "sha256:2b247a54dee0bd3c302a33dd3d64be04d459880a070d2c223ea817a70c3101d7",
+    "generatedAt": "2026-09-26T18:35:35.308Z"
+  },
+  "item_ore_iron": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a rust-streaked chunk of dark iron ore",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/ore_iron.png",
+    "rawHash": "sha256:d41899dfab4852e24b23878cbf0509b4610da1ea253db506b1629eb7ccdd9d59",
+    "outHash": "sha256:78fed4489129c2e22e32acef5dd2d959f8076d34471c2088b729512cf13b225d",
+    "generatedAt": "2026-09-26T18:35:42.924Z"
+  },
+  "item_ore_silver": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a chunk of tarnished silver ore with bright specks",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/ore_silver.png",
+    "rawHash": "sha256:f1dda1db910579890acc710f5df851178d9c4c26bc5ef445fa84d8e0d86c7efb",
+    "outHash": "sha256:d9bde2e94ae2560510e1601efe97a1128c17889d905dc6c8b965a3ee040f1068",
+    "generatedAt": "2026-09-26T18:35:50.791Z"
+  },
+  "item_ore_gold": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a chunk of dark rock with veins of gold",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/ore_gold.png",
+    "rawHash": "sha256:f49e67381ff171e213b11f3c64f956bc88d4056e34c81853d5b9318d83b49271",
+    "outHash": "sha256:9af557598a81f90b487c107f47a1d1a846d2428bcbb6532bc93f96559162751c",
+    "generatedAt": "2026-09-26T18:35:58.562Z"
+  },
+  "item_ingot_copper": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a single copper ingot bar",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/ingot_copper.png",
+    "rawHash": "sha256:d5e69b7dfe42df8811451c98163cd32599a0c34aa741d4a6f1c2a1944ba3c649",
+    "outHash": "sha256:ae4ef4413aabb861d8650b7d1ca831c34ed6c06ee5d889974db0d3424a5e812d",
+    "generatedAt": "2026-09-26T18:36:06.872Z"
+  },
+  "item_ingot_iron": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a single dark iron ingot bar",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/ingot_iron.png",
+    "rawHash": "sha256:3de2ccc872c0d61557df50c06e8a2d743c012134e12fa83ae3a4dcc5b50ec43f",
+    "outHash": "sha256:30cbcd4378b88f31898cdab2b5f9718c190b29055b109ac0978d32253bbc146c",
+    "generatedAt": "2026-09-26T18:36:15.105Z"
+  },
+  "item_ingot_gold": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a single gold ingot bar stamped with a skull",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/ingot_gold.png",
+    "rawHash": "sha256:0774e2775d1f436e6548a1ddde878e4226c77dfed45f8ac7fd941fbec9f20143",
+    "outHash": "sha256:fd5c1305dbd0e9e2c44fad54c9f334e7c8d69e89559decea9f1d326d346542ae",
+    "generatedAt": "2026-09-26T18:36:23.155Z"
+  },
+  "item_flask_hp_minor": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a small corked glass potion vial of dark red healing draught",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/flask_hp_minor.png",
+    "rawHash": "sha256:0f481983d64d2e944417ace7f7f13150b47fb6d2cdf6262033007b9276c46db4",
+    "outHash": "sha256:eac8b4e8fcf1a9761de246dad540b2d5f2b49f534f75dc3d3a6506cdc035f88e",
+    "generatedAt": "2026-09-26T18:36:31.311Z"
+  },
+  "item_flask_hp_major": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a larger ornate corked flask of glowing crimson healing draught with a bone stopper",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/flask_hp_major.png",
+    "rawHash": "sha256:eb22e81dc11e6843f4bb10e54d242b6f7ed468596a801dc1e516069387596203",
+    "outHash": "sha256:bde2df4cab64dd581e182e47fd1db89d7513c73864563b7dd372198e3d853a0d",
+    "generatedAt": "2026-09-26T18:36:40.020Z"
+  },
+  "item_helm_copper": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a dented copper helmet",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/helm_copper.png",
+    "rawHash": "sha256:1b12659369ebbeab1bd23e0f1a8c7b10f8b05ca72b2631d1b18cee5c35fb98ad",
+    "outHash": "sha256:e06c5c905fc44d907946f98a742c121aa5316ab55f2468a64d9eb73a5e78b3c9",
+    "generatedAt": "2026-09-26T18:36:46.242Z"
+  },
+  "item_helm_iron": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a blackened iron helm with a narrow visor",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/helm_iron.png",
+    "rawHash": "sha256:365861214ff808ab61b91f8f039e904bbcffa14f8cb6e419930a698b6db2ffe5",
+    "outHash": "sha256:e6d80f28874ca622abd4c9a794820849f955e7ad15fda788e19f54d345266568",
+    "generatedAt": "2026-09-26T18:36:54.764Z"
+  },
+  "item_helm_gold": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a gold-tempered ceremonial helm shaped like a broken mitre",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/helm_gold.png",
+    "rawHash": "sha256:f91bb30d2a64fc27c60c0874a14705a13aedbeb41106f2c51952da53070213cd",
+    "outHash": "sha256:faf067d7c350ccaf1e8a64fd8f7765cdd521f1dcd6ededa535635717153cf179",
+    "generatedAt": "2026-09-26T18:37:02.964Z"
+  },
+  "item_plate_copper": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a copper breastplate",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/plate_copper.png",
+    "rawHash": "sha256:1be1a2d8f6eea9e8b05915f9f4392e332a200a822fdfbb8f87ace1a48a79c2d9",
+    "outHash": "sha256:4bf46ebc64620bffa25c3e0a528f1da05a0d2ee5dfd16645583aecdf9c5b9b30",
+    "generatedAt": "2026-09-26T18:37:11.567Z"
+  },
+  "item_chest_iron": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a salt-bloomed blackened iron chestplate",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/chest_iron.png",
+    "rawHash": "sha256:3b5da652e3b58cc445ca2812e7a8c8360ba9f13f479d05593025a9961647dc68",
+    "outHash": "sha256:80b252c93f8cd81bfaf5f2e480758bfb740841b0ee5745f4c30025922060e776",
+    "generatedAt": "2026-09-26T18:37:19.614Z"
+  },
+  "item_sword_copper": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a short copper sword",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/sword_copper.png",
+    "rawHash": "sha256:3653a274dc98467dafe215a4b497800e1f877cee65c7246e1b45be4d6a05f188",
+    "outHash": "sha256:feba64c950dfbb754ce9da6faa904b106994624fff9e06e57d772e5df2b5df6d",
+    "generatedAt": "2026-09-26T18:37:30.736Z"
+  },
+  "item_staff_oak": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a gnarled coffin-oak staff topped with a small skull",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/staff_oak.png",
+    "rawHash": "sha256:6f2faa5e74fccf942f399e7a6a18f5ed773452b0083d944c509b4c42da8cf2d2",
+    "outHash": "sha256:26ae4c8894fe8aac8d330b1ecbba5feda2c54b263100ca24d2ef88fbd40fa220",
+    "generatedAt": "2026-09-26T18:37:39.186Z"
+  },
+  "item_augment_copper": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a small copper reliquary charm with a violet gem",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/augment_copper.png",
+    "rawHash": "sha256:b7d514ca836a9746b1358cb50ea5c02cbf0d1694e19a68c66870030c214038b2",
+    "outHash": "sha256:cfd2f797e0cb1b5fe0670059dabd93ffa0bfebe785609c5334764005d945aca8",
+    "generatedAt": "2026-09-26T18:37:47.053Z"
+  },
+  "item_augment_iron": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: an iron reliquary charm with a bone inlay and a violet gem",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/augment_iron.png",
+    "rawHash": "sha256:38ab9cfe3fe9a72469c2e932fc51a6fdc15c4e01a45fc3fb1f26cb31b1d18618",
+    "outHash": "sha256:2044dcc4ab9c56012bd9141a38feedd910fb1195f3bd904f22a2bb361e7645c7",
+    "generatedAt": "2026-09-26T18:37:55.775Z"
+  },
+  "item_log_oak": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a short length of dark oak log",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/log_oak.png",
+    "rawHash": "sha256:fa4781e09b561df0775c91019c82db4c05b5ae820bec8b213d863b791cef7696",
+    "outHash": "sha256:0ac2ccb1cc79bb1eef3eef5def895517cc9bf555c65b89f5c81d67b2951bfa4d",
+    "generatedAt": "2026-09-26T18:38:03.852Z"
+  },
+  "item_kit_iron_warden": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a bundle of iron plates and oak planks bound with leather straps",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/kit_iron_warden.png",
+    "rawHash": "sha256:fdbcd6a2b32e72a95b1ec0cc61d103a89f276abf1e5437eb902e74834153c40e",
+    "outHash": "sha256:78ea96f7c6097ae881179bf30b821c59ef2bcd6d863112cf88c505cfe04d02cf",
+    "generatedAt": "2026-09-26T18:38:12.311Z"
+  },
+  "item_gold": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a small pile of old gold coins",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/ui/gold.png",
+    "rawHash": "sha256:2220a1540084ff2109dd0df473a40cb3aaa77fabd146aa37a6f5e55d64070916",
+    "outHash": "sha256:85c4d87a4097f0288a719e0ad73eb0971c2aca2b3b455d60c7b6c60c69d3111b",
+    "generatedAt": "2026-09-26T18:38:20.274Z"
+  },
+  "item_soul_shard": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a jagged glowing violet soul crystal shard",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/ui/soul_shard.png",
+    "rawHash": "sha256:10f926835b25d1d35f7bbafc705f5d903671acc83437a4866aed99c03d9968d4",
+    "outHash": "sha256:6f26b61a9cf6b624ce166fe1dc8d9afb7f4cef76d4a54ef9b4d57039e619e4a6",
+    "generatedAt": "2026-09-26T18:38:29.048Z"
+  },
+  "item_fracture": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Subject: a cracked bone glowing with violet fracture light, status effect icon",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/status/fracture.png",
+    "rawHash": "sha256:a699e841478f60f01cb4b6912459ea331354445f82ac8299a7336b78f67a8329",
+    "outHash": "sha256:2f0f3e0a837beeba6d8eed58d4eac12ce88f53d1a7eddedaf0b5aa37e87e9f97",
+    "generatedAt": "2026-09-26T18:38:36.918Z"
+  },
+  "portrait_ossuary": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy character portrait, waist-up, painterly, dramatic low-key lighting, near-black background with violet haze, no text. Base the character on the attached hooded necromancer (same hood, face and robes). Variant: the Ossuary discipline: pale bone plates grown over the shoulders and forearms like armour, a skull-faced bone shield, old ivory highlights",
+    "refs": [
+      "art-src/concepts/necromancer.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": {
+      "resize": [
+        480,
+        640
+      ],
+      "format": "webp"
+    },
+    "out": "public/art/portraits/ossuary.webp",
+    "rawHash": "sha256:3191c56b6b9dfffa007d20c6766240f2c25522297dd2ee87988bd291c07aebec",
+    "outHash": "sha256:80b87dc02d85ac49bd6287ae652c788e57d5b6097bbf608a6b36aedaa960608d",
+    "generatedAt": "2026-09-26T18:38:45.469Z"
+  },
+  "portrait_gravecaller": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy character portrait, waist-up, painterly, dramatic low-key lighting, near-black background with violet haze, no text. Base the character on the attached hooded necromancer (same hood, face and robes). Variant: the Gravecaller discipline: a phalanx of skeletal warriors with glowing violet eyes looming behind, one hand raised commanding them, strong violet light",
+    "refs": [
+      "art-src/concepts/necromancer.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": {
+      "resize": [
+        480,
+        640
+      ],
+      "format": "webp"
+    },
+    "out": "public/art/portraits/gravecaller.webp",
+    "rawHash": "sha256:4242dcef6a71be630dec73d1d40df482c17215b8804645410fc7180d5f7f73c7",
+    "outHash": "sha256:694275879a340fc3730ed5a4519864ffd6ffb8c3f847fdecceba443e9de89862",
+    "generatedAt": "2026-09-26T18:38:53.406Z"
+  },
+  "portrait_mourner": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy character portrait, waist-up, painterly, dramatic low-key lighting, near-black background with violet haze, no text. Base the character on the attached hooded necromancer (same hood, face and robes). Variant: the Mourner discipline: translucent silver-blue wraith spirits coiling around, a small funeral bell in hand, cold spirit light",
+    "refs": [
+      "art-src/concepts/necromancer.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": {
+      "resize": [
+        480,
+        640
+      ],
+      "format": "webp"
+    },
+    "out": "public/art/portraits/mourner.webp",
+    "rawHash": "sha256:358ca789a02ddb17ae81730eae74745722d821cd031a9c369496b2de1d179830",
+    "outHash": "sha256:cfac6ff159c83871bae46bb343a52fb6b8282ef096a92911d824f9d7da15d79c",
+    "generatedAt": "2026-09-26T18:39:01.306Z"
+  },
+  "portrait_rotweaver": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy character portrait, waist-up, painterly, dramatic low-key lighting, near-black background with violet haze, no text. Base the character on the attached hooded necromancer (same hood, face and robes). Variant: the Rotweaver discipline: surrounded by violet and sickly green miasma, rot blossoms and spores drifting from the hands",
+    "refs": [
+      "art-src/concepts/necromancer.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": {
+      "resize": [
+        480,
+        640
+      ],
+      "format": "webp"
+    },
+    "out": "public/art/portraits/rotweaver.webp",
+    "rawHash": "sha256:066a4cabe0d400899a3066b3217bab7641868aa805f02b20293082da1b544b52",
+    "outHash": "sha256:4273469ce0f7c03f7f1a90d3431f5e905569b11aec5ed0d19ba501d55a615c4d",
+    "generatedAt": "2026-09-26T18:39:09.127Z"
+  },
+  "backdrop_login": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Wide cinematic dark fantasy vista for a game login screen: a moonlit graveyard in the foreground with leaning tombstones and an iron fence, a ruined gothic cathedral with a violet-lit stained glass window in the distance, violet mist, corpse candles, no characters, no text, no UI. Keep the centre of the image darker and calmer (negative space for a login panel). Palette: layered near-blacks, plum, cold silver moonlight, violet spell light, old bone.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "16:9",
+    "post": {
+      "resize": [
+        1920,
+        1080
+      ],
+      "format": "webp"
+    },
+    "out": "public/art/login-backdrop.webp",
+    "rawHash": "sha256:81d09aa390326b39dc2e0d9df515f6b229362a31b0682da6517de0d5d9137a19",
+    "outHash": "sha256:82f447394812e582b443b4d8efee9575ea9cc4670a0b4744a23c0726d7306c32",
+    "generatedAt": "2026-09-26T18:39:23.452Z"
+  },
+  "concept_prop_tombstone_round": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a weathered rounded-top headstone, cracked, moss in the crevices, a simple carved skull emblem",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/tombstone_round.png",
+    "rawHash": "sha256:fcf5b69e14649ce3a654f6d681cc809eae39a5bff8a02ec10f425f057128a42a",
+    "outHash": "sha256:eaf94b90426fe7bc24dc87f662f694ac1a2559c14b291314475c9d6cfb1e8eaa",
+    "generatedAt": "2026-09-26T18:39:32.960Z"
+  },
+  "concept_prop_tombstone_cross": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a leaning stone celtic cross grave marker on a small plinth, chipped",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/tombstone_cross.png",
+    "rawHash": "sha256:df843e3956d1699bcbda74693b2718f41b50edbe60488afddd79d1e7a9978556",
+    "outHash": "sha256:985a1bc8b58a9d7b489bfb826be6d1039e050b9146019d6d340d4c9cec2eec5f",
+    "generatedAt": "2026-09-26T18:39:41.968Z"
+  },
+  "concept_prop_mausoleum": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a small gothic family mausoleum crypt with a pointed roof, stone buttresses and a closed rusted iron door, violet light leaking from the door gap",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/mausoleum.png",
+    "rawHash": "sha256:9466c5e4589680b4a6d9452e8de7801da7cdc126fd51038331991e2f61fa5d8b",
+    "outHash": "sha256:a6a1d0122c52fb0ede816b48cf1042ebd8257d0423f5b3ea08540598c4704742",
+    "generatedAt": "2026-09-26T18:39:51.849Z"
+  },
+  "concept_prop_pillar": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a tall gothic cathedral stone column with a carved capital and a square base, soot-darkened",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/pillar.png",
+    "rawHash": "sha256:8439dbfdd6ad0e57cd7568351d3abd27e77d3d7a7b24c2e8e18478e0a4780344",
+    "outHash": "sha256:d12c3dd5a6be978c955247904543e203397374b18811b71b83786aeb09cf46ee",
+    "generatedAt": "2026-09-26T18:40:01.281Z"
+  },
+  "concept_prop_arch": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a broken gothic stone archway, pointed arch with one side partly crumbled",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/arch.png",
+    "rawHash": "sha256:d992409f226e01d1dc79a93a63f03c8877de015e2722c5473e94f792afecb07c",
+    "outHash": "sha256:f0c824859fb2f558df6a5f57c09820c7de67c06c0403e9ae6762593ba56efb3f",
+    "generatedAt": "2026-09-26T18:40:10.199Z"
+  },
+  "concept_prop_sarcophagus": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a stone sarcophagus with a carved effigy of a robed knight on the lid, lid slightly ajar",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/sarcophagus.png",
+    "rawHash": "sha256:9208c1b53197a5e935928a64e0c4ba4dd3e5fa87496353e630ea8e97a4cfca0e",
+    "outHash": "sha256:7ae84f1352b060e8e7524c6fe592dd737788b3a59ffad622688dedd926e15e6c",
+    "generatedAt": "2026-09-26T18:40:20.072Z"
+  },
+  "concept_prop_statue": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a hooded mourning angel statue with folded wings on a square stone plinth, face hidden, weathered",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/statue.png",
+    "rawHash": "sha256:cc8f7e4f91dc38b80b9f4d8b406f276d3a5966c3c929a471ef832fc41402bbe2",
+    "outHash": "sha256:dd8c7b9f9bbb1545dc9532229aa9cac34a0ea2a9ae4fd72dd66c54957280052e",
+    "generatedAt": "2026-09-26T18:40:29.120Z"
+  },
+  "concept_prop_candles": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a cluster of many melted white and ivory candles of different heights on a small stone base, dripping wax, not lit",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/candles.png",
+    "rawHash": "sha256:e2576c97e1eef93e82417cc616f1744d53ab857b2454ca03638eb2d2b0241b54",
+    "outHash": "sha256:984f90edfc3bd0434205e796c6eafa236f34c101d7ece346cf9f331471cffa5d",
+    "generatedAt": "2026-09-26T18:40:38.282Z"
+  },
+  "concept_prop_bone_pile": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a heap of human skulls and long bones",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/bone_pile.png",
+    "rawHash": "sha256:1a61ae03e78307ea17fb9a6c0f3dbb0dc7582e71948c248ab1e7e1cc6a42a0db",
+    "outHash": "sha256:323001e086efda7e49cf7087e29fbfdc97635afb0a2ccad6db7d91be4347f959",
+    "generatedAt": "2026-09-26T18:40:47.261Z"
+  },
+  "concept_prop_fence": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a straight section of wrought iron cemetery fence with spear-tipped bars between two stone posts, about twice as wide as tall",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/fence.png",
+    "rawHash": "sha256:147dccbdc6688de6fe204bda40db8988fc6d66d64eff4e9a63a1c6eb1b4b9bb8",
+    "outHash": "sha256:a48a2e53a9b8517190ff882135bef3475b1db45a85ce619b011992946cd60535",
+    "generatedAt": "2026-09-26T18:40:57.515Z"
+  },
+  "concept_prop_dead_tree": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a gnarled leafless dead tree with twisting branches and exposed roots",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/dead_tree.png",
+    "rawHash": "sha256:f8301ebc972abb69db0a7d2ba24fd47a7769ecbea994f4760a44a8afdab285ed",
+    "outHash": "sha256:425e1ee067fbcb344c26e018df86c04f66af9714f5702b776d4c5eca668dca12",
+    "generatedAt": "2026-09-26T18:41:06.013Z"
+  },
+  "concept_prop_brazier": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a blackened iron tripod brazier with a wide bowl full of dim embers",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/brazier.png",
+    "rawHash": "sha256:5e2f27656bd1118caf48b160f85adbc1b6786e7ff61b310d44395811b9956a8d",
+    "outHash": "sha256:e569251e90dbb8252cf4eaf01ca67d1af8ee1b8b16b886e6009a3f42eab26521",
+    "generatedAt": "2026-09-26T18:41:15.085Z"
+  },
+  "concept_prop_bell_altar": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a huge cracked bronze church bell resting on a low stone altar with chains, violet light glowing from inside the crack",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/bell_altar.png",
+    "rawHash": "sha256:c1bc165caacb79feed2996f088162399c80a11409a4292870fb4f53ec661d640",
+    "outHash": "sha256:f115f2946a9a1fce4bd4fb4367abb7165ba7dd4a36cc639e8ed6e940b9334bd8",
+    "generatedAt": "2026-09-26T18:41:24.404Z"
+  },
+  "concept_prop_reliquary": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: an ornate reliquary chest of dark wood bound in blackened iron with bone ornaments and a small skull on the lid",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/reliquary.png",
+    "rawHash": "sha256:20a79a9b98a53dd34e87043eb8d3298797fb3022d5f136b1e95916a7dc7fb20e",
+    "outHash": "sha256:e4d5f24e2c7cbbade10e74e391db3b473f69a1217edece13c2c050166f9b2472",
+    "generatedAt": "2026-09-26T18:41:33.672Z"
+  },
+  "concept_prop_workbench": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a heavy ossuary workbench of dark wood with bones, skulls, tools and a small anvil on it",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/workbench.png",
+    "rawHash": "sha256:add699be778a77f74d659826512907c077631635d78b80c37c89b957ad7db1ac",
+    "outHash": "sha256:355cf8ab4c5417b7d7ae547d526d087379a932ff09b6f5e3b8805df31f9e6a15",
+    "generatedAt": "2026-09-26T18:41:43.017Z"
+  },
+  "concept_prop_waystone": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a tall standing runestone obelisk carved with glowing violet runes, on a small stone base",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/waystone.png",
+    "rawHash": "sha256:36dec6d7276d0c95e064b41d3f2c967941d36cde043fd54c7acef29c530b0b1e",
+    "outHash": "sha256:0b690f178ece08eb16972c9e47cdbad31e728008f21a229f6e587759a2ceb4bc",
+    "generatedAt": "2026-09-26T18:41:52.745Z"
+  },
+  "concept_hero_ossuary": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Character source for 3D modeling. Redraw the hooded necromancer from the FIRST image as the Ossuary discipline shown in the SECOND image: same hood and face, dark robes, but with pale aged-ivory bone plates grown over the shoulders, chest and forearms like armour, bone vertebrae belt, fewer purple accents and more old-ivory. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally at shoulder height, EMPTY hands (no shield, no staff, no props, no magic), legs straight and slightly apart, robe hem above the ankles. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy painterly-realistic game art.",
+    "refs": [
+      "art-src/concepts/necromancer.png",
+      "public/art/portraits/ossuary.webp"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/hero_ossuary.png",
+    "rawHash": "sha256:545caa7757b30b017c3f16496c01a13cd5a6d00985ff20b39d879bd9719493f3",
+    "outHash": "sha256:9f9ed63f0045efd02c70a9f97fbe2375183612a73a6446cb1f41ecfcca6a085d",
+    "generatedAt": "2026-09-26T19:20:17.278Z"
+  },
+  "concept_hero_gravecaller": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Character source for 3D modeling. Redraw the hooded necromancer from the FIRST image as the Gravecaller discipline shown in the SECOND image: a commander of the dead — same hood and face, black and deep-violet war-robes with a tattered cape, a gorget and pauldrons of blackened iron, a sash of hanging finger bones, violet rune embroidery. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally, EMPTY hands (no staff, no banner, no props, no magic), legs straight and slightly apart, robe hem above the ankles. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy painterly-realistic game art.",
+    "refs": [
+      "art-src/concepts/necromancer.png",
+      "public/art/portraits/gravecaller.webp"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/hero_gravecaller.png",
+    "rawHash": "sha256:58fc07b4a4695541535f4750a0195e91bae6fa2db1f5979be5769919422b3688",
+    "outHash": "sha256:2a091a1826efe9eaaeaf56a5fee74fae4e603554c298f430d59139ca5132e42c",
+    "generatedAt": "2026-09-26T19:20:27.766Z"
+  },
+  "concept_hero_mourner": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Character source for 3D modeling. Redraw the hooded necromancer from the FIRST image as the Mourner discipline shown in the SECOND image: same face, a pale grey mourning veil over the hood, layered black and cold silver-blue funeral vestments, many small silver bells and mourning ribbons, a silver reliquary pendant. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally, EMPTY hands (no bell in hand, no props, no ghosts, no magic), legs straight and slightly apart, vestment hem above the ankles. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy painterly-realistic game art.",
+    "refs": [
+      "art-src/concepts/necromancer.png",
+      "public/art/portraits/mourner.webp"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/hero_mourner.png",
+    "rawHash": "sha256:51e9871aa539f9778f8309ef4762da5618b34196f4ac177a532405ca7d240b31",
+    "outHash": "sha256:1f2f78a4c11e08b8fb103f982d87a130e70532fbff8dcfc280e70106b393f7e7",
+    "generatedAt": "2026-09-26T19:20:35.449Z"
+  },
+  "concept_hero_rotweaver": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Character source for 3D modeling. Redraw the hooded necromancer from the FIRST image as the Rotweaver discipline shown in the SECOND image: same hood and face, moss-stained dark robes with sickly olive and chartreuse lichen growth, fungal growths on the shoulders, vials of rot on the belt, dried roots woven into the sleeves. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally, EMPTY hands (no props, no magic, no mist), legs straight and slightly apart, robe hem above the ankles. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy painterly-realistic game art.",
+    "refs": [
+      "art-src/concepts/necromancer.png",
+      "public/art/portraits/rotweaver.webp"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/hero_rotweaver.png",
+    "rawHash": "sha256:6db1cae7f50f9c181f4b61ed2ced0ce8cf873eb6472b9cc7d0f71e9e456eaeb5",
+    "outHash": "sha256:42065ec9b8c0626fa1203f28a86f8a9551f007e303e1a6a68b6b3438d8ddb599",
+    "generatedAt": "2026-09-26T19:20:44.299Z"
+  }
+}

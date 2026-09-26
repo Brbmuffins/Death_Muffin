@@ -1,88 +1,113 @@
-# Asset Pipeline — 3D Characters & Models
+# Asset Pipeline — Gemini → Tripo v3 → shippable GLB
 
-How to take a character from nothing → animated in-game. Follow in order; every
-gotcha here has already cost credits or debugging time once.
+How art gets from an idea to the game. Every step is scripted, resumable and
+recorded, so assets are reproducible (audit: "add a manifest beside every
+generated asset").
 
-## 0. Before generating ANYTHING
-
-- **Check `art-src/tripo/<slug>/` first.** If the model was already generated, the raw
-  outputs and task-ID JSONs are there — regeneration wastes ~30+ Tripo credits.
-- Keys live in `.ai-keys.local` (gitignored). Load per-invocation:
-  `export TRIPO_API_KEY=$(grep '^TRIPO_API_KEY=' .ai-keys.local | cut -d= -f2 | tr -d '\r')`
-- Credits (June 2026): generation ~30, rig ~25 (+25/retry), retarget ~10/clip.
-  A full character ≈ 95 credits (~$10).
-
-## 1. Generate (Tripo skill pipeline)
-
-Run from this project directory:
-
-```bash
-python ~/.claude/skills/threejs-3d-generator/scripts/threejs_3d_asset.py character-pipeline \
-  --prompt "<design>, strict full-body T-pose, arms straight out horizontal away from body, \
-legs apart and separated, front facing, symmetric, complete body head to feet, no props, \
-clean topology, PBR materials, readable silhouette" \
-  --animations preset:idle,preset:walk,preset:run,preset:hurt,preset:slash \
-  --out-dir art-src/tripo/<slug>
 ```
+concept (Gemini)          art-src/concepts/<id>.png          ← art-manifest/gemini-jobs/*.json
+  → 3D (Tripo P1)         art-src/tripo/<id>/model.glb        ← art-manifest/tripo-specs/<id>.json
+  → rig + clips           art-src/tripo/<id>/anim_<clip>.glb
+  → build                 public/models/<id>/character.glb   (or public/models/props/<id>.glb)
+records                   art-manifest/images.json, art-manifest/tripo/<id>.json (task ids, credits, hashes)
+```
+`art-src/` is gitignored (raw outputs, ~1 GB). `art-manifest/` is committed.
 
-- **`--out-dir` must be `art-src/tripo/<slug>`** — never `public/` (raw files are 60MB+ each).
-- Humanoids route to the v1.0 anatomical rig automatically; one FBX per animation.
-- Attack presets: `preset:slash` (melee) or `preset:shoot` (ranged) — there is no `preset:attack`.
-- Creatures (like the slime) get one locomotion preset max; animate extra motion procedurally.
-- Adding a clip to an EXISTING character: find the rig task ID in
-  `art-src/tripo/<slug>/rig/*.json`, then a single `postprocess --type animate_retarget`
-  (10 credits) — do not re-run the whole pipeline. v1.0 rigs: ONE animation per retarget
-  task, `--out-format fbx`, omit `--model-version`.
+## 0. Keys & spend
 
-## 2. Build web assets
+- Keys live in `.ai-keys.local` (gitignored): `TRIPO_API_KEY=` / `GEMINI_API_KEY=`.
+  The tools read them per run and never print them.
+- Budget guidance: see the Tripo memory notes — generous, but report spend per batch.
+- Measured Tripo v3 costs (Sept 2026): P1 image→model **50** (standard texture) /
+  **60** (detailed); rig-check **0**; rig **25**; retarget **10 per clip**.
+  A 7-clip hero ≈ **155**, a 5-clip enemy ≈ **125**, a static prop ≈ **50**.
+- `node tools/ai/tripo.mjs balance` shows the balance (free).
 
-1. Add/extend the slug entry in `CHARACTERS` at the top of `tools/build-models.mjs`
-   (list the animation dir names that exist under `art-src/tripo/<slug>/`).
-2. `node tools/build-models.mjs <slug>` (no args = all).
+## 1. Concepts (Gemini)
 
-Output: `public/models/<slug>/rig.glb` (~2.4MB) + `<anim>.glb` (~0.1MB each).
-Expected log: rig ~60MB → ~2.4MB, anims ~67MB → ~0.1MB. If the rig stays large,
-simplify/textureCompress failed — investigate before shipping.
+`node tools/ai/gemini.mjs art-manifest/gemini-jobs/<file>.json [jobId…] [--force]`
 
-**Why the script does what it does (do not "simplify" these away):**
-- `rig.glb` is built from the **idle FBX**, not Tripo's GLB rig. The GLB rig's rest
-  space differs from the FBX clips (Tripo v1.0 is FBX-native) — mixing them renders
-  the character **lying prone**.
-- Animation GLBs have geometry/materials/skins stripped; clips drive the rig's bones
-  by node name.
-- Each converted clip file contains the take twice; the loader picks the variant with
-  the fewest `|` segments (the deep one binds wrong).
+- Jobs: `{ id, prompt, out, refs?, crop?, aspect?, size?, post? }`. `refs` are
+  reference images (the reference sheets in the repo root, a previous concept…);
+  `crop` cuts a figure out of `refs[0]`. `post.resize/format/removeBg` shape the output.
+- Existing outputs are skipped unless `--force`. Model default:
+  `gemini-3.1-flash-image`.
+- **For Tripo inputs**: single character, strict **T-pose**, empty hands, plain
+  light-grey background, flat lighting. Props: single object, ¾ view, plain grey.
+- Tileable textures: run `node tools/make-seamless.mjs <file>` afterwards
+  (Gemini textures are rarely seamless on their own).
+- Batch-2 prompts are generated by `art-manifest/gemini-jobs/make-batch2.mjs`.
 
-## 3. Register in code
+## 2. Model, rig, animations (Tripo v3)
 
-- `src/graphics/modelPaths.ts` — add to `MODEL_PATHS` via `charPaths('<slug>', 'slash'|'shoot')`.
-- If it's a playable class: add to `CLASS_TO_MODEL` using **server** indices:
-  `0=Engineer (no model), 1=Guardian, 2=Shadowblade (bogar), 3=Cleric (brandolf), 4=Arcanist`.
-  These come from CLASS_NAMES in `/opt/rod-auth/server.js` — do NOT renumber.
-- Enemies/props: reference `MODEL_PATHS.<slug>.rig` directly.
+`node tools/ai/tripo.mjs run art-manifest/tripo-specs/<id>.json` (dry run) → add `--yes` to spend.
 
-`src/graphics/CharacterModel.ts` handles the rest automatically: bounds-based scale
-normalization to 1.8 units (never hardcode a scale — quantize rebakes node scales),
-feet grounded at y=0, horizontal-only `Root.position` root-motion strip, crossfades,
-capsule fallback if loading fails.
+```json
+{
+  "id": "hero_ossuary",
+  "input": "art-src/concepts/hero_ossuary.png",
+  "generation": { "model": "P1-20260311", "face_limit": 12000, "texture_quality": "detailed" },
+  "rig": { "model": "v1.0-20240301", "rig_type": "biped" },
+  "animations": ["preset:biped:idle", "preset:biped:walk", "preset:biped:run", "preset:biped:cast_a_spell",
+                 "preset:biped:hurt", "preset:biped:dig", "preset:biped:fall"],
+  "animationMode": "single"
+}
+```
+- **Always `animationMode: "single"`.** Batch retargeting caps at 5 presets and
+  bakes them into ONE concatenated clip — unusable. Single costs the same.
+- Quadrupeds: `rig: { model: "v2.5-20260210", rig_type: "quadruped" }`, animation
+  `preset:quadruped:walk` (the only quadruped preset).
+- Props: omit `rig`/`animations`.
+- Resumable: every task id is written to `art-src/tripo/<id>/state.json` before
+  polling; a rerun skips finished steps and never pays twice. Failed tasks
+  refund automatically (Tripo freezes then releases credits).
+- Face budgets: hero 12k, boss 14k, horde enemy 4–5k, props 0.9–3.5k.
 
-## 4. Verify (QA bar before calling it done)
+## 3. Build
 
-- `npx tsc --noEmit`
-- Dev server (`npm run dev`, port 5188), login with an account from
-  `TEST_ACCOUNTS.local.md`, check the model in the hub.
-- **preview screenshots time out on this app.** QA numerically via the dev hook
-  `window.__cwDebug` (HubScene, DEV only): bounding box ≈ 1.8 tall / minY 0
-  (a z-depth ≥ ~1.5 means prone — rig/clip mismatch), clip list complete,
-  no `THREE.PropertyBinding` warnings, WebGL `readPixels` shows the character's
-  palette at screen center.
+`node tools/build-characters.mjs [id …]` (no args = every id with a state.json)
 
-## Current model inventory (2026-07-03)
+- Takes the mesh from the idle clip GLB and copies every other clip's channels
+  onto it by joint name → one `character.glb` with clips named
+  `idle walk run cast attack hurt dig death` (whatever exists). All clip files
+  come from the same rig task, so they share a rest pose.
+- dedup → resample → WebP textures (heroes/boss/large props 1024 px, others
+  512) → quantize → prune. glTF extensions are registered (EXT_texture_webp,
+  KHR_mesh_quantization) — never drop that or the files become invalid.
+- Output: characters `public/models/<id>/character.glb` + `clips.json`; props
+  `public/models/props/<id>.glb`.
+- Legacy: `tools/build-models.mjs` is the old v1 FBX pipeline for the retired
+  Unity-era heroes; kept for reference only.
 
-| slug | maps to | clips | note |
-|---|---|---|---|
-| guardian | class 1 | idle walk run hurt slash | verified in hub |
-| bogar | class 2 (Shadowblade) | idle walk run hurt slash | |
-| brandolf | class 3 (Cleric) | idle walk run hurt | **attack retarget pending** (rig task ID in `art-src/tripo/brandolf/rig/*.json`) |
-| arcanist | class 4 | idle walk run hurt shoot | |
-| slime | enemy (unwired) | none — static | animate procedurally in `enemies.ts` |
+## 4. Register in code
+
+- Creatures: `src/graphics/modelPaths.ts` → `CREATURE_MODELS` (slug → url + world height).
+  Enemies map in `src/graphics/EntityViews.ts` (`ENEMY_SLUG`), thralls in `THRALL_SLUG`,
+  discipline heroes via `content/disciplines.ts` `modelSlug` (falls back to `necromancer`).
+- Props: `src/content/layout.ts` `PROPS` (target height + collider) — the loader
+  swaps the code-built stand-in for the GLB automatically.
+- `Creature.attach(bone, obj, dir)` parents weapons/staffs to bones and
+  auto-calibrates their orientation against the idle pose (Tripo bone axes vary).
+
+## 5. Verify
+
+- `npm run typecheck && npm test`
+- Dev server + `?offline`, then numerically through `window.__cwDebug`
+  (`counts()`, `advance(s)` — hidden preview panes throttle rendering, so drive
+  time explicitly), then screenshots.
+- A PBR Tripo material is mostly metallic: keep emissive boosts faint
+  (≤0.15) or models white-out under bloom.
+
+## Current inventory (2026-09-26)
+
+| id | kind | clips | tris | notes |
+|---|---|---|---|---|
+| necromancer | base hero | cast dig death hurt idle run walk | 11.9k | fallback for all disciplines |
+| hero_ossuary / hero_gravecaller / hero_mourner / hero_rotweaver | discipline heroes | same 7 | 9–12k | from `art-src/concepts/hero_*.png` |
+| skeleton_thrall | thrall + Risen | death hurt idle run attack walk | 4.6k | sword/shield attached in code |
+| grave_robber | enemy | death hurt idle attack walk | 3.8k | |
+| bone_hound | enemy + hound thrall | walk | 3.5k | idle = walk slowed; death = topple |
+| penitent / deacon | enemies | cast death hurt idle walk | 4.8k | |
+| carrion_sac | enemy | death idle attack walk | 3.9k | |
+| prelate | boss | cast death hurt idle attack walk | 11.5k | |
+| props (16) | static | — | 0.8–3.6k | tombstones, mausoleum, pillar, arch, sarcophagus, statue, candles, bone pile, fence, dead tree, brazier, bell altar, reliquary, workbench, waystone |

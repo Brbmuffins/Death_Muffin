@@ -1,0 +1,9 @@
+{
+  "id": "prop_tombstone_round",
+  "input": "art-src/concepts/props/tombstone_round.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 900,
+    "texture_quality": "standard"
+  }
+}

@@ -1,0 +1,166 @@
+/*
+ * Crossworlds necromancer redesign — semantic theme seed.
+ * This is intentionally token-first. It can be imported before the existing
+ * ui.css and used to migrate components without a single destructive rewrite.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* World materials: layered blacks and violet magic, never flat black/red */
+  --cw-void-950: #07060a;
+  --cw-obsidian-900: #0d0b11;
+  --cw-plum-850: #17101d;
+  --cw-plum-750: #25162f;
+  --cw-stone-700: #24202b;
+  --cw-stone-500: #5e5968;
+  --cw-bone-300: #d8cfbd;
+  --cw-bone-100: #f0e9dc;
+  --cw-silver-400: #96a0b5;
+  --cw-veil-500: #7c3aed;
+  --cw-spell-400: #9b5cff;
+  --cw-spell-300: #c6a4ff;
+  --cw-spirit-400: #8f9ed1;
+  --cw-iron-500: #4b4654;
+  --cw-blood-600: #4a2d35;
+
+  /* Semantic surfaces */
+  --cw-bg: var(--cw-void-950);
+  --cw-bg-raised: color-mix(in srgb, var(--cw-plum-850) 88%, transparent);
+  --cw-bg-inset: color-mix(in srgb, #000 58%, var(--cw-plum-850));
+  --cw-panel: color-mix(in srgb, var(--cw-obsidian-900) 88%, var(--cw-plum-850));
+  --cw-border: color-mix(in srgb, var(--cw-bone-300) 22%, transparent);
+  --cw-border-active: color-mix(in srgb, var(--cw-spell-400) 78%, var(--cw-bone-300));
+  --cw-text: var(--cw-bone-100);
+  --cw-text-muted: color-mix(in srgb, var(--cw-bone-300) 68%, transparent);
+  --cw-accent: var(--cw-spell-400);
+  --cw-accent-soft: color-mix(in srgb, var(--cw-spell-400) 18%, transparent);
+  --cw-danger: var(--cw-blood-600);
+  --cw-focus: var(--cw-spirit-400);
+
+  /* Shape: carved stone and reliquary metal, not glass-app pills */
+  --cw-radius-panel: 3px;
+  --cw-radius-control: 2px;
+  --cw-radius-slot: 1px;
+  --cw-line: 1px;
+  --cw-shadow-panel:
+    0 22px 60px rgba(0, 0, 0, 0.62),
+    inset 0 0 0 1px rgba(238, 231, 210, 0.035);
+  --cw-glow-spell: 0 0 22px color-mix(in srgb, var(--cw-spell-400) 32%, transparent);
+
+  /* Type hooks. Bundle actual fonts locally before release. */
+  --cw-font-display: "Cormorant Garamond", Georgia, serif;
+  --cw-font-body: "Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+  --cw-font-numeric: "IBM Plex Sans Condensed", "Segoe UI", sans-serif;
+}
+
+body {
+  background:
+    radial-gradient(circle at 50% 35%, rgba(124, 58, 237, 0.11), transparent 38%),
+    var(--cw-bg);
+  color: var(--cw-text);
+  font-family: var(--cw-font-body);
+}
+
+.cw-panel,
+.cw-bag,
+.cw-professions,
+.cw-forge {
+  border-radius: var(--cw-radius-panel);
+  border: var(--cw-line) solid var(--cw-border);
+  background:
+    linear-gradient(145deg, rgba(238, 231, 210, 0.025), transparent 28%),
+    var(--cw-panel);
+  box-shadow: var(--cw-shadow-panel);
+  backdrop-filter: blur(3px) saturate(0.8);
+}
+
+.cw-title,
+.cw-bag-title,
+.cw-boss-name {
+  color: var(--cw-bone-300);
+  font-family: var(--cw-font-display);
+  letter-spacing: 0.12em;
+}
+
+.cw-button,
+.cw-icon-btn,
+.cw-class-card,
+.cw-ability {
+  border-radius: var(--cw-radius-control);
+  border-color: var(--cw-border);
+  background:
+    linear-gradient(180deg, rgba(209, 198, 165, 0.05), transparent),
+    var(--cw-bg-inset);
+  color: var(--cw-text);
+}
+
+.cw-button:hover,
+.cw-icon-btn:hover,
+.cw-class-card:hover,
+.cw-ability:hover {
+  border-color: var(--cw-border-active);
+  background-color: var(--cw-accent-soft);
+  box-shadow: var(--cw-glow-spell);
+}
+
+.cw-field label,
+.cw-ability .key,
+.cw-prof .lvl,
+.cw-slot .eq {
+  color: var(--cw-silver-400);
+}
+
+.cw-field input,
+.cw-chat input {
+  border-radius: var(--cw-radius-control);
+  border-color: var(--cw-border);
+  background: var(--cw-bg-inset);
+  color: var(--cw-text);
+}
+
+.cw-field input:focus,
+.cw-chat input:focus {
+  border-color: var(--cw-focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--cw-focus) 18%, transparent);
+}
+
+.cw-hud .pill,
+.cw-hint,
+.cw-party .slot {
+  border-radius: var(--cw-radius-control);
+  border-color: var(--cw-border);
+  background: var(--cw-panel);
+}
+
+.cw-ability {
+  border-color: color-mix(in srgb, var(--ability-color, var(--cw-spell-400)) 58%, var(--cw-border));
+}
+
+.cw-ability .cd {
+  background: rgba(5, 4, 8, 0.86);
+  box-shadow: inset 0 1px 0 rgba(209, 198, 165, 0.08);
+}
+
+.cw-hpbar {
+  background: color-mix(in srgb, var(--cw-blood-600) 20%, var(--cw-bg-inset));
+}
+
+.cw-hpbar .fill {
+  background: linear-gradient(90deg, #3a222d, #6a354f);
+}
+
+.cw-toast {
+  border-radius: var(--cw-radius-control);
+  border-color: color-mix(in srgb, var(--cw-spell-400) 72%, var(--cw-bone-300));
+  background: color-mix(in srgb, var(--cw-void-950) 82%, var(--cw-plum-750));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

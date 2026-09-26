@@ -1,0 +1,9 @@
+{
+  "id": "prop_bone_pile",
+  "input": "art-src/concepts/props/bone_pile.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2200,
+    "texture_quality": "standard"
+  }
+}

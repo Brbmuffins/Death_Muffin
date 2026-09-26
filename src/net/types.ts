@@ -3,6 +3,15 @@
 
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic';
 
+export type ItemType =
+  | 'weapon'
+  | 'armor_head'
+  | 'armor_chest'
+  | 'armor_legs'
+  | 'ring'
+  | 'trinket'
+  | 'material';
+
 export interface InventorySlot {
   id: number;
   slot_index: number;
@@ -11,14 +20,7 @@ export interface InventorySlot {
   item_id: string;
   name: string;
   rarity: Rarity;
-  item_type:
-    | 'weapon'
-    | 'armor_head'
-    | 'armor_chest'
-    | 'armor_legs'
-    | 'ring'
-    | 'trinket'
-    | 'material';
+  item_type: ItemType;
   stat_bonus: Record<string, number> | null;
   icon_id: string | null;
   sell_value: number;
@@ -47,6 +49,7 @@ export interface Recipe {
   ingredients: RecipeIngredient[];
 }
 
+/** GET/POST /character. The server may send extra legacy columns; these are the ones the client uses. */
 export interface Character {
   id: number;
   class_index: number;

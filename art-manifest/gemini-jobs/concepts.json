@@ -1,0 +1,62 @@
+[
+  {
+    "id": "concept_necromancer",
+    "out": "art-src/concepts/necromancer.png",
+    "refs": ["necromancer-character-minions-reference.png"],
+    "crop": { "left": 370, "top": 20, "width": 410, "height": 990 },
+    "aspect": "3:4",
+    "prompt": "Character turnaround source for 3D modeling. Redraw exactly this hooded necromancer (same face, hood, layered tattered black and deep-purple robes, bone charms, leather belts with small skulls, hanging bronze bells, bronze sigil medallion, violet rune embroidery) as a single full-body character, FRONT VIEW, strict T-pose: both arms straight out horizontally at shoulder height, palms down, EMPTY hands (no staff, no props, no magic effects), legs straight and slightly apart, feet flat. Entire body visible head to feet, centered, occupying most of the frame. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no glow, no smoke, no text, no other characters. Dark fantasy painterly-realistic game art, readable silhouette, robe hem above the ankles so the legs are distinct."
+  },
+  {
+    "id": "concept_skeleton_thrall",
+    "out": "art-src/concepts/skeleton_thrall.png",
+    "refs": ["necromancer-character-minions-reference.png"],
+    "crop": { "left": 10, "top": 250, "width": 330, "height": 670 },
+    "aspect": "3:4",
+    "prompt": "Character source for 3D modeling. Redraw exactly this skeleton warrior (aged ivory bones, dented iron helmet, tattered dark purple loincloth and rags, leather wraps and straps, faint violet runes) as a single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally at shoulder height, EMPTY hands (no sword, no shield), legs straight and slightly apart. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy game art, clean readable silhouette."
+  },
+  {
+    "id": "concept_bone_hound",
+    "out": "art-src/concepts/bone_hound.png",
+    "refs": ["necromancer-character-minions-reference.png"],
+    "crop": { "left": 820, "top": 500, "width": 470, "height": 420 },
+    "aspect": "4:3",
+    "prompt": "Creature source for 3D modeling. Redraw exactly this skeletal hound (ivory bones, spiked spine, tattered purple cloth draped over the ribcage, leather straps and iron collar, glowing violet eye sockets) as a single full-body creature in a neutral standing pose, all four legs straight and visible, tail extended, three-quarter side view facing right. Entire body visible, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no smoke, no text, no other characters. Dark fantasy game art, clean readable silhouette."
+  },
+  {
+    "id": "concept_grave_robber",
+    "out": "art-src/concepts/grave_robber.png",
+    "refs": ["necromancer-character-minions-reference.png"],
+    "crop": { "left": 1265, "top": 240, "width": 270, "height": 690 },
+    "aspect": "3:4",
+    "prompt": "Character source for 3D modeling. Redraw exactly this undead grave robber (grey-violet rotting skin with faint violet rune scars, ragged hood and shroud, filthy wrapped cloth bindings, a small bronze bell on a chain at the belt, bare feet) as a single full-body character, FRONT VIEW, standing upright in a strict T-pose: arms straight out horizontally, EMPTY hands, legs straight and slightly apart. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy game art, clean readable silhouette."
+  },
+  {
+    "id": "concept_penitent",
+    "out": "art-src/concepts/penitent.png",
+    "refs": ["necromancer-character-minions-reference.png"],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new undead enemy: the Bellbound Penitent. A gaunt hooded flagellant corpse in soot-black and bruised-violet penitent robes, face hidden in shadow with two faint violet eye glints, a heavy cracked bronze church bell strapped to its back by chains and leather, iron shackles on the wrists, rope belt with prayer beads. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally, empty hands, legs straight and slightly apart, robe hem above the ankles. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette."
+  },
+  {
+    "id": "concept_deacon",
+    "out": "art-src/concepts/deacon.png",
+    "refs": ["necromancer-character-minions-reference.png"],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new undead enemy: the Crypt Deacon. A tall emaciated undead priest with a tall pointed cracked mitre, layered black and violet vestments with tarnished silver embroidery, a bone rosary, a skull-face with sunken glowing violet eyes, long bony fingers. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally, empty hands, legs straight and slightly apart, vestments ending above the ankles. Entire body visible, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette."
+  },
+  {
+    "id": "concept_carrion_sac",
+    "out": "art-src/concepts/carrion_sac.png",
+    "refs": ["necromancer-character-minions-reference.png"],
+    "aspect": "1:1",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new undead enemy: the Carrion Sac. A grotesque bloated corpse swollen into a round sac of pale grey-violet flesh stitched with black thread, dotted with glowing sickly violet pustules, a small slumped head half-sunk into the body, two stubby arms and two short thick legs. Single full-body creature, front three-quarter view, standing. Entire body visible, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette, not gory."
+  },
+  {
+    "id": "concept_prelate",
+    "out": "art-src/concepts/prelate.png",
+    "refs": ["necromancer-character-minions-reference.png"],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a boss: the Bell-Sworn Prelate. A towering undead cathedral bishop whose ribcage has fused into a huge cracked bronze processional bell (the bell forms the torso), tattered black and deep-purple ceremonial vestments with oxidised silver trim, a crown-like broken mitre, a gaunt skull face with violet eye light, long skeletal arms. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally, empty hands, legs visible and slightly apart below the vestments. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, imposing readable silhouette."
+  }
+]

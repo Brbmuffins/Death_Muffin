@@ -1,0 +1,9 @@
+{
+  "id": "prop_pillar",
+  "input": "art-src/concepts/props/pillar.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 1600,
+    "texture_quality": "standard"
+  }
+}

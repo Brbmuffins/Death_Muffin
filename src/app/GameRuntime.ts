@@ -1,0 +1,164 @@
+import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { onSettingsChange, settings } from './settings';
+
+/** What a scene hands the runtime: something to draw and a per-frame tick. */
+export interface RuntimeView {
+  scene: THREE.Scene;
+  camera: THREE.PerspectiveCamera;
+  update(dt: number, now: number): void;
+  bloom?: { strength: number; radius: number; threshold: number };
+}
+
+const DEFAULT_BLOOM = { strength: 0.85, radius: 0.55, threshold: 0.82 };
+
+/**
+ * One WebGL renderer for the whole app lifetime. Scenes no longer create or
+ * dispose renderers — they swap the active view. This removes per-transition
+ * shader churn and the leaked resize listeners the old fitToWindow() caused.
+ */
+export class GameRuntime {
+  readonly renderer: THREE.WebGLRenderer;
+  private composer: EffectComposer;
+  private renderPass: RenderPass;
+  private bloomPass: UnrealBloomPass;
+  private view: RuntimeView | null = null;
+  private clock = new THREE.Clock();
+  private raf = 0;
+  private bloomEnabled = true;
+
+  /** Smoothed frame time, exposed for the debug overlay / perf checks. */
+  frameMs = 16.7;
+
+  constructor(canvas: HTMLCanvasElement) {
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: true,
+      powerPreference: 'high-performance',
+    });
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer = renderer;
+
+    this.composer = new EffectComposer(renderer);
+    this.renderPass = new RenderPass(new THREE.Scene(), new THREE.PerspectiveCamera());
+    this.bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      DEFAULT_BLOOM.strength,
+      DEFAULT_BLOOM.radius,
+      DEFAULT_BLOOM.threshold,
+    );
+    this.composer.addPass(this.renderPass);
+    this.composer.addPass(this.bloomPass);
+    this.composer.addPass(new OutputPass());
+
+    window.addEventListener('resize', this.resize);
+    onSettingsChange(() => this.applyQuality());
+    this.applyQuality();
+  }
+
+  private applyQuality() {
+    const high = settings.quality === 'high';
+    const ratio = high ? Math.min(window.devicePixelRatio, 2) : 1;
+    this.renderer.setPixelRatio(ratio);
+    this.composer.setPixelRatio(ratio);
+    this.renderer.shadowMap.enabled = high;
+    this.bloomEnabled = high;
+    this.resize();
+  }
+
+  private resize = () => {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    this.renderer.setSize(w, h);
+    this.composer.setSize(w, h);
+    if (this.view) {
+      this.view.camera.aspect = w / h;
+      this.view.camera.updateProjectionMatrix();
+    }
+  };
+
+  get shadowsEnabled() {
+    return this.renderer.shadowMap.enabled;
+  }
+
+  setView(view: RuntimeView | null) {
+    this.view = view;
+    if (view) {
+      this.renderPass.scene = view.scene;
+      this.renderPass.camera = view.camera;
+      const b = view.bloom ?? DEFAULT_BLOOM;
+      this.bloomPass.strength = b.strength;
+      this.bloomPass.radius = b.radius;
+      this.bloomPass.threshold = b.threshold;
+      this.resize();
+    }
+  }
+
+  start() {
+    const loop = () => {
+      this.raf = requestAnimationFrame(loop);
+      const dt = Math.min(this.clock.getDelta(), 0.1);
+      this.frameMs += (dt * 1000 - this.frameMs) * 0.05;
+      const view = this.view;
+      if (!view) {
+        this.renderer.clear();
+        return;
+      }
+      view.update(dt, this.now());
+      // update() may have swapped the view (scene transition) — render the current one.
+      const current = this.view;
+      if (!current) return;
+      if (this.bloomEnabled) this.composer.render(dt);
+      else this.renderer.render(current.scene, current.camera);
+    };
+    loop();
+  }
+
+  stop() {
+    cancelAnimationFrame(this.raf);
+  }
+
+  /**
+   * QA helper: advance the active view deterministically in fixed steps, then
+   * render once. Hidden browser panes throttle requestAnimationFrame, so
+   * automated checks drive time explicitly instead of waiting on the loop.
+   */
+  advance(seconds: number, step = 1 / 60) {
+    this.qaClock = Math.max(this.qaClock, performance.now());
+    for (let i = 0, n = Math.round(seconds / step); i < n && this.view; i++) {
+      this.qaClock += step * 1000;
+      this.view.update(step, this.qaClock);
+    }
+    const v = this.view;
+    if (v) {
+      if (this.bloomEnabled) this.composer.render(step);
+      else this.renderer.render(v.scene, v.camera);
+    }
+  }
+
+  private qaClock = 0;
+
+  /** Monotonic clock shared by the RAF loop and advance(). */
+  now() {
+    return Math.max(performance.now(), this.qaClock);
+  }
+}
+
+let runtime: GameRuntime | null = null;
+
+export function initRuntime(canvas: HTMLCanvasElement): GameRuntime {
+  runtime = new GameRuntime(canvas);
+  runtime.start();
+  return runtime;
+}
+
+export function getRuntime(): GameRuntime {
+  if (!runtime) throw new Error('GameRuntime not initialised');
+  return runtime;
+}

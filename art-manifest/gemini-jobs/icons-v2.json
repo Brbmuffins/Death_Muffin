@@ -1,0 +1,34 @@
+[
+  {
+    "id": "icon_needle",
+    "out": "public/art/abilities/necro-needle.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png"],
+    "aspect": "1:1",
+    "post": { "resize": [256, 256], "format": "png" },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black carved-stone background. Subject: a single sharp needle of aged ivory bone flying diagonally, trailing warm amber-and-ivory light and fine white bone dust. Palette: ivory, bone white, warm amber glow — NO purple. No text, no border, no letters."
+  },
+  {
+    "id": "icon_spear",
+    "out": "public/art/abilities/necro-spear.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png"],
+    "aspect": "1:1",
+    "post": { "resize": [256, 256], "format": "png" },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, near-black background. Subject: a straight line of jagged pale bone spikes erupting from cracked dark earth toward the viewer, the cracks glowing ember orange-red, dust and dark crimson marrow flecks. Palette: bone ivory, ember orange, dried crimson, dark earth brown — NO purple. No text, no border, no letters."
+  },
+  {
+    "id": "icon_exhume",
+    "out": "public/art/abilities/necro-exhume.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png"],
+    "aspect": "1:1",
+    "post": { "resize": [256, 256], "format": "png" },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, near-black background. Subject: a skeletal hand clawing up out of a grave mound, wreathed in pale jade-teal spirit fire rising from the soil. Palette: bone ivory, spectral jade and teal (#6fe3c8), deep teal shadows — NO purple. No text, no border, no letters."
+  },
+  {
+    "id": "icon_miasma",
+    "out": "public/art/abilities/necro-miasma.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png"],
+    "aspect": "1:1",
+    "post": { "resize": [256, 256], "format": "png" },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, near-black background. Subject: a swirling circle of toxic rot mist on the ground, sickly chartreuse and olive green with dark drifting spores and a few small skulls half-sunk in the mist. Palette: acid chartreuse (#a8c23a), olive, murky black-green — NO purple. No text, no border, no letters."
+  }
+]

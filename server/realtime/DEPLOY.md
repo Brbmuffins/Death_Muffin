@@ -3,6 +3,31 @@
 Status: **one-shot script ready.** This machine can't SSH to the VPS
 (`Permission denied (publickey,password)`), so run it yourself on the box.
 
+## 2026-09-26 — protocol v2 (necromancer world)
+
+The service now speaks the **world** protocol the redesigned client needs; the
+old `room:join` / `arena:event` protocol is gone (the old Hub/Arena/Boss
+client scenes were removed at the same time, so deploy client + service together).
+
+| Event | Direction | Rules |
+|---|---|---|
+| `world:join {instance?, characterId, classIndex, x, z, facing}` → ack | client → server | No `instance` = matched into any public world with space (≤4), else a new one. An invite code joins/creates a private world. One socket per account per world. |
+| `player:move {x, z, facing, moving, hpFrac}` | client → room | ≤30/s, bounds-checked (|x|,|z| ≤ 400) |
+| `world:snapshot` | **host only** → room | ≤15/s, ≤96 KB; latest kept for host migration + late joiners |
+| `world:events [..]` | **host only** → room | ≤60/s, ≤64 KB, ≤400 events |
+| `world:intent {t: hit\|miasma\|exhume\|litany\|summonBoss\|recallThralls}` | client → **host only** | validated + clamped, stamped with the real sender id, ≤40/s |
+| `room:host {hostId, snapshot}` | server → room | on host leave; the new host seeds its sim |
+| `chat:send` / `chat:message` | as before | ≤3/s |
+
+Tests: `node --test server/realtime/server.test.js`. After editing `server.js`,
+run `node tools/embed-realtime.mjs` so `deploy-realtime.sh` embeds the new copy
+(it checks the heredoc markers; the embedded file is byte-identical).
+
+Local dev: `server/realtime/.env` from `.env.example` (DEV_TRUST_TOKENS=1 also
+accepts the client's offline dev tokens), then start **crossworlds-realtime**
+from `.claude/launch.json` and open `http://localhost:5188/?offline&coop` in
+two tabs with different offline accounts.
+
 ## Easiest path — the self-contained script
 
 `deploy-realtime.sh` embeds server.js + package.json + the systemd unit + the

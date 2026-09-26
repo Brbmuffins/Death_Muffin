@@ -1,0 +1,9 @@
+{
+  "id": "prop_brazier",
+  "input": "art-src/concepts/props/brazier.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 1400,
+    "texture_quality": "standard"
+  }
+}

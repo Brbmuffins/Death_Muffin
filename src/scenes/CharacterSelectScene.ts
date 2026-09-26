@@ -1,62 +1,67 @@
 import type { GameScene } from './SceneManager';
-import { CLASSES, PORTRAITS } from '../gameplay/classes';
+import { PLAYABLE_DISCIPLINES } from '../content/disciplines';
+import { classByIndex } from '../gameplay/classes';
 import { loadOrCreateCharacter } from '../net/api';
-import { LoginBackdrop } from '../graphics/loginBackdrop';
+import type { Character } from '../net/types';
+import type { NecroBackdrop } from '../graphics/NecroBackdrop';
 
+/**
+ * Choose a necromantic discipline. The server still stores the legacy class
+ * index (1–4); the card notes which legacy class it maps to.
+ */
 export class CharacterSelectScene implements GameScene {
   private root = document.getElementById('ui-root')!;
-  private canvas = document.getElementById('scene') as HTMLCanvasElement;
   private el: HTMLDivElement | null = null;
-  private backdrop = new LoginBackdrop();
 
-  constructor(private onSelected: (character: any) => void) {}
+  constructor(
+    private backdrop: NecroBackdrop,
+    private onSelected: (character: Character) => void,
+  ) {}
 
   mount() {
-    this.backdrop.mount(this.canvas);
+    this.backdrop.mount();
     this.el = document.createElement('div');
-    this.el.className = 'cw-panel cw-select';
+    this.el.className = 'cw-front';
     this.el.innerHTML = `
-      <h1 class="cw-title">Choose Your Class</h1>
-      <div id="cw-class-grid" class="cw-class-grid"></div>
-      <div class="cw-error" id="cw-select-error"></div>
-    `;
+      <div class="cw-plate cw-select" role="dialog" aria-label="Choose your discipline">
+        <h1 class="cw-title">Choose Your Discipline</h1>
+        <p class="sub">Every Covenant necromancer raises the dead. How you spend them is your discipline.</p>
+        <div class="cw-disc-grid" data-grid></div>
+        <div class="cw-error" data-error role="alert"></div>
+      </div>`;
     this.root.appendChild(this.el);
+    const grid = this.el.querySelector<HTMLDivElement>('[data-grid]')!;
+    const errorEl = this.el.querySelector<HTMLDivElement>('[data-error]')!;
 
-    const grid = this.el.querySelector<HTMLDivElement>('#cw-class-grid')!;
-    const errorEl = this.el.querySelector<HTMLDivElement>('#cw-select-error')!;
-
-    CLASSES.filter((c) => c.index !== 0).forEach((c) => {
+    for (const d of PLAYABLE_DISCIPLINES) {
       const btn = document.createElement('button');
-      btn.className = 'cw-class-card';
-      const portrait = PORTRAITS[c.index];
-      const color = c.color;
+      btn.className = 'cw-disc';
+      btn.style.setProperty('--disc-color', d.color);
       btn.innerHTML = `
-        <div class="portrait" style="--class-color:${color}">
-          ${portrait ? `<img src="${portrait}" alt="${c.name}" />` : `<span class="mono">${c.name[0]}</span>`}
-        </div>
-        <div class="label">
-          <span class="name">${c.name}</span>
-          <span class="role">${c.role}</span>
-        </div>
-      `;
+        <span class="legacy">${classByIndex(d.classIndex).name}</span>
+        <img class="portrait" src="art/portraits/${d.id}.webp" alt="" onerror="this.src='${d.portrait}'" />
+        <span class="body">
+          <span class="name">${d.name}</span>
+          <span class="epithet">${d.epithet}</span>
+          <span class="desc">${d.description}</span>
+          <span class="passive"><b>${d.passive.name}.</b> ${d.passive.text}</span>
+        </span>`;
       btn.addEventListener('click', async () => {
         errorEl.textContent = '';
-        btn.disabled = true;
+        grid.querySelectorAll('button').forEach((b) => ((b as HTMLButtonElement).disabled = true));
         try {
-          const character = await loadOrCreateCharacter(c.index);
-          this.onSelected(character);
+          this.onSelected(await loadOrCreateCharacter(d.classIndex));
         } catch (err) {
-          errorEl.textContent = err instanceof Error ? err.message : 'Could not create character';
-          btn.disabled = false;
+          errorEl.textContent = err instanceof Error ? err.message : 'Could not bind you to that discipline';
+          grid.querySelectorAll('button').forEach((b) => ((b as HTMLButtonElement).disabled = false));
         }
       });
       grid.appendChild(btn);
-    });
+    }
   }
 
   unmount() {
     this.el?.remove();
     this.el = null;
-    this.backdrop.unmount();
   }
 }
