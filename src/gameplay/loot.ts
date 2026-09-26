@@ -5,6 +5,7 @@ import { waveModifiers } from '../content/upgrades';
 import { saveInventory } from '../net/api';
 import type { InventorySlot } from '../net/types';
 import { pickWeighted, randInt } from './rng';
+import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
 
 export const BAG_COLS = 6;
 export const BAG_ROWS = 4;
@@ -27,17 +28,18 @@ export interface KillReward {
  * kill rolls their own — no contention, PvE-only assumption). Item ids are
  * restricted to ids the live server knows (content/items.ts).
  */
-export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boolean, waveTier: number, rand = Math.random): KillReward {
+export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boolean, waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium'): KillReward {
   const d = ENEMIES[def];
   const a = AREAS[area];
   const mods = waveModifiers(waveTier);
+  const diff = DIFFICULTIES[difficulty].rewardMult;
   const levelMult = 1 + 0.15 * (level - 1);
-  const gold = Math.round(randInt(rand, d.gold[0], d.gold[1]) * levelMult * mods.rewardMult * (elite ? ELITE.goldMult : 1));
+  const gold = Math.round(randInt(rand, d.gold[0], d.gold[1]) * levelMult * mods.rewardMult * diff * (elite ? ELITE.goldMult : 1));
   const shards = elite ? (rand() < 0.25 ? 2 : 1) : 0;
   const items: LootDrop[] = [];
   const chance = Math.min(1, a.itemChance * mods.itemChanceMult * (elite ? 6 : 1));
   if (a.loot.length && rand() < chance) items.push(rollItem(area, rand));
-  const xp = Math.round(d.xp * (1 + 0.25 * (level - 1)) * (elite ? ELITE.xpMult : 1));
+  const xp = Math.round(d.xp * (1 + 0.25 * (level - 1)) * diff * (elite ? ELITE.xpMult : 1));
   return { gold, shards, items, xp };
 }
 
@@ -47,10 +49,11 @@ export function rollItem(area: AreaId, rand = Math.random): LootDrop {
   return { item_id: pick.item, quantity: meta?.type === 'material' ? 1 + (rand() < 0.35 ? 1 : 0) : 1 };
 }
 
-export function rollBoss(waveTier: number, rand = Math.random): KillReward {
+export function rollBoss(waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium'): KillReward {
   const mods = waveModifiers(waveTier);
+  const diff = DIFFICULTIES[difficulty].rewardMult;
   const items = [rollItem('sanctum', rand), rollItem('sanctum', rand), rollItem('sanctum', rand)];
-  return { gold: Math.round(320 * mods.rewardMult), shards: 3, items, xp: 900 };
+  return { gold: Math.round(320 * mods.rewardMult * diff), shards: 3, items, xp: Math.round(900 * diff) };
 }
 
 /**

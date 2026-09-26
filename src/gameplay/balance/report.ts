@@ -8,8 +8,10 @@
  */
 import { runBalance, type BalanceResult, type BalanceRun } from './harness';
 import { AREAS, AREA_ORDER, type AreaId } from '../../content/areas';
+import type { Difficulty } from '../../content/difficulty';
 
 const MINUTES = Number(process.env.BALANCE_MINUTES ?? 3);
+const DIFFICULTY = (process.env.BALANCE_DIFFICULTY ?? 'medium') as Difficulty;
 const SEEDS = Math.max(1, Number(process.env.BALANCE_SEEDS ?? 1));
 const list = (v: string | undefined) => (v ? v.split(',').map((s) => s.trim()) : null);
 const areas = (list(process.env.BALANCE_AREAS) ?? ['graves', 'ossuary', 'nave', 'sanctum']) as AreaId[];
@@ -36,7 +38,7 @@ function unlockKills(area: AreaId): number | null {
 }
 
 function averaged(run: BalanceRun): BalanceResult {
-  const results = Array.from({ length: SEEDS }, (_, i) => runBalance({ ...run, seed: 42 + i }));
+  const results = Array.from({ length: SEEDS }, (_, i) => runBalance({ ...run, difficulty: DIFFICULTY, seed: 42 + i }));
   if (SEEDS === 1) return results[0];
   const avg = { ...results[0] } as unknown as Record<string, number>;
   for (const key of Object.keys(avg)) {
@@ -76,6 +78,6 @@ for (const area of areas) {
     }
   }
 }
-console.log(`\nCrossworlds balance report: ${MINUTES} simulated minutes per row, ${SEEDS} seed(s)`);
+console.log(`\nCrossworlds balance report: ${MINUTES} simulated minutes per row, ${SEEDS} seed(s), difficulty ${DIFFICULTY}`);
 console.log('hurt%/m = damage taken per minute as % of max HP · 1st†s = seconds to first death · unlock m = minutes of kills to open the next area\n');
 console.log(rows.join('\n'));

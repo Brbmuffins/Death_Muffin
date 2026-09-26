@@ -10,6 +10,8 @@ import { AFFIX_TUNING, ELITE_AFFIXES, ENEMIES, type EliteAffix } from '../conten
 import { HEALING_FLASKS, itemMeta } from '../content/items';
 import { generateLayout } from '../content/layout';
 import { damageBonusPct, waveModifiers } from '../content/upgrades';
+import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
+import { onSettingsChange, settings } from '../app/settings';
 import { AbilitySystem, type CastResult, type CastTarget } from '../gameplay/AbilitySystem';
 import { deriveStats, xpToNext } from '../gameplay/characterStats';
 import { Inventory, rollBoss, rollItem, rollKill } from '../gameplay/loot';
@@ -217,6 +219,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
     this.sim = new WorldSim(this.nav);
     this.sim.waveTier = this.progression.local.waveTierActive;
+    this.sim.difficulty = settings.difficulty;
 
     this.abilities = new AbilitySystem({
       selfId: this.selfId,
@@ -236,6 +239,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.mountUi();
     this.bindInput();
     this.scope.add(this.progression.onChange(() => this.refreshStats()));
+    this.scope.add(onSettingsChange((s) => this.onDifficultySetting(s.difficulty)));
     this.scope.add(this.inventory.onChange(() => this.refreshStats()));
     this.scope.on(window, 'pagehide', () => {
       void this.progression.flush(true);
@@ -785,9 +789,11 @@ export class WorldScene implements GameScene, RuntimeView {
     mirror.seed(sim);
     // Areas that already hold enemies are not "first visits" — no bonus wave.
     for (const e of sim.enemies.values()) sim.markVisited(e.area);
+    // The new keeper's difficulty runs the world from here on (new spawns).
+    sim.difficulty = settings.difficulty;
     this.sim = sim;
     this.mirror = null;
-    this.hud.chatLine('You now keep the world');
+    this.hud.chatLine(`You now keep the world (${DIFFICULTIES[sim.difficulty].name})`);
   }
 
   private addRemote(p: RemotePlayer) {
@@ -1014,7 +1020,7 @@ export class WorldScene implements GameScene, RuntimeView {
     audio.play('levelUp');
     // Personal reward: a guaranteed item from the area's table plus bonus gold.
     const level = AREAS[ev.area].level;
-    const gold = Math.round((24 + 10 * level) * waveModifiers(this.bossWaveTier()).rewardMult);
+    const gold = Math.round((24 + 10 * level) * waveModifiers(this.bossWaveTier()).rewardMult * DIFFICULTIES[this.worldDifficulty()].rewardMult);
     this.loot.item(ev.x, ev.z, rollItem(ev.area));
     this.loot.gold(ev.x, ev.z, gold);
     this.effects.emit({ x: ev.x, y: 0.4, z: ev.z, count: 70, color: SPELL_FX.surge.glow, spread: 1, speed: 1.2, up: 4, life: 1.4, size: 0.34 });
@@ -1027,7 +1033,7 @@ export class WorldScene implements GameScene, RuntimeView {
     // Personal rewards for kills in (or right next to) your area.
     const near = Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 38;
     if (!this.player.alive || !near) return;
-    const reward = rollKill(ev.def, ev.area, ev.level, ev.elite, this.bossWaveTier());
+    const reward = rollKill(ev.def, ev.area, ev.level, ev.elite, this.bossWaveTier(), Math.random, this.worldDifficulty());
     this.loot.gold(ev.x, ev.z, reward.gold);
     if (reward.shards) this.loot.shard(ev.x, ev.z, reward.shards);
     for (const item of reward.items) this.loot.item(ev.x, ev.z, item);
@@ -1038,6 +1044,21 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private bossWaveTier() {
     return this.sim?.waveTier ?? this.mirror?.waveTier ?? 0;
+  }
+
+  private onDifficultySetting(d: Difficulty) {
+    if (this.sim && this.isAuthority()) {
+      if (this.sim.difficulty === d) return;
+      this.sim.difficulty = d;
+      this.hud.toast(`Difficulty: ${DIFFICULTIES[d].name} — the next dead to rise feel it`, 'good');
+    } else if (this.mirror && this.mirror.difficulty !== d) {
+      this.hud.toast(`The world keeper's difficulty applies (${DIFFICULTIES[this.mirror.difficulty].name})`);
+    }
+  }
+
+  /** The difficulty the world is running at: yours solo/as host, the host's as a guest. */
+  private worldDifficulty(): Difficulty {
+    return this.sim?.difficulty ?? this.mirror?.difficulty ?? settings.difficulty;
   }
 
   private onSoulsCharged() {
@@ -1184,7 +1205,7 @@ export class WorldScene implements GameScene, RuntimeView {
           this.hud.banner('The Bell Falls Silent', 'The Prelate is unmade — for now', 4200);
           this.progression.local.bossKills++;
           this.progression.saveLocal();
-          const reward = rollBoss(this.bossWaveTier());
+          const reward = rollBoss(this.bossWaveTier(), Math.random, this.worldDifficulty());
           this.loot.gold(ev.x, ev.z, reward.gold);
           this.loot.shard(ev.x, ev.z, reward.shards);
           for (const item of reward.items) this.loot.item(ev.x, ev.z, item);

@@ -8,6 +8,7 @@ import { BOSS_ARENA, BOSS_RADIUS } from '../sim/BossBrain';
 import type { Enemy, SimEvent } from '../sim/types';
 import { WorldSim } from '../sim/WorldSim';
 import { botCharacter } from './harness';
+import type { Difficulty } from '../../content/difficulty';
 
 /**
  * Headless Prelate fight: the same scripted necromancer as the farming
@@ -29,6 +30,7 @@ export interface BossRun {
   flasks?: number;
   maxMinutes?: number;
   seed?: number;
+  difficulty?: Difficulty;
 }
 
 export interface BossResult {
@@ -64,6 +66,7 @@ export function runBossFight(run: BossRun): BossResult {
   const nav = new Nav();
   nav.setUnlocked(['ossuary', 'nave', 'sanctum']);
   const sim = new WorldSim(nav, rand);
+  sim.difficulty = run.difficulty ?? 'medium';
   const disc = disciplineFor(run.classIndex);
   const stats = deriveStats(botCharacter(run.classIndex, run.level, run.gearStats), [], disc, run.damageTier);
   const sp = stats.spellPower;

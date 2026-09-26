@@ -1,4 +1,5 @@
 import type { AreaId } from '../../content/areas';
+import { isDifficulty, type Difficulty } from '../../content/difficulty';
 import { AFFIX_ORDER, type EliteAffix } from '../../content/enemies';
 import type { EnemyRow, ThrallRow, WorldSnapshot } from '../../net/contracts';
 import type { BossState, Corpse, Enemy, EnemyState, SimEvent, Thrall, ThrallState, Zone } from './types';
@@ -23,6 +24,7 @@ export function makeSnapshot(sim: WorldSim, full: boolean): WorldSnapshot {
   return {
     t: sim.time,
     waveTier: sim.waveTier,
+    difficulty: sim.difficulty,
     enemies,
     thralls,
     boss: { ...sim.bossState },
@@ -89,12 +91,14 @@ export class WorldMirror {
   readonly zones = new Map<number, Zone>();
   bossState: BossState | null = null;
   waveTier = 0;
+  difficulty: Difficulty = 'medium';
   time = 0;
   private targets = new Map<string, Target>();
 
   applySnapshot(s: WorldSnapshot) {
     this.time = s.t;
     this.waveTier = s.waveTier;
+    this.difficulty = isDifficulty(s.difficulty) ? s.difficulty : 'medium';
     const seenE = new Set<number>();
     for (const row of s.enemies) {
       seenE.add(row[0]);
@@ -216,6 +220,7 @@ export class WorldMirror {
     for (const c of this.corpses.values()) sim.corpses.set(c.id, { ...c, bornAt: sim.time, expiresAt: sim.time + 20, ruptureAt: c.kind === 'toxic' ? sim.time + 4 : Infinity });
     if (this.bossState?.active) Object.assign(sim.bossState, this.bossState);
     sim.waveTier = this.waveTier;
+    sim.difficulty = this.difficulty;
     const ids = [...this.enemies.keys(), ...this.thralls.keys(), ...this.corpses.keys(), ...this.zones.keys()];
     sim.reserveIds(ids.length ? Math.max(...ids) : 0);
   }

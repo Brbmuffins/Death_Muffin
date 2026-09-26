@@ -6,7 +6,9 @@
  */
 import { AREAS } from '../../content/areas';
 import { runBossFight, type BossResult, type BossRun } from './boss';
+import type { Difficulty } from '../../content/difficulty';
 
+const DIFFICULTY = (process.env.BALANCE_DIFFICULTY ?? 'medium') as Difficulty;
 const SEEDS = Math.max(1, Number(process.env.BALANCE_SEEDS ?? 3));
 const list = (v: string | undefined) => (v ? v.split(',').map((s) => s.trim()) : null);
 const disciplines = (list(process.env.BALANCE_DISCIPLINES) ?? ['1', '2', '3', '4']).map(Number);
@@ -35,7 +37,7 @@ let maxHp = 0;
 for (const band of bandNames) {
   for (const classIndex of disciplines) {
     for (const dodge of [true, false]) {
-      const rs = Array.from({ length: SEEDS }, (_, i) => runBossFight({ ...BANDS[band], classIndex, dodge, seed: 42 + i }));
+      const rs = Array.from({ length: SEEDS }, (_, i) => runBossFight({ ...BANDS[band], classIndex, dodge, difficulty: DIFFICULTY, seed: 42 + i }));
       maxHp = rs[0].bossMaxHp;
       const wins = rs.filter((r) => r.outcome === 'win');
       const cells = [
@@ -51,6 +53,6 @@ for (const band of bandNames) {
     }
   }
 }
-console.log(`\nBell-Sworn Prelate report: ${SEEDS} seed(s) per row, solo, boss max HP ${Math.round(maxHp)}`);
+console.log(`\nBell-Sworn Prelate report: ${SEEDS} seed(s) per row, solo, difficulty ${DIFFICULTY}, boss max HP ${Math.round(maxHp)}`);
 console.log('time s = average kill time of winning runs · boss% = HP left (avg) · prelate%/adds% = damage taken as % of max HP over the fight\n');
 console.log(rows.join('\n'));

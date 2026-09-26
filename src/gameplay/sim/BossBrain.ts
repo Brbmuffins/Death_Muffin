@@ -1,6 +1,7 @@
 import { AREAS } from '../../content/areas';
 import { enemyDamageScale, enemyHpScale } from '../../content/enemies';
 import { FRACTURE } from '../../content/abilities';
+import { DIFFICULTIES } from '../../content/difficulty';
 import type { WorldSim } from './WorldSim';
 import type { BossPhase, BossState } from './types';
 
@@ -58,7 +59,7 @@ export class BossBrain {
     const s = this.state;
     const party = Math.max(1, this.sim.players.size);
     s.active = true;
-    s.maxHp = BASE_HP * enemyHpScale(s.level) * (1 + 0.8 * (party - 1));
+    s.maxHp = BASE_HP * enemyHpScale(s.level) * (1 + 0.8 * (party - 1)) * DIFFICULTIES[this.sim.difficulty].enemyHpMult;
     s.hp = s.maxHp;
     s.phase = 1;
     s.state = 'idle';
@@ -86,7 +87,7 @@ export class BossBrain {
   }
 
   private dmg(base: number) {
-    return base * enemyDamageScale(this.state.level);
+    return base * enemyDamageScale(this.state.level) * DIFFICULTIES[this.sim.difficulty].enemyDamageMult;
   }
 
   private setPhase(p: BossPhase) {

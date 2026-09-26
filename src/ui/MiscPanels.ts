@@ -1,5 +1,6 @@
 import { settings, updateSettings, type Quality } from '../app/settings';
 import { AREAS, type AreaId } from '../content/areas';
+import { DIFFICULTIES, DIFFICULTY_ORDER, isDifficulty } from '../content/difficulty';
 
 abstract class SimplePanel {
   protected el: HTMLDivElement | null = null;
@@ -40,6 +41,9 @@ export class SettingsPanel extends SimplePanel {
     this.mount(
       'Settings',
       `<div class="cw-settings">
+        <label class="row">Difficulty
+          <select data-diff>${DIFFICULTY_ORDER.map((d) => `<option value="${d}">${DIFFICULTIES[d].name}</option>`).join('')}</select></label>
+        <p class="cw-settings-note" data-diffnote></p>
         <label class="row">Graphics
           <select data-q><option value="high">High (bloom, shadows)</option><option value="low">Low (fast)</option></select></label>
         <label class="row">Volume<input type="range" min="0" max="1" step="0.05" data-vol aria-label="Master volume" /></label>
@@ -51,6 +55,7 @@ export class SettingsPanel extends SimplePanel {
           <kbd>Click</kbd><span>Move · attack target (Bone Needle) · use</span>
           <kbd>Shift+Click</kbd><span>Cast Bone Needle without moving</span>
           <kbd>1–4</kbd><span>Marrow Spear · Exhume · Miasma · Black Litany (at cursor)</span>
+          <kbd>RMB · 5</kbd><span>Corpse Explosion (corpse nearest the cursor)</span>
           <kbd>Q</kbd><span>Drink a healing flask</span>
           <kbd>T</kbd><span>Return to the Chapterhouse</span>
           <kbd>I C P M</kbd><span>Reliquary · Workbench · Rites · Waystones</span>
@@ -63,6 +68,15 @@ export class SettingsPanel extends SimplePanel {
         <button class="cw-button" data-leave>Leave the world</button>
       </div>`,
     );
+    const diff = this.el!.querySelector<HTMLSelectElement>('[data-diff]')!;
+    const note = this.el!.querySelector<HTMLElement>('[data-diffnote]')!;
+    const showNote = () => (note.textContent = `${DIFFICULTIES[settings.difficulty].blurb} In co-op, the world keeper's difficulty applies.`);
+    diff.value = settings.difficulty;
+    showNote();
+    diff.addEventListener('change', () => {
+      if (isDifficulty(diff.value)) updateSettings({ difficulty: diff.value });
+      showNote();
+    });
     const q = this.el!.querySelector<HTMLSelectElement>('[data-q]')!;
     q.value = settings.quality;
     q.addEventListener('change', () => updateSettings({ quality: q.value as Quality }));

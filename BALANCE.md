@@ -97,8 +97,21 @@ damage and Withered ~20%. Adds from the processions barely matter (0–10% of da
 makes them a candidate for a bigger role later. `src/gameplay/__tests__/balance.test.ts` guards the
 intended-band rows.
 
+## Difficulty (Easy / Medium / Hard)
+
+`content/difficulty.ts`. Medium is everything above. Enemies and the Prelate get HP × and damage ×,
+kills/surges/Prelate give gold + XP ×, and Hard adds +2% elite chance. It's picked in Settings. The
+world keeper's value runs the sim and rides in snapshots (older hosts → medium), and changes apply to
+new spawns. Harness: `BALANCE_DIFFICULTY=easy|hard npm run balance` (also `balance:boss`).
+
+| | HP | Damage | Rewards | Farming (intended band) | Prelate (intended, 3 seeds) |
+|---|---|---|---|---|---|
+| Easy | 0.75 | 0.6 | 0.75 | Graves 1–11 %HP/min, Nave 18–48; no deaths even at push in the Graves | everyone wins in ~2 min, even without dodging |
+| Medium | 1 | 1 | 1 | see tables above | dodgers win in ~2.7 min; non-dodgers die |
+| Hard | 1.2 | 1.3 | 1.3 | Nave 56–96 %HP/min, occasional deaths; Sanctum 15–77 | dodgers win in ~3.4 min using every flask; non-dodgers die |
+
 ## Co-op session dashboard (planned)
 
-These knobs (Wave Speed tier, enemy HP/damage multipliers, density, elite chance, surge
+Easy/Medium/Hard is the first slice of this. The remaining knobs (Wave Speed tier, enemy HP/damage multipliers, density, elite chance, surge
 frequency, arrival-wave size, roster weights) should become a **host-side session dashboard for
 co-op rooms**. See `FUTURE_CONTENT.md` → "Co-op session dashboard".

@@ -8,6 +8,7 @@ import { mulberry32 } from '../rng';
 import type { Corpse, Enemy, SimEvent } from '../sim/types';
 import { WorldSim } from '../sim/WorldSim';
 import type { Character } from '../../net/types';
+import type { Difficulty } from '../../content/difficulty';
 
 /**
  * Headless balance harness: drives the real WorldSim with a scripted
@@ -25,6 +26,7 @@ export interface BalanceRun {
   seed?: number;
   /** Stat points per stat beyond base 5 (gear stand-in). */
   gearStats?: number;
+  difficulty?: Difficulty;
 }
 
 export interface BalanceResult {
@@ -76,6 +78,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
   nav.setUnlocked(['ossuary', 'nave', 'sanctum']);
   const sim = new WorldSim(nav, rand);
   sim.waveTier = run.waveTier;
+  sim.difficulty = run.difficulty ?? 'medium';
   const disc = disciplineFor(run.classIndex);
   const character = botCharacter(run.classIndex, run.level, run.gearStats ?? 0);
   let stats = deriveStats(character, [], disc, run.damageTier);
@@ -238,7 +241,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
         born.delete(ev.id);
         if (!p.alive) continue;
         kills++;
-        const r = rollKill(ev.def, ev.area, ev.level, ev.elite, run.waveTier, rand);
+        const r = rollKill(ev.def, ev.area, ev.level, ev.elite, run.waveTier, rand, sim.difficulty);
         gold += r.gold;
         xp += r.xp;
         shards += r.shards;

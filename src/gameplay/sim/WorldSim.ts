@@ -21,6 +21,7 @@ import {
   ABILITIES,
 } from '../../content/abilities';
 import { waveModifiers } from '../../content/upgrades';
+import { DIFFICULTIES, type Difficulty } from '../../content/difficulty';
 import type { Nav } from '../nav';
 import { pickWeighted } from '../rng';
 import { BossBrain, BOSS_ARENA, BOSS_RADIUS } from './BossBrain';
@@ -71,6 +72,8 @@ export class WorldSim {
 
   /** Host's active wave-speed tier (drives every area this sim runs). */
   waveTier = 0;
+  /** Host's session difficulty: scales enemy/boss HP and damage for new spawns. */
+  difficulty: Difficulty = 'medium';
   time = 0;
   /** The running Grave Surge, if any. */
   surge: SurgeState | null = null;
@@ -420,7 +423,8 @@ export class WorldSim {
     const d = ENEMIES[def];
     const level = AREAS[area].level;
     const wave = waveModifiers(this.waveTier);
-    const hp = d.hp * enemyHpScale(level) * wave.enemyHpMult * (elite ? ELITE.hpMult : 1) * this.partyHpScale();
+    const diff = DIFFICULTIES[this.difficulty];
+    const hp = d.hp * enemyHpScale(level) * wave.enemyHpMult * diff.enemyHpMult * (elite ? ELITE.hpMult : 1) * this.partyHpScale();
     const e: Enemy = {
       id: this.id(),
       def,
@@ -432,7 +436,7 @@ export class WorldSim {
       facing: this.rand() * Math.PI * 2,
       hp,
       maxHp: hp,
-      damage: d.damage * enemyDamageScale(level) * wave.enemyDamageMult * (elite ? ELITE.damageMult : 1),
+      damage: d.damage * enemyDamageScale(level) * wave.enemyDamageMult * diff.enemyDamageMult * (elite ? ELITE.damageMult : 1),
       speed: d.speed * (0.92 + this.rand() * 0.16),
       radius: d.radius * (elite ? 1.25 : 1),
       scale: d.scale * (elite ? ELITE.scale : 1),
@@ -517,7 +521,7 @@ export class WorldSim {
     const [x, z] = this.nav.resolveInArea(area, bx + Math.cos(ang) * rr, bz + Math.sin(ang) * rr, 0.5);
     const pick = pickWeighted(def.enemies, this.rand());
     if (!pick) return null;
-    const elite = pick.id !== 'risen' && this.rand() < def.eliteChance + mods.eliteBonus;
+    const elite = pick.id !== 'risen' && this.rand() < def.eliteChance + mods.eliteBonus + DIFFICULTIES[this.difficulty].eliteBonus;
     return this.spawnEnemy(pick.id, area, x, z, elite);
   }
 

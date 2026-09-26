@@ -739,6 +739,7 @@ button { font-family: inherit; }
 .cw-settings label.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--cw-border); font-size: 14px; }
 .cw-settings select, .cw-settings input[type='range'] { accent-color: var(--cw-spell-400); }
 .cw-settings select { background: var(--cw-inset); color: var(--cw-text); border: 1px solid var(--cw-border); padding: 4px 8px; }
+.cw-settings-note { margin: 2px 0 6px; font-size: 12px; color: var(--cw-text-muted); line-height: 1.4; }
 .cw-keys { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin-top: 12px; font-size: 13px; color: var(--cw-text-muted); }
 .cw-keys kbd { font-family: var(--cw-font-numeric); color: var(--cw-bone-100); border: 1px solid var(--cw-border); padding: 0 5px; text-align: center; }
 

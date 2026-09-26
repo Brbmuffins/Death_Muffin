@@ -178,6 +178,10 @@ Reward: a pile of gold, 3 soul shards and three relic rolls from the Sanctum's t
 - **Wave Speed** — faster waves (+12% per tier), more enemies at once (+9%), bigger waves (+6%), more gold (+10%), better item chances and more elites — but every enemy also hits 3.5% harder and has 3% more health per tier. 8 tiers, cost 120 × 1.75ⁿ. The first wave that greets you in an area ignores the dial.
   Buy tiers, then **dial the active tier** up or down (−/+) — it's a risk lever, not just a timer.
 
+**Difficulty** (Settings): *Easy* — enemies and the Prelate hit 40% softer with 25% less health, for 25% less gold and XP;
+*Medium* — the intended balance; *Hard* — 30% harder hits, 20% more health, more elites, 30% more gold and XP.
+In co-op the world keeper's difficulty applies.
+
 <img src="public/art/ui/soul_shard.png" width="22" /> **Soul shards** drop from elites (1–2) and the Prelate (3). Five summon the Prelate.
 
 **Relics** drop with a light pillar (uncommon and better). Each area has its own loot table; relic stats
@@ -220,7 +224,7 @@ Planned content (new disciplines, spells, bosses and systems) lives in [FUTURE_C
 | **Q** | Drink a healing flask |
 | **T** | Return to the Chapterhouse |
 | **I / C / P / M / K** | Reliquary · Workbench · Rites · Waystones · Codex (lore + everything you've met) |
-| **Esc** | Settings (graphics, volume, reduced motion, damage numbers) |
+| **Esc** | Settings (difficulty, graphics, volume, reduced motion, damage numbers) |
 | Wheel · WASD · Enter | Zoom · walk (fallback) · chat |
 
 ---

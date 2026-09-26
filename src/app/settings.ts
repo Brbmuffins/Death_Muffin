@@ -3,6 +3,8 @@
  * localStorage as a convenience only — every read/write is guarded because
  * storage can be unavailable (private windows, blocked site data).
  */
+import { isDifficulty, type Difficulty } from '../content/difficulty';
+
 export type Quality = 'high' | 'low';
 
 export interface Settings {
@@ -12,6 +14,8 @@ export interface Settings {
   volume: number; // 0..1
   /** First-time onboarding tips (ui/Onboarding). */
   tips: boolean;
+  /** Session difficulty; in co-op the world keeper's setting applies. */
+  difficulty: Difficulty;
 }
 
 const KEY = 'cw_settings_v1';
@@ -23,14 +27,18 @@ function defaults(): Settings {
   } catch {
     /* no matchMedia */
   }
-  return { quality: 'high', reducedMotion: reduced, damageNumbers: true, volume: 0.6, tips: true };
+  return { quality: 'high', reducedMotion: reduced, damageNumbers: true, volume: 0.6, tips: true, difficulty: 'medium' };
 }
 
 function load(): Settings {
   const base = defaults();
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return { ...base, ...JSON.parse(raw) };
+    if (raw) {
+      const s = { ...base, ...JSON.parse(raw) } as Settings;
+      if (!isDifficulty(s.difficulty)) s.difficulty = base.difficulty;
+      return s;
+    }
   } catch {
     /* storage unavailable */
   }
