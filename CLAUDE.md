@@ -19,6 +19,7 @@ changes are written up as proposals in `server/proposals/`.
 | `PHASE_REPORTS.md` | what's built and QA'd — **check before rebuilding anything** |
 | `ASSET_PIPELINE.md` | Gemini → Tripo v3 → GLB — **read before any generation** |
 | `FUTURE_CONTENT.md` | backlog: future disciplines, spells, enemies, bosses |
+| `BALANCE.md` | balance targets per band, current `npm run balance` numbers, open issues |
 | `SERVER_OPERATIONS.md` + `server/realtime/DEPLOY.md` | realtime service + deploy scripts |
 | `server/proposals/necromancer-progress.md` | server spec for browser-local progress |
 

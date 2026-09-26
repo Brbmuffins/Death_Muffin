@@ -321,8 +321,11 @@ movement, dispose on leave/disconnect/unmount). ArenaScene already had local-pla
 4. **Combat VFX upgrade**: use `hit-*.png` sprites as Three.js billboards
    (SpriteMaterial + AdditiveBlending) replacing plain ring/line geometry.
 
-## Combat depth pack (2026-09-26) ✅ sim + unit tests — in-browser gameplay QA pending
-Branch `cloud/combat-depth`. All host-authoritative via Intent → WorldSim → SimEvent.
+## Combat depth pack (2026-09-26) ✅ sim + unit tests + in-browser QA
+Folded into master (commit `08c62b0`). In-browser QA 2026-09-26 (cloud session, headless Chromium):
+Bell-Tolled bronze telegraph + affix tag/blurb in the target frame, Corpse Explosion burst on an
+elite resonant corpse (damage number, corpse consumed), Grave Surge opening, Soul Harvest
+charge → free, enlarged Black Litany; no console errors. All host-authoritative via Intent → WorldSim → SimEvent.
 - **Corpse Explosion** (RMB, also key 5; hotbar slot 5): `detonate` intent names a corpse
   and claims `spellPower × 1.8` (clamped by server + sim). Host owns the 3m radius;
   resonant ×1.6 radius, elite ×2 damage, toxic leaves a friendly `rot` zone. 15 essence,
@@ -340,3 +343,32 @@ Branch `cloud/combat-depth`. All host-authoritative via Intent → WorldSim → 
   50% larger. Realtime litany radius clamp raised 10 → 11 for the empowered litany.
 - DEV hooks: `__cwDebug.spawn(def, true, affix)`, `.surge()`, `.souls(n)`, `.corpse(kind, elite)`.
 - Tests: +12 sim (detonate, each affix, surge lifecycle), +2 systems, +2 realtime.
+
+## Environment set pieces (2026-09-26) ✅ unit tests + in-browser QA
+Re-dispatch of `docs/agent-briefs/environment.md` (the `cloud/environment` branch never reached
+GitHub), built on master in commit `5e5e382`.
+- **Drowned Nave water** (`graphics/Water.ts`): three flooded rects (central aisle under the arches
+  + both side aisles) with dry pillar walkways and dry entrance/altar landings; plus 12 graveyard
+  **puddles**. One merged mesh, one draw call. Per-vertex shore distance → rim fade + depth tint;
+  two scrolling canvas normal maps, fresnel rim, patchy moon glints, a faint moonlit sheen on the
+  open-sky puddles, 16 ripple rings. Drawn under spell decals (renderOrder 1 < 2) so telegraphs stay
+  readable. 'low' quality = flat glossy sheet. No Reflector, no textures on disk.
+- **Atmosphere** (`graphics/Atmosphere.ts`): per-area GPU-animated weather around the focus — ash +
+  tumbling leaves (Graves), bone-dust motes (Ossuary), rain streaks + drips + motes (Nave), rising
+  violet embers (Sanctum), dust (Chapterhouse). ≤300 live particles, one draw call, premultiplied
+  blend (normal + additive in one pass), cross-fades on area change, half count on 'low'.
+- **Distant silhouettes**: 7 hand-placed ruined spires + ~63 dead trees / broken walls beyond the
+  walls, code-built, merged into one occlusion-patched mesh.
+- `content/layout.ts`: `water`, `puddles`, `silhouettes` from a separate RNG stream (existing
+  placements unchanged). `WorldView.addRipple()/isWet()`; `WorldScene.wadeRipples()` rings the water
+  under moving players/enemies/thralls (round-robin, 16-slot budget) and on deaths.
+- Tests: `src/graphics/__tests__/layout-water.test.ts` (6).
+- Perf: +3 draw calls total (water, atmosphere, silhouettes). No per-frame CPU work beyond
+  uniforms; atmosphere attributes rewrite only on area change.
+
+## Balance pass (2026-09-26) ✅ harness
+Commit `556e848`. Full write-up, targets and current numbers: `BALANCE.md`.
+Intended-band damage taken went from 0–15 %HP/min to 4–54; push is dangerous (0.3–6 deaths /
+3 min) instead of harmless-or-spiral; the bot opens each area in 3–5 min (was 2.7–3.7).
+Harness now respawns via the Chapterhouse and reports time-to-first-death.
+
