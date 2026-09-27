@@ -82,6 +82,19 @@ procedural definitions and default colours. It does **not** render yet; the Thre
 gallery and game wiring remain a cloud-safe code follow-up. Rebuild locally with `npm run build:vfx` and verify
 with `npm run test:vfx`.
 
+**Second batch (2026-09-27, evening): 45 more, 67 in total (6.6 MB).**
+- New rites (11): `bone_fan_hit`, `rot_lance_projectile`, `ivory_cleave_hit`, `grave_offering_orb`/`_ripple`,
+  `rally_area`, `rally_thrall_rim`, `carrion_seed_armed`/`_burst`, `veil_step_trail`, `frost_shard_hit`.
+- Interactable beacons (4): `interact_rim`, `altar_beacon`, `waystone_portal`, `recall_portal`.
+- World ambience (10): fires, mists, fog, toxic pools, soul orb, level-up pillar, thrall rise.
+- Enemies and bosses (9) and existing-spell layers (4).
+- Seven `world_*` shader kits (water ×2, grass + ground, two screen transitions, dark sky). These are material roots
+  with no nodes; the selection schema now accepts `.tres`.
+
+New tintable sprites for the rites: `public/art/fx/{crescent,seed-bud,wisp,rally-sigil,veil-streak}.png` (Gemini,
+`gemini-jobs/spells-v5.json`). The rite icons already existed (`future-2d.json`). Every hook is listed in
+[`agent-briefs/spell-variety-first-session.md`](agent-briefs/spell-variety-first-session.md) §5.
+
 **Plan, format notes and the proposed wiring:** [`BINBUN-VFX-PORT.md`](BINBUN-VFX-PORT.md).
 
 ## 6. Spend ledger (Tripo credits, 2026-09-27)
