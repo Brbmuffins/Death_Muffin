@@ -51,7 +51,7 @@ function createGatherHandlers({ store, ownsCharacter, logger = console, now = Da
       const out = await store.withCharacter(characterId, async (tx) => {
         const skill = await tx.getSkill(def.skill);
         if (skill.level < def.level) throw new PlayerError(`Requires ${rules.SKILLS[def.skill].name} level ${def.level}`);
-        const budget = rules.checkBudget(def, await tx.getLedger(), claimed, now());
+        const budget = rules.checkBudget(def, await tx.getLedger(), claimed, now(), body.afk === true);
         if (!budget.ok) throw new PlayerError(budget.error);
         const batch = rules.rollBatch(def, skill, budget.accepted, rng);
         const bag = await tx.getBag();
@@ -84,13 +84,36 @@ function createGatherHandlers({ store, ownsCharacter, logger = console, now = Da
     }
   }
 
-  return { gather };
+  async function startAfk(req, res) {
+    const characterId = Number(req.body?.characterId);
+    const def = rules.NODES[req.body?.nodeType];
+    if (!Number.isInteger(characterId) || characterId <= 0 || !def) return fail(res, 400, 'Choose a gathering node.');
+    if (!(await ownsCharacter(req, characterId))) return fail(res, 403, 'That character is not yours');
+    if (!allow(characterId)) return fail(res, 429, 'Too many requests — slow down');
+    try {
+      const out = await store.withCharacter(characterId, async tx => {
+        const skill = await tx.getSkill(def.skill);
+        if (skill.level < def.level) throw new PlayerError(`Requires ${rules.SKILLS[def.skill].name} level ${def.level}`);
+        const ledger = await tx.getLedger();
+        await tx.setLedger({ ...ledger, lastAt: now() });
+        return { node: def.id };
+      });
+      if (out?.notFound) return fail(res, 404, 'Character not found');
+      return res.status(200).json({ success: true, data: out });
+    } catch (err) {
+      if (err instanceof PlayerError) return fail(res, 400, err.message);
+      logger.error('[afk gather]', err);
+      return fail(res, 500, 'Could not start AFK gathering.');
+    }
+  }
+  return { gather, startAfk };
 }
 
 function mountGathering(app, opts) {
   const h = createGatherHandlers(opts);
   if (!opts.requireAuth) throw new Error('gathering: requireAuth middleware is required');
   app.post('/api/gather', opts.requireAuth, h.gather);
+  app.post('/api/gather/afk-start', opts.requireAuth, h.startAfk);
   return h;
 }
 

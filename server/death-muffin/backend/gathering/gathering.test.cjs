@@ -17,11 +17,11 @@ function harness({ owner = true, char = {}, items = ITEMS, rng = () => 0 } = {})
   let clock = 1_000_000;
   const store = createMemoryGatherStore({ characters: { 7: char }, items });
   const h = createGatherHandlers({ store, ownsCharacter: async (_req, id) => owner && id === 7, logger: { error() {} }, now: () => clock, rng, perMinute: 1000 });
-  const call = async (body) => {
+  const call = async (body, method = 'gather') => {
     let status = 0;
     let json = null;
     const res = { status: (s) => ((status = s), res), json: (j) => ((json = j), res) };
-    await h.gather({ body: { characterId: 7, ...body } }, res);
+    await h[method]({ body: { characterId: 7, ...body } }, res);
     return { status, json };
   };
   return { store, call, tick: (ms) => (clock += ms), char: () => store._chars.get(7) };
@@ -130,4 +130,34 @@ test('migration 002 inserts every grantable id that is not already live', () => 
     if (live.has(id)) continue;
     assert.match(sql, new RegExp(`\\('${id}',`), `${id} missing from 002-gathering.sql`);
   }
+});
+
+
+test('AFK requires a start and cannot grant instant or repeated free cycles', async () => {
+  const h = harness();
+  assert.equal((await h.call({ nodeType: 'coffin_oak', actions: 40, afk: true })).status, 400);
+  assert.equal((await h.call({ nodeType: 'coffin_oak' }, 'startAfk')).status, 200);
+  assert.equal((await h.call({ nodeType: 'coffin_oak', actions: 40, afk: true })).status, 400);
+  h.tick(rules.actionMs(rules.NODES.coffin_oak) * 3);
+  const earned = await h.call({ nodeType: 'coffin_oak', actions: 40, afk: true });
+  assert.equal(earned.json.data.accepted, 3);
+  assert.equal((await h.call({ nodeType: 'coffin_oak', actions: 40, afk: true })).status, 400);
+});
+
+test('AFK accepts a background minute in batches without losing remaining earned time', async () => {
+  const h = harness();
+  await h.call({ nodeType: 'coffin_oak' }, 'startAfk');
+  h.tick(60000);
+  const first = await h.call({ nodeType: 'coffin_oak', actions: 3, afk: true });
+  const rest = await h.call({ nodeType: 'coffin_oak', actions: 40, afk: true });
+  assert.equal(first.json.data.accepted + rest.json.data.accepted, Math.floor(60000 / rules.actionMs(rules.NODES.coffin_oak)));
+});
+
+test('AFK starts check ownership, level and preserve the hourly limit', async () => {
+  assert.equal((await harness({ owner: false }).call({ nodeType: 'coffin_oak' }, 'startAfk')).status, 403);
+  const h = harness({ char: { ledger: { lastAt: 1, hourStart: 1000000, hourActions: rules.GATHER_MAX_ACTIONS_PER_HOUR } } });
+  assert.equal((await h.call({ nodeType: 'bone_elder' }, 'startAfk')).status, 400);
+  await h.call({ nodeType: 'coffin_oak' }, 'startAfk');h.tick(60000);
+  assert.equal((await h.call({ nodeType: 'coffin_oak', actions: 40, afk: true })).status, 400);
+  assert.equal(h.char().ledger.hourActions, rules.GATHER_MAX_ACTIONS_PER_HOUR);
 });

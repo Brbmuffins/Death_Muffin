@@ -20,4 +20,4 @@ export const WS_BASE =
 // production so Nginx can route it on the shared 443 vhost without collisions.
 export const WS_PATH = (import.meta as any).env?.VITE_WS_PATH ?? '';
 
-export const MAX_PARTY_SIZE = 4;
+export const MAX_PARTY_SIZE = 10;

@@ -291,11 +291,13 @@ export type BudgetResult = { ok: true; accepted: number; ledger: GatherLedger } 
  * `floor(min(now − last, window) / actionMs) + burst`, capped per hour.
  * A first batch (no ledger) gets the burst plus one window of credit.
  */
-export function checkBudget(def: NodeDef, ledger: GatherLedger, claimed: number, now: number): BudgetResult {
+export function checkBudget(def: NodeDef, ledger: GatherLedger, claimed: number, now: number, afk = false): BudgetResult {
   const want = Math.floor(Number(claimed));
   if (!Number.isFinite(want) || want < 1) return { ok: false, error: 'Nothing to gather' };
-  const elapsed = ledger.lastAt > 0 ? Math.max(0, now - ledger.lastAt) : GATHER_MAX_WINDOW_MS;
-  const byTime = Math.floor(Math.min(elapsed, GATHER_MAX_WINDOW_MS) / actionMs(def)) + GATHER_BURST;
+  if (afk && !ledger.lastAt) return { ok: false, error: 'Start AFK gathering from Skills first.' };
+  const windowMs = afk ? 90_000 : GATHER_MAX_WINDOW_MS;
+  const elapsed = ledger.lastAt > 0 ? Math.max(0, now - ledger.lastAt) : windowMs;
+  const byTime = Math.floor(Math.min(elapsed, windowMs) / actionMs(def)) + (afk ? 0 : GATHER_BURST);
   const rolled = now - ledger.hourStart >= 3_600_000 || ledger.hourStart === 0;
   const hourStart = rolled ? now : ledger.hourStart;
   const hourActions = rolled ? 0 : ledger.hourActions;
@@ -304,7 +306,10 @@ export function checkBudget(def: NodeDef, ledger: GatherLedger, claimed: number,
   if (accepted <= 0) {
     return { ok: false, error: byHour <= 0 ? 'Your hands are spent for this hour. Rest, then gather again.' : 'You are gathering faster than your hands allow. Slow down.' };
   }
-  return { ok: true, accepted, ledger: { lastAt: now, hourStart, hourActions: hourActions + accepted } };
+  // AFK consumes earned time rather than discarding it at the first background
+  // batch. No burst allowance: repeated requests cannot create free work.
+  const lastAt = afk ? Math.max(ledger.lastAt, now - windowMs) + accepted * actionMs(def) : now;
+  return { ok: true, accepted, ledger: { lastAt, hourStart, hourActions: hourActions + accepted } };
 }
 
 // ── Bag placement (shared by the server grant and the offline mock) ──────────

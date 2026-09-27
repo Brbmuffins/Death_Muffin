@@ -10,6 +10,8 @@ export interface RuntimeView {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   update(dt: number, now: number): void;
+  /** AFK-only simulation while hidden, without rendering or adding combat ticks. */
+  backgroundUpdate?(seconds: number): Promise<void>;
   bloom?: { strength: number; radius: number; threshold: number };
 }
 
@@ -28,6 +30,8 @@ export class GameRuntime {
   private view: RuntimeView | null = null;
   private clock = new THREE.Clock();
   private raf = 0;
+  private backgroundTimer = 0;
+  private backgroundBusy = false;
   private bloomEnabled = true;
 
   /** Smoothed frame time, exposed for the debug overlay / perf checks. */
@@ -103,6 +107,7 @@ export class GameRuntime {
   start() {
     const loop = () => {
       this.raf = requestAnimationFrame(loop);
+      if (document.hidden) return;
       const dt = Math.min(this.clock.getDelta(), 0.1);
       this.frameMs += (dt * 1000 - this.frameMs) * 0.05;
       const view = this.view;
@@ -118,10 +123,18 @@ export class GameRuntime {
       else this.renderer.render(current.scene, current.camera);
     };
     loop();
+    this.backgroundTimer = window.setInterval(() => {
+      if (!document.hidden || this.backgroundBusy) return;
+      const elapsed = this.clock.getDelta();
+      if (!this.view?.backgroundUpdate) return;
+      this.backgroundBusy = true;
+      void this.view.backgroundUpdate(Math.min(elapsed, 90)).catch(console.error).finally(() => { this.backgroundBusy = false; });
+    }, 1000);
   }
 
   stop() {
     cancelAnimationFrame(this.raf);
+    window.clearInterval(this.backgroundTimer);
   }
 
   /**

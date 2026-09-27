@@ -279,7 +279,9 @@ export function doorTarget(door: DoorDef): AreaId {
   return AREAS[door.b].unlock ? door.b : door.a;
 }
 
-export const PLAYER_SPAWN = { x: 0, z: 24 };
+// A fixed, safe starting point beside the Acre's entrance and beginner nodes.
+export const PLAYER_SPAWN = { x: -26, z: 20 };
+export const CHAPTERHOUSE_RETURN = { x: 0, z: 24 };
 
 /** Soul shards required at the Sundered Bell to awaken the Prelate. */
 export const BOSS_SUMMON_SHARDS = 5;

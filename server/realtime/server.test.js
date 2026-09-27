@@ -55,7 +55,9 @@ test('matchmaking fills public worlds and isolates invite codes', () => {
   const a = pickWorld();
   worlds.get(a).players.set('p1', {});
   assert.equal(pickWorld(), a, 'joins the public world with space');
-  for (const id of ['p2', 'p3', 'p4']) worlds.get(a).players.set(id, {});
+  for (let i = 2; i <= 9; i++) worlds.get(a).players.set(`p${i}`, {});
+  assert.equal(pickWorld(), a, 'the tenth player joins the same world');
+  worlds.get(a).players.set('p10', {});
   const b = pickWorld();
   assert.notEqual(b, a, 'a full world spawns a new instance');
   const party = pickWorld('Crypt-42');

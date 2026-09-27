@@ -5,7 +5,7 @@ import type { Difficulty } from '../content/difficulty';
 
 /**
  * Realtime wire contracts (Socket.io). The server (server/realtime/server.js)
- * validates shapes and enforces: world rooms are instanced (≤4 players each),
+ * validates shapes and enforces: world rooms are instanced (≤10 players each),
  * only the elected host may publish snapshots/events, and intents are routed
  * to the host only.
  */

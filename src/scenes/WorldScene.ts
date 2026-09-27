@@ -7,7 +7,7 @@ import { ABILITIES, GRIMOIRE, HOTBAR, SIGNATURE_BY_DISCIPLINE, SIGNATURE_LEVEL, 
 import { assignRite, loadLoadout, saveLoadout } from '../gameplay/loadout';
 import { GrimoirePanel } from '../ui/GrimoirePanel';
 import { preloadFxImages } from '../graphics/fxImages';
-import { AREAS, AREA_ORDER, BOSS_SUMMON_SHARDS, DOORS, PLAYER_SPAWN, type AreaId, type Interactable } from '../content/areas';
+import { AREAS, AREA_ORDER, BOSS_SUMMON_SHARDS, CHAPTERHOUSE_RETURN, DOORS, PLAYER_SPAWN, type AreaId, type Interactable } from '../content/areas';
 import { disciplineFor, type Discipline } from '../content/disciplines';
 import { AFFIX_TUNING, ELITE_AFFIXES, ENEMIES, WAVE_THEMES, type EliteAffix, type EnemyId } from '../content/enemies';
 import { HEALING_FLASKS, itemMeta } from '../content/items';
@@ -46,7 +46,7 @@ import { fx } from '../graphics/fxTextures';
 import { LootView } from '../graphics/LootView';
 import { WorldView } from '../graphics/WorldView';
 import { updateOcclusion } from '../graphics/occlusion';
-import { gather, getInventory, getProfessions, OFFLINE, type GatherReply } from '../net/api';
+import { beginAfkGather, gather, getInventory, getProfessions, OFFLINE, type GatherReply } from '../net/api';
 import type { RemotePlayer, WorldSnapshot } from '../net/contracts';
 import { RealtimeClient } from '../net/realtime';
 import type { Character, Profession } from '../net/types';
@@ -177,7 +177,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private gatherProg = 0;
   private lastNodeSync = 0;
   private skillLevels = new Map<SkillId, number>();
-  private area: AreaId = 'chapterhouse';
+  private area: AreaId = 'acre';
   private deadUntil = 0;
   private recallAt = 0;
   private recallFx: Handle | null = null;
@@ -337,10 +337,10 @@ export class WorldScene implements GameScene, RuntimeView {
         live: (id) => this.nodeLive(id),
         bagFits: (itemId) => addToSlots(this.inventory.all, { item_id: itemId, quantity: 1 }) !== null,
         sendSuccess: (nodeId) => this.sendIntent({ t: 'gather', by: this.selfId, nodeId, successes: 1 }),
-        post: async (nodeType, actions, keepalive) => {
+        post: async (nodeType, actions, keepalive, afk) => {
           // Settle the bag first so the server grants onto the same bag the client shows.
           if (!keepalive) await this.inventory.flush();
-          return gather(this.character.id, nodeType, actions, keepalive);
+          return gather(this.character.id, nodeType, actions, keepalive, afk);
         },
         onCycle: (def, success, node) => this.onGatherCycle(def, success, node),
         onReply: (r) => this.onGatherReply(r),
@@ -355,6 +355,9 @@ export class WorldScene implements GameScene, RuntimeView {
       this.skills,
     );
     this.scope.add(this.skills.onChange(() => this.onSkillsChanged()));
+    this.scope.interval(() => {
+      if (this.professionsPanel?.isOpen) this.professionsPanel.refreshStatus();
+    }, 1000);
 
     this.mountUi();
     this.bindInput();
@@ -373,10 +376,10 @@ export class WorldScene implements GameScene, RuntimeView {
     if (!OFFLINE || new URLSearchParams(location.search).has('coop')) void this.connectRealtime();
     if (import.meta.env.DEV) this.installDebug();
 
-    this.area = 'chapterhouse';
-    this.hud.banner(AREAS.chapterhouse.name, AREAS.chapterhouse.subtitle);
-    audio.setArea('chapterhouse');
-    this.codex.discover('area', 'chapterhouse');
+    this.area = 'acre';
+    this.hud.banner(AREAS.acre.name, AREAS.acre.subtitle);
+    audio.setArea('acre');
+    this.codex.discover('area', 'acre');
     // First steps: where you are, then how to move (queued, one card at a time).
     // Server-backed progression when the auth server has it; browser storage otherwise.
     this.scope.add(this.progression.onError((msg) => this.hud.toast(msg, 'err')));
@@ -489,7 +492,11 @@ export class WorldScene implements GameScene, RuntimeView {
       this.skills.adopt(profs);
       this.hud.toast('Crafted', 'good');
     });
-    this.professionsPanel = new ProfessionsPanel(this.root);
+    this.professionsPanel = new ProfessionsPanel(this.root, {
+      start: type => this.startAfkGathering(type),
+      pause: () => this.gathering.stop('moved'),
+      status: () => ({ active: this.gathering.afk, text: this.gathering.status, allowed: this.player.area === 'acre' }),
+    });
     this.settingsPanel = new SettingsPanel(
       this.root,
       () => this.onLeave(),
@@ -584,7 +591,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const wasOpen = panel.isOpen;
     this.closePanels();
     if (wasOpen) return;
-    this.gathering?.stop('panel');
+    if (!(p === 'professions' && this.gathering?.afk)) this.gathering?.stop('panel');
     if (p === 'professions') this.professionsPanel.open(this.skills);
     else if (p === 'inventory') this.inventoryPanel.open();
     else if (p === 'forge') void this.forgePanel.open();
@@ -615,7 +622,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private bindInput() {
     this.mouse.x = window.innerWidth / 2;
     this.mouse.y = window.innerHeight / 2;
-    this.scope.on(window, 'blur', () => { this.keys.clear(); this.mouse.shift = false; this.mouse.aiming = false; this.player.stop(); });
+    this.scope.on(window, 'blur', () => { this.keys.clear(); this.mouse.shift = false; this.mouse.aiming = false; if (!this.gathering.afk) this.player.stop(); });
     this.scope.on<KeyboardEvent>(window, 'keydown', (e) => {
       if (!this.ready) return;
       if (document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement) return;
@@ -931,6 +938,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private startRecall() {
     if (!this.player.alive || this.recallAt) return;
+    this.gathering.stop('moved');
     if (this.area === 'chapterhouse') {
       this.floating.spawn(this.player.x, 2.4, this.player.z, 'Already in the Chapterhouse', 'info');
       return;
@@ -962,6 +970,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private teleportTo(x: number, z: number) {
+    this.gathering?.stop('left');
     this.effects.emit({ x: this.player.x, y: 1, z: this.player.z, count: 50, color: 0x8f9ed1, spread: 0.6, speed: 1.5, up: 2.5, life: 1, size: 0.35 });
     this.player.teleport(x, z);
     this.attackTarget = null;
@@ -1182,13 +1191,45 @@ export class WorldScene implements GameScene, RuntimeView {
     this.effects.emit({ x: node.x, y: def.kind === 'tree' ? 1.6 : 0.5, z: node.z, count: 6, color: c, spread: 0.35, speed: 1.4, up: 1, life: 0.5, size: 0.14 });
   }
 
+  private async startAfkGathering(type: string) {
+    if (this.player.area !== 'acre') throw new Error('Visit the Sexton’s Acre for safe AFK gathering.');
+    const nodes = this.layout.nodes.filter(n => n.area === 'acre' && n.type === type);
+    const node = nodes.sort((a, b) => Math.hypot(a.x - this.player.x, a.z - this.player.z) - Math.hypot(b.x - this.player.x, b.z - this.player.z))[0];
+    if (!node) throw new Error('Choose a gathering node.');
+    this.gathering.stop('moved');
+    await this.gathering.flush();
+    await this.dataReady;
+    await beginAfkGather(this.character.id, type);
+    if (this.scope.isDisposed) return;
+    this.attackTarget = null;
+    this.pendingInteract = null;
+    this.cancelRecall();
+    this.keys.clear();
+    const refusal = this.gathering.startAfk(node);
+    if (refusal) throw new Error(refusal);
+    this.hud.toast('AFK gathering started — keep the game open. It pauses when your bag fills.', 'good');
+  }
+
+  async backgroundUpdate(seconds: number) {
+    // The same authoritative sim and gathering loop, with no hidden-tab render.
+    // Timers can wake once a minute; preserve earned time in capped batches.
+    for (let left = seconds; left > 0 && this.ready && !this.scope.isDisposed && this.gathering.afk && this.player.area === 'acre'; left -= .1) {
+      const dt = Math.min(.1, left);
+      this.update(dt, this.now + dt * 1000);
+    }
+    await this.gathering.flush();
+  }
+
   private onGatherReply(r: GatherReply) {
     for (const g of r.items) this.inventory.add({ item_id: g.itemId, quantity: g.qty });
     if (r.gold > 0) {
       this.progression.addGold(r.gold);
       this.floating.spawn(this.player.x, 2.1, this.player.z, `+${r.gold}g`, 'gold');
     }
-    if (r.rejected.length) this.hud.toast(`Your bag is full: ${r.rejected.map((g) => `${g.qty}× ${itemMeta(g.itemId).name}`).join(', ')} left behind.`, 'err');
+    if (r.rejected.length) {
+      this.hud.toast(`Your bag is full: ${r.rejected.map((g) => `${g.qty}× ${itemMeta(g.itemId).name}`).join(', ')} left behind.`, 'err');
+      if (this.gathering.afk) this.gathering.stop('bagFull');
+    }
     const rare = r.items.filter((g) => g.itemId !== NODES[r.node]?.item);
     for (const g of rare) this.hud.toast(`Found: ${itemMeta(g.itemId).name}${g.qty > 1 ? ` ×${g.qty}` : ''}`, 'good');
     if (r.items.length) this.inventoryPanel?.render();
@@ -1771,7 +1812,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private respawn() {
     this.deadUntil = 0;
     this.player.revive();
-    this.player.teleport(PLAYER_SPAWN.x, PLAYER_SPAWN.z);
+    this.player.teleport(CHAPTERHOUSE_RETURN.x, CHAPTERHOUSE_RETURN.z);
     this.rig.snap(this.player.x, this.player.z);
     this.avatar.c.setLoop('idle');
     this.avatar.c.playOnce('dig', 1.2);
@@ -1907,7 +1948,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
     if (this.recallAt && now >= this.recallAt) {
       this.cancelRecall();
-      this.teleportTo(PLAYER_SPAWN.x, PLAYER_SPAWN.z);
+      this.teleportTo(CHAPTERHOUSE_RETURN.x, CHAPTERHOUSE_RETURN.z);
     }
 
     // Reached an interactable?
@@ -2436,7 +2477,7 @@ export class WorldScene implements GameScene, RuntimeView {
         return this.gathering.start(n) ?? n.id;
       },
       /** State of the gathering loop. */
-      gathering: () => ({ node: this.gathering.node?.id ?? null, working: this.gathering.working, progress: this.gathering.progress, skills: this.skills.rows() }),
+      gathering: () => ({ node: this.gathering.node?.id ?? null, afk: this.gathering.afk, status: this.gathering.status, working: this.gathering.working, progress: this.gathering.progress, skills: this.skills.rows() }),
       /** Set a skill level locally (and in the offline mock's db, so its server agrees). */
       skill: (id: SkillId, level: number) => {
         this.skills.adopt([{ profession_id: id, skill_level: level, skill_xp: 0 }]);

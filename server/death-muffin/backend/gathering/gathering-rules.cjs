@@ -248,11 +248,13 @@ function xpPerHour(def, level, toolTier = 0) {
   return 36e5 / actionMs(def) * successChance(def, level, toolTier) * def.xp;
 }
 var blankLedger = () => ({ lastAt: 0, hourStart: 0, hourActions: 0 });
-function checkBudget(def, ledger, claimed, now) {
+function checkBudget(def, ledger, claimed, now, afk = false) {
   const want = Math.floor(Number(claimed));
   if (!Number.isFinite(want) || want < 1) return { ok: false, error: "Nothing to gather" };
-  const elapsed = ledger.lastAt > 0 ? Math.max(0, now - ledger.lastAt) : GATHER_MAX_WINDOW_MS;
-  const byTime = Math.floor(Math.min(elapsed, GATHER_MAX_WINDOW_MS) / actionMs(def)) + GATHER_BURST;
+  if (afk && !ledger.lastAt) return { ok: false, error: "Start AFK gathering from Skills first." };
+  const windowMs = afk ? 9e4 : GATHER_MAX_WINDOW_MS;
+  const elapsed = ledger.lastAt > 0 ? Math.max(0, now - ledger.lastAt) : windowMs;
+  const byTime = Math.floor(Math.min(elapsed, windowMs) / actionMs(def)) + (afk ? 0 : GATHER_BURST);
   const rolled = now - ledger.hourStart >= 36e5 || ledger.hourStart === 0;
   const hourStart = rolled ? now : ledger.hourStart;
   const hourActions = rolled ? 0 : ledger.hourActions;
@@ -261,7 +263,8 @@ function checkBudget(def, ledger, claimed, now) {
   if (accepted <= 0) {
     return { ok: false, error: byHour <= 0 ? "Your hands are spent for this hour. Rest, then gather again." : "You are gathering faster than your hands allow. Slow down." };
   }
-  return { ok: true, accepted, ledger: { lastAt: now, hourStart, hourActions: hourActions + accepted } };
+  const lastAt = afk ? Math.max(ledger.lastAt, now - windowMs) + accepted * actionMs(def) : now;
+  return { ok: true, accepted, ledger: { lastAt, hourStart, hourActions: hourActions + accepted } };
 }
 var BAG_SLOTS = 24;
 var MATERIAL_STACK = 250;

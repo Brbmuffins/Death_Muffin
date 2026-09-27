@@ -300,6 +300,15 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
   }
 
   // --- Gathering: same shared rules and time budget as the Death Muffin backend. ---
+  if (p === '/api/gather/afk-start' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const def = gather.NODES[String(body.nodeType ?? '')];
+    if (!def) throw new MockError('Unknown gathering node', 400);
+    const level = acc.professions.find(x => x.profession_id === def.skill)?.skill_level ?? 1;
+    if (level < def.level) throw new MockError(`Requires ${gather.SKILLS[def.skill].name} level ${def.level}`, 400);
+    acc.gatherLedger = { ...(acc.gatherLedger ?? gather.blankLedger()), lastAt: Date.now() };
+    return ok({ node: def.id });
+  }
   if (p === '/api/gather' && method === 'POST') {
     ownCharacter(acc, body.characterId);
     const def = gather.NODES[String(body.nodeType ?? '')];
@@ -307,7 +316,7 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     let prof = acc.professions.find((x) => x.profession_id === def.skill);
     if (!prof) acc.professions.push((prof = { profession_id: def.skill, skill_level: 1, skill_xp: 0 }));
     if (prof.skill_level < def.level) throw new MockError(`Requires ${gather.SKILLS[def.skill].name} level ${def.level}`, 400);
-    const budget = gather.checkBudget(def, acc.gatherLedger ?? gather.blankLedger(), body.actions, Date.now());
+    const budget = gather.checkBudget(def, acc.gatherLedger ?? gather.blankLedger(), body.actions, Date.now(), body.afk === true);
     if (!budget.ok) throw new MockError(budget.error, 400);
     const batch = gather.rollBatch(def, { level: prof.skill_level, xp: prof.skill_xp }, budget.accepted, Math.random);
     const bag = acc.slots

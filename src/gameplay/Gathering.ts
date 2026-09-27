@@ -98,7 +98,7 @@ export interface GatherHooks {
   bagFits(itemId: string): boolean;
   /** Tell the host sim a work cycle landed (depletion). */
   sendSuccess(nodeId: string): void;
-  post(nodeType: string, actions: number, keepalive?: boolean): Promise<GatherReply>;
+  post(nodeType: string, actions: number, keepalive?: boolean, afk?: boolean): Promise<GatherReply>;
   /** Presentation: gesture, floating text, sound. */
   onCycle(def: NodeDef, success: boolean, node: NodePlacement): void;
   onReply(reply: GatherReply): void;
@@ -116,12 +116,15 @@ type Phase = 'walk' | 'work' | 'wait';
  */
 export class GatherLoop {
   node: NodePlacement | null = null;
+  afk = false;
+  private lastStop = 'Paused';
   private phase: Phase = 'walk';
   private cycleT = 0;
   private spot: { x: number; z: number } | null = null;
   private queue = new Map<string, number>();
   private lastFlush = 0;
   private inFlight = false;
+  private pending: Promise<void> | null = null;
   private retryAt = 0;
 
   constructor(
@@ -137,6 +140,16 @@ export class GatherLoop {
     return this.node !== null && this.phase === 'work';
   }
 
+  get status() {
+    return this.node ? `${this.phase === 'wait' ? 'Waiting for respawn' : this.phase === 'walk' ? 'Walking to' : 'Working'}: ${NODES[this.node.type].name}` : this.lastStop;
+  }
+
+  startAfk(node: NodePlacement) {
+    const refusal = this.start(node);
+    if (!refusal) this.afk = true;
+    return refusal;
+  }
+
   /** 0..1 progress through the current work cycle (progress arc). */
   get progress() {
     if (!this.node || this.phase !== 'work') return 0;
@@ -148,8 +161,8 @@ export class GatherLoop {
     const def = NODES[node.type];
     const block = gatherBlocker(node.type, this.skills.level(def?.skill ?? 'woodcutting'));
     if (block) return block;
-    if (!this.hooks.live(node.id)) return this.startWaiting(node);
     if (!this.hooks.bagFits(def.item)) return 'Your bag is full.';
+    if (!this.hooks.live(node.id)) return this.startWaiting(node);
     const h = this.hooks;
     const spot = standSpot(h.nav, node, h.player.x, h.player.z);
     if (!spot) return 'You cannot reach that.';
@@ -184,8 +197,10 @@ export class GatherLoop {
     if (!this.node) return;
     this.node = null;
     this.spot = null;
+    this.lastStop = reason === 'bagFull' ? 'Bag full — make room, then Start AFK again.' : message ?? 'Paused';
     this.hooks.onStop(reason, message);
     void this.flush();
+    this.afk = false;
   }
 
   update(dt: number) {
@@ -195,6 +210,7 @@ export class GatherLoop {
     const n = this.node;
     if (!n) return;
     const def = NODES[n.type];
+    if (!h.bagFits(def.item)) return this.stop('bagFull');
     if (this.phase === 'walk' || this.phase === 'wait') {
       if (h.player.hasPath) return;
       const d = this.spot ? Math.hypot(this.spot.x - h.player.x, this.spot.z - h.player.z) : Infinity;
@@ -209,7 +225,6 @@ export class GatherLoop {
     }
     // Working.
     if (!h.live(n.id)) return this.onDepleted(n);
-    if (!h.bagFits(def.item)) return this.stop('bagFull');
     this.cycleT += dt * 1000;
     if (this.cycleT < actionMs(def)) return;
     this.cycleT -= actionMs(def);
@@ -224,10 +239,9 @@ export class GatherLoop {
 
   private onDepleted(n: NodePlacement) {
     const def = NODES[n.type];
-    if (this.hooks.autoEnabled()) {
+    if (this.afk || this.hooks.autoEnabled()) {
       const next = nextAutoNode({ from: n, nodes: this.hooks.nodes(), level: this.skills.level(def.skill), x: this.hooks.player.x, z: this.hooks.player.z });
       if (next) {
-        this.node = null;
         const refusal = this.start(next);
         if (refusal) this.stop('blocked', refusal);
         return;
@@ -246,18 +260,25 @@ export class GatherLoop {
   }
 
   /** Send queued cycles (one request per node type). `keepalive` for tab close. */
-  async flush(keepalive = false): Promise<void> {
+  flush(keepalive = false): Promise<void> {
+    if (this.pending) return this.pending;
+    this.pending = this.flushBatch(keepalive).finally(() => { this.pending = null; });
+    return this.pending;
+  }
+
+  private async flushBatch(keepalive: boolean): Promise<void> {
     if (this.inFlight || !this.queue.size) return;
     this.inFlight = true;
     this.lastFlush = this.hooks.now();
     const batch = [...this.queue];
+    const afk = this.afk;
     this.queue.clear();
     try {
       for (const [type, count] of batch) {
         for (let left = count; left > 0; left -= GATHER_MAX_BATCH) {
           const actions = Math.min(GATHER_MAX_BATCH, left);
           try {
-            const reply = await this.hooks.post(type, actions, keepalive);
+            const reply = await this.hooks.post(type, actions, keepalive, afk);
             this.skills.adopt(reply.skills, reply.skill as SkillId);
             this.hooks.onReply(reply);
           } catch (err) {

@@ -187,4 +187,35 @@ describe('the gathering loop', () => {
     expect(loop.active).toBe(false);
     expect(hooks.onStop).toHaveBeenCalledWith('blocked', 'The Coffin-Oak is spent.');
   });
+
+  it('AFK cycles nodes even with Auto off and waits through respawns', () => {
+    const { loop, live, tick, player } = setup({ autoEnabled: () => false });
+    expect(loop.startAfk(oakA)).toBeNull();
+    live.delete('acre_1');tick(200);
+    expect(loop.afk).toBe(true);expect(loop.node?.id).toBe('acre_2');
+    const spot=player.path[0];player.x=spot.x;player.z=spot.z;player.stop();tick(100);
+    live.delete('acre_2');tick(100);
+    expect(loop.status).toMatch(/Waiting for respawn/);
+    live.add('acre_2');tick(100);
+    expect(loop.working).toBe(true);
+  });
+
+  it('AFK ends at a full bag and manual movement cancels it', () => {
+    let fits=true;
+    const { loop, tick } = setup({ bagFits:()=>fits });
+    loop.startAfk(oakA);fits=false;tick(100);
+    expect(loop.afk).toBe(false);expect(loop.status).toMatch(/Bag full/);
+    fits=true;loop.startAfk(oakA);loop.stop('moved');
+    expect(loop.afk).toBe(false);expect(loop.active).toBe(false);
+  });
+
+  it('flush waits for an existing save, so switching AFK tasks cannot race it', async () => {
+    let resolve!: (r: GatherReply)=>void;
+    const { loop, tick }=setup({ post:()=>new Promise(r=>{resolve=r;}) });
+    loop.startAfk(oakA);tick(actionMs(NODES.coffin_oak));
+    const first=loop.flush();const next=loop.flush();
+    expect(next).toBe(first);
+    resolve({node:'coffin_oak',skill:'woodcutting',accepted:1,successes:0,xp:0,gold:0,items:[],rejected:[],leveledUp:false,skills:[]});
+    await next;
+  });
 });
