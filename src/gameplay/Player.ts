@@ -21,6 +21,8 @@ export class Player {
   area: AreaId | null = 'chapterhouse';
   lastHurtAt = -1e9;
   rootedUntil = 0;
+  /** Shared recovery between spells; independent of each spell's cooldown. */
+  castUntil = 0;
   /** DEV QA only (window.__cwDebug.god). */
   god = false;
   /** Soul Harvest meter (client-side): kills credited to you or your thralls. */

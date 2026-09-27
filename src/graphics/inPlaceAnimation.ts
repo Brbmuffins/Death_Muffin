@@ -12,5 +12,12 @@ export function inPlaceHeroClip(clip: THREE.AnimationClip): THREE.AnimationClip 
     // Hip and descendant rotations still animate the cast, stride and breathing.
     return !(nodeName === 'Hip' && propertyName === 'position');
   });
-  return new THREE.AnimationClip(clip.name, clip.duration, tracks, clip.blendMode);
+  const anchored = new THREE.AnimationClip(clip.name, clip.duration, tracks, clip.blendMode);
+  // Generated hero rites include a long ceremonial follow-through. Keep the
+  // opening gesture so repeated attacks return to locomotion promptly.
+  if (clip.name === 'cast' || clip.name === 'dig') {
+    const seconds = Math.min(clip.duration, clip.name === 'dig' ? 1.3 : 1.1);
+    return THREE.AnimationUtils.subclip(anchored, clip.name, 0, Math.ceil(seconds * 30), 30);
+  }
+  return anchored;
 }

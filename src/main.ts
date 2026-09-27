@@ -46,7 +46,7 @@ function goWorld(character: Character) {
     new WorldScene(character, () => {
       setToken(null);
       goLogin();
-    }),
+    }, goWorld),
   );
 }
 

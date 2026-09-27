@@ -32,6 +32,7 @@ export class SettingsPanel extends SimplePanel {
     private onLeave: () => void,
     private instanceCode: () => string | null,
     private onResetTips?: () => void,
+    private onChangeClass?: () => void,
   ) {
     super(root);
   }
@@ -51,18 +52,23 @@ export class SettingsPanel extends SimplePanel {
         <label class="row">Reduce motion (no camera shake)<input type="checkbox" data-rm /></label>
         <label class="row">Damage numbers<input type="checkbox" data-dn /></label>
         <label class="row">Don't show tips<input type="checkbox" data-tips /></label>
+        <label class="row">Auto combat (G)<input type="checkbox" data-auto aria-label="Auto combat" /></label>
+        <p class="cw-settings-note">While standing, fight nearby enemies and use basic rites automatically. Click to move; hold 1–4 to repeat a rite. Signature rites stay under your control.</p>
         ${this.onResetTips ? '<label class="row">New to the Covenant?<button type="button" class="cw-button" data-resettips>Show tips again</button></label>' : ''}
+        ${this.onChangeClass ? '<label class="row">Class<button type="button" class="cw-button" aria-label="Change class" data-changeclass>Change class</button></label>' : ''}
         ${code ? `<label class="row">Party world code<b style="font-family:var(--cw-font-numeric)">${code}</b></label>` : ''}
         <div class="cw-keys">
           <kbd>Click</kbd><span>Move · attack target (Bone Needle) · use</span>
           <kbd>Shift+Click</kbd><span>Cast Bone Needle without moving</span>
-          <kbd>1–4</kbd><span>Marrow Spear · Exhume · Miasma · Black Litany (at cursor)</span>
+          <kbd>1–4 (hold)</kbd><span>Marrow Spear · Exhume · Miasma · Black Litany (at cursor)</span>
           <kbd>RMB · 5</kbd><span>Corpse Explosion (corpse nearest the cursor)</span>
           <kbd>R · 6</kbd><span>Signature rite (unlocks at level 10)</span>
           <kbd>Q</kbd><span>Drink a healing flask</span>
           <kbd>T</kbd><span>Return to the Chapterhouse</span>
           <kbd>I C P M</kbd><span>Reliquary · Workbench · Rites · Waystones</span>
           <kbd>K</kbd><span>Codex</span>
+          <kbd>G</kbd><span>Toggle auto combat · stand near enemies to grind</span>
+          <kbd>Settings</kbd><span>Change class · keeps your character and progress</span>
           <kbd>WASD</kbd><span>Walk (fallback)</span>
           <kbd>Wheel</kbd><span>Zoom</span>
           <kbd>Enter</kbd><span>Chat</span>
@@ -96,12 +102,16 @@ export class SettingsPanel extends SimplePanel {
     const tips = this.el!.querySelector<HTMLInputElement>('[data-tips]')!;
     tips.checked = !settings.tips;
     tips.addEventListener('change', () => updateSettings({ tips: !tips.checked }));
+    const auto = this.el!.querySelector<HTMLInputElement>('[data-auto]')!;
+    auto.checked = settings.autoCombat;
+    auto.addEventListener('change', () => updateSettings({ autoCombat: auto.checked }));
     this.el!.querySelector<HTMLButtonElement>('[data-resettips]')?.addEventListener('click', () => {
       updateSettings({ tips: true });
       tips.checked = false;
       this.onResetTips?.();
     });
     this.el!.querySelector('[data-leave]')!.addEventListener('click', () => this.onLeave());
+    this.el!.querySelector('[data-changeclass]')?.addEventListener('click', () => this.onChangeClass?.());
   }
 }
 

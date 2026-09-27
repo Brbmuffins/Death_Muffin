@@ -7,6 +7,12 @@ The supplied site design is preserved in `site/`, with live login and registrati
 
 The game uses Diablo-style controls: left-click ground to move, click enemies to attack, aim with the mouse and press 1–4 for abilities, right-click corpses for Corpse Explosion (5 also works), R for the level-10 signature rite, and Shift-click to attack while standing. The cursor reticle follows the mouse. HUD buttons remain interactive; empty HUD space passes input to the game canvas. Each left-click chooses a fixed ground destination. Mouse movement turns and aims a standing hero; walking faces its path, and holding the mouse does not add a second steering input. Generated hero models are aligned from their authored +X front to gameplay’s +Z heading. Help cards stay visible for at least 25 seconds, extend with text length, pause on hover, and can be clicked to dismiss. Status messages stay for at least eight seconds.
 
+Auto combat starts enabled: stand near enemies to fight with basic rites, click to move, and toggle **G** or the Auto HUD button. Hold **1–4** to repeat at the cursor. Signatures stay manual. Cast recovery is shorter; gestures blend into walking, projectile impacts match damage, and visual clutter/shake are reduced.
+
+Use **Settings → Change class** at any time. The same character keeps level, XP, gold, items and permanent progress and returns to the Chapterhouse. The live database already has the nullable `discipline_index` override; new installations with the original character schema must apply `backend/migrations/001-discipline-index.sql` once before starting this backend. Do not rerun it blindly against the current VPS.
+
+For current deployment, validation, Git and rollback details, read [the agent handoff](../../docs/DEATH-MUFFIN-HANDOFF.md).
+
 ## Services and isolation
 
 - `backend/`: account/character/inventory/profession API, adapted from the existing VPS API. Listens only on 127.0.0.1:5190; uses a separate `death_muffin` MySQL database and JWT secret. Copy `server/vps-handoff/necro-progress/` into its `necro-progress/` folder when installing.
@@ -21,6 +27,8 @@ Only the original game schema and catalogs were copied into the separate databas
 
 The leaderboard exposes username, discipline, level, Ascension, Prelate kills, and total kills for the top 25 characters. Ordering is Ascension, Prelate kills, total kills, then level. It caches database results for 30 seconds and refreshes the web page every minute. Email password recovery is not configured; the login UI says so instead of pretending an email was sent.
 
+Future bot opponents, companions, and leaderboard grinding are recorded in `docs/death-muffin-roadmap.md` at the repository root.
+
 ## Build and update the existing VPS
 
 ```bash
@@ -33,6 +41,9 @@ DEPLOY_BASE=/death-muffin/play/ VITE_API_BASE=/death-muffin/api VITE_WS_BASE=htt
 Copy `site/` to `/var/www/death-muffin/` and `dist/` to its `play/` folder. Install backend dependencies with `npm ci` inside the backend directory; configure `.env` privately using `.env.example`. Preserve the running database and `.env` during subsequent updates. On the current VPS, `/home/ubuntu/death-muffin/deploy/deploy.sh` publishes the extracted source and restarts only Death Muffin's services. The original nginx config is backed up in that folder; `rollback.sh` restores hosting while retaining player saves.
 
 ## Validation
+
+Current pass: 122 client tests, TypeScript check, both server test suites and production build passed. Browser checks cover all four models and preserved saves, continuous stationary combat/facing/animation, manual movement priority, menu/toggle suspension and held casts. Live class API tests verify ownership, invalid input, saved stats/gear/necro progress and immediate leaderboard updates. Test accounts were removed.
+
 
 Domain migration checks verified the supplied owner's login and existing character, temporary account creation, rendered game world, authenticated co-op over the new domain, progress API, leaderboard, HTTP-to-HTTPS and old-domain redirects, and availability of both other sites. The temporary test account was removed. The existing Muffin Development front end and Workbench API were not changed.
 

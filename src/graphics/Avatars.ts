@@ -68,13 +68,18 @@ export class NecromancerAvatar {
     if (moving !== this.moving) {
       this.moving = moving;
       this.c.setLoop(moving ? 'run' : 'idle', moving ? speed / 5.2 : 1);
+      if (moving) this.c.releaseGesture();
     }
     this.castLock = Math.max(0, this.castLock - dt);
     this.c.update(dt);
   }
 
-  cast(kind: 'cast' | 'dig', speed = 2) {
-    this.c.playOnce(kind, speed);
+  cast(kind: 'cast' | 'dig', speed = 2, facing?: number, durationSeconds?: number) {
+    if (facing !== undefined) {
+      this.c.root.rotation.y = facing;
+      this.c.root.updateMatrixWorld(true);
+    }
+    this.c.playOnce(kind, speed, durationSeconds);
   }
 
   dispose() {

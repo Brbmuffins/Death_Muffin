@@ -126,6 +126,12 @@ export function getCharacter() {
   return request<Character>('/character', {}, true);
 }
 
+export function changeDiscipline(characterId: number, classIndex: number) {
+  return request<Character>('/character/discipline', {
+    method: 'POST', body: JSON.stringify({ characterId, class_index: classIndex }),
+  }, true);
+}
+
 // New /api/* endpoints wrap payloads in { success, data } — unwrap and
 // surface `error` verbatim (it's player-readable by server contract).
 async function unwrap<T>(p: Promise<ApiResponse<T>>): Promise<T> {

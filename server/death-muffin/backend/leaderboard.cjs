@@ -6,7 +6,7 @@ module.exports = function mountLeaderboard(app, pool) {
     try {
       if (!cached || Date.now() - cachedAt > 30000) {
         const [rows] = await pool.query(`
-          SELECT a.username, c.class_index, c.level,
+          SELECT a.username, COALESCE(c.discipline_index, c.class_index) AS class_index, c.level,
                  COALESCE(p.ascension, 0) AS ascension,
                  COALESCE(p.boss_kills, 0) AS bossKills,
                  COALESCE(p.total_kills, 0) AS totalKills
@@ -25,4 +25,5 @@ module.exports = function mountLeaderboard(app, pool) {
       res.status(503).json({ error: 'Leaderboard is temporarily unavailable.' });
     }
   });
+  return () => { cached = null; };
 };

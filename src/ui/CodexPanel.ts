@@ -2,6 +2,7 @@ import { ABILITIES } from '../content/abilities';
 import { AREAS, AREA_ORDER } from '../content/areas';
 import {
   BEHAVIOUR_LABEL,
+  CLASS_CHANGE_COUNSEL,
   CODEX_AREAS,
   CODEX_DEAD,
   CODEX_DISCIPLINES,
@@ -130,7 +131,7 @@ export class CodexPanel {
   }
 
   private disciplines() {
-    return PLAYABLE_DISCIPLINES.map((d) => {
+    return `<p class="tip">${CLASS_CHANGE_COUNSEL}</p>` + PLAYABLE_DISCIPLINES.map((d) => {
       const mine = d.id === this.discipline;
       return `
         <article class="cw-codex-entry disc${mine ? ' mine' : ''}" style="--disc-color:${d.color}">

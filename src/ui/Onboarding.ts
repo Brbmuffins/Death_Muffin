@@ -8,6 +8,8 @@ import { browserStorage, type StorageLike } from '../gameplay/codexJournal';
  * Settings) turns the whole sequence off via app/settings `tips`.
  */
 export type TipId =
+  | 'auto_combat'
+  | 'change_class'
   | 'welcome'
   | 'move'
   | 'exhume'
@@ -38,6 +40,14 @@ interface Tip {
 }
 
 export const TIPS: Record<TipId, Tip> = {
+  auto_combat: {
+    title: 'Settle into the fight',
+    body: 'Auto combat uses nearby targets and basic rites while you stand still. Click to move whenever you like; your hero stays where you choose. Toggle it with <kbd>G</kbd> or the Auto button. Hold <kbd>1</kbd>–<kbd>4</kbd> to repeat a rite at your cursor. Signature rites remain yours to cast.',
+  },
+  change_class: {
+    title: 'A new discipline',
+    body: 'Choose a class here whenever you want. Your level, gold, items and permanent progress stay with the same character. Changing discipline returns you safely to the Chapterhouse with its new model and passives.',
+  },
   welcome: {
     title: 'The Chapterhouse',
     body: 'Your sanctuary: the dead cannot follow you here. Around you stand the Reliquary, the Workbench, the Altar and a Waystone. The Hollow Graves lie <b>north</b>, through the open gate. <kbd>Esc</kbd> sets difficulty and graphics.',

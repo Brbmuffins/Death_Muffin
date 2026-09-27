@@ -9,8 +9,9 @@ import type { BossState, Corpse, Enemy, Intent, SimEvent } from './sim/types';
 import type { Player } from './Player';
 import { audio } from '../audio/Audio';
 import { HEMORRHAGE } from '../content/statuses';
+import { CAST_FLOW } from '../content/combatFlow';
 
-export type CastResult = 'ok' | 'cooldown' | 'essence' | 'range' | 'no_target' | 'no_corpse' | 'dead' | 'locked' | 'no_thralls';
+export type CastResult = 'ok' | 'busy' | 'cooldown' | 'essence' | 'range' | 'no_target' | 'no_corpse' | 'dead' | 'locked' | 'no_thralls';
 
 export interface CastTarget {
   x: number;
@@ -64,7 +65,7 @@ export class AbilitySystem {
 
   ready(id: AbilityId, now: number) {
     const p = this.ctx.player;
-    return p.alive && !p.onCooldown(id, now) && (this.empowered(id) || p.essence >= ABILITIES[id].essenceCost);
+    return p.alive && now >= p.castUntil && !p.onCooldown(id, now) && (this.empowered(id) || p.essence >= ABILITIES[id].essenceCost);
   }
 
   /** A full Soul Harvest meter makes this cast free and 50% larger. */
@@ -85,6 +86,7 @@ export class AbilitySystem {
     const { player: p } = this.ctx;
     const def = ABILITIES[id];
     if (!p.alive) return 'dead';
+    if (now < p.castUntil) return 'busy';
     if (p.onCooldown(id, now)) return 'cooldown';
     const empowered = this.empowered(id);
     if (!empowered && p.essence < def.essenceCost) return 'essence';
@@ -117,6 +119,8 @@ export class AbilitySystem {
         break;
     }
     if (result === 'ok') {
+      p.castUntil = now + CAST_FLOW[id].lockMs;
+      p.rootedUntil = Math.max(p.rootedUntil, p.castUntil);
       if (empowered) {
         p.spendSouls();
         this.soulRelease();
@@ -130,8 +134,8 @@ export class AbilitySystem {
   private soulRelease() {
     const { player: p, effects } = this.ctx;
     effects.decal({ tex: fx.ring(), color: SOUL.jade, x: p.x, z: p.z, r: 1.8, duration: 0.5, opacity: 1, growFrom: 0.3 });
-    effects.emit({ x: p.x, y: 0.4, z: p.z, count: 36, color: SOUL.jade, spread: 0.6, speed: 1.2, up: 3.2, life: 0.8, size: 0.3 });
-    effects.emit({ x: p.x, y: 1.4, z: p.z, count: 14, color: SOUL.pale, spread: 0.3, speed: 2.4, up: 1, life: 0.5, size: 0.22 });
+    effects.emit({ x: p.x, y: 0.4, z: p.z, count: 20, color: SOUL.jade, spread: 0.6, speed: 1.2, up: 3.2, life: 0.8, size: 0.3 });
+    effects.emit({ x: p.x, y: 1.4, z: p.z, count: 8, color: SOUL.pale, spread: 0.3, speed: 2.4, up: 1, life: 0.5, size: 0.22 });
     effects.lightFlash(p.x, 1.6, p.z, SOUL.jade, 26, 0.45);
     audio.play('shard', p.x, p.z);
   }
@@ -141,8 +145,7 @@ export class AbilitySystem {
     if (t.enemyId === undefined && !t.boss) return 'no_target';
     if (this.shortfall('bone_needle', t) > 0) return 'range';
     p.face(t.x, t.z);
-    p.rootedUntil = this.ctx.now() + 120;
-    avatar.cast('cast', 3.2);
+    avatar.cast('cast', 3.2, p.facing, CAST_FLOW.bone_needle.gestureSeconds);
     const from = avatar.tip();
     effects.flash({ x: from.x, y: from.y, z: from.z, color: N.trail, size: 0.7, duration: 0.14 });
     audio.play('needleCast', p.x, p.z);
@@ -163,6 +166,7 @@ export class AbilitySystem {
         return e ? { x: e.x, y: 1.0, z: e.z } : null;
       },
       onArrive: (pos) => {
+        if (!p.alive) return;
         const amount = crit ? dmg * 1.8 : dmg;
         if (t.boss) {
           if (!this.ctx.boss().active) return;
@@ -194,45 +198,55 @@ export class AbilitySystem {
     dx /= len;
     dz /= len;
     p.face(p.x + dx, p.z + dz);
-    p.rootedUntil = this.ctx.now() + 220;
-    avatar.cast('cast', 2.4);
-    const halfW = radius + 0.2;
-    const ids: number[] = [];
-    for (const e of this.ctx.enemies().values()) {
-      if (e.state === 'dead') continue;
-      const rx = e.x - p.x;
-      const rz = e.z - p.z;
-      const along = rx * dx + rz * dz;
-      const across = Math.abs(rx * dz - rz * dx);
-      if (along > 0 && along < range && across < halfW + e.radius) ids.push(e.id);
-    }
+    avatar.cast('cast', 2.4, p.facing, CAST_FLOW.marrow_spear.gestureSeconds);
+    const origin = { x: p.x, z: p.z };
     const dmg = this.sp * def.power;
-    if (ids.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids, dmg, fracture: 1, bleed: dmg * HEMORRHAGE.dpsFrac });
-    const b = this.ctx.boss();
-    if (b.active) {
-      const rx = b.x - p.x;
-      const rz = b.z - p.z;
-      const along = rx * dx + rz * dz;
-      if (along > 0 && along < range + BOSS_RADIUS && Math.abs(rx * dz - rz * dx) < halfW + BOSS_RADIUS) {
-        this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, fracture: 1, boss: true });
-        this.ctx.number(b.x, b.z, dmg, 'spear');
-      }
-    }
-    for (const id of ids) {
-      const e = this.ctx.enemies().get(id);
-      if (e) this.ctx.number(e.x, e.z, dmg, 'spear');
-    }
-    effects.spikeLine(p.x, p.z, dx, dz, range, radius * 1.6);
-    effects.decal({ tex: fx.cracks(), color: S.crack, x: p.x + dx * range * 0.5, z: p.z + dz * range * 0.5, r: range * 0.5, sx: 0.22 * mult, rot: Math.atan2(dx, dz), duration: 1.1, opacity: 0.75 });
-    for (let i = 1; i < 11; i++) {
-      const x = p.x + dx * i * 1.1 * mult;
-      const z = p.z + dz * i * 1.1 * mult;
-      effects.emitSmoke({ x, y: 0.2, z, count: 2, color: S.dust, spread: 0.5, speed: 0.9, up: 0.9, life: 1.1, size: 1.1, shrink: -0.6 });
-      effects.emit({ x, y: 0.3, z, count: 3, color: i % 3 ? S.bone : S.marrow, spread: 0.3, speed: 1.6, up: 3, life: 0.6, size: 0.14, gravity: 9 });
-    }
-    effects.lightFlash(p.x + dx * 4, 1, p.z + dz * 4, S.crack, 16, 0.35);
-    audio.play('spear', p.x + dx * 3, p.z + dz * 3);
-    this.ctx.shake(0.15);
+    const end = { x: origin.x + dx * range, y: 0.3, z: origin.z + dz * range };
+    const tip = avatar.tip();
+    // A clean ivory release precedes the eruption. Resolve the live line on
+    // impact, rather than hurting enemies before any bone reaches them.
+    effects.flash({ x: tip.x, y: tip.y, z: tip.z, color: S.bone, size: 0.65, duration: 0.12 });
+    effects.beam(tip, () => end, S.bone, 0.025, 0.16);
+    effects.projectile({
+      from: tip, to: () => end, kind: 'needle', color: S.bone, speed: 48,
+      onArrive: () => {
+        if (!p.alive) return;
+        const halfW = radius + 0.2;
+        const ids: number[] = [];
+        for (const e of this.ctx.enemies().values()) {
+          if (e.state === 'dead') continue;
+          const rx = e.x - origin.x;
+          const rz = e.z - origin.z;
+          const along = rx * dx + rz * dz;
+          if (along > 0 && along < range && Math.abs(rx * dz - rz * dx) < halfW + e.radius) {
+            ids.push(e.id);
+            this.ctx.number(e.x, e.z, dmg, 'spear');
+            effects.flash({ x: e.x, y: 0.8, z: e.z, color: S.bone, size: 0.65, duration: 0.14 });
+          }
+        }
+        if (ids.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids, dmg, fracture: 1, bleed: dmg * HEMORRHAGE.dpsFrac });
+        const b = this.ctx.boss();
+        if (b.active) {
+          const rx = b.x - origin.x;
+          const rz = b.z - origin.z;
+          const along = rx * dx + rz * dz;
+          if (along > 0 && along < range + BOSS_RADIUS && Math.abs(rx * dz - rz * dx) < halfW + BOSS_RADIUS) {
+            this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, fracture: 1, boss: true });
+            this.ctx.number(b.x, b.z, dmg, 'spear');
+          }
+        }
+        effects.spikeLine(origin.x, origin.z, dx, dz, range, radius * 1.3, false);
+        effects.decal({ tex: fx.cracks(), color: S.crack, x: origin.x + dx * range * 0.5, z: origin.z + dz * range * 0.5, r: range * 0.5, sx: 0.16 * mult, rot: Math.atan2(dx, dz), duration: 0.65, opacity: 0.55 });
+        for (let i = 1; i <= 6; i++) {
+          const x = origin.x + dx * (i / 6) * range;
+          const z = origin.z + dz * (i / 6) * range;
+          effects.emit({ x, y: 0.3, z, count: 3, color: S.bone, spread: 0.25, speed: 1.4, up: 2.1, life: 0.4, size: 0.12, gravity: 9 });
+        }
+        effects.lightFlash(origin.x + dx * 4, 1, origin.z + dz * 4, S.crack, 12, 0.22);
+        audio.play('spear', origin.x + dx * 3, origin.z + dz * 3);
+        this.ctx.shake(0.055);
+      },
+    });
     return 'ok';
   }
 
@@ -269,8 +283,7 @@ export class AbilitySystem {
     const c = this.pickCorpse(t);
     if (!c) return 'no_corpse';
     p.face(c.x, c.z);
-    p.rootedUntil = this.ctx.now() + 250;
-    avatar.cast('dig', 2.6);
+    avatar.cast('dig', 2.6, p.facing, CAST_FLOW.exhume.gestureSeconds);
     const m = discipline.mods;
     this.ctx.send({
       t: 'exhume',
@@ -302,10 +315,9 @@ export class AbilitySystem {
       z = p.z + ((z - p.z) / d) * def.range;
     }
     p.face(x, z);
-    p.rootedUntil = this.ctx.now() + 200;
-    avatar.cast('cast', 2.2);
+    avatar.cast('cast', 2.2, p.facing, CAST_FLOW.miasma.gestureSeconds);
     const r = def.radius * discipline.mods.miasmaRadiusMult * mult;
-    this.ctx.send({
+    const intent: Intent = {
       t: 'miasma',
       by: this.ctx.selfId,
       x,
@@ -315,18 +327,21 @@ export class AbilitySystem {
       durationMs: 6000,
       witheredCap: discipline.mods.witheredMaxStacks,
       bloom: discipline.mods.miasmaBurstsCorpses,
-    });
+    };
     effects.projectile({
       from: avatar.tip(),
       to: () => ({ x, y: 0.2, z }),
       kind: 'orb',
       color: M.rot,
       speed: 18,
-      arc: 30,
+      arc: 12,
       onArrive: () => {
+        if (!p.alive) return;
+        this.ctx.send(intent);
+        effects.decal({ tex: fx.ring(), color: M.rot, x, z, r, duration: 0.45, opacity: 0.7, growFrom: 0.2 });
         audio.play('miasma', x, z);
-        effects.emitSmoke({ x, y: 0.4, z, count: 14, color: M.spore, spread: r * 0.6, speed: 1.2, up: 0.5, life: 2.2, size: 2.2, shrink: -0.8, drag: 0.8 });
-        effects.emit({ x, y: 0.3, z, count: 30, color: M.rot, spread: r * 0.5, speed: 1.5, up: 1, life: 1.2, size: 0.25 });
+        effects.emitSmoke({ x, y: 0.4, z, count: 6, color: M.spore, spread: r * 0.6, speed: 0.5, up: 0.3, life: 0.9, size: 1.1, shrink: -0.3, drag: 0.8 });
+        effects.emit({ x, y: 0.3, z, count: 16, color: M.rot, spread: r * 0.5, speed: 1.1, up: 0.6, life: 0.65, size: 0.18 });
       },
     });
     return 'ok';
@@ -348,8 +363,7 @@ export class AbilitySystem {
     }
     if (sig === 'dirge') [x, z] = [p.x, p.z];
     else p.face(x, z);
-    p.rootedUntil = this.ctx.now() + 300;
-    avatar.cast('cast', 1.8);
+    avatar.cast('cast', 1.8, p.facing, CAST_FLOW[id].gestureSeconds);
     this.ctx.send({ t: 'signature', by: this.ctx.selfId, sig, x, z, dx: x - p.x, dz: z - p.z, sp: this.sp });
     const color = sig === 'wall' ? SPELL_FX.wall.amber : sig === 'rend' ? SPELL_FX.rend.jade : sig === 'dirge' ? SPELL_FX.dirge.frost : SPELL_FX.bloom.petal;
     effects.emit({ x: p.x, y: 1.4, z: p.z, count: 24, color, spread: 0.4, speed: 1.6, up: 1.2, life: 0.6, size: 0.24 });
@@ -360,8 +374,7 @@ export class AbilitySystem {
   private litany(mult = 1): CastResult {
     const { player: p, avatar, discipline } = this.ctx;
     const def = ABILITIES.black_litany;
-    p.rootedUntil = this.ctx.now() + 450;
-    avatar.cast('cast', 1.6);
+    avatar.cast('cast', 1.6, p.facing, CAST_FLOW.black_litany.gestureSeconds);
     this.ctx.send({
       t: 'litany',
       by: this.ctx.selfId,
@@ -381,8 +394,7 @@ export class AbilitySystem {
     const c = this.pickCorpse(t, ABILITIES.exhume.radius, def.range);
     if (!c) return 'no_corpse';
     p.face(c.x, c.z);
-    p.rootedUntil = this.ctx.now() + 150;
-    avatar.cast('cast', 3);
+    avatar.cast('cast', 3, p.facing, CAST_FLOW.corpse_explosion.gestureSeconds);
     this.ctx.send({ t: 'detonate', by: this.ctx.selfId, corpseId: c.id, dmg: this.sp * def.power });
     const tip = avatar.tip();
     effects.flash({ x: tip.x, y: tip.y, z: tip.z, color: D.hot, size: 0.7, duration: 0.14 });
@@ -401,11 +413,11 @@ export class AbilitySystem {
     effects.decal({ tex: fx.ring(), color: D.ember, x, z, r, duration: 0.45, opacity: 1, growFrom: 0.15 });
     effects.decal({ tex: fx.glow(), color: D.crimson, x, z, r: r * 0.9, duration: 0.7, opacity: 0.85, growFrom: 0.4 });
     effects.decal({ tex: fx.cracks(), color: D.crimson, x, z, r: r * 0.75, rot: Math.random() * 6, duration: 1.6, opacity: 0.85, growFrom: 0.5 });
-    effects.emit({ x, y: 0.6, z, count: 46, color: D.ember, spread: 0.3, speed: r * 2.8, up: 1.6, life: 0.5, size: 0.34, drag: 1.5 });
+    effects.emit({ x, y: 0.6, z, count: 24, color: D.ember, spread: 0.3, speed: r * 2.8, up: 1.6, life: 0.5, size: 0.34, drag: 1.5 });
     // Bone shrapnel: ivory flecks that arc out and rain down.
-    effects.emit({ x, y: 0.7, z, count: 30, color: D.bone, spread: 0.25, speed: r * 2.3, up: 4.5, life: 0.9, size: 0.14, gravity: 14 });
-    effects.emit({ x, y: 0.4, z, count: 14, color: D.crimson, spread: 0.3, speed: 2, up: 2.4, life: 0.8, size: 0.26, gravity: 6 });
-    effects.emitSmoke({ x, y: 0.4, z, count: 7, color: D.smoke, spread: r * 0.35, speed: 1.4, up: 0.8, life: 1.3, size: 1.5, shrink: -0.8 });
+    effects.emit({ x, y: 0.7, z, count: 16, color: D.bone, spread: 0.25, speed: r * 2.3, up: 4.5, life: 0.9, size: 0.14, gravity: 14 });
+    effects.emit({ x, y: 0.4, z, count: 8, color: D.crimson, spread: 0.3, speed: 2, up: 2.4, life: 0.8, size: 0.26, gravity: 6 });
+    effects.emitSmoke({ x, y: 0.4, z, count: 4, color: D.smoke, spread: r * 0.35, speed: 1.4, up: 0.8, life: 0.75, size: 1.0, shrink: -0.3 });
     effects.lightFlash(x, 1.2, z, D.ember, ev.elite ? 55 : 38, 0.45);
     if (ev.corpseKind === 'resonant') {
       // A resonant corpse rings as it goes — the wider blast gets a bronze echo.
@@ -418,7 +430,7 @@ export class AbilitySystem {
     if (ev.elite) {
       effects.decal({ tex: fx.ring(), color: D.hot, x, z, r: r * 1.2, duration: 0.5, opacity: 0.9, growFrom: 0.1, delay: 0.08 });
     }
-    this.ctx.shake((mine ? 0.18 : 0.08) + (ev.elite ? 0.1 : 0));
+    this.ctx.shake((mine ? 0.055 : 0.025) + (ev.elite ? 0.035 : 0));
     if (mine && ev.targets && ev.dmg) this.ctx.number(x, z, ev.dmg, ev.elite ? 'crit' : 'hit');
   }
 
@@ -426,23 +438,23 @@ export class AbilitySystem {
   onLitany(ev: { x: number; z: number; r: number; corpses: number; resonant: number; thralls: number; tethers: [number, number][] }, mine: boolean) {
     const { effects, avatar, player: p, discipline } = this.ctx;
     const tip = mine ? avatar.tip() : new THREE.Vector3(ev.x, 1.6, ev.z);
-    for (const [x, z] of ev.tethers) {
+    for (const [x, z] of ev.tethers.slice(0, 10)) {
       effects.beam({ x, y: 0.6, z }, () => ({ x: tip.x, y: tip.y, z: tip.z }), L.core, 0.045, 0.5);
       effects.emit({ x, y: 0.5, z, count: 8, color: L.core, spread: 0.3, speed: 0.6, up: 1.5, life: 0.6, size: 0.3 });
     }
     // Implosion: the ring of the dead pulled in…
-    effects.emit({ x: ev.x, y: 0.6, z: ev.z, count: 90, color: L.core, spread: ev.r, speed: 7, up: 0.2, life: 0.35, size: 0.4, inward: true, drag: 0 });
-    effects.emitSmoke({ x: ev.x, y: 0.5, z: ev.z, count: 10, color: L.void, spread: 1, speed: 0.5, up: 0.4, life: 1.2, size: 2.6, shrink: -1 });
+    effects.emit({ x: ev.x, y: 0.6, z: ev.z, count: 32, color: L.core, spread: ev.r, speed: 7, up: 0.2, life: 0.25, size: 0.22, inward: true, drag: 0 });
+    effects.emitSmoke({ x: ev.x, y: 0.5, z: ev.z, count: 4, color: L.void, spread: 1, speed: 0.4, up: 0.2, life: 0.65, size: 1.3, shrink: -0.3 });
     // …then the shockwave.
-    effects.decal({ tex: fx.sigil(), color: L.core, x: ev.x, z: ev.z, r: ev.r, duration: 1.2, opacity: 1, growFrom: 0.1, spin: 1.5 });
+    effects.decal({ tex: fx.sigil(), color: L.core, x: ev.x, z: ev.z, r: ev.r, duration: 0.7, opacity: 0.65, growFrom: 0.1, spin: 0.35 });
     effects.decal({ tex: fx.ring(), color: L.hot, x: ev.x, z: ev.z, r: ev.r * 1.15, duration: 0.55, opacity: 1, growFrom: 0.05, delay: 0.18 });
     effects.decal({ tex: fx.ring(), color: L.core, x: ev.x, z: ev.z, r: ev.r * 1.3, duration: 0.7, opacity: 0.7, growFrom: 0.05, delay: 0.26 });
-    effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 140, color: L.core, spread: 1, speed: 9, up: 1.8, life: 0.9, size: 0.42 });
-    effects.emit({ x: ev.x, y: 0.8, z: ev.z, count: 40, color: L.hot, spread: 0.6, speed: 5, up: 3, life: 0.7, size: 0.3 });
-    effects.flash({ x: ev.x, y: 1.5, z: ev.z, color: L.core, size: ev.r * 0.55, duration: 0.3 });
-    effects.lightFlash(ev.x, 2, ev.z, L.core, 70, 0.8);
+    effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 48, color: L.core, spread: 1, speed: 9, up: 1.8, life: 0.55, size: 0.23 });
+    effects.emit({ x: ev.x, y: 0.8, z: ev.z, count: 16, color: L.hot, spread: 0.6, speed: 5, up: 3, life: 0.45, size: 0.2 });
+    effects.flash({ x: ev.x, y: 1.5, z: ev.z, color: L.core, size: Math.min(2.0, ev.r * 0.24), duration: 0.3 });
+    effects.lightFlash(ev.x, 2, ev.z, L.core, 32, 0.4);
     audio.play('litany', ev.x, ev.z, 1 + Math.min(0.6, (ev.corpses + ev.thralls) * 0.05));
-    this.ctx.shake(0.35 + Math.min(0.4, (ev.corpses + ev.thralls) * 0.04));
+    this.ctx.shake(0.08 + Math.min(0.08, (ev.corpses + ev.thralls) * 0.008));
     if (!mine) return;
     const consumed = ev.corpses + ev.resonant + ev.thralls;
     if (discipline.mods.litanyBarrier) p.barrier += p.stats.maxHp * discipline.mods.litanyBarrier * consumed;

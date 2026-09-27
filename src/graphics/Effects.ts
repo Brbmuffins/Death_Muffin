@@ -239,6 +239,9 @@ export class Effects {
   private spritePool: THREE.Object3D[] = [];
   private beamPool: THREE.Object3D[] = [];
   private projectiles: Projectile[] = [];
+  private needlePool: THREE.Mesh[] = [];
+  private orbPool: THREE.Mesh[] = [];
+  private projectileDirection = new THREE.Vector3();
   private needleGeo = new THREE.ConeGeometry(0.085, 0.95, 5).rotateX(Math.PI / 2);
   private needleMat = new THREE.MeshStandardMaterial({
     color: 0xe8dfcc,
@@ -293,6 +296,16 @@ export class Effects {
   }
 
   private add(tr: Transient): Handle {
+    // Cosmetic meshes have a fixed ceiling even in dense co-op bursts. Game
+    // callbacks live on projectiles, so retiring old visuals never drops hits.
+    if (this.transients.length >= 160) {
+      const old = this.transients.shift()!;
+      old.t = old.duration;
+      old.mesh.visible = false;
+      this.group.remove(old.mesh);
+      old.pool.push(old.mesh);
+    }
+    tr.update(tr.t, tr.t / tr.duration, 0);
     this.transients.push(tr);
     return {
       kill: () => {
@@ -437,13 +450,14 @@ export class Effects {
     arc?: number;
     onArrive?: (p: THREE.Vector3) => void;
   }) {
-    const mesh =
-      o.kind === 'needle'
-        ? new THREE.Mesh(this.needleGeo, this.needleMat)
-        : new THREE.Mesh(
-            this.orbGeo,
-            new THREE.MeshBasicMaterial({ color: o.color, transparent: true, blending: THREE.AdditiveBlending }),
-          );
+    const mesh = o.kind === 'needle'
+      ? this.needlePool.pop() ?? new THREE.Mesh(this.needleGeo, this.needleMat)
+      : this.orbPool.pop() ?? new THREE.Mesh(
+          this.orbGeo,
+          new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
+        );
+    if (o.kind === 'orb') (mesh.material as THREE.MeshBasicMaterial).color.set(o.color);
+    mesh.visible = true;
     mesh.position.set(o.from.x, o.from.y, o.from.z);
     this.group.add(mesh);
     const first = o.to();
@@ -464,7 +478,7 @@ export class Effects {
   }
 
   /** A line of bone spikes erupting sequentially (Marrow Spear). */
-  spikeLine(x: number, z: number, dirX: number, dirZ: number, length: number, width: number) {
+  spikeLine(x: number, z: number, dirX: number, dirZ: number, length: number, width: number, sequential = true) {
     const yaw = Math.atan2(dirX, dirZ);
     const n = Math.round(length / 0.55);
     for (let i = 0; i < n; i++) {
@@ -477,7 +491,7 @@ export class Effects {
           yaw: Math.random() * Math.PI,
           tilt: (Math.random() - 0.5) * 0.7,
           h: 0.8 + Math.random() * 0.9 + (i / n) * 0.4,
-          born: this.time + i * 0.018,
+          born: this.time + (sequential ? i * 0.018 : 0),
           life: 0.7,
         });
       }
@@ -509,27 +523,31 @@ export class Effects {
       const target = p.to();
       if (target) p.lastTo.set(target.x, target.y, target.z);
       const pos = p.mesh.position;
-      const toVec = new THREE.Vector3().subVectors(p.lastTo, pos);
+      const toVec = this.projectileDirection.subVectors(p.lastTo, pos);
       const d = toVec.length();
       const step = p.speed * dt;
-      if (d <= step || p.t > 3) {
+      p.t += dt;
+      const arcProgress = Math.min(1, p.t * p.speed / p.dist);
+      if ((p.arc ? arcProgress >= 1 : d <= step) || p.t > 3) {
         pos.copy(p.lastTo);
         this.group.remove(p.mesh);
-        if ((p.mesh as THREE.Mesh).material !== this.needleMat) ((p.mesh as THREE.Mesh).material as THREE.Material).dispose();
+        const mesh = p.mesh as THREE.Mesh;
+        const pool = mesh.material === this.needleMat ? this.needlePool : this.orbPool;
+        if (pool.length < 64) pool.push(mesh);
+        else if (mesh.material !== this.needleMat) (mesh.material as THREE.Material).dispose();
         this.projectiles.splice(i, 1);
         p.onArrive?.(pos.clone());
         continue;
       }
-      p.t += dt;
-      toVec.multiplyScalar(step / d);
-      pos.add(toVec);
       if (p.arc) {
-        const prog = 1 - d / p.dist;
-        pos.y = p.from.y + (p.lastTo.y - p.from.y) * prog + Math.sin(prog * Math.PI) * p.arc * 0.1;
-      }
+        // Time-based travel keeps the arc from slowing itself down as its
+        // raised visual position changes the remaining 3D distance.
+        pos.copy(p.from).lerp(p.lastTo, arcProgress);
+        pos.y += Math.sin(arcProgress * Math.PI) * p.arc * 0.1;
+      } else pos.add(toVec.multiplyScalar(step / Math.max(0.001, d)));
       p.mesh.lookAt(p.lastTo);
       p.trail += dt;
-      if (p.trail > 0.012) {
+      if (p.trail > 0.024) {
         p.trail = 0;
         this.additive.emit({ x: pos.x, y: pos.y, z: pos.z, count: 1, color: p.color, spread: 0.05, speed: 0.15, up: 0.1, life: 0.28, size: 0.32 });
       }
@@ -567,13 +585,29 @@ export class Effects {
   }
 
   dispose() {
-    this.group.traverse((o) => {
+    const geometries = new Set<THREE.BufferGeometry>();
+    const materials = new Set<THREE.Material>();
+    const collect = (o: THREE.Object3D) => {
       const m = o as THREE.Mesh;
-      if (m.geometry) m.geometry.dispose();
+      if (m.geometry) geometries.add(m.geometry);
       const mat = m.material as THREE.Material | THREE.Material[] | undefined;
-      if (Array.isArray(mat)) mat.forEach((x) => x.dispose());
-      else mat?.dispose();
-    });
+      if (Array.isArray(mat)) mat.forEach((x) => materials.add(x));
+      else if (mat) materials.add(mat);
+    };
+    this.group.traverse(collect);
+    // Expired pooled meshes are no longer children of the scene group, but
+    // their GPU resources still belong to this Effects instance.
+    for (const pool of [this.decalPool, this.spritePool, this.beamPool, this.needlePool, this.orbPool]) {
+      for (const mesh of pool) collect(mesh);
+      pool.length = 0;
+    }
+    geometries.add(this.needleGeo);
+    geometries.add(this.orbGeo);
+    materials.add(this.needleMat);
+    for (const geometry of geometries) geometry.dispose();
+    for (const material of materials) material.dispose();
+    this.projectiles.length = 0;
+    this.transients.length = 0;
     this.group.removeFromParent();
   }
 }

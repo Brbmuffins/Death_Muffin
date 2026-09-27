@@ -13,7 +13,10 @@ import { WAVE_MILESTONES, damageBonusPct, milestoneActive, waveModifiers } from 
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
 import { BOONS, ascensionLevels, ascensionRewardMult, roman } from '../content/ascension';
 import { AscensionPanel } from '../ui/AscensionPanel';
-import { onSettingsChange, settings } from '../app/settings';
+import { ClassPanel } from '../ui/ClassPanel';
+import { changeDiscipline } from '../net/api';
+import { onSettingsChange, settings, updateSettings } from '../app/settings';
+import { selectAutoCombatAction } from '../gameplay/autoCombat';
 import { STATUS_FX } from '../content/statuses';
 import { AbilitySystem, type CastResult, type CastTarget } from '../gameplay/AbilitySystem';
 import { deriveStats, xpToNext } from '../gameplay/characterStats';
@@ -134,6 +137,10 @@ export class WorldScene implements GameScene, RuntimeView {
   private surgeFx: Handle | null = null;
 
   private keys = new Set<string>();
+  private nextAutoCombatAt = 0;
+  private autoTargetId: number | null = null;
+  private autoAim: CastTarget | null = null;
+  private queuedCast: { slot: HotbarSlot; target: CastTarget; until: number } | null = null;
   private mouse = { x: 0, y: 0, shift: false, aiming: false };
   private groundPoint = new THREE.Vector3();
   private hover: Hover = null;
@@ -145,6 +152,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private recallFx: Handle | null = null;
   private flaskCdUntil = 0;
   private ready = false;
+  private dataReady: Promise<unknown> = Promise.resolve();
   /** Scene clock in ms (runtime-provided; see GameRuntime.advance). */
   private now = 0;
   private raycaster = new THREE.Raycaster();
@@ -156,6 +164,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private forgePanel!: ForgePanel;
   private professionsPanel!: ProfessionsPanel;
   private settingsPanel!: SettingsPanel;
+  private classPanel!: ClassPanel;
   private waystonePanel!: WaystonePanel;
   private codexPanel!: CodexPanel;
   private ascensionPanel!: AscensionPanel;
@@ -169,6 +178,7 @@ export class WorldScene implements GameScene, RuntimeView {
   constructor(
     private character: Character,
     private onLeave: () => void,
+    private onClassChanged: (character: Character) => void,
   ) {
     this.discipline = disciplineFor(character.class_index);
     this.hotbar = [...HOTBAR, SIGNATURE_BY_DISCIPLINE[this.discipline.id]];
@@ -231,7 +241,7 @@ export class WorldScene implements GameScene, RuntimeView {
       fadeIn: 0.01,
       pulse: 6,
       follow: () => {
-        const h = this.hover?.kind === 'enemy' ? this.hover : this.attackTarget?.kind === 'enemy' ? this.attackTarget : null;
+        const h = this.hover?.kind === 'enemy' ? this.hover : this.attackTarget?.kind === 'enemy' ? this.attackTarget : this.autoTargetId !== null ? { id: this.autoTargetId } : null;
         const e = h ? this.enemiesMap().get(h.id) : undefined;
         return e && e.state !== 'rising' ? { x: e.x, z: e.z } : null;
       },
@@ -270,7 +280,7 @@ export class WorldScene implements GameScene, RuntimeView {
     });
 
     getRuntime().setView(this);
-    void this.loadData();
+    const inventoryReady = this.loadData();
     // Offline dev tokens are not JWTs: only try co-op there when asked (?offline&coop).
     if (!OFFLINE || new URLSearchParams(location.search).has('coop')) void this.connectRealtime();
     if (import.meta.env.DEV) this.installDebug();
@@ -283,7 +293,7 @@ export class WorldScene implements GameScene, RuntimeView {
     // Server-backed progression when the auth server has it; browser storage otherwise.
     this.scope.add(this.progression.onError((msg) => this.hud.toast(msg, 'err')));
     this.scope.add(this.progression.onSynced(() => this.onProgressSynced()));
-    void this.progression.connect();
+    this.dataReady = Promise.all([inventoryReady, this.progression.connect()]);
     this.onboarding.show('welcome', 900);
     this.onboarding.show('move', 1600);
     if (this.character.level >= SIGNATURE_LEVEL) this.onboarding.show('signature', 4000);
@@ -374,6 +384,7 @@ export class WorldScene implements GameScene, RuntimeView {
         this.applyWaveTier();
       },
       open: (p) => this.togglePanel(p),
+      toggleAutoCombat: () => this.toggleAutoCombat(),
       chat: (text) => {
         if (this.realtime.connected) this.realtime.sendChat(text);
         else this.hud.chatLine('(solo) Nobody hears you in the dark.');
@@ -394,7 +405,15 @@ export class WorldScene implements GameScene, RuntimeView {
         this.onboarding.reset();
         this.hud.toast('Covenant counsel will guide you again', 'good');
       },
+      () => {
+        this.closePanels();
+        this.player.stop();
+        this.classPanel.open();
+        this.onboarding.show('change_class');
+      },
     );
+    this.classPanel = new ClassPanel(this.root, () => this.character.class_index, (index) => this.changeClass(index));
+    this.scope.add(() => this.classPanel.dispose());
     this.waystonePanel = new WaystonePanel(
       this.root,
       () => AREA_ORDER.filter((a) => this.progression.isUnlocked(a)),
@@ -428,6 +447,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private closePanels() {
+    this.classPanel?.close();
     this.ascensionPanel?.close();
     this.inventoryPanel.close();
     this.forgePanel.close();
@@ -435,6 +455,24 @@ export class WorldScene implements GameScene, RuntimeView {
     this.settingsPanel.close();
     this.waystonePanel.close();
     this.codexPanel.close();
+  }
+
+  private async changeClass(index: number) {
+    if (index === this.character.class_index) return;
+    this.ready = false;
+    this.player.stop();
+    this.attackTarget = null;
+    this.pendingInteract = null;
+    this.cancelRecall();
+    try {
+      await this.dataReady;
+      await Promise.all([this.progression.saveBeforeClassChange(), this.inventory.saveBeforeClassChange()]);
+      const character = await changeDiscipline(this.character.id, index);
+      this.onClassChanged(character);
+    } catch (err) {
+      this.ready = true;
+      throw err;
+    }
   }
 
   private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension') {
@@ -456,6 +494,13 @@ export class WorldScene implements GameScene, RuntimeView {
     if (this.sim && this.isAuthority()) this.sim.waveTier = this.progression.local.waveTierActive;
   }
 
+  private toggleAutoCombat() {
+    updateSettings({ autoCombat: !settings.autoCombat });
+    this.autoTargetId = null;
+    this.autoAim = null;
+    this.hud.toast(settings.autoCombat ? 'Auto combat on — stand near enemies to fight. Click to move; G turns it off.' : 'Auto combat off — click enemies and use your rites manually.', 'good');
+  }
+
   // -------------------------------------------------------------------------
   // Input
   // -------------------------------------------------------------------------
@@ -465,8 +510,10 @@ export class WorldScene implements GameScene, RuntimeView {
     this.mouse.y = window.innerHeight / 2;
     this.scope.on(window, 'blur', () => { this.keys.clear(); this.mouse.shift = false; this.mouse.aiming = false; this.player.stop(); });
     this.scope.on<KeyboardEvent>(window, 'keydown', (e) => {
+      if (!this.ready) return;
       if (document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement) return;
       const k = e.key.toLowerCase();
+      if (/^[1-4]$/.test(k)) this.keys.add(k);
       if (k === 'enter') {
         this.hud.focusChat();
         return;
@@ -482,6 +529,7 @@ export class WorldScene implements GameScene, RuntimeView {
       else if (k === 'p') this.togglePanel('professions');
       else if (k === 'm') this.togglePanel('map');
       else if (k === 'k') this.togglePanel('codex');
+      else if (k === 'g') this.toggleAutoCombat();
       else if (k === 'escape') this.togglePanel('settings');
       else this.keys.add(k);
       this.mouse.shift = e.shiftKey;
@@ -570,9 +618,10 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private onPrimaryClick() {
-    if (!this.player.alive) return;
+    if (!this.ready || !this.player.alive) return;
     this.updateCursor();
     this.cancelRecall();
+    this.queuedCast = null;
     const h = this.hover;
     const target = this.cursorTarget();
     if (Math.hypot(target.x - this.player.x, target.z - this.player.z) > 0.25) this.player.face(target.x, target.z);
@@ -600,14 +649,20 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private castSlot(slot: HotbarSlot) {
-    if (!this.player?.alive) return;
+    if (!this.ready || !this.player?.alive) return;
     this.updateCursor();
     this.cancelRecall();
+    this.autoTargetId = null;
+    this.autoAim = null;
     const id = this.hotbar[slot - 1];
     if (!id) return;
     // Corpse Explosion picks from the exact ground point, not a hovered enemy's position.
     const target = id === 'corpse_explosion' ? { x: this.groundPoint.x, z: this.groundPoint.z } : this.cursorTarget();
     const res = this.abilities.cast(id, target, this.now);
+    if (res === 'busy' || (res === 'cooldown' && this.player.cooldownLeft(id, this.now) <= 220)) {
+      this.queuedCast = { slot, target, until: this.now + 220 };
+      return;
+    }
     this.feedback(res, id);
     if (res === 'ok') this.hud.slotFlash(slot);
   }
@@ -623,6 +678,55 @@ export class WorldScene implements GameScene, RuntimeView {
       return { x: b.x, z: b.z, boss: true };
     }
     return { x: this.groundPoint.x, z: this.groundPoint.z };
+  }
+
+  private tickCombat(now: number) {
+    const p = this.player;
+    if (!p.alive || this.recallAt) return;
+    if (this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen) {
+      this.queuedCast = null;
+      this.autoTargetId = null;
+      this.autoAim = null;
+      return;
+    }
+    if (this.queuedCast) {
+      const queued = this.queuedCast;
+      if (now > queued.until) this.queuedCast = null;
+      else if (this.abilities.ready(this.hotbar[queued.slot - 1], now)) {
+        this.queuedCast = null;
+        const id = this.hotbar[queued.slot - 1];
+        if (this.abilities.cast(id, queued.target, now) === 'ok') this.hud.slotFlash(queued.slot);
+        return;
+      }
+    }
+    // Held number keys repeat only when the selected spell is ready.
+    for (let slot = 1; slot <= 4; slot++) {
+      if (this.keys.has(String(slot))) {
+        if (this.abilities.ready(this.hotbar[slot - 1], now)) this.castSlot(slot as HotbarSlot);
+        return;
+      }
+    }
+    // Auto combat never sets paths or competes with deliberate movement/menu use.
+    if (!settings.autoCombat || p.hasPath || p.moving || this.attackTarget || this.keys.size) {
+      this.autoTargetId = null;
+      this.autoAim = null;
+      return;
+    }
+    if (now < this.nextAutoCombatAt) return;
+    this.nextAutoCombatAt = now + 180;
+    const thralls = [...this.thrallsMap().values()].filter(t => t.owner === this.selfId).length;
+    const action = selectAutoCombatAction({ player: { x: p.x, z: p.z, essence: p.essence, maxEssence: p.stats.maxEssence },
+      enemies: this.enemiesMap().values(), corpses: this.corpsesMap().values(), boss: this.bossState(),
+      thrallCount: thralls, thrallCap: this.discipline.mods.thrallCap, ready: id => this.abilities.ready(id, now) });
+    const previous = this.autoTargetId === null ? undefined : this.enemiesMap().get(this.autoTargetId);
+    this.autoTargetId = action?.target.enemyId ?? (previous && previous.hp > 0 && previous.state !== 'dead' && Math.hypot(previous.x - p.x, previous.z - p.z) <= ABILITIES.bone_needle.range ? previous.id : null);
+    if (action) this.autoAim = action.target;
+    else if (this.autoTargetId === null && !(this.autoAim?.boss && this.bossState().active && this.bossState().hp > 0)) this.autoAim = null;
+    if (action && this.abilities.cast(action.id, action.target, now) === 'ok') {
+      this.onboarding.show('auto_combat');
+      const slot = ABILITIES[action.id].slot;
+      if (slot) this.hud.slotFlash(slot);
+    }
   }
 
   private lastFeedback = 0;
@@ -1479,9 +1583,10 @@ export class WorldScene implements GameScene, RuntimeView {
     }
     const moved = p.update(dt, now, kd.x || kd.z ? kd : null);
     if (moved) this.cancelRecall();
+    this.tickCombat(now);
     // Walking follows its path. Once standing, the mouse turns the hero to aim
     // without changing position or replacing the clicked destination.
-    if (p.alive && this.mouse.aiming && !p.moving && !p.hasPath && !this.attackTarget && now >= p.rootedUntil) {
+    if (p.alive && this.mouse.aiming && !p.moving && !p.hasPath && !this.attackTarget && this.autoAim === null && now >= p.castUntil) {
       const target = this.cursorTarget();
       if (Math.hypot(target.x - p.x, target.z - p.z) > 0.25) p.face(target.x, target.z);
     }
@@ -1768,6 +1873,7 @@ export class WorldScene implements GameScene, RuntimeView {
           : { text: OFFLINE ? 'Offline save ✓' : 'Saved ✓', warn: false };
 
     this.hud.update({
+      autoCombat: settings.autoCombat,
       hp: p.hp,
       maxHp: p.stats.maxHp,
       barrier: p.barrier,
@@ -1849,7 +1955,7 @@ export class WorldScene implements GameScene, RuntimeView {
       sim: () => this.sim,
       progression: this.progression,
       inventory: this.inventory,
-      advance: (seconds: number) => getRuntime().advance(seconds),
+      advance: (seconds: number, render = true) => getRuntime().advance(seconds, 1 / 60, render),
       net: () => ({ id: this.realtime.selfId, ...this.realtime.stats, connected: this.realtime.connected, host: this.realtime.isHost, instance: this.realtime.instance, mirror: this.mirror ? { enemies: this.mirror.enemies.size, corpses: this.mirror.corpses.size } : null }),
       zoom: (z: number) => this.rig.setZoom(z),
       clear: () => {

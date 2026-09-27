@@ -55,7 +55,7 @@ export const CODEX_RITES: Record<AbilityId, RiteEntry> = {
   bone_needle: {
     fx: 'needle',
     colour: 'Bone white and old gold',
-    tip: `Your essence engine. Every hit returns ${NEEDLE_ESSENCE} Grave Essence, so keep a target under attack between rites and the other four pay for themselves. Shift+Click to stand your ground and cast without walking in.`,
+    tip: `Your essence engine. Every hit returns ${NEEDLE_ESSENCE} Grave Essence, so keep a target under attack between rites and the other four pay for themselves. Auto combat (G) handles nearby targets and basic rites while standing still; click to move, or hold 1–4 to repeat a rite at the cursor. Signature rites stay manual. Shift+Click to stand your ground and cast without walking in.`,
   },
   marrow_spear: {
     fx: 'spear',
@@ -112,6 +112,8 @@ export interface DisciplineEntry {
   /** One line on how the discipline wants to be played. */
   tip: string;
 }
+
+export const CLASS_CHANGE_COUNSEL = 'Change class whenever you like through Settings → Change class. Your level, gold, items and permanent progress stay with the same character; the new discipline begins in the Chapterhouse.';
 
 export const CODEX_DISCIPLINES: Record<DisciplineId, DisciplineEntry> = {
   ossuary: {

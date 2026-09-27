@@ -90,6 +90,15 @@ describe('shipped hero animations', () => {
       hero.playOnce('hurt', 1.6); sample(t.clips.get('hurt')!.duration / 1.6 + 0.3);
       expect(gestureDistance).toBeGreaterThan(0.1);
       // Death retains its authored collapse rather than staying upright.
+      hero.playOnce('cast', 1, 0.22);
+      sample(0.25);
+      expect(state.oneShot).toBeNull();
+      hero.playOnce('dig', 1, 0.34);
+      hero.setLoop('run');
+      hero.releaseGesture();
+      expect(state.oneShot).toBeNull();
+      expect(state.current.getClip().name).toBe('run');
+      sample(0.2);
       hero.playOnce('death'); hero.update(0.3);
       expect(hip.getWorldPosition(new THREE.Vector3()).distanceTo(anchor)).toBeGreaterThan(0.01);
       hero.dispose();

@@ -169,7 +169,7 @@ export class Creature {
   }
 
   /** One-shot overlay (attack/cast/hurt/death/dig); returns to the loop after. */
-  playOnce(anim: CreatureAnim, speed = 1): boolean {
+  playOnce(anim: CreatureAnim, speed = 1, durationSeconds?: number): boolean {
     const a = this.resolve(anim);
     if (!a) return false;
     // Don't let a hurt flinch cancel an attack or a death.
@@ -177,7 +177,7 @@ export class Creature {
     if (this.oneShot?.getClip().name === 'death') return true;
     a.setLoop(THREE.LoopOnce, 1);
     a.clampWhenFinished = true;
-    a.timeScale = speed;
+    a.timeScale = durationSeconds ? a.getClip().duration / Math.max(0.12, durationSeconds) : speed;
     a.enabled = true;
     const repeating = this.current === a;
     a.reset().setEffectiveWeight(1);
@@ -190,6 +190,13 @@ export class Creature {
     this.oneShot = a;
     this.current = a;
     return true;
+  }
+
+  /** Let locomotion blend out a hero gesture as soon as walking resumes. */
+  releaseGesture() {
+    if (!this.opts.inPlace || !this.oneShot || ['death', 'hurt'].includes(this.oneShot.getClip().name)) return;
+    this.oneShot = null;
+    this.startLoop(true);
   }
 
   /** Jump a clip to its last frame (corpses of late joiners, etc.). */

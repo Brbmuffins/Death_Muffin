@@ -260,8 +260,8 @@ async function normalizeCharacterProgress(char) {
 function formatCharacter(char, gear, gmFields = {}) {
   return {
     id:              char.id,
-    class_index:     char.class_index,
-    class_name:      char.class_name,
+    class_index:     char.discipline_index ?? char.class_index,
+    class_name:      char.discipline_index == null ? char.class_name : CLASS_NAMES[char.discipline_index],
     level:           char.level,
     experience:      char.experience,
     xpToNext:        characterXpToNext(char.level),
@@ -1753,5 +1753,6 @@ mountNecroProgress(app, {
     return rows.length === 1;
   },
 });
-require('./leaderboard.cjs')(app, pool);
+const invalidateLeaderboard = require('./leaderboard.cjs')(app, pool);
+require('./discipline.cjs')(app, pool, { verifyJWT, formatCharacter, getGearLoadout, invalidateLeaderboard });
 app.listen(PORT, '127.0.0.1', () => console.log(`Death Muffin account service listening on ${PORT}`));

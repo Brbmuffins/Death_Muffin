@@ -20,6 +20,14 @@ alone or with up to three friends.
 
 ---
 
+## Death Muffin VPS
+
+Play at https://muffindevelopment.com/death-muffin/. See [the VPS handoff](docs/DEATH-MUFFIN-HANDOFF.md) before editing or deploying.
+
+Auto combat is enabled by default: stand near enemies to use basic rites, click to move, and press **G** to toggle it. Hold **1–4** to repeat a spell at the cursor; signature rites remain manual. Casts have short recovery, quicker gestures and calmer effects, with projectile damage arriving at the visual impact.
+
+Use **Settings → Change class** whenever you want. Your character ID, level, gold, items and permanent progress are preserved; the selected class starts safely in the Chapterhouse. [Future bots](docs/death-muffin-roadmap.md) are a documented follow-up.
+
 ## Contents
 [The loop](#the-loop) · [Disciplines](#the-four-disciplines) · [Rites (spells)](#rites--the-necromancers-kit) ·
 [Corpses](#corpses-are-the-economy) · [The dead (enemies)](#the-dead) · [The Diocese (areas)](#the-diocese) ·
@@ -318,13 +326,14 @@ read. Turn them off (or **Show tips again**) in Settings (**Esc**). **K** opens 
 |---|---|
 | Left click | Move · attack the enemy under the cursor · use an object |
 | Shift + click | Cast Bone Needle without moving |
-| **1 2 3 4** | Marrow Spear · Exhume · Miasma Circle · Black Litany (aimed at the cursor) |
+| **1 2 3 4** (hold to repeat) | Marrow Spear · Exhume · Miasma Circle · Black Litany (aimed at the cursor) |
 | Right-click · **5** | Corpse Explosion on the corpse nearest the cursor (works while holding left-click to move) |
 | **R** · **6** | Your discipline's signature rite (unlocks at level 10) |
 | **Q** | Drink a healing flask |
 | **T** | Return to the Chapterhouse |
 | **I / C / P / M / K** | Reliquary · Workbench · Rites · Waystones · Codex (lore + everything you've met) |
-| **Esc** | Settings (difficulty, graphics, volume, reduced motion, damage numbers, tips) |
+| **G** | Toggle auto combat (enabled by default; fights while standing) |
+| **Esc** | Settings (Change class, difficulty, graphics, volume, reduced motion, damage numbers, tips) |
 | Click the Altar | Altar of Ascension (in the Chapterhouse) |
 | Wheel · WASD · Enter | Zoom · walk (fallback) · chat |
 

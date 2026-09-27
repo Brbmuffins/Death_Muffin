@@ -2,6 +2,8 @@
 
 Living status document so any agent (or person) can pick the project up at any
 point. **Update the "Current state" and "In flight" sections whenever you stop.**
+> **VPS update, 2026-09-27:** Death Muffin now runs at https://muffindevelopment.com/death-muffin/. Read [docs/DEATH-MUFFIN-HANDOFF.md](docs/DEATH-MUFFIN-HANDOFF.md) for current deployment, class switching, combat flow, Git access and verification; older cloud-only status below is historical.
+
 Last updated: 2026-09-26 (cloud session: environment, balance + Prelate pass, difficulty, milestones, statuses, thrall variety, signature rites, onboarding, perf, Ascension, VPS storage handoff).
 
 ## 60-second orientation

@@ -224,6 +224,15 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     return acc.character;
   }
 
+  if (p === '/character/discipline' && method === 'POST') {
+    const index = body.class_index;
+    if (!Number.isInteger(index) || index < 1 || index > 4) throw new MockError('Choose one of the four classes.', 400);
+    ownCharacter(acc, body.characterId);
+    acc.character!.class_index = index;
+    acc.character!.class_name = CLASS_NAMES[index];
+    return acc.character;
+  }
+
   if (p === '/character' && method === 'POST') {
     if (acc.character) return acc.character;
     const idx = Number(body.class_index);
