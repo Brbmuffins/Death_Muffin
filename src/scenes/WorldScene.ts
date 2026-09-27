@@ -134,8 +134,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private surgeFx: Handle | null = null;
 
   private keys = new Set<string>();
-  private nextSteerAt = 0;
-  private mouse = { x: 0, y: 0, down: false, shift: false };
+  private mouse = { x: 0, y: 0, shift: false };
   private groundPoint = new THREE.Vector3();
   private hover: Hover = null;
   private attackTarget: { kind: 'enemy'; id: number } | { kind: 'boss' } | null = null;
@@ -464,7 +463,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private bindInput() {
     this.mouse.x = window.innerWidth / 2;
     this.mouse.y = window.innerHeight / 2;
-    this.scope.on(window, 'blur', () => { this.keys.clear(); this.mouse.down = false; });
+    this.scope.on(window, 'blur', () => { this.keys.clear(); this.mouse.shift = false; this.player.stop(); });
     this.scope.on<KeyboardEvent>(window, 'keydown', (e) => {
       if (document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement) return;
       const k = e.key.toLowerCase();
@@ -496,9 +495,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.mouse.y = e.clientY;
       this.mouse.shift = e.shiftKey;
     });
-    // Right-click: Corpse Explosion on the corpse nearest the cursor. Bound on
-    // mousedown (not pointerdown) so it still fires while the left button is
-    // held to steer — chorded presses don't produce a second pointerdown.
+    // Right-click casts at the mouse; left-click movement stays independent.
     this.scope.on<MouseEvent>(this.canvas, 'mousedown', (e) => {
       if (e.button !== 2) return;
       e.preventDefault();
@@ -509,19 +506,11 @@ export class WorldScene implements GameScene, RuntimeView {
     this.scope.on<PointerEvent>(this.canvas, 'pointerdown', (e) => {
       if (e.button !== 0) return;
       e.preventDefault();
-      this.canvas.setPointerCapture(e.pointerId);
-      this.nextSteerAt = this.now + 100;
-      this.mouse.down = true;
       this.mouse.x = e.clientX;
       this.mouse.y = e.clientY;
       this.mouse.shift = e.shiftKey;
       this.onPrimaryClick();
     });
-    // Only the left button steers; releasing a chorded right-click must not stop it.
-    this.scope.on<MouseEvent>(window, 'mouseup', (e) => {
-      if (e.button === 0) this.mouse.down = false;
-    });
-    this.scope.on<PointerEvent>(window, 'pointercancel', () => (this.mouse.down = false));
     this.scope.on<WheelEvent>(this.canvas, 'wheel', (e) => this.rig.onWheel(e), { passive: true });
     this.scope.on<MouseEvent>(window, 'contextmenu', (e) => {
       if (!(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) e.preventDefault();
@@ -1455,11 +1444,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
     this.updateCursor();
 
-    // Hold-to-steer: dragging the mouse keeps re-targeting the ground.
-    if (this.mouse.down && p.alive && !this.attackTarget && !this.mouse.shift && !this.pendingInteract && now >= this.nextSteerAt) {
-      this.nextSteerAt = now + 100;
-      p.moveTo(this.groundPoint.x, this.groundPoint.z);
-    }
+    // The mouse only aims here. Movement destinations are set by deliberate clicks.
 
     // Auto-attack: chase into range, then Bone Needle.
     if (this.attackTarget && p.alive) {
