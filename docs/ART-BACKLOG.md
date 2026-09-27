@@ -108,6 +108,7 @@ New tintable sprites for the rites: `public/art/fx/{crescent,seed-bud,wisp,rally
 | Tools (4) + thrall gear (2) + wraith thrall + 5 more props + 8 profession props | 20 × 50 = 1,000 |
 | Lich Acolyte (125), 3 bosses (3 × 145), 5 future class heroes (5 × 165) | 1,385 |
 | Barrow Ghoul (evening; idle, walk, run, slash, dig, hurt, fall) | 145 |
-| **Total 2026-09-27** | **3,675** (balance 5,155 → 1,480) |
+| Boss props: kings_grave, abbess_reliquary, skull_niche, drowned_font, church_pew (5 × 50) | 250 |
+| **Total 2026-09-27** | **3,925** (balance 5,155 → 1,230) |
 
 Gemini (2D) runs are cheap and not itemised. Every output is recorded in `art-manifest/images.json`.

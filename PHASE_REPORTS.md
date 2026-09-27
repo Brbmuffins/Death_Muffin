@@ -559,3 +559,29 @@ Built from `docs/PROFESSIONS-ROADMAP.md` in one cloud session (branch `claude/ad
 - Tools: `tools/art-backlog.mjs` (unreferenced-art scan that follows imports and the by-name item-icon rule);
   `tools/tint-variants.mjs` now targets `prop_node_*`.
 - Checks: typecheck, 189 client tests, 28 server tests, both rules bundles current, production build.
+
+## Readability pass + boss/mob art + briefs (2026-09-27 evening, workstation) ✅ in-browser QA
+- **UI readability** (owner: "fonts, text boxes, readability, slight adjustments"):
+  - `tokens.css`: muted text 66% → 80%, faint 42% → 60%, and a new `--cw-shadow-legible` token.
+  - New `src/ui/readability.css`, linked after `ui.css` in `index.html` so it never collides with the cloud agent's
+    `ui.css` edits. The display serif is now titles-only: tabs, field labels, Grimoire sockets and Codex `dt` use the
+    body sans.
+  - Panel reading text is 15px/1.5. Every piece of text over the 3D world carries the legible shadow.
+  - One `kbd` key-cap style everywhere; some had fallen back to monospace.
+  - Disabled buy buttons are readable (0.62), the chat backing is heavier, and a 1px overflow that put a stray scrollbar
+    on the spell card is clipped.
+  - Checked in the browser at 1440×900: the Codex tabs now fit one row, and the party epithet stays on one line (the
+    12px bump was reverted there). The production build bundles the sheet.
+- **Art** (records in `art-manifest/`; Tripo ledger in `docs/ART-BACKLOG.md` §6):
+  - Barrow Ghoul: 7 clips, 145 credits.
+  - Boss props: King's Grave, Abbess's Reliquary, skull niche, Drowned Font, church pew (250 credits).
+  - Sprites: `grave-outline`, `tide-crest`, `drowned-hand`, plus the five rite sprites from earlier.
+  - 45 more Binbun conversions (67 in total).
+- **Briefs for the cloud agent:**
+  - `spell-variety-first-session`: dev access, Grimoire, 7 rites, BinbunFX runtime, interactables, First Rites.
+    Dev access, the Grimoire and the 7 rites have since landed on `claude/adoring-knuth-hd1uox`.
+  - `mobs-barrow-ghoul-lich-acolyte`.
+  - `area-bosses`.
+  - `build-depth-aspects-runes`.
+- The merge of `master` (`acfdd36`) with the cloud branch (`502f726`) was previewed with no conflicts and tested in a
+  scratch worktree: typecheck, 220 client, 33 server and 3 VFX tests all green.

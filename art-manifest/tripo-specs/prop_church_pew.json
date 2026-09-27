@@ -1,0 +1,9 @@
+{
+  "id": "prop_church_pew",
+  "input": "art-src/concepts/props/church_pew.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2400,
+    "texture_quality": "standard"
+  }
+}

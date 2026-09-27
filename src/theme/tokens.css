@@ -35,8 +35,11 @@
   --cw-border-strong: color-mix(in srgb, var(--cw-bone-300) 38%, transparent);
   --cw-border-active: color-mix(in srgb, var(--cw-spell-400) 78%, var(--cw-bone-300));
   --cw-text: var(--cw-bone-100);
-  --cw-text-muted: color-mix(in srgb, var(--cw-bone-300) 66%, transparent);
-  --cw-text-faint: color-mix(in srgb, var(--cw-bone-300) 42%, transparent);
+  /* Readability pass 2026-09-27: were 66% / 42%, too dim on dark stone and over the 3D world. */
+  --cw-text-muted: color-mix(in srgb, var(--cw-bone-300) 80%, transparent);
+  --cw-text-faint: color-mix(in srgb, var(--cw-bone-300) 60%, transparent);
+  /* One shadow for any text drawn straight over the world (no panel behind it). */
+  --cw-shadow-legible: 0 1px 2px rgba(0, 0, 0, 0.95), 0 0 6px rgba(0, 0, 0, 0.8);
   --cw-accent: var(--cw-spell-400);
   --cw-accent-soft: color-mix(in srgb, var(--cw-spell-400) 16%, transparent);
   --cw-danger: #c77b8f;

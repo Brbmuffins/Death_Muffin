@@ -88,6 +88,20 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 
 ## In flight (check before starting overlapping work)
 
+- **Queue for the cloud agent (2026-09-27 evening), in order:**
+  1. finish [`spell-variety-first-session.md`](docs/agent-briefs/spell-variety-first-session.md) (dev access, Grimoire
+     and 7 rites are on `claude/adoring-knuth-hd1uox` as `55a6dd2`/`7c3afae`/`502f726`; the VFX runtime, interactables
+     and First Rites remain);
+  2. [`mobs-barrow-ghoul-lich-acolyte.md`](docs/agent-briefs/mobs-barrow-ghoul-lich-acolyte.md);
+  3. [`area-bosses.md`](docs/agent-briefs/area-bosses.md);
+  4. [`build-depth-aspects-runes.md`](docs/agent-briefs/build-depth-aspects-runes.md). Its runes need Death Muffin
+     migration 003 plus a deploy.
+
+  All their art is staged on `master`. `master` and the cloud branch merge cleanly; the merge was tested green in a
+  scratch worktree.
+- **UI readability pass (workstation, staged on `master`):** `src/theme/tokens.css` and a new `src/ui/readability.css`
+  (linked in `index.html` after `ui.css`). Future UI tweaks go in `readability.css` (or `ui.css`), and `readability.css`
+  wins on equal specificity. See PHASE_REPORTS.
 - **Two new mobs (brief ready 2026-09-27 evening):**
   [`docs/agent-briefs/mobs-barrow-ghoul-lich-acolyte.md`](docs/agent-briefs/mobs-barrow-ghoul-lich-acolyte.md).
   - **Barrow Ghoul:** a new Tripo model (145 credits), `public/models/barrow_ghoul/`. It burrows, erupts in a
