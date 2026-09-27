@@ -79,7 +79,13 @@ records                   art-manifest/images.json, art-manifest/tripo/<id>.json
   512) → quantize → prune. glTF extensions are registered (EXT_texture_webp,
   KHR_mesh_quantization) — never drop that or the files become invalid.
 - Output: characters `public/models/<id>/character.glb` + `clips.json`; props
-  `public/models/props/<id>.glb`.
+  `public/models/props/<id>.glb`, with the `prop_` prefix dropped (`prop_tombstone_round` →
+  `tombstone_round.glb`). **Gathering nodes keep it** (`prop_node_coffin_oak.glb`) because the professions
+  code loads `models/props/prop_node_<model>.glb`.
+- **Colour variants without new spend:** `node tools/tint-variants.mjs [base]` recolours the pixels of a
+  built prop's base-colour map that fall in a hue window (e.g. an ore seam's veins). It writes
+  `models/props/<base>_<variant>.glb` for each variant (jobs at the top of the tool). It is used for the
+  per-ore seams and the Hell/Moon geodes. Re-run it after rebuilding the base prop.
 - Legacy: `tools/build-models.mjs` is the old v1 FBX pipeline for the retired
   Unity-era heroes; kept for reference only.
 
@@ -115,6 +121,15 @@ records                   art-manifest/images.json, art-manifest/tripo/<id>.json
 | carrion_sac | enemy | death idle attack walk | 3.9k | |
 | prelate | boss | cast death hurt idle attack walk | 11.5k | |
 | props (16) | static | — | 0.8–3.6k | tombstones, mausoleum, pillar, arch, sarcophagus, statue, candles, bone pile, fence, dead tree, brazier, bell altar, reliquary, workbench, waystone |
+
+Added 2026-09-27 (Tripo, owner-approved): enemies `censer_bearer`, `skull_rat`, `bone_golem` (1024 px),
+static `models/props/choir_wraith.glb` (395 credits); **14 gathering-node props** `models/props/prop_node_*.glb`
+plus tinted ore variants (700 credits); hero `attack` (slash) clip ×5 (50). Roadmap batch (owner-approved):
+hand tools, thrall gear, wraith thrall, 13 more profession props, Lich Acolyte, three area bosses (1024 px) and
+five future class heroes. Icons (`icons-v4.json`, `future-2d.json`): signature rites, item icons for existing
+and roadmap ids, tool tiers, skills, runes, future spells, omens, portraits, and area moodboards. **Everything
+generated, with what is live and what is waiting for code, is tracked in `docs/ART-BACKLOG.md`**
+(`node tools/art-backlog.mjs` lists the unreferenced files).
 
 2D added 2026-09-27 (Gemini only): Grimoire rite icons `public/art/abilities/necro-{wailing-skull,grave-step,grave-frost,bone-mantle}.png`,
 VFX sprites `public/art/fx/{skull,bone-shard,blood-sigil,frost-fan,rime,bone-ring}.png`, status icons

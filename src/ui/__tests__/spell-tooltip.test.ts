@@ -54,6 +54,18 @@ describe('spell hover information', () => {
     expect(spellTooltip('exhume', undefined, { empowered: true }).metrics.find((m) => m.label === 'Essence')?.value).toBe(String(ABILITIES.exhume.essenceCost));
   });
 
+  it('Grimoire rites: loadout key, level lock and their own mechanics', () => {
+    // On the bar, the HUD passes the real key; off it, the card points at the Grimoire.
+    expect(spellTooltip('grave_frost', undefined, { key: '2' }).control).toContain('hold 2');
+    expect(spellTooltip('grave_frost').control).toContain('Grimoire (L)');
+    expect(spellTooltip('marrow_spear', undefined, { key: '4' }).control).toContain('hold 4');
+    expect(spellTooltip('bone_mantle', undefined, { locked: true }).status).toBe(`Locked — unlocks at level ${ABILITIES.bone_mantle.unlockLevel}.`);
+    expect(spellTooltip('wailing_skull').details.join(' ')).toContain('earns another leap');
+    expect(spellTooltip('grave_step').details.join(' ')).toContain('not consumed');
+    expect(spellTooltip('grave_frost').details.join(' ')).toContain('shatter');
+    expect(spellTooltip('bone_mantle').details.join(' ')).toContain('Barrier');
+  });
+
   it('separates the total cooldown from the live remaining time and locked/unaffordable state', () => {
     expect(metric('black_litany', 'Cooldown')).toBe(`${ABILITIES.black_litany.cooldownMs / 1000}s`);
     expect(spellTooltip('black_litany', undefined, { left: 2700 }).status).toBe('Ready in 3s.');

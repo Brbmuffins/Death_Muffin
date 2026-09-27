@@ -1,7 +1,22 @@
-import { ABILITIES, BONE_MANTLE, DETONATE, FRACTURE, GRAVE_FROST, GRAVE_STEP, MIASMA_SLOW, NEEDLE_ESSENCE, SIGNATURE, SIGNATURE_LEVEL, SOUL_HARVEST, WAILING_SKULL, type AbilityId } from '../content/abilities';
+import {
+  ABILITIES,
+  BONE_MANTLE,
+  DEFAULT_LOADOUT,
+  DETONATE,
+  FRACTURE,
+  GRAVE_FROST,
+  GRAVE_STEP,
+  MIASMA_SLOW,
+  NEEDLE_ESSENCE,
+  SIGNATURE,
+  SOUL_HARVEST,
+  WAILING_SKULL,
+  unlockLevel,
+  type AbilityId,
+} from '../content/abilities';
 import { CODEX_RITES } from '../content/codex';
 import { DISCIPLINES, type Discipline } from '../content/disciplines';
-import { HEMORRHAGE } from '../content/statuses';
+import { CHILL, HEMORRHAGE } from '../content/statuses';
 
 export interface SpellTooltipState {
   empowered?: boolean;
@@ -9,6 +24,8 @@ export interface SpellTooltipState {
   affordable?: boolean;
   /** Remaining cooldown in milliseconds; distinct from the base cooldown. */
   left?: number;
+  /** The key this Grimoire rite sits on in the player's loadout (1–4), when it is on the bar. */
+  key?: string;
 }
 
 export interface SpellTooltipData {
@@ -40,7 +57,8 @@ export function spellTooltip(id: AbilityId, discipline?: Discipline, state: Spel
   const m = discipline?.mods;
   const empowered = !!state.empowered && SOUL_HARVEST.spells.includes(id);
   const areaMult = empowered ? SOUL_HARVEST.areaMult : 1;
-  const locked = !!state.locked && a.slot === 6;
+  // Signature and Grimoire rites wait for their level; the starting kit never locks.
+  const locked = !!state.locked && unlockLevel(id) > 1;
   const metrics = [
     { label: 'Essence', value: empowered ? `Free (normally ${a.essenceCost})` : a.essenceCost ? number(a.essenceCost) : 'Free' },
     { label: 'Cooldown', value: `${number(a.cooldownMs / 1000)}s` },
@@ -49,7 +67,7 @@ export function spellTooltip(id: AbilityId, discipline?: Discipline, state: Spel
   let radius = a.radius;
   if (id === 'miasma') radius *= (m?.miasmaRadiusMult ?? 1) * areaMult;
   if (id === 'black_litany') radius *= areaMult;
-  if (['miasma', 'black_litany', 'corpse_explosion', 'dirge', 'plague_bloom', 'command_rend'].includes(id)) {
+  if (['miasma', 'black_litany', 'corpse_explosion', 'dirge', 'plague_bloom', 'command_rend', 'grave_step', 'bone_mantle'].includes(id)) {
     metrics.push({ label: 'Radius', value: `${number(radius)}m` });
   }
   const details: string[] = [];
@@ -87,16 +105,19 @@ export function spellTooltip(id: AbilityId, discipline?: Discipline, state: Spel
         `Toxic corpses leave a friendly rot pool for ${number(DETONATE.rotDurationMs / 1000)}s. A burst body cannot also become a thrall.`);
       break;
     case 'wailing_skull':
-      details.push(`Leaps up to ${WAILING_SKULL.hops - 1} times within ${number(WAILING_SKULL.leapRange)}m, each leap ${percent(1 - WAILING_SKULL.falloff)} weaker. A killing leap earns another, up to ${WAILING_SKULL.maxHops} in all.`);
+      details.push(`Leaps to ${WAILING_SKULL.hops - 1} more enemies within ${WAILING_SKULL.leapRange}m, each bite ${percent(1 - WAILING_SKULL.falloff)} weaker. A bite that kills earns another leap, up to ${WAILING_SKULL.maxHops} in all.`);
       break;
     case 'grave_step':
-      details.push(`Teleports to a corpse and bursts for ${number(GRAVE_STEP.burstRadius)}m. Enemies hit suffer Hemorrhage for ${HEMORRHAGE.durationS}s. The corpse is not consumed.`);
+      details.push(`Blinks you onto a corpse up to ${number(a.range)}m away in the area you stand in; it never crosses a sealed door. The corpse is not consumed.`,
+        `Re-forming bursts within ${GRAVE_STEP.burstRadius}m and makes enemies bleed (Hemorrhage) for ${HEMORRHAGE.durationS}s.`);
       break;
     case 'grave_frost':
-      details.push(`A ${GRAVE_FROST.halfAngleDeg * 2}° cone. Chill lasts ${number(GRAVE_FROST.chillS)}s; enemies already Chilled shatter for ${number(GRAVE_FROST.shatterMult)}× damage.`);
+      details.push(`A ${GRAVE_FROST.halfAngleDeg * 2}° cone. Chills enemies for ${GRAVE_FROST.chillS}s: ${percent(1 - CHILL.moveMult)} slower movement and ${percent(1 - CHILL.attackRateMult)} slower attacks.`,
+        `Enemies already Chilled shatter for ${percent(GRAVE_FROST.shatterMult - 1)} more damage.`);
       break;
     case 'bone_mantle':
-      details.push(`Consumes up to ${BONE_MANTLE.maxCorpses} nearby corpses. Barrier: ${percent(BONE_MANTLE.barrierBase)} of max health + ${percent(BONE_MANTLE.barrierPerCorpse)} per corpse (cap ${percent(BONE_MANTLE.barrierCap)}) for ${BONE_MANTLE.durationS}s.`);
+      details.push(`Consumes up to ${BONE_MANTLE.maxCorpses} nearby corpses. Barrier: ${percent(BONE_MANTLE.barrierBase)} of your maximum health plus ${percent(BONE_MANTLE.barrierPerCorpse)} per corpse (at most ${percent(BONE_MANTLE.barrierCap)}), held for ${BONE_MANTLE.durationS}s before it fades.`,
+        `Shards hit enemies within ${BONE_MANTLE.orbitRadius}m every ${BONE_MANTLE.tickS}s.`);
       break;
     case 'ossuary_wall':
       details.push(`Creates a ${SIGNATURE.wall.length}m wall for ${SIGNATURE.wall.durationS}s. Blocks enemy movement and Penitent cones.`);
@@ -115,7 +136,17 @@ export function spellTooltip(id: AbilityId, discipline?: Discipline, state: Spel
   if (SOUL_HARVEST.spells.includes(id)) {
     details.push(empowered ? `Soul Harvest is ready: this cast is free and ${percent(SOUL_HARVEST.areaMult - 1)} larger. It spends the charged meter.` : 'A full Soul Harvest meter makes your next cast of this spell free and larger.');
   }
-  const control = a.slot === 0 ? 'Click an enemy, or Shift + click to cast in place.' : a.slot === 5 ? 'Right-click, press 5 or click this icon. Aim before casting.' : a.slot === 6 ? 'Press R or 6, or click this icon. Signature spells are manual.' : `Press or hold ${a.slot}; aim with the mouse. You can also click this icon.`;
-  const status = locked ? `Locked — unlocks at level ${SIGNATURE_LEVEL}.` : (state.left ?? 0) > 0 ? `Ready in ${Math.ceil(state.left! / 1000)}s.` : state.affordable === false && !empowered ? 'Not enough Grave Essence.' : empowered ? 'Soul Harvest ready.' : 'Ready to cast.';
+  // Keys 1–4 belong to the Grimoire loadout: the default four start on their usual keys.
+  const gKey = state.key ?? (DEFAULT_LOADOUT.includes(id) ? String(a.slot) : undefined);
+  const control = a.slot === 0
+    ? 'Click an enemy, or Shift + click to cast in place.'
+    : a.slot === 5
+      ? 'Right-click, press 5 or click this icon. Aim before casting.'
+      : a.slot === 6
+        ? 'Press R or 6, or click this icon. Signature spells are manual.'
+        : gKey
+          ? `Press or hold ${gKey}; aim with the mouse. You can also click this icon. Change its key in the Grimoire (L).`
+          : 'Place it on a key (1–4) in the Grimoire (L), then press or hold that key; aim with the mouse.';
+  const status = locked ? `Locked — unlocks at level ${unlockLevel(id)}.` : (state.left ?? 0) > 0 ? `Ready in ${Math.ceil(state.left! / 1000)}s.` : state.affordable === false && !empowered ? 'Not enough Grave Essence.' : empowered ? 'Soul Harvest ready.' : 'Ready to cast.';
   return { name: a.name, description: a.description, control, targeting: TARGETING[a.targeting], metrics, details, tip: CODEX_RITES[id].tip, status, empowered, locked };
 }

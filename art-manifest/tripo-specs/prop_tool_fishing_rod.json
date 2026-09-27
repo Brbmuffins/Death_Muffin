@@ -1,0 +1,9 @@
+{
+  "id": "prop_tool_fishing_rod",
+  "input": "art-src/concepts/props/tool_fishing_rod.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 1500,
+    "texture_quality": "standard"
+  }
+}

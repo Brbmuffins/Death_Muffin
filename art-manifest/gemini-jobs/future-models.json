@@ -1,0 +1,146 @@
+[
+  {
+    "id": "concept_tool_pickaxe",
+    "out": "art-src/concepts/props/tool_pickaxe.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands holding it. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a single mining pickaxe lying diagonally: a blackened iron double-ended pick head bound to a dark coffin-wood haft with iron bands and a small bone charm. Long thin tool, nothing else."
+  },
+  {
+    "id": "concept_tool_hatchet",
+    "out": "art-src/concepts/props/tool_hatchet.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands holding it. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a single woodcutting hatchet lying diagonally: a heavy crescent iron axe head with a notched edge on a short dark wooden haft wrapped in leather. Nothing else."
+  },
+  {
+    "id": "concept_tool_spade",
+    "out": "art-src/concepts/props/tool_spade.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands holding it. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a single gravedigger's spade lying diagonally: a worn iron blade with a skull stamped on it, a long dark wooden handle with a T-grip. Nothing else."
+  },
+  {
+    "id": "concept_tool_fishing_rod",
+    "out": "art-src/concepts/props/tool_fishing_rod.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands holding it. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a single long thin fishing rod lying diagonally: a crooked dark willow-wood pole with an iron reel, a bone hook hanging from a short line. Nothing else."
+  },
+  {
+    "id": "concept_gear_thrall_bow",
+    "out": "art-src/concepts/props/gear_thrall_bow.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands holding it. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a single longbow for a skeleton archer, lying diagonally: made of lashed-together pale bones with sinew string and small bronze bell charms. Nothing else."
+  },
+  {
+    "id": "concept_gear_bone_staff",
+    "out": "art-src/concepts/props/gear_bone_staff.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands holding it. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a single mage staff for a skeleton bone mage, upright: a tall staff of fused vertebrae topped with a small skull holding a faint amber glowing gem. Nothing else."
+  },
+  {
+    "id": "concept_wraith_thrall",
+    "out": "art-src/concepts/wraith_thrall.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design: a friendly bound spirit servant for a Mourner necromancer: a hooded translucent wraith in a torn cold-blue funeral shroud, a mourning veil over a faint skeletal face with calm blue eye lights, loose spectral chains trailing from its wrists, the lower body fading into mist instead of legs, hovering. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally at shoulder height, EMPTY hands (no weapons, no props, no magic), legs straight and slightly apart. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy painterly-realistic game art, readable silhouette."
+  },
+  {
+    "id": "concept_lich_acolyte",
+    "out": "art-src/concepts/lich_acolyte.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design: a new undead enemy, the Lich Acolyte: a gaunt mirror of a necromancer in ragged black and sickly-green robes, a cracked bone crown, a lantern-jawed skull face with green eye flames, a ribcage visible through torn cloth, chains of small skulls across the chest. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally at shoulder height, EMPTY hands (no weapons, no props, no magic), legs straight and slightly apart. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy painterly-realistic game art, readable silhouette."
+  },
+  {
+    "id": "concept_boss_gravedigger_king",
+    "out": "art-src/concepts/boss_gravedigger_king.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design: a huge undead boss, the Gravedigger King: a hulking corpse-king in a tattered gravedigger's coat and a rusted iron crown, a lantern hanging from his belt, earth and roots clinging to his body, enormous calloused hands, a grinning skull face under a wide-brimmed hat. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally at shoulder height, EMPTY hands (no weapons, no props, no magic), legs straight and slightly apart. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy painterly-realistic game art, readable silhouette."
+  },
+  {
+    "id": "concept_boss_bone_abbess",
+    "out": "art-src/concepts/boss_bone_abbess.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design: a tall undead boss, the Bone Abbess: a towering skeletal nun in a flowing tattered black habit and a white wimple, her ribcage and arms reinforced with bones pulled from ossuary walls, a halo of floating skulls behind her head, a long rosary of vertebrae. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally at shoulder height, EMPTY hands (no weapons, no props, no magic), legs straight and slightly apart. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy painterly-realistic game art, readable silhouette."
+  },
+  {
+    "id": "concept_boss_drowned_congregation",
+    "out": "art-src/concepts/boss_drowned_congregation.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design: a huge undead boss, the Drowned Congregation: a giant bloated figure formed from many drowned churchgoers fused together, waterlogged grey-blue skin, several faces pressed into its chest, dripping weeds and a sunken priest's stole, a cracked bishop's mitre on its head. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally at shoulder height, EMPTY hands (no weapons, no props, no magic), legs straight and slightly apart. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy painterly-realistic game art, readable silhouette."
+  },
+  {
+    "id": "concept_hero_grave_warden",
+    "out": "art-src/concepts/hero_grave_warden.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design: a playable hero, the Grave Warden: an iron-clad cemetery guard in a heavy riveted breastplate over a dark wool coat, a hooded iron helm, a lantern hook on the belt, chains and keys, sturdy boots. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally at shoulder height, EMPTY hands (no weapons, no props, no magic), legs straight and slightly apart. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy painterly-realistic game art, readable silhouette."
+  },
+  {
+    "id": "concept_hero_bell_monk",
+    "out": "art-src/concepts/hero_bell_monk.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design: a playable hero, the Bell Monk: a lean ex-penitent monk in bronze-trimmed dark robes, a shaved head with ritual scars, a small bronze bell tattoo on the brow, prayer beads, bound forearms, bare feet. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally at shoulder height, EMPTY hands (no weapons, no props, no magic), legs straight and slightly apart. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy painterly-realistic game art, readable silhouette."
+  },
+  {
+    "id": "concept_hero_carrion_witch",
+    "out": "art-src/concepts/hero_carrion_witch.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design: a playable hero, the Carrion Witch: a ritual butcher witch in a bloodstained leather apron over black feathered robes, a crow-skull headdress, hooks and small cages hanging from her belt, crow feathers on the shoulders. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally at shoulder height, EMPTY hands (no weapons, no props, no magic), legs straight and slightly apart. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy painterly-realistic game art, readable silhouette."
+  },
+  {
+    "id": "concept_hero_hollow_knight",
+    "out": "art-src/concepts/hero_hollow_knight.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design: a playable hero, the Hollow Knight: an undead knight in battered dark plate armour with violet Covenant heraldry, an empty great-helm with faint violet light inside the visor, a torn tabard, a ragged cloak. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally at shoulder height, EMPTY hands (no weapons, no props, no magic), legs straight and slightly apart. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy painterly-realistic game art, readable silhouette."
+  },
+  {
+    "id": "concept_hero_veilwalker",
+    "out": "art-src/concepts/hero_veilwalker.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design: a playable hero, the Veilwalker: a spirit-medium in layered grey and pale-teal veils, half of the body faintly translucent as if stepping between worlds, a blindfold embroidered with eyes, silver jewellery and charms. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally at shoulder height, EMPTY hands (no weapons, no props, no magic), legs straight and slightly apart. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no glow, no text, no other characters. Dark fantasy painterly-realistic game art, readable silhouette."
+  }
+]

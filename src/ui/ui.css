@@ -331,8 +331,6 @@ button { font-family: inherit; }
 .hud-slot.alt button { border-color: color-mix(in srgb, var(--marrow) 55%, transparent); }
 .hud-slot.alt button:hover { border-color: var(--marrow); box-shadow: inset 0 0 0 2px #07060a, 0 0 18px color-mix(in srgb, var(--marrow) 45%, transparent); }
 /* Placeholder icon (litany art) re-tinted from violet to ember until dedicated art exists. */
-.hud-slot.alt button img { filter: hue-rotate(125deg) saturate(1.25) brightness(1.05); }
-.hud-slot.alt button.nores img { filter: hue-rotate(125deg) saturate(0.3) brightness(0.55); }
 .hud-slot.alt .cost { color: #f0b08a; }
 .hud-slot.alt .key { font-size: 10px; letter-spacing: 0.06em; color: #f0b08a; border-color: color-mix(in srgb, var(--marrow) 45%, transparent); }
 /* Soul Harvest charged: spells it empowers glow jade. */

@@ -1,0 +1,13 @@
+{
+  "clips": [
+    "cast",
+    "dig",
+    "death",
+    "hurt",
+    "idle",
+    "run",
+    "attack",
+    "walk"
+  ],
+  "tris": 11757
+}

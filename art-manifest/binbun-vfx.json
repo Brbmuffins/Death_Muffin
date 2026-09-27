@@ -1,0 +1,234 @@
+{
+  "_doc": "Third-party Godot 4 VFX/shader packs by Binbun, vendored raw (gitignored) for the Three.js port. Plan and format notes: docs/BINBUN-VFX-PORT.md.",
+  "vendor": "Binbun (BinbunVFX Godot packs)",
+  "licence": {
+    "status": "confirmed by owner",
+    "date": "2026-09-27",
+    "note": "Owner confirmed the packs are licensed for use in this non-profit game. No licence file ships inside the zips."
+  },
+  "downloadedFrom": "F:\\ (62 zips dated 2026-06-18; originals left in place)",
+  "packs": [
+    {
+      "pack": "FireVFX",
+      "original": "F:\\FireVFX.zip",
+      "copiedTo": "art-src/vendor/binbun/zips/FireVFX.zip",
+      "extractedTo": "art-src/vendor/binbun/FireVFX/",
+      "bytes": 78361,
+      "md5": "6025d2132020addada7e5259542069fc"
+    },
+    {
+      "pack": "BeamVFX",
+      "original": "F:\\GodotBeamVFX (1).zip",
+      "copiedTo": "art-src/vendor/binbun/zips/BeamVFX.zip",
+      "extractedTo": "art-src/vendor/binbun/BeamVFX/",
+      "bytes": 63755,
+      "md5": "82aca3191c1291dfbd7254a0a665e35e"
+    },
+    {
+      "pack": "IceVFX",
+      "original": "F:\\GodotIceVFX.zip",
+      "copiedTo": "art-src/vendor/binbun/zips/IceVFX.zip",
+      "extractedTo": "art-src/vendor/binbun/IceVFX/",
+      "bytes": 143239,
+      "md5": "57855f9888a4aed637912228563c1f8c"
+    },
+    {
+      "pack": "LootVFX",
+      "original": "F:\\GodotLootVFXExtra.zip",
+      "copiedTo": "art-src/vendor/binbun/zips/LootVFX.zip",
+      "extractedTo": "art-src/vendor/binbun/LootVFX/",
+      "bytes": 65581,
+      "md5": "43d772f2f06bde6a0df1dfea66657185"
+    },
+    {
+      "pack": "MagicOrbsVFX",
+      "original": "F:\\GodotMagicOrbsVFX.zip",
+      "copiedTo": "art-src/vendor/binbun/zips/MagicOrbsVFX.zip",
+      "extractedTo": "art-src/vendor/binbun/MagicOrbsVFX/",
+      "bytes": 2514438,
+      "md5": "774bfcd78c82df79ed7c0f25c747bb12"
+    },
+    {
+      "pack": "ImpactVFX",
+      "original": "F:\\ImpactVFX.zip",
+      "copiedTo": "art-src/vendor/binbun/zips/ImpactVFX.zip",
+      "extractedTo": "art-src/vendor/binbun/ImpactVFX/",
+      "bytes": 1463648,
+      "md5": "eb82f9d6ceceaf1bf00ee18e63495a31"
+    },
+    {
+      "pack": "MagicAreaVFX",
+      "original": "F:\\MagicAreaVFX.zip",
+      "copiedTo": "art-src/vendor/binbun/zips/MagicAreaVFX.zip",
+      "extractedTo": "art-src/vendor/binbun/MagicAreaVFX/",
+      "bytes": 1712501,
+      "md5": "a504226c50dc8907f17e95845f709df5"
+    },
+    {
+      "pack": "MagicProjectilesVFX",
+      "original": "F:\\GreenExtra.zip",
+      "copiedTo": "art-src/vendor/binbun/zips/MagicProjectilesVFX.zip",
+      "extractedTo": "art-src/vendor/binbun/MagicProjectilesVFX/",
+      "bytes": 123025,
+      "md5": "6f5d42d84b3ca8e6ea560f4d298e9e83"
+    },
+    {
+      "pack": "MuzzleFlashVFX",
+      "original": "F:\\MuzzleFlashVFX.zip",
+      "copiedTo": "art-src/vendor/binbun/zips/MuzzleFlashVFX.zip",
+      "extractedTo": "art-src/vendor/binbun/MuzzleFlashVFX/",
+      "bytes": 1875967,
+      "md5": "9e8ac2fda85cc1f285d9ec39bdfc8393"
+    },
+    {
+      "pack": "PoisonVFX",
+      "original": "F:\\PoisonVFX.zip",
+      "copiedTo": "art-src/vendor/binbun/zips/PoisonVFX.zip",
+      "extractedTo": "art-src/vendor/binbun/PoisonVFX/",
+      "bytes": 181370,
+      "md5": "8ecfc7f3855ff03b9dce8315b9e7e570"
+    },
+    {
+      "pack": "PortalVFX",
+      "original": "F:\\PortalVFXFull.zip",
+      "copiedTo": "art-src/vendor/binbun/zips/PortalVFX.zip",
+      "extractedTo": "art-src/vendor/binbun/PortalVFX/",
+      "bytes": 388682,
+      "md5": "caf06d685249f8136a4c38f950978ff9"
+    },
+    {
+      "pack": "SmokeVFX",
+      "original": "F:\\SmokeVFX.zip",
+      "copiedTo": "art-src/vendor/binbun/zips/SmokeVFX.zip",
+      "extractedTo": "art-src/vendor/binbun/SmokeVFX/",
+      "bytes": 116466,
+      "md5": "9e93d380686848bad215fb59f17ae6b9"
+    },
+    {
+      "pack": "SupporterExtraTextures",
+      "original": "F:\\SupporterExtraTextures.zip",
+      "copiedTo": "art-src/vendor/binbun/zips/SupporterExtraTextures.zip",
+      "extractedTo": "art-src/vendor/binbun/SupporterExtraTextures/",
+      "bytes": 545536,
+      "md5": "a51832b70182b0e43a200ad1b3470528"
+    },
+    {
+      "pack": "TransitionKit",
+      "original": "F:\\Full (2).zip",
+      "copiedTo": "art-src/vendor/binbun/zips/TransitionKit.zip",
+      "extractedTo": "art-src/vendor/binbun/TransitionKit/",
+      "bytes": 20065,
+      "md5": "200668b4be8fbec846d1ee1d3a85d0ef"
+    },
+    {
+      "pack": "UltimateToon",
+      "original": "F:\\UltimateToon.zip",
+      "copiedTo": "art-src/vendor/binbun/zips/UltimateToon.zip",
+      "extractedTo": "art-src/vendor/binbun/UltimateToon/",
+      "bytes": 3093202,
+      "md5": "f57f2eec0bc2b69671388ce911cc5d05"
+    },
+    {
+      "pack": "Skies",
+      "original": "F:\\SkiesFull.zip",
+      "copiedTo": "art-src/vendor/binbun/zips/Skies.zip",
+      "extractedTo": "art-src/vendor/binbun/Skies/",
+      "bytes": 42294,
+      "md5": "485e7ec0da1eee5e15699235de5ab87e"
+    },
+    {
+      "pack": "Water",
+      "original": "F:\\GodotWaterFull.zip",
+      "copiedTo": "art-src/vendor/binbun/zips/Water.zip",
+      "extractedTo": "art-src/vendor/binbun/Water/",
+      "bytes": 308553,
+      "md5": "16b595e7b0517818a56a4b88325e3994"
+    },
+    {
+      "pack": "Grass",
+      "original": "F:\\GodotGrassFull.zip",
+      "copiedTo": "art-src/vendor/binbun/zips/Grass.zip",
+      "extractedTo": "art-src/vendor/binbun/Grass/",
+      "bytes": 1733341,
+      "md5": "213114f5138f879abf5c1e8df5ba6d0e"
+    },
+    {
+      "pack": "GlassUI",
+      "original": "F:\\GodotGlassUI.zip",
+      "copiedTo": "art-src/vendor/binbun/zips/GlassUI.zip",
+      "extractedTo": "art-src/vendor/binbun/GlassUI/",
+      "bytes": 10678,
+      "md5": "d9e141e440819dc186206875156d8df0"
+    },
+    {
+      "pack": "CardFX",
+      "original": "F:\\GodotCardFXFull.zip",
+      "copiedTo": "art-src/vendor/binbun/zips/CardFX.zip",
+      "extractedTo": "art-src/vendor/binbun/CardFX/",
+      "bytes": 40082,
+      "md5": "41eb8d5f2a56d6298a56f85e9b382b16"
+    },
+    {
+      "pack": "HologramFX",
+      "original": "F:\\GodotHologramFXFull.zip",
+      "copiedTo": "art-src/vendor/binbun/zips/HologramFX.zip",
+      "extractedTo": "art-src/vendor/binbun/HologramFX/",
+      "bytes": 88046,
+      "md5": "f6a440c1694470ea650139892cea6dcb"
+    },
+    {
+      "pack": "TriplanarSource",
+      "original": "F:\\SourceCode (1).zip",
+      "copiedTo": "art-src/vendor/binbun/zips/TriplanarSource.zip",
+      "extractedTo": "art-src/vendor/binbun/TriplanarSource/",
+      "bytes": 2435,
+      "md5": "ff8aab6de27a63531a0c08409f64e643"
+    }
+  ],
+  "duplicatesSkipped": [
+    "FireVFX (1).zip",
+    "GodotBeamVFX.zip (older)",
+    "GodotBeamVFXFree.zip (subset)",
+    "GodotIceVFX (1).zip",
+    "GodotLootVFX.zip (subset)",
+    "GodotLootVFXExtra (1).zip",
+    "GodotMagicOrbsVFX (1).zip",
+    "ImpactVFX (1).zip",
+    "MagicAreaVFX (1).zip",
+    "MagicProjectilesVFX.zip (subset of GreenExtra)",
+    "GreenExtra (1).zip",
+    "MuzzleFlashVFX (1).zip (older)",
+    "PoisonVFX (1).zip",
+    "PortalVFX.zip (subset)",
+    "PortalVFXFull (1).zip",
+    "PortalVFXFull (2).zip",
+    "SmokeVFX (1).zip",
+    "Full (3).zip (older TransitionKit)",
+    "SourceCode.zip (= TransitionKit shader)",
+    "SourceCode (2).zip (= UltimateToon shader)",
+    "SourceCode (3).zip (= Grass source)",
+    "GodotCardFXFull (1).zip",
+    "GodotCardFXSource.zip (subset)",
+    "GodotHologramFXFull (1).zip",
+    "GodotHologramFXSource.zip (subset)",
+    "GodotGrassFull (1).zip",
+    "SkiesFull (1).zip",
+    "UltimateToon (1).zip"
+  ],
+  "notEffectsLeftOnF": [
+    "Binbun_FoodMegaPack_Source.zip",
+    "FoodMegaPack_Free.zip",
+    "FoodMegaPack_Pro.zip",
+    "Binbun_RpgWeapons_Source.zip",
+    "RPGWeapons_Free.zip",
+    "RPGWeapons_Pro.zip",
+    "Binbun_Treasure_Source.zip",
+    "Treasure_Free.zip",
+    "Treasure_Pro.zip",
+    "Stylized Nature MegaKit[Standard].zip",
+    "RetroUrban.zip",
+    "Full.zip (Retro PBR ground textures, 690 png)",
+    "Full (1).zip (Teak PBR wood textures, 300 png)"
+  ],
+  "converted": []
+}

@@ -115,8 +115,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     name: 'Corpse Explosion',
     description:
       'Right-click a corpse to burst it in a 3m blast of marrow and bone. Resonant corpses blast wider, toxic corpses leave a rot pool, elite corpses hit twice as hard.',
-    // Placeholder art until a dedicated icon exists (the HUD re-tints it ember).
-    icon: 'art/abilities/necro-litany.png',
+    icon: 'art/abilities/necro-corpse-explosion.png',
     targeting: 'corpse',
     cooldownMs: 600,
     essenceCost: 15,
@@ -185,15 +184,14 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     radius: 6,
     power: 0.3,
   },
-  // --- Signature rites: one per discipline, unlocked at SIGNATURE_LEVEL. Icons are retinted
-  // placeholders until dedicated art is generated (ASSET_PIPELINE.md).
+  // --- Signature rites: one per discipline, unlocked at SIGNATURE_LEVEL (icons: gemini-jobs/icons-v4.json).
   ossuary_wall: {
     id: 'ossuary_wall',
     slot: 6,
     unlockLevel: 10,
     name: 'Ossuary Wall',
     description: 'Raise a 7m wall of fused bone across the cursor line for 6s. The dead cannot pass it and Penitent cones break on it.',
-    icon: 'art/abilities/necro-spear.png',
+    icon: 'art/abilities/necro-ossuary-wall.png',
     targeting: 'direction',
     cooldownMs: 16000,
     essenceCost: 30,
@@ -207,7 +205,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     unlockLevel: 10,
     name: 'Command: Rend',
     description: 'Your whole legion leaps to the cursor and cleaves everything around it. Costs each thrall 15% of its health instead of essence.',
-    icon: 'art/abilities/necro-exhume.png',
+    icon: 'art/abilities/necro-command-rend.png',
     targeting: 'ground',
     cooldownMs: 9000,
     essenceCost: 0,
@@ -221,7 +219,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     unlockLevel: 10,
     name: 'Dirge',
     description: 'Toll a 4s funeral bell-song around you: you and your thralls mend each second, and enemy casters inside are Silenced.',
-    icon: 'art/abilities/necro-litany.png',
+    icon: 'art/abilities/necro-dirge.png',
     targeting: 'self',
     cooldownMs: 18000,
     essenceCost: 35,
@@ -235,7 +233,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     unlockLevel: 10,
     name: 'Plague Bloom',
     description: 'Plant a rot flower at the cursor. It pulses Withered and every 2s seeds a new bloom on the nearest corpse, chaining through the corpse field.',
-    icon: 'art/abilities/necro-miasma.png',
+    icon: 'art/abilities/necro-plague-bloom.png',
     targeting: 'ground',
     cooldownMs: 12000,
     essenceCost: 28,

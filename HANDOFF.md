@@ -4,9 +4,11 @@ Living status document so any agent (or person) can pick the project up at any
 point. **Update the "Current state" and "In flight" sections whenever you stop.**
 > **VPS update, 2026-09-27:** Death Muffin now runs at https://muffindevelopment.com/death-muffin/. Read [docs/DEATH-MUFFIN-HANDOFF.md](docs/DEATH-MUFFIN-HANDOFF.md) for current deployment, class switching, combat flow, Git access and verification; older cloud-only status below is historical.
 
-Last updated: 2026-09-27, cloud session on `claude/adoring-knuth-hd1uox`: **professions G0 + G1 + G2 + G4 built**
+Last updated: 2026-09-27, workstation (latest: BinbunVFX port researched + documented for Codex, see "In flight"): **everything combined on `master`** (the professions commit `fa43c9c`
+fast-forwarded, plus the workstation's Grimoire, enemy pack, art batches and merge fixes, staged for the owner's
+push). The full art inventory is in [`docs/ART-BACKLOG.md`](docs/ART-BACKLOG.md). Before that, the cloud session on `claude/adoring-knuth-hd1uox`: **professions G0 + G1 + G2 + G4 built**
 (gathering rules + `/api/gather`, the Sexton's Acre, nodes + loop + Auto, Skills panel, stations, tips, Codex, README).
-G3 art is the owner's, running on the workstation. Earlier the same day (Windows workstation session: **Grimoire + four new rites**, **enemy variety pack +
+G3 art has since landed from the workstation. Earlier the same day (Windows workstation session: **Grimoire + four new rites**, **enemy variety pack +
 processions**, **professions roadmap + agent briefs**; all staged, not committed. See the 2026-09-27
 entries in `PHASE_REPORTS.md`). Before that: 2026-09-26 cloud session (environment, balance + Prelate
 pass, difficulty, milestones, statuses, thrall variety, signature rites, onboarding, perf, Ascension,
@@ -86,12 +88,21 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 
 ## In flight (check before starting overlapping work)
 
+- **BinbunVFX → Three.js port (started 2026-09-27; research done, no code yet). Next agent (Codex) picks
+  this up.** The owner's Godot VFX packs (from `F:\`, licence confirmed for this non-profit game) are
+  vendored raw in `art-src/vendor/binbun/` (gitignored, workstation only). Read
+  [`docs/BINBUN-VFX-PORT.md`](docs/BINBUN-VFX-PORT.md) end to end. It covers the file format, the noise
+  and curve baking rules, the gdshader→GLSL mapping, the build steps (converter `tools/binbun-port.mjs` →
+  `public/fx/binbun/` → `src/graphics/binbun/BinbunFX.ts` owned by `Effects`) and the proposed spell/world
+  wiring. Source record: `art-manifest/binbun-vfx.json`. Rules: additive only (keep today's effects),
+  recolour from `SPELL_FX`, never add PointLights (use `Effects.lightFlash`), stage, don't commit.
+
 **Professions / gathering: G0, G1, G2 and G4 are built** on `claude/adoring-knuth-hd1uox` (one session, one branch,
-not the per-brief `cloud/professions-g*` branches). **G3 (node models + item icons) is in progress with the owner** on
-the workstation. Node stand-ins load `models/props/prop_node_<id>.glb` automatically once each GLB exists (HEAD-checked,
-so a missing file costs nothing), and the seam/geode vein colour stays a code-built emissive overlay. The Bone Kiln is
-already the `prop_node_bone_kiln` PropId, so its GLB drops straight in. New item ids have no `icon` yet: add
-`icon: 'art/items/<id>.png'` in `content/items.ts` as the icons land. Next are G5 (Grave Gardening: plots, seeds, tree
+not the per-brief `cloud/professions-g*` branches). **G3 art has landed** (workstation, 2026-09-27): the node GLBs are
+live as `models/props/prop_node_<model>.glb` (trees, stump, seams, geode, rubble, all four grave tiers, Bone Kiln), and
+the seam/geode vein colour stays a code-built emissive overlay. Item icons need no `icon` field, because inventory and
+loot load `art/items/<id>.png` by name. Art that exists but has no code yet (stations, garden stages, tools, tool-tier
+icons, herbs, planks, meals, skills) is listed in [`docs/ART-BACKLOG.md`](docs/ART-BACKLOG.md). **Wire it; don't make stand-ins.** Next are G5 (Grave Gardening: plots, seeds, tree
 patches; `seed_mourning_moss` already drops) and G6 (recipes for the new logs, fish, bones → bone meal, gems). Owner
 decisions assumed are listed in `server/death-muffin/GATHERING_DEPLOY.md`. Brief status: [`docs/agent-briefs/README.md`](docs/agent-briefs/README.md).
 
@@ -127,16 +138,32 @@ refuses while the index has staged changes.
    dodges. Report how intended/push feel, and see "Open issues" in `BALANCE.md`.
 
 **From the 2026-09-27 session (needs the user / a deploy):**
-- **Commit + push through GitHub Desktop.** Everything is staged. This workstation's shell can't reach GitHub
-  (no stored credentials; `git fetch` fails), so fetch and push from GitHub Desktop. The VPS has its own deploy key.
+- **Commit + push `master` through GitHub Desktop.** Everything is combined and staged on `master`: the professions
+  commit (fast-forward) plus all workstation work restored from GitHub Desktop's two branch-switch stashes. Safety refs
+  `backup/art-batch-stash` and `backup/art-late-stash` hold those stashes. Delete them (and the two stash entries)
+  once the push is confirmed. `cloud/*` and `worktree-agent-*` branches are older work already folded into master, and
+  `origin/CrossWorldsWEB` is the July-era README/audit branch, deliberately not merged. This shell can't reach GitHub
+  (no stored credentials), so fetch and push from GitHub Desktop. The VPS has its own deploy key.
 - **Deploy realtime with the client.** The realtime server gained `signature` sig `mantle` (Bone Mantle) and a
   sanitised `hit.chill` flag (`deploy-realtime.sh` is re-embedded). An older realtime server drops Bone
   Mantle for co-op **guests** (hosts and solo play are fine), and Grave Frost's chill passes through unsanitised.
 - `necro-rules.cjs` was regenerated (it embeds `areas.ts`, whose rosters changed). Re-install it if the
   necro-progress package is already on the VPS.
 - Ear-test the four new rite sounds (`wail`, `bloodStep`, `frost`, `mantle`) and the look of the new mobs in a visible browser.
-- Tripo spent this session: choir_wraith 50, skull_rat 85, censer_bearer 125, bone_golem (see
-  `art-manifest/tripo/*.json`). The node props for professions are specced but **not** run.
+- Tripo spent this session (owner-approved; ledger in `docs/ART-BACKLOG.md` §5): the enemy pack (395), 14 node props
+  (700), the hero `attack` clip ×5 (50), and the roadmap batch (tools, thrall gear, wraith thrall, 13 more profession
+  props, Lich Acolyte, three bosses, five class heroes). `NodeViews` gained `live` models for Blackthorn, Ghostwood,
+  crypt collapse and barrow tomb (data only). Node props keep the `prop_` prefix at build time (`tools/build-characters.mjs`).
+- **Workload split:** cloud agents build code; the workstation (the only machine with `.ai-keys.local`) does
+  Gemini/Tripo work and tracks it in `docs/ART-BACKLOG.md`. Signature-rite icons and the dedicated Corpse Explosion icon are wired (`abilities.ts`; the HUD's
+  hue-rotate hack was removed from `ui.css`).
+- **Merge fix (PR #4 spell cards × Grimoire):** the cards' listeners are now bound in `HUD.bindSlots()`,
+  so they survive the slot rebuild a Grimoire swap does (before this, cards stopped opening after any swap).
+  Native `title`s are gone (the cards replace them). `spellTooltip` covers the four new rites, shows the
+  rite's actual loadout key and locks by `unlockLevel`.
+- `docs/SPELL-VARIETY-PLAN.md` (VPS session, PR #4) was written before the Grimoire shipped. Its loadout
+  proposal (role-locked slots), Bone Mantle and Frost Wake overlap what now exists. Reconcile it with
+  `GRIMOIRE` before anyone builds from it.
 
 **From the professions build (needs the user / a deploy):**
 - **Deploy gathering to Death Muffin:** follow `server/death-muffin/GATHERING_DEPLOY.md` (backup, check the professions
@@ -201,4 +228,6 @@ refuses while the index has staged changes.
   (`ASSET_PIPELINE.md` §1). A rig-less Tripo model builds as a **prop** GLB (`models/props/<id>.glb`), so
   register a static creature (the Choir Wraith) with that URL in `modelPaths.ts`.
 - Another session may hold port 5188; `.claude/launch.json` has `crossworlds-web-alt` on 5198.
+- A long-running Vite dev server on this Windows drive can **serve stale modules** after edits (the watcher
+  misses changes). If behaviour doesn't match the source, `fetch('/src/…')` in the page to confirm, then restart the preview.
 

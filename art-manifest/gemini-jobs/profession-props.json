@@ -1,0 +1,74 @@
+[
+  {
+    "id": "concept_node_crypt_collapse",
+    "out": "art-src/concepts/props/node_crypt_collapse.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a collapsed crypt entrance: fallen stone slabs and a broken iron gate half-buried in earth, bones and a cracked coffin visible in the rubble. A mid-level gravedigging site."
+  },
+  {
+    "id": "concept_node_barrow_tomb",
+    "out": "art-src/concepts/props/node_barrow_tomb.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: an ancient barrow-king's tomb: a low grassy burial mound with a stone doorway of standing slabs, a carved crowned skull above the door, rusted iron grave goods at the threshold. A high-level gravedigging site."
+  },
+  {
+    "id": "concept_node_garden_sprouts",
+    "out": "art-src/concepts/props/node_garden_sprouts.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a rectangular raised garden bed of dark coffin planks filled with black soil and rows of small pale seedlings just sprouting. A farming plot with young plants."
+  },
+  {
+    "id": "concept_node_herb_patch",
+    "out": "art-src/concepts/props/node_herb_patch.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a rectangular raised garden bed of dark coffin planks overflowing with fully grown dark herbs: purple nightshade, grey mourning moss, pale lilies and red bloodroot leaves. A farming plot ready to harvest."
+  },
+  {
+    "id": "concept_node_sapling",
+    "out": "art-src/concepts/props/node_sapling.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a young thin graveyard tree sapling tied to a wooden stake with twine, a few dark leaves, growing from a small mound of black soil. A tree patch sapling."
+  },
+  {
+    "id": "concept_node_cook_cauldron",
+    "out": "art-src/concepts/props/node_cook_cauldron.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a cooking station: a black iron cauldron hanging from a tripod over a small fire of coffin wood, bones and fish heads on a stone slab beside it. A crafting station for cooking."
+  },
+  {
+    "id": "concept_node_grave_anvil",
+    "out": "art-src/concepts/props/node_grave_anvil.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a smithing station: a heavy black iron anvil on a stump carved with a skull, tongs and a hammer resting on it, a small quench bucket beside it. A crafting station for smithing."
+  },
+  {
+    "id": "concept_node_compost_heap",
+    "out": "art-src/concepts/props/node_compost_heap.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a compost heap in a low wooden crib: dark soil, ground bone meal, rotting leaves and a few small bones, a spade stuck in it. A gardening station for bone-meal compost."
+  }
+]

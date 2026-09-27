@@ -1,4 +1,4 @@
-import { ABILITIES, HOTBAR, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
+import { ABILITIES, HOTBAR, type AbilityId, type HotbarSlot } from '../content/abilities';
 import type { Discipline } from '../content/disciplines';
 import type { EliteAffix } from '../content/enemies';
 import { DAMAGE_UPGRADE, WAVE_MILESTONES, WAVE_UPGRADE, milestones } from '../content/upgrades';
@@ -227,15 +227,6 @@ export class HUD {
     this.el.querySelectorAll<HTMLButtonElement>('[data-dial]').forEach((b) =>
       b.addEventListener('click', () => this.cb.dialWave(Number(b.dataset.dial))),
     );
-    // Custom cards stay readable as long as the button/card is hovered or
-    // keyboard-focused. Opening a card never casts a spell.
-    this.hotbar.forEach((id, i) => {
-      const btn = this.$(`[data-slot="${i + 1}"]`);
-      btn.addEventListener('pointerenter', () => this.showTooltip(i));
-      btn.addEventListener('pointerleave', () => this.scheduleTooltipHide());
-      btn.addEventListener('focus', () => this.showTooltip(i));
-      btn.addEventListener('blur', () => this.scheduleTooltipHide());
-    });
     this.tooltip.addEventListener('pointerenter', () => window.clearTimeout(this.tooltipHideTimer));
     this.tooltip.addEventListener('pointerleave', () => this.scheduleTooltipHide());
     this.tooltip.addEventListener('focus', () => window.clearTimeout(this.tooltipHideTimer));
@@ -276,14 +267,19 @@ export class HUD {
   }
 
   /** Click-to-cast plus tooltips (name, cost, cooldown, description, unlock level). */
+  /**
+   * Click-to-cast plus the spell cards. The cards (spellTooltip) replace native titles and stay
+   * readable while the button or card is hovered or keyboard-focused; opening one never casts.
+   * Bound here, not once in the constructor, because a Grimoire swap rebuilds the buttons.
+   */
   private bindSlots() {
-    this.hotbar.forEach((id, i) => {
-      const a = ABILITIES[id];
+    this.hotbar.forEach((_id, i) => {
       const btn = this.$<HTMLButtonElement>(`[data-slot="${i + 1}"]`);
       btn.addEventListener('click', () => this.cb.cast((i + 1) as HotbarSlot));
-      const need = unlockLevel(id);
-      const kind = a.slot === 6 ? 'Signature rite' : i < 4 ? 'Grimoire rite (swap with L)' : '';
-      btn.title = `${a.name} — ${a.essenceCost ? `${a.essenceCost} essence · ` : ''}${(a.cooldownMs / 1000).toFixed(1)}s\n${a.description}${kind ? `\n${kind}${need > 1 ? ` — unlocks at level ${need}` : ''}.` : ''}`;
+      btn.addEventListener('pointerenter', () => this.showTooltip(i));
+      btn.addEventListener('pointerleave', () => this.scheduleTooltipHide());
+      btn.addEventListener('focus', () => this.showTooltip(i));
+      btn.addEventListener('blur', () => this.scheduleTooltipHide());
     });
   }
 
@@ -293,6 +289,7 @@ export class HUD {
     this.$('.hud-slots').innerHTML = this.slotsHtml();
     for (const key of [...this.cache.keys()]) if (/^(cd|cdt|res|emp|lock)\d+$/.test(key)) this.cache.delete(key);
     this.bindSlots();
+    this.refreshTooltip();
   }
 
   private set(key: string, value: string | number | boolean, apply: () => void) {
@@ -318,10 +315,11 @@ export class HUD {
     if (this.tooltipSlot === null || this.tooltip.hidden) return;
     const i = this.tooltipSlot;
     const state = this.slotFrames[i] ?? {};
-    const key = `${i}|${!!state.empowered}|${!!state.locked}|${state.affordable}|${Math.ceil((state.left ?? 0) / 1000)}`;
+    // The rite id is part of the key: a Grimoire swap puts a different rite in the same slot.
+    const key = `${i}|${this.hotbar[i]}|${!!state.empowered}|${!!state.locked}|${state.affordable}|${Math.ceil((state.left ?? 0) / 1000)}`;
     if (key === this.tooltipKey) return;
     this.tooltipKey = key;
-    const data = spellTooltip(this.hotbar[i], this.discipline, state);
+    const data = spellTooltip(this.hotbar[i], this.discipline, { ...state, key: i < 4 ? SLOT_KEYS[i] : undefined });
     const scroll = this.tooltip.scrollTop;
     this.tooltip.innerHTML = `
       <div class="spell-name">${esc(data.name)}</div>

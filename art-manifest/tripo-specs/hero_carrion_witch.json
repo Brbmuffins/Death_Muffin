@@ -1,0 +1,24 @@
+{
+  "id": "hero_carrion_witch",
+  "input": "art-src/concepts/hero_carrion_witch.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 12000,
+    "texture_quality": "detailed"
+  },
+  "rig": {
+    "model": "v1.0-20240301",
+    "rig_type": "biped"
+  },
+  "animations": [
+    "preset:biped:idle",
+    "preset:biped:walk",
+    "preset:biped:run",
+    "preset:biped:cast_a_spell",
+    "preset:biped:hurt",
+    "preset:biped:dig",
+    "preset:biped:fall",
+    "preset:biped:slash"
+  ],
+  "animationMode": "single"
+}

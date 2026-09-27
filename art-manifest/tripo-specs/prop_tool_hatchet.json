@@ -1,0 +1,9 @@
+{
+  "id": "prop_tool_hatchet",
+  "input": "art-src/concepts/props/tool_hatchet.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 1500,
+    "texture_quality": "standard"
+  }
+}

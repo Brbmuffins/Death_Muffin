@@ -18,7 +18,8 @@
       "preset:biped:cast_a_spell",
       "preset:biped:hurt",
       "preset:biped:dig",
-      "preset:biped:fall"
+      "preset:biped:fall",
+      "preset:biped:slash"
     ],
     "animationMode": "single"
   },
@@ -250,7 +251,25 @@
         "model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20260926/2999a815-f494-4f0a-9937-4b3b2cdfda72/tripo_retarget_2999a815-f494-4f0a-9937-4b3b2cdfda72.glb?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly90cmlwby1kYXRhLnJnMS5kYXRhLnRyaXBvM2QuY29tL3RjbGlfMzQ0MTZhZWQzNzAwNDIxZWExOTg1YmNmMjU2NzAyMjYvMjAyNjA5MjYvMjk5OWE4MTUtZjQ5NC00ZjBhLTk5MzctNGIzYjJjZGZkYTcyL3RyaXBvX3JldGFyZ2V0XzI5OTlhODE1LWY0OTQtNGYwYS05OTM3LTRiM2IyY2RmZGE3Mi5nbGIiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3OTA1MzM2Mjl9fX1dfQ__&Signature=fHRCgjYh47SX2SsvX6OjdZF-eoKrZxEWwyD-LsJqPQMz0OadQWwxIg1xmimMSsEttDUFiYJgRUQllaEvwoSLgGO3pch7Y4FPNPuHPoDnbW8Nhx3ipqF5~Wyp9JUjcg27ePqZAKzQryyJjBTxz2TgkuacXm-T4deUyWkxKQrYBafTdAkWg1cuICrpCRFbxCoXz5fPwbCNyqOkU0TH~HOaNZvlmmAFxXI3z4~s-fcHA4rCtrVvoiTRaUcr6aU82r7RRVJX4sPOpfnuudS20U0VBFy75zQ1M7qoBnASDm2budb6xaKjpeGC1gQkj0yWj5fvbYHgw6Tp6TmeAA-Gve5L0A__&Key-Pair-Id=K1676C64NMVM2J"
       },
       "fileHash": "sha256:7706658977a31ee76b006e77b9d6299883fca83f98e47e86167a814f330d2e4f"
+    },
+    "anim_slash": {
+      "taskId": "0eec0b7e-01bb-4699-b352-6064c6c1ba2a",
+      "status": "success",
+      "request": {
+        "input": "a6cee1c7-cc33-4ca7-8087-0452e0d4135f",
+        "out_format": "glb",
+        "bake_animation": true,
+        "export_with_geometry": true,
+        "animate_in_place": true,
+        "animation": "preset:biped:slash"
+      },
+      "createdAt": "2026-09-27T13:14:03.668Z",
+      "credits": 10,
+      "output": {
+        "model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_34416aed3700421ea1985bcf25670226/20260927/0eec0b7e-01bb-4699-b352-6064c6c1ba2a/tripo_retarget_0eec0b7e-01bb-4699-b352-6064c6c1ba2a.glb?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly90cmlwby1kYXRhLnJnMS5kYXRhLnRyaXBvM2QuY29tL3RjbGlfMzQ0MTZhZWQzNzAwNDIxZWExOTg1YmNmMjU2NzAyMjYvMjAyNjA5MjcvMGVlYzBiN2UtMDFiYi00Njk5LWIzNTItNjA2NGM2YzFiYTJhL3RyaXBvX3JldGFyZ2V0XzBlZWMwYjdlLTAxYmItNDY5OS1iMzUyLTYwNjRjNmMxYmEyYS5nbGIiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3OTA2MDEyNTJ9fX1dfQ__&Signature=sA3jdtwqFQXfwqURHQRqv1-d0vgU4dqCgMjl5WzxfSWDwCYcvBoomxtm~dLOyVEfFcizz-LkGf1SqzZqhE-DFjDAwNt-EGJySAd05p-NWUQIT~mDYFzliq1UrZagQWfG1JOn17TNAspycX5NrANDkx-rGRvOSVUEGszr0iXSk7lQx3C3JqNcIAESo8jZ-5kSEhkb8MJHF8~bqnsUcpAutt-ydilmznsV7hkHYZmNVEuouuzPkgqtBoWxcObkfpyCb2LJa~CIqDTRRKMkXlrBPqWZ0Bd9xRhwWr5slPsISWm6bUDNV0Qa8ePaPzuMivTERDK~MF3qbLNolsHzzdKRuA__&Key-Pair-Id=K1676C64NMVM2J"
+      },
+      "fileHash": "sha256:ab0a64adff32ceb402be500ffbc5e27315c0d9e0970e0d007b39bb0e433bcc65"
     }
   },
-  "totalCredits": 225
+  "totalCredits": 235
 }

@@ -1,0 +1,9 @@
+{
+  "id": "wraith_thrall",
+  "input": "art-src/concepts/wraith_thrall.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 4000,
+    "texture_quality": "standard"
+  }
+}

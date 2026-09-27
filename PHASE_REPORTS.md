@@ -539,3 +539,23 @@ Built from `docs/PROFESSIONS-ROADMAP.md` in one cloud session (branch `claude/ad
   reachable on foot from spawn (walker test). In the browser (offline mock) I chopped, mined, dug and fished; the server
   bag held `log_oak×3, ore_copper×2, bones_old×3, seed_mourning_moss×1, fish_river×3` and gold 4; the kiln listed
   recipes; the hover card and Skills panel rendered. No console errors.
+
+## Roadmap art batch + combine (2026-09-27, workstation) ✅ tests + in-browser QA
+- **Combined for one push:** `master` fast-forwarded to the professions commit `fa43c9c`. The workstation's work
+  (Grimoire, enemy pack, art, merge fixes) was restored from GitHub Desktop's two branch-switch stashes (backups:
+  `backup/art-batch-stash`, `backup/art-late-stash`). There were two conflicts: the briefs index (both statuses kept)
+  and `spellTooltip.ts` (the workstation version is a superset of the professions agent's fix). The image manifest
+  was union-merged (268 records).
+- **Node art live:** the build keeps `prop_` for gathering nodes, so the GLBs land where `NodeViews`/`layout` already
+  load them (`models/props/prop_node_*.glb`). `NodeViews` gained `live` models for Blackthorn, Ghostwood, crypt collapse
+  and barrow tomb. Verified in the Sexton's Acre: every node GLB returns 200 and the real trees render.
+- **Generated for future roadmaps** (all listed in `docs/ART-BACKLOG.md` with what each waits on): hand tools, thrall
+  bow/staff, Mourner wraith thrall, 13 more profession props (stations, garden stages, sapling, grave tiers), Lich
+  Acolyte, three area bosses (1024 px), five Release-0.3 class heroes (8 clips); 2D for herbs/seeds/saplings/planks/
+  meals/bone meal, 24 tool-tier icons, finds, contracts, 9 skill icons, 9 future-spell icons, 11 relic runes,
+  8 portraits, omen icons and three area moodboards (`future-2d.json`, 97 jobs).
+- **Existing heroes gained an `attack` (slash) clip.** A GLB diff proves mesh, skeleton, textures and every existing clip
+  are byte-identical; no hero code requests `attack`, so combat is unchanged.
+- Tools: `tools/art-backlog.mjs` (unreferenced-art scan that follows imports and the by-name item-icon rule);
+  `tools/tint-variants.mjs` now targets `prop_node_*`.
+- Checks: typecheck, 189 client tests, 28 server tests, both rules bundles current, production build.

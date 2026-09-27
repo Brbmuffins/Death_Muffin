@@ -22,11 +22,14 @@ const MODEL: Record<string, { live?: string; spent?: string; height: number; spe
   hangman_elm: { live: 'prop_node_hangman_elm', spent: 'prop_node_stump', height: 5, spentHeight: 0.9 },
   bleeding_willow: { live: 'prop_node_bleeding_willow', spent: 'prop_node_stump', height: 4.8, spentHeight: 0.9 },
   churchyard_yew: { live: 'prop_node_churchyard_yew', spent: 'prop_node_stump', height: 5.4, spentHeight: 1 },
-  blackthorn: { spent: 'prop_node_stump', height: 4.6, spentHeight: 0.9 },
-  ghostwood: { spent: 'prop_node_stump', height: 5.2, spentHeight: 1 },
+  blackthorn: { live: 'prop_node_blackthorn', spent: 'prop_node_stump', height: 4.6, spentHeight: 0.9 },
+  ghostwood: { live: 'prop_node_ghostwood', spent: 'prop_node_stump', height: 5.2, spentHeight: 1 },
   bone_elder: { live: 'prop_node_bone_elder', spent: 'prop_node_stump', height: 6, spentHeight: 1.1 },
   geode_hell: { live: 'prop_node_ore_geode', spent: 'prop_node_ore_spent', height: 1.5, spentHeight: 0.6 },
   geode_moon: { live: 'prop_node_ore_geode', spent: 'prop_node_ore_spent', height: 1.6, spentHeight: 0.6 },
+  // Higher gravedigging sites have their own models; the pauper's grave and mound use graveModel.
+  grave_crypt: { live: 'prop_node_crypt_collapse', spent: 'prop_node_dug_grave', height: 1.2, spentHeight: 0.5 },
+  grave_barrow_king: { live: 'prop_node_barrow_tomb', spent: 'prop_node_dug_grave', height: 2, spentHeight: 0.5 },
 };
 const seamModel = { live: 'prop_node_ore_seam', spent: 'prop_node_ore_spent', height: 1.2, spentHeight: 0.6 };
 const graveModel = { live: 'prop_node_burial_mound', spent: 'prop_node_dug_grave', height: 0.6, spentHeight: 0.5 };

@@ -1,0 +1,9 @@
+{
+  "id": "prop_node_barrow_tomb",
+  "input": "art-src/concepts/props/node_barrow_tomb.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 3000,
+    "texture_quality": "standard"
+  }
+}

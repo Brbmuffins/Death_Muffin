@@ -6,6 +6,7 @@
     "hurt",
     "idle",
     "run",
+    "attack",
     "walk"
   ],
   "tris": 11749

@@ -1,0 +1,22 @@
+{
+  "id": "boss_gravedigger_king",
+  "input": "art-src/concepts/boss_gravedigger_king.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 14000,
+    "texture_quality": "detailed"
+  },
+  "rig": {
+    "model": "v1.0-20240301",
+    "rig_type": "biped"
+  },
+  "animations": [
+    "preset:biped:idle",
+    "preset:biped:walk",
+    "preset:biped:slash",
+    "preset:biped:dig",
+    "preset:biped:hurt",
+    "preset:biped:fall"
+  ],
+  "animationMode": "single"
+}

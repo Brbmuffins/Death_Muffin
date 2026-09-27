@@ -1,0 +1,9 @@
+{
+  "id": "prop_node_alchemy_table",
+  "input": "art-src/concepts/props/node_alchemy_table.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2800,
+    "texture_quality": "standard"
+  }
+}

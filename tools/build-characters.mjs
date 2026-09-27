@@ -36,7 +36,7 @@ const CLIP_NAMES = {
 };
 
 /** Per-slug texture budget (px). Hero and boss get more; horde enemies less. */
-const TEXTURE_SIZE = { necromancer: 1024, prelate: 1024, bone_golem: 1024, prop_mausoleum: 1024, prop_bell_altar: 1024 };
+const TEXTURE_SIZE = { necromancer: 1024, prelate: 1024, bone_golem: 1024, boss_gravedigger_king: 1024, boss_bone_abbess: 1024, boss_drowned_congregation: 1024, prop_mausoleum: 1024, prop_bell_altar: 1024 };
 const DEFAULT_TEXTURE = 512;
 
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
@@ -98,7 +98,9 @@ async function build(slug) {
   const isProp = clips.length === 0 && !existsSync(join(dir, 'rig.glb'));
   const outDir = isProp ? join(OUT, 'props') : join(OUT, slug);
   mkdirSync(outDir, { recursive: true });
-  const outFile = join(outDir, isProp ? `${slug.replace(/^prop_/, '')}.glb` : 'character.glb');
+  // Environment props drop the `prop_` prefix (layout ids like `tombstone_round`); gathering nodes
+  // keep it, because the professions code loads `models/props/prop_node_<model>.glb` (NodeViews, layout).
+  const outFile = join(outDir, isProp ? `${slug.replace(/^prop_(?!node_)/, '')}.glb` : 'character.glb');
   await io.write(outFile, doc);
   const tris = doc
     .getRoot()

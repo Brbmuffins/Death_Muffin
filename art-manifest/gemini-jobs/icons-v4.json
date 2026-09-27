@@ -1,0 +1,723 @@
+[
+  {
+    "id": "icon_ossuary_wall",
+    "out": "public/art/abilities/necro-ossuary-wall.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a wall of fused pale bones and ribs erupting from cracked flagstones in a line, warm amber light glowing through the gaps, bone dust. Palette: bone ivory (#e8dcc0), warm amber (#d9a66b), dusty brown. NO purple, NO violet, NO green. No text, no border, no letters."
+  },
+  {
+    "id": "icon_command_rend",
+    "out": "public/art/abilities/necro-command-rend.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: three spectral skeleton warriors leaping forward together toward the viewer with raised blades, trailing jade-teal spirit fire, a burst of cleaving light where they land. Palette: spectral jade (#6fe3c8), pale mint (#c8fff0), bone ivory. NO purple, NO violet, NO orange. No text, no border, no letters."
+  },
+  {
+    "id": "icon_dirge",
+    "out": "public/art/abilities/necro-dirge.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a tolling funeral bell ringing out concentric rings of cold blue sound, a hooded mourner silhouette beneath it, frost motes in the air. Palette: cold pale blue (#9fc4ff), deep cold blue (#5b7fd6), frost white. NO purple, NO violet, NO green, NO orange. No text, no border, no letters."
+  },
+  {
+    "id": "icon_plague_bloom",
+    "out": "public/art/abilities/necro-plague-bloom.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a large carnivorous rot flower blooming out of a corpse, sickly chartreuse petals, drifting green spores, smaller buds sprouting nearby as if spreading. Palette: chartreuse (#c7e04a), olive rot (#6f8f22), dark spore green. NO purple, NO violet, NO blue. No text, no border, no letters."
+  },
+  {
+    "id": "item_ingot_tin",
+    "out": "public/art/items/ingot_tin.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a dull grey tin ingot, slightly pitted, cold matte sheen"
+  },
+  {
+    "id": "item_ore_bronze",
+    "out": "public/art/items/ore_bronze.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a rough chunk of rock with warm reddish-bronze metal veins"
+  },
+  {
+    "id": "item_ingot_bronze",
+    "out": "public/art/items/ingot_bronze.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a warm reddish-bronze metal ingot with a faint stamped skull mark"
+  },
+  {
+    "id": "item_ingot_silver",
+    "out": "public/art/items/ingot_silver.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a bright tarnished silver ingot with a faint cold glint"
+  },
+  {
+    "id": "item_ore_steel",
+    "out": "public/art/items/ore_steel.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a dense dark blue-grey ore chunk with bright steel flecks"
+  },
+  {
+    "id": "item_ingot_steel",
+    "out": "public/art/items/ingot_steel.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a dark polished steel ingot with sharp edges and a blue-grey sheen"
+  },
+  {
+    "id": "item_ore_hell",
+    "out": "public/art/items/ore_hell.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a black volcanic ore chunk with glowing ember-red veins and faint smoke"
+  },
+  {
+    "id": "item_ingot_hell",
+    "out": "public/art/items/ingot_hell.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a single smooth rectangular metal ingot bar with flat sides and bevelled edges, shaped exactly like the reference ingot icons, cast from black hell-iron with thin glowing ember-red cracks across its top face. Clearly a smelted bar, not a rock or ore chunk"
+  },
+  {
+    "id": "item_ore_moon",
+    "out": "public/art/items/ore_moon.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a pale grey rock with glowing silver-blue moon-metal crystals"
+  },
+  {
+    "id": "item_ingot_moon",
+    "out": "public/art/items/ingot_moon.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a pale silver-blue metal ingot faintly glowing with cold moonlight"
+  },
+  {
+    "id": "item_fish_river",
+    "out": "public/art/items/fish_river.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a dark grey-green river fish with dull scales, lying on its side"
+  },
+  {
+    "id": "item_fish_fillet",
+    "out": "public/art/items/fish_fillet.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a pink raw fish fillet on a small scrap of waxed cloth"
+  },
+  {
+    "id": "item_plank_oak",
+    "out": "public/art/items/plank_oak.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a short stack of three dark oak planks cut from coffin wood, iron nail holes"
+  },
+  {
+    "id": "item_flask_speed",
+    "out": "public/art/items/flask_speed.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a slim glass flask of swirling pale teal liquid with a feather tied to the neck"
+  },
+  {
+    "id": "item_flask_damage",
+    "out": "public/art/items/flask_damage.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a squat iron-banded glass flask of glowing ember-orange liquid"
+  },
+  {
+    "id": "item_flask_void_resist",
+    "out": "public/art/items/flask_void_resist.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a round glass flask of dark violet liquid with a tiny silver ward-sigil on the cork"
+  },
+  {
+    "id": "item_bow_oak",
+    "out": "public/art/items/bow_oak.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a simple dark oak shortbow with a waxed string and a leather grip"
+  },
+  {
+    "id": "item_log_elm",
+    "out": "public/art/items/log_elm.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a cut log of grey cracked elm wood with a frayed rope loop around it"
+  },
+  {
+    "id": "item_log_willow",
+    "out": "public/art/items/log_willow.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a cut log of black willow wood with dark red sap weeping from the bark"
+  },
+  {
+    "id": "item_log_yew",
+    "out": "public/art/items/log_yew.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a cut log of reddish churchyard yew with twisted grain and a few dark needles"
+  },
+  {
+    "id": "item_log_blackthorn",
+    "out": "public/art/items/log_blackthorn.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a cut log of black thorny wood with long sharp thorns and a pale blossom"
+  },
+  {
+    "id": "item_log_ghostwood",
+    "out": "public/art/items/log_ghostwood.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a cut log of pale white ghostwood faintly glowing along its grain"
+  },
+  {
+    "id": "item_log_bone_elder",
+    "out": "public/art/items/log_bone_elder.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a cut log that looks like fused pale bone and vertebrae with a faint violet glow in the cracks"
+  },
+  {
+    "id": "item_fish_crypt_eel",
+    "out": "public/art/items/fish_crypt_eel.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a coiled dark slimy eel with pale dead eyes"
+  },
+  {
+    "id": "item_fish_bell_carp",
+    "out": "public/art/items/fish_bell_carp.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a heavy bronze-scaled carp whose scales look like small bells"
+  },
+  {
+    "id": "item_fish_drowned_pike",
+    "out": "public/art/items/fish_drowned_pike.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a long pale drowned pike with bared needle teeth and weed on its fins"
+  },
+  {
+    "id": "item_fish_lanternfish",
+    "out": "public/art/items/fish_lanternfish.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a small black deep-water fish with a glowing pale green lure on its head"
+  },
+  {
+    "id": "item_fish_coelacanth",
+    "out": "public/art/items/fish_coelacanth.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a huge ancient armoured blue-grey coelacanth with lobed fins and faint abyssal glow"
+  },
+  {
+    "id": "item_bones_old",
+    "out": "public/art/items/bones_old.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a small bundle of old yellowed human bones tied with twine"
+  },
+  {
+    "id": "item_bones_barrow",
+    "out": "public/art/items/bones_barrow.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a pile of earth-stained barrow bones with a cracked skull on top"
+  },
+  {
+    "id": "item_bones_crypt",
+    "out": "public/art/items/bones_crypt.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: pale crypt bones with iron grave-nails still driven through them"
+  },
+  {
+    "id": "item_bones_ancient",
+    "out": "public/art/items/bones_ancient.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: ancient dark bones etched with faint glowing violet runes"
+  },
+  {
+    "id": "item_seed_mourning_moss",
+    "out": "public/art/items/seed_mourning_moss.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a small burlap seed pouch spilling grey-green moss spores"
+  },
+  {
+    "id": "item_reliquary_fragment",
+    "out": "public/art/items/reliquary_fragment.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a broken piece of a gilded reliquary box with a cracked violet gem"
+  },
+  {
+    "id": "item_covenant_seal",
+    "out": "public/art/items/covenant_seal.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a heavy wax seal stamped with a skull and crossed staves, dark red wax, a torn ribbon"
+  },
+  {
+    "id": "item_gem_grave_garnet",
+    "out": "public/art/items/gem_grave_garnet.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a rough deep blood-red garnet gem with dirt still clinging to it"
+  },
+  {
+    "id": "item_gem_bone_opal",
+    "out": "public/art/items/gem_bone_opal.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a milky bone-white opal gem with rainbow flecks"
+  },
+  {
+    "id": "item_gem_void_sapphire",
+    "out": "public/art/items/gem_void_sapphire.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint violet vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a faceted deep violet-blue sapphire with a tiny star of light inside"
+  },
+  {
+    "id": "concept_node_blackthorn",
+    "out": "art-src/concepts/props/node_blackthorn.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a dense black thorny tree with long sharp thorns on every twisted branch and a scattering of pale white blossoms. A tree that can be chopped for wood."
+  },
+  {
+    "id": "concept_node_ghostwood",
+    "out": "art-src/concepts/props/node_ghostwood.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a slender pale white birch-like tree with papery bark that faintly glows, sparse silver leaves. A rare tree that can be chopped for wood."
+  },
+  {
+    "id": "concept_node_sawpit",
+    "out": "art-src/concepts/props/node_sawpit.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a woodworking sawpit station: a heavy wooden sawhorse holding a log, a long two-man saw, stacked coffin planks and sawdust beside it."
+  },
+  {
+    "id": "concept_node_alchemy_table",
+    "out": "art-src/concepts/props/node_alchemy_table.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a crooked alchemy table with glass alembics, a bubbling green flask over a candle, dried herbs hanging and a human skull used as a mortar."
+  },
+  {
+    "id": "concept_node_sexton_vault",
+    "out": "art-src/concepts/props/node_sexton_vault.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a squat iron-bound stone strongbox vault shaped like a small crypt, heavy padlock, skull relief on the lid. A storage bank chest."
+  }
+]
