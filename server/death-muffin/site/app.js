@@ -8,6 +8,7 @@ const nameField = document.querySelector(".field--name");
 const confirmField = document.querySelector(".field--confirm");
 const displayName = document.querySelector("#display-name");
 const email = document.querySelector("#email");
+const emailField = email.closest(".field");
 const password = document.querySelector("#password");
 const confirmPassword = document.querySelector("#confirm-password");
 const remember = document.querySelector(".remember");
@@ -468,13 +469,17 @@ function validate() {
   clearErrors();
   let valid = true;
 
-  if (mode === "register" && displayName.value.trim().length < 3) {
-    setError(displayName, "Use at least three characters.");
+  // Signing up needs a username only. Mirror the server's rule so the error is readable here
+  // instead of arriving as a 400 from /register.
+  if (mode === "register" && !/^[a-zA-Z0-9_]{3,32}$/.test(displayName.value.trim())) {
+    setError(displayName, "Use 3–32 letters, numbers or underscores.");
     valid = false;
   }
 
-  if (!email.validity.valid) {
-    setError(email, "Enter a valid email address.");
+  // The shared field is the username (or an email, for accounts that chose to add one) at login;
+  // registration hides it entirely, so there is nothing to check in that mode.
+  if (mode === "login" && !email.validity.valid) {
+    setError(email, "Enter your username.");
     valid = false;
   }
 
@@ -499,13 +504,19 @@ function setMode(nextMode) {
   nameField.hidden = !registering;
   confirmField.hidden = !registering;
   displayName.required = registering;
+  displayName.maxLength = 32;
+  displayName.placeholder = registering ? "Pick a username" : "Name your wanderer";
   confirmPassword.required = registering;
   password.autocomplete = registering ? "new-password" : "current-password";
   password.minLength = registering ? 8 : 1;
-  email.type = registering ? "email" : "text";
-  email.autocomplete = registering ? "email" : "username";
-  email.placeholder = registering ? "you@example.com" : "Your username";
-  document.querySelector('label[for="email"]').textContent = registering ? "Email" : "Username or email";
+  // No email is collected at signup — this covenant is friends-only. Existing accounts that have
+  // an email can still log in with it, so the field stays as username-or-email in login mode.
+  emailField.hidden = registering;
+  email.required = !registering;
+  email.type = "text";
+  email.autocomplete = registering ? "off" : "username";
+  email.placeholder = "Your username";
+  document.querySelector('label[for="email"]').textContent = "Username or email";
   document.querySelector('label[for="display-name"]').textContent = "Username";
   remember.hidden = registering;
   forgotAction.hidden = registering;
@@ -560,7 +571,7 @@ form.addEventListener("submit", async (event) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(mode === "login"
         ? { username: email.value.trim(), password: password.value }
-        : { username: displayName.value.trim(), email: email.value.trim(), password: password.value }),
+        : { username: displayName.value.trim(), password: password.value }),
     });
     const data = await response.json();
     if (!response.ok || !data.token) throw new Error(data.error || "Could not open the gate.");

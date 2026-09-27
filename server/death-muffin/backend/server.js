@@ -97,11 +97,17 @@ app.post('/login', loginLimiter, async (req, res) => {
 });
 app.post('/register', registerLimiter, async (req, res) => {
   const { username, email, password } = req.body || {};
-  if (typeof username !== 'string' || !/^[a-zA-Z0-9_]{3,32}$/.test(username) || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 || typeof password !== 'string' || password.length < 8 || password.length > 72)
-    return res.status(400).json({ error: 'Use a username of 3–32 letters, digits or underscores, a valid email, and a password of 8–72 characters.' });
+  // Email is optional (friends-only signup). Supply one and it is still validated and kept unique;
+  // omit it and the column is stored NULL, which the UNIQUE index allows any number of.
+  const trimmedEmail = typeof email === 'string' ? email.trim() : '';
+  const wantsEmail = trimmedEmail !== '';
+  if (typeof username !== 'string' || !/^[a-zA-Z0-9_]{3,32}$/.test(username) || typeof password !== 'string' || password.length < 8 || password.length > 72)
+    return res.status(400).json({ error: 'Use a username of 3–32 letters, digits or underscores and a password of 8–72 characters.' });
+  if (wantsEmail && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail) || trimmedEmail.length > 254))
+    return res.status(400).json({ error: 'That email is not valid. Leave it blank to sign up without one.' });
   try {
     const hash = await bcrypt.hash(password, SALT_ROUNDS);
-    const [result] = await pool.execute('INSERT INTO accounts (username, email, password_hash, active, alpha_access) VALUES (?, ?, ?, 1, 1)', [username, email, hash]);
+    const [result] = await pool.execute('INSERT INTO accounts (username, email, password_hash, active, alpha_access) VALUES (?, ?, ?, 1, 1)', [username, wantsEmail ? trimmedEmail : null, hash]);
     res.status(201).json({ token: jwt.sign({ accountId: result.insertId, username }, process.env.JWT_SECRET, { expiresIn: '24h' }) });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Username or email is already registered.' });

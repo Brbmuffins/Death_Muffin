@@ -475,6 +475,12 @@ button {
   cursor: pointer;
 }
 
+/* `display: flex` above beats the UA rule for [hidden], so the signup view could not hide this.
+   Matches .field[hidden]. "Remember this vessel" only applies when logging in. */
+.remember[hidden] {
+  display: none;
+}
+
 .remember input {
   position: absolute;
   opacity: 0;
