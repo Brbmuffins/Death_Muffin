@@ -277,6 +277,8 @@ export interface AreaEntry {
   dangers: string;
 }
 
+export const CODEX_TRAVEL_COUNSEL = 'Click a walkable spot on the minimap to choose a fixed destination. Travel follows the same paths as ground clicks; locked halls remain closed. The amber marker shows where you are going. Hover or focus a spell icon for detailed rite counsel.';
+
 export const CODEX_AREAS: Record<AreaId, AreaEntry> = {
   chapterhouse: {
     dangers: 'None. The dead cannot follow you here. The Reliquary, the Ossuary Workbench, the Rite Niches, the Altar of Ascension and a waystone wait for you.',

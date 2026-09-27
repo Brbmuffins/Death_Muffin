@@ -59,6 +59,8 @@ export class SettingsPanel extends SimplePanel {
         ${code ? `<label class="row">Party world code<b style="font-family:var(--cw-font-numeric)">${code}</b></label>` : ''}
         <div class="cw-keys">
           <kbd>Click</kbd><span>Move · attack target (Bone Needle) · use</span>
+          <kbd>Minimap</kbd><span>Click a walkable spot to travel there</span>
+          <kbd>Hover / focus</kbd><span>Spell icon: cost, targeting, effects and combat counsel</span>
           <kbd>Shift+Click</kbd><span>Cast Bone Needle without moving</span>
           <kbd>1–4 (hold)</kbd><span>Your four Grimoire rites, at the cursor (start: Marrow Spear · Exhume · Miasma · Black Litany)</span>
           <kbd>L</kbd><span>Grimoire · choose which rites sit on 1–4 (new rites at levels 3, 5, 7, 12)</span>
