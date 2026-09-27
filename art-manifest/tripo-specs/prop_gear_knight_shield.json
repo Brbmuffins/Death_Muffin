@@ -1,0 +1,9 @@
+{
+  "id": "prop_gear_knight_shield",
+  "input": "art-src/concepts/props/gear_knight_shield.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 1400,
+    "texture_quality": "standard"
+  }
+}

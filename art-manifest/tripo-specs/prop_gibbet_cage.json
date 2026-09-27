@@ -1,0 +1,9 @@
+{
+  "id": "prop_gibbet_cage",
+  "input": "art-src/concepts/props/gibbet_cage.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2200,
+    "texture_quality": "standard"
+  }
+}

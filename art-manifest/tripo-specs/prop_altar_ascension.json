@@ -1,0 +1,9 @@
+{
+  "id": "prop_altar_ascension",
+  "input": "art-src/concepts/props/altar_ascension.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 3200,
+    "texture_quality": "standard"
+  }
+}

@@ -112,6 +112,9 @@ gameplay**. The `world_*` kits are unported.
 | Lich Acolyte (125), 3 bosses (3 × 145), 5 future class heroes (5 × 165) | 1,385 |
 | Barrow Ghoul (evening; idle, walk, run, slash, dig, hurt, fall) | 145 |
 | Boss props: kings_grave, abbess_reliquary, skull_niche, drowned_font, church_pew (5 × 50) | 250 |
-| **Total 2026-09-27** | **3,925** (balance 5,155 → 1,230) |
+| Core batch: Chapterhouse centrepieces (altar_ascension, rite_niches, covenant_lectern) + 10 room props (coffin_stack, gibbet_cage, grave_lantern, bone_candelabrum, skull_wall, drowned_statue, stained_glass, sunken_bell, bell_frame, organ_pipes) | 650 |
+| Bell-Sworn Templar (6 clips) + Bone Colossus thrall (5 clips) | 260 |
+| Class weapons: gear_knight_sword, gear_knight_shield, gear_warden_flail, gear_warden_lantern, gear_monk_bell_staff, gear_witch_hook | 300 |
+| **Total 2026-09-27** | **5,135** (balance 5,155 → 20) |
 
 Gemini (2D) runs are cheap and not itemised. Every output is recorded in `art-manifest/images.json`.

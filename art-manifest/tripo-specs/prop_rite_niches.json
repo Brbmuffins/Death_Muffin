@@ -1,0 +1,9 @@
+{
+  "id": "prop_rite_niches",
+  "input": "art-src/concepts/props/rite_niches.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 3200,
+    "texture_quality": "standard"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "id": "prop_skull_wall",
+  "input": "art-src/concepts/props/skull_wall.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2400,
+    "texture_quality": "standard"
+  }
+}

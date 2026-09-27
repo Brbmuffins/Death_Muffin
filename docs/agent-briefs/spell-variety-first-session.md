@@ -245,6 +245,23 @@ selection from 22 to **67 converted entries** (`art-manifest/binbun-effects.json
   `rot_lance_projectile`, `sanctify_beam`, `chapterhouse_candle`, `area_gate`, `loot_*`.
 - DEV: `__cwDebug.vfx(id, colors?)` and `__cwDebug.vfxGallery()` (a grid of every id). Screenshot each for the owner.
 
+**Workstation review of `964906f` (2026-09-27 evening).**
+- Green in a scratch worktree: typecheck, 225 client, 33 server and 3 VFX tests.
+- In the browser (1440×900, offline, dev account):
+  - Dev access, the DEV chip, the Grimoire button + NEW pip and the LMB socket all work.
+  - The gallery works: every shader compiles, all 63 textures load, and the shapes read correctly.
+- **Blocker before wiring:** at default intensity, several effects blow out to white blobs under the game's bloom:
+  `dirge_area`, `soul_harvest_pillar`, `exhume_lift`, `enemy_breach_rim`, and `corpse_explosion` at its peak.
+  The ported programs write `albedo·emission_strength·uGain` straight to `gl_FragColor` without tone mapping, so
+  anything above ~1.0 feeds the bloom.
+  - Default `uGain` to ~0.35–0.45.
+  - Clamp `emission_strength` to ≤ 2 for area/mesh effects.
+  - Clamp the final colour (≈ 1.2) or run it through the renderer's tone mapping.
+  - Re-check every gallery page with `SPELL_FX` colours, not the Godot defaults.
+  - Post screenshots of the pages for the owner before wiring any spell.
+- **Fixed on master (readability pass):** the counsel card had stray horizontal + vertical scrollbars from a 1px corner
+  bracket overflow (`src/ui/readability.css`). No action needed; don't re-fix it in `ui.css`.
+
 **Wiring, by priority** (additive; keep today's effects as the fallback until each passes gallery + readability +
 dense-wave perf QA):
 
@@ -319,6 +336,17 @@ appear on the minimap. Interactables live in `AREAS[*].interactables` (`content/
 Ascension, `inventory`, `forge`, `professions`, `waystone`, `boss`, `kiln`, `sawpit`, `fire`). Picking and
 `INTERACT_RANGE` are in `WorldScene` (~l.694–811, 983, 1954).
 
+0. **Give the Chapterhouse's interactables real bodies first (new, 2026-09-27 evening).** The Altar of Ascension
+   (0, 21) and the Rite Niches (-9, 26.5) had **no model at all**: they were invisible click points between candles,
+   which is the root of the owner's complaint. New GLBs:
+   - `models/props/altar_ascension.glb`: the centrepiece. Height ≈ 2.8, box hw 1.6 hd 1.2. Face it south, toward the
+     door.
+   - `models/props/rite_niches.glb`: height ≈ 2.6, box hw 1.4 hd 0.4. Against the west wall.
+   - `models/props/covenant_lectern.glb`: height ≈ 1.6, circle r 0.5. New interactable `lectern` beside the Acre
+     spawn (-26, 20) that opens the §7 First Rites tracker / Codex.
+
+   Register them in `layout.ts` `PROPS` and place them with `P(...)`, keeping clear of the existing candles. Measure
+   each GLB and adjust heights and colliders. The beacons below then sit on real objects.
 1. **Idle beacon under every interactable:** Binbun `interact_rim` (looping), tinted by function:
 
    | Interactable | Tint |

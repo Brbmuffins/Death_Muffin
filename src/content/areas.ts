@@ -17,7 +17,7 @@ export interface Rect {
 }
 
 /** kiln / sawpit / fire are the Sexton's Acre processing stations (docs/PROFESSIONS-ROADMAP.md §6). */
-export type InteractKind = 'inventory' | 'forge' | 'professions' | 'upgrades' | 'waystone' | 'boss' | 'kiln' | 'sawpit' | 'fire';
+export type InteractKind = 'inventory' | 'forge' | 'professions' | 'upgrades' | 'waystone' | 'boss' | 'kiln' | 'sawpit' | 'fire' | 'lectern';
 
 export interface Interactable {
   id: string;
@@ -78,7 +78,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
     interactables: [
       { id: 'reliquary', kind: 'inventory', label: 'Reliquary', x: -8.5, z: 14 },
       { id: 'workbench', kind: 'forge', label: 'Ossuary Workbench', x: 8.5, z: 14 },
-      { id: 'niches', kind: 'professions', label: 'Rite Niches', x: -9, z: 26.5 },
+      { id: 'niches', kind: 'professions', label: 'Rite Niches', x: -10.8, z: 26.5 },
       { id: 'altar', kind: 'upgrades', label: 'Altar of Ascension', x: 0, z: 21 },
       { id: 'waystone_chapterhouse', kind: 'waystone', label: 'Waystone', x: 9, z: 26.5 },
     ],
@@ -106,6 +106,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
       { id: 'sawpit', kind: 'sawpit', label: 'Sawpit', x: -23.5, z: 12.5 },
       { id: 'bone_kiln', kind: 'kiln', label: 'Bone Kiln', x: -23.5, z: 31.6 },
       { id: 'cooking_fire', kind: 'fire', label: 'Cooking Fire', x: -26.5, z: 28.5 },
+      { id: 'lectern', kind: 'lectern', label: 'Covenant Lectern', x: -24.2, z: 17.8 },
     ],
     ambient: { fog: 0x0c0f10, hemiSky: 0x4b5864, hemiGround: 0x232820, moon: 0xbbcbd8 },
   },

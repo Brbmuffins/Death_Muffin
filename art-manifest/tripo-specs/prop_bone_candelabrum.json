@@ -1,0 +1,9 @@
+{
+  "id": "prop_bone_candelabrum",
+  "input": "art-src/concepts/props/bone_candelabrum.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2400,
+    "texture_quality": "standard"
+  }
+}

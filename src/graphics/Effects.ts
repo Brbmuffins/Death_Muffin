@@ -553,7 +553,7 @@ export class Effects {
     this.group.add(mesh);
     const first = o.to();
     const lastTo = new THREE.Vector3(first?.x ?? o.from.x, first?.y ?? o.from.y, first?.z ?? o.from.z);
-    this.projectiles.push({
+    const rec: Projectile = {
       mesh,
       pool,
       from: new THREE.Vector3(o.from.x, o.from.y, o.from.z),
@@ -566,7 +566,11 @@ export class Effects {
       arc: o.arc ?? 0,
       t: 0,
       dist: Math.max(0.1, lastTo.distanceTo(new THREE.Vector3(o.from.x, o.from.y, o.from.z))),
-    });
+    };
+    this.projectiles.push(rec);
+    // Lets a layered effect (a Binbun core) ride the shot: `pos()` is null once it has landed.
+    const flying = () => this.projectiles.includes(rec);
+    return { pos: () => (flying() ? { x: rec.mesh.position.x, y: rec.mesh.position.y, z: rec.mesh.position.z } : null) };
   }
 
   /** A line of bone spikes erupting sequentially (Marrow Spear). */

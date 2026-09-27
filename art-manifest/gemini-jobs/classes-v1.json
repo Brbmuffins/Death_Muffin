@@ -1,0 +1,731 @@
+[
+  {
+    "id": "icon_knight_hollow_cut",
+    "out": "public/art/abilities/knight-hollow-cut.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: an armoured knight's longsword mid-swing leaving a wide silver arc of light. Palette: cold steel silver, gunmetal grey, deep oath crimson (#8a1f2c) accents; NO purple, NO green. No text, no border, no letters."
+  },
+  {
+    "id": "icon_knight_shield_bash",
+    "out": "public/art/abilities/knight-shield-bash.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a heavy round knight's shield slamming forward with a burst of impact lines and sparks. Palette: cold steel silver, gunmetal grey, deep oath crimson (#8a1f2c) accents; NO purple, NO green. No text, no border, no letters."
+  },
+  {
+    "id": "icon_knight_grave_slam",
+    "out": "public/art/abilities/knight-grave-slam.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: an armoured knight leaping down with a sword point-first into the ground, a shockwave ring cracking the earth and gravestones. Palette: cold steel silver, gunmetal grey, deep oath crimson (#8a1f2c) accents; NO purple, NO green. No text, no border, no letters."
+  },
+  {
+    "id": "icon_knight_bulwark",
+    "out": "public/art/abilities/knight-bulwark.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a raised knight's shield seen from the front deflecting blows, a bright rim of light along its edge, arrows glancing off. Palette: cold steel silver, gunmetal grey, deep oath crimson (#8a1f2c) accents; NO purple, NO green. No text, no border, no letters."
+  },
+  {
+    "id": "icon_knight_corpse_vigil",
+    "out": "public/art/abilities/knight-corpse-vigil.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: an armoured knight kneeling on a fallen corpse with a hand on the sword hilt, a faint crimson healing glow rising from the body into him. Palette: cold steel silver, gunmetal grey, deep oath crimson (#8a1f2c) accents; NO purple, NO green. No text, no border, no letters."
+  },
+  {
+    "id": "icon_knight_grave_brand",
+    "out": "public/art/abilities/knight-grave-brand.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a glowing crimson brand-sigil burned into the chest of a corpse lying on the ground, like a trap mark. Palette: cold steel silver, gunmetal grey, deep oath crimson (#8a1f2c) accents; NO purple, NO green. No text, no border, no letters."
+  },
+  {
+    "id": "icon_knight_oath_unbroken",
+    "out": "public/art/abilities/knight-oath-unbroken.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a battered knight's helm with a burning crimson oath-sigil above it, cracked armour held together by light, defiant. Palette: cold steel silver, gunmetal grey, deep oath crimson (#8a1f2c) accents; NO purple, NO green. No text, no border, no letters."
+  },
+  {
+    "id": "icon_warden_flail_swing",
+    "out": "public/art/abilities/warden-flail-swing.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a spiked iron flail on a chain swinging in a wide arc with motion trails. Palette: lantern gold (#f2b84b), fire orange (#ff7a2a), blackened iron; NO purple, NO green. No text, no border, no letters."
+  },
+  {
+    "id": "icon_warden_lantern_cone",
+    "out": "public/art/abilities/warden-lantern-cone.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: an old iron lantern thrusting a blazing cone of golden light forward that makes a ghost recoil. Palette: lantern gold (#f2b84b), fire orange (#ff7a2a), blackened iron; NO purple, NO green. No text, no border, no letters."
+  },
+  {
+    "id": "icon_warden_chain_pull",
+    "out": "public/art/abilities/warden-chain-pull.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a heavy iron chain with a hook yanking a shambling undead forward by the neck. Palette: lantern gold (#f2b84b), fire orange (#ff7a2a), blackened iron; NO purple, NO green. No text, no border, no letters."
+  },
+  {
+    "id": "icon_warden_burn_the_dead",
+    "out": "public/art/abilities/warden-burn-the-dead.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a pile of corpses catching fire, orange flames and black smoke, a lantern tipped over beside them. Palette: lantern gold (#f2b84b), fire orange (#ff7a2a), blackened iron; NO purple, NO green. No text, no border, no letters."
+  },
+  {
+    "id": "icon_warden_watchmans_ward",
+    "out": "public/art/abilities/warden-watchmans-ward.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a tall iron lantern post planted in the ground casting a protective circle of golden light. Palette: lantern gold (#f2b84b), fire orange (#ff7a2a), blackened iron; NO purple, NO green. No text, no border, no letters."
+  },
+  {
+    "id": "icon_warden_cremate",
+    "out": "public/art/abilities/warden-cremate.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a single corpse erupting into a tall pillar of fire and embers. Palette: lantern gold (#f2b84b), fire orange (#ff7a2a), blackened iron; NO purple, NO green. No text, no border, no letters."
+  },
+  {
+    "id": "icon_warden_last_light",
+    "out": "public/art/abilities/warden-last-light.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a lantern flaring into a blinding golden starburst that fills the frame. Palette: lantern gold (#f2b84b), fire orange (#ff7a2a), blackened iron; NO purple, NO green. No text, no border, no letters."
+  },
+  {
+    "id": "icon_monk_palm_strike",
+    "out": "public/art/abilities/monk-palm-strike.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a bare monk's palm striking forward with concentric sound-wave rings bursting from the impact. Palette: pale gold (#e8d9a0), sound-wave white, weathered brown robes; NO purple, NO green, NO bronze-orange. No text, no border, no letters."
+  },
+  {
+    "id": "icon_monk_toll",
+    "out": "public/art/abilities/monk-toll.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a large handbell ringing with visible circular sound waves rippling outward. Palette: pale gold (#e8d9a0), sound-wave white, weathered brown robes; NO purple, NO green, NO bronze-orange. No text, no border, no letters."
+  },
+  {
+    "id": "icon_monk_resonant_step",
+    "out": "public/art/abilities/monk-resonant-step.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a barefoot monk dashing forward leaving a trail of pale golden sound ripples. Palette: pale gold (#e8d9a0), sound-wave white, weathered brown robes; NO purple, NO green, NO bronze-orange. No text, no border, no letters."
+  },
+  {
+    "id": "icon_monk_knell",
+    "out": "public/art/abilities/monk-knell.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a single bell over a marked target, a ring-shaped sigil with three tick marks like a countdown. Palette: pale gold (#e8d9a0), sound-wave white, weathered brown robes; NO purple, NO green, NO bronze-orange. No text, no border, no letters."
+  },
+  {
+    "id": "icon_monk_choir_of_one",
+    "out": "public/art/abilities/monk-choir-of-one.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a monk in meditation with small bells orbiting around him, each emitting a ring of sound. Palette: pale gold (#e8d9a0), sound-wave white, weathered brown robes; NO purple, NO green, NO bronze-orange. No text, no border, no letters."
+  },
+  {
+    "id": "icon_monk_sound_the_corpse",
+    "out": "public/art/abilities/monk-sound-the-corpse.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a monk's fist striking a corpse on the ground, the corpse glowing and resonating with rings of sound. Palette: pale gold (#e8d9a0), sound-wave white, weathered brown robes; NO purple, NO green, NO bronze-orange. No text, no border, no letters."
+  },
+  {
+    "id": "icon_monk_great_toll",
+    "out": "public/art/abilities/monk-great-toll.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a colossal bell being struck, an enormous shockwave of sound flattening the air, shattering stone. Palette: pale gold (#e8d9a0), sound-wave white, weathered brown robes; NO purple, NO green, NO bronze-orange. No text, no border, no letters."
+  },
+  {
+    "id": "icon_witch_hook_throw",
+    "out": "public/art/abilities/witch-hook-throw.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a rusted butcher's meat hook flying forward on a chain, blood drops trailing. Palette: crow black, blood crimson (#9a1b2a), bone ivory, faint sickly yellow-green; NO purple. No text, no border, no letters."
+  },
+  {
+    "id": "icon_witch_harvest",
+    "out": "public/art/abilities/witch-harvest.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a hooked ritual knife over a corpse, crows gathering and pulling at it. Palette: crow black, blood crimson (#9a1b2a), bone ivory, faint sickly yellow-green; NO purple. No text, no border, no letters."
+  },
+  {
+    "id": "icon_witch_crow_swarm",
+    "out": "public/art/abilities/witch-crow-swarm.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a dense swirling swarm of black crows diving down. Palette: crow black, blood crimson (#9a1b2a), bone ivory, faint sickly yellow-green; NO purple. No text, no border, no letters."
+  },
+  {
+    "id": "icon_witch_hook_pull",
+    "out": "public/art/abilities/witch-hook-pull.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a chain hook caught in an undead's ribcage dragging it off its feet. Palette: crow black, blood crimson (#9a1b2a), bone ivory, faint sickly yellow-green; NO purple. No text, no border, no letters."
+  },
+  {
+    "id": "icon_witch_hex_charm",
+    "out": "public/art/abilities/witch-hex-charm.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a small bundle charm of bones, feathers and twine glowing faint sickly green, a hex sigil behind it. Palette: crow black, blood crimson (#9a1b2a), bone ivory, faint sickly yellow-green; NO purple. No text, no border, no letters."
+  },
+  {
+    "id": "icon_witch_butcher",
+    "out": "public/art/abilities/witch-butcher.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a butcher's cleaver buried in a chopping block with offal charms and bones laid out. Palette: crow black, blood crimson (#9a1b2a), bone ivory, faint sickly yellow-green; NO purple. No text, no border, no letters."
+  },
+  {
+    "id": "icon_witch_murder_of_crows",
+    "out": "public/art/abilities/witch-murder-of-crows.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a vast storm of crows forming a giant spiral with a witch's silhouette at its centre. Palette: crow black, blood crimson (#9a1b2a), bone ivory, faint sickly yellow-green; NO purple. No text, no border, no letters."
+  },
+  {
+    "id": "icon_veil_spirit_bolt",
+    "out": "public/art/abilities/veil-spirit-bolt.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a pale cyan spectral bolt streaking forward from an open palm. Palette: spectral pale cyan (#bff3ff), mist white, soft teal-grey shadows; NO purple, NO orange. No text, no border, no letters."
+  },
+  {
+    "id": "icon_veil_echo",
+    "out": "public/art/abilities/veil-echo.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a translucent spectral copy of a corpse rising from a real one lying on the ground. Palette: spectral pale cyan (#bff3ff), mist white, soft teal-grey shadows; NO purple, NO orange. No text, no border, no letters."
+  },
+  {
+    "id": "icon_veil_veil_tear",
+    "out": "public/art/abilities/veil-veil-tear.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a vertical tear in reality like torn gauze, pale cyan light and wisps pulling inward. Palette: spectral pale cyan (#bff3ff), mist white, soft teal-grey shadows; NO purple, NO orange. No text, no border, no letters."
+  },
+  {
+    "id": "icon_veil_crossing",
+    "out": "public/art/abilities/veil-crossing.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a figure stepping through a veil of mist from one side to the other, half of them spectral. Palette: spectral pale cyan (#bff3ff), mist white, soft teal-grey shadows; NO purple, NO orange. No text, no border, no letters."
+  },
+  {
+    "id": "icon_veil_veil_form",
+    "out": "public/art/abilities/veil-veil-form.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a hooded figure half solid, half ghostly and translucent, split down the middle by a veil of mist. Palette: spectral pale cyan (#bff3ff), mist white, soft teal-grey shadows; NO purple, NO orange. No text, no border, no letters."
+  },
+  {
+    "id": "icon_veil_lay_to_rest",
+    "out": "public/art/abilities/veil-lay-to-rest.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a spectral hand gently closing the eyes of a corpse, a soft cyan glow and rising motes. Palette: spectral pale cyan (#bff3ff), mist white, soft teal-grey shadows; NO purple, NO orange. No text, no border, no letters."
+  },
+  {
+    "id": "icon_veil_between_worlds",
+    "out": "public/art/abilities/veil-between-worlds.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: two overlapping silhouettes of the same figure, one solid, one spectral, surrounded by a ring of veil mist. Palette: spectral pale cyan (#bff3ff), mist white, soft teal-grey shadows; NO purple, NO orange. No text, no border, no letters."
+  },
+  {
+    "id": "fx_crow",
+    "out": "public/art/fx/crow.png",
+    "aspect": "1:1",
+    "post": {
+      "lumaAlpha": true,
+      "floor": 22,
+      "mask": "circle",
+      "resize": [
+        128,
+        128
+      ],
+      "format": "png"
+    },
+    "prompt": "Video game VFX sprite texture. Pure solid black background (#000000). The subject is drawn ONLY in glowing white and light grey light — completely monochrome, no colour at all. Subject: a single crow in flight seen from above with wings spread, drawn as a bright silhouette with feather detail. Centred, nothing touching the edges. Soft glow falloff, high contrast. No text, no border, no frame, no background texture."
+  },
+  {
+    "id": "fx_hook_chain",
+    "out": "public/art/fx/hook-chain.png",
+    "aspect": "1:1",
+    "post": {
+      "lumaAlpha": true,
+      "floor": 22,
+      "mask": "circle",
+      "resize": [
+        128,
+        128
+      ],
+      "format": "png"
+    },
+    "prompt": "Video game VFX sprite texture. Pure solid black background (#000000). The subject is drawn ONLY in glowing white and light grey light — completely monochrome, no colour at all. Subject: a rusted butcher's meat hook at the end of a short length of chain, lying diagonally. Centred, nothing touching the edges. Soft glow falloff, high contrast. No text, no border, no frame, no background texture."
+  },
+  {
+    "id": "fx_sound_ring",
+    "out": "public/art/fx/sound-ring.png",
+    "aspect": "1:1",
+    "post": {
+      "lumaAlpha": true,
+      "floor": 22,
+      "mask": "circle",
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Video game VFX sprite texture. Pure solid black background (#000000). The subject is drawn ONLY in glowing white and light grey light — completely monochrome, no colour at all. Subject: a single thin ring of sound, a clean circle with faint secondary ripples inside and outside it, like a ripple on water. Centred, nothing touching the edges. Soft glow falloff, high contrast. No text, no border, no frame, no background texture."
+  },
+  {
+    "id": "fx_lantern_cone",
+    "out": "public/art/fx/lantern-cone.png",
+    "aspect": "1:1",
+    "post": {
+      "lumaAlpha": true,
+      "floor": 22,
+      "mask": "cone",
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Video game VFX sprite texture. Pure solid black background (#000000). The subject is drawn ONLY in glowing white and light grey light — completely monochrome, no colour at all. Subject: a wedge-shaped cone of lantern light spreading upward from the bottom centre, bright near the apex and fading toward the wide end, with faint dust motes. Centred, nothing touching the edges. Soft glow falloff, high contrast. No text, no border, no frame, no background texture."
+  },
+  {
+    "id": "fx_veil_rift",
+    "out": "public/art/fx/veil-rift.png",
+    "aspect": "1:1",
+    "post": {
+      "lumaAlpha": true,
+      "floor": 22,
+      "mask": "circle",
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Video game VFX sprite texture. Pure solid black background (#000000). The subject is drawn ONLY in glowing white and light grey light — completely monochrome, no colour at all. Subject: a vertical tear in reality like ripped gauze, bright jagged edges and wisps being pulled inward toward the tear. Centred, nothing touching the edges. Soft glow falloff, high contrast. No text, no border, no frame, no background texture."
+  },
+  {
+    "id": "concept_prop_gear_warden_lantern",
+    "out": "art-src/concepts/props/gear_warden_lantern.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game weapon prop, shown flat from the side, the whole object visible and centered diagonally in frame, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no hands, no other objects. Dark fantasy style matching the attached screenshot (blackened iron, aged bone, worn leather, tarnished metal). Subject: an old iron hand lantern with a ring handle on top, thick glass panes, a stubby candle inside, a riveted cage and a hook, sized to be carried in one hand."
+  },
+  {
+    "id": "concept_prop_gear_warden_flail",
+    "out": "art-src/concepts/props/gear_warden_flail.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game weapon prop, shown flat from the side, the whole object visible and centered diagonally in frame, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no hands, no other objects. Dark fantasy style matching the attached screenshot (blackened iron, aged bone, worn leather, tarnished metal). Subject: a one-handed flail: a short wooden haft wrapped in leather with an iron pommel, a heavy chain ending in a spiked iron ball."
+  },
+  {
+    "id": "concept_prop_gear_monk_bell_staff",
+    "out": "art-src/concepts/props/gear_monk_bell_staff.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game weapon prop, shown flat from the side, the whole object visible and centered diagonally in frame, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no hands, no other objects. Dark fantasy style matching the attached screenshot (blackened iron, aged bone, worn leather, tarnished metal). Subject: a monk's tall wooden staff with a crooked top from which a small bronze handbell hangs on a cord, prayer beads wound around the shaft."
+  },
+  {
+    "id": "concept_prop_gear_witch_hook",
+    "out": "art-src/concepts/props/gear_witch_hook.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game weapon prop, shown flat from the side, the whole object visible and centered diagonally in frame, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no hands, no other objects. Dark fantasy style matching the attached screenshot (blackened iron, aged bone, worn leather, tarnished metal). Subject: a butcher-witch's weapon: a large rusted meat hook on a wooden grip with a length of chain coiled from the pommel, crow feathers and a small bone charm tied to it."
+  },
+  {
+    "id": "concept_prop_gear_knight_sword",
+    "out": "art-src/concepts/props/gear_knight_sword.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game weapon prop, shown flat from the side, the whole object visible and centered diagonally in frame, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no hands, no other objects. Dark fantasy style matching the attached screenshot (blackened iron, aged bone, worn leather, tarnished metal). Subject: a long straight knight's sword, worn blackened steel blade with notches, a cross guard shaped like spread wings, a leather-wrapped grip and a round pommel set with a dull crimson stone."
+  },
+  {
+    "id": "concept_prop_gear_knight_shield",
+    "out": "art-src/concepts/props/gear_knight_shield.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game weapon prop, shown flat from the side, the whole object visible and centered diagonally in frame, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no hands, no other objects. Dark fantasy style matching the attached screenshot (blackened iron, aged bone, worn leather, tarnished metal). Subject: a heavy round knight's shield of blackened steel with a raised boss, a faded crimson oath-sigil painted on its face, dents and scratches, straps visible on one edge."
+  }
+]

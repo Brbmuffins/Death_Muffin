@@ -3,6 +3,7 @@ import { itemMeta, RARITY_COLOR } from '../content/items';
 import type { LootDrop } from '../gameplay/loot';
 import type { Effects, Handle } from './Effects';
 import { fx } from './fxTextures';
+import { playFx } from './binbun/presets';
 
 type Kind = 'gold' | 'shard' | 'item';
 
@@ -17,6 +18,8 @@ interface Drop {
   flying: boolean;
   beam?: THREE.Mesh;
   glow?: Handle;
+  /** Binbun ground marker (items) or soul glow (shards). */
+  marker?: Handle;
 }
 
 const coinGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.025, 10);
@@ -71,7 +74,8 @@ export class LootView {
       const m = new THREE.Mesh(shardGeo, shardMat);
       m.position.set(px, 0.5, pz);
       this.group.add(m);
-      this.drops.push({ kind: 'shard', obj: m, x: px, z: pz, amount: 1, t: 0, flying: false });
+      const marker = playFx(this.effects.binbun, 'soul_orb', { x: px, z: pz, colors: [0xb58cff, 0x7c3aed, 0x160a24], follow: () => (m.parent ? { x: m.position.x, y: m.position.y, z: m.position.z } : null) });
+      this.drops.push({ kind: 'shard', obj: m, x: px, z: pz, amount: 1, t: 0, flying: false, marker });
     }
     this.effects.lightFlash(x, 1.2, z, 0xa26bff, 20, 0.6);
   }
@@ -101,7 +105,9 @@ export class LootView {
     this.group.add(icon);
     if (beam) this.group.add(beam);
     const glow = this.effects.decal({ tex: fx.glow(), color, x: px, z: pz, r: 0.9, duration: 1e9, opacity: 0.7 });
-    this.drops.push({ kind: 'item', obj: icon, x: px, z: pz, amount: drop.quantity, item: drop, t: 0, flying: false, beam, glow });
+    // Rarity marker from the Binbun loot pack, in the game's rarity colour (the light pillar and glow stay).
+    const marker = meta.rarity === 'common' || meta.rarity === 'uncommon' ? undefined : playFx(this.effects.binbun, `loot_${meta.rarity}`, { x: px, z: pz, colors: [RARITY_COLOR[meta.rarity], RARITY_COLOR[meta.rarity], '#1a1620'], scale: 0.55, alpha: 0.85 });
+    this.drops.push({ kind: 'item', obj: icon, x: px, z: pz, amount: drop.quantity, item: drop, t: 0, flying: false, beam, glow, marker });
   }
 
   /**
@@ -153,6 +159,7 @@ export class LootView {
   private remove(i: number) {
     const d = this.drops[i];
     d.glow?.kill();
+    d.marker?.kill();
     this.group.remove(d.obj);
     if (d.beam) {
       this.group.remove(d.beam);

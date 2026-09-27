@@ -1,0 +1,9 @@
+{
+  "id": "prop_stained_glass",
+  "input": "art-src/concepts/props/stained_glass.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2400,
+    "texture_quality": "standard"
+  }
+}

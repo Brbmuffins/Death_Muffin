@@ -1,0 +1,9 @@
+{
+  "id": "prop_sunken_bell",
+  "input": "art-src/concepts/props/sunken_bell.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2200,
+    "texture_quality": "standard"
+  }
+}

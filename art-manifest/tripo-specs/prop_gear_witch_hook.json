@@ -1,0 +1,9 @@
+{
+  "id": "prop_gear_witch_hook",
+  "input": "art-src/concepts/props/gear_witch_hook.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 1400,
+    "texture_quality": "standard"
+  }
+}

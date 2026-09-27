@@ -611,3 +611,24 @@ Built from `docs/PROFESSIONS-ROADMAP.md` in one cloud session (branch `claude/ad
     `prelate_impact` read too bright under bloom; tuning is next.
   - **Not yet wired into gameplay** (brief §5 wiring list).
 - Checks: typecheck, 225 client tests (new `binbun.test.ts`), 33 server tests, `test:vfx`, production build.
+
+## Core art round + agent review (2026-09-27 late evening, workstation) ✅
+- **Tripo (1,210 credits, balance 20):**
+  - Chapterhouse centrepieces: the Altar of Ascension, Rite Niches and Covenant lectern. The altar and niches had no
+    model at all before this.
+  - 10 room props (Graves, Ossuary, Nave, Sanctum).
+  - The Bell-Sworn Templar (Sanctum enemy) and the Bone Colossus thrall (the payoff for the epic rune).
+  - Six class weapons.
+- **Gemini:** 35 ability icons for the five Release-0.3 classes, and 5 class sprites (crow, hook-chain, sound-ring,
+  lantern-cone, veil-rift). The Bone Colossus concept was regenerated once for bulk.
+- **Known flaw:** the Monk bell staff's bell is a separate floating island. The workaround is in the `new-classes.md` §5
+  brief.
+- **Briefs:** `world-dressing.md` and `new-classes.md` are new. The Templar went into the mobs brief (§5), the Colossus
+  into build depth (§7), and the centrepieces into spell-variety (§6).
+- **Review of the agent's `964906f`** (scratch worktree, fonts allowed):
+  - Tests: typecheck, 225 client, 33 server and 3 VFX, all green.
+  - Checked in the browser: dev access, the Grimoire button and the LMB socket, and the gallery (every shader compiles,
+    all textures load).
+  - **Blocker:** effects blow out under bloom at default gain. The notes are in the spell-variety brief §5.
+  - The counsel card's stray scrollbars are fixed on master (`readability.css`: the plate's corner brackets are pulled
+    inside scrolling plates).

@@ -45,6 +45,8 @@ import { Effects, type Handle } from '../graphics/Effects';
 import type { BinbunSpawn } from '../graphics/binbun/BinbunFX';
 import { isBinbunImpact, type BinbunId } from '../graphics/binbun/catalog';
 import type { Gallery } from '../graphics/binbun/gallery';
+import { playFx } from '../graphics/binbun/presets';
+import type { BinbunHandle } from '../graphics/binbun/BinbunFX';
 import { EntityViews } from '../graphics/EntityViews';
 import { fx } from '../graphics/fxTextures';
 import { LootView } from '../graphics/LootView';
@@ -426,6 +428,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.bindInput();
     this.scope.add(this.progression.onChange(() => this.refreshStats()));
     this.scope.add(onSettingsChange((s) => this.onDifficultySetting(s.difficulty)));
+    // The Binbun layer is extra polish: High quality only, so Low stays light and calm.
+    this.effects.binbun.enabled = settings.quality === 'high';
+    this.scope.add(onSettingsChange((s) => (this.effects.binbun.enabled = s.quality === 'high')));
     this.scope.add(this.inventory.onChange(() => this.refreshStats()));
     this.scope.on(window, 'pagehide', () => {
       void this.progression.flush(true);
@@ -1071,6 +1076,10 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'upgrades':
         // Damage / Wave Speed are bought from the HUD anywhere; the Altar itself is where runs are burned.
         return this.togglePanel('ascension');
+      case 'lectern':
+        // The Covenant Lectern by the Acre spawn: the Codex (First Rites will live here too).
+        this.onboarding.show('codex');
+        return this.togglePanel('codex');
       case 'boss': {
         const b = this.bossState();
         if (b.active) return;
@@ -1360,11 +1369,23 @@ export class WorldScene implements GameScene, RuntimeView {
     return veilTarget(this.nav, this.player.x, this.player.z, tx, tz);
   }
 
+  /** Layer a Binbun effect through its preset (graphics/binbun/presets.ts). Never throws or waits. */
+  private bb(id: BinbunId, x: number, z: number, o: Omit<BinbunSpawn, 'x' | 'z'> = {}) {
+    return playFx(this.effects.binbun, id, { x, z, ...o });
+  }
+
+  /** Effects that must land after a telegraph (processed in update, so QA stepping stays deterministic). */
+  private fxLater: { at: number; run: () => void }[] = [];
+  /** Looping auras tied to an entity (censer incense by enemy id, toxic stink by corpse id). */
+  private auraFx = new Map<string, BinbunHandle>();
+
   private handleEvent(ev: SimEvent) {
     this.views.onEvent(ev);
     const me = this.selfId;
     switch (ev.t) {
       case 'death':
+        this.auraFx.get(`e${ev.id}`)?.kill();
+        this.auraFx.delete(`e${ev.id}`);
         audio.play(ev.elite ? 'eliteDeath' : 'enemyDeath', ev.x, ev.z);
         this.worldView.addRipple(ev.x, ev.z, ev.elite ? 2 : 1.4);
         this.onKill(ev);
@@ -1393,6 +1414,7 @@ export class WorldScene implements GameScene, RuntimeView {
         } else if (ev.kind === 'archer') {
           this.effects.projectile({ from: { x: ev.x, y: 1.3, z: ev.z }, to: () => ({ x: ev.tx, y: 1, z: ev.tz }), kind: 'needle', color, speed: 26, arc: 0.6 });
         } else this.effects.emit({ x: ev.tx, y: 1, z: ev.tz, count: 3, color, spread: 0.2, speed: 2, up: 0.8, life: 0.3, size: 0.15, gravity: 5 });
+        if (ev.kind === 'archer') this.bb('archer_flash', ev.x, ev.z);
         if (ev.dmg > 0) this.floating.spawn(ev.tx, 1.4, ev.tz, String(ev.dmg), 'thrall');
         break;
       }
@@ -1422,6 +1444,7 @@ export class WorldScene implements GameScene, RuntimeView {
         for (const [fx0, fz0, tx, tz] of ev.leaps) {
           this.effects.beam({ x: fx0, y: 0.8, z: fz0 }, () => ({ x: tx, y: 0.8, z: tz }), R.jade, 0.06, 0.35);
           this.effects.emit({ x: tx, y: 0.6, z: tz, count: 10, color: R.bone, spread: 0.5, speed: 3, up: 1.5, life: 0.5, size: 0.14, gravity: 8 });
+          this.bb('rend_impact', tx, tz);
         }
         this.effects.decal({ tex: fx.ring(), color: R.jade, x: ev.x, z: ev.z, r: 3, duration: 0.5, opacity: 1, growFrom: 0.3 });
         this.effects.lightFlash(ev.x, 1.5, ev.z, R.jade, 40, 0.4);
@@ -1463,6 +1486,11 @@ export class WorldScene implements GameScene, RuntimeView {
         break;
       case 'corpseGone':
         this.abilities.onSeedGone(ev.id);
+        this.auraFx.get(`c${ev.id}`)?.kill();
+        this.auraFx.delete(`c${ev.id}`);
+        break;
+      case 'thrall':
+        if (Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 40) this.bb('thrall_rise', ev.x, ev.z);
         break;
       case 'heal':
         if (ev.player === me && this.player.alive) {
@@ -1513,6 +1541,8 @@ export class WorldScene implements GameScene, RuntimeView {
       }
       case 'affix':
         if (ev.affix === 'hungering' && ev.amount) this.floating.spawn(ev.x, 2.4, ev.z, `+${ev.amount}`, 'dot');
+        else if (ev.affix === 'bellTolled') this.bb('bell_toll_ring', ev.x, ev.z, { scale: (ev.r ?? 3) / 3 });
+        else if (ev.affix === 'vengeful') this.bb('vengeful_burst', ev.x, ev.z);
         break;
       case 'surge':
         this.onSurge(ev);
@@ -1530,6 +1560,7 @@ export class WorldScene implements GameScene, RuntimeView {
           audio.play('wave', ev.x, ev.z);
           this.effects.decal({ tex: fx.cracks(), color: 0x9b5cff, x: ev.x, z: ev.z, r: 3, duration: 1.8, opacity: 0.9, growFrom: 0.3 });
           this.effects.lightFlash(ev.x, 1, ev.z, 0x7c3aed, 30, 0.8);
+          this.bb('enemy_breach_rim', ev.x, ev.z);
           // A procession: one banner for the whole band (each breach reports the wave).
           const theme = ev.theme ? WAVE_THEMES[ev.area]?.find((t) => t.id === ev.theme) : undefined;
           if (theme && this.now - this.lastProcession > 4000) {
@@ -1549,6 +1580,14 @@ export class WorldScene implements GameScene, RuntimeView {
         break;
       case 'spawn':
         // Codex + onboarding: only what this player actually encounters.
+        if (ev.def === 'censer') {
+          const id = ev.id;
+          const follow = () => {
+            const e = this.enemiesMap().get(id);
+            return e && e.state !== 'dead' ? { x: e.x, z: e.z } : null;
+          };
+          this.auraFx.set(`e${id}`, this.bb('censer_incense', ev.x, ev.z, { follow }));
+        }
         if (Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 40) {
           this.codexDiscover('dead', ev.def);
           if (ev.def === 'deacon') this.onboarding.show('deacon');
@@ -1559,6 +1598,7 @@ export class WorldScene implements GameScene, RuntimeView {
         break;
       case 'corpse':
         if (Math.hypot(ev.corpse.x - this.player.x, ev.corpse.z - this.player.z) < 12) this.onboarding.show('exhume');
+        if (ev.corpse.kind === 'toxic') this.auraFx.set(`c${ev.corpse.id}`, this.bb('toxic_stink', ev.corpse.x, ev.corpse.z));
         break;
     }
   }
@@ -1654,6 +1694,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.effects.decal({ tex: fx.disc(), color: song, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.45, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.2 });
       this.effects.decal({ tex: fx.sigil(), color: song, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.6, spin: -1.5, fadeOut: 0.05 });
       this.effects.decal({ tex: fx.ring(), color: 0xeef4ff, x: ev.tx, z: ev.tz, r: r * 1.15, duration: 0.35, opacity: 1, growFrom: 0.5, delay: ms });
+      this.fxLater.push({ at: this.now + ev.ms, run: () => this.bb('choir_scream', ev.tx, ev.tz, { scale: r / 2.2 }) });
     } else if (ev.kind === 'raise') {
       const from = { x: ev.x, y: 1.8, z: ev.z };
       this.effects.beam(from, () => ({ x: ev.tx, y: 0.3, z: ev.tz }), SPELL_FX.enemy.rot, 0.05, ms);
@@ -1677,6 +1718,7 @@ export class WorldScene implements GameScene, RuntimeView {
       ]);
       this.effects.emit({ x: z.x, y: 0.4, z: z.z, count: dirge ? 30 : 18, color: dirge ? D.pale : B.petal, spread: z.r * 0.5, speed: 0.6, up: dirge ? 2 : 1.2, life: 1, size: 0.22 });
       if (dirge) audio.play('tollSmall', z.x, z.z);
+      this.bb(dirge ? 'dirge_area' : 'plague_bloom_area', z.x, z.z, { scale: dirge ? z.r / 6 : z.r / 2.4 });
       return;
     }
     const color = z.kind === 'toxic' ? SPELL_FX.enemy.toxic : SPELL_FX.miasma.deep;
@@ -1686,6 +1728,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.effects.decal({ tex: fx.disc(), color, x: z.x, z: z.z, r: z.r, duration: dur, opacity: z.kind === 'toxic' ? 0.5 : 0.66, growFrom: 0.3, fadeOut: 0.6 }),
       this.effects.decal({ tex: pool ? fx.cracks() : fx.sigil(), color: z.kind === 'toxic' ? SPELL_FX.enemy.rot : SPELL_FX.miasma.rot, x: z.x, z: z.z, r: z.r * 0.95, duration: dur, opacity: 0.22, spin: pool ? 0 : 0.6, fadeOut: 0.6 }),
     ];
+    if (pool) handles.push(this.bb('toxic_puddle', z.x, z.z, { scale: z.r / 2.6, duration: dur, colors: z.kind === 'toxic' ? [SPELL_FX.enemy.toxic, SPELL_FX.enemy.rot, 0x1a2010] : undefined }));
     this.zoneFx.set(z.id, handles);
   }
 
@@ -1700,6 +1743,8 @@ export class WorldScene implements GameScene, RuntimeView {
     this.effects.decal({ tex: fx.ring(), color: S.glow, x: ev.x, z: ev.z, r: 5, duration: 1.2, opacity: 1, growFrom: 0.1 });
     this.effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 60, color: S.glow, spread: 1.2, speed: 3, up: 3, life: 1.2, size: 0.32 });
     this.effects.lightFlash(ev.x, 2, ev.z, S.glow, 60, 1.2);
+    this.bb('surge_eruption', ev.x, ev.z);
+    this.bb('crypt_mist', ev.x, ev.z, { duration: Math.min(ms, 20) });
     if (ev.crypt) {
       // The tomb's seal gives: grave-dust billows and bone chips scatter from its door.
       this.effects.emitSmoke({ x: ev.x, y: 0.6, z: ev.z, count: 18, color: 0x4a4250, spread: 1.4, speed: 1.2, up: 1.4, life: 2.2, size: 2.2, shrink: -0.8 });
@@ -1862,6 +1907,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.effects.emit({ x: this.player.x, y: 0.2, z: this.player.z, count: 90, color: 0xf1d9a8, spread: 0.8, speed: 0.8, up: 5, life: 1.5, size: 0.35 });
       this.effects.decal({ tex: fx.sigil(), color: 0xe2c98f, x: this.player.x, z: this.player.z, r: 2.4, duration: 1.8, opacity: 1, growFrom: 0.2, spin: 1.2 });
       this.effects.lightFlash(this.player.x, 2, this.player.z, 0xf1d9a8, 50, 1);
+      this.bb('levelup_pillar', this.player.x, this.player.z);
     }
   }
 
@@ -1952,6 +1998,7 @@ export class WorldScene implements GameScene, RuntimeView {
           for (let k = 0; k < 3; k++) this.effects.decal({ tex: fx.ring(), color: SPELL_FX.boss.bronze, x: ev.x, z: ev.z, r: (ev.r ?? 6.5) * (0.8 + k * 0.25), duration: 0.6, opacity: 1 - k * 0.25, growFrom: 0.1, delay: k * 0.07 });
           this.effects.emit({ x: ev.x, y: 1, z: ev.z, count: 70, color: SPELL_FX.boss.bronze, spread: 2, speed: 7, up: 1, life: 0.7, size: 0.35 });
           this.effects.lightFlash(ev.x, 3, ev.z, SPELL_FX.boss.bronze, 60, 0.6);
+          this.bb('bell_toll_ring', ev.x, ev.z, { scale: (ev.r ?? 6.5) / 3 });
           this.rig.shake(0.4);
         }
         break;
@@ -1965,6 +2012,7 @@ export class WorldScene implements GameScene, RuntimeView {
             this.effects.flash({ x, y: 0.6, z, color: SPELL_FX.boss.bronze, size: 2.2, duration: 0.25 });
             this.effects.emitSmoke({ x, y: 0.3, z, count: 5, color: 0x3a3340, spread: 0.8, speed: 1.4, up: 0.6, life: 1, size: 1.4 });
             this.effects.spikeLine(x - 0.5, z, 1, 0, 1.2, 1.2);
+            this.bb(ev.kind === 'slam' ? 'prelate_impact' : 'boss_rain_orb', x, z, { scale: (ev.r ?? 2.3) / 2.3 });
           }
         }
         if (ms === 0) {
@@ -2006,6 +2054,11 @@ export class WorldScene implements GameScene, RuntimeView {
   update(dt: number, now: number) {
     if (!this.ready) return;
     this.now = now;
+    if (this.fxLater.length) {
+      const due = this.fxLater.filter((f) => f.at <= now);
+      this.fxLater = this.fxLater.filter((f) => f.at > now);
+      for (const f of due) f.run();
+    }
     const p = this.player;
 
     // Death / respawn.

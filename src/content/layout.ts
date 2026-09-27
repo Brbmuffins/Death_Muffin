@@ -26,7 +26,28 @@ export type PropId =
   | 'workbench'
   | 'waystone'
   // The Acre's Bone Kiln; loads models/props/prop_node_bone_kiln.glb once the pipeline builds it.
-  | 'prop_node_bone_kiln';
+  | 'prop_node_bone_kiln'
+  // Chapterhouse centrepieces (the Altar and the Niches had no body before 2026-09-27) and the Acre lectern.
+  | 'altar_ascension'
+  | 'rite_niches'
+  | 'covenant_lectern'
+  // Room dressing (world-dressing brief): each combat room gets two or three props of its own.
+  | 'coffin_stack'
+  | 'gibbet_cage'
+  | 'grave_lantern'
+  | 'bone_candelabrum'
+  | 'skull_wall'
+  | 'drowned_statue'
+  | 'stained_glass'
+  | 'sunken_bell'
+  | 'bell_frame'
+  | 'organ_pipes'
+  | 'church_pew'
+  // Area-boss summoning objects and the Bone Abbess's niches (area-bosses brief).
+  | 'kings_grave'
+  | 'abbess_reliquary'
+  | 'drowned_font'
+  | 'skull_niche';
 
 export interface PropSpec {
   /** Target world height of the generated model. */
@@ -54,6 +75,24 @@ export const PROPS: Record<PropId, PropSpec> = {
   workbench: { height: 1.4, collider: { kind: 'box', hw: 1.4, hd: 0.8 } },
   waystone: { height: 3, collider: { kind: 'circle', r: 0.6 } },
   prop_node_bone_kiln: { height: 2.2, collider: { kind: 'box', hw: 0.9, hd: 0.8 }, light: { color: 0xff8a3d, intensity: 10, distance: 9, y: 0.9, flames: 0, spread: 0.3 } },
+  altar_ascension: { height: 2.8, collider: { kind: 'box', hw: 1.6, hd: 1.2 } },
+  rite_niches: { height: 2.6, collider: { kind: 'box', hw: 1.4, hd: 0.4 } },
+  covenant_lectern: { height: 1.6, collider: { kind: 'circle', r: 0.45 } },
+  coffin_stack: { height: 1.6, collider: { kind: 'box', hw: 1.0, hd: 0.6 } },
+  gibbet_cage: { height: 3.4, collider: { kind: 'circle', r: 0.4 } },
+  grave_lantern: { height: 2.4, collider: { kind: 'circle', r: 0.25 }, light: { color: 0xffb46b, intensity: 4, distance: 6, y: 2.1, flames: 0, spread: 0.2 } },
+  bone_candelabrum: { height: 2.2, collider: { kind: 'circle', r: 0.4 }, light: { color: 0xffb46b, intensity: 4, distance: 6, y: 2, flames: 0, spread: 0.3 } },
+  skull_wall: { height: 1.1, collider: { kind: 'box', hw: 1.6, hd: 0.35 } },
+  drowned_statue: { height: 2.6, collider: { kind: 'circle', r: 0.6 } },
+  stained_glass: { height: 3.6, collider: { kind: 'box', hw: 1.1, hd: 0.3 } },
+  sunken_bell: { height: 1.8, collider: { kind: 'circle', r: 1.3 } },
+  bell_frame: { height: 3.0, collider: { kind: 'box', hw: 1.4, hd: 0.5 } },
+  organ_pipes: { height: 4.2, collider: { kind: 'box', hw: 1.8, hd: 0.6 } },
+  church_pew: { height: 1.3, collider: { kind: 'box', hw: 1.4, hd: 0.35 } },
+  kings_grave: { height: 1.6, collider: { kind: 'box', hw: 1.5, hd: 1.1 } },
+  abbess_reliquary: { height: 1.6, collider: { kind: 'box', hw: 0.9, hd: 0.7 } },
+  drowned_font: { height: 1.7, collider: { kind: 'circle', r: 0.9 } },
+  skull_niche: { height: 3.4, collider: { kind: 'circle', r: 0.7 } },
 };
 
 export interface Placement {
@@ -244,8 +283,8 @@ export function generateLayout(seed = 1337): WorldLayout {
     for (const x of [-6, 6]) for (const z of [12, 17.5, 23, 28.5]) P('pillar', x, z, a, 0);
     P('reliquary', -8.5, 14, a, Math.PI / 2);
     P('workbench', 8.5, 14, a, -Math.PI / 2);
-    P('statue', 0, 19.6, a, 0, 0.8);
-    P('statue', -9, 27.8, a, Math.PI / 2, 0.75);
+    P('altar_ascension', 0, 20.1, a, 0);
+    P('rite_niches', -12.2, 26.5, a, Math.PI / 2);
     P('waystone', 9, 26.5, a, 0);
     P('sarcophagus', 0, 27, a, 0);
     for (const [x, z] of [[-3, 10.5], [3, 10.5], [-3, 30.5], [3, 30.5]] as const) P('brazier', x, z, a, 0);
@@ -299,6 +338,7 @@ export function generateLayout(seed = 1337): WorldLayout {
     P('brazier', -26.5, 28.5, a, 0);
     P('workbench', -23.5, 12.5, a, 0, 0.9);
     P('prop_node_bone_kiln', -23.5, 33.2, a, Math.PI);
+    P('covenant_lectern', -24.2, 16.8, a, 0);
     for (const [x, z] of [[-21.2, 15.6], [-21.2, 24.4]] as const) P('candles', x, z, a);
     for (const [x, z] of [[-25.4, 34.4], [-60.6, 36.6], [-44.6, 36.8]] as const) P('bone_pile', x, z, a);
     for (const [x, z] of [[-60.8, 30.5], [-60.8, 33.5], [-26.8, 37], [-54, 37]] as const) P('dead_tree', x, z, a, rand() * 6, 0.7 + rand() * 0.2);
@@ -436,6 +476,7 @@ export function generateLayout(seed = 1337): WorldLayout {
 
   const crypts = cryptsFrom(props);
   richNodes(nodes, props);
+  dressRooms(props, nodes, crypts, paths);
 
   return { paths, props, walls, decals, windows, water, puddles, silhouettes, crypts, nodes, ponds };
 }
@@ -471,6 +512,72 @@ function richNodes(nodes: NodePlacement[], props: Placement[]) {
   }
   // Keep only types the rules know (a renamed node must not break old seeds silently).
   for (let i = nodes.length - 1; i >= 0; i--) if (!NODES[nodes[i].type]) nodes.splice(i, 1);
+}
+
+/**
+ * World dressing (2026-09-27): two or three signature props per combat room, placed last so the seeded layout above
+ * never shifts. Each wants a list of candidate spots; the first one clear of props, breaches, doors, interactables,
+ * gathering nodes, crypt surge spots and (for blocking props) the main paths is taken.
+ */
+export const DRESSING: [PropId, AreaId, number, [number, number][]][] = [
+  // Hollow Graves: coffins by the mausoleums, gibbets along the cross path, lantern posts at the forks.
+  ['coffin_stack', 'graves', 0.3, [[-15.4, -32.8], [-15.6, -28.4], [-22.6, -26.2]]],
+  ['coffin_stack', 'graves', 2.8, [[14.8, -0.4], [22.8, -6.2], [15, -4.8]]],
+  ['gibbet_cage', 'graves', 1.2, [[-12, -20.8], [-17, -20.8], [-9.5, -11.2]]],
+  ['gibbet_cage', 'graves', 4.3, [[12.5, -11.2], [17.5, -11.2], [9.5, -21]]],
+  ['grave_lantern', 'graves', 0, [[3.6, -2.6], [3.6, -5.4]]],
+  ['grave_lantern', 'graves', 0, [[-3.6, -31.5], [-3.6, -29]]],
+  ['grave_lantern', 'graves', 0, [[23.2, -12.6], [23.2, -11]]],
+  ['grave_lantern', 'graves', 0, [[-7.2, -13.2], [-7.4, -18.8]]],
+  // Marrow Ossuary: candelabra beside the aisle, low skull walls as half-cover lanes.
+  ['bone_candelabrum', 'ossuary', 0, [[36.2, -21.6], [36.2, -14.4]]],
+  ['bone_candelabrum', 'ossuary', 0, [[44.6, -14.2], [44.6, -22]]],
+  ['bone_candelabrum', 'ossuary', 0, [[60.2, -21.8], [60.2, -14.2]]],
+  ['skull_wall', 'ossuary', 0, [[38.5, -9], [40, -8.4]]],
+  ['skull_wall', 'ossuary', Math.PI / 2, [[46.2, -29.5], [47.4, -30.5]]],
+  ['skull_wall', 'ossuary', 0, [[58, -28.5], [57.4, -30]]],
+  // Drowned Nave: saints in the flood, broken windows on the side walls, a sunken bell as a landmark, pews.
+  ['drowned_statue', 'nave', Math.PI, [[-3.4, -60.5], [-3.4, -58]]],
+  ['drowned_statue', 'nave', Math.PI, [[3.4, -73.5], [3.4, -76]]],
+  ['stained_glass', 'nave', Math.PI / 2, [[-13.9, -57], [-13.9, -67]]],
+  ['stained_glass', 'nave', -Math.PI / 2, [[13.9, -86.5], [13.9, -77]]],
+  ['sunken_bell', 'nave', 0.6, [[-2.8, -83.2], [2.8, -83.2]]],
+  ['church_pew', 'nave', 0, [[-3.1, -55.6]]],
+  ['church_pew', 'nave', 0, [[3.1, -55.6]]],
+  ['church_pew', 'nave', 0, [[-3.1, -63.4]]],
+  ['church_pew', 'nave', 0, [[3.1, -63.4]]],
+  // Bell Sanctum: organ ranks flank the Sundered Bell; bell frames at the entrance corners.
+  ['organ_pipes', 'sanctum', 0, [[-6.6, -128.8]]],
+  ['organ_pipes', 'sanctum', 0, [[6.6, -128.8]]],
+  ['bell_frame', 'sanctum', 0, [[-13.6, -108.2], [-12.6, -107]]],
+  ['bell_frame', 'sanctum', 0, [[13.6, -108.2], [12.6, -107]]],
+];
+
+function footprint(prop: PropId, scale = 1) {
+  const c = PROPS[prop].collider;
+  return (c?.kind === 'box' ? Math.hypot(c.hw, c.hd) : c?.kind === 'circle' ? c.r : 0.4) * scale;
+}
+
+function dressRooms(props: Placement[], nodes: NodePlacement[], crypts: Crypt[], paths: Rect[]) {
+  const spots = interactSpots();
+  for (const [prop, area, rot, cands] of DRESSING) {
+    const r = footprint(prop);
+    const blocks = !!PROPS[prop].collider;
+    const spot = cands.find(([x, z]) => {
+      // Props may stand against the outer walls (the wall is solid anyway); only the centre must be inside.
+      if (!inRect(AREAS[area].rect, x, z, 0.2)) return false;
+      if (props.some((p) => Math.hypot(p.x - x, p.z - z) < (r + footprint(p.prop, p.scale)) * 0.8 + 0.2)) return false;
+      if (AREAS[area].breaches.some(([bx, bz]) => Math.hypot(bx - x, bz - z) < r + 2.5)) return false;
+      if (DOORS.some((d) => inRect({ x0: d.rect.x0 - 2.5, z0: d.rect.z0 - 2.5, x1: d.rect.x1 + 2.5, z1: d.rect.z1 + 2.5 }, x, z))) return false;
+      if (spots.some((s) => Math.hypot(s.x - x, s.z - z) < r + 2.2)) return false;
+      if (nodes.some((n) => Math.hypot(n.x - x, n.z - z) < r + 2)) return false;
+      if (crypts.some((c) => Math.hypot(c.x - x, c.z - z) < r + 2.2)) return false;
+      // Main paths stay open (pews and flooded-aisle props are the Nave's intended exceptions).
+      if (blocks && area !== 'nave' && paths.some((q) => inRect(q, x, z, -r))) return false;
+      return true;
+    });
+    if (spot) props.push({ prop, x: spot[0], z: spot[1], rot, scale: 1, area });
+  }
 }
 
 /** A point in front of each crypt prop, on the side facing its area's open middle. */

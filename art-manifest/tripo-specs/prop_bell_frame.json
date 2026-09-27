@@ -1,0 +1,9 @@
+{
+  "id": "prop_bell_frame",
+  "input": "art-src/concepts/props/bell_frame.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2400,
+    "texture_quality": "standard"
+  }
+}

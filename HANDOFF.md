@@ -88,7 +88,42 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 
 ## In flight (check before starting overlapping work)
 
-- **Queue for the cloud agent (2026-09-27 evening), in order:**
+- **Workstation wiring pass: DONE and staged (2026-09-27 late, usage ran low; resume from here).** All tests are
+  green: typecheck, 225 client, 33 server and 3 VFX. Checked in the browser with no console errors.
+  - **Binbun brightness:** `BINBUN_GAIN = 0.5` plus a soft knee (`bb_out`) in every program
+    (`graphics/binbun/shaders.ts`).
+  - **Effect presets:** one tuning table, `graphics/binbun/presets.ts` (`FX_PRESETS` + `playFx`), with colours from
+    `SPELL_FX`.
+  - **Rite hooks** (`AbilitySystem.bb`): Soul Harvest, Exhume, Miasma, Skull (rides the projectile via the new
+    `Effects.projectile().pos`), Grave Step, Grave Frost, Corpse Explosion, Litany, Offering, Ivory Cleave (≤2),
+    Veil Step, Rally, Carrion Seed.
+  - **Scene hooks** (`WorldScene.bb`): Rend, Wall, Dirge, Bloom, toxic/rot pools, Grave Surge, breaches, affixes
+    (bell toll, vengeful), boss toll/slam/rain, Choir Wraith scream (via the frame-driven `fxLater` queue), thrall
+    rise, level-up, censer incense (follows the bearer), and the toxic-corpse stink.
+  - **Loot:** rare/epic Binbun markers and shard glows (`LootView`).
+  - **Anti-clutter** (owner: "not too much clutter during combat, performance and smooth zone-out"):
+    - Frequent primaries (Needle, Fan, Lance) get **no** Binbun layer; only needle crits do.
+    - Cleave and Frost impacts are capped.
+    - The whole Binbun layer is **High quality only** (`effects.binbun.enabled`).
+  - **Props:** 18 registered in `layout.ts` `PROPS`.
+    - The Chapterhouse **Altar of Ascension** and **Rite Niches** are real models now (they replaced two statues).
+      The Niches interactable moved to (-10.8, 26.5).
+    - A new **Covenant Lectern** interactable (kind `lectern`, Acre spawn) opens the Codex.
+    - `DRESSING` + `dressRooms()` places room props **after** the seeded layout, so no grave or node moves. 21 of 28
+      found a clear spot; the rest skip on purpose, which also keeps rooms uncluttered.
+    - `WorldView` has a generic fallback block for new props.
+  - `necro-rules.cjs` and `gathering-rules.cjs` were regenerated (`areas.ts` changed), so re-install them on the
+    VPS with the next deploy.
+  - **Next, in order:**
+    1. Interactable beacons + nameplates + **E** to interact + minimap icons, and the ambient-fire manager (brief §6;
+       presets for `interact_rim`, `altar_beacon`, `brazier_fire`… exist in `presets.ts`). Keep the ambient loopers
+       under ~14 so spells keep headroom (the runtime caps loopers at 32).
+    2. A co-op **cast echo** (cosmetic relay so partners see each other's direct casts; today only host-event
+       spells are visible to the partner).
+    3. Mobs brief → bosses → aspects → First Rites → runes → world-dressing leftovers → new classes.
+  - The boss props (`kings_grave`, `abbess_reliquary`, `drowned_font`, `skull_niche`) are registered but not
+    placed; the area-bosses brief places them.
+- **2026-09-27 late: the cloud agent is PAUSED; the workstation session is wiring the whole queue below into one working build** (owner: "wire everything up as much as possible into a working product"). Local `master` was fast-forwarded to the agent's `964906f`; the workstation's work is staged on top (backup ref `refs/backup/ws-staged-20260927`). Queue, in order:
   1. finish [`spell-variety-first-session.md`](docs/agent-briefs/spell-variety-first-session.md). Done on
      `claude/adoring-knuth-hd1uox`: §2 dev access (`55a6dd2`), §3 Grimoire + LMB primary (`7c3afae`), §4 seven rites
      (`502f726`), §5 **runtime + DEV gallery** (this session's last commit). **Next, in order:**
@@ -102,13 +137,15 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
        and `prelate_impact` read blown out under bloom. Check `uGain` / emission in `src/graphics/binbun/shaders.ts`
        and the per-pack shaders (they go through the approximate `generic` program).
      - Then §6 interactables (beacons use `interact_rim`), §7 First Rites, §10 docs;
-  2. [`mobs-barrow-ghoul-lich-acolyte.md`](docs/agent-briefs/mobs-barrow-ghoul-lich-acolyte.md);
+  2. [`mobs-barrow-ghoul-lich-acolyte.md`](docs/agent-briefs/mobs-barrow-ghoul-lich-acolyte.md) (+ §5: the Bell-Sworn
+     Templar);
   3. [`area-bosses.md`](docs/agent-briefs/area-bosses.md);
-  4. [`build-depth-aspects-runes.md`](docs/agent-briefs/build-depth-aspects-runes.md). Its runes need Death Muffin
-     migration 003 plus a deploy.
+  4. [`build-depth-aspects-runes.md`](docs/agent-briefs/build-depth-aspects-runes.md) (+ §7: the Bone Colossus model). Its
+     runes need Death Muffin migration 003 plus a deploy;
+  5. [`world-dressing.md`](docs/agent-briefs/world-dressing.md) (can slot in anywhere);
+  6. [`new-classes.md`](docs/agent-briefs/new-classes.md): the class framework, then Hollow Knight first.
 
-  All their art is staged on `master`. `master` and the cloud branch merge cleanly; the merge was tested green in a
-  scratch worktree.
+  All their art is staged on `master`. Tripo balance is now 20; top up before any new 3D work.
 - **UI readability pass (workstation, staged on `master`):** `src/theme/tokens.css` and a new `src/ui/readability.css`
   (linked in `index.html` after `ui.css`). Future UI tweaks go in `readability.css` (or `ui.css`), and `readability.css`
   wins on equal specificity. See PHASE_REPORTS.

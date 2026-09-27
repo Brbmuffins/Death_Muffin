@@ -1,0 +1,9 @@
+{
+  "id": "prop_grave_lantern",
+  "input": "art-src/concepts/props/grave_lantern.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 1800,
+    "texture_quality": "standard"
+  }
+}

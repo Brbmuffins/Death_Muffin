@@ -34,6 +34,9 @@ import type { Player } from './Player';
 import { audio } from '../audio/Audio';
 import { HEMORRHAGE } from '../content/statuses';
 import { CAST_FLOW } from '../content/combatFlow';
+import { playFx } from '../graphics/binbun/presets';
+import type { BinbunHandle, BinbunSpawn } from '../graphics/binbun/BinbunFX';
+import type { BinbunId } from '../graphics/binbun/catalog';
 
 /**
  * Veil Step's destination: walk from (x, z) toward (tx, tz) in small steps and keep the last point
@@ -115,12 +118,20 @@ export class AbilitySystem {
   private dashing: { fx: number; fz: number; tx: number; tz: number; start: number; dur: number } | null = null;
   /** Carrion Seed buds shown on corpses (any caster's), by corpse id. */
   private seeds = new Map<number, Handle>();
+  /** Carrion Seed Binbun cores, by corpse id. */
+  private seedCores = new Map<number, BinbunHandle>();
 
   constructor(private ctx: AbilityContext) {}
 
   /** The realtime socket id replaces the provisional solo id once connected. */
   setSelf(id: string) {
     this.ctx.selfId = id;
+  }
+
+  /** Layer a Binbun effect (presets.ts). A no-op without the runtime (unit tests stub Effects). */
+  private bb(id: BinbunId, x: number, z: number, o: Omit<BinbunSpawn, 'x' | 'z'> = {}): BinbunHandle | null {
+    const b = this.ctx.effects.binbun;
+    return b ? playFx(b, id, { x, z, ...o }) : null;
   }
 
   private get sp() {
@@ -240,6 +251,7 @@ export class AbilitySystem {
     effects.emit({ x: p.x, y: 0.4, z: p.z, count: 20, color: SOUL.jade, spread: 0.6, speed: 1.2, up: 3.2, life: 0.8, size: 0.3 });
     effects.emit({ x: p.x, y: 1.4, z: p.z, count: 8, color: SOUL.pale, spread: 0.3, speed: 2.4, up: 1, life: 0.5, size: 0.22 });
     effects.lightFlash(p.x, 1.6, p.z, SOUL.jade, 26, 0.45);
+    this.bb('soul_harvest_pillar', p.x, p.z);
     audio.play('shard', p.x, p.z);
   }
 
@@ -283,6 +295,8 @@ export class AbilitySystem {
         effects.flash({ x: pos.x, y: pos.y, z: pos.z, color: N.impact, size: crit ? 1.7 : 1.05, duration: 0.2 });
         effects.emit({ x: pos.x, y: pos.y, z: pos.z, count: crit ? 16 : 8, color: N.dust, spread: 0.1, speed: 3.2, up: 1.2, life: 0.4, size: 0.13, gravity: 7 });
         if (crit) effects.emit({ x: pos.x, y: pos.y, z: pos.z, count: 10, color: N.trail, spread: 0.2, speed: 4, up: 0.5, life: 0.3, size: 0.3 });
+        // Needles fire constantly (auto combat): only crits get the extra layer, so farming stays calm.
+        if (crit) this.bb('crit_hit', pos.x, pos.z, { y: pos.y });
         this.ctx.number(pos.x, pos.z, amount, crit ? 'crit' : 'hit');
       },
     });
@@ -404,6 +418,7 @@ export class AbilitySystem {
     audio.play('exhume', c.x, c.z);
     effects.emit({ x: c.x, y: 0.2, z: c.z, count: 26, color: X.spirit, spread: 0.6, speed: 0.4, up: 3.4, life: 1, size: 0.34, gravity: -0.5 });
     effects.decal({ tex: fx.cracks(), color: X.deep, x: c.x, z: c.z, r: 1.4, rot: Math.random() * 6, duration: 1.3, opacity: 0.9, growFrom: 0.3 });
+    this.bb('exhume_lift', c.x, c.z);
     return 'ok';
   }
 
@@ -445,6 +460,7 @@ export class AbilitySystem {
         audio.play('miasma', x, z);
         effects.emitSmoke({ x, y: 0.4, z, count: 6, color: M.spore, spread: r * 0.6, speed: 0.5, up: 0.3, life: 0.9, size: 1.1, shrink: -0.3, drag: 0.8 });
         effects.emit({ x, y: 0.3, z, count: 16, color: M.rot, spread: r * 0.5, speed: 1.1, up: 0.6, life: 0.65, size: 0.18 });
+        this.bb('miasma_cloud', x, z, { scale: r / 3.8 });
       },
     });
     return 'ok';
@@ -493,7 +509,7 @@ export class AbilitySystem {
     const { player: p, effects } = this.ctx;
     const W = WAILING_SKULL;
     const enemyId = t.enemyId;
-    effects.projectile({
+    const shot = effects.projectile({
       from,
       kind: 'sprite',
       tex: fxImage('skull'),
@@ -551,6 +567,7 @@ export class AbilitySystem {
         this.skullLeap({ x: pos.x, y: pos.y, z: pos.z }, next, dmg * W.falloff, hop + 1, left, struck);
       },
     });
+    this.bb('wailing_skull_projectile', from.x, from.z, { y: from.y, follow: shot.pos });
   }
 
   /** Grave Step: blood-mist blink onto a corpse in your own area; the corpse stays. */
@@ -566,6 +583,7 @@ export class AbilitySystem {
     effects.emitSmoke({ x: ox, y: 0.9, z: oz, count: 6, color: ST.mist, spread: 0.45, speed: 0.7, up: 0.7, life: 0.75, size: 1.2, shrink: -0.4 });
     effects.emit({ x: ox, y: 1, z: oz, count: 18, color: ST.blood, spread: 0.4, speed: 2.2, up: 1.2, life: 0.45, size: 0.2, gravity: 6 });
     effects.decal({ tex: fxImage('bloodSigil'), color: ST.crimson, x: ox, z: oz, r: 1.2, duration: 0.8, opacity: 0.85, growFrom: 0.6 });
+    this.bb('grave_step_smoke', ox, oz);
     p.teleport(c.x, c.z);
     p.face(p.x + (p.x - ox), p.z + (p.z - oz));
     avatar.cast('cast', 3, p.facing, CAST_FLOW.grave_step.gestureSeconds);
@@ -595,6 +613,7 @@ export class AbilitySystem {
     effects.emit({ x: p.x, y: 0.8, z: p.z, count: 8, color: ST.hot, spread: 0.2, speed: 2, up: 2.2, life: 0.35, size: 0.18 });
     effects.emitSmoke({ x: p.x, y: 0.5, z: p.z, count: 5, color: ST.mist, spread: r * 0.4, speed: 1.2, up: 0.5, life: 0.8, size: 1.2, shrink: -0.4 });
     effects.lightFlash(p.x, 1.2, p.z, ST.blood, 30, 0.35);
+    this.bb('grave_step_smoke', p.x, p.z, { scale: 1.2 });
     audio.play('bloodStep', p.x, p.z);
     this.ctx.shake(0.05);
     return 'ok';
@@ -626,6 +645,7 @@ export class AbilitySystem {
       effects.emit({ x: origin.x + dx * len * k * 0.85, y: 0.8, z: origin.z + dz * len * k * 0.85, count: 5, color: FR.pale, spread: 0.3 + k * 1.2, speed: 1.2, up: 0.4, life: 0.45, size: 0.14 });
     }
     audio.play('frost', origin.x + dx * 2, origin.z + dz * 2);
+    this.bb('grave_frost_mist', origin.x + dx * len * 0.45, origin.z + dz * len * 0.45, { rot });
     const end = { x: origin.x + dx * len, y: 0.9, z: origin.z + dz * len };
     effects.projectile({
       from: tip, to: () => end, kind: 'orb', color: FR.pale, speed: G.speed,
@@ -647,6 +667,7 @@ export class AbilitySystem {
           if (shown++ < 14) {
             effects.decal({ tex: fxImage('rime'), color: FR.frost, x: e.x, z: e.z, r: 0.75 * e.scale, rot: Math.random() * 6, duration: 1.4, opacity: 0.9, growFrom: 0.4 });
             if (shatter) {
+              if (shown <= 3) this.bb('frost_shard_hit', e.x, e.z);
               effects.flash({ x: e.x, y: 1, z: e.z, color: FR.pale, size: 1.2, duration: 0.18 });
               effects.emit({ x: e.x, y: 1, z: e.z, count: 10, color: FR.pale, spread: 0.2, speed: 3.4, up: 2, life: 0.5, size: 0.13, gravity: 10 });
             }
@@ -871,7 +892,7 @@ export class AbilitySystem {
     effects.flash({ x: tip.x, y: tip.y, z: tip.z, color: LN.rot, size: 0.7, duration: 0.14 });
     audio.play('needleCast', p.x, p.z, 0.8);
     effects.beam(tip, () => end, LN.deep, 0.03, 0.18);
-    effects.projectile({
+    const lanceShot = effects.projectile({
       from: tip, to: () => end, kind: 'orb', color: LN.rot, speed: ROT_LANCE.speed,
       onArrive: () => {
         if (!p.alive) return;
@@ -904,6 +925,7 @@ export class AbilitySystem {
         if (hits.length) audio.play('needleHit', hits[0].x, hits[0].z, 0.7);
       },
     });
+    void lanceShot; // primaries repeat too often for a Binbun core; the lance keeps its light orb + beam
     return 'ok';
   }
 
@@ -925,6 +947,7 @@ export class AbilitySystem {
     // A jade wisp flies corpse → caster (Exhume's beam runs the other way).
     effects.decal({ tex: fx.ring(), color: X.spirit, x: ev.x, z: ev.z, r: 1.1, duration: 0.5, opacity: 0.9, growFrom: 0.3 });
     effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 14, color: X.spirit, spread: 0.3, speed: 1, up: 2.2, life: 0.6, size: 0.18 });
+    this.bb('grave_offering_ripple', ev.x, ev.z);
     effects.projectile({
       from: { x: ev.x, y: 0.8, z: ev.z },
       to: () => {
@@ -934,6 +957,7 @@ export class AbilitySystem {
       kind: 'sprite', tex: fxImage('wisp'), size: 0.9, color: X.beam, speed: 14,
       onArrive: (pos) => {
         effects.flash({ x: pos.x, y: pos.y, z: pos.z, color: X.spirit, size: 1.2, duration: 0.2 });
+        this.bb('grave_offering_orb', pos.x, pos.z);
         if (!mine || !p.alive) return;
         const essence = (GRAVE_OFFERING.essence + (ev.corpseKind === 'resonant' ? GRAVE_OFFERING.resonantBonus : 0)) * (ev.elite ? GRAVE_OFFERING.eliteMult : 1);
         p.essence = Math.min(p.stats.maxEssence, p.essence + essence);
@@ -972,6 +996,7 @@ export class AbilitySystem {
       if (ids.length <= 10) {
         this.ctx.number(e.x, e.z, dmg, 'hit');
         effects.emit({ x: e.x, y: 0.9, z: e.z, count: 5, color: S.bone, spread: 0.2, speed: 2.4, up: 1.1, life: 0.35, size: 0.12, gravity: 8 });
+        if (ids.length <= 2) this.bb('ivory_cleave_hit', e.x, e.z);
       }
       if (ids.length >= 64) break;
     }
@@ -1013,6 +1038,7 @@ export class AbilitySystem {
     effects.decal({ tex: fxImage('veilStreak'), color: VL.jade, x: (from.x + to.x) / 2, z: (from.z + to.z) / 2, r: dist / 2 + 0.4, sx: 0.35, rot: Math.atan2(to.x - from.x, to.z - from.z), duration: 0.6, opacity: 0.85, fadeOut: 0.45 });
     effects.emitSmoke({ x: from.x, y: 0.9, z: from.z, count: 4, color: VL.deep, spread: 0.4, speed: 0.5, up: 0.5, life: 0.6, size: 1, shrink: -0.3 });
     effects.emit({ x: from.x, y: 1, z: from.z, count: 12, color: VL.pale, spread: 0.3, speed: 1.6, up: 0.8, life: 0.4, size: 0.14 });
+    this.bb('veil_step_trail', from.x, from.z, { duration: 0.6, rot: Math.atan2(to.x - from.x, to.z - from.z) });
     effects.decal({ tex: fx.ring(), color: VL.jade, x: to.x, z: to.z, r: 1, duration: 0.45, opacity: 0.9, growFrom: 0.2 });
     effects.lightFlash(to.x, 1.2, to.z, VL.jade, 14, 0.25);
     audio.play('bloodStep', from.x, from.z, 1.3);
@@ -1051,8 +1077,11 @@ export class AbilitySystem {
         0.45,
       );
       effects.decal({ tex: fxImage('rallySigil'), color: RD.jade, x: 0, z: 0, r: 0.7, duration: dur, opacity: 0.7, spin: 1.4, fadeOut: 0.4, follow: at });
+      const a0 = at();
+      if (a0) this.bb('rally_thrall_rim', a0.x, a0.z, { follow: at, duration: dur });
     }
     effects.lightFlash(ev.x, 1.2, ev.z, RD.jade, 18, 0.3);
+    this.bb('rally_area', ev.x, ev.z);
     audio.play('thrallRise', ev.x, ev.z);
   }
 
@@ -1073,6 +1102,9 @@ export class AbilitySystem {
   onSeeded(ev: Extract<SimEvent, { t: 'seeded' }>) {
     const { effects } = this.ctx;
     this.seeds.get(ev.corpseId)?.kill();
+    this.seedCores.get(ev.corpseId)?.kill();
+    const core = this.bb('carrion_seed_armed', ev.x, ev.z, { duration: CARRION_SEED.lifeS + 1 });
+    if (core) this.seedCores.set(ev.corpseId, core);
     effects.emit({ x: ev.x, y: 0.4, z: ev.z, count: 10, color: BL.petal, spread: 0.3, speed: 0.8, up: 1.2, life: 0.5, size: 0.14 });
     this.seeds.set(ev.corpseId, effects.decal({ tex: fxImage('seedBud'), color: BL.petal, x: ev.x, z: ev.z, r: 0.75, duration: CARRION_SEED.lifeS + 1, opacity: 0.95, growFrom: 0.2, pulse: 3, fadeIn: ev.armMs / 1000 }));
   }
@@ -1081,6 +1113,8 @@ export class AbilitySystem {
   onSeedGone(corpseId: number) {
     this.seeds.get(corpseId)?.kill();
     this.seeds.delete(corpseId);
+    this.seedCores.get(corpseId)?.kill();
+    this.seedCores.delete(corpseId);
   }
 
   onSeedBurst(ev: Extract<SimEvent, { t: 'seedBurst' }>) {
@@ -1090,6 +1124,8 @@ export class AbilitySystem {
     effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 30, color: BL.petal, spread: 0.4, speed: ev.r * 2.4, up: 1.6, life: 0.6, size: 0.22, drag: 1.4 });
     effects.emitSmoke({ x: ev.x, y: 0.6, z: ev.z, count: 6, color: BL.spore, spread: ev.r * 0.4, speed: 1, up: 0.6, life: 1, size: 1.4, shrink: -0.4 });
     effects.lightFlash(ev.x, 1, ev.z, BL.petal, 22, 0.3);
+    this.bb('carrion_seed_burst', ev.x, ev.z, { scale: ev.r / 3 });
+    this.bb('toxic_puddle', ev.x, ev.z, { scale: ev.r / 3, duration: 1.5 });
     audio.play('burst', ev.x, ev.z);
     this.ctx.shake(0.06);
   }
@@ -1166,6 +1202,7 @@ export class AbilitySystem {
     effects.emit({ x, y: 0.4, z, count: 8, color: D.crimson, spread: 0.3, speed: 2, up: 2.4, life: 0.8, size: 0.26, gravity: 6 });
     effects.emitSmoke({ x, y: 0.4, z, count: 4, color: D.smoke, spread: r * 0.35, speed: 1.4, up: 0.8, life: 0.75, size: 1.0, shrink: -0.3 });
     effects.lightFlash(x, 1.2, z, D.ember, ev.elite ? 55 : 38, 0.45);
+    this.bb('corpse_explosion', x, z, { scale: r / 3 });
     if (ev.corpseKind === 'resonant') {
       // A resonant corpse rings as it goes — the wider blast gets a bronze echo.
       effects.decal({ tex: fx.ring(), color: SPELL_FX.enemy.toll, x, z, r: r * 1.05, duration: 0.6, opacity: 0.8, growFrom: 0.2, delay: 0.06 });
@@ -1194,6 +1231,7 @@ export class AbilitySystem {
     effects.emitSmoke({ x: ev.x, y: 0.5, z: ev.z, count: 4, color: L.void, spread: 1, speed: 0.4, up: 0.2, life: 0.65, size: 1.3, shrink: -0.3 });
     // …then the shockwave.
     effects.decal({ tex: fx.sigil(), color: L.core, x: ev.x, z: ev.z, r: ev.r, duration: 0.7, opacity: 0.65, growFrom: 0.1, spin: 0.35 });
+    this.bb('litany_pulse', ev.x, ev.z, { scale: ev.r / 7 });
     effects.decal({ tex: fx.ring(), color: L.hot, x: ev.x, z: ev.z, r: ev.r * 1.15, duration: 0.55, opacity: 1, growFrom: 0.05, delay: 0.18 });
     effects.decal({ tex: fx.ring(), color: L.core, x: ev.x, z: ev.z, r: ev.r * 1.3, duration: 0.7, opacity: 0.7, growFrom: 0.05, delay: 0.26 });
     effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 48, color: L.core, spread: 1, speed: 9, up: 1.8, life: 0.55, size: 0.23 });

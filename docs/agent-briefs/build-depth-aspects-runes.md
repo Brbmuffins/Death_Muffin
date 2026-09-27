@@ -132,3 +132,13 @@ Aspect × rune validity matrix, loadout v3 migration, aspect unlock by level (an
 runs with a few aspect/rune builds (report in `BALANCE.md`). Docs: README, Codex, `FUTURE_CONTENT.md` (runes ✅),
 `server/proposals/relic-runes.md` (mark superseded by the Death Muffin implementation), `server/death-muffin/` deploy
 notes (migration 003 + restart), `HANDOFF.md`, `PHASE_REPORTS.md`, this brief's row in `docs/agent-briefs/README.md`.
+
+## 7. Addendum (2026-09-27 evening): the Bone Colossus has its own model
+
+`rune_bone_colossus` (epic) now has a dedicated thrall model:
+- **Model:** `public/models/bone_colossus/character.glb` (Tripo: idle, walk, attack, hurt, death; 5.7k tris). It is a
+  hulking figure of bundled bones with spirit-jade runes and a violet Covenant cloth, so it reads as *yours* and never
+  as the enemy Bone Golem.
+- **Wiring:** add a `colossus` `ThrallKind`, register `bone_colossus` in `modelPaths.ts` (height ≈ 3.2) and map it in
+  `THRALL_SLUG`.
+- **Behaviour:** 3 cap slots, 3.5× HP, 2× damage and a 2.4 m cleave. Its attack clip is the slash.

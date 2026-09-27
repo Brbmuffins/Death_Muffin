@@ -1,0 +1,9 @@
+{
+  "id": "prop_drowned_statue",
+  "input": "art-src/concepts/props/drowned_statue.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2400,
+    "texture_quality": "standard"
+  }
+}

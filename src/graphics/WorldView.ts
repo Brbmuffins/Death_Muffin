@@ -152,6 +152,10 @@ function fallbackGeometry(id: PropId): { geo: THREE.BufferGeometry; color: numbe
       cyl(0.22, 0.28, 1.1, 0.5, 1.1, 0.35);
       color = 0x8a7c68;
       break;
+    default:
+      // Newer pipeline props: a plain block of the right height until the GLB arrives.
+      box(1, PROPS[id].height * 0.8, 0.8);
+      color = 0x4f4a58;
   }
   const merged = mergeGeometries(g.map((x) => (x.index ? x.toNonIndexed() : x)), false)!;
   merged.computeVertexNormals();

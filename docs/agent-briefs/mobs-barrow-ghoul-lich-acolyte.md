@@ -129,3 +129,24 @@ whitelist needs the new ids).
   that the VPS copy needs re-installing.
 - Update `FUTURE_CONTENT.md` (Lich Acolyte ✅), `PHASE_REPORTS.md`, `HANDOFF.md`, `docs/ART-BACKLOG.md` (Lich Acolyte
   + Barrow Ghoul → live), and this brief's row in `docs/agent-briefs/README.md`.
+
+## 5. Addendum (2026-09-27 evening): the Bell-Sworn Templar — the Sanctum's own enemy
+
+The Bell Sanctum borrows every other room's dead and has no enemy of its own. **Art done:** `public/models/bell_templar/character.glb`
+(Tripo: idle, walk, run, attack, hurt, death; 4.9k tris), concept `art-src/concepts/bell_templar.png`, spec
+`art-manifest/tripo-specs/bell_templar.json`. Register like the ghoul (`bell_templar`, height ≈ 2.1, fallback `grave_robber`).
+
+- **Definition:** `templar`, `melee`/`humanoid`, hp 180, speed 1.9, radius 0.55, damage 20, range 1.6, windup 650 ms,
+  cooldown 1600 ms, xp 14, gold [8, 16], corpse `resonant` (it's bell-sworn), scale 1.1. Blurb: *"A knight of the Bell
+  behind a bronze shield. Blows from the front glance off — come at it from the side, or let your thralls hold its
+  attention."*
+- **Twist: the shield.** Damage arriving from the Templar's front 120° is reduced by 70%. The host knows the source:
+  `hit.by` names the caster, so take the caster's position, or the thrall's position for thrall hits. Area and
+  ground damage (Miasma, rot pools, Litany) ignores the shield. A blocked hit plays a bronze spark on the shield and a
+  `tollSmall` tick, so the rule reads without text. **Fractured** Templars lose the block entirely, which rewards
+  Marrow Spear and Ivory Cleave.
+- **Where:** Bell Sanctum weight 12 and the Sanctum `procession` theme (lead: `templar` instead of `golem` in half the
+  processions). Nave weight 3.
+- **Help:** first-sight tip `templar`; a Codex entry; the README.
+- **Tests:** frontal hits are reduced and rear/side hits are not, area damage ignores the shield, Fracture removes the
+  block, and thrall hits use the thrall's position.

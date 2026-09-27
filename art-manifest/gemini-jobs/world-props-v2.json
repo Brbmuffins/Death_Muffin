@@ -1,0 +1,137 @@
+[
+  {
+    "id": "concept_prop_altar_ascension",
+    "out": "art-src/concepts/props/altar_ascension.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood and iron, aged bone, tarnished bronze, candle wax). Subject: the Altar of Ascension, the centrepiece of a necromancer order's chapterhouse: a grand altar of black stone raised on three wide steps, its front carved with a ring of skulls climbing upward toward an old-gold inlaid sigil, a large open ritual tome and a bone-handled knife on top, tall candles at its four corners, a carved stone arch rising behind it with a gilded circular halo at its peak. Imposing, symmetrical, instantly reads as the most important object in the room."
+  },
+  {
+    "id": "concept_prop_rite_niches",
+    "out": "art-src/concepts/props/rite_niches.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood and iron, aged bone, tarnished bronze, candle wax). Subject: a freestanding shrine wall of stone alcoves, three rows of arched niches, each niche holding the tool of a craft on display: a pickaxe, a hatchet, a grave spade, a fishing rod, a mortar and pestle, a cleaver, a woodworking saw, with small candles in every niche, bundles of dried herbs hanging from the top ledge, a carved skull keystone above the centre. Reads as a place to learn crafts."
+  },
+  {
+    "id": "concept_prop_covenant_lectern",
+    "out": "art-src/concepts/props/covenant_lectern.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood and iron, aged bone, tarnished bronze, candle wax). Subject: a tall carved lectern of blackened wood on a stone base, a heavy open book resting on it with a violet ribbon bookmark hanging down, a lit candle and a small skull on the lectern's ledge, a crook-topped staff leaning against it. Reads as a place to read guidance."
+  },
+  {
+    "id": "concept_prop_coffin_stack",
+    "out": "art-src/concepts/props/coffin_stack.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood and iron, aged bone, tarnished bronze, candle wax). Subject: a haphazard stack of old wooden coffins, four or five of them piled at angles, one lid cracked open with a bony hand hanging out, iron bands and nails, mud and moss at the base."
+  },
+  {
+    "id": "concept_prop_gibbet_cage",
+    "out": "art-src/concepts/props/gibbet_cage.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood and iron, aged bone, tarnished bronze, candle wax). Subject: a hanging gibbet: a tall crooked wooden gallows post with an iron bird-cage shaped gibbet hanging from its arm by a chain, a slumped skeleton inside the cage, crows' feathers on the ground."
+  },
+  {
+    "id": "concept_prop_grave_lantern",
+    "out": "art-src/concepts/props/grave_lantern.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood and iron, aged bone, tarnished bronze, candle wax). Subject: a graveyard lantern post: a tall iron post with a hooked arm holding an old iron lantern with a small flame inside, a stone base with a little bell and a wooden sign plank, cobwebs."
+  },
+  {
+    "id": "concept_prop_bone_candelabrum",
+    "out": "art-src/concepts/props/bone_candelabrum.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood and iron, aged bone, tarnished bronze, candle wax). Subject: a floor-standing bone candelabrum as tall as a man, built entirely from femurs, ribs and spines lashed together, with seven skulls along its branching arms each holding a melted candle on its crown, wax dripping down the bones."
+  },
+  {
+    "id": "concept_prop_skull_wall",
+    "out": "art-src/concepts/props/skull_wall.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood and iron, aged bone, tarnished bronze, candle wax). Subject: a low ossuary wall segment, about waist high and twice as long as it is tall, built from stacked human skulls and long bones set in mortar in neat rows, a stone cap along the top with a few candle stubs."
+  },
+  {
+    "id": "concept_prop_drowned_statue",
+    "out": "art-src/concepts/props/drowned_statue.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood and iron, aged bone, tarnished bronze, candle wax). Subject: a weathered stone statue of a hooded saint with praying hands standing on a cracked plinth, the lower half stained green-black with water lines and hanging river weed, barnacles and a rusted bronze halo tilted on its head."
+  },
+  {
+    "id": "concept_prop_stained_glass",
+    "out": "art-src/concepts/props/stained_glass.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood and iron, aged bone, tarnished bronze, candle wax). Subject: a broken gothic window frame standing on its own as ruins: a tall pointed stone arch holding the remains of a stained glass window, most of the glass shattered, a few jagged panes left in deep violet, crimson and amber, lead cames bent, rubble at its base."
+  },
+  {
+    "id": "concept_prop_sunken_bell",
+    "out": "art-src/concepts/props/sunken_bell.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood and iron, aged bone, tarnished bronze, candle wax). Subject: a huge cracked bronze church bell lying tilted half buried in wet flagstones and mud, green verdigris streaks, its clapper hanging out, a snapped wooden yoke beam still bolted to its top."
+  },
+  {
+    "id": "concept_prop_bell_frame",
+    "out": "art-src/concepts/props/bell_frame.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood and iron, aged bone, tarnished bronze, candle wax). Subject: a sturdy wooden bell frame like a small belfry trestle, heavy black timbers with iron brackets, three bronze bells of different sizes hanging in a row from its crossbeam, ropes dangling down to the floor."
+  },
+  {
+    "id": "concept_prop_organ_pipes",
+    "out": "art-src/concepts/props/organ_pipes.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood and iron, aged bone, tarnished bronze, candle wax). Subject: a ruined cathedral pipe organ: a tall rank of tarnished bronze organ pipes of stepped heights set in a carved black wooden case, a few pipes bent or fallen, a small keyboard console with yellowed bone keys in front."
+  },
+  {
+    "id": "concept_bell_templar",
+    "out": "art-src/concepts/bell_templar.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new undead character: the Bell-Sworn Templar, an armoured undead knight of the Bell. Heavy blackened plate armour with tarnished bronze trim, a great helm shaped like a church bell with a narrow eye slit glowing faint amber, a bronze bell hanging at the belt, a tattered soot-black tabard with a bronze bell emblem, a large round bronze shield strapped flat to its left forearm (strapped on, hand still open), chain mail at the joints, bony fingers visible through gauntlet gaps. Broad and imposing. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally, hands open and empty (no weapons or shields held), legs straight and slightly apart. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette."
+  },
+  {
+    "id": "concept_bone_colossus",
+    "out": "art-src/concepts/bone_colossus.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new undead character: the Bone Colossus, a HULKING friendly thrall a necromancer assembles from dozens of dead. Proportions of a giant brute, nearly twice as wide as a man: a huge barrel chest made of several ribcages fused together, thick arms and legs made of bundles of long bones bound with chains, oversized hands, massive hunched shoulders piled with skulls like pauldrons, a small crowned skull head sitting low between the shoulders with bright spirit-jade glowing eye sockets, glowing spirit-jade runes carved along the bundled bones, a tattered violet-black Covenant banner cloth tied around the waist. Heavy and powerful, clearly skeletal (no flesh), loyal rather than monstrous. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally, hands open and empty, legs straight and slightly apart. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette."
+  }
+]

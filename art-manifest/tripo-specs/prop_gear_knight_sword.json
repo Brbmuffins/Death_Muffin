@@ -1,0 +1,9 @@
+{
+  "id": "prop_gear_knight_sword",
+  "input": "art-src/concepts/props/gear_knight_sword.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 1200,
+    "texture_quality": "standard"
+  }
+}

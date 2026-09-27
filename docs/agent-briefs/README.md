@@ -21,6 +21,8 @@ leave `npx tsc --noEmit && npx vitest run && node --test server/realtime/server.
 | [mobs-barrow-ghoul-lich-acolyte.md](mobs-barrow-ghoul-lich-acolyte.md) | same branch, after (or beside) spell-variety | 2026-09-27 evening (Barrow Ghoul model staged on master) | 📝 ready: Barrow Ghoul (Hollow Graves, burrow + erupt) and Lich Acolyte (Nave + Sanctum, unbinds fallen thralls) |
 | [area-bosses.md](area-bosses.md) | same branch, after spell-variety + mobs | 2026-09-27 evening (5 boss props + 3 telegraph sprites staged on master) | 📝 ready: Gravedigger King, Bone Abbess, Drowned Congregation; one-awake-boss engine generalisation |
 | [build-depth-aspects-runes.md](build-depth-aspects-runes.md) | same branch, after spell-variety (runes need a Death Muffin deploy) | 2026-09-27 evening | 📝 ready: 32 Rite Aspects (client-only) + 11 Relic Runes (server items + sockets, dropped by area bosses) |
+| [world-dressing.md](world-dressing.md) | any time (layout data only) | 2026-09-27 evening (10 room props staged on master) | 📝 ready: two or three signature props per combat room |
+| [new-classes.md](new-classes.md) | after build-depth, or its own branch | 2026-09-27 evening (weapons, 35 icons, 5 sprites staged; heroes + portraits older) | 📝 ready: class framework, then Hollow Knight → Warden → Monk → Witch → Veilwalker |
 
 The professions briefs implement [`docs/PROFESSIONS-ROADMAP.md`](../PROFESSIONS-ROADMAP.md), which has the
 design, the owner decisions (§12) and the later phases G5–G7 (gardening, processing, long tail).

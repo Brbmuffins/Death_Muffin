@@ -153,6 +153,14 @@ varying vec2 vUv;
 varying vec4 vColor;
 varying vec3 vViewPos;
 varying vec3 vNormal;
+// Shared output: the global gain, then a soft knee so hot cores roll off toward BB_KNEE_MAX instead of feeding the
+// bloom pass raw Godot emission (tuned for Godot's tonemapper, not ours).
+vec3 bb_out(vec3 c) {
+  c *= uGain;
+  float m = max(max(c.r, c.g), c.b);
+  if (m > BB_KNEE) c *= (BB_KNEE + (1.0 - exp(-(m - BB_KNEE) * 1.5)) * (BB_KNEE_MAX - BB_KNEE)) / m;
+  return c;
+}
 `;
 
 const TRANSPARENT_FS = /* glsl */ `
@@ -173,7 +181,7 @@ void main() {
     if (vUv.x < edge_cutoff.x || vUv.y < edge_cutoff.y || vUv.x > 1.0 - edge_cutoff.z || vUv.y > 1.0 - edge_cutoff.w) discard;
   }
   if (alpha < 0.003) discard;
-  gl_FragColor = vec4((uUnshaded > 0.5 ? albedo : albedo * 0.25 + emission) * uGain, alpha);
+  gl_FragColor = vec4(bb_out(uUnshaded > 0.5 ? albedo : albedo * 0.25 + emission), alpha);
 }
 `;
 
@@ -197,7 +205,7 @@ void main() {
   vec3 albedo = mix(secondary_color, primary_color, value) * emission_strength;
   float alpha = value * alpha_multiplier * vColor.a * uFade;
   if (alpha < 0.003) discard;
-  gl_FragColor = vec4(albedo * uGain, alpha);
+  gl_FragColor = vec4(bb_out(albedo), alpha);
 }
 `;
 
@@ -222,9 +230,16 @@ void main() {
   float alpha = clamp(m * 1.6 * alpha_multiplier * vColor.a, 0.0, 1.0) * uFade;
   if (alpha < 0.003) discard;
   vec3 col = uSmoke > 0.5 ? albedo * 0.5 : uUnshaded > 0.5 ? albedo * max(1.0, emission_strength * 0.5) : albedo * 0.25 + albedo * emission_strength;
-  gl_FragColor = vec4(col * uGain, uSmoke > 0.5 ? alpha * 0.55 : alpha);
+  gl_FragColor = vec4(bb_out(col), uSmoke > 0.5 ? alpha * 0.55 : alpha);
 }
 `;
+
+/**
+ * Brightness calibration against the game's bloom (workstation QA 2026-09-27: at gain 1 the dirge, pillar, lift
+ * and rim effects blew out to white). Every program multiplies by this, then rolls off above BB_KNEE.
+ */
+export const BINBUN_GAIN = 0.5;
+const KNEE = { knee: 0.75, max: 1.35 };
 
 /** Envelope for the generic port: 0 quad/plane, 1 sphere, 2 cylinder, 3 torus. */
 export function shapeCode(shape: MeshShape | undefined) {
@@ -255,7 +270,7 @@ export function buildMaterial(m: MaterialTemplate | null | undefined, shape: Mes
   const base: Record<string, THREE.IUniform> = {
     uTime: { value: 0 },
     uFade: { value: 1 },
-    uGain: { value: 1 },
+    uGain: { value: BINBUN_GAIN },
     uBillboard: { value: m?.billboard ? 1 : 0 },
     primary_color: { value: linear(m?.colors[0]) },
     secondary_color: { value: linear(m?.colors[1]) },
@@ -263,7 +278,7 @@ export function buildMaterial(m: MaterialTemplate | null | undefined, shape: Mes
     alpha_multiplier: { value: num(p.alpha_multiplier, 0.954) },
     emission_strength: { value: num(p.emission_strength, m?.emission ?? 2) },
   };
-  let defines: Record<string, string> = {};
+  let defines: Record<string, string> = { BB_KNEE: KNEE.knee.toFixed(3), BB_KNEE_MAX: KNEE.max.toFixed(3) };
   let vertex = VERTEX_HEAD + VERTEX_MAIN;
   let fragment: string;
   if (program === 'transparent' || program === 'particle') {
@@ -299,7 +314,7 @@ export function buildMaterial(m: MaterialTemplate | null | undefined, shape: Mes
       edge_cutoff: { value: v4(p.edge_cutoff) },
       uUnshaded: { value: 0 },
     });
-    defines = { MASK_OFFSET: program === 'particle' ? 'vColor.r' : '0.0' };
+    defines.MASK_OFFSET = program === 'particle' ? 'vColor.r' : '0.0';
     if (num(p.displacement_scale, 0) !== 0) defines.DISPLACE = '';
     vertex = VERTEX_HEAD + UTIL + MASKS + VERTEX_MAIN;
     fragment = FRAG_HEAD + UTIL + MASKS + TRANSPARENT_FS;
