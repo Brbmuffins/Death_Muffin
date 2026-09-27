@@ -82,6 +82,20 @@ curl -s -X POST $API/api/professions/award-xp -H "Authorization: Bearer $TOKEN" 
 Then in the browser: walk west from the Chapterhouse into the Sexton's Acre, chop a Coffin-Oak, and
 check that the logs land in the Reliquary after about 8 seconds and survive a reload. Remove the test account afterwards.
 
+## Dev access (staff) — needs this deploy
+
+The client opens every rite, area and gathering tier for the owner's account (`brbmuffins`, or any character whose
+`/character` reply has `gm_enabled`) as a runtime overlay; nothing is saved. On the server, `POST /api/gather` and
+`/api/gather/afk-start` skip only the node **level** check for staff (`isStaff` in `server.js`: `accounts.role` is
+`admin`/`gm` or `gm_enabled = 1`); ownership, the rate limit and the time budget still apply, and XP lands on the
+real level. For the owner's account to gather above its level on the live server, set it once:
+
+```sql
+UPDATE accounts SET role = 'admin' WHERE username = 'brbmuffins';   -- or: SET gm_enabled = 1
+```
+
+Without that, the client still shows every tier but the server answers "Requires … level N" verbatim.
+
 ## Rollback
 
 1. Restore `server.js` from the backup folder and restart `death-muffin-auth.service` (the route

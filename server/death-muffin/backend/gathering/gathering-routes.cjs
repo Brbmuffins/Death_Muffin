@@ -31,7 +31,12 @@ function limiter(perMinute) {
 
 class PlayerError extends Error {}
 
-function createGatherHandlers({ store, ownsCharacter, logger = console, now = Date.now, rng = Math.random, perMinute = 30 }) {
+/**
+ * `isStaff(req)` (optional): staff accounts (accounts.role admin/gm or gm_enabled) skip the
+ * node LEVEL check only — never ownership, the rate limit or the time budget. Their rolls use
+ * the node's level as a floor; XP still lands on the real skill level.
+ */
+function createGatherHandlers({ store, ownsCharacter, isStaff = async () => false, logger = console, now = Date.now, rng = Math.random, perMinute = 30 }) {
   if (!store || !ownsCharacter) throw new Error('gathering: store and ownsCharacter are required');
   const allow = limiter(perMinute);
   const fail = (res, status, error) => res.status(status).json({ success: false, error });
@@ -47,13 +52,14 @@ function createGatherHandlers({ store, ownsCharacter, logger = console, now = Da
     if (!(await ownsCharacter(req, characterId))) return fail(res, 403, 'That character is not yours');
     if (!allow(characterId)) return fail(res, 429, 'Too many requests — slow down');
 
+    const staff = await isStaff(req).catch(() => false);
     try {
       const out = await store.withCharacter(characterId, async (tx) => {
         const skill = await tx.getSkill(def.skill);
-        if (skill.level < def.level) throw new PlayerError(`Requires ${rules.SKILLS[def.skill].name} level ${def.level}`);
+        if (skill.level < def.level && !staff) throw new PlayerError(`Requires ${rules.SKILLS[def.skill].name} level ${def.level}`);
         const budget = rules.checkBudget(def, await tx.getLedger(), claimed, now(), body.afk === true);
         if (!budget.ok) throw new PlayerError(budget.error);
-        const batch = rules.rollBatch(def, skill, budget.accepted, rng);
+        const batch = rules.rollBatch(def, skill, budget.accepted, rng, 0, staff ? def.level : 0);
         const bag = await tx.getBag();
         const stacks = await tx.maxStacks(batch.items.map((g) => g.itemId));
         for (const g of batch.items) if (!stacks.has(g.itemId)) throw new PlayerError('This node is not available on the server yet');
@@ -90,10 +96,11 @@ function createGatherHandlers({ store, ownsCharacter, logger = console, now = Da
     if (!Number.isInteger(characterId) || characterId <= 0 || !def) return fail(res, 400, 'Choose a gathering node.');
     if (!(await ownsCharacter(req, characterId))) return fail(res, 403, 'That character is not yours');
     if (!allow(characterId)) return fail(res, 429, 'Too many requests — slow down');
+    const staff = await isStaff(req).catch(() => false);
     try {
       const out = await store.withCharacter(characterId, async tx => {
         const skill = await tx.getSkill(def.skill);
-        if (skill.level < def.level) throw new PlayerError(`Requires ${rules.SKILLS[def.skill].name} level ${def.level}`);
+        if (skill.level < def.level && !staff) throw new PlayerError(`Requires ${rules.SKILLS[def.skill].name} level ${def.level}`);
         const ledger = await tx.getLedger();
         await tx.setLedger({ ...ledger, lastAt: now() });
         return { node: def.id };

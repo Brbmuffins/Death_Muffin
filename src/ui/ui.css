@@ -988,3 +988,6 @@ button { font-family: inherit; }
 .cw-codex-table th { text-align: left; color: var(--cw-bone-300); font-weight: 600; border-bottom: 1px solid var(--cw-border); padding: 2px 4px; }
 .cw-codex-table td { padding: 2px 4px; color: var(--cw-text-muted); border-bottom: 1px solid rgba(255, 255, 255, 0.04); vertical-align: top; }
 .cw-codex-table td:nth-child(2) { color: var(--cw-bone-100); }
+
+/* Dev-access chip beside the level badge */
+.hud-dev { align-self: center; margin: 0 2px 0 -6px; padding: 1px 5px; font: 700 10px/1.4 var(--cw-font-numeric); letter-spacing: 0.08em; color: #1a1206; background: #e2c98f; border-radius: 3px; pointer-events: auto; }

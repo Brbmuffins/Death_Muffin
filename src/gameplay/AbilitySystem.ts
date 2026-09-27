@@ -1,3 +1,4 @@
+import { riteLevel } from './devAccess';
 import * as THREE from 'three';
 import {
   ABILITIES,
@@ -96,7 +97,7 @@ export class AbilitySystem {
 
   /** Grimoire and signature rites wait for their level. */
   unlocked(id: AbilityId) {
-    return this.ctx.player.stats.level >= unlockLevel(id);
+    return riteLevel(this.ctx.player.stats.level) >= unlockLevel(id);
   }
 
   /** A full Soul Harvest meter makes this cast free and 50% larger. */
@@ -708,7 +709,7 @@ export class AbilitySystem {
   private signature(id: AbilityId, t: CastTarget): CastResult {
     const { player: p, avatar, effects } = this.ctx;
     const sig = SIGNATURE_KIND[id]!;
-    if (p.stats.level < SIGNATURE_LEVEL) return 'locked';
+    if (riteLevel(p.stats.level) < SIGNATURE_LEVEL) return 'locked';
     if (sig === 'rend' && !this.ctx.thrallCount()) return 'no_thralls';
     const def = ABILITIES[id];
     let x = t.x;

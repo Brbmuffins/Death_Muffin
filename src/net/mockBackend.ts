@@ -14,6 +14,7 @@ import { ITEMS } from '../content/items';
 import * as necro from '../gameplay/necroRules';
 import type { NecroState } from '../gameplay/necroRules';
 import * as gather from '../gameplay/gatheringRules';
+import { isDevAccount } from '../gameplay/devAccess';
 
 class MockError extends Error {
   constructor(message: string, public status: number) {
@@ -305,7 +306,7 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     const def = gather.NODES[String(body.nodeType ?? '')];
     if (!def) throw new MockError('Unknown gathering node', 400);
     const level = acc.professions.find(x => x.profession_id === def.skill)?.skill_level ?? 1;
-    if (level < def.level) throw new MockError(`Requires ${gather.SKILLS[def.skill].name} level ${def.level}`, 400);
+    if (level < def.level && !isDevAccount(null, `offline:${acc.username}`)) throw new MockError(`Requires ${gather.SKILLS[def.skill].name} level ${def.level}`, 400);
     acc.gatherLedger = { ...(acc.gatherLedger ?? gather.blankLedger()), lastAt: Date.now() };
     return ok({ node: def.id });
   }
@@ -315,10 +316,12 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     if (!def) throw new MockError('Unknown gathering node', 400);
     let prof = acc.professions.find((x) => x.profession_id === def.skill);
     if (!prof) acc.professions.push((prof = { profession_id: def.skill, skill_level: 1, skill_xp: 0 }));
-    if (prof.skill_level < def.level) throw new MockError(`Requires ${gather.SKILLS[def.skill].name} level ${def.level}`, 400);
+    // Offline, the DEV_ACCOUNTS names stand in for the server's staff flag.
+    const staff = isDevAccount(null, `offline:${acc.username}`);
+    if (prof.skill_level < def.level && !staff) throw new MockError(`Requires ${gather.SKILLS[def.skill].name} level ${def.level}`, 400);
     const budget = gather.checkBudget(def, acc.gatherLedger ?? gather.blankLedger(), body.actions, Date.now(), body.afk === true);
     if (!budget.ok) throw new MockError(budget.error, 400);
-    const batch = gather.rollBatch(def, { level: prof.skill_level, xp: prof.skill_xp }, budget.accepted, Math.random);
+    const batch = gather.rollBatch(def, { level: prof.skill_level, xp: prof.skill_xp }, budget.accepted, Math.random, 0, staff ? def.level : 0);
     const bag = acc.slots
       .filter((x) => x.slot_index < 24)
       .map((x) => ({ slot: x.slot_index, itemId: x.equipped ? '' : x.item_id, qty: x.quantity }));

@@ -1,10 +1,12 @@
 import type { GatherReply } from '../net/api';
+import { devAccess } from './devAccess';
 import type { Profession } from '../net/types';
 import type { NodePlacement } from '../content/layout';
 import {
   ALL_SKILLS,
   GATHER_FLUSH_MS,
   GATHER_MAX_BATCH,
+  LEVEL_CAP,
   NODES,
   actionMs,
   addSkillXp,
@@ -55,6 +57,11 @@ export class Skills {
 
   level(skill: SkillId) {
     return this.get(skill).level;
+  }
+
+  /** The level tier gates compare against: the real level, or the cap under dev access (never saved). */
+  gateLevel(skill: SkillId) {
+    return devAccess.active ? LEVEL_CAP : this.level(skill);
   }
 
   /** Level/XP including optimistic XP, for bars and floating text. */
@@ -159,7 +166,7 @@ export class GatherLoop {
   /** Start working a node (a click, or Auto). Returns a player-readable refusal, or null. */
   start(node: NodePlacement): string | null {
     const def = NODES[node.type];
-    const block = gatherBlocker(node.type, this.skills.level(def?.skill ?? 'woodcutting'));
+    const block = gatherBlocker(node.type, this.skills.gateLevel(def?.skill ?? 'woodcutting'));
     if (block) return block;
     if (!this.hooks.bagFits(def.item)) return 'Your bag is full.';
     if (!this.hooks.live(node.id)) return this.startWaiting(node);
@@ -229,7 +236,7 @@ export class GatherLoop {
     if (this.cycleT < actionMs(def)) return;
     this.cycleT -= actionMs(def);
     this.queue.set(n.type, (this.queue.get(n.type) ?? 0) + 1);
-    const success = h.rand() < successChance(def, this.skills.level(def.skill));
+    const success = h.rand() < successChance(def, Math.max(def.level, this.skills.level(def.skill)));
     if (success) {
       this.skills.addPending(def.skill, def.xp);
       h.sendSuccess(n.id);
@@ -240,7 +247,7 @@ export class GatherLoop {
   private onDepleted(n: NodePlacement) {
     const def = NODES[n.type];
     if (this.afk || this.hooks.autoEnabled()) {
-      const next = nextAutoNode({ from: n, nodes: this.hooks.nodes(), level: this.skills.level(def.skill), x: this.hooks.player.x, z: this.hooks.player.z });
+      const next = nextAutoNode({ from: n, nodes: this.hooks.nodes(), level: this.skills.gateLevel(def.skill), x: this.hooks.player.x, z: this.hooks.player.z });
       if (next) {
         const refusal = this.start(next);
         if (refusal) this.stop('blocked', refusal);

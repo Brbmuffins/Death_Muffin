@@ -69,7 +69,7 @@ export class ProfessionsPanel {
           : id === 'gardening'
             ? 'Not open yet.'
             : 'Every node is open to you.';
-      const choices = id === 'gardening' ? [] : nodesForSkill(id).filter(n => n.level <= skills.level(id));
+      const choices = id === 'gardening' ? [] : nodesForSkill(id).filter(n => n.level <= skills.gateLevel(id));
       const selected = selections.get(id) ?? choices[0]?.id;
       const afk = this.afk && choices.length ? `<div class="cw-afk-controls">
         <select data-afk-node="${id}" aria-label="${meta.name} gathering node" ${this.busy ? 'disabled' : ''}>${choices.map(n => `<option value="${n.id}" ${n.id === selected ? 'selected' : ''}>${n.name} · level ${n.level}</option>`).join('')}</select>

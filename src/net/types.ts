@@ -61,4 +61,8 @@ export interface Character {
   stat_agi: number;
   stat_int: number;
   stat_vit: number;
+  /** Death Muffin staff flags (`formatCharacter`); absent on older servers. */
+  gm_enabled?: boolean;
+  gm_level?: number;
+  gm_permissions?: string;
 }

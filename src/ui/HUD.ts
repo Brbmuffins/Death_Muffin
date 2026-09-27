@@ -152,6 +152,7 @@ export class HUD {
       </div>
       <div class="hud-xp">
         <div class="hud-level" data-level aria-label="Level">1</div>
+        <span class="hud-dev" data-dev hidden title="Dev access: every rite, area and gathering tier is open. Nothing is saved. Toggle it in Settings.">DEV</span>
         <div class="hud-xpbar">
           <div class="track"><div class="fill" data-xpfill></div></div>
           <div class="txt"><span>Experience</span><span data-xptxt></span></div>
@@ -518,6 +519,11 @@ export class HUD {
     el.classList.add('show');
     window.clearTimeout(this.bannerTimer);
     this.bannerTimer = window.setTimeout(() => el.classList.remove('show'), ms);
+  }
+
+  /** The DEV chip beside the level badge while the dev-access overlay is on. */
+  setDev(on: boolean) {
+    this.$('[data-dev]').hidden = !on;
   }
 
   /** Hover card for a gathering node (trusted HTML built from gatheringRules), beside the cursor. */

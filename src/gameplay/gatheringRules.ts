@@ -246,7 +246,11 @@ export interface BatchResult {
 }
 
 /** Rolls `actions` cycles in order, levelling up mid-batch (a level-up improves the next roll). */
-export function rollBatch(def: NodeDef, start: SkillProgress, actions: number, rng: () => number, toolTier = 0): BatchResult {
+/**
+ * `rollFloor` lets a staff (dev-access) account roll a node above its real level as if it met the
+ * requirement; XP still lands on the real level, so nothing about the save is faked.
+ */
+export function rollBatch(def: NodeDef, start: SkillProgress, actions: number, rng: () => number, toolTier = 0, rollFloor = 0): BatchResult {
   let progress: SkillProgress = { level: start.level, xp: start.xp };
   const bag = new Map<string, number>();
   let xp = 0;
@@ -254,7 +258,7 @@ export function rollBatch(def: NodeDef, start: SkillProgress, actions: number, r
   let successes = 0;
   let leveled = 0;
   for (let i = 0; i < actions; i++) {
-    const r = rollGather(def, progress.level, rng, toolTier);
+    const r = rollGather(def, Math.max(progress.level, rollFloor), rng, toolTier);
     if (!r.success) continue;
     successes++;
     xp += r.xp;

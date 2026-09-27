@@ -33,6 +33,8 @@ export class SettingsPanel extends SimplePanel {
     private instanceCode: () => string | null,
     private onResetTips?: () => void,
     private onChangeClass?: () => void,
+    /** Only for dev accounts: the dev-access overlay toggle (per character, never saved to the server). */
+    private dev?: { get(): boolean; set(on: boolean): void },
   ) {
     super(root);
   }
@@ -52,6 +54,7 @@ export class SettingsPanel extends SimplePanel {
         <label class="row">Reduce motion (no camera shake)<input type="checkbox" data-rm /></label>
         <label class="row">Damage numbers<input type="checkbox" data-dn /></label>
         <label class="row">Don't show tips<input type="checkbox" data-tips /></label>
+        ${this.dev ? '<label class="row">Dev access (preview as a normal player when off)<input type="checkbox" data-dev aria-label="Dev access" /></label>' : ''}
         <label class="row">Auto combat (G)<input type="checkbox" data-auto aria-label="Auto combat" /></label>
         <label class="row">Auto gathering<input type="checkbox" data-autogather aria-label="Auto gathering: move on to the next node of the same kind" /></label>
         <p class="cw-settings-note">While standing, fight nearby enemies and use basic rites automatically. Click to move; hold 1–4 to repeat a rite. Signature rites stay under your control.</p>
@@ -108,6 +111,11 @@ export class SettingsPanel extends SimplePanel {
     const tips = this.el!.querySelector<HTMLInputElement>('[data-tips]')!;
     tips.checked = !settings.tips;
     tips.addEventListener('change', () => updateSettings({ tips: !tips.checked }));
+    const dev = this.el!.querySelector<HTMLInputElement>('[data-dev]');
+    if (dev && this.dev) {
+      dev.checked = this.dev.get();
+      dev.addEventListener('change', () => this.dev?.set(dev.checked));
+    }
     const auto = this.el!.querySelector<HTMLInputElement>('[data-auto]')!;
     auto.checked = settings.autoCombat;
     auto.addEventListener('change', () => updateSettings({ autoCombat: auto.checked }));

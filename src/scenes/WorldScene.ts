@@ -5,6 +5,7 @@ import { getRuntime, type RuntimeView } from '../app/GameRuntime';
 import { Scope } from '../app/Scope';
 import { ABILITIES, GRIMOIRE, HOTBAR, SIGNATURE_BY_DISCIPLINE, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
 import { assignRite, loadLoadout, saveLoadout } from '../gameplay/loadout';
+import { devAccess, devPreference, isDevAccount, riteLevel, setDevPreference } from '../gameplay/devAccess';
 import { GrimoirePanel } from '../ui/GrimoirePanel';
 import { preloadFxImages } from '../graphics/fxImages';
 import { AREAS, AREA_ORDER, BOSS_SUMMON_SHARDS, CHAPTERHOUSE_RETURN, DOORS, PLAYER_SPAWN, type AreaId, type Interactable } from '../content/areas';
@@ -46,7 +47,7 @@ import { fx } from '../graphics/fxTextures';
 import { LootView } from '../graphics/LootView';
 import { WorldView } from '../graphics/WorldView';
 import { updateOcclusion } from '../graphics/occlusion';
-import { beginAfkGather, gather, getInventory, getProfessions, OFFLINE, type GatherReply } from '../net/api';
+import { beginAfkGather, gather, getInventory, getProfessions, getToken, OFFLINE, type GatherReply } from '../net/api';
 import type { RemotePlayer, WorldSnapshot } from '../net/contracts';
 import { RealtimeClient } from '../net/realtime';
 import type { Character, Profession } from '../net/types';
@@ -114,6 +115,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private canvas = document.getElementById('scene') as HTMLCanvasElement;
 
   private discipline: Discipline;
+  /** This account may use the dev overlay (gm_enabled or DEV_ACCOUNTS); the overlay itself is devAccess.active. */
+  private devAccount = false;
   /** Hotbar: the Grimoire loadout (keys 1–4), Corpse Explosion (slot 5) and this discipline's signature rite (slot 6). */
   private hotbar: AbilityId[] = HOTBAR;
   /** The four rites on keys 1–4 (Grimoire, L); remembered per character in browser storage. */
@@ -213,7 +216,10 @@ export class WorldScene implements GameScene, RuntimeView {
     private onClassChanged: (character: Character) => void,
   ) {
     this.discipline = disciplineFor(character.class_index);
-    this.loadout = loadLoadout(browserStorage(), character.id, character.level ?? 1);
+    // Dev access (runtime overlay, never saved): must be set before the loadout is sanitised.
+    this.devAccount = isDevAccount(character, getToken());
+    devAccess.active = this.devAccount && devPreference(browserStorage(), character.id);
+    this.loadout = loadLoadout(browserStorage(), character.id, riteLevel(character.level ?? 1));
     this.hotbar = this.buildHotbar();
     this.progression = new Progression(character);
     this.applyBoons();
@@ -226,7 +232,12 @@ export class WorldScene implements GameScene, RuntimeView {
 
   /** At least one level-gated Grimoire rite is learned (the Grimoire is worth opening). */
   private grimoireUnlocked() {
-    return GRIMOIRE.some((id) => unlockLevel(id) > 1 && this.character.level >= unlockLevel(id));
+    return GRIMOIRE.some((id) => unlockLevel(id) > 1 && riteLevel(this.character.level) >= unlockLevel(id));
+  }
+
+  /** Areas the nav may walk: the saved seals, or everything under dev access. */
+  private openAreas(): AreaId[] {
+    return devAccess.active ? [...AREA_ORDER] : this.progression.local.unlocked;
   }
 
   private buildHotbar(): AbilityId[] {
@@ -235,7 +246,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   /** Grimoire: put a rite on key `slot + 1` (swapping if it sat on another key) and remember it. */
   private setRite(slot: number, id: AbilityId) {
-    if (this.character.level < unlockLevel(id) || this.loadout[slot] === id) return;
+    if (riteLevel(this.character.level) < unlockLevel(id) || this.loadout[slot] === id) return;
     this.loadout = assignRite(this.loadout, slot, id);
     saveLoadout(browserStorage(), this.character.id, this.loadout);
     this.hotbar = this.buildHotbar();
@@ -253,7 +264,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   mount() {
     this.buildScene();
-    this.nav.setUnlocked(this.progression.local.unlocked);
+    this.nav.setUnlocked(this.openAreas());
     this.worldView = new WorldView(this.scene, this.layout, this.nav, this.effects);
     for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d), true);
     this.views = new EntityViews(this.scene, this.effects);
@@ -360,6 +371,7 @@ export class WorldScene implements GameScene, RuntimeView {
     }, 1000);
 
     this.mountUi();
+    this.hud.setDev(devAccess.active);
     this.bindInput();
     this.scope.add(this.progression.onChange(() => this.refreshStats()));
     this.scope.add(onSettingsChange((s) => this.onDifficultySetting(s.difficulty)));
@@ -508,6 +520,7 @@ export class WorldScene implements GameScene, RuntimeView {
         this.classPanel.open();
         this.onboarding.show('change_class');
       },
+      this.devAccount ? { get: () => devAccess.active, set: (on) => this.setDevAccess(on) } : undefined,
     );
     this.classPanel = new ClassPanel(this.root, () => this.character.class_index, (index) => this.changeClass(index));
     this.scope.add(() => this.classPanel.dispose());
@@ -520,7 +533,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.codexPanel = new CodexPanel(this.root, this.codex, this.discipline.id);
     this.grimoirePanel = new GrimoirePanel(
       this.root,
-      () => ({ loadout: this.loadout, level: this.character.level }),
+      () => ({ loadout: this.loadout, level: riteLevel(this.character.level) }),
       (slot, id) => this.setRite(slot, id),
     );
     this.ascensionPanel = new AscensionPanel(
@@ -723,7 +736,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hover = best;
     const picked = this.hover as Hover;
     const hn = picked?.kind === 'node' && !this.panelOpen() ? picked.node : null;
-    this.nodeViews.hover(hn, hn ? this.skills.level(NODES[hn.type].skill) >= NODES[hn.type].level : true);
+    this.nodeViews.hover(hn, hn ? this.skills.gateLevel(NODES[hn.type].skill) >= NODES[hn.type].level : true);
     this.hud.nodeTip(hn ? this.nodeTipText(hn) : null, this.mouse.x, this.mouse.y);
     const h = this.hover as Hover;
     this.views.hoverId = h?.kind === 'enemy' ? h.id : null;
@@ -1171,7 +1184,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private nodeTipText(n: NodePlacement) {
     const def = NODES[n.type];
-    const lvl = this.skills.level(def.skill);
+    const lvl = this.skills.gateLevel(def.skill);
     const need = lvl < def.level ? `<div class="req missing">Requires ${SKILLS[def.skill].name} level ${def.level} · use ${SKILLS[def.skill].name === 'Woodcutting' ? 'Coffin-Oak near the entrance' : 'a beginner node near the entrance'}</div>` : `<div class="req ok">${SKILLS[def.skill].name} · level ${def.level}${def.level === 1 ? ' · Beginner' : ''}</div>`;
     const spent = this.nodeLive(n.id) ? '' : '<div class="spent">Spent. It will return soon.</div>';
     return `<b>${def.name}</b>${n.rich ? ' <span class="rich">rich</span>' : ''}${need}<div>${def.xp} XP per success · ${itemMeta(def.item).name}</div>${spent}`;
@@ -1655,7 +1668,7 @@ export class WorldScene implements GameScene, RuntimeView {
   /** Server state replaced the local copy: seals, tiers, boons or rank may have moved. */
   private onProgressSynced() {
     if (!this.worldView) return;
-    this.nav.setUnlocked(this.progression.local.unlocked);
+    this.nav.setUnlocked(this.openAreas());
     for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d));
     if (this.sim && this.isAuthority()) {
       this.sim.ascension = this.progression.local.ascension;
@@ -1669,7 +1682,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const earned = this.progression.ascend();
     if (!earned) return;
     const rank = this.progression.local.ascension;
-    this.nav.setUnlocked(this.progression.local.unlocked);
+    this.nav.setUnlocked(this.openAreas());
     for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d));
     if (this.sim && this.isAuthority()) {
       this.sim.ascension = rank;
@@ -1759,7 +1772,7 @@ export class WorldScene implements GameScene, RuntimeView {
       const u = AREAS[id].unlock;
       if (!u || this.progression.isUnlocked(id)) continue;
       if (this.progression.kills(u.area) >= this.progression.unlockKills(u.kills) && this.progression.unlock(id)) {
-        this.nav.setUnlocked(this.progression.local.unlocked);
+        this.nav.setUnlocked(this.openAreas());
         for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d));
         this.hud.banner('A seal breaks', `${AREAS[id].name} lies open`, 3800);
         const door = DOORS.find((d) => d.b === id);
@@ -2168,6 +2181,21 @@ export class WorldScene implements GameScene, RuntimeView {
     void this.progression.flush();
   }
 
+  /** Settings toggle: dev access on, or preview the game as a normal player. Nothing is saved but the preference. */
+  private setDevAccess(on: boolean) {
+    if (!this.devAccount) return;
+    setDevPreference(browserStorage(), this.character.id, on);
+    devAccess.active = on;
+    this.loadout = loadLoadout(browserStorage(), this.character.id, riteLevel(this.character.level));
+    this.hotbar = this.buildHotbar();
+    this.hud.setHotbar(this.hotbar);
+    this.hud.setDev(on);
+    this.nav.setUnlocked(this.openAreas());
+    for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d));
+    this.grimoirePanel.render();
+    this.hud.toast(on ? 'Dev access on: every rite, area and gathering tier is open (nothing is saved).' : 'Dev access off: previewing as a normal player.', 'good');
+  }
+
   private areaProgress(): string {
     const here = this.area;
     if (here === 'acre') return `Beginner nodes by the entrance · <kbd>P</kbd> to choose &amp; Start AFK`;
@@ -2246,7 +2274,7 @@ export class WorldScene implements GameScene, RuntimeView {
           total: ABILITIES[id].cooldownMs,
           affordable: empowered || p.essence >= ABILITIES[id].essenceCost,
           empowered,
-          locked: this.character.level < unlockLevel(id),
+          locked: riteLevel(this.character.level) < unlockLevel(id),
         };
       }),
       souls: p.souls,
@@ -2394,7 +2422,7 @@ export class WorldScene implements GameScene, RuntimeView {
       },
       unlockAll: () => {
         for (const a of AREA_ORDER) this.progression.unlock(a);
-        this.nav.setUnlocked(this.progression.local.unlocked);
+        this.nav.setUnlocked(this.openAreas());
         for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d));
       },
       gold: (n: number) => this.progression.addGold(n),
@@ -2523,6 +2551,7 @@ export class WorldScene implements GameScene, RuntimeView {
   // -------------------------------------------------------------------------
 
   unmount() {
+    devAccess.active = false;
     this.ready = false;
     getRuntime().setView(null);
     this.realtime.disconnect();

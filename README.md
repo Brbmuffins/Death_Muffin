@@ -485,7 +485,7 @@ Skill levels and gathered items live on the Death Muffin backend (`POST /api/gat
 
 DEV console hooks (`window.__cwDebug`, offline dev only): `advance(s)`, `goto(area)`, `unlockAll()`, `god()`,
 `ring(def, n, r)`, `spawn(def, elite, affix)`, `surge()`, `souls()`, `xp(n)`, `perf()`, `prelateSlain()`, `altar()`,
-gathering QA `nodes(area)`, `gatherAt(type)`, `gathering()`, `skill(id, level)`, `station(kind)`, `hoverNode(id)` and more.
+dev access (the owner's `brbmuffins` account or any `gm_enabled` character: every rite, area and gathering tier as a runtime overlay, a **DEV** chip by the level badge, Settings toggle to preview as a normal player), gathering QA `nodes(area)`, `gatherAt(type)`, `gathering()`, `skill(id, level)`, `station(kind)`, `hoverNode(id)` and more.
 
 Docs: [CLAUDE.md](CLAUDE.md) (working context) · [HANDOFF.md](HANDOFF.md) (current state) ·
 [PHASE_REPORTS.md](PHASE_REPORTS.md) (what's built) · [BALANCE.md](BALANCE.md) (targets + numbers) ·

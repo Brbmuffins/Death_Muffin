@@ -224,7 +224,7 @@ function rollGather(def, level, rng, toolTier = 0) {
   }
   return { success: true, xp: def.xp, gold: def.gold ? randInt(rng, def.gold[0], def.gold[1]) : 0, items };
 }
-function rollBatch(def, start, actions, rng, toolTier = 0) {
+function rollBatch(def, start, actions, rng, toolTier = 0, rollFloor = 0) {
   let progress = { level: start.level, xp: start.xp };
   const bag = /* @__PURE__ */ new Map();
   let xp = 0;
@@ -232,7 +232,7 @@ function rollBatch(def, start, actions, rng, toolTier = 0) {
   let successes = 0;
   let leveled = 0;
   for (let i = 0; i < actions; i++) {
-    const r = rollGather(def, progress.level, rng, toolTier);
+    const r = rollGather(def, Math.max(progress.level, rollFloor), rng, toolTier);
     if (!r.success) continue;
     successes++;
     xp += r.xp;

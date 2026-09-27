@@ -161,3 +161,23 @@ test('AFK starts check ownership, level and preserve the hourly limit', async ()
   assert.equal((await h.call({ nodeType: 'coffin_oak', actions: 40, afk: true })).status, 400);
   assert.equal(h.char().ledger.hourActions, rules.GATHER_MAX_ACTIONS_PER_HOUR);
 });
+
+test('staff skip the level gate (only): budget still applies, XP lands on the real level', async () => {
+  const store = createMemoryGatherStore({ characters: { 7: {} }, items: ITEMS });
+  let clock = 1_000_000;
+  const h = createGatherHandlers({ store, ownsCharacter: async () => true, isStaff: async (req) => req.staff === true, logger: { error() {} }, now: () => clock, rng: () => 0, perMinute: 1000 });
+  const call = async (body, staff) => {
+    let status = 0;
+    let json = null;
+    const res = { status: (s) => ((status = s), res), json: (j) => ((json = j), res) };
+    await h.gather({ body: { characterId: 7, ...body }, staff }, res);
+    return { status, json };
+  };
+  assert.equal((await call({ nodeType: 'bone_elder', actions: 2 }, false)).status, 400, 'a normal account is still gated');
+  const r = await call({ nodeType: 'bone_elder', actions: 2 }, true);
+  assert.equal(r.status, 200);
+  assert.equal(r.json.data.successes, 2, 'rolls as if at the node level');
+  assert.equal(r.json.data.skills[0].skill_level > 1, true, 'real XP on the real level');
+  const burst = await call({ nodeType: 'bone_elder', actions: 40 }, true);
+  assert.equal(burst.json.data.accepted, rules.GATHER_BURST, 'the time budget still clamps staff');
+});
