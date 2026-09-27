@@ -39,6 +39,12 @@ export type Sfx =
   | 'bossDefeat'
   | 'step'
   | 'error'
+  // Gathering (roadmap §7): one light sound per work cycle, and a skill level-up.
+  | 'chop'
+  | 'pick'
+  | 'splash'
+  | 'shovel'
+  | 'skillUp'
   // Grimoire rites.
   | 'wail'
   | 'bloodStep'
@@ -369,6 +375,38 @@ class AudioEngine {
         this.tone(o, 'sine', 110, 40, t, 0.003, 0.3, 0.5);
         break;
       }
+      case 'chop': {
+        // An axe into coffin-oak: a dull knock plus a woody crack.
+        const o = this.out(x, z, 0.4, 0.25);
+        this.burst(o, t, 0.12, 0.7, 'lowpass', 700 * r(), 180, 1.2, true);
+        this.burst(o, t + 0.005, 0.05, 0.35, 'bandpass', 1800 * r(), 900, 3);
+        break;
+      }
+      case 'pick': {
+        // Iron on stone: a bright clink with a short ring.
+        const o = this.out(x, z, 0.32, 0.35);
+        this.burst(o, t, 0.04, 0.5, 'highpass', 3000, 3000, 1);
+        this.tone(o, 'triangle', 2400 * r(), 2200, t, 0.001, 0.22, 0.12);
+        break;
+      }
+      case 'splash': {
+        const o = this.out(x, z, 0.3, 0.4);
+        this.burst(o, t, 0.35, 0.4, 'bandpass', 1200 * r(), 500, 0.8);
+        this.burst(o, t + 0.08, 0.2, 0.15, 'highpass', 3500, 4000, 1);
+        break;
+      }
+      case 'shovel': {
+        // A spade into grave soil: a gritty scrape and a soft thud.
+        const o = this.out(x, z, 0.36, 0.2);
+        this.burst(o, t, 0.22, 0.35, 'bandpass', 900 * r(), 400, 1.4);
+        this.burst(o, t + 0.12, 0.1, 0.5, 'lowpass', 260, 90, 1, true);
+        break;
+      }
+      case 'skillUp': {
+        const o = this.out(undefined, undefined, 0.5, 0.7);
+        [392, 494, 587, 784].forEach((f, i) => this.bell(o, t + i * 0.09, f, 1.4, 0.15));
+        break;
+      }
       case 'coin': {
         const o = this.out(undefined, undefined, 0.22, 0.2);
         const f = 1900 * r();
@@ -543,6 +581,10 @@ class AudioEngine {
       case 'chapterhouse':
         wind(300, 0.06);
         drone(55, 0.018);
+        break;
+      case 'acre':
+        wind(900, 0.14);
+        wind(320, 0.07);
         break;
       case 'graves':
         wind(700, 0.22);

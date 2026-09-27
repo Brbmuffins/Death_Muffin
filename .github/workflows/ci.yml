@@ -42,7 +42,7 @@ jobs:
         run: npm ci
 
       - name: Realtime server tests
-        run: node --test server/realtime/server.test.js server/vps-handoff/necro-progress/necro-progress.test.cjs
+        run: node --test server/realtime/server.test.js server/vps-handoff/necro-progress/necro-progress.test.cjs server/death-muffin/backend/gathering/gathering.test.cjs
 
       - name: Production build
         run: npm run build

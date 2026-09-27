@@ -1,9 +1,17 @@
-import { craft, getProfessions, getRecipes } from '../net/api';
+import { craft, getInventory, getProfessions, getRecipes } from '../net/api';
 import type { InventorySlot, Profession, Recipe } from '../net/types';
 import type { Inventory } from '../gameplay/loot';
 
 const PROFESSIONS = ['mining', 'fishing', 'woodcutting'] as const;
 const LABEL: Record<string, string> = { mining: 'Smelting', fishing: 'Tinctures', woodcutting: 'Coffin-wood' };
+
+/** The Sexton's Acre stations: each is the Workbench locked to one rite's recipes. */
+export type Station = 'kiln' | 'sawpit' | 'fire';
+const STATIONS: Record<Station, { title: string; tab: (typeof PROFESSIONS)[number]; blurb: string }> = {
+  kiln: { title: 'Bone Kiln', tab: 'mining', blurb: 'Smelt ore into ingots and forge them into gear.' },
+  sawpit: { title: 'Sawpit', tab: 'woodcutting', blurb: 'Saw logs into planks, staves and bows.' },
+  fire: { title: 'Cooking Fire', tab: 'fishing', blurb: 'Render fish into fillets, tinctures and flasks.' },
+};
 
 /**
  * The Ossuary Workbench. Recipes come from GET /api/recipes per profession;
@@ -21,25 +29,29 @@ export class ForgePanel {
     private root: HTMLElement,
     private characterId: number,
     private inventory: Inventory,
-    private onCrafted: (inventory: InventorySlot[], profession: Profession) => void,
+    private onCrafted: (inventory: InventorySlot[], professions: Profession[]) => void,
   ) {}
 
   get isOpen() {
     return this.el !== null;
   }
 
-  async open() {
+  /** The Workbench (every rite), or one Acre station locked to its rite. */
+  async open(station?: Station) {
     if (this.el) return;
+    const st = station ? STATIONS[station] : null;
+    if (st) this.tab = st.tab;
+    const title = st?.title ?? 'Ossuary Workbench';
     this.el = document.createElement('div');
     this.el.className = 'cw-plate cw-panel-float';
     this.el.setAttribute('role', 'dialog');
-    this.el.setAttribute('aria-label', 'Ossuary Workbench');
+    this.el.setAttribute('aria-label', title);
     this.el.innerHTML = `
       <div class="cw-panel-head">
-        <h2 class="cw-title">Ossuary Workbench</h2>
-        <button class="cw-icon-btn" data-close aria-label="Close workbench">✕</button>
+        <h2 class="cw-title">${title}</h2>
+        <button class="cw-icon-btn" data-close aria-label="Close ${title}">✕</button>
       </div>
-      <div class="cw-tabs">${PROFESSIONS.map((p) => `<button data-tab="${p}">${LABEL[p]}</button>`).join('')}</div>
+      ${st ? `<p class="cw-hint-text">${st.blurb}</p>` : `<div class="cw-tabs">${PROFESSIONS.map((p) => `<button data-tab="${p}">${LABEL[p]}</button>`).join('')}</div>`}
       <div class="cw-recipes"><span class="cw-hint-text">Loading recipes…</span></div>
       <div class="cw-error" data-error></div>
     `;
@@ -117,9 +129,12 @@ export class ForgePanel {
     this.render();
     try {
       await this.inventory.flush();
-      const { updatedInventory, updatedProfession } = await craft(this.characterId, recipeId);
-      this.professions = this.professions.map((p) => (p.profession_id === updatedProfession.profession_id ? updatedProfession : p));
-      this.onCrafted(updatedInventory, updatedProfession);
+      await craft(this.characterId, recipeId);
+      // The live server answers with the crafted item and XP, not the bag, so re-read both:
+      // keeping the pre-craft bag would let the next save write the spent ingredients back.
+      const [inventory, professions] = await Promise.all([getInventory(this.characterId), getProfessions(this.characterId)]);
+      this.professions = professions;
+      this.onCrafted(inventory, professions);
     } catch (err) {
       this.setError(err instanceof Error ? err.message : 'Craft failed');
     } finally {

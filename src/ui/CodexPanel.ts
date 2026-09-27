@@ -4,6 +4,7 @@ import {
   BEHAVIOUR_LABEL,
   CLASS_CHANGE_COUNSEL,
   CODEX_TRAVEL_COUNSEL,
+  CODEX_PROFESSIONS_COUNSEL,
   CODEX_AREAS,
   CODEX_DEAD,
   CODEX_DISCIPLINES,
@@ -18,6 +19,9 @@ import {
 import { PLAYABLE_DISCIPLINES, type DisciplineId } from '../content/disciplines';
 import { ENEMIES } from '../content/enemies';
 import type { CodexJournal } from '../gameplay/codexJournal';
+import { GATHER_SKILLS, SKILLS, actionMs, nodesForSkill, xpPerHour } from '../gameplay/gatheringRules';
+import { generateLayout } from '../content/layout';
+import { itemMeta } from '../content/items';
 import { ICON } from './icons';
 
 const TABS = [
@@ -25,6 +29,7 @@ const TABS = [
   { id: 'disciplines', label: 'Disciplines' },
   { id: 'dead', label: 'The Dead' },
   { id: 'diocese', label: 'The Diocese' },
+  { id: 'professions', label: 'Professions' },
   { id: 'lore', label: 'Covenant Lore' },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
@@ -106,7 +111,9 @@ export class CodexPanel {
             ? this.dead()
             : this.tab === 'diocese'
               ? this.diocese()
-              : this.lore();
+              : this.tab === 'professions'
+                ? this.professions()
+                : this.lore();
   }
 
   private rites() {
@@ -194,6 +201,46 @@ export class CodexPanel {
         </article>`;
     }).join('');
     return `<p class="tip">${CODEX_TRAVEL_COUNSEL}</p><div class="cw-codex-count">Walked <b>${known}</b> of ${AREA_ORDER.length}</div>${rows}`;
+  }
+
+  /** Every gathering node, generated from gatheringRules + the layout so the numbers never drift. */
+  private professions() {
+    const nodes = generateLayout().nodes;
+    const where = (type: string) => {
+      const areas = [...new Set(nodes.filter((n) => n.type === type).map((n) => (n.rich ? `${AREAS[n.area].name} (rich)` : AREAS[n.area].name)))];
+      return areas.join(', ');
+    };
+    const sections = GATHER_SKILLS.map((skill) => {
+      const meta = SKILLS[skill];
+      const rows = nodesForSkill(skill)
+        .map(
+          (n) => `<tr><td>${n.level}</td><td>${n.name}</td><td>${n.xp}</td><td>${(actionMs(n) / 1000).toFixed(1)}s</td><td>${itemMeta(n.item).name}</td><td>~${Math.round(xpPerHour(n, n.level) / 100) / 10}k</td><td>${where(n.id)}</td></tr>`,
+        )
+        .join('');
+      return `
+        <article class="cw-codex-entry" style="border-left:3px solid ${meta.color}">
+          <div class="txt">
+            <div class="hd"><h3>${meta.name}</h3><span class="meta">${meta.rite}</span></div>
+            <table class="cw-codex-table">
+              <thead><tr><th>Lvl</th><th>Node</th><th>XP</th><th>Cycle</th><th>Yields</th><th>XP/h</th><th>Where</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </article>`;
+    }).join('');
+    const stations = `
+      <article class="cw-codex-entry">
+        <div class="txt">
+          <div class="hd"><h3>Stations</h3><span class="meta">Sexton's Acre, by the door</span></div>
+          <dl>
+            <dt>Bone Kiln</dt><dd>Smelting and forging (Mining recipes).</dd>
+            <dt>Sawpit</dt><dd>Planks, staves and bows (Woodcutting recipes).</dd>
+            <dt>Cooking Fire</dt><dd>Fillets, tinctures and flasks (Fishing recipes).</dd>
+          </dl>
+          <p>XP/h assumes steady work at the node's own level with the node always ready; your odds improve with every level above it.</p>
+        </div>
+      </article>`;
+    return `<p class="tip">${CODEX_PROFESSIONS_COUNSEL}</p>${sections}${stations}`;
   }
 
   private lore() {

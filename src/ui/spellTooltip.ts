@@ -1,4 +1,4 @@
-import { ABILITIES, DETONATE, FRACTURE, MIASMA_SLOW, NEEDLE_ESSENCE, SIGNATURE, SIGNATURE_LEVEL, SOUL_HARVEST, type AbilityId } from '../content/abilities';
+import { ABILITIES, BONE_MANTLE, DETONATE, FRACTURE, GRAVE_FROST, GRAVE_STEP, MIASMA_SLOW, NEEDLE_ESSENCE, SIGNATURE, SIGNATURE_LEVEL, SOUL_HARVEST, WAILING_SKULL, type AbilityId } from '../content/abilities';
 import { CODEX_RITES } from '../content/codex';
 import { DISCIPLINES, type Discipline } from '../content/disciplines';
 import { HEMORRHAGE } from '../content/statuses';
@@ -85,6 +85,18 @@ export function spellTooltip(id: AbilityId, discipline?: Discipline, state: Spel
     case 'corpse_explosion':
       details.push(`Consumes one corpse. Resonant corpses blast ${number(DETONATE.resonantRadiusMult)}× wider; elite corpses deal ${number(DETONATE.eliteDamageMult)}× damage.`,
         `Toxic corpses leave a friendly rot pool for ${number(DETONATE.rotDurationMs / 1000)}s. A burst body cannot also become a thrall.`);
+      break;
+    case 'wailing_skull':
+      details.push(`Leaps up to ${WAILING_SKULL.hops - 1} times within ${number(WAILING_SKULL.leapRange)}m, each leap ${percent(1 - WAILING_SKULL.falloff)} weaker. A killing leap earns another, up to ${WAILING_SKULL.maxHops} in all.`);
+      break;
+    case 'grave_step':
+      details.push(`Teleports to a corpse and bursts for ${number(GRAVE_STEP.burstRadius)}m. Enemies hit suffer Hemorrhage for ${HEMORRHAGE.durationS}s. The corpse is not consumed.`);
+      break;
+    case 'grave_frost':
+      details.push(`A ${GRAVE_FROST.halfAngleDeg * 2}° cone. Chill lasts ${number(GRAVE_FROST.chillS)}s; enemies already Chilled shatter for ${number(GRAVE_FROST.shatterMult)}× damage.`);
+      break;
+    case 'bone_mantle':
+      details.push(`Consumes up to ${BONE_MANTLE.maxCorpses} nearby corpses. Barrier: ${percent(BONE_MANTLE.barrierBase)} of max health + ${percent(BONE_MANTLE.barrierPerCorpse)} per corpse (cap ${percent(BONE_MANTLE.barrierCap)}) for ${BONE_MANTLE.durationS}s.`);
       break;
     case 'ossuary_wall':
       details.push(`Creates a ${SIGNATURE.wall.length}m wall for ${SIGNATURE.wall.durationS}s. Blocks enemy movement and Penitent cones.`);

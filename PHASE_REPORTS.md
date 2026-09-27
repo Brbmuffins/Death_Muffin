@@ -505,3 +505,37 @@ Checks at the end: 80 vitest, 8 realtime, typecheck, production build all green.
   area dangers, README tables (dead, processions, statuses).
 - Tests: `enemy-variety.test.ts` (codex/roster integrity, packs never elite, procession theme + lead,
   censer aura + snapshot mirror, scream hits only inside its ring, golem → 3 corpses; wraith/rat → 0).
+
+## Professions G0 + G1 + G2 + G4: gathering and the Sexton's Acre (2026-09-27) ✅ tests + in-browser QA
+Built from `docs/PROFESSIONS-ROADMAP.md` in one cloud session (branch `claude/adoring-knuth-hd1uox`). G3 art is with the owner.
+- **G0 (rules + server):** `src/gameplay/gatheringRules.ts` holds 26 nodes (7 trees, 8 seams + 2 geodes, 6 fishing spots,
+  4 graves), success odds, loot, both XP curves (live rule active), a time budget (elapsed ÷ cycle + 3 burst, 30 s
+  window, 1,800/h cap) and bag placement. It is bundled to `server/death-muffin/backend/gathering/gathering-rules.cjs`
+  (`npm run build:server-rules`, with a parity test). `POST /api/gather` runs ownership → node → level → budget → server roll →
+  one transaction (items, gold, skill, ledger). `002-gathering.sql` adds 21 materials, 250-stacks and `gather_ledger`.
+  `award-xp` now answers 410. The offline mock serves the same route with the same rules. 10 node:test route tests.
+- **G2 (the Sexton's Acre):** a safe zone at x −62…−20, z 6…38, always open through door `chapter_acre`. It has a gravel
+  lane, the quarry wall, the grove, a black-water pond (blocks feet; fishing spots on the shore) and burial rows, with
+  higher tiers further west and one Bone Elder. Stations: Sawpit, Bone Kiln (`prop_node_bone_kiln`, ember light) and
+  Cooking Fire. Leaves, crows and a wind bed for atmosphere. Rich nodes in every hunting ground (2 each). "Always open"
+  is now data (`isAlwaysOpen`: areas with no seal), so progress saves needed no new field.
+- **G1 (nodes + loop):** `WorldSim.nodes` gives host-authoritative depletion and respawn, the `gather` intent (reach-checked),
+  `nodeGone`/`nodeBack` events and a snapshot `depleted` list; mirror and host migration carry it. `Gathering.ts`
+  (`GatherLoop` + `Skills`) handles walk → work → gesture per cycle → local roll for feel → 8 s batches → server wins.
+  Auto (`gatherPlan.ts`) moves to the nearest live node of the same kind and area, or waits. It stops on
+  movement, cast, panel, full bag, hit or death. `Nav.findPath` is a 0.5 m grid A* per room leg, used only for
+  node walks, so click-to-move is unchanged. `NodeViews` draws instanced live/spent stand-ins, ore-tint vein
+  overlays, pool ripples, rich glow, a hover ring and the progress arc, and swaps to `prop_node_*` GLBs when they exist.
+  Four procedural SFX (chop, pick, splash, shovel) plus a skill-up chime.
+- **G4 (UI + help):** the Skills panel (P) shows levels, XP to go, the next unlock and total level. The node hover card has
+  the level requirement, XP per success and yield. The Workbench gained station mode. There are 6 counsel tips (Acre, first
+  node, rich node, station, full bag, skill up), and the welcome tip now mentions the Acre. The Codex has a Professions tab
+  generated from the rules and layout. Settings has Auto gathering, and the key list gained node click and Skills. The README
+  has a Professions section with 4 new screenshots.
+- **Fixes on the way:** the Workbench now re-reads the bag after crafting (the live `/api/craft` returns no bag; see HANDOFF).
+  The offline `/api/recipes` works without a token. Spell hover cards for the four Grimoire rites had no detail lines
+  (the test on master was red).
+- Verified: 188 vitest, 28 server tests (realtime 10, necro-progress 8, gathering 10) and build all green. Every node is
+  reachable on foot from spawn (walker test). In the browser (offline mock) I chopped, mined, dug and fished; the server
+  bag held `log_oak×3, ore_copper×2, bones_old×3, seed_mourning_moss×1, fish_river×3` and gold 4; the kiln listed
+  recipes; the hover card and Skills panel rendered. No console errors.

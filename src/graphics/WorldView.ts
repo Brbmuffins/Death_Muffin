@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { AREAS, AREA_ORDER, DOORS, type AreaId, type DoorDef, type Theme } from '../content/areas';
-import { PROPS, type Placement, type PropId, type Silhouette, type WorldLayout } from '../content/layout';
+import { NODE_COLLIDER, PROPS, type Placement, type PropId, type Silhouette, type WorldLayout } from '../content/layout';
 import type { Nav } from '../gameplay/nav';
+import { NODES } from '../gameplay/gatheringRules';
 import { mulberry32 } from '../gameplay/rng';
 import { assets } from './AssetCache';
 import { fx } from './fxTextures';
@@ -14,6 +15,7 @@ import { Atmosphere } from './Atmosphere';
 
 const FLOOR_TEX: Record<Theme, { url: string; tile: number; color: number; rough: number }> = {
   chapter: { url: 'art/textures/flagstone.webp', tile: 7, color: 0x9a92a8, rough: 0.62 },
+  acre: { url: 'art/textures/grave_soil.webp', tile: 5, color: 0x9aa48c, rough: 0.97 },
   graveyard: { url: 'art/textures/grave_soil.webp', tile: 6, color: 0xb8aab8, rough: 0.95 },
   ossuary: { url: 'art/textures/ossuary_floor.webp', tile: 6, color: 0xb0a4ae, rough: 0.9 },
   nave: { url: 'art/textures/flagstone.webp', tile: 8, color: 0x8c86a8, rough: 0.45 },
@@ -143,6 +145,13 @@ function fallbackGeometry(id: PropId): { geo: THREE.BufferGeometry; color: numbe
       box(1.2, 0.2, 1.2);
       color = 0x4f4a58;
       break;
+    case 'prop_node_bone_kiln':
+      // A squat bone-brick kiln with a chimney; the ember light comes from PROPS.
+      box(1.8, 1.1, 1.6);
+      g.push(new THREE.CylinderGeometry(0.75, 0.9, 0.5, 8, 1, false, 0, Math.PI).rotateY(Math.PI / 2).translate(0, 1.1, 0));
+      cyl(0.22, 0.28, 1.1, 0.5, 1.1, 0.35);
+      color = 0x8a7c68;
+      break;
   }
   const merged = mergeGeometries(g.map((x) => (x.index ? x.toNonIndexed() : x)), false)!;
   merged.computeVertexNormals();
@@ -208,7 +217,12 @@ class PropBatch {
     const { geo, color } = fallbackGeometry(id);
     const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.9, metalness: 0.05 });
     this.build([{ geometry: geo, material: mat, local: new THREE.Matrix4() }], 1);
-    void assets.model(PROP_URL(id), PROPS[id].height).then((t) => {
+    // Pipeline props that may not exist yet (prop_node_*) are HEAD-checked first: no console noise.
+    const url = PROP_URL(id);
+    const exists = id.startsWith('prop_node_')
+      ? fetch(url, { method: 'HEAD' }).then((r) => r.ok && !(r.headers.get('content-type') ?? '').includes('text/html')).catch(() => false)
+      : Promise.resolve(true);
+    void exists.then((ok) => (ok ? assets.model(url, PROPS[id].height) : null)).then((t) => {
       if (!t) return;
       t.scene.updateMatrixWorld(true);
       const bounds = new THREE.Box3().setFromObject(t.scene);
@@ -344,7 +358,7 @@ export class WorldView {
     this.buildFlames();
     this.buildMist();
     this.buildSilhouettes();
-    this.water = new Water(layout.water, layout.puddles);
+    this.water = new Water([...layout.water, ...layout.ponds], layout.puddles);
     this.group.add(this.water.mesh, this.atmosphere.points);
     for (let i = 0; i < 5; i++) {
       const l = new THREE.PointLight(0xffb46b, 0, 8, 1.8);
@@ -397,6 +411,13 @@ export class WorldView {
   }
 
   private buildWalls(nav: Nav) {
+    // Deep water (the Acre's pond) blocks feet; fishing spots sit on its shore.
+    for (const p of this.layout.ponds) nav.addObstacle({ kind: 'box', x0: p.x0, z0: p.z0, x1: p.x1, z1: p.z1 });
+    // Gathering nodes block like props (fishing spots sit on the water and block nothing).
+    for (const n of this.layout.nodes) {
+      const r = NODE_COLLIDER[NODES[n.type].kind];
+      if (r) nav.addObstacle({ kind: 'circle', x: n.x, z: n.z, r });
+    }
     const byTex = new Map<string, THREE.BufferGeometry[]>();
     for (const w of this.layout.walls) {
       const horizontal = Math.abs(w.z1 - w.z0) < 1e-3;

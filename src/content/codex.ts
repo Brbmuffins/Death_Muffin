@@ -277,11 +277,18 @@ export interface AreaEntry {
   dangers: string;
 }
 
+/** Professions tab (docs/PROFESSIONS-ROADMAP.md): counsel above the generated node tables. */
+export const CODEX_PROFESSIONS_COUNSEL =
+  "Click a tree, ore seam, fishing spot or grave and your necromancer keeps working it until it is spent. Every cycle rolls against your level: higher levels succeed more often, and each success gives skill XP and a find, rolled and stored by the server. The Sexton's Acre, west of the Chapterhouse, has every node and no dead. Gold-lit rich nodes in the hunting grounds hold more and return twice as fast. Your bag must have room, and moving, casting, opening a panel or taking a hit stops you. Auto gathering (Settings) walks you on to the next node of the same kind.";
+
 export const CODEX_TRAVEL_COUNSEL = 'Click a walkable spot on the minimap to choose a fixed destination. Travel follows the same paths as ground clicks; locked halls remain closed. The amber marker shows where you are going. Hover or focus a spell icon for detailed rite counsel.';
 
 export const CODEX_AREAS: Record<AreaId, AreaEntry> = {
   chapterhouse: {
     dangers: 'None. The dead cannot follow you here. The Reliquary, the Ossuary Workbench, the Rite Niches, the Altar of Ascension and a waystone wait for you.',
+  },
+  acre: {
+    dangers: "None. No waves ever reach the Acre. Trees, ore seams, black-water fishing spots and burial plots of every tier are here to work, with the stronger ones further from the Chapterhouse door. The Sawpit, Bone Kiln and Cooking Fire stand by the entrance.",
   },
   graves: {
     dangers: 'Grave Robbers in numbers, Bone Hounds on the flanks, and the odd Penitent and Carrion Sac. Learn the corpse economy here. Now and then a procession comes through: a kennel of hounds and skull-rats, or Penitents led by a Censer Bearer.',

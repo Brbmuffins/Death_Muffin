@@ -152,6 +152,20 @@ export interface Zone {
   spreadT?: number;
 }
 
+/** A gathering node's live state (host-only; placements come from the shared layout). */
+export interface SimNode {
+  id: string;
+  type: string;
+  area: AreaId;
+  x: number;
+  z: number;
+  rich: boolean;
+  /** Successes left before it depletes. */
+  remaining: number;
+  /** Sim time it comes back (only meaningful while remaining is 0). */
+  respawnAt: number;
+}
+
 export interface PlayerBody {
   id: string;
   x: number;
@@ -233,7 +247,9 @@ export type Intent =
   /** Host-shaped rites (discipline signatures + Bone Mantle): aim point, aim direction and the caster's spell power. */
   | { t: 'signature'; by: string; sig: 'wall' | 'rend' | 'dirge' | 'bloom' | 'mantle'; x: number; z: number; dx: number; dz: number; sp: number }
   /** Corpse Explosion: `dmg` is the caster's spellPower × power (clamped by the sim). */
-  | { t: 'detonate'; by: string; corpseId: number; dmg: number };
+  | { t: 'detonate'; by: string; corpseId: number; dmg: number }
+  /** Gathering: `successes` work cycles landed on a node (depletion only; rewards come from the REST API). */
+  | { t: 'gather'; by: string; nodeId: string; successes: number };
 
 // --- Events: host → everyone (drive VFX, loot, XP, and damage to players) ---
 
@@ -300,6 +316,9 @@ export type SimEvent =
   | { t: 'heal'; player: string; amount: number; x: number; z: number }
   /** A Crypt Deacon blesses an ally (Sanctified). */
   | { t: 'sanctify'; id: number; target: number; x: number; z: number; tx: number; tz: number }
+  /** A gathering node depleted (felled, mined out, the spot drifted, the grave dug) and when it returns. */
+  | { t: 'nodeGone'; id: string; by: string; respawnS: number }
+  | { t: 'nodeBack'; id: string }
   | { t: 'surge'; area: AreaId; x: number; z: number; durationMs: number; crypt?: boolean }
   | { t: 'surgeCleared'; area: AreaId; x: number; z: number }
   | { t: 'surgeFailed'; area: AreaId; x: number; z: number }

@@ -18,6 +18,8 @@ export interface Settings {
   difficulty: Difficulty;
   /** Fight nearby enemies and manage basic rites while standing. */
   autoCombat: boolean;
+  /** When a gathering node depletes, walk on to the nearest one of the same kind. */
+  autoGather: boolean;
 }
 
 const KEY = 'dm_settings_v1';
@@ -29,7 +31,7 @@ function defaults(): Settings {
   } catch {
     /* no matchMedia */
   }
-  return { quality: 'high', reducedMotion: reduced, damageNumbers: true, volume: 0.6, tips: true, difficulty: 'medium', autoCombat: true };
+  return { quality: 'high', reducedMotion: reduced, damageNumbers: true, volume: 0.6, tips: true, difficulty: 'medium', autoCombat: true, autoGather: true };
 }
 
 function load(): Settings {

@@ -142,6 +142,7 @@ export class HUD {
         </div>
       </div>
       <div class="hud-toasts passive" data-toasts></div>
+      <div class="hud-nodetip passive" data-nodetip role="tooltip" hidden></div>
       <div class="hud-banner passive" data-banner><div class="t"></div><div class="rule"></div><div class="s"></div></div>
       <div class="hud-prompt passive" data-prompt hidden></div>
       <div class="hud-hint passive" data-hint></div>
@@ -519,6 +520,20 @@ export class HUD {
     el.classList.add('show');
     window.clearTimeout(this.bannerTimer);
     this.bannerTimer = window.setTimeout(() => el.classList.remove('show'), ms);
+  }
+
+  /** Hover card for a gathering node (trusted HTML built from gatheringRules), beside the cursor. */
+  nodeTip(html: string | null, x: number, y: number) {
+    const el = this.$('[data-nodetip]');
+    this.set('nodetip', html ?? '', () => {
+      el.hidden = !html;
+      if (html) el.innerHTML = html;
+    });
+    if (!html) return;
+    const w = el.offsetWidth || 220;
+    const h = el.offsetHeight || 70;
+    el.style.left = `${Math.min(window.innerWidth - w - 8, x + 18)}px`;
+    el.style.top = `${Math.max(8, Math.min(window.innerHeight - h - 8, y - h - 12))}px`;
   }
 
   prompt(html: string | null) {

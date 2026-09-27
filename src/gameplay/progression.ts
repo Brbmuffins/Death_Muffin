@@ -1,4 +1,4 @@
-import type { AreaId } from '../content/areas';
+import { isAlwaysOpen, type AreaId } from '../content/areas';
 import { ashesForRun, boonBlocked, boonCost, boonEffects, ASCENSION, type BoonId, type BoonEffects, type BoonRanks, type RunRecord } from '../content/ascension';
 import { DAMAGE_UPGRADE, WAVE_UPGRADE } from '../content/upgrades';
 import { ApiError, necroApi, saveProgress, type NecroReply } from '../net/api';
@@ -404,7 +404,7 @@ export class Progression {
   }
 
   isUnlocked(area: AreaId) {
-    return this.local.unlocked.includes(area);
+    return isAlwaysOpen(area) || this.local.unlocked.includes(area);
   }
 
   unlock(area: AreaId) {

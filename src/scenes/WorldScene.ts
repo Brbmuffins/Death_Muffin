@@ -11,7 +11,13 @@ import { AREAS, AREA_ORDER, BOSS_SUMMON_SHARDS, DOORS, PLAYER_SPAWN, type AreaId
 import { disciplineFor, type Discipline } from '../content/disciplines';
 import { AFFIX_TUNING, ELITE_AFFIXES, ENEMIES, WAVE_THEMES, type EliteAffix, type EnemyId } from '../content/enemies';
 import { HEALING_FLASKS, itemMeta } from '../content/items';
-import { generateLayout } from '../content/layout';
+import { generateLayout, type NodePlacement } from '../content/layout';
+import { GatherLoop, Skills } from '../gameplay/Gathering';
+import { NODES, SKILLS, nodesForSkill, type SkillId } from '../gameplay/gatheringRules';
+import type { LiveNode } from '../gameplay/gatherPlan';
+import { STOP_TEXT } from '../gameplay/gatherPlan';
+import { NodeViews } from '../graphics/NodeViews';
+import { addToSlots } from '../gameplay/loot';
 import { WAVE_MILESTONES, damageBonusPct, milestoneActive, waveModifiers } from '../content/upgrades';
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
 import { BOONS, ascensionLevels, ascensionRewardMult, roman } from '../content/ascension';
@@ -40,7 +46,7 @@ import { fx } from '../graphics/fxTextures';
 import { LootView } from '../graphics/LootView';
 import { WorldView } from '../graphics/WorldView';
 import { updateOcclusion } from '../graphics/occlusion';
-import { getInventory, getProfessions, OFFLINE } from '../net/api';
+import { gather, getInventory, getProfessions, OFFLINE, type GatherReply } from '../net/api';
 import type { RemotePlayer, WorldSnapshot } from '../net/contracts';
 import { RealtimeClient } from '../net/realtime';
 import type { Character, Profession } from '../net/types';
@@ -91,6 +97,7 @@ type Hover =
   | { kind: 'enemy'; id: number }
   | { kind: 'boss' }
   | { kind: 'interact'; it: Interactable }
+  | { kind: 'node'; node: NodePlacement }
   | null;
 
 /**
@@ -163,6 +170,13 @@ export class WorldScene implements GameScene, RuntimeView {
   private hover: Hover = null;
   private attackTarget: { kind: 'enemy'; id: number } | { kind: 'boss' } | null = null;
   private pendingInteract: Interactable | null = null;
+  /** Skilling: levels, the gathering loop and the node props (docs/PROFESSIONS-ROADMAP.md). */
+  private skills = new Skills();
+  private gathering!: GatherLoop;
+  private nodeViews!: NodeViews;
+  private gatherProg = 0;
+  private lastNodeSync = 0;
+  private skillLevels = new Map<SkillId, number>();
   private area: AreaId = 'chapterhouse';
   private deadUntil = 0;
   private recallAt = 0;
@@ -243,6 +257,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.worldView = new WorldView(this.scene, this.layout, this.nav, this.effects);
     for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d), true);
     this.views = new EntityViews(this.scene, this.effects);
+    this.nodeViews = new NodeViews(this.scene, this.layout.nodes);
     this.prelate = new PrelateView(this.scene, this.effects);
     this.loot = new LootView(this.scene, this.effects);
 
@@ -291,6 +306,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
     this.sim = new WorldSim(this.nav);
     this.sim.setCrypts(this.layout.crypts);
+    this.sim.setNodes(this.layout.nodes);
     this.sim.waveTier = this.progression.local.waveTierActive;
     this.sim.difficulty = settings.difficulty;
     this.sim.ascension = this.progression.local.ascension;
@@ -311,6 +327,35 @@ export class WorldScene implements GameScene, RuntimeView {
       now: () => this.now,
     });
 
+    this.gathering = new GatherLoop(
+      {
+        now: () => this.now,
+        rand: Math.random,
+        nav: this.nav,
+        player: this.player,
+        nodes: () => this.liveNodes(),
+        live: (id) => this.nodeLive(id),
+        bagFits: (itemId) => addToSlots(this.inventory.all, { item_id: itemId, quantity: 1 }) !== null,
+        sendSuccess: (nodeId) => this.sendIntent({ t: 'gather', by: this.selfId, nodeId, successes: 1 }),
+        post: async (nodeType, actions, keepalive) => {
+          // Settle the bag first so the server grants onto the same bag the client shows.
+          if (!keepalive) await this.inventory.flush();
+          return gather(this.character.id, nodeType, actions, keepalive);
+        },
+        onCycle: (def, success, node) => this.onGatherCycle(def, success, node),
+        onReply: (r) => this.onGatherReply(r),
+        onStop: (reason, message) => {
+          const text = message ?? STOP_TEXT[reason as keyof typeof STOP_TEXT] ?? null;
+          if (text) this.floating.spawn(this.player.x, 2.4, this.player.z, text, 'info');
+          if (reason === 'bagFull') this.onboarding.show('bag_full');
+        },
+        onError: (msg) => this.hud.toast(msg, 'err'),
+        autoEnabled: () => settings.autoGather,
+      },
+      this.skills,
+    );
+    this.scope.add(this.skills.onChange(() => this.onSkillsChanged()));
+
     this.mountUi();
     this.bindInput();
     this.scope.add(this.progression.onChange(() => this.refreshStats()));
@@ -319,6 +364,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.scope.on(window, 'pagehide', () => {
       void this.progression.flush(true);
       void this.inventory.flush();
+      void this.gathering.flush(true);
     });
 
     getRuntime().setView(this);
@@ -380,6 +426,8 @@ export class WorldScene implements GameScene, RuntimeView {
       const [slots, professions] = await Promise.all([getInventory(this.character.id), getProfessions(this.character.id)]);
       this.inventory.replace(slots);
       this.professions = professions;
+      for (const r of professions) this.skillLevels.set(r.profession_id as SkillId, r.skill_level);
+      this.skills.adopt(professions);
       this.refreshStats();
     } catch (err) {
       this.hud.toast(err instanceof Error ? err.message : 'Failed to load your reliquary', 'err');
@@ -436,9 +484,9 @@ export class WorldScene implements GameScene, RuntimeView {
     }, this.hotbar, this.discipline);
     this.hud.minimap.onNavigate = (x, z) => this.navigateFromMinimap(x, z);
     this.inventoryPanel = new InventoryPanel(this.root, this.character.id, this.inventory, this.statsLine, (id) => this.drinkFlask(id));
-    this.forgePanel = new ForgePanel(this.root, this.character.id, this.inventory, (inv, prof) => {
+    this.forgePanel = new ForgePanel(this.root, this.character.id, this.inventory, (inv, profs) => {
       this.inventory.replace(inv);
-      this.professions = this.professions.map((p) => (p.profession_id === prof.profession_id ? prof : p));
+      this.skills.adopt(profs);
       this.hud.toast('Crafted', 'good');
     });
     this.professionsPanel = new ProfessionsPanel(this.root);
@@ -536,7 +584,8 @@ export class WorldScene implements GameScene, RuntimeView {
     const wasOpen = panel.isOpen;
     this.closePanels();
     if (wasOpen) return;
-    if (p === 'professions') this.professionsPanel.open(this.professions);
+    this.gathering?.stop('panel');
+    if (p === 'professions') this.professionsPanel.open(this.skills);
     else if (p === 'inventory') this.inventoryPanel.open();
     else if (p === 'forge') void this.forgePanel.open();
     else if (p === 'settings') this.settingsPanel.open();
@@ -659,11 +708,27 @@ export class WorldScene implements GameScene, RuntimeView {
       bestD = 60;
       for (const it of this.interactablesNear()) test(it.x, 1.2, it.z, { kind: 'interact', it });
     }
+    if (!best) {
+      bestD = 52;
+      for (const n of this.layout.nodes) {
+        if (Math.abs(n.x - this.player.x) > 26 || Math.abs(n.z - this.player.z) > 22) continue;
+        const kind = NODES[n.type].kind;
+        test(n.x, kind === 'tree' ? 1.6 : kind === 'pool' ? 0.1 : 0.5, n.z, { kind: 'node', node: n }, kind === 'tree' ? 14 : 6);
+      }
+    }
     this.hover = best;
+    const picked = this.hover as Hover;
+    const hn = picked?.kind === 'node' && !this.panelOpen() ? picked.node : null;
+    this.nodeViews.hover(hn, hn ? this.skills.level(NODES[hn.type].skill) >= NODES[hn.type].level : true);
+    this.hud.nodeTip(hn ? this.nodeTipText(hn) : null, this.mouse.x, this.mouse.y);
     const h = this.hover as Hover;
     this.views.hoverId = h?.kind === 'enemy' ? h.id : null;
-    const cur = h?.kind === 'enemy' || h?.kind === 'boss' ? CURSOR.attack : h?.kind === 'interact' ? CURSOR.interact : CURSOR.default;
+    const cur = h?.kind === 'enemy' || h?.kind === 'boss' ? CURSOR.attack : h?.kind === 'interact' || h?.kind === 'node' ? CURSOR.interact : CURSOR.default;
     if (this.canvas.style.cursor !== cur) this.canvas.style.cursor = cur;
+  }
+
+  private panelOpen() {
+    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen;
   }
 
   private interactablesNear(): Interactable[] {
@@ -700,6 +765,22 @@ export class WorldScene implements GameScene, RuntimeView {
     this.cancelRecall();
     this.queuedCast = null;
     const h = this.hover;
+    if (h?.kind === 'node' && !this.mouse.shift) {
+      this.attackTarget = null;
+      this.pendingInteract = null;
+      this.gathering.stop('moved');
+      const refusal = this.gathering.start(h.node);
+      if (refusal) {
+        this.floating.spawn(this.player.x, 2.4, this.player.z, refusal, 'info');
+        audio.play('error');
+      } else {
+        audio.play('click');
+        this.onboarding.show('gather');
+        if (h.node.rich) this.onboarding.show('rich_node');
+      }
+      return;
+    }
+    this.gathering.stop('moved');
     const target = this.cursorTarget();
     if (Math.hypot(target.x - this.player.x, target.z - this.player.z) > 0.25) this.player.face(target.x, target.z);
     if (this.mouse.shift) {
@@ -727,6 +808,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private castSlot(slot: HotbarSlot) {
     if (!this.ready || !this.player?.alive) return;
+    this.gathering?.stop('moved');
     this.updateCursor();
     this.cancelRecall();
     this.autoTargetId = null;
@@ -783,8 +865,8 @@ export class WorldScene implements GameScene, RuntimeView {
         return;
       }
     }
-    // Auto combat never sets paths or competes with deliberate movement/menu use.
-    if (!settings.autoCombat || p.hasPath || p.moving || this.attackTarget || this.keys.size) {
+    // Auto combat never sets paths or competes with deliberate movement/menu use (or gathering).
+    if (!settings.autoCombat || p.hasPath || p.moving || this.attackTarget || this.keys.size || this.gathering.active) {
       this.autoTargetId = null;
       this.autoAim = null;
       return;
@@ -901,6 +983,14 @@ export class WorldScene implements GameScene, RuntimeView {
         return this.togglePanel('professions');
       case 'waystone':
         return this.togglePanel('map');
+      case 'kiln':
+      case 'sawpit':
+      case 'fire':
+        this.gathering.stop('panel');
+        this.closePanels();
+        audio.play('click');
+        this.onboarding.show('station');
+        return void this.forgePanel.open(it.kind);
       case 'upgrades':
         // Damage / Wave Speed are bought from the HUD anywhere; the Altar itself is where runs are burned.
         return this.togglePanel('ascension');
@@ -1031,6 +1121,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (this.sim && !this.mirror) return;
     const sim = new WorldSim(this.nav);
     sim.setCrypts(this.layout.crypts);
+    sim.setNodes(this.layout.nodes);
     sim.waveTier = this.progression.local.waveTierActive;
     // Prefer our own mirror (it has every event applied); the server's stored
     // snapshot is only the fallback when we never mirrored anything.
@@ -1058,6 +1149,89 @@ export class WorldScene implements GameScene, RuntimeView {
   // Events → visuals, rewards, damage
   // -------------------------------------------------------------------------
 
+  // -------------------------------------------------------------------------
+  // Gathering (docs/PROFESSIONS-ROADMAP.md §7)
+  // -------------------------------------------------------------------------
+
+  /** Is a node live? Host/solo asks the sim, a guest asks the mirror. */
+  private nodeLive(id: string) {
+    if (this.sim && this.isAuthority()) return (this.sim.nodes.get(id)?.remaining ?? 0) > 0;
+    return !this.mirror?.depleted.has(id);
+  }
+
+  private *liveNodes(): Iterable<LiveNode> {
+    for (const n of this.layout.nodes) yield { ...n, remaining: this.nodeLive(n.id) ? 1 : 0 };
+  }
+
+  private nodeTipText(n: NodePlacement) {
+    const def = NODES[n.type];
+    const lvl = this.skills.level(def.skill);
+    const need = lvl < def.level ? `<div class="req missing">Requires ${SKILLS[def.skill].name} level ${def.level}</div>` : `<div class="req ok">${SKILLS[def.skill].name} ${lvl} / ${def.level}</div>`;
+    const spent = this.nodeLive(n.id) ? '' : '<div class="spent">Spent. It will return soon.</div>';
+    return `<b>${def.name}</b>${n.rich ? ' <span class="rich">rich</span>' : ''}${need}<div>${def.xp} XP per success · ${itemMeta(def.item).name}</div>${spent}`;
+  }
+
+  private onGatherCycle(def: (typeof NODES)[string], success: boolean, node: NodePlacement) {
+    const p = this.player;
+    audio.play(SKILLS[def.skill].sfx, node.x, node.z);
+    if (!success) return;
+    const color = SKILLS[def.skill].color;
+    this.floating.spawn(p.x, 2.3, p.z, `+${def.xp} ${SKILLS[def.skill].name} XP`, 'skill', color);
+    this.floating.spawn(node.x, 0.7, node.z, `+1 ${itemMeta(def.item).name}`, 'info');
+    const c = parseInt(color.slice(1), 16);
+    this.effects.emit({ x: node.x, y: def.kind === 'tree' ? 1.6 : 0.5, z: node.z, count: 6, color: c, spread: 0.35, speed: 1.4, up: 1, life: 0.5, size: 0.14 });
+  }
+
+  private onGatherReply(r: GatherReply) {
+    for (const g of r.items) this.inventory.add({ item_id: g.itemId, quantity: g.qty });
+    if (r.gold > 0) {
+      this.progression.addGold(r.gold);
+      this.floating.spawn(this.player.x, 2.1, this.player.z, `+${r.gold}g`, 'gold');
+    }
+    if (r.rejected.length) this.hud.toast(`Your bag is full: ${r.rejected.map((g) => `${g.qty}× ${itemMeta(g.itemId).name}`).join(', ')} left behind.`, 'err');
+    const rare = r.items.filter((g) => g.itemId !== NODES[r.node]?.item);
+    for (const g of rare) this.hud.toast(`Found: ${itemMeta(g.itemId).name}${g.qty > 1 ? ` ×${g.qty}` : ''}`, 'good');
+    if (r.items.length) this.inventoryPanel?.render();
+  }
+
+  private onSkillsChanged() {
+    for (const s of Object.keys(SKILLS) as SkillId[]) {
+      const lvl = this.skills.level(s);
+      const before = this.skillLevels.get(s) ?? 1;
+      this.skillLevels.set(s, lvl);
+      if (lvl <= before) continue;
+      const opens = s === 'gardening' ? [] : nodesForSkill(s).filter((n) => n.level > before && n.level <= lvl);
+      this.hud.banner(`${SKILLS[s].name} ${lvl}`, opens.length ? `You can now work: ${opens.map((n) => n.name).join(', ')}` : SKILLS[s].rite, 3200);
+      audio.play('skillUp');
+      this.onboarding.show('skill_up');
+    }
+    this.professions = this.skills.rows();
+    if (this.professionsPanel?.isOpen) this.professionsPanel.render(this.skills);
+  }
+
+  private onNodeSpent(id: string) {
+    const n = this.layout.nodes.find((x) => x.id === id);
+    if (n && this.gathering.node?.id === id) this.effects.emit({ x: n.x, y: 0.4, z: n.z, count: 14, color: 0x8a7a60, spread: 0.6, speed: 1.6, up: 1.2, life: 0.7, size: 0.2 });
+  }
+
+  /** Gesture per work cycle, the progress arc, and a periodic resync of node looks. */
+  private tickGatherVisuals(dt: number) {
+    const g = this.gathering;
+    const prog = g.progress;
+    if (g.working && g.node && (prog < this.gatherProg || this.gatherProg === 0) && prog < 0.5) {
+      const def = NODES[g.node.type];
+      const cycleS = (def.ticks * 600) / 1000;
+      this.avatar.cast(SKILLS[def.skill].gesture, 1, Math.atan2(g.node.x - this.player.x, g.node.z - this.player.z), cycleS * 0.9);
+    }
+    this.gatherProg = g.working ? prog : 0;
+    this.nodeViews.progress(this.player.x, this.player.z, g.working ? Math.max(0.02, prog) : 0, g.node ? SKILLS[NODES[g.node.type].skill].color : '#ffffff');
+    this.nodeViews.update(dt);
+    if (this.now - this.lastNodeSync > 1000) {
+      this.lastNodeSync = this.now;
+      for (const n of this.layout.nodes) this.nodeViews.setLive(n.id, this.nodeLive(n.id));
+    }
+  }
+
   private handleEvent(ev: SimEvent) {
     this.views.onEvent(ev);
     const me = this.selfId;
@@ -1069,6 +1243,13 @@ export class WorldScene implements GameScene, RuntimeView {
         break;
       case 'hurt':
         if (ev.player === me) this.onHurt(ev.dmg, ev.from, ev.x, ev.z);
+        break;
+      case 'nodeGone':
+        this.nodeViews.setLive(ev.id, false);
+        this.onNodeSpent(ev.id);
+        break;
+      case 'nodeBack':
+        this.nodeViews.setLive(ev.id, true);
         break;
       case 'telegraph':
         this.telegraph(ev);
@@ -1557,6 +1738,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const ward = this.discipline.mods.wardPerThrall * myThralls;
     const now = this.now;
     const taken = this.player.takeDamage(raw, ward, now);
+    if (taken >= 1) this.gathering.stop('hurt');
     if (this.player.hp < this.player.stats.maxHp * 0.5) this.onboarding.show('hurt');
     this.cancelRecall();
     if (taken >= 1) this.floating.spawn(this.player.x, 2, this.player.z, `-${Math.round(taken)}`, 'hurt');
@@ -1577,6 +1759,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private onDeath() {
+    this.gathering.stop('dead');
     this.deadUntil = this.now + RESPAWN_MS;
     this.attackTarget = null;
     this.avatar.c.playOnce('death', 1);
@@ -1707,14 +1890,17 @@ export class WorldScene implements GameScene, RuntimeView {
       this.attackTarget = null;
       this.pendingInteract = null;
       this.cancelRecall();
+      this.gathering.stop('moved');
     }
     const moved = p.update(dt, now, kd.x || kd.z ? kd : null);
+    this.gathering.update(dt);
+    this.tickGatherVisuals(dt);
     if (moved) this.cancelRecall();
     this.tickCombat(now);
     this.abilities.update(now);
     // Walking follows its path. Once standing, the mouse turns the hero to aim
     // without changing position or replacing the clicked destination.
-    if (p.alive && this.mouse.aiming && !p.moving && !p.hasPath && !this.attackTarget && this.autoAim === null && now >= p.castUntil) {
+    if (p.alive && this.mouse.aiming && !p.moving && !p.hasPath && !this.attackTarget && this.autoAim === null && now >= p.castUntil && !this.gathering.active) {
       const target = this.cursorTarget();
       if (Math.hypot(target.x - p.x, target.z - p.z) > 0.25) p.face(target.x, target.z);
     }
@@ -1938,11 +2124,13 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hemi.color.set(def.ambient.hemiSky);
     this.hemi.groundColor.set(def.ambient.hemiGround);
     this.moon.color.set(def.ambient.moon);
+    if (area === 'acre') this.onboarding.show('acre', 1200);
     void this.progression.flush();
   }
 
   private areaProgress(): string {
     const here = this.area;
+    if (here === 'acre') return `No dead here. Total skill level <b>${this.skills.total()}</b> (<kbd>P</kbd>)`;
     if (AREAS[here].safe) return 'Sanctuary. The dead cannot follow you here.';
     const next = AREA_ORDER.find((id) => AREAS[id].unlock?.area === here && !this.progression.isUnlocked(id));
     if (next) {
@@ -2235,6 +2423,56 @@ export class WorldScene implements GameScene, RuntimeView {
         this.mouse.x = x;
         this.mouse.y = y;
       },
+      /** Gathering QA: every node with its live state (optionally one area). */
+      nodes: (area?: AreaId) =>
+        this.layout.nodes.filter((n) => !area || n.area === area).map((n) => ({ id: n.id, type: n.type, area: n.area, rich: !!n.rich, live: this.nodeLive(n.id), x: n.x, z: n.z })),
+      /** Walk to the nearest node of a type in the current area (or anywhere) and start working it. */
+      gatherAt: (type: string) => {
+        const list = this.layout.nodes.filter((n) => n.type === type);
+        const here = list.filter((n) => n.area === this.player.area);
+        const pool = here.length ? here : list;
+        const n = pool.sort((a, b) => Math.hypot(a.x - this.player.x, a.z - this.player.z) - Math.hypot(b.x - this.player.x, b.z - this.player.z))[0];
+        if (!n) return 'no such node';
+        return this.gathering.start(n) ?? n.id;
+      },
+      /** State of the gathering loop. */
+      gathering: () => ({ node: this.gathering.node?.id ?? null, working: this.gathering.working, progress: this.gathering.progress, skills: this.skills.rows() }),
+      /** Set a skill level locally (and in the offline mock's db, so its server agrees). */
+      skill: (id: SkillId, level: number) => {
+        this.skills.adopt([{ profession_id: id, skill_level: level, skill_xp: 0 }]);
+        if (OFFLINE) {
+          try {
+            const db = JSON.parse(localStorage.getItem('cw_offline_db_v1') ?? '{}');
+            for (const acc of Object.values(db.accounts ?? {}) as { character?: { id: number }; professions: { profession_id: string; skill_level: number; skill_xp: number }[] }[]) {
+              if (acc.character?.id !== this.character.id) continue;
+              const row = acc.professions.find((p) => p.profession_id === id);
+              if (row) Object.assign(row, { skill_level: level, skill_xp: 0 });
+              else acc.professions.push({ profession_id: id, skill_level: level, skill_xp: 0 });
+            }
+            localStorage.setItem('cw_offline_db_v1', JSON.stringify(db));
+          } catch {
+            /* storage unavailable */
+          }
+        }
+        return this.skills.rows();
+      },
+      flushGather: () => this.gathering.flush(),
+      /** Open an Acre station as if clicked (kiln / sawpit / fire). */
+      station: (kind: 'kiln' | 'sawpit' | 'fire') => {
+        const it = AREAS.acre.interactables.find((i) => i.kind === kind);
+        if (it) this.interact(it);
+      },
+      /** Put the mouse over a node (hover card + ring QA). */
+      hoverNode: (id: string) => {
+        const n = this.layout.nodes.find((x) => x.id === id);
+        if (!n) return null;
+        const v = new THREE.Vector3(n.x, NODES[n.type].kind === 'tree' ? 1.6 : 0.5, n.z).project(this.rig.camera);
+        this.mouse.x = ((v.x + 1) / 2) * window.innerWidth;
+        this.mouse.y = ((1 - v.y) / 2) * window.innerHeight;
+        this.mouse.aiming = true;
+        this.updateCursor();
+        return [Math.round(this.mouse.x), Math.round(this.mouse.y)];
+      },
     };
     (window as unknown as { __cwDebug: typeof dbg }).__cwDebug = dbg;
     this.scope.add(() => delete (window as unknown as { __cwDebug?: unknown }).__cwDebug);
@@ -2255,6 +2493,7 @@ export class WorldScene implements GameScene, RuntimeView {
     for (const r of this.remotes.values()) r.avatar.dispose();
     this.remotes.clear();
     this.views.dispose();
+    this.nodeViews.dispose();
     this.prelate.dispose();
     this.loot.dispose();
     this.avatar.dispose();

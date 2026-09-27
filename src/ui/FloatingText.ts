@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { settings } from '../app/settings';
 
-export type NumKind = 'hit' | 'crit' | 'dot' | 'thrall' | 'hurt' | 'gold' | 'shard' | 'xp' | 'info' | 'big' | 'spear';
+export type NumKind = 'hit' | 'crit' | 'dot' | 'thrall' | 'hurt' | 'gold' | 'shard' | 'xp' | 'info' | 'big' | 'spear' | 'skill';
 
 interface Entry {
   el: HTMLDivElement;
@@ -21,7 +21,8 @@ export class FloatingText {
 
   constructor(private root: HTMLElement) {}
 
-  spawn(x: number, y: number, z: number, text: string, kind: NumKind) {
+  /** `color` tints `skill` numbers with the skill's colour (gatheringRules SKILLS). */
+  spawn(x: number, y: number, z: number, text: string, kind: NumKind, color?: string) {
     if (!settings.damageNumbers && (kind === 'hit' || kind === 'dot' || kind === 'thrall' || kind === 'spear')) return;
     if (this.live.length >= MAX) {
       const old = this.live.shift()!;
@@ -31,6 +32,7 @@ export class FloatingText {
     const el = this.pool.pop() ?? document.createElement('div');
     el.className = `cw-num ${kind === 'spear' ? 'hit' : kind}`;
     el.textContent = text;
+    el.style.color = color ?? '';
     this.root.appendChild(el);
     this.live.push({
       el,

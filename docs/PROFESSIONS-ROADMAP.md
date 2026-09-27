@@ -1,7 +1,11 @@
-# Professions & gathering roadmap (plan only — not built)
+# Professions & gathering roadmap
 
-Written 2026-09-27 for the agents who will build the skilling side of Death Muffin. Nothing here
-is implemented yet. The combat game is the approved baseline (`death-muffin-v1.0.0`), so do not
+Written 2026-09-27 for the agents who will build the skilling side of Death Muffin.
+
+> **Status (2026-09-27, cloud session):** G0, G1, G2 and G4 are **built** (see `PHASE_REPORTS.md` → "Professions G0 +
+> G1 + G2 + G4" and `server/death-muffin/GATHERING_DEPLOY.md`). G3 (node art) is with the owner; G5–G7 are not started.
+> The §12 decisions are still the owner's: the code runs on the recommended defaults, except the XP curve, which stays
+> on the live `level × 50` until the owner decides. The combat game is the approved baseline (`death-muffin-v1.0.0`), so do not
 change its feel while adding this.
 
 **The goal:** a RuneScape-style skilling layer where **the action is grinding levels**. You click a

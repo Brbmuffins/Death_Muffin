@@ -49,7 +49,7 @@ const LIMITS = {
   chatPerSec: 3,
 };
 
-const INTENT_TYPES = new Set(['hit', 'miasma', 'exhume', 'litany', 'summonBoss', 'recallThralls', 'detonate', 'signature']);
+const INTENT_TYPES = new Set(['hit', 'miasma', 'exhume', 'litany', 'summonBoss', 'recallThralls', 'detonate', 'signature', 'gather']);
 /** Host-shaped rites (discipline signatures + Bone Mantle); the host owns their shapes and clamps the aim around the caster. */
 const SIGNATURES = new Set(['wall', 'rend', 'dirge', 'bloom', 'mantle']);
 const WORLD_BOUND = 400; // |x|,|z| sanity bound in world units
@@ -140,6 +140,11 @@ function validIntent(intent) {
       out.dx = Math.min(1e3, Math.max(-1e3, num(out.dx)));
       out.dz = Math.min(1e3, Math.max(-1e3, num(out.dz)));
       out.sp = Math.min(1e5, Math.max(0, num(out.sp)));
+      break;
+    case 'gather':
+      // Depletes a gathering node on the host (rewards come from the REST API, never from here).
+      if (typeof out.nodeId !== 'string' || !/^[a-z]{1,16}_\d{1,4}$/.test(out.nodeId)) return null;
+      out.successes = Math.min(3, Math.max(1, Math.floor(num(out.successes, 1))));
       break;
     case 'detonate':
       // Corpse Explosion: the host owns radius and corpse modifiers; the client

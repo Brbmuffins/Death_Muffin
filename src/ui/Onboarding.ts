@@ -44,7 +44,14 @@ export type TipId =
   | 'censer'
   | 'wraith'
   | 'swarm'
-  | 'golem';
+  | 'golem'
+  // Professions (docs/PROFESSIONS-ROADMAP.md §11).
+  | 'acre'
+  | 'gather'
+  | 'bag_full'
+  | 'skill_up'
+  | 'rich_node'
+  | 'station';
 
 interface Tip {
   title: string;
@@ -70,7 +77,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   welcome: {
     title: 'The Chapterhouse',
-    body: 'Your sanctuary: the dead cannot follow you here. Around you stand the Reliquary, the Workbench, the Altar and a Waystone. The Hollow Graves lie <b>north</b>, through the open gate. <kbd>Esc</kbd> sets difficulty and graphics.',
+    body: 'Your sanctuary: the dead cannot follow you here. Around you stand the Reliquary, the Workbench, the Altar and a Waystone. The Hollow Graves lie <b>north</b>, through the open gate. To the <b>west</b>, the Sexton\'s Acre holds trees, ore, fishing and graves to work, and no dead at all. <kbd>Esc</kbd> sets difficulty and graphics.',
   },
   move: {
     title: 'Walk among the dead',
@@ -187,6 +194,30 @@ export const TIPS: Record<TipId, Tip> = {
   golem: {
     title: 'Bone Golem',
     body: 'A slow giant with a wide bronze-brown slam ring: step out, then punish it. It falls apart into <b>three corpses</b>, a whole legion or a Litany in one kill.',
+  },
+  acre: {
+    title: "The Sexton's Acre",
+    body: 'No waves ever come here. <kbd>Click</kbd> a tree, an ore seam, a fishing spot on the pond or a burial plot, and your necromancer keeps working it until it is spent. The stronger nodes lie further from the door. Press <kbd>P</kbd> to see your skills.',
+  },
+  gather: {
+    title: 'Working a node',
+    body: 'Each swing, cast or dig is one work cycle; the ring under you fills as it goes. Every success gives skill XP and a find. When the node is spent, <b>Auto gathering</b> walks you to the nearest one of the same kind (Settings). Moving, casting or opening a panel stops you.',
+  },
+  bag_full: {
+    title: 'Your bag is full',
+    body: 'Gathering stops when nothing more fits. Open the Reliquary (<kbd>I</kbd>) to drop or equip things, or take materials to the stations: the Bone Kiln, the Sawpit and the Cooking Fire stand by the Acre door.',
+  },
+  skill_up: {
+    title: 'A skill rises',
+    body: 'Each level improves your odds on every node of that skill and opens a stronger one. The Skills panel (<kbd>P</kbd>) shows what the next level unlocks and your total level.',
+  },
+  rich_node: {
+    title: 'A rich node',
+    body: 'Gold-lit nodes in the hunting grounds hold more before they are spent and come back twice as fast. Taking a hit stops gathering, so clear the dead around it first.',
+  },
+  station: {
+    title: 'A working station',
+    body: 'Stations turn what you gather into something useful. Recipes need the matching skill level and their ingredients in your bag; crafting grants skill XP too. The server checks every recipe, and its reason is shown if one fails.',
   },
   rite_mantle: {
     title: 'Bone Mantle',

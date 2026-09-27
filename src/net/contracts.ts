@@ -69,6 +69,8 @@ export interface WorldSnapshot {
   corpses?: Corpse[];
   zones?: Zone[];
   boss: BossState;
+  /** Depleted gathering nodes: [nodeId, seconds until back] (absent from older hosts). */
+  depleted?: [string, number][];
 }
 
 export interface IntentEnvelope {

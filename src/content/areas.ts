@@ -6,8 +6,8 @@ import type { EnemyId } from './enemies';
  * (up-screen). Areas are walkable rectangles joined by door corridors that
  * stay sealed until the unlock threshold is met.
  */
-export type AreaId = 'chapterhouse' | 'graves' | 'ossuary' | 'nave' | 'sanctum';
-export type Theme = 'chapter' | 'graveyard' | 'ossuary' | 'nave' | 'sanctum';
+export type AreaId = 'chapterhouse' | 'acre' | 'graves' | 'ossuary' | 'nave' | 'sanctum';
+export type Theme = 'chapter' | 'acre' | 'graveyard' | 'ossuary' | 'nave' | 'sanctum';
 
 export interface Rect {
   x0: number;
@@ -16,7 +16,8 @@ export interface Rect {
   z1: number;
 }
 
-export type InteractKind = 'inventory' | 'forge' | 'professions' | 'upgrades' | 'waystone' | 'boss';
+/** kiln / sawpit / fire are the Sexton's Acre processing stations (docs/PROFESSIONS-ROADMAP.md §6). */
+export type InteractKind = 'inventory' | 'forge' | 'professions' | 'upgrades' | 'waystone' | 'boss' | 'kiln' | 'sawpit' | 'fire';
 
 export interface Interactable {
   id: string;
@@ -82,6 +83,31 @@ export const AREAS: Record<AreaId, AreaDef> = {
       { id: 'waystone_chapterhouse', kind: 'waystone', label: 'Waystone', x: 9, z: 26.5 },
     ],
     ambient: { fog: 0x0b0810, hemiSky: 0x3b2a52, hemiGround: 0x0a0710, moon: 0x8f9ed1 },
+  },
+  // The non-combat gathering zone: every tier of every gathering node, no waves (roadmap §6).
+  acre: {
+    id: 'acre',
+    name: "The Sexton's Acre",
+    subtitle: "Where the Covenant's dead are tended",
+    theme: 'acre',
+    rect: { x0: -62, z0: 6, x1: -20, z1: 38 },
+    safe: true,
+    level: 1,
+    enemies: [],
+    cap: 0,
+    waveSize: 0,
+    waveIntervalMs: 0,
+    eliteChance: 0,
+    loot: [],
+    itemChance: 0,
+    breaches: [],
+    interactables: [
+      { id: 'waystone_acre', kind: 'waystone', label: 'Waystone', x: -23, z: 25.5 },
+      { id: 'sawpit', kind: 'sawpit', label: 'Sawpit', x: -23.5, z: 12.5 },
+      { id: 'bone_kiln', kind: 'kiln', label: 'Bone Kiln', x: -23.5, z: 31.6 },
+      { id: 'cooking_fire', kind: 'fire', label: 'Cooking Fire', x: -26.5, z: 28.5 },
+    ],
+    ambient: { fog: 0x0c0f10, hemiSky: 0x33404a, hemiGround: 0x0a0c0b, moon: 0xa6b7c9 },
   },
   graves: {
     id: 'graves',
@@ -234,10 +260,15 @@ export const AREAS: Record<AreaId, AreaDef> = {
   },
 };
 
-export const AREA_ORDER: AreaId[] = ['chapterhouse', 'graves', 'ossuary', 'nave', 'sanctum'];
+export const AREA_ORDER: AreaId[] = ['chapterhouse', 'acre', 'graves', 'ossuary', 'nave', 'sanctum'];
+
+/** Areas with no seal (`unlock`) are open to everyone from the start. */
+export const isAlwaysOpen = (id: AreaId) => !AREAS[id].unlock;
 
 export const DOORS: DoorDef[] = [
   { id: 'chapter_graves', a: 'chapterhouse', b: 'graves', rect: { x0: -3.5, z0: 3, x1: 3.5, z1: 9 }, axis: 'z' },
+  // Overlaps both rooms by a metre, like every door, so bodies can cross the seam.
+  { id: 'chapter_acre', a: 'chapterhouse', b: 'acre', rect: { x0: -21, z0: 17, x1: -12, z1: 23 }, axis: 'x' },
   { id: 'graves_ossuary', a: 'graves', b: 'ossuary', rect: { x0: 25, z0: -22, x1: 33, z1: -14 }, axis: 'x' },
   { id: 'graves_nave', a: 'graves', b: 'nave', rect: { x0: -4, z0: -45, x1: 4, z1: -35 }, axis: 'z' },
   { id: 'nave_sanctum', a: 'nave', b: 'sanctum', rect: { x0: -4, z0: -103, x1: 4, z1: -95 }, axis: 'z' },

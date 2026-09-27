@@ -32,6 +32,12 @@ const PROFILES: Record<AreaId, Kind[]> = {
   chapterhouse: [
     { count: 70, shape: 0, colors: [0xd8c8a8, 0xbfae92], size: [0.05, 0.1], alpha: [0.25, 0.5], vy: [-0.05, 0.08], drift: [0.08, 0.05], sway: 0.25, add: 0.6 },
   ],
+  // Overcast dusk: falling leaves, drifting seed-fluff, and far-off crows wheeling high.
+  acre: [
+    { count: 70, shape: 2, colors: [0x7a5a2a, 0x8d6b30, 0x5f4a26, 0x6e7a3a], size: [0.26, 0.4], alpha: [0.7, 0.9], vy: [-0.7, -0.35], drift: [0.5, 0.25], sway: 1.2, add: 0 },
+    { count: 90, shape: 0, colors: [0xd8d4c4, 0xbfc4b0], size: [0.04, 0.08], alpha: [0.25, 0.5], vy: [-0.08, 0.12], drift: [0.2, 0.1], sway: 0.4, add: 0.3 },
+    { count: 14, shape: 1, colors: [0x14121a, 0x1c1a22], size: [0.35, 0.5], alpha: [0.75, 0.9], vy: [-0.02, 0.02], drift: [1.6, 0.9], sway: 2.4, add: 0 },
+  ],
   graves: [
     { count: 240, shape: 1, colors: [0x8d8794, 0x6f6a78, 0xa29aa6], size: [0.08, 0.16], alpha: [0.35, 0.6], vy: [-0.55, -0.25], drift: [0.35, 0.12], sway: 0.5, add: 0 },
     { count: 46, shape: 2, colors: [0x5a3e24, 0x6d4a26, 0x3f2f22], size: [0.28, 0.42], alpha: [0.7, 0.9], vy: [-0.9, -0.5], drift: [0.6, 0.2], sway: 1.1, add: 0 },

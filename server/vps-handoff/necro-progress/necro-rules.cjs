@@ -65,6 +65,31 @@ var AREAS = {
     ],
     ambient: { fog: 722960, hemiSky: 3877458, hemiGround: 657168, moon: 9412305 }
   },
+  // The non-combat gathering zone: every tier of every gathering node, no waves (roadmap §6).
+  acre: {
+    id: "acre",
+    name: "The Sexton's Acre",
+    subtitle: "Where the Covenant's dead are tended",
+    theme: "acre",
+    rect: { x0: -62, z0: 6, x1: -20, z1: 38 },
+    safe: true,
+    level: 1,
+    enemies: [],
+    cap: 0,
+    waveSize: 0,
+    waveIntervalMs: 0,
+    eliteChance: 0,
+    loot: [],
+    itemChance: 0,
+    breaches: [],
+    interactables: [
+      { id: "waystone_acre", kind: "waystone", label: "Waystone", x: -23, z: 25.5 },
+      { id: "sawpit", kind: "sawpit", label: "Sawpit", x: -23.5, z: 12.5 },
+      { id: "bone_kiln", kind: "kiln", label: "Bone Kiln", x: -23.5, z: 31.6 },
+      { id: "cooking_fire", kind: "fire", label: "Cooking Fire", x: -26.5, z: 28.5 }
+    ],
+    ambient: { fog: 790288, hemiSky: 3358794, hemiGround: 658443, moon: 10926025 }
+  },
   graves: {
     id: "graves",
     name: "The Hollow Graves",
@@ -224,7 +249,7 @@ var AREAS = {
     ambient: { fog: 1050644, hemiSky: 4006738, hemiGround: 787980, moon: 10848984 }
   }
 };
-var AREA_ORDER = ["chapterhouse", "graves", "ossuary", "nave", "sanctum"];
+var AREA_ORDER = ["chapterhouse", "acre", "graves", "ossuary", "nave", "sanctum"];
 var BOSS_SUMMON_SHARDS = 5;
 
 // src/content/ascension.ts

@@ -62,6 +62,11 @@ export class Player {
     this.path = this.nav.route(this.x, this.z, x, z);
   }
 
+  /** Follow precomputed waypoints (Nav.findPath — used when walking up to a gathering node). */
+  moveAlong(path: { x: number; z: number }[]) {
+    this.path = path.map((p) => ({ x: p.x, z: p.z }));
+  }
+
   stop() {
     this.path = [];
   }

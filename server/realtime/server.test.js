@@ -88,3 +88,12 @@ test('hit chill (Grave Frost) is a flag only', () => {
   assert.equal(validIntent({ t: 'hit', ids: [1], dmg: 10, chill: 0 }).chill, false);
   assert.equal('chill' in validIntent({ t: 'hit', ids: [1], dmg: 10 }), false);
 });
+
+test('gather names a node id and clamps the successes it reports', () => {
+  const g = validIntent({ t: 'gather', by: 'x', nodeId: 'acre_12', successes: 40 });
+  assert.equal(g.nodeId, 'acre_12');
+  assert.equal(g.successes, 3);
+  assert.equal(validIntent({ t: 'gather', nodeId: 'acre_1', successes: -2 }).successes, 1);
+  assert.equal(validIntent({ t: 'gather', nodeId: '../etc', successes: 1 }), null);
+  assert.equal(validIntent({ t: 'gather', nodeId: 7, successes: 1 }), null);
+});

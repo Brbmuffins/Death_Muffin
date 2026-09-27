@@ -4,7 +4,9 @@ Living status document so any agent (or person) can pick the project up at any
 point. **Update the "Current state" and "In flight" sections whenever you stop.**
 > **VPS update, 2026-09-27:** Death Muffin now runs at https://muffindevelopment.com/death-muffin/. Read [docs/DEATH-MUFFIN-HANDOFF.md](docs/DEATH-MUFFIN-HANDOFF.md) for current deployment, class switching, combat flow, Git access and verification; older cloud-only status below is historical.
 
-Last updated: 2026-09-27 (Windows workstation session: **Grimoire + four new rites**, **enemy variety pack +
+Last updated: 2026-09-27, cloud session on `claude/adoring-knuth-hd1uox`: **professions G0 + G1 + G2 + G4 built**
+(gathering rules + `/api/gather`, the Sexton's Acre, nodes + loop + Auto, Skills panel, stations, tips, Codex, README).
+G3 art is the owner's, running on the workstation. Earlier the same day (Windows workstation session: **Grimoire + four new rites**, **enemy variety pack +
 processions**, **professions roadmap + agent briefs**; all staged, not committed. See the 2026-09-27
 entries in `PHASE_REPORTS.md`). Before that: 2026-09-26 cloud session (environment, balance + Prelate
 pass, difficulty, milestones, statuses, thrall variety, signature rites, onboarding, perf, Ascension,
@@ -76,15 +78,22 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 | **VPS storage package** (validated `/api/necro-progress/*` routes, MySQL store, schema, shared rules bundle, tests) | ✅ tested with an in-memory store + mock backend; not installed yet | `server/vps-handoff/necro-progress/`, `server/VPS_HANDOFF.md`, `npm run build:server-rules` |
 | **Grimoire (L)**: 4 static rite slots, player-chosen from 8 rites; new Wailing Skull / Grave Step / Grave Frost / Bone Mantle (lvl 3/5/7/12); Gemini icons + tintable VFX sprites | ✅ tests + browser QA (2026-09-27) | `gameplay/loadout.ts`, `ui/GrimoirePanel.ts`, `AbilitySystem.ts`, `graphics/fxImages.ts`, `public/art/fx/` |
 | **Enemy variety**: Censer Bearer (Incensed aura), Choir Wraith (scream ring), Skull-Rat packs, Bone Golem (3 corpses) + themed **processions**; Tripo models | ✅ tests + browser QA (2026-09-27) | `content/enemies.ts` (`WAVE_THEMES`), `WorldSim`, `EntityViews`, `public/models/{censer_bearer,skull_rat,bone_golem}`, `models/props/choir_wraith.glb` |
-| **Professions / gathering** (RuneScape-style skilling, the non-combat Sexton's Acre) | 📝 **plan only**: roadmap + 5 agent briefs + node concepts + Tripo specs (not run) | `docs/PROFESSIONS-ROADMAP.md`, `docs/agent-briefs/professions-g*.md` |
+| **Professions / gathering**: shared rules + Death Muffin `POST /api/gather` (time budget, server rolls) | ✅ route tests + mock; **not deployed** | `gameplay/gatheringRules.ts`, `server/death-muffin/backend/gathering/`, `migrations/002-gathering.sql`, `server/death-muffin/GATHERING_DEPLOY.md` |
+| The Sexton's Acre (safe zone west of the Chapterhouse, every node tier, pond, stations) + rich nodes in hunting grounds | ✅ QA'd in-browser | `content/areas.ts`, `content/layout.ts` (`nodes`, `ponds`), `graphics/WorldView.ts`, `Atmosphere.ts` |
+| Gathering nodes in the sim (shared depletion, `gather` intent, snapshot `depleted`), loop + Auto, stand-in node views | ✅ sim/loop tests + browser QA | `sim/WorldSim.ts`, `gameplay/Gathering.ts`, `gameplay/gatherPlan.ts`, `graphics/NodeViews.ts`, `nav.findPath` |
+| Skills panel (P), node hover card, Bone Kiln / Sawpit / Cooking Fire, 6 counsel tips, Codex Professions tab | ✅ QA'd | `ui/ProfessionsPanel.ts`, `ui/ForgePanel.ts` (stations), `ui/HUD.ts` (`nodeTip`), `ui/Onboarding.ts`, `ui/CodexPanel.ts` |
+| Node art (Tripo `prop_node_*`), Grave Gardening (G5), new processing recipes (G6), long tail (G7) | 📝 G3 with the owner; G5–G7 not started | `docs/PROFESSIONS-ROADMAP.md` §10, §13 |
 
 ## In flight (check before starting overlapping work)
 
-**Professions / gathering: ready to dispatch, not started.** The owner plans to hand this side to other
-agents. Start with [`docs/PROFESSIONS-ROADMAP.md`](docs/PROFESSIONS-ROADMAP.md) (§12 lists owner decisions), then the briefs
-G0 (rules + Death Muffin server `/api/gather`) and G2 (Sexton's Acre zone) in parallel, then G1 (nodes + loop)
-and G4 (UI + help). G3 (node models, ~450–700 Tripo credits) waits for the owner's OK. Brief status lives in
-[`docs/agent-briefs/README.md`](docs/agent-briefs/README.md).
+**Professions / gathering: G0, G1, G2 and G4 are built** on `claude/adoring-knuth-hd1uox` (one session, one branch,
+not the per-brief `cloud/professions-g*` branches). **G3 (node models + item icons) is in progress with the owner** on
+the workstation. Node stand-ins load `models/props/prop_node_<id>.glb` automatically once each GLB exists (HEAD-checked,
+so a missing file costs nothing), and the seam/geode vein colour stays a code-built emissive overlay. The Bone Kiln is
+already the `prop_node_bone_kiln` PropId, so its GLB drops straight in. New item ids have no `icon` yet: add
+`icon: 'art/items/<id>.png'` in `content/items.ts` as the icons land. Next are G5 (Grave Gardening: plots, seeds, tree
+patches; `seed_mourning_moss` already drops) and G6 (recipes for the new logs, fish, bones → bone meal, gems). Owner
+decisions assumed are listed in `server/death-muffin/GATHERING_DEPLOY.md`. Brief status: [`docs/agent-briefs/README.md`](docs/agent-briefs/README.md).
 
 The three older agent briefs in [`docs/agent-briefs/`](docs/agent-briefs/README.md) are done:
 
@@ -128,6 +137,19 @@ refuses while the index has staged changes.
 - Ear-test the four new rite sounds (`wail`, `bloodStep`, `frost`, `mantle`) and the look of the new mobs in a visible browser.
 - Tripo spent this session: choir_wraith 50, skull_rat 85, censer_bearer 125, bone_golem (see
   `art-manifest/tripo/*.json`). The node props for professions are specced but **not** run.
+
+**From the professions build (needs the user / a deploy):**
+- **Deploy gathering to Death Muffin:** follow `server/death-muffin/GATHERING_DEPLOY.md` (backup, check the professions
+  column type, migration 002, copy `backend/gathering/` + `server.js`, restart the auth service, verify, publish the client).
+  `POST /api/professions/award-xp` now answers 410; nothing in the client used it.
+- **Realtime:** a new `gather` intent (validated, `successes` clamped to 1–3; `deploy-realtime.sh` re-embedded). An older
+  realtime server drops it, so guests' node depletion stays local until it's deployed.
+- **Workbench fix, worth deploying soon:** the live `/api/craft` replies with the result, not the bag, and the old client
+  kept the pre-craft bag, so the next full-bag save could write spent ingredients back. `ForgePanel` now re-reads the
+  inventory and professions after every craft. The offline mock also served `/api/recipes` only with a token, which left
+  the Workbench empty offline; fixed.
+- **Owner decisions (roadmap §12)** are still open. The code defaults to the live XP rule (`XP_CURVE = 'live'`), optional
+  tools, no character XP from gathering, cap 99, and shared depletion with per-player rewards.
 
 **Buildable next (code-only):**
 5. **Replay depth, continued.** Ascension shipped. Next from `FUTURE_CONTENT.md` → "Replay & endgame

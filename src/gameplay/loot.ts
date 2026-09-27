@@ -63,8 +63,13 @@ export function rollBoss(waveTier: number, rand = Math.random, difficulty: Diffi
  */
 export function addToSlots(slots: InventorySlot[], drop: LootDrop): InventorySlot[] | null {
   const meta = ITEMS[drop.item_id];
-  const stack = slots.find((s) => s.item_id === drop.item_id && (s.item_type === 'material' || meta?.type === 'material'));
-  if (stack) return slots.map((s) => (s === stack ? { ...s, quantity: s.quantity + drop.quantity } : s));
+  const cap = meta?.stack ?? Infinity;
+  const stack = slots.find((s) => s.item_id === drop.item_id && (s.item_type === 'material' || meta?.type === 'material') && s.quantity < cap);
+  if (stack) {
+    const add = Math.min(drop.quantity, cap - stack.quantity);
+    const next = slots.map((s) => (s === stack ? { ...s, quantity: s.quantity + add } : s));
+    return add >= drop.quantity ? next : addToSlots(next, { ...drop, quantity: drop.quantity - add });
+  }
   const used = new Set(slots.map((s) => s.slot_index));
   let free = -1;
   for (let i = 0; i < BAG_SIZE; i++) {
@@ -74,13 +79,17 @@ export function addToSlots(slots: InventorySlot[], drop: LootDrop): InventorySlo
     }
   }
   if (free === -1) return null;
+  if (drop.quantity > cap) {
+    const placed = addToSlots(slots, { ...drop, quantity: cap });
+    return placed && addToSlots(placed, { ...drop, quantity: drop.quantity - cap });
+  }
   return [
     ...slots,
     {
       // Joined item fields come back from the server on save; local placeholders until then.
       id: 0,
       slot_index: free,
-      quantity: drop.quantity,
+      quantity: Math.min(drop.quantity, cap),
       equipped: 0,
       item_id: drop.item_id,
       name: meta?.name ?? drop.item_id,

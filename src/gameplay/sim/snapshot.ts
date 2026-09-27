@@ -30,6 +30,7 @@ export function makeSnapshot(sim: WorldSim, full: boolean): WorldSnapshot {
     enemies,
     thralls,
     boss: { ...sim.bossState },
+    depleted: sim.depletedNodes(),
     ...(full ? { corpses: [...sim.corpses.values()], zones: [...sim.zones.values()] } : {}),
   };
 }
@@ -91,6 +92,8 @@ export class WorldMirror {
   readonly thralls = new Map<number, Thrall>();
   readonly corpses = new Map<number, Corpse>();
   readonly zones = new Map<number, Zone>();
+  /** Depleted gathering nodes → mirror time they come back. */
+  readonly depleted = new Map<string, number>();
   bossState: BossState | null = null;
   waveTier = 0;
   difficulty: Difficulty = 'medium';
@@ -188,6 +191,10 @@ export class WorldMirror {
       for (const z of s.zones) this.zones.set(z.id, z);
     }
     this.bossState = s.boss;
+    if (Array.isArray(s.depleted)) {
+      this.depleted.clear();
+      for (const [id, left] of s.depleted) if (typeof id === 'string') this.depleted.set(id, s.t + Math.max(0, Number(left) || 0));
+    }
   }
 
   applyEvents(events: SimEvent[]) {
@@ -198,6 +205,8 @@ export class WorldMirror {
       else if (ev.t === 'zoneGone') this.zones.delete(ev.id);
       else if (ev.t === 'death') this.enemies.delete(ev.id);
       else if (ev.t === 'thrallGone') this.thralls.delete(ev.id);
+      else if (ev.t === 'nodeGone') this.depleted.set(ev.id, this.time + ev.respawnS);
+      else if (ev.t === 'nodeBack') this.depleted.delete(ev.id);
     }
   }
 
@@ -229,6 +238,13 @@ export class WorldMirror {
     for (const t of this.thralls.values()) sim.thralls.set(t.id, { ...t, damage: t.damage || 6, attackInterval: 1, range: t.kind === 'wraith' ? 5.5 : 1.3 });
     for (const c of this.corpses.values()) sim.corpses.set(c.id, { ...c, bornAt: sim.time, expiresAt: sim.time + 20, ruptureAt: c.kind === 'toxic' ? sim.time + 4 : Infinity });
     if (this.bossState?.active) Object.assign(sim.bossState, this.bossState);
+    for (const [id, back] of this.depleted) {
+      const n = sim.nodes.get(id);
+      if (n) {
+        n.remaining = 0;
+        n.respawnAt = sim.time + Math.max(0, back - this.time);
+      }
+    }
     sim.waveTier = this.waveTier;
     sim.difficulty = this.difficulty;
     sim.ascension = this.ascension;

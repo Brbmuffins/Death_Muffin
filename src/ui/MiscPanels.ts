@@ -53,6 +53,7 @@ export class SettingsPanel extends SimplePanel {
         <label class="row">Damage numbers<input type="checkbox" data-dn /></label>
         <label class="row">Don't show tips<input type="checkbox" data-tips /></label>
         <label class="row">Auto combat (G)<input type="checkbox" data-auto aria-label="Auto combat" /></label>
+        <label class="row">Auto gathering<input type="checkbox" data-autogather aria-label="Auto gathering: move on to the next node of the same kind" /></label>
         <p class="cw-settings-note">While standing, fight nearby enemies and use basic rites automatically. Click to move; hold 1–4 to repeat a rite. Signature rites stay under your control.</p>
         ${this.onResetTips ? '<label class="row">New to the Covenant?<button type="button" class="cw-button" data-resettips>Show tips again</button></label>' : ''}
         ${this.onChangeClass ? '<label class="row">Class<button type="button" class="cw-button" aria-label="Change class" data-changeclass>Change class</button></label>' : ''}
@@ -68,7 +69,8 @@ export class SettingsPanel extends SimplePanel {
           <kbd>R · 6</kbd><span>Signature rite (unlocks at level 10)</span>
           <kbd>Q</kbd><span>Drink a healing flask</span>
           <kbd>T</kbd><span>Return to the Chapterhouse</span>
-          <kbd>I C P M</kbd><span>Reliquary · Workbench · Rites · Waystones</span>
+          <kbd>Click a node</kbd><span>Gather: chop a tree, mine a seam, fish a pool, dig a grave (it keeps working until the node is spent)</span>
+          <kbd>I C P M</kbd><span>Reliquary · Workbench · Skills · Waystones</span>
           <kbd>K</kbd><span>Codex</span>
           <kbd>G</kbd><span>Toggle auto combat · stand near enemies to grind</span>
           <kbd>Settings</kbd><span>Change class · keeps your character and progress</span>
@@ -108,6 +110,9 @@ export class SettingsPanel extends SimplePanel {
     const auto = this.el!.querySelector<HTMLInputElement>('[data-auto]')!;
     auto.checked = settings.autoCombat;
     auto.addEventListener('change', () => updateSettings({ autoCombat: auto.checked }));
+    const autoGather = this.el!.querySelector<HTMLInputElement>('[data-autogather]')!;
+    autoGather.checked = settings.autoGather;
+    autoGather.addEventListener('change', () => updateSettings({ autoGather: autoGather.checked }));
     this.el!.querySelector<HTMLButtonElement>('[data-resettips]')?.addEventListener('click', () => {
       updateSettings({ tips: true });
       tips.checked = false;

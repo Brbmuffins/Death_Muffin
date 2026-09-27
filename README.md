@@ -33,14 +33,14 @@ Use **Settings → Change class** whenever you want. Your character ID, level, g
 ## Contents
 [The loop](#the-loop) · [Disciplines](#the-four-disciplines) · [Rites (spells)](#rites--the-necromancers-kit) ·
 [Corpses](#corpses-are-the-economy) · [The dead (enemies)](#the-dead) · [The Diocese (areas)](#the-diocese) ·
-[The Bell-Sworn Prelate](#the-bell-sworn-prelate) · [Ascension](#ascension--the-endless-rite) · [Upgrades & loot](#upgrades--loot) ·
+[The Bell-Sworn Prelate](#the-bell-sworn-prelate) · [Ascension](#ascension--the-endless-rite) · [Professions](#professions--the-sextons-acre) · [Upgrades & loot](#upgrades--loot) ·
 [Combat guide](#combat-guide) · [New to the Covenant?](#new-to-the-covenant) · [Controls](#controls) · [Art direction](#art-direction) · [Development](#development)
 
 ---
 
 ## The loop
 
-1. **Enter the world** at the Chapterhouse — a safe sanctuary with your Reliquary (inventory), the Ossuary Workbench (crafting), the Rite Niches (professions), waystones and the Altar of Ascension.
+1. **Enter the world** at the Chapterhouse — a safe sanctuary with your Reliquary (inventory), the Ossuary Workbench (crafting), the Rite Niches (skills), waystones and the Altar of Ascension. West of it lies the **Sexton's Acre**, where you can level gathering skills without fighting at all.
 2. **Walk into a hunting ground.** The dead claw out of grave breaches in continuous waves.
 3. **Kill → corpses.** Every corpse is a choice: raise it as a thrall, feed it to Black Litany, detonate it — or lose it to a Crypt Deacon.
 4. **Loot** gold, soul shards (from elites) and relics — equip upgrades on the spot.
@@ -215,6 +215,7 @@ One connected world. Each area's seal breaks when you've killed enough in the ar
 | Area | Level | Opens when | Character |
 |---|---|---|---|
 | **The Chapterhouse** | — | always | Sanctuary. Reliquary, workbench, rite niches, waystone, Altar of Ascension. The dead cannot follow. |
+| **The Sexton's Acre** | — | always | West of the Chapterhouse. A walled cemetery garden with every gathering node, the Sawpit, Bone Kiln and Cooking Fire. No waves, ever. |
 | **The Hollow Graves** | 1 | always | Moonlit graveyard of tombs, mausoleums and mourning statues. Robbers, hounds, the first penitents. |
 | **The Marrow Ossuary** | 5 | 300 kills in the Graves | Skull-walled aisles and bone floors. Deacons appear — protect your corpses. |
 | **The Drowned Nave** | 9 | 420 kills in the Ossuary | A flooded cathedral nave: dark water in the aisles, raised walkways along the pillars, violet stained glass. Penitent choirs. |
@@ -296,6 +297,49 @@ world keeper's rank decides how old the dead are (like difficulty).
 
 ---
 
+## Professions — the Sexton's Acre
+
+![The Sexton's Acre: the grove, the quarry wall and a necromancer chopping a Bleeding Willow](docs/screenshots/sextons-acre.webp)
+
+Beside the combat loop sits a RuneScape-style skilling layer, where **the grind is the point**. **Click** a tree, an ore
+seam, a fishing spot or a burial plot and your necromancer works it: a ring fills under you with each swing, cast
+or dig. Every success gives skill XP and a find. The node gives out after a few successes (a felled tree becomes a stump,
+a seam turns to rubble, a fishing spot drifts away, a grave is left open) and comes back on a timer. With **Auto
+gathering** on (Settings, on by default), you walk to the nearest node of the same kind and carry on. Moving, casting,
+opening a panel, a full bag or a hit stops you.
+
+| Skill | Nodes (level) | Finds |
+|---|---|---|
+| **Woodcutting** · *Rite of Coffin-Oak* | Coffin-Oak (1) · Hangman's Elm (15) · Bleeding Willow (30) · Churchyard Yew (45) · Blackthorn (60) · Ghostwood (75) · Bone Elder (90) | Logs; a rare crow's nest (seed or ring) |
+| **Mining** · *Rite of Grave-Iron* | Copper / Tin (1) · Iron (10) · Bronze (20) · Silver (30) · Gold (40) · Steel (50) · Hell geode (65) · Moon geode (80) | Ore; rare grave garnets, bone opals and void sapphires |
+| **Fishing** · *Rite of the Black Water* | Still pool (1) · Crypt eels (15) · Bell carp (30) · Drowned pike (45) · Lanternfish (62) · Abyssal coelacanth (80) | Fish; drowned trinkets, reliquary fragments, covenant seals |
+| **Gravedigging** · *Rite of the Sexton* | Pauper's grave (1) · Burial mound (20) · Crypt collapse (40) · Barrow-king's tomb (70) | Bones, a little gold, seeds, silver, reliquary fragments; rarely old gear |
+
+- **The Acre is completely non-combat.** Every tier of every node is there, with the stronger ones further from the
+  Chapterhouse door and a single Bone Elder at the far end. The **Sawpit**, **Bone Kiln** and **Cooking Fire** by the
+  entrance run the Workbench recipes for their rite.
+- **Rich nodes** (a gold glow) sit in the hunting grounds: oaks and pauper's graves in the Graves, silver and crypt
+  collapses in the Ossuary, eels and a willow in the Nave, moon geodes in the Sanctum. They hold 50% more and return twice
+  as fast, but taking a hit stops you, so clear the dead first.
+- **Levels** run to 99. Each level improves your odds on every node of that skill and opens the next one. **P** opens the
+  **Skills** panel with every level, the XP to go, what the next level unlocks and your total level. The Codex (**K**) has a
+  *Professions* tab with every node's level, XP, cycle time, XP/h and location.
+- **The server decides the rewards.** The client plays each cycle straight away for feel, but only reports how many
+  cycles you worked. The Death Muffin server rolls the items, XP and gold itself, caps the claim by elapsed time, and stores
+  everything in one transaction. In co-op, a node's depletion is shared (two necromancers fell a tree faster) and each
+  player gets their own finds.
+
+<table><tr>
+<td><img src="docs/screenshots/gathering.webp" alt="Mining a steel seam: the work ring, the find and the XP" /><br/><sub><b>Working a seam</b></sub></td>
+<td><img src="docs/screenshots/skills-panel.webp" alt="The Skills panel" /><br/><sub><b>Skills (P)</b></sub></td>
+<td><img src="docs/screenshots/codex-professions.webp" alt="The Codex Professions tab" /><br/><sub><b>Codex · Professions</b></sub></td>
+</tr></table>
+
+Grave Gardening (seeds, herb beds and tree patches) and new processing recipes are the next phases in
+[docs/PROFESSIONS-ROADMAP.md](docs/PROFESSIONS-ROADMAP.md). Node models from the art pipeline replace the code-built stand-ins as they land.
+
+---
+
 ## Upgrades & loot
 
 <img src="public/art/ui/gold.png" width="22" /> **Gold** drops from everything and buys upgrades at the lower-right panel, from anywhere in the world:
@@ -356,7 +400,8 @@ something matters: a welcome in the Chapterhouse, how to move and needle, your f
 running out of essence, a Litany worth casting, a pack standing on a corpse, low health, your first elite,
 surge and relic, a full Soul Harvest, a Sanctified enemy, the Codex, the Grimoire when your first new
 rite unlocks (and each new rite the first time you put it on a key), your signature rite at level 10,
-five soul shards, the Altar after your first Prelate kill, and Ashes waiting to be spent. Each shows once per character, never pauses the game, and stays up long enough to
+five soul shards, the Altar after your first Prelate kill, Ashes waiting to be spent, and on the skilling side your first
+visit to the Sexton's Acre, your first node, a rich node, a station, a full bag and your first skill level-up. Each shows once per character, never pauses the game, and stays up long enough to
 read. Turn them off (or **Show tips again**) in Settings (**Esc**). **K** opens the Codex any time.
 
 ![A Covenant counsel card welcoming a new necromancer to the Chapterhouse](docs/screenshots/covenant-counsel.webp)
@@ -369,7 +414,7 @@ read. Turn them off (or **Show tips again**) in Settings (**Esc**). **K** opens 
 |---|---|
 | Minimap click | Travel to a walkable location; sealed halls remain closed |
 | Hover/focus spell | Detailed spell information and combat tips |
-| Left click | Move · attack the enemy under the cursor · use an object |
+| Left click | Move · attack the enemy under the cursor · use an object · work a gathering node (tree, seam, fishing spot, grave) |
 | Shift + click | Cast Bone Needle without moving |
 | **1 2 3 4** (hold to repeat) | Your four Grimoire rites, aimed at the cursor (start: Marrow Spear · Exhume · Miasma Circle · Black Litany) |
 | **L** | Grimoire: choose which rites sit on 1–4 (Wailing Skull, Grave Step, Grave Frost, Bone Mantle unlock at levels 3 / 5 / 7 / 12) |
@@ -377,9 +422,9 @@ read. Turn them off (or **Show tips again**) in Settings (**Esc**). **K** opens 
 | **R** · **6** | Your discipline's signature rite (unlocks at level 10) |
 | **Q** | Drink a healing flask |
 | **T** | Return to the Chapterhouse |
-| **I / C / P / M / K** | Reliquary · Workbench · Rites · Waystones · Codex (lore + everything you've met) |
+| **I / C / P / M / K** | Reliquary · Workbench · Skills · Waystones · Codex (lore + everything you've met) |
 | **G** | Toggle auto combat (enabled by default; fights while standing) |
-| **Esc** | Settings (Change class, difficulty, graphics, volume, reduced motion, damage numbers, tips) |
+| **Esc** | Settings (Change class, difficulty, auto gathering, graphics, volume, reduced motion, damage numbers, tips) |
 | Click the Altar | Altar of Ascension (in the Chapterhouse) |
 | Wheel · WASD · Enter | Zoom · walk (fallback) · chat |
 
@@ -427,9 +472,13 @@ npm run build:server-rules   # re-bundle src/gameplay/necroRules.ts for the VPS 
 area kills, seals, Ascension rank, Ashes and boons go to `/api/necro-progress/*` once the VPS installs it
 ([server/VPS_HANDOFF.md](server/VPS_HANDOFF.md)). Until then they stay in the browser's localStorage. On the first connect
 the browser save is uploaded once, and after that the server's copy wins. Server `error` messages show as toasts.
+Skill levels and gathered items live on the Death Muffin backend (`POST /api/gather`,
+[server/death-muffin/GATHERING_DEPLOY.md](server/death-muffin/GATHERING_DEPLOY.md)); the rules are shared through
+`src/gameplay/gatheringRules.ts`, bundled by `npm run build:server-rules`.
 
 DEV console hooks (`window.__cwDebug`, offline dev only): `advance(s)`, `goto(area)`, `unlockAll()`, `god()`,
-`ring(def, n, r)`, `spawn(def, elite, affix)`, `surge()`, `souls()`, `xp(n)`, `perf()`, `prelateSlain()`, `altar()` and more.
+`ring(def, n, r)`, `spawn(def, elite, affix)`, `surge()`, `souls()`, `xp(n)`, `perf()`, `prelateSlain()`, `altar()`,
+gathering QA `nodes(area)`, `gatherAt(type)`, `gathering()`, `skill(id, level)`, `station(kind)`, `hoverNode(id)` and more.
 
 Docs: [CLAUDE.md](CLAUDE.md) (working context) · [HANDOFF.md](HANDOFF.md) (current state) ·
 [PHASE_REPORTS.md](PHASE_REPORTS.md) (what's built) · [BALANCE.md](BALANCE.md) (targets + numbers) ·

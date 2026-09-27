@@ -175,13 +175,36 @@ export function getRecipes(profession: string) {
 }
 
 // Recipe ids are strings (e.g. "recipe_copper_bar") — verified live.
+/** The live server replies with the result + XP (the DEV mock also sends the bag); re-read inventory after. */
 export function craft(characterId: number, recipeId: string) {
-  return unwrap<{ updatedInventory: InventorySlot[]; updatedProfession: Profession }>(
+  return unwrap<{ result_item_id?: string; xp_gained?: number; leveled_up?: boolean; skill_level?: number }>(
     request(
       '/api/craft',
       { method: 'POST', body: JSON.stringify({ characterId, recipeId }) },
       true,
     ),
+  );
+}
+
+// --- Gathering (Death Muffin backend: server/death-muffin/backend/gathering/) ---
+// The client only says which node and how many work cycles; the server rolls
+// the items, XP and gold against a time budget and stores them.
+export interface GatherReply {
+  node: string;
+  skill: string;
+  accepted: number;
+  successes: number;
+  xp: number;
+  gold: number;
+  items: { itemId: string; qty: number }[];
+  rejected: { itemId: string; qty: number }[];
+  leveledUp: boolean;
+  skills: Profession[];
+}
+
+export function gather(characterId: number, nodeType: string, actions: number, keepalive = false) {
+  return unwrap<GatherReply>(
+    request('/api/gather', { method: 'POST', body: JSON.stringify({ characterId, nodeType, actions }), keepalive }, true),
   );
 }
 

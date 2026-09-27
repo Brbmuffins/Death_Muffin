@@ -16,6 +16,8 @@ export interface ItemMeta {
   lore?: string;
   icon?: string;
   offlineStats?: Record<string, number>;
+  /** Max stack size when the server caps it (gathered materials: 250). Unset = no client cap. */
+  stack?: number;
 }
 
 const m = (name: string, rarity: Rarity, sell: number, lore?: string, icon?: string): ItemMeta => ({
@@ -27,31 +29,56 @@ const m = (name: string, rarity: Rarity, sell: number, lore?: string, icon?: str
   icon,
 });
 
+/** A gathered material (migration 002-gathering.sql gives these max_stack_size 250). */
+const g = (name: string, rarity: Rarity, sell: number, lore?: string): ItemMeta => ({ ...m(name, rarity, sell, lore), stack: 250 });
+
 export const ITEMS: Record<string, ItemMeta> = {
   material_copper_shard: m('Copper Shard', 'common', 1, 'Pried from coffin fittings.', 'art/items/material_copper_shard.png'),
   material_copper_bar: m('Copper Bar', 'common', 4, 'Smelted from grave-nails.', 'art/items/material_copper_bar.png'),
-  ore_copper: m('Copper Ore', 'common', 1, 'Green-veined stone from the grave soil.'),
+  ore_copper: g('Copper Ore', 'common', 1, 'Green-veined stone from the grave soil.'),
   ingot_copper: m('Copper Ingot', 'common', 4),
-  ore_tin: m('Tin Ore', 'common', 1, 'Dull ore, cold as a burial ring.'),
+  ore_tin: g('Tin Ore', 'common', 1, 'Dull ore, cold as a burial ring.'),
   ingot_tin: m('Tin Ingot', 'common', 4),
-  ore_iron: m('Iron Ore', 'uncommon', 3, 'Rusted from ossuary damp.'),
+  ore_iron: g('Iron Ore', 'uncommon', 3, 'Rusted from ossuary damp.'),
   ingot_iron: m('Iron Ingot', 'uncommon', 9),
-  ore_bronze: m('Bronze Ore', 'uncommon', 3),
+  ore_bronze: g('Bronze Ore', 'uncommon', 3),
   ingot_bronze: m('Bronze Ingot', 'uncommon', 9),
-  ore_silver: m('Silver Ore', 'uncommon', 6, 'Corpse-silver; it tarnishes near the living.'),
+  ore_silver: g('Silver Ore', 'uncommon', 6, 'Corpse-silver; it tarnishes near the living.'),
   ingot_silver: m('Silver Ingot', 'uncommon', 18),
-  ore_gold: m('Gold Ore', 'rare', 12, 'Tithe-gold from the drowned nave.'),
+  ore_gold: g('Gold Ore', 'rare', 12, 'Tithe-gold from the drowned nave.'),
   ingot_gold: m('Gold Ingot', 'rare', 36),
-  ore_steel: m('Steel Ore', 'rare', 14),
+  ore_steel: g('Steel Ore', 'rare', 14),
   ingot_steel: m('Steel Ingot', 'rare', 40),
-  ore_hell: m('Hell Ore', 'epic', 30),
+  ore_hell: g('Hell Ore', 'epic', 30),
   ingot_hell: m('Hell Ingot', 'epic', 90),
-  ore_moon: m('Moon Ore', 'epic', 40),
+  ore_moon: g('Moon Ore', 'epic', 40),
   ingot_moon: m('Moon Ingot', 'epic', 120),
-  fish_river: m('River Fish', 'common', 1),
+  fish_river: g('River Fish', 'common', 1),
   fish_fillet: m('River Fillet', 'common', 2),
-  log_oak: m('Oak Log', 'common', 1, 'Coffin-wood, still sound.'),
+  log_oak: g('Oak Log', 'common', 1, 'Coffin-wood, still sound.'),
   plank_oak: m('Oak Plank', 'common', 3),
+  // Gathering (docs/PROFESSIONS-ROADMAP.md §4; rows added by migration 002-gathering.sql).
+  log_elm: g('Elm Log', 'common', 3, "Cut from a hangman's elm. The rope scars run deep."),
+  log_willow: g('Willow Log', 'uncommon', 6, 'The sap runs red and never quite dries.'),
+  log_yew: g('Yew Log', 'uncommon', 10, 'Churchyard yew: the roots drink from the graves.'),
+  log_blackthorn: g('Blackthorn Log', 'rare', 16, 'Thorned even after the axe.'),
+  log_ghostwood: g('Ghostwood Log', 'rare', 24, 'Pale, cold and lighter than it should be.'),
+  log_bone_elder: g('Bone Elder Log', 'epic', 36, 'It knocks like bone when you stack it.'),
+  fish_crypt_eel: g('Crypt Eel', 'common', 3, 'Slid out of a flooded vault.'),
+  fish_bell_carp: g('Bell Carp', 'uncommon', 6, 'Its scales ring faintly when tapped.'),
+  fish_drowned_pike: g('Drowned Pike', 'uncommon', 10, 'All teeth and black water.'),
+  fish_lanternfish: g('Lanternfish', 'rare', 16, 'Still glowing, even out of the water.'),
+  fish_coelacanth: g('Abyssal Coelacanth', 'epic', 30, 'Older than the Covenant, and it looks it.'),
+  bones_old: g('Old Bones', 'common', 1, "A pauper's remains. Grind them for the garden."),
+  bones_barrow: g('Barrow Bones', 'common', 4, 'Heavy bones from a burial mound.'),
+  bones_crypt: g('Crypt Bones', 'uncommon', 8, 'Crypt-dust still clings to them.'),
+  bones_ancient: g('Ancient Bones', 'rare', 18, "A barrow-king's bones, crowned with lichen."),
+  seed_mourning_moss: g('Mourning Moss Seed', 'common', 2, 'Plant it in a mourning bed.'),
+  reliquary_fragment: g('Reliquary Fragment', 'rare', 25, 'Gilded shards from a broken reliquary.'),
+  covenant_seal: g('Covenant Seal', 'epic', 60, 'The wax still bears the Ossuary mark.'),
+  gem_grave_garnet: g('Grave Garnet', 'uncommon', 20, 'Blood-dark and cold.'),
+  gem_bone_opal: g('Bone Opal', 'rare', 45, 'Milky fire trapped in bone.'),
+  gem_void_sapphire: g('Void Sapphire', 'epic', 90, 'Its colour has no bottom.'),
   flask_hp_minor: m('Minor Healing Potion', 'common', 5, 'Restores 35% health. Press Q.'),
   flask_hp_major: m('Major Healing Flask', 'uncommon', 15, 'Restores 70% health. Press Q.'),
   flask_speed: m('Swiftness Flask', 'uncommon', 10),

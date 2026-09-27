@@ -587,6 +587,13 @@ button { font-family: inherit; }
 
 .hud-toasts { position: absolute; top: 130px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
 .hud-toast { padding: 8px 16px; background: rgba(7, 6, 10, 0.9); border: 1px solid var(--cw-border-strong); color: var(--cw-bone-100); font-size: 15px; animation: toast-in 0.25s ease, toast-out 0.5s ease var(--toast-ms, 8000ms) forwards; max-width: 70vw; text-align: center; }
+.hud-nodetip { position: fixed; z-index: 30; max-width: 260px; padding: 8px 12px; background: rgba(7, 6, 10, 0.92); border: 1px solid var(--cw-border-strong); color: var(--cw-bone-200); font-family: var(--cw-font-body); font-size: 13px; line-height: 1.4; pointer-events: none; }
+.hud-nodetip b { color: var(--cw-bone-100); font-size: 14px; }
+.hud-nodetip .req { margin-top: 2px; }
+.hud-nodetip .req.ok { color: #9fc27a; }
+.hud-nodetip .req.missing { color: #e58a8a; }
+.hud-nodetip .rich { color: #e2c98f; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+.hud-nodetip .spent { color: var(--cw-bone-400, #8c8478); font-style: italic; }
 .hud-toast.err { border-color: color-mix(in srgb, var(--cw-danger) 60%, transparent); }
 .hud-toast.good { border-color: color-mix(in srgb, var(--cw-spell-400) 70%, transparent); }
 @keyframes toast-in { from { opacity: 0; transform: translateY(-6px); } }
@@ -649,6 +656,7 @@ button { font-family: inherit; }
 .cw-num.gold { color: #e2c98f; font-size: 15px; }
 .cw-num.shard { color: var(--cw-spell-300); font-size: 16px; }
 .cw-num.xp { color: var(--cw-bone-300); font-size: 13px; }
+.cw-num.skill { font-size: 15px; font-family: var(--cw-font-body); font-weight: 600; text-shadow: 0 1px 3px #000c; }
 .cw-num.info { color: var(--cw-bone-100); font-family: var(--cw-font-body); font-size: 15px; }
 .cw-num.big { font-size: 30px; color: #e7d6ff; }
 
@@ -951,3 +959,26 @@ button { font-family: inherit; }
 .cw-ascend .boon .pips i.on { background: #d9a441; }
 .cw-ascend .boon .cw-button { padding: 4px 8px; font-size: 12px; }
 @media (max-width: 620px) { .cw-ascend .boons { grid-template-columns: 1fr; } }
+
+/* Skills panel (Rite Niches, P) */
+.cw-skill-total { margin-left: auto; margin-right: 10px; color: var(--cw-bone-300); font-size: 13px; }
+.cw-skill-total b { color: var(--cw-bone-100); font-size: 16px; }
+.cw-skill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; max-height: 60vh; overflow-y: auto; }
+.cw-skill { padding: 10px 12px; border: 1px solid var(--cw-border); border-left: 3px solid var(--skill); background: rgba(10, 9, 14, 0.55); }
+.cw-skill .row { display: flex; justify-content: space-between; align-items: baseline; }
+.cw-skill .name { color: var(--cw-bone-100); font-weight: 600; }
+.cw-skill .lvl { color: var(--skill); font-size: 20px; font-weight: 700; }
+.cw-skill .lvl small { color: var(--cw-bone-400, #8c8478); font-size: 12px; font-weight: 400; }
+.cw-skill .rite { color: var(--cw-bone-300); font-size: 12px; font-style: italic; margin-bottom: 6px; }
+.cw-skill .bar { height: 6px; background: rgba(255, 255, 255, 0.08); }
+.cw-skill .bar .fill { height: 100%; background: var(--skill); }
+.cw-skill .xp { font-size: 12px; color: var(--cw-bone-300); margin-top: 3px; }
+.cw-skill .next { font-size: 12px; color: var(--cw-bone-100); margin-top: 4px; }
+.cw-skill .blurb { font-size: 12px; color: var(--cw-bone-300); margin-top: 4px; line-height: 1.35; }
+@media (max-width: 560px) { .cw-skill-grid { grid-template-columns: 1fr; } }
+
+/* Codex: Professions node tables */
+.cw-codex-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
+.cw-codex-table th { text-align: left; color: var(--cw-bone-300); font-weight: 600; border-bottom: 1px solid var(--cw-border); padding: 2px 4px; }
+.cw-codex-table td { padding: 2px 4px; color: var(--cw-text-muted); border-bottom: 1px solid rgba(255, 255, 255, 0.04); vertical-align: top; }
+.cw-codex-table td:nth-child(2) { color: var(--cw-bone-100); }

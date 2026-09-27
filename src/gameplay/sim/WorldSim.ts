@@ -36,6 +36,8 @@ import { BONE_HEX, CHILL, HEMORRHAGE, PLAGUE_BURST, SANCTIFIED } from '../../con
 import type { Nav } from '../nav';
 import { pickWeighted } from '../rng';
 import { BossBrain, BOSS_ARENA, BOSS_RADIUS } from './BossBrain';
+import { NODES, RICH_RESPAWN, RICH_YIELD, type NodeDef } from '../gatheringRules';
+import { NODE_REACH } from '../../content/layout';
 import type {
   BossState,
   Corpse,
@@ -47,6 +49,7 @@ import type {
   SurgeState,
   Thrall,
   Zone,
+  SimNode,
 } from './types';
 
 const AGGRO_RANGE = 15;
@@ -111,6 +114,8 @@ export class WorldSim {
   readonly corpses = new Map<number, Corpse>();
   readonly zones = new Map<number, Zone>();
   readonly players = new Map<string, PlayerBody>();
+  /** Gathering nodes (placements from the layout; depletion is host-authoritative). */
+  readonly nodes = new Map<string, SimNode>();
   readonly boss: BossBrain;
 
   /** Host's active wave-speed tier (drives every area this sim runs). */
@@ -200,6 +205,8 @@ export class WorldSim {
         return this.applyDetonate(intent);
       case 'signature':
         return this.applySignature(intent);
+      case 'gather':
+        return this.applyGather(intent);
       case 'recallThralls':
         for (const t of this.thralls.values()) {
           if (t.owner !== intent.by) continue;
@@ -975,6 +982,52 @@ export class WorldSim {
     }
   }
 
+  // --- Gathering nodes (roadmap §7: shared depletion, per-player rewards) ---
+
+  setNodes(placements: { id: string; type: string; area: AreaId; x: number; z: number; rich?: boolean }[]) {
+    this.nodes.clear();
+    for (const p of placements) {
+      const def = NODES[p.type];
+      if (!def) continue;
+      this.nodes.set(p.id, { id: p.id, type: p.type, area: p.area, x: p.x, z: p.z, rich: !!p.rich, remaining: this.rollYield(def, !!p.rich), respawnAt: 0 });
+    }
+  }
+
+  private rollYield(def: NodeDef, rich: boolean) {
+    const [lo, hi] = def.yields;
+    const n = lo + Math.floor(this.rand() * (hi - lo + 1));
+    return Math.max(1, Math.round(n * (rich ? RICH_YIELD : 1)));
+  }
+
+  /** Depleted nodes and the seconds until each returns (snapshot + mirror). */
+  depletedNodes(): [string, number][] {
+    const out: [string, number][] = [];
+    for (const n of this.nodes.values()) if (n.remaining <= 0) out.push([n.id, Math.max(0, Math.round((n.respawnAt - this.time) * 10) / 10)]);
+    return out;
+  }
+
+  private applyGather(g: Extract<Intent, { t: 'gather' }>) {
+    const n = this.nodes.get(g.nodeId);
+    if (!n || n.remaining <= 0) return;
+    // The gatherer must be standing at the node (reach + a little slack for latency).
+    const p = this.players.get(g.by);
+    if (p && Math.hypot(p.x - n.x, p.z - n.z) > NODE_REACH[NODES[n.type].kind] + 2) return;
+    n.remaining -= Math.min(3, Math.max(1, Math.floor(g.successes)));
+    if (n.remaining > 0) return;
+    n.remaining = 0;
+    const respawnS = NODES[n.type].respawnS * (n.rich ? RICH_RESPAWN : 1);
+    n.respawnAt = this.time + respawnS;
+    this.emit({ t: 'nodeGone', id: n.id, by: g.by, respawnS });
+  }
+
+  private updateNodes() {
+    for (const n of this.nodes.values()) {
+      if (n.remaining > 0 || this.time < n.respawnAt) continue;
+      n.remaining = this.rollYield(NODES[n.type], n.rich);
+      this.emit({ t: 'nodeBack', id: n.id });
+    }
+  }
+
   // --- Step ---
 
   step(dt: number): SimEvent[] {
@@ -988,6 +1041,7 @@ export class WorldSim {
     this.separate();
     this.boss.update(dt);
     this.updateCorpses();
+    this.updateNodes();
     this.collectDead();
     return this.drain();
   }

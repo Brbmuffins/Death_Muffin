@@ -12,11 +12,11 @@ leave `npx tsc --noEmit && npx vitest run && node --test server/realtime/server.
 | [combat-depth.md](combat-depth.md) | `cloud/combat-depth` | 2026-09-26 from `c475583` | ✅ in master (`08c62b0`) |
 | [environment.md](environment.md) | `cloud/environment` | 2026-09-26 from `c475583` | ✅ rebuilt on `claude/adoring-knuth-hd1uox` (`5e5e382`) |
 | [codex-onboarding.md](codex-onboarding.md) | `cloud/codex-onboarding` | 2026-09-26 from `c475583` | ✅ in master |
-| [professions-g0-rules-server.md](professions-g0-rules-server.md) | `cloud/professions-g0` | — | 📝 ready (start first; parallel with G2) |
-| [professions-g1-nodes-loop.md](professions-g1-nodes-loop.md) | `cloud/professions-g1` | — | 📝 ready (G0 contract; can stub) |
-| [professions-g2-sextons-acre.md](professions-g2-sextons-acre.md) | `cloud/professions-g2` | — | 📝 ready (parallel with G0) |
-| [professions-g3-art.md](professions-g3-art.md) | `cloud/professions-g3` | — | ⏸ needs the owner's Tripo OK + workstation keys |
-| [professions-g4-ui-help.md](professions-g4-ui-help.md) | `cloud/professions-g4` | — | 📝 ready after G0 + G1 |
+| [professions-g0-rules-server.md](professions-g0-rules-server.md) | `cloud/professions-g0` | — | ✅ built on `claude/adoring-knuth-hd1uox` (2026-09-27) |
+| [professions-g1-nodes-loop.md](professions-g1-nodes-loop.md) | `cloud/professions-g1` | — | ✅ built on `claude/adoring-knuth-hd1uox` |
+| [professions-g2-sextons-acre.md](professions-g2-sextons-acre.md) | `cloud/professions-g2` | — | ✅ built on `claude/adoring-knuth-hd1uox` |
+| [professions-g3-art.md](professions-g3-art.md) | `cloud/professions-g3` | — | 🎨 in progress with the owner (workstation) |
+| [professions-g4-ui-help.md](professions-g4-ui-help.md) | `cloud/professions-g4` | — | ✅ built on `claude/adoring-knuth-hd1uox` |
 
 The professions briefs implement [`docs/PROFESSIONS-ROADMAP.md`](../PROFESSIONS-ROADMAP.md), which has the
 design, the owner decisions (§12) and the later phases G5–G7 (gardening, processing, long tail).

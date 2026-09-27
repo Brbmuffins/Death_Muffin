@@ -973,18 +973,29 @@ app.get('/api/professions/:characterId', requireJWT, async (req, res) => {
 
 // ── POST /api/professions/award-xp ──────────────────────────────────────────
 
+const gatheringRules = require('./gathering/gathering-rules.cjs');
 const PROFESSION_NAMES = Object.freeze({
   woodcutting: 'Woodcutting',
   fishing: 'Fishing',
-  mining: 'Mining'
+  mining: 'Mining',
+  gravedigging: 'Gravedigging',
+  gardening: 'Grave Gardening'
 });
 const VALID_PROFESSION_IDS = new Set(Object.keys(PROFESSION_NAMES));
 
+// One XP curve for gathering and crafting (gathering-rules.cjs → XP_CURVE).
 function xpToNextLevel(currentLevel) {
-  return Math.max(1, currentLevel) * 50;
+  return gatheringRules.xpToNext(currentLevel);
 }
 
-app.post('/api/professions/award-xp', requireJWT, async (req, res) => {
+// Retired for clients: it trusted a client-sent xpAmount. Skill XP now comes only
+// from POST /api/gather (server-rolled, time-budgeted) and POST /api/craft.
+app.post('/api/professions/award-xp', requireJWT, (req, res) => {
+  res.status(410).json({ success: false, error: 'Skill XP is earned by gathering and crafting now.' });
+});
+
+// The original handler, kept unreachable for reference until the route is deleted.
+async function legacyAwardXp(req, res) {
   const { characterId, professionId, xpAmount } = req.body;
 
   if (!characterId || professionId === undefined || !xpAmount)
@@ -1020,7 +1031,7 @@ app.post('/api/professions/award-xp', requireJWT, async (req, res) => {
   skill_xp += xp;
 
   let leveled_up = false;
-  while (skill_xp >= xpToNextLevel(skill_level)) {
+  while (skill_level < gatheringRules.LEVEL_CAP && skill_xp >= xpToNextLevel(skill_level)) {
     skill_xp  -= xpToNextLevel(skill_level);
     skill_level++;
     leveled_up = true;
@@ -1040,7 +1051,8 @@ app.post('/api/professions/award-xp', requireJWT, async (req, res) => {
     success: true,
     data: { skill_level, skill_xp, leveled_up, profession_id: professionKey }
   });
-});
+}
+void legacyAwardXp;
 
 // ── GET /api/professions/recipes/:characterId ───────────────────────────────
 
@@ -1059,7 +1071,7 @@ app.get('/api/professions/recipes/:characterId', requireJWT, async (req, res) =>
     'SELECT profession_id, skill_level FROM professions WHERE character_id = ?',
     [characterId]
   );
-  const levels = { woodcutting: 1, fishing: 1, mining: 1 }; // defaults
+  const levels = { woodcutting: 1, fishing: 1, mining: 1, gravedigging: 1, gardening: 1 }; // defaults
   for (const p of profs) levels[p.profession_id] = p.skill_level;
 
   // Load all recipes with ingredients + result item name
@@ -1279,7 +1291,7 @@ app.post('/api/craft', requireJWT, async (req, res) => {
     );
     let { skill_level, skill_xp } = profAfter;
     let leveled_up = false;
-    while (skill_xp >= xpToNextLevel(skill_level)) {
+    while (skill_level < gatheringRules.LEVEL_CAP && skill_xp >= xpToNextLevel(skill_level)) {
       skill_xp  -= xpToNextLevel(skill_level);
       skill_level++;
       leveled_up = true;
@@ -1747,6 +1759,16 @@ const { mountNecroProgress } = require('./necro-progress/necro-progress-routes.c
 const { createMysqlStore } = require('./necro-progress/mysql-store.cjs');
 mountNecroProgress(app, {
   store: createMysqlStore(pool),
+  requireAuth: requireJWT,
+  ownsCharacter: async (req, characterId) => {
+    const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
+    return rows.length === 1;
+  },
+});
+const { mountGathering } = require('./gathering/gathering-routes.cjs');
+const { createMysqlGatherStore } = require('./gathering/gather-store.cjs');
+mountGathering(app, {
+  store: createMysqlGatherStore(pool),
   requireAuth: requireJWT,
   ownsCharacter: async (req, characterId) => {
     const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);

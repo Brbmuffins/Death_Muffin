@@ -13,6 +13,7 @@ import type { InventorySlot, Profession, Recipe, Rarity } from './types';
 import { ITEMS } from '../content/items';
 import * as necro from '../gameplay/necroRules';
 import type { NecroState } from '../gameplay/necroRules';
+import * as gather from '../gameplay/gatheringRules';
 
 class MockError extends Error {
   constructor(message: string, public status: number) {
@@ -92,6 +93,8 @@ interface StoredSlot {
 interface MockAccount {
   /** Server-side necromancer progression (mirrors character_necro_progress). */
   necro?: NecroState;
+  /** POST /api/gather time budget (mirrors gather_ledger). */
+  gatherLedger?: gather.GatherLedger;
   username: string;
   character: Record<string, any> | null;
   slots: StoredSlot[];
@@ -217,6 +220,12 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     return { token: `offline:${username}` };
   }
 
+  // Public on the live server (no JWT): the Workbench and stations read recipes before auth.
+  if (p === '/api/recipes' && method === 'GET') {
+    const prof = url.searchParams.get('profession');
+    return ok(RECIPES.filter((r) => !prof || r.profession_id === prof));
+  }
+
   const acc = accountFor(db, token);
 
   if (p === '/character' && method === 'GET') {
@@ -290,9 +299,43 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     return ok(acc.professions);
   }
 
-  if (p === '/api/recipes' && method === 'GET') {
-    const prof = url.searchParams.get('profession');
-    return ok(RECIPES.filter((r) => !prof || r.profession_id === prof));
+  // --- Gathering: same shared rules and time budget as the Death Muffin backend. ---
+  if (p === '/api/gather' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const def = gather.NODES[String(body.nodeType ?? '')];
+    if (!def) throw new MockError('Unknown gathering node', 400);
+    let prof = acc.professions.find((x) => x.profession_id === def.skill);
+    if (!prof) acc.professions.push((prof = { profession_id: def.skill, skill_level: 1, skill_xp: 0 }));
+    if (prof.skill_level < def.level) throw new MockError(`Requires ${gather.SKILLS[def.skill].name} level ${def.level}`, 400);
+    const budget = gather.checkBudget(def, acc.gatherLedger ?? gather.blankLedger(), body.actions, Date.now());
+    if (!budget.ok) throw new MockError(budget.error, 400);
+    const batch = gather.rollBatch(def, { level: prof.skill_level, xp: prof.skill_xp }, budget.accepted, Math.random);
+    const bag = acc.slots
+      .filter((x) => x.slot_index < 24)
+      .map((x) => ({ slot: x.slot_index, itemId: x.equipped ? '' : x.item_id, qty: x.quantity }));
+    const placed = gather.placeItems(bag, batch.items, (id) => (MOCK_ITEMS[id]?.item_type === 'material' ? (ITEMS[id]?.stack ?? 9999) : 1));
+    for (const u of placed.updates) acc.slots.find((x) => x.slot_index === u.slot)!.quantity = u.qty;
+    for (const r of placed.inserts) acc.slots.push({ slot_index: r.slot, item_id: r.itemId, quantity: r.qty, equipped: 0 });
+    prof.skill_level = batch.progress.level;
+    prof.skill_xp = batch.progress.xp;
+    if (batch.gold > 0) acc.character!.gold = (Number(acc.character!.gold) || 0) + batch.gold;
+    acc.gatherLedger = budget.ledger;
+    return ok({
+      node: def.id,
+      skill: def.skill,
+      accepted: budget.accepted,
+      successes: batch.successes,
+      xp: batch.xp,
+      gold: batch.gold,
+      items: placed.stored,
+      rejected: placed.rejected,
+      leveledUp: batch.leveled > 0,
+      skills: [{ ...prof }],
+    });
+  }
+
+  if (p === '/api/professions/award-xp' && method === 'POST') {
+    throw new MockError('Skill XP is earned by gathering and crafting now.', 410);
   }
 
   if (p === '/api/craft' && method === 'POST') {

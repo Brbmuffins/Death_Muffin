@@ -1,6 +1,7 @@
 import { AREAS, AREA_ORDER, DOORS, type AreaId, type Rect } from './areas';
 export type { Rect };
 import { mulberry32 } from '../gameplay/rng';
+import { NODES, type NodeKind } from '../gameplay/gatheringRules';
 
 /**
  * Deterministic world dressing. Pure data (no three.js) so the navigation
@@ -23,7 +24,9 @@ export type PropId =
   | 'bell_altar'
   | 'reliquary'
   | 'workbench'
-  | 'waystone';
+  | 'waystone'
+  // The Acre's Bone Kiln; loads models/props/prop_node_bone_kiln.glb once the pipeline builds it.
+  | 'prop_node_bone_kiln';
 
 export interface PropSpec {
   /** Target world height of the generated model. */
@@ -50,6 +53,7 @@ export const PROPS: Record<PropId, PropSpec> = {
   reliquary: { height: 1.2, collider: { kind: 'box', hw: 0.9, hd: 0.6 } },
   workbench: { height: 1.4, collider: { kind: 'box', hw: 1.4, hd: 0.8 } },
   waystone: { height: 3, collider: { kind: 'circle', r: 0.6 } },
+  prop_node_bone_kiln: { height: 2.2, collider: { kind: 'box', hw: 0.9, hd: 0.8 }, light: { color: 0xff8a3d, intensity: 10, distance: 9, y: 0.9, flames: 0, spread: 0.3 } },
 };
 
 export interface Placement {
@@ -124,6 +128,24 @@ export interface Crypt {
   prop: 'mausoleum' | 'sarcophagus';
 }
 
+/** A gathering node in the world (roadmap §4/§6). `type` is a gatheringRules NODES id. */
+export interface NodePlacement {
+  /** Stable id shared by every player in a party (`<area>_<n>`). */
+  id: string;
+  type: string;
+  x: number;
+  z: number;
+  area: AreaId;
+  /** Hunting-ground variant: ×1.5 yield, ×0.5 respawn. */
+  rich?: boolean;
+  rot: number;
+}
+
+/** Collider radius per node kind (fishing spots sit on the water and block nothing). */
+export const NODE_COLLIDER: Record<NodeKind, number> = { tree: 0.6, seam: 0.75, geode: 0.9, pool: 0, grave: 0.7 };
+/** How far from a node's centre the gatherer stands to work it. */
+export const NODE_REACH: Record<NodeKind, number> = { tree: 1.35, seam: 1.45, geode: 1.6, pool: 1.5, grave: 1.4 };
+
 export interface WorldLayout {
   /** Flagstone paths laid over earthen floors. */
   paths: Rect[];
@@ -137,6 +159,10 @@ export interface WorldLayout {
   silhouettes: Silhouette[];
   /** Surge origins derived from the crypt props (unsafe areas only). */
   crypts: Crypt[];
+  /** Gathering nodes (the Sexton's Acre has every tier; hunting grounds get a few rich ones). */
+  nodes: NodePlacement[];
+  /** Deep water: rendered like the nave flood but blocks movement (the Acre's pond). */
+  ponds: Rect[];
 }
 
 const inRect = (r: Rect, x: number, z: number, pad = 0) =>
@@ -223,11 +249,66 @@ export function generateLayout(seed = 1337): WorldLayout {
     P('waystone', 9, 26.5, a, 0);
     P('sarcophagus', 0, 27, a, 0);
     for (const [x, z] of [[-3, 10.5], [3, 10.5], [-3, 30.5], [3, 30.5]] as const) P('brazier', x, z, a, 0);
-    for (const [x, z] of [[-10.5, 11], [10.5, 11], [-10.5, 20], [10.5, 20], [-2, 21.5], [2, 21.5], [-7.2, 26.8], [-10.8, 25.5], [1.8, 28.6], [-1.8, 28.6]] as const)
+    for (const [x, z] of [[-10.5, 11], [10.5, 11], [-11, 15.8], [10.5, 20], [-2, 21.5], [2, 21.5], [-7.2, 26.8], [-10.8, 25.5], [1.8, 28.6], [-1.8, 28.6]] as const)
       P('candles', x, z, a);
     P('bone_pile', -11.2, 30.6, a);
     P('bone_pile', 11.2, 30.3, a);
     decals.push({ kind: 'sigil', x: 0, z: 21, r: 2.6, color: 0x9b5cff, opacity: 0.7, rot: 0, area: a });
+  }
+
+  // --- The Sexton's Acre (non-combat gathering zone) ---
+  const nodes: NodePlacement[] = [];
+  const ponds: Rect[] = [];
+  {
+    const a: AreaId = 'acre';
+    const r = AREAS[a].rect;
+    edgeWalls(a, 1.6, 'stone_wall', walls);
+    // Gravel lane from the Chapterhouse door to the Bone Elder, plus the yard by the door.
+    paths.push({ x0: -57, z0: 18.6, x1: -20, z1: 21.4 }, { x0: -28, z0: 11, x1: -20, z1: 34 });
+    const N = (type: string, x: number, z: number) =>
+      nodes.push({ id: `${a}_${nodes.length}`, type, x, z, area: a, rot: rand() * Math.PI * 2 });
+    // Quarry wall along the north edge: low tiers by the door, geodes at the far end.
+    const seams: [string, number][] = [
+      ['seam_copper', -30], ['seam_tin', -32.6], ['seam_copper', -35.2], ['seam_tin', -37.8], ['seam_iron', -40.6],
+      ['seam_iron', -43.4], ['seam_bronze', -46.4], ['seam_silver', -49.4], ['seam_gold', -52.4], ['seam_steel', -55.2],
+    ];
+    for (const [t, x] of seams) N(t, x, 8.3);
+    N('geode_hell', -58.6, 8.8);
+    N('geode_moon', -59.4, 12.6);
+    // The grove, either side of the lane.
+    for (const [t, x, z] of [
+      ['coffin_oak', -29.5, 14], ['coffin_oak', -33.5, 14], ['coffin_oak', -27.5, 15.8], ['hangman_elm', -37.5, 14], ['hangman_elm', -41.5, 14],
+      ['bleeding_willow', -45.5, 14], ['bleeding_willow', -49.5, 14], ['churchyard_yew', -53.5, 14], ['churchyard_yew', -57.2, 15.2],
+      ['blackthorn', -46.5, 25.2], ['blackthorn', -50.3, 25.2], ['ghostwood', -54, 25.2], ['ghostwood', -57.6, 25.6],
+      ['bone_elder', -59, 20],
+    ] as const) N(t, x, z);
+    // Black-water pond; fishing spots sit just inside its shore.
+    const pond = { x0: -44, z0: 27.4, x1: -30, z1: 32.2 };
+    ponds.push(pond);
+    for (const [t, x, z] of [
+      ['pool_still', -31.8, 28.2], ['pool_still', -34.8, 28.2], ['pool_eels', -37.8, 28.2], ['pool_carp', -40.8, 28.2],
+      ['pool_pike', -43.2, 30.2], ['pool_lantern', -30.8, 30.6], ['pool_coelacanth', -37, 31.4],
+    ] as const) N(t, x, z);
+    // Burial rows along the south wall.
+    for (const [t, x] of [
+      ['grave_pauper', -29.5], ['grave_pauper', -32.5], ['grave_pauper', -35.5], ['grave_mound', -39.5], ['grave_mound', -43],
+      ['grave_crypt', -47.5], ['grave_crypt', -51.5], ['grave_barrow_king', -57],
+    ] as const) N(t, x, 35.6);
+    // Stations and dressing.
+    P('waystone', -23, 25.5, a, 0);
+    P('brazier', -26.5, 28.5, a, 0);
+    P('workbench', -23.5, 12.5, a, 0, 0.9);
+    P('prop_node_bone_kiln', -23.5, 33.2, a, Math.PI);
+    for (const [x, z] of [[-21.2, 15.6], [-21.2, 24.4]] as const) P('candles', x, z, a);
+    for (const [x, z] of [[-25.4, 34.4], [-60.6, 36.6], [-44.6, 36.8]] as const) P('bone_pile', x, z, a);
+    for (const [x, z] of [[-60.8, 30.5], [-60.8, 33.5], [-26.8, 37], [-54, 37]] as const) P('dead_tree', x, z, a, rand() * 6, 0.7 + rand() * 0.2);
+    // Headstones between the burial plots and a fence line along the west wall.
+    for (let x = -30.9; x > -56; x -= 3.2) {
+      if (nodes.some((n) => n.area === a && Math.hypot(n.x - x, n.z - 37.1) < 1.6)) continue;
+      P(rand() < 0.6 ? 'tombstone_round' : 'tombstone_cross', x, 37.1, a, (rand() - 0.5) * 0.4, 0.75, { tilt: (rand() - 0.5) * 0.2 });
+    }
+    for (let z = r.z0 + 1.5; z < r.z1 - 1; z += 2.4) if (Math.abs(z - 20) > 3 && Math.abs(z - 12.6) > 2.2) P('fence', r.x0 + 0.6, z, a, Math.PI / 2);
+    decals.push({ kind: 'sigil', x: -23.5, z: 20, r: 2.2, color: 0x6fae7a, opacity: 0.35, rot: 0, area: a });
   }
 
   // --- The Hollow Graves ---
@@ -354,8 +435,42 @@ export function generateLayout(seed = 1337): WorldLayout {
   const silhouettes = distantSilhouettes(envRand);
 
   const crypts = cryptsFrom(props);
+  richNodes(nodes, props);
 
-  return { paths, props, walls, decals, windows, water, puddles, silhouettes, crypts };
+  return { paths, props, walls, decals, windows, water, puddles, silhouettes, crypts, nodes, ponds };
+}
+
+/**
+ * 2–4 rich nodes per hunting ground, themed to the area (roadmap §6). Each takes
+ * the first candidate spot clear of props, breaches, interactables and doors.
+ */
+function richNodes(nodes: NodePlacement[], props: Placement[]) {
+  const wants: [AreaId, string, [number, number][]][] = [
+    ['graves', 'coffin_oak', [[-23.4, -9.5], [-23.4, -6], [22.8, -30.5], [-23, -24]]],
+    ['graves', 'grave_pauper', [[-16, 1.6], [16.5, 1.4], [-10, -34], [10, -34.2]]],
+    ['ossuary', 'seam_silver', [[33.6, -30], [62.4, -13], [33.6, -26]]],
+    ['ossuary', 'grave_crypt', [[50, -3.8], [40, -36.2], [57, -36.2]]],
+    ['nave', 'pool_eels', [[-11.6, -86], [11.6, -66], [-11.6, -64]]],
+    ['nave', 'bleeding_willow', [[-12.8, -47], [12.8, -94]]],
+    ['sanctum', 'geode_moon', [[-16.2, -113], [-16.2, -121]]],
+    ['sanctum', 'geode_moon', [[16.2, -120], [16.2, -113]]],
+  ];
+  const spots = interactSpots();
+  for (const [area, type, cands] of wants) {
+    const [x, z] =
+      cands.find(([x, z]) => {
+        if (!inRect(AREAS[area].rect, x, z, 0.8)) return false;
+        if (props.some((p) => Math.hypot(p.x - x, p.z - z) < 2)) return false;
+        if (AREAS[area].breaches.some(([bx, bz]) => Math.hypot(bx - x, bz - z) < 3)) return false;
+        if (spots.some((s) => Math.hypot(s.x - x, s.z - z) < 3)) return false;
+        if (DOORS.some((d) => inRect({ x0: d.rect.x0 - 2.5, z0: d.rect.z0 - 2.5, x1: d.rect.x1 + 2.5, z1: d.rect.z1 + 2.5 }, x, z))) return false;
+        return !nodes.some((n) => Math.hypot(n.x - x, n.z - z) < 3);
+      }) ?? [NaN, NaN];
+    if (Number.isNaN(x)) continue;
+    nodes.push({ id: `${area}_${nodes.filter((n) => n.area === area).length}`, type, x, z, area, rich: true, rot: (x * 7.3 + z * 3.1) % (Math.PI * 2) });
+  }
+  // Keep only types the rules know (a renamed node must not break old seeds silently).
+  for (let i = nodes.length - 1; i >= 0; i--) if (!NODES[nodes[i].type]) nodes.splice(i, 1);
 }
 
 /** A point in front of each crypt prop, on the side facing its area's open middle. */
