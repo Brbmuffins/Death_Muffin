@@ -1,0 +1,9 @@
+{
+  "id": "prop_drowned_font",
+  "input": "art-src/concepts/props/drowned_font.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2200,
+    "texture_quality": "standard"
+  }
+}

@@ -5310,5 +5310,146 @@
     "rawHash": "sha256:4d5c6994f8a5aa76ad01f997f22d0da1b73be2e7d89ed61a7c18086451ebf582",
     "outHash": "sha256:111a395f5027a34f9f4da123db977632079035830775a39edfc2d511c467241d",
     "generatedAt": "2026-09-27T22:02:01.292Z"
+  },
+  "concept_prop_church_pew": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood, tarnished bronze, aged bone). Subject: one long heavy gothic church pew of rotten black oak, waterlogged and warped, with a tall carved backrest, a kneeler rail, green-black water stains and hanging weed along the lower half, a few barnacle-like growths and a small tarnished bronze bell ornament on the end panel. Solid chunky silhouette, about chest height.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/church_pew.png",
+    "rawHash": "sha256:5b082deec3f41cede7e07ee3295e82b41be89cebc63d37aeadf1ebb5cc62c74a",
+    "outHash": "sha256:fe5c7bb84c4fa0efc07800e068e349e7f57720ae9c0f3bb75b4c244187b3848e",
+    "generatedAt": "2026-09-27T22:20:49.476Z"
+  },
+  "concept_prop_skull_niche": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, aged bone, candle wax). Subject: a freestanding ossuary shrine, a tall narrow stone niche like a gothic window frame, packed from floor to arch with stacked human skulls and long bones in neat rows, melted candles on its ledge, a larger central skull with a faint inner glow in its eye sockets, cracks in the stone frame. Tall slim silhouette, about twice human height.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/skull_niche.png",
+    "rawHash": "sha256:f9a5c1a63288fcc4777b6e333660a8ea3012a8d96ada85f0c302c6967b8f0cce",
+    "outHash": "sha256:328bd3366facc11c70ab7b4f579d2a9642763afee0934c2a8e8073b96712f771",
+    "generatedAt": "2026-09-27T22:20:58.517Z"
+  },
+  "concept_prop_kings_grave": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, wet earth, blackened iron, aged bone). Subject: an oversized freshly dug open grave, a deep rectangular pit with a mound of dark earth beside it, a huge iron grave-spade planted upright in the mound, a tall cracked headstone at the head of the grave carved with a crude crown, a rusted lantern hanging from the spade handle, a few bones and a broken coffin lid in the dirt.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/kings_grave.png",
+    "rawHash": "sha256:08a0103d4cba9975af3aab67485d25f1f7b645d2ed698111e4eebc98240f843c",
+    "outHash": "sha256:aca9b150ef4a1d21682104c7f3bec6c2b719a897a537c8e7db46838c2a19902d",
+    "generatedAt": "2026-09-27T22:21:07.636Z"
+  },
+  "concept_prop_drowned_font": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, tarnished bronze, black water). Subject: a large octagonal stone baptismal font on a thick pedestal, its basin brimming and overflowing with still black water that spills down the sides in dark streaks, a tarnished bronze bell-shaped cover tipped half off, drowned candles, weed and a pale skeletal hand resting on the rim.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/drowned_font.png",
+    "rawHash": "sha256:c8694678eedcc5bdee8aaf7e1d4df92179005bb68e223ab207431bf8cebdd4b8",
+    "outHash": "sha256:e2cdbc2375a1fcad0bbdb419ee374fe0679297f0ab7bfbaab8de07a036836895",
+    "generatedAt": "2026-09-27T22:21:16.894Z"
+  },
+  "concept_prop_abbess_reliquary": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, aged bone, old gold). Subject: an ornate reliquary casket made of fused bones and ribs on a stone plinth, a glass-fronted lid showing a veiled skull wearing a small bone crown, rib-cage arches forming its roof, vertebrae along its edges, old gold fittings, candle stubs around the base.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/abbess_reliquary.png",
+    "rawHash": "sha256:da28a8331278f440728ba2d0bab183609055f9eab5f6cb31179637af7f8b3c05",
+    "outHash": "sha256:9e71ce2a1886211f639c0f4dfa2530de350ed54d94a19ca5564d10f19f5d95f8",
+    "generatedAt": "2026-09-27T22:21:25.312Z"
+  },
+  "fx_grave_outline": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Video game VFX sprite texture, seen from directly above as a ground decal. Pure solid black background (#000000). The subject is drawn ONLY in white and light grey light — completely monochrome, no colour at all. Subject: the outline of a freshly marked grave on the ground: a vertical rectangular cut in the earth with rough crumbling edges, a slightly brighter bold border, faint cracks radiating out from the corners, a few clods of dirt scattered around, the inside of the rectangle darker than its edge. Centred, the rectangle filling about two thirds of the frame height, nothing touching the edges. High contrast. No text, no border, no frame, no background texture.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "lumaAlpha": true,
+      "floor": 22,
+      "mask": "circle",
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "out": "public/art/fx/grave-outline.png",
+    "rawHash": "sha256:b83158051b46af6cb4b82c4283700e05cfeaccfaa7eb2e90df3bf162a0f76ba4",
+    "outHash": "sha256:b7605ebc814555fc2391bcf2aace2ecd9cf8a554fb3e351b08de6765bc7868d5",
+    "generatedAt": "2026-09-27T22:21:32.232Z"
+  },
+  "fx_tide_crest": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Video game VFX sprite texture, seen from directly above as a ground decal. Pure solid black background (#000000). The subject is drawn ONLY in white and light grey light — completely monochrome, no colour at all. Subject: a single wide curling wave crest of foaming water sweeping from the bottom of the frame toward the top, a bright ragged foam edge along its leading (top) side, streaks of spray and swirling eddies trailing behind it. Spans most of the frame width, centred, nothing touching the edges. High contrast, soft glow falloff. No text, no border, no frame, no background texture.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "lumaAlpha": true,
+      "floor": 22,
+      "mask": "circle",
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "out": "public/art/fx/tide-crest.png",
+    "rawHash": "sha256:be959fcf5dd3b9a34e5466d71f525abcbe8a9b402d5f7dae0eb3b03c4a3fabc3",
+    "outHash": "sha256:9b797a37c40a41aba290ae1a15ff2b2494fbb5b21ad8ecc54ca3f9ec3fbf80e5",
+    "generatedAt": "2026-09-27T22:21:40.495Z"
+  },
+  "fx_drowned_hand": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Video game VFX sprite texture. Pure solid black background (#000000). The subject is drawn ONLY in glowing white and light grey light — completely monochrome, no colour at all. Subject: a gaunt drowned skeletal hand and forearm reaching straight up out of a ring of splashing water, fingers clawed open, water droplets and ripples around the wrist. Centred, filling about two thirds of the frame height, nothing touching the edges. Soft glow falloff, high contrast. No text, no border, no frame, no background texture.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "lumaAlpha": true,
+      "floor": 22,
+      "mask": "circle",
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "out": "public/art/fx/drowned-hand.png",
+    "rawHash": "sha256:311a32c4bf479b209e94a637f8aaf87c20e38e59ed6dc8d91c2afe7788c64a80",
+    "outHash": "sha256:99b305f66053212e67766279832695aab2af921413b8f2ed334bc3c18df1c689",
+    "generatedAt": "2026-09-27T22:21:48.312Z"
   }
 }

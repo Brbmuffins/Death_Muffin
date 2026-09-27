@@ -1,0 +1,9 @@
+{
+  "id": "prop_abbess_reliquary",
+  "input": "art-src/concepts/props/abbess_reliquary.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2800,
+    "texture_quality": "standard"
+  }
+}

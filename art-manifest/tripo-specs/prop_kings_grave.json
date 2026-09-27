@@ -1,0 +1,9 @@
+{
+  "id": "prop_kings_grave",
+  "input": "art-src/concepts/props/kings_grave.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2600,
+    "texture_quality": "standard"
+  }
+}
