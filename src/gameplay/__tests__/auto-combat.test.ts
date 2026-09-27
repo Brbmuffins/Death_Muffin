@@ -38,7 +38,7 @@ describe('stationary auto combat', () => {
   });
 
   it('raises an army up to the selected class cap without replacing existing thralls', () => {
-    const base = input({ corpses: [corpse(40), corpse(6), corpse(3)], thrallCount: 1, thrallCap: 2 });
+    const base = input({ corpses: [corpse(40), corpse(6), corpse(3)], thrallCount: 1, thrallCap: 2, ready: readyOnly('exhume', 'bone_needle') });
     expect(selectAutoCombatAction(base)).toEqual({ id: 'exhume', target: { x: 3, z: 0 } });
     expect(selectAutoCombatAction({ ...base, thrallCount: 2 })?.id).toBe('bone_needle');
     expect(selectAutoCombatAction({ ...base, thrallCap: 0 })?.id).toBe('bone_needle');

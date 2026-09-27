@@ -39,6 +39,14 @@ export type TipId =
   | 'rite_step'
   | 'rite_frost'
   | 'rite_mantle'
+  // Spell variety (shown the first time each is placed on a key or the LMB socket).
+  | 'rite_fan'
+  | 'rite_lance'
+  | 'rite_offering'
+  | 'rite_cleave'
+  | 'rite_veil'
+  | 'rite_rally'
+  | 'rite_seed'
   // Enemy variety: processions and the four newer kinds of dead (first sight).
   | 'procession'
   | 'censer'
@@ -218,6 +226,34 @@ export const TIPS: Record<TipId, Tip> = {
   station: {
     title: 'A working station',
     body: 'Stations turn what you gather into something useful. The Sawpit’s warm gold light marks where to click for wood recipes. Recipes need the matching skill level and their ingredients in your bag; crafting grants skill XP too. The server checks every recipe, and its reason is shown if one fails.',
+  },
+  rite_fan: {
+    title: 'Bone Fan',
+    body: 'Your left click now throws three slivers, each at a different enemy near the one you click. It clears packs fast but is weaker on one target (the Prelate only ever takes one sliver). Swap back to Bone Needle on the Grimoire\'s <b>LMB</b> socket for bosses.',
+  },
+  rite_lance: {
+    title: 'Rot Lance',
+    body: 'Your left click now pierces the first two enemies in line and leaves Withered ticking on each. Line the dead up; the rot keeps working while you move on.',
+  },
+  rite_offering: {
+    title: 'Grave Offering',
+    body: 'Press {key:grave_offering} on a corpse to burn it into Grave Essence and a little health. Spend the bodies you won\'t raise: when your legion is full, or when essence runs dry.',
+  },
+  rite_cleave: {
+    title: 'Ivory Cleave',
+    body: 'Press {key:ivory_cleave} to sweep a bone crescent through everything in a wide arc in front of you, Fracturing it. Cleave the pack that reaches you, then Spear the line.',
+  },
+  rite_veil: {
+    title: 'Veil Step',
+    body: 'Press {key:veil_step} to slip a few metres toward the cursor, no corpse needed. It stops at walls and sealed doors. Use it to leave a cone or a bell ring; auto combat never does.',
+  },
+  rite_rally: {
+    title: 'Rally the Dead',
+    body: 'With thralls at your side, press {key:rally_dead} with the cursor on the enemy you want dead: your legion heals, hits harder and faster, and turns on it. The jade sigils show who is rallied.',
+  },
+  rite_seed: {
+    title: 'Carrion Seed',
+    body: 'Press {key:carrion_seed} on a corpse in the pack\'s path. The bud arms in a moment, then bursts in rot when an enemy comes close. One seed at a time; if another rite uses that corpse, the seed goes with it.',
   },
   rite_mantle: {
     title: 'Bone Mantle',

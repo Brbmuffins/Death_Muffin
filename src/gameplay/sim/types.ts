@@ -95,6 +95,8 @@ export interface Thrall {
   flash: number;
   gait: number;
   moving: boolean;
+  /** Rally the Dead: seconds of +damage/+attack speed left (snapshot flag bit 2 of the empowered field). */
+  rallyT?: number;
 }
 
 export interface Corpse {
@@ -111,6 +113,12 @@ export interface Corpse {
   expiresAt: number;
   /** Toxic corpses rupture at this time unless consumed. */
   ruptureAt: number;
+  /** Carrion Seed: who planted it, burst damage/Withered cap, when it arms and withers (rides in snapshots). */
+  seedOwner?: string;
+  seedDmg?: number;
+  seedCap?: number;
+  seedArmedAt?: number;
+  seedExpires?: number;
 }
 
 /** 'rot' = the friendly pool a detonated toxic corpse leaves behind. */
@@ -209,6 +217,9 @@ export type Intent =
       bleed?: number;
       /** Grave Frost: Chill the targets (the host owns the duration). */
       chill?: boolean;
+      /** Rot Lance: Withered stacks to add (0..1, host-clamped) up to `witheredCap` (1..12). */
+      withered?: number;
+      witheredCap?: number;
     }
   | {
       t: 'miasma';
@@ -245,7 +256,20 @@ export type Intent =
   | { t: 'summonBoss'; by: string }
   | { t: 'recallThralls'; by: string; x: number; z: number }
   /** Host-shaped rites (discipline signatures + Bone Mantle): aim point, aim direction and the caster's spell power. */
-  | { t: 'signature'; by: string; sig: 'wall' | 'rend' | 'dirge' | 'bloom' | 'mantle'; x: number; z: number; dx: number; dz: number; sp: number }
+  | {
+      t: 'signature';
+      by: string;
+      sig: 'wall' | 'rend' | 'dirge' | 'bloom' | 'mantle' | 'offering' | 'rally' | 'seed';
+      x: number;
+      z: number;
+      dx: number;
+      dz: number;
+      sp: number;
+      /** Carrion Seed: Withered cap (1..12, host-clamped). */
+      cap?: number;
+      /** Rally the Dead: seconds (host-clamped to 6..8). */
+      dur?: number;
+    }
   /** Corpse Explosion: `dmg` is the caster's spellPower × power (clamped by the sim). */
   | { t: 'detonate'; by: string; corpseId: number; dmg: number }
   /** Gathering: `successes` work cycles landed on a node (depletion only; rewards come from the REST API). */
@@ -312,6 +336,14 @@ export type SimEvent =
   | { t: 'rend'; by: string; x: number; z: number; leaps: [number, number, number, number][]; hits: number }
   /** Bone Mantle: corpses drawn in around the caster (each [x, z] is where one lay). */
   | { t: 'mantle'; by: string; x: number; z: number; r: number; corpses: number; tethers: [number, number][] }
+  /** Grave Offering: the host consumed (ok) or found no corpse; the caster turns it into essence + health. */
+  | { t: 'offering'; by: string; ok: boolean; x: number; z: number; corpseKind?: CorpseKind; elite?: boolean }
+  /** Rally the Dead: these thralls are rallied, focused on the enemy nearest (x, z). */
+  | { t: 'rally'; by: string; x: number; z: number; ids: number[] }
+  /** Carrion Seed planted / withered away / burst. */
+  | { t: 'seeded'; by: string; corpseId: number; x: number; z: number; armMs: number }
+  | { t: 'seedGone'; corpseId: number }
+  | { t: 'seedBurst'; by: string; x: number; z: number; r: number; targets: number }
   /** A friendly zone mending a player (Dirge). */
   | { t: 'heal'; player: string; amount: number; x: number; z: number }
   /** A Crypt Deacon blesses an ally (Sanctified). */

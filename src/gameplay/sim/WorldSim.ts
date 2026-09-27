@@ -26,7 +26,11 @@ import {
   MIASMA_SLOW,
   ABILITIES,
   BONE_MANTLE,
+  CARRION_SEED,
   GRAVE_FROST,
+  GRAVE_OFFERING,
+  RALLY,
+  WITHERED,
 } from '../../content/abilities';
 import { NIGHTFALL_SHROUD_CHANCE, RESTLESS_SURGE_MULT, milestoneActive, waveModifiers } from '../../content/upgrades';
 import { DIFFICULTIES, type Difficulty } from '../../content/difficulty';
@@ -265,7 +269,28 @@ export class WorldSim {
       }
       // Grave Frost: the host owns the duration; a claim can only ask for it.
       if (h.chill) e.chillT = Math.max(e.chillT ?? 0, GRAVE_FROST.chillS);
+      // Rot Lance: one Withered stack at most per hit, up to a clamped cap; dps scales with the hit.
+      if (h.withered && h.withered > 0) this.wither(e, 1, Math.min(12, Math.max(1, Math.floor(h.witheredCap ?? DETONATE.rotWitheredCap))), h.dmg * WITHERED.dpsPerStack, h.by);
     }
+  }
+
+  /** Add Withered stacks the way zones do (the strongest dps wins, the stacker owns the kill). */
+  private wither(e: Enemy, stacks: number, cap: number, dps: number, by: string) {
+    e.withered = Math.min(cap, e.withered + stacks);
+    e.witheredT = WITHERED.durationMs / 1000;
+    e.witheredDps = Math.max(e.witheredDps, dps);
+    e.witheredOwner = by;
+  }
+
+  private corpseAt(x: number, z: number, r: number, area?: AreaId | null) {
+    let best: Corpse | null = null;
+    let bestD = r;
+    for (const c of this.corpses.values()) {
+      if (area && c.area !== area) continue;
+      const d = Math.hypot(c.x - x, c.z - z);
+      if (d <= bestD) (best = c), (bestD = d);
+    }
+    return best;
   }
 
   private applyMiasma(m: Extract<Intent, { t: 'miasma' }>) {
@@ -573,6 +598,55 @@ export class WorldSim {
           this.removeCorpse(c, 'consumed', g.by);
         }
         this.emit({ t: 'mantle', by: g.by, x: cx, z: cz, r, corpses: near.length, tethers });
+        return;
+      }
+      case 'offering': {
+        // Grave Offering: the corpse nearest the aim (within 0.9m, in the caster's hall) is consumed once.
+        const [cx, cz] = clampAim(ABILITIES.grave_offering.range + 1);
+        const c = this.corpseAt(cx, cz, GRAVE_OFFERING.pickRadius, caster?.area);
+        if (!c) {
+          this.emit({ t: 'offering', by: g.by, ok: false, x: cx, z: cz });
+          return;
+        }
+        this.removeCorpse(c, 'consumed', g.by);
+        this.emit({ t: 'offering', by: g.by, ok: true, x: c.x, z: c.z, corpseKind: c.kind, elite: c.elite });
+        return;
+      }
+      case 'rally': {
+        const [cx, cz] = clampAim(ABILITIES.rally_dead.range);
+        const secs = Math.min(RALLY.durationS + RALLY.gravecallerBonusS, Math.max(RALLY.durationS, Number.isFinite(g.dur) ? (g.dur as number) : RALLY.durationS));
+        let focus: Enemy | null = null;
+        let bestD = Infinity;
+        for (const e of this.enemies.values()) {
+          if (e.state === 'dead' || e.state === 'rising') continue;
+          const d = Math.hypot(e.x - cx, e.z - cz);
+          if (d < bestD) (focus = e), (bestD = d);
+        }
+        const ids: number[] = [];
+        for (const t of this.ownedThralls(g.by)) {
+          t.rallyT = secs;
+          t.hp = Math.min(t.maxHp, t.hp + t.maxHp * RALLY.healFrac);
+          if (focus && Math.hypot(focus.x - t.x, focus.z - t.z) < THRALL_LEASH) t.target = focus.id;
+          ids.push(t.id);
+        }
+        this.emit({ t: 'rally', by: g.by, x: cx, z: cz, ids });
+        return;
+      }
+      case 'seed': {
+        // Carrion Seed: one live seed per caster; a new one withers the old, harmlessly.
+        const [cx, cz] = clampAim(ABILITIES.carrion_seed.range + 1);
+        const c = this.corpseAt(cx, cz, CARRION_SEED.pickRadius, caster?.area);
+        if (!c) return;
+        for (const o of this.corpses.values()) {
+          if (o.seedOwner !== g.by || o === c) continue;
+          this.clearSeed(o);
+        }
+        c.seedOwner = g.by;
+        c.seedDmg = sp * ABILITIES.carrion_seed.power;
+        c.seedCap = Math.min(12, Math.max(1, Math.floor(Number.isFinite(g.cap) ? (g.cap as number) : CARRION_SEED.witheredCap)));
+        c.seedArmedAt = this.time + CARRION_SEED.armS;
+        c.seedExpires = Math.min(c.expiresAt, this.time + CARRION_SEED.lifeS);
+        this.emit({ t: 'seeded', by: g.by, corpseId: c.id, x: c.x, z: c.z, armMs: CARRION_SEED.armS * 1000 });
         return;
       }
     }
@@ -1111,7 +1185,53 @@ export class WorldSim {
     }
   }
 
+  private clearSeed(c: Corpse) {
+    if (!c.seedOwner) return;
+    c.seedOwner = undefined;
+    c.seedDmg = undefined;
+    c.seedCap = undefined;
+    c.seedArmedAt = undefined;
+    c.seedExpires = undefined;
+    this.emit({ t: 'seedGone', corpseId: c.id });
+  }
+
+  /** Armed seeds burst when a living enemy steps within reach; unarmed ones wither after their life. */
+  private updateSeeds() {
+    for (const c of [...this.corpses.values()]) {
+      if (!c.seedOwner) continue;
+      if (this.time >= (c.seedExpires ?? 0)) {
+        this.clearSeed(c);
+        continue;
+      }
+      if (this.time < (c.seedArmedAt ?? Infinity)) continue;
+      let near = false;
+      for (const e of this.enemies.values()) {
+        if (e.state === 'dead' || e.state === 'rising') continue;
+        if (Math.hypot(e.x - c.x, e.z - c.z) <= CARRION_SEED.triggerR + e.radius) {
+          near = true;
+          break;
+        }
+      }
+      if (!near) continue;
+      const by = c.seedOwner;
+      const dmg = Math.min(1e5, c.seedDmg ?? 0);
+      const cap = c.seedCap ?? CARRION_SEED.witheredCap;
+      this.removeCorpse(c, 'burst', by);
+      let targets = 0;
+      for (const e of this.enemies.values()) {
+        if (e.state === 'dead' || Math.hypot(e.x - c.x, e.z - c.z) > CARRION_SEED.burstR + e.radius) continue;
+        this.damageEnemy(e, dmg, by);
+        this.wither(e, CARRION_SEED.withered, cap, dmg * WITHERED.dpsPerStack, by);
+        targets++;
+      }
+      const b = this.boss.state;
+      if (b.active && Math.hypot(b.x - c.x, b.z - c.z) <= CARRION_SEED.burstR + BOSS_RADIUS) this.boss.damage(dmg, by, 0);
+      this.emit({ t: 'seedBurst', by, x: c.x, z: c.z, r: CARRION_SEED.burstR, targets });
+    }
+  }
+
   private updateCorpses() {
+    this.updateSeeds();
     for (const c of [...this.corpses.values()]) {
       if (this.time >= c.ruptureAt) {
         this.removeCorpse(c, 'burst');
@@ -1585,7 +1705,10 @@ export class WorldSim {
       t.moving = false;
       t.flash = Math.max(0, t.flash - dt * 5);
       t.stateT += dt;
-      t.attackCd -= dt;
+      const rallied = (t.rallyT ?? 0) > 0;
+      if (rallied) t.rallyT = Math.max(0, (t.rallyT ?? 0) - dt);
+      // Rallied thralls swing faster (the cooldown drains quicker) and hit harder (below).
+      t.attackCd -= dt * (rallied ? RALLY.attackSpeedMult : 1);
       const owner = this.players.get(t.owner);
       if (!owner || !owner.alive) {
         this.killThrall(t, 'crumbled');
@@ -1642,7 +1765,7 @@ export class WorldSim {
       if (target) {
         const e = target;
         engage(e.x, e.z, e.radius, () => {
-          const dealt = this.damageEnemy(e, t.damage, t.owner);
+          const dealt = this.damageEnemy(e, t.damage * ((t.rallyT ?? 0) > 0 ? RALLY.damageMult : 1), t.owner);
           if (t.kind === 'wraith') e.chillT = CHILL.durationS;
           else if (t.kind === 'bonemage') e.hexT = BONE_HEX.durationS;
           this.emit({ t: 'thrallHit', id: t.id, target: e.id, x: t.x, z: t.z, tx: e.x, tz: e.z, kind: t.kind, dmg: Math.round(dealt) });
@@ -1650,7 +1773,7 @@ export class WorldSim {
       } else if (bossTarget) {
         const b = this.boss.state;
         engage(b.x, b.z, BOSS_RADIUS, () => {
-          this.boss.damage(t.damage, t.owner, 0);
+          this.boss.damage(t.damage * ((t.rallyT ?? 0) > 0 ? RALLY.damageMult : 1), t.owner, 0);
           this.emit({ t: 'thrallHit', id: t.id, target: -1, x: t.x, z: t.z, tx: b.x, tz: b.z, kind: t.kind, dmg: Math.round(t.damage) });
         });
       } else {

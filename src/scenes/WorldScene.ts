@@ -28,7 +28,7 @@ import { changeDiscipline } from '../net/api';
 import { onSettingsChange, settings, updateSettings } from '../app/settings';
 import { selectAutoCombatAction } from '../gameplay/autoCombat';
 import { STATUS_FX } from '../content/statuses';
-import { AbilitySystem, type CastResult, type CastTarget } from '../gameplay/AbilitySystem';
+import { AbilitySystem, veilTarget, type CastResult, type CastTarget } from '../gameplay/AbilitySystem';
 import { deriveStats, xpToNext } from '../gameplay/characterStats';
 import { Inventory, rollBoss, rollItem, rollKill } from '../gameplay/loot';
 import { Nav } from '../gameplay/nav';
@@ -82,6 +82,13 @@ const RITE_TIPS: Partial<Record<AbilityId, TipId>> = {
   grave_step: 'rite_step',
   grave_frost: 'rite_frost',
   bone_mantle: 'rite_mantle',
+  bone_fan: 'rite_fan',
+  rot_lance: 'rite_lance',
+  grave_offering: 'rite_offering',
+  ivory_cleave: 'rite_cleave',
+  veil_step: 'rite_veil',
+  rally_dead: 'rite_rally',
+  carrion_seed: 'rite_seed',
 };
 
 interface Remote {
@@ -372,6 +379,8 @@ export class WorldScene implements GameScene, RuntimeView {
       number: (x, z, amount, kind) => this.floating.spawn(x, 1.6, z, Math.round(amount).toString(), kind === 'crit' ? 'crit' : 'hit'),
       shake: (a) => this.rig.shake(a),
       now: () => this.now,
+      thralls: () => this.thrallsMap(),
+      dash: (tx, tz) => this.dashTarget(tx, tz),
     });
 
     this.gathering = new GatherLoop(
@@ -695,7 +704,11 @@ export class WorldScene implements GameScene, RuntimeView {
       else if (k === 'k') this.togglePanel('codex');
       else if (k === 'l') this.togglePanel('grimoire');
       else if (k === 'g') this.toggleAutoCombat();
-      else if (k === 'escape') this.togglePanel('settings');
+      // Escape closes whatever panel is open first; with nothing open it opens Settings.
+      else if (k === 'escape') {
+        if (this.panelOpen() && !this.settingsPanel.isOpen) this.closePanels();
+        else this.togglePanel('settings');
+      }
       else this.keys.add(k);
       this.mouse.shift = e.shiftKey;
     });
@@ -935,7 +948,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const action = selectAutoCombatAction({ player: { x: p.x, z: p.z, essence: p.essence, maxEssence: p.stats.maxEssence, hp: p.hp, maxHp: p.stats.maxHp },
       enemies: this.enemiesMap().values(), corpses: this.corpsesMap().values(), boss: this.bossState(),
       thrallCount: thralls, thrallCap: this.discipline.mods.thrallCap,
-      ready: id => (id === this.primary || this.hotbar.includes(id)) && this.abilities.ready(id, now), primary: this.primary });
+      ready: id => (id === this.primary || this.hotbar.includes(id)) && this.abilities.ready(id, now), primary: this.primary, selfId: this.selfId });
     const previous = this.autoTargetId === null ? undefined : this.enemiesMap().get(this.autoTargetId);
     this.autoTargetId = action?.target.enemyId ?? (previous && previous.hp > 0 && previous.state !== 'dead' && Math.hypot(previous.x - p.x, previous.z - p.z) <= ABILITIES[this.primary].range ? previous.id : null);
     if (action) this.autoAim = action.target;
@@ -1323,6 +1336,25 @@ export class WorldScene implements GameScene, RuntimeView {
     }
   }
 
+  /** Our body, or a remote caster's latest reported position (for effects that follow a caster). */
+  private casterFollow(by: string, x: number, z: number) {
+    const at = { x, z };
+    return by === this.selfId
+      ? () => (this.player.alive ? this.player : null)
+      : () => {
+          const r = this.remotes.get(by);
+          if (!r) return null;
+          at.x = r.tx;
+          at.z = r.tz;
+          return at;
+        };
+  }
+
+  /** Veil Step: the furthest walkable point toward the goal in the current hall. */
+  private dashTarget(tx: number, tz: number) {
+    return veilTarget(this.nav, this.player.x, this.player.z, tx, tz);
+  }
+
   private handleEvent(ev: SimEvent) {
     this.views.onEvent(ev);
     const me = this.selfId;
@@ -1408,6 +1440,25 @@ export class WorldScene implements GameScene, RuntimeView {
         if (ev.by === me) this.rig.shake(0.12);
         break;
       }
+      case 'offering':
+        this.abilities.onOffering(ev, ev.by === me, this.casterFollow(ev.by, ev.x, ev.z));
+        if (ev.by === me && !ev.ok) this.floating.spawn(this.player.x, 2.4, this.player.z, 'The corpse is gone', 'info');
+        break;
+      case 'rally':
+        this.abilities.onRally(ev, this.casterFollow(ev.by, ev.x, ev.z));
+        break;
+      case 'seeded':
+        this.abilities.onSeeded(ev);
+        break;
+      case 'seedGone':
+        this.abilities.onSeedGone(ev.corpseId);
+        break;
+      case 'seedBurst':
+        this.abilities.onSeedBurst(ev);
+        break;
+      case 'corpseGone':
+        this.abilities.onSeedGone(ev.id);
+        break;
       case 'heal':
         if (ev.player === me && this.player.alive) {
           this.player.heal(ev.amount);

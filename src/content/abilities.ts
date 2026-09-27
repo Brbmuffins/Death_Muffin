@@ -14,6 +14,14 @@ export type AbilityId =
   | 'grave_step'
   | 'grave_frost'
   | 'bone_mantle'
+  // Spell variety (docs/agent-briefs/spell-variety-first-session.md §4): two primaries and five keys.
+  | 'bone_fan'
+  | 'rot_lance'
+  | 'grave_offering'
+  | 'ivory_cleave'
+  | 'veil_step'
+  | 'rally_dead'
+  | 'carrion_seed'
   // Discipline signature rites (level 10, key R / 6).
   | 'ossuary_wall'
   | 'command_rend'
@@ -184,6 +192,105 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     radius: 6,
     power: 0.3,
   },
+  // --- Spell variety: primaries (left click, no cost) and five more Grimoire rites. ---
+  bone_fan: {
+    id: 'bone_fan',
+    slot: 0,
+    unlockLevel: 2,
+    name: 'Bone Fan',
+    description: 'Fling three slivers in a fan. Each homes on a different enemy near the one you clicked (the Prelate takes only one). +3 essence per sliver that lands.',
+    icon: 'art/abilities/necro-bone-fan.png',
+    targeting: 'enemy',
+    cooldownMs: 520,
+    essenceCost: 0,
+    range: 8,
+    radius: 0.35,
+    power: 0.55,
+  },
+  rot_lance: {
+    id: 'rot_lance',
+    slot: 0,
+    unlockLevel: 6,
+    name: 'Rot Lance',
+    description: 'A lance of rot pierces the first two enemies in a line toward your target, adding a stack of Withered to each. +4 essence on the first hit.',
+    icon: 'art/abilities/necro-rot-lance.png',
+    targeting: 'enemy',
+    cooldownMs: 700,
+    essenceCost: 0,
+    range: 14,
+    radius: 0.5,
+    power: 0.8,
+  },
+  grave_offering: {
+    id: 'grave_offering',
+    slot: 2,
+    unlockLevel: 2,
+    name: 'Grave Offering',
+    description: 'Burn the corpse nearest the cursor into your own reserves: +16 Grave Essence (more from resonant and elite bodies) and 4% of your health.',
+    icon: 'art/abilities/necro-grave-offering.png',
+    targeting: 'corpse',
+    cooldownMs: 2000,
+    essenceCost: 0,
+    range: 13,
+    radius: 2.5,
+    power: 0,
+  },
+  ivory_cleave: {
+    id: 'ivory_cleave',
+    slot: 1,
+    unlockLevel: 4,
+    name: 'Ivory Cleave',
+    description: 'Sweep a crescent of bone through everything in a wide arc in front of you (3.6m), Fracturing what it cuts.',
+    icon: 'art/abilities/necro-ivory-cleave.png',
+    targeting: 'direction',
+    cooldownMs: 1600,
+    essenceCost: 14,
+    range: 3.6,
+    radius: 3.6,
+    power: 1.7,
+  },
+  veil_step: {
+    id: 'veil_step',
+    slot: 2,
+    unlockLevel: 4,
+    name: 'Veil Step',
+    description: 'Slip through the veil toward the cursor, up to 5.5m. No corpse needed; it never passes a sealed door or leaves the hall you stand in.',
+    icon: 'art/abilities/necro-veil-step.png',
+    targeting: 'ground',
+    cooldownMs: 7000,
+    essenceCost: 0,
+    range: 5.5,
+    radius: 0,
+    power: 0,
+  },
+  rally_dead: {
+    id: 'rally_dead',
+    slot: 4,
+    unlockLevel: 6,
+    name: 'Rally the Dead',
+    description: 'Rally every thrall you command for 6s: +40% damage, +30% attack speed, 20% health restored, and they turn on the enemy nearest the cursor.',
+    icon: 'art/abilities/necro-rally-the-dead.png',
+    targeting: 'self',
+    cooldownMs: 12000,
+    essenceCost: 20,
+    range: 14,
+    radius: 8,
+    power: 0,
+  },
+  carrion_seed: {
+    id: 'carrion_seed',
+    slot: 3,
+    unlockLevel: 8,
+    name: 'Carrion Seed',
+    description: 'Plant a seed of rot in a corpse. When an enemy comes close it bursts, hurting everything within 3m and leaving 2 stacks of Withered. One seed at a time.',
+    icon: 'art/abilities/necro-carrion-seed.png',
+    targeting: 'corpse',
+    cooldownMs: 6000,
+    essenceCost: 18,
+    range: 13,
+    radius: 3,
+    power: 1.6,
+  },
   // --- Signature rites: one per discipline, unlocked at SIGNATURE_LEVEL (icons: gemini-jobs/icons-v4.json).
   ossuary_wall: {
     id: 'ossuary_wall',
@@ -261,7 +368,7 @@ export const SIGNATURE_BY_DISCIPLINE = {
 
 export type SignatureKind = 'wall' | 'rend' | 'dirge' | 'bloom';
 /** Host-shaped rites carried by the `signature` intent: the four signatures plus Bone Mantle. */
-export type RiteKind = SignatureKind | 'mantle';
+export type RiteKind = SignatureKind | 'mantle' | 'offering' | 'rally' | 'seed';
 export const SIGNATURE_KIND: Partial<Record<AbilityId, SignatureKind>> = {
   ossuary_wall: 'wall',
   command_rend: 'rend',
@@ -293,11 +400,16 @@ export const GRIMOIRE: AbilityId[] = [
   'grave_step',
   'grave_frost',
   'bone_mantle',
+  'grave_offering',
+  'ivory_cleave',
+  'veil_step',
+  'rally_dead',
+  'carrion_seed',
 ];
 export const DEFAULT_LOADOUT: AbilityId[] = ['marrow_spear', 'exhume', 'miasma', 'black_litany'];
 
 /** Left-click primaries (0 essence). The Grimoire's LMB socket picks one; Bone Needle is the default. */
-export const PRIMARIES: AbilityId[] = ['bone_needle'];
+export const PRIMARIES: AbilityId[] = ['bone_needle', 'bone_fan', 'rot_lance'];
 export const DEFAULT_PRIMARY: AbilityId = 'bone_needle';
 
 /** Grimoire role chips: what a rite is for (a filter in the Grimoire, a line in the Codex). */
@@ -313,10 +425,32 @@ export const RITE_ROLES: Partial<Record<AbilityId, RiteRole[]>> = {
   grave_step: ['survival', 'corpse'],
   grave_frost: ['control'],
   bone_mantle: ['survival', 'corpse'],
+  bone_fan: ['damage'],
+  rot_lance: ['damage', 'control'],
+  grave_offering: ['corpse', 'survival'],
+  ivory_cleave: ['damage'],
+  veil_step: ['survival'],
+  rally_dead: ['legion'],
+  carrion_seed: ['control', 'corpse'],
 };
 export const rolesOf = (id: AbilityId): RiteRole[] => RITE_ROLES[id] ?? [];
 /** Key caps for hotbar slots 1–6 (slot 5 is the right-click action, 6 the signature). */
 export const SLOT_KEYS = ['1', '2', '3', '4', 'RMB', 'R'] as const;
+
+/** Bone Fan: three slivers, each on a distinct enemy in a narrow cone around the clicked one. */
+export const BONE_FAN = { slivers: 3, spreadDeg: 12, coneHalfDeg: 15, essencePerHit: 3, essenceCap: 6, speed: 24 };
+/** Rot Lance: pierces the first two in a 0.5m lane; one Withered stack each (host-capped). */
+export const ROT_LANCE = { pierce: 2, halfWidth: 0.25, essence: 4, withered: 1, speed: 32 };
+/** Grave Offering: a corpse burned for essence + health (host consumes it). */
+export const GRAVE_OFFERING = { essence: 16, resonantBonus: 8, eliteMult: 2, healFrac: 0.04, pickRadius: 0.9 };
+/** Ivory Cleave: a 120° crescent in front of the caster. */
+export const IVORY_CLEAVE = { halfAngleDeg: 60, reach: 3.6, fracture: 1 };
+/** Veil Step: a short dash that walks the segment in small steps and stops at the last valid point. */
+export const VEIL_STEP = { stepM: 0.25, durationS: 0.16 };
+/** Rally the Dead (host): thrall buff. Gravecallers rally for 2s longer. */
+export const RALLY = { durationS: 6, gravecallerBonusS: 2, damageMult: 1.4, attackSpeedMult: 1.3, healFrac: 0.2 };
+/** Carrion Seed (host): arm delay, life, trigger reach, burst radius and Withered. */
+export const CARRION_SEED = { armS: 0.6, lifeS: 20, triggerR: 2.2, burstR: 3, withered: 2, witheredCap: 6, pickRadius: 0.9 };
 
 /** Wailing Skull: damage falls off per leap; a killing leap earns one more (up to maxHops). */
 export const WAILING_SKULL = { hops: 3, maxHops: 5, falloff: 0.8, leapRange: 6.5, speed: 15 };
@@ -399,4 +533,7 @@ export const SPELL_FX = {
   step: { blood: 0xc23a48, crimson: 0x8a2c3c, mist: 0x3a1218, hot: 0xffc58a },
   frost: { frost: 0x9fc4ff, deep: 0x5b7fd6, pale: 0xdde8ff },
   mantle: { bone: 0xe8dcc0, gold: 0xe9c98f, amber: 0xd9a66b, dust: 0x6a5a48 },
+  /** Spell variety: Rot Lance = rot chartreuse/olive; Veil Step = spirit jade/pale (shape-distinct from Grave Step's crimson). */
+  lance: { rot: 0xc7e04a, deep: 0x6f8f22, spore: 0x2b3317 },
+  veil: { jade: 0x6fe3c8, pale: 0xdde8ff, deep: 0x1f8f86 },
 } as const;

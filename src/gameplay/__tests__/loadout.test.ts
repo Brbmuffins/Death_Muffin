@@ -1,5 +1,6 @@
+import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { ABILITIES, DEFAULT_LOADOUT, GRIMOIRE, HOTBAR, SIGNATURE_LEVEL, unlockLevel, type AbilityId } from '../../content/abilities';
+import { ABILITIES, PRIMARIES, DEFAULT_LOADOUT, GRIMOIRE, HOTBAR, SIGNATURE_LEVEL, unlockLevel, type AbilityId } from '../../content/abilities';
 import { CODEX_RITES, RITE_ORDER } from '../../content/codex';
 import { CAST_FLOW } from '../../content/combatFlow';
 import { assignRite, legacyLoadoutKey, loadLoadout, loadRites, loadSeen, loadoutStorageKey, sanitizeLoadout, sanitizePrimary, saveLoadout, saveRites, unseenRites } from '../loadout';
@@ -51,8 +52,11 @@ describe('Grimoire loadout', () => {
       expect(CAST_FLOW[id].lockMs).toBeLessThanOrEqual(160);
       expect(ABILITIES[id].icon).toMatch(/^art\/abilities\//);
     }
-    const gated = GRIMOIRE.filter((id) => unlockLevel(id) > 1).map(unlockLevel);
-    expect(gated).toEqual([3, 5, 7, 12]);
+    // The unlock ladder (spell-variety brief §4): a choice at level 2, then 3, 4, 5, 6, 7, 8, 12.
+    const gated = GRIMOIRE.filter((id) => unlockLevel(id) > 1).map(unlockLevel).sort((a, b) => a - b);
+    expect(gated).toEqual([2, 3, 4, 4, 5, 6, 7, 8, 12]);
+    expect(PRIMARIES.map(unlockLevel)).toEqual([1, 2, 6]);
+    for (const id of [...GRIMOIRE, ...PRIMARIES]) expect(existsSync(`public/${ABILITIES[id].icon}`), ABILITIES[id].icon).toBe(true);
     expect(unlockLevel('dirge')).toBe(SIGNATURE_LEVEL);
   });
 });

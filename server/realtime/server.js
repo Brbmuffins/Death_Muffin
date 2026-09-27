@@ -51,7 +51,7 @@ const LIMITS = {
 
 const INTENT_TYPES = new Set(['hit', 'miasma', 'exhume', 'litany', 'summonBoss', 'recallThralls', 'detonate', 'signature', 'gather']);
 /** Host-shaped rites (discipline signatures + Bone Mantle); the host owns their shapes and clamps the aim around the caster. */
-const SIGNATURES = new Set(['wall', 'rend', 'dirge', 'bloom', 'mantle']);
+const SIGNATURES = new Set(['wall', 'rend', 'dirge', 'bloom', 'mantle', 'offering', 'rally', 'seed']);
 const WORLD_BOUND = 400; // |x|,|z| sanity bound in world units
 
 if (DEV_TRUST_TOKENS && process.env.NODE_ENV === 'production') {
@@ -115,6 +115,9 @@ function validIntent(intent) {
       if ('bleed' in out) out.bleed = Math.min(Math.max(0, num(out.bleed)), out.dmg * 0.25);
       // Grave Frost: a flag only; the host sim owns the Chill duration.
       if ('chill' in out) out.chill = !!out.chill;
+      // Rot Lance: at most one Withered stack per hit, capped 1..12 (the host clamps again).
+      if ('withered' in out) out.withered = Math.min(1, Math.max(0, Math.floor(num(out.withered))));
+      if ('witheredCap' in out) out.witheredCap = Math.min(12, Math.max(1, Math.floor(num(out.witheredCap, 5))));
       break;
     case 'miasma':
       out.r = Math.min(8, Math.max(0.5, num(out.r, 3)));
@@ -140,6 +143,9 @@ function validIntent(intent) {
       out.dx = Math.min(1e3, Math.max(-1e3, num(out.dx)));
       out.dz = Math.min(1e3, Math.max(-1e3, num(out.dz)));
       out.sp = Math.min(1e5, Math.max(0, num(out.sp)));
+      // Carrion Seed's Withered cap and Rally's duration (the host clamps both again).
+      if ('cap' in out) out.cap = Math.min(12, Math.max(1, Math.floor(num(out.cap, 6))));
+      if ('dur' in out) out.dur = Math.min(10, Math.max(0, num(out.dur, 6)));
       break;
     case 'gather':
       // Depletes a gathering node on the host (rewards come from the REST API, never from here).

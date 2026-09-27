@@ -13,6 +13,12 @@ export const FX_IMAGES = {
   frostFan: 'art/fx/frost-fan.png',
   rime: 'art/fx/rime.png',
   boneRing: 'art/fx/bone-ring.png',
+  // Spell variety sprites (gemini-jobs/spells-v5.json).
+  crescent: 'art/fx/crescent.png',
+  seedBud: 'art/fx/seed-bud.png',
+  wisp: 'art/fx/wisp.png',
+  rallySigil: 'art/fx/rally-sigil.png',
+  veilStreak: 'art/fx/veil-streak.png',
 } as const;
 export type FxImage = keyof typeof FX_IMAGES;
 

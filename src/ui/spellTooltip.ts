@@ -1,6 +1,12 @@
 import {
   ABILITIES,
+  BONE_FAN,
   BONE_MANTLE,
+  CARRION_SEED,
+  GRAVE_OFFERING,
+  IVORY_CLEAVE,
+  RALLY,
+  ROT_LANCE,
   DEFAULT_LOADOUT,
   DETONATE,
   FRACTURE,
@@ -67,7 +73,7 @@ export function spellTooltip(id: AbilityId, discipline?: Discipline, state: Spel
   let radius = a.radius;
   if (id === 'miasma') radius *= (m?.miasmaRadiusMult ?? 1) * areaMult;
   if (id === 'black_litany') radius *= areaMult;
-  if (['miasma', 'black_litany', 'corpse_explosion', 'dirge', 'plague_bloom', 'command_rend', 'grave_step', 'bone_mantle'].includes(id)) {
+  if (['miasma', 'black_litany', 'corpse_explosion', 'dirge', 'plague_bloom', 'command_rend', 'grave_step', 'bone_mantle', 'carrion_seed', 'rally_dead'].includes(id)) {
     metrics.push({ label: 'Radius', value: `${number(radius)}m` });
   }
   const details: string[] = [];
@@ -103,6 +109,30 @@ export function spellTooltip(id: AbilityId, discipline?: Discipline, state: Spel
     case 'corpse_explosion':
       details.push(`Consumes one corpse. Resonant corpses blast ${number(DETONATE.resonantRadiusMult)}× wider; elite corpses deal ${number(DETONATE.eliteDamageMult)}× damage.`,
         `Toxic corpses leave a friendly rot pool for ${number(DETONATE.rotDurationMs / 1000)}s. A burst body cannot also become a thrall.`);
+      break;
+    case 'bone_fan':
+      details.push(`${BONE_FAN.slivers} slivers, each on a different enemy within ${BONE_FAN.coneHalfDeg * 2}° of your target; the Prelate counts as one.`,
+        `+${BONE_FAN.essencePerHit} Grave Essence per sliver that lands (up to ${BONE_FAN.essenceCap} per cast). Equip on the Grimoire's LMB socket.`);
+      break;
+    case 'rot_lance':
+      details.push(`Pierces the first ${ROT_LANCE.pierce} enemies in a narrow line and adds ${ROT_LANCE.withered} Withered stack to each (up to ${m?.witheredMaxStacks ?? DETONATE.rotWitheredCap}).`,
+        `+${ROT_LANCE.essence} Grave Essence on the first hit. Equip on the Grimoire's LMB socket.`);
+      break;
+    case 'grave_offering':
+      details.push(`Consumes one corpse: +${GRAVE_OFFERING.essence} essence (+${GRAVE_OFFERING.resonantBonus} resonant, ×${GRAVE_OFFERING.eliteMult} elite) and ${percent(GRAVE_OFFERING.healFrac + (m?.corpseHeal ?? 0))} of your maximum health.`);
+      break;
+    case 'ivory_cleave':
+      details.push(`A ${IVORY_CLEAVE.halfAngleDeg * 2}° arc to ${number(IVORY_CLEAVE.reach)}m. Everything cut gains ${IVORY_CLEAVE.fracture} Fracture stack.`);
+      break;
+    case 'veil_step':
+      details.push('Stops at walls and sealed doors and never leaves the hall you stand in. No damage and no invulnerability. Auto combat never casts it.');
+      break;
+    case 'rally_dead':
+      details.push(`Requires at least one thrall. For ${RALLY.durationS}s${m && discipline!.id === 'gravecaller' ? ` (+${RALLY.gravecallerBonusS}s, Gravecaller)` : ''} thralls deal ${percent(RALLY.damageMult - 1)} more damage and attack ${percent(RALLY.attackSpeedMult - 1)} faster; each heals ${percent(RALLY.healFrac)} and turns on the enemy nearest the cursor.`);
+      break;
+    case 'carrion_seed':
+      details.push(`Arms after ${number(CARRION_SEED.armS)}s; the first enemy within ${number(CARRION_SEED.triggerR)}m bursts it for ${number(CARRION_SEED.burstR)}m and ${CARRION_SEED.withered} Withered stacks. One seed at a time; it withers after ${CARRION_SEED.lifeS}s.`,
+        'If another rite uses the seeded corpse, the seed is lost with it.');
       break;
     case 'wailing_skull':
       details.push(`Leaps to ${WAILING_SKULL.hops - 1} more enemies within ${WAILING_SKULL.leapRange}m, each bite ${percent(1 - WAILING_SKULL.falloff)} weaker. A bite that kills earns another leap, up to ${WAILING_SKULL.maxHops} in all.`);

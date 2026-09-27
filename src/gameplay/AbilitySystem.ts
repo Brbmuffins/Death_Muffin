@@ -2,7 +2,15 @@ import { riteLevel } from './devAccess';
 import * as THREE from 'three';
 import {
   ABILITIES,
+  BONE_FAN,
   BONE_MANTLE,
+  CARRION_SEED,
+  DETONATE,
+  GRAVE_OFFERING,
+  IVORY_CLEAVE,
+  RALLY,
+  ROT_LANCE,
+  VEIL_STEP,
   FRACTURE,
   GRAVE_FROST,
   GRAVE_STEP,
@@ -21,11 +29,28 @@ import type { NecromancerAvatar } from '../graphics/Avatars';
 import { fx } from '../graphics/fxTextures';
 import { fxImage } from '../graphics/fxImages';
 import { BOSS_RADIUS } from './sim/BossBrain';
-import type { BossState, Corpse, Enemy, Intent, SimEvent } from './sim/types';
+import type { BossState, Corpse, Enemy, Intent, SimEvent, Thrall } from './sim/types';
 import type { Player } from './Player';
 import { audio } from '../audio/Audio';
 import { HEMORRHAGE } from '../content/statuses';
 import { CAST_FLOW } from '../content/combatFlow';
+
+/**
+ * Veil Step's destination: walk from (x, z) toward (tx, tz) in small steps and keep the last point
+ * that is walkable and still in the starting hall (so it never crosses a sealed door or wall).
+ */
+export function veilTarget(nav: { blocked(x: number, z: number, r: number): boolean; areaAt(x: number, z: number): unknown }, x: number, z: number, tx: number, tz: number) {
+  const area = nav.areaAt(x, z);
+  const n = Math.max(1, Math.ceil(Math.hypot(tx - x, tz - z) / VEIL_STEP.stepM));
+  let best = { x, z };
+  for (let i = 1; i <= n; i++) {
+    const px = x + ((tx - x) * i) / n;
+    const pz = z + ((tz - z) * i) / n;
+    if (nav.blocked(px, pz, 0.45) || nav.areaAt(px, pz) !== area) break;
+    best = { x: px, z: pz };
+  }
+  return best;
+}
 
 export type CastResult = 'ok' | 'busy' | 'cooldown' | 'essence' | 'range' | 'no_target' | 'no_corpse' | 'dead' | 'locked' | 'no_thralls';
 
@@ -52,6 +77,10 @@ export interface AbilityContext {
   shake(amount: number): void;
   /** Scene clock (ms) — never this.ctx.now(), so QA stepping stays consistent. */
   now(): number;
+  /** Thralls (Rally the Dead visuals follow them). Optional for tests. */
+  thralls?(): Map<number, Thrall>;
+  /** Veil Step: the furthest valid point toward (tx, tz), walked in small steps, never past a sealed door or out of the hall. */
+  dash?(tx: number, tz: number): { x: number; z: number };
 }
 
 const N = SPELL_FX.needle;
@@ -65,6 +94,10 @@ const SK = SPELL_FX.skull;
 const ST = SPELL_FX.step;
 const FR = SPELL_FX.frost;
 const MN = SPELL_FX.mantle;
+const LN = SPELL_FX.lance;
+const VL = SPELL_FX.veil;
+const RD = SPELL_FX.rend;
+const BL = SPELL_FX.bloom;
 
 type Vec3 = { x: number; y: number; z: number };
 
@@ -78,6 +111,10 @@ export class AbilitySystem {
   private mantleUntil = 0;
   private nextShardAt = 0;
   private mantleFx: Handle | null = null;
+  /** Veil Step in flight (lerped in update). */
+  private dashing: { fx: number; fz: number; tx: number; tz: number; start: number; dur: number } | null = null;
+  /** Carrion Seed buds shown on corpses (any caster's), by corpse id. */
+  private seeds = new Map<number, Handle>();
 
   constructor(private ctx: AbilityContext) {}
 
@@ -155,6 +192,27 @@ export class AbilitySystem {
         break;
       case 'bone_mantle':
         result = this.mantle();
+        break;
+      case 'bone_fan':
+        result = this.fan(target);
+        break;
+      case 'rot_lance':
+        result = this.lance(target);
+        break;
+      case 'grave_offering':
+        result = this.offering(target);
+        break;
+      case 'ivory_cleave':
+        result = this.cleave(target);
+        break;
+      case 'veil_step':
+        result = this.veil(target);
+        break;
+      case 'rally_dead':
+        result = this.rally(target);
+        break;
+      case 'carrion_seed':
+        result = this.seed(target);
         break;
       case 'ossuary_wall':
       case 'command_rend':
@@ -672,8 +730,15 @@ export class AbilitySystem {
     this.ctx.shake(0.04);
   }
 
-  /** Per frame: the caster's mantle shreds enemies beside them (client-resolved, like Marrow Spear). */
+  /** Per frame: the Veil Step glide, then the caster's mantle shreds enemies beside them (client-resolved, like Marrow Spear). */
   update(now: number) {
+    if (this.dashing) {
+      const d = this.dashing;
+      const k = Math.min(1, (now - d.start) / d.dur);
+      const e = 1 - (1 - k) * (1 - k);
+      if (this.ctx.player.alive) this.ctx.player.teleport(d.fx + (d.tx - d.fx) * e, d.fz + (d.tz - d.fz) * e);
+      if (k >= 1) this.dashing = null;
+    }
     if (now >= this.mantleUntil) return;
     const { player: p, effects } = this.ctx;
     if (!p.alive) {
@@ -703,6 +768,330 @@ export class AbilitySystem {
     }
     const b = this.ctx.boss();
     if (b.active && Math.hypot(b.x - p.x, b.z - p.z) <= reach + BOSS_RADIUS) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, boss: true });
+  }
+
+  // --- Spell variety (docs/agent-briefs/spell-variety-first-session.md §4) ---
+
+  /** Bone Fan: three slivers, each homing on a distinct enemy in a narrow cone (the Prelate takes one). */
+  private fan(t: CastTarget): CastResult {
+    const { player: p, effects, avatar } = this.ctx;
+    const def = ABILITIES.bone_fan;
+    if (t.enemyId === undefined && !t.boss) return 'no_target';
+    if (this.shortfall('bone_fan', t) > 0) return 'range';
+    p.face(t.x, t.z);
+    avatar.cast('cast', 3.2, p.facing, CAST_FLOW.bone_fan.gestureSeconds);
+    const aim = Math.atan2(t.x - p.x, t.z - p.z);
+    const cone = (BONE_FAN.coneHalfDeg * Math.PI) / 180;
+    const angleOff = (x: number, z: number) => {
+      let d = Math.atan2(x - p.x, z - p.z) - aim;
+      while (d > Math.PI) d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      return d;
+    };
+    // The clicked target first, then the others in the cone (distinct), nearest the aim line first.
+    type Pick = { boss?: true; id?: number; off: number };
+    const picks: Pick[] = [t.boss ? { boss: true, off: 0 } : { id: t.enemyId!, off: 0 }];
+    const others: (Pick & { d: number })[] = [];
+    for (const e of this.ctx.enemies().values()) {
+      if (e.state === 'dead' || e.state === 'rising' || e.id === t.enemyId) continue;
+      const d = Math.hypot(e.x - p.x, e.z - p.z);
+      if (d > def.range + 0.4) continue;
+      const off = angleOff(e.x, e.z);
+      if (Math.abs(off) <= cone) others.push({ id: e.id, off, d });
+    }
+    others.sort((a, b) => Math.abs(a.off) - Math.abs(b.off) || a.d - b.d);
+    picks.push(...others.slice(0, BONE_FAN.slivers - 1));
+    const from = avatar.tip();
+    effects.flash({ x: from.x, y: from.y, z: from.z, color: N.trail, size: 0.8, duration: 0.14 });
+    audio.play('needleCast', p.x, p.z);
+    const dmg = this.sp * def.power;
+    let refunded = 0;
+    const spread = (BONE_FAN.spreadDeg * Math.PI) / 180;
+    const angles = [0, -spread, spread];
+    for (let k = 0; k < BONE_FAN.slivers; k++) {
+      const pick = picks[k];
+      const a = aim + angles[k];
+      const miss = { x: p.x + Math.sin(a) * def.range, y: 1, z: p.z + Math.cos(a) * def.range };
+      effects.projectile({
+        from,
+        kind: 'needle',
+        color: N.trail,
+        speed: BONE_FAN.speed,
+        to: () => {
+          if (pick?.boss) {
+            const b = this.ctx.boss();
+            return b.active ? { x: b.x, y: 2.2, z: b.z } : miss;
+          }
+          const e = pick?.id !== undefined ? this.ctx.enemies().get(pick.id) : undefined;
+          return e && e.state !== 'dead' ? { x: e.x, y: 1, z: e.z } : miss;
+        },
+        onArrive: (pos) => {
+          if (!p.alive || !pick) return effects.emit({ x: pos.x, y: pos.y, z: pos.z, count: 4, color: N.dust, spread: 0.1, speed: 1.5, up: 0.6, life: 0.3, size: 0.1, gravity: 6 });
+          if (pick.boss) {
+            if (!this.ctx.boss().active) return;
+            this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, boss: true });
+          } else {
+            const e = this.ctx.enemies().get(pick.id!);
+            if (!e || e.state === 'dead') return;
+            this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [pick.id!], dmg });
+          }
+          if (refunded < BONE_FAN.essenceCap) {
+            const add = Math.min(BONE_FAN.essencePerHit, BONE_FAN.essenceCap - refunded);
+            refunded += add;
+            p.essence = Math.min(p.stats.maxEssence, p.essence + add);
+          }
+          audio.play('needleHit', pos.x, pos.z, 0.8);
+          effects.flash({ x: pos.x, y: pos.y, z: pos.z, color: N.impact, size: 0.8, duration: 0.16 });
+          effects.emit({ x: pos.x, y: pos.y, z: pos.z, count: 6, color: N.dust, spread: 0.1, speed: 3, up: 1.1, life: 0.35, size: 0.12, gravity: 7 });
+          this.ctx.number(pos.x, pos.z, dmg, 'hit');
+        },
+      });
+    }
+    return 'ok';
+  }
+
+  /** Rot Lance: pierces the first two enemies in a narrow lane; the host adds one Withered stack each. */
+  private lance(t: CastTarget): CastResult {
+    const { player: p, effects, avatar, discipline } = this.ctx;
+    const def = ABILITIES.rot_lance;
+    if (t.enemyId === undefined && !t.boss) return 'no_target';
+    if (this.shortfall('rot_lance', t) > 0) return 'range';
+    let dx = t.x - p.x;
+    let dz = t.z - p.z;
+    const len = Math.hypot(dx, dz) || 1;
+    dx /= len;
+    dz /= len;
+    p.face(p.x + dx, p.z + dz);
+    avatar.cast('cast', 2.8, p.facing, CAST_FLOW.rot_lance.gestureSeconds);
+    const origin = { x: p.x, z: p.z };
+    const tip = avatar.tip();
+    const end = { x: origin.x + dx * def.range, y: 1, z: origin.z + dz * def.range };
+    const dmg = this.sp * def.power;
+    const cap = discipline.mods.witheredMaxStacks ?? DETONATE.rotWitheredCap;
+    effects.flash({ x: tip.x, y: tip.y, z: tip.z, color: LN.rot, size: 0.7, duration: 0.14 });
+    audio.play('needleCast', p.x, p.z, 0.8);
+    effects.beam(tip, () => end, LN.deep, 0.03, 0.18);
+    effects.projectile({
+      from: tip, to: () => end, kind: 'orb', color: LN.rot, speed: ROT_LANCE.speed,
+      onArrive: () => {
+        if (!p.alive) return;
+        const lane: { along: number; id?: number; boss?: boolean; x: number; z: number }[] = [];
+        for (const e of this.ctx.enemies().values()) {
+          if (e.state === 'dead') continue;
+          const rx = e.x - origin.x;
+          const rz = e.z - origin.z;
+          const along = rx * dx + rz * dz;
+          if (along > 0 && along < def.range + e.radius && Math.abs(rx * dz - rz * dx) < ROT_LANCE.halfWidth + e.radius) lane.push({ along, id: e.id, x: e.x, z: e.z });
+        }
+        const b = this.ctx.boss();
+        if (b.active) {
+          const rx = b.x - origin.x;
+          const rz = b.z - origin.z;
+          const along = rx * dx + rz * dz;
+          if (along > 0 && along < def.range + BOSS_RADIUS && Math.abs(rx * dz - rz * dx) < ROT_LANCE.halfWidth + BOSS_RADIUS) lane.push({ along, boss: true, x: b.x, z: b.z });
+        }
+        lane.sort((a, c) => a.along - c.along);
+        const hits = lane.slice(0, ROT_LANCE.pierce);
+        const ids = hits.filter((h) => h.id !== undefined).map((h) => h.id!);
+        if (ids.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids, dmg, withered: ROT_LANCE.withered, witheredCap: cap });
+        if (hits.some((h) => h.boss)) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, boss: true });
+        if (hits.length) p.essence = Math.min(p.stats.maxEssence, p.essence + ROT_LANCE.essence);
+        for (const h of hits) {
+          this.ctx.number(h.x, h.z, dmg, 'hit');
+          effects.emitSmoke({ x: h.x, y: 0.9, z: h.z, count: 2, color: LN.spore, spread: 0.3, speed: 0.5, up: 0.5, life: 0.6, size: 0.8, shrink: -0.3 });
+          effects.emit({ x: h.x, y: 1, z: h.z, count: 8, color: LN.rot, spread: 0.2, speed: 2, up: 0.8, life: 0.45, size: 0.14, gravity: 3 });
+        }
+        if (hits.length) audio.play('needleHit', hits[0].x, hits[0].z, 0.7);
+      },
+    });
+    return 'ok';
+  }
+
+  /** Grave Offering: the host consumes the corpse; essence + health arrive with its answer (onOffering). */
+  private offering(t: CastTarget): CastResult {
+    const { player: p, avatar } = this.ctx;
+    const def = ABILITIES.grave_offering;
+    const c = this.pickCorpse(t, def.radius, def.range);
+    if (!c || (p.area && c.area !== p.area)) return 'no_corpse';
+    p.face(c.x, c.z);
+    avatar.cast('cast', 2.4, p.facing, CAST_FLOW.grave_offering.gestureSeconds);
+    this.ctx.send({ t: 'signature', by: this.ctx.selfId, sig: 'offering', x: c.x, z: c.z, dx: 0, dz: 0, sp: this.sp });
+    return 'ok';
+  }
+
+  onOffering(ev: Extract<SimEvent, { t: 'offering' }>, mine: boolean, follow: () => { x: number; z: number } | null) {
+    const { effects, player: p, discipline } = this.ctx;
+    if (!ev.ok) return;
+    // A jade wisp flies corpse → caster (Exhume's beam runs the other way).
+    effects.decal({ tex: fx.ring(), color: X.spirit, x: ev.x, z: ev.z, r: 1.1, duration: 0.5, opacity: 0.9, growFrom: 0.3 });
+    effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 14, color: X.spirit, spread: 0.3, speed: 1, up: 2.2, life: 0.6, size: 0.18 });
+    effects.projectile({
+      from: { x: ev.x, y: 0.8, z: ev.z },
+      to: () => {
+        const f = follow();
+        return f ? { x: f.x, y: 1.2, z: f.z } : null;
+      },
+      kind: 'sprite', tex: fxImage('wisp'), size: 0.9, color: X.beam, speed: 14,
+      onArrive: (pos) => {
+        effects.flash({ x: pos.x, y: pos.y, z: pos.z, color: X.spirit, size: 1.2, duration: 0.2 });
+        if (!mine || !p.alive) return;
+        const essence = (GRAVE_OFFERING.essence + (ev.corpseKind === 'resonant' ? GRAVE_OFFERING.resonantBonus : 0)) * (ev.elite ? GRAVE_OFFERING.eliteMult : 1);
+        p.essence = Math.min(p.stats.maxEssence, p.essence + essence);
+        const heal = p.stats.maxHp * (GRAVE_OFFERING.healFrac + (discipline.mods.corpseHeal ?? 0));
+        p.hp = Math.min(p.stats.maxHp, p.hp + heal);
+        audio.play('shard', pos.x, pos.z);
+      },
+    });
+    audio.play('exhume', ev.x, ev.z);
+  }
+
+  /** Ivory Cleave: a 120° crescent resolved instantly (client-resolved like Grave Frost), Fracturing what it cuts. */
+  private cleave(t: CastTarget): CastResult {
+    const { player: p, effects, avatar } = this.ctx;
+    const def = ABILITIES.ivory_cleave;
+    let dx = t.x - p.x;
+    let dz = t.z - p.z;
+    const l = Math.hypot(dx, dz) || 1;
+    dx /= l;
+    dz /= l;
+    p.face(p.x + dx, p.z + dz);
+    avatar.cast('cast', 3, p.facing, CAST_FLOW.ivory_cleave.gestureSeconds);
+    const cosMax = Math.cos((IVORY_CLEAVE.halfAngleDeg * Math.PI) / 180);
+    const dmg = this.sp * def.power;
+    const inArc = (x: number, z: number, r: number) => {
+      const rx = x - p.x;
+      const rz = z - p.z;
+      const d = Math.hypot(rx, rz);
+      if (d > IVORY_CLEAVE.reach + r) return false;
+      return d < r || (rx * dx + rz * dz) / d >= cosMax;
+    };
+    const ids: number[] = [];
+    for (const e of this.ctx.enemies().values()) {
+      if (e.state === 'dead' || !inArc(e.x, e.z, e.radius)) continue;
+      ids.push(e.id);
+      if (ids.length <= 10) {
+        this.ctx.number(e.x, e.z, dmg, 'hit');
+        effects.emit({ x: e.x, y: 0.9, z: e.z, count: 5, color: S.bone, spread: 0.2, speed: 2.4, up: 1.1, life: 0.35, size: 0.12, gravity: 8 });
+      }
+      if (ids.length >= 64) break;
+    }
+    if (ids.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids, dmg, fracture: IVORY_CLEAVE.fracture });
+    const b = this.ctx.boss();
+    if (b.active && inArc(b.x, b.z, BOSS_RADIUS)) {
+      this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, fracture: IVORY_CLEAVE.fracture, boss: true });
+      this.ctx.number(b.x, b.z, dmg, 'hit');
+    }
+    effects.decal({ tex: fxImage('crescent'), color: S.bone, x: p.x + dx * 1.5, z: p.z + dz * 1.5, r: 2.2, rot: Math.atan2(dx, dz), duration: 0.45, opacity: 1, growFrom: 0.6, fadeOut: 0.3 });
+    effects.decal({ tex: fxImage('crescent'), color: S.crack, x: p.x + dx * 1.6, z: p.z + dz * 1.6, r: 2.4, rot: Math.atan2(dx, dz), duration: 0.35, opacity: 0.6, growFrom: 0.7 });
+    effects.lightFlash(p.x + dx * 1.5, 1, p.z + dz * 1.5, S.crack, 14, 0.2);
+    audio.play('spear', p.x, p.z, 1.3);
+    if (ids.length) audio.play('boneHit', p.x + dx * 2, p.z + dz * 2);
+    this.ctx.shake(0.05);
+    return 'ok';
+  }
+
+  /** Veil Step: a short, lerped slip toward the cursor that stops at the last valid point. */
+  private veil(t: CastTarget): CastResult {
+    const { player: p, effects, avatar } = this.ctx;
+    const def = ABILITIES.veil_step;
+    let dx = t.x - p.x;
+    let dz = t.z - p.z;
+    const l = Math.hypot(dx, dz);
+    if (l < 0.3) return 'no_target';
+    const reach = Math.min(def.range, l);
+    dx /= l;
+    dz /= l;
+    const goal = { x: p.x + dx * reach, z: p.z + dz * reach };
+    const to = this.ctx.dash ? this.ctx.dash(goal.x, goal.z) : goal;
+    if (Math.hypot(to.x - p.x, to.z - p.z) < VEIL_STEP.stepM) return 'no_target';
+    p.face(to.x, to.z);
+    avatar.cast('cast', 3.4, p.facing, CAST_FLOW.veil_step.gestureSeconds);
+    p.stop();
+    const from = { x: p.x, z: p.z };
+    this.dashing = { fx: from.x, fz: from.z, tx: to.x, tz: to.z, start: this.ctx.now(), dur: VEIL_STEP.durationS * 1000 };
+    const dist = Math.hypot(to.x - from.x, to.z - from.z);
+    effects.decal({ tex: fxImage('veilStreak'), color: VL.jade, x: (from.x + to.x) / 2, z: (from.z + to.z) / 2, r: dist / 2 + 0.4, sx: 0.35, rot: Math.atan2(to.x - from.x, to.z - from.z), duration: 0.6, opacity: 0.85, fadeOut: 0.45 });
+    effects.emitSmoke({ x: from.x, y: 0.9, z: from.z, count: 4, color: VL.deep, spread: 0.4, speed: 0.5, up: 0.5, life: 0.6, size: 1, shrink: -0.3 });
+    effects.emit({ x: from.x, y: 1, z: from.z, count: 12, color: VL.pale, spread: 0.3, speed: 1.6, up: 0.8, life: 0.4, size: 0.14 });
+    effects.decal({ tex: fx.ring(), color: VL.jade, x: to.x, z: to.z, r: 1, duration: 0.45, opacity: 0.9, growFrom: 0.2 });
+    effects.lightFlash(to.x, 1.2, to.z, VL.jade, 14, 0.25);
+    audio.play('bloodStep', from.x, from.z, 1.3);
+    return 'ok';
+  }
+
+  /** Rally the Dead: the host buffs and retargets the legion; everyone sees the tethers (onRally). */
+  private rally(t: CastTarget): CastResult {
+    const { player: p, avatar, discipline, effects } = this.ctx;
+    if (!this.ctx.thrallCount()) return 'no_thralls';
+    avatar.cast('cast', 2, p.facing, CAST_FLOW.rally_dead.gestureSeconds);
+    const dur = RALLY.durationS + (discipline.id === 'gravecaller' ? RALLY.gravecallerBonusS : 0);
+    this.ctx.send({ t: 'signature', by: this.ctx.selfId, sig: 'rally', x: t.x, z: t.z, dx: 0, dz: 0, sp: this.sp, dur });
+    effects.decal({ tex: fxImage('rallySigil'), color: RD.jade, x: p.x, z: p.z, r: 2.4, duration: 0.8, opacity: 0.9, growFrom: 0.4, spin: 1 });
+    return 'ok';
+  }
+
+  onRally(ev: Extract<SimEvent, { t: 'rally' }>, follow: () => { x: number; z: number } | null) {
+    const { effects } = this.ctx;
+    const thralls = this.ctx.thralls?.();
+    const dur = RALLY.durationS + RALLY.gravecallerBonusS;
+    for (const id of ev.ids) {
+      const at = () => {
+        const th = thralls?.get(id);
+        return th && th.state !== 'dead' && (th.rallyT ?? 1) > 0 ? { x: th.x, z: th.z } : null;
+      };
+      const f = follow() ?? { x: ev.x, z: ev.z };
+      effects.beam(
+        { x: f.x, y: 1.2, z: f.z },
+        () => {
+          const a = at();
+          return a ? { x: a.x, y: 1, z: a.z } : null;
+        },
+        RD.jade,
+        0.04,
+        0.45,
+      );
+      effects.decal({ tex: fxImage('rallySigil'), color: RD.jade, x: 0, z: 0, r: 0.7, duration: dur, opacity: 0.7, spin: 1.4, fadeOut: 0.4, follow: at });
+    }
+    effects.lightFlash(ev.x, 1.2, ev.z, RD.jade, 18, 0.3);
+    audio.play('thrallRise', ev.x, ev.z);
+  }
+
+  /** Carrion Seed: plant on the corpse nearest the cursor; the host arms and bursts it. */
+  private seed(t: CastTarget): CastResult {
+    const { player: p, avatar, discipline } = this.ctx;
+    const def = ABILITIES.carrion_seed;
+    const c = this.pickCorpse(t, 2.5, def.range);
+    if (!c || (p.area && c.area !== p.area)) return 'no_corpse';
+    p.face(c.x, c.z);
+    avatar.cast('cast', 2.4, p.facing, CAST_FLOW.carrion_seed.gestureSeconds);
+    const cap = discipline.mods.miasmaBurstsCorpses ? Math.max(CARRION_SEED.witheredCap, discipline.mods.witheredMaxStacks ?? 0) : CARRION_SEED.witheredCap;
+    this.ctx.send({ t: 'signature', by: this.ctx.selfId, sig: 'seed', x: c.x, z: c.z, dx: 0, dz: 0, sp: this.sp, cap });
+    audio.play('miasma', c.x, c.z, 1.2);
+    return 'ok';
+  }
+
+  onSeeded(ev: Extract<SimEvent, { t: 'seeded' }>) {
+    const { effects } = this.ctx;
+    this.seeds.get(ev.corpseId)?.kill();
+    effects.emit({ x: ev.x, y: 0.4, z: ev.z, count: 10, color: BL.petal, spread: 0.3, speed: 0.8, up: 1.2, life: 0.5, size: 0.14 });
+    this.seeds.set(ev.corpseId, effects.decal({ tex: fxImage('seedBud'), color: BL.petal, x: ev.x, z: ev.z, r: 0.75, duration: CARRION_SEED.lifeS + 1, opacity: 0.95, growFrom: 0.2, pulse: 3, fadeIn: ev.armMs / 1000 }));
+  }
+
+  /** A seed withered, burst or its corpse was used by another rite. */
+  onSeedGone(corpseId: number) {
+    this.seeds.get(corpseId)?.kill();
+    this.seeds.delete(corpseId);
+  }
+
+  onSeedBurst(ev: Extract<SimEvent, { t: 'seedBurst' }>) {
+    const { effects } = this.ctx;
+    effects.decal({ tex: fx.ring(), color: BL.petal, x: ev.x, z: ev.z, r: ev.r, duration: 0.5, opacity: 1, growFrom: 0.2 });
+    effects.decal({ tex: fx.disc(), color: BL.rot, x: ev.x, z: ev.z, r: ev.r * 0.9, duration: 1.5, opacity: 0.55, fadeOut: 0.8 });
+    effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 30, color: BL.petal, spread: 0.4, speed: ev.r * 2.4, up: 1.6, life: 0.6, size: 0.22, drag: 1.4 });
+    effects.emitSmoke({ x: ev.x, y: 0.6, z: ev.z, count: 6, color: BL.spore, spread: ev.r * 0.4, speed: 1, up: 0.6, life: 1, size: 1.4, shrink: -0.4 });
+    effects.lightFlash(ev.x, 1, ev.z, BL.petal, 22, 0.3);
+    audio.play('burst', ev.x, ev.z);
+    this.ctx.shake(0.06);
   }
 
   /** Discipline signature rites: aim + spell power to the host, a cast flourish here. */

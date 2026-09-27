@@ -1,4 +1,4 @@
-import { ABILITIES, DETONATE, GRAVE_FROST, WAILING_SKULL, type AbilityId } from '../content/abilities';
+import { ABILITIES, DETONATE, GRAVE_FROST, IVORY_CLEAVE, WAILING_SKULL, type AbilityId } from '../content/abilities';
 import type { CastTarget } from './AbilitySystem';
 import { BOSS_RADIUS } from './sim/BossBrain';
 import type { BossState, Corpse, Enemy } from './sim/types';
@@ -14,6 +14,8 @@ export interface AutoCombatInput {
   ready(id: AbilityId): boolean;
   /** The left-click primary the Grimoire equipped (default Bone Needle). */
   primary?: AbilityId;
+  /** Who is deciding (Carrion Seed keeps one seed per caster). */
+  selfId?: string;
 }
 
 export interface AutoCombatAction {
@@ -67,6 +69,25 @@ export function selectAutoCombatAction(input: AutoCombatInput): AutoCombatAction
   corpses.sort((a, b) => distance(p, a) - distance(p, b));
   corpses.length = Math.min(corpses.length, 32);
   if (thrallCount < thrallCap && corpses.length && canSpend('exhume')) return action('exhume', corpses[0]);
+  // Grave Offering: only when essence is low AND the legion is full (otherwise Exhume wants the body);
+  // resonant corpses are kept back for Litany.
+  if (p.essence < p.maxEssence * 0.3 && thrallCount >= thrallCap && input.ready('grave_offering')) {
+    const body = corpses.find((c) => c.kind !== 'resonant' && !c.seedOwner && distance(p, c) <= ABILITIES.grave_offering.range);
+    if (body) return action('grave_offering', body);
+  }
+  // Rally the Dead: a legion of three or more with the enemy close.
+  if (thrallCount >= 3 && canSpend('rally_dead') && targets[0].distance <= 8) return action('rally_dead', targets[0]);
+  // Carrion Seed: one live seed; plant it on the corpse nearest the approaching pack.
+  if (canSpend('carrion_seed') && !corpses.some((c) => c.seedOwner && c.seedOwner === input.selfId)) {
+    let best: Corpse | null = null;
+    let bestD = 6;
+    for (const c of corpses) {
+      if (c.seedOwner) continue;
+      const d = distance(c, targets[0]);
+      if (d > 1.5 && d < bestD) (best = c), (bestD = d);
+    }
+    if (best) return action('carrion_seed', best);
+  }
 
   const countAround = (point: CastTarget, radius: number) => targets.reduce((n, t) => n + (distance(point, t) <= radius + t.radius ? 1 : 0), 0);
   // Bone Mantle: armour up when the pack is on you and you are hurt, or when the dead lie thick.
@@ -93,6 +114,18 @@ export function selectAutoCombatAction(input: AutoCombatInput): AutoCombatAction
     if (best) return action('corpse_explosion', best);
   }
   const candidates = targets.slice(0, 12);
+  // Ivory Cleave: two or more within the crescent in front of the nearest enemy.
+  if (canSpend('ivory_cleave') && targets[0].distance <= IVORY_CLEAVE.reach + targets[0].radius) {
+    const t0 = targets[0];
+    const d0 = Math.max(0.01, t0.distance);
+    const cos = Math.cos((IVORY_CLEAVE.halfAngleDeg * Math.PI) / 180);
+    const inArc = targets.filter((e) => {
+      const d = e.distance;
+      if (d > IVORY_CLEAVE.reach + e.radius) return false;
+      return d < e.radius || ((e.x - p.x) * (t0.x - p.x) + (e.z - p.z) * (t0.z - p.z)) / (d * d0) >= cos;
+    }).length;
+    if (inArc >= 2) return action('ivory_cleave', t0);
+  }
   if (canSpend('miasma')) {
     let best: Target | null = null;
     let hits = 2;
@@ -156,7 +189,7 @@ export function selectAutoCombatAction(input: AutoCombatInput): AutoCombatAction
  */
 function primaryTarget(primary: AbilityId, inReach: Target[]): Target | undefined {
   if (!inReach.length) return undefined;
-  if (primary !== ('bone_fan' as AbilityId)) return inReach[0];
+  if (primary !== 'bone_fan') return inReach[0];
   let best = inReach[0];
   let bestN = -1;
   for (const t of inReach) {

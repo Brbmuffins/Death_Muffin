@@ -99,3 +99,14 @@ test('gather names a node id and clamps the successes it reports', () => {
   assert.equal(validIntent({ t: 'gather', nodeId: '../etc', successes: 1 }), null);
   assert.equal(validIntent({ t: 'gather', nodeId: 7, successes: 1 }), null);
 });
+
+test('spell variety: new signature kinds pass, and withered / cap / dur are clamped', () => {
+  for (const sig of ['offering', 'rally', 'seed']) assert.equal(validIntent({ t: 'signature', sig, x: 1, z: 2, dx: 0, dz: 0, sp: 10 }).sig, sig);
+  const hit = validIntent({ t: 'hit', ids: [1], dmg: 10, withered: 9, witheredCap: 99 });
+  assert.equal(hit.withered, 1);
+  assert.equal(hit.witheredCap, 12);
+  assert.equal(validIntent({ t: 'hit', ids: [1], dmg: 10, withered: -3 }).withered, 0);
+  const seed = validIntent({ t: 'signature', sig: 'seed', x: 0, z: 0, dx: 0, dz: 0, sp: 1, cap: 40 });
+  assert.equal(seed.cap, 12);
+  assert.equal(validIntent({ t: 'signature', sig: 'rally', x: 0, z: 0, dx: 0, dz: 0, sp: 1, dur: 1e9 }).dur, 10);
+});

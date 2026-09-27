@@ -20,7 +20,8 @@ export function makeSnapshot(sim: WorldSim, full: boolean): WorldSnapshot {
   }
   const thralls: ThrallRow[] = [];
   for (const t of sim.thralls.values()) {
-    thralls.push([t.id, t.owner, t.kind, r2(t.x), r2(t.z), r2(t.facing), Math.round(t.hp), Math.round(t.maxHp), T_STATES.indexOf(t.state) | (t.moving ? 16 : 0), r2(t.stateT), t.empowered ? 1 : 0, t.speed]);
+        // Field 10: bit 0 empowered, bit 1 rallied (older clients read it as a truthy flag only).
+    thralls.push([t.id, t.owner, t.kind, r2(t.x), r2(t.z), r2(t.facing), Math.round(t.hp), Math.round(t.maxHp), T_STATES.indexOf(t.state) | (t.moving ? 16 : 0), r2(t.stateT), (t.empowered ? 1 : 0) | ((t.rallyT ?? 0) > 0 ? 2 : 0), t.speed]);
   }
   return {
     t: sim.time,
@@ -164,7 +165,7 @@ export class WorldMirror {
           target: null,
           slot: 0,
           bornAt: 0,
-          empowered: !!row[10],
+          empowered: !!(row[10] & 1),
           flash: 0,
           gait: 0,
           moving: false,
@@ -178,6 +179,7 @@ export class WorldMirror {
       if (st !== t.state) t.stateT = row[9];
       t.state = st;
       t.moving = !!(row[8] & 16);
+      t.rallyT = row[10] & 2 ? 0.3 : 0;
       this.targets.set(`t${t.id}`, { x: row[3], z: row[4], facing: row[5] });
     }
     for (const id of [...this.thralls.keys()]) if (!seenT.has(id)) this.thralls.delete(id);
@@ -205,7 +207,13 @@ export class WorldMirror {
       else if (ev.t === 'zoneGone') this.zones.delete(ev.id);
       else if (ev.t === 'death') this.enemies.delete(ev.id);
       else if (ev.t === 'thrallGone') this.thralls.delete(ev.id);
-      else if (ev.t === 'nodeGone') this.depleted.set(ev.id, this.time + ev.respawnS);
+      else if (ev.t === 'seedGone') {
+        const c = this.corpses.get(ev.corpseId);
+        if (c) c.seedOwner = undefined;
+      } else if (ev.t === 'seeded') {
+        const c = this.corpses.get(ev.corpseId);
+        if (c) (c.seedOwner = ev.by), (c.seedArmedAt = this.time + ev.armMs / 1000);
+      } else if (ev.t === 'nodeGone') this.depleted.set(ev.id, this.time + ev.respawnS);
       else if (ev.t === 'nodeBack') this.depleted.delete(ev.id);
     }
   }
