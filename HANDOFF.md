@@ -4,7 +4,7 @@ Living status document so any agent (or person) can pick the project up at any
 point. **Update the "Current state" and "In flight" sections whenever you stop.**
 > **VPS update, 2026-09-27:** Death Muffin now runs at https://muffindevelopment.com/death-muffin/. The live release includes Acre-first spawn, open-game AFK professions, ten-player co-op, starter-area visual/balance fixes, movable counsel and brighter gathering lighting; source, checks and deployment tooling are committed at the user’s explicit request. Read [docs/DEATH-MUFFIN-HANDOFF.md](docs/DEATH-MUFFIN-HANDOFF.md) for current deployment, class switching, combat flow, Git access and verification; older cloud-only status below is historical.
 
-Last updated: 2026-09-27, workstation (latest: BinbunVFX port researched + documented for Codex, see "In flight"): **everything combined on `master`** (the professions commit `fa43c9c`
+Last updated: 2026-09-27 evening, workstation (latest: spell-variety / dev-access / Binbun runtime / first-session brief + art for the cloud agent, see "In flight"; before that: BinbunVFX port researched + documented for Codex): **everything combined on `master`** (the professions commit `fa43c9c`
 fast-forwarded, plus the workstation's Grimoire, enemy pack, art batches and merge fixes, staged for the owner's
 push). The full art inventory is in [`docs/ART-BACKLOG.md`](docs/ART-BACKLOG.md). Before that, the cloud session on `claude/adoring-knuth-hd1uox`: **professions G0 + G1 + G2 + G4 built**
 (gathering rules + `/api/gather`, the Sexton's Acre, nodes + loop + Auto, Skills panel, stations, tips, Codex, README).
@@ -87,6 +87,23 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 | Node art (Tripo `prop_node_*`), Grave Gardening (G5), new processing recipes (G6), long tail (G7) | 📝 G3 with the owner; G5–G7 not started | `docs/PROFESSIONS-ROADMAP.md` §10, §13 |
 
 ## In flight (check before starting overlapping work)
+
+- **Spell variety + dev access + Binbun runtime + first-session readability (brief ready 2026-09-27 evening).**
+  The owner couldn't find where to swap rites; the Grimoire exists (L) but is hidden and gated at levels 3–12. They
+  asked for:
+  - more rites;
+  - full access for their `brbmuffins` dev account;
+  - the Godot/Binbun VFX, including world effects;
+  - interactables (the Altar and similar) that a first-time player can't miss.
+
+  The cloud agent builds from
+  [`docs/agent-briefs/spell-variety-first-session.md`](docs/agent-briefs/spell-variety-first-session.md). The
+  workstation has staged on `master`:
+  - 45 more Binbun conversions (67 total, including seven `world_*` shader kits);
+  - five tintable rite sprites (`public/art/fx/`, `gemini-jobs/spells-v5.json`).
+
+  The rite icons already existed. The owner pushes `master` via GitHub Desktop; the agent merges `origin/master`
+  into its branch first.
 
 - **BinbunVFX → Three.js port (started 2026-09-27; local conversion complete, runtime pending).** The owner's
   Godot VFX packs (from `F:\`, licence confirmed for this non-profit game) are

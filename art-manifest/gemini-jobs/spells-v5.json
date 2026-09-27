@@ -1,0 +1,82 @@
+[
+  {
+    "id": "fx_crescent",
+    "out": "public/art/fx/crescent.png",
+    "aspect": "1:1",
+    "post": {
+      "lumaAlpha": true,
+      "floor": 22,
+      "mask": "circle",
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Video game VFX sprite texture, seen from directly above as a ground decal. Pure solid black background (#000000). The subject is drawn ONLY in white and light grey light — completely monochrome, no colour at all. Subject: a perfectly left-right SYMMETRIC slash arc shaped like a rainbow or an upside-down U, centred horizontally, bowing upward: it starts low on the left side, rises to its highest point at the top centre of the frame, and comes down low on the right side. The arc is made of jagged bone shards and motion streaks, like the sweep of a scythe; its outer (upper) edge is bright and sharp, its inner edge breaks into softer streaks. The bottom-centre of the frame, inside the arc, is empty black. Nothing touching the edges. High contrast, soft glow falloff. No text, no border, no frame, no background texture."
+  },
+  {
+    "id": "fx_seed_bud",
+    "out": "public/art/fx/seed-bud.png",
+    "aspect": "1:1",
+    "post": {
+      "lumaAlpha": true,
+      "floor": 22,
+      "mask": "circle",
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Video game VFX sprite texture. Pure solid black background (#000000). The subject is drawn ONLY in glowing white and light grey light — completely monochrome, no colour at all. Subject: a single swollen carrion seed pod, a closed bulbous bud with ribbed sepals curling around it and a few thin root tendrils at its base, faintly glowing from within as if about to burst, tiny spore motes drifting off it. Centred, filling about half of the frame, nothing touching the edges. Soft glow falloff, high contrast. No text, no border, no frame, no background texture."
+  },
+  {
+    "id": "fx_wisp",
+    "out": "public/art/fx/wisp.png",
+    "aspect": "1:1",
+    "post": {
+      "lumaAlpha": true,
+      "floor": 22,
+      "mask": "circle",
+      "resize": [
+        128,
+        128
+      ],
+      "format": "png"
+    },
+    "prompt": "Video game VFX sprite texture. Pure solid black background (#000000). The subject is drawn ONLY in glowing white and light grey light — completely monochrome, no colour at all. Subject: a single small soul wisp, a bright round glowing core with a soft halo and a short curling flame-like tail trailing down and to the left. Centred, filling about half of the frame, nothing touching the edges. Very soft glow falloff, high contrast. No text, no border, no frame, no background texture."
+  },
+  {
+    "id": "fx_rally_sigil",
+    "out": "public/art/fx/rally-sigil.png",
+    "aspect": "1:1",
+    "post": {
+      "lumaAlpha": true,
+      "floor": 22,
+      "mask": "circle",
+      "resize": [
+        128,
+        128
+      ],
+      "format": "png"
+    },
+    "prompt": "Video game VFX sprite texture. Pure solid black background (#000000). The subject is drawn ONLY in glowing white and light grey light — completely monochrome, no colour at all. Subject: a small heraldic war sigil floating in the air: a horned skull crest above two crossed bone blades, with a thin glowing chevron beneath it, clean readable silhouette like a buff marker over a unit's head. Centred, filling about two thirds of the frame, nothing touching the edges. Soft glow, high contrast. No text, no border, no frame, no background texture."
+  },
+  {
+    "id": "fx_veil_streak",
+    "out": "public/art/fx/veil-streak.png",
+    "aspect": "1:1",
+    "post": {
+      "lumaAlpha": true,
+      "floor": 22,
+      "mask": "circle",
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "prompt": "Video game VFX sprite texture. Pure solid black background (#000000). The subject is drawn ONLY in glowing white and light grey light — completely monochrome, no colour at all. Subject: a horizontal streak of torn, ghostly funeral veil cloth whipping from left to right as if something just dashed through it, ragged translucent edges, fine wisps peeling off the tail on the left, brightest at the right-hand leading edge. Centred, spanning most of the width, nothing touching the edges. Soft glow falloff, high contrast. No text, no border, no frame, no background texture."
+  }
+]

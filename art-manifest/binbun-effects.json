@@ -133,6 +133,276 @@
       "source": "LootVFX/assets/BinbunVFX/loot_effects/effects/ground/ground_loot_vfx_divine.tscn",
       "anim": "main",
       "note": "Divine loot ground marker"
+    },
+    {
+      "id": "bone_fan_hit",
+      "source": "ImpactVFX/assets/BinbunVFX/impact_explosions/effects/hit/vfx_hit_02.tscn",
+      "anim": "main",
+      "note": "Bone Fan sliver impact (small, ivory)"
+    },
+    {
+      "id": "rot_lance_projectile",
+      "source": "MagicProjectilesVFX/assets/BinbunVFX/magic_projectiles/effects/mprojectile_javelin/mprojectile_javelin_vfx_02.tscn",
+      "anim": "main",
+      "note": "Rot Lance javelin body (chartreuse)"
+    },
+    {
+      "id": "ivory_cleave_hit",
+      "source": "ImpactVFX/assets/BinbunVFX/impact_explosions/effects/hit/vfx_hit_05.tscn",
+      "anim": "main",
+      "note": "Ivory Cleave impact streaks on each struck enemy"
+    },
+    {
+      "id": "grave_offering_orb",
+      "source": "MagicOrbsVFX/assets/BinbunVFX/magic_orbs/effects/magic_orb_flash/magic_orb_flash_vfx_02.tscn",
+      "anim": "oneshot",
+      "note": "Grave Offering wisp arriving at the caster (jade)"
+    },
+    {
+      "id": "grave_offering_ripple",
+      "source": "MagicAreaVFX/assets/BinbunVFX/magic_areas/effects/ripple_area/ripple_area_vfx_02.tscn",
+      "anim": "oneshot",
+      "note": "Grave Offering consumed-corpse ripple (jade)"
+    },
+    {
+      "id": "rally_area",
+      "source": "MagicAreaVFX/assets/BinbunVFX/magic_areas/effects/basic_area/basic_area_vfx_02.tscn",
+      "anim": "oneshot",
+      "note": "Rally the Dead war-cry ring at the caster"
+    },
+    {
+      "id": "rally_thrall_rim",
+      "source": "MagicAreaVFX/assets/BinbunVFX/magic_areas/effects/rim_area/rim_area_vfx_02.tscn",
+      "anim": "main",
+      "note": "Rally the Dead aura under each rallied thrall (looping, follow)"
+    },
+    {
+      "id": "carrion_seed_armed",
+      "source": "PoisonVFX/assets/BinbunVFX/poison_effects/effects/poison_bubble/poison_bubble_vfx_02.tscn",
+      "anim": "main",
+      "note": "Carrion Seed planted on a corpse (looping until it bursts)"
+    },
+    {
+      "id": "carrion_seed_burst",
+      "source": "PoisonVFX/assets/BinbunVFX/poison_effects/effects/stink_big/stink_big_vfx_02.tscn",
+      "anim": "oneshot",
+      "note": "Carrion Seed rot burst"
+    },
+    {
+      "id": "veil_step_trail",
+      "source": "SmokeVFX/assets/BinbunVFX/smoke_effects/effects/smoke_thin/smoke_thin_vfx_02.tscn",
+      "anim": "main",
+      "note": "Veil Step departure veil (cold blue, short-lived)"
+    },
+    {
+      "id": "frost_shard_hit",
+      "source": "IceVFX/assets/BinbunVFX/ice_effects/effects/ice_shard/ice_shard_vfx_02.tscn",
+      "anim": "oneshot",
+      "note": "Grave Frost shatter on Chilled enemies"
+    },
+    {
+      "id": "interact_rim",
+      "source": "MagicAreaVFX/assets/BinbunVFX/magic_areas/effects/rim_area/rim_area_vfx_01.tscn",
+      "anim": "main",
+      "note": "Interactable ground ring: idle beacon under every usable object, tinted by function"
+    },
+    {
+      "id": "altar_beacon",
+      "source": "MagicAreaVFX/assets/BinbunVFX/magic_areas/effects/pillar_area/pillar_area_vfx_04.tscn",
+      "anim": "main",
+      "note": "Altar of Ascension beacon when something can be bought or burned"
+    },
+    {
+      "id": "waystone_portal",
+      "source": "PortalVFX/assets/BinbunVFX/portal_vfx/effects/oval/oval_portal_vfx_02.tscn",
+      "anim": "main",
+      "note": "Waystone swirl (attuned stones)"
+    },
+    {
+      "id": "recall_portal",
+      "source": "PortalVFX/assets/BinbunVFX/portal_vfx/effects/portal/portal_vfx_03.tscn",
+      "anim": "main",
+      "note": "Recall / area exit portal"
+    },
+    {
+      "id": "brazier_fire",
+      "source": "FireVFX/assets/BinbunVFX/fire_effects/effects/Fire/fire_03.tscn",
+      "anim": "main",
+      "note": "Braziers in the Chapterhouse and Bell Sanctum"
+    },
+    {
+      "id": "bonfire",
+      "source": "FireVFX/assets/BinbunVFX/fire_effects/effects/Fire/fire_07.tscn",
+      "anim": "main",
+      "note": "Cooking Fire station and large fires"
+    },
+    {
+      "id": "kiln_fire",
+      "source": "FireVFX/assets/BinbunVFX/fire_effects/effects/Fire/fire_05.tscn",
+      "anim": "main",
+      "note": "Bone Kiln mouth"
+    },
+    {
+      "id": "crypt_mist",
+      "source": "SmokeVFX/assets/BinbunVFX/smoke_effects/effects/smoke_big/smoke_big_vfx_03.tscn",
+      "anim": "main",
+      "note": "Mausoleum and sarcophagus mist; Grave Surge build-up"
+    },
+    {
+      "id": "nave_fog",
+      "source": "IceVFX/assets/BinbunVFX/ice_effects/effects/ice_cloud/ice_cloud_vfx_02.tscn",
+      "anim": "main",
+      "note": "Drowned Nave low fog (recolour grey-green)"
+    },
+    {
+      "id": "toxic_puddle",
+      "source": "PoisonVFX/assets/BinbunVFX/poison_effects/effects/poison_puddle/poison_puddle_vfx_02.tscn",
+      "anim": "main",
+      "note": "Toxic zones and rot pools"
+    },
+    {
+      "id": "toxic_stink",
+      "source": "PoisonVFX/assets/BinbunVFX/poison_effects/effects/stink_small/stink_small_vfx_02.tscn",
+      "anim": "main",
+      "note": "Toxic corpse about to rupture"
+    },
+    {
+      "id": "soul_orb",
+      "source": "MagicOrbsVFX/assets/BinbunVFX/magic_orbs/effects/magic_orb_small/magic_orb_small_vfx_02.tscn",
+      "anim": "main",
+      "note": "Soul shard / relic pickup glow; Soul Harvest full aura"
+    },
+    {
+      "id": "levelup_pillar",
+      "source": "MagicAreaVFX/assets/BinbunVFX/magic_areas/effects/pillar_area/pillar_area_vfx_01.tscn",
+      "anim": "oneshot",
+      "note": "Level-up and new rite learned"
+    },
+    {
+      "id": "thrall_rise",
+      "source": "MagicAreaVFX/assets/BinbunVFX/magic_areas/effects/lift_area/lift_area_vfx_04.tscn",
+      "anim": "oneshot",
+      "note": "Thrall rising from a corpse"
+    },
+    {
+      "id": "censer_incense",
+      "source": "SmokeVFX/assets/BinbunVFX/smoke_effects/effects/smoke_thin/smoke_thin_vfx_05.tscn",
+      "anim": "main",
+      "note": "Censer Bearer Incensed aura"
+    },
+    {
+      "id": "vengeful_burst",
+      "source": "ImpactVFX/assets/BinbunVFX/impact_explosions/effects/explosion/vfx_explosion_02.tscn",
+      "anim": "main",
+      "note": "Vengeful elite death burst"
+    },
+    {
+      "id": "surge_eruption",
+      "source": "ImpactVFX/assets/BinbunVFX/impact_explosions/effects/explosion/vfx_explosion_06.tscn",
+      "anim": "main",
+      "note": "Grave Surge crack eruption"
+    },
+    {
+      "id": "bell_toll_ring",
+      "source": "MagicAreaVFX/assets/BinbunVFX/magic_areas/effects/pulse_area/pulse_area_vfx_01.tscn",
+      "anim": "oneshot",
+      "note": "Bell-Tolled elite ring and Prelate toll"
+    },
+    {
+      "id": "choir_scream",
+      "source": "MagicAreaVFX/assets/BinbunVFX/magic_areas/effects/ripple_area/ripple_area_vfx_04.tscn",
+      "anim": "oneshot",
+      "note": "Choir Wraith scream ring"
+    },
+    {
+      "id": "curse_bolt",
+      "source": "MagicProjectilesVFX/assets/BinbunVFX/magic_projectiles/effects/mprojectile_basic/mprojectile_basic_vfx_01.tscn",
+      "anim": "main",
+      "note": "Enemy caster curse bolt"
+    },
+    {
+      "id": "boss_rain_orb",
+      "source": "MagicOrbsVFX/assets/BinbunVFX/magic_orbs/effects/magic_orb_flare/magic_orb_flare_vfx_03.tscn",
+      "anim": "oneshot",
+      "note": "Prelate rain impacts"
+    },
+    {
+      "id": "sanctify_beam",
+      "source": "BeamVFX/assets/BinbunVFX/beam_vfx/effects/beam/beam_vfx_05.tscn",
+      "anim": "main",
+      "note": "Crypt Deacon Sanctify tether"
+    },
+    {
+      "id": "archer_flash",
+      "source": "MuzzleFlashVFX/assets/BinbunVFX/muzzle_flash/effects/short_flash/short_flash_02.tscn",
+      "anim": "main",
+      "note": "Archer thrall shot"
+    },
+    {
+      "id": "needle_hit",
+      "source": "ImpactVFX/assets/BinbunVFX/impact_explosions/effects/hit/vfx_hit_01.tscn",
+      "anim": "main",
+      "note": "Bone Needle impact"
+    },
+    {
+      "id": "crit_hit",
+      "source": "ImpactVFX/assets/BinbunVFX/impact_explosions/effects/hit/vfx_hit_07.tscn",
+      "anim": "main",
+      "note": "Critical hit accent"
+    },
+    {
+      "id": "rend_impact",
+      "source": "ImpactVFX/assets/BinbunVFX/impact_explosions/effects/impact/vfx_impact_02.tscn",
+      "anim": "main",
+      "note": "Command: Rend leap landing"
+    },
+    {
+      "id": "wall_raise",
+      "source": "ImpactVFX/assets/BinbunVFX/impact_explosions/effects/impact/vfx_impact_05.tscn",
+      "anim": "main",
+      "note": "Ossuary Wall raise"
+    },
+    {
+      "id": "world_water_dirty",
+      "source": "Water/assets/BinbunWater/src/material/water_dirty/water_dirty_02.tres",
+      "anim": "main",
+      "note": "World shader kit (material root, no nodes): Drowned Nave water — port water.gdshader into graphics/Water.ts as a layer"
+    },
+    {
+      "id": "world_water_basic",
+      "source": "Water/assets/BinbunWater/src/material/water_basic/water_basic_03.tres",
+      "anim": "main",
+      "note": "World shader kit: Sexton's Acre pond water"
+    },
+    {
+      "id": "world_grass",
+      "source": "Grass/assets/BinbunGrass/src/materials/grass_01/grass_01.tres",
+      "anim": "main",
+      "note": "World shader kit: instanced grass blades for the Hollow Graves / Acre (atlas textures included)"
+    },
+    {
+      "id": "world_grass_ground",
+      "source": "Grass/assets/BinbunGrass/src/materials/grass_01/grass_ground_01.tres",
+      "anim": "main",
+      "note": "World shader kit: ground blend under the grass"
+    },
+    {
+      "id": "world_transition_ridge",
+      "source": "TransitionKit/assets/TransitionKit/transitions/t_natural_ridge.tscn",
+      "anim": "main",
+      "note": "World shader kit: full-screen area-change / death transition (2D scene; transition.gdshader)"
+    },
+    {
+      "id": "world_transition_blades",
+      "source": "TransitionKit/assets/TransitionKit/transitions/t_blades.tscn",
+      "anim": "main",
+      "note": "World shader kit: alternate transition for recall / waystone travel"
+    },
+    {
+      "id": "world_sky_dark",
+      "source": "Skies/assets/BinbunSky/skies/experimental/dark_sky.tres",
+      "anim": "main",
+      "note": "World shader kit: dark procedural sky (login backdrop / distant horizon only; the game camera is top-down)"
     }
   ]
 }

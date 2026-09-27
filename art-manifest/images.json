@@ -5185,5 +5185,115 @@
     "rawHash": "sha256:a546b9e66920189c657ca35e063cf3e1e2e565444d8cc0ad8c0d34b4a8bdbd19",
     "outHash": "sha256:0a52c6a4bd424d546f3b1160f63655dac59235115e6eee66b9b0f78261d57723",
     "generatedAt": "2026-09-27T13:36:18.788Z"
+  },
+  "fx_crescent": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Video game VFX sprite texture, seen from directly above as a ground decal. Pure solid black background (#000000). The subject is drawn ONLY in white and light grey light — completely monochrome, no colour at all. Subject: a perfectly left-right SYMMETRIC slash arc shaped like a rainbow or an upside-down U, centred horizontally, bowing upward: it starts low on the left side, rises to its highest point at the top centre of the frame, and comes down low on the right side. The arc is made of jagged bone shards and motion streaks, like the sweep of a scythe; its outer (upper) edge is bright and sharp, its inner edge breaks into softer streaks. The bottom-centre of the frame, inside the arc, is empty black. Nothing touching the edges. High contrast, soft glow falloff. No text, no border, no frame, no background texture.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "lumaAlpha": true,
+      "floor": 22,
+      "mask": "circle",
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "out": "public/art/fx/crescent.png",
+    "rawHash": "sha256:0f9bea2327412f69ec7e753b4f2550765110c2c5f3aa7e703231f5bd1d9444f0",
+    "outHash": "sha256:c33b686c85ea9b1eb8009907c5e5ed3415a1aa88c9c0d76109b04164a6307268",
+    "generatedAt": "2026-09-27T21:36:12.844Z"
+  },
+  "fx_seed_bud": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Video game VFX sprite texture. Pure solid black background (#000000). The subject is drawn ONLY in glowing white and light grey light — completely monochrome, no colour at all. Subject: a single swollen carrion seed pod, a closed bulbous bud with ribbed sepals curling around it and a few thin root tendrils at its base, faintly glowing from within as if about to burst, tiny spore motes drifting off it. Centred, filling about half of the frame, nothing touching the edges. Soft glow falloff, high contrast. No text, no border, no frame, no background texture.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "lumaAlpha": true,
+      "floor": 22,
+      "mask": "circle",
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "out": "public/art/fx/seed-bud.png",
+    "rawHash": "sha256:b12c54a49ffaaf2257326e3a1e1198c318574f75a4c009070299803f85797344",
+    "outHash": "sha256:9c1e50f1abed2202094601a757734c6e5aa62ce655893e6086fa404d5de5bdff",
+    "generatedAt": "2026-09-27T21:35:06.493Z"
+  },
+  "fx_wisp": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Video game VFX sprite texture. Pure solid black background (#000000). The subject is drawn ONLY in glowing white and light grey light — completely monochrome, no colour at all. Subject: a single small soul wisp, a bright round glowing core with a soft halo and a short curling flame-like tail trailing down and to the left. Centred, filling about half of the frame, nothing touching the edges. Very soft glow falloff, high contrast. No text, no border, no frame, no background texture.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "lumaAlpha": true,
+      "floor": 22,
+      "mask": "circle",
+      "resize": [
+        128,
+        128
+      ],
+      "format": "png"
+    },
+    "out": "public/art/fx/wisp.png",
+    "rawHash": "sha256:2605fd48fc51d059a445ea4fd59a092682a7b8475f64a61a0022a8024aee9206",
+    "outHash": "sha256:972e8562d71c9496095722a393887b6167036b81cd237476a87f937adc9073b8",
+    "generatedAt": "2026-09-27T21:35:14.221Z"
+  },
+  "fx_rally_sigil": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Video game VFX sprite texture. Pure solid black background (#000000). The subject is drawn ONLY in glowing white and light grey light — completely monochrome, no colour at all. Subject: a small heraldic war sigil floating in the air: a horned skull crest above two crossed bone blades, with a thin glowing chevron beneath it, clean readable silhouette like a buff marker over a unit's head. Centred, filling about two thirds of the frame, nothing touching the edges. Soft glow, high contrast. No text, no border, no frame, no background texture.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "lumaAlpha": true,
+      "floor": 22,
+      "mask": "circle",
+      "resize": [
+        128,
+        128
+      ],
+      "format": "png"
+    },
+    "out": "public/art/fx/rally-sigil.png",
+    "rawHash": "sha256:03a1d7c95498c1e02d26c686c9405cc845d74fe7a07f1942191c1987c0b9774f",
+    "outHash": "sha256:664ac32c275ae29b3a48d062663afeebfab6a7d1631fe08969e7cc35fe1c4e23",
+    "generatedAt": "2026-09-27T21:35:21.442Z"
+  },
+  "fx_veil_streak": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Video game VFX sprite texture. Pure solid black background (#000000). The subject is drawn ONLY in glowing white and light grey light — completely monochrome, no colour at all. Subject: a horizontal streak of torn, ghostly funeral veil cloth whipping from left to right as if something just dashed through it, ragged translucent edges, fine wisps peeling off the tail on the left, brightest at the right-hand leading edge. Centred, spanning most of the width, nothing touching the edges. Soft glow falloff, high contrast. No text, no border, no frame, no background texture.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "lumaAlpha": true,
+      "floor": 22,
+      "mask": "circle",
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "out": "public/art/fx/veil-streak.png",
+    "rawHash": "sha256:90d6b53959b7f0b412767a449b7544ff25cbfa8a1d199df001d6b7e492778e1a",
+    "outHash": "sha256:214e1043e67f9a65e1fbdd13740e486eece1dfbe81a4e21369a54cae9207737d",
+    "generatedAt": "2026-09-27T21:35:29.843Z"
   }
 }

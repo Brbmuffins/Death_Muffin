@@ -17,6 +17,7 @@ leave `npx tsc --noEmit && npx vitest run && node --test server/realtime/server.
 | [professions-g2-sextons-acre.md](professions-g2-sextons-acre.md) | `cloud/professions-g2` | — | ✅ built on `claude/adoring-knuth-hd1uox` (`fa43c9c`) |
 | [professions-g3-art.md](professions-g3-art.md) | — (workstation) | 2026-09-27 | ✅ art generated on the workstation; node models live via `NodeViews` (see the brief + `docs/ART-BACKLOG.md`) |
 | [professions-g4-ui-help.md](professions-g4-ui-help.md) | `cloud/professions-g4` | — | ✅ built on `claude/adoring-knuth-hd1uox` (`fa43c9c`) |
+| [spell-variety-first-session.md](spell-variety-first-session.md) | latest `claude/adoring-knuth-hd1uox` + `origin/master` merged in | 2026-09-27 (workstation art staged on master) | 📝 ready for the cloud agent: dev access, Grimoire button + primary choice, 7 rites, BinbunFX runtime, interactable beacons, First Rites |
 
 The professions briefs implement [`docs/PROFESSIONS-ROADMAP.md`](../PROFESSIONS-ROADMAP.md), which has the
 design, the owner decisions (§12) and the later phases G5–G7 (gardening, processing, long tail).

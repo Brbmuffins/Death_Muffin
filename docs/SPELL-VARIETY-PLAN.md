@@ -1,5 +1,14 @@
 # Death Muffin spell variety plan
 
+> **Reconciled 2026-09-27 with the shipped Grimoire.** The build spec is now
+> [`agent-briefs/spell-variety-first-session.md`](agent-briefs/spell-variety-first-session.md) §3–§4.
+> - **Building:** Bone Fan, Rot Lance (primaries), Grave Offering, Ivory Cleave, Veil Step, Rally the Dead and Carrion
+>   Seed.
+> - **Dropped:** Soul Chain (Wailing Skull already chains) and Frost Wake (Grave Frost ships). Bone Mantle already
+>   shipped.
+> - **Loadout:** the Grimoire's free slots replace the role-locked slots proposed below, plus a new left-click primary
+>   socket.
+
 Status: proposal only, 2026-09-27. No abilities, loadout changes, unlocks or assets in this document have been implemented. Preserve the approved gameplay at `fca634d057105e995e17e44d7363812b6cb08458`, checkpointed as `death-muffin-v1.0.0`. Read [the checkpoint](DEATH-MUFFIN-CHECKPOINT.md) and [VPS handoff](DEATH-MUFFIN-HANDOFF.md) before implementation.
 
 The aim is more ways to enjoy the existing relaxed grinding loop: choose a few spells, watch satisfying combinations clear packs, and take over for positioning or a well-timed ability. Variety should come from different attack shapes and corpse decisions, with the accepted movement, quick gestures and visual UI intact.

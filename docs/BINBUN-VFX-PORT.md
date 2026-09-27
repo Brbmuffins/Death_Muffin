@@ -1,5 +1,11 @@
 # BinbunVFX → Three.js port (handoff for Codex / any agent)
 
+> **Update 2026-09-27 (evening, workstation):** the selection grew to **67 entries** (6.6 MB): new-rite effects,
+> interactable beacons, world ambience, enemy effects and seven `world_*` shader kits (water, grass, transitions, sky;
+> `.tres` material roots). The runtime build and every hook are now specified in
+> [`agent-briefs/spell-variety-first-session.md`](agent-briefs/spell-variety-first-session.md) §5. The 22-effect
+> figures below are historical.
+
 Status 2026-09-27 (workstation session, Codex). **Research, vendoring and the portable conversion pass are
 done; the Three.js runtime and game wiring are not.** `tools/binbun-port.mjs` converted the 22-effect selection
 in `art-manifest/binbun-effects.json` into `public/fx/binbun/` (2.1 MB / 93 files). The output preserves the
