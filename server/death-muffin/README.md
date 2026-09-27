@@ -1,7 +1,7 @@
 # Death Muffin hosted web game
 
-Site: https://playcrossworlds.com/death-muffin/
-Leaderboard: https://playcrossworlds.com/death-muffin/leaderboard.html
+Site: https://muffindevelopment.com/death-muffin/
+Leaderboard: https://muffindevelopment.com/death-muffin/leaderboard.html
 
 The supplied site design is preserved in `site/`, with live login and registration, animated smoke and ash, sound after the first browser interaction, and a lightweight leaderboard. Successful login waits for the gate effect before entering the game. Sound is muted by its existing toggle; browsers require a click or keypress before audio can start. OS reduced-motion preferences are respected.
 
@@ -12,7 +12,8 @@ The game uses Diablo-style controls: left-click ground to move, click enemies to
 - `backend/`: account/character/inventory/profession API, adapted from the existing VPS API. Listens only on 127.0.0.1:5190; uses a separate `death_muffin` MySQL database and JWT secret. Copy `server/vps-handoff/necro-progress/` into its `necro-progress/` folder when installing.
 - `server/realtime/`: the included co-op service runs separately on 127.0.0.1:5191 with `ENV_FILE` pointing to Death Muffin's private backend `.env`.
 - `systemd/`: unit files for the current VPS installation.
-- `nginx-locations.conf`: additive HTTPS locations under the existing playcrossworlds.com certificate. HTTP requests under `/death-muffin/` redirect to HTTPS.
+- `nginx-locations.conf`: additive HTTPS locations under the existing muffindevelopment.com certificate. HTTP requests under `/death-muffin/` redirect to HTTPS.
+- `nginx-crossworlds-redirects.conf`: old game URLs redirect to Muffin Development with path and query preserved.
 - Published static files: `/var/www/death-muffin/`; built game under `play/`.
 - Browser session, progress, codex, settings, and help keys use the `dm_` prefix to avoid Crossworlds collisions.
 
@@ -26,12 +27,14 @@ The leaderboard exposes username, discipline, level, Ascension, Prelate kills, a
 npm ci
 npm run build:server-rules
 npm test
-DEPLOY_BASE=/death-muffin/play/ VITE_API_BASE=/death-muffin/api VITE_WS_BASE=https://playcrossworlds.com VITE_WS_PATH=/death-muffin/rt/socket.io npm run build
+DEPLOY_BASE=/death-muffin/play/ VITE_API_BASE=/death-muffin/api VITE_WS_BASE=https://muffindevelopment.com VITE_WS_PATH=/death-muffin/rt/socket.io npm run build
 ```
 
 Copy `site/` to `/var/www/death-muffin/` and `dist/` to its `play/` folder. Install backend dependencies with `npm ci` inside the backend directory; configure `.env` privately using `.env.example`. Preserve the running database and `.env` during subsequent updates. On the current VPS, `/home/ubuntu/death-muffin/deploy/deploy.sh` publishes the extracted source and restarts only Death Muffin's services. The original nginx config is backed up in that folder; `rollback.sh` restores hosting while retaining player saves.
 
 ## Validation
+
+Domain migration checks verified the supplied owner's login and existing character, temporary account creation, rendered game world, authenticated co-op over the new domain, progress API, leaderboard, HTTP-to-HTTPS and old-domain redirects, and availability of both other sites. The temporary test account was removed. The existing Muffin Development front end and Workbench API were not changed.
 
 The facing follow-up aligns the authored hero front with movement/casting headings. Standing heroes face the mouse; walking keeps path-facing and the fixed click destination. All 99 tests pass, including actual rig orientation checks for all five hero models. Chrome checked visible facing in four mouse directions, unchanged position while aiming, path-facing with the cursor in the opposite direction, arrival at the clicked point, spell-facing, and retained casting stability.
 

@@ -12,7 +12,7 @@ Environment=ENV_FILE=/home/ubuntu/death-muffin/backend/.env
 Environment=REALTIME_HOST=127.0.0.1
 Environment=REALTIME_PORT=5191
 Environment=REALTIME_PATH=/death-muffin/rt/socket.io
-Environment=CORS_ORIGIN=https://playcrossworlds.com
+Environment=CORS_ORIGIN=https://muffindevelopment.com,https://www.muffindevelopment.com
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=true
