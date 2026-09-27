@@ -44,7 +44,7 @@ cat > "$DIR/server.js" <<'CWEOF_SERVER'
  * Additive to the existing stack: does NOT touch /opt/rod-auth, the REST
  * endpoints, or the database. Port 5000 (3000/4000/7777/3001 are frozen).
  *
- * World model (audit Phase 0): players join instanced worlds of ≤4. Without an
+ * World model (audit Phase 0): players join instanced worlds of ≤10. Without an
  * invite code you are matched into any public world with space (or a new one);
  * with a code you join/create that world. The oldest member is the host: it
  * simulates enemies and is the ONLY socket allowed to publish snapshots and
@@ -71,7 +71,7 @@ const jwt = require('jsonwebtoken');
 
 const PORT = Number(process.env.REALTIME_PORT || 5000);
 const HOST = process.env.REALTIME_HOST || '0.0.0.0';
-const MAX_PARTY_SIZE = 4;
+const MAX_PARTY_SIZE = 10;
 const JWT_SECRET = process.env.JWT_SECRET;
 const DEV_TRUST_TOKENS = process.env.DEV_TRUST_TOKENS === '1';
 const CORS_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:5188').split(',');
@@ -255,7 +255,7 @@ io.on('connection', (socket) => {
     const world = worlds.get(worldId);
     if (world.players.size >= MAX_PARTY_SIZE) {
       console.log(`[realtime] ${socket.data.username} rejected from ${worldId} (full)`);
-      return ack({ success: false, error: 'That world is full (4 players)' });
+      return ack({ success: false, error: 'That world is full (10 players)' });
     }
     // One socket per account per world (no duplicate-login ghosts).
     for (const p of world.players.values()) {

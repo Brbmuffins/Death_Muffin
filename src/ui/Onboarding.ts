@@ -76,8 +76,8 @@ export const TIPS: Record<TipId, Tip> = {
     body: 'Choose a class here whenever you want. Your level, gold, items and permanent progress stay with the same character. Changing discipline returns you safely to the Chapterhouse with its new model and passives.',
   },
   welcome: {
-    title: 'The Chapterhouse',
-    body: 'Your sanctuary: the dead cannot follow you here. Around you stand the Reliquary, the Workbench, the Altar and a Waystone. The Hollow Graves lie <b>north</b>, through the open gate. To the <b>west</b>, the Sexton\'s Acre holds trees, ore, fishing and graves to work, and no dead at all. <kbd>Esc</kbd> sets difficulty and graphics.',
+    title: 'The Sexton\'s Acre',
+    body: 'Begin at your own pace: this gathering sanctuary has <b>no enemies</b>. Click a tree, ore seam, fishing spot or grave to work it; <kbd>P</kbd> opens Skills. When you want combat, walk <b>east</b> to the Chapterhouse, then <b>north</b> through its open gate into the Hollow Graves. <kbd>T</kbd> returns you to the Chapterhouse. <kbd>Esc</kbd> sets difficulty and graphics.',
   },
   move: {
     title: 'Walk among the dead',
@@ -201,7 +201,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   gather: {
     title: 'Working a node',
-    body: 'Each swing, cast or dig is one work cycle; the ring under you fills as it goes. Every success gives skill XP and a find. When the node is spent, <b>Auto gathering</b> walks you to the nearest one of the same kind (Settings). Moving, casting or opening a panel stops you.',
+    body: 'Each swing, cast or dig is one work cycle; the ring under you fills as it goes. Every success gives skill XP and a find. For hands-off work in the Acre, open <kbd>P</kbd>, choose a node and <b>Start AFK</b>. Keep the game open: your hero changes nodes and waits for respawns until your bag fills. Skills can stay open; moving, casting or other panels pause work. <b>Pause AFK</b> stops it whenever you like.',
   },
   bag_full: {
     title: 'Your bag is full',

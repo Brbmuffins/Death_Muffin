@@ -104,7 +104,17 @@ describe("the Sexton's Acre", () => {
     expect(generateLayout(1337).nodes).toEqual(layout.nodes);
   });
 
-  it('every node can be reached on foot from the Chapterhouse spawn', () => {
+  it('starts safely in the Acre near beginner gathering, with an open route to combat', () => {
+    const nav = navFor();
+    nav.setUnlocked(['chapterhouse', 'graves']);
+    expect(nav.areaAt(PLAYER_SPAWN.x, PLAYER_SPAWN.z)).toBe('acre');
+    expect(nav.blocked(PLAYER_SPAWN.x, PLAYER_SPAWN.z, 0.45)).toBe(false);
+    expect(AREAS.acre.safe).toBe(true);
+    expect(layout.nodes.some(n => n.area === 'acre' && NODES[n.type].level === 1 && Math.hypot(n.x - PLAYER_SPAWN.x, n.z - PLAYER_SPAWN.z) < 12)).toBe(true);
+    expect(nav.findPath(PLAYER_SPAWN.x, PLAYER_SPAWN.z, 0, -12).length).toBeGreaterThan(0);
+  });
+
+  it('every node can be reached on foot from the gathering spawn', () => {
     const nav = navFor();
     nav.setUnlocked(AREA_ORDER);
     // Walk like Player.update: follow nav.route with resolve(), dropping a stuck waypoint.

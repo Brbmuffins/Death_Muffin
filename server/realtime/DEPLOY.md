@@ -11,11 +11,11 @@ client scenes were removed at the same time, so deploy client + service together
 
 | Event | Direction | Rules |
 |---|---|---|
-| `world:join {instance?, characterId, classIndex, x, z, facing}` → ack | client → server | No `instance` = matched into any public world with space (≤4), else a new one. An invite code joins/creates a private world. One socket per account per world. |
+| `world:join {instance?, characterId, classIndex, x, z, facing}` → ack | client → server | No `instance` = matched into any public world with space (≤10), else a new one. An invite code joins/creates a private world. One socket per account per world. |
 | `player:move {x, z, facing, moving, hpFrac}` | client → room | ≤30/s, bounds-checked (|x|,|z| ≤ 400) |
 | `world:snapshot` | **host only** → room | ≤15/s, ≤96 KB; latest kept for host migration + late joiners |
-| `world:events [..]` | **host only** → room | ≤60/s, ≤64 KB, ≤400 events |
-| `world:intent {t: hit\|miasma\|exhume\|litany\|summonBoss\|recallThralls}` | client → **host only** | validated + clamped, stamped with the real sender id, ≤40/s |
+| `world:events [..]` | **host only** → room | ≤60/s, ≤64 KB, ≤1000 events |
+| `world:intent {t: hit\|miasma\|exhume\|litany\|summonBoss\|recallThralls}` | client → **host only** | validated + clamped, stamped with the real sender id, ≤100/s |
 | `room:host {hostId, snapshot}` | server → room | on host leave; the new host seeds its sim |
 | `chat:send` / `chat:message` | as before | ≤3/s |
 

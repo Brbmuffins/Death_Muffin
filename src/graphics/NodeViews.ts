@@ -132,6 +132,7 @@ class NodeBatch {
     private placements: NodePlacement[],
   ) {
     this.visible = placements.map(() => !spent);
+    this.group.visible = !spent;
     this.build(standIn(def, spent).map((p) => ({ ...p, local: new THREE.Matrix4() })));
     const m = modelFor(def);
     const name = spent ? m.spent : m.live;
@@ -189,7 +190,9 @@ class NodeBatch {
   set(i: number, on: boolean) {
     if (this.visible[i] === on) return;
     this.visible[i] = on;
+    this.group.visible = this.visible.some(Boolean);
     this.write(i);
+    for (const mesh of this.meshes) mesh.computeBoundingSphere();
   }
 }
 
@@ -225,14 +228,18 @@ export class NodeViews {
 
   constructor(scene: THREE.Scene, private placements: NodePlacement[]) {
     scene.add(this.group);
+    // Keep bounds local to each area so distant gathering scenery is culled
+    // during combat instead of sharing one world-spanning instance batch.
     const byType = new Map<string, NodePlacement[]>();
     for (const p of placements) {
       if (!NODES[p.type]) continue;
-      const list = byType.get(p.type) ?? [];
+      const key = `${p.area}:${p.type}`;
+      const list = byType.get(key) ?? [];
       list.push(p);
-      byType.set(p.type, list);
+      byType.set(key, list);
     }
-    for (const [type, list] of byType) {
+    for (const list of byType.values()) {
+      const type = list[0].type;
       const def = NODES[type];
       const live = new NodeBatch(def, false, list);
       const spent = new NodeBatch(def, true, list);

@@ -4,6 +4,32 @@ Updated 2026-09-27. Read this before editing or deploying. Preserve the supplied
 
 User-approved complete version: **`death-muffin-v1.0.0`**. See [the checkpoint record](DEATH-MUFFIN-CHECKPOINT.md) for the full private backup and restoration boundaries. Preserve this baseline while designing new abilities.
 
+## AFK and ten-player release — 2026-09-27 15:30 UTC
+
+Deployed from the canonical `game` repository using [the versioned deployment script](../server/death-muffin/deploy-afk.sh). It updates gathering rules/routes, restarts the API and realtime services, and publishes assets before the index while retaining previous hashed bundles. The older VPS `deploy-update.sh` now also reads this repository, not the stale extracted `update-stage`. No migration or dependency changes were needed. Both running services are healthy, and their updated source copies match the repository.
+
+**AFK professions:** enter the Acre, press **P**, choose an unlocked tier and Start AFK. The existing gathering loop walks between matching nodes and waits for respawn even when ordinary Auto gathering is disabled. A full bag pauses work; clear space and restart. Skills may stay open; movement, casts, recall, other panels and Pause AFK cancel the session. Hidden tabs run capped simulation updates without rendering and save server-rolled inventory/XP. Closing/reloading ends the session; it does not resume or grant offline rewards. Browsers that suspend a tab may delay work, and each background wake is capped at 90 seconds. The authenticated AFK-start endpoint resets elapsed-time credit; AFK requests have no normal burst allowance and preserve hourly caps, ownership and level checks. The budget consumes accepted action time so multiple catch-up batches cannot reuse it.
+
+**Co-op:** client, server and embedded realtime installer now allow ten players per world. Public matchmaking fills a world, then opens another; an explicit full world rejects an eleventh player. Party HUD scrolling keeps it clear of bottom controls. Enemy/effect limits and update rates are unchanged. The browser test joined nine socket clients to a rendered host and verified ten visible party members, chat, shared gathering depletion, guest combat and host migration. With 40 enemies, two low-quality software-renderer runs measured solo CPU update 2.72–3.29 ms and ten-player averages 3.50–4.00 ms. Draw calls increased 119→164 and rendered triangles 416,151→514,520; no extra lights were introduced. These CPU measurements do not promise identical GPU FPS on all devices.
+
+Validation: 193 client tests, server suites, production build, combat input regression and AFK full-bag/pause/resume checks passed. Public smoke verified existing-account login, signup, authenticated co-op, class changes, saved gathering inventory/XP, authorization gates, hidden-tab AFK rewards, Pause AFK and reload ending the session, redirects and other sites, with no browser errors. Temporary accounts and ledgers were removed. Reproducible checks and their setup are in [tools/qa](../tools/qa/README.md); private results/screenshots remain under `/home/ubuntu/death-muffin/deploy/`.
+
+Verified backup before this release: `/home/ubuntu/death-muffin/backups/death-muffin-v1.0.0-20260927T150545Z`. Roll back code independently of newer player progress. The user explicitly requested committing all work; source, tests, deployment tooling and documentation are committed together. Use `git log -1` for the release commit.
+
+## Live update — 2026-09-27 14:53 UTC
+
+The `Updates.zip` handoff is deployed from Git `e29dc08`, plus the staged spawn and node-rendering changes in this workspace. Professions/gathering, the Sexton's Acre, node art, the Grimoire and implemented spell effects are live. Migration `002-gathering.sql` is applied to `death_muffin`; the profession ID column was already VARCHAR(32). The API and realtime copies are updated, including shared node depletion and new rite intents. Player progress was preserved.
+
+Players now enter at the fixed Acre entrance spawn (-26, 20), beside beginner gathering nodes. The welcome tip points to gathering and the east → Chapterhouse → north → combat route. Recall and death recovery still return to the Chapterhouse. Class changes remount at the Acre. **P** opens Skills; **L** opens the Grimoire.
+
+Node rendering batches by area, hides completely inactive batches and refreshes bounds after depletion/respawn. Same 40-enemy low-quality browser comparison: baseline 122 draw calls / 415,769 triangles / median 1.857 ms CPU update; release 121 / 416,155 / 1.935 ms. These are headless software-renderer measurements, not a promise of hardware FPS. Combat browser checks confirm eight auto attacks in four seconds, stable aim/animation anchoring, fixed click movement and held casts. 190 client tests, server suites, portable VFX checks and production build pass.
+
+Public browser verification passed owner login, signup, authenticated co-op, class switching, progress, spell cards, minimap, Skills, gathering inventory/XP persistence, level and ownership gates, leaderboard and redirects, with no browser errors. The temporary account and gather ledger were removed. Evidence is in `/home/ubuntu/death-muffin/deploy/update-performance.json`, `update-performance.log`, `update-client-tests.log`, `update-build.log` and `live-professions.png`. Deployment script: `deploy/deploy-update.sh`.
+
+The converted 22-effect Binbun asset pack is published, but its Three.js runtime/hooks are still unimplemented in the supplied source. Do not describe these effects as active. The shipped game retains its managed spell effects and new skull/frost/bone sprites.
+
+Verified pre-update backup: `/home/ubuntu/death-muffin/backups/death-muffin-v1.0.0-20260927T144330Z`. Its live-site/runtime/database archives captured production immediately before this release. Roll back code only if needed; never import its database over newer player progress merely to roll back visuals.
+
 ## Existing Claude foundation
 
 This builds on the supplied Claude project, not a replacement game. Read `CLAUDE.md` for the architecture and `HANDOFF.md`/`PHASE_REPORTS.md` for already shipped systems. This Death Muffin handoff adds the current VPS deployment state; historical ports, Windows paths and pending-server statements in those earlier documents are not the live Death Muffin configuration.

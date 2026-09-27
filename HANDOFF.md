@@ -2,7 +2,7 @@
 
 Living status document so any agent (or person) can pick the project up at any
 point. **Update the "Current state" and "In flight" sections whenever you stop.**
-> **VPS update, 2026-09-27:** Death Muffin now runs at https://muffindevelopment.com/death-muffin/. Read [docs/DEATH-MUFFIN-HANDOFF.md](docs/DEATH-MUFFIN-HANDOFF.md) for current deployment, class switching, combat flow, Git access and verification; older cloud-only status below is historical.
+> **VPS update, 2026-09-27:** Death Muffin now runs at https://muffindevelopment.com/death-muffin/. The live release includes Acre-first spawn, open-game AFK professions and ten-player co-op; source, checks and deployment tooling are committed at the user’s explicit request. Read [docs/DEATH-MUFFIN-HANDOFF.md](docs/DEATH-MUFFIN-HANDOFF.md) for current deployment, class switching, combat flow, Git access and verification; older cloud-only status below is historical.
 
 Last updated: 2026-09-27, workstation (latest: BinbunVFX port researched + documented for Codex, see "In flight"): **everything combined on `master`** (the professions commit `fa43c9c`
 fast-forwarded, plus the workstation's Grimoire, enemy pack, art batches and merge fixes, staged for the owner's
@@ -17,7 +17,7 @@ VPS storage handoff).
 ## 60-second orientation
 
 - **What it is:** Crossworlds — browser necromancer ARPG (Vite + TS + Three.js). One connected
-  world, continuous waves, corpses → thralls/spells, Damage & Wave Speed upgrades, co-op ≤4,
+  world, continuous waves, corpses → thralls/spells, Damage & Wave Speed upgrades, co-op ≤10,
   the Bell-Sworn Prelate boss. Player-facing guide: `README.md`. Design source: `NECROMANCER_REDESIGN_AUDIT.md`.
 - **Hard rules:** never modify the live REST server from this repo (write proposals in
   `server/proposals/`); commits go through the user's GitHub Desktop (stage, don't commit,
@@ -80,7 +80,7 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 | **VPS storage package** (validated `/api/necro-progress/*` routes, MySQL store, schema, shared rules bundle, tests) | ✅ tested with an in-memory store + mock backend; not installed yet | `server/vps-handoff/necro-progress/`, `server/VPS_HANDOFF.md`, `npm run build:server-rules` |
 | **Grimoire (L)**: 4 static rite slots, player-chosen from 8 rites; new Wailing Skull / Grave Step / Grave Frost / Bone Mantle (lvl 3/5/7/12); Gemini icons + tintable VFX sprites | ✅ tests + browser QA (2026-09-27) | `gameplay/loadout.ts`, `ui/GrimoirePanel.ts`, `AbilitySystem.ts`, `graphics/fxImages.ts`, `public/art/fx/` |
 | **Enemy variety**: Censer Bearer (Incensed aura), Choir Wraith (scream ring), Skull-Rat packs, Bone Golem (3 corpses) + themed **processions**; Tripo models | ✅ tests + browser QA (2026-09-27) | `content/enemies.ts` (`WAVE_THEMES`), `WorldSim`, `EntityViews`, `public/models/{censer_bearer,skull_rat,bone_golem}`, `models/props/choir_wraith.glb` |
-| **Professions / gathering**: shared rules + Death Muffin `POST /api/gather` (time budget, server rolls) | ✅ route tests + mock; **not deployed** | `gameplay/gatheringRules.ts`, `server/death-muffin/backend/gathering/`, `migrations/002-gathering.sql`, `server/death-muffin/GATHERING_DEPLOY.md` |
+| **Professions / gathering**: shared rules + Death Muffin `POST /api/gather` (time budget, server rolls) | ✅ tests + live VPS deployment (2026-09-27) | `gameplay/gatheringRules.ts`, `server/death-muffin/backend/gathering/`, `migrations/002-gathering.sql`, `server/death-muffin/GATHERING_DEPLOY.md` |
 | The Sexton's Acre (safe zone west of the Chapterhouse, every node tier, pond, stations) + rich nodes in hunting grounds | ✅ QA'd in-browser | `content/areas.ts`, `content/layout.ts` (`nodes`, `ponds`), `graphics/WorldView.ts`, `Atmosphere.ts` |
 | Gathering nodes in the sim (shared depletion, `gather` intent, snapshot `depleted`), loop + Auto, stand-in node views | ✅ sim/loop tests + browser QA | `sim/WorldSim.ts`, `gameplay/Gathering.ts`, `gameplay/gatherPlan.ts`, `graphics/NodeViews.ts`, `nav.findPath` |
 | Skills panel (P), node hover card, Bone Kiln / Sawpit / Cooking Fire, 6 counsel tips, Codex Professions tab | ✅ QA'd | `ui/ProfessionsPanel.ts`, `ui/ForgePanel.ts` (stations), `ui/HUD.ts` (`nodeTip`), `ui/Onboarding.ts`, `ui/CodexPanel.ts` |

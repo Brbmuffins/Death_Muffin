@@ -142,7 +142,7 @@ export interface DisciplineEntry {
   tip: string;
 }
 
-export const CLASS_CHANGE_COUNSEL = 'Change class whenever you like through Settings → Change class. Your level, gold, items and permanent progress stay with the same character; the new discipline begins in the Chapterhouse.';
+export const CLASS_CHANGE_COUNSEL = 'Change class whenever you like through Settings → Change class. Your level, gold, items and permanent progress stay with the same character; the new discipline begins in the Sexton\'s Acre.';
 
 export const CODEX_DISCIPLINES: Record<DisciplineId, DisciplineEntry> = {
   ossuary: {
@@ -279,7 +279,7 @@ export interface AreaEntry {
 
 /** Professions tab (docs/PROFESSIONS-ROADMAP.md): counsel above the generated node tables. */
 export const CODEX_PROFESSIONS_COUNSEL =
-  "Click a tree, ore seam, fishing spot or grave and your necromancer keeps working it until it is spent. Every cycle rolls against your level: higher levels succeed more often, and each success gives skill XP and a find, rolled and stored by the server. The Sexton's Acre, west of the Chapterhouse, has every node and no dead. Gold-lit rich nodes in the hunting grounds hold more and return twice as fast. Your bag must have room, and moving, casting, opening a panel or taking a hit stops you. Auto gathering (Settings) walks you on to the next node of the same kind.";
+  "Click a tree, ore seam, fishing spot or grave and your necromancer keeps working it until it is spent. Every cycle rolls against your level: higher levels succeed more often, and each success gives skill XP and a find, rolled and stored by the server. The Sexton's Acre, west of the Chapterhouse, has every node and no dead. Gold-lit rich nodes in the hunting grounds hold more and return twice as fast. Your bag must have room, and moving, casting, opening a panel or taking a hit stops you. Auto gathering (Settings) walks you on to the next node of the same kind. For RuneScape-style AFK work, open Skills (P) in the Acre, choose a node and Start AFK. Keep the game open, including in a background tab: work continues through node changes and respawns until the bag fills. Skills may stay open; movement, casting, other panels or Pause AFK stop work. Closing or reloading the game ends the session. No offline rewards accrue.";
 
 export const CODEX_TRAVEL_COUNSEL = 'Click a walkable spot on the minimap to choose a fixed destination. Travel follows the same paths as ground clicks; locked halls remain closed. The amber marker shows where you are going. Hover or focus a spell icon for detailed rite counsel.';
 

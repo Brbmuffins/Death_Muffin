@@ -17,11 +17,26 @@ const BLURB: Record<SkillId, string> = {
  */
 export class ProfessionsPanel {
   private el: HTMLDivElement | null = null;
+  private busy = false;
+  private message = '';
 
-  constructor(private root: HTMLElement) {}
+  constructor(private root: HTMLElement, private afk?: {
+    start(type: string): Promise<void>;
+    pause(): void;
+    status(): { active: boolean; text: string; allowed: boolean };
+  }) {}
 
   get isOpen() {
     return this.el !== null;
+  }
+
+  refreshStatus() {
+    const status = this.afk?.status();
+    const label = this.el?.querySelector<HTMLElement>('[data-afk-status]');
+    if (!status || !label) return;
+    label.textContent = (this.busy ? 'Starting…' : status.active ? `AFK · ${status.text}` : this.message || status.text) + (!status.allowed ? ' · Visit the Sexton’s Acre to start.' : '');
+    const pause=this.el?.querySelector<HTMLButtonElement>('[data-pause-afk]');
+    if(pause)pause.disabled=!status.active||this.busy;
   }
 
   open(skills: Skills) {
@@ -36,6 +51,11 @@ export class ProfessionsPanel {
 
   render(skills: Skills) {
     if (!this.el) return;
+    // Leave an open native node picker intact while the player chooses a tier.
+    if (this.el.querySelector('select:focus')) return;
+    const selections = new Map([...this.el.querySelectorAll<HTMLSelectElement>('[data-afk-node]')].map(el => [el.dataset.afkNode, el.value]));
+    const focused = this.el.contains(document.activeElement) ? (document.activeElement as HTMLElement).getAttribute('aria-label') : null;
+    const status = this.afk?.status();
     const cards = ALL_SKILLS.map((id) => {
       const meta = SKILLS[id];
       const s = skills.shown(id);
@@ -49,6 +69,12 @@ export class ProfessionsPanel {
           : id === 'gardening'
             ? 'Not open yet.'
             : 'Every node is open to you.';
+      const choices = id === 'gardening' ? [] : nodesForSkill(id).filter(n => n.level <= skills.level(id));
+      const selected = selections.get(id) ?? choices[0]?.id;
+      const afk = this.afk && choices.length ? `<div class="cw-afk-controls">
+        <select data-afk-node="${id}" aria-label="${meta.name} gathering node" ${this.busy ? 'disabled' : ''}>${choices.map(n => `<option value="${n.id}" ${n.id === selected ? 'selected' : ''}>${n.name} · level ${n.level}</option>`).join('')}</select>
+        <button class="cw-btn" data-start-afk="${id}" aria-label="Start AFK ${meta.name}" ${this.busy || !status?.allowed ? 'disabled' : ''}>Start AFK</button>
+      </div>` : '';
       return `
         <div class="cw-skill" style="--skill:${meta.color}">
           <div class="row"><span class="name">${meta.name}</span><span class="lvl">${s.level}<small>/${LEVEL_CAP}</small></span></div>
@@ -57,6 +83,7 @@ export class ProfessionsPanel {
           <div class="xp">${capped ? 'Level cap' : `${s.xp.toLocaleString()} / ${s.next.toLocaleString()} XP · ${(s.next - s.xp).toLocaleString()} to go`}</div>
           <div class="next">${unlock}</div>
           <div class="blurb">${BLURB[id]}</div>
+          ${afk}
         </div>`;
     }).join('');
     this.el.innerHTML = `
@@ -65,10 +92,22 @@ export class ProfessionsPanel {
         <span class="cw-skill-total">Total level <b>${skills.total()}</b></span>
         <button class="cw-icon-btn" data-close aria-label="Close skills">✕</button>
       </div>
-      <p class="cw-hint-text">Click a tree, seam, fishing spot or grave to work it. The Sexton’s Acre, west of the Chapterhouse, has every tier and no dead.</p>
+      <p class="cw-hint-text">Choose a node and Start AFK in the Sexton’s Acre. Keep the game open; your hero repeats, changes nodes and waits for respawns until the bag fills. Skills can stay open. Moving, casting or other panels pause work.</p>
+      ${status ? `<div class="cw-afk-status"><span data-afk-status></span><button class="cw-btn" data-pause-afk ${!status.active || this.busy ? 'disabled' : ''}>Pause AFK</button></div>` : ''}
       <div class="cw-skill-grid">${cards}</div>
     `;
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
+    this.refreshStatus();
+    this.el.querySelector('[data-pause-afk]')?.addEventListener('click', () => { this.afk?.pause(); this.message = 'AFK paused'; this.render(skills); });
+    for (const button of this.el.querySelectorAll<HTMLButtonElement>('[data-start-afk]')) button.addEventListener('click', async () => {
+      const type = this.el?.querySelector<HTMLSelectElement>(`[data-afk-node="${button.dataset.startAfk}"]`)?.value;
+      if (!type || !this.afk || this.busy) return;
+      this.busy = true;this.message = '';this.render(skills);
+      try { await this.afk.start(type); }
+      catch (error) { this.message = (error as Error).message; }
+      finally { this.busy = false;this.render(skills); }
+    });
+    if (focused) [...this.el.querySelectorAll<HTMLElement>('[aria-label]')].find(el => el.getAttribute('aria-label') === focused)?.focus();
   }
 
   close() {

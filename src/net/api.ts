@@ -202,10 +202,14 @@ export interface GatherReply {
   skills: Profession[];
 }
 
-export function gather(characterId: number, nodeType: string, actions: number, keepalive = false) {
+export function gather(characterId: number, nodeType: string, actions: number, keepalive = false, afk = false) {
   return unwrap<GatherReply>(
-    request('/api/gather', { method: 'POST', body: JSON.stringify({ characterId, nodeType, actions }), keepalive }, true),
+    request('/api/gather', { method: 'POST', body: JSON.stringify({ characterId, nodeType, actions, afk }), keepalive }, true),
   );
+}
+
+export function beginAfkGather(characterId: number, nodeType: string) {
+  return unwrap<{ node: string }>(request('/api/gather/afk-start', { method: 'POST', body: JSON.stringify({ characterId, nodeType }) }, true));
 }
 
 // --- Progression ---

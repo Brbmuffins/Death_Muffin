@@ -533,7 +533,7 @@ button { font-family: inherit; }
 .hud-menu .hud-auto[aria-pressed="true"] { color: var(--cw-bone-100); border-color: var(--cw-border-active); }
 
 /* Party (top-left) */
-.hud-party { position: absolute; top: 14px; left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.hud-party { position: absolute; top: 14px; left: 18px; display: flex; flex-direction: column; gap: 6px; max-height: calc(100vh - 220px); overflow-y: auto; pointer-events: auto; }
 .hud-member { display: flex; align-items: center; gap: 8px; width: 210px; padding: 5px 8px 5px 5px; background: rgba(7, 6, 10, 0.82); border: 1px solid var(--cw-border); }
 .hud-member img { width: 34px; height: 34px; object-fit: cover; border: 1px solid var(--cw-border-strong); }
 .hud-member .who { flex: 1; min-width: 0; }
@@ -695,6 +695,10 @@ button { font-family: inherit; }
 .cw-class-panel .cw-disc[aria-current="true"] { border-color: var(--disc-color); }
 .cw-panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .cw-panel-head .cw-title { font-size: 20px; }
+.cw-afk-status { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 8px 0; color: var(--cw-bone-100); }
+.cw-afk-controls { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.cw-afk-controls select { flex: 1; min-width: 140px; max-width: 100%; background: var(--cw-inset); color: var(--cw-bone-100); padding: 6px; border: 1px solid var(--cw-border); }
+.cw-afk-controls button:disabled { opacity: .5; }
 .cw-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
 .cw-tabs button { flex: 1; padding: 6px 8px; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-text-muted); cursor: pointer; font-family: var(--cw-font-display); font-weight: 600; font-size: 14px; letter-spacing: 0.1em; text-transform: uppercase; }
 .cw-tabs button.on { color: var(--cw-bone-100); border-color: var(--cw-border-active); background: var(--cw-accent-soft); }

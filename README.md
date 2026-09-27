@@ -16,13 +16,13 @@ and deadlier every time.
 
 There are no short missions and no extraction timers. Enter the world, farm the dead,
 improve your build, break the seals, and become an unstoppable master of the dead —
-alone or with up to three friends.
+alone or with up to nine friends.
 
 ---
 
 ## Death Muffin VPS
 
-Play at https://muffindevelopment.com/death-muffin/. See [the VPS handoff](docs/DEATH-MUFFIN-HANDOFF.md) before editing or deploying.
+Play at https://muffindevelopment.com/death-muffin/. Up to **10 players per world** share chat, combat and gathering nodes; joining automatically finds a world with room. See [the VPS handoff](docs/DEATH-MUFFIN-HANDOFF.md) before editing or deploying.
 
 Auto combat is enabled by default: stand near enemies to use basic rites, click to move, and press **G** to toggle it. Hold **1–4** to repeat a spell at the cursor; signature rites remain manual. Press **L** for the [Grimoire](#the-grimoire-l--choose-your-four) to choose which rites sit on 1–4. Casts have short recovery, quicker gestures and calmer effects, with projectile damage arriving at the visual impact.
 
@@ -40,7 +40,7 @@ Use **Settings → Change class** whenever you want. Your character ID, level, g
 
 ## The loop
 
-1. **Enter the world** at the Chapterhouse — a safe sanctuary with your Reliquary (inventory), the Ossuary Workbench (crafting), the Rite Niches (skills), waystones and the Altar of Ascension. West of it lies the **Sexton's Acre**, where you can level gathering skills without fighting at all.
+1. **Enter the world** at a fixed, safe spawn beside the **Sexton's Acre** entrance. Click nearby trees, ore, fishing spots or graves to begin gathering without fighting; **P** opens Skills. When you want combat, walk east into the Chapterhouse, then north into the Hollow Graves. The Chapterhouse holds your Reliquary (inventory), Workbench (crafting) and Altar; **T** recalls you there.
 2. **Walk into a hunting ground.** The dead claw out of grave breaches in continuous waves.
 3. **Kill → corpses.** Every corpse is a choice: raise it as a thrall, feed it to Black Litany, detonate it — or lose it to a Crypt Deacon.
 4. **Loot** gold, soul shards (from elites) and relics — equip upgrades on the spot.
@@ -298,6 +298,9 @@ world keeper's rank decides how old the dead are (like difficulty).
 ---
 
 ## Professions — the Sexton's Acre
+
+**AFK gathering:** In the Acre, press **P**, choose a node tier for Woodcutting, Mining, Fishing or Gravedigging, and click **Start AFK**. Your hero works continuously, walks to the next node of the same kind and waits for respawns. Skills can remain open for oversight. Keep the game open; background tabs update the same simulation without drawing frames. A full bag pauses work: make room, then Start AFK again. Movement, casting, other panels or **Pause AFK** stop it. Closing/reloading ends the session; there are no offline rewards. Node tiers stay your choice as you level up.
+
 
 ![The Sexton's Acre: the grove, the quarry wall and a necromancer chopping a Bleeding Willow](docs/screenshots/sextons-acre.webp)
 
