@@ -522,7 +522,7 @@ button { font-family: inherit; }
   border: 2px solid #1c1822;
   box-shadow: 0 0 0 1px var(--cw-border-strong), 0 0 0 6px #0b090e, 0 0 0 7px var(--cw-border), 0 12px 30px rgba(0, 0, 0, 0.7);
 }
-.hud-map canvas { width: 100%; height: 100%; display: block; }
+.hud-map canvas { width: 100%; height: 100%; display: block; cursor: pointer; touch-action: none; user-select: none; }
 .hud-map .area { font-family: var(--cw-font-display); font-weight: 700; font-size: 16px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cw-bone-100); text-align: center; text-shadow: 0 1px 4px #000; }
 .hud-map .prog { font-size: 12px; color: var(--cw-text-muted); text-align: center; max-width: 220px; line-height: 1.3; }
 .hud-map .prog b { color: var(--cw-spell-300); font-family: var(--cw-font-numeric); }
@@ -730,6 +730,42 @@ button { font-family: inherit; }
 .cw-tooltip .lore { color: var(--cw-text-muted); font-style: italic; margin-top: 6px; }
 .cw-tooltip .sell { color: #e2c98f; margin-top: 6px; font-family: var(--cw-font-numeric); }
 .cw-tooltip .meta { display: flex; gap: 10px; font-family: var(--cw-font-numeric); color: var(--cw-spell-300); margin: 4px 0; }
+
+/* Hotbar help uses the existing carved surface, with enough room to read. */
+.hud-spell-tooltip {
+  position: fixed;
+  z-index: 30;
+  width: min(420px, calc(100vw - 24px));
+  max-height: min(580px, calc(100vh - 24px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 17px 19px;
+  background: rgba(7, 6, 10, 0.98);
+  border-color: var(--cw-border-strong);
+  pointer-events: auto;
+  font-size: 15px;
+  line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.hud-spell-tooltip[hidden] { display: none; }
+.hud-spell-tooltip .spell-name { font-family: var(--cw-font-display); font-size: 23px; font-weight: 600; color: var(--cw-bone-100); }
+.hud-spell-tooltip .spell-control { color: var(--cw-bone-300); margin: 3px 0 7px; }
+.hud-spell-tooltip .spell-state { font-size: 14px; color: var(--cw-text-muted); }
+.hud-spell-tooltip .spell-state.empowered { color: #9ff5e0; }
+.hud-spell-tooltip .spell-state.locked { color: #e2c98f; }
+.hud-spell-tooltip p { margin: 10px 0; }
+.hud-spell-tooltip .spell-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 14px; padding: 10px 0; border-block: 1px solid var(--cw-border); }
+.hud-spell-tooltip .spell-metrics div { display: flex; flex-wrap: wrap; gap: 2px 8px; justify-content: space-between; }
+.hud-spell-tooltip .spell-metrics span { color: var(--cw-text-muted); }
+.hud-spell-tooltip .spell-metrics b { color: var(--cw-bone-100); font-family: var(--cw-font-numeric); font-weight: 500; }
+.hud-spell-tooltip .spell-targeting { color: var(--cw-spell-300); }
+.hud-spell-tooltip .spell-details { padding-left: 19px; margin: 10px 0; }
+.hud-spell-tooltip .spell-details li + li { margin-top: 7px; }
+.hud-spell-tooltip .spell-tip { padding-top: 11px; border-top: 1px solid var(--cw-border); }
+.hud-spell-tooltip .spell-tip > b { color: var(--cw-bone-300); font-weight: 600; }
+.hud-spell-tooltip .spell-tip p { margin: 4px 0 0; color: var(--cw-text-muted); }
+.hud-spell-tooltip .spell-footer { font-size: 13px; margin-top: 11px; color: var(--cw-text-faint); }
 
 .cw-recipes { display: flex; flex-direction: column; gap: 8px; }
 .cw-recipe { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px; background: var(--cw-inset); border: 1px solid var(--cw-border); }

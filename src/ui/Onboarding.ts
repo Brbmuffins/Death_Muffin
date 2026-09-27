@@ -8,6 +8,7 @@ import { browserStorage, type StorageLike } from '../gameplay/codexJournal';
  * Settings) turns the whole sequence off via app/settings `tips`.
  */
 export type TipId =
+  | 'minimap'
   | 'auto_combat'
   | 'change_class'
   | 'welcome'
@@ -40,6 +41,10 @@ interface Tip {
 }
 
 export const TIPS: Record<TipId, Tip> = {
+  minimap: {
+    title: 'Choose your path',
+    body: 'Click a walkable spot on the minimap to travel there. The amber marker shows your fixed destination. Click another spot to change it; sealed halls stay closed. Hover a spell icon for its cost, targeting, effects and a useful combat tip.',
+  },
   auto_combat: {
     title: 'Settle into the fight',
     body: 'Auto combat uses nearby targets and basic rites while you stand still. Click to move whenever you like; your hero stays where you choose. Toggle it with <kbd>G</kbd> or the Auto button. Hold <kbd>1</kbd>–<kbd>4</kbd> to repeat a rite at your cursor. Signature rites remain yours to cast.',

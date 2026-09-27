@@ -3,6 +3,7 @@ import { AREAS, AREA_ORDER } from '../content/areas';
 import {
   BEHAVIOUR_LABEL,
   CLASS_CHANGE_COUNSEL,
+  CODEX_TRAVEL_COUNSEL,
   CODEX_AREAS,
   CODEX_DEAD,
   CODEX_DISCIPLINES,
@@ -192,7 +193,7 @@ export class CodexPanel {
           </div>
         </article>`;
     }).join('');
-    return `<div class="cw-codex-count">Walked <b>${known}</b> of ${AREA_ORDER.length}</div>${rows}`;
+    return `<p class="tip">${CODEX_TRAVEL_COUNSEL}</p><div class="cw-codex-count">Walked <b>${known}</b> of ${AREA_ORDER.length}</div>${rows}`;
   }
 
   private lore() {

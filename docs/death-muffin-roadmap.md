@@ -13,3 +13,7 @@ Requested by the owner on 2026-09-27; recorded for future work.
 There is already a headless combat/farming bot in `src/gameplay/balance/harness.ts`, plus the boss harness used by `npm run balance:boss`. This is a testing foundation, not an authenticated persistent player. Start future work from those decision loops and the existing Intent → WorldSim → SimEvent architecture instead of rebuilding combat.
 
 Start with one server-controlled bot in a dedicated test world. Reuse the existing movement, combat intents, progression rules, and authenticated game services. Verify navigation, corpse targeting, resource management, save/reload, and recovery from death before running persistent sessions. Add personality, opponent tactics, and class-specific strategies after the basic loop works reliably.
+
+## Spell variety
+
+The owner requested more spell choice while preserving existing artwork and smooth gameplay. See [SPELL-VARIETY-PLAN.md](SPELL-VARIETY-PLAN.md) for the proposed loadout system, four MVP additions and later class options. These are future designs; richer spell hover cards describe the shipped kit.

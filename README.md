@@ -26,6 +26,8 @@ Play at https://muffindevelopment.com/death-muffin/. See [the VPS handoff](docs/
 
 Auto combat is enabled by default: stand near enemies to use basic rites, click to move, and press **G** to toggle it. Hold **1–4** to repeat a spell at the cursor; signature rites remain manual. Casts have short recovery, quicker gestures and calmer effects, with projectile damage arriving at the visual impact.
 
+Click a walkable spot on the **minimap** to travel there using normal paths; the amber marker shows your fixed destination. Hover or focus a spell icon for richer cost, targeting, status and combat-tip information.
+
 Use **Settings → Change class** whenever you want. Your character ID, level, gold, items and permanent progress are preserved; the selected class starts safely in the Chapterhouse. [Future bots](docs/death-muffin-roadmap.md) are a documented follow-up.
 
 ## Contents
@@ -324,6 +326,8 @@ read. Turn them off (or **Show tips again**) in Settings (**Esc**). **K** opens 
 
 | Input | Action |
 |---|---|
+| Minimap click | Travel to a walkable location; sealed halls remain closed |
+| Hover/focus spell | Detailed spell information and combat tips |
 | Left click | Move · attack the enemy under the cursor · use an object |
 | Shift + click | Cast Bone Needle without moving |
 | **1 2 3 4** (hold to repeat) | Marrow Spear · Exhume · Miasma Circle · Black Litany (aimed at the cursor) |

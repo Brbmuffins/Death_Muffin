@@ -1,4 +1,5 @@
 import { AREAS, AREA_ORDER, DOORS, type AreaId } from '../content/areas';
+import { MINIMAP_SCALE as SCALE, MINIMAP_SIZE, minimapWalkable, minimapWorldPoint } from './minimapCoordinates';
 
 export interface MinimapFrame {
   px: number;
@@ -11,27 +12,50 @@ export interface MinimapFrame {
   corpses: Iterable<{ x: number; z: number }>;
   boss: { x: number; z: number } | null;
   waystones: { x: number; z: number }[];
+  /** Accepted final movement destination; null when the route ends. */
+  destination?: { x: number; z: number } | null;
 }
-
-const SCALE = 2.1; // px per world unit (at 190px canvas)
 
 /** Circular top-right minimap, north-up, centred on the player. */
 export class Minimap {
   readonly canvas = document.createElement('canvas');
   private ctx: CanvasRenderingContext2D;
+  /** Scene validates movement state and navigation, returning true when accepted. */
+  onNavigate?: (x: number, z: number) => boolean;
+  private px = 0;
+  private pz = 0;
+  private unlocked: ((a: AreaId) => boolean) | null = null;
 
   constructor() {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    this.canvas.width = this.canvas.height = Math.round(190 * dpr);
+    this.canvas.width = this.canvas.height = Math.round(MINIMAP_SIZE * dpr);
     this.ctx = this.canvas.getContext('2d')!;
-    this.ctx.scale(dpr, dpr);
+    this.ctx.scale(this.canvas.width / MINIMAP_SIZE, this.canvas.height / MINIMAP_SIZE);
     this.canvas.setAttribute('role', 'img');
-    this.canvas.setAttribute('aria-label', 'Minimap');
+    this.canvas.setAttribute('aria-label', 'Minimap. Click unlocked ground to walk there.');
+    this.canvas.title = 'Click unlocked ground to walk there';
+    this.canvas.addEventListener('pointerdown', event => {
+      event.stopPropagation();
+      if (event.button !== 0 || !event.isPrimary || !this.unlocked || !this.onNavigate) return;
+      event.preventDefault();
+      const point = minimapWorldPoint(event.clientX, event.clientY, this.canvas.getBoundingClientRect(), this.px, this.pz);
+      if (!point || !minimapWalkable(point.x, point.z, this.unlocked)) return;
+      this.onNavigate(point.x, point.z);
+    });
+    // Minimap input belongs to the HUD, including clicks that cannot form a route.
+    for (const type of ['mousedown', 'click', 'dblclick', 'contextmenu']) this.canvas.addEventListener(type, event => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    this.canvas.addEventListener('wheel', event => event.stopPropagation(), { passive: true });
   }
 
   draw(f: MinimapFrame) {
+    this.px = f.px;
+    this.pz = f.pz;
+    this.unlocked = f.unlocked;
     const c = this.ctx;
-    const S = 190;
+    const S = MINIMAP_SIZE;
     const half = S / 2;
     const tx = (x: number) => half + (x - f.px) * SCALE;
     const tz = (z: number) => half + (z - f.pz) * SCALE;
@@ -90,6 +114,19 @@ export class Minimap {
     if (f.boss) {
       dot(f.boss.x, f.boss.z, 5, '#7c3aed');
       dot(f.boss.x, f.boss.z, 2.5, '#f0e9dc');
+    }
+
+    if (f.destination) {
+      // A small fixed world-space marker follows the map's moving centre, not the cursor.
+      const x = tx(f.destination.x);
+      const z = tz(f.destination.z);
+      c.strokeStyle = '#e6cc91';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.arc(x, z, 4, 0, Math.PI * 2);
+      c.moveTo(x - 6, z); c.lineTo(x + 6, z);
+      c.moveTo(x, z - 6); c.lineTo(x, z + 6);
+      c.stroke();
     }
 
     // Player arrow.

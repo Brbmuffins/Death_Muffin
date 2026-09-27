@@ -46,6 +46,18 @@ Editing source does not update the running copies. When editing the supplied sit
 - Nginx locations live in `/etc/nginx/sites-available/muffindevelopment`; old game redirects live in `/etc/nginx/sites-enabled/crossworlds`. Repository fragments are under `server/death-muffin/`.
 - Do not edit the Workbench API, Muffin Development application, original Crossworlds game, or their databases for Death Muffin changes.
 
+## After the approved checkpoint
+
+The approved complete version `death-muffin-v1.0.0` points to `a9e54b3` (documentation atop gameplay `fca634d`). Private full backup: `/home/ubuntu/death-muffin/backups/death-muffin-v1.0.0-20260927T024930Z`, about 202MiB. All archives were listed and checked, Git bundle verified and SHA256SUMS validated; includes the consistent 34-table database snapshot. Source/tag are pushed; private backups are on this VPS, not GitHub. See its `RESTORE.md` and never import a snapshot over newer player data merely to roll back code.
+
+Follow-up UI changes add rich spell hover/focus cards and minimap click movement. Spell counsel derives from `abilities.ts`, `codex.ts` and actual discipline modifiers; native titles are replaced by readable, scrollable cards with current cooldown, cost, range, targeting, effects and tips. Cards persist while hovered/focused; Escape dismisses them before Settings opens.
+
+Minimap clicks map from the displayed canvas/player center to world coordinates, accounting for DPR and CSS scaling. Unlocked floors/open corridors only; invalid/locked/circle-corner clicks do not replace a path. The scene uses the accepted Nav/Player path system, clears attack/interaction/queued cast/auto aim, and never adds drag steering. An amber marker tracks the actual final destination until arrival.
+
+Follow-up verification: 131 client tests, typecheck and production build pass. Public browser smoke also verified the new spell cards/minimap UI with owner login, signup, co-op, class switching and leaderboard; the temporary test account was removed. Browser checks passed persistent/keyboard/readable spell details, hover without casting, desktop/mobile bounds, minimap arrival and fixed destinations, locked/outside rejection, DPR2 and CSS scaling.
+
+New spell additions are **planned, not implemented** in [SPELL-VARIETY-PLAN.md](SPELL-VARIETY-PLAN.md): role-compatible loadouts and four MVP spells before class expansion. Preserve existing art, current short gestures/effects and authoritative sim boundaries. Do not assume the proposals are shipped abilities.
+
 ## Class-change migration checkpoint
 
 The additive nullable `characters.discipline_index` column is already applied to the live `death_muffin` database. **Do not blindly rerun** `server/death-muffin/backend/migrations/001-discipline-index.sql`.
@@ -64,7 +76,7 @@ npm run test:server
 DEPLOY_BASE=/death-muffin/play/ VITE_API_BASE=/death-muffin/api VITE_WS_BASE=https://muffindevelopment.com VITE_WS_PATH=/death-muffin/rt/socket.io npm run build
 ```
 
-Final client suite: **122 passing tests**, including automatic selection, spell arrival timing/caster death/effect limits, real shipped hero anchoring/short gestures/movement blending, and class-save failures/in-flight upgrade purchases. Typecheck, both server test suites and the production build pass. Regenerate server rules when changing shared rules; do not regenerate models merely to adjust gameplay.
+Approved baseline suite: **122 passing tests**; after minimap and rich spell cards, **131 passing tests**, including automatic selection, spell arrival timing/caster death/effect limits, real shipped hero anchoring/short gestures/movement blending, and class-save failures/in-flight upgrade purchases. Typecheck, both server test suites and the production build pass. Regenerate server rules when changing shared rules; do not regenerate models merely to adjust gameplay.
 
 For a game-only update after checks pass:
 
@@ -97,6 +109,6 @@ For isolated browser work, `npm run dev -- --host 127.0.0.1 --port 5198 --strict
 
 - Previous static build is saved at `/home/ubuntu/death-muffin/deploy/play.before-combat-flow-20260927`. Keep the previous static build before publishing. Roll back game code by restoring that build; retain player saves and the additive class override column.
 - `/home/ubuntu/death-muffin/deploy/rollback-domain.sh` restores pre-migration nginx configs, realtime unit and game index, then restarts realtime/reloads nginx. It is a **domain migration rollback**, not a combat rollback. It retains the database.
-- Origin: `https://github.com/Brbmuffins/Cross-Worlds-Web.git`; branch: `claude/adoring-knuth-hd1uox`. Domain migration commit: `6f99bc2`; accepted facing: `ceddcd5`; stable animations: `890473a`.
-- Review `git log -1` for the final feature commit and `git status` before new work. GitHub authentication is configured with the dedicated repo deploy key `/home/ubuntu/.ssh/death_muffin_github` (mode600), GitHub-published host keys in `known_hosts`, and repo-local `core.sshCommand`. Origin uses SSH (`git@github.com:Brbmuffins/Cross-Worlds-Web.git`). Never copy the private key into Git or logs. This persists for future sessions on this VPS; access can be revoked from the repository Deploy keys settings.
+- Origin: `https://github.com/Brbmuffins/Death_Muffin.git`; branch: `claude/adoring-knuth-hd1uox`. Domain migration commit: `6f99bc2`; accepted facing: `ceddcd5`; stable animations: `890473a`.
+- Review `git log -1` for the final feature commit and `git status` before new work. GitHub authentication is configured with the dedicated repo deploy key `/home/ubuntu/.ssh/death_muffin_github` (mode600), GitHub-published host keys in `known_hosts`, and repo-local `core.sshCommand`. Origin uses SSH (`git@github.com:Brbmuffins/Death_Muffin.git`). Never copy the private key into Git or logs. This persists for future sessions on this VPS; access can be revoked from the repository Deploy keys settings.
 - Use the existing private `controls-smoke.cjs --combat-review` and `--class-review` scenarios and `class-api-smoke.cjs` for relevant checks. DEV `__cwDebug.advance(seconds, false)` advances actual simulation without repeated software-GPU renders; it is not a desktop FPS benchmark. Ear-test and judge subjective combat feel in the home-PC browser.
