@@ -15,6 +15,7 @@ export interface HudCallbacks {
   dialWave(delta: number): void;
   open(panel: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex'): void;
   chat(text: string): void;
+  toggleAutoCombat(): void;
 }
 
 export interface SlotFrame {
@@ -28,6 +29,7 @@ export interface SlotFrame {
 }
 
 export interface HudFrame {
+  autoCombat: boolean;
   hp: number;
   maxHp: number;
   barrier: number;
@@ -132,6 +134,7 @@ export class HUD {
           <button data-open="map" title="Waystones (M)" aria-label="Waystones">${ICON.stone}</button>
           <button data-open="codex" title="Codex (K)" aria-label="Codex">${ICON.book}</button>
           <button data-open="settings" title="Settings (Esc)" aria-label="Settings">${ICON.gear}</button>
+          <button class="hud-auto" data-auto aria-label="Auto combat" title="Toggle auto combat (G)" aria-pressed="false">Auto: On · G</button>
         </div>
       </div>
       <div class="hud-toasts passive" data-toasts></div>
@@ -209,6 +212,7 @@ export class HUD {
       b.addEventListener('click', () => this.cb.open(b.dataset.open as 'inventory')),
     );
     this.$('[data-buydmg]').addEventListener('click', () => this.cb.buyDamage());
+    this.$('[data-auto]').addEventListener('click', () => this.cb.toggleAutoCombat());
     this.$('[data-buywave]').addEventListener('click', () => this.cb.buyWave());
     this.el.querySelectorAll<HTMLButtonElement>('[data-dial]').forEach((b) =>
       b.addEventListener('click', () => this.cb.dialWave(Number(b.dataset.dial))),
@@ -242,6 +246,10 @@ export class HUD {
   }
 
   update(f: HudFrame) {
+    this.set('autoCombat', f.autoCombat, () => {
+      this.$('[data-auto]').textContent = f.autoCombat ? 'Auto: On · G' : 'Auto: Off · G';
+      this.$('[data-auto]').setAttribute('aria-pressed', String(f.autoCombat));
+    });
     const hpFrac = Math.max(0, f.hp / f.maxHp);
     this.set('hp', Math.round(hpFrac * 400), () => this.$('[data-hporb]').style.setProperty('--fill', `${hpFrac * 100}%`));
     this.set('hptxt', `${Math.ceil(f.hp)}/${f.maxHp}`, () => (this.$('[data-hptxt]').innerHTML = `${Math.ceil(f.hp).toLocaleString()} / ${f.maxHp.toLocaleString()}<small>Health</small>`));
@@ -375,7 +383,9 @@ export class HUD {
     const box = this.$('[data-toasts]');
     box.appendChild(el);
     while (box.children.length > 4) box.firstChild?.remove();
-    setTimeout(() => el.remove(), 4100);
+    const duration = Math.max(8000, 2000 + text.split(/\s+/).length * 400);
+    el.style.setProperty('--toast-ms', `${duration}ms`);
+    setTimeout(() => el.remove(), duration + 700);
   }
 
   private bannerTimer = 0;

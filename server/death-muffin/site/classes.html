@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#07060a" />
+    <meta
+      name="description"
+      content="Choose a Death Muffin necromancer discipline: Ossuary, Gravecaller, Mourner, or Rotweaver."
+    />
+    <title>Classes — Death Muffin</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%2307060a'/%3E%3Cpath d='M16 4v24M8 10l8-5 8 5M9 22l7 6 7-6M7 16h18' fill='none' stroke='%239b5cff' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23c6a4ff'/%3E%3C/svg%3E"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Pirata+One&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link rel="preload" href="assets/about-covenant.png" as="image" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="about-page classes-page">
+    <a class="skip-link" href="#classes-main">Skip to classes</a>
+
+    <header class="site-nav">
+      <a class="site-nav__brand" href="index.html" aria-label="Death Muffin login">
+        <span class="site-nav__mark" aria-hidden="true"></span>
+        <span>Death Muffin</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a class="site-nav__link" href="about.html">About</a>
+        <a class="site-nav__link" href="classes.html" aria-current="page">Classes</a>
+        <a class="site-nav__link" href="leaderboard.html">Leaderboard</a>
+        <a class="site-nav__enter" href="index.html">Enter</a>
+      </nav>
+    </header>
+
+    <main id="classes-main">
+      <section class="classes-hero" aria-labelledby="classes-title">
+        <div class="classes-hero__content">
+          <p class="eyebrow">The Ossuary Covenant</p>
+          <h1 id="classes-title">Choose your discipline.</h1>
+          <p>
+            Every necromancer raises the dead. Your discipline decides whether those bodies become
+            a shield wall, a restless legion, a choir of wraiths, or a garden of rot.
+          </p>
+          <a class="about-button about-button--primary" href="#disciplines">Read the four rites</a>
+        </div>
+      </section>
+
+      <section class="disciplines-section" id="disciplines" aria-labelledby="disciplines-title">
+        <div class="section-heading section-heading--center">
+          <p class="eyebrow">Four ways to spend the dead</p>
+          <h2 id="disciplines-title">The Covenant’s disciplines</h2>
+        </div>
+
+        <div class="discipline-grid">
+          <article class="discipline-card discipline-card--ossuary" aria-labelledby="ossuary-title">
+            <span class="discipline-card__number" aria-hidden="true">I</span>
+            <div class="discipline-card__sigil" aria-hidden="true">
+              <svg viewBox="0 0 64 64">
+                <path d="M32 6 51 14v16c0 13-8 23-19 29C21 53 13 43 13 30V14Z" />
+                <path d="M23 31h18M32 21v20" />
+              </svg>
+            </div>
+            <p class="discipline-card__role">Tank · Bone</p>
+            <h3 id="ossuary-title">Ossuary</h3>
+            <p class="discipline-card__title">Keeper of the Bone Wall</p>
+            <p class="discipline-card__play">
+              Raise a wall of Shieldbearers, stand behind it, and turn every sacrifice into armour.
+            </p>
+            <div class="discipline-card__passive">
+              <span>Passive · Bone Ward</span>
+              <p>
+                Thralls gain 60% health and draw aggression. You take 6% less damage per active
+                thrall. Black Litany grants a bone barrier.
+              </p>
+            </div>
+          </article>
+
+          <article class="discipline-card discipline-card--gravecaller" aria-labelledby="gravecaller-title">
+            <span class="discipline-card__number" aria-hidden="true">II</span>
+            <div class="discipline-card__sigil" aria-hidden="true">
+              <svg viewBox="0 0 64 64">
+                <path d="M14 52c1-11 7-17 18-17s17 6 18 17M22 22a10 10 0 1 0 20 0 10 10 0 0 0-20 0Z" />
+                <path d="m10 30 7-5m37 5-7-5M18 12l5 4m23-4-5 4" />
+              </svg>
+            </div>
+            <p class="discipline-card__role">Army · Spirit</p>
+            <h3 id="gravecaller-title">Gravecaller</h3>
+            <p class="discipline-card__title">Marshal of the Restless</p>
+            <p class="discipline-card__play">
+              Raise, sacrifice, and raise again. Your corpse field never stays empty for long.
+            </p>
+            <div class="discipline-card__passive">
+              <span>Passive · Grave Legion</span>
+              <p>
+                Command up to five thralls. They attack 20% faster, and those sacrificed by Black
+                Litany leave corpses behind.
+              </p>
+            </div>
+          </article>
+
+          <article class="discipline-card discipline-card--mourner" aria-labelledby="mourner-title">
+            <span class="discipline-card__number" aria-hidden="true">III</span>
+            <div class="discipline-card__sigil" aria-hidden="true">
+              <svg viewBox="0 0 64 64">
+                <path d="M18 16c4-7 24-7 28 0v19c0 12-7 20-14 24-7-4-14-12-14-24Z" />
+                <path d="M25 29c2-2 5-2 7 0m0 0c2-2 5-2 7 0M27 41c3 2 7 2 10 0" />
+              </svg>
+            </div>
+            <p class="discipline-card__role">Sustain · Wraith</p>
+            <h3 id="mourner-title">Mourner</h3>
+            <p class="discipline-card__title">Singer of the Funeral Rite</p>
+            <p class="discipline-card__play">
+              Bind ranged spirits and recover through the very rites that consume your dead.
+            </p>
+            <div class="discipline-card__passive">
+              <span>Passive · Funeral Rites</span>
+              <p>
+                Exhume raises ranged Wraiths. Consuming a corpse heals 6% maximum health, and Grave
+                Essence regenerates 25% faster.
+              </p>
+            </div>
+          </article>
+
+          <article class="discipline-card discipline-card--rotweaver" aria-labelledby="rotweaver-title">
+            <span class="discipline-card__number" aria-hidden="true">IV</span>
+            <div class="discipline-card__sigil" aria-hidden="true">
+              <svg viewBox="0 0 64 64">
+                <path d="M32 55V26M32 37c-10 1-16-5-17-15 10-1 16 4 17 15Zm0-5c9 0 15-6 16-15-10-1-15 5-16 15Z" />
+                <path d="M22 53h20M27 46h10" />
+              </svg>
+            </div>
+            <p class="discipline-card__role">Control · Decay</p>
+            <h3 id="rotweaver-title">Rotweaver</h3>
+            <p class="discipline-card__title">Gardener of Decay</p>
+            <p class="discipline-card__play">
+              Seed rot where enemies gather and make every corpse in the circle bloom violently.
+            </p>
+            <div class="discipline-card__passive">
+              <span>Passive · Carrion Bloom</span>
+              <p>
+                Miasma Circle is 30% wider and Withered stacks to eight. Corpses inside Miasma
+                burst, damaging and withering nearby enemies.
+              </p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="shared-rites" aria-labelledby="rites-title">
+        <div class="shared-rites__intro">
+          <p class="eyebrow">Shared by every discipline</p>
+          <h2 id="rites-title">One necromancer’s kit.</h2>
+          <p>
+            Your discipline changes the economy around the spells—not the spells themselves. Every
+            build still needs to create, claim, and spend corpses under pressure.
+          </p>
+        </div>
+        <ol class="rites-strip">
+          <li><span>Basic</span><strong>Bone Needle</strong><small>Generate Grave Essence</small></li>
+          <li><span>1</span><strong>Marrow Spear</strong><small>Pierce and Fracture</small></li>
+          <li><span>2</span><strong>Exhume</strong><small>Raise the nearest corpse</small></li>
+          <li><span>3</span><strong>Miasma Circle</strong><small>Slow and Wither</small></li>
+          <li><span>4</span><strong>Black Litany</strong><small>Sacrifice everything nearby</small></li>
+        </ol>
+      </section>
+
+      <section class="classes-cta">
+        <p class="eyebrow">The grave is waiting</p>
+        <h2>Choose what the dead become.</h2>
+        <div>
+          <a class="about-button about-button--primary" href="index.html">Enter Death Muffin</a>
+          <a class="about-button about-button--quiet" href="about.html">Explore the world</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="about-footer">
+      <a href="index.html">Death Muffin</a>
+      <span><a class="footer-link" href="about.html">About</a> · Classes</span>
+      <span>© 2026</span>
+    </footer>
+  </body>
+</html>

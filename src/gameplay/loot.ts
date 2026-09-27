@@ -201,6 +201,16 @@ export class Inventory {
     }
   }
 
+  async saveBeforeClassChange() {
+    const deadline = performance.now() + 15000;
+    while (this.inFlight) {
+      if (performance.now() > deadline) throw new Error('Your items are still saving. Please try again.');
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 50));
+    }
+    await this.flush();
+    if (this.dirty || this.state === 'retrying') throw new Error('Could not save your items. Please try again before changing class.');
+  }
+
   dispose() {
     window.clearTimeout(this.timer);
     void this.flush();

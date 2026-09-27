@@ -16,9 +16,11 @@ export interface Settings {
   tips: boolean;
   /** Session difficulty; in co-op the world keeper's setting applies. */
   difficulty: Difficulty;
+  /** Fight nearby enemies and manage basic rites while standing. */
+  autoCombat: boolean;
 }
 
-const KEY = 'cw_settings_v1';
+const KEY = 'dm_settings_v1';
 
 function defaults(): Settings {
   let reduced = false;
@@ -27,7 +29,7 @@ function defaults(): Settings {
   } catch {
     /* no matchMedia */
   }
-  return { quality: 'high', reducedMotion: reduced, damageNumbers: true, volume: 0.6, tips: true, difficulty: 'medium' };
+  return { quality: 'high', reducedMotion: reduced, damageNumbers: true, volume: 0.6, tips: true, difficulty: 'medium', autoCombat: true };
 }
 
 function load(): Settings {

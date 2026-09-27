@@ -39,7 +39,8 @@ export class NecromancerAvatar {
   castLock = 0;
 
   constructor(scene: THREE.Scene, accent: string, withLight: boolean, slug: CreatureSlug = 'necromancer') {
-    this.c = new Creature(slug, { emissive: accent, emissiveIntensity: 0.04, fallback: 'necromancer' });
+    // Generated heroes face +X; gameplay headings use +Z.
+    this.c = new Creature(slug, { inPlace: true, modelYaw: -Math.PI / 2, emissive: accent, emissiveIntensity: 0.04, fallback: 'necromancer' });
     this.staff = skullStaff(accent);
     // Held upright: the grip sits in the hand, calibrated against the idle pose.
     this.c.attach('R_Hand', this.staff, new THREE.Vector3(0, 1, 0.12));
@@ -67,13 +68,18 @@ export class NecromancerAvatar {
     if (moving !== this.moving) {
       this.moving = moving;
       this.c.setLoop(moving ? 'run' : 'idle', moving ? speed / 5.2 : 1);
+      if (moving) this.c.releaseGesture();
     }
     this.castLock = Math.max(0, this.castLock - dt);
     this.c.update(dt);
   }
 
-  cast(kind: 'cast' | 'dig', speed = 2) {
-    this.c.playOnce(kind, speed);
+  cast(kind: 'cast' | 'dig', speed = 2, facing?: number, durationSeconds?: number) {
+    if (facing !== undefined) {
+      this.c.root.rotation.y = facing;
+      this.c.root.updateMatrixWorld(true);
+    }
+    this.c.playOnce(kind, speed, durationSeconds);
   }
 
   dispose() {

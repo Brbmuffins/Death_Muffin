@@ -110,14 +110,14 @@ describe('codex discovery persistence', () => {
     expect(j.count('area')).toBe(1);
   });
 
-  it('persists per character under cw_codex_v1_<characterId>', () => {
+  it('persists per character under dm_codex_v1_<characterId>', () => {
     const storage = new MemoryStorage();
     const a = new CodexJournal(11, storage);
     a.discover('dead', 'prelate');
     a.discover('dead', 'risen');
     a.discover('area', 'sanctum');
     expect(storage.data.has(codexStorageKey(11))).toBe(true);
-    expect(codexStorageKey(11)).toBe('cw_codex_v1_11');
+    expect(codexStorageKey(11)).toBe('dm_codex_v1_11');
 
     const reloaded = new CodexJournal(11, storage);
     expect(reloaded.has('dead', 'prelate')).toBe(true);

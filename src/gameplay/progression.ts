@@ -98,7 +98,7 @@ const blank = (): LocalProgress => ({
   run: { prelateKills: 0, peakWaveTier: 0, kills: 0 },
 });
 
-const key = (characterId: number) => `cw_progress_v1_${characterId}`;
+const key = (characterId: number) => `dm_progress_v1_${characterId}`;
 
 export function loadLocalProgress(characterId: number): LocalProgress {
   try {
@@ -131,6 +131,7 @@ export class Progression {
   private retryDelay = 4000;
   private timer = 0;
   private inFlight = false;
+  private remoteInFlight = 0;
   private listeners = new Set<() => void>();
   /** 'server' once the necro-progress routes answered; 'local' otherwise. */
   mode: 'local' | 'server' = 'local';
@@ -197,15 +198,17 @@ export class Progression {
   /** Fire a server mutation; on success adopt its state, on failure report and resync. */
   private remote(call: () => Promise<NecroReply>) {
     if (this.mode !== 'server') return;
+    this.remoteInFlight++;
     call()
       .then((r) => this.adopt(r.progress))
       .catch((err) => {
         this.errorListeners.forEach((fn) => fn(err instanceof Error ? err.message : 'Progress could not be saved'));
-        void necroApi
+        return necroApi
           .get(this.character.id)
           .then((r) => this.adopt(r.progress))
           .catch(() => undefined);
-      });
+      })
+      .finally(() => { this.remoteInFlight--; });
   }
 
   private get hasPending() {
@@ -523,6 +526,19 @@ export class Progression {
         this.timer = window.setTimeout(() => this.flush(), 45000);
       }
     }
+  }
+
+  /** Drain pending saves before changing scenes; leave the old class on failure. */
+  async saveBeforeClassChange() {
+    const deadline = performance.now() + 15000;
+    while (this.inFlight || this.remoteInFlight) {
+      if (performance.now() > deadline) throw new Error('Your progress is still saving. Please try again.');
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 50));
+    }
+    this.saveLocal();
+    await this.flush();
+    if (this.dirtyServer || this.saveState === 'retrying') throw new Error('Could not save your progress. Please try again before changing class.');
+    await this.flushNecro();
   }
 
   dispose() {

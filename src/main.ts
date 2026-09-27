@@ -29,6 +29,10 @@ const dropBackdrop = () => {
 };
 
 function goLogin() {
+  if (import.meta.env.PROD) {
+    window.location.replace('/death-muffin/');
+    return;
+  }
   manager.goto(new LoginScene(getBackdrop(), resume));
 }
 
@@ -42,7 +46,7 @@ function goWorld(character: Character) {
     new WorldScene(character, () => {
       setToken(null);
       goLogin();
-    }),
+    }, goWorld),
   );
 }
 

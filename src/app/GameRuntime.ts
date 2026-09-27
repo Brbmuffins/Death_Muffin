@@ -64,7 +64,7 @@ export class GameRuntime {
 
   private applyQuality() {
     const high = settings.quality === 'high';
-    const ratio = high ? Math.min(window.devicePixelRatio, 2) : 1;
+    const ratio = high ? Math.min(window.devicePixelRatio, 1.5) : 1;
     this.renderer.setPixelRatio(ratio);
     this.composer.setPixelRatio(ratio);
     this.renderer.shadowMap.enabled = high;
@@ -129,14 +129,14 @@ export class GameRuntime {
    * render once. Hidden browser panes throttle requestAnimationFrame, so
    * automated checks drive time explicitly instead of waiting on the loop.
    */
-  advance(seconds: number, step = 1 / 60) {
+  advance(seconds: number, step = 1 / 60, render = true) {
     this.qaClock = Math.max(this.qaClock, performance.now());
     for (let i = 0, n = Math.round(seconds / step); i < n && this.view; i++) {
       this.qaClock += step * 1000;
       this.view.update(step, this.qaClock);
     }
     const v = this.view;
-    if (v) {
+    if (v && render) {
       if (this.bloomEnabled) this.composer.render(step);
       else this.renderer.render(v.scene, v.camera);
     }

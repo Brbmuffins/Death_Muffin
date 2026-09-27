@@ -19,7 +19,7 @@ export interface StorageLike {
   setItem(key: string, value: string): void;
 }
 
-export const codexStorageKey = (characterId: number) => `cw_codex_v1_${characterId}`;
+export const codexStorageKey = (characterId: number) => `dm_codex_v1_${characterId}`;
 
 const KNOWN: { [K in CodexKind]: readonly string[] } = { dead: DEAD_ORDER, area: AREA_ORDER };
 
