@@ -585,7 +585,7 @@ button { font-family: inherit; }
 
 .hud-toasts { position: absolute; top: 130px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
 .hud-toast { padding: 8px 16px; background: rgba(7, 6, 10, 0.9); border: 1px solid var(--cw-border-strong); color: var(--cw-bone-100); font-size: 15px; animation: toast-in 0.25s ease, toast-out 0.5s ease var(--toast-ms, 8000ms) forwards; max-width: 70vw; text-align: center; }
-.hud-nodetip { position: fixed; z-index: 30; max-width: 260px; padding: 8px 12px; background: rgba(7, 6, 10, 0.92); border: 1px solid var(--cw-border-strong); color: var(--cw-bone-200); font-family: var(--cw-font-body); font-size: 13px; line-height: 1.4; pointer-events: none; }
+.hud-nodetip { position: fixed; inset: auto; width: max-content; height: auto; z-index: 30; max-width: min(260px, calc(100vw - 16px)); max-height: min(160px, calc(100vh - 16px)); overflow: hidden; padding: 8px 12px; background: rgba(7, 6, 10, 0.92); border: 1px solid var(--cw-border-strong); color: var(--cw-bone-200); font-family: var(--cw-font-body); font-size: 13px; line-height: 1.4; pointer-events: none; }
 .hud-nodetip b { color: var(--cw-bone-100); font-size: 14px; }
 .hud-nodetip .req { margin-top: 2px; }
 .hud-nodetip .req.ok { color: #9fc27a; }

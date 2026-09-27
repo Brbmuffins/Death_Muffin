@@ -197,7 +197,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   acre: {
     title: "The Sexton's Acre",
-    body: 'No waves ever come here. <kbd>Click</kbd> a tree, an ore seam, a fishing spot on the pond or a burial plot, and your necromancer keeps working it until it is spent. The stronger nodes lie further from the door. Press <kbd>P</kbd> to see your skills.',
+    body: 'No waves ever come here. <kbd>Click</kbd> a tree, an ore seam, a fishing spot on the pond or a burial plot, and your necromancer keeps working it until it is spent. Coffin-Oaks just north of the entrance, the nearby Copper Seam and Pauper’s Grave, and Still Pools on the pond are usable at <b>level 1</b>. The stronger nodes lie further from the door. Press <kbd>P</kbd> to see your skills.',
   },
   gather: {
     title: 'Working a node',

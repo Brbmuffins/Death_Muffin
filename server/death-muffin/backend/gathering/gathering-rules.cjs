@@ -87,8 +87,8 @@ var GEMS = (scale) => [
 var NODE_LIST = [
   // Woodcutting
   node({ id: "coffin_oak", skill: "woodcutting", name: "Coffin-Oak", kind: "tree", level: 1, xp: 6, ticks: 4, item: "log_oak", yields: [1, 4], respawnS: 8, extras: CROWS_NEST, tint: 7033398 }),
-  node({ id: "hangman_elm", skill: "woodcutting", name: "Hangman's Elm", kind: "tree", level: 15, xp: 14, ticks: 5, item: "log_elm", yields: [3, 6], respawnS: 12, extras: CROWS_NEST, tint: 6117948 }),
-  node({ id: "bleeding_willow", skill: "woodcutting", name: "Bleeding Willow", kind: "tree", level: 30, xp: 24, ticks: 5, item: "log_willow", yields: [4, 8], respawnS: 15, extras: CROWS_NEST, tint: 8010292 }),
+  node({ id: "hangman_elm", skill: "woodcutting", name: "Hangman's Elm", kind: "tree", level: 5, xp: 14, ticks: 5, item: "log_elm", yields: [3, 6], respawnS: 12, extras: CROWS_NEST, tint: 6117948 }),
+  node({ id: "bleeding_willow", skill: "woodcutting", name: "Bleeding Willow", kind: "tree", level: 15, xp: 24, ticks: 5, item: "log_willow", yields: [4, 8], respawnS: 15, extras: CROWS_NEST, tint: 8010292 }),
   node({ id: "churchyard_yew", skill: "woodcutting", name: "Churchyard Yew", kind: "tree", level: 45, xp: 38, ticks: 6, item: "log_yew", yields: [5, 10], respawnS: 30, extras: CROWS_NEST, tint: 3099187 }),
   node({ id: "blackthorn", skill: "woodcutting", name: "Blackthorn", kind: "tree", level: 60, xp: 55, ticks: 7, item: "log_blackthorn", yields: [6, 12], respawnS: 45, extras: CROWS_NEST, tint: 2762032 }),
   node({ id: "ghostwood", skill: "woodcutting", name: "Ghostwood", kind: "tree", level: 75, xp: 80, ticks: 8, item: "log_ghostwood", yields: [6, 12], respawnS: 60, extras: CROWS_NEST, tint: 10467504 }),
@@ -212,7 +212,7 @@ function addSkillXp(p, gained) {
   return { level, xp, leveled };
 }
 function successChance(def, level, toolTier = 0) {
-  const p = 0.45 + 0.01 * (level - def.level) + 0.05 * toolTier;
+  const p = (def.level === 1 ? 0.6 : 0.45) + 0.01 * (level - def.level) + 0.05 * toolTier;
   return Math.max(0.2, Math.min(0.9, p));
 }
 var randInt = (rng, lo, hi) => lo + Math.floor(rng() * (hi - lo + 1));

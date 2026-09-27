@@ -31,7 +31,6 @@ async function domainCheck() {
   game.on('response',r=>{if(r.url().startsWith(site)&&r.status()>=400)failed.push({status:r.status(),url:r.url()});});
   let joinResolve;const joined=new Promise(resolve=>joinResolve=resolve);
   game.on('response',async r=>{if(r.url().includes('/rt/socket.io/')&&r.request().method()==='GET'){try{if((await r.text()).includes('"success":true'))joinResolve(true);}catch{}}});
-  const wsReady=game.waitForEvent('websocket',{timeout:30000});
   const wsUrls=[];game.on('websocket',ws=>{wsUrls.push(ws.url());ws.on('framereceived',frame=>{if(String(frame.payload).includes('"success":true'))joinResolve(true);});});
   const registered=await qa.request.post(site+'api/register',{data:{username,email:username+'@example.invalid',password:'DomainProbe-'+Date.now()}});
   assert.equal(registered.status(),201);const {token}=await registered.json();
@@ -40,7 +39,7 @@ async function domainCheck() {
   await game.locator('.hud').waitFor({timeout:30000});
   const connected=await Promise.race([joined,new Promise(resolve=>setTimeout(()=>resolve(false),20000))]);
   assert.ok(connected,'Authenticated co-op joins the world on the new domain');
-  await wsReady;assert.ok(wsUrls.length&&wsUrls.every(url=>url.startsWith('wss://muffindevelopment.com/death-muffin/rt/socket.io/')));
+  assert.ok(wsUrls.length&&wsUrls.every(url=>url.startsWith('wss://muffindevelopment.com/death-muffin/rt/socket.io/')));
   await game.locator('[data-slot="1"]').hover();
   const spellCard=game.getByRole('tooltip',{name:'Spell details'});await spellCard.waitFor();
   assert.match(await spellCard.innerText(),/Fracture/);await game.keyboard.press('Escape');

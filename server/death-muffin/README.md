@@ -35,7 +35,7 @@ Future bot opponents, companions, and leaderboard grinding are recorded in `docs
 npm ci
 npm run build:server-rules
 npm test
-DEPLOY_BASE=/death-muffin/play/ VITE_API_BASE=/death-muffin/api VITE_WS_BASE=https://muffindevelopment.com VITE_WS_PATH=/death-muffin/rt/socket.io npm run build
+npm run build:death-muffin
 ```
 
 Copy `site/` to `/var/www/death-muffin/` and `dist/` to its `play/` folder. Install backend dependencies with `npm ci` inside the backend directory; configure `.env` privately using `.env.example`. Preserve the running database and `.env` during subsequent updates. On the current VPS, `/home/ubuntu/death-muffin/deploy/deploy.sh` publishes the extracted source and restarts only Death Muffin's services. The original nginx config is backed up in that folder; `rollback.sh` restores hosting while retaining player saves.

@@ -15,7 +15,8 @@
     "build:characters": "node tools/build-characters.mjs",
     "balance": "vite-node src/gameplay/balance/report.ts",
     "balance:boss": "vite-node src/gameplay/balance/bossReport.ts",
-    "build:server-rules": "node tools/build-server-rules.mjs"
+    "build:server-rules": "node tools/build-server-rules.mjs",
+    "build:death-muffin": "DEPLOY_BASE=/death-muffin/play/ VITE_API_BASE=/death-muffin/api VITE_WS_BASE=https://muffindevelopment.com VITE_WS_PATH=/death-muffin/rt/socket.io npm run build"
   },
   "dependencies": {
     "@fontsource/alegreya-sans": "^5.3.0",

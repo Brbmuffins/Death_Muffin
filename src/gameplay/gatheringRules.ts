@@ -101,8 +101,8 @@ const GEMS = (scale: number): LootLine[] => [
 const NODE_LIST: NodeDef[] = [
   // Woodcutting
   node({ id: 'coffin_oak', skill: 'woodcutting', name: 'Coffin-Oak', kind: 'tree', level: 1, xp: 6, ticks: 4, item: 'log_oak', yields: [1, 4], respawnS: 8, extras: CROWS_NEST, tint: 0x6b5236 }),
-  node({ id: 'hangman_elm', skill: 'woodcutting', name: "Hangman's Elm", kind: 'tree', level: 15, xp: 14, ticks: 5, item: 'log_elm', yields: [3, 6], respawnS: 12, extras: CROWS_NEST, tint: 0x5d5a3c }),
-  node({ id: 'bleeding_willow', skill: 'woodcutting', name: 'Bleeding Willow', kind: 'tree', level: 30, xp: 24, ticks: 5, item: 'log_willow', yields: [4, 8], respawnS: 15, extras: CROWS_NEST, tint: 0x7a3a34 }),
+  node({ id: 'hangman_elm', skill: 'woodcutting', name: "Hangman's Elm", kind: 'tree', level: 5, xp: 14, ticks: 5, item: 'log_elm', yields: [3, 6], respawnS: 12, extras: CROWS_NEST, tint: 0x5d5a3c }),
+  node({ id: 'bleeding_willow', skill: 'woodcutting', name: 'Bleeding Willow', kind: 'tree', level: 15, xp: 24, ticks: 5, item: 'log_willow', yields: [4, 8], respawnS: 15, extras: CROWS_NEST, tint: 0x7a3a34 }),
   node({ id: 'churchyard_yew', skill: 'woodcutting', name: 'Churchyard Yew', kind: 'tree', level: 45, xp: 38, ticks: 6, item: 'log_yew', yields: [5, 10], respawnS: 30, extras: CROWS_NEST, tint: 0x2f4a33 }),
   node({ id: 'blackthorn', skill: 'woodcutting', name: 'Blackthorn', kind: 'tree', level: 60, xp: 55, ticks: 7, item: 'log_blackthorn', yields: [6, 12], respawnS: 45, extras: CROWS_NEST, tint: 0x2a2530 }),
   node({ id: 'ghostwood', skill: 'woodcutting', name: 'Ghostwood', kind: 'tree', level: 75, xp: 80, ticks: 8, item: 'log_ghostwood', yields: [6, 12], respawnS: 60, extras: CROWS_NEST, tint: 0x9fb8b0 }),
@@ -208,7 +208,7 @@ export function addSkillXp(p: SkillProgress, gained: number): SkillProgress & { 
 
 /** Chance that one action succeeds. Tools are optional speed-ups (roadmap §12 q2): +5% per tier. */
 export function successChance(def: NodeDef, level: number, toolTier = 0) {
-  const p = 0.45 + 0.01 * (level - def.level) + 0.05 * toolTier;
+  const p = (def.level === 1 ? 0.6 : 0.45) + 0.01 * (level - def.level) + 0.05 * toolTier;
   return Math.max(0.2, Math.min(0.9, p));
 }
 

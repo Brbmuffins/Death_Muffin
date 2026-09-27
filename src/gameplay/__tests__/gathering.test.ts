@@ -75,8 +75,8 @@ describe('gathering rules', () => {
   it('a long batch lands near the expected success rate', () => {
     const def = NODES.coffin_oak;
     const r = rollBatch(def, { level: 1, xp: 0 }, 2000, mulberry32(3));
-    expect(r.successes / 2000).toBeGreaterThan(0.4);
-    expect(r.successes / 2000).toBeLessThan(0.62); // levels rise during the batch
+    expect(r.successes / 2000).toBeGreaterThan(0.55);
+    expect(r.successes / 2000).toBeLessThan(0.8); // levels rise during the batch
   });
 
   it('the budget clamps claims to elapsed time', () => {

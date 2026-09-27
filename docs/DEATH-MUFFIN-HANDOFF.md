@@ -4,6 +4,18 @@ Updated 2026-09-27. Read this before editing or deploying. Preserve the supplied
 
 User-approved complete version: **`death-muffin-v1.0.0`**. See [the checkpoint record](DEATH-MUFFIN-CHECKPOINT.md) for the full private backup and restoration boundaries. Preserve this baseline while designing new abilities.
 
+## Acre starter polish — 2026-09-27
+
+Fixed fishing markers moving around the world origin: the old animation scaled their entire instanced batch, including world coordinates. Ripples now gently pulse opacity in place, with fewer, smaller rings. No node positions move with this animation.
+
+Repositioned existing beginner nodes while preserving IDs: two Coffin-Oaks north of the entrance, Copper Seam at (-31.5, 20.2), Pauper’s Grave at (-28.5, 21.5), and Still Pool at (-31.5, 28.2). Every gathering skill now has an unlocked node within ten units of spawn, and nearby trees are all level 1. Beginner work has a 60% base success chance (previously 45%); Hangman’s Elm unlocks at 5 (previously 15), Bleeding Willow at 15 (previously 30). Other gates, yields, XP per success and hourly limits are preserved. Shared TypeScript and generated API rules ship together. Help, Skills hints and the README reflect the starter path.
+
+For the reported black rectangle during digging, removed the custom shader plane from work progress and replaced it with actual RingGeometry using a standard transparent material. Hover cards have explicit content sizing, height limits and viewport clamping. The original large black rectangle was not reproduced in VPS Chromium; these changes remove the shader rectangle and bound the only node hover overlay. Low/high graphics mouse checks and screenshots are in the portable Acre smoke test and private deployment artifacts.
+
+Deployment now runs `npm run build:death-muffin` itself, setting all production API/socket/base paths and suppressing source maps. A generic local build was briefly published during this pass; the public smoke caught its login redirect, the correct production build replaced it, and its two source maps were moved into private storage.
+
+Validation: 196 client tests, server suites and production build; new regressions cover anchored fishing markers, ring bounds and level-1 access to every gathering skill. Low/high mouse interaction checks and AFK full-bag regression pass. Public smoke passes login, authenticated co-op, class changes, gathering persistence/authorization, background AFK saves and pause/reload stopping; test accounts were removed and no browser errors remain. Backup before publishing: `/home/ubuntu/death-muffin/backups/death-muffin-v1.0.0-20260927T162747Z` (verified full live-site/runtime/database snapshot; its checkpoint label is historical). Roll back code without overwriting newer player progress.
+
 ## AFK and ten-player release — 2026-09-27 15:30 UTC
 
 Deployed from the canonical `game` repository using [the versioned deployment script](../server/death-muffin/deploy-afk.sh). It updates gathering rules/routes, restarts the API and realtime services, and publishes assets before the index while retaining previous hashed bundles. The older VPS `deploy-update.sh` now also reads this repository, not the stale extracted `update-stage`. No migration or dependency changes were needed. Both running services are healthy, and their updated source copies match the repository.
@@ -99,7 +111,7 @@ npm ci
 npm run build:server-rules
 npm test
 npm run test:server
-DEPLOY_BASE=/death-muffin/play/ VITE_API_BASE=/death-muffin/api VITE_WS_BASE=https://muffindevelopment.com VITE_WS_PATH=/death-muffin/rt/socket.io npm run build
+npm run build:death-muffin
 ```
 
 Approved baseline suite: **122 passing tests**; after minimap and rich spell cards, **131 passing tests**, including automatic selection, spell arrival timing/caster death/effect limits, real shipped hero anchoring/short gestures/movement blending, and class-save failures/in-flight upgrade purchases. Typecheck, both server test suites and the production build pass. Regenerate server rules when changing shared rules; do not regenerate models merely to adjust gameplay.

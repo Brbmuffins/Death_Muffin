@@ -530,7 +530,7 @@ export class HUD {
     if (!html) return;
     const w = el.offsetWidth || 220;
     const h = el.offsetHeight || 70;
-    el.style.left = `${Math.min(window.innerWidth - w - 8, x + 18)}px`;
+    el.style.left = `${Math.max(8, Math.min(window.innerWidth - w - 8, x + 18))}px`;
     el.style.top = `${Math.max(8, Math.min(window.innerHeight - h - 8, y - h - 12))}px`;
   }
 

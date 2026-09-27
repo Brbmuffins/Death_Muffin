@@ -299,6 +299,8 @@ world keeper's rank decides how old the dead are (like difficulty).
 
 ## Professions — the Sexton's Acre
 
+**Starting gathering:** Coffin-Oaks just north of the Acre entrance, the nearby Copper Seam and Pauper’s Grave, and Still Pools are all level 1. Beginner cycles succeed 60% of the time before skill/tool bonuses; Woodcutting opens Hangman’s Elm at level 5 and Bleeding Willow at level 15. Other tiers keep their requirements.
+
 **AFK gathering:** In the Acre, press **P**, choose a node tier for Woodcutting, Mining, Fishing or Gravedigging, and click **Start AFK**. Your hero works continuously, walks to the next node of the same kind and waits for respawns. Skills can remain open for oversight. Keep the game open; background tabs update the same simulation without drawing frames. A full bag pauses work: make room, then Start AFK again. Movement, casting, other panels or **Pause AFK** stop it. Closing/reloading ends the session; there are no offline rewards. Node tiers stay your choice as you level up.
 
 
@@ -313,7 +315,7 @@ opening a panel, a full bag or a hit stops you.
 
 | Skill | Nodes (level) | Finds |
 |---|---|---|
-| **Woodcutting** · *Rite of Coffin-Oak* | Coffin-Oak (1) · Hangman's Elm (15) · Bleeding Willow (30) · Churchyard Yew (45) · Blackthorn (60) · Ghostwood (75) · Bone Elder (90) | Logs; a rare crow's nest (seed or ring) |
+| **Woodcutting** · *Rite of Coffin-Oak* | Coffin-Oak (1) · Hangman's Elm (5) · Bleeding Willow (15) · Churchyard Yew (45) · Blackthorn (60) · Ghostwood (75) · Bone Elder (90) | Logs; a rare crow's nest (seed or ring) |
 | **Mining** · *Rite of Grave-Iron* | Copper / Tin (1) · Iron (10) · Bronze (20) · Silver (30) · Gold (40) · Steel (50) · Hell geode (65) · Moon geode (80) | Ore; rare grave garnets, bone opals and void sapphires |
 | **Fishing** · *Rite of the Black Water* | Still pool (1) · Crypt eels (15) · Bell carp (30) · Drowned pike (45) · Lanternfish (62) · Abyssal coelacanth (80) | Fish; drowned trinkets, reliquary fragments, covenant seals |
 | **Gravedigging** · *Rite of the Sexton* | Pauper's grave (1) · Burial mound (20) · Crypt collapse (40) · Barrow-king's tomb (70) | Bones, a little gold, seeds, silver, reliquary fragments; rarely old gear |

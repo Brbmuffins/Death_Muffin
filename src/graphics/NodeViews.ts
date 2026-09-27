@@ -115,8 +115,8 @@ function standIn(def: NodeDef, spent: boolean): Part[] {
   }
   // Pool: a fishing spot on the water — ripples + bubbles, nothing when it has drifted away.
   if (spent) return out;
-  const ring = merged([new THREE.RingGeometry(0.35, 0.45, 20), new THREE.RingGeometry(0.7, 0.78, 24), new THREE.RingGeometry(1.05, 1.1, 28)].map((g) => g.rotateX(-Math.PI / 2).translate(0, 0.05, 0)));
-  out.push({ geo: ring, mat: new THREE.MeshBasicMaterial({ color: col(def.tint, 2.4), transparent: true, opacity: 0.55, depthWrite: false }) });
+  const ring = merged([new THREE.RingGeometry(0.32, 0.37, 20), new THREE.RingGeometry(0.72, 0.77, 24)].map((g) => g.rotateX(-Math.PI / 2).translate(0, 0.05, 0)));
+  out.push({ geo: ring, mat: new THREE.MeshBasicMaterial({ color: col(def.tint, 2), transparent: true, opacity: 0.28, depthWrite: false }) });
   return out;
 }
 
@@ -196,35 +196,16 @@ class NodeBatch {
   }
 }
 
-const RING_VS = /* glsl */ `
-  varying vec2 vUv;
-  void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
-`;
-const RING_FS = /* glsl */ `
-  uniform float uProgress;
-  uniform vec3 uColor;
-  uniform float uOpacity;
-  varying vec2 vUv;
-  void main() {
-    vec2 p = vUv - 0.5;
-    float r = length(p) * 2.0;
-    if (r < 0.78 || r > 1.0) discard;
-    float a = atan(p.x, -p.y) / 6.28318 + 0.5;
-    float lit = step(a, uProgress);
-    gl_FragColor = vec4(uColor, uOpacity * mix(0.18, 1.0, lit));
-  }
-`;
-
 /** Every node's live/spent look, the hover ring and the gatherer's progress arc. */
 export class NodeViews {
   readonly group = new THREE.Group();
   private index = new Map<string, { live: NodeBatch; spent: NodeBatch; i: number }>();
   private hoverRing: THREE.Mesh;
   private arc: THREE.Mesh;
-  private arcMat: THREE.ShaderMaterial;
+  private arcMat: THREE.MeshBasicMaterial;
   private richGlow: THREE.InstancedMesh | null = null;
   private time = 0;
-  private pools: { mesh: THREE.Object3D; phase: number }[] = [];
+  private pools: { materials: THREE.MeshBasicMaterial[]; phase: number }[] = [];
 
   constructor(scene: THREE.Scene, private placements: NodePlacement[]) {
     scene.add(this.group);
@@ -245,7 +226,7 @@ export class NodeViews {
       const spent = new NodeBatch(def, true, list);
       this.group.add(live.group, spent.group);
       list.forEach((p, i) => this.index.set(p.id, { live, spent, i }));
-      if (def.kind === 'pool') this.pools.push({ mesh: live.group, phase: type.length });
+      if (def.kind === 'pool') this.pools.push({ materials: live.group.children.map(m => (m as THREE.Mesh).material as THREE.MeshBasicMaterial), phase: type.length });
     }
     // Rich nodes: a faint glow disc so fighters notice them.
     const rich = placements.filter((p) => p.rich);
@@ -267,14 +248,9 @@ export class NodeViews {
     );
     this.hoverRing.visible = false;
     this.hoverRing.renderOrder = 3;
-    this.arcMat = new THREE.ShaderMaterial({
-      vertexShader: RING_VS,
-      fragmentShader: RING_FS,
-      uniforms: { uProgress: { value: 0 }, uColor: { value: new THREE.Color(0xe8dcc0) }, uOpacity: { value: 0.85 } },
-      transparent: true,
-      depthWrite: false,
-    });
-    this.arc = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6).rotateX(-Math.PI / 2), this.arcMat);
+    // Actual ring geometry cannot become an opaque square if a custom shader fails.
+    this.arcMat = new THREE.MeshBasicMaterial({ color: 0xe8dcc0, transparent: true, opacity: 0.85, depthWrite: false });
+    this.arc = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.8, 48).rotateX(-Math.PI / 2), this.arcMat);
     this.arc.visible = false;
     this.arc.renderOrder = 3;
     this.group.add(this.hoverRing, this.arc);
@@ -303,16 +279,16 @@ export class NodeViews {
     this.arc.visible = t > 0;
     if (!this.arc.visible) return;
     this.arc.position.set(x, 0.05, z);
-    this.arcMat.uniforms.uProgress.value = t;
-    (this.arcMat.uniforms.uColor.value as THREE.Color).set(skillColor);
+    this.arc.geometry.setDrawRange(0, Math.ceil(THREE.MathUtils.clamp(t, 0, 1) * 48) * 6);
+    this.arcMat.color.set(skillColor);
   }
 
   update(dt: number) {
     this.time += dt;
     // Fishing spots breathe: a slow pulse so the eye finds them on dark water.
     for (const p of this.pools) {
-      const k = 1 + Math.sin(this.time * 2.2 + p.phase) * 0.06;
-      p.mesh.scale.set(k, 1, k);
+      const opacity = 0.28 + Math.sin(this.time * 1.2 + p.phase) * 0.05;
+      for (const material of p.materials) material.opacity = opacity;
     }
   }
 

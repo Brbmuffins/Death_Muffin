@@ -1175,7 +1175,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private nodeTipText(n: NodePlacement) {
     const def = NODES[n.type];
     const lvl = this.skills.level(def.skill);
-    const need = lvl < def.level ? `<div class="req missing">Requires ${SKILLS[def.skill].name} level ${def.level}</div>` : `<div class="req ok">${SKILLS[def.skill].name} ${lvl} / ${def.level}</div>`;
+    const need = lvl < def.level ? `<div class="req missing">Requires ${SKILLS[def.skill].name} level ${def.level} · use ${SKILLS[def.skill].name === 'Woodcutting' ? 'Coffin-Oak near the entrance' : 'a beginner node near the entrance'}</div>` : `<div class="req ok">${SKILLS[def.skill].name} · level ${def.level}${def.level === 1 ? ' · Beginner' : ''}</div>`;
     const spent = this.nodeLive(n.id) ? '' : '<div class="spent">Spent. It will return soon.</div>';
     return `<b>${def.name}</b>${n.rich ? ' <span class="rich">rich</span>' : ''}${need}<div>${def.xp} XP per success · ${itemMeta(def.item).name}</div>${spent}`;
   }
@@ -2171,7 +2171,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private areaProgress(): string {
     const here = this.area;
-    if (here === 'acre') return `No dead here. Total skill level <b>${this.skills.total()}</b> (<kbd>P</kbd>)`;
+    if (here === 'acre') return `Beginner nodes by the entrance · <kbd>P</kbd> to choose &amp; Start AFK`;
     if (AREAS[here].safe) return 'Sanctuary. The dead cannot follow you here.';
     const next = AREA_ORDER.find((id) => AREAS[id].unlock?.area === here && !this.progression.isUnlocked(id));
     if (next) {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AREAS, AREA_ORDER, DOORS, PLAYER_SPAWN, isAlwaysOpen } from '../../content/areas';
 import { NODE_COLLIDER, NODE_REACH, PROPS, generateLayout } from '../../content/layout';
-import { NODES, NODE_IDS } from '../gatheringRules';
+import { NODES, NODE_IDS, GATHER_SKILLS } from '../gatheringRules';
 import { Nav } from '../nav';
 import { standSpot } from '../gatherPlan';
 
@@ -112,6 +112,15 @@ describe("the Sexton's Acre", () => {
     expect(AREAS.acre.safe).toBe(true);
     expect(layout.nodes.some(n => n.area === 'acre' && NODES[n.type].level === 1 && Math.hypot(n.x - PLAYER_SPAWN.x, n.z - PLAYER_SPAWN.z) < 12)).toBe(true);
     expect(nav.findPath(PLAYER_SPAWN.x, PLAYER_SPAWN.z, 0, -12).length).toBeGreaterThan(0);
+  });
+
+
+  it('offers every gathering skill at level 1 within a short walk of spawn', () => {
+    for (const skill of GATHER_SKILLS) {
+      const nearby = layout.nodes.filter(n => n.area === 'acre' && NODES[n.type].skill === skill && Math.hypot(n.x - PLAYER_SPAWN.x, n.z - PLAYER_SPAWN.z) < 10);
+      expect(nearby.some(n => NODES[n.type].level === 1), skill).toBe(true);
+      if (skill === 'woodcutting') expect(nearby.every(n => NODES[n.type].level === 1)).toBe(true);
+    }
   });
 
   it('every node can be reached on foot from the gathering spawn', () => {

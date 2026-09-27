@@ -272,12 +272,12 @@ export function generateLayout(seed = 1337): WorldLayout {
       ['seam_copper', -30], ['seam_tin', -32.6], ['seam_copper', -35.2], ['seam_tin', -37.8], ['seam_iron', -40.6],
       ['seam_iron', -43.4], ['seam_bronze', -46.4], ['seam_silver', -49.4], ['seam_gold', -52.4], ['seam_steel', -55.2],
     ];
-    for (const [t, x] of seams) N(t, x, 8.3);
+    for (const [t, x] of seams) N(t, t === 'seam_copper' && x === -30 ? -31.5 : x, t === 'seam_copper' && x === -30 ? 20.2 : 8.3);
     N('geode_hell', -58.6, 8.8);
     N('geode_moon', -59.4, 12.6);
     // The grove, either side of the lane.
     for (const [t, x, z] of [
-      ['coffin_oak', -29.5, 14], ['coffin_oak', -33.5, 14], ['coffin_oak', -27.5, 15.8], ['hangman_elm', -37.5, 14], ['hangman_elm', -41.5, 14],
+      ['coffin_oak', -29.5, 17], ['coffin_oak', -33.5, 17], ['coffin_oak', -27.5, 13.5], ['hangman_elm', -37.5, 14], ['hangman_elm', -41.5, 14],
       ['bleeding_willow', -45.5, 14], ['bleeding_willow', -49.5, 14], ['churchyard_yew', -53.5, 14], ['churchyard_yew', -57.2, 15.2],
       ['blackthorn', -46.5, 25.2], ['blackthorn', -50.3, 25.2], ['ghostwood', -54, 25.2], ['ghostwood', -57.6, 25.6],
       ['bone_elder', -59, 20],
@@ -286,14 +286,14 @@ export function generateLayout(seed = 1337): WorldLayout {
     const pond = { x0: -44, z0: 27.4, x1: -30, z1: 32.2 };
     ponds.push(pond);
     for (const [t, x, z] of [
-      ['pool_still', -31.8, 28.2], ['pool_still', -34.8, 28.2], ['pool_eels', -37.8, 28.2], ['pool_carp', -40.8, 28.2],
+      ['pool_still', -31.5, 28.2], ['pool_still', -34.8, 28.2], ['pool_eels', -37.8, 28.2], ['pool_carp', -40.8, 28.2],
       ['pool_pike', -43.2, 30.2], ['pool_lantern', -30.8, 30.6], ['pool_coelacanth', -37, 31.4],
     ] as const) N(t, x, z);
     // Burial rows along the south wall.
     for (const [t, x] of [
       ['grave_pauper', -29.5], ['grave_pauper', -32.5], ['grave_pauper', -35.5], ['grave_mound', -39.5], ['grave_mound', -43],
       ['grave_crypt', -47.5], ['grave_crypt', -51.5], ['grave_barrow_king', -57],
-    ] as const) N(t, x, 35.6);
+    ] as const) N(t, t === 'grave_pauper' && x === -29.5 ? -28.5 : x, t === 'grave_pauper' && x === -29.5 ? 21.5 : 35.6);
     // Stations and dressing.
     P('waystone', -23, 25.5, a, 0);
     P('brazier', -26.5, 28.5, a, 0);
