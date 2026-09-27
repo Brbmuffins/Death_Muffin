@@ -5295,5 +5295,20 @@
     "rawHash": "sha256:90d6b53959b7f0b412767a449b7544ff25cbfa8a1d199df001d6b7e492778e1a",
     "outHash": "sha256:214e1043e67f9a65e1fbdd13740e486eece1dfbe81a4e21369a54cae9207737d",
     "generatedAt": "2026-09-27T21:35:29.843Z"
+  },
+  "concept_barrow_ghoul": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new undead enemy: the Barrow Ghoul, a burrowing grave-eater that tunnels under churchyards. A gaunt, wiry ghoul with ashen grey-green skin stretched over visible ribs, a long narrow bald skull with a jutting jaw full of needle teeth and milky white eyes, very long forearms ending in oversized black digging claws caked in wet grave dirt, strips of a rotten linen burial shroud wrapped around the hips and one shoulder, clods of earth, roots and a few small bones clinging to its legs and back, a rusted broken spade blade lashed to its back with rope. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally with the clawed hands open and empty, legs straight and slightly apart, standing upright (not hunched) so it can be rigged. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette, earthy browns, ashen skin, bone ivory accents.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/barrow_ghoul.png",
+    "rawHash": "sha256:4d5c6994f8a5aa76ad01f997f22d0da1b73be2e7d89ed61a7c18086451ebf582",
+    "outHash": "sha256:111a395f5027a34f9f4da123db977632079035830775a39edfc2d511c467241d",
+    "generatedAt": "2026-09-27T22:02:01.292Z"
   }
 }

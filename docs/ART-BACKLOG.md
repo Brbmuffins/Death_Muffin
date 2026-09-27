@@ -49,7 +49,8 @@ Roadmap: [`PROFESSIONS-ROADMAP.md`](PROFESSIONS-ROADMAP.md). Wiring notes: [`age
 |---|---|---|---|
 | Thrall gear (2) | `public/models/props/gear_{thrall_bow,bone_staff}.glb` | Replace the code-built bow and staff on archer and bone-mage thralls | `EntityViews` attach (HANDOFF next step #7) |
 | Mourner wraith thrall | `public/models/props/wraith_thrall.glb` (static; hover in code) | Mourner thralls (now the skeleton model made translucent). Register like `choir_wraith` in `modelPaths` | `EntityViews` / `modelPaths` |
-| Lich Acolyte | `public/models/lich_acolyte/character.glb` (idle, walk, cast, hurt, death) | The last 0.4 enemy archetype: raises your fallen thralls against you | Enemy def + WorldSim behaviour |
+| Lich Acolyte | `public/models/lich_acolyte/character.glb` (idle, walk, cast, hurt, death) | The last 0.4 enemy archetype: raises your fallen thralls against you (Nave + Sanctum) | Specced in [`agent-briefs/mobs-barrow-ghoul-lich-acolyte.md`](agent-briefs/mobs-barrow-ghoul-lich-acolyte.md) §3 |
+| Barrow Ghoul (new, 2026-09-27 evening) | `public/models/barrow_ghoul/character.glb` (idle, walk, run, attack, dig, hurt, death; 4k tris) | Hollow Graves burrowing ambusher | Specced in [`agent-briefs/mobs-barrow-ghoul-lich-acolyte.md`](agent-briefs/mobs-barrow-ghoul-lich-acolyte.md) §2 |
 | Area bosses (3) + portraits | `public/models/boss_{gravedigger_king,bone_abbess,drowned_congregation}/character.glb` (idle, walk, attack, cast or dig, hurt, death; 1024 px), `public/art/portraits/boss_{gravedigger_king,bone_abbess,drowned_congregation}.webp` | Bosses for the Hollow Graves, Marrow Ossuary and Drowned Nave | Boss brains + summoning |
 | Future classes (5) + portraits | `public/models/hero_{grave_warden,bell_monk,carrion_witch,hollow_knight,veilwalker}/character.glb` (8 clips incl. `attack`), `public/art/portraits/{grave_warden,bell_monk,carrion_witch,hollow_knight,veilwalker}.webp` | Release 0.3 classes | Server class-index extension + discipline defs |
 | Future spell icons (9) | `public/art/abilities/necro-{bone-fan,veil-step,grave-offering,soul-chain,ivory-cleave,rally-the-dead,frost-wake,carrion-seed,rot-lance}.png` | `SPELL-VARIETY-PLAN.md` spells. Reconcile that plan with the shipped Grimoire first | Ability defs |
@@ -106,6 +107,7 @@ New tintable sprites for the rites: `public/art/fx/{crescent,seed-bud,wisp,rally
 | Hero `slash` clip ×5 | 50 |
 | Tools (4) + thrall gear (2) + wraith thrall + 5 more props + 8 profession props | 20 × 50 = 1,000 |
 | Lich Acolyte (125), 3 bosses (3 × 145), 5 future class heroes (5 × 165) | 1,385 |
-| **Total 2026-09-27** | **3,530** (balance 5,155 → 1,625) |
+| Barrow Ghoul (evening; idle, walk, run, slash, dig, hurt, fall) | 145 |
+| **Total 2026-09-27** | **3,675** (balance 5,155 → 1,480) |
 
 Gemini (2D) runs are cheap and not itemised. Every output is recorded in `art-manifest/images.json`.

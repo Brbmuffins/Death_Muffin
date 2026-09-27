@@ -88,6 +88,13 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 
 ## In flight (check before starting overlapping work)
 
+- **Two new mobs (brief ready 2026-09-27 evening):**
+  [`docs/agent-briefs/mobs-barrow-ghoul-lich-acolyte.md`](docs/agent-briefs/mobs-barrow-ghoul-lich-acolyte.md).
+  - **Barrow Ghoul:** a new Tripo model (145 credits), `public/models/barrow_ghoul/`. It burrows, erupts in a
+    telegraphed ring and gives the Hollow Graves its first new mob.
+  - **Lich Acolyte:** the existing model. It raises your fallen thralls against you in the Nave and the Sanctum.
+
+  Cloud code work; the art is staged on `master`.
 - **Spell variety + dev access + Binbun runtime + first-session readability (brief ready 2026-09-27 evening).**
   The owner couldn't find where to swap rites; the Grimoire exists (L) but is hidden and gated at levels 3–12. They
   asked for:
