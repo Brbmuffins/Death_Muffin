@@ -1,12 +1,15 @@
-import { ABILITIES, HOTBAR, SIGNATURE_LEVEL, type AbilityId, type HotbarSlot } from '../content/abilities';
+import { ABILITIES, HOTBAR, type AbilityId, type HotbarSlot } from '../content/abilities';
+import type { Discipline } from '../content/disciplines';
 import type { EliteAffix } from '../content/enemies';
 import { DAMAGE_UPGRADE, WAVE_MILESTONES, WAVE_UPGRADE, milestones } from '../content/upgrades';
 import { MAX_PARTY_SIZE } from '../net/config';
 import { ICON } from './icons';
 import { Minimap, type MinimapFrame } from './Minimap';
+import { spellTooltip } from './spellTooltip';
 
 /** Key caps under each hotbar slot (slot 5 is the right-click action). */
 const SLOT_KEYS = ['1', '2', '3', '4', 'RMB', 'R'];
+let nextTooltipId = 0;
 
 export interface HudCallbacks {
   cast(slot: HotbarSlot): void;
@@ -86,12 +89,26 @@ export class HUD {
   readonly minimap = new Minimap();
   private cache = new Map<string, string | number | boolean>();
   private $ = <T extends HTMLElement = HTMLElement>(sel: string) => this.el.querySelector<T>(sel)!;
+  private tooltip = document.createElement('div');
+  private tooltipSlot: number | null = null;
+  private tooltipHideTimer = 0;
+  private tooltipKey = '';
+  private slotFrames: SlotFrame[] = [];
+  private resizeTooltip = () => this.positionTooltip();
+  private tooltipKeydown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && !this.tooltip.hidden) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      this.hideTooltip();
+    }
+  };
 
   constructor(
     root: HTMLElement,
     private cb: HudCallbacks,
     /** The slots in order: the shared kit plus this discipline's signature rite. */
     private hotbar: AbilityId[] = HOTBAR,
+    private discipline?: Discipline,
   ) {
     this.el.className = 'hud';
     const slots = this.hotbar.map((id, i) => {
@@ -203,13 +220,20 @@ export class HUD {
       <div class="hud-death passive" data-death><div><div class="t">You have fallen</div><div class="s" data-deathsub></div></div></div>
     `;
     root.appendChild(this.el);
+    this.tooltip.className = 'hud-spell-tooltip cw-plate';
+    this.tooltip.id = `hud-spell-tooltip-${++nextTooltipId}`;
+    this.tooltip.setAttribute('role', 'tooltip');
+    this.tooltip.setAttribute('aria-label', 'Spell details');
+    this.tooltip.tabIndex = 0;
+    this.tooltip.hidden = true;
+    this.el.appendChild(this.tooltip);
     this.$('[data-mapframe]').appendChild(this.minimap.canvas);
 
     this.el.querySelectorAll<HTMLButtonElement>('[data-slot]').forEach((b) =>
       b.addEventListener('click', () => this.cb.cast(Number(b.dataset.slot) as HotbarSlot)),
     );
     this.el.querySelectorAll<HTMLButtonElement>('[data-open]').forEach((b) =>
-      b.addEventListener('click', () => this.cb.open(b.dataset.open as 'inventory')),
+      b.addEventListener('click', () => { this.hideTooltip(); this.cb.open(b.dataset.open as 'inventory'); }),
     );
     this.$('[data-buydmg]').addEventListener('click', () => this.cb.buyDamage());
     this.$('[data-auto]').addEventListener('click', () => this.cb.toggleAutoCombat());
@@ -217,12 +241,21 @@ export class HUD {
     this.el.querySelectorAll<HTMLButtonElement>('[data-dial]').forEach((b) =>
       b.addEventListener('click', () => this.cb.dialWave(Number(b.dataset.dial))),
     );
-    // Ability tooltips (name, cost, cooldown, description).
+    // Custom cards stay readable as long as the button/card is hovered or
+    // keyboard-focused. Opening a card never casts a spell.
     this.hotbar.forEach((id, i) => {
-      const a = ABILITIES[id];
       const btn = this.$(`[data-slot="${i + 1}"]`);
-      btn.title = `${a.name} — ${a.essenceCost ? `${a.essenceCost} essence · ` : ''}${(a.cooldownMs / 1000).toFixed(1)}s\n${a.description}${a.slot === 6 ? `\nSignature rite — unlocks at level ${SIGNATURE_LEVEL}.` : ''}`;
+      btn.addEventListener('pointerenter', () => this.showTooltip(i));
+      btn.addEventListener('pointerleave', () => this.scheduleTooltipHide());
+      btn.addEventListener('focus', () => this.showTooltip(i));
+      btn.addEventListener('blur', () => this.scheduleTooltipHide());
     });
+    this.tooltip.addEventListener('pointerenter', () => window.clearTimeout(this.tooltipHideTimer));
+    this.tooltip.addEventListener('pointerleave', () => this.scheduleTooltipHide());
+    this.tooltip.addEventListener('focus', () => window.clearTimeout(this.tooltipHideTimer));
+    this.tooltip.addEventListener('blur', () => this.scheduleTooltipHide());
+    window.addEventListener('keydown', this.tooltipKeydown, true);
+    window.addEventListener('resize', this.resizeTooltip);
     const chat = this.$<HTMLInputElement>('[data-chatin]');
     chat.addEventListener('keydown', (e) => {
       e.stopPropagation();
@@ -245,7 +278,75 @@ export class HUD {
     apply();
   }
 
+  private showTooltip(i: number) {
+    window.clearTimeout(this.tooltipHideTimer);
+    if (this.tooltipSlot !== i) {
+      this.hideTooltip();
+      this.tooltipSlot = i;
+      this.$(`[data-slot="${i + 1}"]`).setAttribute('aria-describedby', this.tooltip.id);
+      this.tooltipKey = '';
+      this.tooltip.scrollTop = 0;
+    }
+    this.tooltip.hidden = false;
+    this.refreshTooltip();
+  }
+
+  private refreshTooltip() {
+    if (this.tooltipSlot === null || this.tooltip.hidden) return;
+    const i = this.tooltipSlot;
+    const state = this.slotFrames[i] ?? {};
+    const key = `${i}|${!!state.empowered}|${!!state.locked}|${state.affordable}|${Math.ceil((state.left ?? 0) / 1000)}`;
+    if (key === this.tooltipKey) return;
+    this.tooltipKey = key;
+    const data = spellTooltip(this.hotbar[i], this.discipline, state);
+    const scroll = this.tooltip.scrollTop;
+    this.tooltip.innerHTML = `
+      <div class="spell-name">${esc(data.name)}</div>
+      <div class="spell-control">${esc(data.control)}</div>
+      <div class="spell-state${data.locked ? ' locked' : data.empowered ? ' empowered' : ''}">${esc(data.status)}</div>
+      <p class="spell-description">${esc(data.description)}</p>
+      <div class="spell-metrics">${data.metrics.map((m) => `<div><span>${esc(m.label)}</span><b>${esc(m.value)}</b></div>`).join('')}</div>
+      <p class="spell-targeting">${esc(data.targeting)}</p>
+      <ul class="spell-details">${data.details.map((d) => `<li>${esc(d)}</li>`).join('')}</ul>
+      <div class="spell-tip"><b>Combat tip</b><p>${esc(data.tip)}</p></div>
+      <div class="spell-footer">More in Codex (K) · Esc closes this card</div>`;
+    this.tooltip.scrollTop = scroll;
+    this.positionTooltip();
+  }
+
+  private positionTooltip() {
+    if (this.tooltipSlot === null || this.tooltip.hidden) return;
+    const anchor = this.$(`[data-slot="${this.tooltipSlot + 1}"]`).getBoundingClientRect();
+    const card = this.tooltip.getBoundingClientRect();
+    const margin = 12;
+    const left = Math.max(margin, Math.min(window.innerWidth - card.width - margin, anchor.left + anchor.width / 2 - card.width / 2));
+    const above = anchor.top - card.height - 8;
+    const top = Math.max(margin, Math.min(window.innerHeight - card.height - margin, above >= margin ? above : anchor.bottom + 8));
+    this.tooltip.style.left = `${left}px`;
+    this.tooltip.style.top = `${top}px`;
+  }
+
+  private scheduleTooltipHide() {
+    window.clearTimeout(this.tooltipHideTimer);
+    // A small bridge lets the pointer cross the gap into a scrollable card.
+    this.tooltipHideTimer = window.setTimeout(() => {
+      if (this.tooltipSlot === null) return;
+      const btn = this.$(`[data-slot="${this.tooltipSlot + 1}"]`);
+      if (btn.matches(':hover, :focus-visible') || this.tooltip.matches(':hover') || document.activeElement === this.tooltip) return;
+      this.hideTooltip();
+    }, 180);
+  }
+
+  private hideTooltip() {
+    window.clearTimeout(this.tooltipHideTimer);
+    if (this.tooltipSlot !== null) this.$(`[data-slot="${this.tooltipSlot + 1}"]`).removeAttribute('aria-describedby');
+    this.tooltipSlot = null;
+    this.tooltip.hidden = true;
+  }
+
   update(f: HudFrame) {
+    this.slotFrames = f.slots;
+    this.refreshTooltip();
     this.set('autoCombat', f.autoCombat, () => {
       this.$('[data-auto]').textContent = f.autoCombat ? 'Auto: On · G' : 'Auto: Off · G';
       this.$('[data-auto]').setAttribute('aria-pressed', String(f.autoCombat));
@@ -440,6 +541,9 @@ export class HUD {
   }
 
   dispose() {
+    this.hideTooltip();
+    window.removeEventListener('resize', this.resizeTooltip);
+    window.removeEventListener('keydown', this.tooltipKeydown, true);
     this.el.remove();
   }
 }

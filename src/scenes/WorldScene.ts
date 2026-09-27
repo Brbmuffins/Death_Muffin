@@ -389,7 +389,8 @@ export class WorldScene implements GameScene, RuntimeView {
         if (this.realtime.connected) this.realtime.sendChat(text);
         else this.hud.chatLine('(solo) Nobody hears you in the dark.');
       },
-    }, this.hotbar);
+    }, this.hotbar, this.discipline);
+    this.hud.minimap.onNavigate = (x, z) => this.navigateFromMinimap(x, z);
     this.inventoryPanel = new InventoryPanel(this.root, this.character.id, this.inventory, this.statsLine, (id) => this.drinkFlask(id));
     this.forgePanel = new ForgePanel(this.root, this.character.id, this.inventory, (inv, prof) => {
       this.inventory.replace(inv);
@@ -615,6 +616,24 @@ export class WorldScene implements GameScene, RuntimeView {
       }
     }
     return out;
+  }
+
+  private navigateFromMinimap(x: number, z: number): boolean {
+    if (!this.ready || !this.player.alive || this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen) return false;
+    const area = this.nav.areaAt(x, z);
+    const corridor = DOORS.some(d => this.nav.isDoorOpen(d) && x >= d.rect.x0 && x <= d.rect.x1 && z >= d.rect.z0 && z <= d.rect.z1);
+    if (area ? !this.nav.isUnlocked(area) : !corridor) return false;
+    const [tx, tz] = this.nav.resolve(x, z, 0.45);
+    this.cancelRecall();
+    this.attackTarget = null;
+    this.pendingInteract = null;
+    this.queuedCast = null;
+    this.autoTargetId = null;
+    this.autoAim = null;
+    if (Math.hypot(tx - this.player.x, tz - this.player.z) > 0.25) this.player.face(tx, tz);
+    this.player.moveTo(tx, tz);
+    this.onboarding.show('minimap');
+    return this.player.hasPath;
   }
 
   private onPrimaryClick() {
@@ -1915,6 +1934,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (now - this.lastMapDraw > 100) {
       this.lastMapDraw = now;
       this.hud.drawMap({
+        destination: p.destination,
         px: p.x,
         pz: p.z,
         facing: p.facing,
