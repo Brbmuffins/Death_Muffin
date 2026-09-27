@@ -96,12 +96,16 @@ Every discipline shares the core kit. Each rite has its own colour so a crowded 
 
 ### The Grimoire (L) — choose your four
 
-Keys **1–4** are four fixed slots, and the **Grimoire** (**L**, or the open-book button beside the
-minimap) decides which rites fill them. You start with the four above. Four more rites unlock with
-level, and any four can be on the bar. Choosing a key for a rite that already sits on another key
-swaps the two. Each rite keeps its own cooldown, so swapping resets nothing. Your choice is remembered
-per character. Auto combat uses whatever is on your bar; it never casts Grave Step for you, because it
-never moves you.
+Keys **1–4** are four fixed slots, and the **Grimoire** decides which rites fill them. Open it with **L**,
+the **Grimoire** button at the end of the hotbar (a **NEW** pip lights when a rite you haven't looked at
+unlocks, and the level-up toast is clickable), or **right-click any slot**, including the left-click
+socket. The Grimoire has a **left-click primary** socket too: **Bone Needle**, **Bone Fan** (level 2) or
+**Rot Lance** (level 6). Rite cards carry role chips (damage, crowd, sustain, legion, mobility,
+defence). You start with the four above, and new rites unlock at levels **2, 3, 4, 5, 6, 7, 8 and 12**,
+so the first choice comes at level 2. Any four can be on the bar. Choosing a key for a rite that
+already sits on another key swaps the two. Each rite keeps its own cooldown, so swapping resets
+nothing. Your choice is remembered per character. Auto combat uses whatever is on your bar; it never
+casts Grave Step or Veil Step for you, because it never moves you.
 
 | | Rite | Unlocks | Cost · Cooldown | What it does |
 |---|---|---|---|---|
@@ -109,6 +113,13 @@ never moves you.
 | <img src="public/art/abilities/necro-grave-step.png" width="56" /> | **Grave Step** | level 5 | 10 · 5 s | Dissolve into blood mist and re-form on the corpse nearest the cursor (up to 12 m, never across a sealed door). The re-forming burst hits everything within 2.6 m (1.3×) and makes it **bleed**. The corpse stays for your next rite. |
 | <img src="public/art/abilities/necro-grave-frost.png" width="56" /> | **Grave Frost** | level 7 | 20 · 4.5 s | A 7 m cone of grave cold (1.4×) that **Chills** everything it touches for 3 s. Enemies that are already Chilled **shatter** for +50% damage, so breathe twice. |
 | <img src="public/art/abilities/necro-bone-mantle.png" width="56" /> | **Bone Mantle** | level 12 | 25 · 15 s | Draw up to 5 corpses within 6 m into a whirling mantle: a **barrier** of 10% max health +7% per corpse (45% at most) that holds for 6 s, while bone shards cut anything within 1.7 m twice a second. |
+| <img src="public/art/abilities/necro-bone-fan.png" width="56" /> | **Bone Fan** (primary) | level 2 | free · 0.52 s | Fling three slivers in a fan; each homes on a different enemy near the one you clicked (the Prelate takes only one). +3 essence per sliver that lands, 6 at most. |
+| <img src="public/art/abilities/necro-grave-offering.png" width="56" /> | **Grave Offering** | level 2 | free · 2 s | Burn the corpse nearest the cursor into your reserves: +16 Grave Essence (more from resonant and elite bodies) and 4% of your health. |
+| <img src="public/art/abilities/necro-ivory-cleave.png" width="56" /> | **Ivory Cleave** | level 4 | 14 · 1.6 s | A crescent of bone sweeps a wide arc in front of you (3.6 m), **Fracturing** what it cuts. |
+| <img src="public/art/abilities/necro-veil-step.png" width="56" /> | **Veil Step** | level 4 | free · 7 s | Slip through the veil up to 5.5 m toward the cursor. No corpse needed; it never passes a sealed door or leaves your hall. |
+| <img src="public/art/abilities/necro-rot-lance.png" width="56" /> | **Rot Lance** (primary) | level 6 | free · 0.7 s | A lance of rot pierces the first two enemies in a line, adding a **Withered** stack to each. +4 essence on the first hit. |
+| <img src="public/art/abilities/necro-rally-the-dead.png" width="56" /> | **Rally the Dead** | level 6 | 20 · 12 s | Every thrall you command gets +40% damage and +30% attack speed for 6 s (Gravecallers +2 s), heals 20%, and turns on the enemy nearest the cursor. |
+| <img src="public/art/abilities/necro-carrion-seed.png" width="56" /> | **Carrion Seed** | level 8 | 18 · 6 s | Plant rot in a corpse. It arms after 0.6 s; when an enemy comes within 2.2 m it bursts for 3 m and leaves 2 Withered stacks. One seed at a time; it withers after 20 s. |
 
 Each borrows the feel of a rite you already know. The skull flies and lands like Bone Needle, Grave
 Frost resolves its cone on impact like Marrow Spear, Grave Step picks its corpse like Corpse
@@ -422,9 +433,9 @@ read. Drag the **Covenant counsel** header to move it; arrow keys on the focused
 | Minimap click | Travel to a walkable location; sealed halls remain closed |
 | Hover/focus spell | Detailed spell information and combat tips |
 | Left click | Move · attack the enemy under the cursor · use an object · work a gathering node (tree, seam, fishing spot, grave) |
-| Shift + click | Cast Bone Needle without moving |
+| Shift + click | Cast your left-click primary (Bone Needle, Bone Fan or Rot Lance) without moving |
 | **1 2 3 4** (hold to repeat) | Your four Grimoire rites, aimed at the cursor (start: Marrow Spear · Exhume · Miasma Circle · Black Litany) |
-| **L** | Grimoire: choose which rites sit on 1–4 (Wailing Skull, Grave Step, Grave Frost, Bone Mantle unlock at levels 3 / 5 / 7 / 12) |
+| **L** · right-click a slot | Grimoire: choose your left-click primary and which rites sit on 1–4 (new rites at levels 2 / 3 / 4 / 5 / 6 / 7 / 8 / 12) |
 | Right-click · **5** | Corpse Explosion on the corpse nearest the cursor (works while holding left-click to move) |
 | **R** · **6** | Your discipline's signature rite (unlocks at level 10) |
 | **Q** | Drink a healing flask |
@@ -485,7 +496,7 @@ Skill levels and gathered items live on the Death Muffin backend (`POST /api/gat
 
 DEV console hooks (`window.__cwDebug`, offline dev only): `advance(s)`, `goto(area)`, `unlockAll()`, `god()`,
 `ring(def, n, r)`, `spawn(def, elite, affix)`, `surge()`, `souls()`, `xp(n)`, `perf()`, `prelateSlain()`, `altar()`,
-dev access (the owner's `brbmuffins` account or any `gm_enabled` character: every rite, area and gathering tier as a runtime overlay, a **DEV** chip by the level badge, Settings toggle to preview as a normal player), gathering QA `nodes(area)`, `gatherAt(type)`, `gathering()`, `skill(id, level)`, `station(kind)`, `hoverNode(id)` and more.
+dev access (the owner's `brbmuffins` account or any `gm_enabled` character: every rite, area and gathering tier as a runtime overlay, a **DEV** chip by the level badge, Settings toggle to preview as a normal player), gathering QA `nodes(area)`, `gatherAt(type)`, `gathering()`, `skill(id, level)`, `station(kind)`, `hoverNode(id)`, BinbunVFX review `vfx(id, colors?)`, `vfxGallery(page)` (16 per page, `-1` closes), `vfxCount()` and more.
 
 Docs: [CLAUDE.md](CLAUDE.md) (working context) · [HANDOFF.md](HANDOFF.md) (current state) ·
 [PHASE_REPORTS.md](PHASE_REPORTS.md) (what's built) · [BALANCE.md](BALANCE.md) (targets + numbers) ·

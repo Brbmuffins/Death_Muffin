@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { BinbunFX } from './binbun/BinbunFX';
 import { fx } from './fxTextures';
 
 type Vec3 = { x: number; y: number; z: number };
@@ -259,6 +260,8 @@ export class Effects {
   private spikeDummy = new THREE.Object3D();
   private time = 0;
   private lights: { light: THREE.PointLight; t: number; life: number; peak: number }[] = [];
+  /** The converted BinbunVFX library (docs/BINBUN-VFX-PORT.md); fail-open, layered over the effects above. */
+  readonly binbun: BinbunFX;
 
   constructor(scene: THREE.Scene) {
     this.additive = new ParticleSystem(3500, fx.glow(), THREE.AdditiveBlending);
@@ -282,6 +285,7 @@ export class Effects {
       this.lights.push({ light, t: 0, life: 0, peak: 0 });
     }
     scene.add(this.group);
+    this.binbun = new BinbunFX(this.group, (x, y, z, color, intensity, life) => this.lightFlash(x, y, z, color, intensity, life));
   }
 
   emit(o: EmitOptions) {
@@ -592,6 +596,7 @@ export class Effects {
     const scale = (viewportHeight * 0.5) / Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
     this.additive.update(dt, scale);
     this.smoke.update(dt, scale);
+    this.binbun.update(dt, camera);
 
     for (let i = this.transients.length - 1; i >= 0; i--) {
       const tr = this.transients[i];
@@ -672,6 +677,7 @@ export class Effects {
   }
 
   dispose() {
+    this.binbun.dispose();
     const geometries = new Set<THREE.BufferGeometry>();
     const materials = new Set<THREE.Material>();
     const collect = (o: THREE.Object3D) => {

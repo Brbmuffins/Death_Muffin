@@ -4,7 +4,7 @@ Living status document so any agent (or person) can pick the project up at any
 point. **Update the "Current state" and "In flight" sections whenever you stop.**
 > **VPS update, 2026-09-27:** Death Muffin now runs at https://muffindevelopment.com/death-muffin/. The live release includes Acre-first spawn, open-game AFK professions, ten-player co-op, starter-area visual/balance fixes, movable counsel and brighter gathering lighting; source, checks and deployment tooling are committed at the user’s explicit request. Read [docs/DEATH-MUFFIN-HANDOFF.md](docs/DEATH-MUFFIN-HANDOFF.md) for current deployment, class switching, combat flow, Git access and verification; older cloud-only status below is historical.
 
-Last updated: 2026-09-27 evening, workstation (latest: spell-variety / dev-access / Binbun runtime / first-session brief + art for the cloud agent, see "In flight"; before that: BinbunVFX port researched + documented for Codex): **everything combined on `master`** (the professions commit `fa43c9c`
+Last updated: 2026-09-27 late, cloud session on `claude/adoring-knuth-hd1uox` (latest: **BinbunFX runtime + DEV gallery landed**, `origin/master` through `647c021` merged; see "In flight" → queue item 1 for the exact next step). Before that, 2026-09-27 evening, workstation ( spell-variety / dev-access / Binbun runtime / first-session brief + art for the cloud agent, see "In flight"; before that: BinbunVFX port researched + documented for Codex): **everything combined on `master`** (the professions commit `fa43c9c`
 fast-forwarded, plus the workstation's Grimoire, enemy pack, art batches and merge fixes, staged for the owner's
 push). The full art inventory is in [`docs/ART-BACKLOG.md`](docs/ART-BACKLOG.md). Before that, the cloud session on `claude/adoring-knuth-hd1uox`: **professions G0 + G1 + G2 + G4 built**
 (gathering rules + `/api/gather`, the Sexton's Acre, nodes + loop + Auto, Skills panel, stations, tips, Codex, README).
@@ -89,9 +89,19 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 ## In flight (check before starting overlapping work)
 
 - **Queue for the cloud agent (2026-09-27 evening), in order:**
-  1. finish [`spell-variety-first-session.md`](docs/agent-briefs/spell-variety-first-session.md) (dev access, Grimoire
-     and 7 rites are on `claude/adoring-knuth-hd1uox` as `55a6dd2`/`7c3afae`/`502f726`; the VFX runtime, interactables
-     and First Rites remain);
+  1. finish [`spell-variety-first-session.md`](docs/agent-briefs/spell-variety-first-session.md). Done on
+     `claude/adoring-knuth-hd1uox`: §2 dev access (`55a6dd2`), §3 Grimoire + LMB primary (`7c3afae`), §4 seven rites
+     (`502f726`), §5 **runtime + DEV gallery** (this session's last commit). **Next, in order:**
+     - §5 wiring, additive (today's effects stay): start with the new rites in `WorldScene`'s event handlers
+       (`bone_fan_hit` / `ivory_cleave_hit` with `once: true`, `grave_offering_orb`+`_ripple`, `rally_area`,
+       `rally_thrall_rim` via `follow`, `carrion_seed_armed` (follow the corpse; kill on `seedGone`) / `_burst`,
+       `rot_lance_projectile` + `veil_step_trail` with `duration`), colours from `SPELL_FX`. Call
+       `effects.binbun.spawn(id, {...})`; it never throws or waits.
+     - Tune per effect in the gallery first: `__cwDebug.vfxGallery(0..3)` in `?offline`, or `vfx(id)` one at a time.
+       First headless look: all 60 spawnable effects render without shader errors, but `dirge_area`, `exhume_lift`
+       and `prelate_impact` read blown out under bloom. Check `uGain` / emission in `src/graphics/binbun/shaders.ts`
+       and the per-pack shaders (they go through the approximate `generic` program).
+     - Then §6 interactables (beacons use `interact_rim`), §7 First Rites, §10 docs;
   2. [`mobs-barrow-ghoul-lich-acolyte.md`](docs/agent-briefs/mobs-barrow-ghoul-lich-acolyte.md);
   3. [`area-bosses.md`](docs/agent-briefs/area-bosses.md);
   4. [`build-depth-aspects-runes.md`](docs/agent-briefs/build-depth-aspects-runes.md). Its runes need Death Muffin
@@ -126,17 +136,23 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
   The rite icons already existed. The owner pushes `master` via GitHub Desktop; the agent merges `origin/master`
   into its branch first.
 
-- **BinbunVFX → Three.js port (started 2026-09-27; local conversion complete, runtime pending).** The owner's
-  Godot VFX packs (from `F:\`, licence confirmed for this non-profit game) are
-  vendored raw in `art-src/vendor/binbun/` (gitignored, workstation only). Read
-  [`docs/BINBUN-VFX-PORT.md`](docs/BINBUN-VFX-PORT.md) end to end. The workstation-only step is done:
-  `tools/binbun-port.mjs` produced 22 portable effects under `public/fx/binbun/`, so a cloud session no longer
-  needs `art-src/` for this selected batch. Next: build `src/graphics/binbun/BinbunFX.ts`, translate/verify the
-  committed shaders, add the DEV gallery, and wire the proposed spell/world hooks. Source/selection records:
-  `art-manifest/binbun-vfx.json` and `art-manifest/binbun-effects.json`. Rules: additive only (keep today's
-  effects), recolour from `SPELL_FX`, never add PointLights (use `Effects.lightFlash`), and keep asset loading
-  non-blocking/fail-open so combat can never wait on or fail because of VFX. Do not replace the current visuals
-  before gallery + combat-readability + dense-wave perf QA. Stage, don't commit.
+- **BinbunVFX → Three.js port: conversion done (workstation), runtime done (cloud, 2026-09-27 late), wiring next.**
+  Read [`docs/BINBUN-VFX-PORT.md`](docs/BINBUN-VFX-PORT.md). The workstation owns the Godot side
+  (`tools/binbun-port.mjs`, `public/fx/binbun/*`, `art-manifest/binbun-*.json`). The cloud agent doesn't edit those,
+  and the runtime reads the JSON as-is. Runtime: `src/graphics/binbun/`.
+  - `godot.ts`: pure resolver, turns scene JSON into node, material, particle and animation templates.
+  - `textures.ts`: procedural stand-ins for the noise/gradient `.tres` the converter leaves unbaked. When the
+    converter bakes them, the PNG path wins automatically.
+  - `shaders.ts`: exact GLSL ports of the shared `transparent` / `particle` / `glow_fresnel`, plus a `generic`
+    program for every per-pack shader (a follow-up is to port those exactly).
+  - `BinbunFX.ts`: `effects.binbun.spawn(id, {x, y, z, scale, rot, colors, follow, duration, once, alpha})`, fetch +
+    cache, fail-open, capped at 24 one-shots / 32 loopers, pooled, loopers culled beyond 40 m or off-screen, lights
+    through `Effects.lightFlash`.
+  - `catalog.ts`: impacts, loopers, one-shots and world kits (a test keeps it in sync with the manifest).
+  - `gallery.ts`: DEV review grid.
+
+  Rules unchanged: additive only, recolour from `SPELL_FX`, no PointLights, no visual replaced before gallery +
+  readability + dense-wave perf QA. The `world_*` kits are not ported yet.
 
 **Professions / gathering: G0, G1, G2 and G4 are built** on `claude/adoring-knuth-hd1uox` (one session, one branch,
 not the per-brief `cloud/professions-g*` branches). **G3 art has landed** (workstation, 2026-09-27): the node GLBs are

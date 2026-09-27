@@ -42,6 +42,9 @@ import { computeStats, STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
 import { NecromancerAvatar, PrelateView } from '../graphics/Avatars';
 import { CameraRig } from '../graphics/CameraRig';
 import { Effects, type Handle } from '../graphics/Effects';
+import type { BinbunSpawn } from '../graphics/binbun/BinbunFX';
+import { isBinbunImpact, type BinbunId } from '../graphics/binbun/catalog';
+import type { Gallery } from '../graphics/binbun/gallery';
 import { EntityViews } from '../graphics/EntityViews';
 import { fx } from '../graphics/fxTextures';
 import { LootView } from '../graphics/LootView';
@@ -163,6 +166,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private lastMoveSent = 0;
   private lastPrune = 0;
   private lineupTicks: ((dt: number) => void)[] = [];
+  /** DEV: the BinbunVFX review grid, if open. */
+  private vfxGallery: Gallery | null = null;
   private stepT = 0;
   private rippleT = 0;
   private rippleCursor = 0;
@@ -2113,6 +2118,7 @@ export class WorldScene implements GameScene, RuntimeView {
     // Visuals.
     this.avatar.update(dt, p.x, p.z, p.facing, p.moving, p.stats.moveSpeed);
     for (const tick of this.lineupTicks) tick(dt);
+    this.vfxGallery?.update(dt);
     for (const r of this.remotes.values()) {
       const k = Math.min(1, dt * 10);
       const x = r.avatar.c.root.position.x + (r.tx - r.avatar.c.root.position.x) * k;
@@ -2564,6 +2570,21 @@ export class WorldScene implements GameScene, RuntimeView {
         });
       },
       cast: (slot: HotbarSlot) => this.castSlot(slot),
+      /** BinbunVFX QA: play one converted effect at the player, e.g. vfx('bone_fan_hit', [0xe8dcc0]). */
+      vfx: (id: BinbunId, colors?: THREE.ColorRepresentation[], o: Partial<BinbunSpawn> = {}) => {
+        const h = this.effects.binbun.spawn(id, { x: this.player.x, y: 0.05, z: this.player.z, colors, once: isBinbunImpact(id), ...o });
+        return h.alive;
+      },
+      vfxCount: () => this.effects.binbun.count,
+      /** BinbunVFX review grid (16 per page) around the player; call vfxGallery(-1) to close. */
+      vfxGallery: async (page = 0, colors?: THREE.ColorRepresentation[]) => {
+        this.vfxGallery?.dispose();
+        this.vfxGallery = null;
+        if (page < 0) return [];
+        const { openGallery } = await import('../graphics/binbun/gallery');
+        this.vfxGallery = openGallery(this.effects.binbun, this.rig.camera, document.body, this.player, page, 16, colors);
+        return this.vfxGallery.ids;
+      },
       /** Grimoire QA: put rites on keys 1–4, e.g. loadout(['wailing_skull','grave_step','grave_frost','bone_mantle']). */
       loadout: (ids?: AbilityId[]) => {
         ids?.forEach((id, i) => this.setRite(i, id));
@@ -2641,6 +2662,7 @@ export class WorldScene implements GameScene, RuntimeView {
     };
     (window as unknown as { __cwDebug: typeof dbg }).__cwDebug = dbg;
     this.scope.add(() => delete (window as unknown as { __cwDebug?: unknown }).__cwDebug);
+    this.scope.add(() => this.vfxGallery?.dispose());
   }
 
   // -------------------------------------------------------------------------

@@ -95,6 +95,9 @@ with `npm run test:vfx`.
 New tintable sprites for the rites: `public/art/fx/{crescent,seed-bud,wisp,rally-sigil,veil-streak}.png` (Gemini,
 `gemini-jobs/spells-v5.json`). The rite icons already existed (`future-2d.json`). Every hook is listed in
 [`agent-briefs/spell-variety-first-session.md`](agent-briefs/spell-variety-first-session.md) §5.
+**Status (2026-09-27 late):** the five sprites and seven icons are wired (`fxImages.ts`, the §4 rites). The Binbun
+entries play through the new runtime (`src/graphics/binbun/`, DEV `vfxGallery`) but are **not yet hooked into
+gameplay**. The `world_*` kits are unported.
 
 **Plan, format notes and the proposed wiring:** [`BINBUN-VFX-PORT.md`](BINBUN-VFX-PORT.md).
 

@@ -1,5 +1,14 @@
 # BinbunVFX → Three.js port (handoff for Codex / any agent)
 
+> **Update 2026-09-27 (late, cloud):** the §4 step 3 runtime and the step 4 DEV gallery are built in
+> `src/graphics/binbun/` (`BinbunFX.ts`, `godot.ts`, `textures.ts`, `shaders.ts`, `catalog.ts`, `gallery.ts`;
+> test `src/gameplay/__tests__/binbun.test.ts`). It plays the converted JSON unchanged:
+> - the shared `transparent` / `particle` / `glow_fresnel` are ported exactly, and the per-pack shaders go through
+>   an approximate `generic` program;
+> - unbaked noise/gradient `.tres` roots are generated procedurally at load.
+>
+> Game wiring (§5) is next; see `HANDOFF.md`.
+
 > **Update 2026-09-27 (evening, workstation):** the selection grew to **67 entries** (6.6 MB): new-rite effects,
 > interactable beacons, world ambience, enemy effects and seven `world_*` shader kits (water, grass, transitions, sky;
 > `.tres` material roots). The runtime build and every hook are now specified in

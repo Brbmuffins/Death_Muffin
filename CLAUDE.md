@@ -54,7 +54,7 @@ src/app/        GameRuntime (one renderer, bloom, advance() QA stepping), Scope,
 src/content/    data: disciplines, abilities (+SPELL_FX), enemies, areas, layout, items, upgrades
 src/gameplay/   sim/ (WorldSim, BossBrain, snapshot mirror), AbilitySystem, Player, nav,
                 progression (server + local), loot/Inventory, characterStats, __tests__/
-src/graphics/   Creature (GLB instances), EntityViews, WorldView, Effects, LootView,
+src/graphics/   Creature (GLB instances), EntityViews, WorldView, Effects (+binbun/ BinbunVFX runtime), LootView,
                 Avatars, CameraRig, occlusion, NecroBackdrop, AssetCache, fxTextures
 src/net/        REST client (+DEV offline mock), realtime client, contracts
 src/scenes/     Login, CharacterSelect (disciplines), WorldScene (the game)
@@ -75,7 +75,7 @@ server/         realtime service (+tests, deploy), web-deploy, proposals/
 4. Drive QA through `window.__cwDebug` (DEV only): `advance(s)` steps the game
    deterministically (hidden preview panes throttle rAF — don't wait on the loop),
    `counts()`, `net()`, `god()`, `goto(area)`, `unlockAll()`, `ring(def,n,r)`,
-   `freeze()`, `boss()`, `zoom(z)`, `aimAtNearest()`, `cast(slot)`. Screenshots work
+   `freeze()`, `boss()`, `zoom(z)`, `aimAtNearest()`, `cast(slot)`, `vfx(id)`, `vfxGallery(page)`. Screenshots work
    after an `advance()`.
 5. Live-server QA uses accounts in `TEST_ACCOUNTS.local.md` (gitignored) — the
    Vite proxy forwards REST calls to the VPS.

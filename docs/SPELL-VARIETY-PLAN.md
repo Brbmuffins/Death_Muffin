@@ -9,7 +9,7 @@
 > - **Loadout:** the Grimoire's free slots replace the role-locked slots proposed below, plus a new left-click primary
 >   socket.
 
-Status: proposal only, 2026-09-27. No abilities, loadout changes, unlocks or assets in this document have been implemented. Preserve the approved gameplay at `fca634d057105e995e17e44d7363812b6cb08458`, checkpointed as `death-muffin-v1.0.0`. Read [the checkpoint](DEATH-MUFFIN-CHECKPOINT.md) and [VPS handoff](DEATH-MUFFIN-HANDOFF.md) before implementation.
+Status (updated 2026-09-27 late, cloud): **the reconciled build shipped** on `claude/adoring-knuth-hd1uox`. It has the Grimoire left-click primary (Bone Needle / Bone Fan / Rot Lance) and five new keys (Grave Offering, Ivory Cleave, Veil Step, Rally the Dead, Carrion Seed), unlocking at 2/3/4/4/5/6/7/8/12; see `README.md` → The Grimoire and `PHASE_REPORTS.md`. The proposal text below is historical. Preserve the approved gameplay at `fca634d057105e995e17e44d7363812b6cb08458`, checkpointed as `death-muffin-v1.0.0`. Read [the checkpoint](DEATH-MUFFIN-CHECKPOINT.md) and [VPS handoff](DEATH-MUFFIN-HANDOFF.md) before implementation.
 
 The aim is more ways to enjoy the existing relaxed grinding loop: choose a few spells, watch satisfying combinations clear packs, and take over for positioning or a well-timed ability. Variety should come from different attack shapes and corpse decisions, with the accepted movement, quick gestures and visual UI intact.
 

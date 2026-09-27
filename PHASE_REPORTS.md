@@ -585,3 +585,29 @@ Built from `docs/PROFESSIONS-ROADMAP.md` in one cloud session (branch `claude/ad
   - `build-depth-aspects-runes`.
 - The merge of `master` (`acfdd36`) with the cloud branch (`502f726`) was previewed with no conflicts and tested in a
   scratch worktree: typecheck, 220 client, 33 server and 3 VFX tests all green.
+
+## Spell variety brief §2–§5 (2026-09-27, cloud, `claude/adoring-knuth-hd1uox`) ✅ tests + in-browser QA
+- **§2 Dev access** (`55a6dd2`): `gameplay/devAccess.ts`. The `brbmuffins` account or any `gm_enabled` character gets
+  every rite, area and gathering tier as a runtime overlay that is never saved. It adds a **DEV** chip and a Settings
+  toggle to preview as a normal player. Death Muffin `/api/gather` skips only the level check for staff (`isStaff`:
+  `accounts.role` admin/gm or `gm_enabled`); the mock mirrors it.
+- **§3 Grimoire** (`7c3afae`): loadout v2 `{primary, keys}` (migrates v1), a Grimoire button with a NEW pip, a
+  clickable level-up toast, right-click on any slot, role chips, and the left-click primary socket (Bone Needle /
+  Bone Fan / Rot Lance). Escape closes an open panel before it opens Settings.
+- **§4 Seven rites** (`502f726`):
+  - primaries Bone Fan (2) and Rot Lance (6, Withered);
+  - keys Grave Offering (2), Ivory Cleave (4), Veil Step (4), Rally the Dead (6, snapshot rally bit), Carrion Seed
+    (8, host-side seeded corpses, `seeded` / `seedGone` / `seedBurst` events).
+
+  The unlock ladder is 2/3/4/4/5/6/7/8/12. Each rite has a Codex entry, counsel tip, spell card, auto-combat rule
+  (Veil Step never) and realtime sanitiser.
+- **§5 BinbunFX runtime + DEV gallery**: `graphics/binbun/`, owned by `Effects` as `effects.binbun`.
+  - Fail-open fetch/cache, one CPU-simulated InstancedMesh per particle node, Mesh per mesh node, track player.
+  - Lights go through `lightFlash`; cap 24 one-shots / 32 loopers, pooled, loopers culled.
+  - Exact GLSL for the shared `transparent` / `particle` / `glow_fresnel`, a `generic` program for the per-pack
+    shaders, and procedural textures for the unbaked noise/gradient `.tres`.
+  - DEV `vfx(id)`, `vfxGallery(page)`, `vfxCount()`.
+  - Headless QA: all 60 spawnable effects render with no shader errors. `dirge_area`, `exhume_lift` and
+    `prelate_impact` read too bright under bloom; tuning is next.
+  - **Not yet wired into gameplay** (brief §5 wiring list).
+- Checks: typecheck, 225 client tests (new `binbun.test.ts`), 33 server tests, `test:vfx`, production build.
