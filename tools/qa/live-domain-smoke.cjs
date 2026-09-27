@@ -26,7 +26,7 @@ async function domainCheck() {
   assert.equal(owner.status(),200,'Existing owner character remains available');
   await context.close();
   const qa=await browser.newContext({viewport:{width:1280,height:800}});
-  await qa.addInitScript(()=>localStorage.setItem('dm_settings_v1',JSON.stringify({quality:'low',tips:false})));
+  await qa.addInitScript(counsel=>localStorage.setItem('dm_settings_v1',JSON.stringify({quality:'low',tips:counsel})),process.argv.includes('--counsel-check'));
   const game=await qa.newPage();game.on('pageerror',e=>errors.push(e.message));
   game.on('response',r=>{if(r.url().startsWith(site)&&r.status()>=400)failed.push({status:r.status(),url:r.url()});});
   let joinResolve;const joined=new Promise(resolve=>joinResolve=resolve);
@@ -40,6 +40,18 @@ async function domainCheck() {
   const connected=await Promise.race([joined,new Promise(resolve=>setTimeout(()=>resolve(false),20000))]);
   assert.ok(connected,'Authenticated co-op joins the world on the new domain');
   assert.ok(wsUrls.length&&wsUrls.every(url=>url.startsWith('wss://muffindevelopment.com/death-muffin/rt/socket.io/')));
+  if(process.argv.includes('--counsel-check')){
+   const handle=game.getByRole('button',{name:'Move Covenant counsel'});await handle.waitFor();await game.waitForTimeout(350);
+   const before=await game.locator('.cw-tip:not(.out)').boundingBox();const grip=await handle.boundingBox();
+   await game.mouse.move(grip.x+40,grip.y+8);await game.mouse.down();await game.mouse.move(grip.x+290,grip.y+48,{steps:10});await game.mouse.up();
+   const moved=await game.locator('.cw-tip:not(.out)').boundingBox();assert.ok(moved.x-before.x>240);
+   const saved=await game.evaluate(()=>JSON.parse(localStorage.getItem('dm_counsel_position_v1')));
+   await game.reload();await game.locator('.hud').waitFor();await handle.waitFor();await game.waitForTimeout(350);
+   const restored=await game.locator('.cw-tip:not(.out)').boundingBox();assert.ok(Math.abs(restored.x-saved.x)<1&&Math.abs(restored.y-saved.y)<1);
+   await game.screenshot({path:path.join(artifactDir,'live-counsel.png')});
+   await game.getByRole('button',{name:"Don't show tips"}).click();
+   console.log(JSON.stringify({liveCounselDrag:true,liveCounselReloadPersistence:true}));
+  }
   await game.locator('[data-slot="1"]').hover();
   const spellCard=game.getByRole('tooltip',{name:'Spell details'});await spellCard.waitFor();
   assert.match(await spellCard.innerText(),/Fracture/);await game.keyboard.press('Escape');

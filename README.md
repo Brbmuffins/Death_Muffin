@@ -299,6 +299,8 @@ world keeper's rank decides how old the dead are (like difficulty).
 
 ## Professions — the Sexton's Acre
 
+The Acre’s **Sawpit** has a warm light pool and a small gold ground ring: click it to open wood recipes.
+
 **Starting gathering:** Coffin-Oaks just north of the Acre entrance, the nearby Copper Seam and Pauper’s Grave, and Still Pools are all level 1. Beginner cycles succeed 60% of the time before skill/tool bonuses; Woodcutting opens Hangman’s Elm at level 5 and Bleeding Willow at level 15. Other tiers keep their requirements.
 
 **AFK gathering:** In the Acre, press **P**, choose a node tier for Woodcutting, Mining, Fishing or Gravedigging, and click **Start AFK**. Your hero works continuously, walks to the next node of the same kind and waits for respawns. Skills can remain open for oversight. Keep the game open; background tabs update the same simulation without drawing frames. A full bag pauses work: make room, then Start AFK again. Movement, casting, other panels or **Pause AFK** stop it. Closing/reloading ends the session; there are no offline rewards. Node tiers stay your choice as you level up.
@@ -407,7 +409,7 @@ surge and relic, a full Soul Harvest, a Sanctified enemy, the Codex, the Grimoir
 rite unlocks (and each new rite the first time you put it on a key), your signature rite at level 10,
 five soul shards, the Altar after your first Prelate kill, Ashes waiting to be spent, and on the skilling side your first
 visit to the Sexton's Acre, your first node, a rich node, a station, a full bag and your first skill level-up. Each shows once per character, never pauses the game, and stays up long enough to
-read. Turn them off (or **Show tips again**) in Settings (**Esc**). **K** opens the Codex any time.
+read. Drag the **Covenant counsel** header to move it; arrow keys on the focused header also move it. Its position is remembered across cards and reloads and kept inside the screen. Turn them off (or **Show tips again**) in Settings (**Esc**). **K** opens the Codex any time.
 
 ![A Covenant counsel card welcoming a new necromancer to the Chapterhouse](docs/screenshots/covenant-counsel.webp)
 

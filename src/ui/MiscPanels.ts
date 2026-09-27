@@ -73,6 +73,7 @@ export class SettingsPanel extends SimplePanel {
           <kbd>I C P M</kbd><span>Reliquary · Workbench · Skills · Waystones</span>
           <kbd>K</kbd><span>Codex</span>
           <kbd>G</kbd><span>Toggle auto combat · stand near enemies to grind</span>
+          <kbd>Counsel header</kbd><span>Drag to move · arrow keys while focused · remembers its position</span>
           <kbd>Settings</kbd><span>Change class · keeps your character and progress</span>
           <kbd>WASD</kbd><span>Walk (fallback)</span>
           <kbd>Wheel</kbd><span>Zoom</span>

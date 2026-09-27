@@ -352,6 +352,10 @@ export class WorldView {
     this.buildFloors();
     this.buildWalls(nav);
     this.buildProps(nav);
+    // Reuse the five existing dynamic lights for a warm workshop beacon.
+    const sawpit = AREAS.acre.interactables.find(it => it.kind === 'sawpit')!;
+    this.lightSources.push({ x: sawpit.x, y: 1.6, z: sawpit.z, color: 0xffd29a, intensity: 3, distance: 7, lit: true, brazier: false });
+    this.effects.decal({ tex: fx.ring(), color: 0xeac58b, x: sawpit.x, z: sawpit.z, r: 1.4, duration: 1e9, opacity: 0.3, fadeIn: 0.01 });
     this.buildWindows();
     this.buildDecals();
     this.buildGates();

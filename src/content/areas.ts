@@ -107,7 +107,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
       { id: 'bone_kiln', kind: 'kiln', label: 'Bone Kiln', x: -23.5, z: 31.6 },
       { id: 'cooking_fire', kind: 'fire', label: 'Cooking Fire', x: -26.5, z: 28.5 },
     ],
-    ambient: { fog: 0x0c0f10, hemiSky: 0x33404a, hemiGround: 0x0a0c0b, moon: 0xa6b7c9 },
+    ambient: { fog: 0x0c0f10, hemiSky: 0x4b5864, hemiGround: 0x232820, moon: 0xbbcbd8 },
   },
   graves: {
     id: 'graves',

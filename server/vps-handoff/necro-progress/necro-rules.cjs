@@ -88,7 +88,7 @@ var AREAS = {
       { id: "bone_kiln", kind: "kiln", label: "Bone Kiln", x: -23.5, z: 31.6 },
       { id: "cooking_fire", kind: "fire", label: "Cooking Fire", x: -26.5, z: 28.5 }
     ],
-    ambient: { fog: 790288, hemiSky: 3358794, hemiGround: 658443, moon: 10926025 }
+    ambient: { fog: 790288, hemiSky: 4937828, hemiGround: 2304032, moon: 12307416 }
   },
   graves: {
     id: "graves",

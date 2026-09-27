@@ -4,6 +4,16 @@ Updated 2026-09-27. Read this before editing or deploying. Preserve the supplied
 
 User-approved complete version: **`death-muffin-v1.0.0`**. See [the checkpoint record](DEATH-MUFFIN-CHECKPOINT.md) for the full private backup and restoration boundaries. Preserve this baseline while designing new abilities.
 
+## Movable counsel and Acre lighting — 2026-09-27
+
+Covenant counsel starts on the left below the portrait. Drag its labeled header (pointer/touch), or focus it and use arrow keys (Shift moves further). Dragging leaves the card open and never reaches game movement handlers. The per-viewer `dm_counsel_position_v1` preference is guarded browser storage, shared across cards and characters; queued tips/reloads retain it, and viewport changes clamp the card on screen. Body click dismissal, timer pausing and the disable-tips control still work. Dragging ends the entrance animation so it cannot jump when released. The resize listener is removed on world disposal.
+
+The sawpit has a static pale gold ground ring and warm light pool, using the existing five dynamic-light slots. No extra point lights or shadows are added. The Acre's initial spawn now calls its normal area-entry lighting setup instead of keeping Chapterhouse colors. Ambient sky/ground fill is modestly brighter, with hemisphere intensity 1.12 and moon 2.65 in the Acre. Nightfall does not darken this safe gathering area. Combat retains its existing .95/2.4 intensities and Nightfall behavior. Help and Settings describe moving counsel and the sawpit cue.
+
+Validation: 196 client tests, server suites, production build and `tools/qa/counsel-lighting-smoke.cjs`. Browser verification covers drag/keyboard controls without hero movement, queued-card and reload persistence, small-viewport clamping, disabling tips, correct initial lighting, sawpit beacon and unchanged total combat light count (12). Public smoke also confirms drag/reload persistence, login, authenticated co-op, class switching and existing routes, with no browser errors; the temporary account was removed. Private screenshots: `acre-counsel-moved.png` and `acre-lighting.png` in the deployment folder. Generated backend rules and running copies are synchronized by the deployment script.
+
+Verified pre-update backup: `/home/ubuntu/death-muffin/backups/death-muffin-v1.0.0-20260927T212922Z`. Its checkpoint label is historical; live-site/runtime/database archives capture production immediately before this change. Restore code independently of newer player data.
+
 ## Acre starter polish — 2026-09-27
 
 Fixed fishing markers moving around the world origin: the old animation scaled their entire instanced batch, including world coordinates. Ripples now gently pulse opacity in place, with fewer, smaller rings. No node positions move with this animation.

@@ -4,6 +4,7 @@ AFK_SOURCE=/home/ubuntu/vps-handoffs/DeathMuffin/game
 # Build with the correct same-origin API/socket paths and no source maps.
 (cd "$AFK_SOURCE" && npm run build:death-muffin)
 cp "$AFK_SOURCE/server/death-muffin/backend/gathering/gathering-rules.cjs" "$AFK_SOURCE/server/death-muffin/backend/gathering/gathering-routes.cjs" /home/ubuntu/death-muffin/backend/gathering/
+cp "$AFK_SOURCE/server/vps-handoff/necro-progress/necro-rules.cjs" /home/ubuntu/death-muffin/backend/necro-progress/necro-rules.cjs
 node --check /home/ubuntu/death-muffin/backend/gathering/gathering-routes.cjs
 cp "$AFK_SOURCE/server/realtime/server.js" /home/ubuntu/death-muffin/realtime/server.js
 node --check /home/ubuntu/death-muffin/realtime/server.js

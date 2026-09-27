@@ -376,10 +376,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (!OFFLINE || new URLSearchParams(location.search).has('coop')) void this.connectRealtime();
     if (import.meta.env.DEV) this.installDebug();
 
-    this.area = 'acre';
-    this.hud.banner(AREAS.acre.name, AREAS.acre.subtitle);
-    audio.setArea('acre');
-    this.codex.discover('area', 'acre');
+    this.enterArea('acre');
     // First steps: where you are, then how to move (queued, one card at a time).
     // Server-backed progression when the auth server has it; browser storage otherwise.
     this.scope.add(this.progression.onError((msg) => this.hud.toast(msg, 'err')));
@@ -2062,8 +2059,10 @@ export class WorldScene implements GameScene, RuntimeView {
     const target = milestoneActive('nightfall', tier) ? 1 : 0;
     this.nightK += (target - this.nightK) * Math.min(1, dt * 0.8);
     // Intensity only (never toggle light visibility — that recompiles shaders).
-    this.moon.intensity = 2.4 * (1 - 0.6 * this.nightK);
-    this.hemi.intensity = 0.95 * (1 - 0.3 * this.nightK);
+    const acre = this.area === 'acre';
+    const night = acre ? 0 : this.nightK;
+    this.moon.intensity = (acre ? 2.65 : 2.4) * (1 - 0.6 * night);
+    this.hemi.intensity = (acre ? 1.12 : 0.95) * (1 - 0.3 * night);
   }
 
   /** Ossuary Wall: a fence of fused rib-bones along the wall segment. */

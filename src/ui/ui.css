@@ -864,22 +864,26 @@ button { font-family: inherit; }
 .cw-codex-lore p { margin: 0 0 12px; }
 .cw-codex-lore p:first-of-type::first-letter { float: left; font-family: var(--cw-font-display); font-weight: 700; font-size: 44px; line-height: 0.9; padding: 4px 6px 0 0; color: var(--cw-spell-300); }
 
-/* First-time tips: small reliquary card above the hotbar, never modal */
+/* First-time tips: movable reliquary card, never modal */
 .cw-tip {
   position: absolute;
-  left: 50%;
-  bottom: 264px; /* above the interact prompt (220px) and Soul Harvest meter */
-  transform: translateX(-50%);
+  left: 18px;
+  top: 100px;
+  max-height: calc(100vh - 16px);
   width: min(380px, calc(100vw - 32px));
   padding: 10px 14px 12px;
   z-index: 4;
   cursor: pointer;
-  overflow: hidden;
+  overflow: auto;
   animation: tip-in 0.28s ease;
 }
-.cw-tip.out { opacity: 0; transform: translate(-50%, 6px); transition: opacity 0.2s ease, transform 0.2s ease; pointer-events: none; }
-@keyframes tip-in { from { opacity: 0; transform: translate(-50%, 8px); } }
+.cw-tip.out { opacity: 0; transform: translateY(6px); transition: opacity 0.2s ease, transform 0.2s ease; pointer-events: none; }
+@keyframes tip-in { from { opacity: 0; } }
 .cw-tip .kicker { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cw-spell-300); }
+.cw-tip [data-move] { display: flex; justify-content: space-between; gap: 12px; cursor: grab; touch-action: none; user-select: none; }
+.cw-tip.dragging { animation: none; }
+.cw-tip.dragging [data-move] { cursor: grabbing; }
+.cw-tip .move-hint { font-size: 9px; letter-spacing: 0.04em; color: var(--cw-text-muted); }
 .cw-tip .title { font-family: var(--cw-font-display); font-weight: 700; font-size: 18px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cw-bone-100); margin: 1px 0 4px; }
 .cw-tip .body { font-size: 14px; line-height: 1.4; color: var(--cw-bone-300); }
 .cw-tip .body b { color: var(--cw-bone-100); }

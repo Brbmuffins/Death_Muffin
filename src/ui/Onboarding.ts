@@ -3,7 +3,7 @@ import { browserStorage, type StorageLike } from '../gameplay/codexJournal';
 
 /**
  * First-time contextual tips, shown once per character. A small reliquary card
- * above the hotbar: it never takes focus or pauses play, dismisses on click or
+ * movable by its header: it never takes focus or pauses play, dismisses on click or
  * after 8s (longer cards stay longer), and queues so two tips never stack. "Don't show tips" (here or in
  * Settings) turns the whole sequence off via app/settings `tips`.
  */
@@ -217,7 +217,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   station: {
     title: 'A working station',
-    body: 'Stations turn what you gather into something useful. Recipes need the matching skill level and their ingredients in your bag; crafting grants skill XP too. The server checks every recipe, and its reason is shown if one fails.',
+    body: 'Stations turn what you gather into something useful. The Sawpit’s warm gold light marks where to click for wood recipes. Recipes need the matching skill level and their ingredients in your bag; crafting grants skill XP too. The server checks every recipe, and its reason is shown if one fails.',
   },
   rite_mantle: {
     title: 'Bone Mantle',
@@ -228,6 +228,7 @@ export const TIPS: Record<TipId, Tip> = {
 const SHOW_MS = 25000;
 const GAP_MS = 500;
 const tipsKey = (characterId: number) => `dm_tips_v1_${characterId}`;
+const POSITION_KEY = 'dm_counsel_position_v1';
 const TIP_IDS = Object.keys(TIPS) as TipId[];
 
 export class Onboarding {
@@ -239,6 +240,8 @@ export class Onboarding {
   private hideTimer = 0;
   private offSettings: () => void;
   private key: string;
+  private position: { x: number; y: number } | null = null;
+  private onResize = () => { if (this.el) this.place(this.el); };
   /** The key a rite sits on (Grimoire loadout), or null when it isn't on the bar. */
   keyFor: ((abilityId: string) => string | null) | null = null;
 
@@ -255,6 +258,11 @@ export class Onboarding {
     } catch {
       /* storage unavailable or corrupt — tips simply show again */
     }
+    try {
+      const saved = JSON.parse(this.storage?.getItem(POSITION_KEY) ?? 'null');
+      if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) this.position = saved;
+    } catch { /* Use the default position when storage is unavailable. */ }
+    window.addEventListener('resize', this.onResize);
     this.offSettings = onSettingsChange((s) => {
       if (!s.tips) this.clear();
     });
@@ -293,33 +301,95 @@ export class Onboarding {
     const ms = Math.max(SHOW_MS, 5000 + words * 600);
     el.style.setProperty('--tip-ms', `${ms}ms`);
     el.innerHTML = `
-      <div class="kicker">Covenant counsel</div>
+      <div class="kicker" data-move role="button" tabindex="0" aria-label="Move Covenant counsel" title="Drag to move, or use arrow keys"><span>⋮⋮ Covenant counsel</span><span class="move-hint">Drag to move</span></div>
       <div class="title">${tip.title}</div>
       <div class="body">${body}</div>
       <div class="foot"><span>Click to dismiss</span><button type="button" data-skip>Don't show tips</button></div>
       <div class="timer"></div>`;
-    el.addEventListener('click', () => this.dismiss());
+    el.addEventListener('click', e => { if (!(e.target as HTMLElement).closest('[data-move]')) this.dismiss(); });
     el.querySelector('[data-skip]')!.addEventListener('click', (e) => {
       e.stopPropagation();
       updateSettings({ tips: false });
     });
     this.root.appendChild(el);
     this.el = el;
+    this.place(el);
+    const handle = el.querySelector<HTMLElement>('[data-move]')!;
+    let drag: { pointer: number; x: number; y: number; left: number; top: number } | null = null;
+    handle.addEventListener('pointerdown', e => {
+      if (e.button !== 0 || drag) return;
+      e.preventDefault(); e.stopPropagation();
+      handle.focus({ preventScroll: true });
+      const bounds = el.getBoundingClientRect();
+      drag = { pointer: e.pointerId, x: e.clientX, y: e.clientY, left: bounds.left, top: bounds.top };
+      el.style.animation = 'none';
+      el.classList.add('dragging');
+      handle.setPointerCapture(e.pointerId);
+      pauseTimer();
+    });
+    handle.addEventListener('pointermove', e => {
+      if (!drag || drag.pointer !== e.pointerId) return;
+      e.preventDefault(); e.stopPropagation();
+      this.place(el, drag.left + e.clientX - drag.x, drag.top + e.clientY - drag.y);
+    });
+    const endDrag = (e: PointerEvent) => {
+      if (!drag || drag.pointer !== e.pointerId) return;
+      e.stopPropagation();
+      drag = null;
+      el.classList.remove('dragging');
+      if (handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e.pointerId);
+      this.savePosition();
+      if (!el.matches(':hover')) resumeTimer();
+    };
+    handle.addEventListener('pointerup', endDrag);
+    handle.addEventListener('pointercancel', endDrag);
+    handle.addEventListener('keydown', e => {
+      const step = e.shiftKey ? 30 : 10;
+      const moves: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+      const delta = moves[e.key];
+      if (!delta) return;
+      e.preventDefault(); e.stopPropagation();
+      const bounds = el.getBoundingClientRect();
+      this.place(el, bounds.left + delta[0], bounds.top + delta[1]);
+      this.savePosition();
+    });
     let remaining = ms;
     let startedAt = performance.now();
     const timer = el.querySelector<HTMLElement>('.timer')!;
-    el.addEventListener('pointerenter', () => {
+    let paused = false;
+    const pauseTimer = () => {
+      if (paused) return;
+      paused = true;
       remaining = Math.max(0, remaining - (performance.now() - startedAt));
       this.cancel(this.hideTimer);
       timer.style.animationPlayState = 'paused';
-    });
-    el.addEventListener('pointerleave', () => {
-      if (this.el !== el) return;
+    };
+    el.addEventListener('pointerenter', pauseTimer);
+    const resumeTimer = () => {
+      if (this.el !== el || drag || !paused) return;
+      paused = false;
+      this.cancel(this.hideTimer);
       startedAt = performance.now();
       timer.style.animationPlayState = 'running';
       this.hideTimer = this.later(() => this.dismiss(), remaining);
-    });
+    };
+    el.addEventListener('pointerleave', resumeTimer);
     this.hideTimer = this.later(() => this.dismiss(), remaining);
+  }
+
+  private place(el: HTMLElement, x = this.position?.x ?? 18, y = this.position?.y ?? 100) {
+    const bounds = el.getBoundingClientRect();
+    this.position = {
+      x: Math.max(8, Math.min(x, window.innerWidth - bounds.width - 8)),
+      y: Math.max(8, Math.min(y, window.innerHeight - bounds.height - 8)),
+    };
+    el.style.left = `${this.position.x}px`;
+    el.style.top = `${this.position.y}px`;
+  }
+
+  private savePosition() {
+    try { this.storage?.setItem(POSITION_KEY, JSON.stringify(this.position)); }
+    catch { /* Position still works for this session. */ }
   }
 
   private dismiss() {
@@ -379,5 +449,6 @@ export class Onboarding {
   dispose() {
     this.clear();
     this.offSettings();
+    window.removeEventListener('resize', this.onResize);
   }
 }
