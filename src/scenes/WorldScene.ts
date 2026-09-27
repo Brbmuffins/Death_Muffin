@@ -134,7 +134,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private surgeFx: Handle | null = null;
 
   private keys = new Set<string>();
-  private mouse = { x: 0, y: 0, shift: false };
+  private mouse = { x: 0, y: 0, shift: false, aiming: false };
   private groundPoint = new THREE.Vector3();
   private hover: Hover = null;
   private attackTarget: { kind: 'enemy'; id: number } | { kind: 'boss' } | null = null;
@@ -463,7 +463,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private bindInput() {
     this.mouse.x = window.innerWidth / 2;
     this.mouse.y = window.innerHeight / 2;
-    this.scope.on(window, 'blur', () => { this.keys.clear(); this.mouse.shift = false; this.player.stop(); });
+    this.scope.on(window, 'blur', () => { this.keys.clear(); this.mouse.shift = false; this.mouse.aiming = false; this.player.stop(); });
     this.scope.on<KeyboardEvent>(window, 'keydown', (e) => {
       if (document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement) return;
       const k = e.key.toLowerCase();
@@ -491,14 +491,17 @@ export class WorldScene implements GameScene, RuntimeView {
       this.mouse.shift = e.shiftKey;
     });
     this.scope.on<PointerEvent>(this.canvas, 'pointermove', (e) => {
+      this.mouse.aiming = true;
       this.mouse.x = e.clientX;
       this.mouse.y = e.clientY;
       this.mouse.shift = e.shiftKey;
     });
+    this.scope.on(this.canvas, 'pointerleave', () => { this.mouse.aiming = false; });
     // Right-click casts at the mouse; left-click movement stays independent.
     this.scope.on<MouseEvent>(this.canvas, 'mousedown', (e) => {
       if (e.button !== 2) return;
       e.preventDefault();
+      this.mouse.aiming = true;
       this.mouse.x = e.clientX;
       this.mouse.y = e.clientY;
       this.castSlot(5);
@@ -506,6 +509,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.scope.on<PointerEvent>(this.canvas, 'pointerdown', (e) => {
       if (e.button !== 0) return;
       e.preventDefault();
+      this.mouse.aiming = true;
       this.mouse.x = e.clientX;
       this.mouse.y = e.clientY;
       this.mouse.shift = e.shiftKey;
@@ -570,6 +574,8 @@ export class WorldScene implements GameScene, RuntimeView {
     this.updateCursor();
     this.cancelRecall();
     const h = this.hover;
+    const target = this.cursorTarget();
+    if (Math.hypot(target.x - this.player.x, target.z - this.player.z) > 0.25) this.player.face(target.x, target.z);
     if (this.mouse.shift) {
       // Stand and cast at whatever is under the cursor.
       if (h && (h.kind === 'enemy' || h.kind === 'boss')) this.attackTarget = h;
@@ -1473,6 +1479,12 @@ export class WorldScene implements GameScene, RuntimeView {
     }
     const moved = p.update(dt, now, kd.x || kd.z ? kd : null);
     if (moved) this.cancelRecall();
+    // Walking follows its path. Once standing, the mouse turns the hero to aim
+    // without changing position or replacing the clicked destination.
+    if (p.alive && this.mouse.aiming && !p.moving && !p.hasPath && !this.attackTarget && now >= p.rootedUntil) {
+      const target = this.cursorTarget();
+      if (Math.hypot(target.x - p.x, target.z - p.z) > 0.25) p.face(target.x, target.z);
+    }
 
     if (this.recallAt && now >= this.recallAt) {
       this.cancelRecall();

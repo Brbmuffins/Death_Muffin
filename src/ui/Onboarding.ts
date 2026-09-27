@@ -44,7 +44,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   move: {
     title: 'Walk among the dead',
-    body: '<kbd>Click</kbd> the ground to walk to that spot. Moving the mouse only aims; click again to change direction. <kbd>Click</kbd> an enemy to loose Bone Needles at it; every hit refills Grave Essence. Aim with the mouse and press <kbd>1</kbd>–<kbd>4</kbd> for rites. <kbd>Right-click</kbd> bursts corpses. <kbd>Shift</kbd>+<kbd>Click</kbd> attacks without moving.',
+    body: '<kbd>Click</kbd> the ground to walk to that spot; click again to change destination. While standing, face and aim toward the mouse. While walking, face your path. <kbd>Click</kbd> an enemy to loose Bone Needles at it; every hit refills Grave Essence. Aim with the mouse and press <kbd>1</kbd>–<kbd>4</kbd> for rites. <kbd>Right-click</kbd> bursts corpses. <kbd>Shift</kbd>+<kbd>Click</kbd> attacks without moving.',
   },
   exhume: {
     title: 'A corpse lies near',

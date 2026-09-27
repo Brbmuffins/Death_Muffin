@@ -44,11 +44,23 @@ describe('shipped hero animations', () => {
       // Use the registry URL requested by Creature, independent of deploy base.
       const { CREATURE_MODELS } = await import('../modelPaths');
       templates.set(CREATURE_MODELS[slug].url, t);
-      const hero = new Creature(slug, { inPlace: true });
+      const hero = new Creature(slug, { inPlace: true, modelYaw: -Math.PI / 2 });
       await vi.waitFor(() => expect(hero.loaded).toBe(true));
       const hip = hero.root.getObjectByName('Hip')!;
       const root = hero.root.getObjectByName('Root')!;
       const hand = hero.root.getObjectByName('R_Hand')!;
+      // Toe direction measures the actual rig's front, not just the wrapper yaw.
+      const front = new THREE.Vector3();
+      for (const side of ['L', 'R']) {
+        front.add(hero.root.getObjectByName(`${side}_ToeBase`)!.getWorldPosition(new THREE.Vector3())
+          .sub(hero.root.getObjectByName(`${side}_Foot`)!.getWorldPosition(new THREE.Vector3())));
+      }
+      front.y = 0;
+      front.normalize();
+      for (const yaw of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+        const heading = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+        expect(front.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw).dot(heading)).toBeGreaterThan(0.98);
+      }
       const anchor = hip.getWorldPosition(new THREE.Vector3());
       const heading = root.quaternion.clone();
       const handStart = hand.getWorldPosition(new THREE.Vector3());

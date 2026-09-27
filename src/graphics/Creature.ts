@@ -20,6 +20,8 @@ const FALLBACK: Record<CreatureAnim, CreatureAnim[]> = {
 export interface CreatureOptions {
   /** Anchor generated hero root motion to the gameplay position and heading. */
   inPlace?: boolean;
+  /** Align an asset's authored forward axis with gameplay's +Z forward. */
+  modelYaw?: number;
   /** Multiplies base colour (e.g. darken enemies, pale thralls). */
   tint?: THREE.ColorRepresentation;
   emissive?: THREE.ColorRepresentation;
@@ -79,6 +81,7 @@ export class Creature {
       const model = t.skinned ? cloneSkinned(t.scene) : t.scene.clone(true);
       model.scale.multiplyScalar(t.scale);
       model.position.y = t.groundOffset;
+      model.rotation.y += opts.modelYaw ?? 0;
       model.traverse((o) => {
         const mesh = o as THREE.Mesh;
         if (!mesh.isMesh) return;
