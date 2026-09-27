@@ -67,7 +67,7 @@ export class SettingsPanel extends SimplePanel {
           <kbd>Hover / focus</kbd><span>Spell icon: cost, targeting, effects and combat counsel</span>
           <kbd>Shift+Click</kbd><span>Cast Bone Needle without moving</span>
           <kbd>1–4 (hold)</kbd><span>Your four Grimoire rites, at the cursor (start: Marrow Spear · Exhume · Miasma · Black Litany)</span>
-          <kbd>L</kbd><span>Grimoire · choose which rites sit on 1–4 (new rites at levels 3, 5, 7, 12)</span>
+          <kbd>L</kbd><span>Grimoire (also the hotbar's Grimoire button, or right-click a slot) · choose your left-click primary and the rites on 1–4</span>
           <kbd>RMB · 5</kbd><span>Corpse Explosion (corpse nearest the cursor)</span>
           <kbd>R · 6</kbd><span>Signature rite (unlocks at level 10)</span>
           <kbd>Q</kbd><span>Drink a healing flask</span>

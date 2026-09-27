@@ -161,7 +161,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   grimoire: {
     title: 'The Grimoire',
-    body: 'New rites have come to you. Press <kbd>L</kbd> (or the open-book button) to choose which four sit on keys <kbd>1</kbd>–<kbd>4</kbd>. Swap them whenever you like; each rite keeps its own cooldown, and auto combat uses whatever is on your bar.',
+    body: 'New rites have come to you. Click the glowing <b>Grimoire</b> button at the end of your hotbar (or press <kbd>L</kbd>, or right-click a slot) to choose your left-click <b>primary</b> and which four rites sit on keys <kbd>1</kbd>–<kbd>4</kbd>. Click a socket, then a rite. Swap whenever you like; each rite keeps its own cooldown, and auto combat uses whatever is on your bar.',
   },
   rite_skull: {
     title: 'Wailing Skull',

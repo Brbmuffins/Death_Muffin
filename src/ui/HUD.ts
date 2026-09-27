@@ -18,6 +18,8 @@ export interface HudCallbacks {
   open(panel: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'grimoire'): void;
   chat(text: string): void;
   toggleAutoCombat(): void;
+  /** Open the Grimoire with a socket preselected (a key index 0–3 or the LMB primary). */
+  openGrimoire(select?: number | 'primary'): void;
 }
 
 export interface SlotFrame {
@@ -108,6 +110,8 @@ export class HUD {
     /** The slots in order: the Grimoire loadout (keys 1–4), Corpse Explosion, the signature rite. */
     private hotbar: AbilityId[] = HOTBAR,
     private discipline?: Discipline,
+    /** The left-click primary shown in the LMB socket. */
+    private primary: AbilityId = 'bone_needle',
   ) {
     this.el.className = 'hud';
     const slots = this.slotsHtml();
@@ -169,7 +173,11 @@ export class HUD {
             <div class="track"><div class="fill" data-soulfill></div></div>
             <span class="n" data-soultxt></span>
           </div>
-          <div class="hud-slots-wrap"><div class="hud-slots">${slots}</div></div>
+          <div class="hud-slots-wrap">
+            <div class="hud-slot primary" data-primarywrap>${this.primaryHtml()}</div>
+            <div class="hud-slots">${slots}</div>
+            <button class="hud-grimoire-btn" data-grimbtn aria-label="Grimoire: choose your rites (L)">${ICON.grimoire}<span>Grimoire · L</span><span class="pip" data-grimpip hidden>NEW</span></button>
+          </div>
           <div class="hud-thralls" data-thralls aria-label="Thralls"></div>
         </div>
         <div class="hud-orb-wrap">
@@ -219,6 +227,7 @@ export class HUD {
     this.$('[data-mapframe]').appendChild(this.minimap.canvas);
 
     this.bindSlots();
+    this.$('[data-grimbtn]').addEventListener('click', () => { this.hideTooltip(); this.cb.openGrimoire(); });
     this.el.querySelectorAll<HTMLButtonElement>('[data-open]').forEach((b) =>
       b.addEventListener('click', () => { this.hideTooltip(); this.cb.open(b.dataset.open as 'inventory'); }),
     );
@@ -250,6 +259,36 @@ export class HUD {
     this.$<HTMLInputElement>('[data-chatin]').focus();
   }
 
+  private primaryHtml() {
+    const a = ABILITIES[this.primary];
+    return `
+          <button data-slot="0" aria-label="${a.name} (left click). Click or right-click to change it in the Grimoire">
+            <img src="${a.icon}" alt="" draggable="false" />
+          </button>
+          <span class="key">LMB</span>`;
+  }
+
+  /** The LMB socket's primary changed (Grimoire). */
+  setPrimary(id: AbilityId) {
+    this.primary = id;
+    this.$('[data-primarywrap]').innerHTML = this.primaryHtml();
+    this.bindSlots();
+    this.refreshTooltip();
+  }
+
+  /** The hotbar Grimoire button's NEW pip: a learned rite nobody has looked at yet. */
+  setGrimoireNew(on: boolean) {
+    this.set('grimnew', on, () => (this.$('[data-grimpip]').hidden = !on));
+  }
+
+  /** Draw the eye to the Grimoire button for ~6 s (first new rite). */
+  pulseGrimoire() {
+    const b = this.$('[data-grimbtn]');
+    b.classList.remove('pulse');
+    void (b as HTMLElement).offsetWidth;
+    b.classList.add('pulse');
+  }
+
   private slotsHtml() {
     return this.hotbar.map((id, i) => {
       const a = ABILITIES[id];
@@ -274,14 +313,26 @@ export class HUD {
    * Bound here, not once in the constructor, because a Grimoire swap rebuilds the buttons.
    */
   private bindSlots() {
-    this.hotbar.forEach((_id, i) => {
-      const btn = this.$<HTMLButtonElement>(`[data-slot="${i + 1}"]`);
-      btn.addEventListener('click', () => this.cb.cast((i + 1) as HotbarSlot));
+    // i = -1 is the LMB primary socket (data-slot="0"); 0–3 are keys 1–4, 4 right-click, 5 signature.
+    for (let i = -1; i < this.hotbar.length; i++) {
+      const btn = this.el.querySelector<HTMLButtonElement>(`[data-slot="${i + 1}"]`);
+      if (!btn || btn.dataset.bound) continue;
+      btn.dataset.bound = '1';
+      if (i === -1) btn.addEventListener('click', () => { this.hideTooltip(); this.cb.openGrimoire('primary'); });
+      else btn.addEventListener('click', () => this.cb.cast((i + 1) as HotbarSlot));
+      if (i < 4) {
+        btn.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.hideTooltip();
+          this.cb.openGrimoire(i === -1 ? 'primary' : i);
+        });
+      }
       btn.addEventListener('pointerenter', () => this.showTooltip(i));
       btn.addEventListener('pointerleave', () => this.scheduleTooltipHide());
       btn.addEventListener('focus', () => this.showTooltip(i));
       btn.addEventListener('blur', () => this.scheduleTooltipHide());
-    });
+    }
   }
 
   /** The Grimoire loadout changed: rebuild the slots (cooldowns carry over — they belong to the rite). */
@@ -316,11 +367,12 @@ export class HUD {
     if (this.tooltipSlot === null || this.tooltip.hidden) return;
     const i = this.tooltipSlot;
     const state = this.slotFrames[i] ?? {};
+    const id = i === -1 ? this.primary : this.hotbar[i];
     // The rite id is part of the key: a Grimoire swap puts a different rite in the same slot.
-    const key = `${i}|${this.hotbar[i]}|${!!state.empowered}|${!!state.locked}|${state.affordable}|${Math.ceil((state.left ?? 0) / 1000)}`;
+    const key = `${i}|${id}|${!!state.empowered}|${!!state.locked}|${state.affordable}|${Math.ceil((state.left ?? 0) / 1000)}`;
     if (key === this.tooltipKey) return;
     this.tooltipKey = key;
-    const data = spellTooltip(this.hotbar[i], this.discipline, { ...state, key: i < 4 ? SLOT_KEYS[i] : undefined });
+    const data = spellTooltip(id, this.discipline, { ...(i === -1 ? {} : state), key: i === -1 ? 'LMB' : i < 4 ? SLOT_KEYS[i] : undefined });
     const scroll = this.tooltip.scrollTop;
     this.tooltip.innerHTML = `
       <div class="spell-name">${esc(data.name)}</div>
@@ -331,7 +383,7 @@ export class HUD {
       <p class="spell-targeting">${esc(data.targeting)}</p>
       <ul class="spell-details">${data.details.map((d) => `<li>${esc(d)}</li>`).join('')}</ul>
       <div class="spell-tip"><b>Combat tip</b><p>${esc(data.tip)}</p></div>
-      <div class="spell-footer">More in Codex (K) · Esc closes this card</div>`;
+      <div class="spell-footer">${i < 4 ? 'Right-click or L to swap · ' : ''}Codex (K) · Esc closes this card</div>`;
     this.tooltip.scrollTop = scroll;
     this.positionTooltip();
   }
@@ -499,10 +551,17 @@ export class HUD {
     });
   }
 
-  toast(text: string, kind: '' | 'err' | 'good' = '') {
+  /** `onClick` makes the toast a button (e.g. a new rite opens the Grimoire). */
+  toast(text: string, kind: '' | 'err' | 'good' = '', onClick?: () => void) {
     const el = document.createElement('div');
-    el.className = `hud-toast ${kind}`;
+    el.className = `hud-toast ${kind}${onClick ? ' clickable' : ''}`;
     el.textContent = text;
+    if (onClick) {
+      el.setAttribute('role', 'button');
+      el.tabIndex = 0;
+      el.addEventListener('click', () => { onClick(); el.remove(); });
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); el.remove(); } });
+    }
     const box = this.$('[data-toasts]');
     box.appendChild(el);
     while (box.children.length > 4) box.firstChild?.remove();

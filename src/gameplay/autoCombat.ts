@@ -12,6 +12,8 @@ export interface AutoCombatInput {
   thrallCount: number;
   thrallCap: number;
   ready(id: AbilityId): boolean;
+  /** The left-click primary the Grimoire equipped (default Bone Needle). */
+  primary?: AbilityId;
 }
 
 export interface AutoCombatAction {
@@ -51,8 +53,10 @@ export function selectAutoCombatAction(input: AutoCombatInput): AutoCombatAction
   // uses the free generator rather than continually draining regeneration.
   const reserve = Math.max(12, p.maxEssence * 0.2);
   const canSpend = (id: AbilityId) => input.ready(id) && p.essence >= ABILITIES[id].essenceCost + reserve;
-  const needle = targets.find((t) => t.distance <= ABILITIES.bone_needle.range + (t.boss ? BOSS_RADIUS : 0.4));
-  if (p.essence < p.maxEssence * 0.35 && needle && input.ready('bone_needle')) return action('bone_needle', needle);
+  const primary = input.primary ?? 'bone_needle';
+  const inReach = targets.filter((t) => t.distance <= ABILITIES[primary].range + (t.boss ? BOSS_RADIUS : 0.4));
+  const needle = primaryTarget(primary, inReach);
+  if (p.essence < p.maxEssence * 0.35 && needle && input.ready(primary)) return action(primary, needle);
 
   const corpses: Corpse[] = [];
   inspected = 0;
@@ -143,5 +147,21 @@ export function selectAutoCombatAction(input: AutoCombatInput): AutoCombatAction
     const chain = prize ?? candidates.find((t) => reach(t) && countAround(t, WAILING_SKULL.leapRange) >= 3);
     if (chain) return action('wailing_skull', chain);
   }
-  return needle && input.ready('bone_needle') ? action('bone_needle', needle) : null;
+  return needle && input.ready(primary) ? action(primary, needle) : null;
+}
+
+/**
+ * Where the primary aims: the nearest target, except pack primaries (Bone Fan) take the densest
+ * knot in reach. Auto combat never walks closer for any of them.
+ */
+function primaryTarget(primary: AbilityId, inReach: Target[]): Target | undefined {
+  if (!inReach.length) return undefined;
+  if (primary !== ('bone_fan' as AbilityId)) return inReach[0];
+  let best = inReach[0];
+  let bestN = -1;
+  for (const t of inReach) {
+    const n = inReach.filter((o) => Math.hypot(o.x - t.x, o.z - t.z) <= 3).length;
+    if (n > bestN) (best = t), (bestN = n);
+  }
+  return best;
 }

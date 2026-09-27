@@ -810,8 +810,8 @@ button { font-family: inherit; }
 
 /* Grimoire (L): four static rite slots, filled from every unlocked rite */
 .cw-grimoire { width: 560px; }
-.cw-grim-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 4px 0 12px; }
-.cw-grim-socket { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px 6px; background: var(--cw-inset); border: 1px solid var(--cw-border-strong); }
+.cw-grim-bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 4px 0 12px; }
+.cw-grim-socket { position: relative; font: inherit; color: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px 6px; background: var(--cw-inset); border: 1px solid var(--cw-border-strong); }
 .cw-grim-socket img { width: 52px; height: 52px; object-fit: cover; border: 1px solid var(--cw-border-strong); box-shadow: inset 0 0 0 2px #07060a; }
 .cw-grim-socket .key { position: absolute; top: 4px; left: 7px; font-family: var(--cw-font-numeric); font-size: 13px; color: var(--cw-spell-300); }
 .cw-grim-socket .nm { font-family: var(--cw-font-display); font-weight: 600; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cw-bone-100); text-align: center; line-height: 1.15; }
@@ -824,7 +824,27 @@ button { font-family: inherit; }
 .cw-grim-key:hover:not(:disabled) { border-color: var(--cw-border-active); color: var(--cw-bone-100); }
 .cw-grim-key.on { background: var(--cw-accent-soft); border-color: var(--cw-border-active); color: var(--cw-bone-100); cursor: default; }
 .cw-grim-key:disabled:not(.on) { opacity: 0.4; cursor: default; }
-@media (max-width: 640px) { .cw-grim-bar { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { .cw-grim-bar { grid-template-columns: repeat(3, 1fr); } }
+.cw-grim-socket:hover { border-color: var(--cw-border-active); }
+.cw-grim-socket.on { border-color: #e2c98f; box-shadow: 0 0 0 1px #e2c98f, 0 0 14px rgba(226, 201, 143, 0.35); }
+.cw-grim-roles { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.cw-chip { padding: 3px 10px; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-text-muted); font: 600 12px var(--cw-font-body); letter-spacing: 0.04em; cursor: pointer; }
+.cw-chip.on, .cw-chip:hover { border-color: var(--cw-border-active); color: var(--cw-bone-100); }
+.cw-grim-entry.pickable { cursor: pointer; }
+.cw-grim-entry.pickable:hover, .cw-grim-entry.pickable:focus-visible { border-color: var(--cw-border-active); outline: none; }
+.cw-grim-role { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cw-bone-300); margin: -2px 0 4px; }
+.cw-new { display: inline-block; margin-left: 6px; padding: 0 5px; font: 700 10px/1.6 var(--cw-font-numeric); letter-spacing: 0.08em; color: #1a1206; background: #e2c98f; vertical-align: middle; }
+/* Hotbar: LMB primary socket and the Grimoire button */
+.hud-slot.primary .key { color: #e2c98f; }
+.hud-grimoire-btn { position: relative; align-self: center; margin-left: 10px; padding: 6px 10px; display: flex; flex-direction: column; align-items: center; gap: 2px; background: rgba(10, 9, 14, 0.85); border: 1px solid var(--cw-border-strong); color: var(--cw-bone-100); font: 600 11px var(--cw-font-body); letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; pointer-events: auto; }
+.hud-grimoire-btn svg { width: 22px; height: 22px; }
+.hud-grimoire-btn:hover { border-color: var(--cw-border-active); }
+.hud-grimoire-btn .pip { position: absolute; top: -8px; right: -8px; padding: 0 5px; font: 700 10px/1.6 var(--cw-font-numeric); color: #1a1206; background: #e2c98f; box-shadow: 0 0 10px rgba(226, 201, 143, 0.8); animation: cw-pip 1.4s ease-in-out infinite; }
+.hud-grimoire-btn.pulse { animation: cw-grim-pulse 1s ease-in-out 6; }
+@keyframes cw-pip { 50% { transform: scale(1.15); } }
+@keyframes cw-grim-pulse { 50% { box-shadow: 0 0 0 2px #e2c98f, 0 0 22px rgba(226, 201, 143, 0.7); } }
+.hud-slots-wrap { display: flex; align-items: flex-end; }
+
 
 /* Codex (K): same reliquary panel, wider for prose */
 .cw-codex { width: 580px; }
@@ -991,3 +1011,7 @@ button { font-family: inherit; }
 
 /* Dev-access chip beside the level badge */
 .hud-dev { align-self: center; margin: 0 2px 0 -6px; padding: 1px 5px; font: 700 10px/1.4 var(--cw-font-numeric); letter-spacing: 0.08em; color: #1a1206; background: #e2c98f; border-radius: 3px; pointer-events: auto; }
+
+.hud-toast.clickable { pointer-events: auto; cursor: pointer; text-decoration: underline dotted rgba(226, 201, 143, 0.6); }
+.hud-toast.clickable:hover { border-color: #e2c98f; }
+.hud-slot.primary { margin-right: 12px; }

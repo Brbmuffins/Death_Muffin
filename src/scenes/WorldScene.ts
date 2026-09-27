@@ -3,8 +3,8 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import type { GameScene } from './SceneManager';
 import { getRuntime, type RuntimeView } from '../app/GameRuntime';
 import { Scope } from '../app/Scope';
-import { ABILITIES, GRIMOIRE, HOTBAR, SIGNATURE_BY_DISCIPLINE, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
-import { assignRite, loadLoadout, saveLoadout } from '../gameplay/loadout';
+import { ABILITIES, GRIMOIRE, HOTBAR, PRIMARIES, SIGNATURE_BY_DISCIPLINE, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
+import { assignRite, loadRites, loadSeen, saveRites, saveSeen, unseenRites } from '../gameplay/loadout';
 import { devAccess, devPreference, isDevAccount, riteLevel, setDevPreference } from '../gameplay/devAccess';
 import { GrimoirePanel } from '../ui/GrimoirePanel';
 import { preloadFxImages } from '../graphics/fxImages';
@@ -121,6 +121,10 @@ export class WorldScene implements GameScene, RuntimeView {
   private hotbar: AbilityId[] = HOTBAR;
   /** The four rites on keys 1–4 (Grimoire, L); remembered per character in browser storage. */
   private loadout: AbilityId[];
+  /** The left-click primary (Grimoire LMB socket). */
+  private primary: AbilityId = 'bone_needle';
+  /** Rites seen in the Grimoire (a learned rite outside this set wears NEW). */
+  private seen = new Set<AbilityId>();
   private progression: Progression;
   private inventory: Inventory;
   private professions: Profession[] = [];
@@ -219,7 +223,10 @@ export class WorldScene implements GameScene, RuntimeView {
     // Dev access (runtime overlay, never saved): must be set before the loadout is sanitised.
     this.devAccount = isDevAccount(character, getToken());
     devAccess.active = this.devAccount && devPreference(browserStorage(), character.id);
-    this.loadout = loadLoadout(browserStorage(), character.id, riteLevel(character.level ?? 1));
+    const rites = loadRites(browserStorage(), character.id, riteLevel(character.level ?? 1));
+    this.loadout = rites.keys;
+    this.primary = rites.primary;
+    this.seen = loadSeen(browserStorage(), character.id, rites);
     this.hotbar = this.buildHotbar();
     this.progression = new Progression(character);
     this.applyBoons();
@@ -235,6 +242,34 @@ export class WorldScene implements GameScene, RuntimeView {
     return GRIMOIRE.some((id) => unlockLevel(id) > 1 && riteLevel(this.character.level) >= unlockLevel(id));
   }
 
+  /** Grimoire LMB socket: equip a primary (left-click attack; auto combat uses it too). */
+  private setPrimary(id: AbilityId) {
+    if (riteLevel(this.character.level) < unlockLevel(id) || this.primary === id) return;
+    this.primary = id;
+    saveRites(browserStorage(), this.character.id, { primary: this.primary, keys: this.loadout });
+    this.markSeen([id]);
+    this.hud.setPrimary(id);
+    this.grimoirePanel.render();
+    audio.play('click');
+    const tip = RITE_TIPS[id];
+    if (tip) this.onboarding.show(tip);
+  }
+
+  private markSeen(ids: AbilityId[]) {
+    let changed = false;
+    for (const id of ids) if (!this.seen.has(id)) (this.seen.add(id), (changed = true));
+    if (changed) saveSeen(browserStorage(), this.character.id, this.seen);
+    this.hud?.setGrimoireNew(unseenRites(this.seen, riteLevel(this.character.level)).length > 0);
+  }
+
+  private openGrimoire(select?: number | 'primary') {
+    audio.play('click');
+    this.closePanels();
+    this.gathering?.stop('panel');
+    this.grimoirePanel.open(select);
+    this.onboarding.show('grimoire');
+  }
+
   /** Areas the nav may walk: the saved seals, or everything under dev access. */
   private openAreas(): AreaId[] {
     return devAccess.active ? [...AREA_ORDER] : this.progression.local.unlocked;
@@ -248,7 +283,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private setRite(slot: number, id: AbilityId) {
     if (riteLevel(this.character.level) < unlockLevel(id) || this.loadout[slot] === id) return;
     this.loadout = assignRite(this.loadout, slot, id);
-    saveLoadout(browserStorage(), this.character.id, this.loadout);
+    saveRites(browserStorage(), this.character.id, { primary: this.primary, keys: this.loadout });
+    this.markSeen([id]);
     this.hotbar = this.buildHotbar();
     this.hud.setHotbar(this.hotbar);
     this.queuedCast = null;
@@ -372,6 +408,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
     this.mountUi();
     this.hud.setDev(devAccess.active);
+    this.markSeen([]);
     this.bindInput();
     this.scope.add(this.progression.onChange(() => this.refreshStats()));
     this.scope.add(onSettingsChange((s) => this.onDifficultySetting(s.difficulty)));
@@ -493,7 +530,8 @@ export class WorldScene implements GameScene, RuntimeView {
         if (this.realtime.connected) this.realtime.sendChat(text);
         else this.hud.chatLine('(solo) Nobody hears you in the dark.');
       },
-    }, this.hotbar, this.discipline);
+      openGrimoire: (select) => this.openGrimoire(select),
+    }, this.hotbar, this.discipline, this.primary);
     this.hud.minimap.onNavigate = (x, z) => this.navigateFromMinimap(x, z);
     this.inventoryPanel = new InventoryPanel(this.root, this.character.id, this.inventory, this.statsLine, (id) => this.drinkFlask(id));
     this.forgePanel = new ForgePanel(this.root, this.character.id, this.inventory, (inv, profs) => {
@@ -533,8 +571,10 @@ export class WorldScene implements GameScene, RuntimeView {
     this.codexPanel = new CodexPanel(this.root, this.codex, this.discipline.id);
     this.grimoirePanel = new GrimoirePanel(
       this.root,
-      () => ({ loadout: this.loadout, level: riteLevel(this.character.level) }),
+      () => ({ rites: { primary: this.primary, keys: this.loadout }, level: riteLevel(this.character.level), unseen: unseenRites(this.seen, riteLevel(this.character.level)) }),
       (slot, id) => this.setRite(slot, id),
+      (id) => this.setPrimary(id),
+      (ids) => this.markSeen(ids),
     );
     this.ascensionPanel = new AscensionPanel(
       this.root,
@@ -895,9 +935,9 @@ export class WorldScene implements GameScene, RuntimeView {
     const action = selectAutoCombatAction({ player: { x: p.x, z: p.z, essence: p.essence, maxEssence: p.stats.maxEssence, hp: p.hp, maxHp: p.stats.maxHp },
       enemies: this.enemiesMap().values(), corpses: this.corpsesMap().values(), boss: this.bossState(),
       thrallCount: thralls, thrallCap: this.discipline.mods.thrallCap,
-      ready: id => (id === 'bone_needle' || this.hotbar.includes(id)) && this.abilities.ready(id, now) });
+      ready: id => (id === this.primary || this.hotbar.includes(id)) && this.abilities.ready(id, now), primary: this.primary });
     const previous = this.autoTargetId === null ? undefined : this.enemiesMap().get(this.autoTargetId);
-    this.autoTargetId = action?.target.enemyId ?? (previous && previous.hp > 0 && previous.state !== 'dead' && Math.hypot(previous.x - p.x, previous.z - p.z) <= ABILITIES.bone_needle.range ? previous.id : null);
+    this.autoTargetId = action?.target.enemyId ?? (previous && previous.hp > 0 && previous.state !== 'dead' && Math.hypot(previous.x - p.x, previous.z - p.z) <= ABILITIES[this.primary].range ? previous.id : null);
     if (action) this.autoAim = action.target;
     else if (this.autoTargetId === null && !(this.autoAim?.boss && this.bossState().active && this.bossState().hp > 0)) this.autoAim = null;
     if (action && this.abilities.cast(action.id, action.target, now) === 'ok') {
@@ -1753,11 +1793,13 @@ export class WorldScene implements GameScene, RuntimeView {
       this.player.essence = this.player.stats.maxEssence;
       this.hud.banner(`Level ${this.character.level}`, 'The dead answer you more readily', 2600);
       if (this.character.level >= SIGNATURE_LEVEL) this.onboarding.show('signature', 3000);
-      const learned = GRIMOIRE.filter((id) => unlockLevel(id) > this.character.level - gained && unlockLevel(id) <= this.character.level);
+      const learned = [...PRIMARIES, ...GRIMOIRE].filter((id) => unlockLevel(id) > this.character.level - gained && unlockLevel(id) <= this.character.level);
       if (learned.length) {
         const names = learned.map((id) => ABILITIES[id].name).join(', ');
-        this.hud.toast(`${names} ${learned.length > 1 ? 'join' : 'joins'} your Grimoire — press L to place it on a key`, 'good');
+        this.hud.toast(`${names} ${learned.length > 1 ? 'join' : 'joins'} your Grimoire. Click here, press L or use the Grimoire button to place it.`, 'good', () => this.openGrimoire());
         this.grimoirePanel.render();
+        this.markSeen([]);
+        this.hud.pulseGrimoire();
       }
       if (this.grimoireUnlocked()) this.onboarding.show('grimoire', 3200);
       audio.play('levelUp');
@@ -1923,11 +1965,11 @@ export class WorldScene implements GameScene, RuntimeView {
       if (!tgt) this.attackTarget = null;
       else {
         const t: CastTarget = this.attackTarget.kind === 'boss' ? { ...tgt, boss: true } : { ...tgt, enemyId: this.attackTarget.id };
-        const short = this.abilities.shortfall('bone_needle', t);
+        const short = this.abilities.shortfall(this.primary, t);
         if (short > 0 && !this.mouse.shift) p.moveTo(tgt.x, tgt.z);
         else {
           p.stop();
-          if (this.abilities.ready('bone_needle', now)) this.abilities.cast('bone_needle', t, now);
+          if (this.abilities.ready(this.primary, now)) this.abilities.cast(this.primary, t, now);
         }
       }
     }
@@ -2186,7 +2228,11 @@ export class WorldScene implements GameScene, RuntimeView {
     if (!this.devAccount) return;
     setDevPreference(browserStorage(), this.character.id, on);
     devAccess.active = on;
-    this.loadout = loadLoadout(browserStorage(), this.character.id, riteLevel(this.character.level));
+    const rites = loadRites(browserStorage(), this.character.id, riteLevel(this.character.level));
+    this.loadout = rites.keys;
+    this.primary = rites.primary;
+    this.hud.setPrimary(this.primary);
+    this.markSeen([]);
     this.hotbar = this.buildHotbar();
     this.hud.setHotbar(this.hotbar);
     this.hud.setDev(on);

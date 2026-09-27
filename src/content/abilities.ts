@@ -295,6 +295,26 @@ export const GRIMOIRE: AbilityId[] = [
   'bone_mantle',
 ];
 export const DEFAULT_LOADOUT: AbilityId[] = ['marrow_spear', 'exhume', 'miasma', 'black_litany'];
+
+/** Left-click primaries (0 essence). The Grimoire's LMB socket picks one; Bone Needle is the default. */
+export const PRIMARIES: AbilityId[] = ['bone_needle'];
+export const DEFAULT_PRIMARY: AbilityId = 'bone_needle';
+
+/** Grimoire role chips: what a rite is for (a filter in the Grimoire, a line in the Codex). */
+export type RiteRole = 'damage' | 'corpse' | 'control' | 'survival' | 'legion';
+export const ROLE_LABEL: Record<RiteRole, string> = { damage: 'Damage', corpse: 'Corpse', control: 'Control', survival: 'Survival', legion: 'Legion' };
+export const RITE_ROLES: Partial<Record<AbilityId, RiteRole[]>> = {
+  bone_needle: ['damage'],
+  marrow_spear: ['damage'],
+  exhume: ['corpse', 'legion'],
+  miasma: ['control', 'damage'],
+  black_litany: ['corpse', 'damage'],
+  wailing_skull: ['damage'],
+  grave_step: ['survival', 'corpse'],
+  grave_frost: ['control'],
+  bone_mantle: ['survival', 'corpse'],
+};
+export const rolesOf = (id: AbilityId): RiteRole[] => RITE_ROLES[id] ?? [];
 /** Key caps for hotbar slots 1–6 (slot 5 is the right-click action, 6 the signature). */
 export const SLOT_KEYS = ['1', '2', '3', '4', 'RMB', 'R'] as const;
 

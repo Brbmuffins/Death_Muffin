@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ABILITIES, DEFAULT_LOADOUT, GRIMOIRE, HOTBAR, SIGNATURE_LEVEL, unlockLevel, type AbilityId } from '../../content/abilities';
 import { CODEX_RITES, RITE_ORDER } from '../../content/codex';
 import { CAST_FLOW } from '../../content/combatFlow';
-import { assignRite, loadLoadout, loadoutStorageKey, sanitizeLoadout, saveLoadout } from '../loadout';
+import { assignRite, legacyLoadoutKey, loadLoadout, loadRites, loadSeen, loadoutStorageKey, sanitizeLoadout, sanitizePrimary, saveLoadout, saveRites, unseenRites } from '../loadout';
 import type { StorageLike } from '../codexJournal';
 
 const memory = (): StorageLike & { data: Map<string, string> } => {
@@ -54,5 +54,44 @@ describe('Grimoire loadout', () => {
     const gated = GRIMOIRE.filter((id) => unlockLevel(id) > 1).map(unlockLevel);
     expect(gated).toEqual([3, 5, 7, 12]);
     expect(unlockLevel('dirge')).toBe(SIGNATURE_LEVEL);
+  });
+});
+
+describe('loadout v2 (primary + keys)', () => {
+  const mem = () => {
+    const data = new Map<string, string>();
+    return { data, getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => void data.set(k, v), removeItem: (k: string) => void data.delete(k) };
+  };
+
+  it('migrates a v1 array (keys only) and defaults the primary to Bone Needle', () => {
+    const store = mem();
+    store.data.set(legacyLoadoutKey(3), JSON.stringify(['grave_step', 'exhume', 'miasma', 'black_litany']));
+    expect(loadRites(store, 3, 5)).toEqual({ primary: 'bone_needle', keys: ['grave_step', 'exhume', 'miasma', 'black_litany'] });
+  });
+
+  it('round-trips primary + keys, and v2 wins over a stale v1', () => {
+    const store = mem();
+    store.data.set(legacyLoadoutKey(4), JSON.stringify(['wailing_skull', 'exhume', 'miasma', 'black_litany']));
+    saveRites(store, 4, { primary: 'bone_needle', keys: ['marrow_spear', 'grave_step', 'miasma', 'black_litany'] });
+    expect(loadRites(store, 4, 5).keys).toEqual(['marrow_spear', 'grave_step', 'miasma', 'black_litany']);
+    // Saving keys alone keeps the stored primary.
+    saveLoadout(store, 4, ['exhume', 'marrow_spear', 'miasma', 'black_litany']);
+    expect(JSON.parse(store.data.get(loadoutStorageKey(4))!).primary).toBe('bone_needle');
+  });
+
+  it('sanitises the primary: unknown, non-primary or locked falls back to Bone Needle', () => {
+    expect(sanitizePrimary('bone_needle', 1)).toBe('bone_needle');
+    expect(sanitizePrimary('marrow_spear', 99)).toBe('bone_needle');
+    expect(sanitizePrimary(42, 99)).toBe('bone_needle');
+    expect(sanitizePrimary(null, 99)).toBe('bone_needle');
+  });
+
+  it('marks level-1 rites and the current bar as seen; later rites start unseen', () => {
+    const store = mem();
+    const seen = loadSeen(store, 5, { primary: 'bone_needle', keys: ['marrow_spear', 'exhume', 'miasma', 'black_litany'] });
+    expect(unseenRites(seen, 1)).toEqual([]);
+    expect(unseenRites(seen, 3)).toContain('wailing_skull');
+    seen.add('wailing_skull');
+    expect(unseenRites(seen, 3)).not.toContain('wailing_skull');
   });
 });
