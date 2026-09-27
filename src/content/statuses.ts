@@ -49,4 +49,6 @@ export const STATUS_FX = {
   chill: { frost: 0x9fc4ff, deep: 0x5b7fd6 },
   sanctified: { gold: 0xf2d98a, pale: 0xfff3cf },
   hex: { bone: 0xe0d6c2, amber: 0xd9a66b },
+  /** Incensed (Censer Bearer aura) — enemy bronze, like every bell and censer of the diocese. */
+  incensed: { bronze: 0xd9a441, smoke: 0x3a2e1f },
 };

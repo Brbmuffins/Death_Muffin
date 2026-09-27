@@ -2,13 +2,18 @@ import { AREAS, AREA_ORDER, GLOBAL_ENEMY_CAP, type AreaId } from '../../content/
 import {
   AFFIX_ORDER,
   AFFIX_TUNING,
+  CENSER,
   ELITE,
   ENEMIES,
+  PROCESSION,
+  SCREAM,
   SURGE,
+  WAVE_THEMES,
   enemyDamageScale,
   enemyHpScale,
   type EliteAffix,
   type EnemyId,
+  type WaveTheme,
 } from '../../content/enemies';
 import {
   SIGNATURE,
@@ -20,6 +25,8 @@ import {
   LITANY_PER_THRALL,
   MIASMA_SLOW,
   ABILITIES,
+  BONE_MANTLE,
+  GRAVE_FROST,
 } from '../../content/abilities';
 import { NIGHTFALL_SHROUD_CHANCE, RESTLESS_SURGE_MULT, milestoneActive, waveModifiers } from '../../content/upgrades';
 import { DIFFICULTIES, type Difficulty } from '../../content/difficulty';
@@ -249,6 +256,8 @@ export class WorldSim {
         e.fracture = Math.min(FRACTURE.maxStacks, e.fracture + h.fracture);
         e.fractureT = FRACTURE.durationMs / 1000;
       }
+      // Grave Frost: the host owns the duration; a claim can only ask for it.
+      if (h.chill) e.chillT = Math.max(e.chillT ?? 0, GRAVE_FROST.chillS);
     }
   }
 
@@ -541,6 +550,24 @@ export class WorldSim {
         this.addZone({ kind: 'flower', owner: g.by, x: cx, z: cz, r: B.radius, durationS: B.durationS, dps: sp * ABILITIES.plague_bloom.power, witheredCap: B.witheredCap, gen: 0 });
         return;
       }
+      case 'mantle': {
+        // Bone Mantle (a Grimoire rite): like Black Litany, the host decides which corpses go.
+        // The nearest few are drawn in; the caster's client turns the count into its barrier.
+        const [cx, cz] = clampAim(1);
+        const r = ABILITIES.bone_mantle.radius;
+        const near = [...this.corpses.values()]
+          .map((c) => ({ c, d: Math.hypot(c.x - cx, c.z - cz) }))
+          .filter((o) => o.d <= r)
+          .sort((a, b) => a.d - b.d)
+          .slice(0, BONE_MANTLE.maxCorpses);
+        const tethers: [number, number][] = [];
+        for (const { c } of near) {
+          tethers.push([c.x, c.z]);
+          this.removeCorpse(c, 'consumed', g.by);
+        }
+        this.emit({ t: 'mantle', by: g.by, x: cx, z: cz, r, corpses: near.length, tethers });
+        return;
+      }
     }
   }
 
@@ -758,13 +785,26 @@ export class WorldSim {
     const n = first ? 0 : (this.waveCounts.get(area) ?? 0) + 1;
     if (!first) this.waveCounts.set(area, n);
     const vanguard = !first && n % 2 === 1 && milestoneActive('vanguard', this.waveTier);
+    // Processions: now and then a wave arrives as a themed band instead of the usual mix.
+    const themes = WAVE_THEMES[area];
+    const theme: WaveTheme | undefined =
+      !first && themes?.length && n >= PROCESSION.minWave && this.rand() < PROCESSION.chance
+        ? themes[Math.floor(this.rand() * themes.length)]
+        : undefined;
+    if (theme) count = Math.max(1, Math.min(room, Math.round(count * theme.sizeMult)));
+    // `count` is bodies, so a Skull-Rat pack fills several places in the wave.
     let hasElite = false;
-    for (let i = 0; i < count; i++) {
+    let spawned = 0;
+    for (let i = 0; spawned < count; i++) {
       const [bx, bz] = chosen[i % chosen.length];
-      const e = this.spawnAtBreach(area, bx, bz, vanguard && !hasElite && i === count - 1);
-      if (e?.elite) hasElite = true;
+      const lead = i === 0 ? theme?.lead : undefined;
+      // Vanguard: the first pick that can be elite is (packs never are, so the next one tries).
+      const band = this.spawnAtBreach(area, bx, bz, vanguard && !hasElite && !lead, theme?.roster, lead, count - spawned);
+      if (!band.length) break;
+      spawned += band.length;
+      if (band[0].elite) hasElite = true;
     }
-    for (const [x, z] of chosen) this.emit({ t: 'wave', area, count, x, z });
+    for (const [x, z] of chosen) this.emit({ t: 'wave', area, count: spawned, x, z, ...(theme ? { theme: theme.id } : {}) });
   }
 
   /** Breaches at a fair distance from every player; falls back to any breach. */
@@ -780,20 +820,44 @@ export class WorldSim {
     return ok.length ? ok : def.breaches;
   }
 
-  /** One wave member climbing out beside a breach (area roster, elite roll). */
-  private spawnAtBreach(area: AreaId, bx: number, bz: number, forceElite = false): Enemy | null {
+  /**
+   * One wave pick climbing out beside a breach (area roster or a procession's, elite roll).
+   * Pack enemies (Skull-Rats) bring their pack, never more than `room`. Returns every body spawned.
+   */
+  private spawnAtBreach(
+    area: AreaId,
+    bx: number,
+    bz: number,
+    forceElite = false,
+    roster: { id: EnemyId; weight: number }[] = AREAS[area].enemies,
+    lead?: EnemyId,
+    room = Infinity,
+  ): Enemy[] {
     const def = AREAS[area];
     const mods = waveModifiers(this.waveTier);
-    const ang = this.rand() * Math.PI * 2;
-    const rr = 0.5 + this.rand() * 2.4;
-    const [x, z] = this.nav.resolveInArea(area, bx + Math.cos(ang) * rr, bz + Math.sin(ang) * rr, 0.5);
-    const pick = pickWeighted(def.enemies, this.rand());
-    if (!pick) return null;
+    const at = () => {
+      const ang = this.rand() * Math.PI * 2;
+      const rr = 0.5 + this.rand() * 2.4;
+      return this.nav.resolveInArea(area, bx + Math.cos(ang) * rr, bz + Math.sin(ang) * rr, 0.5);
+    };
+    const id = lead ?? pickWeighted(roster, this.rand())?.id;
+    if (!id || room <= 0) return [];
+    const pack = ENEMIES[id].pack;
     const roll = this.rand() < def.eliteChance + mods.eliteBonus + DIFFICULTIES[this.difficulty].eliteBonus;
-    const elite = pick.id !== 'risen' && (forceElite || roll);
+    // Pack animals never come elite (a whole elite swarm would be a wall of health).
+    const elite = id !== 'risen' && !pack && (forceElite || roll);
     // Nightfall: the common dead climb out Shrouded.
     const shroud = !elite && milestoneActive('nightfall', this.waveTier) && this.rand() < NIGHTFALL_SHROUD_CHANCE ? 'shrouded' : undefined;
-    return this.spawnEnemy(pick.id, area, x, z, elite, true, shroud);
+    const [x, z] = at();
+    const band = [this.spawnEnemy(id, area, x, z, elite, true, shroud)];
+    if (pack) {
+      const size = Math.min(room, pack[0] + Math.floor(this.rand() * (pack[1] - pack[0] + 1)));
+      while (band.length < size) {
+        const [px, pz] = at();
+        band.push(this.spawnEnemy(id, area, px, pz, false, true));
+      }
+    }
+    return band;
   }
 
   // --- Grave Surges ---
@@ -869,13 +933,17 @@ export class WorldSim {
     const room = GLOBAL_ENEMY_CAP - this.enemies.size;
     const count = Math.min(room, Math.round(def.waveSize * SURGE.waveSizeMult * waveModifiers(this.waveTier).sizeMult));
     if (count <= 0) return;
-    for (let i = 0; i < count; i++) {
-      const e = this.spawnAtBreach(s.area, s.x, s.z);
-      if (!e) continue;
-      s.ids.add(e.id);
-      s.spawned++;
+    let spawned = 0;
+    while (spawned < count) {
+      const band = this.spawnAtBreach(s.area, s.x, s.z, false, undefined, undefined, count - spawned);
+      if (!band.length) break;
+      for (const e of band) {
+        s.ids.add(e.id);
+        s.spawned++;
+        spawned++;
+      }
     }
-    this.emit({ t: 'wave', area: s.area, count, x: s.x, z: s.z });
+    this.emit({ t: 'wave', area: s.area, count: spawned, x: s.x, z: s.z });
   }
 
   private endSurge() {
@@ -1039,7 +1107,24 @@ export class WorldSim {
         killer: e.lastHitBy,
       });
       this.addCorpse(e.x, e.z, def.corpse, e.def, e.elite, e.facing, e.scale, e.area);
+      // A Bone Golem falls apart into the skeletons it was fused from (ringed around it).
+      for (let k = 1; k < (def.deathCorpses ?? 1); k++) {
+        const a = e.facing + (k / (def.deathCorpses! - 1)) * Math.PI * 2;
+        const [cx, cz] = this.nav.resolveInArea(e.area, e.x + Math.sin(a) * 1.6, e.z + Math.cos(a) * 1.6, 0.4);
+        this.addCorpse(cx, cz, def.corpse, 'risen', false, a, 1, e.area);
+      }
       if (e.affix === 'vengeful') this.vengeance(e);
+    }
+  }
+
+  /** Censer Bearer: each second the incense Incenses every living dead within reach (itself too). */
+  private censerPulse(e: Enemy, dt: number) {
+    e.auraCd = (e.auraCd ?? 0) - dt;
+    if (e.auraCd > 0) return;
+    e.auraCd = 1;
+    for (const o of this.enemies.values()) {
+      if (o.state === 'dead' || o.area !== e.area || Math.hypot(o.x - e.x, o.z - e.z) > CENSER.radius) continue;
+      o.incenseT = Math.max(o.incenseT ?? 0, CENSER.hasteS);
     }
   }
 
@@ -1154,7 +1239,7 @@ export class WorldSim {
     const dz = tz - e.z;
     const d = Math.hypot(dx, dz);
     if (d < 0.05) return;
-    const slow = (e.slowT > 0 ? MIASMA_SLOW : 1) * ((e.chillT ?? 0) > 0 ? CHILL.moveMult : 1);
+    const slow = (e.slowT > 0 ? MIASMA_SLOW : 1) * ((e.chillT ?? 0) > 0 ? CHILL.moveMult : 1) * ((e.incenseT ?? 0) > 0 ? CENSER.moveMult : 1);
     const step = Math.min(d, e.speed * speedMult * slow * dt);
     const px = e.x;
     const pz = e.z;
@@ -1171,8 +1256,18 @@ export class WorldSim {
     if (t.hp <= 0) this.killThrall(t, 'killed');
   }
 
-  private strike(e: Enemy, kind: 'melee' | 'cone' | 'curse' | 'slam') {
+  private strike(e: Enemy, kind: 'melee' | 'cone' | 'curse' | 'slam' | 'scream') {
     const def = ENEMIES[e.def];
+    if (kind === 'scream') {
+      // Choir Wraith: the hymn breaks on the ring it sang onto the ground (step out in time).
+      for (const p of this.players.values()) {
+        if (p.alive && Math.hypot(p.x - e.aimX, p.z - e.aimZ) <= SCREAM.radius) {
+          this.emit({ t: 'hurt', player: p.id, dmg: this.blow(e), from: 'scream', x: e.x, z: e.z });
+        }
+      }
+      for (const t of [...this.thralls.values()]) if (Math.hypot(t.x - e.aimX, t.z - e.aimZ) <= SCREAM.radius) this.hurtThrall(t, this.blow(e));
+      return;
+    }
     if (kind === 'cone') {
       const dirX = e.aimX - e.x;
       const dirZ = e.aimZ - e.z;
@@ -1191,7 +1286,7 @@ export class WorldSim {
       for (const t of [...this.thralls.values()]) if (hits(t.x, t.z)) this.hurtThrall(t, this.blow(e));
       return;
     }
-    const reach = kind === 'slam' ? 1.9 : def.attackRange * 1.35 + 0.4;
+    const reach = kind === 'slam' ? (def.slamRadius ?? 1.9) : def.attackRange * 1.35 + 0.4;
     const cx = kind === 'slam' ? e.aimX : e.x;
     const cz = kind === 'slam' ? e.aimZ : e.z;
     const p = e.targetPlayer ? this.players.get(e.targetPlayer) : undefined;
@@ -1221,6 +1316,7 @@ export class WorldSim {
     if ((e.sanctT ?? 0) > 0) e.sanctT! -= dt;
     if ((e.hexT ?? 0) > 0) e.hexT! -= dt;
     if ((e.silenceT ?? 0) > 0) e.silenceT! -= dt;
+    if ((e.incenseT ?? 0) > 0) e.incenseT! -= dt;
     if ((e.bleedT ?? 0) > 0 && (e.bleedDps ?? 0) > 0) {
       e.bleedT! -= dt;
       const dmg = e.bleedDps! * dt * this.damageTakenMult(e);
@@ -1266,8 +1362,9 @@ export class WorldSim {
       }
       if (!activeAreas.has(e.area)) continue; // dormant: nobody here to hunt
       if (e.affix) this.tickAffix(e, dt);
-      e.attackCd -= dt * ((e.chillT ?? 0) > 0 ? CHILL.attackRateMult : 1);
+      e.attackCd -= dt * ((e.chillT ?? 0) > 0 ? CHILL.attackRateMult : 1) * ((e.incenseT ?? 0) > 0 ? CENSER.attackRateMult : 1);
       const def = ENEMIES[e.def];
+      if (def.aura) this.censerPulse(e, dt);
 
       if (e.state === 'windup' || e.state === 'channel') {
         const windup = (e.state === 'channel' ? 1.5 : def.windupMs / 1000) * (e.elite ? 0.85 : 1);
@@ -1327,7 +1424,7 @@ export class WorldSim {
             e.aimZ = target.z;
             e.facing = Math.atan2(target.x - e.x, target.z - e.z);
             if (def.behavior === 'hazard') {
-              this.emit({ t: 'telegraph', id: e.id, kind: 'slam', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'slam', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, ...(def.slamRadius ? { r: def.slamRadius } : {}) });
             }
           } else if (dist > def.attackRange * 0.8) {
             let tx = target.x;
@@ -1351,7 +1448,9 @@ export class WorldSim {
             e.aimX = target.x;
             e.aimZ = target.z;
             e.facing = Math.atan2(target.x - e.x, target.z - e.z);
-            this.emit({ t: 'telegraph', id: e.id, kind: 'cone', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
+            if (def.attack === 'scream') {
+              this.emit({ t: 'telegraph', id: e.id, kind: 'scream', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: SCREAM.radius });
+            } else this.emit({ t: 'telegraph', id: e.id, kind: 'cone', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
           } else if (dist > def.attackRange - 1.5) this.moveEnemy(e, target.x, target.z, dt);
           else if (dist < 3.5) this.moveEnemy(e, e.x * 2 - target.x, e.z * 2 - target.z, dt, 0.8);
           else e.facing = Math.atan2(target.x - e.x, target.z - e.z);
@@ -1415,7 +1514,7 @@ export class WorldSim {
     }
     switch (def.behavior) {
       case 'caster':
-        return this.strike(e, 'cone');
+        return this.strike(e, def.attack ?? 'cone');
       case 'support':
         return this.strike(e, 'curse');
       case 'hazard':

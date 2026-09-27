@@ -448,3 +448,60 @@ Checks at the end: 80 vitest, 8 realtime, typecheck, production build all green.
 - Known limits (documented in the brief): gold is still earned client-side through `save-progress`, the import
   trusts clamped browser data, and the DEV `prelateSlain()` hook can't credit a kill once a character is
   server-backed (the server requires a paid summon).
+
+## Grimoire + four new rites (2026-09-27) ✅ tests + in-browser QA
+- **Grimoire (L):** keys 1–4 stay four fixed slots; the player picks which rites fill them from
+  `GRIMOIRE` (the classic four + four level-gated rites). Picking a key for a rite already on another key
+  swaps them; cooldowns belong to the rite, so swapping resets nothing. Stored per character in browser
+  storage (`gameplay/loadout.ts`, `dm_loadout_v1_<id>`; a preference, not progress, so no server work).
+  `ui/GrimoirePanel.ts`, HUD open-book button, `HUD.setHotbar()` rebuilds the bar, `unlockLevel()`
+  replaces the signature-only lock.
+- **New rites**, each modelled on a shipped one so they feel the same:
+  - **Wailing Skull** (lvl 3, jade) — flies and hits like Bone Needle; chains 3 bites, −20% per leap, a
+    killing bite earns another (max 5). Client-resolved `hit` intents.
+  - **Grave Step** (lvl 5, blood crimson) — picks a corpse like Corpse Explosion; blink (same area only)
+    + 2.6 m marrow burst with Hemorrhage. The corpse stays. Client-owned movement + `hit`.
+  - **Grave Frost** (lvl 7, cold blue) — resolves its 70° cone on impact like Marrow Spear; `hit.chill`
+    (new flag; host owns the 3 s duration); already-Chilled enemies shatter for +50%.
+  - **Bone Mantle** (lvl 12, ivory/old gold) — like Black Litany the host consumes corpses
+    (`signature` intent `sig: 'mantle'`, event `mantle`); caster gains a barrier (10% + 7%/corpse, cap
+    45%) held for 6 s (`Player.barrierHoldUntil`) and orbiting shards tick adjacent enemies.
+- **Art via the pipeline** (`art-manifest/gemini-jobs/spells-v4.json`, `status-v2.json`): 4 rite icons,
+  6 tintable VFX sprites in `public/art/fx/` (new `post.lumaAlpha` + `post.mask: circle|cone` in
+  `tools/ai/gemini.mjs`), and real Chilled/Silenced status icons replacing the inline SVG stand-ins.
+  Loaded by `graphics/fxImages.ts`; Effects gained sprite projectiles and `orbit()`.
+- Four procedural SFX (`wail`, `bloodStep`, `frost`, `mantle`). Auto combat uses whatever is on the bar
+  (Mantle when pressed + hurt or on corpse fuel, Frost into cones of 3+, Skull on bosses/elites/knots,
+  never Grave Step). Help: Grimoire tip + one tip per new rite the first time it's slotted; tips that
+  named fixed keys now read the loadout (`{key:exhume}`); Codex entries, Settings keys, README.
+- Realtime: `SIGNATURES` += `mantle`, `hit.chill` sanitised; deploy script re-embedded. **Co-op guests
+  need the new realtime service for Bone Mantle** (older servers drop the intent; everything else works).
+- QA (offline mock, level 12 Mourner): skull chain 86→69→55→44→35 over 5 bites; Frost 68→18 + Chill 2.7 s,
+  second breath shattered for 75; Step moved 7.6 m, corpse kept, burst + bleed on the enemy in reach;
+  Mantle took 5 of 6 nearby corpses, barrier 114/254 (cap) held 6 s then decayed; auto combat cast
+  Mantle → Frost → Skull → needles → Corpse Explosion. No console errors. 134 vitest + 17 server tests green.
+
+## Enemy variety pack + processions (2026-09-27) ✅ tests + in-browser QA
+- **Four new dead**, each a shipped behaviour plus one twist (`content/enemies.ts`, `WorldSim`):
+  - **Censer Bearer** (melee): an aura pulse each second Incenses the dead within 5 m (+30% move,
+    +25% attack rate; new status `incenseT`, snapshot flag bit 65536, bronze motes + a ground ring).
+  - **Choir Wraith** (caster, `attack: 'scream'`): a telegraphed song ring (2.2 m) at the target's
+    feet that screams on release; hovers, translucent, leaves no corpse, dissolves on death.
+  - **Ossuary Skull-Rat** (flank, `pack: [4, 6]`): spawns as a pack, never elite, no corpse.
+  - **Bone Golem** (hazard, `slamRadius: 2.8`, `deathCorpses: 3`): wide slam telegraph with cracks;
+    falls apart into its own corpse + two skeleton corpses.
+- **Processions** (`WAVE_THEMES`, `PROCESSION`): from a wave's 2nd count onward, ~30% of waves come
+  as a themed band with an optional lead; the `wave` event carries `theme` and the scene shows one
+  banner per band. Wave size now counts bodies, so packs fill several places; surges track pack ids.
+- Rosters: rats + rare golem (Ossuary), wraiths + censers (Nave), all four (Sanctum); the Hollow Graves
+  roster is unchanged (only its processions bring newcomers). `npm run build:server-rules` re-run
+  (the bundle embeds `areas.ts`).
+- **Art via the pipeline**: Gemini concepts (`enemies-v2.json`, preview `docs/enemy-concepts-v2.webp`),
+  Tripo specs `art-manifest/tripo-specs/{censer_bearer,choir_wraith,skull_rat,bone_golem}.json`
+  (spend approved by the owner: 50 + 85 + 125 + golem), built with `build-characters.mjs`. The wraith is
+  a static mesh (`models/props/choir_wraith.glb`, bobbed in code). Every new slug has a shipped-model
+  fallback (`ENEMY_FALLBACK`). Incensed status icon via Gemini (`status-v2.json`).
+- Help: first-sight tips (censer, wraith, swarm, golem) + a procession tip, Codex bestiary entries and
+  area dangers, README tables (dead, processions, statuses).
+- Tests: `enemy-variety.test.ts` (codex/roster integrity, packs never elite, procession theme + lead,
+  censer aura + snapshot mirror, scream hits only inside its ring, golem → 3 corpses; wraith/rat → 0).

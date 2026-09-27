@@ -17,6 +17,8 @@ export class Player {
   hp = 100;
   essence = 50;
   barrier = 0;
+  /** Bone Mantle holds the barrier until this time (scene ms); it decays as usual after. */
+  barrierHoldUntil = 0;
   alive = true;
   area: AreaId | null = 'chapterhouse';
   lastHurtAt = -1e9;
@@ -105,7 +107,7 @@ export class Player {
     const ooc = now - this.lastHurtAt > OUT_OF_COMBAT_MS;
     this.hp = Math.min(this.stats.maxHp, this.hp + this.stats.maxHp * (ooc ? 0.045 : 0.004) * dt);
     this.essence = Math.min(this.stats.maxEssence, this.essence + this.stats.essenceRegen * dt);
-    this.barrier = Math.max(0, this.barrier - this.stats.maxHp * 0.04 * dt);
+    if (now >= this.barrierHoldUntil) this.barrier = Math.max(0, this.barrier - this.stats.maxHp * 0.04 * dt);
     if (now < this.rootedUntil) return false;
 
     const speed = this.stats.moveSpeed;

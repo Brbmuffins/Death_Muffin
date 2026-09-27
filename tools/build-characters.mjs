@@ -36,7 +36,7 @@ const CLIP_NAMES = {
 };
 
 /** Per-slug texture budget (px). Hero and boss get more; horde enemies less. */
-const TEXTURE_SIZE = { necromancer: 1024, prelate: 1024, prop_mausoleum: 1024, prop_bell_altar: 1024 };
+const TEXTURE_SIZE = { necromancer: 1024, prelate: 1024, bone_golem: 1024, prop_mausoleum: 1024, prop_bell_altar: 1024 };
 const DEFAULT_TEXTURE = 512;
 
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);

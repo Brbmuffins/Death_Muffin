@@ -5,7 +5,7 @@ import { WorldMirror, makeSnapshot } from '../sim/snapshot';
 import { mulberry32 } from '../rng';
 import type { Corpse, SimEvent } from '../sim/types';
 import { AFFIX_ORDER, AFFIX_TUNING, SURGE } from '../../content/enemies';
-import { DETONATE } from '../../content/abilities';
+import { BONE_MANTLE, DETONATE, GRAVE_FROST } from '../../content/abilities';
 import { RESTLESS_SURGE_MULT, waveModifiers } from '../../content/upgrades';
 import { generateLayout } from '../../content/layout';
 import { BONE_HEX, CHILL, HEMORRHAGE, SANCTIFIED } from '../../content/statuses';
@@ -657,5 +657,47 @@ describe('Signature rites', () => {
     expect(flowers.length).toBeGreaterThanOrEqual(3);
     expect(sim.corpses.has(c1.id)).toBe(false);
     expect(Math.max(...flowers.map((f) => f.gen ?? 0))).toBe(2);
+  });
+});
+
+describe('Grimoire rites (host side)', () => {
+  it('Grave Frost hits Chill for the host-owned duration, whatever the claim', () => {
+    const { sim } = world(31);
+    const e = sim.spawnEnemy('robber', 'graves', 2, -16, false, false);
+    sim.apply({ t: 'hit', by: 'p1', ids: [e.id], dmg: 1, chill: true });
+    expect(e.chillT).toBe(GRAVE_FROST.chillS);
+    // A plain hit never chills, and a second breath refreshes rather than stacks.
+    const other = sim.spawnEnemy('robber', 'graves', -2, -16, false, false);
+    sim.apply({ t: 'hit', by: 'p1', ids: [other.id], dmg: 1 });
+    expect(other.chillT ?? 0).toBe(0);
+    sim.step(0.5);
+    sim.apply({ t: 'hit', by: 'p1', ids: [e.id], dmg: 1, chill: true });
+    expect(e.chillT).toBe(GRAVE_FROST.chillS);
+  });
+
+  it('Bone Mantle consumes up to five of the nearest corpses around the caster', () => {
+    const { sim } = world(32);
+    // Player at (0,-16). Seven bodies in reach, one outside the 6m radius.
+    const near = Array.from({ length: 7 }, (_, i) => corpse(sim, -3 + i, -15));
+    const far = corpse(sim, 0, -24);
+    sim.step(0.01);
+    // The client proposes a far-away centre; the host clamps it to the caster.
+    sim.apply({ t: 'signature', by: 'p1', sig: 'mantle', x: 40, z: 40, dx: 0, dz: 0, sp: 20 });
+    const ev = sim.step(0.01);
+    const [m] = of(ev, 'mantle');
+    expect(m.corpses).toBe(BONE_MANTLE.maxCorpses);
+    expect(m.tethers.length).toBe(BONE_MANTLE.maxCorpses);
+    expect(Math.hypot(m.x - 0, m.z + 16)).toBeLessThan(1.01);
+    expect(sim.corpses.has(far.id)).toBe(true);
+    // The two farthest of the seven survive.
+    expect(near.filter((c) => sim.corpses.has(c.id)).length).toBe(2);
+    expect(of(ev, 'corpseGone').every((g) => g.reason === 'consumed' && g.by === 'p1')).toBe(true);
+  });
+
+  it('Bone Mantle with no corpses still answers (a thin mantle)', () => {
+    const { sim } = world(33);
+    sim.apply({ t: 'signature', by: 'p1', sig: 'mantle', x: 0, z: -16, dx: 0, dz: 0, sp: 20 });
+    const [m] = of(sim.step(0.01), 'mantle');
+    expect(m.corpses).toBe(0);
   });
 });

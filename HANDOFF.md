@@ -4,7 +4,11 @@ Living status document so any agent (or person) can pick the project up at any
 point. **Update the "Current state" and "In flight" sections whenever you stop.**
 > **VPS update, 2026-09-27:** Death Muffin now runs at https://muffindevelopment.com/death-muffin/. Read [docs/DEATH-MUFFIN-HANDOFF.md](docs/DEATH-MUFFIN-HANDOFF.md) for current deployment, class switching, combat flow, Git access and verification; older cloud-only status below is historical.
 
-Last updated: 2026-09-26 (cloud session: environment, balance + Prelate pass, difficulty, milestones, statuses, thrall variety, signature rites, onboarding, perf, Ascension, VPS storage handoff).
+Last updated: 2026-09-27 (Windows workstation session: **Grimoire + four new rites**, **enemy variety pack +
+processions**, **professions roadmap + agent briefs**; all staged, not committed. See the 2026-09-27
+entries in `PHASE_REPORTS.md`). Before that: 2026-09-26 cloud session (environment, balance + Prelate
+pass, difficulty, milestones, statuses, thrall variety, signature rites, onboarding, perf, Ascension,
+VPS storage handoff).
 
 ## 60-second orientation
 
@@ -70,10 +74,19 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 | Relic runes | 📝 server proposal only | `server/proposals/relic-runes.md` |
 | **Ascension** (prestige): Altar panel, Ashes, 9 Covenant Boons, +3 levels/rank, snapshot-synced rank | ✅ QA'd (full ascend + boon flow in browser) | `content/ascension.ts`, `progression.ts`, `ui/AscensionPanel.ts` |
 | **VPS storage package** (validated `/api/necro-progress/*` routes, MySQL store, schema, shared rules bundle, tests) | ✅ tested with an in-memory store + mock backend; not installed yet | `server/vps-handoff/necro-progress/`, `server/VPS_HANDOFF.md`, `npm run build:server-rules` |
+| **Grimoire (L)**: 4 static rite slots, player-chosen from 8 rites; new Wailing Skull / Grave Step / Grave Frost / Bone Mantle (lvl 3/5/7/12); Gemini icons + tintable VFX sprites | ✅ tests + browser QA (2026-09-27) | `gameplay/loadout.ts`, `ui/GrimoirePanel.ts`, `AbilitySystem.ts`, `graphics/fxImages.ts`, `public/art/fx/` |
+| **Enemy variety**: Censer Bearer (Incensed aura), Choir Wraith (scream ring), Skull-Rat packs, Bone Golem (3 corpses) + themed **processions**; Tripo models | ✅ tests + browser QA (2026-09-27) | `content/enemies.ts` (`WAVE_THEMES`), `WorldSim`, `EntityViews`, `public/models/{censer_bearer,skull_rat,bone_golem}`, `models/props/choir_wraith.glb` |
+| **Professions / gathering** (RuneScape-style skilling, the non-combat Sexton's Acre) | 📝 **plan only**: roadmap + 5 agent briefs + node concepts + Tripo specs (not run) | `docs/PROFESSIONS-ROADMAP.md`, `docs/agent-briefs/professions-g*.md` |
 
 ## In flight (check before starting overlapping work)
 
-Nothing is in flight. All three agent briefs in [`docs/agent-briefs/`](docs/agent-briefs/README.md) are done:
+**Professions / gathering: ready to dispatch, not started.** The owner plans to hand this side to other
+agents. Start with [`docs/PROFESSIONS-ROADMAP.md`](docs/PROFESSIONS-ROADMAP.md) (§12 lists owner decisions), then the briefs
+G0 (rules + Death Muffin server `/api/gather`) and G2 (Sexton's Acre zone) in parallel, then G1 (nodes + loop)
+and G4 (UI + help). G3 (node models, ~450–700 Tripo credits) waits for the owner's OK. Brief status lives in
+[`docs/agent-briefs/README.md`](docs/agent-briefs/README.md).
+
+The three older agent briefs in [`docs/agent-briefs/`](docs/agent-briefs/README.md) are done:
 
 | Brief | Where it landed |
 |---|---|
@@ -103,6 +116,18 @@ refuses while the index has staged changes.
    `server/web-deploy/`). The user runs the scripts.
 4. **A human playtest of the new balance.** The bot is an upper bound on efficiency and never
    dodges. Report how intended/push feel, and see "Open issues" in `BALANCE.md`.
+
+**From the 2026-09-27 session (needs the user / a deploy):**
+- **Commit + push through GitHub Desktop.** Everything is staged. This workstation's shell can't reach GitHub
+  (no stored credentials; `git fetch` fails), so fetch and push from GitHub Desktop. The VPS has its own deploy key.
+- **Deploy realtime with the client.** The realtime server gained `signature` sig `mantle` (Bone Mantle) and a
+  sanitised `hit.chill` flag (`deploy-realtime.sh` is re-embedded). An older realtime server drops Bone
+  Mantle for co-op **guests** (hosts and solo play are fine), and Grave Frost's chill passes through unsanitised.
+- `necro-rules.cjs` was regenerated (it embeds `areas.ts`, whose rosters changed). Re-install it if the
+  necro-progress package is already on the VPS.
+- Ear-test the four new rite sounds (`wail`, `bloodStep`, `frost`, `mantle`) and the look of the new mobs in a visible browser.
+- Tripo spent this session: choir_wraith 50, skull_rat 85, censer_bearer 125, bone_golem (see
+  `art-manifest/tripo/*.json`). The node props for professions are specced but **not** run.
 
 **Buildable next (code-only):**
 5. **Replay depth, continued.** Ascension shipped. Next from `FUTURE_CONTENT.md` → "Replay & endgame
@@ -147,4 +172,11 @@ refuses while the index has staged changes.
   run `npm run build:server-rules`. The parity test in `necroServer.test.ts` fails if the bundle is stale.
 - Water/decal layering: water renders at renderOrder 1, and Effects decals (telegraphs) at 2. Keep
   that order or telegraphs sink under the nave's flood.
+- **Windows checkout = CRLF working tree** (`core.autocrlf=true`). Git Bash's `grep -c $'\r'` reports 0 even
+  on CRLF files, so check with Node. Scripted string edits must match `\r\n`. The rules-bundle parity test
+  now compares with line endings normalised.
+- The Gemini tool's `post.lumaAlpha` + `post.mask` turn white-on-black art into tintable VFX sprites
+  (`ASSET_PIPELINE.md` §1). A rig-less Tripo model builds as a **prop** GLB (`models/props/<id>.glb`), so
+  register a static creature (the Choir Wraith) with that URL in `modelPaths.ts`.
+- Another session may hold port 5188; `.claude/launch.json` has `crossworlds-web-alt` on 5198.
 

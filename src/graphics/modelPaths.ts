@@ -24,6 +24,12 @@ export const CREATURE_MODELS = {
   deacon: m('deacon', 2.1),
   carrion_sac: m('carrion_sac', 1.75),
   prelate: m('prelate', 4.6),
+  // Enemy variety pack (art-manifest/tripo-specs/*.json). The wraith hovers, so it is a
+  // static mesh built as a prop and bobbed in code.
+  censer_bearer: m('censer_bearer', 1.95),
+  choir_wraith: { url: 'models/props/choir_wraith.glb', height: 2.1 },
+  skull_rat: m('skull_rat', 0.5),
+  bone_golem: m('bone_golem', 3.1),
 } satisfies Record<string, CreatureModelDef>;
 
 export type CreatureSlug = keyof typeof CREATURE_MODELS;

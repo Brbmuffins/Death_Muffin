@@ -122,7 +122,9 @@ var AREAS = {
       { id: "hound", weight: 30 },
       { id: "sac", weight: 18 },
       { id: "deacon", weight: 12 },
-      { id: "penitent", weight: 10 }
+      { id: "penitent", weight: 10 },
+      { id: "rat", weight: 10 },
+      { id: "golem", weight: 2 }
     ],
     cap: 32,
     waveSize: 10,
@@ -158,7 +160,9 @@ var AREAS = {
       { id: "robber", weight: 27 },
       { id: "deacon", weight: 15 },
       { id: "sac", weight: 16 },
-      { id: "hound", weight: 19 }
+      { id: "hound", weight: 19 },
+      { id: "wraith", weight: 12 },
+      { id: "censer", weight: 6 }
     ],
     cap: 34,
     waveSize: 11,
@@ -192,7 +196,10 @@ var AREAS = {
       { id: "deacon", weight: 20 },
       { id: "robber", weight: 20 },
       { id: "hound", weight: 20 },
-      { id: "sac", weight: 10 }
+      { id: "sac", weight: 10 },
+      { id: "censer", weight: 10 },
+      { id: "wraith", weight: 10 },
+      { id: "golem", weight: 4 }
     ],
     cap: 26,
     waveSize: 8,

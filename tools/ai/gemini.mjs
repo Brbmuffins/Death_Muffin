@@ -9,7 +9,9 @@
  *
  * jobs.json: [{ id, prompt, out, refs?: [path], crop?: {left,top,width,height} applied to refs[0],
  *              aspect?: "1:1", size?: "1K", model?, post?: { resize?: [w,h], format?: "png"|"webp",
- *              removeBg?: "#rrggbb" } }]
+ *              removeBg?: "#rrggbb", lumaAlpha?: true, floor?: 0-255, mask?: "circle"|"cone" } }]
+ *   lumaAlpha turns white-on-black VFX art into a white sprite with brightness as alpha
+ *   (tinted in code); mask clips it to a soft circle or a 70° fan (apex bottom centre).
  */
 import sharp from 'sharp';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -76,9 +78,54 @@ async function removeBackground(buf, hex, tolerance = 42) {
   return sharp(data, { raw: info }).png().toBuffer();
 }
 
+/**
+ * Soft shape masks for tintable VFX sprites (0..1 per pixel). `circle` fades to
+ * nothing at the rim; `cone` is a 70° fan with its apex at the bottom centre —
+ * the same frame as fxTextures.cone(), so decals can use `anchor: 1`.
+ */
+const MASKS = {
+  circle: (x, y) => {
+    const d = Math.hypot(x - 0.5, y - 0.5) / 0.5;
+    return d >= 1 ? 0 : d <= 0.78 ? 1 : 1 - (d - 0.78) / 0.22;
+  },
+  cone: (x, y) => {
+    const dx = x - 0.5;
+    const dy = 1 - y;
+    const d = Math.hypot(dx, dy);
+    if (d <= 0 || d >= 1) return 0;
+    const off = Math.abs(Math.atan2(dx, dy)) / ((35 * Math.PI) / 180);
+    const side = off >= 1 ? 0 : off <= 0.75 ? 1 : 1 - (off - 0.75) / 0.25;
+    const rim = d <= 0.85 ? 1 : 1 - (d - 0.85) / 0.15;
+    return side * rim;
+  },
+};
+
+/**
+ * White-on-black VFX art → white sprite whose alpha is its brightness, so the
+ * game can tint it per spell (SPELL_FX). `floor` crushes the near-black noise
+ * Gemini leaves in "pure black" backgrounds; `mask` clips to a soft shape.
+ */
+async function lumaAlpha(buf, job) {
+  const { data, info } = await sharp(buf).greyscale().raw().toBuffer({ resolveWithObject: true });
+  const floor = job.post.floor ?? 18;
+  const mask = job.post.mask ? MASKS[job.post.mask] : null;
+  const out = Buffer.alloc(info.width * info.height * 4);
+  for (let y = 0; y < info.height; y++) {
+    for (let x = 0; x < info.width; x++) {
+      const i = y * info.width + x;
+      let a = Math.max(0, (data[i * info.channels] - floor) / (255 - floor));
+      if (mask) a *= mask((x + 0.5) / info.width, (y + 0.5) / info.height);
+      out[i * 4] = out[i * 4 + 1] = out[i * 4 + 2] = 255;
+      out[i * 4 + 3] = Math.round(Math.min(1, a) * 255);
+    }
+  }
+  return sharp(out, { raw: { width: info.width, height: info.height, channels: 4 } }).png().toBuffer();
+}
+
 async function post(buf, job) {
   let out = buf;
   if (job.post?.removeBg) out = await removeBackground(out, job.post.removeBg);
+  if (job.post?.lumaAlpha) out = await lumaAlpha(out, job);
   let img = sharp(out);
   if (job.post?.resize) img = img.resize(job.post.resize[0], job.post.resize[1], { fit: 'cover' });
   const fmt = job.post?.format ?? (job.out.endsWith('.webp') ? 'webp' : 'png');

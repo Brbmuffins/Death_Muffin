@@ -1,0 +1,9 @@
+{
+  "id": "choir_wraith",
+  "input": "art-src/concepts/choir_wraith.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 4000,
+    "texture_quality": "standard"
+  }
+}

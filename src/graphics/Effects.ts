@@ -205,6 +205,8 @@ export interface Handle {
 
 interface Projectile {
   mesh: THREE.Object3D;
+  /** Where the mesh returns when it lands. */
+  pool: THREE.Object3D[];
   from: THREE.Vector3;
   to: () => Vec3 | null;
   lastTo: THREE.Vector3;
@@ -241,6 +243,8 @@ export class Effects {
   private projectiles: Projectile[] = [];
   private needlePool: THREE.Mesh[] = [];
   private orbPool: THREE.Mesh[] = [];
+  /** Textured billboard projectiles (the Wailing Skull). */
+  private spriteShotPool: THREE.Sprite[] = [];
   private projectileDirection = new THREE.Vector3();
   private needleGeo = new THREE.ConeGeometry(0.085, 0.95, 5).rotateX(Math.PI / 2);
   private needleMat = new THREE.MeshStandardMaterial({
@@ -382,6 +386,7 @@ export class Effects {
     const mat = sprite.material;
     mat.map = o.tex ?? fx.glow();
     mat.color.set(o.color);
+    mat.rotation = 0;
     mat.needsUpdate = true;
     sprite.position.set(o.x, o.y, o.z);
     return this.add({
@@ -395,6 +400,66 @@ export class Effects {
         mat.opacity = k < 0.3 ? 1 : 1 - (k - 0.3) / 0.7;
       },
     });
+  }
+
+  /**
+   * Tinted sprites circling a moving point (Bone Mantle's shards). They spiral out
+   * from the centre, bob and spin; `follow` returning null freezes them where they were.
+   */
+  orbit(o: {
+    tex: THREE.Texture;
+    color: THREE.ColorRepresentation;
+    count: number;
+    radius: number;
+    y: number;
+    size: number;
+    duration: number;
+    /** Radians per second. */
+    speed: number;
+    follow: () => { x: number; z: number } | null;
+  }): Handle {
+    const handles: Handle[] = [];
+    let cx = 0;
+    let cz = 0;
+    const first = o.follow();
+    if (first) [cx, cz] = [first.x, first.z];
+    for (let i = 0; i < o.count; i++) {
+      const sprite = this.take(this.spritePool, () => {
+        const s = new THREE.Sprite(
+          new THREE.SpriteMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
+        );
+        s.renderOrder = 6;
+        return s;
+      }) as THREE.Sprite;
+      const mat = sprite.material;
+      mat.map = o.tex;
+      mat.color.set(o.color);
+      mat.needsUpdate = true;
+      const phase = (i / o.count) * Math.PI * 2;
+      const lift = (i % 3) * 0.28;
+      handles.push(this.add({
+        mesh: sprite,
+        t: 0,
+        duration: o.duration,
+        pool: this.spritePool,
+        update: (t) => {
+          const f = o.follow();
+          if (f) [cx, cz] = [f.x, f.z];
+          const a = phase + t * o.speed;
+          const r = o.radius * Math.min(1, 0.25 + t * 3);
+          sprite.position.set(cx + Math.cos(a) * r, o.y + lift + Math.sin(t * 3.1 + phase) * 0.12, cz + Math.sin(a) * r);
+          mat.rotation = a * 1.7;
+          sprite.scale.set(o.size, o.size, o.size);
+          mat.opacity = Math.max(0, Math.min(1, t / 0.15, (o.duration - t) / 0.35));
+        },
+      }));
+    }
+    return {
+      kill: () => handles.forEach((h) => h.kill()),
+      get alive() {
+        return handles.some((h) => h.alive);
+      },
+    };
   }
 
   /** Glowing tether from A to B (litany tethers, deacon raise beams). */
@@ -446,17 +511,39 @@ export class Effects {
     to: () => Vec3 | null;
     speed: number;
     color: THREE.ColorRepresentation;
-    kind: 'needle' | 'orb';
+    /** 'sprite' flies a tinted billboard (`tex`, `size` world units wide). */
+    kind: 'needle' | 'orb' | 'sprite';
+    tex?: THREE.Texture;
+    size?: number;
     arc?: number;
     onArrive?: (p: THREE.Vector3) => void;
   }) {
-    const mesh = o.kind === 'needle'
-      ? this.needlePool.pop() ?? new THREE.Mesh(this.needleGeo, this.needleMat)
-      : this.orbPool.pop() ?? new THREE.Mesh(
-          this.orbGeo,
-          new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
-        );
-    if (o.kind === 'orb') (mesh.material as THREE.MeshBasicMaterial).color.set(o.color);
+    let mesh: THREE.Object3D;
+    let pool: THREE.Object3D[];
+    if (o.kind === 'sprite') {
+      const s = this.spriteShotPool.pop() ?? new THREE.Sprite(
+        new THREE.SpriteMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
+      );
+      s.renderOrder = 6;
+      s.material.map = o.tex ?? fx.glow();
+      s.material.color.set(o.color);
+      s.material.needsUpdate = true;
+      const size = o.size ?? 0.8;
+      s.scale.set(size, size, size);
+      mesh = s;
+      pool = this.spriteShotPool;
+    } else if (o.kind === 'needle') {
+      mesh = this.needlePool.pop() ?? new THREE.Mesh(this.needleGeo, this.needleMat);
+      pool = this.needlePool;
+    } else {
+      const orb = this.orbPool.pop() ?? new THREE.Mesh(
+        this.orbGeo,
+        new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
+      );
+      (orb.material as THREE.MeshBasicMaterial).color.set(o.color);
+      mesh = orb;
+      pool = this.orbPool;
+    }
     mesh.visible = true;
     mesh.position.set(o.from.x, o.from.y, o.from.z);
     this.group.add(mesh);
@@ -464,6 +551,7 @@ export class Effects {
     const lastTo = new THREE.Vector3(first?.x ?? o.from.x, first?.y ?? o.from.y, first?.z ?? o.from.z);
     this.projectiles.push({
       mesh,
+      pool,
       from: new THREE.Vector3(o.from.x, o.from.y, o.from.z),
       to: o.to,
       lastTo,
@@ -532,8 +620,7 @@ export class Effects {
         pos.copy(p.lastTo);
         this.group.remove(p.mesh);
         const mesh = p.mesh as THREE.Mesh;
-        const pool = mesh.material === this.needleMat ? this.needlePool : this.orbPool;
-        if (pool.length < 64) pool.push(mesh);
+        if (p.pool.length < 64) p.pool.push(mesh);
         else if (mesh.material !== this.needleMat) (mesh.material as THREE.Material).dispose();
         this.projectiles.splice(i, 1);
         p.onArrive?.(pos.clone());
@@ -597,7 +684,7 @@ export class Effects {
     this.group.traverse(collect);
     // Expired pooled meshes are no longer children of the scene group, but
     // their GPU resources still belong to this Effects instance.
-    for (const pool of [this.decalPool, this.spritePool, this.beamPool, this.needlePool, this.orbPool]) {
+    for (const pool of [this.decalPool, this.spritePool, this.beamPool, this.needlePool, this.orbPool, this.spriteShotPool]) {
       for (const mesh of pool) collect(mesh);
       pool.length = 0;
     }

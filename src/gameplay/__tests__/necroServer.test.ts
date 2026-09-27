@@ -62,7 +62,9 @@ async function progression(gold = 1000) {
 describe('server rules bundle', () => {
   it('server/vps-handoff/necro-progress/necro-rules.cjs is generated from the current rules', async () => {
     const { bundleRules, OUT } = await import('../../../tools/build-server-rules.mjs');
-    expect(readFileSync(OUT, 'utf8'), 'run `npm run build:server-rules`').toBe(await bundleRules());
+    // Compare content, not line endings: a Windows checkout (core.autocrlf) holds CRLF.
+    const lf = (s: string) => s.replace(/\r\n/g, '\n');
+    expect(lf(readFileSync(OUT, 'utf8')), 'run `npm run build:server-rules`').toBe(lf(await bundleRules()));
   });
 });
 

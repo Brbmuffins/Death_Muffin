@@ -1,0 +1,9 @@
+{
+  "id": "prop_node_ore_spent",
+  "input": "art-src/concepts/props/node_ore_spent.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 900,
+    "texture_quality": "standard"
+  }
+}

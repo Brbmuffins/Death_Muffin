@@ -1,0 +1,76 @@
+[
+  {
+    "id": "icon_wailing_skull",
+    "out": "public/art/abilities/necro-wailing-skull.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png", "public/art/abilities/necro-spear.png"],
+    "aspect": "1:1",
+    "post": { "resize": [256, 256], "format": "png" },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a screaming spectral skull, jaw wide open in a wail, streaking forward out of the dark and leaving a curving trail of jade-teal ghost fire, with a second faint afterimage skull leaping off to the side as if chaining to another target. Palette: bone ivory skull, spectral jade (#6fe3c8), pale mint (#c8fff0), deep teal (#1f8f86) shadows. NO purple, NO violet, NO orange. No text, no border, no letters."
+  },
+  {
+    "id": "icon_grave_step",
+    "out": "public/art/abilities/necro-grave-step.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png", "public/art/abilities/necro-spear.png"],
+    "aspect": "1:1",
+    "post": { "resize": [256, 256], "format": "png" },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a hooded necromancer's silhouette dissolving into a swirl of dark blood mist on the left and re-forming out of a crimson mist burst above a corpse on the right, a spray of dark red droplets and a ring of blood mist where they land. Palette: dried crimson (#8a2c3c), blood red (#c23a48), near-black maroon mist, a small hot peach glint. NO purple, NO violet, NO green. No text, no border, no letters."
+  },
+  {
+    "id": "icon_grave_frost",
+    "out": "public/art/abilities/necro-grave-frost.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png", "public/art/abilities/necro-spear.png"],
+    "aspect": "1:1",
+    "post": { "resize": [256, 256], "format": "png" },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a skeletal hand open at the bottom of the frame exhaling a widening fan-shaped blast of grave frost upward — jagged ice shards, swirling cold breath and hoarfrost crystals spreading in a wedge, a frozen gravestone half-covered in rime at the edge. Palette: cold pale blue (#9fc4ff), deep cold blue (#5b7fd6), frost white (#dde8ff), bone ivory hand. NO purple, NO violet, NO green, NO orange. No text, no border, no letters."
+  },
+  {
+    "id": "icon_bone_mantle",
+    "out": "public/art/abilities/necro-bone-mantle.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png", "public/art/abilities/necro-spear.png"],
+    "aspect": "1:1",
+    "post": { "resize": [256, 256], "format": "png" },
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a hooded figure seen from the front wrapped in a whirling ring of sharp bone shards, ribs and vertebrae orbiting them like armour, pale amber light glinting off the bones, fine bone dust. Palette: bone ivory (#e8dcc0), warm amber (#d9a66b), old gold highlights, dusty brown shadow. NO purple, NO violet, NO green, NO blue. No text, no border, no letters."
+  },
+  {
+    "id": "fx_skull",
+    "out": "public/art/fx/skull.png",
+    "aspect": "1:1",
+    "post": { "lumaAlpha": true, "floor": 22, "mask": "circle", "resize": [256, 256], "format": "png" },
+    "prompt": "Video game VFX sprite texture. Pure solid black background (#000000). The subject is drawn ONLY in glowing white and light grey light — completely monochrome, no colour at all. Subject: a single spectral screaming skull seen from the front, jaw wide open in a wail, made of wispy ghost fire, bright glowing eye sockets, soft wisps trailing down beneath it. Centred, filling about two thirds of the frame, nothing touching the edges. Soft glow falloff, high contrast. No text, no border, no frame, no background texture."
+  },
+  {
+    "id": "fx_bone_shard",
+    "out": "public/art/fx/bone-shard.png",
+    "aspect": "1:1",
+    "post": { "lumaAlpha": true, "floor": 22, "mask": "circle", "resize": [128, 128], "format": "png" },
+    "prompt": "Video game VFX sprite texture. Pure solid black background (#000000). The subject is drawn ONLY in white and light grey — completely monochrome, no colour at all. Subject: a single jagged curved shard of bone, like a broken rib fragment, lying diagonally, with a faint glowing rim of light along its edges. Centred, nothing touching the edges. High contrast. No text, no border, no frame, no background texture."
+  },
+  {
+    "id": "fx_blood_sigil",
+    "out": "public/art/fx/blood-sigil.png",
+    "aspect": "1:1",
+    "post": { "lumaAlpha": true, "floor": 20, "mask": "circle", "resize": [512, 512], "format": "png" },
+    "prompt": "Video game VFX ground decal texture, seen exactly from above. Pure solid black background (#000000). The subject is drawn ONLY in white and light grey — completely monochrome, no colour at all. Subject: a circular burst of spattered droplets and misty tendrils radiating outward from the centre, forming a rough ritual ring of splatter with a thin broken circle inside it, fine droplets flung to the rim, the very centre mostly empty. Centred, nothing touching the edges. High contrast. No text, no border, no frame, no background texture."
+  },
+  {
+    "id": "fx_frost_fan",
+    "out": "public/art/fx/frost-fan.png",
+    "aspect": "1:1",
+    "post": { "lumaAlpha": true, "floor": 20, "mask": "cone", "resize": [512, 512], "format": "png" },
+    "prompt": "Video game VFX ground decal texture, seen exactly from above. Pure solid black background (#000000). The subject is drawn ONLY in white and light grey — completely monochrome, no colour at all. Subject: a fan of jagged ice crystals, frost ferns and hoarfrost spikes radiating outward from a single point at the exact bottom centre of the image, spreading upward in a wide wedge, crystals growing larger and brighter toward the far edge of the wedge. High contrast. No text, no border, no frame, no background texture."
+  },
+  {
+    "id": "fx_rime",
+    "out": "public/art/fx/rime.png",
+    "aspect": "1:1",
+    "post": { "lumaAlpha": true, "floor": 20, "mask": "circle", "resize": [256, 256], "format": "png" },
+    "prompt": "Video game VFX ground decal texture, seen exactly from above. Pure solid black background (#000000). The subject is drawn ONLY in white and light grey — completely monochrome, no colour at all. Subject: a round patch of frost on the ground — star-shaped ice crystals and fern-like hoarfrost growing outward from the centre, brightest in the middle and fading toward the rim. Centred, nothing touching the edges. High contrast. No text, no border, no frame, no background texture."
+  },
+  {
+    "id": "fx_bone_ring",
+    "out": "public/art/fx/bone-ring.png",
+    "aspect": "1:1",
+    "post": { "lumaAlpha": true, "floor": 20, "mask": "circle", "resize": [512, 512], "format": "png" },
+    "prompt": "Video game VFX ground decal texture, seen exactly from above. Pure solid black background (#000000). The subject is drawn ONLY in white and light grey — completely monochrome, no colour at all. Subject: a ring of small bones — vertebrae, rib fragments and finger bones — laid end to end in a circle like an ossuary ward, with a faint glowing thin circle just inside the bones and a few scattered bone chips, the centre of the circle empty and black. Centred, nothing touching the edges. High contrast. No text, no border, no frame, no background texture."
+  }
+]

@@ -526,8 +526,9 @@ button { font-family: inherit; }
 .hud-map .area { font-family: var(--cw-font-display); font-weight: 700; font-size: 16px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cw-bone-100); text-align: center; text-shadow: 0 1px 4px #000; }
 .hud-map .prog { font-size: 12px; color: var(--cw-text-muted); text-align: center; max-width: 220px; line-height: 1.3; }
 .hud-map .prog b { color: var(--cw-spell-300); font-family: var(--cw-font-numeric); }
-.hud-menu { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
-.hud-menu button { width: 30px; height: 34px; padding: 0; display: grid; place-items: center; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-bone-300); cursor: pointer; }
+/* Seven 26px buttons + 3px gaps = the 200px map column exactly. */
+.hud-menu { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; }
+.hud-menu button { width: 26px; height: 34px; padding: 0; display: grid; place-items: center; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-bone-300); cursor: pointer; }
 .hud-menu button:hover { border-color: var(--cw-border-active); color: var(--cw-bone-100); }
 .hud-menu svg { width: 20px; height: 20px; }
 .hud-menu .hud-auto { width: 100%; height: 26px; font-size: 11px; letter-spacing: .04em; }
@@ -760,6 +761,24 @@ button { font-family: inherit; }
 
 .cw-waystones { display: flex; flex-direction: column; gap: 6px; }
 .cw-waystones button { text-align: left; display: flex; justify-content: space-between; }
+
+/* Grimoire (L): four static rite slots, filled from every unlocked rite */
+.cw-grimoire { width: 560px; }
+.cw-grim-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 4px 0 12px; }
+.cw-grim-socket { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px 6px; background: var(--cw-inset); border: 1px solid var(--cw-border-strong); }
+.cw-grim-socket img { width: 52px; height: 52px; object-fit: cover; border: 1px solid var(--cw-border-strong); box-shadow: inset 0 0 0 2px #07060a; }
+.cw-grim-socket .key { position: absolute; top: 4px; left: 7px; font-family: var(--cw-font-numeric); font-size: 13px; color: var(--cw-spell-300); }
+.cw-grim-socket .nm { font-family: var(--cw-font-display); font-weight: 600; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cw-bone-100); text-align: center; line-height: 1.15; }
+.cw-grim-entry.equipped { border-color: var(--cw-border-active); }
+.cw-grim-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
+.cw-grim-row .chips { display: flex; gap: 3px; }
+.cw-grim-row .chips i { width: 14px; height: 14px; display: block; border: 1px solid rgba(7, 6, 10, 0.9); box-shadow: 0 0 0 1px var(--cw-border); }
+.cw-grim-keys { display: flex; gap: 4px; }
+.cw-grim-key { width: 30px; height: 28px; padding: 0; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-text-muted); font-family: var(--cw-font-numeric); font-size: 14px; cursor: pointer; }
+.cw-grim-key:hover:not(:disabled) { border-color: var(--cw-border-active); color: var(--cw-bone-100); }
+.cw-grim-key.on { background: var(--cw-accent-soft); border-color: var(--cw-border-active); color: var(--cw-bone-100); cursor: default; }
+.cw-grim-key:disabled:not(.on) { opacity: 0.4; cursor: default; }
+@media (max-width: 640px) { .cw-grim-bar { grid-template-columns: repeat(2, 1fr); } }
 
 /* Codex (K): same reliquary panel, wider for prose */
 .cw-codex { width: 580px; }

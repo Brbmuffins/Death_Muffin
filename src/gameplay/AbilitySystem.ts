@@ -1,9 +1,24 @@
 import * as THREE from 'three';
-import { ABILITIES, NEEDLE_ESSENCE, SIGNATURE_KIND, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, type AbilityId } from '../content/abilities';
+import {
+  ABILITIES,
+  BONE_MANTLE,
+  FRACTURE,
+  GRAVE_FROST,
+  GRAVE_STEP,
+  NEEDLE_ESSENCE,
+  SIGNATURE_KIND,
+  SIGNATURE_LEVEL,
+  SOUL_HARVEST,
+  SPELL_FX,
+  WAILING_SKULL,
+  unlockLevel,
+  type AbilityId,
+} from '../content/abilities';
 import type { Discipline } from '../content/disciplines';
-import type { Effects } from '../graphics/Effects';
+import type { Effects, Handle } from '../graphics/Effects';
 import type { NecromancerAvatar } from '../graphics/Avatars';
 import { fx } from '../graphics/fxTextures';
+import { fxImage } from '../graphics/fxImages';
 import { BOSS_RADIUS } from './sim/BossBrain';
 import type { BossState, Corpse, Enemy, Intent, SimEvent } from './sim/types';
 import type { Player } from './Player';
@@ -45,6 +60,12 @@ const M = SPELL_FX.miasma;
 const L = SPELL_FX.litany;
 const D = SPELL_FX.detonate;
 const SOUL = SPELL_FX.souls;
+const SK = SPELL_FX.skull;
+const ST = SPELL_FX.step;
+const FR = SPELL_FX.frost;
+const MN = SPELL_FX.mantle;
+
+type Vec3 = { x: number; y: number; z: number };
 
 /**
  * Casts the shared necromancer kit. Client-side targeting + VFX, then an
@@ -52,6 +73,11 @@ const SOUL = SPELL_FX.souls;
  * Scenes never branch on spell ids — they call cast().
  */
 export class AbilitySystem {
+  /** Bone Mantle (client-owned): when it ends, the next shard tick, and its orbit visuals. */
+  private mantleUntil = 0;
+  private nextShardAt = 0;
+  private mantleFx: Handle | null = null;
+
   constructor(private ctx: AbilityContext) {}
 
   /** The realtime socket id replaces the provisional solo id once connected. */
@@ -65,7 +91,12 @@ export class AbilitySystem {
 
   ready(id: AbilityId, now: number) {
     const p = this.ctx.player;
-    return p.alive && now >= p.castUntil && !p.onCooldown(id, now) && (this.empowered(id) || p.essence >= ABILITIES[id].essenceCost);
+    return p.alive && this.unlocked(id) && now >= p.castUntil && !p.onCooldown(id, now) && (this.empowered(id) || p.essence >= ABILITIES[id].essenceCost);
+  }
+
+  /** Grimoire and signature rites wait for their level. */
+  unlocked(id: AbilityId) {
+    return this.ctx.player.stats.level >= unlockLevel(id);
   }
 
   /** A full Soul Harvest meter makes this cast free and 50% larger. */
@@ -86,6 +117,7 @@ export class AbilitySystem {
     const { player: p } = this.ctx;
     const def = ABILITIES[id];
     if (!p.alive) return 'dead';
+    if (!this.unlocked(id)) return 'locked';
     if (now < p.castUntil) return 'busy';
     if (p.onCooldown(id, now)) return 'cooldown';
     const empowered = this.empowered(id);
@@ -110,6 +142,18 @@ export class AbilitySystem {
         break;
       case 'corpse_explosion':
         result = this.detonate(target);
+        break;
+      case 'wailing_skull':
+        result = this.skull(target);
+        break;
+      case 'grave_step':
+        result = this.step(target);
+        break;
+      case 'grave_frost':
+        result = this.frost(target);
+        break;
+      case 'bone_mantle':
+        result = this.mantle();
         break;
       case 'ossuary_wall':
       case 'command_rend':
@@ -345,6 +389,319 @@ export class AbilitySystem {
       },
     });
     return 'ok';
+  }
+
+  // ---------------------------------------------------------------------------
+  // Grimoire rites. Each follows the flow of a shipped rite so they feel the same:
+  // the skull flies and hits on arrival like Bone Needle, Grave Frost resolves its
+  // shape on impact like Marrow Spear, Grave Step picks corpses like Corpse Explosion,
+  // and Bone Mantle lets the host consume corpses like Black Litany.
+  // ---------------------------------------------------------------------------
+
+  /** Wailing Skull: marks the enemy under (or nearest) the cursor and chains from there. */
+  private skull(t: CastTarget): CastResult {
+    const { player: p, effects, avatar } = this.ctx;
+    const def = ABILITIES.wailing_skull;
+    let target: CastTarget | null = t.enemyId !== undefined || t.boss ? t : null;
+    if (!target) {
+      // A ground cast still finds its mark: the living enemy nearest the cursor.
+      let bestD = def.radius;
+      for (const e of this.ctx.enemies().values()) {
+        if (e.state === 'dead' || e.state === 'rising' || e.hp <= 0) continue;
+        const d = Math.hypot(e.x - t.x, e.z - t.z);
+        if (d < bestD) {
+          bestD = d;
+          target = { x: e.x, z: e.z, enemyId: e.id };
+        }
+      }
+    }
+    if (!target) return 'no_target';
+    if (this.shortfall('wailing_skull', target) > 0) return 'range';
+    p.face(target.x, target.z);
+    avatar.cast('cast', 2.8, p.facing, CAST_FLOW.wailing_skull.gestureSeconds);
+    const from = avatar.tip();
+    effects.flash({ x: from.x, y: from.y, z: from.z, color: SK.jade, size: 0.9, duration: 0.18 });
+    audio.play('wail', p.x, p.z);
+    this.skullLeap({ x: from.x, y: from.y, z: from.z }, target, this.sp * def.power, 1, WAILING_SKULL.hops, new Set());
+    return 'ok';
+  }
+
+  /**
+   * One flight of the skull. `budget` is the leaps left including this one; a leap
+   * that kills earns another, never past WAILING_SKULL.maxHops in total.
+   */
+  private skullLeap(from: Vec3, t: CastTarget, dmg: number, hop: number, budget: number, struck: Set<number>) {
+    const { player: p, effects } = this.ctx;
+    const W = WAILING_SKULL;
+    const enemyId = t.enemyId;
+    effects.projectile({
+      from,
+      kind: 'sprite',
+      tex: fxImage('skull'),
+      size: 0.95,
+      color: SK.jade,
+      speed: W.speed,
+      to: () => {
+        if (t.boss) {
+          const b = this.ctx.boss();
+          return b.active ? { x: b.x, y: 2.2, z: b.z } : null;
+        }
+        const e = this.ctx.enemies().get(enemyId!);
+        return e ? { x: e.x, y: 1.1, z: e.z } : null;
+      },
+      onArrive: (pos) => {
+        if (!p.alive) return;
+        let killed = false;
+        let landed = false;
+        if (t.boss) {
+          if (this.ctx.boss().active) {
+            this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, boss: true });
+            landed = true;
+          }
+        } else {
+          const e = this.ctx.enemies().get(enemyId!);
+          if (e && e.state !== 'dead' && e.hp > 0) {
+            killed = e.hp <= dmg * (1 + FRACTURE.perStack * e.fracture);
+            this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [enemyId!], dmg });
+            landed = true;
+          }
+          struck.add(enemyId!);
+        }
+        if (landed) {
+          audio.play('needleHit', pos.x, pos.z, 1.2);
+          effects.flash({ x: pos.x, y: pos.y, z: pos.z, color: SK.pale, size: killed ? 1.9 : 1.3, duration: 0.22, tex: fxImage('skull') });
+          effects.decal({ tex: fx.ring(), color: SK.jade, x: pos.x, z: pos.z, r: 0.9, duration: 0.4, opacity: 0.9, growFrom: 0.3 });
+          effects.emit({ x: pos.x, y: pos.y, z: pos.z, count: killed ? 18 : 10, color: SK.jade, spread: 0.2, speed: 2.4, up: 1.4, life: 0.5, size: 0.22, gravity: -1 });
+          this.ctx.number(pos.x, pos.z, dmg, killed ? 'crit' : 'hit');
+        }
+        const left = budget - 1 + (killed ? 1 : 0);
+        if (left <= 0 || hop >= W.maxHops) return;
+        // Leap on to the nearest enemy the skull hasn't bitten yet.
+        let next: CastTarget | null = null;
+        let bestD = W.leapRange;
+        for (const e of this.ctx.enemies().values()) {
+          if (e.state === 'dead' || e.state === 'rising' || e.hp <= 0 || struck.has(e.id)) continue;
+          const d = Math.hypot(e.x - pos.x, e.z - pos.z);
+          if (d < bestD) {
+            bestD = d;
+            next = { x: e.x, z: e.z, enemyId: e.id };
+          }
+        }
+        if (!next) return;
+        audio.play('wail', pos.x, pos.z, 0.6);
+        this.skullLeap({ x: pos.x, y: pos.y, z: pos.z }, next, dmg * W.falloff, hop + 1, left, struck);
+      },
+    });
+  }
+
+  /** Grave Step: blood-mist blink onto a corpse in your own area; the corpse stays. */
+  private step(t: CastTarget): CastResult {
+    const { player: p, effects, avatar } = this.ctx;
+    const def = ABILITIES.grave_step;
+    const c = this.pickCorpse(t, ABILITIES.exhume.radius, def.range);
+    // Never across a sealed door: the corpse must lie in the area you stand in.
+    if (!c || !p.area || c.area !== p.area || Math.hypot(c.x - p.x, c.z - p.z) > def.range) return 'no_corpse';
+    const ox = p.x;
+    const oz = p.z;
+    // The body comes apart where it stood…
+    effects.emitSmoke({ x: ox, y: 0.9, z: oz, count: 6, color: ST.mist, spread: 0.45, speed: 0.7, up: 0.7, life: 0.75, size: 1.2, shrink: -0.4 });
+    effects.emit({ x: ox, y: 1, z: oz, count: 18, color: ST.blood, spread: 0.4, speed: 2.2, up: 1.2, life: 0.45, size: 0.2, gravity: 6 });
+    effects.decal({ tex: fxImage('bloodSigil'), color: ST.crimson, x: ox, z: oz, r: 1.2, duration: 0.8, opacity: 0.85, growFrom: 0.6 });
+    p.teleport(c.x, c.z);
+    p.face(p.x + (p.x - ox), p.z + (p.z - oz));
+    avatar.cast('cast', 3, p.facing, CAST_FLOW.grave_step.gestureSeconds);
+    effects.beam({ x: ox, y: 1, z: oz }, () => ({ x: p.x, y: 1, z: p.z }), ST.blood, 0.07, 0.22);
+    // …and re-forms in a marrow burst that bleeds what stands around the corpse.
+    const r = GRAVE_STEP.burstRadius;
+    const dmg = this.sp * def.power;
+    const ids: number[] = [];
+    for (const e of this.ctx.enemies().values()) {
+      if (e.state === 'dead' || Math.hypot(e.x - p.x, e.z - p.z) > r + e.radius) continue;
+      ids.push(e.id);
+      if (ids.length <= 12) {
+        this.ctx.number(e.x, e.z, dmg, 'hit');
+        effects.flash({ x: e.x, y: 0.9, z: e.z, color: ST.blood, size: 0.7, duration: 0.16 });
+      }
+      if (ids.length >= 64) break;
+    }
+    if (ids.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids, dmg, bleed: dmg * HEMORRHAGE.dpsFrac });
+    const b = this.ctx.boss();
+    if (b.active && Math.hypot(b.x - p.x, b.z - p.z) <= r + BOSS_RADIUS) {
+      this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, boss: true });
+      this.ctx.number(b.x, b.z, dmg, 'hit');
+    }
+    effects.decal({ tex: fxImage('bloodSigil'), color: ST.blood, x: p.x, z: p.z, r: r * 1.15, duration: 0.9, opacity: 1, growFrom: 0.25, spin: 0.8 });
+    effects.decal({ tex: fx.ring(), color: ST.crimson, x: p.x, z: p.z, r: r * 1.05, duration: 0.4, opacity: 0.9, growFrom: 0.15 });
+    effects.emit({ x: p.x, y: 0.6, z: p.z, count: 26, color: ST.blood, spread: 0.3, speed: r * 2.6, up: 1.4, life: 0.5, size: 0.26, drag: 1.5 });
+    effects.emit({ x: p.x, y: 0.8, z: p.z, count: 8, color: ST.hot, spread: 0.2, speed: 2, up: 2.2, life: 0.35, size: 0.18 });
+    effects.emitSmoke({ x: p.x, y: 0.5, z: p.z, count: 5, color: ST.mist, spread: r * 0.4, speed: 1.2, up: 0.5, life: 0.8, size: 1.2, shrink: -0.4 });
+    effects.lightFlash(p.x, 1.2, p.z, ST.blood, 30, 0.35);
+    audio.play('bloodStep', p.x, p.z);
+    this.ctx.shake(0.05);
+    return 'ok';
+  }
+
+  /** Grave Frost: a cold bolt runs the cone's centre line; the cone resolves when it lands. */
+  private frost(t: CastTarget): CastResult {
+    const { player: p, effects, avatar } = this.ctx;
+    const def = ABILITIES.grave_frost;
+    const G = GRAVE_FROST;
+    let dx = t.x - p.x;
+    let dz = t.z - p.z;
+    const l = Math.hypot(dx, dz) || 1;
+    dx /= l;
+    dz /= l;
+    p.face(p.x + dx, p.z + dz);
+    avatar.cast('cast', 2.4, p.facing, CAST_FLOW.grave_frost.gestureSeconds);
+    const origin = { x: p.x, z: p.z };
+    const len = def.range;
+    const rot = Math.atan2(dx, dz);
+    const dmg = this.sp * def.power;
+    const tip = avatar.tip();
+    effects.flash({ x: tip.x, y: tip.y, z: tip.z, color: FR.pale, size: 0.8, duration: 0.14 });
+    // The fan of frost spreads over the ground (apex at the caster) with the breath.
+    effects.decal({ tex: fxImage('frostFan'), color: FR.frost, x: origin.x + dx * len * 0.5, z: origin.z + dz * len * 0.5, r: len * 0.5, rot: rot + Math.PI, duration: 0.9, opacity: 0.95, growFrom: 0.35, fadeIn: 0.08, fadeOut: 0.45 });
+    for (let i = 1; i <= 4; i++) {
+      const k = i / 4;
+      effects.emitSmoke({ x: origin.x + dx * len * k * 0.8, y: 0.7, z: origin.z + dz * len * k * 0.8, count: 2, color: 0xb9cbe6, spread: 0.4 + k * 1.4, speed: 0.6, up: 0.3, life: 0.7, size: 1 + k * 0.6, shrink: -0.4, drag: 1 });
+      effects.emit({ x: origin.x + dx * len * k * 0.85, y: 0.8, z: origin.z + dz * len * k * 0.85, count: 5, color: FR.pale, spread: 0.3 + k * 1.2, speed: 1.2, up: 0.4, life: 0.45, size: 0.14 });
+    }
+    audio.play('frost', origin.x + dx * 2, origin.z + dz * 2);
+    const end = { x: origin.x + dx * len, y: 0.9, z: origin.z + dz * len };
+    effects.projectile({
+      from: tip, to: () => end, kind: 'orb', color: FR.pale, speed: G.speed,
+      onArrive: () => {
+        if (!p.alive) return;
+        const slope = Math.tan((G.halfAngleDeg * Math.PI) / 180);
+        const chilled: number[] = [];
+        const shattered: number[] = [];
+        let shown = 0;
+        for (const e of this.ctx.enemies().values()) {
+          if (e.state === 'dead') continue;
+          const rx = e.x - origin.x;
+          const rz = e.z - origin.z;
+          const along = rx * dx + rz * dz;
+          if (along < -e.radius || along > len + e.radius) continue;
+          if (Math.abs(rx * dz - rz * dx) > slope * Math.max(0, along) + e.radius) continue;
+          const shatter = (e.chillT ?? 0) > 0;
+          (shatter ? shattered : chilled).push(e.id);
+          if (shown++ < 14) {
+            effects.decal({ tex: fxImage('rime'), color: FR.frost, x: e.x, z: e.z, r: 0.75 * e.scale, rot: Math.random() * 6, duration: 1.4, opacity: 0.9, growFrom: 0.4 });
+            if (shatter) {
+              effects.flash({ x: e.x, y: 1, z: e.z, color: FR.pale, size: 1.2, duration: 0.18 });
+              effects.emit({ x: e.x, y: 1, z: e.z, count: 10, color: FR.pale, spread: 0.2, speed: 3.4, up: 2, life: 0.5, size: 0.13, gravity: 10 });
+            }
+            this.ctx.number(e.x, e.z, shatter ? dmg * G.shatterMult : dmg, shatter ? 'crit' : 'hit');
+          }
+          if (chilled.length + shattered.length >= 64) break;
+        }
+        if (chilled.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: chilled, dmg, chill: true });
+        if (shattered.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: shattered, dmg: dmg * G.shatterMult, chill: true });
+        const b = this.ctx.boss();
+        if (b.active) {
+          const rx = b.x - origin.x;
+          const rz = b.z - origin.z;
+          const along = rx * dx + rz * dz;
+          if (along > -BOSS_RADIUS && along < len + BOSS_RADIUS && Math.abs(rx * dz - rz * dx) <= slope * Math.max(0, along) + BOSS_RADIUS) {
+            this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, boss: true });
+            this.ctx.number(b.x, b.z, dmg, 'hit');
+          }
+        }
+        effects.lightFlash(origin.x + dx * len * 0.5, 1, origin.z + dz * len * 0.5, FR.frost, 18, 0.3);
+        if (shattered.length) audio.play('needleHit', end.x, end.z, 1.4);
+        this.ctx.shake(0.04);
+      },
+    });
+    return 'ok';
+  }
+
+  /** Bone Mantle: ask the host for the corpses; the barrier arrives with its answer. */
+  private mantle(): CastResult {
+    const { player: p, avatar, effects } = this.ctx;
+    avatar.cast('cast', 1.8, p.facing, CAST_FLOW.bone_mantle.gestureSeconds);
+    this.ctx.send({ t: 'signature', by: this.ctx.selfId, sig: 'mantle', x: p.x, z: p.z, dx: 0, dz: 0, sp: this.sp });
+    effects.emit({ x: p.x, y: 1.3, z: p.z, count: 18, color: MN.bone, spread: 0.5, speed: 1.4, up: 1, life: 0.5, size: 0.2 });
+    return 'ok';
+  }
+
+  /**
+   * The host drew corpses in. Everyone sees the tethers and the whirling shards
+   * (`follow` tracks the caster); only the caster gains the barrier and the shard ticks.
+   */
+  onMantle(ev: Extract<SimEvent, { t: 'mantle' }>, mine: boolean, follow: () => { x: number; z: number } | null) {
+    const { effects } = this.ctx;
+    const M = BONE_MANTLE;
+    for (const [x, z] of ev.tethers) {
+      effects.beam({ x, y: 0.4, z }, () => {
+        const f = follow();
+        return f ? { x: f.x, y: 1.1, z: f.z } : null;
+      }, MN.bone, 0.05, 0.4);
+      effects.emit({ x, y: 0.4, z, count: 10, color: MN.bone, spread: 0.4, speed: 1.2, up: 1.6, life: 0.5, size: 0.16, gravity: 4 });
+      effects.emitSmoke({ x, y: 0.3, z, count: 2, color: MN.dust, spread: 0.4, speed: 0.5, up: 0.4, life: 0.8, size: 0.9 });
+    }
+    const handle = effects.orbit({
+      tex: fxImage('boneShard'),
+      color: MN.bone,
+      count: Math.min(14, 6 + ev.corpses * 2),
+      radius: M.orbitRadius,
+      y: 0.75,
+      size: 0.6,
+      duration: M.durationS,
+      speed: 3.4,
+      follow,
+    });
+    const ring = effects.decal({ tex: fxImage('boneRing'), color: MN.amber, x: ev.x, z: ev.z, r: M.orbitRadius + 0.5, duration: M.durationS, opacity: 0.75, growFrom: 0.4, spin: 0.5, fadeOut: 0.4, follow });
+    effects.lightFlash(ev.x, 1.4, ev.z, MN.gold, 26, 0.4);
+    audio.play('mantle', ev.x, ev.z);
+    if (!mine) return;
+    const p = this.ctx.player;
+    if (!p.alive) {
+      handle.kill();
+      ring.kill();
+      return;
+    }
+    const now = this.ctx.now();
+    const frac = Math.min(M.barrierCap, M.barrierBase + M.barrierPerCorpse * ev.corpses);
+    p.barrier = Math.max(p.barrier, p.stats.maxHp * frac);
+    p.barrierHoldUntil = now + M.durationS * 1000;
+    this.mantleUntil = now + M.durationS * 1000;
+    this.nextShardAt = now + M.tickS * 1000;
+    this.mantleFx?.kill();
+    this.mantleFx = { kill: () => (handle.kill(), ring.kill()), get alive() { return handle.alive; } };
+    this.ctx.shake(0.04);
+  }
+
+  /** Per frame: the caster's mantle shreds enemies beside them (client-resolved, like Marrow Spear). */
+  update(now: number) {
+    if (now >= this.mantleUntil) return;
+    const { player: p, effects } = this.ctx;
+    if (!p.alive) {
+      this.mantleUntil = 0;
+      p.barrierHoldUntil = 0;
+      this.mantleFx?.kill();
+      this.mantleFx = null;
+      return;
+    }
+    if (now < this.nextShardAt) return;
+    this.nextShardAt = now + BONE_MANTLE.tickS * 1000;
+    const reach = BONE_MANTLE.orbitRadius + 0.4;
+    const dmg = this.sp * ABILITIES.bone_mantle.power;
+    const ids: number[] = [];
+    for (const e of this.ctx.enemies().values()) {
+      if (e.state === 'dead' || Math.hypot(e.x - p.x, e.z - p.z) > reach + e.radius) continue;
+      ids.push(e.id);
+      if (ids.length <= 6) {
+        effects.emit({ x: e.x, y: 0.9, z: e.z, count: 4, color: MN.bone, spread: 0.2, speed: 2.2, up: 1, life: 0.3, size: 0.12, gravity: 8 });
+        this.ctx.number(e.x, e.z, dmg, 'hit');
+      }
+      if (ids.length >= 64) break;
+    }
+    if (ids.length) {
+      this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids, dmg });
+      audio.play('boneHit', p.x, p.z);
+    }
+    const b = this.ctx.boss();
+    if (b.active && Math.hypot(b.x - p.x, b.z - p.z) <= reach + BOSS_RADIUS) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, boss: true });
   }
 
   /** Discipline signature rites: aim + spell power to the host, a cast flourish here. */

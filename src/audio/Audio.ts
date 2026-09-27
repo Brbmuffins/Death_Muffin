@@ -38,7 +38,12 @@ export type Sfx =
   | 'bossAwaken'
   | 'bossDefeat'
   | 'step'
-  | 'error';
+  | 'error'
+  // Grimoire rites.
+  | 'wail'
+  | 'bloodStep'
+  | 'frost'
+  | 'mantle';
 
 const MIN_GAP: Partial<Record<Sfx, number>> = {
   needleHit: 0.04,
@@ -47,6 +52,7 @@ const MIN_GAP: Partial<Record<Sfx, number>> = {
   coin: 0.05,
   hurt: 0.12,
   step: 0.2,
+  wail: 0.08,
   tollSmall: 0.25,
   wave: 0.8,
 };
@@ -439,6 +445,37 @@ class AudioEngine {
       case 'step': {
         const o = this.out(undefined, undefined, 0.07 * intensity, 0.05);
         this.burst(o, t, 0.05, 0.9, 'lowpass', 700 * r(), 200, 1);
+        break;
+      }
+      case 'wail': {
+        // Wailing Skull: a falling, slightly detuned shriek over breathy noise.
+        const o = this.out(x, z, 0.4 * intensity, 0.45);
+        this.tone(o, 'sine', 1150 * r(), 420, t, 0.02, 0.45, 0.14);
+        this.tone(o, 'sine', 1190 * r(), 400, t + 0.015, 0.02, 0.45, 0.1);
+        this.burst(o, t, 0.4, 0.3, 'bandpass', 2400, 900, 3);
+        break;
+      }
+      case 'bloodStep': {
+        // Grave Step: a wet rush of mist, then the thud of re-forming.
+        const o = this.out(x, z, 0.6, 0.4);
+        this.burst(o, t, 0.28, 0.55, 'lowpass', 300, 2200, 0.9, true);
+        this.burst(o, t + 0.18, 0.16, 0.6, 'bandpass', 700 * r(), 260, 1.5);
+        this.tone(o, 'sine', 110, 46, t + 0.18, 0.005, 0.3, 0.55);
+        break;
+      }
+      case 'frost': {
+        // Grave Frost: a cold exhale with ice crackling through it.
+        const o = this.out(x, z, 0.55, 0.5);
+        this.burst(o, t, 0.5, 0.35, 'highpass', 2800, 5200, 0.8);
+        for (let i = 0; i < 7; i++) this.burst(o, t + 0.05 + i * 0.045 + Math.random() * 0.02, 0.035, 0.5, 'bandpass', 4200 + Math.random() * 2400, 3000, 6);
+        this.tone(o, 'triangle', 1560 * r(), 1320, t + 0.02, 0.01, 0.3, 0.05);
+        break;
+      }
+      case 'mantle': {
+        // Bone Mantle: rattling bone that settles into a low hum.
+        const o = this.out(x, z, 0.6, 0.5);
+        for (let i = 0; i < 8; i++) this.burst(o, t + i * 0.04 + Math.random() * 0.02, 0.05, 0.6, 'bandpass', 1300 + Math.random() * 900, 800, 4);
+        this.tone(o, 'sine', 82, 110, t + 0.1, 0.1, 0.7, 0.35);
         break;
       }
     }

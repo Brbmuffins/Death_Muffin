@@ -1,0 +1,9 @@
+{
+  "id": "prop_node_bleeding_willow",
+  "input": "art-src/concepts/props/node_bleeding_willow.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 3500,
+    "texture_quality": "standard"
+  }
+}

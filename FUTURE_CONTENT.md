@@ -27,6 +27,9 @@ dead, **chartreuse/olive** = rot & poison, **violet** = signature ritual magic,
 | Mourner | **Dirge** | channel | Channelled bell-song: allies heal, enemies in a cone are Silenced (casters can't cast). Mourner gets a bell weapon slot. |
 | Rotweaver | **Plague Bloom** | ground | Plant a rot flower that pulses Withered and spreads to the nearest corpse, chaining through the corpse field. |
 
+### Grimoire rites (key-slot choice)
+✅ *shipped 2026-09-27: the Grimoire (L) lets any four rites sit on keys 1–4; new rites Wailing Skull (lvl 3), Grave Step (5), Grave Frost (7), Bone Mantle (12).*
+
 ### Spell modifiers ("Relic runes") — the build-depth layer
 Socketable runes that change a spell's behaviour instead of its numbers:
 - Bone Needle: *Splinter* (pierces once), *Marrow Tap* (+essence, −damage), *Volley* (3 needles in a cone, longer cooldown).
@@ -69,6 +72,7 @@ Party synergy target: every class *produces* or *consumes* corpses so a
 ## Release 0.4 — "The Deep Diocese" (combat systems & encounters)
 
 ### New enemy archetypes
+✅ *shipped 2026-09-27: Choir Wraith, Bone Golem (splits into 3 corpses instead of a "Colossal" corpse), Ossuary Swarm (skull-rat packs), Censer Bearer (Incensed aura = speed, not armour), plus themed **processions** (`WAVE_THEMES`). Lich Acolyte remains.*
 | Enemy | Role | Tell | Corpse |
 |---|---|---|---|
 | **Choir Wraith** | flying caster, ignores terrain | pale blue song-lines before a scream | none (dissipates) — denies corpse farming |

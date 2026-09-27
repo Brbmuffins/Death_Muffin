@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ENEMIES, type EliteAffix, type EnemyId } from '../content/enemies';
+import { CENSER, ENEMIES, type EliteAffix, type EnemyId } from '../content/enemies';
 import type { ThrallKind } from '../content/disciplines';
 import type { Corpse, Enemy, SimEvent, Thrall } from '../gameplay/sim/types';
 import { Creature } from './Creature';
@@ -17,7 +17,23 @@ const ENEMY_SLUG: Record<EnemyId, CreatureSlug> = {
   sac: 'carrion_sac',
   deacon: 'deacon',
   risen: 'skeleton_thrall',
+  censer: 'censer_bearer',
+  wraith: 'choir_wraith',
+  rat: 'skull_rat',
+  golem: 'bone_golem',
 };
+
+/** Shipped models to fall back on if a newer GLB is missing (older deploys, failed builds). */
+const ENEMY_FALLBACK: Partial<Record<EnemyId, CreatureSlug>> = {
+  censer: 'deacon',
+  wraith: 'penitent',
+  rat: 'bone_hound',
+  golem: 'skeleton_thrall',
+};
+/** Enemies that cast (play 'cast' rather than 'attack' on the windup). */
+const CASTERS = new Set<EnemyId>(['penitent', 'deacon', 'wraith', 'censer']);
+/** Choir Wraiths float: a hover height and a slow bob. */
+const HOVER = { wraith: 0.45 } as Partial<Record<EnemyId, number>>;
 
 const THRALL_SLUG: Record<ThrallKind, CreatureSlug> = {
   warrior: 'skeleton_thrall',
@@ -44,6 +60,9 @@ const WALK_SPEED: Partial<Record<CreatureSlug, number>> = {
   deacon: 1.4,
   carrion_sac: 1.1,
   skeleton_thrall: 1.6,
+  censer_bearer: 1.4,
+  skull_rat: 3.2,
+  bone_golem: 1.1,
 };
 
 interface View {
@@ -56,6 +75,8 @@ interface View {
   kind?: ThrallKind;
   ring?: Handle;
   eliteAura?: Handle;
+  /** Censer Bearer's incense ring. */
+  auraFx?: Handle;
   affix?: EliteAffix;
   /** Persistent affix tells (rings / cracks that follow the elite). */
   affixFx?: Handle[];
@@ -159,11 +180,15 @@ export class EntityViews {
   private makeEnemy(e: Enemy): View {
     const slug = ENEMY_SLUG[e.def];
     const risen = e.def === 'risen';
+    const wraith = e.def === 'wraith';
     const c = new Creature(slug, {
       // Hostile skeletons read darker and sickly so they never look like your thralls.
       tint: risen ? 0x8a8078 : 0xffffff,
-      emissive: e.elite ? 0x4a1f8a : risen ? 0x2a3a18 : 0x000000,
-      emissiveIntensity: e.elite ? 0.14 : risen ? 0.3 : 0,
+      emissive: e.elite ? 0x4a1f8a : risen ? 0x2a3a18 : wraith ? 0x9fb6d8 : 0x000000,
+      emissiveIntensity: e.elite ? 0.14 : risen ? 0.3 : wraith ? 0.35 : 0,
+      // The choir is half-there: translucent, pale, no shadow.
+      spectral: wraith,
+      fallback: ENEMY_FALLBACK[e.def],
     });
     c.root.scale.setScalar(e.scale / (e.def === 'risen' ? 1 : 1));
     this.group.add(c.root);
@@ -282,8 +307,16 @@ export class EntityViews {
         if (!v) break;
         this.enemies.delete(ev.id);
         v.eliteAura?.kill();
+        v.auraFx?.kill();
         killAffixFx(v);
         if (v.shroud !== undefined && v.shroud < 1) v.c.setOpacity(1);
+        if (ev.def === 'wraith') {
+          // A wraith leaves no body: it thins to mist and sinks away.
+          this.effects.emit({ x: ev.x, y: 1.4, z: ev.z, count: 22, color: 0xb9cbe6, spread: 0.6, speed: 0.9, up: 1.2, life: 1.1, size: 0.3, drag: 1 });
+          v.sinkT = 0;
+          this.fading.push(v);
+          break;
+        }
         v.dieT = 0;
         if (!v.c.playOnce('death')) v.c.toppled = 0.0001;
         this.dying.push(v);
@@ -481,13 +514,15 @@ export class EntityViews {
       v.z = e.z;
       this.syncFacing(v, e.facing, dt);
       const rise = e.state === 'rising' ? Math.min(1, e.stateT / 1.1) : 1;
-      v.c.root.position.set(e.x, -1.7 * (1 - rise) * (1 - rise), e.z);
+      const hover = HOVER[e.def];
+      const lift = hover ? hover + Math.sin(performance.now() / 520 + id) * 0.12 : 0;
+      v.c.root.position.set(e.x, -1.7 * (1 - rise) * (1 - rise) + lift, e.z);
       v.c.root.rotation.y = v.facing;
       v.c.flash = e.flash;
       const key = e.state === 'windup' || e.state === 'channel' ? e.state : e.moving ? 'walk' : 'idle';
       if (key !== v.lastState) {
         if (key === 'windup' || key === 'channel') {
-          const cast = e.def === 'penitent' || e.def === 'deacon';
+          const cast = CASTERS.has(e.def);
           v.c.playOnce(cast ? 'cast' : 'attack', cast ? 1.3 : 1.6);
         } else if (key === 'walk') v.c.setLoop('walk', Math.max(0.6, e.speed / (WALK_SPEED[v.c.slug] ?? 1.5)));
         else v.c.setLoop('idle');
@@ -510,6 +545,18 @@ export class EntityViews {
       if ((e.sanctT ?? 0) > 0 && Math.random() < dt * 3) {
         this.effects.emit({ x: e.x, y: 1.9 * e.scale, z: e.z, count: 1, color: STATUS_FX.sanctified.gold, spread: 0.35, speed: 0.1, up: 0.5, life: 0.7, size: 0.16 });
       }
+      // Incensed (a Censer Bearer's aura): bronze motes drifting off the shoulders.
+      if ((e.incenseT ?? 0) > 0 && Math.random() < dt * 4) {
+        this.effects.emit({ x: e.x, y: 1.2 * e.scale, z: e.z, count: 1, color: STATUS_FX.incensed.bronze, spread: 0.4, speed: 0.2, up: 0.6, life: 0.8, size: 0.14 });
+      }
+      // The Censer Bearer itself trails incense smoke and wears its aura on the ground.
+      if (ENEMIES[e.def].aura) {
+        if (!v.auraFx) v.auraFx = this.effects.decal({ tex: fx.ring(), color: STATUS_FX.incensed.bronze, x: e.x, z: e.z, r: CENSER.radius, duration: 1e9, opacity: 0.22, pulse: 2.5, follow: () => ({ x: v!.x, z: v!.z }) });
+        if (Math.random() < dt * 3) this.effects.emitSmoke({ x: e.x, y: 1.1, z: e.z, count: 1, color: STATUS_FX.incensed.smoke, spread: 0.3, speed: 0.3, up: 0.5, life: 1.4, size: 0.9, shrink: -0.5 });
+      }
+      if (hover && Math.random() < dt * 6) {
+        this.effects.emit({ x: e.x, y: lift + 0.2, z: e.z, count: 1, color: 0xb9cbe6, spread: 0.35, speed: 0.1, up: -0.3, life: 0.7, size: 0.18 });
+      }
       if (e.state === 'rising' && Math.random() < dt * 12) {
         this.effects.emitSmoke({ x: e.x, y: 0.1, z: e.z, count: 1, color: 0x2a2230, spread: 0.5, speed: 0.5, up: 0.6, life: 1, size: 0.9 });
       }
@@ -522,6 +569,7 @@ export class EntityViews {
       if (!enemies.has(id)) {
         this.enemies.delete(id);
         v.eliteAura?.kill();
+        v.auraFx?.kill();
         killAffixFx(v);
         v.sinkT = 0;
         this.fading.push(v);

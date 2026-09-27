@@ -1,0 +1,9 @@
+{
+  "id": "prop_node_garden_plot",
+  "input": "art-src/concepts/props/node_garden_plot.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 1800,
+    "texture_quality": "standard"
+  }
+}

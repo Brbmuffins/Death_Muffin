@@ -1,0 +1,9 @@
+{
+  "id": "prop_node_burial_mound",
+  "input": "art-src/concepts/props/node_burial_mound.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 1500,
+    "texture_quality": "standard"
+  }
+}

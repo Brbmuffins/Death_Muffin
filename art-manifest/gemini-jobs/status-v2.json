@@ -1,0 +1,50 @@
+[
+  {
+    "id": "status_chilled",
+    "out": "public/art/status/chilled.png",
+    "refs": [
+      "public/art/status/fracture.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        128,
+        128
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG status effect icon, square, painterly and readable at very small size, single symbol centered, near-black background. Match the painting style of the reference icon. Subject: a six-armed frost crystal (snowflake of jagged ice) glowing cold pale blue, rime and a few frozen motes around it. Palette: cold pale blue (#9fc4ff), deep cold blue (#5b7fd6), frost white. NO purple, NO violet, NO green. No text, no border, no letters."
+  },
+  {
+    "id": "status_silenced",
+    "out": "public/art/status/silenced.png",
+    "refs": [
+      "public/art/status/fracture.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        128,
+        128
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG status effect icon, square, painterly and readable at very small size, single symbol centered, near-black background. Match the painting style of the reference icon. Subject: a small funeral bell whose clapper is bound tight with pale blue spectral chains so it cannot ring, faint cold-blue glow. Palette: cold pale blue (#9fc4ff), frost white (#dde8ff), dark iron, a touch of tarnished bronze on the bell. NO purple, NO violet, NO green. No text, no border, no letters."
+  },
+  {
+    "id": "status_incensed",
+    "out": "public/art/status/incensed.png",
+    "refs": [
+      "public/art/status/fracture.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        128,
+        128
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG status effect icon, square, painterly and readable at very small size, single symbol centered, near-black background. Match the painting style of the reference icon. Subject: a small swinging bronze church censer on a chain pouring thick curling amber-brown incense smoke, glowing embers inside. Palette: tarnished bronze (#d9a441), amber, smoky brown, dark iron. NO purple, NO violet, NO green, NO blue. No text, no border, no letters."
+  }
+]

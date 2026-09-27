@@ -1,0 +1,9 @@
+{
+  "id": "prop_node_churchyard_yew",
+  "input": "art-src/concepts/props/node_churchyard_yew.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 3500,
+    "texture_quality": "standard"
+  }
+}

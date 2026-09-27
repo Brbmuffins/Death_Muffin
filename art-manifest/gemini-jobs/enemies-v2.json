@@ -1,0 +1,30 @@
+[
+  {
+    "id": "concept_censer_bearer",
+    "out": "art-src/concepts/censer_bearer.png",
+    "refs": ["necromancer-character-minions-reference.png"],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new undead enemy: the Censer Bearer. A stooped undead acolyte in layered soot-black and tarnished-bronze liturgical robes, a tall pointed hood with a bronze veil of small chains hiding the face, two faint amber eye glints, a thick incense-stained stole, bronze bells sewn along the hem, a rope belt hung with little brass censers. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally, empty hands, legs straight and slightly apart, robe hem above the ankles. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette."
+  },
+  {
+    "id": "concept_choir_wraith",
+    "out": "art-src/concepts/choir_wraith.png",
+    "refs": ["necromancer-character-minions-reference.png"],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new undead enemy: the Choir Wraith. A floating spectral chorister with no legs: a tattered pale choir robe and ruff collar that dissolves into long trailing wisps below the waist, a gaunt skull-like face with the jaw stretched open in an endless hymn, hollow glowing pale-blue eyes, thin arms spread wide as if conducting. Single full-body character, FRONT VIEW, arms straight out horizontally, empty hands, hovering, the whole figure visible and centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette, pale blue-white and grey tones."
+  },
+  {
+    "id": "concept_skull_rat",
+    "out": "art-src/concepts/skull_rat.png",
+    "refs": ["necromancer-character-minions-reference.png"],
+    "aspect": "1:1",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new small undead creature: the Ossuary Skull-Rat. A lean rat-sized quadruped whose head is a small cracked human skull, exposed ribs and spine through patchy grey fur, a long bony segmented tail, sharp claws, faint violet glints in the eye sockets. Single creature, SIDE VIEW, standing on all four legs in a neutral pose, whole body visible and centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other creatures. Dark fantasy game art, readable silhouette."
+  },
+  {
+    "id": "concept_bone_golem",
+    "out": "art-src/concepts/bone_golem.png",
+    "refs": ["necromancer-character-minions-reference.png"],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new undead elite enemy: the Bone Golem. A hulking giant built from dozens of fused skeletons: a barrel chest of interlocked ribcages, massive arms made of bundled femurs ending in huge knuckled fists of skulls, a small crowned skull for a head sunk between the shoulders, iron bands and chains binding it together, faint violet glow between the bones. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally, empty hands, legs straight and slightly apart. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette."
+  }
+]

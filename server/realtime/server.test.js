@@ -79,4 +79,12 @@ test('signature rites name a known rite, a point in the world, and clamp spell p
   assert.equal(validIntent({ t: 'signature', sig: 'meteor', x: 0, z: 0, dx: 0, dz: 0, sp: 1 }), null, 'unknown rite');
   assert.equal(validIntent({ t: 'signature', sig: 'bloom', x: 1e9, z: 0, dx: 0, dz: 0, sp: 1 }), null, 'off-world');
   assert.equal(validIntent({ t: 'signature', sig: 'dirge', x: 0, z: 0, dx: 'a', dz: null, sp: -5 }).sp, 0);
+  // Bone Mantle (a Grimoire rite) rides the same host-shaped channel.
+  assert.equal(validIntent({ t: 'signature', sig: 'mantle', x: 0, z: -16, dx: 0, dz: 0, sp: 30 }).sig, 'mantle');
+});
+
+test('hit chill (Grave Frost) is a flag only', () => {
+  assert.equal(validIntent({ t: 'hit', ids: [1], dmg: 10, chill: 'yes please' }).chill, true);
+  assert.equal(validIntent({ t: 'hit', ids: [1], dmg: 10, chill: 0 }).chill, false);
+  assert.equal('chill' in validIntent({ t: 'hit', ids: [1], dmg: 10 }), false);
 });

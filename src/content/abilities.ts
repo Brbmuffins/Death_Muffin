@@ -9,6 +9,11 @@ export type AbilityId =
   | 'miasma'
   | 'black_litany'
   | 'corpse_explosion'
+  // Grimoire rites: level-gated alternatives for keys 1–4 (see GRIMOIRE).
+  | 'wailing_skull'
+  | 'grave_step'
+  | 'grave_frost'
+  | 'bone_mantle'
   // Discipline signature rites (level 10, key R / 6).
   | 'ossuary_wall'
   | 'command_rend'
@@ -20,8 +25,13 @@ export type HotbarSlot = 1 | 2 | 3 | 4 | 5 | 6;
 
 export interface AbilityDef {
   id: AbilityId;
-  /** 0 = primary (left click), 1–4 = hotbar keys, 5 = right-click, 6 = signature. */
+  /**
+   * 0 = primary (left click), 1–4 = a Grimoire rite for keys 1–4 (the number is its
+   * default key; the player's loadout decides the real one), 5 = right-click, 6 = signature.
+   */
   slot: 0 | HotbarSlot;
+  /** Character level that unlocks the rite (default 1). */
+  unlockLevel?: number;
   name: string;
   description: string;
   icon: string;
@@ -115,11 +125,72 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     radius: 3,
     power: 1.8,
   },
+  // --- Grimoire rites: level-gated; any four of GRIMOIRE sit on keys 1–4. Each borrows the
+  // feel of a shipped rite: the skull flies like Bone Needle, Grave Step picks corpses like
+  // Corpse Explosion, Grave Frost resolves its cone like Marrow Spear, and Bone Mantle
+  // consumes corpses on the host like Black Litany.
+  wailing_skull: {
+    id: 'wailing_skull',
+    slot: 1,
+    unlockLevel: 3,
+    name: 'Wailing Skull',
+    description: 'Loose a shrieking skull at the enemy nearest the cursor. It leaps to 2 more, each leap 20% weaker, and a leap that kills earns another (up to 5).',
+    icon: 'art/abilities/necro-wailing-skull.png',
+    targeting: 'enemy',
+    cooldownMs: 3000,
+    essenceCost: 16,
+    range: 13,
+    radius: 4,
+    power: 2.4,
+  },
+  grave_step: {
+    id: 'grave_step',
+    slot: 2,
+    unlockLevel: 5,
+    name: 'Grave Step',
+    description: 'Dissolve into blood mist and re-form on the corpse nearest the cursor, up to 12m away. Enemies around it take a marrow burst and bleed. The corpse stays for your next rite.',
+    icon: 'art/abilities/necro-grave-step.png',
+    targeting: 'corpse',
+    cooldownMs: 5000,
+    essenceCost: 10,
+    range: 12,
+    radius: 2.6,
+    power: 1.3,
+  },
+  grave_frost: {
+    id: 'grave_frost',
+    slot: 3,
+    unlockLevel: 7,
+    name: 'Grave Frost',
+    description: "Exhale the barrow's chill in a 7m cone toward the cursor. Every enemy it touches is Chilled (−30% move, −25% attack speed); enemies already Chilled shatter for +50% damage.",
+    icon: 'art/abilities/necro-grave-frost.png',
+    targeting: 'direction',
+    cooldownMs: 4500,
+    essenceCost: 20,
+    range: 7,
+    radius: 7,
+    power: 1.4,
+  },
+  bone_mantle: {
+    id: 'bone_mantle',
+    slot: 4,
+    unlockLevel: 12,
+    name: 'Bone Mantle',
+    description: 'Draw up to 5 corpses within 6m into a whirling mantle: a barrier of 10% max health +7% per corpse holds for 6s, while bone shards shred enemies beside you.',
+    icon: 'art/abilities/necro-bone-mantle.png',
+    targeting: 'self',
+    cooldownMs: 15000,
+    essenceCost: 25,
+    range: 0,
+    radius: 6,
+    power: 0.3,
+  },
   // --- Signature rites: one per discipline, unlocked at SIGNATURE_LEVEL. Icons are retinted
   // placeholders until dedicated art is generated (ASSET_PIPELINE.md).
   ossuary_wall: {
     id: 'ossuary_wall',
     slot: 6,
+    unlockLevel: 10,
     name: 'Ossuary Wall',
     description: 'Raise a 7m wall of fused bone across the cursor line for 6s. The dead cannot pass it and Penitent cones break on it.',
     icon: 'art/abilities/necro-spear.png',
@@ -133,6 +204,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
   command_rend: {
     id: 'command_rend',
     slot: 6,
+    unlockLevel: 10,
     name: 'Command: Rend',
     description: 'Your whole legion leaps to the cursor and cleaves everything around it. Costs each thrall 15% of its health instead of essence.',
     icon: 'art/abilities/necro-exhume.png',
@@ -146,6 +218,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
   dirge: {
     id: 'dirge',
     slot: 6,
+    unlockLevel: 10,
     name: 'Dirge',
     description: 'Toll a 4s funeral bell-song around you: you and your thralls mend each second, and enemy casters inside are Silenced.',
     icon: 'art/abilities/necro-litany.png',
@@ -159,6 +232,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
   plague_bloom: {
     id: 'plague_bloom',
     slot: 6,
+    unlockLevel: 10,
     name: 'Plague Bloom',
     description: 'Plant a rot flower at the cursor. It pulses Withered and every 2s seeds a new bloom on the nearest corpse, chaining through the corpse field.',
     icon: 'art/abilities/necro-miasma.png',
@@ -174,6 +248,11 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
 /** Level at which each discipline's signature rite unlocks. */
 export const SIGNATURE_LEVEL = 10;
 
+/** Level a rite unlocks at (1 = from the start). */
+export function unlockLevel(id: AbilityId) {
+  return ABILITIES[id].unlockLevel ?? 1;
+}
+
 /** Each discipline's signature rite (DisciplineId → ability). */
 export const SIGNATURE_BY_DISCIPLINE = {
   ossuary: 'ossuary_wall',
@@ -183,6 +262,8 @@ export const SIGNATURE_BY_DISCIPLINE = {
 } as const satisfies Record<string, AbilityId>;
 
 export type SignatureKind = 'wall' | 'rend' | 'dirge' | 'bloom';
+/** Host-shaped rites carried by the `signature` intent: the four signatures plus Bone Mantle. */
+export type RiteKind = SignatureKind | 'mantle';
 export const SIGNATURE_KIND: Partial<Record<AbilityId, SignatureKind>> = {
   ossuary_wall: 'wall',
   command_rend: 'rend',
@@ -200,6 +281,41 @@ export const SIGNATURE = {
 
 /** Hotbar order; index + 1 is the HotbarSlot. Slot 5 is the right-click action. */
 export const HOTBAR: AbilityId[] = ['marrow_spear', 'exhume', 'miasma', 'black_litany', 'corpse_explosion'];
+
+/**
+ * The Grimoire (L): every rite that may sit on keys 1–4. The four slots are
+ * static; the player chooses which of these fill them (gameplay/loadout.ts).
+ */
+export const GRIMOIRE: AbilityId[] = [
+  'marrow_spear',
+  'exhume',
+  'miasma',
+  'black_litany',
+  'wailing_skull',
+  'grave_step',
+  'grave_frost',
+  'bone_mantle',
+];
+export const DEFAULT_LOADOUT: AbilityId[] = ['marrow_spear', 'exhume', 'miasma', 'black_litany'];
+/** Key caps for hotbar slots 1–6 (slot 5 is the right-click action, 6 the signature). */
+export const SLOT_KEYS = ['1', '2', '3', '4', 'RMB', 'R'] as const;
+
+/** Wailing Skull: damage falls off per leap; a killing leap earns one more (up to maxHops). */
+export const WAILING_SKULL = { hops: 3, maxHops: 5, falloff: 0.8, leapRange: 6.5, speed: 15 };
+/** Grave Step: the marrow burst where you re-form (its bleed is HEMORRHAGE.dpsFrac of the hit). */
+export const GRAVE_STEP = { burstRadius: 2.6 };
+/** Grave Frost: a 70° cone. The host applies Chill for `chillS` whatever the claim says. */
+export const GRAVE_FROST = { halfAngleDeg: 35, chillS: 3, shatterMult: 1.5, speed: 40 };
+/** Bone Mantle: the host consumes the corpses; the caster's client owns the barrier and shard ticks. */
+export const BONE_MANTLE = {
+  maxCorpses: 5,
+  barrierBase: 0.1,
+  barrierPerCorpse: 0.07,
+  barrierCap: 0.45,
+  durationS: 6,
+  orbitRadius: 1.7,
+  tickS: 0.5,
+};
 
 /** Corpse Explosion tuning (host-side; the intent only carries the caster's damage). */
 export const DETONATE = {
@@ -260,4 +376,9 @@ export const SPELL_FX = {
   rend: { jade: 0x6fe3c8, pale: 0xc8fff0, bone: 0xe0d6c2 },
   dirge: { frost: 0x9fc4ff, deep: 0x5b7fd6, pale: 0xdde8ff },
   bloom: { petal: 0xc7e04a, rot: 0x6f8f22, spore: 0x2b3317 },
+  /** Grimoire rites. Skull = spirit jade; Step = marrow blood mist (crimson, not Corpse Explosion's ember); Frost = Chill's cold blue; Mantle = bone ivory / old gold. */
+  skull: { jade: 0x6fe3c8, pale: 0xc8fff0, deep: 0x1f8f86 },
+  step: { blood: 0xc23a48, crimson: 0x8a2c3c, mist: 0x3a1218, hot: 0xffc58a },
+  frost: { frost: 0x9fc4ff, deep: 0x5b7fd6, pale: 0xdde8ff },
+  mantle: { bone: 0xe8dcc0, gold: 0xe9c98f, amber: 0xd9a66b, dust: 0x6a5a48 },
 } as const;

@@ -58,6 +58,10 @@ export interface Enemy {
   hexT?: number;
   /** Silenced by a Mourner's Dirge: casters can't start a spell. */
   silenceT?: number;
+  /** Incensed by a Censer Bearer's aura: faster feet and faster blows. */
+  incenseT?: number;
+  /** Host-only: a Censer Bearer's next aura pulse. */
+  auraCd?: number;
   /** Elites roll one affix on spawn (replicated in snapshots). */
   affix?: EliteAffix;
   /** Host-only affix clock: seconds until the next toll / feeding. */
@@ -180,7 +184,18 @@ export interface BossState {
 // --- Intents: client → host requests (the host validates and applies) ---
 
 export type Intent =
-  | { t: 'hit'; by: string; ids: number[]; dmg: number; fracture?: number; boss?: boolean; /** Hemorrhage bleed per second (clamped by the host). */ bleed?: number }
+  | {
+      t: 'hit';
+      by: string;
+      ids: number[];
+      dmg: number;
+      fracture?: number;
+      boss?: boolean;
+      /** Hemorrhage bleed per second (clamped by the host). */
+      bleed?: number;
+      /** Grave Frost: Chill the targets (the host owns the duration). */
+      chill?: boolean;
+    }
   | {
       t: 'miasma';
       by: string;
@@ -215,8 +230,8 @@ export type Intent =
     }
   | { t: 'summonBoss'; by: string }
   | { t: 'recallThralls'; by: string; x: number; z: number }
-  /** Discipline signature rites: aim point, aim direction and the caster's spell power. */
-  | { t: 'signature'; by: string; sig: 'wall' | 'rend' | 'dirge' | 'bloom'; x: number; z: number; dx: number; dz: number; sp: number }
+  /** Host-shaped rites (discipline signatures + Bone Mantle): aim point, aim direction and the caster's spell power. */
+  | { t: 'signature'; by: string; sig: 'wall' | 'rend' | 'dirge' | 'bloom' | 'mantle'; x: number; z: number; dx: number; dz: number; sp: number }
   /** Corpse Explosion: `dmg` is the caster's spellPower × power (clamped by the sim). */
   | { t: 'detonate'; by: string; corpseId: number; dmg: number };
 
@@ -239,9 +254,9 @@ export type SimEvent =
   | { t: 'corpseGone'; id: number; reason: CorpseGoneReason; by?: string }
   | { t: 'thrall'; id: number; owner: string; kind: ThrallKind; x: number; z: number; empowered: boolean }
   | { t: 'thrallGone'; id: number; owner: string; x: number; z: number; reason: 'killed' | 'sacrificed' | 'crumbled' }
-  | { t: 'telegraph'; id: number; kind: 'cone' | 'raise' | 'curse' | 'slam' | 'toll'; x: number; z: number; tx: number; tz: number; ms: number; r?: number }
+  | { t: 'telegraph'; id: number; kind: 'cone' | 'raise' | 'curse' | 'slam' | 'toll' | 'scream'; x: number; z: number; tx: number; tz: number; ms: number; r?: number }
   | { t: 'melee'; id: number; x: number; z: number; tx: number; tz: number }
-  | { t: 'hurt'; player: string; dmg: number; from: 'melee' | 'cone' | 'curse' | 'toxic' | 'boss' | 'toll'; x: number; z: number }
+  | { t: 'hurt'; player: string; dmg: number; from: 'melee' | 'cone' | 'curse' | 'toxic' | 'boss' | 'toll' | 'scream'; x: number; z: number }
   | { t: 'thrallHit'; id: number; target: number; x: number; z: number; tx: number; tz: number; kind: ThrallKind; dmg: number }
   | { t: 'zone'; zone: Zone }
   | { t: 'zoneGone'; id: number }
@@ -279,6 +294,8 @@ export type SimEvent =
   | { t: 'wallGone'; id: number }
   /** Command: Rend — each leap [fromX, fromZ, toX, toZ]; `hits` enemies cleaved. */
   | { t: 'rend'; by: string; x: number; z: number; leaps: [number, number, number, number][]; hits: number }
+  /** Bone Mantle: corpses drawn in around the caster (each [x, z] is where one lay). */
+  | { t: 'mantle'; by: string; x: number; z: number; r: number; corpses: number; tethers: [number, number][] }
   /** A friendly zone mending a player (Dirge). */
   | { t: 'heal'; player: string; amount: number; x: number; z: number }
   /** A Crypt Deacon blesses an ally (Sanctified). */
@@ -286,6 +303,7 @@ export type SimEvent =
   | { t: 'surge'; area: AreaId; x: number; z: number; durationMs: number; crypt?: boolean }
   | { t: 'surgeCleared'; area: AreaId; x: number; z: number }
   | { t: 'surgeFailed'; area: AreaId; x: number; z: number }
-  | { t: 'wave'; area: AreaId; count: number; x: number; z: number }
+  /** `theme`: a procession (content/enemies WAVE_THEMES) rather than the usual mix. */
+  | { t: 'wave'; area: AreaId; count: number; x: number; z: number; theme?: string }
   | { t: 'dmg'; x: number; z: number; amount: number; kind: 'dot' | 'thrall' | 'burst' | 'litany' | 'hit'; by: string }
   | { t: 'boss'; kind: 'awaken' | 'phase' | 'toll' | 'slam' | 'rain' | 'summon' | 'defeated'; x: number; z: number; phase: BossPhase; targets?: [number, number][]; ms?: number; r?: number; killer?: string };

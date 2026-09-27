@@ -112,7 +112,7 @@ export class CodexPanel {
     return RITE_ORDER.map((id) => {
       const a = ABILITIES[id];
       const r = CODEX_RITES[id];
-      const key = a.slot === 0 ? 'Left click' : a.slot === 5 ? 'Right click / Key 5' : `Key ${a.slot}`;
+      const key = a.slot === 0 ? 'Left click' : a.slot === 5 ? 'Right click / Key 5' : a.slot === 6 ? 'Key R' : 'Grimoire · keys 1–4';
       const cost = a.essenceCost ? `${a.essenceCost} essence` : 'No cost';
       return `
         <article class="cw-codex-entry">

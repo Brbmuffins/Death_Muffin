@@ -1,10 +1,11 @@
-import { ABILITIES, DETONATE, type AbilityId } from '../content/abilities';
+import { ABILITIES, DETONATE, GRAVE_FROST, WAILING_SKULL, type AbilityId } from '../content/abilities';
 import type { CastTarget } from './AbilitySystem';
 import { BOSS_RADIUS } from './sim/BossBrain';
 import type { BossState, Corpse, Enemy } from './sim/types';
 
 export interface AutoCombatInput {
-  player: { x: number; z: number; essence: number; maxEssence: number };
+  /** hp/maxHp let Bone Mantle answer pressure; omitted, it only waits for corpse fuel. */
+  player: { x: number; z: number; essence: number; maxEssence: number; hp?: number; maxHp?: number };
   enemies: Iterable<Enemy>;
   corpses: Iterable<Corpse>;
   boss: BossState;
@@ -18,11 +19,13 @@ export interface AutoCombatAction {
   target: CastTarget;
 }
 
-type Target = CastTarget & { radius: number; distance: number };
+type Target = CastTarget & { radius: number; distance: number; elite?: boolean };
 const distance = (a: { x: number; z: number }, b: { x: number; z: number }) => Math.hypot(a.x - b.x, a.z - b.z);
 
 /** One stationary combat decision. The scene owns its clock, movement and casts.
- * Work is capped even in a crowded co-op snapshot; signatures remain manual.
+ * Work is capped even in a crowded co-op snapshot; signatures remain manual, and
+ * Grave Step never fires on its own (auto combat never moves the player). `ready`
+ * decides what is on the bar, so it only reaches for the player's Grimoire rites.
  */
 export function selectAutoCombatAction(input: AutoCombatInput): AutoCombatAction | null {
   const { player: p, boss, thrallCount, thrallCap } = input;
@@ -32,7 +35,7 @@ export function selectAutoCombatAction(input: AutoCombatInput): AutoCombatAction
     if (++inspected > 512) break;
     if (e.hp <= 0 || e.state === 'dead' || e.state === 'rising') continue;
     const d = distance(p, e);
-    if (d <= ABILITIES.miasma.range) targets.push({ x: e.x, z: e.z, enemyId: e.id, radius: e.radius, distance: d });
+    if (d <= ABILITIES.miasma.range) targets.push({ x: e.x, z: e.z, enemyId: e.id, radius: e.radius, distance: d, elite: e.elite });
   }
   targets.sort((a, b) => a.distance - b.distance);
   targets.length = Math.min(targets.length, 64);
@@ -62,6 +65,12 @@ export function selectAutoCombatAction(input: AutoCombatInput): AutoCombatAction
   if (thrallCount < thrallCap && corpses.length && canSpend('exhume')) return action('exhume', corpses[0]);
 
   const countAround = (point: CastTarget, radius: number) => targets.reduce((n, t) => n + (distance(point, t) <= radius + t.radius ? 1 : 0), 0);
+  // Bone Mantle: armour up when the pack is on you and you are hurt, or when the dead lie thick.
+  if (canSpend('bone_mantle') && countAround(p, 3) >= 2) {
+    const hurt = p.hp !== undefined && p.maxHp ? p.hp < p.maxHp * 0.6 : false;
+    const fuel = corpses.filter((c) => distance(p, c) <= ABILITIES.bone_mantle.radius).length;
+    if (hurt || fuel >= 3) return action('bone_mantle', p);
+  }
   // The automatic ritual never destroys the player's army. Save this expensive
   // burst for a large fight with actual corpse fuel, rather than one straggler.
   const litany = ABILITIES.black_litany;
@@ -89,6 +98,24 @@ export function selectAutoCombatAction(input: AutoCombatInput): AutoCombatAction
     }
     if (best) return action('miasma', best);
   }
+  if (canSpend('grave_frost')) {
+    const slope = Math.tan((GRAVE_FROST.halfAngleDeg * Math.PI) / 180);
+    const len = ABILITIES.grave_frost.range;
+    let best: Target | null = null;
+    let hits = 2;
+    for (const t of candidates) {
+      if (t.distance > len || t.distance < 0.01) continue;
+      const dx = (t.x - p.x) / t.distance;
+      const dz = (t.z - p.z) / t.distance;
+      const count = targets.reduce((n, e) => {
+        const rx = e.x - p.x, rz = e.z - p.z;
+        const along = rx * dx + rz * dz;
+        return n + (along >= -e.radius && along <= len + e.radius && Math.abs(rx * dz - rz * dx) <= slope * Math.max(0, along) + e.radius ? 1 : 0);
+      }, 0);
+      if (count > hits) { best = t; hits = count; }
+    }
+    if (best) return action('grave_frost', best);
+  }
   if (canSpend('marrow_spear')) {
     let best: Target | null = null;
     let hits = 1;
@@ -108,6 +135,13 @@ export function selectAutoCombatAction(input: AutoCombatInput): AutoCombatAction
     const single = candidates.find((t) => t.distance <= ABILITIES.marrow_spear.range &&
       p.essence >= p.maxEssence * (t.boss ? 0.6 : 0.8));
     if (single) return action('marrow_spear', single);
+  }
+  if (canSpend('wailing_skull')) {
+    // The skull earns its cost on a boss, an elite, or a knot it can leap through.
+    const reach = (t: Target) => t.distance <= ABILITIES.wailing_skull.range + (t.boss ? BOSS_RADIUS : 0.4);
+    const prize = candidates.find((t) => reach(t) && (t.boss || t.elite));
+    const chain = prize ?? candidates.find((t) => reach(t) && countAround(t, WAILING_SKULL.leapRange) >= 3);
+    if (chain) return action('wailing_skull', chain);
   }
   return needle && input.ready('bone_needle') ? action('bone_needle', needle) : null;
 }

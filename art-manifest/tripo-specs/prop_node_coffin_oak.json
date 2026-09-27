@@ -1,0 +1,9 @@
+{
+  "id": "prop_node_coffin_oak",
+  "input": "art-src/concepts/props/node_coffin_oak.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 3200,
+    "texture_quality": "standard"
+  }
+}

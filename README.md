@@ -24,7 +24,7 @@ alone or with up to three friends.
 
 Play at https://muffindevelopment.com/death-muffin/. See [the VPS handoff](docs/DEATH-MUFFIN-HANDOFF.md) before editing or deploying.
 
-Auto combat is enabled by default: stand near enemies to use basic rites, click to move, and press **G** to toggle it. Hold **1–4** to repeat a spell at the cursor; signature rites remain manual. Casts have short recovery, quicker gestures and calmer effects, with projectile damage arriving at the visual impact.
+Auto combat is enabled by default: stand near enemies to use basic rites, click to move, and press **G** to toggle it. Hold **1–4** to repeat a spell at the cursor; signature rites remain manual. Press **L** for the [Grimoire](#the-grimoire-l--choose-your-four) to choose which rites sit on 1–4. Casts have short recovery, quicker gestures and calmer effects, with projectile damage arriving at the visual impact.
 
 Use **Settings → Change class** whenever you want. Your character ID, level, gold, items and permanent progress are preserved; the selected class starts safely in the Chapterhouse. [Future bots](docs/death-muffin-roadmap.md) are a documented follow-up.
 
@@ -92,18 +92,41 @@ Every discipline shares the core kit. Each rite has its own colour so a crowded 
 <td><img src="docs/screenshots/black-litany.webp" alt="Black Litany" /><br/><sub><b>Black Litany</b> — every corpse tethered into one burst.</sub></td>
 </tr></table>
 
+### The Grimoire (L) — choose your four
+
+Keys **1–4** are four fixed slots, and the **Grimoire** (**L**, or the open-book button beside the
+minimap) decides which rites fill them. You start with the four above. Four more rites unlock with
+level, and any four can be on the bar. Choosing a key for a rite that already sits on another key
+swaps the two. Each rite keeps its own cooldown, so swapping resets nothing. Your choice is remembered
+per character. Auto combat uses whatever is on your bar; it never casts Grave Step for you, because it
+never moves you.
+
+| | Rite | Unlocks | Cost · Cooldown | What it does |
+|---|---|---|---|---|
+| <img src="public/art/abilities/necro-wailing-skull.png" width="56" /> | **Wailing Skull** | level 3 | 16 · 3 s | A shrieking jade skull hunts the enemy nearest the cursor (2.4× spell power), then **leaps** to two more within 6.5 m, each bite 20% weaker. A bite that kills earns another leap, up to 5. |
+| <img src="public/art/abilities/necro-grave-step.png" width="56" /> | **Grave Step** | level 5 | 10 · 5 s | Dissolve into blood mist and re-form on the corpse nearest the cursor (up to 12 m, never across a sealed door). The re-forming burst hits everything within 2.6 m (1.3×) and makes it **bleed**. The corpse stays for your next rite. |
+| <img src="public/art/abilities/necro-grave-frost.png" width="56" /> | **Grave Frost** | level 7 | 20 · 4.5 s | A 7 m cone of grave cold (1.4×) that **Chills** everything it touches for 3 s. Enemies that are already Chilled **shatter** for +50% damage, so breathe twice. |
+| <img src="public/art/abilities/necro-bone-mantle.png" width="56" /> | **Bone Mantle** | level 12 | 25 · 15 s | Draw up to 5 corpses within 6 m into a whirling mantle: a **barrier** of 10% max health +7% per corpse (45% at most) that holds for 6 s, while bone shards cut anything within 1.7 m twice a second. |
+
+Each borrows the feel of a rite you already know. The skull flies and lands like Bone Needle, Grave
+Frost resolves its cone on impact like Marrow Spear, Grave Step picks its corpse like Corpse
+Explosion, and Bone Mantle lets the world's keeper consume the corpses, as Black Litany does. Their
+icons and effect sprites (skull, frost fan, rime, blood sigil, bone shards, bone ring) come from the
+Gemini pipeline (`art-manifest/gemini-jobs/spells-v4.json`) and are tinted per rite in code.
+
 **Status effects** (hover an enemy to see them in the target frame):
 
 | | Status | Source | Effect |
 |---|---|---|---|
 | <img src="public/art/status/fracture.png" width="24" /> | **Fracture** | Marrow Spear | +15% damage taken per stack (3 max) |
-| <img src="public/art/status/hemorrhage.png" width="24" /> | **Hemorrhage** | Marrow Spear | Bleeds 12% of the spear hit per second for 4 s (crimson drips) |
+| <img src="public/art/status/hemorrhage.png" width="24" /> | **Hemorrhage** | Marrow Spear, Grave Step | Bleeds 12% of the hit per second for 4 s (crimson drips) |
 | <img src="public/art/status/withered.png" width="24" /> | **Withered** | Miasma, rot pools, Plague Bloom | Rot damage per stack each second |
 | <img src="public/art/status/void-rot.png" width="24" /> | **Miasma** | Miasma Circle | Slowed 40% |
-| ❄ | **Chilled** | Mourner wraiths | −30% movement, −25% attack rate (frost motes) |
+| <img src="public/art/status/chilled.png" width="24" /> | **Chilled** | Mourner wraiths, Grave Frost | −30% movement, −25% attack rate (frost motes); Grave Frost shatters it for +50% |
 | <img src="public/art/status/cursed.png" width="24" /> | **Bone Hex** | Bone-mage thralls | The enemy's blows land 25% softer |
-| 🔕 | **Silenced** | Dirge | Casters can't start a spell |
+| <img src="public/art/status/silenced.png" width="24" /> | **Silenced** | Dirge | Casters can't start a spell |
 | <img src="public/art/status/sanctified.png" width="24" /> | **Sanctified** | Crypt Deacons (enemy) | The blessed enemy takes 30% less damage (pale gold halo) |
+| <img src="public/art/status/incensed.png" width="24" /> | **Incensed** | Censer Bearers (enemy) | +30% movement and +25% attack rate while near the censer (bronze motes) |
 
 **Soul Harvest** — every kill by you or your thralls adds a soul to the jade skull meter above the
 hotbar. At **50 souls** (fewer with the *Soul Hunger* boon), the next Marrow Spear, Miasma Circle or
@@ -153,7 +176,24 @@ Elite corpses are always empowered when exhumed. The Mourner's discipline overri
 | **Carrion Sac** | Slow, swollen; slams an area in front of it. | toxic | Kill it away from your thralls, then Exhume or Litany the corpse before it ruptures. |
 | **Crypt Deacon** | Support caster. **Steals your corpses** — channels a green beam and raises them as hostile Risen. With no corpse in reach it **Sanctifies** a wounded ally (30% less damage taken). Curses at range. | normal | **Priority target.** Every corpse it steals is a thrall you don't get. A Dirge silences it. |
 | **Risen** | A corpse a Deacon claimed before you did. | none | Weak, but it means you were too slow. |
+| **Censer Bearer** | Walks with the pack swinging bronze incense: the dead within 5 m are **Incensed** (+30% speed, +25% attack rate; bronze motes). | normal | **Kill it first**; the pack slows back down. Wailing Skull reaches it through the crowd. |
+| **Choir Wraith** | Hovering caster. Sings pale song-lines onto a **ring where you stand**, which screams when the hymn breaks. Keeps its distance. | none | Keep moving: one step out of the ring. Dirge silences it; Grave Step closes the gap. |
+| **Ossuary Skull-Rat** | Tiny, fast flankers that climb out in **packs of 4–6**. Never elite. | none | Area rites: Miasma, Grave Frost or a Corpse Explosion ends a pack. |
+| **Bone Golem** | A slow giant of fused skeletons (430 base health) that slams a **wide 2.8 m ring**. | ×3 | Step out, punish the recovery. It falls apart into **three corpses**: a legion or a Litany in one kill. |
 | **Elites** | Any enemy can spawn elite: bigger, tougher (×3.6 health), harder-hitting, pulsing violet ring, and **one affix** (below). | — | Drop **soul shards** (needed for the boss) and far more loot. |
+
+**Processions.** From the second wave in an area, about one wave in three arrives as a themed band
+instead of the usual mix, named on a banner:
+
+| Area | Processions |
+|---|---|
+| Hollow Graves | **The Kennel Loosed** (hounds and skull-rats) · **The Bellringers' Round** (Penitents and robbers, led by a Censer Bearer) |
+| Marrow Ossuary | **The Skittering** (rat packs) · **The Ossuary Wakes** (a Bone Golem leads robbers, rats and hounds) |
+| Drowned Nave | **The Drowned Choir** (wraiths, Penitents, censers) · **The Carrion Tide** (sacs and rats) |
+| Bell Sanctum | **The Procession** (a Bone Golem leads censers, Penitents, Deacons and wraiths) |
+
+The new dead also join the regular mix deeper in: rats and the odd golem in the Ossuary, wraiths and
+censers in the Nave, all four in the Sanctum. The Hollow Graves keep their gentle roster apart from its processions.
 
 **Elite affixes.** The affix shows in the target frame and on the elite itself.
 
@@ -312,7 +352,8 @@ Planned content (new disciplines, spells, bosses and systems) lives in [FUTURE_C
 The game teaches itself as you go. **Covenant counsel** cards appear above the hotbar the first time
 something matters: a welcome in the Chapterhouse, how to move and needle, your first corpse and thrall,
 running out of essence, a Litany worth casting, a pack standing on a corpse, low health, your first elite,
-surge and relic, a full Soul Harvest, a Sanctified enemy, the Codex, your signature rite at level 10,
+surge and relic, a full Soul Harvest, a Sanctified enemy, the Codex, the Grimoire when your first new
+rite unlocks (and each new rite the first time you put it on a key), your signature rite at level 10,
 five soul shards, the Altar after your first Prelate kill, and Ashes waiting to be spent. Each shows once per character, never pauses the game, and stays up long enough to
 read. Turn them off (or **Show tips again**) in Settings (**Esc**). **K** opens the Codex any time.
 
@@ -326,7 +367,8 @@ read. Turn them off (or **Show tips again**) in Settings (**Esc**). **K** opens 
 |---|---|
 | Left click | Move · attack the enemy under the cursor · use an object |
 | Shift + click | Cast Bone Needle without moving |
-| **1 2 3 4** (hold to repeat) | Marrow Spear · Exhume · Miasma Circle · Black Litany (aimed at the cursor) |
+| **1 2 3 4** (hold to repeat) | Your four Grimoire rites, aimed at the cursor (start: Marrow Spear · Exhume · Miasma Circle · Black Litany) |
+| **L** | Grimoire: choose which rites sit on 1–4 (Wailing Skull, Grave Step, Grave Frost, Bone Mantle unlock at levels 3 / 5 / 7 / 12) |
 | Right-click · **5** | Corpse Explosion on the corpse nearest the cursor (works while holding left-click to move) |
 | **R** · **6** | Your discipline's signature rite (unlocks at level 10) |
 | **Q** | Drink a healing flask |

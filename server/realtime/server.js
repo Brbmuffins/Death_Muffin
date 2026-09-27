@@ -50,8 +50,8 @@ const LIMITS = {
 };
 
 const INTENT_TYPES = new Set(['hit', 'miasma', 'exhume', 'litany', 'summonBoss', 'recallThralls', 'detonate', 'signature']);
-/** Discipline signature rites; the host owns their shapes and clamps the aim around the caster. */
-const SIGNATURES = new Set(['wall', 'rend', 'dirge', 'bloom']);
+/** Host-shaped rites (discipline signatures + Bone Mantle); the host owns their shapes and clamps the aim around the caster. */
+const SIGNATURES = new Set(['wall', 'rend', 'dirge', 'bloom', 'mantle']);
 const WORLD_BOUND = 400; // |x|,|z| sanity bound in world units
 
 if (DEV_TRUST_TOKENS && process.env.NODE_ENV === 'production') {
@@ -113,6 +113,8 @@ function validIntent(intent) {
       out.boss = !!out.boss;
       // Hemorrhage (Marrow Spear): a bleed per second, never more than a quarter of the hit.
       if ('bleed' in out) out.bleed = Math.min(Math.max(0, num(out.bleed)), out.dmg * 0.25);
+      // Grave Frost: a flag only; the host sim owns the Chill duration.
+      if ('chill' in out) out.chill = !!out.chill;
       break;
     case 'miasma':
       out.r = Math.min(8, Math.max(0.5, num(out.r, 3)));

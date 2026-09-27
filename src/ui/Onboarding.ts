@@ -31,11 +31,26 @@ export type TipId =
   | 'ascend'
   | 'souls'
   | 'sanctify'
-  | 'boons';
+  | 'boons'
+  // The Grimoire and its level-gated rites (shown the first time each is placed on a key).
+  | 'grimoire'
+  | 'rite_skull'
+  | 'rite_step'
+  | 'rite_frost'
+  | 'rite_mantle'
+  // Enemy variety: processions and the four newer kinds of dead (first sight).
+  | 'procession'
+  | 'censer'
+  | 'wraith'
+  | 'swarm'
+  | 'golem';
 
 interface Tip {
   title: string;
-  /** Trusted static HTML (kbd hints only). */
+  /**
+   * Trusted static HTML (kbd hints only). `{key:<abilityId>}` becomes the key that
+   * rite sits on in the player's Grimoire loadout (see Onboarding.keyFor).
+   */
   body: string;
 }
 
@@ -58,7 +73,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   exhume: {
     title: 'A corpse lies near',
-    body: 'Press <kbd>2</kbd> to Exhume the corpse nearest your cursor and raise it as your thrall. Unclaimed bodies rot away.',
+    body: 'Press {key:exhume} to Exhume the corpse nearest your cursor and raise it as your thrall. Unclaimed bodies rot away.',
   },
   wave: {
     title: 'Wave Speed',
@@ -82,7 +97,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   litany: {
     title: 'Black Litany',
-    body: 'Press <kbd>4</kbd> to give everything within 7m (corpses and thralls) to one burst. The more you give, the harder it hits. Pull the pack onto a pile of bodies first.',
+    body: 'Press {key:black_litany} to give everything within 7m (corpses and thralls) to one burst. The more you give, the harder it hits. Pull the pack onto a pile of bodies first.',
   },
   burst: {
     title: 'Corpse Explosion',
@@ -132,6 +147,46 @@ export const TIPS: Record<TipId, Tip> = {
     title: 'Five soul shards',
     body: 'Enough to wake the Bell-Sworn Prelate. Offer them at the Sundered Bell in the Bell Sanctum, and learn to step out of its bronze rings.',
   },
+  grimoire: {
+    title: 'The Grimoire',
+    body: 'New rites have come to you. Press <kbd>L</kbd> (or the open-book button) to choose which four sit on keys <kbd>1</kbd>–<kbd>4</kbd>. Swap them whenever you like; each rite keeps its own cooldown, and auto combat uses whatever is on your bar.',
+  },
+  rite_skull: {
+    title: 'Wailing Skull',
+    body: 'The skull hunts the enemy nearest your cursor, then leaps on to two more, each bite a little weaker. Finish a wounded foe with it and it earns an extra leap. Good for elites and stragglers.',
+  },
+  rite_step: {
+    title: 'Grave Step',
+    body: 'Aim at a corpse up to 12m away to re-form on it in blood mist, bleeding everything beside it. The body stays, so follow with Corpse Explosion or Exhume. It never carries you through a sealed door.',
+  },
+  rite_frost: {
+    title: 'Grave Frost',
+    body: 'A cone of grave cold: everything it touches is <b>Chilled</b>, slower to move and to strike. Breathe on the same pack again and the Chilled enemies <b>shatter</b> for +50% damage.',
+  },
+  procession: {
+    title: 'A procession',
+    body: 'Not every wave is a mix. Now and then the dead arrive as a <b>procession</b>, a themed band named on the banner (hounds and rats, a choir, a censer and its bells). Read the name, then pick your rites for it.',
+  },
+  censer: {
+    title: 'Censer Bearer',
+    body: 'Its bronze incense <b>Incenses</b> the dead around it: faster feet, faster blows (bronze motes on them). Kill the censer first and the pack slows back down.',
+  },
+  wraith: {
+    title: 'Choir Wraith',
+    body: 'Pale song-lines mark a ring where you stand; when the hymn breaks, the ring screams. One step out is enough. Wraiths leave no corpse.',
+  },
+  swarm: {
+    title: 'Skull-rats',
+    body: 'They pour out in packs and leave no corpses. Needles are wasted on them: a Miasma, a Grave Frost cone or a Corpse Explosion ends a whole pack at once.',
+  },
+  golem: {
+    title: 'Bone Golem',
+    body: 'A slow giant with a wide bronze-brown slam ring: step out, then punish it. It falls apart into <b>three corpses</b>, a whole legion or a Litany in one kill.',
+  },
+  rite_mantle: {
+    title: 'Bone Mantle',
+    body: 'Cast it standing among the dead: each corpse within 6m thickens a barrier that holds for 6 seconds, while whirling shards cut whatever reaches you. With no corpses you still get a thin mantle.',
+  },
 };
 
 const SHOW_MS = 25000;
@@ -148,6 +203,8 @@ export class Onboarding {
   private hideTimer = 0;
   private offSettings: () => void;
   private key: string;
+  /** The key a rite sits on (Grimoire loadout), or null when it isn't on the bar. */
+  keyFor: ((abilityId: string) => string | null) | null = null;
 
   constructor(
     private root: HTMLElement,
@@ -187,18 +244,22 @@ export class Onboarding {
     this.seen.add(id);
     this.persist();
     const tip = TIPS[id];
+    const body = tip.body.replace(/\{key:(\w+)\}/g, (_m, ability: string) => {
+      const k = this.keyFor?.(ability);
+      return k ? `<kbd>${k}</kbd>` : 'a key from your Grimoire (<kbd>L</kbd>)';
+    });
     const el = document.createElement('div');
     el.className = 'cw-plate cw-tip';
     el.setAttribute('role', 'status');
     el.setAttribute('aria-live', 'polite');
     // Give each card at least 25 seconds and longer counsel more reading time.
-    const words = tip.body.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
+    const words = body.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
     const ms = Math.max(SHOW_MS, 5000 + words * 600);
     el.style.setProperty('--tip-ms', `${ms}ms`);
     el.innerHTML = `
       <div class="kicker">Covenant counsel</div>
       <div class="title">${tip.title}</div>
-      <div class="body">${tip.body}</div>
+      <div class="body">${body}</div>
       <div class="foot"><span>Click to dismiss</span><button type="button" data-skip>Don't show tips</button></div>
       <div class="timer"></div>`;
     el.addEventListener('click', () => this.dismiss());

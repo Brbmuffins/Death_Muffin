@@ -1,19 +1,16 @@
-import { ABILITIES, HOTBAR, SIGNATURE_LEVEL, type AbilityId, type HotbarSlot } from '../content/abilities';
+import { ABILITIES, HOTBAR, SLOT_KEYS, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
 import type { EliteAffix } from '../content/enemies';
 import { DAMAGE_UPGRADE, WAVE_MILESTONES, WAVE_UPGRADE, milestones } from '../content/upgrades';
 import { MAX_PARTY_SIZE } from '../net/config';
 import { ICON } from './icons';
 import { Minimap, type MinimapFrame } from './Minimap';
 
-/** Key caps under each hotbar slot (slot 5 is the right-click action). */
-const SLOT_KEYS = ['1', '2', '3', '4', 'RMB', 'R'];
-
 export interface HudCallbacks {
   cast(slot: HotbarSlot): void;
   buyDamage(): void;
   buyWave(): void;
   dialWave(delta: number): void;
-  open(panel: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex'): void;
+  open(panel: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'grimoire'): void;
   chat(text: string): void;
   toggleAutoCombat(): void;
 }
@@ -24,7 +21,7 @@ export interface SlotFrame {
   affordable: boolean;
   /** Soul Harvest is charged and this spell will be free + 50% larger. */
   empowered?: boolean;
-  /** Signature rite not yet unlocked (below SIGNATURE_LEVEL). */
+  /** Rite not yet unlocked (below its unlock level). */
   locked?: boolean;
 }
 
@@ -90,24 +87,11 @@ export class HUD {
   constructor(
     root: HTMLElement,
     private cb: HudCallbacks,
-    /** The slots in order: the shared kit plus this discipline's signature rite. */
+    /** The slots in order: the Grimoire loadout (keys 1–4), Corpse Explosion, the signature rite. */
     private hotbar: AbilityId[] = HOTBAR,
   ) {
     this.el.className = 'hud';
-    const slots = this.hotbar.map((id, i) => {
-      const a = ABILITIES[id];
-      const alt = SLOT_KEYS[i] === 'RMB';
-      return `
-        <div class="hud-slot${alt ? ' alt' : ''}">
-          <button data-slot="${i + 1}" aria-label="${a.name} (${alt ? 'right-click or key 5' : a.slot === 6 ? 'key R or 6' : `key ${i + 1}`})">
-            <img src="${a.icon}" alt="" draggable="false" />
-            <span class="cd" data-cd="${i + 1}"></span>
-            <span class="cdtext" data-cdt="${i + 1}"></span>
-            ${a.essenceCost ? `<span class="cost">${a.essenceCost}</span>` : ''}
-          </button>
-          <span class="key">${SLOT_KEYS[i] ?? i + 1}</span>
-        </div>`;
-    }).join('');
+    const slots = this.slotsHtml();
     this.el.innerHTML = `
       <div class="hud-vignette passive" data-vig></div>
       <div class="hud-party" data-party></div>
@@ -132,6 +116,7 @@ export class HUD {
           <button data-open="forge" title="Workbench (C)" aria-label="Workbench">${ICON.anvil}</button>
           <button data-open="professions" title="Rites (P)" aria-label="Rites">${ICON.candle}</button>
           <button data-open="map" title="Waystones (M)" aria-label="Waystones">${ICON.stone}</button>
+          <button data-open="grimoire" title="Grimoire (L)" aria-label="Grimoire">${ICON.grimoire}</button>
           <button data-open="codex" title="Codex (K)" aria-label="Codex">${ICON.book}</button>
           <button data-open="settings" title="Settings (Esc)" aria-label="Settings">${ICON.gear}</button>
           <button class="hud-auto" data-auto aria-label="Auto combat" title="Toggle auto combat (G)" aria-pressed="false">Auto: On · G</button>
@@ -205,9 +190,7 @@ export class HUD {
     root.appendChild(this.el);
     this.$('[data-mapframe]').appendChild(this.minimap.canvas);
 
-    this.el.querySelectorAll<HTMLButtonElement>('[data-slot]').forEach((b) =>
-      b.addEventListener('click', () => this.cb.cast(Number(b.dataset.slot) as HotbarSlot)),
-    );
+    this.bindSlots();
     this.el.querySelectorAll<HTMLButtonElement>('[data-open]').forEach((b) =>
       b.addEventListener('click', () => this.cb.open(b.dataset.open as 'inventory')),
     );
@@ -217,12 +200,6 @@ export class HUD {
     this.el.querySelectorAll<HTMLButtonElement>('[data-dial]').forEach((b) =>
       b.addEventListener('click', () => this.cb.dialWave(Number(b.dataset.dial))),
     );
-    // Ability tooltips (name, cost, cooldown, description).
-    this.hotbar.forEach((id, i) => {
-      const a = ABILITIES[id];
-      const btn = this.$(`[data-slot="${i + 1}"]`);
-      btn.title = `${a.name} — ${a.essenceCost ? `${a.essenceCost} essence · ` : ''}${(a.cooldownMs / 1000).toFixed(1)}s\n${a.description}${a.slot === 6 ? `\nSignature rite — unlocks at level ${SIGNATURE_LEVEL}.` : ''}`;
-    });
     const chat = this.$<HTMLInputElement>('[data-chatin]');
     chat.addEventListener('keydown', (e) => {
       e.stopPropagation();
@@ -237,6 +214,43 @@ export class HUD {
 
   focusChat() {
     this.$<HTMLInputElement>('[data-chatin]').focus();
+  }
+
+  private slotsHtml() {
+    return this.hotbar.map((id, i) => {
+      const a = ABILITIES[id];
+      const alt = SLOT_KEYS[i] === 'RMB';
+      return `
+        <div class="hud-slot${alt ? ' alt' : ''}">
+          <button data-slot="${i + 1}" aria-label="${a.name} (${alt ? 'right-click or key 5' : a.slot === 6 ? 'key R or 6' : `key ${i + 1}`})">
+            <img src="${a.icon}" alt="" draggable="false" />
+            <span class="cd" data-cd="${i + 1}"></span>
+            <span class="cdtext" data-cdt="${i + 1}"></span>
+            ${a.essenceCost ? `<span class="cost">${a.essenceCost}</span>` : ''}
+          </button>
+          <span class="key">${SLOT_KEYS[i] ?? i + 1}</span>
+        </div>`;
+    }).join('');
+  }
+
+  /** Click-to-cast plus tooltips (name, cost, cooldown, description, unlock level). */
+  private bindSlots() {
+    this.hotbar.forEach((id, i) => {
+      const a = ABILITIES[id];
+      const btn = this.$<HTMLButtonElement>(`[data-slot="${i + 1}"]`);
+      btn.addEventListener('click', () => this.cb.cast((i + 1) as HotbarSlot));
+      const need = unlockLevel(id);
+      const kind = a.slot === 6 ? 'Signature rite' : i < 4 ? 'Grimoire rite (swap with L)' : '';
+      btn.title = `${a.name} — ${a.essenceCost ? `${a.essenceCost} essence · ` : ''}${(a.cooldownMs / 1000).toFixed(1)}s\n${a.description}${kind ? `\n${kind}${need > 1 ? ` — unlocks at level ${need}` : ''}.` : ''}`;
+    });
+  }
+
+  /** The Grimoire loadout changed: rebuild the slots (cooldowns carry over — they belong to the rite). */
+  setHotbar(hotbar: AbilityId[]) {
+    this.hotbar = hotbar;
+    this.$('.hud-slots').innerHTML = this.slotsHtml();
+    for (const key of [...this.cache.keys()]) if (/^(cd|cdt|res|emp|lock)\d+$/.test(key)) this.cache.delete(key);
+    this.bindSlots();
   }
 
   private set(key: string, value: string | number | boolean, apply: () => void) {

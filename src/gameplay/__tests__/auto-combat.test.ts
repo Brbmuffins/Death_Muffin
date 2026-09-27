@@ -14,6 +14,8 @@ const input = (over: Partial<AutoCombatInput> = {}): AutoCombatInput => ({
   thrallCount: 0, thrallCap: 3, ready: () => true, ...over,
 });
 const readyOnly = (...ids: AbilityId[]) => (id: AbilityId) => ids.includes(id);
+/** A starting bar: the free needle, the default four and Corpse Explosion (no level-gated Grimoire rites). */
+const DEFAULT_BAR = readyOnly('bone_needle', 'marrow_spear', 'exhume', 'miasma', 'black_litany', 'corpse_explosion');
 
 describe('stationary auto combat', () => {
   it('does nothing without nearby living enemies, even with available corpses', () => {
@@ -84,7 +86,7 @@ describe('stationary auto combat', () => {
   });
 
   it('handles boss targeting and respects needle reach including the boss radius', () => {
-    const base = input({ enemies: [], boss: { active: true, state: 'idle', hp: 500, x: 12, z: 0 } as BossState });
+    const base = input({ enemies: [], boss: { active: true, state: 'idle', hp: 500, x: 12, z: 0 } as BossState, ready: DEFAULT_BAR });
     expect(selectAutoCombatAction(base)).toEqual({ id: 'bone_needle', target: { x: 12, z: 0, boss: true } });
     expect(selectAutoCombatAction({ ...base, boss: { ...base.boss, hp: 0 } })).toBeNull();
     expect(selectAutoCombatAction({ ...base, boss: { ...base.boss, x: 13 }, ready: readyOnly('bone_needle') })).toBeNull();
@@ -93,6 +95,45 @@ describe('stationary auto combat', () => {
   it('does not select unavailable spells or out-of-range single targets', () => {
     expect(selectAutoCombatAction(input({ ready: () => false }))).toBeNull();
     expect(selectAutoCombatAction(input({ enemies: [enemy(1, 12.8)], ready: readyOnly('bone_needle', 'marrow_spear') }))).toBeNull();
+  });
+
+  it('sends the Wailing Skull at a boss or elite, and through a knot it can leap along', () => {
+    const skull = readyOnly('wailing_skull', 'bone_needle');
+    const boss = input({ enemies: [], boss: { active: true, state: 'idle', hp: 500, x: 12, z: 0 } as BossState, ready: skull });
+    expect(selectAutoCombatAction(boss)).toEqual({ id: 'wailing_skull', target: { x: 12, z: 0, boss: true } });
+    const elite = input({ enemies: [enemy(1, 4), enemy(2, 8, 0, { elite: true })], ready: skull });
+    expect(selectAutoCombatAction(elite)?.target).toEqual({ x: 8, z: 0, enemyId: 2 });
+    // A lone common is left to the needle.
+    expect(selectAutoCombatAction(input({ enemies: [enemy(1, 6)], ready: skull }))?.id).toBe('bone_needle');
+    expect(selectAutoCombatAction(input({ enemies: [enemy(1, 6), enemy(2, 7, 1), enemy(3, 8, -1)], ready: skull }))?.id).toBe('wailing_skull');
+  });
+
+  it('breathes Grave Frost only into a cone of three or more', () => {
+    const frost = readyOnly('grave_frost', 'bone_needle');
+    const pack = [enemy(1, 4), enemy(2, 5, 1), enemy(3, 6, -1.5)];
+    expect(selectAutoCombatAction(input({ enemies: pack, ready: frost }))?.id).toBe('grave_frost');
+    // Two in front and one behind is not a cone.
+    expect(selectAutoCombatAction(input({ enemies: [enemy(1, 4), enemy(2, 5), enemy(3, -5)], ready: frost }))?.id).toBe('bone_needle');
+  });
+
+  it('raises Bone Mantle when pressed and hurt, or standing on corpse fuel', () => {
+    const mantle = readyOnly('bone_mantle', 'bone_needle');
+    const close = [enemy(1, 1.5), enemy(2, -1.5)];
+    const hurt = { x: 0, z: 0, essence: 60, maxEssence: 100, hp: 40, maxHp: 100 };
+    expect(selectAutoCombatAction(input({ enemies: close, ready: mantle, player: hurt }))).toEqual({ id: 'bone_mantle', target: { x: 0, z: 0 } });
+    const healthy = { ...hurt, hp: 95 };
+    expect(selectAutoCombatAction(input({ enemies: close, ready: mantle, player: healthy }))?.id).toBe('bone_needle');
+    const fuel = [corpse(1, 1), corpse(2, 2), corpse(-2, 1)];
+    expect(selectAutoCombatAction(input({ enemies: close, corpses: fuel, thrallCount: 3, ready: mantle, player: healthy }))?.id).toBe('bone_mantle');
+    // Nobody close: no mantle, however many bodies lie around.
+    expect(selectAutoCombatAction(input({ enemies: [enemy(1, 8)], corpses: fuel, ready: mantle, player: hurt }))?.id).toBe('bone_needle');
+  });
+
+  it('never casts Grave Step (auto combat never moves you)', () => {
+    const everything = input({ enemies: [enemy(1, 3), enemy(2, 4)], corpses: [corpse(6)], thrallCount: 3 });
+    for (let essence = 0; essence <= 100; essence += 10) {
+      expect(selectAutoCombatAction({ ...everything, player: { ...everything.player, essence } })?.id).not.toBe('grave_step');
+    }
   });
 
   it('bounds snapshot inspection and returns one action without modifying input', () => {

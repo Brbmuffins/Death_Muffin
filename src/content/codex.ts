@@ -1,6 +1,11 @@
 import {
+  ABILITIES,
+  BONE_MANTLE,
   DETONATE,
   FRACTURE,
+  GRAVE_FROST,
+  GRAVE_STEP,
+  WAILING_SKULL,
   LITANY_MAX_MULT,
   LITANY_PER_CORPSE,
   LITANY_PER_RESONANT,
@@ -13,7 +18,7 @@ import {
 } from './abilities';
 import { AREAS, BOSS_SUMMON_SHARDS, type AreaId } from './areas';
 import type { DisciplineId } from './disciplines';
-import { ENEMIES, type Behavior, type EnemyId } from './enemies';
+import { CENSER, ENEMIES, SCREAM, type Behavior, type EnemyId } from './enemies';
 
 /**
  * Codex text — the in-game Codex (ui/CodexPanel) and any docs/README tooling
@@ -45,6 +50,10 @@ export const RITE_ORDER: AbilityId[] = [
   'miasma',
   'black_litany',
   'corpse_explosion',
+  'wailing_skull',
+  'grave_step',
+  'grave_frost',
+  'bone_mantle',
   'ossuary_wall',
   'command_rend',
   'dirge',
@@ -81,6 +90,26 @@ export const CODEX_RITES: Record<AbilityId, RiteEntry> = {
     fx: 'detonate',
     colour: 'Ember and crimson',
     tip: `The rite for bodies you can't use. Burst a corpse under a pack that has reached you. A resonant Penitent corpse blasts ${DETONATE.resonantRadiusMult}× wider, an elite's hits ${DETONATE.eliteDamageMult}× as hard, and a Carrion Sac's leaves a rot pool that works for you. Each one you burst is a thrall you won't raise, and a body the Litany won't count.`,
+  },
+  wailing_skull: {
+    fx: 'skull',
+    colour: 'Spirit jade',
+    tip: `Grimoire rite (level ${ABILITIES.wailing_skull.unlockLevel}). The skull leaps ${WAILING_SKULL.hops - 1} more times within ${WAILING_SKULL.leapRange}m, each bite ${Math.round((1 - WAILING_SKULL.falloff) * 100)}% weaker, and a killing bite earns another leap (up to ${WAILING_SKULL.maxHops}). Open on the wounded: a Fractured, bleeding pack turns one cast into a chain.`,
+  },
+  grave_step: {
+    fx: 'step',
+    colour: 'Blood mist crimson',
+    tip: `Grimoire rite (level ${ABILITIES.grave_step.unlockLevel}). Your only blink: step out of a Penitent cone or onto the pile you want to fight on. The re-forming burst bleeds everything within ${GRAVE_STEP.burstRadius}m, and the corpse stays for a Corpse Explosion or Exhume. It never crosses into another area.`,
+  },
+  grave_frost: {
+    fx: 'frost',
+    colour: 'Cold grave blue',
+    tip: `Grimoire rite (level ${ABILITIES.grave_frost.unlockLevel}). Breathe it twice: the first cone Chills for ${GRAVE_FROST.chillS} seconds, and the second shatters every Chilled enemy for +${Math.round((GRAVE_FROST.shatterMult - 1) * 100)}% damage. Chilled melee swing slower, so it doubles as defence. Mourner wraiths Chill too, so a Mourner can shatter from the first breath.`,
+  },
+  bone_mantle: {
+    fx: 'mantle',
+    colour: 'Bone ivory and old gold',
+    tip: `Grimoire rite (level ${ABILITIES.bone_mantle.unlockLevel}). Stand on the dead first: each of up to ${BONE_MANTLE.maxCorpses} corpses adds ${Math.round(BONE_MANTLE.barrierPerCorpse * 100)}% of your health to the barrier (${Math.round(BONE_MANTLE.barrierBase * 100)}% with none, ${Math.round(BONE_MANTLE.barrierCap * 100)}% at most), and it holds for ${BONE_MANTLE.durationS} seconds before it wears off. The shards cut anything within ${BONE_MANTLE.orbitRadius}m, so let the pack come to you.`,
   },
   ossuary_wall: {
     fx: 'wall',
@@ -136,7 +165,7 @@ export const CODEX_DISCIPLINES: Record<DisciplineId, DisciplineEntry> = {
 
 export type DeadId = EnemyId | 'prelate';
 
-export const DEAD_ORDER: DeadId[] = ['robber', 'hound', 'penitent', 'sac', 'deacon', 'risen', 'prelate'];
+export const DEAD_ORDER: DeadId[] = ['robber', 'hound', 'penitent', 'sac', 'deacon', 'risen', 'censer', 'wraith', 'rat', 'golem', 'prelate'];
 
 export const PRELATE_NAME = 'The Bell-Sworn Prelate';
 
@@ -202,6 +231,34 @@ export const CODEX_DEAD: Record<DeadId, DeadEntry> = {
     corpse: 'Nothing. The deacon already spent it.',
     counter: 'Cheap to kill, but every Risen is a corpse you lost. The answer is the deacon, not the Risen.',
   },
+  censer: {
+    name: ENEMIES.censer.name,
+    role: ENEMIES.censer.behavior,
+    behaviour: `Walks with the pack swinging a bronze censer. Every second its incense Incenses the dead within ${CENSER.radius}m (bronze motes): they move ${Math.round((CENSER.moveMult - 1) * 100)}% faster and strike ${Math.round((CENSER.attackRateMult - 1) * 100)}% more often. Its own blows are weak.`,
+    corpse: 'An ordinary corpse, rich with old incense.',
+    counter: 'Kill it first: a pack without its censer slows back down within a breath. Wailing Skull reaches it through the crowd, and a Marrow Spear aimed at it clears the way.',
+  },
+  wraith: {
+    name: ENEMIES.wraith.name,
+    role: ENEMIES.wraith.behavior,
+    behaviour: `A drifting chorister. It sings pale song-lines onto the ground where you stand, and ${ENEMIES.wraith.windupMs / 1000}s later the ring (${SCREAM.radius}m) breaks in a scream. It keeps its distance and backs away if you close.`,
+    corpse: 'None. It dissolves into mist, so a choir is a fight with no corpses to spend.',
+    counter: 'Keep moving while it sings; a single step out of the ring is enough. A Mourner\'s Dirge silences the choir, and Grave Step closes the distance in a blink.',
+  },
+  rat: {
+    name: ENEMIES.rat.name,
+    role: ENEMIES.rat.behavior,
+    behaviour: `Pours out of the ossuary walls in packs of ${ENEMIES.rat.pack![0]}–${ENEMIES.rat.pack![1]}. Very fast and very fragile, it circles to your flanks and nips.`,
+    corpse: 'None. Too small to be worth raising.',
+    counter: 'Area rites: a Miasma or a Grave Frost cone ends a whole pack, and so does a Corpse Explosion on any body they swarm past. Needling them one by one is a waste of time.',
+  },
+  golem: {
+    name: ENEMIES.golem.name,
+    role: ENEMIES.golem.behavior,
+    behaviour: `A walking pile of fused skeletons. It lumbers in slowly, then slams a wide ${ENEMIES.golem.slamRadius}m ring after a long windup.`,
+    corpse: `Falls apart into ${ENEMIES.golem.deathCorpses} corpses: its own and the skeletons it was built from. A whole legion, or a whole Litany, in one kill.`,
+    counter: 'Step out of the ring, then punish the recovery. Fracture it with Marrow Spear first, and save Black Litany or Exhume for the pile it leaves behind.',
+  },
   prelate: {
     name: PRELATE_NAME,
     role: 'boss',
@@ -225,16 +282,16 @@ export const CODEX_AREAS: Record<AreaId, AreaEntry> = {
     dangers: 'None. The dead cannot follow you here. The Reliquary, the Ossuary Workbench, the Rite Niches, the Altar of Ascension and a waystone wait for you.',
   },
   graves: {
-    dangers: 'Grave Robbers in numbers, Bone Hounds on the flanks, and the odd Penitent and Carrion Sac. Learn the corpse economy here.',
+    dangers: 'Grave Robbers in numbers, Bone Hounds on the flanks, and the odd Penitent and Carrion Sac. Learn the corpse economy here. Now and then a procession comes through: a kennel of hounds and skull-rats, or Penitents led by a Censer Bearer.',
   },
   ossuary: {
-    dangers: 'The first Crypt Deacons. Hounds and Sacs come thicker, and every corpse on the floor is now contested.',
+    dangers: 'The first Crypt Deacons. Hounds and Sacs come thicker, and every corpse on the floor is now contested. Skull-rats pour from the walls in packs, and a Bone Golem sometimes wakes in the bone-piles.',
   },
   nave: {
-    dangers: 'The aisles are flooded; the pillar walkways stay dry. Penitents are the congregation here, tolling from every pew, and deacons walk among them. Watch for overlapping cones.',
+    dangers: 'The aisles are flooded; the pillar walkways stay dry. Penitents are the congregation here, tolling from every pew, and deacons walk among them. Watch for overlapping cones, and for the Choir Wraiths singing rings onto the dry walkways. Censer Bearers quicken the whole congregation.',
   },
   sanctum: {
-    dangers: 'The Sundered Bell and the Prelate who serves it. Penitents and deacons hold the aisles, and elites are more common here than anywhere else.',
+    dangers: 'The Sundered Bell and the Prelate who serves it. Penitents and deacons hold the aisles, and elites are more common here than anywhere else. Every newer kind of dead walks here too, and the Procession marches behind a Bone Golem.',
   },
 };
 

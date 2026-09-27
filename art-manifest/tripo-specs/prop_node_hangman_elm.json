@@ -1,0 +1,9 @@
+{
+  "id": "prop_node_hangman_elm",
+  "input": "art-src/concepts/props/node_hangman_elm.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 3200,
+    "texture_quality": "standard"
+  }
+}

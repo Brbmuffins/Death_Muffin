@@ -1,0 +1,100 @@
+[
+  {
+    "id": "concept_node_coffin_oak",
+    "out": "art-src/concepts/props/node_coffin_oak.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png"],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a squat gnarled graveyard oak tree, dark furrowed bark with old iron coffin-nails hammered into the trunk, a sparse crown of a few withered brown leaves, thick roots gripping the ground. A tree that can be chopped for wood."
+  },
+  {
+    "id": "concept_node_hangman_elm",
+    "out": "art-src/concepts/props/node_hangman_elm.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png"],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a tall lean elm tree with grey cracked bark and one long horizontal branch from which a frayed old rope hangs, sparse dark leaves at the top. A tree that can be chopped for wood."
+  },
+  {
+    "id": "concept_node_bleeding_willow",
+    "out": "art-src/concepts/props/node_bleeding_willow.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png"],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a weeping willow tree with long drooping curtains of dark olive leaves, dark red sap weeping from cuts in its black bark. A tree that can be chopped for wood."
+  },
+  {
+    "id": "concept_node_churchyard_yew",
+    "out": "art-src/concepts/props/node_churchyard_yew.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png"],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: an ancient churchyard yew tree, a thick hollow twisted reddish trunk and a dense rounded canopy of very dark green needles with a few small red berries. A tree that can be chopped for wood."
+  },
+  {
+    "id": "concept_node_bone_elder",
+    "out": "art-src/concepts/props/node_bone_elder.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png"],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: an eerie elder tree whose trunk and branches look like pale fused bones and vertebrae, faint violet glow in the cracks, a few clusters of pale flowers. A rare high-level tree that can be chopped for wood."
+  },
+  {
+    "id": "concept_node_stump",
+    "out": "art-src/concepts/props/node_stump.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png"],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a freshly chopped dark tree stump with pale cut rings on top, a few wood chips around it and exposed roots."
+  },
+  {
+    "id": "concept_node_ore_seam",
+    "out": "art-src/concepts/props/node_ore_seam.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png"],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a waist-high outcrop of dark grave-soil rock with thick bright copper-green metal veins running through it, a broken old tombstone fragment half-buried in its side. A rock that can be mined for ore."
+  },
+  {
+    "id": "concept_node_ore_geode",
+    "out": "art-src/concepts/props/node_ore_geode.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png"],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a large cracked-open black geode boulder with glowing pale silver-blue moon-metal crystals inside, runic scratches on the outer shell. A rare high-level rock that can be mined for ore."
+  },
+  {
+    "id": "concept_node_ore_spent",
+    "out": "art-src/concepts/props/node_ore_spent.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png"],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a low pile of broken grey rock rubble and dust with no metal left in it, a depleted mining spot."
+  },
+  {
+    "id": "concept_node_burial_mound",
+    "out": "art-src/concepts/props/node_burial_mound.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png"],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a long low earthen grave mound of dark soil with a leaning weathered wooden grave marker at one end and an old iron shovel stuck into the dirt. A grave that can be dug up."
+  },
+  {
+    "id": "concept_node_dug_grave",
+    "out": "art-src/concepts/props/node_dug_grave.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png"],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: an open rectangular grave pit freshly dug into dark soil with a heap of loose dirt beside it and a broken wooden marker lying flat."
+  },
+  {
+    "id": "concept_node_garden_plot",
+    "out": "art-src/concepts/props/node_garden_plot.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png"],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a rectangular raised garden bed framed with old coffin planks, filled with rich black soil in neat furrows, a low wrought-iron fence with small skull finials around it. An empty farming plot."
+  },
+  {
+    "id": "concept_node_bone_kiln",
+    "out": "art-src/concepts/props/node_bone_kiln.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png"],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a squat stone smelting furnace built of dark bricks with skulls set into its dome, a glowing orange mouth, an iron crucible and bellows beside it. A crafting station for smelting ore."
+  },
+  {
+    "id": "concept_node_black_water_pool",
+    "out": "art-src/concepts/props/node_black_water_pool.png",
+    "refs": ["necromancer-world-farming-gameplay-reference.png"],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, violet accents). Subject: a small round pool of still black water ringed by mossy broken flagstones, a crooked iron lantern post with a hanging lantern at the edge and a sunken bell half-visible under the surface. A fishing spot."
+  }
+]

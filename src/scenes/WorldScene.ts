@@ -3,10 +3,13 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import type { GameScene } from './SceneManager';
 import { getRuntime, type RuntimeView } from '../app/GameRuntime';
 import { Scope } from '../app/Scope';
-import { ABILITIES, HOTBAR, SIGNATURE_BY_DISCIPLINE, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, type AbilityId, type HotbarSlot } from '../content/abilities';
+import { ABILITIES, GRIMOIRE, HOTBAR, SIGNATURE_BY_DISCIPLINE, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
+import { assignRite, loadLoadout, saveLoadout } from '../gameplay/loadout';
+import { GrimoirePanel } from '../ui/GrimoirePanel';
+import { preloadFxImages } from '../graphics/fxImages';
 import { AREAS, AREA_ORDER, BOSS_SUMMON_SHARDS, DOORS, PLAYER_SPAWN, type AreaId, type Interactable } from '../content/areas';
 import { disciplineFor, type Discipline } from '../content/disciplines';
-import { AFFIX_TUNING, ELITE_AFFIXES, ENEMIES, type EliteAffix } from '../content/enemies';
+import { AFFIX_TUNING, ELITE_AFFIXES, ENEMIES, WAVE_THEMES, type EliteAffix, type EnemyId } from '../content/enemies';
 import { HEALING_FLASKS, itemMeta } from '../content/items';
 import { generateLayout } from '../content/layout';
 import { WAVE_MILESTONES, damageBonusPct, milestoneActive, waveModifiers } from '../content/upgrades';
@@ -48,21 +51,31 @@ import { InventoryPanel } from '../ui/InventoryPanel';
 import { SettingsPanel, WaystonePanel } from '../ui/MiscPanels';
 import { ProfessionsPanel } from '../ui/ProfessionsPanel';
 import { CodexPanel } from '../ui/CodexPanel';
-import { Onboarding } from '../ui/Onboarding';
-import { CodexJournal, type CodexIds, type CodexKind } from '../gameplay/codexJournal';
+import { Onboarding, type TipId } from '../ui/Onboarding';
+import { CodexJournal, browserStorage, type CodexIds, type CodexKind } from '../gameplay/codexJournal';
 import { deadName } from '../content/codex';
 import { CURSOR } from '../ui/cursors';
 import { audio } from '../audio/Audio';
-
-/** Chill has no generated icon yet: a cold-blue frost sigil drawn inline. */
-const SILENCE_ICON = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%23121a2e'/><path d='M10 21h12l-2-3v-5a4 4 0 0 0-8 0v5z' fill='none' stroke='%239fc4ff' stroke-width='2'/><path d='M7 7l18 18' stroke='%23dde8ff' stroke-width='2.4' stroke-linecap='round'/></svg>";
-const CHILL_ICON = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%23121a2e'/><g stroke='%239fc4ff' stroke-width='2.4' stroke-linecap='round'><path d='M16 5v22M6.5 10.5l19 11M6.5 21.5l19-11'/><path d='M13 7l3 3 3-3M13 25l3-3 3 3' fill='none'/></g></svg>";
 
 const SNAPSHOT_MS = 100;
 const MOVE_SEND_MS = 100;
 const RESPAWN_MS = 4000;
 const RECALL_MS = 1500;
 const INTERACT_RANGE = 2.6;
+/** Counsel shown the first time each newer kind of dead climbs out near the player. */
+const FIRST_SIGHT_TIPS: Partial<Record<EnemyId, TipId>> = {
+  censer: 'censer',
+  wraith: 'wraith',
+  rat: 'swarm',
+  golem: 'golem',
+};
+/** Counsel shown the first time each level-gated Grimoire rite is placed on a key. */
+const RITE_TIPS: Partial<Record<AbilityId, TipId>> = {
+  wailing_skull: 'rite_skull',
+  grave_step: 'rite_step',
+  grave_frost: 'rite_frost',
+  bone_mantle: 'rite_mantle',
+};
 
 interface Remote {
   info: RemotePlayer;
@@ -94,8 +107,10 @@ export class WorldScene implements GameScene, RuntimeView {
   private canvas = document.getElementById('scene') as HTMLCanvasElement;
 
   private discipline: Discipline;
-  /** Hotbar: the shared kit plus this discipline's signature rite (slot 6). */
+  /** Hotbar: the Grimoire loadout (keys 1–4), Corpse Explosion (slot 5) and this discipline's signature rite (slot 6). */
   private hotbar: AbilityId[] = HOTBAR;
+  /** The four rites on keys 1–4 (Grimoire, L); remembered per character in browser storage. */
+  private loadout: AbilityId[];
   private progression: Progression;
   private inventory: Inventory;
   private professions: Profession[] = [];
@@ -137,6 +152,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private surgeFx: Handle | null = null;
 
   private keys = new Set<string>();
+  /** Scene time of the last procession banner (one per band, not one per breach). */
+  private lastProcession = -1e9;
   private nextAutoCombatAt = 0;
   private autoTargetId: number | null = null;
   private autoAim: CastTarget | null = null;
@@ -167,6 +184,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private classPanel!: ClassPanel;
   private waystonePanel!: WaystonePanel;
   private codexPanel!: CodexPanel;
+  private grimoirePanel!: GrimoirePanel;
   private ascensionPanel!: AscensionPanel;
   private codex!: CodexJournal;
   private onboarding!: Onboarding;
@@ -181,7 +199,8 @@ export class WorldScene implements GameScene, RuntimeView {
     private onClassChanged: (character: Character) => void,
   ) {
     this.discipline = disciplineFor(character.class_index);
-    this.hotbar = [...HOTBAR, SIGNATURE_BY_DISCIPLINE[this.discipline.id]];
+    this.loadout = loadLoadout(browserStorage(), character.id, character.level ?? 1);
+    this.hotbar = this.buildHotbar();
     this.progression = new Progression(character);
     this.applyBoons();
     this.inventory = new Inventory(character.id);
@@ -189,6 +208,29 @@ export class WorldScene implements GameScene, RuntimeView {
 
   get camera() {
     return this.rig.camera;
+  }
+
+  /** At least one level-gated Grimoire rite is learned (the Grimoire is worth opening). */
+  private grimoireUnlocked() {
+    return GRIMOIRE.some((id) => unlockLevel(id) > 1 && this.character.level >= unlockLevel(id));
+  }
+
+  private buildHotbar(): AbilityId[] {
+    return [...this.loadout, 'corpse_explosion', SIGNATURE_BY_DISCIPLINE[this.discipline.id]];
+  }
+
+  /** Grimoire: put a rite on key `slot + 1` (swapping if it sat on another key) and remember it. */
+  private setRite(slot: number, id: AbilityId) {
+    if (this.character.level < unlockLevel(id) || this.loadout[slot] === id) return;
+    this.loadout = assignRite(this.loadout, slot, id);
+    saveLoadout(browserStorage(), this.character.id, this.loadout);
+    this.hotbar = this.buildHotbar();
+    this.hud.setHotbar(this.hotbar);
+    this.queuedCast = null;
+    this.grimoirePanel.render();
+    audio.play('click');
+    const tip = RITE_TIPS[id];
+    if (tip) this.onboarding.show(tip);
   }
 
   // -------------------------------------------------------------------------
@@ -297,10 +339,12 @@ export class WorldScene implements GameScene, RuntimeView {
     this.onboarding.show('welcome', 900);
     this.onboarding.show('move', 1600);
     if (this.character.level >= SIGNATURE_LEVEL) this.onboarding.show('signature', 4000);
+    if (this.grimoireUnlocked()) this.onboarding.show('grimoire', 4500);
     this.ready = true;
   }
 
   private buildScene() {
+    preloadFxImages();
     const s = this.scene;
     s.background = new THREE.Color(0x07060a);
     s.fog = new THREE.FogExp2(0x0b0810, 0.014);
@@ -421,6 +465,11 @@ export class WorldScene implements GameScene, RuntimeView {
     );
     this.codex = new CodexJournal(this.character.id);
     this.codexPanel = new CodexPanel(this.root, this.codex, this.discipline.id);
+    this.grimoirePanel = new GrimoirePanel(
+      this.root,
+      () => ({ loadout: this.loadout, level: this.character.level }),
+      (slot, id) => this.setRite(slot, id),
+    );
     this.ascensionPanel = new AscensionPanel(
       this.root,
       this.progression,
@@ -433,6 +482,10 @@ export class WorldScene implements GameScene, RuntimeView {
       },
     );
     this.onboarding = new Onboarding(this.root, this.character.id);
+    this.onboarding.keyFor = (ability) => {
+      const i = this.loadout.indexOf(ability as AbilityId);
+      return i >= 0 ? String(i + 1) : null;
+    };
     this.scope.add(() => {
       this.codexPanel.dispose();
       this.onboarding.dispose();
@@ -455,6 +508,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.settingsPanel.close();
     this.waystonePanel.close();
     this.codexPanel.close();
+    this.grimoirePanel.close();
   }
 
   private async changeClass(index: number) {
@@ -475,9 +529,9 @@ export class WorldScene implements GameScene, RuntimeView {
     }
   }
 
-  private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension') {
+  private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire') {
     audio.play('click');
-    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel }[p];
+    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel }[p];
     const wasOpen = panel.isOpen;
     this.closePanels();
     if (wasOpen) return;
@@ -487,7 +541,10 @@ export class WorldScene implements GameScene, RuntimeView {
     else if (p === 'settings') this.settingsPanel.open();
     else if (p === 'codex') this.codexPanel.open();
     else if (p === 'ascension') this.ascensionPanel.open();
-    else this.waystonePanel.open();
+    else if (p === 'grimoire') {
+      this.grimoirePanel.open();
+      this.onboarding.show('grimoire');
+    } else this.waystonePanel.open();
   }
 
   private applyWaveTier() {
@@ -529,6 +586,7 @@ export class WorldScene implements GameScene, RuntimeView {
       else if (k === 'p') this.togglePanel('professions');
       else if (k === 'm') this.togglePanel('map');
       else if (k === 'k') this.togglePanel('codex');
+      else if (k === 'l') this.togglePanel('grimoire');
       else if (k === 'g') this.toggleAutoCombat();
       else if (k === 'escape') this.togglePanel('settings');
       else this.keys.add(k);
@@ -656,8 +714,8 @@ export class WorldScene implements GameScene, RuntimeView {
     this.autoAim = null;
     const id = this.hotbar[slot - 1];
     if (!id) return;
-    // Corpse Explosion picks from the exact ground point, not a hovered enemy's position.
-    const target = id === 'corpse_explosion' ? { x: this.groundPoint.x, z: this.groundPoint.z } : this.cursorTarget();
+    // Corpse Explosion and Grave Step pick from the exact ground point, not a hovered enemy's position.
+    const target = id === 'corpse_explosion' || id === 'grave_step' ? { x: this.groundPoint.x, z: this.groundPoint.z } : this.cursorTarget();
     const res = this.abilities.cast(id, target, this.now);
     if (res === 'busy' || (res === 'cooldown' && this.player.cooldownLeft(id, this.now) <= 220)) {
       this.queuedCast = { slot, target, until: this.now + 220 };
@@ -683,7 +741,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private tickCombat(now: number) {
     const p = this.player;
     if (!p.alive || this.recallAt) return;
-    if (this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen) {
+    if (this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen) {
       this.queuedCast = null;
       this.autoTargetId = null;
       this.autoAim = null;
@@ -715,16 +773,18 @@ export class WorldScene implements GameScene, RuntimeView {
     if (now < this.nextAutoCombatAt) return;
     this.nextAutoCombatAt = now + 180;
     const thralls = [...this.thrallsMap().values()].filter(t => t.owner === this.selfId).length;
-    const action = selectAutoCombatAction({ player: { x: p.x, z: p.z, essence: p.essence, maxEssence: p.stats.maxEssence },
+    // Auto combat only reaches for what is on the bar (plus the free Bone Needle).
+    const action = selectAutoCombatAction({ player: { x: p.x, z: p.z, essence: p.essence, maxEssence: p.stats.maxEssence, hp: p.hp, maxHp: p.stats.maxHp },
       enemies: this.enemiesMap().values(), corpses: this.corpsesMap().values(), boss: this.bossState(),
-      thrallCount: thralls, thrallCap: this.discipline.mods.thrallCap, ready: id => this.abilities.ready(id, now) });
+      thrallCount: thralls, thrallCap: this.discipline.mods.thrallCap,
+      ready: id => (id === 'bone_needle' || this.hotbar.includes(id)) && this.abilities.ready(id, now) });
     const previous = this.autoTargetId === null ? undefined : this.enemiesMap().get(this.autoTargetId);
     this.autoTargetId = action?.target.enemyId ?? (previous && previous.hp > 0 && previous.state !== 'dead' && Math.hypot(previous.x - p.x, previous.z - p.z) <= ABILITIES.bone_needle.range ? previous.id : null);
     if (action) this.autoAim = action.target;
     else if (this.autoTargetId === null && !(this.autoAim?.boss && this.bossState().active && this.bossState().hp > 0)) this.autoAim = null;
     if (action && this.abilities.cast(action.id, action.target, now) === 'ok') {
       this.onboarding.show('auto_combat');
-      const slot = ABILITIES[action.id].slot;
+      const slot = this.hotbar.indexOf(action.id) + 1;
       if (slot) this.hud.slotFlash(slot);
     }
   }
@@ -743,7 +803,7 @@ export class WorldScene implements GameScene, RuntimeView {
           : res === 'no_corpse'
             ? 'No corpse in reach'
             : res === 'locked'
-              ? `${ABILITIES[id].name} unlocks at level ${SIGNATURE_LEVEL}`
+              ? `${ABILITIES[id].name} unlocks at level ${unlockLevel(id)}`
               : res === 'no_thralls'
                 ? 'You command no thralls'
                 : '';
@@ -1041,6 +1101,22 @@ export class WorldScene implements GameScene, RuntimeView {
         if (ev.by === me) this.rig.shake(0.2);
         break;
       }
+      case 'mantle': {
+        // Shards follow their caster: our body, or the remote's latest reported position.
+        const at = { x: ev.x, z: ev.z };
+        const follow = ev.by === me
+          ? () => (this.player.alive ? this.player : null)
+          : () => {
+              const r = this.remotes.get(ev.by);
+              if (!r) return null;
+              at.x = r.tx;
+              at.z = r.tz;
+              return at;
+            };
+        this.abilities.onMantle(ev, ev.by === me, follow);
+        if (ev.by === me) this.rig.shake(0.12);
+        break;
+      }
       case 'heal':
         if (ev.player === me && this.player.alive) {
           this.player.heal(ev.amount);
@@ -1107,6 +1183,14 @@ export class WorldScene implements GameScene, RuntimeView {
           audio.play('wave', ev.x, ev.z);
           this.effects.decal({ tex: fx.cracks(), color: 0x9b5cff, x: ev.x, z: ev.z, r: 3, duration: 1.8, opacity: 0.9, growFrom: 0.3 });
           this.effects.lightFlash(ev.x, 1, ev.z, 0x7c3aed, 30, 0.8);
+          // A procession: one banner for the whole band (each breach reports the wave).
+          const theme = ev.theme ? WAVE_THEMES[ev.area]?.find((t) => t.id === ev.theme) : undefined;
+          if (theme && this.now - this.lastProcession > 4000) {
+            this.lastProcession = this.now;
+            this.hud.banner(theme.name, theme.blurb, 2600);
+            audio.play('tollSmall', ev.x, ev.z);
+            this.onboarding.show('procession', 1500);
+          }
         }
         break;
       case 'dmg':
@@ -1121,6 +1205,8 @@ export class WorldScene implements GameScene, RuntimeView {
         if (Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 40) {
           this.codexDiscover('dead', ev.def);
           if (ev.def === 'deacon') this.onboarding.show('deacon');
+          const firstSight = FIRST_SIGHT_TIPS[ev.def];
+          if (firstSight) this.onboarding.show(firstSight, 600);
           if (ev.elite) this.onboarding.show('elite');
         }
         break;
@@ -1205,7 +1291,22 @@ export class WorldScene implements GameScene, RuntimeView {
         this.effects.decal({ tex: fx.ring(), color: E.toll, x: ev.x, z: ev.z, r: ENEMIES.penitent.attackRange * (0.45 + k * 0.28), duration: 0.45, opacity: 0.8 - k * 0.2, growFrom: 0.2, delay: ms + k * 0.08 });
       }
     } else if (ev.kind === 'slam') {
-      this.effects.decal({ tex: fx.disc(), color: SPELL_FX.enemy.slam, x: ev.tx, z: ev.tz, r: 1.9, duration: ms, opacity: 0.7, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.4 });
+      const r = ev.r ?? 1.9;
+      this.effects.decal({ tex: fx.disc(), color: SPELL_FX.enemy.slam, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.7, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.4 });
+      if (r > 2.2) {
+        // A Bone Golem's slam: the wide ring cracks as it lands.
+        this.effects.decal({ tex: fx.ring(), color: SPELL_FX.enemy.slam, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.9, fadeOut: 0.05 });
+        this.effects.decal({ tex: fx.cracks(), color: SPELL_FX.enemy.slam, x: ev.tx, z: ev.tz, r: r * 0.9, rot: Math.random() * 6, duration: 1.2, opacity: 0.85, growFrom: 0.5, delay: ms });
+        this.effects.emitSmoke({ x: ev.tx, y: 0.3, z: ev.tz, count: 6, color: 0x3b3440, spread: r * 0.5, speed: 1.4, up: 0.5, life: 0.9, size: 1.2 });
+      }
+    } else if (ev.kind === 'scream') {
+      // Choir Wraith: pale song-lines run from the singer to a ring that breaks when the hymn does.
+      const r = ev.r ?? 2.2;
+      const song = 0xb9cbe6;
+      this.effects.beam({ x: ev.x, y: 2, z: ev.z }, () => ({ x: ev.tx, y: 0.3, z: ev.tz }), song, 0.03, ms);
+      this.effects.decal({ tex: fx.disc(), color: song, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.45, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.2 });
+      this.effects.decal({ tex: fx.sigil(), color: song, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.6, spin: -1.5, fadeOut: 0.05 });
+      this.effects.decal({ tex: fx.ring(), color: 0xeef4ff, x: ev.tx, z: ev.tz, r: r * 1.15, duration: 0.35, opacity: 1, growFrom: 0.5, delay: ms });
     } else if (ev.kind === 'raise') {
       const from = { x: ev.x, y: 1.8, z: ev.z };
       this.effects.beam(from, () => ({ x: ev.tx, y: 0.3, z: ev.tz }), SPELL_FX.enemy.rot, 0.05, ms);
@@ -1401,6 +1502,13 @@ export class WorldScene implements GameScene, RuntimeView {
       this.player.essence = this.player.stats.maxEssence;
       this.hud.banner(`Level ${this.character.level}`, 'The dead answer you more readily', 2600);
       if (this.character.level >= SIGNATURE_LEVEL) this.onboarding.show('signature', 3000);
+      const learned = GRIMOIRE.filter((id) => unlockLevel(id) > this.character.level - gained && unlockLevel(id) <= this.character.level);
+      if (learned.length) {
+        const names = learned.map((id) => ABILITIES[id].name).join(', ');
+        this.hud.toast(`${names} ${learned.length > 1 ? 'join' : 'joins'} your Grimoire — press L to place it on a key`, 'good');
+        this.grimoirePanel.render();
+      }
+      if (this.grimoireUnlocked()) this.onboarding.show('grimoire', 3200);
       audio.play('levelUp');
       this.effects.emit({ x: this.player.x, y: 0.2, z: this.player.z, count: 90, color: 0xf1d9a8, spread: 0.8, speed: 0.8, up: 5, life: 1.5, size: 0.35 });
       this.effects.decal({ tex: fx.sigil(), color: 0xe2c98f, x: this.player.x, z: this.player.z, r: 2.4, duration: 1.8, opacity: 1, growFrom: 0.2, spin: 1.2 });
@@ -1584,6 +1692,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const moved = p.update(dt, now, kd.x || kd.z ? kd : null);
     if (moved) this.cancelRecall();
     this.tickCombat(now);
+    this.abilities.update(now);
     // Walking follows its path. Once standing, the mouse turns the hero to aim
     // without changing position or replacing the clicked destination.
     if (p.alive && this.mouse.aiming && !p.moving && !p.hasPath && !this.attackTarget && this.autoAim === null && now >= p.castUntil) {
@@ -1844,8 +1953,9 @@ export class WorldScene implements GameScene, RuntimeView {
       if (focusEnemy.withered) statuses.push({ icon: 'art/status/withered.png', label: 'Withered', n: focusEnemy.withered });
       if (focusEnemy.slowT > 0) statuses.push({ icon: 'art/status/void-rot.png', label: 'Miasma', n: 1 });
       if ((focusEnemy.bleedT ?? 0) > 0) statuses.push({ icon: 'art/status/hemorrhage.png', label: 'Hemorrhage', n: 1 });
-      if ((focusEnemy.chillT ?? 0) > 0) statuses.push({ icon: CHILL_ICON, label: 'Chilled', n: 1 });
-      if ((focusEnemy.silenceT ?? 0) > 0) statuses.push({ icon: SILENCE_ICON, label: 'Silenced', n: 1 });
+      if ((focusEnemy.chillT ?? 0) > 0) statuses.push({ icon: 'art/status/chilled.png', label: 'Chilled', n: 1 });
+      if ((focusEnemy.silenceT ?? 0) > 0) statuses.push({ icon: 'art/status/silenced.png', label: 'Silenced', n: 1 });
+      if ((focusEnemy.incenseT ?? 0) > 0) statuses.push({ icon: 'art/status/incensed.png', label: 'Incensed', n: 1 });
       if ((focusEnemy.hexT ?? 0) > 0) statuses.push({ icon: 'art/status/cursed.png', label: 'Bone Hex', n: 1 });
       if ((focusEnemy.sanctT ?? 0) > 0) statuses.push({ icon: 'art/status/sanctified.png', label: 'Sanctified', n: 1 });
       const affix = focusEnemy.affix ? ELITE_AFFIXES[focusEnemy.affix] : null;
@@ -1889,7 +1999,7 @@ export class WorldScene implements GameScene, RuntimeView {
           total: ABILITIES[id].cooldownMs,
           affordable: empowered || p.essence >= ABILITIES[id].essenceCost,
           empowered,
-          locked: ABILITIES[id].slot === 6 && this.character.level < SIGNATURE_LEVEL,
+          locked: this.character.level < unlockLevel(id),
         };
       }),
       souls: p.souls,
@@ -2081,6 +2191,11 @@ export class WorldScene implements GameScene, RuntimeView {
         });
       },
       cast: (slot: HotbarSlot) => this.castSlot(slot),
+      /** Grimoire QA: put rites on keys 1–4, e.g. loadout(['wailing_skull','grave_step','grave_frost','bone_mantle']). */
+      loadout: (ids?: AbilityId[]) => {
+        ids?.forEach((id, i) => this.setRite(i, id));
+        return [...this.loadout];
+      },
       attackNearest: () => {
         let best: Enemy | null = null;
         for (const e of this.enemiesMap().values()) if (!best || Math.hypot(e.x - this.player.x, e.z - this.player.z) < Math.hypot(best.x - this.player.x, best.z - this.player.z)) best = e;

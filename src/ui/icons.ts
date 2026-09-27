@@ -13,6 +13,8 @@ export const ICON = {
   map: svg('<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/>'),
   /** Closed book (the Codex): cover, page block, a bone cross on the boards. */
   book: svg('<path d="M5 5a2 2 0 012-2h12v14H7a2 2 0 00-2 2z"/><path d="M5 19a2 2 0 002 2h12v-4"/><path d="M12 6.5v6M9.8 8.6h4.4"/>'),
+  /** Open grimoire (the rite loadout): two pages with a sigil ring. */
+  grimoire: svg('<path d="M3 5.5c3-1 6-1 9 1 3-2 6-2 9-1V19c-3-1-6-1-9 1-3-2-6-2-9-1z"/><path d="M12 6.5V20"/><circle cx="7.5" cy="11.5" r="2"/><path d="M15 10h3.5M15 13h3.5"/>'),
   /** Wax seal with ribbon tails (sealed Codex entries). */
   seal: svg('<circle cx="12" cy="10" r="6"/><circle cx="12" cy="10" r="2.4"/><path d="M9 15.2L7.5 21l4.5-2.4 4.5 2.4-1.5-5.8"/>'),
 };
