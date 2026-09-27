@@ -1833,6 +1833,7 @@ export class WorldScene implements GameScene, RuntimeView {
       scene: this.scene,
       camera: this.rig.camera,
       player: this.player,
+      avatar: this.avatar,
       sim: () => this.sim,
       progression: this.progression,
       inventory: this.inventory,
@@ -2010,4 +2011,3 @@ export class WorldScene implements GameScene, RuntimeView {
     this.scene.clear();
   }
 }
-

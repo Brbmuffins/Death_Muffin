@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { assets } from './AssetCache';
 import { CREATURE_MODELS, type CreatureSlug } from './modelPaths';
+import { inPlaceHeroClip } from './inPlaceAnimation';
 
 export type CreatureAnim = 'idle' | 'walk' | 'run' | 'attack' | 'cast' | 'hurt' | 'death' | 'dig';
 
@@ -17,6 +18,8 @@ const FALLBACK: Record<CreatureAnim, CreatureAnim[]> = {
 };
 
 export interface CreatureOptions {
+  /** Anchor generated hero root motion to the gameplay position and heading. */
+  inPlace?: boolean;
   /** Multiplies base colour (e.g. darken enemies, pale thralls). */
   tint?: THREE.ColorRepresentation;
   emissive?: THREE.ColorRepresentation;
@@ -105,7 +108,9 @@ export class Creature {
       this.model = model;
       this.root.add(model);
       this.mixer = new THREE.AnimationMixer(model);
-      for (const [name, clip] of t.clips) this.actions.set(name, this.mixer.clipAction(clip));
+      for (const [name, clip] of t.clips) {
+        this.actions.set(name, this.mixer.clipAction(opts.inPlace ? inPlaceHeroClip(clip) : clip));
+      }
       this.mixer.addEventListener('finished', (e) => {
         if (e.action === this.oneShot) {
           this.oneShot = null;
@@ -135,14 +140,15 @@ export class Creature {
     const next = this.resolve(this.loop);
     if (!next) return;
     next.setLoop(THREE.LoopRepeat, Infinity);
+    next.clampWhenFinished = false;
     next.timeScale = this.loopSpeed;
     if (next === this.current && !this.oneShot) return;
     next.enabled = true;
     if (fade && this.current) {
-      next.reset().fadeIn(0.18).play();
+      next.reset().setEffectiveWeight(1).fadeIn(0.18).play();
       if (this.current !== next) this.current.fadeOut(0.18);
     } else {
-      next.reset().play();
+      next.reset().setEffectiveWeight(1).play();
       if (this.current && this.current !== next) this.current.stop();
     }
     this.current = next;
@@ -152,7 +158,7 @@ export class Creature {
   setLoop(anim: CreatureAnim, speed = 1) {
     this.loopSpeed = speed;
     if (this.current && this.loop === anim) {
-      this.current.timeScale = speed;
+      if (!this.oneShot) this.current.timeScale = speed;
       return;
     }
     this.loop = anim;
@@ -170,7 +176,12 @@ export class Creature {
     a.clampWhenFinished = true;
     a.timeScale = speed;
     a.enabled = true;
-    a.reset().fadeIn(0.08).play();
+    const repeating = this.current === a;
+    a.reset().setEffectiveWeight(1);
+    // Recasting the same action must not fade its only pose down to bind pose.
+    if (repeating) a.stopFading();
+    else a.fadeIn(0.08);
+    a.play();
     if (this.current && this.current !== a) this.current.fadeOut(0.12);
     if (this.oneShot && this.oneShot !== a) this.oneShot.fadeOut(0.08);
     this.oneShot = a;

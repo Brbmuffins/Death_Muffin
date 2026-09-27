@@ -33,4 +33,6 @@ Copy `site/` to `/var/www/death-muffin/` and `dist/` to its `play/` folder. Inst
 
 ## Validation
 
+The casting follow-up anchors hero root transforms and hip position to the rig, leaving limb animation and the authored death collapse intact. Repeated casts retain animation weight, and movement loop updates no longer overwrite casting speed. All 99 client tests pass, including checks against all five shipped hero rigs. Chrome verified keyboard casting, zero animation-driven hip drift or root turning, and preserved hand gestures.
+
 94 client tests passed, including waypoint continuity regressions. Chrome browser checks used actual mouse clicks and keypresses to verify click-to-move, aiming changes, spell casting, right-click suppression, interactive HUD buttons, and help duration. Public-site checks verified animated canvas pixels, a running WebAudio context after interaction, and the sound toggle. The initial deployment also verified owner login, world rendering, co-op connection, save/reload, and leaderboard behavior using a temporary account that was removed afterward.

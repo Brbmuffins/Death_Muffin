@@ -39,7 +39,7 @@ export class NecromancerAvatar {
   castLock = 0;
 
   constructor(scene: THREE.Scene, accent: string, withLight: boolean, slug: CreatureSlug = 'necromancer') {
-    this.c = new Creature(slug, { emissive: accent, emissiveIntensity: 0.04, fallback: 'necromancer' });
+    this.c = new Creature(slug, { inPlace: true, emissive: accent, emissiveIntensity: 0.04, fallback: 'necromancer' });
     this.staff = skullStaff(accent);
     // Held upright: the grip sits in the hand, calibrated against the idle pose.
     this.c.attach('R_Hand', this.staff, new THREE.Vector3(0, 1, 0.12));
