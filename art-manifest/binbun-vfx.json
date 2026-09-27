@@ -230,5 +230,16 @@
     "Full.zip (Retro PBR ground textures, 690 png)",
     "Full (1).zip (Teak PBR wood textures, 300 png)"
   ],
-  "converted": []
+  "converted": [
+    {
+      "date": "2026-09-27",
+      "selection": "art-manifest/binbun-effects.json",
+      "converter": "tools/binbun-port.mjs",
+      "output": "public/fx/binbun/",
+      "effects": 22,
+      "files": 93,
+      "bytes": 2087790,
+      "status": "portable intermediate complete; Three.js runtime and game wiring remain"
+    }
+  ]
 }

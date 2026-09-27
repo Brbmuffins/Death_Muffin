@@ -88,14 +88,17 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 
 ## In flight (check before starting overlapping work)
 
-- **BinbunVFX → Three.js port (started 2026-09-27; research done, no code yet). Next agent (Codex) picks
-  this up.** The owner's Godot VFX packs (from `F:\`, licence confirmed for this non-profit game) are
+- **BinbunVFX → Three.js port (started 2026-09-27; local conversion complete, runtime pending).** The owner's
+  Godot VFX packs (from `F:\`, licence confirmed for this non-profit game) are
   vendored raw in `art-src/vendor/binbun/` (gitignored, workstation only). Read
-  [`docs/BINBUN-VFX-PORT.md`](docs/BINBUN-VFX-PORT.md) end to end. It covers the file format, the noise
-  and curve baking rules, the gdshader→GLSL mapping, the build steps (converter `tools/binbun-port.mjs` →
-  `public/fx/binbun/` → `src/graphics/binbun/BinbunFX.ts` owned by `Effects`) and the proposed spell/world
-  wiring. Source record: `art-manifest/binbun-vfx.json`. Rules: additive only (keep today's effects),
-  recolour from `SPELL_FX`, never add PointLights (use `Effects.lightFlash`), stage, don't commit.
+  [`docs/BINBUN-VFX-PORT.md`](docs/BINBUN-VFX-PORT.md) end to end. The workstation-only step is done:
+  `tools/binbun-port.mjs` produced 22 portable effects under `public/fx/binbun/`, so a cloud session no longer
+  needs `art-src/` for this selected batch. Next: build `src/graphics/binbun/BinbunFX.ts`, translate/verify the
+  committed shaders, add the DEV gallery, and wire the proposed spell/world hooks. Source/selection records:
+  `art-manifest/binbun-vfx.json` and `art-manifest/binbun-effects.json`. Rules: additive only (keep today's
+  effects), recolour from `SPELL_FX`, never add PointLights (use `Effects.lightFlash`), and keep asset loading
+  non-blocking/fail-open so combat can never wait on or fail because of VFX. Do not replace the current visuals
+  before gallery + combat-readability + dense-wave perf QA. Stage, don't commit.
 
 **Professions / gathering: G0, G1, G2 and G4 are built** on `claude/adoring-knuth-hd1uox` (one session, one branch,
 not the per-brief `cloud/professions-g*` branches). **G3 art has landed** (workstation, 2026-09-27): the node GLBs are
@@ -230,4 +233,3 @@ refuses while the index has staged changes.
 - Another session may hold port 5188; `.claude/launch.json` has `crossworlds-web-alt` on 5198.
 - A long-running Vite dev server on this Windows drive can **serve stale modules** after edits (the watcher
   misses changes). If behaviour doesn't match the source, `fetch('/src/…')` in the page to confirm, then restart the preview.
-

@@ -1,8 +1,11 @@
 # BinbunVFX → Three.js port (handoff for Codex / any agent)
 
-Status 2026-09-27 (workstation session, Claude). **Research and vendoring are done. No game code has
-been written yet.** This file is everything learned so far plus the build plan, so the next agent can
-start cold. The machine-readable source record is [`art-manifest/binbun-vfx.json`](../art-manifest/binbun-vfx.json).
+Status 2026-09-27 (workstation session, Codex). **Research, vendoring and the portable conversion pass are
+done; the Three.js runtime and game wiring are not.** `tools/binbun-port.mjs` converted the 22-effect selection
+in `art-manifest/binbun-effects.json` into `public/fx/binbun/` (2.1 MB / 93 files). The output preserves the
+resolved Godot resource graphs, source colours, sampled curves, baked gradients/noise, copied textures and
+include-expanded Godot shaders, so runtime work can continue on a machine without `art-src/`. The machine-readable
+source record is [`art-manifest/binbun-vfx.json`](../art-manifest/binbun-vfx.json).
 
 ## 0. What the owner asked for
 
@@ -271,9 +274,9 @@ It's close enough to transpile mechanically in the converter, but review every o
    - `source_color` vec4 uniforms are sRGB in Godot. Pass them through `THREE.Color` (linear working space).
    - Baked mask PNGs are **data**, so set `NoColorSpace` / linear on them.
 
-## 4. Build plan (not started; do in this order)
+## 4. Build plan (conversion done; runtime starts at step 3)
 
-1. **`tools/binbun-port.mjs`** (Node, same style as `tools/build-characters.mjs`):
+1. ✅ **`tools/binbun-port.mjs`** (Node, same style as `tools/build-characters.mjs`):
    - Parse Godot text resources (`[gd_scene|gd_resource]`, `[ext_resource]`, `[sub_resource]`, `[node]`,
      `[resource]`; values: `Vector2/3/4`, `Color`, `Transform3D`, `Packed*Array`, `SubResource()`,
      `ExtResource()`, `NodePath()`, dictionaries).
@@ -281,10 +284,13 @@ It's close enough to transpile mechanically in the converter, but review every o
      nodes, meshes, process-material params, sampled curves/gradients, material = `{shader, uniforms, textures}`,
      root colours, and the `main` and `oneshot` animations.
    - Bake textures to `public/fx/binbun/tex/<hash>.png` (use `sharp`, already a dependency).
-   - Transpile each used shader once to `public/fx/binbun/shaders/<name>.{vert,frag}.glsl`, or a TS module.
-   - Report unsupported keys and shaders loudly.
-2. **`art-manifest/binbun-effects.json`** (the selection): `{ id, source: "<Pack>/…/x.tscn", anim: "oneshot"|"main", note }`.
-   The converter reads it. Start with the wiring list in §5.
+   - Current output keeps include-expanded `.gdshader` source instead of emitting GLSL; translation belongs with
+     the runtime pass so it can be verified against Three.js shader compilation.
+   - FastNoiseLite definitions are retained verbatim. The committed preview masks use a deterministic value-noise
+     approximation; replace the sampler with exact FastNoiseLite later without needing the raw packs.
+2. ✅ **`art-manifest/binbun-effects.json`** selects 22 effects covering the wiring list's first useful slice,
+   including all seven loot rarities. `npm run build:vfx` rebuilds them; `npm run test:vfx` checks the parser,
+   curve sampling, selection completeness and every portable asset reference.
 3. **Runtime `src/graphics/binbun/BinbunFX.ts`:**
    - Load the JSON with a `fetch` + cache, like `fxImages.ts`, including a preload.
    - **One `THREE.InstancedMesh` per particle node**, CPU-simulated like the existing `ParticleSystem`, with
@@ -296,6 +302,9 @@ It's close enough to transpile mechanically in the converter, but review every o
      (the same `Handle` shape as `Effects`).
    - Owned by `Effects` (e.g. `effects.binbun`), updated in `Effects.update`, disposed in `Effects.dispose`.
    - Keep a cap like Effects' 160-transient ceiling, and pool meshes and materials per effect id.
+   - **Preserve the shipped game first:** loading is non-blocking and fail-open, casts/sim events never await VFX,
+     missing or rejected assets become a no-op, and the existing `Effects` calls remain the visible fallback until
+     every wired effect passes gallery, combat-readability and dense-wave performance QA.
 4. **DEV QA hook:** `__cwDebug.vfx(id, colors?)` spawns at the player. Add a DEV-only gallery that plays every
    converted id in a grid, so the owner can pick. Screenshots work after `__cwDebug.advance()`.
 5. **Tests** (`src/graphics/__tests__/` or `tools/`):

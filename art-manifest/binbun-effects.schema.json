@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "binbun-effects.schema.json",
+  "title": "Crossworlds Binbun VFX selection",
+  "type": "object",
+  "required": ["effects"],
+  "properties": {
+    "_doc": { "type": "string" },
+    "effects": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "source", "anim", "note"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+          "source": { "type": "string", "pattern": "^[^/]+/.+\\.tscn$" },
+          "anim": { "enum": ["main", "oneshot"] },
+          "note": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": true
+}

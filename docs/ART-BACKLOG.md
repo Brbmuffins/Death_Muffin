@@ -69,13 +69,20 @@ Roadmap: [`PROFESSIONS-ROADMAP.md`](PROFESSIONS-ROADMAP.md). Wiring notes: [`age
 | `public/art/status/{burning,renewal,scorched,triage,void-collapse}.png` | Earlier status set. Renewal could serve a heal-over-time |
 | `public/art/textures/skull_wall.webp` | Loaded by WorldView as a texture set member; the scanner only lists it because its name is built at runtime |
 
-## 5. Third-party VFX library (BinbunVFX, Godot 4): vendored, not yet ported
+## 5. Third-party VFX library (BinbunVFX, Godot 4): portable conversion complete, runtime pending
 
 About 250 effect scenes cover fire, ice, poison, smoke, impact, magic areas/orbs/projectiles, beams,
 portals, loot and muzzle flash, plus transition, sky, water, grass and toon shaders. The owner confirmed
 the licence for this non-profit game on 2026-09-27. The raw packs are in `art-src/vendor/binbun/`
 (gitignored); the source record is `art-manifest/binbun-vfx.json`.
-**Plan, format notes and the proposed wiring:** [`BINBUN-VFX-PORT.md`](BINBUN-VFX-PORT.md). Nothing ships in `public/` yet.
+The workstation converter now ships a curated first batch of 22 effects in `public/fx/binbun/` (2.1 MB,
+93 files): spell impacts/areas, candle, gate, beam, all seven loot tiers, and supporting textures and
+include-expanded shader sources. The portable JSON retains the Godot scene/resource graph, sampled curves,
+procedural definitions and default colours. It does **not** render yet; the Three.js runtime, shader translation,
+gallery and game wiring remain a cloud-safe code follow-up. Rebuild locally with `npm run build:vfx` and verify
+with `npm run test:vfx`.
+
+**Plan, format notes and the proposed wiring:** [`BINBUN-VFX-PORT.md`](BINBUN-VFX-PORT.md).
 
 ## 6. Spend ledger (Tripo credits, 2026-09-27)
 

@@ -1,0 +1,138 @@
+{
+  "$schema": "./binbun-effects.schema.json",
+  "_doc": "Curated Binbun effects converted from workstation-only Godot sources. Runtime wiring is intentionally a separate follow-up.",
+  "effects": [
+    {
+      "id": "miasma_cloud",
+      "source": "PoisonVFX/assets/BinbunVFX/poison_effects/effects/poison_cloud/poison_cloud_vfx_01.tscn",
+      "anim": "oneshot",
+      "note": "Miasma landing cloud"
+    },
+    {
+      "id": "plague_bloom_area",
+      "source": "PoisonVFX/assets/BinbunVFX/poison_effects/effects/poison_area/poison_area_vfx_03.tscn",
+      "anim": "oneshot",
+      "note": "Plague Bloom signature"
+    },
+    {
+      "id": "corpse_explosion",
+      "source": "ImpactVFX/assets/BinbunVFX/impact_explosions/effects/explosion/vfx_explosion_04.tscn",
+      "anim": "oneshot",
+      "note": "Corpse Explosion impact"
+    },
+    {
+      "id": "grave_frost_mist",
+      "source": "IceVFX/assets/BinbunVFX/ice_effects/effects/ice_mist/ice_mist_vfx_02.tscn",
+      "anim": "oneshot",
+      "note": "Grave Frost cone mist"
+    },
+    {
+      "id": "dirge_area",
+      "source": "IceVFX/assets/BinbunVFX/ice_effects/effects/ice_area/ice_area_vfx_03.tscn",
+      "anim": "oneshot",
+      "note": "Mourner Dirge"
+    },
+    {
+      "id": "litany_pulse",
+      "source": "MagicAreaVFX/assets/BinbunVFX/magic_areas/effects/pulse_area/pulse_area_vfx_03.tscn",
+      "anim": "oneshot",
+      "note": "Black Litany shockwave"
+    },
+    {
+      "id": "soul_harvest_pillar",
+      "source": "MagicAreaVFX/assets/BinbunVFX/magic_areas/effects/pillar_area/pillar_area_vfx_03.tscn",
+      "anim": "oneshot",
+      "note": "Soul Harvest release"
+    },
+    {
+      "id": "exhume_lift",
+      "source": "MagicAreaVFX/assets/BinbunVFX/magic_areas/effects/lift_area/lift_area_vfx_02.tscn",
+      "anim": "oneshot",
+      "note": "Exhume corpse lift"
+    },
+    {
+      "id": "grave_step_smoke",
+      "source": "SmokeVFX/assets/BinbunVFX/smoke_effects/effects/smoke/smoke_vfx_03.tscn",
+      "anim": "oneshot",
+      "note": "Grave Step departure and arrival"
+    },
+    {
+      "id": "enemy_breach_rim",
+      "source": "MagicAreaVFX/assets/BinbunVFX/magic_areas/effects/rim_area/rim_area_vfx_03.tscn",
+      "anim": "oneshot",
+      "note": "Grave Surge and enemy breach"
+    },
+    {
+      "id": "prelate_impact",
+      "source": "ImpactVFX/assets/BinbunVFX/impact_explosions/effects/impact/vfx_impact_04.tscn",
+      "anim": "oneshot",
+      "note": "Prelate and boss slam"
+    },
+    {
+      "id": "chapterhouse_candle",
+      "source": "FireVFX/assets/BinbunVFX/fire_effects/effects/Fire/fire_candle.tscn",
+      "anim": "main",
+      "note": "Candle and brazier flame"
+    },
+    {
+      "id": "area_gate",
+      "source": "PortalVFX/assets/BinbunVFX/portal_vfx/effects/gate/gate_portal_vfx_03.tscn",
+      "anim": "main",
+      "note": "Area gate and exit"
+    },
+    {
+      "id": "wailing_skull_projectile",
+      "source": "MagicProjectilesVFX/assets/BinbunVFX/magic_projectiles/effects/mprojectile_basic/mprojectile_basic_vfx_03.tscn",
+      "anim": "main",
+      "note": "Wailing Skull projectile core"
+    },
+    {
+      "id": "exhume_beam",
+      "source": "BeamVFX/assets/BinbunVFX/beam_vfx/effects/beam/beam_vfx_03.tscn",
+      "anim": "main",
+      "note": "Exhume and Litany tether upgrade"
+    },
+    {
+      "id": "loot_common",
+      "source": "LootVFX/assets/BinbunVFX/loot_effects/effects/ground/ground_loot_vfx_common.tscn",
+      "anim": "main",
+      "note": "Common loot ground marker"
+    },
+    {
+      "id": "loot_uncommon",
+      "source": "LootVFX/assets/BinbunVFX/loot_effects/effects/ground/ground_loot_vfx_uncommon.tscn",
+      "anim": "main",
+      "note": "Uncommon loot ground marker"
+    },
+    {
+      "id": "loot_rare",
+      "source": "LootVFX/assets/BinbunVFX/loot_effects/effects/ground/ground_loot_vfx_rare.tscn",
+      "anim": "main",
+      "note": "Rare loot ground marker"
+    },
+    {
+      "id": "loot_epic",
+      "source": "LootVFX/assets/BinbunVFX/loot_effects/effects/ground/ground_loot_vfx_epic.tscn",
+      "anim": "main",
+      "note": "Epic loot ground marker"
+    },
+    {
+      "id": "loot_legendary",
+      "source": "LootVFX/assets/BinbunVFX/loot_effects/effects/ground/ground_loot_vfx_legendary.tscn",
+      "anim": "main",
+      "note": "Legendary loot ground marker"
+    },
+    {
+      "id": "loot_mythic",
+      "source": "LootVFX/assets/BinbunVFX/loot_effects/effects/ground/ground_loot_vfx_mythic.tscn",
+      "anim": "main",
+      "note": "Mythic loot ground marker"
+    },
+    {
+      "id": "loot_divine",
+      "source": "LootVFX/assets/BinbunVFX/loot_effects/effects/ground/ground_loot_vfx_divine.tscn",
+      "anim": "main",
+      "note": "Divine loot ground marker"
+    }
+  ]
+}

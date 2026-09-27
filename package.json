@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:server": "node --test server/realtime/server.test.js server/vps-handoff/necro-progress/necro-progress.test.cjs server/death-muffin/backend/gathering/gathering.test.cjs",
+    "build:vfx": "node tools/binbun-port.mjs",
+    "test:vfx": "node tools/binbun-port.test.mjs",
     "build:characters": "node tools/build-characters.mjs",
     "balance": "vite-node src/gameplay/balance/report.ts",
     "balance:boss": "vite-node src/gameplay/balance/bossReport.ts",
