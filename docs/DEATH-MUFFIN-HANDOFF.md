@@ -2,6 +2,8 @@
 
 Updated 2026-09-27. Read this before editing or deploying. Preserve the supplied site's visual design and the accepted fixed click-to-move behavior.
 
+User-approved complete version: **`death-muffin-v1.0.0`**. See [the checkpoint record](DEATH-MUFFIN-CHECKPOINT.md) for the full private backup and restoration boundaries. Preserve this baseline while designing new abilities.
+
 ## Existing Claude foundation
 
 This builds on the supplied Claude project, not a replacement game. Read `CLAUDE.md` for the architecture and `HANDOFF.md`/`PHASE_REPORTS.md` for already shipped systems. This Death Muffin handoff adds the current VPS deployment state; historical ports, Windows paths and pending-server statements in those earlier documents are not the live Death Muffin configuration.
