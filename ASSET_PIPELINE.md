@@ -4,6 +4,13 @@ How art gets from an idea to the game. Every step is scripted, resumable and
 recorded, so assets are reproducible (audit: "add a manifest beside every
 generated asset").
 
+For future characters, prefer generating and rigging a Death Muffin native GLB
+when converting and retargeting a Crossworlds rig would take more work. Evaluate
+reuse per asset: the local legacy Crossworlds Wizard is about 7.5k triangles and
+could fit; its Paladin is about 50k triangles and needs reduction for regular
+use. The newer Crossworlds hero GLBs referenced by its client are not present
+locally, so their suitability is still unknown.
+
 ```
 concept (Gemini)          art-src/concepts/<id>.png          ← art-manifest/gemini-jobs/*.json
   → 3D (Tripo P1)         art-src/tripo/<id>/model.glb        ← art-manifest/tripo-specs/<id>.json

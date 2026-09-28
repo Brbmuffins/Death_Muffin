@@ -50,7 +50,7 @@ Server-side these are regular items with a new `item_type: 'rune'` plus a socket
 
 ---
 
-## Release 0.3 — "New Blood" (additional classes beyond necromancy)
+## Release 0.3 — "New Blood" (implemented on `claude/new-classes-framework`, 2026-09-28; undeployed)
 
 The server keeps 5 class indices; index 0 (legacy Engineer) is unused. New
 classes should either reuse index 0 or wait for a server `class_index` range
@@ -58,10 +58,10 @@ extension. Each keeps the corpse economy relevant so co-op parties interlock.
 
 | Class | Fantasy | Resource | Corpse interaction | Signature combat |
 |---|---|---|---|---|
-| **Grave Warden** (idx 0 candidate) | Iron-clad cemetery guard, lantern and flail | Oil (lantern fuel) | Burns corpses to deny Deacons and create fire zones | Lantern cone that reveals/stuns wraiths; flail chain-pull |
+| **Grave Warden** — `discipline_index` 5 | Iron-clad cemetery guard, lantern and flail | Oil (lantern fuel) | Burns corpses to deny Deacons and create fire zones | Lantern cone that reveals/stuns wraiths; flail chain-pull |
 | **Bell Monk** | Ex-penitent who turned the bell on the dead | Resonance (builds per hit) | Resonant corpses supercharge bell tolls | Rhythm combat: hits on the toll beat deal bonus damage |
 | **Carrion Witch** | Ritual butcher, crows and hooks | Offal | Harvests corpses for crow swarms and hex charms | Hook-pull + crow swarm DoT, curses that spread on death |
-| **Hollow Knight** — *shipped 2026-09-28, `discipline_index` 8* | Undead knight still loyal to the Covenant | Rage from damage taken | Stands on corpses to regenerate | Shield bash, grave-slam leap, block/parry window |
+| **Hollow Knight** — `discipline_index` 8 | Undead knight still loyal to the Covenant | Rage from damage taken | Stands on corpses to regenerate | Shield bash, grave-slam leap, block/parry window |
 | **Veilwalker** | Spirit-medium stepping between life and death | Veil (toggles form) | Walks through the Veil to see "echo corpses" others can't | Phase-shift: invulnerable in Veil but only deals spirit damage |
 
 Party synergy target: every class *produces* or *consumes* corpses so a

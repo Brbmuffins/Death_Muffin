@@ -42,6 +42,8 @@ export interface Enemy {
   witheredDps: number;
   witheredOwner: string;
   slowT: number;
+  /** Watchman's Ward slows movement by 25%, independently of Miasma. */
+  wardSlowT?: number;
   lastHitBy: string;
   /** Render-only: hit flash 0..1 and gait phase. */
   flash: number;
@@ -64,6 +66,12 @@ export interface Enemy {
   rootT?: number;
   /** Incensed by a Censer Bearer's aura: faster feet and faster blows. */
   incenseT?: number;
+  /** Release 0.3: Knell beats remaining, Witch curse and damage penalty. */
+  knellBeats?: number;
+  knellNext?: number;
+  knellOwner?: string;
+  knellDamage?: number;
+  hexOwner?: string;
   /** Host-only: a Censer Bearer's next aura pulse. */
   auraCd?: number;
   /** Elites roll one affix on spawn (replicated in snapshots). */
@@ -101,6 +109,8 @@ export interface Thrall {
   moving: boolean;
   /** Rally the Dead: seconds of +damage/+attack speed left (snapshot flag bit 2 of the empowered field). */
   rallyT?: number;
+  /** Veilwalker Echo expires on the host after ten seconds. */
+  echoUntil?: number;
 }
 
 export interface Corpse {
@@ -123,10 +133,12 @@ export interface Corpse {
   seedCap?: number;
   seedArmedAt?: number;
   seedExpires?: number;
+  /** Echo corpses may be spent only by their Veilwalker owner. */
+  echoOwner?: string;
 }
 
 /** 'rot' = the friendly pool a detonated toxic corpse leaves behind. */
-export type ZoneKind = 'miasma' | 'toxic' | 'bell' | 'rot' | 'dirge' | 'flower';
+export type ZoneKind = 'miasma' | 'toxic' | 'bell' | 'rot' | 'dirge' | 'flower' | 'warden_fire' | 'warden_ward' | 'witch_crows' | 'witch_charm' | 'veil_rift';
 
 export type CorpseGoneReason = 'consumed' | 'expired' | 'raised' | 'burst' | 'litany' | 'devoured';
 
@@ -184,6 +196,7 @@ export interface PlayerBody {
   z: number;
   alive: boolean;
   area: AreaId | null;
+  family?: import('../../content/disciplines').ClassFamily;
 }
 
 export type BossPhase = 1 | 2 | 3;
@@ -263,7 +276,11 @@ export type Intent =
   | {
       t: 'signature';
       by: string;
-      sig: 'wall' | 'rend' | 'dirge' | 'bloom' | 'mantle' | 'offering' | 'rally' | 'seed' | 'bash' | 'vigil' | 'brand';
+      sig: 'wall' | 'rend' | 'dirge' | 'bloom' | 'mantle' | 'offering' | 'rally' | 'seed' | 'bash' | 'vigil' | 'brand'
+        | 'lantern_cone' | 'chain_pull' | 'burn_the_dead' | 'watchmans_ward' | 'cremate' | 'last_light'
+        | 'toll' | 'resonant_step' | 'knell' | 'sound_the_corpse' | 'great_toll'
+        | 'hook_throw' | 'harvest' | 'crow_swarm' | 'hook_pull' | 'hex_charm' | 'butcher' | 'murder_of_crows'
+        | 'echo' | 'veil_tear' | 'crossing' | 'lay_to_rest';
       x: number;
       z: number;
       dx: number;
@@ -348,6 +365,8 @@ export type SimEvent =
   | { t: 'vigil'; by: string; ok: boolean; x: number; z: number }
   /** Hollow Knight — Grave Brand: `sprung` false when armed, true when it roots. */
   | { t: 'brand'; by: string; ok: boolean; sprung: boolean; x: number; z: number }
+  /** Host resolution for the four New Blood families. */
+  | { t: 'newBlood'; by: string; kind: string; ok: boolean; x: number; z: number; amount?: number; targetId?: number; tx?: number; tz?: number; player?: string }
   /** Rally the Dead: these thralls are rallied, focused on the enemy nearest (x, z). */
   | { t: 'rally'; by: string; x: number; z: number; ids: number[] }
   /** Carrion Seed planted / withered away / burst. */

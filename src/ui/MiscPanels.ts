@@ -35,6 +35,9 @@ export class SettingsPanel extends SimplePanel {
     private onChangeClass?: () => void,
     /** Only for dev accounts: the dev-access overlay toggle (per character, never saved to the server). */
     private dev?: { get(): boolean; set(on: boolean): void },
+    private kitHelp: { primary: string; rites: string[]; corpseAction: string } = {
+      primary: 'Bone Needle', rites: ['Marrow Spear', 'Exhume', 'Miasma', 'Black Litany'], corpseAction: 'Corpse Explosion',
+    },
   ) {
     super(root);
   }
@@ -62,20 +65,20 @@ export class SettingsPanel extends SimplePanel {
         ${this.onChangeClass ? '<label class="row">Class<button type="button" class="cw-button" aria-label="Change class" data-changeclass>Change class</button></label>' : ''}
         ${code ? `<label class="row">Party world code<b style="font-family:var(--cw-font-numeric)">${code}</b></label>` : ''}
         <div class="cw-keys">
-          <kbd>Click</kbd><span>Move · attack target (Bone Needle) · use</span>
+          <kbd>Click</kbd><span>Move · attack target (${this.kitHelp.primary}) · use</span>
           <kbd>Minimap</kbd><span>Click a walkable spot to travel there</span>
           <kbd>Hover / focus</kbd><span>Spell icon: cost, targeting, effects and combat counsel</span>
-          <kbd>Shift+Click</kbd><span>Cast Bone Needle without moving</span>
-          <kbd>1–4 (hold)</kbd><span>Your four Grimoire rites, at the cursor (start: Marrow Spear · Exhume · Miasma · Black Litany)</span>
+          <kbd>Shift+Click</kbd><span>Cast ${this.kitHelp.primary} without moving</span>
+          <kbd>1–4 (hold)</kbd><span>Your four Grimoire rites, at the cursor (start: ${this.kitHelp.rites.join(' · ')})</span>
           <kbd>L</kbd><span>Grimoire (also the hotbar's Grimoire button, or right-click a slot) · choose your left-click primary and the rites on 1–4</span>
-          <kbd>RMB · 5</kbd><span>Corpse Explosion (corpse nearest the cursor)</span>
+          <kbd>RMB · 5</kbd><span>${this.kitHelp.corpseAction} (corpse nearest the cursor)</span>
           <kbd>R · 6</kbd><span>Signature rite (unlocks at level 10)</span>
           <kbd>Q</kbd><span>Drink a healing flask</span>
           <kbd>T</kbd><span>Return to the Chapterhouse</span>
           <kbd>Click a node</kbd><span>Gather: chop a tree, mine a seam, fish a pool, dig a grave (it keeps working until the node is spent)</span>
           <kbd>I C P M</kbd><span>Reliquary · Workbench · Skills · Waystones</span>
           <kbd>K</kbd><span>Codex</span>
-          <kbd>G</kbd><span>Toggle auto combat on Easy · stand near enemies to grind</span>
+          <kbd>G</kbd><span>Toggle auto combat on Easy · engage nearby enemies</span>
           <kbd>Counsel header</kbd><span>Drag to move · arrow keys while focused · remembers its position</span>
           <kbd>Settings</kbd><span>Change class · keeps your character and progress</span>
           <kbd>WASD</kbd><span>Walk (fallback)</span>

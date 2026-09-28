@@ -44,6 +44,7 @@ export interface HudFrame {
   /** Right-orb label and liquid colour, from the family's resource rules. */
   resourceLabel?: string;
   resourceColor?: string;
+  beatPulse?: boolean;
   level: number;
   xp: number;
   xpNext: number;
@@ -443,6 +444,7 @@ export class HUD {
     this.set('ess', Math.round(eFrac * 400), () => this.$('[data-essorb]').style.setProperty('--fill', `${eFrac * 100}%`));
     this.set('esstxt', `${Math.floor(f.essence)}/${f.maxEssence}|${resLabel}`, () => (this.$('[data-esstxt]').innerHTML = `${Math.floor(f.essence)} / ${f.maxEssence}<small>${resLabel}</small>`));
     this.set('reslabel', resLabel, () => this.$('[data-essorb]').setAttribute('aria-label', resLabel));
+    this.set('beatpulse', !!f.beatPulse, () => this.$('[data-essorb]').classList.toggle('beat-pulse', !!f.beatPulse));
     this.set('rescolor', f.resourceColor ?? '', () => {
       const orb = this.$('[data-essorb]');
       if (f.resourceColor) orb.style.setProperty('--res-color', f.resourceColor);

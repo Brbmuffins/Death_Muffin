@@ -24,6 +24,7 @@ import {
   LITANY_PER_RESONANT,
   LITANY_PER_THRALL,
   MIASMA_SLOW,
+  WATCHMANS_WARD_SLOW,
   ABILITIES,
   BONE_MANTLE,
   CARRION_SEED,
@@ -291,6 +292,7 @@ export class WorldSim {
     let bestD = r;
     for (const c of this.corpses.values()) {
       if (area && c.area !== area) continue;
+      if (c.echoOwner) continue;
       const d = Math.hypot(c.x - x, c.z - z);
       if (d <= bestD) (best = c), (bestD = d);
     }
@@ -326,6 +328,7 @@ export class WorldSim {
     let best: Corpse | null = null;
     let bestD = Infinity;
     for (const c of this.corpses.values()) {
+      if (c.echoOwner) continue;
       const d = Math.hypot(c.x - x.x, c.z - x.z);
       if (d <= x.r && d < bestD) {
         best = c;
@@ -384,6 +387,7 @@ export class WorldSim {
     let resonant = 0;
     const tethers: [number, number][] = [];
     for (const c of [...this.corpses.values()]) {
+      if (c.echoOwner) continue;
       if (Math.hypot(c.x - l.x, c.z - l.z) > l.r) continue;
       if (c.kind === 'resonant') resonant++;
       else corpses++;
@@ -423,7 +427,7 @@ export class WorldSim {
    */
   private applyDetonate(d: Extract<Intent, { t: 'detonate' }>) {
     const c = this.corpses.get(d.corpseId);
-    if (!c) {
+    if (!c || c.echoOwner) {
       // Claimed by someone else first (the caster refunds on ok:false).
       this.emit({ t: 'detonated', by: d.by, ok: false, corpseId: d.corpseId, x: 0, z: 0, r: 0 });
       return;
@@ -504,6 +508,7 @@ export class WorldSim {
     };
     this.corpses.set(c.id, c);
     this.emit({ t: 'corpse', corpse: c });
+    return c;
   }
 
   removeCorpse(c: Corpse, reason: CorpseGoneReason, by?: string) {
@@ -592,6 +597,7 @@ export class WorldSim {
         const [cx, cz] = clampAim(1);
         const r = ABILITIES.bone_mantle.radius;
         const near = [...this.corpses.values()]
+          .filter((c) => !c.echoOwner)
           .map((c) => ({ c, d: Math.hypot(c.x - cx, c.z - cz) }))
           .filter((o) => o.d <= r)
           .sort((a, b) => a.d - b.d)
@@ -639,6 +645,20 @@ export class WorldSim {
           if (Math.abs(rx * -dz + rz * dx) > e.radius + ABILITIES.shield_bash.radius) continue;
           if (along < bestT) (first = e), (bestT = along);
         }
+        const boss = this.boss.state;
+        if (caster?.area === 'sanctum' && boss.active) {
+          const rx = boss.x - ox;
+          const rz = boss.z - oz;
+          const along = rx * dx + rz * dz;
+          const across = Math.abs(rx * -dz + rz * dx);
+          if (along >= -BOSS_RADIUS && along <= SHIELD_BASH.dashM + BOSS_RADIUS
+            && across <= BOSS_RADIUS + ABILITIES.shield_bash.radius && along < bestT) {
+            this.boss.damage(sp * ABILITIES.shield_bash.power, g.by, 0);
+            this.boss.stagger(SHIELD_BASH.bossStunS);
+            this.emit({ t: 'bash', by: g.by, x: boss.x, z: boss.z, id: null });
+            return;
+          }
+        }
         if (!first) {
           this.emit({ t: 'bash', by: g.by, x: ox + dx * SHIELD_BASH.dashM, z: oz + dz * SHIELD_BASH.dashM, id: null });
           return;
@@ -646,9 +666,6 @@ export class WorldSim {
         this.damageEnemy(first, sp * ABILITIES.shield_bash.power, g.by);
         first.stunT = Math.max(first.stunT ?? 0, SHIELD_BASH.stunS);
         this.emit({ t: 'bash', by: g.by, x: first.x, z: first.z, id: first.id });
-        // NOTE: the brief also gives a boss a SHIELD_BASH.bossStunS stagger.
-        // BossBrain has no interrupt hook, so that is deliberately not applied
-        // rather than faked — it needs a real stagger API on the boss first.
         return;
       }
       case 'vigil': {
@@ -715,6 +732,169 @@ export class WorldSim {
         this.emit({ t: 'seeded', by: g.by, corpseId: c.id, x: c.x, z: c.z, armMs: CARRION_SEED.armS * 1000 });
         return;
       }
+      default:
+        this.applyNewBlood(g, caster, sp);
+        return;
+    }
+  }
+
+  /** Resolve New Blood corpse, control and area rites on the room host. */
+  private applyNewBlood(g: Extract<Intent, { t: 'signature' }>, caster: PlayerBody | undefined, sp: number) {
+    const fail = (x = g.x, z = g.z) => this.emit({ t: 'newBlood', by: g.by, kind: g.sig, ok: false, x, z });
+    if (!caster || !caster.alive || !caster.area) return fail();
+    const def = ABILITIES[g.sig as keyof typeof ABILITIES];
+    if (!def) return fail();
+    const dx = g.x - caster.x, dz = g.z - caster.z, dist = Math.hypot(dx, dz);
+    const reach = def.range || def.radius || 1;
+    const x = dist > reach ? caster.x + dx / dist * reach : g.x;
+    const z = dist > reach ? caster.z + dz / dist * reach : g.z;
+    const event = (amount?: number, targetId?: number, tx?: number, tz?: number) =>
+      this.emit({ t: 'newBlood', by: g.by, kind: g.sig, ok: true, x, z, amount, targetId, tx, tz });
+    const body = (r = 1.25, echo = false) => [...this.corpses.values()]
+      .filter((c) => c.area === caster.area && (echo ? !!c.echoOwner && (c.echoOwner === g.by || c.echoOwner === '*') : !c.echoOwner)
+        && Math.hypot(c.x - x, c.z - z) <= r)
+      .sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z))[0];
+    const foe = (range: number) => [...this.enemies.values()]
+      .filter((e) => e.state !== 'dead' && e.state !== 'rising' && e.area === caster.area
+        && Math.hypot(e.x - x, e.z - z) <= e.radius + 0.8 && Math.hypot(e.x - caster.x, e.z - caster.z) <= range + e.radius)
+      .sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z))[0];
+    switch (g.sig) {
+      case 'lantern_cone': {
+        const len = Math.hypot(dx, dz) || 1;
+        for (const e of this.enemies.values()) {
+          if (e.state === 'dead' || e.area !== caster.area || Math.hypot(e.x - caster.x, e.z - caster.z) > 7 + e.radius) continue;
+          const vx = e.x - caster.x, vz = e.z - caster.z;
+          if ((vx * dx + vz * dz) / (Math.max(0.01, Math.hypot(vx, vz)) * len) < Math.cos(Math.PI / 5)) continue;
+          if (e.affix === 'shrouded') e.affix = undefined;
+          if (e.def === 'wraith') e.stunT = Math.max(e.stunT ?? 0, 1.5);
+        }
+        event(); return;
+      }
+      case 'chain_pull': case 'hook_pull': {
+        const e = foe(def.range); if (!e) return fail(x, z);
+        const [tx, tz] = this.nav.resolveInArea(caster.area, caster.x + 0.8, caster.z + 0.8, e.radius);
+        e.x = tx; e.z = tz; e.rootT = Math.max(e.rootT ?? 0, 0.25);
+        this.damageEnemy(e, sp * def.power, g.by);
+        event(undefined, e.id, tx, tz); return;
+      }
+      case 'burn_the_dead': {
+        const bodies = [...this.corpses.values()].filter((c) => !c.echoOwner && c.area === caster.area && Math.hypot(c.x - x, c.z - z) <= 4)
+          .sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z)).slice(0, 3);
+        if (!bodies.length) return fail(x, z);
+        for (const c of bodies) {
+          this.removeCorpse(c, 'consumed', g.by);
+          this.addZone({ kind: 'warden_fire', owner: g.by, x: c.x, z: c.z, r: 1.5, durationS: 5, dps: sp * def.power, witheredCap: 0 });
+        }
+        event(bodies.length * 20); return;
+      }
+      case 'watchmans_ward':
+        this.addZone({ kind: 'warden_ward', owner: g.by, x, z, r: 5, durationS: 8, dps: 0, witheredCap: 0 });
+        event(); return;
+      case 'cremate': {
+        const c = body(); if (!c) return fail(x, z);
+        this.removeCorpse(c, 'consumed', g.by);
+        this.addZone({ kind: 'warden_fire', owner: g.by, x: c.x, z: c.z, r: 1.5, durationS: 3, dps: sp * def.power, witheredCap: 0 });
+        event(20); return;
+      }
+      case 'last_light': {
+        for (const e of this.enemies.values()) {
+          if (e.state === 'dead' || e.area !== caster.area || Math.hypot(e.x - caster.x, e.z - caster.z) > 12 + e.radius) continue;
+          if (e.affix === 'shrouded') e.affix = undefined;
+          e.stunT = Math.max(e.stunT ?? 0, 1);
+          this.damageEnemy(e, sp * def.power, g.by);
+        }
+        for (const p of this.players.values()) if (p.alive && p.area === caster.area && Math.hypot(p.x - caster.x, p.z - caster.z) <= 12)
+          this.emit({ t: 'newBlood', by: g.by, kind: 'heal', ok: true, x: p.x, z: p.z, amount: 0.1, player: p.id });
+        event(); return;
+      }
+      case 'toll': case 'great_toll': {
+        const radius = g.sig === 'toll' ? 4 : 9;
+        const resonant = [...this.corpses.values()].some((c) => c.kind === 'resonant' && c.area === caster.area && Math.hypot(c.x - caster.x, c.z - caster.z) <= radius);
+        for (const e of this.enemies.values()) {
+          if (e.state === 'dead' || e.area !== caster.area || Math.hypot(e.x - caster.x, e.z - caster.z) > radius + e.radius) continue;
+          this.damageEnemy(e, sp * def.power * (resonant ? 1.5 : 1), g.by);
+          if (g.sig === 'great_toll') e.silenceT = Math.max(e.silenceT ?? 0, 3);
+          else {
+            if (e.state === 'windup' || e.state === 'channel') e.state = 'recover';
+            if ((g.dur ?? 0) > 0) e.stunT = Math.max(e.stunT ?? 0, 0.6);
+          }
+        }
+        event(); return;
+      }
+      case 'resonant_step': {
+        const sx = caster.x, sz = caster.z;
+        const vx = x - sx, vz = z - sz, len = Math.hypot(vx, vz) || 1;
+        for (const e of this.enemies.values()) {
+          if (e.state === 'dead' || e.area !== caster.area) continue;
+          const ex = e.x - sx, ez = e.z - sz;
+          const along = Math.max(0, Math.min(len, (ex * vx + ez * vz) / len));
+          if (Math.hypot(ex - vx / len * along, ez - vz / len * along) <= e.radius + 0.8) this.damageEnemy(e, sp * def.power, g.by);
+        }
+        event(); return;
+      }
+      case 'knell': {
+        const e = foe(9); if (!e) return fail(x, z);
+        e.knellBeats = 3; e.knellNext = this.time + 1.2; e.knellOwner = g.by; e.knellDamage = sp * def.power * 1.6;
+        event(undefined, e.id); return;
+      }
+      case 'sound_the_corpse': {
+        const c = body(); if (!c) return fail(x, z);
+        c.kind = 'resonant'; this.emit({ t: 'corpse', corpse: c });
+        for (const e of this.enemies.values()) if (e.state !== 'dead' && e.area === c.area && Math.hypot(e.x - c.x, e.z - c.z) <= 3 + e.radius)
+          this.damageEnemy(e, sp * def.power, g.by);
+        event(); return;
+      }
+      case 'harvest': case 'butcher': case 'lay_to_rest': {
+        const c = body(); if (!c) return fail(x, z);
+        this.removeCorpse(c, 'consumed', g.by);
+        if (g.sig === 'butcher') for (let i = 0; i < 3; i++) {
+          const angle = i * Math.PI * 2 / 3;
+          this.addZone({ kind: 'witch_charm', owner: g.by, x: c.x + Math.cos(angle), z: c.z + Math.sin(angle), r: 0.65, durationS: 20, dps: 0, witheredCap: 0 });
+        }
+        if (g.sig === 'lay_to_rest') for (const offset of [-0.8, 0.8]) {
+          const [ex, ez] = this.nav.resolveInArea(c.area, c.x + offset, c.z + 0.5, 0.4);
+          const echo = this.addCorpse(ex, ez, 'normal', c.enemy, false, c.facing, 0.7, c.area);
+          if (echo) { echo.echoOwner = g.by; echo.expiresAt = this.time + 20; }
+        }
+        event(g.sig === 'harvest' ? 30 : undefined); return;
+      }
+      case 'crow_swarm':
+        this.addZone({ kind: 'witch_crows', owner: g.by, x, z, r: 3, durationS: 5, dps: sp * def.power, witheredCap: 0 });
+        event(); return;
+      case 'hex_charm': {
+        const e = foe(9); if (!e) return fail(x, z);
+        e.hexT = 8; e.hexOwner = g.by;
+        event(undefined, e.id); return;
+      }
+      case 'murder_of_crows': {
+        const existing = [...this.zones.values()].find((zone) => zone.kind === 'witch_crows' && zone.owner === g.by && zone.gen === 1);
+        if (existing) { existing.x = x; existing.z = z; this.emit({ t: 'zone', zone: existing }); }
+        else this.addZone({ kind: 'witch_crows', owner: g.by, x, z, r: 4, durationS: 8, dps: sp * def.power, witheredCap: 0, gen: 1 });
+        event(); return;
+      }
+      case 'echo': {
+        const c = body(1.25, true); if (!c) return fail(x, z);
+        const owned = this.ownedThralls(g.by);
+        if (owned.length >= 5) this.killThrall(owned.sort((a, b) => a.bornAt - b.bornAt)[0], 'crumbled');
+        this.removeCorpse(c, 'raised', g.by);
+        const t: Thrall = { id: this.id(), owner: g.by, kind: 'wraith', x: c.x, z: c.z, facing: c.facing,
+          hp: 35 + sp, maxHp: 35 + sp, damage: Math.max(5, sp * 0.6), attackInterval: THRALL_BASE.wraith.interval,
+          range: THRALL_BASE.wraith.range, speed: THRALL_BASE.wraith.speed, state: 'rising', stateT: 0, attackCd: 0.4,
+          target: null, slot: owned.length, bornAt: this.time, empowered: false, flash: 0, gait: 0, moving: false,
+          echoUntil: this.time + 10 };
+        this.thralls.set(t.id, t);
+        this.emit({ t: 'thrall', id: t.id, owner: g.by, kind: 'wraith', x: t.x, z: t.z, empowered: false });
+        event(undefined, t.id); return;
+      }
+      case 'veil_tear':
+        this.addZone({ kind: 'veil_rift', owner: g.by, x, z, r: 3, durationS: 2, dps: sp * def.power, witheredCap: 0 });
+        event(); return;
+      case 'crossing': {
+        const c = body(1.25, true); if (!c || Math.hypot(c.x - caster.x, c.z - caster.z) > 12) return fail(x, z);
+        const [tx, tz] = this.nav.resolveInArea(c.area, c.x, c.z, 0.45);
+        event(undefined, undefined, tx, tz); return;
+      }
+      default: fail(); return;
     }
   }
 
@@ -734,7 +914,7 @@ export class WorldSim {
       witheredCap: o.witheredCap,
       bloom: false,
       hostile: false,
-      ...(o.kind === 'flower' ? { gen: o.gen ?? 0, spreadT: SIGNATURE.bloom.spreadEveryS } : {}),
+      ...(o.kind === 'flower' ? { gen: o.gen ?? 0, spreadT: SIGNATURE.bloom.spreadEveryS } : o.gen != null ? { gen: o.gen } : {}),
     };
     this.zones.set(zone.id, zone);
     this.emit({ t: 'zone', zone });
@@ -1219,6 +1399,29 @@ export class WorldSim {
         this.tickDirge(z, pulse);
         continue;
       }
+      if (z.kind === 'witch_charm') {
+        const p = [...this.players.values()].find((player) => player.alive && Math.hypot(player.x - z.x, player.z - z.z) <= z.r + PLAYER_RADIUS);
+        if (p) {
+          this.emit({ t: 'newBlood', by: z.owner, kind: 'heal', ok: true, x: p.x, z: p.z, amount: 0.05, player: p.id });
+          this.zones.delete(z.id); this.emit({ t: 'zoneGone', id: z.id });
+        }
+        continue;
+      }
+      if (z.kind === 'warden_ward') {
+        for (const e of this.enemies.values()) if (e.state !== 'dead' && Math.hypot(e.x - z.x, e.z - z.z) <= z.r + e.radius) e.wardSlowT = Math.max(e.wardSlowT ?? 0, 0.3);
+        continue;
+      }
+      if (z.kind === 'warden_fire' || z.kind === 'witch_crows' || z.kind === 'veil_rift') {
+        for (const e of this.enemies.values()) {
+          if (e.state === 'dead' || Math.hypot(e.x - z.x, e.z - z.z) > z.r + e.radius) continue;
+          if (z.kind === 'veil_rift') {
+            const [nx, nz] = this.nav.resolveInArea(e.area, e.x + (z.x - e.x) * Math.min(1, dt * 2), e.z + (z.z - e.z) * Math.min(1, dt * 2), e.radius);
+            e.x = nx; e.z = nz;
+          }
+          if (pulse) this.damageEnemy(e, z.dps, z.owner);
+        }
+        continue;
+      }
       if (z.kind === 'flower') this.tickBloomSpread(z, dt);
       if (!z.hostile) {
         for (const e of this.enemies.values()) {
@@ -1366,6 +1569,16 @@ export class WorldSim {
         killer: e.lastHitBy,
       });
       this.addCorpse(e.x, e.z, def.corpse, e.def, e.elite, e.facing, e.scale, e.area);
+      if (def.corpse !== 'none' && [...this.players.values()].some((p) => p.alive && p.area === e.area && p.family === 'veil')) {
+        const echo = this.addCorpse(e.x + 0.45, e.z + 0.45, 'normal', e.def, false, e.facing, 0.65, e.area);
+        if (echo) { echo.echoOwner = '*'; echo.expiresAt = this.time + 20; }
+      }
+      if ((e.hexT ?? 0) > 0 && e.hexOwner) {
+        const neighbours = [...this.enemies.values()].filter((other) => other.state !== 'dead' && other.area === e.area
+          && Math.hypot(other.x - e.x, other.z - e.z) <= 6)
+          .sort((a, b) => Math.hypot(a.x - e.x, a.z - e.z) - Math.hypot(b.x - e.x, b.z - e.z)).slice(0, 2);
+        for (const other of neighbours) { other.hexT = Math.max(other.hexT ?? 0, 8); other.hexOwner = e.hexOwner; }
+      }
       // A Bone Golem falls apart into the skeletons it was fused from (ringed around it).
       for (let k = 1; k < (def.deathCorpses ?? 1); k++) {
         const a = e.facing + (k / (def.deathCorpses! - 1)) * Math.PI * 2;
@@ -1503,7 +1716,8 @@ export class WorldSim {
     const dz = tz - e.z;
     const d = Math.hypot(dx, dz);
     if (d < 0.05) return;
-    const slow = (e.slowT > 0 ? MIASMA_SLOW : 1) * ((e.chillT ?? 0) > 0 ? CHILL.moveMult : 1) * ((e.incenseT ?? 0) > 0 ? CENSER.moveMult : 1);
+    const slow = Math.min(e.slowT > 0 ? MIASMA_SLOW : 1, (e.wardSlowT ?? 0) > 0 ? WATCHMANS_WARD_SLOW : 1)
+      * ((e.chillT ?? 0) > 0 ? CHILL.moveMult : 1) * ((e.incenseT ?? 0) > 0 ? CENSER.moveMult : 1);
     const step = Math.min(d, e.speed * speedMult * slow * dt);
     const px = e.x;
     const pz = e.z;
@@ -1570,8 +1784,14 @@ export class WorldSim {
   }
 
   private tickStatuses(e: Enemy, dt: number) {
+    if ((e.knellBeats ?? 0) > 0 && this.time >= (e.knellNext ?? Infinity)) {
+      e.knellNext = this.time + 1.2;
+      e.knellBeats!--;
+      this.damageEnemy(e, Math.max(1, e.knellDamage ?? 1), e.knellOwner ?? '');
+    }
     e.flash = Math.max(0, e.flash - dt * 8);
     if (e.slowT > 0) e.slowT -= dt;
+    if ((e.wardSlowT ?? 0) > 0) e.wardSlowT! -= dt;
     if (e.fractureT > 0) {
       e.fractureT -= dt;
       if (e.fractureT <= 0) e.fracture = 0;
@@ -1804,6 +2024,7 @@ export class WorldSim {
 
   private updateThralls(dt: number) {
     for (const t of [...this.thralls.values()]) {
+      if (t.echoUntil !== undefined && this.time >= t.echoUntil) { this.killThrall(t, 'crumbled'); continue; }
       t.moving = false;
       t.flash = Math.max(0, t.flash - dt * 5);
       t.stateT += dt;

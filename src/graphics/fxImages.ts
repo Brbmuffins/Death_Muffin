@@ -21,6 +21,11 @@ export const FX_IMAGES = {
   veilStreak: 'art/fx/veil-streak.png',
   // Release 0.3 class sprites (art-manifest/gemini-jobs/classes-v1.json).
   graveOutline: 'art/fx/grave-outline.png',
+  crow: 'art/fx/crow.png',
+  hookChain: 'art/fx/hook-chain.png',
+  soundRing: 'art/fx/sound-ring.png',
+  lanternCone: 'art/fx/lantern-cone.png',
+  veilRift: 'art/fx/veil-rift.png',
 } as const;
 export type FxImage = keyof typeof FX_IMAGES;
 

@@ -18,8 +18,8 @@ const ASC = Math.max(0, Number(process.env.BALANCE_ASCENSION ?? 0));
 const SEEDS = Math.max(1, Number(process.env.BALANCE_SEEDS ?? 1));
 const list = (v: string | undefined) => (v ? v.split(',').map((s) => s.trim()) : null);
 const areas = (list(process.env.BALANCE_AREAS) ?? ['graves', 'ossuary', 'nave', 'sanctum']) as AreaId[];
-const disciplines = (list(process.env.BALANCE_DISCIPLINES) ?? ['1', '2', '3', '4']).map(Number);
-const names: Record<number, string> = { 1: 'Ossuary', 2: 'Gravecaller', 3: 'Mourner', 4: 'Rotweaver' };
+const disciplines = (list(process.env.BALANCE_DISCIPLINES) ?? ['1', '2', '3', '4', '5', '6', '7', '8', '9']).map(Number);
+const names: Record<number, string> = { 1: 'Ossuary', 2: 'Gravecaller', 3: 'Mourner', 4: 'Rotweaver', 5: 'Grave Warden', 6: 'Bell Monk', 7: 'Carrion Witch', 8: 'Hollow Knight', 9: 'Veilwalker' };
 
 /** Level bands relative to the area's level: how a player plausibly arrives and pushes. */
 const BANDS: Record<string, (lvl: number) => Partial<BalanceRun>> = {

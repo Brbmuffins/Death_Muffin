@@ -26,7 +26,7 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyDef> = {
     name: 'Easy',
     blurb: 'The dead hit softer and fall faster. Less gold and experience.',
     enemyHpMult: 0.75,
-    enemyDamageMult: 0.6,
+    enemyDamageMult: 0.3,
     rewardMult: 0.75,
     eliteBonus: 0,
   },

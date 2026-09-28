@@ -22,6 +22,11 @@ export class Player {
    * as an alias so the necromancer call sites — and their tests — are untouched.
    */
   resource: { kind: ResourceKind; value: number; max: number };
+  /** Veilwalker form. The short Between Worlds window shares its protection. */
+  veilForm = false;
+  betweenUntil = 0;
+  lastResourceGainAt = 0;
+  private clockNow = 0;
   private readonly rules: ResourceRules;
   barrier = 0;
   /** Bone Mantle holds the barrier until this time (scene ms); it decays as usual after. */
@@ -71,6 +76,7 @@ export class Player {
 
   /** Add to (or drain) the family resource, clamped to 0..max. */
   addResource(amount: number) {
+    if (amount > 0 && this.resource.kind === 'resonance') this.lastResourceGainAt = this.clockNow;
     this.resource.value = Math.max(0, Math.min(this.resource.max, this.resource.value + amount));
   }
 
@@ -138,6 +144,7 @@ export class Player {
 
   /** Walk the path, or step along a WASD direction. Returns true if moved. */
   update(dt: number, now: number, keyDir: { x: number; z: number } | null): boolean {
+    this.clockNow = now;
     this.moving = false;
     if (!this.alive) return false;
     // Regeneration: brisk out of combat, a trickle in it.
@@ -146,17 +153,19 @@ export class Player {
     // Family resource drift. For the necromancer this is `stats.essenceRegen`
     // every frame, exactly as before; Rage instead decays out of combat.
     this.addResource(
-      this.rules.passive({
+      (this.resource.kind === 'veil' && this.veilForm ? -12 : this.rules.passive({
         stats: this.stats,
         value: this.resource.value,
         max: this.resource.max,
         sinceHurtMs: now - this.lastHurtAt,
-      }) * dt,
+        sinceResourceGainMs: now - this.lastResourceGainAt,
+      })) * dt,
     );
+    if (this.resource.kind === 'veil' && this.resource.value <= 0) this.veilForm = false;
     if (now >= this.barrierHoldUntil) this.barrier = Math.max(0, this.barrier - this.stats.maxHp * 0.04 * dt);
     if (now < this.rootedUntil) return false;
 
-    const speed = this.stats.moveSpeed;
+    const speed = this.stats.moveSpeed * (this.veilForm || now < this.betweenUntil ? 1.2 : 1);
     let dx = 0;
     let dz = 0;
     if (keyDir && (keyDir.x || keyDir.z)) {
@@ -202,9 +211,10 @@ export class Player {
    * `from` is where the blow came from — Bulwark only covers the front, so
    * without it a guarded hit is treated as coming from behind (no mitigation).
    */
-  takeDamage(raw: number, wardPct: number, now: number, from?: { x: number; z: number }): number {
+  takeDamage(raw: number, wardPct: number, now: number, from?: { x: number; z: number }, source?: string): number {
     this.lastBlock = 'none';
     if (!this.alive || this.god) return 0;
+    if (this.resource.kind === 'veil' && source !== 'toxic' && (this.veilForm || now < this.betweenUntil)) return 0;
     let dmg = raw * (1 - Math.min(0.6, wardPct));
     if (now < this.bulwarkUntil && this.blowIsFrontal(from)) {
       this.lastBlock = now < this.bulwarkPerfectUntil ? 'perfect' : 'front';

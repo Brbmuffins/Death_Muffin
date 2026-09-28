@@ -2,10 +2,13 @@ import { ABILITIES, DETONATE, GRAVE_FROST, IVORY_CLEAVE, WAILING_SKULL, type Abi
 import type { CastTarget } from './AbilitySystem';
 import { BOSS_RADIUS } from './sim/BossBrain';
 import type { BossState, Corpse, Enemy } from './sim/types';
+import type { ClassFamily } from '../content/disciplines';
+import { AREAS, type AreaId } from '../content/areas';
 
 export interface AutoCombatInput {
   /** hp/maxHp let Bone Mantle answer pressure; omitted, it only waits for corpse fuel. */
-  player: { x: number; z: number; essence: number; maxEssence: number; hp?: number; maxHp?: number };
+  player: { x: number; z: number; essence: number; maxEssence: number; hp?: number; maxHp?: number;
+    area?: AreaId | null; veilForm?: boolean; bulwarkUntil?: number; betweenUntil?: number; unbreakableUntil?: number };
   enemies: Iterable<Enemy>;
   corpses: Iterable<Corpse>;
   boss: BossState;
@@ -16,6 +19,9 @@ export interface AutoCombatInput {
   primary?: AbilityId;
   /** Who is deciding (Carrion Seed keeps one seed per caster). */
   selfId?: string;
+  family?: ClassFamily;
+  signature?: AbilityId;
+  now?: number;
 }
 
 export interface AutoCombatAction {
@@ -23,13 +29,13 @@ export interface AutoCombatAction {
   target: CastTarget;
 }
 
-type Target = CastTarget & { radius: number; distance: number; elite?: boolean };
+type Target = CastTarget & { radius: number; distance: number; elite?: boolean; hp?: number; maxHp?: number;
+  state?: Enemy['state']; hexOwner?: string };
 const distance = (a: { x: number; z: number }, b: { x: number; z: number }) => Math.hypot(a.x - b.x, a.z - b.z);
 
-/** One stationary combat decision. The scene owns its clock, movement and casts.
- * Work is capped even in a crowded co-op snapshot; signatures remain manual, and
- * Grave Step never fires on its own (auto combat never moves the player). `ready`
- * decides what is on the bar, so it only reaches for the player's Grimoire rites.
+/** One Easy-auto combat decision. The scene owns its clock, movement and casts.
+ * Work is capped even in a crowded co-op snapshot. `ready` restricts choices
+ * to the equipped kit and unlocked rites.
  */
 export function selectAutoCombatAction(input: AutoCombatInput): AutoCombatAction | null {
   const { player: p, boss, thrallCount, thrallCap } = input;
@@ -37,9 +43,10 @@ export function selectAutoCombatAction(input: AutoCombatInput): AutoCombatAction
   let inspected = 0;
   for (const e of input.enemies) {
     if (++inspected > 512) break;
-    if (e.hp <= 0 || e.state === 'dead' || e.state === 'rising') continue;
+    if (e.hp <= 0 || e.state === 'dead' || e.state === 'rising' || (p.area && e.area && e.area !== p.area)) continue;
     const d = distance(p, e);
-    if (d <= ABILITIES.miasma.range) targets.push({ x: e.x, z: e.z, enemyId: e.id, radius: e.radius, distance: d, elite: e.elite });
+    if (d <= ABILITIES.miasma.range) targets.push({ x: e.x, z: e.z, enemyId: e.id, radius: e.radius, distance: d,
+      elite: e.elite, hp: e.hp, maxHp: e.maxHp, state: e.state, hexOwner: e.hexOwner });
   }
   targets.sort((a, b) => a.distance - b.distance);
   targets.length = Math.min(targets.length, 64);
@@ -51,6 +58,7 @@ export function selectAutoCombatAction(input: AutoCombatInput): AutoCombatAction
   targets.sort((a, b) => a.distance - b.distance);
   const aim = (t: CastTarget): CastTarget => ({ x: t.x, z: t.z, ...(t.boss ? { boss: true } : t.enemyId !== undefined ? { enemyId: t.enemyId } : {}) });
   const action = (id: AbilityId, t: CastTarget): AutoCombatAction => ({ id, target: aim(t) });
+  if (input.family && input.family !== 'necromancer') return newBloodAutoAction(input, targets, action);
   // Always retain a little essence for player-directed spells. Low essence
   // uses the free generator rather than continually draining regeneration.
   const reserve = Math.max(12, p.maxEssence * 0.2);
@@ -180,12 +188,109 @@ export function selectAutoCombatAction(input: AutoCombatInput): AutoCombatAction
     const chain = prize ?? candidates.find((t) => reach(t) && countAround(t, WAILING_SKULL.leapRange) >= 3);
     if (chain) return action('wailing_skull', chain);
   }
+  if (input.signature && input.ready(input.signature) && targets.length >= 3) {
+    if (input.signature === 'command_rend' && thrallCount >= 2) return action(input.signature, targets[0]);
+    if (input.signature === 'plague_bloom' && countAround(targets[0], 4) >= 3) return action(input.signature, targets[0]);
+    if (input.signature === 'ossuary_wall' && countAround(p, 5) >= 3) return action(input.signature, targets[0]);
+    if (input.signature === 'dirge' && p.hp !== undefined && p.maxHp && p.hp < p.maxHp * 0.65) return action(input.signature, p);
+  }
   return needle && input.ready(primary) ? action(primary, needle) : null;
+}
+
+function newBloodAutoAction(input: AutoCombatInput, targets: Target[], action: (id: AbilityId, t: CastTarget) => AutoCombatAction): AutoCombatAction | null {
+  const p = input.player, family = input.family, nearest = targets[0];
+  const primary = input.primary ?? 'bone_needle';
+  const ready = (id: AbilityId) => input.ready(id) && p.essence >= ABILITIES[id].essenceCost;
+  const inRange = (id: AbilityId, t: { x: number; z: number }) => distance(p, t) <= ABILITIES[id].range + 0.4;
+  const count = (t: { x: number; z: number }, r: number) => targets.filter((e) => distance(t, e) <= r + e.radius).length;
+  const real = [...input.corpses].filter((c) => !c.echoOwner && (!p.area || !c.area || c.area === p.area));
+  const echo = [...input.corpses].find((c) => (c.echoOwner === '*' || c.echoOwner === input.selfId) && inRange('echo', c));
+  const body = (id: AbilityId) => real.find((c) => inRange(id, c));
+  const hurt = p.hp !== undefined && p.maxHp ? p.hp / p.maxHp : 1;
+  const now = input.now ?? 0;
+  if (family === 'warden') {
+    if (hurt < 0.7 && nearest?.distance <= 12 && ready('last_light')) return action('last_light', p);
+    if (nearest?.distance <= 5 && (hurt < 0.75 || count(p, 5) >= 3) && ready('watchmans_ward')) return action('watchmans_ward', p);
+    const burning = real.find((c) => inRange('burn_the_dead', c) && count(c, 4) >= 2);
+    if (burning && ready('burn_the_dead')) return action('burn_the_dead', burning);
+    const cremation = real.find((c) => inRange('cremate', c) && count(c, 2) >= 1);
+    if (cremation && ready('cremate')) return action('cremate', cremation);
+    if (nearest?.distance <= 7 && (count(p, 7) >= 2 || nearest.elite || nearest.boss) && ready('lantern_cone')) return action('lantern_cone', nearest);
+    if (nearest?.distance > 3 && inRange('chain_pull', nearest) && ready('chain_pull') && !nearest.boss) return action('chain_pull', nearest);
+  } else if (family === 'monk') {
+    if (nearest?.distance <= 9 && count(p, 9) >= 3 && ready('great_toll')) return action('great_toll', p);
+    if (nearest?.distance <= 4 && count(p, 4) >= 2 && ready('choir_of_one')) return action('choir_of_one', p);
+    const resonant = real.find((c) => inRange('sound_the_corpse', c) && count(c, 3) >= 2 && c.kind !== 'resonant');
+    if (resonant && ready('sound_the_corpse')) return action('sound_the_corpse', resonant);
+    if (nearest && inRange('knell', nearest) && (nearest.elite || nearest.boss || (nearest.maxHp && (nearest.hp ?? 0) > nearest.maxHp * 0.7)) && ready('knell')) return action('knell', nearest);
+    if (nearest?.distance <= 4 && (count(p, 4) >= 2 || nearest.state === 'windup' || nearest.state === 'channel') && ready('toll')) return action('toll', p);
+    if (nearest?.distance > 2 && nearest?.distance <= 5 && ready('resonant_step')) return action('resonant_step', nearest);
+  } else if (family === 'witch') {
+    const harvest = body('harvest');
+    if (harvest && p.essence < 70 && ready('harvest')) return action('harvest', harvest);
+    const charm = body('butcher');
+    if (charm && hurt < 0.65 && ready('butcher')) return action('butcher', charm);
+    if (nearest && inRange('murder_of_crows', nearest) && count(nearest, 4) >= 3 && ready('murder_of_crows')) return action('murder_of_crows', nearest);
+    if (nearest && inRange('hex_charm', nearest) && !nearest.boss && !nearest.hexOwner && count(nearest, 4) >= 2 && ready('hex_charm')) return action('hex_charm', nearest);
+    if (nearest && inRange('crow_swarm', nearest) && count(nearest, 3) >= 2 && ready('crow_swarm')) return action('crow_swarm', nearest);
+    if (nearest?.distance > 4 && inRange('hook_pull', nearest) && ready('hook_pull') && !nearest.boss) return action('hook_pull', nearest);
+  } else if (family === 'veil') {
+    if (nearest?.distance <= 6 && ready('between_worlds') && p.essence < 45) return action('between_worlds', p);
+    const pressured = nearest?.distance <= 5 && (hurt < 0.7 || count(p, 5) >= 3);
+    if (pressured && !p.veilForm && p.essence >= 45 && now >= (p.betweenUntil ?? 0) && ready('veil_form')) return action('veil_form', p);
+    if (p.veilForm && (p.essence <= 15 || !nearest || nearest.distance > 8 || (!pressured && hurt > 0.9)) && ready('veil_form')) return action('veil_form', p);
+    if (echo && input.thrallCount < 5 && ready('echo')) return action('echo', echo);
+    const rest = body('lay_to_rest');
+    if (rest && (hurt < 0.8 || !echo) && ready('lay_to_rest')) return action('lay_to_rest', rest);
+    if (nearest && inRange('veil_tear', nearest) && count(nearest, 3) >= 2 && ready('veil_tear')) return action('veil_tear', nearest);
+    if (echo && nearest?.distance > 8 && distance(echo, nearest) < 5 && ready('crossing')) return action('crossing', echo);
+  } else if (family === 'knight') {
+    if (hurt < 0.35 && nearest?.distance <= 8 && now >= (p.unbreakableUntil ?? 0) && ready('oath_unbroken')) return action('oath_unbroken', p);
+    const vigil = body('corpse_vigil');
+    if (hurt < 0.7 && vigil && distance(p, vigil) <= 2 && ready('corpse_vigil')) return action('corpse_vigil', vigil);
+    if (nearest?.distance <= 3 && (hurt < 0.65 || nearest.state === 'windup') && now >= (p.bulwarkUntil ?? 0) && ready('bulwark')) return action('bulwark', nearest);
+    const brand = real.find((c) => inRange('grave_brand', c) && count(c, 1.5) >= 1);
+    if (brand && ready('grave_brand')) return action('grave_brand', brand);
+    if (nearest && inRange('grave_slam', nearest) && count(nearest, 3) >= 2 && ready('grave_slam')) return action('grave_slam', nearest);
+    if (nearest && inRange('shield_bash', nearest) && nearest.distance <= 3 && ready('shield_bash')) return action('shield_bash', nearest);
+  }
+  return nearest && nearest.distance <= ABILITIES[primary].range + (nearest.boss ? BOSS_RADIUS : 0.4) && ready(primary)
+    ? action(primary, nearest) : null;
+}
+
+/** A local engagement direction; manual movement, panels and gathering gate its use in the scene. */
+export function selectAutoCombatMovement(input: Pick<AutoCombatInput, 'player' | 'enemies' | 'primary' | 'family'>): { x: number; z: number } | null {
+  const p = input.player;
+  const enemies = [...input.enemies].filter((e) => e.hp > 0 && e.state !== 'dead' && e.state !== 'rising' && (!p.area || e.area === p.area))
+    .sort((a, b) => distance(p, a) - distance(p, b));
+  const nearest = enemies[0];
+  if (!nearest) return null;
+  const d = distance(p, nearest);
+  if (d > 36 || d < 0.01) return null;
+  const dx = (nearest.x - p.x) / d, dz = (nearest.z - p.z) / d;
+  const rect = p.area ? AREAS[p.area].rect : null;
+  const cx = rect ? (rect.x0 + rect.x1) / 2 - p.x : 0;
+  const cz = rect ? (rect.z0 + rect.z1) / 2 - p.z : 0;
+  const centerD = Math.hypot(cx, cz) || 1;
+  const center = { x: cx / centerD, z: cz / centerD };
+  const safe = (choices: { x: number; z: number }[]) => {
+    if (!rect) return choices[0];
+    return choices.find((v) => p.x + v.x * 2 > rect.x0 + 1 && p.x + v.x * 2 < rect.x1 - 1 &&
+      p.z + v.z * 2 > rect.z0 + 1 && p.z + v.z * 2 < rect.z1 - 1) ?? choices.at(-1)!;
+  };
+  const lowHp = p.hp !== undefined && p.maxHp && p.hp < p.maxHp * 0.32;
+  if (lowHp && d < 5) return safe([{ x: -dx, z: -dz }, { x: -dz, z: dx }, { x: dz, z: -dx }, center]);
+  const threatened = enemies.some((e) => distance(p, e) < 4 && (e.state === 'windup' || e.state === 'channel'));
+  if (threatened && d < 3.5) return safe([{ x: -dz, z: dx }, { x: dz, z: -dx }, { x: -dx, z: -dz }, center]);
+  const reach = ABILITIES[input.primary ?? 'bone_needle'].range;
+  if (d > Math.max(1.1, reach - 0.4)) return safe([{ x: dx, z: dz }, center]);
+  if (reach >= 7 && d < 3 && enemies.filter((e) => distance(p, e) < 3.5).length >= 2) return safe([{ x: -dx, z: -dz }, center]);
+  return null;
 }
 
 /**
  * Where the primary aims: the nearest target, except pack primaries (Bone Fan) take the densest
- * knot in reach. Auto combat never walks closer for any of them.
+ * knot in reach. Movement into range is selected separately.
  */
 function primaryTarget(primary: AbilityId, inReach: Target[]): Target | undefined {
   if (!inReach.length) return undefined;

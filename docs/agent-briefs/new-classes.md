@@ -8,13 +8,22 @@ parallel on its own branch if the owner prefers — the framework touches `Abili
 
 ## 0b. Status (2026-09-28)
 
+**All five kits implemented on `claude/new-classes-framework`; undeployed.** Grave Warden, Bell Monk,
+Carrion Witch and Veilwalker followed the Knight. Their 28 rites live in `gameplay/NewBloodSystem.ts`,
+with persistent effects in `sim/WorldSim.ts`; host and resource checks are in
+`gameplay/__tests__/new-blood.test.ts`. The leaderboard now returns `hasDiscipline` to disambiguate
+legacy Necromancer index 5 from Grave Warden index 5. Echo requires an eligible echo corpse; Watchman's
+Ward applies the specified 25% slow. The paid class sprites are wired into their combat effects. The
+updated balance bot and three-seed results are recorded in `BALANCE.md`; the new classes still need a
+human combat review before release.
+
 **Framework: done.** `ClassFamily` + `Discipline.family`, per-family resource rules
 (`gameplay/resources.ts`), per-family kits (`content/kits.ts`), the HUD orb following the family, the
 server accepting `discipline_index` 5–9, and realtime validation for the new `sig` kinds. The four
 necromantic disciplines are pinned unchanged by `__tests__/resources.test.ts` and
 `__tests__/kits.test.ts`.
 
-**Hollow Knight: done** (`__tests__/knight.test.ts`, 19 tests). Rage, all seven rites, the sword and
+**Hollow Knight: done** (`__tests__/knight.test.ts`, 20 tests). Rage, all seven rites, the sword and
 shield attached to the rig, Codex + counsel + spell cards + README.
 
 Deviations from §2/§3 below, all deliberate:
@@ -24,14 +33,13 @@ Deviations from §2/§3 below, all deliberate:
   family it would have been indirection with nothing on the other side.
 - **`Player.essence` kept as a getter/setter alias** for `resource.value` rather than renamed across
   ~20 call sites. Behaviour is identical and the necromancer diff stays near zero.
-- **Shield Bash does not stagger a boss.** `BossBrain` has no interrupt hook; §3 asks for 0.2s.
-  Faking one was worse than leaving it out — it needs a real stagger API first.
-- **Leaderboard index 5 is ambiguous**: legacy `class_index` 5 (Necromancer) and the Grave Warden's
-  `discipline_index`. Nothing reaches 5 yet, so it still reads 'Necromancer'. **Resolve before the
-  Grave Warden ships.**
+- **Shield Bash boss stagger is implemented** with a 0.2s pause in `BossBrain`; the host picks
+  the first body along the charge and delays any pending boss telegraph by the same interval.
+- **Leaderboard index 5 is disambiguated** by `hasDiscipline`: a legacy `class_index` 5 remains
+  Necromancer, while an explicit `discipline_index` 5 is Grave Warden.
 - Numbers §3 left open (bash/slam power, most cooldowns) are first passes, not design decisions.
 
-Next: Grave Warden, Bell Monk, Carrion Witch, then Veilwalker last (§3).
+Next: human combat and balance review, then a release decision.
 
 ## 1. What exists (all paid for, all in the repo)
 

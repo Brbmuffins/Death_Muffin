@@ -4,6 +4,13 @@ These tests use development debug hooks and temporary offline accounts. Install 
 
 For AFK, run `npm run dev -- --host 127.0.0.1 --port 5199 --strictPort`, then `node tools/qa/afk-smoke.cjs`. It verifies Skills controls, persisted background rewards without rendering, pause/resume and full-bag stopping. `DM_QA_URL` overrides the default offline preview URL.
 
+For the five Release 0.3 classes, use the same dev server and run `node tools/qa/new-blood-smoke.cjs`.
+It checks class selection at 1280×800, world entry, resource orbs, hero models, hotbars and a
+primary hit. It also casts Warden Lantern Cone, Witch Harvest and Veil Tear in their class runs.
+`DM_QA_CLASS=Veilwalker` limits the check to one class; `DM_QA_ARTIFACT_DIR=/tmp` saves screenshots.
+
+For an actual Easy auto balance sample, run `node tools/qa/easy-auto-balance.cjs` against the offline preview. It creates a fresh character, enters the Graves, and advances three minutes with auto combat on, recording kills, deaths, health and flask use. `DM_QA_CLASS='Hollow Knight'`, `DM_QA_SECONDS=60`, and `DM_QA_SEED=43` narrow or repeat a run. The browser random seed helps comparison, but the run still depends on scene timing and is a sample, not a deterministic balance proof.
+
 For ten-player co-op, start an **isolated test server**, never a production service:
 
 ```sh

@@ -27,9 +27,9 @@ export interface Rites {
 }
 
 /**
- * A valid set of keys for this level: four distinct, unlocked Grimoire rites. A
- * missing, corrupt or out-of-level slot falls back to the default rite for that
- * key (or the first free unlocked one), so play never starts with a hole.
+ * Four distinct Grimoire rites. Invalid slots prefer a free unlocked rite.
+ * Families with fewer than four level-1 rites keep future defaults visible in
+ * locked hotbar slots, so a new character never starts with a hole.
  */
 export function sanitizeLoadout(raw: unknown, level: number, kit: Kit = NECRO): AbilityId[] {
   const usable = (id: unknown): id is AbilityId => typeof id === 'string' && kit.grimoire.includes(id as AbilityId) && unlockLevel(id as AbilityId) <= level;
@@ -43,7 +43,8 @@ export function sanitizeLoadout(raw: unknown, level: number, kit: Kit = NECRO): 
   });
   return picked.map((id, i) => {
     if (id) return id;
-    const fallback = [kit.defaultLoadout[i], ...kit.grimoire].find((g) => usable(g) && !picked.includes(g))!;
+    const fallback = [kit.defaultLoadout[i], ...kit.grimoire].find((g) => usable(g) && !picked.includes(g))
+      ?? [kit.defaultLoadout[i], ...kit.grimoire].find((g) => !picked.includes(g))!;
     picked[i] = fallback;
     return fallback;
   });
@@ -110,7 +111,7 @@ export function loadSeen(storage: StorageLike | null, characterId: number, rites
   const seen = new Set<AbilityId>(Array.isArray(raw) ? (raw.filter((x) => typeof x === 'string') as AbilityId[]) : []);
   for (const id of [...kit.grimoire, ...kit.primaries]) if (unlockLevel(id) <= 1) seen.add(id);
   seen.add(rites.primary);
-  for (const id of rites.keys) seen.add(id);
+  for (const id of rites.keys) if (unlockLevel(id) <= 1) seen.add(id);
   return seen;
 }
 

@@ -27,7 +27,7 @@ import { AscensionPanel } from '../ui/AscensionPanel';
 import { ClassPanel } from '../ui/ClassPanel';
 import { changeDiscipline } from '../net/api';
 import { onSettingsChange, settings, updateSettings } from '../app/settings';
-import { selectAutoCombatAction } from '../gameplay/autoCombat';
+import { selectAutoCombatAction, selectAutoCombatMovement } from '../gameplay/autoCombat';
 import { STATUS_FX } from '../content/statuses';
 import { AbilitySystem, veilTarget, type CastResult, type CastTarget } from '../gameplay/AbilitySystem';
 import { deriveStats, xpToNext } from '../gameplay/characterStats';
@@ -180,6 +180,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private rippleT = 0;
   private rippleCursor = 0;
   private zoneFx = new Map<number, Handle[]>();
+  private echoFx = new Map<number, Handle>();
   /** Standing Ossuary Walls: their meshes, removed on wallGone. */
   private wallFx = new Map<number, THREE.Object3D>();
   /** The cracked-crypt marker of the running Grave Surge. */
@@ -213,6 +214,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private dataReady: Promise<unknown> = Promise.resolve();
   /** Scene clock in ms (runtime-provided; see GameRuntime.advance). */
   private now = 0;
+  private lastMonkBeat = -1;
   private raycaster = new THREE.Raycaster();
   private ndc = new THREE.Vector2();
   private groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -396,6 +398,7 @@ export class WorldScene implements GameScene, RuntimeView {
       now: () => this.now,
       thralls: () => this.thrallsMap(),
       dash: (tx, tz) => this.dashTarget(tx, tz),
+      aim: () => ({ x: this.groundPoint.x, z: this.groundPoint.z }),
     });
 
     this.gathering = new GatherLoop(
@@ -462,6 +465,10 @@ export class WorldScene implements GameScene, RuntimeView {
     this.onboarding.show('move', 1600);
     // First time in the world as a Knight: Rage works nothing like essence.
     if (this.discipline.family === 'knight') this.onboarding.show('knight_rage', 2600);
+    if (this.discipline.family === 'warden') this.onboarding.show('warden_oil', 2600);
+    if (this.discipline.family === 'monk') this.onboarding.show('monk_beat', 2600);
+    if (this.discipline.family === 'witch') this.onboarding.show('witch_offal', 2600);
+    if (this.discipline.family === 'veil') this.onboarding.show('veil_forms', 2600);
     if (this.character.level >= SIGNATURE_LEVEL) this.onboarding.show('signature', 4000);
     if (this.grimoireUnlocked()) this.onboarding.show('grimoire', 4500);
     this.ready = true;
@@ -588,6 +595,11 @@ export class WorldScene implements GameScene, RuntimeView {
         this.onboarding.show('change_class');
       },
       this.devAccount ? { get: () => devAccess.active, set: (on) => this.setDevAccess(on) } : undefined,
+      {
+        primary: ABILITIES[this.kit.defaultPrimary].name,
+        rites: this.kit.defaultLoadout.map((id) => ABILITIES[id].name),
+        corpseAction: ABILITIES[this.kit.rmb].name,
+      },
     );
     this.classPanel = new ClassPanel(this.root, () => this.character.class_index, (index) => this.changeClass(index));
     this.scope.add(() => this.classPanel.dispose());
@@ -625,7 +637,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.codexPanel.dispose();
       this.onboarding.dispose();
     });
-    const rmb = 'Right-click a corpse: Corpse Explosion';
+    const rmb = `Right-click a corpse: ${ABILITIES[this.kit.rmb].name}`;
     this.hud.hint(OFFLINE ? `OFFLINE DEV MODE — progress stays in this browser · ${rmb}` : rmb);
     this.scope.add(() => {
       this.closePanels();
@@ -695,7 +707,7 @@ export class WorldScene implements GameScene, RuntimeView {
     updateSettings({ autoCombat: !settings.autoCombat });
     this.autoTargetId = null;
     this.autoAim = null;
-    this.hud.toast(settings.autoCombat ? 'Auto combat on — stand near enemies to fight. Click to move; G turns it off.' : 'Auto combat off — click enemies and use your rites manually.', 'good');
+    this.hud.toast(settings.autoCombat ? 'Auto combat on — your hero engages nearby enemies. Click or use keys to take control; G turns it off.' : 'Auto combat off — click enemies and use your rites manually.', 'good');
   }
 
   // -------------------------------------------------------------------------
@@ -959,8 +971,8 @@ export class WorldScene implements GameScene, RuntimeView {
         return;
       }
     }
-    // Auto combat never sets paths or competes with deliberate movement/menu use (or gathering).
-    if (!settings.autoCombat || p.hasPath || p.moving || this.attackTarget || this.keys.size || this.gathering.active) {
+    // Easy auto yields to deliberate movement, menus, gathering and manual targets.
+    if (!settings.autoCombat || p.hasPath || this.attackTarget || this.keys.size || this.gathering.active) {
       this.autoTargetId = null;
       this.autoAim = null;
       return;
@@ -968,11 +980,15 @@ export class WorldScene implements GameScene, RuntimeView {
     if (now < this.nextAutoCombatAt) return;
     this.nextAutoCombatAt = now + 180;
     const thralls = [...this.thrallsMap().values()].filter(t => t.owner === this.selfId).length;
-    // Auto combat only reaches for what is on the bar (plus the free Bone Needle).
-    const action = selectAutoCombatAction({ player: { x: p.x, z: p.z, essence: p.essence, maxEssence: p.stats.maxEssence, hp: p.hp, maxHp: p.stats.maxHp },
+    if (p.hp < p.stats.maxHp * 0.42 && now >= this.flaskCdUntil &&
+        (this.inventory.count('flask_hp_major') || this.inventory.count('flask_hp_minor'))) this.drinkFlask();
+    const action = selectAutoCombatAction({ player: { x: p.x, z: p.z, area: p.area, essence: p.essence, maxEssence: p.resource.max,
+      hp: p.hp, maxHp: p.stats.maxHp, veilForm: p.veilForm, bulwarkUntil: p.bulwarkUntil,
+      betweenUntil: p.betweenUntil, unbreakableUntil: p.unbreakableUntil },
       enemies: this.enemiesMap().values(), corpses: this.corpsesMap().values(), boss: this.bossState(),
       thrallCount: thralls, thrallCap: this.discipline.mods.thrallCap,
-      ready: id => (id === this.primary || this.hotbar.includes(id)) && this.abilities.ready(id, now), primary: this.primary, selfId: this.selfId });
+      ready: id => (id === this.primary || this.hotbar.includes(id)) && this.abilities.ready(id, now),
+      primary: this.primary, selfId: this.selfId, family: this.discipline.family, signature: this.hotbar[5], now });
     const previous = this.autoTargetId === null ? undefined : this.enemiesMap().get(this.autoTargetId);
     this.autoTargetId = action?.target.enemyId ?? (previous && previous.hp > 0 && previous.state !== 'dead' && Math.hypot(previous.x - p.x, previous.z - p.z) <= ABILITIES[this.primary].range ? previous.id : null);
     if (action) this.autoAim = action.target;
@@ -1486,6 +1502,11 @@ export class WorldScene implements GameScene, RuntimeView {
         this.abilities.onOffering(ev, ev.by === me, this.casterFollow(ev.by, ev.x, ev.z));
         if (ev.by === me && !ev.ok) this.floating.spawn(this.player.x, 2.4, this.player.z, 'The corpse is gone', 'info');
         break;
+      case 'newBlood':
+        if (ev.kind === 'heal' && ev.player === me && ev.amount) this.player.heal(this.player.stats.maxHp * ev.amount);
+        this.abilities.onNewBlood(ev, ev.by === me);
+        if (ev.by === me && !ev.ok) this.floating.spawn(this.player.x, 2.4, this.player.z, 'The target is gone', 'info');
+        break;
       case 'rally':
         this.abilities.onRally(ev, this.casterFollow(ev.by, ev.x, ev.z));
         break;
@@ -1657,8 +1678,8 @@ export class WorldScene implements GameScene, RuntimeView {
         packOnCorpse = n >= 3;
       }
     }
-    if (mine + corpsesNear >= 4 && this.character.level >= 2) this.onboarding.show('litany');
-    if (packOnCorpse && this.progression.local.totalKills >= 15) this.onboarding.show('burst');
+    if (this.discipline.family === 'necromancer' && mine + corpsesNear >= 4 && this.character.level >= 2) this.onboarding.show('litany');
+    if (this.discipline.family === 'necromancer' && packOnCorpse && this.progression.local.totalKills >= 15) this.onboarding.show('burst');
     if (this.progression.local.totalKills >= 40) this.onboarding.show('codex');
     if (this.progression.local.shards >= BOSS_SUMMON_SHARDS) this.onboarding.show('prelate');
     if (this.progression.local.ascension > 0 && this.progression.local.ashes > 0 && this.area === 'chapterhouse') this.onboarding.show('boons');
@@ -1720,7 +1741,18 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private zoneVisual(z: Zone) {
+    this.zoneFx.get(z.id)?.forEach((h) => h.kill());
     const dur = Math.max(0.1, z.until - (this.sim?.time ?? this.mirror?.time ?? 0));
+    if (z.kind === 'warden_fire' || z.kind === 'warden_ward' || z.kind === 'witch_crows' || z.kind === 'witch_charm' || z.kind === 'veil_rift') {
+      const color = z.kind === 'warden_fire' ? 0xff822d : z.kind === 'warden_ward' ? SPELL_FX.warden.gold
+        : z.kind === 'witch_crows' ? SPELL_FX.witch.blood : z.kind === 'witch_charm' ? 0xcc4499 : SPELL_FX.veilwalker.cyan;
+      const glyph = z.kind === 'warden_fire' ? fx.cracks() : z.kind === 'witch_charm' ? fx.glow() : fx.sigil();
+      this.zoneFx.set(z.id, [
+        this.effects.decal({ tex: fx.disc(), color, x: z.x, z: z.z, r: z.r, duration: dur, opacity: z.kind === 'witch_charm' ? 0.32 : 0.4, growFrom: 0.3, fadeOut: 0.35 }),
+        this.effects.decal({ tex: glyph, color, x: z.x, z: z.z, r: z.r, duration: dur, opacity: 0.72, pulse: z.kind === 'warden_fire' ? 4 : 2, fadeOut: 0.35 }),
+      ]);
+      return;
+    }
     if (z.kind === 'dirge' || z.kind === 'flower') {
       // Signature zones: Dirge = cold-blue bell rings, Plague Bloom = a chartreuse flower sigil.
       const D = SPELL_FX.dirge;
@@ -1744,6 +1776,22 @@ export class WorldScene implements GameScene, RuntimeView {
     ];
     if (pool) handles.push(this.bb('toxic_puddle', z.x, z.z, { scale: z.r / 2.6, duration: dur, colors: z.kind === 'toxic' ? [SPELL_FX.enemy.toxic, SPELL_FX.enemy.rot, 0x1a2010] : undefined }));
     this.zoneFx.set(z.id, handles);
+  }
+
+  private syncEchoVisuals() {
+    const visible = this.discipline.family === 'veil' && (this.player.veilForm || this.now < this.player.betweenUntil);
+    const corpses = this.sim?.corpses ?? this.mirror?.corpses;
+    for (const [id, handle] of this.echoFx) {
+      if (visible && corpses?.get(id)?.echoOwner) continue;
+      handle.kill(); this.echoFx.delete(id);
+    }
+    if (!visible || !corpses) return;
+    for (const c of corpses.values()) {
+      if (!c.echoOwner || this.echoFx.has(c.id)) continue;
+      this.echoFx.set(c.id, this.effects.decal({ tex: fx.sigil(), color: SPELL_FX.veilwalker.cyan,
+        x: c.x, z: c.z, r: 0.8, duration: Math.max(0.1, c.expiresAt - (this.sim?.time ?? this.mirror?.time ?? 0)),
+        opacity: 0.8, pulse: 3, fadeOut: 0.2 }));
+    }
   }
 
   // --- Grave Surges ---
@@ -1944,10 +1992,13 @@ export class WorldScene implements GameScene, RuntimeView {
   private onHurt(raw: number, from: string, x: number, z: number) {
     if (!this.player.alive) return;
     const myThralls = [...this.thrallsMap().values()].filter((t) => t.owner === this.selfId).length;
-    const ward = this.discipline.mods.wardPerThrall * myThralls;
+    const lanternWard = [...(this.sim?.zones ?? this.mirror?.zones ?? new Map()).values()].some((zone) => zone.kind === 'warden_ward' && Math.hypot(zone.x - this.player.x, zone.z - this.player.z) <= zone.r) ? 0.2 : 0;
+    // Easy auto softens hits between the Knight's blocks and the Veilwalker's phases.
+    const autoGuard = settings.autoCombat && (this.discipline.family === 'knight' || this.discipline.family === 'veil') ? 0.3 : 0;
+    const ward = this.discipline.mods.wardPerThrall * myThralls + lanternWard + autoGuard;
     const now = this.now;
     // The blow's origin lets Bulwark decide whether it covered this one.
-    const taken = this.player.takeDamage(raw, ward, now, { x, z });
+    const taken = this.player.takeDamage(raw, ward, now, { x, z }, from);
     if (this.player.lastBlock !== 'none') this.onBulwarkBlock(raw, x, z);
     if (taken >= 1) this.gathering.stop('hurt');
     if (this.player.hp < this.player.stats.maxHp * 0.5) this.onboarding.show('hurt');
@@ -2132,7 +2183,13 @@ export class WorldScene implements GameScene, RuntimeView {
       this.cancelRecall();
       this.gathering.stop('moved');
     }
-    const moved = p.update(dt, now, kd.x || kd.z ? kd : null);
+    const autoMove = settings.autoCombat && p.alive && !this.panelOpen() && !this.recallAt && !p.hasPath &&
+      !this.attackTarget && !this.pendingInteract && !this.gathering.active && !this.keys.size
+      ? selectAutoCombatMovement({ player: { x: p.x, z: p.z, area: p.area, essence: p.essence, maxEssence: p.resource.max,
+          hp: p.hp, maxHp: p.stats.maxHp },
+        enemies: this.enemiesMap().values(), primary: this.primary, family: this.discipline.family }) : null;
+    const moved = p.update(dt, now, kd.x || kd.z ? kd : autoMove);
+    if (settings.autoCombat && p.alive && now - p.lastHurtAt < 5000) p.heal(p.stats.maxHp * 0.02 * dt);
     this.gathering.update(dt);
     this.tickGatherVisuals(dt);
     if (moved) this.cancelRecall();
@@ -2161,9 +2218,9 @@ export class WorldScene implements GameScene, RuntimeView {
 
     // Authoritative world (host/solo) or mirror (guest).
     if (this.sim && this.isAuthority()) {
-      this.sim.setPlayer({ id: this.selfId, x: p.x, z: p.z, alive: p.alive, area: p.alive ? p.area : null });
+      this.sim.setPlayer({ id: this.selfId, x: p.x, z: p.z, alive: p.alive, area: p.alive ? p.area : null, family: this.discipline.family });
       for (const [id, r] of this.remotes) {
-        this.sim.setPlayer({ id, x: r.tx, z: r.tz, alive: r.hpFrac > 0, area: this.nav.areaAt(r.tx, r.tz) });
+        this.sim.setPlayer({ id, x: r.tx, z: r.tz, alive: r.hpFrac > 0, area: this.nav.areaAt(r.tx, r.tz), family: disciplineFor(r.info.classIndex).family });
       }
       const events = this.sim.step(dt);
       for (const ev of events) this.handleEvent(ev);
@@ -2241,6 +2298,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.tickMilestones(dt);
     const vh = window.innerHeight * getRuntime().renderer.getPixelRatio();
     this.worldView.update(dt, p.x, p.z, this.rig.camera, vh);
+    this.syncEchoVisuals();
     this.effects.update(dt, this.rig.camera, vh);
     this.floating.update(dt, this.rig.camera);
     this.tickOnboarding(now);
@@ -2451,6 +2509,14 @@ export class WorldScene implements GameScene, RuntimeView {
           ? { text: 'Saving…', warn: false }
           : { text: OFFLINE ? 'Offline save ✓' : 'Saved ✓', warn: false };
 
+    if (this.discipline.family === 'monk' && p.alive) {
+      const beat = Math.floor(now / 1200);
+      if (beat !== this.lastMonkBeat) {
+        this.lastMonkBeat = beat;
+        audio.play('tollSmall', p.x, p.z, 0.18);
+      }
+    }
+
     this.hud.update({
       autoCombat: settings.autoCombat,
       autoCombatAvailable: settings.difficulty === 'easy',
@@ -2461,6 +2527,7 @@ export class WorldScene implements GameScene, RuntimeView {
       maxEssence: p.resource.max,
       resourceLabel: this.resourceRules.label,
       resourceColor: this.resourceRules.color,
+      beatPulse: this.discipline.family === 'monk' && Math.min(now % 1200, 1200 - now % 1200) <= 150,
       level: this.character.level,
       xp: this.character.experience,
       xpNext: xpToNext(this.character.level),

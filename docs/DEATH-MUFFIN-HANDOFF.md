@@ -4,7 +4,9 @@ Updated 2026-09-27. Read this before editing or deploying. Preserve the supplied
 
 User-approved complete version: **`death-muffin-v1.0.0`**. See [the checkpoint record](DEATH-MUFFIN-CHECKPOINT.md) for the full private backup and restoration boundaries. Preserve this baseline while designing new abilities.
 
-## Class framework + Hollow Knight — 2026-09-28
+## New Blood class framework + five kits — 2026-09-28 (undeployed)
+
+Grave Warden (`discipline_index` 5), Bell Monk (6), Carrion Witch (7), Hollow Knight (8), and Veilwalker (9) now have client kits, host rites, resources, art registration, Codex, and help. The Grave Warden leaderboard collision with legacy class index 5 is resolved by returning `hasDiscipline` from the backend leaderboard route. The source branch still needs a deliberate release and live verification; it has not been deployed.
 
 **Not deployed.** Branch `claude/new-classes-framework`; the running backend, realtime service and
 `/var/www/death-muffin/play` are untouched. Deploying needs the usual client publish **plus** the
@@ -22,11 +24,16 @@ The framework is additive and the four necromantic disciplines are provably unch
 - **Hollow Knight** (`discipline_index` 8): Rage, seven rites, sword + shield on the rig. Shield Bash,
   Corpse Vigil and Grave Brand go through the host as new `sig` kinds; Hollow Cut and Grave Slam are
   client-resolved like Ivory Cleave. New enemy statuses `stunT`/`rootT` (snapshot bits 17/18).
-- **Known gaps, flagged not faked:** no boss stagger on Shield Bash (`BossBrain` has no interrupt
-  hook); leaderboard index 5 is ambiguous between legacy Necromancer and the Grave Warden — resolve
-  before that class ships. Both recorded in `agent-briefs/new-classes.md` §0b.
+- **Known gap:** Shield Bash does not stagger a boss (`BossBrain` has no interrupt hook). The
+  leaderboard index-5 collision was resolved in the New Blood follow-up above.
 
-Green: typecheck, 262 client tests (19 new Knight, 18 new framework regression), 41 server, 3 vfx, build.
+Green after the follow-up: typecheck, 265 client tests (19 Knight, 18 framework regression, 3 new creation/loadout checks), 41 server, 3 VFX, production build.
+
+Follow-up browser check fixed first-time Knight selection: `POST /character` creates its separate
+legacy index-5 slot, then `/character/discipline` sets index 8. The offline mock mirrors both steps.
+At level 1 the locked Bulwark and Corpse Vigil sockets remain defined, so the HUD and world mount;
+casting is still level-gated. Offline browser play confirmed the Rage orb, seven sockets, Knight
+model and sword/shield GLBs with no console errors. Help labels now use Grave Brand for the Knight.
 
 ## Movable counsel and Acre lighting — 2026-09-27
 
@@ -96,7 +103,7 @@ Historical prohibitions on changing the original shared REST server still protec
 - Old `playcrossworlds.com/death-muffin/` URLs return 308 redirects to the new domain, preserving path and query. Other Crossworlds and Muffin Development routes remain independent.
 - Completed: separate accounts/progress/co-op, login effects and sound, leaderboard, readable help, fixed click destinations, stable hero animation roots, correct model facing. Standing heroes aim at the mouse; walking heroes face their path. Holding or moving the mouse must not retarget movement.
 - **Published 2026-09-27 and tested:** free class changes from Settings, and the combat polish pass. Class changes save inventory/progression first, preserve the character ID and original class slot, and return to the Chapterhouse.
-- Combat direction: easy, readable Three.js combat for relaxed grinding, while remaining engaging to watch. Auto combat is enabled by default and toggled with `G` or the HUD button. It never sets a movement path, stops for manual movement and open panels, conserves essence, raises below the discipline cap, and leaves signatures manual. Hold 1–4 to repeat at the cursor; short input buffering absorbs near-ready casts. Cast recovery is 60–160ms and gestures .22–.48s. Spear and Miasma hits arrive with the visuals; delayed impacts cancel on caster death. Smoke, shake and particle counts are reduced; cosmetic meshes cap at 160 and projectile meshes are pooled.
+- Combat direction: easy, readable Three.js combat for relaxed grinding, while remaining engaging to watch. On Easy, auto combat is enabled by default and toggled with `G` or the HUD button. The 2026-09-28 New Blood branch extends it to engage enemies within the current combat area, dodge close windups, use equipped rites and signatures, drink flasks, and recover health under attack; Hollow Knight auto guards. Manual paths, keys, targets, panels and gathering take priority. Easy enemy damage is 0.3×. Medium/Hard remain manual and keep their previous damage values. Hold 1–4 to repeat at the cursor; short input buffering absorbs near-ready casts. Cast recovery is 60–160ms and gestures .22–.48s. Spear and Miasma hits arrive with the visuals; delayed impacts cancel on caster death. Smoke, shake and particle counts are reduced; cosmetic meshes cap at 160 and projectile meshes are pooled.
 - Future bot opponents/companions and persistent leaderboard farming are recorded in [death-muffin-roadmap.md](death-muffin-roadmap.md). They are not implemented by this pass.
 
 ## Source and running copies

@@ -5,7 +5,7 @@
  * disciplines in a client content manifest"). Index 0 (legacy Engineer, no
  * model) plays as a Gravecaller.
  */
-export type DisciplineId = 'ossuary' | 'gravecaller' | 'mourner' | 'rotweaver' | 'hollow_knight';
+export type DisciplineId = 'ossuary' | 'gravecaller' | 'mourner' | 'rotweaver' | 'grave_warden' | 'bell_monk' | 'carrion_witch' | 'hollow_knight' | 'veilwalker';
 
 /**
  * Which kit a discipline plays. The four necromantic disciplines share the
@@ -53,7 +53,7 @@ export interface Discipline {
   color: string;
   portrait: string;
   /** Generated discipline hero (graphics/modelPaths CREATURE_MODELS); falls back to the base necromancer. */
-  modelSlug: 'hero_ossuary' | 'hero_gravecaller' | 'hero_mourner' | 'hero_rotweaver' | 'hero_hollow_knight';
+  modelSlug: 'hero_ossuary' | 'hero_gravecaller' | 'hero_mourner' | 'hero_rotweaver' | 'hero_grave_warden' | 'hero_bell_monk' | 'hero_carrion_witch' | 'hero_hollow_knight' | 'hero_veilwalker';
   mods: DisciplineMods;
 }
 
@@ -161,9 +161,37 @@ export const DISCIPLINES: Record<DisciplineId, Discipline> = {
     modelSlug: 'hero_hollow_knight',
     mods: { ...BASE },
   },
+  grave_warden: {
+    classIndex: 5, id: 'grave_warden', family: 'warden', name: 'Grave Warden',
+    epithet: 'Keeper of the Last Lantern',
+    description: 'A watchful guardian who burns corpses for Oil, pins enemies with a chain and shelters allies in lantern light.',
+    passive: { name: 'Lamplighter', text: 'Oil refills steadily and rises when a corpse burns. Lantern wards protect everyone standing inside.' },
+    color: '#f2b84b', portrait: 'art/portraits/grave_warden.webp', modelSlug: 'hero_grave_warden', mods: { ...BASE },
+  },
+  bell_monk: {
+    classIndex: 6, id: 'bell_monk', family: 'monk', name: 'Bell Monk',
+    epithet: 'Voice of the Last Toll',
+    description: 'Strikes on a twelve-beat rhythm, builds Resonance and turns corpses into sounding bells.',
+    passive: { name: 'The Beat', text: 'Hits close to each toll deal more damage and build Resonance faster.' },
+    color: '#e8d9a0', portrait: 'art/portraits/bell_monk.webp', modelSlug: 'hero_bell_monk', mods: { ...BASE },
+  },
+  carrion_witch: {
+    classIndex: 7, id: 'carrion_witch', family: 'witch', name: 'Carrion Witch',
+    epithet: 'Mistress of Hooks and Crows',
+    description: 'Harvests corpses for Offal, sends crows into a pack and curses foes with a hooked charm.',
+    passive: { name: 'Corpse Hunger', text: 'Offal comes from bodies, never passive regeneration. Save a corpse before spending it.' },
+    color: '#9a1b2a', portrait: 'art/portraits/carrion_witch.webp', modelSlug: 'hero_carrion_witch', mods: { ...BASE },
+  },
+  veilwalker: {
+    classIndex: 9, id: 'veilwalker', family: 'veil', name: 'Veilwalker',
+    epithet: 'One Foot Beyond',
+    description: 'Walks between life and death, raising brief spectral allies from echoes of the fallen.',
+    passive: { name: 'Thin Places', text: 'Veil refills in Life form and drains in Veil form. Spectral echoes appear where corpses fall.' },
+    color: '#bff3ff', portrait: 'art/portraits/veilwalker.webp', modelSlug: 'hero_veilwalker', mods: { ...BASE },
+  },
 };
 
-const BY_INDEX: Record<number, DisciplineId> = { 0: 'gravecaller', 1: 'ossuary', 2: 'gravecaller', 3: 'mourner', 4: 'rotweaver', 8: 'hollow_knight' };
+const BY_INDEX: Record<number, DisciplineId> = { 0: 'gravecaller', 1: 'ossuary', 2: 'gravecaller', 3: 'mourner', 4: 'rotweaver', 5: 'grave_warden', 6: 'bell_monk', 7: 'carrion_witch', 8: 'hollow_knight', 9: 'veilwalker' };
 
 export function disciplineFor(classIndex: number): Discipline {
   return DISCIPLINES[BY_INDEX[classIndex] ?? 'gravecaller'];
@@ -174,5 +202,9 @@ export const PLAYABLE_DISCIPLINES: Discipline[] = [
   DISCIPLINES.gravecaller,
   DISCIPLINES.mourner,
   DISCIPLINES.rotweaver,
+  DISCIPLINES.grave_warden,
+  DISCIPLINES.bell_monk,
+  DISCIPLINES.carrion_witch,
   DISCIPLINES.hollow_knight,
+  DISCIPLINES.veilwalker,
 ];

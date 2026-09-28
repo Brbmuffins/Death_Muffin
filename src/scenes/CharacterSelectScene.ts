@@ -5,10 +5,7 @@ import { loadOrCreateCharacter } from '../net/api';
 import type { Character } from '../net/types';
 import type { NecroBackdrop } from '../graphics/NecroBackdrop';
 
-/**
- * Choose a necromantic discipline. The server still stores the legacy class
- * index (1–4); the card notes which legacy class it maps to.
- */
+/** Choose a playable discipline. New families retain a legacy character slot. */
 export class CharacterSelectScene implements GameScene {
   private root = document.getElementById('ui-root')!;
   private el: HTMLDivElement | null = null;
@@ -25,7 +22,7 @@ export class CharacterSelectScene implements GameScene {
     this.el.innerHTML = `
       <div class="cw-plate cw-select" role="dialog" aria-label="Choose your discipline">
         <h1 class="cw-title">Choose Your Discipline</h1>
-        <p class="sub">Every Covenant necromancer raises the dead. How you spend them is your discipline.</p>
+        <p class="sub">Choose from nine disciplines, each with its own resource, rites, and way through the dead.</p>
         <div class="cw-disc-grid" data-grid></div>
         <div class="cw-error" data-error role="alert"></div>
       </div>`;

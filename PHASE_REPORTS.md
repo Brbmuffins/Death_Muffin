@@ -633,6 +633,12 @@ Built from `docs/PROFESSIONS-ROADMAP.md` in one cloud session (branch `claude/ad
   - The counsel card's stray scrollbars are fixed on master (`readability.css`: the plate's corner brackets are pulled
     inside scrolling plates).
 
+## Four remaining New Blood classes (2026-09-28, undeployed)
+
+Built Grave Warden, Bell Monk, Carrion Witch and Veilwalker on the class framework: 28 abilities, four family resources, hero and gear registration, host corpse/control/zone rites, Veil echoes, Codex, tooltips, first-entry counsel, and family-aware auto combat. Added focused host/resource tests and the four families to the headless balance report. Echo now requires an eligible echo corpse; Watchman's Ward slows by 25%; class sprite effects are wired and Warden Cone, Witch Harvest and Veil Tear passed offline browser checks. The updated three-seed Graves bot pass still shows repeated deaths for the new families. It does not dodge or drink flasks, so this is a release risk signal requiring human combat review, not a player balance verdict. Backend leaderboard now distinguishes Warden index 5 from the legacy Necromancer class index. Changes are on `claude/new-classes-framework` and not deployed.
+
+The owner chose Easy as a powerful hands-off mode. Easy auto now engages and dodges within the combat area, uses equipped rites and signatures, drinks flasks, and recovers health under pressure; Knight and Veilwalker gain automatic ward. Veilwalker now saves Veil Form for actual pressure. Easy enemy damage was reduced to 0.3× Medium. Three-minute real-browser Graves samples starting at level 1 had zero deaths for all five New Blood classes; the final Veilwalker policy survived two separate samples without flasks. See `BALANCE.md` for counts and limits. This is separate from the older headless Medium bot and still needs later-area playtests. Not deployed.
+
 ## Class framework + Hollow Knight (2026-09-28, undeployed)
 
 Branch `claude/new-classes-framework`. Release 0.3's first class, on a framework built to carry the
@@ -649,9 +655,25 @@ other four.
 - **Host authority kept:** Shield Bash, Corpse Vigil and Grave Brand ride `signature` as new sig
   kinds so the corpse spend, the body struck and every duration are the host's. Hollow Cut and Grave
   Slam are client-resolved like Ivory Cleave. New enemy statuses `stunT`/`rootT`, snapshot bits 17/18.
-- **Tests:** typecheck, 262 client (19 Knight, 18 framework regression pinning the necromancer's old
-  numbers), 41 server, 3 VFX, build — all green.
-- **Flagged, not faked:** Shield Bash does not stagger a boss (`BossBrain` has no interrupt hook);
-  leaderboard index 5 is ambiguous between legacy Necromancer and the Grave Warden's index. Both are
-  written up in `docs/agent-briefs/new-classes.md` §0b.
-- **Not browser-checked.** The kit is covered by unit tests only; it has never been played.
+- **First-time play check:** the legacy `/character` endpoint cannot create index 8, so new
+  families create in the separate legacy index-5 slot, then set `discipline_index` on that same
+  character. The offline mock mirrors this path. A level-1 Knight now keeps Bulwark and Corpse
+  Vigil visible as locked hotbar slots; the old sanitizer left them undefined and prevented the
+  world from mounting. Class-specific corpse action labels replaced stale Corpse Explosion help.
+- **Tests:** typecheck, client tests including the new creation and low-level loadout regressions,
+  server tests, VFX tests, and build — all green.
+- **Follow-up:** Shield Bash now damages and staggers the boss for 0.2s; its pending telegraphs
+  pause with it. The leaderboard index-5 collision was resolved in the four-class follow-up above.
+- **Browser-checked in offline DEV:** first-time account creation, Knight card selection, world
+  entry, Rage HUD (0/100), seven hotbar sockets, and successful loading of the Knight, sword and
+  shield GLBs. No browser errors. Combat mechanics are covered by 20 Knight tests, not a manual
+  in-world fight. Production remains undeployed.
+
+## New Blood browser and boss follow-up (2026-09-28, undeployed)
+
+All five classes were selected in offline Chromium at 1280×800. Each entered the world with its
+resource orb, seven hotbar slots and hero GLB, then landed its primary attack on a live sim enemy
+without browser errors. The ninth card was unreachable at that viewport height; the selection
+screen now scrolls safely, and Veilwalker was selected through the visible card. Shield Bash's
+host-owned charge now staggers the boss for 0.2s and delays pending telegraphs; a focused host
+test covers damage and the pause. The local branch remains undeployed.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { selectAutoCombatAction, type AutoCombatInput } from '../autoCombat';
+import { selectAutoCombatAction, selectAutoCombatMovement, type AutoCombatInput } from '../autoCombat';
 import type { BossState, Corpse, Enemy } from '../sim/types';
 import type { AbilityId } from '../../content/abilities';
 
@@ -143,5 +143,41 @@ describe('stationary auto combat', () => {
     }
     expect(selectAutoCombatAction(input({ enemies: crowded() }))).toBeNull();
     expect(reads).toBeLessThanOrEqual(513);
+  });
+});
+
+describe('Easy auto for New Blood', () => {
+  it('uses Knight defense before offense, then uses Slam on a pack', () => {
+    const pack = [enemy(1, 2), enemy(2, 2.5, 0.5)];
+    const base = input({ family: 'knight', primary: 'hollow_cut', enemies: pack,
+      player: { x: 0, z: 0, essence: 50, maxEssence: 100, hp: 25, maxHp: 100 },
+      ready: readyOnly('oath_unbroken', 'grave_slam', 'hollow_cut') });
+    expect(selectAutoCombatAction(base)?.id).toBe('oath_unbroken');
+    expect(selectAutoCombatAction({ ...base, player: { ...base.player, hp: 100 } })?.id).toBe('grave_slam');
+  });
+
+  it('uses Warden control and Witch corpse fuel', () => {
+    const pack = [enemy(1, 4), enemy(2, 4.5, 0.5)];
+    expect(selectAutoCombatAction(input({ family: 'warden', primary: 'flail_swing', enemies: pack,
+      ready: readyOnly('lantern_cone', 'flail_swing') }))?.id).toBe('lantern_cone');
+    expect(selectAutoCombatAction(input({ family: 'witch', primary: 'hook_throw', enemies: pack, corpses: [corpse(2)],
+      player: { x: 0, z: 0, essence: 0, maxEssence: 100 }, ready: readyOnly('harvest', 'hook_throw') }))?.id).toBe('harvest');
+  });
+
+  it('uses Monk control and toggles Veil form based on threat and meter', () => {
+    expect(selectAutoCombatAction(input({ family: 'monk', primary: 'palm_strike', enemies: [enemy(1, 3), enemy(2, 3.5)],
+      ready: readyOnly('toll', 'palm_strike') }))?.id).toBe('toll');
+    const veil = input({ family: 'veil', primary: 'spirit_bolt', enemies: [enemy(1, 3)],
+      player: { x: 0, z: 0, essence: 45, maxEssence: 100, veilForm: false }, ready: readyOnly('veil_form', 'spirit_bolt') });
+    expect(selectAutoCombatAction(veil)?.id).toBe('spirit_bolt');
+    expect(selectAutoCombatAction({ ...veil, player: { ...veil.player, hp: 65, maxHp: 100 } })?.id).toBe('veil_form');
+    expect(selectAutoCombatAction({ ...veil, player: { ...veil.player, essence: 10, veilForm: true } })?.id).toBe('veil_form');
+  });
+
+  it('approaches only nearby targets and dodges a close windup', () => {
+    const p = { x: 0, z: 0, essence: 0, maxEssence: 100 };
+    expect(selectAutoCombatMovement({ player: p, enemies: [enemy(1, 6)], primary: 'hollow_cut' })).toEqual({ x: 1, z: 0 });
+    expect(selectAutoCombatMovement({ player: p, enemies: [enemy(1, 40)], primary: 'hollow_cut' })).toBeNull();
+    expect(selectAutoCombatMovement({ player: p, enemies: [enemy(1, 2, 0, { state: 'windup' })], primary: 'hollow_cut' })).toEqual({ x: -0, z: 1 });
   });
 });

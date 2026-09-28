@@ -114,12 +114,17 @@ export function health() {
 
 // --- Character — old system, read-mostly, do not change shape ---
 // Server expects snake_case `class_index` (verified against the live endpoint).
-export function loadOrCreateCharacter(classIndex?: number) {
-  return request<Character>(
+export async function loadOrCreateCharacter(classIndex?: number) {
+  // Character creation still takes a legacy class index. New families are
+  // stored as a discipline override on the same character/save.
+  const character = await request<Character>(
     '/character',
-    { method: 'POST', body: JSON.stringify({ class_index: classIndex }) },
+    { method: 'POST', body: JSON.stringify({ class_index: classIndex != null && classIndex > 4 ? 5 : classIndex }) },
     true,
   );
+  return classIndex != null && classIndex > 4
+    ? changeDiscipline(character.id, classIndex)
+    : character;
 }
 
 export function getCharacter() {

@@ -45,10 +45,10 @@ export class NecromancerAvatar {
   constructor(scene: THREE.Scene, accent: string, withLight: boolean, slug: CreatureSlug = 'necromancer') {
     // Generated heroes face +X; gameplay headings use +Z.
     this.c = new Creature(slug, { inPlace: true, modelYaw: -Math.PI / 2, emissive: accent, emissiveIntensity: 0.04, fallback: 'necromancer' });
-    if (slug === 'hero_hollow_knight') {
-      // The Knight carries authored props, not a code-built staff.
+    if (slug === 'hero_hollow_knight' || slug === 'hero_grave_warden' || slug === 'hero_bell_monk' || slug === 'hero_carrion_witch' || slug === 'hero_veilwalker') {
+      // New Blood heroes use their authored gear or bare hands.
       this.staff = null;
-      this.attachKnightGear();
+      this.attachClassGear(slug);
     } else {
       this.staff = skullStaff(accent);
       // Held upright: the grip sits in the hand, calibrated against the idle pose.
@@ -68,11 +68,25 @@ export class NecromancerAvatar {
    * an aim direction and Creature.attach calibrates the grip against the idle
    * pose (the same path as the necromancer staff). Heights are world units.
    */
-  private attachKnightGear() {
-    const gear: { bone: string; id: string; height: number; dir: THREE.Vector3; tip?: boolean }[] = [
-      { bone: 'R_Hand', id: 'gear_knight_sword', height: 1.05, dir: new THREE.Vector3(0, 1, 0.1), tip: true },
-      { bone: 'L_Hand', id: 'gear_knight_shield', height: 0.62, dir: new THREE.Vector3(0, 0, 1) },
-    ];
+  private attachClassGear(slug: CreatureSlug) {
+    if (slug === 'hero_veilwalker') {
+      for (const bone of ['R_Hand', 'L_Hand']) {
+        const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: fx.glow(), color: 0x85efff,
+          blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.72 }));
+        glow.scale.setScalar(0.28);
+        this.c.attach(bone, glow);
+        if (bone === 'R_Hand') this.tipObj = glow;
+      }
+      return;
+    }
+    const grip = (bone: string, id: string, height: number, tip = false) =>
+      ({ bone, id, height, dir: new THREE.Vector3(0, 1, 0.1), tip });
+    const gear = slug === 'hero_hollow_knight'
+      ? [grip('R_Hand', 'gear_knight_sword', 1.05, true), grip('L_Hand', 'gear_knight_shield', 0.62)]
+      : slug === 'hero_grave_warden'
+        ? [grip('R_Hand', 'gear_warden_flail', 1.1, true), grip('L_Hand', 'gear_warden_lantern', 0.7)]
+        : slug === 'hero_bell_monk' ? [grip('R_Hand', 'gear_monk_bell_staff', 1.65, true)]
+          : slug === 'hero_carrion_witch' ? [grip('R_Hand', 'gear_witch_hook', 0.9, true)] : [];
     for (const g of gear) {
       void assets.model(PROP_URL(g.id), g.height).then((t) => {
         if (!t) return;

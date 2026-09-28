@@ -5,6 +5,7 @@ import { CODEX_RITES, RITE_ORDER } from '../../content/codex';
 import { CAST_FLOW } from '../../content/combatFlow';
 import { assignRite, legacyLoadoutKey, loadLoadout, loadRites, loadSeen, loadoutStorageKey, sanitizeLoadout, sanitizePrimary, saveLoadout, saveRites, unseenRites } from '../loadout';
 import type { StorageLike } from '../codexJournal';
+import { kitFor } from '../../content/kits';
 
 const memory = (): StorageLike & { data: Map<string, string> } => {
   const data = new Map<string, string>();
@@ -12,6 +13,14 @@ const memory = (): StorageLike & { data: Map<string, string> } => {
 };
 
 describe('Grimoire loadout', () => {
+  it('keeps the Knight hotbar complete at level 1 without learning future rites', () => {
+    const kit = kitFor('knight');
+    const keys = sanitizeLoadout(null, 1, kit);
+    expect(keys).toEqual(kit.defaultLoadout);
+    expect(keys.map(unlockLevel)).toEqual([1, 1, 3, 5]);
+    const seen = loadSeen(memory(), 8, { primary: kit.defaultPrimary, keys }, kit);
+    expect(unseenRites(seen, 3, kit)).toContain('bulwark');
+  });
   it('starts on the classic four and keeps the default bar', () => {
     expect(DEFAULT_LOADOUT).toEqual(HOTBAR.slice(0, 4));
     expect(sanitizeLoadout(null, 1)).toEqual(DEFAULT_LOADOUT);

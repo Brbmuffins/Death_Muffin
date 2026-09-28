@@ -1,5 +1,48 @@
 # Crossworlds — Balance targets & current numbers
 
+## Easy auto combat browser pass (2026-09-28, undeployed)
+
+The owner wants Easy to be an automated, powerful farming mode. Easy auto now engages enemies across the current combat area, dodges nearby windups, uses every equipped New Blood rite and signature when useful, drinks flasks, and recovers 2% max HP/s while under attack. Hollow Knight and Veilwalker auto gain 30% ward between their defensive abilities. Veilwalker phases under pressure instead of draining its meter against every lone enemy. Easy enemies deal 0.3× Medium damage (previously 0.6×); Medium and Hard enemy damage is unchanged. Manual movement, targets, menus, and gathering still take control.
+
+The offline browser drove the **real scene and auto policy**, starting fresh level-1 characters in the Graves with Easy auto on for three minutes (`tools/qa/easy-auto-balance.cjs`, browser random seed 43). These are one-run samples, not a statistical guarantee:
+
+| Class | Kills / 3 min | Deaths | Healing flasks used | End HP |
+|---|---:|---:|---:|---:|
+| Ossuary necromancer | 291 | 0 | 0 | 190/190 |
+| Grave Warden | 138 | 0 | 1 | 101/128 |
+| Bell Monk | 122 | 0 | 0 | 111/128 |
+| Carrion Witch | 109 | 0 | 0 | 111/128 |
+| Hollow Knight | 119 | 0 | 0 | 128/128 |
+| Veilwalker | 72 | 0 | 0 | 114/114 |
+
+The Knight row is a repeat after its guard change; the Veilwalker row is a repeat after its ward and phase policy changes. The other rows ran before those class-specific changes. A second final Veilwalker run (seed 44) made 69 kills with zero deaths and zero flasks. One earlier run with the old Veilwalker policy died at 141 seconds. These short, level-1 Graves samples do not establish later-area or long-session survival. The headless Medium numbers below use a different scripted bot, so they should not be compared directly with the Easy browser rows.
+
+## New Blood simulation (2026-09-28)
+
+The report includes discipline indices 5–9. The updated bot uses the real `Player` resource and damage rules, class arcs, Witch crows, Veil form, and available defensive rites. **Graves / intended / 3 minutes / seeds 42–44** produced:
+
+| Class | Kills/min | Mean deaths | Earliest first death |
+|---|---:|---:|---:|
+| Grave Warden | 27.6 | 6.7 | 13 s |
+| Bell Monk | 23.7 | 7.0 | 8 s |
+| Carrion Witch | 26.9 | 4.7 | 17 s |
+| Hollow Knight | 12.9 | 8.3 | 12 s |
+| Veilwalker | 29.1 | 1.7 | 23 s |
+
+The established Ossuary necromancer bot made 96.9 kills/min with no deaths under the same settings. That comparison exposes a large solo farming gap, but the policies differ: the necromancer fights behind thralls, while the new-family bot walks into range and never dodges, drinks flasks, or retreats from packs. Its level-1 melee classes cannot use their later defensive rites. The 3-seed geared Graves and Ossuary runs also showed repeated new-class deaths. These are release risk signals, not calibrated player outcomes; a human combat pass and a bot with movement and defensive timing are needed before tuning damage or enemy health from this table.
+
+The full **medium / 3-minute / seeds 42–44** run on 2026-09-28 covered all four areas and all four bands (`BALANCE_SEEDS=3 npm run balance`). Intended-band results below are **kills per minute / mean deaths**. The four necromancer disciplines made 70.6–126.7 kills/min and averaged 0–1.3 deaths across these areas.
+
+| Class | Graves | Ossuary | Nave | Sanctum |
+|---|---:|---:|---:|---:|
+| Grave Warden | 27.6 / 6.7 | 35.0 / 6.7 | 25.4 / 8.7 | 21.3 / 8.3 |
+| Bell Monk | 23.7 / 7.0 | 25.6 / 8.3 | 19.6 / 10.0 | 14.3 / 9.3 |
+| Carrion Witch | 26.9 / 4.7 | 22.1 / 7.3 | 11.2 / 11.3 | 16.0 / 7.7 |
+| Hollow Knight | 12.9 / 8.3 | 14.0 / 7.7 | 9.1 / 10.0 | 6.6 / 9.0 |
+| Veilwalker | 29.1 / 1.7 | 19.0 / 6.3 | 16.1 / 7.7 | 13.6 / 6.7 |
+
+At geared Wave Speed 3, every new class still averaged at least 5.3 deaths in every area. This bot currently skips Shield Bash, Grave Slam, Resonant Step, Knell, Choir, Chain Pull, Cremate, Hook Pull, Hex Charm, and Echo; it therefore understates several kits' offense and control. It also enters close combat without reacting to telegraphs. The next balance pass should exercise those rites and movement before setting numeric buffs, followed by a human playtest.
+
 `npm run balance` drives the real `WorldSim` with a scripted necromancer bot
 (`src/gameplay/balance/harness.ts`) and prints one row per area × level band ×
 discipline. The bot is **an upper bound on kill efficiency** (perfect targeting,

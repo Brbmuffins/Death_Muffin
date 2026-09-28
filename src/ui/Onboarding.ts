@@ -12,6 +12,10 @@ export type TipId =
   | 'auto_combat'
   | 'change_class'
   | 'knight_rage'
+  | 'warden_oil'
+  | 'monk_beat'
+  | 'witch_offal'
+  | 'veil_forms'
   | 'welcome'
   | 'move'
   | 'exhume'
@@ -72,13 +76,29 @@ interface Tip {
 }
 
 export const TIPS: Record<TipId, Tip> = {
+  warden_oil: {
+    title: 'Keep the lantern lit',
+    body: '<b>Oil</b> refills slowly. Burn nearby corpses with <kbd>3</kbd> or <kbd>Right-click</kbd> to reclaim 20 oil per body and leave fire behind. Your lantern cone strips Shrouded and stuns wraiths; plant a ward to protect allies.',
+  },
+  monk_beat: {
+    title: 'Hear the beat',
+    body: '<b>Resonance</b> rises with hits and fades after a quiet moment. The resource orb pulses every 1.2 seconds: strike within the pulse for extra damage and Resonance. Toll spends 25 Resonance to stun; Sound the Corpse makes nearby Tolls stronger.',
+  },
+  witch_offal: {
+    title: 'Feed the crows',
+    body: '<b>Offal</b> comes from corpses. Harvest one with <kbd>1</kbd> to gain 30 Offal and summon pecking crows. Butcher a body with <kbd>Right-click</kbd> to leave three healing charms for allies.',
+  },
+  veil_forms: {
+    title: 'Walk the Veil',
+    body: '<kbd>1</kbd> changes form. Veil form drains your meter and protects you from enemy attacks while you move faster; your spirit attacks deal less damage. Life form refills Veil. Lay a body to rest for healing and echo corpses, then raise or cross to an echo.',
+  },
   minimap: {
     title: 'Choose your path',
     body: 'Click a walkable spot on the minimap to travel there. The amber marker shows your fixed destination. Click another spot to change it; sealed halls stay closed. Hover a spell icon for its cost, targeting, effects and a useful combat tip.',
   },
   auto_combat: {
     title: 'Settle into the fight',
-    body: 'On Easy, auto combat uses nearby targets and basic rites while you stand still. Click to move whenever you like; your hero stays where you choose. Toggle it with <kbd>G</kbd> or the Auto button. Hold <kbd>1</kbd>–<kbd>4</kbd> to repeat a rite at your cursor. Signature rites remain yours to cast.',
+    body: 'On Easy, auto combat engages enemies in the current area, uses your equipped rites and signature, drinks healing flasks, and mends you while under attack. The Hollow Knight also guards automatically. Click or use movement keys to take control whenever you like. Toggle it with <kbd>G</kbd> or the Auto button.',
   },
   knight_rage: {
     title: 'Rage, not essence',
@@ -94,7 +114,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   move: {
     title: 'Walk among the dead',
-    body: '<kbd>Click</kbd> the ground to walk to that spot; click again to change destination. While standing, face and aim toward the mouse. While walking, face your path. <kbd>Click</kbd> an enemy to loose Bone Needles at it; every hit refills Grave Essence. Aim with the mouse and press <kbd>1</kbd>–<kbd>4</kbd> for rites. <kbd>Right-click</kbd> bursts corpses. <kbd>Shift</kbd>+<kbd>Click</kbd> attacks without moving.',
+    body: '<kbd>Click</kbd> the ground to walk to that spot; click again to change destination. While standing, face and aim toward the mouse. While walking, face your path. <kbd>Click</kbd> an enemy to use your basic attack. Aim with the mouse and press <kbd>1</kbd>–<kbd>4</kbd> for rites. <kbd>Right-click</kbd> uses your corpse rite. <kbd>Shift</kbd>+<kbd>Click</kbd> attacks without moving.',
   },
   exhume: {
     title: 'A corpse lies near',

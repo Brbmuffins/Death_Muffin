@@ -82,7 +82,10 @@ const RECIPES: Recipe[] = RECIPE_ROWS.map(([id, name, profession_id, lvl, result
   ingredients: ings.map(([item_id, quantity]) => ({ item_id, quantity, name: MOCK_ITEMS[item_id]?.name ?? item_id })),
 }));
 
-const CLASS_NAMES = ['Engineer', 'Guardian', 'Shadowblade', 'Cleric', 'Arcanist'];
+const CLASS_NAMES = ['Engineer', 'Guardian', 'Shadowblade', 'Cleric', 'Arcanist', 'Necromancer'];
+/** Mirrors the Death Muffin backend's DISCIPLINE_NAMES (discipline_index 5-9). */
+const DISCIPLINE_NAMES: Record<number, string> = { 5: 'Grave Warden', 6: 'Bell Monk', 7: 'Carrion Witch', 8: 'Hollow Knight', 9: 'Veilwalker' };
+const MAX_DISCIPLINE_INDEX = 9;
 
 interface StoredSlot {
   slot_index: number;
@@ -236,17 +239,17 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
 
   if (p === '/character/discipline' && method === 'POST') {
     const index = body.class_index;
-    if (!Number.isInteger(index) || index < 1 || index > 4) throw new MockError('Choose one of the four classes.', 400);
+    if (!Number.isInteger(index) || index < 1 || index > MAX_DISCIPLINE_INDEX) throw new MockError(`Choose one of the ${MAX_DISCIPLINE_INDEX} classes.`, 400);
     ownCharacter(acc, body.characterId);
     acc.character!.class_index = index;
-    acc.character!.class_name = CLASS_NAMES[index];
+    acc.character!.class_name = DISCIPLINE_NAMES[index] ?? CLASS_NAMES[index] ?? acc.character!.class_name;
     return acc.character;
   }
 
   if (p === '/character' && method === 'POST') {
     if (acc.character) return acc.character;
     const idx = Number(body.class_index);
-    if (!Number.isInteger(idx) || idx < 0 || idx > 4) throw new MockError('class_index must be 0–4', 400);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= CLASS_NAMES.length) throw new MockError('class_index must be 0–5', 400);
     acc.character = {
       id: db.nextCharacterId++,
       class_index: idx,

@@ -68,6 +68,23 @@ describe('Hollow Knight on the host', () => {
     expect(aside.stunT ?? 0).toBe(0);
   });
 
+  it('Shield Bash damages and briefly staggers the boss when it is the first body hit', () => {
+    const { sim } = world();
+    sim.setPlayer({ id: 'p1', x: 0, z: -117, alive: true, area: 'sanctum' });
+    sim.boss.awaken('p1');
+    const boss = sim.boss.state;
+    boss.z = -121;
+    const hp = boss.hp;
+    sim.drain();
+    sim.apply(sig('bash', 0, -117, { dz: -1 }));
+    expect(boss.hp).toBeLessThan(hp);
+    expect(of(sim.drain(), 'bash')).toMatchObject([{ x: 0, z: -121, id: null }]);
+    sim.step(SHIELD_BASH.bossStunS / 2);
+    expect(boss.z).toBe(-121);
+    sim.step(SHIELD_BASH.bossStunS);
+    expect(boss.z).toBeGreaterThan(-121);
+  });
+
   it('a stunned body neither acts nor moves, and its windup is cancelled', () => {
     const { sim } = world();
     const e = sim.spawnEnemy('robber', 'graves', 0.5, -15.5, false);

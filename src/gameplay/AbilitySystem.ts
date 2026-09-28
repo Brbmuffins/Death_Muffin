@@ -44,6 +44,7 @@ import { CAST_FLOW } from '../content/combatFlow';
 import { playFx } from '../graphics/binbun/presets';
 import type { BinbunHandle, BinbunSpawn } from '../graphics/binbun/BinbunFX';
 import type { BinbunId } from '../graphics/binbun/catalog';
+import { NewBloodSystem } from './NewBloodSystem';
 
 /**
  * Veil Step's destination: walk from (x, z) toward (tx, tz) in small steps and keep the last point
@@ -91,6 +92,8 @@ export interface AbilityContext {
   thralls?(): Map<number, Thrall>;
   /** Veil Step: the furthest valid point toward (tx, tz), walked in small steps, never past a sealed door or out of the hall. */
   dash?(tx: number, tz: number): { x: number; z: number };
+  /** Current ground cursor, for effects that follow the aim point. */
+  aim?(): { x: number; z: number };
 }
 
 const N = SPELL_FX.needle;
@@ -118,6 +121,7 @@ type Vec3 = { x: number; y: number; z: number };
  * Scenes never branch on spell ids — they call cast().
  */
 export class AbilitySystem {
+  private newBlood: NewBloodSystem;
   /** Bone Mantle (client-owned): when it ends, the next shard tick, and its orbit visuals. */
   private mantleUntil = 0;
   private nextShardAt = 0;
@@ -132,7 +136,7 @@ export class AbilitySystem {
   private vigilUntil = 0;
   private lastVigilAt = 0;
 
-  constructor(private ctx: AbilityContext) {}
+  constructor(private ctx: AbilityContext) { this.newBlood = new NewBloodSystem(ctx); }
 
   /** The realtime socket id replaces the provisional solo id once connected. */
   setSelf(id: string) {
@@ -265,6 +269,9 @@ export class AbilitySystem {
       case 'dirge':
       case 'plague_bloom':
         result = this.signature(id, target);
+        break;
+      default:
+        result = this.newBlood.cast(id, target, now) ?? 'no_target';
         break;
     }
     if (result === 'ok') {
@@ -788,6 +795,7 @@ export class AbilitySystem {
 
   /** Per frame: the Veil Step glide, then the caster's mantle shreds enemies beside them (client-resolved, like Marrow Spear). */
   update(now: number) {
+    this.newBlood.update(now);
     if (this.dashing) {
       const d = this.dashing;
       const k = Math.min(1, (now - d.start) / d.dur);
@@ -1398,6 +1406,10 @@ export class AbilitySystem {
     effects.decal({ tex: fxImage('graveOutline'), color: KN.oath, x: ev.x, z: ev.z, r: GRAVE_BRAND.triggerR, duration: GRAVE_BRAND.lifeS, opacity: 0.5, growFrom: 0.6, fadeOut: 0.5 });
     effects.emit({ x: ev.x, y: 0.4, z: ev.z, count: 10, color: KN.oath, spread: 0.3, speed: 1, up: 0.6, life: 0.5, size: 0.14 });
     audio.play('shard', ev.x, ev.z, 0.7);
+  }
+
+  onNewBlood(ev: Extract<SimEvent, { t: 'newBlood' }>, mine: boolean) {
+    this.newBlood.onEvent(ev, mine);
   }
 
   private signature(id: AbilityId, t: CastTarget): CastResult {

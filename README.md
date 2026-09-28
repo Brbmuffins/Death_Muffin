@@ -24,14 +24,14 @@ alone or with up to nine friends.
 
 Play at https://muffindevelopment.com/death-muffin/. Up to **10 players per world** share chat, combat and gathering nodes; joining automatically finds a world with room. See [the VPS handoff](docs/DEATH-MUFFIN-HANDOFF.md) before editing or deploying.
 
-Auto combat is enabled by default: stand near enemies to use basic rites, click to move, and press **G** to toggle it. Hold **1–4** to repeat a spell at the cursor; signature rites remain manual. Press **L** for the [Grimoire](#the-grimoire-l--choose-your-four) to choose which rites sit on 1–4. Casts have short recovery, quicker gestures and calmer effects, with projectile damage arriving at the visual impact.
+On Easy, auto combat is enabled by default: your hero engages enemies in the current area, uses equipped rites and signatures, guards and heals, and drinks flasks. Click or use movement keys to take control; press **G** to toggle auto. Hold **1–4** to repeat a spell at the cursor. Press **L** for the [Grimoire](#the-grimoire-l--choose-your-four) to choose which rites sit on 1–4. Casts have short recovery, quicker gestures and calmer effects, with projectile damage arriving at the visual impact.
 
 Click a walkable spot on the **minimap** to travel there using normal paths; the amber marker shows your fixed destination. Hover or focus a spell icon for richer cost, targeting, status and combat-tip information.
 
 Use **Settings → Change class** whenever you want. Your character ID, level, gold, items and permanent progress are preserved; the selected class starts safely in the Chapterhouse. [Future bots](docs/death-muffin-roadmap.md) are a documented follow-up.
 
 ## Contents
-[The loop](#the-loop) · [Disciplines](#the-four-disciplines) · [Rites (spells)](#rites--the-necromancers-kit) ·
+[The loop](#the-loop) · [Disciplines](#the-nine-disciplines) · [Rites (spells)](#rites--the-necromancers-kit) ·
 [Corpses](#corpses-are-the-economy) · [The dead (enemies)](#the-dead) · [The Diocese (areas)](#the-diocese) ·
 [The Bell-Sworn Prelate](#the-bell-sworn-prelate) · [Ascension](#ascension--the-endless-rite) · [Professions](#professions--the-sextons-acre) · [Upgrades & loot](#upgrades--loot) ·
 [Combat guide](#combat-guide) · [New to the Covenant?](#new-to-the-covenant) · [Controls](#controls) · [Art direction](#art-direction) · [Development](#development)
@@ -52,9 +52,10 @@ Use **Settings → Change class** whenever you want. Your character ID, level, g
 
 ---
 
-## The four disciplines
+## The nine disciplines
 
 Every Covenant necromancer raises the dead. How you spend them is your discipline.
+Five other paths now fight beside them, each with its own resource and seven rites.
 
 ![The four disciplines before the Altar of Ascension](docs/screenshots/disciplines-lineup.webp)
 
@@ -64,6 +65,13 @@ Every Covenant necromancer raises the dead. How you spend them is your disciplin
 | <img src="public/art/portraits/gravecaller.webp" width="96" /> | **Gravecaller** — *Marshal of the Restless* | **Grave Legion.** Thrall cap 5. Thralls attack 20% faster. Thralls sacrificed by Black Litany leave corpses behind. | The army. Raise, sacrifice, re-raise — the corpse field never runs dry. |
 | <img src="public/art/portraits/mourner.webp" width="96" /> | **Mourner** — *Singer of the Funeral Rite* | **Funeral Rites.** Exhume binds Wraiths that attack from range. Consuming a corpse heals 6% max health. +25% Grave Essence regeneration. | Sustain. Ranged spirits and a heal on every rite. |
 | <img src="public/art/portraits/rotweaver.webp" width="96" /> | **Rotweaver** — *Gardener of Decay* | **Carrion Bloom.** Miasma Circle is 30% wider and Withered stacks to 8. Corpses inside your Miasma burst, damaging and withering nearby enemies. | Area control. Seed rot where they gather; every corpse becomes a bomb. |
+
+| Discipline | Resource | Fighting style |
+|---|---|---|
+| **Grave Warden** | Oil refills 3/s; burning a body grants 20. | Sweep with a flail, strip Shrouded with lantern light, pull enemies in, and protect allies inside a ward. |
+| **Bell Monk** | Resonance grows on hits and fades after two quiet seconds. | Strike on the 1.2-second beat, interrupt with Toll, and sound corpses to strengthen later Tolls. |
+| **Carrion Witch** | Offal comes from harvested bodies. | Hook and bleed enemies, send crows into packs, spread hexes on death, and carve healing charms. |
+| **Veilwalker** | Veil drains in spirit form and refills in life form. | Move safely from enemy blows in Veil form, raise spectral echoes, cross to them, and tear open a rift. |
 
 At **level 10** each discipline wakes its own **signature rite** on **R** — see [Signature rites](#signature-rites-level-10).
 
@@ -81,7 +89,7 @@ carries a sword and a shield, and it runs on **Rage**.
 | Slot | Rite | What it does |
 |---|---|---|
 | **LMB** | **Hollow Cut** | A 110° sword arc 2.4m in front of you. Free, and pays 4 Rage per body it cuts. |
-| **1** | **Shield Bash** | Charge 3m; the first enemy struck is stunned 0.8s (0.2s on a boss) and loses any windup. |
+| **1** | **Shield Bash** | Charge 3m; the first ordinary enemy struck is stunned 0.8s and loses any windup. Boss stagger is still pending. |
 | **2** | **Grave Slam** | 30 Rage. Leap up to 8m to the cursor and strike everything within 3m of the landing. |
 | **3** | **Bulwark** *(level 3)* | 2s: 60% less damage **from the front only**. A blow in the first 0.25s is a perfect block — half reflected, +15 Rage. |
 | **4** | **Corpse Vigil** *(level 5)* | Consume a body to regain 3% health per second for 4s. Your only heal. |
@@ -126,8 +134,7 @@ socket. The Grimoire has a **left-click primary** socket too: **Bone Needle**, *
 defence). You start with the four above, and new rites unlock at levels **2, 3, 4, 5, 6, 7, 8 and 12**,
 so the first choice comes at level 2. Any four can be on the bar. Choosing a key for a rite that
 already sits on another key swaps the two. Each rite keeps its own cooldown, so swapping resets
-nothing. Your choice is remembered per character. Auto combat uses whatever is on your bar; it never
-casts Grave Step or Veil Step for you, because it never moves you.
+nothing. Your choice is remembered per character. Easy auto combat uses whatever is on your bar. It still leaves Grave Step and Veil Step to your own aim.
 
 | | Rite | Unlocks | Cost · Cooldown | What it does |
 |---|---|---|---|---|
@@ -391,7 +398,7 @@ Grave Gardening (seeds, herb beds and tree patches) and new processing recipes a
   tier 3 *Elite Vanguard* (every other wave brings an elite), tier 6 *Restless Crypts* (Grave Surges
   40% sooner), tier 8 *Nightfall* (the moon darkens, half the common dead rise Shrouded; +25% gold, more relics).
 
-**Difficulty** (Settings): *Easy* — auto combat turns on; enemies and the Prelate hit 40% softer with 25% less health, for 25% less gold and XP;
+**Difficulty** (Settings): *Easy* — auto combat turns on; enemies and the Prelate hit 70% softer with 25% less health, for 25% less gold and XP;
 *Medium* — the intended balance; *Hard* — 30% harder hits, 20% more health, more elites, 30% more gold and XP.
 In co-op the world keeper sets enemy difficulty; each player controls their own auto combat through their Easy setting.
 
@@ -463,7 +470,7 @@ read. Drag the **Covenant counsel** header to move it; arrow keys on the focused
 | **Q** | Drink a healing flask |
 | **T** | Return to the Chapterhouse |
 | **I / C / P / M / K** | Reliquary · Workbench · Skills · Waystones · Codex (lore + everything you've met) |
-| **G** | Toggle auto combat (enabled by default; fights while standing) |
+| **G** | Toggle Easy auto combat (enabled by default; engages nearby enemies) |
 | **Esc** | Settings (Change class, difficulty, auto gathering, graphics, volume, reduced motion, damage numbers, tips) |
 | Click the Altar | Altar of Ascension (in the Chapterhouse) |
 | Wheel · WASD · Enter | Zoom · walk (fallback) · chat |

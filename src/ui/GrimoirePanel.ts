@@ -59,7 +59,7 @@ export class GrimoirePanel extends SimplePanel {
     const { kit } = this.state();
     const list = primaryMode ? kit.primaries : kit.grimoire.filter((id) => this.role === 'all' || rolesOf(id).includes(this.role));
     body.innerHTML = `
-      <p class="cw-settings-note">Click a socket, then click a rite to place it there. <b>LMB</b> is your free left-click attack; keys <kbd>1</kbd>–<kbd>4</kbd> hold any four rites. A rite already on another key swaps places, and cooldowns stay with the rite. Right-click a hotbar slot to jump here. Corpse Explosion and your signature rite stay where they are.</p>
+      <p class="cw-settings-note">Click a socket, then click a rite to place it there. <b>LMB</b> is your free left-click attack; keys <kbd>1</kbd>–<kbd>4</kbd> hold any four rites. A rite already on another key swaps places, and cooldowns stay with the rite. Right-click a hotbar slot to jump here. ${ABILITIES[kit.rmb].name} and your signature rite stay where they are.</p>
       <div class="cw-grim-bar" aria-label="Current rotation">
         ${socket(rites.primary, 'primary', 'LMB')}
         ${rites.keys.map((id, i) => socket(id, i, String(i + 1))).join('')}

@@ -52,6 +52,7 @@ export class BossBrain {
   private slamCd = 2;
   private rainCd = 6;
   private lastHitBy = '';
+  private staggerT = 0;
 
   constructor(private sim: WorldSim) {}
 
@@ -72,6 +73,7 @@ export class BossBrain {
     this.slamCd = 2;
     this.rainCd = 7;
     this.pending = [];
+    this.staggerT = 0;
     this.lastHitBy = by;
     this.sim.emit({ t: 'boss', kind: 'awaken', x: s.x, z: s.z, phase: 1 });
   }
@@ -86,6 +88,13 @@ export class BossBrain {
       s.fracture = Math.min(FRACTURE.maxStacks, s.fracture + fracture);
       s.fractureT = FRACTURE.durationMs / 1000;
     }
+  }
+
+  /** Pause movement, attacks and active telegraphs for a short host-owned stagger. */
+  stagger(seconds: number) {
+    if (!this.state.active || this.state.hp <= 0) return;
+    this.staggerT = Math.max(this.staggerT, seconds);
+    this.state.flash = 1;
   }
 
   private dmg(base: number) {
@@ -115,7 +124,6 @@ export class BossBrain {
     const s = this.state;
     if (!s.active) return;
     s.flash = Math.max(0, s.flash - dt * 4);
-    s.stateT += dt;
     if (s.fractureT > 0 && (s.fractureT -= dt) <= 0) s.fracture = 0;
     if (s.witheredT > 0 && s.withered > 0) {
       s.witheredT -= dt;
@@ -143,6 +151,17 @@ export class BossBrain {
       this.sim.emit({ t: 'boss', kind: 'defeated', x: s.x, z: s.z, phase: s.phase, killer: '' });
       return;
     }
+
+    // A stagger pauses the boss clock, including attacks already telegraphed.
+    // The room clock keeps advancing, so move their due times forward too.
+    if (this.staggerT > 0) {
+      const paused = Math.min(dt, this.staggerT);
+      this.staggerT -= paused;
+      for (const attack of this.pending) attack.at += paused;
+      dt -= paused;
+      if (dt <= 0) return;
+    }
+    s.stateT += dt;
 
     // Resolve telegraphed attacks.
     const now = this.sim.time;

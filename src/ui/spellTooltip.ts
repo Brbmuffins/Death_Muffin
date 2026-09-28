@@ -31,6 +31,7 @@ import { CODEX_RITES } from '../content/codex';
 import { DISCIPLINES, type Discipline } from '../content/disciplines';
 import { kitFor, type Kit } from '../content/kits';
 import { CHILL, HEMORRHAGE } from '../content/statuses';
+import { resourceRulesFor } from '../gameplay/resources';
 
 export interface SpellTooltipState {
   empowered?: boolean;
@@ -75,8 +76,9 @@ export function spellTooltip(id: AbilityId, discipline?: Discipline, state: Spel
   const areaMult = empowered ? SOUL_HARVEST.areaMult : 1;
   // Signature and Grimoire rites wait for their level; the starting kit never locks.
   const locked = !!state.locked && unlockLevel(id) > 1;
+  const resourceName = discipline && discipline.family !== 'necromancer' ? resourceRulesFor(discipline.family).label : 'Essence';
   const metrics = [
-    { label: 'Essence', value: empowered ? `Free (normally ${a.essenceCost})` : a.essenceCost ? number(a.essenceCost) : 'Free' },
+    { label: resourceName, value: empowered ? `Free (normally ${a.essenceCost})` : a.essenceCost ? number(a.essenceCost) : 'Free' },
     { label: 'Cooldown', value: `${number(a.cooldownMs / 1000)}s` },
     { label: 'Range', value: a.range ? `${number(a.range * (id === 'marrow_spear' ? areaMult : 1))}m` : 'Around you' },
   ];
@@ -199,6 +201,7 @@ export function spellTooltip(id: AbilityId, discipline?: Discipline, state: Spel
         `Builds Withered up to ${SIGNATURE.bloom.witheredCap} stacks. Bodies used to spread cannot be raised.`);
       break;
   }
+  if (!details.length) details.push(a.description);
   if (SOUL_HARVEST.spells.includes(id)) {
     details.push(empowered ? `Soul Harvest is ready: this cast is free and ${percent(SOUL_HARVEST.areaMult - 1)} larger. It spends the charged meter.` : 'A full Soul Harvest meter makes your next cast of this spell free and larger.');
   }
@@ -214,6 +217,6 @@ export function spellTooltip(id: AbilityId, discipline?: Discipline, state: Spel
         : gKey
           ? `Press or hold ${gKey}; aim with the mouse. You can also click this icon. Change its key in the Grimoire (L).`
           : 'Place it on a key (1–4) in the Grimoire (L), then press or hold that key; aim with the mouse.';
-  const status = locked ? `Locked — unlocks at level ${unlockLevel(id)}.` : (state.left ?? 0) > 0 ? `Ready in ${Math.ceil(state.left! / 1000)}s.` : state.affordable === false && !empowered ? 'Not enough Grave Essence.' : empowered ? 'Soul Harvest ready.' : 'Ready to cast.';
+  const status = locked ? `Locked — unlocks at level ${unlockLevel(id)}.` : (state.left ?? 0) > 0 ? `Ready in ${Math.ceil(state.left! / 1000)}s.` : state.affordable === false && !empowered ? `Not enough ${resourceName === 'Essence' ? 'Grave Essence' : resourceName}.` : empowered ? 'Soul Harvest ready.' : 'Ready to cast.';
   return { name: a.name, description: a.description, control, targeting: TARGETING[a.targeting], metrics, details, tip: CODEX_RITES[id].tip, status, empowered, locked };
 }

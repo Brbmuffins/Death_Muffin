@@ -64,6 +64,13 @@ const KNIGHT_KIT: Kit = {
   signatures: { hollow_knight: 'oath_unbroken' },
 };
 
+function newBloodKit(family: ClassFamily, discipline: DisciplineId, rites: [AbilityId, AbilityId, AbilityId, AbilityId, AbilityId, AbilityId, AbilityId]): Kit {
+  const [primary, one, two, three, four, rmb, signature] = rites;
+  return { family, hotbar: [one, two, three, four, rmb], grimoire: [one, two, three, four],
+    defaultLoadout: [one, two, three, four], primaries: [primary], defaultPrimary: primary,
+    rmb, signatures: { [discipline]: signature } };
+}
+
 /**
  * Families without a kit yet fall back to the necromancer's, matching
  * `resourceRulesFor`: an unexpected `discipline_index` stays playable rather
@@ -72,10 +79,10 @@ const KNIGHT_KIT: Kit = {
 const KITS: Record<ClassFamily, Kit> = {
   necromancer: NECROMANCER_KIT,
   knight: KNIGHT_KIT,
-  warden: NECROMANCER_KIT,
-  monk: NECROMANCER_KIT,
-  witch: NECROMANCER_KIT,
-  veil: NECROMANCER_KIT,
+  warden: newBloodKit('warden', 'grave_warden', ['flail_swing', 'lantern_cone', 'chain_pull', 'burn_the_dead', 'watchmans_ward', 'cremate', 'last_light']),
+  monk: newBloodKit('monk', 'bell_monk', ['palm_strike', 'toll', 'resonant_step', 'knell', 'choir_of_one', 'sound_the_corpse', 'great_toll']),
+  witch: newBloodKit('witch', 'carrion_witch', ['hook_throw', 'harvest', 'crow_swarm', 'hook_pull', 'hex_charm', 'butcher', 'murder_of_crows']),
+  veil: newBloodKit('veil', 'veilwalker', ['spirit_bolt', 'veil_form', 'echo', 'veil_tear', 'crossing', 'lay_to_rest', 'between_worlds']),
 };
 
 export function kitFor(family: ClassFamily): Kit {

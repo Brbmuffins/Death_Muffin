@@ -329,6 +329,7 @@ export class EntityViews {
       }
       case 'corpse': {
         const c = ev.corpse;
+        if (c.echoOwner) break;
         let best = -1;
         let bestD = 1.2;
         this.dying.forEach((v, i) => {

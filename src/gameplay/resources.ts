@@ -19,6 +19,7 @@ export interface PassiveContext {
   max: number;
   /** Milliseconds since the player last took damage. Families gate decay on it. */
   sinceHurtMs: number;
+  sinceResourceGainMs: number;
 }
 
 export interface ResourceRules {
@@ -69,10 +70,10 @@ const KNIGHT: ResourceRules = {
 export const RESOURCE_RULES: Record<ClassFamily, ResourceRules> = {
   necromancer: NECROMANCER,
   knight: KNIGHT,
-  warden: NECROMANCER,
-  monk: NECROMANCER,
-  witch: NECROMANCER,
-  veil: NECROMANCER,
+  warden: { kind: 'oil', label: 'Oil', color: '#f2b84b', max: () => 100, initial: () => 60, onRevive: () => 50, passive: () => 3 },
+  monk: { kind: 'resonance', label: 'Resonance', color: '#e8d9a0', max: () => 100, initial: () => 0, onRevive: () => 0, passive: ({ sinceResourceGainMs }) => sinceResourceGainMs > 2000 ? -5 : 0 },
+  witch: { kind: 'offal', label: 'Offal', color: '#9a1b2a', max: () => 100, initial: () => 0, onRevive: () => 0, passive: () => 0 },
+  veil: { kind: 'veil', label: 'Veil', color: '#bff3ff', max: () => 100, initial: () => 100, onRevive: () => 100, passive: () => 8 },
 };
 
 export function resourceRulesFor(family: ClassFamily): ResourceRules {

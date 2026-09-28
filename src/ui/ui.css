@@ -149,6 +149,7 @@ button { font-family: inherit; }
   inset: 0;
   display: grid;
   place-items: center;
+  overflow-y: auto;
   pointer-events: none;
 }
 .cw-front > * { pointer-events: auto; }
@@ -199,6 +200,7 @@ button { font-family: inherit; }
 .cw-select {
   width: min(1100px, calc(100vw - 32px));
   padding: 24px 26px;
+  align-self: safe center;
 }
 .cw-select h1 { text-align: center; font-size: 30px; }
 .cw-select .sub { text-align: center; color: var(--cw-text-muted); margin: 6px 0 20px; font-family: var(--cw-font-display); font-style: italic; font-size: 17px; }
@@ -409,6 +411,7 @@ button { font-family: inherit; }
 }
 .hud-orb.hp { --liquid: linear-gradient(180deg, #7a2f63, #3b0f2c 70%, #22061a); --surface: #a2467f; }
 .hud-orb.ess { --liquid: linear-gradient(180deg, #5d58d6, #2a1f84 70%, #150c4a); --surface: #8a82ff; }
+.hud-orb.ess.beat-pulse { box-shadow: 0 0 0 3px rgba(230, 211, 139, .72), 0 0 22px rgba(230, 211, 139, .7); transform: scale(1.07); }
 /* Non-necromancer families set --res-color (resources.ts) and the orb restains
    around it; the necromancer never sets it and keeps the violet above. */
 .hud-orb.ess[style*="--res-color"] {

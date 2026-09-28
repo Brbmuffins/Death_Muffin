@@ -1,12 +1,9 @@
 const leaderboardStatus = document.querySelector('#leaderboard-status');
 const rows = document.querySelector('#leaderboard-rows');
 // Indexed by COALESCE(discipline_index, class_index) from /leaderboard.
-// 0–5 are the legacy class indices; 6–9 are Release 0.3 classes.
-// NOTE: index 5 is ambiguous — it is legacy class_index 5 (Necromancer) and
-// also the Grave Warden's discipline_index. Nothing can currently reach
-// discipline_index 5 (only the Hollow Knight, 8, is playable), so it stays
-// 'Necromancer'; resolve the collision before the Grave Warden ships.
-const disciplines = ['Engineer', 'Ossuary', 'Gravecaller', 'Mourner', 'Rotweaver', 'Necromancer', 'Bell Monk', 'Carrion Witch', 'Hollow Knight', 'Veilwalker'];
+// The source flag disambiguates legacy class_index 5 from Grave Warden's discipline_index 5.
+const disciplines = ['Engineer', 'Ossuary', 'Gravecaller', 'Mourner', 'Rotweaver', 'Grave Warden', 'Bell Monk', 'Carrion Witch', 'Hollow Knight', 'Veilwalker'];
+const legacy = ['Engineer', 'Guardian', 'Shadowblade', 'Cleric', 'Arcanist', 'Necromancer'];
 async function refreshLeaderboard() {
   try {
     const response = await fetch('api/leaderboard');
@@ -15,7 +12,8 @@ async function refreshLeaderboard() {
     const fragment = document.createDocumentFragment();
     for (const player of data.players) {
       const row = document.createElement('tr');
-      for (const value of [player.rank, player.username, disciplines[player.classIndex] || 'Necromancer', player.level, player.ascension, player.bossKills, player.totalKills]) {
+      const className = player.hasDiscipline ? disciplines[player.classIndex] : legacy[player.classIndex];
+      for (const value of [player.rank, player.username, className || 'Necromancer', player.level, player.ascension, player.bossKills, player.totalKills]) {
         const cell = document.createElement('td');
         cell.textContent = typeof value === 'number' ? value.toLocaleString() : value;
         row.appendChild(cell);

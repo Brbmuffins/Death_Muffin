@@ -91,7 +91,11 @@ const LIMITS = {
 
 const INTENT_TYPES = new Set(['hit', 'miasma', 'exhume', 'litany', 'summonBoss', 'recallThralls', 'detonate', 'signature', 'gather']);
 /** Host-shaped rites (discipline signatures + Bone Mantle); the host owns their shapes and clamps the aim around the caster. */
-const SIGNATURES = new Set(['wall', 'rend', 'dirge', 'bloom', 'mantle', 'offering', 'rally', 'seed', 'bash', 'vigil', 'brand']);
+const SIGNATURES = new Set(['wall', 'rend', 'dirge', 'bloom', 'mantle', 'offering', 'rally', 'seed', 'bash', 'vigil', 'brand',
+  'lantern_cone', 'chain_pull', 'burn_the_dead', 'watchmans_ward', 'cremate', 'last_light',
+  'toll', 'resonant_step', 'knell', 'sound_the_corpse', 'great_toll',
+  'hook_throw', 'harvest', 'crow_swarm', 'hook_pull', 'hex_charm', 'butcher', 'murder_of_crows',
+  'echo', 'veil_tear', 'crossing', 'lay_to_rest']);
 const WORLD_BOUND = 400; // |x|,|z| sanity bound in world units
 
 if (DEV_TRUST_TOKENS && process.env.NODE_ENV === 'production') {

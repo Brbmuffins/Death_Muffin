@@ -29,6 +29,8 @@ import {
   CORPSE_VIGIL,
   GRAVE_BRAND,
   OATH_UNBROKEN,
+  NEW_BLOOD_ABILITIES,
+  type NewBloodId,
 } from './abilities';
 import { AREAS, BOSS_SUMMON_SHARDS, type AreaId } from './areas';
 import type { DisciplineId } from './disciplines';
@@ -83,13 +85,23 @@ export const RITE_ORDER: AbilityId[] = [
   'corpse_vigil',
   'grave_brand',
   'oath_unbroken',
+  ...Object.keys(NEW_BLOOD_ABILITIES) as NewBloodId[],
   'ossuary_wall',
   'command_rend',
   'dirge',
   'plague_bloom',
 ];
 
+const NEW_BLOOD_CODEX = Object.fromEntries(Object.entries(NEW_BLOOD_ABILITIES).map(([id, def]) => {
+  const fx = id in { flail_swing: 1, lantern_cone: 1, chain_pull: 1, burn_the_dead: 1, watchmans_ward: 1, cremate: 1, last_light: 1 }
+    ? 'warden' : id in { palm_strike: 1, toll: 1, resonant_step: 1, knell: 1, choir_of_one: 1, sound_the_corpse: 1, great_toll: 1 }
+      ? 'monk' : id in { hook_throw: 1, harvest: 1, crow_swarm: 1, hook_pull: 1, hex_charm: 1, butcher: 1, murder_of_crows: 1 }
+        ? 'witch' : 'veilwalker';
+  return [id, { fx, colour: { warden: 'Lantern gold and fire', monk: 'Pale gold and sound white', witch: 'Crow black, blood and hex green', veilwalker: 'Spectral cyan and mist' }[fx], tip: def.description }];
+})) as Record<NewBloodId, RiteEntry>;
+
 export const CODEX_RITES: Record<AbilityId, RiteEntry> = {
+  ...NEW_BLOOD_CODEX,
   bone_needle: {
     fx: 'needle',
     colour: 'Bone white and old gold',
@@ -260,6 +272,10 @@ export const CODEX_DISCIPLINES: Record<DisciplineId, DisciplineEntry> = {
   hollow_knight: {
     tip: 'You have no thralls and no Grave Essence — you have Rage, and you earn it by being hit. Open with Hollow Cut across two or three bodies, hold Bulwark facing the blow for a perfect block, then spend the Rage leaping in with Grave Slam. Corpse Vigil is your only heal, so keep one body spare. At level 10, Oath Unbroken (R) makes you unkillable for six seconds.',
   },
+  grave_warden: { tip: 'Oil refills steadily. Burn bodies to fuel your lamp, pull a dangerous caster into your reach, and plant Watchman’s Ward where your party will hold. Last Light stuns the pack and mends allies.' },
+  bell_monk: { tip: 'Your global bell sounds every 1.2 seconds. Strike on the beat for stronger blows and faster Resonance. Sound a corpse where Toll can reach it; Great Toll spends all the Resonance you have saved.' },
+  carrion_witch: { tip: 'Offal comes only from corpses. Harvest a body before unleashing Crow Swarm, then hold the pack with Hook Pull and Hex Charm. Butcher makes healing charms for the party.' },
+  veilwalker: { tip: 'Veil Form drains Veil while shielding you from enemy blows and speeding your steps. Lay a corpse to rest to create echoes, raise one with Echo, or Cross to it. Return to Life form to refill.' },
 };
 
 // ---------------------------------------------------------------------------

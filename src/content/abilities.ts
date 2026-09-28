@@ -30,6 +30,10 @@ export type AbilityId =
   | 'corpse_vigil'
   | 'grave_brand'
   | 'oath_unbroken'
+  | 'flail_swing' | 'lantern_cone' | 'chain_pull' | 'burn_the_dead' | 'watchmans_ward' | 'cremate' | 'last_light'
+  | 'palm_strike' | 'toll' | 'resonant_step' | 'knell' | 'choir_of_one' | 'sound_the_corpse' | 'great_toll'
+  | 'hook_throw' | 'harvest' | 'crow_swarm' | 'hook_pull' | 'hex_charm' | 'butcher' | 'murder_of_crows'
+  | 'spirit_bolt' | 'veil_form' | 'echo' | 'veil_tear' | 'crossing' | 'lay_to_rest' | 'between_worlds'
   // Discipline signature rites (level 10, key R / 6).
   | 'ossuary_wall'
   | 'command_rend'
@@ -59,7 +63,54 @@ export interface AbilityDef {
   power: number;
 }
 
+export type NewBloodId = Exclude<AbilityId,
+  | 'bone_needle' | 'marrow_spear' | 'exhume' | 'miasma' | 'black_litany' | 'corpse_explosion'
+  | 'wailing_skull' | 'grave_step' | 'grave_frost' | 'bone_mantle' | 'bone_fan' | 'rot_lance'
+  | 'grave_offering' | 'ivory_cleave' | 'veil_step' | 'rally_dead' | 'carrion_seed'
+  | 'hollow_cut' | 'shield_bash' | 'grave_slam' | 'bulwark' | 'corpse_vigil' | 'grave_brand' | 'oath_unbroken'
+  | 'ossuary_wall' | 'command_rend' | 'dirge' | 'plague_bloom'>;
+
+function newRite(id: NewBloodId, slot: AbilityDef['slot'], name: string, family: string, icon: string,
+  targeting: Targeting, cooldownMs: number, essenceCost: number, range: number, radius: number,
+  power: number, description: string, unlockLevel?: number): AbilityDef {
+  return { id, slot, name, description, icon: `art/abilities/${family}-${icon}.png`, targeting,
+    cooldownMs, essenceCost, range, radius, power, ...(unlockLevel ? { unlockLevel } : {}) };
+}
+
+/** Release 0.3 class rites. The sim owns corpse spends, displacement and lasting statuses. */
+export const NEW_BLOOD_ABILITIES: Record<NewBloodId, AbilityDef> = {
+  flail_swing: newRite('flail_swing', 0, 'Flail Swing', 'warden', 'flail-swing', 'direction', 600, 0, 3, 3, 1, 'Sweep the flail through a wide arc in front of you.'),
+  lantern_cone: newRite('lantern_cone', 1, 'Lantern Cone', 'warden', 'lantern-cone', 'direction', 4000, 20, 7, 7, 1.3, 'Burn a cone of enemies, strip Shrouded and stun wraiths.'),
+  chain_pull: newRite('chain_pull', 2, 'Chain Pull', 'warden', 'chain-pull', 'enemy', 6000, 10, 10, 0, 0.6, 'Pull an enemy to your feet. Bosses cannot be pulled.'),
+  burn_the_dead: newRite('burn_the_dead', 3, 'Burn the Dead', 'warden', 'burn-the-dead', 'ground', 9000, 0, 10, 4, 0.5, 'Burn up to three corpses into fire pools for five seconds. Gain 20 Oil for each.', 3),
+  watchmans_ward: newRite('watchmans_ward', 4, "Watchman's Ward", 'warden', 'watchmans-ward', 'ground', 18000, 25, 10, 5, 0, 'Plant a lantern for eight seconds. Allies inside take less damage and enemies slow.', 5),
+  cremate: newRite('cremate', 5, 'Cremate', 'warden', 'cremate', 'corpse', 5000, 0, 12, 1.2, 0.7, 'Spend one corpse to kindle a three-second fire pillar.'),
+  last_light: newRite('last_light', 6, 'Last Light', 'warden', 'last-light', 'self', 50000, 0, 0, 12, 1.2, 'Stun nearby enemies, strip Shrouded and heal nearby allies by 10%.', 10),
+  palm_strike: newRite('palm_strike', 0, 'Palm Strike', 'monk', 'palm-strike', 'enemy', 400, 0, 1.8, 0, 1, 'A quick palm strike. Hits on the bell beat deal extra damage and Resonance.'),
+  toll: newRite('toll', 1, 'Toll', 'monk', 'toll', 'self', 4500, 0, 0, 4, 1.2, 'Ring around you and interrupt casters. Spend 25 Resonance to stun.'),
+  resonant_step: newRite('resonant_step', 2, 'Resonant Step', 'monk', 'resonant-step', 'direction', 6000, 0, 5, 0.8, 1, 'Dash through enemies, striking every body along the path.'),
+  knell: newRite('knell', 3, 'Knell', 'monk', 'knell', 'enemy', 9000, 15, 9, 0, 0.6, 'Mark a target. The next three tolls hurt it harder.', 3),
+  choir_of_one: newRite('choir_of_one', 4, 'Choir of One', 'monk', 'choir-of-one', 'self', 20000, 30, 0, 2.5, 0.5, 'For six seconds every beat emits a small toll ring.', 5),
+  sound_the_corpse: newRite('sound_the_corpse', 5, 'Sound the Corpse', 'monk', 'sound-the-corpse', 'corpse', 7000, 0, 10, 1.2, 0.8, 'Sound a corpse as a resonant bell. Tolls near it strike harder.'),
+  great_toll: newRite('great_toll', 6, 'Great Toll', 'monk', 'great-toll', 'self', 50000, 0, 0, 9, 2, 'Spend all Resonance on a great toll that damages and silences foes.', 10),
+  hook_throw: newRite('hook_throw', 0, 'Hook Throw', 'witch', 'hook-throw', 'enemy', 550, 0, 8, 0, 1, 'Hurl a hook that bleeds its target.'),
+  harvest: newRite('harvest', 1, 'Harvest', 'witch', 'harvest', 'corpse', 6000, 0, 10, 1.2, 0, 'Consume a corpse for 30 Offal and summon three crows for six seconds.'),
+  crow_swarm: newRite('crow_swarm', 2, 'Crow Swarm', 'witch', 'crow-swarm', 'ground', 8000, 30, 10, 3, 0.4, 'Send crows into a three-metre circle for five seconds.'),
+  hook_pull: newRite('hook_pull', 3, 'Hook Pull', 'witch', 'hook-pull', 'enemy', 7000, 10, 8, 0, 0.6, 'Drag an enemy to you. Bosses cannot be pulled.', 3),
+  hex_charm: newRite('hex_charm', 4, 'Hex Charm', 'witch', 'hex-charm', 'enemy', 12000, 20, 9, 0, 0.3, 'Curse a target to deal 25% less damage. On death it jumps to two neighbours.', 5),
+  butcher: newRite('butcher', 5, 'Butcher', 'witch', 'butcher', 'corpse', 7000, 0, 10, 1.2, 0, 'Carve a corpse into three charms. Allies who collect them heal 5%.'),
+  murder_of_crows: newRite('murder_of_crows', 6, 'Murder of Crows', 'witch', 'murder-of-crows', 'ground', 50000, 35, 12, 4, 0.7, 'An eight-second swarm follows your aim and rends nearby enemies.', 10),
+  spirit_bolt: newRite('spirit_bolt', 0, 'Spirit Bolt', 'veil', 'spirit-bolt', 'enemy', 450, 0, 11, 0, 1, 'Loose a spectral bolt from your palm.'),
+  veil_form: newRite('veil_form', 1, 'Veil Form', 'veil', 'veil-form', 'self', 500, 0, 0, 0, 0, 'Toggle Veil form. Avoid enemy blows, move faster and deal less damage while Veil drains.'),
+  echo: newRite('echo', 2, 'Echo', 'veil', 'echo', 'corpse', 7000, 25, 12, 1.2, 0, 'Raise an echo corpse as a spectral ally for ten seconds.'),
+  veil_tear: newRite('veil_tear', 3, 'Veil Tear', 'veil', 'veil-tear', 'ground', 10000, 20, 10, 3, 0.4, 'Open a two-second rift that draws enemies inward.', 3),
+  crossing: newRite('crossing', 4, 'Crossing', 'veil', 'crossing', 'corpse', 10000, 15, 12, 1.2, 0, 'Blink to an echo corpse.', 5),
+  lay_to_rest: newRite('lay_to_rest', 5, 'Lay to Rest', 'veil', 'lay-to-rest', 'corpse', 6000, 0, 10, 1.2, 0, 'Consume a corpse, heal 6% and leave two echo corpses.'),
+  between_worlds: newRite('between_worlds', 6, 'Between Worlds', 'veil', 'between-worlds', 'self', 60000, 0, 0, 0, 0, 'For five seconds gain Veil protection with full Life-form damage.', 10),
+};
+
 export const ABILITIES: Record<AbilityId, AbilityDef> = {
+  ...NEW_BLOOD_ABILITIES,
   bone_needle: {
     id: 'bone_needle',
     slot: 0,
@@ -545,6 +596,14 @@ export const RITE_ROLES: Partial<Record<AbilityId, RiteRole[]>> = {
   corpse_vigil: ['survival', 'corpse'],
   grave_brand: ['control', 'corpse'],
   oath_unbroken: ['survival', 'damage'],
+  flail_swing: ['damage'], lantern_cone: ['damage', 'control'], chain_pull: ['control'], burn_the_dead: ['corpse', 'damage'],
+  watchmans_ward: ['survival'], cremate: ['corpse', 'damage'], last_light: ['survival', 'control'],
+  palm_strike: ['damage'], toll: ['damage', 'control'], resonant_step: ['damage'], knell: ['control'],
+  choir_of_one: ['damage'], sound_the_corpse: ['corpse', 'damage'], great_toll: ['damage', 'control'],
+  hook_throw: ['damage'], harvest: ['corpse', 'legion'], crow_swarm: ['damage'], hook_pull: ['control'],
+  hex_charm: ['control'], butcher: ['corpse', 'survival'], murder_of_crows: ['damage'],
+  spirit_bolt: ['damage'], veil_form: ['survival'], echo: ['corpse', 'legion'], veil_tear: ['control'],
+  crossing: ['survival', 'corpse'], lay_to_rest: ['corpse', 'survival'], between_worlds: ['survival'],
 };
 export const rolesOf = (id: AbilityId): RiteRole[] => RITE_ROLES[id] ?? [];
 /** Key caps for hotbar slots 1–6 (slot 5 is the right-click action, 6 the signature). */
@@ -612,6 +671,7 @@ export const LITANY_MAX_MULT = 14;
 export const FRACTURE = { perStack: 0.15, maxStacks: 3, durationMs: 5000 };
 export const WITHERED = { dpsPerStack: 0.18, durationMs: 5000 };
 export const MIASMA_SLOW = 0.6;
+export const WATCHMANS_WARD_SLOW = 0.75;
 export const NEEDLE_ESSENCE = 6;
 
 /**
@@ -630,6 +690,10 @@ export const GRAVE_BRAND = { triggerR: 1.5, rootS: 1.5, lifeS: 30 };
 export const OATH_UNBROKEN = { durationS: 6, damageMult: 1.3 };
 
 export const SPELL_FX = {
+  warden: { gold: 0xf2b84b, fire: 0xff7a2a, ash: 0x6b3b24 },
+  monk: { gold: 0xe8d9a0, sound: 0xf6f1e3, bronze: 0xc9aa6a },
+  witch: { blood: 0x9a1b2a, hex: 0xa6b04a, crow: 0x1a1418 },
+  veilwalker: { cyan: 0xbff3ff, mist: 0xdfe9ee, deep: 0x668eaa },
   needle: { core: 0xf3e8d2, trail: 0xe9c98f, impact: 0xfff1d6, dust: 0xd8cfbd },
   spear: { bone: 0xe0d6c2, crack: 0xb4502e, dust: 0x4a3a30, marrow: 0x8a2c3c },
   exhume: { spirit: 0x6fe3c8, deep: 0x1f8f86, beam: 0x9ff5e0 },
