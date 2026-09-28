@@ -33,6 +33,7 @@ import { deriveStats, xpToNext } from '../gameplay/characterStats';
 import { Inventory, rollBoss, rollItem, rollKill } from '../gameplay/loot';
 import { Nav } from '../gameplay/nav';
 import { Player } from '../gameplay/Player';
+import { resourceRulesFor, type ResourceRules } from '../gameplay/resources';
 import { Progression } from '../gameplay/progression';
 import { BOSS_ARENA } from '../gameplay/sim/BossBrain';
 import { makeSnapshot, WorldMirror } from '../gameplay/sim/snapshot';
@@ -127,6 +128,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private canvas = document.getElementById('scene') as HTMLCanvasElement;
 
   private discipline: Discipline;
+  /** Resource rules for the active discipline's family (HUD orb label/colour). */
+  private resourceRules: ResourceRules;
   /** This account may use the dev overlay (gm_enabled or DEV_ACCOUNTS); the overlay itself is devAccess.active. */
   private devAccount = false;
   /** Hotbar: the Grimoire loadout (keys 1–4), Corpse Explosion (slot 5) and this discipline's signature rite (slot 6). */
@@ -234,6 +237,7 @@ export class WorldScene implements GameScene, RuntimeView {
     private onClassChanged: (character: Character) => void,
   ) {
     this.discipline = disciplineFor(character.class_index);
+    this.resourceRules = resourceRulesFor(this.discipline.family);
     // Dev access (runtime overlay, never saved): must be set before the loadout is sanitised.
     this.devAccount = isDevAccount(character, getToken());
     devAccess.active = this.devAccount && devPreference(browserStorage(), character.id);
@@ -323,7 +327,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.loot = new LootView(this.scene, this.effects);
 
     const stats = deriveStats(this.character, [], this.discipline, this.progression.local.damageTier);
-    this.player = new Player(stats, this.nav);
+    this.player = new Player(stats, this.nav, this.discipline.family);
     this.player.soulsMax = Math.max(10, SOUL_HARVEST.souls - this.progression.boons.soulsDiscount);
     this.player.teleport(PLAYER_SPAWN.x, PLAYER_SPAWN.z);
     this.avatar = new NecromancerAvatar(this.scene, this.discipline.color, true, this.discipline.modelSlug);
@@ -1891,7 +1895,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (gained > 0) {
       this.refreshStats();
       this.player.hp = this.player.stats.maxHp;
-      this.player.essence = this.player.stats.maxEssence;
+      this.player.resource.value = this.player.resource.max;
       this.hud.banner(`Level ${this.character.level}`, 'The dead answer you more readily', 2600);
       if (this.character.level >= SIGNATURE_LEVEL) this.onboarding.show('signature', 3000);
       const learned = [...PRIMARIES, ...GRIMOIRE].filter((id) => unlockLevel(id) > this.character.level - gained && unlockLevel(id) <= this.character.level);
@@ -2418,8 +2422,10 @@ export class WorldScene implements GameScene, RuntimeView {
       hp: p.hp,
       maxHp: p.stats.maxHp,
       barrier: p.barrier,
-      essence: p.essence,
-      maxEssence: p.stats.maxEssence,
+      essence: p.resource.value,
+      maxEssence: p.resource.max,
+      resourceLabel: this.resourceRules.label,
+      resourceColor: this.resourceRules.color,
       level: this.character.level,
       xp: this.character.experience,
       xpNext: xpToNext(this.character.level),

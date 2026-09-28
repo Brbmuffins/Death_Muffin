@@ -409,6 +409,12 @@ button { font-family: inherit; }
 }
 .hud-orb.hp { --liquid: linear-gradient(180deg, #7a2f63, #3b0f2c 70%, #22061a); --surface: #a2467f; }
 .hud-orb.ess { --liquid: linear-gradient(180deg, #5d58d6, #2a1f84 70%, #150c4a); --surface: #8a82ff; }
+/* Non-necromancer families set --res-color (resources.ts) and the orb restains
+   around it; the necromancer never sets it and keeps the violet above. */
+.hud-orb.ess[style*="--res-color"] {
+  --liquid: linear-gradient(180deg, var(--res-color), color-mix(in srgb, var(--res-color) 55%, #0b0810) 70%, #0b0810);
+  --surface: color-mix(in srgb, var(--res-color) 70%, #ffffff);
+}
 .hud-orb .barrier {
   position: absolute;
   inset: 0;

@@ -6,6 +6,16 @@
  * model) plays as a Gravecaller.
  */
 export type DisciplineId = 'ossuary' | 'gravecaller' | 'mourner' | 'rotweaver';
+
+/**
+ * Which kit a discipline plays. The four necromantic disciplines share the
+ * `necromancer` family (Grimoire, Grave Essence, thralls, corpse rites); each
+ * Release 0.3 class is its own family with its own kit and resource.
+ * The union lists all six up front so the framework is general — a family only
+ * becomes reachable once its kit exists and its discipline is added to
+ * `PLAYABLE_DISCIPLINES`.
+ */
+export type ClassFamily = 'necromancer' | 'warden' | 'monk' | 'witch' | 'knight' | 'veil';
 /** warrior/shieldbearer/wraith come from the discipline; hound, archer, bonemage and plaguebearer from the corpse. */
 export type ThrallKind = 'warrior' | 'shieldbearer' | 'wraith' | 'hound' | 'archer' | 'bonemage' | 'plaguebearer';
 
@@ -34,6 +44,8 @@ export interface DisciplineMods {
 export interface Discipline {
   classIndex: number;
   id: DisciplineId;
+  /** Which kit and resource this discipline plays (see ClassFamily). */
+  family: ClassFamily;
   name: string;
   epithet: string;
   description: string;
@@ -66,6 +78,7 @@ export const DISCIPLINES: Record<DisciplineId, Discipline> = {
   ossuary: {
     classIndex: 1,
     id: 'ossuary',
+    family: 'necromancer',
     name: 'Ossuary',
     epithet: 'Keeper of the Bone Wall',
     description: 'Armours itself in the dead. Raises shield-bearing thralls that hold the line while you work.',
@@ -81,6 +94,7 @@ export const DISCIPLINES: Record<DisciplineId, Discipline> = {
   gravecaller: {
     classIndex: 2,
     id: 'gravecaller',
+    family: 'necromancer',
     name: 'Gravecaller',
     epithet: 'Marshal of the Restless',
     description: 'Commands the largest legion. Spends thralls freely, because every sacrifice leaves another corpse.',
@@ -96,6 +110,7 @@ export const DISCIPLINES: Record<DisciplineId, Discipline> = {
   mourner: {
     classIndex: 3,
     id: 'mourner',
+    family: 'necromancer',
     name: 'Mourner',
     epithet: 'Singer of the Funeral Rite',
     description: 'Binds spirits instead of bones. Wraiths strike from range and every rite mends the living.',
@@ -111,6 +126,7 @@ export const DISCIPLINES: Record<DisciplineId, Discipline> = {
   rotweaver: {
     classIndex: 4,
     id: 'rotweaver',
+    family: 'necromancer',
     name: 'Rotweaver',
     epithet: 'Gardener of Decay',
     description: 'Poisons the ground itself. Miasma spreads further, rots deeper, and turns corpses into bombs.',

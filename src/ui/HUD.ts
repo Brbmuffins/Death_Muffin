@@ -37,8 +37,12 @@ export interface HudFrame {
   hp: number;
   maxHp: number;
   barrier: number;
+  /** The family resource (Grave Essence, Rage, …) and its ceiling. */
   essence: number;
   maxEssence: number;
+  /** Right-orb label and liquid colour, from the family's resource rules. */
+  resourceLabel?: string;
+  resourceColor?: string;
   level: number;
   xp: number;
   xpNext: number;
@@ -431,8 +435,15 @@ export class HUD {
     this.set('barrier', Math.round((f.barrier / f.maxHp) * 20), () => this.$('[data-hporb]').style.setProperty('--barrier', String(Math.min(0.9, (f.barrier / f.maxHp) * 3))));
     this.set('low', hpFrac < 0.3 && f.hp > 0, () => this.$('[data-vig]').classList.toggle('low', hpFrac < 0.3 && f.hp > 0));
     const eFrac = f.essence / f.maxEssence;
+    const resLabel = f.resourceLabel ?? 'Grave Essence';
     this.set('ess', Math.round(eFrac * 400), () => this.$('[data-essorb]').style.setProperty('--fill', `${eFrac * 100}%`));
-    this.set('esstxt', `${Math.floor(f.essence)}/${f.maxEssence}`, () => (this.$('[data-esstxt]').innerHTML = `${Math.floor(f.essence)} / ${f.maxEssence}<small>Grave Essence</small>`));
+    this.set('esstxt', `${Math.floor(f.essence)}/${f.maxEssence}|${resLabel}`, () => (this.$('[data-esstxt]').innerHTML = `${Math.floor(f.essence)} / ${f.maxEssence}<small>${resLabel}</small>`));
+    this.set('reslabel', resLabel, () => this.$('[data-essorb]').setAttribute('aria-label', resLabel));
+    this.set('rescolor', f.resourceColor ?? '', () => {
+      const orb = this.$('[data-essorb]');
+      if (f.resourceColor) orb.style.setProperty('--res-color', f.resourceColor);
+      else orb.style.removeProperty('--res-color');
+    });
 
     f.slots.forEach((s, i) => {
       const n = i + 1;

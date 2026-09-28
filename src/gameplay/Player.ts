@@ -1,7 +1,9 @@
 import { SOUL_HARVEST } from '../content/abilities';
 import type { AreaId } from '../content/areas';
+import type { ClassFamily } from '../content/disciplines';
 import type { DerivedStats } from './characterStats';
 import type { Nav } from './nav';
+import { resourceRulesFor, type ResourceKind, type ResourceRules } from './resources';
 
 const OUT_OF_COMBAT_MS = 5000;
 
@@ -15,7 +17,12 @@ export class Player {
   facing = Math.PI;
   moving = false;
   hp = 100;
-  essence = 50;
+  /**
+   * The family resource (Grave Essence, Rage, Oil, …). `essence` below is kept
+   * as an alias so the necromancer call sites — and their tests — are untouched.
+   */
+  resource: { kind: ResourceKind; value: number; max: number };
+  private readonly rules: ResourceRules;
   barrier = 0;
   /** Bone Mantle holds the barrier until this time (scene ms); it decays as usual after. */
   barrierHoldUntil = 0;
@@ -38,16 +45,34 @@ export class Player {
   constructor(
     public stats: DerivedStats,
     private nav: Nav,
+    family: ClassFamily = 'necromancer',
   ) {
+    this.rules = resourceRulesFor(family);
+    const max = this.rules.max(stats);
+    this.resource = { kind: this.rules.kind, value: this.rules.initial(max), max };
     this.hp = stats.maxHp;
-    this.essence = stats.maxEssence * 0.6;
+  }
+
+  /** Alias for `resource.value` — the necromancer's Grave Essence. */
+  get essence() {
+    return this.resource.value;
+  }
+
+  set essence(value: number) {
+    this.resource.value = value;
+  }
+
+  /** Add to (or drain) the family resource, clamped to 0..max. */
+  addResource(amount: number) {
+    this.resource.value = Math.max(0, Math.min(this.resource.max, this.resource.value + amount));
   }
 
   setStats(stats: DerivedStats) {
     const hpFrac = this.hp / this.stats.maxHp;
     this.stats = stats;
     this.hp = Math.min(stats.maxHp, Math.max(1, Math.round(stats.maxHp * hpFrac)));
-    this.essence = Math.min(stats.maxEssence, this.essence);
+    this.resource.max = this.rules.max(stats);
+    this.resource.value = Math.min(this.resource.max, this.resource.value);
   }
 
   teleport(x: number, z: number) {
@@ -111,7 +136,16 @@ export class Player {
     // Regeneration: brisk out of combat, a trickle in it.
     const ooc = now - this.lastHurtAt > OUT_OF_COMBAT_MS;
     this.hp = Math.min(this.stats.maxHp, this.hp + this.stats.maxHp * (ooc ? 0.045 : 0.004) * dt);
-    this.essence = Math.min(this.stats.maxEssence, this.essence + this.stats.essenceRegen * dt);
+    // Family resource drift. For the necromancer this is `stats.essenceRegen`
+    // every frame, exactly as before; Rage instead decays out of combat.
+    this.addResource(
+      this.rules.passive({
+        stats: this.stats,
+        value: this.resource.value,
+        max: this.resource.max,
+        sinceHurtMs: now - this.lastHurtAt,
+      }) * dt,
+    );
     if (now >= this.barrierHoldUntil) this.barrier = Math.max(0, this.barrier - this.stats.maxHp * 0.04 * dt);
     if (now < this.rootedUntil) return false;
 
@@ -178,7 +212,7 @@ export class Player {
   revive() {
     this.alive = true;
     this.hp = this.stats.maxHp;
-    this.essence = this.stats.maxEssence * 0.5;
+    this.resource.value = this.rules.onRevive(this.resource.max);
     this.barrier = 0;
   }
 }

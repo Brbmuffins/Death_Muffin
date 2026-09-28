@@ -31,7 +31,7 @@ function defaults(): Settings {
   } catch {
     /* no matchMedia */
   }
-  return { quality: 'high', reducedMotion: reduced, damageNumbers: true, volume: 0.6, tips: true, difficulty: 'medium', autoCombat: true, autoGather: true };
+  return { quality: 'high', reducedMotion: reduced, damageNumbers: true, volume: 0.6, tips: true, difficulty: 'medium', autoCombat: false, autoGather: true };
 }
 
 function load(): Settings {
@@ -54,6 +54,9 @@ export const settings: Settings = load();
 const listeners = new Set<(s: Settings) => void>();
 
 export function updateSettings(patch: Partial<Settings>) {
+  if (patch.difficulty !== undefined && patch.autoCombat === undefined) {
+    patch = { ...patch, autoCombat: patch.difficulty === 'easy' };
+  }
   Object.assign(settings, patch);
   try {
     localStorage.setItem(KEY, JSON.stringify(settings));
