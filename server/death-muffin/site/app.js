@@ -13,8 +13,6 @@ const password = document.querySelector("#password");
 const confirmPassword = document.querySelector("#confirm-password");
 const remember = document.querySelector(".remember");
 const forgotAction = document.querySelector(".forgot-action");
-const forgotDialog = document.querySelector(".forgot-dialog");
-const recoveryEmail = document.querySelector("#recovery-email");
 const revealPassword = document.querySelector(".reveal-password");
 const soundToggle = document.querySelector(".sound-toggle");
 const gateway = document.querySelector(".gateway");
@@ -516,7 +514,7 @@ function setMode(nextMode) {
   email.type = "text";
   email.autocomplete = registering ? "off" : "username";
   email.placeholder = "Your username";
-  document.querySelector('label[for="email"]').textContent = "Username or email";
+  document.querySelector('label[for="email"]').textContent = "Username";
   document.querySelector('label[for="display-name"]').textContent = "Username";
   remember.hidden = registering;
   forgotAction.hidden = registering;

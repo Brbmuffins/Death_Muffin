@@ -21,8 +21,10 @@
       rel="stylesheet"
     />
     <link rel="preload" href="assets/covenant-bg.png" as="image" />
-    <link rel="stylesheet" href="styles.css" />
-    <script src="app.js" defer></script>
+    <!-- ?v= is a cache buster: Cloudflare overrides nginx's no-cache on .css/.js with a 4h
+         browser TTL, so a deploy is invisible until the URL changes. Bump on every site edit. -->
+    <link rel="stylesheet" href="styles.css?v=2" />
+    <script src="app.js?v=2" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#account-form">Skip to account form</a>
@@ -71,10 +73,10 @@
             </div>
 
             <div class="field">
-              <label for="email">Username or email</label>
+              <label for="email">Username</label>
               <div class="field__control">
                 <svg aria-hidden="true" viewBox="0 0 24 24">
-                  <path d="M3 6h18v12H3zM3 7l9 7 9-7" />
+                  <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 8a7 7 0 0 0-14 0" />
                 </svg>
                 <input
                   id="email"
@@ -180,16 +182,5 @@
       </section>
     </main>
 
-    <dialog class="forgot-dialog">
-      <form method="dialog">
-        <button class="dialog-close" value="close" aria-label="Close">×</button>
-        <span class="dialog-sigil" aria-hidden="true"></span>
-        <h2>Recover your oath</h2>
-        <p>Enter your email and we’ll send instructions for restoring access.</p>
-        <label for="recovery-email">Email</label>
-        <input id="recovery-email" type="email" autocomplete="email" placeholder="you@example.com" />
-        <button class="dialog-submit" value="send">Send recovery link</button>
-      </form>
-    </dialog>
   </body>
 </html>
