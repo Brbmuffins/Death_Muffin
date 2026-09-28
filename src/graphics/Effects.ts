@@ -70,6 +70,7 @@ class ParticleSystem {
   private drag: Float32Array;
   private shrink: Float32Array;
   private cursor = 0;
+  private active = 0;
   private material: THREE.ShaderMaterial;
   private tmp = new THREE.Color();
 
@@ -99,15 +100,18 @@ class ParticleSystem {
       blending,
     });
     this.points = new THREE.Points(geo, this.material);
+    this.points.visible = false;
     this.points.frustumCulled = false;
     this.points.renderOrder = 5;
   }
 
   emit(o: EmitOptions) {
+    if (o.count <= 0) return;
     this.tmp.set(o.color);
     for (let n = 0; n < o.count; n++) {
       const i = this.cursor;
       this.cursor = (this.cursor + 1) % this.capacity;
+      if (this.life[i] <= 0) this.active++;
       const a = Math.random() * Math.PI * 2;
       const r = (o.spread ?? 0.2) * Math.sqrt(Math.random());
       this.pos[i * 3] = o.x + Math.cos(a) * r;
@@ -129,16 +133,20 @@ class ParticleSystem {
       this.col[i * 3 + 1] = this.tmp.g;
       this.col[i * 3 + 2] = this.tmp.b;
     }
+    this.points.visible = true;
+    (this.points.geometry.attributes.aColor as THREE.BufferAttribute).needsUpdate = true;
   }
 
   update(dt: number, scale: number) {
     this.material.uniforms.uScale.value = scale;
+    if (this.active === 0) return;
     for (let i = 0; i < this.capacity; i++) {
       if (this.life[i] <= 0) {
         this.alpha[i] = 0;
         continue;
       }
       this.life[i] -= dt;
+      if (this.life[i] <= 0) this.active--;
       const t = 1 - Math.max(0, this.life[i]) / this.maxLife[i];
       const k = Math.max(0, 1 - this.drag[i] * dt);
       this.vel[i * 3] *= k;
@@ -152,8 +160,8 @@ class ParticleSystem {
       this.size[i] = this.baseSize[i] * (sh >= 0 ? 1 - sh * t * 0.7 : 1 + -sh * t);
     }
     const g = this.points.geometry;
+    this.points.visible = this.active > 0;
     (g.attributes.position as THREE.BufferAttribute).needsUpdate = true;
-    (g.attributes.aColor as THREE.BufferAttribute).needsUpdate = true;
     (g.attributes.aSize as THREE.BufferAttribute).needsUpdate = true;
     (g.attributes.aAlpha as THREE.BufferAttribute).needsUpdate = true;
   }

@@ -369,9 +369,9 @@ Grave Gardening (seeds, herb beds and tree patches) and new processing recipes a
   tier 3 *Elite Vanguard* (every other wave brings an elite), tier 6 *Restless Crypts* (Grave Surges
   40% sooner), tier 8 *Nightfall* (the moon darkens, half the common dead rise Shrouded; +25% gold, more relics).
 
-**Difficulty** (Settings): *Easy* — enemies and the Prelate hit 40% softer with 25% less health, for 25% less gold and XP;
+**Difficulty** (Settings): *Easy* — auto combat turns on; enemies and the Prelate hit 40% softer with 25% less health, for 25% less gold and XP;
 *Medium* — the intended balance; *Hard* — 30% harder hits, 20% more health, more elites, 30% more gold and XP.
-In co-op the world keeper's difficulty applies.
+In co-op the world keeper sets enemy difficulty; each player controls their own auto combat through their Easy setting.
 
 <img src="public/art/ui/soul_shard.png" width="22" /> **Soul shards** drop from elites (1–2) and the Prelate (3). Five summon the Prelate.
 
@@ -459,8 +459,8 @@ material contrast — soot, obsidian, plum, old bone, cold moonlight — with vi
 
 Every hero, monster and prop is generated and rigged through a reproducible pipeline
 (Gemini concept → Tripo 3D low-poly model → auto-rig → per-clip animation → optimised GLB);
-prompts, task ids and costs are recorded in [`art-manifest/`](art-manifest). Sound is fully
-procedural WebAudio (bells, bone, rot, wind) — no audio files. See [ASSET_PIPELINE.md](ASSET_PIPELINE.md).
+prompts, task ids and costs are recorded in [`art-manifest/`](art-manifest). Sound is mostly
+procedural WebAudio (bells, bone, rot, wind), with two CC0 Kenney footstep clips. See [ASSET_PIPELINE.md](ASSET_PIPELINE.md).
 
 ---
 
