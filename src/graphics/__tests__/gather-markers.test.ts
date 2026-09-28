@@ -36,4 +36,18 @@ describe('gathering markers', () => {
     expect(arc.visible).toBe(false);
     views.dispose();
   });
+
+  it('keeps the selected node circle after the pointer leaves', () => {
+    const views = new NodeViews(new THREE.Scene(), nodes);
+    views.selected(nodes[0]);
+    views.hover(null);
+    const selected = views.group.children.at(-2) as THREE.Mesh<THREE.RingGeometry>;
+    expect(selected.geometry.type).toBe('RingGeometry');
+    expect(selected.visible).toBe(true);
+    expect(selected.position.x).toBe(nodes[0].x);
+    expect(selected.position.z).toBe(nodes[0].z);
+    views.selected(null);
+    expect(selected.visible).toBe(false);
+    views.dispose();
+  });
 });

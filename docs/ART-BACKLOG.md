@@ -26,7 +26,8 @@ Roadmap: [`PROFESSIONS-ROADMAP.md`](PROFESSIONS-ROADMAP.md). Wiring notes: [`age
 | Bone Kiln | `public/models/props/prop_node_bone_kiln.glb` | `layout.ts` `PROPS` |
 | Gathered-goods icons (21) | `public/art/items/{log_*,fish_*,bones_*,gem_*,seed_mourning_moss,reliquary_fragment,covenant_seal}.png` | Item ids from the professions build |
 | Existing items that had no icon (17) | `public/art/items/{ingot_tin,ore_bronze,ingot_bronze,ingot_silver,ore_steel,ingot_steel,ore_hell,ingot_hell,ore_moon,ingot_moon,fish_river,fish_fillet,plank_oak,flask_speed,flask_damage,flask_void_resist,bow_oak}.png` | Inventory and loot (by name) |
-| Hero swing clip | `attack` clip in `public/models/{necromancer,hero_ossuary,hero_gravecaller,hero_mourner,hero_rotweaver}/character.glb` | Present on every hero. Nothing plays it yet; it's the chop and pickaxe swing for the gathering loop |
+| Hand tools (4) | `public/models/props/tool_{pickaxe,hatchet,spade,fishing_rod}.glb` | Attached while gathering; normal class gear returns when work stops |
+| Hero swing clip | `attack` clip in `public/models/{necromancer,hero_ossuary,hero_gravecaller,hero_mourner,hero_rotweaver}/character.glb` | Woodcutting and mining use it when the hero has it; other rigs fall back to their gathering gesture |
 
 ### Ready, waiting for code
 
@@ -36,7 +37,6 @@ Roadmap: [`PROFESSIONS-ROADMAP.md`](PROFESSIONS-ROADMAP.md). Wiring notes: [`age
 | Garden (4) | `prop_node_{garden_plot,garden_sprouts,herb_patch,sapling}.glb` | Empty → sprouting → grown plot; tree-patch sapling | G5 Grave Gardening |
 | Fishing marker | `prop_node_black_water_pool.glb` | A still-pool prop for the Acre pond edge (pools themselves are ripples) | Optional (G2 decoration) |
 | Per-ore seam bakes (9) | `prop_node_ore_seam_{copper,tin,iron,bronze,silver,gold,steel}.glb`, `prop_node_ore_geode_{moon,hell}.glb` | Alternative to the crystal overlay: one baked seam per ore (`tools/tint-variants.mjs`) | Optional |
-| Hand tools (4) | `public/models/props/tool_{pickaxe,hatchet,spade,fishing_rod}.glb` | Attached to the hero's hand while gathering (`Creature.attach`), with the `attack` swing | G1 follow-up |
 | Herbs, seeds, saplings (14) | `public/art/items/herb_{mourning_moss,nightshade,corpse_lily,wolfsbane,bloodroot,moonpetal}.png`, `seed_{nightshade,corpse_lily,wolfsbane,bloodroot,moonpetal}.png`, `sapling_{coffin_oak,churchyard_yew,bone_elder}.png` | Grave Gardening items | G5 item ids |
 | Processing (12) | `public/art/items/plank_{elm,willow,yew,blackthorn,ghostwood,bone_elder}.png`, `meal_{crypt_eel,bell_carp,drowned_pike,lanternfish,coelacanth}.png`, `bone_meal.png` | Carpentry planks, Cooking meals, compost | G6 recipes and ids |
 | Tool tiers (24) | `public/art/items/tool_{pickaxe,hatchet,spade,rod}_{copper,iron,silver,steel,hell,moon}.png` | Smithing-made tools that make gathering faster (the grinding ladder) | G6 tool items |

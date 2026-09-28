@@ -1,17 +1,20 @@
 # Death Muffin agent handoff
 
-Updated 2026-09-27. Read this before editing or deploying. Preserve the supplied site's visual design and the accepted fixed click-to-move behavior.
+Updated 2026-09-28. Read this before editing or deploying. Preserve the supplied site's visual design and the accepted fixed click-to-move behavior.
 
 User-approved complete version: **`death-muffin-v1.0.0`**. See [the checkpoint record](DEATH-MUFFIN-CHECKPOINT.md) for the full private backup and restoration boundaries. Preserve this baseline while designing new abilities.
 
-## New Blood class framework + five kits — 2026-09-28 (undeployed)
+## AFK gathering visual polish — 2026-09-28
 
-Grave Warden (`discipline_index` 5), Bell Monk (6), Carrion Witch (7), Hollow Knight (8), and Veilwalker (9) now have client kits, host rites, resources, art registration, Codex, and help. The Grave Warden leaderboard collision with legacy class index 5 is resolved by returning `hasDiscipline` from the backend leaderboard route. The source branch still needs a deliberate release and live verification; it has not been deployed.
+Published the client-only update from `codex/new-blood-release-20260928`. Woodcutting, mining, fishing and gravedigging now equip their generated hand tools during work and restore class gear when work stops. Woodcutting and mining use the hero's `attack` swing where available. The ground circle stays on the selected node during walking, work and respawn waits; the existing progress arc stays under the hero. The four tool GLBs were already on the live site. No API or realtime service changed or restarted.
 
-**Not deployed.** Branch `claude/new-classes-framework`; the running backend, realtime service and
-`/var/www/death-muffin/play` are untouched. Deploying needs the usual client publish **plus** the
-Death Muffin backend (`discipline.cjs`, `server.js`), the realtime service (`server/realtime/server.js`)
-and `site/leaderboard.js`. No migration: `discipline_index` is already nullable.
+Typecheck, production build, AFK background/pause/full-bag smoke, four-tool browser size and circle checks, Hollow Knight gear-swap check, and ground-ring tests passed. The previous live index is backed up at `/home/ubuntu/death-muffin/backups/pre-gather-tools-20260928T183608Z/index.html`; old hashed bundles remain served for a client-only rollback.
+
+## New Blood class framework + five kits — 2026-09-28 (deployed)
+
+Grave Warden (`discipline_index` 5), Bell Monk (6), Carrion Witch (7), Hollow Knight (8), and Veilwalker (9) now have client kits, host rites, resources, art registration, Codex, and help. The Grave Warden leaderboard collision with legacy class index 5 is resolved by returning `hasDiscipline` from the backend leaderboard route. The release and public browser verification passed on 2026-09-28.
+
+The class release published the client, Death Muffin backend (`discipline.cjs`, `server.js`), realtime service (`server/realtime/server.js`) and `site/leaderboard.js`. Public QA created a Grave Warden, switched through all five classes, loaded each hero model, exercised the in-game class switch and checked the leaderboard. The temporary account was removed. Its verified pre-release backup is `/home/ubuntu/death-muffin/backups/death-muffin-v1.0.0-20260928T175414Z`. No migration was needed: `discipline_index` was already nullable.
 
 The framework is additive and the four necromantic disciplines are provably unchanged —
 `resources.test.ts` pins the old essence numbers (60% on spawn, 50% on revive, unconditional

@@ -419,6 +419,9 @@ export class WorldScene implements GameScene, RuntimeView {
         onCycle: (def, success, node) => this.onGatherCycle(def, success, node),
         onReply: (r) => this.onGatherReply(r),
         onStop: (reason, message) => {
+          this.avatar.setGatheringTool(null);
+          this.avatar.c.releaseGesture();
+          this.nodeViews.selected(null);
           const text = message ?? STOP_TEXT[reason as keyof typeof STOP_TEXT] ?? null;
           if (text) this.floating.spawn(this.player.x, 2.4, this.player.z, text, 'info');
           if (reason === 'bagFull') this.onboarding.show('bag_full');
@@ -1366,10 +1369,16 @@ export class WorldScene implements GameScene, RuntimeView {
   private tickGatherVisuals(dt: number) {
     const g = this.gathering;
     const prog = g.progress;
+    const skill = g.node ? NODES[g.node.type].skill : null;
+    this.avatar.setGatheringTool(skill);
+    this.nodeViews.selected(g.node);
     if (g.working && g.node && (prog < this.gatherProg || this.gatherProg === 0) && prog < 0.5) {
       const def = NODES[g.node.type];
       const cycleS = (def.ticks * 600) / 1000;
-      this.avatar.cast(SKILLS[def.skill].gesture, 1, Math.atan2(g.node.x - this.player.x, g.node.z - this.player.z), cycleS * 0.9);
+      const gesture = (skill === 'woodcutting' || skill === 'mining') && this.avatar.c.has('attack')
+        ? 'attack' : SKILLS[def.skill].gesture;
+      const gestureS = skill === 'fishing' ? Math.min(1.6, cycleS * 0.85) : Math.min(1.15, cycleS * 0.7);
+      this.avatar.cast(gesture, 1, Math.atan2(g.node.x - this.player.x, g.node.z - this.player.z), gestureS);
     }
     this.gatherProg = g.working ? prog : 0;
     this.nodeViews.progress(this.player.x, this.player.z, g.working ? Math.max(0.02, prog) : 0, g.node ? SKILLS[NODES[g.node.type].skill].color : '#ffffff');

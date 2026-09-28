@@ -202,6 +202,7 @@ export class NodeViews {
   readonly group = new THREE.Group();
   private index = new Map<string, { live: NodeBatch; spent: NodeBatch; i: number }>();
   private hoverRing: THREE.Mesh;
+  private selectedRing: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
   private arc: THREE.Mesh;
   private arcMat: THREE.MeshBasicMaterial;
   private richGlow: THREE.InstancedMesh | null = null;
@@ -249,12 +250,19 @@ export class NodeViews {
     );
     this.hoverRing.visible = false;
     this.hoverRing.renderOrder = 3;
+    // Keep the interaction circle visible while Auto or AFK moves between nodes.
+    this.selectedRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.9, 1.02, 40).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: 0xe8dcc0, transparent: true, opacity: 0.45, depthWrite: false }),
+    );
+    this.selectedRing.visible = false;
+    this.selectedRing.renderOrder = 3;
     // Actual ring geometry cannot become an opaque square if a custom shader fails.
     this.arcMat = new THREE.MeshBasicMaterial({ color: 0xe8dcc0, transparent: true, opacity: 0.74, depthWrite: false });
     this.arc = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.8, 48).rotateX(-Math.PI / 2), this.arcMat);
     this.arc.visible = false;
     this.arc.renderOrder = 3;
-    this.group.add(this.hoverRing, this.arc);
+    this.group.add(this.hoverRing, this.selectedRing, this.arc);
   }
 
   /** Show a node live (true) or spent (false). */
@@ -277,6 +285,16 @@ export class NodeViews {
     if (usable) color.lerp(INDICATOR_BONE, 0.25);
   }
 
+  /** The current gathering target, including walking and respawn waits. */
+  selected(node: NodePlacement | null) {
+    this.selectedRing.visible = !!node;
+    if (!node) return;
+    const def = NODES[node.type];
+    this.selectedRing.position.set(node.x, 0.035, node.z);
+    this.selectedRing.scale.setScalar(def.kind === 'pool' ? 1.25 : def.kind === 'tree' ? 1 : 0.95);
+    this.selectedRing.material.color.set(SKILLS[def.skill].color).lerp(INDICATOR_BONE, 0.4);
+  }
+
   /** The progress arc under the hero while a work cycle runs (0 hides it). */
   progress(x: number, z: number, t: number, skillColor: string) {
     this.arc.visible = t > 0;
@@ -288,6 +306,7 @@ export class NodeViews {
 
   update(dt: number) {
     this.time += dt;
+    this.selectedRing.material.opacity = 0.42 + Math.sin(this.time * 1.8) * 0.06;
     // Fishing spots breathe: a slow pulse so the eye finds them on dark water.
     for (const p of this.pools) {
       const opacity = 0.28 + Math.sin(this.time * 1.2 + p.phase) * 0.05;

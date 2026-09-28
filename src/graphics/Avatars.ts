@@ -3,6 +3,7 @@ import type { BossState } from '../gameplay/sim/types';
 import { assets } from './AssetCache';
 import { Creature } from './Creature';
 import { PROP_URL, type CreatureSlug } from './modelPaths';
+import type { GatherSkill } from '../gameplay/gatheringRules';
 import type { Effects } from './Effects';
 import { fx } from './fxTextures';
 
@@ -37,6 +38,11 @@ export class NecromancerAvatar {
   readonly lantern: THREE.PointLight | null;
   /** The necromancer's staff. Null for families that carry real weapon props. */
   private staff: THREE.Group | null;
+  private classGear: THREE.Object3D[] = [];
+  private gatheringSkill: GatherSkill | null = null;
+  private gatheringTools = new Map<GatherSkill, THREE.Object3D>();
+  private loadingTools = new Set<GatherSkill>();
+  private disposed = false;
   /** Spell origin when there is no staff (the Knight's sword). */
   private tipObj: THREE.Object3D | null = null;
   private moving = false;
@@ -75,6 +81,7 @@ export class NecromancerAvatar {
           blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.72 }));
         glow.scale.setScalar(0.28);
         this.c.attach(bone, glow);
+        this.classGear.push(glow);
         if (bone === 'R_Hand') this.tipObj = glow;
       }
       return;
@@ -89,13 +96,44 @@ export class NecromancerAvatar {
           : slug === 'hero_carrion_witch' ? [grip('R_Hand', 'gear_witch_hook', 0.9, true)] : [];
     for (const g of gear) {
       void assets.model(PROP_URL(g.id), g.height).then((t) => {
-        if (!t) return;
+        if (!t || this.disposed) return;
         const obj = t.scene.clone(true);
         obj.scale.setScalar(t.scale);
+        obj.visible = this.gatheringSkill === null;
         this.c.attach(g.bone, obj, g.dir);
+        this.classGear.push(obj);
         if (g.tip) this.tipObj = obj;
       });
     }
+  }
+
+  /** Show the matching hand tool while gathering, then restore class gear. */
+  setGatheringTool(skill: GatherSkill | null) {
+    if (this.gatheringSkill === skill || this.disposed) return;
+    this.gatheringSkill = skill;
+    if (this.staff) this.staff.visible = skill === null;
+    for (const obj of this.classGear) obj.visible = skill === null;
+    for (const [id, obj] of this.gatheringTools) obj.visible = id === skill;
+    if (!skill || this.gatheringTools.has(skill) || this.loadingTools.has(skill)) return;
+
+    const tool = {
+      woodcutting: { id: 'tool_hatchet', length: 0.95 },
+      mining: { id: 'tool_pickaxe', length: 1.2 },
+      fishing: { id: 'tool_fishing_rod', length: 1.45 },
+      gravedigging: { id: 'tool_spade', length: 1.2 },
+    }[skill];
+    this.loadingTools.add(skill);
+    void assets.model(PROP_URL(tool.id), tool.length).then((template) => {
+      if (!template || this.disposed) return;
+      const obj = template.scene.clone(true);
+      // Several tools are authored sideways; their Y height can be tiny.
+      // Normalize by the longest axis so a spade never becomes giant in-hand.
+      const size = new THREE.Box3().setFromObject(template.scene).getSize(new THREE.Vector3());
+      obj.scale.setScalar(tool.length / Math.max(0.001, size.x, size.y, size.z));
+      obj.visible = this.gatheringSkill === skill;
+      this.c.attach('R_Hand', obj, new THREE.Vector3(0, 1, 0.1));
+      this.gatheringTools.set(skill, obj);
+    }).finally(() => this.loadingTools.delete(skill));
   }
 
   /** World position of the staff tip (spell origin). */
@@ -134,6 +172,7 @@ export class NecromancerAvatar {
   }
 
   dispose() {
+    this.disposed = true;
     this.c.dispose();
   }
 }
