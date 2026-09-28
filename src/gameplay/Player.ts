@@ -1,4 +1,4 @@
-import { SOUL_HARVEST } from '../content/abilities';
+import { BULWARK, KNIGHT_RAGE, SOUL_HARVEST } from '../content/abilities';
 import type { AreaId } from '../content/areas';
 import type { ClassFamily } from '../content/disciplines';
 import type { DerivedStats } from './characterStats';
@@ -26,6 +26,13 @@ export class Player {
   barrier = 0;
   /** Bone Mantle holds the barrier until this time (scene ms); it decays as usual after. */
   barrierHoldUntil = 0;
+  /** Hollow Knight — Bulwark: the shield is up until this time, perfect until the earlier one. */
+  bulwarkUntil = 0;
+  bulwarkPerfectUntil = 0;
+  /** Hollow Knight — Oath Unbroken: cannot drop below 1 health until this time. */
+  unbreakableUntil = 0;
+  /** How Bulwark answered the last blow, for the caller's reflect + Rage. */
+  lastBlock: 'none' | 'front' | 'perfect' = 'none';
   alive = true;
   area: AreaId | null = 'chapterhouse';
   lastHurtAt = -1e9;
@@ -187,21 +194,54 @@ export class Player {
     this.facing = Math.atan2(x - this.x, z - this.z);
   }
 
-  /** Apply incoming damage through barrier + Bone Ward. Returns damage taken. */
-  takeDamage(raw: number, wardPct: number, now: number): number {
+  /**
+   * Apply incoming damage through barrier + Bone Ward, then the Hollow Knight's
+   * guards. Returns damage taken; `lastBlock` reports how Bulwark answered it so
+   * the caller can reflect and pay Rage.
+   *
+   * `from` is where the blow came from — Bulwark only covers the front, so
+   * without it a guarded hit is treated as coming from behind (no mitigation).
+   */
+  takeDamage(raw: number, wardPct: number, now: number, from?: { x: number; z: number }): number {
+    this.lastBlock = 'none';
     if (!this.alive || this.god) return 0;
     let dmg = raw * (1 - Math.min(0.6, wardPct));
+    if (now < this.bulwarkUntil && this.blowIsFrontal(from)) {
+      this.lastBlock = now < this.bulwarkPerfectUntil ? 'perfect' : 'front';
+      dmg *= 1 - BULWARK.damageCut;
+    }
     const absorbed = Math.min(this.barrier, dmg);
     this.barrier -= absorbed;
     dmg -= absorbed;
     this.hp -= dmg;
     this.lastHurtAt = now;
+    // Rage is built by punishment: +1 per 1% of max health lost.
+    if (this.resource.kind === 'rage' && dmg > 0) {
+      this.addResource((dmg / this.stats.maxHp) * 100 * KNIGHT_RAGE.perHpPercentLost);
+    }
+    if (this.lastBlock === 'perfect') this.addResource(KNIGHT_RAGE.perPerfectBlock);
     if (this.hp <= 0) {
-      this.hp = 0;
-      this.alive = false;
-      this.path = [];
+      // Oath Unbroken: the oath holds at a sliver rather than breaking.
+      if (now < this.unbreakableUntil) {
+        this.hp = 1;
+      } else {
+        this.hp = 0;
+        this.alive = false;
+        this.path = [];
+      }
     }
     return dmg;
+  }
+
+  /** Inside Bulwark's frontal cover (the front 120°)? */
+  private blowIsFrontal(from?: { x: number; z: number }) {
+    if (!from) return false;
+    const dx = from.x - this.x;
+    const dz = from.z - this.z;
+    const len = Math.hypot(dx, dz);
+    if (len < 1e-6) return true;
+    const dot = (Math.sin(this.facing) * dx + Math.cos(this.facing) * dz) / len;
+    return dot >= Math.cos((BULWARK.frontHalfDeg * Math.PI) / 180);
   }
 
   heal(amount: number) {

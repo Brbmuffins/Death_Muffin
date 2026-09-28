@@ -21,6 +21,14 @@ import {
   SIGNATURE_LEVEL,
   SPELL_FX,
   type AbilityId,
+  KNIGHT_RAGE,
+  HOLLOW_CUT,
+  SHIELD_BASH,
+  GRAVE_SLAM,
+  BULWARK,
+  CORPSE_VIGIL,
+  GRAVE_BRAND,
+  OATH_UNBROKEN,
 } from './abilities';
 import { AREAS, BOSS_SUMMON_SHARDS, type AreaId } from './areas';
 import type { DisciplineId } from './disciplines';
@@ -67,6 +75,14 @@ export const RITE_ORDER: AbilityId[] = [
   'veil_step',
   'rally_dead',
   'carrion_seed',
+  // Hollow Knight
+  'hollow_cut',
+  'shield_bash',
+  'grave_slam',
+  'bulwark',
+  'corpse_vigil',
+  'grave_brand',
+  'oath_unbroken',
   'ossuary_wall',
   'command_rend',
   'dirge',
@@ -179,6 +195,42 @@ export const CODEX_RITES: Record<AbilityId, RiteEntry> = {
     colour: 'Chartreuse rot',
     tip: `Rotweaver signature (level ${SIGNATURE_LEVEL}). Plant it next to a corpse pile: every ${SIGNATURE.bloom.spreadEveryS} seconds it seeds a new bloom on the nearest body, up to ${SIGNATURE.bloom.maxGenerations} generations deep. It eats the bodies it spreads through, so bloom what you won't raise.`,
   },
+  // ── Hollow Knight ──────────────────────────────────────────────────────────
+  hollow_cut: {
+    fx: 'knight',
+    colour: 'Cold steel',
+    tip: `Your Rage engine. It costs nothing and every enemy the arc cuts returns ${HOLLOW_CUT.rage} Rage, so open on a clump rather than a single body — the arc is ${HOLLOW_CUT.reach}m and wide enough to catch three abreast. Rage decays ${KNIGHT_RAGE.decayPerS}/s once you have been out of combat for ${KNIGHT_RAGE.decayAfterS}s, so bank it into Grave Slam before you disengage.`,
+  },
+  shield_bash: {
+    fx: 'knight',
+    colour: 'Cold steel',
+    tip: `A gap-closer that opens with control rather than damage: the first body you meet is stunned ${SHIELD_BASH.stunS}s (only ${SHIELD_BASH.bossStunS}s on a boss, so do not save it for one). Bash into a caster mid-windup and the cast is lost.`,
+  },
+  grave_slam: {
+    fx: 'knight',
+    colour: 'Cold steel with oath crimson',
+    tip: `Your one Rage sink at this level, and the only rite that reaches ${GRAVE_SLAM.leapM}m. The landing hits everything within ${GRAVE_SLAM.slamR}m, so leap onto the middle of a pack, not its edge. It will not land anywhere your feet cannot go.`,
+  },
+  bulwark: {
+    fx: 'knight',
+    colour: 'Cold steel',
+    tip: `Held for ${BULWARK.holdS}s, it cuts damage from the front by ${Math.round(BULWARK.damageCut * 100)}% — turn to face what is hitting you or it does nothing. Time it: a blow inside the first ${BULWARK.perfectWindowS}s is a perfect block that reflects half and pays ${KNIGHT_RAGE.perPerfectBlock} Rage, which is the fastest Rage in the kit.`,
+  },
+  corpse_vigil: {
+    fx: 'knight',
+    colour: 'Cold steel over grave dust',
+    tip: `Your only heal: stand over a body and it becomes ${Math.round(CORPSE_VIGIL.regenFracPerS * 100)}% of your health a second for ${CORPSE_VIGIL.durationS}s. The corpse is spent, so in co-op say so before you take one a necromancer was saving.`,
+  },
+  grave_brand: {
+    fx: 'knight',
+    colour: 'Oath crimson',
+    tip: `A trap, not a strike. Brand a body on the path you expect them to take and the first one within ${GRAVE_BRAND.triggerR}m is rooted ${GRAVE_BRAND.rootS}s. Brand behind you when you need to break away, or on a chokepoint before a wave lands.`,
+  },
+  oath_unbroken: {
+    fx: 'knight',
+    colour: 'Oath crimson',
+    tip: `Hollow Knight signature (level ${SIGNATURE_LEVEL}). For ${OATH_UNBROKEN.durationS}s nothing can drop you below 1 health, you deal ${Math.round((OATH_UNBROKEN.damageMult - 1) * 100)}% more, and your Rage refills. It is a commitment, not an escape — spend the window swinging.`,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -204,6 +256,9 @@ export const CODEX_DISCIPLINES: Record<DisciplineId, DisciplineEntry> = {
   },
   rotweaver: {
     tip: 'Let the pack die inside your Miasma. Corpses in the rot burst on their own and spread Withered to whatever is still standing. At level 10, Plague Bloom (R) chains rot flowers through the corpse field.',
+  },
+  hollow_knight: {
+    tip: 'You have no thralls and no Grave Essence — you have Rage, and you earn it by being hit. Open with Hollow Cut across two or three bodies, hold Bulwark facing the blow for a perfect block, then spend the Rage leaping in with Grave Slam. Corpse Vigil is your only heal, so keep one body spare. At level 10, Oath Unbroken (R) makes you unkillable for six seconds.',
   },
 };
 

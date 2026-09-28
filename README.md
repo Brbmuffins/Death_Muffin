@@ -69,6 +69,28 @@ At **level 10** each discipline wakes its own **signature rite** on **R** — se
 
 *(The server still stores the legacy class index — 1 Guardian → Ossuary, 2 Shadowblade → Gravecaller, 3 Cleric → Mourner, 4 Arcanist → Rotweaver.)*
 
+### The Hollow Knight
+
+The first class that is **not** a necromancer. It raises nothing and spends no Grave Essence — it
+carries a sword and a shield, and it runs on **Rage**.
+
+| | Class | Resource | Plays like |
+|---|---|---|---|
+| <img src="public/art/portraits/hollow_knight.webp" width="96" /> | **Hollow Knight** — *Oathbound of the Covenant* | **Rage** 0–100. +1 per 1% of health lost, +4 per body Hollow Cut catches, **+15 on a perfect block**. Drains 4/s once you have been out of the fight for 4s. | Walk in and take the hit. Cut a clump to build, block on the beat to build faster, then spend it leaping into the middle of them. |
+
+| Slot | Rite | What it does |
+|---|---|---|
+| **LMB** | **Hollow Cut** | A 110° sword arc 2.4m in front of you. Free, and pays 4 Rage per body it cuts. |
+| **1** | **Shield Bash** | Charge 3m; the first enemy struck is stunned 0.8s (0.2s on a boss) and loses any windup. |
+| **2** | **Grave Slam** | 30 Rage. Leap up to 8m to the cursor and strike everything within 3m of the landing. |
+| **3** | **Bulwark** *(level 3)* | 2s: 60% less damage **from the front only**. A blow in the first 0.25s is a perfect block — half reflected, +15 Rage. |
+| **4** | **Corpse Vigil** *(level 5)* | Consume a body to regain 3% health per second for 4s. Your only heal. |
+| **RMB** | **Grave Brand** | Brand a body; the first enemy within 1.5m of it is rooted 1.5s. A trap, not a strike. |
+| **R** | **Oath Unbroken** *(level 10)* | 6s: cannot drop below 1 health, +30% damage, Rage refills. |
+
+Rage sits in the same orb Grave Essence does, recoloured oath crimson. The Knight has no Grimoire
+alternatives yet, so its four keys are fixed. Stored as `discipline_index` **8**.
+
 ---
 
 ## Rites — the necromancer's kit

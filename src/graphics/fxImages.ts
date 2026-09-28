@@ -19,6 +19,8 @@ export const FX_IMAGES = {
   wisp: 'art/fx/wisp.png',
   rallySigil: 'art/fx/rally-sigil.png',
   veilStreak: 'art/fx/veil-streak.png',
+  // Release 0.3 class sprites (art-manifest/gemini-jobs/classes-v1.json).
+  graveOutline: 'art/fx/grave-outline.png',
 } as const;
 export type FxImage = keyof typeof FX_IMAGES;
 

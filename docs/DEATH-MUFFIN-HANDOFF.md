@@ -4,6 +4,30 @@ Updated 2026-09-27. Read this before editing or deploying. Preserve the supplied
 
 User-approved complete version: **`death-muffin-v1.0.0`**. See [the checkpoint record](DEATH-MUFFIN-CHECKPOINT.md) for the full private backup and restoration boundaries. Preserve this baseline while designing new abilities.
 
+## Class framework + Hollow Knight — 2026-09-28
+
+**Not deployed.** Branch `claude/new-classes-framework`; the running backend, realtime service and
+`/var/www/death-muffin/play` are untouched. Deploying needs the usual client publish **plus** the
+Death Muffin backend (`discipline.cjs`, `server.js`), the realtime service (`server/realtime/server.js`)
+and `site/leaderboard.js`. No migration: `discipline_index` is already nullable.
+
+The framework is additive and the four necromantic disciplines are provably unchanged —
+`resources.test.ts` pins the old essence numbers (60% on spawn, 50% on revive, unconditional
+`essenceRegen`) and `kits.test.ts` pins the necromancer kit against the original constants.
+
+- **Families.** `Discipline.family` + `ClassFamily`; per-family resource rules and kits. The HUD's
+  right orb takes its label and colour from the family (violet Grave Essence, oath-crimson Rage).
+- **Server.** `discipline.cjs` accepts 1–`maxIndex` (mounted at 9). `DISCIPLINE_NAMES` is a *separate*
+  map from the legacy `CLASS_NAMES`, so indices 1–4 keep reporting the `class_name` they always did.
+- **Hollow Knight** (`discipline_index` 8): Rage, seven rites, sword + shield on the rig. Shield Bash,
+  Corpse Vigil and Grave Brand go through the host as new `sig` kinds; Hollow Cut and Grave Slam are
+  client-resolved like Ivory Cleave. New enemy statuses `stunT`/`rootT` (snapshot bits 17/18).
+- **Known gaps, flagged not faked:** no boss stagger on Shield Bash (`BossBrain` has no interrupt
+  hook); leaderboard index 5 is ambiguous between legacy Necromancer and the Grave Warden — resolve
+  before that class ships. Both recorded in `agent-briefs/new-classes.md` §0b.
+
+Green: typecheck, 262 client tests (19 new Knight, 18 new framework regression), 41 server, 3 vfx, build.
+
 ## Movable counsel and Acre lighting — 2026-09-27
 
 Covenant counsel starts on the left below the portrait. Drag its labeled header (pointer/touch), or focus it and use arrow keys (Shift moves further). Dragging leaves the card open and never reaches game movement handlers. The per-viewer `dm_counsel_position_v1` preference is guarded browser storage, shared across cards and characters; queued tips/reloads retain it, and viewport changes clamp the card on screen. Body click dismissal, timer pausing and the disable-tips control still work. Dragging ends the entrance animation so it cannot jump when released. The resize listener is removed on world disposal.

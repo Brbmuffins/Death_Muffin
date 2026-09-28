@@ -14,6 +14,14 @@ import {
   MIASMA_SLOW,
   NEEDLE_ESSENCE,
   SIGNATURE,
+  KNIGHT_RAGE,
+  HOLLOW_CUT,
+  SHIELD_BASH,
+  GRAVE_SLAM,
+  BULWARK,
+  CORPSE_VIGIL,
+  GRAVE_BRAND,
+  OATH_UNBROKEN,
   SOUL_HARVEST,
   WAILING_SKULL,
   unlockLevel,
@@ -159,6 +167,32 @@ export function spellTooltip(id: AbilityId, discipline?: Discipline, state: Spel
       break;
     case 'dirge':
       details.push(`Lasts ${SIGNATURE.dirge.durationS}s. Mends you and your thralls while Silenced enemies cannot start spells.`);
+      break;
+    // ── Hollow Knight ──
+    case 'hollow_cut':
+      details.push(`A ${HOLLOW_CUT.halfAngleDeg * 2}° arc ${HOLLOW_CUT.reach}m in front of you. Costs nothing and pays ${HOLLOW_CUT.rage} Rage for every enemy it cuts, so it is worth lining up two or three.`);
+      break;
+    case 'shield_bash':
+      details.push(`Charges ${SHIELD_BASH.dashM}m and stuns the first enemy struck for ${SHIELD_BASH.stunS}s — only ${SHIELD_BASH.bossStunS}s against a boss. Stops at walls and sealed doors.`);
+      break;
+    case 'grave_slam':
+      details.push(`Leaps up to ${GRAVE_SLAM.leapM}m to the cursor and strikes everything within ${GRAVE_SLAM.slamR}m of the landing. It will not leap anywhere you could not walk.`);
+      break;
+    case 'bulwark':
+      details.push(`Held for ${BULWARK.holdS}s: ${percent(BULWARK.damageCut)} less damage from the front ${BULWARK.frontHalfDeg * 2}° only — blows from behind land in full.`,
+        `A blow inside the first ${BULWARK.perfectWindowS}s is a perfect block: ${percent(BULWARK.reflect)} of it is reflected and you gain ${KNIGHT_RAGE.perPerfectBlock} Rage.`);
+      break;
+    case 'corpse_vigil':
+      details.push(`Consumes the body and regenerates ${percent(CORPSE_VIGIL.regenFracPerS)} of your maximum health every second for ${CORPSE_VIGIL.durationS}s.`,
+        'The corpse cannot then be raised or exploded — in co-op, say which one you are taking.');
+      break;
+    case 'grave_brand':
+      details.push(`Brands a body for ${GRAVE_BRAND.lifeS}s. The first enemy within ${GRAVE_BRAND.triggerR}m of it is rooted for ${GRAVE_BRAND.rootS}s and the corpse is spent.`,
+        'A rooted enemy can still swing, so do not brand under your own feet.');
+      break;
+    case 'oath_unbroken':
+      details.push(`For ${OATH_UNBROKEN.durationS}s you cannot be reduced below 1 health, you deal ${percent(OATH_UNBROKEN.damageMult - 1)} more damage, and your Rage fills.`,
+        'It does not heal you — when the oath ends you are as hurt as it found you.');
       break;
     case 'plague_bloom':
       details.push(`The first flower lasts ${SIGNATURE.bloom.durationS}s. Every ${SIGNATURE.bloom.spreadEveryS}s it can consume a corpse to seed another flower, up to ${SIGNATURE.bloom.maxGenerations} generations.`,

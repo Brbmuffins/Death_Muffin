@@ -17,6 +17,8 @@ export const CREATURE_MODELS = {
   hero_gravecaller: m('hero_gravecaller', 1.88),
   hero_mourner: m('hero_mourner', 1.85),
   hero_rotweaver: m('hero_rotweaver', 1.85),
+  // Release 0.3 classes (art shipped in update2; only the Knight is playable).
+  hero_hollow_knight: m('hero_hollow_knight', 1.9),
   skeleton_thrall: m('skeleton_thrall', 1.75),
   grave_robber: m('grave_robber', 1.7),
   bone_hound: m('bone_hound', 1.05),

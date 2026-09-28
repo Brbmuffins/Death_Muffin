@@ -49,13 +49,29 @@ const NECROMANCER_KIT: Kit = {
 };
 
 /**
+ * Hollow Knight (Release 0.3). Seven rites, no Grimoire alternatives yet — the
+ * four keys are fixed, so `grimoire` is exactly `defaultLoadout`. Its one
+ * primary is Hollow Cut; the signature is keyed to the single knight discipline.
+ */
+const KNIGHT_KIT: Kit = {
+  family: 'knight',
+  hotbar: ['shield_bash', 'grave_slam', 'bulwark', 'corpse_vigil', 'grave_brand'],
+  grimoire: ['shield_bash', 'grave_slam', 'bulwark', 'corpse_vigil'],
+  defaultLoadout: ['shield_bash', 'grave_slam', 'bulwark', 'corpse_vigil'],
+  primaries: ['hollow_cut'],
+  defaultPrimary: 'hollow_cut',
+  rmb: 'grave_brand',
+  signatures: { hollow_knight: 'oath_unbroken' },
+};
+
+/**
  * Families without a kit yet fall back to the necromancer's, matching
  * `resourceRulesFor`: an unexpected `discipline_index` stays playable rather
  * than loading a class with no rites. Each is replaced when its kit lands.
  */
 const KITS: Record<ClassFamily, Kit> = {
   necromancer: NECROMANCER_KIT,
-  knight: NECROMANCER_KIT,
+  knight: KNIGHT_KIT,
   warden: NECROMANCER_KIT,
   monk: NECROMANCER_KIT,
   witch: NECROMANCER_KIT,

@@ -6,6 +6,33 @@ code: a class framework, then one class at a time. Ground rules as in
 [`spell-variety-first-session.md`](spell-variety-first-session.md) §1. Queue position: after build-depth (or in
 parallel on its own branch if the owner prefers — the framework touches `AbilitySystem`, `Player`, `HUD`, `WorldScene`).
 
+## 0b. Status (2026-09-28)
+
+**Framework: done.** `ClassFamily` + `Discipline.family`, per-family resource rules
+(`gameplay/resources.ts`), per-family kits (`content/kits.ts`), the HUD orb following the family, the
+server accepting `discipline_index` 5–9, and realtime validation for the new `sig` kinds. The four
+necromantic disciplines are pinned unchanged by `__tests__/resources.test.ts` and
+`__tests__/kits.test.ts`.
+
+**Hollow Knight: done** (`__tests__/knight.test.ts`, 19 tests). Rage, all seven rites, the sword and
+shield attached to the rig, Codex + counsel + spell cards + README.
+
+Deviations from §2/§3 below, all deliberate:
+- **No per-family `gameplay/kits/<family>.ts` dispatch module.** `AbilitySystem.cast` is already a
+  flat switch over `AbilityId` and the Knight's seven cases sit in it. Splitting the file is worth
+  doing when the *second* family lands and the necromancer file would otherwise balloon — with one
+  family it would have been indirection with nothing on the other side.
+- **`Player.essence` kept as a getter/setter alias** for `resource.value` rather than renamed across
+  ~20 call sites. Behaviour is identical and the necromancer diff stays near zero.
+- **Shield Bash does not stagger a boss.** `BossBrain` has no interrupt hook; §3 asks for 0.2s.
+  Faking one was worse than leaving it out — it needs a real stagger API first.
+- **Leaderboard index 5 is ambiguous**: legacy `class_index` 5 (Necromancer) and the Grave Warden's
+  `discipline_index`. Nothing reaches 5 yet, so it still reads 'Necromancer'. **Resolve before the
+  Grave Warden ships.**
+- Numbers §3 left open (bash/slam power, most cooldowns) are first passes, not design decisions.
+
+Next: Grave Warden, Bell Monk, Carrion Witch, then Veilwalker last (§3).
+
 ## 1. What exists (all paid for, all in the repo)
 
 | Class | Model (8 clips: idle walk run attack cast dig hurt death) | Portrait | Weapons (`models/props/`) | Icons (`art/abilities/`) |

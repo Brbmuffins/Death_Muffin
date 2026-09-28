@@ -632,3 +632,26 @@ Built from `docs/PROFESSIONS-ROADMAP.md` in one cloud session (branch `claude/ad
   - **Blocker:** effects blow out under bloom at default gain. The notes are in the spell-variety brief §5.
   - The counsel card's stray scrollbars are fixed on master (`readability.css`: the plate's corner brackets are pulled
     inside scrolling plates).
+
+## Class framework + Hollow Knight (2026-09-28, undeployed)
+
+Branch `claude/new-classes-framework`. Release 0.3's first class, on a framework built to carry the
+other four.
+
+- **Framework, additive, no class-visible change:** `ClassFamily` + `Discipline.family`; per-family
+  resource rules (`gameplay/resources.ts`) and kits (`content/kits.ts`); the HUD orb takes its label
+  and colour from the family; `Player.resource { kind, value, max }` with `essence` kept as an alias
+  so no necromancer call site moved. Server `discipline_index` range opened to 1–9 and realtime
+  validation extended to the new `sig` kinds.
+- **Hollow Knight** (`discipline_index` 8): Rage 0–100 built by damage taken, by Hollow Cut hits and
+  by perfect blocks; the seven rites from the brief; `gear_knight_sword` + `gear_knight_shield`
+  attached to the rig; Codex entries, a first-entry counsel tip, spell cards and README.
+- **Host authority kept:** Shield Bash, Corpse Vigil and Grave Brand ride `signature` as new sig
+  kinds so the corpse spend, the body struck and every duration are the host's. Hollow Cut and Grave
+  Slam are client-resolved like Ivory Cleave. New enemy statuses `stunT`/`rootT`, snapshot bits 17/18.
+- **Tests:** typecheck, 262 client (19 Knight, 18 framework regression pinning the necromancer's old
+  numbers), 41 server, 3 VFX, build — all green.
+- **Flagged, not faked:** Shield Bash does not stagger a boss (`BossBrain` has no interrupt hook);
+  leaderboard index 5 is ambiguous between legacy Necromancer and the Grave Warden's index. Both are
+  written up in `docs/agent-briefs/new-classes.md` §0b.
+- **Not browser-checked.** The kit is covered by unit tests only; it has never been played.

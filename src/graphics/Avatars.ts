@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import type { BossState } from '../gameplay/sim/types';
+import { assets } from './AssetCache';
 import { Creature } from './Creature';
-import type { CreatureSlug } from './modelPaths';
+import { PROP_URL, type CreatureSlug } from './modelPaths';
 import type { Effects } from './Effects';
 import { fx } from './fxTextures';
 
@@ -34,16 +35,25 @@ function skullStaff(accent: THREE.ColorRepresentation) {
 export class NecromancerAvatar {
   readonly c: Creature;
   readonly lantern: THREE.PointLight | null;
-  private staff: THREE.Group;
+  /** The necromancer's staff. Null for families that carry real weapon props. */
+  private staff: THREE.Group | null;
+  /** Spell origin when there is no staff (the Knight's sword). */
+  private tipObj: THREE.Object3D | null = null;
   private moving = false;
   castLock = 0;
 
   constructor(scene: THREE.Scene, accent: string, withLight: boolean, slug: CreatureSlug = 'necromancer') {
     // Generated heroes face +X; gameplay headings use +Z.
     this.c = new Creature(slug, { inPlace: true, modelYaw: -Math.PI / 2, emissive: accent, emissiveIntensity: 0.04, fallback: 'necromancer' });
-    this.staff = skullStaff(accent);
-    // Held upright: the grip sits in the hand, calibrated against the idle pose.
-    this.c.attach('R_Hand', this.staff, new THREE.Vector3(0, 1, 0.12));
+    if (slug === 'hero_hollow_knight') {
+      // The Knight carries authored props, not a code-built staff.
+      this.staff = null;
+      this.attachKnightGear();
+    } else {
+      this.staff = skullStaff(accent);
+      // Held upright: the grip sits in the hand, calibrated against the idle pose.
+      this.c.attach('R_Hand', this.staff, new THREE.Vector3(0, 1, 0.12));
+    }
     scene.add(this.c.root);
     this.lantern = withLight ? new THREE.PointLight(accent, 18, 10, 1.4) : null;
     if (this.lantern) {
@@ -52,10 +62,32 @@ export class NecromancerAvatar {
     }
   }
 
+  /**
+   * Hollow Knight: sword in the right hand, shield on the left. The heroes are
+   * authored T-posed with empty hands, so each prop is attached to its bone with
+   * an aim direction and Creature.attach calibrates the grip against the idle
+   * pose (the same path as the necromancer staff). Heights are world units.
+   */
+  private attachKnightGear() {
+    const gear: { bone: string; id: string; height: number; dir: THREE.Vector3; tip?: boolean }[] = [
+      { bone: 'R_Hand', id: 'gear_knight_sword', height: 1.05, dir: new THREE.Vector3(0, 1, 0.1), tip: true },
+      { bone: 'L_Hand', id: 'gear_knight_shield', height: 0.62, dir: new THREE.Vector3(0, 0, 1) },
+    ];
+    for (const g of gear) {
+      void assets.model(PROP_URL(g.id), g.height).then((t) => {
+        if (!t) return;
+        const obj = t.scene.clone(true);
+        obj.scale.setScalar(t.scale);
+        this.c.attach(g.bone, obj, g.dir);
+        if (g.tip) this.tipObj = obj;
+      });
+    }
+  }
+
   /** World position of the staff tip (spell origin). */
   tip(out = new THREE.Vector3()): THREE.Vector3 {
-    const tip = this.staff.userData.tip as THREE.Object3D;
-    if (this.c.loaded) return tip.getWorldPosition(out);
+    const tip = (this.staff?.userData.tip as THREE.Object3D | undefined) ?? this.tipObj;
+    if (tip && this.c.loaded) return tip.getWorldPosition(out);
     return out.set(this.c.root.position.x, 1.6, this.c.root.position.z);
   }
 
@@ -74,7 +106,12 @@ export class NecromancerAvatar {
     this.c.update(dt);
   }
 
-  cast(kind: 'cast' | 'dig', speed = 2, facing?: number, durationSeconds?: number) {
+  /**
+   * Play a one-shot gesture. `attack` is the weapon swing every shipped hero rig
+   * carries but only the Hollow Knight's kit uses; the necromancer rites all
+   * gesture with `cast` or `dig`.
+   */
+  cast(kind: 'cast' | 'dig' | 'attack', speed = 2, facing?: number, durationSeconds?: number) {
     if (facing !== undefined) {
       this.c.root.rotation.y = facing;
       this.c.root.updateMatrixWorld(true);

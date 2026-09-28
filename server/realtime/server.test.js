@@ -100,6 +100,29 @@ test('gather names a node id and clamps the successes it reports', () => {
   assert.equal(validIntent({ t: 'gather', nodeId: 7, successes: 1 }), null);
 });
 
+test('Hollow Knight signature kinds pass validation and stay clamped', () => {
+  for (const sig of ['bash', 'vigil', 'brand']) {
+    const ok = validIntent({ t: 'signature', by: 'k', sig, x: 3, z: -4, dx: 1, dz: 0, sp: 40 });
+    assert.equal(ok.sig, sig, `${sig} should be accepted`);
+    assert.equal(ok.sp, 40);
+  }
+  // Spell power and aim are clamped exactly as for the necromancer rites, and
+  // the client cannot smuggle a stun duration or a corpse id through.
+  assert.equal(validIntent({ t: 'signature', sig: 'bash', x: 0, z: 0, dx: 1e9, dz: 0, sp: 1e9 }).sp, 1e5);
+  assert.equal(validIntent({ t: 'signature', sig: 'bash', x: 0, z: 0, dx: 1e9, dz: 0, sp: 1 }).dx, 1e3);
+  assert.equal(validIntent({ t: 'signature', sig: 'vigil', x: 1e9, z: 0, dx: 0, dz: 0, sp: 1 }), null, 'off-world');
+  assert.equal(validIntent({ t: 'signature', sig: 'brand', x: 0, z: 0, dx: 0, dz: 0, sp: -5 }).sp, 0);
+  // validIntent is a shallow sanitised copy, so unknown keys survive it (true of
+  // every intent type, bounded by LIMITS.intentBytes). What protects the Knight
+  // is that WorldSim re-derives the body struck, the corpse spent and every
+  // duration from its own state and never reads a client-supplied one — so a
+  // smuggled field is inert rather than stripped. Worth hardening to a
+  // whitelist one day; asserting the real invariant here rather than a false one.
+  const smuggled = validIntent({ t: 'signature', sig: 'bash', x: 0, z: 0, dx: 0, dz: 0, sp: 1, stunS: 99 });
+  assert.equal(smuggled.sig, 'bash');
+  assert.equal(smuggled.sp, 1, 'only the fields the host reads are clamped');
+});
+
 test('spell variety: new signature kinds pass, and withered / cap / dur are clamped', () => {
   for (const sig of ['offering', 'rally', 'seed']) assert.equal(validIntent({ t: 'signature', sig, x: 1, z: 2, dx: 0, dz: 0, sp: 10 }).sig, sig);
   const hit = validIntent({ t: 'hit', ids: [1], dmg: 10, withered: 9, witheredCap: 99 });

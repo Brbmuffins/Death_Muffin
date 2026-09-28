@@ -3,7 +3,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import type { GameScene } from './SceneManager';
 import { getRuntime, type RuntimeView } from '../app/GameRuntime';
 import { Scope } from '../app/Scope';
-import { ABILITIES, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
+import { ABILITIES, BULWARK, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
 import { kitFor, type Kit } from '../content/kits';
 import { assignRite, loadRites, loadSeen, saveRites, saveSeen, unseenRites } from '../gameplay/loadout';
 import { devAccess, devPreference, isDevAccount, riteLevel, setDevPreference } from '../gameplay/devAccess';
@@ -460,6 +460,8 @@ export class WorldScene implements GameScene, RuntimeView {
     this.dataReady = Promise.all([inventoryReady, this.progression.connect()]);
     this.onboarding.show('welcome', 900);
     this.onboarding.show('move', 1600);
+    // First time in the world as a Knight: Rage works nothing like essence.
+    if (this.discipline.family === 'knight') this.onboarding.show('knight_rage', 2600);
     if (this.character.level >= SIGNATURE_LEVEL) this.onboarding.show('signature', 4000);
     if (this.grimoireUnlocked()) this.onboarding.show('grimoire', 4500);
     this.ready = true;
@@ -1944,7 +1946,9 @@ export class WorldScene implements GameScene, RuntimeView {
     const myThralls = [...this.thrallsMap().values()].filter((t) => t.owner === this.selfId).length;
     const ward = this.discipline.mods.wardPerThrall * myThralls;
     const now = this.now;
-    const taken = this.player.takeDamage(raw, ward, now);
+    // The blow's origin lets Bulwark decide whether it covered this one.
+    const taken = this.player.takeDamage(raw, ward, now, { x, z });
+    if (this.player.lastBlock !== 'none') this.onBulwarkBlock(raw, x, z);
     if (taken >= 1) this.gathering.stop('hurt');
     if (this.player.hp < this.player.stats.maxHp * 0.5) this.onboarding.show('hurt');
     this.cancelRecall();
@@ -1963,6 +1967,28 @@ export class WorldScene implements GameScene, RuntimeView {
       this.effects.emit({ x: this.player.x, y: 1.8, z: this.player.z, count: 12, color: SPELL_FX.affix.bell, spread: 0.3, speed: 1.2, up: 0.4, life: 0.5, size: 0.2 });
     }
     if (!this.player.alive) this.onDeath();
+  }
+
+  /**
+   * Bulwark answered a blow. A perfect block (inside the opening window) reflects
+   * half of the raw damage at whatever struck — the Rage is paid in takeDamage.
+   */
+  private onBulwarkBlock(raw: number, x: number, z: number) {
+    const perfect = this.player.lastBlock === 'perfect';
+    this.floating.spawn(this.player.x, 2.5, this.player.z, perfect ? 'Perfect block' : 'Blocked', 'info');
+    this.effects.decal({ tex: fx.ring(), color: SPELL_FX.knight.steel, x: this.player.x, z: this.player.z, r: perfect ? 1.5 : 1.1, duration: 0.3, opacity: perfect ? 1 : 0.6, growFrom: 0.5 });
+    if (!perfect) return;
+    this.effects.lightFlash(this.player.x, 1.2, this.player.z, SPELL_FX.knight.pale, 16, 0.2);
+    audio.play('shard', this.player.x, this.player.z, 1.4);
+    // Reflect at the nearest body to the blow's origin; a cone or toll with no
+    // single owner simply reflects nothing.
+    let best: { id: number; d: number } | null = null;
+    for (const e of this.enemiesMap().values()) {
+      if (e.state === 'dead') continue;
+      const d = Math.hypot(e.x - x, e.z - z);
+      if (d <= 1.5 + e.radius && (!best || d < best.d)) best = { id: e.id, d };
+    }
+    if (best) this.sendIntent({ t: 'hit', by: this.selfId, ids: [best.id], dmg: raw * BULWARK.reflect });
   }
 
   private onDeath() {

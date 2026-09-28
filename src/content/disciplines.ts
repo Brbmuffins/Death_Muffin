@@ -5,7 +5,7 @@
  * disciplines in a client content manifest"). Index 0 (legacy Engineer, no
  * model) plays as a Gravecaller.
  */
-export type DisciplineId = 'ossuary' | 'gravecaller' | 'mourner' | 'rotweaver';
+export type DisciplineId = 'ossuary' | 'gravecaller' | 'mourner' | 'rotweaver' | 'hollow_knight';
 
 /**
  * Which kit a discipline plays. The four necromantic disciplines share the
@@ -53,7 +53,7 @@ export interface Discipline {
   color: string;
   portrait: string;
   /** Generated discipline hero (graphics/modelPaths CREATURE_MODELS); falls back to the base necromancer. */
-  modelSlug: 'hero_ossuary' | 'hero_gravecaller' | 'hero_mourner' | 'hero_rotweaver';
+  modelSlug: 'hero_ossuary' | 'hero_gravecaller' | 'hero_mourner' | 'hero_rotweaver' | 'hero_hollow_knight';
   mods: DisciplineMods;
 }
 
@@ -139,9 +139,31 @@ export const DISCIPLINES: Record<DisciplineId, Discipline> = {
     modelSlug: 'hero_rotweaver',
     mods: { ...BASE, miasmaRadiusMult: 1.3, witheredMaxStacks: 8, miasmaBurstsCorpses: true },
   },
+  /**
+   * Release 0.3. Not a necromancer: family 'knight' brings its own kit
+   * (content/kits.ts) and resource (Rage, gameplay/resources.ts). The
+   * necromancer-only `mods` stay at BASE — the Knight raises no thralls, and its
+   * kit never offers the rites that would read them.
+   */
+  hollow_knight: {
+    classIndex: 8,
+    id: 'hollow_knight',
+    family: 'knight',
+    name: 'Hollow Knight',
+    epithet: 'Oathbound of the Covenant',
+    description: 'An undead knight still keeping its oath. Builds Rage by taking and dealing punishment, then spends it leaping into the dead.',
+    passive: {
+      name: 'Oathbound',
+      text: 'Rage instead of Grave Essence: built by damage taken, by every body Hollow Cut catches, and fastest of all by a perfect block. It drains once you leave the fight.',
+    },
+    color: '#b8c0cc',
+    portrait: 'art/portraits/hollow_knight.webp',
+    modelSlug: 'hero_hollow_knight',
+    mods: { ...BASE },
+  },
 };
 
-const BY_INDEX: Record<number, DisciplineId> = { 0: 'gravecaller', 1: 'ossuary', 2: 'gravecaller', 3: 'mourner', 4: 'rotweaver' };
+const BY_INDEX: Record<number, DisciplineId> = { 0: 'gravecaller', 1: 'ossuary', 2: 'gravecaller', 3: 'mourner', 4: 'rotweaver', 8: 'hollow_knight' };
 
 export function disciplineFor(classIndex: number): Discipline {
   return DISCIPLINES[BY_INDEX[classIndex] ?? 'gravecaller'];
@@ -152,4 +174,5 @@ export const PLAYABLE_DISCIPLINES: Discipline[] = [
   DISCIPLINES.gravecaller,
   DISCIPLINES.mourner,
   DISCIPLINES.rotweaver,
+  DISCIPLINES.hollow_knight,
 ];

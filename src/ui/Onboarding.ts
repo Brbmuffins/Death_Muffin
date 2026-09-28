@@ -11,6 +11,7 @@ export type TipId =
   | 'minimap'
   | 'auto_combat'
   | 'change_class'
+  | 'knight_rage'
   | 'welcome'
   | 'move'
   | 'exhume'
@@ -78,6 +79,10 @@ export const TIPS: Record<TipId, Tip> = {
   auto_combat: {
     title: 'Settle into the fight',
     body: 'On Easy, auto combat uses nearby targets and basic rites while you stand still. Click to move whenever you like; your hero stays where you choose. Toggle it with <kbd>G</kbd> or the Auto button. Hold <kbd>1</kbd>–<kbd>4</kbd> to repeat a rite at your cursor. Signature rites remain yours to cast.',
+  },
+  knight_rage: {
+    title: 'Rage, not essence',
+    body: 'You are the <b>Hollow Knight</b>: no thralls, no Grave Essence. <b>Rage</b> builds when you are hit, when <kbd>LMB</kbd> Hollow Cut catches a body, and fastest of all from a perfect block — hold <kbd>3</kbd> Bulwark <b>facing</b> the blow. Spend it on <kbd>2</kbd> Grave Slam. <kbd>4</kbd> Corpse Vigil is your only heal, so keep a body spare.',
   },
   change_class: {
     title: 'A new discipline',

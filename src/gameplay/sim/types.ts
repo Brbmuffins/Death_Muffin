@@ -58,6 +58,10 @@ export interface Enemy {
   hexT?: number;
   /** Silenced by a Mourner's Dirge: casters can't start a spell. */
   silenceT?: number;
+  /** Stunned by a Hollow Knight's Shield Bash: cannot act or move. */
+  stunT?: number;
+  /** Rooted by a Hollow Knight's Grave Brand: cannot move, can still swing. */
+  rootT?: number;
   /** Incensed by a Censer Bearer's aura: faster feet and faster blows. */
   incenseT?: number;
   /** Host-only: a Censer Bearer's next aura pulse. */
@@ -259,7 +263,7 @@ export type Intent =
   | {
       t: 'signature';
       by: string;
-      sig: 'wall' | 'rend' | 'dirge' | 'bloom' | 'mantle' | 'offering' | 'rally' | 'seed';
+      sig: 'wall' | 'rend' | 'dirge' | 'bloom' | 'mantle' | 'offering' | 'rally' | 'seed' | 'bash' | 'vigil' | 'brand';
       x: number;
       z: number;
       dx: number;
@@ -338,6 +342,12 @@ export type SimEvent =
   | { t: 'mantle'; by: string; x: number; z: number; r: number; corpses: number; tethers: [number, number][] }
   /** Grave Offering: the host consumed (ok) or found no corpse; the caster turns it into essence + health. */
   | { t: 'offering'; by: string; ok: boolean; x: number; z: number; corpseKind?: CorpseKind; elite?: boolean }
+  /** Hollow Knight — Shield Bash: the body the charge caught (none if it hit air). */
+  | { t: 'bash'; by: string; x: number; z: number; id: number | null }
+  /** Hollow Knight — Corpse Vigil: the body spent keeping vigil. */
+  | { t: 'vigil'; by: string; ok: boolean; x: number; z: number }
+  /** Hollow Knight — Grave Brand: `sprung` false when armed, true when it roots. */
+  | { t: 'brand'; by: string; ok: boolean; sprung: boolean; x: number; z: number }
   /** Rally the Dead: these thralls are rallied, focused on the enemy nearest (x, z). */
   | { t: 'rally'; by: string; x: number; z: number; ids: number[] }
   /** Carrion Seed planted / withered away / burst. */

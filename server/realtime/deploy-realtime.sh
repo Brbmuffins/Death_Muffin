@@ -91,7 +91,7 @@ const LIMITS = {
 
 const INTENT_TYPES = new Set(['hit', 'miasma', 'exhume', 'litany', 'summonBoss', 'recallThralls', 'detonate', 'signature', 'gather']);
 /** Host-shaped rites (discipline signatures + Bone Mantle); the host owns their shapes and clamps the aim around the caster. */
-const SIGNATURES = new Set(['wall', 'rend', 'dirge', 'bloom', 'mantle', 'offering', 'rally', 'seed']);
+const SIGNATURES = new Set(['wall', 'rend', 'dirge', 'bloom', 'mantle', 'offering', 'rally', 'seed', 'bash', 'vigil', 'brand']);
 const WORLD_BOUND = 400; // |x|,|z| sanity bound in world units
 
 if (DEV_TRUST_TOKENS && process.env.NODE_ENV === 'production') {
@@ -186,6 +186,10 @@ function validIntent(intent) {
       // Carrion Seed's Withered cap and Rally's duration (the host clamps both again).
       if ('cap' in out) out.cap = Math.min(12, Math.max(1, Math.floor(num(out.cap, 6))));
       if ('dur' in out) out.dur = Math.min(10, Math.max(0, num(out.dur, 6)));
+      // Hollow Knight: 'bash' carries only the charge direction (already clamped
+      // above), 'vigil' and 'brand' only the aim point. The host re-derives the
+      // body struck, the corpse spent and every duration, so there is nothing
+      // else here to trust.
       break;
     case 'gather':
       // Depletes a gathering node on the host (rewards come from the REST API, never from here).

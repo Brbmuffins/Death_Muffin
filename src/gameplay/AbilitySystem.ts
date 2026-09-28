@@ -19,6 +19,13 @@ import {
   SIGNATURE_LEVEL,
   SOUL_HARVEST,
   SPELL_FX,
+  HOLLOW_CUT,
+  SHIELD_BASH,
+  GRAVE_SLAM,
+  BULWARK,
+  CORPSE_VIGIL,
+  GRAVE_BRAND,
+  OATH_UNBROKEN,
   WAILING_SKULL,
   unlockLevel,
   type AbilityId,
@@ -101,6 +108,7 @@ const LN = SPELL_FX.lance;
 const VL = SPELL_FX.veil;
 const RD = SPELL_FX.rend;
 const BL = SPELL_FX.bloom;
+const KN = SPELL_FX.knight;
 
 type Vec3 = { x: number; y: number; z: number };
 
@@ -115,11 +123,14 @@ export class AbilitySystem {
   private nextShardAt = 0;
   private mantleFx: Handle | null = null;
   /** Veil Step in flight (lerped in update). */
-  private dashing: { fx: number; fz: number; tx: number; tz: number; start: number; dur: number } | null = null;
+  private dashing: { fx: number; fz: number; tx: number; tz: number; start: number; dur: number; onArrive?: () => void } | null = null;
   /** Carrion Seed buds shown on corpses (any caster's), by corpse id. */
   private seeds = new Map<number, Handle>();
   /** Carrion Seed Binbun cores, by corpse id. */
   private seedCores = new Map<number, BinbunHandle>();
+  /** Hollow Knight — Corpse Vigil regenerates until this time (scene ms). */
+  private vigilUntil = 0;
+  private lastVigilAt = 0;
 
   constructor(private ctx: AbilityContext) {}
 
@@ -135,7 +146,10 @@ export class AbilitySystem {
   }
 
   private get sp() {
-    return this.ctx.player.stats.spellPower;
+    const p = this.ctx.player;
+    // Oath Unbroken raises every blow for its window; 1 for every other family.
+    const oath = this.ctx.now() < p.unbreakableUntil ? OATH_UNBROKEN.damageMult : 1;
+    return p.stats.spellPower * oath;
   }
 
   ready(id: AbilityId, now: number) {
@@ -224,6 +238,27 @@ export class AbilitySystem {
         break;
       case 'carrion_seed':
         result = this.seed(target);
+        break;
+      case 'hollow_cut':
+        result = this.hollowCut(target);
+        break;
+      case 'shield_bash':
+        result = this.shieldBash(target);
+        break;
+      case 'grave_slam':
+        result = this.graveSlam(target);
+        break;
+      case 'bulwark':
+        result = this.bulwark(now);
+        break;
+      case 'corpse_vigil':
+        result = this.corpseVigil(target);
+        break;
+      case 'grave_brand':
+        result = this.graveBrand(target);
+        break;
+      case 'oath_unbroken':
+        result = this.oathUnbroken(now);
         break;
       case 'ossuary_wall':
       case 'command_rend':
@@ -758,7 +793,20 @@ export class AbilitySystem {
       const k = Math.min(1, (now - d.start) / d.dur);
       const e = 1 - (1 - k) * (1 - k);
       if (this.ctx.player.alive) this.ctx.player.teleport(d.fx + (d.tx - d.fx) * e, d.fz + (d.tz - d.fz) * e);
-      if (k >= 1) this.dashing = null;
+      if (k >= 1) {
+        this.dashing = null;
+        d.onArrive?.();
+      }
+    }
+    // Corpse Vigil: regenerate while the vigil holds. Uses the same frame clock
+    // as the dash above, so it ticks whether or not the Knight is moving.
+    if (now < this.vigilUntil) {
+      const { player: kp } = this.ctx;
+      const dt = Math.min(0.25, Math.max(0, (now - this.lastVigilAt) / 1000));
+      this.lastVigilAt = now;
+      if (kp.alive && dt > 0) kp.heal(kp.stats.maxHp * CORPSE_VIGIL.regenFracPerS * dt);
+    } else {
+      this.lastVigilAt = now;
     }
     if (now >= this.mantleUntil) return;
     const { player: p, effects } = this.ctx;
@@ -1131,6 +1179,227 @@ export class AbilitySystem {
   }
 
   /** Discipline signature rites: aim + spell power to the host, a cast flourish here. */
+  // ── Hollow Knight ──────────────────────────────────────────────────────────
+  // Rage is built by Hollow Cut hits (here), by damage taken and by perfect
+  // blocks (Player.takeDamage). Corpse rites and the stun go through the host.
+
+  /** Hollow Cut: a short sword arc, client-resolved like Ivory Cleave, paying Rage per body cut. */
+  private hollowCut(t: CastTarget): CastResult {
+    const { player: p, effects, avatar } = this.ctx;
+    const def = ABILITIES.hollow_cut;
+    let dx = t.x - p.x;
+    let dz = t.z - p.z;
+    const l = Math.hypot(dx, dz) || 1;
+    dx /= l;
+    dz /= l;
+    p.face(p.x + dx, p.z + dz);
+    avatar.cast('attack', 3, p.facing, CAST_FLOW.hollow_cut.gestureSeconds);
+    const cosMax = Math.cos((HOLLOW_CUT.halfAngleDeg * Math.PI) / 180);
+    const dmg = this.sp * def.power;
+    const inArc = (x: number, z: number, r: number) => {
+      const rx = x - p.x;
+      const rz = z - p.z;
+      const d = Math.hypot(rx, rz);
+      if (d > HOLLOW_CUT.reach + r) return false;
+      return d < r || (rx * dx + rz * dz) / d >= cosMax;
+    };
+    const ids: number[] = [];
+    for (const e of this.ctx.enemies().values()) {
+      if (e.state === 'dead' || !inArc(e.x, e.z, e.radius)) continue;
+      ids.push(e.id);
+      if (ids.length <= 10) {
+        this.ctx.number(e.x, e.z, dmg, 'hit');
+        effects.emit({ x: e.x, y: 1, z: e.z, count: 4, color: KN.pale, spread: 0.2, speed: 2.2, up: 1, life: 0.3, size: 0.1, gravity: 8 });
+      }
+      if (ids.length >= 64) break;
+    }
+    if (ids.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids, dmg });
+    const b = this.ctx.boss();
+    if (b.active && inArc(b.x, b.z, BOSS_RADIUS)) {
+      this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, boss: true });
+      this.ctx.number(b.x, b.z, dmg, 'hit');
+      p.addResource(HOLLOW_CUT.rage);
+    }
+    // Rage per body cut — the reason to open on a clump.
+    p.addResource(HOLLOW_CUT.rage * ids.length);
+    effects.decal({ tex: fxImage('crescent'), color: KN.steel, x: p.x + dx * 1.2, z: p.z + dz * 1.2, r: HOLLOW_CUT.reach, rot: Math.atan2(dx, dz), duration: 0.32, opacity: 0.95, growFrom: 0.7, fadeOut: 0.22 });
+    effects.lightFlash(p.x + dx * 1.2, 1, p.z + dz * 1.2, KN.pale, 10, 0.16);
+    audio.play('spear', p.x, p.z, 1.45);
+    if (ids.length) audio.play('boneHit', p.x + dx * 1.6, p.z + dz * 1.6);
+    return 'ok';
+  }
+
+  /** Shield Bash: a short client dash; the host owns the strike and the stun (sig 'bash'). */
+  private shieldBash(t: CastTarget): CastResult {
+    const { player: p, effects, avatar } = this.ctx;
+    let dx = t.x - p.x;
+    let dz = t.z - p.z;
+    const l = Math.hypot(dx, dz);
+    if (l < 0.3) return 'no_target';
+    dx /= l;
+    dz /= l;
+    const goal = { x: p.x + dx * SHIELD_BASH.dashM, z: p.z + dz * SHIELD_BASH.dashM };
+    const to = this.ctx.dash ? this.ctx.dash(goal.x, goal.z) : goal;
+    p.face(p.x + dx, p.z + dz);
+    avatar.cast('attack', 3.2, p.facing, CAST_FLOW.shield_bash.gestureSeconds);
+    p.stop();
+    const from = { x: p.x, z: p.z };
+    this.dashing = { fx: from.x, fz: from.z, tx: to.x, tz: to.z, start: this.ctx.now(), dur: SHIELD_BASH.durationS * 1000 };
+    // The host finds the first body along the charge, damages and stuns it.
+    this.ctx.send({ t: 'signature', by: this.ctx.selfId, sig: 'bash', x: from.x, z: from.z, dx, dz, sp: this.sp });
+    const mid = { x: (from.x + to.x) / 2, z: (from.z + to.z) / 2 };
+    effects.decal({ tex: fx.glow(), color: KN.steel, x: mid.x, z: mid.z, r: 1.3, duration: 0.3, opacity: 0.7, fadeOut: 0.2 });
+    effects.emitSmoke({ x: from.x, y: 0.4, z: from.z, count: 4, color: KN.dust, spread: 0.4, speed: 0.6, up: 0.3, life: 0.5, size: 0.8 });
+    audio.play('bloodStep', from.x, from.z, 1.2);
+    this.ctx.shake(0.04);
+    return 'ok';
+  }
+
+  /** Grave Slam: a nav-valid leap that resolves its slam on landing (client-resolved damage). */
+  private graveSlam(t: CastTarget): CastResult {
+    const { player: p, effects, avatar } = this.ctx;
+    const def = ABILITIES.grave_slam;
+    let dx = t.x - p.x;
+    let dz = t.z - p.z;
+    const l = Math.hypot(dx, dz);
+    if (l < 0.5) return 'no_target';
+    const reach = Math.min(GRAVE_SLAM.leapM, l);
+    dx /= l;
+    dz /= l;
+    const goal = { x: p.x + dx * reach, z: p.z + dz * reach };
+    const to = this.ctx.dash ? this.ctx.dash(goal.x, goal.z) : goal;
+    if (Math.hypot(to.x - p.x, to.z - p.z) < 0.5) return 'no_target';
+    p.face(to.x, to.z);
+    avatar.cast('attack', 2.6, p.facing, CAST_FLOW.grave_slam.gestureSeconds);
+    p.stop();
+    const from = { x: p.x, z: p.z };
+    const dmg = this.sp * def.power;
+    this.dashing = {
+      fx: from.x, fz: from.z, tx: to.x, tz: to.z,
+      start: this.ctx.now(), dur: GRAVE_SLAM.durationS * 1000,
+      onArrive: () => this.slamLanding(to, dmg),
+    };
+    effects.emitSmoke({ x: from.x, y: 0.4, z: from.z, count: 5, color: KN.dust, spread: 0.5, speed: 0.8, up: 0.6, life: 0.5, size: 0.9 });
+    audio.play('bloodStep', from.x, from.z, 0.9);
+    return 'ok';
+  }
+
+  /** The slam itself: everything within GRAVE_SLAM.slamR of where the Knight came down. */
+  private slamLanding(at: { x: number; z: number }, dmg: number) {
+    const { effects } = this.ctx;
+    const r = GRAVE_SLAM.slamR;
+    const ids: number[] = [];
+    for (const e of this.ctx.enemies().values()) {
+      if (e.state === 'dead') continue;
+      if (Math.hypot(e.x - at.x, e.z - at.z) > r + e.radius) continue;
+      ids.push(e.id);
+      if (ids.length <= 10) this.ctx.number(e.x, e.z, dmg, 'hit');
+      if (ids.length >= 64) break;
+    }
+    if (ids.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids, dmg });
+    const b = this.ctx.boss();
+    if (b.active && Math.hypot(b.x - at.x, b.z - at.z) <= r + BOSS_RADIUS) {
+      this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, boss: true });
+      this.ctx.number(b.x, b.z, dmg, 'hit');
+    }
+    effects.decal({ tex: fx.ring(), color: KN.steel, x: at.x, z: at.z, r, duration: 0.5, opacity: 1, growFrom: 0.2, fadeOut: 0.3 });
+    effects.decal({ tex: fx.glow(), color: KN.oath, x: at.x, z: at.z, r: r * 0.7, duration: 0.4, opacity: 0.55, fadeOut: 0.3 });
+    effects.emit({ x: at.x, y: 0.4, z: at.z, count: 20, color: KN.dust, spread: 0.6, speed: 3.4, up: 1.6, life: 0.5, size: 0.18, gravity: 10 });
+    effects.lightFlash(at.x, 1, at.z, KN.pale, 18, 0.22);
+    this.bb('rend_impact', at.x, at.z);
+    audio.play('boneHit', at.x, at.z, 0.8);
+    this.ctx.shake(0.12);
+  }
+
+  /** Bulwark: raise the shield. Mitigation and the perfect-block window live on Player. */
+  private bulwark(now: number): CastResult {
+    const { player: p, effects, avatar } = this.ctx;
+    avatar.cast('cast', 1.6, p.facing, CAST_FLOW.bulwark.gestureSeconds);
+    p.bulwarkUntil = now + BULWARK.holdS * 1000;
+    p.bulwarkPerfectUntil = now + BULWARK.perfectWindowS * 1000;
+    const follow = () => ({ x: p.x, z: p.z });
+    effects.decal({ tex: fx.ring(), color: KN.steel, x: p.x, z: p.z, r: 1.15, duration: BULWARK.holdS, opacity: 0.8, growFrom: 0.4, follow });
+    effects.emit({ x: p.x, y: 1.1, z: p.z, count: 12, color: KN.pale, spread: 0.4, speed: 1.2, up: 0.8, life: 0.4, size: 0.16 });
+    audio.play('shard', p.x, p.z, 0.8);
+    return 'ok';
+  }
+
+  /** Corpse Vigil: the host spends the body (sig 'vigil'); the regen lands in onVigil. */
+  private corpseVigil(t: CastTarget): CastResult {
+    const { player: p, avatar } = this.ctx;
+    const def = ABILITIES.corpse_vigil;
+    const c = this.pickCorpse(t, def.radius, def.range);
+    if (!c || (p.area && c.area !== p.area)) return 'no_corpse';
+    p.face(c.x, c.z);
+    avatar.cast('cast', 1.8, p.facing, CAST_FLOW.corpse_vigil.gestureSeconds);
+    this.ctx.send({ t: 'signature', by: this.ctx.selfId, sig: 'vigil', x: c.x, z: c.z, dx: 0, dz: 0, sp: this.sp });
+    return 'ok';
+  }
+
+  /** Grave Brand: the host spends the body and owns the trap (sig 'brand'). */
+  private graveBrand(t: CastTarget): CastResult {
+    const { player: p, avatar } = this.ctx;
+    const def = ABILITIES.grave_brand;
+    const c = this.pickCorpse(t, def.radius, def.range);
+    if (!c || (p.area && c.area !== p.area)) return 'no_corpse';
+    p.face(c.x, c.z);
+    avatar.cast('cast', 2.2, p.facing, CAST_FLOW.grave_brand.gestureSeconds);
+    this.ctx.send({ t: 'signature', by: this.ctx.selfId, sig: 'brand', x: c.x, z: c.z, dx: 0, dz: 0, sp: this.sp });
+    return 'ok';
+  }
+
+  /** Oath Unbroken: the death floor, the damage bonus and the Rage refill are all local. */
+  private oathUnbroken(now: number): CastResult {
+    const { player: p, effects, avatar } = this.ctx;
+    avatar.cast('cast', 2, p.facing, CAST_FLOW.oath_unbroken.gestureSeconds);
+    p.unbreakableUntil = now + OATH_UNBROKEN.durationS * 1000;
+    p.resource.value = p.resource.max;
+    const follow = () => ({ x: p.x, z: p.z });
+    effects.decal({ tex: fx.ring(), color: KN.oath, x: p.x, z: p.z, r: 1.6, duration: OATH_UNBROKEN.durationS, opacity: 0.75, growFrom: 0.3, follow, spin: 0.6 });
+    effects.decal({ tex: fx.glow(), color: KN.oath, x: p.x, z: p.z, r: 2.4, duration: OATH_UNBROKEN.durationS, opacity: 0.3, growFrom: 0.5, follow });
+    effects.emit({ x: p.x, y: 1.3, z: p.z, count: 24, color: KN.oath, spread: 0.5, speed: 2, up: 1.4, life: 0.7, size: 0.2 });
+    effects.lightFlash(p.x, 1.4, p.z, KN.oath, 22, 0.35);
+    audio.play('litany', p.x, p.z, 0.9);
+    this.ctx.shake(0.08);
+    return 'ok';
+  }
+
+  /**
+   * The host spent a body on Corpse Vigil. Only the caster regenerates; everyone
+   * sees the vigil light.
+   */
+  onVigil(ev: { x: number; z: number; ok?: boolean }, mine: boolean, follow: () => { x: number; z: number } | null) {
+    const { effects, player: p } = this.ctx;
+    if (ev.ok === false) return;
+    effects.decal({ tex: fx.ring(), color: KN.pale, x: ev.x, z: ev.z, r: 1.2, duration: 0.6, opacity: 0.9, growFrom: 0.3 });
+    effects.emit({ x: ev.x, y: 0.6, z: ev.z, count: 14, color: KN.pale, spread: 0.3, speed: 1, up: 2, life: 0.7, size: 0.16 });
+    audio.play('exhume', ev.x, ev.z, 0.9);
+    if (!mine || !p.alive) return;
+    this.vigilUntil = this.ctx.now() + CORPSE_VIGIL.durationS * 1000;
+    const f = follow();
+    if (f) {
+      effects.decal({
+        tex: fx.glow(), color: KN.pale, x: f.x, z: f.z, r: 1.4,
+        duration: CORPSE_VIGIL.durationS, opacity: 0.4, growFrom: 0.5,
+        follow: () => follow() ?? { x: f.x, z: f.z },
+      });
+    }
+  }
+
+  /** The host armed or sprung a Grave Brand. */
+  onBrand(ev: { x: number; z: number; sprung?: boolean }) {
+    const { effects } = this.ctx;
+    if (ev.sprung) {
+      effects.decal({ tex: fx.ring(), color: KN.oath, x: ev.x, z: ev.z, r: GRAVE_BRAND.triggerR, duration: 0.45, opacity: 1, growFrom: 0.3 });
+      effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 16, color: KN.oath, spread: 0.4, speed: 2.4, up: 1, life: 0.5, size: 0.16, gravity: 8 });
+      audio.play('boneHit', ev.x, ev.z, 1.1);
+      return;
+    }
+    effects.decal({ tex: fxImage('graveOutline'), color: KN.oath, x: ev.x, z: ev.z, r: GRAVE_BRAND.triggerR, duration: GRAVE_BRAND.lifeS, opacity: 0.5, growFrom: 0.6, fadeOut: 0.5 });
+    effects.emit({ x: ev.x, y: 0.4, z: ev.z, count: 10, color: KN.oath, spread: 0.3, speed: 1, up: 0.6, life: 0.5, size: 0.14 });
+    audio.play('shard', ev.x, ev.z, 0.7);
+  }
+
   private signature(id: AbilityId, t: CastTarget): CastResult {
     const { player: p, avatar, effects } = this.ctx;
     const sig = SIGNATURE_KIND[id]!;

@@ -14,8 +14,8 @@ const affixFrom = (code: number | undefined): EliteAffix | undefined => (code ? 
 export function makeSnapshot(sim: WorldSim, full: boolean): WorldSnapshot {
   const enemies: EnemyRow[] = [];
   for (const e of sim.enemies.values()) {
-    // Bit 3 chill, 12 bleed, 13 sanctified, 14 bone hex, 15 silenced, 16 incensed (older clients ignore unknown bits).
-    const flags = (e.elite ? 1 : 0) | (e.moving ? 2 : 0) | (e.slowT > 0 ? 4 : 0) | ((e.chillT ?? 0) > 0 ? 8 : 0) | ((e.bleedT ?? 0) > 0 ? 4096 : 0) | ((e.sanctT ?? 0) > 0 ? 8192 : 0) | ((e.hexT ?? 0) > 0 ? 16384 : 0) | ((e.silenceT ?? 0) > 0 ? 32768 : 0) | ((e.incenseT ?? 0) > 0 ? 65536 : 0);
+    // Bit 3 chill, 12 bleed, 13 sanctified, 14 bone hex, 15 silenced, 16 incensed, 17 stunned, 18 rooted (older clients ignore unknown bits).
+    const flags = (e.elite ? 1 : 0) | (e.moving ? 2 : 0) | (e.slowT > 0 ? 4 : 0) | ((e.chillT ?? 0) > 0 ? 8 : 0) | ((e.bleedT ?? 0) > 0 ? 4096 : 0) | ((e.sanctT ?? 0) > 0 ? 8192 : 0) | ((e.hexT ?? 0) > 0 ? 16384 : 0) | ((e.silenceT ?? 0) > 0 ? 32768 : 0) | ((e.incenseT ?? 0) > 0 ? 65536 : 0) | ((e.stunT ?? 0) > 0 ? 131072 : 0) | ((e.rootT ?? 0) > 0 ? 262144 : 0);
     enemies.push([e.id, e.def, r2(e.x), r2(e.z), r2(e.facing), Math.round(e.hp), Math.round(e.maxHp), E_STATES.indexOf(e.state), flags | (e.fracture << 4) | (e.withered << 8), r2(e.stateT), r2(e.speed), r2(e.scale), e.area, affixCode(e.affix)]);
   }
   const thralls: ThrallRow[] = [];
@@ -132,6 +132,8 @@ export class WorldMirror {
       e.hexT = flags & 16384 ? 0.2 : 0;
       e.silenceT = flags & 32768 ? 0.2 : 0;
       e.incenseT = flags & 65536 ? 0.2 : 0;
+      e.stunT = flags & 131072 ? 0.2 : 0;
+      e.rootT = flags & 262144 ? 0.2 : 0;
       e.fracture = (flags >> 4) & 15;
       e.withered = (flags >> 8) & 15;
       e.speed = row[10];

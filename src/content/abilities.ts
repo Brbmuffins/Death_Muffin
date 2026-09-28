@@ -22,6 +22,14 @@ export type AbilityId =
   | 'veil_step'
   | 'rally_dead'
   | 'carrion_seed'
+  // Hollow Knight (Release 0.3, family 'knight'). Rage, not Grave Essence.
+  | 'hollow_cut'
+  | 'shield_bash'
+  | 'grave_slam'
+  | 'bulwark'
+  | 'corpse_vigil'
+  | 'grave_brand'
+  | 'oath_unbroken'
   // Discipline signature rites (level 10, key R / 6).
   | 'ossuary_wall'
   | 'command_rend'
@@ -292,6 +300,104 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     power: 1.6,
   },
   // --- Signature rites: one per discipline, unlocked at SIGNATURE_LEVEL (icons: gemini-jobs/icons-v4.json).
+  // ── Hollow Knight ──────────────────────────────────────────────────────────
+  // Starting numbers from docs/agent-briefs/new-classes.md §3. Where the brief
+  // left a value open (bash/slam power, most cooldowns) the number here is a
+  // first pass to be tuned with the balance harness, not a design decision.
+  hollow_cut: {
+    id: 'hollow_cut',
+    slot: 0,
+    name: 'Hollow Cut',
+    description: 'A short sword arc in front of you. Every enemy it cuts returns 4 Rage.',
+    icon: 'art/abilities/knight-hollow-cut.png',
+    targeting: 'direction',
+    cooldownMs: 550,
+    essenceCost: 0,
+    range: 2.4,
+    radius: 2.4,
+    power: 1.1,
+  },
+  shield_bash: {
+    id: 'shield_bash',
+    slot: 1,
+    name: 'Shield Bash',
+    description: 'Dash 3m behind your shield. The first enemy you strike is stunned for 0.8s (0.2s against a boss).',
+    icon: 'art/abilities/knight-shield-bash.png',
+    targeting: 'direction',
+    cooldownMs: 6000,
+    essenceCost: 0,
+    range: 3,
+    radius: 1,
+    power: 0.9,
+  },
+  grave_slam: {
+    id: 'grave_slam',
+    slot: 2,
+    name: 'Grave Slam',
+    description: 'Leap up to 8m to the cursor and slam down, striking everything within 3m.',
+    icon: 'art/abilities/knight-grave-slam.png',
+    targeting: 'ground',
+    cooldownMs: 9000,
+    essenceCost: 30,
+    range: 8,
+    radius: 3,
+    power: 2.2,
+  },
+  bulwark: {
+    id: 'bulwark',
+    slot: 3,
+    unlockLevel: 3,
+    name: 'Bulwark',
+    description: 'Raise the shield for 2s: 60% less damage from the front. A blow in the first 0.25s is a perfect block — half of it is reflected and you gain 15 Rage.',
+    icon: 'art/abilities/knight-bulwark.png',
+    targeting: 'self',
+    cooldownMs: 12000,
+    essenceCost: 0,
+    range: 0,
+    radius: 0,
+    power: 0,
+  },
+  corpse_vigil: {
+    id: 'corpse_vigil',
+    slot: 4,
+    unlockLevel: 5,
+    name: 'Corpse Vigil',
+    description: 'Stand over a corpse and keep vigil: it is consumed and you regain 3% of your health each second for 4s.',
+    icon: 'art/abilities/knight-corpse-vigil.png',
+    targeting: 'corpse',
+    cooldownMs: 15000,
+    essenceCost: 0,
+    range: 1.6,
+    radius: 1.2,
+    power: 0,
+  },
+  grave_brand: {
+    id: 'grave_brand',
+    slot: 5,
+    name: 'Grave Brand',
+    description: 'Brand a corpse. The next enemy to come within 1.5m of it is rooted for 1.5s and the corpse is spent.',
+    icon: 'art/abilities/knight-grave-brand.png',
+    targeting: 'corpse',
+    cooldownMs: 8000,
+    essenceCost: 0,
+    range: 6,
+    radius: 1.2,
+    power: 0,
+  },
+  oath_unbroken: {
+    id: 'oath_unbroken',
+    slot: 6,
+    unlockLevel: 10,
+    name: 'Oath Unbroken',
+    description: 'For 6s you cannot fall below 1 health, you deal 30% more damage, and your Rage refills.',
+    icon: 'art/abilities/knight-oath-unbroken.png',
+    targeting: 'self',
+    cooldownMs: 60000,
+    essenceCost: 0,
+    range: 0,
+    radius: 0,
+    power: 0,
+  },
   ossuary_wall: {
     id: 'ossuary_wall',
     slot: 6,
@@ -368,7 +474,7 @@ export const SIGNATURE_BY_DISCIPLINE = {
 
 export type SignatureKind = 'wall' | 'rend' | 'dirge' | 'bloom';
 /** Host-shaped rites carried by the `signature` intent: the four signatures plus Bone Mantle. */
-export type RiteKind = SignatureKind | 'mantle' | 'offering' | 'rally' | 'seed';
+export type RiteKind = SignatureKind | 'mantle' | 'offering' | 'rally' | 'seed' | 'bash' | 'vigil' | 'brand';
 export const SIGNATURE_KIND: Partial<Record<AbilityId, SignatureKind>> = {
   ossuary_wall: 'wall',
   command_rend: 'rend',
@@ -432,6 +538,13 @@ export const RITE_ROLES: Partial<Record<AbilityId, RiteRole[]>> = {
   veil_step: ['survival'],
   rally_dead: ['legion'],
   carrion_seed: ['control', 'corpse'],
+  hollow_cut: ['damage'],
+  shield_bash: ['control', 'damage'],
+  grave_slam: ['damage', 'control'],
+  bulwark: ['survival'],
+  corpse_vigil: ['survival', 'corpse'],
+  grave_brand: ['control', 'corpse'],
+  oath_unbroken: ['survival', 'damage'],
 };
 export const rolesOf = (id: AbilityId): RiteRole[] => RITE_ROLES[id] ?? [];
 /** Key caps for hotbar slots 1–6 (slot 5 is the right-click action, 6 the signature). */
@@ -506,6 +619,16 @@ export const NEEDLE_ESSENCE = 6;
  * purple). Violet is reserved for the signature ultimate; the rest spread
  * across bone, marrow, spirit and rot so a crowded fight stays legible.
  */
+/** Hollow Knight (docs/agent-briefs/new-classes.md §3). Rage is built, not regenerated. */
+export const KNIGHT_RAGE = { max: 100, perHpPercentLost: 1, perCutHit: 4, perPerfectBlock: 15, decayPerS: 4, decayAfterS: 4 };
+export const HOLLOW_CUT = { halfAngleDeg: 55, reach: 2.4, rage: 4 };
+export const SHIELD_BASH = { dashM: 3, durationS: 0.14, stunS: 0.8, bossStunS: 0.2 };
+export const GRAVE_SLAM = { leapM: 8, durationS: 0.28, slamR: 3 };
+export const BULWARK = { holdS: 2, frontHalfDeg: 60, damageCut: 0.6, perfectWindowS: 0.25, reflect: 0.5 };
+export const CORPSE_VIGIL = { regenFracPerS: 0.03, durationS: 4 };
+export const GRAVE_BRAND = { triggerR: 1.5, rootS: 1.5, lifeS: 30 };
+export const OATH_UNBROKEN = { durationS: 6, damageMult: 1.3 };
+
 export const SPELL_FX = {
   needle: { core: 0xf3e8d2, trail: 0xe9c98f, impact: 0xfff1d6, dust: 0xd8cfbd },
   spear: { bone: 0xe0d6c2, crack: 0xb4502e, dust: 0x4a3a30, marrow: 0x8a2c3c },
@@ -523,6 +646,8 @@ export const SPELL_FX = {
   /** Grave Surge — enemy bell/crypt bronze. */
   surge: { crack: 0xc8923a, glow: 0xd9a441 },
   boss: { bronze: 0xd9a441, shard: 0xc8a06a, spirit: 0xb9c8ff },
+  /** Hollow Knight: cold steel + oath crimson. Never enemy bronze. */
+  knight: { steel: 0xb8c0cc, oath: 0x8a1f2c, pale: 0xe6ebf2, dust: 0x4a4740 },
   /** Signature rites: Ossuary Wall = bone ivory/amber, Rend = spirit jade, Dirge = Mourner cold blue, Bloom = rot chartreuse. */
   wall: { bone: 0xe8dcc0, amber: 0xd9a66b, dust: 0x6a5a48 },
   rend: { jade: 0x6fe3c8, pale: 0xc8fff0, bone: 0xe0d6c2 },

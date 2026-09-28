@@ -29,6 +29,8 @@ import {
   CARRION_SEED,
   GRAVE_FROST,
   GRAVE_OFFERING,
+  GRAVE_BRAND,
+  SHIELD_BASH,
   RALLY,
   WITHERED,
 } from '../../content/abilities';
@@ -141,6 +143,8 @@ export class WorldSim {
   private waveCounts = new Map<AreaId, number>();
   /** Ossuary Walls standing right now (segments enemies can't cross). */
   readonly walls = new Map<number, { id: number; owner: string; x0: number; z0: number; x1: number; z1: number; until: number }>();
+  /** Hollow Knight — armed Grave Brands: the first enemy within range is rooted. */
+  readonly brands = new Map<number, { owner: string; x: number; z: number; area: AreaId; until: number }>();
   /** Surge origins in front of crypt props (from the layout); breaches are the fallback. */
   private crypts: { area: AreaId; x: number; z: number }[] = [];
   private dotAccum = new Map<number, number>();
@@ -612,6 +616,68 @@ export class WorldSim {
         this.emit({ t: 'offering', by: g.by, ok: true, x: c.x, z: c.z, corpseKind: c.kind, elite: c.elite });
         return;
       }
+      case 'bash': {
+        // Shield Bash: the host owns the strike and the stun. Walk the charge
+        // line from the caster and take the first living body it meets.
+        let dx = g.dx;
+        let dz = g.dz;
+        const dl = Math.hypot(dx, dz);
+        if (!Number.isFinite(dl) || dl < 1e-6) [dx, dz] = [0, -1];
+        else [dx, dz] = [dx / dl, dz / dl];
+        const ox = caster?.x ?? g.x;
+        const oz = caster?.z ?? g.z;
+        let first: Enemy | null = null;
+        let bestT = Infinity;
+        for (const e of this.enemies.values()) {
+          if (e.state === 'dead' || e.state === 'rising') continue;
+          if (caster?.area && e.area !== caster.area) continue;
+          const rx = e.x - ox;
+          const rz = e.z - oz;
+          const along = rx * dx + rz * dz;
+          if (along < -e.radius || along > SHIELD_BASH.dashM + e.radius) continue;
+          // Perpendicular distance from the charge line.
+          if (Math.abs(rx * -dz + rz * dx) > e.radius + ABILITIES.shield_bash.radius) continue;
+          if (along < bestT) (first = e), (bestT = along);
+        }
+        if (!first) {
+          this.emit({ t: 'bash', by: g.by, x: ox + dx * SHIELD_BASH.dashM, z: oz + dz * SHIELD_BASH.dashM, id: null });
+          return;
+        }
+        this.damageEnemy(first, sp * ABILITIES.shield_bash.power, g.by);
+        first.stunT = Math.max(first.stunT ?? 0, SHIELD_BASH.stunS);
+        this.emit({ t: 'bash', by: g.by, x: first.x, z: first.z, id: first.id });
+        // NOTE: the brief also gives a boss a SHIELD_BASH.bossStunS stagger.
+        // BossBrain has no interrupt hook, so that is deliberately not applied
+        // rather than faked — it needs a real stagger API on the boss first.
+        return;
+      }
+      case 'vigil': {
+        // Corpse Vigil: spend one body. The regeneration itself is the caster's.
+        const [cx, cz] = clampAim(ABILITIES.corpse_vigil.range + 1);
+        const c = this.corpseAt(cx, cz, ABILITIES.corpse_vigil.radius, caster?.area);
+        if (!c) {
+          this.emit({ t: 'vigil', by: g.by, ok: false, x: cx, z: cz });
+          return;
+        }
+        this.removeCorpse(c, 'consumed', g.by);
+        this.emit({ t: 'vigil', by: g.by, ok: true, x: c.x, z: c.z });
+        return;
+      }
+      case 'brand': {
+        // Grave Brand: spend the body and arm a trap the host watches.
+        const [cx, cz] = clampAim(ABILITIES.grave_brand.range + 1);
+        const c = this.corpseAt(cx, cz, ABILITIES.grave_brand.radius, caster?.area);
+        if (!c) {
+          this.emit({ t: 'brand', by: g.by, ok: false, sprung: false, x: cx, z: cz });
+          return;
+        }
+        const area = c.area;
+        const [bx, bz] = [c.x, c.z];
+        this.removeCorpse(c, 'consumed', g.by);
+        this.brands.set(this.id(), { owner: g.by, x: bx, z: bz, area, until: this.time + GRAVE_BRAND.lifeS });
+        this.emit({ t: 'brand', by: g.by, ok: true, sprung: false, x: bx, z: bz });
+        return;
+      }
       case 'rally': {
         const [cx, cz] = clampAim(ABILITIES.rally_dead.range);
         const secs = Math.min(RALLY.durationS + RALLY.gravecallerBonusS, Math.max(RALLY.durationS, Number.isFinite(g.dur) ? (g.dur as number) : RALLY.durationS));
@@ -716,6 +782,25 @@ export class WorldSim {
       if (this.time < w.until) continue;
       this.walls.delete(w.id);
       this.emit({ t: 'wallGone', id: w.id });
+    }
+    this.tickBrands();
+  }
+
+  /** Grave Brands: expire quietly, or root the first body that walks onto one. */
+  private tickBrands() {
+    for (const [id, b] of [...this.brands]) {
+      if (this.time >= b.until) {
+        this.brands.delete(id);
+        continue;
+      }
+      for (const e of this.enemies.values()) {
+        if (e.state === 'dead' || e.state === 'rising' || e.area !== b.area) continue;
+        if (Math.hypot(e.x - b.x, e.z - b.z) > GRAVE_BRAND.triggerR + e.radius) continue;
+        e.rootT = Math.max(e.rootT ?? 0, GRAVE_BRAND.rootS);
+        this.brands.delete(id);
+        this.emit({ t: 'brand', by: b.owner, ok: true, sprung: true, x: b.x, z: b.z });
+        break;
+      }
     }
   }
 
@@ -1409,6 +1494,11 @@ export class WorldSim {
   }
 
   private moveEnemy(e: Enemy, tx: number, tz: number, dt: number, speedMult = 1) {
+    // Grave Brand roots the feet only — a rooted body still turns and swings.
+    if ((e.rootT ?? 0) > 0) {
+      e.facing = Math.atan2(tx - e.x, tz - e.z);
+      return;
+    }
     const dx = tx - e.x;
     const dz = tz - e.z;
     const d = Math.hypot(dx, dz);
@@ -1490,6 +1580,8 @@ export class WorldSim {
     if ((e.sanctT ?? 0) > 0) e.sanctT! -= dt;
     if ((e.hexT ?? 0) > 0) e.hexT! -= dt;
     if ((e.silenceT ?? 0) > 0) e.silenceT! -= dt;
+    if ((e.stunT ?? 0) > 0) e.stunT! -= dt;
+    if ((e.rootT ?? 0) > 0) e.rootT! -= dt;
     if ((e.incenseT ?? 0) > 0) e.incenseT! -= dt;
     if ((e.bleedT ?? 0) > 0 && (e.bleedDps ?? 0) > 0) {
       e.bleedT! -= dt;
@@ -1535,6 +1627,16 @@ export class WorldSim {
         continue;
       }
       if (!activeAreas.has(e.area)) continue; // dormant: nobody here to hunt
+      // Shield Bash: stunned bodies neither act nor move, and a stun cancels a
+      // windup or channel outright (this is the interrupt the Knight pays for).
+      if ((e.stunT ?? 0) > 0) {
+        if (e.state === 'windup' || e.state === 'channel') {
+          e.state = 'recover';
+          e.stateT = 0;
+          e.channelCorpse = null;
+        }
+        continue;
+      }
       if (e.affix) this.tickAffix(e, dt);
       e.attackCd -= dt * ((e.chillT ?? 0) > 0 ? CHILL.attackRateMult : 1) * ((e.incenseT ?? 0) > 0 ? CENSER.attackRateMult : 1);
       const def = ENEMIES[e.def];
