@@ -100,12 +100,13 @@ var AREAS = {
     safe: false,
     level: 1,
     enemies: [
-      { id: "robber", weight: 58 },
+      { id: "robber", weight: 52 },
       { id: "hound", weight: 24 },
       { id: "penitent", weight: 11 },
       { id: "sac", weight: 7 },
       { id: "moth", weight: 6 },
-      { id: "bat", weight: 5 }
+      { id: "bat", weight: 5 },
+      { id: "ghoul", weight: 6 }
     ],
     cap: 28,
     waveSize: 9,
@@ -154,7 +155,8 @@ var AREAS = {
       { id: "rat", weight: 10 },
       { id: "golem", weight: 2 },
       { id: "moth", weight: 5 },
-      { id: "bat", weight: 4 }
+      { id: "bat", weight: 4 },
+      { id: "ghoul", weight: 4 }
     ],
     cap: 32,
     waveSize: 10,
@@ -194,7 +196,9 @@ var AREAS = {
       { id: "wraith", weight: 12 },
       { id: "censer", weight: 6 },
       { id: "gargoyle", weight: 8 },
-      { id: "bat", weight: 7 }
+      { id: "bat", weight: 7 },
+      { id: "acolyte", weight: 8 },
+      { id: "templar", weight: 3 }
     ],
     cap: 34,
     waveSize: 11,
@@ -233,7 +237,9 @@ var AREAS = {
       { id: "wraith", weight: 10 },
       { id: "golem", weight: 4 },
       { id: "gargoyle", weight: 8 },
-      { id: "seraph", weight: 7 }
+      { id: "seraph", weight: 7 },
+      { id: "acolyte", weight: 8 },
+      { id: "templar", weight: 6 }
     ],
     cap: 26,
     waveSize: 8,

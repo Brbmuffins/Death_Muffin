@@ -90,7 +90,9 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 
 ## In flight (check before starting overlapping work)
 
-- **2026-09-28 VPS session (staged, not committed, not deployed):** flying mob pack (gargoyle, moth, bat, seraph),
+- **2026-09-28 VPS session, deployed in two checkpoints** (tags `stable-20260928-flyers`, `stable-20260928-mobs-g6`):
+  flyers, rites, backlog mobs, animation variety and Professions G6 are live, and migration 004 is applied. See PHASE_REPORTS.
+  Previous note: flying mob pack (gargoyle, moth, bat, seraph),
   Grimoire expansion (Soul Siphon, Bone Prison, Grave Hands, Bone Storm), Bone Mantle bone meshes, and an Easy-auto
   movement fix. Details, numbers and caveats are in PHASE_REPORTS → "Flying pack, Grimoire expansion…".
   - Deploying needs `npm run build:death-muffin` plus the regenerated `necro-rules.cjs`.

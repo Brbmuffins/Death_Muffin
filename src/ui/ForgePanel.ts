@@ -2,15 +2,18 @@ import { craft, getInventory, getProfessions, getRecipes } from '../net/api';
 import type { InventorySlot, Profession, Recipe } from '../net/types';
 import type { Inventory } from '../gameplay/loot';
 
-const PROFESSIONS = ['mining', 'fishing', 'woodcutting'] as const;
-const LABEL: Record<string, string> = { mining: 'Smelting', fishing: 'Tinctures', woodcutting: 'Coffin-wood' };
+/** Tabs: a profession's recipes; 'tools' is the smithing recipes for gathering tools (mining, `smith_*`). */
+const PROFESSIONS = ['mining', 'tools', 'fishing', 'woodcutting', 'gravedigging'] as const;
+type Tab = (typeof PROFESSIONS)[number];
+const LABEL: Record<Tab, string> = { mining: 'Smelting', tools: 'Tools', fishing: 'Cooking', woodcutting: 'Coffin-wood', gravedigging: 'Bonework' };
+const isTool = (id: string) => id.startsWith('smith_');
 
-/** The Sexton's Acre stations: each is the Workbench locked to one rite's recipes. */
+/** The Sexton's Acre stations: each is the Workbench locked to its rites' recipes. */
 export type Station = 'kiln' | 'sawpit' | 'fire';
-const STATIONS: Record<Station, { title: string; tab: (typeof PROFESSIONS)[number]; blurb: string }> = {
-  kiln: { title: 'Bone Kiln', tab: 'mining', blurb: 'Smelt ore into ingots and forge them into gear.' },
-  sawpit: { title: 'Sawpit', tab: 'woodcutting', blurb: 'Saw logs into planks, staves and bows.' },
-  fire: { title: 'Cooking Fire', tab: 'fishing', blurb: 'Render fish into fillets, tinctures and flasks.' },
+const STATIONS: Record<Station, { title: string; tabs: Tab[]; blurb: string }> = {
+  kiln: { title: 'Bone Kiln', tabs: ['mining', 'tools', 'gravedigging'], blurb: 'Smelt ore into ingots, forge gathering tools, and grind bones into bone meal.' },
+  sawpit: { title: 'Sawpit', tabs: ['woodcutting'], blurb: 'Saw logs into planks, staves and bows.' },
+  fire: { title: 'Cooking Fire', tabs: ['fishing'], blurb: 'Cook fish into meals, and render fillets into tinctures and flasks.' },
 };
 
 /**
@@ -22,7 +25,7 @@ export class ForgePanel {
   private el: HTMLDivElement | null = null;
   private recipes: Recipe[] = [];
   private professions: Profession[] = [];
-  private tab: (typeof PROFESSIONS)[number] = 'mining';
+  private tab: Tab = 'mining';
   private busy = false;
 
   constructor(
@@ -40,7 +43,8 @@ export class ForgePanel {
   async open(station?: Station) {
     if (this.el) return;
     const st = station ? STATIONS[station] : null;
-    if (st) this.tab = st.tab;
+    if (st && !st.tabs.includes(this.tab)) this.tab = st.tabs[0];
+    const tabs = st?.tabs ?? PROFESSIONS;
     const title = st?.title ?? 'Ossuary Workbench';
     this.el = document.createElement('div');
     this.el.className = 'cw-plate cw-panel-float';
@@ -51,7 +55,8 @@ export class ForgePanel {
         <h2 class="cw-title">${title}</h2>
         <button class="cw-icon-btn" data-close aria-label="Close ${title}">✕</button>
       </div>
-      ${st ? `<p class="cw-hint-text">${st.blurb}</p>` : `<div class="cw-tabs">${PROFESSIONS.map((p) => `<button data-tab="${p}">${LABEL[p]}</button>`).join('')}</div>`}
+      ${st ? `<p class="cw-hint-text">${st.blurb}</p>` : ''}
+      ${tabs.length > 1 ? `<div class="cw-tabs">${tabs.map((p) => `<button data-tab="${p}">${LABEL[p]}</button>`).join('')}</div>` : ''}
       <div class="cw-recipes"><span class="cw-hint-text">Loading recipes…</span></div>
       <div class="cw-error" data-error></div>
     `;
@@ -70,7 +75,10 @@ export class ForgePanel {
     this.setError('');
     this.el?.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === this.tab));
     try {
-      [this.recipes, this.professions] = await Promise.all([getRecipes(this.tab), getProfessions(this.characterId)]);
+      const prof = this.tab === 'tools' ? 'mining' : this.tab;
+      const [recipes, professions] = await Promise.all([getRecipes(prof), getProfessions(this.characterId)]);
+      this.recipes = recipes.filter((r) => (this.tab === 'tools') === isTool(r.id));
+      this.professions = professions;
       this.render();
     } catch (err) {
       this.setError(err instanceof Error ? err.message : 'Could not load recipes');
@@ -83,7 +91,8 @@ export class ForgePanel {
   }
 
   private skill(profession: string) {
-    return this.professions.find((p) => p.profession_id === profession)?.skill_level ?? 0;
+    // No row yet means level 1, exactly as the server's craft check treats it.
+    return this.professions.find((p) => p.profession_id === profession)?.skill_level ?? 1;
   }
 
   private render() {

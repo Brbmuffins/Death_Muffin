@@ -38,7 +38,7 @@ import {
 } from './abilities';
 import { AREAS, BOSS_SUMMON_SHARDS, type AreaId } from './areas';
 import type { DisciplineId } from './disciplines';
-import { CENSER, DUST, ENEMIES, SCREAM, WARD, type Behavior, type EnemyId } from './enemies';
+import { BURROW, CENSER, DUST, ENEMIES, SCREAM, TEMPLAR_SHIELD, UNBIND, WARD, type Behavior, type EnemyId } from './enemies';
 
 /**
  * Codex text — the in-game Codex (ui/CodexPanel) and any docs/README tooling
@@ -312,7 +312,7 @@ export const CODEX_DISCIPLINES: Record<DisciplineId, DisciplineEntry> = {
 
 export type DeadId = EnemyId | 'prelate';
 
-export const DEAD_ORDER: DeadId[] = ['robber', 'hound', 'penitent', 'sac', 'deacon', 'risen', 'censer', 'wraith', 'rat', 'golem', 'bat', 'moth', 'gargoyle', 'seraph', 'prelate'];
+export const DEAD_ORDER: DeadId[] = ['robber', 'hound', 'penitent', 'sac', 'deacon', 'risen', 'censer', 'wraith', 'rat', 'golem', 'bat', 'moth', 'gargoyle', 'seraph', 'ghoul', 'acolyte', 'templar', 'prelate'];
 
 export const PRELATE_NAME = 'The Bell-Sworn Prelate';
 
@@ -433,6 +433,27 @@ export const CODEX_DEAD: Record<DeadId, DeadEntry> = {
     behaviour: `A cathedral angel come loose from its plinth. It weeps a blessing over up to ${WARD.maxTargets} allies within ${WARD.range}m at once: Sanctified, they take less damage. It never steals corpses.`,
     corpse: 'A resonant corpse: Black Litany counts it twice.',
     counter: 'Kill it first, or at least before the pack reaches you. A Dirge silences its blessing, and Wailing Skull reaches it over the crowd.',
+  },
+  ghoul: {
+    name: ENEMIES.ghoul.name,
+    role: ENEMIES.ghoul.behavior,
+    behaviour: `Climbs out underground and tunnels toward the living, untouchable. Close by, the ground cracks in a ${BURROW.eruptR}m ring and it bursts out for ${BURROW.eruptMult}× damage. The first time it drops below half health it digs back in (still hittable while it digs) and tunnels up to ${BURROW.travelM}m to erupt again.`,
+    corpse: 'An ordinary corpse: early fuel for Exhume.',
+    counter: 'Step out of the cracking ring, then punish it. Burst it down past half in one go, or be ready while it digs: that is your window to finish it.',
+  },
+  acolyte: {
+    name: ENEMIES.acolyte.name,
+    role: ENEMIES.acolyte.behavior,
+    behaviour: `A mirror-necromancer that curses from range. Any thrall of yours killed within ${UNBIND.range}m of it rises ${UNBIND.delayS}s later as a hostile Risen (once every ${UNBIND.cooldownS}s, at most ${UNBIND.maxAlive} at a time). A crimson ring shows its reach while your thralls are inside.`,
+    corpse: 'An ordinary corpse.',
+    counter: 'Kill it before you spend your legion near it. Sacrificed (Litany) and crumbled thralls never rise, so a Litany beside it is safe.',
+  },
+  templar: {
+    name: ENEMIES.templar.name,
+    role: ENEMIES.templar.behavior,
+    behaviour: `A heavy knight of the Bell. Direct blows from its front ${TEMPLAR_SHIELD.halfArcDeg * 2}° glance off the bronze shield (only ${Math.round(TEMPLAR_SHIELD.passThrough * 100)}% gets through). Area and ground damage ignores the shield, and a Fractured Templar cannot block at all.`,
+    corpse: 'A resonant corpse: Black Litany counts it twice.',
+    counter: 'Let thralls turn it and strike from the side, or Fracture it first with Marrow Spear or Ivory Cleave. Miasma and rot pools work whatever way it faces.',
   },
   prelate: {
     name: PRELATE_NAME,

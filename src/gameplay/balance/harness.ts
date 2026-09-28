@@ -162,7 +162,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
 
     // --- Bot decisions ---
     if (p.alive) {
-      const enemies = [...sim.enemies.values()].filter((e) => e.state !== 'dead' && e.state !== 'rising' && e.area === run.area);
+      const enemies = [...sim.enemies.values()].filter((e) => e.state !== 'dead' && (e.state !== 'rising' && e.state !== 'burrow') && e.area === run.area);
       peak = Math.max(peak, enemies.length);
       let nearest: Enemy | null = null;
       let nd = Infinity;

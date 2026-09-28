@@ -14,6 +14,7 @@ import { ITEMS } from '../content/items';
 import * as necro from '../gameplay/necroRules';
 import type { NecroState } from '../gameplay/necroRules';
 import * as gather from '../gameplay/gatheringRules';
+import { PROCESSING_RECIPES } from '../content/processing';
 import { isDevAccount } from '../gameplay/devAccess';
 
 class MockError extends Error {
@@ -71,6 +72,9 @@ const RECIPE_ROWS: R[] = [
   ['craft_oak_shortbow', 'Oak Shortbow', 'woodcutting', 3, 'bow_oak', 1, [['plank_oak', 3]]],
   ['craft_oak_staff', 'Oak Staff', 'woodcutting', 3, 'staff_oak', 1, [['plank_oak', 3]]],
 ];
+
+// Professions G6: the same rows the server migration is generated from.
+RECIPE_ROWS.push(...PROCESSING_RECIPES);
 
 const RECIPES: Recipe[] = RECIPE_ROWS.map(([id, name, profession_id, lvl, result, qty, ings]) => ({
   id,
@@ -324,10 +328,11 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     if (prof.skill_level < def.level && !staff) throw new MockError(`Requires ${gather.SKILLS[def.skill].name} level ${def.level}`, 400);
     const budget = gather.checkBudget(def, acc.gatherLedger ?? gather.blankLedger(), body.actions, Date.now(), body.afk === true);
     if (!budget.ok) throw new MockError(budget.error, 400);
-    const batch = gather.rollBatch(def, { level: prof.skill_level, xp: prof.skill_xp }, budget.accepted, Math.random, 0, staff ? def.level : 0);
     const bag = acc.slots
       .filter((x) => x.slot_index < 24)
       .map((x) => ({ slot: x.slot_index, itemId: x.equipped ? '' : x.item_id, qty: x.quantity }));
+    const toolTier = gather.toolTierFor(def.skill, bag.map((s) => s.itemId));
+    const batch = gather.rollBatch(def, { level: prof.skill_level, xp: prof.skill_xp }, budget.accepted, Math.random, toolTier, staff ? def.level : 0);
     const placed = gather.placeItems(bag, batch.items, (id) => (MOCK_ITEMS[id]?.item_type === 'material' ? (ITEMS[id]?.stack ?? 9999) : 1));
     for (const u of placed.updates) acc.slots.find((x) => x.slot_index === u.slot)!.quantity = u.qty;
     for (const r of placed.inserts) acc.slots.push({ slot_index: r.slot, item_id: r.itemId, quantity: r.qty, equipped: 0 });
@@ -358,7 +363,7 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     const recipe = RECIPES.find((r) => r.id === body.recipeId);
     if (!recipe) return fail('Unknown recipe');
     const prof = acc.professions.find((x) => x.profession_id === recipe.profession_id);
-    const lvl = prof?.skill_level ?? 0;
+    const lvl = prof?.skill_level ?? 1; // the live server treats a missing row as level 1
     if (lvl < recipe.skill_level_required) {
       return fail(`requires ${recipe.profession_id} level ${recipe.skill_level_required} (you have ${lvl})`);
     }

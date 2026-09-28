@@ -1,8 +1,10 @@
 {
   "clips": [
     "cast",
+    "death2",
     "death",
     "hurt",
+    "hurt2",
     "idle"
   ],
   "tris": 4432

@@ -1,8 +1,39 @@
 {
   "id": "grave_robber",
   "input": "art-src/concepts/grave_robber.png",
-  "generation": { "model": "P1-20260311", "face_limit": 4000, "texture_quality": "standard" },
-  "rig": { "model": "v1.0-20240301", "rig_type": "biped" },
-  "animations": ["preset:biped:idle", "preset:biped:walk", "preset:biped:slash", "preset:biped:hurt", "preset:biped:fall"],
-  "animationMode": "single"
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 4000,
+    "texture_quality": "standard"
+  },
+  "rig": {
+    "model": "v1.0-20240301",
+    "rig_type": "biped"
+  },
+  "animations": [
+    "preset:biped:idle",
+    "preset:biped:walk",
+    "preset:biped:slash",
+    "preset:biped:hurt",
+    "preset:biped:fall",
+    "preset:biped:defeat_03",
+    "preset:biped:hit_to_body_01",
+    "preset:biped:hit_to_head",
+    "preset:biped:hit_to_side",
+    "preset:biped:box_01"
+  ],
+  "animationMode": "single",
+  "catalogued": [
+    "defeat_02",
+    "chop (= slash)",
+    "box_02",
+    "front_kick_01",
+    "hit_to_stomach",
+    "flee_01",
+    "dive",
+    "jump",
+    "lift_heavy",
+    "frightened",
+    "angry_01"
+  ]
 }

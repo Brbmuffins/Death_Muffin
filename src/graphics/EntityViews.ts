@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CENSER, ENEMIES, type EliteAffix, type EnemyId } from '../content/enemies';
+import { BURROW, CENSER, ENEMIES, UNBIND, type EliteAffix, type EnemyId } from '../content/enemies';
 import type { ThrallKind } from '../content/disciplines';
 import type { Corpse, Enemy, SimEvent, Thrall } from '../gameplay/sim/types';
 import { Creature } from './Creature';
@@ -26,6 +26,9 @@ const ENEMY_SLUG: Record<EnemyId, CreatureSlug> = {
   moth: 'shroud_moth',
   bat: 'tithe_bat',
   seraph: 'weeping_seraph',
+  ghoul: 'barrow_ghoul',
+  acolyte: 'lich_acolyte',
+  templar: 'bell_templar',
 };
 
 /** Shipped models to fall back on if a newer GLB is missing (older deploys, failed builds). */
@@ -38,9 +41,12 @@ const ENEMY_FALLBACK: Partial<Record<EnemyId, CreatureSlug>> = {
   moth: 'choir_wraith',
   bat: 'skull_rat',
   seraph: 'deacon',
+  ghoul: 'grave_robber',
+  acolyte: 'deacon',
+  templar: 'grave_robber',
 };
 /** Enemies that cast (play 'cast' rather than 'attack' on the windup). */
-const CASTERS = new Set<EnemyId>(['penitent', 'deacon', 'wraith', 'censer', 'moth', 'seraph']);
+const CASTERS = new Set<EnemyId>(['penitent', 'deacon', 'wraith', 'censer', 'moth', 'seraph', 'acolyte']);
 /** Choir Wraiths float: a hover height and a slow bob. */
 const HOVER = { wraith: 0.45 } as Partial<Record<EnemyId, number>>;
 /** Flying pack wingbeats: heavy stone, dusty moth, frantic bat, slow grieving seraph. */
@@ -105,6 +111,24 @@ interface View {
   animSkip: number;
   animDt: number;
   float?: boolean;
+  /** Barrow Ghoul underground (burrowed, or winding up its eruption): the model hides, a dirt mound slides instead. */
+  under?: boolean;
+  mound?: THREE.Mesh;
+  /** Hit flinch: last seen hit flash and when the next flinch may play (ms). */
+  lastFlash?: number;
+  flinchAt?: number;
+}
+
+/** One shared low-poly mound for every burrowed ghoul (grave-dirt brown, never a player colour). */
+let MOUND_GEO: THREE.BufferGeometry | null = null;
+let MOUND_MAT: THREE.MeshStandardMaterial | null = null;
+function makeMound() {
+  MOUND_GEO ??= new THREE.SphereGeometry(0.55, 14, 5, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.4, 1.3);
+  // Darker than the dirt particles: under warm torchlight the mound otherwise reads orange.
+  MOUND_MAT ??= new THREE.MeshStandardMaterial({ color: 0x33251a, roughness: 1, metalness: 0, flatShading: true });
+  const m = new THREE.Mesh(MOUND_GEO, MOUND_MAT);
+  m.castShadow = false;
+  return m;
 }
 
 const A = SPELL_FX.affix;
@@ -319,10 +343,43 @@ export class EntityViews {
         this.effects.emit({ x: ev.x, y: 0.1, z: ev.z, count: 4, color: 0x5b2bb0, spread: 0.5, speed: 0.6, up: 1.4, life: 0.8, size: 0.24 });
         this.effects.decal({ tex: fx.cracks(), color: 0x7c3aed, x: ev.x, z: ev.z, r: ev.elite ? 1.6 : 1.1, rot: Math.random() * 6, duration: 2.2, opacity: 0.8, growFrom: 0.3 });
         break;
+      case 'erupt': {
+        // Barrow Ghoul surfaces: dirt and bone flung out of its ring.
+        const dirt = SPELL_FX.enemy.dirt;
+        this.effects.emit({ x: ev.x, y: 0.3, z: ev.z, count: 22, color: dirt, spread: ev.r * 0.5, speed: 3.2, up: 3, life: 0.7, size: 0.2, gravity: 10 });
+        this.effects.emit({ x: ev.x, y: 0.4, z: ev.z, count: 8, color: 0xe0d6c2, spread: ev.r * 0.4, speed: 2.4, up: 2.6, life: 0.6, size: 0.12, gravity: 10 });
+        this.effects.emitSmoke({ x: ev.x, y: 0.3, z: ev.z, count: 5, color: 0x2a1a10, spread: ev.r * 0.4, speed: 1, up: 0.6, life: 1, size: 1.1 });
+        this.effects.decal({ tex: fx.cracks(), color: dirt, x: ev.x, z: ev.z, r: ev.r, rot: Math.random() * 6, duration: 1.6, opacity: 0.8, growFrom: 0.6, fadeOut: 0.5 });
+        audio.play('burst', ev.x, ev.z);
+        break;
+      }
+      case 'digIn': {
+        const v = this.enemies.get(ev.id);
+        v?.c.playOnce('dig', 1, BURROW.digS);
+        this.effects.emitSmoke({ x: ev.x, y: 0.2, z: ev.z, count: 4, color: SPELL_FX.enemy.dirt, spread: 0.5, speed: 0.6, up: 0.4, life: 1, size: 0.9 });
+        break;
+      }
+      case 'unbind': {
+        // Lich Acolyte reaches for your fallen thrall: a curse-crimson tether and a sigil where it will rise.
+        const curse = SPELL_FX.enemy.curse;
+        this.effects.beam({ x: ev.x, y: 1.6, z: ev.z }, () => ({ x: ev.tx, y: 0.3, z: ev.tz }), curse, 0.06, UNBIND.delayS);
+        this.effects.decal({ tex: fx.sigil(), color: curse, x: ev.tx, z: ev.tz, r: 1, duration: UNBIND.delayS + 0.3, opacity: 0.85, spin: 2.5, fadeOut: 0.3 });
+        audio.play('raise', ev.tx, ev.tz);
+        break;
+      }
+      case 'shieldBlock': {
+        // Bell Templar: a bronze spark off the shield and a small toll.
+        const v = this.enemies.get(ev.id);
+        const f = v ? v.facing : 0;
+        this.effects.emit({ x: ev.x + Math.sin(f) * 0.6, y: 1.1, z: ev.z + Math.cos(f) * 0.6, count: 8, color: SPELL_FX.enemy.toll, spread: 0.15, speed: 2.6, up: 0.8, life: 0.3, size: 0.12, gravity: 6 });
+        audio.play('tollSmall', ev.x, ev.z);
+        break;
+      }
       case 'death': {
         const v = this.enemies.get(ev.id);
         if (!v) break;
         this.enemies.delete(ev.id);
+        if (v.mound) (v.mound.removeFromParent(), (v.mound = undefined), (v.c.root.visible = true));
         v.eliteAura?.kill();
         v.auraFx?.kill();
         killAffixFx(v);
@@ -554,8 +611,16 @@ export class EntityViews {
         else v.c.setLoop('idle');
         v.lastState = key;
       }
-      this.tickAnim(v, dt, focusX, focusZ);
       const nearFx = Math.abs(e.x - focusX) < 24 && Math.abs(e.z - focusZ) < 20;
+      // A fresh hit makes the body flinch (short hit-react clips, 2026-09-28). Throttled per enemy, near the
+      // camera only, and playOnce never lets a flinch cut into an attack windup or a death.
+      const fresh = e.flash > 0.9 && (v.lastFlash ?? 0) < 0.5;
+      v.lastFlash = e.flash;
+      if (fresh && nearFx && key !== 'windup' && key !== 'channel' && !v.under && performance.now() >= (v.flinchAt ?? 0) && v.c.has('hurt')) {
+        v.flinchAt = performance.now() + 1200;
+        v.c.playOnce('hurt', 1.9);
+      }
+      this.tickAnim(v, dt, focusX, focusZ);
       if (nearFx && e.withered > 0 && Math.random() < dt * (1 + e.withered * 0.75)) {
         this.effects.emit({ x: e.x, y: 0.8 + Math.random() * 0.8, z: e.z, count: 1, color: SPELL_FX.miasma.rot, spread: 0.4, speed: 0.2, up: 0.7, life: 0.9, size: 0.2 });
       }
@@ -584,6 +649,29 @@ export class EntityViews {
       if (nearFx && hover && Math.random() < dt * 4) {
         this.effects.emit({ x: e.x, y: lift + 0.2, z: e.z, count: 1, color: 0xb9cbe6, spread: 0.35, speed: 0.1, up: -0.3, life: 0.7, size: 0.18 });
       }
+      // Barrow Ghoul: underground from 'burrow' until its eruption windup ends (the mirror sees only states).
+      if (e.state === 'burrow') v.under = true;
+      else if (v.under && e.state !== 'windup') v.under = false;
+      if (v.under) {
+        if (!v.mound) this.group.add((v.mound = makeMound()));
+        v.mound.position.set(e.x, 0, e.z);
+        v.mound.rotation.y = v.facing;
+        v.c.root.visible = false;
+        if (nearFx && e.moving && Math.random() < dt * 7) {
+          this.effects.emit({ x: e.x, y: 0.15, z: e.z, count: 2, color: SPELL_FX.enemy.dirt, spread: 0.35, speed: 0.9, up: 1.2, life: 0.4, size: 0.12, gravity: 9 });
+        }
+      } else if (v.mound) {
+        v.mound.removeFromParent();
+        v.mound = undefined;
+        v.c.root.visible = true;
+      }
+      // Lich Acolyte: its crimson reach shows only while one of your thralls stands inside it.
+      if (ENEMIES[e.def].unbind) {
+        let near = false;
+        for (const t of thralls.values()) if (Math.abs(t.x - e.x) < UNBIND.range && Math.hypot(t.x - e.x, t.z - e.z) <= UNBIND.range) { near = true; break; }
+        if (near && !v.auraFx) v.auraFx = this.effects.decal({ tex: fx.ring(), color: SPELL_FX.enemy.curse, x: e.x, z: e.z, r: UNBIND.range, duration: 1e9, opacity: 0.15, pulse: 1.5, follow: () => ({ x: v!.x, z: v!.z }) });
+        else if (!near && v.auraFx) (v.auraFx.kill(), (v.auraFx = undefined));
+      }
       if (nearFx && e.state === 'rising' && Math.random() < dt * 8) {
         this.effects.emitSmoke({ x: e.x, y: 0.1, z: e.z, count: 1, color: 0x2a2230, spread: 0.5, speed: 0.5, up: 0.6, life: 1, size: 0.9 });
       }
@@ -595,6 +683,7 @@ export class EntityViews {
     for (const [id, v] of this.enemies) {
       if (!enemies.has(id)) {
         this.enemies.delete(id);
+        if (v.mound) (v.mound.removeFromParent(), (v.mound = undefined));
         v.eliteAura?.kill();
         v.auraFx?.kill();
         killAffixFx(v);

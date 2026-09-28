@@ -1,5 +1,6 @@
 import type { Skills } from '../gameplay/Gathering';
-import { ALL_SKILLS, LEVEL_CAP, SKILLS, nodesForSkill, type SkillId } from '../gameplay/gatheringRules';
+import { ALL_SKILLS, LEVEL_CAP, SKILLS, TOOL_KIND, nodesForSkill, toolItemId, toolTierFor, type SkillId } from '../gameplay/gatheringRules';
+import { itemMeta } from '../content/items';
 
 /** What each skill is for, and where its processing happens (roadmap §3). */
 const BLURB: Record<SkillId, string> = {
@@ -24,7 +25,7 @@ export class ProfessionsPanel {
     start(type: string): Promise<void>;
     pause(): void;
     status(): { active: boolean; text: string; allowed: boolean };
-  }) {}
+  }, private heldItems?: () => string[]) {}
 
   get isOpen() {
     return this.el !== null;
@@ -37,6 +38,15 @@ export class ProfessionsPanel {
     label.textContent = (this.busy ? 'Starting…' : status.active ? `AFK · ${status.text}` : this.message || status.text) + (!status.allowed ? ' · Visit the Sexton’s Acre to start.' : '');
     const pause=this.el?.querySelector<HTMLButtonElement>('[data-pause-afk]');
     if(pause)pause.disabled=!status.active||this.busy;
+  }
+
+  /** Gathering tools (G6): the best one carried for this skill, or where to get one. */
+  private toolLine(id: SkillId) {
+    if (!TOOL_KIND[id] || !this.heldItems) return '';
+    const tier = toolTierFor(id, this.heldItems());
+    return tier
+      ? `<div class="next">Tool: ${itemMeta(toolItemId(id, tier)).name} · +${tier * 5}% success</div>`
+      : '<div class="next">No tool: forge one at the Bone Kiln for +5% or more.</div>';
   }
 
   open(skills: Skills) {
@@ -82,6 +92,7 @@ export class ProfessionsPanel {
           <div class="bar" role="meter" aria-label="${meta.name} XP" aria-valuenow="${s.xp}" aria-valuemax="${s.next}"><div class="fill" style="width:${pct}%"></div></div>
           <div class="xp">${capped ? 'Level cap' : `${s.xp.toLocaleString()} / ${s.next.toLocaleString()} XP · ${(s.next - s.xp).toLocaleString()} to go`}</div>
           <div class="next">${unlock}</div>
+          ${this.toolLine(id)}
           <div class="blurb">${BLURB[id]}</div>
           ${afk}
         </div>`;

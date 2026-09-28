@@ -66,6 +66,11 @@ export type TipId =
   | 'moth'
   | 'bats'
   | 'seraph'
+  | 'ghoul'
+  | 'meal'
+  | 'tool'
+  | 'acolyte'
+  | 'templar'
   // Professions (docs/PROFESSIONS-ROADMAP.md §11).
   | 'acre'
   | 'gather'
@@ -251,6 +256,26 @@ export const TIPS: Record<TipId, Tip> = {
   seraph: {
     title: 'Weeping Seraph',
     body: 'It blesses <b>every ally near it</b> at once (priest-gold motes: they take less damage). Kill the seraph first, or silence it with a Dirge.',
+  },
+  meal: {
+    title: 'Well fed',
+    body: 'A cooked meal <b>heals over time</b> and stacks with a flask. Cook fish at the Cooking Fire in the Acre; the rarer the fish, the bigger the meal. One meal at a time.',
+  },
+  tool: {
+    title: 'Gathering tools',
+    body: 'Keep a tool in your bag and it speeds that skill up: <b>+5% success per metal tier</b> (the best one you carry counts). Forge hatchets, pickaxes, rods and spades at the Bone Kiln (Tools tab) or the Workbench.',
+  },
+  ghoul: {
+    title: 'Barrow Ghoul',
+    body: 'Barrow Ghouls tunnel toward you. When the ground <b>cracks in a ring</b>, step out of it, then kill the ghoul before it digs back down.',
+  },
+  acolyte: {
+    title: 'Lich Acolyte',
+    body: 'A Lich Acolyte turns your <b>fallen thralls</b> against you. Kill it first, or keep your legion out of its crimson ring. Sacrificing a thrall (Litany) is safe.',
+  },
+  templar: {
+    title: 'Bell-Sworn Templar',
+    body: 'Blows from the <b>front</b> glance off its bronze shield. Come at it from the side, let your thralls turn it, or <b>Fracture</b> it (Marrow Spear, Ivory Cleave) to break the guard.',
   },
   acre: {
     title: "The Sexton's Acre",

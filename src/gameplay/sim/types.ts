@@ -8,7 +8,8 @@ import type { CorpseKind, EliteAffix, EnemyId } from '../../content/enemies';
  * simulated by their own client and reported to the host.
  */
 
-export type EnemyState = 'rising' | 'move' | 'windup' | 'recover' | 'channel' | 'dead';
+/** 'burrow' (Barrow Ghoul): underground, immune and untargetable. */
+export type EnemyState = 'rising' | 'move' | 'windup' | 'recover' | 'channel' | 'dead' | 'burrow';
 
 export interface Enemy {
   id: number;
@@ -79,6 +80,16 @@ export interface Enemy {
   groundT?: number;
   /** Tithe Bat (host-only): seconds left flitting away after a bite. */
   fleeT?: number;
+  /** Barrow Ghoul (host-only): winding up an eruption on this target; has dug back in once; metres left to tunnel. */
+  erupting?: number | string | null;
+  dugIn?: boolean;
+  digPending?: boolean;
+  burrowLeft?: number;
+  /** Lich Acolyte (host-only): seconds until it may unbind again. Risen it raised carry `unboundBy`. */
+  unbindCd?: number;
+  unboundBy?: number;
+  /** Bell Templar (host-only): throttles the shield-block tell. */
+  blockFxAt?: number;
   /** Host-only: a Censer Bearer's next aura pulse. */
   auraCd?: number;
   /** Elites roll one affix on spawn (replicated in snapshots). */
@@ -326,9 +337,9 @@ export type SimEvent =
   | { t: 'corpseGone'; id: number; reason: CorpseGoneReason; by?: string }
   | { t: 'thrall'; id: number; owner: string; kind: ThrallKind; x: number; z: number; empowered: boolean }
   | { t: 'thrallGone'; id: number; owner: string; x: number; z: number; reason: 'killed' | 'sacrificed' | 'crumbled' }
-  | { t: 'telegraph'; id: number; kind: 'cone' | 'raise' | 'curse' | 'slam' | 'toll' | 'scream' | 'dust' | 'dive'; x: number; z: number; tx: number; tz: number; ms: number; r?: number }
+  | { t: 'telegraph'; id: number; kind: 'cone' | 'raise' | 'curse' | 'slam' | 'toll' | 'scream' | 'dust' | 'dive' | 'erupt'; x: number; z: number; tx: number; tz: number; ms: number; r?: number }
   | { t: 'melee'; id: number; x: number; z: number; tx: number; tz: number }
-  | { t: 'hurt'; player: string; dmg: number; from: 'melee' | 'cone' | 'curse' | 'toxic' | 'boss' | 'toll' | 'scream' | 'dust'; x: number; z: number }
+  | { t: 'hurt'; player: string; dmg: number; from: 'melee' | 'cone' | 'curse' | 'toxic' | 'boss' | 'toll' | 'scream' | 'dust' | 'erupt'; x: number; z: number }
   | { t: 'thrallHit'; id: number; target: number; x: number; z: number; tx: number; tz: number; kind: ThrallKind; dmg: number }
   | { t: 'zone'; zone: Zone }
   | { t: 'zoneGone'; id: number }
@@ -388,6 +399,13 @@ export type SimEvent =
   | { t: 'heal'; player: string; amount: number; x: number; z: number }
   /** A Crypt Deacon blesses an ally (Sanctified). */
   | { t: 'sanctify'; id: number; target: number; x: number; z: number; tx: number; tz: number }
+  /** Barrow Ghoul: surfaced in its ring, or started digging back in. */
+  | { t: 'erupt'; id: number; x: number; z: number; r: number }
+  | { t: 'digIn'; id: number; x: number; z: number }
+  /** Lich Acolyte reaches for a dying thrall (its Risen climbs out UNBIND.delayS later). */
+  | { t: 'unbind'; id: number; x: number; z: number; tx: number; tz: number }
+  /** Bell Templar's shield turned a blow. */
+  | { t: 'shieldBlock'; id: number; x: number; z: number }
   /** A gathering node depleted (felled, mined out, the spot drifted, the grave dug) and when it returns. */
   | { t: 'nodeGone'; id: string; by: string; respawnS: number }
   | { t: 'nodeBack'; id: string }

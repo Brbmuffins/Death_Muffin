@@ -1,8 +1,24 @@
 {
   "id": "penitent",
   "input": "art-src/concepts/penitent.png",
-  "generation": { "model": "P1-20260311", "face_limit": 5000, "texture_quality": "standard" },
-  "rig": { "model": "v1.0-20240301", "rig_type": "biped" },
-  "animations": ["preset:biped:idle", "preset:biped:walk", "preset:biped:cast_a_spell", "preset:biped:hurt", "preset:biped:fall"],
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 5000,
+    "texture_quality": "standard"
+  },
+  "rig": {
+    "model": "v1.0-20240301",
+    "rig_type": "biped"
+  },
+  "animations": [
+    "preset:biped:idle",
+    "preset:biped:walk",
+    "preset:biped:cast_a_spell",
+    "preset:biped:hurt",
+    "preset:biped:fall",
+    "preset:biped:hit_to_body_01",
+    "preset:biped:hit_to_head",
+    "preset:biped:defeat_03"
+  ],
   "animationMode": "single"
 }

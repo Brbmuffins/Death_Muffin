@@ -5,7 +5,8 @@ import type { EnemyRow, ThrallRow, WorldSnapshot } from '../../net/contracts';
 import type { BossState, Corpse, Enemy, EnemyState, SimEvent, Thrall, ThrallState, Zone } from './types';
 import type { WorldSim } from './WorldSim';
 
-const E_STATES: EnemyState[] = ['rising', 'move', 'windup', 'recover', 'channel', 'dead'];
+// Append-only: older snapshots must keep decoding ('burrow' = Barrow Ghoul, 2026-09-28).
+const E_STATES: EnemyState[] = ['rising', 'move', 'windup', 'recover', 'channel', 'dead', 'burrow'];
 const T_STATES: ThrallState[] = ['rising', 'idle', 'move', 'attack', 'dead'];
 const r2 = (n: number) => Math.round(n * 100) / 100;
 const affixCode = (a: EliteAffix | undefined) => (a ? AFFIX_ORDER.indexOf(a) + 1 : 0);

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 /** Gameplay owns hero position and heading; generated clips own limb poses. */
 export function inPlaceHeroClip(clip: THREE.AnimationClip): THREE.AnimationClip {
   // Keep the authored collapse for corpses.
-  if (clip.name === 'death') return clip;
+  if (clip.name.startsWith('death')) return clip;
   const tracks = clip.tracks.filter((track) => {
     const { nodeName, propertyName } = THREE.PropertyBinding.parseTrackName(track.name);
     // Root rotations also contain authored turns, which fight mouse aiming.

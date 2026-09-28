@@ -148,7 +148,7 @@ export function runBossFight(run: BossRun): BossResult {
     else if (bd < 5.5) move(b.x, b.z, true);
 
     // --- Spells ---
-    const adds = [...sim.enemies.values()].filter((e) => e.state !== 'dead' && e.state !== 'rising');
+    const adds = [...sim.enemies.values()].filter((e) => e.state !== 'dead' && (e.state !== 'rising' && e.state !== 'burrow'));
     let nearAdd: Enemy | null = null;
     let nad = 8;
     for (const e of adds) {

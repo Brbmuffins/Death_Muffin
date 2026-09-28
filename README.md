@@ -230,6 +230,9 @@ Elite corpses are always empowered when exhumed. The Mourner's discipline overri
 | **Tithe Bat** | Flying. Crypt bats in **flocks of 4–6** that bite and flit away, over and over. Never elite. | none | Don't chase. Hold your ground and sweep the flock with Miasma, Grave Frost or Bone Mantle. |
 | **Shroud Moth** | Flying caster. Shakes grave dust onto an **ochre ring where you stand**; the burst leaves a choking cloud for 3.5 s. | swift | Step out of the ring, then out of the cloud. Fragile: one or two good hits. Dirge silences it. |
 | **Belfry Gargoyle** | Flying stone. From 3.5–9 m it marks a **bronze circle** under you and **dives** onto it, then sits grounded for 1.4 s. Claws up close. | normal | Walk out of the circle, then punish the landing. A stun knocks it out of the air mid-dive. |
+| **Barrow Ghoul** | Tunnels underground (untouchable) toward you, then **erupts in a cracking ring** (1× damage in the Graves, 1.25× deeper in). Below half health it digs back in once and erupts again. | normal | Step out of the ring, then finish it while it digs. |
+| **Lich Acolyte** | Curse caster. Any thrall of yours **killed** within 7 m of it rises as a hostile Risen (crimson ring shows its reach). | normal | Kill it before spending your legion near it. Litany sacrifices are safe. |
+| **Bell-Sworn Templar** | Heavy knight; direct blows from its **front 120° glance off** the shield (30% gets through). | resonant | Hit from the side, let thralls turn it, or **Fracture** it to break the guard. Area damage ignores the shield. |
 | **Weeping Seraph** | Flying support. Blesses **up to four allies within 5.5 m at once** (Sanctified: 30% less damage). Never steals corpses. | resonant | **Kill it first**, or silence it with a Dirge. Wailing Skull reaches it over the crowd. |
 | **Elites** | Any enemy can spawn elite: bigger, tougher (×3.6 health), harder-hitting, pulsing violet ring, and **one affix** (below). | — | Drop **soul shards** (needed for the boss) and far more loot. |
 
@@ -239,9 +242,9 @@ instead of the usual mix, named on a banner:
 | Area | Processions |
 |---|---|
 | Hollow Graves | **The Kennel Loosed** (hounds and skull-rats) · **Moth-Dusk** (moths, bats and robbers) · **The Bellringers' Round** (Penitents and robbers, led by a Censer Bearer) |
-| Marrow Ossuary | **The Skittering** (rat packs) · **The Ossuary Wakes** (a Bone Golem leads robbers, rats and hounds) |
-| Drowned Nave | **The Drowned Choir** (wraiths, Penitents, censers) · **The Belfry Stirs** (a gargoyle leads bats and Penitents) · **The Carrion Tide** (sacs and rats) |
-| Bell Sanctum | **Vespers** (a Weeping Seraph leads Penitents, gargoyles and censers) · **The Procession** (a Bone Golem leads censers, Penitents, Deacons and wraiths) |
+| Marrow Ossuary | **The Barrow Opens** (ghouls tunnel in) · **The Skittering** (rat packs) · **The Ossuary Wakes** (a Bone Golem leads robbers, rats and hounds) |
+| Drowned Nave | **The Drowned Choir** (wraiths, Penitents, censers) · **The Belfry Stirs** (a gargoyle leads bats and Penitents) · **The Unbound** (acolytes lead robbers and hounds) · **The Carrion Tide** (sacs and rats) |
+| Bell Sanctum | **The Bell-Sworn March** (Templars shield Penitents, censers and acolytes) · **Vespers** (a Weeping Seraph leads Penitents, gargoyles and censers) · **The Procession** (a Bone Golem leads censers, Penitents, Deacons and wraiths) |
 
 The new dead also join the regular mix deeper in: rats and the odd golem in the Ossuary, wraiths and
 censers in the Nave, all four in the Sanctum. The **flying pack** is spread across the world: a few moths
@@ -375,6 +378,12 @@ opening a panel, a full bag or a hit stops you.
 - **The Acre is completely non-combat.** Every tier of every node is there, with the stronger ones further from the
   Chapterhouse door and a single Bone Elder at the far end. The **Sawpit**, **Bone Kiln** and **Cooking Fire** by the
   entrance run the Workbench recipes for their rite.
+- **Every find has a use.** The **Sawpit** mills each log into its plank; the **Cooking Fire** turns each fish into a
+  meal that **heals over time** (Eat it from the bag; it stacks with a flask); the **Bone Kiln** grinds bones into
+  **bone meal** (for the cheaper Bone-Ash Flask, and the mourning beds later) and forges **gathering tools**.
+- **Tools** (hatchet, pickaxe, fishing rod, grave spade) come in six metals, from copper to moon, made from that metal's
+  ingots and a matching plank. Keep one in your bag and its skill gets **+5% success per tier**; the best one you carry
+  counts, and the server checks your bag itself. The Skills panel shows the tool each skill is using.
 - **Rich nodes** (a gold glow) sit in the hunting grounds: oaks and pauper's graves in the Graves, silver and crypt
   collapses in the Ossuary, eels and a willow in the Nave, moon geodes in the Sanctum. They hold 50% more and return twice
   as fast, but taking a hit stops you, so clear the dead first.

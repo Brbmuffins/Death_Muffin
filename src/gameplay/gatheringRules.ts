@@ -206,6 +206,26 @@ export function addSkillXp(p: SkillProgress, gained: number): SkillProgress & { 
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 
+/**
+ * Gathering tools (G6, 2026-09-28): smithed at the Workbench, carried in the bag. The best one you
+ * hold for a skill sets its tier (+5% success per tier). The server reads the bag itself, so a
+ * client can't claim a tool it doesn't have.
+ */
+export const TOOL_KIND: Partial<Record<SkillId, string>> = { woodcutting: 'hatchet', mining: 'pickaxe', fishing: 'rod', gravedigging: 'spade' };
+export const TOOL_METALS = ['copper', 'iron', 'silver', 'steel', 'hell', 'moon'] as const;
+export const toolItemId = (skill: SkillId, tier: number) => `tool_${TOOL_KIND[skill]}_${TOOL_METALS[tier - 1]}`;
+export function toolTierFor(skill: SkillId, heldItemIds: Iterable<string>): number {
+  const kind = TOOL_KIND[skill];
+  if (!kind) return 0;
+  let best = 0;
+  for (const id of heldItemIds) {
+    if (!id || !id.startsWith(`tool_${kind}_`)) continue;
+    const tier = TOOL_METALS.indexOf(id.slice(kind.length + 6) as (typeof TOOL_METALS)[number]) + 1;
+    if (tier > best) best = tier;
+  }
+  return best;
+}
+
 /** Chance that one action succeeds. Tools are optional speed-ups (roadmap §12 q2): +5% per tier. */
 export function successChance(def: NodeDef, level: number, toolTier = 0) {
   const p = (def.level === 1 ? 0.6 : 0.45) + 0.01 * (level - def.level) + 0.05 * toolTier;

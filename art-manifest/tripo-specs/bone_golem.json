@@ -15,7 +15,11 @@
     "preset:biped:walk",
     "preset:biped:slash",
     "preset:biped:hurt",
-    "preset:biped:fall"
+    "preset:biped:fall",
+    "preset:biped:hit_to_body_01",
+    "preset:biped:hit_to_head",
+    "preset:biped:defeat_03",
+    "preset:biped:front_kick_01"
   ],
   "animationMode": "single"
 }

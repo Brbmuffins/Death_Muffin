@@ -38,6 +38,8 @@ __export(gatheringRules_exports, {
   RICH_YIELD: () => RICH_YIELD,
   SKILLS: () => SKILLS,
   TICK_MS: () => TICK_MS,
+  TOOL_KIND: () => TOOL_KIND,
+  TOOL_METALS: () => TOOL_METALS,
   XP_CURVE: () => XP_CURVE,
   actionMs: () => actionMs,
   addSkillXp: () => addSkillXp,
@@ -49,6 +51,8 @@ __export(gatheringRules_exports, {
   rollBatch: () => rollBatch,
   rollGather: () => rollGather,
   successChance: () => successChance,
+  toolItemId: () => toolItemId,
+  toolTierFor: () => toolTierFor,
   totalXpFor: () => totalXpFor,
   xpPerHour: () => xpPerHour,
   xpToNext: () => xpToNext,
@@ -211,6 +215,20 @@ function addSkillXp(p, gained) {
   if (level >= LEVEL_CAP) xp = 0;
   return { level, xp, leveled };
 }
+var TOOL_KIND = { woodcutting: "hatchet", mining: "pickaxe", fishing: "rod", gravedigging: "spade" };
+var TOOL_METALS = ["copper", "iron", "silver", "steel", "hell", "moon"];
+var toolItemId = (skill, tier) => `tool_${TOOL_KIND[skill]}_${TOOL_METALS[tier - 1]}`;
+function toolTierFor(skill, heldItemIds) {
+  const kind = TOOL_KIND[skill];
+  if (!kind) return 0;
+  let best = 0;
+  for (const id of heldItemIds) {
+    if (!id || !id.startsWith(`tool_${kind}_`)) continue;
+    const tier = TOOL_METALS.indexOf(id.slice(kind.length + 6)) + 1;
+    if (tier > best) best = tier;
+  }
+  return best;
+}
 function successChance(def, level, toolTier = 0) {
   const p = (def.level === 1 ? 0.6 : 0.45) + 0.01 * (level - def.level) + 0.05 * toolTier;
   return Math.max(0.2, Math.min(0.9, p));
@@ -316,6 +334,8 @@ function placeItems(bag, grants, maxStack) {
   RICH_YIELD,
   SKILLS,
   TICK_MS,
+  TOOL_KIND,
+  TOOL_METALS,
   XP_CURVE,
   actionMs,
   addSkillXp,
@@ -327,6 +347,8 @@ function placeItems(bag, grants, maxStack) {
   rollBatch,
   rollGather,
   successChance,
+  toolItemId,
+  toolTierFor,
   totalXpFor,
   xpPerHour,
   xpToNext,

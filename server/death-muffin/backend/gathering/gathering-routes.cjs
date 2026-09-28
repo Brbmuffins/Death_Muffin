@@ -59,8 +59,10 @@ function createGatherHandlers({ store, ownsCharacter, isStaff = async () => fals
         if (skill.level < def.level && !staff) throw new PlayerError(`Requires ${rules.SKILLS[def.skill].name} level ${def.level}`);
         const budget = rules.checkBudget(def, await tx.getLedger(), claimed, now(), body.afk === true);
         if (!budget.ok) throw new PlayerError(budget.error);
-        const batch = rules.rollBatch(def, skill, budget.accepted, rng, 0, staff ? def.level : 0);
         const bag = await tx.getBag();
+        // Tools are read from the bag here, never from the request.
+        const toolTier = rules.toolTierFor(def.skill, bag.map((s) => s.itemId));
+        const batch = rules.rollBatch(def, skill, budget.accepted, rng, toolTier, staff ? def.level : 0);
         const stacks = await tx.maxStacks(batch.items.map((g) => g.itemId));
         for (const g of batch.items) if (!stacks.has(g.itemId)) throw new PlayerError('This node is not available on the server yet');
         const placed = rules.placeItems(bag, batch.items, (id) => stacks.get(id));
@@ -78,6 +80,7 @@ function createGatherHandlers({ store, ownsCharacter, isStaff = async () => fals
           items: placed.stored,
           rejected: placed.rejected,
           leveledUp: batch.leveled > 0,
+          toolTier,
           skills: [{ profession_id: def.skill, skill_level: batch.progress.level, skill_xp: batch.progress.xp }],
         };
       });

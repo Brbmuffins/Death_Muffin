@@ -1,8 +1,10 @@
 {
   "clips": [
+    "death2",
     "dive",
     "death",
     "hurt",
+    "hurt2",
     "idle",
     "attack"
   ],

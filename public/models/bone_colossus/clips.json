@@ -1,7 +1,9 @@
 {
   "clips": [
+    "death2",
     "death",
     "hurt",
+    "hurt2",
     "idle",
     "attack",
     "walk"

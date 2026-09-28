@@ -39,6 +39,8 @@ export interface CreatureOptions {
 }
 
 const FLASH_COLOR = new THREE.Color(0xfff0dc);
+/** One-shots that may have numbered variety clips (tools/build-characters.mjs CLIP_NAMES). */
+const VARIANTS = new Set<CreatureAnim>(['attack', 'hurt', 'death']);
 
 /**
  * One animated instance of a generated character. The template GLB loads once
@@ -129,7 +131,7 @@ export class Creature {
       this.mixer.addEventListener('finished', (e) => {
         if (e.action === this.oneShot) {
           this.oneShot = null;
-          if (e.action.getClip().name !== 'death') this.startLoop(true);
+          if (!e.action.getClip().name.startsWith('death')) this.startLoop(true);
         }
       });
       this.loaded = true;
@@ -146,7 +148,17 @@ export class Creature {
   private resolve(anim: CreatureAnim): THREE.AnimationAction | null {
     for (const name of FALLBACK[anim]) {
       const a = this.actions.get(name);
-      if (a) return a;
+      if (!a) continue;
+      // Variety clips ('death2', 'attack3', …): one-shots pick at random so a horde doesn't move in lockstep.
+      if (anim === name && VARIANTS.has(anim)) {
+        const pool = [a];
+        for (let i = 2; i <= 3; i++) {
+          const v = this.actions.get(`${name}${i}`);
+          if (v) pool.push(v);
+        }
+        return pool[Math.floor(Math.random() * pool.length)];
+      }
+      return a;
     }
     return null;
   }
@@ -186,7 +198,7 @@ export class Creature {
     if (!a) return false;
     // Don't let a hurt flinch cancel an attack or a death.
     if (this.oneShot && anim === 'hurt') return true;
-    if (this.oneShot?.getClip().name === 'death') return true;
+    if (this.oneShot?.getClip().name.startsWith('death')) return true;
     a.setLoop(THREE.LoopOnce, 1);
     a.clampWhenFinished = true;
     a.timeScale = durationSeconds ? a.getClip().duration / Math.max(0.12, durationSeconds) : speed;
@@ -206,7 +218,7 @@ export class Creature {
 
   /** Let locomotion blend out a hero gesture as soon as walking resumes. */
   releaseGesture() {
-    if (!this.opts.inPlace || !this.oneShot || ['death', 'hurt'].includes(this.oneShot.getClip().name)) return;
+    if (!this.opts.inPlace || !this.oneShot || /^(death|hurt)\d?$/.test(this.oneShot.getClip().name)) return;
     this.oneShot = null;
     this.startLoop(true);
   }

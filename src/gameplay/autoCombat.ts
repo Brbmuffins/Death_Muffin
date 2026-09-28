@@ -43,7 +43,7 @@ export function selectAutoCombatAction(input: AutoCombatInput): AutoCombatAction
   let inspected = 0;
   for (const e of input.enemies) {
     if (++inspected > 512) break;
-    if (e.hp <= 0 || e.state === 'dead' || e.state === 'rising' || (p.area && e.area && e.area !== p.area)) continue;
+    if (e.hp <= 0 || e.state === 'dead' || (e.state === 'rising' || e.state === 'burrow') || (p.area && e.area && e.area !== p.area)) continue;
     const d = distance(p, e);
     if (d <= ABILITIES.miasma.range) targets.push({ x: e.x, z: e.z, enemyId: e.id, radius: e.radius, distance: d,
       elite: e.elite, hp: e.hp, maxHp: e.maxHp, state: e.state, hexOwner: e.hexOwner });
@@ -349,7 +349,7 @@ export function selectAutoCombatMovement(
 
 function rawAutoMovement(input: Pick<AutoCombatInput, 'player' | 'enemies' | 'primary' | 'family'> & { nav?: AutoMoveNav }, mem: AutoMoveMemory | undefined, now: number): { x: number; z: number } | null {
   const p = input.player;
-  const enemies = [...input.enemies].filter((e) => e.hp > 0 && e.state !== 'dead' && e.state !== 'rising' && (!p.area || e.area === p.area))
+  const enemies = [...input.enemies].filter((e) => e.hp > 0 && e.state !== 'dead' && (e.state !== 'rising' && e.state !== 'burrow') && (!p.area || e.area === p.area))
     .sort((a, b) => distance(p, a) - distance(p, b));
   let nearest = enemies[0];
   if (!nearest) {

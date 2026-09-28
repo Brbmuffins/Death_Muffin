@@ -13,6 +13,7 @@ import { AREAS, AREA_ORDER, BOSS_SUMMON_SHARDS, CHAPTERHOUSE_RETURN, DOORS, PLAY
 import { disciplineFor, type Discipline } from '../content/disciplines';
 import { AFFIX_TUNING, ELITE_AFFIXES, ENEMIES, WAVE_THEMES, type EliteAffix, type EnemyId } from '../content/enemies';
 import { HEALING_FLASKS, itemMeta } from '../content/items';
+import { MEALS } from '../content/processing';
 import { generateLayout, type NodePlacement } from '../content/layout';
 import { GatherLoop, Skills } from '../gameplay/Gathering';
 import { NODES, SKILLS, nodesForSkill, type SkillId } from '../gameplay/gatheringRules';
@@ -86,6 +87,9 @@ const FIRST_SIGHT_TIPS: Partial<Record<EnemyId, TipId>> = {
   moth: 'moth',
   bat: 'bats',
   seraph: 'seraph',
+  ghoul: 'ghoul',
+  acolyte: 'acolyte',
+  templar: 'templar',
 };
 /** Counsel shown the first time each level-gated Grimoire rite is placed on a key. */
 const RITE_TIPS: Partial<Record<AbilityId, TipId>> = {
@@ -381,7 +385,7 @@ export class WorldScene implements GameScene, RuntimeView {
       follow: () => {
         const h = this.hover?.kind === 'enemy' ? this.hover : this.attackTarget?.kind === 'enemy' ? this.attackTarget : this.autoTargetId !== null ? { id: this.autoTargetId } : null;
         const e = h ? this.enemiesMap().get(h.id) : undefined;
-        return e && e.state !== 'rising' ? { x: e.x, z: e.z } : null;
+        return e && (e.state !== 'rising' && e.state !== 'burrow') ? { x: e.x, z: e.z } : null;
       },
     });
 
@@ -592,7 +596,7 @@ export class WorldScene implements GameScene, RuntimeView {
       start: type => this.startAfkGathering(type),
       pause: () => this.gathering.stop('moved'),
       status: () => ({ active: this.gathering.afk, text: this.gathering.status, allowed: this.player.area === 'acre' }),
-    });
+    }, () => this.inventory.all.map((s) => s.item_id));
     this.settingsPanel = new SettingsPanel(
       this.root,
       () => this.onLeave(),
@@ -818,7 +822,7 @@ export class WorldScene implements GameScene, RuntimeView {
       }
     };
     for (const e of this.enemiesMap().values()) {
-      if (e.state === 'dead' || e.state === 'rising') continue;
+      if (e.state === 'dead' || (e.state === 'rising' || e.state === 'burrow')) continue;
       test(e.x, 0.9 * e.scale, e.z, { kind: 'enemy', id: e.id }, e.elite ? 10 : 0);
     }
     const b = this.bossState();
@@ -1039,7 +1043,27 @@ export class WorldScene implements GameScene, RuntimeView {
     }
   }
 
+  /** A meal heals over time (content/processing.ts MEALS); one at a time, and it stacks with a flask. */
+  private mealUntil = 0;
+  private mealRate = 0;
+  private eatMeal(id: string) {
+    const meal = MEALS[id];
+    const now = this.now;
+    if (!meal || !this.player.alive) return;
+    if (now < this.mealUntil) {
+      this.floating.spawn(this.player.x, 2.4, this.player.z, 'Still eating', 'info');
+      return;
+    }
+    if (!this.inventory.consume(id)) return;
+    this.mealUntil = now + meal.seconds * 1000;
+    this.mealRate = (this.player.stats.maxHp * meal.healFrac) / meal.seconds;
+    this.floating.spawn(this.player.x, 2.2, this.player.z, `Well fed · +${Math.round(meal.healFrac * 100)}% over ${meal.seconds}s`, 'gold');
+    this.effects.emit({ x: this.player.x, y: 0.8, z: this.player.z, count: 14, color: 0xe9c98f, spread: 0.4, speed: 0.4, up: 1.2, life: 0.8, size: 0.22 });
+    this.onboarding.show('meal');
+  }
+
   private drinkFlask(prefer?: string) {
+    if (prefer && prefer in MEALS) return this.eatMeal(prefer);
     const now = this.now;
     if (!this.player.alive || now < this.flaskCdUntil) return;
     const id = prefer && prefer in HEALING_FLASKS ? prefer : ['flask_hp_major', 'flask_hp_minor'].find((f) => this.inventory.count(f) > 0);
@@ -1702,6 +1726,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (this.discipline.family === 'necromancer' && mine + corpsesNear >= 4 && this.character.level >= 2) this.onboarding.show('litany');
     if (this.discipline.family === 'necromancer' && packOnCorpse && this.progression.local.totalKills >= 15) this.onboarding.show('burst');
     if (this.progression.local.totalKills >= 40) this.onboarding.show('codex');
+    if (this.inventory.all.some((s) => s.item_id.startsWith('tool_'))) this.onboarding.show('tool');
     if (this.progression.local.shards >= BOSS_SUMMON_SHARDS) this.onboarding.show('prelate');
     if (this.progression.local.ascension > 0 && this.progression.local.ashes > 0 && this.area === 'chapterhouse') this.onboarding.show('boons');
     const { x, z } = this.player;
@@ -1765,6 +1790,13 @@ export class WorldScene implements GameScene, RuntimeView {
         audio.play('boneHit', ev.tx, ev.tz);
         this.rig.shake(0.08);
       } });
+    } else if (ev.kind === 'erupt') {
+      // Barrow Ghoul: the ground cracks open in a dirt-brown ring; it breaks out when the ring fills.
+      const r = ev.r ?? 1.8;
+      const dirt = SPELL_FX.enemy.dirt;
+      this.effects.decal({ tex: fx.disc(), color: dirt, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.45, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.2 });
+      this.effects.decal({ tex: fx.ring(), color: 0xa07a50, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.85, fadeOut: 0.05 });
+      this.effects.decal({ tex: fx.cracks(), color: dirt, x: ev.tx, z: ev.tz, r: r * 0.9, rot: Math.random() * 6, duration: ms, opacity: 0.7, growFrom: 0.2, fadeOut: 0.05 });
     } else if (ev.kind === 'dust') {
       // Shroud Moth: dust sifts down from the wings onto a ring; the cloud (a zone) follows the burst.
       const r = ev.r ?? 2;
@@ -2243,6 +2275,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (!autoMove) this.autoMoveMem.dir = null;
     const moved = p.update(dt, now, kd.x || kd.z ? kd : autoMove);
     if (settings.autoCombat && p.alive && now - p.lastHurtAt < 5000) p.heal(p.stats.maxHp * 0.02 * dt);
+    if (now < this.mealUntil && p.alive) p.heal(this.mealRate * dt);
     this.gathering.update(dt);
     this.tickGatherVisuals(dt);
     if (moved) this.cancelRecall();

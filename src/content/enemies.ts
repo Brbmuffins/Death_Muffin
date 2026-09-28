@@ -21,7 +21,11 @@ export type EnemyId =
   | 'gargoyle'
   | 'moth'
   | 'bat'
-  | 'seraph';
+  | 'seraph'
+  // Backlog mobs (docs/agent-briefs/mobs-barrow-ghoul-lich-acolyte.md), wired 2026-09-28.
+  | 'ghoul'
+  | 'acolyte'
+  | 'templar';
 export type CorpseKind = 'normal' | 'resonant' | 'swift' | 'toxic' | 'none';
 export type Behavior = 'melee' | 'flank' | 'caster' | 'hazard' | 'support';
 export type RigKind = 'humanoid' | 'quadruped' | 'bloat' | 'robed';
@@ -47,7 +51,7 @@ export interface EnemyDef {
   modelSlug?: string;
   blurb: string;
   /** Casters: the attack released after the windup (default: the Penitent's cone). */
-  attack?: 'cone' | 'scream' | 'dust';
+  attack?: 'cone' | 'scream' | 'dust' | 'curse';
   /** Hazard slam radius (default 1.9). */
   slamRadius?: number;
   /** Climbs out as a pack of this many (one wave pick). */
@@ -64,6 +68,12 @@ export interface EnemyDef {
   hitRun?: number;
   /** Weeping Seraph: blesses every ally in reach at once instead of stealing corpses. */
   ward?: boolean;
+  /** Barrow Ghoul: climbs out burrowed (immune), erupts in a ring, digs back in once below half health. */
+  burrow?: boolean;
+  /** Lich Acolyte: thralls killed near it rise as hostile Risen (see UNBIND). */
+  unbind?: boolean;
+  /** Bell Templar: blows from its front arc are mostly blocked until it is Fractured (see TEMPLAR_SHIELD). */
+  shield?: boolean;
 }
 
 export const ENEMIES: Record<EnemyId, EnemyDef> = {
@@ -348,6 +358,68 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     ward: true,
     blurb: 'A cathedral angel come loose. It weeps a blessing over every ally near it at once. Kill it before it wards the pack.',
   },
+  // --- Backlog mobs. Ghoul = grave-dirt brown; Acolyte = enemy curse crimson; Templar = bell bronze.
+  ghoul: {
+    id: 'ghoul',
+    name: 'Barrow Ghoul',
+    behavior: 'melee',
+    rig: 'humanoid',
+    hp: 60,
+    speed: 2.4,
+    radius: 0.45,
+    damage: 12,
+    attackRange: 1.3,
+    windupMs: 420,
+    cooldownMs: 1400,
+    xp: 5,
+    gold: [2, 6],
+    corpse: 'normal',
+    scale: 1.05,
+    modelSlug: 'barrow_ghoul',
+    burrow: true,
+    blurb: 'Tunnels under the churchyard toward the living. When the ground splits in a ring, step out, then finish it before it digs back down.',
+  },
+  acolyte: {
+    id: 'acolyte',
+    name: 'Lich Acolyte',
+    behavior: 'caster',
+    rig: 'robed',
+    hp: 92,
+    speed: 2.0,
+    radius: 0.5,
+    damage: 14,
+    attackRange: 8,
+    windupMs: 900,
+    cooldownMs: 3000,
+    xp: 9,
+    gold: [5, 10],
+    corpse: 'normal',
+    scale: 1.05,
+    modelSlug: 'lich_acolyte',
+    attack: 'curse',
+    unbind: true,
+    blurb: 'A necromancer of the Bell. Any thrall of yours that dies near it rises again, on its side. Kill it before you spend your legion.',
+  },
+  templar: {
+    id: 'templar',
+    name: 'Bell-Sworn Templar',
+    behavior: 'melee',
+    rig: 'humanoid',
+    hp: 180,
+    speed: 1.9,
+    radius: 0.55,
+    damage: 17,
+    attackRange: 1.6,
+    windupMs: 650,
+    cooldownMs: 1600,
+    xp: 14,
+    gold: [8, 16],
+    corpse: 'resonant',
+    scale: 1.1,
+    modelSlug: 'bell_templar',
+    shield: true,
+    blurb: 'A knight of the Bell behind a bronze shield. Blows from the front glance off: come at it from the side, Fracture it, or let your thralls hold its attention.',
+  },
 };
 
 /** Censer Bearer aura: the dead within `radius` are Incensed (refreshed each second). */
@@ -356,6 +428,12 @@ export const CENSER = { radius: 5, hasteS: 1.5, moveMult: 1.3, attackRateMult: 1
 export const SCREAM = { radius: 2.2 };
 /** Shroud Moth dust: the burst ring, then a lingering cloud (hostile zone) that chokes each second. */
 export const DUST = { radius: 2, cloudS: 3.5, cloudDpsMult: 0.35 };
+/** Barrow Ghoul: burrowed speed, how close it surfaces, the eruption ring, and how far a dig-in may travel. */
+export const BURROW = { speed: 4.2, surfaceR: 2.5, eruptR: 1.8, eruptMult: 1.25, eruptMultGraves: 1, eruptMsGraves: 1000, eruptMs: 800, digS: 0.8, digAtFrac: 0.5, travelM: 8, maxPerTarget: 3 };
+/** Lich Acolyte Unbinding: reach, delay before the Risen climbs out, cooldown, and cap per acolyte. */
+export const UNBIND = { range: 7, delayS: 1, cooldownS: 4, maxAlive: 4 };
+/** Bell Templar shield: the blocked front arc and how much of a blocked blow gets through. */
+export const TEMPLAR_SHIELD = { halfArcDeg: 60, passThrough: 0.3 };
 /** Weeping Seraph ward: every ally within `range` is Sanctified at once (up to `maxTargets`). */
 export const WARD = { range: 5.5, maxTargets: 4 };
 
@@ -379,17 +457,20 @@ export const WAVE_THEMES: Partial<Record<AreaId, WaveTheme[]>> = {
     { id: 'bellringers', name: "The Bellringers' Round", blurb: 'Penitents under a censer', roster: [{ id: 'penitent', weight: 50 }, { id: 'robber', weight: 35 }, { id: 'censer', weight: 15 }], sizeMult: 0.9, lead: 'censer' },
   ],
   ossuary: [
+    { id: 'burrows', name: 'The Barrow Opens', blurb: 'Ghouls tunnel in from every side', roster: [{ id: 'ghoul', weight: 40 }, { id: 'robber', weight: 40 }, { id: 'hound', weight: 20 }], sizeMult: 0.85 },
     { id: 'skittering', name: 'The Skittering', blurb: 'The walls empty of rats', roster: [{ id: 'rat', weight: 100 }], sizeMult: 1.4 },
     { id: 'golem', name: 'The Ossuary Wakes', blurb: 'A golem climbs out of the bone-piles', roster: [{ id: 'robber', weight: 45 }, { id: 'rat', weight: 35 }, { id: 'hound', weight: 20 }], sizeMult: 0.8, lead: 'golem' },
   ],
   nave: [
     { id: 'choir', name: 'The Drowned Choir', blurb: 'Wraiths sing over the flood', roster: [{ id: 'wraith', weight: 55 }, { id: 'penitent', weight: 25 }, { id: 'censer', weight: 20 }], sizeMult: 0.85 },
     { id: 'belfry', name: 'The Belfry Stirs', blurb: 'Gargoyles drop from the roof', roster: [{ id: 'bat', weight: 45 }, { id: 'gargoyle', weight: 30 }, { id: 'penitent', weight: 25 }], sizeMult: 0.8, lead: 'gargoyle' },
+    { id: 'unbound', name: 'The Unbound', blurb: 'Acolytes lead the risen', roster: [{ id: 'acolyte', weight: 35 }, { id: 'robber', weight: 40 }, { id: 'hound', weight: 25 }], sizeMult: 0.85, lead: 'acolyte' },
     { id: 'carrion', name: 'The Carrion Tide', blurb: 'Sacs and rats wash in', roster: [{ id: 'sac', weight: 60 }, { id: 'rat', weight: 40 }], sizeMult: 0.9 },
   ],
   sanctum: [
     { id: 'vespers', name: 'Vespers', blurb: 'Seraphs weep over the faithful', roster: [{ id: 'seraph', weight: 25 }, { id: 'penitent', weight: 30 }, { id: 'gargoyle', weight: 20 }, { id: 'censer', weight: 25 }], sizeMult: 0.85, lead: 'seraph' },
-    { id: 'procession', name: 'The Procession', blurb: 'Censers, bells and deacons march', roster: [{ id: 'censer', weight: 30 }, { id: 'penitent', weight: 35 }, { id: 'deacon', weight: 15 }, { id: 'wraith', weight: 20 }], sizeMult: 0.9, lead: 'golem' },
+    { id: 'procession', name: 'The Procession', blurb: 'Censers, bells and deacons march', roster: [{ id: 'censer', weight: 25 }, { id: 'penitent', weight: 30 }, { id: 'deacon', weight: 15 }, { id: 'wraith', weight: 15 }, { id: 'acolyte', weight: 15 }], sizeMult: 0.9, lead: 'golem' },
+    { id: 'templars', name: 'The Bell-Sworn March', blurb: 'Templars shield the procession', roster: [{ id: 'templar', weight: 30 }, { id: 'penitent', weight: 30 }, { id: 'censer', weight: 20 }, { id: 'acolyte', weight: 20 }], sizeMult: 0.85, lead: 'templar' },
   ],
 };
 

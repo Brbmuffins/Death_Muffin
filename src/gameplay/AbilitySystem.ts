@@ -546,7 +546,7 @@ export class AbilitySystem {
       // A ground cast still finds its mark: the living enemy nearest the cursor.
       let bestD = def.radius;
       for (const e of this.ctx.enemies().values()) {
-        if (e.state === 'dead' || e.state === 'rising' || e.hp <= 0) continue;
+        if (e.state === 'dead' || (e.state === 'rising' || e.state === 'burrow') || e.hp <= 0) continue;
         const d = Math.hypot(e.x - t.x, e.z - t.z);
         if (d < bestD) {
           bestD = d;
@@ -619,7 +619,7 @@ export class AbilitySystem {
         let next: CastTarget | null = null;
         let bestD = W.leapRange;
         for (const e of this.ctx.enemies().values()) {
-          if (e.state === 'dead' || e.state === 'rising' || e.hp <= 0 || struck.has(e.id)) continue;
+          if (e.state === 'dead' || (e.state === 'rising' || e.state === 'burrow') || e.hp <= 0 || struck.has(e.id)) continue;
           const d = Math.hypot(e.x - pos.x, e.z - pos.z);
           if (d < bestD) {
             bestD = d;
@@ -796,7 +796,7 @@ export class AbilitySystem {
   private inCircle(x: number, z: number, r: number) {
     const ids: number[] = [];
     for (const e of this.ctx.enemies().values()) {
-      if (e.state === 'dead' || e.state === 'rising' || Math.hypot(e.x - x, e.z - z) > r + e.radius) continue;
+      if (e.state === 'dead' || (e.state === 'rising' || e.state === 'burrow') || Math.hypot(e.x - x, e.z - z) > r + e.radius) continue;
       ids.push(e.id);
       if (ids.length >= 64) break;
     }
@@ -1130,7 +1130,7 @@ export class AbilitySystem {
     const picks: Pick[] = [t.boss ? { boss: true, off: 0 } : { id: t.enemyId!, off: 0 }];
     const others: (Pick & { d: number })[] = [];
     for (const e of this.ctx.enemies().values()) {
-      if (e.state === 'dead' || e.state === 'rising' || e.id === t.enemyId) continue;
+      if (e.state === 'dead' || (e.state === 'rising' || e.state === 'burrow') || e.id === t.enemyId) continue;
       const d = Math.hypot(e.x - p.x, e.z - p.z);
       if (d > def.range + 0.4) continue;
       const off = angleOff(e.x, e.z);

@@ -3,6 +3,7 @@ import type { InventorySlot } from '../net/types';
 import { STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
 import { BAG_SIZE, type Inventory } from '../gameplay/loot';
 import { HEALING_FLASKS, RARITY_COLOR, RARITY_MARK, itemMeta } from '../content/items';
+import { MEALS } from '../content/processing';
 
 const TYPE_GLYPH: Record<string, string> = {
   weapon: '⚔',
@@ -162,12 +163,13 @@ export class InventoryPanel {
     const detail = this.el!.querySelector<HTMLDivElement>('[data-detail]')!;
     const slot = this.selected !== null ? this.slotAt(this.selected) : undefined;
     if (!slot) {
-      detail.innerHTML = '<span class="cw-hint-text">Select a relic. Double-click to equip or drink.</span>';
+      detail.innerHTML = '<span class="cw-hint-text">Select a relic. Double-click to equip, drink or eat.</span>';
       return;
     }
     const meta = itemMeta(slot.item_id);
     const equippable = EQUIPPABLE.has(slot.item_type);
     const drinkable = slot.item_id in HEALING_FLASKS;
+    const edible = slot.item_id in MEALS;
     detail.innerHTML = `
       <div class="info">
         <div class="name" style="color:${RARITY_COLOR[slot.rarity]}">${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''}</div>
@@ -177,12 +179,13 @@ export class InventoryPanel {
       </div>
       ${equippable ? `<button class="cw-button small" data-act>${slot.equipped ? 'Unequip' : 'Equip'}</button>` : ''}
       ${drinkable ? `<button class="cw-button small" data-act>Drink</button>` : ''}
+      ${edible ? `<button class="cw-button small" data-act>Eat</button>` : ''}
     `;
     detail.querySelector('[data-act]')?.addEventListener('click', () => this.primaryAction(slot));
   }
 
   private primaryAction(slot: InventorySlot) {
-    if (slot.item_id in HEALING_FLASKS) this.onUse(slot.item_id);
+    if (slot.item_id in HEALING_FLASKS || slot.item_id in MEALS) this.onUse(slot.item_id);
     else if (EQUIPPABLE.has(slot.item_type)) void this.toggleEquip(slot);
   }
 

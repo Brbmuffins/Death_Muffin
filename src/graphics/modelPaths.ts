@@ -42,6 +42,10 @@ export const CREATURE_MODELS = {
   weeping_seraph: m('weeping_seraph', 2.3),
   shroud_moth: { url: 'models/props/shroud_moth.glb', height: 1.3 },
   tithe_bat: { url: 'models/props/tithe_bat.glb', height: 0.75 },
+  // Backlog mobs (roadmap batch art, wired 2026-09-28).
+  barrow_ghoul: m('barrow_ghoul', 1.9),
+  lich_acolyte: m('lich_acolyte', 1.95),
+  bell_templar: m('bell_templar', 2.1),
 } satisfies Record<string, CreatureModelDef>;
 
 export type CreatureSlug = keyof typeof CREATURE_MODELS;

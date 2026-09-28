@@ -30,9 +30,18 @@ const CLIP_NAMES = {
   cast_a_spell: 'cast',
   slash: 'attack',
   shoot: 'attack',
-  hurt: 'hurt',
+  // Tripo's 'hurt' preset is a 14s lying-injured clip, not a flinch: kept out of play (2026-09-28).
+  hurt: 'hurt_down',
   dig: 'dig',
   fall: 'death',
+  // Variety clips (2026-09-28): Creature picks between a clip and its numbered variants at random.
+  // (defeat_02 stays standing and chop is an alias of slash: see the grave_robber spec's `catalogued`.)
+  defeat_03: 'death2',
+  hit_to_body_01: 'hurt',
+  hit_to_head: 'hurt2',
+  hit_to_side: 'hurt3',
+  box_01: 'attack2',
+  front_kick_01: 'attack2',
 };
 
 /** Per-slug texture budget (px). Hero and boss get more; horde enemies less. */
@@ -82,7 +91,7 @@ async function build(slug) {
   const names = [];
   for (const c of clips) {
     const name = CLIP_NAMES[c.preset] ?? c.preset;
-    if (names.includes(name)) continue;
+    if (names.includes(name) || name === 'hurt_down') continue;
     const srcDoc = await io.read(c.file);
     if (copyAnimation(srcDoc, doc, name)) names.push(name);
   }

@@ -17,7 +17,11 @@
     "preset:biped:slash",
     "preset:biped:dig",
     "preset:biped:hurt",
-    "preset:biped:fall"
+    "preset:biped:fall",
+    "preset:biped:hit_to_body_01",
+    "preset:biped:hit_to_head",
+    "preset:biped:defeat_03",
+    "preset:biped:box_01"
   ],
   "animationMode": "single"
 }

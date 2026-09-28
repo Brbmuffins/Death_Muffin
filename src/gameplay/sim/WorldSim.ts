@@ -9,6 +9,9 @@ import {
   SCREAM,
   DUST,
   WARD,
+  BURROW,
+  UNBIND,
+  TEMPLAR_SHIELD,
   SURGE,
   WAVE_THEMES,
   enemyDamageScale,
@@ -124,6 +127,8 @@ export class WorldSim {
   readonly thralls = new Map<number, Thrall>();
   readonly corpses = new Map<number, Corpse>();
   readonly zones = new Map<number, Zone>();
+  /** Lich Acolyte Unbindings waiting to climb out (host-only). */
+  private unbinds: { at: number; by: number; x: number; z: number; area: AreaId }[] = [];
   readonly players = new Map<string, PlayerBody>();
   /** Gathering nodes (placements from the layout; depletion is host-authoritative). */
   readonly nodes = new Map<string, SimNode>();
@@ -230,12 +235,40 @@ export class WorldSim {
     }
   }
 
-  damageEnemy(e: Enemy, amount: number, by: string) {
+  /**
+   * `from` is where a directed blow came from (the caster, or the thrall that struck). Only directed
+   * blows can glance off a Bell Templar's shield; zones and damage over time pass none.
+   */
+  damageEnemy(e: Enemy, amount: number, by: string, from?: { x: number; z: number }) {
     if (e.state === 'dead' || e.hp <= 0) return 0;
-    const dmg = amount * (1 + FRACTURE.perStack * e.fracture) * this.damageTakenMult(e);
+    // A Barrow Ghoul underground (burrowed, or winding up its eruption) cannot be touched.
+    if (e.state === 'burrow' || (e.erupting != null && e.state === 'windup')) return 0;
+    const def = ENEMIES[e.def];
+    let shield = 1;
+    if (def.shield && from && e.fracture === 0) {
+      let d = Math.abs(Math.atan2(from.x - e.x, from.z - e.z) - e.facing) % (Math.PI * 2);
+      if (d > Math.PI) d = Math.PI * 2 - d;
+      if (d <= (TEMPLAR_SHIELD.halfArcDeg * Math.PI) / 180) {
+        shield = TEMPLAR_SHIELD.passThrough;
+        if (this.time >= (e.blockFxAt ?? 0)) {
+          e.blockFxAt = this.time + 0.25;
+          this.emit({ t: 'shieldBlock', id: e.id, x: e.x, z: e.z });
+        }
+      }
+    }
+    const dmg = amount * (1 + FRACTURE.perStack * e.fracture) * this.damageTakenMult(e) * shield;
     e.hp -= dmg;
     e.flash = 1;
     e.lastHitBy = by;
+    // Barrow Ghoul: the first time it drops below half it digs back in (still hittable while it digs).
+    if (def.burrow && !e.dugIn && e.hp > 0 && e.hp < e.maxHp * BURROW.digAtFrac) {
+      e.dugIn = true;
+      e.digPending = true;
+      e.state = 'recover';
+      e.stateT = 0;
+      e.groundT = Math.max(0, BURROW.digS - 0.3);
+      this.emit({ t: 'digIn', id: e.id, x: e.x, z: e.z });
+    }
     return dmg;
   }
 
@@ -259,10 +292,12 @@ export class WorldSim {
       this.boss.damage(h.dmg, h.by, h.fracture ?? 0);
       return;
     }
+    const caster = this.players.get(h.by);
+    const from = caster ? { x: caster.x, z: caster.z } : undefined;
     for (const id of h.ids) {
       const e = this.enemies.get(id);
-      if (!e) continue;
-      this.damageEnemy(e, h.dmg, h.by);
+      if (!e || e.state === 'burrow') continue;
+      this.damageEnemy(e, h.dmg, h.by, from);
       if (h.bleed && h.bleed > 0) {
         // Hemorrhage: the strongest bleed wins; the host caps what a hit may claim.
         const dps = Math.min(h.bleed, h.dmg * HEMORRHAGE.maxFrac);
@@ -528,6 +563,66 @@ export class WorldSim {
     t.state = 'dead';
     this.emit({ t: 'thrallGone', id: t.id, owner: t.owner, x: t.x, z: t.z, reason });
     if (t.kind === 'plaguebearer' && reason !== 'crumbled') this.plagueBurst(t);
+    // Only a thrall that was killed can be unbound; sacrificed and crumbled ones are safe.
+    if (reason === 'killed') this.tryUnbind(t);
+  }
+
+  /** Lich Acolyte: the nearest ready acolyte in reach claims a fallen thrall; a Risen climbs out shortly after. */
+  private tryUnbind(t: Thrall) {
+    for (const e of this.enemies.values()) {
+      if (!ENEMIES[e.def].unbind || e.state === 'dead' || (e.state === 'rising' || e.state === 'burrow') || e.hp <= 0) continue;
+      if ((e.unbindCd ?? 0) > 0 || Math.hypot(e.x - t.x, e.z - t.z) > UNBIND.range) continue;
+      let alive = this.unbinds.filter((u) => u.by === e.id).length;
+      for (const o of this.enemies.values()) if (o.unboundBy === e.id && o.state !== 'dead') alive++;
+      if (alive >= UNBIND.maxAlive) continue;
+      e.unbindCd = UNBIND.cooldownS;
+      this.unbinds.push({ at: this.time + UNBIND.delayS, by: e.id, x: t.x, z: t.z, area: e.area });
+      this.emit({ t: 'unbind', id: e.id, x: e.x, z: e.z, tx: t.x, tz: t.z });
+      return;
+    }
+  }
+
+  private tickUnbinds() {
+    for (let i = this.unbinds.length - 1; i >= 0; i--) {
+      const u = this.unbinds[i];
+      if (this.time < u.at) continue;
+      this.unbinds.splice(i, 1);
+      const a = this.enemies.get(u.by);
+      if (!a || a.state === 'dead' || a.hp <= 0) continue; // a dead acolyte cancels its Unbinding
+      this.spawnEnemy('risen', u.area, u.x, u.z, false).unboundBy = a.id;
+    }
+  }
+
+  /** Barrow Ghoul underground: tunnel toward the target, then wind up an eruption (at most a few per target). */
+  private tickBurrow(e: Enemy, dt: number) {
+    const target = this.pickTarget(e);
+    e.targetPlayer = target?.player?.id ?? null;
+    e.targetThrall = target?.thrall?.id ?? null;
+    if (!target) return;
+    const key = target.player?.id ?? target.thrall!.id;
+    const d = Math.hypot(target.x - e.x, target.z - e.z);
+    if (d <= BURROW.surfaceR || (e.burrowLeft ?? Infinity) <= 0) {
+      let busy = 0;
+      for (const o of this.enemies.values()) if (o !== e && o.erupting === key && o.state === 'windup') busy++;
+      if (busy >= BURROW.maxPerTarget) return; // wait underground so the rings stay readable
+      e.state = 'windup';
+      e.stateT = 0;
+      e.erupting = key;
+      e.aimX = target.x;
+      e.aimZ = target.z;
+      e.facing = Math.atan2(target.x - e.x, target.z - e.z);
+      this.emit({ t: 'telegraph', id: e.id, kind: 'erupt', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: this.eruptMs(e), r: BURROW.eruptR });
+      return;
+    }
+    const px = e.x;
+    const pz = e.z;
+    this.moveEnemy(e, target.x, target.z, dt, BURROW.speed / e.speed);
+    if (e.burrowLeft !== undefined) e.burrowLeft -= Math.hypot(e.x - px, e.z - pz);
+  }
+
+  /** The eruption windup: generous in the first room. */
+  private eruptMs(e: Enemy) {
+    return (e.area === 'graves' ? BURROW.eruptMsGraves : BURROW.eruptMs) * (e.elite ? 0.85 : 1);
   }
 
   // --- Signature rites ---
@@ -576,7 +671,7 @@ export class WorldSim {
           t.attackCd = 0.2;
           for (const e of this.enemies.values()) {
             if (e.state === 'dead' || Math.hypot(e.x - tx, e.z - tz) > R.cleaveRadius + e.radius) continue;
-            this.damageEnemy(e, t.damage * R.damageMult, g.by);
+            this.damageEnemy(e, t.damage * R.damageMult, g.by, t);
             hit.add(e.id);
           }
           const b = this.boss.state;
@@ -641,7 +736,7 @@ export class WorldSim {
         let first: Enemy | null = null;
         let bestT = Infinity;
         for (const e of this.enemies.values()) {
-          if (e.state === 'dead' || e.state === 'rising') continue;
+          if (e.state === 'dead' || (e.state === 'rising' || e.state === 'burrow')) continue;
           if (caster?.area && e.area !== caster.area) continue;
           const rx = e.x - ox;
           const rz = e.z - oz;
@@ -707,7 +802,7 @@ export class WorldSim {
         let focus: Enemy | null = null;
         let bestD = Infinity;
         for (const e of this.enemies.values()) {
-          if (e.state === 'dead' || e.state === 'rising') continue;
+          if (e.state === 'dead' || (e.state === 'rising' || e.state === 'burrow')) continue;
           const d = Math.hypot(e.x - cx, e.z - cz);
           if (d < bestD) (focus = e), (bestD = d);
         }
@@ -761,7 +856,7 @@ export class WorldSim {
         && Math.hypot(c.x - x, c.z - z) <= r)
       .sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z))[0];
     const foe = (range: number) => [...this.enemies.values()]
-      .filter((e) => e.state !== 'dead' && e.state !== 'rising' && e.area === caster.area
+      .filter((e) => e.state !== 'dead' && (e.state !== 'rising' && e.state !== 'burrow') && e.area === caster.area
         && Math.hypot(e.x - x, e.z - z) <= e.radius + 0.8 && Math.hypot(e.x - caster.x, e.z - caster.z) <= range + e.radius)
       .sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z))[0];
     switch (g.sig) {
@@ -980,7 +1075,7 @@ export class WorldSim {
         continue;
       }
       for (const e of this.enemies.values()) {
-        if (e.state === 'dead' || e.state === 'rising' || e.area !== b.area) continue;
+        if (e.state === 'dead' || (e.state === 'rising' || e.state === 'burrow') || e.area !== b.area) continue;
         if (Math.hypot(e.x - b.x, e.z - b.z) > GRAVE_BRAND.triggerR + e.radius) continue;
         e.rootT = Math.max(e.rootT ?? 0, GRAVE_BRAND.rootS);
         this.brands.delete(id);
@@ -1079,7 +1174,7 @@ export class WorldSim {
       speed: d.speed * (0.92 + this.rand() * 0.16),
       radius: d.radius * (elite ? 1.25 : 1),
       scale: d.scale * (elite ? ELITE.scale : 1),
-      state: rising ? 'rising' : 'move',
+      state: rising ? (d.burrow ? 'burrow' : 'rising') : 'move',
       stateT: 0,
       attackCd: 0.5 + this.rand(),
       targetPlayer: null,
@@ -1500,7 +1595,7 @@ export class WorldSim {
       if (this.time < (c.seedArmedAt ?? Infinity)) continue;
       let near = false;
       for (const e of this.enemies.values()) {
-        if (e.state === 'dead' || e.state === 'rising') continue;
+        if (e.state === 'dead' || (e.state === 'rising' || e.state === 'burrow')) continue;
         if (Math.hypot(e.x - c.x, e.z - c.z) <= CARRION_SEED.triggerR + e.radius) {
           near = true;
           break;
@@ -1701,7 +1796,7 @@ export class WorldSim {
     let best: Enemy | null = null;
     let bestFrac = 0.999;
     for (const o of this.enemies.values()) {
-      if (o === e || o.def === 'deacon' || o.state === 'dead' || o.state === 'rising' || (o.sanctT ?? 0) > 0) continue;
+      if (o === e || o.def === 'deacon' || o.state === 'dead' || (o.state === 'rising' || o.state === 'burrow') || (o.sanctT ?? 0) > 0) continue;
       if (Math.hypot(o.x - e.x, o.z - e.z) > SANCTIFIED.range) continue;
       const frac = o.hp / o.maxHp;
       if (frac < bestFrac) {
@@ -1837,6 +1932,7 @@ export class WorldSim {
     if ((e.stunT ?? 0) > 0) e.stunT! -= dt;
     if ((e.rootT ?? 0) > 0) e.rootT! -= dt;
     if ((e.incenseT ?? 0) > 0) e.incenseT! -= dt;
+    if ((e.unbindCd ?? 0) > 0) e.unbindCd! -= dt;
     if ((e.bleedT ?? 0) > 0 && (e.bleedDps ?? 0) > 0) {
       e.bleedT! -= dt;
       const dmg = e.bleedDps! * dt * this.damageTakenMult(e);
@@ -1869,6 +1965,7 @@ export class WorldSim {
   private updateEnemies(dt: number) {
     const activeAreas = new Set<AreaId>();
     for (const p of this.players.values()) if (p.alive && p.area) activeAreas.add(p.area);
+    this.tickUnbinds();
     for (const e of this.enemies.values()) {
       e.moving = false;
       this.tickStatuses(e, dt);
@@ -1881,6 +1978,10 @@ export class WorldSim {
         continue;
       }
       if (!activeAreas.has(e.area)) continue; // dormant: nobody here to hunt
+      if (e.state === 'burrow') {
+        this.tickBurrow(e, dt);
+        continue;
+      }
       // Shield Bash: stunned bodies neither act nor move, and a stun cancels a
       // windup or channel outright (this is the interrupt the Knight pays for).
       if ((e.stunT ?? 0) > 0) {
@@ -1889,6 +1990,11 @@ export class WorldSim {
           e.stateT = 0;
           e.channelCorpse = null;
           if (e.diving) this.endDive(e);
+          // A stun can't reach a ghoul still underground: it just keeps tunnelling.
+          if (e.erupting != null) {
+            e.erupting = null;
+            e.state = 'burrow';
+          }
         }
         continue;
       }
@@ -1898,7 +2004,7 @@ export class WorldSim {
       if (def.aura) this.censerPulse(e, dt);
 
       if (e.state === 'windup' || e.state === 'channel') {
-        const windup = (e.state === 'channel' ? 1.5 : def.windupMs / 1000) * (e.elite ? 0.85 : 1);
+        const windup = e.erupting != null && e.state === 'windup' ? this.eruptMs(e) / 1000 : (e.state === 'channel' ? 1.5 : def.windupMs / 1000) * (e.elite ? 0.85 : 1);
         // Belfry Gargoyle: it hangs over the mark for the first half, then drops onto it in a straight line.
         if (e.diving) {
           const k = Math.max(0, Math.min(1, (e.stateT - windup * 0.5) / (windup * 0.5)));
@@ -1915,6 +2021,12 @@ export class WorldSim {
           e.state = 'move';
           e.stateT = 0;
           e.groundT = 0;
+          // Barrow Ghoul finished digging: back underground for one more tunnel.
+          if (e.digPending) {
+            e.digPending = false;
+            e.state = 'burrow';
+            e.burrowLeft = BURROW.travelM;
+          }
         }
         continue;
       }
@@ -2013,6 +2125,8 @@ export class WorldSim {
               this.emit({ t: 'telegraph', id: e.id, kind: 'scream', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: SCREAM.radius });
             } else if (def.attack === 'dust') {
               this.emit({ t: 'telegraph', id: e.id, kind: 'dust', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: DUST.radius });
+            } else if (def.attack === 'curse') {
+              this.emit({ t: 'telegraph', id: e.id, kind: 'curse', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
             } else this.emit({ t: 'telegraph', id: e.id, kind: 'cone', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
           } else if (dist > def.attackRange - 1.5) this.moveEnemy(e, target.x, target.z, dt);
           else if (dist < 3.5) this.moveEnemy(e, e.x * 2 - target.x, e.z * 2 - target.z, dt, 0.8);
@@ -2075,6 +2189,18 @@ export class WorldSim {
       }
       return;
     }
+    if (e.erupting != null) {
+      // Barrow Ghoul surfaces in the middle of its ring and hits everything inside it once.
+      e.erupting = null;
+      [e.x, e.z] = this.nav.resolveInArea(e.area, e.aimX, e.aimZ, e.radius);
+      const dmg = this.blow(e) * (e.area === 'graves' ? BURROW.eruptMultGraves : BURROW.eruptMult);
+      for (const p of this.players.values()) {
+        if (p.alive && Math.hypot(p.x - e.aimX, p.z - e.aimZ) <= BURROW.eruptR) this.emit({ t: 'hurt', player: p.id, dmg, from: 'erupt', x: e.x, z: e.z });
+      }
+      for (const t of [...this.thralls.values()]) if (Math.hypot(t.x - e.aimX, t.z - e.aimZ) <= BURROW.eruptR) this.hurtThrall(t, dmg);
+      this.emit({ t: 'erupt', id: e.id, x: e.aimX, z: e.aimZ, r: BURROW.eruptR });
+      return;
+    }
     if (e.diving && def.dive) {
       this.endDive(e);
       e.groundT = def.dive.groundedS;
@@ -2103,7 +2229,7 @@ export class WorldSim {
   private seraphWard(e: Enemy) {
     const allies: Enemy[] = [];
     for (const o of this.enemies.values()) {
-      if (o === e || o.state === 'dead' || o.state === 'rising' || (o.sanctT ?? 0) > 0) continue;
+      if (o === e || o.state === 'dead' || (o.state === 'rising' || o.state === 'burrow') || (o.sanctT ?? 0) > 0) continue;
       if (Math.hypot(o.x - e.x, o.z - e.z) <= WARD.range) allies.push(o);
     }
     if (!allies.length) return;
@@ -2153,7 +2279,7 @@ export class WorldSim {
         t.target = null;
         let bestD = 10;
         for (const e of this.enemies.values()) {
-          if (e.state === 'dead' || e.state === 'rising') continue;
+          if (e.state === 'dead' || (e.state === 'rising' || e.state === 'burrow')) continue;
           if (Math.hypot(e.x - owner.x, e.z - owner.z) > THRALL_LEASH - 2) continue;
           const d = Math.hypot(e.x - t.x, e.z - t.z);
           if (d < bestD) {
@@ -2183,7 +2309,7 @@ export class WorldSim {
       if (target) {
         const e = target;
         engage(e.x, e.z, e.radius, () => {
-          const dealt = this.damageEnemy(e, t.damage * ((t.rallyT ?? 0) > 0 ? RALLY.damageMult : 1), t.owner);
+          const dealt = this.damageEnemy(e, t.damage * ((t.rallyT ?? 0) > 0 ? RALLY.damageMult : 1), t.owner, t);
           if (t.kind === 'wraith') e.chillT = CHILL.durationS;
           else if (t.kind === 'bonemage') e.hexT = BONE_HEX.durationS;
           this.emit({ t: 'thrallHit', id: t.id, target: e.id, x: t.x, z: t.z, tx: e.x, tz: e.z, kind: t.kind, dmg: Math.round(dealt) });
@@ -2224,7 +2350,7 @@ export class WorldSim {
   /** Soft body separation: enemies ↔ enemies/thralls/players, thralls ↔ thralls. */
   private separate() {
     const bodies: { x: number; z: number; r: number; w: number; e?: Enemy; t?: Thrall }[] = [];
-    for (const e of this.enemies.values()) if (e.state !== 'rising') bodies.push({ x: e.x, z: e.z, r: e.radius, w: 1, e });
+    for (const e of this.enemies.values()) if ((e.state !== 'rising' && e.state !== 'burrow')) bodies.push({ x: e.x, z: e.z, r: e.radius, w: 1, e });
     for (const t of this.thralls.values()) bodies.push({ x: t.x, z: t.z, r: 0.4, w: 0.6, t });
     for (const p of this.players.values()) if (p.alive) bodies.push({ x: p.x, z: p.z, r: PLAYER_RADIUS, w: 0 });
     for (let i = 0; i < bodies.length; i++) {

@@ -233,9 +233,10 @@ export class CodexPanel {
         <div class="txt">
           <div class="hd"><h3>Stations</h3><span class="meta">Sexton's Acre, by the door</span></div>
           <dl>
-            <dt>Bone Kiln</dt><dd>Smelting and forging (Mining recipes).</dd>
-            <dt>Sawpit</dt><dd>Planks, staves and bows (Woodcutting recipes).</dd>
-            <dt>Cooking Fire</dt><dd>Fillets, tinctures and flasks (Fishing recipes).</dd>
+            <dt>Bone Kiln</dt><dd>Smelting, gathering tools (Mining recipes) and Bonework: bones ground into bone meal (Gravedigging).</dd>
+            <dt>Sawpit</dt><dd>A plank for every log, plus staves and bows (Woodcutting recipes).</dd>
+            <dt>Cooking Fire</dt><dd>A meal for every fish (heals over time), fillets, tinctures and flasks (Fishing recipes).</dd>
+            <dt>Tools</dt><dd>A hatchet, pickaxe, rod or spade in your bag adds +5% success per metal tier to its skill (copper to moon; the best you carry counts).</dd>
           </dl>
           <p>XP/h assumes steady work at the node's own level with the node always ready; your odds improve with every level above it.</p>
         </div>

@@ -1,9 +1,11 @@
 {
   "clips": [
     "cast",
+    "death2",
     "dig",
     "death",
     "hurt",
+    "hurt2",
     "idle",
     "run",
     "attack",
