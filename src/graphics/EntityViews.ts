@@ -238,17 +238,17 @@ export class EntityViews {
   }
 
   /** Per-frame affix particles / shroud fade. */
-  private tickAffix(v: View, e: Enemy, dt: number) {
+  private tickAffix(v: View, e: Enemy, dt: number, nearFx: boolean) {
     const headY = HEAD_Y[ENEMIES[e.def].rig] * e.scale;
     switch (e.affix) {
       case 'hungering':
-        if (Math.random() < dt * 6) {
+        if (nearFx && Math.random() < dt * 4) {
           const f = v.facing;
           this.effects.emit({ x: e.x + Math.sin(f) * 0.3 * e.scale, y: headY, z: e.z + Math.cos(f) * 0.3 * e.scale, count: 1, color: A.drool, spread: 0.06, speed: 0.1, up: -0.3, life: 0.7, size: 0.13, gravity: 7 });
         }
         break;
       case 'vengeful':
-        if (Math.random() < dt * 4) {
+        if (nearFx && Math.random() < dt * 3) {
           this.effects.emit({ x: e.x, y: 0.3 + Math.random() * headY, z: e.z, count: 1, color: A.vengeful, spread: 0.35 * e.scale, speed: 0.2, up: 1.1, life: 0.7, size: 0.12 });
         }
         break;
@@ -257,7 +257,7 @@ export class EntityViews {
         const target = e.slowT > 0 ? 1 : 0.38;
         v.shroud = (v.shroud ?? 1) + (target - (v.shroud ?? 1)) * Math.min(1, dt * 6);
         v.c.setOpacity(v.shroud);
-        if (target < 1 && Math.random() < dt * 3) {
+        if (nearFx && target < 1 && Math.random() < dt * 2) {
           this.effects.emitSmoke({ x: e.x, y: 0.4 + Math.random() * headY, z: e.z, count: 1, color: A.shroud, spread: 0.4 * e.scale, speed: 0.15, up: 0.4, life: 1.2, size: 0.9, shrink: -0.6 });
         }
         break;
@@ -529,40 +529,41 @@ export class EntityViews {
         v.lastState = key;
       }
       this.tickAnim(v, dt, focusX, focusZ);
-      if (e.withered > 0 && Math.random() < dt * (1.5 + e.withered)) {
+      const nearFx = Math.abs(e.x - focusX) < 24 && Math.abs(e.z - focusZ) < 20;
+      if (nearFx && e.withered > 0 && Math.random() < dt * (1 + e.withered * 0.75)) {
         this.effects.emit({ x: e.x, y: 0.8 + Math.random() * 0.8, z: e.z, count: 1, color: SPELL_FX.miasma.rot, spread: 0.4, speed: 0.2, up: 0.7, life: 0.9, size: 0.2 });
       }
-      if (e.fracture > 0 && Math.random() < dt * 2 * e.fracture) {
+      if (nearFx && e.fracture > 0 && Math.random() < dt * 1.5 * e.fracture) {
         this.effects.emit({ x: e.x, y: 1.2, z: e.z, count: 1, color: SPELL_FX.needle.dust, spread: 0.3, speed: 0.6, up: 0.4, life: 0.5, size: 0.1, gravity: 5 });
       }
       // Status tells: marrow drips, frost motes, a priest-gold glint.
-      if ((e.bleedT ?? 0) > 0 && Math.random() < dt * 6) {
+      if (nearFx && (e.bleedT ?? 0) > 0 && Math.random() < dt * 4) {
         this.effects.emit({ x: e.x, y: 0.7 + Math.random() * 0.6, z: e.z, count: 1, color: Math.random() < 0.7 ? STATUS_FX.hemorrhage.crimson : STATUS_FX.hemorrhage.ember, spread: 0.3, speed: 0.1, up: -0.2, life: 0.6, size: 0.12, gravity: 8 });
       }
-      if ((e.chillT ?? 0) > 0 && Math.random() < dt * 5) {
+      if (nearFx && (e.chillT ?? 0) > 0 && Math.random() < dt * 3) {
         this.effects.emit({ x: e.x, y: 0.3 + Math.random() * 1.2, z: e.z, count: 1, color: STATUS_FX.chill.frost, spread: 0.45, speed: 0.15, up: 0.2, life: 0.8, size: 0.14, drag: 0.5 });
       }
-      if ((e.sanctT ?? 0) > 0 && Math.random() < dt * 3) {
+      if (nearFx && (e.sanctT ?? 0) > 0 && Math.random() < dt * 2) {
         this.effects.emit({ x: e.x, y: 1.9 * e.scale, z: e.z, count: 1, color: STATUS_FX.sanctified.gold, spread: 0.35, speed: 0.1, up: 0.5, life: 0.7, size: 0.16 });
       }
       // Incensed (a Censer Bearer's aura): bronze motes drifting off the shoulders.
-      if ((e.incenseT ?? 0) > 0 && Math.random() < dt * 4) {
+      if (nearFx && (e.incenseT ?? 0) > 0 && Math.random() < dt * 3) {
         this.effects.emit({ x: e.x, y: 1.2 * e.scale, z: e.z, count: 1, color: STATUS_FX.incensed.bronze, spread: 0.4, speed: 0.2, up: 0.6, life: 0.8, size: 0.14 });
       }
       // The Censer Bearer itself trails incense smoke and wears its aura on the ground.
       if (ENEMIES[e.def].aura) {
         if (!v.auraFx) v.auraFx = this.effects.decal({ tex: fx.ring(), color: STATUS_FX.incensed.bronze, x: e.x, z: e.z, r: CENSER.radius, duration: 1e9, opacity: 0.22, pulse: 2.5, follow: () => ({ x: v!.x, z: v!.z }) });
-        if (Math.random() < dt * 3) this.effects.emitSmoke({ x: e.x, y: 1.1, z: e.z, count: 1, color: STATUS_FX.incensed.smoke, spread: 0.3, speed: 0.3, up: 0.5, life: 1.4, size: 0.9, shrink: -0.5 });
+        if (nearFx && Math.random() < dt * 2) this.effects.emitSmoke({ x: e.x, y: 1.1, z: e.z, count: 1, color: STATUS_FX.incensed.smoke, spread: 0.3, speed: 0.3, up: 0.5, life: 1.4, size: 0.9, shrink: -0.5 });
       }
-      if (hover && Math.random() < dt * 6) {
+      if (nearFx && hover && Math.random() < dt * 4) {
         this.effects.emit({ x: e.x, y: lift + 0.2, z: e.z, count: 1, color: 0xb9cbe6, spread: 0.35, speed: 0.1, up: -0.3, life: 0.7, size: 0.18 });
       }
-      if (e.state === 'rising' && Math.random() < dt * 12) {
+      if (nearFx && e.state === 'rising' && Math.random() < dt * 8) {
         this.effects.emitSmoke({ x: e.x, y: 0.1, z: e.z, count: 1, color: 0x2a2230, spread: 0.5, speed: 0.5, up: 0.6, life: 1, size: 0.9 });
       }
       // A mirror may learn the affix after the view exists (late snapshot field).
       if (e.affix && !v.affix) this.dressAffix(v, e);
-      if (v.affix) this.tickAffix(v, e, dt);
+      if (v.affix) this.tickAffix(v, e, dt, nearFx);
     }
     // Enemies that vanished without a death event (mirror resync, area clear).
     for (const [id, v] of this.enemies) {

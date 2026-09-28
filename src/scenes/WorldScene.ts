@@ -122,7 +122,7 @@ type Hover =
  */
 export class WorldScene implements GameScene, RuntimeView {
   readonly scene = new THREE.Scene();
-  readonly bloom = { strength: 0.9, radius: 0.55, threshold: 0.8 };
+  readonly bloom = { strength: 0.75, radius: 0.55, threshold: 0.85 };
   private rig = new CameraRig();
   private scope = new Scope();
   private root = document.getElementById('ui-root')!;
@@ -336,12 +336,12 @@ export class WorldScene implements GameScene, RuntimeView {
     this.player.teleport(PLAYER_SPAWN.x, PLAYER_SPAWN.z);
     this.avatar = new NecromancerAvatar(this.scene, this.discipline.color, true, this.discipline.modelSlug);
     this.rig.snap(this.player.x, this.player.z);
-    // Readability: a soft pool of discipline light and a thin ring under the hero.
+    // A quiet discipline glow and a warm bone ring keep the hero readable on violet and dark stone.
     const follow = () => ({ x: this.player.x, z: this.player.z });
-    this.effects.decal({ tex: fx.glow(), color: this.discipline.color, x: 0, z: 0, r: 2.2, duration: 1e9, opacity: 0.32, fadeIn: 0.01, follow });
-    this.effects.decal({ tex: fx.ring(), color: this.discipline.color, x: 0, z: 0, r: 0.85, duration: 1e9, opacity: 0.55, fadeIn: 0.01, follow });
+    this.effects.decal({ tex: fx.glow(), color: this.discipline.color, x: 0, z: 0, r: 2.2, duration: 1e9, opacity: 0.13, fadeIn: 0.01, follow });
+    this.effects.decal({ tex: fx.ring(), color: 0xc8bea8, x: 0, z: 0, r: 0.85, duration: 1e9, opacity: 0.46, fadeIn: 0.01, follow });
     // A small ground reticle follows the mouse independently of the hero ring.
-    this.effects.decal({ tex: fx.ring(), color: 0xc6a4ff, x: 0, z: 0, r: 0.35, duration: 1e9, opacity: 0.5, fadeIn: 0.01, follow: () => ({ x: this.groundPoint.x, z: this.groundPoint.z }) });
+    this.effects.decal({ tex: fx.ring(), color: 0xb6a9c8, x: 0, z: 0, r: 0.35, duration: 1e9, opacity: 0.36, fadeIn: 0.01, follow: () => ({ x: this.groundPoint.x, z: this.groundPoint.z }) });
     // Soul Harvest charged: a jade halo until the empowered spell is spent.
     this.effects.decal({
       tex: fx.ring(),
@@ -480,7 +480,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const moon = new THREE.DirectionalLight(0x9aa6d4, 2.4);
     moon.position.set(-14, 30, 12);
     moon.castShadow = true;
-    moon.shadow.mapSize.set(2048, 2048);
+    moon.shadow.mapSize.set(1024, 1024);
     moon.shadow.camera.left = -30;
     moon.shadow.camera.right = 30;
     moon.shadow.camera.top = 30;
@@ -895,7 +895,7 @@ export class WorldScene implements GameScene, RuntimeView {
     }
     this.pendingInteract = null;
     this.player.moveTo(this.groundPoint.x, this.groundPoint.z);
-    this.effects.decal({ tex: fx.ring(), color: 0xc6a4ff, x: this.groundPoint.x, z: this.groundPoint.z, r: 0.45, duration: 0.35, opacity: 0.8, growFrom: 1.6 });
+    this.effects.decal({ tex: fx.ring(), color: 0xb6a9c8, x: this.groundPoint.x, z: this.groundPoint.z, r: 0.45, duration: 0.35, opacity: 0.62, growFrom: 1.6 });
   }
 
   private castSlot(slot: HotbarSlot) {
@@ -2304,7 +2304,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (!zones) return;
     for (const z of zones.values()) {
       if (Math.abs(z.x - this.player.x) > 30 || Math.abs(z.z - this.player.z) > 26) continue;
-      const rate = z.r * z.r * 1.2;
+      const rate = z.r * z.r * 0.8;
       if (Math.random() < dt * rate) {
         const a = Math.random() * Math.PI * 2;
         const d = Math.sqrt(Math.random()) * z.r;
@@ -2312,7 +2312,7 @@ export class WorldScene implements GameScene, RuntimeView {
         const zz = z.z + Math.sin(a) * d;
         if (z.kind === 'miasma' || z.kind === 'rot') {
           this.effects.emit({ x, y: 0.2, z: zz, count: 1, color: SPELL_FX.miasma.rot, spread: 0.2, speed: 0.15, up: 0.9, life: 1.4, size: 0.22, drag: 0.5 });
-          if (Math.random() < 0.6) this.effects.emitSmoke({ x, y: 0.3, z: zz, count: 1, color: 0x56662a, spread: 0.3, speed: 0.2, up: 0.3, life: 2, size: 1.6, shrink: -0.8, drag: 0.5 });
+          if (Math.random() < 0.4) this.effects.emitSmoke({ x, y: 0.3, z: zz, count: 1, color: 0x56662a, spread: 0.3, speed: 0.2, up: 0.3, life: 2, size: 1.6, shrink: -0.8, drag: 0.5 });
         } else if (z.kind === 'toxic') {
           this.effects.emit({ x, y: 0.1, z: zz, count: 1, color: SPELL_FX.enemy.toxic, spread: 0.1, speed: 0.05, up: 0.6, life: 0.8, size: 0.28 });
         }

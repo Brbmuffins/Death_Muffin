@@ -11,7 +11,7 @@ interface Entry {
   drift: number;
 }
 
-const MAX = 70;
+const MAX = 56;
 
 /** Pooled DOM combat text projected from world space every frame. */
 export class FloatingText {

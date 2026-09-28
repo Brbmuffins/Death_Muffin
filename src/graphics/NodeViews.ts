@@ -60,6 +60,7 @@ function merged(parts: THREE.BufferGeometry[]) {
 }
 
 const col = (hex: number, k = 1) => new THREE.Color(hex).multiplyScalar(k);
+const INDICATOR_BONE = new THREE.Color(0xc8bea8);
 
 /** Code-built look for a node kind (live or spent). */
 function standIn(def: NodeDef, spent: boolean): Part[] {
@@ -244,12 +245,12 @@ export class NodeViews {
     }
     this.hoverRing = new THREE.Mesh(
       new THREE.RingGeometry(1.05, 1.22, 40).rotateX(-Math.PI / 2),
-      new THREE.MeshBasicMaterial({ color: 0xe8dcc0, transparent: true, opacity: 0.7, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ color: 0xe8dcc0, transparent: true, opacity: 0.6, depthWrite: false }),
     );
     this.hoverRing.visible = false;
     this.hoverRing.renderOrder = 3;
     // Actual ring geometry cannot become an opaque square if a custom shader fails.
-    this.arcMat = new THREE.MeshBasicMaterial({ color: 0xe8dcc0, transparent: true, opacity: 0.85, depthWrite: false });
+    this.arcMat = new THREE.MeshBasicMaterial({ color: 0xe8dcc0, transparent: true, opacity: 0.74, depthWrite: false });
     this.arc = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.8, 48).rotateX(-Math.PI / 2), this.arcMat);
     this.arc.visible = false;
     this.arc.renderOrder = 3;
@@ -271,7 +272,9 @@ export class NodeViews {
     const scale = def.kind === 'tree' ? 1 : def.kind === 'pool' ? 1.25 : 0.95;
     this.hoverRing.position.set(node.x, 0.04, node.z);
     this.hoverRing.scale.setScalar(scale);
-    (this.hoverRing.material as THREE.MeshBasicMaterial).color.set(usable ? SKILLS[def.skill].color : '#c0504d');
+    const color = (this.hoverRing.material as THREE.MeshBasicMaterial).color;
+    color.set(usable ? SKILLS[def.skill].color : '#c0504d');
+    if (usable) color.lerp(INDICATOR_BONE, 0.25);
   }
 
   /** The progress arc under the hero while a work cycle runs (0 hides it). */
@@ -280,7 +283,7 @@ export class NodeViews {
     if (!this.arc.visible) return;
     this.arc.position.set(x, 0.05, z);
     this.arc.geometry.setDrawRange(0, Math.ceil(THREE.MathUtils.clamp(t, 0, 1) * 48) * 6);
-    this.arcMat.color.set(skillColor);
+    this.arcMat.color.set(skillColor).lerp(INDICATOR_BONE, 0.3);
   }
 
   update(dt: number) {

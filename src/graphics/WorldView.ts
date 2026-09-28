@@ -785,10 +785,10 @@ export class WorldView {
     // Brazier fire near the focus.
     for (const b of this.braziers) {
       if (!b.lit || Math.abs(b.x - focusX) > 30 || Math.abs(b.z - focusZ) > 28) continue;
-      if (Math.random() < dt * 16) {
+      if (Math.random() < dt * 10) {
         this.effects.emit({ x: b.x, y: b.y, z: b.z, count: 1, color: Math.random() < 0.7 ? 0x8a5cf0 : 0xc6a4ff, spread: 0.18, speed: 0.1, up: 1, life: 0.5, size: 0.3, gravity: -0.8 });
       }
-      if (Math.random() < dt * 2) {
+      if (Math.random() < dt * 1.5) {
         this.effects.emit({ x: b.x, y: b.y + 0.2, z: b.z, count: 1, color: 0xe9a86b, spread: 0.2, speed: 0.3, up: 1.6, life: 1.2, size: 0.08, drag: 0.3 });
       }
     }

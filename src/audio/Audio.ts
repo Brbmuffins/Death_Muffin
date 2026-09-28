@@ -2,8 +2,8 @@ import { onSettingsChange, settings } from '../app/settings';
 import type { AreaId } from '../content/areas';
 
 /**
- * Procedural sound: every effect is synthesised with WebAudio (no files, no
- * licensing, tiny download). Positional sounds are panned and attenuated
+ * Mostly procedural sound, with two tiny CC0 footstep samples for texture.
+ * Positional sounds are panned and attenuated
  * relative to the listener (the hero). The context starts on the first user
  * gesture, as browsers require.
  */
@@ -74,6 +74,8 @@ class AudioEngine {
   private verbSend!: GainNode;
   private noise!: AudioBuffer;
   private brown!: AudioBuffer;
+  private footsteps: AudioBuffer[] = [];
+  private footstepCursor = 0;
   private voices = 0;
   private last = new Map<Sfx, number>();
   private listener = { x: 0, z: 0 };
@@ -122,12 +124,27 @@ class AudioEngine {
     this.verb.connect(comp);
     this.noise = this.makeNoise(false);
     this.brown = this.makeNoise(true);
+    void this.loadFootsteps();
     this.applyVolume();
     if (this.wantArea) this.setArea(this.wantArea);
   }
 
   private applyVolume() {
     if (this.master) this.master.gain.value = Math.pow(settings.volume, 1.5) * 0.9;
+  }
+
+  private async loadFootsteps() {
+    const ctx = this.ctx!;
+    const clips = await Promise.all(['footstep06.ogg', 'footstep09.ogg'].map(async (name) => {
+      try {
+        const response = await fetch(new URL(`audio/kenney/${name}`, document.baseURI));
+        if (!response.ok) return null;
+        return await ctx.decodeAudioData(await response.arrayBuffer());
+      } catch {
+        return null;
+      }
+    }));
+    this.footsteps = clips.filter((clip): clip is AudioBuffer => clip !== null);
   }
 
   private makeNoise(brown: boolean) {
@@ -481,8 +498,21 @@ class AudioEngine {
         break;
       }
       case 'step': {
-        const o = this.out(undefined, undefined, 0.07 * intensity, 0.05);
-        this.burst(o, t, 0.05, 0.9, 'lowpass', 700 * r(), 200, 1);
+        const clip = this.wantArea === 'nave' || this.footsteps.length === 0
+          ? undefined
+          : this.footsteps[this.footstepCursor++ % this.footsteps.length];
+        if (clip) {
+          const o = this.out(undefined, undefined, 0.09 * intensity, 0.04);
+          const source = this.ctx.createBufferSource();
+          source.buffer = clip;
+          source.playbackRate.value = 0.94 + Math.random() * 0.12;
+          source.connect(o);
+          source.start(t);
+          this.track(source, t + clip.duration / source.playbackRate.value + 0.02);
+        } else {
+          const o = this.out(undefined, undefined, 0.07 * intensity, 0.05);
+          this.burst(o, t, 0.05, 0.9, 'lowpass', 700 * r(), 200, 1);
+        }
         break;
       }
       case 'wail': {
