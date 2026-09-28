@@ -1,6 +1,12 @@
 const leaderboardStatus = document.querySelector('#leaderboard-status');
 const rows = document.querySelector('#leaderboard-rows');
-const disciplines = ['Engineer', 'Ossuary', 'Gravecaller', 'Mourner', 'Rotweaver', 'Necromancer'];
+// Indexed by COALESCE(discipline_index, class_index) from /leaderboard.
+// 0–5 are the legacy class indices; 6–9 are Release 0.3 classes.
+// NOTE: index 5 is ambiguous — it is legacy class_index 5 (Necromancer) and
+// also the Grave Warden's discipline_index. Nothing can currently reach
+// discipline_index 5 (only the Hollow Knight, 8, is playable), so it stays
+// 'Necromancer'; resolve the collision before the Grave Warden ships.
+const disciplines = ['Engineer', 'Ossuary', 'Gravecaller', 'Mourner', 'Rotweaver', 'Necromancer', 'Bell Monk', 'Carrion Witch', 'Hollow Knight', 'Veilwalker'];
 async function refreshLeaderboard() {
   try {
     const response = await fetch('api/leaderboard');

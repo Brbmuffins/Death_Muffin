@@ -119,6 +119,19 @@ app.get('/health', (_, res) => res.json({ status: 'ok' }));
 // ─── Character system ─────────────────────────────────────────────────────────
 
 const CLASS_NAMES = ['Engineer', 'Guardian', 'Shadowblade', 'Cleric', 'Arcanist', 'Necromancer'];
+// Release 0.3 classes, addressed by `discipline_index` only (POST /character
+// still creates against the legacy CLASS_NAMES above). Kept as a separate map
+// so indices 1–4 keep reporting exactly the class_name they always have —
+// existing characters see no change — while 5–9 stop reporting undefined.
+const DISCIPLINE_NAMES = {
+  5: 'Grave Warden',
+  6: 'Bell Monk',
+  7: 'Carrion Witch',
+  8: 'Hollow Knight',
+  9: 'Veilwalker',
+};
+/** Highest accepted `discipline_index`. The client presents the names. */
+const MAX_DISCIPLINE_INDEX = 9;
 
 // JWT middleware – verifies token and pre-fetches character row
 async function verifyJWT(req, res, next) {
@@ -267,7 +280,9 @@ function formatCharacter(char, gear, gmFields = {}) {
   return {
     id:              char.id,
     class_index:     char.discipline_index ?? char.class_index,
-    class_name:      char.discipline_index == null ? char.class_name : CLASS_NAMES[char.discipline_index],
+    class_name:      char.discipline_index == null
+      ? char.class_name
+      : (DISCIPLINE_NAMES[char.discipline_index] ?? CLASS_NAMES[char.discipline_index] ?? char.class_name),
     level:           char.level,
     experience:      char.experience,
     xpToNext:        characterXpToNext(char.level),
@@ -1787,5 +1802,5 @@ mountGathering(app, {
   },
 });
 const invalidateLeaderboard = require('./leaderboard.cjs')(app, pool);
-require('./discipline.cjs')(app, pool, { verifyJWT, formatCharacter, getGearLoadout, invalidateLeaderboard });
+require('./discipline.cjs')(app, pool, { verifyJWT, formatCharacter, getGearLoadout, invalidateLeaderboard, maxIndex: MAX_DISCIPLINE_INDEX });
 app.listen(PORT, '127.0.0.1', () => console.log(`Death Muffin account service listening on ${PORT}`));
