@@ -1,0 +1,44 @@
+[
+  {
+    "id": "concept_belfry_gargoyle",
+    "out": "art-src/concepts/belfry_gargoyle.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new flying enemy for a dark-fantasy necromancer game set in a haunted cathedral: the Belfry Gargoyle, a winged stone gargoyle that tore itself off a bell tower. Weathered grey-black cathedral stone body with moss and verdigris streaks, cracks glowing faintly with pale bronze light, a snarling horned demon face, a rusted bronze bell-clapper chained around its neck, long clawed hands and bird-like taloned feet, a thin whip tail ending in a stone spade. Large bat-like stone wings with torn membranes. Single creature, FRONT VIEW, symmetrical, wings FULLY SPREAD out horizontally to the sides, arms slightly out from the body with hands open, legs straight down, hovering upright so it can be rigged. Entire body and both wingtips visible, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other creatures. Readable silhouette, stone greys, old bronze accents."
+  },
+  {
+    "id": "concept_shroud_moth",
+    "out": "art-src/concepts/shroud_moth.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new flying enemy for a dark-fantasy necromancer game set in a haunted graveyard: the Shroud Moth, a huge moth grown fat on grave dust, big as a hound. Its four broad wings are made of tattered yellowed burial-shroud linen with faded stitched funeral sigils and death's-head markings, the wing edges frayed and dripping dust. A furry ash-grey body, a skull-like face with large milky compound eyes, feathery antennae, thin segmented insect legs curled beneath. Single creature, TOP-FRONT VIEW, perfectly symmetrical, all four wings FULLY SPREAD flat to the sides, body vertical in the centre. Entire creature and all wingtips visible, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other creatures. Readable silhouette, bone ivory, ash grey and dusty ochre, faint sickly green glow in the eyes."
+  },
+  {
+    "id": "concept_weeping_seraph",
+    "out": "art-src/concepts/weeping_seraph.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new flying support enemy for a dark-fantasy necromancer game set in a haunted cathedral: the Weeping Seraph, a desecrated cathedral angel statue that has come loose from its plinth. A tall gaunt adult figure carved from cracked, grime-stained white marble, its face hidden under a carved marble mourning veil with dark tear stains running down from beneath it, long flowing carved robes that end in ragged broken stone instead of feet, a tarnished halo of rusted iron spikes floating behind its head, two large feathered marble wings with chipped and missing feathers. Single figure, FRONT VIEW, symmetrical, arms straight out horizontally with the hands open and empty, wings FULLY SPREAD to the sides, hovering upright so it can be rigged. Entire figure visible, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other figures. Readable silhouette, grimy marble white, black cracks, faint pale gold glow from the halo."
+  },
+  {
+    "id": "concept_tithe_bat",
+    "out": "art-src/concepts/tithe_bat.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a small swarming flying enemy for a dark-fantasy necromancer game: the Tithe Bat, a rotten crypt bat the size of a cat. Mangy dark grey-brown fur with patches of bare leathery skin, an oversized pale bat skull showing through its face, a mouth of needle fangs, tiny glowing ember-red eyes, a small tarnished copper coin (a grave tithe) stuck through one ear like a piercing, torn leathery wings with visible finger bones. Single creature, FRONT VIEW, perfectly symmetrical, wings FULLY SPREAD out horizontally, body vertical, legs hanging down. Entire creature and both wingtips visible, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other creatures. Readable silhouette, dusky browns and greys, bone ivory skull."
+  },
+  {
+    "id": "concept_mantle_bones",
+    "out": "art-src/concepts/prop_mantle_bones.png",
+    "aspect": "1:1",
+    "prompt": "Game prop concept: three separate small bone fragments laid out side by side with space between them, for a necromancer's orbiting bone shield — a sharp jagged broken rib splinter with a pointed tip, a single human vertebra with its spiny processes, and a cracked jagged skull shard. Aged off-white bone, greyish, dark brown grime in the cracks and pores, sharp broken edges, clearly bone and not smooth. Three-quarter view, plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text. Realistic dark-fantasy game art style."
+  }
+]

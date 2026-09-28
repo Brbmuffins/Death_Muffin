@@ -72,6 +72,13 @@ export interface Enemy {
   knellOwner?: string;
   knellDamage?: number;
   hexOwner?: string;
+  /** Belfry Gargoyle: mid-dive (snapshot flag bit 19), where the dive started, and seconds grounded after landing. */
+  diving?: boolean;
+  diveX?: number;
+  diveZ?: number;
+  groundT?: number;
+  /** Tithe Bat (host-only): seconds left flitting away after a bite. */
+  fleeT?: number;
   /** Host-only: a Censer Bearer's next aura pulse. */
   auraCd?: number;
   /** Elites roll one affix on spawn (replicated in snapshots). */
@@ -138,7 +145,7 @@ export interface Corpse {
 }
 
 /** 'rot' = the friendly pool a detonated toxic corpse leaves behind. */
-export type ZoneKind = 'miasma' | 'toxic' | 'bell' | 'rot' | 'dirge' | 'flower' | 'warden_fire' | 'warden_ward' | 'witch_crows' | 'witch_charm' | 'veil_rift';
+export type ZoneKind = 'miasma' | 'toxic' | 'bell' | 'rot' | 'dirge' | 'flower' | 'warden_fire' | 'warden_ward' | 'witch_crows' | 'witch_charm' | 'veil_rift' | 'dust';
 
 export type CorpseGoneReason = 'consumed' | 'expired' | 'raised' | 'burst' | 'litany' | 'devoured';
 
@@ -237,6 +244,10 @@ export type Intent =
       /** Rot Lance: Withered stacks to add (0..1, host-clamped) up to `witheredCap` (1..12). */
       withered?: number;
       witheredCap?: number;
+      /** Bone Prison: root the targets (the host owns the duration). */
+      root?: boolean;
+      /** Grave Hands: slow the targets briefly (Miasma's slow; the host owns the duration). */
+      slow?: boolean;
     }
   | {
       t: 'miasma';
@@ -315,9 +326,9 @@ export type SimEvent =
   | { t: 'corpseGone'; id: number; reason: CorpseGoneReason; by?: string }
   | { t: 'thrall'; id: number; owner: string; kind: ThrallKind; x: number; z: number; empowered: boolean }
   | { t: 'thrallGone'; id: number; owner: string; x: number; z: number; reason: 'killed' | 'sacrificed' | 'crumbled' }
-  | { t: 'telegraph'; id: number; kind: 'cone' | 'raise' | 'curse' | 'slam' | 'toll' | 'scream'; x: number; z: number; tx: number; tz: number; ms: number; r?: number }
+  | { t: 'telegraph'; id: number; kind: 'cone' | 'raise' | 'curse' | 'slam' | 'toll' | 'scream' | 'dust' | 'dive'; x: number; z: number; tx: number; tz: number; ms: number; r?: number }
   | { t: 'melee'; id: number; x: number; z: number; tx: number; tz: number }
-  | { t: 'hurt'; player: string; dmg: number; from: 'melee' | 'cone' | 'curse' | 'toxic' | 'boss' | 'toll' | 'scream'; x: number; z: number }
+  | { t: 'hurt'; player: string; dmg: number; from: 'melee' | 'cone' | 'curse' | 'toxic' | 'boss' | 'toll' | 'scream' | 'dust'; x: number; z: number }
   | { t: 'thrallHit'; id: number; target: number; x: number; z: number; tx: number; tz: number; kind: ThrallKind; dmg: number }
   | { t: 'zone'; zone: Zone }
   | { t: 'zoneGone'; id: number }

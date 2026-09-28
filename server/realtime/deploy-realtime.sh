@@ -162,6 +162,9 @@ function validIntent(intent) {
       // Rot Lance: at most one Withered stack per hit, capped 1..12 (the host clamps again).
       if ('withered' in out) out.withered = Math.min(1, Math.max(0, Math.floor(num(out.withered))));
       if ('witheredCap' in out) out.witheredCap = Math.min(12, Math.max(1, Math.floor(num(out.witheredCap, 5))));
+      // Bone Prison / Grave Hands: flags only; the host sim owns the root and slow durations.
+      if ('root' in out) out.root = !!out.root;
+      if ('slow' in out) out.slow = !!out.slow;
       break;
     case 'miasma':
       out.r = Math.min(8, Math.max(0.5, num(out.r, 3)));

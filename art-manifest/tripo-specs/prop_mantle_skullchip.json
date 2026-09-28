@@ -1,0 +1,5 @@
+{
+  "id": "prop_mantle_skullchip",
+  "input": "art-src/concepts/prop_mantle_skullchip.png",
+  "generation": { "model": "P1-20260311", "face_limit": 300, "texture_quality": "standard" }
+}

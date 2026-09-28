@@ -68,6 +68,13 @@ records                   art-manifest/images.json, art-manifest/tripo/<id>.json
   bakes them into ONE concatenated clip — unusable. Single costs the same.
 - Quadrupeds: `rig: { model: "v2.5-20260210", rig_type: "quadruped" }`, animation
   `preset:quadruped:walk` (the only quadruped preset).
+- **Flyers: don't use `rig_type: "avian"`.** On a front-facing, wings-spread model it boned only one wing (2026-09-28,
+  `belfry_gargoyle`), and Tripo has no flight presets. Use a biped rig for winged humanoids (for clips like `dive`,
+  `slash` and `cast_a_spell`) or no rig for animals. Wings flap in the vertex shader (`graphics/wingFlap.ts`, `WINGS` in
+  `EntityViews.ts`).
+- The legacy v1.0 biped rig has 90+ presets beyond the eight used so far. Combat-useful unused ones: `dive`, `chop`,
+  `box_01–03`, `front_kick_01/02`, `hit_to_body_01/02`, `hit_to_head`, `hit_to_side`, `defeat_02/03`, `flee_01/02`,
+  `frightened`, `jump`, `lift_heavy`. Retargeting onto an existing rig task costs 10 credits per clip.
 - Props: omit `rig`/`animations`.
 - Resumable: every task id is written to `art-src/tripo/<id>/state.json` before
   polling; a rerun skips finished steps and never pays twice. Failed tasks

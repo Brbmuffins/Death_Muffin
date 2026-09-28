@@ -403,6 +403,30 @@
       "source": "Skies/assets/BinbunSky/skies/experimental/dark_sky.tres",
       "anim": "main",
       "note": "World shader kit: dark procedural sky (login backdrop / distant horizon only; the game camera is top-down)"
+    },
+    {
+      "id": "bone_prison_burst",
+      "source": "ImpactVFX/assets/BinbunVFX/impact_explosions/effects/impact/vfx_impact_03.tscn",
+      "anim": "main",
+      "note": "Bone Prison: the ring of spikes erupting"
+    },
+    {
+      "id": "soul_siphon_beam",
+      "source": "BeamVFX/assets/BinbunVFX/beam_vfx/effects/beam/beam_vfx_07.tscn",
+      "anim": "main",
+      "note": "Soul Siphon: the drain tether (jade)"
+    },
+    {
+      "id": "bone_storm_dust",
+      "source": "SmokeVFX/assets/BinbunVFX/smoke_effects/effects/smoke_big/smoke_big_vfx_05.tscn",
+      "anim": "main",
+      "note": "Bone Storm: bone-dust vortex under the tumbling fragments"
+    },
+    {
+      "id": "grave_hands_pulse",
+      "source": "MagicAreaVFX/assets/BinbunVFX/magic_areas/effects/pulse_area/pulse_area_vfx_03.tscn",
+      "anim": "oneshot",
+      "note": "Grave Hands: the field opening"
     }
   ]
 }

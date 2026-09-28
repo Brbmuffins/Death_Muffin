@@ -27,7 +27,7 @@ import { AscensionPanel } from '../ui/AscensionPanel';
 import { ClassPanel } from '../ui/ClassPanel';
 import { changeDiscipline } from '../net/api';
 import { onSettingsChange, settings, updateSettings } from '../app/settings';
-import { selectAutoCombatAction, selectAutoCombatMovement } from '../gameplay/autoCombat';
+import { selectAutoCombatAction, selectAutoCombatMovement, type AutoMoveMemory } from '../gameplay/autoCombat';
 import { STATUS_FX } from '../content/statuses';
 import { AbilitySystem, veilTarget, type CastResult, type CastTarget } from '../gameplay/AbilitySystem';
 import { deriveStats, xpToNext } from '../gameplay/characterStats';
@@ -82,12 +82,20 @@ const FIRST_SIGHT_TIPS: Partial<Record<EnemyId, TipId>> = {
   wraith: 'wraith',
   rat: 'swarm',
   golem: 'golem',
+  gargoyle: 'gargoyle',
+  moth: 'moth',
+  bat: 'bats',
+  seraph: 'seraph',
 };
 /** Counsel shown the first time each level-gated Grimoire rite is placed on a key. */
 const RITE_TIPS: Partial<Record<AbilityId, TipId>> = {
   wailing_skull: 'rite_skull',
   grave_step: 'rite_step',
   grave_frost: 'rite_frost',
+  soul_siphon: 'rite_siphon',
+  bone_prison: 'rite_prison',
+  grave_hands: 'rite_hands',
+  bone_storm: 'rite_storm',
   bone_mantle: 'rite_mantle',
   bone_fan: 'rite_fan',
   rot_lance: 'rite_lance',
@@ -190,6 +198,8 @@ export class WorldScene implements GameScene, RuntimeView {
   /** Scene time of the last procession banner (one per band, not one per breach). */
   private lastProcession = -1e9;
   private nextAutoCombatAt = 0;
+  /** Easy auto movement memory: sticky target, closing hysteresis, committed dodges, smoothed turns. */
+  private autoMoveMem: AutoMoveMemory = {};
   private autoTargetId: number | null = null;
   private autoAim: CastTarget | null = null;
   private queuedCast: { slot: HotbarSlot; target: CastTarget; until: number } | null = null;
@@ -995,6 +1005,8 @@ export class WorldScene implements GameScene, RuntimeView {
     const previous = this.autoTargetId === null ? undefined : this.enemiesMap().get(this.autoTargetId);
     this.autoTargetId = action?.target.enemyId ?? (previous && previous.hp > 0 && previous.state !== 'dead' && Math.hypot(previous.x - p.x, previous.z - p.z) <= ABILITIES[this.primary].range ? previous.id : null);
     if (action) this.autoAim = action.target;
+    // Walk toward what we are shooting at, so movement and aim never pull in two directions.
+    if (action?.target.enemyId !== undefined) this.autoMoveMem.targetId = action.target.enemyId;
     else if (this.autoTargetId === null && !(this.autoAim?.boss && this.bossState().active && this.bossState().hp > 0)) this.autoAim = null;
     if (action && this.abilities.cast(action.id, action.target, now) === 'ok') {
       this.onboarding.show('auto_combat');
@@ -1739,6 +1751,27 @@ export class WorldScene implements GameScene, RuntimeView {
       this.effects.decal({ tex: fx.sigil(), color: song, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.6, spin: -1.5, fadeOut: 0.05 });
       this.effects.decal({ tex: fx.ring(), color: 0xeef4ff, x: ev.tx, z: ev.tz, r: r * 1.15, duration: 0.35, opacity: 1, growFrom: 0.5, delay: ms });
       this.fxLater.push({ at: this.now + ev.ms, run: () => this.bb('choir_scream', ev.tx, ev.tz, { scale: r / 2.2 }) });
+    } else if (ev.kind === 'dive') {
+      // Belfry Gargoyle: a bronze mark fills in under the target; the stone lands when it's full.
+      const r = ev.r ?? 2;
+      const E = SPELL_FX.enemy;
+      // Kept low: the bronze disc is additive and blooms hard; the ring carries the read.
+      this.effects.decal({ tex: fx.disc(), color: E.dive, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.22, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.3 });
+      this.effects.decal({ tex: fx.ring(), color: E.dive, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.7, fadeOut: 0.05 });
+      this.effects.decal({ tex: fx.cracks(), color: E.slam, x: ev.tx, z: ev.tz, r: r * 0.95, rot: Math.random() * 6, duration: 1.4, opacity: 0.8, growFrom: 0.5, delay: ms });
+      this.fxLater.push({ at: this.now + ev.ms, run: () => {
+        this.effects.emitSmoke({ x: ev.tx, y: 0.3, z: ev.tz, count: 5, color: 0x3b3440, spread: r * 0.45, speed: 1.3, up: 0.5, life: 0.8, size: 1.1 });
+        this.effects.emit({ x: ev.tx, y: 0.3, z: ev.tz, count: 14, color: 0x8a8378, spread: r * 0.4, speed: 2.4, up: 2, life: 0.6, size: 0.14, gravity: 9 });
+        audio.play('boneHit', ev.tx, ev.tz);
+        this.rig.shake(0.08);
+      } });
+    } else if (ev.kind === 'dust') {
+      // Shroud Moth: dust sifts down from the wings onto a ring; the cloud (a zone) follows the burst.
+      const r = ev.r ?? 2;
+      const E = SPELL_FX.enemy;
+      this.effects.decal({ tex: fx.disc(), color: E.dust, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.4, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.25 });
+      this.effects.decal({ tex: fx.ring(), color: E.dust, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.85, fadeOut: 0.05 });
+      this.effects.emit({ x: ev.x, y: 1.4, z: ev.z, count: 10, color: E.dust, spread: 0.6, speed: 0.4, up: -0.6, life: ms, size: 0.16, drag: 0.6 });
     } else if (ev.kind === 'raise') {
       const from = { x: ev.x, y: 1.8, z: ev.z };
       this.effects.beam(from, () => ({ x: ev.tx, y: 0.3, z: ev.tz }), SPELL_FX.enemy.rot, 0.05, ms);
@@ -1774,6 +1807,16 @@ export class WorldScene implements GameScene, RuntimeView {
       this.effects.emit({ x: z.x, y: 0.4, z: z.z, count: dirge ? 30 : 18, color: dirge ? D.pale : B.petal, spread: z.r * 0.5, speed: 0.6, up: dirge ? 2 : 1.2, life: 1, size: 0.22 });
       if (dirge) audio.play('tollSmall', z.x, z.z);
       this.bb(dirge ? 'dirge_area' : 'plague_bloom_area', z.x, z.z, { scale: dirge ? z.r / 6 : z.r / 2.4 });
+      return;
+    }
+    if (z.kind === 'dust') {
+      // Shroud Moth cloud: a low ochre haze, a few slow puffs (cheap: two decals + one burst of smoke).
+      const E = SPELL_FX.enemy;
+      this.zoneFx.set(z.id, [
+        this.effects.decal({ tex: fx.disc(), color: E.dustDeep, x: z.x, z: z.z, r: z.r, duration: dur, opacity: 0.55, growFrom: 0.4, fadeOut: 0.6 }),
+        this.effects.decal({ tex: fx.glow(), color: E.dust, x: z.x, z: z.z, r: z.r * 1.05, duration: dur, opacity: 0.35, pulse: 1.5, fadeOut: 0.6 }),
+      ]);
+      this.effects.emitSmoke({ x: z.x, y: 0.5, z: z.z, count: 6, color: E.dust, spread: z.r * 0.5, speed: 0.4, up: 0.35, life: Math.min(dur, 3), size: 1.5, shrink: -0.6 });
       return;
     }
     const color = z.kind === 'toxic' ? SPELL_FX.enemy.toxic : SPELL_FX.miasma.deep;
@@ -2196,7 +2239,8 @@ export class WorldScene implements GameScene, RuntimeView {
       !this.attackTarget && !this.pendingInteract && !this.gathering.active && !this.keys.size
       ? selectAutoCombatMovement({ player: { x: p.x, z: p.z, area: p.area, essence: p.essence, maxEssence: p.resource.max,
           hp: p.hp, maxHp: p.stats.maxHp },
-        enemies: this.enemiesMap().values(), primary: this.primary, family: this.discipline.family }) : null;
+        enemies: this.enemiesMap().values(), primary: this.primary, family: this.discipline.family, nav: this.nav }, this.autoMoveMem, now, dt) : null;
+    if (!autoMove) this.autoMoveMem.dir = null;
     const moved = p.update(dt, now, kd.x || kd.z ? kd : autoMove);
     if (settings.autoCombat && p.alive && now - p.lastHurtAt < 5000) p.heal(p.stats.maxHp * 0.02 * dt);
     this.gathering.update(dt);

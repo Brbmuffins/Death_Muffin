@@ -10,6 +10,10 @@ import {
   DETONATE,
   FRACTURE,
   GRAVE_FROST,
+  SOUL_SIPHON,
+  BONE_PRISON,
+  GRAVE_HANDS,
+  BONE_STORM,
   GRAVE_STEP,
   MIASMA_SLOW,
   NEEDLE_ESSENCE,
@@ -85,7 +89,7 @@ export function spellTooltip(id: AbilityId, discipline?: Discipline, state: Spel
   let radius = a.radius;
   if (id === 'miasma') radius *= (m?.miasmaRadiusMult ?? 1) * areaMult;
   if (id === 'black_litany') radius *= areaMult;
-  if (['miasma', 'black_litany', 'corpse_explosion', 'dirge', 'plague_bloom', 'command_rend', 'grave_step', 'bone_mantle', 'carrion_seed', 'rally_dead'].includes(id)) {
+  if (['miasma', 'black_litany', 'corpse_explosion', 'dirge', 'plague_bloom', 'command_rend', 'grave_step', 'bone_mantle', 'carrion_seed', 'rally_dead', 'bone_prison', 'grave_hands', 'bone_storm'].includes(id)) {
     metrics.push({ label: 'Radius', value: `${number(radius)}m` });
   }
   const details: string[] = [];
@@ -160,6 +164,18 @@ export function spellTooltip(id: AbilityId, discipline?: Discipline, state: Spel
     case 'bone_mantle':
       details.push(`Consumes up to ${BONE_MANTLE.maxCorpses} nearby corpses. Barrier: ${percent(BONE_MANTLE.barrierBase)} of your maximum health plus ${percent(BONE_MANTLE.barrierPerCorpse)} per corpse (at most ${percent(BONE_MANTLE.barrierCap)}), held for ${BONE_MANTLE.durationS}s before it fades.`,
         `Shards hit enemies within ${BONE_MANTLE.orbitRadius}m every ${BONE_MANTLE.tickS}s.`);
+      break;
+    case 'soul_siphon':
+      details.push(`Drains every ${SOUL_SIPHON.tickS}s for ${SOUL_SIPHON.durationS}s. Heals ${percent(SOUL_SIPHON.healFrac)} of each tick and returns ${SOUL_SIPHON.essencePerTick} essence. Snaps beyond ${number(a.range * SOUL_SIPHON.breakMult)}m.`);
+      break;
+    case 'bone_prison':
+      details.push(`Roots everything in the ring for ${BONE_PRISON.rootS}s (the Prelate only takes the damage) and adds ${BONE_PRISON.fracture} Fracture.`);
+      break;
+    case 'grave_hands':
+      details.push(`Slows and rakes every ${GRAVE_HANDS.tickS}s for ${GRAVE_HANDS.durationS}s. Each corpse in the field adds ${percent(GRAVE_HANDS.perCorpse)} damage (up to ${GRAVE_HANDS.maxCorpses}); corpses are not consumed.`);
+      break;
+    case 'bone_storm':
+      details.push(`Lasts ${BONE_STORM.durationS}s, +${BONE_STORM.perCorpseS}s per corpse it starts on (up to +${BONE_STORM.maxExtraS}s; not consumed). Drifts toward the nearest enemy and hits every ${BONE_STORM.tickS}s.`);
       break;
     case 'ossuary_wall':
       details.push(`Creates a ${SIGNATURE.wall.length}m wall for ${SIGNATURE.wall.durationS}s. Blocks enemy movement and Penitent cones.`);

@@ -90,6 +90,13 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 
 ## In flight (check before starting overlapping work)
 
+- **2026-09-28 VPS session (staged, not committed, not deployed):** flying mob pack (gargoyle, moth, bat, seraph),
+  Grimoire expansion (Soul Siphon, Bone Prison, Grave Hands, Bone Storm), Bone Mantle bone meshes, and an Easy-auto
+  movement fix. Details, numbers and caveats are in PHASE_REPORTS → "Flying pack, Grimoire expansion…".
+  - Deploying needs `npm run build:death-muffin` plus the regenerated `necro-rules.cjs`.
+  - Optionally deploy the realtime `server.js`, which sanitises the new `root`/`slow` hit flags.
+  - Tripo balance is 9,455.
+
 - **Workstation wiring pass: DONE and staged (2026-09-27 late, usage ran low; resume from here).** All tests are
   green: typecheck, 225 client, 33 server and 3 VFX. Checked in the browser with no console errors.
   - **Binbun brightness:** `BINBUN_GAIN = 0.5` plus a soft knee (`bb_out`) in every program

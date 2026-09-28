@@ -228,7 +228,8 @@ export class Nav {
     return false;
   }
 
-  private clearLine(ax: number, az: number, bx: number, bz: number, r: number) {
+  /** Pure query: is the straight segment walkable for a body of radius r? (Easy auto uses it too.) */
+  clearLine(ax: number, az: number, bx: number, bz: number, r: number) {
     const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 0.25));
     for (let i = 1; i <= n; i++) if (this.blocked(ax + ((bx - ax) * i) / n, az + ((bz - az) * i) / n, r)) return false;
     return true;

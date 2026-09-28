@@ -3,8 +3,9 @@ import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js
 import { assets } from './AssetCache';
 import { CREATURE_MODELS, type CreatureSlug } from './modelPaths';
 import { inPlaceHeroClip } from './inPlaceAnimation';
+import { applyWingFlap, type WingOpts } from './wingFlap';
 
-export type CreatureAnim = 'idle' | 'walk' | 'run' | 'attack' | 'cast' | 'hurt' | 'death' | 'dig';
+export type CreatureAnim = 'idle' | 'walk' | 'run' | 'attack' | 'cast' | 'hurt' | 'death' | 'dig' | 'dive';
 
 const FALLBACK: Record<CreatureAnim, CreatureAnim[]> = {
   idle: ['idle', 'walk'],
@@ -15,6 +16,7 @@ const FALLBACK: Record<CreatureAnim, CreatureAnim[]> = {
   hurt: ['hurt'],
   death: ['death'],
   dig: ['dig', 'cast', 'attack'],
+  dive: ['dive', 'attack', 'cast'],
 };
 
 export interface CreatureOptions {
@@ -32,6 +34,8 @@ export interface CreatureOptions {
   castShadow?: boolean;
   /** Load this model instead if the requested one is missing. */
   fallback?: CreatureSlug;
+  /** Flying creatures: flap the wings in the vertex shader (see wingFlap.ts). */
+  wings?: WingOpts;
 }
 
 const FLASH_COLOR = new THREE.Color(0xfff0dc);
@@ -73,15 +77,21 @@ export class Creature {
     this.shadowOn = opts.castShadow ?? true;
     const def = CREATURE_MODELS[slug];
     const fb = opts.fallback ? CREATURE_MODELS[opts.fallback] : null;
+    let usedFallback = false;
     void assets
       .model(def.url, def.height * (opts.scale ?? 1))
-      .then((t) => t ?? (fb ? assets.model(fb.url, fb.height * (opts.scale ?? 1)) : null))
+      .then((t) => {
+        if (t) return t;
+        usedFallback = true;
+        return fb ? assets.model(fb.url, fb.height * (opts.scale ?? 1)) : null;
+      })
       .then((t) => {
       if (!t || this.disposed) return;
       const model = t.skinned ? cloneSkinned(t.scene) : t.scene.clone(true);
       model.scale.multiplyScalar(t.scale);
       model.position.y = t.groundOffset;
       model.rotation.y += opts.modelYaw ?? 0;
+      const wingPhase = Math.random() * Math.PI * 2;
       model.traverse((o) => {
         const mesh = o as THREE.Mesh;
         if (!mesh.isMesh) return;
@@ -101,6 +111,8 @@ export class Creature {
           mat.emissiveIntensity = opts.emissiveIntensity ?? 0.9;
           mesh.castShadow = false;
         }
+        // Only the requested model flaps; a fallback stand-in (older deploy) keeps still.
+        if (opts.wings && !usedFallback) applyWingFlap(mesh, mat, opts.wings, wingPhase);
         mesh.material = mat;
         this.mats.push(mat);
       });

@@ -44,6 +44,10 @@ export type TipId =
   | 'rite_step'
   | 'rite_frost'
   | 'rite_mantle'
+  | 'rite_siphon'
+  | 'rite_prison'
+  | 'rite_hands'
+  | 'rite_storm'
   // Spell variety (shown the first time each is placed on a key or the LMB socket).
   | 'rite_fan'
   | 'rite_lance'
@@ -58,6 +62,10 @@ export type TipId =
   | 'wraith'
   | 'swarm'
   | 'golem'
+  | 'gargoyle'
+  | 'moth'
+  | 'bats'
+  | 'seraph'
   // Professions (docs/PROFESSIONS-ROADMAP.md §11).
   | 'acre'
   | 'gather'
@@ -228,6 +236,22 @@ export const TIPS: Record<TipId, Tip> = {
     title: 'Bone Golem',
     body: 'A slow giant with a wide bronze-brown slam ring: step out, then punish it. It falls apart into <b>three corpses</b>, a whole legion or a Litany in one kill.',
   },
+  gargoyle: {
+    title: 'Belfry Gargoyle',
+    body: 'When a <b>bronze circle</b> fills in under you, a gargoyle is about to dive onto it. Walk out, then turn on it: it sits <b>grounded in the rubble</b> for a moment after it lands. A stun knocks it out of the air.',
+  },
+  moth: {
+    title: 'Shroud Moth',
+    body: 'An <b>ochre ring</b> means grave dust is coming down. Step out before it bursts, and stay out of the cloud it leaves for a few seconds. Moths are fragile: one or two good hits.',
+  },
+  bats: {
+    title: 'Tithe Bats',
+    body: 'They bite and flit away, again and again, and leave no corpses. Don\'t chase them. Hold your ground and sweep the flock with Miasma, a Grave Frost cone or Bone Mantle.',
+  },
+  seraph: {
+    title: 'Weeping Seraph',
+    body: 'It blesses <b>every ally near it</b> at once (priest-gold motes: they take less damage). Kill the seraph first, or silence it with a Dirge.',
+  },
   acre: {
     title: "The Sexton's Acre",
     body: 'No waves ever come here. <kbd>Click</kbd> a tree, an ore seam, a fishing spot on the pond or a burial plot, and your necromancer keeps working it until it is spent. Coffin-Oaks just north of the entrance, the nearby Copper Seam and Pauper’s Grave, and Still Pools on the pond are usable at <b>level 1</b>. The stronger nodes lie further from the door. Press <kbd>P</kbd> to see your skills.',
@@ -279,6 +303,22 @@ export const TIPS: Record<TipId, Tip> = {
   rite_seed: {
     title: 'Carrion Seed',
     body: 'Press {key:carrion_seed} on a corpse in the pack\'s path. The bud arms in a moment, then bursts in rot when an enemy comes close. One seed at a time; if another rite uses that corpse, the seed goes with it.',
+  },
+  rite_siphon: {
+    title: 'Soul Siphon',
+    body: 'Latch the jade tether onto something sturdy and <b>keep moving</b>: it follows the target for 3 seconds, draining it into your health and essence. It snaps if they get too far away.',
+  },
+  rite_prison: {
+    title: 'Bone Prison',
+    body: 'Drop the cage on a pack as it closes. Everything inside is <b>rooted</b> for a moment and Fractured: the perfect setup for a Marrow Spear or a Corpse Explosion. Rooted enemies still swing at whatever stands beside them.',
+  },
+  rite_hands: {
+    title: 'Grave Hands',
+    body: 'Cast it where the dead lie thickest: every corpse in the field adds more hands and more damage, and <b>none are used up</b>. Everything inside is slowed while the hands claw.',
+  },
+  rite_storm: {
+    title: 'Bone Storm',
+    body: 'Start the storm on a pile of corpses to make it last longer (they are not used up), then let it <b>drift through the pack on its own</b> while you keep casting.',
   },
   rite_mantle: {
     title: 'Bone Mantle',

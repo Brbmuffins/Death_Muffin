@@ -22,6 +22,11 @@ export type AbilityId =
   | 'veil_step'
   | 'rally_dead'
   | 'carrion_seed'
+  // Grimoire expansion (2026-09-28): four new shapes, with Binbun VFX layered on.
+  | 'soul_siphon'
+  | 'bone_prison'
+  | 'grave_hands'
+  | 'bone_storm'
   // Hollow Knight (Release 0.3, family 'knight'). Rage, not Grave Essence.
   | 'hollow_cut'
   | 'shield_bash'
@@ -67,6 +72,7 @@ export type NewBloodId = Exclude<AbilityId,
   | 'bone_needle' | 'marrow_spear' | 'exhume' | 'miasma' | 'black_litany' | 'corpse_explosion'
   | 'wailing_skull' | 'grave_step' | 'grave_frost' | 'bone_mantle' | 'bone_fan' | 'rot_lance'
   | 'grave_offering' | 'ivory_cleave' | 'veil_step' | 'rally_dead' | 'carrion_seed'
+  | 'soul_siphon' | 'bone_prison' | 'grave_hands' | 'bone_storm'
   | 'hollow_cut' | 'shield_bash' | 'grave_slam' | 'bulwark' | 'corpse_vigil' | 'grave_brand' | 'oath_unbroken'
   | 'ossuary_wall' | 'command_rend' | 'dirge' | 'plague_bloom'>;
 
@@ -350,6 +356,63 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     radius: 3,
     power: 1.6,
   },
+  // --- Grimoire expansion: a drain, a cage, a field and a storm (icons: gemini-jobs/spells-v6.json). ---
+  soul_siphon: {
+    id: 'soul_siphon',
+    slot: 2,
+    unlockLevel: 6,
+    name: 'Soul Siphon',
+    description: 'Latch a soul-tether onto an enemy for 3s. It follows them while you move, drains damage every half second, and heals you for 35% of it plus 2 essence a tick. Breaks if they get too far away.',
+    icon: 'art/abilities/necro-soul-siphon.png',
+    targeting: 'enemy',
+    cooldownMs: 7000,
+    essenceCost: 14,
+    range: 9,
+    radius: 0,
+    power: 0.55,
+  },
+  bone_prison: {
+    id: 'bone_prison',
+    slot: 3,
+    unlockLevel: 9,
+    name: 'Bone Prison',
+    description: 'A ring of bone spikes bursts out of the ground at the cursor, caging everything inside for 1.8s (rooted: they can still swing) and Fracturing it.',
+    icon: 'art/abilities/necro-bone-prison.png',
+    targeting: 'ground',
+    cooldownMs: 9000,
+    essenceCost: 24,
+    range: 11,
+    radius: 2.4,
+    power: 1.1,
+  },
+  grave_hands: {
+    id: 'grave_hands',
+    slot: 3,
+    unlockLevel: 11,
+    name: 'Grave Hands',
+    description: 'The buried dead claw up through a 3.5m field for 3s, slowing and raking everything in it. Every corpse in the field adds more hands (+15% damage each, up to +60%).',
+    icon: 'art/abilities/necro-grave-hands.png',
+    targeting: 'ground',
+    cooldownMs: 11000,
+    essenceCost: 26,
+    range: 10,
+    radius: 3.5,
+    power: 0.4,
+  },
+  bone_storm: {
+    id: 'bone_storm',
+    slot: 4,
+    unlockLevel: 14,
+    name: 'Bone Storm',
+    description: 'Whip a tornado of bone fragments up at the cursor. It creeps toward the nearest enemy for 4s, shredding everything within 2m; each corpse it starts on adds 0.6s (up to +3s).',
+    icon: 'art/abilities/necro-bone-storm.png',
+    targeting: 'ground',
+    cooldownMs: 12000,
+    essenceCost: 32,
+    range: 10,
+    radius: 2,
+    power: 0.5,
+  },
   // --- Signature rites: one per discipline, unlocked at SIGNATURE_LEVEL (icons: gemini-jobs/icons-v4.json).
   // ── Hollow Knight ──────────────────────────────────────────────────────────
   // Starting numbers from docs/agent-briefs/new-classes.md §3. Where the brief
@@ -562,6 +625,10 @@ export const GRIMOIRE: AbilityId[] = [
   'veil_step',
   'rally_dead',
   'carrion_seed',
+  'soul_siphon',
+  'bone_prison',
+  'grave_hands',
+  'bone_storm',
 ];
 export const DEFAULT_LOADOUT: AbilityId[] = ['marrow_spear', 'exhume', 'miasma', 'black_litany'];
 
@@ -589,6 +656,10 @@ export const RITE_ROLES: Partial<Record<AbilityId, RiteRole[]>> = {
   veil_step: ['survival'],
   rally_dead: ['legion'],
   carrion_seed: ['control', 'corpse'],
+  soul_siphon: ['survival', 'damage'],
+  bone_prison: ['control'],
+  grave_hands: ['control', 'corpse'],
+  bone_storm: ['damage', 'corpse'],
   hollow_cut: ['damage'],
   shield_bash: ['control', 'damage'],
   grave_slam: ['damage', 'control'],
@@ -623,6 +694,15 @@ export const VEIL_STEP = { stepM: 0.25, durationS: 0.16 };
 export const RALLY = { durationS: 6, gravecallerBonusS: 2, damageMult: 1.4, attackSpeedMult: 1.3, healFrac: 0.2 };
 /** Carrion Seed (host): arm delay, life, trigger reach, burst radius and Withered. */
 export const CARRION_SEED = { armS: 0.6, lifeS: 20, triggerR: 2.2, burstR: 3, withered: 2, witheredCap: 6, pickRadius: 0.9 };
+
+/** Soul Siphon: tick cadence, share of each tick healed, essence per tick, break distance (× range). */
+export const SOUL_SIPHON = { durationS: 3, tickS: 0.5, healFrac: 0.35, essencePerTick: 2, breakMult: 1.4 };
+/** Bone Prison: the host owns the root duration (a hit can only ask for it). Bosses take damage only. */
+export const BONE_PRISON = { rootS: 1.8, spikes: 16, fracture: 1 };
+/** Grave Hands: slow ticks in a field; corpses inside at cast time add hands and damage. */
+export const GRAVE_HANDS = { durationS: 3, tickS: 0.5, hands: 9, handsPerCorpse: 3, maxHands: 24, perCorpse: 0.15, maxCorpses: 4 };
+/** Bone Storm: a drifting funnel; corpses under it at cast time extend it (they are not consumed). */
+export const BONE_STORM = { durationS: 4, perCorpseS: 0.6, maxExtraS: 3, tickS: 0.4, drift: 2.2, seekR: 9, shards: 27 };
 
 /** Wailing Skull: damage falls off per leap; a killing leap earns one more (up to maxHops). */
 export const WAILING_SKULL = { hops: 3, maxHops: 5, falloff: 0.8, leapRange: 6.5, speed: 15 };
@@ -704,7 +784,8 @@ export const SPELL_FX = {
   /** Soul Harvest — spirit: jade/teal. */
   souls: { jade: 0x6fe3c8, deep: 0x1f8f86, pale: 0x9ff5e0 },
   thrall: { spark: 0xe8dfcc, wraith: 0x8fb4ff },
-  enemy: { toll: 0xd9a441, rot: 0x7fa05a, curse: 0x8a3a4a, slam: 0x9a6a3a, toxic: 0x6f8f3a },
+  /** Flying pack: dust = Shroud Moth grave-dust ochre; dive = the gargoyle's bell-bronze mark. */
+  enemy: { toll: 0xd9a441, rot: 0x7fa05a, curse: 0x8a3a4a, slam: 0x9a6a3a, toxic: 0x6f8f3a, dust: 0xb89a5a, dustDeep: 0x4a3d24, dive: 0xc8923a },
   /** Elite affix tells (bell = bronze, hunger = olive rot, shroud = grave dusk, vengeance = ember). */
   affix: { bell: 0xd9a441, drool: 0x8a8f2a, shroud: 0x3a3448, vengeful: 0xe0552a },
   /** Grave Surge — enemy bell/crypt bronze. */
@@ -721,8 +802,14 @@ export const SPELL_FX = {
   skull: { jade: 0x6fe3c8, pale: 0xc8fff0, deep: 0x1f8f86 },
   step: { blood: 0xc23a48, crimson: 0x8a2c3c, mist: 0x3a1218, hot: 0xffc58a },
   frost: { frost: 0x9fc4ff, deep: 0x5b7fd6, pale: 0xdde8ff },
-  mantle: { bone: 0xe8dcc0, gold: 0xe9c98f, amber: 0xd9a66b, dust: 0x6a5a48 },
+  // Mantle: aged bone greys, not cream/gold (the old warm palette plus additive sprites read as bananas).
+  mantle: { bone: 0xcfc8b8, gold: 0xb8ad94, amber: 0x8c7d64, dust: 0x5a5046 },
   /** Spell variety: Rot Lance = rot chartreuse/olive; Veil Step = spirit jade/pale (shape-distinct from Grave Step's crimson). */
   lance: { rot: 0xc7e04a, deep: 0x6f8f22, spore: 0x2b3317 },
+  /** Grimoire expansion: Siphon = soul jade (like Harvest); Prison/Storm = aged bone + dust; Hands = grave earth + a spirit seep. */
+  siphon: { jade: 0x6fe3c8, pale: 0x9ff5e0, deep: 0x1f8f86 },
+  prison: { bone: 0xcfc8b8, dust: 0x5a5046, amber: 0x8c7d64 },
+  hands: { earth: 0x3a2e22, bone: 0xcfc8b8, seep: 0x6fe3c8 },
+  storm: { bone: 0xcfc8b8, ash: 0x8a8378, dust: 0x5a5046 },
   veil: { jade: 0x6fe3c8, pale: 0xdde8ff, deep: 0x1f8f86 },
 } as const;

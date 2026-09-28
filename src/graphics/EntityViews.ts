@@ -9,6 +9,7 @@ import { SPELL_FX } from '../content/abilities';
 import { audio } from '../audio/Audio';
 import type { CreatureSlug } from './modelPaths';
 import { STATUS_FX } from '../content/statuses';
+import { wingClock, type WingOpts } from './wingFlap';
 
 const ENEMY_SLUG: Record<EnemyId, CreatureSlug> = {
   robber: 'grave_robber',
@@ -21,6 +22,10 @@ const ENEMY_SLUG: Record<EnemyId, CreatureSlug> = {
   wraith: 'choir_wraith',
   rat: 'skull_rat',
   golem: 'bone_golem',
+  gargoyle: 'belfry_gargoyle',
+  moth: 'shroud_moth',
+  bat: 'tithe_bat',
+  seraph: 'weeping_seraph',
 };
 
 /** Shipped models to fall back on if a newer GLB is missing (older deploys, failed builds). */
@@ -29,11 +34,22 @@ const ENEMY_FALLBACK: Partial<Record<EnemyId, CreatureSlug>> = {
   wraith: 'penitent',
   rat: 'bone_hound',
   golem: 'skeleton_thrall',
+  gargoyle: 'bone_hound',
+  moth: 'choir_wraith',
+  bat: 'skull_rat',
+  seraph: 'deacon',
 };
 /** Enemies that cast (play 'cast' rather than 'attack' on the windup). */
-const CASTERS = new Set<EnemyId>(['penitent', 'deacon', 'wraith', 'censer']);
+const CASTERS = new Set<EnemyId>(['penitent', 'deacon', 'wraith', 'censer', 'moth', 'seraph']);
 /** Choir Wraiths float: a hover height and a slow bob. */
 const HOVER = { wraith: 0.45 } as Partial<Record<EnemyId, number>>;
+/** Flying pack wingbeats: heavy stone, dusty moth, frantic bat, slow grieving seraph. */
+const WINGS: Partial<Record<EnemyId, WingOpts>> = {
+  gargoyle: { speed: 6, amp: 0.45, body: 0.3 },
+  moth: { speed: 8, amp: 0.55, body: 0.16 },
+  bat: { speed: 17, amp: 0.75, body: 0.22 },
+  seraph: { speed: 3.2, amp: 0.22, body: 0.3 },
+};
 
 const THRALL_SLUG: Record<ThrallKind, CreatureSlug> = {
   warrior: 'skeleton_thrall',
@@ -189,6 +205,7 @@ export class EntityViews {
       // The choir is half-there: translucent, pale, no shadow.
       spectral: wraith,
       fallback: ENEMY_FALLBACK[e.def],
+      wings: WINGS[e.def],
     });
     c.root.scale.setScalar(e.scale / (e.def === 'risen' ? 1 : 1));
     this.group.add(c.root);
@@ -504,6 +521,7 @@ export class EntityViews {
     focusZ: number,
   ) {
     this.frame++;
+    wingClock.value = performance.now() / 1000;
     if (this.frame % 10 === 0) this.shadowLod(enemies, focusX, focusZ);
     for (const [id, e] of enemies) {
       let v = this.enemies.get(id);
@@ -515,14 +533,21 @@ export class EntityViews {
       v.z = e.z;
       this.syncFacing(v, e.facing, dt);
       const rise = e.state === 'rising' ? Math.min(1, e.stateT / 1.1) : 1;
-      const hover = HOVER[e.def];
-      const lift = hover ? hover + Math.sin(performance.now() / 520 + id) * 0.12 : 0;
+      const def = ENEMIES[e.def];
+      const hover = def.flying ?? HOVER[e.def];
+      let lift = hover ? hover + Math.sin(performance.now() / 520 + id) * (def.flying ? 0.18 : 0.12) : 0;
+      if (def.dive && e.diving) {
+        // Belfry Gargoyle dive: climb over the mark for the first half, then drop onto it.
+        const k = Math.min(1, e.stateT / ((def.windupMs / 1000) * (e.elite ? 0.85 : 1)));
+        lift = k < 0.5 ? hover! + k * 3 : (hover! + 1.5) * (1 - (k - 0.5) * 2) ** 2;
+      } else if (def.dive && e.state === 'recover') lift = 0.05; // grounded in the rubble
       v.c.root.position.set(e.x, -1.7 * (1 - rise) * (1 - rise) + lift, e.z);
       v.c.root.rotation.y = v.facing;
       v.c.flash = e.flash;
-      const key = e.state === 'windup' || e.state === 'channel' ? e.state : e.moving ? 'walk' : 'idle';
+      const key = e.diving ? 'dive' : e.state === 'windup' || e.state === 'channel' ? e.state : e.moving ? 'walk' : 'idle';
       if (key !== v.lastState) {
-        if (key === 'windup' || key === 'channel') {
+        if (key === 'dive') v.c.playOnce('dive', 1, (def.windupMs / 1000) * 1.2);
+        else if (key === 'windup' || key === 'channel') {
           const cast = CASTERS.has(e.def);
           v.c.playOnce(cast ? 'cast' : 'attack', cast ? 1.3 : 1.6);
         } else if (key === 'walk') v.c.setLoop('walk', Math.max(0.6, e.speed / (WALK_SPEED[v.c.slug] ?? 1.5)));

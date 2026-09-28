@@ -1,0 +1,9 @@
+{
+  "id": "shroud_moth",
+  "input": "art-src/concepts/shroud_moth.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 3500,
+    "texture_quality": "standard"
+  }
+}

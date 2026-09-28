@@ -63,6 +63,11 @@ export const FX_PRESETS: Partial<Record<BinbunId, FxPreset>> = {
   rend_impact: { colors: [R.jade, R.pale, R.bone], scale: 0.5 },
   levelup_pillar: { colors: [0xe9c98f, 0xd9a441, 0xf3e8d2], scale: 0.6, alpha: 0.8 },
   soul_orb: { colors: [SO.jade, SO.pale, SO.deep], scale: 0.35, y: 0.6 },
+  // Grimoire expansion. Bone greys/dust for Prison and Storm (never the old warm cream), jade for Siphon.
+  bone_prison_burst: { colors: [SPELL_FX.prison.bone, SPELL_FX.prison.amber, SPELL_FX.prison.dust], scale: 0.55, y: 0.2 },
+  soul_siphon_beam: { colors: [SPELL_FX.siphon.jade, SPELL_FX.siphon.pale, SPELL_FX.siphon.deep], scale: 0.3, y: 1.2, alpha: 0.7 },
+  bone_storm_dust: { colors: [SPELL_FX.storm.bone, SPELL_FX.storm.ash, SPELL_FX.storm.dust], scale: 0.8, alpha: 0.8 },
+  grave_hands_pulse: { colors: [SPELL_FX.hands.seep, SPELL_FX.hands.bone, SPELL_FX.hands.earth], scale: 0.8, alpha: 0.75 },
   // --- Enemies and bosses (enemy language only: bronze, rot, curse, choir blue) ---
   censer_incense: { colors: [E.toll, 0x6a6258, 0x2a2622], scale: 0.55, alpha: 0.6 },
   vengeful_burst: { colors: [SPELL_FX.affix.vengeful, 0xffb07a, 0x3a1a10], scale: 0.7 },

@@ -36,6 +36,12 @@ export const CREATURE_MODELS = {
   choir_wraith: { url: 'models/props/choir_wraith.glb', height: 2.1 },
   skull_rat: m('skull_rat', 0.5),
   bone_golem: m('bone_golem', 3.1),
+  // Flying pack (2026-09-28). Gargoyle and seraph are rigged (biped); moth and bat are static
+  // meshes. All four flap their wings in the vertex shader (graphics/wingFlap.ts).
+  belfry_gargoyle: m('belfry_gargoyle', 2.0),
+  weeping_seraph: m('weeping_seraph', 2.3),
+  shroud_moth: { url: 'models/props/shroud_moth.glb', height: 1.3 },
+  tithe_bat: { url: 'models/props/tithe_bat.glb', height: 0.75 },
 } satisfies Record<string, CreatureModelDef>;
 
 export type CreatureSlug = keyof typeof CREATURE_MODELS;

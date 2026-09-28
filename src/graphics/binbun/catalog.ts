@@ -14,6 +14,7 @@ export const BINBUN_IMPACTS = [
   'archer_flash',
   'bone_fan_hit',
   'ivory_cleave_hit',
+  'bone_prison_burst',
 ] as const;
 
 /** Persistent effects: give them `follow` or `duration` (they are culled when far or off-screen). */
@@ -48,6 +49,8 @@ export const BINBUN_LOOPERS = [
   'loot_legendary',
   'loot_mythic',
   'loot_divine',
+  'soul_siphon_beam',
+  'bone_storm_dust',
 ] as const;
 
 /** Played through their `oneshot` animation. */
@@ -73,6 +76,7 @@ export const BINBUN_ONESHOTS = [
   'bell_toll_ring',
   'choir_scream',
   'boss_rain_orb',
+  'grave_hands_pulse',
 ] as const;
 
 /** Material/shader kits with no nodes (the world_* entries): ported one by one later, never spawned. */

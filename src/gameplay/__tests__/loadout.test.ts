@@ -61,9 +61,10 @@ describe('Grimoire loadout', () => {
       expect(CAST_FLOW[id].lockMs).toBeLessThanOrEqual(160);
       expect(ABILITIES[id].icon).toMatch(/^art\/abilities\//);
     }
-    // The unlock ladder (spell-variety brief §4): a choice at level 2, then 3, 4, 5, 6, 7, 8, 12.
+    // The unlock ladder (spell-variety brief §4): a choice at level 2, then 3, 4, 5, 6, 7, 8, 12;
+    // the Grimoire expansion (2026-09-28) adds Siphon 6, Prison 9, Hands 11 and Storm 14.
     const gated = GRIMOIRE.filter((id) => unlockLevel(id) > 1).map(unlockLevel).sort((a, b) => a - b);
-    expect(gated).toEqual([2, 3, 4, 4, 5, 6, 7, 8, 12]);
+    expect(gated).toEqual([2, 3, 4, 4, 5, 6, 6, 7, 8, 9, 11, 12, 14]);
     expect(PRIMARIES.map(unlockLevel)).toEqual([1, 2, 6]);
     for (const id of [...GRIMOIRE, ...PRIMARIES]) expect(existsSync(`public/${ABILITIES[id].icon}`), ABILITIES[id].icon).toBe(true);
     expect(unlockLevel('dirge')).toBe(SIGNATURE_LEVEL);

@@ -1,0 +1,21 @@
+{
+  "id": "belfry_gargoyle",
+  "input": "art-src/concepts/belfry_gargoyle.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 4500,
+    "texture_quality": "standard"
+  },
+  "rig": {
+    "model": "v1.0-20240301",
+    "rig_type": "biped"
+  },
+  "animations": [
+    "preset:biped:idle",
+    "preset:biped:slash",
+    "preset:biped:dive",
+    "preset:biped:hurt",
+    "preset:biped:fall"
+  ],
+  "animationMode": "single"
+}

@@ -738,6 +738,50 @@
       "animation": "main",
       "duration": 0,
       "unsupported": []
+    },
+    {
+      "id": "bone_prison_burst",
+      "file": "bone_prison_burst.json",
+      "particles": 3,
+      "meshes": 3,
+      "decals": 1,
+      "lights": 1,
+      "animation": "main",
+      "duration": 0,
+      "unsupported": []
+    },
+    {
+      "id": "soul_siphon_beam",
+      "file": "soul_siphon_beam.json",
+      "particles": 2,
+      "meshes": 6,
+      "decals": 0,
+      "lights": 0,
+      "animation": "main",
+      "duration": 0,
+      "unsupported": []
+    },
+    {
+      "id": "bone_storm_dust",
+      "file": "bone_storm_dust.json",
+      "particles": 2,
+      "meshes": 0,
+      "decals": 0,
+      "lights": 0,
+      "animation": "main",
+      "duration": 0,
+      "unsupported": []
+    },
+    {
+      "id": "grave_hands_pulse",
+      "file": "grave_hands_pulse.json",
+      "particles": 0,
+      "meshes": 2,
+      "decals": 0,
+      "lights": 1,
+      "animation": "oneshot",
+      "duration": 1,
+      "unsupported": []
     }
   ],
   "files": [
@@ -746,6 +790,8 @@
     "public/fx/binbun/area_gate.json",
     "public/fx/binbun/bell_toll_ring.json",
     "public/fx/binbun/bone_fan_hit.json",
+    "public/fx/binbun/bone_prison_burst.json",
+    "public/fx/binbun/bone_storm_dust.json",
     "public/fx/binbun/bonfire.json",
     "public/fx/binbun/boss_rain_orb.json",
     "public/fx/binbun/brazier_fire.json",
@@ -764,6 +810,7 @@
     "public/fx/binbun/exhume_lift.json",
     "public/fx/binbun/frost_shard_hit.json",
     "public/fx/binbun/grave_frost_mist.json",
+    "public/fx/binbun/grave_hands_pulse.json",
     "public/fx/binbun/grave_offering_orb.json",
     "public/fx/binbun/grave_offering_ripple.json",
     "public/fx/binbun/grave_step_smoke.json",
@@ -829,6 +876,7 @@
     "public/fx/binbun/shaders/ff9c528ca933a5a0.gdshader",
     "public/fx/binbun/soul_harvest_pillar.json",
     "public/fx/binbun/soul_orb.json",
+    "public/fx/binbun/soul_siphon_beam.json",
     "public/fx/binbun/surge_eruption.json",
     "public/fx/binbun/tex/024abd8279311204.png",
     "public/fx/binbun/tex/05eb0566b68b3223.png",
@@ -913,6 +961,7 @@
     "public/fx/binbun/tex/d21a95f80bfbd399.png",
     "public/fx/binbun/tex/d26ae3e98918a9a8.png",
     "public/fx/binbun/tex/d29647c05cafaa57.png",
+    "public/fx/binbun/tex/d3dc81728b41e8d8.png",
     "public/fx/binbun/tex/d77781da66afe2de.png",
     "public/fx/binbun/tex/d7ac81069eb9af71.png",
     "public/fx/binbun/tex/d7eaad9f23f43d60.png",

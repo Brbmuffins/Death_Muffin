@@ -6646,5 +6646,179 @@
     "rawHash": "sha256:d60dcee665c5fa8ff399dc42ba135fc5adfc42bf7c9c9f0d742194c9456b1d10",
     "outHash": "sha256:11d12ef3b7b341da7dd3f2e90354f2715fcbb7b91580069adb8306660cae90d0",
     "generatedAt": "2026-09-27T22:53:18.371Z"
+  },
+  "concept_belfry_gargoyle": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new flying enemy for a dark-fantasy necromancer game set in a haunted cathedral: the Belfry Gargoyle, a winged stone gargoyle that tore itself off a bell tower. Weathered grey-black cathedral stone body with moss and verdigris streaks, cracks glowing faintly with pale bronze light, a snarling horned demon face, a rusted bronze bell-clapper chained around its neck, long clawed hands and bird-like taloned feet, a thin whip tail ending in a stone spade. Large bat-like stone wings with torn membranes. Single creature, FRONT VIEW, symmetrical, wings FULLY SPREAD out horizontally to the sides, arms slightly out from the body with hands open, legs straight down, hovering upright so it can be rigged. Entire body and both wingtips visible, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other creatures. Readable silhouette, stone greys, old bronze accents.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/belfry_gargoyle.png",
+    "rawHash": "sha256:ce2fb7edc8c077535aa7fe601e83e5ce59831ddef529f9114cf761577787e7d5",
+    "outHash": "sha256:278c1ff5ee7da920b497b5c07f33a0a46c4024524de71e1be6275b2ca59849e1",
+    "generatedAt": "2026-09-28T21:16:23.239Z"
+  },
+  "concept_shroud_moth": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new flying enemy for a dark-fantasy necromancer game set in a haunted graveyard: the Shroud Moth, a huge moth grown fat on grave dust, big as a hound. Its four broad wings are made of tattered yellowed burial-shroud linen with faded stitched funeral sigils and death's-head markings, the wing edges frayed and dripping dust. A furry ash-grey body, a skull-like face with large milky compound eyes, feathery antennae, thin segmented insect legs curled beneath. Single creature, TOP-FRONT VIEW, perfectly symmetrical, all four wings FULLY SPREAD flat to the sides, body vertical in the centre. Entire creature and all wingtips visible, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other creatures. Readable silhouette, bone ivory, ash grey and dusty ochre, faint sickly green glow in the eyes.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/shroud_moth.png",
+    "rawHash": "sha256:3b7cd6afff255320249089a3e0129e86baf0cb26450b3df72afcb004dc1312a9",
+    "outHash": "sha256:acf96a89f6353998f156bad4db345e78735b32bbfdacff8cb571e3ded5bf4b90",
+    "generatedAt": "2026-09-28T21:16:31.742Z"
+  },
+  "concept_tithe_bat": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a small swarming flying enemy for a dark-fantasy necromancer game: the Tithe Bat, a rotten crypt bat the size of a cat. Mangy dark grey-brown fur with patches of bare leathery skin, an oversized pale bat skull showing through its face, a mouth of needle fangs, tiny glowing ember-red eyes, a small tarnished copper coin (a grave tithe) stuck through one ear like a piercing, torn leathery wings with visible finger bones. Single creature, FRONT VIEW, perfectly symmetrical, wings FULLY SPREAD out horizontally, body vertical, legs hanging down. Entire creature and both wingtips visible, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other creatures. Readable silhouette, dusky browns and greys, bone ivory skull.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/tithe_bat.png",
+    "rawHash": "sha256:38a3ffd490c29e5aeac9060d0d407bf3fbcbced6678954183e0b9c8b56175ccb",
+    "outHash": "sha256:129ac7f0d136f9654d8bcf682d2281a96f16e85974d49f367086558b6d9f685c",
+    "generatedAt": "2026-09-28T21:16:50.438Z"
+  },
+  "concept_mantle_bones": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Game prop concept: three separate small bone fragments laid out side by side with space between them, for a necromancer's orbiting bone shield — a sharp jagged broken rib splinter with a pointed tip, a single human vertebra with its spiny processes, and a cracked jagged skull shard. Aged off-white bone, greyish, dark brown grime in the cracks and pores, sharp broken edges, clearly bone and not smooth. Three-quarter view, plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text. Realistic dark-fantasy game art style.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/prop_mantle_bones.png",
+    "rawHash": "sha256:6e1a74f27710aabe34ef324040d88f473a0d951604605f785aba3c2bc9eb82fa",
+    "outHash": "sha256:e9a5140fbdbeaa7b9a7fdf763081346ee73466ae6dc20bd4562f81241a624fea",
+    "generatedAt": "2026-09-28T21:16:59.440Z"
+  },
+  "concept_weeping_seraph": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new flying support enemy for a dark-fantasy necromancer game set in a haunted cathedral: the Weeping Seraph, a desecrated cathedral angel statue that has come loose from its plinth. A tall gaunt adult figure carved from cracked, grime-stained white marble, its face hidden under a carved marble mourning veil with dark tear stains running down from beneath it, long flowing carved robes that end in ragged broken stone instead of feet, a tarnished halo of rusted iron spikes floating behind its head, two large feathered marble wings with chipped and missing feathers. Single figure, FRONT VIEW, symmetrical, arms straight out horizontally with the hands open and empty, wings FULLY SPREAD to the sides, hovering upright so it can be rigged. Entire figure visible, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other figures. Readable silhouette, grimy marble white, black cracks, faint pale gold glow from the halo.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/weeping_seraph.png",
+    "rawHash": "sha256:c16f481baaef3c83540f85a54d1d8bb70a20350ab0150055381dfb2b2a60995a",
+    "outHash": "sha256:70660bc854ae3bb0f34fe76d39dd1533c04985d5a0dc3da77d2d547084c18fe6",
+    "generatedAt": "2026-09-28T21:17:35.331Z"
+  },
+  "icon_bone_prison": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: seen from slightly above, a tight ring of tall jagged bone spikes and rib-cage bars erupting from cracked grave soil, curving inward like a cage around a trapped dark shadowy figure at the centre, bone dust bursting from the base of each spike. Palette: aged bone ivory (#cfc8b8), dusty grey-brown (#5a5046), faint warm amber rim light (#8c7d64). NO purple, NO violet, NO green, NO bright yellow. No text, no border, no letters.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "out": "public/art/abilities/necro-bone-prison.png",
+    "rawHash": "sha256:09bf9b44b160c027ea6aa261705f6af510dfc0481813c17e56e4ee5812b61d0f",
+    "outHash": "sha256:87f5449a283168713af23c9459bda63e56a937a457716e1821557b9fcf1dab7a",
+    "generatedAt": "2026-09-28T21:51:23.542Z"
+  },
+  "icon_soul_siphon": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a skeletal necromancer hand in the lower corner, fingers clawed, drawing a twisting glowing stream of souls and spirit wisps out of a screaming ghostly face in the upper corner, the stream spiralling into the palm. Palette: spirit jade (#6fe3c8), deep teal (#1f8f86), pale mint (#9ff5e0), bone ivory hand. NO purple, NO violet, NO orange, NO red. No text, no border, no letters.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "out": "public/art/abilities/necro-soul-siphon.png",
+    "rawHash": "sha256:67b51ccf047b75008dcf31e7eb9adb6312dbb0c79785dbb6dae4d135bcd11ffa",
+    "outHash": "sha256:6c3c5ecf7933d65a47fbdea027aa55a9fd966c8cb0024b1f88d0eb454021df06",
+    "generatedAt": "2026-09-28T21:51:32.105Z"
+  },
+  "icon_bone_storm": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: a tall swirling tornado of bone fragments — rib splinters, vertebrae, skull shards and finger bones — spinning in a funnel of pale bone dust over a graveyard, the fragments sharp and tumbling. Palette: aged bone ivory (#cfc8b8), ash grey (#8a8378), dusty brown (#5a5046). NO purple, NO violet, NO green, NO bright yellow. No text, no border, no letters.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "out": "public/art/abilities/necro-bone-storm.png",
+    "rawHash": "sha256:67610700e70acc55a22116d5450398f0f37086c4dbd0dfb4fc8f87ea4693c8d1",
+    "outHash": "sha256:db3b727f8522e9df8f4cdd7c6cd1d4e8adcb0f2c53bd8b6c286426cbdaaab17f",
+    "generatedAt": "2026-09-28T21:51:40.714Z"
+  },
+  "icon_grave_hands": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG ability icon, square, painterly, readable at small size, strong central silhouette, near-black background. Match the painting style and framing of the second reference image (the bone-spear icon). Subject: many skeletal hands and bony forearms bursting up out of dark grave earth, clawing and grasping upward, clods of dirt flying, a faint spirit-teal glow seeping from the cracks in the soil between them. Palette: bone ivory (#cfc8b8), dark earth brown (#3a2e22), faint spirit teal glow (#6fe3c8). NO purple, NO violet, NO orange. No text, no border, no letters.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png",
+      "public/art/abilities/necro-spear.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        256,
+        256
+      ],
+      "format": "png"
+    },
+    "out": "public/art/abilities/necro-grave-hands.png",
+    "rawHash": "sha256:77ecd5b79f8ac0e65be3363936d8fd47535842648e24d9e1ce3a466797530400",
+    "outHash": "sha256:71bb13e95477403a3bbd5757c24fc3a207517089b200c3bc1394349a30d7519b",
+    "generatedAt": "2026-09-28T21:51:49.244Z"
+  },
+  "concept_grave_hand": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Game prop concept: a single skeletal human hand and forearm bursting straight up out of a small mound of dark grave dirt, fingers curled and clawing upward, aged off-white bone with brown grime, a few clods of earth around the base. Single object, three-quarter view, vertical, plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text. Dark fantasy game art style.",
+    "refs": [],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/prop_grave_hand.png",
+    "rawHash": "sha256:56afcde7018aaac41187b80c2ca25ab95e6cc6ca88a172a863dde4d1cb96973d",
+    "outHash": "sha256:a792d90d8fe7fef5d6034da6004da6a939a701a63d874aae8cc4453edfe972bd",
+    "generatedAt": "2026-09-28T21:51:57.953Z"
   }
 }

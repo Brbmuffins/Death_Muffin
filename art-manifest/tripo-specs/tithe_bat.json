@@ -1,0 +1,9 @@
+{
+  "id": "tithe_bat",
+  "input": "art-src/concepts/tithe_bat.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 1800,
+    "texture_quality": "standard"
+  }
+}

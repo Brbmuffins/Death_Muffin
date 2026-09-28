@@ -7,6 +7,8 @@ import {
   ENEMIES,
   PROCESSION,
   SCREAM,
+  DUST,
+  WARD,
   SURGE,
   WAVE_THEMES,
   enemyDamageScale,
@@ -29,6 +31,8 @@ import {
   BONE_MANTLE,
   CARRION_SEED,
   GRAVE_FROST,
+  BONE_PRISON,
+  GRAVE_HANDS,
   GRAVE_OFFERING,
   GRAVE_BRAND,
   SHIELD_BASH,
@@ -274,6 +278,8 @@ export class WorldSim {
       }
       // Grave Frost: the host owns the duration; a claim can only ask for it.
       if (h.chill) e.chillT = Math.max(e.chillT ?? 0, GRAVE_FROST.chillS);
+      if (h.root) e.rootT = Math.max(e.rootT ?? 0, BONE_PRISON.rootS);
+      if (h.slow) e.slowT = Math.max(e.slowT, GRAVE_HANDS.tickS + 0.2);
       // Rot Lance: one Withered stack at most per hit, up to a clamped cap; dps scales with the hit.
       if (h.withered && h.withered > 0) this.wither(e, 1, Math.min(12, Math.max(1, Math.floor(h.witheredCap ?? DETONATE.rotWitheredCap))), h.dmg * WITHERED.dpsPerStack, h.by);
     }
@@ -1734,8 +1740,36 @@ export class WorldSim {
     if (t.hp <= 0) this.killThrall(t, 'killed');
   }
 
-  private strike(e: Enemy, kind: 'melee' | 'cone' | 'curse' | 'slam' | 'scream') {
+  private strike(e: Enemy, kind: 'melee' | 'cone' | 'curse' | 'slam' | 'scream' | 'dust', slamR?: number) {
     const def = ENEMIES[e.def];
+    if (kind === 'dust') {
+      // Shroud Moth: the burst chokes whoever is in the ring, then the dust hangs there (a hostile zone).
+      for (const p of this.players.values()) {
+        if (p.alive && Math.hypot(p.x - e.aimX, p.z - e.aimZ) <= DUST.radius) {
+          this.emit({ t: 'hurt', player: p.id, dmg: this.blow(e), from: 'dust', x: e.x, z: e.z });
+        }
+      }
+      for (const t of [...this.thralls.values()]) if (Math.hypot(t.x - e.aimX, t.z - e.aimZ) <= DUST.radius) this.hurtThrall(t, this.blow(e));
+      const zone: Zone = {
+        id: this.id(),
+        kind: 'dust',
+        owner: '',
+        x: e.aimX,
+        z: e.aimZ,
+        r: DUST.radius,
+        until: this.time + DUST.cloudS,
+        bornAt: this.time,
+        tick: 1,
+        dps: this.blow(e) * DUST.cloudDpsMult,
+        slow: 1,
+        witheredCap: 0,
+        bloom: false,
+        hostile: true,
+      };
+      this.zones.set(zone.id, zone);
+      this.emit({ t: 'zone', zone });
+      return;
+    }
     if (kind === 'scream') {
       // Choir Wraith: the hymn breaks on the ring it sang onto the ground (step out in time).
       for (const p of this.players.values()) {
@@ -1764,7 +1798,7 @@ export class WorldSim {
       for (const t of [...this.thralls.values()]) if (hits(t.x, t.z)) this.hurtThrall(t, this.blow(e));
       return;
     }
-    const reach = kind === 'slam' ? (def.slamRadius ?? 1.9) : def.attackRange * 1.35 + 0.4;
+    const reach = kind === 'slam' ? (slamR ?? def.slamRadius ?? 1.9) : def.attackRange * 1.35 + 0.4;
     const cx = kind === 'slam' ? e.aimX : e.x;
     const cz = kind === 'slam' ? e.aimZ : e.z;
     const p = e.targetPlayer ? this.players.get(e.targetPlayer) : undefined;
@@ -1854,6 +1888,7 @@ export class WorldSim {
           e.state = 'recover';
           e.stateT = 0;
           e.channelCorpse = null;
+          if (e.diving) this.endDive(e);
         }
         continue;
       }
@@ -1864,13 +1899,22 @@ export class WorldSim {
 
       if (e.state === 'windup' || e.state === 'channel') {
         const windup = (e.state === 'channel' ? 1.5 : def.windupMs / 1000) * (e.elite ? 0.85 : 1);
+        // Belfry Gargoyle: it hangs over the mark for the first half, then drops onto it in a straight line.
+        if (e.diving) {
+          const k = Math.max(0, Math.min(1, (e.stateT - windup * 0.5) / (windup * 0.5)));
+          const ease = k * k;
+          e.x = (e.diveX ?? e.x) + (e.aimX - (e.diveX ?? e.x)) * ease;
+          e.z = (e.diveZ ?? e.z) + (e.aimZ - (e.diveZ ?? e.z)) * ease;
+        }
         if (e.stateT >= windup) this.release(e);
         continue;
       }
       if (e.state === 'recover') {
-        if (e.stateT >= 0.3) {
+        // A landed gargoyle sits grounded (groundT) before it takes off again.
+        if (e.stateT >= 0.3 + (e.groundT ?? 0)) {
           e.state = 'move';
           e.stateT = 0;
+          e.groundT = 0;
         }
         continue;
       }
@@ -1878,7 +1922,8 @@ export class WorldSim {
       // Deacons harvest any unclaimed corpse in reach, hunting or not — that
       // corpse competition is why they're the priority kill.
       const silenced = (e.silenceT ?? 0) > 0;
-      if (def.behavior === 'support' && e.attackCd <= 0 && !silenced) {
+      if (def.ward && e.attackCd <= 0 && !silenced) this.seraphWard(e);
+      if (def.behavior === 'support' && !def.ward && e.attackCd <= 0 && !silenced) {
         const corpse = this.nearestCorpse(e.x, e.z, 8);
         if (corpse) {
           e.state = 'channel';
@@ -1913,6 +1958,26 @@ export class WorldSim {
         case 'melee':
         case 'hazard':
         case 'flank': {
+          if ((e.fleeT ?? 0) > 0) {
+            // Tithe Bat: flit away (and a little sideways) after a bite, then come back.
+            e.fleeT! -= dt;
+            const px = -(target.z - e.z) / (dist || 1);
+            const pz = (target.x - e.x) / (dist || 1);
+            this.moveEnemy(e, e.x * 2 - target.x + px * 2 * e.flankSide, e.z * 2 - target.z + pz * 2 * e.flankSide, dt);
+            break;
+          }
+          if (def.dive && e.attackCd <= 0 && dist >= def.dive.minRange && dist <= def.dive.range && !this.wallBetween(e.x, e.z, target.x, target.z)) {
+            e.state = 'windup';
+            e.stateT = 0;
+            e.diving = true;
+            e.diveX = e.x;
+            e.diveZ = e.z;
+            e.aimX = target.x;
+            e.aimZ = target.z;
+            e.facing = Math.atan2(target.x - e.x, target.z - e.z);
+            this.emit({ t: 'telegraph', id: e.id, kind: 'dive', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs * (e.elite ? 0.85 : 1), r: def.dive.radius });
+            break;
+          }
           if (dist <= def.attackRange + 0.35 && e.attackCd <= 0) {
             e.state = 'windup';
             e.stateT = 0;
@@ -1946,6 +2011,8 @@ export class WorldSim {
             e.facing = Math.atan2(target.x - e.x, target.z - e.z);
             if (def.attack === 'scream') {
               this.emit({ t: 'telegraph', id: e.id, kind: 'scream', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: SCREAM.radius });
+            } else if (def.attack === 'dust') {
+              this.emit({ t: 'telegraph', id: e.id, kind: 'dust', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: DUST.radius });
             } else this.emit({ t: 'telegraph', id: e.id, kind: 'cone', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
           } else if (dist > def.attackRange - 1.5) this.moveEnemy(e, target.x, target.z, dt);
           else if (dist < 3.5) this.moveEnemy(e, e.x * 2 - target.x, e.z * 2 - target.z, dt, 0.8);
@@ -1954,7 +2021,7 @@ export class WorldSim {
         }
         case 'support': {
           if (e.attackCd <= 0 && !silenced) {
-            const corpse = this.nearestCorpse(e.x, e.z, 8);
+            const corpse = def.ward ? null : this.nearestCorpse(e.x, e.z, 8);
             if (corpse) {
               e.state = 'channel';
               e.stateT = 0;
@@ -2008,6 +2075,11 @@ export class WorldSim {
       }
       return;
     }
+    if (e.diving && def.dive) {
+      this.endDive(e);
+      e.groundT = def.dive.groundedS;
+      return this.strike(e, 'slam', def.dive.radius);
+    }
     switch (def.behavior) {
       case 'caster':
         return this.strike(e, def.attack ?? 'cone');
@@ -2016,8 +2088,31 @@ export class WorldSim {
       case 'hazard':
         return this.strike(e, 'slam');
       default:
-        return this.strike(e, 'melee');
+        this.strike(e, 'melee');
+        if (def.hitRun) e.fleeT = def.hitRun;
     }
+  }
+
+  /** A dive ends (landed or stunned out of the air): settle onto walkable ground. */
+  private endDive(e: Enemy) {
+    e.diving = false;
+    [e.x, e.z] = this.nav.resolveInArea(e.area, e.x, e.z, e.radius);
+  }
+
+  /** Weeping Seraph: Sanctify every ally in reach at once, if at least one other body is there to bless. */
+  private seraphWard(e: Enemy) {
+    const allies: Enemy[] = [];
+    for (const o of this.enemies.values()) {
+      if (o === e || o.state === 'dead' || o.state === 'rising' || (o.sanctT ?? 0) > 0) continue;
+      if (Math.hypot(o.x - e.x, o.z - e.z) <= WARD.range) allies.push(o);
+    }
+    if (!allies.length) return;
+    allies.sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp);
+    for (const o of allies.slice(0, WARD.maxTargets)) {
+      o.sanctT = SANCTIFIED.durationS;
+      this.emit({ t: 'sanctify', id: e.id, target: o.id, x: e.x, z: e.z, tx: o.x, tz: o.z });
+    }
+    e.attackCd = ENEMIES[e.def].cooldownMs / 1000;
   }
 
   // --- Thrall AI ---

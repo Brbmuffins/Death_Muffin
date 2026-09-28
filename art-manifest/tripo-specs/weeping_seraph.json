@@ -1,0 +1,20 @@
+{
+  "id": "weeping_seraph",
+  "input": "art-src/concepts/weeping_seraph.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 4500,
+    "texture_quality": "standard"
+  },
+  "rig": {
+    "model": "v1.0-20240301",
+    "rig_type": "biped"
+  },
+  "animations": [
+    "preset:biped:idle",
+    "preset:biped:cast_a_spell",
+    "preset:biped:hurt",
+    "preset:biped:fall"
+  ],
+  "animationMode": "single"
+}

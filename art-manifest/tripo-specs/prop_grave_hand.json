@@ -1,0 +1,5 @@
+{
+  "id": "prop_grave_hand",
+  "input": "art-src/concepts/prop_grave_hand.png",
+  "generation": { "model": "P1-20260311", "face_limit": 400, "texture_quality": "standard" }
+}

@@ -143,6 +143,36 @@ export function selectAutoCombatAction(input: AutoCombatInput): AutoCombatAction
     }
     if (best) return action('miasma', best);
   }
+  // Grimoire expansion: a cage, a field and a storm want a knot of three or more; the siphon wants a
+  // sturdy target, or answers pressure when hurt.
+  const knot = (id: AbilityId, r: number, min: number) => {
+    let best: Target | null = null;
+    let hits = min - 1;
+    for (const t of candidates) {
+      if (t.boss || t.distance > ABILITIES[id].range + 0.4) continue;
+      const n = countAround(t, r);
+      if (n > hits) (best = t), (hits = n);
+    }
+    return best;
+  };
+  if (canSpend('bone_prison')) {
+    const t = knot('bone_prison', ABILITIES.bone_prison.radius, 3);
+    if (t) return action('bone_prison', t);
+  }
+  if (canSpend('grave_hands')) {
+    const t = knot('grave_hands', ABILITIES.grave_hands.radius, 3);
+    if (t) return action('grave_hands', t);
+  }
+  if (canSpend('bone_storm')) {
+    const t = knot('bone_storm', ABILITIES.bone_storm.radius + 1, 3);
+    if (t) return action('bone_storm', t);
+  }
+  if (canSpend('soul_siphon')) {
+    const hurtNow = p.hp !== undefined && p.maxHp ? p.hp < p.maxHp * 0.7 : false;
+    const reach = (t: Target) => t.distance <= ABILITIES.soul_siphon.range + (t.boss ? BOSS_RADIUS : 0.4);
+    const prey = candidates.find((t) => reach(t) && (t.boss || t.elite)) ?? (hurtNow ? candidates.find(reach) : undefined);
+    if (prey) return action('soul_siphon', prey);
+  }
   if (canSpend('grave_frost')) {
     const slope = Math.tan((GRAVE_FROST.halfAngleDeg * Math.PI) / 180);
     const len = ABILITIES.grave_frost.range;
@@ -258,13 +288,80 @@ function newBloodAutoAction(input: AutoCombatInput, targets: Target[], action: (
     ? action(primary, nearest) : null;
 }
 
+/**
+ * Movement memory for Easy auto, owned by the scene. Without it the bot re-decides from scratch each
+ * frame and looks choppy: it flickers walk/stop at the edge of its reach, snaps between two equally
+ * near targets, and re-picks a dodge side every frame. Tests may omit it (stateless decisions).
+ */
+export interface AutoMoveMemory {
+  targetId?: number | null;
+  /** Closing distance (hysteresis: keep walking until comfortably inside reach). */
+  closing?: boolean;
+  /** A committed dodge/retreat direction and when it may be re-chosen (ms). */
+  evade?: { x: number; z: number; until: number } | null;
+  /** Last output direction, for smoothed turning. */
+  dir?: { x: number; z: number } | null;
+  /** Walking around a prop to reach the target: waypoints, whose they are, and when to re-plan (ms). */
+  route?: { x: number; z: number }[] | null;
+  routeFor?: number;
+  routeAt?: number;
+  /** Line-of-sight check cadence (ms) and its last answer. */
+  sightAt?: number;
+  blocked?: boolean;
+}
+/** The nav queries movement needs to walk around props instead of into them (optional for tests). */
+export interface AutoMoveNav {
+  clearLine(x0: number, z0: number, x1: number, z1: number, r?: number): boolean;
+  findPath(fx: number, fz: number, tx: number, tz: number): { x: number; z: number }[];
+}
+const STICKY_TARGET_M = 2;
+const CLOSE_START = 0.2;
+const CLOSE_STOP = 1.1;
+const EVADE_COMMIT_MS = 450;
+const TURN_SECONDS = 0.1;
+
 /** A local engagement direction; manual movement, panels and gathering gate its use in the scene. */
-export function selectAutoCombatMovement(input: Pick<AutoCombatInput, 'player' | 'enemies' | 'primary' | 'family'>): { x: number; z: number } | null {
+export function selectAutoCombatMovement(
+  input: Pick<AutoCombatInput, 'player' | 'enemies' | 'primary' | 'family'> & { nav?: AutoMoveNav },
+  mem?: AutoMoveMemory,
+  now = 0,
+  dt = 0,
+): { x: number; z: number } | null {
+  const want = rawAutoMovement(input, mem, now);
+  if (!mem) return want;
+  if (!want) {
+    mem.dir = null;
+    return null;
+  }
+  // Smoothed turning: blend from the last heading instead of snapping (a reversal still turns fast).
+  const prev = mem.dir;
+  let out = want;
+  if (prev && dt > 0) {
+    const k = 1 - Math.exp(-dt / TURN_SECONDS);
+    const x = prev.x + (want.x - prev.x) * k;
+    const z = prev.z + (want.z - prev.z) * k;
+    const len = Math.hypot(x, z);
+    out = len > 0.2 ? { x: x / len, z: z / len } : want;
+  }
+  mem.dir = out;
+  return out;
+}
+
+function rawAutoMovement(input: Pick<AutoCombatInput, 'player' | 'enemies' | 'primary' | 'family'> & { nav?: AutoMoveNav }, mem: AutoMoveMemory | undefined, now: number): { x: number; z: number } | null {
   const p = input.player;
   const enemies = [...input.enemies].filter((e) => e.hp > 0 && e.state !== 'dead' && e.state !== 'rising' && (!p.area || e.area === p.area))
     .sort((a, b) => distance(p, a) - distance(p, b));
-  const nearest = enemies[0];
-  if (!nearest) return null;
+  let nearest = enemies[0];
+  if (!nearest) {
+    if (mem) (mem.targetId = null), (mem.closing = false), (mem.evade = null);
+    return null;
+  }
+  // Sticky target: keep the one we were engaging unless another is clearly closer.
+  if (mem?.targetId != null) {
+    const kept = enemies.find((e) => e.id === mem.targetId);
+    if (kept && distance(p, kept) - distance(p, nearest) < STICKY_TARGET_M) nearest = kept;
+  }
+  if (mem) mem.targetId = nearest.id;
   const d = distance(p, nearest);
   if (d > 36 || d < 0.01) return null;
   const dx = (nearest.x - p.x) / d, dz = (nearest.z - p.z) / d;
@@ -278,13 +375,50 @@ export function selectAutoCombatMovement(input: Pick<AutoCombatInput, 'player' |
     return choices.find((v) => p.x + v.x * 2 > rect.x0 + 1 && p.x + v.x * 2 < rect.x1 - 1 &&
       p.z + v.z * 2 > rect.z0 + 1 && p.z + v.z * 2 < rect.z1 - 1) ?? choices.at(-1)!;
   };
+  // A committed dodge holds its direction briefly so the hero doesn't wobble between sides.
+  const evade = (choices: { x: number; z: number }[]) => {
+    if (mem?.evade && now < mem.evade.until) return { x: mem.evade.x, z: mem.evade.z };
+    const v = safe(choices);
+    if (mem) mem.evade = { ...v, until: now + EVADE_COMMIT_MS };
+    return v;
+  };
   const lowHp = p.hp !== undefined && p.maxHp && p.hp < p.maxHp * 0.32;
-  if (lowHp && d < 5) return safe([{ x: -dx, z: -dz }, { x: -dz, z: dx }, { x: dz, z: -dx }, center]);
+  if (lowHp && d < 5) return evade([{ x: -dx, z: -dz }, { x: -dz, z: dx }, { x: dz, z: -dx }, center]);
   const threatened = enemies.some((e) => distance(p, e) < 4 && (e.state === 'windup' || e.state === 'channel'));
-  if (threatened && d < 3.5) return safe([{ x: -dz, z: dx }, { x: dz, z: -dx }, { x: -dx, z: -dz }, center]);
+  if (threatened && d < 3.5) return evade([{ x: -dz, z: dx }, { x: dz, z: -dx }, { x: -dx, z: -dz }, center]);
+  if (mem?.evade && now < mem.evade.until) return { x: mem.evade.x, z: mem.evade.z };
+  if (mem) mem.evade = null;
   const reach = ABILITIES[input.primary ?? 'bone_needle'].range;
-  if (d > Math.max(1.1, reach - 0.4)) return safe([{ x: dx, z: dz }, center]);
-  if (reach >= 7 && d < 3 && enemies.filter((e) => distance(p, e) < 3.5).length >= 2) return safe([{ x: -dx, z: -dz }, center]);
+  // Hysteresis: start closing just past reach, keep closing until comfortably inside it.
+  const startAt = Math.max(1.1, reach - (mem ? CLOSE_START : 0.4));
+  const stopAt = Math.max(0.9, reach - CLOSE_STOP);
+  const closing = mem?.closing ? d > stopAt : d > startAt;
+  if (mem) mem.closing = closing;
+  if (closing) {
+    // A straight line into a tombstone makes the hero grind against it (the wall resolve pushes it
+    // back every frame). When the target is out of sight, walk the nav path around instead.
+    if (mem && input.nav) {
+      if (now >= (mem.sightAt ?? 0)) {
+        mem.sightAt = now + 200;
+        mem.blocked = !input.nav.clearLine(p.x, p.z, nearest.x, nearest.z, 0.45);
+      }
+      if (mem.blocked) {
+        if (!mem.route?.length || mem.routeFor !== nearest.id || now >= (mem.routeAt ?? 0)) {
+          mem.route = input.nav.findPath(p.x, p.z, nearest.x, nearest.z);
+          mem.routeFor = nearest.id;
+          mem.routeAt = now + 800;
+        }
+        while (mem.route.length && Math.hypot(mem.route[0].x - p.x, mem.route[0].z - p.z) < 0.5) mem.route.shift();
+        const wp = mem.route[0];
+        if (wp) {
+          const l = Math.hypot(wp.x - p.x, wp.z - p.z) || 1;
+          return { x: (wp.x - p.x) / l, z: (wp.z - p.z) / l };
+        }
+      } else mem.route = null;
+    }
+    return safe([{ x: dx, z: dz }, center]);
+  }
+  if (reach >= 7 && d < 3 && enemies.filter((e) => distance(p, e) < 3.5).length >= 2) return evade([{ x: -dx, z: -dz }, center]);
   return null;
 }
 

@@ -4,6 +4,10 @@ import {
   ABILITIES,
   BONE_FAN,
   BONE_MANTLE,
+  BONE_PRISON,
+  BONE_STORM,
+  GRAVE_HANDS,
+  SOUL_SIPHON,
   CARRION_SEED,
   DETONATE,
   GRAVE_OFFERING,
@@ -112,6 +116,10 @@ const VL = SPELL_FX.veil;
 const RD = SPELL_FX.rend;
 const BL = SPELL_FX.bloom;
 const KN = SPELL_FX.knight;
+const SI = SPELL_FX.siphon;
+const PR = SPELL_FX.prison;
+const GH = SPELL_FX.hands;
+const BS = SPELL_FX.storm;
 
 type Vec3 = { x: number; y: number; z: number };
 
@@ -132,6 +140,8 @@ export class AbilitySystem {
   private seeds = new Map<number, Handle>();
   /** Carrion Seed Binbun cores, by corpse id. */
   private seedCores = new Map<number, BinbunHandle>();
+  /** Persistent client-resolved rites (Soul Siphon, Grave Hands, Bone Storm), ticked from update(). */
+  private timed: { until: number; next: number; every: number; tick: (now: number) => boolean | void; end?: () => void }[] = [];
   /** Hollow Knight — Corpse Vigil regenerates until this time (scene ms). */
   private vigilUntil = 0;
   private lastVigilAt = 0;
@@ -242,6 +252,18 @@ export class AbilitySystem {
         break;
       case 'carrion_seed':
         result = this.seed(target);
+        break;
+      case 'soul_siphon':
+        result = this.siphon(target, now);
+        break;
+      case 'bone_prison':
+        result = this.prison(target);
+        break;
+      case 'grave_hands':
+        result = this.hands(target, now);
+        break;
+      case 'bone_storm':
+        result = this.storm(target, now);
         break;
       case 'hollow_cut':
         result = this.hollowCut(target);
@@ -737,6 +759,242 @@ export class AbilitySystem {
     return 'ok';
   }
 
+  // --- Grimoire expansion: Soul Siphon, Bone Prison, Grave Hands, Bone Storm ---
+
+  private tickTimed(now: number) {
+    if (!this.timed.length) return;
+    const alive = this.ctx.player.alive;
+    for (let i = this.timed.length - 1; i >= 0; i--) {
+      const t = this.timed[i];
+      let done = !alive || now >= t.until;
+      while (!done && now >= t.next) {
+        t.next += t.every;
+        if (t.tick(now) === false) done = true;
+      }
+      if (done) {
+        t.end?.();
+        this.timed.splice(i, 1);
+      }
+    }
+  }
+
+  /** Clamp a ground aim to the rite's reach. */
+  private groundAim(id: AbilityId, t: CastTarget) {
+    const p = this.ctx.player;
+    const range = ABILITIES[id].range;
+    let x = t.x;
+    let z = t.z;
+    const d = Math.hypot(x - p.x, z - p.z);
+    if (d > range) {
+      x = p.x + ((x - p.x) / d) * range;
+      z = p.z + ((z - p.z) / d) * range;
+    }
+    return { x, z };
+  }
+
+  /** Enemy ids within r of a point (capped like every client-resolved hit), plus whether the Prelate is in it. */
+  private inCircle(x: number, z: number, r: number) {
+    const ids: number[] = [];
+    for (const e of this.ctx.enemies().values()) {
+      if (e.state === 'dead' || e.state === 'rising' || Math.hypot(e.x - x, e.z - z) > r + e.radius) continue;
+      ids.push(e.id);
+      if (ids.length >= 64) break;
+    }
+    const b = this.ctx.boss();
+    return { ids, boss: b.active && b.hp > 0 && Math.hypot(b.x - x, b.z - z) <= r + BOSS_RADIUS };
+  }
+
+  private corpsesIn(x: number, z: number, r: number) {
+    let n = 0;
+    for (const c of this.ctx.corpses().values()) if (!c.echoOwner && Math.hypot(c.x - x, c.z - z) <= r) n++;
+    return n;
+  }
+
+  /** Soul Siphon: a jade tether that follows the target, draining every half second into health and essence. */
+  private siphon(t: CastTarget, now: number): CastResult {
+    const { player: p, effects, avatar } = this.ctx;
+    const def = ABILITIES.soul_siphon;
+    const S = SOUL_SIPHON;
+    if (t.enemyId === undefined && !t.boss) return 'no_target';
+    if (this.shortfall('soul_siphon', t) > 0) return 'range';
+    p.face(t.x, t.z);
+    avatar.cast('cast', 2.4, p.facing, CAST_FLOW.soul_siphon.gestureSeconds);
+    const breakR = def.range * S.breakMult + (t.boss ? BOSS_RADIUS : 0);
+    let ended = false;
+    const target = () => {
+      if (ended || !p.alive) return null;
+      let q: Vec3 | null = null;
+      if (t.boss) {
+        const b = this.ctx.boss();
+        if (b.active && b.hp > 0) q = { x: b.x, y: 2.2, z: b.z };
+      } else {
+        const e = this.ctx.enemies().get(t.enemyId!);
+        if (e && e.state !== 'dead') q = { x: e.x, y: 1.1, z: e.z };
+      }
+      return q && Math.hypot(q.x - p.x, q.z - p.z) <= breakR ? q : null;
+    };
+    const caster = () => (ended || !p.alive ? null : { x: p.x, y: 1.4, z: p.z });
+    const beams = [effects.beam(caster, target, SI.deep, 0.1, S.durationS), effects.beam(caster, target, SI.jade, 0.055, S.durationS), effects.beam(caster, target, SI.pale, 0.02, S.durationS)];
+    const first = target();
+    const core = first ? this.bb('soul_orb', first.x, first.z, { follow: () => target(), duration: S.durationS, colors: [SI.jade, SI.pale, SI.deep] }) : null;
+    this.bb('soul_siphon_beam', p.x, p.z, { follow: () => caster(), duration: S.durationS });
+    audio.play('shard', p.x, p.z);
+    const dmg = this.sp * def.power;
+    this.timed.push({
+      until: now + S.durationS * 1000,
+      next: now + S.tickS * 1000,
+      every: S.tickS * 1000,
+      tick: () => {
+        const q = target();
+        if (!q) return false;
+        if (t.boss) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, boss: true });
+        else this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [t.enemyId!], dmg });
+        this.ctx.number(q.x, q.z, dmg, 'hit');
+        p.heal(dmg * S.healFrac);
+        p.addResource(S.essencePerTick);
+        // Motes strung along the tether, drifting toward the caster: the drain reads even at a glance.
+        for (let k = 0; k < 6; k++) {
+          const f = (k + Math.random()) / 6;
+          effects.emit({ x: q.x + (p.x - q.x) * f, y: q.y + (1.4 - q.y) * f, z: q.z + (p.z - q.z) * f, count: 1, color: k % 2 ? SI.pale : SI.jade, spread: 0.08, speed: 0.2, up: 0.1, life: 0.3, size: 0.22 });
+        }
+        effects.emit({ x: q.x, y: q.y, z: q.z, count: 5, color: SI.pale, spread: 0.25, speed: 0.6, up: 0.3, life: 0.35, size: 0.16 });
+        effects.emit({ x: p.x, y: 1.3, z: p.z, count: 3, color: SI.jade, spread: 0.2, speed: 0.3, up: 0.6, life: 0.4, size: 0.18 });
+      },
+      end: () => {
+        ended = true;
+        beams.forEach((b) => b.kill());
+        core?.kill();
+      },
+    });
+    return 'ok';
+  }
+
+  /** Bone Prison: a caging ring of spikes; everything inside is rooted (host-owned duration) and Fractured. */
+  private prison(t: CastTarget): CastResult {
+    const { player: p, effects, avatar } = this.ctx;
+    const def = ABILITIES.bone_prison;
+    const P = BONE_PRISON;
+    const { x, z } = this.groundAim('bone_prison', t);
+    p.face(x, z);
+    avatar.cast('cast', 2.3, p.facing, CAST_FLOW.bone_prison.gestureSeconds);
+    const r = def.radius;
+    effects.spikeRing(x, z, r, P.spikes, P.rootS + 0.1);
+    effects.decal({ tex: fx.cracks(), color: PR.dust, x, z, r: r * 1.1, rot: Math.random() * 6, duration: P.rootS + 0.4, opacity: 0.8, growFrom: 0.6, fadeOut: 0.4 });
+    effects.decal({ tex: fxImage('boneRing'), color: PR.amber, x, z, r: r + 0.3, duration: P.rootS, opacity: 0.4, growFrom: 0.8, fadeOut: 0.3 });
+    effects.emitSmoke({ x, y: 0.3, z, count: 6, color: PR.dust, spread: r * 0.8, speed: 0.9, up: 0.5, life: 0.9, size: 1.1 });
+    effects.emit({ x, y: 0.4, z, count: 18, color: PR.bone, spread: r, speed: 1.8, up: 2.2, life: 0.5, size: 0.12, gravity: 9 });
+    this.bb('bone_prison_burst', x, z, { scale: r / 2.4 });
+    audio.play('boneHit', x, z);
+    this.ctx.shake(0.06);
+    const dmg = this.sp * def.power;
+    const { ids, boss } = this.inCircle(x, z, r);
+    if (ids.length) {
+      this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids, dmg, fracture: P.fracture, root: true });
+      for (const id of ids.slice(0, 6)) {
+        const e = this.ctx.enemies().get(id);
+        if (e) this.ctx.number(e.x, e.z, dmg, 'hit');
+      }
+    }
+    if (boss) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, boss: true, fracture: P.fracture });
+    return 'ok';
+  }
+
+  /** Grave Hands: a slowing field of clawing hands; corpses inside at cast time add hands and damage. */
+  private hands(t: CastTarget, now: number): CastResult {
+    const { player: p, effects, avatar } = this.ctx;
+    const def = ABILITIES.grave_hands;
+    const G = GRAVE_HANDS;
+    const { x, z } = this.groundAim('grave_hands', t);
+    p.face(x, z);
+    avatar.cast('dig', 2.2, p.facing, CAST_FLOW.grave_hands.gestureSeconds);
+    const r = def.radius;
+    const corpses = Math.min(G.maxCorpses, this.corpsesIn(x, z, r));
+    const hands = Math.min(G.maxHands, G.hands + corpses * G.handsPerCorpse);
+    const visual = effects.graveHands(x, z, r, hands, G.durationS);
+    const ground = effects.decal({ tex: fx.disc(), color: GH.earth, x, z, r, duration: G.durationS, opacity: 0.7, growFrom: 0.5, fadeOut: 0.4 });
+    const seep = effects.decal({ tex: fx.cracks(), color: GH.seep, x, z, r: r * 0.95, rot: Math.random() * 6, duration: G.durationS, opacity: 0.35, pulse: 2, fadeOut: 0.4 });
+    effects.emitSmoke({ x, y: 0.2, z, count: 8, color: GH.earth, spread: r * 0.7, speed: 0.8, up: 0.6, life: 1, size: 1.2 });
+    this.bb('grave_hands_pulse', x, z, { scale: r / 3.5 });
+    audio.play('raise', x, z);
+    const dmg = this.sp * def.power * (1 + G.perCorpse * corpses);
+    this.timed.push({
+      until: now + G.durationS * 1000,
+      next: now + 60,
+      every: G.tickS * 1000,
+      tick: () => {
+        const { ids, boss } = this.inCircle(x, z, r);
+        if (ids.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids, dmg, slow: true });
+        if (boss) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, boss: true });
+        for (const id of ids.slice(0, 4)) {
+          const e = this.ctx.enemies().get(id);
+          if (e) effects.emit({ x: e.x, y: 0.4, z: e.z, count: 3, color: GH.bone, spread: 0.3, speed: 1.2, up: 1.2, life: 0.35, size: 0.1, gravity: 8 });
+        }
+      },
+      end: () => {
+        visual.kill();
+        ground.kill();
+        seep.kill();
+      },
+    });
+    return 'ok';
+  }
+
+  /** Bone Storm: a funnel of real bone fragments that drifts toward the nearest enemy, shredding what it passes. */
+  private storm(t: CastTarget, now: number): CastResult {
+    const { player: p, effects, avatar } = this.ctx;
+    const def = ABILITIES.bone_storm;
+    const B = BONE_STORM;
+    const start = this.groundAim('bone_storm', t);
+    p.face(start.x, start.z);
+    avatar.cast('cast', 2, p.facing, CAST_FLOW.bone_storm.gestureSeconds);
+    const r = def.radius;
+    const extra = Math.min(B.maxExtraS, this.corpsesIn(start.x, start.z, r) * B.perCorpseS);
+    const life = B.durationS + extra;
+    const c = { x: start.x, z: start.z };
+    let ended = false;
+    const follow = () => (ended ? null : c);
+    const bones = effects.boneOrbit({ fallbackTex: fxImage('boneShard'), fallbackColor: BS.bone, count: B.shards, radius: r * 0.8, y: 0.25, size: 0.34, duration: life, speed: 7, follow, funnel: true });
+    const dust = this.bb('bone_storm_dust', c.x, c.z, { follow, duration: life, colors: [BS.bone, BS.ash, BS.dust] });
+    const ring = effects.decal({ tex: fx.ring(), color: BS.ash, x: c.x, z: c.z, r, duration: life, opacity: 0.35, spin: 2, fadeOut: 0.4, follow });
+    audio.play('boneHit', c.x, c.z);
+    const dmg = this.sp * def.power;
+    let last = now;
+    this.timed.push({
+      until: now + life * 1000,
+      next: now + B.tickS * 1000,
+      every: B.tickS * 1000,
+      tick: (tNow) => {
+        // Drift toward the nearest living enemy within seekR (walkable space is the ground it sweeps).
+        const dt = Math.min(1, (tNow - last) / 1000);
+        last = tNow;
+        let best: { x: number; z: number } | null = null;
+        let bestD = B.seekR;
+        for (const e of this.ctx.enemies().values()) {
+          if (e.state === 'dead') continue;
+          const d = Math.hypot(e.x - c.x, e.z - c.z);
+          if (d < bestD) (bestD = d), (best = e);
+        }
+        if (best && bestD > 0.3) {
+          const step = Math.min(bestD, B.drift * dt);
+          c.x += ((best.x - c.x) / bestD) * step;
+          c.z += ((best.z - c.z) / bestD) * step;
+        }
+        const { ids, boss } = this.inCircle(c.x, c.z, r);
+        if (ids.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids, dmg });
+        if (boss) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, boss: true });
+        if (ids.length) audio.play('boneHit', c.x, c.z);
+        effects.emitSmoke({ x: c.x, y: 0.4, z: c.z, count: 3, color: BS.ash, spread: r * 0.4, speed: 0.9, up: 1.4, life: 0.9, size: 1.1, shrink: -0.4 });
+      },
+      end: () => {
+        ended = true;
+        bones.kill();
+        dust?.kill();
+        ring.kill();
+      },
+    });
+    return 'ok';
+  }
+
   /** Bone Mantle: ask the host for the corpses; the barrier arrives with its answer. */
   private mantle(): CastResult {
     const { player: p, avatar, effects } = this.ctx;
@@ -761,18 +1019,19 @@ export class AbilitySystem {
       effects.emit({ x, y: 0.4, z, count: 10, color: MN.bone, spread: 0.4, speed: 1.2, up: 1.6, life: 0.5, size: 0.16, gravity: 4 });
       effects.emitSmoke({ x, y: 0.3, z, count: 2, color: MN.dust, spread: 0.4, speed: 0.5, up: 0.4, life: 0.8, size: 0.9 });
     }
-    const handle = effects.orbit({
-      tex: fxImage('boneShard'),
-      color: MN.bone,
-      count: Math.min(14, 6 + ev.corpses * 2),
+    // Real bone fragments (instanced, lit, matte) rather than tinted sprites, which read as a ring of bananas.
+    const handle = effects.boneOrbit({
+      fallbackTex: fxImage('boneShard'),
+      fallbackColor: MN.bone,
+      count: Math.min(15, 6 + ev.corpses * 2),
       radius: M.orbitRadius,
-      y: 0.75,
-      size: 0.6,
+      y: 0.7,
+      size: 0.5,
       duration: M.durationS,
       speed: 3.4,
       follow,
     });
-    const ring = effects.decal({ tex: fxImage('boneRing'), color: MN.amber, x: ev.x, z: ev.z, r: M.orbitRadius + 0.5, duration: M.durationS, opacity: 0.75, growFrom: 0.4, spin: 0.5, fadeOut: 0.4, follow });
+    const ring = effects.decal({ tex: fxImage('boneRing'), color: MN.amber, x: ev.x, z: ev.z, r: M.orbitRadius + 0.5, duration: M.durationS, opacity: 0.45, growFrom: 0.4, spin: 0.5, fadeOut: 0.4, follow });
     effects.lightFlash(ev.x, 1.4, ev.z, MN.gold, 26, 0.4);
     audio.play('mantle', ev.x, ev.z);
     if (!mine) return;
@@ -796,6 +1055,7 @@ export class AbilitySystem {
   /** Per frame: the Veil Step glide, then the caster's mantle shreds enemies beside them (client-resolved, like Marrow Spear). */
   update(now: number) {
     this.newBlood.update(now);
+    this.tickTimed(now);
     if (this.dashing) {
       const d = this.dashing;
       const k = Math.min(1, (now - d.start) / d.dur);

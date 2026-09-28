@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BinbunFX } from './binbun/BinbunFX';
 import { fx } from './fxTextures';
+import { assets } from './AssetCache';
 
 type Vec3 = { x: number; y: number; z: number };
 
@@ -228,6 +229,40 @@ interface Projectile {
   dist: number;
 }
 
+/** Bone Mantle: one ring of real bone fragments (instanced meshes), see boneOrbit(). */
+interface BoneOrbit {
+  count: number;
+  radius: number;
+  y: number;
+  size: number;
+  duration: number;
+  speed: number;
+  follow: () => { x: number; z: number } | null;
+  t: number;
+  cx: number;
+  cz: number;
+  seed: number;
+  /** Bone Storm: stack the fragments into a widening funnel instead of a flat ring. */
+  funnel?: boolean;
+}
+
+/** Grave Hands: skeletal hands clawing up out of a field (instanced Tripo prop). */
+interface HandField {
+  x: number;
+  z: number;
+  r: number;
+  count: number;
+  duration: number;
+  t: number;
+  seed: number;
+}
+const GRAVE_HAND_URL = 'models/props/grave_hand.glb';
+const GRAVE_HAND_CAP = 64;
+
+/** The three Tripo fragments (art-manifest/tripo-specs/prop_mantle_*.json), ~300 tris each. */
+const BONE_SHARD_URLS = ['models/props/mantle_rib.glb', 'models/props/mantle_vertebra.glb', 'models/props/mantle_skullchip.glb'];
+const BONE_SHARD_CAP = 96;
+
 interface Spike {
   x: number;
   z: number;
@@ -266,6 +301,11 @@ export class Effects {
   private spikes: Spike[] = [];
   private spikeMesh: THREE.InstancedMesh;
   private spikeDummy = new THREE.Object3D();
+  /** Instanced bone fragments for Bone Mantle: three draw calls however many mantles are up. */
+  private boneShards: THREE.InstancedMesh[] | null = null;
+  private boneOrbits: BoneOrbit[] = [];
+  private handMesh: THREE.InstancedMesh | null = null;
+  private handFields: HandField[] = [];
   private time = 0;
   private lights: { light: THREE.PointLight; t: number; life: number; peak: number }[] = [];
   /** The converted BinbunVFX library (docs/BINBUN-VFX-PORT.md); fail-open, layered over the effects above. */
@@ -293,6 +333,11 @@ export class Effects {
       this.lights.push({ light, t: 0, life: 0, peak: 0 });
     }
     scene.add(this.group);
+    // Browser only (unit tests construct Effects under Node, where relative model URLs can't load).
+    if (typeof document !== 'undefined') {
+      void this.loadBoneShards();
+      void this.loadGraveHands();
+    }
     this.binbun = new BinbunFX(this.group, (x, y, z, color, intensity, life) => this.lightFlash(x, y, z, color, intensity, life));
   }
 
@@ -474,8 +519,193 @@ export class Effects {
     };
   }
 
+  /**
+   * One small Tripo prop as an InstancedMesh: node transform baked, fitted to a unit box (centred, or
+   * with its base at y=0), matte (Tripo PBR comes out mostly metallic), faintly warm so it never glows.
+   */
+  private async instancedProp(url: string, cap: number, base = false): Promise<THREE.InstancedMesh | null> {
+    const t = await assets.model(url, 1);
+    if (!t) return null;
+    let src: THREE.Mesh | null = null;
+    t.scene.updateMatrixWorld(true);
+    t.scene.traverse((o) => {
+      if (!src && (o as THREE.Mesh).isMesh) src = o as THREE.Mesh;
+    });
+    if (!src) return null;
+    const mesh = src as THREE.Mesh;
+    const geo = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
+    geo.computeBoundingBox();
+    const box = geo.boundingBox!;
+    const c = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    geo.translate(-c.x, base ? -box.min.y : -c.y, -c.z);
+    const k = 1 / Math.max(base ? size.y : Math.max(size.x, size.y, size.z), 1e-4);
+    geo.scale(k, k, k);
+    const mat = (mesh.material as THREE.MeshStandardMaterial).clone();
+    mat.metalness = 0.02;
+    mat.roughness = 0.85;
+    mat.emissive = new THREE.Color(0x2a2118);
+    mat.emissiveIntensity = 0.6;
+    const im = new THREE.InstancedMesh(geo, mat, cap);
+    im.count = 0;
+    im.frustumCulled = false;
+    im.castShadow = false;
+    this.group.add(im);
+    return im;
+  }
+
+  private async loadBoneShards() {
+    const meshes = await Promise.all(BONE_SHARD_URLS.map((u) => this.instancedProp(u, BONE_SHARD_CAP)));
+    if (meshes.every(Boolean)) this.boneShards = meshes as THREE.InstancedMesh[];
+    else meshes.forEach((m) => m && this.group.remove(m)); // stays on the sprite fallback
+  }
+
+  private async loadGraveHands() {
+    this.handMesh = await this.instancedProp(GRAVE_HAND_URL, GRAVE_HAND_CAP, true);
+    // A little more lift than the shards: the hands stand on dark earth and must still read.
+    const m = this.handMesh?.material as THREE.MeshStandardMaterial | undefined;
+    if (m) m.emissiveIntensity = 1.1;
+  }
+
+  /** Bone Prison: a ring of bone spikes bursting up around a point, leaning inward like a cage. */
+  spikeRing(x: number, z: number, r: number, count: number, life = 1.9) {
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2 + Math.random() * 0.2;
+      this.spikes.push({
+        x: x + Math.sin(a) * r,
+        z: z + Math.cos(a) * r,
+        yaw: a + Math.PI / 2,
+        tilt: -0.35 - Math.random() * 0.15,
+        h: 0.75 + Math.random() * 0.45,
+        born: this.time + i * 0.012,
+        life,
+      });
+    }
+    if (this.spikes.length > 300) this.spikes.splice(0, this.spikes.length - 300);
+  }
+
+  /**
+   * Grave Hands: skeletal hands claw up out of the field, grasp, and sink. One InstancedMesh (one draw
+   * call) for every field; falls back to short bone spikes until the prop has loaded.
+   */
+  graveHands(x: number, z: number, r: number, count: number, duration: number): Handle {
+    if (!this.handMesh) {
+      for (let i = 0; i < Math.min(count, 12); i++) {
+        const a = Math.random() * Math.PI * 2;
+        const d = Math.sqrt(Math.random()) * r;
+        this.spikes.push({ x: x + Math.sin(a) * d, z: z + Math.cos(a) * d, yaw: Math.random() * 3, tilt: (Math.random() - 0.5) * 0.5, h: 0.6, born: this.time + i * 0.05, life: duration });
+      }
+      return { kill: () => {}, alive: false };
+    }
+    const field: HandField = { x, z, r, count: Math.min(count, GRAVE_HAND_CAP), duration, t: 0, seed: Math.random() * 100 };
+    this.handFields.push(field);
+    return {
+      kill: () => {
+        field.t = Math.max(field.t, field.duration - 0.3);
+      },
+      get alive() {
+        return field.t < field.duration;
+      },
+    };
+  }
+
+  private updateGraveHands(dt: number) {
+    const im = this.handMesh;
+    if (!im) return;
+    let n = 0;
+    const d = this.spikeDummy;
+    for (let k = this.handFields.length - 1; k >= 0; k--) {
+      const f = this.handFields[k];
+      f.t += dt;
+      if (f.t >= f.duration) {
+        this.handFields.splice(k, 1);
+        continue;
+      }
+      for (let i = 0; i < f.count && n < GRAVE_HAND_CAP; i++) {
+        // Stable per-hand spot (golden-angle spiral) and a staggered rise.
+        const a = i * 2.39996 + f.seed;
+        const dist = f.r * Math.sqrt((i + 0.5) / f.count) * 0.92;
+        const born = (i % 6) * 0.07;
+        const age = f.t - born;
+        if (age <= 0) continue;
+        const rise = Math.min(1, age / 0.25) * Math.min(1, (f.duration - f.t) / 0.35);
+        const grasp = Math.sin(age * 5 + i) * 0.18;
+        d.position.set(f.x + Math.sin(a) * dist, -0.75 * (1 - rise), f.z + Math.cos(a) * dist);
+        d.rotation.set(grasp + 0.12 * Math.sin(i), a * 1.7, grasp * 0.6);
+        d.scale.setScalar(0.95 + (i % 3) * 0.12);
+        d.updateMatrix();
+        im.setMatrixAt(n++, d.matrix);
+      }
+    }
+    if (im.count === 0 && n === 0) return;
+    im.count = n;
+    im.instanceMatrix.needsUpdate = true;
+  }
+
+  /**
+   * Bone Mantle's orbit: real bone fragments (rib splinter, vertebra, skull chip)
+   * tumbling around a moving point. Lit, opaque, no additive glow. Falls back
+   * to the sprite orbit until the three tiny GLBs have loaded.
+   */
+  boneOrbit(o: { count: number; radius: number; y: number; size: number; duration: number; speed: number; follow: () => { x: number; z: number } | null; fallbackTex: THREE.Texture; fallbackColor: THREE.ColorRepresentation; funnel?: boolean }): Handle {
+    if (!this.boneShards) return this.orbit({ ...o, tex: o.fallbackTex, color: o.fallbackColor });
+    const first = o.follow();
+    const orbit: BoneOrbit = { count: o.count, radius: o.radius, y: o.y, size: o.size, duration: o.duration, speed: o.speed, follow: o.follow, t: 0, cx: first?.x ?? 0, cz: first?.z ?? 0, seed: Math.random() * 100, funnel: o.funnel };
+    this.boneOrbits.push(orbit);
+    return {
+      kill: () => {
+        orbit.t = orbit.duration;
+      },
+      get alive() {
+        return orbit.t < orbit.duration;
+      },
+    };
+  }
+
+  private updateBoneOrbits(dt: number) {
+    const meshes = this.boneShards;
+    if (!meshes) return;
+    const n = [0, 0, 0];
+    const d = this.spikeDummy;
+    for (let k = this.boneOrbits.length - 1; k >= 0; k--) {
+      const o = this.boneOrbits[k];
+      o.t += dt;
+      if (o.t >= o.duration) {
+        this.boneOrbits.splice(k, 1);
+        continue;
+      }
+      const f = o.follow();
+      if (f) [o.cx, o.cz] = [f.x, f.z];
+      const r = o.radius * Math.min(1, 0.25 + o.t * 3);
+      // Scale in fast, out at the end (opaque meshes don't fade).
+      const grow = Math.max(0, Math.min(1, o.t / 0.15, (o.duration - o.t) / 0.35));
+      for (let i = 0; i < o.count; i++) {
+        const type = i % 3;
+        if (n[type] >= BONE_SHARD_CAP) continue;
+        const phase = (i / o.count) * Math.PI * 2;
+        const s = o.seed + i * 1.7;
+        // Funnel (Bone Storm): five tiers, wider and slower toward the top.
+        const tier = o.funnel ? (i % 5) / 4 : 0;
+        const a = phase * (o.funnel ? 2.3 : 1) + o.t * o.speed * (o.funnel ? 1.4 - tier * 0.6 : 1);
+        const rr = o.funnel ? r * (0.35 + tier * 0.75) : r;
+        const y = o.funnel ? o.y + tier * 2.1 : o.y + (i % 3) * 0.28;
+        d.position.set(o.cx + Math.cos(a) * rr, y + Math.sin(o.t * 3.1 + phase) * 0.12, o.cz + Math.sin(a) * rr);
+        d.rotation.set(s + o.t * (1.3 + (i % 4) * 0.4), -a, s * 0.7 + o.t * 0.9);
+        d.scale.setScalar(o.size * (type === 0 ? 1.15 : 0.8) * grow);
+        d.updateMatrix();
+        meshes[type].setMatrixAt(n[type]++, d.matrix);
+      }
+    }
+    for (let i = 0; i < 3; i++) {
+      if (meshes[i].count === 0 && n[i] === 0) continue;
+      meshes[i].count = n[i];
+      meshes[i].instanceMatrix.needsUpdate = true;
+    }
+  }
+
   /** Glowing tether from A to B (litany tethers, deacon raise beams). */
-  beam(a: Vec3, b: () => Vec3 | null, color: THREE.ColorRepresentation, width: number, duration: number) {
+  /** `a` may also follow a moving anchor (Soul Siphon's caster end). */
+  beam(a: Vec3 | (() => Vec3 | null), b: () => Vec3 | null, color: THREE.ColorRepresentation, width: number, duration: number) {
     const mesh = this.take(this.beamPool, () => {
       const m = new THREE.Mesh(
         new THREE.CylinderGeometry(1, 1, 1, 6, 1, true).rotateX(Math.PI / 2),
@@ -495,8 +725,12 @@ export class Effects {
       pool: this.beamPool,
       update: (t, k) => {
         const end = b();
-        if (!end) return;
-        pa.set(a.x, a.y, a.z);
+        const start = typeof a === 'function' ? a() : a;
+        if (!end || !start) {
+          mat.opacity = 0;
+          return;
+        }
+        pa.set(start.x, start.y, start.z);
         pb.set(end.x, end.y, end.z);
         const len = pa.distanceTo(pb);
         mesh.position.copy(pa).lerp(pb, 0.5);
@@ -676,6 +910,8 @@ export class Effects {
     }
     this.spikeMesh.count = n;
     this.spikeMesh.instanceMatrix.needsUpdate = true;
+    this.updateBoneOrbits(dt);
+    this.updateGraveHands(dt);
 
     for (const l of this.lights) {
       if (l.life <= 0) continue;

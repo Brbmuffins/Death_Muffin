@@ -16,7 +16,12 @@ export type EnemyId =
   | 'censer'
   | 'wraith'
   | 'rat'
-  | 'golem';
+  | 'golem'
+  // Flying pack (2026-09-28): the air over the diocese, one twist each.
+  | 'gargoyle'
+  | 'moth'
+  | 'bat'
+  | 'seraph';
 export type CorpseKind = 'normal' | 'resonant' | 'swift' | 'toxic' | 'none';
 export type Behavior = 'melee' | 'flank' | 'caster' | 'hazard' | 'support';
 export type RigKind = 'humanoid' | 'quadruped' | 'bloat' | 'robed';
@@ -42,7 +47,7 @@ export interface EnemyDef {
   modelSlug?: string;
   blurb: string;
   /** Casters: the attack released after the windup (default: the Penitent's cone). */
-  attack?: 'cone' | 'scream';
+  attack?: 'cone' | 'scream' | 'dust';
   /** Hazard slam radius (default 1.9). */
   slamRadius?: number;
   /** Climbs out as a pack of this many (one wave pick). */
@@ -51,6 +56,14 @@ export interface EnemyDef {
   deathCorpses?: number;
   /** Censer aura: nearby dead are Incensed (see CENSER). */
   aura?: boolean;
+  /** Flies: hover height (m) above the ground; views flap its wings (see graphics/wingFlap). */
+  flying?: number;
+  /** Belfry Gargoyle: from `minRange`..`range` it dive-bombs a marked spot, then sits grounded. */
+  dive?: { minRange: number; range: number; radius: number; groundedS: number };
+  /** Tithe Bat: seconds it flits away after each bite before coming back. */
+  hitRun?: number;
+  /** Weeping Seraph: blesses every ally in reach at once instead of stealing corpses. */
+  ward?: boolean;
 }
 
 export const ENEMIES: Record<EnemyId, EnemyDef> = {
@@ -248,12 +261,103 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     deathCorpses: 3,
     blurb: 'Dozens of the dead fused into one. Its slam cracks a wide ring; it falls apart into three corpses.',
   },
+  // --- Flying pack. Colour language: gargoyle = enemy bronze (it is a bell-tower thing),
+  // moth = grave-dust ochre, bat = dusk, seraph = the Deacons' priest gold (Sanctified).
+  gargoyle: {
+    id: 'gargoyle',
+    name: 'Belfry Gargoyle',
+    behavior: 'flank',
+    rig: 'humanoid',
+    hp: 150,
+    speed: 3.2,
+    radius: 0.55,
+    damage: 14,
+    attackRange: 1.4,
+    windupMs: 900,
+    cooldownMs: 3400,
+    xp: 12,
+    gold: [6, 12],
+    corpse: 'normal',
+    scale: 1,
+    modelSlug: 'belfry_gargoyle',
+    flying: 1.1,
+    dive: { minRange: 3.5, range: 9, radius: 2, groundedS: 1.4 },
+    blurb: 'Tore itself off a bell tower. It marks a spot, dives onto it, then sits stunned in the rubble for a breath. Punish it there.',
+  },
+  moth: {
+    id: 'moth',
+    name: 'Shroud Moth',
+    behavior: 'caster',
+    rig: 'bloat',
+    hp: 52,
+    speed: 2.6,
+    radius: 0.5,
+    damage: 10,
+    attackRange: 7,
+    windupMs: 950,
+    cooldownMs: 3800,
+    xp: 6,
+    gold: [2, 6],
+    corpse: 'swift',
+    scale: 1,
+    modelSlug: 'shroud_moth',
+    attack: 'dust',
+    flying: 1.3,
+    blurb: 'Fat on grave dust. It shakes a choking cloud onto where you stand that lingers a few seconds. Walk out of the ochre.',
+  },
+  bat: {
+    id: 'bat',
+    name: 'Tithe Bat',
+    behavior: 'flank',
+    rig: 'quadruped',
+    hp: 16,
+    speed: 5.2,
+    radius: 0.3,
+    damage: 4,
+    attackRange: 0.9,
+    windupMs: 180,
+    cooldownMs: 900,
+    xp: 1,
+    gold: [0, 2],
+    corpse: 'none',
+    scale: 1,
+    modelSlug: 'tithe_bat',
+    pack: [4, 6],
+    flying: 1.5,
+    hitRun: 0.8,
+    blurb: 'Crypt bats with a coin through the ear. They bite and flit off, over and over. No corpse: sweep them with area rites.',
+  },
+  seraph: {
+    id: 'seraph',
+    name: 'Weeping Seraph',
+    behavior: 'support',
+    rig: 'robed',
+    hp: 120,
+    speed: 1.9,
+    radius: 0.55,
+    damage: 8,
+    attackRange: 6.5,
+    windupMs: 1300,
+    cooldownMs: 8500,
+    xp: 11,
+    gold: [5, 11],
+    corpse: 'resonant',
+    scale: 1.05,
+    modelSlug: 'weeping_seraph',
+    flying: 0.7,
+    ward: true,
+    blurb: 'A cathedral angel come loose. It weeps a blessing over every ally near it at once. Kill it before it wards the pack.',
+  },
 };
 
 /** Censer Bearer aura: the dead within `radius` are Incensed (refreshed each second). */
 export const CENSER = { radius: 5, hasteS: 1.5, moveMult: 1.3, attackRateMult: 1.25 };
 /** Choir Wraith scream: a ring of song lands where the target stood. */
 export const SCREAM = { radius: 2.2 };
+/** Shroud Moth dust: the burst ring, then a lingering cloud (hostile zone) that chokes each second. */
+export const DUST = { radius: 2, cloudS: 3.5, cloudDpsMult: 0.35 };
+/** Weeping Seraph ward: every ally within `range` is Sanctified at once (up to `maxTargets`). */
+export const WARD = { range: 5.5, maxTargets: 4 };
 
 /**
  * Processions: some waves arrive as a themed band instead of the area's usual
@@ -271,6 +375,7 @@ export const PROCESSION = { chance: 0.3, minWave: 2 };
 export const WAVE_THEMES: Partial<Record<AreaId, WaveTheme[]>> = {
   graves: [
     { id: 'kennel', name: 'The Kennel Loosed', blurb: 'Hounds and rats, all teeth', roster: [{ id: 'hound', weight: 75 }, { id: 'rat', weight: 25 }], sizeMult: 1.15 },
+    { id: 'dusk', name: 'Moth-Dusk', blurb: 'Moths and bats come off the yews', roster: [{ id: 'moth', weight: 45 }, { id: 'bat', weight: 30 }, { id: 'robber', weight: 25 }], sizeMult: 0.85 },
     { id: 'bellringers', name: "The Bellringers' Round", blurb: 'Penitents under a censer', roster: [{ id: 'penitent', weight: 50 }, { id: 'robber', weight: 35 }, { id: 'censer', weight: 15 }], sizeMult: 0.9, lead: 'censer' },
   ],
   ossuary: [
@@ -279,9 +384,11 @@ export const WAVE_THEMES: Partial<Record<AreaId, WaveTheme[]>> = {
   ],
   nave: [
     { id: 'choir', name: 'The Drowned Choir', blurb: 'Wraiths sing over the flood', roster: [{ id: 'wraith', weight: 55 }, { id: 'penitent', weight: 25 }, { id: 'censer', weight: 20 }], sizeMult: 0.85 },
+    { id: 'belfry', name: 'The Belfry Stirs', blurb: 'Gargoyles drop from the roof', roster: [{ id: 'bat', weight: 45 }, { id: 'gargoyle', weight: 30 }, { id: 'penitent', weight: 25 }], sizeMult: 0.8, lead: 'gargoyle' },
     { id: 'carrion', name: 'The Carrion Tide', blurb: 'Sacs and rats wash in', roster: [{ id: 'sac', weight: 60 }, { id: 'rat', weight: 40 }], sizeMult: 0.9 },
   ],
   sanctum: [
+    { id: 'vespers', name: 'Vespers', blurb: 'Seraphs weep over the faithful', roster: [{ id: 'seraph', weight: 25 }, { id: 'penitent', weight: 30 }, { id: 'gargoyle', weight: 20 }, { id: 'censer', weight: 25 }], sizeMult: 0.85, lead: 'seraph' },
     { id: 'procession', name: 'The Procession', blurb: 'Censers, bells and deacons march', roster: [{ id: 'censer', weight: 30 }, { id: 'penitent', weight: 35 }, { id: 'deacon', weight: 15 }, { id: 'wraith', weight: 20 }], sizeMult: 0.9, lead: 'golem' },
   ],
 };

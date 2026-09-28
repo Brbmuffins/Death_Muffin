@@ -1,5 +1,6 @@
+import { ABILITIES } from '../../content/abilities';
 import { describe, expect, it } from 'vitest';
-import { selectAutoCombatAction, selectAutoCombatMovement, type AutoCombatInput } from '../autoCombat';
+import { selectAutoCombatAction, selectAutoCombatMovement, type AutoCombatInput, type AutoMoveMemory } from '../autoCombat';
 import type { BossState, Corpse, Enemy } from '../sim/types';
 import type { AbilityId } from '../../content/abilities';
 
@@ -180,4 +181,38 @@ describe('Easy auto for New Blood', () => {
     expect(selectAutoCombatMovement({ player: p, enemies: [enemy(1, 40)], primary: 'hollow_cut' })).toBeNull();
     expect(selectAutoCombatMovement({ player: p, enemies: [enemy(1, 2, 0, { state: 'windup' })], primary: 'hollow_cut' })).toEqual({ x: -0, z: 1 });
   });
+
+  it('moves smoothly with memory: no walk/stop flicker at the edge of reach, sticky target, committed dodge', () => {
+    const p = { x: 0, z: 0, essence: 0, maxEssence: 100 };
+    const reach = ABILITIES.bone_needle.range;
+    const mem: AutoMoveMemory = {};
+    // Just beyond reach: start closing, and keep closing while only slightly inside it.
+    expect(selectAutoCombatMovement({ player: p, enemies: [enemy(1, reach + 0.1)] }, mem, 0, 0.016)).not.toBeNull();
+    expect(selectAutoCombatMovement({ player: p, enemies: [enemy(1, reach - 0.5)] }, mem, 16, 0.016)).not.toBeNull();
+    // Comfortably inside: stop, and stay stopped until it is past reach again.
+    expect(selectAutoCombatMovement({ player: p, enemies: [enemy(1, reach - 1.5)] }, mem, 32, 0.016)).toBeNull();
+    expect(selectAutoCombatMovement({ player: p, enemies: [enemy(1, reach - 0.3)] }, mem, 48, 0.016)).toBeNull();
+    // Sticky: a second enemy only slightly nearer does not steal the heading.
+    const m2: AutoMoveMemory = {};
+    selectAutoCombatMovement({ player: p, enemies: [enemy(1, 20, 0)] }, m2, 0, 0.016);
+    expect(m2.targetId).toBe(1);
+    selectAutoCombatMovement({ player: p, enemies: [enemy(1, 20, 0), enemy(2, 0, 19)] }, m2, 16, 0.016);
+    expect(m2.targetId).toBe(1);
+    // A dodge side is held for a moment even after the windup ends.
+    const m3: AutoMoveMemory = {};
+    const dodge = selectAutoCombatMovement({ player: p, enemies: [enemy(1, 2, 0, { state: 'windup' })] }, m3, 0, 0);
+    expect(selectAutoCombatMovement({ player: p, enemies: [enemy(1, 2, 0)] }, m3, 200, 0)).toEqual(dodge);
+  });
+
+  it('walks the nav path around a prop instead of grinding into it when the target is out of sight', () => {
+    const p = { x: 0, z: 0, essence: 0, maxEssence: 100 };
+    const mem: AutoMoveMemory = {};
+    const nav = { clearLine: () => false, findPath: () => [{ x: 0, z: 5 }, { x: 20, z: 0 }] };
+    // The target is due east, but the route goes north first.
+    expect(selectAutoCombatMovement({ player: p, enemies: [enemy(1, 20, 0)], nav }, mem, 0, 0)).toEqual({ x: 0, z: 1 });
+    // Clear line of sight: straight at it again.
+    const open = { clearLine: () => true, findPath: () => [] };
+    expect(selectAutoCombatMovement({ player: p, enemies: [enemy(1, 20, 0)], nav: open }, mem, 300, 0)).toEqual({ x: 1, z: 0 });
+  });
 });
+

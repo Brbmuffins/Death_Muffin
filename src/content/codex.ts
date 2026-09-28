@@ -10,6 +10,10 @@ import {
   DETONATE,
   FRACTURE,
   GRAVE_FROST,
+  SOUL_SIPHON,
+  BONE_PRISON,
+  GRAVE_HANDS,
+  BONE_STORM,
   GRAVE_STEP,
   WAILING_SKULL,
   LITANY_MAX_MULT,
@@ -34,7 +38,7 @@ import {
 } from './abilities';
 import { AREAS, BOSS_SUMMON_SHARDS, type AreaId } from './areas';
 import type { DisciplineId } from './disciplines';
-import { CENSER, ENEMIES, SCREAM, type Behavior, type EnemyId } from './enemies';
+import { CENSER, DUST, ENEMIES, SCREAM, WARD, type Behavior, type EnemyId } from './enemies';
 
 /**
  * Codex text — the in-game Codex (ui/CodexPanel) and any docs/README tooling
@@ -77,6 +81,10 @@ export const RITE_ORDER: AbilityId[] = [
   'veil_step',
   'rally_dead',
   'carrion_seed',
+  'soul_siphon',
+  'bone_prison',
+  'grave_hands',
+  'bone_storm',
   // Hollow Knight
   'hollow_cut',
   'shield_bash',
@@ -186,6 +194,26 @@ export const CODEX_RITES: Record<AbilityId, RiteEntry> = {
     colour: 'Rot chartreuse',
     tip: `Grimoire rite (level ${ABILITIES.carrion_seed.unlockLevel}). Seed a corpse in the pack's path: after ${CARRION_SEED.armS}s it bursts when an enemy comes within ${CARRION_SEED.triggerR}m, hitting everything in ${CARRION_SEED.burstR}m and adding ${CARRION_SEED.withered} Withered. One seed at a time, and it withers after ${CARRION_SEED.lifeS}s. Any other rite that uses the seeded corpse spends the seed with it.`,
   },
+  soul_siphon: {
+    fx: 'siphon',
+    colour: 'Soul jade',
+    tip: `Grimoire rite (level ${ABILITIES.soul_siphon.unlockLevel}). Latch onto something sturdy (an elite, a golem) and keep moving: the tether follows it for ${SOUL_SIPHON.durationS}s, healing ${Math.round(SOUL_SIPHON.healFrac * 100)}% of every tick and returning ${SOUL_SIPHON.essencePerTick} essence each time. It snaps if the target gets more than ${Math.round(ABILITIES.soul_siphon.range * SOUL_SIPHON.breakMult)}m away.`,
+  },
+  bone_prison: {
+    fx: 'prison',
+    colour: 'Aged bone',
+    tip: `Grimoire rite (level ${ABILITIES.bone_prison.unlockLevel}). Drop the cage on a pack as it closes: everything inside is rooted for ${BONE_PRISON.rootS}s and Fractured, which sets up a Marrow Spear, a Corpse Explosion or a Miasma perfectly. Rooted enemies still swing at whatever stands beside them.`,
+  },
+  grave_hands: {
+    fx: 'hands',
+    colour: 'Grave earth with a spirit seep',
+    tip: `Grimoire rite (level ${ABILITIES.grave_hands.unlockLevel}). Cast it where the dead lie thickest: each corpse in the field adds hands (+${Math.round(GRAVE_HANDS.perCorpse * 100)}% damage, up to ${GRAVE_HANDS.maxCorpses}) and the corpses are not used up. Everything inside is slowed for ${GRAVE_HANDS.durationS}s.`,
+  },
+  bone_storm: {
+    fx: 'storm',
+    colour: 'Aged bone and ash',
+    tip: `Grimoire rite (level ${ABILITIES.bone_storm.unlockLevel}). Start it on a pile of corpses for a longer storm (+${BONE_STORM.perCorpseS}s each, up to +${BONE_STORM.maxExtraS}s; they are not used up), then let it drift through the pack on its own while you keep casting.`,
+  },
 
   ossuary_wall: {
     fx: 'wall',
@@ -284,7 +312,7 @@ export const CODEX_DISCIPLINES: Record<DisciplineId, DisciplineEntry> = {
 
 export type DeadId = EnemyId | 'prelate';
 
-export const DEAD_ORDER: DeadId[] = ['robber', 'hound', 'penitent', 'sac', 'deacon', 'risen', 'censer', 'wraith', 'rat', 'golem', 'prelate'];
+export const DEAD_ORDER: DeadId[] = ['robber', 'hound', 'penitent', 'sac', 'deacon', 'risen', 'censer', 'wraith', 'rat', 'golem', 'bat', 'moth', 'gargoyle', 'seraph', 'prelate'];
 
 export const PRELATE_NAME = 'The Bell-Sworn Prelate';
 
@@ -377,6 +405,34 @@ export const CODEX_DEAD: Record<DeadId, DeadEntry> = {
     behaviour: `A walking pile of fused skeletons. It lumbers in slowly, then slams a wide ${ENEMIES.golem.slamRadius}m ring after a long windup.`,
     corpse: `Falls apart into ${ENEMIES.golem.deathCorpses} corpses: its own and the skeletons it was built from. A whole legion, or a whole Litany, in one kill.`,
     counter: 'Step out of the ring, then punish the recovery. Fracture it with Marrow Spear first, and save Black Litany or Exhume for the pile it leaves behind.',
+  },
+  bat: {
+    name: ENEMIES.bat.name,
+    role: ENEMIES.bat.behavior,
+    behaviour: `Crypt bats in flocks of ${ENEMIES.bat.pack![0]}–${ENEMIES.bat.pack![1]}. Each one darts in, bites, and flits away for a moment before it comes back, so the flock never stands still.`,
+    corpse: 'None. Too small to be worth raising.',
+    counter: 'Chasing them is a waste of time. Stand your ground and let them come to you, then sweep them with Miasma, a Grave Frost cone, or Bone Mantle shards.',
+  },
+  moth: {
+    name: ENEMIES.moth.name,
+    role: ENEMIES.moth.behavior,
+    behaviour: `A hound-sized moth that hangs back and shakes grave dust onto where you stand. ${ENEMIES.moth.windupMs / 1000}s later the ring (${DUST.radius}m) bursts, and the ochre cloud chokes anything inside it for ${DUST.cloudS}s more.`,
+    corpse: 'A swift corpse: it rises as a quick hound thrall.',
+    counter: 'Step out of the ring, then out of the cloud. It is fragile: a Wailing Skull or two needles bring it down, and a Dirge silences it.',
+  },
+  gargoyle: {
+    name: ENEMIES.gargoyle.name,
+    role: ENEMIES.gargoyle.behavior,
+    behaviour: `A bell-tower gargoyle. From ${ENEMIES.gargoyle.dive!.minRange}–${ENEMIES.gargoyle.dive!.range}m it marks a bronze circle (${ENEMIES.gargoyle.dive!.radius}m) under you and dives onto it. Then it sits grounded in the rubble for ${ENEMIES.gargoyle.dive!.groundedS}s. Up close it rakes with its claws.`,
+    corpse: 'An ordinary corpse, for all that it was stone.',
+    counter: 'Walk out of the circle when it appears, then turn and punish the landing. Shield Bash or any stun knocks it out of the air mid-dive.',
+  },
+  seraph: {
+    name: ENEMIES.seraph.name,
+    role: ENEMIES.seraph.behavior,
+    behaviour: `A cathedral angel come loose from its plinth. It weeps a blessing over up to ${WARD.maxTargets} allies within ${WARD.range}m at once: Sanctified, they take less damage. It never steals corpses.`,
+    corpse: 'A resonant corpse: Black Litany counts it twice.',
+    counter: 'Kill it first, or at least before the pack reaches you. A Dirge silences its blessing, and Wailing Skull reaches it over the crowd.',
   },
   prelate: {
     name: PRELATE_NAME,

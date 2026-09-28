@@ -677,3 +677,59 @@ without browser errors. The ninth card was unreachable at that viewport height; 
 screen now scrolls safely, and Veilwalker was selected through the visible card. Shield Bash's
 host-owned charge now staggers the boss for 0.2s and delays pending telegraphs; a focused host
 test covers damage and the pause. The local branch remains undeployed.
+
+## Flying pack, Grimoire expansion, Bone Mantle fix, Easy-auto smoothing (2026-09-28, VPS session, undeployed)
+
+**Art (Tripo 565 credits, balance 10,020 → 9,455; Gemini for concepts and icons).**
+- Four flyers: `belfry_gargoyle` and `weeping_seraph` (biped rig, 4.5k/4.4k tris; gargoyle clips idle/attack/dive/hurt/death,
+  seraph idle/cast/hurt/death), `shroud_moth` and `tithe_bat` (static, 3.6k/1.8k). The cherub concept was
+  refused by Gemini's image-safety filter (child figure), so it was replaced by the adult Weeping Seraph.
+- **Tripo's avian auto-rig boned only one wing** of a symmetric model, and Tripo has no flight presets. Wings therefore
+  flap in the vertex shader (`graphics/wingFlap.ts`): no bones, no mixer, one shared program, and it runs before skinning,
+  so rigged flyers flap on top of their clips.
+- Bone Mantle fragments `mantle_rib/vertebra/skullchip` (~300 tris, 256 px) and `grave_hand` (278 tris). All are drawn
+  as InstancedMesh, three draw calls for every mantle and storm, one for every hand field.
+- Rite icons: `necro-{soul-siphon,bone-prison,grave-hands,bone-storm}.png` (`gemini-jobs/spells-v6.json`).
+- Binbun: four more scenes converted (`bone_prison_burst`, `soul_siphon_beam`, `bone_storm_dust`,
+  `grave_hands_pulse`); the converter's output for the existing 67 effects is byte-identical.
+
+**Flying pack** (`content/enemies.ts`, `WorldSim`): each flyer reuses a behaviour and adds one twist.
+- Gargoyle: a telegraphed dive-bomb. It moves in a straight line during the second half of the windup, lands, slams,
+  then stays grounded 1.4 s. A stun mid-dive drops it onto walkable ground. Snapshot flag bit 19 carries `diving`.
+- Moth: `attack: 'dust'`, a burst ring plus a 3.5 s hostile `dust` zone.
+- Bat: `hitRun`, which flits away 0.8 s after each bite.
+- Seraph: `ward`, which Sanctifies up to four allies in 5.5 m at once and never raises corpses.
+- Added to the area rosters plus three processions (Moth-Dusk, The Belfry Stirs, Vespers). Each has Codex, counsel
+  and README entries.
+- `necro-rules.cjs` was regenerated (areas changed).
+
+**Balance** (`npm run balance`, 4 seeds, base vs new): every band is within a few percent on deaths, damage taken
+and kills. The first pass over-tuned the Seraph (6 targets, 6.5 s) and halved sanctum-push kill speed. It is now
+4 targets on an 8.5 s cooldown, and the Ossuary flyer weights were trimmed.
+
+**Grimoire expansion**:
+- Soul Siphon (6): a following tether that drains into health and essence.
+- Bone Prison (9): a root ring. It adds the `hit.root` flag; the host owns the 1.8 s duration.
+- Grave Hands (11): a slow field, with the `hit.slow` flag. Corpses in it add hands and damage without being consumed.
+- Bone Storm (14): a drifting funnel of the instanced bones. Corpses it starts on extend it.
+- All four are client-resolved like Bone Mantle's shard ticks (`AbilitySystem.timed`), with Easy-auto rules, tooltips,
+  Codex, counsel tips and README entries.
+- `server.js` sanitises the two new flags. The relay already passes unknown fields, so co-op works before a
+  realtime deploy; `deploy-realtime.sh` is refreshed.
+
+**Bone Mantle "bananas" fix.**
+- Cause: a cream-tinted, curved sprite with additive blending, spun in a ring.
+- Fix: real lit, matte bone meshes tumbling on the orbit, and aged-bone greys in `SPELL_FX.mantle`.
+
+**Easy auto choppiness** (`selectAutoCombatMovement` + `AutoMoveMemory`).
+- A frame trace showed the hero's intended heading was steady while its motion flipped 178° each frame. It was walking
+  a straight line into props and being resolved back out.
+- Movement now keeps a sticky target, a closing hysteresis band, committed dodges and smoothed turns. It walks
+  `nav.findPath` whenever `nav.clearLine` says the target is out of sight.
+- Browser sample (4 seeds × 40 s, old vs new): heading jitter 56 → 25 °/s, walk/stop flips 2.1 → 1.8 /s, kills +20%.
+
+**Perf** (`tools/qa/flyers-rites-smoke.cjs`, 36 enemies): CPU update 0.688 ms ground roster vs 0.678 ms flyers,
+triangles equal, +24 draw calls.
+
+**Verification:** typecheck, 289 vitest (new `flying-pack`, `grimoire-expansion` and auto-combat routing cases),
+41 realtime tests, and a headless-Chromium smoke with screenshots.

@@ -132,7 +132,7 @@ unlocks, and the level-up toast is clickable), or **right-click any slot**, incl
 socket. The Grimoire has a **left-click primary** socket too: **Bone Needle**, **Bone Fan** (level 2) or
 **Rot Lance** (level 6). Rite cards carry role chips (damage, crowd, sustain, legion, mobility,
 defence). You start with the four above, and new rites unlock at levels **2, 3, 4, 5, 6, 7, 8 and 12**,
-so the first choice comes at level 2. Any four can be on the bar. Choosing a key for a rite that
+so the first choice comes at level 2 (the Grimoire expansion adds 9, 11 and 14, and a second rite at 6). Any four can be on the bar. Choosing a key for a rite that
 already sits on another key swaps the two. Each rite keeps its own cooldown, so swapping resets
 nothing. Your choice is remembered per character. Easy auto combat uses whatever is on your bar. It still leaves Grave Step and Veil Step to your own aim.
 
@@ -149,6 +149,10 @@ nothing. Your choice is remembered per character. Easy auto combat uses whatever
 | <img src="public/art/abilities/necro-rot-lance.png" width="56" /> | **Rot Lance** (primary) | level 6 | free · 0.7 s | A lance of rot pierces the first two enemies in a line, adding a **Withered** stack to each. +4 essence on the first hit. |
 | <img src="public/art/abilities/necro-rally-the-dead.png" width="56" /> | **Rally the Dead** | level 6 | 20 · 12 s | Every thrall you command gets +40% damage and +30% attack speed for 6 s (Gravecallers +2 s), heals 20%, and turns on the enemy nearest the cursor. |
 | <img src="public/art/abilities/necro-carrion-seed.png" width="56" /> | **Carrion Seed** | level 8 | 18 · 6 s | Plant rot in a corpse. It arms after 0.6 s; when an enemy comes within 2.2 m it bursts for 3 m and leaves 2 Withered stacks. One seed at a time; it withers after 20 s. |
+| <img src="public/art/abilities/necro-soul-siphon.png" width="56" /> | **Soul Siphon** | level 6 | 14 · 7 s | Latch a jade tether onto an enemy for 3 s. It follows them while you move, drains 0.55× spell power every half second, heals you 35% of it and returns 2 essence a tick. Snaps beyond 12.6 m. |
+| <img src="public/art/abilities/necro-bone-prison.png" width="56" /> | **Bone Prison** | level 9 | 24 · 9 s | A 2.4 m ring of bone spikes bursts up at the cursor: everything inside is **rooted** for 1.8 s (it can still swing) and Fractured. The Prelate only takes the damage. |
+| <img src="public/art/abilities/necro-grave-hands.png" width="56" /> | **Grave Hands** | level 11 | 26 · 11 s | Skeletal hands claw up through a 3.5 m field for 3 s, **slowing** and raking everything in it. Each corpse in the field adds hands and +15% damage (up to +60%); corpses are not used up. |
+| <img src="public/art/abilities/necro-bone-storm.png" width="56" /> | **Bone Storm** | level 14 | 32 · 12 s | A tornado of bone fragments creeps toward the nearest enemy for 4 s, shredding everything within 2 m. Each corpse it starts on adds 0.6 s (up to +3 s); corpses are not used up. |
 
 Each borrows the feel of a rite you already know. The skull flies and lands like Bone Needle, Grave
 Frost resolves its cone on impact like Marrow Spear, Grave Step picks its corpse like Corpse
@@ -163,7 +167,8 @@ Gemini pipeline (`art-manifest/gemini-jobs/spells-v4.json`) and are tinted per r
 | <img src="public/art/status/fracture.png" width="24" /> | **Fracture** | Marrow Spear | +15% damage taken per stack (3 max) |
 | <img src="public/art/status/hemorrhage.png" width="24" /> | **Hemorrhage** | Marrow Spear, Grave Step | Bleeds 12% of the hit per second for 4 s (crimson drips) |
 | <img src="public/art/status/withered.png" width="24" /> | **Withered** | Miasma, rot pools, Plague Bloom | Rot damage per stack each second |
-| <img src="public/art/status/void-rot.png" width="24" /> | **Miasma** | Miasma Circle | Slowed 40% |
+| <img src="public/art/status/void-rot.png" width="24" /> | **Miasma** | Miasma Circle, Grave Hands | Slowed 40% |
+| <img src="public/art/status/fracture.png" width="24" /> | **Rooted** | Bone Prison (and the Knight's Grave Brand) | Cannot move; can still swing at whatever is beside it |
 | <img src="public/art/status/chilled.png" width="24" /> | **Chilled** | Mourner wraiths, Grave Frost | −30% movement, −25% attack rate (frost motes); Grave Frost shatters it for +50% |
 | <img src="public/art/status/cursed.png" width="24" /> | **Bone Hex** | Bone-mage thralls | The enemy's blows land 25% softer |
 | <img src="public/art/status/silenced.png" width="24" /> | **Silenced** | Dirge | Casters can't start a spell |
@@ -222,6 +227,10 @@ Elite corpses are always empowered when exhumed. The Mourner's discipline overri
 | **Choir Wraith** | Hovering caster. Sings pale song-lines onto a **ring where you stand**, which screams when the hymn breaks. Keeps its distance. | none | Keep moving: one step out of the ring. Dirge silences it; Grave Step closes the gap. |
 | **Ossuary Skull-Rat** | Tiny, fast flankers that climb out in **packs of 4–6**. Never elite. | none | Area rites: Miasma, Grave Frost or a Corpse Explosion ends a pack. |
 | **Bone Golem** | A slow giant of fused skeletons (430 base health) that slams a **wide 2.8 m ring**. | ×3 | Step out, punish the recovery. It falls apart into **three corpses**: a legion or a Litany in one kill. |
+| **Tithe Bat** | Flying. Crypt bats in **flocks of 4–6** that bite and flit away, over and over. Never elite. | none | Don't chase. Hold your ground and sweep the flock with Miasma, Grave Frost or Bone Mantle. |
+| **Shroud Moth** | Flying caster. Shakes grave dust onto an **ochre ring where you stand**; the burst leaves a choking cloud for 3.5 s. | swift | Step out of the ring, then out of the cloud. Fragile: one or two good hits. Dirge silences it. |
+| **Belfry Gargoyle** | Flying stone. From 3.5–9 m it marks a **bronze circle** under you and **dives** onto it, then sits grounded for 1.4 s. Claws up close. | normal | Walk out of the circle, then punish the landing. A stun knocks it out of the air mid-dive. |
+| **Weeping Seraph** | Flying support. Blesses **up to four allies within 5.5 m at once** (Sanctified: 30% less damage). Never steals corpses. | resonant | **Kill it first**, or silence it with a Dirge. Wailing Skull reaches it over the crowd. |
 | **Elites** | Any enemy can spawn elite: bigger, tougher (×3.6 health), harder-hitting, pulsing violet ring, and **one affix** (below). | — | Drop **soul shards** (needed for the boss) and far more loot. |
 
 **Processions.** From the second wave in an area, about one wave in three arrives as a themed band
@@ -229,13 +238,14 @@ instead of the usual mix, named on a banner:
 
 | Area | Processions |
 |---|---|
-| Hollow Graves | **The Kennel Loosed** (hounds and skull-rats) · **The Bellringers' Round** (Penitents and robbers, led by a Censer Bearer) |
+| Hollow Graves | **The Kennel Loosed** (hounds and skull-rats) · **Moth-Dusk** (moths, bats and robbers) · **The Bellringers' Round** (Penitents and robbers, led by a Censer Bearer) |
 | Marrow Ossuary | **The Skittering** (rat packs) · **The Ossuary Wakes** (a Bone Golem leads robbers, rats and hounds) |
-| Drowned Nave | **The Drowned Choir** (wraiths, Penitents, censers) · **The Carrion Tide** (sacs and rats) |
-| Bell Sanctum | **The Procession** (a Bone Golem leads censers, Penitents, Deacons and wraiths) |
+| Drowned Nave | **The Drowned Choir** (wraiths, Penitents, censers) · **The Belfry Stirs** (a gargoyle leads bats and Penitents) · **The Carrion Tide** (sacs and rats) |
+| Bell Sanctum | **Vespers** (a Weeping Seraph leads Penitents, gargoyles and censers) · **The Procession** (a Bone Golem leads censers, Penitents, Deacons and wraiths) |
 
 The new dead also join the regular mix deeper in: rats and the odd golem in the Ossuary, wraiths and
-censers in the Nave, all four in the Sanctum. The Hollow Graves keep their gentle roster apart from its processions.
+censers in the Nave, all four in the Sanctum. The **flying pack** is spread across the world: a few moths
+and bat flocks in the Graves and Ossuary, gargoyles and bats in the Nave, gargoyles and seraphs in the Sanctum.
 
 **Elite affixes.** The affix shows in the target frame and on the elite itself.
 
