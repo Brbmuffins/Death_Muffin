@@ -3,7 +3,8 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import type { GameScene } from './SceneManager';
 import { getRuntime, type RuntimeView } from '../app/GameRuntime';
 import { Scope } from '../app/Scope';
-import { ABILITIES, GRIMOIRE, HOTBAR, PRIMARIES, SIGNATURE_BY_DISCIPLINE, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
+import { ABILITIES, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
+import { kitFor, type Kit } from '../content/kits';
 import { assignRite, loadRites, loadSeen, saveRites, saveSeen, unseenRites } from '../gameplay/loadout';
 import { devAccess, devPreference, isDevAccount, riteLevel, setDevPreference } from '../gameplay/devAccess';
 import { GrimoirePanel } from '../ui/GrimoirePanel';
@@ -130,10 +131,12 @@ export class WorldScene implements GameScene, RuntimeView {
   private discipline: Discipline;
   /** Resource rules for the active discipline's family (HUD orb label/colour). */
   private resourceRules: ResourceRules;
+  /** The active family's kit: which rites this class plays. */
+  private kit: Kit;
   /** This account may use the dev overlay (gm_enabled or DEV_ACCOUNTS); the overlay itself is devAccess.active. */
   private devAccount = false;
   /** Hotbar: the Grimoire loadout (keys 1–4), Corpse Explosion (slot 5) and this discipline's signature rite (slot 6). */
-  private hotbar: AbilityId[] = HOTBAR;
+  private hotbar: AbilityId[] = kitFor('necromancer').hotbar;
   /** The four rites on keys 1–4 (Grimoire, L); remembered per character in browser storage. */
   private loadout: AbilityId[];
   /** The left-click primary (Grimoire LMB socket). */
@@ -238,13 +241,14 @@ export class WorldScene implements GameScene, RuntimeView {
   ) {
     this.discipline = disciplineFor(character.class_index);
     this.resourceRules = resourceRulesFor(this.discipline.family);
+    this.kit = kitFor(this.discipline.family);
     // Dev access (runtime overlay, never saved): must be set before the loadout is sanitised.
     this.devAccount = isDevAccount(character, getToken());
     devAccess.active = this.devAccount && devPreference(browserStorage(), character.id);
-    const rites = loadRites(browserStorage(), character.id, riteLevel(character.level ?? 1));
+    const rites = loadRites(browserStorage(), character.id, riteLevel(character.level ?? 1), this.kit);
     this.loadout = rites.keys;
     this.primary = rites.primary;
-    this.seen = loadSeen(browserStorage(), character.id, rites);
+    this.seen = loadSeen(browserStorage(), character.id, rites, this.kit);
     this.hotbar = this.buildHotbar();
     this.progression = new Progression(character);
     this.applyBoons();
@@ -257,7 +261,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   /** At least one level-gated Grimoire rite is learned (the Grimoire is worth opening). */
   private grimoireUnlocked() {
-    return GRIMOIRE.some((id) => unlockLevel(id) > 1 && riteLevel(this.character.level) >= unlockLevel(id));
+    return this.kit.grimoire.some((id) => unlockLevel(id) > 1 && riteLevel(this.character.level) >= unlockLevel(id));
   }
 
   /** Grimoire LMB socket: equip a primary (left-click attack; auto combat uses it too). */
@@ -277,7 +281,7 @@ export class WorldScene implements GameScene, RuntimeView {
     let changed = false;
     for (const id of ids) if (!this.seen.has(id)) (this.seen.add(id), (changed = true));
     if (changed) saveSeen(browserStorage(), this.character.id, this.seen);
-    this.hud?.setGrimoireNew(unseenRites(this.seen, riteLevel(this.character.level)).length > 0);
+    this.hud?.setGrimoireNew(unseenRites(this.seen, riteLevel(this.character.level), this.kit).length > 0);
   }
 
   private openGrimoire(select?: number | 'primary') {
@@ -294,7 +298,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private buildHotbar(): AbilityId[] {
-    return [...this.loadout, 'corpse_explosion', SIGNATURE_BY_DISCIPLINE[this.discipline.id]];
+    return [...this.loadout, this.kit.rmb, this.kit.signatures[this.discipline.id]!];
   }
 
   /** Grimoire: put a rite on key `slot + 1` (swapping if it sat on another key) and remember it. */
@@ -594,7 +598,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.codexPanel = new CodexPanel(this.root, this.codex, this.discipline.id);
     this.grimoirePanel = new GrimoirePanel(
       this.root,
-      () => ({ rites: { primary: this.primary, keys: this.loadout }, level: riteLevel(this.character.level), unseen: unseenRites(this.seen, riteLevel(this.character.level)) }),
+      () => ({ rites: { primary: this.primary, keys: this.loadout }, level: riteLevel(this.character.level), unseen: unseenRites(this.seen, riteLevel(this.character.level), this.kit), kit: this.kit }),
       (slot, id) => this.setRite(slot, id),
       (id) => this.setPrimary(id),
       (ids) => this.markSeen(ids),
@@ -682,6 +686,10 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private toggleAutoCombat() {
+    if (settings.difficulty !== 'easy') {
+      this.hud.toast('Auto combat is available on Easy difficulty. Change it in Settings.');
+      return;
+    }
     updateSettings({ autoCombat: !settings.autoCombat });
     this.autoTargetId = null;
     this.autoAim = null;
@@ -1898,7 +1906,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.player.resource.value = this.player.resource.max;
       this.hud.banner(`Level ${this.character.level}`, 'The dead answer you more readily', 2600);
       if (this.character.level >= SIGNATURE_LEVEL) this.onboarding.show('signature', 3000);
-      const learned = [...PRIMARIES, ...GRIMOIRE].filter((id) => unlockLevel(id) > this.character.level - gained && unlockLevel(id) <= this.character.level);
+      const learned = [...this.kit.primaries, ...this.kit.grimoire].filter((id) => unlockLevel(id) > this.character.level - gained && unlockLevel(id) <= this.character.level);
       if (learned.length) {
         const names = learned.map((id) => ABILITIES[id].name).join(', ');
         this.hud.toast(`${names} ${learned.length > 1 ? 'join' : 'joins'} your Grimoire. Click here, press L or use the Grimoire button to place it.`, 'good', () => this.openGrimoire());
@@ -2342,7 +2350,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (!this.devAccount) return;
     setDevPreference(browserStorage(), this.character.id, on);
     devAccess.active = on;
-    const rites = loadRites(browserStorage(), this.character.id, riteLevel(this.character.level));
+    const rites = loadRites(browserStorage(), this.character.id, riteLevel(this.character.level), this.kit);
     this.loadout = rites.keys;
     this.primary = rites.primary;
     this.hud.setPrimary(this.primary);
@@ -2419,6 +2427,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
     this.hud.update({
       autoCombat: settings.autoCombat,
+      autoCombatAvailable: settings.difficulty === 'easy',
       hp: p.hp,
       maxHp: p.stats.maxHp,
       barrier: p.barrier,

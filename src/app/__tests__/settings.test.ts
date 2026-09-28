@@ -22,6 +22,22 @@ describe('difficulty and auto combat', () => {
     expect(settings.autoCombat).toBe(true);
     updateSettings({ difficulty: 'hard' });
     expect(settings.autoCombat).toBe(false);
+    updateSettings({ autoCombat: true });
+    expect(settings.autoCombat).toBe(false);
     expect(JSON.parse(saved.get('dm_settings_v1')!).autoCombat).toBe(false);
+  });
+
+  it('normalizes old saved settings while preserving an Easy opt-out', async () => {
+    let saved = JSON.stringify({ difficulty: 'hard', autoCombat: true });
+    vi.stubGlobal('window', { matchMedia: () => ({ matches: false }) });
+    vi.stubGlobal('localStorage', { getItem: () => saved, setItem: () => {} });
+
+    expect((await import('../settings')).settings.autoCombat).toBe(false);
+    vi.resetModules();
+    saved = JSON.stringify({ difficulty: 'easy', autoCombat: false });
+    expect((await import('../settings')).settings.autoCombat).toBe(false);
+    vi.resetModules();
+    saved = JSON.stringify({ difficulty: 'easy' });
+    expect((await import('../settings')).settings.autoCombat).toBe(true);
   });
 });

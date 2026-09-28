@@ -7,7 +7,6 @@ import {
   IVORY_CLEAVE,
   RALLY,
   ROT_LANCE,
-  DEFAULT_LOADOUT,
   DETONATE,
   FRACTURE,
   GRAVE_FROST,
@@ -22,6 +21,7 @@ import {
 } from '../content/abilities';
 import { CODEX_RITES } from '../content/codex';
 import { DISCIPLINES, type Discipline } from '../content/disciplines';
+import { kitFor, type Kit } from '../content/kits';
 import { CHILL, HEMORRHAGE } from '../content/statuses';
 
 export interface SpellTooltipState {
@@ -32,6 +32,8 @@ export interface SpellTooltipState {
   left?: number;
   /** The key this Grimoire rite sits on in the player's loadout (1–4), when it is on the bar. */
   key?: string;
+  /** The active family's kit; defaults to the necromancer's when a caller has none. */
+  kit?: Kit;
 }
 
 export interface SpellTooltipData {
@@ -167,7 +169,8 @@ export function spellTooltip(id: AbilityId, discipline?: Discipline, state: Spel
     details.push(empowered ? `Soul Harvest is ready: this cast is free and ${percent(SOUL_HARVEST.areaMult - 1)} larger. It spends the charged meter.` : 'A full Soul Harvest meter makes your next cast of this spell free and larger.');
   }
   // Keys 1–4 belong to the Grimoire loadout: the default four start on their usual keys.
-  const gKey = state.key ?? (DEFAULT_LOADOUT.includes(id) ? String(a.slot) : undefined);
+  const defaults = (state.kit ?? kitFor('necromancer')).defaultLoadout;
+  const gKey = state.key ?? (defaults.includes(id) ? String(a.slot) : undefined);
   const control = a.slot === 0
     ? 'Click an enemy, or Shift + click to cast in place.'
     : a.slot === 5

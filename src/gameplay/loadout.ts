@@ -1,5 +1,12 @@
-import { DEFAULT_LOADOUT, DEFAULT_PRIMARY, GRIMOIRE, PRIMARIES, unlockLevel, type AbilityId } from '../content/abilities';
+import { unlockLevel, type AbilityId } from '../content/abilities';
+import { kitFor, type Kit } from '../content/kits';
 import type { StorageLike } from './codexJournal';
+
+/**
+ * Every reader takes the active `kit` and defaults to the necromancer's, so
+ * pre-framework call sites (and their tests) keep their exact behaviour.
+ */
+const NECRO = kitFor('necromancer');
 
 /**
  * The Grimoire loadout: the left-click primary plus which four rites sit on
@@ -24,8 +31,8 @@ export interface Rites {
  * missing, corrupt or out-of-level slot falls back to the default rite for that
  * key (or the first free unlocked one), so play never starts with a hole.
  */
-export function sanitizeLoadout(raw: unknown, level: number): AbilityId[] {
-  const usable = (id: unknown): id is AbilityId => typeof id === 'string' && GRIMOIRE.includes(id as AbilityId) && unlockLevel(id as AbilityId) <= level;
+export function sanitizeLoadout(raw: unknown, level: number, kit: Kit = NECRO): AbilityId[] {
+  const usable = (id: unknown): id is AbilityId => typeof id === 'string' && kit.grimoire.includes(id as AbilityId) && unlockLevel(id as AbilityId) <= level;
   const picked: (AbilityId | null)[] = Array.from({ length: LOADOUT_SLOTS }, (_, i) => {
     const id = Array.isArray(raw) ? raw[i] : null;
     return usable(id) ? id : null;
@@ -36,15 +43,15 @@ export function sanitizeLoadout(raw: unknown, level: number): AbilityId[] {
   });
   return picked.map((id, i) => {
     if (id) return id;
-    const fallback = [DEFAULT_LOADOUT[i], ...GRIMOIRE].find((g) => usable(g) && !picked.includes(g))!;
+    const fallback = [kit.defaultLoadout[i], ...kit.grimoire].find((g) => usable(g) && !picked.includes(g))!;
     picked[i] = fallback;
     return fallback;
   });
 }
 
 /** A valid primary for this level (falls back to Bone Needle). */
-export function sanitizePrimary(raw: unknown, level: number): AbilityId {
-  return typeof raw === 'string' && PRIMARIES.includes(raw as AbilityId) && unlockLevel(raw as AbilityId) <= level ? (raw as AbilityId) : DEFAULT_PRIMARY;
+export function sanitizePrimary(raw: unknown, level: number, kit: Kit = NECRO): AbilityId {
+  return typeof raw === 'string' && kit.primaries.includes(raw as AbilityId) && unlockLevel(raw as AbilityId) <= level ? (raw as AbilityId) : kit.defaultPrimary;
 }
 
 function readJson(storage: StorageLike | null, key: string): unknown {
@@ -56,12 +63,12 @@ function readJson(storage: StorageLike | null, key: string): unknown {
   }
 }
 
-export function loadRites(storage: StorageLike | null, characterId: number, level: number): Rites {
+export function loadRites(storage: StorageLike | null, characterId: number, level: number, kit: Kit = NECRO): Rites {
   const v2 = readJson(storage, loadoutStorageKey(characterId)) as { primary?: unknown; keys?: unknown } | null;
-  if (v2 && typeof v2 === 'object' && !Array.isArray(v2)) return { primary: sanitizePrimary(v2.primary, level), keys: sanitizeLoadout(v2.keys, level) };
+  if (v2 && typeof v2 === 'object' && !Array.isArray(v2)) return { primary: sanitizePrimary(v2.primary, level, kit), keys: sanitizeLoadout(v2.keys, level, kit) };
   // v1: an array of keys only.
   const v1 = readJson(storage, legacyLoadoutKey(characterId));
-  return { primary: DEFAULT_PRIMARY, keys: sanitizeLoadout(v1, level) };
+  return { primary: kit.defaultPrimary, keys: sanitizeLoadout(v1, level, kit) };
 }
 
 export function saveRites(storage: StorageLike | null, characterId: number, rites: Rites) {
@@ -73,14 +80,14 @@ export function saveRites(storage: StorageLike | null, characterId: number, rite
 }
 
 /** Keys only (kept for callers that only care about 1–4). */
-export function loadLoadout(storage: StorageLike | null, characterId: number, level: number): AbilityId[] {
-  return loadRites(storage, characterId, level).keys;
+export function loadLoadout(storage: StorageLike | null, characterId: number, level: number, kit: Kit = NECRO): AbilityId[] {
+  return loadRites(storage, characterId, level, kit).keys;
 }
 
 /** Save keys 1–4, keeping whatever primary is stored. */
-export function saveLoadout(storage: StorageLike | null, characterId: number, loadout: AbilityId[]) {
+export function saveLoadout(storage: StorageLike | null, characterId: number, loadout: AbilityId[], kit: Kit = NECRO) {
   const stored = readJson(storage, loadoutStorageKey(characterId)) as { primary?: unknown } | null;
-  const primary = typeof stored?.primary === 'string' && PRIMARIES.includes(stored.primary as AbilityId) ? (stored.primary as AbilityId) : DEFAULT_PRIMARY;
+  const primary = typeof stored?.primary === 'string' && kit.primaries.includes(stored.primary as AbilityId) ? (stored.primary as AbilityId) : kit.defaultPrimary;
   saveRites(storage, characterId, { primary, keys: loadout });
 }
 
@@ -98,10 +105,10 @@ export function assignRite(loadout: AbilityId[], slot: number, id: AbilityId): A
  * Rites the player has seen in the Grimoire (or placed). A learned rite not in this set wears a
  * NEW tag, and the hotbar's Grimoire button a pip. Starts with the level-1 kit and the current bar.
  */
-export function loadSeen(storage: StorageLike | null, characterId: number, rites: Rites): Set<AbilityId> {
+export function loadSeen(storage: StorageLike | null, characterId: number, rites: Rites, kit: Kit = NECRO): Set<AbilityId> {
   const raw = readJson(storage, seenStorageKey(characterId));
   const seen = new Set<AbilityId>(Array.isArray(raw) ? (raw.filter((x) => typeof x === 'string') as AbilityId[]) : []);
-  for (const id of [...GRIMOIRE, ...PRIMARIES]) if (unlockLevel(id) <= 1) seen.add(id);
+  for (const id of [...kit.grimoire, ...kit.primaries]) if (unlockLevel(id) <= 1) seen.add(id);
   seen.add(rites.primary);
   for (const id of rites.keys) seen.add(id);
   return seen;
@@ -116,6 +123,6 @@ export function saveSeen(storage: StorageLike | null, characterId: number, seen:
 }
 
 /** Learned (at this level) but never seen. */
-export function unseenRites(seen: Set<AbilityId>, level: number): AbilityId[] {
-  return [...PRIMARIES, ...GRIMOIRE].filter((id) => unlockLevel(id) <= level && !seen.has(id));
+export function unseenRites(seen: Set<AbilityId>, level: number, kit: Kit = NECRO): AbilityId[] {
+  return [...kit.primaries, ...kit.grimoire].filter((id) => unlockLevel(id) <= level && !seen.has(id));
 }

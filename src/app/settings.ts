@@ -39,8 +39,10 @@ function load(): Settings {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
-      const s = { ...base, ...JSON.parse(raw) } as Settings;
+      const stored = JSON.parse(raw) as Partial<Settings>;
+      const s = { ...base, ...stored } as Settings;
       if (!isDifficulty(s.difficulty)) s.difficulty = base.difficulty;
+      s.autoCombat = s.difficulty === 'easy' && (typeof stored.autoCombat === 'boolean' ? stored.autoCombat : true);
       return s;
     }
   } catch {
@@ -56,6 +58,9 @@ const listeners = new Set<(s: Settings) => void>();
 export function updateSettings(patch: Partial<Settings>) {
   if (patch.difficulty !== undefined && patch.autoCombat === undefined) {
     patch = { ...patch, autoCombat: patch.difficulty === 'easy' };
+  }
+  if ((patch.difficulty ?? settings.difficulty) !== 'easy') {
+    patch = { ...patch, autoCombat: false };
   }
   Object.assign(settings, patch);
   try {

@@ -34,6 +34,7 @@ export interface SlotFrame {
 
 export interface HudFrame {
   autoCombat: boolean;
+  autoCombatAvailable: boolean;
   hp: number;
   maxHp: number;
   barrier: number;
@@ -146,7 +147,7 @@ export class HUD {
           <button data-open="grimoire" title="Grimoire (L)" aria-label="Grimoire">${ICON.grimoire}</button>
           <button data-open="codex" title="Codex (K)" aria-label="Codex">${ICON.book}</button>
           <button data-open="settings" title="Settings (Esc)" aria-label="Settings">${ICON.gear}</button>
-          <button class="hud-auto" data-auto aria-label="Auto combat" title="Toggle auto combat (G)" aria-pressed="false">Auto: On · G</button>
+          <button class="hud-auto" data-auto aria-label="Auto combat" title="Available on Easy difficulty" aria-pressed="false">Auto: Easy only</button>
         </div>
       </div>
       <div class="hud-toasts passive" data-toasts></div>
@@ -425,9 +426,12 @@ export class HUD {
   update(f: HudFrame) {
     this.slotFrames = f.slots;
     this.refreshTooltip();
-    this.set('autoCombat', f.autoCombat, () => {
-      this.$('[data-auto]').textContent = f.autoCombat ? 'Auto: On · G' : 'Auto: Off · G';
-      this.$('[data-auto]').setAttribute('aria-pressed', String(f.autoCombat));
+    this.set('autoCombat', `${f.autoCombat}|${f.autoCombatAvailable}`, () => {
+      const button = this.$('[data-auto]') as HTMLButtonElement;
+      button.disabled = !f.autoCombatAvailable;
+      button.textContent = f.autoCombatAvailable ? (f.autoCombat ? 'Auto: On · G' : 'Auto: Off · G') : 'Auto: Easy only';
+      button.title = f.autoCombatAvailable ? 'Toggle auto combat (G)' : 'Available on Easy difficulty';
+      button.setAttribute('aria-pressed', String(f.autoCombat));
     });
     const hpFrac = Math.max(0, f.hp / f.maxHp);
     this.set('hp', Math.round(hpFrac * 400), () => this.$('[data-hporb]').style.setProperty('--fill', `${hpFrac * 100}%`));

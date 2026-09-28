@@ -55,7 +55,7 @@ export class SettingsPanel extends SimplePanel {
         <label class="row">Damage numbers<input type="checkbox" data-dn /></label>
         <label class="row">Don't show tips<input type="checkbox" data-tips /></label>
         ${this.dev ? '<label class="row">Dev access (preview as a normal player when off)<input type="checkbox" data-dev aria-label="Dev access" /></label>' : ''}
-        <label class="row">Auto combat (G)<input type="checkbox" data-auto aria-label="Auto combat" /></label>
+        <label class="row">Auto combat (Easy only, G)<input type="checkbox" data-auto aria-label="Auto combat" /></label>
         <label class="row">Auto gathering<input type="checkbox" data-autogather aria-label="Auto gathering: move on to the next node of the same kind" /></label>
         <p class="cw-settings-note">While standing, fight nearby enemies and use basic rites automatically. Click to move; hold 1–4 to repeat a rite. Signature rites stay under your control.</p>
         ${this.onResetTips ? '<label class="row">New to the Covenant?<button type="button" class="cw-button" data-resettips>Show tips again</button></label>' : ''}
@@ -75,7 +75,7 @@ export class SettingsPanel extends SimplePanel {
           <kbd>Click a node</kbd><span>Gather: chop a tree, mine a seam, fish a pool, dig a grave (it keeps working until the node is spent)</span>
           <kbd>I C P M</kbd><span>Reliquary · Workbench · Skills · Waystones</span>
           <kbd>K</kbd><span>Codex</span>
-          <kbd>G</kbd><span>Toggle auto combat · stand near enemies to grind</span>
+          <kbd>G</kbd><span>Toggle auto combat on Easy · stand near enemies to grind</span>
           <kbd>Counsel header</kbd><span>Drag to move · arrow keys while focused · remembers its position</span>
           <kbd>Settings</kbd><span>Change class · keeps your character and progress</span>
           <kbd>WASD</kbd><span>Walk (fallback)</span>
@@ -89,12 +89,19 @@ export class SettingsPanel extends SimplePanel {
     );
     const diff = this.el!.querySelector<HTMLSelectElement>('[data-diff]')!;
     const note = this.el!.querySelector<HTMLElement>('[data-diffnote]')!;
-    const showNote = () => (note.textContent = `${DIFFICULTIES[settings.difficulty].blurb} In co-op, the world keeper's difficulty applies.`);
+    const auto = this.el!.querySelector<HTMLInputElement>('[data-auto]')!;
+    const syncAuto = () => {
+      auto.checked = settings.autoCombat;
+      auto.disabled = settings.difficulty !== 'easy';
+    };
+    const showNote = () => (note.textContent = `${DIFFICULTIES[settings.difficulty].blurb} ${settings.difficulty === 'easy' ? 'Auto combat turns on with Easy.' : 'Auto combat turns off with Medium and Hard.'} In co-op, the world keeper sets enemy difficulty; your auto combat choice stays yours.`);
     diff.value = settings.difficulty;
     showNote();
+    syncAuto();
     diff.addEventListener('change', () => {
       if (isDifficulty(diff.value)) updateSettings({ difficulty: diff.value });
       showNote();
+      syncAuto();
     });
     const q = this.el!.querySelector<HTMLSelectElement>('[data-q]')!;
     q.value = settings.quality;
@@ -116,8 +123,6 @@ export class SettingsPanel extends SimplePanel {
       dev.checked = this.dev.get();
       dev.addEventListener('change', () => this.dev?.set(dev.checked));
     }
-    const auto = this.el!.querySelector<HTMLInputElement>('[data-auto]')!;
-    auto.checked = settings.autoCombat;
     auto.addEventListener('change', () => updateSettings({ autoCombat: auto.checked }));
     const autoGather = this.el!.querySelector<HTMLInputElement>('[data-autogather]')!;
     autoGather.checked = settings.autoGather;

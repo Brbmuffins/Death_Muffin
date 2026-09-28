@@ -77,7 +77,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   auto_combat: {
     title: 'Settle into the fight',
-    body: 'Auto combat uses nearby targets and basic rites while you stand still. Click to move whenever you like; your hero stays where you choose. Toggle it with <kbd>G</kbd> or the Auto button. Hold <kbd>1</kbd>–<kbd>4</kbd> to repeat a rite at your cursor. Signature rites remain yours to cast.',
+    body: 'On Easy, auto combat uses nearby targets and basic rites while you stand still. Click to move whenever you like; your hero stays where you choose. Toggle it with <kbd>G</kbd> or the Auto button. Hold <kbd>1</kbd>–<kbd>4</kbd> to repeat a rite at your cursor. Signature rites remain yours to cast.',
   },
   change_class: {
     title: 'A new discipline',

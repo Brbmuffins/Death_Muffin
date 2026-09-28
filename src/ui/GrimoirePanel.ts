@@ -1,4 +1,5 @@
-import { ABILITIES, GRIMOIRE, PRIMARIES, ROLE_LABEL, rolesOf, unlockLevel, type AbilityId, type RiteRole } from '../content/abilities';
+import { ABILITIES, ROLE_LABEL, rolesOf, unlockLevel, type AbilityId, type RiteRole } from '../content/abilities';
+import type { Kit } from '../content/kits';
 import { CODEX_RITES, riteSwatch } from '../content/codex';
 import { LOADOUT_SLOTS, type Rites } from '../gameplay/loadout';
 import { SimplePanel } from './MiscPanels';
@@ -22,7 +23,7 @@ export class GrimoirePanel extends SimplePanel {
 
   constructor(
     root: HTMLElement,
-    private state: () => { rites: Rites; level: number; unseen: AbilityId[] },
+    private state: () => { rites: Rites; level: number; unseen: AbilityId[]; kit: Kit },
     private assign: (slot: number, id: AbilityId) => void,
     private assignPrimary: (id: AbilityId) => void,
     private markSeen: (ids: AbilityId[]) => void,
@@ -38,7 +39,7 @@ export class GrimoirePanel extends SimplePanel {
     this.el!.classList.add('cw-grimoire');
     const { unseen } = this.state();
     this.fresh = new Set(unseen);
-    if (this.selected !== 'primary' && unseen.some((id) => PRIMARIES.includes(id))) this.selected = 'primary';
+    if (this.selected !== 'primary' && unseen.some((id) => this.state().kit.primaries.includes(id))) this.selected = 'primary';
     this.render();
     this.markSeen(unseen);
   }
@@ -55,7 +56,8 @@ export class GrimoirePanel extends SimplePanel {
         <span class="nm">${ABILITIES[id].name}</span>
       </button>`;
     const primaryMode = this.selected === 'primary';
-    const list = primaryMode ? PRIMARIES : GRIMOIRE.filter((id) => this.role === 'all' || rolesOf(id).includes(this.role));
+    const { kit } = this.state();
+    const list = primaryMode ? kit.primaries : kit.grimoire.filter((id) => this.role === 'all' || rolesOf(id).includes(this.role));
     body.innerHTML = `
       <p class="cw-settings-note">Click a socket, then click a rite to place it there. <b>LMB</b> is your free left-click attack; keys <kbd>1</kbd>–<kbd>4</kbd> hold any four rites. A rite already on another key swaps places, and cooldowns stay with the rite. Right-click a hotbar slot to jump here. Corpse Explosion and your signature rite stay where they are.</p>
       <div class="cw-grim-bar" aria-label="Current rotation">

@@ -537,6 +537,7 @@ button { font-family: inherit; }
 .hud-menu svg { width: 20px; height: 20px; }
 .hud-menu .hud-auto { width: 100%; height: 26px; font-size: 11px; letter-spacing: .04em; }
 .hud-menu .hud-auto[aria-pressed="true"] { color: var(--cw-bone-100); border-color: var(--cw-border-active); }
+.hud-menu .hud-auto:disabled { opacity: .55; cursor: default; }
 
 /* Party (top-left) */
 .hud-party { position: absolute; top: 14px; left: 18px; display: flex; flex-direction: column; gap: 6px; max-height: calc(100vh - 220px); overflow-y: auto; pointer-events: auto; }
