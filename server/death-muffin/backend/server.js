@@ -1776,11 +1776,17 @@ app.get('/api/enemies/:id', async (req, res) => {
 });
 
 
+// Staff = dev access (admin / gm role or gm_enabled): skips level and area gates, never budgets or rate limits.
+const isStaffAccount = async (req) => {
+  const [[acct]] = await pool.execute('SELECT role, gm_enabled FROM accounts WHERE id = ? LIMIT 1', [req.user.accountId]);
+  return !!acct && (acct.role === 'admin' || acct.role === 'gm' || !!acct.gm_enabled);
+};
 const { mountNecroProgress } = require('./necro-progress/necro-progress-routes.cjs');
 const { createMysqlStore } = require('./necro-progress/mysql-store.cjs');
 mountNecroProgress(app, {
   store: createMysqlStore(pool),
   requireAuth: requireJWT,
+  isStaff: isStaffAccount,
   ownsCharacter: async (req, characterId) => {
     const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
     return rows.length === 1;
@@ -1792,10 +1798,7 @@ mountGathering(app, {
   store: createMysqlGatherStore(pool),
   requireAuth: requireJWT,
   // Staff (dev access) skip gathering level gates only; the budget and rate limit still apply.
-  isStaff: async (req) => {
-    const [[acct]] = await pool.execute('SELECT role, gm_enabled FROM accounts WHERE id = ? LIMIT 1', [req.user.accountId]);
-    return !!acct && (acct.role === 'admin' || acct.role === 'gm' || !!acct.gm_enabled);
-  },
+  isStaff: isStaffAccount,
   ownsCharacter: async (req, characterId) => {
     const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
     return rows.length === 1;

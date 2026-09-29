@@ -463,7 +463,7 @@ var BOSSES = {
     summonId: "saints_litter",
     summonLabel: "The Saint's Litter",
     shards: 5,
-    baseHp: 16e3,
+    baseHp: 24e3,
     modelSlug: "boss_plague_saint",
     portrait: "",
     color: 10273850,
@@ -549,6 +549,7 @@ function unlockKills(s, id) {
   const u = AREAS[id].unlock;
   return u ? Math.max(1, Math.round(u.kills * boonEffects(s.boons).unlockKillsMult)) : null;
 }
+var isOpen = (s, id, opts) => !!opts?.staff || s.unlockedAreas.includes(id);
 function openSeals(s) {
   for (const id of AREA_ORDER) {
     const u = AREAS[id].unlock;
@@ -556,13 +557,13 @@ function openSeals(s) {
     if ((s.areaKills[u.area] ?? 0) >= unlockKills(s, id) && s.unlockedAreas.includes(u.area)) s.unlockedAreas.push(id);
   }
 }
-function applySave(state, input) {
+function applySave(state, input, opts) {
   const s = copy(state);
   let budget = NECRO_LIMITS.killsPerSave;
   let kills = 0;
   for (const id of AREA_ORDER) {
     const n = Math.min(budget, clampInt(input.areaKills?.[id], 0, budget));
-    if (!n || AREAS[id].safe || !s.unlockedAreas.includes(id)) continue;
+    if (!n || AREAS[id].safe || !isOpen(s, id, opts)) continue;
     s.areaKills[id] = (s.areaKills[id] ?? 0) + n;
     budget -= n;
     kills += n;
@@ -592,23 +593,23 @@ function purchase(state, gold, upgrade) {
   }
   return { ok: true, state: s, gold: gold - cost, cost };
 }
-function summonPrelate(state) {
+function summonPrelate(state, opts) {
   if (state.soulShards < BOSS_SUMMON_SHARDS) {
     return { ok: false, error: `The Sundered Bell demands ${BOSS_SUMMON_SHARDS} soul shards (you have ${state.soulShards}).` };
   }
-  if (!state.unlockedAreas.includes("sanctum")) return { ok: false, error: "The Bell Sanctum is still sealed." };
+  if (!isOpen(state, "sanctum", opts)) return { ok: false, error: "The Bell Sanctum is still sealed." };
   const s = copy(state);
   s.soulShards -= BOSS_SUMMON_SHARDS;
   s.summonsPending = Math.min(5, s.summonsPending + 1);
   return { ok: true, state: s };
 }
-function summonAreaBoss(state, boss) {
+function summonAreaBoss(state, boss, opts) {
   if (!isBossId(boss) || boss === "prelate") return { ok: false, error: "Unknown boss." };
   const def = BOSSES[boss];
   if (state.soulShards < def.shards) {
     return { ok: false, error: `${def.summonLabel} demands ${def.shards} soul shards (you have ${state.soulShards}).` };
   }
-  if (!state.unlockedAreas.includes(def.area)) return { ok: false, error: `${AREAS[def.area].name} is still sealed.` };
+  if (!isOpen(state, def.area, opts)) return { ok: false, error: `${AREAS[def.area].name} is still sealed.` };
   const s = copy(state);
   s.soulShards -= def.shards;
   return { ok: true, state: s };

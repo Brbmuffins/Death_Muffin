@@ -51,7 +51,7 @@ function limiter(perMinute) {
   };
 }
 
-function createNecroProgressHandlers({ store, ownsCharacter, logger = console, perMinute = 60 }) {
+function createNecroProgressHandlers({ store, ownsCharacter, isStaff, logger = console, perMinute = 60 }) {
   if (!store || !ownsCharacter) throw new Error('necro-progress: store and ownsCharacter are required');
   const allow = limiter(perMinute);
 
@@ -72,9 +72,11 @@ function createNecroProgressHandlers({ store, ownsCharacter, logger = console, p
     const characterId = await guard(req, res, req.body && req.body.characterId);
     if (!characterId) return;
     try {
+      // Staff (dev access) stand past every area seal; everyone else opens seals with kills.
+      const staff = isStaff ? !!(await isStaff(req)) : false;
       let outcome = null;
       const done = await store.withLock(characterId, (state, gold) => {
-        const r = apply(state, gold, req.body || {});
+        const r = apply(state, gold, req.body || {}, { staff });
         outcome = r;
         if (!r.ok) return {}; // nothing written
         return { state: r.state, gold: r.gold };
@@ -106,18 +108,18 @@ function createNecroProgressHandlers({ store, ownsCharacter, logger = console, p
       }
     },
     save: (req, res) =>
-      mutate(req, res, (s, _g, b) =>
+      mutate(req, res, (s, _g, b, o) =>
         rules.applySave(s, {
           waveTierActive: b.waveTierActive,
           areaKills: b.areaKills,
           shards: b.shards,
           prelateKills: b.prelateKills,
           peakWaveTier: b.peakWaveTier,
-        }),
+        }, o),
       ),
     purchase: (req, res) => mutate(req, res, (s, g, b) => rules.purchase(s, g, b.upgrade)),
-    summonPrelate: (req, res) => mutate(req, res, (s) => rules.summonPrelate(s)),
-    summonBoss: (req, res) => mutate(req, res, (s, _g, b) => rules.summonAreaBoss(s, b.boss)),
+    summonPrelate: (req, res) => mutate(req, res, (s, _g, _b, o) => rules.summonPrelate(s, o)),
+    summonBoss: (req, res) => mutate(req, res, (s, _g, b, o) => rules.summonAreaBoss(s, b.boss, o)),
     ascend: (req, res) => mutate(req, res, (s) => rules.ascend(s)),
     boon: (req, res) => mutate(req, res, (s, _g, b) => rules.buyBoon(s, String(b.boonId || ''))),
     importLocal: (req, res) => mutate(req, res, (s, _g, b) => rules.importLocal(s, b.record)),

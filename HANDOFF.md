@@ -116,6 +116,11 @@ No deployment. Source and redistribution note: `docs/CROSSWORLDS-AUDIO.md`.
   `WorldSim.areaLevel` follows the highest-level living player inside), Plague Doctor / Flagellant, the Plague Saint.
   Players now send `level` on join; the realtime server clamps it and `classIndex` (now 0–9; it was 0–4, which showed
   New Blood partners as Rotweavers). **Next:** GRIND-LOOP §3 #2 (loot affix chase) is the biggest remaining hook.
+- **Dev access (2026-09-29):** the owner's `Brbmuffins` account now has `gm_enabled = 1` in the live DB (role stays
+  `player`, no GM permissions). The client overlay already opened every area, rite and tier. Now the server also
+  treats staff as past every area seal: kills count and boss summons work anywhere (shards are still charged), and
+  the saved `unlockedAreas` never changes. Everyone else unlocks areas with kills. See `RuleOpts.staff` in
+  `necroRules.ts` and `isStaffAccount` in the backend `server.js`. Rollback: `~/death-muffin/deploy/backup-pre-devstaff-*`.
 - **Dead loot:** seeds, gems, reliquary fragments and covenant seals drop with no use. Selling now exists; real sinks
   are in GRIND-LOOP §3. `kit_iron_warden` is still an inert consumable.
 - **Balance left for owner feel:** Nave geared deaths +15% (Acolytes), Ossuary geared kill rate −18% (burrowed ghouls).

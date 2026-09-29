@@ -98,6 +98,15 @@ export function unlockKills(s: NecroState, id: AreaId): number | null {
   return u ? Math.max(1, Math.round(u.kills * boonEffects(s.boons).unlockKillsMult)) : null;
 }
 
+/**
+ * Staff (dev access: `gm_enabled` / admin / gm accounts) stand past every seal: their kills count and their summons work
+ * in any area, without their saved `unlockedAreas` changing. Everyone else opens seals with kills.
+ */
+export interface RuleOpts {
+  staff?: boolean;
+}
+const isOpen = (s: NecroState, id: AreaId, opts?: RuleOpts) => !!opts?.staff || s.unlockedAreas.includes(id);
+
 /** Re-derive opened seals from kill counts (never closes one already open this run). */
 function openSeals(s: NecroState) {
   for (const id of AREA_ORDER) {
@@ -122,14 +131,14 @@ export interface SaveInput {
 }
 
 /** Merge a periodic save: clamped deltas, derived unlocks. Never fails (bad input is clamped away). */
-export function applySave(state: NecroState, input: SaveInput): RuleResult {
+export function applySave(state: NecroState, input: SaveInput, opts?: RuleOpts): RuleResult {
   const s = copy(state);
   let budget = NECRO_LIMITS.killsPerSave;
   let kills = 0;
   for (const id of AREA_ORDER) {
     const n = Math.min(budget, clampInt(input.areaKills?.[id], 0, budget));
     // Kills only count where the character can actually be.
-    if (!n || AREAS[id].safe || !s.unlockedAreas.includes(id)) continue;
+    if (!n || AREAS[id].safe || !isOpen(s, id, opts)) continue;
     s.areaKills[id] = (s.areaKills[id] ?? 0) + n;
     budget -= n;
     kills += n;
@@ -161,11 +170,11 @@ export function purchase(state: NecroState, gold: number, upgrade: 'damage' | 'w
   return { ok: true, state: s, gold: gold - cost, cost };
 }
 
-export function summonPrelate(state: NecroState): RuleResult {
+export function summonPrelate(state: NecroState, opts?: RuleOpts): RuleResult {
   if (state.soulShards < BOSS_SUMMON_SHARDS) {
     return { ok: false, error: `The Sundered Bell demands ${BOSS_SUMMON_SHARDS} soul shards (you have ${state.soulShards}).` };
   }
-  if (!state.unlockedAreas.includes('sanctum')) return { ok: false, error: 'The Bell Sanctum is still sealed.' };
+  if (!isOpen(state, 'sanctum', opts)) return { ok: false, error: 'The Bell Sanctum is still sealed.' };
   const s = copy(state);
   s.soulShards -= BOSS_SUMMON_SHARDS;
   s.summonsPending = Math.min(5, s.summonsPending + 1);
@@ -176,13 +185,13 @@ export function summonPrelate(state: NecroState): RuleResult {
  * Area bosses (2026-09-29): spend that boss's shards; its area must be open. Unlike the Prelate this leaves
  * `summonsPending` alone, which only pays out Prelate kills (the Ascension counter).
  */
-export function summonAreaBoss(state: NecroState, boss: unknown): RuleResult {
+export function summonAreaBoss(state: NecroState, boss: unknown, opts?: RuleOpts): RuleResult {
   if (!isBossId(boss) || boss === 'prelate') return { ok: false, error: 'Unknown boss.' };
   const def = BOSSES[boss];
   if (state.soulShards < def.shards) {
     return { ok: false, error: `${def.summonLabel} demands ${def.shards} soul shards (you have ${state.soulShards}).` };
   }
-  if (!state.unlockedAreas.includes(def.area)) return { ok: false, error: `${AREAS[def.area].name} is still sealed.` };
+  if (!isOpen(state, def.area, opts)) return { ok: false, error: `${AREAS[def.area].name} is still sealed.` };
   const s = copy(state);
   s.soulShards -= def.shards;
   return { ok: true, state: s };

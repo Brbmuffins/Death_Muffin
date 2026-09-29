@@ -6,9 +6,9 @@ const assert = require('node:assert/strict');
 const { createNecroProgressHandlers } = require('./necro-progress-routes.cjs');
 const { createMemoryStore } = require('./mysql-store.cjs');
 
-function harness({ gold = 10000, owner = true } = {}) {
+function harness({ gold = 10000, owner = true, staff = false } = {}) {
   const store = createMemoryStore({ 7: gold, 8: 0 });
-  const h = createNecroProgressHandlers({ store, ownsCharacter: async (_req, id) => owner && id === 7, logger: { error() {} }, perMinute: 1000 });
+  const h = createNecroProgressHandlers({ store, ownsCharacter: async (_req, id) => owner && id === 7, isStaff: async () => staff, logger: { error() {} }, perMinute: 1000 });
   const call = async (name, body = {}, params = {}) => {
     let status = 0;
     let json = null;
@@ -93,6 +93,26 @@ test('area-boss summons charge their own cost, need their area, and owe no Prela
   assert.equal(r.json.data.progress.summonsPending, 0, 'no Prelate summon is owed');
   r = await call('summonBoss', { boss: 'prelate' });
   assert.equal(r.status, 400, 'the Prelate keeps its own route');
+});
+
+test('staff (dev access) stand past every seal without their save changing; players still unlock with kills', async () => {
+  const dev = harness({ staff: true });
+  await dev.call('importLocal', { record: { areaKills: { graves: 10 }, shards: 20 } });
+  let r = await dev.call('save', { areaKills: { cloister: 40, chapterhouse: 5 } });
+  assert.equal(r.json.data.progress.areaKills.cloister, 40, 'dev kills count in a sealed area');
+  assert.equal(r.json.data.progress.areaKills.chapterhouse, undefined, 'still none in the sanctuary');
+  assert.ok(!r.json.data.progress.unlockedAreas.includes('cloister'), 'the saved seals are untouched');
+  r = await dev.call('summonBoss', { boss: 'saint' });
+  assert.equal(r.status, 200, 'dev summons the Saint in a sealed area');
+  assert.equal(r.json.data.progress.soulShards, 15, 'and still pays for it');
+  r = await dev.call('summonPrelate');
+  assert.equal(r.status, 200);
+  const player = harness();
+  await player.call('importLocal', { record: { areaKills: { graves: 10 }, shards: 20 } });
+  r = await player.call('summonBoss', { boss: 'saint' });
+  assert.equal(r.status, 400, 'a player needs the Cloister open');
+  r = await player.call('save', { areaKills: { cloister: 40 } });
+  assert.equal(r.json.data.progress.areaKills.cloister, undefined);
 });
 
 test('Ascend and boons are server rules', async () => {
