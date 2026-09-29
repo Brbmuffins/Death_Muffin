@@ -359,7 +359,7 @@ export class WorldView {
     // Reuse the five existing dynamic lights for a warm workshop beacon.
     const sawpit = AREAS.acre.interactables.find(it => it.kind === 'sawpit')!;
     this.lightSources.push({ x: sawpit.x, y: 1.6, z: sawpit.z, color: 0xffd29a, intensity: 3, distance: 7, lit: true, brazier: false });
-    this.effects.decal({ tex: fx.ring(), color: 0xeac58b, x: sawpit.x, z: sawpit.z, r: 1.4, duration: 1e9, opacity: 0.3, fadeIn: 0.01 });
+    this.effects.decal({ tex: fx.ring(), color: 0xeac58b, x: sawpit.x, z: sawpit.z, r: 1.4, duration: 1e9, persistent: true, opacity: 0.3, fadeIn: 0.01 });
     this.buildWindows();
     this.buildDecals();
     this.buildGates();
@@ -530,14 +530,14 @@ export class WorldView {
       shaft.translateZ(5);
       shaft.rotateX(-0.55);
       this.group.add(shaft);
-      this.effects.decal({ tex: fx.glow(), color: 0x5a3bb8, x: shaft.position.x, z: shaft.position.z, r: w.w, duration: 1e9, opacity: 0.35, fadeIn: 0.01 });
+      this.effects.decal({ tex: fx.glow(), color: 0x5a3bb8, x: shaft.position.x, z: shaft.position.z, r: w.w, duration: 1e9, persistent: true, opacity: 0.35, fadeIn: 0.01 });
     }
   }
 
   private buildDecals() {
     for (const d of this.layout.decals) {
       const tex = d.kind === 'sigil' ? fx.sigil() : fx.cracks();
-      this.effects.decal({ tex, color: d.color, x: d.x, z: d.z, r: d.r, rot: d.rot, duration: 1e9, opacity: d.opacity, fadeIn: 0.01, y: 0.02, spin: d.kind === 'sigil' ? 0.03 : 0 });
+      this.effects.decal({ tex, color: d.color, x: d.x, z: d.z, r: d.r, rot: d.rot, duration: 1e9, persistent: true, opacity: d.opacity, fadeIn: 0.01, y: 0.02, spin: d.kind === 'sigil' ? 0.03 : 0 });
     }
     // Light pools under every flame source: fake bounce light, zero per-pixel cost.
     for (const s of this.lightSources) {
@@ -548,6 +548,7 @@ export class WorldView {
         z: s.z,
         r: s.distance * 0.42,
         duration: 1e9,
+        persistent: true,
         opacity: s.brazier ? 0.5 : 0.32,
         fadeIn: 0.01,
         y: 0.015,

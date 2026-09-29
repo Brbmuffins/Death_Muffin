@@ -79,8 +79,8 @@ float blendf(float a, float b, int mode) {
   if (mode == 6) result = a < 0.5 ? (2.0 * a * b) : (1.0 - 2.0 * (1.0 - a) * (1.0 - b));
   if (mode == 7) result = b < 0.5 ? (2.0 * a * b) : (1.0 - 2.0 * (1.0 - a) * (1.0 - b));
   if (mode == 8) result = b < 0.5 ? (2.0 * a * b + a * a * (1.0 - 2.0 * b)) : (sqrt(a) * (2.0 * b - 1.0) + (2.0 * a) * (1.0 - b));
-  if (mode == 9) result = a / (1.0 - b);
-  if (mode == 10) result = 1.0 - (1.0 - a) / b;
+  if (mode == 9) result = a / max(0.0001, 1.0 - b);
+  if (mode == 10) result = 1.0 - (1.0 - a) / max(0.0001, b);
   if (mode == 11) result = a + b - 1.0;
   return result;
 }
@@ -169,6 +169,7 @@ uniform float color_smoothness;
 uniform float alpha_smoothness;
 uniform vec4 edge_cutoff;
 uniform float uUnshaded;
+uniform float uRadialClip;
 void main() {
   float mask_value = mask(vUv, MASK_OFFSET);
   float color_mask = smoothstep(0.5 - color_smoothness * 0.5, 0.5 + color_smoothness * 0.5, mask_value);
@@ -177,6 +178,9 @@ void main() {
   // clamp(0.5 - s/2, 0.5 + s/2, mask) in the source is min(0.5 + s/2, mask).
   float alpha_mask = max(0.0, min(0.5 + alpha_smoothness * 0.5, mask_value));
   float alpha = clamp(pow(alpha_mask, 3.0) * alpha_multiplier * vColor.a, 0.0, 1.0) * uFade;
+  // Some overlay masks turn a circular base gradient back on at its square
+  // corners. Preserve the base gradient's round footprint on ground planes.
+  if (uRadialClip > 0.5) alpha *= 1.0 - smoothstep(0.42, 0.5, length(vUv - vec2(0.5)));
   if (edge_cutoff != vec4(0.0)) {
     if (vUv.x < edge_cutoff.x || vUv.y < edge_cutoff.y || vUv.x > 1.0 - edge_cutoff.z || vUv.y > 1.0 - edge_cutoff.w) discard;
   }
@@ -264,7 +268,7 @@ const v4 = (v: ParamValue | undefined) => (Array.isArray(v) && v.length >= 4 ? n
  * `defaults` records the starting value of every animatable uniform so a pooled
  * effect can be reset.
  */
-export function buildMaterial(m: MaterialTemplate | null | undefined, shape: MeshShape | undefined, texture: TextureFor): THREE.ShaderMaterial {
+export function buildMaterial(m: MaterialTemplate | null | undefined, shape: MeshShape | undefined, texture: TextureFor, radialClip = false): THREE.ShaderMaterial {
   const p = m?.params ?? {};
   const program = m?.program ?? 'generic';
   const base: Record<string, THREE.IUniform> = {
@@ -313,6 +317,7 @@ export function buildMaterial(m: MaterialTemplate | null | undefined, shape: Mes
       alpha_smoothness: { value: num(p.alpha_smoothness, 0.954) },
       edge_cutoff: { value: v4(p.edge_cutoff) },
       uUnshaded: { value: 0 },
+      uRadialClip: { value: radialClip ? 1 : 0 },
     });
     defines.MASK_OFFSET = program === 'particle' ? 'vColor.r' : '0.0';
     if (num(p.displacement_scale, 0) !== 0) defines.DISPLACE = '';

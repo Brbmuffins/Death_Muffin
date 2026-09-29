@@ -1,5 +1,11 @@
 # Death Muffin spell variety plan
 
+> **Current reading guide, 2026-09-29:** This is a dated design record. Its
+> loadout, stationary-auto and manual-signature proposals below describe the
+> 2026-09-27 state. The later New Blood release gave Easy auto movement and
+> conditional signatures; use [the game README](../README.md), current source
+> and [HANDOFF](../HANDOFF.md) for current behavior.
+
 > **Reconciled 2026-09-27 with the shipped Grimoire.** The build spec is now
 > [`agent-briefs/spell-variety-first-session.md`](agent-briefs/spell-variety-first-session.md) §3–§4.
 > - **Building:** Bone Fan, Rot Lance (primaries), Grave Offering, Ivory Cleave, Veil Step, Rally the Dead and Carrion

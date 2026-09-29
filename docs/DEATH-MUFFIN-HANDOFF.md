@@ -1,6 +1,9 @@
 # Death Muffin agent handoff
 
-Updated 2026-09-28. Read this before editing or deploying. Preserve the supplied site's visual design and the accepted fixed click-to-move behavior.
+Last deployment recorded here: 2026-09-28. Read this before editing or deploying.
+Preserve the supplied site's visual design and the accepted fixed click-to-move
+behavior. This is a dated release and operations record; for later local work,
+read [HANDOFF](../HANDOFF.md) and [the documentation map](README.md).
 
 User-approved complete version: **`death-muffin-v1.0.0`**. See [the checkpoint record](DEATH-MUFFIN-CHECKPOINT.md) for the full private backup and restoration boundaries. Preserve this baseline while designing new abilities.
 
@@ -27,8 +30,10 @@ The framework is additive and the four necromantic disciplines are provably unch
 - **Hollow Knight** (`discipline_index` 8): Rage, seven rites, sword + shield on the rig. Shield Bash,
   Corpse Vigil and Grave Brand go through the host as new `sig` kinds; Hollow Cut and Grave Slam are
   client-resolved like Ivory Cleave. New enemy statuses `stunT`/`rootT` (snapshot bits 17/18).
-- **Known gap:** Shield Bash does not stagger a boss (`BossBrain` has no interrupt hook). The
-  leaderboard index-5 collision was resolved in the New Blood follow-up above.
+- **Historical release gap:** the first class build had no boss stagger hook.
+  The current source has `BossBrain.stagger()` and a Shield Bash boss call;
+  verify its deployment separately. The leaderboard index-5 collision was
+  resolved in the New Blood follow-up above.
 
 Green after the follow-up: typecheck, 265 client tests (19 Knight, 18 framework regression, 3 new creation/loadout checks), 41 server, 3 VFX, production build.
 
@@ -93,7 +98,7 @@ This builds on the supplied Claude project, not a replacement game. Read `CLAUDE
 - `NECROMANCER_REDESIGN_AUDIT.md`: connected world → waves → corpses as minions/spell fuel → loot → damage/wave upgrades → new areas. Keep that loop.
 - `docs/agent-briefs/combat-depth.md`: the combat depth pack is already shipped. Preserve host-authoritative **Intent → WorldSim → SimEvent → VFX/audio/rewards**; polish presentation/input without inventing a second damage path.
 - `src/content/abilities.ts` (`SPELL_FX`) and `FUTURE_CONTENT.md`: bone ivory/amber; marrow ember/crimson; spirit jade/teal; rot chartreuse/olive; ritual violet; enemy bells bronze. Readability needs distinct shapes/timing as well as colour.
-- `CLAUDE.md`: new mechanics need their Onboarding counsel tip, Codex entry, Settings keys and README guidance. Keep known live item IDs and four discipline/server index mappings.
+- `CLAUDE.md`: new mechanics need their Onboarding counsel tip, Codex entry, Settings keys and README guidance. Keep known live item IDs and the legacy class/client discipline index mappings in sync.
 - `BALANCE.md`, `src/gameplay/balance/harness.ts`, `npm run balance` and `npm run balance:boss`: existing deterministic farming/combat bot harnesses; reuse them before designing future persistent live bots.
 - `docs/agent-briefs/environment.md`: desktop 60 fps, high/low quality fallbacks, capped effects and no allocations in hot loops. Existing managed Effects/runtime should own updates and disposal.
 - `.claude/launch.json` is a Windows preview configuration (ports 5188/5000). Use the VPS dev command below here.
@@ -138,13 +143,15 @@ Minimap clicks map from the displayed canvas/player center to world coordinates,
 
 Follow-up verification: 131 client tests, typecheck and production build pass. Public browser smoke also verified the new spell cards/minimap UI with owner login, signup, co-op, class switching and leaderboard; the temporary test account was removed. Browser checks passed persistent/keyboard/readable spell details, hover without casting, desktop/mobile bounds, minimap arrival and fixed destinations, locked/outside rejection, DPR2 and CSS scaling.
 
-New spell additions are **planned, not implemented** in [SPELL-VARIETY-PLAN.md](SPELL-VARIETY-PLAN.md): role-compatible loadouts and four MVP spells before class expansion. Preserve existing art, current short gestures/effects and authoritative sim boundaries. Do not assume the proposals are shipped abilities.
+At this 2026-09-27 checkpoint, additions in [SPELL-VARIETY-PLAN.md](SPELL-VARIETY-PLAN.md)
+were proposals. Several rites and the Grimoire were built and published later;
+check source and the newer release entries above before using that plan as a task list.
 
 ## Class-change migration checkpoint
 
 The additive nullable `characters.discipline_index` column is already applied to the live `death_muffin` database. **Do not blindly rerun** `server/death-muffin/backend/migrations/001-discipline-index.sql`.
 
-`POST /character/discipline` in `server/death-muffin/backend/discipline.cjs` accepts a character ID and discipline index 1–4, checks ownership, and updates only that override. Character responses and the leaderboard use the effective discipline while preserving original `class_index`, ID, level, items and progress. The live backend copy includes the class override endpoint. Preview checks verified all four correct models, persistence after reload, preserved inventory/gold/shards and mobile panel fit. Live API checks verified ownership, invalid inputs, all four changes preserving saved stats/gear/XP/progress and immediate leaderboard updates; the temporary test account was removed. Review `src/ui/ClassPanel.ts`, `src/scenes/WorldScene.ts`, `src/net/api.ts`, and the class-save tests together.
+`POST /character/discipline` in `server/death-muffin/backend/discipline.cjs` accepts a character ID and discipline index 1–`maxIndex` (9 in the 2026-09-28 release), checks ownership, and updates only that override. Character responses and the leaderboard use the effective discipline while preserving original `class_index`, ID, level, items and progress. The live backend copy includes the class override endpoint. The initial 1–4 preview and API checks verified correct models, persistence after reload, preserved inventory/gold/shards, ownership and invalid inputs; the later New Blood release checked all five added classes. Temporary test accounts were removed. Review `src/ui/ClassPanel.ts`, `src/scenes/WorldScene.ts`, `src/net/api.ts`, and the class-save tests together.
 
 ## Build, validation and publication
 
@@ -181,8 +188,8 @@ Browser combat evidence: eight automatic needles during the isolated four-second
 - Login on the new site, enter a character, confirm animated world and reconnecting co-op. Use temporary test accounts; do not repeat owner credentials in logs or documentation.
 - Click ground and move the cursor elsewhere: destination remains fixed; arrival stops movement. Standing aim, path-facing, Shift-click and right-click corpse casting still work; Chrome's context menu stays suppressed over the game.
 - Cast repeatedly while standing and walking: no hip/root drift, facing reversal or snapping; spell origin and impact match the target. Check frame stability during crowded fights and effect cleanup after leaving a scene.
-- If auto-combat is present, check toggle on/off, manual movement/aim priority, no casting through open panels, and safe behavior with no target, no essence, death and scene changes.
-- Change all four classes and reload: same character ID, level, gold, items, upgrades and saved progress; effective class updates in game and leaderboard. Failure must leave play usable and existing progress intact.
+- On Easy, check auto-combat toggle on/off, equipped rites and conditional signatures, manual movement/aim priority, no casting through open panels, and safe behavior with no target, no resource, death and scene changes.
+- Change through all nine classes and reload: same character ID, level, gold, items, upgrades and saved progress; effective class updates in game and leaderboard. Failure must leave play usable and existing progress intact.
 - Check help readability, HUD clicks, sound toggle, leaderboard, old-domain redirect, and availability of the unrelated sites. Hard refresh with Ctrl+Shift+R after publication.
 
 For isolated browser work, `npm run dev -- --host 127.0.0.1 --port 5198 --strictPort` and `?offline` use the DEV-only mock backend. `window.__cwDebug` is DEV-only; keep it out of production. Existing private browser scripts in the deploy directory have scenario-specific assumptions: inspect them before running against real accounts.

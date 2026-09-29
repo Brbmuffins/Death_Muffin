@@ -229,7 +229,7 @@ export function spellTooltip(id: AbilityId, discipline?: Discipline, state: Spel
     : a.slot === 5
       ? 'Right-click, press 5 or click this icon. Aim before casting.'
       : a.slot === 6
-        ? 'Press R or 6, or click this icon. Signature spells are manual.'
+        ? 'Press R or 6, or click this icon. On Easy, Auto may cast it in a suitable fight.'
         : gKey
           ? `Press or hold ${gKey}; aim with the mouse. You can also click this icon. Change its key in the Grimoire (L).`
           : 'Place it on a key (1–4) in the Grimoire (L), then press or hold that key; aim with the mouse.';

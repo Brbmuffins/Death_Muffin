@@ -113,7 +113,7 @@ export const CODEX_RITES: Record<AbilityId, RiteEntry> = {
   bone_needle: {
     fx: 'needle',
     colour: 'Bone white and old gold',
-    tip: `Your essence engine. Every hit returns ${NEEDLE_ESSENCE} Grave Essence, so keep a target under attack between rites and the other four pay for themselves. Auto combat (G) handles nearby targets and basic rites while standing still; click to move, or hold 1–4 to repeat a rite at the cursor. Signature rites stay manual. Shift+Click to stand your ground and cast without walking in.`,
+    tip: `Your essence engine. Every hit returns ${NEEDLE_ESSENCE} Grave Essence, so keep a target under attack between rites and the other four pay for themselves. On Easy, Auto (G) engages enemies in your current area and uses equipped rites, including signatures when useful. Click or use movement keys to take control, or hold 1–4 to repeat a rite at the cursor. Shift+Click to stand your ground and cast without walking in.`,
   },
   marrow_spear: {
     fx: 'spear',

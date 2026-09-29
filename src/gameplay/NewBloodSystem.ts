@@ -1,9 +1,23 @@
 import { ABILITIES, SPELL_FX, type AbilityId, type NewBloodId } from '../content/abilities';
 import { CAST_FLOW } from '../content/combatFlow';
+import { audio, type Sfx } from '../audio/Audio';
 import { fx } from '../graphics/fxTextures';
 import { fxImage } from '../graphics/fxImages';
 import type { AbilityContext, CastResult, CastTarget } from './AbilitySystem';
 import type { Corpse, Enemy, Intent, SimEvent } from './sim/types';
+
+const CAST_SFX: Record<NewBloodId, Sfx> = {
+  flail_swing: 'flail', lantern_cone: 'lantern', chain_pull: 'chain',
+  burn_the_dead: 'pyre', watchmans_ward: 'ward', cremate: 'pyre',
+  last_light: 'ward', palm_strike: 'palm', resonant_step: 'veilRite',
+  sound_the_corpse: 'choir', toll: 'choir', knell: 'choir',
+  choir_of_one: 'choir', great_toll: 'choir', lay_to_rest: 'ward',
+  hook_throw: 'chain', hex_charm: 'bloodRite', crow_swarm: 'crow',
+  harvest: 'bloodRite', butcher: 'bloodRite', murder_of_crows: 'crow',
+  spirit_bolt: 'spiritBolt', veil_form: 'veilRite', echo: 'veilRite',
+  crossing: 'veilRite', veil_tear: 'veilRite', between_worlds: 'veilRite',
+  hook_pull: 'chain',
+};
 
 /** The four Release 0.3 families. Corpse spends and persistent statuses resolve on the host. */
 export class NewBloodSystem {
@@ -31,6 +45,8 @@ export class NewBloodSystem {
     const p = this.ctx.player;
     if (Math.hypot(t.x - p.x, t.z - p.z) > 0.1) p.face(t.x, t.z);
     this.ctx.avatar.cast(attack ? 'attack' : 'cast', attack ? 2.8 : 2, p.facing, CAST_FLOW[id].gestureSeconds);
+    const sfx = CAST_SFX[id as NewBloodId];
+    if (sfx) audio.play(sfx, p.x, p.z);
   }
 
   private ring(x: number, z: number, r: number, duration = 0.5) {
@@ -235,6 +251,11 @@ export class NewBloodSystem {
   onEvent(ev: Extract<SimEvent, { t: 'newBlood' }>, mine: boolean) {
     if (!ev.ok) return;
     this.ring(ev.x, ev.z, ev.kind === 'last_light' || ev.kind === 'great_toll' ? 6 : 1.5);
+    // The caster heard the gesture already; partners hear its impact from the world.
+    if (!mine) {
+      const sfx = CAST_SFX[ev.kind as NewBloodId];
+      if (sfx) audio.play(sfx, ev.x, ev.z, 0.7);
+    }
     if (!mine) return;
     const p = this.ctx.player;
     if (ev.kind === 'burn_the_dead' || ev.kind === 'cremate' || ev.kind === 'harvest') p.addResource(ev.amount ?? 0);

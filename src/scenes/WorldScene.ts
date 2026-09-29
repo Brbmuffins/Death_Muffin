@@ -45,7 +45,7 @@ import { computeStats, STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
 import { NecromancerAvatar, PrelateView } from '../graphics/Avatars';
 import { CameraRig } from '../graphics/CameraRig';
 import { Effects, type Handle } from '../graphics/Effects';
-import type { BinbunSpawn } from '../graphics/binbun/BinbunFX';
+import { preloadBinbun, type BinbunSpawn } from '../graphics/binbun/BinbunFX';
 import { isBinbunImpact, type BinbunId } from '../graphics/binbun/catalog';
 import type { Gallery } from '../graphics/binbun/gallery';
 import { playFx } from '../graphics/binbun/presets';
@@ -76,6 +76,11 @@ const SNAPSHOT_MS = 100;
 const MOVE_SEND_MS = 100;
 const RESPAWN_MS = 4000;
 const RECALL_MS = 1500;
+const GROUND_FX_PRELOAD = [
+  'toxic_puddle', 'grave_hands_pulse', 'dirge_area', 'plague_bloom_area',
+  'enemy_breach_rim', 'crypt_mist', 'bell_toll_ring', 'miasma_cloud',
+  'grave_frost_mist', 'surge_eruption',
+] as const;
 const INTERACT_RANGE = 2.6;
 /** Counsel shown the first time each newer kind of dead climbs out near the player. */
 const FIRST_SIGHT_TIPS: Partial<Record<EnemyId, TipId>> = {
@@ -458,7 +463,11 @@ export class WorldScene implements GameScene, RuntimeView {
     this.scope.add(onSettingsChange((s) => this.onDifficultySetting(s.difficulty)));
     // The Binbun layer is extra polish: High quality only, so Low stays light and calm.
     this.effects.binbun.enabled = settings.quality === 'high';
-    this.scope.add(onSettingsChange((s) => (this.effects.binbun.enabled = s.quality === 'high')));
+    if (this.effects.binbun.enabled) preloadBinbun(GROUND_FX_PRELOAD);
+    this.scope.add(onSettingsChange((s) => {
+      this.effects.binbun.enabled = s.quality === 'high';
+      if (this.effects.binbun.enabled) preloadBinbun(GROUND_FX_PRELOAD);
+    }));
     this.scope.add(this.inventory.onChange(() => this.refreshStats()));
     this.scope.on(window, 'pagehide', () => {
       void this.progression.flush(true);
@@ -2919,6 +2928,7 @@ export class WorldScene implements GameScene, RuntimeView {
   unmount() {
     devAccess.active = false;
     this.ready = false;
+    audio.stopArea();
     getRuntime().setView(null);
     this.realtime.disconnect();
     this.progression.dispose();

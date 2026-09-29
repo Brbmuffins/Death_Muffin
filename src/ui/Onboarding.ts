@@ -4,7 +4,7 @@ import { browserStorage, type StorageLike } from '../gameplay/codexJournal';
 /**
  * First-time contextual tips, shown once per character. A small reliquary card
  * movable by its header: it never takes focus or pauses play, dismisses on click or
- * after 8s (longer cards stay longer), and queues so two tips never stack. "Don't show tips" (here or in
+ * after at least 25s (longer cards stay longer), and queues so two tips never stack. "Don't show tips" (here or in
  * Settings) turns the whole sequence off via app/settings `tips`.
  */
 export type TipId =
@@ -111,7 +111,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   auto_combat: {
     title: 'Settle into the fight',
-    body: 'On Easy, auto combat engages enemies in the current area, uses your equipped rites and signature, drinks healing flasks, and mends you while under attack. The Hollow Knight also guards automatically. Click or use movement keys to take control whenever you like. Toggle it with <kbd>G</kbd> or the Auto button.',
+    body: 'On Easy, auto combat engages enemies in the current area, uses equipped rites and may cast your signature when useful. It drinks healing flasks and mends you while under attack. The Hollow Knight also guards automatically. Click or use movement keys to take control. Toggle it with <kbd>G</kbd> or the Auto button.',
   },
   knight_rage: {
     title: 'Rage, not essence',
@@ -151,7 +151,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   thrall: {
     title: 'Your first thrall',
-    body: 'It follows you and fights what you fight. Raise more with <kbd>2</kbd> up to your cap (the skull count, lower right); past the cap your oldest crumbles. A corpse remembers what it was: Penitents rise as archers, Deacons as bone mages, Carrion Sacs as plague bearers.',
+    body: 'It follows you and fights what you fight. Raise more with {key:exhume} up to your cap (the skull count, lower right); past the cap your oldest crumbles. A corpse remembers what it was: Penitents rise as archers, Deacons as bone mages, Carrion Sacs as plague bearers.',
   },
   litany: {
     title: 'Black Litany',
@@ -183,7 +183,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   signature: {
     title: 'Your signature rite awakens',
-    body: 'Level 10: press <kbd>R</kbd> for your discipline\'s own rite. Hover the new slot to read what it does.',
+    body: 'Level 10: press <kbd>R</kbd> for your class\'s own rite. Hover the new slot to read what it does. On Easy, Auto may also use it when the fight calls for it.',
   },
   ascend: {
     title: 'The Altar of Ascension stirs',
@@ -207,7 +207,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   grimoire: {
     title: 'The Grimoire',
-    body: 'New rites have come to you. Click the glowing <b>Grimoire</b> button at the end of your hotbar (or press <kbd>L</kbd>, or right-click a slot) to choose your left-click <b>primary</b> and which four rites sit on keys <kbd>1</kbd>–<kbd>4</kbd>. Click a socket, then a rite. Swap whenever you like; each rite keeps its own cooldown, and auto combat uses whatever is on your bar.',
+    body: 'New rites have come to you. Open the <b>Grimoire</b> at the end of the hotbar (or press <kbd>L</kbd>, or right-click a slot) to inspect your left-click <b>primary</b> and keys <kbd>1</kbd>–<kbd>4</kbd>. Necromancers can choose unlocked alternatives; other classes can rearrange their four rites, but have no extra choices yet. Each rite keeps its own cooldown, and Easy auto uses equipped rites.',
   },
   rite_skull: {
     title: 'Wailing Skull',

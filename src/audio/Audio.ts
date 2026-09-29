@@ -49,7 +49,23 @@ export type Sfx =
   | 'wail'
   | 'bloodStep'
   | 'frost'
-  | 'mantle';
+  | 'mantle'
+  // New Blood: distinct materials and gestures for the four newer families.
+  | 'flail'
+  | 'lantern'
+  | 'chain'
+  | 'pyre'
+  | 'ward'
+  | 'palm'
+  | 'choir'
+  | 'crow'
+  | 'bloodRite'
+  | 'veilRite'
+  | 'spiritBolt'
+  // Sparse environmental detail between combat sounds.
+  | 'distantBell'
+  | 'graveCreak'
+  | 'waterDrip';
 
 const MIN_GAP: Partial<Record<Sfx, number>> = {
   needleHit: 0.04,
@@ -61,6 +77,12 @@ const MIN_GAP: Partial<Record<Sfx, number>> = {
   wail: 0.08,
   tollSmall: 0.25,
   wave: 0.8,
+  flail: 0.12,
+  palm: 0.12,
+  crow: 0.35,
+  distantBell: 3,
+  graveCreak: 3,
+  waterDrip: 0.5,
 };
 
 const MAX_VOICES = 36;
@@ -76,12 +98,15 @@ class AudioEngine {
   private brown!: AudioBuffer;
   private footsteps: AudioBuffer[] = [];
   private footstepCursor = 0;
+  private accents = new Map<string, AudioBuffer>();
+  private lastAccent = new Map<string, number>();
   private voices = 0;
   private last = new Map<Sfx, number>();
   private listener = { x: 0, z: 0 };
   private ambience: { area: AreaId | null; nodes: AudioNode[]; gain: GainNode | null } = { area: null, nodes: [], gain: null };
   private wantArea: AreaId | null = null;
   private bossBed: GainNode | null = null;
+  private ambienceAccentTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     const start = () => {
@@ -125,6 +150,7 @@ class AudioEngine {
     this.noise = this.makeNoise(false);
     this.brown = this.makeNoise(true);
     void this.loadFootsteps();
+    void this.loadAccents();
     this.applyVolume();
     if (this.wantArea) this.setArea(this.wantArea);
   }
@@ -145,6 +171,17 @@ class AudioEngine {
       }
     }));
     this.footsteps = clips.filter((clip): clip is AudioBuffer => clip !== null);
+  }
+
+  private async loadAccents() {
+    const ctx = this.ctx!;
+    const names = ['dark-magic-spell-1', 'dark-magic-spell-2', 'magic-cast-whoosh-2-1'];
+    await Promise.all(names.map(async (name) => {
+      try {
+        const response = await fetch(new URL(`audio/crossworlds/${name}.ogg`, document.baseURI));
+        if (response.ok) this.accents.set(name, await ctx.decodeAudioData(await response.arrayBuffer()));
+      } catch { /* Procedural sound still plays when an accent cannot load. */ }
+    }));
   }
 
   private makeNoise(brown: boolean) {
@@ -211,6 +248,18 @@ class AudioEngine {
     this.voices++;
     node.onended = () => (this.voices = Math.max(0, this.voices - 1));
     node.stop(stopAt);
+  }
+
+  /** Quiet source-recording layer over a generated spell, rate-limited independently. */
+  private accent(name: string, x: number | undefined, z: number | undefined, t: number, volume: number, gap = 0) {
+    const clip = this.accents.get(name);
+    if (!clip || this.voices >= MAX_VOICES || t - (this.lastAccent.get(name) ?? -Infinity) < gap) return;
+    this.lastAccent.set(name, t);
+    const source = this.ctx!.createBufferSource();
+    source.buffer = clip;
+    source.connect(this.out(x, z, volume, 0.35));
+    source.start(t);
+    this.track(source, t + clip.duration + 0.01);
   }
 
   private env(g: GainNode, t: number, a: number, peak: number, d: number) {
@@ -310,6 +359,7 @@ class AudioEngine {
         this.burst(o, t, 0.4, 0.45, 'lowpass', 900, 200, 0.8, true);
         this.tone(o, 'sine', 220 * r(), 660, t + 0.05, 0.25, 0.6, 0.18);
         this.tone(o, 'sine', 330 * r(), 990, t + 0.1, 0.25, 0.55, 0.12);
+        this.accent('dark-magic-spell-2', x, z, t, 0.2, 2);
         break;
       }
       case 'thrallRise': {
@@ -334,6 +384,7 @@ class AudioEngine {
         this.tone(o, 'sine', 70, 28, t + 0.2, 0.01, 1.4, 1);
         this.burst(o, t + 0.2, 1.2, 0.6, 'lowpass', 1400, 120, 0.7, true);
         for (const f of [110, 130.8, 164.8, 196]) this.tone(o, 'sawtooth', f * r() * 0.5, f * 0.5, t + 0.22, 0.12, 1.6, 0.05);
+        this.accent('dark-magic-spell-1', x, z, t, 0.23, 3);
         break;
       }
       case 'enemyDeath': {
@@ -546,6 +597,97 @@ class AudioEngine {
         this.tone(o, 'sine', 82, 110, t + 0.1, 0.1, 0.7, 0.35);
         break;
       }
+      case 'flail': {
+        const o = this.out(x, z, 0.48 * intensity, 0.22);
+        this.burst(o, t, 0.15, 0.4, 'bandpass', 700, 2300, 0.8);
+        for (let i = 0; i < 3; i++) this.tone(o, 'triangle', (680 + i * 330) * r(), 280 + i * 70, t + 0.04 + i * 0.028, 0.002, 0.17, 0.12);
+        break;
+      }
+      case 'lantern': {
+        const o = this.out(x, z, 0.5, 0.35);
+        this.burst(o, t, 0.45, 0.32, 'bandpass', 400, 1900, 0.7);
+        this.tone(o, 'sine', 390, 520, t + 0.06, 0.09, 0.42, 0.11);
+        break;
+      }
+      case 'chain': {
+        const o = this.out(x, z, 0.55, 0.28);
+        this.burst(o, t, 0.22, 0.35, 'highpass', 1200, 2800, 1);
+        for (let i = 0; i < 4; i++) this.tone(o, 'triangle', (950 + i * 280) * r(), 600 + i * 90, t + i * 0.045, 0.002, 0.15, 0.1);
+        break;
+      }
+      case 'pyre': {
+        const o = this.out(x, z, 0.62 * intensity, 0.48);
+        this.burst(o, t, 0.65, 0.5, 'bandpass', 250, 1700, 0.8);
+        this.burst(o, t + 0.16, 0.4, 0.18, 'highpass', 3200, 5000, 0.8);
+        this.tone(o, 'sine', 72, 48, t + 0.08, 0.05, 0.55, 0.4);
+        break;
+      }
+      case 'ward': {
+        const o = this.out(x, z, 0.5, 0.58);
+        this.burst(o, t, 0.32, 0.2, 'bandpass', 2600, 700, 2);
+        this.tone(o, 'sine', 164 * r(), 122, t, 0.04, 0.72, 0.25);
+        this.tone(o, 'sine', 246 * r(), 185, t + 0.05, 0.04, 0.6, 0.12);
+        break;
+      }
+      case 'palm': {
+        const o = this.out(x, z, 0.48 * intensity, 0.45);
+        this.burst(o, t, 0.09, 0.48, 'lowpass', 1300, 260, 0.8);
+        this.tone(o, 'sine', 155 * r(), 72, t, 0.002, 0.18, 0.55);
+        this.tone(o, 'sine', 520 * r(), 460, t + 0.025, 0.003, 0.45, 0.11);
+        break;
+      }
+      case 'choir': {
+        const o = this.out(x, z, 0.58 * intensity, 0.85);
+        this.burst(o, t, 0.55, 0.22, 'bandpass', 380, 1200, 1.4);
+        for (const [i, f] of [196, 246.9, 293.7].entries()) this.tone(o, 'sine', f * r(), f * 0.995, t + i * 0.045, 0.12, 1.15, 0.14);
+        break;
+      }
+      case 'crow': {
+        const o = this.out(x, z, 0.36 * intensity, 0.35);
+        this.burst(o, t, 0.26, 0.24, 'bandpass', 2100, 900, 3);
+        this.tone(o, 'sawtooth', 560 * r(), 210, t, 0.025, 0.22, 0.065);
+        this.tone(o, 'sawtooth', 410 * r(), 180, t + 0.14, 0.012, 0.18, 0.035);
+        break;
+      }
+      case 'bloodRite': {
+        const o = this.out(x, z, 0.46 * intensity, 0.5);
+        this.burst(o, t, 0.37, 0.36, 'lowpass', 280, 1300, 0.8, true);
+        this.tone(o, 'sine', 96, 54, t + 0.08, 0.03, 0.52, 0.32);
+        break;
+      }
+      case 'veilRite': {
+        const o = this.out(x, z, 0.43 * intensity, 0.68);
+        this.burst(o, t, 0.55, 0.2, 'bandpass', 450, 3400, 0.9);
+        this.tone(o, 'sine', 360 * r(), 920, t + 0.06, 0.18, 0.52, 0.12);
+        this.tone(o, 'sine', 540 * r(), 1380, t + 0.11, 0.14, 0.47, 0.07);
+        this.accent('magic-cast-whoosh-2-1', x, z, t, 0.16 * intensity, 3);
+        break;
+      }
+      case 'spiritBolt': {
+        const o = this.out(x, z, 0.36 * intensity, 0.5);
+        this.burst(o, t, 0.18, 0.35, 'bandpass', 550, 2500, 2);
+        this.tone(o, 'sine', 650 * r(), 1150, t, 0.015, 0.25, 0.12);
+        break;
+      }
+      case 'distantBell': {
+        const o = this.out(x, z, 0.12, 0.95);
+        const f = 147 * r();
+        for (const [ratio, peak] of [[1, 0.08], [1.56, 0.025], [2.51, 0.018]])
+          this.tone(o, 'sine', f * ratio, f * ratio * 0.998, t, 0.004, 2.6, peak);
+        break;
+      }
+      case 'graveCreak': {
+        const o = this.out(x, z, 0.16, 0.8);
+        this.burst(o, t, 0.75, 0.2, 'bandpass', 850, 180, 8, true);
+        this.tone(o, 'sawtooth', 130 * r(), 83, t, 0.1, 0.6, 0.025);
+        break;
+      }
+      case 'waterDrip': {
+        const o = this.out(x, z, 0.18, 0.9);
+        this.tone(o, 'sine', 980 * r(), 470, t, 0.002, 0.24, 0.2);
+        this.burst(o, t, 0.025, 0.18, 'highpass', 2400, 2400);
+        break;
+      }
     }
   }
 
@@ -555,6 +697,7 @@ class AudioEngine {
   setArea(area: AreaId) {
     this.wantArea = area;
     if (!this.ctx || this.ambience.area === area) return;
+    if (this.ambienceAccentTimer) clearTimeout(this.ambienceAccentTimer);
     const c = this.ctx;
     const t = c.currentTime;
     if (this.ambience.gain) {
@@ -635,6 +778,41 @@ class AudioEngine {
         break;
     }
     this.ambience = { area, nodes, gain };
+    this.scheduleAmbienceAccent(area);
+  }
+
+  private scheduleAmbienceAccent(area: AreaId) {
+    this.ambienceAccentTimer = setTimeout(() => {
+      if (this.ambience.area !== area || !this.ctx) return;
+      const palette: Record<AreaId, readonly Sfx[]> = {
+        chapterhouse: ['graveCreak', 'distantBell'],
+        acre: ['graveCreak', 'distantBell'],
+        graves: ['graveCreak', 'distantBell'],
+        ossuary: ['waterDrip', 'graveCreak'],
+        nave: ['waterDrip', 'distantBell'],
+        sanctum: ['distantBell', 'graveCreak'],
+      };
+      const sounds = palette[area];
+      const distance = 7 + Math.random() * 9;
+      const angle = Math.random() * Math.PI * 2;
+      this.play(sounds[Math.floor(Math.random() * sounds.length)],
+        this.listener.x + Math.cos(angle) * distance,
+        this.listener.z + Math.sin(angle) * distance);
+      this.scheduleAmbienceAccent(area);
+    }, 9000 + Math.random() * 9000);
+  }
+
+  stopArea() {
+    this.wantArea = null;
+    if (this.ambienceAccentTimer) clearTimeout(this.ambienceAccentTimer);
+    this.ambienceAccentTimer = null;
+    if (this.ctx && this.ambience.gain) {
+      const old = this.ambience;
+      old.gain!.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.5);
+      setTimeout(() => old.nodes.forEach((n) => (n as AudioScheduledSourceNode).stop?.()), 3000);
+    }
+    this.ambience = { area: null, nodes: [], gain: null };
+    this.setBossBed(false);
   }
 
   /** A slow war-drum pulse under boss fights. */

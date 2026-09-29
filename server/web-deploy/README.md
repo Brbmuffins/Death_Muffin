@@ -1,5 +1,7 @@
 # Web client deploy → https://playcrossworlds.com/play/
 
+> Legacy Crossworlds /play/ deployment instructions. Death Muffin uses the separate versioned service in server/death-muffin/; see docs/DEATH-MUFFIN-HANDOFF.md for its release process.
+
 Two files, one command. Serves the game at `/play/` (your existing root site and
 the Unity download page stay untouched).
 

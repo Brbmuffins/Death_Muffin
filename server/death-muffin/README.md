@@ -5,13 +5,15 @@ Leaderboard: https://muffindevelopment.com/death-muffin/leaderboard.html
 
 The supplied site design is preserved in `site/`, with live login and registration, animated smoke and ash, sound after the first browser interaction, and a lightweight leaderboard. Successful login waits for the gate effect before entering the game. Sound is muted by its existing toggle; browsers require a click or keypress before audio can start. OS reduced-motion preferences are respected.
 
-The game uses Diablo-style controls: left-click ground to move, click enemies to attack, aim with the mouse and press 1–4 for abilities, right-click corpses for Corpse Explosion (5 also works), R for the level-10 signature rite, and Shift-click to attack while standing. The cursor reticle follows the mouse. HUD buttons remain interactive; empty HUD space passes input to the game canvas. Each left-click chooses a fixed ground destination. Mouse movement turns and aims a standing hero; walking faces its path, and holding the mouse does not add a second steering input. Generated hero models are aligned from their authored +X front to gameplay’s +Z heading. Help cards stay visible for at least 25 seconds, extend with text length, pause on hover, and can be clicked to dismiss. Status messages stay for at least eight seconds.
+The game uses Diablo-style controls: left-click ground to move, click enemies to attack, aim with the mouse and press 1–4 for equipped rites, right-click or press 5 for the class's corpse action, R or 6 for the level-10 signature rite, and Shift-click to attack while standing. The cursor reticle follows the mouse. HUD buttons remain interactive; empty HUD space passes input to the game canvas. Each left-click chooses a fixed ground destination. Mouse movement turns and aims a standing hero; walking faces its path, and holding the mouse does not add a second steering input. Generated hero models are aligned from their authored +X front to gameplay’s +Z heading. Help cards stay visible for at least 25 seconds, extend with text length, pause on hover, and can be clicked to dismiss. Status messages stay for at least eight seconds.
 
-Auto combat starts enabled: stand near enemies to fight with basic rites, click to move, and toggle **G** or the Auto HUD button. Hold **1–4** to repeat at the cursor. Signatures stay manual. Cast recovery is shorter; gestures blend into walking, projectile impacts match damage, and visual clutter/shake are reduced.
+On Easy, auto combat starts enabled: the hero engages enemies in the current area, uses equipped rites and may cast a signature when its conditions fit. Click or use movement keys to take control, and toggle **G** or the Auto HUD button. Hold **1–4** to repeat at the cursor. Cast recovery is short; gestures blend into walking, projectile impacts match damage, and visual clutter/shake is bounded.
 
 Use **Settings → Change class** at any time. The same character keeps level, XP, gold, items and permanent progress and returns to the Chapterhouse. The live database already has the nullable `discipline_index` override; new installations with the original character schema must apply `backend/migrations/001-discipline-index.sql` once before starting this backend. Do not rerun it blindly against the current VPS.
 
-For current deployment, validation, Git and rollback details, read [the agent handoff](../../docs/DEATH-MUFFIN-HANDOFF.md).
+For the last recorded deployment, validation, Git and rollback details, read
+[the agent handoff](../../docs/DEATH-MUFFIN-HANDOFF.md). For work newer than
+that release, check [HANDOFF](../../HANDOFF.md) and `git status --short`.
 
 ## Services and isolation
 
@@ -42,7 +44,11 @@ Copy `site/` to `/var/www/death-muffin/` and `dist/` to its `play/` folder. Inst
 
 ## Validation
 
-Current pass: 122 client tests, TypeScript check, both server test suites and production build passed. Browser checks cover all four models and preserved saves, continuous stationary combat/facing/animation, manual movement priority, menu/toggle suspension and held casts. Live class API tests verify ownership, invalid input, saved stats/gear/necro progress and immediate leaderboard updates. Test accounts were removed.
+The initial 2026-09-27 pass had 122 client tests plus TypeScript, server and
+build checks. Later releases added classes, rites and tests; use the current
+checkout's commands in `CLAUDE.md` for today's result. Initial browser checks
+covered preserved saves, combat/facing/animation, manual movement priority,
+menu/toggle suspension and held casts. Temporary test accounts were removed.
 
 
 Domain migration checks verified the supplied owner's login and existing character, temporary account creation, rendered game world, authenticated co-op over the new domain, progress API, leaderboard, HTTP-to-HTTPS and old-domain redirects, and availability of both other sites. The temporary test account was removed. The existing Muffin Development front end and Workbench API were not changed.

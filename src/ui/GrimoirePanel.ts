@@ -47,7 +47,7 @@ export class GrimoirePanel extends SimplePanel {
   /** Redraw after the loadout or level changes (no-op while closed). */
   render() {
     if (!this.el) return;
-    const { rites, level } = this.state();
+    const { rites, level, kit } = this.state();
     const body = this.el.querySelector<HTMLDivElement>('[data-body]')!;
     const socket = (id: AbilityId, key: Socket, label: string) => `
       <button type="button" class="cw-grim-socket${this.selected === key ? ' on' : ''}" data-socket="${key}" aria-pressed="${this.selected === key}" aria-label="Select ${label}: ${ABILITIES[id].name}">
@@ -56,10 +56,10 @@ export class GrimoirePanel extends SimplePanel {
         <span class="nm">${ABILITIES[id].name}</span>
       </button>`;
     const primaryMode = this.selected === 'primary';
-    const { kit } = this.state();
     const list = primaryMode ? kit.primaries : kit.grimoire.filter((id) => this.role === 'all' || rolesOf(id).includes(this.role));
+    const choices = kit.grimoire.length > LOADOUT_SLOTS || kit.primaries.length > 1;
     body.innerHTML = `
-      <p class="cw-settings-note">Click a socket, then click a rite to place it there. <b>LMB</b> is your free left-click attack; keys <kbd>1</kbd>–<kbd>4</kbd> hold any four rites. A rite already on another key swaps places, and cooldowns stay with the rite. Right-click a hotbar slot to jump here. ${ABILITIES[kit.rmb].name} and your signature rite stay where they are.</p>
+      <p class="cw-settings-note">${choices ? 'Click a socket, then an unlocked rite to equip it.' : 'Your class has one primary and four rites; you can rearrange the rites on keys 1–4.'} <b>LMB</b> is your left-click attack. A rite already on another key swaps places, and cooldowns stay with the rite. Right-click a hotbar slot to jump here. ${ABILITIES[kit.rmb].name} and your signature rite stay where they are.</p>
       <div class="cw-grim-bar" aria-label="Current rotation">
         ${socket(rites.primary, 'primary', 'LMB')}
         ${rites.keys.map((id, i) => socket(id, i, String(i + 1))).join('')}

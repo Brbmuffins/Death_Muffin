@@ -2,20 +2,20 @@
   <img src="public/art/crossworlds-logo.png" alt="Crossworlds" width="360" />
 </p>
 
-<p align="center"><em>A dark fantasy necromancer action RPG in the browser.</em></p>
+<p align="center"><em>A dark fantasy action RPG in the browser, with nine playable classes.</em></p>
 
 ![A fight in the Hollow Graves: bone spikes, rot miasma and jade-ringed thralls](docs/screenshots/graves-battle.webp)
 
-Crossworlds is set in a dying diocese consumed by necromancy. You are a grave-worker of the
-**Ossuary Covenant**, reclaiming one connected realm — haunted graveyards, bone-filled
+Death Muffin is set in a dying diocese consumed by necromancy. Choose a path in the
+**Ossuary Covenant** and reclaim one connected realm — haunted graveyards, bone-filled
 ossuaries, a drowned cathedral nave and the bell sanctum at its heart. Farm endless waves,
-turn every corpse into a servant or a weapon, collect equipment, and push your **Damage**
+turn corpses into servants or weapons, collect equipment, and push your **Damage**
 and **Wave Speed** higher. Faster waves bring greater pressure — and better rewards. Beat the
 Bell-Sworn Prelate, then **Ascend**: burn the run for permanent boons and a world that grows older
 and deadlier every time.
 
 There are no short missions and no extraction timers. Enter the world, farm the dead,
-improve your build, break the seals, and become an unstoppable master of the dead —
+improve your build, break the seals, and master your chosen class —
 alone or with up to nine friends.
 
 ---
@@ -42,7 +42,7 @@ Use **Settings → Change class** whenever you want. Your character ID, level, g
 
 1. **Enter the world** at a fixed, safe spawn beside the **Sexton's Acre** entrance. Click nearby trees, ore, fishing spots or graves to begin gathering without fighting; **P** opens Skills. When you want combat, walk east into the Chapterhouse, then north into the Hollow Graves. The Chapterhouse holds your Reliquary (inventory), Workbench (crafting) and Altar; **T** recalls you there.
 2. **Walk into a hunting ground.** The dead claw out of grave breaches in continuous waves.
-3. **Kill → corpses.** Every corpse is a choice: raise it as a thrall, feed it to Black Litany, detonate it — or lose it to a Crypt Deacon.
+3. **Kill → corpses.** For a necromancer, every corpse is a choice: raise it as a thrall, feed it to Black Litany, detonate it — or lose it to a Crypt Deacon. The other classes use bodies in their own ways.
 4. **Loot** gold, soul shards (from elites) and relics — equip upgrades on the spot.
 5. **Spend gold** on **Damage** (clear faster) and **Wave Speed** (more enemies, more reward — a risk dial you control).
 6. **Break seals**: kill enough in an area to open the next one. At the end: offer soul shards at the Sundered Bell and awaken the Prelate.
@@ -54,10 +54,12 @@ Use **Settings → Change class** whenever you want. Your character ID, level, g
 
 ## The nine disciplines
 
-Every Covenant necromancer raises the dead. How you spend them is your discipline.
-Five other paths now fight beside them, each with its own resource and seven rites.
+Four Covenant necromancer disciplines share Grave Essence and corpse rites. Five other classes
+have their own resources and seven-rite kits. Open the Grimoire (**L**) to inspect your class's
+rites. The Hollow Knight and the four newer families can rearrange their four equipped rites,
+but do not have alternative rites yet.
 
-![The four disciplines before the Altar of Ascension](docs/screenshots/disciplines-lineup.webp)
+![The original four necromancer disciplines before the Altar of Ascension](docs/screenshots/disciplines-lineup.webp)
 
 | | Discipline | Passive | Plays like |
 |---|---|---|---|
@@ -79,7 +81,7 @@ At **level 10** each discipline wakes its own **signature rite** on **R** — se
 
 ### The Hollow Knight
 
-The first class that is **not** a necromancer. It raises nothing and spends no Grave Essence — it
+The Hollow Knight raises nothing and spends no Grave Essence — it
 carries a sword and a shield, and it runs on **Rage**.
 
 | | Class | Resource | Plays like |
@@ -89,7 +91,7 @@ carries a sword and a shield, and it runs on **Rage**.
 | Slot | Rite | What it does |
 |---|---|---|
 | **LMB** | **Hollow Cut** | A 110° sword arc 2.4m in front of you. Free, and pays 4 Rage per body it cuts. |
-| **1** | **Shield Bash** | Charge 3m; the first ordinary enemy struck is stunned 0.8s and loses any windup. Boss stagger is still pending. |
+| **1** | **Shield Bash** | Charge 3m; the first ordinary enemy struck is stunned 0.8s and loses any windup. In the current source, a boss hit briefly staggers its attack clock; check [HANDOFF](HANDOFF.md) for release status. |
 | **2** | **Grave Slam** | 30 Rage. Leap up to 8m to the cursor and strike everything within 3m of the landing. |
 | **3** | **Bulwark** *(level 3)* | 2s: 60% less damage **from the front only**. A blow in the first 0.25s is a perfect block — half reflected, +15 Rage. |
 | **4** | **Corpse Vigil** *(level 5)* | Consume a body to regain 3% health per second for 4s. Your only heal. |
@@ -401,8 +403,9 @@ opening a panel, a full bag or a hit stops you.
 <td><img src="docs/screenshots/codex-professions.webp" alt="The Codex Professions tab" /><br/><sub><b>Codex · Professions</b></sub></td>
 </tr></table>
 
-Grave Gardening (seeds, herb beds and tree patches) and new processing recipes are the next phases in
-[docs/PROFESSIONS-ROADMAP.md](docs/PROFESSIONS-ROADMAP.md). Node models from the art pipeline replace the code-built stand-ins as they land.
+Wood, fish and bone processing recipes are available at the stations. Grave Gardening
+(seeds, herb beds and tree patches) remains a future phase in
+[docs/PROFESSIONS-ROADMAP.md](docs/PROFESSIONS-ROADMAP.md).
 
 ---
 
@@ -455,19 +458,20 @@ Rarity is shown by colour *and* mark: · common, ◆ uncommon, ◆◆ rare, ◆�
 - **Wave Speed is a dial.** Turn it down to recover, up when your build is carrying — the rewards scale with the danger.
 - **Watch the ground.** Bronze = bell/sound attacks, olive = poison, crimson rings = curses. Telegraphs always come before damage.
 
-Planned content (new disciplines, spells, bosses and systems) lives in [FUTURE_CONTENT.md](FUTURE_CONTENT.md).
+Further ideas and proposed systems live in [FUTURE_CONTENT.md](FUTURE_CONTENT.md); check
+[the current handoff](HANDOFF.md) before treating a proposal as shipped.
 
 ---
 
 ## New to the Covenant?
 
 The game teaches itself as you go. **Covenant counsel** cards appear above the hotbar the first time
-something matters: a welcome in the Chapterhouse, how to move and needle, your first corpse and thrall,
+something matters: a welcome in the Sexton's Acre, how to move and use your primary attack, your first corpse and thrall,
 running out of essence, a Litany worth casting, a pack standing on a corpse, low health, your first elite,
 surge and relic, a full Soul Harvest, a Sanctified enemy, the Codex, the Grimoire when your first new
 rite unlocks (and each new rite the first time you put it on a key), your signature rite at level 10,
 five soul shards, the Altar after your first Prelate kill, Ashes waiting to be spent, and on the skilling side your first
-visit to the Sexton's Acre, your first node, a rich node, a station, a full bag and your first skill level-up. Each shows once per character, never pauses the game, and stays up long enough to
+visit to the Sexton's Acre, your first node, a rich node, a station, a full bag and your first skill level-up. Counsel starts below your portrait. Each card shows once per character, never pauses the game, and stays up long enough to
 read. Drag the **Covenant counsel** header to move it; arrow keys on the focused header also move it. Its position is remembered across cards and reloads and kept inside the screen. Turn them off (or **Show tips again**) in Settings (**Esc**). **K** opens the Codex any time.
 
 ![A Covenant counsel card welcoming a new necromancer to the Chapterhouse](docs/screenshots/covenant-counsel.webp)
@@ -481,15 +485,15 @@ read. Drag the **Covenant counsel** header to move it; arrow keys on the focused
 | Minimap click | Travel to a walkable location; sealed halls remain closed |
 | Hover/focus spell | Detailed spell information and combat tips |
 | Left click | Move · attack the enemy under the cursor · use an object · work a gathering node (tree, seam, fishing spot, grave) |
-| Shift + click | Cast your left-click primary (Bone Needle, Bone Fan or Rot Lance) without moving |
-| **1 2 3 4** (hold to repeat) | Your four Grimoire rites, aimed at the cursor (start: Marrow Spear · Exhume · Miasma Circle · Black Litany) |
-| **L** · right-click a slot | Grimoire: choose your left-click primary and which rites sit on 1–4 (new rites at levels 2 / 3 / 4 / 5 / 6 / 7 / 8 / 12) |
-| Right-click · **5** | Corpse Explosion on the corpse nearest the cursor (works while holding left-click to move) |
-| **R** · **6** | Your discipline's signature rite (unlocks at level 10) |
+| Shift + click | Cast your class's left-click primary without moving |
+| **1 2 3 4** (hold to repeat) | Four equipped rites, aimed at the cursor (necromancer start: Marrow Spear · Exhume · Miasma Circle · Black Litany) |
+| **L** · right-click a slot | Grimoire: inspect your class kit and choose available alternatives (necromancers gain more rites as they level) |
+| Right-click · **5** | Your class's corpse rite (Corpse Explosion for necromancers; works while holding left-click to move) |
+| **R** · **6** | Your class's signature rite (unlocks at level 10) |
 | **Q** | Drink a healing flask |
 | **T** | Return to the Chapterhouse |
 | **I / C / P / M / K** | Reliquary · Workbench · Skills · Waystones · Codex (lore + everything you've met) |
-| **G** | Toggle Easy auto combat (enabled by default; engages nearby enemies) |
+| **G** | Toggle Easy auto combat (enabled by default; engages enemies in the current area) |
 | **Esc** | Settings (Change class, difficulty, auto gathering, graphics, volume, reduced motion, damage numbers, tips) |
 | Click the Altar | Altar of Ascension (in the Chapterhouse) |
 | Wheel · WASD · Enter | Zoom · walk (fallback) · chat |
@@ -508,19 +512,24 @@ material contrast — soot, obsidian, plum, old bone, cold moonlight — with vi
 Every hero, monster and prop is generated and rigged through a reproducible pipeline
 (Gemini concept → Tripo 3D low-poly model → auto-rig → per-clip animation → optimised GLB);
 prompts, task ids and costs are recorded in [`art-manifest/`](art-manifest). Sound is mostly
-procedural WebAudio (bells, bone, rot, wind), with two CC0 Kenney footstep clips. See [ASSET_PIPELINE.md](ASSET_PIPELINE.md).
+procedural WebAudio (bells, bone, rot, wind), with two CC0 Kenney footstep clips.
+The source build also includes three quiet Crossworlds spell accents; their origin and
+release review are recorded in [the audio note](docs/CROSSWORLDS-AUDIO.md).
+See [ASSET_PIPELINE.md](ASSET_PIPELINE.md).
 
 ---
 
 ## Development
 
 ```
-npm install
+npm ci
 npm run dev            # http://localhost:5188
 ```
 
 - `http://localhost:5188/?offline` — DEV-only offline mode: an in-browser mock of the auth server.
-- Live server: the dev server proxies the REST API to `playcrossworlds.com:3000` (override with `VITE_API_PROXY_TARGET`).
+- Without `?offline`, Vite's default API proxy points at the original Crossworlds auth server.
+  For Death Muffin integration, set `VITE_API_PROXY_TARGET` to the separate Death Muffin API;
+  use the [VPS handoff](docs/DEATH-MUFFIN-HANDOFF.md) for its current address and deployment procedure.
 - Co-op locally: `cd server/realtime && npm install && cp .env.example .env && node server.js`, then `?offline&coop` in two tabs.
 
 ```
@@ -529,24 +538,24 @@ npm test               # game-logic unit tests (vitest)
 npm run test:server    # realtime + necro-progress server tests (node:test; run `npm ci` in server/realtime first)
 npm run build
 npm run balance        # headless bot farms every area × level band × discipline (BALANCE.md)
-npm run balance:boss   # headless Prelate fights, dodging and not
+npm run balance:boss   # headless Prelate fights and dodging
                        # env: BALANCE_SEEDS, BALANCE_AREAS, BALANCE_BANDS, BALANCE_DIFFICULTY, BALANCE_ASCENSION
 npm run build:server-rules   # re-bundle src/gameplay/necroRules.ts for the VPS package (after changing prices/unlocks/Ascension)
 ```
 
-**Where progress lives.** Level, XP and gold are saved through the existing auth server. Upgrade tiers, Soul Shards,
-area kills, seals, Ascension rank, Ashes and boons go to `/api/necro-progress/*` once the VPS installs it
-([server/VPS_HANDOFF.md](server/VPS_HANDOFF.md)). Until then they stay in the browser's localStorage. On the first connect
-the browser save is uploaded once, and after that the server's copy wins. Server `error` messages show as toasts.
-Skill levels and gathered items live on the Death Muffin backend (`POST /api/gather`,
-[server/death-muffin/GATHERING_DEPLOY.md](server/death-muffin/GATHERING_DEPLOY.md)); the rules are shared through
-`src/gameplay/gatheringRules.ts`, bundled by `npm run build:server-rules`.
+**Where progress lives.** `?offline` uses a browser-local mock and localStorage. In the hosted
+Death Muffin game, the separate Death Muffin API owns accounts, characters, inventory,
+progression and gathering. The client uses `/api/necro-progress/*` for tiers, shards,
+seals and Ascension, and `/api/gather` for server-rolled profession rewards.
+Shared rules are bundled by `npm run build:server-rules`; see
+[the VPS handoff](docs/DEATH-MUFFIN-HANDOFF.md) and
+[gathering deployment notes](server/death-muffin/GATHERING_DEPLOY.md).
 
 DEV console hooks (`window.__cwDebug`, offline dev only): `advance(s)`, `goto(area)`, `unlockAll()`, `god()`,
 `ring(def, n, r)`, `spawn(def, elite, affix)`, `surge()`, `souls()`, `xp(n)`, `perf()`, `prelateSlain()`, `altar()`,
 dev access (the owner's `brbmuffins` account or any `gm_enabled` character: every rite, area and gathering tier as a runtime overlay, a **DEV** chip by the level badge, Settings toggle to preview as a normal player), gathering QA `nodes(area)`, `gatherAt(type)`, `gathering()`, `skill(id, level)`, `station(kind)`, `hoverNode(id)`, BinbunVFX review `vfx(id, colors?)`, `vfxGallery(page)` (16 per page, `-1` closes), `vfxCount()` and more.
 
-Docs: [CLAUDE.md](CLAUDE.md) (working context) · [HANDOFF.md](HANDOFF.md) (current state) ·
+Docs: [documentation map](docs/README.md) · [CLAUDE.md](CLAUDE.md) (working context) · [HANDOFF.md](HANDOFF.md) (current state) ·
 [PHASE_REPORTS.md](PHASE_REPORTS.md) (what's built) · [BALANCE.md](BALANCE.md) (targets + numbers) ·
 [NECROMANCER_REDESIGN_AUDIT.md](NECROMANCER_REDESIGN_AUDIT.md) (design direction) ·
 [ASSET_PIPELINE.md](ASSET_PIPELINE.md) · [FUTURE_CONTENT.md](FUTURE_CONTENT.md) ·

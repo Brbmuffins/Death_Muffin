@@ -1,5 +1,10 @@
 # Brief: finish the five new class heroes (Release 0.3 "New Blood")
 
+> **Release update, 2026-09-29:** The five class kits were recorded as deployed
+> and publicly checked on 2026-09-28 in [the VPS handoff](../DEATH-MUFFIN-HANDOFF.md).
+> The original queue, branch and release-gate instructions below describe the
+> pre-deployment work and are preserved as history.
+
 Written 2026-09-27 (evening) on the workstation for the **cloud code agent**. The owner: "look at finishing the class
 heroes if those are already paid." They are — models, portraits, and now weapons, icons and sprites. What's left is
 code: a class framework, then one class at a time. Ground rules as in

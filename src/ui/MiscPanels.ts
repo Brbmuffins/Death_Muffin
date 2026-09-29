@@ -60,7 +60,7 @@ export class SettingsPanel extends SimplePanel {
         ${this.dev ? '<label class="row">Dev access (preview as a normal player when off)<input type="checkbox" data-dev aria-label="Dev access" /></label>' : ''}
         <label class="row">Auto combat (Easy only, G)<input type="checkbox" data-auto aria-label="Auto combat" /></label>
         <label class="row">Auto gathering<input type="checkbox" data-autogather aria-label="Auto gathering: move on to the next node of the same kind" /></label>
-        <p class="cw-settings-note">While standing, fight nearby enemies and use basic rites automatically. Click to move; hold 1–4 to repeat a rite. Signature rites stay under your control.</p>
+        <p class="cw-settings-note">On Easy, Auto engages enemies in your current area, uses equipped rites and may cast your signature when a fight calls for it. Click or use movement keys to take control; hold 1–4 to repeat a rite.</p>
         ${this.onResetTips ? '<label class="row">New to the Covenant?<button type="button" class="cw-button" data-resettips>Show tips again</button></label>' : ''}
         ${this.onChangeClass ? '<label class="row">Class<button type="button" class="cw-button" aria-label="Change class" data-changeclass>Change class</button></label>' : ''}
         ${code ? `<label class="row">Party world code<b style="font-family:var(--cw-font-numeric)">${code}</b></label>` : ''}
@@ -69,8 +69,8 @@ export class SettingsPanel extends SimplePanel {
           <kbd>Minimap</kbd><span>Click a walkable spot to travel there</span>
           <kbd>Hover / focus</kbd><span>Spell icon: cost, targeting, effects and combat counsel</span>
           <kbd>Shift+Click</kbd><span>Cast ${this.kitHelp.primary} without moving</span>
-          <kbd>1–4 (hold)</kbd><span>Your four Grimoire rites, at the cursor (start: ${this.kitHelp.rites.join(' · ')})</span>
-          <kbd>L</kbd><span>Grimoire (also the hotbar's Grimoire button, or right-click a slot) · choose your left-click primary and the rites on 1–4</span>
+          <kbd>1–4 (hold)</kbd><span>Your four equipped rites, at the cursor (start: ${this.kitHelp.rites.join(' · ')})</span>
+          <kbd>L</kbd><span>Grimoire (also the hotbar button, or right-click a slot) · inspect your class kit and choose available alternatives</span>
           <kbd>RMB · 5</kbd><span>${this.kitHelp.corpseAction} (corpse nearest the cursor)</span>
           <kbd>R · 6</kbd><span>Signature rite (unlocks at level 10)</span>
           <kbd>Q</kbd><span>Drink a healing flask</span>

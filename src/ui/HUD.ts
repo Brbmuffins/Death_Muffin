@@ -74,7 +74,7 @@ export interface HudFrame {
     statuses: { icon: string; label: string; n: number }[];
     blurb: string;
   };
-  boss: null | { name: string; phase: number; hp: number; maxHp: number };
+  boss: null | { name: string; phase: number; hp: number; maxHp: number; phases?: readonly string[] };
 }
 
 export interface PartyMember {
@@ -113,7 +113,7 @@ export class HUD {
   constructor(
     root: HTMLElement,
     private cb: HudCallbacks,
-    /** The slots in order: the Grimoire loadout (keys 1–4), Corpse Explosion, the signature rite. */
+    /** The slots in order: the Grimoire loadout (keys 1–4), the class corpse action, the signature rite. */
     private hotbar: AbilityId[] = HOTBAR,
     private discipline?: Discipline,
     /** The left-click primary shown in the LMB socket. */
@@ -182,7 +182,7 @@ export class HUD {
           <div class="hud-slots-wrap">
             <div class="hud-slot primary" data-primarywrap>${this.primaryHtml()}</div>
             <div class="hud-slots">${slots}</div>
-            <button class="hud-grimoire-btn" data-grimbtn aria-label="Grimoire: choose your rites (L)">${ICON.grimoire}<span>Grimoire · L</span><span class="pip" data-grimpip hidden>NEW</span></button>
+            <button class="hud-grimoire-btn" data-grimbtn aria-label="Grimoire: inspect your rites (L)">${ICON.grimoire}<span>Grimoire · L</span><span class="pip" data-grimpip hidden>NEW</span></button>
           </div>
           <div class="hud-thralls" data-thralls aria-label="Thralls"></div>
         </div>
@@ -268,7 +268,7 @@ export class HUD {
   private primaryHtml() {
     const a = ABILITIES[this.primary];
     return `
-          <button data-slot="0" aria-label="${a.name} (left click). Click or right-click to change it in the Grimoire">
+          <button data-slot="0" aria-label="${a.name} (left click). Open the Grimoire to inspect this slot">
             <img src="${a.icon}" alt="" draggable="false" />
           </button>
           <span class="key">LMB</span>`;
@@ -389,7 +389,7 @@ export class HUD {
       <p class="spell-targeting">${esc(data.targeting)}</p>
       <ul class="spell-details">${data.details.map((d) => `<li>${esc(d)}</li>`).join('')}</ul>
       <div class="spell-tip"><b>Combat tip</b><p>${esc(data.tip)}</p></div>
-      <div class="spell-footer">${i < 4 ? 'Right-click or L to swap · ' : ''}Codex (K) · Esc closes this card</div>`;
+      <div class="spell-footer">${i < 4 ? 'Right-click or L for Grimoire · ' : ''}Codex (K) · Esc closes this card</div>`;
     this.tooltip.scrollTop = scroll;
     this.positionTooltip();
   }
@@ -543,7 +543,7 @@ export class HUD {
     if (b) {
       this.set('bname', `${b.name}|${b.phase}`, () => {
         this.$('[data-bname]').textContent = b.name;
-        this.$('[data-bphase]').textContent = ['', 'The bell is silent', 'The procession begins', 'The bell is breaking'][b.phase];
+        this.$('[data-bphase]').textContent = (b.phases ?? ['The bell is silent', 'The procession begins', 'The bell is breaking'])[b.phase - 1] ?? '';
       });
       this.set('bhp', Math.round((b.hp / b.maxHp) * 400), () => {
         this.$('[data-bhp]').style.width = `${Math.max(0, (b.hp / b.maxHp) * 100)}%`;

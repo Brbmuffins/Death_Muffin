@@ -53,6 +53,7 @@ const FADE_OUT = 0.3;
 // App-lifetime caches, like fxImages: the JSON, textures and geometries are shared by every Effects instance.
 const files = new Map<string, Promise<EffectTemplate | null>>();
 const ready = new Map<string, EffectTemplate | null>();
+const warmed = new Set<string>();
 const textures = new Map<string, THREE.Texture>();
 const geometries = new Map<string, THREE.BufferGeometry>();
 let blank: THREE.DataTexture | null = null;
@@ -76,7 +77,24 @@ export function loadBinbun(id: string): Promise<EffectTemplate | null> {
 }
 
 export function preloadBinbun(ids: readonly string[]) {
-  for (const id of ids) void loadBinbun(id);
+  // Spread the optional High-quality work across idle turns so entering the
+  // world does not parse every effect and bake every texture in one frame.
+  void (async () => {
+    for (const id of ids) {
+      if (warmed.has(id)) continue;
+      warmed.add(id);
+      const template = await loadBinbun(id);
+      if (template) {
+        for (const node of template.nodes) {
+          const material = node.material;
+          if (!material) continue;
+          if (material.texture) textureFor(material.texture);
+          for (const ref of Object.values(material.samplers)) textureFor(ref);
+        }
+      }
+      await new Promise<void>((resolve) => setTimeout(resolve, 80));
+    }
+  })();
 }
 
 function blankTexture() {
@@ -401,7 +419,9 @@ class Instance {
         part = pp;
         longest = Math.max(longest, (node.lifetime ?? 1) * (node.oneShot ? 1 : 1));
       } else if (node.type === 'mesh' && node.shape) {
-        const mat = buildMaterial(node.material, node.shape, textureFor);
+        // The converted toxic glow's overlay masks can light its square UV
+        // corners even though the source shape is a round puddle.
+        const mat = buildMaterial(node.material, node.shape, textureFor, tpl.id === 'toxic_puddle' && node.name === 'Glow');
         const mesh = new THREE.Mesh(geometryFor(node.shape), mat);
         mesh.matrixAutoUpdate = false;
         mesh.matrix.fromArray(node.matrix);

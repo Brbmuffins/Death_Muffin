@@ -1,29 +1,30 @@
-# HANDOFF — read this first
+# HANDOFF — current work first
 
-> **New Blood, 2026-09-28 (branch `claude/new-classes-framework`, undeployed):** Grave Warden, Bell Monk, Carrion Witch and Veilwalker now have seven rites each, family resources, hero models/gear, Codex and first-entry counsel. Hollow Knight was completed earlier on the same branch. All five passed offline browser entry, hero asset and primary attack checks (`tools/qa/new-blood-smoke.cjs`); the selection screen scrolls to Veilwalker, and Shield Bash staggers the boss. The class sprites are wired into combat effects. Echo requires an eligible echo corpse and Watchman's Ward slows by 25%. Warden Cone, Witch Harvest and Veil Tear were checked in the browser. Easy auto now uses equipped class rites, movement and defense; three-minute Graves browser samples had zero deaths for all five New Blood classes, with two final Veilwalker samples also using no flasks (see `BALANCE.md`). The old Medium headless bot remains a risk signal for manual play. Stage only; do not deploy without a release decision.
+Updated 2026-09-29. Read [the documentation map](docs/README.md) for the
+difference between source, published releases and historical plans. Update the
+**Current state** and **In flight** sections when stopping work.
 
-Living status document so any agent (or person) can pick the project up at any
-point. **Update the "Current state" and "In flight" sections whenever you stop.**
-> **VPS update, 2026-09-27:** Death Muffin now runs at https://muffindevelopment.com/death-muffin/. The live release includes Acre-first spawn, open-game AFK professions, ten-player co-op, starter-area visual/balance fixes, movable counsel and brighter gathering lighting; source, checks and deployment tooling are committed at the user’s explicit request. Read [docs/DEATH-MUFFIN-HANDOFF.md](docs/DEATH-MUFFIN-HANDOFF.md) for current deployment, class switching, combat flow, Git access and verification; older cloud-only status below is historical.
+The last recorded Death Muffin deployment is the 2026-09-28 New Blood release:
+Grave Warden, Bell Monk, Carrion Witch, Hollow Knight and Veilwalker are recorded
+as published and publicly checked in [the VPS handoff](docs/DEATH-MUFFIN-HANDOFF.md).
+The later AFK gathering tool visuals are also recorded there. This statement is
+based on that dated deployment record; local edits still need a release decision.
 
-Last updated: 2026-09-27 late, cloud session on `claude/adoring-knuth-hd1uox` (latest: **BinbunFX runtime + DEV gallery landed**, `origin/master` through `647c021` merged; see "In flight" → queue item 1 for the exact next step). Before that, 2026-09-27 evening, workstation ( spell-variety / dev-access / Binbun runtime / first-session brief + art for the cloud agent, see "In flight"; before that: BinbunVFX port researched + documented for Codex): **everything combined on `master`** (the professions commit `fa43c9c`
-fast-forwarded, plus the workstation's Grimoire, enemy pack, art batches and merge fixes, staged for the owner's
-push). The full art inventory is in [`docs/ART-BACKLOG.md`](docs/ART-BACKLOG.md). Before that, the cloud session on `claude/adoring-knuth-hd1uox`: **professions G0 + G1 + G2 + G4 built**
-(gathering rules + `/api/gather`, the Sexton's Acre, nodes + loop + Auto, Skills panel, stations, tips, Codex, README).
-G3 art has since landed from the workstation. Earlier the same day (Windows workstation session: **Grimoire + four new rites**, **enemy variety pack +
-processions**, **professions roadmap + agent briefs**; all staged, not committed. See the 2026-09-27
-entries in `PHASE_REPORTS.md`). Before that: 2026-09-26 cloud session (environment, balance + Prelate
-pass, difficulty, milestones, statuses, thrall variety, signature rites, onboarding, perf, Ascension,
-VPS storage handoff).
+This checkout is `codex/new-blood-release-20260928`. As of this update, audio and
+High-graphics fixes are staged, while separate area-boss work is unstaged. Check
+`git status --short` and both diffs before editing shared files; other
+contributors may have changed them since this note.
 
 ## 60-second orientation
 
-- **What it is:** Crossworlds — browser necromancer ARPG (Vite + TS + Three.js). One connected
-  world, continuous waves, corpses → thralls/spells, Damage & Wave Speed upgrades, co-op ≤10,
-  the Bell-Sworn Prelate boss. Player-facing guide: `README.md`. Design source: `NECROMANCER_REDESIGN_AUDIT.md`.
-- **Hard rules:** never modify the live REST server from this repo (write proposals in
-  `server/proposals/`); commits go through the user's GitHub Desktop (stage, don't commit,
-  unless the user explicitly asks); keys in `.ai-keys.local` are never printed or committed.
+- **What it is:** Death Muffin — browser dark-fantasy ARPG (Vite + TS + Three.js),
+  nine classes, one connected world, continuous waves, corpse mechanics,
+  Damage & Wave Speed upgrades and co-op ≤10. Player guide: `README.md`.
+- **Hard rules:** the original shared Crossworlds REST server is outside this repo
+  (write proposals in `server/proposals/`); Death Muffin's separate backend is
+  versioned under `server/death-muffin/`. Stage changes for the user's GitHub
+  workflow; do not commit unless explicitly asked. Never print or commit keys
+  from `.ai-keys.local`.
 - **Architecture map + verification recipe:** `CLAUDE.md`.
 - **Asset generation (Gemini/Tripo):** `ASSET_PIPELINE.md` — costs, specs, resumable tools.
 - **Scope:** focus on the game (mechanics, engine, rendering, content). The user already has a
@@ -44,7 +45,25 @@ npm run dev                       # or preview "crossworlds-web" in .claude/laun
 Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(seconds)`;
 `__cwShot('name')` saves the current frame to `docs/screenshots/`.
 
-## Current state (all verified in-browser on 2026-09-26)
+## Current state
+
+| Scope | Status | Evidence / next action |
+| --- | --- | --- |
+| Last recorded public release | New Blood classes and AFK gathering visuals, 2026-09-28 | [VPS deployment handoff](docs/DEATH-MUFFIN-HANDOFF.md) |
+| Audio and High-quality ground fixes | Staged locally; not deployed | Build, typecheck, VFX and browser graphics checks passed 2026-09-29; ear-test and source-audio rights review remain |
+| Area bosses | Unstaged work in this checkout | `src/content/bosses.ts`, `WorldScene.ts` and sim files; do not describe as published |
+| Documentation and help audit | Staged locally 2026-09-29 | Player/working/VPS READMEs, documentation map, historical briefs, counsel, Grimoire, HUD, Settings, Codex and spell cards aligned with current source; typecheck, 24 focused tests and local Markdown link audit passed |
+| Current full client test suite | 297 pass, 2 fail on this checkout | `layout-water.test.ts` overlaps the new Drowned Font; `necroServer.test.ts` finds a stale generated rules bundle. Resolve with the respective work owner. |
+
+### Historical baseline — verified in 2026-09-26, not a current status table
+
+2026-09-29 local pass: New Blood rites now have distinct procedural cast sounds,
+three quiet spell layers from the local Crossworlds Unity archive, and sparse
+area detail. High-quality ground VFX warm in small batches; static floor decals
+survive dense combat, and the toxic-puddle glow no longer draws a bright square.
+Production build, typecheck, VFX tests and browser graphics checks pass. Audio
+clips decoded in headless WebAudio; balance and loudness still need an ear-test.
+No deployment. Source and redistribution note: `docs/CROSSWORLDS-AUDIO.md`.
 
 | Area | Status | Where |
 |---|---|---|
@@ -89,6 +108,20 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 | Node art (Tripo `prop_node_*`), Grave Gardening (G5), new processing recipes (G6), long tail (G7) | 📝 G3 with the owner; G5–G7 not started | `docs/PROFESSIONS-ROADMAP.md` §10, §13 |
 
 ## In flight (check before starting overlapping work)
+
+- **2026-09-29 documentation/help audit:** staged locally. The source README
+  and in-game copy now reflect current kits, Easy auto and delivered professions;
+  the documentation map distinguishes source, published releases and historical
+  plans. Typecheck, 24 focused tests and the local Markdown link audit pass.
+  The full client suite's two known failures are listed above.
+- **2026-09-29 audio / High-quality graphics pass:** pending visible-browser
+  ear-test and any user-provided screenshot of other ground artifacts. The
+  existing full client suite has two failures outside this pass:
+  `layout-water.test.ts` sees the newly added `drowned_font` inside the nave's
+  designed water, and `necroServer.test.ts` reports a stale generated rules
+  bundle. Leave those with the concurrent boss/server-rules work owner.
+
+### Historical handoffs — dated records, not today's task queue
 
 - **2026-09-28 VPS session, deployed in two checkpoints** (tags `stable-20260928-flyers`, `stable-20260928-mobs-g6`):
   flyers, rites, backlog mobs, animation variety and Professions G6 are live, and migration 004 is applied. See PHASE_REPORTS.
@@ -228,7 +261,11 @@ stage-don't-commit rule): `git diff --binary <base> <branch> > x.patch && git ap
 Run it from bash; PowerShell pipes rewrite line endings and corrupt the patch. `git merge`
 refuses while the index has staged changes.
 
-## Known issues / next steps (priority order)
+## Historical follow-ups from 2026-09-26/27
+
+These notes explain earlier decisions. Several deployments and queue items below
+have since happened; verify against **Current state**, the VPS deployment handoff
+and source before acting on them.
 
 **Needs the user (can't be done from a cloud container):**
 1. **Ear-test audio** in a visible browser (volumes, ambience crossfades, boss drum loop).

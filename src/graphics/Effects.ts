@@ -198,6 +198,8 @@ export interface DecalOptions {
   pulse?: number;
   /** Seconds before the decal appears (duration counts after the delay). */
   delay?: number;
+  /** Scenery decals stay in place when combat fills the transient effect pool. */
+  persistent?: boolean;
 }
 
 interface Transient {
@@ -206,6 +208,7 @@ interface Transient {
   duration: number;
   update: (t: number, k: number, dt: number) => void;
   pool: THREE.Object3D[];
+  persistent?: boolean;
 }
 
 export interface Handle {
@@ -357,10 +360,11 @@ export class Effects {
   }
 
   private add(tr: Transient): Handle {
-    // Cosmetic meshes have a fixed ceiling even in dense co-op bursts. Game
-    // callbacks live on projectiles, so retiring old visuals never drops hits.
-    if (this.transients.length >= 160) {
-      const old = this.transients.shift()!;
+    // Scenery uses the same decal renderer but must not be evicted by a dense
+    // fight. Bound only transient combat visuals; projectile callbacks are separate.
+    if (!tr.persistent && this.transients.filter((item) => !item.persistent).length >= 160) {
+      const oldest = this.transients.findIndex((item) => !item.persistent);
+      const [old] = this.transients.splice(oldest, 1);
       old.t = old.duration;
       old.mesh.visible = false;
       this.group.remove(old.mesh);
@@ -414,6 +418,7 @@ export class Effects {
       t: -delay,
       duration: o.duration,
       pool: this.decalPool,
+      persistent: o.persistent,
       update: (t, k) => {
         if (t < 0) {
           mat.opacity = 0;

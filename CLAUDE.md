@@ -1,17 +1,19 @@
 # Crossworlds Web — Claude Context
 
-Browser client for Crossworlds (Vite + TypeScript + Three.js): a dark-fantasy
-**necromancer** action RPG — one connected world (Chapterhouse → Hollow Graves →
+Browser client for Death Muffin / Crossworlds (Vite + TypeScript + Three.js): a dark-fantasy
+action RPG with nine classes — one connected world (Chapterhouse → Hollow Graves →
 Marrow Ossuary → Drowned Nave → Bell Sanctum), continuous waves, corpses as a
-resource, thralls, Damage / Wave Speed upgrades, the Bell-Sworn Prelate.
-Talks to the existing Node/Express auth server — **never modify server endpoints
-from this repo**; the REST API and MySQL schema are owned by the VPS
-(see `D:\Crossworlds\_CONTEXT\CLAUDE.md` for the server side). Server-side
-changes are written up as proposals in `server/proposals/`.
+resource, Damage / Wave Speed upgrades and boss fights. The original shared
+Crossworlds REST API is outside this repository: propose changes for it in
+`server/proposals/`. Death Muffin has its own versioned backend in
+`server/death-muffin/`; read `docs/DEATH-MUFFIN-HANDOFF.md` before touching its
+deployment or database.
 
 ## Read before working
 
-**Start with `HANDOFF.md`** — current state, in-flight branches, next steps. Update it when you stop.
+**Start with `HANDOFF.md`** — current state, active work and dated history.
+Use [the documentation map](docs/README.md) to find the right source for
+player behavior, deployment and plans. Update the handoff when you stop.
 
 | Doc | When |
 |---|---|
@@ -29,10 +31,13 @@ changes are written up as proposals in `server/proposals/`.
   print, commit, or bake them into client code.
 - Raw AI outputs go in `art-src/` (gitignored). Only optimized output ships in
   `public/models/`; generation records (prompts, task ids, credits) go in `art-manifest/`.
-- Server class indices: 0=Engineer, 1=Guardian, 2=Shadowblade, 3=Cleric,
-  4=Arcanist. The client presents them as disciplines 1=Ossuary, 2=Gravecaller,
-  3=Mourner, 4=Rotweaver (0 plays as Gravecaller). Mirrors: `src/gameplay/classes.ts`
-  (server names) and `src/content/disciplines.ts` (presentation) — keep in sync.
+- Legacy server class indices are 0=Engineer, 1=Guardian, 2=Shadowblade,
+  3=Cleric, 4=Arcanist. Client discipline indices are 1=Ossuary,
+  2=Gravecaller, 3=Mourner, 4=Rotweaver, 5=Grave Warden, 6=Bell Monk,
+  7=Carrion Witch, 8=Hollow Knight, 9=Veilwalker (legacy 0 plays as
+  Gravecaller). `src/gameplay/classes.ts`, `src/content/disciplines.ts` and
+  Death Muffin's `discipline.cjs` must agree; do not merge the legacy class
+  names with the discipline names.
 - Loot may only use item ids the live server knows (`src/content/items.ts`;
   a unit test enforces it).
 - Realtime = Socket.io on port 5000 locally (`server/realtime/`); the client must
@@ -67,8 +72,8 @@ server/         realtime service (+tests, deploy), web-deploy, proposals/
 ## Verification
 
 1. `npm run typecheck && npm test && npm run test:server`
-2. Dev server (**crossworlds-web** in `.claude/launch.json`, port 5188 — uses
-   node.exe directly because npm may not be on the app's PATH).
+2. Dev server: `npm run dev` (port 5188). `.claude/launch.json` is the older
+   Windows preview setup; on this VPS, `tools/qa/README.md` uses port 5199.
 3. `http://localhost:5188/?offline` = DEV-only in-browser mock backend (no live
    server, accounts in localStorage). Add `&coop` + start **crossworlds-realtime**
    to test co-op across two tabs.
