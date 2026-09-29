@@ -284,6 +284,8 @@ export class Effects {
   private additive: ParticleSystem;
   private smoke: ParticleSystem;
   private transients: Transient[] = [];
+  /** How many entries in `transients` are combat visuals (not persistent scenery); capped at 160. */
+  private combatTransients = 0;
   private decalPool: THREE.Object3D[] = [];
   private spritePool: THREE.Object3D[] = [];
   private beamPool: THREE.Object3D[] = [];
@@ -362,9 +364,11 @@ export class Effects {
   private add(tr: Transient): Handle {
     // Scenery uses the same decal renderer but must not be evicted by a dense
     // fight. Bound only transient combat visuals; projectile callbacks are separate.
-    if (!tr.persistent && this.transients.filter((item) => !item.persistent).length >= 160) {
+    // A running count keeps this off the hot path (no array walk per particle burst).
+    if (!tr.persistent && this.combatTransients >= 160) {
       const oldest = this.transients.findIndex((item) => !item.persistent);
       const [old] = this.transients.splice(oldest, 1);
+      this.combatTransients--;
       old.t = old.duration;
       old.mesh.visible = false;
       this.group.remove(old.mesh);
@@ -372,6 +376,7 @@ export class Effects {
     }
     tr.update(tr.t, tr.t / tr.duration, 0);
     this.transients.push(tr);
+    if (!tr.persistent) this.combatTransients++;
     return {
       kill: () => {
         tr.t = tr.duration;
@@ -857,6 +862,7 @@ export class Effects {
         this.group.remove(tr.mesh);
         tr.pool.push(tr.mesh);
         this.transients.splice(i, 1);
+        if (!tr.persistent) this.combatTransients--;
         continue;
       }
       tr.update(tr.t, tr.t / tr.duration, dt);

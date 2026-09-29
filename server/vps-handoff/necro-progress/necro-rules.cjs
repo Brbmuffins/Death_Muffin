@@ -32,6 +32,7 @@ __export(necroRules_exports, {
   importLocal: () => importLocal,
   normalise: () => normalise,
   purchase: () => purchase,
+  summonAreaBoss: () => summonAreaBoss,
   summonPrelate: () => summonPrelate,
   unlockKills: () => unlockKills,
   waveCost: () => waveCost
@@ -353,6 +354,86 @@ var WAVE_UPGRADE = {
   cost: (tier) => Math.round(120 * Math.pow(1.75, tier))
 };
 
+// src/content/bosses.ts
+var BOSS_IDS = ["gravedigger", "abbess", "congregation", "prelate"];
+var BOSSES = {
+  gravedigger: {
+    id: "gravedigger",
+    name: "The Gravedigger King",
+    title: "Lord of the Hollow Graves",
+    area: "graves",
+    arena: { x: -14, z: -22, r: 10 },
+    summonId: "kings_grave",
+    summonLabel: "The King's Grave",
+    shards: 2,
+    baseHp: 15500,
+    modelSlug: "boss_gravedigger_king",
+    portrait: "art/portraits/boss_gravedigger_king.webp",
+    color: 14722136,
+    phases: ["He digs", "The graves give up their dead", "Every grave is open"],
+    awaken: "The King climbs out of his own grave",
+    defeated: ["The King Is Buried", "The Hollow Graves fall quiet, for now"]
+  },
+  abbess: {
+    id: "abbess",
+    name: "The Bone Abbess",
+    title: "Keeper of the Marrow Ossuary",
+    area: "ossuary",
+    arena: { x: 48, z: -24, r: 10 },
+    summonId: "abbess_reliquary",
+    summonLabel: "The Abbess's Reliquary",
+    shards: 3,
+    baseHp: 13e3,
+    modelSlug: "boss_bone_abbess",
+    portrait: "art/portraits/boss_bone_abbess.webp",
+    color: 13148266,
+    phases: ["The niches sing", "The chorus doubles", "The Abbess rebuilds"],
+    awaken: "The skull niches begin to sing",
+    defeated: ["The Chorus Breaks", "The Abbess returns to her reliquary"]
+  },
+  congregation: {
+    id: "congregation",
+    name: "The Drowned Congregation",
+    title: "Choir of the Drowned Nave",
+    area: "nave",
+    arena: { x: 0, z: -61, r: 11 },
+    summonId: "drowned_font",
+    summonLabel: "The Drowned Font",
+    shards: 4,
+    baseHp: 19e3,
+    modelSlug: "boss_drowned_congregation",
+    portrait: "art/portraits/boss_drowned_congregation.webp",
+    color: 9417928,
+    phases: ["The hymn begins", "The water rises", "The flood hymn"],
+    awaken: "The nave water begins to rise",
+    defeated: ["The Hymn Ends", "The Congregation sinks back into the black water"]
+  },
+  prelate: {
+    id: "prelate",
+    name: "The Bell-Sworn Prelate",
+    title: "The Sundered Bell",
+    area: "sanctum",
+    arena: { x: 0, z: -116, r: 13 },
+    summonId: "sundered_bell",
+    summonLabel: "The Sundered Bell",
+    shards: 5,
+    baseHp: 26e3,
+    modelSlug: "prelate",
+    portrait: "art/portraits/prelate.webp",
+    color: 10644479,
+    phases: ["The bell is silent", "The procession begins", "The bell is breaking"],
+    awaken: "The Sundered Bell tolls for you",
+    defeated: ["The Bell Falls Silent", "The Prelate is unmade \u2014 for now"]
+  }
+};
+var isBossId = (v) => typeof v === "string" && BOSS_IDS.includes(v);
+function arenaRim(id, angle, frac = 0.85) {
+  const a = BOSSES[id].arena;
+  return [a.x + Math.sin(angle) * a.r * frac, a.z + Math.cos(angle) * a.r * frac];
+}
+var ABBESS_NICHE_SPOTS = [0, 1, 2, 3].map((i) => arenaRim("abbess", Math.PI / 4 + i * Math.PI / 2, 0.75));
+var GRAVEDIGGER_PITS = [0, 1, 2, 3].map((i) => arenaRim("gravedigger", Math.PI / 4 + i * Math.PI / 2, 0.55));
+
 // src/gameplay/necroRules.ts
 var NECRO_LIMITS = {
   killsPerSave: 900,
@@ -458,6 +539,17 @@ function summonPrelate(state) {
   s.summonsPending = Math.min(5, s.summonsPending + 1);
   return { ok: true, state: s };
 }
+function summonAreaBoss(state, boss) {
+  if (!isBossId(boss) || boss === "prelate") return { ok: false, error: "Unknown boss." };
+  const def = BOSSES[boss];
+  if (state.soulShards < def.shards) {
+    return { ok: false, error: `${def.summonLabel} demands ${def.shards} soul shards (you have ${state.soulShards}).` };
+  }
+  if (!state.unlockedAreas.includes(def.area)) return { ok: false, error: `${AREAS[def.area].name} is still sealed.` };
+  const s = copy(state);
+  s.soulShards -= def.shards;
+  return { ok: true, state: s };
+}
 function ashesOnAscend(state) {
   return state.ascension >= ASCENSION.maxRank ? 0 : ashesForRun(state.run, state.ascension);
 }
@@ -550,6 +642,7 @@ function normalise(raw) {
   importLocal,
   normalise,
   purchase,
+  summonAreaBoss,
   summonPrelate,
   unlockKills,
   waveCost

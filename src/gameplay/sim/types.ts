@@ -408,6 +408,8 @@ export type SimEvent =
   | { t: 'digIn'; id: number; x: number; z: number }
   /** Lich Acolyte reaches for a dying thrall (its Risen climbs out UNBIND.delayS later). */
   | { t: 'unbind'; id: number; x: number; z: number; tx: number; tz: number }
+  /** A summon the host refused because another boss is awake: the caller gets its shards back. */
+  | { t: 'bossBusy'; by: string; boss: BossId; awake: BossId }
   /** Bell Templar's shield turned a blow. */
   | { t: 'shieldBlock'; id: number; x: number; z: number }
   /** A gathering node depleted (felled, mined out, the spot drifted, the grave dug) and when it returns. */

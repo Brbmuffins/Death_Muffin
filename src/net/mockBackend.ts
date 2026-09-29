@@ -418,7 +418,7 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     acc.necro = necro.normalise(acc.necro ?? necro.blankState());
     return ok({ progress: acc.necro, gold: acc.character!.gold });
   }
-  if ((m = p.match(/^\/api\/necro-progress\/(save|purchase|summon-prelate|ascend|boon|import)$/)) && method === 'POST') {
+  if ((m = p.match(/^\/api\/necro-progress\/(save|purchase|summon-prelate|summon-boss|ascend|boon|import)$/)) && method === 'POST') {
     ownCharacter(acc, body.characterId);
     const c = acc.character!;
     const state = necro.normalise(acc.necro ?? necro.blankState());
@@ -429,6 +429,8 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
           ? necro.purchase(state, Number(c.gold) || 0, body.upgrade)
           : m[1] === 'summon-prelate'
             ? necro.summonPrelate(state)
+            : m[1] === 'summon-boss'
+              ? necro.summonAreaBoss(state, body.boss)
             : m[1] === 'ascend'
               ? necro.ascend(state)
               : m[1] === 'boon'

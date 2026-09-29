@@ -141,6 +141,8 @@ export abstract class BossBrain {
   protected abstract onPhase(p: BossPhase): void;
   protected abstract think(dt: number, players: PlayerBody[]): void;
   protected onDefeat() {}
+  /** Host migration: rebuild what only the old host's brain knew (niches, pits). Cooldowns restart. */
+  resume() {}
 
   /** Adds belong to this attempt; they leave with the boss without granting a kill or a corpse. */
   protected spawnAdd(def: EnemyId, x: number, z: number, elite = false) {
@@ -457,6 +459,12 @@ export class GravediggerBrain extends BossBrain {
     this.pits = [];
   }
 
+  /** Host migration: the pits are open again if he was already in his last phase. */
+  resume() {
+    this.pits = this.state.phase >= 3 ? GRAVEDIGGER_PITS.map(([x, z]) => [x, z] as [number, number]) : [];
+    this.eliteDone = this.state.hp / this.state.maxHp <= 0.45;
+  }
+
   protected tick(dt: number, players: PlayerBody[]) {
     // Walking into an open grave buries you (per-player cooldown so it can't chain-lock).
     if (!this.pits.length) return;
@@ -583,12 +591,25 @@ export class AbbessBrain extends BossBrain {
   }
 
   protected onDefeat() {
-    // The niches crumble with her (no XP, no corpse).
-    for (const id of this.niches) {
-      const e = this.sim.enemies.get(id);
-      if (e && e.state !== 'dead') e.hp = 0;
-    }
+    // The niches crumble with her. Removed outright (like adds), so no death event pays out a kill.
+    for (const id of this.niches) this.sim.enemies.delete(id);
     this.niches = [];
+  }
+
+  /** Host migration: re-find the standing niches by their fixed spots. */
+  resume() {
+    this.nicheSpots = ABBESS_NICHE_SPOTS.map(([x, z]) => [x, z] as [number, number]);
+    this.niches = [];
+    this.broken.clear();
+    this.nicheSpots.forEach(([x, z], i) => {
+      const e = [...this.sim.enemies.values()].find((o) => o.def === 'niche' && Math.hypot(o.x - x, o.z - z) < 1.5);
+      if (e) this.niches[i] = e.id;
+      else {
+        this.niches[i] = -1;
+        this.broken.add(i);
+      }
+    });
+    this.rebuilt = this.state.phase >= 3;
   }
 
   private alive(i: number) {

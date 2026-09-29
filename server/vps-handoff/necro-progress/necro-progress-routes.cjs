@@ -117,6 +117,7 @@ function createNecroProgressHandlers({ store, ownsCharacter, logger = console, p
       ),
     purchase: (req, res) => mutate(req, res, (s, g, b) => rules.purchase(s, g, b.upgrade)),
     summonPrelate: (req, res) => mutate(req, res, (s) => rules.summonPrelate(s)),
+    summonBoss: (req, res) => mutate(req, res, (s, _g, b) => rules.summonAreaBoss(s, b.boss)),
     ascend: (req, res) => mutate(req, res, (s) => rules.ascend(s)),
     boon: (req, res) => mutate(req, res, (s, _g, b) => rules.buyBoon(s, String(b.boonId || ''))),
     importLocal: (req, res) => mutate(req, res, (s, _g, b) => rules.importLocal(s, b.record)),
@@ -131,6 +132,7 @@ function mountNecroProgress(app, opts) {
   app.post('/api/necro-progress/save', auth, h.save);
   app.post('/api/necro-progress/purchase', auth, h.purchase);
   app.post('/api/necro-progress/summon-prelate', auth, h.summonPrelate);
+  app.post('/api/necro-progress/summon-boss', auth, h.summonBoss);
   app.post('/api/necro-progress/ascend', auth, h.ascend);
   app.post('/api/necro-progress/boon', auth, h.boon);
   app.post('/api/necro-progress/import', auth, h.importLocal);

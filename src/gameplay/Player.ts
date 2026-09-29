@@ -146,8 +146,10 @@ export class Player {
   }
 
   /** Walk the path, or step along a WASD direction. Returns true if moved. */
-  /** Scene-set movement multiplier (the Drowned Congregation's rising water). */
+  /** Scene-set movement multiplier (the Drowned Congregation's rising water, a Swiftness Flask). */
   moveMult = 1;
+  /** Buff flasks: when each one wears off (scene ms). */
+  buffUntil: { speed: number; damage: number; ward: number } = { speed: 0, damage: 0, ward: 0 };
 
   update(dt: number, now: number, keyDir: { x: number; z: number } | null): boolean {
     this.clockNow = now;

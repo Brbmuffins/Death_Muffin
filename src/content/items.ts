@@ -82,9 +82,9 @@ export const ITEMS: Record<string, ItemMeta> = {
   gem_void_sapphire: g('Void Sapphire', 'epic', 90, 'Its colour has no bottom.'),
   flask_hp_minor: m('Minor Healing Potion', 'common', 5, 'Restores 35% health. Press Q.'),
   flask_hp_major: m('Major Healing Flask', 'uncommon', 15, 'Restores 70% health. Press Q.'),
-  flask_speed: m('Swiftness Flask', 'uncommon', 10),
-  flask_damage: m('Forge-Tempered Flask', 'rare', 20),
-  flask_void_resist: m('Void Resist Flask', 'uncommon', 12),
+  flask_speed: m('Swiftness Flask', 'uncommon', 10, '+20% movement speed for 30 seconds.'),
+  flask_damage: m('Forge-Tempered Flask', 'rare', 20, '+15% spell damage for 45 seconds.'),
+  flask_void_resist: m('Void Resist Flask', 'uncommon', 12, 'Wards off 25% of all damage for 90 seconds.'),
   ring_copper: {
     name: 'Copper Ring', type: 'ring', rarity: 'uncommon', sell: 12,
     lore: 'A mourning band. The name inside is scratched out.', icon: 'art/items/ring_copper.png',
@@ -124,6 +124,16 @@ export const RARITY_MARK: Record<Rarity, string> = {
 export function itemMeta(id: string): ItemMeta {
   return ITEMS[id] ?? { name: id.replace(/_/g, ' '), type: 'material', rarity: 'common', sell: 0 };
 }
+
+/**
+ * Buff flasks (2026-09-29): these were craftable but did nothing when used. Values match the server's
+ * stat_bonus rows (speed 0.2 / 30 s, damage_amp 0.15 / 45 s, resist_void 0.25 / 90 s; void resist wards all damage).
+ */
+export const BUFF_FLASKS: Record<string, { kind: 'speed' | 'damage' | 'ward'; value: number; seconds: number; label: string }> = {
+  flask_speed: { kind: 'speed', value: 0.2, seconds: 30, label: 'Swift' },
+  flask_damage: { kind: 'damage', value: 0.15, seconds: 45, label: 'Forge-tempered' },
+  flask_void_resist: { kind: 'ward', value: 0.25, seconds: 90, label: 'Warded' },
+};
 
 export const HEALING_FLASKS: Record<string, number> = {
   flask_hp_major: 0.7,

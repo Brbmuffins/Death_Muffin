@@ -12,11 +12,13 @@ const character = (): Character => ({ id: 7, class_index: 2, class_name: 'Shadow
 
 describe('save before changing class', () => {
   beforeEach(() => {
+    // These tests fail saves on purpose; keep the expected retry warnings out of the test output.
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.stubGlobal('window', { setTimeout, clearTimeout });
     vi.mocked(saveProgress).mockReset().mockResolvedValue({ success: true });
     vi.mocked(saveInventory).mockReset().mockResolvedValue([]);
   });
-  afterEach(() => { vi.unstubAllGlobals(); });
+  afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
   it('waits for an outstanding progress save and saves later gains before returning', async () => {
     const progress = new Progression(character());
@@ -139,4 +141,35 @@ describe('save before changing class', () => {
       expect(usingFlask.count('flask_hp_minor')).toBe(1);
     } finally { usingFlask.dispose(); }
   });
+
+  it('a craft never overlaps a bag save, so spent ingredients cannot be written back', async () => {
+    const inventory = new Inventory(7);
+    try {
+      let release!: () => void;
+      const order: string[] = [];
+      vi.mocked(saveInventory).mockImplementation(() => new Promise((resolve) => {
+        order.push('save-start');
+        release = () => {
+          order.push('save-end');
+          resolve([]);
+        };
+      }));
+      inventory.add({ item_id: 'log_oak', quantity: 3 });
+      const saving = inventory.flush(); // a save is now in flight
+      const crafted = inventory.exclusive(async () => {
+        order.push('craft');
+        inventory.add({ item_id: 'log_oak', quantity: 1 }); // a pickup during the craft
+        inventory.replace([]); // the server's post-craft bag
+      });
+      await new Promise((r) => setTimeout(r, 20));
+      expect(order).toEqual(['save-start']); // the craft waits for the save to land
+      release();
+      await saving;
+      await crafted;
+      expect(order.slice(0, 3)).toEqual(['save-start', 'save-end', 'craft']);
+      // The mid-craft pickup replays on top of the fresh bag; the spent logs don't come back.
+      expect(inventory.count('log_oak')).toBe(1);
+    } finally { inventory.dispose(); }
+  });
 });
+

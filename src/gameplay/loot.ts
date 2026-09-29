@@ -251,8 +251,37 @@ export class Inventory {
     this.timer = window.setTimeout(() => void this.flush(), ms);
   }
 
+  /** Saves held while a server-side bag change (craft, equip) runs; see exclusive(). */
+  private held = 0;
+
+  /**
+   * Run a server-side bag change with no save in flight. Saves overwrite the whole bag, so a save racing a craft
+   * or equip could write spent ingredients back (duplicating them). This waits for any in-flight save, pushes
+   * pending pickups, then holds saves until `fn` (which should re-read the bag and call replace()) is done.
+   * Pickups made meanwhile replay on top of the fresh bag.
+   */
+  async exclusive<T>(fn: () => Promise<T>): Promise<T> {
+    const settle = async () => {
+      const deadline = performance.now() + 15000;
+      while (this.inFlight) {
+        if (performance.now() > deadline) throw new Error('Your items are still saving. Please try again.');
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 50));
+      }
+    };
+    await settle();
+    await this.flush();
+    await settle();
+    this.held++;
+    try {
+      return await fn();
+    } finally {
+      this.held--;
+      if (this.dirty && !this.held) this.scheduleFlush(300);
+    }
+  }
+
   async flush(): Promise<void> {
-    if (!this.dirty || this.inFlight) return;
+    if (!this.dirty || this.inFlight || this.held) return;
     this.inFlight = true;
     this.dirty = false;
     this.state = 'saving';

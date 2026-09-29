@@ -6,13 +6,13 @@ import { Scope } from '../app/Scope';
 import { ABILITIES, BULWARK, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
 import { kitFor, type Kit } from '../content/kits';
 import { assignRite, loadRites, loadSeen, saveRites, saveSeen, unseenRites } from '../gameplay/loadout';
-import { devAccess, devPreference, isDevAccount, riteLevel, setDevPreference } from '../gameplay/devAccess';
+import { devAccess, devPreference, isDevAccount, riteLevel, setDevPreference, tokenUsername } from '../gameplay/devAccess';
 import { GrimoirePanel } from '../ui/GrimoirePanel';
 import { preloadFxImages } from '../graphics/fxImages';
 import { AREAS, AREA_ORDER, BOSS_SUMMON_SHARDS, CHAPTERHOUSE_RETURN, DOORS, PLAYER_SPAWN, type AreaId, type Interactable } from '../content/areas';
 import { disciplineFor, type Discipline } from '../content/disciplines';
 import { AFFIX_TUNING, ELITE_AFFIXES, ENEMIES, WAVE_THEMES, type EliteAffix, type EnemyId } from '../content/enemies';
-import { HEALING_FLASKS, itemMeta } from '../content/items';
+import { BUFF_FLASKS, HEALING_FLASKS, itemMeta } from '../content/items';
 import { MEALS } from '../content/processing';
 import { generateLayout, PROPS, type NodePlacement } from '../content/layout';
 import { GatherLoop, Skills } from '../gameplay/Gathering';
@@ -86,6 +86,14 @@ const GROUND_FX_PRELOAD = [
 const INTERACT_RANGE = 2.6;
 /** Only enemies with a distinct counter need a first-sight card; the Codex covers the rest. */
 const FIRST_SIGHT_TIPS: Partial<Record<EnemyId, TipId>> = {
+  censer: 'censer',
+  wraith: 'wraith',
+  rat: 'swarm',
+  golem: 'golem',
+  gargoyle: 'gargoyle',
+  moth: 'moth',
+  bat: 'bats',
+  seraph: 'seraph',
   ghoul: 'ghoul',
   acolyte: 'acolyte',
   templar: 'templar',
@@ -204,6 +212,8 @@ export class WorldScene implements GameScene, RuntimeView {
   /** Theme introduction is shown once per area; later themed waves keep their sound and VFX. */
   private announcedProcessions = new Set<AreaId>();
   private announcedAreas = new Set<AreaId>();
+  /** The character's display name: the account name the session token carries. */
+  private selfName = tokenUsername(getToken()) ?? 'You';
   private nextAutoCombatAt = 0;
   /** Easy auto movement memory: sticky target, closing hysteresis, committed dodges, smoothed turns. */
   private autoMoveMem: AutoMoveMemory = {};
@@ -341,6 +351,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.buildScene();
     this.nav.setUnlocked(this.openAreas());
     this.worldView = new WorldView(this.scene, this.layout, this.nav, this.effects);
+    this.dressWaystones();
     for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d), true);
     this.views = new EntityViews(this.scene, this.effects);
     this.nodeViews = new NodeViews(this.scene, this.layout.nodes);
@@ -594,7 +605,12 @@ export class WorldScene implements GameScene, RuntimeView {
       openGrimoire: (select) => this.openGrimoire(select),
     }, this.hotbar, this.discipline, this.primary);
     this.hud.minimap.onNavigate = (x, z) => this.navigateFromMinimap(x, z);
-    this.inventoryPanel = new InventoryPanel(this.root, this.character.id, this.inventory, this.statsLine, (id) => this.drinkFlask(id));
+    this.inventoryPanel = new InventoryPanel(this.root, this.character.id, this.inventory, this.statsLine, (id) => this.drinkFlask(id), (gold, name, n) => {
+      this.progression.addGold(gold);
+      audio.play('coin');
+      this.floating.spawn(this.player.x, 2.4, this.player.z, `+${gold.toLocaleString()}g`, 'gold');
+      this.hud.toast(`Sold ${n > 1 ? `${n}× ` : ''}${name} for ${gold.toLocaleString()} gold`, 'good');
+    });
     this.forgePanel = new ForgePanel(this.root, this.character.id, this.inventory, (inv, profs) => {
       this.inventory.replace(inv);
       this.skills.adopt(profs);
@@ -1017,9 +1033,9 @@ export class WorldScene implements GameScene, RuntimeView {
     const previous = this.autoTargetId === null ? undefined : this.enemiesMap().get(this.autoTargetId);
     this.autoTargetId = action?.target.enemyId ?? (previous && previous.hp > 0 && previous.state !== 'dead' && Math.hypot(previous.x - p.x, previous.z - p.z) <= ABILITIES[this.primary].range ? previous.id : null);
     if (action) this.autoAim = action.target;
+    else if (this.autoTargetId === null && !(this.autoAim?.boss && this.bossState().active && this.bossState().hp > 0)) this.autoAim = null;
     // Walk toward what we are shooting at, so movement and aim never pull in two directions.
     if (action?.target.enemyId !== undefined) this.autoMoveMem.targetId = action.target.enemyId;
-    else if (this.autoTargetId === null && !(this.autoAim?.boss && this.bossState().active && this.bossState().hp > 0)) this.autoAim = null;
     if (action && this.abilities.cast(action.id, action.target, now) === 'ok') {
       this.onboarding.show('auto_combat');
       const slot = this.hotbar.indexOf(action.id) + 1;
@@ -1070,8 +1086,18 @@ export class WorldScene implements GameScene, RuntimeView {
     this.onboarding.show('meal');
   }
 
+  private drinkBuff(id: string) {
+    const b = BUFF_FLASKS[id];
+    if (!b || !this.player.alive || !this.inventory.consume(id)) return;
+    this.player.buffUntil[b.kind] = Math.max(this.player.buffUntil[b.kind], this.now) + b.seconds * 1000;
+    this.floating.spawn(this.player.x, 2.2, this.player.z, `${b.label} · ${b.seconds}s`, 'gold');
+    this.effects.emit({ x: this.player.x, y: 0.8, z: this.player.z, count: 18, color: b.kind === 'speed' ? 0x9ff5e0 : b.kind === 'damage' ? 0xffa060 : 0xb9c8ff, spread: 0.4, speed: 0.6, up: 1.8, life: 0.8, size: 0.24 });
+    audio.play('shard');
+  }
+
   private drinkFlask(prefer?: string) {
     if (prefer && prefer in MEALS) return this.eatMeal(prefer);
+    if (prefer && prefer in BUFF_FLASKS) return this.drinkBuff(prefer);
     const now = this.now;
     if (!this.player.alive || now < this.flaskCdUntil) return;
     const id = prefer && prefer in HEALING_FLASKS ? prefer : ['flask_hp_major', 'flask_hp_minor'].find((f) => this.inventory.count(f) > 0);
@@ -1167,7 +1193,7 @@ export class WorldScene implements GameScene, RuntimeView {
           if (awake.id !== id) this.hud.toast(`${awake.name} already stirs in ${AREAS[awake.area].name}.`, 'err');
           return;
         }
-        if (!this.progression.spendShards(def.shards)) {
+        if (!(id === 'prelate' ? this.progression.spendShards(def.shards) : this.progression.spendBossShards(id))) {
           this.hud.toast(`${def.summonLabel} demands ${def.shards} soul shards (you have ${this.progression.local.shards}). Elites carry them.`, 'err');
           return;
         }
@@ -1461,6 +1487,28 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   /** Layer a Binbun effect through its preset (graphics/binbun/presets.ts). Never throws or waits. */
+  /**
+   * Waystones must read as "click me" from across the room (they used to blend into the stonework): a pulsing
+   * teal ring on every quality level, the Binbun portal on High, and rising motes when you are near (update()).
+   */
+  private waystoneSpots: { x: number; z: number }[] = [];
+  private dressWaystones() {
+    this.waystoneSpots = AREA_ORDER.flatMap((a) => AREAS[a].interactables.filter((i) => i.kind === 'waystone'));
+    for (const w of this.waystoneSpots) {
+      this.effects.decal({ tex: fx.ring(), color: 0x6fe3c8, x: w.x, z: w.z, r: 1.7, duration: 1e9, opacity: 0.85, pulse: 1.2, persistent: true });
+      this.effects.decal({ tex: fx.glow(), color: 0x1f8f86, x: w.x, z: w.z, r: 2.2, duration: 1e9, opacity: 0.5, persistent: true });
+      this.bb('waystone_portal', w.x, w.z);
+    }
+  }
+
+  private waystoneMotes(dt: number) {
+    for (const w of this.waystoneSpots) {
+      if (Math.abs(w.x - this.player.x) > 22 || Math.abs(w.z - this.player.z) > 22 || Math.random() > dt * 6) continue;
+      const a = Math.random() * Math.PI * 2;
+      this.effects.emit({ x: w.x + Math.sin(a) * 0.9, y: 0.2, z: w.z + Math.cos(a) * 0.9, count: 1, color: 0x9ff5e0, spread: 0.1, speed: 0.1, up: 1.6, life: 1.6, size: 0.22 });
+    }
+  }
+
   private bb(id: BinbunId, x: number, z: number, o: Omit<BinbunSpawn, 'x' | 'z'> = {}) {
     return playFx(this.effects.binbun, id, { x, z, ...o });
   }
@@ -1624,6 +1672,14 @@ export class WorldScene implements GameScene, RuntimeView {
           this.player.essence = Math.min(this.player.stats.maxEssence, this.player.essence + ABILITIES.corpse_explosion.essenceCost);
           this.player.cooldowns.delete('corpse_explosion');
           this.floating.spawn(this.player.x, 2.4, this.player.z, 'The corpse is gone', 'info');
+        }
+        break;
+      case 'bossBusy':
+        // The host refused our summon (another boss woke first): refund the shards we spent.
+        if (ev.by === this.selfId) {
+          if (ev.boss === 'prelate') this.progression.addShards(BOSSES.prelate.shards);
+          else this.progression.refundBossShards(ev.boss);
+          this.hud.toast(`${BOSSES[ev.awake].name} already stirs in ${AREAS[BOSSES[ev.awake].area].name}. Your shards are returned.`, 'err');
         }
         break;
       case 'sanctify': {
@@ -1927,6 +1983,8 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private onKill(ev: Extract<SimEvent, { t: 'death' }>) {
+    // A boss's skull niche is part of the fight, not a kill: no souls, loot, XP or area progress.
+    if (ENEMIES[ev.def].inert) return;
     // Soul Harvest: kills credited to you (thralls and DoTs credit their owner).
     if (ev.killer === this.selfId && this.player.alive && this.player.addSouls(1)) this.onSoulsCharged();
     // Personal rewards for kills in (or right next to) your area.
@@ -2085,7 +2143,8 @@ export class WorldScene implements GameScene, RuntimeView {
     const lanternWard = [...(this.sim?.zones ?? this.mirror?.zones ?? new Map()).values()].some((zone) => zone.kind === 'warden_ward' && Math.hypot(zone.x - this.player.x, zone.z - this.player.z) <= zone.r) ? 0.2 : 0;
     // Easy auto softens hits between the Knight's blocks and the Veilwalker's phases.
     const autoGuard = settings.autoCombat && (this.discipline.family === 'knight' || this.discipline.family === 'veil') ? 0.3 : 0;
-    const ward = this.discipline.mods.wardPerThrall * myThralls + lanternWard + autoGuard;
+    const flaskWard = this.now < this.player.buffUntil.ward ? BUFF_FLASKS.flask_void_resist.value : 0;
+    const ward = this.discipline.mods.wardPerThrall * myThralls + lanternWard + autoGuard + flaskWard;
     const now = this.now;
     // The blow's origin lets Bulwark decide whether it covered this one.
     const taken = this.player.takeDamage(raw, ward, now, { x, z }, from);
@@ -2462,13 +2521,14 @@ export class WorldScene implements GameScene, RuntimeView {
       const arena = BOSSES.congregation.arena;
       const wading = b.active && b.id === 'congregation' && b.phase >= 2 && p.area === 'nave'
         && Math.hypot(p.x - arena.x, p.z - arena.z) <= arena.r && Math.hypot(p.x - arena.x, p.z - arena.z) > C.dais;
-      p.moveMult = wading ? (b.phase >= 3 ? C.slowP3 : C.slowP2) : 1;
+      p.moveMult = (wading ? (b.phase >= 3 ? C.slowP3 : C.slowP2) : 1) * (now < p.buffUntil.speed ? 1 + BUFF_FLASKS.flask_speed.value : 1);
     }
     const moved = p.update(dt, now, kd.x || kd.z ? kd : autoMove);
     if (settings.autoCombat && p.alive && now - p.lastHurtAt < 5000) p.heal(p.stats.maxHp * 0.02 * dt);
     if (now < this.mealUntil && p.alive) p.heal(this.mealRate * dt);
     this.gathering.update(dt);
     this.tickGatherVisuals(dt);
+    this.waystoneMotes(dt);
     if (moved) this.cancelRecall();
     this.tickCombat(now);
     this.abilities.update(now);
@@ -2879,8 +2939,9 @@ export class WorldScene implements GameScene, RuntimeView {
       this.hud.party([
         {
           id: this.selfId,
-          name: `${this.character.class_name ? this.discipline.name : 'You'} (you)`,
-          discipline: this.progression.local.ascension ? `${this.discipline.epithet} · Ascension ${roman(this.progression.local.ascension)}` : this.discipline.epithet,
+          // Your character's name (one character per account: the account name), class and level beneath it.
+          name: this.selfName,
+          discipline: `${this.discipline.name} · Level ${this.character.level}${this.progression.local.ascension ? ` · Ascension ${roman(this.progression.local.ascension)}` : ''}`,
           portrait: `art/portraits/${this.discipline.id}.webp`,
           hpFrac: p.hp / p.stats.maxHp,
         },

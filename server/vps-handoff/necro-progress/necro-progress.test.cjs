@@ -80,6 +80,21 @@ test('Prelate kills must follow a paid summon', async () => {
   assert.equal(r.json.data.progress.run.prelateKills, 1);
 });
 
+test('area-boss summons charge their own cost, need their area, and owe no Prelate kill', async () => {
+  const { call } = harness();
+  let r = await call('summonBoss', { boss: 'abbess' });
+  assert.equal(r.status, 400, 'no shards');
+  await call('importLocal', { record: { areaKills: { graves: 300 }, shards: 5 } });
+  r = await call('summonBoss', { boss: 'congregation' });
+  assert.equal(r.status, 400, 'the Nave is still sealed');
+  r = await call('summonBoss', { boss: 'gravedigger' });
+  assert.equal(r.status, 200);
+  assert.equal(r.json.data.progress.soulShards, 3, 'the King costs 2');
+  assert.equal(r.json.data.progress.summonsPending, 0, 'no Prelate summon is owed');
+  r = await call('summonBoss', { boss: 'prelate' });
+  assert.equal(r.status, 400, 'the Prelate keeps its own route');
+});
+
 test('Ascend and boons are server rules', async () => {
   const { call } = harness();
   assert.equal((await call('ascend')).status, 400);

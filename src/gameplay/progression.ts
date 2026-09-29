@@ -6,6 +6,7 @@ import { ApiError, necroApi, saveProgress, type NecroReply } from '../net/api';
 import { applySave, normalise, type NecroState, type SaveInput } from './necroRules';
 import type { Character } from '../net/types';
 import { xpToNext } from './characterStats';
+import { BOSSES, type BossId } from '../content/bosses';
 
 /**
  * Necromancer progression (upgrade tiers, soul shards, area kills / unlocks,
@@ -443,6 +444,26 @@ export class Progression {
       });
     }
     return true;
+  }
+
+  /** Area bosses: the boss's own cost, charged by the server's summon-boss rule (no Prelate summon is owed). */
+  spendBossShards(boss: BossId): boolean {
+    const n = BOSSES[boss].shards;
+    if (this.local.shards < n) return false;
+    this.local.shards -= n;
+    this.saveLocal();
+    if (this.mode === 'server') {
+      this.remote(async () => {
+        await this.flushNecro();
+        return necroApi.summonBoss(this.character.id, boss);
+      });
+    }
+    return true;
+  }
+
+  /** Give shards back when a summon never happened (another boss was already awake on the host). */
+  refundBossShards(boss: BossId) {
+    this.addShards(BOSSES[boss].shards);
   }
 
   /** Send gathered deltas now (server mode). Failures put them back for the next try. */

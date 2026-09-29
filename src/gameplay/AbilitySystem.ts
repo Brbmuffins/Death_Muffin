@@ -163,7 +163,9 @@ export class AbilitySystem {
     const p = this.ctx.player;
     // Oath Unbroken raises every blow for its window; 1 for every other family.
     const oath = this.ctx.now() < p.unbreakableUntil ? OATH_UNBROKEN.damageMult : 1;
-    return p.stats.spellPower * oath;
+    // A Forge-Tempered Flask adds 15% while it lasts.
+    const flask = this.ctx.now() < p.buffUntil.damage ? 1.15 : 1;
+    return p.stats.spellPower * oath * flask;
   }
 
   ready(id: AbilityId, now: number) {
@@ -829,7 +831,8 @@ export class AbilitySystem {
         if (b.active && b.hp > 0) q = { x: b.x, y: 2.2, z: b.z };
       } else {
         const e = this.ctx.enemies().get(t.enemyId!);
-        if (e && e.state !== 'dead') q = { x: e.x, y: 1.1, z: e.z };
+        // A ghoul that digs in breaks the tether (the host would refuse every drain anyway).
+        if (e && e.state !== 'dead' && e.state !== 'burrow') q = { x: e.x, y: 1.1, z: e.z };
       }
       return q && Math.hypot(q.x - p.x, q.z - p.z) <= breakR ? q : null;
     };
@@ -970,7 +973,7 @@ export class AbilitySystem {
         let best: { x: number; z: number } | null = null;
         let bestD = B.seekR;
         for (const e of this.ctx.enemies().values()) {
-          if (e.state === 'dead') continue;
+          if (e.state === 'dead' || e.state === 'rising' || e.state === 'burrow') continue;
           const d = Math.hypot(e.x - c.x, e.z - c.z);
           if (d < bestD) (bestD = d), (best = e);
         }

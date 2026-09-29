@@ -249,7 +249,7 @@ export class WorldMirror {
     for (const e of this.enemies.values()) sim.enemies.set(e.id, { ...e, damage: e.damage || 8, radius: 0.5 });
     for (const t of this.thralls.values()) sim.thralls.set(t.id, { ...t, damage: t.damage || 6, attackInterval: 1, range: t.kind === 'wraith' ? 5.5 : 1.3 });
     for (const c of this.corpses.values()) sim.corpses.set(c.id, { ...c, bornAt: sim.time, expiresAt: sim.time + 20, ruptureAt: c.kind === 'toxic' ? sim.time + 4 : Infinity });
-    if (this.bossState?.active) Object.assign(sim.bossState, this.bossState);
+    if (this.bossState?.active) sim.adoptBoss(this.bossState);
     for (const [id, back] of this.depleted) {
       const n = sim.nodes.get(id);
       if (n) {

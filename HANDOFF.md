@@ -109,6 +109,25 @@ No deployment. Source and redistribution note: `docs/CROSSWORLDS-AUDIO.md`.
 
 ## In flight (check before starting overlapping work)
 
+### Open threads (2026-09-29): read this first
+- **Direction:** the owner wants a continuous reward loop ("addict me to grind"). The plan and backlog are in
+  [docs/GRIND-LOOP.md](docs/GRIND-LOOP.md), and every new feature should feed it.
+- **Next up:** the **Plague Cloister**, a level-scaled end zone (min level 20; enemy level follows the highest-level
+  player present). It fixes the XP plateau for high-level characters.
+- **Dead loot:** seeds, gems, reliquary fragments and covenant seals drop with no use. Selling now exists; real sinks
+  are in GRIND-LOOP §3. `kit_iron_warden` is still an inert consumable.
+- **Balance left for owner feel:** Nave geared deaths +15% (Acolytes), Ossuary geared kill rate −18% (burrowed ghouls).
+- **Parallel agents:** another agent session also edits this tree. Run `git status` before committing and don't
+  sweep someone else's staged work into your commit unreviewed.
+- **Deploy recipe:**
+  1. `npm run build:death-muffin`.
+  2. Back up the live index, server files and any DB tables to `~/death-muffin/deploy/backup-*` with a ROLLBACK.sh.
+  3. Copy the rules `.cjs` files, `realtime/server.js` and the necro-progress routes, then restart both services.
+  4. Publish `dist/{assets,art,models,fx,audio}`, with `index.html` last.
+  5. Run `node tools/qa/live-release-smoke.cjs`.
+- **Trust model:** loot, gold and bag saves are client-reported (the server validates ids and stacks). Shards and the
+  necro progression are server-ruled (`necroRules.ts`; the area-boss summon is `summonAreaBoss`).
+
 - **2026-09-29: area bosses built (Gravedigger King, Bone Abbess, Drowned Congregation).** See PHASE_REPORTS →
   "Area bosses". Deploying it needs the realtime `server.js` (it validates `summonBoss.boss`) and the regenerated rules.
 

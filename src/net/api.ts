@@ -264,6 +264,7 @@ export const necroApi = {
   save: (characterId: number, input: SaveInput, keepalive = false) => necroPost('save', { characterId, ...input }, keepalive),
   purchase: (characterId: number, upgrade: 'damage' | 'wave') => necroPost('purchase', { characterId, upgrade }),
   summonPrelate: (characterId: number) => necroPost('summon-prelate', { characterId }),
+  summonBoss: (characterId: number, boss: string) => necroPost('summon-boss', { characterId, boss }),
   ascend: (characterId: number) => necroPost('ascend', { characterId }),
   boon: (characterId: number, boonId: string) => necroPost('boon', { characterId, boonId }),
   importLocal: (characterId: number, record: object) => necroPost('import', { characterId, record }),

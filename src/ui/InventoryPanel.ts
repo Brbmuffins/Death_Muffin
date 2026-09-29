@@ -2,7 +2,7 @@ import { equipItem } from '../net/api';
 import type { InventorySlot } from '../net/types';
 import { STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
 import { BAG_SIZE, type Inventory } from '../gameplay/loot';
-import { HEALING_FLASKS, RARITY_COLOR, RARITY_MARK, itemMeta } from '../content/items';
+import { BUFF_FLASKS, HEALING_FLASKS, RARITY_COLOR, RARITY_MARK, itemMeta } from '../content/items';
 import { MEALS } from '../content/processing';
 
 const TYPE_GLYPH: Record<string, string> = {
@@ -39,6 +39,8 @@ export class InventoryPanel {
     private inventory: Inventory,
     private statsLine: () => string,
     private onUse: (itemId: string) => void,
+    /** Selling (2026-09-29): gold is credited by the scene, like any pickup. */
+    private onSold?: (gold: number, name: string, quantity: number) => void,
   ) {}
 
   get isOpen() {
@@ -168,7 +170,7 @@ export class InventoryPanel {
     }
     const meta = itemMeta(slot.item_id);
     const equippable = EQUIPPABLE.has(slot.item_type);
-    const drinkable = slot.item_id in HEALING_FLASKS;
+    const drinkable = slot.item_id in HEALING_FLASKS || slot.item_id in BUFF_FLASKS;
     const edible = slot.item_id in MEALS;
     detail.innerHTML = `
       <div class="info">
@@ -180,12 +182,26 @@ export class InventoryPanel {
       ${equippable ? `<button class="cw-button small" data-act>${slot.equipped ? 'Unequip' : 'Equip'}</button>` : ''}
       ${drinkable ? `<button class="cw-button small" data-act>Drink</button>` : ''}
       ${edible ? `<button class="cw-button small" data-act>Eat</button>` : ''}
+      ${this.onSold && !slot.equipped && slot.sell_value > 0 ? `<button class="cw-button small" data-sell="1">Sell (${slot.sell_value}g)</button>` : ''}
+      ${this.onSold && !slot.equipped && slot.sell_value > 0 && slot.quantity > 1 ? `<button class="cw-button small" data-sell="${slot.quantity}">Sell all ×${slot.quantity} (${(slot.sell_value * slot.quantity).toLocaleString()}g)</button>` : ''}
     `;
     detail.querySelector('[data-act]')?.addEventListener('click', () => this.primaryAction(slot));
+    detail.querySelectorAll<HTMLButtonElement>('[data-sell]').forEach((b) => b.addEventListener('click', () => this.sell(slot, Number(b.dataset.sell))));
+  }
+
+  /** Sell from the bag (never equipped gear). Each unit goes through consume(), so saves stay race-safe. */
+  private sell(slot: InventorySlot, quantity: number) {
+    if (slot.equipped || !this.onSold) return;
+    let sold = 0;
+    for (let i = 0; i < quantity && this.inventory.consume(slot.item_id); i++) sold++;
+    if (!sold) return;
+    this.onSold(sold * slot.sell_value, slot.name, sold);
+    if (!this.inventory.count(slot.item_id)) this.selected = null;
+    this.render();
   }
 
   private primaryAction(slot: InventorySlot) {
-    if (slot.item_id in HEALING_FLASKS || slot.item_id in MEALS) this.onUse(slot.item_id);
+    if (slot.item_id in HEALING_FLASKS || slot.item_id in BUFF_FLASKS || slot.item_id in MEALS) this.onUse(slot.item_id);
     else if (EQUIPPABLE.has(slot.item_type)) void this.toggleEquip(slot);
   }
 
@@ -199,15 +215,16 @@ export class InventoryPanel {
     this.busy = true;
     this.setError('');
     try {
-      // Unsaved pickups must land before equip so the server's array includes them.
-      await this.inventory.flush();
-      let slots = this.inventory.all;
-      if (!slot.equipped) {
-        const conflict = slots.find((s) => s.equipped && s.item_type === slot.item_type && s.slot_index !== slot.slot_index);
-        if (conflict) slots = await equipItem(this.characterId, conflict.slot_index, 0);
-      }
-      slots = await equipItem(this.characterId, slot.slot_index, slot.equipped ? 0 : 1);
-      this.inventory.replace(slots);
+      // Unsaved pickups land first and no save flies during the equip (Inventory.exclusive).
+      await this.inventory.exclusive(async () => {
+        let slots = this.inventory.all;
+        if (!slot.equipped) {
+          const conflict = slots.find((s) => s.equipped && s.item_type === slot.item_type && s.slot_index !== slot.slot_index);
+          if (conflict) slots = await equipItem(this.characterId, conflict.slot_index, 0);
+        }
+        slots = await equipItem(this.characterId, slot.slot_index, slot.equipped ? 0 : 1);
+        this.inventory.replace(slots);
+      });
     } catch (err) {
       this.setError(err instanceof Error ? err.message : 'Equip failed');
     } finally {

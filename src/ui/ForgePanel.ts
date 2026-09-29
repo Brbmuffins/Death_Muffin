@@ -137,13 +137,14 @@ export class ForgePanel {
     this.setError('');
     this.render();
     try {
-      await this.inventory.flush();
-      await craft(this.characterId, recipeId);
-      // The live server answers with the crafted item and XP, not the bag, so re-read both:
-      // keeping the pre-craft bag would let the next save write the spent ingredients back.
-      const [inventory, professions] = await Promise.all([getInventory(this.characterId), getProfessions(this.characterId)]);
-      this.professions = professions;
-      this.onCrafted(inventory, professions);
+      // No save may fly during the craft (it would write the spent ingredients back): see Inventory.exclusive.
+      await this.inventory.exclusive(async () => {
+        await craft(this.characterId, recipeId);
+        // The live server answers with the crafted item and XP, not the bag, so re-read both.
+        const [inventory, professions] = await Promise.all([getInventory(this.characterId), getProfessions(this.characterId)]);
+        this.professions = professions;
+        this.onCrafted(inventory, professions);
+      });
     } catch (err) {
       this.setError(err instanceof Error ? err.message : 'Craft failed');
     } finally {

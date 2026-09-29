@@ -1,6 +1,7 @@
 import { AREAS, AREA_ORDER, BOSS_SUMMON_SHARDS, type AreaId } from '../content/areas';
 import { ASCENSION, BOONS, ashesForRun, boonBlocked, boonCost, boonEffects, type BoonId, type BoonRanks } from '../content/ascension';
 import { DAMAGE_UPGRADE, WAVE_UPGRADE } from '../content/upgrades';
+import { BOSSES, isBossId } from '../content/bosses';
 
 /**
  * Necromancer progression rules — the ONE source of truth shared by the
@@ -168,6 +169,22 @@ export function summonPrelate(state: NecroState): RuleResult {
   const s = copy(state);
   s.soulShards -= BOSS_SUMMON_SHARDS;
   s.summonsPending = Math.min(5, s.summonsPending + 1);
+  return { ok: true, state: s };
+}
+
+/**
+ * Area bosses (2026-09-29): spend that boss's shards; its area must be open. Unlike the Prelate this leaves
+ * `summonsPending` alone, which only pays out Prelate kills (the Ascension counter).
+ */
+export function summonAreaBoss(state: NecroState, boss: unknown): RuleResult {
+  if (!isBossId(boss) || boss === 'prelate') return { ok: false, error: 'Unknown boss.' };
+  const def = BOSSES[boss];
+  if (state.soulShards < def.shards) {
+    return { ok: false, error: `${def.summonLabel} demands ${def.shards} soul shards (you have ${state.soulShards}).` };
+  }
+  if (!state.unlockedAreas.includes(def.area)) return { ok: false, error: `${AREAS[def.area].name} is still sealed.` };
+  const s = copy(state);
+  s.soulShards -= def.shards;
   return { ok: true, state: s };
 }
 

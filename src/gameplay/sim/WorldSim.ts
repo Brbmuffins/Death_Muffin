@@ -144,6 +144,12 @@ export class WorldSim {
   setCover(boxes: CoverBox[]) {
     this.cover = boxes;
   }
+  /** Host migration: continue the awake boss on its own brain (older snapshots have no id: the Prelate). */
+  adoptBoss(state: BossState) {
+    this.bossId = isBossId(state.id) ? state.id : 'prelate';
+    Object.assign(this.boss.state, state, { id: this.bossId });
+    this.boss.resume();
+  }
 
   /** Host's active wave-speed tier (drives every area this sim runs). */
   waveTier = 0;
@@ -229,8 +235,11 @@ export class WorldSim {
       case 'litany':
         return this.applyLitany(intent);
       case 'summonBoss': {
-        // One awake boss per world: a second summon is ignored (the client explains why).
-        if (this.boss.state.active) return;
+        // One awake boss per world: a second summon is refused and its caller refunded (the client explains why).
+        if (this.boss.state.active) {
+          this.emit({ t: 'bossBusy', by: intent.by, boss: isBossId(intent.boss) ? intent.boss : 'prelate', awake: this.bossId });
+          return;
+        }
         this.bossId = isBossId(intent.boss) ? intent.boss : 'prelate';
         return this.boss.awaken(intent.by);
       }
@@ -311,7 +320,8 @@ export class WorldSim {
     const from = caster ? { x: caster.x, z: caster.z } : undefined;
     for (const id of h.ids) {
       const e = this.enemies.get(id);
-      if (!e || e.state === 'burrow') continue;
+      // Underground (tunnelling or winding up its eruption): no damage and no statuses either.
+      if (!e || e.state === 'burrow' || (e.erupting != null && e.state === 'windup')) continue;
       this.damageEnemy(e, h.dmg, h.by, from);
       if (h.bleed && h.bleed > 0) {
         // Hemorrhage: the strongest bleed wins; the host caps what a hit may claim.
@@ -2042,6 +2052,14 @@ export class WorldSim {
             e.digPending = false;
             e.state = 'burrow';
             e.burrowLeft = BURROW.travelM;
+            // Digging in shrugs off bleeds, rot and holds: it must not die or stick fast underground.
+            e.bleedT = 0;
+            e.bleedDps = 0;
+            e.withered = 0;
+            e.witheredT = 0;
+            e.rootT = 0;
+            e.slowT = 0;
+            e.chillT = 0;
           }
         }
         continue;
