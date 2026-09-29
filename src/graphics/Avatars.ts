@@ -7,6 +7,9 @@ import type { GatherSkill } from '../gameplay/gatheringRules';
 import type { Effects } from './Effects';
 import { fx } from './fxTextures';
 
+/** How much a held staff follows the wrist (0 = pinned upright, 1 = fully hand-driven). */
+const STAFF_FOLLOW = 0.15;
+
 /** Coffin-oak staff with a skull finial and a violet soul-light. */
 function skullStaff(accent: THREE.ColorRepresentation) {
   const g = new THREE.Group();
@@ -58,7 +61,7 @@ export class NecromancerAvatar {
     } else {
       this.staff = skullStaff(accent);
       // Held upright: the grip sits in the hand, calibrated against the idle pose.
-      this.c.attach('R_Hand', this.staff, new THREE.Vector3(0, 1, 0.12));
+      this.c.attach('R_Hand', this.staff, new THREE.Vector3(0, 1, 0.12), STAFF_FOLLOW);
     }
     scene.add(this.c.root);
     this.lantern = withLight ? new THREE.PointLight(accent, 18, 10, 1.4) : null;
@@ -86,21 +89,21 @@ export class NecromancerAvatar {
       }
       return;
     }
-    const grip = (bone: string, id: string, height: number, tip = false) =>
-      ({ bone, id, height, dir: new THREE.Vector3(0, 1, 0.1), tip });
+    const grip = (bone: string, id: string, height: number, tip = false, follow?: number) =>
+      ({ bone, id, height, dir: new THREE.Vector3(0, 1, 0.1), tip, follow });
     const gear = slug === 'hero_hollow_knight'
-      ? [grip('R_Hand', 'gear_knight_sword', 1.05, true), grip('L_Hand', 'gear_knight_shield', 0.62)]
+      ? [grip('R_Hand', 'gear_knight_sword', 1.05, true, 0.6), grip('L_Hand', 'gear_knight_shield', 0.62, false, 0.5)]
       : slug === 'hero_grave_warden'
-        ? [grip('R_Hand', 'gear_warden_flail', 1.1, true), grip('L_Hand', 'gear_warden_lantern', 0.7)]
-        : slug === 'hero_bell_monk' ? [grip('R_Hand', 'gear_monk_bell_staff', 1.65, true)]
-          : slug === 'hero_carrion_witch' ? [grip('R_Hand', 'gear_witch_hook', 0.9, true)] : [];
+        ? [grip('R_Hand', 'gear_warden_flail', 1.1, true, 0.6), grip('L_Hand', 'gear_warden_lantern', 0.7, false, 0.5)]
+        : slug === 'hero_bell_monk' ? [grip('R_Hand', 'gear_monk_bell_staff', 1.65, true, STAFF_FOLLOW)]
+          : slug === 'hero_carrion_witch' ? [grip('R_Hand', 'gear_witch_hook', 0.9, true, 0.6)] : [];
     for (const g of gear) {
       void assets.model(PROP_URL(g.id), g.height).then((t) => {
         if (!t || this.disposed) return;
         const obj = t.scene.clone(true);
         obj.scale.setScalar(t.scale);
         obj.visible = this.gatheringSkill === null;
-        this.c.attach(g.bone, obj, g.dir);
+        this.c.attach(g.bone, obj, g.dir, g.follow);
         this.classGear.push(obj);
         if (g.tip) this.tipObj = obj;
       });

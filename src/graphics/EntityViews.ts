@@ -323,10 +323,11 @@ export class EntityViews {
       scale: look?.scale ?? (t.kind === 'shieldbearer' ? 1.1 : 1),
     });
     if (t.kind === 'warrior' || t.kind === 'shieldbearer') {
-      c.attach('R_Hand', boneSword(), new THREE.Vector3(0, 0.25, 1));
-      c.attach('L_Hand', roundShield(t.kind === 'shieldbearer' ? 0.5 : 0.32), new THREE.Vector3(0, 1, 0));
-    } else if (t.kind === 'archer') c.attach('L_Hand', boneBow(), new THREE.Vector3(0, 1, 0));
-    else if (t.kind === 'bonemage') c.attach('R_Hand', boneStaff(), new THREE.Vector3(0, 0.25, 1));
+      // Blade carried up and forward; `follow` keeps it from whipping around with the wrist while walking.
+      c.attach('R_Hand', boneSword(), new THREE.Vector3(0, 1, 0.55), 0.6);
+      c.attach('L_Hand', roundShield(t.kind === 'shieldbearer' ? 0.5 : 0.32), new THREE.Vector3(0, 1, 0), 0.5);
+    } else if (t.kind === 'archer') c.attach('L_Hand', boneBow(), new THREE.Vector3(0, 1, 0), 0.5);
+    else if (t.kind === 'bonemage') c.attach('R_Hand', boneStaff(), new THREE.Vector3(0, 1, 0.12), 0.15);
     this.group.add(c.root);
     const v: View = { c, x: t.x, z: t.z, facing: t.facing, lastState: '', kind: t.kind, animSkip: 0, animDt: 0, float: wraith };
     v.ring = this.effects.decal({

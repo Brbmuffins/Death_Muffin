@@ -63,10 +63,10 @@ export class Creature {
   private loopSpeed = 1;
   private current: THREE.AnimationAction | null = null;
   private oneShot: THREE.AnimationAction | null = null;
-  private pendingAttach: [string, THREE.Object3D, THREE.Vector3 | undefined][] = [];
+  private pendingAttach: [string, THREE.Object3D, THREE.Vector3 | undefined, number | undefined][] = [];
   private calibrate: { obj: THREE.Object3D; dir: THREE.Vector3; frames: number }[] = [];
   /** Calibrated attachments, re-checked while idle so a bad first pose self-heals. */
-  private attached: { obj: THREE.Object3D; dir: THREE.Vector3 }[] = [];
+  private attached: { obj: THREE.Object3D; dir: THREE.Vector3; follow?: number; baseQ?: THREE.Quaternion }[] = [];
   private settledT = 0;
   private recheckT = 0;
   private disposed = false;
@@ -137,7 +137,7 @@ export class Creature {
         }
       });
       this.loaded = true;
-      for (const [bone, obj, dir] of this.pendingAttach) this.attach(bone, obj, dir);
+      for (const [bone, obj, dir, follow] of this.pendingAttach) this.attach(bone, obj, dir, follow);
       this.pendingAttach = [];
       this.startLoop(false);
     });
@@ -243,16 +243,19 @@ export class Creature {
    * Parent `obj` to a bone. With `dir` (character-local, e.g. straight up),
    * the object's +Y is auto-aligned to that direction after the first animated
    * frames — bone axes differ per rig, so we calibrate instead of guessing.
+   * `follow` (0..1) keeps a held staff steady: every frame its +Y is pulled back
+   * toward `dir` by (1 - follow), so it rides the hand without flailing when the
+   * wrist swings through a run cycle. Omit it for weapons that should swing freely.
    */
-  attach(boneName: string, obj: THREE.Object3D, dir?: THREE.Vector3) {
+  attach(boneName: string, obj: THREE.Object3D, dir?: THREE.Vector3, follow?: number) {
     if (!this.model) {
-      this.pendingAttach.push([boneName, obj, dir]);
+      this.pendingAttach.push([boneName, obj, dir, follow]);
       return;
     }
     if (dir) {
       const d = dir.clone().normalize();
       this.calibrate.push({ obj, dir: d, frames: 4 });
-      this.attached.push({ obj, dir: d });
+      this.attached.push({ obj, dir: d, follow });
     }
     let bone: THREE.Object3D | undefined;
     this.model.traverse((o) => {
@@ -306,9 +309,31 @@ export class Creature {
     const settled = !this.oneShot && (!idle || (this.current === idle && idle.getEffectiveWeight() > 0.99));
     this.settledT = settled ? this.settledT + dt : 0;
     if (this.calibrate.length) this.runCalibration();
-    else if (this.attached.length && this.settledT > 0.6 && (this.recheckT -= dt) <= 0) {
+    else if (this.attached.some((a) => a.baseQ)) this.steadyAttachments();
+    if (!this.calibrate.length && this.attached.length && this.settledT > 0.6 && (this.recheckT -= dt) <= 0) {
       this.recheckT = 2;
       this.recheckAttachments();
+    }
+  }
+
+  /** Pull each `follow` attachment's +Y back toward its aim direction, keeping the bone's roll. */
+  private steadyAttachments() {
+    this.root.updateMatrixWorld(true);
+    const rootQ = this.root.getWorldQuaternion(new THREE.Quaternion());
+    const parentQ = new THREE.Quaternion();
+    const driven = new THREE.Quaternion();
+    const locked = new THREE.Quaternion();
+    const up = new THREE.Vector3();
+    for (const a of this.attached) {
+      const parent = a.obj.parent;
+      if (!a.baseQ || !parent) continue;
+      parent.getWorldQuaternion(parentQ);
+      driven.copy(parentQ).multiply(a.baseQ);
+      up.set(0, 1, 0).applyQuaternion(driven);
+      const want = a.dir.clone().applyQuaternion(rootQ);
+      locked.setFromUnitVectors(up, want).multiply(driven);
+      driven.slerp(locked, 1 - (a.follow ?? 1));
+      a.obj.quaternion.copy(parentQ.invert().multiply(driven));
     }
   }
 
@@ -343,6 +368,8 @@ export class Creature {
       parent.getWorldQuaternion(parentQ);
       const want = c.dir.clone().applyQuaternion(rootQ).applyQuaternion(parentQ.invert());
       c.obj.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), want.normalize());
+      const rec = this.attached.find((a) => a.obj === c.obj);
+      if (rec && rec.follow !== undefined) rec.baseQ = c.obj.quaternion.clone();
       this.calibrate.splice(i, 1);
     }
   }
