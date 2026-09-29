@@ -26,6 +26,9 @@ export const FX_IMAGES = {
   soundRing: 'art/fx/sound-ring.png',
   lanternCone: 'art/fx/lantern-cone.png',
   veilRift: 'art/fx/veil-rift.png',
+  // Area-boss telegraphs (gemini-jobs/bosses-v1.json).
+  tideCrest: 'art/fx/tide-crest.png',
+  drownedHand: 'art/fx/drowned-hand.png',
 } as const;
 export type FxImage = keyof typeof FX_IMAGES;
 

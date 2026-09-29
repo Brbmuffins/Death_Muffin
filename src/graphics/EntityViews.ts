@@ -29,6 +29,7 @@ const ENEMY_SLUG: Record<EnemyId, CreatureSlug> = {
   ghoul: 'barrow_ghoul',
   acolyte: 'lich_acolyte',
   templar: 'bell_templar',
+  niche: 'skull_niche',
 };
 
 /** Shipped models to fall back on if a newer GLB is missing (older deploys, failed builds). */
@@ -137,6 +138,7 @@ const D = SPELL_FX.detonate;
 /** Rough mouth/head height per rig, for drool and sparks. */
 /** Common enemies nearest the camera focus that keep their moon shadow. */
 const SHADOW_CASTERS = 12;
+const CROWDED_SHADOW_CASTERS = 8;
 const HEAD_Y = { humanoid: 1.3, robed: 1.35, quadruped: 0.75, bloat: 1.05 } as const;
 
 function killAffixFx(v: View) {
@@ -379,6 +381,9 @@ export class EntityViews {
         const v = this.enemies.get(ev.id);
         if (!v) break;
         this.enemies.delete(ev.id);
+        // The final blow sets a pale hit flash. This view becomes the corpse,
+        // so it no longer receives enemy flash updates after leaving the map.
+        v.c.flash = 0;
         if (v.mound) (v.mound.removeFromParent(), (v.mound = undefined), (v.c.root.visible = true));
         v.eliteAura?.kill();
         v.auraFx?.kill();
@@ -543,24 +548,24 @@ export class EntityViews {
   }
 
   /** LOD: far creatures animate at a lower rate. */
-  /**
-   * Shadow LOD: only the nearest enemies (and every elite) cast moon shadows.
-   * A horde at the cap otherwise re-renders ~100 skinned bodies in the shadow pass.
-   */
+  /** Shadow LOD: keep a bounded number of nearby enemy shadows, including elites. */
   private shadowLod(enemies: Map<number, Enemy>, fx0: number, fz0: number) {
     const ranked: { v: View; d: number }[] = [];
     for (const [id, e] of enemies) {
       const v = this.enemies.get(id);
       if (!v) continue;
-      if (e.elite) v.c.setCastShadow(true);
-      else ranked.push({ v, d: (e.x - fx0) ** 2 + (e.z - fz0) ** 2 });
+      ranked.push({ v, d: (e.x - fx0) ** 2 + (e.z - fz0) ** 2 });
     }
     ranked.sort((a, b) => a.d - b.d);
-    ranked.forEach((r, i) => r.v.c.setCastShadow(i < SHADOW_CASTERS));
+    const budget = enemies.size >= 32 ? CROWDED_SHADOW_CASTERS : SHADOW_CASTERS;
+    ranked.forEach((r, i) => r.v.c.setCastShadow(i < budget));
   }
 
-  private tickAnim(v: View, dt: number, fx0: number, fz0: number) {
-    const far = Math.abs(v.x - fx0) > 26 || Math.abs(v.z - fz0) > 22;
+  private tickAnim(v: View, dt: number, fx0: number, fz0: number, crowded: boolean) {
+    // Keep nearby attacks fluid; distant bodies can share a lower animation rate
+    // when a high Wave Speed tier has filled the room.
+    const far = Math.abs(v.x - fx0) > 26 || Math.abs(v.z - fz0) > 22
+      || (crowded && (Math.abs(v.x - fx0) > 14 || Math.abs(v.z - fz0) > 12));
     v.animDt += dt;
     if (far) {
       v.animSkip = (v.animSkip + 1) % 3;
@@ -578,6 +583,7 @@ export class EntityViews {
     focusZ: number,
   ) {
     this.frame++;
+    const crowded = enemies.size + thralls.size >= 32;
     wingClock.value = performance.now() / 1000;
     if (this.frame % 10 === 0) this.shadowLod(enemies, focusX, focusZ);
     for (const [id, e] of enemies) {
@@ -620,7 +626,7 @@ export class EntityViews {
         v.flinchAt = performance.now() + 1200;
         v.c.playOnce('hurt', 1.9);
       }
-      this.tickAnim(v, dt, focusX, focusZ);
+      this.tickAnim(v, dt, focusX, focusZ, crowded);
       if (nearFx && e.withered > 0 && Math.random() < dt * (1 + e.withered * 0.75)) {
         this.effects.emit({ x: e.x, y: 0.8 + Math.random() * 0.8, z: e.z, count: 1, color: SPELL_FX.miasma.rot, spread: 0.4, speed: 0.2, up: 0.7, life: 0.9, size: 0.2 });
       }
@@ -711,7 +717,7 @@ export class EntityViews {
       else if (key === 'move' && v.lastState !== 'move') v.c.setLoop(t.speed > 6.5 ? 'run' : 'walk', 1.3);
       else if (key === 'idle' && v.lastState !== 'idle') v.c.setLoop('idle');
       v.lastState = key;
-      this.tickAnim(v, dt, focusX, focusZ);
+      this.tickAnim(v, dt, focusX, focusZ, crowded);
     }
     for (const [id, v] of this.thralls) {
       if (!thralls.has(id)) {

@@ -97,6 +97,7 @@ Party synergy target: every class *produces* or *consumes* corpses so a
 - ✅ *shipped 2026-09-26* — **Status matrix expansion**: Chill (Mourner wraith hits: −30% move, −25% attack rate), Hemorrhage (Marrow Spear bleed), Sanctified (Crypt Deacons bless a wounded ally: −30% damage taken). Chill has no generated icon yet (inline SVG stand-in) — generate one with the asset pipeline.
 
 ### More bosses (one per area, each with a summoning key)
+✅ *shipped 2026-09-29: the Gravedigger King (Graves), the Bone Abbess (Ossuary) and the Drowned Congregation (Nave); see README → Area bosses.*
 | Area | Boss | Mechanic |
 |---|---|---|
 | Hollow Graves | **The Gravedigger King** | Buries players (root) and digs up elites mid-fight |

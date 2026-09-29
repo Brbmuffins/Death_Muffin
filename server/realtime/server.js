@@ -49,6 +49,7 @@ const LIMITS = {
   chatPerSec: 3,
 };
 
+const BOSS_IDS = new Set(['prelate', 'gravedigger', 'abbess', 'congregation']);
 const INTENT_TYPES = new Set(['hit', 'miasma', 'exhume', 'litany', 'summonBoss', 'recallThralls', 'detonate', 'signature', 'gather']);
 /** Host-shaped rites (discipline signatures + Bone Mantle); the host owns their shapes and clamps the aim around the caster. */
 const SIGNATURES = new Set(['wall', 'rend', 'dirge', 'bloom', 'mantle', 'offering', 'rally', 'seed', 'bash', 'vigil', 'brand',
@@ -144,6 +145,10 @@ function validIntent(intent) {
       out.r = Math.min(11, Math.max(1, num(out.r, 7)));
       out.spellPower = Math.min(1e5, Math.max(0, num(out.spellPower)));
       out.leaveCorpses = !!out.leaveCorpses;
+      break;
+    case 'summonBoss':
+      // Area bosses: which boss to wake; older clients send none and mean the Prelate. The host keeps one awake.
+      out.boss = BOSS_IDS.has(out.boss) ? out.boss : 'prelate';
       break;
     case 'signature':
       if (!SIGNATURES.has(out.sig) || !inWorld(out.x) || !inWorld(out.z)) return null;

@@ -8,6 +8,11 @@ import { AREAS } from '../../content/areas';
 import { runBossFight, type BossResult, type BossRun } from './boss';
 import type { Difficulty } from '../../content/difficulty';
 import { ascensionLevels } from '../../content/ascension';
+import { BOSSES, isBossId, type BossId } from '../../content/bosses';
+
+/** `npm run balance:boss -- --boss abbess` (or BALANCE_BOSS=abbess); default the Prelate. */
+const argBoss = process.argv[process.argv.indexOf('--boss') + 1];
+const BOSS: BossId = isBossId(argBoss) ? argBoss : isBossId(process.env.BALANCE_BOSS) ? process.env.BALANCE_BOSS : 'prelate';
 
 const DIFFICULTY = (process.env.BALANCE_DIFFICULTY ?? 'medium') as Difficulty;
 /** World Ascension rank; bands then anchor on the aged area level. */
@@ -16,7 +21,7 @@ const SEEDS = Math.max(1, Number(process.env.BALANCE_SEEDS ?? 3));
 const list = (v: string | undefined) => (v ? v.split(',').map((s) => s.trim()) : null);
 const disciplines = (list(process.env.BALANCE_DISCIPLINES) ?? ['1', '2', '3', '4']).map(Number);
 const names: Record<number, string> = { 1: 'Ossuary', 2: 'Gravecaller', 3: 'Mourner', 4: 'Rotweaver' };
-const L = AREAS.sanctum.level + ascensionLevels(ASC);
+const L = AREAS[BOSSES[BOSS].area].level + ascensionLevels(ASC);
 
 /** Same bands as the farming report, anchored on the Sanctum's level. */
 const BANDS: Record<string, Omit<BossRun, 'classIndex' | 'dodge'>> = {
@@ -40,7 +45,7 @@ let maxHp = 0;
 for (const band of bandNames) {
   for (const classIndex of disciplines) {
     for (const dodge of [true, false]) {
-      const rs = Array.from({ length: SEEDS }, (_, i) => runBossFight({ ...BANDS[band], classIndex, dodge, difficulty: DIFFICULTY, seed: 42 + i, ascension: ASC }));
+      const rs = Array.from({ length: SEEDS }, (_, i) => runBossFight({ ...BANDS[band], classIndex, dodge, difficulty: DIFFICULTY, seed: 42 + i, ascension: ASC, boss: BOSS }));
       maxHp = rs[0].bossMaxHp;
       const wins = rs.filter((r) => r.outcome === 'win');
       const cells = [
@@ -56,6 +61,6 @@ for (const band of bandNames) {
     }
   }
 }
-console.log(`\nBell-Sworn Prelate report: ${SEEDS} seed(s) per row, solo, difficulty ${DIFFICULTY}, ascension ${ASC}, boss max HP ${Math.round(maxHp)}`);
+console.log(`\n${BOSSES[BOSS].name} report: ${SEEDS} seed(s) per row, solo, difficulty ${DIFFICULTY}, ascension ${ASC}, boss max HP ${Math.round(maxHp)}`);
 console.log('time s = average kill time of winning runs · boss% = HP left (avg) · prelate%/adds% = damage taken as % of max HP over the fight\n');
 console.log(rows.join('\n'));

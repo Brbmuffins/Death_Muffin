@@ -35,9 +35,10 @@ describe('environment layout', () => {
     }
   });
 
-  it('never puts water or puddles over an interactable', () => {
+  it('keeps interaction spots dry except for the Drowned Font in its flooded aisle', () => {
     for (const i of interactables) {
-      expect(layout.water.some((w) => inside(w, i.x, i.z, 1.5)), i.id).toBe(false);
+      if (i.id === 'drowned_font') expect(layout.water.some((w) => inside(w, i.x, i.z)), i.id).toBe(true);
+      else expect(layout.water.some((w) => inside(w, i.x, i.z, 1.5)), i.id).toBe(false);
       for (const p of layout.puddles) expect(Math.hypot(p.x - i.x, p.z - i.z), i.id).toBeGreaterThan(p.r * p.sx + 1.5);
     }
   });

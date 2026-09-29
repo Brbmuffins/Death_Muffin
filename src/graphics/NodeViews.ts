@@ -116,7 +116,9 @@ function standIn(def: NodeDef, spent: boolean): Part[] {
   }
   // Pool: a fishing spot on the water — ripples + bubbles, nothing when it has drifted away.
   if (spent) return out;
-  const ring = merged([new THREE.RingGeometry(0.32, 0.37, 20), new THREE.RingGeometry(0.72, 0.77, 24)].map((g) => g.rotateX(-Math.PI / 2).translate(0, 0.05, 0)));
+  // The water sheet sits at y=0.06. Keep the fishing cue above it so the
+  // translucent water does not wash out the small rings in the Acre pond.
+  const ring = merged([new THREE.RingGeometry(0.32, 0.37, 20), new THREE.RingGeometry(0.72, 0.77, 24)].map((g) => g.rotateX(-Math.PI / 2).translate(0, 0.09, 0)));
   out.push({ geo: ring, mat: new THREE.MeshBasicMaterial({ color: col(def.tint, 2), transparent: true, opacity: 0.28, depthWrite: false }) });
   return out;
 }
@@ -168,6 +170,7 @@ class NodeBatch {
       inst.userData.local = part.local;
       inst.castShadow = this.def.kind === 'tree' && !this.spent;
       inst.receiveShadow = true;
+      if (this.def.kind === 'pool') inst.renderOrder = 2;
       this.meshes.push(inst);
       this.group.add(inst);
     }

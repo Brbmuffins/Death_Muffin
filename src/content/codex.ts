@@ -38,6 +38,7 @@ import {
 } from './abilities';
 import { AREAS, BOSS_SUMMON_SHARDS, type AreaId } from './areas';
 import type { DisciplineId } from './disciplines';
+import { ABBESS, BOSSES, CONGREGATION, GRAVEDIGGER, type BossId } from './bosses';
 import { BURROW, CENSER, DUST, ENEMIES, SCREAM, TEMPLAR_SHIELD, UNBIND, WARD, type Behavior, type EnemyId } from './enemies';
 
 /**
@@ -310,9 +311,10 @@ export const CODEX_DISCIPLINES: Record<DisciplineId, DisciplineEntry> = {
 // The Dead (enemies + the Prelate)
 // ---------------------------------------------------------------------------
 
-export type DeadId = EnemyId | 'prelate';
+/** Enemies plus every boss (bosses double as the Codex trophies: sealed until you have faced them). */
+export type DeadId = EnemyId | BossId;
 
-export const DEAD_ORDER: DeadId[] = ['robber', 'hound', 'penitent', 'sac', 'deacon', 'risen', 'censer', 'wraith', 'rat', 'golem', 'bat', 'moth', 'gargoyle', 'seraph', 'ghoul', 'acolyte', 'templar', 'prelate'];
+export const DEAD_ORDER: DeadId[] = ['robber', 'hound', 'penitent', 'sac', 'deacon', 'risen', 'censer', 'wraith', 'rat', 'golem', 'bat', 'moth', 'gargoyle', 'seraph', 'ghoul', 'acolyte', 'templar', 'niche', 'gravedigger', 'abbess', 'congregation', 'prelate'];
 
 export const PRELATE_NAME = 'The Bell-Sworn Prelate';
 
@@ -454,6 +456,34 @@ export const CODEX_DEAD: Record<DeadId, DeadEntry> = {
     behaviour: `A heavy knight of the Bell. Direct blows from its front ${TEMPLAR_SHIELD.halfArcDeg * 2}° glance off the bronze shield (only ${Math.round(TEMPLAR_SHIELD.passThrough * 100)}% gets through). Area and ground damage ignores the shield, and a Fractured Templar cannot block at all.`,
     corpse: 'A resonant corpse: Black Litany counts it twice.',
     counter: 'Let thralls turn it and strike from the side, or Fracture it first with Marrow Spear or Ivory Cleave. Miasma and rot pools work whatever way it faces.',
+  },
+  niche: {
+    name: ENEMIES.niche.name,
+    role: ENEMIES.niche.behavior,
+    behaviour: `Four stand around the Bone Abbess while she is awake. While any stands she heals ${ABBESS.regenPerS * 100}% of her health a second, and one fires a Bone Lance at someone every ${ABBESS.lance.everyS}s.`,
+    corpse: 'None: it crumbles to dust.',
+    counter: `Break them. Each one broken tears ${ABBESS.nicheBreakFrac * 100}% of her health away and Fractures her; thralls can work on them too.`,
+  },
+  gravedigger: {
+    name: BOSSES.gravedigger.name,
+    role: 'boss',
+    behaviour: `The Hollow Graves' boss. A Spade Sweep cone, and Burial: a grave outline opens under you (${GRAVEDIGGER.burial.windupMs / 1000}s) and anyone still in it is Buried, rooted for ${GRAVEDIGGER.burial.rootS}s (you can still cast). From 60% he digs Barrow Ghouls up at the edge; from 30% four open graves bury whoever walks in, and every player gets an outline.`,
+    corpse: 'None. He crawls back into his grave.',
+    counter: `Offer ${BOSSES.gravedigger.shards} soul shards at the King's Grave. Step off the outline the moment it appears, and stay out of the open graves in the last phase.`,
+  },
+  abbess: {
+    name: BOSSES.abbess.name,
+    role: 'boss',
+    behaviour: `The Marrow Ossuary's boss. Four skull niches heal her and fire Bone Lances. Ossuary Chorus throws eight spokes of bone out ${ABBESS.chorus.len}m (twice, rotated, from 60%). From 30% two broken niches re-form once, and Bone Communion drags every corpse in the arena to her, each healing ${ABBESS.communion.healPerCorpse * 100}%.`,
+    corpse: 'None. She folds back into her reliquary.',
+    counter: `Offer ${BOSSES.abbess.shards} soul shards at the Abbess's Reliquary. Break the niches first, stand between the spokes, and spend the corpses (Exhume, explode, Litany) before the Communion.`,
+  },
+  congregation: {
+    name: BOSSES.congregation.name,
+    role: 'boss',
+    behaviour: `The Drowned Nave's boss. Flood Hymn sweeps a ${CONGREGATION.hymn.halfDeg * 2}° arc of black water from her (${CONGREGATION.hymn.windupMs / 1000}s): only a pew between you and her keeps you dry. Drowning Grasp rings root whoever stays in them. Each phase the water rises (slower outside her dais; Soaked in the last phase) and wraiths and penitents climb out.`,
+    corpse: 'None. It sinks back into the black water.',
+    counter: `Offer ${BOSSES.congregation.shards} soul shards at the Drowned Font. When the tide crests start marching, put a pew between you and her.`,
   },
   prelate: {
     name: PRELATE_NAME,

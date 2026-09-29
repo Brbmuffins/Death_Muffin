@@ -135,7 +135,11 @@ var AREAS = {
       [-14, -3],
       [14, -4]
     ],
-    interactables: [{ id: "waystone_graves", kind: "waystone", label: "Waystone", x: -5.5, z: 1 }],
+    interactables: [
+      { id: "waystone_graves", kind: "waystone", label: "Waystone", x: -5.5, z: 1 },
+      // Area bosses (content/bosses.ts summonSpot: each arena's north edge).
+      { id: "kings_grave", kind: "boss", label: "The King's Grave", x: -14, z: -30.5 }
+    ],
     ambient: { fog: 854548, hemiSky: 3812693, hemiGround: 722960, moon: 10135252 }
   },
   ossuary: {
@@ -176,7 +180,10 @@ var AREAS = {
     ],
     itemChance: 0.09,
     breaches: [[38, -33], [50, -35], [60, -27], [60, -9], [46, -6], [39, -18], [54, -19], [44, -27]],
-    interactables: [{ id: "waystone_ossuary", kind: "waystone", label: "Waystone", x: 35.5, z: -6 }],
+    interactables: [
+      { id: "waystone_ossuary", kind: "waystone", label: "Waystone", x: 35.5, z: -6 },
+      { id: "abbess_reliquary", kind: "boss", label: "The Abbess's Reliquary", x: 48, z: -32.5 }
+    ],
     ambient: { fog: 920332, hemiSky: 4207434, hemiGround: 854281, moon: 12036494 }
   },
   nave: {
@@ -216,7 +223,10 @@ var AREAS = {
     ],
     itemChance: 0.1,
     breaches: [[-11, -91], [11, -91], [-11, -72], [11, -72], [-11, -53], [11, -53], [0, -82], [0, -62]],
-    interactables: [{ id: "waystone_nave", kind: "waystone", label: "Waystone", x: 6, z: -47.5 }],
+    interactables: [
+      { id: "waystone_nave", kind: "waystone", label: "Waystone", x: 6, z: -47.5 },
+      { id: "drowned_font", kind: "boss", label: "The Drowned Font", x: 0, z: -70.35 }
+    ],
     ambient: { fog: 723220, hemiSky: 3352666, hemiGround: 525839, moon: 9406168 }
   },
   sanctum: {

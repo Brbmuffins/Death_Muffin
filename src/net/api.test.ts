@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { loadOrCreateCharacter, setToken } from './api';
+import { loadOrCreateCharacter, saveProgress, setToken } from './api';
 
 const character = { id: 42, class_index: 5, class_name: 'Necromancer', level: 1,
   experience: 0, gold: 0, stat_str: 5, stat_agi: 5, stat_int: 5, stat_vit: 10 };
@@ -30,5 +30,14 @@ describe('first-time class selection', () => {
     await loadOrCreateCharacter(2);
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(JSON.parse(String(fetch.mock.calls[0][1].body))).toEqual({ class_index: 2 });
+  });
+});
+
+describe('progress saving', () => {
+  it('rejects a failed response even when the server uses HTTP 200', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ success: false, error: 'Progress was not saved' }) })));
+    setToken('test-token');
+    await expect(saveProgress({ characterId: 42, level: 1, xp: 0, gold: 0,
+      stat_str: 5, stat_agi: 5, stat_int: 5, stat_vit: 5 })).rejects.toThrow('Progress was not saved');
   });
 });

@@ -3,80 +3,158 @@ import { enemyDamageScale, enemyHpScale } from '../../content/enemies';
 import { FRACTURE } from '../../content/abilities';
 import { DIFFICULTIES } from '../../content/difficulty';
 import { ascensionLevels } from '../../content/ascension';
+import { ABBESS, ABBESS_NICHE_SPOTS, BOSSES, CONGREGATION, GRAVEDIGGER, GRAVEDIGGER_PITS, type BossId } from '../../content/bosses';
+import type { EnemyId } from '../../content/enemies';
 import type { WorldSim } from './WorldSim';
-import type { BossPhase, BossState } from './types';
+import type { BossPhase, BossState, PlayerBody } from './types';
 
-export const BOSS_ARENA = { x: 0, z: -116, r: 13 };
+/** The Prelate's arena (kept for older call sites; every boss's arena lives in content/bosses.ts). */
+export const BOSS_ARENA = BOSSES.prelate.arena;
 export const BOSS_RADIUS = 1.6;
-const BASE_HP = 26000;
 
-interface Pending {
-  kind: 'toll' | 'slam' | 'rain';
+export interface Pending {
+  kind: string;
   at: number;
   x: number;
   z: number;
   r: number;
   targets?: [number, number][];
+  /** Facing (radians) for cones, lines and spokes. */
+  dir?: number;
+  /** A niche's attacks don't count as the boss being busy. */
+  side?: boolean;
+}
+
+/** Axis-aligned cover box (Drowned Congregation pews), same shape as the nav's prop boxes. */
+export interface CoverBox {
+  x0: number;
+  z0: number;
+  x1: number;
+  z1: number;
+}
+
+const angleTo = (fx: number, fz: number, tx: number, tz: number) => Math.atan2(tx - fx, tz - fz);
+const angleDiff = (a: number, b: number) => {
+  let d = Math.abs(a - b) % (Math.PI * 2);
+  return d > Math.PI ? Math.PI * 2 - d : d;
+};
+/** Distance from P to the segment AB. */
+function segDist(px: number, pz: number, ax: number, az: number, bx: number, bz: number) {
+  const vx = bx - ax;
+  const vz = bz - az;
+  const l2 = vx * vx + vz * vz || 1;
+  const t = Math.max(0, Math.min(1, ((px - ax) * vx + (pz - az) * vz) / l2));
+  return Math.hypot(px - (ax + vx * t), pz - (az + vz * t));
+}
+/** Does segment AB cross the box (slab test)? */
+export function segmentHitsBox(ax: number, az: number, bx: number, bz: number, b: CoverBox) {
+  let t0 = 0;
+  let t1 = 1;
+  const d = [bx - ax, bz - az];
+  const o = [ax, az];
+  const lo = [b.x0, b.z0];
+  const hi = [b.x1, b.z1];
+  for (let i = 0; i < 2; i++) {
+    if (Math.abs(d[i]) < 1e-9) {
+      if (o[i] < lo[i] || o[i] > hi[i]) return false;
+      continue;
+    }
+    let ta = (lo[i] - o[i]) / d[i];
+    let tb = (hi[i] - o[i]) / d[i];
+    if (ta > tb) [ta, tb] = [tb, ta];
+    t0 = Math.max(t0, ta);
+    t1 = Math.min(t1, tb);
+    if (t0 > t1) return false;
+  }
+  return true;
 }
 
 /**
- * The Bell-Sworn Prelate — the audit's replacement for the Void Warden. Keeps
- * the proven three-phase shape, but every attack has a readable physical
- * cause and a telegraph:
- *   Toll (all phases)  — ring around the bell; step out before it sounds.
- *   Slam               — the bell drops in front of it.
- *   Bell Rain (P2+)    — cracked bell shards fall on marked circles.
- *   Procession (P2/P3) — penitents file out of the walls on phase change.
+ * Shared boss machinery (area-bosses brief §2): awaken, damage + Fracture + Withered, a host-owned stagger,
+ * phase thresholds at 60% / 30%, telegraphed attacks resolved on time, the wipe reset, defeat, and the arena leash.
+ * Each boss adds its attacks in `think` and how they land in `resolve`.
  */
-export class BossBrain {
-  state: BossState = {
-    active: false,
-    x: BOSS_ARENA.x,
-    z: BOSS_ARENA.z,
-    facing: 0,
-    hp: 1,
-    maxHp: 1,
-    phase: 1,
-    state: 'idle',
-    stateT: 0,
-    flash: 0,
-    fracture: 0,
-    fractureT: 0,
-    withered: 0,
-    witheredT: 0,
-    witheredDps: 0,
-    level: AREAS.sanctum.level,
-  };
-  private pending: Pending[] = [];
-  private tollCd = 4;
-  private slamCd = 2;
-  private rainCd = 6;
-  private lastHitBy = '';
-  private staggerT = 0;
+export abstract class BossBrain {
+  readonly def;
+  state: BossState;
+  protected pending: Pending[] = [];
+  protected lastHitBy = '';
+  protected staggerT = 0;
+  private adds = new Set<number>();
 
-  constructor(private sim: WorldSim) {}
+  constructor(protected sim: WorldSim, readonly id: BossId) {
+    this.def = BOSSES[id];
+    this.state = {
+      id,
+      active: false,
+      x: this.def.arena.x,
+      z: this.def.arena.z,
+      facing: 0,
+      hp: 1,
+      maxHp: 1,
+      phase: 1,
+      state: 'idle',
+      stateT: 0,
+      flash: 0,
+      fracture: 0,
+      fractureT: 0,
+      withered: 0,
+      witheredT: 0,
+      witheredDps: 0,
+      level: AREAS[this.def.area].level,
+    };
+  }
+
+  protected get arena() {
+    return this.def.arena;
+  }
 
   awaken(by: string) {
     if (this.state.active) return;
     const s = this.state;
     const party = Math.max(1, this.sim.players.size);
     s.active = true;
-    s.level = AREAS.sanctum.level + ascensionLevels(this.sim.ascension);
-    s.maxHp = BASE_HP * enemyHpScale(s.level) * (1 + 0.8 * (party - 1)) * DIFFICULTIES[this.sim.difficulty].enemyHpMult;
+    s.level = AREAS[this.def.area].level + ascensionLevels(this.sim.ascension);
+    s.maxHp = this.def.baseHp * enemyHpScale(s.level) * (1 + 0.8 * (party - 1)) * DIFFICULTIES[this.sim.difficulty].enemyHpMult;
     s.hp = s.maxHp;
     s.phase = 1;
     s.state = 'idle';
     s.stateT = 0;
-    s.x = BOSS_ARENA.x;
-    s.z = BOSS_ARENA.z - 4;
-    this.tollCd = 3.5;
-    this.slamCd = 2;
-    this.rainCd = 7;
+    s.x = this.arena.x;
+    s.z = this.arena.z;
+    s.facing = 0;
+    s.flash = 0;
+    s.fracture = 0;
+    s.fractureT = 0;
+    s.withered = 0;
+    s.witheredT = 0;
+    s.witheredDps = 0;
     this.pending = [];
     this.staggerT = 0;
+    this.adds.clear();
     this.lastHitBy = by;
-    this.sim.emit({ t: 'boss', kind: 'awaken', x: s.x, z: s.z, phase: 1 });
+    this.onAwaken();
+    this.sim.emit({ t: 'boss', kind: 'awaken', x: s.x, z: s.z, phase: 1, boss: this.id });
   }
+
+  protected abstract onAwaken(): void;
+  protected abstract onPhase(p: BossPhase): void;
+  protected abstract think(dt: number, players: PlayerBody[]): void;
+  protected onDefeat() {}
+
+  /** Adds belong to this attempt; they leave with the boss without granting a kill or a corpse. */
+  protected spawnAdd(def: EnemyId, x: number, z: number, elite = false) {
+    const enemy = this.sim.spawnEnemy(def, this.def.area, x, z, elite);
+    this.adds.add(enemy.id);
+    return enemy;
+  }
+
+  private clearAdds() {
+    for (const id of this.adds) this.sim.enemies.delete(id);
+    this.adds.clear();
+  }
+  /** Extra per-tick work before attacks (regen, hazards); runs after the stagger. */
+  protected tick(_dt: number, _players: PlayerBody[]) {}
 
   damage(amount: number, by: string, fracture: number) {
     const s = this.state;
@@ -97,27 +175,15 @@ export class BossBrain {
     this.state.flash = 1;
   }
 
-  private dmg(base: number) {
+  protected dmg(base: number) {
     return base * enemyDamageScale(this.state.level) * DIFFICULTIES[this.sim.difficulty].enemyDamageMult;
   }
 
   private setPhase(p: BossPhase) {
     const s = this.state;
     s.phase = p;
-    this.sim.emit({ t: 'boss', kind: 'phase', x: s.x, z: s.z, phase: p });
-    // Procession: penitents file in from the side aisles.
-    const spawns: [number, number][] = [
-      [-11, -110],
-      [11, -110],
-      [-11, -123],
-      [11, -123],
-    ];
-    const count = p === 2 ? 4 : 6;
-    for (let i = 0; i < count; i++) {
-      const [x, z] = spawns[i % spawns.length];
-      this.sim.spawnEnemy(i % 2 ? 'penitent' : 'risen', 'sanctum', x + (i > 3 ? 1.5 : 0), z, false);
-    }
-    this.sim.emit({ t: 'boss', kind: 'summon', x: s.x, z: s.z, phase: p, targets: spawns });
+    this.sim.emit({ t: 'boss', kind: 'phase', x: s.x, z: s.z, phase: p, boss: this.id });
+    this.onPhase(p);
   }
 
   update(dt: number) {
@@ -135,20 +201,24 @@ export class BossBrain {
       s.active = false;
       s.state = 'dead';
       this.pending = [];
-      this.sim.emit({ t: 'boss', kind: 'defeated', x: s.x, z: s.z, phase: s.phase, killer: this.lastHitBy });
+      this.onDefeat();
+      this.clearAdds();
+      this.sim.emit({ t: 'boss', kind: 'defeated', x: s.x, z: s.z, phase: s.phase, killer: this.lastHitBy, boss: this.id });
       return;
     }
     const ratio = s.hp / s.maxHp;
     if (s.phase === 1 && ratio <= 0.6) this.setPhase(2);
     else if (s.phase === 2 && ratio <= 0.3) this.setPhase(3);
 
-    const players = [...this.sim.players.values()].filter((p) => p.alive && p.area === 'sanctum');
+    const players = [...this.sim.players.values()].filter((p) => p.alive && p.area === this.def.area);
     if (!players.length) {
-      // Everyone left or fell: the Prelate resets and waits to be summoned again.
+      // Everyone left or fell: the boss resets and waits to be summoned again.
       s.active = false;
       s.state = 'idle';
       this.pending = [];
-      this.sim.emit({ t: 'boss', kind: 'defeated', x: s.x, z: s.z, phase: s.phase, killer: '' });
+      this.onDefeat();
+      this.clearAdds();
+      this.sim.emit({ t: 'boss', kind: 'defeated', x: s.x, z: s.z, phase: s.phase, killer: '', boss: this.id });
       return;
     }
 
@@ -162,37 +232,74 @@ export class BossBrain {
       if (dt <= 0) return;
     }
     s.stateT += dt;
+    this.tick(dt, players);
 
     // Resolve telegraphed attacks.
     const now = this.sim.time;
     for (const p of [...this.pending]) {
       if (now < p.at) continue;
       this.pending.splice(this.pending.indexOf(p), 1);
-      const circles = p.targets ?? [[p.x, p.z]];
-      const hurt = new Set<string>();
-      for (const [cx, cz] of circles) {
-        for (const pl of players) {
-          if (hurt.has(pl.id) || Math.hypot(pl.x - cx, pl.z - cz) > p.r + 0.4) continue;
-          hurt.add(pl.id);
-          const base = p.kind === 'toll' ? 24 : p.kind === 'slam' ? 20 : 18;
-          this.sim.emit({ t: 'hurt', player: pl.id, dmg: this.dmg(base), from: 'boss', x: cx, z: cz });
-        }
-        for (const t of [...this.sim.thralls.values()]) {
-          if (Math.hypot(t.x - cx, t.z - cz) <= p.r) {
-            t.hp -= this.dmg(20);
-            t.flash = 1;
-            if (t.hp <= 0) this.sim.killThrall(t, 'killed');
-          }
-        }
-      }
-      this.sim.emit({ t: 'boss', kind: p.kind, x: p.x, z: p.z, phase: s.phase, targets: p.targets, r: p.r, ms: 0 });
+      this.resolve(p, players);
     }
+    this.think(dt, players);
+  }
 
-    const fast = s.phase === 3 ? 0.62 : s.phase === 2 ? 0.82 : 1;
-    this.tollCd -= dt;
-    this.slamCd -= dt;
-    this.rainCd -= dt;
+  /** Default resolution: circles (Prelate toll/slam/rain, and any boss's ring attack). */
+  protected resolve(p: Pending, players: PlayerBody[]) {
+    const s = this.state;
+    const circles = p.targets ?? [[p.x, p.z]];
+    const hurt = new Set<string>();
+    for (const [cx, cz] of circles) {
+      for (const pl of players) {
+        if (hurt.has(pl.id) || Math.hypot(pl.x - cx, pl.z - cz) > p.r + 0.4) continue;
+        hurt.add(pl.id);
+        this.sim.emit({ t: 'hurt', player: pl.id, dmg: this.dmg(this.circleDamage(p.kind)), from: 'boss', x: cx, z: cz });
+      }
+      this.hurtThralls((t) => Math.hypot(t.x - cx, t.z - cz) <= p.r);
+    }
+    this.sim.emit({ t: 'boss', kind: p.kind as never, x: p.x, z: p.z, phase: s.phase, targets: p.targets, r: p.r, ms: 0, boss: this.id });
+  }
 
+  protected circleDamage(_kind: string) {
+    return 20;
+  }
+
+  protected hurtThralls(inside: (t: { x: number; z: number }) => boolean, base = 20) {
+    for (const t of [...this.sim.thralls.values()]) {
+      if (!inside(t)) continue;
+      t.hp -= this.dmg(base);
+      t.flash = 1;
+      if (t.hp <= 0) this.sim.killThrall(t, 'killed');
+    }
+  }
+
+  /** A cone / line / spoke hit on players: emits hurt for each caught body and returns their ids. */
+  protected strikePlayers(players: PlayerBody[], caught: (p: PlayerBody) => boolean, base: number, x: number, z: number) {
+    const ids: string[] = [];
+    for (const pl of players) {
+      if (!caught(pl)) continue;
+      ids.push(pl.id);
+      this.sim.emit({ t: 'hurt', player: pl.id, dmg: this.dmg(base), from: 'boss', x, z });
+    }
+    return ids;
+  }
+
+  protected telegraph(kind: string, x: number, z: number, r: number, ms: number, extra: Partial<Pending> = {}, delayMs = 0) {
+    const p: Pending = { kind, at: this.sim.time + (ms + delayMs) / 1000, x, z, r, ...extra };
+    this.pending.push(p);
+    if (!p.side) {
+      this.state.state = (['toll', 'slam', 'rain', 'summon'].includes(kind) ? kind : kind === 'bury' || kind === 'hymn' || kind === 'grasp' || kind === 'chorus' || kind === 'communion' ? 'rain' : 'slam') as BossState['state'];
+      this.state.stateT = 0;
+    }
+    this.sim.emit({ t: 'boss', kind: kind as never, x, z, phase: this.state.phase, targets: p.targets, r, ms: ms + delayMs, dir: p.dir, boss: this.id });
+  }
+
+  protected get busy() {
+    return this.pending.some((p) => !p.side);
+  }
+
+  protected nearest(players: PlayerBody[]) {
+    const s = this.state;
     let nearest = players[0];
     let nd = Infinity;
     for (const p of players) {
@@ -202,8 +309,88 @@ export class BossBrain {
         nearest = p;
       }
     }
+    return { nearest, nd };
+  }
 
-    const busy = this.pending.length > 0;
+  /** Lumber toward the nearest player, leashed inside the arena (radius − margin). */
+  protected chase(nearest: PlayerBody, nd: number, speed: number, dt: number, margin = 2, stopAt = 3, busy = this.busy) {
+    const s = this.state;
+    if (nd > stopAt) {
+      const dx = nearest.x - s.x;
+      const dz = nearest.z - s.z;
+      s.x += (dx / nd) * speed * dt;
+      s.z += (dz / nd) * speed * dt;
+      const ox = s.x - this.arena.x;
+      const oz = s.z - this.arena.z;
+      const or = Math.hypot(ox, oz);
+      if (or > this.arena.r - margin) {
+        s.x = this.arena.x + (ox / or) * (this.arena.r - margin);
+        s.z = this.arena.z + (oz / or) * (this.arena.r - margin);
+      }
+      s.state = busy ? s.state : 'move';
+    }
+    s.facing = Math.atan2(nearest.x - s.x, nearest.z - s.z);
+  }
+
+  /** A point on the arena rim (for adds and pits). */
+  protected rim(angle: number, frac = 0.85): [number, number] {
+    return [this.arena.x + Math.sin(angle) * this.arena.r * frac, this.arena.z + Math.cos(angle) * this.arena.r * frac];
+  }
+}
+
+/**
+ * The Bell-Sworn Prelate — unchanged from the single-boss build. Every attack has a readable physical cause and a
+ * telegraph:
+ *   Toll (all phases)  — ring around the bell; step out before it sounds.
+ *   Slam               — the bell drops in front of it.
+ *   Bell Rain (P2+)    — cracked bell shards fall on marked circles.
+ *   Procession (P2/P3) — penitents file out of the walls on phase change.
+ */
+export class PrelateBrain extends BossBrain {
+  private tollCd = 4;
+  private slamCd = 2;
+  private rainCd = 6;
+
+  constructor(sim: WorldSim) {
+    super(sim, 'prelate');
+  }
+
+  protected onAwaken() {
+    this.state.z = BOSS_ARENA.z - 4;
+    this.tollCd = 3.5;
+    this.slamCd = 2;
+    this.rainCd = 7;
+  }
+
+  protected circleDamage(kind: string) {
+    return kind === 'toll' ? 24 : kind === 'slam' ? 20 : 18;
+  }
+
+  protected onPhase(p: BossPhase) {
+    const s = this.state;
+    // Procession: penitents file in from the side aisles.
+    const spawns: [number, number][] = [
+      [-11, -110],
+      [11, -110],
+      [-11, -123],
+      [11, -123],
+    ];
+    const count = p === 2 ? 4 : 6;
+    for (let i = 0; i < count; i++) {
+      const [x, z] = spawns[i % spawns.length];
+      this.spawnAdd(i % 2 ? 'penitent' : 'risen', x + (i > 3 ? 1.5 : 0), z);
+    }
+    this.sim.emit({ t: 'boss', kind: 'summon', x: s.x, z: s.z, phase: p, targets: spawns, boss: this.id });
+  }
+
+  protected think(dt: number, players: PlayerBody[]) {
+    const s = this.state;
+    const fast = s.phase === 3 ? 0.62 : s.phase === 2 ? 0.82 : 1;
+    this.tollCd -= dt;
+    this.slamCd -= dt;
+    this.rainCd -= dt;
+    const { nearest, nd } = this.nearest(players);
+    const busy = this.busy;
     if (!busy) {
       if (this.tollCd <= 0) {
         this.tollCd = 9 * fast;
@@ -218,7 +405,7 @@ export class BossBrain {
           const r = 3 + this.sim.rand() * (BOSS_ARENA.r - 4);
           targets.push([BOSS_ARENA.x + Math.cos(a) * r, BOSS_ARENA.z + Math.sin(a) * r]);
         }
-        this.telegraph('rain', s.x, s.z, 2.3, 1400, targets);
+        this.telegraph('rain', s.x, s.z, 2.3, 1400, { targets });
       } else if (this.slamCd <= 0 && nd < 4.5) {
         this.slamCd = 3.2 * fast;
         const dirX = (nearest.x - s.x) / (nd || 1);
@@ -226,30 +413,409 @@ export class BossBrain {
         this.telegraph('slam', s.x + dirX * 2.6, s.z + dirZ * 2.6, 2.6, 900 * (s.phase === 3 ? 0.8 : 1));
       }
     }
-
-    // Lumber toward the nearest player, staying inside the sanctum.
     const speed = (s.phase === 3 ? 2.6 : s.phase === 2 ? 2 : 1.6) * (busy ? 0.25 : 1);
-    if (nd > 3) {
-      const dx = nearest.x - s.x;
-      const dz = nearest.z - s.z;
-      s.x += (dx / nd) * speed * dt;
-      s.z += (dz / nd) * speed * dt;
-      const ox = s.x - BOSS_ARENA.x;
-      const oz = s.z - BOSS_ARENA.z;
-      const or = Math.hypot(ox, oz);
-      if (or > BOSS_ARENA.r - 2) {
-        s.x = BOSS_ARENA.x + (ox / or) * (BOSS_ARENA.r - 2);
-        s.z = BOSS_ARENA.z + (oz / or) * (BOSS_ARENA.r - 2);
-      }
-      s.state = busy ? s.state : 'move';
-    }
-    s.facing = Math.atan2(nearest.x - s.x, nearest.z - s.z);
+    // `busy` from before this tick's attack choice, exactly as the single-boss build did.
+    this.chase(nearest, nd, speed, dt, 2, 3, busy);
+  }
+}
+
+/**
+ * The Gravedigger King (Hollow Graves). Spade Sweep (cone) and Burial (a grave outline under you: leave it or be
+ * Buried — rooted, casting allowed). P2 digs Barrow Ghouls up at the rim; P3 opens four pits that bury whoever walks in.
+ */
+export class GravediggerBrain extends BossBrain {
+  private sweepCd = 2.5;
+  private buryCd = 4;
+  private exhumeCd = 0;
+  private eliteDone = false;
+  private pits: [number, number][] = [];
+  private pitCd = new Map<string, number>();
+
+  constructor(sim: WorldSim) {
+    super(sim, 'gravedigger');
   }
 
-  private telegraph(kind: Pending['kind'], x: number, z: number, r: number, ms: number, targets?: [number, number][]) {
-    this.pending.push({ kind, at: this.sim.time + ms / 1000, x, z, r, targets });
-    this.state.state = kind === 'rain' ? 'rain' : kind;
-    this.state.stateT = 0;
-    this.sim.emit({ t: 'boss', kind, x, z, phase: this.state.phase, targets, r, ms });
+  protected onAwaken() {
+    this.sweepCd = 2.5;
+    this.buryCd = 4;
+    this.exhumeCd = 4;
+    this.eliteDone = false;
+    this.pits = [];
+    this.pitCd.clear();
   }
+
+  protected onPhase(p: BossPhase) {
+    const s = this.state;
+    if (p === 3) {
+      // Open Graves: four pits at fixed points around the arena.
+      this.pits = GRAVEDIGGER_PITS.map(([x, z]) => [x, z] as [number, number]);
+      this.sim.emit({ t: 'boss', kind: 'pits', x: s.x, z: s.z, phase: p, targets: this.pits, r: GRAVEDIGGER.pits.r, boss: this.id });
+    }
+  }
+
+  protected onDefeat() {
+    this.pits = [];
+  }
+
+  protected tick(dt: number, players: PlayerBody[]) {
+    // Walking into an open grave buries you (per-player cooldown so it can't chain-lock).
+    if (!this.pits.length) return;
+    const G = GRAVEDIGGER;
+    for (const pl of players) {
+      const cd = (this.pitCd.get(pl.id) ?? 0) - dt;
+      this.pitCd.set(pl.id, cd);
+      if (cd > 0) continue;
+      const pit = this.pits.find(([x, z]) => Math.hypot(pl.x - x, pl.z - z) <= G.pits.r);
+      if (!pit) continue;
+      this.pitCd.set(pl.id, G.pits.reburyS);
+      this.sim.emit({ t: 'hurt', player: pl.id, dmg: this.dmg(G.burial.dmg * 0.6), from: 'boss', x: pit[0], z: pit[1] });
+      this.sim.emit({ t: 'boss', kind: 'bury', x: pit[0], z: pit[1], phase: this.state.phase, ms: 0, players: [pl.id], root: G.burial.rootS, boss: this.id });
+    }
+  }
+
+  protected resolve(p: Pending, players: PlayerBody[]) {
+    const G = GRAVEDIGGER;
+    const s = this.state;
+    if (p.kind === 'sweep') {
+      const ids = this.strikePlayers(players, (pl) => Math.hypot(pl.x - p.x, pl.z - p.z) <= G.sweep.r + 0.3 && angleDiff(angleTo(p.x, p.z, pl.x, pl.z), p.dir!) <= (G.sweep.halfDeg * Math.PI) / 180, G.sweep.dmg, p.x, p.z);
+      this.hurtThralls((t) => Math.hypot(t.x - p.x, t.z - p.z) <= G.sweep.r && angleDiff(angleTo(p.x, p.z, t.x, t.z), p.dir!) <= (G.sweep.halfDeg * Math.PI) / 180);
+      this.sim.emit({ t: 'boss', kind: 'sweep', x: p.x, z: p.z, phase: s.phase, r: p.r, ms: 0, dir: p.dir, players: ids, boss: this.id });
+      return;
+    }
+    if (p.kind === 'bury') {
+      const caught = new Set<string>();
+      for (const [gx, gz] of p.targets ?? []) {
+        for (const pl of players) {
+          if (Math.abs(pl.x - gx) <= G.burial.hw + 0.3 && Math.abs(pl.z - gz) <= G.burial.hd + 0.3) caught.add(pl.id);
+        }
+      }
+      for (const id of caught) this.sim.emit({ t: 'hurt', player: id, dmg: this.dmg(G.burial.dmg), from: 'boss', x: p.x, z: p.z });
+      this.sim.emit({ t: 'boss', kind: 'bury', x: p.x, z: p.z, phase: s.phase, targets: p.targets, ms: 0, players: [...caught], root: G.burial.rootS, boss: this.id });
+      return;
+    }
+    super.resolve(p, players);
+  }
+
+  protected think(dt: number, players: PlayerBody[]) {
+    const G = GRAVEDIGGER;
+    const s = this.state;
+    const fast = s.phase === 3 ? 0.75 : s.phase === 2 ? 0.88 : 1;
+    this.sweepCd -= dt;
+    this.buryCd -= dt;
+    const { nearest, nd } = this.nearest(players);
+    if (s.phase >= 2) {
+      this.exhumeCd -= dt;
+      if (this.exhumeCd <= 0) {
+        // Exhumation: Barrow Ghouls dug up at the rim (they climb out burrowed).
+        this.exhumeCd = G.exhume.everyS;
+        const spots: [number, number][] = [];
+        for (let i = 0; i < G.exhume.ghouls; i++) {
+          const at = this.rim(this.sim.rand() * Math.PI * 2);
+          spots.push(at);
+          this.spawnAdd('ghoul', at[0], at[1]);
+        }
+        this.sim.emit({ t: 'boss', kind: 'summon', x: s.x, z: s.z, phase: s.phase, targets: spots, boss: this.id });
+      }
+      if (!this.eliteDone && s.hp / s.maxHp <= 0.45) {
+        this.eliteDone = true;
+        const at = this.rim(angleTo(this.arena.x, this.arena.z, nearest.x, nearest.z) + Math.PI);
+        this.spawnAdd('robber', at[0], at[1], true);
+      }
+    }
+    if (!this.busy) {
+      if (this.buryCd <= 0) {
+        this.buryCd = G.burial.cd * fast;
+        // Up to two players (every player in P3) get a grave outline under their feet.
+        const marked = s.phase === 3 ? players : [...players].sort((a, b) => Math.hypot(a.x - s.x, a.z - s.z) - Math.hypot(b.x - s.x, b.z - s.z)).slice(0, 2);
+        this.telegraph('bury', s.x, s.z, G.burial.hd, G.burial.windupMs, { targets: marked.map((pl) => [pl.x, pl.z]) });
+      } else if (this.sweepCd <= 0 && nd < G.sweep.r + 1) {
+        this.sweepCd = G.sweep.cd * fast;
+        const dir = angleTo(s.x, s.z, nearest.x, nearest.z);
+        this.telegraph('sweep', s.x, s.z, G.sweep.r, G.sweep.windupMs, { dir });
+        if (s.phase === 3) this.telegraph('sweep', s.x, s.z, G.sweep.r, G.sweep.windupMs, { dir: dir + Math.PI / 3 }, 650);
+      }
+    }
+    this.chase(nearest, nd, (s.phase === 3 ? 2.6 : s.phase === 2 ? 2.2 : 1.8) * (this.busy ? 0.3 : 1), dt, 2, 2.5);
+  }
+}
+
+/**
+ * The Bone Abbess (Marrow Ossuary). Four skull niches (targetable enemies) heal her and fire Bone Lances; breaking
+ * one hurts and Fractures her. Ossuary Chorus radiates eight spokes (twice in P2). P3 rebuilds two niches once and
+ * channels Bone Communion: every corpse in the arena crawls to her and heals her — spend them first.
+ */
+export class AbbessBrain extends BossBrain {
+  private niches: number[] = [];
+  private nicheSpots: [number, number][] = [];
+  private broken = new Set<number>();
+  private lanceCd = 4;
+  private chorusCd = 5;
+  private graspCd = 2;
+  private communionCd = 6;
+  private rebuilt = false;
+
+  constructor(sim: WorldSim) {
+    super(sim, 'abbess');
+  }
+
+  get nicheIds() {
+    return this.niches;
+  }
+
+  private spawnNiche(i: number) {
+    const [x, z] = this.nicheSpots[i];
+    const e = this.sim.spawnEnemy('niche', this.def.area, x, z, false, false);
+    e.maxHp = e.hp = this.state.maxHp * ABBESS.nicheHpFrac;
+    this.niches[i] = e.id;
+    this.broken.delete(i);
+  }
+
+  protected onAwaken() {
+    this.nicheSpots = ABBESS_NICHE_SPOTS.map(([x, z]) => [x, z] as [number, number]);
+    this.niches = [];
+    this.broken.clear();
+    this.rebuilt = false;
+    this.lanceCd = 4;
+    this.chorusCd = 5;
+    this.graspCd = 2;
+    this.communionCd = 6;
+    for (let i = 0; i < ABBESS.niches; i++) this.spawnNiche(i);
+  }
+
+  protected onDefeat() {
+    // The niches crumble with her (no XP, no corpse).
+    for (const id of this.niches) {
+      const e = this.sim.enemies.get(id);
+      if (e && e.state !== 'dead') e.hp = 0;
+    }
+    this.niches = [];
+  }
+
+  private alive(i: number) {
+    const e = this.sim.enemies.get(this.niches[i]);
+    return !!e && e.state !== 'dead' && e.hp > 0;
+  }
+
+  protected onPhase(p: BossPhase) {
+    if (p === 3 && !this.rebuilt) {
+      // Rebuild: two broken niches re-form, once.
+      this.rebuilt = true;
+      let n = 0;
+      for (let i = 0; i < this.nicheSpots.length && n < 2; i++) if (!this.alive(i)) (this.spawnNiche(i), n++);
+      if (n) this.sim.emit({ t: 'boss', kind: 'summon', x: this.state.x, z: this.state.z, phase: p, targets: this.nicheSpots, boss: this.id });
+    }
+  }
+
+  protected tick(dt: number, players: PlayerBody[]) {
+    const s = this.state;
+    let standing = 0;
+    for (let i = 0; i < this.niches.length; i++) {
+      if (this.alive(i)) {
+        standing++;
+        continue;
+      }
+      if (this.broken.has(i)) continue;
+      // A niche broke: it tears at her (4% max health) and Fractures her.
+      this.broken.add(i);
+      s.hp -= s.maxHp * ABBESS.nicheBreakFrac;
+      s.flash = 1;
+      s.fracture = Math.min(FRACTURE.maxStacks, s.fracture + 1);
+      s.fractureT = FRACTURE.durationMs / 1000;
+      const [x, z] = this.nicheSpots[i];
+      this.sim.emit({ t: 'boss', kind: 'nicheBreak', x, z, phase: s.phase, boss: this.id });
+    }
+    if (standing > 0) {
+      s.hp = Math.min(s.maxHp, s.hp + s.maxHp * ABBESS.regenPerS * dt);
+      this.lanceCd -= dt;
+      if (this.lanceCd <= 0 && players.length) {
+        // A Bone Lance from a standing niche at a random player.
+        this.lanceCd = ABBESS.lance.everyS;
+        const up = this.nicheSpots.filter((_, i) => this.alive(i));
+        const [nx, nz] = up[Math.floor(this.sim.rand() * up.length)];
+        const pl = players[Math.floor(this.sim.rand() * players.length)];
+        this.telegraph('lance', nx, nz, ABBESS.lance.len, ABBESS.lance.windupMs, { dir: angleTo(nx, nz, pl.x, pl.z), side: true });
+      }
+    }
+  }
+
+  get standingNiches() {
+    return this.niches.filter((_, i) => this.alive(i)).length;
+  }
+
+  protected resolve(p: Pending, players: PlayerBody[]) {
+    const A = ABBESS;
+    const s = this.state;
+    const tip = (len: number, dir: number): [number, number] => [p.x + Math.sin(dir) * len, p.z + Math.cos(dir) * len];
+    if (p.kind === 'lance') {
+      const [bx, bz] = tip(A.lance.len, p.dir!);
+      this.strikePlayers(players, (pl) => segDist(pl.x, pl.z, p.x, p.z, bx, bz) <= A.lance.halfWidth, A.lance.dmg, p.x, p.z);
+      this.hurtThralls((t) => segDist(t.x, t.z, p.x, p.z, bx, bz) <= A.lance.halfWidth);
+      this.sim.emit({ t: 'boss', kind: 'lance', x: p.x, z: p.z, phase: s.phase, r: p.r, ms: 0, dir: p.dir, boss: this.id });
+      return;
+    }
+    if (p.kind === 'chorus') {
+      const spokes = Array.from({ length: A.chorus.spokes }, (_, i) => p.dir! + (i * Math.PI * 2) / A.chorus.spokes);
+      const onSpoke = (x: number, z: number) => spokes.some((d) => {
+        const [bx, bz] = tip(A.chorus.len, d);
+        return segDist(x, z, p.x, p.z, bx, bz) <= A.chorus.halfWidth;
+      });
+      this.strikePlayers(players, (pl) => onSpoke(pl.x, pl.z), A.chorus.dmg, p.x, p.z);
+      this.hurtThralls((t) => onSpoke(t.x, t.z));
+      this.sim.emit({ t: 'boss', kind: 'chorus', x: p.x, z: p.z, phase: s.phase, r: p.r, ms: 0, dir: p.dir, boss: this.id });
+      return;
+    }
+    if (p.kind === 'grasp') {
+      this.strikePlayers(players, (pl) => Math.hypot(pl.x - p.x, pl.z - p.z) <= A.grasp.r + 0.3 && angleDiff(angleTo(p.x, p.z, pl.x, pl.z), p.dir!) <= (A.grasp.halfDeg * Math.PI) / 180, A.grasp.dmg, p.x, p.z);
+      this.sim.emit({ t: 'boss', kind: 'grasp', x: p.x, z: p.z, phase: s.phase, r: p.r, ms: 0, dir: p.dir, boss: this.id });
+      return;
+    }
+    if (p.kind === 'communion') {
+      // Every corpse still in the arena crawls to her and feeds her.
+      let fed = 0;
+      for (const c of [...this.sim.corpses.values()]) {
+        if (c.area !== this.def.area || Math.hypot(c.x - this.arena.x, c.z - this.arena.z) > this.arena.r) continue;
+        this.sim.removeCorpse(c, 'devoured');
+        fed++;
+      }
+      s.hp = Math.min(s.maxHp, s.hp + s.maxHp * A.communion.healPerCorpse * fed);
+      this.sim.emit({ t: 'boss', kind: 'communion', x: p.x, z: p.z, phase: s.phase, ms: 0, r: fed, boss: this.id });
+      return;
+    }
+    super.resolve(p, players);
+  }
+
+  protected think(dt: number, players: PlayerBody[]) {
+    const A = ABBESS;
+    const s = this.state;
+    const fast = s.phase === 3 ? 0.8 : s.phase === 2 ? 0.9 : 1;
+    this.chorusCd -= dt;
+    this.graspCd -= dt;
+    if (s.phase === 3) this.communionCd -= dt;
+    const { nearest, nd } = this.nearest(players);
+    if (!this.busy) {
+      if (s.phase === 3 && this.communionCd <= 0) {
+        this.communionCd = A.communion.cd;
+        const corpses: [number, number][] = [...this.sim.corpses.values()]
+          .filter((c) => c.area === this.def.area && Math.hypot(c.x - this.arena.x, c.z - this.arena.z) <= this.arena.r)
+          .map((c) => [c.x, c.z]);
+        this.telegraph('communion', s.x, s.z, this.arena.r, A.communion.channelS * 1000, { targets: corpses });
+      } else if (this.chorusCd <= 0) {
+        this.chorusCd = A.chorus.cd * fast;
+        const dir = this.sim.rand() * Math.PI * 2;
+        this.telegraph('chorus', s.x, s.z, A.chorus.len, A.chorus.windupMs, { dir });
+        if (s.phase >= 2) this.telegraph('chorus', s.x, s.z, A.chorus.len, A.chorus.windupMs, { dir: dir + (A.chorus.rotateDeg * Math.PI) / 180 }, 900);
+      } else if (this.graspCd <= 0 && nd < A.grasp.r + 0.5) {
+        this.graspCd = A.grasp.cd * fast;
+        this.telegraph('grasp', s.x, s.z, A.grasp.r, A.grasp.windupMs, { dir: angleTo(s.x, s.z, nearest.x, nearest.z) });
+      }
+    }
+    this.chase(nearest, nd, (s.phase === 3 ? 2 : s.phase === 2 ? 1.7 : 1.4) * (this.busy ? 0.25 : 1), dt, 2.5, 2.8);
+  }
+}
+
+/**
+ * The Drowned Congregation (Drowned Nave). Flood Hymn sweeps a 120° arc from her: a pew between you and her is the
+ * only cover. Drowning Grasp rings root whoever stays in them. Each phase the water rises (players slow outside the
+ * dais; Soaked in P3 takes more from the Hymn) and the congregation — wraiths and penitents — climbs out.
+ */
+export class CongregationBrain extends BossBrain {
+  private hymnCd = 6;
+  private graspCd = 3;
+  private meleeCd = 2;
+
+  constructor(sim: WorldSim) {
+    super(sim, 'congregation');
+  }
+
+  protected onAwaken() {
+    this.hymnCd = 6;
+    this.graspCd = 3;
+    this.meleeCd = 2;
+  }
+
+  protected onPhase(p: BossPhase) {
+    const s = this.state;
+    const spots: [number, number][] = [];
+    for (let i = 0; i < 6; i++) {
+      const at = this.rim((i / 6) * Math.PI * 2 + 0.3);
+      spots.push(at);
+      this.spawnAdd(i < 4 ? 'wraith' : 'penitent', at[0], at[1]);
+    }
+    this.sim.emit({ t: 'boss', kind: 'summon', x: s.x, z: s.z, phase: p, targets: spots, boss: this.id });
+  }
+
+  /** Is the player sheltered from her by a pew? */
+  covered(px: number, pz: number, fromX = this.state.x, fromZ = this.state.z) {
+    return this.sim.cover.some((b) => segmentHitsBox(fromX, fromZ, px, pz, b));
+  }
+
+  protected resolve(p: Pending, players: PlayerBody[]) {
+    const C = CONGREGATION;
+    const s = this.state;
+    if (p.kind === 'hymn') {
+      const inArc = (x: number, z: number) => Math.hypot(x - p.x, z - p.z) <= C.hymn.reach && angleDiff(angleTo(p.x, p.z, x, z), p.dir!) <= (C.hymn.halfDeg * Math.PI) / 180;
+      for (const pl of players) {
+        if (!inArc(pl.x, pl.z) || this.covered(pl.x, pl.z, p.x, p.z)) continue;
+        const soaked = s.phase === 3 && Math.hypot(pl.x - this.arena.x, pl.z - this.arena.z) > C.water.dais;
+        this.sim.emit({ t: 'hurt', player: pl.id, dmg: this.dmg(C.hymn.base * C.hymn.dmgMult * (soaked ? C.hymn.soakedMult : 1)), from: 'boss', x: p.x, z: p.z, chillMs: 2000 });
+      }
+      this.hurtThralls((t) => inArc(t.x, t.z) && !this.covered(t.x, t.z, p.x, p.z));
+      this.sim.emit({ t: 'boss', kind: 'hymn', x: p.x, z: p.z, phase: s.phase, r: p.r, ms: 0, dir: p.dir, boss: this.id });
+      return;
+    }
+    if (p.kind === 'grasp') {
+      const caught = new Set<string>();
+      for (const [cx, cz] of p.targets ?? []) for (const pl of players) if (Math.hypot(pl.x - cx, pl.z - cz) <= C.grasp.r + 0.2) caught.add(pl.id);
+      for (const id of caught) this.sim.emit({ t: 'hurt', player: id, dmg: this.dmg(C.grasp.dmg), from: 'boss', x: p.x, z: p.z });
+      this.sim.emit({ t: 'boss', kind: 'grasp', x: p.x, z: p.z, phase: s.phase, targets: p.targets, r: p.r, ms: 0, players: [...caught], root: C.grasp.rootS, boss: this.id });
+      return;
+    }
+    if (p.kind === 'maul') {
+      this.strikePlayers(players, (pl) => Math.hypot(pl.x - p.x, pl.z - p.z) <= C.melee.r + 0.3 && angleDiff(angleTo(p.x, p.z, pl.x, pl.z), p.dir!) <= (C.melee.halfDeg * Math.PI) / 180, C.melee.dmg, p.x, p.z);
+      this.sim.emit({ t: 'boss', kind: 'maul', x: p.x, z: p.z, phase: s.phase, r: p.r, ms: 0, dir: p.dir, boss: this.id });
+      return;
+    }
+    super.resolve(p, players);
+  }
+
+  protected think(dt: number, players: PlayerBody[]) {
+    const C = CONGREGATION;
+    const s = this.state;
+    const fast = s.phase === 3 ? 0.78 : s.phase === 2 ? 0.9 : 1;
+    this.hymnCd -= dt;
+    this.graspCd -= dt;
+    this.meleeCd -= dt;
+    const { nearest, nd } = this.nearest(players);
+    if (!this.busy) {
+      if (this.hymnCd <= 0) {
+        this.hymnCd = C.hymn.cd * fast;
+        this.telegraph('hymn', s.x, s.z, C.hymn.reach, C.hymn.windupMs, { dir: angleTo(s.x, s.z, nearest.x, nearest.z) });
+      } else if (this.graspCd <= 0) {
+        this.graspCd = C.grasp.cd * fast;
+        const [lo, hi] = C.grasp.rings;
+        const n = lo + Math.floor(this.sim.rand() * (hi - lo + 1));
+        const targets: [number, number][] = players.map((pl) => [pl.x, pl.z]);
+        while (targets.length < n) {
+          const pl = players[Math.floor(this.sim.rand() * players.length)];
+          const a = this.sim.rand() * Math.PI * 2;
+          targets.push([pl.x + Math.sin(a) * 2.5, pl.z + Math.cos(a) * 2.5]);
+        }
+        this.telegraph('grasp', s.x, s.z, C.grasp.r, C.grasp.windupMs, { targets: targets.slice(0, Math.max(n, players.length)) });
+      } else if (this.meleeCd <= 0 && nd < C.melee.r + 0.5) {
+        this.meleeCd = C.melee.cd * fast;
+        this.telegraph('maul', s.x, s.z, C.melee.r, C.melee.windupMs, { dir: angleTo(s.x, s.z, nearest.x, nearest.z) });
+      }
+    }
+    // She keeps to the dais and turns to face the nearest singer.
+    this.chase(nearest, nd, 1.1 * (this.busy ? 0.2 : 1), dt, this.arena.r - C.water.dais, 2.5);
+  }
+}
+
+export function makeBossBrains(sim: WorldSim): Record<BossId, BossBrain> {
+  return {
+    prelate: new PrelateBrain(sim),
+    gravedigger: new GravediggerBrain(sim),
+    abbess: new AbbessBrain(sim),
+    congregation: new CongregationBrain(sim),
+  };
 }

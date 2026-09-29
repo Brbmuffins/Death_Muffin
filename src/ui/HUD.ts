@@ -545,7 +545,8 @@ export class HUD {
         this.$('[data-bname]').textContent = b.name;
         this.$('[data-bphase]').textContent = (b.phases ?? ['The bell is silent', 'The procession begins', 'The bell is breaking'])[b.phase - 1] ?? '';
       });
-      this.set('bhp', Math.round((b.hp / b.maxHp) * 400), () => {
+      // Keyed on max HP too: a new boss at full health must not keep the last boss's numbers.
+      this.set('bhp', `${Math.round((b.hp / b.maxHp) * 400)}|${Math.round(b.maxHp)}`, () => {
         this.$('[data-bhp]').style.width = `${Math.max(0, (b.hp / b.maxHp) * 100)}%`;
         this.$('[data-bnum]').textContent = `${Math.max(0, Math.ceil(b.hp)).toLocaleString()} / ${Math.ceil(b.maxHp).toLocaleString()}`;
       });

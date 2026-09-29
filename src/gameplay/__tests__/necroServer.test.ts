@@ -120,6 +120,21 @@ describe('Progression server mode', () => {
     expect(p.local.damageTier).toBe(1);
   });
 
+  it('saves the selected active wave tier without another kill or gold change', async () => {
+    const p = await progression(500);
+    await p.connect();
+    expect(p.buyWave()).toBe(true);
+    await settle();
+    await settle();
+    await p.flush();
+    expect(server.state!.waveTierActive).toBe(1);
+
+    p.setActiveWaveTier(0);
+    expect(p.state).toBe('dirty');
+    await p.flush();
+    expect(server.state!.waveTierActive).toBe(0);
+  });
+
   it('summon, Prelate kill and Ascension go through the server rules', async () => {
     const p = await progression();
     p.local.areaKills = { graves: 300, ossuary: 420, nave: 520 };

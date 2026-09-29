@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Progression } from '../progression';
-import { Inventory } from '../loot';
+import { Inventory, addToSlots } from '../loot';
 import { necroApi, saveInventory, saveProgress } from '../../net/api';
 import { blankState } from '../necroRules';
 import type { Character } from '../../net/types';
@@ -83,5 +83,60 @@ describe('save before changing class', () => {
       expect(inventory.state).toBe('saved');
       expect(inventory.count('flask_hp_minor')).toBe(3);
     } finally { inventory.dispose(); }
+  });
+
+  it('keeps loot and flask use that arrive before an equip or craft inventory reply', async () => {
+    const inventory = new Inventory(7);
+    try {
+      inventory.add({ item_id: 'flask_hp_minor', quantity: 2 });
+      inventory.replace([]); // Stale server reply from a request already in progress.
+      expect(inventory.count('flask_hp_minor')).toBe(2);
+      await inventory.flush();
+      expect(saveInventory).toHaveBeenLastCalledWith(7, expect.arrayContaining([
+        expect.objectContaining({ item_id: 'flask_hp_minor', quantity: 2 }),
+      ]));
+    } finally { inventory.dispose(); }
+
+    const usingFlask = new Inventory(7);
+    try {
+      const reply = addToSlots([], { item_id: 'flask_hp_minor', quantity: 1 })!;
+      usingFlask.replace(reply);
+      usingFlask.consume('flask_hp_minor');
+      usingFlask.replace(reply);
+      expect(usingFlask.count('flask_hp_minor')).toBe(0);
+      usingFlask.replace([]); // Already reflected by the server; keep its updated bag.
+      expect(usingFlask.count('flask_hp_minor')).toBe(0);
+    } finally { usingFlask.dispose(); }
+  });
+
+  it('does not replay an in-flight save already present in an equip reply', async () => {
+    const savedPickup = addToSlots([], { item_id: 'flask_hp_minor', quantity: 1 })!;
+    const inventory = new Inventory(7);
+    try {
+      let complete!: () => void;
+      vi.mocked(saveInventory).mockImplementationOnce(() => new Promise(resolve => { complete = () => resolve(savedPickup); }));
+      inventory.add({ item_id: 'flask_hp_minor', quantity: 1 });
+      const saving = inventory.flush();
+      inventory.replace(savedPickup); // Server applied save, but response is still in flight.
+      expect(inventory.count('flask_hp_minor')).toBe(1);
+      complete();
+      await saving;
+      expect(inventory.count('flask_hp_minor')).toBe(1);
+    } finally { inventory.dispose(); }
+
+    const savedUse = addToSlots([], { item_id: 'flask_hp_minor', quantity: 1 })!;
+    const usingFlask = new Inventory(7);
+    try {
+      usingFlask.replace(addToSlots([], { item_id: 'flask_hp_minor', quantity: 2 })!);
+      let complete!: () => void;
+      vi.mocked(saveInventory).mockImplementationOnce(() => new Promise(resolve => { complete = () => resolve(savedUse); }));
+      usingFlask.consume('flask_hp_minor');
+      const saving = usingFlask.flush();
+      usingFlask.replace(savedUse);
+      expect(usingFlask.count('flask_hp_minor')).toBe(1);
+      complete();
+      await saving;
+      expect(usingFlask.count('flask_hp_minor')).toBe(1);
+    } finally { usingFlask.dispose(); }
   });
 });

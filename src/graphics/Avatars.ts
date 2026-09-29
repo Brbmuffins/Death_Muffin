@@ -178,18 +178,19 @@ export class NecromancerAvatar {
 }
 
 /** The Bell-Sworn Prelate's body and its bell-light. */
-export class PrelateView {
+/** Any boss's model (area bosses: one per BossId, created on first summon; the Prelate's is built at load). */
+export class BossView {
   readonly c: Creature;
   private light: THREE.PointLight;
   private lastState = '';
   private visible = false;
   private rise = 0;
 
-  constructor(scene: THREE.Scene, private effects: Effects) {
-    this.c = new Creature('prelate', { emissive: 0x3b1d5e, emissiveIntensity: 0.05 });
+  constructor(scene: THREE.Scene, private effects: Effects, slug: CreatureSlug = 'prelate', private color = 0xa26bff) {
+    this.c = new Creature(slug, { emissive: slug === 'prelate' ? 0x3b1d5e : 0x000000, emissiveIntensity: slug === 'prelate' ? 0.05 : 0, fallback: 'prelate' });
     this.c.root.visible = false;
     scene.add(this.c.root);
-    this.light = new THREE.PointLight(0xa26bff, 0, 14, 1.4);
+    this.light = new THREE.PointLight(color, 0, 14, 1.4);
     this.light.position.set(0, 2.6, 0.6);
     this.c.root.add(this.light);
   }
@@ -209,7 +210,7 @@ export class PrelateView {
     while (d > Math.PI) d -= Math.PI * 2;
     while (d < -Math.PI) d += Math.PI * 2;
     this.c.root.rotation.y += d * Math.min(1, dt * 3);
-    this.c.flash = b.flash;
+    this.c.flash = b.active ? b.flash : 0;
     this.light.intensity = b.active ? 16 + b.phase * 8 + Math.sin(performance.now() / 200) * 4 : Math.max(0, this.light.intensity - dt * 30);
     if (b.state !== this.lastState) {
       this.lastState = b.state;
@@ -220,7 +221,7 @@ export class PrelateView {
       else this.c.setLoop('idle');
     }
     if (b.active && Math.random() < dt * 10) {
-      this.effects.emit({ x: b.x, y: 2.5, z: b.z, count: 1, color: 0x9d6bff, spread: 1, speed: 0.4, up: 0.8, life: 1.2, size: 0.4 });
+      this.effects.emit({ x: b.x, y: 2.5, z: b.z, count: 1, color: this.color === 0xa26bff ? 0x9d6bff : this.color, spread: 1, speed: 0.4, up: 0.8, life: 1.2, size: 0.4 });
     }
     this.c.update(dt);
   }
@@ -228,6 +229,7 @@ export class PrelateView {
   /** Fade out after death (or when the fight resets). */
   hide() {
     if (!this.visible) return;
+    this.c.flash = 0;
     let t = 0;
     const tick = () => {
       t += 0.05;
@@ -245,3 +247,7 @@ export class PrelateView {
     this.c.dispose();
   }
 }
+
+/** The single-boss name, kept for older imports. */
+export const PrelateView = BossView;
+export type PrelateView = BossView;

@@ -14,7 +14,7 @@ import { disciplineFor, type Discipline } from '../content/disciplines';
 import { AFFIX_TUNING, ELITE_AFFIXES, ENEMIES, WAVE_THEMES, type EliteAffix, type EnemyId } from '../content/enemies';
 import { HEALING_FLASKS, itemMeta } from '../content/items';
 import { MEALS } from '../content/processing';
-import { generateLayout, type NodePlacement } from '../content/layout';
+import { generateLayout, PROPS, type NodePlacement } from '../content/layout';
 import { GatherLoop, Skills } from '../gameplay/Gathering';
 import { NODES, SKILLS, nodesForSkill, type SkillId } from '../gameplay/gatheringRules';
 import type { LiveNode } from '../gameplay/gatherPlan';
@@ -32,7 +32,7 @@ import { selectAutoCombatAction, selectAutoCombatMovement, type AutoMoveMemory }
 import { STATUS_FX } from '../content/statuses';
 import { AbilitySystem, veilTarget, type CastResult, type CastTarget } from '../gameplay/AbilitySystem';
 import { deriveStats, xpToNext } from '../gameplay/characterStats';
-import { Inventory, rollBoss, rollItem, rollKill } from '../gameplay/loot';
+import { Inventory, rollBoss, rollFirstKillItem, rollItem, rollKill } from '../gameplay/loot';
 import { Nav } from '../gameplay/nav';
 import { Player } from '../gameplay/Player';
 import { resourceRulesFor, type ResourceRules } from '../gameplay/resources';
@@ -42,7 +42,10 @@ import { makeSnapshot, WorldMirror } from '../gameplay/sim/snapshot';
 import type { BossState, Corpse, Enemy, Intent, SimEvent, Thrall, Zone } from '../gameplay/sim/types';
 import { WorldSim } from '../gameplay/sim/WorldSim';
 import { computeStats, STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
-import { NecromancerAvatar, PrelateView } from '../graphics/Avatars';
+import { BossView, NecromancerAvatar } from '../graphics/Avatars';
+import { prewarmCreature } from '../graphics/prewarmCreature';
+import { BOSSES, CONGREGATION, GRAVEDIGGER, bossForSummon, type BossId } from '../content/bosses';
+import { fxImage } from '../graphics/fxImages';
 import { CameraRig } from '../graphics/CameraRig';
 import { Effects, type Handle } from '../graphics/Effects';
 import { preloadBinbun, type BinbunSpawn } from '../graphics/binbun/BinbunFX';
@@ -68,7 +71,6 @@ import { ProfessionsPanel } from '../ui/ProfessionsPanel';
 import { CodexPanel } from '../ui/CodexPanel';
 import { Onboarding, type TipId } from '../ui/Onboarding';
 import { CodexJournal, browserStorage, type CodexIds, type CodexKind } from '../gameplay/codexJournal';
-import { deadName } from '../content/codex';
 import { CURSOR } from '../ui/cursors';
 import { audio } from '../audio/Audio';
 
@@ -82,16 +84,8 @@ const GROUND_FX_PRELOAD = [
   'grave_frost_mist', 'surge_eruption',
 ] as const;
 const INTERACT_RANGE = 2.6;
-/** Counsel shown the first time each newer kind of dead climbs out near the player. */
+/** Only enemies with a distinct counter need a first-sight card; the Codex covers the rest. */
 const FIRST_SIGHT_TIPS: Partial<Record<EnemyId, TipId>> = {
-  censer: 'censer',
-  wraith: 'wraith',
-  rat: 'swarm',
-  golem: 'golem',
-  gargoyle: 'gargoyle',
-  moth: 'moth',
-  bat: 'bats',
-  seraph: 'seraph',
   ghoul: 'ghoul',
   acolyte: 'acolyte',
   templar: 'templar',
@@ -168,7 +162,10 @@ export class WorldScene implements GameScene, RuntimeView {
   private effects!: Effects;
   private worldView!: WorldView;
   private views!: EntityViews;
-  private prelate!: PrelateView;
+  /** One view per boss (the Prelate's built at load, area bosses on first summon). */
+  private bossViews = new Map<BossId, BossView>();
+  /** Open graves (Gravedigger P3) until the fight ends. */
+  private pitFx: Handle[] = [];
   private loot!: LootView;
   private avatar!: NecromancerAvatar;
   private player!: Player;
@@ -204,8 +201,9 @@ export class WorldScene implements GameScene, RuntimeView {
   private surgeFx: Handle | null = null;
 
   private keys = new Set<string>();
-  /** Scene time of the last procession banner (one per band, not one per breach). */
-  private lastProcession = -1e9;
+  /** Theme introduction is shown once per area; later themed waves keep their sound and VFX. */
+  private announcedProcessions = new Set<AreaId>();
+  private announcedAreas = new Set<AreaId>();
   private nextAutoCombatAt = 0;
   /** Easy auto movement memory: sticky target, closing hysteresis, committed dodges, smoothed turns. */
   private autoMoveMem: AutoMoveMemory = {};
@@ -252,8 +250,6 @@ export class WorldScene implements GameScene, RuntimeView {
   private onboarding!: Onboarding;
   private lastTipCheck = 0;
   /** Codex discoveries waiting to be announced as one toast (entering an area finds several at once). */
-  private codexPending: string[] = [];
-  private codexPendingSince = -1;
 
   constructor(
     private character: Character,
@@ -348,7 +344,9 @@ export class WorldScene implements GameScene, RuntimeView {
     for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d), true);
     this.views = new EntityViews(this.scene, this.effects);
     this.nodeViews = new NodeViews(this.scene, this.layout.nodes);
-    this.prelate = new PrelateView(this.scene, this.effects);
+    const prelate = new BossView(this.scene, this.effects);
+    this.bossViews.set('prelate', prelate);
+    this.scope.add(prewarmCreature(prelate.c, getRuntime().renderer, this.rig.camera, this.scene));
     this.loot = new LootView(this.scene, this.effects);
 
     const stats = deriveStats(this.character, [], this.discipline, this.progression.local.damageTier);
@@ -396,6 +394,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
     this.sim = new WorldSim(this.nav);
     this.sim.setCrypts(this.layout.crypts);
+    this.sim.setCover(this.pewCover());
     this.sim.setNodes(this.layout.nodes);
     this.sim.waveTier = this.progression.local.waveTierActive;
     this.sim.difficulty = settings.difficulty;
@@ -1159,13 +1158,20 @@ export class WorldScene implements GameScene, RuntimeView {
         this.onboarding.show('codex');
         return this.togglePanel('codex');
       case 'boss': {
+        // One awake boss per world (area bosses brief §2.3).
+        const id = bossForSummon(it.id) ?? 'prelate';
+        const def = BOSSES[id];
         const b = this.bossState();
-        if (b.active) return;
-        if (!this.progression.spendShards(BOSS_SUMMON_SHARDS)) {
-          this.hud.toast(`The Sundered Bell demands ${BOSS_SUMMON_SHARDS} soul shards (you have ${this.progression.local.shards}). Elites carry them.`, 'err');
+        if (b.active) {
+          const awake = BOSSES[b.id ?? 'prelate'];
+          if (awake.id !== id) this.hud.toast(`${awake.name} already stirs in ${AREAS[awake.area].name}.`, 'err');
           return;
         }
-        this.sendIntent({ t: 'summonBoss', by: this.selfId });
+        if (!this.progression.spendShards(def.shards)) {
+          this.hud.toast(`${def.summonLabel} demands ${def.shards} soul shards (you have ${this.progression.local.shards}). Elites carry them.`, 'err');
+          return;
+        }
+        this.sendIntent({ t: 'summonBoss', by: this.selfId, boss: id });
       }
     }
   }
@@ -1285,6 +1291,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (this.sim && !this.mirror) return;
     const sim = new WorldSim(this.nav);
     sim.setCrypts(this.layout.crypts);
+    sim.setCover(this.pewCover());
     sim.setNodes(this.layout.nodes);
     sim.waveTier = this.progression.local.waveTierActive;
     // Prefer our own mirror (it has every event applied); the server's stored
@@ -1475,7 +1482,7 @@ export class WorldScene implements GameScene, RuntimeView {
         this.onKill(ev);
         break;
       case 'hurt':
-        if (ev.player === me) this.onHurt(ev.dmg, ev.from, ev.x, ev.z);
+        if (ev.player === me) this.onHurt(ev.dmg, ev.from, ev.x, ev.z, ev.chillMs);
         break;
       case 'nodeGone':
         this.nodeViews.setLive(ev.id, false);
@@ -1650,13 +1657,13 @@ export class WorldScene implements GameScene, RuntimeView {
           this.effects.decal({ tex: fx.cracks(), color: 0x9b5cff, x: ev.x, z: ev.z, r: 3, duration: 1.8, opacity: 0.9, growFrom: 0.3 });
           this.effects.lightFlash(ev.x, 1, ev.z, 0x7c3aed, 30, 0.8);
           this.bb('enemy_breach_rim', ev.x, ev.z);
-          // A procession: one banner for the whole band (each breach reports the wave).
+          // Introduce a themed wave once per area. At high Wave Speed, repeated
+          // processions otherwise cover combat with the same banner every few seconds.
           const theme = ev.theme ? WAVE_THEMES[ev.area]?.find((t) => t.id === ev.theme) : undefined;
-          if (theme && this.now - this.lastProcession > 4000) {
-            this.lastProcession = this.now;
+          if (theme && !this.announcedProcessions.has(ev.area)) {
+            this.announcedProcessions.add(ev.area);
             this.hud.banner(theme.name, theme.blurb, 2600);
             audio.play('tollSmall', ev.x, ev.z);
-            this.onboarding.show('procession', 1500);
           }
         }
         break;
@@ -1692,28 +1699,13 @@ export class WorldScene implements GameScene, RuntimeView {
     }
   }
 
-  /** Records a Codex discovery; toasts only the first time. */
+  /** Records a Codex discovery without a second alert over combat. */
   private codexDiscover<K extends CodexKind>(kind: K, id: CodexIds[K]) {
-    if (!this.codex.discover(kind, id)) return;
-    const name = kind === 'area' ? AREAS[id as AreaId].name : deadName(id as CodexIds['dead']);
-    this.codexPending.push(name);
-  }
-
-  /** Announces batched discoveries half a second after the first one lands. */
-  private flushCodexToasts(now: number) {
-    if (!this.codexPending.length) return;
-    if (this.codexPendingSince < 0) this.codexPendingSince = now;
-    if (now - this.codexPendingSince < 500) return;
-    const names = this.codexPending;
-    const list = names.length > 3 ? `${names.slice(0, 2).join(', ')} +${names.length - 2} more` : names.join(', ');
-    this.hud.toast(`Codex updated: ${list}`, 'good');
-    this.codexPending = [];
-    this.codexPendingSince = -1;
+    this.codex.discover(kind, id);
   }
 
   /** Throttled onboarding triggers that depend on state rather than events. */
   private tickOnboarding(now: number) {
-    this.flushCodexToasts(now);
     if (now - this.lastTipCheck < 400 || !this.player.alive) return;
     this.lastTipCheck = now;
     const cost = this.progression.waveCost();
@@ -1737,6 +1729,11 @@ export class WorldScene implements GameScene, RuntimeView {
     if (this.progression.local.totalKills >= 40) this.onboarding.show('codex');
     if (this.inventory.all.some((s) => s.item_id.startsWith('tool_'))) this.onboarding.show('tool');
     if (this.progression.local.shards >= BOSS_SUMMON_SHARDS) this.onboarding.show('prelate');
+    // Area bosses: counsel the first time a summon object is within 12 m.
+    for (const id of ['gravedigger', 'abbess', 'congregation'] as BossId[]) {
+      const it = AREAS[BOSSES[id].area].interactables.find((i) => i.id === BOSSES[id].summonId);
+      if (it && this.player.area === BOSSES[id].area && Math.hypot(it.x - this.player.x, it.z - this.player.z) < 12) this.onboarding.show(`boss_${id}` as TipId);
+    }
     if (this.progression.local.ascension > 0 && this.progression.local.ashes > 0 && this.area === 'chapterhouse') this.onboarding.show('boons');
     const { x, z } = this.player;
     for (const d of DOORS) {
@@ -2082,7 +2079,7 @@ export class WorldScene implements GameScene, RuntimeView {
     }
   }
 
-  private onHurt(raw: number, from: string, x: number, z: number) {
+  private onHurt(raw: number, from: string, x: number, z: number, chillMs?: number) {
     if (!this.player.alive) return;
     const myThralls = [...this.thrallsMap().values()].filter((t) => t.owner === this.selfId).length;
     const lanternWard = [...(this.sim?.zones ?? this.mirror?.zones ?? new Map()).values()].some((zone) => zone.kind === 'warden_ward' && Math.hypot(zone.x - this.player.x, zone.z - this.player.z) <= zone.r) ? 0.2 : 0;
@@ -2092,6 +2089,10 @@ export class WorldScene implements GameScene, RuntimeView {
     const now = this.now;
     // The blow's origin lets Bulwark decide whether it covered this one.
     const taken = this.player.takeDamage(raw, ward, now, { x, z }, from);
+    if (chillMs && taken > 0 && this.player.alive) {
+      this.player.chilledUntil = Math.max(this.player.chilledUntil, now + chillMs);
+      this.floating.spawn(this.player.x, 2.5, this.player.z, 'Chilled', 'info');
+    }
     if (this.player.lastBlock !== 'none') this.onBulwarkBlock(raw, x, z);
     if (taken >= 1) this.gathering.stop('hurt');
     if (this.player.hp < this.player.stats.maxHp * 0.5) this.onboarding.show('hurt');
@@ -2156,22 +2157,183 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hud.toast('You rise again in the Chapterhouse. Nothing was lost.', 'good');
   }
 
+  /** The nave pews' boxes: the Drowned Congregation's Flood Hymn can't reach behind them. Same maths as WorldView's colliders. */
+  private pewCover() {
+    return this.layout.props
+      .filter((p) => p.prop === 'church_pew' && p.area === 'nave')
+      .map((p) => {
+        const c = PROPS.church_pew.collider as { hw: number; hd: number };
+        const cos = Math.abs(Math.cos(p.rot));
+        const sin = Math.abs(Math.sin(p.rot));
+        const hw = (c.hw * cos + c.hd * sin) * p.scale;
+        const hd = (c.hw * sin + c.hd * cos) * p.scale;
+        return { x0: p.x - hw, z0: p.z - hd, x1: p.x + hw, z1: p.z + hd };
+      });
+  }
+
+  private bossView(id: BossId): BossView {
+    let v = this.bossViews.get(id);
+    if (!v) {
+      v = new BossView(this.scene, this.effects, BOSSES[id].modelSlug, BOSSES[id].color);
+      this.bossViews.set(id, v);
+    }
+    return v;
+  }
+
+  /** First kill of an area boss by this character? Recorded in browser storage (no new server fields). */
+  private claimTrophy(id: BossId): boolean {
+    const key = `dm_boss_trophies_v1:${this.character.id}`;
+    try {
+      const got: string[] = JSON.parse(localStorage.getItem(key) ?? '[]');
+      if (got.includes(id)) return false;
+      localStorage.setItem(key, JSON.stringify([...got, id]));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Area-boss telegraphs (ms > 0) and impacts (ms = 0). Enemy colour language only. */
+  private areaBossEvent(ev: Extract<SimEvent, { t: 'boss' }>, ms: number) {
+    const def = BOSSES[ev.boss ?? 'prelate'];
+    const dirt = SPELL_FX.enemy.dirt;
+    const curse = SPELL_FX.enemy.curse;
+    const tide = 0x5f8f8a;
+    const cone = (r: number, dir: number, halfDeg: number, color: number, dur: number, delay = 0) =>
+      this.effects.decal({ tex: fx.cone(), color, x: ev.x, z: ev.z, r: r / 2, sz: 1, sx: Math.tan((halfDeg * Math.PI) / 180) / Math.tan(Math.PI / 6), anchor: 1, rot: dir + Math.PI, duration: dur, opacity: 0.5, fadeIn: dur * 0.6, fadeOut: 0.05, delay });
+    const line = (x: number, z: number, len: number, dir: number, halfWidth: number, color: number, dur: number) =>
+      this.effects.decal({ tex: fx.disc(), color, x, z, r: len / 2, sz: 1, sx: (halfWidth * 2) / len, anchor: 1, rot: dir + Math.PI, duration: dur, opacity: 0.6, fadeIn: dur * 0.7, fadeOut: 0.05 });
+    const mine = ev.players?.includes(this.selfId);
+    if ((ev.kind === 'bury' || (ev.kind === 'grasp' && def.id === 'congregation')) && ms === 0 && mine && ev.root) {
+      // Buried / grasped: root yourself (players are client-simulated); casting stays allowed.
+      this.player.rootedUntil = Math.max(this.player.rootedUntil, this.now + ev.root * 1000);
+      this.floating.spawn(this.player.x, 2.4, this.player.z, ev.kind === 'bury' ? 'Buried!' : 'Grasped!', 'info');
+    }
+    switch (ev.kind) {
+      case 'sweep':
+      case 'maul':
+        if (ms > 0) cone(ev.r ?? 4, ev.dir ?? 0, ev.kind === 'sweep' ? GRAVEDIGGER.sweep.halfDeg : CONGREGATION.melee.halfDeg, def.id === 'gravedigger' ? dirt : tide, ms);
+        else {
+          this.effects.emit({ x: ev.x + Math.sin(ev.dir ?? 0) * 2, y: 0.4, z: ev.z + Math.cos(ev.dir ?? 0) * 2, count: 20, color: def.id === 'gravedigger' ? dirt : tide, spread: 1.2, speed: 3, up: 1.5, life: 0.6, size: 0.2, gravity: 9 });
+          audio.play('bossSlam', ev.x, ev.z);
+          this.rig.shake(0.2);
+        }
+        break;
+      case 'bury':
+        for (const [x, z] of ev.targets ?? [[ev.x, ev.z]]) {
+          if (ms > 0) this.effects.decal({ tex: fxImage('graveOutline'), color: 0xe0a458, x, z, r: GRAVEDIGGER.burial.hd, sx: GRAVEDIGGER.burial.hw / GRAVEDIGGER.burial.hd, duration: ms, opacity: 0.9, fadeIn: ms * 0.5, fadeOut: 0.05 });
+          else {
+            this.effects.emit({ x, y: 0.3, z, count: 18, color: dirt, spread: 0.8, speed: 1.8, up: 2, life: 0.6, size: 0.2, gravity: 9 });
+            this.effects.decal({ tex: fx.cracks(), color: dirt, x, z, r: 1.4, rot: Math.random() * 6, duration: 1.2, opacity: 0.8, fadeOut: 0.4 });
+          }
+        }
+        if (ms === 0) audio.play('boneHit', ev.x, ev.z);
+        break;
+      case 'pits':
+        for (const [x, z] of ev.targets ?? []) {
+          this.pitFx.push(this.effects.decal({ tex: fx.disc(), color: 0x120c08, x, z, r: ev.r ?? 1.2, duration: 1e9, opacity: 0.95, growFrom: 0.2 }));
+          this.pitFx.push(this.effects.decal({ tex: fxImage('graveOutline'), color: 0xe0a458, x, z, r: (ev.r ?? 1.2) * 1.3, sx: 0.55, duration: 1e9, opacity: 0.7, pulse: 1.5 }));
+        }
+        this.hud.toast('Every grave is open: stay out of the pits.', 'err');
+        break;
+      case 'lance':
+        if (ms > 0) line(ev.x, ev.z, ev.r ?? 11, ev.dir ?? 0, 0.8, curse, ms);
+        else {
+          this.effects.spikeLine(ev.x, ev.z, Math.sin(ev.dir ?? 0), Math.cos(ev.dir ?? 0), ev.r ?? 11, 1);
+          audio.play('boneHit', ev.x, ev.z);
+        }
+        break;
+      case 'chorus':
+        for (let i = 0; i < 8; i++) {
+          const d = (ev.dir ?? 0) + (i * Math.PI) / 4;
+          if (ms > 0) line(ev.x, ev.z, ev.r ?? 9, d, 0.7, SPELL_FX.boss.shard, ms);
+          else this.effects.spikeLine(ev.x, ev.z, Math.sin(d), Math.cos(d), ev.r ?? 9, 0.9);
+        }
+        if (ms === 0) {
+          audio.play('bossSlam', ev.x, ev.z);
+          this.rig.shake(0.25);
+        }
+        break;
+      case 'grasp':
+        if (def.id === 'abbess') {
+          if (ms > 0) cone(ev.r ?? 3.5, ev.dir ?? 0, 55, SPELL_FX.boss.shard, ms);
+          break;
+        }
+        for (const [x, z] of ev.targets ?? []) {
+          if (ms > 0) {
+            this.effects.decal({ tex: fx.disc(), color: tide, x, z, r: ev.r ?? 1.4, duration: ms, opacity: 0.5, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.3 });
+            this.effects.decal({ tex: fxImage('drownedHand'), color: 0x8fb4c8, x, z, r: (ev.r ?? 1.4) * 0.9, duration: ms, opacity: 0.8, growFrom: 0.2, fadeOut: 0.05 });
+          } else this.effects.emit({ x, y: 0.3, z, count: 16, color: 0x8fb4c8, spread: 0.6, speed: 1.2, up: 2.4, life: 0.7, size: 0.22 });
+        }
+        break;
+      case 'hymn':
+        if (ms > 0) {
+          cone(ev.r ?? 15, ev.dir ?? 0, CONGREGATION.hymn.halfDeg, tide, ms);
+          // Tide crests march outward across the arc: find a pew before they reach you.
+          for (let k = 1; k <= 5; k++) {
+            const rr = ((ev.r ?? 15) * k) / 5.5;
+            for (const off of [-0.6, 0, 0.6]) {
+              const d = (ev.dir ?? 0) + off;
+              this.effects.decal({ tex: fxImage('tideCrest'), color: 0x8fb4c8, x: ev.x + Math.sin(d) * rr, z: ev.z + Math.cos(d) * rr, r: 1.1, rot: d + Math.PI, duration: 0.6, opacity: 0.85, fadeOut: 0.3, delay: (ms / 1000) * (k / 6) });
+            }
+          }
+          this.hud.toast('Flood Hymn: put a pew between you and her!', 'err');
+        } else {
+          for (let k = 0; k < 6; k++) {
+            const d = (ev.dir ?? 0) + (k - 2.5) * 0.35;
+            this.effects.emitSmoke({ x: ev.x + Math.sin(d) * 7, y: 0.4, z: ev.z + Math.cos(d) * 7, count: 3, color: 0x2a3a40, spread: 1.5, speed: 2.5, up: 0.8, life: 0.9, size: 1.4 });
+          }
+          audio.play('bossSlam', ev.x, ev.z);
+          this.rig.shake(0.3);
+        }
+        break;
+      case 'communion':
+        if (ms > 0) {
+          for (const [x, z] of ev.targets ?? []) this.effects.beam({ x, y: 0.3, z }, () => ({ x: ev.x, y: 1.5, z: ev.z }), curse, 0.05, ms);
+          this.effects.decal({ tex: fx.sigil(), color: curse, x: ev.x, z: ev.z, r: 2.4, duration: ms, opacity: 0.8, spin: 1.5 });
+          this.hud.toast('Bone Communion: spend the corpses before they reach her!', 'err');
+        } else if ((ev.r ?? 0) > 0) this.floating.spawn(ev.x, 3, ev.z, `+${Math.round((ev.r ?? 0))} corpses devoured`, 'info');
+        break;
+      case 'nicheBreak':
+        this.effects.emit({ x: ev.x, y: 1.6, z: ev.z, count: 40, color: 0xe0d6c2, spread: 1, speed: 3.5, up: 2.5, life: 0.9, size: 0.25, gravity: 8 });
+        this.effects.lightFlash(ev.x, 2, ev.z, SPELL_FX.boss.shard, 40, 0.5);
+        audio.play('bossSlam', ev.x, ev.z);
+        break;
+    }
+  }
+
   private onBossEvent(ev: Extract<SimEvent, { t: 'boss' }>) {
     const ms = (ev.ms ?? 0) / 1000;
     switch (ev.kind) {
-      case 'awaken':
-        this.codexDiscover('dead', 'prelate');
+      case 'awaken': {
+        const def = BOSSES[ev.boss ?? 'prelate'];
+        this.codexDiscover('dead', def.id);
         audio.play('bossAwaken', ev.x, ev.z);
-        this.hud.banner('The Bell-Sworn Prelate', 'The Sundered Bell tolls for you', 3500);
-        this.effects.lightFlash(ev.x, 3, ev.z, 0xa26bff, 90, 1.6);
-        this.effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 160, color: 0xb58cff, spread: 3, speed: 4, up: 4, life: 1.6, size: 0.5 });
+        this.hud.banner(def.name, def.awaken, 3500);
+        this.effects.lightFlash(ev.x, 3, ev.z, def.color, 90, 1.6);
+        this.effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 160, color: def.id === 'prelate' ? 0xb58cff : def.color, spread: 3, speed: 4, up: 4, life: 1.6, size: 0.5 });
         this.rig.shake(0.6);
-        for (const g of ['west', 'east', 'north']) this.worldView.setCandleGroup(g, true);
+        if (def.id === 'prelate') for (const g of ['west', 'east', 'north']) this.worldView.setCandleGroup(g, true);
         break;
+      }
       case 'phase':
-        this.hud.banner(ev.phase === 2 ? 'The Procession' : 'The Bell Breaks', ev.phase === 2 ? 'Penitents file in from the aisles' : 'The Prelate is enraged', 2600);
-        this.worldView.setCandleGroup(ev.phase === 2 ? 'west' : 'east', false);
+        if ((ev.boss ?? 'prelate') === 'prelate') {
+          this.hud.banner(ev.phase === 2 ? 'The Procession' : 'The Bell Breaks', ev.phase === 2 ? 'Penitents file in from the aisles' : 'The Prelate is enraged', 2600);
+          this.worldView.setCandleGroup(ev.phase === 2 ? 'west' : 'east', false);
+        } else this.hud.banner(BOSSES[ev.boss!].phases[ev.phase - 1], BOSSES[ev.boss!].name, 2600);
         this.rig.shake(0.5);
+        break;
+      case 'sweep':
+      case 'maul':
+      case 'grasp':
+      case 'hymn':
+      case 'bury':
+      case 'pits':
+      case 'lance':
+      case 'chorus':
+      case 'communion':
+      case 'nicheBreak':
+        this.areaBossEvent(ev, ms);
         break;
       case 'toll':
         if (ms === 0) audio.play('bossToll', ev.x, ev.z);
@@ -2210,14 +2372,25 @@ export class WorldScene implements GameScene, RuntimeView {
         }
         break;
       case 'defeated':
-        audio.play('bossDefeat', ev.x, ev.z);
-        this.prelate.hide();
-        for (const g of ['west', 'east', 'north']) this.worldView.setCandleGroup(g, true);
+        this.bossView(ev.boss ?? 'prelate').hide();
+        const def = BOSSES[ev.boss ?? 'prelate'];
+        this.pitFx.forEach((h) => h.kill());
+        this.pitFx = [];
+        if (def.id === 'prelate') for (const g of ['west', 'east', 'north']) this.worldView.setCandleGroup(g, true);
         if (ev.killer) {
-          this.hud.banner('The Bell Falls Silent', 'The Prelate is unmade — for now', 4200);
-          this.progression.recordPrelateKill();
-          if (this.progression.canAscend()) this.onboarding.show('ascend', 5000);
-          const reward = rollBoss(this.bossWaveTier(), Math.random, this.worldDifficulty());
+          audio.play('bossDefeat', ev.x, ev.z);
+          this.hud.banner(def.defeated[0], def.defeated[1], 4200);
+          if (def.id === 'prelate') {
+            this.progression.recordPrelateKill();
+            if (this.progression.canAscend()) this.onboarding.show('ascend', 5000);
+          }
+          const reward = rollBoss(this.bossWaveTier(), Math.random, this.worldDifficulty(), def.area, def.shards);
+          // First kill per character: two more shards and a guaranteed rare-or-better (browser trophy record).
+          if (def.id !== 'prelate' && this.claimTrophy(def.id)) {
+            reward.shards += 2;
+            reward.items.push(rollFirstKillItem(def.area));
+            this.hud.toast(`First kill: ${def.name}. A trophy for the Codex, two more shards and a rare relic.`, 'good');
+          }
           this.loot.gold(ev.x, ev.z, reward.gold);
           this.loot.shard(ev.x, ev.z, reward.shards);
           for (const item of reward.items) this.loot.item(ev.x, ev.z, item);
@@ -2282,6 +2455,15 @@ export class WorldScene implements GameScene, RuntimeView {
           hp: p.hp, maxHp: p.stats.maxHp },
         enemies: this.enemiesMap().values(), primary: this.primary, family: this.discipline.family, nav: this.nav }, this.autoMoveMem, now, dt) : null;
     if (!autoMove) this.autoMoveMem.dir = null;
+    // Drowned Congregation: the water rises each phase; wading outside her dais is slower.
+    {
+      const b = this.bossState();
+      const C = CONGREGATION.water;
+      const arena = BOSSES.congregation.arena;
+      const wading = b.active && b.id === 'congregation' && b.phase >= 2 && p.area === 'nave'
+        && Math.hypot(p.x - arena.x, p.z - arena.z) <= arena.r && Math.hypot(p.x - arena.x, p.z - arena.z) > C.dais;
+      p.moveMult = wading ? (b.phase >= 3 ? C.slowP3 : C.slowP2) : 1;
+    }
     const moved = p.update(dt, now, kd.x || kd.z ? kd : autoMove);
     if (settings.autoCombat && p.alive && now - p.lastHurtAt < 5000) p.heal(p.stats.maxHp * 0.02 * dt);
     if (now < this.mealUntil && p.alive) p.heal(this.mealRate * dt);
@@ -2375,7 +2557,10 @@ export class WorldScene implements GameScene, RuntimeView {
     }
     this.zoneAmbience(dt);
     this.wadeRipples(dt);
-    this.prelate.sync(this.bossState(), dt);
+    {
+      const b = this.bossState();
+      this.bossView(b.id ?? 'prelate').sync(b, dt);
+    }
     this.rig.update(dt, p.x, p.z);
     audio.setListener(p.x, p.z);
     if (p.moving) {
@@ -2514,7 +2699,10 @@ export class WorldScene implements GameScene, RuntimeView {
     this.area = area;
     audio.setArea(area);
     const def = AREAS[area];
-    this.hud.banner(def.name, def.subtitle);
+    if (!this.announcedAreas.has(area)) {
+      this.announcedAreas.add(area);
+      this.hud.banner(def.name, def.subtitle);
+    }
     this.codexDiscover('area', area);
     (this.scene.fog as THREE.FogExp2).color.set(def.ambient.fog);
     this.hemi.color.set(def.ambient.hemiSky);
@@ -2545,7 +2733,8 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private areaProgress(): string {
     const here = this.area;
-    if (here === 'acre') return `Beginner nodes by the entrance · <kbd>P</kbd> to choose &amp; Start AFK`;
+    if (here === 'acre') return 'Click a glowing node to gather · Walk east to the Chapterhouse for combat';
+    if (here === 'chapterhouse') return 'Walk north to the Hollow Graves · Click an enemy to attack';
     if (AREAS[here].safe) return 'Sanctuary. The dead cannot follow you here.';
     const next = AREA_ORDER.find((id) => AREAS[id].unlock?.area === here && !this.progression.isUnlocked(id));
     if (next) {
@@ -2558,6 +2747,24 @@ export class WorldScene implements GameScene, RuntimeView {
         : `Offer <b>${this.progression.local.shards}/${BOSS_SUMMON_SHARDS}</b> soul shards at the Sundered Bell`;
     }
     return `<b>${this.progression.kills(here)}</b> slain here · Level ${AREAS[here].level + ascensionLevels(this.worldAscension())} dead`;
+  }
+
+  private interactPrompt(it: Interactable): string {
+    switch (it.kind) {
+      case 'inventory': return 'Open the Reliquary';
+      case 'forge': return 'Open the Workbench';
+      case 'professions': return 'Open Skills and AFK gathering';
+      case 'waystone': return 'Travel by Waystone';
+      case 'kiln': return 'Open Bone Kiln recipes';
+      case 'sawpit': return 'Open Sawpit recipes';
+      case 'fire': return 'Open Cooking Fire recipes';
+      case 'upgrades': return 'Open Ascension';
+      case 'lectern': return 'Open the Codex';
+      case 'boss': {
+        const boss = BOSSES[bossForSummon(it.id) ?? 'prelate'];
+        return `Summon ${boss.name} · ${boss.shards} shards`;
+      }
+    }
   }
 
   private lastMapDraw = 0;
@@ -2591,10 +2798,8 @@ export class WorldScene implements GameScene, RuntimeView {
         // The affix is the actionable read on an elite; the lore line otherwise.
         blurb: affix ? affix.blurb : d.blurb,
       };
-    } else if (hover?.kind === 'interact') {
-      this.hud.prompt(`<kbd>Click</kbd>${hover.it.label}`);
     }
-    if (hover?.kind !== 'interact') this.hud.prompt(null);
+    this.hud.prompt(hover?.kind === 'interact' ? `<kbd>Click</kbd> ${this.interactPrompt(hover.it)}` : null);
     const b = this.bossState();
     const myThralls = [...this.thrallsMap().values()].filter((t) => t.owner === this.selfId);
     const saveText =
@@ -2653,7 +2858,7 @@ export class WorldScene implements GameScene, RuntimeView {
       areaProgress: this.areaProgress(),
       save: saveText,
       target,
-      boss: b.active ? { name: 'The Bell-Sworn Prelate', phase: b.phase, hp: b.hp, maxHp: b.maxHp } : null,
+      boss: b.active ? { name: BOSSES[b.id ?? 'prelate'].name, phase: b.phase, hp: b.hp, maxHp: b.maxHp, phases: BOSSES[b.id ?? 'prelate'].phases } : null,
     });
 
     if (now - this.lastMapDraw > 100) {
@@ -2939,7 +3144,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.remotes.clear();
     this.views.dispose();
     this.nodeViews.dispose();
-    this.prelate.dispose();
+    for (const v of this.bossViews.values()) v.dispose();
     this.loot.dispose();
     this.avatar.dispose();
     this.effects.dispose();

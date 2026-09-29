@@ -50,6 +50,12 @@ test('oversized intents are dropped', () => {
   assert.equal(validIntent({ t: 'summonBoss', junk: 'x'.repeat(5000) }), null);
 });
 
+test('summonBoss names a known boss; unknown or missing means the Prelate', () => {
+  assert.equal(validIntent({ t: 'summonBoss', by: 'p1', boss: 'abbess' }).boss, 'abbess');
+  assert.equal(validIntent({ t: 'summonBoss', by: 'p1', boss: 'lich-king' }).boss, 'prelate');
+  assert.equal(validIntent({ t: 'summonBoss', by: 'p1' }).boss, 'prelate');
+});
+
 test('matchmaking fills public worlds and isolates invite codes', () => {
   worlds.clear();
   const a = pickWorld();

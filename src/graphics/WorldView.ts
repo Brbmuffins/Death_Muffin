@@ -342,6 +342,7 @@ export class WorldView {
   private mist!: THREE.Points;
   private mistVel: Float32Array = new Float32Array(0);
   private braziers: LightSource[] = [];
+  private interactMarkers: THREE.InstancedMesh<THREE.RingGeometry, THREE.MeshBasicMaterial>[] = [];
   private water: Water;
   private atmosphere = new Atmosphere();
   private focusArea: AreaId | null = null;
@@ -362,6 +363,7 @@ export class WorldView {
     this.effects.decal({ tex: fx.ring(), color: 0xeac58b, x: sawpit.x, z: sawpit.z, r: 1.4, duration: 1e9, persistent: true, opacity: 0.3, fadeIn: 0.01 });
     this.buildWindows();
     this.buildDecals();
+    this.buildInteractableMarkers();
     this.buildGates();
     this.buildFlames();
     this.buildMist();
@@ -553,6 +555,45 @@ export class WorldView {
         fadeIn: 0.01,
         y: 0.015,
       });
+    }
+  }
+
+  /** Quiet ground rings make stations, waystones and summon sites readable before hover. */
+  private buildInteractableMarkers() {
+    const styles = [
+      { key: 'service', color: 0xd6bc91, radius: 1.12, opacity: 0.44 },
+      { key: 'waystone', color: 0x8dd6c9, radius: 1.23, opacity: 0.48 },
+      { key: 'boss', color: 0xc59ce2, radius: 1.55, opacity: 0.5 },
+    ] as const;
+    const interactables = AREA_ORDER.flatMap((area) => AREAS[area].interactables);
+    const dummy = new THREE.Object3D();
+    for (const style of styles) {
+      const spots = interactables.filter((it) =>
+        style.key === 'service' ? it.kind !== 'waystone' && it.kind !== 'boss' : it.kind === style.key,
+      );
+      if (!spots.length) continue;
+      const geometry = new THREE.RingGeometry(0.89, 1, 40).rotateX(-Math.PI / 2);
+      const material = new THREE.MeshBasicMaterial({
+        color: style.color,
+        transparent: true,
+        opacity: style.opacity,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      const markers = new THREE.InstancedMesh(geometry, material, spots.length);
+      for (let i = 0; i < spots.length; i++) {
+        const spot = spots[i];
+        dummy.position.set(spot.x, 0.1, spot.z);
+        dummy.scale.setScalar(style.radius);
+        dummy.updateMatrix();
+        markers.setMatrixAt(i, dummy.matrix);
+      }
+      // Water draws at order 1; spell decals draw at 2. The cues stay visible
+      // over the Drowned Font without altering the water's colour or surface.
+      markers.renderOrder = 3;
+      markers.computeBoundingSphere();
+      this.group.add(markers);
+      this.interactMarkers.push(markers);
     }
   }
 
@@ -824,6 +865,7 @@ export class WorldView {
   dispose() {
     this.water.dispose();
     this.atmosphere.dispose();
+    for (const marker of this.interactMarkers) marker.material.dispose();
     this.group.traverse((o) => {
       const m = o as THREE.Mesh;
       m.geometry?.dispose?.();

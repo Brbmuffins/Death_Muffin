@@ -68,6 +68,9 @@ export type TipId =
   | 'seraph'
   | 'ghoul'
   | 'meal'
+  | 'boss_gravedigger'
+  | 'boss_abbess'
+  | 'boss_congregation'
   | 'tool'
   | 'acolyte'
   | 'templar'
@@ -257,6 +260,18 @@ export const TIPS: Record<TipId, Tip> = {
     title: 'Weeping Seraph',
     body: 'It blesses <b>every ally near it</b> at once (priest-gold motes: they take less damage). Kill the seraph first, or silence it with a Dirge.',
   },
+  boss_gravedigger: {
+    title: "The King's Grave",
+    body: 'Offer <b>2 soul shards</b> here to wake the Gravedigger King. When a <b>grave outline</b> opens under you, step off it or be Buried (rooted, casting allowed). In his last phase, stay out of the open pits.',
+  },
+  boss_abbess: {
+    title: "The Abbess's Reliquary",
+    body: 'Offer <b>3 soul shards</b> to wake the Bone Abbess. Break her four <b>skull niches</b> first: they heal her and each one broken tears at her. Stand between the chorus spokes, and <b>spend the corpses</b> before her Communion eats them.',
+  },
+  boss_congregation: {
+    title: 'The Drowned Font',
+    body: 'Offer <b>4 soul shards</b> to wake the Drowned Congregation. When the tide crests march out, put a <b>pew</b> between you and her: it is the only cover from the Flood Hymn. The rising water slows you off her dais.',
+  },
   meal: {
     title: 'Well fed',
     body: 'A cooked meal <b>heals over time</b> and stacks with a flask. Cook fish at the Cooking Fire in the Acre; the rarer the fish, the bigger the meal. One meal at a time.',
@@ -427,7 +442,7 @@ export class Onboarding {
     const ms = Math.max(SHOW_MS, 5000 + words * 600);
     el.style.setProperty('--tip-ms', `${ms}ms`);
     el.innerHTML = `
-      <div class="kicker" data-move role="button" tabindex="0" aria-label="Move Covenant counsel" title="Drag to move, or use arrow keys"><span>⋮⋮ Covenant counsel</span><span class="move-hint">Drag to move</span></div>
+      <div class="kicker" data-move role="button" tabindex="0" aria-label="Move Covenant counsel card" title="Drag this card, or use arrow keys"><span>⋮⋮ Covenant counsel</span><span class="move-hint">Move this card</span></div>
       <div class="title">${tip.title}</div>
       <div class="body">${body}</div>
       <div class="foot"><span>Click to dismiss</span><button type="button" data-skip>Don't show tips</button></div>

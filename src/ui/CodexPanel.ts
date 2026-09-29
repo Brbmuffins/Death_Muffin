@@ -17,7 +17,8 @@ import {
   riteSwatch,
 } from '../content/codex';
 import { PLAYABLE_DISCIPLINES, type DisciplineId } from '../content/disciplines';
-import { ENEMIES } from '../content/enemies';
+import { ENEMIES, type EnemyId } from '../content/enemies';
+import { BOSSES, type BossId } from '../content/bosses';
 import type { CodexJournal } from '../gameplay/codexJournal';
 import { GATHER_SKILLS, SKILLS, actionMs, nodesForSkill, xpPerHour } from '../gameplay/gatheringRules';
 import { generateLayout } from '../content/layout';
@@ -160,7 +161,8 @@ export class CodexPanel {
     const rows = DEAD_ORDER.map((id) => {
       if (!this.journal.has('dead', id)) return this.sealed(CODEX_SEALED.dead);
       const e = CODEX_DEAD[id];
-      const blurb = id === 'prelate' ? '' : `<p class="quote">${ENEMIES[id].blurb}</p>`;
+      const boss = id in BOSSES ? BOSSES[id as BossId] : null;
+      const blurb = boss ? (boss.portrait && id !== 'prelate' ? `<img class="cw-boss-portrait" src="${boss.portrait}" alt="" width="96" height="96" />` : '') : `<p class="quote">${ENEMIES[id as EnemyId].blurb}</p>`;
       return `
         <article class="cw-codex-entry">
           <div class="txt">

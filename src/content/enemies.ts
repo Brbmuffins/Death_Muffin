@@ -25,7 +25,9 @@ export type EnemyId =
   // Backlog mobs (docs/agent-briefs/mobs-barrow-ghoul-lich-acolyte.md), wired 2026-09-28.
   | 'ghoul'
   | 'acolyte'
-  | 'templar';
+  | 'templar'
+  // The Bone Abbess's skull niches (area bosses): spawned by her brain only, never by waves.
+  | 'niche';
 export type CorpseKind = 'normal' | 'resonant' | 'swift' | 'toxic' | 'none';
 export type Behavior = 'melee' | 'flank' | 'caster' | 'hazard' | 'support';
 export type RigKind = 'humanoid' | 'quadruped' | 'bloat' | 'robed';
@@ -74,6 +76,8 @@ export interface EnemyDef {
   unbind?: boolean;
   /** Bell Templar: blows from its front arc are mostly blocked until it is Fractured (see TEMPLAR_SHIELD). */
   shield?: boolean;
+  /** No AI and never shoved (a boss's skull niche): it only stands there to be broken. */
+  inert?: boolean;
 }
 
 export const ENEMIES: Record<EnemyId, EnemyDef> = {
@@ -419,7 +423,27 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     modelSlug: 'bell_templar',
     shield: true,
     blurb: 'A knight of the Bell behind a bronze shield. Blows from the front glance off: come at it from the side, Fracture it, or let your thralls hold its attention.',
+  },  niche: {
+    id: 'niche',
+    name: 'Skull Niche',
+    behavior: 'support',
+    rig: 'robed',
+    hp: 500,
+    speed: 0.0001,
+    radius: 0.9,
+    damage: 0,
+    attackRange: 0,
+    windupMs: 1000,
+    cooldownMs: 1e9,
+    xp: 0,
+    gold: [0, 0],
+    corpse: 'none',
+    scale: 1,
+    modelSlug: 'skull_niche',
+    inert: true,
+    blurb: "A singing shrine of skulls. While any stands, the Bone Abbess heals and its lances fly; each one broken tears at her.",
   },
+
 };
 
 /** Censer Bearer aura: the dead within `radius` are Incensed (refreshed each second). */

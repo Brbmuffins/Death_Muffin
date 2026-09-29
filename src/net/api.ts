@@ -234,11 +234,11 @@ export interface ProgressPayload {
  * starts unloading (sendBeacon can't carry the Authorization header).
  */
 export function saveProgress(payload: ProgressPayload, keepalive = false) {
-  return request<ApiResponse<unknown>>(
+  return unwrap<unknown>(request<ApiResponse<unknown>>(
     '/api/character/save-progress',
     { method: 'POST', body: JSON.stringify(payload), keepalive },
     true,
-  );
+  ));
 }
 
 // --- Necromancer progression (server storage; see server/VPS_HANDOFF.md) ---

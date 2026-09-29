@@ -49,11 +49,27 @@ export function rollItem(area: AreaId, rand = Math.random): LootDrop {
   return { item_id: pick.item, quantity: meta?.type === 'material' ? 1 + (rand() < 0.35 ? 1 : 0) : 1 };
 }
 
-export function rollBoss(waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium'): KillReward {
+/**
+ * A boss's spoils. The Prelate's are unchanged (Sanctum loot, 3 shards back); an area boss rolls its own area's
+ * loot and scales gold/XP by its shard cost (2/3/4 of the Prelate's 5) and returns fewer shards.
+ */
+export function rollBoss(waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium', area: AreaId = 'sanctum', costShards = 5): KillReward {
   const mods = waveModifiers(waveTier);
   const diff = DIFFICULTIES[difficulty].rewardMult;
-  const items = [rollItem('sanctum', rand), rollItem('sanctum', rand), rollItem('sanctum', rand)];
-  return { gold: Math.round(320 * mods.rewardMult * diff), shards: 3, items, xp: Math.round(900 * diff) };
+  const k = costShards / 5;
+  const items = [rollItem(area, rand), rollItem(area, rand), rollItem(area, rand)];
+  return { gold: Math.round(320 * k * mods.rewardMult * diff), shards: costShards >= 5 ? 3 : Math.max(1, costShards - 1), items, xp: Math.round(900 * k * diff) };
+}
+
+/** A boss's first kill per character: a guaranteed rare-or-better item from ids the server knows. */
+export function rollFirstKillItem(area: AreaId, rand = Math.random): LootDrop {
+  for (let i = 0; i < 30; i++) {
+    const d = rollItem(area, rand);
+    const r = ITEMS[d.item_id]?.rarity;
+    if (r === 'rare' || r === 'epic') return d;
+  }
+  const rares = Object.entries(ITEMS).filter(([, m]) => m.type !== 'material' && (m.rarity === 'rare' || m.rarity === 'epic')).map(([id]) => id);
+  return { item_id: rares[Math.floor(rand() * rares.length)] ?? 'helm_gold', quantity: 1 };
 }
 
 /**
@@ -114,6 +130,30 @@ export function toSavePayload(slots: InventorySlot[]) {
 }
 
 export type InventorySaveState = 'saved' | 'saving' | 'retrying';
+type InventoryMutation = ({ kind: 'add'; drop: LootDrop } | { kind: 'consume'; itemId: string }) & { countAfter: number };
+
+function itemCount(slots: InventorySlot[], itemId: string) {
+  return slots.filter((s) => s.item_id === itemId).reduce((n, s) => n + s.quantity, 0);
+}
+
+function applyInventoryMutation(slots: InventorySlot[], mutation: InventoryMutation): InventorySlot[] | null {
+  if (mutation.kind === 'add') return addToSlots(slots, mutation.drop);
+  const slot = slots.find((s) => s.item_id === mutation.itemId && s.quantity > 0);
+  // The server may already have removed it (for example as a crafting cost).
+  if (!slot) return slots;
+  return slots.map((s) => (s === slot ? { ...s, quantity: s.quantity - 1 } : s)).filter((s) => s.quantity > 0);
+}
+
+/** An in-flight save may already be reflected in another server reply. */
+function reconcileInFlightMutation(slots: InventorySlot[], mutation: InventoryMutation): InventorySlot[] | null {
+  const itemId = mutation.kind === 'add' ? mutation.drop.item_id : mutation.itemId;
+  const count = itemCount(slots, itemId);
+  if (mutation.kind === 'add') {
+    const missing = Math.min(mutation.drop.quantity, Math.max(0, mutation.countAfter - count));
+    return missing ? addToSlots(slots, { ...mutation.drop, quantity: missing }) : slots;
+  }
+  return count > mutation.countAfter ? applyInventoryMutation(slots, mutation) : slots;
+}
 
 /**
  * Owns the bag. Pickups merge immediately (optimistic) and flush to the server
@@ -126,6 +166,9 @@ export class Inventory {
   private timer = 0;
   private inFlight = false;
   private retryDelay = 3000;
+  /** Local changes that a server response may not yet include. */
+  private pendingMutations: InventoryMutation[] = [];
+  private inFlightMutations: InventoryMutation[] = [];
   state: InventorySaveState = 'saved';
   private listeners = new Set<(slots: InventorySlot[]) => void>();
 
@@ -147,8 +190,29 @@ export class Inventory {
   /** Server responses (load, equip, craft) are the source of truth. */
   replace(slots: InventorySlot[]) {
     if (this.dirty || this.inFlight) {
-      // Keep unsaved pickups: re-apply the local delta on top later via flush.
-      this.slots = slots;
+      // Equip and craft replies can arrive after a pickup or flask use. Replay
+      // those local changes before the next save instead of dropping them.
+      let merged = slots;
+      for (const mutation of this.inFlightMutations) {
+        const next = reconcileInFlightMutation(merged, mutation);
+        if (!next) {
+          this.scheduleFlush(300);
+          return;
+        }
+        merged = next;
+      }
+      for (const mutation of this.pendingMutations) {
+        const next = applyInventoryMutation(merged, mutation);
+        if (!next) {
+          // The server bag may have filled while the request flew. Keep the
+          // local bag so a pickup is never silently discarded.
+          this.scheduleFlush(300);
+          return;
+        }
+        merged = next;
+      }
+      this.slots = merged;
+      this.dirty = true;
       this.scheduleFlush(300);
     } else this.slots = slots;
     this.emit();
@@ -158,6 +222,7 @@ export class Inventory {
     const next = addToSlots(this.slots, drop);
     if (!next) return false;
     this.slots = next;
+    this.pendingMutations.push({ kind: 'add', drop: { ...drop }, countAfter: itemCount(next, drop.item_id) });
     this.dirty = true;
     this.emit();
     this.scheduleFlush(1500);
@@ -174,6 +239,7 @@ export class Inventory {
     this.slots = this.slots
       .map((s) => (s === slot ? { ...s, quantity: s.quantity - 1 } : s))
       .filter((s) => s.quantity > 0);
+    this.pendingMutations.push({ kind: 'consume', itemId, countAfter: this.count(itemId) });
     this.dirty = true;
     this.emit();
     this.scheduleFlush(1500);
@@ -191,6 +257,9 @@ export class Inventory {
     this.dirty = false;
     this.state = 'saving';
     const sent = this.slots;
+    const sentMutations = this.pendingMutations;
+    this.pendingMutations = [];
+    this.inFlightMutations = sentMutations;
     try {
       const saved = await saveInventory(this.characterId, toSavePayload(sent));
       // Only adopt the server rows if nothing changed while the request flew.
@@ -198,10 +267,13 @@ export class Inventory {
       else this.dirty = true;
       this.retryDelay = 3000;
       this.state = 'saved';
+      this.inFlightMutations = [];
     } catch (err) {
       console.warn('[inventory] save failed, will retry', err);
       this.dirty = true;
       this.state = 'retrying';
+      this.pendingMutations = [...sentMutations, ...this.pendingMutations];
+      this.inFlightMutations = [];
       this.retryDelay = Math.min(60000, this.retryDelay * 2);
     } finally {
       this.inFlight = false;

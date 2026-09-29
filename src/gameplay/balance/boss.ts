@@ -4,7 +4,8 @@ import { HEALING_FLASKS } from '../../content/items';
 import { deriveStats } from '../characterStats';
 import { Nav } from '../nav';
 import { mulberry32 } from '../rng';
-import { BOSS_ARENA, BOSS_RADIUS } from '../sim/BossBrain';
+import { BOSS_RADIUS } from '../sim/BossBrain';
+import { BOSSES, type BossId } from '../../content/bosses';
 import type { Enemy, SimEvent } from '../sim/types';
 import { WorldSim } from '../sim/WorldSim';
 import { botCharacter } from './harness';
@@ -32,6 +33,8 @@ export interface BossRun {
   seed?: number;
   difficulty?: Difficulty;
   ascension?: number;
+  /** Which boss (default the Prelate). */
+  boss?: BossId;
 }
 
 export interface BossResult {
@@ -65,7 +68,10 @@ const DT = 0.05;
 export function runBossFight(run: BossRun): BossResult {
   const rand = mulberry32(run.seed ?? 42);
   const nav = new Nav();
-  nav.setUnlocked(['ossuary', 'nave', 'sanctum']);
+  nav.setUnlocked(['chapterhouse', 'graves', 'ossuary', 'nave', 'sanctum']);
+  const bossId: BossId = run.boss ?? 'prelate';
+  const area = BOSSES[bossId].area;
+  const BOSS_ARENA = BOSSES[bossId].arena;
   const sim = new WorldSim(nav, rand);
   sim.difficulty = run.difficulty ?? 'medium';
   sim.ascension = run.ascension ?? 0;
@@ -83,20 +89,20 @@ export function runBossFight(run: BossRun): BossResult {
     cds.set(id, t + a.cooldownMs / 1000);
     return true;
   };
-  const place = (alive = true) => sim.setPlayer({ id: p.id, x: p.x, z: p.z, alive, area: alive ? 'sanctum' : null });
+  const place = (alive = true) => sim.setPlayer({ id: p.id, x: p.x, z: p.z, alive, area: alive ? area : null });
 
   // Arrive with a full legion (raised during the Sanctum trash).
   place();
   for (let i = 0; i < disc.mods.thrallCap; i++) {
     const cx = p.x - 1.5 + i * 0.8;
     const cz = p.z + 1;
-    sim.addCorpse(cx, cz, 'normal', 'robber', false, 0, 1, 'sanctum');
+    sim.addCorpse(cx, cz, 'normal', 'robber', false, 0, 1, area);
     sim.apply({ t: 'exhume', by: p.id, x: cx, z: cz, r: 0.8, kind: disc.mods.thrallKind, cap: disc.mods.thrallCap, hp: stats.thrallHp, damage: stats.thrallDamage, attackSpeedMult: disc.mods.thrallAttackSpeedMult });
   }
   for (let i = 0; i < 25; i++) sim.step(DT);
   // Clear the trash that climbed out while the legion rose; the fight starts clean.
   for (const e of [...sim.enemies.values()]) sim.enemies.delete(e.id);
-  sim.apply({ t: 'summonBoss', by: p.id });
+  sim.apply({ t: 'summonBoss', by: p.id, boss: bossId });
   const b = sim.boss.state;
   const bossMaxHp = b.maxHp;
 

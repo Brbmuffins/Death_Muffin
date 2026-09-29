@@ -49,6 +49,8 @@ const VARIANTS = new Set<CreatureAnim>(['attack', 'hurt', 'death']);
  */
 export class Creature {
   readonly root = new THREE.Group();
+  /** Resolves after the model has been cloned and attached (or its load failed). */
+  readonly ready: Promise<void>;
   loaded = false;
   private model: THREE.Object3D | null = null;
   private shadowOn: boolean;
@@ -80,7 +82,7 @@ export class Creature {
     const def = CREATURE_MODELS[slug];
     const fb = opts.fallback ? CREATURE_MODELS[opts.fallback] : null;
     let usedFallback = false;
-    void assets
+    this.ready = assets
       .model(def.url, def.height * (opts.scale ?? 1))
       .then((t) => {
         if (t) return t;

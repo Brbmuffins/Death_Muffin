@@ -300,6 +300,21 @@ yields an **offering**: a guaranteed item plus bonus gold. Otherwise the surge f
 
 ---
 
+## Area bosses
+
+Every hunting ground has its own boss, summoned with soul shards at an object on the arena's north edge. Only one boss
+can be awake in a world at a time. Waves in that area pause while it fights. Each boss's **first kill** per character
+pays two extra shards and a guaranteed rare-or-better relic, and puts a trophy in the Codex (The Dead).
+
+| Boss | Where · summon · shards | The one thing that matters |
+|---|---|---|
+| **The Gravedigger King** | Hollow Graves · The King's Grave · 2 | **Burial**: a grave outline opens under you. Step off or be **Buried** (rooted 2 s, casting allowed). Spade Sweep cone. From 60% he digs Barrow Ghouls up at the edge; from 30% four open pits bury whoever walks in. |
+| **The Bone Abbess** | Marrow Ossuary · The Abbess's Reliquary · 3 | **Four skull niches** heal her and fire Bone Lances. Each one broken tears 4% of her health away and Fractures her. Ossuary Chorus: eight bone spokes (stand between them; twice from 60%). From 30% two niches re-form once, and **Bone Communion** drags every corpse in the arena to her to heal: spend them first. |
+| **The Drowned Congregation** | Drowned Nave · The Drowned Font · 4 | **Flood Hymn**: tide crests march out across a 120° arc, and only a **pew** between you and her keeps you dry. Drowning Grasp rings root whoever stays in them. The water rises each phase (slower off her dais; Soaked in the last phase) and wraiths and penitents climb out. |
+
+Solo kill times for a careful player at the area's intended level: about 1.5–2 minutes (King), 2–2.5 (Abbess) and
+2.5–3 (Congregation). Measure with `npm run balance:boss -- --boss gravedigger|abbess|congregation`.
+
 ## The Bell-Sworn Prelate
 
 ![The Bell-Sworn Prelate tolling in the Bell Sanctum](docs/screenshots/bell-sworn-prelate.webp)

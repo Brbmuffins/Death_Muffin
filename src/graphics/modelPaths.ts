@@ -30,6 +30,10 @@ export const CREATURE_MODELS = {
   deacon: m('deacon', 2.1),
   carrion_sac: m('carrion_sac', 1.75),
   prelate: m('prelate', 4.6),
+  // Area bosses (roadmap batch art; wired 2026-09-28).
+  boss_gravedigger_king: m('boss_gravedigger_king', 3.4),
+  boss_bone_abbess: m('boss_bone_abbess', 3.2),
+  boss_drowned_congregation: m('boss_drowned_congregation', 3.6),
   // Enemy variety pack (art-manifest/tripo-specs/*.json). The wraith hovers, so it is a
   // static mesh built as a prop and bobbed in code.
   censer_bearer: m('censer_bearer', 1.95),
@@ -46,6 +50,8 @@ export const CREATURE_MODELS = {
   barrow_ghoul: m('barrow_ghoul', 1.9),
   lich_acolyte: m('lich_acolyte', 1.95),
   bell_templar: m('bell_templar', 2.1),
+  // The Bone Abbess's niches are static props drawn as enemies while she is awake.
+  skull_niche: { url: 'models/props/skull_niche.glb', height: 3.4 },
 } satisfies Record<string, CreatureModelDef>;
 
 export type CreatureSlug = keyof typeof CREATURE_MODELS;

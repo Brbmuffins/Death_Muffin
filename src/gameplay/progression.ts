@@ -384,7 +384,7 @@ export class Progression {
     this.local.waveTierActive = Math.max(0, Math.min(this.local.waveTierOwned, tier));
     this.pendingWaveActive = true;
     this.saveLocal();
-    this.emit();
+    if (this.mode === 'server') this.markServerDirty(false);
   }
 
   // --- Kills / unlocks / shards (local) ---

@@ -775,3 +775,33 @@ triangles equal, +24 draw calls.
 - The Bone Kiln has Smelting / Tools / Bonework tabs.
 - Fixed a client bug: a missing profession row meant level 0 client-side, but the server uses 1, so new characters
   couldn't use their first Bonework recipe.
+
+## Area bosses (2026-09-29, VPS session; docs/agent-briefs/area-bosses.md)
+
+- **Engine.** `BossBrain` is now a base class covering awaken, damage, Fracture, Withered, stagger, the 60% / 30%
+  phases, telegraph resolution, wipe reset and the arena leash.
+  - `PrelateBrain` keeps the old logic in the old order. **`npm run balance:boss` output is byte-identical** to the
+    single-boss build.
+  - `WorldSim.bosses` holds all four and `boss` returns the awake one. The ~20 old call sites are unchanged.
+  - `summonBoss.boss` defaults to the Prelate for old clients, and the realtime server validates it (42 tests).
+  - `BossState.id` travels in snapshots.
+- **Content** (`src/content/bosses.ts`):
+  - **Gravedigger King:** Burial roots whoever stays on the outline; each client roots itself. Spade Sweep. P2 digs up
+    ghouls; P3 opens pits.
+  - **Bone Abbess:** four inert `niche` enemies heal her and fire lances, and breaking one tears at her. Chorus spokes;
+    P3 Rebuild and Bone Communion (eats arena corpses).
+  - **Drowned Congregation:** Flood Hymn with pew cover, a segment-vs-box test against the layout's pew boxes.
+    Drowning Grasp roots. Rising-water slow off the dais in P2/P3, and Soaked adds Hymn damage in P3.
+- **World.** `layout.ts` `bossArenas()` runs last: it clears small props from each arena, places the summon object on
+  the north edge, keeps niche and pit spots clear, and adds pew rows.
+  - Gathering nodes are byte-identical and all 10 crypts are kept.
+- **Tuned solo kill times** (skilled player, intended band) against the brief's targets:
+  - King: 88–114 s (target 90–120), baseHp 15 500.
+  - Abbess: about 120–150 s (target 120–150), baseHp 13 000, regen 0.25%/s.
+  - Congregation: 139–162 s (target 150–180), baseHp 19 000.
+  - Non-dodging players lose the Congregation, as they do the Prelate.
+- **Rewards:** `rollBoss(…, area, shards)` scales per boss; the Prelate is unchanged. The first kill is a browser
+  trophy worth +2 shards and a guaranteed rare-or-better relic.
+- **HUD fix:** the boss bar kept the previous boss's numbers when a new boss started at 100%.
+- **Tests:** `area-bosses.test.ts` (6) covers one awake boss, the snapshot id, Burial roots, niche regen and Fracture,
+  Communion, and pew cover. The browser QA summoned all three through their real objects.

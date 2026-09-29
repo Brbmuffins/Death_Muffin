@@ -49,7 +49,8 @@ import type { ThrallKind } from '../../content/disciplines';
 import { BONE_HEX, CHILL, HEMORRHAGE, PLAGUE_BURST, SANCTIFIED } from '../../content/statuses';
 import type { Nav } from '../nav';
 import { pickWeighted } from '../rng';
-import { BossBrain, BOSS_ARENA, BOSS_RADIUS } from './BossBrain';
+import { BOSS_RADIUS, makeBossBrains, type BossBrain, type CoverBox } from './BossBrain';
+import { BOSSES, isBossId, type BossId } from '../../content/bosses';
 import { NODES, RICH_RESPAWN, RICH_YIELD, type NodeDef } from '../gatheringRules';
 import { NODE_REACH } from '../../content/layout';
 import type {
@@ -132,7 +133,17 @@ export class WorldSim {
   readonly players = new Map<string, PlayerBody>();
   /** Gathering nodes (placements from the layout; depletion is host-authoritative). */
   readonly nodes = new Map<string, SimNode>();
-  readonly boss: BossBrain;
+  /** Every area boss's brain (one awake at a time); `boss` is the awake one, or the last one summoned. */
+  readonly bosses: Record<BossId, BossBrain>;
+  private bossId: BossId = 'prelate';
+  get boss(): BossBrain {
+    return this.bosses[this.bossId];
+  }
+  /** Drowned Congregation cover (the nave pews' boxes; WorldScene passes them from the layout). */
+  cover: CoverBox[] = [];
+  setCover(boxes: CoverBox[]) {
+    this.cover = boxes;
+  }
 
   /** Host's active wave-speed tier (drives every area this sim runs). */
   waveTier = 0;
@@ -164,7 +175,7 @@ export class WorldSim {
     private nav: Nav,
     readonly rand: () => number = Math.random,
   ) {
-    this.boss = new BossBrain(this);
+    this.bosses = makeBossBrains(this);
   }
 
   id() {
@@ -217,8 +228,12 @@ export class WorldSim {
         return this.applyExhume(intent);
       case 'litany':
         return this.applyLitany(intent);
-      case 'summonBoss':
+      case 'summonBoss': {
+        // One awake boss per world: a second summon is ignored (the client explains why).
+        if (this.boss.state.active) return;
+        this.bossId = isBossId(intent.boss) ? intent.boss : 'prelate';
         return this.boss.awaken(intent.by);
+      }
       case 'detonate':
         return this.applyDetonate(intent);
       case 'signature':
@@ -747,7 +762,7 @@ export class WorldSim {
           if (along < bestT) (first = e), (bestT = along);
         }
         const boss = this.boss.state;
-        if (caster?.area === 'sanctum' && boss.active) {
+        if (caster?.area === BOSSES[this.bossId].area && boss.active) {
           const rx = boss.x - ox;
           const rz = boss.z - oz;
           const along = rx * dx + rz * dz;
@@ -1338,7 +1353,7 @@ export class WorldSim {
         AREAS[id].breaches.length > 0 &&
         this.nav.isUnlocked(id) &&
         this.playersIn(id).length > 0 &&
-        !(id === 'sanctum' && this.boss.state.active),
+        !(id === BOSSES[this.bossId].area && this.boss.state.active),
     );
     if (!eligible.length) return;
     this.surgeIn -= dt;
@@ -1405,7 +1420,7 @@ export class WorldSim {
       const def = AREAS[id];
       if (def.safe || !this.nav.isUnlocked(id)) continue;
       if (!this.playersIn(id).length) continue;
-      if (id === 'sanctum' && this.boss.state.active) continue;
+      if (id === BOSSES[this.bossId].area && this.boss.state.active) continue;
       let t = this.waveTimers.get(id);
       if (t === undefined) {
         // First visit: open with a heavier wave so the area feels inhabited.
@@ -1982,6 +1997,7 @@ export class WorldSim {
         this.tickBurrow(e, dt);
         continue;
       }
+      if (ENEMIES[e.def].inert) continue; // a skull niche only stands there to be broken
       // Shield Bash: stunned bodies neither act nor move, and a stun cancels a
       // windup or channel outright (this is the interrupt the Knight pays for).
       if ((e.stunT ?? 0) > 0) {
@@ -2350,7 +2366,7 @@ export class WorldSim {
   /** Soft body separation: enemies ↔ enemies/thralls/players, thralls ↔ thralls. */
   private separate() {
     const bodies: { x: number; z: number; r: number; w: number; e?: Enemy; t?: Thrall }[] = [];
-    for (const e of this.enemies.values()) if ((e.state !== 'rising' && e.state !== 'burrow')) bodies.push({ x: e.x, z: e.z, r: e.radius, w: 1, e });
+    for (const e of this.enemies.values()) if ((e.state !== 'rising' && e.state !== 'burrow')) bodies.push({ x: e.x, z: e.z, r: e.radius, w: ENEMIES[e.def].inert ? 0 : 1, e });
     for (const t of this.thralls.values()) bodies.push({ x: t.x, z: t.z, r: 0.4, w: 0.6, t });
     for (const p of this.players.values()) if (p.alive) bodies.push({ x: p.x, z: p.z, r: PLAYER_RADIUS, w: 0 });
     for (let i = 0; i < bodies.length; i++) {
@@ -2394,6 +2410,6 @@ export class WorldSim {
   }
 
   arenaCenter() {
-    return BOSS_ARENA;
+    return BOSSES[this.bossId].arena;
   }
 }

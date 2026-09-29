@@ -2,6 +2,7 @@ import { AREAS, AREA_ORDER, DOORS, type AreaId, type Rect } from './areas';
 export type { Rect };
 import { mulberry32 } from '../gameplay/rng';
 import { NODES, type NodeKind } from '../gameplay/gatheringRules';
+import { ABBESS_NICHE_SPOTS, BOSSES, GRAVEDIGGER_PITS, summonSpot, type BossId } from './bosses';
 
 /**
  * Deterministic world dressing. Pure data (no three.js) so the navigation
@@ -477,6 +478,7 @@ export function generateLayout(seed = 1337): WorldLayout {
   const crypts = cryptsFrom(props);
   richNodes(nodes, props);
   dressRooms(props, nodes, crypts, paths);
+  bossArenas(props);
 
   return { paths, props, walls, decals, windows, water, puddles, silhouettes, crypts, nodes, ponds };
 }
@@ -577,6 +579,35 @@ function dressRooms(props: Placement[], nodes: NodePlacement[], crypts: Crypt[],
       return true;
     });
     if (spot) props.push({ prop, x: spot[0], z: spot[1], rot, scale: 1, area });
+  }
+}
+
+/** Small props an area-boss arena clears out of its fighting ground (crypts, pillars and walls stay). */
+const ARENA_CLEAR = new Set<PropId>(['tombstone_round', 'tombstone_cross', 'candles', 'bone_pile', 'dead_tree', 'gibbet_cage', 'coffin_stack', 'statue', 'drowned_statue', 'bone_candelabrum', 'brazier']);
+
+/**
+ * Area bosses (2026-09-28), placed last like the dressing so the seeded layout never shifts: clear each arena's
+ * small props, stand its summon object at the north edge, keep the Abbess's niche spots and the King's pits open,
+ * and give the Congregation two ragged rows of pews to hide behind.
+ */
+function bossArenas(props: Placement[]) {
+  const drop = (keep: (p: Placement) => boolean) => {
+    for (let i = props.length - 1; i >= 0; i--) if (!keep(props[i])) props.splice(i, 1);
+  };
+  for (const id of ['gravedigger', 'abbess', 'congregation'] as BossId[]) {
+    const b = BOSSES[id];
+    const { x, z, r } = b.arena;
+    const [sx, sz] = summonSpot(id);
+    drop((p) => p.area !== b.area || !ARENA_CLEAR.has(p.prop) || Math.hypot(p.x - x, p.z - z) > r * 0.8);
+    drop((p) => p.area !== b.area || Math.hypot(p.x - sx, p.z - sz) > 2.4 || p.prop === 'mausoleum' || p.prop === 'sarcophagus');
+    props.push({ prop: b.summonId as PropId, x: sx, z: sz, rot: 0, scale: 1, area: b.area });
+  }
+  const open: [BossId, [number, number][]][] = [['abbess', ABBESS_NICHE_SPOTS], ['gravedigger', GRAVEDIGGER_PITS]];
+  for (const [id, spots] of open) drop((p) => p.area !== BOSSES[id].area || p.prop === 'mausoleum' || p.prop === 'sarcophagus' || spots.every(([x, z]) => Math.hypot(p.x - x, p.z - z) > 1.9));
+  // Pews: the Hymn's only cover. Keep what the dressing placed and add the outer row where it is clear.
+  for (const [x, z] of [[-6.4, -57.4], [6.4, -57.4], [-6.4, -64.8], [6.4, -64.8]] as const) {
+    if (props.some((p) => Math.hypot(p.x - x, p.z - z) < footprint(p.prop, p.scale) + 1.1)) continue;
+    props.push({ prop: 'church_pew', x, z, rot: 0, scale: 1, area: 'nave' });
   }
 }
 

@@ -109,6 +109,9 @@ No deployment. Source and redistribution note: `docs/CROSSWORLDS-AUDIO.md`.
 
 ## In flight (check before starting overlapping work)
 
+- **2026-09-29: area bosses built (Gravedigger King, Bone Abbess, Drowned Congregation).** See PHASE_REPORTS →
+  "Area bosses". Deploying it needs the realtime `server.js` (it validates `summonBoss.boss`) and the regenerated rules.
+
 - **2026-09-29 documentation/help audit:** staged locally. The source README
   and in-game copy now reflect current kits, Easy auto and delivered professions;
   the documentation map distinguishes source, published releases and historical

@@ -1,4 +1,5 @@
 import { BULWARK, KNIGHT_RAGE, SOUL_HARVEST } from '../content/abilities';
+import { CHILL } from '../content/statuses';
 import type { AreaId } from '../content/areas';
 import type { ClassFamily } from '../content/disciplines';
 import type { DerivedStats } from './characterStats';
@@ -42,6 +43,8 @@ export class Player {
   area: AreaId | null = 'chapterhouse';
   lastHurtAt = -1e9;
   rootedUntil = 0;
+  /** Flood Hymn's Chill slows movement until this scene time (ms). */
+  chilledUntil = 0;
   /** Shared recovery between spells; independent of each spell's cooldown. */
   castUntil = 0;
   /** DEV QA only (window.__cwDebug.god). */
@@ -143,6 +146,9 @@ export class Player {
   }
 
   /** Walk the path, or step along a WASD direction. Returns true if moved. */
+  /** Scene-set movement multiplier (the Drowned Congregation's rising water). */
+  moveMult = 1;
+
   update(dt: number, now: number, keyDir: { x: number; z: number } | null): boolean {
     this.clockNow = now;
     this.moving = false;
@@ -165,7 +171,7 @@ export class Player {
     if (now >= this.barrierHoldUntil) this.barrier = Math.max(0, this.barrier - this.stats.maxHp * 0.04 * dt);
     if (now < this.rootedUntil) return false;
 
-    const speed = this.stats.moveSpeed * (this.veilForm || now < this.betweenUntil ? 1.2 : 1);
+    const speed = this.stats.moveSpeed * (this.veilForm || now < this.betweenUntil ? 1.2 : 1) * this.moveMult * (now < this.chilledUntil ? CHILL.moveMult : 1);
     let dx = 0;
     let dz = 0;
     if (keyDir && (keyDir.x || keyDir.z)) {
@@ -261,6 +267,7 @@ export class Player {
 
   revive() {
     this.alive = true;
+    this.chilledUntil = 0;
     this.hp = this.stats.maxHp;
     this.resource.value = this.rules.onRevive(this.resource.max);
     this.barrier = 0;

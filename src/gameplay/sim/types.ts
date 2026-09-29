@@ -1,6 +1,7 @@
 import type { AreaId } from '../../content/areas';
 import type { ThrallKind } from '../../content/disciplines';
 import type { CorpseKind, EliteAffix, EnemyId } from '../../content/enemies';
+import type { BossId } from '../../content/bosses';
 
 /**
  * Authoritative world-simulation types. The room host (or the solo player)
@@ -220,6 +221,8 @@ export interface PlayerBody {
 export type BossPhase = 1 | 2 | 3;
 
 export interface BossState {
+  /** Which boss this is (older snapshots have none → the Prelate). */
+  id?: BossId;
   active: boolean;
   x: number;
   z: number;
@@ -292,7 +295,8 @@ export type Intent =
       spellPower: number;
       leaveCorpses: boolean;
     }
-  | { t: 'summonBoss'; by: string }
+  /** `boss` (area bosses, 2026-09-28); missing = the Prelate, for older clients. */
+  | { t: 'summonBoss'; by: string; boss?: BossId }
   | { t: 'recallThralls'; by: string; x: number; z: number }
   /** Host-shaped rites (discipline signatures + Bone Mantle): aim point, aim direction and the caster's spell power. */
   | {
@@ -339,7 +343,7 @@ export type SimEvent =
   | { t: 'thrallGone'; id: number; owner: string; x: number; z: number; reason: 'killed' | 'sacrificed' | 'crumbled' }
   | { t: 'telegraph'; id: number; kind: 'cone' | 'raise' | 'curse' | 'slam' | 'toll' | 'scream' | 'dust' | 'dive' | 'erupt'; x: number; z: number; tx: number; tz: number; ms: number; r?: number }
   | { t: 'melee'; id: number; x: number; z: number; tx: number; tz: number }
-  | { t: 'hurt'; player: string; dmg: number; from: 'melee' | 'cone' | 'curse' | 'toxic' | 'boss' | 'toll' | 'scream' | 'dust' | 'erupt'; x: number; z: number }
+  | { t: 'hurt'; player: string; dmg: number; from: 'melee' | 'cone' | 'curse' | 'toxic' | 'boss' | 'toll' | 'scream' | 'dust' | 'erupt'; x: number; z: number; chillMs?: number }
   | { t: 'thrallHit'; id: number; target: number; x: number; z: number; tx: number; tz: number; kind: ThrallKind; dmg: number }
   | { t: 'zone'; zone: Zone }
   | { t: 'zoneGone'; id: number }
@@ -415,4 +419,22 @@ export type SimEvent =
   /** `theme`: a procession (content/enemies WAVE_THEMES) rather than the usual mix. */
   | { t: 'wave'; area: AreaId; count: number; x: number; z: number; theme?: string }
   | { t: 'dmg'; x: number; z: number; amount: number; kind: 'dot' | 'thrall' | 'burst' | 'litany' | 'hit'; by: string }
-  | { t: 'boss'; kind: 'awaken' | 'phase' | 'toll' | 'slam' | 'rain' | 'summon' | 'defeated'; x: number; z: number; phase: BossPhase; targets?: [number, number][]; ms?: number; r?: number; killer?: string };
+  | {
+      t: 'boss';
+      kind: 'awaken' | 'phase' | 'toll' | 'slam' | 'rain' | 'summon' | 'defeated'
+        // Area bosses: Gravedigger (sweep, bury, pits), Abbess (lance, chorus, grasp, communion, nicheBreak), Congregation (hymn, grasp, maul).
+        | 'sweep' | 'bury' | 'pits' | 'lance' | 'chorus' | 'grasp' | 'communion' | 'nicheBreak' | 'hymn' | 'maul';
+      x: number;
+      z: number;
+      phase: BossPhase;
+      targets?: [number, number][];
+      ms?: number;
+      r?: number;
+      killer?: string;
+      boss?: BossId;
+      /** Facing for cones, lines and spokes. */
+      dir?: number;
+      /** Players caught (Burial / Drowning Grasp root them for `root` seconds on their own client). */
+      players?: string[];
+      root?: number;
+    };
