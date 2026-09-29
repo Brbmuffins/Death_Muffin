@@ -48,7 +48,12 @@ export type PropId =
   | 'kings_grave'
   | 'abbess_reliquary'
   | 'drowned_font'
-  | 'skull_niche';
+  | 'skull_niche'
+  // The Plague Cloister.
+  | 'plague_well'
+  | 'rot_garden'
+  | 'plague_cart'
+  | 'saints_litter';
 
 export interface PropSpec {
   /** Target world height of the generated model. */
@@ -94,6 +99,10 @@ export const PROPS: Record<PropId, PropSpec> = {
   abbess_reliquary: { height: 1.6, collider: { kind: 'box', hw: 0.9, hd: 0.7 } },
   drowned_font: { height: 1.7, collider: { kind: 'circle', r: 0.9 } },
   skull_niche: { height: 3.4, collider: { kind: 'circle', r: 0.7 } },
+  plague_well: { height: 2.4, collider: { kind: 'circle', r: 1.3 } },
+  rot_garden: { height: 1.0, collider: { kind: 'box', hw: 1.6, hd: 0.9 } },
+  plague_cart: { height: 2.0, collider: { kind: 'box', hw: 1.4, hd: 0.8 } },
+  saints_litter: { height: 2.4, collider: { kind: 'box', hw: 1.2, hd: 1.8 } },
 };
 
 export interface Placement {
@@ -469,6 +478,38 @@ export function generateLayout(seed = 1337): WorldLayout {
     windows.push({ x: 0, z: -129.9, w: 6.5, h: 11, facing: 0, y: 7.5 });
   }
 
+  // --- The Plague Cloister (2026-09-29): a mossy cloister garth ringed by an arcade, the plague well at its heart.
+  // Placed after every older area and before the seeded post-passes, so nothing earlier shifts.
+  {
+    const a: AreaId = 'cloister';
+    edgeWalls(a, 7, 'stone_wall', walls);
+    const cx = 44;
+    const cz = -116;
+    // The arcade: pillars on a rectangle inset from the walls, arches over the four walks.
+    for (let x = 29; x <= 59; x += 6) {
+      P('pillar', x, -102.5, a, 0);
+      P('pillar', x, -129.5, a, 0);
+    }
+    for (let z = -123.5; z <= -108.5; z += 5) {
+      P('pillar', 28.5, z, a, 0);
+      P('pillar', 59.5, z, a, 0);
+    }
+    P('arch', 44, -102.5, a, 0);
+    P('arch', 59.5, -116, a, Math.PI / 2);
+    // The well stands in the south garth; the north half is the Plague Saint's arena.
+    P('plague_well', cx, -107.5, a, 0);
+    P('waystone', 27.5, -108, a, 0);
+    for (const [x, z] of [[35, -110], [53, -110], [35, -122], [53, -122]] as const) P('rot_garden', x, z, a, x < cx ? 0 : Math.PI);
+    for (const [x, z, r] of [[31, -104.5, 0.4], [57, -127.5, 2.6], [61, -106, 1.7]] as const) P('plague_cart', x, z, a, r);
+    for (const [x, z] of [[40, -104], [48, -104], [31, -127], [57, -104.5]] as const) P('candles', x, z, a);
+    for (let i = 0; i < 6; i++) {
+      const x = 30 + rand() * 28;
+      const z = -131 + rand() * 30;
+      if (clearOf(x, z, 3)) P(rand() < 0.5 ? 'bone_pile' : 'dead_tree', x, z, a);
+    }
+    decals.push({ kind: 'sigil', x: cx, z: cz, r: 9, color: 0x6f8f22, opacity: 0.35, rot: 0, area: a });
+  }
+
   // Environment dressing draws from its own stream so adding it never moves a grave.
   const envRand = mulberry32(seed ^ 0x5eed);
   const water = naveWater();
@@ -594,7 +635,7 @@ function bossArenas(props: Placement[]) {
   const drop = (keep: (p: Placement) => boolean) => {
     for (let i = props.length - 1; i >= 0; i--) if (!keep(props[i])) props.splice(i, 1);
   };
-  for (const id of ['gravedigger', 'abbess', 'congregation'] as BossId[]) {
+  for (const id of ['gravedigger', 'abbess', 'congregation', 'saint'] as BossId[]) {
     const b = BOSSES[id];
     const { x, z, r } = b.arena;
     const [sx, sz] = summonSpot(id);
@@ -682,7 +723,7 @@ function distantSilhouettes(rand: () => number): Silhouette[] {
     [-38, -58, 1.25],
     [30, -62, 1.05],
     [-30, -134, 1.4],
-    [34, -126, 1.15],
+    [44, -146, 1.3], // behind the Plague Cloister
     [0, -150, 1.6],
     [82, -24, 1.1],
     [48, -58, 0.9],

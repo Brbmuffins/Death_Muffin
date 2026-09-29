@@ -44,7 +44,7 @@ import { WorldSim } from '../gameplay/sim/WorldSim';
 import { computeStats, STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
 import { BossView, NecromancerAvatar } from '../graphics/Avatars';
 import { prewarmCreature } from '../graphics/prewarmCreature';
-import { BOSSES, CONGREGATION, GRAVEDIGGER, bossForSummon, type BossId } from '../content/bosses';
+import { BOSSES, CONGREGATION, GRAVEDIGGER, SAINT, bossForSummon, type BossId } from '../content/bosses';
 import { fxImage } from '../graphics/fxImages';
 import { CameraRig } from '../graphics/CameraRig';
 import { Effects, type Handle } from '../graphics/Effects';
@@ -97,6 +97,8 @@ const FIRST_SIGHT_TIPS: Partial<Record<EnemyId, TipId>> = {
   ghoul: 'ghoul',
   acolyte: 'acolyte',
   templar: 'templar',
+  plague_doctor: 'plague_doctor',
+  flagellant: 'flagellant',
 };
 /** Counsel shown the first time each level-gated Grimoire rite is placed on a key. */
 const RITE_TIPS: Partial<Record<AbilityId, TipId>> = {
@@ -174,6 +176,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private bossViews = new Map<BossId, BossView>();
   /** Open graves (Gravedigger P3) until the fight ends. */
   private pitFx: Handle[] = [];
+  private saintBlessTold = false;
   private loot!: LootView;
   private avatar!: NecromancerAvatar;
   private player!: Player;
@@ -1237,6 +1240,7 @@ export class WorldScene implements GameScene, RuntimeView {
         {
           characterId: this.character.id,
           classIndex: this.character.class_index,
+          level: this.character.level,
           x: this.player.x,
           z: this.player.z,
           facing: this.player.facing,
@@ -1786,7 +1790,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (this.inventory.all.some((s) => s.item_id.startsWith('tool_'))) this.onboarding.show('tool');
     if (this.progression.local.shards >= BOSS_SUMMON_SHARDS) this.onboarding.show('prelate');
     // Area bosses: counsel the first time a summon object is within 12 m.
-    for (const id of ['gravedigger', 'abbess', 'congregation'] as BossId[]) {
+    for (const id of ['gravedigger', 'abbess', 'congregation', 'saint'] as BossId[]) {
       const it = AREAS[BOSSES[id].area].interactables.find((i) => i.id === BOSSES[id].summonId);
       if (it && this.player.area === BOSSES[id].area && Math.hypot(it.x - this.player.x, it.z - this.player.z) < 12) this.onboarding.show(`boss_${id}` as TipId);
     }
@@ -1859,6 +1863,13 @@ export class WorldScene implements GameScene, RuntimeView {
       this.effects.decal({ tex: fx.disc(), color: dirt, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.45, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.2 });
       this.effects.decal({ tex: fx.ring(), color: 0xa07a50, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.85, fadeOut: 0.05 });
       this.effects.decal({ tex: fx.cracks(), color: dirt, x: ev.tx, z: ev.tz, r: r * 0.9, rot: Math.random() * 6, duration: ms, opacity: 0.7, growFrom: 0.2, fadeOut: 0.05 });
+    } else if (ev.kind === 'flask') {
+      // Plague Doctor: a rot-green ring where the flask will land (enemy rot, never the player's Miasma).
+      const r = ev.r ?? 1.8;
+      const rot = SPELL_FX.enemy.toxic;
+      this.effects.decal({ tex: fx.disc(), color: rot, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.45, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.25 });
+      this.effects.decal({ tex: fx.ring(), color: SPELL_FX.enemy.rot, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.9, fadeOut: 0.05 });
+      this.effects.projectile({ from: { x: ev.x, y: 1.6, z: ev.z }, to: () => ({ x: ev.tx, y: 0.3, z: ev.tz }), kind: 'orb', color: rot, speed: Math.max(4, Math.hypot(ev.tx - ev.x, ev.tz - ev.z) / Math.max(0.2, ms)), arc: 30 });
     } else if (ev.kind === 'dust') {
       // Shroud Moth: dust sifts down from the wings onto a ring; the cloud (a zone) follows the burst.
       const r = ev.r ?? 2;
@@ -2353,6 +2364,29 @@ export class WorldScene implements GameScene, RuntimeView {
           this.hud.toast('Bone Communion: spend the corpses before they reach her!', 'err');
         } else if ((ev.r ?? 0) > 0) this.floating.spawn(ev.x, 3, ev.z, `+${Math.round((ev.r ?? 0))} corpses devoured`, 'info');
         break;
+      case 'rotRain':
+        for (const [x, z] of ev.targets ?? []) {
+          if (ms > 0) this.effects.decal({ tex: fx.disc(), color: SPELL_FX.enemy.toxic, x, z, r: ev.r ?? 2, duration: ms, opacity: 0.55, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.2 });
+          else this.effects.emitSmoke({ x, y: 0.3, z, count: 3, color: 0x4a5a22, spread: 1, speed: 1.2, up: 1, life: 1, size: 1.1 });
+        }
+        if (ms > 0) this.hud.toast('Rot Rain: step out of the green, then keep her out of it.', 'err');
+        else audio.play('boneHit', ev.x, ev.z);
+        break;
+      case 'swing':
+        if (ms > 0) cone(ev.r ?? 4.5, ev.dir ?? 0, SAINT.swing.halfDeg, SPELL_FX.enemy.rot, ms);
+        else {
+          this.effects.emitSmoke({ x: ev.x + Math.sin(ev.dir ?? 0) * 2, y: 0.8, z: ev.z + Math.cos(ev.dir ?? 0) * 2, count: 4, color: 0x5a6a2a, spread: 1.4, speed: 2, up: 0.6, life: 0.8, size: 1 });
+          audio.play('bossSlam', ev.x, ev.z);
+          this.rig.shake(0.2);
+        }
+        break;
+      case 'blessed':
+        this.effects.emit({ x: ev.x, y: 0.4, z: ev.z, count: 10, color: 0x9cc43a, spread: 0.8, speed: 0.6, up: 2.2, life: 0.9, size: 0.2 });
+        if (!this.saintBlessTold) {
+          this.saintBlessTold = true;
+          this.floating.spawn(ev.x, 3.5, ev.z, 'The rot heals her!', 'info');
+        }
+        break;
       case 'nicheBreak':
         this.effects.emit({ x: ev.x, y: 1.6, z: ev.z, count: 40, color: 0xe0d6c2, spread: 1, speed: 3.5, up: 2.5, life: 0.9, size: 0.25, gravity: 8 });
         this.effects.lightFlash(ev.x, 2, ev.z, SPELL_FX.boss.shard, 40, 0.5);
@@ -2392,6 +2426,9 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'chorus':
       case 'communion':
       case 'nicheBreak':
+      case 'rotRain':
+      case 'swing':
+      case 'blessed':
         this.areaBossEvent(ev, ms);
         break;
       case 'toll':
@@ -2555,9 +2592,9 @@ export class WorldScene implements GameScene, RuntimeView {
 
     // Authoritative world (host/solo) or mirror (guest).
     if (this.sim && this.isAuthority()) {
-      this.sim.setPlayer({ id: this.selfId, x: p.x, z: p.z, alive: p.alive, area: p.alive ? p.area : null, family: this.discipline.family });
+      this.sim.setPlayer({ id: this.selfId, x: p.x, z: p.z, alive: p.alive, area: p.alive ? p.area : null, family: this.discipline.family, level: this.character.level });
       for (const [id, r] of this.remotes) {
-        this.sim.setPlayer({ id, x: r.tx, z: r.tz, alive: r.hpFrac > 0, area: this.nav.areaAt(r.tx, r.tz), family: disciplineFor(r.info.classIndex).family });
+        this.sim.setPlayer({ id, x: r.tx, z: r.tz, alive: r.hpFrac > 0, area: this.nav.areaAt(r.tx, r.tz), family: disciplineFor(r.info.classIndex).family, level: r.info.level ?? 1 });
       }
       const events = this.sim.step(dt);
       for (const ev of events) this.handleEvent(ev);
@@ -2762,6 +2799,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (!this.announcedAreas.has(area)) {
       this.announcedAreas.add(area);
       this.hud.banner(def.name, def.subtitle);
+      if (area === 'cloister') this.onboarding.show('cloister', 1200);
     }
     this.codexDiscover('area', area);
     (this.scene.fog as THREE.FogExp2).color.set(def.ambient.fog);
@@ -3073,9 +3111,12 @@ export class WorldScene implements GameScene, RuntimeView {
         const enemy = kind === 'resonant' ? 'penitent' : kind === 'toxic' ? 'sac' : 'robber';
         this.sim?.addCorpse(this.groundPoint.x, this.groundPoint.z, kind, enemy, elite, 0, 1, a);
       },
-      boss: () => {
-        this.teleportTo(BOSS_ARENA.x, BOSS_ARENA.z + 8);
-        this.sendIntent({ t: 'summonBoss', by: this.selfId });
+      /** Summon a boss (default the Prelate) and stand at the edge of its arena. */
+      boss: (id: BossId = 'prelate') => {
+        const a = BOSSES[id].arena;
+        if (id === 'prelate') this.teleportTo(BOSS_ARENA.x, BOSS_ARENA.z + 8);
+        else this.teleportTo(a.x, a.z + a.r * 0.7);
+        this.sendIntent(id === 'prelate' ? { t: 'summonBoss', by: this.selfId } : { t: 'summonBoss', by: this.selfId, boss: id });
       },
       god: (on = true) => (this.player.god = on),
       /** README shot: the four discipline heroes standing in a row beside the player. */

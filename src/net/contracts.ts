@@ -15,6 +15,8 @@ export interface RemotePlayer {
   characterId: number;
   name: string;
   classIndex: number;
+  /** Character level at join (older servers omit it). */
+  level?: number;
   x: number;
   z: number;
   facing: number;
@@ -27,6 +29,7 @@ export interface JoinRequest {
   instance?: string;
   characterId: number;
   classIndex: number;
+  level?: number;
   x: number;
   z: number;
   facing: number;

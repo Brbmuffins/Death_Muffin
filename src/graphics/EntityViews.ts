@@ -30,6 +30,8 @@ const ENEMY_SLUG: Record<EnemyId, CreatureSlug> = {
   acolyte: 'lich_acolyte',
   templar: 'bell_templar',
   niche: 'skull_niche',
+  plague_doctor: 'plague_doctor',
+  flagellant: 'flagellant',
 };
 
 /** Shipped models to fall back on if a newer GLB is missing (older deploys, failed builds). */
@@ -45,9 +47,11 @@ const ENEMY_FALLBACK: Partial<Record<EnemyId, CreatureSlug>> = {
   ghoul: 'grave_robber',
   acolyte: 'deacon',
   templar: 'grave_robber',
+  plague_doctor: 'deacon',
+  flagellant: 'grave_robber',
 };
 /** Enemies that cast (play 'cast' rather than 'attack' on the windup). */
-const CASTERS = new Set<EnemyId>(['penitent', 'deacon', 'wraith', 'censer', 'moth', 'seraph', 'acolyte']);
+const CASTERS = new Set<EnemyId>(['penitent', 'deacon', 'wraith', 'censer', 'moth', 'seraph', 'acolyte', 'plague_doctor']);
 /** Choir Wraiths float: a hover height and a slow bob. */
 const HOVER = { wraith: 0.45 } as Partial<Record<EnemyId, number>>;
 /** Flying pack wingbeats: heavy stone, dusty moth, frantic bat, slow grieving seraph. */
@@ -642,6 +646,10 @@ export class EntityViews {
       }
       if (nearFx && (e.sanctT ?? 0) > 0 && Math.random() < dt * 2) {
         this.effects.emit({ x: e.x, y: 1.9 * e.scale, z: e.z, count: 1, color: STATUS_FX.sanctified.gold, spread: 0.35, speed: 0.1, up: 0.5, life: 0.7, size: 0.16 });
+      }
+      // A frenzied Flagellant sheds blood motes (hp below half; mirrors see the same hp).
+      if (nearFx && ENEMIES[e.def].frenzy && e.hp < e.maxHp * 0.5 && Math.random() < dt * 5) {
+        this.effects.emit({ x: e.x, y: 1.1, z: e.z, count: 1, color: 0x9a1b2a, spread: 0.3, speed: 0.4, up: 0.4, life: 0.5, size: 0.14, gravity: 6 });
       }
       // Incensed (a Censer Bearer's aura): bronze motes drifting off the shoulders.
       if (nearFx && (e.incenseT ?? 0) > 0 && Math.random() < dt * 3) {

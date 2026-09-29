@@ -275,8 +275,9 @@ One connected world. Each area's seal breaks when you've killed enough in the ar
 | **The Marrow Ossuary** | 5 | 300 kills in the Graves | Skull-walled aisles and bone floors. Deacons appear — protect your corpses. |
 | **The Drowned Nave** | 9 | 420 kills in the Ossuary | A flooded cathedral nave: dark water in the aisles, raised walkways along the pillars, violet stained glass. Penitent choirs. |
 | **The Bell Sanctum** | 13 | 520 kills in the Nave | The Prelate's seat. Summon it at the Sundered Bell with 5 soul shards. |
+| **The Plague Cloister** | 20+, **grows with you** | 600 kills in the Sanctum | East of the Sanctum. A diseased cloister garth of rot gardens, a plague well and corpse carts. Its dead match the highest-level player inside it (never below 20), so XP per kill keeps pace at any level. Plague Doctors lob flasks that leave rot pools; Flagellants frenzy below half health. |
 
-Every Ascension rank makes all of these levels **3 higher**.
+Every Ascension rank makes all of these levels **3 higher**. The Cloister is where to go once the fixed-level areas stop paying XP.
 
 <table><tr>
 <td><img src="docs/screenshots/chapterhouse.webp" alt="The Chapterhouse" /><br/><sub><b>The Chapterhouse</b></sub></td>
@@ -285,7 +286,7 @@ Every Ascension rank makes all of these levels **3 higher**.
 </tr></table>
 
 Each area has its own weather: ash and dead leaves over the Graves, bone dust in the Ossuary,
-rain and drips in the Nave, rising embers in the Sanctum. Rain puddles in the graveyard catch the moon,
+rain and drips in the Nave, rising embers in the Sanctum, plague motes in the Cloister. Rain puddles in the graveyard catch the moon,
 and every body that wades through the Nave's flood leaves ripples. Ruined spires and dead trees stand
 in the fog beyond the walls.
 
@@ -310,10 +311,11 @@ pays two extra shards and a guaranteed rare-or-better relic, and puts a trophy i
 |---|---|---|
 | **The Gravedigger King** | Hollow Graves · The King's Grave · 2 | **Burial**: a grave outline opens under you. Step off or be **Buried** (rooted 2 s, casting allowed). Spade Sweep cone. From 60% he digs Barrow Ghouls up at the edge; from 30% four open pits bury whoever walks in. |
 | **The Bone Abbess** | Marrow Ossuary · The Abbess's Reliquary · 3 | **Four skull niches** heal her and fire Bone Lances. Each one broken tears 4% of her health away and Fractures her. Ossuary Chorus: eight bone spokes (stand between them; twice from 60%). From 30% two niches re-form once, and **Bone Communion** drags every corpse in the arena to her to heal: spend them first. |
+| **The Plague Saint** | Plague Cloister · The Saint's Litter · 5 | **She heals in her own rot.** Rot Rain marks circles on you and around the garth; each becomes a rot pool, and while she stands in one she heals. Kite her onto clean ground. Censer Swing cone up close. Plague Doctors and Flagellants join at 60%; at 30% the rain gets heavier, pools last longer and rats swarm. Her level follows yours, like the Cloister's dead. |
 | **The Drowned Congregation** | Drowned Nave · The Drowned Font · 4 | **Flood Hymn**: tide crests march out across a 120° arc, and only a **pew** between you and her keeps you dry. Drowning Grasp rings root whoever stays in them. The water rises each phase (slower off her dais; Soaked in the last phase) and wraiths and penitents climb out. |
 
 Solo kill times for a careful player at the area's intended level: about 1.5–2 minutes (King), 2–2.5 (Abbess) and
-2.5–3 (Congregation). Measure with `npm run balance:boss -- --boss gravedigger|abbess|congregation`.
+2.5–3 (Congregation and Saint). Measure with `npm run balance:boss -- --boss gravedigger|abbess|congregation|saint`.
 
 ## The Bell-Sworn Prelate
 

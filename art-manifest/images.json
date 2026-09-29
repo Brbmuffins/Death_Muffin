@@ -6820,5 +6820,131 @@
     "rawHash": "sha256:56afcde7018aaac41187b80c2ca25ab95e6cc6ca88a172a863dde4d1cb96973d",
     "outHash": "sha256:a792d90d8fe7fef5d6034da6004da6a939a701a63d874aae8cc4453edfe972bd",
     "generatedAt": "2026-09-28T21:51:57.953Z"
+  },
+  "concept_flagellant": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new enemy for a plague-ridden cloister: the Flagellant, a lean frenzied penitent monk, bare scarred back and arms wrapped in bloody bandages, a ragged grey hooded robe tied at the waist with a rope, a crown of rusted nails, pale plague-blistered skin with green veins, bare feet, a scourge of knotted chains tucked into the rope belt. Palette: grey sackcloth, dried blood crimson, pallid skin, sickly green veins. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally with the hands open and empty, legs straight and slightly apart, standing upright so it can be rigged. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/flagellant.png",
+    "rawHash": "sha256:6eaeaf3f6311c30d74ea736629e67dc6f6fde097df8c29cb6504e984fdeb739a",
+    "outHash": "sha256:bbefc3f4b230bbef2fe5423eecf5f072182291b0ed63c13b1f1417ce49d57d71",
+    "generatedAt": "2026-09-29T21:34:04.107Z"
+  },
+  "concept_boss_plague_saint": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a BOSS for a plague-ridden cloister: the Plague Saint, a towering bloated rotting saint, twice human size, in tattered once-white vestments stained green and brown, a halo of rusted iron and dead flies, a serene gilded death-mask face with rot seeping from the eye holes, swollen arms with open plague sores leaking glowing green ichor, a swarm of flies and spores around the shoulders, a heavy thurible censer chained to one wrist. Palette: stained ivory, tarnished gold, sickly chartreuse glow, rot brown. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally with the hands open and empty, legs straight and slightly apart, standing upright so it can be rigged. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/boss_plague_saint.png",
+    "rawHash": "sha256:36f9b448b1bac623216bcd00d2de323fdf429252820616afe2215aba8d4e436f",
+    "outHash": "sha256:4e558f0e56de7b2d0512bab100e99429a0db632a6cbcefbbc170e591ea4728b2",
+    "generatedAt": "2026-09-29T21:34:13.174Z"
+  },
+  "concept_prop_plague_well": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood and iron, aged bone, tarnished bronze, sickly green rot and moss). Subject: an old round stone cloister well, its rim cracked and overgrown with green moss, a rotten wooden winch and a broken bucket on a chain, thick glowing green plague water welling up and spilling over the stone lip, a few bones and a dead rat at the base.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/plague_well.png",
+    "rawHash": "sha256:1b121a9cfe03868db02099a4ca24b2c238755af8e19fec1a703aa16963f3ad7b",
+    "outHash": "sha256:fe4fb070f8411143a0469c7fa2101a2a6686e194a4c7a377a06fcbef5c2e844d",
+    "generatedAt": "2026-09-29T21:34:23.688Z"
+  },
+  "concept_prop_rot_garden": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood and iron, aged bone, tarnished bronze, sickly green rot and moss). Subject: a rectangular raised monastery herb bed edged with cracked stone, full of withered black and sickly green plants, bloated fungi and glowing green spore pods, a few human bones half buried in the soil, a rusted trowel stuck in the dirt.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/rot_garden.png",
+    "rawHash": "sha256:272db86ac834dc2479d5d821c2a5da9c88c41108b805dd5a2a644813d189159f",
+    "outHash": "sha256:a0eece5d7e4ef62071a6fa3883cbf194cb4f2e30d44b23480ac96322b5a32460",
+    "generatedAt": "2026-09-29T21:34:33.799Z"
+  },
+  "concept_prop_plague_cart": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood and iron, aged bone, tarnished bronze, sickly green rot and moss). Subject: a rickety wooden plague cart with two large spoked wheels and long handles, piled with bodies wrapped in grey burial sackcloth, flies, a hand-painted red cross on the side boards, a lantern hanging from a pole at the front.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/plague_cart.png",
+    "rawHash": "sha256:5891a2be0c2af1f473abdff9684a3ad77db2443586a5cf1c5102fc9d1b73e117",
+    "outHash": "sha256:f99ce6788179e98e231c3c3f2aae7bc8d9c17e8661b9edf7068156af38c8c9e0",
+    "generatedAt": "2026-09-29T21:34:42.322Z"
+  },
+  "concept_prop_saints_litter": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood and iron, aged bone, tarnished bronze, sickly green rot and moss). Subject: an ornate carrying litter (a processional palanquin) of blackened wood and tarnished gold, with four long carrying poles, rotting green silk curtains, a gilded reliquary box on its bed sealed with wax and chains, glowing green light seeping from the cracks of the reliquary, dead flowers heaped around it.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/concepts/props/saints_litter.png",
+    "rawHash": "sha256:84f9fe1572c69927d65a2b5ac3bab497008806c54c4273cd0216513a73b1a592",
+    "outHash": "sha256:3bd4e5d66c1bd16352ffd530c59b7231b763135527ce7df5f8b96ca15654c4d8",
+    "generatedAt": "2026-09-29T21:34:51.138Z"
+  },
+  "tex_cloister_floor": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Seamless tileable game texture, perfectly tiling on all four edges, orthographic top-down, flat even diffuse lighting with no directional shadows, no vignette, no text, no border, fills the entire frame edge to edge. Use the attached screenshot ONLY for mood and palette (layered near-blacks, soot, cold reflections). Subject: an old monastery cloister floor of worn square flagstones with thick sickly green moss and black rot growing in the cracks, a few small puddles of green slime and scattered dead leaves. Dark overall value.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        1024,
+        1024
+      ],
+      "format": "webp"
+    },
+    "out": "public/art/textures/cloister_floor.webp",
+    "rawHash": "sha256:8a300482dbbcb8bf60734a6e810ca340a2837f875fe2a299534ee74a0f2afc41",
+    "outHash": "sha256:4fbe19d616b0127bfc5099508bcb2b62b97c59c2e74972e179a629516fcfba21",
+    "generatedAt": "2026-09-29T21:35:00.639Z"
+  },
+  "concept_plague_doctor": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new enemy for a plague-ridden cloister: the Plague Doctor, a tall gaunt figure in a long waxed black leather coat and wide-brimmed hat, a bone-white beaked plague mask with round glass eye lenses glowing sickly green, leather gloves, a bandolier of small glass vials of glowing green rot across the chest, a smoking censer of herbs hanging from the belt. Palette: black leather, bone white, sickly chartreuse green glow. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally with the hands open and empty, legs straight and slightly apart, standing upright so it can be rigged. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/plague_doctor.png",
+    "rawHash": "sha256:2cc694cba697ddc73ce36f47b23b6e669292eda3306084503927a70711de0c1f",
+    "outHash": "sha256:76354b389982310b982a10106b7cbb014b4c7d79390492b84c5d0ff5a6700a88",
+    "generatedAt": "2026-09-29T21:35:20.505Z"
   }
 }

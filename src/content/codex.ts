@@ -38,8 +38,8 @@ import {
 } from './abilities';
 import { AREAS, BOSS_SUMMON_SHARDS, type AreaId } from './areas';
 import type { DisciplineId } from './disciplines';
-import { ABBESS, BOSSES, CONGREGATION, GRAVEDIGGER, type BossId } from './bosses';
-import { BURROW, CENSER, DUST, ENEMIES, SCREAM, TEMPLAR_SHIELD, UNBIND, WARD, type Behavior, type EnemyId } from './enemies';
+import { ABBESS, BOSSES, CONGREGATION, GRAVEDIGGER, SAINT, type BossId } from './bosses';
+import { BURROW, CENSER, DUST, ENEMIES, FRENZY, PLAGUE_FLASK, SCREAM, TEMPLAR_SHIELD, UNBIND, WARD, type Behavior, type EnemyId } from './enemies';
 
 /**
  * Codex text — the in-game Codex (ui/CodexPanel) and any docs/README tooling
@@ -314,7 +314,7 @@ export const CODEX_DISCIPLINES: Record<DisciplineId, DisciplineEntry> = {
 /** Enemies plus every boss (bosses double as the Codex trophies: sealed until you have faced them). */
 export type DeadId = EnemyId | BossId;
 
-export const DEAD_ORDER: DeadId[] = ['robber', 'hound', 'penitent', 'sac', 'deacon', 'risen', 'censer', 'wraith', 'rat', 'golem', 'bat', 'moth', 'gargoyle', 'seraph', 'ghoul', 'acolyte', 'templar', 'niche', 'gravedigger', 'abbess', 'congregation', 'prelate'];
+export const DEAD_ORDER: DeadId[] = ['robber', 'hound', 'penitent', 'sac', 'deacon', 'risen', 'censer', 'wraith', 'rat', 'golem', 'bat', 'moth', 'gargoyle', 'seraph', 'ghoul', 'acolyte', 'templar', 'niche', 'plague_doctor', 'flagellant', 'gravedigger', 'abbess', 'congregation', 'saint', 'prelate'];
 
 export const PRELATE_NAME = 'The Bell-Sworn Prelate';
 
@@ -464,6 +464,20 @@ export const CODEX_DEAD: Record<DeadId, DeadEntry> = {
     corpse: 'None: it crumbles to dust.',
     counter: `Break them. Each one broken tears ${ABBESS.nicheBreakFrac * 100}% of her health away and Fractures her; thralls can work on them too.`,
   },
+  plague_doctor: {
+    name: ENEMIES.plague_doctor.name,
+    role: ENEMIES.plague_doctor.behavior,
+    behaviour: `Keeps its distance and lobs a flask of plague onto where you stand. ${ENEMIES.plague_doctor.windupMs / 1000}s later it bursts (${PLAGUE_FLASK.radius}m) and leaves a rot pool that burns for ${PLAGUE_FLASK.poolS}s.`,
+    corpse: 'A toxic corpse: explode or consume it before it ruptures.',
+    counter: 'Step out of the green ring, then out of the pool. It is fragile up close; Grave Step or Veil Step closes the gap.',
+  },
+  flagellant: {
+    name: ENEMIES.flagellant.name,
+    role: ENEMIES.flagellant.behavior,
+    behaviour: `A fast melee penitent. Below ${FRENZY.atFrac * 100}% health it frenzies: ${Math.round((FRENZY.moveMult - 1) * 100)}% faster feet and ${Math.round((FRENZY.attackRateMult - 1) * 100)}% faster blows.`,
+    corpse: 'An ordinary corpse.',
+    counter: 'Burst it from half to dead in one go (Marrow Spear, Wailing Skull, a Corpse Explosion), or root it in a Bone Prison first.',
+  },
   gravedigger: {
     name: BOSSES.gravedigger.name,
     role: 'boss',
@@ -484,6 +498,13 @@ export const CODEX_DEAD: Record<DeadId, DeadEntry> = {
     behaviour: `The Drowned Nave's boss. Flood Hymn sweeps a ${CONGREGATION.hymn.halfDeg * 2}° arc of black water from her (${CONGREGATION.hymn.windupMs / 1000}s): only a pew between you and her keeps you dry. Drowning Grasp rings root whoever stays in them. Each phase the water rises (slower outside her dais; Soaked in the last phase) and wraiths and penitents climb out.`,
     corpse: 'None. It sinks back into the black water.',
     counter: `Offer ${BOSSES.congregation.shards} soul shards at the Drowned Font. When the tide crests start marching, put a pew between you and her.`,
+  },
+  saint: {
+    name: BOSSES.saint.name,
+    role: 'boss',
+    behaviour: `The Plague Cloister's boss, as strong as you are. Rot Rain marks circles on you and around the garth (${SAINT.rain.windupMs / 1000}s); each one becomes a rot pool. While she stands in a pool she heals. A censer swing covers the ground in front of her. Plague Doctors and Flagellants join in phase 2; phase 3 brings heavier rain, pools that last longer and a rat swarm.`,
+    corpse: 'None. The blight carries her back to her litter.',
+    counter: `Offer ${BOSSES.saint.shards} soul shards at the Saint's Litter. Kite her out of the rot: every second she spends in a pool undoes your damage.`,
   },
   prelate: {
     name: PRELATE_NAME,
@@ -527,6 +548,9 @@ export const CODEX_AREAS: Record<AreaId, AreaEntry> = {
   },
   sanctum: {
     dangers: 'The Sundered Bell and the Prelate who serves it. Penitents and deacons hold the aisles, and elites are more common here than anywhere else. Every newer kind of dead walks here too, and the Procession marches behind a Bone Golem.',
+  },
+  cloister: {
+    dangers: "Beyond the Sanctum's east door. The blight grows with you: its dead always match the highest-level player inside (never below level 20), so every kill here is worth your level. Plague Doctors lob flasks that leave rot pools, Flagellants frenzy when wounded, and sacs, rats and censers crowd the moss. The Plague Saint waits at the Saint's Litter.",
   },
 };
 

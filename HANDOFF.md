@@ -112,8 +112,10 @@ No deployment. Source and redistribution note: `docs/CROSSWORLDS-AUDIO.md`.
 ### Open threads (2026-09-29): read this first
 - **Direction:** the owner wants a continuous reward loop ("addict me to grind"). The plan and backlog are in
   [docs/GRIND-LOOP.md](docs/GRIND-LOOP.md), and every new feature should feed it.
-- **Next up:** the **Plague Cloister**, a level-scaled end zone (min level 20; enemy level follows the highest-level
-  player present). It fixes the XP plateau for high-level characters.
+- **Plague Cloister: shipped 2026-09-29** (see PHASE_REPORTS → "Plague Cloister"). Level-scaled end zone (min 20;
+  `WorldSim.areaLevel` follows the highest-level living player inside), Plague Doctor / Flagellant, the Plague Saint.
+  Players now send `level` on join; the realtime server clamps it and `classIndex` (now 0–9; it was 0–4, which showed
+  New Blood partners as Rotweavers). **Next:** GRIND-LOOP §3 #2 (loot affix chase) is the biggest remaining hook.
 - **Dead loot:** seeds, gems, reliquary fragments and covenant seals drop with no use. Selling now exists; real sinks
   are in GRIND-LOOP §3. `kit_iron_warden` is still an inert consumable.
 - **Balance left for owner feel:** Nave geared deaths +15% (Acolytes), Ossuary geared kill rate −18% (burrowed ghouls).

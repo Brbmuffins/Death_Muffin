@@ -805,3 +805,31 @@ triangles equal, +24 draw calls.
 - **HUD fix:** the boss bar kept the previous boss's numbers when a new boss started at 100%.
 - **Tests:** `area-bosses.test.ts` (6) covers one awake boss, the snapshot id, Burial roots, niche regen and Fracture,
   Communion, and pew cover. The browser QA summoned all three through their real objects.
+
+## Plague Cloister (2026-09-29, VPS session)
+
+- **Why:** a level-49 dev account had nothing worth killing. Area levels top out at 13 while levels cost `level × 100`.
+- **Zone** (`areas.ts` `cloister`, rect x 24..64, z −134..−98, door from the Sanctum's east wall, 600 Sanctum kills):
+  - `scaling: { minLevel: 20 }`: `WorldSim.areaLevel` = the highest living player level inside (never below 20), plus
+    Ascension. It drives enemy HP, damage and XP, the toxic rupture, and the boss.
+  - Players now carry `level` (join, `setPlayer`, realtime clamp). The realtime `classIndex` clamp was widened from
+    0–4 to 0–9, fixing New Blood partners showing as Rotweavers.
+  - Art: Gemini floor texture (seamless), a green atmosphere and ambience, 4 Tripo props (plague well, rot garden,
+    plague cart, the Saint's litter), arcade pillars and a sigil.
+- **Mobs:** **Plague Doctor** (a caster flask: burst plus a hostile rot pool, `PLAGUE_FLASK`) and **Flagellant**
+  (melee that frenzies below 50%: ×1.45 move, ×1.6 attack rate, blood-mote tell). Tripo models with hurt/death variety.
+- **Plague Saint** (`SaintBrain`, 5 shards, baseHp 24 000, level-scaled):
+  - Rot Rain: circles on each player plus the garth, and each becomes a hostile pool (`addHostilePool`).
+  - She heals 0.6%/s while standing in any hostile pool (the "blessed" tell).
+  - Censer Swing cone. P2 brings a doctor and a flagellant; P3 brings heavier rain, longer pools and rats.
+- **Harness fixes:** `balance/boss.ts` and `harness.ts` pass the player level and unlock the Cloister. Dodging
+  bots now step out of hostile pools (before, pool damage counted as "adds" and every run wiped).
+- **Numbers:**
+  - Saint, intended band (level 20), dodging: 137–164 s, 2/2 wins, minHp 34–58%. Non-dodgers wipe (as with the
+    Congregation and Prelate).
+  - Cloister farming at intended: necro kills 62–102/m vs Sanctum 79–86, XP/m 3 070–5 123 vs 2 759–3 086, 0–2 deaths.
+  - Perf (36 enemies): Cloister roster 185 calls / 240k tris / 0.93 ms vs Graves roster 198 / 280k / 0.99 ms.
+- **Tests:** `cloister.test.ts` (5): scaling floor and partner rules, flask pool, frenzy, summon spot, rain pools and
+  the heal-only-in-rot rule. `tools/qa/cloister-smoke.cjs` covers the zone, mobs and Saint screenshots, model loads
+  and perf. A skyline spire that stood inside the new zone was moved behind it.
+- **Credits:** Tripo 8 415 → 7 760.

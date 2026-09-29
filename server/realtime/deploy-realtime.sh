@@ -89,7 +89,7 @@ const LIMITS = {
   chatPerSec: 3,
 };
 
-const BOSS_IDS = new Set(['prelate', 'gravedigger', 'abbess', 'congregation']);
+const BOSS_IDS = new Set(['prelate', 'gravedigger', 'abbess', 'congregation', 'saint']);
 const INTENT_TYPES = new Set(['hit', 'miasma', 'exhume', 'litany', 'summonBoss', 'recallThralls', 'detonate', 'signature', 'gather']);
 /** Host-shaped rites (discipline signatures + Bone Mantle); the host owns their shapes and clamps the aim around the caster. */
 const SIGNATURES = new Set(['wall', 'rend', 'dirge', 'bloom', 'mantle', 'offering', 'rally', 'seed', 'bash', 'vigil', 'brand',
@@ -288,7 +288,10 @@ io.on('connection', (socket) => {
       accountId: socket.data.accountId,
       characterId: Math.trunc(num(info && info.characterId)),
       name: socket.data.username,
-      classIndex: Math.min(4, Math.max(0, Math.trunc(num(info && info.classIndex)))),
+      // Disciplines 0–9 (the Release 0.3 classes are 5–9; a 0–4 clamp showed them to partners as Rotweavers).
+      classIndex: Math.min(9, Math.max(0, Math.trunc(num(info && info.classIndex)))),
+      // Character level: level-scaled areas (the Plague Cloister) match the party's highest.
+      level: Math.min(999, Math.max(1, Math.trunc(num(info && info.level)) || 1)),
       x: inWorld(info && info.x) ? num(info.x) : 0,
       z: inWorld(info && info.z) ? num(info.z) : 0,
       facing: num(info && info.facing),

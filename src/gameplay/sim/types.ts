@@ -216,6 +216,8 @@ export interface PlayerBody {
   alive: boolean;
   area: AreaId | null;
   family?: import('../../content/disciplines').ClassFamily;
+  /** Character level (level-scaled areas match the highest player in them). */
+  level?: number;
 }
 
 export type BossPhase = 1 | 2 | 3;
@@ -341,7 +343,7 @@ export type SimEvent =
   | { t: 'corpseGone'; id: number; reason: CorpseGoneReason; by?: string }
   | { t: 'thrall'; id: number; owner: string; kind: ThrallKind; x: number; z: number; empowered: boolean }
   | { t: 'thrallGone'; id: number; owner: string; x: number; z: number; reason: 'killed' | 'sacrificed' | 'crumbled' }
-  | { t: 'telegraph'; id: number; kind: 'cone' | 'raise' | 'curse' | 'slam' | 'toll' | 'scream' | 'dust' | 'dive' | 'erupt'; x: number; z: number; tx: number; tz: number; ms: number; r?: number }
+  | { t: 'telegraph'; id: number; kind: 'cone' | 'raise' | 'curse' | 'slam' | 'toll' | 'scream' | 'dust' | 'dive' | 'erupt' | 'flask'; x: number; z: number; tx: number; tz: number; ms: number; r?: number }
   | { t: 'melee'; id: number; x: number; z: number; tx: number; tz: number }
   | { t: 'hurt'; player: string; dmg: number; from: 'melee' | 'cone' | 'curse' | 'toxic' | 'boss' | 'toll' | 'scream' | 'dust' | 'erupt'; x: number; z: number; chillMs?: number }
   | { t: 'thrallHit'; id: number; target: number; x: number; z: number; tx: number; tz: number; kind: ThrallKind; dmg: number }
@@ -425,7 +427,9 @@ export type SimEvent =
       t: 'boss';
       kind: 'awaken' | 'phase' | 'toll' | 'slam' | 'rain' | 'summon' | 'defeated'
         // Area bosses: Gravedigger (sweep, bury, pits), Abbess (lance, chorus, grasp, communion, nicheBreak), Congregation (hymn, grasp, maul).
-        | 'sweep' | 'bury' | 'pits' | 'lance' | 'chorus' | 'grasp' | 'communion' | 'nicheBreak' | 'hymn' | 'maul';
+        | 'sweep' | 'bury' | 'pits' | 'lance' | 'chorus' | 'grasp' | 'communion' | 'nicheBreak' | 'hymn' | 'maul'
+        // Plague Saint.
+        | 'rotRain' | 'swing' | 'blessed';
       x: number;
       z: number;
       phase: BossPhase;

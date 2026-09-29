@@ -52,6 +52,10 @@ export const CREATURE_MODELS = {
   bell_templar: m('bell_templar', 2.1),
   // The Bone Abbess's niches are static props drawn as enemies while she is awake.
   skull_niche: { url: 'models/props/skull_niche.glb', height: 3.4 },
+  // The Plague Cloister (2026-09-29).
+  plague_doctor: m('plague_doctor', 2.0),
+  flagellant: m('flagellant', 1.85),
+  boss_plague_saint: m('boss_plague_saint', 4.0),
 } satisfies Record<string, CreatureModelDef>;
 
 export type CreatureSlug = keyof typeof CREATURE_MODELS;

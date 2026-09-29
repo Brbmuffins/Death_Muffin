@@ -81,7 +81,7 @@ export function botCharacter(classIndex: number, level: number, gear: number): C
 export function runBalance(run: BalanceRun): BalanceResult {
   const rand = mulberry32(run.seed ?? 42);
   const nav = new Nav();
-  nav.setUnlocked(['ossuary', 'nave', 'sanctum']);
+  nav.setUnlocked(['ossuary', 'nave', 'sanctum', 'cloister']);
   const sim = new WorldSim(nav, rand);
   sim.waveTier = run.waveTier;
   sim.difficulty = run.difficulty ?? 'medium';
@@ -158,7 +158,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
           max: resource.max(stats), sinceHurtMs: (t - lastHurt) * 1000, sinceResourceGainMs: (t - lastResourceGain) * 1000 }) * dt));
       }
     }
-    sim.setPlayer({ id: p.id, x: p.x, z: p.z, alive: p.alive, area: p.alive ? run.area : null, family: disc.family });
+    sim.setPlayer({ id: p.id, x: p.x, z: p.z, alive: p.alive, area: p.alive ? run.area : null, family: disc.family, level: run.level });
 
     // --- Bot decisions ---
     if (p.alive) {

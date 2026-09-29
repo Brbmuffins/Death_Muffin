@@ -791,6 +791,7 @@ class AudioEngine {
         ossuary: ['waterDrip', 'graveCreak'],
         nave: ['waterDrip', 'distantBell'],
         sanctum: ['distantBell', 'graveCreak'],
+        cloister: ['waterDrip', 'graveCreak'],
       };
       const sounds = palette[area];
       const distance = 7 + Math.random() * 9;

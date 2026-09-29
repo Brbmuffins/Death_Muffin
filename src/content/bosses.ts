@@ -5,8 +5,8 @@ import type { AreaId } from './areas';
  * its numbers; the three new bosses each have one mechanic that matters (graves / niches + corpses / pews).
  * Colours are enemy language only.
  */
-export type BossId = 'prelate' | 'gravedigger' | 'abbess' | 'congregation';
-export const BOSS_IDS: BossId[] = ['gravedigger', 'abbess', 'congregation', 'prelate'];
+export type BossId = 'prelate' | 'gravedigger' | 'abbess' | 'congregation' | 'saint';
+export const BOSS_IDS: BossId[] = ['gravedigger', 'abbess', 'congregation', 'prelate', 'saint'];
 
 export interface BossDef {
   id: BossId;
@@ -19,7 +19,7 @@ export interface BossDef {
   summonLabel: string;
   shards: number;
   baseHp: number;
-  modelSlug: 'prelate' | 'boss_gravedigger_king' | 'boss_bone_abbess' | 'boss_drowned_congregation';
+  modelSlug: 'prelate' | 'boss_gravedigger_king' | 'boss_bone_abbess' | 'boss_drowned_congregation' | 'boss_plague_saint';
   portrait: string;
   /** Aura light + particle colour for the view. */
   color: number;
@@ -82,6 +82,23 @@ export const BOSSES: Record<BossId, BossDef> = {
     awaken: 'The nave water begins to rise',
     defeated: ['The Hymn Ends', 'The Congregation sinks back into the black water'],
   },
+  saint: {
+    id: 'saint',
+    name: 'The Plague Saint',
+    title: 'Mother of the Blight',
+    area: 'cloister',
+    arena: { x: 44, z: -121, r: 10 },
+    summonId: 'saints_litter',
+    summonLabel: "The Saint's Litter",
+    shards: 5,
+    baseHp: 24000,
+    modelSlug: 'boss_plague_saint',
+    portrait: '',
+    color: 0x9cc43a,
+    phases: ['The blight blesses her', 'Her flock gathers', 'The swarm'],
+    awaken: 'The Saint rises from her litter',
+    defeated: ['The Blight Recedes', 'The Plague Saint sinks back into her reliquary'],
+  },
   prelate: {
     id: 'prelate',
     name: 'The Bell-Sworn Prelate',
@@ -133,6 +150,13 @@ export const ABBESS = {
   grasp: { r: 3.5, halfDeg: 55, windupMs: 700, dmg: 18, cd: 3 },
   communion: { channelS: 4, healPerCorpse: 0.01, cd: 16 },
 };
+/** Plague Saint (level-scaled with the Cloister). */
+export const SAINT = {
+  rain: { circles: [3, 5] as [number, number], r: 2, windupMs: 1400, dmg: 24, cd: 7, poolS: 6, poolSP3: 9, poolDpsMult: 0.3 },
+  swing: { r: 4.5, halfDeg: 60, windupMs: 900, dmg: 26, cd: 3 },
+  blessing: { healPerS: 0.006 },
+};
+
 /** Drowned Congregation. */
 export const CONGREGATION = {
   hymn: { halfDeg: 60, reach: 15, windupMs: 2200, dmgMult: 1.8, base: 18, cd: 11, soakedMult: 1.2 },

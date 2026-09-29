@@ -1,0 +1,9 @@
+{
+  "id": "prop_rot_garden",
+  "input": "art-src/concepts/props/rot_garden.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 1800,
+    "texture_quality": "standard"
+  }
+}

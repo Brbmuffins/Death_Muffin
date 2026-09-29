@@ -8,6 +8,8 @@ import {
   PROCESSION,
   SCREAM,
   DUST,
+  PLAGUE_FLASK,
+  FRENZY,
   WARD,
   BURROW,
   UNBIND,
@@ -144,6 +146,29 @@ export class WorldSim {
   setCover(boxes: CoverBox[]) {
     this.cover = boxes;
   }
+  /**
+   * An area's enemy level. Level-scaled areas (the Plague Cloister) match the highest-level living player in them,
+   * never below their floor, so XP per kill keeps pace with any character; the rest use their fixed level.
+   * Ascension adds its levels either way.
+   */
+  areaLevel(area: AreaId): number {
+    const def = AREAS[area];
+    let level = def.level;
+    if (def.scaling) {
+      level = def.scaling.minLevel;
+      for (const p of this.players.values()) if (p.alive && p.area === area && (p.level ?? 0) > level) level = Math.min(999, p.level!);
+    }
+    return level + ascensionLevels(this.ascension);
+  }
+
+  /** A boss's rot pool: a hostile toxic zone (the Plague Saint heals while she stands in one). */
+  addHostilePool(x: number, z: number, r: number, dps: number, seconds: number): Zone {
+    const zone: Zone = { id: this.id(), kind: 'toxic', owner: '', x, z, r, until: this.time + seconds, bornAt: this.time, tick: 1, dps, slow: 1, witheredCap: 0, bloom: false, hostile: true };
+    this.zones.set(zone.id, zone);
+    this.emit({ t: 'zone', zone });
+    return zone;
+  }
+
   /** Host migration: continue the awake boss on its own brain (older snapshots have no id: the Prelate). */
   adoptBoss(state: BossState) {
     this.bossId = isBossId(state.id) ? state.id : 'prelate';
@@ -1180,7 +1205,7 @@ export class WorldSim {
   /** `affix` forces an elite affix (tests / debug); otherwise elites roll one. */
   spawnEnemy(def: EnemyId, area: AreaId, x: number, z: number, elite: boolean, rising = true, affix?: EliteAffix): Enemy {
     const d = ENEMIES[def];
-    const level = AREAS[area].level + ascensionLevels(this.ascension);
+    const level = this.areaLevel(area);
     const wave = waveModifiers(this.waveTier);
     const diff = DIFFICULTIES[this.difficulty];
     const hp = d.hp * enemyHpScale(level) * wave.enemyHpMult * diff.enemyHpMult * (elite ? ELITE.hpMult : 1) * this.partyHpScale();
@@ -1649,7 +1674,7 @@ export class WorldSim {
     for (const c of [...this.corpses.values()]) {
       if (this.time >= c.ruptureAt) {
         this.removeCorpse(c, 'burst');
-        const level = AREAS[c.area].level + ascensionLevels(this.ascension);
+        const level = this.areaLevel(c.area);
         const zone: Zone = {
           id: this.id(),
           kind: 'toxic',
@@ -1843,7 +1868,7 @@ export class WorldSim {
     const d = Math.hypot(dx, dz);
     if (d < 0.05) return;
     const slow = Math.min(e.slowT > 0 ? MIASMA_SLOW : 1, (e.wardSlowT ?? 0) > 0 ? WATCHMANS_WARD_SLOW : 1)
-      * ((e.chillT ?? 0) > 0 ? CHILL.moveMult : 1) * ((e.incenseT ?? 0) > 0 ? CENSER.moveMult : 1);
+      * ((e.chillT ?? 0) > 0 ? CHILL.moveMult : 1) * ((e.incenseT ?? 0) > 0 ? CENSER.moveMult : 1) * (this.frenzied(e) ? FRENZY.moveMult : 1);
     const step = Math.min(d, e.speed * speedMult * slow * dt);
     const px = e.x;
     const pz = e.z;
@@ -1860,8 +1885,26 @@ export class WorldSim {
     if (t.hp <= 0) this.killThrall(t, 'killed');
   }
 
-  private strike(e: Enemy, kind: 'melee' | 'cone' | 'curse' | 'slam' | 'scream' | 'dust', slamR?: number) {
+  private strike(e: Enemy, kind: 'melee' | 'cone' | 'curse' | 'slam' | 'scream' | 'dust' | 'flask', slamR?: number) {
     const def = ENEMIES[e.def];
+    if (kind === 'flask') {
+      // Plague Doctor: the flask bursts where the target stood, then leaves a rot pool (a hostile toxic zone).
+      for (const p of this.players.values()) {
+        if (p.alive && Math.hypot(p.x - e.aimX, p.z - e.aimZ) <= PLAGUE_FLASK.radius) {
+          this.emit({ t: 'hurt', player: p.id, dmg: this.blow(e), from: 'toxic', x: e.x, z: e.z });
+        }
+      }
+      for (const t of [...this.thralls.values()]) if (Math.hypot(t.x - e.aimX, t.z - e.aimZ) <= PLAGUE_FLASK.radius) this.hurtThrall(t, this.blow(e));
+      const zone: Zone = {
+        id: this.id(), kind: 'toxic', owner: '', x: e.aimX, z: e.aimZ, r: PLAGUE_FLASK.radius,
+        until: this.time + PLAGUE_FLASK.poolS, bornAt: this.time, tick: 1, dps: this.blow(e) * PLAGUE_FLASK.poolDpsMult,
+        slow: 1, witheredCap: 0, bloom: false, hostile: true,
+      };
+      this.zones.set(zone.id, zone);
+      this.emit({ t: 'zone', zone });
+      this.emit({ t: 'burst', kind: 'toxic', x: e.aimX, z: e.aimZ, r: PLAGUE_FLASK.radius });
+      return;
+    }
     if (kind === 'dust') {
       // Shroud Moth: the burst chokes whoever is in the ring, then the dust hangs there (a hostile zone).
       for (const p of this.players.values()) {
@@ -2025,7 +2068,7 @@ export class WorldSim {
         continue;
       }
       if (e.affix) this.tickAffix(e, dt);
-      e.attackCd -= dt * ((e.chillT ?? 0) > 0 ? CHILL.attackRateMult : 1) * ((e.incenseT ?? 0) > 0 ? CENSER.attackRateMult : 1);
+      e.attackCd -= dt * ((e.chillT ?? 0) > 0 ? CHILL.attackRateMult : 1) * ((e.incenseT ?? 0) > 0 ? CENSER.attackRateMult : 1) * (this.frenzied(e) ? FRENZY.attackRateMult : 1);
       const def = ENEMIES[e.def];
       if (def.aura) this.censerPulse(e, dt);
 
@@ -2159,6 +2202,8 @@ export class WorldSim {
               this.emit({ t: 'telegraph', id: e.id, kind: 'scream', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: SCREAM.radius });
             } else if (def.attack === 'dust') {
               this.emit({ t: 'telegraph', id: e.id, kind: 'dust', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: DUST.radius });
+            } else if (def.attack === 'flask') {
+              this.emit({ t: 'telegraph', id: e.id, kind: 'flask', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: PLAGUE_FLASK.radius });
             } else if (def.attack === 'curse') {
               this.emit({ t: 'telegraph', id: e.id, kind: 'curse', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
             } else this.emit({ t: 'telegraph', id: e.id, kind: 'cone', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
@@ -2251,6 +2296,11 @@ export class WorldSim {
         this.strike(e, 'melee');
         if (def.hitRun) e.fleeT = def.hitRun;
     }
+  }
+
+  /** Flagellant: frenzied below half health. */
+  private frenzied(e: Enemy) {
+    return !!ENEMIES[e.def].frenzy && e.hp < e.maxHp * FRENZY.atFrac;
   }
 
   /** A dive ends (landed or stunned out of the air): settle onto walkable ground. */

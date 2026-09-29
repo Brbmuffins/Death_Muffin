@@ -27,7 +27,10 @@ export type EnemyId =
   | 'acolyte'
   | 'templar'
   // The Bone Abbess's skull niches (area bosses): spawned by her brain only, never by waves.
-  | 'niche';
+  | 'niche'
+  // The Plague Cloister (2026-09-29).
+  | 'plague_doctor'
+  | 'flagellant';
 export type CorpseKind = 'normal' | 'resonant' | 'swift' | 'toxic' | 'none';
 export type Behavior = 'melee' | 'flank' | 'caster' | 'hazard' | 'support';
 export type RigKind = 'humanoid' | 'quadruped' | 'bloat' | 'robed';
@@ -53,7 +56,7 @@ export interface EnemyDef {
   modelSlug?: string;
   blurb: string;
   /** Casters: the attack released after the windup (default: the Penitent's cone). */
-  attack?: 'cone' | 'scream' | 'dust' | 'curse';
+  attack?: 'cone' | 'scream' | 'dust' | 'curse' | 'flask';
   /** Hazard slam radius (default 1.9). */
   slamRadius?: number;
   /** Climbs out as a pack of this many (one wave pick). */
@@ -78,6 +81,8 @@ export interface EnemyDef {
   shield?: boolean;
   /** No AI and never shoved (a boss's skull niche): it only stands there to be broken. */
   inert?: boolean;
+  /** Flagellant: below half health it frenzies (faster feet and blows, see FRENZY). */
+  frenzy?: boolean;
 }
 
 export const ENEMIES: Record<EnemyId, EnemyDef> = {
@@ -442,7 +447,48 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     modelSlug: 'skull_niche',
     inert: true,
     blurb: "A singing shrine of skulls. While any stands, the Bone Abbess heals and its lances fly; each one broken tears at her.",
+  },  // --- The Plague Cloister. Rot chartreuse for the Doctor's flasks (enemy rot, not the player's Miasma green).
+  plague_doctor: {
+    id: 'plague_doctor',
+    name: 'Plague Doctor',
+    behavior: 'caster',
+    rig: 'robed',
+    hp: 90,
+    speed: 2.1,
+    radius: 0.5,
+    damage: 13,
+    attackRange: 8.5,
+    windupMs: 1000,
+    cooldownMs: 3600,
+    xp: 10,
+    gold: [5, 11],
+    corpse: 'toxic',
+    scale: 1.05,
+    modelSlug: 'plague_doctor',
+    attack: 'flask',
+    blurb: 'Lobs flasks of plague that shatter into rot pools where you stand. Keep moving, and keep off the green.',
   },
+  flagellant: {
+    id: 'flagellant',
+    name: 'Flagellant',
+    behavior: 'melee',
+    rig: 'humanoid',
+    hp: 120,
+    speed: 2.7,
+    radius: 0.45,
+    damage: 12,
+    attackRange: 1.3,
+    windupMs: 380,
+    cooldownMs: 1100,
+    xp: 11,
+    gold: [4, 10],
+    corpse: 'normal',
+    scale: 1,
+    modelSlug: 'flagellant',
+    frenzy: true,
+    blurb: 'A penitent flayed by his own scourge. Wounded below half, he frenzies: faster feet, faster blows. Finish him quickly.',
+  },
+
 
 };
 
@@ -458,6 +504,10 @@ export const BURROW = { speed: 4.2, surfaceR: 2.5, eruptR: 1.8, eruptMult: 1.25,
 export const UNBIND = { range: 7, delayS: 1, cooldownS: 4, maxAlive: 4 };
 /** Bell Templar shield: the blocked front arc and how much of a blocked blow gets through. */
 export const TEMPLAR_SHIELD = { halfArcDeg: 60, passThrough: 0.3 };
+/** Plague Doctor flask: the burst where it lands, then a rot pool (a hostile zone) that burns each second. */
+export const PLAGUE_FLASK = { radius: 1.8, poolS: 5, poolDpsMult: 0.35 };
+/** Flagellant frenzy below `atFrac` health. */
+export const FRENZY = { atFrac: 0.5, moveMult: 1.45, attackRateMult: 1.6 };
 /** Weeping Seraph ward: every ally within `range` is Sanctified at once (up to `maxTargets`). */
 export const WARD = { range: 5.5, maxTargets: 4 };
 

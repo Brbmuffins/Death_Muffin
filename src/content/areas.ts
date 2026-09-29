@@ -6,8 +6,8 @@ import type { EnemyId } from './enemies';
  * (up-screen). Areas are walkable rectangles joined by door corridors that
  * stay sealed until the unlock threshold is met.
  */
-export type AreaId = 'chapterhouse' | 'acre' | 'graves' | 'ossuary' | 'nave' | 'sanctum';
-export type Theme = 'chapter' | 'acre' | 'graveyard' | 'ossuary' | 'nave' | 'sanctum';
+export type AreaId = 'chapterhouse' | 'acre' | 'graves' | 'ossuary' | 'nave' | 'sanctum' | 'cloister';
+export type Theme = 'chapter' | 'acre' | 'graveyard' | 'ossuary' | 'nave' | 'sanctum' | 'cloister';
 
 export interface Rect {
   x0: number;
@@ -47,6 +47,11 @@ export interface AreaDef {
   breaches: [number, number][];
   interactables: Interactable[];
   ambient: { fog: number; hemiSky: number; hemiGround: number; moon: number };
+  /**
+   * Level-scaled area (the Plague Cloister): its dead match the highest-level player in it, never below `minLevel`,
+   * so XP per kill keeps pace with any character (docs/GRIND-LOOP.md §2). `level` is then only the floor shown in UI.
+   */
+  scaling?: { minLevel: number };
 }
 
 export interface DoorDef {
@@ -283,9 +288,55 @@ export const AREAS: Record<AreaId, AreaDef> = {
     ],
     ambient: { fog: 0x100814, hemiSky: 0x3d2352, hemiGround: 0x0c060c, moon: 0xa58ad8 },
   },
+  cloister: {
+    id: 'cloister',
+    name: 'The Plague Cloister',
+    subtitle: 'Where the blight grows with you',
+    theme: 'cloister',
+    rect: { x0: 24, z0: -134, x1: 64, z1: -98 },
+    safe: false,
+    level: 20,
+    scaling: { minLevel: 20 },
+    enemies: [
+      { id: 'plague_doctor', weight: 22 },
+      { id: 'flagellant', weight: 24 },
+      { id: 'sac', weight: 14 },
+      { id: 'rat', weight: 10 },
+      { id: 'acolyte', weight: 8 },
+      { id: 'censer', weight: 8 },
+      { id: 'moth', weight: 6 },
+      { id: 'templar', weight: 5 },
+      { id: 'golem', weight: 3 },
+    ],
+    cap: 28,
+    waveSize: 9,
+    waveIntervalMs: 6000,
+    eliteChance: 0.08,
+    unlock: { area: 'sanctum', kills: 600 },
+    loot: [
+      { item: 'ore_steel', weight: 14 },
+      { item: 'ore_hell', weight: 12 },
+      { item: 'ore_moon', weight: 6 },
+      { item: 'ingot_steel', weight: 6 },
+      { item: 'gem_grave_garnet', weight: 6 },
+      { item: 'gem_bone_opal', weight: 3 },
+      { item: 'flask_hp_major', weight: 10 },
+      { item: 'flask_damage', weight: 6 },
+      { item: 'flask_void_resist', weight: 5 },
+      { item: 'helm_gold', weight: 5 },
+      { item: 'chest_iron', weight: 5 },
+    ],
+    itemChance: 0.14,
+    breaches: [[27, -101], [61, -101], [27, -131], [61, -131], [44, -100.5], [62, -116]],
+    interactables: [
+      { id: 'waystone_cloister', kind: 'waystone', label: 'Waystone', x: 27.5, z: -108 },
+      { id: 'saints_litter', kind: 'boss', label: "The Saint's Litter", x: 44, z: -129.5 },
+    ],
+    ambient: { fog: 0x0a1008, hemiSky: 0x2c3a24, hemiGround: 0x070a05, moon: 0x9cc48a },
+  },
 };
 
-export const AREA_ORDER: AreaId[] = ['chapterhouse', 'acre', 'graves', 'ossuary', 'nave', 'sanctum'];
+export const AREA_ORDER: AreaId[] = ['chapterhouse', 'acre', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister'];
 
 /** Areas with no seal (`unlock`) are open to everyone from the start. */
 export const isAlwaysOpen = (id: AreaId) => !AREAS[id].unlock;
@@ -297,6 +348,7 @@ export const DOORS: DoorDef[] = [
   { id: 'graves_ossuary', a: 'graves', b: 'ossuary', rect: { x0: 25, z0: -22, x1: 33, z1: -14 }, axis: 'x' },
   { id: 'graves_nave', a: 'graves', b: 'nave', rect: { x0: -4, z0: -45, x1: 4, z1: -35 }, axis: 'z' },
   { id: 'nave_sanctum', a: 'nave', b: 'sanctum', rect: { x0: -4, z0: -103, x1: 4, z1: -95 }, axis: 'z' },
+  { id: 'sanctum_cloister', a: 'sanctum', b: 'cloister', rect: { x0: 17, z0: -112, x1: 25, z1: -104 }, axis: 'x' },
 ];
 
 /** A door is open when its far-side area is unlocked. */

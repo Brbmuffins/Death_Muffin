@@ -68,7 +68,7 @@ const DT = 0.05;
 export function runBossFight(run: BossRun): BossResult {
   const rand = mulberry32(run.seed ?? 42);
   const nav = new Nav();
-  nav.setUnlocked(['chapterhouse', 'graves', 'ossuary', 'nave', 'sanctum']);
+  nav.setUnlocked(['chapterhouse', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister']);
   const bossId: BossId = run.boss ?? 'prelate';
   const area = BOSSES[bossId].area;
   const BOSS_ARENA = BOSSES[bossId].arena;
@@ -89,7 +89,7 @@ export function runBossFight(run: BossRun): BossResult {
     cds.set(id, t + a.cooldownMs / 1000);
     return true;
   };
-  const place = (alive = true) => sim.setPlayer({ id: p.id, x: p.x, z: p.z, alive, area: alive ? area : null });
+  const place = (alive = true) => sim.setPlayer({ id: p.id, x: p.x, z: p.z, alive, area: alive ? area : null, level: run.level });
 
   // Arrive with a full legion (raised during the Sanctum trash).
   place();
@@ -146,7 +146,12 @@ export function runBossFight(run: BossRun): BossResult {
     const threat = run.dodge
       ? dangers.find((d) => t - d.seenAt >= reaction && t < d.at && Math.hypot(p.x - d.x, p.z - d.z) < d.r + 0.9)
       : undefined;
-    if (threat) {
+    // Standing in a rot pool (the Plague Saint's rain, plague flasks): a dodging player walks out.
+    const pool = run.dodge && !threat ? [...sim.zones.values()].find((z) => z.hostile && sim.time - z.bornAt >= reaction && Math.hypot(p.x - z.x, p.z - z.z) < z.r + 0.5) : undefined;
+    if (pool) {
+      if (Math.hypot(p.x - pool.x, p.z - pool.z) < 0.2) move(p.x + 1, p.z);
+      else move(pool.x, pool.z, true);
+    } else if (threat) {
       // Step straight out of the circle (sideways if standing on its centre).
       if (Math.hypot(p.x - threat.x, p.z - threat.z) < 0.2) move(p.x + 1, p.z);
       else move(threat.x, threat.z, true);

@@ -3,7 +3,7 @@ import { enemyDamageScale, enemyHpScale } from '../../content/enemies';
 import { FRACTURE } from '../../content/abilities';
 import { DIFFICULTIES } from '../../content/difficulty';
 import { ascensionLevels } from '../../content/ascension';
-import { ABBESS, ABBESS_NICHE_SPOTS, BOSSES, CONGREGATION, GRAVEDIGGER, GRAVEDIGGER_PITS, type BossId } from '../../content/bosses';
+import { ABBESS, ABBESS_NICHE_SPOTS, BOSSES, CONGREGATION, GRAVEDIGGER, GRAVEDIGGER_PITS, SAINT, type BossId } from '../../content/bosses';
 import type { EnemyId } from '../../content/enemies';
 import type { WorldSim } from './WorldSim';
 import type { BossPhase, BossState, PlayerBody } from './types';
@@ -114,7 +114,7 @@ export abstract class BossBrain {
     const s = this.state;
     const party = Math.max(1, this.sim.players.size);
     s.active = true;
-    s.level = AREAS[this.def.area].level + ascensionLevels(this.sim.ascension);
+    s.level = this.sim.areaLevel(this.def.area);
     s.maxHp = this.def.baseHp * enemyHpScale(s.level) * (1 + 0.8 * (party - 1)) * DIFFICULTIES[this.sim.difficulty].enemyHpMult;
     s.hp = s.maxHp;
     s.phase = 1;
@@ -832,11 +832,110 @@ export class CongregationBrain extends BossBrain {
   }
 }
 
+/**
+ * The Plague Saint (Plague Cloister, level-scaled). Rot Rain marks circles that turn into rot pools; she heals while
+ * she stands in one, so the fight is about kiting her out of the rot you've been dodging. A censer swing up close;
+ * P2 brings Plague Doctors and Flagellants, P3 heavier rain, longer pools and a rat swarm.
+ */
+export class SaintBrain extends BossBrain {
+  private rainCd = 4;
+  private swingCd = 2;
+  private blessFx = 0;
+
+  constructor(sim: WorldSim) {
+    super(sim, 'saint');
+  }
+
+  protected onAwaken() {
+    this.rainCd = 4;
+    this.swingCd = 2;
+  }
+
+  protected onPhase(p: BossPhase) {
+    const s = this.state;
+    const spots: [number, number][] = [];
+    const wave: EnemyId[] = p === 2 ? ['plague_doctor', 'flagellant'] : ['rat', 'rat', 'rat', 'flagellant'];
+    wave.forEach((def, i) => {
+      const at = this.rim((i / wave.length) * Math.PI * 2 + 0.4);
+      spots.push(at);
+      this.spawnAdd(def, at[0], at[1]);
+    });
+    this.sim.emit({ t: 'boss', kind: 'summon', x: s.x, z: s.z, phase: p, targets: spots, boss: this.id });
+  }
+
+  /** Standing in her own rot? */
+  private inRot() {
+    const s = this.state;
+    for (const z of this.sim.zones.values()) if (z.hostile && z.kind === 'toxic' && Math.hypot(z.x - s.x, z.z - s.z) <= z.r + 0.6) return true;
+    return false;
+  }
+
+  protected tick(dt: number) {
+    const s = this.state;
+    if (!this.inRot()) return;
+    // Pestilent Blessing: the rot feeds her.
+    s.hp = Math.min(s.maxHp, s.hp + s.maxHp * SAINT.blessing.healPerS * dt);
+    if ((this.blessFx -= dt) <= 0) {
+      this.blessFx = 0.8;
+      this.sim.emit({ t: 'boss', kind: 'blessed', x: s.x, z: s.z, phase: s.phase, boss: this.id });
+    }
+  }
+
+  protected resolve(p: Pending, players: PlayerBody[]) {
+    const S = SAINT;
+    const s = this.state;
+    if (p.kind === 'rotRain') {
+      super.resolve(p, players);
+      for (const [x, z] of p.targets ?? []) this.sim.addHostilePool(x, z, S.rain.r, this.dmg(S.rain.dmg) * S.rain.poolDpsMult, s.phase === 3 ? S.rain.poolSP3 : S.rain.poolS);
+      return;
+    }
+    if (p.kind === 'swing') {
+      this.strikePlayers(players, (pl) => Math.hypot(pl.x - p.x, pl.z - p.z) <= S.swing.r + 0.3 && angleDiff(angleTo(p.x, p.z, pl.x, pl.z), p.dir!) <= (S.swing.halfDeg * Math.PI) / 180, S.swing.dmg, p.x, p.z);
+      this.hurtThralls((t) => Math.hypot(t.x - p.x, t.z - p.z) <= S.swing.r && angleDiff(angleTo(p.x, p.z, t.x, t.z), p.dir!) <= (S.swing.halfDeg * Math.PI) / 180);
+      this.sim.emit({ t: 'boss', kind: 'swing', x: p.x, z: p.z, phase: s.phase, r: p.r, ms: 0, dir: p.dir, boss: this.id });
+      return;
+    }
+    super.resolve(p, players);
+  }
+
+  protected circleDamage() {
+    return SAINT.rain.dmg;
+  }
+
+  protected think(dt: number, players: PlayerBody[]) {
+    const S = SAINT;
+    const s = this.state;
+    const fast = s.phase === 3 ? 0.75 : s.phase === 2 ? 0.88 : 1;
+    this.rainCd -= dt;
+    this.swingCd -= dt;
+    const { nearest, nd } = this.nearest(players);
+    if (!this.busy) {
+      if (this.rainCd <= 0) {
+        this.rainCd = S.rain.cd * fast;
+        const [lo, hi] = S.rain.circles;
+        const n = lo + Math.floor(this.sim.rand() * (hi - lo + 1)) + (s.phase === 3 ? 2 : 0);
+        const targets: [number, number][] = players.map((pl) => [pl.x, pl.z]);
+        while (targets.length < n) {
+          const a = this.sim.rand() * Math.PI * 2;
+          const r = 2 + this.sim.rand() * (this.arena.r - 3);
+          targets.push([this.arena.x + Math.sin(a) * r, this.arena.z + Math.cos(a) * r]);
+        }
+        this.telegraph('rotRain', s.x, s.z, S.rain.r, S.rain.windupMs, { targets });
+      } else if (this.swingCd <= 0 && nd < S.swing.r + 0.5) {
+        this.swingCd = S.swing.cd * fast;
+        this.telegraph('swing', s.x, s.z, S.swing.r, S.swing.windupMs, { dir: angleTo(s.x, s.z, nearest.x, nearest.z) });
+      }
+    }
+    this.chase(nearest, nd, (s.phase === 3 ? 2.1 : s.phase === 2 ? 1.8 : 1.5) * (this.busy ? 0.3 : 1), dt, 2, 2.8);
+  }
+}
+
 export function makeBossBrains(sim: WorldSim): Record<BossId, BossBrain> {
   return {
     prelate: new PrelateBrain(sim),
     gravedigger: new GravediggerBrain(sim),
     abbess: new AbbessBrain(sim),
     congregation: new CongregationBrain(sim),
+    saint: new SaintBrain(sim),
   };
 }

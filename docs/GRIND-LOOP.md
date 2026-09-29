@@ -18,7 +18,7 @@ leaks, and the backlog that fixes it, ordered by payoff for effort.
 
 1. **XP plateaus above level ~15.** Kill XP scales with *area* level (max 13), but levels cost `level × 100`.
    A level-49 character needs about 1,200 Graves kills per level.
-   → **The Plague Cloister** is level-scaled (min 20) so XP per kill keeps pace with any level. Bosses and Ascension help today.
+   → **Fixed:** the Plague Cloister is level-scaled (min 20), so XP per kill keeps pace with any level.
 2. **Dead items clutter the bag.** Measured on 2026-09-29, these drop but have no use:
    - `seed_mourning_moss`: waits for Grave Gardening (G5);
    - `gem_grave_garnet`, `gem_bone_opal`, `gem_void_sapphire`;
@@ -34,7 +34,7 @@ leaks, and the backlog that fixes it, ordered by payoff for effort.
 
 | # | Feature | Why it hooks | Effort | Notes |
 |---|---|---|---|---|
-| 1 | **Plague Cloister** (level-scaled zone) | XP never plateaus; a new place to explore | L | In flight 2026-09-29; see HANDOFF |
+| 1 | ~~**Plague Cloister** (level-scaled zone)~~ | XP never plateaus; a new place to explore | L | **Shipped 2026-09-29**, with the Plague Saint |
 | 2 | **Loot upgrade chase**: item level + affix rolls on drops (e.g. "+8% needle damage"), rarity beams already exist | Every drop *might* be better; the core ARPG slot machine | L | Needs server item_instance rows (the table exists) |
 | 3 | **Salvage** gear → materials, and **gems into sockets** (runes brief: `build-depth-aspects-runes.md`) | Gives gems, fragments and duplicate gear a purpose | M | Migration 005 plus a Reliquary panel |
 | 4 | **Daily Sexton's Contracts** ("kill 200 in the Nave", "cook 20 meals") → shards and seals | A reason to log in daily | M | Icon `sexton_contract.png` exists (unused) |

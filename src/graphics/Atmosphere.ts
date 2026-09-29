@@ -50,6 +50,11 @@ const PROFILES: Record<AreaId, Kind[]> = {
     { count: 90, shape: 0, colors: [0xbcc4f0, 0xd8dcff], size: [0.05, 0.08], alpha: [0.45, 0.8], vy: [-6, -4], drift: [0, 0], sway: 0, add: 0.9 },
     { count: 60, shape: 0, colors: [0x5a5890, 0x6c68a6], size: [0.1, 0.18], alpha: [0.15, 0.3], vy: [-0.04, 0.05], drift: [0.05, 0.05], sway: 0.3, add: 0 },
   ],
+  cloister: [
+    // Drifting plague spores and flies over the moss.
+    { count: 220, shape: 0, colors: [0x9cc43a, 0x7fa02a, 0xc8e060], size: [0.05, 0.11], alpha: [0.35, 0.75], vy: [-0.08, 0.14], drift: [0.14, 0.08], sway: 0.5, add: 0.7 },
+    { count: 60, shape: 0, colors: [0x1a1a10, 0x2a2818], size: [0.04, 0.07], alpha: [0.6, 0.9], vy: [-0.3, 0.3], drift: [0.6, 0.4], sway: 1.2, add: 0 },
+  ],
   sanctum: [
     { count: 200, shape: 0, colors: [0xa66bff, 0x8a4fe0, 0xd2a8ff], size: [0.07, 0.15], alpha: [0.5, 0.9], vy: [0.5, 1.3], drift: [0.1, 0.1], sway: 0.6, add: 1 },
     { count: 50, shape: 1, colors: [0x55486a, 0x3f3552], size: [0.1, 0.18], alpha: [0.3, 0.5], vy: [-0.4, -0.2], drift: [0.15, 0.1], sway: 0.4, add: 0 },

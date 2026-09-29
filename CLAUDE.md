@@ -2,7 +2,7 @@
 
 Browser client for Death Muffin / Crossworlds (Vite + TypeScript + Three.js): a dark-fantasy
 action RPG with nine classes — one connected world (Chapterhouse → Hollow Graves →
-Marrow Ossuary → Drowned Nave → Bell Sanctum), continuous waves, corpses as a
+Marrow Ossuary → Drowned Nave → Bell Sanctum → Plague Cloister, level-scaled), continuous waves, corpses as a
 resource, Damage / Wave Speed upgrades and boss fights. The original shared
 Crossworlds REST API is outside this repository: propose changes for it in
 `server/proposals/`. Death Muffin has its own versioned backend in
@@ -80,7 +80,7 @@ server/         realtime service (+tests, deploy), web-deploy, proposals/
 4. Drive QA through `window.__cwDebug` (DEV only): `advance(s)` steps the game
    deterministically (hidden preview panes throttle rAF — don't wait on the loop),
    `counts()`, `net()`, `god()`, `goto(area)`, `unlockAll()`, `ring(def,n,r)`,
-   `freeze()`, `boss()`, `zoom(z)`, `aimAtNearest()`, `cast(slot)`, `vfx(id)`, `vfxGallery(page)`. Screenshots work
+   `freeze()`, `boss(id?)`, `zoom(z)`, `aimAtNearest()`, `cast(slot)`, `vfx(id)`, `vfxGallery(page)`. Screenshots work
    after an `advance()`.
 5. Live-server QA uses accounts in `TEST_ACCOUNTS.local.md` (gitignored) — the
    Vite proxy forwards REST calls to the VPS.

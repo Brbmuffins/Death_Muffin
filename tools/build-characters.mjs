@@ -45,7 +45,7 @@ const CLIP_NAMES = {
 };
 
 /** Per-slug texture budget (px). Hero and boss get more; horde enemies less. */
-const TEXTURE_SIZE = { tithe_bat: 256, prop_mantle_rib: 256, prop_mantle_vertebra: 256, prop_mantle_skullchip: 256, prop_grave_hand: 256, necromancer: 1024, prelate: 1024, bone_golem: 1024, boss_gravedigger_king: 1024, boss_bone_abbess: 1024, boss_drowned_congregation: 1024, prop_mausoleum: 1024, prop_bell_altar: 1024 };
+const TEXTURE_SIZE = { boss_plague_saint: 1024, tithe_bat: 256, prop_mantle_rib: 256, prop_mantle_vertebra: 256, prop_mantle_skullchip: 256, prop_grave_hand: 256, necromancer: 1024, prelate: 1024, bone_golem: 1024, boss_gravedigger_king: 1024, boss_bone_abbess: 1024, boss_drowned_congregation: 1024, prop_mausoleum: 1024, prop_bell_altar: 1024 };
 const DEFAULT_TEXTURE = 512;
 
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);

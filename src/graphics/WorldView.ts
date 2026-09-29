@@ -20,6 +20,7 @@ const FLOOR_TEX: Record<Theme, { url: string; tile: number; color: number; rough
   ossuary: { url: 'art/textures/ossuary_floor.webp', tile: 6, color: 0xb0a4ae, rough: 0.9 },
   nave: { url: 'art/textures/flagstone.webp', tile: 8, color: 0x8c86a8, rough: 0.45 },
   sanctum: { url: 'art/textures/flagstone.webp', tile: 7, color: 0x9a86aa, rough: 0.5 },
+  cloister: { url: 'art/textures/cloister_floor.webp', tile: 6, color: 0xa8b4a0, rough: 0.8 },
 };
 
 export interface LightSource {

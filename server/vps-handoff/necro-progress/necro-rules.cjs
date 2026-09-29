@@ -273,9 +273,55 @@ var AREAS = {
       { id: "sundered_bell", kind: "boss", label: "The Sundered Bell", x: 0, z: -123.4 }
     ],
     ambient: { fog: 1050644, hemiSky: 4006738, hemiGround: 787980, moon: 10848984 }
+  },
+  cloister: {
+    id: "cloister",
+    name: "The Plague Cloister",
+    subtitle: "Where the blight grows with you",
+    theme: "cloister",
+    rect: { x0: 24, z0: -134, x1: 64, z1: -98 },
+    safe: false,
+    level: 20,
+    scaling: { minLevel: 20 },
+    enemies: [
+      { id: "plague_doctor", weight: 22 },
+      { id: "flagellant", weight: 24 },
+      { id: "sac", weight: 14 },
+      { id: "rat", weight: 10 },
+      { id: "acolyte", weight: 8 },
+      { id: "censer", weight: 8 },
+      { id: "moth", weight: 6 },
+      { id: "templar", weight: 5 },
+      { id: "golem", weight: 3 }
+    ],
+    cap: 28,
+    waveSize: 9,
+    waveIntervalMs: 6e3,
+    eliteChance: 0.08,
+    unlock: { area: "sanctum", kills: 600 },
+    loot: [
+      { item: "ore_steel", weight: 14 },
+      { item: "ore_hell", weight: 12 },
+      { item: "ore_moon", weight: 6 },
+      { item: "ingot_steel", weight: 6 },
+      { item: "gem_grave_garnet", weight: 6 },
+      { item: "gem_bone_opal", weight: 3 },
+      { item: "flask_hp_major", weight: 10 },
+      { item: "flask_damage", weight: 6 },
+      { item: "flask_void_resist", weight: 5 },
+      { item: "helm_gold", weight: 5 },
+      { item: "chest_iron", weight: 5 }
+    ],
+    itemChance: 0.14,
+    breaches: [[27, -101], [61, -101], [27, -131], [61, -131], [44, -100.5], [62, -116]],
+    interactables: [
+      { id: "waystone_cloister", kind: "waystone", label: "Waystone", x: 27.5, z: -108 },
+      { id: "saints_litter", kind: "boss", label: "The Saint's Litter", x: 44, z: -129.5 }
+    ],
+    ambient: { fog: 659464, hemiSky: 2898468, hemiGround: 461317, moon: 10273930 }
   }
 };
-var AREA_ORDER = ["chapterhouse", "acre", "graves", "ossuary", "nave", "sanctum"];
+var AREA_ORDER = ["chapterhouse", "acre", "graves", "ossuary", "nave", "sanctum", "cloister"];
 var BOSS_SUMMON_SHARDS = 5;
 
 // src/content/ascension.ts
@@ -355,7 +401,7 @@ var WAVE_UPGRADE = {
 };
 
 // src/content/bosses.ts
-var BOSS_IDS = ["gravedigger", "abbess", "congregation", "prelate"];
+var BOSS_IDS = ["gravedigger", "abbess", "congregation", "prelate", "saint"];
 var BOSSES = {
   gravedigger: {
     id: "gravedigger",
@@ -407,6 +453,23 @@ var BOSSES = {
     phases: ["The hymn begins", "The water rises", "The flood hymn"],
     awaken: "The nave water begins to rise",
     defeated: ["The Hymn Ends", "The Congregation sinks back into the black water"]
+  },
+  saint: {
+    id: "saint",
+    name: "The Plague Saint",
+    title: "Mother of the Blight",
+    area: "cloister",
+    arena: { x: 44, z: -121, r: 10 },
+    summonId: "saints_litter",
+    summonLabel: "The Saint's Litter",
+    shards: 5,
+    baseHp: 16e3,
+    modelSlug: "boss_plague_saint",
+    portrait: "",
+    color: 10273850,
+    phases: ["The blight blesses her", "Her flock gathers", "The swarm"],
+    awaken: "The Saint rises from her litter",
+    defeated: ["The Blight Recedes", "The Plague Saint sinks back into her reliquary"]
   },
   prelate: {
     id: "prelate",
