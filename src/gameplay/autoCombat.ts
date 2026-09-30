@@ -17,6 +17,8 @@ export interface AutoCombatInput {
   ready(id: AbilityId): boolean;
   /** The left-click primary the Grimoire equipped (default Bone Needle). */
   primary?: AbilityId;
+  /** The primary's reach when a weapon changes it (staff needle +25%, scythe arc 3 m); default is the ability's own. */
+  primaryRange?: number;
   /** Who is deciding (Carrion Seed keeps one seed per caster). */
   selfId?: string;
   family?: ClassFamily;
@@ -64,7 +66,7 @@ export function selectAutoCombatAction(input: AutoCombatInput): AutoCombatAction
   const reserve = Math.max(12, p.maxEssence * 0.2);
   const canSpend = (id: AbilityId) => input.ready(id) && p.essence >= ABILITIES[id].essenceCost + reserve;
   const primary = input.primary ?? 'bone_needle';
-  const inReach = targets.filter((t) => t.distance <= ABILITIES[primary].range + (t.boss ? BOSS_RADIUS : 0.4));
+  const inReach = targets.filter((t) => t.distance <= (input.primaryRange ?? ABILITIES[primary].range) + (t.boss ? BOSS_RADIUS : 0.4));
   const needle = primaryTarget(primary, inReach);
   if (p.essence < p.maxEssence * 0.35 && needle && input.ready(primary)) return action(primary, needle);
 
@@ -322,7 +324,7 @@ const TURN_SECONDS = 0.1;
 
 /** A local engagement direction; manual movement, panels and gathering gate its use in the scene. */
 export function selectAutoCombatMovement(
-  input: Pick<AutoCombatInput, 'player' | 'enemies' | 'primary' | 'family'> & { nav?: AutoMoveNav },
+  input: Pick<AutoCombatInput, 'player' | 'enemies' | 'primary' | 'primaryRange' | 'family'> & { nav?: AutoMoveNav },
   mem?: AutoMoveMemory,
   now = 0,
   dt = 0,
@@ -347,7 +349,7 @@ export function selectAutoCombatMovement(
   return out;
 }
 
-function rawAutoMovement(input: Pick<AutoCombatInput, 'player' | 'enemies' | 'primary' | 'family'> & { nav?: AutoMoveNav }, mem: AutoMoveMemory | undefined, now: number): { x: number; z: number } | null {
+function rawAutoMovement(input: Pick<AutoCombatInput, 'player' | 'enemies' | 'primary' | 'primaryRange' | 'family'> & { nav?: AutoMoveNav }, mem: AutoMoveMemory | undefined, now: number): { x: number; z: number } | null {
   const p = input.player;
   const enemies = [...input.enemies].filter((e) => e.hp > 0 && e.state !== 'dead' && (e.state !== 'rising' && e.state !== 'burrow') && (!p.area || e.area === p.area))
     .sort((a, b) => distance(p, a) - distance(p, b));
@@ -388,7 +390,7 @@ function rawAutoMovement(input: Pick<AutoCombatInput, 'player' | 'enemies' | 'pr
   if (threatened && d < 3.5) return evade([{ x: -dz, z: dx }, { x: dz, z: -dx }, { x: -dx, z: -dz }, center]);
   if (mem?.evade && now < mem.evade.until) return { x: mem.evade.x, z: mem.evade.z };
   if (mem) mem.evade = null;
-  const reach = ABILITIES[input.primary ?? 'bone_needle'].range;
+  const reach = input.primaryRange ?? ABILITIES[input.primary ?? 'bone_needle'].range;
   // Hysteresis: start closing just past reach, keep closing until comfortably inside it.
   const startAt = Math.max(1.1, reach - (mem ? CLOSE_START : 0.4));
   const stopAt = Math.max(0.9, reach - CLOSE_STOP);

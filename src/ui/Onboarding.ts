@@ -32,6 +32,7 @@ export type TipId =
   | 'surge'
   | 'relic'
   | 'armor'
+  | 'necroWeapon'
   | 'codex'
   | 'signature'
   | 'prelate'
@@ -198,6 +199,10 @@ export const TIPS: Record<TipId, Tip> = {
   armor: {
     title: 'Set armor',
     body: 'Armor comes in five-piece sets, one look per discipline, and <b>any class can wear any set</b>. Open your Reliquary (<kbd>I</kbd>) and double-click a piece to wear it; it shows on your hero. Stats only: there is no set bonus. Later areas drop the rarer, stronger sets.',
+  },
+  necroWeapon: {
+    title: 'A weapon that changes your left click',
+    body: 'Necromancer weapons change your <b>Bone Needle</b> (left click): a <b>Scythe</b> becomes a close reaping arc that pays a soul per kill, a <b>Wand</b> casts faster but softer, a <b>Ritual Sickle</b> leaves targets Withered, and a <b>Staff</b> reaches farther and pierces. Off-hands add a passive. Hover any piece in the Reliquary (<kbd>I</kbd>) for its line; the Codex (<kbd>K</kbd>) lists them all.',
   },
   codex: {
     title: 'The Codex',

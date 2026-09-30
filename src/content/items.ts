@@ -4,6 +4,7 @@ import { GARDEN_ITEMS } from './gardening';
 import { ALCHEMY_BUFFS, ALCHEMY_HEALING, ALCHEMY_ITEMS } from './alchemy';
 import { CHARM_ITEMS } from './cosmetics';
 import { ARMOR_PIECES } from './armorSets';
+import { NECRO_WEAPONS } from './necroWeapons';
 
 /**
  * Client-side display metadata for item ids the live server knows about
@@ -123,6 +124,12 @@ for (const piece of ARMOR_PIECES) ITEMS[piece.id] = {
   name: piece.name, type: piece.type, rarity: piece.rarity, sell: piece.sell,
   lore: piece.lore,
   icon: `art/items/${piece.id}.svg`, offlineStats: piece.stats,
+};
+
+// Necromancer weapon line (content/necroWeapons.ts; server rows from migration 013-necro-weapons.sql).
+for (const w of NECRO_WEAPONS) ITEMS[w.id] = {
+  name: w.name, type: w.type, rarity: w.rarity, sell: w.sell, lore: w.lore,
+  icon: `art/items/${w.id}.svg`, offlineStats: w.stats,
 };
 
 export const RARITY_COLOR: Record<Rarity, string> = {

@@ -22,6 +22,7 @@ import { itemMeta } from '../content/items';
 import * as gather from '../gameplay/gatheringRules';
 import { PROCESSING_RECIPES } from '../content/processing';
 import { ALCHEMY_RECIPES } from '../content/alchemy';
+import { NECRO_RECIPES, isTwoHanded } from '../content/necroWeapons';
 import { isDevAccount } from '../gameplay/devAccess';
 
 class MockError extends Error {
@@ -83,6 +84,7 @@ const RECIPE_ROWS: R[] = [
 // Professions G6: the same rows the server migration is generated from.
 RECIPE_ROWS.push(...PROCESSING_RECIPES);
 RECIPE_ROWS.push(...ALCHEMY_RECIPES);
+RECIPE_ROWS.push(...NECRO_RECIPES);
 
 const RECIPES: Recipe[] = RECIPE_ROWS.map(([id, name, profession_id, lvl, result, qty, ings]) => ({
   id,
@@ -321,12 +323,17 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     const reserved = { head: 100, chest: 101, legs: 102, feet: 103, hands: 104, main_hand: 105, off_hand: 106, ring: 107, trinket: 108 }[gearSlot];
     const free = () => Array.from({ length: 24 }, (_, i) => i).find((i) => !acc.slots.some((s) => s !== slot && s.slot_index === i));
     if (body.equipped) {
-      const previous = acc.slots.find((s) => s !== slot && s.slot_index === reserved);
-      if (previous && free() === undefined) return fail('Not enough inventory space to swap equipment');
+      // Same rules as the server: a two-handed weapon displaces the off-hand, and an off-hand displaces a two-handed weapon.
+      const displaced = acc.slots.filter((s) => s !== slot && (s.slot_index === reserved
+        || (isTwoHanded(slot.item_id) && s.slot_index === 106)
+        || (gearSlot === 'off_hand' && s.slot_index === 105 && isTwoHanded(s.item_id))));
+      const freeBag = Array.from({ length: 24 }, (_, i) => i).filter((i) => !acc.slots.some((s) => s !== slot && !displaced.includes(s) && s.slot_index === i));
+      // The equipped item's own bag slot is vacated, so it can hold the first displaced piece.
+      if (displaced.length > freeBag.length + 1) return fail('Not enough inventory space to swap equipment');
       const bagIndex = slot.slot_index;
       slot.slot_index = reserved;
       slot.equipped = 1;
-      if (previous) { previous.slot_index = bagIndex; previous.equipped = 0; }
+      displaced.forEach((d, i) => { d.slot_index = i === 0 ? bagIndex : freeBag[i - 1]; d.equipped = 0; });
     } else {
       const bagIndex = free();
       if (bagIndex === undefined) return fail('Inventory full');

@@ -59,6 +59,7 @@ import { BOSS_RADIUS, makeBossBrains, type BossBrain, type CoverBox } from './Bo
 import { BOSSES, isBossId, type BossId } from '../../content/bosses';
 import { NODES, RICH_RESPAWN, RICH_YIELD, type NodeDef } from '../gatheringRules';
 import { NODE_REACH } from '../../content/layout';
+import { NECRO_WEAPON_TUNING } from '../../content/necroWeapons';
 import type {
   BossState,
   Corpse,
@@ -474,6 +475,7 @@ export class WorldSim {
       gait: 0,
       moving: false,
     };
+    if (kind === 'wraith' && x.allyHeal && x.allyHeal > 0) t.allyHeal = Math.min(NECRO_WEAPON_TUNING.mourning_bell.allyHealFrac * 1.5, x.allyHeal);
     this.thralls.set(t.id, t);
     this.emit({ t: 'thrall', id: t.id, owner: t.owner, kind, x: t.x, z: t.z, empowered });
     this.emit({ t: 'exhumed', by: x.by, ok: true, corpseKind: best.kind, x: best.x, z: best.z, crumbled });
@@ -2433,7 +2435,10 @@ export class WorldSim {
         const e = target;
         engage(e.x, e.z, e.radius, () => {
           const dealt = this.damageEnemy(e, t.damage * ((t.rallyT ?? 0) > 0 ? RALLY.damageMult : 1), t.owner, t);
-          if (t.kind === 'wraith') e.chillT = CHILL.durationS;
+          if (t.kind === 'wraith') {
+            e.chillT = CHILL.durationS;
+            this.bellHeal(t);
+          }
           else if (t.kind === 'bonemage') e.hexT = BONE_HEX.durationS;
           this.emit({ t: 'thrallHit', id: t.id, target: e.id, x: t.x, z: t.z, tx: e.x, tz: e.z, kind: t.kind, dmg: Math.round(dealt) });
         });
@@ -2455,6 +2460,15 @@ export class WorldSim {
           t.state = 'move';
         } else if (t.state === 'move') t.state = 'idle';
       }
+    }
+  }
+
+  /** Mourning Bell: a wraith's hit mends every living ally near it (each client scales the heal to its own max health). */
+  private bellHeal(t: Thrall) {
+    if (!t.allyHeal) return;
+    const r = NECRO_WEAPON_TUNING.mourning_bell.allyHealRange;
+    for (const p of this.players.values()) {
+      if (p.alive && Math.hypot(p.x - t.x, p.z - t.z) <= r) this.emit({ t: 'heal', player: p.id, amount: 0, x: p.x, z: p.z, frac: t.allyHeal });
     }
   }
 

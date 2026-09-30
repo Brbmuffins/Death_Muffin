@@ -39,6 +39,7 @@ import {
 import { AREAS, BOSS_SUMMON_SHARDS, type AreaId } from './areas';
 import type { DisciplineId } from './disciplines';
 import { ABBESS, BOSSES, CONGREGATION, GRAVEDIGGER, REGENT, SAINT, type BossId } from './bosses';
+import { NECRO_KIND_LABEL, NECRO_TIERS, NECRO_TIER_INFO, NECRO_WEAPON_TUNING as WT, type NecroKind } from './necroWeapons';
 import { BURROW, CENSER, DUST, EMBER_BOLT, EMBER_DEATH, ENEMIES, FRENZY, PLAGUE_FLASK, SCREAM, SLAG_POOL, TEMPLAR_SHIELD, UNBIND, WARD, type Behavior, type EnemyId } from './enemies';
 
 /**
@@ -562,6 +563,46 @@ export interface AreaEntry {
 /** Professions tab (docs/PROFESSIONS-ROADMAP.md): counsel above the generated node tables. */
 export const CODEX_PROFESSIONS_COUNSEL =
   "Click a tree, ore seam, fishing spot or grave and your necromancer keeps working it until it is spent. Every cycle rolls against your level: higher levels succeed more often, and each success gives skill XP and a find, rolled and stored by the server. The Sexton's Acre, west of the Chapterhouse, has every node and no dead. The warm gold pool marks the Sawpit: click it for wood recipes. Gold-lit rich nodes in the hunting grounds hold more and return twice as fast. Your bag must have room, and moving, casting, opening a panel or taking a hit stops you. Auto gathering (Settings) walks you on to the next node of the same kind. For RuneScape-style AFK work, open Skills (P) in the Acre, choose a node and Start AFK. Begin with level-1 Coffin-Oaks, Copper Seams, Still Pools or Pauper’s Graves near the Acre entrance. Keep the game open, including in a background tab: work continues through node changes and respawns until the bag fills. Skills may stay open; movement, casting, other panels or Pause AFK stop work. Closing or reloading the game ends the session. No offline rewards accrue. When work stops, the Sexton’s Ledger opens: time worked, finds and their worth, levels gained, your best find, lifetime milestones and personal bests. Press O for the Sexton’s Contracts: three delivery orders a day, easy to hard, drawn from what your skills can make. Deliver from your bag for gold and sometimes an item, and fill all three for a bonus; the board refreshes at midnight UTC. Press U for Grave Gardening: four Mourning Beds and two Coffin Patches that grow in real time, even while you are away. Seeds and saplings drop from graves and trees; bone meal grows a plot a quarter faster. Herbs sell, feed the Sexton’s orders and are the ground for Alchemy: at the Workbench (C, Alchemy tab) they brew into flasks and elixirs, from Moss Tonic at level 1 to the Grand Healing Flask (58) and the Moonlight Elixir (72). Alchemy is its own skill, levelled by brewing. Press H for Grave Laborers: send the raised dead to work a gathering post and they keep at it, slowly, for up to eight hours even while you are away. They gather about an eighth of what you would and earn a quarter of the XP; collect when you like and the Ledger shows what they brought. You command one laborer, and another for every 50 total gathering levels, up to four. Press N for Capes & Pets: a mastery cape for level 99 in each skill, mantles for total level (100, 300, and every skill at 99), and companions (Tithe Bat, Grave Rat, Drowned Pup, Wee Thrall, Shroud Moth) that turn up as rare charms while you work; adopt a charm and the pet is yours for good. Other players see what you wear.";
+
+/** Weapons tab: the necromancer weapon line (content/necroWeapons.ts). Numbers come from NECRO_WEAPON_TUNING. */
+export const CODEX_WEAPONS_COUNSEL =
+  'Necromancer weapons change your left click (Bone Needle) and add one passive, so a weapon swap is a build choice, not a stat stick. Only the four necromancer disciplines (Ossuary, Gravecaller, Mourner, Rotweaver) gain the effects; other classes wear the stats. Staffs and Scythes are two-handed and push the off-hand back to your bag. Every kind comes in five materials: Bone (Hollow Graves, Bone Warren), Iron (Marrow Ossuary, Coliseum), Gold (Drowned Nave, Bell Sanctum), Hell (Plague Cloister, Cinder Pyre) and Moon (the Pyre, rarely). Carpentry and Smithing at the Workbench craft them too.';
+
+export interface WeaponEntry {
+  kind: NecroKind;
+  name: string;
+  hands: string;
+  change: string;
+  suits: string;
+  tip: string;
+}
+
+const pc = (n: number) => `${Math.round(n * 100)}%`;
+export const CODEX_WEAPONS: WeaponEntry[] = [
+  { kind: 'staff', name: NECRO_KIND_LABEL.staff, hands: 'Two-handed', suits: 'Ossuary and all-rounders',
+    change: `Bone Needle flies ${pc(WT.staff.needleRangeMult - 1)} farther and pierces ${WT.staff.pierce} extra enemy behind its target (${pc(WT.staff.pierceDamageMult)} damage). Passive: +${pc(WT.staff.spellDamageMult - 1)} spell damage.`,
+    tip: 'Line enemies up: a needle down a corridor hits two. The spell damage bonus lifts every rite, and shows in your Spell stat.' },
+  { kind: 'scythe', name: NECRO_KIND_LABEL.scythe, hands: 'Two-handed', suits: 'Gravecaller, fighting beside thralls',
+    change: `Your left click becomes a close reaping arc: ${WT.scythe.arcDeg} degrees, ${WT.scythe.reach} m, up to ${WT.scythe.maxHits} enemies, ${pc(WT.scythe.damageMult)} of a needle each. Each target gives back ${WT.scythe.essencePerHit} essence. Kills the arc delivers give +${WT.scythe.soulsPerKill} soul.`,
+    tip: 'Stand in the thick of it with your thralls. Filling the Soul Harvest meter sooner makes Marrow Spear, Miasma and Litany free and larger.' },
+  { kind: 'wand', name: NECRO_KIND_LABEL.wand, hands: 'One-handed', suits: 'Any class, paired with an off-hand',
+    change: `Bone Needle fires ${pc(WT.wand.cadenceMult - 1)} faster and strikes ${pc(1 - WT.wand.damageMult)} softer.`,
+    tip: 'More needles means more essence back. Pair it with a Grimoire for faster rites or a Skull Focus for a bigger legion.' },
+  { kind: 'sickle', name: NECRO_KIND_LABEL.sickle, hands: 'One-handed', suits: 'Rotweaver',
+    change: `Bone Needle leaves ${WT.sickle.witheredStacks} Withered stack per hit, up to your discipline's cap. Passive: Exhume gives back ${pc(WT.sickle.exhumeRefund)} of its essence.`,
+    tip: 'Withered stacks tick on their own: a Rotweaver with a Sickle can needle one enemy and walk on. Miasma stacks on top.' },
+  { kind: 'skull_focus', name: NECRO_KIND_LABEL.skull_focus, hands: 'Off-hand', suits: 'Gravecaller',
+    change: `Gold tier and above: +${WT.skull_focus.thrallCap} thrall cap (Bone and Iron skulls are stat sticks).`,
+    tip: 'One more thrall is one more body for Litany and one more blade in the line.' },
+  { kind: 'grimoire', name: NECRO_KIND_LABEL.grimoire, hands: 'Off-hand', suits: 'Anyone who lives on rites',
+    change: `Every rite (not the left click) recovers ${pc(1 - WT.grimoire.riteCooldownMult)} sooner.`,
+    tip: 'The most for the spells with the longest waits: Miasma, Black Litany and your signature rite.' },
+  { kind: 'mourning_bell', name: NECRO_KIND_LABEL.mourning_bell, hands: 'Off-hand', suits: 'Mourner',
+    change: `Each hit from your wraiths heals every ally within ${WT.mourning_bell.allyHealRange} m for ${pc(WT.mourning_bell.allyHealFrac)} of their max health, you included.`,
+    tip: 'More wraiths, more healing. In co-op it heals the whole party, each by their own maximum.' },
+];
+
+export const CODEX_WEAPON_TIERS = NECRO_TIERS.map((t) => ({ tier: t, label: NECRO_TIER_INFO[t].label, level: NECRO_TIER_INFO[t].level, areas: NECRO_TIER_INFO[t].area }));
 
 export const CODEX_TRAVEL_COUNSEL = 'Click a walkable spot on the minimap to choose a fixed destination. Travel follows the same paths as ground clicks; locked halls remain closed. The amber marker shows where you are going. Hover or focus a spell icon for detailed rite counsel.';
 

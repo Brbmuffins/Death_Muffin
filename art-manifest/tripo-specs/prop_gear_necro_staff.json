@@ -1,0 +1,9 @@
+{
+  "id": "prop_gear_necro_staff",
+  "input": "art-src/concepts/nw_staff.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 3200,
+    "texture_quality": "standard"
+  }
+}

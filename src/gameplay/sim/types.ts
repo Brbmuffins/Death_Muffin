@@ -130,6 +130,8 @@ export interface Thrall {
   rallyT?: number;
   /** Veilwalker Echo expires on the host after ten seconds. */
   echoUntil?: number;
+  /** Mourning Bell: the share of max health each of this wraith's hits heals allies for. */
+  allyHeal?: number;
 }
 
 export interface Corpse {
@@ -287,6 +289,8 @@ export type Intent =
       hp: number;
       damage: number;
       attackSpeedMult: number;
+      /** Mourning Bell: each wraith hit heals allies by this share of their max health (host-clamped, 0..0.03). */
+      allyHeal?: number;
     }
   | {
       t: 'litany';
@@ -402,7 +406,7 @@ export type SimEvent =
   | { t: 'seedGone'; corpseId: number }
   | { t: 'seedBurst'; by: string; x: number; z: number; r: number; targets: number }
   /** A friendly zone mending a player (Dirge). */
-  | { t: 'heal'; player: string; amount: number; x: number; z: number }
+  | { t: 'heal'; player: string; amount: number; x: number; z: number; frac?: number }
   /** A Crypt Deacon blesses an ally (Sanctified). */
   | { t: 'sanctify'; id: number; target: number; x: number; z: number; tx: number; tz: number }
   /** Barrow Ghoul: surfaced in its ring, or started digging back in. */

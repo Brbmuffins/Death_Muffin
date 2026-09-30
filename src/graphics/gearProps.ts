@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import { gearTier, offhandKind, weaponKind, type GearTier } from '../content/gear';
 import { ARMOR_BY_ID } from '../content/armorSets';
 import { fx } from './fxTextures';
+import { assets } from './AssetCache';
+import { PROP_URL } from './modelPaths';
+import { NECRO_MODEL, NECRO_WEAPON_BY_ID, type NecroKind } from '../content/necroWeapons';
 
 /**
  * Code-built props for equipped gear (no art budget): every prop's +Y is its long axis with the
@@ -94,9 +97,185 @@ function tome(t: GearTier) {
   return g;
 }
 
+// --- Necromancer weapon line: procedural stand-ins (used while the GLB loads, or if it fails) ---------------------------
+
+function extrudeFlat(shape: THREE.Shape, depth: number, mat: THREE.Material) {
+  const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelSize: 0.004, bevelThickness: 0.004, bevelSegments: 1, curveSegments: 10 });
+  geo.translate(0, 0, -depth / 2);
+  return new THREE.Mesh(geo, mat);
+}
+
+/** Crescent blade in the XY plane: root at the origin, sweeping out along +X and curling back down to the point. */
+function crescent(len: number, bulge: number, thick: number) {
+  const sh = new THREE.Shape();
+  sh.moveTo(0, 0);
+  sh.bezierCurveTo(len * 0.25, bulge, len * 0.75, bulge * 0.7, len, -bulge * 1.5);
+  sh.bezierCurveTo(len * 0.7, bulge * 0.1, len * 0.3, bulge * 0.05 - thick, 0, -thick);
+  sh.closePath();
+  return sh;
+}
+
+function necroScythe(t: GearTier) {
+  const g = new THREE.Group();
+  const metal = metalMat(t);
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.028, 1.95, 7), new THREE.MeshStandardMaterial({ color: 0x2a211b, roughness: 0.85 }));
+  shaft.position.y = 0.36;
+  const blade = extrudeFlat(crescent(0.72, 0.16, 0.07), 0.018, metal);
+  blade.position.set(0.01, 1.28, 0);
+  blade.rotation.y = Math.PI / 2;
+  const collar = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), metal);
+  collar.position.y = 1.29;
+  g.add(shaft, blade, collar);
+  tipAt(g, 1.3);
+  return g;
+}
+
+function necroWand(t: GearTier) {
+  const g = new THREE.Group();
+  const metal = metalMat(t);
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.02, 0.24, 7), leather());
+  handle.position.y = 0;
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.014, 0.26, 7), metal);
+  shaft.position.y = 0.19;
+  const shard = new THREE.Mesh(new THREE.OctahedronGeometry(0.035), metal);
+  shard.scale.set(0.8, 1.7, 0.8);
+  shard.position.y = 0.36;
+  const guard = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.006, 5, 10), metal);
+  guard.rotation.x = Math.PI / 2;
+  guard.position.y = 0.07;
+  g.add(handle, shaft, shard, guard);
+  tipAt(g, 0.4);
+  return g;
+}
+
+function necroSickle(t: GearTier) {
+  const g = new THREE.Group();
+  const metal = metalMat(t);
+  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.26, 7), leather());
+  grip.position.y = -0.02;
+  const blade = extrudeFlat(crescent(0.3, 0.1, 0.05), 0.012, metal);
+  blade.position.set(0, 0.22, 0);
+  blade.rotation.set(0, Math.PI / 2, Math.PI / 2);
+  blade.scale.set(1, 1, 1);
+  const pommel = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.006, 5, 10), metal);
+  pommel.position.y = -0.17;
+  g.add(grip, blade, pommel);
+  tipAt(g, 0.42);
+  return g;
+}
+
+function necroSkull(t: GearTier) {
+  const g = new THREE.Group();
+  const bone = new THREE.MeshStandardMaterial({ color: t.color, metalness: t.metal * 0.4, roughness: Math.max(0.45, t.rough), emissive: t.glow ?? 0x000000, emissiveIntensity: t.glow ? 0.4 : 0 });
+  const cranium = new THREE.Mesh(new THREE.SphereGeometry(0.11, 14, 10), bone);
+  cranium.scale.set(1, 1.05, 1.1);
+  cranium.position.y = 0.26;
+  const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.05, 0.12), bone);
+  jaw.position.set(0, 0.155, 0.02);
+  const dark = new THREE.MeshBasicMaterial({ color: 0x0b0810 });
+  for (const x of [-0.04, 0.04]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.026, 8, 6), dark);
+    eye.position.set(x, 0.27, 0.09);
+    g.add(eye);
+  }
+  const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.024, 0.2, 7), leather());
+  spine.position.y = 0.05;
+  g.add(cranium, jaw, spine);
+  tipAt(g, 0.3);
+  return g;
+}
+
+function necroBell(t: GearTier) {
+  const g = new THREE.Group();
+  const metal = metalMat(t);
+  const pts = [[0.0, 0], [0.05, -0.01], [0.075, -0.06], [0.085, -0.15], [0.12, -0.26], [0.135, -0.3], [0.125, -0.315], [0.0, -0.28]].map(([x, y]) => new THREE.Vector2(x, y));
+  const body = new THREE.Mesh(new THREE.LatheGeometry(pts, 18), metal);
+  body.material = metal;
+  (body.material as THREE.MeshStandardMaterial).side = THREE.DoubleSide;
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.018, 0.1, 6), leather());
+  handle.position.y = 0.04;
+  const clapper = new THREE.Mesh(new THREE.SphereGeometry(0.026, 8, 6), metal);
+  clapper.position.y = -0.3;
+  g.add(body, handle, clapper);
+  tipAt(g, -0.12);
+  return g;
+}
+
+function necroFallback(kind: NecroKind, t: GearTier): THREE.Group {
+  switch (kind) {
+    case 'staff': return staff(t);
+    case 'scythe': return necroScythe(t);
+    case 'wand': return necroWand(t);
+    case 'sickle': return necroSickle(t);
+    case 'skull_focus': return necroSkull(t);
+    case 'mourning_bell': return necroBell(t);
+    default: return tome(t);
+  }
+}
+
+/**
+ * Tint one shared mesh five ways: the model's pale relief keeps its detail while the tier's colour, metal, roughness and glow
+ * replace the material factors. Materials are cloned per prop (the geometry and textures stay shared).
+ */
+function tintModel(root: THREE.Object3D, t: GearTier) {
+  const base = new THREE.Color(t.color);
+  // The raw relief texture is a mid pale grey: lift the tint so dark tiers (iron, hell) do not go black.
+  const lift = 1.55;
+  const tint = new THREE.Color(Math.min(1, base.r * lift), Math.min(1, base.g * lift), Math.min(1, base.b * lift));
+  root.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh) return;
+    m.userData.sharedGeo = true;
+    m.castShadow = true;
+    const mat = (m.material as THREE.MeshStandardMaterial).clone();
+    mat.color.copy(tint);
+    mat.metalness = Math.min(1, t.metal * 0.85);
+    mat.roughness = Math.max(0.25, t.rough);
+    if (t.glow) {
+      mat.emissive = new THREE.Color(t.glow);
+      mat.emissiveMap = mat.map ?? null;
+      mat.emissiveIntensity = 0.4;
+    } else mat.emissive = new THREE.Color(0x000000);
+    m.material = mat;
+  });
+}
+
+/** Swap a code-built stand-in for its baked GLB once loaded (the group, its attachment and calibration stay as they are). */
+function upgradeToModel(g: THREE.Group, kind: NecroKind, t: GearTier) {
+  const cfg = NECRO_MODEL[kind];
+  void assets.model(PROP_URL(`gear_${kind}`), cfg.length).then((tpl) => {
+    if (!tpl || g.userData.disposed) return;
+    const model = tpl.scene.clone(true);
+    model.scale.setScalar(tpl.scale);
+    tintModel(model, t);
+    for (const c of [...g.children]) {
+      g.remove(c);
+      disposeProp(c);
+    }
+    g.add(model);
+    const tip = new THREE.Object3D();
+    tip.position.y = (cfg.tip - cfg.grip) * cfg.length;
+    g.add(tip);
+    g.userData.tip = tip;
+    g.userData.model = true;
+    // A soft light at the spell origin for the staff, wand and skull: the same tell the primitive staff carries.
+    if (kind === 'staff' || kind === 'wand' || kind === 'skull_focus') {
+      const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: fx.glow(), color: t.glow ?? 0xb6a9c8, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: t.glow ? 0.65 : 0.35 }));
+      glow.scale.setScalar(kind === 'staff' ? 0.42 : 0.28);
+      tip.add(glow);
+    }
+  });
+}
+
 /** A main-hand weapon for the given item id. */
 export function buildWeapon(itemId: string, rarity?: string): THREE.Group {
   const t = gearTier(itemId, rarity);
+  const necro = NECRO_WEAPON_BY_ID[itemId];
+  if (necro) {
+    const g = necroFallback(necro.kind, t);
+    upgradeToModel(g, necro.kind, t);
+    return g;
+  }
   switch (weaponKind(itemId)) {
     case 'staff': return staff(t);
     case 'bow': return bow(t);
@@ -110,6 +289,12 @@ export function buildWeapon(itemId: string, rarity?: string): THREE.Group {
 /** An off-hand piece: a round shield (disc axis along X, like the thrall shield) or a tome. */
 export function buildOffhand(itemId: string, rarity?: string): THREE.Group {
   const t = gearTier(itemId, rarity);
+  const necro = NECRO_WEAPON_BY_ID[itemId];
+  if (necro) {
+    const g = necroFallback(necro.kind, t);
+    upgradeToModel(g, necro.kind, t);
+    return g;
+  }
   if (offhandKind(itemId) === 'tome') return tome(t);
   const g = new THREE.Group();
   const r = 0.27;
@@ -188,10 +373,11 @@ export function buildHelm(itemId: string, rarity?: string): THREE.Group {
 
 /** Free a prop's private geometry and materials (props are code-built and never shared). */
 export function disposeProp(obj: THREE.Object3D) {
+  obj.userData.disposed = true;
   obj.traverse((o) => {
     const m = o as THREE.Mesh;
     if (m.isMesh || (o as THREE.Sprite).isSprite) {
-      m.geometry?.dispose();
+      if (!m.userData.sharedGeo) m.geometry?.dispose();
       const mat = m.material as THREE.Material | THREE.Material[];
       (Array.isArray(mat) ? mat : [mat]).forEach((x) => x.dispose());
     }

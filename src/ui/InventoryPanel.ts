@@ -6,6 +6,7 @@ import { BUFF_FLASKS, HEALING_FLASKS, RARITY_COLOR, RARITY_MARK, itemMeta } from
 import { MEALS } from '../content/processing';
 import { EQUIP_SLOTS, equipSlotOf, equippedBySlot, type EquipSlot } from '../content/gear';
 import { ARMOR_BY_ID } from '../content/armorSets';
+import { necroWeaponTooltip } from '../content/necroWeapons';
 
 const TYPE_GLYPH: Record<string, string> = {
   weapon: '⚔',
@@ -203,6 +204,8 @@ export class InventoryPanel {
   }
 
   private setLine(slot: InventorySlot) {
+    const weapon = necroWeaponTooltip(slot.item_id);
+    if (weapon) return `<div class="stat">${weapon.effect}</div><div class="lore">Recommended level ${weapon.level}. Only necromancers gain the effect; other classes keep the stats.</div>`;
     const piece = ARMOR_BY_ID[slot.item_id];
     if (!piece) return '';
     const worn = this.inventory.all.filter((s) => s.equipped && ARMOR_BY_ID[s.item_id]?.setId === piece.setId).length;

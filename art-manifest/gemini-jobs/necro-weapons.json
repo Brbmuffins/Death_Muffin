@@ -1,0 +1,44 @@
+[
+  {
+    "id": "concept_nw_staff",
+    "out": "art-src/concepts/nw_staff.png",
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands holding it. Dark fantasy necromancer weapon, hand-crafted and ornate with clearly readable chunky silhouette details. IMPORTANT: the object is made of ONE uniform pale desaturated stone-grey / ivory material (near-monochrome, minimal colour, no gold, no red, no blue, no glowing parts) so it can be recoloured in-engine; detail is carried by sculpted relief and shading, not by colour. Subject, upright, perfectly vertical, filling the frame top to bottom, three-quarter view: a tall two-handed necromancer staff. A long shaft wrapped in leather bindings and carved with bone vertebrae segments, crowned by a cage of clawed, curving bone talons holding a large round skull-shaped orb socket at the very top. Nothing else."
+  },
+  {
+    "id": "concept_nw_scythe",
+    "out": "art-src/concepts/nw_scythe.png",
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands holding it. Dark fantasy necromancer weapon, hand-crafted and ornate with clearly readable chunky silhouette details. IMPORTANT: the object is made of ONE uniform pale desaturated stone-grey / ivory material (near-monochrome, minimal colour, no gold, no red, no blue, no glowing parts) so it can be recoloured in-engine; detail is carried by sculpted relief and shading, not by colour. Subject, upright, perfectly vertical, filling the frame top to bottom, side view: a tall two-handed reaper's scythe. A long straight dark shaft with a grip wrap, and at the top a huge curved crescent blade sweeping out to ONE side, with a serrated inner edge, rib-like fuller grooves, and a small skull ornament where blade meets shaft. Nothing else."
+  },
+  {
+    "id": "concept_nw_wand",
+    "out": "art-src/concepts/nw_wand.png",
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands holding it. Dark fantasy necromancer weapon, hand-crafted and ornate with clearly readable chunky silhouette details. IMPORTANT: the object is made of ONE uniform pale desaturated stone-grey / ivory material (near-monochrome, minimal colour, no gold, no red, no blue, no glowing parts) so it can be recoloured in-engine; detail is carried by sculpted relief and shading, not by colour. Subject, upright, perfectly vertical, three-quarter view: a short one-handed necromancer wand about forearm length. A slender carved-bone handle with a finger guard, a spiralling twisted shaft, tipped with a sharp pointed shard-like crystal point held in tiny talons. Nothing else."
+  },
+  {
+    "id": "concept_nw_sickle",
+    "out": "art-src/concepts/nw_sickle.png",
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands holding it. Dark fantasy necromancer weapon, hand-crafted and ornate with clearly readable chunky silhouette details. IMPORTANT: the object is made of ONE uniform pale desaturated stone-grey / ivory material (near-monochrome, minimal colour, no gold, no red, no blue, no glowing parts) so it can be recoloured in-engine; detail is carried by sculpted relief and shading, not by colour. Subject, upright, perfectly vertical, side view: a short one-handed ritual sickle for a plague priest. A short wrapped grip with a pommel ring, and a strongly curved hooked blade with runic etched channels along it and a notched cruel edge. Nothing else."
+  },
+  {
+    "id": "concept_nw_skull_focus",
+    "out": "art-src/concepts/nw_skull_focus.png",
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands holding it. Dark fantasy necromancer weapon, hand-crafted and ornate with clearly readable chunky silhouette details. IMPORTANT: the object is made of ONE uniform pale desaturated stone-grey / ivory material (near-monochrome, minimal colour, no gold, no red, no blue, no glowing parts) so it can be recoloured in-engine; detail is carried by sculpted relief and shading, not by colour. Subject, upright, three-quarter view: an off-hand necromancer skull focus held up by its base. A human skull with a detached jaw, large hollow eye sockets with small empty gem settings, filigree crown ridges carved on the brow, mounted on a short ornate spine-like handle with a wrapped grip at the bottom. Nothing else."
+  },
+  {
+    "id": "concept_nw_grimoire",
+    "out": "art-src/concepts/nw_grimoire.png",
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands holding it. Dark fantasy necromancer weapon, hand-crafted and ornate with clearly readable chunky silhouette details. IMPORTANT: the object is made of ONE uniform pale desaturated stone-grey / ivory material (near-monochrome, minimal colour, no gold, no red, no blue, no glowing parts) so it can be recoloured in-engine; detail is carried by sculpted relief and shading, not by colour. Subject, upright, three-quarter view showing the front cover slightly angled: a thick ancient necromancer grimoire held in one hand. Heavy cover embossed with a skull and ribcage relief, corner guards, a clasped strap with a chain, cracked spine with ribbon bookmarks, pages visible at the edge. Nothing else."
+  },
+  {
+    "id": "concept_nw_mourning_bell",
+    "out": "art-src/concepts/nw_mourning_bell.png",
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects, no hands holding it. Dark fantasy necromancer weapon, hand-crafted and ornate with clearly readable chunky silhouette details. IMPORTANT: the object is made of ONE uniform pale desaturated stone-grey / ivory material (near-monochrome, minimal colour, no gold, no red, no blue, no glowing parts) so it can be recoloured in-engine; detail is carried by sculpted relief and shading, not by colour. Subject, upright, three-quarter view: a one-handed mourning bell. A flared hand-bell with bands of relief and a tattered funeral ribbon tied at the rim, small skull ornament on the shoulder, a short carved bone handle on the top, and a dangling clapper. Nothing else."
+  }
+]

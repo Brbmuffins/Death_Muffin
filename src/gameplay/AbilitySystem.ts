@@ -32,6 +32,7 @@ import {
   OATH_UNBROKEN,
   WAILING_SKULL,
   unlockLevel,
+  PRIMARIES,
   type AbilityId,
 } from '../content/abilities';
 import type { Discipline } from '../content/disciplines';
@@ -49,6 +50,8 @@ import { playFx } from '../graphics/binbun/presets';
 import type { BinbunHandle, BinbunSpawn } from '../graphics/binbun/BinbunFX';
 import type { BinbunId } from '../graphics/binbun/catalog';
 import { NewBloodSystem } from './NewBloodSystem';
+import { NECRO_WEAPON_TUNING } from '../content/necroWeapons';
+import { abilityCooldownMs, abilityLockMs, abilityRange, pierceTargets, reapTargets } from './weaponLine';
 
 /**
  * Veil Step's destination: walk from (x, z) toward (tx, tz) in small steps and keep the last point
@@ -191,7 +194,7 @@ export class AbilitySystem {
     const def = ABILITIES[id];
     if (def.targeting !== 'enemy') return 0;
     const pad = t.boss ? BOSS_RADIUS : 0.4;
-    return Math.max(0, Math.hypot(t.x - p.x, t.z - p.z) - (def.range + pad));
+    return Math.max(0, Math.hypot(t.x - p.x, t.z - p.z) - (abilityRange(id, def.range, p.loadout) + pad));
   }
 
   cast(id: AbilityId, target: CastTarget, now: number): CastResult {
@@ -207,7 +210,7 @@ export class AbilitySystem {
     let result: CastResult;
     switch (id) {
       case 'bone_needle':
-        result = this.needle(target);
+        result = p.loadout.reap ? this.reap(target) : this.needle(target);
         break;
       case 'marrow_spear':
         result = this.spear(target, mult);
@@ -301,13 +304,15 @@ export class AbilitySystem {
         break;
     }
     if (result === 'ok') {
-      p.castUntil = now + CAST_FLOW[id].lockMs;
+      p.castUntil = now + abilityLockMs(id, CAST_FLOW[id].lockMs, p.loadout);
       p.rootedUntil = Math.max(p.rootedUntil, p.castUntil);
       if (empowered) {
         p.spendSouls();
         this.soulRelease();
       } else p.essence -= def.essenceCost;
-      p.cooldowns.set(id, now + def.cooldownMs);
+      // A Ritual Sickle gives back a share of Exhume's essence.
+      if (id === 'exhume' && p.loadout.exhumeRefund > 0) p.essence = Math.min(p.stats.maxEssence, p.essence + def.essenceCost * p.loadout.exhumeRefund);
+      p.cooldowns.set(id, now + abilityCooldownMs(id, def.cooldownMs, p.loadout, PRIMARIES.includes(id)));
     }
     return result;
   }
@@ -333,7 +338,10 @@ export class AbilitySystem {
     effects.flash({ x: from.x, y: from.y, z: from.z, color: N.trail, size: 0.7, duration: 0.14 });
     audio.play('needleCast', p.x, p.z);
     const enemyId = t.enemyId;
-    const dmg = this.sp * ABILITIES.bone_needle.power * (0.9 + Math.random() * 0.2);
+    const lo = p.loadout;
+    // Weapon line: a wand's needle strikes softer (but faster); a sickle's leaves the target Withered; a staff's pierces on.
+    const dmg = this.sp * ABILITIES.bone_needle.power * lo.needleDamageMult * (0.9 + Math.random() * 0.2);
+    const withered = lo.needleWithered > 0 ? { withered: lo.needleWithered, witheredCap: this.ctx.discipline.mods.witheredMaxStacks } : {};
     const crit = Math.random() < 0.08;
     effects.projectile({
       from,
@@ -356,7 +364,8 @@ export class AbilitySystem {
           this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg: amount, boss: true });
         } else {
           if (!this.ctx.enemies().has(enemyId!)) return;
-          this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [enemyId!], dmg: amount });
+          this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [enemyId!], dmg: amount, ...withered });
+          if (lo.needlePierce > 0) this.pierceBeyond(enemyId!, pos, dmg * NECRO_WEAPON_TUNING.staff.pierceDamageMult, lo.needlePierce, withered);
         }
         p.essence = Math.min(p.stats.maxEssence, p.essence + NEEDLE_ESSENCE);
         audio.play('needleHit', pos.x, pos.z, crit ? 1.4 : 1);
@@ -368,6 +377,84 @@ export class AbilitySystem {
         this.ctx.number(pos.x, pos.z, amount, crit ? 'crit' : 'hit');
       },
     });
+    return 'ok';
+  }
+
+  /** Staff needle: it carries on through the nearest enemy behind its target, in its lane. */
+  private pierceBeyond(firstId: number, at: { x: number; z: number }, dmg: number, count: number, extra: { withered?: number; witheredCap?: number }) {
+    const { player: p, effects } = this.ctx;
+    const pool = [];
+    for (const e of this.ctx.enemies().values()) if (e.state !== 'dead') pool.push(e);
+    const next = pierceTargets({ x: p.x, z: p.z }, { x: at.x, z: at.z, id: firstId }, pool, count);
+    if (!next.length) return;
+    this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: next.map((e) => e.id), dmg, ...extra });
+    for (const e of next) {
+      effects.beam({ x: at.x, y: 1, z: at.z }, () => ({ x: e.x, y: 1, z: e.z }), N.trail, 0.02, 0.12);
+      effects.flash({ x: e.x, y: 1, z: e.z, color: N.impact, size: 0.8, duration: 0.16 });
+      effects.emit({ x: e.x, y: 1, z: e.z, count: 6, color: N.dust, spread: 0.1, speed: 3, up: 1, life: 0.35, size: 0.12, gravity: 7 });
+      this.ctx.number(e.x, e.z, dmg, 'hit');
+    }
+    audio.play('needleHit', next[0].x, next[0].z, 0.8);
+  }
+
+  /** Enemy ids struck by a scythe arc, with the scene time they count as reaped until. */
+  private reaped = new Map<number, number>();
+
+  /** Extra souls for a kill the scythe arc delivered (the scene calls this from its death handler). */
+  reapedSouls(enemyId: number): number {
+    const until = this.reaped.get(enemyId);
+    if (until === undefined) return 0;
+    this.reaped.delete(enemyId);
+    return this.ctx.now() <= until ? NECRO_WEAPON_TUNING.scythe.soulsPerKill : 0;
+  }
+
+  /**
+   * Scythe: the left click becomes a close reaping arc, client-resolved like Ivory Cleave (the caster's client picks the
+   * targets from its own view and sends one hit intent, so a relayed cast never double-hits or desyncs). Kills the arc
+   * delivers are remembered so the death handler can pay the bonus soul.
+   */
+  private reap(t: CastTarget): CastResult {
+    const { player: p, effects, avatar } = this.ctx;
+    const T = NECRO_WEAPON_TUNING.scythe;
+    if (t.enemyId === undefined && !t.boss) return 'no_target';
+    if (this.shortfall('bone_needle', t) > 0) return 'range';
+    let dx = t.x - p.x;
+    let dz = t.z - p.z;
+    const l = Math.hypot(dx, dz) || 1;
+    dx /= l;
+    dz /= l;
+    p.face(p.x + dx, p.z + dz);
+    avatar.cast('attack', 2.6, p.facing, T.gestureSeconds);
+    const dmg = this.sp * ABILITIES.bone_needle.power * T.damageMult * (0.9 + Math.random() * 0.2);
+    const pool = [];
+    for (const e of this.ctx.enemies().values()) if (e.state !== 'dead') pool.push(e);
+    const struck = reapTargets({ x: p.x, z: p.z }, { x: t.x, z: t.z }, pool);
+    const b = this.ctx.boss();
+    const hitBoss = b.active && reapTargets({ x: p.x, z: p.z }, { x: t.x, z: t.z }, [{ x: b.x, z: b.z, radius: BOSS_RADIUS }]).length > 0;
+    const now = this.ctx.now();
+    if (this.reaped.size > 64) for (const [id, until] of this.reaped) if (until < now) this.reaped.delete(id);
+    // The boss takes a slot of the three if it is nearer than the last enemy; keep the cap honest.
+    const slots = Math.max(0, T.maxHits - (hitBoss ? 1 : 0));
+    const hits = struck.slice(0, slots);
+    if (hits.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: hits.map((e) => e.id), dmg });
+    if (hitBoss) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, boss: true });
+    for (const e of hits) {
+      this.reaped.set(e.id, now + T.reapWindowMs);
+      this.ctx.number(e.x, e.z, dmg, 'hit');
+      effects.emit({ x: e.x, y: 0.9, z: e.z, count: 7, color: N.dust, spread: 0.2, speed: 3, up: 1.2, life: 0.4, size: 0.13, gravity: 7 });
+      effects.flash({ x: e.x, y: 1, z: e.z, color: N.impact, size: 0.9, duration: 0.16 });
+    }
+    if (hitBoss) {
+      this.ctx.number(b.x, b.z, dmg, 'hit');
+      effects.flash({ x: b.x, y: 1.6, z: b.z, color: N.impact, size: 1.2, duration: 0.18 });
+    }
+    const landed = hits.length + (hitBoss ? 1 : 0);
+    if (landed) p.essence = Math.min(p.stats.maxEssence, p.essence + T.essencePerHit * landed);
+    const rot = Math.atan2(dx, dz);
+    effects.decal({ tex: fxImage('crescent'), color: N.trail, x: p.x + dx * 1.3, z: p.z + dz * 1.3, r: 2.0, rot, duration: 0.32, opacity: 0.95, growFrom: 0.6, fadeOut: 0.25 });
+    effects.lightFlash(p.x + dx * 1.3, 1, p.z + dz * 1.3, N.trail, 10, 0.16);
+    audio.play('spear', p.x, p.z, 1.1);
+    if (landed) audio.play('boneHit', p.x + dx * 1.8, p.z + dz * 1.8);
     return 'ok';
   }
 
@@ -481,6 +568,7 @@ export class AbilitySystem {
       hp: p.stats.thrallHp,
       damage: p.stats.thrallDamage,
       attackSpeedMult: m.thrallAttackSpeedMult,
+      ...(p.loadout.bellAllyHeal > 0 ? { allyHeal: p.loadout.bellAllyHeal } : {}),
     });
     effects.beam(avatar.tip(), () => ({ x: c.x, y: 0.3, z: c.z }), X.beam, 0.06, 0.4);
     audio.play('exhume', c.x, c.z);
