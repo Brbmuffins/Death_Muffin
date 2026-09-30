@@ -7,9 +7,11 @@ import type { GatherSkill } from '../gameplay/gatheringRules';
 import type { Effects } from './Effects';
 import { fx } from './fxTextures';
 import type { EquipSlot } from '../content/gear';
+import type { AbilityId } from '../content/abilities';
+import { castClipFor, planGesture, type GestureKey } from '../content/castClips';
 import { buildCape, buildHelm, buildOffhand, buildWeapon, disposeProp } from './gearProps';
 import { capeDef } from '../content/cosmetics';
-import { gearTier } from '../content/gear';
+import { gearTier, weaponKind } from '../content/gear';
 import type { GearRegion } from './gearTint';
 
 /** How much a held staff follows the wrist (0 = pinned upright, 1 = fully hand-driven). */
@@ -252,12 +254,27 @@ export class NecromancerAvatar {
    * carries and the melee kits (Hollow Knight, Grave Warden) use; the necromancer
    * rites all gesture with `cast` or `dig`.
    */
-  cast(kind: 'cast' | 'dig' | 'attack', speed = 2, facing?: number, durationSeconds?: number) {
+  cast(kind: 'cast' | 'dig' | 'attack', speed = 2, facing?: number, durationSeconds?: number, ability?: AbilityId) {
     if (facing !== undefined) {
       this.c.root.rotation.y = facing;
       this.c.root.updateMatrixWorld(true);
     }
+    // A necromancer rite picks its body gesture from the weapon in hand (content/castClips.ts); anything
+    // without a matching clip falls through to today's cast / attack / dig.
+    const choice = ability && durationSeconds ? castClipFor(this.weaponGesture(), ability) : null;
+    const clip = choice && this.c.clipDuration(choice.clip);
+    if (choice && clip) {
+      const plan = planGesture(choice, durationSeconds!, clip);
+      this.c.playOnce(choice.clip, plan.speed, undefined, plan.startAt);
+      return;
+    }
     this.c.playOnce(kind, speed, durationSeconds);
+  }
+
+  /** The weapon kind steering the gesture: the equipped main hand, or 'none' (the default skull staff). */
+  weaponGesture(): GestureKey {
+    const id = this.worn.get('main_hand')?.key;
+    return id ? weaponKind(id) : 'none';
   }
 
   dispose() {

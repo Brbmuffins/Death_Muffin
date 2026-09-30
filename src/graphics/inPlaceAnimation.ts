@@ -1,9 +1,17 @@
 import * as THREE from 'three';
 
+/**
+ * Necromancer combat clips (tools/build-characters.mjs COMBAT_TRIMS). Their Hip position is stored relative to the
+ * source clip's standing first frame, so the crouch / leap survives (feet stay planted) while the ground-plane
+ * drift is dropped.
+ */
+export const COMBAT_CLIPS: ReadonlySet<string> = new Set(['slam', 'sweep', 'flick', 'channel', 'summon']);
+
 /** Gameplay owns hero position and heading; generated clips own limb poses. */
-export function inPlaceHeroClip(clip: THREE.AnimationClip): THREE.AnimationClip {
+export function inPlaceHeroClip(clip: THREE.AnimationClip, anchor?: { x: number; y: number; z?: number }): THREE.AnimationClip {
   // Keep the authored collapse for corpses.
   if (clip.name.startsWith('death')) return clip;
+  if (COMBAT_CLIPS.has(clip.name) && anchor?.z !== undefined) return combatClip(clip, anchor as { x: number; y: number; z: number });
   const tracks = clip.tracks.filter((track) => {
     const { nodeName, propertyName } = THREE.PropertyBinding.parseTrackName(track.name);
     // Root rotations also contain authored turns, which fight mouse aiming.
@@ -20,6 +28,27 @@ export function inPlaceHeroClip(clip: THREE.AnimationClip): THREE.AnimationClip 
     return THREE.AnimationUtils.subclip(anchored, clip.name, 0, Math.ceil(seconds * 30), 30);
   }
   return anchored;
+}
+
+/** Combat clip: no Root motion or turns, Hip pinned to the bind ground position, vertical travel kept. */
+function combatClip(clip: THREE.AnimationClip, anchor: { x: number; y: number; z: number }): THREE.AnimationClip {
+  const tracks: THREE.KeyframeTrack[] = [];
+  for (const track of clip.tracks) {
+    const { nodeName, propertyName } = THREE.PropertyBinding.parseTrackName(track.name);
+    if (nodeName === 'Root' && ['position', 'quaternion', 'scale'].includes(propertyName)) continue;
+    if (nodeName === 'Hip' && propertyName === 'position') {
+      const v = Array.from(track.values);
+      for (let i = 0; i < v.length; i += 3) {
+        v[i] = anchor.x;
+        v[i + 1] = anchor.y;
+        v[i + 2] = anchor.z + v[i + 2];
+      }
+      tracks.push(new THREE.VectorKeyframeTrack(track.name, Array.from(track.times), v));
+      continue;
+    }
+    tracks.push(track);
+  }
+  return new THREE.AnimationClip(clip.name, clip.duration, tracks, clip.blendMode);
 }
 
 /**
@@ -54,7 +83,7 @@ export function stripRootTravel(clip: THREE.AnimationClip, anchor?: { x: number;
 }
 
 /** The idle clip's first Hip position, used as the shared ground-plane anchor. */
-export function hipAnchor(clip: THREE.AnimationClip | undefined): { x: number; y: number } | undefined {
+export function hipAnchor(clip: THREE.AnimationClip | undefined): { x: number; y: number; z: number } | undefined {
   const t = clip?.tracks.find((tr) => tr.name === 'Hip.position');
-  return t ? { x: t.values[0], y: t.values[1] } : undefined;
+  return t ? { x: t.values[0], y: t.values[1], z: t.values[2] } : undefined;
 }
