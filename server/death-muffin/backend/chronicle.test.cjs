@@ -96,3 +96,8 @@ test('someone else\'s character is refused', async () => {
   const r = await call('POST /api/chronicle/add', { body: { characterId: 7, deltas: { kills: 1 } } });
   assert.equal(r.status, 403);
 });
+
+test('no bound LIMIT parameter (mysql2 execute + MySQL 8 rejects it with ER_WRONG_ARGUMENTS)', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, 'chronicle.cjs'), 'utf8');
+  assert.equal(/LIMIT\s*\?/.test(src), false);
+});

@@ -944,3 +944,10 @@ Two more areas, both reusing existing props and mobs (only floor textures are ne
 - **Rotweaver:** Miasma radius ×1.3 → ×1.4, +10% max health. 1201/2649/3640 → 1605/2796/4746, deaths 0.3/1.1/1.9 → 0.1/0.3/0.6.
 - Ossuary is untouched (1527/3179/4504): the three are now within ~10% of each other. Regent and Plague Saint re-run: dodgers still win 3/3, non-dodgers still mostly lose (one geared Gravecaller Regent stand-still win, 1/3).
 - Bot noise is ±30 kills/min at 4 seeds; use 8 before believing a delta.
+
+## Validation and QA pass (2026-09-30, after the armor / necromancer deploys)
+
+- **Live bug found and fixed:** `GET /api/chronicle/:id` returned 500 for every character since the Chronicle deploy (`LIMIT ?` bound as a double → MySQL 8 `ER_WRONG_ARGUMENTS`; the mock-pool unit test could not see it). Interpolated the constant, added a source-level regression test, deployed to prod (auth restarted; rollback `deploy/backup-pre-chronicle-fix-20260930-191827`). `live-release-smoke.cjs` now exits 0.
+- **New `tools/qa/live-armor-api.cjs`:** throwaway account on the public domain; grants both Gravecaller collections, equips a full set into reserved slots 100-104, checks the stats endpoint (set 1 = +24 INT / +12 VIT, ascended = +40 INT / +17 VIT, matching the client catalogue), swaps collections, and confirms a bag-only `/inventory/save` keeps the gear. Cleans up after itself.
+- **Also green:** typecheck, 403 vitest, 75 server tests, offline smokes armor / chain / regent / levels / pyre / flyers-rites / cloister / afk (afk timed out once while the box was loaded, passed alone).
+- **Observation, not changed:** `/inventory/add-item` lets any authenticated player add any known item id (qty ≤ 9999) to their own character; loot is client-authoritative by design.

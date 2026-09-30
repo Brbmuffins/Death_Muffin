@@ -23,6 +23,7 @@ const SUM_KEYS = new Set([
 const MAX_KEYS = new Set(['peak.level', 'peak.wave']);
 
 const MAX_DELTA = 50_000_000;
+/** Interpolated, not bound: mysql2's execute() sends a bound numeric LIMIT as a double and MySQL 8 rejects it (ER_WRONG_ARGUMENTS). */
 const MAX_RUNS_RETURNED = 50;
 
 function sanitize(input, allowed) {
@@ -70,8 +71,8 @@ module.exports = function mountChronicle(app, pool, { requireAuth, ownsCharacter
       if (!id) return;
       const [rows] = await pool.execute('SELECT * FROM character_chronicle WHERE character_id = ?', [id]);
       const [runs] = await pool.execute(
-        'SELECT run_no, started_at, ended_at, ascension_after, stats FROM character_runs WHERE character_id = ? ORDER BY run_no DESC LIMIT ?',
-        [id, MAX_RUNS_RETURNED],
+        `SELECT run_no, started_at, ended_at, ascension_after, stats FROM character_runs WHERE character_id = ? ORDER BY run_no DESC LIMIT ${MAX_RUNS_RETURNED}`,
+        [id],
       );
       const row = rows[0];
       res.json({
