@@ -377,3 +377,56 @@ export function plantGarden(characterId: number, plot: string, seedId: string, c
 export function harvestGarden(characterId: number, plot: string) {
   return unwrap<GardenResult>(request('/api/garden/harvest', { method: 'POST', body: JSON.stringify({ characterId, plot }) }, true));
 }
+
+// --- Grave Laborers: thrall labour that works on the server clock (server/death-muffin/backend/labor.cjs) ---
+
+export interface LaborSlot {
+  slot: number;
+  unlocked: boolean;
+  nodeType: string | null;
+  nodeName: string | null;
+  skill: string | null;
+  item: string | null;
+  startedAt: number;
+  elapsedMs: number;
+  capped: boolean;
+  pendingActions: number;
+  estItems: number;
+  estXp: number;
+}
+
+export interface LaborView {
+  now: number;
+  capMs: number;
+  totalLevel: number;
+  levelsPerSlot: number;
+  slots: LaborSlot[];
+}
+
+export interface LaborCollected {
+  slot: number;
+  node: string;
+  skill: string;
+  hours: number;
+  actions: number;
+  items: { itemId: string; qty: number }[];
+  gold: number;
+  xp: number;
+  leveledUp: boolean;
+}
+
+export interface LaborResult extends LaborView {
+  collected?: LaborCollected;
+}
+
+export function getLabor(characterId: number) {
+  return unwrap<LaborView>(request(`/api/labor/${characterId}`, {}, true));
+}
+
+export function assignLabor(characterId: number, slot: number, nodeType: string | null) {
+  return unwrap<LaborResult>(request('/api/labor/assign', { method: 'POST', body: JSON.stringify({ characterId, slot, nodeType }) }, true));
+}
+
+export function collectLabor(characterId: number, slot: number) {
+  return unwrap<LaborResult>(request('/api/labor/collect', { method: 'POST', body: JSON.stringify({ characterId, slot }) }, true));
+}

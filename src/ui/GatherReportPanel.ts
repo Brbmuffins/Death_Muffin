@@ -10,6 +10,7 @@ const WHY: Record<string, string> = {
   left: 'You left the Sexton’s Acre.',
   blocked: 'The node was spent.',
   unreachable: 'The node could not be reached.',
+  labor: 'Your laborers came home with this.',
 };
 
 const iconOf = (itemId: string) => itemMeta(itemId).icon ?? `art/items/${itemId}.png`;

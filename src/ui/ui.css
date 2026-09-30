@@ -1091,3 +1091,19 @@ button { font-family: inherit; }
 .cw-plot select { flex: 1; min-width: 110px; background: var(--cw-inset); color: var(--cw-bone-100); padding: 4px; border: 1px solid var(--cw-border); }
 .cw-plot .cw-check { font-size: 12px; color: var(--cw-text-muted); display: flex; align-items: center; gap: 4px; }
 @media (max-width: 560px) { .cw-plots { grid-template-columns: 1fr; } }
+
+/* Grave Laborers. */
+.cw-labs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 8px; }
+.cw-lab { padding: 8px 10px; background: var(--cw-inset); border: 1px solid var(--cw-border); min-height: 78px; }
+.cw-lab.locked { opacity: .55; }
+.cw-lab.ready { border-color: var(--cw-ok); box-shadow: inset 0 0 14px -6px var(--cw-ok); }
+.cw-lab .hd { display: flex; justify-content: space-between; font-size: 13px; color: var(--cw-bone-100); margin-bottom: 4px; }
+.cw-lab .hd .meta { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--cw-text-faint); }
+.cw-lab .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cw-lab .grow { flex: 1; min-width: 120px; }
+.cw-lab .bar { height: 5px; background: rgba(255,255,255,.06); }
+.cw-lab .bar i { display: block; height: 100%; background: var(--cw-ok); }
+.cw-lab .rw { font-size: 12px; color: var(--cw-text-muted); margin-top: 3px; }
+.cw-lab .rw b { color: var(--cw-bone-100); }
+.cw-lab select { flex: 1; min-width: 130px; background: var(--cw-inset); color: var(--cw-bone-100); padding: 4px; border: 1px solid var(--cw-border); }
+@media (max-width: 560px) { .cw-labs { grid-template-columns: 1fr; } }

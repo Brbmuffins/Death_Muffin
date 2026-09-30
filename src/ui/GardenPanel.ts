@@ -41,7 +41,7 @@ export class GardenPanel {
     this.el.setAttribute('aria-label', 'Grave Gardening');
     this.root.appendChild(this.el);
     this.off = this.inventory.onChange(() => this.render());
-    this.tick = window.setInterval(() => this.render(), 1000);
+    this.tick = window.setInterval(() => this.tickRender(), 1000);
     this.render();
     await this.refresh();
   }
@@ -80,6 +80,15 @@ export class GardenPanel {
       else out.push({ id: d.id, name: itemMeta(d.id).name, qty: s.quantity, level: d.level, ok: level >= d.level });
     }
     return out.sort((a, b) => a.level - b.level);
+  }
+
+  /**
+   * The countdown tick. Redrawing replaces the buttons, so a click that starts on one while a redraw lands is lost: skip the redraw
+   * while the pointer is over a control or a dropdown is open, and catch up on the next tick.
+   */
+  private tickRender() {
+    if (!this.el || this.el.querySelector('button:hover, select:hover, select:focus, input:hover, input:focus')) return;
+    this.render();
   }
 
   private render() {

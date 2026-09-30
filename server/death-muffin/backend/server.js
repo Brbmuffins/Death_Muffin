@@ -1816,6 +1816,13 @@ require('./chronicle.cjs')(app, pool, {
   },
   invalidateLeaderboard,
 });
+require('./labor.cjs')(app, pool, {
+  requireAuth: requireJWT,
+  ownsCharacter: async (req, characterId) => {
+    const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
+    return rows.length === 1;
+  },
+});
 require('./garden.cjs')(app, pool, {
   requireAuth: requireJWT,
   ownsCharacter: async (req, characterId) => {

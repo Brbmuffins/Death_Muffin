@@ -37,7 +37,7 @@ export class ContractsPanel {
     this.el.setAttribute('aria-label', 'Sexton’s Contracts');
     this.root.appendChild(this.el);
     this.off = this.inventory.onChange(() => this.render());
-    this.tick = window.setInterval(() => this.render(), 30_000);
+    this.tick = window.setInterval(() => this.tickRender(), 30_000);
     this.render();
     try {
       this.board = await getContracts(this.characterId);
@@ -62,6 +62,15 @@ export class ContractsPanel {
     const h = Math.floor(ms / 3_600_000);
     const m = Math.floor((ms % 3_600_000) / 60_000);
     return `${h}h ${m}m`;
+  }
+
+  /**
+   * The countdown tick. Redrawing replaces the buttons, so a click that starts on one while a redraw lands is lost: skip the redraw
+   * while the pointer is over a control or a dropdown is open, and catch up on the next tick.
+   */
+  private tickRender() {
+    if (!this.el || this.el.querySelector('button:hover, select:hover, select:focus, input:hover, input:focus')) return;
+    this.render();
   }
 
   private render() {

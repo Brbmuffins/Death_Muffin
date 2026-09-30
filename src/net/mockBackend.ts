@@ -16,6 +16,7 @@ import * as necro from '../gameplay/necroRules';
 import type { NecroState } from '../gameplay/necroRules';
 import * as contractRules from '../gameplay/contractRules';
 import * as gardenRules from '../gameplay/gardeningRules';
+import * as laborRules from '../gameplay/laborRules';
 import { itemMeta } from '../content/items';
 import * as gather from '../gameplay/gatheringRules';
 import { PROCESSING_RECIPES } from '../content/processing';
@@ -105,6 +106,8 @@ interface StoredSlot {
 interface MockAccount {
   /** Server-side necromancer progression (mirrors character_necro_progress). */
   necro?: NecroState;
+  /** Grave Laborers' posts (mirrors character_labor). */
+  labor?: Record<number, { nodeType: string | null; startedAt: number }>;
   /** Grave Gardening plots (mirrors garden_plots). */
   garden?: Record<string, gardenRules.PlotRow>;
   /** Sexton's Contracts: which of today's orders are filled (mirrors character_contracts). */
@@ -420,6 +423,67 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       if (body[k] !== undefined) c[k] = Number(body[k]);
     }
     return ok({ saved: true });
+  }
+
+  // --- Grave Laborers: the same shared rules the server runs; work accrues on the clock. ---
+  const laborLevels = () => Object.fromEntries(acc.professions.map((pr) => [pr.profession_id, pr.skill_level]));
+  const laborPosts = () => (acc.labor ??= {});
+  const laborView = (now: number) => {
+    const levels = laborLevels();
+    const total = laborRules.totalGatherLevel(levels);
+    const unlocked = laborRules.laborSlots(total);
+    return {
+      now, capMs: laborRules.LABOR.capMs, totalLevel: total, levelsPerSlot: laborRules.LABOR.levelsPerSlot,
+      slots: Array.from({ length: laborRules.LABOR.maxSlots }, (_, slot) => {
+        const row = laborPosts()[slot];
+        const def = row?.nodeType ? gather.NODES[row.nodeType] : null;
+        const elapsed = def ? Math.max(0, Math.min(now - row!.startedAt, laborRules.LABOR.capMs)) : 0;
+        const est = def ? laborRules.estimate(def, levels[def.skill] ?? 1, elapsed) : null;
+        return { slot, unlocked: slot < unlocked, nodeType: def?.id ?? null, nodeName: def?.name ?? null, skill: def?.skill ?? null, item: def?.item ?? null, startedAt: def ? row!.startedAt : 0, elapsedMs: elapsed, capped: !!def && now - row!.startedAt >= laborRules.LABOR.capMs, pendingActions: est?.actions ?? 0, estItems: est?.items ?? 0, estXp: est?.xp ?? 0 };
+      }),
+    };
+  };
+  if ((m = p.match(/^\/api\/labor\/(\d+)$/)) && method === 'GET') {
+    ownCharacter(acc, m[1]);
+    return ok(laborView(Date.now()));
+  }
+  if (p === '/api/labor/assign' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const now = Date.now();
+    const slot = Number(body.slot);
+    const levels = laborLevels();
+    if (!(slot >= 0 && slot < laborRules.laborSlots(laborRules.totalGatherLevel(levels)))) return fail('You do not command that many laborers yet.');
+    const row = laborPosts()[slot];
+    const cur = row?.nodeType ? gather.NODES[row.nodeType] : null;
+    if (cur && laborRules.laborActions(cur, now - row!.startedAt) >= 1) return fail('Collect what they have gathered first.');
+    if (body.nodeType) {
+      const blocked = laborRules.assignBlocker(body.nodeType, levels);
+      if (blocked) return fail(blocked);
+    }
+    laborPosts()[slot] = { nodeType: body.nodeType || null, startedAt: body.nodeType ? now : 0 };
+    return ok(laborView(now));
+  }
+  if (p === '/api/labor/collect' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const now = Date.now();
+    const slot = Number(body.slot);
+    const row = laborPosts()[slot];
+    const def = row?.nodeType ? gather.NODES[row.nodeType] : null;
+    if (!def) return fail('That laborer has no post.');
+    const elapsed = Math.min(now - row!.startedAt, laborRules.LABOR.capMs);
+    const actions = laborRules.laborActions(def, elapsed);
+    if (actions < 1) return fail('They have barely started.');
+    let pr = acc.professions.find((x) => x.profession_id === def.skill);
+    if (!pr) { pr = { profession_id: def.skill, skill_level: 1, skill_xp: 0 }; acc.professions.push(pr); }
+    const roll = laborRules.rollLabor(def, { level: pr.skill_level, xp: pr.skill_xp }, elapsed, laborRules.claimRng(laborRules.hashSeed(acc.character!.id, slot, row!.startedAt, actions)));
+    const placed = gather.placeItems(acc.slots.map((s) => ({ slot: s.slot_index, itemId: s.equipped ? '' : s.item_id, qty: s.quantity })), roll.items, () => 250);
+    if (placed.rejected.length) return fail(`Make room in your bag: ${placed.rejected.reduce((n, g) => n + g.qty, 0)} of their finds would not fit.`);
+    for (const u of placed.updates) acc.slots.find((s) => s.slot_index === u.slot)!.quantity = u.qty;
+    for (const r of placed.inserts) acc.slots.push({ slot_index: r.slot, item_id: r.itemId, quantity: r.qty, equipped: 0 });
+    pr.skill_level = roll.progress.level;
+    pr.skill_xp = roll.progress.xp;
+    row!.startedAt = now;
+    return ok({ ...laborView(now), collected: { slot, node: def.id, skill: def.skill, hours: elapsed / 3_600_000, actions, items: placed.stored, gold: roll.gold, xp: roll.xp, leveledUp: roll.leveled > 0 } });
   }
 
   // --- Grave Gardening: the same shared rules the server runs; growth is timestamp-based. ---

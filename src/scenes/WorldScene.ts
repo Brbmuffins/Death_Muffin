@@ -26,7 +26,7 @@ import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
 import { BOONS, ascensionLevels, ascensionRewardMult, roman } from '../content/ascension';
 import { AscensionPanel } from '../ui/AscensionPanel';
 import { ClassPanel } from '../ui/ClassPanel';
-import { changeDiscipline, getGarden, type ContractDelivery, type GardenResult } from '../net/api';
+import { changeDiscipline, getGarden, getLabor, type ContractDelivery, type GardenResult, type LaborResult } from '../net/api';
 import { onSettingsChange, settings, updateSettings } from '../app/settings';
 import { selectAutoCombatAction, selectAutoCombatMovement, type AutoMoveMemory } from '../gameplay/autoCombat';
 import { STATUS_FX } from '../content/statuses';
@@ -60,10 +60,11 @@ import { WorldView } from '../graphics/WorldView';
 import { updateOcclusion } from '../graphics/occlusion';
 import { equippedBySlot, gearFromIds } from '../content/gear';
 import { Chronicle } from '../gameplay/chronicle';
-import { GatherSession, loadBests, saveBests } from '../gameplay/gatherReport';
+import { GatherSession, crossedMilestones, loadBests, saveBests } from '../gameplay/gatherReport';
 import { GatherReportPanel } from '../ui/GatherReportPanel';
 import { ContractsPanel } from '../ui/ContractsPanel';
 import { GardenPanel } from '../ui/GardenPanel';
+import { LaborPanel } from '../ui/LaborPanel';
 import { beginAfkGather, gather, getInventory, getProfessions, getToken, OFFLINE, type GatherReply } from '../net/api';
 import type { RemotePlayer, WorldSnapshot } from '../net/contracts';
 import { RealtimeClient } from '../net/realtime';
@@ -187,6 +188,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private gatherReportPanel!: GatherReportPanel;
   private contractsPanel!: ContractsPanel;
   private gardenPanel!: GardenPanel;
+  private laborPanel!: LaborPanel;
+  private laborCapNoted = new Set<number>();
   private gardenReady = -1;
   private saintBlessTold = false;
   private saintRainTold = false;
@@ -532,6 +535,8 @@ export class WorldScene implements GameScene, RuntimeView {
     // The garden grows on the server's clock: say what is waiting on arrival, and as plots come ready.
     void this.dataReady.then(() => window.setTimeout(() => void this.checkGarden(true), 4000));
     this.scope.interval(() => void this.checkGarden(false), 60_000);
+    void this.dataReady.then(() => window.setTimeout(() => void this.checkLabor(true), 6000));
+    this.scope.interval(() => void this.checkLabor(false), 5 * 60_000);
     this.onboarding.show('welcome', 900);
     this.onboarding.show('move', 1600);
     // First time in the world as a Knight: Rage works nothing like essence.
@@ -657,7 +662,8 @@ export class WorldScene implements GameScene, RuntimeView {
       start: type => this.startAfkGathering(type),
       pause: () => this.gathering.stop('moved'),
       status: () => ({ active: this.gathering.afk, text: this.gathering.status, allowed: this.player.area === 'acre' }),
-    }, () => this.inventory.all.map((s) => s.item_id), () => this.togglePanel('contracts'), () => this.togglePanel('garden'));
+    }, () => this.inventory.all.map((s) => s.item_id), () => this.togglePanel('contracts'), () => this.togglePanel('garden'), () => this.togglePanel('labor'));
+    this.laborPanel = new LaborPanel(this.root, this.character.id, this.inventory, (skill) => this.skills.level(skill), (r) => this.onLaborCollected(r));
     this.gardenPanel = new GardenPanel(this.root, this.character.id, this.inventory, (kind, r) => this.onGardenResult(kind, r));
     this.contractsPanel = new ContractsPanel(this.root, this.character.id, this.inventory, (d) => this.onContractDelivered(d));
     this.settingsPanel = new SettingsPanel(
@@ -740,6 +746,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.gatherReportPanel?.close();
     this.contractsPanel?.close();
     this.gardenPanel?.close();
+    this.laborPanel?.close();
   }
 
   private async changeClass(index: number) {
@@ -757,6 +764,53 @@ export class WorldScene implements GameScene, RuntimeView {
     } catch (err) {
       this.ready = true;
       throw err;
+    }
+  }
+
+  /** A laborer came home: credit gold and the skill, count the finds, and show what they brought in the Ledger. */
+  private onLaborCollected(r: LaborResult) {
+    const c = r.collected;
+    if (!c) return;
+    const skill = c.skill as SkillId;
+    const before = this.skills.level(skill);
+    const total = c.items.reduce((n, g) => n + g.qty, 0);
+    const lifeBefore = this.chronicle.view().life[`gathered.${skill}`] ?? 0;
+    if (c.gold > 0) this.progression.addGold(c.gold);
+    this.chronicle.add(`gathered.${skill}`, total);
+    audio.play('coin');
+    void getProfessions(this.character.id).then((rows) => {
+      this.skills.adopt(rows);
+      const items = c.items.map((g) => {
+        const m = itemMeta(g.itemId);
+        return { itemId: g.itemId, name: m.name, rarity: m.rarity, qty: g.qty, value: m.sell * g.qty };
+      }).sort((a, b) => b.value - a.value);
+      const rank = { common: 0, uncommon: 1, rare: 2, epic: 3 } as const;
+      const best = [...items].sort((a, b) => rank[b.rarity] - rank[a.rarity] || b.value - a.value)[0];
+      const after = this.skills.level(skill);
+      const milestones = crossedMilestones(lifeBefore, lifeBefore + total).map((m) => `${m.toLocaleString()} ${SKILLS[skill].name} finds`);
+      if (after > before) milestones.push(`${SKILLS[skill].name} level ${after}`);
+      this.closePanels();
+      this.gatherReportPanel.show({
+        seconds: Math.round(c.hours * 3600), reason: 'labor', items, totalItems: total, goldValue: items.reduce((n, i) => n + i.value, 0), gold: c.gold,
+        skills: [{ skill, name: SKILLS[skill].name, xp: c.xp, fromLevel: before, toLevel: after, items: total }],
+        best: best && rank[best.rarity] > 0 ? best : null, milestones, records: [],
+      });
+    }).catch(() => this.hud.toast(`Your laborers brought ${total.toLocaleString()} finds`, 'good'));
+  }
+
+  /** Tell the player when their laborers have work waiting: on arrival, and once when a laborer is full. */
+  private async checkLabor(arrival: boolean) {
+    try {
+      const v = await getLabor(this.character.id);
+      const waiting = v.slots.filter((s) => s.nodeType && s.elapsedMs >= 30 * 60_000);
+      const items = waiting.reduce((n, s) => n + s.estItems, 0);
+      const full = v.slots.filter((s) => s.capped && !this.laborCapNoted.has(s.slot));
+      for (const s of full) this.laborCapNoted.add(s.slot);
+      for (const s of v.slots) if (!s.capped) this.laborCapNoted.delete(s.slot);
+      if (arrival && waiting.length) this.hud.toast(`Your laborers have gathered about ${items.toLocaleString()} finds (H)`, 'good');
+      else if (full.length) this.hud.toast(`A laborer has filled up: collect what they gathered (H)`, 'good');
+    } catch {
+      /* a nicety: try again next time */
     }
   }
 
@@ -801,9 +855,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hud.toast(d.paidBonus ? `Order filled, and the day’s bonus is yours: +${d.paidBonus.gold.toLocaleString()}g` : 'Order filled', 'good');
   }
 
-  private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts' | 'garden') {
+  private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts' | 'garden' | 'labor') {
     audio.play('click');
-    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel }[p];
+    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel }[p];
     const wasOpen = panel.isOpen;
     this.closePanels();
     if (wasOpen) return;
@@ -815,6 +869,7 @@ export class WorldScene implements GameScene, RuntimeView {
     else if (p === 'codex') this.codexPanel.open();
     else if (p === 'contracts') void this.contractsPanel.open();
     else if (p === 'garden') void this.gardenPanel.open();
+    else if (p === 'labor') void this.laborPanel.open();
     else if (p === 'ascension') this.ascensionPanel.open();
     else if (p === 'grimoire') {
       this.grimoirePanel.open();
@@ -865,6 +920,7 @@ export class WorldScene implements GameScene, RuntimeView {
       else if (k === 'p') this.togglePanel('professions');
       else if (k === 'o') this.togglePanel('contracts');
       else if (k === 'u') this.togglePanel('garden');
+      else if (k === 'h') this.togglePanel('labor');
       else if (k === 'm') this.togglePanel('map');
       else if (k === 'k') this.togglePanel('codex');
       else if (k === 'l') this.togglePanel('grimoire');
@@ -963,7 +1019,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private panelOpen() {
-    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.gardenPanel?.isOpen;
+    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen;
   }
 
   private interactablesNear(): Interactable[] {
