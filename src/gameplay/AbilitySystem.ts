@@ -165,8 +165,8 @@ export class AbilitySystem {
     const p = this.ctx.player;
     // Oath Unbroken raises every blow for its window; 1 for every other family.
     const oath = this.ctx.now() < p.unbreakableUntil ? OATH_UNBROKEN.damageMult : 1;
-    // A Forge-Tempered Flask adds 15% while it lasts.
-    const flask = this.ctx.now() < p.buffUntil.damage ? 1.15 : 1;
+    // The active elixir's damage effect (Forge-tempered +15%, Moonlit +25%, ...).
+    const flask = 1 + p.brewValue('damage', this.ctx.now());
     return p.stats.spellPower * oath * flask;
   }
 
@@ -307,7 +307,8 @@ export class AbilitySystem {
         p.spendSouls();
         this.soulRelease();
       } else p.essence -= def.essenceCost;
-      p.cooldowns.set(id, now + def.cooldownMs);
+      // Haste (elixir): cooldowns recover faster, applied once when the cooldown starts.
+      p.cooldowns.set(id, now + def.cooldownMs / (1 + p.brewValue('haste', now)));
     }
     return result;
   }

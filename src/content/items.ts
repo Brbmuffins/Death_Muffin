@@ -1,7 +1,8 @@
 import type { ItemType, Rarity } from '../net/types';
 import { PROCESSING_ITEMS } from './processing';
 import { GARDEN_ITEMS } from './gardening';
-import { ALCHEMY_BUFFS, ALCHEMY_HEALING, ALCHEMY_ITEMS } from './alchemy';
+import { ALCHEMY_HEALING, ALCHEMY_ITEMS } from './alchemy';
+import { BREWS, type BrewKind } from './brews';
 import { CHARM_ITEMS } from './cosmetics';
 import { ARMOR_PIECES } from './armorSets';
 
@@ -146,14 +147,11 @@ export function itemMeta(id: string): ItemMeta {
 
 /**
  * Buff flasks (2026-09-29): these were craftable but did nothing when used. Values match the server's
- * stat_bonus rows (speed 0.2 / 30 s, damage_amp 0.15 / 45 s, resist_void 0.25 / 90 s; void resist wards all damage).
+ * stat_bonus rows (now derived from BREWS in brews.ts; speed 0.2 / 30 s, damage_amp 0.15 / 45 s, resist_void 0.25 / 90 s; void resist wards all damage).
  */
-export const BUFF_FLASKS: Record<string, { kind: 'speed' | 'damage' | 'ward'; value: number; seconds: number; label: string }> = {
-  flask_speed: { kind: 'speed', value: 0.2, seconds: 30, label: 'Swift' },
-  flask_damage: { kind: 'damage', value: 0.15, seconds: 45, label: 'Forge-tempered' },
-  flask_void_resist: { kind: 'ward', value: 0.25, seconds: 90, label: 'Warded' },
-  ...ALCHEMY_BUFFS,
-};
+export const BUFF_FLASKS: Record<string, { kind: BrewKind; value: number; seconds: number; label: string }> = Object.fromEntries(
+  Object.entries(BREWS).map(([id, b]) => [id, { kind: b.effects[0].kind, value: b.effects[0].value, seconds: b.seconds, label: b.label }]),
+);
 
 export const HEALING_FLASKS: Record<string, number> = {
   flask_hp_major: 0.7,

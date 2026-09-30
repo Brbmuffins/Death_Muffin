@@ -74,6 +74,7 @@ export class SettingsPanel extends SimplePanel {
           <kbd>RMB · 5</kbd><span>${this.kitHelp.corpseAction} (corpse nearest the cursor)</span>
           <kbd>R · 6</kbd><span>Signature rite (unlocks at level 10)</span>
           <kbd>Q</kbd><span>Drink a healing flask</span>
+          <kbd>Z · X</kbd><span>Drink the elixir · tonic on your belt (right-click a brew in the Reliquary to belt it)</span>
           <kbd>T</kbd><span>Return to the Chapterhouse</span>
           <kbd>Click a node</kbd><span>Gather: chop a tree, mine a seam, fish a pool, dig a grave (it keeps working until the node is spent)</span>
           <kbd>I C P M</kbd><span>Reliquary · Workbench · Skills · Waystones</span>
