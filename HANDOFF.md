@@ -112,12 +112,14 @@ No deployment. Source and redistribution note: `docs/CROSSWORLDS-AUDIO.md`.
 ### Open threads (2026-09-29): read this first
 - **Direction:** the owner wants a continuous reward loop ("addict me to grind"). The plan and backlog are in
   [docs/GRIND-LOOP.md](docs/GRIND-LOOP.md), and every new feature should feed it.
-- **2026-09-30 (VPS session, NOT deployed): Cinder Pyre + Cinder Regent, Catacomb Warren, Bone Coliseum.** See PHASE_REPORTS →
-  "Cinder Pyre", "Cinder Regent", "New levels". All staged locally in the working tree with the parallel agent's other
-  work; nothing committed or deployed. Generated rules were rebuilt (`npm run build:server-rules`), `deploy-realtime.sh`
-  re-embedded (BOSS_IDS gained `regent`), `chronicle.cjs` lists the new areas and boss. Before deploying: build from a clean
-  HEAD checkout of the commit that contains all of it, run `npm run build:death-muffin`, ship the realtime service (new boss id)
-  before the client, and do a live smoke of the door corridors (Graves west, Ossuary east, Cloister east).
+- **2026-09-30 (VPS session, DEPLOYED 03:29 UTC): Cinder Pyre + Cinder Regent, Catacomb Warren, Bone Coliseum, Kill Chain, Milestones, Omens.**
+  Commit `edb2237`, tag `stable-20260930-pyre-levels`, built from a pristine `git archive` (never the shared tree) with
+  `deploy/deploy-pyre-levels.sh <checkout>`; rollback copies are in `deploy/backup-pre-pyre-20260930-032920` (chronicle.cjs,
+  necro-rules.cjs, realtime server.js, index.html). Server files shipped first (new boss id `regent`, area ids), client last.
+  Verified through the public edge (health, index.html byte-equal, every new model/texture 200, bundle contains the new
+  content) and clean service logs. NOT yet verified: a real login walking the three new doors (Graves west, Ossuary east,
+  Cloister east) and the Regent fight live. The armor-set work stayed out of this commit (it is still uncommitted here,
+  with migrations 006/007 that need applying before it ships).
 - **Plague Cloister: shipped 2026-09-29** (see PHASE_REPORTS → "Plague Cloister"). Level-scaled end zone (min 20;
   `WorldSim.areaLevel` follows the highest-level living player inside), Plague Doctor / Flagellant, the Plague Saint.
   Players now send `level` on join; the realtime server clamps it and `classIndex` (now 0–9; it was 0–4, which showed
