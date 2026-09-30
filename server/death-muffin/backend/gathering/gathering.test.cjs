@@ -124,8 +124,8 @@ test('an item missing from the server items table fails the whole batch', async 
 });
 
 test('a migration inserts every grantable id that is not already live', () => {
-  // 002 adds the gathering items; 007 the garden seeds and saplings, 010 the pet charms that nodes now drop, 014 the zone herbs (Rot-cap, Ash-bloom) and their seeds.
-  const sql = ['002-gathering.sql', '007-gardening.sql', '010-cosmetics.sql', '014-alchemy-reagents.sql'].map((f) => readFileSync(join(__dirname, '../migrations', f), 'utf8')).join('\n');
+  // Gathering, gardening, cosmetics, reagent and Fen ids all need matching migration rows.
+  const sql = ['002-gathering.sql', '007-gardening.sql', '010-cosmetics.sql', '014-alchemy-reagents.sql', '015-fen.sql'].map((f) => readFileSync(join(__dirname, '../migrations', f), 'utf8')).join('\n');
   const live = new Set(['log_oak', 'fish_river', 'ore_copper', 'ore_tin', 'ore_iron', 'ore_bronze', 'ore_silver', 'ore_gold', 'ore_steel', 'ore_hell', 'ore_moon', ...GEAR]);
   for (const id of rules.grantableItems()) {
     if (live.has(id)) continue;

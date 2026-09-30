@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { ALCHEMY_BUFFS, ALCHEMY_HEALING, ALCHEMY_ITEMS, ALCHEMY_RECIPES } from '../../content/alchemy';
 import { REAGENT_RECIPES } from '../../content/reagents';
+import { FEN_RECIPES } from '../../content/fenItems';
 import { SEEDS } from '../../content/gardening';
 import { BUFF_FLASKS, HEALING_FLASKS, ITEMS } from '../../content/items';
 import { SKILLS, ALL_SKILLS } from '../gatheringRules';
@@ -32,7 +33,7 @@ describe('alchemy content', () => {
   });
 
   it('the herb potions actually consume herbs, and the top herbs are worth brewing', () => {
-    const used = new Set([...ALCHEMY_RECIPES, ...REAGENT_RECIPES].flatMap((r) => r[6].map(([item]) => item)));
+    const used = new Set([...ALCHEMY_RECIPES, ...REAGENT_RECIPES, ...FEN_RECIPES].flatMap((r) => r[6].map(([item]) => item)));
     for (const herb of herbs) expect(used.has(herb), `${herb} is never used`).toBe(true);
   });
 

@@ -94,6 +94,8 @@ export const ARMOR_BY_ID: Record<string, ArmorPiece> = Object.fromEntries(ARMOR_
 
 /** Equal weight per class and piece within an area's armor pool. */
 export function armorLoot(area: AreaId) {
+  // The Mourning Fen (level 45+) is past every armor area: it drops the whole ascended collection, head and grips included.
+  if (area === 'fen') return ARMOR_PIECES.filter((piece) => piece.collection === 2).map((piece) => ({ item: piece.id, weight: 1 }));
   return ARMOR_PIECES.filter((piece) => piece.area === area || (piece.collection === 1 && (area === 'cloister' || area === 'pyre') && piece.area !== 'graves') || (piece.collection === 2 && area === 'pyre' && piece.area === 'cloister'))
     .map((piece) => ({ item: piece.id, weight: 1 }));
 }

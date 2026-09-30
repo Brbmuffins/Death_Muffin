@@ -244,7 +244,7 @@ describe('reagents: drops', () => {
         expect(ichors, `${boss} seed ${seed}`).toEqual([{ item_id: BOSS_ICHOR[boss], quantity: 1 }]);
       }
     }
-    expect(new Set(Object.values(BOSS_ICHOR)).size).toBe(6);
+    expect(new Set(Object.values(BOSS_ICHOR)).size).toBe(BOSS_IDS.length);
     // Without a boss id the spoils are as before.
     expect(rollBoss(0, mulberry32(1), 'medium').items.some((d) => ICHORS.includes(d.item_id))).toBe(false);
   });

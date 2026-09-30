@@ -1,0 +1,9 @@
+{
+  "id": "prop_mire_altar",
+  "input": "art-src/fen/concepts/props/mire_altar.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2500,
+    "texture_quality": "standard"
+  }
+}

@@ -1,4 +1,5 @@
 import { ABILITIES, DETONATE, LITANY_PER_CORPSE } from '../../content/abilities';
+import { bogMult } from '../../content/fen';
 import { AREAS, type AreaId } from '../../content/areas';
 import { disciplineFor } from '../../content/disciplines';
 import { deriveStats, xpToNext } from '../characterStats';
@@ -81,7 +82,7 @@ export function botCharacter(classIndex: number, level: number, gear: number): C
 export function runBalance(run: BalanceRun): BalanceResult {
   const rand = mulberry32(run.seed ?? 42);
   const nav = new Nav();
-  nav.setUnlocked(['ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'warren', 'coliseum']);
+  nav.setUnlocked(['ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'warren', 'coliseum', 'fen']);
   const sim = new WorldSim(nav, rand);
   sim.waveTier = run.waveTier;
   sim.difficulty = run.difficulty ?? 'medium';
@@ -123,6 +124,8 @@ export function runBalance(run: BalanceRun): BalanceResult {
   const born = new Map<number, number>();
   const ttks: number[] = [];
 
+  // The Mourning Fen's bog slows the bot exactly as it slows a hero (hummocks are dry).
+  const bog = () => (run.area === 'fen' ? bogMult(p.x, p.z) : 1);
   const dt = 0.05;
   const steps = Math.round((run.minutes * 60) / dt);
   const ready = (id: string, t: number) => (cds.get(id) ?? 0) <= t;
@@ -221,7 +224,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
         if (nearest) {
           const range = disc.family === 'witch' ? 8 : disc.family === 'veil' ? 11 : disc.family === 'monk' ? 1.8 : 3;
           if (nd > range - 0.4) {
-            const step = stats.moveSpeed * dt;
+            const step = stats.moveSpeed * dt * bog();
             [p.x, p.z] = nav.resolve(p.x + (nearest.x - p.x) / nd * step, p.z + (nearest.z - p.z) / nd * step, 0.45);
           }
           if (disc.family === 'warden') {
@@ -314,10 +317,10 @@ export function runBalance(run: BalanceRun): BalanceResult {
       // Needle the nearest; close distance if out of range, back off if swarmed.
       if (nearest) {
         if (nd > SP_NEEDLE.range - 0.5) {
-          const step = stats.moveSpeed * dt;
+          const step = stats.moveSpeed * dt * bog();
           [p.x, p.z] = nav.resolve(p.x + ((nearest.x - p.x) / nd) * step, p.z + ((nearest.z - p.z) / nd) * step, 0.45);
         } else if (near(1.6).length >= 3 && p.hp < stats.maxHp * 0.5) {
-          const step = stats.moveSpeed * dt;
+          const step = stats.moveSpeed * dt * bog();
           [p.x, p.z] = nav.resolve(p.x - ((nearest.x - p.x) / nd) * step, p.z - ((nearest.z - p.z) / nd) * step, 0.45);
         }
         if (nd <= SP_NEEDLE.range + 0.4 && ready('bone_needle', t)) {
@@ -332,7 +335,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
         const cz = (area.rect.z0 + area.rect.z1) / 2;
         const d = Math.hypot(cx - p.x, cz - p.z);
         if (d > 3) {
-          const step = stats.moveSpeed * dt;
+          const step = stats.moveSpeed * dt * bog();
           [p.x, p.z] = nav.resolve(p.x + ((cx - p.x) / d) * step, p.z + ((cz - p.z) / d) * step, 0.45);
         }
       }

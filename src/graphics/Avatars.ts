@@ -297,10 +297,14 @@ export class BossView {
   private rise = 0;
   private readonly saint: boolean;
   private readonly regent: boolean;
+  private readonly mire: boolean;
+  /** Mire Mother: 0 standing, 1 fully under the water. */
+  private sunk = 0;
 
   constructor(scene: THREE.Scene, private effects: Effects, slug: CreatureSlug = 'prelate', private color = 0xa26bff) {
     this.saint = slug === 'boss_plague_saint';
     this.regent = slug === 'boss_cinder_regent';
+    this.mire = slug === 'boss_mire_mother';
     this.c = new Creature(slug, { emissive: slug === 'prelate' ? 0x3b1d5e : 0x000000, emissiveIntensity: slug === 'prelate' ? 0.05 : 0, fallback: 'prelate' });
     this.c.root.visible = false;
     scene.add(this.c.root);
@@ -319,15 +323,23 @@ export class BossView {
     }
     if (!this.visible) return;
     this.rise = Math.min(1, this.rise + dt * 0.6);
-    this.c.root.position.set(b.x, -4.6 * (1 - this.rise) * (1 - this.rise), b.z);
+    if (this.mire) {
+      // She sinks into the marsh (hidden once under) and climbs back out with the same ease.
+      this.sunk += ((b.active && b.state === 'sunk' ? 1 : 0) - this.sunk) * Math.min(1, dt * 4);
+      this.c.root.visible = this.sunk < 0.97;
+      if (b.active && Math.random() < dt * (this.sunk > 0.3 ? 14 : 4)) {
+        this.effects.emit({ x: b.x + (Math.random() - 0.5) * 2.4, y: 0.2 + (1 - this.sunk) * Math.random() * 2, z: b.z + (Math.random() - 0.5) * 2.4, count: 1, color: Math.random() < 0.6 ? 0x5fc4b4 : 0x9fe8da, spread: 0.3, speed: 0.3, up: 0.8, life: 0.9, size: 0.16, drag: 0.5 });
+      }
+    }
+    this.c.root.position.set(b.x, -4.6 * (1 - this.rise) * (1 - this.rise) - this.sunk * 4.4, b.z);
     let d = b.facing - this.c.root.rotation.y;
     while (d > Math.PI) d -= Math.PI * 2;
     while (d < -Math.PI) d += Math.PI * 2;
     this.c.root.rotation.y += d * Math.min(1, dt * 3);
     this.c.flash = b.active ? b.flash : 0;
     // The Regent's pale cape and molten plate white out under a close 16-24 light: a warm, low glow instead.
-    const glow = this.regent ? 4 + b.phase * 2 : 16 + b.phase * 8;
-    this.light.intensity = b.active ? glow + Math.sin(performance.now() / 200) * (this.regent ? 1 : 4) : Math.max(0, this.light.intensity - dt * 30);
+    const glow = this.regent || this.mire ? 4 + b.phase * 2 : 16 + b.phase * 8;
+    this.light.intensity = b.active ? glow + Math.sin(performance.now() / 200) * (this.regent || this.mire ? 1 : 4) : Math.max(0, this.light.intensity - dt * 30);
     if (b.state !== this.lastState) {
       this.lastState = b.state;
       if (b.state === 'toll' || b.state === 'rain' || b.state === 'summon') this.c.playOnce('cast', 1.1);

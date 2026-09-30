@@ -35,7 +35,12 @@ export type EnemyId =
   | 'cinder_husk'
   | 'pyre_priest'
   | 'cinderhound'
-  | 'slag_brute';
+  | 'slag_brute'
+  // The Mourning Fen (2026-09-30).
+  | 'bog_hag'
+  | 'mire_leech'
+  | 'fen_wisp'
+  | 'drowned_sexton';
 export type CorpseKind = 'normal' | 'resonant' | 'swift' | 'toxic' | 'none';
 export type Behavior = 'melee' | 'flank' | 'caster' | 'hazard' | 'support';
 export type RigKind = 'humanoid' | 'quadruped' | 'bloat' | 'robed';
@@ -61,7 +66,7 @@ export interface EnemyDef {
   modelSlug?: string;
   blurb: string;
   /** Casters: the attack released after the windup (default: the Penitent's cone). */
-  attack?: 'cone' | 'scream' | 'dust' | 'curse' | 'flask' | 'ember';
+  attack?: 'cone' | 'scream' | 'dust' | 'curse' | 'flask' | 'ember' | 'hex' | 'pulse';
   /** Hazard slam radius (default 1.9). */
   slamRadius?: number;
   /** Climbs out as a pack of this many (one wave pick). */
@@ -92,6 +97,12 @@ export interface EnemyDef {
   emberDeath?: boolean;
   /** Slag Brute: its slam leaves a molten pool at the point of impact (see SLAG_POOL). */
   slamPool?: boolean;
+  /** Drowned Sexton: from range it throws a grave-hook along a line and drags whoever it catches toward itself (see SEXTON_HOOK). */
+  hook?: boolean;
+  /** Fen Wisp: when it backs away it drifts toward the open water at the heart of the Fen (see FEN_LURE). */
+  lure?: boolean;
+  /** Mire Leech: its bites are bog rot (the `toxic` source, so rot-resist brews cover them). */
+  rotBite?: boolean;
 }
 
 export const ENEMIES: Record<EnemyId, EnemyDef> = {
@@ -579,7 +590,92 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     slamPool: true,
     blurb: 'Slag and iron, still molten at the seams. Its slam cracks a wide ring and leaves it burning.',
   },
-
+  // --- The Mourning Fen. Bog teal is the marsh's own colour; the hag's hex is its own sickly magenta (SPELL_FX.enemy.hex).
+  bog_hag: {
+    id: 'bog_hag',
+    name: 'Bog Hag',
+    behavior: 'caster',
+    rig: 'robed',
+    hp: 100,
+    speed: 2.0,
+    radius: 0.5,
+    damage: 12,
+    attackRange: 9.5,
+    windupMs: 1300,
+    cooldownMs: 4400,
+    xp: 24,
+    gold: [6, 13],
+    corpse: 'normal',
+    scale: 1.05,
+    modelSlug: 'bog_hag',
+    attack: 'hex',
+    blurb: 'Hexes your thralls: inside the magenta ring they hit 30% softer for six seconds. Kill her first, or pull your legion out of the ring.',
+  },
+  mire_leech: {
+    id: 'mire_leech',
+    name: 'Mire Leech',
+    behavior: 'flank',
+    rig: 'quadruped',
+    hp: 22,
+    speed: 4.2,
+    radius: 0.32,
+    damage: 4,
+    attackRange: 0.9,
+    windupMs: 210,
+    cooldownMs: 720,
+    xp: 5,
+    gold: [0, 1],
+    corpse: 'none',
+    scale: 1,
+    modelSlug: 'mire_leech',
+    rotBite: true,
+    pack: [4, 6],
+    blurb: 'Pours out of the black water in swarms of four to six. Too small to leave a corpse: sweep them with area rites and Miasma.',
+  },
+  fen_wisp: {
+    id: 'fen_wisp',
+    name: 'Fen Wisp',
+    behavior: 'caster',
+    rig: 'bloat',
+    hp: 60,
+    speed: 3.0,
+    radius: 0.4,
+    damage: 9,
+    attackRange: 8.5,
+    windupMs: 1000,
+    cooldownMs: 3300,
+    xp: 19,
+    gold: [3, 8],
+    corpse: 'none',
+    scale: 0.85,
+    modelSlug: 'fen_wisp',
+    attack: 'pulse',
+    flying: 1.5,
+    lure: true,
+    blurb: 'A drowned lantern-flame. It pulses a ring of cold onto where you stand, and backs away toward the open water: do not follow it in.',
+  },
+  drowned_sexton: {
+    id: 'drowned_sexton',
+    name: 'Drowned Sexton',
+    behavior: 'hazard',
+    rig: 'humanoid',
+    hp: 560,
+    speed: 1.6,
+    radius: 0.95,
+    damage: 25,
+    attackRange: 2.2,
+    windupMs: 1000,
+    cooldownMs: 2900,
+    xp: 54,
+    gold: [20, 36],
+    corpse: 'normal',
+    scale: 1,
+    modelSlug: 'drowned_sexton',
+    slamRadius: 2.5,
+    deathCorpses: 2,
+    hook: true,
+    blurb: 'A bloated gravedigger with a chain and a grave-hook. When the chain flies it drags you toward him, then the spade comes down. Leave the line.',
+  },
 
 };
 
@@ -642,6 +738,11 @@ export const WAVE_THEMES: Partial<Record<AreaId, WaveTheme[]>> = {
     { id: 'vespers', name: 'Vespers', blurb: 'Seraphs weep over the faithful', roster: [{ id: 'seraph', weight: 25 }, { id: 'penitent', weight: 30 }, { id: 'gargoyle', weight: 20 }, { id: 'censer', weight: 25 }], sizeMult: 0.85, lead: 'seraph' },
     { id: 'procession', name: 'The Procession', blurb: 'Censers, bells and deacons march', roster: [{ id: 'censer', weight: 25 }, { id: 'penitent', weight: 30 }, { id: 'deacon', weight: 15 }, { id: 'wraith', weight: 15 }, { id: 'acolyte', weight: 15 }], sizeMult: 0.9, lead: 'golem' },
     { id: 'templars', name: 'The Bell-Sworn March', blurb: 'Templars shield the procession', roster: [{ id: 'templar', weight: 30 }, { id: 'penitent', weight: 30 }, { id: 'censer', weight: 20 }, { id: 'acolyte', weight: 20 }], sizeMult: 0.85, lead: 'templar' },
+  ],
+  fen: [
+    { id: 'leech_tide', name: 'The Leech Tide', blurb: 'The black water boils with leeches', roster: [{ id: 'mire_leech', weight: 100 }], sizeMult: 1.25 },
+    { id: 'corpse_candles', name: 'Corpse-Candles', blurb: 'Wisps drift in over the water, a hag behind them', roster: [{ id: 'fen_wisp', weight: 70 }, { id: 'wraith', weight: 30 }], sizeMult: 0.85, lead: 'bog_hag' },
+    { id: 'sexton_round', name: "The Sexton's Round", blurb: 'A gravedigger and his drowned congregation', roster: [{ id: 'mire_leech', weight: 35 }, { id: 'bog_hag', weight: 35 }, { id: 'wraith', weight: 30 }], sizeMult: 0.8, lead: 'drowned_sexton' },
   ],
 };
 

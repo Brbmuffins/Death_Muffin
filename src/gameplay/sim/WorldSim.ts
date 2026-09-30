@@ -57,6 +57,7 @@ import type { Nav } from '../nav';
 import { pickWeighted } from '../rng';
 import { BOSS_RADIUS, makeBossBrains, type BossBrain, type CoverBox } from './BossBrain';
 import { BOSSES, isBossId, type BossId } from '../../content/bosses';
+import { FEN_LURE, HAG_HEX, SEXTON_HOOK, WISP_PULSE } from '../../content/fen';
 import { NODES, RICH_RESPAWN, RICH_YIELD, type NodeDef } from '../gatheringRules';
 import { NODE_REACH } from '../../content/layout';
 import { NECRO_WEAPON_TUNING } from '../../content/necroWeapons';
@@ -729,11 +730,11 @@ export class WorldSim {
           t.attackCd = 0.2;
           for (const e of this.enemies.values()) {
             if (e.state === 'dead' || Math.hypot(e.x - tx, e.z - tz) > R.cleaveRadius + e.radius) continue;
-            this.damageEnemy(e, t.damage * R.damageMult, g.by, t);
+            this.damageEnemy(e, t.damage * R.damageMult * this.cursedMult(t), g.by, t);
             hit.add(e.id);
           }
           const b = this.boss.state;
-          if (b.active && Math.hypot(b.x - tx, b.z - tz) <= R.cleaveRadius + BOSS_RADIUS) this.boss.damage(t.damage * R.damageMult, g.by, 0);
+          if (b.active && Math.hypot(b.x - tx, b.z - tz) <= R.cleaveRadius + BOSS_RADIUS) this.boss.damage(t.damage * R.damageMult * this.cursedMult(t), g.by, 0);
         });
         this.emit({ t: 'rend', by: g.by, x: cx, z: cz, leaps, hits: hit.size });
         return;
@@ -1204,6 +1205,11 @@ export class WorldSim {
   }
 
   /** What an enemy's blow is worth right now (Bone Hex softens it). */
+  /** A Bog Hag's hex: the thrall deals less while it lasts. */
+  private cursedMult(t: Thrall) {
+    return (t.cursedT ?? 0) > 0 ? HAG_HEX.thrallDamageMult : 1;
+  }
+
   private blow(e: Enemy) {
     return e.damage * ((e.hexT ?? 0) > 0 ? BONE_HEX.damageMult : 1);
   }
@@ -1892,6 +1898,23 @@ export class WorldSim {
     e.gait += step * 2.4;
   }
 
+  /** Where a Bog Hag lays her hex: the centre of the thrall standing in the thickest knot within reach; the target itself if none. */
+  private hexAim(e: Enemy, target: { x: number; z: number }): [number, number] {
+    const reach = ENEMIES[e.def].attackRange;
+    let best: Thrall | null = null;
+    let bestN = 0;
+    for (const t of this.thralls.values()) {
+      if (t.state === 'dead' || t.state === 'rising' || Math.hypot(t.x - e.x, t.z - e.z) > reach) continue;
+      let n = 0;
+      for (const o of this.thralls.values()) if (o.state !== 'dead' && Math.hypot(o.x - t.x, o.z - t.z) <= HAG_HEX.radius) n++;
+      if (n > bestN) {
+        bestN = n;
+        best = t;
+      }
+    }
+    return best ? [best.x, best.z] : [target.x, target.z];
+  }
+
   private hurtThrall(t: Thrall, dmg: number) {
     t.hp -= dmg;
     t.flash = 1;
@@ -1910,8 +1933,53 @@ export class WorldSim {
     return zone;
   }
 
-  private strike(e: Enemy, kind: 'melee' | 'cone' | 'curse' | 'slam' | 'scream' | 'dust' | 'flask' | 'ember', slamR?: number) {
+  private strike(e: Enemy, kind: 'melee' | 'cone' | 'curse' | 'slam' | 'scream' | 'dust' | 'flask' | 'ember' | 'hex' | 'pulse' | 'hook', slamR?: number) {
     const def = ENEMIES[e.def];
+    if (kind === 'hex') {
+      // Bog Hag: players in the ring are mired (a short chill) and nicked; thralls in it are hexed, dealing less for a few seconds.
+      for (const p of this.players.values()) {
+        if (p.alive && Math.hypot(p.x - e.aimX, p.z - e.aimZ) <= HAG_HEX.radius) {
+          this.emit({ t: 'hurt', player: p.id, dmg: this.blow(e) * HAG_HEX.blowMult, from: 'curse', x: e.x, z: e.z, chillMs: HAG_HEX.chillMs });
+        }
+      }
+      for (const t of [...this.thralls.values()]) {
+        if (Math.hypot(t.x - e.aimX, t.z - e.aimZ) > HAG_HEX.radius) continue;
+        this.hurtThrall(t, this.blow(e) * HAG_HEX.blowMult);
+        if (t.hp > 0) t.cursedT = HAG_HEX.durationS;
+      }
+      return;
+    }
+    if (kind === 'pulse') {
+      // Fen Wisp: a ring of marsh-cold where the target stood; it chills (slows) whoever is in it.
+      for (const p of this.players.values()) {
+        if (p.alive && Math.hypot(p.x - e.aimX, p.z - e.aimZ) <= WISP_PULSE.radius) {
+          this.emit({ t: 'hurt', player: p.id, dmg: this.blow(e), from: 'dust', x: e.x, z: e.z, chillMs: WISP_PULSE.chillMs });
+        }
+      }
+      for (const t of [...this.thralls.values()]) if (Math.hypot(t.x - e.aimX, t.z - e.aimZ) <= WISP_PULSE.radius) this.hurtThrall(t, this.blow(e));
+      return;
+    }
+    if (kind === 'hook') {
+      // Drowned Sexton: everything on the chain's line (from him toward the aim, out to its range) is struck, and players are dragged in.
+      const dx = e.aimX - e.x;
+      const dz = e.aimZ - e.z;
+      const len = Math.hypot(dx, dz) || 1;
+      const ux = dx / len;
+      const uz = dz / len;
+      const onLine = (x: number, z: number) => {
+        const along = (x - e.x) * ux + (z - e.z) * uz;
+        if (along < 0 || along > SEXTON_HOOK.range + 0.6) return false;
+        return Math.abs((x - e.x) * uz - (z - e.z) * ux) <= SEXTON_HOOK.halfWidth + 0.3 && !this.wallBetween(e.x, e.z, x, z);
+      };
+      for (const p of this.players.values()) {
+        if (p.alive && onLine(p.x, p.z)) {
+          this.emit({ t: 'hurt', player: p.id, dmg: this.blow(e) * SEXTON_HOOK.blowMult, from: 'melee', x: e.x, z: e.z, pull: { x: e.x, z: e.z, m: SEXTON_HOOK.pullM, rootMs: SEXTON_HOOK.rootMs } });
+        }
+      }
+      for (const t of [...this.thralls.values()]) if (onLine(t.x, t.z)) this.hurtThrall(t, this.blow(e) * SEXTON_HOOK.blowMult);
+      this.emit({ t: 'melee', id: e.id, x: e.x, z: e.z, tx: e.aimX, tz: e.aimZ });
+      return;
+    }
     if (kind === 'ember') {
       // Pyre Priest: the coal bursts where the target stood, then leaves burning ground.
       for (const p of this.players.values()) {
@@ -2002,7 +2070,7 @@ export class WorldSim {
     const cz = kind === 'slam' ? e.aimZ : e.z;
     const p = e.targetPlayer ? this.players.get(e.targetPlayer) : undefined;
     if (p && p.alive && Math.hypot(p.x - cx, p.z - cz) <= reach) {
-      this.emit({ t: 'hurt', player: p.id, dmg: this.blow(e), from: kind === 'curse' ? 'curse' : 'melee', x: e.x, z: e.z });
+      this.emit({ t: 'hurt', player: p.id, dmg: this.blow(e), from: kind === 'curse' ? 'curse' : def.rotBite ? 'toxic' : 'melee', x: e.x, z: e.z });
     }
     const t = e.targetThrall !== null ? this.thralls.get(e.targetThrall) : undefined;
     if (t && Math.hypot(t.x - cx, t.z - cz) <= reach) this.hurtThrall(t, this.blow(e));
@@ -2104,6 +2172,7 @@ export class WorldSim {
         continue;
       }
       if (e.affix) this.tickAffix(e, dt);
+      if ((e.hookCd ?? 0) > 0) e.hookCd! -= dt;
       e.attackCd -= dt * ((e.chillT ?? 0) > 0 ? CHILL.attackRateMult : 1) * ((e.incenseT ?? 0) > 0 ? CENSER.attackRateMult : 1) * (this.frenzied(e) ? FRENZY.attackRateMult : 1);
       const def = ENEMIES[e.def];
       if (def.aura) this.censerPulse(e, dt);
@@ -2191,6 +2260,18 @@ export class WorldSim {
             this.moveEnemy(e, e.x * 2 - target.x + px * 2 * e.flankSide, e.z * 2 - target.z + pz * 2 * e.flankSide, dt);
             break;
           }
+          // Drowned Sexton: from range he throws the grave-hook along a line (a telegraphed line), then drags whoever it caught.
+          if (def.hook && target.player && e.attackCd <= 0 && (e.hookCd ?? 0) <= 0 && dist >= SEXTON_HOOK.minRange && dist <= SEXTON_HOOK.range && !this.wallBetween(e.x, e.z, target.x, target.z)) {
+            e.state = 'windup';
+            e.stateT = 0;
+            e.hooking = true;
+            e.hookCd = SEXTON_HOOK.cooldownS;
+            e.aimX = target.x;
+            e.aimZ = target.z;
+            e.facing = Math.atan2(target.x - e.x, target.z - e.z);
+            this.emit({ t: 'telegraph', id: e.id, kind: 'hook', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs * (e.elite ? 0.85 : 1), r: SEXTON_HOOK.range });
+            break;
+          }
           if (def.dive && e.attackCd <= 0 && dist >= def.dive.minRange && dist <= def.dive.range && !this.wallBetween(e.x, e.z, target.x, target.z)) {
             e.state = 'windup';
             e.stateT = 0;
@@ -2234,7 +2315,16 @@ export class WorldSim {
             e.aimX = target.x;
             e.aimZ = target.z;
             e.facing = Math.atan2(target.x - e.x, target.z - e.z);
-            if (def.attack === 'scream') {
+            if (def.attack === 'hex') {
+              // Bog Hag: the ring is laid on the thickest knot of thralls in reach (your legion is the point of her curse).
+              const [hx, hz] = this.hexAim(e, target);
+              e.aimX = hx;
+              e.aimZ = hz;
+              e.facing = Math.atan2(hx - e.x, hz - e.z);
+              this.emit({ t: 'telegraph', id: e.id, kind: 'hex', x: e.x, z: e.z, tx: hx, tz: hz, ms: def.windupMs, r: HAG_HEX.radius });
+            } else if (def.attack === 'pulse') {
+              this.emit({ t: 'telegraph', id: e.id, kind: 'pulse', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: WISP_PULSE.radius });
+            } else if (def.attack === 'scream') {
               this.emit({ t: 'telegraph', id: e.id, kind: 'scream', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: SCREAM.radius });
             } else if (def.attack === 'dust') {
               this.emit({ t: 'telegraph', id: e.id, kind: 'dust', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: DUST.radius });
@@ -2246,8 +2336,21 @@ export class WorldSim {
               this.emit({ t: 'telegraph', id: e.id, kind: 'curse', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
             } else this.emit({ t: 'telegraph', id: e.id, kind: 'cone', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
           } else if (dist > def.attackRange - 1.5) this.moveEnemy(e, target.x, target.z, dt);
-          else if (dist < 3.5) this.moveEnemy(e, e.x * 2 - target.x, e.z * 2 - target.z, dt, 0.8);
-          else e.facing = Math.atan2(target.x - e.x, target.z - e.z);
+          else if (dist < 3.5) {
+            let rx = e.x * 2 - target.x;
+            let rz = e.z * 2 - target.z;
+            if (def.lure) {
+              // Fen Wisp: it backs away, but bends its retreat toward the open water (where you would wade after it).
+              const ax = (e.x - target.x) / (dist || 1);
+              const az = (e.z - target.z) / (dist || 1);
+              const lx = FEN_LURE.x - e.x;
+              const lz = FEN_LURE.z - e.z;
+              const ll = Math.hypot(lx, lz) || 1;
+              rx = e.x + (ax * 0.55 + (lx / ll) * 0.45) * 3;
+              rz = e.z + (az * 0.55 + (lz / ll) * 0.45) * 3;
+            }
+            this.moveEnemy(e, rx, rz, dt, 0.8);
+          } else e.facing = Math.atan2(target.x - e.x, target.z - e.z);
           break;
         }
         case 'support': {
@@ -2318,6 +2421,10 @@ export class WorldSim {
       this.emit({ t: 'erupt', id: e.id, x: e.aimX, z: e.aimZ, r: BURROW.eruptR });
       return;
     }
+    if (e.hooking) {
+      e.hooking = false;
+      return this.strike(e, 'hook');
+    }
     if (e.diving && def.dive) {
       this.endDive(e);
       e.groundT = def.dive.groundedS;
@@ -2376,6 +2483,7 @@ export class WorldSim {
       t.stateT += dt;
       const rallied = (t.rallyT ?? 0) > 0;
       if (rallied) t.rallyT = Math.max(0, (t.rallyT ?? 0) - dt);
+      if ((t.cursedT ?? 0) > 0) t.cursedT = Math.max(0, t.cursedT! - dt);
       // Rallied thralls swing faster (the cooldown drains quicker) and hit harder (below).
       t.attackCd -= dt * (rallied ? RALLY.attackSpeedMult : 1);
       const owner = this.players.get(t.owner);
@@ -2398,7 +2506,7 @@ export class WorldSim {
       }
 
       let target = t.target !== null ? this.enemies.get(t.target) : undefined;
-      const bossTarget = this.boss.state.active && Math.hypot(this.boss.state.x - owner.x, this.boss.state.z - owner.z) < 16;
+      const bossTarget = this.boss.state.active && this.boss.state.state !== 'sunk' && Math.hypot(this.boss.state.x - owner.x, this.boss.state.z - owner.z) < 16;
       if (!target || target.state === 'dead' || Math.hypot(target.x - owner.x, target.z - owner.z) > THRALL_LEASH) {
         target = undefined;
         t.target = null;
@@ -2434,7 +2542,7 @@ export class WorldSim {
       if (target) {
         const e = target;
         engage(e.x, e.z, e.radius, () => {
-          const dealt = this.damageEnemy(e, t.damage * ((t.rallyT ?? 0) > 0 ? RALLY.damageMult : 1), t.owner, t);
+          const dealt = this.damageEnemy(e, t.damage * ((t.rallyT ?? 0) > 0 ? RALLY.damageMult : 1) * this.cursedMult(t), t.owner, t);
           if (t.kind === 'wraith') {
             e.chillT = CHILL.durationS;
             this.bellHeal(t);
@@ -2445,8 +2553,8 @@ export class WorldSim {
       } else if (bossTarget) {
         const b = this.boss.state;
         engage(b.x, b.z, BOSS_RADIUS, () => {
-          this.boss.damage(t.damage * ((t.rallyT ?? 0) > 0 ? RALLY.damageMult : 1), t.owner, 0);
-          this.emit({ t: 'thrallHit', id: t.id, target: -1, x: t.x, z: t.z, tx: b.x, tz: b.z, kind: t.kind, dmg: Math.round(t.damage) });
+          this.boss.damage(t.damage * ((t.rallyT ?? 0) > 0 ? RALLY.damageMult : 1) * this.cursedMult(t), t.owner, 0);
+          this.emit({ t: 'thrallHit', id: t.id, target: -1, x: t.x, z: t.z, tx: b.x, tz: b.z, kind: t.kind, dmg: Math.round(t.damage * this.cursedMult(t)) });
         });
       } else {
         // Formation ring around the owner.

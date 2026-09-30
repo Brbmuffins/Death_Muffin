@@ -1,0 +1,76 @@
+[
+  {
+    "id": "tex_fen_floor",
+    "out": "art-src/fen/textures/fen_floor.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "size": "1K",
+    "prompt": "Seamless tileable game texture, perfectly tiling on all four edges, orthographic top-down, flat even diffuse lighting with no directional shadows, no vignette, no text, no border, fills the entire frame edge to edge. Use the attached screenshot ONLY for mood and palette (layered near-blacks, cold reflections). Subject: the floor of a drowned graveyard marsh: black peat mud with patches of dark teal-green moss and sodden leaf litter, shallow puddles of still dark water, tangled reed roots and a few pale bones pressed into the mud. Dark overall value, cold blue-green tint."
+  },
+  {
+    "id": "item_herb_bog_myrtle",
+    "out": "public/art/items/herb_bog_myrtle.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint teal vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a sprig of bog myrtle: grey-green waxy leaves on a dark woody stem with small pale catkins and a faint teal glow"
+  },
+  {
+    "id": "item_herb_drowned_lotus",
+    "out": "public/art/items/herb_drowned_lotus.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint teal vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a drowned lotus: a single pale blue-white lotus flower with dripping petals on a dark stem with a round lily pad, faint teal glow"
+  },
+  {
+    "id": "item_seed_bog_myrtle",
+    "out": "public/art/items/seed_bog_myrtle.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint teal vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a small burlap seed pouch spilling tiny dark seeds, a sprig of grey-green bog myrtle tied to the pouch"
+  },
+  {
+    "id": "item_seed_drowned_lotus",
+    "out": "public/art/items/seed_drowned_lotus.png",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint teal vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a small burlap seed pouch spilling round pale seeds, a pale blue lotus petal tied to the pouch"
+  }
+]

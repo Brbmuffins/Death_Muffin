@@ -57,6 +57,7 @@ export const BOSS_ICHOR: Record<BossId, string> = {
   prelate: 'ichor_prelate',
   saint: 'ichor_plague_saint',
   regent: 'ichor_regent',
+  mire: 'ichor_mire',
 };
 export const bossIchor = (boss: BossDef['id']): string => BOSS_ICHOR[boss];
 

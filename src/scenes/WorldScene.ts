@@ -51,7 +51,8 @@ import { WorldSim } from '../gameplay/sim/WorldSim';
 import { computeStats, STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
 import { BossView, NecromancerAvatar } from '../graphics/Avatars';
 import { prewarmCreature } from '../graphics/prewarmCreature';
-import { BOSSES, CONGREGATION, GRAVEDIGGER, REGENT, SAINT, bossForSummon, type BossId } from '../content/bosses';
+import { BOSSES, CONGREGATION, GRAVEDIGGER, MIRE, REGENT, SAINT, bossForSummon, type BossId } from '../content/bosses';
+import { FEN_FLOOD_SCALE, HAG_HEX, SEXTON_HOOK, bogMult } from '../content/fen';
 import { fxImage } from '../graphics/fxImages';
 import { CameraRig } from '../graphics/CameraRig';
 import { Effects, type Handle } from '../graphics/Effects';
@@ -122,6 +123,10 @@ const FIRST_SIGHT_TIPS: Partial<Record<EnemyId, TipId>> = {
   pyre_priest: 'pyre_priest',
   cinderhound: 'cinderhound',
   slag_brute: 'slag_brute',
+  bog_hag: 'bog_hag',
+  mire_leech: 'mire_leech',
+  fen_wisp: 'fen_wisp',
+  drowned_sexton: 'drowned_sexton',
 };
 /** Counsel shown the first time each level-gated Grimoire rite is placed on a key. */
 const RITE_TIPS: Partial<Record<AbilityId, TipId>> = {
@@ -1953,7 +1958,7 @@ export class WorldScene implements GameScene, RuntimeView {
         this.onKill(ev);
         break;
       case 'hurt':
-        if (ev.player === me) this.onHurt(ev.dmg, ev.from, ev.x, ev.z, ev.chillMs);
+        if (ev.player === me) this.onHurt(ev.dmg, ev.from, ev.x, ev.z, ev.chillMs, ev.pull);
         break;
       case 'nodeGone':
         this.nodeViews.setLive(ev.id, false);
@@ -2227,7 +2232,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (this.inventory.all.some((s) => s.item_id.startsWith('tool_'))) this.onboarding.show('tool');
     if (this.progression.local.shards >= BOSS_SUMMON_SHARDS) this.onboarding.show('prelate');
     // Area bosses: counsel the first time a summon object is within 12 m.
-    for (const id of ['gravedigger', 'abbess', 'congregation', 'saint', 'regent'] as BossId[]) {
+    for (const id of ['gravedigger', 'abbess', 'congregation', 'saint', 'regent', 'mire'] as BossId[]) {
       const it = AREAS[BOSSES[id].area].interactables.find((i) => i.id === BOSSES[id].summonId);
       if (it && this.player.area === BOSSES[id].area && Math.hypot(it.x - this.player.x, it.z - this.player.z) < 12) this.onboarding.show(`boss_${id}` as TipId);
     }
@@ -2349,6 +2354,41 @@ export class WorldScene implements GameScene, RuntimeView {
       const from = { x: ev.x, y: 1.8, z: ev.z };
       this.effects.beam(from, () => ({ x: ev.tx, y: 0.3, z: ev.tz }), SPELL_FX.enemy.rot, 0.05, ms);
       this.effects.decal({ tex: fx.sigil(), color: SPELL_FX.enemy.rot, x: ev.tx, z: ev.tz, r: 1, duration: ms, opacity: 0.8, spin: 3 });
+    } else if (ev.kind === 'hex') {
+      // Bog Hag: a sickly magenta ring on the knot of thralls she will curse, and a thread from her to it.
+      const r = ev.r ?? HAG_HEX.radius;
+      const H = SPELL_FX.enemy.hex;
+      this.effects.decal({ tex: fx.disc(), color: H, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.38, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.3 });
+      this.effects.decal({ tex: fx.ring(), color: H, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.95, fadeOut: 0.05, pulse: 3 });
+      this.effects.decal({ tex: fx.sigil(), color: H, x: ev.tx, z: ev.tz, r: r * 0.8, duration: ms, opacity: 0.7, spin: 1.8, fadeOut: 0.05 });
+      this.effects.beam({ x: ev.x, y: 1.9, z: ev.z }, () => ({ x: ev.tx, y: 0.5, z: ev.tz }), H, 0.04, ms);
+      this.fxLater.push({ at: this.now + ev.ms, run: () => {
+        this.effects.decal({ tex: fx.ring(), color: H, x: ev.tx, z: ev.tz, r: r * 1.25, duration: 0.5, opacity: 1, growFrom: 0.3 });
+        this.effects.emit({ x: ev.tx, y: 0.8, z: ev.tz, count: 26, color: H, spread: r * 0.45, speed: 1.4, up: 2.2, life: 0.9, size: 0.2 });
+        audio.play('curse', ev.tx, ev.tz);
+      } });
+    } else if (ev.kind === 'pulse') {
+      // Fen Wisp: a cold teal ring where you stand, ripples spreading on the water.
+      const r = ev.r ?? 2.3;
+      const W = 0x7fe0d0;
+      this.effects.decal({ tex: fx.disc(), color: W, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.3, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.3 });
+      this.effects.decal({ tex: fx.ring(), color: W, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.9, fadeOut: 0.05, pulse: 4 });
+      this.fxLater.push({ at: this.now + ev.ms, run: () => {
+        this.effects.decal({ tex: fx.ring(), color: 0xeaffff, x: ev.tx, z: ev.tz, r: r * 1.2, duration: 0.45, opacity: 1, growFrom: 0.3 });
+        this.effects.emit({ x: ev.tx, y: 0.4, z: ev.tz, count: 18, color: W, spread: r * 0.4, speed: 1.6, up: 1.8, life: 0.8, size: 0.16 });
+        this.worldView.addRipple(ev.tx, ev.tz, 2);
+      } });
+    } else if (ev.kind === 'hook') {
+      // Drowned Sexton: a rust-brown line along the chain's path, to its full reach.
+      const dx = ev.tx - ev.x;
+      const dz = ev.tz - ev.z;
+      const dir = Math.atan2(dx, dz);
+      const len = ev.r ?? SEXTON_HOOK.range;
+      const hx = ev.x + Math.sin(dir) * len * 0.5;
+      const hz = ev.z + Math.cos(dir) * len * 0.5;
+      this.effects.decal({ tex: fx.disc(), color: 0xa8743a, x: hx, z: hz, r: len / 2, sz: 1, sx: (SEXTON_HOOK.halfWidth * 2) / len, rot: dir + Math.PI, duration: ms, opacity: 0.55, fadeIn: ms * 0.7, fadeOut: 0.05 });
+      this.effects.decal({ tex: fx.ring(), color: 0xe0a458, x: ev.x + Math.sin(dir) * len, z: ev.z + Math.cos(dir) * len, r: 0.9, duration: ms, opacity: 0.8, fadeOut: 0.05 });
+      audio.play('boneHit', ev.x, ev.z);
     } else if (ev.kind === 'curse') {
       this.effects.decal({ tex: fx.ring(), color: SPELL_FX.enemy.curse, x: ev.tx, z: ev.tz, r: 1.2, duration: ms, opacity: 0.85, growFrom: 2 });
       this.effects.decal({ tex: fx.glow(), color: SPELL_FX.enemy.curse, x: ev.tx, z: ev.tz, r: 1.4, duration: 0.3, opacity: 0.9, delay: ms });
@@ -2688,7 +2728,7 @@ export class WorldScene implements GameScene, RuntimeView {
     }
   }
 
-  private onHurt(raw: number, from: string, x: number, z: number, chillMs?: number) {
+  private onHurt(raw: number, from: string, x: number, z: number, chillMs?: number, pull?: { x: number; z: number; m: number; rootMs: number }) {
     if (!this.player.alive) return;
     const myThralls = [...this.thrallsMap().values()].filter((t) => t.owner === this.selfId).length;
     const lanternWard = [...(this.sim?.zones ?? this.mirror?.zones ?? new Map()).values()].some((zone) => zone.kind === 'warden_ward' && Math.hypot(zone.x - this.player.x, zone.z - this.player.z) <= zone.r) ? 0.2 : 0;
@@ -2704,6 +2744,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.player.chilledUntil = Math.max(this.player.chilledUntil, now + chillMs);
       this.floating.spawn(this.player.x, 2.5, this.player.z, 'Chilled', 'info');
     }
+    if (pull && taken > 0 && this.player.alive) this.dragPlayer(pull);
     if (this.player.lastBlock !== 'none') this.onBulwarkBlock(raw, x, z);
     if (taken >= 1) this.gathering.stop('hurt');
     if (this.player.hp < this.player.stats.maxHp * 0.5) this.onboarding.show('hurt');
@@ -2730,6 +2771,24 @@ export class WorldScene implements GameScene, RuntimeView {
       this.effects.emit({ x: this.player.x, y: 1.8, z: this.player.z, count: 12, color: SPELL_FX.affix.bell, spread: 0.3, speed: 1.2, up: 0.4, life: 0.5, size: 0.2 });
     }
     if (!this.player.alive) this.onDeath();
+  }
+
+  /** The Drowned Sexton's chain: drag the hero `m` metres toward the hook (never into him), a chain of splashes along the way. */
+  private dragPlayer(pull: { x: number; z: number; m: number; rootMs: number }) {
+    const p = this.player;
+    const d = Math.hypot(pull.x - p.x, pull.z - p.z);
+    const m = Math.min(pull.m, Math.max(0, d - 1.6));
+    if (m <= 0.05) return;
+    const from = { x: p.x, z: p.z };
+    const [nx, nz] = this.nav.resolve(p.x + ((pull.x - p.x) / d) * m, p.z + ((pull.z - p.z) / d) * m, 0.45);
+    p.x = nx;
+    p.z = nz;
+    p.stop();
+    p.rootedUntil = Math.max(p.rootedUntil, this.now + pull.rootMs);
+    this.effects.beam({ x: pull.x, y: 1.3, z: pull.z }, () => ({ x: p.x, y: 1.1, z: p.z }), 0x7a6a58, 0.05, 0.35);
+    for (let k = 0; k <= 4; k++) this.worldView.addRipple(from.x + (nx - from.x) * (k / 4), from.z + (nz - from.z) * (k / 4), 1.2);
+    this.floating.spawn(p.x, 2.5, p.z, 'Dragged!', 'info');
+    this.rig.shake(0.2);
   }
 
   /**
@@ -2824,7 +2883,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const line = (x: number, z: number, len: number, dir: number, halfWidth: number, color: number, dur: number) =>
       this.effects.decal({ tex: fx.disc(), color, x, z, r: len / 2, sz: 1, sx: (halfWidth * 2) / len, anchor: 1, rot: dir + Math.PI, duration: dur, opacity: 0.6, fadeIn: dur * 0.7, fadeOut: 0.05 });
     const mine = ev.players?.includes(this.selfId);
-    if ((ev.kind === 'bury' || (ev.kind === 'grasp' && def.id === 'congregation')) && ms === 0 && mine && ev.root) {
+    if ((ev.kind === 'bury' || ev.kind === 'hands' || (ev.kind === 'grasp' && def.id === 'congregation')) && ms === 0 && mine && ev.root) {
       // Buried / grasped: root yourself (players are client-simulated); casting stays allowed.
       this.player.rootedUntil = Math.max(this.player.rootedUntil, this.now + ev.root * 1000);
       this.floating.spawn(this.player.x, 2.4, this.player.z, ev.kind === 'bury' ? 'Buried!' : 'Grasped!', 'info');
@@ -3013,6 +3072,72 @@ export class WorldScene implements GameScene, RuntimeView {
         }
         break;
       }
+      case 'surface': {
+        // Mire Mother: ripple rings converge on a hummock for the whole windup; when they meet, she bursts out under it.
+        const T = 0x5fc4b4;
+        if (ms > 0) {
+          this.effects.decal({ tex: fx.disc(), color: T, x: ev.x, z: ev.z, r: ev.r ?? 3.7, duration: ms, opacity: 0.4, fadeIn: ms * 0.9, fadeOut: 0.05, growFrom: 0.3 });
+          this.effects.decal({ tex: fx.ring(), color: 0xc8fff4, x: ev.x, z: ev.z, r: ev.r ?? 3.7, duration: ms, opacity: 0.95, pulse: 4, fadeOut: 0.05 });
+          for (let k = 0; k < 3; k++) this.effects.decal({ tex: fx.ring(), color: T, x: ev.x, z: ev.z, r: (ev.r ?? 3.7) * 1.8, duration: Math.max(0.3, ms / 3), opacity: 0.8, growFrom: 1, delay: (ms / 3) * k });
+          for (let k = 0; k < 6; k++) this.worldView.addRipple(ev.x, ev.z, 1.4);
+          this.hud.toast('The Mire Mother sinks: leave the ringed hummock before she surfaces!', 'err');
+        } else {
+          for (let k = 0; k < 3; k++) this.effects.decal({ tex: fx.ring(), color: T, x: ev.x, z: ev.z, r: (ev.r ?? 3.7) * (0.6 + k * 0.35), duration: 0.6, opacity: 1 - k * 0.25, growFrom: 0.2, delay: k * 0.08 });
+          this.effects.emit({ x: ev.x, y: 0.4, z: ev.z, count: 80, color: 0x9fe8da, spread: 1.6, speed: 4.5, up: 4, life: 1, size: 0.3, gravity: 7 });
+          this.effects.emitSmoke({ x: ev.x, y: 0.4, z: ev.z, count: 6, color: 0x1c3a38, spread: 1.4, speed: 1.4, up: 0.9, life: 1.2, size: 1.6 });
+          this.worldView.addRipple(ev.x, ev.z, 3);
+          this.effects.lightFlash(ev.x, 2, ev.z, T, 60, 0.6);
+          audio.play('bossSlam', ev.x, ev.z);
+          this.rig.shake(0.4);
+          this.floating.spawn(ev.x, 3.6, ev.z, 'Winded!', 'info');
+        }
+        break;
+      }
+      case 'hands': {
+        const T = 0x7fb4a8;
+        for (const [x, z] of ev.targets ?? []) {
+          if (ms > 0) {
+            this.effects.decal({ tex: fx.disc(), color: T, x, z, r: ev.r ?? 1.5, duration: ms, opacity: 0.5, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.3 });
+            this.effects.decal({ tex: fxImage('drownedHand'), color: 0x8fb4c8, x, z, r: (ev.r ?? 1.5) * 0.9, duration: ms, opacity: 0.85, growFrom: 0.2, fadeOut: 0.05 });
+          } else {
+            this.effects.emit({ x, y: 0.3, z, count: 14, color: T, spread: 0.6, speed: 1.2, up: 2.4, life: 0.7, size: 0.22 });
+            this.worldView.addRipple(x, z, 1.6);
+          }
+        }
+        if (ms > 0) this.hud.toast('Drowned hands rise under anyone wading the open water: get onto dry ground!', 'err');
+        break;
+      }
+      case 'rite': {
+        const T = 0x5fc4b4;
+        if (ms > 0) {
+          for (const [x, z] of ev.targets ?? []) {
+            this.effects.beam({ x, y: 0.3, z }, () => ({ x: ev.x, y: 2.2, z: ev.z }), T, 0.05, ms);
+            this.effects.decal({ tex: fx.sigil(), color: T, x, z, r: 1.1, duration: ms, opacity: 0.85, spin: 3, fadeOut: 0.05 });
+          }
+          this.effects.decal({ tex: fx.sigil(), color: T, x: ev.x, z: ev.z, r: 3, duration: ms, opacity: 0.8, spin: 1.5, fadeOut: 0.05 });
+          this.hud.toast('The Drowned Rite: she raises every corpse in the Fen. Spend them now!', 'err');
+        } else if ((ev.targets?.length ?? 0) === 0) {
+          this.floating.spawn(ev.x, 3.6, ev.z, 'The rite finds no dead', 'info');
+          this.effects.emit({ x: ev.x, y: 1.6, z: ev.z, count: 30, color: 0x9fb4b0, spread: 1, speed: 1.4, up: 1.2, life: 0.9, size: 0.25 });
+          this.hud.toast('The rite failed: no corpses left. She reels!', 'good');
+        } else {
+          for (const [x, z] of ev.targets ?? []) {
+            this.effects.emit({ x, y: 0.3, z, count: 26, color: T, spread: 0.5, speed: 0.6, up: 3, life: 1, size: 0.3, gravity: -0.4 });
+            this.effects.decal({ tex: fx.ring(), color: T, x, z, r: 1.6, duration: 0.6, opacity: 0.9, growFrom: 0.2 });
+          }
+          audio.play('raise', ev.x, ev.z);
+        }
+        break;
+      }
+      case 'flood': {
+        // The arena floods: rings race outward, the hummocks sink to their new size (WorldView eases them).
+        const T = 0x5fc4b4;
+        for (let k = 0; k < 4; k++) this.effects.decal({ tex: fx.ring(), color: T, x: ev.x, z: ev.z, r: 6 + k * 3, duration: 1, opacity: 1 - k * 0.2, growFrom: 0.1, delay: k * 0.1 });
+        for (const [x, z] of ev.targets ?? []) this.effects.emit({ x, y: 0.3, z, count: 24, color: 0x7fe0d0, spread: 0.6, speed: 0.8, up: 2.4, life: 1, size: 0.25 });
+        this.effects.lightFlash(ev.x, 3, ev.z, T, 70, 0.9);
+        this.rig.shake(0.5);
+        break;
+      }
       case 'nicheBreak':
         this.effects.emit({ x: ev.x, y: 1.6, z: ev.z, count: 40, color: 0xe0d6c2, spread: 1, speed: 3.5, up: 2.5, life: 0.9, size: 0.25, gravity: 8 });
         this.effects.lightFlash(ev.x, 2, ev.z, SPELL_FX.boss.shard, 40, 0.5);
@@ -3029,6 +3154,7 @@ export class WorldScene implements GameScene, RuntimeView {
         this.codexDiscover('dead', def.id);
         audio.play('bossAwaken', ev.x, ev.z);
         if (def.id === 'regent') this.hud.toast('The Cinder Regent: when Conflagration begins, run to a grey ash circle. Kill the Pyre Priests early.', 'err');
+        if (def.id === 'mire') this.hud.toast('The Mire Mother: she sinks and resurfaces. Leave the ringed hummock, punish her while she is winded, and spend your corpses before she raises them.', 'err');
         if (def.id === 'saint') {
           this.saintBlessTold = false;
           this.saintRainTold = false;
@@ -3055,6 +3181,7 @@ export class WorldScene implements GameScene, RuntimeView {
             this.rig.shake(0.5);
             this.hud.toast(ev.phase === 2 ? 'The pyre feeds: Husks and Pyre Priests join. Kill the Priests before their coals cover the ash.' : 'The pyre burns down: fewer ash circles, and hounds hunt in packs.', 'err');
           }
+          if (ev.boss === 'mire') this.hud.toast(ev.phase === 2 ? 'The marsh floods: the hummocks shrink and the water drags harder. Leeches climb out.' : 'The drowned rise: spend your corpses before she raises them. Hags will hex your thralls.', 'err');
           if (ev.boss === 'saint') {
             if (ev.phase === 3) {
               // The swarm: a rot nova so the phase change feels like an event.
@@ -3085,6 +3212,10 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'coals':
       case 'cleave':
       case 'conflagration':
+      case 'surface':
+      case 'hands':
+      case 'rite':
+      case 'flood':
         this.areaBossEvent(ev, ms);
         break;
       case 'toll':
@@ -3216,7 +3347,11 @@ export class WorldScene implements GameScene, RuntimeView {
       const arena = BOSSES.congregation.arena;
       const wading = b.active && b.id === 'congregation' && b.phase >= 2 && p.area === 'nave'
         && Math.hypot(p.x - arena.x, p.z - arena.z) <= arena.r && Math.hypot(p.x - arena.x, p.z - arena.z) > C.dais;
-      p.moveMult = (wading ? (b.phase >= 3 ? C.slowP3 : C.slowP2) : 1) * (1 + p.brewValue('speed', now));
+      // The Mourning Fen: wading the bog is slow, dry hummocks are not; the Mire Mother's flood shrinks them and deepens the slow.
+      const mire = b.active && b.id === 'mire' ? b.phase : 0;
+      const bog = p.area === 'fen' ? bogMult(p.x, p.z, mire) : 1;
+      this.worldView.setFenFlood(mire ? FEN_FLOOD_SCALE[mire] : 1);
+      p.moveMult = (wading ? (b.phase >= 3 ? C.slowP3 : C.slowP2) : 1) * bog * (1 + p.brewValue('speed', now));
     }
     const moved = p.update(dt, now, kd.x || kd.z ? kd : autoMove);
     if (settings.autoCombat && p.alive && now - p.lastHurtAt < 5000) p.heal(p.stats.maxHp * 0.02 * dt);
@@ -3465,6 +3600,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.hud.banner(def.name, def.subtitle);
       if (area === 'cloister') this.onboarding.show('cloister', 1200);
       if (area === 'pyre') this.onboarding.show('pyre', 1200);
+      if (area === 'fen') this.onboarding.show('fen', 1200);
       if (area === 'warren') this.onboarding.show('warren', 1200);
       if (area === 'coliseum') this.onboarding.show('coliseum', 1200);
     }
@@ -3475,7 +3611,7 @@ export class WorldScene implements GameScene, RuntimeView {
     // The Omen tints the sky over every area's own palette (half-way, so each place stays itself).
     this.moon.color.set(def.ambient.moon).lerp(new THREE.Color(this.omen.sky.moon), 0.5);
     const fog = this.scene.fog as THREE.FogExp2;
-    fog.density = 0.014 * (def.safe ? 1 : this.omen.sky.fogMult);
+    fog.density = 0.014 * (def.safe ? 1 : this.omen.sky.fogMult) * (def.ambient.fogMult ?? 1);
     if (!this.omenTold) {
       this.omenTold = true;
       this.hud.setOmen({ name: this.omen.name, icon: this.omen.icon, blurb: `${this.omen.blurb} Changes in ${omenLeft()}.` });
@@ -3521,7 +3657,11 @@ export class WorldScene implements GameScene, RuntimeView {
       .sort((a, b) => a.need - b.need);
     if (pending.length) {
       const kills = this.progression.kills(here);
-      return pending.map(({ id, need }) => `Slay <b>${Math.min(need, kills)}/${need}</b> to unseal ${AREAS[id].name}`).join('<br>');
+      return pending.map(({ id, need }) => {
+        // A seal may open a door in another hall (the Fen's is the Nave's west wall): say where.
+        const door = DOORS.find((d) => d.b === id && d.a !== here);
+        return `Slay <b>${Math.min(need, kills)}/${need}</b> to unseal ${AREAS[id].name}${door ? ` (${doorDirection(door)})` : ''}`;
+      }).join('<br>');
     }
     if (here === 'sanctum') {
       return this.bossState().active
@@ -3906,6 +4046,8 @@ export class WorldScene implements GameScene, RuntimeView {
         return this.skills.rows();
       },
       flushGather: () => this.gathering.flush(),
+      /** The Mourning Fen's eased flood scale (1 calm, 0.72 / 0.5 in the Mire Mother's phases 2 / 3). */
+      fenFlood: () => this.worldView.fenFlood(),
       /** Open an Acre station as if clicked (kiln / sawpit / fire). */
       station: (kind: 'kiln' | 'sawpit' | 'fire') => {
         const it = AREAS.acre.interactables.find((i) => i.kind === kind);

@@ -120,6 +120,21 @@ var NODE_LIST = [
     tint: 5064242,
     extras: [{ item: "ring_copper", chance: 1 / 120 }, { item: "seed_mourning_moss", chance: 1 / 20 }, { item: "seed_nightshade", chance: 1 / 25 }]
   }),
+  // The Mourning Fen's herbs (2026-09-30): dug from the marsh. Bog myrtle grows on the hummocks.
+  node({
+    id: "bog_myrtle",
+    skill: "gravedigging",
+    name: "Bog Myrtle Thicket",
+    kind: "grave",
+    level: 25,
+    xp: 26,
+    ticks: 5,
+    item: "herb_bog_myrtle",
+    yields: [3, 6],
+    respawnS: 40,
+    tint: 6982258,
+    extras: [{ item: "seed_bog_myrtle", chance: 1 / 16 }, { item: "gem_grave_garnet", chance: 1 / 120 }]
+  }),
   node({
     id: "grave_crypt",
     skill: "gravedigging",
@@ -134,6 +149,21 @@ var NODE_LIST = [
     gold: [2, 6],
     tint: 5920336,
     extras: [{ item: "ore_silver", chance: 1 / 8 }, { item: "reliquary_fragment", chance: 1 / 60 }, { item: "seed_corpse_lily", chance: 1 / 25 }, { item: "seed_wolfsbane", chance: 1 / 40 }]
+  }),
+  // ...and the drowned lotus in the open water.
+  node({
+    id: "drowned_lotus",
+    skill: "gravedigging",
+    name: "Drowned Lotus Bed",
+    kind: "grave",
+    level: 45,
+    xp: 44,
+    ticks: 6,
+    item: "herb_drowned_lotus",
+    yields: [3, 5],
+    respawnS: 55,
+    tint: 10405080,
+    extras: [{ item: "seed_drowned_lotus", chance: 1 / 20 }, { item: "gem_bone_opal", chance: 1 / 140 }, { item: "gem_void_sapphire", chance: 1 / 400 }]
   }),
   node({
     id: "grave_barrow_king",
@@ -253,6 +283,9 @@ var SEEDS = [
   // Zone herbs (content/reagents.ts): foraged in the Cloister and the Pyre, grown in the Acre. Their items live in reagents.ts so migration 007 stays as applied.
   herb("rot_cap", 35, 75, 26, 360, [3, 6]),
   herb("ash_bloom", 50, 90, 34, 450, [3, 6]),
+  // The Mourning Fen's herbs (items in content/fenItems.ts; found as gathering nodes in the Fen).
+  herb("bog_myrtle", 55, 90, 36, 420, [4, 7]),
+  herb("drowned_lotus", 70, 110, 52, 600, [4, 8]),
   { id: "sapling_oak", kind: "tree", level: 10, growMin: 120, harvest: "log_oak", yields: [14, 24], plantXp: 25, harvestXp: 225, seedBack: 0.15 },
   { id: "sapling_yew", kind: "tree", level: 40, growMin: 360, harvest: "log_yew", yields: [10, 18], plantXp: 60, harvestXp: 630, seedBack: 0.15 }
 ];
@@ -303,6 +336,15 @@ var ALCHEMY_RECIPES = [
   ["brew_moonpetal_elixir", "Brew Moonlight Elixir", "alchemy", 72, "elixir_moonlight", 1, [["herb_moonpetal", 3], ["herb_bloodroot", 1]]]
 ];
 
+// src/content/fenItems.ts
+var FEN_ITEMS = {
+  herb_bog_myrtle: { name: "Bog Myrtle", rarity: "rare", sell: 34, lore: "Waxy grey leaves dug from the peat. Its smoke keeps the marsh-fever off the living.", stack: 250 },
+  herb_drowned_lotus: { name: "Drowned Lotus", rarity: "epic", sell: 72, lore: "It blooms under black water and glows faintly, as if lit from below.", stack: 250 },
+  seed_bog_myrtle: { name: "Bog Myrtle Seed", rarity: "rare", sell: 16, lore: "Plant it in a Mourning Bed. It grows best in damp, dark ground.", stack: 250 },
+  seed_drowned_lotus: { name: "Drowned Lotus Seed", rarity: "rare", sell: 28, lore: "Plant it in a Mourning Bed and keep it patient.", stack: 250 },
+  ichor_mire: { name: "Mire Ichor", rarity: "epic", sell: 60, lore: "The Mire Mother leaves this dark, silver-flecked ichor. Brew it with drowned lotus for Moonlight Elixir.", stack: 250 }
+};
+
 // src/content/reagents.ts
 var item = (name, rarity, sell, lore, art) => ({ name, rarity, sell, lore, stack: 250, art });
 var REAGENT_ITEMS = {
@@ -327,7 +369,8 @@ var BOSS_ICHOR = {
   congregation: "ichor_congregation",
   prelate: "ichor_prelate",
   saint: "ichor_plague_saint",
-  regent: "ichor_regent"
+  regent: "ichor_regent",
+  mire: "ichor_mire"
 };
 var brew = (name, rarity, sell, lore, def, recipe, art) => ({ name, rarity, sell, lore, def, recipe, art });
 var REAGENT_BREW_LIST = [
@@ -863,6 +906,7 @@ for (const [id, c] of Object.entries(CHARM_ITEMS)) ITEMS[id] ??= { name: c.name,
 for (const [id, a] of Object.entries(ALCHEMY_ITEMS)) ITEMS[id] ??= { name: a.name, type: "material", rarity: a.rarity, sell: a.sell, lore: a.lore, stack: a.stack };
 for (const [id, r] of Object.entries(REAGENT_ITEMS)) ITEMS[id] ??= { name: r.name, type: "material", rarity: r.rarity, sell: r.sell, lore: r.lore, stack: r.stack, icon: reagentIcon(id) };
 for (const [id, r] of Object.entries(REAGENT_BREW_ITEMS)) ITEMS[id] ??= { name: r.name, type: "material", rarity: r.rarity, sell: r.sell, lore: r.lore, stack: r.stack, icon: reagentIcon(id) };
+for (const [id, f] of Object.entries(FEN_ITEMS)) ITEMS[id] ??= { name: f.name, type: "material", rarity: f.rarity, sell: f.sell, lore: f.lore, stack: f.stack };
 for (const [id, p] of Object.entries(PROCESSING_ITEMS)) ITEMS[id] ??= { name: p.name, type: "material", rarity: p.rarity, sell: p.sell, lore: p.lore, stack: p.stack };
 for (const piece of ARMOR_PIECES) ITEMS[piece.id] = {
   name: piece.name,

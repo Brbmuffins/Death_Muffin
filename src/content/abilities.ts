@@ -785,7 +785,7 @@ export const SPELL_FX = {
   souls: { jade: 0x6fe3c8, deep: 0x1f8f86, pale: 0x9ff5e0 },
   thrall: { spark: 0xe8dfcc, wraith: 0x8fb4ff },
   /** Flying pack: dust = Shroud Moth grave-dust ochre; dive = the gargoyle's bell-bronze mark. */
-  enemy: { toll: 0xd9a441, rot: 0x7fa05a, curse: 0x8a3a4a, slam: 0x9a6a3a, toxic: 0x6f8f3a, dust: 0xb89a5a, dustDeep: 0x4a3d24, dive: 0xc8923a, dirt: 0x6a4a30, ember: 0xff7a2a, emberDeep: 0x4a1608, emberCore: 0xffc45a },
+  enemy: { toll: 0xd9a441, rot: 0x7fa05a, curse: 0x8a3a4a, slam: 0x9a6a3a, toxic: 0x6f8f3a, dust: 0xb89a5a, dustDeep: 0x4a3d24, dive: 0xc8923a, dirt: 0x6a4a30, ember: 0xff7a2a, emberDeep: 0x4a1608, emberCore: 0xffc45a, hex: 0xc2409a },
   /** Elite affix tells (bell = bronze, hunger = olive rot, shroud = grave dusk, vengeance = ember). */
   affix: { bell: 0xd9a441, drool: 0x8a8f2a, shroud: 0x3a3448, vengeful: 0xe0552a },
   /** Grave Surge — enemy bell/crypt bronze. */

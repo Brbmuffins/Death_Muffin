@@ -24,6 +24,7 @@ import { PROCESSING_RECIPES } from '../content/processing';
 import { ALCHEMY_RECIPES } from '../content/alchemy';
 import { NECRO_RECIPES, isTwoHanded } from '../content/necroWeapons';
 import { REAGENT_RECIPES } from '../content/reagents';
+import { FEN_RECIPES } from '../content/fenItems';
 import { isDevAccount } from '../gameplay/devAccess';
 
 class MockError extends Error {
@@ -84,7 +85,7 @@ const RECIPE_ROWS: R[] = [
 
 // Professions G6: the same rows the server migration is generated from.
 RECIPE_ROWS.push(...PROCESSING_RECIPES);
-RECIPE_ROWS.push(...ALCHEMY_RECIPES, ...NECRO_RECIPES, ...REAGENT_RECIPES);
+RECIPE_ROWS.push(...ALCHEMY_RECIPES, ...NECRO_RECIPES, ...REAGENT_RECIPES, ...FEN_RECIPES);
 
 const RECIPES: Recipe[] = RECIPE_ROWS.map(([id, name, profession_id, lvl, result, qty, ings]) => ({
   id,

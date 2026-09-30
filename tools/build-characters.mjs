@@ -19,7 +19,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const RAW = join(ROOT, 'art-src', 'tripo');
+// ART_SUB=fen reads raw outputs from art-src/fen/tripo/ (a zone's own folder); pass slugs explicitly when it is set.
+const RAW = join(ROOT, 'art-src', process.env.ART_SUB ?? '', 'tripo');
 const OUT = join(ROOT, 'public', 'models');
 
 /** Tripo preset suffix → runtime clip name. */
@@ -45,7 +46,7 @@ const CLIP_NAMES = {
 };
 
 /** Per-slug texture budget (px). Hero and boss get more; horde enemies less. */
-const TEXTURE_SIZE = { boss_plague_saint: 1024, boss_cinder_regent: 1024, slag_brute: 1024, tithe_bat: 256, prop_mantle_rib: 256, prop_mantle_vertebra: 256, prop_mantle_skullchip: 256, prop_grave_hand: 256, necromancer: 1024, prelate: 1024, bone_golem: 1024, boss_gravedigger_king: 1024, boss_bone_abbess: 1024, boss_drowned_congregation: 1024, prop_mausoleum: 1024, prop_bell_altar: 1024 };
+const TEXTURE_SIZE = { boss_plague_saint: 1024, boss_cinder_regent: 1024, boss_mire_mother: 1024, drowned_sexton: 1024, slag_brute: 1024, tithe_bat: 256, prop_mantle_rib: 256, prop_mantle_vertebra: 256, prop_mantle_skullchip: 256, prop_grave_hand: 256, necromancer: 1024, prelate: 1024, bone_golem: 1024, boss_gravedigger_king: 1024, boss_bone_abbess: 1024, boss_drowned_congregation: 1024, prop_mausoleum: 1024, prop_bell_altar: 1024 };
 const DEFAULT_TEXTURE = 512;
 
 /**

@@ -93,6 +93,7 @@ function piecesFor(sets, collection) {
 var ARMOR_PIECES = [...piecesFor(ARMOR_SETS, 1), ...piecesFor(ASCENDED_ARMOR_SETS, 2)];
 var ARMOR_BY_ID = Object.fromEntries(ARMOR_PIECES.map((piece) => [piece.id, piece]));
 function armorLoot(area) {
+  if (area === "fen") return ARMOR_PIECES.filter((piece) => piece.collection === 2).map((piece) => ({ item: piece.id, weight: 1 }));
   return ARMOR_PIECES.filter((piece) => piece.area === area || piece.collection === 1 && (area === "cloister" || area === "pyre") && piece.area !== "graves" || piece.collection === 2 && area === "pyre" && piece.area === "cloister").map((piece) => ({ item: piece.id, weight: 1 }));
 }
 
@@ -783,9 +784,59 @@ var AREAS = {
     breaches: [[91, -44], [91, -12], [110, -28], [78, -43], [78, -13], [104, -42], [104, -14], [100, -28]],
     interactables: [{ id: "waystone_coliseum", kind: "waystone", label: "Waystone", x: 73.5, z: -20 }],
     ambient: { fog: 1051658, hemiSky: 4864560, hemiGround: 788486, moon: 13678736 }
+  },
+  // The Mourning Fen (2026-09-30): a drowned graveyard marsh west of the Drowned Nave, level-scaled like the Pyre. Bog water slows
+  // whoever wades it (content/fen.ts); the dry hummocks are where you stand. Its seal is earned in the Pyre (800 kills there) but
+  // the door is the Nave's west wall: the player has cleared the Nave long before, the Pyre kills are the gate, not the walk.
+  fen: {
+    id: "fen",
+    name: "The Mourning Fen",
+    subtitle: "Where the marsh keeps the names it swallows",
+    theme: "fen",
+    rect: { x0: -60, z0: -100, x1: -22, z1: -60 },
+    safe: false,
+    level: 45,
+    scaling: { minLevel: 45 },
+    enemies: [
+      { id: "bog_hag", weight: 18 },
+      { id: "mire_leech", weight: 16 },
+      { id: "fen_wisp", weight: 20 },
+      { id: "drowned_sexton", weight: 8 },
+      { id: "wraith", weight: 12 }
+    ],
+    cap: 24,
+    waveSize: 9,
+    waveIntervalMs: 6200,
+    eliteChance: 0.09,
+    unlock: { area: "pyre", kills: 800 },
+    loot: [
+      ...armorLoot("fen"),
+      { item: "gem_void_sapphire", weight: 9 },
+      { item: "gem_bone_opal", weight: 8 },
+      { item: "gem_grave_garnet", weight: 6 },
+      { item: "herb_bog_myrtle", weight: 14 },
+      { item: "herb_drowned_lotus", weight: 8 },
+      { item: "seed_bog_myrtle", weight: 4 },
+      { item: "seed_drowned_lotus", weight: 3 },
+      { item: "ore_moon", weight: 7 },
+      { item: "ingot_hell", weight: 4 },
+      { item: "flask_hp_grand", weight: 8 },
+      { item: "flask_void_resist", weight: 7 },
+      { item: "flask_damage", weight: 6 },
+      { item: "elixir_moonlight", weight: 2 },
+      { item: "helm_gold", weight: 4 }
+    ],
+    itemChance: 0.16,
+    breaches: [[-58.5, -98.5], [-25.5, -97], [-57, -63], [-28, -63], [-41, -98.5], [-58, -80], [-41, -62]],
+    interactables: [
+      { id: "waystone_fen", kind: "waystone", label: "Waystone", x: -24.8, z: -85.6 },
+      // Boss summon on the arena's north rim (content/bosses.ts summonSpot), on its own hummock.
+      { id: "mire_altar", kind: "boss", label: "The Mire Altar", x: -42, z: -90.2 }
+    ],
+    ambient: { fog: 661016, hemiSky: 2771538, hemiGround: 396302, moon: 8307908, fogMult: 1.7 }
   }
 };
-var AREA_ORDER = ["chapterhouse", "acre", "graves", "ossuary", "nave", "sanctum", "cloister", "pyre", "warren", "coliseum"];
+var AREA_ORDER = ["chapterhouse", "acre", "graves", "ossuary", "nave", "sanctum", "cloister", "pyre", "warren", "coliseum", "fen"];
 var BOSS_SUMMON_SHARDS = 5;
 
 // src/content/ascension.ts
@@ -864,8 +915,11 @@ var WAVE_UPGRADE = {
   cost: (tier) => Math.round(120 * Math.pow(1.75, tier))
 };
 
+// src/content/fen.ts
+var FEN_ARENA = { x: -42, z: -80, r: 12 };
+
 // src/content/bosses.ts
-var BOSS_IDS = ["gravedigger", "abbess", "congregation", "prelate", "saint", "regent"];
+var BOSS_IDS = ["gravedigger", "abbess", "congregation", "prelate", "saint", "regent", "mire"];
 var BOSSES = {
   gravedigger: {
     id: "gravedigger",
@@ -951,6 +1005,23 @@ var BOSSES = {
     phases: ["The crown ignites", "The pyre feeds", "The pyre burns down"],
     awaken: "The Regent rises from the embers",
     defeated: ["The Pyre Burns Out", "The Cinder Regent crumbles to ash"]
+  },
+  mire: {
+    id: "mire",
+    name: "The Mire Mother",
+    title: "Drowned Matriarch of the Mourning Fen",
+    area: "fen",
+    arena: FEN_ARENA,
+    summonId: "mire_altar",
+    summonLabel: "The Mire Altar",
+    shards: 7,
+    baseHp: 32e3,
+    modelSlug: "boss_mire_mother",
+    portrait: "",
+    color: 6276276,
+    phases: ["She sinks, and surfaces", "The marsh floods", "The drowned rise"],
+    awaken: "The Mire Mother wakes beneath the hummocks",
+    defeated: ["The Marsh Goes Still", "The Mire Mother sinks for the last time"]
   },
   prelate: {
     id: "prelate",

@@ -133,6 +133,7 @@ The diocese is one connected world. Kill enough enemies in the preceding area to
 | **The Catacomb Warren** | 4 | 150 kills in the Graves | A side dungeon west of the Graves: nine chambers split by tall half-walls. See [Levels to explore](#levels-to-explore). |
 | **The Bone Coliseum** | 11 | 350 kills in the Ossuary | A horde pit east of the Ossuary: four gates, fast surges, twice the elites. |
 | **The Cinder Pyre** | 30 minimum | 700 kills in the Cloister | A fire realm past the Cloister's east arch, level-scaled the same way. Cinder Husks burst into embers, Pyre Priests hurl coals, Cinderhounds hunt in packs, Slag Brutes slam burning rings: everything here leaves burning ground. |
+| **The Mourning Fen** | 45 minimum | 800 kills in the Pyre | A drowned marsh west of the Nave (door on the Nave's west wall), level-scaled. Bog water slows you; dry hummocks do not. Bog Hags hex your thralls, Wisps chill and lure, Leeches swarm, Sextons drag. |
 
 <table><tr>
 <td><img src="docs/screenshots/chapterhouse.webp" alt="The Chapterhouse" /><br /><sub>The Chapterhouse</sub></td>
@@ -149,6 +150,7 @@ Every hunting ground has a boss summon object. Bosses cost **soul shards**, and 
 | **Drowned Congregation** | Drowned Font, Drowned Nave · **4 shards** | Use pews to block the Flood Hymn and leave grasping rings. |
 | **Bell-Sworn Prelate** | Sundered Bell, Bell Sanctum · **5 shards** | Leave the expanding Toll ring, the frontal Slam, and marked Bell Rain circles. Defeating it unlocks Ascension for the run. |
 | **Cinder Regent** | Ember Altar, Cinder Pyre · **6 shards** | When Conflagration starts, run to a grey ash circle and stay on it; the rest of the arena burns. Kill the Pyre Priests early so their coals do not cover the ash. His level scales with the Pyre. |
+| **Mire Mother** | Mire Altar, Mourning Fen · **7 shards** | She sinks and resurfaces under a ringed hummock: leave it, then hit her while she is winded. Phase 2 floods the marsh; in phase 3 she raises every corpse in the Fen, so spend yours first. Her level scales with the Fen. |
 | **Plague Saint** | Saint's Litter, Plague Cloister · **5 shards** | Move her off rot pools, where she heals, and kill the Plague Doctors that feed her through a green link. Her level scales with the Cloister. |
 
 ### Levels to explore
@@ -180,6 +182,19 @@ The fire realm: a scorched garth of black obelisks, funeral pyres and a slag fon
 | **Slag Brute** | Slow, heavy slam that cracks a wide ring and leaves it burning; resonant corpse | Leave the ring on the wind-up, kite it in circles |
 
 The Regent waits at the Ember Altar on the arena's north edge. The floor sigil marks the arena; the slag font stands in the east alcove, out of the fight.
+
+**The Mourning Fen** (level-scaled, never below 45 · open after 800 Pyre kills · door on the Nave's west wall).
+A drowned graveyard marsh under heavy fog and drifting marsh-lights. The whole floor is **bog water**: wading is slow (-22%), the pale-rimmed **hummocks** and the dry landing by the door are not, so you fight from the islands and cross the water on purpose. Enemy level follows the highest-level player inside, like the Pyre. Bog myrtle and drowned lotus grow here as gathering nodes (Gravedigging 25 and 45) and their seeds plant in the Acre's Mourning Beds (Gardening 55 and 70); both herbs brew into flasks. It drops the ascended armour sets, void sapphires and moon ore.
+
+| Dead | What it does | What to do |
+|---|---|---|
+| **Bog Hag** | Lays a magenta ring on your thrall knot: inside it they deal 30% less for six seconds (a sigil shows on each) | Kill her first, or walk the legion out of the ring |
+| **Mire Leech** | Swarms of four to six, bog-rot bites, no corpse | Miasma and area rites; stay on a hummock |
+| **Fen Wisp** | Flies; pulses a teal chilling ring under you, backs away toward the open water | Step out, do not chase it into the bog |
+| **Drowned Sexton** | Throws a grave-hook along a brown line and drags you 4.5 m in, then slams; two corpses | Step off the line, then leave the slam ring |
+| **Choir Wraith** | Sings rings onto the ground (as in the Nave) | Keep moving |
+
+The **Mire Mother** wakes at the Mire Altar on the marsh's heart. She sinks and resurfaces under a hummock (ripple ring: leave it), and is winded for a moment when she bursts out. Drowned Hands root anyone wading the open water. At 60% the marsh floods (hummocks shrink, the bog drags harder, leeches climb out); at 30% she raises a Risen from every corpse lying in the Fen, so spend your corpses first and the rite fails.
 
 ![The Bell-Sworn Prelate in the Bell Sanctum](docs/screenshots/bell-sworn-prelate.webp)
 

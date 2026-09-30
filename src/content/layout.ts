@@ -2,6 +2,7 @@ import { AREAS, AREA_ORDER, DOORS, type AreaId, type Rect } from './areas';
 export type { Rect };
 import { mulberry32 } from '../gameplay/rng';
 import { NODES, type NodeKind } from '../gameplay/gatheringRules';
+import { FEN_BOG, FEN_HUMMOCKS } from './fen';
 import { ABBESS_NICHE_SPOTS, BOSSES, GRAVEDIGGER_PITS, summonSpot, type BossId } from './bosses';
 
 /**
@@ -58,7 +59,10 @@ export type PropId =
   | 'pyre_stack'
   | 'slag_font'
   | 'cinder_obelisk'
-  | 'ember_altar';
+  | 'ember_altar'
+  // The Mourning Fen (2026-09-30).
+  | 'fen_hummock'
+  | 'mire_altar';
 
 export interface PropSpec {
   /** Target world height of the generated model. */
@@ -112,6 +116,10 @@ export const PROPS: Record<PropId, PropSpec> = {
   pyre_stack: { height: 2.6, collider: { kind: 'circle', r: 1.3 }, light: { color: 0xff7a2a, intensity: 12, distance: 12, y: 3.2, flames: 0, spread: 0.4 } },
   slag_font: { height: 2.0, collider: { kind: 'circle', r: 1.6 }, light: { color: 0xff6a20, intensity: 11, distance: 14, y: 3.4, flames: 0, spread: 0.3 } },
   ember_altar: { height: 1.8, collider: { kind: 'box', hw: 1.0, hd: 0.8 }, light: { color: 0xff7a2a, intensity: 8, distance: 10, y: 2.6, flames: 0, spread: 0.3 } },
+  // Hummock decor (reeds and a leaning headstone on a peat mound): walkable, the dry ground itself is drawn by WorldView.
+  fen_hummock: { height: 1.1 },
+  // Teal witch-fire: marsh-cold, never the Chapterhouse braziers' violet.
+  mire_altar: { height: 1.3, collider: { kind: 'circle', r: 1.1 }, light: { color: 0x5fc4b4, intensity: 9, distance: 11, y: 1.8, flames: 0, spread: 0.3 } },
   cinder_obelisk: { height: 4.2, collider: { kind: 'circle', r: 0.75 }, light: { color: 0xff7a2a, intensity: 7, distance: 8, y: 3.4, flames: 0, spread: 0.2 } },
 };
 
@@ -214,6 +222,8 @@ export interface WorldLayout {
   windows: Window[];
   /** Shallow standing water (the Drowned Nave). Walkable — it only slows the eye, not the feet. */
   water: Rect[];
+  /** The Mourning Fen's marsh water (drawn with the nave flood; it slows, see content/fen.ts). */
+  bog: Rect[];
   puddles: Puddle[];
   silhouettes: Silhouette[];
   /** Surge origins derived from the crypt props (unsafe areas only). */
@@ -643,6 +653,61 @@ export function generateLayout(seed = 1337): WorldLayout {
     for (let i = 0; i < 7; i++) decals.push({ kind: 'blood', x: 78 + cr() * 26, z: -40 + cr() * 24, r: 1.2 + cr() * 1.6, color: 0x5a1a1a, opacity: 0.4, rot: cr() * 6, area: a });
   }
 
+  // --- The Mourning Fen (2026-09-30): a drowned graveyard marsh. The floor is bog water (content/fen.ts); the hummocks are dry.
+  // Own random stream, so it can never move a prop that was placed before it.
+  {
+    const a: AreaId = 'fen';
+    const fr = mulberry32(seed ^ 0xfe17);
+    const r = AREAS.fen.rect;
+    const free = (x: number, z: number, rad: number) =>
+      clearOf(x, z, rad) && AREAS.fen.breaches.every(([bx, bz]) => Math.hypot(bx - x, bz - z) > 3) && !(x > -24 && z > -83 && z < -71);
+    edgeWalls(a, 3.2, 'stone_wall', walls);
+    // The dry landing: waystone, lanterns either side of the causeway, weeping saints.
+    P('waystone', -24.8, -85.6, a, 0);
+    P('grave_lantern', -26.6, -83.6, a, 0);
+    P('grave_lantern', -26.6, -70.4, a, 0);
+    P('drowned_statue', -29.5, -87, a, Math.PI / 2);
+    P('drowned_statue', -29.5, -67.5, a, Math.PI / 2);
+    // Hummock decor: reeds and a leaning headstone on most of them (not the altar's or the central one).
+    FEN_HUMMOCKS.forEach((h, i) => {
+      if (i < 2) return;
+      P('fen_hummock', h.x + (fr() - 0.5) * 0.8, h.z + (fr() - 0.5) * 0.8, a, fr() * 6.28, 0.85 + fr() * 0.35);
+    });
+    // Graves on the dry ground: a few headstones on the outer hummocks (they flood in the boss fight).
+    for (const i of [7, 8, 9, 10, 11, 12, 13]) {
+      const h = FEN_HUMMOCKS[i];
+      const ang = Math.PI / 2 + (fr() - 0.5) * 0.8; // the far side from the herb node on its north edge
+      P(fr() < 0.5 ? 'tombstone_round' : 'tombstone_cross', h.x + Math.cos(ang) * h.r * 0.7, h.z + Math.sin(ang) * h.r * 0.7, a, ang, 0.8, { tilt: (fr() - 0.5) * 0.4 });
+    }
+    // Dead trees ring the marsh walls.
+    for (let x = r.x0 + 3; x <= r.x1 - 3; x += 6.5) {
+      for (const z of [r.z0 + 1.6, r.z1 - 1.6]) {
+        const tx = x + (fr() - 0.5) * 2;
+        if (free(tx, z, 2.5)) P('dead_tree', tx, z, a, fr() * 6.28, 0.8 + fr() * 0.4);
+      }
+    }
+    for (let z = r.z0 + 6; z <= r.z1 - 6; z += 7) {
+      if (free(r.x0 + 1.6, z, 2.5)) P('dead_tree', r.x0 + 1.6, z, a, fr() * 6.28, 0.8 + fr() * 0.4);
+    }
+    // Sunken pews and bone piles in the open water, well clear of the boss ring.
+    for (let i = 0, n = 0; i < 60 && n < 7; i++) {
+      const x = r.x0 + 3 + fr() * (r.x1 - r.x0 - 6);
+      const z = r.z0 + 3 + fr() * (r.z1 - r.z0 - 6);
+      const ok = Math.hypot(x - FEN_HUMMOCKS[1].x, z - FEN_HUMMOCKS[1].z) > 14 && FEN_HUMMOCKS.every((h) => Math.hypot(h.x - x, h.z - z) > h.r + 2.2) && free(x, z, 3.5) && x < -32;
+      if (!ok) continue;
+      P(n % 3 === 0 ? 'church_pew' : n % 3 === 1 ? 'bone_pile' : 'coffin_stack', x, z, a, fr() * 6.28);
+      n++;
+    }
+    // Herb nodes: bog myrtle on the outer hummocks' dry edge, drowned lotus beds in the open water.
+    const N = (type: string, x: number, z: number) => nodes.push({ id: `${a}_${nodes.length}`, type, x, z, area: a, rot: fr() * Math.PI * 2 });
+    for (const i of [7, 9, 11, 12, 8]) {
+      const h = FEN_HUMMOCKS[i];
+      N('bog_myrtle', h.x, h.z - h.r * 0.55);
+    }
+    for (const [x, z] of [[-50, -74.5], [-38.5, -69], [-47.5, -96.5], [-31.5, -91]] as const) N('drowned_lotus', x, z);
+    decals.push({ kind: 'sigil', x: -42, z: -80, r: 11, color: 0x5fc4b4, opacity: 0.22, rot: 0, area: a });
+  }
+
   // Environment dressing draws from its own stream so adding it never moves a grave.
   const envRand = mulberry32(seed ^ 0x5eed);
   const water = naveWater();
@@ -654,7 +719,7 @@ export function generateLayout(seed = 1337): WorldLayout {
   dressRooms(props, nodes, crypts, paths);
   bossArenas(props);
 
-  return { paths, props, walls, decals, windows, water, puddles, silhouettes, crypts, nodes, ponds };
+  return { paths, props, walls, decals, windows, water, bog: FEN_BOG, puddles, silhouettes, crypts, nodes, ponds };
 }
 
 /**
@@ -775,7 +840,7 @@ function bossArenas(props: Placement[]) {
   const drop = (keep: (p: Placement) => boolean) => {
     for (let i = props.length - 1; i >= 0; i--) if (!keep(props[i])) props.splice(i, 1);
   };
-  for (const id of ['gravedigger', 'abbess', 'congregation', 'saint', 'regent'] as BossId[]) {
+  for (const id of ['gravedigger', 'abbess', 'congregation', 'saint', 'regent', 'mire'] as BossId[]) {
     const b = BOSSES[id];
     const { x, z, r } = b.arena;
     const [sx, sz] = summonSpot(id);
@@ -860,7 +925,7 @@ function distantSilhouettes(rand: () => number): Silhouette[] {
   const out: Silhouette[] = [];
   // A ruined cathedral skyline: spires hand-placed where the camera looks north past walls.
   const spires: [number, number, number][] = [
-    [-38, -58, 1.25],
+    [-38, -110, 1.25], // behind the Mourning Fen
     [30, -62, 1.05],
     [-30, -134, 1.4],
     [44, -146, 1.3], // behind the Plague Cloister

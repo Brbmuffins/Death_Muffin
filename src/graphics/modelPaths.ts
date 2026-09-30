@@ -67,6 +67,12 @@ export const CREATURE_MODELS = {
   cinderhound: m('cinderhound', 1.0),
   slag_brute: m('slag_brute', 2.9),
   boss_cinder_regent: m('boss_cinder_regent', 4.3),
+  // The Mourning Fen (2026-09-30). Leech and wisp are static meshes (built as props): the leech slithers and the wisp bobs in code.
+  bog_hag: m('bog_hag', 2.0),
+  drowned_sexton: m('drowned_sexton', 2.6),
+  mire_leech: { url: 'models/props/mire_leech.glb', height: 0.6 },
+  fen_wisp: { url: 'models/props/fen_wisp.glb', height: 1.15 },
+  boss_mire_mother: m('boss_mire_mother', 4.4),
 } satisfies Record<string, CreatureModelDef>;
 
 export type CreatureSlug = keyof typeof CREATURE_MODELS;

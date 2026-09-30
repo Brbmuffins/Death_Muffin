@@ -41,7 +41,8 @@ import { itemMeta } from './items';
 import { AREA_REAGENT_DROPS, BOSS_ICHOR, ENEMY_REAGENT_DROPS, REAGENT_ITEMS, REAGENT_RECIPES } from './reagents';
 import { AREAS, BOSS_SUMMON_SHARDS, type AreaId } from './areas';
 import type { DisciplineId } from './disciplines';
-import { ABBESS, BOSSES, CONGREGATION, GRAVEDIGGER, REGENT, SAINT, type BossId } from './bosses';
+import { ABBESS, BOSSES, CONGREGATION, GRAVEDIGGER, MIRE, REGENT, SAINT, type BossId } from './bosses';
+import { BOG, HAG_HEX, SEXTON_HOOK, WISP_PULSE } from './fen';
 import { NECRO_KIND_LABEL, NECRO_TIERS, NECRO_TIER_INFO, NECRO_WEAPON_TUNING as WT, type NecroKind } from './necroWeapons';
 import { BURROW, CENSER, DUST, EMBER_BOLT, EMBER_DEATH, ENEMIES, FRENZY, PLAGUE_FLASK, SCREAM, SLAG_POOL, TEMPLAR_SHIELD, UNBIND, WARD, type Behavior, type EnemyId } from './enemies';
 
@@ -318,7 +319,7 @@ export const CODEX_DISCIPLINES: Record<DisciplineId, DisciplineEntry> = {
 /** Enemies plus every boss (bosses double as the Codex trophies: sealed until you have faced them). */
 export type DeadId = EnemyId | BossId;
 
-export const DEAD_ORDER: DeadId[] = ['robber', 'hound', 'penitent', 'sac', 'deacon', 'risen', 'censer', 'wraith', 'rat', 'golem', 'bat', 'moth', 'gargoyle', 'seraph', 'ghoul', 'acolyte', 'templar', 'niche', 'plague_doctor', 'flagellant', 'cinder_husk', 'pyre_priest', 'cinderhound', 'slag_brute', 'gravedigger', 'abbess', 'congregation', 'saint', 'regent', 'prelate'];
+export const DEAD_ORDER: DeadId[] = ['robber', 'hound', 'penitent', 'sac', 'deacon', 'risen', 'censer', 'wraith', 'rat', 'golem', 'bat', 'moth', 'gargoyle', 'seraph', 'ghoul', 'acolyte', 'templar', 'niche', 'plague_doctor', 'flagellant', 'cinder_husk', 'pyre_priest', 'cinderhound', 'slag_brute', 'bog_hag', 'mire_leech', 'fen_wisp', 'drowned_sexton', 'gravedigger', 'abbess', 'congregation', 'saint', 'regent', 'mire', 'prelate'];
 
 export const PRELATE_NAME = 'The Bell-Sworn Prelate';
 
@@ -510,6 +511,34 @@ export const CODEX_DEAD: Record<DeadId, DeadEntry> = {
     corpse: 'A resonant corpse: the strongest kind to raise.',
     counter: 'Leave the ring when it winds up, kite it in circles, and never fight standing in the last slam.',
   },
+  bog_hag: {
+    name: ENEMIES.bog_hag.name,
+    role: ENEMIES.bog_hag.behavior,
+    behaviour: `Stands back and lays a magenta ring (${HAG_HEX.radius}m) on the thickest knot of your thralls. Every thrall inside is hexed for ${HAG_HEX.durationS}s and deals ${Math.round((1 - HAG_HEX.thrallDamageMult) * 100)}% less damage; a sigil shows on each cursed thrall. A player caught in the ring is mired (chilled) and nicked.`,
+    corpse: 'A normal corpse.',
+    counter: 'Kill her first: she has little health. Or move the legion out before the ring fills (thralls follow you), and keep your corpses for bigger rites while her hex runs.',
+  },
+  mire_leech: {
+    name: ENEMIES.mire_leech.name,
+    role: ENEMIES.mire_leech.behavior,
+    behaviour: 'Arrive in swarms of four to six and flank fast. Their bites are bog rot, so rot-resist brews cover them.',
+    corpse: 'None. Too small to leave a body.',
+    counter: 'Miasma, Corpse Explosion on a bigger body, or any area rite. Standing on a hummock keeps you fast while they come to you.',
+  },
+  fen_wisp: {
+    name: ENEMIES.fen_wisp.name,
+    role: ENEMIES.fen_wisp.behavior,
+    behaviour: `A drifting marsh-light. It pulses a teal ring (${WISP_PULSE.radius}m) onto where you stand that chills you, and when pressed it backs away toward the open water at the heart of the Fen, where wading slows you.`,
+    corpse: 'None.',
+    counter: 'Step out of the ring, let your thralls and ranged rites catch it, and do not chase it into the water.',
+  },
+  drowned_sexton: {
+    name: ENEMIES.drowned_sexton.name,
+    role: ENEMIES.drowned_sexton.behavior,
+    behaviour: `A bloated gravedigger. From ${SEXTON_HOOK.minRange}–${SEXTON_HOOK.range}m he throws a grave-hook along a marked line: whoever it catches is dragged ${SEXTON_HOOK.pullM}m toward him and held for a breath, then his slam (${ENEMIES.drowned_sexton.slamRadius}m) lands.`,
+    corpse: 'Two corpses.',
+    counter: 'Step sideways off the brown line when it draws, then leave the slam ring. Two corpses make him a good source for Exhume.',
+  },
   gravedigger: {
     name: BOSSES.gravedigger.name,
     role: 'boss',
@@ -544,6 +573,13 @@ export const CODEX_DEAD: Record<DeadId, DeadEntry> = {
     behaviour: `The Cinder Pyre's boss, as strong as you are. Coals mark ${REGENT.coals.circles[0]}–${REGENT.coals.circles[1]} circles on you and around the arena and leave burning ground; Cinder Cleave lays a line of fire down the cone. Every ${REGENT.conflagration.cd}s or so Conflagration begins: the whole arena burns after ${REGENT.conflagration.windupMs / 1000}s except the grey ash circles (${REGENT.conflagration.safe[0]}, then ${REGENT.conflagration.safe[1]}, then ${REGENT.conflagration.safe[2]}, plus one per three extra players). Husks and Priests join in phase 2; phase 3 brings hounds and fewer ash circles.`,
     corpse: 'None. The Regent crumbles to ash.',
     counter: `Offer ${BOSSES.regent.shards} soul shards at the Ember Altar. The moment Conflagration begins, run for an ash circle and stay on it until the fire has passed; use the gaps between to damage him. Kill the Pyre Priests early: their coals cover the ash you need.`,
+  },
+  mire: {
+    name: BOSSES.mire.name,
+    role: 'boss',
+    behaviour: `The Mourning Fen's boss, as strong as you are. She sinks and resurfaces under a hummock: a ripple ring marks it for ${MIRE.surface.windupMs[0] / 1000}s, and she bursts out for heavy damage, then is winded for ${MIRE.surface.windedS}s. Drowned Hands root anyone wading the open water. At 60% the marsh floods (the hummocks shrink to 72%, the water slows you more, leeches climb out); at 30% she raises a Risen from every corpse lying in the Fen, and hags hex your thralls.`,
+    corpse: 'None. She sinks for the last time.',
+    counter: `Offer ${BOSSES.mire.shards} soul shards at the Mire Altar. Leave the ringed hummock, then hit her while she is winded; stay on dry ground when hands rise. In phase 3 spend your corpses first (Exhume, Litany, Offering, Corpse Explosion): if none are left the rite fails and she staggers.`,
   },
   prelate: {
     name: PRELATE_NAME,
@@ -671,6 +707,9 @@ export const CODEX_AREAS: Record<AreaId, AreaEntry> = {
   },
   pyre: {
     dangers: "Beyond the Cloister's east arch, sealed until enough of the Cloister's dead have fallen. Level-scaled like the Cloister, never below level 30. Every mob here leaves fire: Pyre Priests hurl coals that burn where they land, Cinder Husks burst into embers when they die, Slag Brutes slam rings that keep burning, and Cinderhounds arrive in fast packs.",
+  },
+  fen: {
+    dangers: `Through the Drowned Nave's west wall, sealed until 800 of the Pyre's dead have fallen. Level-scaled, never below level 45. The marsh floor is bog water: wading slows you (x${BOG.slow}), the pale-rimmed hummocks and the dry landing do not. Bog Hags hex your thralls, Fen Wisps chill you and lure you toward the deep water, Mire Leeches swarm, and Drowned Sextons drag you in with a grave-hook. Bog myrtle and drowned lotus grow here; the Mire Mother waits at the Mire Altar.`,
   },
   cloister: {
     dangers: "Beyond the Sanctum's east door. The blight grows with you: its dead always match the highest-level player inside (never below level 20), so every kill here is worth your level. Plague Doctors lob flasks that leave rot pools, Flagellants frenzy when wounded, and sacs, rats and censers crowd the moss. The Plague Saint waits at the Saint's Litter.",

@@ -64,6 +64,9 @@ export const SEEDS: SeedDef[] = [
   // Zone herbs (content/reagents.ts): foraged in the Cloister and the Pyre, grown in the Acre. Their items live in reagents.ts so migration 007 stays as applied.
   herb('rot_cap', 35, 75, 26, 360, [3, 6]),
   herb('ash_bloom', 50, 90, 34, 450, [3, 6]),
+  // The Mourning Fen's herbs (items in content/fenItems.ts; found as gathering nodes in the Fen).
+  herb('bog_myrtle', 55, 90, 36, 420, [4, 7]),
+  herb('drowned_lotus', 70, 110, 52, 600, [4, 8]),
   { id: 'sapling_oak', kind: 'tree', level: 10, growMin: 120, harvest: 'log_oak', yields: [14, 24], plantXp: 25, harvestXp: 225, seedBack: 0.15 },
   { id: 'sapling_yew', kind: 'tree', level: 40, growMin: 360, harvest: 'log_yew', yields: [10, 18], plantXp: 60, harvestXp: 630, seedBack: 0.15 },
 ];
