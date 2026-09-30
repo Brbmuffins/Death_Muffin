@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { assets } from './AssetCache';
 import { CREATURE_MODELS, type CreatureSlug } from './modelPaths';
-import { inPlaceHeroClip } from './inPlaceAnimation';
+import { hipAnchor, inPlaceHeroClip, stripRootTravel } from './inPlaceAnimation';
 import { applyWingFlap, type WingOpts } from './wingFlap';
 
 export type CreatureAnim = 'idle' | 'walk' | 'run' | 'attack' | 'cast' | 'hurt' | 'death' | 'dig' | 'dive';
@@ -127,8 +127,9 @@ export class Creature {
       this.model = model;
       this.root.add(model);
       this.mixer = new THREE.AnimationMixer(model);
+      const anchor = hipAnchor(t.clips.get('idle'));
       for (const [name, clip] of t.clips) {
-        this.actions.set(name, this.mixer.clipAction(opts.inPlace ? inPlaceHeroClip(clip) : clip));
+        this.actions.set(name, this.mixer.clipAction(opts.inPlace ? inPlaceHeroClip(clip) : stripRootTravel(clip, anchor)));
       }
       this.mixer.addEventListener('finished', (e) => {
         if (e.action === this.oneShot) {
