@@ -720,9 +720,12 @@ app.post('/api/inventory/add-item', requireJWT, async (req, res) => {
 });
 
 app.post('/api/inventory/save', requireJWT, async (req, res) => {
-  const { characterId, slots } = req.body;
-  if (!Array.isArray(slots))
+  const { characterId } = req.body;
+  if (!Array.isArray(req.body.slots))
     return res.status(400).json({ success: false, error: 'slots must be an array' });
+  // Equipped gear lives in reserved slots 100-108 (managed by /equip). Older clients echo those rows back
+  // with the bag, which made every save fail; the save owns the bag only, so ignore them.
+  const slots = req.body.slots.filter(s => !(Number(s && s.slot_index) >= 100 && Number(s.slot_index) <= 108));
   const incomingSlots = slots.map(s => parseInt(s.slot_index, 10));
   if (slots.length > 24)
     return res.status(400).json({ success: false, error: 'inventory cannot exceed 24 slots' });

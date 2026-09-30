@@ -120,8 +120,13 @@ export function addToSlots(slots: InventorySlot[], drop: LootDrop): InventorySlo
 }
 
 /** Payload shape for POST /api/inventory/save. */
+/**
+ * The save endpoint owns the bag only (slot_index 0..BAG_SIZE-1). Equipped gear lives in reserved
+ * slots (100+) that /api/inventory/equip manages, so it is never sent back: one equipped item used to
+ * make every save fail with "each slot_index must be between 0 and 23".
+ */
 export function toSavePayload(slots: InventorySlot[]) {
-  return slots.map((s) => ({
+  return slots.filter((s) => s.slot_index >= 0 && s.slot_index < BAG_SIZE).map((s) => ({
     slot_index: s.slot_index,
     item_id: s.item_id,
     quantity: s.quantity,
