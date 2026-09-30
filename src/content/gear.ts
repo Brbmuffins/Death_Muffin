@@ -47,6 +47,14 @@ export function equippedBySlot(slots: readonly InventorySlot[]): Partial<Record<
   return out;
 }
 
+/** Rebuild an equipment map from the item ids other players broadcast (no rarity: tiers come from the id). */
+export function gearFromIds(ids: Record<string, string> | undefined): Partial<Record<EquipSlot, { item_id: string }>> {
+  const out: Partial<Record<EquipSlot, { item_id: string }>> = {};
+  if (!ids) return out;
+  for (const [slot, id] of Object.entries(ids)) if (SLOT_IDS.has(slot) && typeof id === 'string') out[slot as EquipSlot] = { item_id: id };
+  return out;
+}
+
 // --- How gear looks on the model -------------------------------------------------------------
 
 export type WeaponKind = 'sword' | 'dagger' | 'staff' | 'bow' | 'mace' | 'tome';
@@ -62,6 +70,7 @@ export interface GearTier {
 
 const TIERS: Record<string, GearTier> = {
   wood: { color: 0x4a3626, metal: 0.05, rough: 0.85 },
+  leather: { color: 0x6b4f34, metal: 0.05, rough: 0.9 },
   bone: { color: 0xd8cfbd, metal: 0.05, rough: 0.7 },
   copper: { color: 0xb87333, metal: 0.75, rough: 0.4 },
   iron: { color: 0x7a7d86, metal: 0.8, rough: 0.42 },
@@ -76,7 +85,7 @@ export function gearTier(itemId: string, rarity?: string): GearTier {
   for (const key of ['moon', 'hell', 'gold', 'steel', 'iron', 'copper', 'bone']) if (itemId.includes(key)) return TIERS[key];
   if (/oak|wood|apprentice|spike/.test(itemId)) return TIERS.wood;
   // Unknown ids: let rarity pick a look so nothing renders as a grey placeholder.
-  return rarity === 'epic' ? TIERS.gold : rarity === 'rare' ? TIERS.steel : rarity === 'uncommon' ? TIERS.iron : TIERS.copper;
+  return rarity === 'epic' ? TIERS.gold : rarity === 'rare' ? TIERS.steel : rarity === 'uncommon' ? TIERS.iron : TIERS.leather;
 }
 
 export function weaponKind(itemId: string): WeaponKind {

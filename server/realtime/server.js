@@ -41,12 +41,14 @@ const LIMITS = {
   eventsBytes: 64 * 1024,
   intentBytes: 2 * 1024,
   moveBytes: 256,
+  gearBytes: 512,
   // per-socket per-second budgets
   movesPerSec: 30,
   intentsPerSec: 40,
   snapshotsPerSec: 15,
   eventsPerSec: 60,
   chatPerSec: 3,
+  gearPerSec: 2,
 };
 
 const BOSS_IDS = new Set(['prelate', 'gravedigger', 'abbess', 'congregation', 'saint']);
@@ -93,6 +95,18 @@ const num = (v, fallback = 0) => (Number.isFinite(Number(v)) ? Number(v) : fallb
 const inWorld = (v) => Math.abs(num(v, 1e9)) <= WORLD_BOUND;
 
 /** Token bucket per socket + channel. */
+// Visible equipment: item ids per slot, shown on the hero for everyone in the world (client-side cosmetics only).
+const GEAR_SLOTS = ['head', 'chest', 'legs', 'feet', 'hands', 'main_hand', 'off_hand'];
+function cleanGear(g) {
+  const out = {};
+  if (!g || typeof g !== 'object') return out;
+  for (const slot of GEAR_SLOTS) {
+    const id = g[slot];
+    if (typeof id === 'string' && /^[a-z0-9_]{1,48}$/.test(id)) out[slot] = id;
+  }
+  return out;
+}
+
 function allow(socket, channel, perSec) {
   const now = Date.now();
   const buckets = (socket.data.buckets ??= {});
@@ -257,6 +271,7 @@ io.on('connection', (socket) => {
       facing: num(info && info.facing),
       moving: false,
       hpFrac: 1,
+      gear: cleanGear(info && info.gear),
     };
     world.players.set(socket.id, player);
     socket.data.worldId = worldId;
@@ -278,6 +293,15 @@ io.on('connection', (socket) => {
 
   const myWorld = () => (socket.data.worldId ? worlds.get(socket.data.worldId) : null);
   const isHost = () => hostOf(myWorld()) === socket.id;
+
+  socket.on('player:gear', (gear) => {
+    const world = myWorld();
+    if (!world || !allow(socket, 'gear', LIMITS.gearPerSec) || bytes(gear) > LIMITS.gearBytes) return;
+    const player = world.players.get(socket.id);
+    if (!player) return;
+    player.gear = cleanGear(gear);
+    socket.to(socket.data.worldId).emit('player:gear', { id: socket.id, gear: player.gear });
+  });
 
   socket.on('player:move', (pos) => {
     const world = myWorld();
@@ -359,4 +383,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { validIntent, pickWorld, worlds, LIMITS, httpServer };
+module.exports = { validIntent, pickWorld, worlds, LIMITS, httpServer, cleanGear };

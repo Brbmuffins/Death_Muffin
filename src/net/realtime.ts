@@ -17,6 +17,7 @@ export interface RealtimeHandlers {
   onPlayerJoin(p: RemotePlayer): void;
   onPlayerLeave(id: string): void;
   onPlayerMove(u: PlayerMove & { id: string }): void;
+  onPlayerGear?(u: { id: string; gear: Record<string, string> }): void;
   onChat(m: ChatMessage): void;
   onDisconnect(): void;
   onIntent(env: IntentEnvelope): void;
@@ -79,6 +80,7 @@ export class RealtimeClient {
             this.stats.moveIn++;
             h.onPlayerMove(u);
           });
+          socket.on('player:gear', (u: { id: string; gear: Record<string, string> }) => h.onPlayerGear?.(u));
           socket.on('chat:message', h.onChat);
           socket.on('world:intent', (env: IntentEnvelope) => {
             this.stats.intentIn++;
@@ -103,6 +105,10 @@ export class RealtimeClient {
         });
       });
     });
+  }
+
+  sendGear(gear: Record<string, string>) {
+    this.socket?.emit('player:gear', gear);
   }
 
   sendMove(m: PlayerMove) {

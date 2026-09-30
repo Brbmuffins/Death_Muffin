@@ -8,6 +8,8 @@ import type { Effects } from './Effects';
 import { fx } from './fxTextures';
 import type { EquipSlot } from '../content/gear';
 import { buildHelm, buildOffhand, buildWeapon, disposeProp } from './gearProps';
+import { gearTier } from '../content/gear';
+import type { GearRegion } from './gearTint';
 
 /** How much a held staff follows the wrist (0 = pinned upright, 1 = fully hand-driven). */
 const STAFF_FOLLOW = 0.15;
@@ -59,7 +61,7 @@ export class NecromancerAvatar {
 
   constructor(scene: THREE.Scene, accent: string, withLight: boolean, slug: CreatureSlug = 'necromancer') {
     // Generated heroes face +X; gameplay headings use +Z.
-    this.c = new Creature(slug, { inPlace: true, modelYaw: -Math.PI / 2, emissive: accent, emissiveIntensity: 0.04, fallback: 'necromancer' });
+    this.c = new Creature(slug, { inPlace: true, gearTint: true, modelYaw: -Math.PI / 2, emissive: accent, emissiveIntensity: 0.04, fallback: 'necromancer' });
     if (slug === 'hero_hollow_knight' || slug === 'hero_grave_warden' || slug === 'hero_bell_monk' || slug === 'hero_carrion_witch' || slug === 'hero_veilwalker') {
       // New Blood heroes use their authored gear or bare hands.
       this.staff = null;
@@ -183,6 +185,16 @@ export class NecromancerAvatar {
       if (slot === 'head') this.c.attach(bone, obj, new THREE.Vector3(0, 1, 0));
       else this.c.attach(bone, obj, new THREE.Vector3(0, 1, 0.1), slot === 'main_hand' && obj.userData.tip ? STAFF_FOLLOW * 2 : 0.5);
       this.worn.set(slot, { obj, key: item.item_id });
+    }
+    // Body slots have no prop: they recolour their region of the body by material tier.
+    const body: [GearRegion, EquipSlot][] = [['chest', 'chest'], ['legs', 'legs'], ['hands', 'hands'], ['feet', 'feet']];
+    for (const [region, slot] of body) {
+      const item = items[slot];
+      if (!item) this.c.setRegionTint(region, null);
+      else {
+        const t = gearTier(item.item_id, item.rarity);
+        this.c.setRegionTint(region, { color: t.color, glow: t.glow });
+      }
     }
     this.applyGearVisibility();
   }

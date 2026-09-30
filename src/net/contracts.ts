@@ -22,6 +22,8 @@ export interface RemotePlayer {
   facing: number;
   moving: boolean;
   hpFrac: number;
+  /** Visible equipment by slot (item ids); older servers omit it. */
+  gear?: Record<string, string>;
 }
 
 export interface JoinRequest {
@@ -33,6 +35,7 @@ export interface JoinRequest {
   x: number;
   z: number;
   facing: number;
+  gear?: Record<string, string>;
 }
 
 export interface JoinResult {

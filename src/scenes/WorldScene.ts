@@ -58,7 +58,7 @@ import { fx } from '../graphics/fxTextures';
 import { LootView } from '../graphics/LootView';
 import { WorldView } from '../graphics/WorldView';
 import { updateOcclusion } from '../graphics/occlusion';
-import { equippedBySlot } from '../content/gear';
+import { equippedBySlot, gearFromIds } from '../content/gear';
 import { beginAfkGather, gather, getInventory, getProfessions, getToken, OFFLINE, type GatherReply } from '../net/api';
 import type { RemotePlayer, WorldSnapshot } from '../net/contracts';
 import { RealtimeClient } from '../net/realtime';
@@ -370,7 +370,11 @@ export class WorldScene implements GameScene, RuntimeView {
     this.player.teleport(PLAYER_SPAWN.x, PLAYER_SPAWN.z);
     this.avatar = new NecromancerAvatar(this.scene, this.discipline.color, true, this.discipline.modelSlug);
     // Worn gear shows on the hero: weapon, off-hand and helm follow the equipped rows.
-    const syncGear = () => this.avatar.setEquipment(equippedBySlot(this.inventory.all));
+    const syncGear = () => {
+      const worn = equippedBySlot(this.inventory.all);
+      this.avatar.setEquipment(worn);
+      this.broadcastGear(worn);
+    };
     this.scope.add(this.inventory.onChange(syncGear));
     syncGear();
     this.rig.snap(this.player.x, this.player.z);
@@ -1249,6 +1253,7 @@ export class WorldScene implements GameScene, RuntimeView {
           x: this.player.x,
           z: this.player.z,
           facing: this.player.facing,
+          gear: this.currentGearIds(),
         },
         {
           onPlayerJoin: (p) => {
@@ -1272,6 +1277,7 @@ export class WorldScene implements GameScene, RuntimeView {
             r.moving = u.moving;
             r.hpFrac = u.hpFrac;
           },
+          onPlayerGear: (u) => this.remotes.get(u.id)?.avatar.setEquipment(gearFromIds(u.gear)),
           onChat: (m) => this.hud.chatLine(`${m.name}: ${m.text}`),
           onDisconnect: () => {
             for (const r of this.remotes.values()) r.avatar.dispose();
@@ -1344,10 +1350,28 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hud.chatLine(`You now keep the world (${DIFFICULTIES[sim.difficulty].name})`);
   }
 
+  private currentGearIds() {
+    const gear: Record<string, string> = {};
+    for (const [slot, it] of Object.entries(equippedBySlot(this.inventory.all))) if (it) gear[slot] = it.item_id;
+    return gear;
+  }
+
+  /** Tell the world what we're wearing (item ids only), when it changes and once after joining. */
+  private lastGearSent = '';
+  private broadcastGear(worn: ReturnType<typeof equippedBySlot>, force = false) {
+    const gear: Record<string, string> = {};
+    for (const [slot, it] of Object.entries(worn)) if (it) gear[slot] = it.item_id;
+    const key = JSON.stringify(gear);
+    if (!force && key === this.lastGearSent) return;
+    this.lastGearSent = key;
+    if (this.realtime.connected) this.realtime.sendGear(gear);
+  }
+
   private addRemote(p: RemotePlayer) {
     if (this.remotes.has(p.id) || p.id === this.selfId) return;
     const d = disciplineFor(p.classIndex);
     const avatar = new NecromancerAvatar(this.scene, d.color, false, d.modelSlug);
+    avatar.setEquipment(gearFromIds(p.gear));
     this.remotes.set(p.id, { info: p, avatar, tx: p.x, tz: p.z, facing: p.facing, moving: false, hpFrac: p.hpFrac ?? 1 });
   }
 

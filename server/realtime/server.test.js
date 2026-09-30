@@ -3,7 +3,7 @@ process.env.DEV_TRUST_TOKENS = '1';
 process.env.NODE_ENV = 'test';
 const test = require('node:test');
 const assert = require('node:assert');
-const { validIntent, pickWorld, worlds } = require('./server');
+const { validIntent, pickWorld, worlds, cleanGear } = require('./server');
 
 test('rejects unknown or malformed intents', () => {
   assert.equal(validIntent(null), null);
@@ -138,4 +138,10 @@ test('spell variety: new signature kinds pass, and withered / cap / dur are clam
   const seed = validIntent({ t: 'signature', sig: 'seed', x: 0, z: 0, dx: 0, dz: 0, sp: 1, cap: 40 });
   assert.equal(seed.cap, 12);
   assert.equal(validIntent({ t: 'signature', sig: 'rally', x: 0, z: 0, dx: 0, dz: 0, sp: 1, dur: 1e9 }).dur, 10);
+});
+
+test('visible gear keeps only known slots and plain item ids', () => {
+  assert.deepEqual(cleanGear(null), {});
+  assert.deepEqual(cleanGear({ main_hand: 'sword_iron', head: 'helm_gold', ring: 'ring_copper', off_hand: 'Bad Id!', chest: 42 }), { main_hand: 'sword_iron', head: 'helm_gold' });
+  assert.equal(Object.keys(cleanGear({ legs: 'x'.repeat(80) })).length, 0, 'over-long ids are dropped');
 });

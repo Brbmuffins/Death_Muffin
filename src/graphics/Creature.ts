@@ -4,6 +4,7 @@ import { assets } from './AssetCache';
 import { CREATURE_MODELS, type CreatureSlug } from './modelPaths';
 import { hipAnchor, inPlaceHeroClip, stripRootTravel } from './inPlaceAnimation';
 import { applyWingFlap, type WingOpts } from './wingFlap';
+import { applyGearTint, GEAR_REGIONS, makeGearTintState, type GearRegion } from './gearTint';
 
 export type CreatureAnim = 'idle' | 'walk' | 'run' | 'attack' | 'cast' | 'hurt' | 'death' | 'dig' | 'dive';
 
@@ -20,6 +21,8 @@ const FALLBACK: Record<CreatureAnim, CreatureAnim[]> = {
 };
 
 export interface CreatureOptions {
+  /** Heroes only: let equipped body gear recolour chest/legs/hands/feet (see gearTint.ts). */
+  gearTint?: boolean;
   /** Anchor generated hero root motion to the gameplay position and heading. */
   inPlace?: boolean;
   /** Align an asset's authored forward axis with gameplay's +Z forward. */
@@ -63,6 +66,8 @@ export class Creature {
   private loopSpeed = 1;
   private current: THREE.AnimationAction | null = null;
   private oneShot: THREE.AnimationAction | null = null;
+  /** Shared uniform state for body-gear tints; only patched into materials when `gearTint` is set. */
+  private readonly gearTint = makeGearTintState();
   private pendingAttach: [string, THREE.Object3D, THREE.Vector3 | undefined, number | undefined][] = [];
   private calibrate: { obj: THREE.Object3D; dir: THREE.Vector3; frames: number }[] = [];
   /** Calibrated attachments, re-checked while idle so a bad first pose self-heals. */
@@ -117,6 +122,7 @@ export class Creature {
         }
         // Only the requested model flaps; a fallback stand-in (older deploy) keeps still.
         if (opts.wings && !usedFallback) applyWingFlap(mesh, mat, opts.wings, wingPhase);
+        if (opts.gearTint) applyGearTint(mesh, mat, this.gearTint);
         mesh.material = mat;
         this.mats.push(mat);
       });
@@ -269,6 +275,24 @@ export class Creature {
     this.root.getWorldScale(rootScale);
     obj.scale.multiplyScalar(rootScale.x / (s.x || 1));
     (bone ?? this.root).add(obj);
+  }
+
+  /** Recolour one body region (null clears it). Takes effect on the next frame; safe before the model loads. */
+  setRegionTint(region: GearRegion, tint: { color: number; glow?: number; strength?: number } | null) {
+    const i = GEAR_REGIONS.indexOf(region);
+    const t = this.gearTint.tint[i];
+    const g = this.gearTint.glow[i];
+    if (!tint) {
+      t.set(1, 1, 1, 0);
+      g.set(0, 0, 0);
+      return;
+    }
+    const c = new THREE.Color(tint.color);
+    t.set(c.r, c.g, c.b, tint.strength ?? 0.7);
+    if (tint.glow) {
+      const gc = new THREE.Color(tint.glow);
+      g.set(gc.r, gc.g, gc.b).multiplyScalar(0.6);
+    } else g.set(0, 0, 0);
   }
 
   /** Remove an attached prop (equipment swaps). Does not dispose it. */
