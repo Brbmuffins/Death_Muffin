@@ -269,3 +269,33 @@ export const necroApi = {
   boon: (characterId: number, boonId: string) => necroPost('boon', { characterId, boonId }),
   importLocal: (characterId: number, record: object) => necroPost('import', { characterId, record }),
 };
+
+// --- Chronicle: lifetime stats + archived runs (server/death-muffin/backend/chronicle.cjs) ---
+
+export interface ChronicleRun {
+  runNo: number;
+  startedAt: string;
+  endedAt: string;
+  ascensionAfter: number;
+  stats: Record<string, number>;
+}
+
+export interface ChronicleData {
+  life: Record<string, number>;
+  run: Record<string, number>;
+  runNo: number;
+  runStartedAt: string | null;
+  runs: ChronicleRun[];
+}
+
+export function getChronicle(characterId: number) {
+  return unwrap<ChronicleData>(request(`/api/chronicle/${characterId}`, {}, true));
+}
+
+export function addChronicle(characterId: number, deltas: Record<string, number>, maxes: Record<string, number>) {
+  return unwrap<unknown>(request('/api/chronicle/add', { method: 'POST', body: JSON.stringify({ characterId, deltas, maxes }) }, true));
+}
+
+export function ascendChronicle(characterId: number, ascension: number) {
+  return unwrap<{ archived: boolean }>(request('/api/chronicle/ascend', { method: 'POST', body: JSON.stringify({ characterId, ascension }) }, true));
+}

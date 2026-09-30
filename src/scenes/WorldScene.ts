@@ -59,6 +59,7 @@ import { LootView } from '../graphics/LootView';
 import { WorldView } from '../graphics/WorldView';
 import { updateOcclusion } from '../graphics/occlusion';
 import { equippedBySlot, gearFromIds } from '../content/gear';
+import { Chronicle } from '../gameplay/chronicle';
 import { beginAfkGather, gather, getInventory, getProfessions, getToken, OFFLINE, type GatherReply } from '../net/api';
 import type { RemotePlayer, WorldSnapshot } from '../net/contracts';
 import { RealtimeClient } from '../net/realtime';
@@ -177,6 +178,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private bossViews = new Map<BossId, BossView>();
   /** Open graves (Gravedigger P3) until the fight ends. */
   private pitFx: Handle[] = [];
+  private chronicle!: Chronicle;
   private saintBlessTold = false;
   private saintRainTold = false;
   private saintLinkTold = false;
@@ -287,6 +289,11 @@ export class WorldScene implements GameScene, RuntimeView {
     this.progression = new Progression(character);
     this.applyBoons();
     this.inventory = new Inventory(character.id);
+    this.chronicle = new Chronicle(character.id);
+    this.progression.chronicle = this.chronicle;
+    void this.chronicle.load();
+    this.chronicle.max('peak.level', character.level ?? 1);
+    this.scope.add(() => this.chronicle.dispose());
   }
 
   get camera() {
@@ -624,11 +631,13 @@ export class WorldScene implements GameScene, RuntimeView {
       this.progression.addGold(gold);
       audio.play('coin');
       this.floating.spawn(this.player.x, 2.4, this.player.z, `+${gold.toLocaleString()}g`, 'gold');
+      this.chronicle.add('sold', n);
       this.hud.toast(`Sold ${n > 1 ? `${n}× ` : ''}${name} for ${gold.toLocaleString()} gold`, 'good');
     });
     this.forgePanel = new ForgePanel(this.root, this.character.id, this.inventory, (inv, profs) => {
       this.inventory.replace(inv);
       this.skills.adopt(profs);
+      this.chronicle.add('crafted');
       this.hud.toast('Crafted', 'good');
     });
     this.professionsPanel = new ProfessionsPanel(this.root, {
@@ -665,7 +674,7 @@ export class WorldScene implements GameScene, RuntimeView {
       (a) => this.travel(a),
     );
     this.codex = new CodexJournal(this.character.id);
-    this.codexPanel = new CodexPanel(this.root, this.codex, this.discipline.id);
+    this.codexPanel = new CodexPanel(this.root, this.codex, this.discipline.id, this.chronicle);
     this.grimoirePanel = new GrimoirePanel(
       this.root,
       () => ({ rites: { primary: this.primary, keys: this.loadout }, level: riteLevel(this.character.level), unseen: unseenRites(this.seen, riteLevel(this.character.level), this.kit), kit: this.kit }),
@@ -1446,6 +1455,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private onGatherReply(r: GatherReply) {
     for (const g of r.items) this.inventory.add({ item_id: g.itemId, quantity: g.qty });
+    this.chronicle.add(`gathered.${r.skill}`, r.items.reduce((n, g) => n + g.qty, 0));
     if (r.gold > 0) {
       this.progression.addGold(r.gold);
       this.floating.spawn(this.player.x, 2.1, this.player.z, `+${r.gold}g`, 'gold');
@@ -2142,6 +2152,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const gained = this.progression.addXp(xp);
     if (Math.random() < 0.35) this.floating.spawn(x, 2, z, `+${xp} xp`, 'xp');
     if (gained > 0) {
+      this.chronicle.max('peak.level', this.character.level);
       this.refreshStats();
       this.player.hp = this.player.stats.maxHp;
       this.player.resource.value = this.player.resource.max;
@@ -2244,6 +2255,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.attackTarget = null;
     this.avatar.c.playOnce('death', 1);
     audio.play('playerDeath');
+    this.chronicle.add('deaths');
     this.hud.death(true, 'The Chapterhouse will call you back…');
     this.closePanels();
   }
@@ -2546,6 +2558,7 @@ export class WorldScene implements GameScene, RuntimeView {
         if (def.id === 'prelate') for (const g of ['west', 'east', 'north']) this.worldView.setCandleGroup(g, true);
         if (ev.killer) {
           audio.play('bossDefeat', ev.x, ev.z);
+          this.chronicle.add(`boss.${def.id}`);
           this.hud.banner(def.defeated[0], def.defeated[1], 4200);
           if (def.id === 'prelate') {
             this.progression.recordPrelateKill();
@@ -2576,6 +2589,7 @@ export class WorldScene implements GameScene, RuntimeView {
   update(dt: number, now: number) {
     if (!this.ready) return;
     this.now = now;
+    this.chronicle.time(dt, !!this.gathering?.afk);
     if (this.fxLater.length) {
       const due = this.fxLater.filter((f) => f.at <= now);
       this.fxLater = this.fxLater.filter((f) => f.at > now);

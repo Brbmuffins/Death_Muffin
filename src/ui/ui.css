@@ -1035,3 +1035,15 @@ button { font-family: inherit; }
 .hud-toast.clickable { pointer-events: auto; cursor: pointer; text-decoration: underline dotted rgba(226, 201, 143, 0.6); }
 .hud-toast.clickable:hover { border-color: #e2c98f; }
 .hud-slot.primary { margin-right: 12px; }
+
+/* Codex: the Chronicle tab. */
+.cw-chron { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px; }
+.cw-chron-grp { background: var(--cw-inset); border: 1px solid var(--cw-border); padding: 8px 10px; }
+.cw-chron-grp h4 { margin: 0 0 6px; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--cw-bone-300); }
+.cw-chron-grp .row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 1px 0; color: var(--cw-text-muted); }
+.cw-chron-grp .row b { color: var(--cw-bone-100); font-family: var(--cw-font-numeric); font-weight: 600; }
+.cw-chron-h { margin: 6px 0; font-size: 14px; letter-spacing: .1em; text-transform: uppercase; }
+.cw-chron-runs td, .cw-chron-runs th { font-family: var(--cw-font-numeric); font-size: 12px; }
+@media (max-width: 560px) { .cw-chron { grid-template-columns: 1fr; } }
+.cw-codex-note { font-size: 12px; color: var(--cw-text-muted); margin: 6px 0 10px; line-height: 1.4; }
+.cw-codex-note a { color: var(--cw-spell-300); }

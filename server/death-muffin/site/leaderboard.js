@@ -4,6 +4,12 @@ const rows = document.querySelector('#leaderboard-rows');
 // The source flag disambiguates legacy class_index 5 from Grave Warden's discipline_index 5.
 const disciplines = ['Engineer', 'Ossuary', 'Gravecaller', 'Mourner', 'Rotweaver', 'Grave Warden', 'Bell Monk', 'Carrion Witch', 'Hollow Knight', 'Veilwalker'];
 const legacy = ['Engineer', 'Guardian', 'Shadowblade', 'Cleric', 'Arcanist', 'Necromancer'];
+function hoursLabel(seconds) {
+  if (!seconds) return '—';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
 async function refreshLeaderboard() {
   try {
     const response = await fetch('api/leaderboard');
@@ -13,7 +19,7 @@ async function refreshLeaderboard() {
     for (const player of data.players) {
       const row = document.createElement('tr');
       const className = player.hasDiscipline ? disciplines[player.classIndex] : legacy[player.classIndex];
-      for (const value of [player.rank, player.username, className || 'Necromancer', player.level, player.ascension, player.bossKills, player.totalKills]) {
+      for (const value of [player.rank, player.username, className || 'Necromancer', player.level, player.ascension, player.bossKills, player.totalKills, hoursLabel(player.playSeconds), player.runs]) {
         const cell = document.createElement('td');
         cell.textContent = typeof value === 'number' ? value.toLocaleString() : value;
         row.appendChild(cell);

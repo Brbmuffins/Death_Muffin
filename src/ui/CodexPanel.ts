@@ -24,6 +24,7 @@ import { GATHER_SKILLS, SKILLS, actionMs, nodesForSkill, xpPerHour } from '../ga
 import { generateLayout } from '../content/layout';
 import { itemMeta } from '../content/items';
 import { ICON } from './icons';
+import type { Chronicle } from '../gameplay/chronicle';
 
 const TABS = [
   { id: 'rites', label: 'Rites' },
@@ -32,6 +33,7 @@ const TABS = [
   { id: 'diocese', label: 'The Diocese' },
   { id: 'professions', label: 'Professions' },
   { id: 'lore', label: 'Covenant Lore' },
+  { id: 'chronicle', label: 'Chronicle' },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
@@ -51,6 +53,7 @@ export class CodexPanel {
     private root: HTMLElement,
     private journal: CodexJournal,
     private discipline: DisciplineId,
+    private chronicle?: Chronicle,
   ) {
     this.offJournal = journal.onChange(() => this.render());
   }
@@ -77,6 +80,8 @@ export class CodexPanel {
     this.el.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) =>
       b.addEventListener('click', () => {
         this.tab = b.dataset.tab as TabId;
+        // The Chronicle reads the server's record, so refresh it when the tab opens.
+        if (this.tab === 'chronicle') void this.chronicle?.load().then(() => this.render());
         this.render();
         if (this.el) this.el.scrollTop = 0;
       }),
@@ -114,7 +119,44 @@ export class CodexPanel {
               ? this.diocese()
               : this.tab === 'professions'
                 ? this.professions()
-                : this.lore();
+                : this.tab === 'chronicle'
+                  ? this.chronicleTab()
+                  : this.lore();
+  }
+
+  /** Lifetime totals, this run, and every finished run: what Ascension can't erase. */
+  private chronicleTab() {
+    if (!this.chronicle) return '<p class="cw-codex-note">The Chronicle is not being kept.</p>';
+    const c = this.chronicle.view();
+    const n = (v = 0) => Math.floor(v).toLocaleString();
+    const dur = (s = 0) => {
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      return h ? `${h}h ${m}m` : `${m}m`;
+    };
+    const rows = (rs: [string, string][]) => rs.map(([l, v]) => `<div class="row"><span>${l}</span><b>${v}</b></div>`).join('');
+    const life = c.life;
+    const areas = AREA_ORDER.filter((a) => life[`kills.${a}`]).map((a): [string, string] => [AREAS[a].name, n(life[`kills.${a}`])]);
+    const bosses = (Object.keys(BOSSES) as BossId[]).filter((b) => life[`boss.${b}`]).map((b): [string, string] => [BOSSES[b].name, n(life[`boss.${b}`])]);
+    const skills = GATHER_SKILLS.map((s): [string, string] => [SKILLS[s].name, n(life[`gathered.${s}`])]);
+    const group = (title: string, body: string) => `<div class="cw-chron-grp"><h4>${title}</h4>${body}</div>`;
+    const runRow = (label: string, s: Record<string, number>, ended: string) =>
+      `<tr><td>${label}</td><td>${n(s.kills)}</td><td>${n(s['boss.prelate'])}</td><td>${n(s.deaths)}</td><td>${n(s['gold.earned'])}</td><td>${dur(s.playSeconds)}</td><td>${ended}</td></tr>`;
+    const past = c.runs.map((r) => runRow(`#${r.runNo}`, r.stats, new Date(r.endedAt).toLocaleDateString())).join('');
+    return `
+      <p class="cw-codex-note">Everything you do is written here. Lifetime totals never reset; each Ascension closes a run and opens the next. Counting began on the day the Chronicle was opened.</p>
+      <div class="cw-chron">
+        ${group('Combat', rows([['Foes slain', n(life.kills)], ...areas, ...bosses, ['Deaths', n(life.deaths)], ['Highest level', n(life['peak.level'])], ['Highest wave tier', n(life['peak.wave'])]]))}
+        ${group('Economy', rows([['Gold earned', n(life['gold.earned'])], ['Gold spent', n(life['gold.spent'])], ['Items sold', n(life.sold)], ['Items crafted', n(life.crafted)]]))}
+        ${group('Gathering', rows([...skills, ['AFK time', dur(life.afkSeconds)]]))}
+        ${group('Time', rows([['Time played', dur(life.playSeconds)], ['Runs completed', n(c.runNo - 1)], ['This run', `#${c.runNo}`]]))}
+      </div>
+      <h3 class="cw-chron-h">Runs</h3>
+      <table class="cw-codex-table cw-chron-runs">
+        <thead><tr><th>Run</th><th>Kills</th><th>Prelate</th><th>Deaths</th><th>Gold</th><th>Time</th><th>Ended</th></tr></thead>
+        <tbody>${runRow(`#${c.runNo} (now)`, c.run, '—')}${past}</tbody>
+      </table>
+      <p class="cw-codex-note"><a href="../leaderboard.html" target="_blank" rel="noopener">The public leaderboard</a> shows every player's time played and completed runs.</p>`;
   }
 
   private rites() {

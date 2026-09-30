@@ -101,6 +101,8 @@ interface StoredSlot {
 interface MockAccount {
   /** Server-side necromancer progression (mirrors character_necro_progress). */
   necro?: NecroState;
+  /** The Chronicle (mirrors character_chronicle + character_runs). */
+  chronicle?: { life: Record<string, number>; run: Record<string, number>; runNo: number; runStartedAt: string; runs: { runNo: number; startedAt: string; endedAt: string; ascensionAfter: number; stats: Record<string, number> }[] };
   /** POST /api/gather time budget (mirrors gather_ledger). */
   gatherLedger?: gather.GatherLedger;
   username: string;
@@ -410,6 +412,31 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       if (body[k] !== undefined) c[k] = Number(body[k]);
     }
     return ok({ saved: true });
+  }
+
+  // --- Chronicle: lifetime stats and archived runs (the real server whitelists keys; the mock trusts them). ---
+  const chron = () => (acc.chronicle ??= { life: {}, run: {}, runNo: 1, runStartedAt: new Date().toISOString(), runs: [] });
+  if ((m = p.match(/^\/api\/chronicle\/(\d+)$/)) && method === 'GET') {
+    ownCharacter(acc, m[1]);
+    const c = chron();
+    return ok({ ...c, runs: [...c.runs].reverse() });
+  }
+  if (p === '/api/chronicle/add' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const c = chron();
+    for (const [k, v] of Object.entries<number>(body.deltas ?? {})) for (const t of [c.life, c.run]) t[k] = (t[k] ?? 0) + Math.max(0, Math.floor(Number(v) || 0));
+    for (const [k, v] of Object.entries<number>(body.maxes ?? {})) for (const t of [c.life, c.run]) t[k] = Math.max(t[k] ?? 0, Math.floor(Number(v) || 0));
+    return ok({});
+  }
+  if (p === '/api/chronicle/ascend' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const c = chron();
+    if (!Object.keys(c.run).length) return ok({ archived: false });
+    c.runs.push({ runNo: c.runNo, startedAt: c.runStartedAt, endedAt: new Date().toISOString(), ascensionAfter: Number(body.ascension) || 0, stats: c.run });
+    c.run = {};
+    c.runNo++;
+    c.runStartedAt = new Date().toISOString();
+    return ok({ archived: true });
   }
 
   // --- Necromancer progression: same shared rules the VPS runs (server/vps-handoff). ---

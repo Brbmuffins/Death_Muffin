@@ -1,5 +1,6 @@
 import { isAlwaysOpen, type AreaId } from '../content/areas';
 import { devAccess } from './devAccess';
+import type { Chronicle } from './chronicle';
 import { ashesForRun, boonBlocked, boonCost, boonEffects, ASCENSION, type BoonId, type BoonEffects, type BoonRanks, type RunRecord } from '../content/ascension';
 import { DAMAGE_UPGRADE, WAVE_UPGRADE } from '../content/upgrades';
 import { ApiError, necroApi, saveProgress, type NecroReply } from '../net/api';
@@ -135,6 +136,8 @@ export class Progression {
   private inFlight = false;
   private remoteInFlight = 0;
   private listeners = new Set<() => void>();
+  /** Lifetime stats (set by the scene): kills, gold and Ascension runs feed it from here. */
+  chronicle: Chronicle | null = null;
   /** 'server' once the necro-progress routes answered; 'local' otherwise. */
   mode: 'local' | 'server' = 'local';
   /** Deltas gathered since the last necro save (server mode). */
@@ -248,6 +251,7 @@ export class Progression {
   }
 
   addGold(amount: number) {
+    if (amount > 0) this.chronicle?.add('gold.earned', Math.round(amount));
     this.character.gold = (this.character.gold ?? 0) + Math.round(amount);
     this.markServerDirty(false);
   }
@@ -301,6 +305,7 @@ export class Progression {
     l.areaKills = {};
     l.unlocked = ['chapterhouse', 'graves'];
     l.run = { prelateKills: 0, peakWaveTier: 0, kills: 0 };
+    void this.chronicle?.ascend(l.ascension);
     l.summonsPending = 0;
     this.pending = emptyPending();
     this.saveLocal();
@@ -347,6 +352,7 @@ export class Progression {
     const cost = this.damageCost();
     if (cost === null || !this.canAfford(cost)) return false;
     this.character.gold -= cost;
+    this.chronicle?.add('gold.spent', cost);
     this.local.damageTier++;
     this.saveLocal();
     this.serverPurchase('damage', cost);
@@ -374,6 +380,7 @@ export class Progression {
     const cost = this.waveCost();
     if (cost === null || !this.canAfford(cost)) return false;
     this.character.gold -= cost;
+    this.chronicle?.add('gold.spent', cost);
     this.local.waveTierOwned++;
     this.local.waveTierActive = this.local.waveTierOwned;
     this.saveLocal();
@@ -397,6 +404,9 @@ export class Progression {
     this.local.totalKills++;
     this.local.run.kills++;
     this.local.run.peakWaveTier = Math.max(this.local.run.peakWaveTier, waveTier);
+    this.chronicle?.add('kills');
+    this.chronicle?.add(`kills.${area}`);
+    this.chronicle?.max('peak.wave', waveTier);
     this.pending.areaKills[area] = (this.pending.areaKills[area] ?? 0) + 1;
     this.pending.peakWaveTier = Math.max(this.pending.peakWaveTier, waveTier);
     if (this.mode === 'server') this.markServerDirty(false);
