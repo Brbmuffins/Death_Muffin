@@ -184,7 +184,7 @@ The **Sexton's Acre**, west of the Chapterhouse, contains every tier of the four
 
 Keep a matching hatchet, pickaxe, rod, or spade **in your bag** to improve gathering success; the best one you carry counts. The Workbench crafts stronger tools from ingots and planks. Some hunting grounds also hold richer nodes, but enemy hits interrupt gathering there.
 
-With **Auto gathering** enabled in Settings, clicking a node can continue to another of the same kind. For longer sessions, use **P → choose a node tier → Start AFK** while in the Acre. Your character keeps working while the game is open. A full bag pauses work; make space and start again. Movement, casting, or **Pause AFK** stops it. Closing the game ends the session, so this does not earn rewards while offline.
+With **Auto gathering** enabled in Settings, clicking a node can continue to another of the same kind. For longer sessions, use **P → choose a node tier → Start AFK** while in the Acre. Your character keeps working while the game is open. A full bag pauses work; make space and start again. Movement, casting, or **Pause AFK** stops it. Closing the game ends the session, so this does not earn rewards while offline. When AFK work stops, **the Sexton’s Ledger** opens with what the session brought back: time worked, finds and their worth, skill levels gained, your best find, milestones and personal bests.
 
 <table><tr>
 <td><img src="docs/screenshots/gathering.webp" alt="Working a gathering node" /><br /><sub>Working a node</sub></td>
