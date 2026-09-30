@@ -178,6 +178,8 @@ export class WorldScene implements GameScene, RuntimeView {
   /** Open graves (Gravedigger P3) until the fight ends. */
   private pitFx: Handle[] = [];
   private saintBlessTold = false;
+  private saintRainTold = false;
+  private saintFeedAt = 0;
   private loot!: LootView;
   private avatar!: NecromancerAvatar;
   private player!: Player;
@@ -2394,6 +2396,10 @@ export class WorldScene implements GameScene, RuntimeView {
         } else if ((ev.r ?? 0) > 0) this.floating.spawn(ev.x, 3, ev.z, `+${Math.round((ev.r ?? 0))} corpses devoured`, 'info');
         break;
       case 'rotRain':
+        if (ms > 0 && !this.saintRainTold) {
+          this.saintRainTold = true;
+          this.hud.toast('Rot Rain: leave the circles! The pools they leave behind heal her.', 'err');
+        }
         for (const [x, z] of ev.targets ?? []) {
           if (ms > 0) this.effects.decal({ tex: fx.disc(), color: SPELL_FX.enemy.toxic, x, z, r: ev.r ?? 2, duration: ms, opacity: 0.55, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.2 });
           else this.effects.emitSmoke({ x, y: 0.3, z, count: 3, color: 0x4a5a22, spread: 1, speed: 1.2, up: 1, life: 1, size: 1.1 });
@@ -2411,9 +2417,15 @@ export class WorldScene implements GameScene, RuntimeView {
         break;
       case 'blessed':
         this.effects.emit({ x: ev.x, y: 0.4, z: ev.z, count: 10, color: 0x9cc43a, spread: 0.8, speed: 0.6, up: 2.2, life: 0.9, size: 0.2 });
-        if (!this.saintBlessTold) {
-          this.saintBlessTold = true;
-          this.floating.spawn(ev.x, 3.5, ev.z, 'The rot heals her!', 'info');
+        // A pulse ring under her every beat she feeds, so "she is healing right now" reads at a glance.
+        this.effects.decal({ tex: fx.ring(), color: 0x9cc43a, x: ev.x, z: ev.z, r: 3.2, duration: 0.7, opacity: 0.85, growFrom: 0.4, fadeOut: 0.4 });
+        if (performance.now() - this.saintFeedAt > 3500) {
+          this.saintFeedAt = performance.now();
+          this.floating.spawn(ev.x, 3.5, ev.z, 'She feeds on the rot!', 'info');
+          if (!this.saintBlessTold) {
+            this.saintBlessTold = true;
+            this.hud.toast('She heals while standing in rot pools: lure her onto clean ground!', 'err');
+          }
         }
         break;
       case 'nicheBreak':
@@ -2431,6 +2443,10 @@ export class WorldScene implements GameScene, RuntimeView {
         const def = BOSSES[ev.boss ?? 'prelate'];
         this.codexDiscover('dead', def.id);
         audio.play('bossAwaken', ev.x, ev.z);
+        if (def.id === 'saint') {
+          this.saintBlessTold = false;
+          this.saintRainTold = false;
+        }
         this.hud.banner(def.name, def.awaken, 3500);
         this.effects.lightFlash(ev.x, 3, ev.z, def.color, 90, 1.6);
         this.effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 160, color: def.id === 'prelate' ? 0xb58cff : def.color, spread: 3, speed: 4, up: 4, life: 1.6, size: 0.5 });
@@ -2442,7 +2458,12 @@ export class WorldScene implements GameScene, RuntimeView {
         if ((ev.boss ?? 'prelate') === 'prelate') {
           this.hud.banner(ev.phase === 2 ? 'The Procession' : 'The Bell Breaks', ev.phase === 2 ? 'Penitents file in from the aisles' : 'The Prelate is enraged', 2600);
           this.worldView.setCandleGroup(ev.phase === 2 ? 'west' : 'east', false);
-        } else this.hud.banner(BOSSES[ev.boss!].phases[ev.phase - 1], BOSSES[ev.boss!].name, 2600);
+        } else {
+          this.hud.banner(BOSSES[ev.boss!].phases[ev.phase - 1], BOSSES[ev.boss!].name, 2600);
+          if (ev.boss === 'saint') {
+            this.hud.toast(ev.phase === 2 ? 'Her flock gathers: kill the Plague Doctors first, their flasks feed the rot.' : 'The swarm: the rain falls heavier and the pools last longer. Keep her out of them.', 'err');
+          }
+        }
         this.rig.shake(0.5);
         break;
       case 'sweep':

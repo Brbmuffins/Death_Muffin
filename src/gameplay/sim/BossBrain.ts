@@ -289,7 +289,7 @@ export abstract class BossBrain {
     const p: Pending = { kind, at: this.sim.time + (ms + delayMs) / 1000, x, z, r, ...extra };
     this.pending.push(p);
     if (!p.side) {
-      this.state.state = (['toll', 'slam', 'rain', 'summon'].includes(kind) ? kind : kind === 'bury' || kind === 'hymn' || kind === 'grasp' || kind === 'chorus' || kind === 'communion' ? 'rain' : 'slam') as BossState['state'];
+      this.state.state = (['toll', 'slam', 'rain', 'summon'].includes(kind) ? kind : kind === 'rotRain' || kind === 'bury' || kind === 'hymn' || kind === 'grasp' || kind === 'chorus' || kind === 'communion' ? 'rain' : 'slam') as BossState['state'];
       this.state.stateT = 0;
     }
     this.sim.emit({ t: 'boss', kind: kind as never, x, z, phase: this.state.phase, targets: p.targets, r, ms: ms + delayMs, dir: p.dir, boss: this.id });

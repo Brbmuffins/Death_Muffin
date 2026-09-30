@@ -278,7 +278,7 @@ export class BossView {
     this.light.intensity = b.active ? 16 + b.phase * 8 + Math.sin(performance.now() / 200) * 4 : Math.max(0, this.light.intensity - dt * 30);
     if (b.state !== this.lastState) {
       this.lastState = b.state;
-      if (b.state === 'toll' || b.state === 'rain') this.c.playOnce('cast', 1.1);
+      if (b.state === 'toll' || b.state === 'rain' || b.state === 'summon') this.c.playOnce('cast', 1.1);
       else if (b.state === 'slam') this.c.playOnce('attack', 1.3);
       else if (b.state === 'move') this.c.setLoop('walk', 0.9 + b.phase * 0.15);
       else if (b.state === 'dead') this.c.playOnce('death', 0.8);
