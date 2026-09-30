@@ -100,12 +100,12 @@ export const DISCIPLINES: Record<DisciplineId, Discipline> = {
     description: 'Commands the largest legion. Spends thralls freely, because every sacrifice leaves another corpse.',
     passive: {
       name: 'Grave Legion',
-      text: 'Thrall cap 5. Thralls attack 20% faster. Thralls sacrificed by Black Litany leave corpses behind.',
+      text: 'Thrall cap 5. Thralls attack 20% faster and hit 15% harder. Thralls sacrificed by Black Litany leave corpses behind.',
     },
     color: '#9b5cff',
     portrait: 'art/portraits/gravecaller.webp',
     modelSlug: 'hero_gravecaller',
-    mods: { ...BASE, thrallCap: 5, thrallAttackSpeedMult: 1.2, thrallHpMult: 0.85, sacrificeLeavesCorpse: true },
+    mods: { ...BASE, thrallCap: 5, thrallAttackSpeedMult: 1.2, thrallHpMult: 1, thrallDamageMult: 1.15, sacrificeLeavesCorpse: true },
   },
   mourner: {
     classIndex: 3,
@@ -132,12 +132,12 @@ export const DISCIPLINES: Record<DisciplineId, Discipline> = {
     description: 'Poisons the ground itself. Miasma spreads further, rots deeper, and turns corpses into bombs.',
     passive: {
       name: 'Carrion Bloom',
-      text: 'Miasma Circle is 30% wider and Withered stacks to 8. Corpses inside your Miasma burst, damaging and withering nearby enemies.',
+      text: 'Miasma Circle is 40% wider and Withered stacks to 8. You have 10% more health. Corpses inside your Miasma burst, damaging and withering nearby enemies.',
     },
     color: '#b58cc7',
     portrait: 'art/portraits/rotweaver.webp',
     modelSlug: 'hero_rotweaver',
-    mods: { ...BASE, miasmaRadiusMult: 1.3, witheredMaxStacks: 8, miasmaBurstsCorpses: true },
+    mods: { ...BASE, miasmaRadiusMult: 1.4, witheredMaxStacks: 8, maxHpMult: 1.1, miasmaBurstsCorpses: true },
   },
   /**
    * Release 0.3. Not a necromancer: family 'knight' brings its own kit

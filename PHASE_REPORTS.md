@@ -936,3 +936,11 @@ Two more areas, both reusing existing props and mobs (only floor textures are ne
 - **Clutter:** call-outs that land on the same spot (chain tiers, heals, gold, notices) now stack upward instead of overprinting (`FloatingText`);
   Black Litany loses its outermost ring and its sigil is lighter; the level-up "join your Grimoire" toast lists three rites then "and N more".
 - Hero rings (glow, bone ring, cursor reticle) are kept on purpose: they keep the hero findable on dark stone.
+
+## Necromancer tuning pass (2026-09-30)
+
+8-seed `balance` (geared band, gold/min as the kill-rate proxy) found Ossuary well ahead at levels 8-16; Gravecaller and Rotweaver lagged and died more.
+- **Gravecaller:** thrall HP ×0.85 → ×1.0, thrall damage ×1 → ×1.15 (passive text updated). Ossuary/Nave/Sanctum gold/min 1377/2347/4304 → 1535/2803/5027, Sanctum deaths 1.8 → 0.5. ×1.35 bought almost nothing more.
+- **Rotweaver:** Miasma radius ×1.3 → ×1.4, +10% max health. 1201/2649/3640 → 1605/2796/4746, deaths 0.3/1.1/1.9 → 0.1/0.3/0.6.
+- Ossuary is untouched (1527/3179/4504): the three are now within ~10% of each other. Regent and Plague Saint re-run: dodgers still win 3/3, non-dodgers still mostly lose (one geared Gravecaller Regent stand-still win, 1/3).
+- Bot noise is ±30 kills/min at 4 seeds; use 8 before believing a delta.
