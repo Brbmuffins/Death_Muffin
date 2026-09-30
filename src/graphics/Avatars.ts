@@ -163,8 +163,8 @@ export class NecromancerAvatar {
 
   /**
    * Play a one-shot gesture. `attack` is the weapon swing every shipped hero rig
-   * carries but only the Hollow Knight's kit uses; the necromancer rites all
-   * gesture with `cast` or `dig`.
+   * carries and the melee kits (Hollow Knight, Grave Warden) use; the necromancer
+   * rites all gesture with `cast` or `dig`.
    */
   cast(kind: 'cast' | 'dig' | 'attack', speed = 2, facing?: number, durationSeconds?: number) {
     if (facing !== undefined) {
@@ -180,7 +180,6 @@ export class NecromancerAvatar {
   }
 }
 
-/** The Bell-Sworn Prelate's body and its bell-light. */
 /** Any boss's model (area bosses: one per BossId, created on first summon; the Prelate's is built at load). */
 export class BossView {
   readonly c: Creature;

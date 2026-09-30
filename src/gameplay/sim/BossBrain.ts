@@ -2,7 +2,6 @@ import { AREAS } from '../../content/areas';
 import { enemyDamageScale, enemyHpScale } from '../../content/enemies';
 import { FRACTURE } from '../../content/abilities';
 import { DIFFICULTIES } from '../../content/difficulty';
-import { ascensionLevels } from '../../content/ascension';
 import { ABBESS, ABBESS_NICHE_SPOTS, BOSSES, CONGREGATION, GRAVEDIGGER, GRAVEDIGGER_PITS, SAINT, type BossId } from '../../content/bosses';
 import type { EnemyId } from '../../content/enemies';
 import type { WorldSim } from './WorldSim';
