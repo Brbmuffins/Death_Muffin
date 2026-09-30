@@ -6,6 +6,8 @@ import { PROP_URL, type CreatureSlug } from './modelPaths';
 import type { GatherSkill } from '../gameplay/gatheringRules';
 import type { Effects } from './Effects';
 import { fx } from './fxTextures';
+import type { EquipSlot } from '../content/gear';
+import { buildHelm, buildOffhand, buildWeapon, disposeProp } from './gearProps';
 
 /** How much a held staff follows the wrist (0 = pinned upright, 1 = fully hand-driven). */
 const STAFF_FOLLOW = 0.15;
@@ -42,6 +44,10 @@ export class NecromancerAvatar {
   /** The necromancer's staff. Null for families that carry real weapon props. */
   private staff: THREE.Group | null;
   private classGear: THREE.Object3D[] = [];
+  /** Which hand each default prop (the staff, class weapons) fills, so an equipped item can replace it. */
+  private defaultHand = new Map<THREE.Object3D, 'main_hand' | 'off_hand'>();
+  /** Equipped-gear props currently on the model, with the item id each was built from. */
+  private worn = new Map<'main_hand' | 'off_hand' | 'head', { obj: THREE.Object3D; key: string }>();
   private gatheringSkill: GatherSkill | null = null;
   private gatheringTools = new Map<GatherSkill, THREE.Object3D>();
   private loadingTools = new Set<GatherSkill>();
@@ -62,6 +68,7 @@ export class NecromancerAvatar {
       this.staff = skullStaff(accent);
       // Held upright: the grip sits in the hand, calibrated against the idle pose.
       this.c.attach('R_Hand', this.staff, new THREE.Vector3(0, 1, 0.12), STAFF_FOLLOW);
+      this.defaultHand.set(this.staff, 'main_hand');
     }
     scene.add(this.c.root);
     this.lantern = withLight ? new THREE.PointLight(accent, 18, 10, 1.4) : null;
@@ -85,6 +92,7 @@ export class NecromancerAvatar {
         glow.scale.setScalar(0.28);
         this.c.attach(bone, glow);
         this.classGear.push(glow);
+        this.defaultHand.set(glow, bone === 'R_Hand' ? 'main_hand' : 'off_hand');
         if (bone === 'R_Hand') this.tipObj = glow;
       }
       return;
@@ -102,10 +110,11 @@ export class NecromancerAvatar {
         if (!t || this.disposed) return;
         const obj = t.scene.clone(true);
         obj.scale.setScalar(t.scale);
-        obj.visible = this.gatheringSkill === null;
         this.c.attach(g.bone, obj, g.dir, g.follow);
         this.classGear.push(obj);
+        this.defaultHand.set(obj, g.bone === 'R_Hand' ? 'main_hand' : 'off_hand');
         if (g.tip) this.tipObj = obj;
+        this.applyGearVisibility();
       });
     }
   }
@@ -114,8 +123,7 @@ export class NecromancerAvatar {
   setGatheringTool(skill: GatherSkill | null) {
     if (this.gatheringSkill === skill || this.disposed) return;
     this.gatheringSkill = skill;
-    if (this.staff) this.staff.visible = skill === null;
-    for (const obj of this.classGear) obj.visible = skill === null;
+    this.applyGearVisibility();
     for (const [id, obj] of this.gatheringTools) obj.visible = id === skill;
     if (!skill || this.gatheringTools.has(skill) || this.loadingTools.has(skill)) return;
 
@@ -139,9 +147,49 @@ export class NecromancerAvatar {
     }).finally(() => this.loadingTools.delete(skill));
   }
 
+  /** Default props show unless a gathering tool is out or an equipped item took their hand; worn gear hides while gathering. */
+  private applyGearVisibility() {
+    const idle = this.gatheringSkill === null;
+    const defaults = this.staff ? [this.staff, ...this.classGear] : this.classGear;
+    for (const obj of defaults) {
+      const hand = this.defaultHand.get(obj);
+      obj.visible = idle && !(hand && this.worn.has(hand));
+    }
+    for (const w of this.worn.values()) w.obj.visible = idle;
+  }
+
+  /**
+   * Show equipped gear on the model: weapon in the right hand, off-hand piece in the left, helm on
+   * the head. An equipped weapon or shield replaces the class's default prop for that hand. Only
+   * changed slots are rebuilt, so this is cheap to call on every inventory change.
+   */
+  setEquipment(items: Partial<Record<EquipSlot, { item_id: string; rarity?: string } | undefined>>) {
+    if (this.disposed) return;
+    const want: [ 'main_hand' | 'off_hand' | 'head', string, { item_id: string; rarity?: string } | undefined][] = [
+      ['main_hand', 'R_Hand', items.main_hand],
+      ['off_hand', 'L_Hand', items.off_hand],
+      ['head', 'Head', items.head],
+    ];
+    for (const [slot, bone, item] of want) {
+      const cur = this.worn.get(slot);
+      if (cur?.key === item?.item_id) continue;
+      if (cur) {
+        this.c.detach(cur.obj);
+        disposeProp(cur.obj);
+        this.worn.delete(slot);
+      }
+      if (!item) continue;
+      const obj = slot === 'head' ? buildHelm(item.item_id, item.rarity) : slot === 'off_hand' ? buildOffhand(item.item_id, item.rarity) : buildWeapon(item.item_id, item.rarity);
+      if (slot === 'head') this.c.attach(bone, obj, new THREE.Vector3(0, 1, 0));
+      else this.c.attach(bone, obj, new THREE.Vector3(0, 1, 0.1), slot === 'main_hand' && obj.userData.tip ? STAFF_FOLLOW * 2 : 0.5);
+      this.worn.set(slot, { obj, key: item.item_id });
+    }
+    this.applyGearVisibility();
+  }
+
   /** World position of the staff tip (spell origin). */
   tip(out = new THREE.Vector3()): THREE.Vector3 {
-    const tip = (this.staff?.userData.tip as THREE.Object3D | undefined) ?? this.tipObj;
+    const tip = (this.worn.get('main_hand')?.obj.userData.tip as THREE.Object3D | undefined) ?? (this.staff?.userData.tip as THREE.Object3D | undefined) ?? this.tipObj;
     if (tip && this.c.loaded) return tip.getWorldPosition(out);
     return out.set(this.c.root.position.x, 1.6, this.c.root.position.z);
   }
@@ -176,6 +224,8 @@ export class NecromancerAvatar {
 
   dispose() {
     this.disposed = true;
+    for (const w of this.worn.values()) disposeProp(w.obj);
+    this.worn.clear();
     this.c.dispose();
   }
 }

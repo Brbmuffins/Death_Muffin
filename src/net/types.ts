@@ -8,6 +8,9 @@ export type ItemType =
   | 'armor_head'
   | 'armor_chest'
   | 'armor_legs'
+  | 'armor_feet'
+  | 'armor_hands'
+  | 'offhand'
   | 'ring'
   | 'trinket'
   | 'material';
@@ -21,6 +24,10 @@ export interface InventorySlot {
   name: string;
   rarity: Rarity;
   item_type: ItemType;
+  /** Where an equipped item sits (server INV_SELECT); null/absent in the bag. */
+  equipped_slot?: string | null;
+  /** The item's own slot (server items.equipment_slot). */
+  item_equipment_slot?: string | null;
   stat_bonus: Record<string, number> | null;
   icon_id: string | null;
   sell_value: number;

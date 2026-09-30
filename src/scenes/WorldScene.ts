@@ -58,6 +58,7 @@ import { fx } from '../graphics/fxTextures';
 import { LootView } from '../graphics/LootView';
 import { WorldView } from '../graphics/WorldView';
 import { updateOcclusion } from '../graphics/occlusion';
+import { equippedBySlot } from '../content/gear';
 import { beginAfkGather, gather, getInventory, getProfessions, getToken, OFFLINE, type GatherReply } from '../net/api';
 import type { RemotePlayer, WorldSnapshot } from '../net/contracts';
 import { RealtimeClient } from '../net/realtime';
@@ -368,6 +369,10 @@ export class WorldScene implements GameScene, RuntimeView {
     this.player.soulsMax = Math.max(10, SOUL_HARVEST.souls - this.progression.boons.soulsDiscount);
     this.player.teleport(PLAYER_SPAWN.x, PLAYER_SPAWN.z);
     this.avatar = new NecromancerAvatar(this.scene, this.discipline.color, true, this.discipline.modelSlug);
+    // Worn gear shows on the hero: weapon, off-hand and helm follow the equipped rows.
+    const syncGear = () => this.avatar.setEquipment(equippedBySlot(this.inventory.all));
+    this.scope.add(this.inventory.onChange(syncGear));
+    syncGear();
     this.rig.snap(this.player.x, this.player.z);
     // A quiet discipline glow and a warm bone ring keep the hero readable on violet and dark stone.
     const follow = () => ({ x: this.player.x, z: this.player.z });

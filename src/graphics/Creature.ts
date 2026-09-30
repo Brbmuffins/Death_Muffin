@@ -271,6 +271,14 @@ export class Creature {
     (bone ?? this.root).add(obj);
   }
 
+  /** Remove an attached prop (equipment swaps). Does not dispose it. */
+  detach(obj: THREE.Object3D) {
+    this.pendingAttach = this.pendingAttach.filter(([, o]) => o !== obj);
+    this.calibrate = this.calibrate.filter((c) => c.obj !== obj);
+    this.attached = this.attached.filter((a) => a.obj !== obj);
+    obj.removeFromParent();
+  }
+
   set flash(v: number) {
     if (Math.abs(v - this.flashV) < 0.02) return;
     this.flashV = v;

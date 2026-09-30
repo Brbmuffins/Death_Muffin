@@ -735,6 +735,16 @@ button { font-family: inherit; }
 .cw-slot .rm { position: absolute; right: 2px; top: 0; font-size: 9px; color: var(--rarity); letter-spacing: -1px; }
 .cw-slot.equipped { border-width: 2px; }
 
+.cw-inv-body { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
+.cw-equip { display: grid; grid-template-columns: repeat(3, 50px); grid-auto-rows: 50px; gap: 5px; flex: none; }
+.cw-inv-body .cw-bag-grid { flex: 1; margin-bottom: 0; }
+.cw-equip-slot { min-height: 0; display: flex; align-items: center; justify-content: center; }
+.cw-equip-slot.empty { opacity: 0.6; }
+.cw-equip-slot .glyph.dim { color: var(--cw-text-faint); font-size: 18px; }
+.cw-equip-slot .slot-label { position: absolute; left: 0; right: 0; bottom: 1px; font-size: 8px; letter-spacing: .04em; text-transform: uppercase; color: var(--cw-text-faint); text-align: center; }
+.cw-bag-detail .cmp { font-size: 12px; color: var(--cw-text-muted); }
+.cw-bag-detail .cmp .up { color: var(--cw-ok); }
+.cw-bag-detail .cmp .down { color: #d97a6b; }
 .cw-bag-detail { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 58px; padding: 8px 10px; background: var(--cw-inset); border: 1px solid var(--cw-border); }
 .cw-bag-detail .name { font-size: 15px; font-weight: 700; }
 .cw-bag-detail .type { font-size: 12px; color: var(--cw-text-faint); text-transform: capitalize; }

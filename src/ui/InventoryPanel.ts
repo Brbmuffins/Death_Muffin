@@ -4,18 +4,23 @@ import { STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
 import { BAG_SIZE, type Inventory } from '../gameplay/loot';
 import { BUFF_FLASKS, HEALING_FLASKS, RARITY_COLOR, RARITY_MARK, itemMeta } from '../content/items';
 import { MEALS } from '../content/processing';
+import { EQUIP_SLOTS, equipSlotOf, equippedBySlot, type EquipSlot } from '../content/gear';
 
 const TYPE_GLYPH: Record<string, string> = {
   weapon: '⚔',
   armor_head: '⛨',
   armor_chest: '⛊',
   armor_legs: '⛊',
+  armor_feet: '◭',
+  armor_hands: '✋',
+  offhand: '◐',
   ring: '◎',
   trinket: '✦',
   material: '◆',
 };
 
-const EQUIPPABLE = new Set(['weapon', 'armor_head', 'armor_chest', 'armor_legs', 'ring', 'trinket']);
+/** Paper-doll order (3 columns); null cells are spacers. */
+const DOLL: (EquipSlot | null)[] = ['ring', 'head', 'trinket', 'main_hand', 'chest', 'off_hand', 'hands', 'legs', null, null, 'feet', null];
 
 export function itemIcon(slot: Pick<InventorySlot, 'item_id'>) {
   const meta = itemMeta(slot.item_id);
@@ -50,7 +55,7 @@ export class InventoryPanel {
   open() {
     if (this.el) return;
     this.el = document.createElement('div');
-    this.el.className = 'cw-plate cw-panel-float';
+    this.el.className = 'cw-plate cw-panel-float wide';
     this.el.setAttribute('role', 'dialog');
     this.el.setAttribute('aria-label', 'Reliquary');
     this.el.innerHTML = `
@@ -59,7 +64,10 @@ export class InventoryPanel {
         <button class="cw-icon-btn" data-close aria-label="Close reliquary">✕</button>
       </div>
       <div class="cw-stats-line" data-stats></div>
-      <div class="cw-bag-grid" role="grid"></div>
+      <div class="cw-inv-body">
+        <div class="cw-equip" role="group" aria-label="Equipment"></div>
+        <div class="cw-bag-grid" role="grid"></div>
+      </div>
       <div class="cw-bag-detail" data-detail></div>
       <div class="cw-error" data-error></div>
     `;
@@ -126,7 +134,64 @@ export class InventoryPanel {
       if (this.selected === i) cell.classList.add('selected');
       grid.appendChild(cell);
     }
+    this.renderEquipment();
     this.renderDetail();
+  }
+
+  /** Worn gear (server slots 100+) is invisible to the bag grid, so it gets its own paper-doll. */
+  private renderEquipment() {
+    const doll = this.el!.querySelector<HTMLDivElement>('.cw-equip')!;
+    doll.innerHTML = '';
+    const worn = equippedBySlot(this.inventory.all);
+    for (const id of DOLL) {
+      if (!id) {
+        doll.appendChild(Object.assign(document.createElement('div'), { className: 'cw-equip-gap' }));
+        continue;
+      }
+      const meta = EQUIP_SLOTS.find((s) => s.id === id)!;
+      const slot = worn[id];
+      const cell = document.createElement('button');
+      cell.className = 'cw-slot cw-equip-slot';
+      cell.setAttribute('aria-label', slot ? `${meta.label}: ${slot.name}, ${slot.rarity}` : `${meta.label}: empty`);
+      if (slot) {
+        cell.classList.add('filled', 'equipped');
+        cell.style.setProperty('--rarity', RARITY_COLOR[slot.rarity] ?? RARITY_COLOR.common);
+        const img = document.createElement('img');
+        img.className = 'item-icon';
+        img.src = itemIcon(slot);
+        img.alt = '';
+        img.onerror = () => img.replaceWith(Object.assign(document.createElement('span'), { className: 'glyph', textContent: meta.glyph }));
+        cell.appendChild(img);
+        cell.insertAdjacentHTML('beforeend', `<span class="rm">${RARITY_MARK[slot.rarity] ?? ''}</span>`);
+        cell.addEventListener('pointerenter', (e) => this.showTooltip(slot, e));
+        cell.addEventListener('pointermove', (e) => this.moveTooltip(e));
+        cell.addEventListener('pointerleave', () => this.hideTooltip());
+        cell.addEventListener('click', () => {
+          this.selected = this.selected === slot.slot_index ? null : slot.slot_index;
+          this.render();
+        });
+        cell.addEventListener('dblclick', () => void this.toggleEquip(slot));
+        if (this.selected === slot.slot_index) cell.classList.add('selected');
+      } else {
+        cell.classList.add('empty');
+        cell.disabled = true;
+        cell.insertAdjacentHTML('beforeend', `<span class="glyph dim">${meta.glyph}</span><span class="slot-label">${meta.label}</span>`);
+      }
+      doll.appendChild(cell);
+    }
+  }
+
+  /** "+3 Vitality" lines vs what is worn in the same slot, so choosing between two items is one glance. */
+  private compareLines(slot: InventorySlot) {
+    if (slot.equipped) return '';
+    const id = equipSlotOf(slot);
+    const other = id ? equippedBySlot(this.inventory.all)[id] : undefined;
+    if (!id) return '';
+    if (!other) return '<div class="cmp">Nothing equipped there</div>';
+    const rows = STAT_KEYS.map((k) => [k, (slot.stat_bonus?.[k] ?? 0) - (other.stat_bonus?.[k] ?? 0)] as const)
+      .filter(([, d]) => d !== 0)
+      .map(([k, d]) => `<span class="${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : ''}${d} ${STAT_LABELS[k]}</span>`);
+    return `<div class="cmp">vs ${other.name}: ${rows.length ? rows.join(' · ') : 'no change'}</div>`;
   }
 
   private statLines(slot: InventorySlot) {
@@ -169,7 +234,7 @@ export class InventoryPanel {
       return;
     }
     const meta = itemMeta(slot.item_id);
-    const equippable = EQUIPPABLE.has(slot.item_type);
+    const equippable = equipSlotOf(slot) !== null;
     const drinkable = slot.item_id in HEALING_FLASKS || slot.item_id in BUFF_FLASKS;
     const edible = slot.item_id in MEALS;
     detail.innerHTML = `
@@ -177,6 +242,7 @@ export class InventoryPanel {
         <div class="name" style="color:${RARITY_COLOR[slot.rarity]}">${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''}</div>
         <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${slot.item_type.replace('_', ' ')}</div>
         ${this.statLines(slot)}
+        ${this.compareLines(slot)}
         ${meta.lore ? `<div class="lore">${meta.lore}</div>` : ''}
       </div>
       ${equippable ? `<button class="cw-button small" data-act>${slot.equipped ? 'Unequip' : 'Equip'}</button>` : ''}
@@ -202,7 +268,7 @@ export class InventoryPanel {
 
   private primaryAction(slot: InventorySlot) {
     if (slot.item_id in HEALING_FLASKS || slot.item_id in BUFF_FLASKS || slot.item_id in MEALS) this.onUse(slot.item_id);
-    else if (EQUIPPABLE.has(slot.item_type)) void this.toggleEquip(slot);
+    else if (equipSlotOf(slot) !== null) void this.toggleEquip(slot);
   }
 
   private setError(msg: string) {
@@ -217,12 +283,9 @@ export class InventoryPanel {
     try {
       // Unsaved pickups land first and no save flies during the equip (Inventory.exclusive).
       await this.inventory.exclusive(async () => {
-        let slots = this.inventory.all;
-        if (!slot.equipped) {
-          const conflict = slots.find((s) => s.equipped && s.item_type === slot.item_type && s.slot_index !== slot.slot_index);
-          if (conflict) slots = await equipItem(this.characterId, conflict.slot_index, 0);
-        }
-        slots = await equipItem(this.characterId, slot.slot_index, slot.equipped ? 0 : 1);
+        // The server displaces whatever already fills the slot (and a two-hander's off-hand) back into the bag.
+        const slots = await equipItem(this.characterId, slot.slot_index, slot.equipped ? 0 : 1);
+        this.selected = null;
         this.inventory.replace(slots);
       });
     } catch (err) {
