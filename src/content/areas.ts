@@ -493,7 +493,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
       { id: 'drowned_sexton', weight: 8 },
       { id: 'wraith', weight: 12 },
     ],
-    cap: 26,
+    cap: 24,
     waveSize: 9,
     waveIntervalMs: 6200,
     eliteChance: 0.09,

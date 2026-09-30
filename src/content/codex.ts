@@ -519,7 +519,7 @@ export const CODEX_DEAD: Record<DeadId, DeadEntry> = {
   mire_leech: {
     name: ENEMIES.mire_leech.name,
     role: ENEMIES.mire_leech.behavior,
-    behaviour: 'Arrive in swarms of five to seven and flank fast. Their bites are bog rot, so rot-resist brews cover them.',
+    behaviour: 'Arrive in swarms of four to six and flank fast. Their bites are bog rot, so rot-resist brews cover them.',
     corpse: 'None. Too small to leave a body.',
     counter: 'Miasma, Corpse Explosion on a bigger body, or any area rite. Standing on a hummock keeps you fast while they come to you.',
   },

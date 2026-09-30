@@ -34,5 +34,7 @@ For the 2026-09-30 content, run these against the 5199 offline preview (`DM_QA_A
 - `node tools/qa/pyre-smoke.cjs`: the Cinder Pyre zone, the four fire mobs, a live coal/slam/husk-death, and a perf comparison against the Cloister roster.
 - `node tools/qa/regent-smoke.cjs`: wakes the Cinder Regent and screenshots the awake boss, the Conflagration windup (ash circles) and the eruption.
 - `node tools/qa/levels-smoke.cjs`: Catacomb Warren, Bone Coliseum and Cinder Pyre screenshots after a couple of waves (`DM_QA_AREAS=coliseum` for one).
+- `node tools/qa/fen-smoke.cjs` (port 5306 on this branch): the Mourning Fen landing and marsh, bog slow vs hummocks (moveMult 1 / 0.78), each mob at rest, the Bog Hag's hex landing on thralls, the wisp pulse and sexton hook telegraphs, and a perf comparison against the Graves roster.
+- `node tools/qa/mire-mother-smoke.cjs`: wakes the Mire Mother and steps through the ripple ring and burst, phase 2 (hummocks shrink), and phase 3 (the Drowned Rite over corpses).
 - `node tools/qa/chain-smoke.cjs`: 14 own kills build the Kill Chain readout (×14 Rampage), the weekly Omen chip is present, the chain breaks and hides, and the chain-10 milestone is paid.
 - Playwright is not installed in the repo. On this VPS it lives in the npx cache: `DM_PLAYWRIGHT_MODULE=/home/ubuntu/.npm/_npx/e41f203b7505f1fb/node_modules/playwright`.

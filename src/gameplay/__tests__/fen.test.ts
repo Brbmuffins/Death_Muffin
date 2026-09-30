@@ -162,7 +162,7 @@ describe('Mourning Fen mobs', () => {
   });
 
   it('Mire Leeches come in packs, leave no corpse, and bite with bog rot', () => {
-    expect(ENEMIES.mire_leech.pack![0]).toBeGreaterThanOrEqual(5);
+    expect(ENEMIES.mire_leech.pack![0]).toBeGreaterThanOrEqual(4);
     expect(ENEMIES.mire_leech.corpse).toBe('none');
     const sim = world();
     sim.spawnEnemy('mire_leech', 'fen', -30, -80, false, false).attackCd = 0;

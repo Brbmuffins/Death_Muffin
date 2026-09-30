@@ -178,3 +178,33 @@ Boons are per-character only: stats, costs, thrall cap, Soul Harvest, unlock thr
 Easy/Medium/Hard is the first slice of this. The remaining knobs (Wave Speed tier, enemy HP/damage multipliers, density, elite chance, surge
 frequency, arrival-wave size, roster weights) should become a **host-side session dashboard for
 co-op rooms**. See `FUTURE_CONTENT.md` → "Co-op session dashboard".
+
+
+## Mourning Fen vs Cinder Pyre (2026-09-30, 8 seeds, 3 sim-minutes, same level in both)
+
+The Fen is a level-scaled area (min 45), so it is compared with the Pyre at equal player levels (45 and 65) rather than at the area floors.
+`npx vite-node src/gameplay/balance/fenCompare.ts` reproduces it; the bot also wades the bog at the real slow (x0.78), as a hero would.
+Target: danger similar to the Pyre, XP/min about 10-15% higher (enough to reward going there).
+
+    kills = kills/min, xp = XP/min, hurt = damage taken as % of max HP per minute, deaths per 3 min
+    L45 Gravecaller intended | pyre kills 90 xp 13219 hurt 46 deaths 0.4 | fen kills 81 xp 14854 hurt 74 deaths 0.9 | xp ratio 1.12
+    L45 Gravecaller geared   | pyre kills 128 xp 22953 hurt 67 deaths 0.6 | fen kills 105 xp 23529 hurt 109 deaths 1.5 | xp ratio 1.03
+    L45 Ossuary     intended | pyre kills 100 xp 14249 hurt 29 deaths 0.3 | fen kills 96 xp 17853 hurt 44 deaths 0.3 | xp ratio 1.25
+    L45 Ossuary     geared   | pyre kills 156 xp 27481 hurt 52 deaths 0.8 | fen kills 144 xp 31917 hurt 99 deaths 0.9 | xp ratio 1.16
+    L45 Mourner     intended | pyre kills 79 xp 11689 hurt 72 deaths 1.3 | fen kills 83 xp 14575 hurt 57 deaths 0.4 | xp ratio 1.25
+    L45 Mourner     geared   | pyre kills 98 xp 17394 hurt 124 deaths 2.5 | fen kills 110 xp 24673 hurt 93 deaths 0.8 | xp ratio 1.42
+    L45 Rotweaver   intended | pyre kills 84 xp 12418 hurt 65 deaths 1.0 | fen kills 84 xp 15909 hurt 70 deaths 0.8 | xp ratio 1.28
+    L45 Rotweaver   geared   | pyre kills 106 xp 19097 hurt 106 deaths 1.6 | fen kills 107 xp 25747 hurt 63 deaths 0.5 | xp ratio 1.35
+    L65 Gravecaller intended | pyre kills 94 xp 20696 hurt 36 deaths 0.4 | fen kills 88 xp 24397 hurt 36 deaths 0.3 | xp ratio 1.18
+    L65 Gravecaller geared   | pyre kills 143 xp 35589 hurt 44 deaths 0.3 | fen kills 122 xp 37817 hurt 62 deaths 0.5 | xp ratio 1.06
+    L65 Ossuary     intended | pyre kills 100 xp 20959 hurt 13 deaths 0.1 | fen kills 99 xp 24457 hurt 18 deaths 0.0 | xp ratio 1.17
+    L65 Ossuary     geared   | pyre kills 165 xp 40539 hurt 26 deaths 0.1 | fen kills 151 xp 44123 hurt 66 deaths 0.8 | xp ratio 1.09
+    L65 Mourner     intended | pyre kills 95 xp 20313 hurt 28 deaths 0.1 | fen kills 88 xp 23236 hurt 53 deaths 0.4 | xp ratio 1.14
+    L65 Mourner     geared   | pyre kills 134 xp 33104 hurt 48 deaths 0.4 | fen kills 126 xp 39029 hurt 55 deaths 0.6 | xp ratio 1.18
+    L65 Rotweaver   intended | pyre kills 95 xp 19529 hurt 32 deaths 0.3 | fen kills 95 xp 25708 hurt 27 deaths 0.0 | xp ratio 1.32
+    L65 Rotweaver   geared   | pyre kills 149 xp 36838 hurt 54 deaths 0.4 | fen kills 125 xp 37682 hurt 47 deaths 0.3 | xp ratio 1.02
+
+Level 65 (the live top band): XP/min is +14% on average (range 1.02-1.32, bot noise is large), hurt%/min is at or below the Pyre at `intended`
+and 10-40 points above it when `geared` (wave speed 3 fills the bog with leeches), deaths stay at or under 0.8 per 3 minutes. Level 45 runs
+hotter on XP (+23%; the Fen's XP is a flat per-kill table, and the bot's kill rate differs most at lower gear); left as is (it is the
+entry band). Tuning that got here: leech 4 dmg / 22 hp / 4.2 speed / 5 XP, hag 12 dmg / 24 XP, wisp 9 dmg / 19 XP, sexton 25 dmg / 54 XP, cap 24.

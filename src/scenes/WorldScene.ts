@@ -4000,6 +4000,8 @@ export class WorldScene implements GameScene, RuntimeView {
         return this.skills.rows();
       },
       flushGather: () => this.gathering.flush(),
+      /** The Mourning Fen's eased flood scale (1 calm, 0.72 / 0.5 in the Mire Mother's phases 2 / 3). */
+      fenFlood: () => this.worldView.fenFlood(),
       /** Open an Acre station as if clicked (kiln / sawpit / fire). */
       station: (kind: 'kiln' | 'sawpit' | 'fire') => {
         const it = AREAS.acre.interactables.find((i) => i.kind === kind);

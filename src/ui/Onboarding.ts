@@ -360,7 +360,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   mire_leech: {
     title: 'Mire Leech',
-    body: 'They come in <b>swarms of six</b> and leave no corpse. Sweep them with Miasma or another area rite instead of chasing them one by one.',
+    body: 'They come in <b>swarms of four to six</b> and leave no corpse. Sweep them with Miasma or another area rite instead of chasing them one by one.',
   },
   fen_wisp: {
     title: 'Fen Wisp',
