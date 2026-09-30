@@ -76,7 +76,7 @@ const THRALL_SLUG: Record<ThrallKind, CreatureSlug> = {
 const THRALL_LOOK: Partial<Record<ThrallKind, { tint: number; emissive: number; glow: number; scale?: number; ring?: number }>> = {
   archer: { tint: 0xf2e6cc, emissive: 0x6b4a1f, glow: 0.25 },
   bonemage: { tint: 0xe6dccb, emissive: 0xb07a2a, glow: 0.35 },
-  plaguebearer: { tint: 0xb9c48a, emissive: 0x5a6a18, glow: 0.35, scale: 0.8, ring: 1.05 },
+  plaguebearer: { tint: 0xb9c48a, emissive: 0x5a6a18, glow: 0.35, scale: 0.8, ring: 0.7 },
 };
 
 /** Nominal ground speed of each walk clip (u/s) — scales playback to avoid foot sliding. */
@@ -335,7 +335,8 @@ export class EntityViews {
       color: wraith ? 0x8fb4ff : SPELL_FX.exhume.spirit,
       x: t.x,
       z: t.z,
-      r: look?.ring ?? (t.kind === 'hound' ? 0.9 : 0.75),
+      // Small on purpose: a big horde of thralls otherwise paints the whole floor.
+      r: look?.ring ?? (t.kind === 'hound' ? 0.6 : 0.5),
       duration: 1e9,
       opacity: t.empowered ? 1 : 0.7,
       follow: () => ({ x: v.x, z: v.z }),
