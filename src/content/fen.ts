@@ -32,18 +32,17 @@ export interface Hummock {
 }
 
 /**
- * Dry hummocks. Index 0 carries the Mire Altar on the arena's north rim, index 1 is the big central one, 2-7 ring it (the
+ * Dry hummocks. Index 0 carries the Mire Altar on the arena's north rim, index 1 is the big central one, 2-6 ring it (the
  * boss's resurfacing spots live here), the rest are footholds around the marsh so every breach has somewhere to fight from.
  */
 export const FEN_HUMMOCKS: Hummock[] = [
   { x: -42, z: -90.2, r: 2.7 },
   { x: -42, z: -80, r: 3.2 },
-  { x: -37.8, z: -75, r: 2.4 },
-  { x: -35.6, z: -81.1, r: 2.3 },
-  { x: -39.8, z: -86.1, r: 2.4 },
-  { x: -46.2, z: -85, r: 2.4 },
-  { x: -48.4, z: -78.9, r: 2.3 },
-  { x: -44.2, z: -73.9, r: 2.4 },
+  { x: -42, z: -73.4, r: 2.4 },
+  { x: -36.3, z: -76.7, r: 2.3 },
+  { x: -36.3, z: -83.3, r: 2.4 },
+  { x: -47.7, z: -83.3, r: 2.4 },
+  { x: -47.7, z: -76.7, r: 2.3 },
   { x: -55.5, z: -95, r: 2.6 },
   { x: -33, z: -95.5, r: 2.5 },
   { x: -56, z: -82, r: 2.6 },
@@ -54,7 +53,7 @@ export const FEN_HUMMOCKS: Hummock[] = [
 ];
 
 /** Hummocks the Mire Mother may surface under (the ring around the centre, and the centre itself). */
-export const FEN_SURFACE_SPOTS = [1, 2, 3, 4, 5, 6, 7];
+export const FEN_SURFACE_SPOTS = [1, 2, 3, 4, 5, 6];
 
 /** Dry-ground radius multiplier per Mire Mother phase: the arena floods, the hummocks shrink (1 outside the fight). */
 export const FEN_FLOOD_SCALE: Record<1 | 2 | 3, number> = { 1: 1, 2: 0.72, 3: 0.5 };

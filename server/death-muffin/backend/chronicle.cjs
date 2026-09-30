@@ -8,8 +8,8 @@
  *   POST /api/chronicle/ascend         -> { characterId, ascension }  archives the current run, starts the next
  */
 
-const AREAS = ['chapterhouse', 'acre', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'warren', 'coliseum'];
-const BOSSES = ['gravedigger', 'abbess', 'congregation', 'prelate', 'saint', 'regent'];
+const AREAS = ['chapterhouse', 'acre', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'warren', 'coliseum', 'fen'];
+const BOSSES = ['gravedigger', 'abbess', 'congregation', 'prelate', 'saint', 'regent', 'mire'];
 const SKILLS = ['woodcutting', 'mining', 'fishing', 'gravedigging', 'gardening'];
 
 /** Counters that add up. Dotted keys group related numbers (kills.graves, boss.saint, gathered.mining). */

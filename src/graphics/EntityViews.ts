@@ -70,6 +70,8 @@ const ENEMY_FALLBACK: Partial<Record<EnemyId, CreatureSlug>> = {
 const CASTERS = new Set<EnemyId>(['penitent', 'deacon', 'wraith', 'censer', 'moth', 'seraph', 'acolyte', 'plague_doctor', 'pyre_priest', 'bog_hag', 'fen_wisp']);
 /** The Cinder Pyre's dead: they shed embers and spray sparks when struck (see the per-enemy effect pass). */
 const FIRE_DEAD = new Set<EnemyId>(['cinder_husk', 'pyre_priest', 'cinderhound', 'slag_brute']);
+/** The Mourning Fen's own dead (see fenDead). */
+const FEN_DEAD = new Set<EnemyId>(['fen_wisp', 'bog_hag', 'drowned_sexton', 'mire_leech']);
 /** Choir Wraiths float: a hover height and a slow bob. */
 const HOVER = { wraith: 0.45 } as Partial<Record<EnemyId, number>>;
 /** Flying pack wingbeats: heavy stone, dusty moth, frantic bat, slow grieving seraph. */
@@ -127,6 +129,8 @@ interface View {
   def?: EnemyId;
   kind?: ThrallKind;
   ring?: Handle;
+  /** A Bog Hag's hex on this thrall: a magenta sigil ring under it while `cursedT` lasts. */
+  hexFx?: Handle;
   eliteAura?: Handle;
   /** Censer Bearer's incense ring. */
   auraFx?: Handle;
@@ -257,11 +261,13 @@ export class EntityViews {
     const slug = ENEMY_SLUG[e.def];
     const risen = e.def === 'risen';
     const wraith = e.def === 'wraith';
+    // Risen raised by the Mire Mother's rite are drowned: teal-tinged.
+    const drowned = risen && e.area === 'fen';
     const c = new Creature(slug, {
       // Hostile skeletons read darker and sickly so they never look like your thralls.
-      tint: risen ? 0x8a8078 : 0xffffff,
-      emissive: e.elite ? 0x4a1f8a : risen ? 0x2a3a18 : wraith ? 0x9fb6d8 : 0x000000,
-      emissiveIntensity: e.elite ? 0.14 : risen ? 0.3 : wraith ? 0.35 : 0,
+      tint: risen ? (drowned ? 0x7ab0a8 : 0x8a8078) : 0xffffff,
+      emissive: e.elite ? 0x4a1f8a : risen ? (drowned ? 0x1f8f86 : 0x2a3a18) : wraith ? 0x9fb6d8 : e.def === 'fen_wisp' ? 0x7fe0d0 : 0x000000,
+      emissiveIntensity: e.elite ? 0.14 : risen ? (drowned ? 0.4 : 0.3) : wraith ? 0.35 : e.def === 'fen_wisp' ? 0.9 : 0,
       // The choir is half-there: translucent, pale, no shadow.
       spectral: wraith,
       fallback: ENEMY_FALLBACK[e.def],
@@ -410,6 +416,30 @@ export class EntityViews {
         break;
     }
     void v;
+  }
+
+  /** The Fen's dead (cheap: a few particles a second, near the camera only): the wisp's marsh-light, the hag's drips, the sexton's water. */
+  private fenDead(e: Enemy, dt: number, lift: number, id: number, v: View) {
+    const T = 0x7fe0d0;
+    switch (e.def) {
+      case 'fen_wisp':
+        if (Math.random() < dt * 9) this.effects.emit({ x: e.x, y: lift + 0.2 + Math.random() * 0.6, z: e.z, count: 1, color: Math.random() < 0.6 ? T : 0xeaffff, spread: 0.25, speed: 0.15, up: -0.2, life: 0.8, size: 0.12, drag: 0.6 });
+        break;
+      case 'bog_hag':
+        if (Math.random() < dt * (e.state === 'windup' ? 20 : 3)) this.effects.emit({ x: e.x, y: 1 + Math.random() * 0.8, z: e.z, count: 1, color: e.state === 'windup' ? SPELL_FX.enemy.hex : 0x6fb4a8, spread: 0.3, speed: 0.2, up: e.state === 'windup' ? 1.2 : -0.4, life: 0.8, size: 0.14, gravity: e.state === 'windup' ? -0.3 : 5 });
+        break;
+      case 'drowned_sexton':
+        if (Math.random() < dt * 6) this.effects.emit({ x: e.x + (Math.random() - 0.5) * 0.8, y: 1.6 * e.scale, z: e.z + (Math.random() - 0.5) * 0.8, count: 1, color: 0x3a5a54, spread: 0.1, speed: 0.1, up: -0.3, life: 0.6, size: 0.1, gravity: 9 });
+        break;
+      case 'mire_leech': {
+        // Slither: a squirming squash-and-stretch on the static mesh (only while it moves).
+        const w = Math.sin(performance.now() / 85 + id * 1.7) * (e.moving ? 1 : 0.25);
+        const k = e.scale;
+        v.c.root.scale.set(k * (1 + 0.12 * w), k * (1 - 0.09 * w), k * (1 + 0.1 * w));
+        v.c.root.rotation.z = 0.12 * w;
+        break;
+      }
+    }
   }
 
   onEvent(ev: SimEvent, lookupCorpseFacing?: (c: Corpse) => number) {
@@ -563,6 +593,7 @@ export class EntityViews {
         const v = this.thralls.get(ev.id);
         if (!v) break;
         this.thralls.delete(ev.id);
+        v.hexFx?.kill();
         v.ring?.kill();
         v.sinkT = 0;
         this.fading.push(v);
@@ -706,6 +737,7 @@ export class EntityViews {
       }
       this.tickAnim(v, dt, focusX, focusZ, crowded);
       if (nearFx && FIRE_DEAD.has(e.def)) this.fireDead(e, v, dt, fresh);
+      if (nearFx && FEN_DEAD.has(e.def)) this.fenDead(e, dt, lift, id, v);
       if (nearFx && e.withered > 0 && Math.random() < dt * (1 + e.withered * 0.75)) {
         this.effects.emit({ x: e.x, y: 0.8 + Math.random() * 0.8, z: e.z, count: 1, color: SPELL_FX.miasma.rot, spread: 0.4, speed: 0.2, up: 0.7, life: 0.9, size: 0.2 });
       }
@@ -800,11 +832,20 @@ export class EntityViews {
       else if (key === 'move' && v.lastState !== 'move') v.c.setLoop(t.speed > 6.5 ? 'run' : 'walk', 1.3);
       else if (key === 'idle' && v.lastState !== 'idle') v.c.setLoop('idle');
       v.lastState = key;
+      // A Bog Hag's hex: a magenta sigil ring follows the thrall and sickly motes drip off it while it lasts.
+      if ((t.cursedT ?? 0) > 0) {
+        if (!v.hexFx?.alive) v.hexFx = this.effects.decal({ tex: fx.sigil(), color: SPELL_FX.enemy.hex, x: t.x, z: t.z, r: 0.95, duration: 1e9, opacity: 0.9, spin: 2, follow: () => ({ x: v!.x, z: v!.z }) });
+        if (Math.abs(t.x - focusX) < 24 && Math.abs(t.z - focusZ) < 20 && Math.random() < dt * 5) this.effects.emit({ x: t.x, y: 0.9 + Math.random() * 0.8, z: t.z, count: 1, color: SPELL_FX.enemy.hex, spread: 0.25, speed: 0.15, up: -0.5, life: 0.7, size: 0.12, gravity: 4 });
+      } else if (v.hexFx) {
+        v.hexFx.kill();
+        v.hexFx = undefined;
+      }
       this.tickAnim(v, dt, focusX, focusZ, crowded);
     }
     for (const [id, v] of this.thralls) {
       if (!thralls.has(id)) {
         this.thralls.delete(id);
+        v.hexFx?.kill();
         v.ring?.kill();
         v.sinkT = 0;
         this.fading.push(v);

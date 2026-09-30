@@ -120,6 +120,21 @@ var NODE_LIST = [
     tint: 5064242,
     extras: [{ item: "ring_copper", chance: 1 / 120 }, { item: "seed_mourning_moss", chance: 1 / 20 }, { item: "seed_nightshade", chance: 1 / 25 }]
   }),
+  // The Mourning Fen's herbs (2026-09-30): dug from the marsh. Bog myrtle grows on the hummocks.
+  node({
+    id: "bog_myrtle",
+    skill: "gravedigging",
+    name: "Bog Myrtle Thicket",
+    kind: "grave",
+    level: 25,
+    xp: 26,
+    ticks: 5,
+    item: "herb_bog_myrtle",
+    yields: [3, 6],
+    respawnS: 40,
+    tint: 6982258,
+    extras: [{ item: "seed_bog_myrtle", chance: 1 / 16 }, { item: "gem_grave_garnet", chance: 1 / 120 }]
+  }),
   node({
     id: "grave_crypt",
     skill: "gravedigging",
@@ -134,6 +149,21 @@ var NODE_LIST = [
     gold: [2, 6],
     tint: 5920336,
     extras: [{ item: "ore_silver", chance: 1 / 8 }, { item: "reliquary_fragment", chance: 1 / 60 }, { item: "seed_corpse_lily", chance: 1 / 25 }, { item: "seed_wolfsbane", chance: 1 / 40 }]
+  }),
+  // ...and the drowned lotus in the open water.
+  node({
+    id: "drowned_lotus",
+    skill: "gravedigging",
+    name: "Drowned Lotus Bed",
+    kind: "grave",
+    level: 45,
+    xp: 44,
+    ticks: 6,
+    item: "herb_drowned_lotus",
+    yields: [3, 5],
+    respawnS: 55,
+    tint: 10405080,
+    extras: [{ item: "seed_drowned_lotus", chance: 1 / 20 }, { item: "gem_bone_opal", chance: 1 / 140 }, { item: "gem_void_sapphire", chance: 1 / 400 }]
   }),
   node({
     id: "grave_barrow_king",
@@ -246,6 +276,9 @@ var SEEDS = [
   herb("wolfsbane", 45, 80, 30, 315, [4, 7]),
   herb("bloodroot", 60, 100, 42, 480, [4, 8]),
   herb("moonpetal", 75, 120, 60, 690, [5, 9]),
+  // The Mourning Fen's herbs (items in content/fenItems.ts; found as gathering nodes in the Fen).
+  herb("bog_myrtle", 55, 90, 36, 420, [4, 7]),
+  herb("drowned_lotus", 70, 110, 52, 600, [4, 8]),
   { id: "sapling_oak", kind: "tree", level: 10, growMin: 120, harvest: "log_oak", yields: [14, 24], plantXp: 25, harvestXp: 225, seedBack: 0.15 },
   { id: "sapling_yew", kind: "tree", level: 40, growMin: 360, harvest: "log_yew", yields: [10, 18], plantXp: 60, harvestXp: 630, seedBack: 0.15 }
 ];
@@ -286,9 +319,6 @@ var ALCHEMY_ITEMS = {
   }
 };
 var ALCHEMY_HEALING = { flask_hp_grand: 0.9 };
-var ALCHEMY_BUFFS = {
-  elixir_moonlight: { kind: "damage", value: 0.25, seconds: 60, label: "Moonlit" }
-};
 var ALCHEMY_RECIPES = [
   ["brew_moss_tonic", "Brew Moss Tonic", "alchemy", 1, "flask_hp_minor", 3, [["herb_mourning_moss", 3]]],
   ["brew_nightshade_draught", "Brew Nightshade Draught", "alchemy", 12, "flask_hp_major", 2, [["herb_nightshade", 3], ["bone_meal", 1]]],
@@ -298,6 +328,22 @@ var ALCHEMY_RECIPES = [
   ["brew_bloodroot_grand", "Brew Grand Healing Flask", "alchemy", 58, "flask_hp_grand", 2, [["herb_bloodroot", 3], ["herb_corpse_lily", 1]]],
   ["brew_moonpetal_elixir", "Brew Moonlight Elixir", "alchemy", 72, "elixir_moonlight", 1, [["herb_moonpetal", 3], ["herb_bloodroot", 1]]]
 ];
+
+// src/content/fenItems.ts
+var FEN_ITEMS = {
+  herb_bog_myrtle: { name: "Bog Myrtle", rarity: "rare", sell: 34, lore: "Waxy grey leaves dug from the peat. Its smoke keeps the marsh-fever off the living.", stack: 250 },
+  herb_drowned_lotus: { name: "Drowned Lotus", rarity: "epic", sell: 72, lore: "It blooms under black water and glows faintly, as if lit from below.", stack: 250 },
+  seed_bog_myrtle: { name: "Bog Myrtle Seed", rarity: "rare", sell: 16, lore: "Plant it in a Mourning Bed. It grows best in damp, dark ground.", stack: 250 },
+  seed_drowned_lotus: { name: "Drowned Lotus Seed", rarity: "rare", sell: 28, lore: "Plant it in a Mourning Bed and keep it patient.", stack: 250 }
+};
+
+// src/content/brews.ts
+var BREWS = {
+  flask_damage: { slot: "elixir", effects: [{ kind: "damage", value: 0.15 }], seconds: 45, label: "Forge-tempered", color: 16752736, glyph: "\u2726" },
+  elixir_moonlight: { slot: "elixir", effects: [{ kind: "damage", value: 0.25 }], seconds: 60, label: "Moonlit", color: 12374271, glyph: "\u263E" },
+  flask_void_resist: { slot: "elixir", effects: [{ kind: "ward", value: 0.25 }], seconds: 90, label: "Warded", color: 12175615, glyph: "\u25C8" },
+  flask_speed: { slot: "tonic", effects: [{ kind: "speed", value: 0.2 }], seconds: 30, label: "Swift", color: 10483168, glyph: "\u226B" }
+};
 
 // src/content/armorSets.ts
 var ARMOR_PARTS = ["head", "chest", "hands", "legs", "feet"];
@@ -439,6 +485,7 @@ var ITEMS = {
 for (const [id, g2] of Object.entries(GARDEN_ITEMS)) ITEMS[id] ??= { name: g2.name, type: "material", rarity: g2.rarity, sell: g2.sell, lore: g2.lore, stack: g2.stack };
 for (const [id, c] of Object.entries(CHARM_ITEMS)) ITEMS[id] ??= { name: c.name, type: "material", rarity: c.rarity, sell: c.sell, lore: c.lore, stack: 1 };
 for (const [id, a] of Object.entries(ALCHEMY_ITEMS)) ITEMS[id] ??= { name: a.name, type: "material", rarity: a.rarity, sell: a.sell, lore: a.lore, stack: a.stack };
+for (const [id, f] of Object.entries(FEN_ITEMS)) ITEMS[id] ??= { name: f.name, type: "material", rarity: f.rarity, sell: f.sell, lore: f.lore, stack: f.stack };
 for (const [id, p] of Object.entries(PROCESSING_ITEMS)) ITEMS[id] ??= { name: p.name, type: "material", rarity: p.rarity, sell: p.sell, lore: p.lore, stack: p.stack };
 for (const piece of ARMOR_PIECES) ITEMS[piece.id] = {
   name: piece.name,
@@ -452,12 +499,9 @@ for (const piece of ARMOR_PIECES) ITEMS[piece.id] = {
 function itemMeta(id) {
   return ITEMS[id] ?? { name: id.replace(/_/g, " "), type: "material", rarity: "common", sell: 0 };
 }
-var BUFF_FLASKS = {
-  flask_speed: { kind: "speed", value: 0.2, seconds: 30, label: "Swift" },
-  flask_damage: { kind: "damage", value: 0.15, seconds: 45, label: "Forge-tempered" },
-  flask_void_resist: { kind: "ward", value: 0.25, seconds: 90, label: "Warded" },
-  ...ALCHEMY_BUFFS
-};
+var BUFF_FLASKS = Object.fromEntries(
+  Object.entries(BREWS).map(([id, b]) => [id, { kind: b.effects[0].kind, value: b.effects[0].value, seconds: b.seconds, label: b.label }])
+);
 var HEALING_FLASKS = {
   flask_hp_major: 0.7,
   flask_hp_minor: 0.35,

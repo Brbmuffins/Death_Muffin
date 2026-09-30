@@ -270,6 +270,14 @@ export class Water {
     this.next = (this.next + 1) % RIPPLES;
   }
 
+  /** The Fen's water is teal-black and cold; everywhere else keeps the Nave's violet-black. */
+  setPalette(fen: boolean) {
+    this.uniforms.uDeep.value.set(fen ? 0x02100e : 0x04040b);
+    this.uniforms.uRim.value.set(fen ? 0x2a7a72 : 0x2c3a7a);
+    this.high.color.set(fen ? 0x0f2a2a : 0x15142a);
+    this.low.color.set(fen ? 0x0d2426 : 0x131228);
+  }
+
   setMoon(color: number) {
     this.uniforms.uMoon.value.set(color);
   }

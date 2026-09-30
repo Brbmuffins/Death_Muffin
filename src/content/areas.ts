@@ -516,7 +516,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
       { item: 'helm_gold', weight: 4 },
     ],
     itemChance: 0.16,
-    breaches: [[-57, -97], [-25.5, -97], [-57, -63], [-28, -63], [-41, -98.5], [-58, -80], [-41, -62]],
+    breaches: [[-58.5, -98.5], [-25.5, -97], [-57, -63], [-28, -63], [-41, -98.5], [-58, -80], [-41, -62]],
     interactables: [
       { id: 'waystone_fen', kind: 'waystone', label: 'Waystone', x: -24.8, z: -85.6 },
       // Boss summon on the arena's north rim (content/bosses.ts summonSpot), on its own hummock.

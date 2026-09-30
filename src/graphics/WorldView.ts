@@ -12,6 +12,7 @@ import type { Effects } from './Effects';
 import { applyOcclusion } from './occlusion';
 import { Water } from './Water';
 import { Atmosphere } from './Atmosphere';
+import { FEN_HUMMOCKS } from '../content/fen';
 
 const FLOOR_TEX: Record<Theme, { url: string; tile: number; color: number; rough: number }> = {
   chapter: { url: 'art/textures/flagstone.webp', tile: 7, color: 0x9a92a8, rough: 0.62 },
@@ -351,6 +352,8 @@ export class WorldView {
   private water: Water;
   private atmosphere = new Atmosphere();
   private focusArea: AreaId | null = null;
+  /** The Fen's dry hummocks: one instanced mound and one rim ring, rescaled while the Mire Mother floods the marsh. */
+  private hummocks: { mound: THREE.InstancedMesh; rim: THREE.InstancedMesh; cur: number; target: number } | null = null;
 
   constructor(
     scene: THREE.Scene,
@@ -373,13 +376,57 @@ export class WorldView {
     this.buildFlames();
     this.buildMist();
     this.buildSilhouettes();
-    this.water = new Water([...layout.water, ...layout.ponds], layout.puddles);
+    this.buildHummocks();
+    this.water = new Water([...layout.water, ...layout.bog, ...layout.ponds], layout.puddles);
     this.group.add(this.water.mesh, this.atmosphere.points);
     for (let i = 0; i < 5; i++) {
       const l = new THREE.PointLight(0xffb46b, 0, 8, 1.8);
       this.group.add(l);
       this.pointLights.push(l);
     }
+  }
+
+  /** The Mourning Fen's dry ground (content/fen.ts FEN_HUMMOCKS): low peat mounds with a pale teal rim, two draw calls. */
+  private buildHummocks() {
+    const n = FEN_HUMMOCKS.length;
+    const mound = new THREE.InstancedMesh(
+      new THREE.CylinderGeometry(0.9, 1, 0.34, 18, 1).translate(0, 0.17, 0),
+      new THREE.MeshStandardMaterial({ color: 0x46574a, roughness: 1, metalness: 0, flatShading: true, emissive: 0x0a2622, emissiveIntensity: 0.5 }),
+      n,
+    );
+    mound.receiveShadow = true;
+    const rim = new THREE.InstancedMesh(
+      new THREE.RingGeometry(0.93, 1.07, 36).rotateX(-Math.PI / 2).translate(0, 0.36, 0),
+      new THREE.MeshBasicMaterial({ color: 0x6fd6c4, transparent: true, opacity: 0.38, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
+      n,
+    );
+    rim.renderOrder = 3;
+    this.hummocks = { mound, rim, cur: 1, target: 1 };
+    this.layoutHummocks(1);
+    this.group.add(mound, rim);
+  }
+
+  private layoutHummocks(k: number) {
+    const h = this.hummocks!;
+    const m = new THREE.Matrix4();
+    FEN_HUMMOCKS.forEach((p, i) => {
+      m.makeScale(p.r * k, 1, p.r * k).setPosition(p.x, 0, p.z);
+      h.mound.setMatrixAt(i, m);
+      h.rim.setMatrixAt(i, m);
+    });
+    h.mound.instanceMatrix.needsUpdate = true;
+    h.rim.instanceMatrix.needsUpdate = true;
+    h.mound.computeBoundingSphere();
+    h.rim.computeBoundingSphere();
+  }
+
+  /** The marsh floods (Mire Mother phase 2/3): the dry radius eases to `k` times its calm size. Only moves while it changes. */
+  setFenFlood(k: number) {
+    if (this.hummocks) this.hummocks.target = k;
+  }
+  /** Current eased flood scale (for QA). */
+  fenFlood() {
+    return this.hummocks?.cur ?? 1;
   }
 
   private buildFloors() {
@@ -807,6 +854,13 @@ export class WorldView {
     if (area && area !== this.focusArea) {
       this.focusArea = area;
       this.water.setMoon(AREAS[area].ambient.moon);
+      this.water.setPalette(area === 'fen');
+    }
+    if (this.hummocks && this.hummocks.cur !== this.hummocks.target) {
+      const h = this.hummocks;
+      h.cur += (h.target - h.cur) * Math.min(1, dt * 1.6);
+      if (Math.abs(h.target - h.cur) < 0.004) h.cur = h.target;
+      this.layoutHummocks(h.cur);
     }
     this.water.update(dt);
     this.atmosphere.update(dt, area, focusX, focusZ, scale);

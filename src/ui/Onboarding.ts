@@ -82,6 +82,12 @@ export type TipId =
   | 'pyre_priest'
   | 'cinderhound'
   | 'slag_brute'
+  | 'fen'
+  | 'bog_hag'
+  | 'mire_leech'
+  | 'fen_wisp'
+  | 'drowned_sexton'
+  | 'boss_mire'
   | 'boss_gravedigger'
   | 'boss_abbess'
   | 'boss_congregation'
@@ -343,6 +349,30 @@ export const TIPS: Record<TipId, Tip> = {
   cinderhound: {
     title: 'Cinderhound',
     body: 'Burning hounds that hunt in <b>packs of two or three</b> and flank fast. Fight with your back to a wall or a Bone Ward; their corpses rise as hounds of your own.',
+  },
+  fen: {
+    title: 'The Mourning Fen',
+    body: 'A drowned marsh, level-scaled like the Pyre (never below 45). <b>Bog water slows you</b>; the pale-rimmed <b>hummocks are dry and safe</b>, so fight from them. The <b>Bog Hag</b>’s magenta ring <b>hexes your thralls</b> (30% softer for six seconds): kill her first or move your legion out of it.',
+  },
+  bog_hag: {
+    title: 'Bog Hag',
+    body: 'A <b>magenta ring</b> on your thralls is her hex: anything inside deals 30% less damage for six seconds. Kill her first, or pull the legion out before the ring fills.',
+  },
+  mire_leech: {
+    title: 'Mire Leech',
+    body: 'They come in <b>swarms of six</b> and leave no corpse. Sweep them with Miasma or another area rite instead of chasing them one by one.',
+  },
+  fen_wisp: {
+    title: 'Fen Wisp',
+    body: 'A <b>teal ring</b> under your feet is a cold pulse that slows you. Step out, and do not chase it: it backs away toward the open water, where you wade slowly.',
+  },
+  drowned_sexton: {
+    title: 'Drowned Sexton',
+    body: 'A <b>rust-brown line</b> is his grave-hook: it drags you toward him, then the slam follows. Step off the line, or cross it on a hummock and be ready to leave the slam ring.',
+  },
+  boss_mire: {
+    title: 'The Mire Altar',
+    body: 'Offer <b>7 soul shards</b> to wake the Mire Mother. She <b>sinks and resurfaces</b> under a hummock (a ring marks it: leave, then hit her while she is winded); phase 2 <b>floods the marsh</b>; in phase 3 she <b>raises every corpse in the Fen</b>, so spend yours first.',
   },
   slag_brute: {
     title: 'Slag Brute',
