@@ -221,6 +221,7 @@ function createGraveAtmosphere(canvas) {
   const context = canvas.getContext("2d");
   const smoke = [];
   const ash = [];
+  const embers = [];
   let width = 0;
   let height = 0;
   let pixelRatio = 1;
@@ -228,11 +229,13 @@ function createGraveAtmosphere(canvas) {
   let lastTime = performance.now();
   let smokeTimer = 0;
   let ashTimer = 0;
+  let emberTimer = 0;
   let awakenedUntil = 0;
 
   function resize() {
     width = window.innerWidth;
     height = window.innerHeight;
+    if (width <= 900) embers.length = 0;
     pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
     canvas.width = Math.round(width * pixelRatio);
     canvas.height = Math.round(height * pixelRatio);
@@ -290,6 +293,20 @@ function createGraveAtmosphere(canvas) {
         spin: (Math.random() - 0.5) * 0.35,
       });
     }
+  }
+
+  function kindleEmber() {
+    if (width <= 900 || embers.length >= 24) return;
+    embers.push({
+      x: width * 0.075 + (Math.random() - 0.5) * 120,
+      y: height * 0.235 + (Math.random() - 0.5) * 70,
+      vx: -12 + Math.random() * 32,
+      vy: -(25 + Math.random() * 42),
+      age: 0,
+      life: 0.9 + Math.random() * 1.3,
+      size: 0.8 + Math.random() * 1.6,
+      phase: Math.random() * Math.PI * 2,
+    });
   }
 
   function drawGlow(origin, radius, strength) {
@@ -363,6 +380,7 @@ function createGraveAtmosphere(canvas) {
     lastTime = now;
     smokeTimer += delta;
     ashTimer += delta;
+    emberTimer += delta;
 
     context.clearRect(0, 0, width, height);
     const awakened = now < awakenedUntil ? 1.75 : 1;
@@ -383,6 +401,11 @@ function createGraveAtmosphere(canvas) {
     if (ashTimer > 0.48) {
       loosenAsh(Math.random() > 0.72 ? 2 : 1);
       ashTimer = 0;
+    }
+
+    if (emberTimer > 0.18) {
+      kindleEmber();
+      emberTimer = 0;
     }
 
     context.globalCompositeOperation = "source-over";
@@ -417,6 +440,22 @@ function createGraveAtmosphere(canvas) {
       context.fillRect(-0.45, -fleck.length * 0.5, 0.9, fleck.length);
       context.restore();
     }
+
+    context.globalCompositeOperation = "screen";
+    for (let index = embers.length - 1; index >= 0; index -= 1) {
+      const ember = embers[index];
+      ember.age += delta;
+      if (ember.age >= ember.life) {
+        embers.splice(index, 1);
+        continue;
+      }
+      ember.x += (ember.vx + Math.sin(now / 350 + ember.phase) * 7) * delta;
+      ember.y += ember.vy * delta;
+      const fade = Math.sin((ember.age / ember.life) * Math.PI);
+      context.fillStyle = `rgba(255, 161, 75, ${fade * 0.85})`;
+      context.fillRect(ember.x, ember.y, ember.size, ember.size * 1.8);
+    }
+    context.globalCompositeOperation = "source-over";
 
     animationFrame = requestAnimationFrame(render);
   }

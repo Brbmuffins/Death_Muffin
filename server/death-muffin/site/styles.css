@@ -68,7 +68,7 @@ button {
   overflow: hidden;
   background:
     linear-gradient(90deg, transparent 0 42%, rgba(7, 6, 10, 0.17) 58%, rgba(7, 6, 10, 0.58) 100%),
-    url("assets/covenant-pyre.webp") 45% center / cover no-repeat;
+    url("assets/covenant-pyre.webp") left center / cover no-repeat;
 }
 
 .gateway__shade {
@@ -80,6 +80,23 @@ button {
     linear-gradient(180deg, rgba(4, 3, 7, 0.08), transparent 52%, rgba(4, 3, 7, 0.58));
   pointer-events: none;
   animation: veil-breathe 8.5s ease-in-out infinite alternate;
+}
+
+.pyre-glow {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: -7%;
+  width: min(30vw, 380px);
+  height: min(35vw, 360px);
+  pointer-events: none;
+  background: radial-gradient(ellipse, rgba(255, 137, 45, 0.2), rgba(225, 75, 28, 0.08) 44%, transparent 72%);
+  animation: pyre-flicker 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes pyre-flicker {
+  from { opacity: 0.55; transform: scale(0.95); }
+  to { opacity: 0.95; transform: scale(1.04); }
 }
 
 .spell-canvas {
@@ -836,6 +853,7 @@ button {
 }
 
 @media (max-width: 900px) {
+  .pyre-glow { display: none; }
   .gateway {
     background-position: 34% center;
   }
