@@ -45,6 +45,7 @@ On **Easy**, auto combat can engage enemies, use equipped rites, heal, and drink
 | Right click or **5** | Use your class's fifth rite, often a corpse action |
 | **R** or **6** | Use your class's signature rite after level 10 |
 | **Q** | Drink a healing flask |
+| **Z** / **X** | Drink the elixir / tonic on your belt (**F** is reserved for throwables) |
 | **T** | Recall to the Chapterhouse |
 | **L** | Open the Grimoire to inspect rites and set the four keys |
 | **I** or **B** / **C** / **P** / **O** / **U** / **H** / **N** | Reliquary / Workbench / Skills and AFK gathering / Sexton’s Contracts / Grave Gardening / Grave Laborers / Capes & Pets |
@@ -200,7 +201,7 @@ Omens only act in combat areas. The sky tint is half-way, so each place keeps it
 
 **Milestones.** One-off gold purses for kill counts (100 up to 25,000), kills in each hunting ground (100 up to 2,500) and your best chain (10 up to 100). Each pays once per character in this browser.
 
-Gold and experience come from fighting. Open the **Reliquary (I)** to equip gear, use consumables, and see your inventory. Loot pillars mark better drops; item rarity is shown by color and marks. The **Workbench (C)** turns materials into equipment and tools. Healing flasks are used with **Q**; cooked meals can be eaten from the bag for healing over time.
+Gold and experience come from fighting. Open the **Reliquary (I)** to equip gear, use consumables, and see your inventory. Loot pillars mark better drops; item rarity is shown by color and marks. The **Workbench (C)** turns materials into equipment and tools. Healing flasks are used with **Q**. **Brews** are two slots: one **elixir** (combat: damage, ward, lifesteal, haste, fire/rot resist) and one **tonic** (utility: speed, essence, wisdom, fortune). A new elixir replaces the active one; drinking the same brew extends it (up to twice its length). Right-click a brew in the Reliquary to put it on your belt, then press **Z** (elixir) or **X** (tonic); active brews show with countdowns at the left edge. Lifesteal heals a share of the damage of each hit (at most 3 targets count, and one hit heals at most 1.5% of max health). Brews are local and never sent to other players; cooked meals can be eaten from the bag for healing over time.
 
 Each discipline has two five-piece armor sets with matching icons and visible colors on the hero. The first collection begins in the Hollow Graves and completes in the Bell Sanctum; the stronger ascended collection begins in the Sanctum and completes in the Cinder Pyre. Any class can wear any set. See [the armor set guide](docs/ARMOR-SETS.md) for names and drop areas.
 

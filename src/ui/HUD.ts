@@ -66,6 +66,8 @@ export interface HudFrame {
   areaProgress: string;
   /** Ossuary's Bone Ward: damage shaved off by the thralls standing now. Null for other disciplines. */
   ward: null | { pct: number; thralls: number; perThrall: number };
+  /** The brew tray: one row per belt slot (elixir, tonic), null when that slot has nothing active or belted. */
+  brews: ({ slot: string; key: string; label: string; glyph: string; color: number; active: boolean; left: number; frac: number; count: number; tip: string } | null)[];
   save: { text: string; warn: boolean };
   target: null | {
     name: string;
@@ -128,6 +130,7 @@ export class HUD {
       <div class="hud-party" data-party></div>
       <div class="hud-omen" data-omen hidden><img alt="" data-omen-img /><span data-omen-name></span></div>
       <div class="hud-ward" data-ward hidden></div>
+      <div class="hud-brews" data-brews hidden></div>
       <div class="hud-chain passive" data-chain hidden aria-live="off">
         <div class="n" data-chain-n></div>
         <div class="lbl" data-chain-lbl></div>
@@ -531,6 +534,15 @@ export class HUD {
       el.classList.toggle('on', f.ward.pct > 0);
       el.innerHTML = `<span class="lbl">Bone Ward</span><span class="n">−${f.ward.pct}%</span>`;
       el.title = `Each active thrall shields you from ${Math.round(f.ward.perThrall * 100)}% of incoming damage (you have ${f.ward.thralls}; the most it gives is 60%).`;
+    });
+    this.set('brews', f.brews.map((b) => (b ? `${b.label}|${b.active}|${b.left}|${b.count}` : '-')).join(';'), () => {
+      const el = this.$('[data-brews]');
+      const rows = f.brews.filter((b): b is NonNullable<typeof b> => !!b);
+      el.hidden = !rows.length;
+      el.innerHTML = rows.map((b) => `<div class="brew-chip${b.active ? ' on' : ''}" style="--brew:#${b.color.toString(16).padStart(6, '0')}" title="${b.tip.replace(/"/g, '&quot;')}">
+        <kbd>${b.key}</kbd><span class="glyph">${b.glyph}</span>
+        <span class="txt"><span class="lbl">${b.label}</span><span class="sub">${b.active ? `${b.left}s` : 'ready'}${b.count ? ` · ×${b.count}` : ''}</span></span>
+        <span class="bar"><i style="width:${Math.round(b.frac * 100)}%"></i></span></div>`).join('');
     });
     this.set('prog', f.areaProgress, () => (this.$('[data-prog]').innerHTML = f.areaProgress));
     this.set('save', f.save.text, () => {

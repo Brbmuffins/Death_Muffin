@@ -5,6 +5,8 @@ import {
   CLASS_CHANGE_COUNSEL,
   CODEX_TRAVEL_COUNSEL,
   CODEX_PROFESSIONS_COUNSEL,
+  CODEX_BREWS_COUNSEL,
+  codexBrewRows,
   CODEX_AREAS,
   CODEX_DEAD,
   CODEX_DISCIPLINES,
@@ -285,7 +287,15 @@ export class CodexPanel {
           <p>XP/h assumes steady work at the node's own level with the node always ready; your odds improve with every level above it.</p>
         </div>
       </article>`;
-    return `<p class="tip">${CODEX_PROFESSIONS_COUNSEL}</p>${sections}${stations}`;
+    const brews = `
+      <article class="cw-codex-entry">
+        <div class="txt">
+          <div class="hd"><h3>Elixirs &amp; Tonics</h3><span class="meta">Z elixir · X tonic</span></div>
+          <p>${CODEX_BREWS_COUNSEL}</p>
+          <dl>${codexBrewRows().map((r) => `<dt>${r.name}</dt><dd>${r.slot} · ${r.effects} · ${r.seconds}s</dd>`).join('')}</dl>
+        </div>
+      </article>`;
+    return `<p class="tip">${CODEX_PROFESSIONS_COUNSEL}</p>${sections}${stations}${brews}`;
   }
 
   private lore() {

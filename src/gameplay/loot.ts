@@ -28,7 +28,7 @@ export interface KillReward {
  * kill rolls their own — no contention, PvE-only assumption). Item ids are
  * restricted to ids the live server knows (content/items.ts).
  */
-export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boolean, waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium'): KillReward {
+export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boolean, waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium', itemChanceMult = 1): KillReward {
   const d = ENEMIES[def];
   const a = AREAS[area];
   const mods = waveModifiers(waveTier);
@@ -37,7 +37,7 @@ export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boole
   const gold = Math.round(randInt(rand, d.gold[0], d.gold[1]) * levelMult * mods.rewardMult * diff * (elite ? ELITE.goldMult : 1));
   const shards = elite ? (rand() < 0.25 ? 2 : 1) : 0;
   const items: LootDrop[] = [];
-  const chance = Math.min(1, a.itemChance * mods.itemChanceMult * (elite ? 6 : 1));
+  const chance = Math.min(1, a.itemChance * mods.itemChanceMult * itemChanceMult * (elite ? 6 : 1));
   if (a.loot.length && rand() < chance) items.push(rollItem(area, rand));
   const xp = Math.round(d.xp * (1 + 0.25 * (level - 1)) * diff * (elite ? ELITE.xpMult : 1));
   return { gold, shards, items, xp };

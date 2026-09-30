@@ -5,6 +5,7 @@ import type { ClassFamily } from '../content/disciplines';
 import type { DerivedStats } from './characterStats';
 import type { Nav } from './nav';
 import { resourceRulesFor, type ResourceKind, type ResourceRules } from './resources';
+import { brewValue, emptyBrews, type ActiveBrews, type BrewKind } from '../content/brews';
 
 const OUT_OF_COMBAT_MS = 5000;
 
@@ -148,8 +149,12 @@ export class Player {
   /** Walk the path, or step along a WASD direction. Returns true if moved. */
   /** Scene-set movement multiplier (the Drowned Congregation's rising water, a Swiftness Flask). */
   moveMult = 1;
-  /** Buff flasks: when each one wears off (scene ms). */
-  buffUntil: { speed: number; damage: number; ward: number } = { speed: 0, damage: 0, ward: 0 };
+  /** The active elixir and tonic (content/brews.ts). Local-only; never sent to the realtime host. */
+  brews: ActiveBrews = emptyBrews();
+  /** Summed value of one brew effect kind at `now` (0 when none is active). */
+  brewValue(kind: BrewKind, now: number) {
+    return brewValue(this.brews, kind, now);
+  }
 
   update(dt: number, now: number, keyDir: { x: number; z: number } | null): boolean {
     this.clockNow = now;
@@ -158,11 +163,13 @@ export class Player {
     // Regeneration: brisk out of combat, a trickle in it.
     const ooc = now - this.lastHurtAt > OUT_OF_COMBAT_MS;
     this.hp = Math.min(this.stats.maxHp, this.hp + this.stats.maxHp * (ooc ? 0.045 : 0.004) * dt);
+    const essenceBoost = this.brews.tonic ? brewValue(this.brews, 'essence', now) : 0;
     // Family resource drift. For the necromancer this is `stats.essenceRegen`
     // every frame, exactly as before; Rage instead decays out of combat.
     this.addResource(
       (this.resource.kind === 'veil' && this.veilForm ? -12 : this.rules.passive({
-        stats: this.stats,
+        // Tonic of essence: the regen rate grows while it lasts (only allocates while the brew is active).
+        stats: essenceBoost ? { ...this.stats, essenceRegen: this.stats.essenceRegen * (1 + essenceBoost) } : this.stats,
         value: this.resource.value,
         max: this.resource.max,
         sinceHurtMs: now - this.lastHurtAt,

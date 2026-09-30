@@ -13,7 +13,8 @@ import { ARMOR_BY_ID } from '../content/armorSets';
 import { AREAS, AREA_ORDER, BOSS_SUMMON_SHARDS, CHAPTERHOUSE_RETURN, DOORS, PLAYER_SPAWN, type AreaId, type DoorDef, type Interactable } from '../content/areas';
 import { disciplineFor, type Discipline } from '../content/disciplines';
 import { AFFIX_TUNING, ELITE_AFFIXES, ENEMIES, WAVE_THEMES, type EliteAffix, type EnemyId } from '../content/enemies';
-import { BUFF_FLASKS, HEALING_FLASKS, itemMeta } from '../content/items';
+import { HEALING_FLASKS, itemMeta } from '../content/items';
+import { BREWS, BREW_KEYS, BREW_SLOTS, applyBrew, brewEffectsText, brewWard, lifestealHeal, slotName, type BrewSlot } from '../content/brews';
 import { MEALS } from '../content/processing';
 import { generateLayout, PROPS, type NodePlacement } from '../content/layout';
 import { GatherLoop, Skills } from '../gameplay/Gathering';
@@ -290,6 +291,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private recallAt = 0;
   private recallFx: Handle | null = null;
   private flaskCdUntil = 0;
+  /** Belt quick-slots: the brew chosen for Z (elixir) and X (tonic); persisted per character. */
+  private belt: Record<BrewSlot, string | null> = { elixir: null, tonic: null };
   private ready = false;
   private dataReady: Promise<unknown> = Promise.resolve();
   /** Scene clock in ms (runtime-provided; see GameRuntime.advance). */
@@ -684,7 +687,8 @@ export class WorldScene implements GameScene, RuntimeView {
       openGrimoire: (select) => this.openGrimoire(select),
     }, this.hotbar, this.discipline, this.primary);
     this.hud.minimap.onNavigate = (x, z) => this.navigateFromMinimap(x, z);
-    this.inventoryPanel = new InventoryPanel(this.root, this.character.id, this.inventory, this.statsLine, (id) => this.drinkFlask(id), (gold, name, n) => {
+    this.loadBelt();
+    this.inventoryPanel = new InventoryPanel(this.root, this.character.id, this.inventory, this.statsLine, (id) => this.drinkFlask(id), (id) => this.setBelt(id), (gold, name, n) => {
       this.progression.addGold(gold);
       audio.play('coin');
       this.floating.spawn(this.player.x, 2.4, this.player.z, `+${gold.toLocaleString()}g`, 'gold');
@@ -958,6 +962,8 @@ export class WorldScene implements GameScene, RuntimeView {
       if (k >= '1' && k <= '6') this.castSlot(Number(k) as HotbarSlot);
       else if (k === 'r') this.castSlot(6);
       else if (k === 'q') this.drinkFlask();
+      else if (k === BREW_KEYS.elixir) this.drinkBelt('elixir');
+      else if (k === BREW_KEYS.tonic) this.drinkBelt('tonic');
       else if (k === 't') this.startRecall();
       else if (k === 'i' || k === 'b') this.togglePanel('inventory');
       else if (k === 'c') this.togglePanel('forge');
@@ -1276,17 +1282,79 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private drinkBuff(id: string) {
-    const b = BUFF_FLASKS[id];
-    if (!b || !this.player.alive || !this.inventory.consume(id)) return;
-    this.player.buffUntil[b.kind] = Math.max(this.player.buffUntil[b.kind], this.now) + b.seconds * 1000;
-    this.floating.spawn(this.player.x, 2.2, this.player.z, `${b.label} · ${b.seconds}s`, 'gold');
-    this.effects.emit({ x: this.player.x, y: 0.8, z: this.player.z, count: 18, color: b.kind === 'speed' ? 0x9ff5e0 : b.kind === 'damage' ? 0xffa060 : 0xb9c8ff, spread: 0.4, speed: 0.6, up: 1.8, life: 0.8, size: 0.24 });
+    const b = BREWS[id];
+    if (!b || !this.player.alive || !this.inventory.count(id)) return;
+    const before = this.player.brews[b.slot];
+    const prev = before && this.now < before.until ? BREWS[before.id] : null;
+    if (!this.inventory.consume(id)) return;
+    const r = applyBrew(this.player.brews, id, this.now);
+    const text = r.replaced && prev ? `${b.label} replaces ${prev.label}` : r.extended ? `${b.label} extended · ${Math.round((r.until - this.now) / 1000)}s` : `${b.label} · ${b.seconds}s`;
+    this.floating.spawn(this.player.x, 2.2, this.player.z, text, 'gold');
+    this.effects.emit({ x: this.player.x, y: 0.8, z: this.player.z, count: 18, color: b.color, spread: 0.4, speed: 0.6, up: 1.8, life: 0.8, size: 0.24 });
     audio.play('shard');
+    this.onboarding.show('brew');
+  }
+
+  /** The brew a belt key drinks: the chosen one while the bag has it, else the first brew of that slot you carry. */
+  private beltBrew(slot: BrewSlot): string | null {
+    const pick = this.belt[slot];
+    if (pick && this.inventory.count(pick)) return pick;
+    return Object.keys(BREWS).find((id) => BREWS[id].slot === slot && this.inventory.count(id) > 0) ?? null;
+  }
+
+  private drinkBelt(slot: BrewSlot) {
+    const id = this.beltBrew(slot);
+    if (!id) {
+      if (this.player.alive) this.floating.spawn(this.player.x, 2.4, this.player.z, `No ${slot} on your belt`, 'info');
+      return;
+    }
+    this.drinkBuff(id);
+  }
+
+  private beltKey() {
+    return `dm_belt_${this.character.id}`;
+  }
+
+  private loadBelt() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(this.beltKey()) ?? '{}') as Partial<Record<BrewSlot, string>>;
+      for (const slot of BREW_SLOTS) this.belt[slot] = raw[slot] && BREWS[raw[slot]!]?.slot === slot ? raw[slot]! : null;
+    } catch { /* storage unavailable: the belt auto-fills */ }
+  }
+
+  private setBelt(id: string) {
+    const b = BREWS[id];
+    if (!b) return;
+    this.belt[b.slot] = id;
+    try { localStorage.setItem(this.beltKey(), JSON.stringify(this.belt)); } catch { /* ignore */ }
+    this.hud.toast(`${b.label} is on your belt: press ${BREW_KEYS[b.slot].toUpperCase()} to drink it`, 'good');
+  }
+
+  /** HUD tray rows: one per slot, the active brew (countdown) or the belted one waiting. Null when there is nothing to show. */
+  private brewTray() {
+    const now = this.now;
+    return BREW_SLOTS.map((slot) => {
+      const act = this.player.brews[slot];
+      const live = act && now < act.until ? act : null;
+      const beltId = this.beltBrew(slot);
+      const shown = live ? live.id : beltId;
+      if (!shown) return null;
+      const def = BREWS[shown];
+      const left = live ? Math.ceil((live.until - now) / 1000) : 0;
+      return {
+        slot, key: BREW_KEYS[slot].toUpperCase(), label: def.label, glyph: def.glyph, color: def.color, active: !!live, left,
+        frac: live ? Math.min(1, (live.until - now) / (def.seconds * 1000)) : 0,
+        count: beltId ? this.inventory.count(beltId) : 0,
+        tip: live
+          ? `${slotName(slot)}: ${def.label} · ${brewEffectsText(def)} · ${left}s left. ${beltId ? `Press ${BREW_KEYS[slot].toUpperCase()} for another (${this.inventory.count(beltId)} on your belt).` : ''}`
+          : `${slotName(slot)} on your belt: ${def.label} · ${brewEffectsText(def)} for ${def.seconds}s. Press ${BREW_KEYS[slot].toUpperCase()} to drink (${this.inventory.count(shown)} left).`,
+      };
+    });
   }
 
   private drinkFlask(prefer?: string) {
     if (prefer && prefer in MEALS) return this.eatMeal(prefer);
-    if (prefer && prefer in BUFF_FLASKS) return this.drinkBuff(prefer);
+    if (prefer && prefer in BREWS) return this.drinkBuff(prefer);
     const now = this.now;
     if (!this.player.alive || now < this.flaskCdUntil) return;
     const id = prefer && prefer in HEALING_FLASKS ? prefer : ['flask_hp_grand', 'flask_hp_major', 'flask_hp_minor'].find((f) => this.inventory.count(f) > 0);
@@ -1416,6 +1484,14 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private sendIntent(intent: Intent) {
+    // Lifesteal (elixir): every direct hit the player lands goes through here, so this is the one place it applies.
+    if (intent.t === 'hit' && intent.by === this.selfId && this.player.alive) {
+      const ls = this.player.brewValue('lifesteal', this.now);
+      if (ls > 0) {
+        const heal = lifestealHeal(intent.dmg, intent.ids.length + (intent.boss ? 1 : 0), ls, this.player.stats.maxHp);
+        if (heal >= 1) this.player.heal(heal);
+      }
+    }
     if (this.sim && this.isAuthority()) this.sim.apply(intent);
     else this.realtime.sendIntent(intent);
   }
@@ -2359,7 +2435,7 @@ export class WorldScene implements GameScene, RuntimeView {
     // Personal rewards for kills in (or right next to) your area.
     const near = Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 38;
     if (!this.player.alive || !near) return;
-    const reward = rollKill(ev.def, ev.area, ev.level, ev.elite, this.bossWaveTier(), Math.random, this.worldDifficulty());
+    const reward = rollKill(ev.def, ev.area, ev.level, ev.elite, this.bossWaveTier(), Math.random, this.worldDifficulty(), 1 + this.player.brewValue('fortune', this.now));
     // The chain: your own kills (thralls and DoTs credit their owner) in unsafe ground, each within the window of the last.
     let chainMult = 1;
     if (ev.killer === this.selfId && !AREAS[ev.area].safe) {
@@ -2373,7 +2449,8 @@ export class WorldScene implements GameScene, RuntimeView {
     const asc = ascensionRewardMult(this.worldAscension()) * chainMult * (combatArea ? this.omen.rewardMult : 1);
     if (reward.shards && combatArea) reward.shards = Math.ceil(reward.shards * this.omen.shardMult);
     reward.gold = Math.round(reward.gold * asc);
-    reward.xp = Math.round(reward.xp * asc);
+    // Tonic of wisdom: a share more experience from every kill.
+    reward.xp = Math.round(reward.xp * asc * (1 + this.player.brewValue('wisdom', this.now)));
     this.loot.gold(ev.x, ev.z, reward.gold);
     if (reward.shards) this.loot.shard(ev.x, ev.z, reward.shards);
     for (const item of reward.items) this.loot.item(ev.x, ev.z, item);
@@ -2572,7 +2649,8 @@ export class WorldScene implements GameScene, RuntimeView {
     const lanternWard = [...(this.sim?.zones ?? this.mirror?.zones ?? new Map()).values()].some((zone) => zone.kind === 'warden_ward' && Math.hypot(zone.x - this.player.x, zone.z - this.player.z) <= zone.r) ? 0.2 : 0;
     // Easy auto softens hits between the Knight's blocks and the Veilwalker's phases.
     const autoGuard = settings.autoCombat && (this.discipline.family === 'knight' || this.discipline.family === 'veil') ? 0.3 : 0;
-    const flaskWard = this.now < this.player.buffUntil.ward ? BUFF_FLASKS.flask_void_resist.value : 0;
+    // Elixir wards and fire/rot resists (brews); Player.takeDamage caps the whole sum at 60%.
+    const flaskWard = brewWard(this.player.brews, from, this.now);
     const ward = this.discipline.mods.wardPerThrall * myThralls + lanternWard + autoGuard + flaskWard;
     const now = this.now;
     // The blow's origin lets Bulwark decide whether it covered this one.
@@ -3093,7 +3171,7 @@ export class WorldScene implements GameScene, RuntimeView {
       const arena = BOSSES.congregation.arena;
       const wading = b.active && b.id === 'congregation' && b.phase >= 2 && p.area === 'nave'
         && Math.hypot(p.x - arena.x, p.z - arena.z) <= arena.r && Math.hypot(p.x - arena.x, p.z - arena.z) > C.dais;
-      p.moveMult = (wading ? (b.phase >= 3 ? C.slowP3 : C.slowP2) : 1) * (now < p.buffUntil.speed ? 1 + BUFF_FLASKS.flask_speed.value : 1);
+      p.moveMult = (wading ? (b.phase >= 3 ? C.slowP3 : C.slowP2) : 1) * (1 + p.brewValue('speed', now));
     }
     const moved = p.update(dt, now, kd.x || kd.z ? kd : autoMove);
     if (settings.autoCombat && p.alive && now - p.lastHurtAt < 5000) p.heal(p.stats.maxHp * 0.02 * dt);
@@ -3526,6 +3604,7 @@ export class WorldScene implements GameScene, RuntimeView {
       areaName: AREAS[this.area].name,
       areaProgress: this.areaProgress(),
       ward: this.discipline.mods.wardPerThrall > 0 ? this.wardReadout() : null,
+      brews: this.brewTray(),
       save: saveText,
       target,
       boss: b.active ? { name: BOSSES[b.id ?? 'prelate'].name, phase: b.phase, hp: b.hp, maxHp: b.maxHp, phases: BOSSES[b.id ?? 'prelate'].phases } : null,

@@ -951,3 +951,17 @@ Two more areas, both reusing existing props and mobs (only floor textures are ne
 - **New `tools/qa/live-armor-api.cjs`:** throwaway account on the public domain; grants both Gravecaller collections, equips a full set into reserved slots 100-104, checks the stats endpoint (set 1 = +24 INT / +12 VIT, ascended = +40 INT / +17 VIT, matching the client catalogue), swaps collections, and confirms a bag-only `/inventory/save` keeps the gear. Cleans up after itself.
 - **Also green:** typecheck, 403 vitest, 75 server tests, offline smokes armor / chain / regent / levels / pyre / flyers-rites / cloister / afk (afk timed out once while the box was loaded, passed alone).
 - **Observation, not changed:** `/inventory/add-item` lets any authenticated player add any known item id (qty ≤ 9999) to their own character; loot is client-authoritative by design.
+
+## Brew engine (2026-09-30, Alchemy plan Part 1 A)
+
+One table drives every drinkable buff; the three hardcoded `buffUntil` timers are gone.
+- **Where:** `src/content/brews.ts` (`BREWS`, pure helpers `applyBrew`, `brewValue`, `brewWard`, `lifestealHeal`, text helpers). `BUFF_FLASKS` in items.ts is now derived from it (ids and values unchanged). `Player.brews` = `{ elixir, tonic }` active state plus `Player.brewValue(kind, now)` (O(2), no per-effect timers).
+- **One read site per kind:** damage `AbilitySystem.sp` (fixes the hardcoded 1.15: Moonlit is now +25%); ward + resist_fire (`ember`/`burn`) + resist_rot (`toxic`/`dust`) in `WorldScene.onHurt` (shares the 60% ward cap in `takeDamage`); lifesteal in `WorldScene.sendIntent` (every direct player hit passes it); haste divides the cooldown when it starts (`AbilitySystem.cast`); speed in `moveMult`; essence in `Player.update` regen; wisdom on kill XP; fortune is the new `itemChanceMult` arg of `rollKill`.
+- **Lifesteal cap:** heals `value x damage` per hit intent, counting at most 3 targets, and never more than 1.5% of max HP per hit. No shipped brew uses lifesteal yet (engine only).
+- **Drinking:** a new elixir replaces the active one (float "Moonlit replaces Forge-tempered"); the same brew extends, capped at 2x its duration remaining; tonic is independent. Q and healing flasks unchanged.
+- **Belt:** **Z** = elixir, **X** = tonic (both were unbound; **F** left free for concoctions). Right-click a brew in the Reliquary or use "Put on belt"; an empty belt auto-fills with the first brew of that slot you carry. Choice persists per character in localStorage (`dm_belt_<characterId>`).
+- **HUD:** brew tray under the Bone Ward chip: key cap, glyph, label, countdown bar, belt count; dim "ready" chip when belted but idle; tooltip with exact numbers. Inventory detail and tooltip show the slot, effects and duration.
+- **Help:** counsel tip `brew` (first brew drunk), Codex "Elixirs & Tonics" card in the Professions tab (rows generated from `BREWS`), Settings key list, README.
+- **Tests:** `src/gameplay/__tests__/brews.test.ts` (11): values preserved, sum/expiry, elixir replaces, tonic independent, extend cap, Moonlight +25%, resist by source, fortune multiplies chance, lifesteal cap. Full suite 414 pass, `tsc` clean.
+- **QA:** `tools/qa/brew-smoke.cjs` (offline character, belt keys, damage multiplier 1.15 then 1.25 on replace, tonic survives). Screenshots in `docs/screenshots/brew/`.
+- **Not done:** auto-combat does not drink belted elixirs (skipped); no shipped brew uses haste/lifesteal/resists/essence/wisdom/fortune yet (recipes come with Phase C/D).

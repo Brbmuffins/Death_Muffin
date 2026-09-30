@@ -2,6 +2,7 @@ import { equipItem } from '../net/api';
 import type { InventorySlot } from '../net/types';
 import { STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
 import { BAG_SIZE, type Inventory } from '../gameplay/loot';
+import { BREWS, BREW_KEYS, brewSummary } from '../content/brews';
 import { BUFF_FLASKS, HEALING_FLASKS, RARITY_COLOR, RARITY_MARK, itemMeta } from '../content/items';
 import { MEALS } from '../content/processing';
 import { EQUIP_SLOTS, equipSlotOf, equippedBySlot, type EquipSlot } from '../content/gear';
@@ -45,6 +46,8 @@ export class InventoryPanel {
     private inventory: Inventory,
     private statsLine: () => string,
     private onUse: (itemId: string) => void,
+    /** Right-click or the detail button on a brew: put it on its belt key (Z elixir, X tonic). */
+    private onBelt?: (itemId: string) => void,
     /** Selling (2026-09-29): gold is credited by the scene, like any pickup. */
     private onSold?: (gold: number, name: string, quantity: number) => void,
   ) {}
@@ -131,6 +134,11 @@ export class InventoryPanel {
           this.render();
         });
         cell.addEventListener('dblclick', () => this.primaryAction(slot));
+        cell.addEventListener('contextmenu', (e) => {
+          if (!this.onBelt || !(slot.item_id in BREWS)) return;
+          e.preventDefault();
+          this.onBelt(slot.item_id);
+        });
       } else cell.disabled = true;
       if (this.selected === i) cell.classList.add('selected');
       grid.appendChild(cell);
@@ -217,6 +225,7 @@ export class InventoryPanel {
       <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${slot.item_type.replace('_', ' ')}</div>
       ${this.statLines(slot)}
       ${this.setLine(slot)}
+      ${brewSummary(slot.item_id) ? `<div class="brew-line">${brewSummary(slot.item_id)}</div>` : ''}
       ${meta.lore ? `<div class="lore">${meta.lore}</div>` : ''}
       <div class="sell">Worth ${slot.sell_value}g</div>
     `;
@@ -253,15 +262,18 @@ export class InventoryPanel {
         ${this.statLines(slot)}
         ${this.setLine(slot)}
         ${this.compareLines(slot)}
+        ${brewSummary(slot.item_id) ? `<div class="brew-line">${brewSummary(slot.item_id)}</div>` : ''}
         ${meta.lore ? `<div class="lore">${meta.lore}</div>` : ''}
       </div>
       ${equippable ? `<button class="cw-button small" data-act>${slot.equipped ? 'Unequip' : 'Equip'}</button>` : ''}
       ${drinkable ? `<button class="cw-button small" data-act>Drink</button>` : ''}
+      ${this.onBelt && slot.item_id in BREWS ? `<button class="cw-button small" data-belt>Put on belt (${BREW_KEYS[BREWS[slot.item_id].slot].toUpperCase()})</button>` : ''}
       ${edible ? `<button class="cw-button small" data-act>Eat</button>` : ''}
       ${this.onSold && !slot.equipped && slot.sell_value > 0 ? `<button class="cw-button small" data-sell="1">Sell (${slot.sell_value}g)</button>` : ''}
       ${this.onSold && !slot.equipped && slot.sell_value > 0 && slot.quantity > 1 ? `<button class="cw-button small" data-sell="${slot.quantity}">Sell all ×${slot.quantity} (${(slot.sell_value * slot.quantity).toLocaleString()}g)</button>` : ''}
     `;
     detail.querySelector('[data-act]')?.addEventListener('click', () => this.primaryAction(slot));
+    detail.querySelector('[data-belt]')?.addEventListener('click', () => this.onBelt?.(slot.item_id));
     detail.querySelectorAll<HTMLButtonElement>('[data-sell]').forEach((b) => b.addEventListener('click', () => this.sell(slot, Number(b.dataset.sell))));
   }
 
