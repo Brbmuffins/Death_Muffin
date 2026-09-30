@@ -25,7 +25,7 @@ export class ProfessionsPanel {
     start(type: string): Promise<void>;
     pause(): void;
     status(): { active: boolean; text: string; allowed: boolean };
-  }, private heldItems?: () => string[]) {}
+  }, private heldItems?: () => string[], private onContracts?: () => void) {}
 
   get isOpen() {
     return this.el !== null;
@@ -101,6 +101,7 @@ export class ProfessionsPanel {
       <div class="cw-panel-head">
         <h2 class="cw-title">Skills</h2>
         <span class="cw-skill-total">Total level <b>${skills.total()}</b></span>
+        ${this.onContracts ? '<button class="cw-button small" data-contracts title="Daily delivery orders (O)">Contracts</button>' : ''}
         <button class="cw-icon-btn" data-close aria-label="Close skills">✕</button>
       </div>
       <p class="cw-hint-text">Choose a node and Start AFK in the Sexton’s Acre. Keep the game open; your hero repeats, changes nodes and waits for respawns until the bag fills. Skills can stay open. Moving, casting or other panels pause work.</p>
@@ -108,6 +109,7 @@ export class ProfessionsPanel {
       <div class="cw-skill-grid">${cards}</div>
     `;
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
+    this.el.querySelector('[data-contracts]')?.addEventListener('click', () => this.onContracts?.());
     this.refreshStatus();
     this.el.querySelector('[data-pause-afk]')?.addEventListener('click', () => { this.afk?.pause(); this.message = 'AFK paused'; this.render(skills); });
     for (const button of this.el.querySelectorAll<HTMLButtonElement>('[data-start-afk]')) button.addEventListener('click', async () => {

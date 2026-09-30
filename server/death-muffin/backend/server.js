@@ -1816,5 +1816,12 @@ require('./chronicle.cjs')(app, pool, {
   },
   invalidateLeaderboard,
 });
+require('./contracts.cjs')(app, pool, {
+  requireAuth: requireJWT,
+  ownsCharacter: async (req, characterId) => {
+    const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
+    return rows.length === 1;
+  },
+});
 require('./discipline.cjs')(app, pool, { verifyJWT, formatCharacter, getGearLoadout, invalidateLeaderboard, maxIndex: MAX_DISCIPLINE_INDEX });
 app.listen(PORT, '127.0.0.1', () => console.log(`Death Muffin account service listening on ${PORT}`));

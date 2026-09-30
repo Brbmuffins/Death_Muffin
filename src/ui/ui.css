@@ -1059,3 +1059,18 @@ button { font-family: inherit; }
 .cw-gather-report .cw-chron-grp .row i { font-style: normal; color: var(--cw-ok); }
 .cw-gather-report .cw-chron-grp img { width: 18px; height: 18px; vertical-align: -4px; }
 .cw-gather-report .cw-chron-grp { max-height: 240px; overflow-y: auto; }
+
+/* Sexton's Contracts. */
+.cw-ctr-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.cw-ctr { display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; background: var(--cw-inset); border: 1px solid color-mix(in srgb, var(--rarity) 45%, var(--cw-border)); }
+.cw-ctr img { width: 44px; height: 44px; object-fit: cover; border: 1px solid var(--cw-border); }
+.cw-ctr .hd { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; color: var(--cw-bone-100); }
+.cw-ctr .hd .meta { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--cw-text-faint); white-space: nowrap; }
+.cw-ctr .bar { height: 5px; margin: 5px 0; background: rgba(255,255,255,.06); }
+.cw-ctr .bar i { display: block; height: 100%; background: var(--rarity); }
+.cw-ctr .rw { font-size: 12px; color: var(--cw-text-muted); }
+.cw-ctr .rw b { color: #e2c98f; font-weight: 600; }
+.cw-ctr.done { opacity: .55; }
+.cw-ctr-foot { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--cw-text-muted); }
+.cw-ctr-foot b { color: var(--cw-bone-100); }
+.cw-ctr-foot i { color: var(--cw-ok); font-style: normal; }

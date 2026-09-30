@@ -25,6 +25,11 @@ const TARGETS = {
     out: join(root, 'server/death-muffin/backend/gathering/gathering-rules.cjs'),
     about: 'Gathering rules (nodes, XP curve, rolls, time budget) shared by the web client and the Death Muffin backend.',
   },
+  contracts: {
+    entry: 'src/gameplay/contractRules.ts',
+    out: join(root, 'server/death-muffin/backend/gathering/contract-rules.cjs'),
+    about: "Sexton's Contracts (the daily delivery board) shared by the web client and the Death Muffin backend.",
+  },
 };
 
 export const OUT = TARGETS.necro.out;

@@ -11,8 +11,11 @@
  */
 import type { InventorySlot, Profession, Recipe, Rarity } from './types';
 import { ITEMS } from '../content/items';
+import { equipSlotOf } from '../content/gear';
 import * as necro from '../gameplay/necroRules';
 import type { NecroState } from '../gameplay/necroRules';
+import * as contractRules from '../gameplay/contractRules';
+import { itemMeta } from '../content/items';
 import * as gather from '../gameplay/gatheringRules';
 import { PROCESSING_RECIPES } from '../content/processing';
 import { isDevAccount } from '../gameplay/devAccess';
@@ -101,6 +104,8 @@ interface StoredSlot {
 interface MockAccount {
   /** Server-side necromancer progression (mirrors character_necro_progress). */
   necro?: NecroState;
+  /** Sexton's Contracts: which of today's orders are filled (mirrors character_contracts). */
+  contracts?: { day: string; done: number[]; bonus: boolean; days: string[] };
   /** The Chronicle (mirrors character_chronicle + character_runs). */
   chronicle?: { life: Record<string, number>; run: Record<string, number>; runNo: number; runStartedAt: string; runs: { runNo: number; startedAt: string; endedAt: string; ascensionAfter: number; stats: Record<string, number> }[] };
   /** POST /api/gather time budget (mirrors gather_ledger). */
@@ -412,6 +417,79 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       if (body[k] !== undefined) c[k] = Number(body[k]);
     }
     return ok({ saved: true });
+  }
+
+  // --- Sexton's Contracts: the same shared board rules the server runs. ---
+  const contractsFor = () => {
+    const day = contractRules.dayKey(Date.now());
+    if (!acc.contracts || acc.contracts.day !== day) acc.contracts = { day, done: [], bonus: false, days: acc.contracts?.days ?? [] };
+    return acc.contracts;
+  };
+  const contractView = () => {
+    const st = contractsFor();
+    const levels = Object.fromEntries(acc.professions.map((pr) => [pr.profession_id, pr.skill_level]));
+    const board = contractRules.generateBoard(acc.character!.id, st.day, levels);
+    const nm = (id: string) => itemMeta(id).name;
+    const bonus = contractRules.bonusFor(board);
+    return {
+      board,
+      view: {
+        day: st.day,
+        resetsAt: new Date(contractRules.nextResetMs(Date.now())).toISOString(),
+        contracts: board.map((c) => ({ ...c, name: nm(c.itemId), rarity: itemMeta(c.itemId).rarity, done: st.done.includes(c.slot), rewardItem: c.rewardItem && { ...c.rewardItem, name: nm(c.rewardItem.itemId) } })),
+        bonus: { gold: bonus.gold, item: { ...bonus.item, name: nm(bonus.item.itemId) }, claimed: st.bonus },
+        streak: contractRules.streakOf(st.days, st.day),
+      },
+    };
+  };
+  if ((m = p.match(/^\/api\/contracts\/(\d+)$/)) && method === 'GET') {
+    ownCharacter(acc, m[1]);
+    return ok(contractView().view);
+  }
+  if (p === '/api/contracts/deliver' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const st = contractsFor();
+    const { board } = contractView();
+    const c = board[Number(body.slot)];
+    if (!c) return fail('unknown contract');
+    if (st.done.includes(c.slot)) return fail('That order is already filled.');
+    const have = acc.slots.filter((s) => s.item_id === c.itemId && !s.equipped && s.slot_index < 24).reduce((n, s) => n + s.quantity, 0);
+    if (have < c.qty) return fail(`You need ${c.qty} of that in your bag.`);
+    let left = c.qty;
+    for (const s of acc.slots.filter((x) => x.item_id === c.itemId && !x.equipped && x.slot_index < 24).sort((a, b) => a.slot_index - b.slot_index)) {
+      const take = Math.min(left, s.quantity);
+      s.quantity -= take;
+      left -= take;
+    }
+    acc.slots = acc.slots.filter((s) => s.quantity > 0);
+    const grant = (itemId: string, qty: number) => {
+      const stack = acc.slots.find((s) => s.item_id === itemId && s.slot_index < 24 && !s.equipped);
+      if (stack) stack.quantity += qty;
+      else {
+        const free = [...Array(24).keys()].find((i) => !acc.slots.some((s) => s.slot_index === i));
+        if (free === undefined) return false;
+        acc.slots.push({ slot_index: free, item_id: itemId, quantity: qty, equipped: 0 });
+      }
+      return true;
+    };
+    const items: { itemId: string; qty: number }[] = [];
+    if (c.rewardItem) {
+      if (!grant(c.rewardItem.itemId, c.rewardItem.qty)) return fail('Make room in your bag for the reward.');
+      items.push(c.rewardItem);
+    }
+    st.done.push(c.slot);
+    if (!st.days.includes(st.day)) st.days.push(st.day);
+    let gold = c.rewardGold;
+    let paidBonus: { gold: number; item: { itemId: string; qty: number } } | null = null;
+    if (!st.bonus && board.every((o) => st.done.includes(o.slot))) {
+      const b = contractRules.bonusFor(board);
+      grant(b.item.itemId, b.item.qty);
+      st.bonus = true;
+      gold += b.gold;
+      items.push(b.item);
+      paidBonus = { gold: b.gold, item: b.item };
+    }
+    return ok({ ...contractView().view, gold, items, paidBonus });
   }
 
   // --- Chronicle: lifetime stats and archived runs (the real server whitelists keys; the mock trusts them). ---

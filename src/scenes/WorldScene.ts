@@ -26,7 +26,7 @@ import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
 import { BOONS, ascensionLevels, ascensionRewardMult, roman } from '../content/ascension';
 import { AscensionPanel } from '../ui/AscensionPanel';
 import { ClassPanel } from '../ui/ClassPanel';
-import { changeDiscipline } from '../net/api';
+import { changeDiscipline, type ContractDelivery } from '../net/api';
 import { onSettingsChange, settings, updateSettings } from '../app/settings';
 import { selectAutoCombatAction, selectAutoCombatMovement, type AutoMoveMemory } from '../gameplay/autoCombat';
 import { STATUS_FX } from '../content/statuses';
@@ -62,6 +62,7 @@ import { equippedBySlot, gearFromIds } from '../content/gear';
 import { Chronicle } from '../gameplay/chronicle';
 import { GatherSession, loadBests, saveBests } from '../gameplay/gatherReport';
 import { GatherReportPanel } from '../ui/GatherReportPanel';
+import { ContractsPanel } from '../ui/ContractsPanel';
 import { beginAfkGather, gather, getInventory, getProfessions, getToken, OFFLINE, type GatherReply } from '../net/api';
 import type { RemotePlayer, WorldSnapshot } from '../net/contracts';
 import { RealtimeClient } from '../net/realtime';
@@ -183,6 +184,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private chronicle!: Chronicle;
   private gatherSession: GatherSession | null = null;
   private gatherReportPanel!: GatherReportPanel;
+  private contractsPanel!: ContractsPanel;
   private saintBlessTold = false;
   private saintRainTold = false;
   private saintLinkTold = false;
@@ -649,7 +651,8 @@ export class WorldScene implements GameScene, RuntimeView {
       start: type => this.startAfkGathering(type),
       pause: () => this.gathering.stop('moved'),
       status: () => ({ active: this.gathering.afk, text: this.gathering.status, allowed: this.player.area === 'acre' }),
-    }, () => this.inventory.all.map((s) => s.item_id));
+    }, () => this.inventory.all.map((s) => s.item_id), () => this.togglePanel('contracts'));
+    this.contractsPanel = new ContractsPanel(this.root, this.character.id, this.inventory, (d) => this.onContractDelivered(d));
     this.settingsPanel = new SettingsPanel(
       this.root,
       () => this.onLeave(),
@@ -728,6 +731,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.codexPanel.close();
     this.grimoirePanel.close();
     this.gatherReportPanel?.close();
+    this.contractsPanel?.close();
   }
 
   private async changeClass(index: number) {
@@ -748,9 +752,19 @@ export class WorldScene implements GameScene, RuntimeView {
     }
   }
 
-  private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire') {
+  private onContractDelivered(d: ContractDelivery) {
+    if (d.gold > 0) {
+      this.progression.addGold(d.gold);
+      audio.play('coin');
+      this.floating.spawn(this.player.x, 2.4, this.player.z, `+${d.gold.toLocaleString()}g`, 'gold');
+    }
+    this.chronicle.add('contracts');
+    this.hud.toast(d.paidBonus ? `Order filled, and the day’s bonus is yours: +${d.paidBonus.gold.toLocaleString()}g` : 'Order filled', 'good');
+  }
+
+  private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts') {
     audio.play('click');
-    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel }[p];
+    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel }[p];
     const wasOpen = panel.isOpen;
     this.closePanels();
     if (wasOpen) return;
@@ -760,6 +774,7 @@ export class WorldScene implements GameScene, RuntimeView {
     else if (p === 'forge') void this.forgePanel.open();
     else if (p === 'settings') this.settingsPanel.open();
     else if (p === 'codex') this.codexPanel.open();
+    else if (p === 'contracts') void this.contractsPanel.open();
     else if (p === 'ascension') this.ascensionPanel.open();
     else if (p === 'grimoire') {
       this.grimoirePanel.open();
@@ -808,6 +823,7 @@ export class WorldScene implements GameScene, RuntimeView {
       else if (k === 'i' || k === 'b') this.togglePanel('inventory');
       else if (k === 'c') this.togglePanel('forge');
       else if (k === 'p') this.togglePanel('professions');
+      else if (k === 'o') this.togglePanel('contracts');
       else if (k === 'm') this.togglePanel('map');
       else if (k === 'k') this.togglePanel('codex');
       else if (k === 'l') this.togglePanel('grimoire');
@@ -906,7 +922,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private panelOpen() {
-    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen;
+    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen;
   }
 
   private interactablesNear(): Interactable[] {

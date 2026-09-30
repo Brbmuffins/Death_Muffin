@@ -14,7 +14,7 @@ const SKILLS = ['woodcutting', 'mining', 'fishing', 'gravedigging', 'gardening']
 
 /** Counters that add up. Dotted keys group related numbers (kills.graves, boss.saint, gathered.mining). */
 const SUM_KEYS = new Set([
-  'kills', 'deaths', 'sold', 'crafted', 'playSeconds', 'afkSeconds', 'gold.earned', 'gold.spent',
+  'kills', 'deaths', 'sold', 'crafted', 'contracts', 'playSeconds', 'afkSeconds', 'gold.earned', 'gold.spent',
   ...AREAS.map((a) => `kills.${a}`),
   ...BOSSES.map((b) => `boss.${b}`),
   ...SKILLS.map((s) => `gathered.${s}`),

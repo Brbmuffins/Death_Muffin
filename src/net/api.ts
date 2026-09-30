@@ -299,3 +299,40 @@ export function addChronicle(characterId: number, deltas: Record<string, number>
 export function ascendChronicle(characterId: number, ascension: number) {
   return unwrap<{ archived: boolean }>(request('/api/chronicle/ascend', { method: 'POST', body: JSON.stringify({ characterId, ascension }) }, true));
 }
+
+// --- Sexton's Contracts: the daily delivery board (server/death-muffin/backend/contracts.cjs) ---
+
+export interface ContractView {
+  slot: number;
+  itemId: string;
+  name: string;
+  rarity: 'common' | 'uncommon' | 'rare' | 'epic';
+  qty: number;
+  skill: string;
+  rewardGold: number;
+  rewardItem: { itemId: string; qty: number; name: string } | null;
+  done: boolean;
+}
+
+export interface ContractBoard {
+  day: string;
+  resetsAt: string;
+  contracts: ContractView[];
+  bonus: { gold: number; item: { itemId: string; qty: number; name: string }; claimed: boolean };
+  streak: number;
+}
+
+export interface ContractDelivery extends ContractBoard {
+  /** Gold to credit (the client owns the gold total). */
+  gold: number;
+  items: { itemId: string; qty: number }[];
+  paidBonus: { gold: number; item: { itemId: string; qty: number } } | null;
+}
+
+export function getContracts(characterId: number) {
+  return unwrap<ContractBoard>(request(`/api/contracts/${characterId}`, {}, true));
+}
+
+export function deliverContract(characterId: number, slot: number) {
+  return unwrap<ContractDelivery>(request('/api/contracts/deliver', { method: 'POST', body: JSON.stringify({ characterId, slot }) }, true));
+}
