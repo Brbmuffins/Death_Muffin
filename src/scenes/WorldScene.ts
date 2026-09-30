@@ -60,6 +60,8 @@ import { WorldView } from '../graphics/WorldView';
 import { updateOcclusion } from '../graphics/occlusion';
 import { equippedBySlot, gearFromIds } from '../content/gear';
 import { Chronicle } from '../gameplay/chronicle';
+import { GatherSession, loadBests, saveBests } from '../gameplay/gatherReport';
+import { GatherReportPanel } from '../ui/GatherReportPanel';
 import { beginAfkGather, gather, getInventory, getProfessions, getToken, OFFLINE, type GatherReply } from '../net/api';
 import type { RemotePlayer, WorldSnapshot } from '../net/contracts';
 import { RealtimeClient } from '../net/realtime';
@@ -179,6 +181,8 @@ export class WorldScene implements GameScene, RuntimeView {
   /** Open graves (Gravedigger P3) until the fight ends. */
   private pitFx: Handle[] = [];
   private chronicle!: Chronicle;
+  private gatherSession: GatherSession | null = null;
+  private gatherReportPanel!: GatherReportPanel;
   private saintBlessTold = false;
   private saintRainTold = false;
   private saintLinkTold = false;
@@ -476,6 +480,7 @@ export class WorldScene implements GameScene, RuntimeView {
           const text = message ?? STOP_TEXT[reason as keyof typeof STOP_TEXT] ?? null;
           if (text) this.floating.spawn(this.player.x, 2.4, this.player.z, text, 'info');
           if (reason === 'bagFull') this.onboarding.show('bag_full');
+          this.endGatherSession(reason);
         },
         onError: (msg) => this.hud.toast(msg, 'err'),
         autoEnabled: () => settings.autoGather,
@@ -674,6 +679,7 @@ export class WorldScene implements GameScene, RuntimeView {
       (a) => this.travel(a),
     );
     this.codex = new CodexJournal(this.character.id);
+    this.gatherReportPanel = new GatherReportPanel(this.root, () => this.togglePanel('inventory'));
     this.codexPanel = new CodexPanel(this.root, this.codex, this.discipline.id, this.chronicle);
     this.grimoirePanel = new GrimoirePanel(
       this.root,
@@ -721,6 +727,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.waystonePanel.close();
     this.codexPanel.close();
     this.grimoirePanel.close();
+    this.gatherReportPanel?.close();
   }
 
   private async changeClass(index: number) {
@@ -899,7 +906,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private panelOpen() {
-    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen;
+    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen;
   }
 
   private interactablesNear(): Interactable[] {
@@ -1441,6 +1448,31 @@ export class WorldScene implements GameScene, RuntimeView {
     const refusal = this.gathering.startAfk(node);
     if (refusal) throw new Error(refusal);
     this.hud.toast('AFK gathering started — keep the game open. It pauses when your bag fills.', 'good');
+    this.gatherSession = new GatherSession(
+      performance.now(),
+      (id) => { const m = itemMeta(id); return { name: m.name, rarity: m.rarity, sell: m.sell }; },
+      (skill) => this.skills.level(skill),
+      (skill) => this.chronicle.view().life[`gathered.${skill}`] ?? 0,
+    );
+  }
+
+  /** Work stopped: wait for the last batch to be saved, then show what the session brought back. */
+  private endGatherSession(reason: string) {
+    const session = this.gatherSession;
+    if (!session) return;
+    void Promise.resolve()
+      .then(() => this.gathering.flush())
+      .then(() => {
+        if (this.gatherSession !== session || this.scope.isDisposed) return;
+        this.gatherSession = null;
+        const bests = loadBests(browserStorage(), this.character.id);
+        const out = session.finish(performance.now(), reason, bests);
+        if (!out) return;
+        saveBests(browserStorage(), this.character.id, out.bests);
+        this.closePanels();
+        this.gatherReportPanel.show(out.report);
+        audio.play(out.report.milestones.length ? 'skillUp' : 'coin');
+      });
   }
 
   async backgroundUpdate(seconds: number) {
@@ -1454,6 +1486,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private onGatherReply(r: GatherReply) {
+    this.gatherSession?.record(r);
     for (const g of r.items) this.inventory.add({ item_id: g.itemId, quantity: g.qty });
     this.chronicle.add(`gathered.${r.skill}`, r.items.reduce((n, g) => n + g.qty, 0));
     if (r.gold > 0) {
