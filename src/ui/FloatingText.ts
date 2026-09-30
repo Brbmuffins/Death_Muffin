@@ -9,6 +9,11 @@ interface Entry {
   t: number;
   life: number;
   drift: number;
+  /** Extra screen-y lift so call-outs spawned on the same spot stack instead of overprinting. */
+  lift: number;
+  group: boolean;
+  wx: number;
+  wz: number;
 }
 
 const MAX = 56;
@@ -34,9 +39,17 @@ export class FloatingText {
     el.textContent = text;
     el.style.color = color ?? '';
     this.root.appendChild(el);
+    // Call-outs (heals, chain tiers, gold, notices) that land on the same spot within a moment stack upwards
+    // instead of printing over each other; hit numbers keep their scatter.
+    const group = kind !== 'hit' && kind !== 'crit' && kind !== 'dot' && kind !== 'thrall' && kind !== 'hurt' && kind !== 'spear' && kind !== 'xp';
+    const stacked = group ? this.live.filter((o) => o.group && o.t < 0.9 && Math.abs(o.wx - x) < 1 && Math.abs(o.wz - z) < 1).length : 0;
     this.live.push({
       el,
       pos: new THREE.Vector3(x + (Math.random() - 0.5) * 0.5, y, z + (Math.random() - 0.5) * 0.3),
+      lift: stacked * 26,
+      group,
+      wx: x,
+      wz: z,
       t: 0,
       life: kind === 'big' || kind === 'info' || kind === 'heal' || kind === 'ward' ? 1.6 : kind === 'crit' ? 1.1 : 0.85,
       drift: (Math.random() - 0.5) * 30,
@@ -58,7 +71,7 @@ export class FloatingText {
       this.v.copy(e.pos).project(camera);
       const k = e.t / e.life;
       const sx = ((this.v.x + 1) / 2) * w + e.drift * k;
-      const sy = ((1 - this.v.y) / 2) * h - 34 - k * 46;
+      const sy = ((1 - this.v.y) / 2) * h - 34 - k * 46 - e.lift;
       const pop = k < 0.12 ? 0.7 + (k / 0.12) * 0.5 : 1.2 - Math.min(0.2, (k - 0.12) * 0.6);
       e.el.style.transform = `translate3d(${sx.toFixed(1)}px, ${sy.toFixed(1)}px, 0) translate(-50%, -50%) scale(${pop.toFixed(3)})`;
       e.el.style.opacity = k > 0.65 ? String(1 - (k - 0.65) / 0.35) : '1';

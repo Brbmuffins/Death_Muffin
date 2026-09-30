@@ -1776,10 +1776,9 @@ export class AbilitySystem {
     effects.emit({ x: ev.x, y: 0.6, z: ev.z, count: 32, color: L.core, spread: ev.r, speed: 7, up: 0.2, life: 0.25, size: 0.22, inward: true, drag: 0 });
     effects.emitSmoke({ x: ev.x, y: 0.5, z: ev.z, count: 4, color: L.void, spread: 1, speed: 0.4, up: 0.2, life: 0.65, size: 1.3, shrink: -0.3 });
     // …then the shockwave.
-    effects.decal({ tex: fx.sigil(), color: L.core, x: ev.x, z: ev.z, r: ev.r, duration: 0.7, opacity: 0.65, growFrom: 0.1, spin: 0.35 });
+    effects.decal({ tex: fx.sigil(), color: L.core, x: ev.x, z: ev.z, r: ev.r, duration: 0.7, opacity: 0.5, growFrom: 0.1, spin: 0.35 });
     this.bb('litany_pulse', ev.x, ev.z, { scale: ev.r / 7 });
     effects.decal({ tex: fx.ring(), color: L.hot, x: ev.x, z: ev.z, r: ev.r * 1.15, duration: 0.55, opacity: 1, growFrom: 0.05, delay: 0.18 });
-    effects.decal({ tex: fx.ring(), color: L.core, x: ev.x, z: ev.z, r: ev.r * 1.3, duration: 0.7, opacity: 0.7, growFrom: 0.05, delay: 0.26 });
     effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 48, color: L.core, spread: 1, speed: 9, up: 1.8, life: 0.55, size: 0.23 });
     effects.emit({ x: ev.x, y: 0.8, z: ev.z, count: 16, color: L.hot, spread: 0.6, speed: 5, up: 3, life: 0.45, size: 0.2 });
     effects.flash({ x: ev.x, y: 1.5, z: ev.z, color: L.core, size: Math.min(2.0, ev.r * 0.24), duration: 0.3 });

@@ -38,6 +38,11 @@ export const CREATURE_MODELS = {
   // static mesh built as a prop and bobbed in code.
   censer_bearer: m('censer_bearer', 1.95),
   choir_wraith: { url: 'models/props/choir_wraith.glb', height: 2.1 },
+  // Discipline legions (2026-09-30): each necromancer raises its own kind of dead.
+  thrall_sentinel: m('thrall_sentinel', 1.85),
+  thrall_legionnaire: m('thrall_legionnaire', 1.75),
+  thrall_plague: m('thrall_plague', 1.8),
+  wraith_thrall: { url: 'models/props/wraith_thrall.glb', height: 1.95 },
   skull_rat: m('skull_rat', 0.5),
   bone_golem: m('bone_golem', 3.1),
   // Flying pack (2026-09-28). Gargoyle and seraph are rigged (biped); moth and bat are static

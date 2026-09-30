@@ -1,0 +1,23 @@
+[
+  {
+    "id": "concept_thrall_sentinel",
+    "out": "art-src/concepts/thrall_sentinel.png",
+    "refs": ["art-src/concepts/skeleton_thrall.png"],
+    "aspect": "3:4",
+    "prompt": "Creature source for 3D modeling. Using the attached skeleton thrall ONLY as a style, palette and proportion reference, design the Bone Sentinel: an armoured skeleton warrior for the Ossuary necromancer, a living wall of bone. Ivory bone plate armour grown from its own skeleton: layered rib-plate cuirass, broad overlapping bone pauldrons, vambraces and greaves of fused bone plates, a heavy bone helm with a low crest and a narrow eye slit glowing soft amber. Yellowed ivory and bone-white palette with dark brown-black joints and a few bronze rivets, no cloth. Sturdier and broader than the plain skeleton but the same height. Strict T-pose, arms out straight, EMPTY open hands (no weapon, no shield), feet apart, facing the camera, full body head to toe visible. Plain flat light-grey background, flat even lighting, no shadows, no text."
+  },
+  {
+    "id": "concept_thrall_legionnaire",
+    "out": "art-src/concepts/thrall_legionnaire.png",
+    "refs": ["art-src/concepts/skeleton_thrall.png"],
+    "aspect": "3:4",
+    "prompt": "Creature source for 3D modeling. Using the attached skeleton thrall ONLY as a style, palette and proportion reference, design the Grave Legionnaire: a disciplined undead soldier of the Gravecaller's legion. A skeleton in a tattered royal-violet legion tunic and short ragged cape, a dented iron helmet with a cracked crest, a few iron plates on the shoulders and forearms, a rusted iron belt with a tarnished silver clasp, glowing violet eye sockets and faint violet light in the ribs. Bone-white and deep violet palette with dull iron grey. Same height and proportions as the plain skeleton. Strict T-pose, arms out straight, EMPTY open hands (no weapon, no shield), feet apart, facing the camera, full body head to toe visible. Plain flat light-grey background, flat even lighting, no shadows, no text."
+  },
+  {
+    "id": "concept_thrall_plague",
+    "out": "art-src/concepts/thrall_plague.png",
+    "refs": ["art-src/concepts/skeleton_thrall.png"],
+    "aspect": "3:4",
+    "prompt": "Creature source for 3D modeling. Using the attached skeleton thrall ONLY as a style, palette and proportion reference, design the Rot Thrall: a half-rotted corpse servant of the Rotweaver, gardener of decay. A gaunt humanoid of sagging olive-green and grey decayed flesh with exposed ribs and patches of bare bone, bright moss and pale toadstool fungus growing from the shoulders, spine and skull, a few glowing yellow-green spore pods hanging from the ribs, tattered mouldering burial rags in olive and brown, hollow eye sockets glowing sickly yellow-green. Same height as the plain skeleton, slightly hunched but readable. Strict T-pose, arms out straight, EMPTY open hands (no weapon, no shield), feet apart, facing the camera, full body head to toe visible. Plain flat light-grey background, flat even lighting, no shadows, no text."
+  }
+]

@@ -412,12 +412,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.dressWaystones();
     for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d), true);
     this.views = new EntityViews(this.scene, this.effects, (owner) => {
-      if (owner !== this.selfId) return null;
-      const family = this.discipline.id;
-      // Gravecaller's legion glows violet; Rotweaver's is olive with rot. Ossuary keeps bone ivory (its shields set it apart).
-      return family === 'gravecaller' ? { tint: 0xe2d6ff, emissive: 0x6a3fc0, glow: 0.4 }
-        : family === 'rotweaver' ? { tint: 0xb8c48a, emissive: 0x5a6a18, glow: 0.45 }
-        : null;
+      if (owner === this.selfId) return this.discipline.id;
+      const remote = this.remotes.get(owner);
+      return remote ? disciplineFor(remote.info.classIndex).id : null;
     });
     this.nodeViews = new NodeViews(this.scene, this.layout.nodes);
     const prelate = new BossView(this.scene, this.effects);
@@ -2537,7 +2534,8 @@ export class WorldScene implements GameScene, RuntimeView {
       if (this.character.level >= SIGNATURE_LEVEL) this.onboarding.show('signature', 3000);
       const learned = [...this.kit.primaries, ...this.kit.grimoire].filter((id) => unlockLevel(id) > this.character.level - gained && unlockLevel(id) <= this.character.level);
       if (learned.length) {
-        const names = learned.map((id) => ABILITIES[id].name).join(', ');
+        const shown = learned.slice(0, 3).map((id) => ABILITIES[id].name);
+        const names = learned.length > 3 ? `${shown.join(', ')} and ${learned.length - 3} more` : shown.join(', ');
         this.hud.toast(`${names} ${learned.length > 1 ? 'join' : 'joins'} your Grimoire. Click here, press L or use the Grimoire button to place it.`, 'good', () => this.openGrimoire());
         this.grimoirePanel.render();
         this.markSeen([]);

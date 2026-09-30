@@ -925,3 +925,14 @@ Two more areas, both reusing existing props and mobs (only floor textures are ne
 - **Mourner tuning:** wraith HP ×0.7→0.9, corpse heal 6%→8%. Sanctum geared (4 seeds): hurt 169→91 %/min, deaths 2.8→1.3, kills/min 80→95. The earlier 45 kills/min Ossuary reading was a one-seed fluke (4-seed mean ≈126, now ≈110; bot noise is large).
 - **Legions have class colour:** Gravecaller's thralls glow violet, Rotweaver's are olive with rot; Ossuary keeps bone ivory + shields, Mourner's are spectral wraiths. Own legion only (other players' thralls keep the default look).
 - Still open: effect clutter around the hero, bespoke wraith/plague thrall meshes, Gravecaller trailing Ossuary at levels 8–12, Rotweaver weakest at the Ossuary (≈99 kills/min).
+
+## Necromancer polish pass 2: legions and clutter (2026-09-30)
+
+- **Custom thrall models** (Gemini concept → Tripo biped rig, 10 clips each, ≈175 credits apiece; balance 6,855 → ~6,330):
+  `thrall_sentinel` (Ossuary: bone-plate armour, still carries the code-built sword and shield), `thrall_legionnaire` (Gravecaller: violet legion tabard, iron helm),
+  `thrall_plague` (Rotweaver: mossy rot with fungus and spore pods, unarmed). Mourner wraiths now use the existing `wraith_thrall.glb` prop.
+  `EntityViews` `LEGION` maps discipline → model; it uses the owner's class, so other players' legions look right too. Thralls raised from corpses
+  (archer, mage, hound, bearer) and the New Blood classes keep their old look. Specs `art-manifest/tripo-specs/thrall_*.json`, jobs `gemini-jobs/thralls-v1.json`.
+- **Clutter:** call-outs that land on the same spot (chain tiers, heals, gold, notices) now stack upward instead of overprinting (`FloatingText`);
+  Black Litany loses its outermost ring and its sigil is lighter; the level-up "join your Grimoire" toast lists three rites then "and N more".
+- Hero rings (glow, bone ring, cursor reticle) are kept on purpose: they keep the hero findable on dark stone.

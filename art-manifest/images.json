@@ -7144,5 +7144,50 @@
     "rawHash": "sha256:f2fc4dd558e92ae524104dd85bac9e26f1b97cd340a4b268f32c0663c56e6d18",
     "outHash": "sha256:428594c62a14f31628430844d1bb9674104cf11bab8959c91ccac342fba2dd30",
     "generatedAt": "2026-09-30T02:40:27.142Z"
+  },
+  "concept_thrall_sentinel": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Creature source for 3D modeling. Using the attached skeleton thrall ONLY as a style, palette and proportion reference, design the Bone Sentinel: an armoured skeleton warrior for the Ossuary necromancer, a living wall of bone. Ivory bone plate armour grown from its own skeleton: layered rib-plate cuirass, broad overlapping bone pauldrons, vambraces and greaves of fused bone plates, a heavy bone helm with a low crest and a narrow eye slit glowing soft amber. Yellowed ivory and bone-white palette with dark brown-black joints and a few bronze rivets, no cloth. Sturdier and broader than the plain skeleton but the same height. Strict T-pose, arms out straight, EMPTY open hands (no weapon, no shield), feet apart, facing the camera, full body head to toe visible. Plain flat light-grey background, flat even lighting, no shadows, no text.",
+    "refs": [
+      "art-src/concepts/skeleton_thrall.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/thrall_sentinel.png",
+    "rawHash": "sha256:771e5de9a31fed1c019ceeb903635185c6780e33cee76248ee09367d12d5681b",
+    "outHash": "sha256:cae296a0473cbd6ff1be8dcc2e2c46f4a73e77f9938b24daf13b7df8c7b1fb14",
+    "generatedAt": "2026-09-30T18:41:43.349Z"
+  },
+  "concept_thrall_legionnaire": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Creature source for 3D modeling. Using the attached skeleton thrall ONLY as a style, palette and proportion reference, design the Grave Legionnaire: a disciplined undead soldier of the Gravecaller's legion. A skeleton in a tattered royal-violet legion tunic and short ragged cape, a dented iron helmet with a cracked crest, a few iron plates on the shoulders and forearms, a rusted iron belt with a tarnished silver clasp, glowing violet eye sockets and faint violet light in the ribs. Bone-white and deep violet palette with dull iron grey. Same height and proportions as the plain skeleton. Strict T-pose, arms out straight, EMPTY open hands (no weapon, no shield), feet apart, facing the camera, full body head to toe visible. Plain flat light-grey background, flat even lighting, no shadows, no text.",
+    "refs": [
+      "art-src/concepts/skeleton_thrall.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/thrall_legionnaire.png",
+    "rawHash": "sha256:65ad7806d052c34aab270be3594073597c41a063bbaacbb00457489ec6c6c181",
+    "outHash": "sha256:08ff01e73f205641ab66629b6b906be2e026b1b257ab0c033a46edcf8796d4e7",
+    "generatedAt": "2026-09-30T18:41:52.796Z"
+  },
+  "concept_thrall_plague": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Creature source for 3D modeling. Using the attached skeleton thrall ONLY as a style, palette and proportion reference, design the Rot Thrall: a half-rotted corpse servant of the Rotweaver, gardener of decay. A gaunt humanoid of sagging olive-green and grey decayed flesh with exposed ribs and patches of bare bone, bright moss and pale toadstool fungus growing from the shoulders, spine and skull, a few glowing yellow-green spore pods hanging from the ribs, tattered mouldering burial rags in olive and brown, hollow eye sockets glowing sickly yellow-green. Same height as the plain skeleton, slightly hunched but readable. Strict T-pose, arms out straight, EMPTY open hands (no weapon, no shield), feet apart, facing the camera, full body head to toe visible. Plain flat light-grey background, flat even lighting, no shadows, no text.",
+    "refs": [
+      "art-src/concepts/skeleton_thrall.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/concepts/thrall_plague.png",
+    "rawHash": "sha256:7ba129657991d8d95a46a99ab7e2946ae4087ddf975f4aaf4152f644732cb746",
+    "outHash": "sha256:eeffebb9976cea96a3ed161340a62b8361d252991bcfe8932192cab5ae78549d",
+    "generatedAt": "2026-09-30T18:42:01.620Z"
   }
 }

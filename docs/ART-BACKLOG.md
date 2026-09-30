@@ -50,7 +50,7 @@ Roadmap: [`PROFESSIONS-ROADMAP.md`](PROFESSIONS-ROADMAP.md). Wiring notes: [`age
 | Art | Files | Intended use | Waiting on |
 |---|---|---|---|
 | Thrall gear (2) | `public/models/props/gear_{thrall_bow,bone_staff}.glb` | Replace the code-built bow and staff on archer and bone-mage thralls | `EntityViews` attach (HANDOFF next step #7) |
-| Mourner wraith thrall | `public/models/props/wraith_thrall.glb` (static; hover in code) | Mourner thralls (now the skeleton model made translucent). Register like `choir_wraith` in `modelPaths` | `EntityViews` / `modelPaths` |
+| Mourner wraith thrall | `public/models/props/wraith_thrall.glb` | **Live (2026-09-30):** Mourner wraiths use it (static, hover + bob in code) | — |
 | Lich Acolyte | `public/models/lich_acolyte/character.glb` (idle, walk, cast, hurt, death) | The last 0.4 enemy archetype: raises your fallen thralls against you (Nave + Sanctum) | Specced in [`agent-briefs/mobs-barrow-ghoul-lich-acolyte.md`](agent-briefs/mobs-barrow-ghoul-lich-acolyte.md) §3 |
 | Barrow Ghoul (new, 2026-09-27 evening) | `public/models/barrow_ghoul/character.glb` (idle, walk, run, attack, dig, hurt, death; 4k tris) | Hollow Graves burrowing ambusher | Specced in [`agent-briefs/mobs-barrow-ghoul-lich-acolyte.md`](agent-briefs/mobs-barrow-ghoul-lich-acolyte.md) §2 |
 | Area bosses (3) + portraits | `public/models/boss_{gravedigger_king,bone_abbess,drowned_congregation}/character.glb` (idle, walk, attack, cast or dig, hurt, death; 1024 px), `public/art/portraits/boss_{gravedigger_king,bone_abbess,drowned_congregation}.webp` | Bosses for the Hollow Graves, Marrow Ossuary and Drowned Nave | Boss brains + summoning |

@@ -1,0 +1,26 @@
+{
+  "id": "thrall_legionnaire",
+  "input": "art-src/concepts/thrall_legionnaire.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 5000,
+    "texture_quality": "standard"
+  },
+  "rig": {
+    "model": "v1.0-20240301",
+    "rig_type": "biped"
+  },
+  "animations": [
+    "preset:biped:idle",
+    "preset:biped:walk",
+    "preset:biped:run",
+    "preset:biped:slash",
+    "preset:biped:hurt",
+    "preset:biped:fall",
+    "preset:biped:hit_to_body_01",
+    "preset:biped:hit_to_head",
+    "preset:biped:defeat_03",
+    "preset:biped:box_01"
+  ],
+  "animationMode": "single"
+}

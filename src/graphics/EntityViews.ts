@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BURROW, CENSER, ENEMIES, UNBIND, type EliteAffix, type EnemyId } from '../content/enemies';
-import type { ThrallKind } from '../content/disciplines';
+import type { DisciplineId, ThrallKind } from '../content/disciplines';
 import type { Corpse, Enemy, SimEvent, Thrall } from '../gameplay/sim/types';
 import { Creature } from './Creature';
 import type { Effects, Handle } from './Effects';
@@ -70,6 +70,14 @@ const WINGS: Partial<Record<EnemyId, WingOpts>> = {
   moth: { speed: 8, amp: 0.55, body: 0.16 },
   bat: { speed: 17, amp: 0.75, body: 0.22 },
   seraph: { speed: 3.2, amp: 0.22, body: 0.3 },
+};
+
+/** Each necromancer's own dead. Bespoke textures carry the colour, so the tint is neutral and the glow faint. */
+const LEGION: Record<string, { slug: CreatureSlug; tint?: number; emissive?: number; glow?: number; armed?: boolean }> = {
+  ossuary: { slug: 'thrall_sentinel', tint: 0xffffff, emissive: 0x6b4a1f, glow: 0.12, armed: true },
+  gravecaller: { slug: 'thrall_legionnaire', tint: 0xffffff, emissive: 0x6a3fc0, glow: 0.16, armed: true },
+  rotweaver: { slug: 'thrall_plague', tint: 0xffffff, emissive: 0x5a6a18, glow: 0.16 },
+  mourner: { slug: 'wraith_thrall' },
 };
 
 const THRALL_SLUG: Record<ThrallKind, CreatureSlug> = {
@@ -231,8 +239,8 @@ export class EntityViews {
   constructor(
     scene: THREE.Scene,
     private effects: Effects,
-    /** Colours the caller's own legion by discipline (other players' thralls keep the default bone look). */
-    private legionLook?: (owner: string) => { tint: number; emissive: number; glow: number } | null,
+    /** The discipline that raised a thrall (its owner's), so each necromancer's legion looks like its own. */
+    private legionOf?: (owner: string) => DisciplineId | null,
   ) {
     scene.add(this.group);
   }
@@ -329,15 +337,17 @@ export class EntityViews {
   private makeThrall(t: Thrall): View {
     const wraith = t.kind === 'wraith';
     const kindLook = THRALL_LOOK[t.kind];
-    const look = kindLook ?? this.legionLook?.(t.owner) ?? undefined;
-    const c = new Creature(THRALL_SLUG[t.kind], {
-      tint: look?.tint ?? (wraith ? 0xb9c4ff : 0xf4ecff),
-      emissive: look?.emissive ?? (wraith ? 0x8f9ed1 : 0x1f8f86),
-      emissiveIntensity: wraith ? 1.1 : (look?.glow ?? 0.18) + (t.empowered ? 0.22 : 0),
+    // Discipline legions have their own meshes; thralls raised from corpses (archers, mages, hounds, bearers) keep theirs.
+    const legion = kindLook ? null : LEGION[t.kind === 'wraith' ? 'mourner' : (this.legionOf?.(t.owner) ?? '')];
+    const look = kindLook;
+    const c = new Creature(legion?.slug ?? THRALL_SLUG[t.kind], {
+      tint: look?.tint ?? legion?.tint ?? (wraith ? 0xb9c4ff : 0xf4ecff),
+      emissive: look?.emissive ?? legion?.emissive ?? (wraith ? 0x8f9ed1 : 0x1f8f86),
+      emissiveIntensity: wraith ? 1.1 : (look?.glow ?? legion?.glow ?? 0.18) + (t.empowered ? 0.22 : 0),
       spectral: wraith,
       scale: kindLook?.scale ?? (t.kind === 'shieldbearer' ? 1.1 : 1),
     });
-    if (t.kind === 'warrior' || t.kind === 'shieldbearer') {
+    if ((t.kind === 'warrior' || t.kind === 'shieldbearer') && (!legion || legion.armed)) {
       // Blade carried up and forward; `follow` keeps it from whipping around with the wrist while walking.
       c.attach('R_Hand', boneSword(), new THREE.Vector3(0, 1, 0.55), 0.6);
       c.attach('L_Hand', roundShield(t.kind === 'shieldbearer' ? 0.5 : 0.32), new THREE.Vector3(0, 1, 0), 0.5);
