@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { ALCHEMY_RECIPES } from '../../content/alchemy';
+import { REAGENT_RECIPES } from '../../content/reagents';
 import { ITEMS } from '../../content/items';
 import { MEALS, PROCESSING_ITEMS, PROCESSING_RECIPES } from '../../content/processing';
 import { NODES, TOOL_KIND, toolItemId, toolTierFor, rollBatch, type SkillId } from '../gatheringRules';
@@ -19,7 +21,7 @@ describe('Professions G6: processing', () => {
   });
 
   it('no gathered material is a dead end any more', () => {
-    const used = new Set(PROCESSING_RECIPES.flatMap((r) => r[6].map(([i]) => i)));
+    const used = new Set([...PROCESSING_RECIPES, ...ALCHEMY_RECIPES, ...REAGENT_RECIPES].flatMap((r) => r[6].map(([i]) => i)));
     // Oak, river fish and every ore already had recipes before G6.
     for (const n of Object.values(NODES)) if (!['log_oak', 'fish_river'].includes(n.item) && !n.item.startsWith('ore_')) expect(used.has(n.item), n.item).toBe(true);
     for (const m of Object.keys(MEALS)) expect(PROCESSING_ITEMS[m].kind).toBe('consumable');

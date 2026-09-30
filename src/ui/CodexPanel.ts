@@ -6,6 +6,9 @@ import {
   CODEX_TRAVEL_COUNSEL,
   CODEX_PROFESSIONS_COUNSEL,
   CODEX_BREWS_COUNSEL,
+  CODEX_REAGENTS_COUNSEL,
+  codexReagentRecipes,
+  codexReagentRows,
   codexBrewRows,
   CODEX_AREAS,
   CODEX_DEAD,
@@ -314,7 +317,19 @@ export class CodexPanel {
           <dl>${codexBrewRows().map((r) => `<dt>${r.name}</dt><dd>${r.slot} · ${r.effects} · ${r.seconds}s</dd>`).join('')}</dl>
         </div>
       </article>`;
-    return `<p class="tip">${CODEX_PROFESSIONS_COUNSEL}</p>${sections}${stations}${brews}`;
+    const reagents = `
+      <article class="cw-codex-entry">
+        <div class="txt">
+          <div class="hd"><h3>Reagents</h3><span class="meta">Workbench · Alchemy tab</span></div>
+          <p>${CODEX_REAGENTS_COUNSEL}</p>
+          <dl>${codexReagentRows().map((r) => `<dt>${r.name}</dt><dd>${r.from}${r.usedIn ? `. Brews: ${r.usedIn}.` : ''}</dd>`).join('')}</dl>
+          <table class="cw-codex-table">
+            <thead><tr><th>Alch</th><th>Brew</th><th>Makes</th><th>Needs</th><th>Effect</th></tr></thead>
+            <tbody>${codexReagentRecipes().map((r) => `<tr><td>${r.level}</td><td>${r.name}</td><td>${r.qty}</td><td>${r.ings}</td><td>${r.slot} · ${r.effects} · ${r.seconds}s</td></tr>`).join('')}</tbody>
+          </table>
+        </div>
+      </article>`;
+    return `<p class="tip">${CODEX_PROFESSIONS_COUNSEL}</p>${sections}${stations}${brews}${reagents}`;
   }
 
   private lore() {

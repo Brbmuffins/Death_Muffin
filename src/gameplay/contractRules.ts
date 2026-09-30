@@ -1,6 +1,7 @@
 import { itemMeta } from '../content/items';
 import { SEEDS } from '../content/gardening';
 import { ALCHEMY_RECIPES } from '../content/alchemy';
+import { MOB_REAGENTS, REAGENT_RECIPES } from '../content/reagents';
 import { PROCESSING_RECIPES } from '../content/processing';
 import { NODES, type SkillId } from './gatheringRules';
 
@@ -59,6 +60,9 @@ function mulberry32(seed: number) {
   };
 }
 
+/** The alchemy level at which each mob reagent starts to be asked for. */
+const MOB_REAGENT_LEVELS: [string, number][] = [['reagent_grave_dust', 1], ['reagent_wraith_ectoplasm', 10], ['reagent_plague_bile', 38], ['reagent_cinder_ash', 52]];
+
 interface Candidate {
   itemId: string;
   skill: SkillId;
@@ -76,13 +80,17 @@ export function candidatesFor(levels: Partial<Record<SkillId, number>>): Candida
     seen.add(c.itemId);
     out.push(c);
   };
-  for (const n of Object.values(NODES)) if (n.level <= level(n.skill)) add({ itemId: n.item, skill: n.skill, level: n.level, processed: false });
+  // Zone herb patches are skipped: their herbs come in through the seed list below at the level they can be planted.
+  for (const n of Object.values(NODES)) if (n.skill !== 'gardening' && n.level <= level(n.skill)) add({ itemId: n.item, skill: n.skill, level: n.level, processed: false });
   for (const [, , skill, req, result] of PROCESSING_RECIPES) {
     if (result.startsWith('tool_')) continue;
     if (req <= level(skill as SkillId)) add({ itemId: result, skill: skill as SkillId, level: req, processed: true });
   }
   // Potions from the Alembic: small numbers, like anything that takes time and herbs to make.
   for (const [, , skill, req, result] of ALCHEMY_RECIPES) if (req <= level(skill as SkillId)) add({ itemId: result, skill: skill as SkillId, level: req, processed: true });
+  // Reagent brews and the mob reagents behind them: small orders, gated by the alchemy level that uses them.
+  for (const [, , skill, req, result] of REAGENT_RECIPES) if (req <= level(skill as SkillId)) add({ itemId: result, skill: skill as SkillId, level: req, processed: true });
+  for (const [id, req] of MOB_REAGENT_LEVELS) if (req <= level('alchemy') && MOB_REAGENTS.includes(id)) add({ itemId: id, skill: 'alchemy', level: req, processed: true });
   // Herbs and logs from the garden: asked for in small numbers, like other things that take a while to make.
   for (const s of SEEDS) if (s.kind === 'herb' && s.level <= level('gardening')) add({ itemId: s.harvest, skill: 'gardening', level: s.level, processed: true });
   return out.sort((a, b) => a.level - b.level || a.itemId.localeCompare(b.itemId));

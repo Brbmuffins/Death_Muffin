@@ -12,9 +12,10 @@
 import { petChance, petForSkill } from '../content/cosmetics';
 
 export type SkillId = 'woodcutting' | 'mining' | 'fishing' | 'gravedigging' | 'gardening' | 'alchemy';
-/** Skills worked on world nodes (gardening uses plots, not nodes). */
-export type GatherSkill = Exclude<SkillId, 'gardening' | 'alchemy'>;
-export const GATHER_SKILLS: GatherSkill[] = ['woodcutting', 'mining', 'fishing', 'gravedigging'];
+/** Skills worked on world nodes. Gardening mostly uses plots; its only nodes are the zone herb patches (Cloister, Pyre). */
+export type GatherSkill = Exclude<SkillId, 'alchemy'>;
+/** The four classic node skills (tools, laborers, the Skills grid). Gardening's herb patches sit outside this list. */
+export const GATHER_SKILLS: Exclude<GatherSkill, 'gardening'>[] = ['woodcutting', 'mining', 'fishing', 'gravedigging'];
 export const ALL_SKILLS: SkillId[] = ['woodcutting', 'mining', 'fishing', 'gravedigging', 'gardening', 'alchemy'];
 
 export interface SkillMeta {
@@ -52,7 +53,7 @@ export const GATHER_MAX_ACTIONS_PER_HOUR = 1800;
 export const GATHER_FLUSH_MS = 8_000;
 export const GATHER_MAX_BATCH = 40;
 
-export type NodeKind = 'tree' | 'seam' | 'geode' | 'pool' | 'grave';
+export type NodeKind = 'tree' | 'seam' | 'geode' | 'pool' | 'grave' | 'herb';
 
 export interface LootLine {
   item: string;
@@ -159,6 +160,10 @@ const NODE_LIST: NodeDef[] = [
       { item: 'kit_iron_warden', chance: 1 / 800 },
     ],
   }),
+  // Zone herb patches (docs/ALCHEMY-AND-WORLDS-PLAN.md §D): foraged in the Cloister and the Pyre, level 1 so a fresh
+  // gardener can start here; the seeds drop too and grow in the Acre. Gardening XP, no tool.
+  node({ id: 'rot_cap_patch', skill: 'gardening', name: 'Rot-cap Patch', kind: 'herb', level: 1, xp: 16, ticks: 5, item: 'herb_rot_cap', yields: [3, 6], respawnS: 40, extras: [{ item: 'seed_rot_cap', chance: 1 / 10 }], tint: 0x8fae3a }),
+  node({ id: 'ash_bloom_patch', skill: 'gardening', name: 'Ash-bloom Patch', kind: 'herb', level: 1, xp: 22, ticks: 5, item: 'herb_ash_bloom', yields: [3, 6], respawnS: 40, extras: [{ item: 'seed_ash_bloom', chance: 1 / 10 }], tint: 0xe0703a }),
 ];
 
 export const NODES: Record<string, NodeDef> = Object.fromEntries(NODE_LIST.map((n) => [n.id, n]));

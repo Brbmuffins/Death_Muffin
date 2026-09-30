@@ -114,6 +114,20 @@ function standIn(def: NodeDef, spent: boolean): Part[] {
     out.push({ geo: stone, mat: mat(lvl >= 40 ? 0x6a6470 : 0x55505a) });
     return out;
   }
+  if (kind === 'herb') {
+    // A foraging patch: a tuft of stalks crowned with glowing caps in the herb's tint; bare stalks when picked clean.
+    const stalk = (x: number, z: number, h: number, lean: number) => cyl(0.025, 0.05, h, x, 0, z, 5).rotateZ(lean);
+    if (spent) {
+      out.push({ geo: merged([stalk(0, 0, 0.12, 0.1), stalk(0.18, 0.08, 0.1, -0.2), stalk(-0.16, -0.1, 0.09, 0.3)]), mat: mat(0x2e3a22) });
+      return out;
+    }
+    out.push({ geo: merged([stalk(0, 0, 0.42, 0.05), stalk(0.22, 0.1, 0.34, -0.2), stalk(-0.2, 0.06, 0.38, 0.25), stalk(0.05, -0.22, 0.3, 0.1), stalk(-0.12, -0.18, 0.26, -0.15)]), mat: mat(0x35472a) });
+    out.push({
+      geo: merged([blob(0.15, 0.02, 0.46, 0, 0.6), blob(0.12, 0.17, 0.36, 0.1, 0.6), blob(0.13, -0.17, 0.4, 0.06, 0.6), blob(0.1, 0.05, 0.32, -0.22, 0.6), blob(0.09, -0.1, 0.28, -0.18, 0.6)]),
+      mat: mat(col(def.tint), 0.6, col(def.tint), 0.7),
+    });
+    return out;
+  }
   // Pool: a fishing spot on the water — ripples + bubbles, nothing when it has drifted away.
   if (spent) return out;
   // The water sheet sits at y=0.06. Keep the fishing cue above it so the

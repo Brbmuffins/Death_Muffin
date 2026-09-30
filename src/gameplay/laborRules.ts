@@ -27,14 +27,14 @@ export const laborSlots = (totalLevel: number) => Math.min(LABOR.maxSlots, 1 + M
 /** Total levels over the four gathering skills. */
 export const totalGatherLevel = (levels: Partial<Record<string, number>>) => GATHER_SKILLS.reduce((n, s) => n + Math.max(1, levels[s] ?? 1), 0);
 
-/** Work posts a laborer can take: every base node your level allows. */
+/** Work posts a laborer can take: every base node your level allows (the zone herb patches are for you to forage, not the dead). */
 export function postsFor(levels: Partial<Record<string, number>>): NodeDef[] {
-  return Object.values(NODES).filter((n) => (levels[n.skill] ?? 1) >= n.level);
+  return Object.values(NODES).filter((n) => n.skill !== 'gardening' && (levels[n.skill] ?? 1) >= n.level);
 }
 
 export function assignBlocker(nodeType: string, levels: Partial<Record<string, number>>): string | null {
   const def = NODES[nodeType];
-  if (!def) return 'That is not a place to work.';
+  if (!def || def.skill === 'gardening') return 'That is not a place to work.';
   if ((levels[def.skill] ?? 1) < def.level) return `Requires level ${def.level}.`;
   return null;
 }

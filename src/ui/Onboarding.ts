@@ -71,6 +71,7 @@ export type TipId =
   | 'ghoul'
   | 'meal'
   | 'brew'
+  | 'reagent'
   | 'plague_doctor'
   | 'flagellant'
   | 'cloister'
@@ -360,6 +361,10 @@ export const TIPS: Record<TipId, Tip> = {
   brew: {
     title: 'Elixirs and tonics',
     body: 'You can hold <b>one elixir</b> (combat: damage, wards) and <b>one tonic</b> (utility: speed) at once. A new elixir <b>replaces</b> the old one; the same brew again extends it. Right-click a brew in the Reliquary to <b>put it on your belt</b>, then press <kbd>Z</kbd> for your elixir and <kbd>X</kbd> for your tonic. Active brews and their timers sit at the left edge of the screen.',
+  },
+  reagent: {
+    title: 'Reagents',
+    body: 'Grave Dust, ectoplasm, bile, ash and boss ichor are <b>Alchemy reagents</b>. Take them to the Workbench (<kbd>C</kbd>), <b>Alchemy tab</b>: four Grave Dust brew a tonic at level 1, no garden needed. Better reagents make better elixirs as your Alchemy rises; every brew is an Elixir or a Tonic you drink with <kbd>Z</kbd> or <kbd>X</kbd>.',
   },
   tool: {
     title: 'Gathering tools',

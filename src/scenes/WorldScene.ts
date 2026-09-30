@@ -15,6 +15,7 @@ import { AREAS, AREA_ORDER, BOSS_SUMMON_SHARDS, CHAPTERHOUSE_RETURN, DOORS, PLAY
 import { disciplineFor, type Discipline } from '../content/disciplines';
 import { AFFIX_TUNING, ELITE_AFFIXES, ENEMIES, WAVE_THEMES, type EliteAffix, type EnemyId } from '../content/enemies';
 import { HEALING_FLASKS, itemMeta } from '../content/items';
+import { REAGENT_ITEMS } from '../content/reagents';
 import { BREWS, BREW_KEYS, BREW_SLOTS, applyBrew, brewEffectsText, brewWard, lifestealHeal, slotName, type BrewSlot } from '../content/brews';
 import { MEALS } from '../content/processing';
 import { generateLayout, PROPS, type NodePlacement } from '../content/layout';
@@ -3136,7 +3137,7 @@ export class WorldScene implements GameScene, RuntimeView {
             this.progression.recordPrelateKill();
             if (this.progression.canAscend()) this.onboarding.show('ascend', 5000);
           }
-          const reward = rollBoss(this.bossWaveTier(), Math.random, this.worldDifficulty(), def.area, def.shards);
+          const reward = rollBoss(this.bossWaveTier(), Math.random, this.worldDifficulty(), def.area, def.shards, def.id);
           // First kill per character: two more shards and a guaranteed rare-or-better (browser trophy record).
           if (def.id !== 'prelate' && this.claimTrophy(def.id)) {
             reward.shards += 2;
@@ -3293,6 +3294,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.onboarding.show('relic');
     }
     if (got.items.some((item) => ARMOR_BY_ID[item.item_id])) this.onboarding.show('armor');
+    if (got.items.some((item) => item.item_id in REAGENT_ITEMS)) this.onboarding.show('reagent');
     for (const item of got.items) this.hud.toast(`${itemMeta(item.item_id).name}${item.quantity > 1 ? ` ×${item.quantity}` : ''}`, 'good');
 
     // Visuals.

@@ -45,7 +45,7 @@ export function gatherBlocker(type: string, level: number): string | null {
   return null;
 }
 
-const NAMES: Record<GatherSkill, string> = { woodcutting: 'Woodcutting', mining: 'Mining', fishing: 'Fishing', gravedigging: 'Gravedigging' };
+const NAMES: Record<GatherSkill, string> = { woodcutting: 'Woodcutting', mining: 'Mining', fishing: 'Fishing', gravedigging: 'Gravedigging', gardening: 'Grave Gardening' };
 const skillName = (s: GatherSkill) => NAMES[s];
 
 export interface AutoGatherInput {

@@ -38,6 +38,7 @@ import {
 } from './abilities';
 import { BREWS, brewEffectsText, slotName } from './brews';
 import { itemMeta } from './items';
+import { AREA_REAGENT_DROPS, BOSS_ICHOR, ENEMY_REAGENT_DROPS, REAGENT_ITEMS, REAGENT_RECIPES } from './reagents';
 import { AREAS, BOSS_SUMMON_SHARDS, type AreaId } from './areas';
 import type { DisciplineId } from './disciplines';
 import { ABBESS, BOSSES, CONGREGATION, GRAVEDIGGER, REGENT, SAINT, type BossId } from './bosses';
@@ -564,7 +565,7 @@ export interface AreaEntry {
 
 /** Professions tab (docs/PROFESSIONS-ROADMAP.md): counsel above the generated node tables. */
 export const CODEX_PROFESSIONS_COUNSEL =
-  "Click a tree, ore seam, fishing spot or grave and your necromancer keeps working it until it is spent. Every cycle rolls against your level: higher levels succeed more often, and each success gives skill XP and a find, rolled and stored by the server. The Sexton's Acre, west of the Chapterhouse, has every node and no dead. The warm gold pool marks the Sawpit: click it for wood recipes. Gold-lit rich nodes in the hunting grounds hold more and return twice as fast. Your bag must have room, and moving, casting, opening a panel or taking a hit stops you. Auto gathering (Settings) walks you on to the next node of the same kind. For RuneScape-style AFK work, open Skills (P) in the Acre, choose a node and Start AFK. Begin with level-1 Coffin-Oaks, Copper Seams, Still Pools or Pauper’s Graves near the Acre entrance. Keep the game open, including in a background tab: work continues through node changes and respawns until the bag fills. Skills may stay open; movement, casting, other panels or Pause AFK stop work. Closing or reloading the game ends the session. No offline rewards accrue. When work stops, the Sexton’s Ledger opens: time worked, finds and their worth, levels gained, your best find, lifetime milestones and personal bests. Press O for the Sexton’s Contracts: three delivery orders a day, easy to hard, drawn from what your skills can make. Deliver from your bag for gold and sometimes an item, and fill all three for a bonus; the board refreshes at midnight UTC. Press U for Grave Gardening: four Mourning Beds and two Coffin Patches that grow in real time, even while you are away. Seeds and saplings drop from graves and trees; bone meal grows a plot a quarter faster. Herbs sell, feed the Sexton’s orders and are the ground for Alchemy: at the Workbench (C, Alchemy tab) they brew into flasks and elixirs, from Moss Tonic at level 1 to the Grand Healing Flask (58) and the Moonlight Elixir (72). Alchemy is its own skill, levelled by brewing. Press H for Grave Laborers: send the raised dead to work a gathering post and they keep at it, slowly, for up to eight hours even while you are away. They gather about an eighth of what you would and earn a quarter of the XP; collect when you like and the Ledger shows what they brought. You command one laborer, and another for every 50 total gathering levels, up to four. Press N for Capes & Pets: a mastery cape for level 99 in each skill, mantles for total level (100, 300, and every skill at 99), and companions (Tithe Bat, Grave Rat, Drowned Pup, Wee Thrall, Shroud Moth) that turn up as rare charms while you work; adopt a charm and the pet is yours for good. Other players see what you wear.";
+  "Click a tree, ore seam, fishing spot or grave and your necromancer keeps working it until it is spent. Every cycle rolls against your level: higher levels succeed more often, and each success gives skill XP and a find, rolled and stored by the server. The Sexton's Acre, west of the Chapterhouse, has every node and no dead. The warm gold pool marks the Sawpit: click it for wood recipes. Gold-lit rich nodes in the hunting grounds hold more and return twice as fast. Your bag must have room, and moving, casting, opening a panel or taking a hit stops you. Auto gathering (Settings) walks you on to the next node of the same kind. For RuneScape-style AFK work, open Skills (P) in the Acre, choose a node and Start AFK. Begin with level-1 Coffin-Oaks, Copper Seams, Still Pools or Pauper’s Graves near the Acre entrance. Keep the game open, including in a background tab: work continues through node changes and respawns until the bag fills. Skills may stay open; movement, casting, other panels or Pause AFK stop work. Closing or reloading the game ends the session. No offline rewards accrue. When work stops, the Sexton’s Ledger opens: time worked, finds and their worth, levels gained, your best find, lifetime milestones and personal bests. Press O for the Sexton’s Contracts: three delivery orders a day, easy to hard, drawn from what your skills can make. Deliver from your bag for gold and sometimes an item, and fill all three for a bonus; the board refreshes at midnight UTC. Press U for Grave Gardening: four Mourning Beds and two Coffin Patches that grow in real time, even while you are away. Seeds and saplings drop from graves and trees; bone meal grows a plot a quarter faster. Herbs sell, feed the Sexton’s orders and are the ground for Alchemy: at the Workbench (C, Alchemy tab) they brew into flasks and elixirs, from Moss Tonic at level 1 to the Grand Healing Flask (58) and the Moonlight Elixir (72). Mobs drop Alchemy reagents too (Grave Dust in the Graves and Warren is enough to start at level 1, no garden needed), and bosses leave ichor for the top elixirs: see Reagents below. Alchemy is its own skill, levelled by brewing. Press H for Grave Laborers: send the raised dead to work a gathering post and they keep at it, slowly, for up to eight hours even while you are away. They gather about an eighth of what you would and earn a quarter of the XP; collect when you like and the Ledger shows what they brought. You command one laborer, and another for every 50 total gathering levels, up to four. Press N for Capes & Pets: a mastery cape for level 99 in each skill, mantles for total level (100, 300, and every skill at 99), and companions (Tithe Bat, Grave Rat, Drowned Pup, Wee Thrall, Shroud Moth) that turn up as rare charms while you work; adopt a charm and the pet is yours for good. Other players see what you wear.";
 
 /** Codex: Elixirs & Tonics (Brew engine). Rows are generated from BREWS so the numbers never drift. */
 export const CODEX_BREWS_COUNSEL = 'Two brew slots, one brew each: an Elixir (combat) and a Tonic (utility). A new elixir replaces the old one; drinking the same brew again extends it (up to twice its length). Right-click a brew in the Reliquary to put it on your belt, then press Z for your elixir and X for your tonic. Healing flasks stay on Q. Brews are yours alone; the tray at the left edge shows what is active and for how long.';
@@ -609,6 +610,37 @@ export const CODEX_WEAPONS: WeaponEntry[] = [
 ];
 
 export const CODEX_WEAPON_TIERS = NECRO_TIERS.map((t) => ({ tier: t, label: NECRO_TIER_INFO[t].label, level: NECRO_TIER_INFO[t].level, areas: NECRO_TIER_INFO[t].area }));
+
+/** Codex: Reagents. Rows are generated from the drop tables and recipes so the numbers never drift. */
+export const CODEX_REAGENTS_COUNSEL =
+  'You do not need a garden to start Alchemy. Kill the dead and they drop reagents: Grave Dust (Hollow Graves, Catacomb Warren), Wraith Ectoplasm (Choir Wraiths and Weeping Seraphs anywhere), Plague Bile (Plague Cloister) and Cinder Ash (Cinder Pyre). Every area boss always leaves one ichor. Rot-cap and Ash-bloom are foraged from patches in the Cloister and the Pyre (Gardening level 1) and their seeds grow in the Acre. Take it all to the Workbench (C), Alchemy tab. Elites drop reagents four times as often.';
+const pctText = (c: number) => `${Math.round(c * 1000) / 10}% per kill`;
+export const codexReagentRows = () => {
+  const usedIn = (id: string) => REAGENT_RECIPES.filter((r) => r[6].some(([i]) => i === id)).map((r) => itemMeta(r[4]).name);
+  const dropText = (id: string): string => {
+    const parts: string[] = [];
+    for (const [area, list] of Object.entries(AREA_REAGENT_DROPS)) for (const d of list ?? []) if (d.item === id) parts.push(`${AREAS[area as AreaId].name}, ${pctText(d.chance)}`);
+    for (const [enemy, list] of Object.entries(ENEMY_REAGENT_DROPS)) for (const d of list ?? []) if (d.item === id) parts.push(`${ENEMIES[enemy as EnemyId].name}, ${pctText(d.chance)}`);
+    for (const [boss, ichor] of Object.entries(BOSS_ICHOR)) if (ichor === id) parts.push(`${BOSSES[boss as BossId].name}, always one`);
+    if (id === 'herb_rot_cap' || id === 'seed_rot_cap') parts.push('Rot-cap Patches in the Plague Cloister' + (id === 'seed_rot_cap' ? ' (10% per pick); grow at Gardening 35' : ''));
+    if (id === 'herb_ash_bloom' || id === 'seed_ash_bloom') parts.push('Ash-bloom Patches in the Cinder Pyre' + (id === 'seed_ash_bloom' ? ' (10% per pick); grow at Gardening 50' : ''));
+    return parts.join('; ');
+  };
+  return Object.keys(REAGENT_ITEMS)
+    .filter((id) => !id.startsWith('seed_'))
+    .map((id) => ({ id, name: itemMeta(id).name, from: dropText(id), usedIn: usedIn(id).join(', ') }));
+};
+/** Every brew with its recipe, for the Codex Reagents entry. */
+export const codexReagentRecipes = () =>
+  REAGENT_RECIPES.map(([, , , level, result, qty, ings]) => ({
+    level,
+    name: itemMeta(result).name,
+    qty,
+    ings: ings.map(([i, n]) => `${n} ${itemMeta(i).name}`).join(', '),
+    effects: brewEffectsText(BREWS[result]),
+    seconds: BREWS[result].seconds,
+    slot: slotName(BREWS[result].slot),
+  }));
 
 export const CODEX_TRAVEL_COUNSEL = 'Click a walkable spot on the minimap to choose a fixed destination. Travel follows the same paths as ground clicks; locked halls remain closed. The amber marker shows where you are going. Hover or focus a spell icon for detailed rite counsel.';
 

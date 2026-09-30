@@ -157,7 +157,11 @@ var NODE_LIST = [
       { item: "chest_iron", chance: 1 / 700 },
       { item: "kit_iron_warden", chance: 1 / 800 }
     ]
-  })
+  }),
+  // Zone herb patches (docs/ALCHEMY-AND-WORLDS-PLAN.md §D): foraged in the Cloister and the Pyre, level 1 so a fresh
+  // gardener can start here; the seeds drop too and grow in the Acre. Gardening XP, no tool.
+  node({ id: "rot_cap_patch", skill: "gardening", name: "Rot-cap Patch", kind: "herb", level: 1, xp: 16, ticks: 5, item: "herb_rot_cap", yields: [3, 6], respawnS: 40, extras: [{ item: "seed_rot_cap", chance: 1 / 10 }], tint: 9416250 }),
+  node({ id: "ash_bloom_patch", skill: "gardening", name: "Ash-bloom Patch", kind: "herb", level: 1, xp: 22, ticks: 5, item: "herb_ash_bloom", yields: [3, 6], respawnS: 40, extras: [{ item: "seed_ash_bloom", chance: 1 / 10 }], tint: 14708794 })
 ];
 var NODES = Object.fromEntries(NODE_LIST.map((n) => [n.id, n]));
 var NODE_IDS = NODE_LIST.map((n) => n.id);
@@ -246,6 +250,9 @@ var SEEDS = [
   herb("wolfsbane", 45, 80, 30, 315, [4, 7]),
   herb("bloodroot", 60, 100, 42, 480, [4, 8]),
   herb("moonpetal", 75, 120, 60, 690, [5, 9]),
+  // Zone herbs (content/reagents.ts): foraged in the Cloister and the Pyre, grown in the Acre. Their items live in reagents.ts so migration 007 stays as applied.
+  herb("rot_cap", 35, 75, 26, 360, [3, 6]),
+  herb("ash_bloom", 50, 90, 34, 450, [3, 6]),
   { id: "sapling_oak", kind: "tree", level: 10, growMin: 120, harvest: "log_oak", yields: [14, 24], plantXp: 25, harvestXp: 225, seedBack: 0.15 },
   { id: "sapling_yew", kind: "tree", level: 40, growMin: 360, harvest: "log_yew", yields: [10, 18], plantXp: 60, harvestXp: 630, seedBack: 0.15 }
 ];
@@ -286,9 +293,6 @@ var ALCHEMY_ITEMS = {
   }
 };
 var ALCHEMY_HEALING = { flask_hp_grand: 0.9 };
-var ALCHEMY_BUFFS = {
-  elixir_moonlight: { kind: "damage", value: 0.25, seconds: 60, label: "Moonlit" }
-};
 var ALCHEMY_RECIPES = [
   ["brew_moss_tonic", "Brew Moss Tonic", "alchemy", 1, "flask_hp_minor", 3, [["herb_mourning_moss", 3]]],
   ["brew_nightshade_draught", "Brew Nightshade Draught", "alchemy", 12, "flask_hp_major", 2, [["herb_nightshade", 3], ["bone_meal", 1]]],
@@ -298,6 +302,171 @@ var ALCHEMY_RECIPES = [
   ["brew_bloodroot_grand", "Brew Grand Healing Flask", "alchemy", 58, "flask_hp_grand", 2, [["herb_bloodroot", 3], ["herb_corpse_lily", 1]]],
   ["brew_moonpetal_elixir", "Brew Moonlight Elixir", "alchemy", 72, "elixir_moonlight", 1, [["herb_moonpetal", 3], ["herb_bloodroot", 1]]]
 ];
+
+// src/content/reagents.ts
+var item = (name, rarity, sell, lore, art) => ({ name, rarity, sell, lore, stack: 250, art });
+var REAGENT_ITEMS = {
+  reagent_grave_dust: item("Grave Dust", "common", 2, "Sifted from what the dead leave behind. Take it to the Workbench, Alchemy tab: four dust brew a Grave-Dust Tonic, no garden needed.", "dust"),
+  reagent_wraith_ectoplasm: item("Wraith Ectoplasm", "uncommon", 8, "Cold, weightless and faintly singing. Choir Wraiths and Weeping Seraphs shed it when they unravel. Brews into haste and insight.", "ecto"),
+  reagent_plague_bile: item("Plague Bile", "rare", 16, "Bottled from the Cloister dead, still green and still spoiling. The base of the lifesteal and rot-proof brews.", "bile"),
+  reagent_cinder_ash: item("Cinder Ash", "rare", 16, "Grey ash with a red heart that never cools. Falls from the Pyre; brews into fire-proofing.", "ash"),
+  herb_rot_cap: item("Rot-cap", "rare", 24, "A pale mushroom that grows out of the Cloister flagstones. Forage it there, or plant its seed in the Acre (Gardening 35).", "rotcap"),
+  seed_rot_cap: item("Rot-cap Seed", "rare", 10, "Plant it in a Mourning Bed (Grave Gardening 35). Foraged in the Plague Cloister.", "seed_rotcap"),
+  herb_ash_bloom: item("Ash-bloom", "rare", 40, "A black flower that only opens in cinders. Forage it in the Pyre, or plant its seed in the Acre (Gardening 50).", "ashbloom"),
+  seed_ash_bloom: item("Ash-bloom Seed", "rare", 14, "Plant it in a Mourning Bed (Grave Gardening 50). Foraged in the Cinder Pyre.", "seed_ashbloom"),
+  ichor_gravedigger: item("Gravedigger Ichor", "epic", 60, "The Gravedigger King's blood, black as churned earth. Guaranteed from his spoils; top-tier elixirs need it.", "ichor_earth"),
+  ichor_abbess: item("Abbess Ichor", "epic", 60, "Marrow-pale and never quite still. Guaranteed from the Bone Abbess; top-tier elixirs need it.", "ichor_bone"),
+  ichor_congregation: item("Congregation Ichor", "epic", 60, "Drowned-blue, and it hums a hymn. Guaranteed from the Drowned Congregation; top-tier elixirs need it.", "ichor_water"),
+  ichor_prelate: item("Prelate Ichor", "epic", 60, "Bell-bronze and heavy. Guaranteed from the Bell-Sworn Prelate; top-tier elixirs need it.", "ichor_bell"),
+  ichor_plague_saint: item("Plague Saint Ichor", "epic", 60, "The Saint's own blight, sweet and green. Guaranteed from the Plague Saint; top-tier elixirs need it.", "ichor_rot"),
+  ichor_regent: item("Regent Ichor", "epic", 60, "Liquid ember that does not burn the glass. Guaranteed from the Cinder Regent; top-tier elixirs need it.", "ichor_fire")
+};
+var BOSS_ICHOR = {
+  gravedigger: "ichor_gravedigger",
+  abbess: "ichor_abbess",
+  congregation: "ichor_congregation",
+  prelate: "ichor_prelate",
+  saint: "ichor_plague_saint",
+  regent: "ichor_regent"
+};
+var brew = (name, rarity, sell, lore, def, recipe, art) => ({ name, rarity, sell, lore, def, recipe, art });
+var REAGENT_BREW_LIST = [
+  ["tonic_grave_dust", brew(
+    "Grave-Dust Tonic",
+    "common",
+    6,
+    "Tonic. +20% essence regeneration for 60 seconds. Four pinches of grave dust in black water: the first brew anyone can make from what the dead drop.",
+    { slot: "tonic", effects: [{ kind: "essence", value: 0.2 }], seconds: 60, label: "Dust-breathed", color: 14208957, glyph: "\u2234" },
+    { id: "brew_grave_dust_tonic", name: "Brew Grave-Dust Tonic", level: 1, qty: 2, ings: [["reagent_grave_dust", 4]] },
+    "flask_tonic_dust"
+  )],
+  ["elixir_wraithquick", brew(
+    "Wraithquick Elixir",
+    "uncommon",
+    28,
+    "Elixir. +15% cooldown recovery for 45 seconds. Ectoplasm sings in the glass, and your rites come back quicker for it.",
+    { slot: "elixir", effects: [{ kind: "haste", value: 0.15 }], seconds: 45, label: "Wraithquick", color: 9417983, glyph: "\u21F6" },
+    { id: "brew_wraithquick", name: "Brew Wraithquick Elixir", level: 10, qty: 1, ings: [["reagent_wraith_ectoplasm", 2], ["reagent_grave_dust", 2]] },
+    "flask_haste"
+  )],
+  ["tonic_graveluck", brew(
+    "Grave-Luck Tonic",
+    "uncommon",
+    36,
+    "Tonic. +15% item drop chance for 60 seconds. Nightshade and a fistful of grave dust: the dead hold on to their things a little less tightly.",
+    { slot: "tonic", effects: [{ kind: "fortune", value: 0.15 }], seconds: 60, label: "Grave-lucky", color: 15254362, glyph: "\u25C6" },
+    { id: "brew_graveluck", name: "Brew Grave-Luck Tonic", level: 22, qty: 1, ings: [["reagent_grave_dust", 6], ["herb_nightshade", 2]] },
+    "flask_fortune"
+  )],
+  ["tonic_insight", brew(
+    "Sexton's Insight",
+    "uncommon",
+    40,
+    "Tonic. +15% experience from kills for 60 seconds. Ectoplasm and mourning moss steeped together; every death teaches a little more.",
+    { slot: "tonic", effects: [{ kind: "wisdom", value: 0.15 }], seconds: 60, label: "Insightful", color: 15128319, glyph: "\u2727" },
+    { id: "brew_insight", name: "Brew Sexton's Insight", level: 28, qty: 1, ings: [["reagent_wraith_ectoplasm", 3], ["herb_mourning_moss", 3]] },
+    "flask_wisdom"
+  )],
+  ["elixir_leechblood", brew(
+    "Leechblood Elixir",
+    "rare",
+    52,
+    "Elixir. Heal 4% of the damage you deal for 45 seconds (up to three targets per hit, at most 1.5% of your health per hit). Plague bile that remembers being alive.",
+    { slot: "elixir", effects: [{ kind: "lifesteal", value: 0.04 }], seconds: 45, label: "Leechblood", color: 12728904, glyph: "\u2756" },
+    { id: "brew_leechblood", name: "Brew Leechblood Elixir", level: 38, qty: 1, ings: [["reagent_plague_bile", 2], ["reagent_grave_dust", 3]] },
+    "flask_lifesteal"
+  )],
+  ["elixir_rotproof", brew(
+    "Rot-Proof Elixir",
+    "rare",
+    48,
+    "Elixir. 40% less rot and plague damage for 75 seconds (adds to other wards; the total caps at 60%). Bile and rot-cap, taken before the Plague Saint.",
+    { slot: "elixir", effects: [{ kind: "resist_rot", value: 0.4 }], seconds: 75, label: "Rot-proof", color: 13099082, glyph: "\u2725" },
+    { id: "brew_rotproof", name: "Brew Rot-Proof Elixir", level: 42, qty: 1, ings: [["reagent_plague_bile", 1], ["herb_rot_cap", 3]] },
+    "flask_rotproof"
+  )],
+  ["elixir_cinderskin", brew(
+    "Cinderskin Elixir",
+    "rare",
+    60,
+    "Elixir. 40% less fire damage for 75 seconds (adds to other wards; the total caps at 60%). Cinder ash and ash-bloom: walk the Pyre as if it were a hearth.",
+    { slot: "elixir", effects: [{ kind: "resist_fire", value: 0.4 }], seconds: 75, label: "Cinderskin", color: 16742954, glyph: "\u25B2" },
+    { id: "brew_cinderskin", name: "Brew Cinderskin Elixir", level: 52, qty: 1, ings: [["reagent_cinder_ash", 1], ["herb_ash_bloom", 3]] },
+    "flask_cinderskin"
+  )],
+  ["tonic_ghostwalk", brew(
+    "Ghostwalk Tonic",
+    "rare",
+    90,
+    "Tonic. +30% essence regeneration and +10% move speed for 75 seconds. Ectoplasm and wolfsbane: you drift more than you walk.",
+    { slot: "tonic", effects: [{ kind: "essence", value: 0.3 }, { kind: "speed", value: 0.1 }], seconds: 75, label: "Ghostwalking", color: 7332808, glyph: "\u2248" },
+    { id: "brew_ghostwalk", name: "Brew Ghostwalk Tonic", level: 62, qty: 1, ings: [["reagent_wraith_ectoplasm", 4], ["herb_wolfsbane", 2]] },
+    "flask_ghostwalk"
+  )],
+  ["elixir_bloodmoon", brew(
+    "Bloodmoon Elixir",
+    "epic",
+    200,
+    "Elixir. +20% spell damage and heal 6% of the damage you deal for 60 seconds. Two kings' ichor and plague bile, drunk under a red moon.",
+    { slot: "elixir", effects: [{ kind: "damage", value: 0.2 }, { kind: "lifesteal", value: 0.06 }], seconds: 60, label: "Bloodmoon", color: 13652072, glyph: "\u25D0" },
+    { id: "brew_bloodmoon", name: "Brew Bloodmoon Elixir", level: 70, qty: 1, ings: [["ichor_gravedigger", 1], ["ichor_abbess", 1], ["reagent_plague_bile", 2]] },
+    "flask_bloodmoon"
+  )],
+  ["elixir_hymnal", brew(
+    "Hymnal Elixir",
+    "epic",
+    170,
+    "Elixir. 15% less damage taken, 20% less rot and plague damage, and heal 3% of the damage you deal, for 75 seconds. The drowned hymn and the Saint's blight, made to cancel each other out.",
+    { slot: "elixir", effects: [{ kind: "ward", value: 0.15 }, { kind: "resist_rot", value: 0.2 }, { kind: "lifesteal", value: 0.03 }], seconds: 75, label: "Hymnal", color: 12175615, glyph: "\u2671" },
+    { id: "brew_hymnal", name: "Brew Hymnal Elixir", level: 78, qty: 1, ings: [["ichor_congregation", 1], ["ichor_plague_saint", 1], ["reagent_wraith_ectoplasm", 4]] },
+    "flask_hymnal"
+  )],
+  ["elixir_regent", brew(
+    "Regent's Vigil Elixir",
+    "epic",
+    300,
+    "Elixir. +12% spell damage, 15% less damage taken and +10% cooldown recovery for 60 seconds. The Regent's ichor and the Prelate's, bound with cinder ash: the last word in elixirs.",
+    { slot: "elixir", effects: [{ kind: "damage", value: 0.12 }, { kind: "ward", value: 0.15 }, { kind: "haste", value: 0.1 }], seconds: 60, label: "Regent's Vigil", color: 16761946, glyph: "\u265B" },
+    { id: "brew_regent_vigil", name: "Brew Regent's Vigil Elixir", level: 85, qty: 1, ings: [["ichor_regent", 1], ["ichor_prelate", 1], ["reagent_cinder_ash", 3]] },
+    "flask_regent"
+  )]
+];
+var REAGENT_BREWS = Object.fromEntries(REAGENT_BREW_LIST.map(([id, b]) => [id, b.def]));
+var SERVER_EFFECT = {
+  damage: "damage_amp",
+  ward: "resist_void",
+  lifesteal: "lifesteal",
+  haste: "cooldown_rate",
+  resist_fire: "resist_fire",
+  resist_rot: "resist_rot",
+  speed: "move_speed",
+  essence: "essence_regen",
+  wisdom: "xp_amp",
+  fortune: "drop_amp"
+};
+function brewStat(def) {
+  const [first, ...rest] = def.effects;
+  const stat = { value: first.value, effect: SERVER_EFFECT[first.kind], duration: def.seconds };
+  if (rest.length) stat.effects = def.effects.map((e) => ({ effect: SERVER_EFFECT[e.kind], value: e.value }));
+  return stat;
+}
+var REAGENT_BREW_ITEMS = Object.fromEntries(
+  REAGENT_BREW_LIST.map(([id, b]) => [id, { name: b.name, rarity: b.rarity, sell: b.sell, lore: b.lore, stack: 99, stat: brewStat(b.def), art: b.art }])
+);
+var REAGENT_RECIPES = REAGENT_BREW_LIST.map(([id, b]) => [b.recipe.id, b.recipe.name, "alchemy", b.recipe.level, id, b.recipe.qty, b.recipe.ings]);
+var ALL_REAGENT_IDS = [...Object.keys(REAGENT_ITEMS), ...Object.keys(REAGENT_BREW_ITEMS)];
+var reagentIcon = (id) => `art/items/${id}.svg`;
+var MOB_REAGENTS = ["reagent_grave_dust", "reagent_wraith_ectoplasm", "reagent_plague_bile", "reagent_cinder_ash"];
+var ICHORS = Object.values(BOSS_ICHOR);
+
+// src/content/brews.ts
+var BASE_BREWS = {
+  flask_damage: { slot: "elixir", effects: [{ kind: "damage", value: 0.15 }], seconds: 45, label: "Forge-tempered", color: 16752736, glyph: "\u2726" },
+  elixir_moonlight: { slot: "elixir", effects: [{ kind: "damage", value: 0.25 }], seconds: 60, label: "Moonlit", color: 12374271, glyph: "\u263E" },
+  flask_void_resist: { slot: "elixir", effects: [{ kind: "ward", value: 0.25 }], seconds: 90, label: "Warded", color: 12175615, glyph: "\u25C8" },
+  flask_speed: { slot: "tonic", effects: [{ kind: "speed", value: 0.2 }], seconds: 30, label: "Swift", color: 10483168, glyph: "\u226B" }
+};
+var BREWS = { ...BASE_BREWS, ...REAGENT_BREWS };
 
 // src/content/armorSets.ts
 var ARMOR_PARTS = ["head", "chest", "hands", "legs", "feet"];
@@ -692,6 +861,8 @@ var ITEMS = {
 for (const [id, g2] of Object.entries(GARDEN_ITEMS)) ITEMS[id] ??= { name: g2.name, type: "material", rarity: g2.rarity, sell: g2.sell, lore: g2.lore, stack: g2.stack };
 for (const [id, c] of Object.entries(CHARM_ITEMS)) ITEMS[id] ??= { name: c.name, type: "material", rarity: c.rarity, sell: c.sell, lore: c.lore, stack: 1 };
 for (const [id, a] of Object.entries(ALCHEMY_ITEMS)) ITEMS[id] ??= { name: a.name, type: "material", rarity: a.rarity, sell: a.sell, lore: a.lore, stack: a.stack };
+for (const [id, r] of Object.entries(REAGENT_ITEMS)) ITEMS[id] ??= { name: r.name, type: "material", rarity: r.rarity, sell: r.sell, lore: r.lore, stack: r.stack, icon: reagentIcon(id) };
+for (const [id, r] of Object.entries(REAGENT_BREW_ITEMS)) ITEMS[id] ??= { name: r.name, type: "material", rarity: r.rarity, sell: r.sell, lore: r.lore, stack: r.stack, icon: reagentIcon(id) };
 for (const [id, p] of Object.entries(PROCESSING_ITEMS)) ITEMS[id] ??= { name: p.name, type: "material", rarity: p.rarity, sell: p.sell, lore: p.lore, stack: p.stack };
 for (const piece of ARMOR_PIECES) ITEMS[piece.id] = {
   name: piece.name,
@@ -714,12 +885,9 @@ for (const w of NECRO_WEAPONS) ITEMS[w.id] = {
 function itemMeta(id) {
   return ITEMS[id] ?? { name: id.replace(/_/g, " "), type: "material", rarity: "common", sell: 0 };
 }
-var BUFF_FLASKS = {
-  flask_speed: { kind: "speed", value: 0.2, seconds: 30, label: "Swift" },
-  flask_damage: { kind: "damage", value: 0.15, seconds: 45, label: "Forge-tempered" },
-  flask_void_resist: { kind: "ward", value: 0.25, seconds: 90, label: "Warded" },
-  ...ALCHEMY_BUFFS
-};
+var BUFF_FLASKS = Object.fromEntries(
+  Object.entries(BREWS).map(([id, b]) => [id, { kind: b.effects[0].kind, value: b.effects[0].value, seconds: b.seconds, label: b.label }])
+);
 var HEALING_FLASKS = {
   flask_hp_major: 0.7,
   flask_hp_minor: 0.35,
@@ -751,6 +919,7 @@ function mulberry32(seed) {
     return ((t ^ t >>> 14) >>> 0) / 4294967296;
   };
 }
+var MOB_REAGENT_LEVELS = [["reagent_grave_dust", 1], ["reagent_wraith_ectoplasm", 10], ["reagent_plague_bile", 38], ["reagent_cinder_ash", 52]];
 function candidatesFor(levels) {
   const level = (s) => Math.max(1, levels[s] ?? 1);
   const seen = /* @__PURE__ */ new Set();
@@ -760,12 +929,14 @@ function candidatesFor(levels) {
     seen.add(c.itemId);
     out.push(c);
   };
-  for (const n of Object.values(NODES)) if (n.level <= level(n.skill)) add({ itemId: n.item, skill: n.skill, level: n.level, processed: false });
+  for (const n of Object.values(NODES)) if (n.skill !== "gardening" && n.level <= level(n.skill)) add({ itemId: n.item, skill: n.skill, level: n.level, processed: false });
   for (const [, , skill, req, result] of PROCESSING_RECIPES) {
     if (result.startsWith("tool_")) continue;
     if (req <= level(skill)) add({ itemId: result, skill, level: req, processed: true });
   }
   for (const [, , skill, req, result] of ALCHEMY_RECIPES) if (req <= level(skill)) add({ itemId: result, skill, level: req, processed: true });
+  for (const [, , skill, req, result] of REAGENT_RECIPES) if (req <= level(skill)) add({ itemId: result, skill, level: req, processed: true });
+  for (const [id, req] of MOB_REAGENT_LEVELS) if (req <= level("alchemy") && MOB_REAGENTS.includes(id)) add({ itemId: id, skill: "alchemy", level: req, processed: true });
   for (const s of SEEDS) if (s.kind === "herb" && s.level <= level("gardening")) add({ itemId: s.harvest, skill: "gardening", level: s.level, processed: true });
   return out.sort((a, b) => a.level - b.level || a.itemId.localeCompare(b.itemId));
 }
