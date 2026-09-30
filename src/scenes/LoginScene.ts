@@ -18,10 +18,26 @@ export class LoginScene implements GameScene {
   mount() {
     this.backdrop.mount();
     this.el = document.createElement('div');
-    this.el.className = 'cw-front';
+    this.el.className = 'cw-front cw-front-login';
     this.panel = document.createElement('div');
     this.panel.className = 'cw-plate cw-login';
-    this.el.appendChild(this.panel);
+    const shell = document.createElement('div');
+    shell.className = 'cw-login-shell';
+    shell.innerHTML = `
+      <section class="cw-login-story" aria-label="The Ossuary Covenant">
+        <img class="cw-login-logo" src="art/crossworlds-logo.png" alt="Crossworlds" draggable="false" />
+        <p class="cw-login-kicker">THE OSSUARY COVENANT <span aria-hidden="true">✦</span> THE DIOCESE IS BURNING</p>
+        <h1>The dead don't stay buried.<br /><em>Neither does the fire.</em></h1>
+        <p class="cw-login-intro">Raise the fallen, face gargoyles and cinderhounds, and carry your legion into the Cinder Pyre.</p>
+        <div class="cw-login-chapters" aria-label="The world beyond the gate">
+          <div><span>01 / THE GRAVES</span><strong>Build your legion from the dead.</strong></div>
+          <div><span>02 / THE NAVE</span><strong>Face deacons, gargoyles, and worse.</strong></div>
+          <div><span>03 / THE PYRE</span><strong>Survive cinderhounds and burning ground.</strong></div>
+        </div>
+      </section>
+    `;
+    shell.appendChild(this.panel);
+    this.el.appendChild(shell);
     this.root.appendChild(this.el);
     this.render();
   }
@@ -29,8 +45,9 @@ export class LoginScene implements GameScene {
   private render() {
     const isLogin = this.mode === 'login';
     this.panel!.innerHTML = `
-      <img class="cw-logo" src="art/crossworlds-logo.png" alt="Crossworlds" draggable="false" />
-      <p class="cw-tagline">${isLogin ? 'The dead are waiting to be counted.' : 'Swear yourself to the Ossuary Covenant.'}</p>
+      <p class="cw-login-card-kicker">${isLogin ? 'THE GATE IS OPEN' : 'A NEW OATH'}</p>
+      <h2>${isLogin ? 'Return to the Covenant' : 'Join the Covenant'}</h2>
+      <p class="cw-tagline">${isLogin ? 'The dead are waiting to be counted.' : 'Your first descent begins here.'}</p>
       <form novalidate>
         <div class="cw-field">
           <label for="cw-user">Name</label>

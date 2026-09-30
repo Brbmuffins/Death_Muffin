@@ -11,6 +11,7 @@
   --violet: #7c3aed;
   --spell: #9b5cff;
   --lilac: #c6a4ff;
+  --ember: #e8a66d;
   --danger: #c97b91;
   --shadow: rgba(0, 0, 0, 0.78);
   --occult: "Pirata One", "Old English Text MT", "Palatino Linotype", Georgia, serif;
@@ -66,8 +67,8 @@ button {
   min-height: 100svh;
   overflow: hidden;
   background:
-    linear-gradient(90deg, transparent 0 42%, rgba(7, 6, 10, 0.16) 58%, rgba(7, 6, 10, 0.5) 100%),
-    url("assets/covenant-bg.png") 45% center / cover no-repeat;
+    linear-gradient(90deg, transparent 0 42%, rgba(7, 6, 10, 0.17) 58%, rgba(7, 6, 10, 0.58) 100%),
+    url("assets/covenant-pyre.webp") 45% center / cover no-repeat;
 }
 
 .gateway__shade {
@@ -262,6 +263,32 @@ button {
   font-size: 1.12rem;
   letter-spacing: 0.21em;
   text-transform: uppercase;
+}
+
+.account__dispatch {
+  max-width: 31rem;
+  margin: 0 auto clamp(1.1rem, 2.4vh, 1.65rem);
+  padding: 0.75rem 1.1rem;
+  border-top: 1px solid rgba(232, 166, 109, 0.55);
+  border-bottom: 1px solid rgba(232, 166, 109, 0.24);
+  background: rgba(8, 6, 10, 0.72);
+  text-align: center;
+  text-shadow: 0 2px 10px #000;
+}
+
+.account__dispatch span {
+  color: var(--ember);
+  font-family: var(--serif);
+  font-size: 0.79rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+.account__dispatch p {
+  margin: 0.3rem 0 0;
+  color: var(--bone-bright);
+  font-size: 0.86rem;
+  line-height: 1.45;
 }
 
 .reliquary {
@@ -855,6 +882,13 @@ button {
     font-size: 0.76rem;
     letter-spacing: 0.25em;
   }
+
+  .account__dispatch {
+    margin-bottom: 1rem;
+    padding: 0.55rem 0.75rem;
+  }
+
+  .account__dispatch p { font-size: 0.8rem; }
 
   .reliquary {
     padding: 1.6rem 1.2rem;
