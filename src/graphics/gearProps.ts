@@ -154,3 +154,38 @@ export function disposeProp(obj: THREE.Object3D) {
     }
   });
 }
+
+
+/**
+ * A mastery cape hung from the shoulders. Built for the hero skeleton's Spine02 bone, whose local Y is up and local +Z is the back, so
+ * no calibration is needed: the cloth is an open cylinder arc centred behind the spine and flaring to the hem, with a trim strip, a
+ * clasp and a faint emblem glow. The returned group pivots at the shoulders (`userData.sway` swings it a little as the hero moves).
+ */
+export function buildCape(color: number, trim: number): THREE.Group {
+  const g = new THREE.Group();
+  g.position.set(0, 0.16, 0);
+  // The cloth hangs behind the spine: the bone's +Z is the hero's back. The robe's back surface sits 0.23-0.33 from the spine
+  // (measured on the skinned mesh), so the shoulders clear it at 0.27 and the hem at 0.42.
+  const back = new THREE.Group();
+  g.add(back);
+  const cloth = new THREE.MeshStandardMaterial({ color, roughness: 0.92, metalness: 0.02, side: THREE.DoubleSide });
+  const edge = new THREE.MeshStandardMaterial({ color: trim, roughness: 0.5, metalness: 0.35, emissive: trim, emissiveIntensity: 0.18, side: THREE.DoubleSide });
+  const arc = 1.7;
+  const start = -arc / 2;
+  const height = 0.92;
+  const top = 0.27;
+  const bottom = 0.42;
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(top, bottom, height, 16, 4, true, start, arc), cloth);
+  body.position.set(0, -height / 2, 0);
+  const hem = new THREE.Mesh(new THREE.CylinderGeometry(bottom - 0.002, bottom + 0.004, 0.045, 16, 1, true, start, arc), edge);
+  hem.position.set(0, -height + 0.022, 0);
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(top + 0.002, top + 0.002, 0.035, 16, 1, true, start, arc), edge);
+  collar.position.set(0, -0.018, 0);
+  const clasp = new THREE.Mesh(new THREE.SphereGeometry(0.032, 8, 6), edge);
+  clasp.position.set(0, -0.02, -top + 0.005);
+  const emblem = new THREE.Sprite(new THREE.SpriteMaterial({ map: fx.glow(), color: trim, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.5 }));
+  emblem.scale.setScalar(0.2);
+  emblem.position.set(0, -0.3, top + 0.06);
+  back.add(body, hem, collar, clasp, emblem);
+  return g;
+}

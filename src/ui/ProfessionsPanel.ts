@@ -29,7 +29,7 @@ export class ProfessionsPanel {
     start(type: string): Promise<void>;
     pause(): void;
     status(): { active: boolean; text: string; allowed: boolean };
-  }, private heldItems?: () => string[], private onContracts?: () => void, private onGarden?: () => void, private onLabor?: () => void) {}
+  }, private heldItems?: () => string[], private onContracts?: () => void, private onGarden?: () => void, private onLabor?: () => void, private onCosmetics?: () => void) {}
 
   get isOpen() {
     return this.el !== null;
@@ -107,6 +107,7 @@ export class ProfessionsPanel {
       <div class="cw-panel-head">
         <h2 class="cw-title">Skills</h2>
         <span class="cw-skill-total">Total level <b>${skills.total()}</b></span>
+        ${this.onCosmetics ? '<button class="cw-button small" data-cosmetics title="Capes and pets (N)">Capes</button>' : ''}
         ${this.onLabor ? '<button class="cw-button small" data-labor title="Grave Laborers (H)">Laborers</button>' : ''}
         ${this.onGarden ? '<button class="cw-button small" data-garden title="Grave Gardening (U)">Garden</button>' : ''}
         ${this.onContracts ? '<button class="cw-button small" data-contracts title="Daily delivery orders (O)">Contracts</button>' : ''}
@@ -120,6 +121,7 @@ export class ProfessionsPanel {
     this.el.querySelector('[data-contracts]')?.addEventListener('click', () => this.onContracts?.());
     this.el.querySelector('[data-garden]')?.addEventListener('click', () => this.onGarden?.());
     this.el.querySelector('[data-labor]')?.addEventListener('click', () => this.onLabor?.());
+    this.el.querySelector('[data-cosmetics]')?.addEventListener('click', () => this.onCosmetics?.());
     this.refreshStatus();
     this.el.querySelector('[data-pause-afk]')?.addEventListener('click', () => { this.afk?.pause(); this.message = 'AFK paused'; this.render(skills); });
     for (const button of this.el.querySelectorAll<HTMLButtonElement>('[data-start-afk]')) button.addEventListener('click', async () => {

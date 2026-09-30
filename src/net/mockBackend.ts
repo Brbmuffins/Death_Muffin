@@ -17,6 +17,7 @@ import type { NecroState } from '../gameplay/necroRules';
 import * as contractRules from '../gameplay/contractRules';
 import * as gardenRules from '../gameplay/gardeningRules';
 import * as laborRules from '../gameplay/laborRules';
+import * as cosmeticRules from '../gameplay/cosmeticRules';
 import { itemMeta } from '../content/items';
 import * as gather from '../gameplay/gatheringRules';
 import { PROCESSING_RECIPES } from '../content/processing';
@@ -108,6 +109,8 @@ interface StoredSlot {
 interface MockAccount {
   /** Server-side necromancer progression (mirrors character_necro_progress). */
   necro?: NecroState;
+  /** Capes and pets (mirrors character_cosmetics + character_pets). */
+  cosmetics?: { cape: string | null; pet: string | null; pets: string[] };
   /** Grave Laborers' posts (mirrors character_labor). */
   labor?: Record<number, { nodeType: string | null; startedAt: number }>;
   /** Grave Gardening plots (mirrors garden_plots). */
@@ -550,6 +553,50 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     delete plotsOf()[body.plot];
     const leveledUp = gardenXp(crop.xp);
     return ok({ ...gardenView(now), items: grants, gainedXp: crop.xp, leveledUp });
+  }
+
+  // --- Capes and pets: unlocks come from the same shared rules the server runs. ---
+  const cosOf = () => (acc.cosmetics ??= { cape: null, pet: null, pets: [] });
+  const cosLevels = () => Object.fromEntries(acc.professions.map((pr) => [pr.profession_id, pr.skill_level]));
+  const cosView = () => {
+    const levels = cosLevels();
+    const c = cosOf();
+    return {
+      totalLevel: cosmeticRules.totalLevel(levels),
+      capes: cosmeticRules.CAPES.map((cape) => ({ id: cape.id, name: cape.name, lore: cape.lore, color: cape.color, trim: cape.trim, ...cosmeticRules.capeProgress(cape, levels) })),
+      pets: cosmeticRules.PETS.map((p) => ({ id: p.id, name: p.name, charm: p.charm, skill: p.skill, lore: p.lore, adopted: c.pets.includes(p.id) })),
+      selected: { cape: c.cape, pet: c.pet },
+    };
+  };
+  if ((m = p.match(/^\/api\/cosmetics\/(\d+)$/)) && method === 'GET') {
+    ownCharacter(acc, m[1]);
+    return ok(cosView());
+  }
+  if (p === '/api/cosmetics/select' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const c = cosOf();
+    if ('cape' in body) {
+      if (body.cape === null) c.cape = null;
+      else if (!cosmeticRules.capeUnlocked(String(body.cape), cosLevels())) return fail('You have not earned that cape yet.');
+      else c.cape = String(body.cape);
+    }
+    if ('pet' in body) {
+      if (body.pet === null) c.pet = null;
+      else if (!c.pets.includes(String(body.pet))) return fail('You have not adopted that companion.');
+      else c.pet = String(body.pet);
+    }
+    return ok(cosView());
+  }
+  if (p === '/api/cosmetics/adopt' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const def = cosmeticRules.petDef(String(body.petId ?? ''));
+    if (!def) return fail('There is no such companion.');
+    const c = cosOf();
+    if (c.pets.includes(def.id)) return fail(`The ${def.name} is already yours. Keep the charm for someone else, or sell it.`);
+    if (!takeFromBag(def.charm, 1)) return fail(`You have no ${def.name} Charm in your bag.`);
+    c.pets.push(def.id);
+    if (!c.pet) c.pet = def.id;
+    return ok({ ...cosView(), adopted: def.id });
   }
 
   // --- Sexton's Contracts: the same shared board rules the server runs. ---

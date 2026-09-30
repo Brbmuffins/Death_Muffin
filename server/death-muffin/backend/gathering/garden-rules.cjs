@@ -23,9 +23,11 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 var gardeningRules_exports = {};
 __export(gardeningRules_exports, {
   COMPOST_ITEM: () => COMPOST_ITEM,
+  GARDEN_PET_CHANCE: () => GARDEN_PET_CHANCE,
   PLOTS: () => PLOTS,
   SEEDS: () => SEEDS,
   growMs: () => growMs,
+  petForSkill: () => petForSkill,
   plantBlocker: () => plantBlocker,
   plotDef: () => plotDef,
   remainingText: () => remainingText,
@@ -85,6 +87,21 @@ for (const [id, name, rarity, sell, seedSell, lore] of HERBS) {
 GARDEN_ITEMS.sapling_oak = { name: "Coffin-Oak Sapling", rarity: "common", sell: 6, lore: "Plant it in a Coffin Patch and come back in a couple of hours.", stack: 250 };
 GARDEN_ITEMS.sapling_yew = { name: "Churchyard Yew Sapling", rarity: "uncommon", sell: 20, lore: "Slow, patient and worth the wait.", stack: 250 };
 
+// src/content/cosmetics.ts
+var PETS = [
+  { id: "pet_tithe_bat", name: "Tithe Bat", charm: "charm_tithe_bat", skill: "woodcutting", model: "tithe_bat", scale: 0.7, fly: { height: 1.5, speed: 17, amp: 0.75, body: 0.22 }, rarity: "rare", lore: "It roosts in the coffin-oaks and follows the sound of the axe." },
+  { id: "pet_grave_rat", name: "Grave Rat", charm: "charm_grave_rat", skill: "mining", model: "skull_rat", scale: 1.05, rarity: "rare", lore: "It found a better seam than you did, and it will not tell you where." },
+  { id: "pet_drowned_pup", name: "Drowned Pup", charm: "charm_drowned_pup", skill: "fishing", model: "bone_hound", scale: 0.55, tint: 10470612, rarity: "rare", lore: "Pulled from black water, still wet, still hopeful." },
+  { id: "pet_wee_thrall", name: "Wee Thrall", charm: "charm_wee_thrall", skill: "gravedigging", model: "skeleton_thrall", scale: 0.32, rarity: "epic", lore: "A very small skeleton with a very large sense of duty." },
+  { id: "pet_shroud_moth", name: "Shroud Moth", charm: "charm_shroud_moth", skill: "gardening", model: "shroud_moth", scale: 0.6, fly: { height: 1.7, speed: 8, amp: 0.55, body: 0.16 }, tint: 14215360, rarity: "epic", lore: "It drinks the light from the beds and gives a little back." }
+];
+var petForSkill = (skill) => PETS.find((p) => p.skill === skill);
+var PET_CHANCE = 1 / 3500;
+var GARDEN_PET_CHANCE = 1 / 35;
+var CHARM_ITEMS = Object.fromEntries(
+  PETS.map((p) => [p.charm, { name: `${p.name} Charm`, rarity: p.rarity, sell: 250, lore: `Adopt it (Capes & Pets, N) and the ${p.name} is yours for good. ${p.lore}` }])
+);
+
 // src/gameplay/gardeningRules.ts
 var plotDef = (id) => PLOTS.find((p) => p.id === id);
 var stateOf = (row, now) => !row || !row.seedId ? "empty" : now >= row.readyAt ? "ready" : "growing";
@@ -112,9 +129,11 @@ function remainingText(ms) {
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   COMPOST_ITEM,
+  GARDEN_PET_CHANCE,
   PLOTS,
   SEEDS,
   growMs,
+  petForSkill,
   plantBlocker,
   plotDef,
   remainingText,

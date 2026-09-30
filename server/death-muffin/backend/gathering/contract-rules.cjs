@@ -32,8 +32,28 @@ __export(contractRules_exports, {
 });
 module.exports = __toCommonJS(contractRules_exports);
 
+// src/content/cosmetics.ts
+var PETS = [
+  { id: "pet_tithe_bat", name: "Tithe Bat", charm: "charm_tithe_bat", skill: "woodcutting", model: "tithe_bat", scale: 0.7, fly: { height: 1.5, speed: 17, amp: 0.75, body: 0.22 }, rarity: "rare", lore: "It roosts in the coffin-oaks and follows the sound of the axe." },
+  { id: "pet_grave_rat", name: "Grave Rat", charm: "charm_grave_rat", skill: "mining", model: "skull_rat", scale: 1.05, rarity: "rare", lore: "It found a better seam than you did, and it will not tell you where." },
+  { id: "pet_drowned_pup", name: "Drowned Pup", charm: "charm_drowned_pup", skill: "fishing", model: "bone_hound", scale: 0.55, tint: 10470612, rarity: "rare", lore: "Pulled from black water, still wet, still hopeful." },
+  { id: "pet_wee_thrall", name: "Wee Thrall", charm: "charm_wee_thrall", skill: "gravedigging", model: "skeleton_thrall", scale: 0.32, rarity: "epic", lore: "A very small skeleton with a very large sense of duty." },
+  { id: "pet_shroud_moth", name: "Shroud Moth", charm: "charm_shroud_moth", skill: "gardening", model: "shroud_moth", scale: 0.6, fly: { height: 1.7, speed: 8, amp: 0.55, body: 0.16 }, tint: 14215360, rarity: "epic", lore: "It drinks the light from the beds and gives a little back." }
+];
+var petForSkill = (skill) => PETS.find((p) => p.skill === skill);
+var PET_CHANCE = 1 / 3500;
+var petChance = (nodeLevel) => PET_CHANCE * (1 + nodeLevel / 100);
+var GARDEN_PET_CHANCE = 1 / 35;
+var CHARM_ITEMS = Object.fromEntries(
+  PETS.map((p) => [p.charm, { name: `${p.name} Charm`, rarity: p.rarity, sell: 250, lore: `Adopt it (Capes & Pets, N) and the ${p.name} is yours for good. ${p.lore}` }])
+);
+
 // src/gameplay/gatheringRules.ts
-var node = (d) => ({ extras: [], ...d });
+var petLine = (skill, level) => {
+  const pet = petForSkill(skill);
+  return pet ? [{ item: pet.charm, chance: petChance(level) }] : [];
+};
+var node = (d) => ({ ...d, extras: [...d.extras ?? [], ...petLine(d.skill, d.level)] });
 var CROWS_NEST = [
   { item: "seed_mourning_moss", chance: 1 / 300 },
   { item: "ring_copper", chance: 1 / 600 }
@@ -363,6 +383,7 @@ var ITEMS = {
   kit_iron_warden: { name: "Iron Warden Kit", type: "trinket", rarity: "rare", sell: 55, offlineStats: { stat_vit: 4, stat_int: 4 } }
 };
 for (const [id, g2] of Object.entries(GARDEN_ITEMS)) ITEMS[id] ??= { name: g2.name, type: "material", rarity: g2.rarity, sell: g2.sell, lore: g2.lore, stack: g2.stack };
+for (const [id, c] of Object.entries(CHARM_ITEMS)) ITEMS[id] ??= { name: c.name, type: "material", rarity: c.rarity, sell: c.sell, lore: c.lore, stack: 1 };
 for (const [id, a] of Object.entries(ALCHEMY_ITEMS)) ITEMS[id] ??= { name: a.name, type: "material", rarity: a.rarity, sell: a.sell, lore: a.lore, stack: a.stack };
 for (const [id, p] of Object.entries(PROCESSING_ITEMS)) ITEMS[id] ??= { name: p.name, type: "material", rarity: p.rarity, sell: p.sell, lore: p.lore, stack: p.stack };
 function itemMeta(id) {

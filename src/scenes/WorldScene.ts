@@ -26,7 +26,7 @@ import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
 import { BOONS, ascensionLevels, ascensionRewardMult, roman } from '../content/ascension';
 import { AscensionPanel } from '../ui/AscensionPanel';
 import { ClassPanel } from '../ui/ClassPanel';
-import { changeDiscipline, getGarden, getLabor, type ContractDelivery, type GardenResult, type LaborResult } from '../net/api';
+import { changeDiscipline, getCosmetics, getGarden, getLabor, type ContractDelivery, type CosmeticsView, type GardenResult, type LaborResult } from '../net/api';
 import { onSettingsChange, settings, updateSettings } from '../app/settings';
 import { selectAutoCombatAction, selectAutoCombatMovement, type AutoMoveMemory } from '../gameplay/autoCombat';
 import { STATUS_FX } from '../content/statuses';
@@ -68,6 +68,10 @@ import { GatherReportPanel } from '../ui/GatherReportPanel';
 import { ContractsPanel } from '../ui/ContractsPanel';
 import { GardenPanel } from '../ui/GardenPanel';
 import { LaborPanel } from '../ui/LaborPanel';
+import { CosmeticsPanel } from '../ui/CosmeticsPanel';
+import { PetView } from '../graphics/PetView';
+import { petDef, petForCharm } from '../content/cosmetics';
+import { isCape, isPet } from '../gameplay/cosmeticRules';
 import { beginAfkGather, gather, getInventory, getProfessions, getToken, OFFLINE, type GatherReply } from '../net/api';
 import type { RemotePlayer, WorldSnapshot } from '../net/contracts';
 import { RealtimeClient } from '../net/realtime';
@@ -136,6 +140,8 @@ const RITE_TIPS: Partial<Record<AbilityId, TipId>> = {
 interface Remote {
   info: RemotePlayer;
   avatar: NecromancerAvatar;
+  /** Their companion, if they have called one. */
+  pet?: PetView | null;
   tx: number;
   tz: number;
   facing: number;
@@ -202,6 +208,9 @@ export class WorldScene implements GameScene, RuntimeView {
   private contractsPanel!: ContractsPanel;
   private gardenPanel!: GardenPanel;
   private laborPanel!: LaborPanel;
+  private cosmeticsPanel!: CosmeticsPanel;
+  private myCosmetics: { cape: string | null; pet: string | null } = { cape: null, pet: null };
+  private petView: PetView | null = null;
   private laborCapNoted = new Set<number>();
   private gardenReady = -1;
   private saintBlessTold = false;
@@ -550,6 +559,7 @@ export class WorldScene implements GameScene, RuntimeView {
     void this.dataReady.then(() => window.setTimeout(() => void this.checkGarden(true), 4000));
     this.scope.interval(() => void this.checkGarden(false), 60_000);
     void this.dataReady.then(() => window.setTimeout(() => void this.checkLabor(true), 6000));
+    void this.dataReady.then(() => getCosmetics(this.character.id)).then((v) => this.applyCosmetics(v.selected)).catch(() => {});
     this.scope.interval(() => void this.checkLabor(false), 5 * 60_000);
     this.onboarding.show('welcome', 900);
     this.onboarding.show('move', 1600);
@@ -676,7 +686,8 @@ export class WorldScene implements GameScene, RuntimeView {
       start: type => this.startAfkGathering(type),
       pause: () => this.gathering.stop('moved'),
       status: () => ({ active: this.gathering.afk, text: this.gathering.status, allowed: this.player.area === 'acre' }),
-    }, () => this.inventory.all.map((s) => s.item_id), () => this.togglePanel('contracts'), () => this.togglePanel('garden'), () => this.togglePanel('labor'));
+    }, () => this.inventory.all.map((s) => s.item_id), () => this.togglePanel('contracts'), () => this.togglePanel('garden'), () => this.togglePanel('labor'), () => this.togglePanel('cosmetics'));
+    this.cosmeticsPanel = new CosmeticsPanel(this.root, this.character.id, this.inventory, (v) => this.applyCosmetics(v.selected));
     this.laborPanel = new LaborPanel(this.root, this.character.id, this.inventory, (skill) => this.skills.level(skill), (r) => this.onLaborCollected(r));
     this.gardenPanel = new GardenPanel(this.root, this.character.id, this.inventory, (kind, r) => this.onGardenResult(kind, r));
     this.contractsPanel = new ContractsPanel(this.root, this.character.id, this.inventory, (d) => this.onContractDelivered(d));
@@ -761,6 +772,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.contractsPanel?.close();
     this.gardenPanel?.close();
     this.laborPanel?.close();
+    this.cosmeticsPanel?.close();
   }
 
   private async changeClass(index: number) {
@@ -785,6 +797,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private onLaborCollected(r: LaborResult) {
     const c = r.collected;
     if (!c) return;
+    this.celebrateCharms(c.items);
     const skill = c.skill as SkillId;
     const before = this.skills.level(skill);
     const total = c.items.reduce((n, g) => n + g.qty, 0);
@@ -833,6 +846,7 @@ export class WorldScene implements GameScene, RuntimeView {
     audio.play(kind === 'harvest' ? 'coin' : 'click');
     void getProfessions(this.character.id).then((rows) => this.skills.adopt(rows)).catch(() => {});
     if (kind === 'harvest' && r.items?.length) {
+      this.celebrateCharms(r.items);
       const crop = r.items[0];
       this.chronicle.add('gathered.gardening', crop.qty);
       const seedBack = r.items[1];
@@ -869,9 +883,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hud.toast(d.paidBonus ? `Order filled, and the day’s bonus is yours: +${d.paidBonus.gold.toLocaleString()}g` : 'Order filled', 'good');
   }
 
-  private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts' | 'garden' | 'labor') {
+  private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics') {
     audio.play('click');
-    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel }[p];
+    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel, cosmetics: this.cosmeticsPanel }[p];
     const wasOpen = panel.isOpen;
     this.closePanels();
     if (wasOpen) return;
@@ -884,6 +898,7 @@ export class WorldScene implements GameScene, RuntimeView {
     else if (p === 'contracts') void this.contractsPanel.open();
     else if (p === 'garden') void this.gardenPanel.open();
     else if (p === 'labor') void this.laborPanel.open();
+    else if (p === 'cosmetics') void this.cosmeticsPanel.open();
     else if (p === 'ascension') this.ascensionPanel.open();
     else if (p === 'grimoire') {
       this.grimoirePanel.open();
@@ -935,6 +950,7 @@ export class WorldScene implements GameScene, RuntimeView {
       else if (k === 'o') this.togglePanel('contracts');
       else if (k === 'u') this.togglePanel('garden');
       else if (k === 'h') this.togglePanel('labor');
+      else if (k === 'n') this.togglePanel('cosmetics');
       else if (k === 'm') this.togglePanel('map');
       else if (k === 'k') this.togglePanel('codex');
       else if (k === 'l') this.togglePanel('grimoire');
@@ -1033,7 +1049,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private panelOpen() {
-    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen;
+    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen;
   }
 
   private interactablesNear(): Interactable[] {
@@ -1423,10 +1439,15 @@ export class WorldScene implements GameScene, RuntimeView {
             r.moving = u.moving;
             r.hpFrac = u.hpFrac;
           },
-          onPlayerGear: (u) => this.remotes.get(u.id)?.avatar.setEquipment(gearFromIds(u.gear)),
+          onPlayerGear: (u) => {
+            const r = this.remotes.get(u.id);
+            if (!r) return;
+            r.avatar.setEquipment(gearFromIds(u.gear));
+            this.dressRemote(r, u.gear);
+          },
           onChat: (m) => this.hud.chatLine(`${m.name}: ${m.text}`),
           onDisconnect: () => {
-            for (const r of this.remotes.values()) r.avatar.dispose();
+            for (const r of this.remotes.values()) { r.avatar.dispose(); r.pet?.dispose(); }
             this.remotes.clear();
             this.becomeAuthority(null);
             this.hud.toast('Lost the co-op link — the world continues solo', 'err');
@@ -1499,7 +1520,41 @@ export class WorldScene implements GameScene, RuntimeView {
   private currentGearIds() {
     const gear: Record<string, string> = {};
     for (const [slot, it] of Object.entries(equippedBySlot(this.inventory.all))) if (it) gear[slot] = it.item_id;
+    if (this.myCosmetics.cape) gear.cape = this.myCosmetics.cape;
+    if (this.myCosmetics.pet) gear.pet = this.myCosmetics.pet;
     return gear;
+  }
+
+  /** Dress the hero: the cape on the back and the companion at their heel. Called with the server's saved choice. */
+  private applyCosmetics(sel: { cape: string | null; pet: string | null }) {
+    this.myCosmetics = { cape: sel.cape, pet: sel.pet };
+    this.avatar.setCape(sel.cape);
+    const def = sel.pet ? petDef(sel.pet) : undefined;
+    if ((this.petView?.id ?? null) !== (def?.id ?? null)) {
+      this.petView?.dispose();
+      this.petView = def ? new PetView(this.scene, def, this.player.x, this.player.z) : null;
+    }
+    this.broadcastGear(equippedBySlot(this.inventory.all), true);
+  }
+
+  /** Another player's cape and companion, from the ids they broadcast (checked against the catalogue). */
+  private dressRemote(r: Remote, gear: Record<string, string> | undefined) {
+    r.avatar.setCape(isCape(gear?.cape) ? gear!.cape : null);
+    const pet = isPet(gear?.pet) ? petDef(gear!.pet) : undefined;
+    if ((r.pet?.id ?? null) !== (pet?.id ?? null)) {
+      r.pet?.dispose();
+      r.pet = pet ? new PetView(this.scene, pet, r.tx, r.tz) : null;
+    }
+  }
+
+  /** A charm turned up: a rare moment worth a banner (gathering, laborers and the garden all funnel through here). */
+  private celebrateCharms(items: { itemId: string }[]) {
+    for (const g of items) {
+      const pet = petForCharm(g.itemId);
+      if (!pet) continue;
+      this.hud.banner('A rare find!', `${itemMeta(g.itemId).name}: adopt it in Capes & Pets (N)`, 4200);
+      audio.play('skillUp');
+    }
   }
 
   /** Tell the world what we're wearing (item ids only), when it changes and once after joining. */
@@ -1507,6 +1562,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private broadcastGear(worn: ReturnType<typeof equippedBySlot>, force = false) {
     const gear: Record<string, string> = {};
     for (const [slot, it] of Object.entries(worn)) if (it) gear[slot] = it.item_id;
+    if (this.myCosmetics.cape) gear.cape = this.myCosmetics.cape;
+    if (this.myCosmetics.pet) gear.pet = this.myCosmetics.pet;
     const key = JSON.stringify(gear);
     if (!force && key === this.lastGearSent) return;
     this.lastGearSent = key;
@@ -1518,7 +1575,9 @@ export class WorldScene implements GameScene, RuntimeView {
     const d = disciplineFor(p.classIndex);
     const avatar = new NecromancerAvatar(this.scene, d.color, false, d.modelSlug);
     avatar.setEquipment(gearFromIds(p.gear));
-    this.remotes.set(p.id, { info: p, avatar, tx: p.x, tz: p.z, facing: p.facing, moving: false, hpFrac: p.hpFrac ?? 1 });
+    const remote: Remote = { info: p, avatar, tx: p.x, tz: p.z, facing: p.facing, moving: false, hpFrac: p.hpFrac ?? 1 };
+    this.remotes.set(p.id, remote);
+    this.dressRemote(remote, p.gear);
   }
 
   // -------------------------------------------------------------------------
@@ -1614,6 +1673,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private onGatherReply(r: GatherReply) {
     this.gatherSession?.record(r);
+    this.celebrateCharms(r.items);
     for (const g of r.items) this.inventory.add({ item_id: g.itemId, quantity: g.qty });
     this.chronicle.add(`gathered.${r.skill}`, r.items.reduce((n, g) => n + g.qty, 0));
     if (r.gold > 0) {

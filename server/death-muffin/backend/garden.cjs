@@ -109,6 +109,9 @@ module.exports = function mountGarden(app, pool, { requireAuth, ownsCharacter, r
     const [bagRows] = await conn.execute('SELECT slot_index, item_id, quantity, equipped FROM inventory WHERE character_id = ? AND slot_index BETWEEN 0 AND 23 FOR UPDATE', [id]);
     const bag = bagRows.map((r) => ({ slot: num(r.slot_index), itemId: num(r.equipped) ? '' : r.item_id, qty: num(r.quantity) }));
     const grants = [{ itemId: crop.itemId, qty: crop.qty }, ...(crop.seedBack ? [{ itemId: crop.seedBack, qty: 1 }] : [])];
+    // A rare companion: the gardener's charm turns up now and then.
+    const pet = garden.petForSkill('gardening');
+    if (pet && random() < garden.GARDEN_PET_CHANCE) grants.push({ itemId: pet.charm, qty: 1 });
     const ids = [...new Set(grants.map((g) => g.itemId))];
     const [stackRows] = await conn.query('SELECT id, stackable, max_stack_size FROM items WHERE id IN (?)', [ids]);
     const stacks = new Map(stackRows.map((r) => [r.id, num(r.stackable) ? Math.max(1, num(r.max_stack_size) || 1) : 1]));

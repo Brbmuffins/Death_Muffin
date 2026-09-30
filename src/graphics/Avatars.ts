@@ -7,7 +7,8 @@ import type { GatherSkill } from '../gameplay/gatheringRules';
 import type { Effects } from './Effects';
 import { fx } from './fxTextures';
 import type { EquipSlot } from '../content/gear';
-import { buildHelm, buildOffhand, buildWeapon, disposeProp } from './gearProps';
+import { buildCape, buildHelm, buildOffhand, buildWeapon, disposeProp } from './gearProps';
+import { capeDef } from '../content/cosmetics';
 import { gearTier } from '../content/gear';
 import type { GearRegion } from './gearTint';
 
@@ -50,6 +51,9 @@ export class NecromancerAvatar {
   private defaultHand = new Map<THREE.Object3D, 'main_hand' | 'off_hand'>();
   /** Equipped-gear props currently on the model, with the item id each was built from. */
   private worn = new Map<'main_hand' | 'off_hand' | 'head', { obj: THREE.Object3D; key: string }>();
+  /** The mastery cape on the back (a cosmetic: content/cosmetics.ts), and how far it has swung. */
+  private cape: { obj: THREE.Object3D; id: string } | null = null;
+  private swayT = Math.random() * 6;
   private gatheringSkill: GatherSkill | null = null;
   private gatheringTools = new Map<GatherSkill, THREE.Object3D>();
   private loadingTools = new Set<GatherSkill>();
@@ -158,6 +162,7 @@ export class NecromancerAvatar {
       obj.visible = idle && !(hand && this.worn.has(hand));
     }
     for (const w of this.worn.values()) w.obj.visible = idle;
+    if (this.cape) this.cape.obj.visible = idle;
   }
 
   /**
@@ -199,6 +204,22 @@ export class NecromancerAvatar {
     this.applyGearVisibility();
   }
 
+  /** Put a cape on (or take it off with null). Hidden while a gathering tool is out, like the rest of the worn gear. */
+  setCape(id: string | null) {
+    if (this.disposed || (this.cape?.id ?? null) === id) return;
+    if (this.cape) {
+      this.c.detach(this.cape.obj);
+      disposeProp(this.cape.obj);
+      this.cape = null;
+    }
+    const def = id ? capeDef(id) : undefined;
+    if (!def) return;
+    const obj = buildCape(def.color, def.trim);
+    this.c.attach('Spine02', obj);
+    this.cape = { obj, id: def.id };
+    obj.visible = this.gatheringSkill === null;
+  }
+
   /** World position of the staff tip (spell origin). */
   tip(out = new THREE.Vector3()): THREE.Vector3 {
     const tip = (this.worn.get('main_hand')?.obj.userData.tip as THREE.Object3D | undefined) ?? (this.staff?.userData.tip as THREE.Object3D | undefined) ?? this.tipObj;
@@ -219,6 +240,11 @@ export class NecromancerAvatar {
     }
     this.castLock = Math.max(0, this.castLock - dt);
     this.c.update(dt);
+    if (this.cape) {
+      // The cloth trails a little behind a moving hero and breathes when still.
+      this.swayT += dt * (moving ? 5 : 1.6);
+      this.cape.obj.rotation.x = (moving ? 0.17 : 0.05) + Math.sin(this.swayT) * (moving ? 0.05 : 0.02);
+    }
   }
 
   /**
@@ -238,6 +264,8 @@ export class NecromancerAvatar {
     this.disposed = true;
     for (const w of this.worn.values()) disposeProp(w.obj);
     this.worn.clear();
+    if (this.cape) disposeProp(this.cape.obj);
+    this.cape = null;
     this.c.dispose();
   }
 }

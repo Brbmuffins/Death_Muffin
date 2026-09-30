@@ -2,6 +2,7 @@ import type { ItemType, Rarity } from '../net/types';
 import { PROCESSING_ITEMS } from './processing';
 import { GARDEN_ITEMS } from './gardening';
 import { ALCHEMY_BUFFS, ALCHEMY_HEALING, ALCHEMY_ITEMS } from './alchemy';
+import { CHARM_ITEMS } from './cosmetics';
 
 /**
  * Client-side display metadata for item ids the live server knows about
@@ -107,6 +108,9 @@ export const ITEMS: Record<string, ItemMeta> = {
 
 // Grave Gardening (content/gardening.ts; server rows from migration 007-gardening.sql).
 for (const [id, g] of Object.entries(GARDEN_ITEMS)) ITEMS[id] ??= { name: g.name, type: 'material', rarity: g.rarity, sell: g.sell, lore: g.lore, stack: g.stack };
+
+// Pet charms (content/cosmetics.ts; server rows from migration 010-cosmetics.sql).
+for (const [id, c] of Object.entries(CHARM_ITEMS)) ITEMS[id] ??= { name: c.name, type: 'material', rarity: c.rarity, sell: c.sell, lore: c.lore, stack: 1 };
 
 // Alchemy (content/alchemy.ts; server rows from migration 009-alchemy.sql).
 for (const [id, a] of Object.entries(ALCHEMY_ITEMS)) ITEMS[id] ??= { name: a.name, type: 'material', rarity: a.rarity, sell: a.sell, lore: a.lore, stack: a.stack };

@@ -30,6 +30,11 @@ const TARGETS = {
     out: join(root, 'server/death-muffin/backend/gathering/garden-rules.cjs'),
     about: 'Grave Gardening rules (plots, growth, harvest rolls) shared by the web client and the Death Muffin backend.',
   },
+  cosmetics: {
+    entry: 'src/gameplay/cosmeticRules.ts',
+    out: join(root, 'server/death-muffin/backend/gathering/cosmetic-rules.cjs'),
+    about: 'Capes and pets (unlock rules) shared by the web client and the Death Muffin backend.',
+  },
   labor: {
     entry: 'src/gameplay/laborRules.ts',
     out: join(root, 'server/death-muffin/backend/gathering/labor-rules.cjs'),

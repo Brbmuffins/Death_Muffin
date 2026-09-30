@@ -1,6 +1,7 @@
 import { COMPOST_SPEED, PLOTS, seedDef, type PlotDef, type SeedDef } from '../content/gardening';
 
 export { COMPOST_ITEM, PLOTS, SEEDS, seedDef } from '../content/gardening';
+export { GARDEN_PET_CHANCE, petForSkill } from '../content/cosmetics';
 
 /**
  * Grave Gardening rules, shared by the client (panel + offline mock) and the Death Muffin backend (`npm run build:server-rules`

@@ -430,3 +430,30 @@ export function assignLabor(characterId: number, slot: number, nodeType: string 
 export function collectLabor(characterId: number, slot: number) {
   return unwrap<LaborResult>(request('/api/labor/collect', { method: 'POST', body: JSON.stringify({ characterId, slot }) }, true));
 }
+
+// --- Capes and pets (server/death-muffin/backend/cosmetics.cjs) ---
+
+export interface CosmeticsView {
+  totalLevel: number;
+  capes: { id: string; name: string; lore: string; color: number; trim: number; unlocked: boolean; have: number; need: number }[];
+  pets: { id: string; name: string; charm: string; skill: string; lore: string; adopted: boolean }[];
+  selected: { cape: string | null; pet: string | null };
+}
+
+export interface CosmeticsResult extends CosmeticsView {
+  /** Adopt only: the pet that just joined you. */
+  adopted?: string;
+}
+
+export function getCosmetics(characterId: number) {
+  return unwrap<CosmeticsView>(request(`/api/cosmetics/${characterId}`, {}, true));
+}
+
+/** Only the fields present change: `{ cape: null }` puts the cape away and leaves the pet as it was. */
+export function selectCosmetics(characterId: number, patch: { cape?: string | null; pet?: string | null }) {
+  return unwrap<CosmeticsResult>(request('/api/cosmetics/select', { method: 'POST', body: JSON.stringify({ characterId, ...patch }) }, true));
+}
+
+export function adoptPet(characterId: number, petId: string) {
+  return unwrap<CosmeticsResult>(request('/api/cosmetics/adopt', { method: 'POST', body: JSON.stringify({ characterId, petId }) }, true));
+}

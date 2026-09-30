@@ -96,7 +96,7 @@ const inWorld = (v) => Math.abs(num(v, 1e9)) <= WORLD_BOUND;
 
 /** Token bucket per socket + channel. */
 // Visible equipment: item ids per slot, shown on the hero for everyone in the world (client-side cosmetics only).
-const GEAR_SLOTS = ['head', 'chest', 'legs', 'feet', 'hands', 'main_hand', 'off_hand'];
+const GEAR_SLOTS = ['head', 'chest', 'legs', 'feet', 'hands', 'main_hand', 'off_hand', 'cape', 'pet'];
 function cleanGear(g) {
   const out = {};
   if (!g || typeof g !== 'object') return out;

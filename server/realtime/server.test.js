@@ -144,4 +144,5 @@ test('visible gear keeps only known slots and plain item ids', () => {
   assert.deepEqual(cleanGear(null), {});
   assert.deepEqual(cleanGear({ main_hand: 'sword_iron', head: 'helm_gold', ring: 'ring_copper', off_hand: 'Bad Id!', chest: 42 }), { main_hand: 'sword_iron', head: 'helm_gold' });
   assert.equal(Object.keys(cleanGear({ legs: 'x'.repeat(80) })).length, 0, 'over-long ids are dropped');
+  assert.deepEqual(cleanGear({ cape: 'cape_mining', pet: 'pet_grave_rat', ring: 'x' }), { cape: 'cape_mining', pet: 'pet_grave_rat' }, 'capes and pets ride along with the gear');
 });

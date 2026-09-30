@@ -9,6 +9,8 @@
  * client and the tests can each supply their own.
  */
 
+import { petChance, petForSkill } from '../content/cosmetics';
+
 export type SkillId = 'woodcutting' | 'mining' | 'fishing' | 'gravedigging' | 'gardening' | 'alchemy';
 /** Skills worked on world nodes (gardening uses plots, not nodes). */
 export type GatherSkill = Exclude<SkillId, 'gardening' | 'alchemy'>;
@@ -86,7 +88,12 @@ export interface NodeDef {
 export const RICH_YIELD = 1.5;
 export const RICH_RESPAWN = 0.5;
 
-const node = (d: Omit<NodeDef, 'extras'> & { extras?: LootLine[] }): NodeDef => ({ extras: [], ...d });
+/** Every node can turn up its skill's pet charm (content/cosmetics.ts): rare, and a little likelier on higher tiers. */
+const petLine = (skill: SkillId, level: number): LootLine[] => {
+  const pet = petForSkill(skill);
+  return pet ? [{ item: pet.charm, chance: petChance(level) }] : [];
+};
+const node = (d: Omit<NodeDef, 'extras'> & { extras?: LootLine[] }): NodeDef => ({ ...d, extras: [...(d.extras ?? []), ...petLine(d.skill, d.level)] });
 
 /** Crow's nests in felled trees (1/200): a seed or a mourning ring. */
 const CROWS_NEST: LootLine[] = [
