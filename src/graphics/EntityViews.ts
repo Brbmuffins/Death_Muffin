@@ -210,6 +210,8 @@ export class EntityViews {
   private enemies = new Map<number, View>();
   private thralls = new Map<number, View>();
   private corpses = new Map<number, View>();
+  /** Resonant corpses' ground rings, so they end with the corpse instead of lingering out their full timer. */
+  private corpseRings = new Map<number, Handle>();
   private dying: View[] = [];
   private fading: View[] = [];
   private frame = 0;
@@ -449,11 +451,15 @@ export class EntityViews {
           this.effects.decal({ tex: fx.disc(), color: 0x6f8f3a, x: c.x, z: c.z, r: 2.4 * c.scale, duration: 5, opacity: 0.35, pulse: 6, growFrom: 0.6 });
         }
         if (c.kind === 'resonant') {
-          this.effects.decal({ tex: fx.ring(), color: 0xc6a4ff, x: c.x, z: c.z, r: 1.2, duration: 26, opacity: 0.6, pulse: 3 });
+          if (!this.corpseRings.get(c.id)?.alive) {
+            this.corpseRings.set(c.id, this.effects.decal({ tex: fx.ring(), color: 0xc6a4ff, x: c.x, z: c.z, r: 1.2, duration: 26, opacity: 0.6, pulse: 3 }));
+          }
         }
         break;
       }
       case 'corpseGone': {
+        this.corpseRings.get(ev.id)?.kill();
+        this.corpseRings.delete(ev.id);
         const v = this.corpses.get(ev.id);
         if (!v) break;
         this.corpses.delete(ev.id);
@@ -795,6 +801,8 @@ export class EntityViews {
   }
 
   dispose() {
+    for (const h of this.corpseRings.values()) h.kill();
+    this.corpseRings.clear();
     for (const map of [this.enemies, this.thralls, this.corpses]) for (const v of map.values()) v.c.dispose();
     for (const v of [...this.dying, ...this.fading]) v.c.dispose();
     this.group.removeFromParent();
