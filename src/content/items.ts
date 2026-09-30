@@ -2,6 +2,7 @@ import type { ItemType, Rarity } from '../net/types';
 import { PROCESSING_ITEMS } from './processing';
 import { GARDEN_ITEMS } from './gardening';
 import { ALCHEMY_HEALING, ALCHEMY_ITEMS } from './alchemy';
+import { FEN_ITEMS } from './fenItems';
 import { BREWS, type BrewKind } from './brews';
 import { CHARM_ITEMS } from './cosmetics';
 import { ARMOR_PIECES } from './armorSets';
@@ -116,6 +117,9 @@ for (const [id, c] of Object.entries(CHARM_ITEMS)) ITEMS[id] ??= { name: c.name,
 
 // Alchemy (content/alchemy.ts; server rows from migration 009-alchemy.sql).
 for (const [id, a] of Object.entries(ALCHEMY_ITEMS)) ITEMS[id] ??= { name: a.name, type: 'material', rarity: a.rarity, sell: a.sell, lore: a.lore, stack: a.stack };
+
+// The Mourning Fen's herbs and seeds (content/fenItems.ts; server rows from migration 015-fen.sql).
+for (const [id, f] of Object.entries(FEN_ITEMS)) ITEMS[id] ??= { name: f.name, type: 'material', rarity: f.rarity, sell: f.sell, lore: f.lore, stack: f.stack };
 
 // Professions G6 (content/processing.ts; server rows from migration 004-processing.sql).
 for (const [id, p] of Object.entries(PROCESSING_ITEMS)) ITEMS[id] ??= { name: p.name, type: 'material', rarity: p.rarity, sell: p.sell, lore: p.lore, stack: p.stack };

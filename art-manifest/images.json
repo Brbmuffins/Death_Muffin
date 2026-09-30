@@ -7189,5 +7189,209 @@
     "rawHash": "sha256:7ba129657991d8d95a46a99ab7e2946ae4087ddf975f4aaf4152f644732cb746",
     "outHash": "sha256:eeffebb9976cea96a3ed161340a62b8361d252991bcfe8932192cab5ae78549d",
     "generatedAt": "2026-09-30T18:42:01.620Z"
+  },
+  "concept_bog_hag": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new enemy for a drowned graveyard marsh, the Mourning Fen: the Bog Hag, a stooped swamp crone in sodden rotting burial shrouds draped with pondweed and dripping reeds, pale waterlogged blue-grey skin, long tangled black hair hung with small bones and tarnished bells, milky glowing teal eyes, long thin clawed fingers, a faint cold teal witch-light seeping from her chest. Palette: bog black, waterlogged teal-grey, pale bone, cold teal glow. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally with the hands open and empty, legs straight and slightly apart, standing upright so it can be rigged. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/fen/concepts/bog_hag.png",
+    "rawHash": "sha256:263e555d8162f5ac47da8863b080b0a5887015b6d7b7360d2d2cb3f472f4b35e",
+    "outHash": "sha256:ae24025322c2cc7fc24af979614dbbf1fa461f43aada46d1677f2e601e4c6ce9",
+    "generatedAt": "2026-09-30T21:43:38.215Z"
+  },
+  "concept_drowned_sexton": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new enemy for a drowned graveyard marsh, the Mourning Fen: the Drowned Sexton, a hulking bloated drowned gravedigger half again the height of a human, swollen green-grey skin, a rotted black sexton's cassock in tatters, pondweed and pale fungus growing on the shoulders, a heavy rusted iron chain wrapped around the waist with a big rusted grave-hook hanging from its end at the hip, sodden wide-brimmed hat, hollow glowing teal eyes, thick heavy boots. Palette: rotted black, swollen green-grey, rust iron, cold teal glow. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally with the hands open and empty, legs straight and slightly apart, standing upright so it can be rigged. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/fen/concepts/drowned_sexton.png",
+    "rawHash": "sha256:15fb7211bf6ae898907fd6c3d40faf76a7377b328312f6fb35405de1711fcbf2",
+    "outHash": "sha256:9c892b40b8da9d1d6abfb1fffa543394f1c1fb1c01d2ad36a5387609ae7be1c0",
+    "generatedAt": "2026-09-30T21:43:48.305Z"
+  },
+  "concept_boss_mire_mother": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new BOSS for a drowned graveyard marsh, the Mourning Fen: the Mire Mother, a towering drowned matriarch twice human size, vast and bloated, waterlogged blue-grey skin streaked with peat, a crown of woven reeds and small bones, long black hair like dripping pondweed falling to the waist, a huge tattered drowned burial shroud trailing rotting lily-pads and roots, many small pale drowned hands clinging to her gown, milky glowing teal eyes, glowing teal-green veins across the chest and arms. Palette: bog black, waterlogged teal-grey, pale bone, cold teal glow. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally with the hands open and empty, legs straight and slightly apart, standing upright so it can be rigged. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": null,
+    "aspect": "3:4",
+    "post": null,
+    "out": "art-src/fen/concepts/boss_mire_mother.png",
+    "rawHash": "sha256:035de8092a4abc2877d31d5be20215a5d27f5f23713591325465c027130ce805",
+    "outHash": "sha256:c2e4e201d0eb85bf8a19b6fdbfce79114e3e4989a4366dd8ced8e3a50b487476",
+    "generatedAt": "2026-09-30T21:43:58.773Z"
+  },
+  "concept_mire_leech": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Creature source for 3D modeling. Design a single Mire Leech of a drowned graveyard marsh: a fat glistening bloated leech the size of a cat, black-green ringed segmented body with a pale sickly teal underbelly, a wide circular toothed sucker mouth at the front, small pale eyespots, faint teal bioluminescent dots along the back, body slightly curled in a rearing arch. Side view facing right, the entire body visible, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no water, no text, no other objects. Dark fantasy game art, clean readable silhouette.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": null,
+    "aspect": "4:3",
+    "post": null,
+    "out": "art-src/fen/concepts/mire_leech.png",
+    "rawHash": "sha256:379e975de05adc940fab68d1534e81ded57bb8b58bc8e738f4293c0d790253c8",
+    "outHash": "sha256:705370ad85806cbabb3a034b6b736dbb0796b9b238c969f1487e9ac0e8c71eb7",
+    "generatedAt": "2026-09-30T21:44:07.944Z"
+  },
+  "concept_fen_wisp": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Creature source for 3D modeling. Design a single Fen Wisp of a drowned graveyard marsh: a floating will-o-wisp, a glowing ball of cold pale teal-white fire the size of a human head with two dark hollow eyes and a faint open mouth inside it like a drowned face, a long tapering tail of curling teal mist and flame trailing down and behind, a few small drifting sparks. Front three-quarter view, the whole creature visible, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no text, no other objects. Dark fantasy game art, clean readable silhouette.",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/fen/concepts/fen_wisp.png",
+    "rawHash": "sha256:130b2be2cddba1f141e63441b15b567a880eba7d69fce53a07e0f67961c9f1ed",
+    "outHash": "sha256:99f2d02320d438d300b5160a0b17d45d9f4d38bfa4e1caac3cc3b23bce375f53",
+    "generatedAt": "2026-09-30T21:44:16.166Z"
+  },
+  "concept_prop_mire_altar": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood, aged bone, drowned moss), cold teal light. Subject: a squat sunken stone altar slab half swallowed by peat, reeds and black water, carved with drowned faces, a rotted woven reed cradle resting on top holding a small bowl of cold teal witch-fire, a few pale skulls and hanging bells at the corners, pondweed draped over the edge.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/fen/concepts/props/mire_altar.png",
+    "rawHash": "sha256:787d1cf5bab4da02510b6a309ef5e7081384a8b230af2923429af40474337d6a",
+    "outHash": "sha256:53ba9e9ea98ee6c15bdf446c6ccdae2935395c8e08f4e294c92240047f42886e",
+    "generatedAt": "2026-09-30T21:44:25.087Z"
+  },
+  "concept_prop_fen_hummock": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood, aged bone, drowned moss), cold teal light. Subject: a low flat-topped hummock of dry peat and tussock grass the size of a small island, a leaning half-sunken mossy headstone on it, a cluster of tall reeds at one side, a few pale bones, roots and black mud at the base.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/fen/concepts/props/fen_hummock.png",
+    "rawHash": "sha256:33fe6bbee6d9e39dd3e403bb002e38cc8f76db4c3587fadd49e6ce07b45a33d9",
+    "outHash": "sha256:462bd771b66505ec32e39211e936451a8ab49b2d37a02951166e36c2c283fb89",
+    "generatedAt": "2026-09-30T21:44:34.321Z"
+  },
+  "tex_fen_floor": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Seamless tileable game texture, perfectly tiling on all four edges, orthographic top-down, flat even diffuse lighting with no directional shadows, no vignette, no text, no border, fills the entire frame edge to edge. Use the attached screenshot ONLY for mood and palette (layered near-blacks, cold reflections). Subject: the floor of a drowned graveyard marsh: black peat mud with patches of dark teal-green moss and sodden leaf litter, shallow puddles of still dark water, tangled reed roots and a few pale bones pressed into the mud. Dark overall value, cold blue-green tint.",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": null,
+    "out": "art-src/fen/textures/fen_floor.png",
+    "rawHash": "sha256:5e26824f84507f29a7c4f16a440c5dcb0e91ca3ffd7404aa48d15e88b79fbbf4",
+    "outHash": "sha256:9bc23de646805650025fadc2906fdb424e665b66149c561c753299a531f395d4",
+    "generatedAt": "2026-09-30T21:54:47.784Z"
+  },
+  "item_herb_bog_myrtle": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint teal vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a sprig of bog myrtle: grey-green waxy leaves on a dark woody stem with small pale catkins and a faint teal glow",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/herb_bog_myrtle.png",
+    "rawHash": "sha256:4655a39c9a42d33e68d5783bf5855132b7ecb39462b30d1fc0cd963eaf861db5",
+    "outHash": "sha256:e12093ad53975893aaff2f2b62b50ae43726e8b41bd30826101fb3a0779bd1a5",
+    "generatedAt": "2026-09-30T21:54:56.174Z"
+  },
+  "item_herb_drowned_lotus": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint teal vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a drowned lotus: a single pale blue-white lotus flower with dripping petals on a dark stem with a round lily pad, faint teal glow",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/herb_drowned_lotus.png",
+    "rawHash": "sha256:064c751095274081473ac2bb39a5c9bfba4b6226482ae94e7bc3b52c39e611c6",
+    "outHash": "sha256:857bf7498c53ba9aa15a9f73285a634c7e3b4c0ac0e55dfaf7fa00a48e55d76c",
+    "generatedAt": "2026-09-30T21:55:03.667Z"
+  },
+  "item_seed_bog_myrtle": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint teal vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a small burlap seed pouch spilling tiny dark seeds, a sprig of grey-green bog myrtle tied to the pouch",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/seed_bog_myrtle.png",
+    "rawHash": "sha256:9c25b70702f89dc00c74e783303f0bc97b7920c8115c4f10bf559e1b235b2c2b",
+    "outHash": "sha256:9b96190d957d7b194c134be710fd1a363241db90fc368c346c5e78e1a6386d98",
+    "generatedAt": "2026-09-30T21:55:12.463Z"
+  },
+  "item_seed_drowned_lotus": {
+    "generator": "gemini",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "Dark fantasy ARPG inventory item icon, square, single object centered, painterly and readable at small size, near-black background with a faint teal vignette, no text, no border. Match the painting style, lighting and framing of the reference icon. Subject: a small burlap seed pouch spilling round pale seeds, a pale blue lotus petal tied to the pouch",
+    "refs": [
+      "public/art/items/ore_copper.png"
+    ],
+    "crop": null,
+    "aspect": "1:1",
+    "post": {
+      "resize": [
+        192,
+        192
+      ],
+      "format": "png"
+    },
+    "out": "public/art/items/seed_drowned_lotus.png",
+    "rawHash": "sha256:2a80bdf4ff36dc80e546f02f3ff8e49d1a4915436e9c2f173b1a4c2b0965e58e",
+    "outHash": "sha256:4d511b07378c2384a82cf2d8fa2f901ebf656db1766c91dd571139035e624be9",
+    "generatedAt": "2026-09-30T21:55:20.326Z"
   }
 }

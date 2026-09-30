@@ -141,10 +141,20 @@ const NODE_LIST: NodeDef[] = [
     id: 'grave_mound', skill: 'gravedigging', name: 'Burial Mound', kind: 'grave', level: 20, xp: 18, ticks: 5, item: 'bones_barrow',
     yields: [3, 5], respawnS: 18, gold: [1, 4], tint: 0x4d4632, extras: [{ item: 'ring_copper', chance: 1 / 120 }, { item: 'seed_mourning_moss', chance: 1 / 20 }, { item: 'seed_nightshade', chance: 1 / 25 }],
   }),
+  // The Mourning Fen's herbs (2026-09-30): dug from the marsh. Bog myrtle grows on the hummocks.
+  node({
+    id: 'bog_myrtle', skill: 'gravedigging', name: 'Bog Myrtle Thicket', kind: 'grave', level: 25, xp: 26, ticks: 5, item: 'herb_bog_myrtle',
+    yields: [3, 6], respawnS: 40, tint: 0x6a8a72, extras: [{ item: 'seed_bog_myrtle', chance: 1 / 16 }, { item: 'gem_grave_garnet', chance: 1 / 120 }],
+  }),
   node({
     id: 'grave_crypt', skill: 'gravedigging', name: 'Crypt Collapse', kind: 'grave', level: 40, xp: 34, ticks: 6, item: 'bones_crypt',
     yields: [3, 6], respawnS: 30, gold: [2, 6], tint: 0x5a5650,
     extras: [{ item: 'ore_silver', chance: 1 / 8 }, { item: 'reliquary_fragment', chance: 1 / 60 }, { item: 'seed_corpse_lily', chance: 1 / 25 }, { item: 'seed_wolfsbane', chance: 1 / 40 }],
+  }),
+  // ...and the drowned lotus in the open water.
+  node({
+    id: 'drowned_lotus', skill: 'gravedigging', name: 'Drowned Lotus Bed', kind: 'grave', level: 45, xp: 44, ticks: 6, item: 'herb_drowned_lotus',
+    yields: [3, 5], respawnS: 55, tint: 0x9ec4d8, extras: [{ item: 'seed_drowned_lotus', chance: 1 / 20 }, { item: 'gem_bone_opal', chance: 1 / 140 }, { item: 'gem_void_sapphire', chance: 1 / 400 }],
   }),
   node({
     id: 'grave_barrow_king', skill: 'gravedigging', name: "Barrow-King's Tomb", kind: 'grave', level: 70, xp: 70, ticks: 8, item: 'bones_ancient',

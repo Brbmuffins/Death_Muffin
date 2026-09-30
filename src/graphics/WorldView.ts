@@ -24,6 +24,7 @@ const FLOOR_TEX: Record<Theme, { url: string; tile: number; color: number; rough
   warren: { url: 'art/textures/warren_floor.webp', tile: 6, color: 0xb8ac98, rough: 0.9 },
   coliseum: { url: 'art/textures/coliseum_floor.webp', tile: 7, color: 0xc8bca8, rough: 0.9 },
   pyre: { url: 'art/textures/pyre_floor.webp', tile: 6, color: 0xd8b498, rough: 0.85 },
+  fen: { url: 'art/textures/fen_floor.webp', tile: 6, color: 0xa8c0bc, rough: 0.8 },
 };
 
 export interface LightSource {

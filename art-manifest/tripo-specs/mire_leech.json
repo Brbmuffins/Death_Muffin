@@ -1,0 +1,9 @@
+{
+  "id": "mire_leech",
+  "input": "art-src/fen/concepts/mire_leech.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 1800,
+    "texture_quality": "standard"
+  }
+}

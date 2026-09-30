@@ -36,6 +36,10 @@ const ENEMY_SLUG: Record<EnemyId, CreatureSlug> = {
   pyre_priest: 'pyre_priest',
   cinderhound: 'cinderhound',
   slag_brute: 'slag_brute',
+  bog_hag: 'bog_hag',
+  mire_leech: 'mire_leech',
+  fen_wisp: 'fen_wisp',
+  drowned_sexton: 'drowned_sexton',
 };
 
 /** Shipped models to fall back on if a newer GLB is missing (older deploys, failed builds). */
@@ -57,9 +61,13 @@ const ENEMY_FALLBACK: Partial<Record<EnemyId, CreatureSlug>> = {
   pyre_priest: 'deacon',
   cinderhound: 'bone_hound',
   slag_brute: 'bone_golem',
+  bog_hag: 'deacon',
+  mire_leech: 'skull_rat',
+  fen_wisp: 'choir_wraith',
+  drowned_sexton: 'bone_golem',
 };
 /** Enemies that cast (play 'cast' rather than 'attack' on the windup). */
-const CASTERS = new Set<EnemyId>(['penitent', 'deacon', 'wraith', 'censer', 'moth', 'seraph', 'acolyte', 'plague_doctor', 'pyre_priest']);
+const CASTERS = new Set<EnemyId>(['penitent', 'deacon', 'wraith', 'censer', 'moth', 'seraph', 'acolyte', 'plague_doctor', 'pyre_priest', 'bog_hag', 'fen_wisp']);
 /** The Cinder Pyre's dead: they shed embers and spray sparks when struck (see the per-enemy effect pass). */
 const FIRE_DEAD = new Set<EnemyId>(['cinder_husk', 'pyre_priest', 'cinderhound', 'slag_brute']);
 /** Choir Wraiths float: a hover height and a slow bob. */

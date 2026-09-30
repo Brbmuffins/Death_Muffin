@@ -65,6 +65,11 @@ const PROFILES: Record<AreaId, Kind[]> = {
     { count: 150, shape: 0, colors: [0xd8c8a8, 0xbca888], size: [0.05, 0.11], alpha: [0.25, 0.55], vy: [0.05, 0.3], drift: [0.35, 0.2], sway: 0.6, add: 0.3 },
     { count: 50, shape: 0, colors: [0xffb46b, 0xffd08a], size: [0.04, 0.08], alpha: [0.5, 0.9], vy: [0.4, 1.0], drift: [0.1, 0.1], sway: 0.5, add: 1 },
   ],
+  fen: [
+    // Cold marsh-lights drifting up off the water, and pale mist flakes sinking through the reeds.
+    { count: 170, shape: 0, colors: [0x7fe0d0, 0x5fc4b4, 0xa8f0e0], size: [0.05, 0.13], alpha: [0.35, 0.85], vy: [0.1, 0.55], drift: [0.22, 0.16], sway: 0.9, add: 1 },
+    { count: 90, shape: 1, colors: [0x46605e, 0x385250, 0x5a7270], size: [0.1, 0.2], alpha: [0.25, 0.45], vy: [-0.2, -0.04], drift: [0.35, 0.2], sway: 0.6, add: 0 },
+  ],
   pyre: [
     // Rising embers over the slag, and pale ash sifting down.
     { count: 200, shape: 0, colors: [0xff7a2a, 0xffb04a, 0xff4a1a], size: [0.05, 0.12], alpha: [0.5, 0.95], vy: [0.5, 1.6], drift: [0.25, 0.15], sway: 0.6, add: 1 },

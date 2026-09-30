@@ -79,6 +79,9 @@ export interface Enemy {
   diveX?: number;
   diveZ?: number;
   groundT?: number;
+  /** Drowned Sexton (host-only): winding up the grave-hook, and its cooldown. */
+  hooking?: boolean;
+  hookCd?: number;
   /** Tithe Bat (host-only): seconds left flitting away after a bite. */
   fleeT?: number;
   /** Barrow Ghoul (host-only): winding up an eruption on this target; has dug back in once; metres left to tunnel. */
@@ -130,6 +133,8 @@ export interface Thrall {
   rallyT?: number;
   /** Veilwalker Echo expires on the host after ten seconds. */
   echoUntil?: number;
+  /** A Bog Hag's hex: seconds left dealing less damage (snapshot flag bit 2 of the empowered field, value 4). */
+  cursedT?: number;
 }
 
 export interface Corpse {
@@ -232,7 +237,8 @@ export interface BossState {
   hp: number;
   maxHp: number;
   phase: BossPhase;
-  state: 'idle' | 'move' | 'toll' | 'slam' | 'rain' | 'summon' | 'dead';
+  /** 'sunk': the Mire Mother under the water (untargetable, hidden). */
+  state: 'idle' | 'move' | 'toll' | 'slam' | 'rain' | 'summon' | 'dead' | 'sunk';
   stateT: number;
   flash: number;
   fracture: number;
@@ -343,9 +349,11 @@ export type SimEvent =
   | { t: 'corpseGone'; id: number; reason: CorpseGoneReason; by?: string }
   | { t: 'thrall'; id: number; owner: string; kind: ThrallKind; x: number; z: number; empowered: boolean }
   | { t: 'thrallGone'; id: number; owner: string; x: number; z: number; reason: 'killed' | 'sacrificed' | 'crumbled' }
-  | { t: 'telegraph'; id: number; kind: 'cone' | 'raise' | 'curse' | 'slam' | 'toll' | 'scream' | 'dust' | 'dive' | 'erupt' | 'flask' | 'ember'; x: number; z: number; tx: number; tz: number; ms: number; r?: number }
+  | { t: 'telegraph'; id: number; kind: 'cone' | 'raise' | 'curse' | 'slam' | 'toll' | 'scream' | 'dust' | 'dive' | 'erupt' | 'flask' | 'ember' | 'hex' | 'pulse' | 'hook'; x: number; z: number; tx: number; tz: number; ms: number; r?: number }
   | { t: 'melee'; id: number; x: number; z: number; tx: number; tz: number }
-  | { t: 'hurt'; player: string; dmg: number; from: 'melee' | 'cone' | 'curse' | 'toxic' | 'boss' | 'toll' | 'scream' | 'dust' | 'erupt' | 'ember' | 'burn'; x: number; z: number; chillMs?: number }
+  | { t: 'hurt'; player: string; dmg: number; from: 'melee' | 'cone' | 'curse' | 'toxic' | 'boss' | 'toll' | 'scream' | 'dust' | 'erupt' | 'ember' | 'burn'; x: number; z: number; chillMs?: number;
+      /** Drowned Sexton: drag the player `m` metres toward (x, z), rooted for `rootMs` (players are client-simulated, so the client moves them). */
+      pull?: { x: number; z: number; m: number; rootMs: number } }
   | { t: 'thrallHit'; id: number; target: number; x: number; z: number; tx: number; tz: number; kind: ThrallKind; dmg: number }
   | { t: 'zone'; zone: Zone }
   | { t: 'zoneGone'; id: number }
@@ -431,7 +439,9 @@ export type SimEvent =
         // Plague Saint.
         | 'rotRain' | 'swing' | 'blessed' | 'link'
         // Cinder Regent.
-        | 'coals' | 'cleave' | 'conflagration';
+        | 'coals' | 'cleave' | 'conflagration'
+        // Mire Mother: surface (ripple ring, then the burst), hands, rite (phase 3), flood (phase 2/3 change).
+        | 'surface' | 'hands' | 'rite' | 'flood';
       x: number;
       z: number;
       phase: BossPhase;

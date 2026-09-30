@@ -7,8 +7,8 @@ import { armorLoot } from './armorSets';
  * (up-screen). Areas are walkable rectangles joined by door corridors that
  * stay sealed until the unlock threshold is met.
  */
-export type AreaId = 'chapterhouse' | 'acre' | 'graves' | 'ossuary' | 'nave' | 'sanctum' | 'cloister' | 'pyre' | 'warren' | 'coliseum';
-export type Theme = 'chapter' | 'acre' | 'graveyard' | 'ossuary' | 'nave' | 'sanctum' | 'cloister' | 'pyre' | 'warren' | 'coliseum';
+export type AreaId = 'chapterhouse' | 'acre' | 'graves' | 'ossuary' | 'nave' | 'sanctum' | 'cloister' | 'pyre' | 'warren' | 'coliseum' | 'fen';
+export type Theme = 'chapter' | 'acre' | 'graveyard' | 'ossuary' | 'nave' | 'sanctum' | 'cloister' | 'pyre' | 'warren' | 'coliseum' | 'fen';
 
 export interface Rect {
   x0: number;
@@ -47,7 +47,8 @@ export interface AreaDef {
   itemChance: number;
   breaches: [number, number][];
   interactables: Interactable[];
-  ambient: { fog: number; hemiSky: number; hemiGround: number; moon: number };
+  /** `fogMult` thickens (or thins) the scene fog while you are here (the Fen's heavy marsh fog). */
+  ambient: { fog: number; hemiSky: number; hemiGround: number; moon: number; fogMult?: number };
   /**
    * Level-scaled area (the Plague Cloister): its dead match the highest-level player in it, never below `minLevel`,
    * so XP per kill keeps pace with any character (docs/GRIND-LOOP.md §2). `level` is then only the floor shown in UI.
@@ -473,9 +474,59 @@ export const AREAS: Record<AreaId, AreaDef> = {
     interactables: [{ id: 'waystone_coliseum', kind: 'waystone', label: 'Waystone', x: 73.5, z: -20 }],
     ambient: { fog: 0x100c0a, hemiSky: 0x4a3a30, hemiGround: 0x0c0806, moon: 0xd0b890 },
   },
+  // The Mourning Fen (2026-09-30): a drowned graveyard marsh west of the Drowned Nave, level-scaled like the Pyre. Bog water slows
+  // whoever wades it (content/fen.ts); the dry hummocks are where you stand. Its seal is earned in the Pyre (800 kills there) but
+  // the door is the Nave's west wall: the player has cleared the Nave long before, the Pyre kills are the gate, not the walk.
+  fen: {
+    id: 'fen',
+    name: 'The Mourning Fen',
+    subtitle: 'Where the marsh keeps the names it swallows',
+    theme: 'fen',
+    rect: { x0: -60, z0: -100, x1: -22, z1: -60 },
+    safe: false,
+    level: 45,
+    scaling: { minLevel: 45 },
+    enemies: [
+      { id: 'bog_hag', weight: 18 },
+      { id: 'mire_leech', weight: 16 },
+      { id: 'fen_wisp', weight: 20 },
+      { id: 'drowned_sexton', weight: 8 },
+      { id: 'wraith', weight: 12 },
+    ],
+    cap: 26,
+    waveSize: 9,
+    waveIntervalMs: 6200,
+    eliteChance: 0.09,
+    unlock: { area: 'pyre', kills: 800 },
+    loot: [
+      ...armorLoot('fen'),
+      { item: 'gem_void_sapphire', weight: 9 },
+      { item: 'gem_bone_opal', weight: 8 },
+      { item: 'gem_grave_garnet', weight: 6 },
+      { item: 'herb_bog_myrtle', weight: 14 },
+      { item: 'herb_drowned_lotus', weight: 8 },
+      { item: 'seed_bog_myrtle', weight: 4 },
+      { item: 'seed_drowned_lotus', weight: 3 },
+      { item: 'ore_moon', weight: 7 },
+      { item: 'ingot_hell', weight: 4 },
+      { item: 'flask_hp_grand', weight: 8 },
+      { item: 'flask_void_resist', weight: 7 },
+      { item: 'flask_damage', weight: 6 },
+      { item: 'elixir_moonlight', weight: 2 },
+      { item: 'helm_gold', weight: 4 },
+    ],
+    itemChance: 0.16,
+    breaches: [[-57, -97], [-25.5, -97], [-57, -63], [-28, -63], [-41, -98.5], [-58, -80], [-41, -62]],
+    interactables: [
+      { id: 'waystone_fen', kind: 'waystone', label: 'Waystone', x: -24.8, z: -85.6 },
+      // Boss summon on the arena's north rim (content/bosses.ts summonSpot), on its own hummock.
+      { id: 'mire_altar', kind: 'boss', label: 'The Mire Altar', x: -42, z: -90.2 },
+    ],
+    ambient: { fog: 0x0a1618, hemiSky: 0x2a4a52, hemiGround: 0x060c0e, moon: 0x7ec4c4, fogMult: 1.7 },
+  },
 };
 
-export const AREA_ORDER: AreaId[] = ['chapterhouse', 'acre', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'warren', 'coliseum'];
+export const AREA_ORDER: AreaId[] = ['chapterhouse', 'acre', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'warren', 'coliseum', 'fen'];
 
 /** Areas with no seal (`unlock`) are open to everyone from the start. */
 export const isAlwaysOpen = (id: AreaId) => !AREAS[id].unlock;
@@ -491,6 +542,8 @@ export const DOORS: DoorDef[] = [
   { id: 'graves_warren', a: 'graves', b: 'warren', rect: { x0: -33, z0: -32, x1: -25, z1: -24 }, axis: 'x' },
   { id: 'ossuary_coliseum', a: 'ossuary', b: 'coliseum', rect: { x0: 63, z0: -30, x1: 71, z1: -22 }, axis: 'x' },
   { id: 'cloister_pyre', a: 'cloister', b: 'pyre', rect: { x0: 63, z0: -120, x1: 71, z1: -112 }, axis: 'x' },
+  // The Nave's west wall (between its statues); a 7 m causeway crosses the gap to the Fen's dry landing.
+  { id: 'nave_fen', a: 'nave', b: 'fen', rect: { x0: -23, z0: -81, x1: -14, z1: -73 }, axis: 'x' },
 ];
 
 /** A door is open when its far-side area is unlocked. */

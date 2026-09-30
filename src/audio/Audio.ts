@@ -858,6 +858,12 @@ class AudioEngine {
         wind(420, 0.1);
         drone(55, 0.018);
         break;
+      case 'fen':
+        // Marsh night: a thin reedy wind, a wet low drone, and the drips and creaks as accents.
+        wind(900, 0.07);
+        wind(300, 0.09);
+        drone(38.9, 0.026);
+        break;
     }
     this.ambience = { area, nodes, gain };
     this.scheduleAmbienceAccent(area);
@@ -877,6 +883,7 @@ class AudioEngine {
         pyre: ['emberCrackle', 'emberCrackle', 'graveCreak'],
         warren: ['waterDrip', 'graveCreak'],
         coliseum: ['distantBell', 'graveCreak'],
+        fen: ['waterDrip', 'waterDrip', 'graveCreak'],
       };
       const sounds = palette[area];
       const distance = 7 + Math.random() * 9;

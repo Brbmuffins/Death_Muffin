@@ -1,0 +1,65 @@
+[
+  {
+    "id": "concept_bog_hag",
+    "out": "art-src/fen/concepts/bog_hag.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new enemy for a drowned graveyard marsh, the Mourning Fen: the Bog Hag, a stooped swamp crone in sodden rotting burial shrouds draped with pondweed and dripping reeds, pale waterlogged blue-grey skin, long tangled black hair hung with small bones and tarnished bells, milky glowing teal eyes, long thin clawed fingers, a faint cold teal witch-light seeping from her chest. Palette: bog black, waterlogged teal-grey, pale bone, cold teal glow. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally with the hands open and empty, legs straight and slightly apart, standing upright so it can be rigged. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette."
+  },
+  {
+    "id": "concept_drowned_sexton",
+    "out": "art-src/fen/concepts/drowned_sexton.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new enemy for a drowned graveyard marsh, the Mourning Fen: the Drowned Sexton, a hulking bloated drowned gravedigger half again the height of a human, swollen green-grey skin, a rotted black sexton's cassock in tatters, pondweed and pale fungus growing on the shoulders, a heavy rusted iron chain wrapped around the waist with a big rusted grave-hook hanging from its end at the hip, sodden wide-brimmed hat, hollow glowing teal eyes, thick heavy boots. Palette: rotted black, swollen green-grey, rust iron, cold teal glow. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally with the hands open and empty, legs straight and slightly apart, standing upright so it can be rigged. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette."
+  },
+  {
+    "id": "concept_boss_mire_mother",
+    "out": "art-src/fen/concepts/boss_mire_mother.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new BOSS for a drowned graveyard marsh, the Mourning Fen: the Mire Mother, a towering drowned matriarch twice human size, vast and bloated, waterlogged blue-grey skin streaked with peat, a crown of woven reeds and small bones, long black hair like dripping pondweed falling to the waist, a huge tattered drowned burial shroud trailing rotting lily-pads and roots, many small pale drowned hands clinging to her gown, milky glowing teal eyes, glowing teal-green veins across the chest and arms. Palette: bog black, waterlogged teal-grey, pale bone, cold teal glow. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally with the hands open and empty, legs straight and slightly apart, standing upright so it can be rigged. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette."
+  },
+  {
+    "id": "concept_mire_leech",
+    "out": "art-src/fen/concepts/mire_leech.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "4:3",
+    "prompt": "Creature source for 3D modeling. Design a single Mire Leech of a drowned graveyard marsh: a fat glistening bloated leech the size of a cat, black-green ringed segmented body with a pale sickly teal underbelly, a wide circular toothed sucker mouth at the front, small pale eyespots, faint teal bioluminescent dots along the back, body slightly curled in a rearing arch. Side view facing right, the entire body visible, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no water, no text, no other objects. Dark fantasy game art, clean readable silhouette."
+  },
+  {
+    "id": "concept_fen_wisp",
+    "out": "art-src/fen/concepts/fen_wisp.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "Creature source for 3D modeling. Design a single Fen Wisp of a drowned graveyard marsh: a floating will-o-wisp, a glowing ball of cold pale teal-white fire the size of a human head with two dark hollow eyes and a faint open mouth inside it like a drowned face, a long tapering tail of curling teal mist and flame trailing down and behind, a few small drifting sparks. Front three-quarter view, the whole creature visible, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no text, no other objects. Dark fantasy game art, clean readable silhouette."
+  },
+  {
+    "id": "concept_prop_mire_altar",
+    "out": "art-src/fen/concepts/props/mire_altar.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood, aged bone, drowned moss), cold teal light. Subject: a squat sunken stone altar slab half swallowed by peat, reeds and black water, carved with drowned faces, a rotted woven reed cradle resting on top holding a small bowl of cold teal witch-fire, a few pale skulls and hanging bells at the corners, pondweed draped over the edge."
+  },
+  {
+    "id": "concept_prop_fen_hummock",
+    "out": "art-src/fen/concepts/props/fen_hummock.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood, aged bone, drowned moss), cold teal light. Subject: a low flat-topped hummock of dry peat and tussock grass the size of a small island, a leaning half-sunken mossy headstone on it, a cluster of tall reeds at one side, a few pale bones, roots and black mud at the base."
+  }
+]

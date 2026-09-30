@@ -1,0 +1,9 @@
+{
+  "id": "fen_wisp",
+  "input": "art-src/fen/concepts/fen_wisp.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 1500,
+    "texture_quality": "standard"
+  }
+}

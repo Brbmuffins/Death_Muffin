@@ -96,7 +96,8 @@ async function download(url, dest) {
 class Run {
   constructor(spec) {
     this.spec = spec;
-    this.dir = ensureDir(join(ART_SRC, 'tripo', spec.id));
+    // ART_SUB (e.g. `fen`) keeps a zone's raw outputs under art-src/<sub>/tripo/ instead of the shared art-src/tripo/.
+    this.dir = ensureDir(join(ART_SRC, process.env.ART_SUB ?? '', 'tripo', spec.id));
     this.statePath = join(this.dir, 'state.json');
     this.state = readJson(this.statePath, { id: spec.id, steps: {} });
   }

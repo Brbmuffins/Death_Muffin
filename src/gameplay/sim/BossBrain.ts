@@ -2,7 +2,8 @@ import { AREAS } from '../../content/areas';
 import { enemyDamageScale, enemyHpScale } from '../../content/enemies';
 import { FRACTURE } from '../../content/abilities';
 import { DIFFICULTIES } from '../../content/difficulty';
-import { ABBESS, ABBESS_NICHE_SPOTS, BOSSES, CONGREGATION, GRAVEDIGGER, GRAVEDIGGER_PITS, REGENT, SAINT, type BossId } from '../../content/bosses';
+import { ABBESS, ABBESS_NICHE_SPOTS, BOSSES, CONGREGATION, GRAVEDIGGER, GRAVEDIGGER_PITS, MIRE, REGENT, SAINT, type BossId } from '../../content/bosses';
+import { FEN_FLOOD_SCALE, FEN_HUMMOCKS, FEN_SURFACE_SPOTS, inBog, hummockAt } from '../../content/fen';
 import type { EnemyId } from '../../content/enemies';
 import type { WorldSim } from './WorldSim';
 import type { BossPhase, BossState, PlayerBody } from './types';
@@ -289,7 +290,7 @@ export abstract class BossBrain {
     const p: Pending = { kind, at: this.sim.time + (ms + delayMs) / 1000, x, z, r, ...extra };
     this.pending.push(p);
     if (!p.side) {
-      this.state.state = (['toll', 'slam', 'rain', 'summon'].includes(kind) ? kind : kind === 'rotRain' || kind === 'coals' || kind === 'conflagration' || kind === 'bury' || kind === 'hymn' || kind === 'grasp' || kind === 'chorus' || kind === 'communion' ? 'rain' : 'slam') as BossState['state'];
+      this.state.state = (['toll', 'slam', 'rain', 'summon'].includes(kind) ? kind : kind === 'rotRain' || kind === 'coals' || kind === 'conflagration' || kind === 'hands' || kind === 'rite' || kind === 'bury' || kind === 'hymn' || kind === 'grasp' || kind === 'chorus' || kind === 'communion' ? 'rain' : 'slam') as BossState['state'];
       this.state.stateT = 0;
     }
     this.sim.emit({ t: 'boss', kind: kind as never, x, z, phase: this.state.phase, targets: p.targets, r, ms: ms + delayMs, dir: p.dir, boss: this.id });
@@ -1074,6 +1075,171 @@ export class RegentBrain extends BossBrain {
   }
 }
 
+/**
+ * The Mire Mother (Mourning Fen, level-scaled). Phase 1: she sinks and resurfaces under a hummock: a ripple ring marks the spot
+ * for the whole windup, and she is winded (staggered) when she comes up. Drowned Hands root anyone wading the open water.
+ * Phase 2 floods the arena (the hummocks shrink, leeches climb out). Phase 3 she raises a Risen from every corpse in the Fen:
+ * a player who spent their corpses first starves the rite (it fails and she staggers).
+ */
+export class MireMotherBrain extends BossBrain {
+  private surfaceCd = 6;
+  private maulCd = 2;
+  private handsCd = 4;
+  private riteCd = 10;
+  /** The hummock she is surfacing under (index into FEN_HUMMOCKS), or -1 while she walks. */
+  private spot = -1;
+
+  constructor(sim: WorldSim) {
+    super(sim, 'mire');
+  }
+
+  protected onAwaken() {
+    this.surfaceCd = 6;
+    this.maulCd = 2;
+    this.handsCd = 4;
+    this.riteCd = 10;
+    this.spot = -1;
+    // She rises on the central hummock.
+    this.state.x = FEN_HUMMOCKS[1].x;
+    this.state.z = FEN_HUMMOCKS[1].z;
+  }
+
+  resume() {
+    this.spot = -1;
+    if (this.state.state === 'sunk') this.state.state = 'idle';
+    this.surfaceCd = 6;
+    this.handsCd = 4;
+    this.riteCd = 10;
+  }
+
+  /** Nothing hurts her while she is under the water. */
+  damage(amount: number, by: string, fracture: number) {
+    if (this.state.state === 'sunk') return;
+    super.damage(amount, by, fracture);
+  }
+
+  protected onDefeat() {
+    this.spot = -1;
+  }
+
+  protected onPhase(p: BossPhase) {
+    const s = this.state;
+    const wave = p === 2 ? MIRE.adds.p2 : p === 3 ? MIRE.adds.p3 : [];
+    const spots: [number, number][] = [];
+    wave.forEach((def, i) => {
+      const at = this.rim((i / wave.length) * Math.PI * 2 + 0.35, 0.9);
+      spots.push(at);
+      this.spawnAdd(def, at[0], at[1]);
+    });
+    // The flood itself is read from the phase (content/fen.ts FEN_FLOOD_SCALE): the event is the moment to show it.
+    this.sim.emit({ t: 'boss', kind: 'flood', x: s.x, z: s.z, phase: p, targets: spots, boss: this.id });
+  }
+
+  /** Corpses lying in the Fen right now (a corpse may be claimed by anything: Exhume, Litany, Offering, a detonation). */
+  private fenCorpses() {
+    return [...this.sim.corpses.values()].filter((c) => c.area === this.def.area).sort((a, b) => Math.hypot(a.x - this.arena.x, a.z - this.arena.z) - Math.hypot(b.x - this.arena.x, b.z - this.arena.z)).slice(0, MIRE.rite.maxCorpses);
+  }
+
+  protected resolve(p: Pending, players: PlayerBody[]) {
+    const M = MIRE;
+    const s = this.state;
+    if (p.kind === 'surface') {
+      const h = FEN_HUMMOCKS[this.spot] ?? FEN_HUMMOCKS[1];
+      this.spot = -1;
+      s.x = h.x;
+      s.z = h.z;
+      s.state = 'idle';
+      s.stateT = 0;
+      this.strikePlayers(players, (pl) => Math.hypot(pl.x - h.x, pl.z - h.z) <= M.surface.r + 0.3, M.surface.dmg, h.x, h.z);
+      this.hurtThralls((t) => Math.hypot(t.x - h.x, t.z - h.z) <= M.surface.r, M.surface.dmg * 0.6);
+      this.sim.emit({ t: 'boss', kind: 'surface', x: h.x, z: h.z, phase: s.phase, r: M.surface.r, ms: 0, boss: this.id });
+      // Winded: a real window to hit her (the brain pauses while staggered).
+      this.stagger(M.surface.windedS);
+      return;
+    }
+    if (p.kind === 'hands') {
+      const caught = new Set<string>();
+      for (const [cx, cz] of p.targets ?? []) for (const pl of players) if (Math.hypot(pl.x - cx, pl.z - cz) <= M.hands.r + 0.2) caught.add(pl.id);
+      for (const id of caught) this.sim.emit({ t: 'hurt', player: id, dmg: this.dmg(M.hands.dmg), from: 'boss', x: p.x, z: p.z });
+      this.hurtThralls((t) => (p.targets ?? []).some(([cx, cz]) => Math.hypot(t.x - cx, t.z - cz) <= M.hands.r), M.hands.dmg);
+      this.sim.emit({ t: 'boss', kind: 'hands', x: p.x, z: p.z, phase: s.phase, targets: p.targets, r: p.r, ms: 0, players: [...caught], root: M.hands.rootS, boss: this.id });
+      return;
+    }
+    if (p.kind === 'maul') {
+      this.strikePlayers(players, (pl) => Math.hypot(pl.x - p.x, pl.z - p.z) <= M.maul.r + 0.3 && angleDiff(angleTo(p.x, p.z, pl.x, pl.z), p.dir!) <= (M.maul.halfDeg * Math.PI) / 180, M.maul.dmg, p.x, p.z);
+      this.hurtThralls((t) => Math.hypot(t.x - p.x, t.z - p.z) <= M.maul.r && angleDiff(angleTo(p.x, p.z, t.x, t.z), p.dir!) <= (M.maul.halfDeg * Math.PI) / 180);
+      this.sim.emit({ t: 'boss', kind: 'maul', x: p.x, z: p.z, phase: s.phase, r: p.r, ms: 0, dir: p.dir, boss: this.id });
+      return;
+    }
+    if (p.kind === 'rite') {
+      // Drowned thralls rise from whatever corpses are still lying in the Fen.
+      const corpses = this.fenCorpses();
+      const at: [number, number][] = [];
+      for (const c of corpses) {
+        at.push([c.x, c.z]);
+        this.sim.removeCorpse(c, 'raised');
+        this.spawnAdd('risen', c.x, c.z);
+      }
+      this.sim.emit({ t: 'boss', kind: 'rite', x: s.x, z: s.z, phase: s.phase, targets: at, r: at.length, ms: 0, boss: this.id });
+      if (!at.length) this.stagger(M.rite.failStaggerS);
+      return;
+    }
+    super.resolve(p, players);
+  }
+
+  protected think(dt: number, players: PlayerBody[]) {
+    const M = MIRE;
+    const s = this.state;
+    if (s.state === 'sunk') return; // under the water until the ripple ring fills
+    const ph = s.phase - 1;
+    const fast = s.phase === 3 ? 0.8 : s.phase === 2 ? 0.9 : 1;
+    this.surfaceCd -= dt;
+    this.maulCd -= dt;
+    this.handsCd -= dt;
+    if (s.phase === 3) this.riteCd -= dt;
+    const { nearest, nd } = this.nearest(players);
+    if (!this.busy) {
+      if (s.phase === 3 && this.riteCd <= 0) {
+        this.riteCd = M.rite.cd * fast;
+        // The beams are drawn to the corpses that exist right now; whatever is gone by the end of the windup is denied her.
+        this.telegraph('rite', s.x, s.z, this.arena.r, M.rite.windupMs, { targets: this.fenCorpses().map((c) => [c.x, c.z] as [number, number]) });
+      } else if (this.surfaceCd <= 0) {
+        this.surfaceCd = M.surface.cd[ph];
+        // She hunts: usually the hummock a player is standing on, otherwise any of the ring.
+        const scale = FEN_FLOOD_SCALE[s.phase];
+        const standing = FEN_SURFACE_SPOTS.filter((i) => players.some((pl) => Math.hypot(pl.x - FEN_HUMMOCKS[i].x, pl.z - FEN_HUMMOCKS[i].z) <= FEN_HUMMOCKS[i].r * scale + 0.5));
+        const pool = standing.length && this.sim.rand() < M.surface.huntChance ? standing : FEN_SURFACE_SPOTS;
+        this.spot = pool[Math.floor(this.sim.rand() * pool.length)];
+        const h = FEN_HUMMOCKS[this.spot];
+        this.telegraph('surface', h.x, h.z, M.surface.r, M.surface.windupMs[ph]);
+        // She slips under now; the ring fills over her new hummock.
+        s.state = 'sunk';
+        s.stateT = 0;
+        s.x = h.x;
+        s.z = h.z;
+        return;
+      } else if (this.handsCd <= 0) {
+        this.handsCd = M.hands.cd[ph];
+        const [lo, hi] = M.hands.rings;
+        const n = lo + Math.floor(this.sim.rand() * (hi - lo + 1));
+        // Hands reach for anyone wading the open water (players on dry ground are safe from them).
+        const wading = players.filter((pl) => inBog(pl.x, pl.z) && !hummockAt(pl.x, pl.z, FEN_FLOOD_SCALE[s.phase]));
+        const targets: [number, number][] = wading.map((pl) => [pl.x, pl.z]);
+        while (targets.length < n) {
+          const a = this.sim.rand() * Math.PI * 2;
+          const r = 2 + this.sim.rand() * (this.arena.r - 3);
+          targets.push([this.arena.x + Math.sin(a) * r, this.arena.z + Math.cos(a) * r]);
+        }
+        this.telegraph('hands', s.x, s.z, M.hands.r, M.hands.windupMs, { targets: targets.slice(0, Math.max(n, wading.length)) });
+      } else if (this.maulCd <= 0 && nd < M.maul.r + 0.5) {
+        this.maulCd = M.maul.cd * fast;
+        this.telegraph('maul', s.x, s.z, M.maul.r, M.maul.windupMs, { dir: angleTo(s.x, s.z, nearest.x, nearest.z) });
+      }
+    }
+    this.chase(nearest, nd, (s.phase === 3 ? 2 : s.phase === 2 ? 1.75 : 1.5) * (this.busy ? 0.3 : 1), dt, 2.5, 2.8);
+  }
+}
+
 export function makeBossBrains(sim: WorldSim): Record<BossId, BossBrain> {
   return {
     prelate: new PrelateBrain(sim),
@@ -1082,5 +1248,6 @@ export function makeBossBrains(sim: WorldSim): Record<BossId, BossBrain> {
     congregation: new CongregationBrain(sim),
     saint: new SaintBrain(sim),
     regent: new RegentBrain(sim),
+    mire: new MireMotherBrain(sim),
   };
 }

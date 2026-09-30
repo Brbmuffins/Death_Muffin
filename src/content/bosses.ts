@@ -1,12 +1,13 @@
 import type { AreaId } from './areas';
+import { FEN_ARENA } from './fen';
 
 /**
  * A boss for every area (docs/agent-briefs/area-bosses.md). One awake boss per world. The Bell-Sworn Prelate keeps
  * its numbers; the three new bosses each have one mechanic that matters (graves / niches + corpses / pews).
  * Colours are enemy language only.
  */
-export type BossId = 'prelate' | 'gravedigger' | 'abbess' | 'congregation' | 'saint' | 'regent';
-export const BOSS_IDS: BossId[] = ['gravedigger', 'abbess', 'congregation', 'prelate', 'saint', 'regent'];
+export type BossId = 'prelate' | 'gravedigger' | 'abbess' | 'congregation' | 'saint' | 'regent' | 'mire';
+export const BOSS_IDS: BossId[] = ['gravedigger', 'abbess', 'congregation', 'prelate', 'saint', 'regent', 'mire'];
 
 export interface BossDef {
   id: BossId;
@@ -19,7 +20,7 @@ export interface BossDef {
   summonLabel: string;
   shards: number;
   baseHp: number;
-  modelSlug: 'prelate' | 'boss_gravedigger_king' | 'boss_bone_abbess' | 'boss_drowned_congregation' | 'boss_plague_saint' | 'boss_cinder_regent';
+  modelSlug: 'prelate' | 'boss_gravedigger_king' | 'boss_bone_abbess' | 'boss_drowned_congregation' | 'boss_plague_saint' | 'boss_cinder_regent' | 'boss_mire_mother';
   portrait: string;
   /** Aura light + particle colour for the view. */
   color: number;
@@ -116,6 +117,23 @@ export const BOSSES: Record<BossId, BossDef> = {
     awaken: 'The Regent rises from the embers',
     defeated: ['The Pyre Burns Out', 'The Cinder Regent crumbles to ash'],
   },
+  mire: {
+    id: 'mire',
+    name: 'The Mire Mother',
+    title: 'Drowned Matriarch of the Mourning Fen',
+    area: 'fen',
+    arena: FEN_ARENA,
+    summonId: 'mire_altar',
+    summonLabel: 'The Mire Altar',
+    shards: 7,
+    baseHp: 32000,
+    modelSlug: 'boss_mire_mother',
+    portrait: '',
+    color: 0x5fc4b4,
+    phases: ['She sinks, and surfaces', 'The marsh floods', 'The drowned rise'],
+    awaken: 'The Mire Mother wakes beneath the hummocks',
+    defeated: ['The Marsh Goes Still', 'The Mire Mother sinks for the last time'],
+  },
   prelate: {
     id: 'prelate',
     name: 'The Bell-Sworn Prelate',
@@ -188,6 +206,24 @@ export const REGENT = {
   conflagration: { safe: [4, 3, 2] as [number, number, number], safeR: 2.7, windupMs: 2700, dmg: 46, cd: 15, embers: 4, emberS: 4 },
   /** Phase adds ring the arena on the change. */
   adds: { p2: ['cinder_husk', 'cinder_husk', 'cinder_husk', 'pyre_priest', 'pyre_priest'], p3: ['cinderhound', 'cinderhound', 'cinder_husk', 'cinder_husk'] } as const,
+};
+
+/**
+ * The Mire Mother (Mourning Fen, level-scaled). She sinks and resurfaces under a hummock (a ripple ring marks the spot for the
+ * whole windup: leave the island, then punish her while she is winded). Phase 2 floods the arena: the hummocks shrink, the
+ * water slows you more, and the marsh sends leeches. Phase 3 she raises drowned thralls from every corpse lying in the Fen:
+ * spend your corpses first (Exhume, Litany, Offering, Corpse Explosion) and the rite finds nothing and leaves her staggered.
+ */
+export const MIRE = {
+  /** Resurface: a ripple ring on a hummock; it bursts for `dmg` when the windup ends. `cdP` = seconds between resurfaces per phase. */
+  surface: { r: 3.7, windupMs: [2300, 2000, 1750] as [number, number, number], dmg: 42, cd: [13, 11, 9.5] as [number, number, number], windedS: 2.8, huntChance: 0.65 },
+  maul: { r: 3.4, halfDeg: 60, windupMs: 900, dmg: 26, cd: 3.2 },
+  /** Drowned hands rise under players wading in the open water and root them. */
+  hands: { rings: [2, 4] as [number, number], r: 1.5, windupMs: 1300, dmg: 15, rootS: 1, cd: [9, 7.5, 6.5] as [number, number, number] },
+  /** Phase 3: raise a Risen from each corpse in the Fen (at most `maxCorpses`); none left = the rite fails and she staggers. */
+  rite: { windupMs: 2600, maxCorpses: 6, cd: 13, failStaggerS: 3 },
+  /** Phase adds ring the arena on the change. */
+  adds: { p2: ['mire_leech', 'mire_leech', 'mire_leech', 'mire_leech', 'mire_leech', 'mire_leech'], p3: ['bog_hag', 'bog_hag', 'mire_leech', 'mire_leech', 'mire_leech', 'mire_leech'] } as const,
 };
 
 /** Drowned Congregation. */
