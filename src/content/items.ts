@@ -5,6 +5,7 @@ import { ALCHEMY_HEALING, ALCHEMY_ITEMS } from './alchemy';
 import { BREWS, type BrewKind } from './brews';
 import { CHARM_ITEMS } from './cosmetics';
 import { ARMOR_PIECES } from './armorSets';
+import { REAGENT_BREW_ITEMS, REAGENT_ITEMS, reagentIcon } from './reagents';
 
 /**
  * Client-side display metadata for item ids the live server knows about
@@ -116,6 +117,10 @@ for (const [id, c] of Object.entries(CHARM_ITEMS)) ITEMS[id] ??= { name: c.name,
 
 // Alchemy (content/alchemy.ts; server rows from migration 009-alchemy.sql).
 for (const [id, a] of Object.entries(ALCHEMY_ITEMS)) ITEMS[id] ??= { name: a.name, type: 'material', rarity: a.rarity, sell: a.sell, lore: a.lore, stack: a.stack };
+
+// Reagents, zone herbs, boss ichors and the brews made from them (content/reagents.ts; server rows from migration 014-alchemy-reagents.sql).
+for (const [id, r] of Object.entries(REAGENT_ITEMS)) ITEMS[id] ??= { name: r.name, type: 'material', rarity: r.rarity, sell: r.sell, lore: r.lore, stack: r.stack, icon: reagentIcon(id) };
+for (const [id, r] of Object.entries(REAGENT_BREW_ITEMS)) ITEMS[id] ??= { name: r.name, type: 'material', rarity: r.rarity, sell: r.sell, lore: r.lore, stack: r.stack, icon: reagentIcon(id) };
 
 // Professions G6 (content/processing.ts; server rows from migration 004-processing.sql).
 for (const [id, p] of Object.entries(PROCESSING_ITEMS)) ITEMS[id] ??= { name: p.name, type: 'material', rarity: p.rarity, sell: p.sell, lore: p.lore, stack: p.stack };

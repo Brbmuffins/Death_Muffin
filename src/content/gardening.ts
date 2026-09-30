@@ -61,6 +61,9 @@ export const SEEDS: SeedDef[] = [
   herb('wolfsbane', 45, 80, 30, 315, [4, 7]),
   herb('bloodroot', 60, 100, 42, 480, [4, 8]),
   herb('moonpetal', 75, 120, 60, 690, [5, 9]),
+  // Zone herbs (content/reagents.ts): foraged in the Cloister and the Pyre, grown in the Acre. Their items live in reagents.ts so migration 007 stays as applied.
+  herb('rot_cap', 35, 75, 26, 360, [3, 6]),
+  herb('ash_bloom', 50, 90, 34, 450, [3, 6]),
   { id: 'sapling_oak', kind: 'tree', level: 10, growMin: 120, harvest: 'log_oak', yields: [14, 24], plantXp: 25, harvestXp: 225, seedBack: 0.15 },
   { id: 'sapling_yew', kind: 'tree', level: 40, growMin: 360, harvest: 'log_yew', yields: [10, 18], plantXp: 60, harvestXp: 630, seedBack: 0.15 },
 ];

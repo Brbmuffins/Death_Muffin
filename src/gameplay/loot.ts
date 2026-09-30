@@ -6,6 +6,8 @@ import { saveInventory } from '../net/api';
 import type { InventorySlot } from '../net/types';
 import { pickWeighted, randInt } from './rng';
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
+import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS, bossIchor } from '../content/reagents';
+import type { BossId } from '../content/bosses';
 
 export const BAG_COLS = 6;
 export const BAG_ROWS = 4;
@@ -28,7 +30,7 @@ export interface KillReward {
  * kill rolls their own — no contention, PvE-only assumption). Item ids are
  * restricted to ids the live server knows (content/items.ts).
  */
-export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boolean, waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium', itemChanceMult = 1): KillReward {
+export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boolean, waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium', itemChanceMult = 1, reagentRand: () => number = Math.random): KillReward {
   const d = ENEMIES[def];
   const a = AREAS[area];
   const mods = waveModifiers(waveTier);
@@ -39,8 +41,24 @@ export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boole
   const items: LootDrop[] = [];
   const chance = Math.min(1, a.itemChance * mods.itemChanceMult * itemChanceMult * (elite ? 6 : 1));
   if (a.loot.length && rand() < chance) items.push(rollItem(area, rand));
+  // Reagents use their own stream: a seeded `rand` (balance harness, tests) keeps the same sequence it always had.
+  items.push(...rollReagents(def, area, elite, itemChanceMult, reagentRand));
   const xp = Math.round(d.xp * (1 + 0.25 * (level - 1)) * diff * (elite ? ELITE.xpMult : 1));
   return { gold, shards, items, xp };
+}
+
+/**
+ * Reagent drops (content/reagents.ts): independent of the area loot roll, per area and per enemy kind. Elites roll more
+ * often, a fortune tonic helps, and nothing is rolled (no rand consumed) where no reagent can drop.
+ */
+export function rollReagents(def: EnemyId, area: AreaId, elite: boolean, itemChanceMult = 1, rand = Math.random): LootDrop[] {
+  const specs = [...(AREA_REAGENT_DROPS[area] ?? []), ...(ENEMY_REAGENT_DROPS[def] ?? [])];
+  const out: LootDrop[] = [];
+  for (const s of specs) {
+    if (rand() >= Math.min(1, s.chance * itemChanceMult * (elite ? ELITE_REAGENT_MULT : 1))) continue;
+    out.push({ item_id: s.item, quantity: randInt(rand, s.qty[0], s.qty[1]) });
+  }
+  return out;
 }
 
 export function rollItem(area: AreaId, rand = Math.random): LootDrop {
@@ -51,13 +69,16 @@ export function rollItem(area: AreaId, rand = Math.random): LootDrop {
 
 /**
  * A boss's spoils. The Prelate's are unchanged (Sanctum loot, 3 shards back); an area boss rolls its own area's
- * loot and scales gold/XP by its shard cost (2/3/4 of the Prelate's 5) and returns fewer shards.
+ * loot and scales gold/XP by its shard cost (2/3/4 of the Prelate's 5) and returns fewer shards. Pass the boss id and
+ * the spoils always include its ichor.
  */
-export function rollBoss(waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium', area: AreaId = 'sanctum', costShards = 5): KillReward {
+export function rollBoss(waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium', area: AreaId = 'sanctum', costShards = 5, boss?: BossId): KillReward {
   const mods = waveModifiers(waveTier);
   const diff = DIFFICULTIES[difficulty].rewardMult;
   const k = costShards / 5;
   const items = [rollItem(area, rand), rollItem(area, rand), rollItem(area, rand)];
+  // Every boss leaves exactly one ichor: the top-tier Alchemy reagent (content/reagents.ts).
+  if (boss) items.push({ item_id: bossIchor(boss), quantity: 1 });
   return { gold: Math.round(320 * k * mods.rewardMult * diff), shards: costShards >= 5 ? 3 : Math.max(1, costShards - 1), items, xp: Math.round(900 * k * diff) };
 }
 

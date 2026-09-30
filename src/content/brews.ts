@@ -5,6 +5,8 @@
  * (see the table in docs/ALCHEMY-AND-WORLDS-PLAN.md, Part 1 A). Pure helpers live here so they can be unit-tested.
  */
 
+import { REAGENT_BREWS } from './reagents';
+
 export type BrewSlot = 'elixir' | 'tonic';
 
 export type BrewKind =
@@ -25,12 +27,15 @@ export interface BrewDef {
 }
 
 /** Existing flasks keep their ids and values; new brews are added as rows here. */
-export const BREWS: Record<string, BrewDef> = {
+const BASE_BREWS: Record<string, BrewDef> = {
   flask_damage: { slot: 'elixir', effects: [{ kind: 'damage', value: 0.15 }], seconds: 45, label: 'Forge-tempered', color: 0xffa060, glyph: '✦' },
   elixir_moonlight: { slot: 'elixir', effects: [{ kind: 'damage', value: 0.25 }], seconds: 60, label: 'Moonlit', color: 0xbcd0ff, glyph: '☾' },
   flask_void_resist: { slot: 'elixir', effects: [{ kind: 'ward', value: 0.25 }], seconds: 90, label: 'Warded', color: 0xb9c8ff, glyph: '◈' },
   flask_speed: { slot: 'tonic', effects: [{ kind: 'speed', value: 0.2 }], seconds: 30, label: 'Swift', color: 0x9ff5e0, glyph: '≫' },
 };
+
+/** The four original flasks and elixirs plus the reagent brews (content/reagents.ts). */
+export const BREWS: Record<string, BrewDef> = { ...BASE_BREWS, ...REAGENT_BREWS };
 
 export const BREW_SLOTS: BrewSlot[] = ['elixir', 'tonic'];
 /** Belt quick-keys. F is reserved for throwable concoctions (Phase B). */

@@ -201,9 +201,9 @@ export interface NodePlacement {
 }
 
 /** Collider radius per node kind (fishing spots sit on the water and block nothing). */
-export const NODE_COLLIDER: Record<NodeKind, number> = { tree: 0.6, seam: 0.75, geode: 0.9, pool: 0, grave: 0.7 };
+export const NODE_COLLIDER: Record<NodeKind, number> = { tree: 0.6, seam: 0.75, geode: 0.9, pool: 0, grave: 0.7, herb: 0.4 };
 /** How far from a node's centre the gatherer stands to work it. */
-export const NODE_REACH: Record<NodeKind, number> = { tree: 1.35, seam: 1.45, geode: 1.6, pool: 1.5, grave: 1.4 };
+export const NODE_REACH: Record<NodeKind, number> = { tree: 1.35, seam: 1.45, geode: 1.6, pool: 1.5, grave: 1.4, herb: 1.3 };
 
 export interface WorldLayout {
   /** Flagstone paths laid over earthen floors. */
@@ -671,6 +671,13 @@ function richNodes(nodes: NodePlacement[], props: Placement[]) {
     ['nave', 'bleeding_willow', [[-12.8, -47], [12.8, -94]]],
     ['sanctum', 'geode_moon', [[-16.2, -113], [-16.2, -121]]],
     ['sanctum', 'geode_moon', [[16.2, -120], [16.2, -113]]],
+    // Zone herb patches (docs/ALCHEMY-AND-WORLDS-PLAN.md §D): three each, kept off the boss arenas (Saint 44,-121 r10; Regent 90,-117 r11) and doors.
+    ['cloister', 'rot_cap_patch', [[58, -104], [60, -128], [30, -128], [32, -102]]],
+    ['cloister', 'rot_cap_patch', [[30, -126], [62, -108], [38, -101], [56, -131]]],
+    ['cloister', 'rot_cap_patch', [[62, -130], [28, -102], [50, -102], [32, -131]]],
+    ['pyre', 'ash_bloom_patch', [[76, -102], [106, -104], [76, -131], [106, -131]]],
+    ['pyre', 'ash_bloom_patch', [[106, -131], [80, -101], [74, -126], [104, -101]]],
+    ['pyre', 'ash_bloom_patch', [[92, -101], [108, -112], [108, -124], [74, -130]]],
   ];
   const spots = interactSpots();
   for (const [area, type, cands] of wants) {

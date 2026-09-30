@@ -138,6 +138,7 @@ export class NecromancerAvatar {
       mining: { id: 'tool_pickaxe', length: 1.2 },
       fishing: { id: 'tool_fishing_rod', length: 1.45 },
       gravedigging: { id: 'tool_spade', length: 1.2 },
+      gardening: { id: 'tool_spade', length: 1.2 }, // foraging the zone herb patches
     }[skill];
     this.loadingTools.add(skill);
     void assets.model(PROP_URL(tool.id), tool.length).then((template) => {

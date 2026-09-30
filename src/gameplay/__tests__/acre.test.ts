@@ -60,7 +60,8 @@ describe("the Sexton's Acre", () => {
 
   it('holds every node type, each inside the area and off the lane, doors and stations', () => {
     const acre = layout.nodes.filter((n) => n.area === 'acre');
-    for (const id of NODE_IDS) expect(acre.some((n) => n.type === id), id).toBe(true);
+    // Zone herb patches (gardening nodes) are zone-only by design: they grow in the Cloister and the Pyre, not the Acre.
+    for (const id of NODE_IDS.filter((i) => NODES[i].skill !== 'gardening')) expect(acre.some((n) => n.type === id), id).toBe(true);
     for (const n of layout.nodes) {
       expect(inside(AREAS[n.area].rect, n.x, n.z, 0.5), n.id).toBe(true);
       for (const d of DOORS) expect(inside({ x0: d.rect.x0 - 1.5, z0: d.rect.z0 - 1.5, x1: d.rect.x1 + 1.5, z1: d.rect.z1 + 1.5 }, n.x, n.z), `${n.id} on ${d.id}`).toBe(false);

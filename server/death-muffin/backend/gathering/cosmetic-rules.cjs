@@ -179,7 +179,11 @@ var NODE_LIST = [
       { item: "chest_iron", chance: 1 / 700 },
       { item: "kit_iron_warden", chance: 1 / 800 }
     ]
-  })
+  }),
+  // Zone herb patches (docs/ALCHEMY-AND-WORLDS-PLAN.md §D): foraged in the Cloister and the Pyre, level 1 so a fresh
+  // gardener can start here; the seeds drop too and grow in the Acre. Gardening XP, no tool.
+  node({ id: "rot_cap_patch", skill: "gardening", name: "Rot-cap Patch", kind: "herb", level: 1, xp: 16, ticks: 5, item: "herb_rot_cap", yields: [3, 6], respawnS: 40, extras: [{ item: "seed_rot_cap", chance: 1 / 10 }], tint: 9416250 }),
+  node({ id: "ash_bloom_patch", skill: "gardening", name: "Ash-bloom Patch", kind: "herb", level: 1, xp: 22, ticks: 5, item: "herb_ash_bloom", yields: [3, 6], respawnS: 40, extras: [{ item: "seed_ash_bloom", chance: 1 / 10 }], tint: 14708794 })
 ];
 var NODES = Object.fromEntries(NODE_LIST.map((n) => [n.id, n]));
 var NODE_IDS = NODE_LIST.map((n) => n.id);
