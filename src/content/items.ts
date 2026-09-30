@@ -1,6 +1,7 @@
 import type { ItemType, Rarity } from '../net/types';
 import { PROCESSING_ITEMS } from './processing';
 import { GARDEN_ITEMS } from './gardening';
+import { ALCHEMY_BUFFS, ALCHEMY_HEALING, ALCHEMY_ITEMS } from './alchemy';
 
 /**
  * Client-side display metadata for item ids the live server knows about
@@ -107,6 +108,9 @@ export const ITEMS: Record<string, ItemMeta> = {
 // Grave Gardening (content/gardening.ts; server rows from migration 007-gardening.sql).
 for (const [id, g] of Object.entries(GARDEN_ITEMS)) ITEMS[id] ??= { name: g.name, type: 'material', rarity: g.rarity, sell: g.sell, lore: g.lore, stack: g.stack };
 
+// Alchemy (content/alchemy.ts; server rows from migration 009-alchemy.sql).
+for (const [id, a] of Object.entries(ALCHEMY_ITEMS)) ITEMS[id] ??= { name: a.name, type: 'material', rarity: a.rarity, sell: a.sell, lore: a.lore, stack: a.stack };
+
 // Professions G6 (content/processing.ts; server rows from migration 004-processing.sql).
 for (const [id, p] of Object.entries(PROCESSING_ITEMS)) ITEMS[id] ??= { name: p.name, type: 'material', rarity: p.rarity, sell: p.sell, lore: p.lore, stack: p.stack };
 
@@ -137,9 +141,11 @@ export const BUFF_FLASKS: Record<string, { kind: 'speed' | 'damage' | 'ward'; va
   flask_speed: { kind: 'speed', value: 0.2, seconds: 30, label: 'Swift' },
   flask_damage: { kind: 'damage', value: 0.15, seconds: 45, label: 'Forge-tempered' },
   flask_void_resist: { kind: 'ward', value: 0.25, seconds: 90, label: 'Warded' },
+  ...ALCHEMY_BUFFS,
 };
 
 export const HEALING_FLASKS: Record<string, number> = {
   flask_hp_major: 0.7,
   flask_hp_minor: 0.35,
+  ...ALCHEMY_HEALING,
 };

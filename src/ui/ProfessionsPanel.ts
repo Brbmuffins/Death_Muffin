@@ -1,5 +1,8 @@
 import type { Skills } from '../gameplay/Gathering';
-import { ALL_SKILLS, LEVEL_CAP, SKILLS, TOOL_KIND, nodesForSkill, toolItemId, toolTierFor, type SkillId } from '../gameplay/gatheringRules';
+import { ALL_SKILLS, GATHER_SKILLS, LEVEL_CAP, SKILLS, TOOL_KIND, nodesForSkill, toolItemId, toolTierFor, type GatherSkill, type SkillId } from '../gameplay/gatheringRules';
+
+/** Gardening and alchemy have no nodes to work: they live in the Garden panel and at the Workbench. */
+const isGather = (id: SkillId): id is GatherSkill => (GATHER_SKILLS as SkillId[]).includes(id);
 import { itemMeta } from '../content/items';
 
 /** What each skill is for, and where its processing happens (roadmap §3). */
@@ -8,7 +11,8 @@ const BLURB: Record<SkillId, string> = {
   mining: 'Mine ore seams and geodes. The Bone Kiln smelts ore into ingots and gear.',
   fishing: 'Fish the drifting spots on black water. The Cooking Fire renders fish into fillets and flasks.',
   gravedigging: 'Dig pauper’s graves, mounds and tombs for bones, grave goods and a little gold.',
-  gardening: 'Mourning beds and tree patches are still being dug in the Acre. Seeds you find will keep.',
+  gardening: 'Plant seeds and saplings in the Mourning Beds and Coffin Patches (Garden, U). They grow while you are away.',
+  alchemy: 'Brew herbs and bone meal into flasks and elixirs at the Workbench (C, Alchemy tab).',
 };
 
 /**
@@ -71,15 +75,17 @@ export class ProfessionsPanel {
       const s = skills.shown(id);
       const capped = s.level >= LEVEL_CAP;
       const pct = capped ? 100 : Math.min(100, Math.round((s.xp / s.next) * 100));
-      const nextNode = id === 'gardening' ? null : nodesForSkill(id).find((n) => n.level > s.level);
+      const nextNode = !isGather(id) ? null : nodesForSkill(id).find((n) => n.level > s.level);
       const unlock = capped
         ? 'Mastered.'
         : nextNode
           ? `Level ${nextNode.level}: ${nextNode.name}`
           : id === 'gardening'
-            ? 'Not open yet.'
-            : 'Every node is open to you.';
-      const choices = id === 'gardening' ? [] : nodesForSkill(id).filter(n => n.level <= skills.gateLevel(id));
+            ? 'Plant in the Garden (U).'
+            : id === 'alchemy'
+              ? 'Brew at the Workbench (C).'
+              : 'Every node is open to you.';
+      const choices = !isGather(id) ? [] : nodesForSkill(id).filter(n => n.level <= skills.gateLevel(id));
       const selected = selections.get(id) ?? choices[0]?.id;
       const afk = this.afk && choices.length ? `<div class="cw-afk-controls">
         <select data-afk-node="${id}" aria-label="${meta.name} gathering node" ${this.busy ? 'disabled' : ''}>${choices.map(n => `<option value="${n.id}" ${n.id === selected ? 'selected' : ''}>${n.name} · level ${n.level}</option>`).join('')}</select>

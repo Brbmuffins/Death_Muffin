@@ -1003,7 +1003,8 @@ const PROFESSION_NAMES = Object.freeze({
   fishing: 'Fishing',
   mining: 'Mining',
   gravedigging: 'Gravedigging',
-  gardening: 'Grave Gardening'
+  gardening: 'Grave Gardening',
+  alchemy: 'Alchemy'
 });
 const VALID_PROFESSION_IDS = new Set(Object.keys(PROFESSION_NAMES));
 
@@ -1095,7 +1096,7 @@ app.get('/api/professions/recipes/:characterId', requireJWT, async (req, res) =>
     'SELECT profession_id, skill_level FROM professions WHERE character_id = ?',
     [characterId]
   );
-  const levels = { woodcutting: 1, fishing: 1, mining: 1, gravedigging: 1, gardening: 1 }; // defaults
+  const levels = { woodcutting: 1, fishing: 1, mining: 1, gravedigging: 1, gardening: 1, alchemy: 1 }; // defaults
   for (const p of profs) levels[p.profession_id] = p.skill_level;
 
   // Load all recipes with ingredients + result item name

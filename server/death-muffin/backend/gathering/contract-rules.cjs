@@ -246,6 +246,39 @@ for (const [id, name, rarity, sell, seedSell, lore] of HERBS) {
 GARDEN_ITEMS.sapling_oak = { name: "Coffin-Oak Sapling", rarity: "common", sell: 6, lore: "Plant it in a Coffin Patch and come back in a couple of hours.", stack: 250 };
 GARDEN_ITEMS.sapling_yew = { name: "Churchyard Yew Sapling", rarity: "uncommon", sell: 20, lore: "Slow, patient and worth the wait.", stack: 250 };
 
+// src/content/alchemy.ts
+var ALCHEMY_ITEMS = {
+  flask_hp_grand: {
+    name: "Grand Healing Flask",
+    rarity: "rare",
+    sell: 45,
+    lore: "Bloodroot and corpse-lily, brewed until the glass runs warm. Restores 90% health. Press Q.",
+    stack: 99,
+    stat: { value: 150, effect: "hp_regen", duration: 60 }
+  },
+  elixir_moonlight: {
+    name: "Moonlight Elixir",
+    rarity: "epic",
+    sell: 120,
+    lore: "+25% spell damage for 60 seconds. It glows faintly, and the dead lean toward it.",
+    stack: 99,
+    stat: { value: 0.25, effect: "damage_amp", duration: 60 }
+  }
+};
+var ALCHEMY_HEALING = { flask_hp_grand: 0.9 };
+var ALCHEMY_BUFFS = {
+  elixir_moonlight: { kind: "damage", value: 0.25, seconds: 60, label: "Moonlit" }
+};
+var ALCHEMY_RECIPES = [
+  ["brew_moss_tonic", "Brew Moss Tonic", "alchemy", 1, "flask_hp_minor", 3, [["herb_mourning_moss", 3]]],
+  ["brew_nightshade_draught", "Brew Nightshade Draught", "alchemy", 12, "flask_hp_major", 2, [["herb_nightshade", 3], ["bone_meal", 1]]],
+  ["brew_swift_tincture", "Brew Swift Tincture", "alchemy", 18, "flask_speed", 2, [["herb_nightshade", 2], ["herb_mourning_moss", 2]]],
+  ["brew_lily_tempering", "Brew Lily Tempering", "alchemy", 32, "flask_damage", 2, [["herb_corpse_lily", 3], ["bone_meal", 2]]],
+  ["brew_wolfsbane_ward", "Brew Wolfsbane Ward", "alchemy", 45, "flask_void_resist", 2, [["herb_wolfsbane", 3]]],
+  ["brew_bloodroot_grand", "Brew Grand Healing Flask", "alchemy", 58, "flask_hp_grand", 2, [["herb_bloodroot", 3], ["herb_corpse_lily", 1]]],
+  ["brew_moonpetal_elixir", "Brew Moonlight Elixir", "alchemy", 72, "elixir_moonlight", 1, [["herb_moonpetal", 3], ["herb_bloodroot", 1]]]
+];
+
 // src/content/items.ts
 var m = (name, rarity, sell, lore, icon) => ({
   name,
@@ -330,10 +363,22 @@ var ITEMS = {
   kit_iron_warden: { name: "Iron Warden Kit", type: "trinket", rarity: "rare", sell: 55, offlineStats: { stat_vit: 4, stat_int: 4 } }
 };
 for (const [id, g2] of Object.entries(GARDEN_ITEMS)) ITEMS[id] ??= { name: g2.name, type: "material", rarity: g2.rarity, sell: g2.sell, lore: g2.lore, stack: g2.stack };
+for (const [id, a] of Object.entries(ALCHEMY_ITEMS)) ITEMS[id] ??= { name: a.name, type: "material", rarity: a.rarity, sell: a.sell, lore: a.lore, stack: a.stack };
 for (const [id, p] of Object.entries(PROCESSING_ITEMS)) ITEMS[id] ??= { name: p.name, type: "material", rarity: p.rarity, sell: p.sell, lore: p.lore, stack: p.stack };
 function itemMeta(id) {
   return ITEMS[id] ?? { name: id.replace(/_/g, " "), type: "material", rarity: "common", sell: 0 };
 }
+var BUFF_FLASKS = {
+  flask_speed: { kind: "speed", value: 0.2, seconds: 30, label: "Swift" },
+  flask_damage: { kind: "damage", value: 0.15, seconds: 45, label: "Forge-tempered" },
+  flask_void_resist: { kind: "ward", value: 0.25, seconds: 90, label: "Warded" },
+  ...ALCHEMY_BUFFS
+};
+var HEALING_FLASKS = {
+  flask_hp_major: 0.7,
+  flask_hp_minor: 0.35,
+  ...ALCHEMY_HEALING
+};
 
 // src/gameplay/contractRules.ts
 var CONTRACT_SLOTS = 3;
@@ -374,6 +419,7 @@ function candidatesFor(levels) {
     if (result.startsWith("tool_")) continue;
     if (req <= level(skill)) add({ itemId: result, skill, level: req, processed: true });
   }
+  for (const [, , skill, req, result] of ALCHEMY_RECIPES) if (req <= level(skill)) add({ itemId: result, skill, level: req, processed: true });
   for (const s of SEEDS) if (s.kind === "herb" && s.level <= level("gardening")) add({ itemId: s.harvest, skill: "gardening", level: s.level, processed: true });
   return out.sort((a, b) => a.level - b.level || a.itemId.localeCompare(b.itemId));
 }

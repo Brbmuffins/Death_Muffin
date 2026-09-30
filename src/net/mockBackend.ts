@@ -20,6 +20,7 @@ import * as laborRules from '../gameplay/laborRules';
 import { itemMeta } from '../content/items';
 import * as gather from '../gameplay/gatheringRules';
 import { PROCESSING_RECIPES } from '../content/processing';
+import { ALCHEMY_RECIPES } from '../content/alchemy';
 import { isDevAccount } from '../gameplay/devAccess';
 
 class MockError extends Error {
@@ -80,6 +81,7 @@ const RECIPE_ROWS: R[] = [
 
 // Professions G6: the same rows the server migration is generated from.
 RECIPE_ROWS.push(...PROCESSING_RECIPES);
+RECIPE_ROWS.push(...ALCHEMY_RECIPES);
 
 const RECIPES: Recipe[] = RECIPE_ROWS.map(([id, name, profession_id, lvl, result, qty, ings]) => ({
   id,
@@ -403,14 +405,18 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       if (free >= 24) return fail('Inventory full');
       acc.slots.push({ slot_index: free, item_id: recipe.result_item_id, quantity: recipe.result_quantity, equipped: 0 });
     }
-    if (prof) {
-      prof.skill_xp += 10;
-      while (prof.skill_xp >= prof.skill_level * 50) {
-        prof.skill_xp -= prof.skill_level * 50;
-        prof.skill_level += 1;
-      }
+    // Like the live server: a missing profession row is created on the first craft, and XP is 5 per required level.
+    let earner = prof;
+    if (!earner) {
+      earner = { profession_id: recipe.profession_id, skill_level: 1, skill_xp: 0 };
+      acc.professions.push(earner);
     }
-    return ok({ updatedInventory: acc.slots.map(joinSlot), updatedProfession: prof });
+    earner.skill_xp += Math.max(1, recipe.skill_level_required) * 5;
+    while (earner.skill_xp >= earner.skill_level * 50) {
+      earner.skill_xp -= earner.skill_level * 50;
+      earner.skill_level += 1;
+    }
+    return ok({ updatedInventory: acc.slots.map(joinSlot), updatedProfession: earner });
   }
 
   if (p === '/api/character/save-progress' && method === 'POST') {

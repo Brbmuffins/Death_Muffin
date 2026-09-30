@@ -1,5 +1,6 @@
 import { itemMeta } from '../content/items';
 import { SEEDS } from '../content/gardening';
+import { ALCHEMY_RECIPES } from '../content/alchemy';
 import { PROCESSING_RECIPES } from '../content/processing';
 import { NODES, type SkillId } from './gatheringRules';
 
@@ -80,6 +81,8 @@ export function candidatesFor(levels: Partial<Record<SkillId, number>>): Candida
     if (result.startsWith('tool_')) continue;
     if (req <= level(skill as SkillId)) add({ itemId: result, skill: skill as SkillId, level: req, processed: true });
   }
+  // Potions from the Alembic: small numbers, like anything that takes time and herbs to make.
+  for (const [, , skill, req, result] of ALCHEMY_RECIPES) if (req <= level(skill as SkillId)) add({ itemId: result, skill: skill as SkillId, level: req, processed: true });
   // Herbs and logs from the garden: asked for in small numbers, like other things that take a while to make.
   for (const s of SEEDS) if (s.kind === 'herb' && s.level <= level('gardening')) add({ itemId: s.harvest, skill: 'gardening', level: s.level, processed: true });
   return out.sort((a, b) => a.level - b.level || a.itemId.localeCompare(b.itemId));

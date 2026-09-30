@@ -9,11 +9,11 @@
  * client and the tests can each supply their own.
  */
 
-export type SkillId = 'woodcutting' | 'mining' | 'fishing' | 'gravedigging' | 'gardening';
+export type SkillId = 'woodcutting' | 'mining' | 'fishing' | 'gravedigging' | 'gardening' | 'alchemy';
 /** Skills worked on world nodes (gardening uses plots, not nodes). */
-export type GatherSkill = Exclude<SkillId, 'gardening'>;
+export type GatherSkill = Exclude<SkillId, 'gardening' | 'alchemy'>;
 export const GATHER_SKILLS: GatherSkill[] = ['woodcutting', 'mining', 'fishing', 'gravedigging'];
-export const ALL_SKILLS: SkillId[] = ['woodcutting', 'mining', 'fishing', 'gravedigging', 'gardening'];
+export const ALL_SKILLS: SkillId[] = ['woodcutting', 'mining', 'fishing', 'gravedigging', 'gardening', 'alchemy'];
 
 export interface SkillMeta {
   name: string;
@@ -34,6 +34,7 @@ export const SKILLS: Record<SkillId, SkillMeta> = {
   fishing: { name: 'Fishing', rite: 'Rite of the Black Water', color: '#6fb3c8', gesture: 'cast', sfx: 'splash', verb: 'Fish' },
   gravedigging: { name: 'Gravedigging', rite: 'Rite of the Sexton', color: '#d8cfa8', gesture: 'dig', sfx: 'shovel', verb: 'Dig' },
   gardening: { name: 'Grave Gardening', rite: 'Rite of the Mourning Bed', color: '#9fc27a', gesture: 'cast', sfx: 'shovel', verb: 'Tend' },
+  alchemy: { name: 'Alchemy', rite: 'Rite of the Alembic', color: '#b48be0', gesture: 'cast', sfx: 'splash', verb: 'Brew' },
 };
 
 /** One RuneScape tick. Most nodes take 4–8 ticks per action. */

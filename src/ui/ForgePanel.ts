@@ -3,9 +3,9 @@ import type { InventorySlot, Profession, Recipe } from '../net/types';
 import type { Inventory } from '../gameplay/loot';
 
 /** Tabs: a profession's recipes; 'tools' is the smithing recipes for gathering tools (mining, `smith_*`). */
-const PROFESSIONS = ['mining', 'tools', 'fishing', 'woodcutting', 'gravedigging'] as const;
+const PROFESSIONS = ['mining', 'tools', 'fishing', 'woodcutting', 'gravedigging', 'alchemy'] as const;
 type Tab = (typeof PROFESSIONS)[number];
-const LABEL: Record<Tab, string> = { mining: 'Smelting', tools: 'Tools', fishing: 'Cooking', woodcutting: 'Coffin-wood', gravedigging: 'Bonework' };
+const LABEL: Record<Tab, string> = { mining: 'Smelting', tools: 'Tools', fishing: 'Cooking', woodcutting: 'Coffin-wood', gravedigging: 'Bonework', alchemy: 'Alchemy' };
 const isTool = (id: string) => id.startsWith('smith_');
 
 /** The Sexton's Acre stations: each is the Workbench locked to its rites' recipes. */

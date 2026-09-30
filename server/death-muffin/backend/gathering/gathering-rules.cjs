@@ -61,13 +61,14 @@ __export(gatheringRules_exports, {
 });
 module.exports = __toCommonJS(gatheringRules_exports);
 var GATHER_SKILLS = ["woodcutting", "mining", "fishing", "gravedigging"];
-var ALL_SKILLS = ["woodcutting", "mining", "fishing", "gravedigging", "gardening"];
+var ALL_SKILLS = ["woodcutting", "mining", "fishing", "gravedigging", "gardening", "alchemy"];
 var SKILLS = {
   woodcutting: { name: "Woodcutting", rite: "Rite of Coffin-Oak", color: "#c9a36b", gesture: "dig", sfx: "chop", verb: "Chop" },
   mining: { name: "Mining", rite: "Rite of Grave-Iron", color: "#b7bcc4", gesture: "dig", sfx: "pick", verb: "Mine" },
   fishing: { name: "Fishing", rite: "Rite of the Black Water", color: "#6fb3c8", gesture: "cast", sfx: "splash", verb: "Fish" },
   gravedigging: { name: "Gravedigging", rite: "Rite of the Sexton", color: "#d8cfa8", gesture: "dig", sfx: "shovel", verb: "Dig" },
-  gardening: { name: "Grave Gardening", rite: "Rite of the Mourning Bed", color: "#9fc27a", gesture: "cast", sfx: "shovel", verb: "Tend" }
+  gardening: { name: "Grave Gardening", rite: "Rite of the Mourning Bed", color: "#9fc27a", gesture: "cast", sfx: "shovel", verb: "Tend" },
+  alchemy: { name: "Alchemy", rite: "Rite of the Alembic", color: "#b48be0", gesture: "cast", sfx: "splash", verb: "Brew" }
 };
 var TICK_MS = 600;
 var LEVEL_CAP = 99;

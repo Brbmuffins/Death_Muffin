@@ -1180,7 +1180,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.nextAutoCombatAt = now + 180;
     const thralls = [...this.thrallsMap().values()].filter(t => t.owner === this.selfId).length;
     if (p.hp < p.stats.maxHp * 0.42 && now >= this.flaskCdUntil &&
-        (this.inventory.count('flask_hp_major') || this.inventory.count('flask_hp_minor'))) this.drinkFlask();
+        (this.inventory.count('flask_hp_grand') || this.inventory.count('flask_hp_major') || this.inventory.count('flask_hp_minor'))) this.drinkFlask();
     const action = selectAutoCombatAction({ player: { x: p.x, z: p.z, area: p.area, essence: p.essence, maxEssence: p.resource.max,
       hp: p.hp, maxHp: p.stats.maxHp, veilForm: p.veilForm, bulwarkUntil: p.bulwarkUntil,
       betweenUntil: p.betweenUntil, unbreakableUntil: p.unbreakableUntil },
@@ -1258,7 +1258,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (prefer && prefer in BUFF_FLASKS) return this.drinkBuff(prefer);
     const now = this.now;
     if (!this.player.alive || now < this.flaskCdUntil) return;
-    const id = prefer && prefer in HEALING_FLASKS ? prefer : ['flask_hp_major', 'flask_hp_minor'].find((f) => this.inventory.count(f) > 0);
+    const id = prefer && prefer in HEALING_FLASKS ? prefer : ['flask_hp_grand', 'flask_hp_major', 'flask_hp_minor'].find((f) => this.inventory.count(f) > 0);
     if (!id || !this.inventory.consume(id)) {
       this.floating.spawn(this.player.x, 2.4, this.player.z, 'No healing flasks', 'info');
       return;
@@ -1635,7 +1635,7 @@ export class WorldScene implements GameScene, RuntimeView {
       const before = this.skillLevels.get(s) ?? 1;
       this.skillLevels.set(s, lvl);
       if (lvl <= before) continue;
-      const opens = s === 'gardening' ? [] : nodesForSkill(s).filter((n) => n.level > before && n.level <= lvl);
+      const opens = s === 'gardening' || s === 'alchemy' ? [] : nodesForSkill(s).filter((n) => n.level > before && n.level <= lvl);
       this.hud.banner(`${SKILLS[s].name} ${lvl}`, opens.length ? `You can now work: ${opens.map((n) => n.name).join(', ')}` : SKILLS[s].rite, 3200);
       audio.play('skillUp');
       this.onboarding.show('skill_up');
