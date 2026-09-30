@@ -41,6 +41,7 @@ import { itemMeta } from './items';
 import { AREAS, BOSS_SUMMON_SHARDS, type AreaId } from './areas';
 import type { DisciplineId } from './disciplines';
 import { ABBESS, BOSSES, CONGREGATION, GRAVEDIGGER, REGENT, SAINT, type BossId } from './bosses';
+import { NECRO_KIND_LABEL, NECRO_TIERS, NECRO_TIER_INFO, NECRO_WEAPON_TUNING as WT, type NecroKind } from './necroWeapons';
 import { BURROW, CENSER, DUST, EMBER_BOLT, EMBER_DEATH, ENEMIES, FRENZY, PLAGUE_FLASK, SCREAM, SLAG_POOL, TEMPLAR_SHIELD, UNBIND, WARD, type Behavior, type EnemyId } from './enemies';
 
 /**
@@ -569,6 +570,45 @@ export const CODEX_PROFESSIONS_COUNSEL =
 export const CODEX_BREWS_COUNSEL = 'Two brew slots, one brew each: an Elixir (combat) and a Tonic (utility). A new elixir replaces the old one; drinking the same brew again extends it (up to twice its length). Right-click a brew in the Reliquary to put it on your belt, then press Z for your elixir and X for your tonic. Healing flasks stay on Q. Brews are yours alone; the tray at the left edge shows what is active and for how long.';
 export const codexBrewRows = () =>
   Object.entries(BREWS).map(([id, b]) => ({ id, name: itemMeta(id).name, slot: slotName(b.slot), effects: brewEffectsText(b), seconds: b.seconds }));
+/** Weapons tab: the necromancer weapon line (content/necroWeapons.ts). Numbers come from NECRO_WEAPON_TUNING. */
+export const CODEX_WEAPONS_COUNSEL =
+  'Necromancer weapons change your left click (Bone Needle) and add one passive, so a weapon swap is a build choice, not a stat stick. Only the four necromancer disciplines (Ossuary, Gravecaller, Mourner, Rotweaver) gain the effects; other classes wear the stats. Staffs and Scythes are two-handed and push the off-hand back to your bag. Every kind comes in five materials: Bone (Hollow Graves, Bone Warren), Iron (Marrow Ossuary, Coliseum), Gold (Drowned Nave, Bell Sanctum), Hell (Plague Cloister, Cinder Pyre) and Moon (the Pyre, rarely). Carpentry and Smithing at the Workbench craft them too.';
+
+export interface WeaponEntry {
+  kind: NecroKind;
+  name: string;
+  hands: string;
+  change: string;
+  suits: string;
+  tip: string;
+}
+
+const pc = (n: number) => `${Math.round(n * 100)}%`;
+export const CODEX_WEAPONS: WeaponEntry[] = [
+  { kind: 'staff', name: NECRO_KIND_LABEL.staff, hands: 'Two-handed', suits: 'Ossuary and all-rounders',
+    change: `Bone Needle flies ${pc(WT.staff.needleRangeMult - 1)} farther and pierces ${WT.staff.pierce} extra enemy behind its target (${pc(WT.staff.pierceDamageMult)} damage). Passive: +${pc(WT.staff.spellDamageMult - 1)} spell damage.`,
+    tip: 'Line enemies up: a needle down a corridor hits two. The spell damage bonus lifts every rite, and shows in your Spell stat.' },
+  { kind: 'scythe', name: NECRO_KIND_LABEL.scythe, hands: 'Two-handed', suits: 'Gravecaller, fighting beside thralls',
+    change: `Your left click becomes a close reaping arc: ${WT.scythe.arcDeg} degrees, ${WT.scythe.reach} m, up to ${WT.scythe.maxHits} enemies, ${pc(WT.scythe.damageMult)} of a needle each. Each target gives back ${WT.scythe.essencePerHit} essence. Kills the arc delivers give +${WT.scythe.soulsPerKill} soul.`,
+    tip: 'Stand in the thick of it with your thralls. Filling the Soul Harvest meter sooner makes Marrow Spear, Miasma and Litany free and larger.' },
+  { kind: 'wand', name: NECRO_KIND_LABEL.wand, hands: 'One-handed', suits: 'Any class, paired with an off-hand',
+    change: `Bone Needle fires ${pc(WT.wand.cadenceMult - 1)} faster and strikes ${pc(1 - WT.wand.damageMult)} softer.`,
+    tip: 'More needles means more essence back. Pair it with a Grimoire for faster rites or a Skull Focus for a bigger legion.' },
+  { kind: 'sickle', name: NECRO_KIND_LABEL.sickle, hands: 'One-handed', suits: 'Rotweaver',
+    change: `Bone Needle leaves ${WT.sickle.witheredStacks} Withered stack per hit, up to your discipline's cap. Passive: Exhume gives back ${pc(WT.sickle.exhumeRefund)} of its essence.`,
+    tip: 'Withered stacks tick on their own: a Rotweaver with a Sickle can needle one enemy and walk on. Miasma stacks on top.' },
+  { kind: 'skull_focus', name: NECRO_KIND_LABEL.skull_focus, hands: 'Off-hand', suits: 'Gravecaller',
+    change: `Gold tier and above: +${WT.skull_focus.thrallCap} thrall cap (Bone and Iron skulls are stat sticks).`,
+    tip: 'One more thrall is one more body for Litany and one more blade in the line.' },
+  { kind: 'grimoire', name: NECRO_KIND_LABEL.grimoire, hands: 'Off-hand', suits: 'Anyone who lives on rites',
+    change: `Every rite (not the left click) recovers ${pc(1 - WT.grimoire.riteCooldownMult)} sooner.`,
+    tip: 'The most for the spells with the longest waits: Miasma, Black Litany and your signature rite.' },
+  { kind: 'mourning_bell', name: NECRO_KIND_LABEL.mourning_bell, hands: 'Off-hand', suits: 'Mourner',
+    change: `Each hit from your wraiths heals every ally within ${WT.mourning_bell.allyHealRange} m for ${pc(WT.mourning_bell.allyHealFrac)} of their max health, you included.`,
+    tip: 'More wraiths, more healing. In co-op it heals the whole party, each by their own maximum.' },
+];
+
+export const CODEX_WEAPON_TIERS = NECRO_TIERS.map((t) => ({ tier: t, label: NECRO_TIER_INFO[t].label, level: NECRO_TIER_INFO[t].level, areas: NECRO_TIER_INFO[t].area }));
 
 export const CODEX_TRAVEL_COUNSEL = 'Click a walkable spot on the minimap to choose a fixed destination. Travel follows the same paths as ground clicks; locked halls remain closed. The amber marker shows where you are going. Hover or focus a spell icon for detailed rite counsel.';
 

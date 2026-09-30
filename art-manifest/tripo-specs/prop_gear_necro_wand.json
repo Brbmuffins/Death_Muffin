@@ -1,0 +1,9 @@
+{
+  "id": "prop_gear_necro_wand",
+  "input": "art-src/concepts/nw_wand.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2400,
+    "texture_quality": "standard"
+  }
+}

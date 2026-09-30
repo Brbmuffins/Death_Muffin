@@ -2,6 +2,8 @@ import type { Character, InventorySlot } from '../net/types';
 import type { Discipline } from '../content/disciplines';
 import { DAMAGE_UPGRADE } from '../content/upgrades';
 import { computeStats } from './stats';
+import { equippedBySlot } from '../content/gear';
+import { resolveWeaponLoadout } from './weaponLine';
 
 /**
  * One source of truth for derived combat stats (the audit found the arena and
@@ -30,8 +32,10 @@ export function deriveStats(
   const mods = discipline.mods;
   const dmgMult = 1 + DAMAGE_UPGRADE.perTier * damageTier;
   const maxHp = Math.round((60 + total.stat_vit * 8 + (level - 1) * 14) * mods.maxHpMult);
-  const spellPower =
+  const baseSpellPower =
     (6 + total.stat_int * 1.3 + total.stat_str * 0.4 + total.stat_agi * 0.2 + (level - 1) * 1.6) * dmgMult;
+  // A line staff's passive (+10% spell damage) raises Spell power; thralls keep the unboosted figure.
+  const spellPower = baseSpellPower * resolveWeaponLoadout(equippedBySlot(slots), discipline.id).spellMult;
   return {
     level,
     maxHp,
@@ -40,7 +44,7 @@ export function deriveStats(
     essenceRegen: (5 + total.stat_int * 0.1) * mods.essenceRegenMult,
     moveSpeed: 5.4 * (1 + total.stat_agi * 0.003),
     thrallHp: Math.round(maxHp * 0.45 * mods.thrallHpMult),
-    thrallDamage: spellPower * 0.4 * mods.thrallDamageMult,
+    thrallDamage: baseSpellPower * 0.4 * mods.thrallDamageMult,
     damageBonusPct: Math.round((dmgMult - 1) * 100),
   };
 }

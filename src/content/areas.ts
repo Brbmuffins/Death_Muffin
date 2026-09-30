@@ -1,5 +1,6 @@
 import type { EnemyId } from './enemies';
 import { armorLoot } from './armorSets';
+import { necroWeaponLoot } from './necroWeapons';
 
 /**
  * One connected world (audit: "one continuous farming space assembled from
@@ -139,6 +140,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
     eliteChance: 0.035,
     loot: [
       ...armorLoot('graves'),
+      ...necroWeaponLoot('graves'),
       { item: 'material_copper_shard', weight: 30 },
       { item: 'ore_copper', weight: 24 },
       { item: 'ore_tin', weight: 14 },
@@ -186,6 +188,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
     unlock: { area: 'graves', kills: 300 },
     loot: [
       ...armorLoot('ossuary'),
+      ...necroWeaponLoot('ossuary'),
       { item: 'ore_iron', weight: 24 },
       { item: 'ore_copper', weight: 14 },
       { item: 'material_copper_bar', weight: 14 },
@@ -232,6 +235,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
     unlock: { area: 'ossuary', kills: 420 },
     loot: [
       ...armorLoot('nave'),
+      ...necroWeaponLoot('nave'),
       { item: 'ore_silver', weight: 20 },
       { item: 'ore_iron', weight: 20 },
       { item: 'ore_gold', weight: 8 },
@@ -277,6 +281,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
     unlock: { area: 'nave', kills: 520 },
     loot: [
       ...armorLoot('sanctum'),
+      ...necroWeaponLoot('sanctum'),
       { item: 'ore_gold', weight: 18 },
       { item: 'ore_steel', weight: 14 },
       { item: 'ingot_gold', weight: 8 },
@@ -320,6 +325,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
     unlock: { area: 'sanctum', kills: 600 },
     loot: [
       ...armorLoot('cloister'),
+      ...necroWeaponLoot('cloister'),
       { item: 'ore_steel', weight: 14 },
       { item: 'ore_hell', weight: 12 },
       { item: 'ore_moon', weight: 6 },
@@ -363,6 +369,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
     unlock: { area: 'cloister', kills: 700 },
     loot: [
       ...armorLoot('pyre'),
+      ...necroWeaponLoot('pyre'),
       { item: 'ore_hell', weight: 22 },
       { item: 'ingot_hell', weight: 6 },
       { item: 'ore_steel', weight: 12 },
@@ -410,6 +417,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
     eliteChance: 0.045,
     unlock: { area: 'graves', kills: 150 },
     loot: [
+      ...necroWeaponLoot('warren'),
       { item: 'bones_old', weight: 20 },
       { item: 'bones_barrow', weight: 12 },
       { item: 'ore_tin', weight: 18 },
@@ -456,6 +464,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
     eliteChance: 0.16,
     unlock: { area: 'ossuary', kills: 350 },
     loot: [
+      ...necroWeaponLoot('coliseum'),
       { item: 'ore_silver', weight: 18 },
       { item: 'ore_gold', weight: 12 },
       { item: 'ingot_silver', weight: 6 },

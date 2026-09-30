@@ -1,0 +1,9 @@
+{
+  "id": "prop_gear_necro_grimoire",
+  "input": "art-src/concepts/nw_grimoire.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2800,
+    "texture_quality": "standard"
+  }
+}

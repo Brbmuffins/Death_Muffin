@@ -205,6 +205,20 @@ Gold and experience come from fighting. Open the **Reliquary (I)** to equip gear
 
 Each discipline has two five-piece armor sets with matching icons and visible colors on the hero. The first collection begins in the Hollow Graves and completes in the Bell Sanctum; the stronger ascended collection begins in the Sanctum and completes in the Cinder Pyre. Any class can wear any set. See [the armor set guide](docs/ARMOR-SETS.md) for names and drop areas.
 
+**Necromancer weapons.** The four necromancer disciplines (Ossuary, Gravecaller, Mourner, Rotweaver) can carry a weapon line that changes what your left click (Bone Needle) does. Other classes wear the same items for their stats only.
+
+| Weapon | Hands | Left click becomes | Passive |
+|---|---|---|---|
+| **Staff** | Two | Needle reaches 25% farther and pierces one more enemy | +10% spell damage |
+| **Scythe** | Two | A close reaping arc (100 degrees, 3 m, up to 3 enemies) | Kills in the arc give +1 soul toward Soul Harvest |
+| **Wand** | One | Needle fires 30% faster and strikes 15% softer | none: pair it with an off-hand |
+| **Ritual Sickle** | One | Needle leaves one Withered stack | Exhume returns 20% of its essence |
+| **Skull Focus** | Off-hand | none | Gold tier and above: +1 thrall cap |
+| **Grimoire** | Off-hand | none | Rites recover 10% sooner |
+| **Mourning Bell** | Off-hand | none | A Mourner's wraith hits heal allies for 2% of their max health |
+
+Every kind comes in five materials, **Bone, Iron, Gold, Hell and Moon** (recommended levels 1, 15, 30, 45 and 60). They drop by zone (Bone in the Hollow Graves and Bone Warren, Iron in the Ossuary and Coliseum, Gold in the Nave and Sanctum, Hell in the Cloister and Pyre, Moon rarely in the Pyre) and the Workbench crafts them from planks and ingots (Carpentry: staff, wand, grimoire; Smithing: scythe, sickle, skull focus, bell). Two-handed weapons push the off-hand back to your bag. Hover a piece in the Reliquary for its line, or open the Codex (K, Weapons tab). Screenshots: [docs/screenshots/necro-weapons](docs/screenshots/necro-weapons).
+
 <table><tr>
 <td><img src="public/art/items/staff_oak.png" alt="Oak Staff" width="56" /></td>
 <td><img src="public/art/items/helm_gold.png" alt="Gold Helm" width="56" /></td>

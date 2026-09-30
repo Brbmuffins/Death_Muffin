@@ -12,6 +12,9 @@ import {
   CODEX_DISCIPLINES,
   CODEX_RITES,
   CODEX_SEALED,
+  CODEX_WEAPONS,
+  CODEX_WEAPONS_COUNSEL,
+  CODEX_WEAPON_TIERS,
   COVENANT_LORE,
   DEAD_ORDER,
   RITE_ORDER,
@@ -31,6 +34,7 @@ import type { Chronicle } from '../gameplay/chronicle';
 const TABS = [
   { id: 'rites', label: 'Rites' },
   { id: 'disciplines', label: 'Disciplines' },
+  { id: 'weapons', label: 'Weapons' },
   { id: 'dead', label: 'The Dead' },
   { id: 'diocese', label: 'The Diocese' },
   { id: 'professions', label: 'Professions' },
@@ -115,6 +119,8 @@ export class CodexPanel {
         ? this.rites()
         : this.tab === 'disciplines'
           ? this.disciplines()
+          : this.tab === 'weapons'
+            ? this.weapons()
           : this.tab === 'dead'
             ? this.dead()
             : this.tab === 'diocese'
@@ -181,6 +187,19 @@ export class CodexPanel {
           </div>
         </article>`;
     }).join('');
+  }
+
+  private weapons() {
+    const ladder = CODEX_WEAPON_TIERS.map((t) => `<tr><td>${t.label}</td><td>${t.level}+</td><td>${t.areas.map((a) => AREAS[a].name).join(', ')}</td></tr>`).join('');
+    return `<p class="tip">${CODEX_WEAPONS_COUNSEL}</p>` + CODEX_WEAPONS.map((w) => `
+        <article class="cw-codex-entry">
+          <img class="ico" src="art/items/${w.kind}_gold.svg" alt="" draggable="false" />
+          <div class="txt">
+            <div class="hd"><h3>${w.name}</h3><span class="meta">${w.hands} · ${w.suits}</span></div>
+            <p>${w.change}</p>
+            <p class="tip"><b>Use it well.</b> ${w.tip}</p>
+          </div>
+        </article>`).join('') + `<table class="cw-codex-table"><thead><tr><th>Tier</th><th>Recommended level</th><th>Drops in</th></tr></thead><tbody>${ladder}</tbody></table>`;
   }
 
   private disciplines() {

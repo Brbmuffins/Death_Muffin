@@ -3,7 +3,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import type { GameScene } from './SceneManager';
 import { getRuntime, type RuntimeView } from '../app/GameRuntime';
 import { Scope } from '../app/Scope';
-import { ABILITIES, BULWARK, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
+import { ABILITIES, PRIMARIES, BULWARK, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
 import { kitFor, type Kit } from '../content/kits';
 import { assignRite, loadRites, loadSeen, saveRites, saveSeen, unseenRites } from '../gameplay/loadout';
 import { devAccess, devPreference, isDevAccount, riteLevel, setDevPreference, tokenUsername } from '../gameplay/devAccess';
@@ -64,6 +64,7 @@ import { LootView } from '../graphics/LootView';
 import { WorldView } from '../graphics/WorldView';
 import { updateOcclusion } from '../graphics/occlusion';
 import { equippedBySlot, gearFromIds } from '../content/gear';
+import { abilityCooldownMs, abilityRange, resolveWeaponLoadout } from '../gameplay/weaponLine';
 import { Chronicle } from '../gameplay/chronicle';
 import { GatherSession, crossedMilestones, loadBests, saveBests } from '../gameplay/gatherReport';
 import { GatherReportPanel } from '../ui/GatherReportPanel';
@@ -181,6 +182,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private canvas = document.getElementById('scene') as HTMLCanvasElement;
 
   private discipline: Discipline;
+  /** Skull Focus (gold and above): extra thrall cap from the worn off-hand. */
+  private weaponThrallBonus = 0;
   /** Resource rules for the active discipline's family (HUD orb label/colour). */
   private resourceRules: ResourceRules;
   /** The active family's kit: which rites this class plays. */
@@ -485,10 +488,12 @@ export class WorldScene implements GameScene, RuntimeView {
     this.sim.difficulty = settings.difficulty;
     this.sim.ascension = this.progression.local.ascension;
 
+    const scene = this;
     this.abilities = new AbilitySystem({
       selfId: this.selfId,
       player: this.player,
-      discipline: this.discipline,
+      // A getter: Covenant boons and a Skull Focus swap replace this.discipline, and the abilities must see the current cap.
+      get discipline() { return scene.discipline; },
       avatar: this.avatar,
       effects: this.effects,
       enemies: () => this.enemiesMap(),
@@ -637,10 +642,25 @@ export class WorldScene implements GameScene, RuntimeView {
     }
   }
 
+  /** The left click's reach with the worn weapon (a scythe's arc is short, a staff's needle long). */
+  private primaryRange() {
+    return abilityRange(this.primary, ABILITIES[this.primary].range, this.player.loadout);
+  }
+
   private refreshStats() {
     if (!this.player) return;
     const stats = deriveStats(this.character, this.inventory.all, this.discipline, this.progression.local.damageTier);
     this.player.setStats(stats);
+    // Necro weapon line: the worn weapon/off-hand change the left click and add a passive (gameplay/weaponLine.ts).
+    const loadout = resolveWeaponLoadout(equippedBySlot(this.inventory.all), this.discipline.id);
+    const was = this.player.loadout;
+    this.player.loadout = loadout;
+    if (loadout.main !== was.main && loadout.main && loadout.main !== 'staff') this.onboarding.show('necroWeapon');
+    if (loadout.thrallBonus !== this.weaponThrallBonus) {
+      this.weaponThrallBonus = loadout.thrallBonus;
+      this.applyBoons();
+      return;
+    }
     if (this.sim && (this.isAuthority())) this.sim.waveTier = this.progression.local.waveTierActive;
     this.inventoryPanel?.render();
   }
@@ -1224,9 +1244,9 @@ export class WorldScene implements GameScene, RuntimeView {
       enemies: this.enemiesMap().values(), corpses: this.corpsesMap().values(), boss: this.bossState(),
       thrallCount: thralls, thrallCap: this.discipline.mods.thrallCap,
       ready: id => (id === this.primary || this.hotbar.includes(id)) && this.abilities.ready(id, now),
-      primary: this.primary, selfId: this.selfId, family: this.discipline.family, signature: this.hotbar[5], now });
+      primary: this.primary, primaryRange: this.primaryRange(), selfId: this.selfId, family: this.discipline.family, signature: this.hotbar[5], now });
     const previous = this.autoTargetId === null ? undefined : this.enemiesMap().get(this.autoTargetId);
-    this.autoTargetId = action?.target.enemyId ?? (previous && previous.hp > 0 && previous.state !== 'dead' && Math.hypot(previous.x - p.x, previous.z - p.z) <= ABILITIES[this.primary].range ? previous.id : null);
+    this.autoTargetId = action?.target.enemyId ?? (previous && previous.hp > 0 && previous.state !== 'dead' && Math.hypot(previous.x - p.x, previous.z - p.z) <= this.primaryRange() ? previous.id : null);
     if (action) this.autoAim = action.target;
     else if (this.autoTargetId === null && !(this.autoAim?.boss && this.bossState().active && this.bossState().hp > 0)) this.autoAim = null;
     // Walk toward what we are shooting at, so movement and aim never pull in two directions.
@@ -2023,8 +2043,9 @@ export class WorldScene implements GameScene, RuntimeView {
         break;
       case 'heal':
         if (ev.player === me && this.player.alive) {
-          this.player.heal(ev.amount);
-          this.floating.spawn(this.player.x, 2.2, this.player.z, `+${Math.round(ev.amount)}`, 'heal');
+          const amount = ev.frac ? this.player.stats.maxHp * ev.frac : ev.amount;
+          this.player.heal(amount);
+          this.floating.spawn(this.player.x, 2.2, this.player.z, `+${Math.round(amount)}`, 'heal');
         }
         break;
       case 'burst':
@@ -2431,7 +2452,7 @@ export class WorldScene implements GameScene, RuntimeView {
     // A boss's skull niche is part of the fight, not a kill: no souls, loot, XP or area progress.
     if (ENEMIES[ev.def].inert) return;
     // Soul Harvest: kills credited to you (thralls and DoTs credit their owner).
-    if (ev.killer === this.selfId && this.player.alive && this.player.addSouls(1)) this.onSoulsCharged();
+    if (ev.killer === this.selfId && this.player.alive && this.player.addSouls(1 + this.abilities.reapedSouls(ev.id))) this.onSoulsCharged();
     // Personal rewards for kills in (or right next to) your area.
     const near = Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 38;
     if (!this.player.alive || !near) return;
@@ -2572,7 +2593,7 @@ export class WorldScene implements GameScene, RuntimeView {
       ...base,
       mods: {
         ...base.mods,
-        thrallCap: base.mods.thrallCap + fx.extraThralls,
+        thrallCap: base.mods.thrallCap + fx.extraThralls + this.weaponThrallBonus,
         maxHpMult: base.mods.maxHpMult * fx.maxHpMult,
         essenceRegenMult: base.mods.essenceRegenMult * fx.essenceRegenMult,
       },
@@ -3162,7 +3183,7 @@ export class WorldScene implements GameScene, RuntimeView {
       !this.attackTarget && !this.pendingInteract && !this.gathering.active && !this.keys.size
       ? selectAutoCombatMovement({ player: { x: p.x, z: p.z, area: p.area, essence: p.essence, maxEssence: p.resource.max,
           hp: p.hp, maxHp: p.stats.maxHp },
-        enemies: this.enemiesMap().values(), primary: this.primary, family: this.discipline.family, nav: this.nav }, this.autoMoveMem, now, dt) : null;
+        enemies: this.enemiesMap().values(), primary: this.primary, primaryRange: this.primaryRange(), family: this.discipline.family, nav: this.nav }, this.autoMoveMem, now, dt) : null;
     if (!autoMove) this.autoMoveMem.dir = null;
     // Drowned Congregation: the water rises each phase; wading outside her dais is slower.
     {
@@ -3582,7 +3603,7 @@ export class WorldScene implements GameScene, RuntimeView {
         const empowered = this.abilities.empowered(id);
         return {
           left: p.cooldownLeft(id, now),
-          total: ABILITIES[id].cooldownMs,
+          total: abilityCooldownMs(id, ABILITIES[id].cooldownMs, p.loadout, PRIMARIES.includes(id)),
           affordable: empowered || p.essence >= ABILITIES[id].essenceCost,
           empowered,
           locked: riteLevel(this.character.level) < unlockLevel(id),

@@ -12,6 +12,7 @@ on the public site.
 | What rules apply to edits and checks? | [CLAUDE](../CLAUDE.md) | Repository working instructions |
 | What was built in earlier phases? | [Phase reports](../PHASE_REPORTS.md) | Chronological history; older counts and next steps are historical |
 | How are the systems balanced? | [BALANCE](../BALANCE.md) and source constants | Targets, samples and open balance risks |
+| What do the necromancer weapons change, and how do I regenerate them? | [Necro weapons](NECRO-WEAPONS.md) | Built; mechanics, migration 013 and model pipeline |
 | What is proposed? | [Future content](../FUTURE_CONTENT.md), [agent briefs](agent-briefs/README.md), [profession roadmap](PROFESSIONS-ROADMAP.md) | Designs; confirm implementation in source and HANDOFF |
 | How are assets and browser checks made? | [Asset pipeline](../ASSET_PIPELINE.md), [QA guide](../tools/qa/README.md) | Procedures and test entry points |
 | How is the separate hosted service operated? | [VPS handoff](DEATH-MUFFIN-HANDOFF.md), [server operations](../SERVER_OPERATIONS.md) | Deployment and service boundaries |

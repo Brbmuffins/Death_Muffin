@@ -6,6 +6,7 @@ import type { DerivedStats } from './characterStats';
 import type { Nav } from './nav';
 import { resourceRulesFor, type ResourceKind, type ResourceRules } from './resources';
 import { brewValue, emptyBrews, type ActiveBrews, type BrewKind } from '../content/brews';
+import { NO_LOADOUT, type WeaponLoadout } from './weaponLine';
 
 const OUT_OF_COMBAT_MS = 5000;
 
@@ -50,6 +51,8 @@ export class Player {
   castUntil = 0;
   /** DEV QA only (window.__cwDebug.god). */
   god = false;
+  /** What the equipped necro weapon line changes (scene-set from worn gear; weaponLine.ts). */
+  loadout: WeaponLoadout = NO_LOADOUT;
   /** Soul Harvest meter (client-side): kills credited to you or your thralls. */
   souls = 0;
   /** Souls needed to charge the meter (Soul Hunger boons lower it). */

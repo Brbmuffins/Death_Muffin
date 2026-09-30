@@ -96,6 +96,267 @@ function armorLoot(area) {
   return ARMOR_PIECES.filter((piece) => piece.area === area || piece.collection === 1 && (area === "cloister" || area === "pyre") && piece.area !== "graves" || piece.collection === 2 && area === "pyre" && piece.area === "cloister").map((piece) => ({ item: piece.id, weight: 1 }));
 }
 
+// src/content/necroWeapons.ts
+var NECRO_TIERS = ["bone", "iron", "gold", "hell", "moon"];
+var NECRO_WEAPON_TUNING = {
+  staff: {
+    /** Needle reach: +25%. */
+    needleRangeMult: 1.25,
+    /** Extra enemies the needle passes through behind its target, and what they take relative to the first. */
+    pierce: 1,
+    pierceDamageMult: 0.8,
+    /** The pierced enemy must be within this distance of the needle's line, and this far behind the target. */
+    pierceLane: 1.1,
+    pierceReach: 4.5,
+    /** Passive: +10% spell damage (folded into derived Spell power, so the stats line shows it). */
+    spellDamageMult: 1.1
+  },
+  scythe: {
+    /** LMB becomes a close reaping arc: full cone angle (degrees), reach (metres), targets hit. */
+    arcDeg: 100,
+    reach: 3,
+    maxHits: 3,
+    /** Per-target damage relative to a Needle hit, cooldown and lock (a heavier, slower swing), essence per target struck. */
+    damageMult: 1.15,
+    cooldownMs: 520,
+    lockMs: 110,
+    gestureSeconds: 0.3,
+    essencePerHit: 4,
+    /** Bonus souls for a kill the arc delivered, on top of the normal soul every kill gives. */
+    soulsPerKill: 1,
+    /** How long (ms) a struck enemy still counts as reaped when it dies. */
+    reapWindowMs: 1200
+  },
+  wand: {
+    /** Needle cooldown and cast lock are divided by this (+30% cadence). */
+    cadenceMult: 1.3,
+    /** Needle damage: -15%. */
+    damageMult: 0.85
+  },
+  sickle: {
+    /** Each needle adds this many Withered stacks (up to the discipline's cap). */
+    witheredStacks: 1,
+    /** Passive: Exhume gives back this share of its essence cost. */
+    exhumeRefund: 0.2
+  },
+  skull_focus: {
+    /** Thrall cap bonus at or above this tier. */
+    thrallCap: 1,
+    minTier: "gold"
+  },
+  grimoire: {
+    /** Every rite (not the LMB primary) recovers 10% sooner. */
+    riteCooldownMult: 0.9
+  },
+  mourning_bell: {
+    /** A Mourner's wraith hit heals every ally in this range by this share of their max health. */
+    allyHealFrac: 0.02,
+    allyHealRange: 14
+  }
+};
+var NECRO_TIER_INFO = {
+  bone: { label: "Bone", level: 1, rarity: "common", sellMult: 1, area: ["graves", "warren"] },
+  iron: { label: "Iron", level: 15, rarity: "uncommon", sellMult: 2.4, area: ["ossuary", "coliseum"] },
+  gold: { label: "Gold", level: 30, rarity: "rare", sellMult: 5.5, area: ["nave", "sanctum"] },
+  hell: { label: "Hell", level: 45, rarity: "epic", sellMult: 11, area: ["cloister", "pyre"] },
+  moon: { label: "Moon", level: 60, rarity: "epic", sellMult: 22, area: ["pyre"] }
+};
+var PALETTE = {
+  bone: { color: 14208957, accent: 15985881 },
+  iron: { color: 8027526, accent: 12830674 },
+  gold: { color: 14263361, accent: 16769946 },
+  hell: { color: 9054746, accent: 16742973 },
+  moon: { color: 11188456, accent: 15002623 }
+};
+var T = NECRO_WEAPON_TUNING;
+var pct = (n) => `${Math.round(n * 100)}%`;
+var KINDS = {
+  staff: {
+    label: "Staff",
+    type: "weapon",
+    slot: "main_hand",
+    twoHanded: true,
+    names: { bone: "Vertebral Staff", iron: "Crypt-Iron Crozier", gold: "Reliquary Staff", hell: "Hellcoal Crozier", moon: "Staff of the Pale Moon" },
+    int: [5, 9, 15, 22, 30],
+    second: { key: "stat_vit", values: [0, 1, 2, 4, 6] },
+    sell: 16,
+    lore: {
+      bone: "Fused vertebrae, still warm from the hand that carried it. Bone Needles fly farther and pierce a second body.",
+      iron: "A grave-watch crozier with a bell-metal cap. Bone Needles fly farther and pierce a second body.",
+      gold: "Tithe-gold wound round a reliquary shaft. Bone Needles fly farther and pierce a second body.",
+      hell: "Quenched in pyre-coal; the skull at its head never stops smoking. Bone Needles fly farther and pierce a second body.",
+      moon: "Cut from a bone that never touched the ground. Bone Needles fly farther and pierce a second body."
+    },
+    effect: `Bone Needle: +${pct(T.staff.needleRangeMult - 1)} range, pierces ${T.staff.pierce} extra target. Passive: +${pct(T.staff.spellDamageMult - 1)} spell damage. Two-handed.`
+  },
+  scythe: {
+    label: "Scythe",
+    type: "weapon",
+    slot: "main_hand",
+    twoHanded: true,
+    names: { bone: "Gleaner's Scythe", iron: "Sexton's Scythe", gold: "Tithe-Reaper", hell: "Pyre Reaper", moon: "Moonreaper" },
+    int: [4, 8, 13, 19, 26],
+    second: { key: "stat_vit", values: [2, 3, 5, 8, 11] },
+    sell: 18,
+    lore: {
+      bone: "A gleaner cuts what the living left standing. Your left click becomes a reaping arc; kills in it yield a soul.",
+      iron: "The sexton swings it at dusk, in rows. Your left click becomes a reaping arc; kills in it yield a soul.",
+      gold: "Every swing tolls a coin against the dead. Your left click becomes a reaping arc; kills in it yield a soul.",
+      hell: "Its edge glows where it has drunk ash. Your left click becomes a reaping arc; kills in it yield a soul.",
+      moon: "The last harvest is always by moonlight. Your left click becomes a reaping arc; kills in it yield a soul."
+    },
+    effect: `Left click becomes a ${T.scythe.arcDeg}\xB0 reaping arc (${T.scythe.reach} m, hits up to ${T.scythe.maxHits}); kills in the arc give +${T.scythe.soulsPerKill} soul. Two-handed.`
+  },
+  wand: {
+    label: "Wand",
+    type: "weapon",
+    slot: "main_hand",
+    twoHanded: false,
+    names: { bone: "Knucklebone Wand", iron: "Iron Mourning Wand", gold: "Gilded Censer Wand", hell: "Emberthorn Wand", moon: "Wand of Quiet Stars" },
+    int: [3, 6, 10, 15, 21],
+    second: { key: "stat_agi", values: [0, 1, 2, 3, 5] },
+    sell: 12,
+    lore: {
+      bone: "Finger bones, bound in a hurry. Bone Needles come faster and strike softer.",
+      iron: "A mourner flicks it like a hand-bell. Bone Needles come faster and strike softer.",
+      gold: "A censer chain wound round the grip. Bone Needles come faster and strike softer.",
+      hell: "Thorned, and warm to the touch. Bone Needles come faster and strike softer.",
+      moon: "It weighs nothing, and is never quite still. Bone Needles come faster and strike softer."
+    },
+    effect: `Bone Needle: +${pct(T.wand.cadenceMult - 1)} cadence, -${pct(1 - T.wand.damageMult)} damage. One-handed: pair it with an off-hand.`
+  },
+  sickle: {
+    label: "Ritual Sickle",
+    type: "weapon",
+    slot: "main_hand",
+    twoHanded: false,
+    names: { bone: "Barrow Sickle", iron: "Plague Sickle", gold: "Sexton's Gilded Sickle", hell: "Blightfire Sickle", moon: "Moonrot Sickle" },
+    int: [3, 6, 10, 14, 20],
+    second: { key: "stat_vit", values: [1, 2, 3, 5, 7] },
+    sell: 13,
+    lore: {
+      bone: "A curved rib, sharpened on a headstone. Bone Needles leave the target Withered; Exhume returns essence.",
+      iron: "The plague priests cut herbs and throats with it. Bone Needles leave the target Withered; Exhume returns essence.",
+      gold: "Gilded for rites nobody admits to. Bone Needles leave the target Withered; Exhume returns essence.",
+      hell: "The rot burns instead of festering. Bone Needles leave the target Withered; Exhume returns essence.",
+      moon: "Its blade is etched with a blight the moon forgave. Bone Needles leave the target Withered; Exhume returns essence."
+    },
+    effect: `Bone Needle applies ${T.sickle.witheredStacks} Withered stack. Passive: Exhume refunds ${pct(T.sickle.exhumeRefund)} of its essence. One-handed.`
+  },
+  skull_focus: {
+    label: "Skull Focus",
+    type: "offhand",
+    slot: "off_hand",
+    twoHanded: false,
+    names: { bone: "Pauper's Skull Focus", iron: "Iron-Jawed Skull Focus", gold: "Gilded Skull Focus", hell: "Cinder Skull Focus", moon: "Moon Skull Focus" },
+    int: [1, 3, 5, 8, 11],
+    second: { key: "stat_vit", values: [2, 3, 5, 8, 11] },
+    sell: 10,
+    lore: {
+      bone: "A nameless skull that still listens. (Gold and better skulls hold one more thrall.)",
+      iron: "Its jaw is wired shut so it cannot argue. (Gold and better skulls hold one more thrall.)",
+      gold: "It remembers a legion. Hold it and command one more thrall.",
+      hell: "The eyes glow like coals in a cold hearth. Hold it and command one more thrall.",
+      moon: "It was a king, once; it still expects to be obeyed. Hold it and command one more thrall."
+    },
+    effect: `Off-hand. Gold tier and above: +${T.skull_focus.thrallCap} thrall cap.`
+  },
+  grimoire: {
+    label: "Grimoire",
+    type: "offhand",
+    slot: "off_hand",
+    twoHanded: false,
+    names: { bone: "Gravedigger's Grimoire", iron: "Iron-Clasped Grimoire", gold: "Gilt Reliquary Grimoire", hell: "Hellbound Grimoire", moon: "Moonlit Grimoire" },
+    int: [2, 4, 7, 10, 14],
+    sell: 11,
+    lore: {
+      bone: "A gravedigger's ledger of names and their uses. Rites recover sooner.",
+      iron: "Chained shut, and opened only from the inside. Rites recover sooner.",
+      gold: "Every page is gilt, every margin a warning. Rites recover sooner.",
+      hell: "Its binding is singed along the spine. Rites recover sooner.",
+      moon: "The pages turn themselves to the rite you need. Rites recover sooner."
+    },
+    effect: `Off-hand. Rites (your other spells, not the left click) recover ${pct(1 - T.grimoire.riteCooldownMult)} faster.`
+  },
+  mourning_bell: {
+    label: "Mourning Bell",
+    type: "offhand",
+    slot: "off_hand",
+    twoHanded: false,
+    names: { bone: "Pauper's Mourning Bell", iron: "Iron Mourning Bell", gold: "Gilded Mourning Bell", hell: "Cinder Mourning Bell", moon: "Moon Mourning Bell" },
+    int: [1, 3, 5, 8, 11],
+    second: { key: "stat_agi", values: [1, 2, 3, 5, 7] },
+    sell: 10,
+    lore: {
+      bone: "Rung once for each name you could not save. A Mourner's wraith hits mend allies.",
+      iron: "Its note is flat on purpose. A Mourner's wraith hits mend allies.",
+      gold: "The clapper is wrapped in widow's silk. A Mourner's wraith hits mend allies.",
+      hell: "It tolls for the ones who should have stayed buried. A Mourner's wraith hits mend allies.",
+      moon: "You hear it a moment before it rings. A Mourner's wraith hits mend allies."
+    },
+    effect: `Off-hand. Mourner: each wraith hit heals allies in ${T.mourning_bell.allyHealRange} m for ${pct(T.mourning_bell.allyHealFrac)} of their max health.`
+  }
+};
+var NECRO_KIND_LABEL = Object.fromEntries(Object.entries(KINDS).map(([k, d]) => [k, d.label]));
+function build() {
+  const out = [];
+  for (const [kind, def] of Object.entries(KINDS)) {
+    NECRO_TIERS.forEach((tier, i) => {
+      const info = NECRO_TIER_INFO[tier];
+      const stats = { stat_int: def.int[i] };
+      if (def.second && def.second.values[i] > 0) stats[def.second.key] = def.second.values[i];
+      out.push({
+        id: `${kind}_${tier}`,
+        kind,
+        tier,
+        name: def.names[tier],
+        type: def.type,
+        slot: def.slot,
+        twoHanded: def.twoHanded,
+        rarity: info.rarity,
+        level: info.level,
+        stats,
+        sell: Math.round(def.sell * info.sellMult),
+        lore: def.lore[tier],
+        effect: def.effect,
+        color: PALETTE[tier].color,
+        accent: PALETTE[tier].accent
+      });
+    });
+  }
+  return out;
+}
+var NECRO_WEAPONS = build();
+var NECRO_WEAPON_BY_ID = Object.fromEntries(NECRO_WEAPONS.map((w) => [w.id, w]));
+function necroWeaponLoot(area) {
+  const out = [];
+  for (const w of NECRO_WEAPONS) {
+    if (!NECRO_TIER_INFO[w.tier].area.includes(area)) continue;
+    out.push({ item: w.id, weight: w.tier === "moon" ? 0.5 : 1 });
+  }
+  return out;
+}
+var WOOD_KINDS = ["staff", "wand", "grimoire"];
+var WOOD_RECIPE = {
+  bone: { level: 3, ing: [["plank_oak", 3], ["bones_old", 2]] },
+  iron: { level: 8, ing: [["plank_elm", 3], ["ingot_iron", 1]] },
+  gold: { level: 18, ing: [["plank_willow", 3], ["ingot_gold", 1]] },
+  hell: { level: 42, ing: [["plank_yew", 3], ["ingot_hell", 1]] },
+  moon: { level: 57, ing: [["plank_blackthorn", 3], ["ingot_moon", 1]] }
+};
+var SMITH_RECIPE = {
+  bone: { level: 2, ing: [["ingot_copper", 2], ["bones_old", 3]] },
+  iron: { level: 10, ing: [["ingot_iron", 3]] },
+  gold: { level: 20, ing: [["ingot_gold", 3], ["ingot_iron", 1]] },
+  hell: { level: 40, ing: [["ingot_hell", 3], ["ingot_gold", 1]] },
+  moon: { level: 55, ing: [["ingot_moon", 3], ["ingot_hell", 1]] }
+};
+var NECRO_RECIPES = NECRO_WEAPONS.map((w) => {
+  const wood = WOOD_KINDS.includes(w.kind);
+  const r = (wood ? WOOD_RECIPE : SMITH_RECIPE)[w.tier];
+  return [`craft_${w.id}`, w.name, wood ? "woodcutting" : "mining", r.level, w.id, 1, r.ing];
+});
+
 // src/content/areas.ts
 var AREAS = {
   chapterhouse: {
@@ -172,6 +433,7 @@ var AREAS = {
     eliteChance: 0.035,
     loot: [
       ...armorLoot("graves"),
+      ...necroWeaponLoot("graves"),
       { item: "material_copper_shard", weight: 30 },
       { item: "ore_copper", weight: 24 },
       { item: "ore_tin", weight: 14 },
@@ -228,6 +490,7 @@ var AREAS = {
     unlock: { area: "graves", kills: 300 },
     loot: [
       ...armorLoot("ossuary"),
+      ...necroWeaponLoot("ossuary"),
       { item: "ore_iron", weight: 24 },
       { item: "ore_copper", weight: 14 },
       { item: "material_copper_bar", weight: 14 },
@@ -274,6 +537,7 @@ var AREAS = {
     unlock: { area: "ossuary", kills: 420 },
     loot: [
       ...armorLoot("nave"),
+      ...necroWeaponLoot("nave"),
       { item: "ore_silver", weight: 20 },
       { item: "ore_iron", weight: 20 },
       { item: "ore_gold", weight: 8 },
@@ -319,6 +583,7 @@ var AREAS = {
     unlock: { area: "nave", kills: 520 },
     loot: [
       ...armorLoot("sanctum"),
+      ...necroWeaponLoot("sanctum"),
       { item: "ore_gold", weight: 18 },
       { item: "ore_steel", weight: 14 },
       { item: "ingot_gold", weight: 8 },
@@ -362,6 +627,7 @@ var AREAS = {
     unlock: { area: "sanctum", kills: 600 },
     loot: [
       ...armorLoot("cloister"),
+      ...necroWeaponLoot("cloister"),
       { item: "ore_steel", weight: 14 },
       { item: "ore_hell", weight: 12 },
       { item: "ore_moon", weight: 6 },
@@ -405,6 +671,7 @@ var AREAS = {
     unlock: { area: "cloister", kills: 700 },
     loot: [
       ...armorLoot("pyre"),
+      ...necroWeaponLoot("pyre"),
       { item: "ore_hell", weight: 22 },
       { item: "ingot_hell", weight: 6 },
       { item: "ore_steel", weight: 12 },
@@ -452,6 +719,7 @@ var AREAS = {
     eliteChance: 0.045,
     unlock: { area: "graves", kills: 150 },
     loot: [
+      ...necroWeaponLoot("warren"),
       { item: "bones_old", weight: 20 },
       { item: "bones_barrow", weight: 12 },
       { item: "ore_tin", weight: 18 },
@@ -498,6 +766,7 @@ var AREAS = {
     eliteChance: 0.16,
     unlock: { area: "ossuary", kills: 350 },
     loot: [
+      ...necroWeaponLoot("coliseum"),
       { item: "ore_silver", weight: 18 },
       { item: "ore_gold", weight: 12 },
       { item: "ingot_silver", weight: 6 },
