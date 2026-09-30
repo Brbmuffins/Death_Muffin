@@ -56,6 +56,12 @@ export const CREATURE_MODELS = {
   plague_doctor: m('plague_doctor', 2.0),
   flagellant: m('flagellant', 1.85),
   boss_plague_saint: m('boss_plague_saint', 4.0),
+  // The Cinder Pyre (2026-09-30).
+  cinder_husk: m('cinder_husk', 1.9),
+  pyre_priest: m('pyre_priest', 2.0),
+  cinderhound: m('cinderhound', 1.0),
+  slag_brute: m('slag_brute', 2.9),
+  boss_cinder_regent: m('boss_cinder_regent', 4.3),
 } satisfies Record<string, CreatureModelDef>;
 
 export type CreatureSlug = keyof typeof CREATURE_MODELS;

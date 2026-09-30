@@ -2,7 +2,7 @@ import { AREAS } from '../../content/areas';
 import { enemyDamageScale, enemyHpScale } from '../../content/enemies';
 import { FRACTURE } from '../../content/abilities';
 import { DIFFICULTIES } from '../../content/difficulty';
-import { ABBESS, ABBESS_NICHE_SPOTS, BOSSES, CONGREGATION, GRAVEDIGGER, GRAVEDIGGER_PITS, SAINT, type BossId } from '../../content/bosses';
+import { ABBESS, ABBESS_NICHE_SPOTS, BOSSES, CONGREGATION, GRAVEDIGGER, GRAVEDIGGER_PITS, REGENT, SAINT, type BossId } from '../../content/bosses';
 import type { EnemyId } from '../../content/enemies';
 import type { WorldSim } from './WorldSim';
 import type { BossPhase, BossState, PlayerBody } from './types';
@@ -289,7 +289,7 @@ export abstract class BossBrain {
     const p: Pending = { kind, at: this.sim.time + (ms + delayMs) / 1000, x, z, r, ...extra };
     this.pending.push(p);
     if (!p.side) {
-      this.state.state = (['toll', 'slam', 'rain', 'summon'].includes(kind) ? kind : kind === 'rotRain' || kind === 'bury' || kind === 'hymn' || kind === 'grasp' || kind === 'chorus' || kind === 'communion' ? 'rain' : 'slam') as BossState['state'];
+      this.state.state = (['toll', 'slam', 'rain', 'summon'].includes(kind) ? kind : kind === 'rotRain' || kind === 'coals' || kind === 'conflagration' || kind === 'bury' || kind === 'hymn' || kind === 'grasp' || kind === 'chorus' || kind === 'communion' ? 'rain' : 'slam') as BossState['state'];
       this.state.stateT = 0;
     }
     this.sim.emit({ t: 'boss', kind: kind as never, x, z, phase: this.state.phase, targets: p.targets, r, ms: ms + delayMs, dir: p.dir, boss: this.id });
@@ -949,6 +949,131 @@ export class SaintBrain extends BossBrain {
   }
 }
 
+/**
+ * The Cinder Regent (Cinder Pyre, level-scaled). Coals mark burning circles, Cinder Cleave lays a firebreak down its
+ * line, and Conflagration burns the whole arena except a few ash circles (marked for the entire windup). P2 brings
+ * Husks and Priests, P3 hounds, fewer ash circles and a faster cadence.
+ */
+export class RegentBrain extends BossBrain {
+  private coalsCd = 3;
+  private cleaveCd = 2;
+  private conflCd = 9;
+
+  constructor(sim: WorldSim) {
+    super(sim, 'regent');
+  }
+
+  protected onAwaken() {
+    this.coalsCd = 3;
+    this.cleaveCd = 2;
+    this.conflCd = 9;
+  }
+
+  protected onPhase(p: BossPhase) {
+    const s = this.state;
+    const wave = p === 2 ? REGENT.adds.p2 : p === 3 ? REGENT.adds.p3 : [];
+    const spots: [number, number][] = [];
+    wave.forEach((def, i) => {
+      const at = this.rim((i / wave.length) * Math.PI * 2 + 0.5);
+      spots.push(at);
+      this.spawnAdd(def, at[0], at[1]);
+    });
+    if (spots.length) this.sim.emit({ t: 'boss', kind: 'summon', x: s.x, z: s.z, phase: p, targets: spots, boss: this.id });
+  }
+
+  protected circleDamage(kind: string) {
+    return kind === 'coals' ? REGENT.coals.dmg : 20;
+  }
+
+  /** Ash circles for a Conflagration: spread over the arena, never on top of one another. */
+  private ashSpots(players: PlayerBody[]): [number, number][] {
+    const s = this.state;
+    const C = REGENT.conflagration;
+    const extra = Math.floor(Math.max(0, players.length - 1) / 3);
+    const n = C.safe[s.phase - 1] + extra;
+    const spots: [number, number][] = [];
+    for (let tries = 0; spots.length < n && tries < 80; tries++) {
+      const a = this.sim.rand() * Math.PI * 2;
+      const r = Math.sqrt(this.sim.rand()) * (this.arena.r - C.safeR - 0.6);
+      const x = this.arena.x + Math.sin(a) * r;
+      const z = this.arena.z + Math.cos(a) * r;
+      if (spots.every(([sx, sz]) => Math.hypot(sx - x, sz - z) > C.safeR * 2 + 1)) spots.push([x, z]);
+    }
+    return spots;
+  }
+
+  protected resolve(p: Pending, players: PlayerBody[]) {
+    const R = REGENT;
+    const s = this.state;
+    if (p.kind === 'coals') {
+      super.resolve(p, players);
+      for (const [x, z] of p.targets ?? []) this.sim.emberPool(x, z, R.coals.r, R.coals.poolS, this.dmg(R.coals.dmg) * R.coals.poolDpsMult);
+      return;
+    }
+    if (p.kind === 'cleave') {
+      const inCone = (x: number, z: number) => Math.hypot(x - p.x, z - p.z) <= R.cleave.r + 0.3 && angleDiff(angleTo(p.x, p.z, x, z), p.dir!) <= (R.cleave.halfDeg * Math.PI) / 180;
+      this.strikePlayers(players, (pl) => inCone(pl.x, pl.z), R.cleave.dmg, p.x, p.z);
+      this.hurtThralls((t) => inCone(t.x, t.z));
+      // The firebreak: burning ground down the line of the blow.
+      for (const d of R.cleave.trail) this.sim.emberPool(p.x + Math.sin(p.dir!) * d, p.z + Math.cos(p.dir!) * d, R.cleave.trailR, R.cleave.trailS, this.dmg(R.cleave.dmg) * R.cleave.trailDpsMult);
+      this.sim.emit({ t: 'boss', kind: 'cleave', x: p.x, z: p.z, phase: s.phase, r: p.r, ms: 0, dir: p.dir, boss: this.id });
+      return;
+    }
+    if (p.kind === 'conflagration') {
+      const C = R.conflagration;
+      const safe = p.targets ?? [];
+      const onAsh = (x: number, z: number) => safe.some(([sx, sz]) => Math.hypot(x - sx, z - sz) <= C.safeR);
+      const inArena = (x: number, z: number) => Math.hypot(x - this.arena.x, z - this.arena.z) <= this.arena.r + 0.5;
+      for (const pl of players) {
+        if (inArena(pl.x, pl.z) && !onAsh(pl.x, pl.z)) this.sim.emit({ t: 'hurt', player: pl.id, dmg: this.dmg(C.dmg), from: 'ember', x: this.arena.x, z: this.arena.z });
+      }
+      this.hurtThralls((t) => inArena(t.x, t.z) && !onAsh(t.x, t.z), C.dmg * 0.5);
+      // What is left of the floor smoulders in a few places (never on the ash).
+      for (let i = 0; i < C.embers; i++) {
+        const a = this.sim.rand() * Math.PI * 2;
+        const r = Math.sqrt(this.sim.rand()) * (this.arena.r - 2);
+        const x = this.arena.x + Math.sin(a) * r;
+        const z = this.arena.z + Math.cos(a) * r;
+        if (!onAsh(x, z)) this.sim.emberPool(x, z, 1.8, C.emberS, this.dmg(REGENT.coals.dmg) * REGENT.coals.poolDpsMult);
+      }
+      this.sim.emit({ t: 'boss', kind: 'conflagration', x: this.arena.x, z: this.arena.z, phase: s.phase, targets: safe, r: this.arena.r, ms: 0, boss: this.id });
+      return;
+    }
+    super.resolve(p, players);
+  }
+
+  protected think(dt: number, players: PlayerBody[]) {
+    const R = REGENT;
+    const s = this.state;
+    const fast = s.phase === 3 ? 0.75 : s.phase === 2 ? 0.88 : 1;
+    this.coalsCd -= dt;
+    this.cleaveCd -= dt;
+    this.conflCd -= dt;
+    const { nearest, nd } = this.nearest(players);
+    if (!this.busy) {
+      if (this.conflCd <= 0) {
+        this.conflCd = R.conflagration.cd * fast;
+        this.telegraph('conflagration', this.arena.x, this.arena.z, this.arena.r, R.conflagration.windupMs, { targets: this.ashSpots(players) });
+      } else if (this.coalsCd <= 0) {
+        this.coalsCd = R.coals.cd * fast;
+        const [lo, hi] = R.coals.circles;
+        const n = lo + Math.floor(this.sim.rand() * (hi - lo + 1)) + (s.phase === 3 ? 2 : 0);
+        const targets: [number, number][] = players.map((pl) => [pl.x, pl.z]);
+        while (targets.length < n) {
+          const a = this.sim.rand() * Math.PI * 2;
+          const r = 2 + this.sim.rand() * (this.arena.r - 3);
+          targets.push([this.arena.x + Math.sin(a) * r, this.arena.z + Math.cos(a) * r]);
+        }
+        this.telegraph('coals', s.x, s.z, R.coals.r, R.coals.windupMs, { targets });
+      } else if (this.cleaveCd <= 0 && nd < R.cleave.r + 0.5) {
+        this.cleaveCd = R.cleave.cd * fast;
+        this.telegraph('cleave', s.x, s.z, R.cleave.r, R.cleave.windupMs, { dir: angleTo(s.x, s.z, nearest.x, nearest.z) });
+      }
+    }
+    this.chase(nearest, nd, (s.phase === 3 ? 2.2 : s.phase === 2 ? 1.9 : 1.6) * (this.busy ? 0.3 : 1), dt, 2, 2.8);
+  }
+}
+
 export function makeBossBrains(sim: WorldSim): Record<BossId, BossBrain> {
   return {
     prelate: new PrelateBrain(sim),
@@ -956,5 +1081,6 @@ export function makeBossBrains(sim: WorldSim): Record<BossId, BossBrain> {
     abbess: new AbbessBrain(sim),
     congregation: new CongregationBrain(sim),
     saint: new SaintBrain(sim),
+    regent: new RegentBrain(sim),
   };
 }

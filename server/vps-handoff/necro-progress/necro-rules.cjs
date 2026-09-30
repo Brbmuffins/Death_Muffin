@@ -319,9 +319,141 @@ var AREAS = {
       { id: "saints_litter", kind: "boss", label: "The Saint's Litter", x: 44, z: -129.5 }
     ],
     ambient: { fog: 659464, hemiSky: 2898468, hemiGround: 461317, moon: 10273930 }
+  },
+  // The Cinder Pyre (2026-09-30): the fire realm past the Plague Cloister, level-scaled like it but harder.
+  pyre: {
+    id: "pyre",
+    name: "The Cinder Pyre",
+    subtitle: "Where the Covenant burns what it cannot bury",
+    theme: "pyre",
+    rect: { x0: 70, z0: -134, x1: 110, z1: -98 },
+    safe: false,
+    level: 30,
+    scaling: { minLevel: 30 },
+    enemies: [
+      { id: "cinder_husk", weight: 30 },
+      { id: "pyre_priest", weight: 20 },
+      { id: "cinderhound", weight: 22 },
+      { id: "slag_brute", weight: 8 }
+    ],
+    cap: 28,
+    waveSize: 9,
+    waveIntervalMs: 6e3,
+    eliteChance: 0.09,
+    unlock: { area: "cloister", kills: 700 },
+    loot: [
+      { item: "ore_hell", weight: 22 },
+      { item: "ingot_hell", weight: 6 },
+      { item: "ore_steel", weight: 12 },
+      { item: "ingot_steel", weight: 6 },
+      { item: "ore_moon", weight: 5 },
+      { item: "gem_grave_garnet", weight: 8 },
+      { item: "gem_bone_opal", weight: 4 },
+      { item: "flask_hp_major", weight: 10 },
+      { item: "flask_damage", weight: 7 },
+      { item: "flask_void_resist", weight: 5 },
+      { item: "helm_gold", weight: 5 },
+      { item: "chest_iron", weight: 5 }
+    ],
+    itemChance: 0.15,
+    breaches: [[73, -101], [107, -101], [73, -131], [107, -131], [90, -100.5], [108, -116], [86.5, -131.5]],
+    interactables: [
+      { id: "waystone_pyre", kind: "waystone", label: "Waystone", x: 73.5, z: -108 },
+      // Boss summon at the arena's north edge (content/bosses.ts summonSpot).
+      { id: "ember_altar", kind: "boss", label: "The Ember Altar", x: 90, z: -126.35 }
+    ],
+    ambient: { fog: 1312774, hemiSky: 4858898, hemiGround: 787459, moon: 14191178 }
+  },
+  // The Catacomb Warren (2026-09-30): a chambered side dungeon off the Hollow Graves. Half-walls divide nine chambers;
+  // they break Penitent cones and Ossuary-style line of sight, so the rooms are the fun.
+  warren: {
+    id: "warren",
+    name: "The Catacomb Warren",
+    subtitle: "Nine chambers, and something is digging in each",
+    theme: "warren",
+    rect: { x0: -72, z0: -52, x1: -32, z1: -8 },
+    safe: false,
+    level: 4,
+    enemies: [
+      { id: "rat", weight: 30 },
+      { id: "robber", weight: 22 },
+      { id: "ghoul", weight: 14 },
+      { id: "bat", weight: 12 },
+      { id: "sac", weight: 10 },
+      { id: "hound", weight: 8 },
+      { id: "penitent", weight: 4 }
+    ],
+    cap: 26,
+    waveSize: 8,
+    waveIntervalMs: 6400,
+    eliteChance: 0.045,
+    unlock: { area: "graves", kills: 150 },
+    loot: [
+      { item: "bones_old", weight: 20 },
+      { item: "bones_barrow", weight: 12 },
+      { item: "ore_tin", weight: 18 },
+      { item: "ore_iron", weight: 14 },
+      { item: "material_copper_bar", weight: 10 },
+      { item: "seed_mourning_moss", weight: 8 },
+      { item: "flask_hp_minor", weight: 12 },
+      { item: "augment_copper", weight: 5 },
+      { item: "plate_copper", weight: 4 },
+      { item: "helm_iron", weight: 3 }
+    ],
+    itemChance: 0.1,
+    breaches: [[-65, -45], [-52, -45], [-39, -45], [-65, -30], [-55.5, -30], [-65, -15], [-52, -15], [-39, -15]],
+    interactables: [{ id: "waystone_warren", kind: "waystone", label: "Waystone", x: -35.5, z: -27 }],
+    ambient: { fog: 789e3, hemiSky: 3813926, hemiGround: 657414, moon: 11049594 }
+  },
+  // The Bone Coliseum (2026-09-30): a wave-gauntlet pit east of the Ossuary. Four gates, fast surges, elites everywhere,
+  // the best drops before the Sanctum: for players who want a fight, not a walk.
+  coliseum: {
+    id: "coliseum",
+    name: "The Bone Coliseum",
+    subtitle: "The dead cheer for whoever is still standing",
+    theme: "coliseum",
+    rect: { x0: 70, z0: -46, x1: 112, z1: -10 },
+    safe: false,
+    level: 11,
+    enemies: [
+      { id: "rat", weight: 18 },
+      { id: "hound", weight: 16 },
+      { id: "robber", weight: 14 },
+      { id: "deacon", weight: 10 },
+      { id: "bat", weight: 8 },
+      { id: "acolyte", weight: 9 },
+      { id: "wraith", weight: 8 },
+      { id: "gargoyle", weight: 8 },
+      { id: "templar", weight: 6 },
+      { id: "censer", weight: 5 },
+      { id: "seraph", weight: 5 },
+      { id: "golem", weight: 3 }
+    ],
+    cap: 36,
+    waveSize: 14,
+    waveIntervalMs: 4200,
+    eliteChance: 0.16,
+    unlock: { area: "ossuary", kills: 350 },
+    loot: [
+      { item: "ore_silver", weight: 18 },
+      { item: "ore_gold", weight: 12 },
+      { item: "ingot_silver", weight: 6 },
+      { item: "flask_hp_major", weight: 12 },
+      { item: "flask_damage", weight: 6 },
+      { item: "gem_grave_garnet", weight: 6 },
+      { item: "gem_bone_opal", weight: 3 },
+      { item: "augment_iron", weight: 6 },
+      { item: "helm_iron", weight: 6 },
+      { item: "chest_iron", weight: 5 },
+      { item: "kit_iron_warden", weight: 4 }
+    ],
+    itemChance: 0.17,
+    breaches: [[91, -44], [91, -12], [110, -28], [78, -43], [78, -13], [104, -42], [104, -14], [100, -28]],
+    interactables: [{ id: "waystone_coliseum", kind: "waystone", label: "Waystone", x: 73.5, z: -20 }],
+    ambient: { fog: 1051658, hemiSky: 4864560, hemiGround: 788486, moon: 13678736 }
   }
 };
-var AREA_ORDER = ["chapterhouse", "acre", "graves", "ossuary", "nave", "sanctum", "cloister"];
+var AREA_ORDER = ["chapterhouse", "acre", "graves", "ossuary", "nave", "sanctum", "cloister", "pyre", "warren", "coliseum"];
 var BOSS_SUMMON_SHARDS = 5;
 
 // src/content/ascension.ts
@@ -401,7 +533,7 @@ var WAVE_UPGRADE = {
 };
 
 // src/content/bosses.ts
-var BOSS_IDS = ["gravedigger", "abbess", "congregation", "prelate", "saint"];
+var BOSS_IDS = ["gravedigger", "abbess", "congregation", "prelate", "saint", "regent"];
 var BOSSES = {
   gravedigger: {
     id: "gravedigger",
@@ -470,6 +602,23 @@ var BOSSES = {
     phases: ["The blight blesses her", "Her flock gathers", "The swarm"],
     awaken: "The Saint rises from her litter",
     defeated: ["The Blight Recedes", "The Plague Saint sinks back into her reliquary"]
+  },
+  regent: {
+    id: "regent",
+    name: "The Cinder Regent",
+    title: "Ember-Crowned Keeper of the Pyre",
+    area: "pyre",
+    arena: { x: 90, z: -117, r: 11 },
+    summonId: "ember_altar",
+    summonLabel: "The Ember Altar",
+    shards: 6,
+    baseHp: 28e3,
+    modelSlug: "boss_cinder_regent",
+    portrait: "",
+    color: 16742954,
+    phases: ["The crown ignites", "The pyre feeds", "The pyre burns down"],
+    awaken: "The Regent rises from the embers",
+    defeated: ["The Pyre Burns Out", "The Cinder Regent crumbles to ash"]
   },
   prelate: {
     id: "prelate",

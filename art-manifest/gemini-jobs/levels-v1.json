@@ -1,0 +1,36 @@
+[
+  {
+    "id": "tex_warren_floor",
+    "out": "public/art/textures/warren_floor.webp",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "size": "1K",
+    "post": {
+      "resize": [
+        1024,
+        1024
+      ],
+      "format": "webp"
+    },
+    "prompt": "Seamless tileable game texture, perfectly tiling on all four edges, orthographic top-down, flat even diffuse lighting with no directional shadows, no vignette, no text, no border, fills the entire frame edge to edge. Use the attached screenshot ONLY for mood and palette (layered near-blacks, soot, cold reflections). Subject: packed dark earth of an ancient catacomb tunnel floor, pale tree roots creeping through it, scattered small bones and skull fragments pressed into the dirt, damp patches, a few flat cracked burial slabs half buried. Dark overall value."
+  },
+  {
+    "id": "tex_coliseum_floor",
+    "out": "public/art/textures/coliseum_floor.webp",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "size": "1K",
+    "post": {
+      "resize": [
+        1024,
+        1024
+      ],
+      "format": "webp"
+    },
+    "prompt": "Seamless tileable game texture, perfectly tiling on all four edges, orthographic top-down, flat even diffuse lighting with no directional shadows, no vignette, no text, no border, fills the entire frame edge to edge. Use the attached screenshot ONLY for mood and palette (layered near-blacks, soot, cold reflections). Subject: a fighting-pit floor of pale bone-dust sand raked into arcs, dark dried bloodstains, chips of old bone and broken teeth, a few worn cobbles at the edge, faint scratch marks of countless battles. Dark overall value."
+  }
+]

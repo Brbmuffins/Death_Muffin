@@ -37,6 +37,9 @@ import { Nav } from '../gameplay/nav';
 import { Player } from '../gameplay/Player';
 import { resourceRulesFor, type ResourceRules } from '../gameplay/resources';
 import { Progression } from '../gameplay/progression';
+import { CHAIN, KillChain } from '../gameplay/killChain';
+import { newlyReached } from '../gameplay/milestones';
+import { omenFor, omenLeft, type Omen } from '../content/omens';
 import { BOSS_ARENA } from '../gameplay/sim/BossBrain';
 import { makeSnapshot, WorldMirror } from '../gameplay/sim/snapshot';
 import type { BossState, Corpse, Enemy, Intent, SimEvent, Thrall, Zone } from '../gameplay/sim/types';
@@ -44,7 +47,7 @@ import { WorldSim } from '../gameplay/sim/WorldSim';
 import { computeStats, STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
 import { BossView, NecromancerAvatar } from '../graphics/Avatars';
 import { prewarmCreature } from '../graphics/prewarmCreature';
-import { BOSSES, CONGREGATION, GRAVEDIGGER, SAINT, bossForSummon, type BossId } from '../content/bosses';
+import { BOSSES, CONGREGATION, GRAVEDIGGER, REGENT, SAINT, bossForSummon, type BossId } from '../content/bosses';
 import { fxImage } from '../graphics/fxImages';
 import { CameraRig } from '../graphics/CameraRig';
 import { Effects, type Handle } from '../graphics/Effects';
@@ -106,6 +109,10 @@ const FIRST_SIGHT_TIPS: Partial<Record<EnemyId, TipId>> = {
   templar: 'templar',
   plague_doctor: 'plague_doctor',
   flagellant: 'flagellant',
+  cinder_husk: 'cinder_husk',
+  pyre_priest: 'pyre_priest',
+  cinderhound: 'cinderhound',
+  slag_brute: 'slag_brute',
 };
 /** Counsel shown the first time each level-gated Grimoire rite is placed on a key. */
 const RITE_TIPS: Partial<Record<AbilityId, TipId>> = {
@@ -184,6 +191,12 @@ export class WorldScene implements GameScene, RuntimeView {
   /** Open graves (Gravedigger P3) until the fight ends. */
   private pitFx: Handle[] = [];
   private chronicle!: Chronicle;
+  /** Kill Chain (GRIND-LOOP §3 #8) and the milestone claims that ride on it (§3 #9). */
+  private chain = new KillChain();
+  private chainTold = false;
+  /** This week's Omen (content/omens.ts): same for everyone, so a party sees one sky. */
+  private omen: Omen = omenFor();
+  private omenTold = false;
   private gatherSession: GatherSession | null = null;
   private gatherReportPanel!: GatherReportPanel;
   private contractsPanel!: ContractsPanel;
@@ -438,6 +451,7 @@ export class WorldScene implements GameScene, RuntimeView {
     });
 
     this.sim = new WorldSim(this.nav);
+    this.sim.omen = this.omen;
     this.sim.setCrypts(this.layout.crypts);
     this.sim.setCover(this.pewCover());
     this.sim.setNodes(this.layout.nodes);
@@ -1701,6 +1715,26 @@ export class WorldScene implements GameScene, RuntimeView {
     }
   }
 
+  /** A camera jolt for a fire burst, fading with distance from the hero (so far-off pools never shake the screen). */
+  private emberShake(x: number, z: number, amount: number) {
+    const d = Math.hypot(x - this.player.x, z - this.player.z);
+    if (d < 14) this.rig.shake(amount * (1 - d / 14));
+  }
+
+  /** The Cinder Pyre's dead go out in fire: a flare, sparks and soot (the Husk's pool burst is its own event). */
+  private fireDeath(ev: Extract<SimEvent, { t: 'death' }>) {
+    if (ev.def !== 'cinder_husk' && ev.def !== 'pyre_priest' && ev.def !== 'cinderhound' && ev.def !== 'slag_brute') return;
+    const E = SPELL_FX.enemy;
+    const big = ev.def === 'slag_brute';
+    this.effects.emit({ x: ev.x, y: 0.9, z: ev.z, count: big ? 40 : 18, color: E.emberCore, spread: big ? 0.9 : 0.4, speed: big ? 4.5 : 3, up: big ? 3.4 : 2.4, life: 0.9, size: 0.13, gravity: 7 });
+    this.effects.emitSmoke({ x: ev.x, y: 0.8, z: ev.z, count: big ? 6 : 3, color: E.emberDeep, spread: big ? 0.8 : 0.4, speed: 0.9, up: 0.9, life: 1.3, size: big ? 1.6 : 1, shrink: -0.6 });
+    if (big) {
+      this.bb('surge_eruption', ev.x, ev.z, { scale: 0.9, colors: [E.ember, E.emberCore, E.emberDeep] });
+      this.effects.decal({ tex: fx.ring(), color: E.ember, x: ev.x, z: ev.z, r: 3.2, duration: 0.6, opacity: 0.9, growFrom: 0.2 });
+      this.emberShake(ev.x, ev.z, 0.14);
+    }
+  }
+
   private bb(id: BinbunId, x: number, z: number, o: Omit<BinbunSpawn, 'x' | 'z'> = {}) {
     return playFx(this.effects.binbun, id, { x, z, ...o });
   }
@@ -1719,6 +1753,7 @@ export class WorldScene implements GameScene, RuntimeView {
         this.auraFx.delete(`e${ev.id}`);
         audio.play(ev.elite ? 'eliteDeath' : 'enemyDeath', ev.x, ev.z);
         this.worldView.addRipple(ev.x, ev.z, ev.elite ? 2 : 1.4);
+        this.fireDeath(ev);
         this.onKill(ev);
         break;
       case 'hurt':
@@ -1734,9 +1769,15 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'telegraph':
         this.telegraph(ev);
         break;
-      case 'melee':
+      case 'melee': {
         this.effects.emitSmoke({ x: ev.tx, y: 0.3, z: ev.tz, count: 2, color: 0x3a3340, spread: 0.3, speed: 0.8, up: 0.3, life: 0.5, size: 0.6 });
+        // The Pyre's dead strike in a shower of sparks.
+        const def = this.enemiesMap().get(ev.id)?.def;
+        if (def === 'cinder_husk' || def === 'cinderhound' || def === 'slag_brute') {
+          this.effects.emit({ x: ev.tx, y: 0.9, z: ev.tz, count: def === 'slag_brute' ? 12 : 7, color: SPELL_FX.enemy.emberCore, spread: 0.3, speed: 3, up: 1.6, life: 0.4, size: 0.1, gravity: 8 });
+        }
         break;
+      }
       case 'thrallHit': {
         audio.play('boneHit', ev.tx, ev.tz);
         const color = ev.kind === 'wraith' ? 0x8f9ed1 : ev.kind === 'bonemage' ? STATUS_FX.hex.amber : 0xd8cfbd;
@@ -1835,7 +1876,18 @@ export class WorldScene implements GameScene, RuntimeView {
         }
         break;
       case 'burst':
-        audio.play('burst', ev.x, ev.z);
+        if (ev.kind !== 'ember') audio.play('burst', ev.x, ev.z);
+        if (ev.kind === 'ember') {
+          // A Cinder Husk's last embers (enemy fire, never the player's Miasma green or Corpse Explosion violet).
+          const E = SPELL_FX.enemy;
+          audio.play('emberBurst', ev.x, ev.z);
+          this.bb('vengeful_burst', ev.x, ev.z, { scale: ev.r / 1.4, colors: [E.ember, E.emberCore, E.emberDeep] });
+          this.emberShake(ev.x, ev.z, 0.05);
+          this.effects.decal({ tex: fx.ring(), color: E.ember, x: ev.x, z: ev.z, r: ev.r, duration: 0.5, growFrom: 0.2, opacity: 1 });
+          this.effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 26, color: E.emberCore, spread: ev.r * 0.5, speed: 3.2, up: 2.4, life: 0.9, size: 0.2, gravity: 5 });
+          this.effects.emitSmoke({ x: ev.x, y: 0.4, z: ev.z, count: 6, color: E.emberDeep, spread: ev.r * 0.4, speed: 1.2, up: 0.9, life: 1.4, size: 1.5, shrink: -1 });
+          break;
+        }
         this.effects.decal({ tex: fx.ring(), color: ev.kind === 'toxic' ? 0x8fa05a : 0xb58cff, x: ev.x, z: ev.z, r: ev.r, duration: 0.5, growFrom: 0.2, opacity: 1 });
         this.effects.emit({ x: ev.x, y: 0.6, z: ev.z, count: 30, color: ev.kind === 'toxic' ? 0x8fa05a : 0xb58cff, spread: ev.r * 0.5, speed: 3, up: 1.5, life: 0.8, size: 0.35 });
         this.effects.emitSmoke({ x: ev.x, y: 0.4, z: ev.z, count: 8, color: ev.kind === 'toxic' ? 0x3d4a22 : 0x3a2d55, spread: ev.r * 0.4, speed: 1.2, up: 0.8, life: 1.4, size: 1.6, shrink: -1 });
@@ -1978,7 +2030,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (this.inventory.all.some((s) => s.item_id.startsWith('tool_'))) this.onboarding.show('tool');
     if (this.progression.local.shards >= BOSS_SUMMON_SHARDS) this.onboarding.show('prelate');
     // Area bosses: counsel the first time a summon object is within 12 m.
-    for (const id of ['gravedigger', 'abbess', 'congregation', 'saint'] as BossId[]) {
+    for (const id of ['gravedigger', 'abbess', 'congregation', 'saint', 'regent'] as BossId[]) {
       const it = AREAS[BOSSES[id].area].interactables.find((i) => i.id === BOSSES[id].summonId);
       if (it && this.player.area === BOSSES[id].area && Math.hypot(it.x - this.player.x, it.z - this.player.z) < 12) this.onboarding.show(`boss_${id}` as TipId);
     }
@@ -2012,6 +2064,22 @@ export class WorldScene implements GameScene, RuntimeView {
       for (let k = 0; k < 3; k++) {
         this.effects.decal({ tex: fx.ring(), color: E.toll, x: ev.x, z: ev.z, r: ENEMIES.penitent.attackRange * (0.45 + k * 0.28), duration: 0.45, opacity: 0.8 - k * 0.2, growFrom: 0.2, delay: ms + k * 0.08 });
       }
+    } else if (ev.kind === 'slam' && this.enemiesMap().get(ev.id)?.def === 'slag_brute') {
+      // Slag Brute: a molten ring fills as the fist rises; it lands with a shockwave, a heat flash and a heavy shake.
+      const r = ev.r ?? 2.7;
+      const E = SPELL_FX.enemy;
+      this.effects.decal({ tex: fx.disc(), color: E.emberDeep, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.7, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.4 });
+      this.effects.decal({ tex: fx.ring(), color: E.ember, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.95, fadeOut: 0.05 });
+      this.effects.decal({ tex: fx.cracks(), color: E.emberCore, x: ev.tx, z: ev.tz, r: r * 0.9, rot: Math.random() * 6, duration: ms, opacity: 0.6, fadeIn: ms * 0.8, fadeOut: 0.05 });
+      this.fxLater.push({ at: this.now + ev.ms, run: () => {
+        this.effects.decal({ tex: fx.ring(), color: E.emberCore, x: ev.tx, z: ev.tz, r: r * 1.35, duration: 0.5, opacity: 1, growFrom: 0.3 });
+        this.effects.decal({ tex: fx.cracks(), color: E.ember, x: ev.tx, z: ev.tz, r: r * 0.95, rot: Math.random() * 6, duration: 1.6, opacity: 0.85, growFrom: 0.5 });
+        this.bb('surge_eruption', ev.tx, ev.tz, { scale: r / 2, colors: [E.ember, E.emberCore, E.emberDeep] });
+        this.effects.emit({ x: ev.tx, y: 0.3, z: ev.tz, count: 34, color: E.emberCore, spread: r * 0.5, speed: 4.5, up: 3.2, life: 0.8, size: 0.14, gravity: 9 });
+        this.effects.emitSmoke({ x: ev.tx, y: 0.3, z: ev.tz, count: 6, color: E.emberDeep, spread: r * 0.5, speed: 1.6, up: 0.7, life: 1.1, size: 1.4 });
+        audio.play('slagSlam', ev.tx, ev.tz);
+        this.emberShake(ev.tx, ev.tz, 0.2);
+      } });
     } else if (ev.kind === 'slam') {
       const r = ev.r ?? 1.9;
       this.effects.decal({ tex: fx.disc(), color: SPELL_FX.enemy.slam, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.7, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.4 });
@@ -2058,6 +2126,21 @@ export class WorldScene implements GameScene, RuntimeView {
       this.effects.decal({ tex: fx.disc(), color: rot, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.45, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.25 });
       this.effects.decal({ tex: fx.ring(), color: SPELL_FX.enemy.rot, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.9, fadeOut: 0.05 });
       this.effects.projectile({ from: { x: ev.x, y: 1.6, z: ev.z }, to: () => ({ x: ev.tx, y: 0.3, z: ev.tz }), kind: 'orb', color: rot, speed: Math.max(4, Math.hypot(ev.tx - ev.x, ev.tz - ev.z) / Math.max(0.2, ms)), arc: 30 });
+    } else if (ev.kind === 'ember') {
+      // Pyre Priest: an ember-orange ring where the coal will land.
+      const r = ev.r ?? 1.7;
+      const E = SPELL_FX.enemy;
+      this.effects.decal({ tex: fx.disc(), color: E.ember, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.45, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.25 });
+      this.effects.decal({ tex: fx.ring(), color: E.emberCore, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.9, fadeOut: 0.05 });
+      this.effects.projectile({ from: { x: ev.x, y: 1.6, z: ev.z }, to: () => ({ x: ev.tx, y: 0.3, z: ev.tz }), kind: 'orb', color: E.ember, speed: Math.max(4, Math.hypot(ev.tx - ev.x, ev.tz - ev.z) / Math.max(0.2, ms)), arc: 30 });
+      audio.play('emberThrow', ev.x, ev.z);
+      // The coal lands as the windup ends: a flare, a burst of sparks and a jolt if you are near.
+      this.fxLater.push({ at: this.now + ev.ms, run: () => {
+        this.bb('vengeful_burst', ev.tx, ev.tz, { scale: r / 1.4, colors: [E.ember, E.emberCore, E.emberDeep] });
+        this.effects.emit({ x: ev.tx, y: 0.4, z: ev.tz, count: 16, color: E.emberCore, spread: r * 0.4, speed: 3, up: 2.6, life: 0.7, size: 0.13, gravity: 8 });
+        audio.play('emberBurst', ev.tx, ev.tz);
+        this.emberShake(ev.tx, ev.tz, 0.06);
+      } });
     } else if (ev.kind === 'dust') {
       // Shroud Moth: dust sifts down from the wings onto a ring; the cloud (a zone) follows the burst.
       const r = ev.r ?? 2;
@@ -2110,6 +2193,17 @@ export class WorldScene implements GameScene, RuntimeView {
         this.effects.decal({ tex: fx.glow(), color: E.dust, x: z.x, z: z.z, r: z.r * 1.05, duration: dur, opacity: 0.35, pulse: 1.5, fadeOut: 0.6 }),
       ]);
       this.effects.emitSmoke({ x: z.x, y: 0.5, z: z.z, count: 6, color: E.dust, spread: z.r * 0.5, speed: 0.4, up: 0.35, life: Math.min(dur, 3), size: 1.5, shrink: -0.6 });
+      return;
+    }
+    if (z.kind === 'ember') {
+      // Burning ground: an orange disc over glowing cracks, with sparks rising off it (see the ambient pass below).
+      const E = SPELL_FX.enemy;
+      this.zoneFx.set(z.id, [
+        this.effects.decal({ tex: fx.disc(), color: E.emberDeep, x: z.x, z: z.z, r: z.r, duration: dur, opacity: 0.6, growFrom: 0.3, fadeOut: 0.6 }),
+        this.effects.decal({ tex: fx.cracks(), color: E.ember, x: z.x, z: z.z, r: z.r * 0.95, duration: dur, opacity: 0.75, pulse: 2.5, fadeOut: 0.6 }),
+        this.effects.decal({ tex: fx.glow(), color: E.ember, x: z.x, z: z.z, r: z.r * 1.05, duration: dur, opacity: 0.3, pulse: 1.5, fadeOut: 0.6 }),
+        this.bb('bonfire', z.x, z.z, { scale: z.r / 2.2, duration: dur, alpha: 0.85 }),
+      ]);
       return;
     }
     const color = z.kind === 'toxic' ? SPELL_FX.enemy.toxic : SPELL_FX.miasma.deep;
@@ -2190,7 +2284,18 @@ export class WorldScene implements GameScene, RuntimeView {
     const near = Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 38;
     if (!this.player.alive || !near) return;
     const reward = rollKill(ev.def, ev.area, ev.level, ev.elite, this.bossWaveTier(), Math.random, this.worldDifficulty());
-    const asc = ascensionRewardMult(this.worldAscension());
+    // The chain: your own kills (thralls and DoTs credit their owner) in unsafe ground, each within the window of the last.
+    let chainMult = 1;
+    if (ev.killer === this.selfId && !AREAS[ev.area].safe) {
+      const up = this.chain.hit(this.now);
+      chainMult = this.chain.mult;
+      this.hud.pulseChain();
+      if (up) this.onChainTier(up.name, up.bonus, ev.x, ev.z);
+    }
+    // The week's Omen pays a little extra on every kill, and doubles or more the shards elites drop.
+    const combatArea = !AREAS[ev.area].safe;
+    const asc = ascensionRewardMult(this.worldAscension()) * chainMult * (combatArea ? this.omen.rewardMult : 1);
+    if (reward.shards && combatArea) reward.shards = Math.ceil(reward.shards * this.omen.shardMult);
     reward.gold = Math.round(reward.gold * asc);
     reward.xp = Math.round(reward.xp * asc);
     this.loot.gold(ev.x, ev.z, reward.gold);
@@ -2199,6 +2304,53 @@ export class WorldScene implements GameScene, RuntimeView {
     this.gainXp(reward.xp, ev.x, ev.z);
     this.progression.recordKill(ev.area, this.bossWaveTier());
     this.checkUnlocks();
+    this.checkMilestones();
+  }
+
+  /** A new chain tier: a floating call-out, a chime that climbs with the tier, and a flash of the tier colour. */
+  private onChainTier(name: string, bonus: number, x: number, z: number) {
+    const idx = CHAIN.tiers.findIndex((t) => t.name === name);
+    audio.play('chainTier', this.player.x, this.player.z, 1);
+    this.floating.spawn(this.player.x, 3, this.player.z, `${name.toUpperCase()}  +${Math.round(bonus * 100)}%`, 'big');
+    const col = [0xe6d3a0, 0xf0b25a, 0xf08a3a, 0xee5a2a, 0xff3a3a][Math.max(0, idx)];
+    this.effects.emit({ x: this.player.x, y: 1, z: this.player.z, count: 20 + idx * 8, color: col, spread: 0.5, speed: 3 + idx * 0.6, up: 2.4, life: 0.8, size: 0.16, gravity: 3 });
+    this.effects.decal({ tex: fx.ring(), color: col, x: this.player.x, z: this.player.z, r: 2 + idx * 0.5, duration: 0.5, opacity: 0.9, growFrom: 0.3 });
+    if (idx >= 2) this.rig.shake(0.08 + idx * 0.02);
+    if (!this.chainTold) {
+      this.chainTold = true;
+      this.onboarding.show('chain', 400);
+    }
+    void x;
+    void z;
+  }
+
+  private static readonly CHAIN_BEST_KEY = 'dm_chain_best_';
+  private static readonly MILESTONE_KEY = 'dm_milestones_';
+
+  /** Pays any newly reached milestone once per character (claims live in this browser). */
+  private checkMilestones() {
+    const store = browserStorage();
+    let claimed = new Set<string>();
+    let bestStored = 0;
+    try {
+      claimed = new Set<string>(JSON.parse(store?.getItem(WorldScene.MILESTONE_KEY + this.character.id) ?? '[]'));
+      bestStored = Number(store?.getItem(WorldScene.CHAIN_BEST_KEY + this.character.id) ?? 0) || 0;
+    } catch { /* unreadable storage: nothing is claimed this session */ }
+    const bestChain = Math.max(bestStored, this.chain.best);
+    const hit = newlyReached({ totalKills: this.progression.local.totalKills, areaKills: this.progression.local.areaKills, bestChain }, claimed);
+    try {
+      if (bestChain > bestStored) store?.setItem(WorldScene.CHAIN_BEST_KEY + this.character.id, String(bestChain));
+    } catch { /* ignore */ }
+    if (!hit.length) return;
+    for (const m of hit) {
+      claimed.add(m.id);
+      this.loot.gold(this.player.x, this.player.z, m.gold);
+      this.hud.toast(`Milestone: ${m.title}. ${m.text} (+${m.gold} gold)`, 'good');
+      audio.play('skillUp');
+    }
+    try {
+      store?.setItem(WorldScene.MILESTONE_KEY + this.character.id, JSON.stringify([...claimed]));
+    } catch { /* ignore */ }
   }
 
   private bossWaveTier() {
@@ -2364,6 +2516,13 @@ export class WorldScene implements GameScene, RuntimeView {
     if (from === 'cone' || from === 'boss') {
       this.effects.emit({ x: this.player.x, y: 1, z: this.player.z, count: 10, color: SPELL_FX.enemy.curse, spread: 0.3, speed: 2, up: 1, life: 0.4, size: 0.25 });
     }
+    if (from === 'ember' || from === 'burn') {
+      // Scorched: sparks spray off the hero and the hit thumps a little harder than plain damage.
+      const E = SPELL_FX.enemy;
+      this.effects.emit({ x: this.player.x, y: 1, z: this.player.z, count: 14, color: E.emberCore, spread: 0.35, speed: 2.6, up: 1.8, life: 0.5, size: 0.12, gravity: 7 });
+      this.effects.emit({ x: this.player.x, y: 1.2, z: this.player.z, count: 4, color: E.ember, spread: 0.3, speed: 1, up: 1.4, life: 0.7, size: 0.22 });
+      this.rig.shake(0.16);
+    }
     if (from === 'toll' && this.player.alive) {
       // Bell-Tolled ring: a brief stun.
       this.player.rootedUntil = Math.max(this.player.rootedUntil, now + AFFIX_TUNING.bellTolled.stunMs);
@@ -2396,6 +2555,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private onDeath() {
+    this.chain.reset();
     this.gathering.stop('dead');
     this.deadUntil = this.now + RESPAWN_MS;
     this.attackTarget = null;
@@ -2598,6 +2758,61 @@ export class WorldScene implements GameScene, RuntimeView {
           }
         }
         break;
+      case 'coals': {
+        const E = SPELL_FX.enemy;
+        for (const [x, z] of ev.targets ?? []) {
+          if (ms > 0) {
+            this.effects.decal({ tex: fx.disc(), color: E.ember, x, z, r: ev.r ?? 1.8, duration: ms, opacity: 0.55, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.2 });
+            this.effects.decal({ tex: fx.ring(), color: E.emberCore, x, z, r: ev.r ?? 1.8, duration: ms, opacity: 0.9, fadeOut: 0.05 });
+            this.effects.projectile({ from: { x: ev.x, y: 3.4, z: ev.z }, to: () => ({ x, y: 0.3, z }), kind: 'orb', color: E.ember, speed: Math.max(5, Math.hypot(x - ev.x, z - ev.z) / Math.max(0.3, ms)), arc: 45 });
+          } else {
+            this.bb('vengeful_burst', x, z, { scale: (ev.r ?? 1.8) / 1.4, colors: [E.ember, E.emberCore, E.emberDeep] });
+            this.effects.emit({ x, y: 0.4, z, count: 14, color: E.emberCore, spread: 0.7, speed: 3, up: 2.6, life: 0.7, size: 0.13, gravity: 8 });
+          }
+        }
+        if (ms > 0) audio.play('emberThrow', ev.x, ev.z);
+        else audio.play('emberBurst', ev.x, ev.z);
+        break;
+      }
+      case 'cleave':
+        if (ms > 0) cone(ev.r ?? 5.2, ev.dir ?? 0, REGENT.cleave.halfDeg, SPELL_FX.enemy.ember, ms);
+        else {
+          const E = SPELL_FX.enemy;
+          for (const d of REGENT.cleave.trail) {
+            const x = ev.x + Math.sin(ev.dir ?? 0) * d;
+            const z = ev.z + Math.cos(ev.dir ?? 0) * d;
+            this.effects.emit({ x, y: 0.5, z, count: 12, color: E.emberCore, spread: 0.5, speed: 3.4, up: 2.4, life: 0.6, size: 0.12, gravity: 8 });
+          }
+          this.effects.emitSmoke({ x: ev.x + Math.sin(ev.dir ?? 0) * 2.5, y: 0.8, z: ev.z + Math.cos(ev.dir ?? 0) * 2.5, count: 4, color: E.emberDeep, spread: 1.4, speed: 2, up: 0.6, life: 0.8, size: 1 });
+          audio.play('slagSlam', ev.x, ev.z);
+          this.rig.shake(0.25);
+        }
+        break;
+      case 'conflagration': {
+        // The signature: the whole arena reddens over the windup while the ash circles glow pale. When it lands the
+        // floor erupts everywhere else.
+        const E = SPELL_FX.enemy;
+        const r = ev.r ?? 11;
+        if (ms > 0) {
+          this.effects.decal({ tex: fx.disc(), color: E.ember, x: ev.x, z: ev.z, r, duration: ms, opacity: 0.5, fadeIn: ms * 0.9, fadeOut: 0.05, growFrom: 0.9 });
+          this.effects.decal({ tex: fx.ring(), color: E.emberCore, x: ev.x, z: ev.z, r, duration: ms, opacity: 0.9, pulse: 6, fadeOut: 0.05 });
+          for (const [x, z] of ev.targets ?? []) {
+            this.effects.decal({ tex: fx.disc(), color: 0xd8d4c8, x, z, r: REGENT.conflagration.safeR, duration: ms, opacity: 0.6, fadeOut: 0.05 });
+            this.effects.decal({ tex: fx.ring(), color: 0xffffff, x, z, r: REGENT.conflagration.safeR, duration: ms, opacity: 0.95, pulse: 3, fadeOut: 0.05 });
+            this.effects.emit({ x, y: 0.3, z, count: 6, color: 0xd8d4c8, spread: REGENT.conflagration.safeR * 0.6, speed: 0.3, up: 1.2, life: ms, size: 0.16, drag: 0.5 });
+          }
+          audio.play('bossAwaken', ev.x, ev.z);
+          this.hud.toast('Conflagration! Run to a grey ash circle and stand on it!', 'err');
+        } else {
+          for (let k = 0; k < 4; k++) this.effects.decal({ tex: fx.ring(), color: k % 2 ? E.emberCore : E.ember, x: ev.x, z: ev.z, r: r * (0.4 + k * 0.3), duration: 0.7, opacity: 1 - k * 0.2, growFrom: 0.1, delay: k * 0.08 });
+          this.effects.emit({ x: ev.x, y: 0.6, z: ev.z, count: 160, color: E.emberCore, spread: r * 0.55, speed: 5, up: 4, life: 1.1, size: 0.16, gravity: 6 });
+          this.effects.lightFlash(ev.x, 3, ev.z, E.ember, 110, 0.9);
+          this.bb('surge_eruption', ev.x, ev.z, { scale: r / 4, colors: [E.ember, E.emberCore, E.emberDeep] });
+          audio.play('slagSlam', ev.x, ev.z);
+          this.rig.shake(0.55);
+        }
+        break;
+      }
       case 'nicheBreak':
         this.effects.emit({ x: ev.x, y: 1.6, z: ev.z, count: 40, color: 0xe0d6c2, spread: 1, speed: 3.5, up: 2.5, life: 0.9, size: 0.25, gravity: 8 });
         this.effects.lightFlash(ev.x, 2, ev.z, SPELL_FX.boss.shard, 40, 0.5);
@@ -2613,6 +2828,7 @@ export class WorldScene implements GameScene, RuntimeView {
         const def = BOSSES[ev.boss ?? 'prelate'];
         this.codexDiscover('dead', def.id);
         audio.play('bossAwaken', ev.x, ev.z);
+        if (def.id === 'regent') this.hud.toast('The Cinder Regent: when Conflagration begins, run to a grey ash circle. Kill the Pyre Priests early.', 'err');
         if (def.id === 'saint') {
           this.saintBlessTold = false;
           this.saintRainTold = false;
@@ -2631,6 +2847,14 @@ export class WorldScene implements GameScene, RuntimeView {
           this.worldView.setCandleGroup(ev.phase === 2 ? 'west' : 'east', false);
         } else {
           this.hud.banner(BOSSES[ev.boss!].phases[ev.phase - 1], BOSSES[ev.boss!].name, 2600);
+          if (ev.boss === 'regent') {
+            const E = SPELL_FX.enemy;
+            for (let k = 0; k < 3; k++) this.effects.decal({ tex: fx.ring(), color: E.ember, x: ev.x, z: ev.z, r: 5 + k * 3, duration: 0.9, opacity: 1 - k * 0.25, growFrom: 0.1, delay: k * 0.12 });
+            this.effects.emit({ x: ev.x, y: 1, z: ev.z, count: 90, color: E.emberCore, spread: 2.5, speed: 6, up: 2.5, life: 0.9, size: 0.2, gravity: 4 });
+            this.effects.lightFlash(ev.x, 3, ev.z, E.ember, 70, 0.9);
+            this.rig.shake(0.5);
+            this.hud.toast(ev.phase === 2 ? 'The pyre feeds: Husks and Pyre Priests join. Kill the Priests before their coals cover the ash.' : 'The pyre burns down: fewer ash circles, and hounds hunt in packs.', 'err');
+          }
           if (ev.boss === 'saint') {
             if (ev.phase === 3) {
               // The swarm: a rot nova so the phase change feels like an event.
@@ -2658,6 +2882,9 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'swing':
       case 'blessed':
       case 'link':
+      case 'coals':
+      case 'cleave':
+      case 'conflagration':
         this.areaBossEvent(ev, ms);
         break;
       case 'toll':
@@ -3005,6 +3232,8 @@ export class WorldScene implements GameScene, RuntimeView {
         if (z.kind === 'miasma' || z.kind === 'rot') {
           this.effects.emit({ x, y: 0.2, z: zz, count: 1, color: SPELL_FX.miasma.rot, spread: 0.2, speed: 0.15, up: 0.9, life: 1.4, size: 0.22, drag: 0.5 });
           if (Math.random() < 0.4) this.effects.emitSmoke({ x, y: 0.3, z: zz, count: 1, color: 0x56662a, spread: 0.3, speed: 0.2, up: 0.3, life: 2, size: 1.6, shrink: -0.8, drag: 0.5 });
+        } else if (z.kind === 'ember') {
+          this.effects.emit({ x, y: 0.15, z: zz, count: 1, color: SPELL_FX.enemy.emberCore, spread: 0.1, speed: 0.3, up: 1.6, life: 0.9, size: 0.14, drag: 0.4 });
         } else if (z.kind === 'toxic') {
           this.effects.emit({ x, y: 0.1, z: zz, count: 1, color: SPELL_FX.enemy.toxic, spread: 0.1, speed: 0.05, up: 0.6, life: 0.8, size: 0.28 });
         }
@@ -3031,12 +3260,23 @@ export class WorldScene implements GameScene, RuntimeView {
       this.announcedAreas.add(area);
       this.hud.banner(def.name, def.subtitle);
       if (area === 'cloister') this.onboarding.show('cloister', 1200);
+      if (area === 'pyre') this.onboarding.show('pyre', 1200);
+      if (area === 'warren') this.onboarding.show('warren', 1200);
+      if (area === 'coliseum') this.onboarding.show('coliseum', 1200);
     }
     this.codexDiscover('area', area);
     (this.scene.fog as THREE.FogExp2).color.set(def.ambient.fog);
     this.hemi.color.set(def.ambient.hemiSky);
     this.hemi.groundColor.set(def.ambient.hemiGround);
-    this.moon.color.set(def.ambient.moon);
+    // The Omen tints the sky over every area's own palette (half-way, so each place stays itself).
+    this.moon.color.set(def.ambient.moon).lerp(new THREE.Color(this.omen.sky.moon), 0.5);
+    const fog = this.scene.fog as THREE.FogExp2;
+    fog.density = 0.014 * (def.safe ? 1 : this.omen.sky.fogMult);
+    if (!this.omenTold) {
+      this.omenTold = true;
+      this.hud.setOmen({ name: this.omen.name, icon: this.omen.icon, blurb: `${this.omen.blurb} Changes in ${omenLeft()}.` });
+      this.onboarding.show('omen', 2600);
+    }
     if (area === 'acre') this.onboarding.show('acre', 1200);
     void this.progression.flush();
   }
@@ -3146,6 +3386,17 @@ export class WorldScene implements GameScene, RuntimeView {
       }
     }
 
+    // Kill Chain readout; a long chain that breaks is remembered with a low thud.
+    const broke = this.chain.tick(now);
+    if (broke >= CHAIN.reportAt) {
+      audio.play('chainBreak');
+      this.floating.spawn(this.player.x, 2.6, this.player.z, `Chain broken: ${broke}`, 'info');
+    }
+    const chainTier = this.chain.tier;
+    this.hud.setChain(this.chain.active && p.alive
+      ? { count: this.chain.count, name: chainTier?.name ?? 'Chain', bonus: chainTier?.bonus ?? 0, frac: this.chain.frac(now), tier: chainTier ? CHAIN.tiers.indexOf(chainTier) + 1 : 0 }
+      : null);
+
     this.hud.update({
       autoCombat: settings.autoCombat,
       autoCombatAvailable: settings.difficulty === 'easy',
@@ -3233,6 +3484,9 @@ export class WorldScene implements GameScene, RuntimeView {
       player: this.player,
       avatar: this.avatar,
       sim: () => this.sim,
+      /** QA: this client's body id (kills credited to it feed the Kill Chain) and the chain itself. */
+      self: () => this.selfId,
+      chain: () => this.chain,
       progression: this.progression,
       inventory: this.inventory,
       advance: (seconds: number, render = true) => getRuntime().advance(seconds, 1 / 60, render),

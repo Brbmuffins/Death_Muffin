@@ -71,10 +71,20 @@ export type TipId =
   | 'plague_doctor'
   | 'flagellant'
   | 'cloister'
+  | 'pyre'
+  | 'chain'
+  | 'omen'
+  | 'warren'
+  | 'coliseum'
+  | 'cinder_husk'
+  | 'pyre_priest'
+  | 'cinderhound'
+  | 'slag_brute'
   | 'boss_gravedigger'
   | 'boss_abbess'
   | 'boss_congregation'
   | 'boss_saint'
+  | 'boss_regent'
   | 'tool'
   | 'acolyte'
   | 'templar'
@@ -280,6 +290,10 @@ export const TIPS: Record<TipId, Tip> = {
     title: "The Saint's Litter",
     body: 'Offer <b>5 soul shards</b> to wake the Plague Saint. She grows as strong as you. Her Rot Rain leaves <b>rot pools</b>, and she <b>heals while she stands in one</b>: pull her out onto clean ground before you unload. Later her <b>Plague Doctors</b> feed her through a green link: kill them first.',
   },
+  boss_regent: {
+    title: 'The Ember Altar',
+    body: 'Offer <b>6 soul shards</b> to wake the Cinder Regent. He grows as strong as you. When <b>Conflagration</b> begins the whole arena will burn: run to a <b>grey ash circle</b> and stay on it. Kill the Pyre Priests early, before their coals cover the ash.',
+  },
   plague_doctor: {
     title: 'Plague Doctor',
     body: 'A <b>green ring</b> means a plague flask is coming. Step out, then stay off the rot pool it leaves behind.',
@@ -291,6 +305,42 @@ export const TIPS: Record<TipId, Tip> = {
   cloister: {
     title: 'The Plague Cloister',
     body: 'The blight <b>grows with you</b>: the dead here always match the highest-level player inside (never below 20), so every kill is worth your level. The Plague Saint waits at the Saint’s Litter.',
+  },
+  omen: {
+    title: 'The Week’s Omen',
+    body: 'One omen hangs over the diocese each week (the icon on the left, hover it for the rules), the same for everyone: <b>Blood Moon</b> (more elites), <b>Drowned Week</b> (bigger waves) or <b>The Tolling</b> (Bell-Tolled elites, double shards). It changes on Monday, UTC.',
+  },
+  chain: {
+    title: 'Kill Chain',
+    body: 'Kills that land within <b>4 seconds</b> of each other build a chain. Every tier (5, 12, 25, 45, 80) adds a bonus to XP and gold, and the count turns warmer. Keep killing to keep it; dying ends it.',
+  },
+  pyre: {
+    title: 'The Cinder Pyre',
+    body: 'Fire, ash and embers. The dead here are <b>level-scaled</b> like the Cloister’s (never below 30) and every one of them leaves <b>burning ground</b>: orange rings are coals about to land, glowing cracks are ground to leave.',
+  },
+  warren: {
+    title: 'The Catacomb Warren',
+    body: 'Nine chambers split by <b>tall half-walls</b>. Walls stop cones and blows, so break line of sight to a caster by stepping behind one, and fight in the gaps where the swarm has to funnel.',
+  },
+  coliseum: {
+    title: 'The Bone Coliseum',
+    body: 'A pit with <b>four gates</b> and fast surges: twice the elites, richer drops. Fight from the pillar islands, and clear each surge before the next arrives.',
+  },
+  cinder_husk: {
+    title: 'Cinder Husk',
+    body: 'When a Husk falls it <b>bursts into embers</b> and leaves burning ground where it died. Finish it at range, or step back the moment it drops.',
+  },
+  pyre_priest: {
+    title: 'Pyre Priest',
+    body: 'An <b>orange ring</b> means a coal is coming. Step out, then stay off the burning ground it leaves behind.',
+  },
+  cinderhound: {
+    title: 'Cinderhound',
+    body: 'Burning hounds that hunt in <b>packs of two or three</b> and flank fast. Fight with your back to a wall or a Bone Ward; their corpses rise as hounds of your own.',
+  },
+  slag_brute: {
+    title: 'Slag Brute',
+    body: 'A slow slam that cracks a wide ring and <b>leaves it burning</b>. Leave the ring when it winds up, and do not fight standing in the old one.',
   },
   meal: {
     title: 'Well fed',

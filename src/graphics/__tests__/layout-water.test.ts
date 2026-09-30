@@ -90,6 +90,6 @@ describe('surge crypts', () => {
         expect(Math.hypot(p.x - c.x, p.z - c.z), `${c.prop} crypt vs ${p.prop}`).toBeGreaterThan(r * p.scale);
       }
     }
-    expect(new Set(layout.crypts.map((c) => c.area))).toEqual(new Set(['graves', 'ossuary', 'nave']));
+    expect(new Set(layout.crypts.map((c) => c.area))).toEqual(new Set(['graves', 'ossuary', 'nave', 'warren']));
   });
 });

@@ -38,11 +38,11 @@ leaks, and the backlog that fixes it, ordered by payoff for effort.
 | 2 | **Loot upgrade chase**: item level + affix rolls on drops (e.g. "+8% needle damage"), rarity beams already exist | Every drop *might* be better; the core ARPG slot machine | L | Needs server item_instance rows (the table exists) |
 | 3 | **Salvage** gear → materials, and **gems into sockets** (runes brief: `build-depth-aspects-runes.md`) | Gives gems, fragments and duplicate gear a purpose | M | Migration 005 plus a Reliquary panel |
 | 4 | **Daily Sexton's Contracts** ("kill 200 in the Nave", "cook 20 meals") → shards and seals | A reason to log in daily | M | Icon `sexton_contract.png` exists (unused) |
-| 5 | **Omens**: weekly world modifiers (Blood Moon: +elites, Drowned Week: water everywhere, Tolling) | Novelty, and a reason to replay old zones | M | Icons `art/omens/*` exist (unused) |
+| 5 | ~~**Omens**~~ | Novelty, and a reason to replay old zones | M | **Shipped 2026-09-30** (`content/omens.ts`): Blood Moon, Drowned Week and The Tolling rotate each UTC week; effects on elites, wave size, rewards and the sky. The `daily_rite` icon is still unused |
 | 6 | **Grave Gardening (G5)**: seeds → herbs → alchemy flasks; tree patches | Offline progress to come back to | M | Roadmap §5; herb and seed icons exist |
 | 7 | **Covenant Seals / Reliquary Fragments** as boss keys: summon an *empowered* boss (+HP, guaranteed epic) | Turns rare mats into a chase | S | Reuse the BossBrain level knob |
-| 8 | **Kill streak / combo meter** (nearest-kill chain → temporary XP and gold bonus, audio escalation) | Moment-to-moment juice | S | Client-only; hook onKill |
-| 9 | **Milestone toasts**: first 1k kills in an area, 100 elites, and so on, with small permanent bonuses | Frequent small wins | S | Codex journal already stores discoveries |
+| 8 | ~~**Kill streak / combo meter**~~ | Moment-to-moment juice | S | **Shipped 2026-09-30** as the Kill Chain (`gameplay/killChain.ts`): 4 s window, five tiers, +5–25% XP and gold, HUD readout, rising chime |
+| 9 | ~~**Milestone toasts**~~ | Frequent small wins | S | **Shipped 2026-09-30** (`gameplay/milestones.ts`): kill-count, per-area and best-chain purses, paid once per character in this browser. Permanent bonuses were left out: they need server-side storage |
 | 10 | Gold sinks: thrall gear upgrades, cosmetic Chapterhouse decorations | Keeps gold meaningful | M | Thrall gear models exist (unused) |
 
 ## 4. Rules of thumb for new features

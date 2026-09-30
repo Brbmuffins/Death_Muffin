@@ -25,6 +25,12 @@ export type Sfx =
   | 'curse'
   | 'raise'
   | 'burst'
+  | 'emberBurst'
+  | 'emberCrackle'
+  | 'chainTier'
+  | 'chainBreak'
+  | 'emberThrow'
+  | 'slagSlam'
   | 'coin'
   | 'shard'
   | 'item'
@@ -70,6 +76,12 @@ export type Sfx =
 const MIN_GAP: Partial<Record<Sfx, number>> = {
   needleHit: 0.04,
   boneHit: 0.05,
+  emberBurst: 0.07,
+  emberCrackle: 0.05,
+  chainTier: 0.3,
+  chainBreak: 0.5,
+  emberThrow: 0.15,
+  slagSlam: 0.2,
   enemyDeath: 0.06,
   coin: 0.05,
   hurt: 0.12,
@@ -443,6 +455,53 @@ class AudioEngine {
         this.tone(o, 'sine', 110, 40, t, 0.003, 0.3, 0.5);
         break;
       }
+      case 'emberBurst': {
+        // Coals bursting: a soft whoomph under a spray of crackles.
+        const o = this.out(x, z, 0.55, 0.4);
+        this.burst(o, t, 0.3, 0.7, 'lowpass', 1600, 250, 0.8, true);
+        this.tone(o, 'sine', 140, 55, t, 0.004, 0.25, 0.4);
+        for (let i = 0; i < 5; i++) this.burst(o, t + 0.02 + i * 0.04 * r(), 0.03, 0.4, 'highpass', 3500 + 900 * r(), 3500, 1);
+        break;
+      }
+      case 'chainTier': {
+        // A rising bell-and-shimmer: bright, short, never harsh.
+        const o = this.out(undefined, undefined, 0.5, 0.3);
+        this.bell(o, t, 660, 0.9, 0.1);
+        this.bell(o, t + 0.09, 880, 0.9, 0.1);
+        this.bell(o, t + 0.18, 1320, 1.1, 0.1);
+        this.burst(o, t, 0.25, 0.2, 'highpass', 4000, 6000, 1);
+        break;
+      }
+      case 'chainBreak': {
+        // A long chain snapping: a low thud and a slow falling tone.
+        const o = this.out(undefined, undefined, 0.5, 0.2);
+        this.tone(o, 'sine', 180, 60, t, 0.005, 0.5, 0.3);
+        this.burst(o, t, 0.25, 0.3, 'lowpass', 700, 200, 1);
+        break;
+      }
+      case 'emberCrackle': {
+        // A pop and a few sparks from a distant fire.
+        const o = this.out(x, z, 0.3, 0.5);
+        for (let i = 0; i < 3 + Math.floor(Math.random() * 3); i++) this.burst(o, t + i * 0.05 * r(), 0.025, 0.3, 'highpass', 3000 + 1500 * r(), 3000, 1);
+        this.burst(o, t, 0.08, 0.25, 'lowpass', 900, 300, 1, true);
+        break;
+      }
+      case 'emberThrow': {
+        // A coal leaving the censer: a rising hiss.
+        const o = this.out(x, z, 0.4, 0.4);
+        this.burst(o, t, 0.35, 0.35, 'bandpass', 700, 2600, 2);
+        this.tone(o, 'sawtooth', 180, 420, t, 0.05, 0.3, 0.08);
+        break;
+      }
+      case 'slagSlam': {
+        // Molten fist on stone: a deep thud, a grind of slag and a hiss as it cools.
+        const o = this.out(x, z, 0.85, 0.35);
+        this.tone(o, 'sine', 80, 32, t, 0.003, 0.5, 0.75);
+        this.burst(o, t, 0.5, 0.6, 'lowpass', 900, 150, 0.9, true);
+        this.burst(o, t + 0.08, 0.6, 0.3, 'highpass', 3000, 1800, 1);
+        for (let i = 0; i < 6; i++) this.burst(o, t + 0.1 + i * 0.05 * r(), 0.03, 0.35, 'highpass', 4000, 4000, 1);
+        break;
+      }
       case 'chop': {
         // An axe into coffin-oak: a dull knock plus a woody crack.
         const o = this.out(x, z, 0.4, 0.25);
@@ -776,6 +835,29 @@ class AudioEngine {
         wind(380, 0.08);
         drone(36.7, 0.034);
         break;
+      case 'cloister':
+        // Damp garth: a low mossy wind and a distant, sick hum.
+        wind(520, 0.1);
+        wind(200, 0.08);
+        drone(43.7, 0.02);
+        break;
+      case 'pyre':
+        // A furnace bed: a roaring, slowly breathing wind over a low forge drone (the crackle is the accent).
+        wind(650, 0.16);
+        wind(240, 0.14);
+        drone(46.2, 0.03);
+        break;
+      case 'warren':
+        // Close earth: barely any wind, a deep tunnel drone.
+        wind(240, 0.05);
+        drone(41.2, 0.024);
+        break;
+      case 'coliseum':
+        // The crowd of the dead: a broad murmur over a low drone.
+        wind(1100, 0.09);
+        wind(420, 0.1);
+        drone(55, 0.018);
+        break;
     }
     this.ambience = { area, nodes, gain };
     this.scheduleAmbienceAccent(area);
@@ -792,6 +874,9 @@ class AudioEngine {
         nave: ['waterDrip', 'distantBell'],
         sanctum: ['distantBell', 'graveCreak'],
         cloister: ['waterDrip', 'graveCreak'],
+        pyre: ['emberCrackle', 'emberCrackle', 'graveCreak'],
+        warren: ['waterDrip', 'graveCreak'],
+        coliseum: ['distantBell', 'graveCreak'],
       };
       const sounds = palette[area];
       const distance = 7 + Math.random() * 9;

@@ -68,7 +68,7 @@ const DT = 0.05;
 export function runBossFight(run: BossRun): BossResult {
   const rand = mulberry32(run.seed ?? 42);
   const nav = new Nav();
-  nav.setUnlocked(['chapterhouse', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister']);
+  nav.setUnlocked(['chapterhouse', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister', 'pyre']);
   const bossId: BossId = run.boss ?? 'prelate';
   const area = BOSSES[bossId].area;
   const BOSS_ARENA = BOSSES[bossId].arena;

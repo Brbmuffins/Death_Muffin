@@ -21,6 +21,9 @@ const FLOOR_TEX: Record<Theme, { url: string; tile: number; color: number; rough
   nave: { url: 'art/textures/flagstone.webp', tile: 8, color: 0x8c86a8, rough: 0.45 },
   sanctum: { url: 'art/textures/flagstone.webp', tile: 7, color: 0x9a86aa, rough: 0.5 },
   cloister: { url: 'art/textures/cloister_floor.webp', tile: 6, color: 0xa8b4a0, rough: 0.8 },
+  warren: { url: 'art/textures/warren_floor.webp', tile: 6, color: 0xb8ac98, rough: 0.9 },
+  coliseum: { url: 'art/textures/coliseum_floor.webp', tile: 7, color: 0xc8bca8, rough: 0.9 },
+  pyre: { url: 'art/textures/pyre_floor.webp', tile: 6, color: 0xd8b498, rough: 0.85 },
 };
 
 export interface LightSource {
@@ -441,7 +444,9 @@ export class WorldView {
       // Interior partitions block movement (edge walls sit outside the walkable rect).
       const hw = horizontal ? len / 2 : w.thickness / 2;
       const hd = horizontal ? w.thickness / 2 : len / 2;
-      nav.addObstacle({ kind: 'box', x0: (w.x0 + w.x1) / 2 - hw, z0: (w.z0 + w.z1) / 2 - hd, x1: (w.x0 + w.x1) / 2 + hw, z1: (w.z0 + w.z1) / 2 + hd });
+      const box = { kind: 'box' as const, x0: (w.x0 + w.x1) / 2 - hw, z0: (w.z0 + w.z1) / 2 - hd, x1: (w.x0 + w.x1) / 2 + hw, z1: (w.z0 + w.z1) / 2 + hd };
+      nav.addObstacle(box);
+      if (w.height >= 2.5) nav.addSightBlocker(box);
     }
     for (const [tex, geos] of byTex) {
       const merged = mergeGeometries(geos, false);

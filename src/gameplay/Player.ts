@@ -222,7 +222,7 @@ export class Player {
   takeDamage(raw: number, wardPct: number, now: number, from?: { x: number; z: number }, source?: string): number {
     this.lastBlock = 'none';
     if (!this.alive || this.god) return 0;
-    if (this.resource.kind === 'veil' && source !== 'toxic' && (this.veilForm || now < this.betweenUntil)) return 0;
+    if (this.resource.kind === 'veil' && source !== 'toxic' && source !== 'burn' && (this.veilForm || now < this.betweenUntil)) return 0;
     let dmg = raw * (1 - Math.min(0.6, wardPct));
     if (now < this.bulwarkUntil && this.blowIsFrontal(from)) {
       this.lastBlock = now < this.bulwarkPerfectUntil ? 'perfect' : 'front';

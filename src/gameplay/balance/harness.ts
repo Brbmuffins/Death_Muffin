@@ -81,7 +81,7 @@ export function botCharacter(classIndex: number, level: number, gear: number): C
 export function runBalance(run: BalanceRun): BalanceResult {
   const rand = mulberry32(run.seed ?? 42);
   const nav = new Nav();
-  nav.setUnlocked(['ossuary', 'nave', 'sanctum', 'cloister']);
+  nav.setUnlocked(['ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'warren', 'coliseum']);
   const sim = new WorldSim(nav, rand);
   sim.waveTier = run.waveTier;
   sim.difficulty = run.difficulty ?? 'medium';

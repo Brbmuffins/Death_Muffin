@@ -5,8 +5,8 @@ import type { AreaId } from './areas';
  * its numbers; the three new bosses each have one mechanic that matters (graves / niches + corpses / pews).
  * Colours are enemy language only.
  */
-export type BossId = 'prelate' | 'gravedigger' | 'abbess' | 'congregation' | 'saint';
-export const BOSS_IDS: BossId[] = ['gravedigger', 'abbess', 'congregation', 'prelate', 'saint'];
+export type BossId = 'prelate' | 'gravedigger' | 'abbess' | 'congregation' | 'saint' | 'regent';
+export const BOSS_IDS: BossId[] = ['gravedigger', 'abbess', 'congregation', 'prelate', 'saint', 'regent'];
 
 export interface BossDef {
   id: BossId;
@@ -19,7 +19,7 @@ export interface BossDef {
   summonLabel: string;
   shards: number;
   baseHp: number;
-  modelSlug: 'prelate' | 'boss_gravedigger_king' | 'boss_bone_abbess' | 'boss_drowned_congregation' | 'boss_plague_saint';
+  modelSlug: 'prelate' | 'boss_gravedigger_king' | 'boss_bone_abbess' | 'boss_drowned_congregation' | 'boss_plague_saint' | 'boss_cinder_regent';
   portrait: string;
   /** Aura light + particle colour for the view. */
   color: number;
@@ -99,6 +99,23 @@ export const BOSSES: Record<BossId, BossDef> = {
     awaken: 'The Saint rises from her litter',
     defeated: ['The Blight Recedes', 'The Plague Saint sinks back into her reliquary'],
   },
+  regent: {
+    id: 'regent',
+    name: 'The Cinder Regent',
+    title: 'Ember-Crowned Keeper of the Pyre',
+    area: 'pyre',
+    arena: { x: 90, z: -117, r: 11 },
+    summonId: 'ember_altar',
+    summonLabel: 'The Ember Altar',
+    shards: 6,
+    baseHp: 28000,
+    modelSlug: 'boss_cinder_regent',
+    portrait: '',
+    color: 0xff7a2a,
+    phases: ['The crown ignites', 'The pyre feeds', 'The pyre burns down'],
+    awaken: 'The Regent rises from the embers',
+    defeated: ['The Pyre Burns Out', 'The Cinder Regent crumbles to ash'],
+  },
   prelate: {
     id: 'prelate',
     name: 'The Bell-Sworn Prelate',
@@ -157,6 +174,20 @@ export const SAINT = {
   blessing: { healPerS: 0.006 },
   /** Plague Doctors near the arena feed her through a visible link: kill them (priority target) to cut it. */
   doctors: { healPerS: 0.001, beatS: 0.9 },
+};
+
+/**
+ * Cinder Regent (Cinder Pyre, level-scaled). Coals mark circles that burn on; Cinder Cleave lays a firebreak down its
+ * line; and the signature, Conflagration: the whole arena erupts unless you are standing on ash. Ash circles are
+ * marked grey-white for the whole windup, so the fight is about reading the floor and getting there in time.
+ */
+export const REGENT = {
+  coals: { circles: [4, 6] as [number, number], r: 1.8, windupMs: 1200, dmg: 22, cd: 7, poolS: 4, poolDpsMult: 0.3 },
+  cleave: { r: 5.2, halfDeg: 60, windupMs: 900, dmg: 28, cd: 3, trail: [1.9, 3.7, 5.5], trailR: 1.4, trailS: 5, trailDpsMult: 0.3 },
+  /** `safe` ash circles per phase (plus one per three extra players); the rest of the arena burns for `dmg`. */
+  conflagration: { safe: [4, 3, 2] as [number, number, number], safeR: 2.7, windupMs: 2700, dmg: 46, cd: 15, embers: 4, emberS: 4 },
+  /** Phase adds ring the arena on the change. */
+  adds: { p2: ['cinder_husk', 'cinder_husk', 'cinder_husk', 'pyre_priest', 'pyre_priest'], p3: ['cinderhound', 'cinderhound', 'cinder_husk', 'cinder_husk'] } as const,
 };
 
 /** Drowned Congregation. */

@@ -1,0 +1,24 @@
+{
+  "id": "cinder_husk",
+  "input": "art-src/concepts/cinder_husk.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 4500,
+    "texture_quality": "standard"
+  },
+  "rig": {
+    "model": "v1.0-20240301",
+    "rig_type": "biped"
+  },
+  "animations": [
+    "preset:biped:idle",
+    "preset:biped:walk",
+    "preset:biped:run",
+    "preset:biped:slash",
+    "preset:biped:box_01",
+    "preset:biped:hit_to_body_01",
+    "preset:biped:fall",
+    "preset:biped:defeat_03"
+  ],
+  "animationMode": "single"
+}

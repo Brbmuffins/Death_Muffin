@@ -1,0 +1,9 @@
+{
+  "id": "prop_pyre_stack",
+  "input": "art-src/concepts/props/pyre_stack.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2500,
+    "texture_quality": "standard"
+  }
+}

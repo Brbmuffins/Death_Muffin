@@ -9,6 +9,9 @@ import {
   SCREAM,
   DUST,
   PLAGUE_FLASK,
+  EMBER_BOLT,
+  EMBER_DEATH,
+  SLAG_POOL,
   FRENZY,
   WARD,
   BURROW,
@@ -47,6 +50,7 @@ import {
 import { NIGHTFALL_SHROUD_CHANCE, RESTLESS_SURGE_MULT, milestoneActive, waveModifiers } from '../../content/upgrades';
 import { DIFFICULTIES, type Difficulty } from '../../content/difficulty';
 import { ascensionLevels } from '../../content/ascension';
+import type { Omen } from '../../content/omens';
 import type { ThrallKind } from '../../content/disciplines';
 import { BONE_HEX, CHILL, HEMORRHAGE, PLAGUE_BURST, SANCTIFIED } from '../../content/statuses';
 import type { Nav } from '../nav';
@@ -178,6 +182,8 @@ export class WorldSim {
 
   /** Host's active wave-speed tier (drives every area this sim runs). */
   waveTier = 0;
+  /** The week's Omen (content/omens.ts): elite chance, wave size and elite affix. Null = none (tests, older hosts). */
+  omen: Omen | null = null;
   /** Host's session difficulty: scales enemy/boss HP and damage for new spawns. */
   difficulty: Difficulty = 'medium';
   /** World keeper's Ascension rank: every enemy and the Prelate run this many ranks older. */
@@ -1138,7 +1144,7 @@ export class WorldSim {
   /** Does the segment a→b cross a standing wall? */
   private wallBetween(ax: number, az: number, bx: number, bz: number) {
     for (const w of this.walls.values()) if (segmentsCross(ax, az, bx, bz, w.x0, w.z0, w.x1, w.z1)) return true;
-    return false;
+    return this.nav.sightBlocked(ax, az, bx, bz);
   }
 
   /** Keep a mover on the side of every wall it started on. */
@@ -1271,7 +1277,7 @@ export class WorldSim {
     const room = Math.min(cap - this.aliveIn(area), GLOBAL_ENEMY_CAP - this.enemies.size);
     if (room <= 0) return;
     // The arrival wave is a fixed greeting; the Wave Speed dial only shapes what follows.
-    let count = Math.round(first ? def.waveSize * 1.3 : def.waveSize * mods.sizeMult);
+    let count = Math.round(first ? def.waveSize * 1.3 : def.waveSize * mods.sizeMult * (this.omen?.waveSizeMult ?? 1));
     count = Math.min(count, room);
     const pool = this.fairBreaches(area);
     // Bigger waves split across breaches so they arrive from more than one side.
@@ -1340,11 +1346,11 @@ export class WorldSim {
     const id = lead ?? pickWeighted(roster, this.rand())?.id;
     if (!id || room <= 0) return [];
     const pack = ENEMIES[id].pack;
-    const roll = this.rand() < def.eliteChance + mods.eliteBonus + DIFFICULTIES[this.difficulty].eliteBonus;
+    const roll = this.rand() < def.eliteChance + mods.eliteBonus + DIFFICULTIES[this.difficulty].eliteBonus + (this.omen?.eliteBonus ?? 0);
     // Pack animals never come elite (a whole elite swarm would be a wall of health).
     const elite = id !== 'risen' && !pack && (forceElite || roll);
     // Nightfall: the common dead climb out Shrouded.
-    const shroud = !elite && milestoneActive('nightfall', this.waveTier) && this.rand() < NIGHTFALL_SHROUD_CHANCE ? 'shrouded' : undefined;
+    const shroud = !elite && milestoneActive('nightfall', this.waveTier) && this.rand() < NIGHTFALL_SHROUD_CHANCE ? 'shrouded' : elite ? this.omen?.affix : undefined;
     const [x, z] = at();
     const band = [this.spawnEnemy(id, area, x, z, elite, true, shroud)];
     if (pack) {
@@ -1602,7 +1608,7 @@ export class WorldSim {
       } else if (pulse) {
         for (const p of this.players.values()) {
           if (p.alive && Math.hypot(p.x - z.x, p.z - z.z) < z.r + PLAYER_RADIUS) {
-            this.emit({ t: 'hurt', player: p.id, dmg: z.dps, from: 'toxic', x: z.x, z: z.z });
+            this.emit({ t: 'hurt', player: p.id, dmg: z.dps, from: z.kind === 'ember' ? 'burn' : 'toxic', x: z.x, z: z.z });
           }
         }
         for (const t of this.thralls.values()) {
@@ -1737,6 +1743,11 @@ export class WorldSim {
         this.addCorpse(cx, cz, def.corpse, 'risen', false, a, 1, e.area);
       }
       if (e.affix === 'vengeful') this.vengeance(e);
+      // Cinder Husk: the embers it dies in stay behind as burning ground.
+      if (def.emberDeath) {
+        this.emberPool(e.x, e.z, EMBER_DEATH.radius, EMBER_DEATH.poolS, e.damage * EMBER_DEATH.poolDpsMult);
+        this.emit({ t: 'burst', kind: 'ember', x: e.x, z: e.z, r: EMBER_DEATH.radius });
+      }
     }
   }
 
@@ -1885,8 +1896,31 @@ export class WorldSim {
     if (t.hp <= 0) this.killThrall(t, 'killed');
   }
 
-  private strike(e: Enemy, kind: 'melee' | 'cone' | 'curse' | 'slam' | 'scream' | 'dust' | 'flask', slamR?: number) {
+  /** A hostile burning pool (Pyre Priest coals, a Husk's last embers, a Slag Brute's slam). */
+  emberPool(x: number, z: number, r: number, seconds: number, dps: number) {
+    const zone: Zone = {
+      id: this.id(), kind: 'ember', owner: '', x, z, r,
+      until: this.time + seconds, bornAt: this.time, tick: 1, dps,
+      slow: 1, witheredCap: 0, bloom: false, hostile: true,
+    };
+    this.zones.set(zone.id, zone);
+    this.emit({ t: 'zone', zone });
+    return zone;
+  }
+
+  private strike(e: Enemy, kind: 'melee' | 'cone' | 'curse' | 'slam' | 'scream' | 'dust' | 'flask' | 'ember', slamR?: number) {
     const def = ENEMIES[e.def];
+    if (kind === 'ember') {
+      // Pyre Priest: the coal bursts where the target stood, then leaves burning ground.
+      for (const p of this.players.values()) {
+        if (p.alive && Math.hypot(p.x - e.aimX, p.z - e.aimZ) <= EMBER_BOLT.radius) {
+          this.emit({ t: 'hurt', player: p.id, dmg: this.blow(e), from: 'ember', x: e.x, z: e.z });
+        }
+      }
+      for (const t of [...this.thralls.values()]) if (Math.hypot(t.x - e.aimX, t.z - e.aimZ) <= EMBER_BOLT.radius) this.hurtThrall(t, this.blow(e));
+      this.emberPool(e.aimX, e.aimZ, EMBER_BOLT.radius, EMBER_BOLT.poolS, this.blow(e) * EMBER_BOLT.poolDpsMult);
+      return;
+    }
     if (kind === 'flask') {
       // Plague Doctor: the flask bursts where the target stood, then leaves a rot pool (a hostile toxic zone).
       for (const p of this.players.values()) {
@@ -2204,6 +2238,8 @@ export class WorldSim {
               this.emit({ t: 'telegraph', id: e.id, kind: 'dust', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: DUST.radius });
             } else if (def.attack === 'flask') {
               this.emit({ t: 'telegraph', id: e.id, kind: 'flask', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: PLAGUE_FLASK.radius });
+            } else if (def.attack === 'ember') {
+              this.emit({ t: 'telegraph', id: e.id, kind: 'ember', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: EMBER_BOLT.radius });
             } else if (def.attack === 'curse') {
               this.emit({ t: 'telegraph', id: e.id, kind: 'curse', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
             } else this.emit({ t: 'telegraph', id: e.id, kind: 'cone', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
@@ -2291,7 +2327,10 @@ export class WorldSim {
       case 'support':
         return this.strike(e, 'curse');
       case 'hazard':
-        return this.strike(e, 'slam');
+        this.strike(e, 'slam');
+        // Slag Brute: the ring it cracked keeps burning.
+        if (def.slamPool) this.emberPool(e.aimX, e.aimZ, def.slamRadius ?? 1.9, SLAG_POOL.poolS, this.blow(e) * SLAG_POOL.poolDpsMult);
+        return;
       default:
         this.strike(e, 'melee');
         if (def.hitRun) e.fleeT = def.hitRun;

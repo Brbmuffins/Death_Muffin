@@ -55,6 +55,21 @@ const PROFILES: Record<AreaId, Kind[]> = {
     { count: 220, shape: 0, colors: [0x9cc43a, 0x7fa02a, 0xc8e060], size: [0.05, 0.11], alpha: [0.35, 0.75], vy: [-0.08, 0.14], drift: [0.14, 0.08], sway: 0.5, add: 0.7 },
     { count: 60, shape: 0, colors: [0x1a1a10, 0x2a2818], size: [0.04, 0.07], alpha: [0.6, 0.9], vy: [-0.3, 0.3], drift: [0.6, 0.4], sway: 1.2, add: 0 },
   ],
+  warren: [
+    // Drifting root-dust and the odd pale moth-glint in the tunnels.
+    { count: 130, shape: 0, colors: [0xb8a88a, 0x9c8e74], size: [0.04, 0.09], alpha: [0.25, 0.55], vy: [-0.05, 0.1], drift: [0.1, 0.08], sway: 0.4, add: 0.4 },
+    { count: 40, shape: 1, colors: [0x3a3226, 0x4a4030], size: [0.08, 0.16], alpha: [0.25, 0.45], vy: [-0.3, -0.1], drift: [0.1, 0.1], sway: 0.3, add: 0 },
+  ],
+  coliseum: [
+    // Bone-dust kicked up off the sand, and cold torch-sparks over the stands.
+    { count: 150, shape: 0, colors: [0xd8c8a8, 0xbca888], size: [0.05, 0.11], alpha: [0.25, 0.55], vy: [0.05, 0.3], drift: [0.35, 0.2], sway: 0.6, add: 0.3 },
+    { count: 50, shape: 0, colors: [0xffb46b, 0xffd08a], size: [0.04, 0.08], alpha: [0.5, 0.9], vy: [0.4, 1.0], drift: [0.1, 0.1], sway: 0.5, add: 1 },
+  ],
+  pyre: [
+    // Rising embers over the slag, and pale ash sifting down.
+    { count: 200, shape: 0, colors: [0xff7a2a, 0xffb04a, 0xff4a1a], size: [0.05, 0.12], alpha: [0.5, 0.95], vy: [0.5, 1.6], drift: [0.25, 0.15], sway: 0.6, add: 1 },
+    { count: 90, shape: 1, colors: [0x8a8680, 0x6a665e, 0xa8a49c], size: [0.08, 0.16], alpha: [0.25, 0.5], vy: [-0.5, -0.2], drift: [0.3, 0.2], sway: 0.5, add: 0 },
+  ],
   sanctum: [
     { count: 200, shape: 0, colors: [0xa66bff, 0x8a4fe0, 0xd2a8ff], size: [0.07, 0.15], alpha: [0.5, 0.9], vy: [0.5, 1.3], drift: [0.1, 0.1], sway: 0.6, add: 1 },
     { count: 50, shape: 1, colors: [0x55486a, 0x3f3552], size: [0.1, 0.18], alpha: [0.3, 0.5], vy: [-0.4, -0.2], drift: [0.15, 0.1], sway: 0.4, add: 0 },

@@ -250,9 +250,11 @@ export class BossView {
   private visible = false;
   private rise = 0;
   private readonly saint: boolean;
+  private readonly regent: boolean;
 
   constructor(scene: THREE.Scene, private effects: Effects, slug: CreatureSlug = 'prelate', private color = 0xa26bff) {
     this.saint = slug === 'boss_plague_saint';
+    this.regent = slug === 'boss_cinder_regent';
     this.c = new Creature(slug, { emissive: slug === 'prelate' ? 0x3b1d5e : 0x000000, emissiveIntensity: slug === 'prelate' ? 0.05 : 0, fallback: 'prelate' });
     this.c.root.visible = false;
     scene.add(this.c.root);
@@ -277,7 +279,9 @@ export class BossView {
     while (d < -Math.PI) d += Math.PI * 2;
     this.c.root.rotation.y += d * Math.min(1, dt * 3);
     this.c.flash = b.active ? b.flash : 0;
-    this.light.intensity = b.active ? 16 + b.phase * 8 + Math.sin(performance.now() / 200) * 4 : Math.max(0, this.light.intensity - dt * 30);
+    // The Regent's pale cape and molten plate white out under a close 16-24 light: a warm, low glow instead.
+    const glow = this.regent ? 4 + b.phase * 2 : 16 + b.phase * 8;
+    this.light.intensity = b.active ? glow + Math.sin(performance.now() / 200) * (this.regent ? 1 : 4) : Math.max(0, this.light.intensity - dt * 30);
     if (b.state !== this.lastState) {
       this.lastState = b.state;
       if (b.state === 'toll' || b.state === 'rain' || b.state === 'summon') this.c.playOnce('cast', 1.1);
@@ -294,6 +298,15 @@ export class BossView {
       if (Math.random() < dt * (2 + ph * 3)) {
         this.effects.emitSmoke({ x: b.x + (Math.random() - 0.5) * 2, y: 0.3, z: b.z + (Math.random() - 0.5) * 2, count: 1, color: 0x4a5a22, spread: 0.8, speed: 0.3, up: 0.5, life: 1.4, size: 1.2 });
       }
+    }
+    if (this.regent && b.active) {
+      // The Regent burns hotter each phase: embers stream off the crown and pauldrons, soot rolls off the cape.
+      const ph = b.phase;
+      this.c.root.scale.setScalar(1 + Math.sin(performance.now() / 1000 * (1.4 + ph * 0.8)) * 0.01 * ph);
+      if (Math.random() < dt * (10 + ph * 10)) {
+        this.effects.emit({ x: b.x + (Math.random() - 0.5) * 1.6, y: 2 + Math.random() * 2.4, z: b.z + (Math.random() - 0.5) * 1.6, count: 1, color: Math.random() < 0.5 ? 0xff7a2a : 0xffc45a, spread: 0.5, speed: 0.4, up: 1.2 + ph * 0.3, life: 1.1, size: 0.14, drag: 0.4 });
+      }
+      if (Math.random() < dt * (2 + ph * 2)) this.effects.emitSmoke({ x: b.x + (Math.random() - 0.5) * 2, y: 1.2, z: b.z + (Math.random() - 0.5) * 2, count: 1, color: 0x2a1408, spread: 0.7, speed: 0.3, up: 0.7, life: 1.6, size: 1.3, shrink: -0.5 });
     }
     if (b.active && Math.random() < dt * (this.saint ? 8 + b.phase * 8 : 10)) {
       this.effects.emit({ x: b.x, y: 2.5, z: b.z, count: 1, color: this.color === 0xa26bff ? 0x9d6bff : this.color, spread: 1, speed: 0.4, up: 0.8, life: 1.2, size: 0.4 });

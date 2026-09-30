@@ -833,3 +833,76 @@ triangles equal, +24 draw calls.
   the heal-only-in-rot rule. `tools/qa/cloister-smoke.cjs` covers the zone, mobs and Saint screenshots, model loads
   and perf. A skyline spire that stood inside the new zone was moved behind it.
 - **Credits:** Tripo 8 415 → 7 760.
+
+## Cinder Pyre (2026-09-30)
+
+A second level-scaled world, the fire realm past the Plague Cloister's east arch.
+
+- **Zone** (`areas.ts` `pyre`, rect x 70..110, z −134..−98, door `cloister_pyre` on the Cloister's east wall, 700 Cloister
+  kills, level floor 30). Ember/ash theme: floor texture, rising-ember atmosphere, orange fire-lit props
+  (`pyre_stack`, `slag_font`, `cinder_obelisk`), area ambient. Boss: the Cinder Regent (below).
+- **Mobs** (each leaves fire; enemy ember orange is `SPELL_FX.enemy.ember*`, never Miasma green):
+  Cinder Husk (dies into an ember pool, `EMBER_DEATH`), Pyre Priest (coal → burning ground, `EMBER_BOLT`, new `ember`
+  attack/telegraph), Cinderhound (pack of 2–3 flankers), Slag Brute (slam leaves its ring burning, `SLAG_POOL`).
+  New `ember` zone kind, `ember` burst kind and `ember` hurt source.
+- **Feel pass:** ember shedding per mob type, sparks when struck and when they strike, coal flare + jolt on impact,
+  Slag Brute shockwave/heat flash/shake, fire death puffs, burning-ground bonfire loops, scorched-hero sparks,
+  three new procedural sounds (`emberThrow`, `emberBurst`, `slagSlam`).
+- **Balance:** `npm run balance` (cloister vs pyre, four disciplines, three bands) shows the Pyre in line with the
+  Cloister on hurt%/min, kills/min and deaths.
+- **Tests:** `pyre.test.ts` (7). Art records: `gemini-jobs/pyre-v1.json`, `tripo-specs/{cinder_husk,pyre_priest,
+  slag_brute,cinderhound,prop_pyre_stack,prop_slag_font,prop_cinder_obelisk}.json`.
+
+### Cinder Regent (2026-09-30)
+
+- **Boss** (`bosses.ts` `regent`, `REGENT`; `BossBrain.ts` `RegentBrain`): arena (90, −117) r 11, Ember Altar on its north edge,
+  6 shards, level-scaled with the Pyre. Coals (burning circles), Cinder Cleave (a cone that lays a line of burning ground),
+  and the signature **Conflagration**: a 2.7 s windup marks grey ash circles (4 / 3 / 2 by phase, +1 per three extra players)
+  and the rest of the arena burns for `dmg 46`, leaving a few embers. P2 adds Husks and Priests, P3 hounds and husks.
+  New `coals` / `cleave` / `conflagration` boss events; `WorldSim.emberPool` is public for the brain.
+- **Art:** `boss_cinder_regent` (Tripo, 1024 px, 14k tris, 8 clips) and `ember_altar` prop; the slag font moved to the east
+  alcove so the arena stays open.
+- **Balance:** `npm run balance:boss -- --boss regent` — dodgers win 2/2 in ~90–130 s at intended/geared, non-dodgers lose;
+  comparable to the Plague Saint.
+- **Tests:** `pyre.test.ts` covers the summon spot, Conflagration (off-ash hurt, on-ash spared), ash-circle telegraph and coals.
+  `tools/qa/regent-smoke.cjs` screenshots the awake boss, the windup and the eruption.
+
+## Kill Chain and Milestones (2026-09-30, GRIND-LOOP #8 and #9)
+
+- `gameplay/killChain.ts`: 4 s window, tiers 5/12/25/45/80 → +5/10/15/20/25% XP and gold (applied to the reward the client already
+  rolls, on top of the Ascension multiplier). Only your own kills (thralls and DoTs credit their owner) in unsafe areas count;
+  death resets it. HUD readout `hud-chain` (left edge, warms by tier, timer bar), floating tier call-outs, rising `chainTier`
+  chime, a `chainBreak` thud for chains of 10+, a counsel tip on the first tier.
+- `gameplay/milestones.ts`: kill totals (100–25,000), per-area kills (100–2,500), best chain (10–100); a one-off gold purse each,
+  claimed per character in localStorage (`dm_milestones_<id>`, best chain in `dm_chain_best_<id>`).
+- Tests: `killChain.test.ts` (6). QA: `tools/qa/chain-smoke.cjs` (14 own kills → ×14 Rampage, HUD visible, then hides; the
+  chain-10 milestone paid). Debug hooks `__cwDebug.self()` and `.chain()`.
+
+## Weekly Omens (2026-09-30, GRIND-LOOP #5)
+
+- `content/omens.ts`: Blood Moon / Drowned Week / The Tolling, chosen by UTC week (Monday 00:00 start), no server state.
+  Effects: `WorldSim.omen` adds to the elite chance, scales wave size and forces an elite affix (Tolling → Bell-Tolled); the
+  client multiplies kill XP and gold (`rewardMult`, combat areas only) and elite shards (`shardMult`), tints the moon half-way
+  and thickens the fog (`sky`). HUD chip `hud-omen` (hover = rules and time left), counsel tip on first entry.
+- Tests: `omens.test.ts` (3): rotation and week boundaries, modest bounds, and a 60-wave harvest showing elites ×1.5+,
+  waves ×1.15+, all Tolling elites Bell-Tolled. The `daily_rite` icon is reserved for Daily Rites.
+- Co-op: the host's sim applies the spawn effects; every client computes the same week from its clock.
+
+## New levels: Catacomb Warren, Bone Coliseum (2026-09-30)
+
+Two more areas, both reusing existing props and mobs (only floor textures are new art; Gemini, ~free).
+
+- **Catacomb Warren** (`areas.ts` `warren`, rect x −72..−32, z −52..−8, door `graves_warren`, level 4, 150 Graves kills): a 3×3
+  grid of chambers divided by tall (3.4) half-walls with staggered gaps, a lantern at each gap end, and a central vault
+  (sarcophagus, four candelabra, reliquary; also a surge crypt). Rats, robbers, ghouls, bats, sacs, hounds.
+- **Bone Coliseum** (`coliseum`, rect x 70..112, z −46..−10, door `ossuary_coliseum`, level 11, 350 Ossuary kills): oval pillar ring,
+  four L-shaped low skull walls with statues as cover, bone-dust sand floor, blood decals. Wave 14 / 4.2 s / cap 36, elite
+  chance 0.16, a fodder-heavy roster so it plays as a horde pit; `npm run balance` shows ~120–185 necro kills/min with
+  real damage taken (unlike the melee bots, which are slow everywhere).
+- **Line of sight:** tall layout walls (height ≥ 2.5) are registered with `Nav.addSightBlocker`; `WorldSim.wallBetween` now
+  also checks them, so Penitent cones and gargoyle dives stop at any tall wall, including the Ossuary's existing partitions.
+- **Tests:** `levels.test.ts` (8): no area overlaps, door graph reaches every area, unlock chains, breaches inside the area,
+  and a 0.5 m flood-fill from each waystone proving every spawn breach (and the Warren vault) is walkable. The flood-fill
+  caught two real bugs (a breach under a pillar and one under a sarcophagus).
+- **QA:** `tools/qa/levels-smoke.cjs` (warren, coliseum, pyre screenshots + a mob mix), `pyre-smoke.cjs`, `regent-smoke.cjs`.
+  Run them on an idle machine: a leftover headless Chromium makes screenshots time out.

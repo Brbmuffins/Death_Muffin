@@ -30,7 +30,12 @@ export type EnemyId =
   | 'niche'
   // The Plague Cloister (2026-09-29).
   | 'plague_doctor'
-  | 'flagellant';
+  | 'flagellant'
+  // The Cinder Pyre (2026-09-30).
+  | 'cinder_husk'
+  | 'pyre_priest'
+  | 'cinderhound'
+  | 'slag_brute';
 export type CorpseKind = 'normal' | 'resonant' | 'swift' | 'toxic' | 'none';
 export type Behavior = 'melee' | 'flank' | 'caster' | 'hazard' | 'support';
 export type RigKind = 'humanoid' | 'quadruped' | 'bloat' | 'robed';
@@ -56,7 +61,7 @@ export interface EnemyDef {
   modelSlug?: string;
   blurb: string;
   /** Casters: the attack released after the windup (default: the Penitent's cone). */
-  attack?: 'cone' | 'scream' | 'dust' | 'curse' | 'flask';
+  attack?: 'cone' | 'scream' | 'dust' | 'curse' | 'flask' | 'ember';
   /** Hazard slam radius (default 1.9). */
   slamRadius?: number;
   /** Climbs out as a pack of this many (one wave pick). */
@@ -83,6 +88,10 @@ export interface EnemyDef {
   inert?: boolean;
   /** Flagellant: below half health it frenzies (faster feet and blows, see FRENZY). */
   frenzy?: boolean;
+  /** Cinder Husk: bursts where it falls, leaving a short-lived ember pool (see EMBER_DEATH). */
+  emberDeath?: boolean;
+  /** Slag Brute: its slam leaves a molten pool at the point of impact (see SLAG_POOL). */
+  slamPool?: boolean;
 }
 
 export const ENEMIES: Record<EnemyId, EnemyDef> = {
@@ -488,6 +497,88 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     frenzy: true,
     blurb: 'A penitent flayed by his own scourge. Wounded below half, he frenzies: faster feet, faster blows. Finish him quickly.',
   },
+  // --- The Cinder Pyre. Fire is enemy ember orange (SPELL_FX.enemy.ember), distinct from the player's Miasma green.
+  cinder_husk: {
+    id: 'cinder_husk',
+    name: 'Cinder Husk',
+    behavior: 'melee',
+    rig: 'humanoid',
+    hp: 110,
+    speed: 2.5,
+    radius: 0.45,
+    damage: 14,
+    attackRange: 1.3,
+    windupMs: 400,
+    cooldownMs: 1200,
+    xp: 12,
+    gold: [5, 11],
+    corpse: 'normal',
+    scale: 1,
+    modelSlug: 'cinder_husk',
+    emberDeath: true,
+    blurb: 'A pyre-burnt corpse that never stopped walking. When it falls it bursts into embers; do not stand in them.',
+  },
+  pyre_priest: {
+    id: 'pyre_priest',
+    name: 'Pyre Priest',
+    behavior: 'caster',
+    rig: 'robed',
+    hp: 90,
+    speed: 2.1,
+    radius: 0.5,
+    damage: 15,
+    attackRange: 8.5,
+    windupMs: 950,
+    cooldownMs: 3400,
+    xp: 13,
+    gold: [6, 13],
+    corpse: 'normal',
+    scale: 1.05,
+    modelSlug: 'pyre_priest',
+    attack: 'ember',
+    blurb: 'Hurls coals from his censer that burst into burning ground where you stand. Keep moving, and keep off the embers.',
+  },
+  cinderhound: {
+    id: 'cinderhound',
+    name: 'Cinderhound',
+    behavior: 'flank',
+    rig: 'quadruped',
+    hp: 62,
+    speed: 4.7,
+    radius: 0.45,
+    damage: 11,
+    attackRange: 1.2,
+    windupMs: 240,
+    cooldownMs: 780,
+    xp: 5,
+    gold: [2, 6],
+    corpse: 'swift',
+    scale: 1,
+    modelSlug: 'cinderhound',
+    pack: [2, 3],
+    blurb: 'Burning hounds that hunt in packs and flank hard. Their corpses rise as hounds of your own.',
+  },
+  slag_brute: {
+    id: 'slag_brute',
+    name: 'Slag Brute',
+    behavior: 'hazard',
+    rig: 'humanoid',
+    hp: 520,
+    speed: 1.5,
+    radius: 1.0,
+    damage: 28,
+    attackRange: 2.2,
+    windupMs: 1000,
+    cooldownMs: 2900,
+    xp: 34,
+    gold: [18, 34],
+    corpse: 'resonant',
+    scale: 1,
+    modelSlug: 'slag_brute',
+    slamRadius: 2.7,
+    slamPool: true,
+    blurb: 'Slag and iron, still molten at the seams. Its slam cracks a wide ring and leaves it burning.',
+  },
 
 
 };
@@ -506,6 +597,12 @@ export const UNBIND = { range: 7, delayS: 1, cooldownS: 4, maxAlive: 4 };
 export const TEMPLAR_SHIELD = { halfArcDeg: 60, passThrough: 0.3 };
 /** Plague Doctor flask: the burst where it lands, then a rot pool (a hostile zone) that burns each second. */
 export const PLAGUE_FLASK = { radius: 1.8, poolS: 5, poolDpsMult: 0.35 };
+/** Pyre Priest ember: the burst where it lands, then a burning pool (a hostile zone). */
+export const EMBER_BOLT = { radius: 1.7, poolS: 4, poolDpsMult: 0.4 };
+/** Cinder Husk: the burst where it dies (a hostile pool, never an instant hit). dps is a share of its blow. */
+export const EMBER_DEATH = { radius: 1.6, poolS: 3, poolDpsMult: 0.3 };
+/** Slag Brute: the molten pool its slam leaves. */
+export const SLAG_POOL = { poolS: 4, poolDpsMult: 0.3 };
 /** Flagellant frenzy below `atFrac` health. */
 export const FRENZY = { atFrac: 0.5, moveMult: 1.45, attackRateMult: 1.6 };
 /** Weeping Seraph ward: every ally within `range` is Sanctified at once (up to `maxTargets`). */

@@ -53,7 +53,12 @@ export type PropId =
   | 'plague_well'
   | 'rot_garden'
   | 'plague_cart'
-  | 'saints_litter';
+  | 'saints_litter'
+  // The Cinder Pyre (2026-09-30).
+  | 'pyre_stack'
+  | 'slag_font'
+  | 'cinder_obelisk'
+  | 'ember_altar';
 
 export interface PropSpec {
   /** Target world height of the generated model. */
@@ -103,6 +108,11 @@ export const PROPS: Record<PropId, PropSpec> = {
   rot_garden: { height: 1.0, collider: { kind: 'box', hw: 1.6, hd: 0.9 } },
   plague_cart: { height: 2.0, collider: { kind: 'box', hw: 1.4, hd: 0.8 } },
   saints_litter: { height: 2.4, collider: { kind: 'box', hw: 1.2, hd: 1.8 } },
+  // Fire-lit: enemy-ember orange, never the Chapterhouse braziers' violet.
+  pyre_stack: { height: 2.6, collider: { kind: 'circle', r: 1.3 }, light: { color: 0xff7a2a, intensity: 12, distance: 12, y: 3.2, flames: 0, spread: 0.4 } },
+  slag_font: { height: 2.0, collider: { kind: 'circle', r: 1.6 }, light: { color: 0xff6a20, intensity: 11, distance: 14, y: 3.4, flames: 0, spread: 0.3 } },
+  ember_altar: { height: 1.8, collider: { kind: 'box', hw: 1.0, hd: 0.8 }, light: { color: 0xff7a2a, intensity: 8, distance: 10, y: 2.6, flames: 0, spread: 0.3 } },
+  cinder_obelisk: { height: 4.2, collider: { kind: 'circle', r: 0.75 }, light: { color: 0xff7a2a, intensity: 7, distance: 8, y: 3.4, flames: 0, spread: 0.2 } },
 };
 
 export interface Placement {
@@ -510,6 +520,129 @@ export function generateLayout(seed = 1337): WorldLayout {
     decals.push({ kind: 'sigil', x: cx, z: cz, r: 9, color: 0x6f8f22, opacity: 0.35, rot: 0, area: a });
   }
 
+  // --- The Cinder Pyre (2026-09-30): a scorched garth of black obelisks around a slag font, funeral pyres burning
+  // between them. Own random stream, so it can never move a prop that was placed before it.
+  {
+    const a: AreaId = 'pyre';
+    const pr = mulberry32(seed ^ 0x0f17e);
+    edgeWalls(a, 7, 'stone_wall', walls);
+    const cx = 90;
+    const cz = -116;
+    // Broken pillars along the north and south walks.
+    for (let x = 76; x <= 104; x += 7) {
+      P('pillar', x, -102.5, a, 0);
+      P('pillar', x, -129.5, a, 0);
+    }
+    P('arch', 70.5, -116, a, Math.PI / 2);
+    // The slag font stands in the east alcove: the Regent's arena (r 11 around the sigil) is kept open.
+    P('slag_font', 104, cz, a, 0);
+    P('waystone', 73.5, -108, a, 0);
+    for (const [x, z] of [[80, -108], [100, -108], [80, -124], [100, -124], [90, -105], [82, -130.5], [98, -130.5]] as const) P('cinder_obelisk', x, z, a, pr() * Math.PI);
+    for (const [x, z, r] of [[78.5, -112, 0.3], [78.5, -122, 2.4], [101, -110.5, 1.1], [101, -123.5, 4.1]] as const) P('pyre_stack', x, z, a, r);
+    for (let i = 0; i < 8; i++) {
+      const x = 74 + pr() * 32;
+      const z = -131 + pr() * 30;
+      if (clearOf(x, z, 3)) P(pr() < 0.5 ? 'bone_pile' : 'dead_tree', x, z, a);
+    }
+    decals.push({ kind: 'sigil', x: cx, z: cz, r: 10, color: 0xff7a2a, opacity: 0.3, rot: 0, area: a });
+  }
+
+  // --- The Catacomb Warren (2026-09-30): nine chambers on a 3x3 grid, divided by tall half-walls with staggered gaps.
+  {
+    const a: AreaId = 'warren';
+    const wr = mulberry32(seed ^ 0x3a44e7);
+    // Scatter never lands on a spawn breach.
+    const free = (x: number, z: number, r: number) => clearOf(x, z, r) && AREAS.warren.breaches.every(([bx, bz]) => Math.hypot(bx - x, bz - z) > 2.5);
+    edgeWalls(a, 6, 'stone_wall', walls);
+    const r = AREAS.warren.rect;
+    const XS = [-58.7, -45.3];
+    const ZS = [-37.3, -22.7];
+    /** A partition along one axis with gaps: `open` are [from, to] ranges left clear. */
+    const divide = (axis: 'x' | 'z', fixed: number, from: number, to: number, open: [number, number][]) => {
+      let cur = from;
+      const seg = (u0: number, u1: number) => {
+        if (u1 - u0 < 0.4) return;
+        walls.push(axis === 'x'
+          ? { x0: fixed, z0: u0, x1: fixed, z1: u1, height: 3.4, thickness: 1, texture: 'stone_wall', area: a }
+          : { x0: u0, z0: fixed, x1: u1, z1: fixed, height: 3.4, thickness: 1, texture: 'stone_wall', area: a });
+      };
+      // A lantern on the end of every wall beside a gap: lit doorways tell you where the chambers join.
+      for (const [o0] of open) P('grave_lantern', axis === 'x' ? fixed + 0.9 : o0 - 0.7, axis === 'x' ? o0 - 0.7 : fixed + 0.9, a, 0);
+      for (const [o0, o1] of open) { seg(cur, o0); cur = o1; }
+      seg(cur, to);
+    };
+    // Vertical partitions (gaps stagger from row to row so the route winds), then horizontal ones.
+    divide('x', XS[0], r.z0, r.z1, [[-48, -41], [-33, -27], [-19, -12]]);
+    divide('x', XS[1], r.z0, r.z1, [[-46, -39], [-34, -24], [-17, -10]]);
+    divide('z', ZS[0], r.x0, r.x1, [[-68, -61], [-55, -49], [-42, -36]]);
+    divide('z', ZS[1], r.x0, r.x1, [[-70, -64], [-53, -47], [-40, -34]]);
+    for (const x of XS) for (const z of ZS) P('pillar', x, z, a, 0);
+    P('waystone', -35.5, -27, a, 0);
+    // The central chamber is the vault: a sarcophagus under candlelight, and a reliquary on the far side.
+    P('sarcophagus', -52, -33.8, a, Math.PI / 2);
+    P('bone_candelabrum', -55.5, -33.5, a, 0);
+    P('bone_candelabrum', -48.5, -33.5, a, 0);
+    P('bone_candelabrum', -55.5, -26.5, a, 0);
+    P('bone_candelabrum', -48.5, -26.5, a, 0);
+    P('reliquary', -56.6, -36, a, 0);
+    P('grave_lantern', -34, -33, a, 0);
+    P('grave_lantern', -34, -21.5, a, 0);
+    // Chambers: [x-centre, z-centre] on the grid, minus the vault and the entry.
+    const chambers: [number, number][] = [[-65.3, -44.7], [-52, -44.7], [-38.7, -44.7], [-65.3, -30], [-65.3, -15.3], [-52, -15.3], [-38.7, -15.3]];
+    chambers.forEach(([cx, cz], i) => {
+      const px = cx + (wr() - 0.5) * 6;
+      const pz = cz + (wr() - 0.5) * 6;
+      if (free(px, pz, 2.2)) P(i % 2 ? 'coffin_stack' : 'gibbet_cage', px, pz, a, wr() * 3);
+      for (let k = 0; k < 2; k++) {
+        const x = cx + (wr() - 0.5) * 9;
+        const z = cz + (wr() - 0.5) * 9;
+        if (free(x, z, 2.5)) P(wr() < 0.6 ? 'bone_pile' : 'tombstone_round', x, z, a, wr() * 6);
+      }
+      if (wr() < 0.5 && free(cx + 3, cz - 3, 2)) P('candles', cx + 3, cz - 3, a);
+    });
+    decals.push({ kind: 'cracks', x: -52, z: -30, r: 8, color: 0x2a2418, opacity: 0.5, rot: 0.4, area: a });
+    decals.push({ kind: 'sigil', x: -52, z: -30, r: 6, color: 0xb8a070, opacity: 0.25, rot: 0, area: a });
+  }
+
+  // --- The Bone Coliseum (2026-09-30): an oval pit ringed by pillars with four gates, cover islands inside.
+  {
+    const a: AreaId = 'coliseum';
+    const cr = mulberry32(seed ^ 0x51c0de);
+    const free = (x: number, z: number, r: number) => clearOf(x, z, r) && AREAS.coliseum.breaches.every(([bx, bz]) => Math.hypot(bx - x, bz - z) > 2.5);
+    edgeWalls(a, 6.5, 'skull_wall', walls);
+    const cx = 91;
+    const cz = -28;
+    // The stands: a ring of pillars, left open at the four gates (N, S, E; the west gate is the door from the Ossuary).
+    for (let k = 0; k < 16; k++) {
+      const ang = (k / 16) * Math.PI * 2;
+      const gate = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2].some((g) => Math.abs(Math.atan2(Math.sin(ang - g), Math.cos(ang - g))) < 0.22);
+      if (gate) continue;
+      P('pillar', cx + Math.cos(ang) * 17.5, cz + Math.sin(ang) * 13.5, a, 0);
+    }
+    for (let k = 0; k < 8; k++) {
+      const ang = (k / 8) * Math.PI * 2 + Math.PI / 8;
+      P('bone_candelabrum', cx + Math.cos(ang) * 14.5, cz + Math.sin(ang) * 11, a, 0);
+    }
+    P('waystone', 73.5, -20, a, 0);
+    // Cover: four L-shaped low skull walls with a statue at each elbow, the pit's only shelter.
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+      const ex = cx + sx * 7.5;
+      const ez = cz + sz * 5.5;
+      walls.push({ x0: ex, z0: ez, x1: ex + sx * 4, z1: ez, height: 1.3, thickness: 0.9, texture: 'skull_wall', area: a });
+      walls.push({ x0: ex, z0: ez, x1: ex, z1: ez + sz * 3, height: 1.3, thickness: 0.9, texture: 'skull_wall', area: a });
+      P('statue', ex, ez, a, Math.atan2(-sx, -sz));
+    }
+    for (const [x, z] of [[74, -42], [108, -42], [74, -14], [108, -14]] as const) P('gibbet_cage', x, z, a, cr() * 6);
+    for (let i = 0; i < 9; i++) {
+      const x = 76 + cr() * 30;
+      const z = -42 + cr() * 28;
+      if (free(x, z, 3) && Math.hypot(x - cx, z - cz) > 3) P('bone_pile', x, z, a, cr() * 6);
+    }
+    decals.push({ kind: 'sigil', x: cx, z: cz, r: 11, color: 0xa8873a, opacity: 0.28, rot: 0, area: a });
+    decals.push({ kind: 'cracks', x: cx, z: cz, r: 7, color: 0x2a1a14, opacity: 0.45, rot: 1.1, area: a });
+    for (let i = 0; i < 7; i++) decals.push({ kind: 'blood', x: 78 + cr() * 26, z: -40 + cr() * 24, r: 1.2 + cr() * 1.6, color: 0x5a1a1a, opacity: 0.4, rot: cr() * 6, area: a });
+  }
+
   // Environment dressing draws from its own stream so adding it never moves a grave.
   const envRand = mulberry32(seed ^ 0x5eed);
   const water = naveWater();
@@ -635,7 +768,7 @@ function bossArenas(props: Placement[]) {
   const drop = (keep: (p: Placement) => boolean) => {
     for (let i = props.length - 1; i >= 0; i--) if (!keep(props[i])) props.splice(i, 1);
   };
-  for (const id of ['gravedigger', 'abbess', 'congregation', 'saint'] as BossId[]) {
+  for (const id of ['gravedigger', 'abbess', 'congregation', 'saint', 'regent'] as BossId[]) {
     const b = BOSSES[id];
     const { x, z, r } = b.arena;
     const [sx, sz] = summonSpot(id);
@@ -725,7 +858,7 @@ function distantSilhouettes(rand: () => number): Silhouette[] {
     [-30, -134, 1.4],
     [44, -146, 1.3], // behind the Plague Cloister
     [0, -150, 1.6],
-    [82, -24, 1.1],
+    [128, -24, 1.1],
     [48, -58, 0.9],
   ];
   for (const [x, z, scale] of spires) out.push({ kind: 'spire', x, z, scale, rot: rand() * Math.PI * 2 });

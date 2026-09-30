@@ -124,6 +124,12 @@ export class HUD {
     this.el.innerHTML = `
       <div class="hud-vignette passive" data-vig></div>
       <div class="hud-party" data-party></div>
+      <div class="hud-omen" data-omen hidden><img alt="" data-omen-img /><span data-omen-name></span></div>
+      <div class="hud-chain passive" data-chain hidden aria-live="off">
+        <div class="n" data-chain-n></div>
+        <div class="lbl" data-chain-lbl></div>
+        <div class="track"><div class="fill" data-chain-fill></div></div>
+      </div>
       <div class="hud-target passive" data-target hidden>
         <div class="nm" data-tname></div>
         <div class="track"><div class="fill" data-thp></div></div>
@@ -570,6 +576,35 @@ export class HUD {
   }
 
   /** `onClick` makes the toast a button (e.g. a new rite opens the Grimoire). */
+  /** The week's Omen chip under the party list (its blurb is the tooltip). */
+  setOmen(o: { name: string; icon: string; blurb: string } | null) {
+    const el = this.$('[data-omen]');
+    el.hidden = o === null;
+    if (!o) return;
+    (this.$('[data-omen-img]') as HTMLImageElement).src = o.icon;
+    this.$('[data-omen-name]').textContent = o.name;
+    el.title = o.blurb;
+    el.setAttribute('aria-label', `${o.name}. ${o.blurb}`);
+  }
+
+  /** The Kill Chain readout: a count, the tier name and bonus, and the time left before it breaks (null hides it). */
+  setChain(c: null | { count: number; name: string; bonus: number; frac: number; tier: number }) {
+    this.set('chain.on', c !== null, () => (this.$('[data-chain]').hidden = c === null));
+    if (!c) return;
+    this.set('chain.n', c.count, () => (this.$('[data-chain-n]').textContent = `×${c.count}`));
+    this.set('chain.lbl', `${c.name}|${c.bonus}`, () => (this.$('[data-chain-lbl]').textContent = c.bonus > 0 ? `${c.name} · +${Math.round(c.bonus * 100)}% XP & gold` : 'Chain'));
+    this.set('chain.tier', c.tier, () => (this.$('[data-chain]').dataset.tier = String(c.tier)));
+    this.set('chain.fill', Math.round(c.frac * 50), () => this.$('[data-chain-fill]').style.setProperty('width', `${c.frac * 100}%`));
+  }
+
+  /** A short pop on the readout when the count climbs (retriggers the CSS animation). */
+  pulseChain() {
+    const el = this.$('[data-chain-n]');
+    el.classList.remove('pop');
+    void el.offsetWidth;
+    el.classList.add('pop');
+  }
+
   toast(text: string, kind: '' | 'err' | 'good' = '', onClick?: () => void) {
     const el = document.createElement('div');
     el.className = `hud-toast ${kind}${onClick ? ' clickable' : ''}`;

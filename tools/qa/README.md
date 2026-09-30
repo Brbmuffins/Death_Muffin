@@ -28,3 +28,11 @@ The VPS public-site check is `node tools/qa/live-domain-smoke.cjs --gather-check
 For starter-area visuals, run `node tools/qa/acre-smoke.cjs` against the offline preview on 5199 (or set `DM_QA_URL`). It checks low/high graphics, real mouse clicks on a beginner oak and grave from the entrance, compact hover cards, anchored fishing batches and renderer errors. Each interaction begins at the entrance to avoid AFK or ordinary Auto gathering moving the test character away between screenshots.
 
 For counsel and lighting, run `node tools/qa/counsel-lighting-smoke.cjs` against the 5199 offline preview. It checks pointer/keyboard movement without hero movement, position persistence across queued cards and reloads, resize clamping, dismissal, initial Acre lighting, the sawpit beacon, and the unchanged combat lighting/light count. Add `--counsel-check` to the public domain smoke for production drag/reload verification.
+
+For the 2026-09-30 content, run these against the 5199 offline preview (`DM_QA_ARTIFACT_DIR=/tmp` saves screenshots). Run them one at a time on an idle machine: a leftover headless Chromium (or another heavy process) makes `page.screenshot` time out, which looks like a game hang and is not.
+
+- `node tools/qa/pyre-smoke.cjs`: the Cinder Pyre zone, the four fire mobs, a live coal/slam/husk-death, and a perf comparison against the Cloister roster.
+- `node tools/qa/regent-smoke.cjs`: wakes the Cinder Regent and screenshots the awake boss, the Conflagration windup (ash circles) and the eruption.
+- `node tools/qa/levels-smoke.cjs`: Catacomb Warren, Bone Coliseum and Cinder Pyre screenshots after a couple of waves (`DM_QA_AREAS=coliseum` for one).
+- `node tools/qa/chain-smoke.cjs`: 14 own kills build the Kill Chain readout (×14 Rampage), the weekly Omen chip is present, the chain breaks and hides, and the chain-10 milestone is paid.
+- Playwright is not installed in the repo. On this VPS it lives in the npx cache: `DM_PLAYWRIGHT_MODULE=/home/ubuntu/.npm/_npx/e41f203b7505f1fb/node_modules/playwright`.

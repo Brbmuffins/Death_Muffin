@@ -32,6 +32,10 @@ const ENEMY_SLUG: Record<EnemyId, CreatureSlug> = {
   niche: 'skull_niche',
   plague_doctor: 'plague_doctor',
   flagellant: 'flagellant',
+  cinder_husk: 'cinder_husk',
+  pyre_priest: 'pyre_priest',
+  cinderhound: 'cinderhound',
+  slag_brute: 'slag_brute',
 };
 
 /** Shipped models to fall back on if a newer GLB is missing (older deploys, failed builds). */
@@ -49,9 +53,15 @@ const ENEMY_FALLBACK: Partial<Record<EnemyId, CreatureSlug>> = {
   templar: 'grave_robber',
   plague_doctor: 'deacon',
   flagellant: 'grave_robber',
+  cinder_husk: 'grave_robber',
+  pyre_priest: 'deacon',
+  cinderhound: 'bone_hound',
+  slag_brute: 'bone_golem',
 };
 /** Enemies that cast (play 'cast' rather than 'attack' on the windup). */
-const CASTERS = new Set<EnemyId>(['penitent', 'deacon', 'wraith', 'censer', 'moth', 'seraph', 'acolyte', 'plague_doctor']);
+const CASTERS = new Set<EnemyId>(['penitent', 'deacon', 'wraith', 'censer', 'moth', 'seraph', 'acolyte', 'plague_doctor', 'pyre_priest']);
+/** The Cinder Pyre's dead: they shed embers and spray sparks when struck (see the per-enemy effect pass). */
+const FIRE_DEAD = new Set<EnemyId>(['cinder_husk', 'pyre_priest', 'cinderhound', 'slag_brute']);
 /** Choir Wraiths float: a hover height and a slow bob. */
 const HOVER = { wraith: 0.45 } as Partial<Record<EnemyId, number>>;
 /** Flying pack wingbeats: heavy stone, dusty moth, frantic bat, slow grieving seraph. */
@@ -344,6 +354,41 @@ export class EntityViews {
       follow: () => ({ x: v.x, z: v.z }),
     });
     return v;
+  }
+
+  /** Ember shedding and hit sparks for the Cinder Pyre's dead (cheap: a few particles per second, near the camera only). */
+  private fireDead(e: Enemy, v: { x: number; z: number }, dt: number, struck: boolean) {
+    const F = SPELL_FX.enemy;
+    const s = e.scale;
+    if (struck) {
+      // Struck: sparks fly off the body and a puff of soot follows.
+      const heavy = e.def === 'slag_brute';
+      this.effects.emit({ x: e.x, y: 1.1 * s, z: e.z, count: heavy ? 14 : 9, color: F.emberCore, spread: 0.25, speed: heavy ? 4.2 : 3.2, up: 2, life: 0.55, size: 0.11, gravity: 9 });
+      this.effects.emit({ x: e.x, y: 1.1 * s, z: e.z, count: 4, color: F.ember, spread: 0.3, speed: 1.6, up: 1.2, life: 0.7, size: 0.2, gravity: 4 });
+      if (heavy) this.effects.emitSmoke({ x: e.x, y: 1.4, z: e.z, count: 2, color: F.emberDeep, spread: 0.4, speed: 0.6, up: 0.5, life: 0.8, size: 0.9, shrink: -0.5 });
+    }
+    switch (e.def) {
+      case 'cinder_husk':
+        // Embers lifting off the charred shoulders and ribs.
+        if (Math.random() < dt * 7) this.effects.emit({ x: e.x, y: 0.9 + Math.random() * 0.9, z: e.z, count: 1, color: Math.random() < 0.6 ? F.ember : F.emberCore, spread: 0.3, speed: 0.15, up: 1.1, life: 0.9, size: 0.1, drag: 0.5 });
+        break;
+      case 'pyre_priest':
+        // The censer at the hip smoulders; ash sifts from the sleeves. It flares while a coal is winding up.
+        if (Math.random() < dt * (e.state === 'windup' ? 22 : 5)) this.effects.emit({ x: e.x, y: 0.9 * s, z: e.z, count: 1, color: F.emberCore, spread: 0.2, speed: 0.2, up: 1.2, life: 0.7, size: e.state === 'windup' ? 0.18 : 0.11, drag: 0.4 });
+        if (Math.random() < dt * 2) this.effects.emitSmoke({ x: e.x, y: 1.5, z: e.z, count: 1, color: 0x8a8680, spread: 0.3, speed: 0.15, up: 0.3, life: 1.6, size: 0.7, shrink: -0.4 });
+        break;
+      case 'cinderhound':
+        // A trail of sparks and a wisp of smoke behind a running hound.
+        if (e.moving && Math.random() < dt * 14) this.effects.emit({ x: e.x, y: 0.35, z: e.z, count: 1, color: Math.random() < 0.5 ? F.ember : F.emberCore, spread: 0.15, speed: 0.4, up: 0.8, life: 0.55, size: 0.09, gravity: 2 });
+        if (e.moving && Math.random() < dt * 4) this.effects.emitSmoke({ x: e.x, y: 0.5, z: e.z, count: 1, color: F.emberDeep, spread: 0.2, speed: 0.2, up: 0.3, life: 0.8, size: 0.6, shrink: -0.5 });
+        break;
+      case 'slag_brute':
+        // Heat off the molten seams: big slow embers, heavy dark smoke.
+        if (Math.random() < dt * 6) this.effects.emit({ x: e.x, y: 1 + Math.random() * 1.6, z: e.z, count: 1, color: F.ember, spread: 0.6, speed: 0.15, up: 1, life: 1.1, size: 0.16, drag: 0.5 });
+        if (Math.random() < dt * 2.5) this.effects.emitSmoke({ x: e.x, y: 2.2, z: e.z, count: 1, color: F.emberDeep, spread: 0.4, speed: 0.2, up: 0.6, life: 1.6, size: 1.1, shrink: -0.4 });
+        break;
+    }
+    void v;
   }
 
   onEvent(ev: SimEvent, lookupCorpseFacing?: (c: Corpse) => number) {
@@ -639,6 +684,7 @@ export class EntityViews {
         v.c.playOnce('hurt', 1.9);
       }
       this.tickAnim(v, dt, focusX, focusZ, crowded);
+      if (nearFx && FIRE_DEAD.has(e.def)) this.fireDead(e, v, dt, fresh);
       if (nearFx && e.withered > 0 && Math.random() < dt * (1 + e.withered * 0.75)) {
         this.effects.emit({ x: e.x, y: 0.8 + Math.random() * 0.8, z: e.z, count: 1, color: SPELL_FX.miasma.rot, spread: 0.4, speed: 0.2, up: 0.7, life: 0.9, size: 0.2 });
       }

@@ -38,8 +38,8 @@ import {
 } from './abilities';
 import { AREAS, BOSS_SUMMON_SHARDS, type AreaId } from './areas';
 import type { DisciplineId } from './disciplines';
-import { ABBESS, BOSSES, CONGREGATION, GRAVEDIGGER, SAINT, type BossId } from './bosses';
-import { BURROW, CENSER, DUST, ENEMIES, FRENZY, PLAGUE_FLASK, SCREAM, TEMPLAR_SHIELD, UNBIND, WARD, type Behavior, type EnemyId } from './enemies';
+import { ABBESS, BOSSES, CONGREGATION, GRAVEDIGGER, REGENT, SAINT, type BossId } from './bosses';
+import { BURROW, CENSER, DUST, EMBER_BOLT, EMBER_DEATH, ENEMIES, FRENZY, PLAGUE_FLASK, SCREAM, SLAG_POOL, TEMPLAR_SHIELD, UNBIND, WARD, type Behavior, type EnemyId } from './enemies';
 
 /**
  * Codex text — the in-game Codex (ui/CodexPanel) and any docs/README tooling
@@ -314,7 +314,7 @@ export const CODEX_DISCIPLINES: Record<DisciplineId, DisciplineEntry> = {
 /** Enemies plus every boss (bosses double as the Codex trophies: sealed until you have faced them). */
 export type DeadId = EnemyId | BossId;
 
-export const DEAD_ORDER: DeadId[] = ['robber', 'hound', 'penitent', 'sac', 'deacon', 'risen', 'censer', 'wraith', 'rat', 'golem', 'bat', 'moth', 'gargoyle', 'seraph', 'ghoul', 'acolyte', 'templar', 'niche', 'plague_doctor', 'flagellant', 'gravedigger', 'abbess', 'congregation', 'saint', 'prelate'];
+export const DEAD_ORDER: DeadId[] = ['robber', 'hound', 'penitent', 'sac', 'deacon', 'risen', 'censer', 'wraith', 'rat', 'golem', 'bat', 'moth', 'gargoyle', 'seraph', 'ghoul', 'acolyte', 'templar', 'niche', 'plague_doctor', 'flagellant', 'cinder_husk', 'pyre_priest', 'cinderhound', 'slag_brute', 'gravedigger', 'abbess', 'congregation', 'saint', 'regent', 'prelate'];
 
 export const PRELATE_NAME = 'The Bell-Sworn Prelate';
 
@@ -478,6 +478,34 @@ export const CODEX_DEAD: Record<DeadId, DeadEntry> = {
     corpse: 'An ordinary corpse.',
     counter: 'Burst it from half to dead in one go (Marrow Spear, Wailing Skull, a Corpse Explosion), or root it in a Bone Prison first.',
   },
+  cinder_husk: {
+    name: ENEMIES.cinder_husk.name,
+    role: ENEMIES.cinder_husk.behavior,
+    behaviour: `A sturdy melee corpse. When it dies it bursts and leaves burning ground (${EMBER_DEATH.radius}m) for ${EMBER_DEATH.poolS}s.`,
+    corpse: 'An ordinary corpse, lying in its own embers.',
+    counter: 'Kill it at range or with a Corpse Explosion, and do not stand where it falls. Corpses that lie in the embers are still yours to take once the fire dies.',
+  },
+  pyre_priest: {
+    name: ENEMIES.pyre_priest.name,
+    role: ENEMIES.pyre_priest.behavior,
+    behaviour: `Keeps its distance and hurls a coal onto where you stand. ${ENEMIES.pyre_priest.windupMs / 1000}s later it bursts (${EMBER_BOLT.radius}m) and leaves burning ground for ${EMBER_BOLT.poolS}s.`,
+    corpse: 'An ordinary corpse.',
+    counter: 'Step out of the orange ring, then out of the embers. It is fragile up close; Grave Step or Veil Step closes the gap.',
+  },
+  cinderhound: {
+    name: ENEMIES.cinderhound.name,
+    role: ENEMIES.cinderhound.behavior,
+    behaviour: 'Fast burning flankers that arrive in packs of two or three, curving around to your side.',
+    corpse: 'A swift corpse: it rises as a hound of your own.',
+    counter: 'Put your back to a wall or a Bone Ward, and take them with area rites. Veil Step and Grave Step shake a pack.',
+  },
+  slag_brute: {
+    name: ENEMIES.slag_brute.name,
+    role: ENEMIES.slag_brute.behavior,
+    behaviour: `Slow and heavy. Its slam lands ${ENEMIES.slag_brute.slamRadius}m wide after ${ENEMIES.slag_brute.windupMs / 1000}s and leaves the ring burning for ${SLAG_POOL.poolS}s.`,
+    corpse: 'A resonant corpse: the strongest kind to raise.',
+    counter: 'Leave the ring when it winds up, kite it in circles, and never fight standing in the last slam.',
+  },
   gravedigger: {
     name: BOSSES.gravedigger.name,
     role: 'boss',
@@ -505,6 +533,13 @@ export const CODEX_DEAD: Record<DeadId, DeadEntry> = {
     behaviour: `The Plague Cloister's boss, as strong as you are. Rot Rain marks circles on you and around the garth (${SAINT.rain.windupMs / 1000}s); each one becomes a rot pool. While she stands in a pool she heals. A censer swing covers the ground in front of her. Plague Doctors and Flagellants join in phase 2; phase 3 brings heavier rain, pools that last longer and a rat swarm.`,
     corpse: 'None. The blight carries her back to her litter.',
     counter: `Offer ${BOSSES.saint.shards} soul shards at the Saint's Litter. Kite her out of the rot: every second she spends in a pool undoes your damage. In her second phase the Plague Doctors heal her through a green link, so they are the priority target.`,
+  },
+  regent: {
+    name: BOSSES.regent.name,
+    role: 'boss',
+    behaviour: `The Cinder Pyre's boss, as strong as you are. Coals mark ${REGENT.coals.circles[0]}–${REGENT.coals.circles[1]} circles on you and around the arena and leave burning ground; Cinder Cleave lays a line of fire down the cone. Every ${REGENT.conflagration.cd}s or so Conflagration begins: the whole arena burns after ${REGENT.conflagration.windupMs / 1000}s except the grey ash circles (${REGENT.conflagration.safe[0]}, then ${REGENT.conflagration.safe[1]}, then ${REGENT.conflagration.safe[2]}, plus one per three extra players). Husks and Priests join in phase 2; phase 3 brings hounds and fewer ash circles.`,
+    corpse: 'None. The Regent crumbles to ash.',
+    counter: `Offer ${BOSSES.regent.shards} soul shards at the Ember Altar. The moment Conflagration begins, run for an ash circle and stay on it until the fire has passed; use the gaps between to damage him. Kill the Pyre Priests early: their coals cover the ash you need.`,
   },
   prelate: {
     name: PRELATE_NAME,
@@ -548,6 +583,15 @@ export const CODEX_AREAS: Record<AreaId, AreaEntry> = {
   },
   sanctum: {
     dangers: 'The Sundered Bell and the Prelate who serves it. Penitents and deacons hold the aisles, and elites are more common here than anywhere else. Every newer kind of dead walks here too, and the Procession marches behind a Bone Golem.',
+  },
+  warren: {
+    dangers: "Through the Hollow Graves' west door, once 150 of the Graves' dead have fallen. Nine chambers divided by tall half-walls: the walls stop cones (a Penitent cannot hit you round a corner) and rats swarm through the gaps. Barrow Ghouls dig up inside the chambers, so keep moving.",
+  },
+  coliseum: {
+    dangers: "East of the Ossuary, once enough of its dead have fallen. Four gates feed a wide sand pit with fast surges, twice the usual elites and every newer kind of dead. Pillar islands and low walls are the only cover. The best drops before the Sanctum.",
+  },
+  pyre: {
+    dangers: "Beyond the Cloister's east arch, sealed until enough of the Cloister's dead have fallen. Level-scaled like the Cloister, never below level 30. Every mob here leaves fire: Pyre Priests hurl coals that burn where they land, Cinder Husks burst into embers when they die, Slag Brutes slam rings that keep burning, and Cinderhounds arrive in fast packs.",
   },
   cloister: {
     dangers: "Beyond the Sanctum's east door. The blight grows with you: its dead always match the highest-level player inside (never below level 20), so every kill here is worth your level. Plague Doctors lob flasks that leave rot pools, Flagellants frenzy when wounded, and sacs, rats and censers crowd the moss. The Plague Saint waits at the Saint's Litter.",

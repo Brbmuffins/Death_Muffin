@@ -569,6 +569,27 @@ button { font-family: inherit; }
 .hud-target .statuses img { width: 22px; height: 22px; }
 .hud-target .blurb { font-size: 12px; color: var(--cw-text-muted); font-style: italic; margin-top: 2px; }
 
+/* The week's Omen: a small icon-and-name chip on the left edge (hover for the rules). */
+.hud-omen { position: absolute; left: 22px; top: 27%; display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; background: rgba(7, 6, 10, 0.55); border-left: 3px solid var(--cw-spell-300); pointer-events: auto; cursor: help; }
+.hud-omen img { width: 30px; height: 30px; object-fit: contain; }
+.hud-omen span { font-family: var(--cw-font-display); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cw-bone-100); text-shadow: 0 1px 4px #000; }
+
+/* Kill Chain: a quiet count on the left edge that warms up as the tier climbs. */
+.hud-chain { position: absolute; left: 22px; top: 34%; min-width: 150px; padding: 6px 12px 8px; background: rgba(7, 6, 10, 0.55); border-left: 3px solid var(--cw-border-strong); text-shadow: 0 1px 4px #000; --chain: var(--cw-bone-300); }
+.hud-chain[data-tier='1'] { --chain: #e6d3a0; }
+.hud-chain[data-tier='2'] { --chain: #f0b25a; }
+.hud-chain[data-tier='3'] { --chain: #f08a3a; }
+.hud-chain[data-tier='4'] { --chain: #ee5a2a; }
+.hud-chain[data-tier='5'] { --chain: #ff3a3a; }
+.hud-chain { border-left-color: var(--chain); }
+.hud-chain .n { font-family: var(--cw-font-numeric); font-weight: 700; font-size: 34px; line-height: 1; color: var(--chain); transform-origin: left center; }
+.hud-chain .n.pop { animation: cw-chain-pop 0.18s ease-out; }
+.hud-chain .lbl { font-family: var(--cw-font-display); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cw-bone-100); margin-top: 2px; }
+.hud-chain .track { height: 4px; margin-top: 6px; background: rgba(7, 6, 10, 0.9); }
+.hud-chain .track .fill { height: 100%; width: 100%; background: var(--chain); transition: width 0.1s linear; }
+@keyframes cw-chain-pop { from { transform: scale(1.35); } to { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .hud-chain .n.pop { animation: none; } }
+
 .hud-boss { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: min(620px, 60vw); padding: 10px 16px 12px; text-align: center; }
 .hud-boss .nm { font-family: var(--cw-font-display); font-weight: 700; font-size: 22px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--cw-bone-100); }
 .hud-boss .ph { font-size: 12px; color: var(--cw-spell-300); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 6px; }

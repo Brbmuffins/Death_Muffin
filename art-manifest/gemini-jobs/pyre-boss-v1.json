@@ -1,0 +1,20 @@
+[
+  {
+    "id": "concept_boss_cinder_regent",
+    "out": "art-src/concepts/boss_cinder_regent.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a BOSS for a burning crypt-realm of fire and ash, the Cinder Regent: a towering armored skeletal king, twice human size, in blackened cracked plate armor with molten orange fissures glowing through every joint and the ribcage, a broken crown of burning iron spikes with small flames, a tattered ash-grey cape smouldering at the hem, huge spiked pauldrons, glowing ember eye sockets, ash drifting off the shoulders. Palette: charcoal black, molten orange, ember red, ash grey. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally with the hands open and empty, legs straight and slightly apart, standing upright so it can be rigged. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette."
+  },
+  {
+    "id": "concept_prop_ember_altar",
+    "out": "art-src/concepts/props/ember_altar.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron), lit from within by glowing orange embers. Subject: a squat cracked black basalt altar holding a broken iron crown heaped with glowing embers and ash, four iron spikes at the corners, glowing orange fissures in the stone, a few scorched bones at the base."
+  }
+]

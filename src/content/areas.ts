@@ -6,8 +6,8 @@ import type { EnemyId } from './enemies';
  * (up-screen). Areas are walkable rectangles joined by door corridors that
  * stay sealed until the unlock threshold is met.
  */
-export type AreaId = 'chapterhouse' | 'acre' | 'graves' | 'ossuary' | 'nave' | 'sanctum' | 'cloister';
-export type Theme = 'chapter' | 'acre' | 'graveyard' | 'ossuary' | 'nave' | 'sanctum' | 'cloister';
+export type AreaId = 'chapterhouse' | 'acre' | 'graves' | 'ossuary' | 'nave' | 'sanctum' | 'cloister' | 'pyre' | 'warren' | 'coliseum';
+export type Theme = 'chapter' | 'acre' | 'graveyard' | 'ossuary' | 'nave' | 'sanctum' | 'cloister' | 'pyre' | 'warren' | 'coliseum';
 
 export interface Rect {
   x0: number;
@@ -334,9 +334,141 @@ export const AREAS: Record<AreaId, AreaDef> = {
     ],
     ambient: { fog: 0x0a1008, hemiSky: 0x2c3a24, hemiGround: 0x070a05, moon: 0x9cc48a },
   },
+  // The Cinder Pyre (2026-09-30): the fire realm past the Plague Cloister, level-scaled like it but harder.
+  pyre: {
+    id: 'pyre',
+    name: 'The Cinder Pyre',
+    subtitle: 'Where the Covenant burns what it cannot bury',
+    theme: 'pyre',
+    rect: { x0: 70, z0: -134, x1: 110, z1: -98 },
+    safe: false,
+    level: 30,
+    scaling: { minLevel: 30 },
+    enemies: [
+      { id: 'cinder_husk', weight: 30 },
+      { id: 'pyre_priest', weight: 20 },
+      { id: 'cinderhound', weight: 22 },
+      { id: 'slag_brute', weight: 8 },
+    ],
+    cap: 28,
+    waveSize: 9,
+    waveIntervalMs: 6000,
+    eliteChance: 0.09,
+    unlock: { area: 'cloister', kills: 700 },
+    loot: [
+      { item: 'ore_hell', weight: 22 },
+      { item: 'ingot_hell', weight: 6 },
+      { item: 'ore_steel', weight: 12 },
+      { item: 'ingot_steel', weight: 6 },
+      { item: 'ore_moon', weight: 5 },
+      { item: 'gem_grave_garnet', weight: 8 },
+      { item: 'gem_bone_opal', weight: 4 },
+      { item: 'flask_hp_major', weight: 10 },
+      { item: 'flask_damage', weight: 7 },
+      { item: 'flask_void_resist', weight: 5 },
+      { item: 'helm_gold', weight: 5 },
+      { item: 'chest_iron', weight: 5 },
+    ],
+    itemChance: 0.15,
+    breaches: [[73, -101], [107, -101], [73, -131], [107, -131], [90, -100.5], [108, -116], [86.5, -131.5]],
+    interactables: [
+      { id: 'waystone_pyre', kind: 'waystone', label: 'Waystone', x: 73.5, z: -108 },
+      // Boss summon at the arena's north edge (content/bosses.ts summonSpot).
+      { id: 'ember_altar', kind: 'boss', label: 'The Ember Altar', x: 90, z: -126.35 },
+    ],
+    ambient: { fog: 0x140806, hemiSky: 0x4a2412, hemiGround: 0x0c0403, moon: 0xd88a4a },
+  },
+  // The Catacomb Warren (2026-09-30): a chambered side dungeon off the Hollow Graves. Half-walls divide nine chambers;
+  // they break Penitent cones and Ossuary-style line of sight, so the rooms are the fun.
+  warren: {
+    id: 'warren',
+    name: 'The Catacomb Warren',
+    subtitle: 'Nine chambers, and something is digging in each',
+    theme: 'warren',
+    rect: { x0: -72, z0: -52, x1: -32, z1: -8 },
+    safe: false,
+    level: 4,
+    enemies: [
+      { id: 'rat', weight: 30 },
+      { id: 'robber', weight: 22 },
+      { id: 'ghoul', weight: 14 },
+      { id: 'bat', weight: 12 },
+      { id: 'sac', weight: 10 },
+      { id: 'hound', weight: 8 },
+      { id: 'penitent', weight: 4 },
+    ],
+    cap: 26,
+    waveSize: 8,
+    waveIntervalMs: 6400,
+    eliteChance: 0.045,
+    unlock: { area: 'graves', kills: 150 },
+    loot: [
+      { item: 'bones_old', weight: 20 },
+      { item: 'bones_barrow', weight: 12 },
+      { item: 'ore_tin', weight: 18 },
+      { item: 'ore_iron', weight: 14 },
+      { item: 'material_copper_bar', weight: 10 },
+      { item: 'seed_mourning_moss', weight: 8 },
+      { item: 'flask_hp_minor', weight: 12 },
+      { item: 'augment_copper', weight: 5 },
+      { item: 'plate_copper', weight: 4 },
+      { item: 'helm_iron', weight: 3 },
+    ],
+    itemChance: 0.1,
+    breaches: [[-65, -45], [-52, -45], [-39, -45], [-65, -30], [-55.5, -30], [-65, -15], [-52, -15], [-39, -15]],
+    interactables: [{ id: 'waystone_warren', kind: 'waystone', label: 'Waystone', x: -35.5, z: -27 }],
+    ambient: { fog: 0x0c0a08, hemiSky: 0x3a3226, hemiGround: 0x0a0806, moon: 0xa89a7a },
+  },
+  // The Bone Coliseum (2026-09-30): a wave-gauntlet pit east of the Ossuary. Four gates, fast surges, elites everywhere,
+  // the best drops before the Sanctum: for players who want a fight, not a walk.
+  coliseum: {
+    id: 'coliseum',
+    name: 'The Bone Coliseum',
+    subtitle: 'The dead cheer for whoever is still standing',
+    theme: 'coliseum',
+    rect: { x0: 70, z0: -46, x1: 112, z1: -10 },
+    safe: false,
+    level: 11,
+    enemies: [
+      { id: 'rat', weight: 18 },
+      { id: 'hound', weight: 16 },
+      { id: 'robber', weight: 14 },
+      { id: 'deacon', weight: 10 },
+      { id: 'bat', weight: 8 },
+      { id: 'acolyte', weight: 9 },
+      { id: 'wraith', weight: 8 },
+      { id: 'gargoyle', weight: 8 },
+      { id: 'templar', weight: 6 },
+      { id: 'censer', weight: 5 },
+      { id: 'seraph', weight: 5 },
+      { id: 'golem', weight: 3 },
+    ],
+    cap: 36,
+    waveSize: 14,
+    waveIntervalMs: 4200,
+    eliteChance: 0.16,
+    unlock: { area: 'ossuary', kills: 350 },
+    loot: [
+      { item: 'ore_silver', weight: 18 },
+      { item: 'ore_gold', weight: 12 },
+      { item: 'ingot_silver', weight: 6 },
+      { item: 'flask_hp_major', weight: 12 },
+      { item: 'flask_damage', weight: 6 },
+      { item: 'gem_grave_garnet', weight: 6 },
+      { item: 'gem_bone_opal', weight: 3 },
+      { item: 'augment_iron', weight: 6 },
+      { item: 'helm_iron', weight: 6 },
+      { item: 'chest_iron', weight: 5 },
+      { item: 'kit_iron_warden', weight: 4 },
+    ],
+    itemChance: 0.17,
+    breaches: [[91, -44], [91, -12], [110, -28], [78, -43], [78, -13], [104, -42], [104, -14], [100, -28]],
+    interactables: [{ id: 'waystone_coliseum', kind: 'waystone', label: 'Waystone', x: 73.5, z: -20 }],
+    ambient: { fog: 0x100c0a, hemiSky: 0x4a3a30, hemiGround: 0x0c0806, moon: 0xd0b890 },
+  },
 };
 
-export const AREA_ORDER: AreaId[] = ['chapterhouse', 'acre', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister'];
+export const AREA_ORDER: AreaId[] = ['chapterhouse', 'acre', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'warren', 'coliseum'];
 
 /** Areas with no seal (`unlock`) are open to everyone from the start. */
 export const isAlwaysOpen = (id: AreaId) => !AREAS[id].unlock;
@@ -349,6 +481,9 @@ export const DOORS: DoorDef[] = [
   { id: 'graves_nave', a: 'graves', b: 'nave', rect: { x0: -4, z0: -45, x1: 4, z1: -35 }, axis: 'z' },
   { id: 'nave_sanctum', a: 'nave', b: 'sanctum', rect: { x0: -4, z0: -103, x1: 4, z1: -95 }, axis: 'z' },
   { id: 'sanctum_cloister', a: 'sanctum', b: 'cloister', rect: { x0: 17, z0: -112, x1: 25, z1: -104 }, axis: 'x' },
+  { id: 'graves_warren', a: 'graves', b: 'warren', rect: { x0: -33, z0: -32, x1: -25, z1: -24 }, axis: 'x' },
+  { id: 'ossuary_coliseum', a: 'ossuary', b: 'coliseum', rect: { x0: 63, z0: -30, x1: 71, z1: -22 }, axis: 'x' },
+  { id: 'cloister_pyre', a: 'cloister', b: 'pyre', rect: { x0: 63, z0: -120, x1: 71, z1: -112 }, axis: 'x' },
 ];
 
 /** A door is open when its far-side area is unlocked. */

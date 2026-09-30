@@ -1,0 +1,17 @@
+{
+  "id": "cinderhound",
+  "input": "art-src/concepts/cinderhound.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 4000,
+    "texture_quality": "standard"
+  },
+  "rig": {
+    "model": "v2.5-20260210",
+    "rig_type": "quadruped"
+  },
+  "animations": [
+    "preset:quadruped:walk"
+  ],
+  "animationMode": "single"
+}

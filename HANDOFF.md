@@ -112,6 +112,12 @@ No deployment. Source and redistribution note: `docs/CROSSWORLDS-AUDIO.md`.
 ### Open threads (2026-09-29): read this first
 - **Direction:** the owner wants a continuous reward loop ("addict me to grind"). The plan and backlog are in
   [docs/GRIND-LOOP.md](docs/GRIND-LOOP.md), and every new feature should feed it.
+- **2026-09-30 (VPS session, NOT deployed): Cinder Pyre + Cinder Regent, Catacomb Warren, Bone Coliseum.** See PHASE_REPORTS →
+  "Cinder Pyre", "Cinder Regent", "New levels". All staged locally in the working tree with the parallel agent's other
+  work; nothing committed or deployed. Generated rules were rebuilt (`npm run build:server-rules`), `deploy-realtime.sh`
+  re-embedded (BOSS_IDS gained `regent`), `chronicle.cjs` lists the new areas and boss. Before deploying: build from a clean
+  HEAD checkout of the commit that contains all of it, run `npm run build:death-muffin`, ship the realtime service (new boss id)
+  before the client, and do a live smoke of the door corridors (Graves west, Ossuary east, Cloister east).
 - **Plague Cloister: shipped 2026-09-29** (see PHASE_REPORTS → "Plague Cloister"). Level-scaled end zone (min 20;
   `WorldSim.areaLevel` follows the highest-level living player inside), Plague Doctor / Flagellant, the Plague Saint.
   Players now send `level` on join; the realtime server clamps it and `classIndex` (now 0–9; it was 0–4, which showed

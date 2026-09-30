@@ -1,0 +1,82 @@
+[
+  {
+    "id": "concept_cinder_husk",
+    "out": "art-src/concepts/cinder_husk.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new enemy for a burning crypt-realm of fire and ash, the Cinder Pyre: the Cinder Husk, a charred human corpse still shambling, skin burnt to black crackled char with molten orange cracks glowing through the ribs, chest and eye sockets, tattered scorched burial rags smoldering at the hem, one arm bent claw-like, small flames licking from the shoulders, bare cracked feet. Palette: charcoal black, molten orange, ember red, ash grey. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally with the hands open and empty, legs straight and slightly apart, standing upright so it can be rigged. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette."
+  },
+  {
+    "id": "concept_pyre_priest",
+    "out": "art-src/concepts/pyre_priest.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new enemy for a burning crypt-realm of fire and ash, the Cinder Pyre: the Pyre Priest, a gaunt robed fire-cultist in long ash-grey ceremonial vestments trimmed with scorched red, a tall pointed hood over a blackened skull face with two glowing orange eyes, a heavy iron censer-brazier bowl of live coals chained to the belt, ash falling from the sleeves, soot-blackened hands. Palette: ash grey, scorched crimson, soot black, glowing ember orange. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally with the hands open and empty, legs straight and slightly apart, standing upright so it can be rigged. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette."
+  },
+  {
+    "id": "concept_slag_brute",
+    "out": "art-src/concepts/slag_brute.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Using the attached sheet ONLY as a style and palette reference, design a new enemy for a burning crypt-realm of fire and ash, the Cinder Pyre: the Slag Brute, a hulking towering brute made of cooled black volcanic slag and rusted iron plates, molten orange lava seams running through chest, shoulders and knuckles, an enormous molten-cracked fist for each hand, a small glowing furnace-maw in the chest, thick stubby legs, half again the height of a human. Palette: obsidian black, rust iron, molten orange lava glow. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally with the hands open and empty, legs straight and slightly apart, standing upright so it can be rigged. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette."
+  },
+  {
+    "id": "concept_cinderhound",
+    "out": "art-src/concepts/cinderhound.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "4:3",
+    "prompt": "Creature source for 3D modeling. Design a single burning hound of the Cinder Pyre: a lean charred skeletal hound with blackened bones and shreds of scorched hide, glowing molten orange cracks along the ribs and spine, smouldering embers streaming from the jaws, ember-orange glowing eye sockets, ragged burnt tail. Neutral standing pose, all four legs straight and visible, tail extended, three-quarter side view facing right. Entire body visible, centered. Plain flat light grey background (#c8c8c8), even neutral studio lighting, no shadows, no smoke, no text, no other characters. Dark fantasy game art, clean readable silhouette."
+  },
+  {
+    "id": "concept_prop_pyre_stack",
+    "out": "art-src/concepts/props/pyre_stack.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood and iron, aged bone, tarnished bronze), lit from within by glowing orange embers. Subject: a great funeral pyre: a tall stacked pile of blackened logs and charred coffins with wrapped bodies on top, smouldering, orange flames and embers licking through the gaps, ash heaped at the base, iron stakes at the corners."
+  },
+  {
+    "id": "concept_prop_slag_font",
+    "out": "art-src/concepts/props/slag_font.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood and iron, aged bone, tarnished bronze), lit from within by glowing orange embers. Subject: a broad round stone basin overflowing with glowing molten slag, cracked black basalt rim, a rusted iron chain hoist above, thick orange lava spilling over the lip and cooling into black crust, a few charred bones at the base."
+  },
+  {
+    "id": "concept_prop_cinder_obelisk",
+    "out": "art-src/concepts/props/cinder_obelisk.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened wood and iron, aged bone, tarnished bronze), lit from within by glowing orange embers. Subject: a tall cracked black basalt obelisk carved with worn runes, split open by glowing orange fissures, hot embers drifting off it, a ring of scorched broken stones and bones at its base."
+  },
+  {
+    "id": "tex_pyre_floor",
+    "out": "public/art/textures/pyre_floor.webp",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "size": "1K",
+    "post": {
+      "resize": [
+        1024,
+        1024
+      ],
+      "format": "webp"
+    },
+    "prompt": "Seamless tileable game texture, perfectly tiling on all four edges, orthographic top-down, flat even diffuse lighting with no directional shadows, no vignette, no text, no border, fills the entire frame edge to edge. Use the attached screenshot ONLY for mood and palette (layered near-blacks, soot). Subject: scorched black basalt and cracked slag flagstones with thin glowing orange lava veins running through the cracks, drifts of pale grey ash and small charred bone fragments. Dark overall value, the glow subtle."
+  }
+]

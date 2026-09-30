@@ -157,7 +157,7 @@ export interface Corpse {
 }
 
 /** 'rot' = the friendly pool a detonated toxic corpse leaves behind. */
-export type ZoneKind = 'miasma' | 'toxic' | 'bell' | 'rot' | 'dirge' | 'flower' | 'warden_fire' | 'warden_ward' | 'witch_crows' | 'witch_charm' | 'veil_rift' | 'dust';
+export type ZoneKind = 'miasma' | 'toxic' | 'bell' | 'rot' | 'dirge' | 'flower' | 'warden_fire' | 'warden_ward' | 'witch_crows' | 'witch_charm' | 'veil_rift' | 'dust' | 'ember';
 
 export type CorpseGoneReason = 'consumed' | 'expired' | 'raised' | 'burst' | 'litany' | 'devoured';
 
@@ -343,13 +343,13 @@ export type SimEvent =
   | { t: 'corpseGone'; id: number; reason: CorpseGoneReason; by?: string }
   | { t: 'thrall'; id: number; owner: string; kind: ThrallKind; x: number; z: number; empowered: boolean }
   | { t: 'thrallGone'; id: number; owner: string; x: number; z: number; reason: 'killed' | 'sacrificed' | 'crumbled' }
-  | { t: 'telegraph'; id: number; kind: 'cone' | 'raise' | 'curse' | 'slam' | 'toll' | 'scream' | 'dust' | 'dive' | 'erupt' | 'flask'; x: number; z: number; tx: number; tz: number; ms: number; r?: number }
+  | { t: 'telegraph'; id: number; kind: 'cone' | 'raise' | 'curse' | 'slam' | 'toll' | 'scream' | 'dust' | 'dive' | 'erupt' | 'flask' | 'ember'; x: number; z: number; tx: number; tz: number; ms: number; r?: number }
   | { t: 'melee'; id: number; x: number; z: number; tx: number; tz: number }
-  | { t: 'hurt'; player: string; dmg: number; from: 'melee' | 'cone' | 'curse' | 'toxic' | 'boss' | 'toll' | 'scream' | 'dust' | 'erupt'; x: number; z: number; chillMs?: number }
+  | { t: 'hurt'; player: string; dmg: number; from: 'melee' | 'cone' | 'curse' | 'toxic' | 'boss' | 'toll' | 'scream' | 'dust' | 'erupt' | 'ember' | 'burn'; x: number; z: number; chillMs?: number }
   | { t: 'thrallHit'; id: number; target: number; x: number; z: number; tx: number; tz: number; kind: ThrallKind; dmg: number }
   | { t: 'zone'; zone: Zone }
   | { t: 'zoneGone'; id: number }
-  | { t: 'burst'; kind: 'toxic' | 'bloom'; x: number; z: number; r: number }
+  | { t: 'burst'; kind: 'toxic' | 'bloom' | 'ember'; x: number; z: number; r: number }
   | { t: 'exhumed'; by: string; ok: boolean; corpseKind?: CorpseKind; x: number; z: number; crumbled?: number }
   | {
       t: 'litanyResult';
@@ -429,7 +429,9 @@ export type SimEvent =
         // Area bosses: Gravedigger (sweep, bury, pits), Abbess (lance, chorus, grasp, communion, nicheBreak), Congregation (hymn, grasp, maul).
         | 'sweep' | 'bury' | 'pits' | 'lance' | 'chorus' | 'grasp' | 'communion' | 'nicheBreak' | 'hymn' | 'maul'
         // Plague Saint.
-        | 'rotRain' | 'swing' | 'blessed' | 'link';
+        | 'rotRain' | 'swing' | 'blessed' | 'link'
+        // Cinder Regent.
+        | 'coals' | 'cleave' | 'conflagration';
       x: number;
       z: number;
       phase: BossPhase;

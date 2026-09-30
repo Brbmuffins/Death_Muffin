@@ -2,7 +2,7 @@
 
 Browser client for Death Muffin / Crossworlds (Vite + TypeScript + Three.js): a dark-fantasy
 action RPG with nine classes — one connected world (Chapterhouse → Hollow Graves →
-Marrow Ossuary → Drowned Nave → Bell Sanctum → Plague Cloister, level-scaled), continuous waves, corpses as a
+Marrow Ossuary → Drowned Nave → Bell Sanctum → Plague Cloister → Cinder Pyre, both level-scaled), continuous waves, corpses as a
 resource, Damage / Wave Speed upgrades and boss fights. The original shared
 Crossworlds REST API is outside this repository: propose changes for it in
 `server/proposals/`. Death Muffin has its own versioned backend in

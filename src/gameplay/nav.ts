@@ -56,6 +56,35 @@ export class Nav {
     return this.unlocked.has(door.a) && this.unlocked.has(door.b);
   }
 
+  /** Tall standing walls (dungeon partitions): they stop cones as well as bodies. */
+  private sightBlockers: BoxObstacle[] = [];
+
+  addSightBlocker(b: BoxObstacle) {
+    this.sightBlockers.push(b);
+  }
+
+  /** Does the straight line a→b pass through a tall wall? (Liang–Barsky against each box.) */
+  sightBlocked(ax: number, az: number, bx: number, bz: number): boolean {
+    const dx = bx - ax;
+    const dz = bz - az;
+    for (const w of this.sightBlockers) {
+      let t0 = 0;
+      let t1 = 1;
+      let hit = true;
+      for (const [p, q] of [[-dx, ax - w.x0], [dx, w.x1 - ax], [-dz, az - w.z0], [dz, w.z1 - az]] as const) {
+        if (p === 0) {
+          if (q < 0) { hit = false; break; }
+        } else {
+          const r = q / p;
+          if (p < 0) { if (r > t1) { hit = false; break; } if (r > t0) t0 = r; }
+          else { if (r < t0) { hit = false; break; } if (r < t1) t1 = r; }
+        }
+      }
+      if (hit) return true;
+    }
+    return false;
+  }
+
   addObstacle(o: Obstacle) {
     this.obstacles.push(o);
     const [x0, z0, x1, z1] =
