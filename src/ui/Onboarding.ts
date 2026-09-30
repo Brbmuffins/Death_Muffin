@@ -278,7 +278,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   boss_saint: {
     title: "The Saint's Litter",
-    body: 'Offer <b>5 soul shards</b> to wake the Plague Saint. She grows as strong as you. Her Rot Rain leaves <b>rot pools</b>, and she <b>heals while she stands in one</b>: pull her out onto clean ground before you unload.',
+    body: 'Offer <b>5 soul shards</b> to wake the Plague Saint. She grows as strong as you. Her Rot Rain leaves <b>rot pools</b>, and she <b>heals while she stands in one</b>: pull her out onto clean ground before you unload. Later her <b>Plague Doctors</b> feed her through a green link: kill them first.',
   },
   plague_doctor: {
     title: 'Plague Doctor',

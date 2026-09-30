@@ -179,6 +179,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private pitFx: Handle[] = [];
   private saintBlessTold = false;
   private saintRainTold = false;
+  private saintLinkTold = false;
   private saintFeedAt = 0;
   private loot!: LootView;
   private avatar!: NecromancerAvatar;
@@ -2415,6 +2416,17 @@ export class WorldScene implements GameScene, RuntimeView {
           this.rig.shake(0.2);
         }
         break;
+      case 'link':
+        // Plague Doctors feeding her: a green tether from each, so "kill the doctors" is visible.
+        for (const [x, z] of ev.targets ?? []) {
+          this.effects.beam({ x, y: 1.6, z }, () => ({ x: ev.x, y: 2.2, z: ev.z }), 0x9cc43a, 0.07, 900);
+          this.effects.emit({ x, y: 1.4, z, count: 4, color: 0x9cc43a, spread: 0.3, speed: 0.5, up: 1.4, life: 0.7, size: 0.18 });
+        }
+        if ((ev.targets?.length ?? 0) > 0 && !this.saintLinkTold) {
+          this.saintLinkTold = true;
+          this.hud.toast('The Plague Doctors are feeding her: cut them down first!', 'err');
+        }
+        break;
       case 'blessed':
         this.effects.emit({ x: ev.x, y: 0.4, z: ev.z, count: 10, color: 0x9cc43a, spread: 0.8, speed: 0.6, up: 2.2, life: 0.9, size: 0.2 });
         // A pulse ring under her every beat she feeds, so "she is healing right now" reads at a glance.
@@ -2446,6 +2458,7 @@ export class WorldScene implements GameScene, RuntimeView {
         if (def.id === 'saint') {
           this.saintBlessTold = false;
           this.saintRainTold = false;
+          this.saintLinkTold = false;
         }
         this.hud.banner(def.name, def.awaken, 3500);
         this.effects.lightFlash(ev.x, 3, ev.z, def.color, 90, 1.6);
@@ -2461,7 +2474,14 @@ export class WorldScene implements GameScene, RuntimeView {
         } else {
           this.hud.banner(BOSSES[ev.boss!].phases[ev.phase - 1], BOSSES[ev.boss!].name, 2600);
           if (ev.boss === 'saint') {
-            this.hud.toast(ev.phase === 2 ? 'Her flock gathers: kill the Plague Doctors first, their flasks feed the rot.' : 'The swarm: the rain falls heavier and the pools last longer. Keep her out of them.', 'err');
+            if (ev.phase === 3) {
+              // The swarm: a rot nova so the phase change feels like an event.
+              for (let k = 0; k < 3; k++) this.effects.decal({ tex: fx.ring(), color: 0x9cc43a, x: ev.x, z: ev.z, r: 6 + k * 3, duration: 0.9, opacity: 1 - k * 0.25, growFrom: 0.1, delay: k * 0.12 });
+              this.effects.emit({ x: ev.x, y: 1, z: ev.z, count: 90, color: 0x9cc43a, spread: 2.5, speed: 6, up: 1.5, life: 0.9, size: 0.35 });
+              this.effects.lightFlash(ev.x, 3, ev.z, 0x9cc43a, 70, 0.9);
+              this.rig.shake(0.5);
+            }
+            this.hud.toast(ev.phase === 2 ? 'Her flock gathers: Plague Doctors feed her through a green link. Cut them down first, then keep her out of the rot.' : 'The swarm: the rain falls heavier and the pools last longer. Keep her out of them.', 'err');
           }
         }
         this.rig.shake(0.5);
@@ -2479,6 +2499,7 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'rotRain':
       case 'swing':
       case 'blessed':
+      case 'link':
         this.areaBossEvent(ev, ms);
         break;
       case 'toll':

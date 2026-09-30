@@ -429,7 +429,7 @@ export type SimEvent =
         // Area bosses: Gravedigger (sweep, bury, pits), Abbess (lance, chorus, grasp, communion, nicheBreak), Congregation (hymn, grasp, maul).
         | 'sweep' | 'bury' | 'pits' | 'lance' | 'chorus' | 'grasp' | 'communion' | 'nicheBreak' | 'hymn' | 'maul'
         // Plague Saint.
-        | 'rotRain' | 'swing' | 'blessed';
+        | 'rotRain' | 'swing' | 'blessed' | 'link';
       x: number;
       z: number;
       phase: BossPhase;

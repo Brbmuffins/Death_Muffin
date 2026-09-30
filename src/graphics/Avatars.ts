@@ -249,8 +249,10 @@ export class BossView {
   private lastState = '';
   private visible = false;
   private rise = 0;
+  private readonly saint: boolean;
 
   constructor(scene: THREE.Scene, private effects: Effects, slug: CreatureSlug = 'prelate', private color = 0xa26bff) {
+    this.saint = slug === 'boss_plague_saint';
     this.c = new Creature(slug, { emissive: slug === 'prelate' ? 0x3b1d5e : 0x000000, emissiveIntensity: slug === 'prelate' ? 0.05 : 0, fallback: 'prelate' });
     this.c.root.visible = false;
     scene.add(this.c.root);
@@ -284,7 +286,16 @@ export class BossView {
       else if (b.state === 'dead') this.c.playOnce('death', 0.8);
       else this.c.setLoop('idle');
     }
-    if (b.active && Math.random() < dt * 10) {
+    if (this.saint && b.active) {
+      // Her clip set is small (idle/walk/attack/cast), so the blight itself is the tell: she swells and
+      // sheds more rot each phase.
+      const ph = b.phase;
+      this.c.root.scale.setScalar(1 + Math.sin(performance.now() / 1000 * (1.6 + ph * 0.9)) * 0.012 * ph);
+      if (Math.random() < dt * (2 + ph * 3)) {
+        this.effects.emitSmoke({ x: b.x + (Math.random() - 0.5) * 2, y: 0.3, z: b.z + (Math.random() - 0.5) * 2, count: 1, color: 0x4a5a22, spread: 0.8, speed: 0.3, up: 0.5, life: 1.4, size: 1.2 });
+      }
+    }
+    if (b.active && Math.random() < dt * (this.saint ? 8 + b.phase * 8 : 10)) {
       this.effects.emit({ x: b.x, y: 2.5, z: b.z, count: 1, color: this.color === 0xa26bff ? 0x9d6bff : this.color, spread: 1, speed: 0.4, up: 0.8, life: 1.2, size: 0.4 });
     }
     this.c.update(dt);

@@ -840,6 +840,7 @@ export class SaintBrain extends BossBrain {
   private rainCd = 4;
   private swingCd = 2;
   private blessFx = 0;
+  private linkFx = 0;
 
   constructor(sim: WorldSim) {
     super(sim, 'saint');
@@ -853,7 +854,7 @@ export class SaintBrain extends BossBrain {
   protected onPhase(p: BossPhase) {
     const s = this.state;
     const spots: [number, number][] = [];
-    const wave: EnemyId[] = p === 2 ? ['plague_doctor', 'flagellant'] : ['rat', 'rat', 'rat', 'flagellant'];
+    const wave: EnemyId[] = p === 2 ? ['plague_doctor', 'plague_doctor', 'flagellant'] : ['rat', 'rat', 'rat', 'flagellant'];
     wave.forEach((def, i) => {
       const at = this.rim((i / wave.length) * Math.PI * 2 + 0.4);
       spots.push(at);
@@ -869,8 +870,27 @@ export class SaintBrain extends BossBrain {
     return false;
   }
 
+  /** Plague Doctors standing in her arena (the summoned ones and any that wandered in). */
+  private linkedDoctors() {
+    const out: { x: number; z: number }[] = [];
+    for (const e of this.sim.enemies.values()) {
+      if (e.def !== 'plague_doctor' || e.hp <= 0 || e.area !== this.def.area) continue;
+      if (Math.hypot(e.x - this.arena.x, e.z - this.arena.z) <= this.arena.r + 2) out.push({ x: e.x, z: e.z });
+    }
+    return out;
+  }
+
   protected tick(dt: number) {
     const s = this.state;
+    // Doctors' link: every doctor in the arena feeds her, and the view draws a beam from each.
+    const docs = this.linkedDoctors();
+    if (docs.length) {
+      s.hp = Math.min(s.maxHp, s.hp + s.maxHp * SAINT.doctors.healPerS * docs.length * dt);
+      if ((this.linkFx -= dt) <= 0) {
+        this.linkFx = SAINT.doctors.beatS;
+        this.sim.emit({ t: 'boss', kind: 'link', x: s.x, z: s.z, phase: s.phase, targets: docs.map((d) => [d.x, d.z] as [number, number]), ms: 0, boss: this.id });
+      }
+    }
     if (!this.inRot()) return;
     // Pestilent Blessing: the rot feeds her.
     s.hp = Math.min(s.maxHp, s.hp + s.maxHp * SAINT.blessing.healPerS * dt);

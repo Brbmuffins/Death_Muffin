@@ -155,6 +155,8 @@ export const SAINT = {
   rain: { circles: [3, 5] as [number, number], r: 2, windupMs: 1400, dmg: 24, cd: 7, poolS: 6, poolSP3: 9, poolDpsMult: 0.3 },
   swing: { r: 4.5, halfDeg: 60, windupMs: 900, dmg: 26, cd: 3 },
   blessing: { healPerS: 0.006 },
+  /** Plague Doctors near the arena feed her through a visible link: kill them (priority target) to cut it. */
+  doctors: { healPerS: 0.001, beatS: 0.9 },
 };
 
 /** Drowned Congregation. */

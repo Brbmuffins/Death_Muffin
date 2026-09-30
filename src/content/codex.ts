@@ -504,7 +504,7 @@ export const CODEX_DEAD: Record<DeadId, DeadEntry> = {
     role: 'boss',
     behaviour: `The Plague Cloister's boss, as strong as you are. Rot Rain marks circles on you and around the garth (${SAINT.rain.windupMs / 1000}s); each one becomes a rot pool. While she stands in a pool she heals. A censer swing covers the ground in front of her. Plague Doctors and Flagellants join in phase 2; phase 3 brings heavier rain, pools that last longer and a rat swarm.`,
     corpse: 'None. The blight carries her back to her litter.',
-    counter: `Offer ${BOSSES.saint.shards} soul shards at the Saint's Litter. Kite her out of the rot: every second she spends in a pool undoes your damage.`,
+    counter: `Offer ${BOSSES.saint.shards} soul shards at the Saint's Litter. Kite her out of the rot: every second she spends in a pool undoes your damage. In her second phase the Plague Doctors heal her through a green link, so they are the priority target.`,
   },
   prelate: {
     name: PRELATE_NAME,
