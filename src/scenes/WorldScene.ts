@@ -411,7 +411,14 @@ export class WorldScene implements GameScene, RuntimeView {
     this.worldView = new WorldView(this.scene, this.layout, this.nav, this.effects);
     this.dressWaystones();
     for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d), true);
-    this.views = new EntityViews(this.scene, this.effects);
+    this.views = new EntityViews(this.scene, this.effects, (owner) => {
+      if (owner !== this.selfId) return null;
+      const family = this.discipline.id;
+      // Gravecaller's legion glows violet; Rotweaver's is olive with rot. Ossuary keeps bone ivory (its shields set it apart).
+      return family === 'gravecaller' ? { tint: 0xe2d6ff, emissive: 0x6a3fc0, glow: 0.4 }
+        : family === 'rotweaver' ? { tint: 0xb8c48a, emissive: 0x5a6a18, glow: 0.45 }
+        : null;
+    });
     this.nodeViews = new NodeViews(this.scene, this.layout.nodes);
     const prelate = new BossView(this.scene, this.effects);
     this.bossViews.set('prelate', prelate);
@@ -491,6 +498,7 @@ export class WorldScene implements GameScene, RuntimeView {
       send: (i) => this.sendIntent(i),
       number: (x, z, amount, kind) => this.floating.spawn(x, 1.6, z, Math.round(amount).toString(), kind === 'crit' ? 'crit' : 'hit'),
       shake: (a) => this.rig.shake(a),
+      note: (text, kind) => this.floating.spawn(this.player.x, 2.4, this.player.z, text, kind),
       now: () => this.now,
       thralls: () => this.thrallsMap(),
       dash: (tx, tz) => this.dashTarget(tx, tz),
@@ -1292,7 +1300,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.flaskCdUntil = now + 1500;
     const amount = this.player.stats.maxHp * HEALING_FLASKS[id];
     this.player.heal(amount);
-    this.floating.spawn(this.player.x, 2.2, this.player.z, `+${Math.round(amount)}`, 'gold');
+    this.floating.spawn(this.player.x, 2.2, this.player.z, `+${Math.round(amount)}`, 'heal');
     this.effects.emit({ x: this.player.x, y: 0.5, z: this.player.z, count: 26, color: 0xc85a8a, spread: 0.5, speed: 0.6, up: 2.2, life: 0.9, size: 0.3 });
   }
 
@@ -1943,7 +1951,7 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'heal':
         if (ev.player === me && this.player.alive) {
           this.player.heal(ev.amount);
-          this.floating.spawn(this.player.x, 2.2, this.player.z, `+${Math.round(ev.amount)}`, 'info');
+          this.floating.spawn(this.player.x, 2.2, this.player.z, `+${Math.round(ev.amount)}`, 'heal');
         }
         break;
       case 'burst':
@@ -1973,7 +1981,7 @@ export class WorldScene implements GameScene, RuntimeView {
           } else if (this.discipline.mods.corpseHeal) {
             const amt = this.player.stats.maxHp * this.discipline.mods.corpseHeal;
             this.player.heal(amt);
-            this.floating.spawn(this.player.x, 2.2, this.player.z, `+${Math.round(amt)}`, 'gold');
+            this.floating.spawn(this.player.x, 2.2, this.player.z, `+${Math.round(amt)}`, 'heal');
           }
         }
         break;
@@ -3374,6 +3382,12 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hud.toast(on ? 'Dev access on: every rite, area and gathering tier is open (nothing is saved).' : 'Dev access off: previewing as a normal player.', 'good');
   }
 
+  private wardReadout() {
+    const perThrall = this.discipline.mods.wardPerThrall;
+    const thralls = [...this.thrallsMap().values()].filter((t) => t.owner === this.selfId).length;
+    return { pct: Math.round(Math.min(0.6, perThrall * thralls) * 100), thralls, perThrall };
+  }
+
   private areaProgress(): string {
     const here = this.area;
     if (here === 'acre') return 'Click a glowing node to gather · Walk east to the Chapterhouse for combat';
@@ -3513,6 +3527,7 @@ export class WorldScene implements GameScene, RuntimeView {
       waveCost: this.progression.waveCost(),
       areaName: AREAS[this.area].name,
       areaProgress: this.areaProgress(),
+      ward: this.discipline.mods.wardPerThrall > 0 ? this.wardReadout() : null,
       save: saveText,
       target,
       boss: b.active ? { name: BOSSES[b.id ?? 'prelate'].name, phase: b.phase, hp: b.hp, maxHp: b.maxHp, phases: BOSSES[b.id ?? 'prelate'].phases } : null,

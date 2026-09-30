@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { settings } from '../app/settings';
 
-export type NumKind = 'hit' | 'crit' | 'dot' | 'thrall' | 'hurt' | 'gold' | 'shard' | 'xp' | 'info' | 'big' | 'spear' | 'skill';
+export type NumKind = 'hit' | 'crit' | 'dot' | 'thrall' | 'hurt' | 'gold' | 'shard' | 'xp' | 'info' | 'big' | 'spear' | 'skill' | 'heal' | 'ward';
 
 interface Entry {
   el: HTMLDivElement;
@@ -38,7 +38,7 @@ export class FloatingText {
       el,
       pos: new THREE.Vector3(x + (Math.random() - 0.5) * 0.5, y, z + (Math.random() - 0.5) * 0.3),
       t: 0,
-      life: kind === 'big' || kind === 'info' ? 1.6 : kind === 'crit' ? 1.1 : 0.85,
+      life: kind === 'big' || kind === 'info' || kind === 'heal' || kind === 'ward' ? 1.6 : kind === 'crit' ? 1.1 : 0.85,
       drift: (Math.random() - 0.5) * 30,
     });
   }

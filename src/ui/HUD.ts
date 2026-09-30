@@ -64,6 +64,8 @@ export interface HudFrame {
   waveCost: number | null;
   areaName: string;
   areaProgress: string;
+  /** Ossuary's Bone Ward: damage shaved off by the thralls standing now. Null for other disciplines. */
+  ward: null | { pct: number; thralls: number; perThrall: number };
   save: { text: string; warn: boolean };
   target: null | {
     name: string;
@@ -125,6 +127,7 @@ export class HUD {
       <div class="hud-vignette passive" data-vig></div>
       <div class="hud-party" data-party></div>
       <div class="hud-omen" data-omen hidden><img alt="" data-omen-img /><span data-omen-name></span></div>
+      <div class="hud-ward" data-ward hidden></div>
       <div class="hud-chain passive" data-chain hidden aria-live="off">
         <div class="n" data-chain-n></div>
         <div class="lbl" data-chain-lbl></div>
@@ -521,6 +524,14 @@ export class HUD {
       this.$<HTMLButtonElement>('[data-dial="1"]').disabled = f.waveActive >= f.waveOwned;
     });
     this.set('area', f.areaName, () => (this.$('[data-area]').textContent = f.areaName));
+    this.set('ward', f.ward ? `${f.ward.pct}|${f.ward.thralls}` : '', () => {
+      const el = this.$('[data-ward]');
+      el.hidden = !f.ward;
+      if (!f.ward) return;
+      el.classList.toggle('on', f.ward.pct > 0);
+      el.innerHTML = `<span class="lbl">Bone Ward</span><span class="n">−${f.ward.pct}%</span>`;
+      el.title = `Each active thrall shields you from ${Math.round(f.ward.perThrall * 100)}% of incoming damage (you have ${f.ward.thralls}; the most it gives is 60%).`;
+    });
     this.set('prog', f.areaProgress, () => (this.$('[data-prog]').innerHTML = f.areaProgress));
     this.set('save', f.save.text, () => {
       const el = this.$('[data-save]');

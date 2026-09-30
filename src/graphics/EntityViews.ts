@@ -231,6 +231,8 @@ export class EntityViews {
   constructor(
     scene: THREE.Scene,
     private effects: Effects,
+    /** Colours the caller's own legion by discipline (other players' thralls keep the default bone look). */
+    private legionLook?: (owner: string) => { tint: number; emissive: number; glow: number } | null,
   ) {
     scene.add(this.group);
   }
@@ -326,13 +328,14 @@ export class EntityViews {
 
   private makeThrall(t: Thrall): View {
     const wraith = t.kind === 'wraith';
-    const look = THRALL_LOOK[t.kind];
+    const kindLook = THRALL_LOOK[t.kind];
+    const look = kindLook ?? this.legionLook?.(t.owner) ?? undefined;
     const c = new Creature(THRALL_SLUG[t.kind], {
       tint: look?.tint ?? (wraith ? 0xb9c4ff : 0xf4ecff),
       emissive: look?.emissive ?? (wraith ? 0x8f9ed1 : 0x1f8f86),
       emissiveIntensity: wraith ? 1.1 : (look?.glow ?? 0.18) + (t.empowered ? 0.22 : 0),
       spectral: wraith,
-      scale: look?.scale ?? (t.kind === 'shieldbearer' ? 1.1 : 1),
+      scale: kindLook?.scale ?? (t.kind === 'shieldbearer' ? 1.1 : 1),
     });
     if (t.kind === 'warrior' || t.kind === 'shieldbearer') {
       // Blade carried up and forward; `follow` keeps it from whipping around with the wrist while walking.
@@ -348,7 +351,7 @@ export class EntityViews {
       x: t.x,
       z: t.z,
       // Small on purpose: a big horde of thralls otherwise paints the whole floor.
-      r: look?.ring ?? (t.kind === 'hound' ? 0.6 : 0.5),
+      r: kindLook?.ring ?? (t.kind === 'hound' ? 0.6 : 0.5),
       duration: 1e9,
       opacity: t.empowered ? 1 : 0.7,
       follow: () => ({ x: v.x, z: v.z }),

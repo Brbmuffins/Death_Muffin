@@ -917,3 +917,11 @@ Two more areas, both reusing existing props and mobs (only floor textures are ne
   announced; it now lists every pending seal. The "A seal breaks" banner says which door to use ("the west door of The Hollow Graves").
   First set-piece drop shows a counsel tip (`armor`); tooltips show "N/5 worn" and say there is no set bonus.
 - Migrations 011 and 012 must be applied (`sudo mysql death_muffin < file`) before the client that drops these items is published.
+
+## Necromancer polish pass 1 (2026-09-30)
+
+- **Heals are readable:** new `heal` floating-number kind (green, glowing) for corpse-eat heals, Mourner Litany heals, flasks and the heal event; previously they reused the gold-coin style. Litany now also floats `+N barrier` (`ward`, blue) for Ossuary and `+N` for Mourner (there was no feedback at all).
+- **Bone Ward chip** (left column under the Kill Chain): `Bone Ward −N%` for Ossuary, hover explains the 6%/thrall rule and the 60% cap; dim at 0 thralls.
+- **Mourner tuning:** wraith HP ×0.7→0.9, corpse heal 6%→8%. Sanctum geared (4 seeds): hurt 169→91 %/min, deaths 2.8→1.3, kills/min 80→95. The earlier 45 kills/min Ossuary reading was a one-seed fluke (4-seed mean ≈126, now ≈110; bot noise is large).
+- **Legions have class colour:** Gravecaller's thralls glow violet, Rotweaver's are olive with rot; Ossuary keeps bone ivory + shields, Mourner's are spectral wraiths. Own legion only (other players' thralls keep the default look).
+- Still open: effect clutter around the hero, bespoke wraith/plague thrall meshes, Gravecaller trailing Ossuary at levels 8–12, Rotweaver weakest at the Ossuary (≈99 kills/min).

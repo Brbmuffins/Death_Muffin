@@ -90,6 +90,8 @@ export interface AbilityContext {
   send(intent: Intent): void;
   number(x: number, z: number, amount: number, kind: 'hit' | 'crit' | 'spear'): void;
   shake(amount: number): void;
+  /** Floating text over the caster (heals, barriers). Optional for tests. */
+  note?(text: string, kind: 'heal' | 'ward'): void;
   /** Scene clock (ms) — never this.ctx.now(), so QA stepping stays consistent. */
   now(): number;
   /** Thralls (Rally the Dead visuals follow them). Optional for tests. */
@@ -1786,7 +1788,15 @@ export class AbilitySystem {
     this.ctx.shake(0.08 + Math.min(0.08, (ev.corpses + ev.thralls) * 0.008));
     if (!mine) return;
     const consumed = ev.corpses + ev.resonant + ev.thralls;
-    if (discipline.mods.litanyBarrier) p.barrier += p.stats.maxHp * discipline.mods.litanyBarrier * consumed;
-    if (discipline.mods.corpseHeal) p.heal(p.stats.maxHp * discipline.mods.corpseHeal * (ev.corpses + ev.resonant) * 0.5);
+    if (discipline.mods.litanyBarrier) {
+      const barrier = p.stats.maxHp * discipline.mods.litanyBarrier * consumed;
+      p.barrier += barrier;
+      if (barrier >= 1) this.ctx.note?.(`+${Math.round(barrier)} barrier`, 'ward');
+    }
+    if (discipline.mods.corpseHeal) {
+      const healed = p.stats.maxHp * discipline.mods.corpseHeal * (ev.corpses + ev.resonant) * 0.5;
+      p.heal(healed);
+      if (healed >= 1) this.ctx.note?.(`+${Math.round(healed)}`, 'heal');
+    }
   }
 }

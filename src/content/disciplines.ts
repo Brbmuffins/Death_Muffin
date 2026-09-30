@@ -116,12 +116,12 @@ export const DISCIPLINES: Record<DisciplineId, Discipline> = {
     description: 'Binds spirits instead of bones. Wraiths strike from range and every rite mends the living.',
     passive: {
       name: 'Funeral Rites',
-      text: 'Exhume binds Wraiths that attack from range. Consuming a corpse heals 6% max health. +25% Grave Essence regeneration.',
+      text: 'Exhume binds Wraiths that attack from range. Consuming a corpse heals 8% max health. +25% Grave Essence regeneration.',
     },
     color: '#8f9ed1',
     portrait: 'art/portraits/mourner.webp',
     modelSlug: 'hero_mourner',
-    mods: { ...BASE, thrallKind: 'wraith', thrallHpMult: 0.7, corpseHeal: 0.06, essenceRegenMult: 1.25 },
+    mods: { ...BASE, thrallKind: 'wraith', thrallHpMult: 0.9, corpseHeal: 0.08, essenceRegenMult: 1.25 },
   },
   rotweaver: {
     classIndex: 4,

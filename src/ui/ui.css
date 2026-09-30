@@ -574,6 +574,11 @@ button { font-family: inherit; }
 .hud-omen img { width: 30px; height: 30px; object-fit: contain; }
 .hud-omen span { font-family: var(--cw-font-display); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cw-bone-100); text-shadow: 0 1px 4px #000; }
 
+.hud-ward { position: absolute; left: 22px; top: 44%; display: flex; align-items: baseline; gap: 10px; padding: 4px 12px; background: rgba(7, 6, 10, 0.55); border-left: 3px solid var(--cw-border-strong); pointer-events: auto; cursor: help; opacity: 0.6; }
+.hud-ward.on { border-left-color: #d8cfbd; opacity: 1; }
+.hud-ward .lbl { font-family: var(--cw-font-display); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cw-bone-100); text-shadow: 0 1px 4px #000; }
+.hud-ward .n { font-family: var(--cw-font-numeric); font-weight: 700; font-size: 20px; color: #efe6d0; text-shadow: 0 1px 4px #000; }
+
 /* Kill Chain: a quiet count on the left edge that warms up as the tier climbs. */
 .hud-chain { position: absolute; left: 22px; top: 34%; min-width: 150px; padding: 6px 12px 8px; background: rgba(7, 6, 10, 0.55); border-left: 3px solid var(--cw-border-strong); text-shadow: 0 1px 4px #000; --chain: var(--cw-bone-300); }
 .hud-chain[data-tier='1'] { --chain: #e6d3a0; }
@@ -679,6 +684,8 @@ button { font-family: inherit; }
   will-change: transform, opacity;
 }
 .cw-num.crit { font-size: 23px; color: #e7d6ff; }
+.cw-num.heal { font-size: 19px; color: #8df0b0; text-shadow: 0 1px 3px #000, 0 0 10px rgba(80, 230, 140, 0.55); }
+.cw-num.ward { font-size: 16px; color: #a9d0ff; text-shadow: 0 1px 3px #000, 0 0 10px rgba(110, 170, 255, 0.5); }
 .cw-num.dot { font-size: 14px; color: #b9a3e8; }
 .cw-num.thrall { font-size: 13px; color: var(--cw-bone-300); }
 .cw-num.hurt { color: #e58aa8; font-size: 18px; }
