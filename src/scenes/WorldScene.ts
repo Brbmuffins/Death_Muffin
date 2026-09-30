@@ -4,6 +4,7 @@ import type { GameScene } from './SceneManager';
 import { getRuntime, type RuntimeView } from '../app/GameRuntime';
 import { Scope } from '../app/Scope';
 import { ABILITIES, BULWARK, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
+import { CAST_FLOW } from '../content/combatFlow';
 import { kitFor, type Kit } from '../content/kits';
 import { assignRite, loadRites, loadSeen, saveRites, saveSeen, unseenRites } from '../gameplay/loadout';
 import { devAccess, devPreference, isDevAccount, riteLevel, setDevPreference, tokenUsername } from '../gameplay/devAccess';
@@ -1820,8 +1821,30 @@ export class WorldScene implements GameScene, RuntimeView {
   /** Looping auras tied to an entity (censer incense by enemy id, toxic stink by corpse id). */
   private auraFx = new Map<string, BinbunHandle>();
 
+  /** Rite events that carry their caster: a remote necromancer makes the same weapon gesture we would (castClips.ts). */
+  private static readonly REMOTE_GESTURE: Partial<Record<SimEvent['t'], AbilityId>> = {
+    exhumed: 'exhume',
+    litanyResult: 'black_litany',
+    detonated: 'corpse_explosion',
+    mantle: 'bone_mantle',
+    offering: 'grave_offering',
+    rend: 'command_rend',
+    rally: 'rally_dead',
+    seeded: 'carrion_seed',
+  };
+
+  private remoteGesture(ev: SimEvent) {
+    const id = WorldScene.REMOTE_GESTURE[ev.t];
+    const by = id && 'by' in ev ? ev.by : undefined;
+    if (!id || !by || by === this.selfId) return;
+    const r = this.remotes.get(by);
+    if (!r) return;
+    r.avatar.cast(id === 'exhume' || id === 'carrion_seed' ? 'dig' : 'cast', 2, r.facing, CAST_FLOW[id].gestureSeconds, id);
+  }
+
   private handleEvent(ev: SimEvent) {
     this.views.onEvent(ev);
+    this.remoteGesture(ev);
     const me = this.selfId;
     switch (ev.t) {
       case 'death':

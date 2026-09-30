@@ -9,7 +9,19 @@
     "idle",
     "run",
     "attack",
-    "walk"
+    "walk",
+    "slam",
+    "sweep",
+    "flick",
+    "channel",
+    "summon"
   ],
-  "tris": 9199
+  "tris": 9199,
+  "release": {
+    "slam": 0.4,
+    "sweep": 0.286,
+    "flick": 0.619,
+    "channel": 0.687,
+    "summon": 0.5
+  }
 }

@@ -81,7 +81,7 @@ describe('spell presentation and hit timing', () => {
     expect(p.castUntil).toBe(0);
     expect(abilities.cast('miasma', { x: 4, z: 0 }, 1000)).toBe('ok');
     expect(p.castUntil).toBe(1000 + CAST_FLOW.miasma.lockMs);
-    expect(avatar.cast).toHaveBeenCalledWith('cast', 2.2, p.facing, CAST_FLOW.miasma.gestureSeconds);
+    expect(avatar.cast).toHaveBeenCalledWith('cast', 2.2, p.facing, CAST_FLOW.miasma.gestureSeconds, 'miasma');
     const essence = p.essence;
     expect(abilities.ready('marrow_spear', 1010)).toBe(false);
     expect(abilities.cast('marrow_spear', { x: 12, z: 0 }, 1010)).toBe('busy');

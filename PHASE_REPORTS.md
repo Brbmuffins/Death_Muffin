@@ -951,3 +951,53 @@ Two more areas, both reusing existing props and mobs (only floor textures are ne
 - **New `tools/qa/live-armor-api.cjs`:** throwaway account on the public domain; grants both Gravecaller collections, equips a full set into reserved slots 100-104, checks the stats endpoint (set 1 = +24 INT / +12 VIT, ascended = +40 INT / +17 VIT, matching the client catalogue), swaps collections, and confirms a bag-only `/inventory/save` keeps the gear. Cleans up after itself.
 - **Also green:** typecheck, 403 vitest, 75 server tests, offline smokes armor / chain / regent / levels / pyre / flyers-rites / cloister / afk (afk timed out once while the box was loaded, passed alone).
 - **Observation, not changed:** `/inventory/add-item` lets any authenticated player add any known item id (qty ≤ 9999) to their own character; loot is client-authoritative by design.
+
+## Necro animation pass (N2, 2026-09-30)
+
+**What shipped.** Five new combat clips on each of the four necromancer heroes (`hero_gravecaller/ossuary/mourner/rotweaver`),
+retargeted onto their existing rig tasks (no re-rig), plus a `(weapon kind, rite) -> clip` table. Non-necro heroes, enemies and the
+base `necromancer` fallback model are untouched (the table falls back to today's `cast` / `attack` / `dig` when a model lacks a clip).
+
+| Clip | Preset | Window (src s) | Release | Used for |
+|---|---|---|---|---|
+| `slam` | `slash` (already owned, 0 cr) | 1.3-3.3 | 0.40 | big rites (staff / no weapon / scythe): Corpse Explosion, Bone Storm, Rend, Wall, Bloom, Prison |
+| `sweep` | `box_03` | 0.3-1.7 | 0.286 | scythe primary (Bone Needle) |
+| `flick` | `pitch_baseball` | 1.25-2.3 | 0.619 | wand / sickle primary and bolt rites |
+| `channel` | `sing_01` | 5.9-7.5 | 0.687 | Black Litany, Dirge, Bone Mantle, Grave Offering |
+| `summon` | `basketball_shot` | 1.4-3.0 | 0.50 | Exhume, Grave Hands, Rally, Carrion Seed |
+
+**Rejected presets (measured on `hero_gravecaller` with `tools/measure-clips.mjs` + `tools/clip-sheet.mjs`, 120 cr of candidates):**
+`golf` (16 s, hands peak 0.38 m/s: a slow practice swing), `shovel` (gardening loop), `lift_heavy` (hip ends at 2.8x standing height, 2.4 m
+travel), `fire` (hands peak 0.09 m/s), `football_pass` (no release), `cheer` (good arms-up pose but `basketball_shot` does crouch-then-raise
+for the same role), `volleyball` (great spike, 7.4 m/s, but duplicates `slam` and adds an airborne tuck), `warm_up` (stretching).
+`box_03` is the weakest accept: a hooking lunge at 2.1 m/s, not a true scythe reap; revisit with a dedicated sweep if the scythe mesh lands.
+
+**Trimming.** Tripo presets carry seconds of idle lead-in/out (`slash` is 6.6 s for a 1 s action), so `tools/build-characters.mjs`
+(`COMBAT_TRIMS`) cuts each to its action window, and stores the Hip position relative to the source clip's standing first frame. At runtime
+`inPlaceAnimation.ts` (`combatClip`) drops Root motion and ground-plane Hip travel (the `stripRootTravel` rule) but keeps the vertical
+crouch/leap. The release fraction is written to each `clips.json` (`release`) and a unit test keeps `CLIP_RELEASE` in sync.
+
+**Selection.** `src/content/castClips.ts`: `ABILITY_ROLE` (rite -> primary/bolt/big/channel/summon) x `WEAPON_CLIPS` (weapon kind or `none`
+-> role -> clip); `none` plays like a staff (the default skull staff is in hand). `NecromancerAvatar.cast(..., abilityId)` (the 21 necro
+call sites in `AbilitySystem`) asks the table using the equipped main hand (`weaponKind`), so local and remote avatars behave the same (remote gear
+arrives through `setEquipment(gearFromIds(...))`). Remote necros now also gesture on the rite events that carry their caster
+(`WorldScene.REMOTE_GESTURE`: exhumed, litany, detonated, mantle, offering, rend, rally, seeded); before this they never gestured.
+Timing: rites spawn instantly and `lockMs` / `gestureSeconds` are untouched. `planGesture` starts the clip part-way in (`Creature.playOnce(..., startAt)`)
+and scales its speed so the release frame lands 0.08 s after the rite fires; heavy clips play at least `minSeconds` (slam 0.55, channel 0.9, summon 0.7).
+
+**Hurt / death.** The lying `hurt` preset was already not shipped (renamed `hurt_down`, PHASE "Animation variety"): the shipped `hurt` is
+`hit_to_body_01` (1.3 s) and `hurt2` is `hit_to_head`. Now pinned by `necro-clips.test.ts` (measures the shipped GLBs: flinches under 3 s and
+hip >= 0.85 of standing; `death` / `death2` end lying, hip < 0.45). Both death clips were checked on stick-figure sheets and in game strips.
+
+**Cost.** 240 of the 260-credit budget: 120 candidates (12 jobs on gravecaller) + 120 (4 accepted presets x 3 other rigs); `slam` was free.
+Every job id is in `art-manifest/necro-anim-jobs.json`. Shared account balance went 6330 -> ~5075 over the session, but other agents also spend
+from it; this pass accounts for 240 of that.
+
+**GLB size (before -> after):** gravecaller 2,037,364 -> 2,153,712; ossuary 1,934,240 -> 2,050,628; mourner 1,903,388 -> 2,019,360;
+rotweaver 2,174,640 -> 2,290,704 (about +116 KB / +5.7% each).
+
+**Tools:** `tools/ai/retarget-clips.mjs` (budget-capped retargets onto an existing rig), `tools/measure-clips.mjs` (hip height, travel, release),
+`tools/clip-sheet.mjs` (stick-figure contact sheet), `tools/qa/necro-anim-smoke.cjs` (in-game strips to `docs/screenshots/necro-anim/`).
+
+**Open:** the scythe / wand / sickle meshes belong to the N1 agent (until they land those ids render as the sword stand-in); the release
+timing is verified by numbers and strips, not yet by ear; N3 (weapon trails, hit-stop) not started.

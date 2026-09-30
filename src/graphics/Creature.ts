@@ -6,7 +6,9 @@ import { hipAnchor, inPlaceHeroClip, stripRootTravel } from './inPlaceAnimation'
 import { applyWingFlap, type WingOpts } from './wingFlap';
 import { applyGearTint, GEAR_REGIONS, makeGearTintState, type GearRegion } from './gearTint';
 
-export type CreatureAnim = 'idle' | 'walk' | 'run' | 'attack' | 'cast' | 'hurt' | 'death' | 'dig' | 'dive';
+export type CreatureAnim = 'idle' | 'walk' | 'run' | 'attack' | 'cast' | 'hurt' | 'death' | 'dig' | 'dive' | CombatAnim;
+/** Necromancer combat gestures (content/castClips.ts); only the four necro heroes carry them. */
+export type CombatAnim = 'slam' | 'sweep' | 'flick' | 'channel' | 'summon';
 
 const FALLBACK: Record<CreatureAnim, CreatureAnim[]> = {
   idle: ['idle', 'walk'],
@@ -18,6 +20,11 @@ const FALLBACK: Record<CreatureAnim, CreatureAnim[]> = {
   death: ['death'],
   dig: ['dig', 'cast', 'attack'],
   dive: ['dive', 'attack', 'cast'],
+  slam: ['slam', 'attack', 'cast'],
+  sweep: ['sweep', 'attack', 'cast'],
+  flick: ['flick', 'cast', 'attack'],
+  channel: ['channel', 'cast', 'attack'],
+  summon: ['summon', 'dig', 'cast'],
 };
 
 export interface CreatureOptions {
@@ -135,7 +142,7 @@ export class Creature {
       this.mixer = new THREE.AnimationMixer(model);
       const anchor = hipAnchor(t.clips.get('idle'));
       for (const [name, clip] of t.clips) {
-        this.actions.set(name, this.mixer.clipAction(opts.inPlace ? inPlaceHeroClip(clip) : stripRootTravel(clip, anchor)));
+        this.actions.set(name, this.mixer.clipAction(opts.inPlace ? inPlaceHeroClip(clip, anchor) : stripRootTravel(clip, anchor)));
       }
       this.mixer.addEventListener('finished', (e) => {
         if (e.action === this.oneShot) {
@@ -152,6 +159,11 @@ export class Creature {
 
   has(anim: CreatureAnim) {
     return this.actions.has(anim);
+  }
+
+  /** Length in seconds of a clip this model carries (after in-place processing), or 0. */
+  clipDuration(anim: CreatureAnim): number {
+    return this.actions.get(anim)?.getClip().duration ?? 0;
   }
 
   private resolve(anim: CreatureAnim): THREE.AnimationAction | null {
@@ -202,7 +214,7 @@ export class Creature {
   }
 
   /** One-shot overlay (attack/cast/hurt/death/dig); returns to the loop after. */
-  playOnce(anim: CreatureAnim, speed = 1, durationSeconds?: number): boolean {
+  playOnce(anim: CreatureAnim, speed = 1, durationSeconds?: number, startAt = 0): boolean {
     const a = this.resolve(anim);
     if (!a) return false;
     // Don't let a hurt flinch cancel an attack or a death.
@@ -214,6 +226,8 @@ export class Creature {
     a.enabled = true;
     const repeating = this.current === a;
     a.reset().setEffectiveWeight(1);
+    // Start part-way in to skip a wind-up the ability has no time for (release frame = spell spawn).
+    if (startAt > 0) a.time = Math.min(startAt, a.getClip().duration);
     // Recasting the same action must not fade its only pose down to bind pose.
     if (repeating) a.stopFading();
     else a.fadeIn(0.08);

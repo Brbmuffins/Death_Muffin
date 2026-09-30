@@ -328,7 +328,7 @@ export class AbilitySystem {
     if (t.enemyId === undefined && !t.boss) return 'no_target';
     if (this.shortfall('bone_needle', t) > 0) return 'range';
     p.face(t.x, t.z);
-    avatar.cast('cast', 3.2, p.facing, CAST_FLOW.bone_needle.gestureSeconds);
+    avatar.cast('cast', 3.2, p.facing, CAST_FLOW.bone_needle.gestureSeconds, 'bone_needle');
     const from = avatar.tip();
     effects.flash({ x: from.x, y: from.y, z: from.z, color: N.trail, size: 0.7, duration: 0.14 });
     audio.play('needleCast', p.x, p.z);
@@ -383,7 +383,7 @@ export class AbilitySystem {
     dx /= len;
     dz /= len;
     p.face(p.x + dx, p.z + dz);
-    avatar.cast('cast', 2.4, p.facing, CAST_FLOW.marrow_spear.gestureSeconds);
+    avatar.cast('cast', 2.4, p.facing, CAST_FLOW.marrow_spear.gestureSeconds, 'marrow_spear');
     const origin = { x: p.x, z: p.z };
     const dmg = this.sp * def.power;
     const end = { x: origin.x + dx * range, y: 0.3, z: origin.z + dz * range };
@@ -468,7 +468,7 @@ export class AbilitySystem {
     const c = this.pickCorpse(t);
     if (!c) return 'no_corpse';
     p.face(c.x, c.z);
-    avatar.cast('dig', 2.6, p.facing, CAST_FLOW.exhume.gestureSeconds);
+    avatar.cast('dig', 2.6, p.facing, CAST_FLOW.exhume.gestureSeconds, 'exhume');
     const m = discipline.mods;
     this.ctx.send({
       t: 'exhume',
@@ -501,7 +501,7 @@ export class AbilitySystem {
       z = p.z + ((z - p.z) / d) * def.range;
     }
     p.face(x, z);
-    avatar.cast('cast', 2.2, p.facing, CAST_FLOW.miasma.gestureSeconds);
+    avatar.cast('cast', 2.2, p.facing, CAST_FLOW.miasma.gestureSeconds, 'miasma');
     const r = def.radius * discipline.mods.miasmaRadiusMult * mult;
     const intent: Intent = {
       t: 'miasma',
@@ -561,7 +561,7 @@ export class AbilitySystem {
     if (!target) return 'no_target';
     if (this.shortfall('wailing_skull', target) > 0) return 'range';
     p.face(target.x, target.z);
-    avatar.cast('cast', 2.8, p.facing, CAST_FLOW.wailing_skull.gestureSeconds);
+    avatar.cast('cast', 2.8, p.facing, CAST_FLOW.wailing_skull.gestureSeconds, 'wailing_skull');
     const from = avatar.tip();
     effects.flash({ x: from.x, y: from.y, z: from.z, color: SK.jade, size: 0.9, duration: 0.18 });
     audio.play('wail', p.x, p.z);
@@ -654,7 +654,7 @@ export class AbilitySystem {
     this.bb('grave_step_smoke', ox, oz);
     p.teleport(c.x, c.z);
     p.face(p.x + (p.x - ox), p.z + (p.z - oz));
-    avatar.cast('cast', 3, p.facing, CAST_FLOW.grave_step.gestureSeconds);
+    avatar.cast('cast', 3, p.facing, CAST_FLOW.grave_step.gestureSeconds, 'grave_step');
     effects.beam({ x: ox, y: 1, z: oz }, () => ({ x: p.x, y: 1, z: p.z }), ST.blood, 0.07, 0.22);
     // …and re-forms in a marrow burst that bleeds what stands around the corpse.
     const r = GRAVE_STEP.burstRadius;
@@ -698,7 +698,7 @@ export class AbilitySystem {
     dx /= l;
     dz /= l;
     p.face(p.x + dx, p.z + dz);
-    avatar.cast('cast', 2.4, p.facing, CAST_FLOW.grave_frost.gestureSeconds);
+    avatar.cast('cast', 2.4, p.facing, CAST_FLOW.grave_frost.gestureSeconds, 'grave_frost');
     const origin = { x: p.x, z: p.z };
     const len = def.range;
     const rot = Math.atan2(dx, dz);
@@ -822,7 +822,7 @@ export class AbilitySystem {
     if (t.enemyId === undefined && !t.boss) return 'no_target';
     if (this.shortfall('soul_siphon', t) > 0) return 'range';
     p.face(t.x, t.z);
-    avatar.cast('cast', 2.4, p.facing, CAST_FLOW.soul_siphon.gestureSeconds);
+    avatar.cast('cast', 2.4, p.facing, CAST_FLOW.soul_siphon.gestureSeconds, 'soul_siphon');
     const breakR = def.range * S.breakMult + (t.boss ? BOSS_RADIUS : 0);
     let ended = false;
     const target = () => {
@@ -881,7 +881,7 @@ export class AbilitySystem {
     const P = BONE_PRISON;
     const { x, z } = this.groundAim('bone_prison', t);
     p.face(x, z);
-    avatar.cast('cast', 2.3, p.facing, CAST_FLOW.bone_prison.gestureSeconds);
+    avatar.cast('cast', 2.3, p.facing, CAST_FLOW.bone_prison.gestureSeconds, 'bone_prison');
     const r = def.radius;
     effects.spikeRing(x, z, r, P.spikes, P.rootS + 0.1);
     effects.decal({ tex: fx.cracks(), color: PR.dust, x, z, r: r * 1.1, rot: Math.random() * 6, duration: P.rootS + 0.4, opacity: 0.8, growFrom: 0.6, fadeOut: 0.4 });
@@ -911,7 +911,7 @@ export class AbilitySystem {
     const G = GRAVE_HANDS;
     const { x, z } = this.groundAim('grave_hands', t);
     p.face(x, z);
-    avatar.cast('dig', 2.2, p.facing, CAST_FLOW.grave_hands.gestureSeconds);
+    avatar.cast('dig', 2.2, p.facing, CAST_FLOW.grave_hands.gestureSeconds, 'grave_hands');
     const r = def.radius;
     const corpses = Math.min(G.maxCorpses, this.corpsesIn(x, z, r));
     const hands = Math.min(G.maxHands, G.hands + corpses * G.handsPerCorpse);
@@ -951,7 +951,7 @@ export class AbilitySystem {
     const B = BONE_STORM;
     const start = this.groundAim('bone_storm', t);
     p.face(start.x, start.z);
-    avatar.cast('cast', 2, p.facing, CAST_FLOW.bone_storm.gestureSeconds);
+    avatar.cast('cast', 2, p.facing, CAST_FLOW.bone_storm.gestureSeconds, 'bone_storm');
     const r = def.radius;
     const extra = Math.min(B.maxExtraS, this.corpsesIn(start.x, start.z, r) * B.perCorpseS);
     const life = B.durationS + extra;
@@ -1003,7 +1003,7 @@ export class AbilitySystem {
   /** Bone Mantle: ask the host for the corpses; the barrier arrives with its answer. */
   private mantle(): CastResult {
     const { player: p, avatar, effects } = this.ctx;
-    avatar.cast('cast', 1.8, p.facing, CAST_FLOW.bone_mantle.gestureSeconds);
+    avatar.cast('cast', 1.8, p.facing, CAST_FLOW.bone_mantle.gestureSeconds, 'bone_mantle');
     this.ctx.send({ t: 'signature', by: this.ctx.selfId, sig: 'mantle', x: p.x, z: p.z, dx: 0, dz: 0, sp: this.sp });
     effects.emit({ x: p.x, y: 1.3, z: p.z, count: 18, color: MN.bone, spread: 0.5, speed: 1.4, up: 1, life: 0.5, size: 0.2 });
     return 'ok';
@@ -1121,7 +1121,7 @@ export class AbilitySystem {
     if (t.enemyId === undefined && !t.boss) return 'no_target';
     if (this.shortfall('bone_fan', t) > 0) return 'range';
     p.face(t.x, t.z);
-    avatar.cast('cast', 3.2, p.facing, CAST_FLOW.bone_fan.gestureSeconds);
+    avatar.cast('cast', 3.2, p.facing, CAST_FLOW.bone_fan.gestureSeconds, 'bone_fan');
     const aim = Math.atan2(t.x - p.x, t.z - p.z);
     const cone = (BONE_FAN.coneHalfDeg * Math.PI) / 180;
     const angleOff = (x: number, z: number) => {
@@ -1204,7 +1204,7 @@ export class AbilitySystem {
     dx /= len;
     dz /= len;
     p.face(p.x + dx, p.z + dz);
-    avatar.cast('cast', 2.8, p.facing, CAST_FLOW.rot_lance.gestureSeconds);
+    avatar.cast('cast', 2.8, p.facing, CAST_FLOW.rot_lance.gestureSeconds, 'rot_lance');
     const origin = { x: p.x, z: p.z };
     const tip = avatar.tip();
     const end = { x: origin.x + dx * def.range, y: 1, z: origin.z + dz * def.range };
@@ -1257,7 +1257,7 @@ export class AbilitySystem {
     const c = this.pickCorpse(t, def.radius, def.range);
     if (!c || (p.area && c.area !== p.area)) return 'no_corpse';
     p.face(c.x, c.z);
-    avatar.cast('cast', 2.4, p.facing, CAST_FLOW.grave_offering.gestureSeconds);
+    avatar.cast('cast', 2.4, p.facing, CAST_FLOW.grave_offering.gestureSeconds, 'grave_offering');
     this.ctx.send({ t: 'signature', by: this.ctx.selfId, sig: 'offering', x: c.x, z: c.z, dx: 0, dz: 0, sp: this.sp });
     return 'ok';
   }
@@ -1300,7 +1300,7 @@ export class AbilitySystem {
     dx /= l;
     dz /= l;
     p.face(p.x + dx, p.z + dz);
-    avatar.cast('cast', 3, p.facing, CAST_FLOW.ivory_cleave.gestureSeconds);
+    avatar.cast('cast', 3, p.facing, CAST_FLOW.ivory_cleave.gestureSeconds, 'ivory_cleave');
     const cosMax = Math.cos((IVORY_CLEAVE.halfAngleDeg * Math.PI) / 180);
     const dmg = this.sp * def.power;
     const inArc = (x: number, z: number, r: number) => {
@@ -1370,7 +1370,7 @@ export class AbilitySystem {
   private rally(t: CastTarget): CastResult {
     const { player: p, avatar, discipline, effects } = this.ctx;
     if (!this.ctx.thrallCount()) return 'no_thralls';
-    avatar.cast('cast', 2, p.facing, CAST_FLOW.rally_dead.gestureSeconds);
+    avatar.cast('cast', 2, p.facing, CAST_FLOW.rally_dead.gestureSeconds, 'rally_dead');
     const dur = RALLY.durationS + (discipline.id === 'gravecaller' ? RALLY.gravecallerBonusS : 0);
     this.ctx.send({ t: 'signature', by: this.ctx.selfId, sig: 'rally', x: t.x, z: t.z, dx: 0, dz: 0, sp: this.sp, dur });
     effects.decal({ tex: fxImage('rallySigil'), color: RD.jade, x: p.x, z: p.z, r: 2.4, duration: 0.8, opacity: 0.9, growFrom: 0.4, spin: 1 });
@@ -1413,7 +1413,7 @@ export class AbilitySystem {
     const c = this.pickCorpse(t, 2.5, def.range);
     if (!c || (p.area && c.area !== p.area)) return 'no_corpse';
     p.face(c.x, c.z);
-    avatar.cast('cast', 2.4, p.facing, CAST_FLOW.carrion_seed.gestureSeconds);
+    avatar.cast('cast', 2.4, p.facing, CAST_FLOW.carrion_seed.gestureSeconds, 'carrion_seed');
     const cap = discipline.mods.miasmaBurstsCorpses ? Math.max(CARRION_SEED.witheredCap, discipline.mods.witheredMaxStacks ?? 0) : CARRION_SEED.witheredCap;
     this.ctx.send({ t: 'signature', by: this.ctx.selfId, sig: 'seed', x: c.x, z: c.z, dx: 0, dz: 0, sp: this.sp, cap });
     audio.play('miasma', c.x, c.z, 1.2);
@@ -1692,7 +1692,7 @@ export class AbilitySystem {
     }
     if (sig === 'dirge') [x, z] = [p.x, p.z];
     else p.face(x, z);
-    avatar.cast('cast', 1.8, p.facing, CAST_FLOW[id].gestureSeconds);
+    avatar.cast('cast', 1.8, p.facing, CAST_FLOW[id].gestureSeconds, id);
     this.ctx.send({ t: 'signature', by: this.ctx.selfId, sig, x, z, dx: x - p.x, dz: z - p.z, sp: this.sp });
     const color = sig === 'wall' ? SPELL_FX.wall.amber : sig === 'rend' ? SPELL_FX.rend.jade : sig === 'dirge' ? SPELL_FX.dirge.frost : SPELL_FX.bloom.petal;
     effects.emit({ x: p.x, y: 1.4, z: p.z, count: 24, color, spread: 0.4, speed: 1.6, up: 1.2, life: 0.6, size: 0.24 });
@@ -1703,7 +1703,7 @@ export class AbilitySystem {
   private litany(mult = 1): CastResult {
     const { player: p, avatar, discipline } = this.ctx;
     const def = ABILITIES.black_litany;
-    avatar.cast('cast', 1.6, p.facing, CAST_FLOW.black_litany.gestureSeconds);
+    avatar.cast('cast', 1.6, p.facing, CAST_FLOW.black_litany.gestureSeconds, 'black_litany');
     this.ctx.send({
       t: 'litany',
       by: this.ctx.selfId,
@@ -1723,7 +1723,7 @@ export class AbilitySystem {
     const c = this.pickCorpse(t, ABILITIES.exhume.radius, def.range);
     if (!c) return 'no_corpse';
     p.face(c.x, c.z);
-    avatar.cast('cast', 3, p.facing, CAST_FLOW.corpse_explosion.gestureSeconds);
+    avatar.cast('cast', 3, p.facing, CAST_FLOW.corpse_explosion.gestureSeconds, 'corpse_explosion');
     this.ctx.send({ t: 'detonate', by: this.ctx.selfId, corpseId: c.id, dmg: this.sp * def.power });
     const tip = avatar.tip();
     effects.flash({ x: tip.x, y: tip.y, z: tip.z, color: D.hot, size: 0.7, duration: 0.14 });
