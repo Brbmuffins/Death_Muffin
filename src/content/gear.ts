@@ -81,10 +81,16 @@ const TIERS: Record<string, GearTier> = {
   moon: { color: 0xaab8e8, metal: 0.85, rough: 0.3, glow: 0x3a4a9a },
 };
 
+/** Emissive tints in the existing tiers are dark (0x6b4a10); a bright accent used raw floods the whole body flat. */
+function dimColor(hex: number, k: number): number {
+  const c = (shift: number) => Math.round(((hex >> shift) & 255) * k);
+  return (c(16) << 16) | (c(8) << 8) | c(0);
+}
+
 /** Guess a material tier from the item id ("helm_iron", "sword_copper", "staff_oak" …). */
 export function gearTier(itemId: string, rarity?: string): GearTier {
   const armor = ARMOR_BY_ID[itemId];
-  if (armor) return { color: armor.color, metal: armor.disciplineId === 'knight' || armor.disciplineId === 'warden' ? 0.75 : 0.24, rough: armor.collection === 2 ? 0.38 : 0.55, glow: armor.collection === 2 || armor.rarity === 'epic' ? armor.accent : undefined };
+  if (armor) return { color: armor.color, metal: armor.disciplineId === 'knight' || armor.disciplineId === 'warden' ? 0.75 : 0.24, rough: armor.collection === 2 ? 0.38 : 0.55, glow: armor.collection === 2 || armor.rarity === 'epic' ? dimColor(armor.accent, armor.collection === 2 ? 0.22 : 0.14) : undefined };
   for (const key of ['moon', 'hell', 'gold', 'steel', 'iron', 'copper', 'bone']) if (itemId.includes(key)) return TIERS[key];
   if (/oak|wood|apprentice|spike/.test(itemId)) return TIERS.wood;
   // Unknown ids: let rarity pick a look so nothing renders as a grey placeholder.
