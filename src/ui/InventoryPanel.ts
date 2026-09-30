@@ -5,6 +5,7 @@ import { BAG_SIZE, type Inventory } from '../gameplay/loot';
 import { BUFF_FLASKS, HEALING_FLASKS, RARITY_COLOR, RARITY_MARK, itemMeta } from '../content/items';
 import { MEALS } from '../content/processing';
 import { EQUIP_SLOTS, equipSlotOf, equippedBySlot, type EquipSlot } from '../content/gear';
+import { ARMOR_BY_ID } from '../content/armorSets';
 
 const TYPE_GLYPH: Record<string, string> = {
   weapon: '⚔',
@@ -201,6 +202,13 @@ export class InventoryPanel {
       .join('');
   }
 
+  private setLine(slot: InventorySlot) {
+    const piece = ARMOR_BY_ID[slot.item_id];
+    if (!piece) return '';
+    const worn = this.inventory.all.filter((s) => s.equipped && ARMOR_BY_ID[s.item_id]?.setId === piece.setId).length;
+    return `<div class="lore">${piece.setName} set · ${worn}/5 worn</div><div class="lore">Any class can wear it. Stats only, no set bonus.</div>`;
+  }
+
   private showTooltip(slot: InventorySlot, e: PointerEvent) {
     if (!this.tooltip || e.pointerType === 'touch') return;
     const meta = itemMeta(slot.item_id);
@@ -208,6 +216,7 @@ export class InventoryPanel {
       <div class="name" style="color:${RARITY_COLOR[slot.rarity]}">${slot.name}</div>
       <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${slot.item_type.replace('_', ' ')}</div>
       ${this.statLines(slot)}
+      ${this.setLine(slot)}
       ${meta.lore ? `<div class="lore">${meta.lore}</div>` : ''}
       <div class="sell">Worth ${slot.sell_value}g</div>
     `;
@@ -242,6 +251,7 @@ export class InventoryPanel {
         <div class="name" style="color:${RARITY_COLOR[slot.rarity]}">${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''}</div>
         <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${slot.item_type.replace('_', ' ')}</div>
         ${this.statLines(slot)}
+        ${this.setLine(slot)}
         ${this.compareLines(slot)}
         ${meta.lore ? `<div class="lore">${meta.lore}</div>` : ''}
       </div>

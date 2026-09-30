@@ -147,7 +147,38 @@ Every hunting ground has a boss summon object. Bosses cost **soul shards**, and 
 | **Bone Abbess** | Abbess's Reliquary, Marrow Ossuary · **3 shards** | Break the skull niches that heal her; spend corpses before she draws them in. |
 | **Drowned Congregation** | Drowned Font, Drowned Nave · **4 shards** | Use pews to block the Flood Hymn and leave grasping rings. |
 | **Bell-Sworn Prelate** | Sundered Bell, Bell Sanctum · **5 shards** | Leave the expanding Toll ring, the frontal Slam, and marked Bell Rain circles. Defeating it unlocks Ascension for the run. |
+| **Cinder Regent** | Ember Altar, Cinder Pyre · **6 shards** | When Conflagration starts, run to a grey ash circle and stay on it; the rest of the arena burns. Kill the Pyre Priests early so their coals do not cover the ash. His level scales with the Pyre. |
 | **Plague Saint** | Saint's Litter, Plague Cloister · **5 shards** | Move her off rot pools, where she heals, and kill the Plague Doctors that feed her through a green link. Her level scales with the Cloister. |
+
+### Levels to explore
+
+Three levels sit off the main road. Each has its own layout and its own reason to go there.
+
+<table><tr>
+<td><img src="docs/screenshots/catacomb-warren.webp" alt="The Catacomb Warren vault" /><br /><sub>The Catacomb Warren: the vault chamber</sub></td>
+<td><img src="docs/screenshots/bone-coliseum.webp" alt="A surge in the Bone Coliseum" /><br /><sub>The Bone Coliseum: a surge in the pit</sub></td>
+</tr><tr>
+<td><img src="docs/screenshots/cinder-pyre.webp" alt="The Cinder Pyre and the Ember Altar" /><br /><sub>The Cinder Pyre: the Regent's arena and the Ember Altar</sub></td>
+<td><img src="docs/screenshots/cinder-regent.webp" alt="Conflagration: ash circles in the Regent's arena" /><br /><sub>Conflagration: stand on a white ash circle</sub></td>
+</tr></table>
+
+**The Catacomb Warren** (level 4 · open after 150 Graves kills · door on the Graves' west wall).
+A chambered dungeon: a three-by-three grid of rooms divided by tall half-walls, with staggered gaps and a lantern beside every gap so the doorways read in the dark. The middle chamber is the vault, a sarcophagus under four candelabra. Walls are solid to more than feet: **cones and blows stop at a wall**, so stepping behind one breaks a Bellbound Penitent's line and funnels the swarm into the gaps. Rats, Barrow Ghouls, bats, sacs and the odd Penitent live here. Good for learning to fight around corners; drops lean toward bones, tin, iron and copper gear.
+
+**The Bone Coliseum** (level 11 · open after 350 Ossuary kills · door on the Ossuary's east wall).
+A wide sand pit ringed by pillars with four gates. Surges arrive fast (a wave of 14 every 4.2 seconds, cap 36) and **elites are twice as common** as in the Nave. The only shelter is four low L-shaped skull walls, each with a statue at the elbow, and the pillar ring. The roster mixes fodder (skull rats, hounds, bats) with the newer kinds (Wraiths, Gargoyles, Templars, Acolytes), so it rewards area rites, kiting and holding a wall. Better drops and more XP per minute than the Nave, and a real chance of dying.
+
+**The Cinder Pyre** (level-scaled, never below 30 · open after 700 Cloister kills · east arch of the Cloister).
+The fire realm: a scorched garth of black obelisks, funeral pyres and a slag font, under drifting embers and ash. Enemy level follows the highest-level player inside, like the Cloister, and **everything here leaves burning ground**:
+
+| Dead | What it does | What to do |
+|---|---|---|
+| **Cinder Husk** | Sturdy melee corpse that bursts into an ember pool when it dies | Finish it at range or step back as it falls |
+| **Pyre Priest** | Hurls a coal onto where you stand (orange ring), leaving burning ground | Leave the ring, then the embers; close the gap with a blink |
+| **Cinderhound** | Fast flankers in packs of two or three; corpses rise as your own hounds | Hold a wall or a Bone Ward, use area rites |
+| **Slag Brute** | Slow, heavy slam that cracks a wide ring and leaves it burning; resonant corpse | Leave the ring on the wind-up, kite it in circles |
+
+The Regent waits at the Ember Altar on the arena's north edge. The floor sigil marks the arena; the slag font stands in the east alcove, out of the fight.
 
 ![The Bell-Sworn Prelate in the Bell Sanctum](docs/screenshots/bell-sworn-prelate.webp)
 
@@ -155,7 +186,23 @@ Every hunting ground has a boss summon object. Bosses cost **soul shards**, and 
 
 ## Gold, gear, and difficulty
 
+**Kill Chain.** Kills you land (your thralls' and damage-over-time kills count) within **4 seconds** of each other build a chain, shown on the left edge. Tiers at 5, 12, 25, 45 and 80 (Stirring, Rampage, Slaughter, Massacre, Requiem) add **+5% to +25% XP and gold**, ring a rising chime and warm the readout from bone to red. It breaks when the window runs out or you die; a chain of 10 or more announces its end. Safe areas do not count.
+
+**Weekly Omens.** One omen hangs over the diocese each week, the same for everyone, shown as an icon and name on the left edge (hover it for the rules). It changes every Monday at 00:00 UTC and cycles in order:
+
+| Omen | Effect |
+|---|---|
+| **Blood Moon** | Elites are much more common in every hunting ground; every kill pays 15% more XP and gold. Red moon. |
+| **Drowned Week** | Waves arrive 25% larger and kills pay 20% more; thicker cold mist. |
+| **The Tolling** | Elites come Bell-Tolled and drop twice the shards; kills pay 5% more. Bronze moon. |
+
+Omens only act in combat areas. The sky tint is half-way, so each place keeps its own light.
+
+**Milestones.** One-off gold purses for kill counts (100 up to 25,000), kills in each hunting ground (100 up to 2,500) and your best chain (10 up to 100). Each pays once per character in this browser.
+
 Gold and experience come from fighting. Open the **Reliquary (I)** to equip gear, use consumables, and see your inventory. Loot pillars mark better drops; item rarity is shown by color and marks. The **Workbench (C)** turns materials into equipment and tools. Healing flasks are used with **Q**; cooked meals can be eaten from the bag for healing over time.
+
+Each discipline has two five-piece armor sets with matching icons and visible colors on the hero. The first collection begins in the Hollow Graves and completes in the Bell Sanctum; the stronger ascended collection begins in the Sanctum and completes in the Cinder Pyre. Any class can wear any set. See [the armor set guide](docs/ARMOR-SETS.md) for names and drop areas.
 
 <table><tr>
 <td><img src="public/art/items/staff_oak.png" alt="Oak Staff" width="56" /></td>

@@ -31,6 +31,7 @@ export type TipId =
   | 'elite'
   | 'surge'
   | 'relic'
+  | 'armor'
   | 'codex'
   | 'signature'
   | 'prelate'
@@ -193,6 +194,10 @@ export const TIPS: Record<TipId, Tip> = {
   relic: {
     title: 'A relic',
     body: 'Loot goes to your Reliquary (<kbd>I</kbd>). Equip gear there; the Workbench (<kbd>C</kbd>) turns ore and bars into more.',
+  },
+  armor: {
+    title: 'Set armor',
+    body: 'Armor comes in five-piece sets, one look per discipline, and <b>any class can wear any set</b>. Open your Reliquary (<kbd>I</kbd>) and double-click a piece to wear it; it shows on your hero. Stats only: there is no set bonus. Later areas drop the rarer, stronger sets.',
   },
   codex: {
     title: 'The Codex',

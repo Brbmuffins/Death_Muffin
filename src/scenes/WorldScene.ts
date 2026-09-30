@@ -9,7 +9,8 @@ import { assignRite, loadRites, loadSeen, saveRites, saveSeen, unseenRites } fro
 import { devAccess, devPreference, isDevAccount, riteLevel, setDevPreference, tokenUsername } from '../gameplay/devAccess';
 import { GrimoirePanel } from '../ui/GrimoirePanel';
 import { preloadFxImages } from '../graphics/fxImages';
-import { AREAS, AREA_ORDER, BOSS_SUMMON_SHARDS, CHAPTERHOUSE_RETURN, DOORS, PLAYER_SPAWN, type AreaId, type Interactable } from '../content/areas';
+import { ARMOR_BY_ID } from '../content/armorSets';
+import { AREAS, AREA_ORDER, BOSS_SUMMON_SHARDS, CHAPTERHOUSE_RETURN, DOORS, PLAYER_SPAWN, type AreaId, type DoorDef, type Interactable } from '../content/areas';
 import { disciplineFor, type Discipline } from '../content/disciplines';
 import { AFFIX_TUNING, ELITE_AFFIXES, ENEMIES, WAVE_THEMES, type EliteAffix, type EnemyId } from '../content/enemies';
 import { BUFF_FLASKS, HEALING_FLASKS, itemMeta } from '../content/items';
@@ -161,6 +162,15 @@ type Hover =
  * Drowned Nave and Bell Sanctum. Replaces the old Hub/Arena/Boss scenes —
  * there is no extraction; you farm, upgrade, unlock and push deeper.
  */
+/** Where a newly opened door sits in the hall it leaves, so the banner tells the player which way to walk. */
+function doorDirection(d: DoorDef): string {
+  const from = AREAS[d.a].rect;
+  const dx = (d.rect.x0 + d.rect.x1) / 2 - (from.x0 + from.x1) / 2;
+  const dz = (d.rect.z0 + d.rect.z1) / 2 - (from.z0 + from.z1) / 2;
+  const side = Math.abs(dx) >= Math.abs(dz) ? (dx > 0 ? 'east' : 'west') : (dz > 0 ? 'south' : 'north');
+  return `the ${side} door of ${AREAS[d.a].name}`;
+}
+
 export class WorldScene implements GameScene, RuntimeView {
   readonly scene = new THREE.Scene();
   readonly bloom = { strength: 0.75, radius: 0.55, threshold: 0.85 };
@@ -1427,6 +1437,7 @@ export class WorldScene implements GameScene, RuntimeView {
             if (!r) return;
             this.hud.chatLine(`${r.info.name} left`);
             r.avatar.dispose();
+            r.pet?.dispose();
             this.remotes.delete(id);
             this.sim?.removePlayer(id);
           },
@@ -2540,8 +2551,8 @@ export class WorldScene implements GameScene, RuntimeView {
       if (this.progression.kills(u.area) >= this.progression.unlockKills(u.kills) && this.progression.unlock(id)) {
         this.nav.setUnlocked(this.openAreas());
         for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d));
-        this.hud.banner('A seal breaks', `${AREAS[id].name} lies open`, 3800);
         const door = DOORS.find((d) => d.b === id);
+        this.hud.banner('A seal breaks', `${AREAS[id].name} lies open${door ? ` · ${doorDirection(door)}` : ''}`, 4800);
         if (door) audio.play('gate', (door.rect.x0 + door.rect.x1) / 2, (door.rect.z0 + door.rect.z1) / 2);
         this.rig.shake(0.3);
         void this.progression.flush();
@@ -3153,10 +3164,12 @@ export class WorldScene implements GameScene, RuntimeView {
       audio.play('item');
       this.onboarding.show('relic');
     }
+    if (got.items.some((item) => ARMOR_BY_ID[item.item_id])) this.onboarding.show('armor');
     for (const item of got.items) this.hud.toast(`${itemMeta(item.item_id).name}${item.quantity > 1 ? ` ×${item.quantity}` : ''}`, 'good');
 
     // Visuals.
     this.avatar.update(dt, p.x, p.z, p.facing, p.moving, p.stats.moveSpeed);
+    this.petView?.update(dt, p.x, p.z, p.facing);
     for (const tick of this.lineupTicks) tick(dt);
     this.vfxGallery?.update(dt);
     for (const r of this.remotes.values()) {
@@ -3164,6 +3177,7 @@ export class WorldScene implements GameScene, RuntimeView {
       const x = r.avatar.c.root.position.x + (r.tx - r.avatar.c.root.position.x) * k;
       const z = r.avatar.c.root.position.z + (r.tz - r.avatar.c.root.position.z) * k;
       r.avatar.update(dt, x, z, r.facing, r.moving, 5.4);
+      r.pet?.update(dt, x, z, r.facing);
     }
     this.views.sync(this.enemiesMap(), this.thrallsMap(), dt, p.x, p.z);
     if (now - this.lastPrune > 2000) {
@@ -3365,10 +3379,13 @@ export class WorldScene implements GameScene, RuntimeView {
     if (here === 'acre') return 'Click a glowing node to gather · Walk east to the Chapterhouse for combat';
     if (here === 'chapterhouse') return 'Walk north to the Hollow Graves · Click an enemy to attack';
     if (AREAS[here].safe) return 'Sanctuary. The dead cannot follow you here.';
-    const next = AREA_ORDER.find((id) => AREAS[id].unlock?.area === here && !this.progression.isUnlocked(id));
-    if (next) {
-      const need = this.progression.unlockKills(AREAS[next].unlock!.kills);
-      return `Slay <b>${Math.min(need, this.progression.kills(here))}/${need}</b> to unseal ${AREAS[next].name}`;
+    // Every pending seal off this hall (the Graves hold two: the Warren and the Ossuary), nearest first.
+    const pending = AREA_ORDER.filter((id) => AREAS[id].unlock?.area === here && !this.progression.isUnlocked(id))
+      .map((id) => ({ id, need: this.progression.unlockKills(AREAS[id].unlock!.kills) }))
+      .sort((a, b) => a.need - b.need);
+    if (pending.length) {
+      const kills = this.progression.kills(here);
+      return pending.map(({ id, need }) => `Slay <b>${Math.min(need, kills)}/${need}</b> to unseal ${AREAS[id].name}`).join('<br>');
     }
     if (here === 'sanctum') {
       return this.bossState().active
@@ -3787,7 +3804,8 @@ export class WorldScene implements GameScene, RuntimeView {
     this.inventory.dispose();
     this.scope.dispose();
     this.canvas.style.cursor = '';
-    for (const r of this.remotes.values()) r.avatar.dispose();
+    for (const r of this.remotes.values()) { r.avatar.dispose(); r.pet?.dispose(); }
+    this.petView?.dispose();
     this.remotes.clear();
     this.views.dispose();
     this.nodeViews.dispose();

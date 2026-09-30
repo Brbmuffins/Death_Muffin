@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { gearTier, offhandKind, weaponKind, type GearTier } from '../content/gear';
+import { ARMOR_BY_ID } from '../content/armorSets';
 import { fx } from './fxTextures';
 
 /**
@@ -125,6 +126,7 @@ export function buildOffhand(itemId: string, rarity?: string): THREE.Group {
 /** A helm that sits on the Head bone: dome, brim and (for the noble tiers) a crest. */
 export function buildHelm(itemId: string, rarity?: string): THREE.Group {
   const t = gearTier(itemId, rarity);
+  const set = ARMOR_BY_ID[itemId];
   const g = new THREE.Group();
   const metal = metalMat(t);
   const dome = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), metal);
@@ -135,6 +137,47 @@ export function buildHelm(itemId: string, rarity?: string): THREE.Group {
   seat.position.y = 0.04; // lift inside the scaled parent so it stays in world units
   g.add(seat);
   seat.add(dome, brim);
+  if (set) {
+    const accent = new THREE.MeshStandardMaterial({ color: set.accent, metalness: 0.65, roughness: 0.35, emissive: set.rarity === 'epic' ? set.accent : 0x000000, emissiveIntensity: 0.32 });
+    const jewel = new THREE.Mesh(new THREE.OctahedronGeometry(0.04), accent);
+    jewel.position.set(0, 0.08, 0.145);
+    seat.add(jewel);
+    if (set.disciplineId === 'witch' || set.disciplineId === 'rotweaver') {
+      for (const x of [-0.105, 0.105]) {
+        const thorn = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.18, 5), accent);
+        thorn.position.set(x, 0.14, 0);
+        thorn.rotation.z = x > 0 ? -0.28 : 0.28;
+        seat.add(thorn);
+      }
+    } else if (set.disciplineId === 'knight' || set.disciplineId === 'warden') {
+      const visor = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.055, 0.025), accent);
+      visor.position.set(0, 0.035, 0.145);
+      seat.add(visor);
+      const crest = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.11, 0.19), accent);
+      crest.position.y = 0.18;
+      seat.add(crest);
+    } else if (set.disciplineId === 'monk' || set.disciplineId === 'mourner' || set.disciplineId === 'veil') {
+      const halo = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.012, 5, 20), accent);
+      halo.rotation.x = Math.PI / 2;
+      halo.position.y = 0.13;
+      seat.add(halo);
+    } else {
+      const crown = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.15, 5), accent);
+      crown.position.y = 0.19;
+      seat.add(crown);
+    }
+    if (set.collection === 2) {
+      const upperRim = new THREE.Mesh(new THREE.TorusGeometry(0.165, 0.014, 6, 24), accent);
+      upperRim.rotation.x = Math.PI / 2;
+      upperRim.position.y = 0.16;
+      seat.add(upperRim);
+      for (const x of [-0.12, 0.12]) {
+        const fin = new THREE.Mesh(new THREE.ConeGeometry(0.024, 0.12, 5), accent);
+        fin.position.set(x, 0.2, -0.02);
+        seat.add(fin);
+      }
+    }
+  }
   if (t.glow) {
     const crest = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.07, 0.22), metal);
     crest.position.y = 0.15;

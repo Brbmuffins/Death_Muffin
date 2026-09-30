@@ -68,7 +68,12 @@ export function rollFirstKillItem(area: AreaId, rand = Math.random): LootDrop {
     const r = ITEMS[d.item_id]?.rarity;
     if (r === 'rare' || r === 'epic') return d;
   }
-  const rares = Object.entries(ITEMS).filter(([, m]) => m.type !== 'material' && (m.rarity === 'rare' || m.rarity === 'epic')).map(([id]) => id);
+  // Some early areas have no rare entry in their weighted table. Keep the historical rare helm
+  // fallback there; never grant a late-area set piece from the global catalog on a first kill.
+  const rares = AREAS[area].loot.map((entry) => entry.item).filter((id) => {
+    const m = ITEMS[id];
+    return m && m.type !== 'material' && (m.rarity === 'rare' || m.rarity === 'epic');
+  });
   return { item_id: rares[Math.floor(rand() * rares.length)] ?? 'helm_gold', quantity: 1 };
 }
 

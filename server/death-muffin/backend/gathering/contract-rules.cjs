@@ -299,6 +299,60 @@ var ALCHEMY_RECIPES = [
   ["brew_moonpetal_elixir", "Brew Moonlight Elixir", "alchemy", 72, "elixir_moonlight", 1, [["herb_moonpetal", 3], ["herb_bloodroot", 1]]]
 ];
 
+// src/content/armorSets.ts
+var ARMOR_PARTS = ["head", "chest", "hands", "legs", "feet"];
+var ARMOR_SETS = {
+  gravecaller: { name: "Gravecall", wearer: "Gravecaller", color: 8485789, accent: 13090268, stats: ["stat_int", "stat_vit"], lore: "Stitched for those who command the newly buried." },
+  warden: { name: "Lamplight", wearer: "Grave Warden", color: 9531463, accent: 16039271, stats: ["stat_vit", "stat_str"], lore: "Brass and soot from the grave watch." },
+  monk: { name: "Bellwake", wearer: "Bell Monk", color: 9533794, accent: 14991750, stats: ["stat_str", "stat_agi"], lore: "Worn thin by a thousand measured tolls." },
+  ossuary: { name: "Ivory Reliquary", wearer: "Ossuary", color: 13813672, accent: 10194658, stats: ["stat_int", "stat_vit"], lore: "Bone plates engraved with the Covenant dead." },
+  mourner: { name: "Widowveil", wearer: "Mourner", color: 6711948, accent: 10795488, stats: ["stat_int", "stat_agi"], lore: "Funeral cloth that remembers every name." },
+  witch: { name: "Carrionbloom", wearer: "Carrion Witch", color: 6452546, accent: 12966528, stats: ["stat_int", "stat_vit"], lore: "Living thorns bind the seams shut." },
+  rotweaver: { name: "Blightweave", wearer: "Rotweaver", color: 7636039, accent: 13231213, stats: ["stat_int", "stat_vit"], lore: "A sickly mantle spun where the plague took root." },
+  knight: { name: "Hollow Oath", wearer: "Hollow Knight", color: 6712188, accent: 13193039, stats: ["stat_str", "stat_vit"], lore: "Blackened plate still bearing its broken vow." },
+  veil: { name: "Threshold", wearer: "Veilwalker", color: 6709646, accent: 11445744, stats: ["stat_agi", "stat_int"], lore: "A border of silver marks the edge between worlds." }
+};
+var ASCENDED_ARMOR_SETS = {
+  gravecaller: { name: "Epitaph Sovereign", wearer: "Gravecaller", color: 4208735, accent: 14141951, stats: ["stat_int", "stat_vit"], lore: "A sovereign name is written on every bone clasp." },
+  warden: { name: "Nightwatch Beacon", wearer: "Grave Warden", color: 5195318, accent: 16766070, stats: ["stat_vit", "stat_str"], lore: "Its caged flame answers the last watch bell." },
+  monk: { name: "Last Toll", wearer: "Bell Monk", color: 6508865, accent: 16768412, stats: ["stat_str", "stat_agi"], lore: "Bronze thread hums with the final note." },
+  ossuary: { name: "Marrow Regent", wearer: "Ossuary", color: 11970690, accent: 15985870, stats: ["stat_int", "stat_vit"], lore: "The reliquary opens only for its bearer." },
+  mourner: { name: "Pale Requiem", wearer: "Mourner", color: 4540776, accent: 13163775, stats: ["stat_int", "stat_agi"], lore: "A hush follows wherever the silver hem falls." },
+  witch: { name: "Thorn Covenant", wearer: "Carrion Witch", color: 3888702, accent: 12120461, stats: ["stat_int", "stat_vit"], lore: "The roots draw strength from what lies beneath." },
+  rotweaver: { name: "Virulent Choir", wearer: "Rotweaver", color: 4676390, accent: 14679921, stats: ["stat_int", "stat_vit"], lore: "A bright plague song runs through its seams." },
+  knight: { name: "Oathbreaker", wearer: "Hollow Knight", color: 3488070, accent: 16742255, stats: ["stat_str", "stat_vit"], lore: "The oath is broken; the shield remains." },
+  veil: { name: "Umbral Crossing", wearer: "Veilwalker", color: 3748950, accent: 13154559, stats: ["stat_agi", "stat_int"], lore: "The wearer leaves no shadow on either side." }
+};
+var PART_NAMES = { head: "Crown", chest: "Vestment", hands: "Grips", legs: "Legguards", feet: "Treads" };
+var PART_POWER = { head: 2, chest: 4, hands: 2, legs: 3, feet: 2 };
+var RARITY_SCALE = { common: 1, uncommon: 1, rare: 2, epic: 3 };
+var PART_AREA = { head: "graves", hands: "graves", chest: "ossuary", legs: "nave", feet: "sanctum" };
+var PART_RARITY = { head: "uncommon", hands: "uncommon", chest: "rare", legs: "rare", feet: "epic" };
+var ASCENDED_AREA = { head: "sanctum", hands: "sanctum", chest: "cloister", legs: "cloister", feet: "pyre" };
+var ASCENDED_RARITY = { head: "rare", hands: "rare", chest: "epic", legs: "epic", feet: "epic" };
+function piecesFor(sets, collection) {
+  return Object.entries(sets).flatMap(([disciplineId, set]) => ARMOR_PARTS.map((part) => ({
+    id: collection === 1 ? `set_${disciplineId}_${part}` : `set_${disciplineId}_ascended_${part}`,
+    setId: collection === 1 ? disciplineId : `${disciplineId}_ascended`,
+    disciplineId,
+    collection,
+    setName: set.name,
+    part,
+    name: `${set.name} ${PART_NAMES[part]}`,
+    type: `armor_${part}`,
+    rarity: collection === 1 ? PART_RARITY[part] : ASCENDED_RARITY[part],
+    area: collection === 1 ? PART_AREA[part] : ASCENDED_AREA[part],
+    stats: { [set.stats[0]]: PART_POWER[part] * RARITY_SCALE[collection === 1 ? PART_RARITY[part] : ASCENDED_RARITY[part]] + (collection === 2 ? 1 : 0), [set.stats[1]]: Math.max(1, Math.floor(PART_POWER[part] * RARITY_SCALE[collection === 1 ? PART_RARITY[part] : ASCENDED_RARITY[part]] / 2)) },
+    color: set.color,
+    accent: set.accent,
+    wearer: set.wearer,
+    lore: set.lore,
+    sell: PART_POWER[part] * ((collection === 1 ? PART_RARITY[part] : ASCENDED_RARITY[part]) === "epic" ? 22 : (collection === 1 ? PART_RARITY[part] : ASCENDED_RARITY[part]) === "rare" ? 13 : 7) + (collection === 2 ? 20 : 0)
+  })));
+}
+var ARMOR_PIECES = [...piecesFor(ARMOR_SETS, 1), ...piecesFor(ASCENDED_ARMOR_SETS, 2)];
+var ARMOR_BY_ID = Object.fromEntries(ARMOR_PIECES.map((piece) => [piece.id, piece]));
+
 // src/content/items.ts
 var m = (name, rarity, sell, lore, icon) => ({
   name,
@@ -386,6 +440,15 @@ for (const [id, g2] of Object.entries(GARDEN_ITEMS)) ITEMS[id] ??= { name: g2.na
 for (const [id, c] of Object.entries(CHARM_ITEMS)) ITEMS[id] ??= { name: c.name, type: "material", rarity: c.rarity, sell: c.sell, lore: c.lore, stack: 1 };
 for (const [id, a] of Object.entries(ALCHEMY_ITEMS)) ITEMS[id] ??= { name: a.name, type: "material", rarity: a.rarity, sell: a.sell, lore: a.lore, stack: a.stack };
 for (const [id, p] of Object.entries(PROCESSING_ITEMS)) ITEMS[id] ??= { name: p.name, type: "material", rarity: p.rarity, sell: p.sell, lore: p.lore, stack: p.stack };
+for (const piece of ARMOR_PIECES) ITEMS[piece.id] = {
+  name: piece.name,
+  type: piece.type,
+  rarity: piece.rarity,
+  sell: piece.sell,
+  lore: piece.lore,
+  icon: `art/items/${piece.id}.svg`,
+  offlineStats: piece.stats
+};
 function itemMeta(id) {
   return ITEMS[id] ?? { name: id.replace(/_/g, " "), type: "material", rarity: "common", sell: 0 };
 }

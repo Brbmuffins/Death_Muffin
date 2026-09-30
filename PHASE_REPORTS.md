@@ -906,3 +906,14 @@ Two more areas, both reusing existing props and mobs (only floor textures are ne
   caught two real bugs (a breach under a pillar and one under a sarcophagus).
 - **QA:** `tools/qa/levels-smoke.cjs` (warren, coliseum, pyre screenshots + a mob mix), `pyre-smoke.cjs`, `regent-smoke.cjs`.
   Run them on an idle machine: a leftover headless Chromium makes screenshots time out.
+
+## Armor sets: tuning and findability pass (2026-09-30)
+
+- **Tuning** (`balance:boss` regent, 4 disciplines): the first set ≈ the "intended" gear band (+22 INT/+11 VIT ≈ one rare helm plus kit),
+  but the ascended set's flat +2/+1 made a full set ≈ +45 INT and turned the Regent into a stand-still win (non-dodgers 0/2 → 2/2, 125 s → 70 s).
+  Trimmed to +1 primary / +0 secondary per ascended piece (full set ≈ +40 INT, +17 VIT); dodging still matters for 3 of 4 disciplines.
+  Open for owner feel: 5 of 9 sets are INT/VIT and INT is the best damage stat for every class, so those sets are the default pick.
+- **Findability:** the Graves/Ossuary HUD line only showed the first pending seal, so the Warren (150) and Coliseum (350) were never
+  announced; it now lists every pending seal. The "A seal breaks" banner says which door to use ("the west door of The Hollow Graves").
+  First set-piece drop shows a counsel tip (`armor`); tooltips show "N/5 worn" and say there is no set bonus.
+- Migrations 011 and 012 must be applied (`sudo mysql death_muffin < file`) before the client that drops these items is published.

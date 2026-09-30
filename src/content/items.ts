@@ -3,6 +3,7 @@ import { PROCESSING_ITEMS } from './processing';
 import { GARDEN_ITEMS } from './gardening';
 import { ALCHEMY_BUFFS, ALCHEMY_HEALING, ALCHEMY_ITEMS } from './alchemy';
 import { CHARM_ITEMS } from './cosmetics';
+import { ARMOR_PIECES } from './armorSets';
 
 /**
  * Client-side display metadata for item ids the live server knows about
@@ -117,6 +118,12 @@ for (const [id, a] of Object.entries(ALCHEMY_ITEMS)) ITEMS[id] ??= { name: a.nam
 
 // Professions G6 (content/processing.ts; server rows from migration 004-processing.sql).
 for (const [id, p] of Object.entries(PROCESSING_ITEMS)) ITEMS[id] ??= { name: p.name, type: 'material', rarity: p.rarity, sell: p.sell, lore: p.lore, stack: p.stack };
+
+for (const piece of ARMOR_PIECES) ITEMS[piece.id] = {
+  name: piece.name, type: piece.type, rarity: piece.rarity, sell: piece.sell,
+  lore: piece.lore,
+  icon: `art/items/${piece.id}.svg`, offlineStats: piece.stats,
+};
 
 export const RARITY_COLOR: Record<Rarity, string> = {
   common: '#b9b2a4',

@@ -1,4 +1,5 @@
 import type { EnemyId } from './enemies';
+import { armorLoot } from './armorSets';
 
 /**
  * One connected world (audit: "one continuous farming space assembled from
@@ -137,6 +138,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
     waveIntervalMs: 6500,
     eliteChance: 0.035,
     loot: [
+      ...armorLoot('graves'),
       { item: 'material_copper_shard', weight: 30 },
       { item: 'ore_copper', weight: 24 },
       { item: 'ore_tin', weight: 14 },
@@ -183,6 +185,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
     eliteChance: 0.045,
     unlock: { area: 'graves', kills: 300 },
     loot: [
+      ...armorLoot('ossuary'),
       { item: 'ore_iron', weight: 24 },
       { item: 'ore_copper', weight: 14 },
       { item: 'material_copper_bar', weight: 14 },
@@ -228,6 +231,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
     eliteChance: 0.055,
     unlock: { area: 'ossuary', kills: 420 },
     loot: [
+      ...armorLoot('nave'),
       { item: 'ore_silver', weight: 20 },
       { item: 'ore_iron', weight: 20 },
       { item: 'ore_gold', weight: 8 },
@@ -272,6 +276,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
     eliteChance: 0.07,
     unlock: { area: 'nave', kills: 520 },
     loot: [
+      ...armorLoot('sanctum'),
       { item: 'ore_gold', weight: 18 },
       { item: 'ore_steel', weight: 14 },
       { item: 'ingot_gold', weight: 8 },
@@ -314,6 +319,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
     eliteChance: 0.08,
     unlock: { area: 'sanctum', kills: 600 },
     loot: [
+      ...armorLoot('cloister'),
       { item: 'ore_steel', weight: 14 },
       { item: 'ore_hell', weight: 12 },
       { item: 'ore_moon', weight: 6 },
@@ -356,6 +362,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
     eliteChance: 0.09,
     unlock: { area: 'cloister', kills: 700 },
     loot: [
+      ...armorLoot('pyre'),
       { item: 'ore_hell', weight: 22 },
       { item: 'ingot_hell', weight: 6 },
       { item: 'ore_steel', weight: 12 },

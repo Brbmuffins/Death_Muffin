@@ -1,4 +1,5 @@
 import type { InventorySlot, ItemType } from '../net/types';
+import { ARMOR_BY_ID } from './armorSets';
 
 /** The nine equipment slots the server knows (reservedSlots in /api/inventory/equip). */
 export type EquipSlot = 'head' | 'chest' | 'legs' | 'feet' | 'hands' | 'main_hand' | 'off_hand' | 'ring' | 'trinket';
@@ -82,6 +83,8 @@ const TIERS: Record<string, GearTier> = {
 
 /** Guess a material tier from the item id ("helm_iron", "sword_copper", "staff_oak" …). */
 export function gearTier(itemId: string, rarity?: string): GearTier {
+  const armor = ARMOR_BY_ID[itemId];
+  if (armor) return { color: armor.color, metal: armor.disciplineId === 'knight' || armor.disciplineId === 'warden' ? 0.75 : 0.24, rough: armor.collection === 2 ? 0.38 : 0.55, glow: armor.collection === 2 || armor.rarity === 'epic' ? armor.accent : undefined };
   for (const key of ['moon', 'hell', 'gold', 'steel', 'iron', 'copper', 'bone']) if (itemId.includes(key)) return TIERS[key];
   if (/oak|wood|apprentice|spike/.test(itemId)) return TIERS.wood;
   // Unknown ids: let rarity pick a look so nothing renders as a grey placeholder.

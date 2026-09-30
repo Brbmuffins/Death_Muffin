@@ -307,7 +307,7 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       if (qty <= 0) continue;
       next.push({ slot_index: Number(s.slot_index), item_id: s.item_id, quantity: qty, equipped: s.equipped ? 1 : 0 });
     }
-    acc.slots = next;
+    acc.slots = [...acc.slots.filter((s) => s.slot_index >= 100), ...next];
     return ok(acc.slots.map(joinSlot));
   }
 
@@ -315,8 +315,24 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     ownCharacter(acc, body.characterId);
     const slot = acc.slots.find((s) => s.slot_index === Number(body.slot_index));
     if (!slot) return fail('Slot is empty');
-    if (MOCK_ITEMS[slot.item_id]?.item_type === 'material') return fail('That item cannot be equipped');
-    slot.equipped = body.equipped ? 1 : 0;
+    const type = MOCK_ITEMS[slot.item_id]?.item_type;
+    const gearSlot = type && equipSlotOf({ item_type: type, equipped_slot: null, item_equipment_slot: null });
+    if (!gearSlot) return fail('That item cannot be equipped');
+    const reserved = { head: 100, chest: 101, legs: 102, feet: 103, hands: 104, main_hand: 105, off_hand: 106, ring: 107, trinket: 108 }[gearSlot];
+    const free = () => Array.from({ length: 24 }, (_, i) => i).find((i) => !acc.slots.some((s) => s !== slot && s.slot_index === i));
+    if (body.equipped) {
+      const previous = acc.slots.find((s) => s !== slot && s.slot_index === reserved);
+      if (previous && free() === undefined) return fail('Not enough inventory space to swap equipment');
+      const bagIndex = slot.slot_index;
+      slot.slot_index = reserved;
+      slot.equipped = 1;
+      if (previous) { previous.slot_index = bagIndex; previous.equipped = 0; }
+    } else {
+      const bagIndex = free();
+      if (bagIndex === undefined) return fail('Inventory full');
+      slot.slot_index = bagIndex;
+      slot.equipped = 0;
+    }
     return ok(acc.slots.map(joinSlot));
   }
 
