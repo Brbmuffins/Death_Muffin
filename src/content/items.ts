@@ -1,5 +1,6 @@
 import type { ItemType, Rarity } from '../net/types';
 import { PROCESSING_ITEMS } from './processing';
+import { GARDEN_ITEMS } from './gardening';
 
 /**
  * Client-side display metadata for item ids the live server knows about
@@ -102,6 +103,9 @@ export const ITEMS: Record<string, ItemMeta> = {
   helm_gold: { name: 'Gold-Tempered Helm', type: 'armor_head', rarity: 'rare', sell: 60, lore: 'Prelate\'s regalia, bell-dented.', offlineStats: { stat_vit: 6, stat_int: 4 } },
   kit_iron_warden: { name: 'Iron Warden Kit', type: 'trinket', rarity: 'rare', sell: 55, offlineStats: { stat_vit: 4, stat_int: 4 } },
 };
+
+// Grave Gardening (content/gardening.ts; server rows from migration 007-gardening.sql).
+for (const [id, g] of Object.entries(GARDEN_ITEMS)) ITEMS[id] ??= { name: g.name, type: 'material', rarity: g.rarity, sell: g.sell, lore: g.lore, stack: g.stack };
 
 // Professions G6 (content/processing.ts; server rows from migration 004-processing.sql).
 for (const [id, p] of Object.entries(PROCESSING_ITEMS)) ITEMS[id] ??= { name: p.name, type: 'material', rarity: p.rarity, sell: p.sell, lore: p.lore, stack: p.stack };

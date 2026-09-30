@@ -100,10 +100,10 @@ const GEMS = (scale: number): LootLine[] => [
 
 const NODE_LIST: NodeDef[] = [
   // Woodcutting
-  node({ id: 'coffin_oak', skill: 'woodcutting', name: 'Coffin-Oak', kind: 'tree', level: 1, xp: 6, ticks: 4, item: 'log_oak', yields: [1, 4], respawnS: 8, extras: CROWS_NEST, tint: 0x6b5236 }),
+  node({ id: 'coffin_oak', skill: 'woodcutting', name: 'Coffin-Oak', kind: 'tree', level: 1, xp: 6, ticks: 4, item: 'log_oak', yields: [1, 4], respawnS: 8, extras: [...CROWS_NEST, { item: 'sapling_oak', chance: 1 / 40 }], tint: 0x6b5236 }),
   node({ id: 'hangman_elm', skill: 'woodcutting', name: "Hangman's Elm", kind: 'tree', level: 5, xp: 14, ticks: 5, item: 'log_elm', yields: [3, 6], respawnS: 12, extras: CROWS_NEST, tint: 0x5d5a3c }),
   node({ id: 'bleeding_willow', skill: 'woodcutting', name: 'Bleeding Willow', kind: 'tree', level: 15, xp: 24, ticks: 5, item: 'log_willow', yields: [4, 8], respawnS: 15, extras: CROWS_NEST, tint: 0x7a3a34 }),
-  node({ id: 'churchyard_yew', skill: 'woodcutting', name: 'Churchyard Yew', kind: 'tree', level: 45, xp: 38, ticks: 6, item: 'log_yew', yields: [5, 10], respawnS: 30, extras: CROWS_NEST, tint: 0x2f4a33 }),
+  node({ id: 'churchyard_yew', skill: 'woodcutting', name: 'Churchyard Yew', kind: 'tree', level: 45, xp: 38, ticks: 6, item: 'log_yew', yields: [5, 10], respawnS: 30, extras: [...CROWS_NEST, { item: 'sapling_yew', chance: 1 / 50 }], tint: 0x2f4a33 }),
   node({ id: 'blackthorn', skill: 'woodcutting', name: 'Blackthorn', kind: 'tree', level: 60, xp: 55, ticks: 7, item: 'log_blackthorn', yields: [6, 12], respawnS: 45, extras: CROWS_NEST, tint: 0x2a2530 }),
   node({ id: 'ghostwood', skill: 'woodcutting', name: 'Ghostwood', kind: 'tree', level: 75, xp: 80, ticks: 8, item: 'log_ghostwood', yields: [6, 12], respawnS: 60, extras: CROWS_NEST, tint: 0x9fb8b0 }),
   node({ id: 'bone_elder', skill: 'woodcutting', name: 'Bone Elder', kind: 'tree', level: 90, xp: 115, ticks: 8, item: 'log_bone_elder', yields: [8, 14], respawnS: 120, extras: CROWS_NEST, tint: 0xe6dcc4 }),
@@ -131,12 +131,12 @@ const NODE_LIST: NodeDef[] = [
   }),
   node({
     id: 'grave_mound', skill: 'gravedigging', name: 'Burial Mound', kind: 'grave', level: 20, xp: 18, ticks: 5, item: 'bones_barrow',
-    yields: [3, 5], respawnS: 18, gold: [1, 4], tint: 0x4d4632, extras: [{ item: 'ring_copper', chance: 1 / 120 }, { item: 'seed_mourning_moss', chance: 1 / 20 }],
+    yields: [3, 5], respawnS: 18, gold: [1, 4], tint: 0x4d4632, extras: [{ item: 'ring_copper', chance: 1 / 120 }, { item: 'seed_mourning_moss', chance: 1 / 20 }, { item: 'seed_nightshade', chance: 1 / 25 }],
   }),
   node({
     id: 'grave_crypt', skill: 'gravedigging', name: 'Crypt Collapse', kind: 'grave', level: 40, xp: 34, ticks: 6, item: 'bones_crypt',
     yields: [3, 6], respawnS: 30, gold: [2, 6], tint: 0x5a5650,
-    extras: [{ item: 'ore_silver', chance: 1 / 8 }, { item: 'reliquary_fragment', chance: 1 / 60 }],
+    extras: [{ item: 'ore_silver', chance: 1 / 8 }, { item: 'reliquary_fragment', chance: 1 / 60 }, { item: 'seed_corpse_lily', chance: 1 / 25 }, { item: 'seed_wolfsbane', chance: 1 / 40 }],
   }),
   node({
     id: 'grave_barrow_king', skill: 'gravedigging', name: "Barrow-King's Tomb", kind: 'grave', level: 70, xp: 70, ticks: 8, item: 'bones_ancient',
@@ -144,6 +144,8 @@ const NODE_LIST: NodeDef[] = [
     extras: [
       { item: 'covenant_seal', chance: 1 / 40 },
       { item: 'reliquary_fragment', chance: 1 / 25 },
+      { item: 'seed_bloodroot', chance: 1 / 20 },
+      { item: 'seed_moonpetal', chance: 1 / 30 },
       { item: 'helm_gold', chance: 1 / 900 },
       { item: 'chest_iron', chance: 1 / 700 },
       { item: 'kit_iron_warden', chance: 1 / 800 },

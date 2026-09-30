@@ -336,3 +336,44 @@ export function getContracts(characterId: number) {
 export function deliverContract(characterId: number, slot: number) {
   return unwrap<ContractDelivery>(request('/api/contracts/deliver', { method: 'POST', body: JSON.stringify({ characterId, slot }) }, true));
 }
+
+// --- Grave Gardening: plots that grow in real time (server/death-muffin/backend/garden.cjs) ---
+
+export interface GardenPlot {
+  plot: string;
+  kind: 'herb' | 'tree';
+  label: string;
+  seedId: string | null;
+  plantedAt: number;
+  readyAt: number;
+  composted: boolean;
+  state: 'empty' | 'growing' | 'ready';
+}
+
+export interface GardenView {
+  /** The server's clock, so countdowns don't depend on the player's. */
+  now: number;
+  level: number;
+  xp: number;
+  xpToNext: number;
+  plots: GardenPlot[];
+}
+
+export interface GardenResult extends GardenView {
+  gainedXp: number;
+  leveledUp: boolean;
+  /** Harvest only: what went into the bag (the crop, and a seed if one came back). */
+  items?: { itemId: string; qty: number }[];
+}
+
+export function getGarden(characterId: number) {
+  return unwrap<GardenView>(request(`/api/garden/${characterId}`, {}, true));
+}
+
+export function plantGarden(characterId: number, plot: string, seedId: string, compost: boolean) {
+  return unwrap<GardenResult>(request('/api/garden/plant', { method: 'POST', body: JSON.stringify({ characterId, plot, seedId, compost }) }, true));
+}
+
+export function harvestGarden(characterId: number, plot: string) {
+  return unwrap<GardenResult>(request('/api/garden/harvest', { method: 'POST', body: JSON.stringify({ characterId, plot }) }, true));
+}

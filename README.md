@@ -47,7 +47,7 @@ On **Easy**, auto combat can engage enemies, use equipped rites, heal, and drink
 | **Q** | Drink a healing flask |
 | **T** | Recall to the Chapterhouse |
 | **L** | Open the Grimoire to inspect rites and set the four keys |
-| **I** or **B** / **C** / **P** / **O** | Reliquary / Workbench / Skills and AFK gathering / Sexton’s Contracts |
+| **I** or **B** / **C** / **P** / **O** / **U** | Reliquary / Workbench / Skills and AFK gathering / Sexton’s Contracts / Grave Gardening |
 | **M** / **K** | Waystone map / Codex |
 | **G** | Toggle auto combat on Easy |
 | **Enter** | Chat |
@@ -184,7 +184,7 @@ The **Sexton's Acre**, west of the Chapterhouse, contains every tier of the four
 
 Keep a matching hatchet, pickaxe, rod, or spade **in your bag** to improve gathering success; the best one you carry counts. The Workbench crafts stronger tools from ingots and planks. Some hunting grounds also hold richer nodes, but enemy hits interrupt gathering there.
 
-With **Auto gathering** enabled in Settings, clicking a node can continue to another of the same kind. For longer sessions, use **P → choose a node tier → Start AFK** while in the Acre. Your character keeps working while the game is open. A full bag pauses work; make space and start again. Movement, casting, or **Pause AFK** stops it. Closing the game ends the session, so this does not earn rewards while offline. When AFK work stops, **the Sexton’s Ledger** opens with what the session brought back: time worked, finds and their worth, skill levels gained, your best find, milestones and personal bests. Press **O** (or the Contracts button in Skills) for **the Sexton’s Contracts**: three delivery orders a day, from easy to hard, drawn from what your skills can make. Deliver from your bag for gold and sometimes an item; fill all three for a bonus and build a daily streak.
+With **Auto gathering** enabled in Settings, clicking a node can continue to another of the same kind. For longer sessions, use **P → choose a node tier → Start AFK** while in the Acre. Your character keeps working while the game is open. A full bag pauses work; make space and start again. Movement, casting, or **Pause AFK** stops it. Closing the game ends the session, so this does not earn rewards while offline. When AFK work stops, **the Sexton’s Ledger** opens with what the session brought back: time worked, finds and their worth, skill levels gained, your best find, milestones and personal bests. Press **O** (or the Contracts button in Skills) for **the Sexton’s Contracts**: three delivery orders a day, from easy to hard, drawn from what your skills can make. Deliver from your bag for gold and sometimes an item; fill all three for a bonus and build a daily streak. **Grave Gardening (U)** has four Mourning Beds and two Coffin Patches: plant a seed or sapling and come back, because it grows in real time even while you are away (bone meal makes it a quarter faster). Seeds drop from graves, saplings from Coffin-Oaks and Yews, and you are told when plots are ready.
 
 <table><tr>
 <td><img src="docs/screenshots/gathering.webp" alt="Working a gathering node" /><br /><sub>Working a node</sub></td>

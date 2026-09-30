@@ -26,7 +26,7 @@ import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
 import { BOONS, ascensionLevels, ascensionRewardMult, roman } from '../content/ascension';
 import { AscensionPanel } from '../ui/AscensionPanel';
 import { ClassPanel } from '../ui/ClassPanel';
-import { changeDiscipline, type ContractDelivery } from '../net/api';
+import { changeDiscipline, getGarden, type ContractDelivery, type GardenResult } from '../net/api';
 import { onSettingsChange, settings, updateSettings } from '../app/settings';
 import { selectAutoCombatAction, selectAutoCombatMovement, type AutoMoveMemory } from '../gameplay/autoCombat';
 import { STATUS_FX } from '../content/statuses';
@@ -63,6 +63,7 @@ import { Chronicle } from '../gameplay/chronicle';
 import { GatherSession, loadBests, saveBests } from '../gameplay/gatherReport';
 import { GatherReportPanel } from '../ui/GatherReportPanel';
 import { ContractsPanel } from '../ui/ContractsPanel';
+import { GardenPanel } from '../ui/GardenPanel';
 import { beginAfkGather, gather, getInventory, getProfessions, getToken, OFFLINE, type GatherReply } from '../net/api';
 import type { RemotePlayer, WorldSnapshot } from '../net/contracts';
 import { RealtimeClient } from '../net/realtime';
@@ -185,6 +186,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private gatherSession: GatherSession | null = null;
   private gatherReportPanel!: GatherReportPanel;
   private contractsPanel!: ContractsPanel;
+  private gardenPanel!: GardenPanel;
+  private gardenReady = -1;
   private saintBlessTold = false;
   private saintRainTold = false;
   private saintLinkTold = false;
@@ -526,6 +529,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.scope.add(this.progression.onError((msg) => this.hud.toast(msg, 'err')));
     this.scope.add(this.progression.onSynced(() => this.onProgressSynced()));
     this.dataReady = Promise.all([inventoryReady, this.progression.connect()]);
+    // The garden grows on the server's clock: say what is waiting on arrival, and as plots come ready.
+    void this.dataReady.then(() => window.setTimeout(() => void this.checkGarden(true), 4000));
+    this.scope.interval(() => void this.checkGarden(false), 60_000);
     this.onboarding.show('welcome', 900);
     this.onboarding.show('move', 1600);
     // First time in the world as a Knight: Rage works nothing like essence.
@@ -651,7 +657,8 @@ export class WorldScene implements GameScene, RuntimeView {
       start: type => this.startAfkGathering(type),
       pause: () => this.gathering.stop('moved'),
       status: () => ({ active: this.gathering.afk, text: this.gathering.status, allowed: this.player.area === 'acre' }),
-    }, () => this.inventory.all.map((s) => s.item_id), () => this.togglePanel('contracts'));
+    }, () => this.inventory.all.map((s) => s.item_id), () => this.togglePanel('contracts'), () => this.togglePanel('garden'));
+    this.gardenPanel = new GardenPanel(this.root, this.character.id, this.inventory, (kind, r) => this.onGardenResult(kind, r));
     this.contractsPanel = new ContractsPanel(this.root, this.character.id, this.inventory, (d) => this.onContractDelivered(d));
     this.settingsPanel = new SettingsPanel(
       this.root,
@@ -732,6 +739,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.grimoirePanel.close();
     this.gatherReportPanel?.close();
     this.contractsPanel?.close();
+    this.gardenPanel?.close();
   }
 
   private async changeClass(index: number) {
@@ -752,6 +760,37 @@ export class WorldScene implements GameScene, RuntimeView {
     }
   }
 
+  /** Plant / harvest finished: credit the skill, count the crop, and tell the player. */
+  private onGardenResult(kind: 'plant' | 'harvest', r: GardenResult) {
+    audio.play(kind === 'harvest' ? 'coin' : 'click');
+    void getProfessions(this.character.id).then((rows) => this.skills.adopt(rows)).catch(() => {});
+    if (kind === 'harvest' && r.items?.length) {
+      const crop = r.items[0];
+      this.chronicle.add('gathered.gardening', crop.qty);
+      const seedBack = r.items[1];
+      this.hud.toast(`Harvested ${crop.qty}× ${itemMeta(crop.itemId).name}${seedBack ? ' (and a seed to replant)' : ''}`, 'good');
+    }
+    if (r.leveledUp) this.hud.banner(`Grave Gardening ${r.level}`, 'The beds answer you more readily', 2600);
+    this.gardenReady = r.plots.filter((p) => p.state === 'ready').length;
+  }
+
+  /** Tell the player when the garden has something waiting: on arrival, and as plots come ready while they play. */
+  private async checkGarden(arrival: boolean) {
+    try {
+      const v = await getGarden(this.character.id);
+      const ready = v.plots.filter((p) => p.state === 'ready').length;
+      const growing = v.plots.filter((p) => p.state === 'growing').length;
+      if (ready > 0 && (arrival || ready > this.gardenReady)) {
+        this.hud.toast(`${ready} plot${ready === 1 ? ' is' : 's are'} ready in your garden (U)`, 'good');
+      } else if (arrival && growing > 0) {
+        this.hud.toast(`${growing} plot${growing === 1 ? ' is' : 's are'} still growing in your garden (U)`);
+      }
+      this.gardenReady = ready;
+    } catch {
+      /* the garden is a nicety: a failed check just tries again next minute */
+    }
+  }
+
   private onContractDelivered(d: ContractDelivery) {
     if (d.gold > 0) {
       this.progression.addGold(d.gold);
@@ -762,9 +801,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hud.toast(d.paidBonus ? `Order filled, and the day’s bonus is yours: +${d.paidBonus.gold.toLocaleString()}g` : 'Order filled', 'good');
   }
 
-  private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts') {
+  private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts' | 'garden') {
     audio.play('click');
-    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel }[p];
+    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel }[p];
     const wasOpen = panel.isOpen;
     this.closePanels();
     if (wasOpen) return;
@@ -775,6 +814,7 @@ export class WorldScene implements GameScene, RuntimeView {
     else if (p === 'settings') this.settingsPanel.open();
     else if (p === 'codex') this.codexPanel.open();
     else if (p === 'contracts') void this.contractsPanel.open();
+    else if (p === 'garden') void this.gardenPanel.open();
     else if (p === 'ascension') this.ascensionPanel.open();
     else if (p === 'grimoire') {
       this.grimoirePanel.open();
@@ -824,6 +864,7 @@ export class WorldScene implements GameScene, RuntimeView {
       else if (k === 'c') this.togglePanel('forge');
       else if (k === 'p') this.togglePanel('professions');
       else if (k === 'o') this.togglePanel('contracts');
+      else if (k === 'u') this.togglePanel('garden');
       else if (k === 'm') this.togglePanel('map');
       else if (k === 'k') this.togglePanel('codex');
       else if (k === 'l') this.togglePanel('grimoire');
@@ -922,7 +963,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private panelOpen() {
-    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen;
+    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.gardenPanel?.isOpen;
   }
 
   private interactablesNear(): Interactable[] {

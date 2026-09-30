@@ -15,6 +15,7 @@ import { equipSlotOf } from '../content/gear';
 import * as necro from '../gameplay/necroRules';
 import type { NecroState } from '../gameplay/necroRules';
 import * as contractRules from '../gameplay/contractRules';
+import * as gardenRules from '../gameplay/gardeningRules';
 import { itemMeta } from '../content/items';
 import * as gather from '../gameplay/gatheringRules';
 import { PROCESSING_RECIPES } from '../content/processing';
@@ -104,6 +105,8 @@ interface StoredSlot {
 interface MockAccount {
   /** Server-side necromancer progression (mirrors character_necro_progress). */
   necro?: NecroState;
+  /** Grave Gardening plots (mirrors garden_plots). */
+  garden?: Record<string, gardenRules.PlotRow>;
   /** Sexton's Contracts: which of today's orders are filled (mirrors character_contracts). */
   contracts?: { day: string; done: number[]; bonus: boolean; days: string[] };
   /** The Chronicle (mirrors character_chronicle + character_runs). */
@@ -417,6 +420,66 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       if (body[k] !== undefined) c[k] = Number(body[k]);
     }
     return ok({ saved: true });
+  }
+
+  // --- Grave Gardening: the same shared rules the server runs; growth is timestamp-based. ---
+  const plotsOf = () => (acc.garden ??= {});
+  const gardenView = (now: number) => {
+    const lvl = acc.professions.find((pr) => pr.profession_id === 'gardening');
+    const level = lvl?.skill_level ?? 1;
+    return {
+      now, level, xp: lvl?.skill_xp ?? 0, xpToNext: gather.xpToNext(level),
+      plots: gardenRules.PLOTS.map((d) => { const row = plotsOf()[d.id]; return { plot: d.id, kind: d.kind, label: d.label, seedId: row?.seedId ?? null, plantedAt: row?.plantedAt ?? 0, readyAt: row?.readyAt ?? 0, composted: !!row?.composted, state: gardenRules.stateOf(row, now) }; }),
+    };
+  };
+  const gardenXp = (xp: number) => {
+    let pr = acc.professions.find((x) => x.profession_id === 'gardening');
+    if (!pr) { pr = { profession_id: 'gardening', skill_level: 1, skill_xp: 0 }; acc.professions.push(pr); }
+    const next = gather.addSkillXp({ level: pr.skill_level, xp: pr.skill_xp }, xp);
+    pr.skill_level = next.level;
+    pr.skill_xp = next.xp;
+    return next.leveled > 0;
+  };
+  const takeFromBag = (itemId: string, n: number) => {
+    const have = acc.slots.filter((s) => s.item_id === itemId && !s.equipped && s.slot_index < 24).reduce((t, s) => t + s.quantity, 0);
+    if (have < n) return false;
+    let left = n;
+    for (const s of acc.slots.filter((x) => x.item_id === itemId && !x.equipped && x.slot_index < 24)) { const t = Math.min(left, s.quantity); s.quantity -= t; left -= t; }
+    acc.slots = acc.slots.filter((s) => s.quantity > 0);
+    return true;
+  };
+  if ((m = p.match(/^\/api\/garden\/(\d+)$/)) && method === 'GET') {
+    ownCharacter(acc, m[1]);
+    return ok(gardenView(Date.now()));
+  }
+  if (p === '/api/garden/plant' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const now = Date.now();
+    const view = gardenView(now);
+    const blocked = gardenRules.plantBlocker(gardenRules.plotDef(body.plot), body.seedId, view.level, plotsOf()[body.plot], now);
+    if (blocked) return fail(blocked);
+    if (!takeFromBag(body.seedId, 1)) return fail('You have no such seed in your bag.');
+    if (body.compost && !takeFromBag(gardenRules.COMPOST_ITEM, 1)) return fail('You have no bone meal in your bag.');
+    const seed = gardenRules.seedDef(body.seedId)!;
+    plotsOf()[body.plot] = { plot: body.plot, seedId: seed.id, plantedAt: now, readyAt: now + gardenRules.growMs(seed, !!body.compost), composted: !!body.compost };
+    const leveledUp = gardenXp(seed.plantXp);
+    return ok({ ...gardenView(now), gainedXp: seed.plantXp, leveledUp });
+  }
+  if (p === '/api/garden/harvest' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const now = Date.now();
+    const row = plotsOf()[body.plot];
+    if (gardenRules.stateOf(row, now) === 'empty') return fail('Nothing is growing there.');
+    if (gardenRules.stateOf(row, now) !== 'ready') return fail('It is not ready yet.');
+    const crop = gardenRules.rollHarvest(gardenRules.seedDef(row.seedId!)!, Math.random);
+    const grants = [{ itemId: crop.itemId, qty: crop.qty }, ...(crop.seedBack ? [{ itemId: crop.seedBack, qty: 1 }] : [])];
+    const placed = gather.placeItems(acc.slots.map((s) => ({ slot: s.slot_index, itemId: s.equipped ? '' : s.item_id, qty: s.quantity })), grants, () => 250);
+    if (placed.rejected.length) return fail('Make room in your bag before you harvest.');
+    for (const u of placed.updates) acc.slots.find((s) => s.slot_index === u.slot)!.quantity = u.qty;
+    for (const r of placed.inserts) acc.slots.push({ slot_index: r.slot, item_id: r.itemId, quantity: r.qty, equipped: 0 });
+    delete plotsOf()[body.plot];
+    const leveledUp = gardenXp(crop.xp);
+    return ok({ ...gardenView(now), items: grants, gainedXp: crop.xp, leveledUp });
   }
 
   // --- Sexton's Contracts: the same shared board rules the server runs. ---

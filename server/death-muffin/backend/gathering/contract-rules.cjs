@@ -45,10 +45,10 @@ var GEMS = (scale) => [
 ];
 var NODE_LIST = [
   // Woodcutting
-  node({ id: "coffin_oak", skill: "woodcutting", name: "Coffin-Oak", kind: "tree", level: 1, xp: 6, ticks: 4, item: "log_oak", yields: [1, 4], respawnS: 8, extras: CROWS_NEST, tint: 7033398 }),
+  node({ id: "coffin_oak", skill: "woodcutting", name: "Coffin-Oak", kind: "tree", level: 1, xp: 6, ticks: 4, item: "log_oak", yields: [1, 4], respawnS: 8, extras: [...CROWS_NEST, { item: "sapling_oak", chance: 1 / 40 }], tint: 7033398 }),
   node({ id: "hangman_elm", skill: "woodcutting", name: "Hangman's Elm", kind: "tree", level: 5, xp: 14, ticks: 5, item: "log_elm", yields: [3, 6], respawnS: 12, extras: CROWS_NEST, tint: 6117948 }),
   node({ id: "bleeding_willow", skill: "woodcutting", name: "Bleeding Willow", kind: "tree", level: 15, xp: 24, ticks: 5, item: "log_willow", yields: [4, 8], respawnS: 15, extras: CROWS_NEST, tint: 8010292 }),
-  node({ id: "churchyard_yew", skill: "woodcutting", name: "Churchyard Yew", kind: "tree", level: 45, xp: 38, ticks: 6, item: "log_yew", yields: [5, 10], respawnS: 30, extras: CROWS_NEST, tint: 3099187 }),
+  node({ id: "churchyard_yew", skill: "woodcutting", name: "Churchyard Yew", kind: "tree", level: 45, xp: 38, ticks: 6, item: "log_yew", yields: [5, 10], respawnS: 30, extras: [...CROWS_NEST, { item: "sapling_yew", chance: 1 / 50 }], tint: 3099187 }),
   node({ id: "blackthorn", skill: "woodcutting", name: "Blackthorn", kind: "tree", level: 60, xp: 55, ticks: 7, item: "log_blackthorn", yields: [6, 12], respawnS: 45, extras: CROWS_NEST, tint: 2762032 }),
   node({ id: "ghostwood", skill: "woodcutting", name: "Ghostwood", kind: "tree", level: 75, xp: 80, ticks: 8, item: "log_ghostwood", yields: [6, 12], respawnS: 60, extras: CROWS_NEST, tint: 10467504 }),
   node({ id: "bone_elder", skill: "woodcutting", name: "Bone Elder", kind: "tree", level: 90, xp: 115, ticks: 8, item: "log_bone_elder", yields: [8, 14], respawnS: 120, extras: CROWS_NEST, tint: 15129796 }),
@@ -98,7 +98,7 @@ var NODE_LIST = [
     respawnS: 18,
     gold: [1, 4],
     tint: 5064242,
-    extras: [{ item: "ring_copper", chance: 1 / 120 }, { item: "seed_mourning_moss", chance: 1 / 20 }]
+    extras: [{ item: "ring_copper", chance: 1 / 120 }, { item: "seed_mourning_moss", chance: 1 / 20 }, { item: "seed_nightshade", chance: 1 / 25 }]
   }),
   node({
     id: "grave_crypt",
@@ -113,7 +113,7 @@ var NODE_LIST = [
     respawnS: 30,
     gold: [2, 6],
     tint: 5920336,
-    extras: [{ item: "ore_silver", chance: 1 / 8 }, { item: "reliquary_fragment", chance: 1 / 60 }]
+    extras: [{ item: "ore_silver", chance: 1 / 8 }, { item: "reliquary_fragment", chance: 1 / 60 }, { item: "seed_corpse_lily", chance: 1 / 25 }, { item: "seed_wolfsbane", chance: 1 / 40 }]
   }),
   node({
     id: "grave_barrow_king",
@@ -131,6 +131,8 @@ var NODE_LIST = [
     extras: [
       { item: "covenant_seal", chance: 1 / 40 },
       { item: "reliquary_fragment", chance: 1 / 25 },
+      { item: "seed_bloodroot", chance: 1 / 20 },
+      { item: "seed_moonpetal", chance: 1 / 30 },
       { item: "helm_gold", chance: 1 / 900 },
       { item: "chest_iron", chance: 1 / 700 },
       { item: "kit_iron_warden", chance: 1 / 800 }
@@ -204,6 +206,45 @@ for (const skill of Object.keys(TOOL_KIND)) {
     PROCESSING_RECIPES.push([`smith_${kind}_${metal}`, `Forge ${PROCESSING_ITEMS[id].name}`, "mining", level, id, 1, [[`ingot_${metal}`, ingots], [plank, planks]]]);
   });
 }
+
+// src/content/gardening.ts
+var herb = (id, level, growMin, plantXp, harvestXp, yields = [3, 6]) => ({
+  id: `seed_${id}`,
+  kind: "herb",
+  level,
+  growMin,
+  harvest: `herb_${id}`,
+  yields,
+  plantXp,
+  harvestXp,
+  seedBack: 0.4
+});
+var SEEDS = [
+  herb("mourning_moss", 1, 20, 6, 40),
+  herb("nightshade", 15, 40, 12, 105, [3, 6]),
+  herb("corpse_lily", 30, 60, 20, 195),
+  herb("wolfsbane", 45, 80, 30, 315, [4, 7]),
+  herb("bloodroot", 60, 100, 42, 480, [4, 8]),
+  herb("moonpetal", 75, 120, 60, 690, [5, 9]),
+  { id: "sapling_oak", kind: "tree", level: 10, growMin: 120, harvest: "log_oak", yields: [14, 24], plantXp: 25, harvestXp: 225, seedBack: 0.15 },
+  { id: "sapling_yew", kind: "tree", level: 40, growMin: 360, harvest: "log_yew", yields: [10, 18], plantXp: 60, harvestXp: 630, seedBack: 0.15 }
+];
+var SEED_IDS = SEEDS.map((s) => s.id);
+var HERBS = [
+  ["mourning_moss", "Mourning Moss", "common", 4, 2, "Grows where the grieving sit."],
+  ["nightshade", "Nightshade", "uncommon", 9, 4, "Bitter, dark and quietly useful."],
+  ["corpse_lily", "Corpse-lily", "uncommon", 18, 8, "It flowers only on fresh graves."],
+  ["wolfsbane", "Wolfsbane", "rare", 30, 14, "Older than the wolves that fear it."],
+  ["bloodroot", "Bloodroot", "rare", 48, 22, "The soil around it is always warm."],
+  ["moonpetal", "Moonpetal", "epic", 80, 36, "It opens for the dead alone."]
+];
+var GARDEN_ITEMS = {};
+for (const [id, name, rarity, sell, seedSell, lore] of HERBS) {
+  GARDEN_ITEMS[`herb_${id}`] = { name, rarity, sell, lore, stack: 250 };
+  if (id !== "mourning_moss") GARDEN_ITEMS[`seed_${id}`] = { name: `${name} Seed`, rarity: rarity === "epic" ? "rare" : rarity, sell: seedSell, lore: "Plant it in a Mourning Bed.", stack: 250 };
+}
+GARDEN_ITEMS.sapling_oak = { name: "Coffin-Oak Sapling", rarity: "common", sell: 6, lore: "Plant it in a Coffin Patch and come back in a couple of hours.", stack: 250 };
+GARDEN_ITEMS.sapling_yew = { name: "Churchyard Yew Sapling", rarity: "uncommon", sell: 20, lore: "Slow, patient and worth the wait.", stack: 250 };
 
 // src/content/items.ts
 var m = (name, rarity, sell, lore, icon) => ({
@@ -288,6 +329,7 @@ var ITEMS = {
   helm_gold: { name: "Gold-Tempered Helm", type: "armor_head", rarity: "rare", sell: 60, lore: "Prelate's regalia, bell-dented.", offlineStats: { stat_vit: 6, stat_int: 4 } },
   kit_iron_warden: { name: "Iron Warden Kit", type: "trinket", rarity: "rare", sell: 55, offlineStats: { stat_vit: 4, stat_int: 4 } }
 };
+for (const [id, g2] of Object.entries(GARDEN_ITEMS)) ITEMS[id] ??= { name: g2.name, type: "material", rarity: g2.rarity, sell: g2.sell, lore: g2.lore, stack: g2.stack };
 for (const [id, p] of Object.entries(PROCESSING_ITEMS)) ITEMS[id] ??= { name: p.name, type: "material", rarity: p.rarity, sell: p.sell, lore: p.lore, stack: p.stack };
 function itemMeta(id) {
   return ITEMS[id] ?? { name: id.replace(/_/g, " "), type: "material", rarity: "common", sell: 0 };
@@ -332,6 +374,7 @@ function candidatesFor(levels) {
     if (result.startsWith("tool_")) continue;
     if (req <= level(skill)) add({ itemId: result, skill, level: req, processed: true });
   }
+  for (const s of SEEDS) if (s.kind === "herb" && s.level <= level("gardening")) add({ itemId: s.harvest, skill: "gardening", level: s.level, processed: true });
   return out.sort((a, b) => a.level - b.level || a.itemId.localeCompare(b.itemId));
 }
 var HARD_REWARDS = [

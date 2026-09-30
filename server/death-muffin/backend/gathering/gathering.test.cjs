@@ -123,12 +123,13 @@ test('an item missing from the server items table fails the whole batch', async 
   assert.equal(char().ledger.lastAt, 0, 'ledger untouched');
 });
 
-test('migration 002 inserts every grantable id that is not already live', () => {
-  const sql = readFileSync(join(__dirname, '../migrations/002-gathering.sql'), 'utf8');
+test('a migration inserts every grantable id that is not already live', () => {
+  // 002 adds the gathering items; 007 adds the garden seeds and saplings that graves and trees now drop.
+  const sql = ['002-gathering.sql', '007-gardening.sql'].map((f) => readFileSync(join(__dirname, '../migrations', f), 'utf8')).join('\n');
   const live = new Set(['log_oak', 'fish_river', 'ore_copper', 'ore_tin', 'ore_iron', 'ore_bronze', 'ore_silver', 'ore_gold', 'ore_steel', 'ore_hell', 'ore_moon', ...GEAR]);
   for (const id of rules.grantableItems()) {
     if (live.has(id)) continue;
-    assert.match(sql, new RegExp(`\\('${id}',`), `${id} missing from 002-gathering.sql`);
+    assert.match(sql, new RegExp(`\\('${id}',`), `${id} missing from the migrations`);
   }
 });
 

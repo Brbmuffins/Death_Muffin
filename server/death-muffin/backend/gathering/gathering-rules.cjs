@@ -90,10 +90,10 @@ var GEMS = (scale) => [
 ];
 var NODE_LIST = [
   // Woodcutting
-  node({ id: "coffin_oak", skill: "woodcutting", name: "Coffin-Oak", kind: "tree", level: 1, xp: 6, ticks: 4, item: "log_oak", yields: [1, 4], respawnS: 8, extras: CROWS_NEST, tint: 7033398 }),
+  node({ id: "coffin_oak", skill: "woodcutting", name: "Coffin-Oak", kind: "tree", level: 1, xp: 6, ticks: 4, item: "log_oak", yields: [1, 4], respawnS: 8, extras: [...CROWS_NEST, { item: "sapling_oak", chance: 1 / 40 }], tint: 7033398 }),
   node({ id: "hangman_elm", skill: "woodcutting", name: "Hangman's Elm", kind: "tree", level: 5, xp: 14, ticks: 5, item: "log_elm", yields: [3, 6], respawnS: 12, extras: CROWS_NEST, tint: 6117948 }),
   node({ id: "bleeding_willow", skill: "woodcutting", name: "Bleeding Willow", kind: "tree", level: 15, xp: 24, ticks: 5, item: "log_willow", yields: [4, 8], respawnS: 15, extras: CROWS_NEST, tint: 8010292 }),
-  node({ id: "churchyard_yew", skill: "woodcutting", name: "Churchyard Yew", kind: "tree", level: 45, xp: 38, ticks: 6, item: "log_yew", yields: [5, 10], respawnS: 30, extras: CROWS_NEST, tint: 3099187 }),
+  node({ id: "churchyard_yew", skill: "woodcutting", name: "Churchyard Yew", kind: "tree", level: 45, xp: 38, ticks: 6, item: "log_yew", yields: [5, 10], respawnS: 30, extras: [...CROWS_NEST, { item: "sapling_yew", chance: 1 / 50 }], tint: 3099187 }),
   node({ id: "blackthorn", skill: "woodcutting", name: "Blackthorn", kind: "tree", level: 60, xp: 55, ticks: 7, item: "log_blackthorn", yields: [6, 12], respawnS: 45, extras: CROWS_NEST, tint: 2762032 }),
   node({ id: "ghostwood", skill: "woodcutting", name: "Ghostwood", kind: "tree", level: 75, xp: 80, ticks: 8, item: "log_ghostwood", yields: [6, 12], respawnS: 60, extras: CROWS_NEST, tint: 10467504 }),
   node({ id: "bone_elder", skill: "woodcutting", name: "Bone Elder", kind: "tree", level: 90, xp: 115, ticks: 8, item: "log_bone_elder", yields: [8, 14], respawnS: 120, extras: CROWS_NEST, tint: 15129796 }),
@@ -143,7 +143,7 @@ var NODE_LIST = [
     respawnS: 18,
     gold: [1, 4],
     tint: 5064242,
-    extras: [{ item: "ring_copper", chance: 1 / 120 }, { item: "seed_mourning_moss", chance: 1 / 20 }]
+    extras: [{ item: "ring_copper", chance: 1 / 120 }, { item: "seed_mourning_moss", chance: 1 / 20 }, { item: "seed_nightshade", chance: 1 / 25 }]
   }),
   node({
     id: "grave_crypt",
@@ -158,7 +158,7 @@ var NODE_LIST = [
     respawnS: 30,
     gold: [2, 6],
     tint: 5920336,
-    extras: [{ item: "ore_silver", chance: 1 / 8 }, { item: "reliquary_fragment", chance: 1 / 60 }]
+    extras: [{ item: "ore_silver", chance: 1 / 8 }, { item: "reliquary_fragment", chance: 1 / 60 }, { item: "seed_corpse_lily", chance: 1 / 25 }, { item: "seed_wolfsbane", chance: 1 / 40 }]
   }),
   node({
     id: "grave_barrow_king",
@@ -176,6 +176,8 @@ var NODE_LIST = [
     extras: [
       { item: "covenant_seal", chance: 1 / 40 },
       { item: "reliquary_fragment", chance: 1 / 25 },
+      { item: "seed_bloodroot", chance: 1 / 20 },
+      { item: "seed_moonpetal", chance: 1 / 30 },
       { item: "helm_gold", chance: 1 / 900 },
       { item: "chest_iron", chance: 1 / 700 },
       { item: "kit_iron_warden", chance: 1 / 800 }
