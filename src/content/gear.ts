@@ -58,8 +58,9 @@ export function gearFromIds(ids: Record<string, string> | undefined): Partial<Re
 
 // --- How gear looks on the model -------------------------------------------------------------
 
-export type WeaponKind = 'sword' | 'dagger' | 'staff' | 'bow' | 'mace' | 'tome';
-export type OffhandKind = 'shield' | 'tome';
+/** Necro weapon line (docs/ALCHEMY-AND-WORLDS-PLAN.md N1): scythe, wand and sickle play differently from the staff. */
+export type WeaponKind = 'sword' | 'dagger' | 'staff' | 'bow' | 'mace' | 'tome' | 'scythe' | 'wand' | 'sickle';
+export type OffhandKind = 'shield' | 'tome' | 'skull' | 'bell';
 
 /** Material tiers tint the prop; `glow` is an emissive tell for the rare end. */
 export interface GearTier {
@@ -98,7 +99,10 @@ export function gearTier(itemId: string, rarity?: string): GearTier {
 }
 
 export function weaponKind(itemId: string): WeaponKind {
-  if (/staff|wand|focus/.test(itemId)) return 'staff';
+  if (/scythe/.test(itemId)) return 'scythe';
+  if (/sickle/.test(itemId)) return 'sickle';
+  if (/wand/.test(itemId)) return 'wand';
+  if (/staff|focus/.test(itemId)) return 'staff';
   if (/bow/.test(itemId)) return 'bow';
   if (/dagger|knife/.test(itemId)) return 'dagger';
   if (/mace|hammer|club|flail/.test(itemId)) return 'mace';
@@ -107,5 +111,7 @@ export function weaponKind(itemId: string): WeaponKind {
 }
 
 export function offhandKind(itemId: string): OffhandKind {
-  return /tome|book|lantern/.test(itemId) ? 'tome' : 'shield';
+  if (/skull_focus/.test(itemId)) return 'skull';
+  if (/mourning_bell/.test(itemId)) return 'bell';
+  return /tome|book|lantern|grimoire/.test(itemId) ? 'tome' : 'shield';
 }
