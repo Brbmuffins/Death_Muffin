@@ -48,6 +48,7 @@ export class SettingsPanel extends SimplePanel {
     this.mount(
       'Settings',
       `<div class="cw-settings">
+        <div class="cw-settings-top"><span>Done for now?</span><button class="cw-button" data-leave>Leave the world</button></div>
         <section class="cw-settings-section"><h3>Play</h3>
         <label class="row">Difficulty
           <select data-diff>${DIFFICULTY_ORDER.map((d) => `<option value="${d}">${DIFFICULTIES[d].name}</option>`).join('')}</select></label>
@@ -95,7 +96,6 @@ export class SettingsPanel extends SimplePanel {
           <kbd>Altar</kbd><span>Click the Altar in the Chapterhouse to Ascend and buy Boons</span>
         </div>
         </section>
-        <button class="cw-button" data-leave>Leave the world</button>
       </div>`,
     );
     const diff = this.el!.querySelector<HTMLSelectElement>('[data-diff]')!;

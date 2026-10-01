@@ -8,7 +8,7 @@ The Ossuary Covenant stands in a diocese overrun by the dead. Choose one of nine
 
 **Play:** [muffindevelopment.com/death-muffin](https://muffindevelopment.com/death-muffin/). Create an account or sign in, then choose a discipline. You can change class later in **Settings** while keeping the same character's level, gold, items, and permanent progress.
 
-**Release status:** This guide matches the live game as of **1 October 2026**: armor sets, the Cinder Pyre and Mourning Fen, necromancer weapons and brews, five swappable rite slots, and the Offline Edition with complete save sync. See [the handoff](HANDOFF.md) for development status.
+**Release status:** This guide matches the live game as of **1 October 2026**: armor sets, the Cinder Pyre and Mourning Fen, necromancer weapons and brews, five swappable rite slots, and the Offline Edition with complete save sync. See the **[visual roadmap](ROADMAP.md)** for what is coming next, and [the handoff](HANDOFF.md) for development status.
 
 ## Contents
 

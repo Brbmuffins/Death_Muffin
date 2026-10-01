@@ -1005,6 +1005,9 @@ button { font-family: inherit; }
 .cw-settings select { min-height: 38px; max-width: 55%; background: var(--cw-inset); color: var(--cw-text); border: 1px solid var(--cw-border); padding: 7px 10px; }
 .cw-settings input[type='checkbox'] { width: 18px; height: 18px; flex: none; }
 .cw-settings-note { margin: 8px 0 2px; font-size: 13px; color: var(--cw-text-muted); line-height: 1.5; }
+.cw-settings-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; border: 1px solid var(--cw-border); background: var(--cw-inset); }
+.cw-settings-top span { color: var(--cw-text-muted); font-size: 14px; white-space: nowrap; }
+.cw-settings-top .cw-button { flex: none; width: auto; }
 .cw-settings-section { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--cw-border); background: var(--cw-inset); }
 .cw-settings-section:first-child { margin-top: 0; }
 .cw-settings-section h3 { margin: 0 0 6px; font-family: var(--cw-font-display); font-size: 17px; letter-spacing: .1em; text-transform: uppercase; color: var(--cw-bone-100); }
