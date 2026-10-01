@@ -1,22 +1,28 @@
 # HANDOFF — current work first
 
-Updated 2026-10-01. Read [the documentation map](docs/README.md) for the
+Updated 2026-10-01 (late). Read [the documentation map](docs/README.md) for the
 difference between source, published releases and historical plans. Update the
-**Current state** and **In flight** sections when stopping work.
+**Current state** and **In flight** sections when stopping work. What comes next
+is in **[ROADMAP.md](ROADMAP.md)**.
 
-The 2026-10-01 release published the brew engine, necromancer weapons and cast
-animations, alchemy reagents, Mourning Fen, five-slot Grimoire and local UI work.
-A later client-only correction replaced an inherited Crossworlds logo and page
-labels with Death Muffin branding, and the local dev proxy now targets Death
-Muffin's auth service. The shared Crossworlds deployment was not changed.
-The prior 2026-09-30 releases include the Cinder Pyre and levels, armor
-collections, necromancer polish, login refresh and landing-page fire effect.
+**Live == GitHub `master` == `5cef60e`** (check: `curl https://muffindevelopment.com/death-muffin/play/release.txt`).
+Every 2026-10-01 release is committed: brew engine, necromancer weapons and cast
+animations, reagents, Mourning Fen, five-slot Grimoire, Death Muffin branding,
+the owner-only Auto Combat gate, and the Offline Edition with complete save sync
+(migration 016). Earlier that day several releases had gone out from uncommitted
+edits; they were reviewed, committed and redeployed from a clean export. The
+pre-cleanup tree is preserved on `backup/codex-wip-20261001` and `-b`.
 
-This checkout is `codex/new-blood-release-20260928`. Five interrupted worktree
-branches (brew engine, necromancer weapons, cast animation, reagents and Mourning
-Fen) were committed on their own branches and merged through `c668a55`. The
-README, menu spacing, five-slot Grimoire and QA fixes remain local edits for the
-owner's GitHub Desktop flow. Check `git status --short` before editing shared files.
+**Deploy only with `server/death-muffin/deploy-release.sh [rev] [migration.sql ...]`.** It
+builds play and offline clients from `git archive <rev>` (never the working tree),
+runs typecheck and both test suites, backs up the DB and runtime, applies the named
+migrations, restarts realtime then auth, publishes assets before entry pages, and
+writes `play/release.txt`. The old one-off scripts in `~/death-muffin/deploy/` build
+from stale trees and must not be re-run.
+
+Branch `codex/new-blood-release-20260928` tracks `origin/master` (push `HEAD:master`
+after a secret scan; the repo is public). The owner asked for commits, which overrides
+the older "stage, don't commit" note.
 
 ## 60-second orientation
 
@@ -52,11 +58,12 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 
 | Scope | Status | Evidence / next action |
 | --- | --- | --- |
-| Last recorded public release | Necromancer weapons, brewing/reagents, Mourning Fen, five-slot Grimoire and UI, 2026-10-01 | Migrations 013–015 applied; tested candidate index matches public; temporary-account co-op/Grimoire smoke passed; backup `deploy/backup-pre-necro-fen-20261001T171843Z` |
-| Integrated local content | Same release as above | Built from frozen `deploy/candidate-necro-fen-20261001`; no later feature code included |
-| Local UI and player guide | Wider centered menus, separated Skills/AFK controls, explicit hotbar swap buttons, five swappable rites and updated README | Included in 2026-10-01 published build; local browser smoke checked swap and reload persistence |
-| Validation | 497 client tests, 9 server suites, typecheck and production build pass | Reagent pickup/brewing/foraging browser smoke and spell swap smoke pass; Fen balance comparison is recorded in `BALANCE.md` |
-| Progression pacing to review | New Blood classes gain XP much more slowly than necromancers in the current Medium bot | Graves level-1 sample: necromancers 364–391 XP/min, New Blood 42–106 XP/min, with repeated bot deaths; human and Easy-mode checks needed before retuning |
+| Live release | `5cef60e`, 2026-10-01 23:28 UTC | `deploy-release.sh`; backup `~/death-muffin/deploy/backup-pre-release-5cef60e072b6-*`; live smoke (login, co-op, 9 class cards, Grimoire, no page errors) passed |
+| Offline Edition | Downloadable PWA at `/death-muffin/offline/` plus complete save sync with saved versions and restore | Live end-to-end check: load, 409 on a stale fingerprint, 400 on an unknown item with rollback, versions, restore. `offline-edition-smoke.cjs` passes against production |
+| Validation | 497 client tests, 88 server tests, typecheck, both builds | Offline-preview smoke suite: 17/21 pass. `necro-audit` exceeds a 600 s cap (run per discipline with `DM_QA_DISC`); `flyers-rites` hits a Playwright "promise was garbage collected" at line 108; `reagents` only collects loot landing within 1.3 m (items do not fly to the player), so it can miss dust; `acre` only fails when `node_modules` is symlinked from outside the Vite root |
+| Fixed 2026-10-01 | Server XP curve now `level × 100` like the client; Ritual Sickle no longer refunds an empowered Exhume; held keys repeat slot 5; Leave the world is at the top of Settings | |
+| Progression pacing to review | New Blood classes gain XP much more slowly than necromancers in the current Medium bot | Graves level-1 sample: necromancers 364–391 XP/min, New Blood 42–106 XP/min; human checks needed before retuning |
+| Housekeeping for the owner | Seven `zz_*` test accounts in the live DB; six merged worktrees in `wt/`; about 11 GB of old update zips and stages in `vps-handoffs/DeathMuffin/` | Owner deletes; nothing was removed |
 
 ### Historical baseline — verified in 2026-09-26, not a current status table
 
