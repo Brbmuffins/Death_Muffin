@@ -80,3 +80,12 @@ test('pruneVersions keeps only the newest KEEP_VERSIONS rows', async () => {
   const quiet = { async query() { return [[]]; }, async execute() { throw new Error('should not delete'); } };
   await sync.pruneVersions(quiet, 7);
 });
+
+test('experience must stay below the client level curve (level * 100)', () => {
+  const ok = save();
+  Object.assign(ok.character, { level: 4, experience: 399 });
+  assert.doesNotThrow(() => sync.validate(ok, 2));
+  const over = save();
+  Object.assign(over.character, { level: 4, experience: 400 });
+  assert.throws(() => sync.validate(over, 2), RangeError);
+});

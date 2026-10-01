@@ -50,7 +50,7 @@ mkdir -p "$BK/backend/gathering" "$BK/backend/necro-progress" "$BK/realtime" "$B
 sudo mysqldump --single-transaction death_muffin > "$BK/death_muffin.sql"
 cp -a "$RUNTIME/backend/server.js" "$RUNTIME/backend/"*.cjs "$BK/backend/"
 cp -a "$RUNTIME/backend/gathering/"*.cjs "$BK/backend/gathering/"
-cp -a "$RUNTIME/backend/necro-progress/necro-rules.cjs" "$BK/backend/necro-progress/"
+cp -a "$RUNTIME/backend/necro-progress/"*.cjs "$BK/backend/necro-progress/"
 cp -a "$RUNTIME/realtime/server.js" "$BK/realtime/"
 sudo cp -a "$PUBLIC/play/index.html" "$BK/play/"
 sudo cp -a "$PUBLIC/offline/." "$BK/offline/"
@@ -60,7 +60,7 @@ cat > "$BK/ROLLBACK.sh" <<EOF
 set -euo pipefail
 cp -a '$BK/backend/'*.js '$BK/backend/'*.cjs '$RUNTIME/backend/'
 cp -a '$BK/backend/gathering/'*.cjs '$RUNTIME/backend/gathering/'
-cp -a '$BK/backend/necro-progress/necro-rules.cjs' '$RUNTIME/backend/necro-progress/'
+cp -a '$BK/backend/necro-progress/'*.cjs '$RUNTIME/backend/necro-progress/'
 cp -a '$BK/realtime/server.js' '$RUNTIME/realtime/'
 sudo systemctl restart death-muffin-realtime.service death-muffin-auth.service
 sudo cp -a '$BK/play/index.html' '$PUBLIC/play/index.html'
@@ -77,7 +77,7 @@ done
 echo "== Server code"
 for f in "$B"/server.js "$B"/*.cjs; do case "$f" in *.test.cjs) ;; *) cp "$f" "$RUNTIME/backend/";; esac; done
 for f in "$B"/gathering/*.cjs; do case "$f" in *.test.cjs) ;; *) cp "$f" "$RUNTIME/backend/gathering/";; esac; done
-cp "$SRC/server/vps-handoff/necro-progress/necro-rules.cjs" "$RUNTIME/backend/necro-progress/"
+for f in necro-rules.cjs necro-progress-routes.cjs mysql-store.cjs; do cp "$SRC/server/vps-handoff/necro-progress/$f" "$RUNTIME/backend/necro-progress/"; done
 cp "$SRC/server/realtime/server.js" "$RUNTIME/realtime/"
 node --check "$RUNTIME/backend/server.js"
 sudo systemctl restart death-muffin-realtime.service

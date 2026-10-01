@@ -254,8 +254,10 @@ async function getGearLoadout(characterId) {
   return gear;
 }
 
+// Must match the client's xpToNext (src/gameplay/characterStats.ts): the browser levels the character and
+// saves level/XP, so a steeper server curve made xpToNext in GET /character wrong (dormant while unused).
 function characterXpToNext(level) {
-  return Math.round(100 * Math.pow(Math.max(1, Number(level) || 1) + 1, 1.5));
+  return Math.max(1, Number(level) || 1) * 100;
 }
 
 async function normalizeCharacterProgress(char) {

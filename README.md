@@ -8,7 +8,7 @@ The Ossuary Covenant stands in a diocese overrun by the dead. Choose one of nine
 
 **Play:** [muffindevelopment.com/death-muffin](https://muffindevelopment.com/death-muffin/). Create an account or sign in, then choose a discipline. You can change class later in **Settings** while keeping the same character's level, gold, items, and permanent progress.
 
-**Release status:** This guide covers the current repository build. The armor sets, Pyre, Mourning Fen, new necromancer weapons and brews, menu and spell swap updates, and refreshed landing page have recorded live releases. See [the handoff](HANDOFF.md) for the current status.
+**Release status:** This guide matches the live game as of **1 October 2026**: armor sets, the Cinder Pyre and Mourning Fen, necromancer weapons and brews, five swappable rite slots, and the Offline Edition with complete save sync. See [the handoff](HANDOFF.md) for development status.
 
 ## Contents
 
@@ -56,8 +56,8 @@ The landing page previews the fire realm and its enemies with a lightweight purp
 | Shift + left click | Use your basic attack without moving |
 | Click the minimap | Walk to a reachable point; the amber marker is your destination |
 | Mouse / wheel | Aim / zoom |
-| **1–4** | Use the first four equipped rites at the cursor; hold to repeat when ready |
-| Right click or **5** | Use your fifth equipped rite, which you can change in the Grimoire |
+| **1–5** | Use your equipped rites at the cursor; hold to repeat when ready |
+| Right click | Also uses your fifth equipped rite, which you can change in the Grimoire |
 | **R** or **6** | Use your class's signature rite after level 10 |
 | **Q** | Drink a healing flask |
 | **Z** / **X** | Drink the elixir / tonic on your belt (**F** is reserved for throwables) |
@@ -321,6 +321,11 @@ For technical setup and deployment, see [docs/README.md](docs/README.md) and the
 
 The standalone **Death Muffin Offline** edition lives at [muffindevelopment.com/death-muffin/offline/](https://muffindevelopment.com/death-muffin/offline/). Open it while connected, create a local player, then select **Download for offline play**. Wait for “Ready to play without a network” before disconnecting. The download is about 105 MB; your browser may also offer **Install app**. The game and save stay on this device. Clearing site data removes the save, so use a browser profile you keep.
 
-After reconnecting, open **Upload level and XP** in the offline game. Sign in with your online Death Muffin account, which must already have a character of the same discipline. The upload keeps whichever level and XP are higher; items, gold, professions and other local progress stay in the offline edition. Close any open online game tab before uploading, then reopen it to see the updated stats. The online account password is used for this upload and is not stored by the offline edition.
+**Moving a save between offline and online.** After reconnecting, open **Sync complete save** in the offline game and sign in with your online Death Muffin account. The panel compares the two characters (level, XP, gold, items, professions, Ascension), then lets you choose:
+
+- **Load offline save online** replaces your online character with the offline one: level, gold, inventory and equipment, professions, necromancer progress, Chronicle, contracts, garden, laborers, capes and pets. The game asks you to confirm first. Both saves must use the same discipline.
+- **Load online save on this device** copies your online character into the offline edition as a separate local player, so your existing local save is untouched.
+
+Before anything is replaced, the server keeps a copy of **both** versions. The panel lists your last saved versions, and **Restore** puts any of them back. If the online character changed after you compared (for example, another tab was still playing), the load is refused until you compare again. Close any open online game tab first and reopen it afterwards. Your password is only used to sign in for the sync and is not stored by the offline edition.
 
 Developers can still run `npm run dev` with `?offline` for the browser mock, or run `npm run build:offline` to prepare the standalone edition in `dist-offline/`.

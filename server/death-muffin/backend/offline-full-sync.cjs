@@ -72,7 +72,7 @@ function validate(account, onlineClass) {
   if (!account || typeof account !== 'object' || !account.character) throw new RangeError('Invalid offline save');
   const c = account.character;
   if (c.class_index !== onlineClass) throw new RangeError('The saves must use the same discipline');
-  if (!bounded(c.level, 1, 255) || !bounded(c.experience, 0, Math.round(100 * Math.pow(c.level + 1, 1.5)) - 1) ||
+  if (!bounded(c.level, 1, 255) || !bounded(c.experience, 0, c.level * 100 - 1) ||
       !bounded(c.gold, 0, 2147483647) || ['stat_str', 'stat_agi', 'stat_int', 'stat_vit'].some((key) => !bounded(c[key], 0, 65535)))
     throw new RangeError('Invalid character stats');
   if (!Array.isArray(account.slots) || account.slots.length > 33) throw new RangeError('Invalid inventory');
