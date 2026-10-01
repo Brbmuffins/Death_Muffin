@@ -1,5 +1,5 @@
-/** Installable asset download and explicit stats upload for the offline edition. */
-import { getCharacter, getToken } from '../net/api';
+/** Installable asset download for the standalone offline edition. */
+import { getToken, setToken } from '../net/api';
 
 export async function setupOfflineInstall() {
   const panel = document.createElement('aside');
@@ -11,14 +11,20 @@ export async function setupOfflineInstall() {
     <button class="cw-button" type="button" data-offline-download>Download for offline play</button>
     <button class="cw-button" type="button" data-offline-install hidden>Install app</button>
     <details class="dm-offline-sync">
-      <summary>Upload level and XP</summary>
-      <p>Reconnect to upload this local player's level and XP to an online character of the same discipline. Items, gold and professions stay here. Your higher online progress is kept. Close any online game tab first, then reopen it after uploading.</p>
+      <summary>Sync complete save</summary>
+      <p>Reconnect and compare your local and online characters. Both versions are kept while you choose which one to load. Close any open online game tab first.</p>
       <form data-offline-sync>
         <label>Online account <input name="username" autocomplete="username" required /></label>
         <label>Password <input name="password" type="password" autocomplete="current-password" required /></label>
-        <button class="cw-button" type="submit">Upload stats</button>
+        <button class="cw-button" type="submit">Compare saves</button>
       </form>
       <span data-sync-status role="status"></span>
+      <div data-save-choices hidden>
+        <p data-save-compare></p>
+        <button class="cw-button" type="button" data-load-online>Load online save on this device</button>
+        <button class="cw-button" type="button" data-load-offline>Load offline save online</button>
+        <div data-saved-versions></div>
+      </div>
     </details>`;
   document.body.appendChild(panel);
   const status = panel.querySelector<HTMLElement>('[data-offline-status]')!;
@@ -26,6 +32,16 @@ export async function setupOfflineInstall() {
   const install = panel.querySelector<HTMLButtonElement>('[data-offline-install]')!;
   const syncForm = panel.querySelector<HTMLFormElement>('[data-offline-sync]')!;
   const syncStatus = panel.querySelector<HTMLElement>('[data-sync-status]')!;
+  const choices = panel.querySelector<HTMLElement>('[data-save-choices]')!;
+  const compare = panel.querySelector<HTMLElement>('[data-save-compare]')!;
+  const loadOnline = panel.querySelector<HTMLButtonElement>('[data-load-online]')!;
+  const loadOffline = panel.querySelector<HTMLButtonElement>('[data-load-offline]')!;
+  const versions = panel.querySelector<HTMLElement>('[data-saved-versions]')!;
+  const api = `${location.origin}/death-muffin/api`;
+  let onlineToken: string | null = null;
+  let onlineSnapshot: any = null;
+  let onlineFingerprint = '';
+  let localSnapshot: any = null;
   let installPrompt: (Event & { prompt(): Promise<void>; userChoice: Promise<{ outcome: string }> }) | null = null;
 
   window.addEventListener('beforeinstallprompt', (event) => {
@@ -41,17 +57,27 @@ export async function setupOfflineInstall() {
     install.hidden = true;
   });
 
+  const onlineRequest = async (path: string, options: RequestInit = {}) => {
+    if (!onlineToken) throw new Error('Compare saves again to sign in.');
+    const response = await fetch(`${api}${path}`, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${onlineToken}`, ...options.headers },
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || `Online request failed (${response.status}).`);
+    return body;
+  };
+  const label = (s: any) => `Level ${s.level}, ${s.experience} XP, ${s.gold} gold, ${s.items} inventory slots, ${s.professions} professions, Ascension ${s.ascension}`;
+
   syncForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const button = syncForm.querySelector<HTMLButtonElement>('button')!;
     const username = syncForm.elements.namedItem('username') as HTMLInputElement;
     const password = syncForm.elements.namedItem('password') as HTMLInputElement;
     button.disabled = true;
-    syncStatus.textContent = 'Connecting to your online character…';
+    choices.hidden = true;
+    syncStatus.textContent = 'Comparing complete saves…';
     try {
-      if (!getToken()?.startsWith('offline:')) throw new Error('Open a local player before uploading stats.');
-      const local = await getCharacter();
-      const api = `${location.origin}/death-muffin/api`;
       const login = await fetch(`${api}/login`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: username.value.trim(), password: password.value }),
@@ -59,19 +85,78 @@ export async function setupOfflineInstall() {
       const auth = await login.json();
       if (!login.ok || !auth.token) throw new Error(auth.error || 'Online login failed.');
       password.value = '';
-      const synced = await fetch(`${api}/api/offline/sync-stats`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.token}` },
-        body: JSON.stringify({ classIndex: local.class_index, level: local.level, experience: local.experience }),
-      });
-      const result = await synced.json();
-      if (!synced.ok) throw new Error(result.error || 'Upload failed.');
-      syncStatus.textContent = result.improved
-        ? `Uploaded. Your online character is now level ${result.level} with ${result.experience} XP.`
-        : `Your online character is already ahead at level ${result.level} with ${result.experience} XP.`;
+      onlineToken = auth.token;
+      const online = await onlineRequest('/api/offline/snapshot');
+      onlineSnapshot = online.snapshot;
+      onlineFingerprint = online.fingerprint;
+      const localToken = getToken();
+      localSnapshot = localToken?.startsWith('offline:')
+        ? (await import('../net/mockBackend')).exportLocalSave(localToken) : null;
+      const localSummary = localSnapshot ? {
+        level: localSnapshot.character.level, experience: localSnapshot.character.experience,
+        gold: localSnapshot.character.gold, items: localSnapshot.slots.length,
+        professions: localSnapshot.professions.length, ascension: localSnapshot.necro?.ascension ?? 0,
+      } : null;
+      compare.textContent = `Online: ${label(online.summary)}. ${localSummary ? `Local: ${label(localSummary)}.` : 'No local character is open yet.'}`;
+      loadOffline.disabled = !localSnapshot || localSnapshot.character.class_index !== onlineSnapshot.character.class_index;
+      if (localSnapshot && loadOffline.disabled) syncStatus.textContent = 'The saves use different disciplines. You can still import the online save as another local player.';
+      else syncStatus.textContent = 'Choose which complete save to load. The other version is kept.';
+      const history = await onlineRequest('/api/offline/versions');
+      versions.replaceChildren();
+      if (history.versions?.length) {
+        const title = document.createElement('p');
+        title.textContent = 'Previous online versions:';
+        versions.appendChild(title);
+        for (const saved of history.versions.slice(0, 10)) {
+          const restore = document.createElement('button');
+          restore.className = 'cw-button';
+          restore.type = 'button';
+          restore.textContent = `Restore ${saved.source} save from ${new Date(saved.createdAt).toLocaleString()} — ${label(saved.summary)}`;
+          restore.addEventListener('click', async () => {
+            restore.disabled = true;
+            try {
+              const result = await onlineRequest('/api/offline/restore', { method: 'POST', body: JSON.stringify({ versionId: saved.id, expectedFingerprint: onlineFingerprint }) });
+              onlineFingerprint = result.fingerprint;
+              syncStatus.textContent = `Previous version loaded online: ${label(result.summary)}. Reopen the online game.`;
+            } catch (error) { syncStatus.textContent = error instanceof Error ? error.message : 'Restore failed.'; }
+            finally { restore.disabled = false; }
+          });
+          versions.appendChild(restore);
+        }
+      }
+      choices.hidden = false;
     } catch (error) {
       password.value = '';
-      syncStatus.textContent = error instanceof Error ? error.message : 'Could not upload stats.';
+      syncStatus.textContent = error instanceof Error ? error.message : 'Could not compare saves.';
     } finally { button.disabled = false; }
+  });
+
+  loadOnline.addEventListener('click', async () => {
+    if (!onlineSnapshot) return;
+    loadOnline.disabled = true;
+    try {
+      const token = (await import('../net/mockBackend')).importOnlineSave(onlineSnapshot);
+      setToken(token);
+      location.reload();
+    } catch (error) {
+      syncStatus.textContent = error instanceof Error ? error.message : 'Could not import online save.';
+      loadOnline.disabled = false;
+    }
+  });
+
+  loadOffline.addEventListener('click', async () => {
+    if (!localSnapshot || !onlineFingerprint) return;
+    if (!window.confirm('Replace your ONLINE character with this offline save? The current online save is kept as a version you can restore.')) return;
+    loadOffline.disabled = true;
+    syncStatus.textContent = 'Saving both versions and loading the offline character online…';
+    try {
+      const token = getToken();
+      const current = token?.startsWith('offline:') ? (await import('../net/mockBackend')).exportLocalSave(token) : localSnapshot;
+      const result = await onlineRequest('/api/offline/load', { method: 'POST', body: JSON.stringify({ snapshot: current, expectedFingerprint: onlineFingerprint }) });
+      onlineFingerprint = result.fingerprint;
+      syncStatus.textContent = `Offline save loaded online: ${label(result.summary)}. Reopen the online game.`;
+    } catch (error) { syncStatus.textContent = error instanceof Error ? error.message : 'Could not load offline save online.'; }
+    finally { loadOffline.disabled = false; }
   });
 
   if (!('serviceWorker' in navigator) || !('caches' in window)) {

@@ -42,23 +42,37 @@ async function main() {
     assert.deepEqual(api, [], 'offline edition made no online API request');
     assert.deepEqual(errors, [], 'no page errors');
     await context.setOffline(false);
+    const localSave = await page.evaluate(() => JSON.parse(localStorage.getItem('dm_offline_db_v1')).accounts.offline_probe);
+    const onlineSave = structuredClone(localSave);
+    onlineSave.username = 'online_probe';
+    onlineSave.character.level = 2;
     let upload = null;
     await page.route('**/death-muffin/api/login', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token: 'test-online-token' }) }));
-    await page.route('**/death-muffin/api/api/offline/sync-stats', async (route) => {
+    await page.route('**/death-muffin/api/api/offline/snapshot', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ snapshot: onlineSave, fingerprint: 'a'.repeat(64), summary: { discipline: 'Gravecaller', level: 2, experience: 0, gold: 0, items: onlineSave.slots.length, professions: onlineSave.professions.length, ascension: 0 } }) }));
+    await page.route('**/death-muffin/api/api/offline/versions', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ versions: [] }) }));
+    await page.route('**/death-muffin/api/api/offline/load', async (route) => {
       upload = route.request().postDataJSON();
       assert.equal(route.request().headers().authorization, 'Bearer test-online-token');
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ level: upload.level, experience: upload.experience, improved: true }) });
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ fingerprint: 'b'.repeat(64), summary: { discipline: 'Gravecaller', level: upload.snapshot.character.level, experience: upload.snapshot.character.experience, gold: upload.snapshot.character.gold, items: upload.snapshot.slots.length, professions: upload.snapshot.professions.length, ascension: 0 } }) });
     });
     await page.locator('.dm-offline-sync summary').click();
     await page.locator('.dm-offline-sync [name="username"]').fill('online_probe');
     await page.locator('.dm-offline-sync [name="password"]').fill('private-test-password');
-    await page.getByRole('button', { name: 'Upload stats' }).click();
-    await page.getByText('Uploaded. Your online character is now level', { exact: false }).waitFor();
-    assert.equal(upload.level, 1);
-    assert.equal(upload.experience, 0);
+    await page.getByRole('button', { name: 'Compare saves' }).click();
+    await page.getByRole('button', { name: 'Load offline save online' }).click();
+    await page.getByText('Offline save loaded online:', { exact: false }).waitFor();
+    assert.equal(upload.snapshot.character.level, 1);
+    assert.equal(upload.snapshot.slots.length, localSave.slots.length);
+    assert.equal(upload.expectedFingerprint, 'a'.repeat(64));
     assert.equal(await page.locator('.dm-offline-sync [name="password"]').inputValue(), '');
     assert.deepEqual(errors, [], 'no page errors during upload');
-    console.log(JSON.stringify({ offlineReload: true, localCharacter: true, mediumDefault: true, autoCombatHidden: true, autoGatherAvailable: true, statsUpload: upload, errors }));
+    await page.getByRole('button', { name: 'Load online save on this device' }).click();
+    await page.locator('.hud').waitFor({ timeout: 45000 });
+    const profiles = await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('dm_offline_db_v1')).accounts));
+    assert.equal(profiles.includes('offline_probe'), true);
+    assert.equal(profiles.some((name) => name.startsWith('online_online_probe')), true);
+    assert.deepEqual(errors, [], 'no page errors after importing the online save');
+    console.log(JSON.stringify({ offlineReload: true, localCharacter: true, mediumDefault: true, autoCombatHidden: true, autoGatherAvailable: true, fullSaveUpload: true, bothLocalProfiles: true, errors }));
   } finally {
     await browser.close();
   }

@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# Publish a full Death Muffin release from a COMMITTED revision (default HEAD), never the working tree.
+#
+#   deploy-release.sh [rev] [migration.sql ...]
+#
+# 1. Exports <rev> with `git archive` into deploy/candidate-<sha>/src and builds the play and offline clients there.
+# 2. Runs typecheck, client tests and server tests on that export.
+# 3. Backs up the DB, runtime server files and public entry pages, and writes ROLLBACK.sh.
+# 4. Applies the named migrations (each must be additive / idempotent), installs server code, restarts realtime then auth.
+# 5. Publishes hashed assets first and entry pages last, then checks the public pages match the build.
+# The deployed revision is written to /death-muffin/play/release.txt so "is live == HEAD?" is one curl.
+set -euo pipefail
+
+REPO=/home/ubuntu/vps-handoffs/DeathMuffin/game
+RUNTIME=/home/ubuntu/death-muffin
+PUBLIC=/var/www/death-muffin
+REV="${1:-HEAD}"
+shift || true
+SHA=$(git -C "$REPO" rev-parse --short=12 "$REV^{commit}")
+STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+CAND="$RUNTIME/deploy/candidate-$SHA"
+BK="$RUNTIME/deploy/backup-pre-release-$SHA-$STAMP"
+SRC="$CAND/src"
+
+echo "== Building $SHA from git (not the working tree)"
+rm -rf "$CAND"
+mkdir -p "$SRC"
+git -C "$REPO" archive "$SHA" | tar -x -C "$SRC"
+ln -s "$REPO/node_modules" "$SRC/node_modules"
+[ -d "$REPO/server/realtime/node_modules" ] && ln -s "$REPO/server/realtime/node_modules" "$SRC/server/realtime/node_modules"
+for m in "$@"; do test -f "$SRC/server/death-muffin/backend/migrations/$m"; done
+(
+  cd "$SRC"
+  npx tsc --noEmit -p .
+  npx vitest run --reporter=dot
+  npm run -s test:server
+  npm run -s build:death-muffin
+  npm run -s build:offline
+)
+B="$SRC/server/death-muffin/backend"
+for f in "$B"/server.js "$B"/*.cjs "$B"/gathering/*.cjs "$SRC/server/vps-handoff/necro-progress/necro-rules.cjs" "$SRC/server/realtime/server.js"; do
+  case "$f" in *.test.cjs) continue;; esac
+  node --check "$f"
+done
+test -f "$SRC/dist/index.html"
+test -f "$SRC/dist-offline/sw.js"
+
+echo "== Backup -> $BK"
+mkdir -p "$BK/backend/gathering" "$BK/backend/necro-progress" "$BK/realtime" "$BK/play" "$BK/offline"
+sudo mysqldump --single-transaction death_muffin > "$BK/death_muffin.sql"
+cp -a "$RUNTIME/backend/server.js" "$RUNTIME/backend/"*.cjs "$BK/backend/"
+cp -a "$RUNTIME/backend/gathering/"*.cjs "$BK/backend/gathering/"
+cp -a "$RUNTIME/backend/necro-progress/necro-rules.cjs" "$BK/backend/necro-progress/"
+cp -a "$RUNTIME/realtime/server.js" "$BK/realtime/"
+sudo cp -a "$PUBLIC/play/index.html" "$BK/play/"
+sudo cp -a "$PUBLIC/offline/." "$BK/offline/"
+cat > "$BK/ROLLBACK.sh" <<EOF
+#!/usr/bin/env bash
+# Restores code and entry pages from before release $SHA. Additive tables and newer player data stay.
+set -euo pipefail
+cp -a '$BK/backend/'*.js '$BK/backend/'*.cjs '$RUNTIME/backend/'
+cp -a '$BK/backend/gathering/'*.cjs '$RUNTIME/backend/gathering/'
+cp -a '$BK/backend/necro-progress/necro-rules.cjs' '$RUNTIME/backend/necro-progress/'
+cp -a '$BK/realtime/server.js' '$RUNTIME/realtime/'
+sudo systemctl restart death-muffin-realtime.service death-muffin-auth.service
+sudo cp -a '$BK/play/index.html' '$PUBLIC/play/index.html'
+sudo cp -a '$BK/offline/.' '$PUBLIC/offline/'
+echo 'Rolled back to the pre-$SHA code. Full DB dump: $BK/death_muffin.sql'
+EOF
+chmod 700 "$BK/ROLLBACK.sh"
+
+for m in "$@"; do
+  echo "== Migration $m"
+  sudo mysql death_muffin < "$SRC/server/death-muffin/backend/migrations/$m"
+done
+
+echo "== Server code"
+for f in "$B"/server.js "$B"/*.cjs; do case "$f" in *.test.cjs) ;; *) cp "$f" "$RUNTIME/backend/";; esac; done
+for f in "$B"/gathering/*.cjs; do case "$f" in *.test.cjs) ;; *) cp "$f" "$RUNTIME/backend/gathering/";; esac; done
+cp "$SRC/server/vps-handoff/necro-progress/necro-rules.cjs" "$RUNTIME/backend/necro-progress/"
+cp "$SRC/server/realtime/server.js" "$RUNTIME/realtime/"
+node --check "$RUNTIME/backend/server.js"
+sudo systemctl restart death-muffin-realtime.service
+sudo systemctl restart death-muffin-auth.service
+curl --silent --show-error --fail --retry 10 --retry-delay 1 --retry-all-errors http://127.0.0.1:5190/health >/dev/null
+sudo systemctl is-active death-muffin-auth.service death-muffin-realtime.service
+
+echo "== Clients (assets first, entry pages last)"
+for d in assets art models fx audio; do [ -d "$SRC/dist/$d" ] && sudo cp -a "$SRC/dist/$d" "$PUBLIC/play/"; done
+echo "$SHA $(date -u +%FT%TZ)" > "$CAND/release.txt"
+sudo cp "$CAND/release.txt" "$PUBLIC/play/release.txt"
+sudo cp -a "$SRC/dist/index.html" "$PUBLIC/play/index.html"
+(cd "$SRC/dist-offline" && sudo cp -a $(ls -A | grep -vx -e index.html -e sw.js) "$PUBLIC/offline/")
+sudo cp -a "$SRC/dist-offline/sw.js" "$SRC/dist-offline/index.html" "$PUBLIC/offline/"
+sudo chown -R root:root "$PUBLIC/play" "$PUBLIC/offline"
+sudo chmod -R a+rX "$PUBLIC/play" "$PUBLIC/offline"
+
+echo "== Verify"
+curl -sSf https://muffindevelopment.com/death-muffin/play/ | cmp - "$SRC/dist/index.html"
+curl -sSf https://muffindevelopment.com/death-muffin/offline/ | cmp - "$SRC/dist-offline/index.html"
+curl -sSf https://muffindevelopment.com/death-muffin/offline/sw.js | cmp - "$SRC/dist-offline/sw.js"
+curl -sSf https://muffindevelopment.com/death-muffin/api/health; echo
+echo "Release $SHA published. Rollback: $BK/ROLLBACK.sh"

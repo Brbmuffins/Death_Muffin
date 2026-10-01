@@ -8,6 +8,7 @@ const fs         = require('fs');
 const crypto     = require('crypto');
 const rateLimit  = require('express-rate-limit');
 const { mergeOfflineStats } = require('./offline-sync.cjs');
+const offlineFull = require('./offline-full-sync.cjs');
 
 const app  = express();
 const PORT = process.env.PORT || 5190;
@@ -596,6 +597,83 @@ app.post('/api/game/items/definitions', requireGameServerToken, async (req, res)
 // ─── Progression ──────────────────────────────────────────────────────────────
 
 const offlineSyncLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false });
+app.get('/api/offline/snapshot', verifyJWT, async (req, res) => {
+  if (!req.character) return res.status(404).json({ error: 'Create an online character before syncing.' });
+  try {
+    const snapshot = await offlineFull.capture(pool, req.character.id, req.user.username);
+    res.json({ snapshot, fingerprint: offlineFull.fingerprint(snapshot), summary: offlineFull.summary(snapshot) });
+  } catch (err) {
+    console.error('Offline snapshot error:', err.code || err.message);
+    res.status(500).json({ error: 'Could not load online save.' });
+  }
+});
+
+app.get('/api/offline/versions', verifyJWT, async (req, res) => {
+  if (!req.character) return res.status(404).json({ error: 'Online character not found.' });
+  try {
+    const [rows] = await pool.execute('SELECT id, source, snapshot, created_at FROM character_save_versions WHERE account_id = ? AND character_id = ? ORDER BY id DESC LIMIT 20',
+      [req.user.accountId, req.character.id]);
+    res.json({ versions: rows.map((row) => ({ id: row.id, source: row.source, createdAt: row.created_at, summary: offlineFull.summary(typeof row.snapshot === 'string' ? JSON.parse(row.snapshot) : row.snapshot) })) });
+  } catch (err) {
+    console.error('Offline versions error:', err.code || err.message);
+    res.status(500).json({ error: 'Could not load saved versions.' });
+  }
+});
+
+async function loadOfflineVersion(req, res, source, account, expectedFingerprint) {
+  if (!req.character) return res.status(404).json({ error: 'Create an online character before syncing.' });
+  if (typeof expectedFingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(expectedFingerprint))
+    return res.status(400).json({ error: 'Refresh the online save comparison before loading a version.' });
+  try { offlineFull.validate(account, Number(req.character.discipline_index ?? req.character.class_index)); }
+  catch (err) { return res.status(400).json({ error: err.message }); }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [[locked]] = await conn.execute('SELECT id FROM characters WHERE id = ? AND account_id = ? FOR UPDATE',
+      [req.character.id, req.user.accountId]);
+    if (!locked) { await conn.rollback(); return res.status(404).json({ error: 'Online character not found.' }); }
+    const before = await offlineFull.capture(conn, locked.id, req.user.username);
+    if (offlineFull.fingerprint(before) !== expectedFingerprint) {
+      await conn.rollback();
+      return res.status(409).json({ error: 'The online save changed. Compare the saves again before choosing.', summary: offlineFull.summary(before) });
+    }
+    await conn.execute('INSERT INTO character_save_versions (account_id, character_id, source, snapshot) VALUES (?, ?, ?, ?)',
+      [req.user.accountId, locked.id, 'online', JSON.stringify(before)]);
+    await conn.execute('INSERT INTO character_save_versions (account_id, character_id, source, snapshot) VALUES (?, ?, ?, ?)',
+      [req.user.accountId, locked.id, source, JSON.stringify(account)]);
+    await offlineFull.apply(conn, locked.id, account);
+    await offlineFull.pruneVersions(conn, locked.id);
+    const after = await offlineFull.capture(conn, locked.id, req.user.username);
+    await conn.commit();
+    res.json({ summary: offlineFull.summary(after), fingerprint: offlineFull.fingerprint(after) });
+  } catch (err) {
+    await conn.rollback().catch(() => {});
+    if (err instanceof RangeError) return res.status(400).json({ error: err.message });
+    console.error('Offline full save error:', err.code || err.message);
+    res.status(500).json({ error: 'Could not load the selected save.' });
+  } finally { conn.release(); }
+}
+
+app.post('/api/offline/load', offlineSyncLimiter, verifyJWT, async (req, res) => {
+  await loadOfflineVersion(req, res, 'offline', req.body?.snapshot, req.body?.expectedFingerprint);
+});
+
+app.post('/api/offline/restore', offlineSyncLimiter, verifyJWT, async (req, res) => {
+  if (!req.character || !Number.isInteger(req.body?.versionId)) return res.status(400).json({ error: 'Choose a saved version.' });
+  try {
+    const [[row]] = await pool.execute('SELECT snapshot FROM character_save_versions WHERE id = ? AND account_id = ? AND character_id = ?',
+      [req.body.versionId, req.user.accountId, req.character.id]);
+    if (!row) return res.status(404).json({ error: 'Saved version not found.' });
+    const account = typeof row.snapshot === 'string' ? JSON.parse(row.snapshot) : row.snapshot;
+    await loadOfflineVersion(req, res, 'restored', account, req.body.expectedFingerprint);
+  } catch (err) {
+    console.error('Offline restore error:', err.code || err.message);
+    res.status(500).json({ error: 'Could not restore saved version.' });
+  }
+});
+
+
 app.post('/api/offline/sync-stats', offlineSyncLimiter, verifyJWT, async (req, res) => {
   if (!req.character)
     return res.status(404).json({ error: 'Create an online character before syncing offline stats.' });

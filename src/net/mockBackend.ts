@@ -156,6 +156,32 @@ function saveDb(db: MockDb) {
   }
 }
 
+/** Full portable account state for the offline save chooser. */
+export function exportLocalSave(token: string): MockAccount {
+  const account = accountFor(loadDb(), token);
+  if (!account.character) throw new MockError('Create a local character before syncing.', 400);
+  return JSON.parse(JSON.stringify(account));
+}
+
+/** Keep the current local player; import an online save as another local player. */
+export function importOnlineSave(snapshot: MockAccount): string {
+  if (!snapshot?.character || !Array.isArray(snapshot.slots) || !Array.isArray(snapshot.professions))
+    throw new MockError('Invalid online save.', 400);
+  const db = loadDb();
+  const stem = `online_${String(snapshot.username || 'player').replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 20)}`;
+  let username = stem;
+  for (let n = 2; db.accounts[username]; n++) username = `${stem}_${n}`;
+  const copy = JSON.parse(JSON.stringify(snapshot)) as MockAccount;
+  copy.username = username;
+  if (Object.values(db.accounts).some((a) => a.character?.id === copy.character!.id)) {
+    copy.character!.id = db.nextCharacterId++;
+  }
+  db.nextCharacterId = Math.max(db.nextCharacterId, Number(copy.character!.id) + 1);
+  db.accounts[username] = copy;
+  saveDb(db);
+  return `offline:${username}`;
+}
+
 function joinSlot(s: StoredSlot, i: number): InventorySlot {
   const def = MOCK_ITEMS[s.item_id];
   return {

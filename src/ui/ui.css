@@ -671,6 +671,9 @@ button { font-family: inherit; }
 .dm-offline-sync form { gap: 8px; }
 .dm-offline-sync input { width: 100%; box-sizing: border-box; padding: 7px; color: #fff; background: #15101e; border: 1px solid #69537e; border-radius: 4px; }
 .dm-offline-sync [data-sync-status] { display: block; margin-top: 7px; line-height: 1.35; }
+.dm-offline-sync [data-save-choices]:not([hidden]) { display: flex; flex-direction: column; gap: 7px; margin-top: 8px; }
+.dm-offline-sync [data-save-choices][hidden] { display: none; }
+.dm-offline-sync [data-saved-versions] { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid rgba(211, 190, 255, .22); margin-top: 5px; padding-top: 5px; }
 .dm-offline-sync button { white-space: normal; text-align: left; }
 .hud-menu .hud-auto[aria-pressed="true"] { color: var(--cw-bone-100); border-color: var(--cw-border-active); }
 .hud-menu .hud-auto:disabled { opacity: .55; cursor: default; }
