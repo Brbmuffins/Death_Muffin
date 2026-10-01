@@ -106,7 +106,7 @@ module.exports = function mountGarden(app, pool, { requireAuth, ownsCharacter, r
     const crop = garden.rollHarvest(seed, random);
 
     // Where the crop lands: top up stacks, then free slots. Refuse the whole harvest (changing nothing) if it will not all fit.
-    const [bagRows] = await conn.execute('SELECT slot_index, item_id, quantity, equipped FROM inventory WHERE character_id = ? AND slot_index BETWEEN 0 AND 23 FOR UPDATE', [id]);
+    const [bagRows] = await conn.execute('SELECT slot_index, item_id, quantity, equipped FROM inventory WHERE character_id = ? AND slot_index BETWEEN 0 AND ? FOR UPDATE', [id, gather.BAG_SLOTS - 1]);
     const bag = bagRows.map((r) => ({ slot: num(r.slot_index), itemId: num(r.equipped) ? '' : r.item_id, qty: num(r.quantity) }));
     const grants = [{ itemId: crop.itemId, qty: crop.qty }, ...(crop.seedBack ? [{ itemId: crop.seedBack, qty: 1 }] : [])];
     // A rare companion: the gardener's charm turns up now and then.

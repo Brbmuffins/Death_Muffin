@@ -152,11 +152,12 @@ export function getInventory(characterId: number) {
   return unwrap<InventorySlot[]>(request(`/api/inventory/${characterId}`, {}, true));
 }
 
-export function saveInventory(characterId: number, slots: unknown[]) {
+/** `bagSize` tells the server which bag slots this save speaks for; without it a server assumes the old 24-slot bag. */
+export function saveInventory(characterId: number, slots: unknown[], bagSize?: number) {
   return unwrap<InventorySlot[]>(
     request(
       '/api/inventory/save',
-      { method: 'POST', body: JSON.stringify({ characterId, slots }) },
+      { method: 'POST', body: JSON.stringify({ characterId, slots, bagSize }) },
       true,
     ),
   );

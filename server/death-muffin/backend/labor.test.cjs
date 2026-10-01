@@ -18,7 +18,7 @@ function fakeDb({ levels = {}, bag = [] } = {}) {
     if (sql.startsWith('SELECT skill_level, skill_xp FROM professions')) { const v = prof.get(p[1]); return [[v ? { skill_level: v.level, skill_xp: v.xp } : undefined].filter(Boolean)]; }
     if (sql.startsWith('INSERT IGNORE INTO professions')) { if (!prof.has(p[1])) prof.set(p[1], { level: 1, xp: 0 }); return [{}]; }
     if (sql.startsWith('UPDATE professions')) { prof.set(p[3], { level: p[0], xp: p[1] }); return [{}]; }
-    if (sql.startsWith('SELECT slot_index, item_id, quantity, equipped FROM inventory')) return [inv.filter((r) => r.slot_index <= 23).map((r) => ({ ...r }))];
+    if (sql.startsWith('SELECT slot_index, item_id, quantity, equipped FROM inventory')) return [inv.filter((r) => r.slot_index <= 47).map((r) => ({ ...r }))];
     if (sql.startsWith('UPDATE inventory SET quantity = ? WHERE')) { inv.find((r) => r.slot_index === p[2]).quantity = p[0]; return [{}]; }
     if (sql.startsWith('INSERT INTO inventory')) { inv.push({ id: nextId++, character_id: p[0], slot_index: p[1], item_id: p[2], quantity: p[3], equipped: 0 }); return [{}]; }
     throw new Error(`unexpected SQL: ${sql.slice(0, 80)}`);
@@ -100,7 +100,7 @@ test('work stops accruing after eight hours', async () => {
 });
 
 test('a full bag refuses the collection and changes nothing, so it cannot be re-rolled', async () => {
-  const bag = Array.from({ length: 24 }, (_, i) => ({ slot_index: i, item_id: `junk_${i}`, quantity: 1 }));
+  const bag = Array.from({ length: 48 }, (_, i) => ({ slot_index: i, item_id: `junk_${i}`, quantity: 1 }));
   const db = fakeDb({ levels: { woodcutting: 5 }, bag });
   const { call, advance } = harness(db);
   await call('POST /api/labor/assign', { body: { characterId: 1, slot: 0, nodeType: 'coffin_oak' } });

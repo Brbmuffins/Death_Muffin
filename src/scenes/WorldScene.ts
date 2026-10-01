@@ -1817,7 +1817,7 @@ export class WorldScene implements GameScene, RuntimeView {
       const before = this.skillLevels.get(s) ?? 1;
       this.skillLevels.set(s, lvl);
       if (lvl <= before) continue;
-      const opens = s === 'gardening' || s === 'alchemy' ? [] : nodesForSkill(s).filter((n) => n.level > before && n.level <= lvl);
+      const opens = s === 'gardening' || s === 'alchemy' || s === 'salvaging' ? [] : nodesForSkill(s).filter((n) => n.level > before && n.level <= lvl);
       this.hud.banner(`${SKILLS[s].name} ${lvl}`, opens.length ? `You can now work: ${opens.map((n) => n.name).join(', ')}` : SKILLS[s].rite, 3200);
       audio.play('skillUp');
       this.onboarding.show('skill_up');

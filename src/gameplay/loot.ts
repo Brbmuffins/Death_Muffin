@@ -4,14 +4,16 @@ import { ITEMS } from '../content/items';
 import { waveModifiers } from '../content/upgrades';
 import { saveInventory } from '../net/api';
 import type { InventorySlot } from '../net/types';
+import { BAG_SLOTS } from './gatheringRules';
 import { pickWeighted, randInt } from './rng';
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
 import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS, bossIchor } from '../content/reagents';
 import type { BossId } from '../content/bosses';
 
-export const BAG_COLS = 6;
-export const BAG_ROWS = 4;
-export const BAG_SIZE = BAG_COLS * BAG_ROWS; // matches Unity's 4×6 bag
+/** One source of truth: gatheringRules.BAG_SLOTS (also bundled for the server). 8 columns × 6 rows = 48. */
+export const BAG_SIZE = BAG_SLOTS;
+export const BAG_COLS = 8;
+export const BAG_ROWS = BAG_SIZE / BAG_COLS;
 
 export interface LootDrop {
   item_id: string;
@@ -149,7 +151,7 @@ export function addToSlots(slots: InventorySlot[], drop: LootDrop): InventorySlo
 /**
  * The save endpoint owns the bag only (slot_index 0..BAG_SIZE-1). Equipped gear lives in reserved
  * slots (100+) that /api/inventory/equip manages, so it is never sent back: one equipped item used to
- * make every save fail with "each slot_index must be between 0 and 23".
+ * make every save fail with "each slot_index must be between 0 and 23" (when the bag grew).
  */
 export function toSavePayload(slots: InventorySlot[]) {
   return slots.filter((s) => s.slot_index >= 0 && s.slot_index < BAG_SIZE).map((s) => ({
@@ -321,7 +323,7 @@ export class Inventory {
     this.pendingMutations = [];
     this.inFlightMutations = sentMutations;
     try {
-      const saved = await saveInventory(this.characterId, toSavePayload(sent));
+      const saved = await saveInventory(this.characterId, toSavePayload(sent), BAG_SIZE);
       // Only adopt the server rows if nothing changed while the request flew.
       if (this.slots === sent) this.slots = saved;
       else this.dirty = true;

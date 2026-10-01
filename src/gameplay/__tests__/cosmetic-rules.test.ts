@@ -25,7 +25,7 @@ describe('capes', () => {
     expect(unlockedCapes(all(17))).toContain('cape_apprentice');
     expect(unlockedCapes(all(50))).toContain('cape_journeyman');
     expect(unlockedCapes(all(50))).not.toContain('cape_sexton');
-    expect(totalLevel(all(99))).toBe(594);
+    expect(totalLevel(all(99))).toBe(693);
     expect(unlockedCapes(all(99))).toContain('cape_sexton');
     expect(unlockedCapes(all(99))).toHaveLength(CAPES.length);
   });
@@ -34,7 +34,7 @@ describe('capes', () => {
     const c = CAPES.find((x) => x.id === 'cape_fishing')!;
     expect(capeProgress(c, { fishing: 74 })).toEqual({ unlocked: false, have: 74, need: 99 });
     const m = CAPES.find((x) => x.id === 'cape_journeyman')!;
-    expect(capeProgress(m, all(40))).toMatchObject({ unlocked: false, have: 240, need: 300 });
+    expect(capeProgress(m, all(40))).toMatchObject({ unlocked: false, have: 280, need: 300 });
   });
 });
 

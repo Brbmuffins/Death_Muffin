@@ -83,7 +83,7 @@ test('removeFromBag takes across stacks and refuses, changing nothing, when shor
 });
 
 test('addToBag stacks first, then fills free slots, and reports what did not fit', async () => {
-  const bag = Array.from({ length: 23 }, (_, i) => ({ character_id: 1, slot_index: i, item_id: `junk_${i}`, quantity: 1 }));
+  const bag = Array.from({ length: 47 }, (_, i) => ({ character_id: 1, slot_index: i, item_id: `junk_${i}`, quantity: 1 }));
   bag[3] = { character_id: 1, slot_index: 3, item_id: 'gem_grave_garnet', quantity: 98 };
   const db = fakeDb({ bag });
   const conn = await db.pool.getConnection();
@@ -136,9 +136,9 @@ test('a full bag refuses a reward and nothing is lost', async () => {
   const call = harness(db);
   const board = (await call('GET /api/contracts/:characterId', { params: { characterId: '1' } })).json.data.contracts;
   const hard = board[2];
-  // The bag is packed with the ordered item plus 23 other things: taking the order frees slots, but only if it is one slot...
+  // The bag is packed with the ordered item plus 47 other things: taking the order frees slots, but only if it is one slot...
   db.inv.push({ id: 700, character_id: 1, slot_index: 0, item_id: hard.itemId, quantity: hard.qty + 1, equipped: 0 });
-  for (let i = 1; i < 24; i++) db.inv.push({ id: 700 + i, character_id: 1, slot_index: i, item_id: `junk_${i}`, quantity: 1, equipped: 0 });
+  for (let i = 1; i < 48; i++) db.inv.push({ id: 700 + i, character_id: 1, slot_index: i, item_id: `junk_${i}`, quantity: 1, equipped: 0 });
   const r = (await call('POST /api/contracts/deliver', { body: { characterId: 1, slot: 2 } })).json;
   assert.equal(r.success, false);
   assert.match(r.error, /Make room/);

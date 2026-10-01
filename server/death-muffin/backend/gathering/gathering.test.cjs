@@ -93,7 +93,7 @@ test('levels roll over mid-batch and the reply carries the new level', async () 
 });
 
 test('a full bag rejects what does not fit but still grants XP', async () => {
-  const bag = Array.from({ length: 24 }, (_, i) => ({ slot: i, itemId: i === 0 ? 'log_oak' : 'staff_oak', qty: i === 0 ? 249 : 1 }));
+  const bag = Array.from({ length: 48 }, (_, i) => ({ slot: i, itemId: i === 0 ? 'log_oak' : 'staff_oak', qty: i === 0 ? 249 : 1 }));
   const { call, char } = harness({ char: { bag } });
   const r = await call({ nodeType: 'coffin_oak', actions: 3 });
   assert.equal(r.status, 200);

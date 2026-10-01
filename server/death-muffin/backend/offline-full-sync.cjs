@@ -4,6 +4,7 @@ const path = require('path');
 const runtimeNecro = path.join(__dirname, 'necro-progress/necro-rules.cjs');
 const necroRules = require(fs.existsSync(runtimeNecro) ? runtimeNecro : '../../vps-handoff/necro-progress/necro-rules.cjs');
 const contractRules = require('./gathering/contract-rules.cjs');
+const gather = require('./gathering/gathering-rules.cjs');
 
 const parse = (value, fallback = null) => {
   if (value == null) return fallback;
@@ -75,18 +76,18 @@ function validate(account, onlineClass) {
   if (!bounded(c.level, 1, 255) || !bounded(c.experience, 0, c.level * 100 - 1) ||
       !bounded(c.gold, 0, 2147483647) || ['stat_str', 'stat_agi', 'stat_int', 'stat_vit'].some((key) => !bounded(c[key], 0, 65535)))
     throw new RangeError('Invalid character stats');
-  if (!Array.isArray(account.slots) || account.slots.length > 33) throw new RangeError('Invalid inventory');
+  if (!Array.isArray(account.slots) || account.slots.length > gather.BAG_SLOTS + 9) throw new RangeError('Invalid inventory');
   const occupied = new Set();
   for (const slot of account.slots) {
     const index = slot?.slot_index;
-    if (!bounded(index, 0, 23) && !bounded(index, 100, 108)) throw new RangeError('Invalid inventory slot');
+    if (!bounded(index, 0, gather.BAG_SLOTS - 1) && !bounded(index, 100, 108)) throw new RangeError('Invalid inventory slot');
     if (occupied.has(index) || !itemId(slot.item_id) || !bounded(slot.quantity, 1, 9999)) throw new RangeError('Invalid inventory item');
     occupied.add(index);
   }
   if (!Array.isArray(account.professions) || account.professions.length > 12) throw new RangeError('Invalid professions');
   const skills = new Set();
   for (const row of account.professions) {
-    if (!['woodcutting', 'fishing', 'mining', 'gravedigging', 'gardening', 'alchemy'].includes(row?.profession_id) ||
+    if (!['woodcutting', 'fishing', 'mining', 'gravedigging', 'gardening', 'alchemy', 'salvaging'].includes(row?.profession_id) ||
         skills.has(row.profession_id) || !bounded(row.skill_level, 1, 100) || !bounded(row.skill_xp, 0, 2147483647)) throw new RangeError('Invalid profession');
     skills.add(row.profession_id);
   }

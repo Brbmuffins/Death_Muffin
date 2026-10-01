@@ -125,14 +125,14 @@ describe('progression math', () => {
     expect(rollKill('robber', 'graves', 1, true, 0, mulberry32(1)).shards).toBeGreaterThan(0);
   });
 
-  it('pickups stack materials and respect the 24-slot bag', () => {
+  it('pickups stack materials and respect the 48-slot bag', () => {
     let slots = addToSlots([], { item_id: 'ore_copper', quantity: 1 })!;
     slots = addToSlots(slots, { item_id: 'ore_copper', quantity: 2 })!;
     expect(slots).toHaveLength(1);
     expect(slots[0].quantity).toBe(3);
     let full = slots;
-    for (let i = 0; i < 23; i++) full = addToSlots(full, { item_id: 'helm_copper', quantity: 1 })!;
-    expect(full).toHaveLength(24);
+    for (let i = 0; i < 47; i++) full = addToSlots(full, { item_id: 'helm_copper', quantity: 1 })!;
+    expect(full).toHaveLength(48);
     expect(addToSlots(full, { item_id: 'helm_iron', quantity: 1 })).toBeNull();
   });
 });

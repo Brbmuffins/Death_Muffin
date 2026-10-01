@@ -126,7 +126,7 @@ module.exports = function mountLabor(app, pool, { requireAuth, ownsCharacter, no
     const roll = labor.rollLabor(def, start, elapsed, labor.claimRng(labor.hashSeed(id, slot, row.startedAt, actions)));
 
     // Place the finds: refuse the whole collection (changing nothing) if they will not all fit.
-    const [bagRows] = await conn.execute('SELECT slot_index, item_id, quantity, equipped FROM inventory WHERE character_id = ? AND slot_index BETWEEN 0 AND 23 FOR UPDATE', [id]);
+    const [bagRows] = await conn.execute('SELECT slot_index, item_id, quantity, equipped FROM inventory WHERE character_id = ? AND slot_index BETWEEN 0 AND ? FOR UPDATE', [id, gather.BAG_SLOTS - 1]);
     const bag = bagRows.map((r) => ({ slot: num(r.slot_index), itemId: num(r.equipped) ? '' : r.item_id, qty: num(r.quantity) }));
     const ids = [...new Set(roll.items.map((g) => g.itemId))];
     const stacks = new Map();

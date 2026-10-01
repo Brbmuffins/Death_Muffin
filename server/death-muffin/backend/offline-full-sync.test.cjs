@@ -28,9 +28,9 @@ test('character stats are bounded', () => {
   }
 });
 
-test('inventory slots must be bag (0-23) or equipment (100-108), unique, with sane ids and quantities', () => {
+test('inventory slots must be bag (0-47) or equipment (100-108), unique, with sane ids and quantities', () => {
   const bad = [
-    [{ slot_index: 24, item_id: 'staff_oak', quantity: 1 }],
+    [{ slot_index: 48, item_id: 'staff_oak', quantity: 1 }],
     [{ slot_index: 99, item_id: 'staff_oak', quantity: 1 }],
     [{ slot_index: 0, item_id: 'staff_oak', quantity: 1 }, { slot_index: 0, item_id: 'bone_meal', quantity: 1 }],
     [{ slot_index: 1, item_id: 'DROP TABLE', quantity: 1 }],
@@ -38,6 +38,7 @@ test('inventory slots must be bag (0-23) or equipment (100-108), unique, with sa
     [{ slot_index: 1, item_id: 'bone_meal', quantity: 10000 }],
   ];
   for (const slots of bad) assert.throws(() => sync.validate(save({ slots }), 2), RangeError, JSON.stringify(slots));
+  assert.doesNotThrow(() => sync.validate(save({ slots: [{ slot_index: 47, item_id: 'staff_oak', quantity: 1 }] }), 2));
   assert.doesNotThrow(() => sync.validate(save({ slots: [{ slot_index: 105, item_id: 'staff_oak', quantity: 1 }] }), 2));
 });
 

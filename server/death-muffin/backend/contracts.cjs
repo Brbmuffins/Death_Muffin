@@ -8,14 +8,15 @@
  * (which owns the gold total and saves it, exactly like a gather reply), never written here.
  */
 const rules = require('./gathering/contract-rules.cjs');
+const gather = require('./gathering/gathering-rules.cjs');
 
-const BAG = 24;
+const BAG = gather.BAG_SLOTS;
 const BONUS_SLOT = 9;
 
 const SKILL_IDS = ['woodcutting', 'mining', 'fishing', 'gravedigging', 'gardening'];
 const parse = (v) => (typeof v === 'string' ? JSON.parse(v) : v) || {};
 
-/** Remove `qty` of an item from the bag (unequipped, slots 0-23). Returns false, changing nothing, if the bag holds fewer. */
+/** Remove `qty` of an item from the bag (unequipped, slots 0..BAG_SLOTS-1). Returns false, changing nothing, if the bag holds fewer. */
 async function removeFromBag(conn, characterId, itemId, qty) {
   const [rows] = await conn.execute(
     'SELECT id, quantity FROM inventory WHERE character_id = ? AND item_id = ? AND equipped = 0 AND slot_index BETWEEN 0 AND ? ORDER BY slot_index FOR UPDATE',
@@ -33,7 +34,7 @@ async function removeFromBag(conn, characterId, itemId, qty) {
   return true;
 }
 
-/** Put `qty` of an item in the bag (stacking first, then free slots 0-23). Returns how many did NOT fit. */
+/** Put `qty` of an item in the bag (stacking first, then free slots 0..BAG_SLOTS-1). Returns how many did NOT fit. */
 async function addToBag(conn, characterId, itemId, qty) {
   const [[item]] = await conn.execute('SELECT stackable, max_stack_size FROM items WHERE id = ?', [itemId]);
   if (!item) throw new Error(`unknown item: ${itemId}`);
