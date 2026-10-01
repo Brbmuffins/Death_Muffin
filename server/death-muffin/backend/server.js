@@ -7,6 +7,7 @@ const { execFile } = require('child_process');
 const fs         = require('fs');
 const crypto     = require('crypto');
 const rateLimit  = require('express-rate-limit');
+const { mergeOfflineStats } = require('./offline-sync.cjs');
 
 const app  = express();
 const PORT = process.env.PORT || 5190;
@@ -58,7 +59,7 @@ function calcXpGained(enemyLevel, enemyCategory) {
   return Math.round(baseXp * COMBAT_XP_MULTIPLIERS[enemyCategory]);
 }
 
-app.use(express.json());
+app.use(express.json({ limit: '512kb' }));
 app.set('trust proxy', 'loopback'); // nginx proxies from 127.0.0.1 — trust its X-Forwarded-For
 
 const registerLimiter = rateLimit({
@@ -173,7 +174,7 @@ async function verifyJWT(req, res, next) {
 
   try {
     const [[acct]] = await pool.execute(
-      'SELECT role, gm_enabled, gm_level, gm_permissions FROM accounts WHERE id = ? LIMIT 1',
+      'SELECT username, role, gm_enabled, gm_level, gm_permissions FROM accounts WHERE id = ? LIMIT 1',
       [payload.accountId]
     );
     if (acct) {
@@ -185,6 +186,8 @@ async function verifyJWT(req, res, next) {
         gm_enabled: staffRole || !!acct.gm_enabled,
         gm_level: staffRole ? Math.max(1, acct.gm_level || 0) : (acct.gm_level || 0),
         gm_permissions: acct.gm_permissions || (staffRole ? '*' : ''),
+        // Only the owner's verified Death Muffin account can use Auto Combat.
+        auto_combat_allowed: acct.username.toLowerCase() === 'brbmuffins' && (staffRole || !!acct.gm_enabled),
       };
     } else {
       req.gmFields = { gm_enabled: 0, gm_level: 0, gm_permissions: '' };
@@ -304,6 +307,7 @@ function formatCharacter(char, gear, gmFields = {}) {
     gm_enabled:      !!gmFields.gm_enabled,
     gm_level:        gmFields.gm_level     ?? 0,
     gm_permissions:  gmFields.gm_permissions ?? '',
+    auto_combat_allowed: !!gmFields.auto_combat_allowed,
   };
 }
 
@@ -590,6 +594,38 @@ app.post('/api/game/items/definitions', requireGameServerToken, async (req, res)
 });
 
 // ─── Progression ──────────────────────────────────────────────────────────────
+
+const offlineSyncLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false });
+app.post('/api/offline/sync-stats', offlineSyncLimiter, verifyJWT, async (req, res) => {
+  if (!req.character)
+    return res.status(404).json({ error: 'Create an online character before syncing offline stats.' });
+  const offlineClass = req.body?.classIndex;
+  if (!Number.isInteger(offlineClass) || offlineClass !== Number(req.character.discipline_index ?? req.character.class_index))
+    return res.status(400).json({ error: 'The offline and online characters must use the same discipline.' });
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [[online]] = await conn.execute(
+      'SELECT level, experience FROM characters WHERE id = ? AND account_id = ? FOR UPDATE',
+      [req.character.id, req.user.accountId]
+    );
+    if (!online) { await conn.rollback(); return res.status(404).json({ error: 'Online character not found.' }); }
+    let merged;
+    try { merged = mergeOfflineStats(online, req.body); }
+    catch { await conn.rollback(); return res.status(400).json({ error: 'Invalid offline level or XP.' }); }
+    if (merged.improved) {
+      await conn.execute('UPDATE characters SET level = ?, experience = ? WHERE id = ?',
+        [merged.level, merged.experience, req.character.id]);
+    }
+    await conn.commit();
+    res.json({ level: merged.level, experience: merged.experience, improved: merged.improved });
+  } catch (err) {
+    await conn.rollback();
+    console.error('Offline stats sync error:', err.code || err.message);
+    res.status(500).json({ error: 'Could not sync offline stats.' });
+  } finally { conn.release(); }
+});
 
 app.post('/api/character/save-progress', requireJWT, async (req, res) => {
   const { characterId } = req.body;

@@ -22,12 +22,14 @@ export class ApiError extends Error {
 }
 
 /**
- * DEV-only offline mode: `?offline` in the dev-server URL routes every call to
- * an in-browser mock (src/net/mockBackend.ts). `import.meta.env.DEV` is
- * statically false in production builds, so the mock is dead-code-eliminated.
+ * The standalone offline edition routes calls to its in-browser store. The
+ * ordinary production game never includes that store. Development `?offline`
+ * keeps the same local QA path.
  */
 export const OFFLINE =
-  import.meta.env.DEV && typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('offline');
+  import.meta.env.VITE_OFFLINE_BUILD === '1' ||
+  (import.meta.env.DEV && typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('offline'));
+const TOKEN_KEY = import.meta.env.VITE_OFFLINE_BUILD === '1' ? 'dm_offline_token' : 'dm_jwt';
 
 let jwt: string | null = null;
 
@@ -35,11 +37,11 @@ export function setToken(token: string | null) {
   jwt = token;
   try {
     if (token) {
-      sessionStorage.setItem('dm_jwt', token);
-      if (localStorage.getItem('dm_jwt')) localStorage.setItem('dm_jwt', token);
+      sessionStorage.setItem(TOKEN_KEY, token);
+      if (localStorage.getItem(TOKEN_KEY)) localStorage.setItem(TOKEN_KEY, token);
     } else {
-      sessionStorage.removeItem('dm_jwt');
-      localStorage.removeItem('dm_jwt');
+      sessionStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(TOKEN_KEY);
     }
   } catch {
     /* storage unavailable — token lives in memory for this page only */
@@ -49,7 +51,7 @@ export function setToken(token: string | null) {
 export function getToken(): string | null {
   if (jwt) return jwt;
   try {
-    return sessionStorage.getItem('dm_jwt') || localStorage.getItem('dm_jwt');
+    return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
   } catch {
     return null;
   }

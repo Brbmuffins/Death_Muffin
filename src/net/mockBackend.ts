@@ -135,11 +135,12 @@ interface MockDb {
   accounts: Record<string, MockAccount>;
 }
 
-const DB_KEY = 'cw_offline_db_v1';
+const DB_KEY = 'dm_offline_db_v1';
+const LEGACY_DEV_KEY = 'cw_offline_db_v1';
 
 function loadDb(): MockDb {
   try {
-    const raw = localStorage.getItem(DB_KEY);
+    const raw = localStorage.getItem(DB_KEY) ?? (import.meta.env.DEV ? localStorage.getItem(LEGACY_DEV_KEY) : null);
     if (raw) return JSON.parse(raw);
   } catch {
     /* fresh db */
@@ -256,10 +257,11 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
   }
 
   const acc = accountFor(db, token);
+  const characterResponse = () => ({ ...acc.character, auto_combat_allowed: import.meta.env.DEV && acc.username.toLowerCase() === 'brbmuffins' });
 
   if (p === '/character' && method === 'GET') {
     if (!acc.character) throw new MockError('No character', 404);
-    return acc.character;
+    return characterResponse();
   }
 
   if (p === '/character/discipline' && method === 'POST') {
@@ -268,11 +270,11 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     ownCharacter(acc, body.characterId);
     acc.character!.class_index = index;
     acc.character!.class_name = DISCIPLINE_NAMES[index] ?? CLASS_NAMES[index] ?? acc.character!.class_name;
-    return acc.character;
+    return characterResponse();
   }
 
   if (p === '/character' && method === 'POST') {
-    if (acc.character) return acc.character;
+    if (acc.character) return characterResponse();
     const idx = Number(body.class_index);
     if (!Number.isInteger(idx) || idx < 0 || idx >= CLASS_NAMES.length) throw new MockError('class_index must be 0–5', 400);
     acc.character = {
@@ -292,7 +294,7 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       { slot_index: 0, item_id: 'staff_oak', quantity: 1, equipped: 0 },
       { slot_index: 1, item_id: 'flask_hp_minor', quantity: 3, equipped: 0 },
     ];
-    return acc.character;
+    return characterResponse();
   }
 
   let m: RegExpMatchArray | null;

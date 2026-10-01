@@ -24,9 +24,9 @@ export interface Kit {
   family: ClassFamily;
   /** HUD hotbar order: index + 1 is the HotbarSlot; slot 5 is the right-click action. */
   hotbar: AbilityId[];
-  /** Every rite that may sit on keys 1–4 — this family's Grimoire. */
+  /** Class rites in the Grimoire; the default right-click rite is added to the swappable pool. */
   grimoire: AbilityId[];
-  /** Keys 1–4 for a fresh character. */
+  /** Keys 1–4 for a fresh character; rmb supplies slot 5. */
   defaultLoadout: AbilityId[];
   /** Left-click options; `defaultPrimary` must be one of them. */
   primaries: AbilityId[];

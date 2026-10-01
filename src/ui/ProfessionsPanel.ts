@@ -56,7 +56,7 @@ export class ProfessionsPanel {
   open(skills: Skills) {
     if (this.el) return;
     this.el = document.createElement('div');
-    this.el.className = 'cw-plate cw-panel-float wide';
+    this.el.className = 'cw-plate cw-panel-float wide cw-skills-panel';
     this.el.setAttribute('role', 'dialog');
     this.el.setAttribute('aria-label', 'Skills');
     this.root.appendChild(this.el);
@@ -89,7 +89,7 @@ export class ProfessionsPanel {
       const selected = selections.get(id) ?? choices[0]?.id;
       const afk = this.afk && choices.length ? `<div class="cw-afk-controls">
         <select data-afk-node="${id}" aria-label="${meta.name} gathering node" ${this.busy ? 'disabled' : ''}>${choices.map(n => `<option value="${n.id}" ${n.id === selected ? 'selected' : ''}>${n.name} · level ${n.level}</option>`).join('')}</select>
-        <button class="cw-btn" data-start-afk="${id}" aria-label="Start AFK ${meta.name}" ${this.busy || !status?.allowed ? 'disabled' : ''}>Start AFK</button>
+        <button class="cw-button small" data-start-afk="${id}" aria-label="Start AFK ${meta.name}" ${this.busy || !status?.allowed ? 'disabled' : ''}>Start AFK</button>
       </div>` : '';
       return `
         <div class="cw-skill" style="--skill:${meta.color}">
@@ -107,14 +107,17 @@ export class ProfessionsPanel {
       <div class="cw-panel-head">
         <h2 class="cw-title">Skills</h2>
         <span class="cw-skill-total">Total level <b>${skills.total()}</b></span>
+        <button class="cw-icon-btn" data-close aria-label="Close skills">✕</button>
+      </div>
+      <div class="cw-panel-actions" aria-label="Professions and rewards">
         ${this.onCosmetics ? '<button class="cw-button small" data-cosmetics title="Capes and pets (N)">Capes</button>' : ''}
         ${this.onLabor ? '<button class="cw-button small" data-labor title="Grave Laborers (H)">Laborers</button>' : ''}
         ${this.onGarden ? '<button class="cw-button small" data-garden title="Grave Gardening (U)">Garden</button>' : ''}
         ${this.onContracts ? '<button class="cw-button small" data-contracts title="Daily delivery orders (O)">Contracts</button>' : ''}
-        <button class="cw-icon-btn" data-close aria-label="Close skills">✕</button>
       </div>
+      <h3 class="cw-panel-section-title">AFK gathering</h3>
       <p class="cw-hint-text">Choose a node and Start AFK in the Sexton’s Acre. Keep the game open; your hero repeats, changes nodes and waits for respawns until the bag fills. Skills can stay open. Moving, casting or other panels pause work.</p>
-      ${status ? `<div class="cw-afk-status"><span data-afk-status></span><button class="cw-btn" data-pause-afk ${!status.active || this.busy ? 'disabled' : ''}>Pause AFK</button></div>` : ''}
+      ${status ? `<div class="cw-afk-status"><span data-afk-status></span><button class="cw-button small" data-pause-afk ${!status.active || this.busy ? 'disabled' : ''}>Pause AFK</button></div>` : ''}
       <div class="cw-skill-grid">${cards}</div>
     `;
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());

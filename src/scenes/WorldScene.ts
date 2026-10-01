@@ -6,7 +6,7 @@ import { Scope } from '../app/Scope';
 import { ABILITIES, PRIMARIES, BULWARK, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
 import { CAST_FLOW } from '../content/combatFlow';
 import { kitFor, type Kit } from '../content/kits';
-import { assignRite, loadRites, loadSeen, saveRites, saveSeen, unseenRites } from '../gameplay/loadout';
+import { assignableRites, assignRite, LOADOUT_SLOTS, loadRites, loadSeen, saveRites, saveSeen, unseenRites } from '../gameplay/loadout';
 import { devAccess, devPreference, isDevAccount, riteLevel, setDevPreference, tokenUsername } from '../gameplay/devAccess';
 import { GrimoirePanel } from '../ui/GrimoirePanel';
 import { preloadFxImages } from '../graphics/fxImages';
@@ -31,7 +31,7 @@ import { BOONS, ascensionLevels, ascensionRewardMult, roman } from '../content/a
 import { AscensionPanel } from '../ui/AscensionPanel';
 import { ClassPanel } from '../ui/ClassPanel';
 import { changeDiscipline, getCosmetics, getGarden, getLabor, type ContractDelivery, type CosmeticsView, type GardenResult, type LaborResult } from '../net/api';
-import { onSettingsChange, settings, updateSettings } from '../app/settings';
+import { canUseAutoCombat, onSettingsChange, setActiveCharacter, settings, updateSettings } from '../app/settings';
 import { selectAutoCombatAction, selectAutoCombatMovement, type AutoMoveMemory } from '../gameplay/autoCombat';
 import { STATUS_FX } from '../content/statuses';
 import { AbilitySystem, veilTarget, type CastResult, type CastTarget } from '../gameplay/AbilitySystem';
@@ -197,9 +197,9 @@ export class WorldScene implements GameScene, RuntimeView {
   private kit: Kit;
   /** This account may use the dev overlay (gm_enabled or DEV_ACCOUNTS); the overlay itself is devAccess.active. */
   private devAccount = false;
-  /** Hotbar: the Grimoire loadout (keys 1–4), Corpse Explosion (slot 5) and this discipline's signature rite (slot 6). */
+  /** Hotbar: five Grimoire sockets (slot 5 also casts on right-click) and the signature on R. */
   private hotbar: AbilityId[] = kitFor('necromancer').hotbar;
-  /** The four rites on keys 1–4 (Grimoire, L); remembered per character in browser storage. */
+  /** The five rites on keys 1–5 (Grimoire, L); remembered per character in browser storage. */
   private loadout: AbilityId[];
   /** The left-click primary (Grimoire LMB socket). */
   private primary: AbilityId = 'bone_needle';
@@ -396,12 +396,13 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private buildHotbar(): AbilityId[] {
-    return [...this.loadout, this.kit.rmb, this.kit.signatures[this.discipline.id]!];
+    return [...this.loadout, this.kit.signatures[this.discipline.id]!];
   }
 
-  /** Grimoire: put a rite on key `slot + 1` (swapping if it sat on another key) and remember it. */
+  /** Grimoire: put a rite on a slot, swapping if it sat on another, and remember it. */
   private setRite(slot: number, id: AbilityId) {
-    if (riteLevel(this.character.level) < unlockLevel(id) || this.loadout[slot] === id) return;
+    if (slot < 0 || slot >= LOADOUT_SLOTS || !assignableRites(this.kit).includes(id)
+      || riteLevel(this.character.level) < unlockLevel(id) || this.loadout[slot] === id) return;
     this.loadout = assignRite(this.loadout, slot, id);
     saveRites(browserStorage(), this.character.id, { primary: this.primary, keys: this.loadout });
     this.markSeen([id]);
@@ -419,6 +420,7 @@ export class WorldScene implements GameScene, RuntimeView {
   // -------------------------------------------------------------------------
 
   mount() {
+    setActiveCharacter(this.character.id, this.character.auto_combat_allowed === true);
     this.buildScene();
     this.nav.setUnlocked(this.openAreas());
     this.worldView = new WorldView(this.scene, this.layout, this.nav, this.effects);
@@ -576,7 +578,7 @@ export class WorldScene implements GameScene, RuntimeView {
     getRuntime().setView(this);
     const inventoryReady = this.loadData();
     // Offline dev tokens are not JWTs: only try co-op there when asked (?offline&coop).
-    if (!OFFLINE || new URLSearchParams(location.search).has('coop')) void this.connectRealtime();
+    if (!OFFLINE || (import.meta.env.DEV && new URLSearchParams(location.search).has('coop'))) void this.connectRealtime();
     if (import.meta.env.DEV) this.installDebug();
 
     this.enterArea('acre');
@@ -795,8 +797,8 @@ export class WorldScene implements GameScene, RuntimeView {
       this.codexPanel.dispose();
       this.onboarding.dispose();
     });
-    const rmb = `Right-click a corpse: ${ABILITIES[this.kit.rmb].name}`;
-    this.hud.hint(OFFLINE ? `OFFLINE DEV MODE — progress stays in this browser · ${rmb}` : rmb);
+    const rmb = 'Right-click or press 5 for your fifth equipped rite · click swap below its icon to change it';
+    this.hud.hint(OFFLINE ? `OFFLINE EDITION — progress stays on this device · ${rmb}` : rmb);
     this.scope.add(() => {
       this.closePanels();
       this.hud.dispose();
@@ -957,6 +959,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private toggleAutoCombat() {
+    if (!canUseAutoCombat()) return;
     if (settings.difficulty !== 'easy') {
       this.hud.toast('Auto combat is available on Easy difficulty. Change it in Settings.');
       return;
@@ -1228,14 +1231,14 @@ export class WorldScene implements GameScene, RuntimeView {
       }
     }
     // Held number keys repeat only when the selected spell is ready.
-    for (let slot = 1; slot <= 4; slot++) {
+    for (let slot = 1; slot <= 5; slot++) {
       if (this.keys.has(String(slot))) {
         if (this.abilities.ready(this.hotbar[slot - 1], now)) this.castSlot(slot as HotbarSlot);
         return;
       }
     }
     // Easy auto yields to deliberate movement, menus, gathering and manual targets.
-    if (!settings.autoCombat || p.hasPath || this.attackTarget || this.keys.size || this.gathering.active) {
+    if (!canUseAutoCombat() || !settings.autoCombat || p.hasPath || this.attackTarget || this.keys.size || this.gathering.active) {
       this.autoTargetId = null;
       this.autoAim = null;
       return;
@@ -1339,7 +1342,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private beltKey() {
-    return `dm_belt_${this.character.id}`;
+    return `${import.meta.env.VITE_OFFLINE_BUILD === '1' ? 'dm_offline_' : ''}dm_belt_${this.character.id}`;
   }
 
   private loadBelt() {
@@ -2733,7 +2736,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const myThralls = [...this.thrallsMap().values()].filter((t) => t.owner === this.selfId).length;
     const lanternWard = [...(this.sim?.zones ?? this.mirror?.zones ?? new Map()).values()].some((zone) => zone.kind === 'warden_ward' && Math.hypot(zone.x - this.player.x, zone.z - this.player.z) <= zone.r) ? 0.2 : 0;
     // Easy auto softens hits between the Knight's blocks and the Veilwalker's phases.
-    const autoGuard = settings.autoCombat && (this.discipline.family === 'knight' || this.discipline.family === 'veil') ? 0.3 : 0;
+    const autoGuard = canUseAutoCombat() && settings.autoCombat && (this.discipline.family === 'knight' || this.discipline.family === 'veil') ? 0.3 : 0;
     // Elixir wards and fire/rot resists (brews); Player.takeDamage caps the whole sum at 60%.
     const flaskWard = brewWard(this.player.brews, from, this.now);
     const ward = this.discipline.mods.wardPerThrall * myThralls + lanternWard + autoGuard + flaskWard;
@@ -2861,7 +2864,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   /** First kill of an area boss by this character? Recorded in browser storage (no new server fields). */
   private claimTrophy(id: BossId): boolean {
-    const key = `dm_boss_trophies_v1:${this.character.id}`;
+    const key = `${import.meta.env.VITE_OFFLINE_BUILD === '1' ? 'dm_offline_' : ''}dm_boss_trophies_v1:${this.character.id}`;
     try {
       const got: string[] = JSON.parse(localStorage.getItem(key) ?? '[]');
       if (got.includes(id)) return false;
@@ -3334,7 +3337,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.cancelRecall();
       this.gathering.stop('moved');
     }
-    const autoMove = settings.autoCombat && p.alive && !this.panelOpen() && !this.recallAt && !p.hasPath &&
+    const autoMove = canUseAutoCombat() && settings.autoCombat && p.alive && !this.panelOpen() && !this.recallAt && !p.hasPath &&
       !this.attackTarget && !this.pendingInteract && !this.gathering.active && !this.keys.size
       ? selectAutoCombatMovement({ player: { x: p.x, z: p.z, area: p.area, essence: p.essence, maxEssence: p.resource.max,
           hp: p.hp, maxHp: p.stats.maxHp },
@@ -3354,7 +3357,7 @@ export class WorldScene implements GameScene, RuntimeView {
       p.moveMult = (wading ? (b.phase >= 3 ? C.slowP3 : C.slowP2) : 1) * bog * (1 + p.brewValue('speed', now));
     }
     const moved = p.update(dt, now, kd.x || kd.z ? kd : autoMove);
-    if (settings.autoCombat && p.alive && now - p.lastHurtAt < 5000) p.heal(p.stats.maxHp * 0.02 * dt);
+    if (canUseAutoCombat() && settings.autoCombat && p.alive && now - p.lastHurtAt < 5000) p.heal(p.stats.maxHp * 0.02 * dt);
     if (now < this.mealUntil && p.alive) p.heal(this.mealRate * dt);
     this.gathering.update(dt);
     this.tickGatherVisuals(dt);
@@ -3429,7 +3432,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.onboarding.show('relic');
     }
     if (got.items.some((item) => ARMOR_BY_ID[item.item_id])) this.onboarding.show('armor');
-    if (got.items.some((item) => item.item_id in REAGENT_ITEMS)) this.onboarding.show('reagent');
+    if (got.items.some((item) => item.item_id in REAGENT_ITEMS)) this.onboarding.show('reagent', 0, true);
     for (const item of got.items) this.hud.toast(`${itemMeta(item.item_id).name}${item.quantity > 1 ? ` ×${item.quantity}` : ''}`, 'good');
 
     // Visuals.
@@ -3752,7 +3755,8 @@ export class WorldScene implements GameScene, RuntimeView {
 
     this.hud.update({
       autoCombat: settings.autoCombat,
-      autoCombatAvailable: settings.difficulty === 'easy',
+      autoCombatAvailable: canUseAutoCombat() && settings.difficulty === 'easy',
+      autoCombatVisible: canUseAutoCombat(),
       hp: p.hp,
       maxHp: p.stats.maxHp,
       barrier: p.barrier,
@@ -4031,14 +4035,14 @@ export class WorldScene implements GameScene, RuntimeView {
         this.skills.adopt([{ profession_id: id, skill_level: level, skill_xp: 0 }]);
         if (OFFLINE) {
           try {
-            const db = JSON.parse(localStorage.getItem('cw_offline_db_v1') ?? '{}');
+            const db = JSON.parse(localStorage.getItem('dm_offline_db_v1') ?? '{}');
             for (const acc of Object.values(db.accounts ?? {}) as { character?: { id: number }; professions: { profession_id: string; skill_level: number; skill_xp: number }[] }[]) {
               if (acc.character?.id !== this.character.id) continue;
               const row = acc.professions.find((p) => p.profession_id === id);
               if (row) Object.assign(row, { skill_level: level, skill_xp: 0 });
               else acc.professions.push({ profession_id: id, skill_level: level, skill_xp: 0 });
             }
-            localStorage.setItem('cw_offline_db_v1', JSON.stringify(db));
+            localStorage.setItem('dm_offline_db_v1', JSON.stringify(db));
           } catch {
             /* storage unavailable */
           }
@@ -4075,6 +4079,7 @@ export class WorldScene implements GameScene, RuntimeView {
   // -------------------------------------------------------------------------
 
   unmount() {
+    setActiveCharacter(null);
     devAccess.active = false;
     this.ready = false;
     audio.stopArea();

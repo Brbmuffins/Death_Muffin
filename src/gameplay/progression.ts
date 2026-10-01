@@ -101,7 +101,7 @@ const blank = (): LocalProgress => ({
   run: { prelateKills: 0, peakWaveTier: 0, kills: 0 },
 });
 
-const key = (characterId: number) => `dm_progress_v1_${characterId}`;
+const key = (characterId: number) => `${import.meta.env.VITE_OFFLINE_BUILD === '1' ? 'dm_offline_' : ''}dm_progress_v1_${characterId}`;
 
 export function loadLocalProgress(characterId: number): LocalProgress {
   try {

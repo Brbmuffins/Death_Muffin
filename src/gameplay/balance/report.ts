@@ -81,6 +81,6 @@ for (const area of areas) {
     }
   }
 }
-console.log(`\nCrossworlds balance report: ${MINUTES} simulated minutes per row, ${SEEDS} seed(s), difficulty ${DIFFICULTY}, ascension ${ASC}`);
+console.log(`\nDeath Muffin balance report: ${MINUTES} simulated minutes per row, ${SEEDS} seed(s), difficulty ${DIFFICULTY}, ascension ${ASC}`);
 console.log('hurt%/m = damage taken per minute as % of max HP · 1st†s = seconds to first death · unlock m = minutes of kills to open the next area\n');
 console.log(rows.join('\n'));

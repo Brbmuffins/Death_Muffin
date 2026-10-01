@@ -24,7 +24,7 @@ async function main() {
   const failed = [];
   try {
     const qa = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-    await qa.addInitScript(() => localStorage.setItem('dm_settings_v1', JSON.stringify({ quality: 'high', tips: false })));
+    await qa.addInitScript(() => localStorage.setItem('dm_settings_v1', JSON.stringify({ quality: 'high', tips: false, difficulty: 'easy', autoCombat: true })));
     const game = await qa.newPage();
     game.on('pageerror', (e) => errors.push(e.message));
     game.on('response', (r) => { if (r.url().startsWith(site) && r.status() >= 400) failed.push({ status: r.status(), url: r.url() }); });
@@ -42,6 +42,28 @@ async function main() {
     const cards = await game.locator('.cw-disc').allInnerTexts();
     await game.locator('.cw-disc').filter({ hasText: 'Gravecaller' }).first().click();
     await game.locator('.hud').waitFor({ timeout: 45000 });
+    const characterResponse = await qa.request.get(site + 'api/character', { headers: { Authorization: `Bearer ${token}` } });
+    assert.equal(characterResponse.status(), 200, 'character response');
+    const character = await characterResponse.json();
+    assert.equal(character.auto_combat_allowed, false, 'ordinary account has no Auto Combat capability');
+    const sync = await qa.request.post(site + 'api/api/offline/sync-stats', {
+      headers: { Authorization: `Bearer ${token}` },
+      data: { classIndex: character.class_index, level: character.level, experience: character.experience },
+    });
+    assert.equal(sync.status(), 200, 'offline stats sync endpoint');
+    assert.equal((await sync.json()).improved, false, 'same stats leave online character unchanged');
+    const badSync = await qa.request.post(site + 'api/api/offline/sync-stats', {
+      headers: { Authorization: `Bearer ${token}` },
+      data: { classIndex: character.class_index, level: 2, experience: 200 },
+    });
+    assert.equal(badSync.status(), 400, 'invalid offline XP rejected');
+    await game.locator('[data-open="settings"]').click();
+    assert.equal(await game.locator('[data-diff]').inputValue(), 'medium', 'new character starts on Medium despite saved Easy');
+    assert.equal(await game.locator('[data-auto]:visible').count(), 0, 'Auto Combat controls are hidden');
+    assert.equal(await game.locator('[data-autogather]').count(), 1, 'Auto gathering remains available');
+    await game.locator('[data-diff]').selectOption('easy');
+    assert.equal(await game.locator('[data-auto]:visible').count(), 0, 'Easy does not unlock Auto Combat');
+    await game.keyboard.press('Escape');
     const coop = await Promise.race([joined, game.getByText(/Joined world/).first().waitFor({ timeout: 20000 }).then(() => true).catch(() => false)]);
     await game.waitForTimeout(2500);
     await game.keyboard.press('l');
@@ -49,7 +71,7 @@ async function main() {
     const grimoire = await game.evaluate(() => document.body.textContent || '');
     await game.screenshot({ path: path.join(out, 'live-grimoire.png') });
     const missing = RITES.filter((r) => !grimoire.includes(r));
-    const report = { cards: cards.map((c) => c.split('\n')[0]), coop, missingRites: missing, errors, failed };
+    const report = { cards: cards.map((c) => c.split('\n')[0]), coop, normalAccount: 'Medium initially, Auto Combat hidden, Auto gathering available', missingRites: missing, errors, failed };
     console.log(JSON.stringify(report));
     assert.deepEqual(missing, [], 'Grimoire lists the new rites');
     assert.equal(errors.length, 0, 'no page errors');

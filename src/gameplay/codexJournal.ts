@@ -25,7 +25,13 @@ const KNOWN: { [K in CodexKind]: readonly string[] } = { dead: DEAD_ORDER, area:
 
 export function browserStorage(): StorageLike | null {
   try {
-    return globalThis.localStorage ?? null;
+    const store = globalThis.localStorage;
+    if (!store) return null;
+    if (import.meta.env.VITE_OFFLINE_BUILD !== '1') return store;
+    return {
+      getItem: (key) => store.getItem(`dm_offline_${key}`),
+      setItem: (key, value) => store.setItem(`dm_offline_${key}`, value),
+    };
   } catch {
     return null;
   }

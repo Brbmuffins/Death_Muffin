@@ -5,10 +5,11 @@ import { LoginScene } from './scenes/LoginScene';
 import { CharacterSelectScene } from './scenes/CharacterSelectScene';
 import { WorldScene } from './scenes/WorldScene';
 import { NecroBackdrop } from './graphics/NecroBackdrop';
-import { ApiError, getCharacter, getToken, setToken } from './net/api';
+import { ApiError, getCharacter, getToken, OFFLINE, setToken } from './net/api';
 import type { Character } from './net/types';
 
 const runtime = initRuntime(document.getElementById('scene') as HTMLCanvasElement);
+if (import.meta.env.VITE_OFFLINE_BUILD === '1') void import('./offline/install').then(({ setupOfflineInstall }) => setupOfflineInstall());
 
 // DEV: README/QA screenshots — __cwShot('name') saves the current WebGL frame
 // to docs/screenshots/ via the dev-only tools/qa-shots-plugin.ts endpoint.
@@ -29,7 +30,7 @@ const dropBackdrop = () => {
 };
 
 function goLogin() {
-  if (import.meta.env.PROD) {
+  if (import.meta.env.PROD && !OFFLINE) {
     window.location.replace('/death-muffin/');
     return;
   }

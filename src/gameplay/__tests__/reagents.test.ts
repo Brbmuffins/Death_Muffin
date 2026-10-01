@@ -1,12 +1,13 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { AREAS } from '../../content/areas';
+import { AREAS, AREA_ORDER } from '../../content/areas';
 import { BOSSES, BOSS_IDS } from '../../content/bosses';
 import { BREWS, type BrewKind } from '../../content/brews';
+import { FEN_RECIPES } from '../../content/fenItems';
 import { codexReagentRecipes, codexReagentRows } from '../../content/codex';
 import { BUFF_FLASKS, ITEMS } from '../../content/items';
-import { generateLayout } from '../../content/layout';
+import { NODE_COLLIDER, PROPS, generateLayout } from '../../content/layout';
 import {
   ALL_REAGENT_IDS, AREA_REAGENT_DROPS, BOSS_ICHOR, ENEMY_REAGENT_DROPS, ICHORS, MOB_REAGENTS, REAGENT_BREW_ITEMS, REAGENT_BREW_LIST, REAGENT_BREWS,
   REAGENT_ITEMS, REAGENT_RECIPES, reagentDropIds,
@@ -15,12 +16,14 @@ import { SEEDS } from '../../content/gardening';
 import { TIPS } from '../../ui/Onboarding';
 import { candidatesFor } from '../contractRules';
 import { NODES, rollBatch } from '../gatheringRules';
+import { standSpot } from '../gatherPlan';
 import { rollBoss, rollKill, rollReagents } from '../loot';
+import { Nav } from '../nav';
 import { mulberry32 } from '../rng';
 
 const GRAVES_DUST_ID = 'reagent_grave_dust';
 const dropIds = new Set(reagentDropIds());
-const ingredientIds = new Set(REAGENT_RECIPES.flatMap((r) => r[6].map(([i]) => i)));
+const ingredientIds = new Set([...REAGENT_RECIPES, ...FEN_RECIPES].flatMap((r) => r[6].map(([i]) => i)));
 
 describe('reagents: catalogue', () => {
   it('every new item is known to the client, sells, and has an icon on disk', () => {
@@ -253,6 +256,35 @@ describe('reagents: drops', () => {
 describe('reagents: zone herb patches', () => {
   const layout = generateLayout();
   const patches = layout.nodes.filter((n) => NODES[n.type]?.kind === 'herb');
+
+  it('has a reachable standing point beside every zone herb patch', () => {
+    const nav = new Nav();
+    nav.setUnlocked(AREA_ORDER);
+    for (const w of layout.walls) {
+      const horizontal = Math.abs(w.z1 - w.z0) < 1e-3;
+      const len = horizontal ? w.x1 - w.x0 : w.z1 - w.z0;
+      const hw = horizontal ? len / 2 : w.thickness / 2;
+      const hd = horizontal ? w.thickness / 2 : len / 2;
+      nav.addObstacle({ kind: 'box', x0: (w.x0 + w.x1) / 2 - hw, z0: (w.z0 + w.z1) / 2 - hd, x1: (w.x0 + w.x1) / 2 + hw, z1: (w.z0 + w.z1) / 2 + hd });
+    }
+    for (const p of layout.props) {
+      const c = PROPS[p.prop].collider;
+      if (c?.kind === 'circle') nav.addObstacle({ kind: 'circle', x: p.x, z: p.z, r: c.r * p.scale });
+      else if (c?.kind === 'box') {
+        const cos = Math.abs(Math.cos(p.rot));
+        const sin = Math.abs(Math.sin(p.rot));
+        const hw = (c.hw * cos + c.hd * sin) * p.scale;
+        const hd = (c.hw * sin + c.hd * cos) * p.scale;
+        nav.addObstacle({ kind: 'box', x0: p.x - hw, z0: p.z - hd, x1: p.x + hw, z1: p.z + hd });
+      }
+    }
+    for (const n of layout.nodes) {
+      const r = NODE_COLLIDER[NODES[n.type].kind];
+      if (r) nav.addObstacle({ kind: 'circle', x: n.x, z: n.z, r });
+    }
+    for (const p of layout.ponds) nav.addObstacle({ kind: 'box', ...p });
+    for (const n of patches) expect(standSpot(nav, n, n.x + 2, n.z + 2), n.id).not.toBeNull();
+  });
 
   it('the Cloister holds Rot-cap patches and the Pyre Ash-bloom patches, off the boss arenas', () => {
     for (const [type, area, item] of [['rot_cap_patch', 'cloister', 'herb_rot_cap'], ['ash_bloom_patch', 'pyre', 'herb_ash_bloom']] as const) {

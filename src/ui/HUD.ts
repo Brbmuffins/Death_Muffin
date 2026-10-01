@@ -18,7 +18,7 @@ export interface HudCallbacks {
   open(panel: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'grimoire'): void;
   chat(text: string): void;
   toggleAutoCombat(): void;
-  /** Open the Grimoire with a socket preselected (a key index 0–3 or the LMB primary). */
+  /** Open the Grimoire with a socket preselected (a rite index 0–4 or the LMB primary). */
   openGrimoire(select?: number | 'primary'): void;
 }
 
@@ -35,6 +35,7 @@ export interface SlotFrame {
 export interface HudFrame {
   autoCombat: boolean;
   autoCombatAvailable: boolean;
+  autoCombatVisible: boolean;
   hp: number;
   maxHp: number;
   barrier: number;
@@ -117,7 +118,7 @@ export class HUD {
   constructor(
     root: HTMLElement,
     private cb: HudCallbacks,
-    /** The slots in order: the Grimoire loadout (keys 1–4), the class corpse action, the signature rite. */
+    /** The slots in order: five Grimoire rites, then the signature rite. */
     private hotbar: AbilityId[] = HOTBAR,
     private discipline?: Discipline,
     /** The left-click primary shown in the LMB socket. */
@@ -160,7 +161,7 @@ export class HUD {
           <button data-open="grimoire" title="Grimoire (L)" aria-label="Grimoire">${ICON.grimoire}</button>
           <button data-open="codex" title="Codex (K)" aria-label="Codex">${ICON.book}</button>
           <button data-open="settings" title="Settings (Esc)" aria-label="Settings">${ICON.gear}</button>
-          <button class="hud-auto" data-auto aria-label="Auto combat" title="Available on Easy difficulty" aria-pressed="false">Auto: Easy only</button>
+          <button class="hud-auto" data-auto hidden aria-label="Auto combat" title="Available on Easy difficulty" aria-pressed="false">Auto: Easy only</button>
         </div>
       </div>
       <div class="hud-toasts passive" data-toasts></div>
@@ -194,7 +195,7 @@ export class HUD {
           <div class="hud-slots-wrap">
             <div class="hud-slot primary" data-primarywrap>${this.primaryHtml()}</div>
             <div class="hud-slots">${slots}</div>
-            <button class="hud-grimoire-btn" data-grimbtn aria-label="Grimoire: inspect your rites (L)">${ICON.grimoire}<span>Grimoire · L</span><span class="pip" data-grimpip hidden>NEW</span></button>
+            <button class="hud-grimoire-btn" data-grimbtn aria-label="Swap spells in the Grimoire (L)">${ICON.grimoire}<span>Swap spells · L</span><span class="pip" data-grimpip hidden>NEW</span></button>
           </div>
           <div class="hud-thralls" data-thralls aria-label="Thralls"></div>
         </div>
@@ -319,7 +320,7 @@ export class HUD {
             <span class="cdtext" data-cdt="${i + 1}"></span>
             ${a.essenceCost ? `<span class="cost">${a.essenceCost}</span>` : ''}
           </button>
-          <span class="key">${SLOT_KEYS[i] ?? i + 1}</span>
+          ${i < 5 ? `<button class="key swap" data-swap="${i}" aria-label="Swap ${a.name} in ${alt ? 'right-click or slot 5' : `slot ${i + 1}`}">${SLOT_KEYS[i]} <span>swap</span></button>` : `<span class="key">${SLOT_KEYS[i] ?? i + 1}</span>`}
         </div>`;
     }).join('');
   }
@@ -331,14 +332,14 @@ export class HUD {
    * Bound here, not once in the constructor, because a Grimoire swap rebuilds the buttons.
    */
   private bindSlots() {
-    // i = -1 is the LMB primary socket (data-slot="0"); 0–3 are keys 1–4, 4 right-click, 5 signature.
+    // i = -1 is LMB; 0–4 are the five swappable rites; 5 is the signature.
     for (let i = -1; i < this.hotbar.length; i++) {
       const btn = this.el.querySelector<HTMLButtonElement>(`[data-slot="${i + 1}"]`);
       if (!btn || btn.dataset.bound) continue;
       btn.dataset.bound = '1';
       if (i === -1) btn.addEventListener('click', () => { this.hideTooltip(); this.cb.openGrimoire('primary'); });
       else btn.addEventListener('click', () => this.cb.cast((i + 1) as HotbarSlot));
-      if (i < 4) {
+      if (i < 5) {
         btn.addEventListener('contextmenu', (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -351,6 +352,9 @@ export class HUD {
       btn.addEventListener('focus', () => this.showTooltip(i));
       btn.addEventListener('blur', () => this.scheduleTooltipHide());
     }
+    this.el.querySelectorAll<HTMLButtonElement>('[data-swap]').forEach((button) => {
+      button.addEventListener('click', () => { this.hideTooltip(); this.cb.openGrimoire(Number(button.dataset.swap)); });
+    });
   }
 
   /** The Grimoire loadout changed: rebuild the slots (cooldowns carry over — they belong to the rite). */
@@ -390,7 +394,7 @@ export class HUD {
     const key = `${i}|${id}|${!!state.empowered}|${!!state.locked}|${state.affordable}|${Math.ceil((state.left ?? 0) / 1000)}`;
     if (key === this.tooltipKey) return;
     this.tooltipKey = key;
-    const data = spellTooltip(id, this.discipline, { ...(i === -1 ? {} : state), key: i === -1 ? 'LMB' : i < 4 ? SLOT_KEYS[i] : undefined });
+    const data = spellTooltip(id, this.discipline, { ...(i === -1 ? {} : state), key: i === -1 ? 'LMB' : i < 5 ? SLOT_KEYS[i] : undefined });
     const scroll = this.tooltip.scrollTop;
     this.tooltip.innerHTML = `
       <div class="spell-name">${esc(data.name)}</div>
@@ -401,7 +405,7 @@ export class HUD {
       <p class="spell-targeting">${esc(data.targeting)}</p>
       <ul class="spell-details">${data.details.map((d) => `<li>${esc(d)}</li>`).join('')}</ul>
       <div class="spell-tip"><b>Combat tip</b><p>${esc(data.tip)}</p></div>
-      <div class="spell-footer">${i < 4 ? 'Right-click or L for Grimoire · ' : ''}Codex (K) · Esc closes this card</div>`;
+      <div class="spell-footer">${i < 5 ? 'Click swap below this slot or press L · ' : ''}Codex (K) · Esc closes this card</div>`;
     this.tooltip.scrollTop = scroll;
     this.positionTooltip();
   }
@@ -439,8 +443,9 @@ export class HUD {
   update(f: HudFrame) {
     this.slotFrames = f.slots;
     this.refreshTooltip();
-    this.set('autoCombat', `${f.autoCombat}|${f.autoCombatAvailable}`, () => {
+    this.set('autoCombat', `${f.autoCombat}|${f.autoCombatAvailable}|${f.autoCombatVisible}`, () => {
       const button = this.$('[data-auto]') as HTMLButtonElement;
+      button.hidden = !f.autoCombatVisible;
       button.disabled = !f.autoCombatAvailable;
       button.textContent = f.autoCombatAvailable ? (f.autoCombat ? 'Auto: On · G' : 'Auto: Off · G') : 'Auto: Easy only';
       button.title = f.autoCombatAvailable ? 'Toggle auto combat (G)' : 'Available on Easy difficulty';

@@ -72,4 +72,6 @@ export interface Character {
   gm_enabled?: boolean;
   gm_level?: number;
   gm_permissions?: string;
+  /** Verified Death Muffin account capability for Auto Combat. */
+  auto_combat_allowed?: boolean;
 }

@@ -1,4 +1,4 @@
-import { settings, updateSettings, type Quality } from '../app/settings';
+import { canUseAutoCombat, settings, updateSettings, type Quality } from '../app/settings';
 import { AREAS, type AreaId } from '../content/areas';
 import { DIFFICULTIES, DIFFICULTY_ORDER, isDifficulty } from '../content/difficulty';
 
@@ -48,30 +48,38 @@ export class SettingsPanel extends SimplePanel {
     this.mount(
       'Settings',
       `<div class="cw-settings">
+        <section class="cw-settings-section"><h3>Play</h3>
         <label class="row">Difficulty
           <select data-diff>${DIFFICULTY_ORDER.map((d) => `<option value="${d}">${DIFFICULTIES[d].name}</option>`).join('')}</select></label>
         <p class="cw-settings-note" data-diffnote></p>
+        ${canUseAutoCombat() ? '<label class="row">Auto combat (Easy only, G)<input type="checkbox" data-auto aria-label="Auto combat" /></label>' : ''}
+        <label class="row">Auto gathering<input type="checkbox" data-autogather aria-label="Auto gathering: move on to the next node of the same kind" /></label>
+        ${canUseAutoCombat() ? '<p class="cw-settings-note">On Easy, Auto engages enemies in your current area, uses equipped rites and may cast your signature when a fight calls for it. Click or use WASD to take control; hold 1–5 to repeat a rite.</p>' : ''}
+        </section>
+        <section class="cw-settings-section"><h3>Display and sound</h3>
         <label class="row">Graphics
           <select data-q><option value="high">High (bloom, shadows)</option><option value="low">Low (fast)</option></select></label>
         <label class="row">Volume<input type="range" min="0" max="1" step="0.05" data-vol aria-label="Master volume" /></label>
         <label class="row">Reduce motion (no camera shake)<input type="checkbox" data-rm /></label>
         <label class="row">Damage numbers<input type="checkbox" data-dn /></label>
         <label class="row">Don't show tips<input type="checkbox" data-tips /></label>
+        </section>
+        <section class="cw-settings-section"><h3>Character and help</h3>
         ${this.dev ? '<label class="row">Dev access (preview as a normal player when off)<input type="checkbox" data-dev aria-label="Dev access" /></label>' : ''}
-        <label class="row">Auto combat (Easy only, G)<input type="checkbox" data-auto aria-label="Auto combat" /></label>
-        <label class="row">Auto gathering<input type="checkbox" data-autogather aria-label="Auto gathering: move on to the next node of the same kind" /></label>
-        <p class="cw-settings-note">On Easy, Auto engages enemies in your current area, uses equipped rites and may cast your signature when a fight calls for it. Click or use movement keys to take control; hold 1–4 to repeat a rite.</p>
         ${this.onResetTips ? '<label class="row">New to the Covenant?<button type="button" class="cw-button" data-resettips>Show tips again</button></label>' : ''}
         ${this.onChangeClass ? '<label class="row">Class<button type="button" class="cw-button" aria-label="Change class" data-changeclass>Change class</button></label>' : ''}
         ${code ? `<label class="row">Party world code<b style="font-family:var(--cw-font-numeric)">${code}</b></label>` : ''}
+        </section>
+        <section class="cw-settings-section"><h3>Controls</h3>
         <div class="cw-keys">
+          <kbd>WASD</kbd><span>Walk freely; holding a direction takes over from click-to-move</span>
           <kbd>Click</kbd><span>Move · attack target (${this.kitHelp.primary}) · use</span>
           <kbd>Minimap</kbd><span>Click a walkable spot to travel there</span>
           <kbd>Hover / focus</kbd><span>Spell icon: cost, targeting, effects and combat counsel</span>
           <kbd>Shift+Click</kbd><span>Cast ${this.kitHelp.primary} without moving</span>
-          <kbd>1–4 (hold)</kbd><span>Your four equipped rites, at the cursor (start: ${this.kitHelp.rites.join(' · ')})</span>
-          <kbd>L</kbd><span>Grimoire (also the hotbar button, or right-click a slot) · inspect your class kit and choose available alternatives</span>
-          <kbd>RMB · 5</kbd><span>${this.kitHelp.corpseAction} (corpse nearest the cursor)</span>
+          <kbd>1–5 (hold)</kbd><span>Cast your equipped rites at the cursor</span>
+          <kbd>L</kbd><span>Grimoire · click swap below a hotbar spell to choose any unlocked class rite</span>
+          <kbd>RMB · 5</kbd><span>Cast your fifth equipped rite (starts as ${this.kitHelp.corpseAction})</span>
           <kbd>R · 6</kbd><span>Signature rite (unlocks at level 10)</span>
           <kbd>Q</kbd><span>Drink a healing flask</span>
           <kbd>Z · X</kbd><span>Drink the elixir · tonic on your belt (right-click a brew in the Reliquary to belt it)</span>
@@ -79,26 +87,26 @@ export class SettingsPanel extends SimplePanel {
           <kbd>Click a node</kbd><span>Gather: chop a tree, mine a seam, fish a pool, dig a grave (it keeps working until the node is spent)</span>
           <kbd>I C P M</kbd><span>Reliquary · Workbench · Skills · Waystones</span>
           <kbd>K</kbd><span>Codex</span>
-          <kbd>G</kbd><span>Toggle auto combat on Easy · engage nearby enemies</span>
+          ${canUseAutoCombat() ? '<kbd>G</kbd><span>Toggle auto combat on Easy · engage nearby enemies</span>' : ''}
           <kbd>Counsel header</kbd><span>Drag to move · arrow keys while focused · remembers its position</span>
           <kbd>Settings</kbd><span>Change class · keeps your character and progress</span>
-          <kbd>WASD</kbd><span>Walk (fallback)</span>
           <kbd>Wheel</kbd><span>Zoom</span>
           <kbd>Enter</kbd><span>Chat</span>
           <kbd>Altar</kbd><span>Click the Altar in the Chapterhouse to Ascend and buy Boons</span>
         </div>
-        <hr class="cw-rule" />
+        </section>
         <button class="cw-button" data-leave>Leave the world</button>
       </div>`,
     );
     const diff = this.el!.querySelector<HTMLSelectElement>('[data-diff]')!;
     const note = this.el!.querySelector<HTMLElement>('[data-diffnote]')!;
-    const auto = this.el!.querySelector<HTMLInputElement>('[data-auto]')!;
+    const auto = this.el!.querySelector<HTMLInputElement>('[data-auto]');
     const syncAuto = () => {
+      if (!auto) return;
       auto.checked = settings.autoCombat;
       auto.disabled = settings.difficulty !== 'easy';
     };
-    const showNote = () => (note.textContent = `${DIFFICULTIES[settings.difficulty].blurb} ${settings.difficulty === 'easy' ? 'Auto combat turns on with Easy.' : 'Auto combat turns off with Medium and Hard.'} In co-op, the world keeper sets enemy difficulty; your auto combat choice stays yours.`);
+    const showNote = () => (note.textContent = `${DIFFICULTIES[settings.difficulty].blurb}${canUseAutoCombat() ? ` ${settings.difficulty === 'easy' ? 'Auto combat turns on with Easy.' : 'Auto combat turns off with Medium and Hard.'}` : ''} In co-op, the world keeper sets enemy difficulty.`);
     diff.value = settings.difficulty;
     showNote();
     syncAuto();
@@ -127,7 +135,7 @@ export class SettingsPanel extends SimplePanel {
       dev.checked = this.dev.get();
       dev.addEventListener('change', () => this.dev?.set(dev.checked));
     }
-    auto.addEventListener('change', () => updateSettings({ autoCombat: auto.checked }));
+    auto?.addEventListener('change', () => updateSettings({ autoCombat: auto.checked }));
     const autoGather = this.el!.querySelector<HTMLInputElement>('[data-autogather]')!;
     autoGather.checked = settings.autoGather;
     autoGather.addEventListener('change', () => updateSettings({ autoGather: autoGather.checked }));

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ABILITIES, PRIMARIES, DEFAULT_LOADOUT, GRIMOIRE, HOTBAR, SIGNATURE_LEVEL, unlockLevel, type AbilityId } from '../../content/abilities';
 import { CODEX_RITES, RITE_ORDER } from '../../content/codex';
 import { CAST_FLOW } from '../../content/combatFlow';
-import { assignRite, legacyLoadoutKey, loadLoadout, loadRites, loadSeen, loadoutStorageKey, sanitizeLoadout, sanitizePrimary, saveLoadout, saveRites, unseenRites } from '../loadout';
+import { assignableRites, assignRite, legacyLoadoutKey, loadLoadout, loadRites, loadSeen, loadoutStorageKey, sanitizeLoadout, sanitizePrimary, saveLoadout, saveRites, unseenRites } from '../loadout';
 import type { StorageLike } from '../codexJournal';
 import { kitFor } from '../../content/kits';
 
@@ -16,23 +16,25 @@ describe('Grimoire loadout', () => {
   it('keeps the Knight hotbar complete at level 1 without learning future rites', () => {
     const kit = kitFor('knight');
     const keys = sanitizeLoadout(null, 1, kit);
-    expect(keys).toEqual(kit.defaultLoadout);
-    expect(keys.map(unlockLevel)).toEqual([1, 1, 3, 5]);
+    expect(keys).toEqual([...kit.defaultLoadout, kit.rmb]);
+    expect(keys.map(unlockLevel)).toEqual([1, 1, 3, 5, 1]);
     const seen = loadSeen(memory(), 8, { primary: kit.defaultPrimary, keys }, kit);
     expect(unseenRites(seen, 3, kit)).toContain('bulwark');
   });
-  it('starts on the classic four and keeps the default bar', () => {
+  it('starts on the classic bar with the right-click action in slot 5', () => {
     expect(DEFAULT_LOADOUT).toEqual(HOTBAR.slice(0, 4));
-    expect(sanitizeLoadout(null, 1)).toEqual(DEFAULT_LOADOUT);
+    expect(sanitizeLoadout(null, 1)).toEqual(HOTBAR);
+    expect(assignableRites()).toContain('corpse_explosion');
   });
 
-  it('only lets unlocked, distinct Grimoire rites onto keys 1–4', () => {
+  it('only lets unlocked, distinct class rites onto the five slots', () => {
     // Too low for the skull, a duplicate, a signature and junk all fall back to the default for that key.
-    expect(sanitizeLoadout(['wailing_skull', 'miasma', 'miasma', 'dirge'], 1)).toEqual(['marrow_spear', 'miasma', 'exhume', 'black_litany']);
-    expect(sanitizeLoadout(['wailing_skull', 'grave_step', 'grave_frost', 'bone_mantle'], 12)).toEqual(['wailing_skull', 'grave_step', 'grave_frost', 'bone_mantle']);
+    expect(sanitizeLoadout(['wailing_skull', 'miasma', 'miasma', 'dirge'], 1)).toEqual(['marrow_spear', 'miasma', 'exhume', 'black_litany', 'corpse_explosion']);
+    expect(sanitizeLoadout(['wailing_skull', 'grave_step', 'grave_frost', 'bone_mantle'], 12)).toEqual(['wailing_skull', 'grave_step', 'grave_frost', 'bone_mantle', 'corpse_explosion']);
     // Level 7: the mantle (12) isn't learned yet.
-    expect(sanitizeLoadout(['wailing_skull', 'grave_step', 'grave_frost', 'bone_mantle'], 7)).toEqual(['wailing_skull', 'grave_step', 'grave_frost', 'black_litany']);
-    expect(sanitizeLoadout('nonsense', 20)).toEqual(DEFAULT_LOADOUT);
+    expect(sanitizeLoadout(['wailing_skull', 'grave_step', 'grave_frost', 'bone_mantle'], 7)).toEqual(['wailing_skull', 'grave_step', 'grave_frost', 'black_litany', 'corpse_explosion']);
+    expect(sanitizeLoadout('nonsense', 20)).toEqual(HOTBAR);
+    expect(sanitizeLoadout(['corpse_explosion', 'exhume', 'miasma', 'black_litany', 'marrow_spear'], 1)).toEqual(['corpse_explosion', 'exhume', 'miasma', 'black_litany', 'marrow_spear']);
   });
 
   it('swaps a rite that already sits on another key', () => {
@@ -40,17 +42,18 @@ describe('Grimoire loadout', () => {
     expect(assignRite(start, 0, 'miasma')).toEqual(['miasma', 'exhume', 'marrow_spear', 'black_litany']);
     expect(assignRite(start, 3, 'grave_frost')).toEqual(['marrow_spear', 'exhume', 'miasma', 'grave_frost']);
     expect(assignRite(start, 1, 'exhume')).toEqual(start);
+    expect(assignRite([...start, 'corpse_explosion'], 0, 'corpse_explosion')).toEqual(['corpse_explosion', 'exhume', 'miasma', 'black_litany', 'marrow_spear']);
   });
 
   it('remembers the choice per character and survives broken storage', () => {
     const store = memory();
     saveLoadout(store, 7, ['grave_step', 'exhume', 'miasma', 'black_litany']);
-    expect(loadLoadout(store, 7, 5)).toEqual(['grave_step', 'exhume', 'miasma', 'black_litany']);
-    expect(loadLoadout(store, 8, 5)).toEqual(DEFAULT_LOADOUT);
+    expect(loadLoadout(store, 7, 5)).toEqual(['grave_step', 'exhume', 'miasma', 'black_litany', 'corpse_explosion']);
+    expect(loadLoadout(store, 8, 5)).toEqual(HOTBAR);
     store.data.set(loadoutStorageKey(9), '{not json');
-    expect(loadLoadout(store, 9, 5)).toEqual(DEFAULT_LOADOUT);
+    expect(loadLoadout(store, 9, 5)).toEqual(HOTBAR);
     const throwing: StorageLike = { getItem: () => { throw new Error('denied'); }, setItem: () => { throw new Error('denied'); } };
-    expect(loadLoadout(throwing, 1, 20)).toEqual(DEFAULT_LOADOUT);
+    expect(loadLoadout(throwing, 1, 20)).toEqual(HOTBAR);
     expect(() => saveLoadout(throwing, 1, DEFAULT_LOADOUT)).not.toThrow();
   });
 
@@ -80,14 +83,14 @@ describe('loadout v2 (primary + keys)', () => {
   it('migrates a v1 array (keys only) and defaults the primary to Bone Needle', () => {
     const store = mem();
     store.data.set(legacyLoadoutKey(3), JSON.stringify(['grave_step', 'exhume', 'miasma', 'black_litany']));
-    expect(loadRites(store, 3, 5)).toEqual({ primary: 'bone_needle', keys: ['grave_step', 'exhume', 'miasma', 'black_litany'] });
+    expect(loadRites(store, 3, 5)).toEqual({ primary: 'bone_needle', keys: ['grave_step', 'exhume', 'miasma', 'black_litany', 'corpse_explosion'] });
   });
 
   it('round-trips primary + keys, and v2 wins over a stale v1', () => {
     const store = mem();
     store.data.set(legacyLoadoutKey(4), JSON.stringify(['wailing_skull', 'exhume', 'miasma', 'black_litany']));
     saveRites(store, 4, { primary: 'bone_needle', keys: ['marrow_spear', 'grave_step', 'miasma', 'black_litany'] });
-    expect(loadRites(store, 4, 5).keys).toEqual(['marrow_spear', 'grave_step', 'miasma', 'black_litany']);
+    expect(loadRites(store, 4, 5).keys).toEqual(['marrow_spear', 'grave_step', 'miasma', 'black_litany', 'corpse_explosion']);
     // Saving keys alone keeps the stored primary.
     saveLoadout(store, 4, ['exhume', 'marrow_spear', 'miasma', 'black_litany']);
     expect(JSON.parse(store.data.get(loadoutStorageKey(4))!).primary).toBe('bone_needle');

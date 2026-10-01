@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 /**
  * Diablo-style click-to-move: raycast the cursor onto the ground plane and
- * walk the player toward it. WASD still works as a fallback; keyboard input
+ * walk the player toward it. WASD also moves directly; keyboard input
  * clears the click target.
  */
 export class ClickToMove {

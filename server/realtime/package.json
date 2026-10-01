@@ -1,8 +1,8 @@
 {
-  "name": "crossworlds-realtime",
+  "name": "death-muffin-realtime",
   "version": "0.1.0",
   "private": true,
-  "description": "Crossworlds realtime co-op layer (Socket.io). Deploy target: /opt/rod-realtime/ on playcrossworlds.com, port 5000.",
+  "description": "Death Muffin realtime co-op service (Socket.io). Production listens on 127.0.0.1:5191.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

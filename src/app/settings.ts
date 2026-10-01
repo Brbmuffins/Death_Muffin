@@ -22,7 +22,11 @@ export interface Settings {
   autoGather: boolean;
 }
 
-const KEY = 'dm_settings_v1';
+const OFFLINE_PREFIX = import.meta.env.VITE_OFFLINE_BUILD === '1' ? 'dm_offline_' : '';
+const KEY = `${OFFLINE_PREFIX}dm_settings_v1`;
+const characterKey = (id: number) => `${OFFLINE_PREFIX}dm_play_settings_v1_${id}`;
+let activeCharacter: number | null = null;
+let autoCombatAllowed = false;
 
 function defaults(): Settings {
   let reduced = false;
@@ -42,7 +46,10 @@ function load(): Settings {
       const stored = JSON.parse(raw) as Partial<Settings>;
       const s = { ...base, ...stored } as Settings;
       if (!isDifficulty(s.difficulty)) s.difficulty = base.difficulty;
-      s.autoCombat = s.difficulty === 'easy' && (typeof stored.autoCombat === 'boolean' ? stored.autoCombat : true);
+      // Old browser-wide play settings cannot be attributed to an account.
+      // Each character starts on Medium until its own preference is loaded.
+      s.difficulty = base.difficulty;
+      s.autoCombat = false;
       return s;
     }
   } catch {
@@ -55,16 +62,44 @@ export const settings: Settings = load();
 
 const listeners = new Set<(s: Settings) => void>();
 
+export function canUseAutoCombat(): boolean {
+  return autoCombatAllowed;
+}
+
+/** Called after the authenticated character response, before the world mounts. */
+export function setActiveCharacter(id: number | null, allowed = false) {
+  activeCharacter = id;
+  autoCombatAllowed = allowed === true;
+  let difficulty: Difficulty = 'medium';
+  let autoCombat = false;
+  if (id !== null) {
+    try {
+      const raw = localStorage.getItem(characterKey(id));
+      if (raw) {
+        const saved = JSON.parse(raw) as { difficulty?: unknown; autoCombat?: unknown };
+        if (isDifficulty(saved.difficulty)) difficulty = saved.difficulty;
+        autoCombat = saved.autoCombat === true;
+      }
+    } catch {
+      /* storage unavailable or corrupt */
+    }
+  }
+  settings.difficulty = difficulty;
+  settings.autoCombat = autoCombatAllowed && difficulty === 'easy' && autoCombat;
+  listeners.forEach((fn) => fn(settings));
+}
+
 export function updateSettings(patch: Partial<Settings>) {
   if (patch.difficulty !== undefined && patch.autoCombat === undefined) {
-    patch = { ...patch, autoCombat: patch.difficulty === 'easy' };
+    patch = { ...patch, autoCombat: autoCombatAllowed && patch.difficulty === 'easy' };
   }
-  if ((patch.difficulty ?? settings.difficulty) !== 'easy') {
+  if (!autoCombatAllowed || (patch.difficulty ?? settings.difficulty) !== 'easy') {
     patch = { ...patch, autoCombat: false };
   }
   Object.assign(settings, patch);
   try {
     localStorage.setItem(KEY, JSON.stringify(settings));
+    if (activeCharacter !== null) localStorage.setItem(characterKey(activeCharacter), JSON.stringify({ difficulty: settings.difficulty, autoCombat: settings.autoCombat }));
   } catch {
     /* storage unavailable */
   }

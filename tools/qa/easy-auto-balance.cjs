@@ -21,18 +21,21 @@ async function main() {
           t ^= t + Math.imul(t ^ t >>> 7, t | 61);
           return ((t ^ t >>> 14) >>> 0) / 4294967296;
         };
-        localStorage.setItem('dm_settings_v1', JSON.stringify({ quality: 'low', tips: false,
-          difficulty: 'easy', autoCombat: true, autoGather: false }));
+        localStorage.setItem('dm_settings_v1', JSON.stringify({ quality: 'low', tips: false, autoGather: false }));
       }, Number(process.env.DM_QA_SEED || 42));
       await page.goto(process.env.DM_QA_URL || 'http://127.0.0.1:5199/?offline');
       await page.getByRole('button', { name: 'New to the Covenant? Create an account' }).click();
       const slug = name.toLowerCase().replaceAll(' ', '_');
-      await page.fill('#cw-user', `auto_${slug}`);
+      await page.fill('#cw-user', 'brbmuffins');
       await page.fill('#cw-email', `auto_${slug}@example.invalid`);
       await page.fill('#cw-pass', 'TestingEasyAuto');
       await page.locator('#cw-login-btn').click();
       await page.locator('.cw-disc').filter({ hasText: name }).click();
       await page.waitForFunction(() => window.__cwDebug?.avatar.c.loaded, null, { timeout: 45000 });
+      await page.evaluate(async () => {
+        const { updateSettings } = await import('/src/app/settings.ts');
+        updateSettings({ difficulty: 'easy' });
+      });
       const result = await page.evaluate((seconds) => {
         const dbg = window.__cwDebug;
         dbg.clear(); dbg.goto('graves');

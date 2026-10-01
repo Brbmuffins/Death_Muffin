@@ -43,7 +43,7 @@ export interface SpellTooltipState {
   affordable?: boolean;
   /** Remaining cooldown in milliseconds; distinct from the base cooldown. */
   left?: number;
-  /** The key this Grimoire rite sits on in the player's loadout (1–4), when it is on the bar. */
+  /** The key this Grimoire rite sits on (1–4 or RMB), when it is on the bar. */
   key?: string;
   /** The active family's kit; defaults to the necromancer's when a caller has none. */
   kit?: Kit;
@@ -221,18 +221,19 @@ export function spellTooltip(id: AbilityId, discipline?: Discipline, state: Spel
   if (SOUL_HARVEST.spells.includes(id)) {
     details.push(empowered ? `Soul Harvest is ready: this cast is free and ${percent(SOUL_HARVEST.areaMult - 1)} larger. It spends the charged meter.` : 'A full Soul Harvest meter makes your next cast of this spell free and larger.');
   }
-  // Keys 1–4 belong to the Grimoire loadout: the default four start on their usual keys.
-  const defaults = (state.kit ?? kitFor('necromancer')).defaultLoadout;
-  const gKey = state.key ?? (defaults.includes(id) ? String(a.slot) : undefined);
+  // HUD passes the equipped slot; elsewhere, describe the default kit position.
+  const kit = state.kit ?? kitFor('necromancer');
+  const defaults = [...kit.defaultLoadout, kit.rmb];
+  const gKey = state.key ?? (defaults.includes(id) ? String(defaults.indexOf(id) + 1) : undefined);
   const control = a.slot === 0
     ? 'Click an enemy, or Shift + click to cast in place.'
-    : a.slot === 5
-      ? 'Right-click, press 5 or click this icon. Aim before casting.'
-      : a.slot === 6
+    : a.slot === 6
         ? 'Press R or 6, or click this icon. On Easy, Auto may cast it in a suitable fight.'
+        : gKey === 'RMB' || gKey === '5'
+          ? 'Right-click, press 5 or click this icon. Aim before casting. Change this slot in the Grimoire (L).'
         : gKey
           ? `Press or hold ${gKey}; aim with the mouse. You can also click this icon. Change its key in the Grimoire (L).`
-          : 'Place it on a key (1–4) in the Grimoire (L), then press or hold that key; aim with the mouse.';
+          : 'Place it on one of the five slots in the Grimoire (L), then press that key or right-click for slot 5.';
   const status = locked ? `Locked — unlocks at level ${unlockLevel(id)}.` : (state.left ?? 0) > 0 ? `Ready in ${Math.ceil(state.left! / 1000)}s.` : state.affordable === false && !empowered ? `Not enough ${resourceName === 'Essence' ? 'Grave Essence' : resourceName}.` : empowered ? 'Soul Harvest ready.' : 'Ready to cast.';
   return { name: a.name, description: a.description, control, targeting: TARGETING[a.targeting], metrics, details, tip: CODEX_RITES[id].tip, status, empowered, locked };
 }

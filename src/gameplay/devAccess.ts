@@ -32,6 +32,8 @@ export function tokenUsername(token: string | null | undefined): string | null {
 
 export function isDevAccount(character: Pick<Character, 'gm_enabled'> | null | undefined, token: string | null | undefined): boolean {
   if (character?.gm_enabled === true) return true;
+  // Downloadable local profiles are user-created and cannot prove staff identity.
+  if (token?.startsWith('offline:') && !import.meta.env.DEV) return false;
   const name = tokenUsername(token)?.toLowerCase();
   return !!name && DEV_ACCOUNTS.includes(name);
 }

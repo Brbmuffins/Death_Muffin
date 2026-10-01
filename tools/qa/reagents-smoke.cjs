@@ -53,14 +53,14 @@ async function main() {
     console.log(JSON.stringify({ gravesKills: kills, graveDust: found }));
     await page.waitForTimeout(400);
     await shot(`${out}/01-dust-drop.png`);
-    // The first reagent pickup queues the counsel tip behind any earlier ones: click through until it shows.
-    // Best effort: earlier counsel cards can hold the queue for minutes, so the reagent tip is reported, not required
-    // (its text and trigger are covered by vitest: TIPS.reagent and the pickup hook in WorldScene).
+    // The first reagent pickup places its counsel next after the current card.
     let tipShown = false;
-    for (let i = 0; i < 6 && !tipShown; i++) {
-      tipShown = (await page.locator('.cw-tip .title').first().textContent({ timeout: 500 }).catch(() => '')) === 'Reagents';
-      if (!tipShown) { await page.locator('.cw-tip').first().click({ timeout: 500 }).catch(() => {}); await page.waitForTimeout(500); }
+    for (let i = 0; i < 12 && !tipShown; i++) {
+      const title = await page.locator('.cw-tip:not(.out) .title').first().textContent({ timeout: 1000 }).catch(() => '');
+      tipShown = title === 'Reagents';
+      if (!tipShown) { await page.locator('.cw-tip:not(.out)').first().click({ timeout: 1000 }).catch(() => {}); await page.waitForTimeout(750); }
     }
+    assert.ok(tipShown, 'first reagent pickup shows its counsel after the current card');
     console.log(JSON.stringify({ reagentTipShown: tipShown }));
     await shot(`${out}/02-reagent-tip.png`);
 
@@ -106,7 +106,7 @@ async function main() {
     console.log(JSON.stringify({ before, chips, essenceMult }));
 
     // --- 4. Forage a Rot-cap patch in the Cloister as a level-1 gardener.
-    await page.evaluate(() => { const d = window.__cwDebug; d.goto('cloister'); d.advance(0.5); d.clear(); d.zoom(1); d.advance(0.5); });
+    await page.evaluate(() => { const d = window.__cwDebug; d.unlockAll(); d.goto('cloister'); d.advance(0.5); d.clear(); d.zoom(1); d.advance(0.5); });
     const patches = await page.evaluate(() => window.__cwDebug.nodes('cloister').filter((n) => n.type === 'rot_cap_patch'));
     assert.ok(patches.length >= 2, 'rot-cap patches placed in the Cloister');
     let start = '';

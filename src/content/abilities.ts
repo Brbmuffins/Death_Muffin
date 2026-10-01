@@ -9,7 +9,7 @@ export type AbilityId =
   | 'miasma'
   | 'black_litany'
   | 'corpse_explosion'
-  // Grimoire rites: level-gated alternatives for keys 1–4 (see GRIMOIRE).
+  // Grimoire rites: level-gated alternatives for the five swappable slots (see GRIMOIRE).
   | 'wailing_skull'
   | 'grave_step'
   | 'grave_frost'
@@ -51,8 +51,8 @@ export type HotbarSlot = 1 | 2 | 3 | 4 | 5 | 6;
 export interface AbilityDef {
   id: AbilityId;
   /**
-   * 0 = primary (left click), 1–4 = a Grimoire rite for keys 1–4 (the number is its
-   * default key; the player's loadout decides the real one), 5 = right-click, 6 = signature.
+   * 0 = primary (left click), 1–5 = a Grimoire rite (the number is its
+   * default slot; the player's loadout decides the real one), 6 = signature.
    */
   slot: 0 | HotbarSlot;
   /** Character level that unlocks the rite (default 1). */
@@ -608,8 +608,8 @@ export const SIGNATURE = {
 export const HOTBAR: AbilityId[] = ['marrow_spear', 'exhume', 'miasma', 'black_litany', 'corpse_explosion'];
 
 /**
- * The Grimoire (L): every rite that may sit on keys 1–4. The four slots are
- * static; the player chooses which of these fill them (gameplay/loadout.ts).
+ * The Grimoire (L): class rites available for the five swappable slots.
+ * The default right-click rite is added by gameplay/loadout.ts.
  */
 export const GRIMOIRE: AbilityId[] = [
   'marrow_spear',

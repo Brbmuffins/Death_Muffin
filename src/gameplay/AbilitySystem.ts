@@ -310,8 +310,8 @@ export class AbilitySystem {
         p.spendSouls();
         this.soulRelease();
       } else p.essence -= def.essenceCost;
-      // A Ritual Sickle gives back a share of Exhume's essence.
-      if (id === 'exhume' && p.loadout.exhumeRefund > 0) p.essence = Math.min(p.stats.maxEssence, p.essence + def.essenceCost * p.loadout.exhumeRefund);
+      // A Ritual Sickle gives back a share of Exhume's essence (none was spent on an empowered cast).
+      if (id === 'exhume' && !empowered && p.loadout.exhumeRefund > 0) p.essence = Math.min(p.stats.maxEssence, p.essence + def.essenceCost * p.loadout.exhumeRefund);
       // Apply weapon cooldown changes and elixir haste when the cooldown starts.
       p.cooldowns.set(id, now + abilityCooldownMs(id, def.cooldownMs, p.loadout, PRIMARIES.includes(id)) / (1 + p.brewValue('haste', now)));
     }

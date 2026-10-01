@@ -1,4 +1,4 @@
-// Mirrors CLASS_NAMES in /opt/rod-auth/server.js — keep in sync with the server.
+// Mirrors Death Muffin class indices in server/death-muffin/backend/server.js.
 // These are the server's legacy class names; the client presents each index as
 // a necromantic discipline (content/disciplines.ts), which owns names,
 // portraits and tuning.

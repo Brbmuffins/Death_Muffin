@@ -1,7 +1,7 @@
 import { ABILITIES, ROLE_LABEL, rolesOf, unlockLevel, type AbilityId, type RiteRole } from '../content/abilities';
 import type { Kit } from '../content/kits';
 import { CODEX_RITES, riteSwatch } from '../content/codex';
-import { LOADOUT_SLOTS, type Rites } from '../gameplay/loadout';
+import { assignableRites, LOADOUT_SLOTS, type Rites } from '../gameplay/loadout';
 import { SimplePanel } from './MiscPanels';
 
 const secs = (ms: number) => `${+(ms / 1000).toFixed(2)}s`;
@@ -10,8 +10,8 @@ const ROLES = Object.keys(ROLE_LABEL) as RiteRole[];
 
 /**
  * The Grimoire (L, the hotbar's Grimoire button, or right-click a slot): the
- * left-click primary plus four rite sockets on keys 1–4. Click a socket to
- * select it, then click a rite to place it (or use a rite's 1–4 buttons). A
+ * left-click primary plus five rite sockets on keys 1–5 / right-click. Click a socket to
+ * select it, then click a rite to place it (or use a rite's slot buttons). A
  * rite already on another key swaps places. Cooldowns belong to the rite, so
  * swapping never resets one. Locked rites stay visible with their level.
  */
@@ -39,7 +39,7 @@ export class GrimoirePanel extends SimplePanel {
     this.el!.classList.add('cw-grimoire');
     const { unseen } = this.state();
     this.fresh = new Set(unseen);
-    if (this.selected !== 'primary' && unseen.some((id) => this.state().kit.primaries.includes(id))) this.selected = 'primary';
+    if (select === undefined && this.selected !== 'primary' && unseen.some((id) => this.state().kit.primaries.includes(id))) this.selected = 'primary';
     this.render();
     this.markSeen(unseen);
   }
@@ -56,15 +56,16 @@ export class GrimoirePanel extends SimplePanel {
         <span class="nm">${ABILITIES[id].name}</span>
       </button>`;
     const primaryMode = this.selected === 'primary';
-    const list = primaryMode ? kit.primaries : kit.grimoire.filter((id) => this.role === 'all' || rolesOf(id).includes(this.role));
-    const choices = kit.grimoire.length > LOADOUT_SLOTS || kit.primaries.length > 1;
+    const available = assignableRites(kit);
+    const list = primaryMode ? kit.primaries : available.filter((id) => this.role === 'all' || rolesOf(id).includes(this.role));
+    const choices = available.length > LOADOUT_SLOTS || kit.primaries.length > 1;
     body.innerHTML = `
-      <p class="cw-settings-note">${choices ? 'Click a socket, then an unlocked rite to equip it.' : 'Your class has one primary and four rites; you can rearrange the rites on keys 1–4.'} <b>LMB</b> is your left-click attack. A rite already on another key swaps places, and cooldowns stay with the rite. Right-click a hotbar slot to jump here. ${ABILITIES[kit.rmb].name} and your signature rite stay where they are.</p>
+      <p class="cw-settings-note">${choices ? 'Click a socket, then an unlocked rite to equip it.' : 'Your class has one primary and five rites; you can rearrange all five slots.'} <b>LMB</b> is your left-click attack. Slot <b>5</b> also casts on right-click. A rite already on another slot swaps places, and cooldowns stay with the rite. Right-click a hotbar slot to jump here. Your signature rite stays on <b>R</b>.</p>
       <div class="cw-grim-bar" aria-label="Current rotation">
         ${socket(rites.primary, 'primary', 'LMB')}
-        ${rites.keys.map((id, i) => socket(id, i, String(i + 1))).join('')}
+        ${rites.keys.map((id, i) => socket(id, i, i === 4 ? 'RMB · 5' : String(i + 1))).join('')}
       </div>
-      ${primaryMode ? '<p class="cw-settings-note">Primaries cost nothing and fire on left-click (and Auto combat).</p>' : `<div class="cw-grim-roles" role="group" aria-label="Filter by role">${['all', ...ROLES]
+      ${primaryMode ? '<p class="cw-settings-note">Primaries cost nothing and fire on left-click.</p>' : `<div class="cw-grim-roles" role="group" aria-label="Filter by role">${['all', ...ROLES]
         .map((r) => `<button type="button" class="cw-chip${this.role === r ? ' on' : ''}" data-role="${r}" aria-pressed="${this.role === r}">${r === 'all' ? 'All' : ROLE_LABEL[r as RiteRole]}</button>`)
         .join('')}</div>`}
       <div class="cw-codex-body">${list.map((id) => this.entry(id, rites, level, primaryMode)).join('')}</div>`;
@@ -106,7 +107,7 @@ export class GrimoirePanel extends SimplePanel {
     const keys = primaryMode
       ? `<span class="cw-grim-keys">${on === 0 ? '<b>Equipped</b>' : locked ? '' : '<span>Click to equip</span>'}</span>`
       : `<span class="cw-grim-keys" role="group" aria-label="Choose a key for ${a.name}">${Array.from({ length: LOADOUT_SLOTS }, (_, i) =>
-          `<button type="button" class="cw-grim-key${on === i ? ' on' : ''}" data-put="${id}" data-slot="${i}" ${locked || on === i ? 'disabled' : ''} aria-label="Put ${a.name} on key ${i + 1}"${on === i ? ' aria-current="true"' : ''}>${i + 1}</button>`,
+          `<button type="button" class="cw-grim-key${on === i ? ' on' : ''}" data-put="${id}" data-slot="${i}" ${locked || on === i ? 'disabled' : ''} aria-label="Put ${a.name} on ${i === 4 ? 'right-click or key 5' : `key ${i + 1}`}"${on === i ? ' aria-current="true"' : ''}>${i + 1}</button>`,
         ).join('')}</span>`;
     const isNew = this.fresh.has(id) && !locked;
     return `

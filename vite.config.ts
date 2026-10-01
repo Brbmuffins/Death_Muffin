@@ -6,7 +6,7 @@ import { qaShots } from './tools/qa-shots-plugin';
 // routes same-origin. Old endpoints live at the root (/login, /character, ...),
 // new ones under /api — proxy each prefix.
 const API_TARGET =
-  process.env.VITE_API_PROXY_TARGET ?? 'http://playcrossworlds.com:3000';
+  process.env.VITE_API_PROXY_TARGET ?? 'http://127.0.0.1:5190';
 
 const apiPaths = ['/api', '/login', '/register', '/character', '/items'];
 

@@ -9,14 +9,14 @@ import type { StorageLike } from './codexJournal';
 const NECRO = kitFor('necromancer');
 
 /**
- * The Grimoire loadout: the left-click primary plus which four rites sit on
- * keys 1–4. A per-character preference (not progress), so it lives in browser
+ * The Grimoire loadout: the left-click primary plus five rites on keys 1–5
+ * (right-click also casts slot 5). A per-character preference, so it lives in browser
  * storage beside the Codex journal and never touches the server.
  *
  * v2 storage is `{ primary, keys }` under dm_loadout_v2_<id>; a v1 array
  * (dm_loadout_v1_<id>, keys only) is migrated on first read.
  */
-export const LOADOUT_SLOTS = 4;
+export const LOADOUT_SLOTS = 5;
 export const loadoutStorageKey = (characterId: number) => `dm_loadout_v2_${characterId}`;
 export const legacyLoadoutKey = (characterId: number) => `dm_loadout_v1_${characterId}`;
 export const seenStorageKey = (characterId: number) => `dm_rites_seen_v1_${characterId}`;
@@ -27,12 +27,22 @@ export interface Rites {
 }
 
 /**
- * Four distinct Grimoire rites. Invalid slots prefer a free unlocked rite.
- * Families with fewer than four level-1 rites keep future defaults visible in
+ * All rites that can be equipped in the five sockets. The signature stays on R.
+ */
+export function assignableRites(kit: Kit = NECRO): AbilityId[] {
+  return [...new Set([...kit.grimoire, kit.rmb])];
+}
+
+/**
+ * Five distinct Grimoire rites. Invalid slots fall back to the default rite
+ * for that socket, then another free unlocked rite.
+ * Families with fewer than five level-1 rites keep future defaults visible in
  * locked hotbar slots, so a new character never starts with a hole.
  */
 export function sanitizeLoadout(raw: unknown, level: number, kit: Kit = NECRO): AbilityId[] {
-  const usable = (id: unknown): id is AbilityId => typeof id === 'string' && kit.grimoire.includes(id as AbilityId) && unlockLevel(id as AbilityId) <= level;
+  const available = assignableRites(kit);
+  const defaults = [...kit.defaultLoadout, kit.rmb];
+  const usable = (id: unknown): id is AbilityId => typeof id === 'string' && available.includes(id as AbilityId) && unlockLevel(id as AbilityId) <= level;
   const picked: (AbilityId | null)[] = Array.from({ length: LOADOUT_SLOTS }, (_, i) => {
     const id = Array.isArray(raw) ? raw[i] : null;
     return usable(id) ? id : null;
@@ -43,8 +53,11 @@ export function sanitizeLoadout(raw: unknown, level: number, kit: Kit = NECRO): 
   });
   return picked.map((id, i) => {
     if (id) return id;
-    const fallback = [kit.defaultLoadout[i], ...kit.grimoire].find((g) => usable(g) && !picked.includes(g))
-      ?? [kit.defaultLoadout[i], ...kit.grimoire].find((g) => !picked.includes(g))!;
+    // Keep an as-yet-locked default visible in its original socket. A newly
+    // unlocked rite may replace it, but never moves the right-click default.
+    const fallback = (defaults[i] && !picked.includes(defaults[i]) ? defaults[i] : undefined)
+      ?? available.find((g) => usable(g) && !picked.includes(g))
+      ?? available.find((g) => !picked.includes(g))!;
     picked[i] = fallback;
     return fallback;
   });
@@ -80,12 +93,12 @@ export function saveRites(storage: StorageLike | null, characterId: number, rite
   }
 }
 
-/** Keys only (kept for callers that only care about 1–4). */
+/** Five equipped rite slots. */
 export function loadLoadout(storage: StorageLike | null, characterId: number, level: number, kit: Kit = NECRO): AbilityId[] {
   return loadRites(storage, characterId, level, kit).keys;
 }
 
-/** Save keys 1–4, keeping whatever primary is stored. */
+/** Save the five rite slots, keeping whatever primary is stored. */
 export function saveLoadout(storage: StorageLike | null, characterId: number, loadout: AbilityId[], kit: Kit = NECRO) {
   const stored = readJson(storage, loadoutStorageKey(characterId)) as { primary?: unknown } | null;
   const primary = typeof stored?.primary === 'string' && kit.primaries.includes(stored.primary as AbilityId) ? (stored.primary as AbilityId) : kit.defaultPrimary;
@@ -109,7 +122,7 @@ export function assignRite(loadout: AbilityId[], slot: number, id: AbilityId): A
 export function loadSeen(storage: StorageLike | null, characterId: number, rites: Rites, kit: Kit = NECRO): Set<AbilityId> {
   const raw = readJson(storage, seenStorageKey(characterId));
   const seen = new Set<AbilityId>(Array.isArray(raw) ? (raw.filter((x) => typeof x === 'string') as AbilityId[]) : []);
-  for (const id of [...kit.grimoire, ...kit.primaries]) if (unlockLevel(id) <= 1) seen.add(id);
+  for (const id of [...assignableRites(kit), ...kit.primaries]) if (unlockLevel(id) <= 1) seen.add(id);
   seen.add(rites.primary);
   for (const id of rites.keys) if (unlockLevel(id) <= 1) seen.add(id);
   return seen;
@@ -125,5 +138,5 @@ export function saveSeen(storage: StorageLike | null, characterId: number, seen:
 
 /** Learned (at this level) but never seen. */
 export function unseenRites(seen: Set<AbilityId>, level: number, kit: Kit = NECRO): AbilityId[] {
-  return [...kit.primaries, ...kit.grimoire].filter((id) => unlockLevel(id) <= level && !seen.has(id));
+  return [...kit.primaries, ...assignableRites(kit)].filter((id) => unlockLevel(id) <= level && !seen.has(id));
 }

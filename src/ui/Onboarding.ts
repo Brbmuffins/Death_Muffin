@@ -154,7 +154,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   move: {
     title: 'Walk among the dead',
-    body: '<kbd>Click</kbd> the ground to walk to that spot; click again to change destination. While standing, face and aim toward the mouse. While walking, face your path. <kbd>Click</kbd> an enemy to use your basic attack. Aim with the mouse and press <kbd>1</kbd>–<kbd>4</kbd> for rites. <kbd>Right-click</kbd> uses your corpse rite. <kbd>Shift</kbd>+<kbd>Click</kbd> attacks without moving.',
+    body: 'Hold <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to walk freely. You can also <kbd>Click</kbd> the ground to walk to that spot; holding a movement key takes over. Aim with the mouse and <kbd>Click</kbd> an enemy for your basic attack. Press <kbd>1</kbd>–<kbd>4</kbd> for rites, <kbd>Right-click</kbd> (or <kbd>5</kbd>) for your fifth rite, or <kbd>Shift</kbd>+<kbd>Click</kbd> to attack without moving.',
   },
   exhume: {
     title: 'A corpse lies near',
@@ -242,7 +242,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   grimoire: {
     title: 'The Grimoire',
-    body: 'New rites have come to you. Open the <b>Grimoire</b> at the end of the hotbar (or press <kbd>L</kbd>, or right-click a slot) to inspect your left-click <b>primary</b> and keys <kbd>1</kbd>–<kbd>4</kbd>. Necromancers can choose unlocked alternatives; other classes can rearrange their four rites, but have no extra choices yet. Each rite keeps its own cooldown, and Easy auto uses equipped rites.',
+    body: 'New rites have come to you. Click <b>swap</b> below a hotbar spell, use <b>Swap spells</b> at the end of the bar, or press <kbd>L</kbd> to open the Grimoire. Choose any unlocked class rite for slots <kbd>1</kbd>–<kbd>5</kbd>; slot 5 also uses right-click. Necromancers learn extra alternatives, while other classes can rearrange their five rites. Your signature stays on <kbd>R</kbd>. Each rite keeps its cooldown, and Easy auto uses equipped rites.',
   },
   rite_skull: {
     title: 'Wailing Skull',
@@ -530,17 +530,20 @@ export class Onboarding {
   }
 
   /** Show a tip once per character (no-op when seen, queued, or tips are off). */
-  show(id: TipId, delayMs = 0) {
+  show(id: TipId, delayMs = 0, priority = false) {
     if (!settings.tips || this.seen.has(id) || this.pending.has(id) || this.queue.includes(id)) return;
     if (delayMs > 0) {
       this.pending.add(id);
       this.later(() => {
         this.pending.delete(id);
-        this.show(id);
+        this.show(id, 0, priority);
       }, delayMs);
       return;
     }
-    if (this.el) this.queue.push(id);
+    if (this.el) {
+      if (priority) this.queue.unshift(id);
+      else this.queue.push(id);
+    }
     else this.present(id);
   }
 

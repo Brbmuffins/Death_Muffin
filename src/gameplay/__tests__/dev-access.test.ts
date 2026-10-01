@@ -47,7 +47,7 @@ describe('dev access', () => {
   it('a dev loadout may hold every rite; a normal level-1 loadout stays gated', () => {
     const late = GRIMOIRE.filter((id) => unlockLevel(id) > 1).slice(0, 4);
     devAccess.active = true;
-    expect(sanitizeLoadout(late, riteLevel(1))).toEqual(late);
+    expect(sanitizeLoadout(late, riteLevel(1))).toEqual([...late, 'corpse_explosion']);
     devAccess.active = false;
     const normal = sanitizeLoadout(late, riteLevel(1));
     for (const id of normal) expect(unlockLevel(id)).toBeLessThanOrEqual(1);
