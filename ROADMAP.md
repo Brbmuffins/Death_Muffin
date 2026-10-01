@@ -35,7 +35,7 @@ flowchart LR
   end
 
   subgraph LATER["🌒 Later"]
-    L1[AI companions<br/>2-3 bots you can play with]:::decide
+    L1[AI companions<br/>parked by the owner]:::later
     L2[New zones<br/>Catacomb Depths · Hollow Court]:::later
     L3[Bone Colossus · runes · thrall gear]:::later
     L4[Server authority<br/>anti-cheat for saves and loot]:::later
@@ -115,7 +115,9 @@ Already the next item in the grind loop (`docs/GRIND-LOOP.md` §3 #2). Items rol
 
 ## 🌒 Later
 
-### L1 · AI companions (needs a decision)
+### L1 · AI companions (parked)
+*Parked on 1 October 2026. The cost study below is kept for when this comes back: event-driven decisions on Claude Haiku 4.5, bots online only while a player is in the world, and a hard daily spend cap come to about $10–20 a month for three bots.*
+
 Two or three bot players you can log in and play with. Recommended design:
 
 - **Body:** a lightweight Node "player" that speaks the same realtime protocol as a browser (move, cast intents, chat), with no rendering. It reuses the existing Easy auto-combat brain (`src/gameplay/autoCombat.ts`) for moment-to-moment fighting. It is cheap enough to run several on the VPS.
