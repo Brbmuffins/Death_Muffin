@@ -31,7 +31,7 @@ async function main() {
       await page.locator('.cw-bag-grid .cw-slot').filter({ has: page.locator(`img[src*="${setPrefix}_${part}.svg"]`) }).click();
       await page.locator('.cw-bag-detail [data-act]').click();
       await page.waitForFunction(({ prefix, part, reserved }) => {
-        const db = JSON.parse(localStorage.getItem('cw_offline_db_v1'));
+        const db = JSON.parse(localStorage.getItem('dm_offline_db_v1'));
         return Object.values(db.accounts).some(acc => acc.slots.some(s => s.item_id === `${prefix}_${part}` && s.slot_index === reserved));
       }, { prefix: setPrefix, part, reserved: part === 'head' ? 100 : 101 });
       await page.locator(`.cw-equip img[src*="${setPrefix}_${part}.svg"]`).waitFor();

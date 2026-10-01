@@ -15,7 +15,7 @@ async function main(){
   await page.waitForFunction(()=>window.__cwDebug.gathering().afk);
   await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});window.__afkHiddenAt=Date.now();});
   try { await page.waitForFunction(()=>window.__cwDebug.inventory.all.some(s=>s.item_id==='log_oak'&&s.quantity>0),{},{timeout:60000}); }
-  catch(error){console.error(await page.evaluate(()=>({gather:window.__cwDebug.gathering(),bag:window.__cwDebug.inventory.all,stops:window.__afkStops,store:localStorage.getItem('cw_offline_db_v1'),hidden:document.hidden})));throw error;}
+  catch(error){console.error(await page.evaluate(()=>({gather:window.__cwDebug.gathering(),bag:window.__cwDebug.inventory.all,stops:window.__afkStops,store:localStorage.getItem('dm_offline_db_v1'),hidden:document.hidden})));throw error;}
   const saved=await page.evaluate(async()=>{const r=(await import('/src/app/GameRuntime.ts')).getRuntime();return {running:r.view.gathering.afk,status:r.view.gathering.status,bag:window.__cwDebug.inventory.all.map(s=>({item:s.item_id,qty:s.quantity})),skills:window.__cwDebug.gathering().skills,elapsed:Date.now()-window.__afkHiddenAt};});
   assert.ok(saved.running);assert.ok(saved.skills.some(s=>s.profession_id==='woodcutting'&&(s.skill_xp>0||s.skill_level>1)));
   const noRender=await page.evaluate(async()=>{const r=(await import('/src/app/GameRuntime.ts')).getRuntime();const before=r.renderer.info.render.frame;await new Promise(resolve=>setTimeout(resolve,2200));return r.renderer.info.render.frame===before;});assert.ok(noRender);
