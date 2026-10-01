@@ -1,6 +1,5 @@
 import { equipItem } from '../net/api';
 import type { InventorySlot } from '../net/types';
-import { STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
 import { BAG_SIZE, type Inventory } from '../gameplay/loot';
 import { BREWS, BREW_KEYS, brewSummary } from '../content/brews';
 import { BUFF_FLASKS, HEALING_FLASKS, RARITY_COLOR, RARITY_MARK, itemMeta } from '../content/items';
@@ -8,6 +7,7 @@ import { MEALS } from '../content/processing';
 import { EQUIP_SLOTS, equipSlotOf, equippedBySlot, type EquipSlot } from '../content/gear';
 import { ARMOR_BY_ID } from '../content/armorSets';
 import { necroWeaponTooltip } from '../content/necroWeapons';
+import { compareChipsHtml, compareTableHtml, itemStatsHtml, type StatContextSource } from './gearText';
 
 const TYPE_GLYPH: Record<string, string> = {
   weapon: '⚔',
@@ -40,6 +40,12 @@ export class InventoryPanel {
   private selected: number | null = null;
   private busy = false;
   private off: (() => void) | null = null;
+  /** Gear you can read: set by the scene so stat lines and compare blocks speak for this character. */
+  statContext: StatContextSource | null = null;
+  /** Opens the Character sheet (the paper doll's Sheet button). */
+  onSheet: (() => void) | null = null;
+  /** Called after the server accepted an equip (not an unequip): the first-time counsel hangs off it. */
+  onEquipped: (() => void) | null = null;
 
   constructor(
     private root: HTMLElement,
@@ -153,8 +159,15 @@ export class InventoryPanel {
     const doll = this.el!.querySelector<HTMLDivElement>('.cw-equip')!;
     doll.innerHTML = '';
     const worn = equippedBySlot(this.inventory.all);
-    for (const id of DOLL) {
+    for (const [at, id] of DOLL.entries()) {
       if (!id) {
+        if (at === DOLL.length - 1 && this.onSheet) {
+          const b = Object.assign(document.createElement('button'), { className: 'cw-equip-sheet', type: 'button', innerHTML: '<span class="glyph">☰</span>Sheet · J' });
+          b.setAttribute('aria-label', 'Open the character sheet (J)');
+          b.addEventListener('click', () => this.onSheet?.());
+          doll.appendChild(b);
+          continue;
+        }
         doll.appendChild(Object.assign(document.createElement('div'), { className: 'cw-equip-gap' }));
         continue;
       }
@@ -191,24 +204,13 @@ export class InventoryPanel {
     }
   }
 
-  /** "+3 Vitality" lines vs what is worn in the same slot, so choosing between two items is one glance. */
+  /** What equipping this instead of the worn piece changes for this character (gearText.ts). */
   private compareLines(slot: InventorySlot) {
-    if (slot.equipped) return '';
-    const id = equipSlotOf(slot);
-    const other = id ? equippedBySlot(this.inventory.all)[id] : undefined;
-    if (!id) return '';
-    if (!other) return '<div class="cmp">Nothing equipped there</div>';
-    const rows = STAT_KEYS.map((k) => [k, (slot.stat_bonus?.[k] ?? 0) - (other.stat_bonus?.[k] ?? 0)] as const)
-      .filter(([, d]) => d !== 0)
-      .map(([k, d]) => `<span class="${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : ''}${d} ${STAT_LABELS[k]}</span>`);
-    return `<div class="cmp">vs ${other.name}: ${rows.length ? rows.join(' · ') : 'no change'}</div>`;
+    return compareTableHtml(this.statContext?.() ?? null, slot);
   }
 
   private statLines(slot: InventorySlot) {
-    if (!slot.stat_bonus) return '';
-    return STAT_KEYS.filter((k) => slot.stat_bonus![k])
-      .map((k) => `<div class="stat">+${slot.stat_bonus![k]} ${STAT_LABELS[k]}</div>`)
-      .join('');
+    return itemStatsHtml(this.statContext?.() ?? null, slot);
   }
 
   private setLine(slot: InventorySlot) {
@@ -228,6 +230,7 @@ export class InventoryPanel {
       <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${slot.item_type.replace('_', ' ')}</div>
       ${this.statLines(slot)}
       ${this.setLine(slot)}
+      ${compareChipsHtml(this.statContext?.() ?? null, slot)}
       ${brewSummary(slot.item_id) ? `<div class="brew-line">${brewSummary(slot.item_id)}</div>` : ''}
       ${meta.lore ? `<div class="lore">${meta.lore}</div>` : ''}
       <div class="sell">Worth ${slot.sell_value}g</div>
@@ -258,15 +261,18 @@ export class InventoryPanel {
     const equippable = equipSlotOf(slot) !== null;
     const drinkable = slot.item_id in HEALING_FLASKS || slot.item_id in BUFF_FLASKS;
     const edible = slot.item_id in MEALS;
+    const compare = this.compareLines(slot);
     detail.innerHTML = `
-      <div class="info">
+      <div class="info${compare ? ' gs-wide' : ''}">
+        <div class="gs-col">
         <div class="name" style="color:${RARITY_COLOR[slot.rarity]}">${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''}</div>
         <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${slot.item_type.replace('_', ' ')}</div>
         ${this.statLines(slot)}
         ${this.setLine(slot)}
-        ${this.compareLines(slot)}
         ${brewSummary(slot.item_id) ? `<div class="brew-line">${brewSummary(slot.item_id)}</div>` : ''}
         ${meta.lore ? `<div class="lore">${meta.lore}</div>` : ''}
+        </div>
+        ${compare ? `<div class="gs-col">${compare}</div>` : ''}
       </div>
       ${equippable ? `<button class="cw-button small" data-act>${slot.equipped ? 'Unequip' : 'Equip'}</button>` : ''}
       ${drinkable ? `<button class="cw-button small" data-act>Drink</button>` : ''}
@@ -312,6 +318,7 @@ export class InventoryPanel {
         const slots = await equipItem(this.characterId, slot.slot_index, slot.equipped ? 0 : 1);
         this.selected = null;
         this.inventory.replace(slots);
+        if (!slot.equipped) this.onEquipped?.();
       });
     } catch (err) {
       this.setError(err instanceof Error ? err.message : 'Equip failed');

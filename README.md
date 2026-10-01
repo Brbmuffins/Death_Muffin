@@ -19,6 +19,7 @@ The Ossuary Covenant stands in a diocese overrun by the dead. Choose one of nine
 - [Combat and corpses](#combat-and-corpses)
 - [The world and its bosses](#the-world-and-its-bosses)
 - [Gold, gear, and difficulty](#gold-gear-and-difficulty)
+- [Gear, stats and the character sheet](#gear-stats-and-the-character-sheet)
 - [Gathering and crafting](#gathering-and-crafting)
 - [Ascension](#ascension)
 - [Playing together and getting help](#playing-together-and-getting-help)
@@ -64,6 +65,7 @@ The landing page previews the fire realm and its enemies with a lightweight purp
 | **T** | Recall to the Chapterhouse |
 | **L** | Open the Grimoire to inspect rites and set all five slots |
 | **I** or **B** / **C** / **P** / **O** / **U** / **H** / **N** | Reliquary / Workbench / Skills and AFK gathering / Sexton’s Contracts / Grave Gardening / Grave Laborers / Capes & Pets |
+| **J** | Character sheet: your numbers and where each comes from |
 | **M** / **K** | Waystone map / Codex |
 | **G** | Toggle auto combat on Easy (Brbmuffins developer account) |
 | **Enter** | Chat |
@@ -267,6 +269,26 @@ The HUD has two gold upgrades:
 ![Nightfall at Wave Speed tier 8](docs/screenshots/nightfall.webp)
 
 Choose difficulty in **Settings (Esc)**. **Medium** is the starting balance for each character. **Easy** reduces enemy health and damage and pays less gold and XP; the Brbmuffins developer account can also use auto combat on Easy. **Hard** raises enemy health and damage, adds elites, and pays more gold and XP. In a shared world, the world keeper's difficulty and Ascension rank govern the enemies.
+
+## Gear, stats and the character sheet
+
+Gear carries four stats. Each one feeds a few numbers you can feel, and the game shows you which:
+
+| Stat | What each point gives you |
+|---|---|
+| **VIT** (Vitality) | +8 health. Your thralls have 45% of your health, so VIT helps them too |
+| **INT** (Intellect) | +1.3 spell power, +2 max essence, +0.1 essence per second |
+| **STR** (Strength) | +0.4 spell power |
+| **AGI** (Agility) | +0.3% move speed, +0.2 spell power |
+| **Each level** | +14 health, +1.6 spell power, +2 max essence |
+
+Your discipline then scales the result (an Ossuary necromancer has extra health, a Mourner regains essence faster), Covenant boons add their own share, **Damage upgrades** raise spell power by 8% per tier, and a necromancer's **staff** adds 10% spell power. A thrall hits for 40% of your spell power, before the staff's boost.
+
+**Reading an item.** Hover a piece, or select it in the Reliquary (**I**). Under each stat is what it does for *your* character, for example `+6 VIT: +48 health (+22 thrall health)`. These numbers already include your discipline, so the same helm can be worth more to one class than another.
+
+**Comparing.** Select a bag item you can wear and the Reliquary shows what changes if you equip it instead of what you wear now: health, spell power, essence, essence per second, move speed, thrall health and thrall damage. **Green** is a gain and **red** is a loss. A two-handed weapon is compared against both your main hand and your off-hand, since both leave your hands. For necromancer weapons it also says what changes about your left click ("Left click becomes a reaping arc").
+
+**The character sheet (J, or the Sheet button beside the paper doll).** Lists your final Health, Spell power, Max essence, Essence per second, Move speed, Thrall health, Thrall damage and Damage upgrade, plus your STR, AGI, INT and VIT totals. Click any line to open its breakdown: the base, your level, each worn piece, your discipline, boons, Damage tiers and the weapon line. Brews and other timed effects are not included. The Codex (**K**, Stats tab) carries the same table. Armor set bonuses are not in the game yet.
 
 ## Gathering and crafting
 

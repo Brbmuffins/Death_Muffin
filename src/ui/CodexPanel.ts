@@ -17,6 +17,8 @@ import {
   CODEX_SEALED,
   CODEX_WEAPONS,
   CODEX_WEAPONS_COUNSEL,
+  CODEX_STATS,
+  CODEX_STATS_COUNSEL,
   CODEX_WEAPON_TIERS,
   COVENANT_LORE,
   DEAD_ORDER,
@@ -38,6 +40,7 @@ const TABS = [
   { id: 'rites', label: 'Rites' },
   { id: 'disciplines', label: 'Disciplines' },
   { id: 'weapons', label: 'Weapons' },
+  { id: 'stats', label: 'Stats' },
   { id: 'dead', label: 'The Dead' },
   { id: 'diocese', label: 'The Diocese' },
   { id: 'professions', label: 'Professions' },
@@ -124,6 +127,8 @@ export class CodexPanel {
           ? this.disciplines()
           : this.tab === 'weapons'
             ? this.weapons()
+          : this.tab === 'stats'
+            ? this.stats()
           : this.tab === 'dead'
             ? this.dead()
             : this.tab === 'diocese'
@@ -190,6 +195,16 @@ export class CodexPanel {
           </div>
         </article>`;
     }).join('');
+  }
+
+  private stats() {
+    return `<p class="tip">${CODEX_STATS_COUNSEL}</p>` + CODEX_STATS.map((s) => `
+        <article class="cw-codex-entry">
+          <div class="txt">
+            <div class="hd"><h3>${s.name}</h3><span class="meta">${s.stat}</span></div>
+            <p>${s.effects}</p>
+          </div>
+        </article>`).join('');
   }
 
   private weapons() {

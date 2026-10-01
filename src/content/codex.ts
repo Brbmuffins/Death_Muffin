@@ -43,6 +43,7 @@ import { AREAS, BOSS_SUMMON_SHARDS, type AreaId } from './areas';
 import type { DisciplineId } from './disciplines';
 import { ABBESS, BOSSES, CONGREGATION, GRAVEDIGGER, MIRE, REGENT, SAINT, type BossId } from './bosses';
 import { BOG, HAG_HEX, SEXTON_HOOK, WISP_PULSE } from './fen';
+import { STAT_EFFECTS } from '../gameplay/characterStats';
 import { NECRO_KIND_LABEL, NECRO_TIERS, NECRO_TIER_INFO, NECRO_WEAPON_TUNING as WT, type NecroKind } from './necroWeapons';
 import { BURROW, CENSER, DUST, EMBER_BOLT, EMBER_DEATH, ENEMIES, FRENZY, PLAGUE_FLASK, SCREAM, SLAG_POOL, TEMPLAR_SHIELD, UNBIND, WARD, type Behavior, type EnemyId } from './enemies';
 
@@ -607,6 +608,18 @@ export const CODEX_PROFESSIONS_COUNSEL =
 export const CODEX_BREWS_COUNSEL = 'Two brew slots, one brew each: an Elixir (combat) and a Tonic (utility). A new elixir replaces the old one; drinking the same brew again extends it (up to twice its length). Right-click a brew in the Reliquary to put it on your belt, then press Z for your elixir and X for your tonic. Healing flasks stay on Q. Brews are yours alone; the tray at the left edge shows what is active and for how long.';
 export const codexBrewRows = () =>
   Object.entries(BREWS).map(([id, b]) => ({ id, name: itemMeta(id).name, slot: slotName(b.slot), effects: brewEffectsText(b), seconds: b.seconds }));
+/** Stats tab: what STR / AGI / INT / VIT do. Numbers come from STAT_EFFECTS, the same table deriveStats uses. */
+export const CODEX_STATS_COUNSEL =
+  'Gear and levels raise four stats, and each one feeds a few numbers you can feel. Open the Reliquary (I) and every stat on a piece says what it does for you; a bag item shows what changes if you wear it instead (green is better, red is worse). Press J for the Character sheet, where each number can be opened to see where it comes from.';
+const f = (n: number) => String(+n.toFixed(3));
+export const CODEX_STATS: { stat: string; name: string; effects: string }[] = [
+  { stat: 'VIT', name: 'Vitality', effects: `Each point: +${STAT_EFFECTS.health.perVit} health, and your thralls have ${Math.round(STAT_EFFECTS.thrall.hpShare * 100)}% of it.` },
+  { stat: 'INT', name: 'Intellect', effects: `Each point: +${STAT_EFFECTS.spell.perInt} spell power, +${STAT_EFFECTS.essence.perInt} max essence and +${STAT_EFFECTS.essenceRegen.perInt} essence per second.` },
+  { stat: 'STR', name: 'Strength', effects: `Each point: +${STAT_EFFECTS.spell.perStr} spell power. A small bonus; most useful on gear you wear for other reasons.` },
+  { stat: 'AGI', name: 'Agility', effects: `Each point: +${f(STAT_EFFECTS.moveSpeed.perAgi * 100)}% move speed and +${STAT_EFFECTS.spell.perAgi} spell power.` },
+  { stat: 'Level', name: 'Each level', effects: `+${STAT_EFFECTS.health.perLevel} health, +${STAT_EFFECTS.spell.perLevel} spell power and +${STAT_EFFECTS.essence.perLevel} max essence.` },
+  { stat: 'Thralls', name: 'Your army', effects: `A thrall's damage is ${Math.round(STAT_EFFECTS.thrall.damageShare * 100)}% of your spell power (before a staff's boost); its health is ${Math.round(STAT_EFFECTS.thrall.hpShare * 100)}% of yours. Your discipline then scales both.` },
+];
 /** Weapons tab: the necromancer weapon line (content/necroWeapons.ts). Numbers come from NECRO_WEAPON_TUNING. */
 export const CODEX_WEAPONS_COUNSEL =
   'Necromancer weapons change your left click (Bone Needle) and add one passive, so a weapon swap is a build choice, not a stat stick. Only the four necromancer disciplines (Ossuary, Gravecaller, Mourner, Rotweaver) gain the effects; other classes wear the stats. Staffs and Scythes are two-handed and push the off-hand back to your bag. Every kind comes in five materials: Bone (Hollow Graves, Bone Warren), Iron (Marrow Ossuary, Coliseum), Gold (Drowned Nave, Bell Sanctum), Hell (Plague Cloister, Cinder Pyre) and Moon (the Pyre, rarely). Carpentry and Smithing at the Workbench craft them too.';

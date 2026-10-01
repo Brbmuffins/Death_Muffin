@@ -33,6 +33,8 @@ export type TipId =
   | 'relic'
   | 'armor'
   | 'necroWeapon'
+  | 'gearEquip'
+  | 'statSheet'
   | 'codex'
   | 'signature'
   | 'prelate'
@@ -207,6 +209,14 @@ export const TIPS: Record<TipId, Tip> = {
   armor: {
     title: 'Set armor',
     body: 'Armor comes in five-piece sets, one look per discipline, and <b>any class can wear any set</b>. Open your Reliquary (<kbd>I</kbd>) and double-click a piece to wear it; it shows on your hero. Stats only: there is no set bonus. Later areas drop the rarer, stronger sets.',
+  },
+  gearEquip: {
+    title: 'Gear you can read',
+    body: 'Hover or select a piece in the Reliquary (<kbd>I</kbd>) and every stat says what it does for <b>you</b>: <b>VIT</b> is health, <b>INT</b> is spell power and essence. A bag item also shows what changes if you wear it instead: <b>green</b> is better, <b>red</b> is worse. Press <kbd>J</kbd> for your Character sheet.',
+  },
+  statSheet: {
+    title: 'Your Character sheet',
+    body: 'Every number your hero fights with, and where it comes from. Click a line to open its breakdown: base, level, each worn piece, your discipline, damage upgrades and boons. Armor set bonuses will join it later.',
   },
   necroWeapon: {
     title: 'A weapon that changes your left click',

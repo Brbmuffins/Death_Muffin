@@ -86,6 +86,8 @@ import { FloatingText } from '../ui/FloatingText';
 import { ForgePanel } from '../ui/ForgePanel';
 import { HUD, type HudFrame } from '../ui/HUD';
 import { InventoryPanel } from '../ui/InventoryPanel';
+import { CharacterSheetPanel } from '../ui/CharacterSheet';
+import type { StatContext } from '../gameplay/gearStats';
 import { SettingsPanel, WaystonePanel } from '../ui/MiscPanels';
 import { ProfessionsPanel } from '../ui/ProfessionsPanel';
 import { CodexPanel } from '../ui/CodexPanel';
@@ -230,6 +232,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private gardenPanel!: GardenPanel;
   private laborPanel!: LaborPanel;
   private cosmeticsPanel!: CosmeticsPanel;
+  private sheetPanel!: CharacterSheetPanel;
   private myCosmetics: { cape: string | null; pet: string | null } = { cape: null, pet: null };
   private petView: PetView | null = null;
   private laborCapNoted = new Set<number>();
@@ -672,7 +675,12 @@ export class WorldScene implements GameScene, RuntimeView {
     }
     if (this.sim && (this.isAuthority())) this.sim.waveTier = this.progression.local.waveTierActive;
     this.inventoryPanel?.render();
+    this.sheetPanel?.render();
   }
+
+  /** Who the gear text is for; null until the player exists. The discipline already carries boons and a skull-focus swap. */
+  private statContext = (): StatContext | null =>
+    this.player ? { character: this.character, slots: this.inventory.all, discipline: this.discipline, damageTier: this.progression.local.damageTier } : null;
 
   private statsLine = () => {
     const { total, bonus } = computeStats(this.character, this.inventory.all);
@@ -724,6 +732,11 @@ export class WorldScene implements GameScene, RuntimeView {
       this.chronicle.add('sold', n);
       this.hud.toast(`Sold ${n > 1 ? `${n}× ` : ''}${name} for ${gold.toLocaleString()} gold`, 'good');
     });
+    // Gear you can read: stat lines and compare blocks speak for this character, and J opens the sheet.
+    this.inventoryPanel.statContext = this.statContext;
+    this.inventoryPanel.onSheet = () => this.togglePanel('sheet');
+    this.inventoryPanel.onEquipped = () => this.onboarding.show('gearEquip');
+    this.sheetPanel = new CharacterSheetPanel(this.root, this.statContext, () => this.onboarding.show('statSheet'));
     this.forgePanel = new ForgePanel(this.root, this.character.id, this.inventory, (inv, profs) => {
       this.inventory.replace(inv);
       this.skills.adopt(profs);
@@ -821,6 +834,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.gardenPanel?.close();
     this.laborPanel?.close();
     this.cosmeticsPanel?.close();
+    this.sheetPanel?.close();
   }
 
   private async changeClass(index: number) {
@@ -931,9 +945,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hud.toast(d.paidBonus ? `Order filled, and the day’s bonus is yours: +${d.paidBonus.gold.toLocaleString()}g` : 'Order filled', 'good');
   }
 
-  private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics') {
+  private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'sheet') {
     audio.play('click');
-    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel, cosmetics: this.cosmeticsPanel }[p];
+    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel, cosmetics: this.cosmeticsPanel, sheet: this.sheetPanel }[p];
     const wasOpen = panel.isOpen;
     this.closePanels();
     if (wasOpen) return;
@@ -947,6 +961,7 @@ export class WorldScene implements GameScene, RuntimeView {
     else if (p === 'garden') void this.gardenPanel.open();
     else if (p === 'labor') void this.laborPanel.open();
     else if (p === 'cosmetics') void this.cosmeticsPanel.open();
+    else if (p === 'sheet') this.sheetPanel.open();
     else if (p === 'ascension') this.ascensionPanel.open();
     else if (p === 'grimoire') {
       this.grimoirePanel.open();
@@ -996,6 +1011,7 @@ export class WorldScene implements GameScene, RuntimeView {
       else if (k === BREW_KEYS.tonic) this.drinkBelt('tonic');
       else if (k === 't') this.startRecall();
       else if (k === 'i' || k === 'b') this.togglePanel('inventory');
+      else if (k === 'j') this.togglePanel('sheet');
       else if (k === 'c') this.togglePanel('forge');
       else if (k === 'p') this.togglePanel('professions');
       else if (k === 'o') this.togglePanel('contracts');
@@ -1100,7 +1116,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private panelOpen() {
-    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen;
+    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen || !!this.sheetPanel?.isOpen;
   }
 
   private interactablesNear(): Interactable[] {
