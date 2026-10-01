@@ -59,8 +59,11 @@ async function main() {
     await page.locator('.dm-offline-sync [name="username"]').fill('online_probe');
     await page.locator('.dm-offline-sync [name="password"]').fill('private-test-password');
     await page.getByRole('button', { name: 'Compare saves' }).click();
+    let confirmText = '';
+    page.once('dialog', (dialog) => { confirmText = dialog.message(); void dialog.accept(); });
     await page.getByRole('button', { name: 'Load offline save online' }).click();
     await page.getByText('Offline save loaded online:', { exact: false }).waitFor();
+    assert.match(confirmText, /Replace your ONLINE character/, 'asks before overwriting the online save');
     assert.equal(upload.snapshot.character.level, 1);
     assert.equal(upload.snapshot.slots.length, localSave.slots.length);
     assert.equal(upload.expectedFingerprint, 'a'.repeat(64));
