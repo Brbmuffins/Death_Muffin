@@ -6,12 +6,11 @@
 
 .gs-cmp { margin-top: 6px; font-size: 12px; color: var(--cw-text-muted); }
 .gs-cmp .hd { margin-bottom: 3px; color: var(--cw-text-faint); }
-.gs-cmp table { border-collapse: collapse; font-family: var(--cw-font-numeric); }
-.gs-cmp th { text-align: left; font-weight: 400; padding: 1px 14px 1px 0; color: var(--cw-bone-300); white-space: nowrap; }
-.gs-cmp td { padding: 1px 12px 1px 0; white-space: nowrap; }
-.gs-cmp td.d { font-weight: 700; padding-right: 0; }
-.gs-cmp tr.up td.d, .gs-cmp .up { color: var(--cw-ok); }
-.gs-cmp tr.down td.d, .gs-cmp .down { color: #d97a6b; }
+.gs-cmp .rows { display: flex; flex-wrap: wrap; gap: 3px 14px; font-family: var(--cw-font-numeric); font-size: 13px; }
+.gs-cmp .r { white-space: nowrap; color: var(--cw-bone-300); cursor: help; }
+.gs-cmp .r b { font-weight: 700; }
+.gs-cmp .r.up b, .gs-cmp .up { color: var(--cw-ok); }
+.gs-cmp .r.down b, .gs-cmp .down { color: #d97a6b; }
 .gs-cmp ul { list-style: none; margin: 4px 0 0; padding: 0; }
 .gs-cmp .gs-note { font-style: italic; }
 
@@ -22,8 +21,13 @@
 .gs-cmp-mini .down { color: #d97a6b; }
 
 /* The detail strip gets the compare table beside the item text instead of stacking taller. */
-.cw-bag-detail .info.gs-wide { display: grid; grid-template-columns: minmax(190px, 1fr) minmax(220px, 1fr); gap: 0 22px; align-items: start; }
-.cw-bag-detail .info.gs-wide > .gs-col { min-width: 0; }
+.cw-bag-detail .info { flex: 1; min-width: 0; }
+.cw-bag-detail .info.gs-wide { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 0 18px; align-items: start; }
+.cw-bag-detail .info.gs-wide .gs-cmp { margin-top: 0; }
+/* Action buttons stack in a narrow column so the item text and its comparison get the width. */
+.cw-bag-detail:has(.info.gs-wide) { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 6px 14px; }
+.cw-bag-detail:has(.info.gs-wide) > .info { grid-column: 1; grid-row: 1 / span 8; }
+.cw-bag-detail:has(.info.gs-wide) > .cw-button { grid-column: 2; }
 
 .cw-equip-sheet { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 0; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-bone-300); cursor: pointer; font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
 .cw-equip-sheet:hover { border-color: var(--cw-border-active); background: var(--cw-accent-soft); }
@@ -52,5 +56,7 @@
   .gs-sheet { width: auto; }
   .gs-line .help { display: none; }
   .gs-line .gs-rows { padding-left: 8px; }
-  .cw-bag-detail .info.gs-wide { grid-template-columns: 1fr; }
+  .cw-bag-detail .info { flex: 1; min-width: 0; }
+.cw-bag-detail .info.gs-wide { grid-template-columns: 1fr; }
 }
+

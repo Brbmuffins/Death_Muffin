@@ -41,7 +41,7 @@ export function compareTableHtml(ctx: StatContext | null, slot: InventorySlot): 
   const c = ctx && compareEquip(ctx, slot);
   if (!c) return '';
   const rows = c.lines
-    .map((l) => `<tr class="${l.tone}"><th>${l.short}</th><td>${formatDerived(l.key, l.before)} → ${formatDerived(l.key, l.after)}</td><td class="d">${l.text}</td></tr>`)
+    .map((l) => `<span class="r ${l.tone}" title="${l.short}: ${formatDerived(l.key, l.before)} → ${formatDerived(l.key, l.after)}"><b>${l.text}</b> ${l.label}</span>`)
     .join('');
   const notes = [
     ...c.gained.map((t) => `<li class="up">${esc(t)}</li>`),
@@ -50,7 +50,7 @@ export function compareTableHtml(ctx: StatContext | null, slot: InventorySlot): 
   return `
     <div class="gs-cmp">
       <div class="hd">${headline(c.replaced)}</div>
-      ${rows ? `<table>${rows}</table>` : '<div class="gs-note">No change to your numbers.</div>'}
+      ${rows ? `<div class="rows">${rows}</div>` : '<div class="gs-note">No change to your numbers.</div>'}
       ${notes ? `<ul>${notes}</ul>` : ''}
     </div>`;
 }

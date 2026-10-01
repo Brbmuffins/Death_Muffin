@@ -108,6 +108,7 @@ export class InventoryPanel {
 
   render() {
     if (!this.el) return;
+    this.hideTooltip(); // the cell under the pointer is rebuilt, so its pointerleave never fires
     this.el.querySelector('[data-stats]')!.innerHTML = this.statsLine();
     const grid = this.el.querySelector<HTMLDivElement>('.cw-bag-grid')!;
     grid.innerHTML = '';
@@ -270,7 +271,7 @@ export class InventoryPanel {
         ${this.statLines(slot)}
         ${this.setLine(slot)}
         ${brewSummary(slot.item_id) ? `<div class="brew-line">${brewSummary(slot.item_id)}</div>` : ''}
-        ${meta.lore ? `<div class="lore">${meta.lore}</div>` : ''}
+        ${meta.lore && !compare ? `<div class="lore">${meta.lore}</div>` : ''}
         </div>
         ${compare ? `<div class="gs-col">${compare}</div>` : ''}
       </div>
