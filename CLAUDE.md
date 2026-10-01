@@ -1,6 +1,6 @@
-# Crossworlds Web — Claude Context
+# Death Muffin — development context
 
-Browser client for Death Muffin / Crossworlds (Vite + TypeScript + Three.js): a dark-fantasy
+Browser client for Death Muffin (Vite + TypeScript + Three.js): a dark-fantasy
 action RPG with nine classes — one connected world (Chapterhouse → Hollow Graves →
 Marrow Ossuary → Drowned Nave → Bell Sanctum → Plague Cloister → Cinder Pyre → Mourning Fen, the last three level-scaled), continuous waves, corpses as a
 resource, Damage / Wave Speed upgrades and boss fights. The original shared
@@ -22,7 +22,7 @@ player behavior, deployment and plans. Update the handoff when you stop.
 | `ASSET_PIPELINE.md` | Gemini → Tripo v3 → GLB — **read before any generation** |
 | `FUTURE_CONTENT.md` | backlog: future disciplines, spells, enemies, bosses |
 | `BALANCE.md` | balance targets per band, current `npm run balance` numbers, open issues |
-| `SERVER_OPERATIONS.md` + `server/realtime/DEPLOY.md` | realtime service + deploy scripts |
+| `docs/DEATH-MUFFIN-HANDOFF.md` + `server/death-muffin/` | Death Muffin runtime and deploy scripts; `server/realtime/DEPLOY.md` is legacy Crossworlds history |
 | `server/proposals/necromancer-progress.md` | server spec for browser-local progress |
 
 ## Ground rules
@@ -75,7 +75,7 @@ server/         realtime service (+tests, deploy), web-deploy, proposals/
 2. Dev server: `npm run dev` (port 5188). `.claude/launch.json` is the older
    Windows preview setup; on this VPS, `tools/qa/README.md` uses port 5199.
 3. `http://localhost:5188/?offline` = DEV-only in-browser mock backend (no live
-   server, accounts in localStorage). Add `&coop` + start **crossworlds-realtime**
+   server, accounts in localStorage). Add `&coop` + start **death-muffin-realtime**
    to test co-op across two tabs.
 4. Drive QA through `window.__cwDebug` (DEV only): `advance(s)` steps the game
    deterministically (hidden preview panes throttle rAF — don't wait on the loop),

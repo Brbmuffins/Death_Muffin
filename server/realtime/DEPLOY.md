@@ -1,4 +1,8 @@
-# Phase 3 VPS Deploy — rod-realtime
+# Historical Crossworlds Phase 3 deploy — do not use for Death Muffin
+
+This file describes the old shared Crossworlds deployment and its `rod-realtime`
+service. Death Muffin uses separate services, database, ports and `/death-muffin/`
+routes; follow `docs/DEATH-MUFFIN-HANDOFF.md` and `server/death-muffin/` instead.
 
 Status: **one-shot script ready.** This machine can't SSH to the VPS
 (`Permission denied (publickey,password)`), so run it yourself on the box.

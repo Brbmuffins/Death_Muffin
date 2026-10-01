@@ -8,9 +8,12 @@ The Ossuary Covenant stands in a diocese overrun by the dead. Choose one of nine
 
 **Play:** [muffindevelopment.com/death-muffin](https://muffindevelopment.com/death-muffin/). Create an account or sign in, then choose a discipline. You can change class later in **Settings** while keeping the same character's level, gold, items, and permanent progress.
 
+**Release status:** This guide covers the current repository build. The armor sets, Pyre, Mourning Fen, new necromancer weapons and brews, menu and spell swap updates, and refreshed landing page have recorded live releases. See [the handoff](HANDOFF.md) for the current status.
+
 ## Contents
 
 - [Your first hour](#your-first-hour)
+- [What to explore next](#what-to-explore-next)
 - [Controls](#controls)
 - [Choose a discipline](#choose-a-discipline)
 - [Combat and corpses](#combat-and-corpses)
@@ -19,46 +22,58 @@ The Ossuary Covenant stands in a diocese overrun by the dead. Choose one of nine
 - [Gathering and crafting](#gathering-and-crafting)
 - [Ascension](#ascension)
 - [Playing together and getting help](#playing-together-and-getting-help)
+- [Offline play status](#offline-play-status)
 
 ## Your first hour
 
 1. **Start in the Sexton's Acre.** This is a safe gathering area. Click a Coffin-Oak, Copper or Tin Seam, Still Pool, or Pauper's Grave to begin a level 1 skill. Press **P** to see your skills. You can leave gathering for later if you want to fight immediately.
 2. **Walk east into the Chapterhouse.** This safe hub has the Reliquary for your inventory, the Workbench for crafting, the Altar of Ascension, and a Waystone. Press **T** to channel a return here when you need a break.
-3. **Go north into the Hollow Graves.** Click ground to move and enemies to use your basic attack. Aim with the mouse and use **1–4** for your equipped rites. Watch the ground for attack warnings. The count beneath the minimap shows progress toward the next sealed area.
+3. **Go north into the Hollow Graves.** Hold **WASD** to move, or click ground to set a destination. Click enemies to use your basic attack, aim with the mouse, and use **1–5** for equipped rites. Watch the ground for attack warnings. The count beneath the minimap shows progress toward the next sealed area.
 4. **Collect loot and grow stronger.** Open the Reliquary with **I** to equip items. Spend gold on **Damage** and **Wave Speed** in the HUD. Wave Speed has a separate active dial, so you can turn the pressure back down after buying a tier.
 5. **Read what you meet.** Hover a rite for its cost and targeting advice, open the **Codex** with **K** for enemies and professions, and follow the Covenant counsel tips as they appear.
 
 ![The Sexton's Acre, a safe place to learn gathering](docs/screenshots/sextons-acre.webp)
 
-On **Easy**, auto combat can engage enemies, use equipped rites, heal, and drink flasks. It turns on when you switch to Easy unless you turn it off. **G** toggles it; clicking or moving takes manual control. **Medium** is the default difficulty.
+**Medium** is the default difficulty for each character. The Brbmuffins developer account can use auto combat on **Easy**; it turns on when switching to Easy unless turned off. **G** toggles it; clicking or moving takes manual control. Auto gathering and AFK professions remain available to every player.
+
+## What to explore next
+
+| If you enjoy… | Try this |
+|---|---|
+| A new fight | Follow the main route through the Plague Cloister to the **Cinder Pyre**. Fire enemies leave burning ground; the Cinder Regent's ash circles are safe during Conflagration. After 800 Pyre kills, enter the **Mourning Fen** from the Drowned Nave's west wall and fight the Mire Mother from the dry hummocks. |
+| Finding a build | Collect a five-piece armor set for any discipline. Necromancers can also try a staff, scythe, wand or ritual sickle: each changes the basic attack. Equip a skull focus, grimoire or mourning bell in the off-hand if your weapon leaves that hand free. |
+| Gathering and brewing | Dead in the Hollow Graves drop **Grave Dust**. Four dust make a **Grave-Dust Tonic** at the Workbench's Alchemy tab, with no garden required. Forage Rot-cap in the Cloister, Ash-bloom in the Pyre, and bog myrtle or drowned lotus in the Fen for later recipes. |
+| A longer goal | Fill Sexton's Contracts, grow herbs in the Acre, send Grave Laborers to work, and unlock capes and companions as your skills rise. The **Codex (K)** lists enemies, weapons, brews, reagents and professions. |
+
+The landing page previews the fire realm and its enemies with a lightweight purple fire glow and drifting embers. **Settings → Reduced motion** tones down effects in game if you prefer a quieter screen.
 
 ## Controls
 
 | Input | Action |
 |---|---|
-| Left click ground / enemy / object | Walk, use your basic attack, interact, or gather |
+| **WASD** or arrow keys | Walk directly; a held key takes over from click-to-move |
+| Left click ground / enemy / object | Set a walking destination, use your basic attack, interact, or gather |
 | Shift + left click | Use your basic attack without moving |
 | Click the minimap | Walk to a reachable point; the amber marker is your destination |
 | Mouse / wheel | Aim / zoom |
-| WASD or arrow keys | Walk manually |
-| **1–4** | Use equipped rites at the cursor; hold to repeat when ready |
-| Right click or **5** | Use your class's fifth rite, often a corpse action |
+| **1–4** | Use the first four equipped rites at the cursor; hold to repeat when ready |
+| Right click or **5** | Use your fifth equipped rite, which you can change in the Grimoire |
 | **R** or **6** | Use your class's signature rite after level 10 |
 | **Q** | Drink a healing flask |
 | **Z** / **X** | Drink the elixir / tonic on your belt (**F** is reserved for throwables) |
 | **T** | Recall to the Chapterhouse |
-| **L** | Open the Grimoire to inspect rites and set the four keys |
+| **L** | Open the Grimoire to inspect rites and set all five slots |
 | **I** or **B** / **C** / **P** / **O** / **U** / **H** / **N** | Reliquary / Workbench / Skills and AFK gathering / Sexton’s Contracts / Grave Gardening / Grave Laborers / Capes & Pets |
 | **M** / **K** | Waystone map / Codex |
-| **G** | Toggle auto combat on Easy |
+| **G** | Toggle auto combat on Easy (Brbmuffins developer account) |
 | **Enter** | Chat |
 | **Esc** | Close an open panel, then open Settings |
 
-You can also click hotbar icons. Right click a hotbar slot to open the Grimoire. In **Settings**, you can change class, difficulty, graphics, volume, reduced motion, damage numbers, gathering behavior, and counsel tips.
+You can also click hotbar icons. Click **swap** below any spell icon to open the Grimoire with that slot selected; right click a hotbar slot also works. In **Settings**, you can change class, difficulty, graphics, volume, reduced motion, damage numbers, gathering behavior, and counsel tips.
 
 ## Choose a discipline
 
-Every class has a basic attack, four rites on **1–4**, a fifth rite on right click, and a signature on **R** at level 10. The four necromancers share a larger pool of rites and can change their loadout in the Grimoire as they level. The other five classes have their own resource and fixed rite choices for now; their four keys can be rearranged.
+Every class has a basic attack, five swappable rites on **1–5** (slot 5 also uses right click), and a signature on **R** at level 10. The four necromancers share a larger pool of rites and can choose any five unlocked rites in the Grimoire as they level. The other five classes have their own resource and five rites to rearrange.
 
 | Portrait | Discipline | Resource and style |
 |---|---|---|
@@ -101,7 +116,7 @@ The necromancers begin with this kit. The icons are the same ones used on the ho
 | <img src="public/art/abilities/necro-litany.png" alt="" width="42" /> | **4** | **Black Litany** | Sacrifices nearby corpses and thralls for a stronger burst. |
 | <img src="public/art/abilities/necro-corpse-explosion.png" alt="" width="42" /> | Right click / **5** | **Corpse Explosion** | Detonates a corpse near the cursor under a pack. |
 
-Your **Grimoire (L)** shows unlock levels, costs, cooldowns, and available alternatives. Necromancers gain new primaries and rites while leveling; put any four unlocked Grimoire rites on **1–4**. Swapping slots does not clear a rite's cooldown. Your loadout is remembered for your character, and Easy auto combat uses the rites you equipped. Other classes can use the Grimoire to inspect and rearrange their starting kit.
+Your **Grimoire (L)** shows unlock levels, costs, cooldowns, and available alternatives. Click **swap** below a hotbar spell to jump to its socket, then choose an unlocked rite. Necromancers gain new primaries and rites while leveling; put any five unlocked class rites on **1–5**, including right click. Swapping slots does not clear a rite's cooldown. Your loadout is remembered for your character. Other classes can inspect and rearrange their five starting rites.
 
 A corpse is an opportunity, but it will not last forever. Necromancers can raise it, explode it, or save it for Black Litany. The kind of corpse affects the thrall: a Penitent becomes an archer, a Deacon a bone mage, and a Carrion Sac a plague bearer. The other classes have their own corpse rites. **Crypt Deacons** can steal unattended bodies and raise enemies from them, so deal with a Deacon before letting corpses pile up.
 
@@ -234,6 +249,8 @@ Each discipline has two five-piece armor sets with matching icons and visible co
 
 Every kind comes in five materials, **Bone, Iron, Gold, Hell and Moon** (recommended levels 1, 15, 30, 45 and 60). They drop by zone (Bone in the Hollow Graves and Bone Warren, Iron in the Ossuary and Coliseum, Gold in the Nave and Sanctum, Hell in the Cloister and Pyre, Moon rarely in the Pyre) and the Workbench crafts them from planks and ingots (Carpentry: staff, wand, grimoire; Smithing: scythe, sickle, skull focus, bell). Two-handed weapons push the off-hand back to your bag. Hover a piece in the Reliquary for its line, or open the Codex (K, Weapons tab). Screenshots: [docs/screenshots/necro-weapons](docs/screenshots/necro-weapons).
 
+Necromancer rites also have distinct casting motions now. A scythe sweeps, wands and sickles flick, and larger rites slam, channel or summon; the four necromancer heroes each use their own animations.
+
 <table><tr>
 <td><img src="public/art/items/staff_oak.png" alt="Oak Staff" width="56" /></td>
 <td><img src="public/art/items/helm_gold.png" alt="Gold Helm" width="56" /></td>
@@ -249,7 +266,7 @@ The HUD has two gold upgrades:
 
 ![Nightfall at Wave Speed tier 8](docs/screenshots/nightfall.webp)
 
-Choose difficulty in **Settings (Esc)**. **Medium** is the starting balance. **Easy** reduces enemy health and damage and pays less gold and XP; it allows auto combat. **Hard** raises enemy health and damage, adds elites, and pays more gold and XP. In a shared world, the world keeper's difficulty and Ascension rank govern the enemies; your Easy auto combat choice remains yours.
+Choose difficulty in **Settings (Esc)**. **Medium** is the starting balance for each character. **Easy** reduces enemy health and damage and pays less gold and XP; the Brbmuffins developer account can also use auto combat on Easy. **Hard** raises enemy health and damage, adds elites, and pays more gold and XP. In a shared world, the world keeper's difficulty and Ascension rank govern the enemies.
 
 ## Gathering and crafting
 
@@ -264,7 +281,13 @@ The **Sexton's Acre**, west of the Chapterhouse, contains every tier of the four
 
 Keep a matching hatchet, pickaxe, rod, or spade **in your bag** to improve gathering success; the best one you carry counts. The Workbench crafts stronger tools from ingots and planks. Some hunting grounds also hold richer nodes, but enemy hits interrupt gathering there.
 
-With **Auto gathering** enabled in Settings, clicking a node can continue to another of the same kind. For longer sessions, use **P → choose a node tier → Start AFK** while in the Acre. Your character keeps working while the game is open. A full bag pauses work; make space and start again. Movement, casting, or **Pause AFK** stops it. Closing the game ends the session, so this does not earn rewards while offline. When AFK work stops, **the Sexton’s Ledger** opens with what the session brought back: time worked, finds and their worth, skill levels gained, your best find, milestones and personal bests. Press **O** (or the Contracts button in Skills) for **the Sexton’s Contracts**: three delivery orders a day, from easy to hard, drawn from what your skills can make. Deliver from your bag for gold and sometimes an item; fill all three for a bonus and build a daily streak. **Grave Gardening (U)** has four Mourning Beds and two Coffin Patches: plant a seed or sapling and come back, because it grows in real time even while you are away (bone meal makes it a quarter faster). Seeds drop from graves, saplings from Coffin-Oaks and Yews, and you are told when plots are ready. **Alchemy** (Workbench, C, Alchemy tab) brews herbs and bone meal into flasks and elixirs, including a Grand Healing Flask (restores 90% health) and a Moonlight Elixir (+25% spell damage for a minute); it is its own skill and levels as you brew. **Reagents** are how Alchemy starts without a garden: the dead drop **Grave Dust** (Hollow Graves, Catacomb Warren), **Wraith Ectoplasm** (Choir Wraiths and Weeping Seraphs anywhere), **Plague Bile** (Plague Cloister) and **Cinder Ash** (Cinder Pyre), elites four times as often, and every area boss always leaves one **ichor** (Gravedigger, Abbess, Congregation, Prelate, Plague Saint, Regent). **Rot-cap** and **Ash-bloom** patches in the Cloister and the Pyre can be foraged from Gardening level 1 (their seeds grow in the Acre at Gardening 35 and 50). Eleven new brews use them: Grave-Dust Tonic (Alchemy 1, four Grave Dust, +20% essence regeneration), Wraithquick (10, haste), Grave-Luck (22, +15% drops), Sexton's Insight (28, +15% XP), Leechblood (38, 4% lifesteal), Rot-Proof (42) and Cinderskin (52) resists, Ghostwalk (62), and three top-tier elixirs that need boss ichor: Bloodmoon (70), Hymnal (78) and Regent's Vigil (85). The Codex (Professions tab, Reagents) lists every source, recipe and number. **Grave Laborers (H)** send the raised dead to work a gathering post while you fight, explore or sleep: they gather slowly for up to eight hours between collections (about an eighth of your own pace, a quarter of the XP), and the Ledger shows what they brought home. You command one laborer, plus one for every 50 total gathering levels, up to four. **Capes & Pets (N)**: a mastery cape for level 99 in each skill and total-level mantles (100, 300, and all skills at 99), plus five companions (Tithe Bat, Grave Rat, Drowned Pup, Wee Thrall, Shroud Moth) that turn up as rare charms while you gather, from your laborers, or from garden harvests. Adopt a charm and the pet is yours for good; other players see your cape and companion.
+With **Auto gathering** enabled in Settings, clicking a node can continue to another of the same kind. For longer sessions, use **P → choose a node tier → Start AFK** while in the Acre. Your character keeps working while the game is open. A full bag pauses work; movement, casting, or **Pause AFK** stops it. Closing the game ends the session, so it does not earn rewards while offline. When work stops, **the Sexton’s Ledger** shows your finds, their worth, skill gains and personal bests.
+
+**Sexton’s Contracts (O)** offers three delivery orders a day, based on what your skills can make. Deliver from your bag for gold and sometimes an item; completing all three gives a bonus and builds a daily streak. **Grave Gardening (U)** gives you four Mourning Beds and two Coffin Patches. Plant seeds or saplings and return later; plots grow in real time even while you are away, and bone meal makes them grow faster.
+
+**Alchemy** is at the Workbench (**C → Alchemy**). Start with four Grave Dust from the Hollow Graves or Catacomb Warren to brew a Grave-Dust Tonic at level 1. Later, Wraith Ectoplasm drops from spirit enemies, Plague Bile from the Cloister, and Cinder Ash from the Pyre. Area bosses always leave an ichor; the Mire Mother’s ichor combines with drowned lotus for a Moonlight Elixir. Forage Rot-cap in the Cloister and Ash-bloom in the Pyre from Gardening level 1, then grow their seeds in the Acre at Gardening 35 and 50. Bog myrtle and drowned lotus grow in the Fen. The **Codex (K → Professions → Reagents)** lists sources, brew effects, recipes and Alchemy levels. Equip an elixir or tonic on your belt in the Reliquary, then use **Z** or **X**.
+
+**Grave Laborers (H)** gather slowly for up to eight hours while you fight, explore or are away. Collect their work and the Ledger shows what they found. You begin with one laborer and gain another for every 50 total gathering levels, up to four. **Capes & Pets (N)** has a mastery cape for level 99 in each skill, total-level mantles, and five companions found as rare charms while gathering, from laborers, or from garden harvests. Adopt a charm permanently; other players see your cape and companion.
 
 <table><tr>
 <td><img src="docs/screenshots/gathering.webp" alt="Working a gathering node" /><br /><sub>Working a node</sub></td>
@@ -293,3 +316,11 @@ When co-op is available, joining places you in a world with room for up to **10 
 ![A Covenant counsel tip in game](docs/screenshots/covenant-counsel.webp)
 
 For technical setup and deployment, see [docs/README.md](docs/README.md) and the [VPS handoff](docs/DEATH-MUFFIN-HANDOFF.md).
+
+## Offline play status
+
+The standalone **Death Muffin Offline** edition lives at [muffindevelopment.com/death-muffin/offline/](https://muffindevelopment.com/death-muffin/offline/). Open it while connected, create a local player, then select **Download for offline play**. Wait for “Ready to play without a network” before disconnecting. The download is about 105 MB; your browser may also offer **Install app**. The game and save stay on this device. Clearing site data removes the save, so use a browser profile you keep.
+
+After reconnecting, open **Upload level and XP** in the offline game. Sign in with your online Death Muffin account, which must already have a character of the same discipline. The upload keeps whichever level and XP are higher; items, gold, professions and other local progress stay in the offline edition. Close any open online game tab before uploading, then reopen it to see the updated stats. The online account password is used for this upload and is not stored by the offline edition.
+
+Developers can still run `npm run dev` with `?offline` for the browser mock, or run `npm run build:offline` to prepare the standalone edition in `dist-offline/`.

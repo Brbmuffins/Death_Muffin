@@ -1,19 +1,22 @@
 # HANDOFF — current work first
 
-Updated 2026-09-29. Read [the documentation map](docs/README.md) for the
+Updated 2026-10-01. Read [the documentation map](docs/README.md) for the
 difference between source, published releases and historical plans. Update the
 **Current state** and **In flight** sections when stopping work.
 
-The last recorded Death Muffin deployment is the 2026-09-28 New Blood release:
-Grave Warden, Bell Monk, Carrion Witch, Hollow Knight and Veilwalker are recorded
-as published and publicly checked in [the VPS handoff](docs/DEATH-MUFFIN-HANDOFF.md).
-The later AFK gathering tool visuals are also recorded there. This statement is
-based on that dated deployment record; local edits still need a release decision.
+The 2026-10-01 release published the brew engine, necromancer weapons and cast
+animations, alchemy reagents, Mourning Fen, five-slot Grimoire and local UI work.
+A later client-only correction replaced an inherited Crossworlds logo and page
+labels with Death Muffin branding, and the local dev proxy now targets Death
+Muffin's auth service. The shared Crossworlds deployment was not changed.
+The prior 2026-09-30 releases include the Cinder Pyre and levels, armor
+collections, necromancer polish, login refresh and landing-page fire effect.
 
-This checkout is `codex/new-blood-release-20260928`. As of this update, audio and
-High-graphics fixes are staged, while separate area-boss work is unstaged. Check
-`git status --short` and both diffs before editing shared files; other
-contributors may have changed them since this note.
+This checkout is `codex/new-blood-release-20260928`. Five interrupted worktree
+branches (brew engine, necromancer weapons, cast animation, reagents and Mourning
+Fen) were committed on their own branches and merged through `c668a55`. The
+README, menu spacing, five-slot Grimoire and QA fixes remain local edits for the
+owner's GitHub Desktop flow. Check `git status --short` before editing shared files.
 
 ## 60-second orientation
 
@@ -38,7 +41,7 @@ npm install                       # Node 24 (winget OpenJS.NodeJS.LTS if missing
 (cd server/realtime && npm ci)     # test:server needs the realtime service's deps (dotenv, socket.io)
 npm run typecheck && npm test && npm run test:server
 npm run balance                   # headless farming/danger table — targets + current numbers in BALANCE.md
-npm run dev                       # or preview "crossworlds-web" in .claude/launch.json
+npm run dev                       # or preview "death-muffin-web" in .claude/launch.json
 # open http://localhost:5188/?offline  → register any name/password (local mock), pick a discipline
 # QA from the console: __cwDebug.god(); __cwDebug.goto('graves'); __cwDebug.advance(3); __cwDebug.counts()
 ```
@@ -49,11 +52,11 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 
 | Scope | Status | Evidence / next action |
 | --- | --- | --- |
-| Last recorded public release | New Blood classes and AFK gathering visuals, 2026-09-28 | [VPS deployment handoff](docs/DEATH-MUFFIN-HANDOFF.md) |
-| Audio and High-quality ground fixes | Staged locally; not deployed | Build, typecheck, VFX and browser graphics checks passed 2026-09-29; ear-test and source-audio rights review remain |
-| Area bosses | Unstaged work in this checkout | `src/content/bosses.ts`, `WorldScene.ts` and sim files; do not describe as published |
-| Documentation and help audit | Staged locally 2026-09-29 | Player/working/VPS READMEs, documentation map, historical briefs, counsel, Grimoire, HUD, Settings, Codex and spell cards aligned with current source; typecheck, 24 focused tests and local Markdown link audit passed |
-| Current full client test suite | 297 pass, 2 fail on this checkout | `layout-water.test.ts` overlaps the new Drowned Font; `necroServer.test.ts` finds a stale generated rules bundle. Resolve with the respective work owner. |
+| Last recorded public release | Necromancer weapons, brewing/reagents, Mourning Fen, five-slot Grimoire and UI, 2026-10-01 | Migrations 013–015 applied; tested candidate index matches public; temporary-account co-op/Grimoire smoke passed; backup `deploy/backup-pre-necro-fen-20261001T171843Z` |
+| Integrated local content | Same release as above | Built from frozen `deploy/candidate-necro-fen-20261001`; no later feature code included |
+| Local UI and player guide | Wider centered menus, separated Skills/AFK controls, explicit hotbar swap buttons, five swappable rites and updated README | Included in 2026-10-01 published build; local browser smoke checked swap and reload persistence |
+| Validation | 497 client tests, 9 server suites, typecheck and production build pass | Reagent pickup/brewing/foraging browser smoke and spell swap smoke pass; Fen balance comparison is recorded in `BALANCE.md` |
+| Progression pacing to review | New Blood classes gain XP much more slowly than necromancers in the current Medium bot | Graves level-1 sample: necromancers 364–391 XP/min, New Blood 42–106 XP/min, with repeated bot deaths; human and Easy-mode checks needed before retuning |
 
 ### Historical baseline — verified in 2026-09-26, not a current status table
 
@@ -105,11 +108,26 @@ No deployment. Source and redistribution note: `docs/CROSSWORLDS-AUDIO.md`.
 | The Sexton's Acre (safe zone west of the Chapterhouse, every node tier, pond, stations) + rich nodes in hunting grounds | ✅ QA'd in-browser | `content/areas.ts`, `content/layout.ts` (`nodes`, `ponds`), `graphics/WorldView.ts`, `Atmosphere.ts` |
 | Gathering nodes in the sim (shared depletion, `gather` intent, snapshot `depleted`), loop + Auto, stand-in node views | ✅ sim/loop tests + browser QA | `sim/WorldSim.ts`, `gameplay/Gathering.ts`, `gameplay/gatherPlan.ts`, `graphics/NodeViews.ts`, `nav.findPath` |
 | Skills panel (P), node hover card, Bone Kiln / Sawpit / Cooking Fire, 6 counsel tips, Codex Professions tab | ✅ QA'd | `ui/ProfessionsPanel.ts`, `ui/ForgePanel.ts` (stations), `ui/HUD.ts` (`nodeTip`), `ui/Onboarding.ts`, `ui/CodexPanel.ts` |
-| Node art (Tripo `prop_node_*`), Grave Gardening (G5), new processing recipes (G6), long tail (G7) | 📝 G3 with the owner; G5–G7 not started | `docs/PROFESSIONS-ROADMAP.md` §10, §13 |
+| Professions G3–G7 | Node art, gardening, processing, Contracts, laborers, capes and pets are in source and published | Skill leaderboards and other long-tail ideas remain proposals; older roadmap status was stale |
 
 ## In flight (check before starting overlapping work)
 
-### Open threads (2026-09-29): read this first
+### 2026-10-01 release and next work
+
+- The frozen candidate passed typecheck, 497 client tests, nine server suites, a production build, and local spell-swap, reagent, Fen and Mire Mother browser checks. Fen performance was 289 calls / 486,775 triangles / 1.849 ms update versus 231 / 485,691 / 1.64 ms in the Graves sample.
+- Backup `~/death-muffin/deploy/backup-pre-necro-fen-20261001T171843Z` contains the database dump, old runtime files, index, checksums and `ROLLBACK.sh`. Migrations 013–015 dry-ran in a rolled-back transaction, then applied in order. Both services are active and the public API is healthy. The first post-restart public request briefly returned 502; it recovered before the client index was published. The release script now retries that health check.
+- Public index matches the frozen candidate. `live-release-smoke.cjs` passed temporary-account login, co-op, class cards, Grimoire rites and page-error checks; its test account was removed. A normal first-time `/api/character` 404 is expected. The full four-discipline visual audit and subjective audio check remain open.
+- A client-only brand correction followed: `index.html` and in-game LoginScene now identify Death Muffin; the old Crossworlds logo is no longer displayed. Local login screenshot and metadata checks passed, and the public index matches `deploy/candidate-brand-20261001`. Prior index is in `deploy/backup-pre-brand-20261001`. The Vite dev API proxy defaults to Death Muffin's `127.0.0.1:5190`; inherited Crossworlds deployment documentation is explicitly historical.
+- **Next implementation:** GRIND-LOOP §3 #2, the loot item-level and affix chase. Current loot is client-rolled and bag saves are by item id, so persistent per-item rolls need a server-backed instance path.
+
+### Local release package (2026-09-30)
+
+- Five interrupted Claude worktrees were recovered and merged in the current branch. Brew engine, necromancer weapon line and animations, reagents, and Mourning Fen are integrated. The recovered `tools/qa/necro-audit.cjs` passed a focused Ossuary clip pass with no browser errors; its sampled idle/run/cast/hurt/dig hips showed zero horizontal drift. The full four-discipline visual audit remains open.
+- Migrations `013-necro-weapons.sql`, `014-alchemy-reagents.sql`, and `015-fen.sql` are additive and must be applied in order before publishing the corresponding client. Deploy server rules and realtime code with the same release. Use a fresh production build (`npm run build:death-muffin`), verified backup and public smoke as described below.
+- The Skills/AFK layout and Settings spacing are local UI edits. WASD was already implemented and browser verified. The Grimoire now lets a player swap any five unlocked class rites, including the right-click slot; visible swap buttons under every rite icon open the selected socket. The level-10 signature remains on R. Saved four-slot preferences gain the original right-click rite as slot five. `tools/qa/spell-swap-smoke.cjs` verifies level gates, swap and reload persistence.
+- Player README now names the new systems and distinguishes integrated local content from recorded live releases. The DEV `?offline` mock still exists; there is no downloadable offline player build.
+
+### Historical open threads (2026-09-29)
 - **Direction:** the owner wants a continuous reward loop ("addict me to grind"). The plan and backlog are in
   [docs/GRIND-LOOP.md](docs/GRIND-LOOP.md), and every new feature should feed it.
 - **2026-09-30 (VPS session, DEPLOYED 03:29 UTC): Cinder Pyre + Cinder Regent, Catacomb Warren, Bone Coliseum, Kill Chain, Milestones, Omens.**
@@ -406,6 +424,6 @@ and source before acting on them.
 - The Gemini tool's `post.lumaAlpha` + `post.mask` turn white-on-black art into tintable VFX sprites
   (`ASSET_PIPELINE.md` §1). A rig-less Tripo model builds as a **prop** GLB (`models/props/<id>.glb`), so
   register a static creature (the Choir Wraith) with that URL in `modelPaths.ts`.
-- Another session may hold port 5188; `.claude/launch.json` has `crossworlds-web-alt` on 5198.
+- Another session may hold port 5188; `.claude/launch.json` has `death-muffin-web-alt` on 5198.
 - A long-running Vite dev server on this Windows drive can **serve stale modules** after edits (the watcher
   misses changes). If behaviour doesn't match the source, `fetch('/src/…')` in the page to confirm, then restart the preview.

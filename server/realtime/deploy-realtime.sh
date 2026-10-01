@@ -39,10 +39,11 @@ mkdir -p "$DIR"
 
 cat > "$DIR/server.js" <<'CWEOF_SERVER'
 /**
- * Crossworlds realtime co-op service — Socket.io over WebSocket.
+ * Death Muffin realtime co-op service — Socket.io over WebSocket.
  *
- * Additive to the existing stack: does NOT touch /opt/rod-auth, the REST
- * endpoints, or the database. Port 5000 (3000/4000/7777/3001 are frozen).
+ * This is Death Muffin's separate realtime service. It does not alter the
+ * original shared Crossworlds REST server. Local default is port 5000;
+ * production sets REALTIME_PORT=5191.
  *
  * World model (audit Phase 0): players join instanced worlds of ≤10. Without an
  * invite code you are matched into any public world with space (or a new one);
@@ -54,9 +55,8 @@ cat > "$DIR/server.js" <<'CWEOF_SERVER'
  *
  * Config (env, or ENV_FILE pointing at an env file):
  *   REALTIME_PORT     — default 5000
- *   JWT_SECRET        — required in production. On the VPS, run with
- *                       ENV_FILE=/opt/rod-auth/.env so the secret is read
- *                       in place from the auth server's env — never copied.
+ *   JWT_SECRET        — required in production; use Death Muffin's own
+ *                       auth service secret, never the shared server's.
  *   CORS_ORIGIN       — comma-separated allowed origins
  *                       (default http://localhost:5188 for local dev)
  *   DEV_TRUST_TOKENS  — '1' = decode JWTs without signature verification and
@@ -106,7 +106,7 @@ if (DEV_TRUST_TOKENS && process.env.NODE_ENV === 'production') {
   process.exit(1);
 }
 if (!JWT_SECRET && !DEV_TRUST_TOKENS) {
-  console.error('[realtime] JWT_SECRET missing (set ENV_FILE=/opt/rod-auth/.env on the VPS)');
+  console.error('[realtime] JWT_SECRET missing (set ENV_FILE to Death Muffin auth .env)');
   process.exit(1);
 }
 if (DEV_TRUST_TOKENS) console.warn('[realtime] DEV_TRUST_TOKENS=1 — signatures NOT verified. Local dev only.');
@@ -428,10 +428,10 @@ CWEOF_SERVER
 
 cat > "$DIR/package.json" <<'CWEOF_PKG'
 {
-  "name": "crossworlds-realtime",
+  "name": "death-muffin-realtime",
   "version": "0.1.0",
   "private": true,
-  "description": "Crossworlds realtime co-op layer (Socket.io). Deploy target: /opt/rod-realtime/ on playcrossworlds.com, port 5000.",
+  "description": "Death Muffin realtime co-op service (Socket.io). Production listens on 127.0.0.1:5191.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
