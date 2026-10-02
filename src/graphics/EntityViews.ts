@@ -11,6 +11,8 @@ import { audio } from '../audio/Audio';
 import type { CreatureSlug } from './modelPaths';
 import { STATUS_FX } from '../content/statuses';
 import { wingClock, type WingOpts } from './wingFlap';
+import { smoothSpeed, stepSpeed, turnToward } from './locomotion';
+import { separateBodies, type CrowdBody } from './crowdSeparation';
 
 const ENEMY_SLUG: Record<EnemyId, CreatureSlug> = {
   robber: 'grave_robber',
@@ -108,19 +110,6 @@ const THRALL_LOOK: Partial<Record<ThrallKind, { tint: number; emissive: number; 
   plaguebearer: { tint: 0xb9c48a, emissive: 0x5a6a18, glow: 0.35, scale: 0.8, ring: 0.7 },
 };
 
-/** Nominal ground speed of each walk clip (u/s) — scales playback to avoid foot sliding. */
-const WALK_SPEED: Partial<Record<CreatureSlug, number>> = {
-  grave_robber: 1.5,
-  bone_hound: 2.6,
-  penitent: 1.4,
-  deacon: 1.4,
-  carrion_sac: 1.1,
-  skeleton_thrall: 1.6,
-  censer_bearer: 1.4,
-  skull_rat: 3.2,
-  bone_golem: 1.1,
-};
-
 interface View {
   c: Creature;
   x: number;
@@ -153,6 +142,11 @@ interface View {
   /** Hit flinch: last seen hit flash and when the next flinch may play (ms). */
   lastFlash?: number;
   flinchAt?: number;
+  /** Smoothed ground speed (units/s) measured from the body's real movement; drives the walk / run playback. */
+  gs?: number;
+  /** Eased slide of the drawn body off its sim position, so a pack does not stack (crowdSeparation.ts). */
+  ox?: number;
+  oz?: number;
 }
 
 /** One shared low-poly mound for every burrowed ghoul (grave-dirt brown, never a player colour). */
@@ -173,6 +167,13 @@ const D = SPELL_FX.detonate;
 /** Rough mouth/head height per rig, for drool and sparks. */
 /** Common enemies nearest the camera focus that keep their moon shadow. */
 const SHADOW_CASTERS = 12;
+/** Fastest a body swings round to a new heading (rad/s): an about-face reads as a turn, not a snap. */
+const ENEMY_TURN_RATE = 9;
+/** Most bodies near the camera the view-layer separation will relax in one frame (it is O(n^2) in this number). */
+const MAX_CROWD = 140;
+/** How fast a drawn body eases to its separated spot (1/s), and the footprint it is drawn with (share of the sim radius). */
+const CROWD_EASE = 9;
+const CROWD_FOOTPRINT = 1.12;
 const CROWDED_SHADOW_CASTERS = 8;
 const HEAD_Y = { humanoid: 1.3, robed: 1.35, quadruped: 0.75, bloat: 1.05 } as const;
 
@@ -246,6 +247,10 @@ export class EntityViews {
   private dying: View[] = [];
   private fading: View[] = [];
   private frame = 0;
+  private crowd: CrowdBody[] = [];
+  private crowdViews: View[] = [];
+  private crowdSeen = new Set<View>();
+  private crowdOut = new Float32Array(2 * (MAX_CROWD + 1));
   /** Enemy under the cursor — gets a faint lilac highlight. */
   hoverId: number | null = null;
 
@@ -287,7 +292,7 @@ export class EntityViews {
         duration: 1e9,
         opacity: 0.8,
         pulse: 4,
-        follow: () => ({ x: v.x, z: v.z }),
+        follow: () => ({ x: v.x + (v.ox ?? 0), z: v.z + (v.oz ?? 0) }),
       });
     }
     if (e.affix) this.dressAffix(v, e);
@@ -379,7 +384,7 @@ export class EntityViews {
       r: kindLook?.ring ?? (t.kind === 'hound' ? 0.6 : 0.5),
       duration: 1e9,
       opacity: t.empowered ? 1 : 0.7,
-      follow: () => ({ x: v.x, z: v.z }),
+      follow: () => ({ x: v.x + (v.ox ?? 0), z: v.z + (v.oz ?? 0) }),
     });
     return v;
   }
@@ -658,10 +663,77 @@ export class EntityViews {
   }
 
   private syncFacing(v: View, target: number, dt: number) {
-    let d = target - v.facing;
-    while (d > Math.PI) d -= Math.PI * 2;
-    while (d < -Math.PI) d += Math.PI * 2;
-    v.facing += d * Math.min(1, dt * 10);
+    v.facing = turnToward(v.facing, target, dt, 10, ENEMY_TURN_RATE);
+  }
+
+  /**
+   * Slide drawn bodies apart where the sim leaves them overlapping. Positions are the sim's; the offsets are eased and
+   * capped, applied to the model roots only (decals follow via ox/oz), and never fed back into the sim.
+   */
+  private separateCrowd(enemies: Map<number, Enemy>, thralls: Map<number, Thrall>, dt: number, fx0: number, fz0: number) {
+    const bodies = this.crowd;
+    const views = this.crowdViews;
+    let n = 0;
+    views.length = 0;
+    const add = (v: View, x: number, z: number, r: number, w: number) => {
+      const b = (bodies[n] ??= { x: 0, z: 0, r: 0, w: 0 });
+      b.x = x;
+      b.z = z;
+      b.r = r;
+      b.w = w;
+      n++;
+      views.push(v);
+    };
+    // Body 0 is the hero: an obstacle that never yields.
+    const hero = (bodies[0] ??= { x: 0, z: 0, r: 0, w: 0 });
+    hero.x = fx0;
+    hero.z = fz0;
+    hero.r = 0.45;
+    hero.w = 0;
+    n = 1;
+    const near = (x: number, z: number) => Math.abs(x - fx0) < 22 && Math.abs(z - fz0) < 18;
+    for (const [id, e] of enemies) {
+      const v = this.enemies.get(id);
+      if (!v || v.under || e.state === 'rising' || e.state === 'burrow' || e.state === 'dead' || !near(e.x, e.z)) continue;
+      if (n > MAX_CROWD) break;
+      add(v, e.x, e.z, e.radius * CROWD_FOOTPRINT, ENEMIES[e.def].inert ? 0 : 1);
+    }
+    for (const [id, t] of thralls) {
+      const v = this.thralls.get(id);
+      if (!v || t.state === 'rising' || !near(t.x, t.z)) continue;
+      if (n > MAX_CROWD) break;
+      add(v, t.x, t.z, 0.4 * CROWD_FOOTPRINT * (THRALL_LOOK[t.kind]?.scale ?? (t.kind === 'shieldbearer' ? 1.1 : 1)), 0.8);
+    }
+    const out = this.crowdOut;
+    separateBodies(bodies, out, { iterations: 2, maxOffset: 0.55 }, n);
+    const k = Math.min(1, dt * CROWD_EASE);
+    const seen = this.crowdSeen;
+    seen.clear();
+    for (let i = 1; i < n; i++) {
+      const v = views[i - 1];
+      seen.add(v);
+      v.ox = (v.ox ?? 0) + (out[i * 2] - (v.ox ?? 0)) * k;
+      v.oz = (v.oz ?? 0) + (out[i * 2 + 1] - (v.oz ?? 0)) * k;
+      v.c.root.position.x += v.ox;
+      v.c.root.position.z += v.oz;
+    }
+    // Bodies that left the crowd (far away, burrowed, rising) ease back to their sim spot.
+    for (const map of [this.enemies, this.thralls]) {
+      for (const v of map.values()) {
+        if (seen.has(v) || (!v.ox && !v.oz)) continue;
+        v.ox = (v.ox ?? 0) * (1 - k);
+        v.oz = (v.oz ?? 0) * (1 - k);
+        if (Math.abs(v.ox) < 1e-3 && Math.abs(v.oz) < 1e-3) v.ox = v.oz = 0;
+        v.c.root.position.x += v.ox;
+        v.c.root.position.z += v.oz;
+      }
+    }
+  }
+
+  /** Track a body's real ground speed (smoothed) from how far it moved this frame, for its stride playback. */
+  private measureSpeed(v: View, x: number, z: number, dt: number) {
+    const inst = stepSpeed(x - v.x, z - v.z, dt);
+    v.gs = smoothSpeed(v.gs ?? inst, inst, dt, 0.18);
   }
 
   /** LOD: far creatures animate at a lower rate. */
@@ -709,6 +781,7 @@ export class EntityViews {
         v = this.makeEnemy(e);
         this.enemies.set(id, v);
       }
+      this.measureSpeed(v, e.x, e.z, dt);
       v.x = e.x;
       v.z = e.z;
       this.syncFacing(v, e.facing, dt);
@@ -732,18 +805,20 @@ export class EntityViews {
           // The sim lands the blow when the wind-up ends: time the swing's impact frame to it.
           if (key === 'windup') v.c.playStrike(cast ? 'cast' : 'attack', (def.windupMs / 1000) * (e.elite ? 0.85 : 1));
           else v.c.playOnce(cast ? 'cast' : 'attack', cast ? 1.3 : 1.6);
-        } else if (key === 'walk') v.c.setLoop('walk', Math.max(0.6, e.speed / (WALK_SPEED[v.c.slug] ?? 1.5)));
-        else v.c.setLoop('idle');
+        } else if (key === 'walk') {
+          v.gs = e.speed; // start the legs at the pace the sim is about to move the body
+          v.c.setGroundSpeed(e.speed);
+        } else v.c.setLoop('idle');
         v.lastState = key;
-      }
+      } else if (key === 'walk') v.c.setGroundSpeed(v.gs ?? e.speed);
       const nearFx = Math.abs(e.x - focusX) < 24 && Math.abs(e.z - focusZ) < 20;
-      // A fresh hit makes the body flinch (short hit-react clips, 2026-09-28). Throttled per enemy, near the
-      // camera only, and playOnce never lets a flinch cut into an attack windup or a death.
+      // A fresh hit makes the body flinch: a short additive hit-react laid over the running animation, so a
+      // flinch never cuts a stride or a swing. Throttled per enemy, near the camera only.
       const fresh = e.flash > 0.9 && (v.lastFlash ?? 0) < 0.5;
       v.lastFlash = e.flash;
-      if (fresh && nearFx && key !== 'windup' && key !== 'channel' && !v.under && performance.now() >= (v.flinchAt ?? 0) && v.c.has('hurt')) {
-        v.flinchAt = performance.now() + 1200;
-        v.c.playOnce('hurt', 1.9);
+      if (fresh && nearFx && !v.under && performance.now() >= (v.flinchAt ?? 0) && v.c.has('hurt')) {
+        v.flinchAt = performance.now() + 700;
+        v.c.flinch();
       }
       this.tickAnim(v, dt, focusX, focusZ, crowded);
       if (nearFx && FIRE_DEAD.has(e.def)) this.fireDead(e, v, dt, fresh);
@@ -774,7 +849,7 @@ export class EntityViews {
       }
       // The Censer Bearer itself trails incense smoke and wears its aura on the ground.
       if (ENEMIES[e.def].aura) {
-        if (!v.auraFx) v.auraFx = this.effects.decal({ tex: fx.ring(), color: STATUS_FX.incensed.bronze, x: e.x, z: e.z, r: CENSER.radius, duration: 1e9, opacity: 0.22, pulse: 2.5, follow: () => ({ x: v!.x, z: v!.z }) });
+        if (!v.auraFx) v.auraFx = this.effects.decal({ tex: fx.ring(), color: STATUS_FX.incensed.bronze, x: e.x, z: e.z, r: CENSER.radius, duration: 1e9, opacity: 0.22, pulse: 2.5, follow: () => ({ x: v!.x + (v!.ox ?? 0), z: v!.z + (v!.oz ?? 0) }) });
         if (nearFx && Math.random() < dt * 2) this.effects.emitSmoke({ x: e.x, y: 1.1, z: e.z, count: 1, color: STATUS_FX.incensed.smoke, spread: 0.3, speed: 0.3, up: 0.5, life: 1.4, size: 0.9, shrink: -0.5 });
       }
       if (nearFx && hover && Math.random() < dt * 4) {
@@ -800,7 +875,7 @@ export class EntityViews {
       if (ENEMIES[e.def].unbind) {
         let near = false;
         for (const t of thralls.values()) if (Math.abs(t.x - e.x) < UNBIND.range && Math.hypot(t.x - e.x, t.z - e.z) <= UNBIND.range) { near = true; break; }
-        if (near && !v.auraFx) v.auraFx = this.effects.decal({ tex: fx.ring(), color: SPELL_FX.enemy.curse, x: e.x, z: e.z, r: UNBIND.range, duration: 1e9, opacity: 0.15, pulse: 1.5, follow: () => ({ x: v!.x, z: v!.z }) });
+        if (near && !v.auraFx) v.auraFx = this.effects.decal({ tex: fx.ring(), color: SPELL_FX.enemy.curse, x: e.x, z: e.z, r: UNBIND.range, duration: 1e9, opacity: 0.15, pulse: 1.5, follow: () => ({ x: v!.x + (v!.ox ?? 0), z: v!.z + (v!.oz ?? 0) }) });
         else if (!near && v.auraFx) (v.auraFx.kill(), (v.auraFx = undefined));
       }
       if (nearFx && e.state === 'rising' && Math.random() < dt * 8) {
@@ -829,6 +904,7 @@ export class EntityViews {
         v = this.makeThrall(t);
         this.thralls.set(id, v);
       }
+      this.measureSpeed(v, t.x, t.z, dt);
       v.x = t.x;
       v.z = t.z;
       this.syncFacing(v, t.facing, dt);
@@ -840,12 +916,15 @@ export class EntityViews {
       const key = t.state === 'attack' && t.stateT < 0.1 ? 'attack' : t.moving ? 'move' : 'idle';
       // A thrall's hit applies the instant its attack starts: open the swing just before its impact frame.
       if (key === 'attack' && v.lastState !== 'attack') v.c.playStrike('attack', 0.12);
-      else if (key === 'move' && v.lastState !== 'move') v.c.setLoop(t.speed > 6.5 ? 'run' : 'walk', 1.3);
+      else if (key === 'move' && v.lastState !== 'move') {
+        v.gs = t.speed;
+        v.c.setGroundSpeed(t.speed);
+      } else if (key === 'move') v.c.setGroundSpeed(v.gs ?? t.speed);
       else if (key === 'idle' && v.lastState !== 'idle') v.c.setLoop('idle');
       v.lastState = key;
       // A Bog Hag's hex: a magenta sigil ring follows the thrall and sickly motes drip off it while it lasts.
       if ((t.cursedT ?? 0) > 0) {
-        if (!v.hexFx?.alive) v.hexFx = this.effects.decal({ tex: fx.sigil(), color: SPELL_FX.enemy.hex, x: t.x, z: t.z, r: 0.95, duration: 1e9, opacity: 0.9, spin: 2, follow: () => ({ x: v!.x, z: v!.z }) });
+        if (!v.hexFx?.alive) v.hexFx = this.effects.decal({ tex: fx.sigil(), color: SPELL_FX.enemy.hex, x: t.x, z: t.z, r: 0.95, duration: 1e9, opacity: 0.9, spin: 2, follow: () => ({ x: v!.x + (v!.ox ?? 0), z: v!.z + (v!.oz ?? 0) }) });
         if (Math.abs(t.x - focusX) < 24 && Math.abs(t.z - focusZ) < 20 && Math.random() < dt * 5) this.effects.emit({ x: t.x, y: 0.9 + Math.random() * 0.8, z: t.z, count: 1, color: SPELL_FX.enemy.hex, spread: 0.25, speed: 0.15, up: -0.5, life: 0.7, size: 0.12, gravity: 4 });
       } else if (v.hexFx) {
         v.hexFx.kill();
@@ -862,6 +941,8 @@ export class EntityViews {
         this.fading.push(v);
       }
     }
+
+    this.separateCrowd(enemies, thralls, dt, focusX, focusZ);
 
     for (let i = this.dying.length - 1; i >= 0; i--) {
       const v = this.dying[i];

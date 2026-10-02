@@ -24,6 +24,23 @@ Branch `codex/new-blood-release-20260928` tracks `origin/master` (push `HEAD:mas
 after a secret scan; the repo is public). The owner asked for commits, which overrides
 the older "stage, don't commit" note.
 
+## Animation pass (branch `dm/anim-pass`, 2 Oct 2026, not deployed)
+
+- **Models faced the wrong way.** Every Tripo biped (enemies, thralls, bosses, laborers) faces +X in its GLB and only the
+  heroes had the yaw fix, so enemies walked sideways and swung at an angle. `Creature` now yaws any rig with a `Hip` bone
+  by -90 degrees; `bone_hound` and `cinderhound` get 180 (head measured at -Z). `graphics/__tests__/creature-locomotion.test.ts` pins it.
+- **Foot sliding.** `tools/build-stride-speeds.mjs` writes `src/content/strideSpeeds.json` (planted-foot speed in body
+  heights per second, from the clips; run it after adding a model). `graphics/locomotion.ts` turns real ground speed (measured from
+  the body's movement) into clip and playback speed; `Creature.setGroundSpeed` applies it. Walk-only rigs are capped
+  (3x, less for big bodies), so very fast walkers still slide a little. The old `WALK_SPEED` table is gone.
+- **Blends.** Locomotion crossfades 0.28 s (walk/run phase-matched), return from a swing 0.2 s, swings stay at 0.08 s. A hit
+  now plays an additive flinch (`Creature.flinch`, also what `playOnce('hurt')` does) over whatever is running. Walk-only rigs
+  idle as a slow shuffle. Heroes turn through `turnToward` (max 13 rad/s), enemies max 9.
+- **Props.** `gearProps.GRIPS` holds per-kind lean/offset/roll/follow, tuned with `prop-clipping.test.ts` (vertices of the
+  prop buried in the skinned body, measured on the real rig). Gathering tools are stood upright and gripped at the handle end.
+- **Crowds.** `graphics/crowdSeparation.ts` slides drawn enemies/thralls apart (view layer only, max 0.55 u, eased); the sim is unchanged.
+- QA: `tools/qa/anim-pass-smoke.cjs` (port 5336).
+
 ## 60-second orientation
 
 - **What it is:** Death Muffin — browser dark-fantasy ARPG (Vite + TS + Three.js),
