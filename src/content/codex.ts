@@ -1,6 +1,9 @@
 import { SET_BONUSES, SET_NAMES, describeEffect } from './setBonuses';
 import { ARMOR_PIECES, ARMOR_PARTS } from './armorSets';
 import { AFFIXES, MAX_AFFIXES } from '../gameplay/affixRules';
+import { KIT_RATES, pieceBonus } from '../gameplay/legionRules';
+import { LEGION_UPGRADE } from './upgrades';
+import { ITEMS } from './items';
 import {
   ABILITIES,
   BONE_MANTLE,
@@ -866,3 +869,23 @@ export const codexAffixRows = (): CodexAffixRow[] =>
     };
     return { word: a.kind === 'prefix' ? `${a.word} \u2026` : `\u2026 ${a.word}`, kind: a.kind, necro: a.necro, low: line(10), high: line(40) };
   });
+
+/** Codex: the Legion kit (thrall gear) and its Reinforce gold sink. The examples and the cost ladder are computed from the rules, so they cannot drift. */
+export const CODEX_LEGION_COUNSEL =
+  `Your thralls can wear spare gear. Press Y (necromancers) or use the Legion button in the Reliquary: one Weapon slot (a weapon or off-hand) and one Armour slot (a helm, chest, legs, boots or gloves), kept outside your bag, so the Vault, Salvage and Sell all junk never touch them. A piece's stat points (STR, AGI, INT and VIT, plus flat stat affixes) become thrall bonuses: a weapon gives +${+(KIT_RATES.weaponDamagePerPoint * 100).toFixed(1)}% thrall damage and +${+(KIT_RATES.weaponSpeedPerPoint * 100).toFixed(2)}% attack speed per point, armour gives +${+(KIT_RATES.armorHpPerPoint * 100).toFixed(1)}% thrall health per point, each capped (+${KIT_RATES.weaponDamageCap * 100}% damage, +${KIT_RATES.weaponSpeedCap * 100}% attack speed, +${KIT_RATES.armorHpCap * 100}% health). Gravebound, of the Legion and of the Ossuary Wall affixes count too, at ${KIT_RATES.affixShare * 100}% of their worn strength; other affixes belong to you alone. Kit pieces never change your own stats. Each spare weapon and armour piece in the Legion panel wears a green ▲ or red ▼ against what the legion holds now. The bonus applies to thralls you raise after a change (the ones already standing keep what they were raised with), and archers and bone mages show the kit bow and staff while every kit-wearing thrall takes a light wash of the armour's colour. Reinforce binds the dead tighter for gold: ${LEGION_UPGRADE.maxTier} tiers, each +${LEGION_UPGRADE.perTier * 100}% thrall health and damage and +${LEGION_UPGRADE.speedPerTier * 100}% attack speed, at a price that rises with every tier. Like Damage and Wave Speed, the tiers reset when you Ascend; the kit pieces stay.`;
+export interface CodexLegionExample { item: string; slot: string; points: number; gives: string }
+export const codexLegionExamples = (): CodexLegionExample[] =>
+  ['bow_oak', 'sword_copper', 'staff_iron', 'staff_moon', 'helm_copper', 'plate_copper', 'chest_iron', 'set_ossuary_ascended_chest'].map((id) => {
+    const m = ITEMS[id];
+    const kit = m.type === 'weapon' || m.type === 'offhand' ? 'weapon' : 'armor';
+    const b = pieceBonus(kit, { itemType: m.type, statBonus: m.offlineStats ?? null });
+    const parts = [b.damage && `+${+(b.damage * 100).toFixed(1)}% damage`, b.speed && `+${+(b.speed * 100).toFixed(1)}% attack speed`, b.hp && `+${+(b.hp * 100).toFixed(1)}% health`].filter(Boolean);
+    return { item: m.name, slot: kit === 'weapon' ? 'Weapon' : 'Armour', points: b.points, gives: parts.join(', ') };
+  });
+export const codexLegionTiers = () =>
+  Array.from({ length: LEGION_UPGRADE.maxTier }, (_, i) => ({
+    tier: i + 1,
+    cost: LEGION_UPGRADE.cost(i),
+    total: Array.from({ length: i + 1 }, (_, k) => LEGION_UPGRADE.cost(k)).reduce((a, b) => a + b, 0),
+    bonus: `+${+((i + 1) * LEGION_UPGRADE.perTier * 100).toFixed(1)}% health and damage, +${+((i + 1) * LEGION_UPGRADE.speedPerTier * 100).toFixed(1)}% attack speed`,
+  }));

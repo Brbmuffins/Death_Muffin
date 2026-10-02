@@ -29,8 +29,8 @@ async function moveTool(conn, characterId, slotIndex, equipped) {
     const target = gather.BELT_BASE + gather.BELT_KINDS.indexOf(kind);
     const other = bySlot.get(target);
     if (other) {
-      // Park the old belt tool out of the unique key, seat the new one, then put the old one in the freed bag slot.
-      await conn.execute('UPDATE inventory SET slot_index = ? WHERE id = ?', [-1000000 - Number(other.id), other.id]);
+      // Park the old (and free its equipped_slot name: the live table has UNIQUE (character_id, equipped_slot)) belt tool out of the unique key, seat the new one, then put the old one in the freed bag slot.
+      await conn.execute('UPDATE inventory SET slot_index = ?, equipped = 0, equipped_slot = NULL WHERE id = ?', [-1000000 - Number(other.id), other.id]);
       await conn.execute('UPDATE inventory SET slot_index = ?, equipped = 1, equipped_slot = ? WHERE id = ?', [target, gather.beltEquippedSlot(kind), row.id]);
       await conn.execute('UPDATE inventory SET slot_index = ?, equipped = 0, equipped_slot = NULL WHERE id = ?', [slotIndex, other.id]);
     } else {

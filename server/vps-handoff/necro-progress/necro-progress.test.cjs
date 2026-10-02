@@ -50,6 +50,31 @@ test('purchase deducts gold server-side, atomically, with the right price', asyn
   assert.equal((await call('purchase', { upgrade: 'teleport' })).status, 400);
 });
 
+test('Legion reinforcement: the server prices each tier, takes the gold atomically and stops at the top', async () => {
+  const { call, store } = harness({ gold: 500 });
+  const r = await call('purchase', { upgrade: 'legion' });
+  assert.equal(r.status, 200);
+  assert.deepEqual([r.json.data.cost, r.json.data.gold, r.json.data.progress.legionTier], [120, 380, 1]);
+  const r2 = await call('purchase', { upgrade: 'legion' });
+  assert.deepEqual([r2.json.data.cost, r2.json.data.gold, r2.json.data.progress.legionTier], [198, 182, 2]);
+  assert.equal(store._chars.get(7).gold, 182);
+  const poor = await call('purchase', { upgrade: 'legion' }); // 327 > 182
+  assert.equal(poor.status, 400);
+  assert.match(poor.json.error, /Not enough gold \(need 327\)/);
+  assert.equal(store._chars.get(7).gold, 182, 'a refused buy takes nothing');
+  assert.equal((await call('get')).json.data.progress.legionTier, 2);
+});
+
+test('Legion reinforcement stops at tier 12', async () => {
+  const { call } = harness({ gold: 1e9 });
+  let last;
+  for (let i = 0; i < 12; i++) last = await call('purchase', { upgrade: 'legion' });
+  assert.equal(last.json.data.progress.legionTier, 12);
+  const over = await call('purchase', { upgrade: 'legion' });
+  assert.equal(over.status, 400);
+  assert.match(over.json.error, /max tier/);
+});
+
 test('saves clamp deltas and open seals from kills; locked areas earn nothing', async () => {
   const { call } = harness();
   const r = await call('save', { areaKills: { graves: 310, nave: 500, chapterhouse: 9 }, shards: 3, peakWaveTier: 5 });

@@ -17,6 +17,7 @@ import { resolveWeaponLoadout, type WeaponLoadout } from './weaponLine';
 import { diffSetBonuses, effectRelevant, foldEffect, resolveSetBonuses, setDiffText, withSetBonuses, withoutSetBonuses, type SetDiff, type SetStatus, type SetTotals } from './setBonuses';
 import { affixLines, type AffixLine } from './affixes';
 import { affixEffect, type AffixStat } from './affixRules';
+import { NO_LEGION, type LegionBonus } from './legionRules';
 
 /**
  * Gear you can read: everything the Reliquary tooltips, the compare block and the Character sheet say about
@@ -29,6 +30,8 @@ export interface StatContext {
   slots: readonly InventorySlot[];
   discipline: Discipline;
   damageTier: number;
+  /** The Legion kit and its reinforcement, already folded into `discipline.mods`; given so the sheet can name where it came from. */
+  legion?: LegionBonus;
 }
 
 /** Derived stats for `slots`: the discipline is re-based on the set bonuses those slots would give (gameplay/setBonuses.ts). */
@@ -372,12 +375,15 @@ export function statSheet(ctx: StatContext): SheetSection[] {
       final('Move speed', `${formatDerived('moveSpeed', d.moveSpeed)} m/s`),
     ),
   };
+  const legion = ctx.legion ?? NO_LEGION;
   const thrallHp: SheetLine = {
     id: 'thrallHp', label: 'Thrall health', value: formatDerived('thrallHp', d.thrallHp), help: `Each thrall has ${Math.round(E.thrall.hpShare * 100)}% of your health, so VIT feeds your army too.`,
     rows: rowsOf(
       { label: 'Your health', value: formatDerived('maxHp', d.maxHp) },
       { label: 'Thrall share', value: mult(E.thrall.hpShare) },
       multRow(`${discipline.name} thralls`, baseMods.thrallHpMult),
+      multRow('Legion kit', 1 + legion.kit.hp),
+      multRow('Legion reinforcement', 1 + legion.reinforce.hp),
       multRow('Set bonuses', setMult.thrallHpMult ?? 1),
       multRow('Item affixes', affMult.thrallHpMult ?? 1),
       final('Thrall health', formatDerived('thrallHp', d.thrallHp)),
@@ -389,6 +395,8 @@ export function statSheet(ctx: StatContext): SheetSection[] {
       { label: 'Your spell power (no staff)', value: formatDerived('spellPower', d.spellPower / loadout.spellMult) },
       { label: 'Thrall share', value: mult(E.thrall.damageShare) },
       multRow(`${discipline.name} thralls`, baseMods.thrallDamageMult),
+      multRow('Legion kit', 1 + legion.kit.damage),
+      multRow('Legion reinforcement', 1 + legion.reinforce.damage),
       multRow('Set bonuses', setMult.thrallDamageMult ?? 1),
       multRow('Item affixes', affMult.thrallDamageMult ?? 1),
       final('Thrall damage', formatDerived('thrallDamage', d.thrallDamage)),

@@ -30,6 +30,7 @@ __export(necroRules_exports, {
   buyBoon: () => buyBoon,
   damageCost: () => damageCost,
   importLocal: () => importLocal,
+  legionCost: () => legionCost,
   normalise: () => normalise,
   purchase: () => purchase,
   summonAreaBoss: () => summonAreaBoss,
@@ -958,6 +959,12 @@ var WAVE_UPGRADE = {
   maxTier: 8,
   cost: (tier) => Math.round(120 * Math.pow(1.75, tier))
 };
+var LEGION_UPGRADE = {
+  maxTier: 12,
+  perTier: 0.03,
+  speedPerTier: 0.01,
+  cost: (tier) => Math.round(120 * Math.pow(1.65, tier))
+};
 
 // src/content/fen.ts
 var FEN_ARENA = { x: -42, z: -80, r: 12 };
@@ -1113,6 +1120,7 @@ function blankState() {
     damageTier: 0,
     waveTierOwned: 0,
     waveTierActive: 0,
+    legionTier: 0,
     soulShards: 0,
     areaKills: {},
     unlockedAreas: ["chapterhouse", "graves"],
@@ -1140,6 +1148,10 @@ function damageCost(s) {
 function waveCost(s) {
   if (s.waveTierOwned >= WAVE_UPGRADE.maxTier) return null;
   return Math.round(WAVE_UPGRADE.cost(s.waveTierOwned) * boonEffects(s.boons).waveCostMult);
+}
+function legionCost(s) {
+  if (s.legionTier >= LEGION_UPGRADE.maxTier) return null;
+  return LEGION_UPGRADE.cost(s.legionTier);
 }
 function unlockKills(s, id) {
   const u = AREAS[id].unlock;
@@ -1178,11 +1190,12 @@ function applySave(state, input, opts) {
 }
 function purchase(state, gold, upgrade) {
   const s = copy(state);
-  const cost = upgrade === "damage" ? damageCost(s) : upgrade === "wave" ? waveCost(s) : null;
-  if (upgrade !== "damage" && upgrade !== "wave") return { ok: false, error: "Unknown upgrade" };
+  if (upgrade !== "damage" && upgrade !== "wave" && upgrade !== "legion") return { ok: false, error: "Unknown upgrade" };
+  const cost = upgrade === "damage" ? damageCost(s) : upgrade === "wave" ? waveCost(s) : legionCost(s);
   if (cost === null) return { ok: false, error: "Already at max tier" };
   if (gold < cost) return { ok: false, error: `Not enough gold (need ${cost})` };
   if (upgrade === "damage") s.damageTier++;
+  else if (upgrade === "legion") s.legionTier++;
   else {
     s.waveTierOwned++;
     s.waveTierActive = s.waveTierOwned;
@@ -1223,6 +1236,7 @@ function ascend(state) {
   s.damageTier = fx.startDamageTier;
   s.waveTierOwned = 0;
   s.waveTierActive = 0;
+  s.legionTier = 0;
   s.soulShards = fx.startShards;
   s.areaKills = {};
   s.unlockedAreas = ["chapterhouse", "graves"];
@@ -1284,6 +1298,7 @@ function normalise(raw) {
   return {
     ...b,
     ...r,
+    legionTier: clampInt(r.legionTier, 0, LEGION_UPGRADE.maxTier),
     areaKills: { ...r.areaKills ?? {} },
     unlockedAreas: Array.isArray(r.unlockedAreas) && r.unlockedAreas.length ? [...r.unlockedAreas] : b.unlockedAreas,
     boons: { ...r.boons ?? {} },
@@ -1300,6 +1315,7 @@ function normalise(raw) {
   buyBoon,
   damageCost,
   importLocal,
+  legionCost,
   normalise,
   purchase,
   summonAreaBoss,

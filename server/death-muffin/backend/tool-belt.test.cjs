@@ -83,5 +83,9 @@ test('a bag save (any bag, including an empty one) leaves belt and gear rows int
 
 test('the save route drops echoed belt rows rather than failing (server.js filter range)', () => {
   const src = require('node:fs').readFileSync(require('node:path').join(__dirname, 'server.js'), 'utf8');
-  assert.match(src, /BELT_BASE \+ gatheringRules\.BELT_SLOT_COUNT - 1/);
+  // The filter now runs 100 .. the last Legion kit slot (thrall-kit.cjs), which sits above the belt: it must still cover every belt slot.
+  assert.match(src, /legionRules\.KIT_BASE \+ legionRules\.KIT_SLOT_COUNT - 1/);
+  const legion = require('./gathering/legion-rules.cjs');
+  assert.ok(legion.KIT_BASE + legion.KIT_SLOT_COUNT - 1 >= gather.BELT_BASE + gather.BELT_SLOT_COUNT - 1);
+  assert.ok(legion.KIT_BASE > gather.BELT_BASE + gather.BELT_SLOT_COUNT - 1, 'kit slots clear of the belt');
 });

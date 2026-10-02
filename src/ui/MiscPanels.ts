@@ -35,8 +35,8 @@ export class SettingsPanel extends SimplePanel {
     private onChangeClass?: () => void,
     /** Only for dev accounts: the dev-access overlay toggle (per character, never saved to the server). */
     private dev?: { get(): boolean; set(on: boolean): void },
-    private kitHelp: { primary: string; rites: string[]; corpseAction: string } = {
-      primary: 'Bone Needle', rites: ['Marrow Spear', 'Exhume', 'Miasma', 'Black Litany'], corpseAction: 'Corpse Explosion',
+    private kitHelp: { primary: string; rites: string[]; corpseAction: string; legion?: boolean } = {
+      primary: 'Bone Needle', rites: ['Marrow Spear', 'Exhume', 'Miasma', 'Black Litany'], corpseAction: 'Corpse Explosion', legion: true,
     },
   ) {
     super(root);
@@ -93,6 +93,7 @@ export class SettingsPanel extends SimplePanel {
           <kbd>Click a node</kbd><span>Gather: chop a tree, mine a seam, fish a pool, dig a grave (it keeps working until the node is spent)</span>
           <kbd>I C P M</kbd><span>Reliquary · Workbench · Skills · Waystones</span>
           <kbd>J</kbd><span>Character sheet: your stats, and where each number comes from</span>
+          ${this.kitHelp.legion ? '<kbd>Y</kbd><span>Legion: spare weapon and armour for your thralls, and Reinforce (necromancers)</span>' : ''}
           <kbd>K</kbd><span>Codex</span>
           <kbd>E</kbd><span>Talk to the Prior, the Sexton or the Apothecary when you stand close (or click them)</span>
           <kbd>V</kbd><span>Ossuary Vault: a shared stash (in the Chapterhouse or the Acre)</span>

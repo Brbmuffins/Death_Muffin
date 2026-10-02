@@ -2,7 +2,7 @@ import { isAlwaysOpen, type AreaId } from '../content/areas';
 import { devAccess } from './devAccess';
 import type { Chronicle } from './chronicle';
 import { ashesForRun, boonBlocked, boonCost, boonEffects, ASCENSION, type BoonId, type BoonEffects, type BoonRanks, type RunRecord } from '../content/ascension';
-import { DAMAGE_UPGRADE, WAVE_UPGRADE } from '../content/upgrades';
+import { DAMAGE_UPGRADE, LEGION_UPGRADE, WAVE_UPGRADE } from '../content/upgrades';
 import { ApiError, necroApi, saveProgress, type NecroReply } from '../net/api';
 import { applySave, normalise, type NecroState, type SaveInput } from './necroRules';
 import type { Character } from '../net/types';
@@ -24,6 +24,8 @@ export interface LocalProgress {
   damageTier: number;
   waveTierOwned: number;
   waveTierActive: number;
+  /** Legion reinforcement tiers bought this run (thrall kit gold sink). */
+  legionTier?: number;
   shards: number;
   areaKills: Partial<Record<AreaId, number>>;
   unlocked: AreaId[];
@@ -47,6 +49,7 @@ export function toNecro(l: LocalProgress): NecroState {
     damageTier: l.damageTier,
     waveTierOwned: l.waveTierOwned,
     waveTierActive: l.waveTierActive,
+    legionTier: l.legionTier ?? 0,
     soulShards: l.shards,
     areaKills: l.areaKills,
     unlockedAreas: l.unlocked,
@@ -65,6 +68,7 @@ function copyInto(l: LocalProgress, s: NecroState) {
   l.damageTier = s.damageTier;
   l.waveTierOwned = s.waveTierOwned;
   l.waveTierActive = s.waveTierActive;
+  l.legionTier = s.legionTier;
   l.shards = s.soulShards;
   l.areaKills = { ...s.areaKills };
   l.unlocked = [...s.unlockedAreas];
@@ -90,6 +94,7 @@ const blank = (): LocalProgress => ({
   damageTier: 0,
   waveTierOwned: 0,
   waveTierActive: 0,
+  legionTier: 0,
   shards: 0,
   areaKills: {},
   unlocked: ['chapterhouse', 'graves'],
@@ -272,6 +277,12 @@ export class Progression {
     return Math.round(WAVE_UPGRADE.cost(this.local.waveTierOwned) * this.boons.waveCostMult);
   }
 
+  /** Gold for the next Legion reinforcement tier, or null at the top. */
+  legionCost() {
+    const tier = this.local.legionTier ?? 0;
+    return tier >= LEGION_UPGRADE.maxTier ? null : LEGION_UPGRADE.cost(tier);
+  }
+
   // --- Ascension (local) ---
 
   get boons(): BoonEffects {
@@ -301,6 +312,7 @@ export class Progression {
     l.damageTier = fx.startDamageTier;
     l.waveTierOwned = 0;
     l.waveTierActive = 0;
+    l.legionTier = 0;
     l.shards = fx.startShards;
     l.areaKills = {};
     l.unlocked = ['chapterhouse', 'graves'];
@@ -365,7 +377,7 @@ export class Progression {
    * then let the server price and record the tier. The optimistic local
    * deduction already happened; the next regular save carries the new gold.
    */
-  private serverPurchase(upgrade: 'damage' | 'wave', cost: number) {
+  private serverPurchase(upgrade: 'damage' | 'wave' | 'legion', cost: number) {
     if (this.mode !== 'server') return this.markServerDirty(true);
     const goldBefore = (this.character.gold ?? 0) + cost;
     this.remote(async () => {
@@ -385,6 +397,18 @@ export class Progression {
     this.local.waveTierActive = this.local.waveTierOwned;
     this.saveLocal();
     this.serverPurchase('wave', cost);
+    return true;
+  }
+
+  /** Reinforce the Legion one tier for gold (the thrall kit's gold sink). */
+  buyLegion(): boolean {
+    const cost = this.legionCost();
+    if (cost === null || !this.canAfford(cost)) return false;
+    this.character.gold -= cost;
+    this.chronicle?.add('gold.spent', cost);
+    this.local.legionTier = (this.local.legionTier ?? 0) + 1;
+    this.saveLocal();
+    this.serverPurchase('legion', cost);
     return true;
   }
 

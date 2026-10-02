@@ -268,6 +268,61 @@ function upgradeToModel(g: THREE.Group, kind: NecroKind, t: GearTier) {
   });
 }
 
+/**
+ * The archer's bow and the bone mage's staff, as the baked GLBs (`props/gear_thrall_bow`, `props/gear_bone_staff`), when the legion's
+ * Weapon slot holds something. The code-built stand-in the thrall already carries is passed in and shows until the model loads (and
+ * stays if it never does). The model keeps its own pale bone texture and takes only a light wash of the kit piece's metal colour plus,
+ * for the glowing tiers, a faint emissive, so a legion of them reads as bone with a hint of its gear rather than a new palette.
+ */
+/**
+ * `tilt` and `yaw` stand the baked model up the way the stand-in is built: the bow GLB was modelled leaning 38.7 degrees in its
+ * Y-Z plane with the belly on -Z (measured from its vertices), so it is tipped upright (tilt) and turned a quarter so the belly bulges
+ * toward -X like the stand-in's. The staff is straight along Y.
+ */
+const THRALL_PROPS = {
+  bow: { file: 'gear_thrall_bow', length: 0.95, lift: 0, tilt: 0.675, yaw: Math.PI / 2 },
+  staff: { file: 'gear_bone_staff', length: 1.45, lift: 0.52, tilt: 0, yaw: 0 },
+} as const;
+
+export function upgradeThrallProp(g: THREE.Group, kind: keyof typeof THRALL_PROPS, itemId: string, rarity?: string) {
+  const cfg = THRALL_PROPS[kind];
+  const t = gearTier(itemId, rarity);
+  void assets.model(PROP_URL(cfg.file), cfg.length).then((tpl) => {
+    if (!tpl || g.userData.disposed) return;
+    const model = tpl.scene.clone(true);
+    model.scale.setScalar(tpl.scale);
+    const upright = new THREE.Group();
+    upright.rotation.x = cfg.tilt;
+    upright.add(model);
+    const placed = new THREE.Group();
+    placed.rotation.y = cfg.yaw;
+    placed.position.y = cfg.lift;
+    placed.add(upright);
+    const wash = new THREE.Color(t.color);
+    model.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      m.userData.sharedGeo = true;
+      m.castShadow = true;
+      const mat = (m.material as THREE.MeshStandardMaterial).clone();
+      mat.color.lerp(wash, 0.3);
+      // The raw Tripo texture is dark and these props are thin, so they vanish against the stone: light the texture from within
+      // (pale bone, or the tier's glow), the same trick the thralls' own bodies use.
+      mat.emissive = new THREE.Color(t.glow ?? 0x7a6e58);
+      mat.emissiveMap = mat.map ?? null;
+      mat.emissiveIntensity = t.glow ? 0.6 : 0.55;
+      m.material = mat;
+    });
+    for (const c of [...g.children]) {
+      g.remove(c);
+      disposeProp(c);
+    }
+    g.add(placed);
+    g.userData.model = true;
+  });
+  return g;
+}
+
 /** A main-hand weapon for the given item id. */
 export function buildWeapon(itemId: string, rarity?: string): THREE.Group {
   const t = gearTier(itemId, rarity);

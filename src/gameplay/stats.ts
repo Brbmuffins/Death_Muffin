@@ -1,5 +1,6 @@
 import type { Character, InventorySlot } from '../net/types';
 import { setStatTotals } from './setBonuses';
+import { isKitSlot } from './legionRules';
 
 export const STAT_KEYS = ['stat_str', 'stat_agi', 'stat_int', 'stat_vit'] as const;
 export type StatKey = (typeof STAT_KEYS)[number];
@@ -29,7 +30,8 @@ export function computeStats(character: Character, slots: InventorySlot[]): Comp
   const bonus = Object.fromEntries(STAT_KEYS.map((k) => [k, 0])) as Record<StatKey, number>;
 
   for (const slot of slots) {
-    if (!slot.equipped || !slot.stat_bonus) continue;
+    // Legion kit pieces (slots 120+) are worn by the thralls: their stats never reach you.
+    if (!slot.equipped || !slot.stat_bonus || isKitSlot(slot.slot_index)) continue;
     for (const k of STAT_KEYS) {
       bonus[k] += slot.stat_bonus[k] ?? 0;
     }

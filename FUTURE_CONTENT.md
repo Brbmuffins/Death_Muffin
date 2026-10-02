@@ -41,7 +41,7 @@ Server-side these are regular items with a new `item_type: 'rune'` plus a socket
 
 ### Thrall variety
 - ✅ *shipped 2026-09-26* — Skeleton archer (from Bellbound corpses), bone mage (from Deacon corpses — its Bone Hex makes enemy blows 25% softer), plague bearer (from Carrion Sacs — bursts into a friendly rot pool when killed or sacrificed). The Mourner's wraiths still override. Bow/staff are code-built stand-ins.
-- Thrall gear: give thralls the copper/iron gear you'd otherwise salvage (weapon/armour slots on the thrall bar).
+- ✅ *built 2026-10-02 (branch `dm/thrall-gear`, not deployed)* — **Thrall gear: the Legion kit.** Two slots for the whole legion (Weapon, Armour; reserved inventory slots 120-121) take the spare gear you'd otherwise salvage; stat points become thrall damage, health and attack speed through the existing mods, **Reinforce** (12 tiers of gold) is the sink. Archers and bone mages carry the baked `gear_thrall_bow` / `gear_bone_staff`. Press **Y**. See HANDOFF and README ("Thrall gear").
 
 ### Resource & feel
 - ✅ *shipped (combat depth pack, see PHASE_REPORTS)* — **Corpse Explosion** as a universal action on a key (5): the classic necromancer button; toxic/resonant corpses get special explosions.

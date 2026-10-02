@@ -20,6 +20,7 @@ import * as laborRules from '../gameplay/laborRules';
 import * as cosmeticRules from '../gameplay/cosmeticRules';
 import { itemMeta } from '../content/items';
 import * as gather from '../gameplay/gatheringRules';
+import * as legion from '../gameplay/legionRules';
 import { PROCESSING_RECIPES } from '../content/processing';
 import { ALCHEMY_RECIPES } from '../content/alchemy';
 import { NECRO_RECIPES, isTwoHanded } from '../content/necroWeapons';
@@ -475,6 +476,32 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       if (!slot) return fail('The belt slot is empty.');
       const bagIndex = Array.from({ length: BAG }, (_, i) => i).find((i) => !acc.slots.some((s) => s.slot_index === i));
       if (bagIndex === undefined) return fail('Your bag is full. Make room, then take the tool off the belt.');
+      slot.slot_index = bagIndex;
+      slot.equipped = 0;
+    }
+    return ok(acc.slots.map(join));
+  }
+
+  // The Legion kit (thrall gear): the same moves as server/death-muffin/backend/thrall-kit.cjs.
+  if (p === '/api/inventory/kit' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const index = Number(body.slot_index);
+    const slot = acc.slots.find((s) => s.slot_index === index);
+    if (body.equipped) {
+      if (!(index >= 0 && index < BAG)) return fail('Pick a piece from your bag.');
+      if (!slot) return fail('There is nothing in that slot.');
+      const kitId = legion.kitIdForType(MOCK_ITEMS[slot.item_id]?.item_type);
+      if (!kitId) return fail('The legion wears weapons and armour only.');
+      const target = legion.kitSlotIndex(kitId);
+      const other = acc.slots.find((s) => s.slot_index === target);
+      slot.slot_index = target;
+      slot.equipped = 1;
+      if (other) { other.slot_index = index; other.equipped = 0; }
+    } else {
+      if (!legion.isKitSlot(index)) return fail('That is not a legion slot.');
+      if (!slot) return fail('The legion slot is empty.');
+      const bagIndex = Array.from({ length: BAG }, (_, i) => i).find((i) => !acc.slots.some((s) => s.slot_index === i));
+      if (bagIndex === undefined) return fail('Your bag is full. Make room, then take the piece off the legion.');
       slot.slot_index = bagIndex;
       slot.equipped = 0;
     }
