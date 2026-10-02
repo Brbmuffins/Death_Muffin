@@ -10,9 +10,12 @@ import { ARMOR_PIECES, ARMOR_SETS, ASCENDED_ARMOR_SETS } from './armorSets';
  */
 
 /** Discipline mods that multiply (1.05 = +5%). */
-export type SetMultKey = 'thrallHpMult' | 'thrallDamageMult' | 'thrallAttackSpeedMult' | 'maxHpMult' | 'essenceRegenMult' | 'miasmaRadiusMult';
+export type SetMultKey = 'thrallHpMult' | 'thrallDamageMult' | 'thrallAttackSpeedMult' | 'maxHpMult' | 'essenceRegenMult' | 'miasmaRadiusMult' | 'soulHarvestRateMult';
 /** Discipline mods that add. */
-export type SetAddKey = 'thrallCap' | 'witheredMaxStacks' | 'corpseHeal' | 'wardPerThrall' | 'litanyBarrier';
+export type SetAddKey = 'thrallCap' | 'witheredMaxStacks' | 'corpseHeal' | 'wardPerThrall' | 'litanyBarrier'
+  // Legendary set mechanics (DisciplineMods, 0 = off):
+  | 'thrallDeathBurst' | 'championEvery' | 'spearRally' | 'wardReflect' | 'colossusGuard' | 'litanyShatter' | 'corpseWisp'
+  | 'wraithNova' | 'miasmaSpreadsWithered' | 'witheredBurstAt';
 export type SetStatKey = 'stat_str' | 'stat_agi' | 'stat_int' | 'stat_vit';
 
 export interface SetEffect {
