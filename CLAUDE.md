@@ -50,6 +50,9 @@ player behavior, deployment and plans. Update the handoff when you stop.
 - Every new player-facing mechanic ships with its help: a Covenant counsel tip (`src/ui/Onboarding.ts`,
   triggered the first time it matters), its Codex entry (`src/content/codex.ts`), the Settings key list
   if it adds a key, and the README. Re-check existing tips when a mechanic changes.
+  Give the tip a kind in `src/ui/counselCadence.ts` (default: calm, waits for a quiet moment; `ASKED` for
+  "the player just did it", `DANGER` for fight-time, `HERE` for a place, `GROUPS` for a subject that must not repeat),
+  and never point brewing at the Workbench: it lives in the Alchemist's Wing.
 - Commits go through the user's GitHub Desktop flow — stage, don't commit.
 
 ## Layout

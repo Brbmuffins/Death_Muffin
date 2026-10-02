@@ -31,6 +31,25 @@ textures (`tools/make-wing-textures.mjs`), brightened herb bundles/drying rack (
 (`NPC_LOOKS.sexton.held`). Perf on Low: Wing 140 calls / 394k tris vs Chapterhouse 125 / 356k (the smoke asserts <= +15%). Details and
 screenshots: `docs/ALCHEMIST-WING-ART.md` "Dressing pass". Door lane and station rings are unit-tested.
 
+## First-hour polish (branch `dm/first-hour`, 2 Oct 2026, not deployed)
+
+Audit of a brand-new character's first stretch: `docs/FIRST-HOUR-AUDIT.md` (timeline, findings, before/after). What changed:
+
+- **Counsel cadence** is a pure module, `src/ui/counselCadence.ts` (tests: `src/ui/__tests__/counselCadence.test.ts`). Every tip has a kind: `urgent` (only `hurt`, jumps the
+  queue), `danger` (fight-time lessons and enemy telegraphs; shown in a fight, never in a sanctuary or while talking, dropped when stale), `asked` (the player just did the
+  thing; shown at once) and `calm` (everything else; waits for no fight / no conversation / no banner / no open panel and a 20 s gap). Tips on one subject (`gear`, `bag`,
+  `brew`, `acre`, `road`) keep 150 s apart; place tips (`HERE`) wait for their place; at most 4 calm tips queue. `Onboarding` draws, the cadence decides. New tips: add the id
+  to `DANGER`/`ASKED`/`HERE`/`GROUPS`/`PRIORITY` if the default (calm, ungrouped, priority 50) is wrong. `Onboarding.show(id, delayMs, { kind, bump })`.
+- The opening is one card ("Take your time"; it also marks the Acre card seen), then the fight lesson on the first dead met in a hunting ground (`move`), not in the Acre.
+- The card sits top-left under the hero frame; the Omen chip moved beside the hero frame and the Kill Chain / Bone Ward / brews readouts start lower. Cards are above panels
+  and fade for the 3 s area/level banner; toasts step under a banner; the hint line is short; XP bar and chat narrow at 1280; the Damage / Wave Speed panel lifts above the
+  Grave Essence orb under 1500 px.
+- The Next line from the Acre says "east to the Chapterhouse, then north"; while it shows, the area text under the minimap says what the place is for and drops the seal it
+  already counts. Stale "Workbench" brewing directions now point at the Alchemist's Wing (tips, Apothecary, Skills panel, Grave Dust lore, server item text).
+- A conversation eases the camera north (`WorldScene.talkFocus`) so the speaker and the hero stay below the card.
+- QA: `tools/qa/first-hour-audit.cjs` (plays the hour, logs a timeline, screenshots every popup, detects overlaps; phases A-H), `tools/qa/first-hour-smoke.cjs` (asserts), shared
+  helpers in `tools/qa/lib/first-hour-lib.cjs` (virtual UI timers so cards age with game time).
+
 ## Animation pass (branch `dm/anim-pass`, 2 Oct 2026, not deployed)
 
 - **Models faced the wrong way.** Every Tripo biped (enemies, thralls, bosses, laborers) faces +X in its GLB and only the
