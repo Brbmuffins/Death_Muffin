@@ -66,7 +66,7 @@ export function describeEffect(e: SetEffect): string[] {
   if (m.soulHarvestRateMult && m.soulHarvestRateMult !== 1) out.push(`Soul Harvest fills ${+m.soulHarvestRateMult.toFixed(2)}x faster`);
   if (a.wraithNova) out.push(`When Soul Harvest empowers a rite, every wraith and wisp releases a nova (${pct(a.wraithNova)} of your spell power)`);
   if (a.miasmaSpreadsWithered) out.push('Enemies that die in your Miasma spread their Withered stacks to enemies nearby');
-  if (a.witheredBurstAt) out.push(`An enemy that reaches ${a.witheredBurstAt} Withered stacks bursts into a new Miasma cloud (stack cap raised to ${a.witheredBurstAt})`);
+  if (a.witheredBurstAt) out.push(`An enemy that reaches ${a.witheredBurstAt} Withered stacks bursts into a new Miasma cloud (stack cap at least ${a.witheredBurstAt})`);
   return out;
 }
 
@@ -117,24 +117,24 @@ export const SET_BONUSES: Record<string, SetBonusDef[]> = {
   ],
   // --- Legendary sets (docs/LEGENDARY-SETS.md): build-defining; 4 pieces change a mechanic, 5 define the build -------------
   legion_unburied: [
-    { pieces: 2, effect: { mult: { thrallDamageMult: 1.15 } } },
-    { pieces: 4, name: 'Bursting Dead', effect: { add: { thrallDeathBurst: 0.6 } } },
-    { pieces: 5, name: 'Legion Champion', effect: { add: { thrallCap: 2, championEvery: 5, spearRally: 0.75 } } },
+    { pieces: 2, effect: { mult: { thrallDamageMult: 1.25 } } },
+    { pieces: 4, name: 'Bursting Dead', effect: { mult: { thrallAttackSpeedMult: 1.1 }, add: { thrallDeathBurst: 0.8 } } },
+    { pieces: 5, name: 'Legion Champion', effect: { add: { thrallCap: 2, championEvery: 4, spearRally: 1 } } },
   ],
   colossus_mantle: [
-    { pieces: 2, effect: { mult: { thrallHpMult: 1.25 } } },
-    { pieces: 4, name: 'Reflecting Ward', effect: { add: { wardReflect: 0.4 } } },
-    { pieces: 5, name: 'Colossus', effect: { add: { colossusGuard: 0.25, litanyShatter: 3 } } },
+    { pieces: 2, effect: { mult: { thrallHpMult: 1.35, thrallDamageMult: 1.15 } } },
+    { pieces: 4, name: 'Reflecting Ward', effect: { add: { wardReflect: 0.6 } } },
+    { pieces: 5, name: 'Colossus', effect: { add: { colossusGuard: 0.3, litanyShatter: 4 } } },
   ],
   requiem_wraiths: [
-    { pieces: 2, effect: { mult: { essenceRegenMult: 1.3 } } },
-    { pieces: 4, name: 'Wisps', effect: { add: { corpseWisp: 8 } } },
-    { pieces: 5, name: 'Requiem', effect: { mult: { soulHarvestRateMult: 2 }, add: { wraithNova: 0.8 } } },
+    { pieces: 2, effect: { mult: { essenceRegenMult: 1.4, maxHpMult: 1.1 } } },
+    { pieces: 4, name: 'Wisps', effect: { add: { corpseWisp: 10, corpseHeal: 0.02 } } },
+    { pieces: 5, name: 'Requiem', effect: { mult: { soulHarvestRateMult: 2, thrallAttackSpeedMult: 1.15 }, add: { wraithNova: 1.2 } } },
   ],
   plague_choir: [
-    { pieces: 2, effect: { mult: { miasmaRadiusMult: 1.15 } } },
+    { pieces: 2, effect: { mult: { miasmaRadiusMult: 1.25, maxHpMult: 1.08 } } },
     { pieces: 4, name: 'Contagion', effect: { add: { miasmaSpreadsWithered: 1 } } },
-    { pieces: 5, name: 'Chain Plague', effect: { add: { witheredBurstAt: 10 } } },
+    { pieces: 5, name: 'Chain Plague', effect: { add: { witheredBurstAt: 8 } } },
   ],
   // --- Other disciplines: flat stats plus health / essence regeneration (all they have to scale) ------
   warden: [

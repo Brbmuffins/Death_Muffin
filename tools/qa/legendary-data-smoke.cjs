@@ -99,7 +99,7 @@ async function run1(browser, label, ctxOptions, phone, setPage) {
   await wear('hands');
   await wear('legs');
   const m4 = await mods();
-  assert.ok(Math.abs(m4.thrallDeathBurst - addAt(4, 'thrallDeathBurst')) < 1e-9 && m4.thrallDeathBurst === 0.6, '4-piece: death burst 0.6');
+  assert.ok(Math.abs(m4.thrallDeathBurst - addAt(4, 'thrallDeathBurst')) < 1e-9 && m4.thrallDeathBurst === 0.8, '4-piece: death burst 0.8');
   assert.equal(m4.championEvery, 0, 'champions need 5');
   await look(SET.prefix + 'feet');
   t = await detailText();
@@ -114,9 +114,9 @@ async function run1(browser, label, ctxOptions, phone, setPage) {
   await wear('feet');
   const m5 = await mods();
   assert.equal(m5.thrallCap, base.thrallCap + 2, '5-piece: +2 thrall cap');
-  assert.equal(m5.championEvery, 5);
-  assert.equal(m5.spearRally, 0.75);
-  assert.ok(Math.abs(m5.thrallDamageMult - base.thrallDamageMult * 1.15) < 1e-9);
+  assert.equal(m5.championEvery, 4);
+  assert.equal(m5.spearRally, 1);
+  assert.ok(Math.abs(m5.thrallDamageMult - base.thrallDamageMult * 1.25) < 1e-9);
 
   // Character sheet: the set is listed, 5 / 5, all three tiers active, in plain words.
   if (phone) await page.locator('.cw-equip-sheet').tap(); else await page.locator('.cw-equip-sheet').click();
