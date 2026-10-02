@@ -4,6 +4,7 @@
 //   npm run dev -- --host 127.0.0.1 --port 5350 --strictPort
 //   DM_PLAYWRIGHT_MODULE=... DM_QA_URL='http://127.0.0.1:5350/?offline' DM_QA_ARTIFACT_DIR=/tmp/tour/before node tools/qa/zone-tour.cjs
 // Env: DM_QA_QUALITY=high,low   DM_QA_AREAS=graves,pyre   DM_QA_BOSSES=0 to skip bosses   DM_QA_VISIT=0 to skip the zone shots (bosses only)   DM_QA_BOSS_SHOTS=8   DM_QA_DISC=Gravecaller
+// For before/after perf numbers use tools/qa/fixed-fight-perf.cjs instead (the tour's random wave content swings calls +-30%).
 // Writes <dir>/<quality>-<area>-{arrival,fight}.png, <quality>-boss-<id>-<n>.png and <dir>/tour.json.
 const fs = require('node:fs');
 const os = require('node:os');

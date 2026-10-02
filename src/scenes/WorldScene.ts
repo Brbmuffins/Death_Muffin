@@ -481,7 +481,7 @@ export class WorldScene implements GameScene, RuntimeView {
       if (owner === this.selfId) return this.discipline.id;
       const remote = this.remotes.get(owner);
       return remote ? disciplineFor(remote.info.classIndex).id : null;
-    });
+    }, (owner) => owner === this.selfId);
     this.nodeViews = new NodeViews(this.scene, this.layout.nodes);
     this.npcViews = new NpcViews(this.scene);
     this.guidance = new Guidance(this.character.id);
@@ -3885,8 +3885,10 @@ export class WorldScene implements GameScene, RuntimeView {
     // Intensity only (never toggle light visibility — that recompiles shaders).
     const acre = this.area === 'acre' || this.area === 'alchemist_wing'; // the Wing is a lit indoor workshop: no nightfall dimming
     const night = acre ? 0 : this.nightK;
-    this.moon.intensity = (acre ? 2.65 : 2.4) * (1 - 0.6 * night);
-    this.hemi.intensity = (acre ? 1.12 : 0.95) * (1 - 0.3 * night);
+    // The Acre is the first place a new player stands: lifted further than the Wing so the orchard reads on arrival.
+    const orchard = this.area === 'acre';
+    this.moon.intensity = (orchard ? 3.4 : acre ? 2.65 : 2.4) * (1 - 0.6 * night);
+    this.hemi.intensity = (orchard ? 2.0 : acre ? 1.12 : 0.95) * (1 - 0.3 * night);
   }
 
   /** Ossuary Wall: a fence of fused rib-bones along the wall segment. */

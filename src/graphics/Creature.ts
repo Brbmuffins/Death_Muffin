@@ -33,6 +33,7 @@ const CLIP_TIMINGS = CLIP_TIMINGS_JSON as Record<string, Record<string, number[]
 import { hipAnchor, inPlaceHeroClip, landingTime, stripRootTravel } from './inPlaceAnimation';
 import { planLocomotion, STRIDES, type LocomotionPlan } from './locomotion';
 import { applyWingFlap, type WingOpts } from './wingFlap';
+import { applyFriendRim, type FriendRim } from './friendRim';
 import { applyGearTint, GEAR_REGIONS, makeGearTintState, type GearRegion } from './gearTint';
 
 export type CreatureAnim = 'idle' | 'walk' | 'run' | 'attack' | 'cast' | 'hurt' | 'death' | 'dig' | 'chop' | 'dive' | 'talk' | 'talk2' | CombatAnim;
@@ -88,6 +89,8 @@ export interface CreatureOptions {
   fallback?: CreatureSlug;
   /** Flying creatures: flap the wings in the vertex shader (see wingFlap.ts). */
   wings?: WingOpts;
+  /** Thralls: a soft fresnel rim so friendly dead read at a glance against the horde (see friendRim.ts). */
+  rim?: FriendRim;
 }
 
 const FLASH_COLOR = new THREE.Color(0xfff0dc);
@@ -198,6 +201,7 @@ export class Creature {
         // Only the requested model flaps; a fallback stand-in (older deploy) keeps still.
         if (opts.wings && !usedFallback) applyWingFlap(mesh, mat, opts.wings, wingPhase);
         if (opts.gearTint) applyGearTint(mesh, mat, this.gearTint);
+        if (opts.rim) applyFriendRim(mat, opts.rim);
         mesh.material = mat;
         this.mats.push(mat);
       });

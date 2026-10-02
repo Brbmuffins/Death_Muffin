@@ -14,9 +14,10 @@ import { Water } from './Water';
 import { Atmosphere } from './Atmosphere';
 import { FEN_HUMMOCKS } from '../content/fen';
 
-const FLOOR_TEX: Record<Theme, { url: string; tile: number; color: number; rough: number }> = {
+/** `glow` (a colour): a self-lit share of the texture (emissive), for floors so dark they vanish even under bright lights. */
+const FLOOR_TEX: Record<Theme, { url: string; tile: number; color: number; rough: number; glow?: number }> = {
   chapter: { url: 'art/textures/flagstone.webp', tile: 7, color: 0x9a92a8, rough: 0.62 },
-  acre: { url: 'art/textures/grave_soil.webp', tile: 5, color: 0x9aa48c, rough: 0.97 },
+  acre: { url: 'art/textures/grave_soil.webp', tile: 5, color: 0xe6f0d4, rough: 0.97, glow: 0x4a5a3c },
   graveyard: { url: 'art/textures/grave_soil.webp', tile: 6, color: 0xb8aab8, rough: 0.95 },
   ossuary: { url: 'art/textures/ossuary_floor.webp', tile: 6, color: 0xb0a4ae, rough: 0.9 },
   nave: { url: 'art/textures/flagstone.webp', tile: 8, color: 0x8c86a8, rough: 0.45 },
@@ -28,6 +29,14 @@ const FLOOR_TEX: Record<Theme, { url: string; tile: number; color: number; rough
   fen: { url: 'art/textures/fen_floor.webp', tile: 6, color: 0xa8c0bc, rough: 0.8 },
   // The Alchemist's Wing: a de-purpled, warmed flagstone variant (tools/make-wing-textures.mjs).
   wing: { url: 'art/textures/wing_floor.webp', tile: 6, color: 0xe8dcc8, rough: 0.75 },
+};
+
+/**
+ * Per-area tone of the floor light pools (1 = the raw 0.42 x light distance, fixed opacity). The Nave's eleven braziers and
+ * candle rows overlap into one violet-gold smear under a busy fight, so its pools are smaller and fainter.
+ */
+const POOL_TONE: Partial<Record<string, { gain: number; scale: number }>> = {
+  nave: { gain: 0.68, scale: 0.8 },
 };
 
 export interface LightSource {
@@ -464,6 +473,10 @@ export class WorldView {
         const f = FLOOR_TEX[theme];
         const map = assets.texture(f.url, { repeat: 1 });
         m = new THREE.MeshStandardMaterial({ map, color: f.color, roughness: f.rough, metalness: 0.05, bumpMap: map, bumpScale: 2.2 });
+        if (f.glow) {
+          m.emissive.set(f.glow);
+          m.emissiveMap = map;
+        }
         // No roughnessMap: a per-tile gloss map clips point-light highlights to
         // square tile shapes that bloom into glowing squares. Uniform damp stone reads better.
         mats.set(theme, m);
@@ -697,22 +710,53 @@ export class WorldView {
       const tex = d.kind === 'sigil' ? fx.sigil() : fx.cracks();
       this.effects.decal({ tex, color: d.color, x: d.x, z: d.z, r: d.r, rot: d.rot, duration: 1e9, persistent: true, opacity: d.opacity, fadeIn: 0.01, y: 0.02, spin: d.kind === 'sigil' ? 0.03 : 0 });
     }
-    // Light pools under every flame source: fake bounce light, zero per-pixel cost.
+    // Light pools under every flame source: fake bounce light, zero per-pixel cost. They are static and additive, so each
+    // area's pools are baked into ONE quad-soup mesh (colour x opacity in the vertex colours) instead of one draw call per
+    // candle: the Nave alone had ~14 overlapping pool decals.
+    const byArea = new Map<string, LightSource[]>();
     for (const s of this.lightSources) {
-      this.effects.decal({
-        tex: fx.lightPool(),
-        color: s.pool ?? (s.brazier ? 0x7a4fd6 : 0xc9864a),
-        x: s.x,
-        z: s.z,
-        r: s.distance * 0.42,
-        duration: 1e9,
-        persistent: true,
-        opacity: s.brazier ? 0.5 : 0.32,
-        fadeIn: 0.01,
-        y: 0.015,
-      });
+      const area = AREA_ORDER.find((a) => {
+        const r = AREAS[a].rect;
+        return s.x >= r.x0 - 1 && s.x <= r.x1 + 1 && s.z >= r.z0 - 1 && s.z <= r.z1 + 1;
+      }) ?? 'other';
+      const list = byArea.get(area) ?? [];
+      list.push(s);
+      byArea.set(area, list);
+    }
+    const poolMat = new THREE.MeshBasicMaterial({ map: fx.lightPool(), vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    this.poolMat = poolMat;
+    const tint = new THREE.Color();
+    for (const [area, list] of byArea) {
+      const tone = POOL_TONE[area] ?? { gain: 1, scale: 1 };
+      const pos: number[] = [];
+      const uv: number[] = [];
+      const col: number[] = [];
+      const idx: number[] = [];
+      for (const s of list) {
+        const r = s.distance * 0.42 * tone.scale;
+        const k = s.brazier ? 0.5 : 0.32;
+        tint.set(s.pool ?? (s.brazier ? 0x7a4fd6 : 0xc9864a)).multiplyScalar(k * tone.gain);
+        const o = pos.length / 3;
+        for (const [dx, dz, u, v] of [[-1, -1, 0, 1], [1, -1, 1, 1], [1, 1, 1, 0], [-1, 1, 0, 0]] as const) {
+          pos.push(s.x + dx * r, 0.015, s.z + dz * r);
+          uv.push(u, v);
+          col.push(tint.r, tint.g, tint.b);
+        }
+        idx.push(o, o + 2, o + 1, o, o + 3, o + 2);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+      g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      g.setIndex(idx);
+      g.computeBoundingSphere();
+      const m = new THREE.Mesh(g, poolMat);
+      m.renderOrder = 2;
+      this.group.add(m);
     }
   }
+
+  private poolMat: THREE.MeshBasicMaterial | null = null;
 
   /** Quiet ground rings make stations, waystones and summon sites readable before hover. */
   private buildInteractableMarkers() {
@@ -1029,6 +1073,7 @@ export class WorldView {
     this.water.dispose();
     this.atmosphere.dispose();
     for (const marker of this.interactMarkers) marker.material.dispose();
+    this.poolMat?.dispose();
     this.group.traverse((o) => {
       const m = o as THREE.Mesh;
       m.geometry?.dispose?.();

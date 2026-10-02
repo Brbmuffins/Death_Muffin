@@ -197,6 +197,9 @@ const NO_SETTLE = -1;
 const CORPSE_ANIM_S = 6;
 /** Most faint corpse rings alive at once (draw-call budget). */
 const CORPSE_MARKS_MAX = 8;
+/** Fresnel rim strength on thralls: own legion / a co-op ally's legion (see friendRim.ts). */
+const THRALL_RIM_OWN = 0.9;
+const THRALL_RIM_ALLY = 0.6;
 const HEAD_Y = { humanoid: 1.3, robed: 1.35, quadruped: 0.75, bloat: 1.05 } as const;
 
 function killAffixFx(v: View) {
@@ -281,6 +284,8 @@ export class EntityViews {
     private effects: Effects,
     /** The discipline that raised a thrall (its owner's), so each necromancer's legion looks like its own. */
     private legionOf?: (owner: string) => DisciplineId | null,
+    /** Is this thrall's owner the local player? Allies' legions get a slightly softer friendly rim. */
+    private isOwn?: (owner: string) => boolean,
   ) {
     scene.add(this.group);
   }
@@ -388,6 +393,8 @@ export class EntityViews {
       emissiveIntensity: wraith ? 1.1 : (look?.glow ?? legion?.glow ?? 0.18) + (t.empowered ? 0.22 : 0),
       spectral: wraith,
       scale: kindLook?.scale ?? (t.kind === 'shieldbearer' ? 1.1 : 1),
+      // Every thrall wears the friendly jade rim (your own a bit stronger than a co-op ally's); enemies never do.
+      rim: { color: SPELL_FX.exhume.spirit, strength: this.isOwn?.(t.owner) === false ? THRALL_RIM_ALLY : THRALL_RIM_OWN },
     });
     if ((t.kind === 'warrior' || t.kind === 'shieldbearer') && (!legion || legion.armed)) {
       // Blade carried up and forward; `follow` keeps it from whipping around with the wrist while walking.
@@ -579,7 +586,10 @@ export class EntityViews {
           // for the 26 s it lasts. Capped so a wipe of 40 bodies does not add 40 draw calls (resonant ones keep their own, brighter ring).
           let live = 0;
           for (const h of this.corpseRings.values()) if (h.alive) live++;
-          if (live < CORPSE_MARKS_MAX) this.corpseRings.set(c.id, this.effects.decal({ tex: fx.ring(), color: 0xd8cdf2, x: c.x, z: c.z, r: 0.8 * Math.max(1, c.scale), duration: 26, opacity: 0.4, fadeIn: 0.8, pulse: 2 }));
+          // On the Fen's teal water the pale lilac ring vanished: there it is warm bone-ivory (the one hue the marsh does not have),
+          // bigger and brighter, since the body sinks below the surface.
+          const marsh = c.area === 'fen';
+          if (live < CORPSE_MARKS_MAX) this.corpseRings.set(c.id, this.effects.decal({ tex: fx.ring(), color: marsh ? 0xffe6b0 : 0xd8cdf2, x: c.x, z: c.z, r: (marsh ? 1.1 : 0.8) * Math.max(1, c.scale), duration: 26, opacity: marsh ? 0.85 : 0.4, fadeIn: 0.8, pulse: 2 }));
         }
         if (c.kind === 'resonant') {
           if (!this.corpseRings.get(c.id)?.alive) {

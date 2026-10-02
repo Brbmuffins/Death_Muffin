@@ -122,3 +122,58 @@ Sanctum arrival (top; sigil dimmed, effect mild) and Ossuary arrival (bottom; sl
 - **Acre** is very dark on arrival from the orchard; only the node rings glow.
 - Frame time on a real GPU was not measured (software renderer on a loaded VPS).
 - The generated server bundle (`server/vps-handoff/necro-progress/necro-rules.cjs`) was regenerated because `areas.ts` changed (waystone coordinates and the Ossuary ambient colour). It needs a deploy only if the live server is meant to know the new Cloister waystone spot.
+
+
+---
+
+# Round 3: readability (2 Oct 2026, branch `dm/readability-3`)
+
+Views and visuals only; no gameplay numbers. This closes the open items above except GPU frame time. Measured with `zone-tour.cjs` (High and Low) plus the new `tools/qa/fixed-fight-perf.cjs` (one zone, a fixed state: five thralls, the zone roster in rings frozen, 10 fresh corpses, median of 3 `perf` reads). Same SwiftShader/loaded-VPS caveats as above: **no frame time is reported**.
+
+| # | Problem | Fix | Files |
+|---|---|---|---|
+| 1 | Thralls and pale-lavender enemies shared a palette; only a small cyan ground ring told them apart | A soft fresnel rim in thrall jade (`SPELL_FX.exhume.spirit`, 0x6fe3c8) added to every thrall material: the silhouette edge glows, the face is untouched, no extra mesh or draw call (one extra shader variant). Own legion strength 0.9, a co-op ally's 0.6 (so allies read as friendly but yours stand out). Enemies never get it. | new `src/graphics/friendRim.ts`, `Creature.ts` (`rim` option), `EntityViews.ts` (`makeThrall`, `isOwn` ctor arg), `WorldScene.ts` (passes `owner === selfId`) |
+| 2 | The Acre was the darkest place on arrival (60% of the play-field under luminance 20) | Soil floor tint 0x9aa48c -> 0xe6f0d4 plus a self-lit share (emissive 0x4a5a3c through the soil texture, new optional `glow` in `FLOOR_TEX`), hemisphere sky/ground brighter, Acre-only light boost (moon 2.65 -> 3.4, hemi 1.12 -> 2.0; the Alchemist's Wing keeps its old values). Mean play-field luminance 26.5 -> 31.1, share under 20 from 60% to 34%. Trees still read as silhouettes against lit ground; fog and mood unchanged. | `WorldView.ts`, `WorldScene.ts`, `areas.ts` (Acre ambient; regenerated `necro-rules.cjs`) |
+| 3 | Fen corpse rings (pale lilac, 0.4) vanished on the teal water | In the Fen the ring is warm bone-ivory (0xffe6b0, the one hue the marsh lacks), bigger (1.1) and 0.85 opaque. Other zones unchanged. Still counted in the existing cap of 8. | `EntityViews.ts` |
+| 4 | Nave noise and cost | (a) every static floor light pool (candles, braziers) was its own additive decal, 14+ overlapping draw calls in the Nave; they are now baked into one mesh per area (vertex colours, identical look elsewhere). (b) Nave pools drawn 20% smaller and 32% fainter so the violet and gold no longer smear together. (c) Water moon glints scaled to 0.3 in the roofed Nave (they bloomed into violet confetti). (d) Nave light-shaft layer 150 -> 100 particles at lower alpha, the bright specks 90 -> 60. | `WorldView.ts` (`buildDecals`, `POOL_TONE`), `Water.ts`, `Atmosphere.ts` |
+
+## Before / after screenshots
+
+Left = before, right = after (High).
+
+Thralls among pale enemies (Nave):
+![thralls](screenshots/readability-3/pair-thralls.webp)
+
+The Acre on arrival:
+![acre](screenshots/readability-3/pair-acre.webp)
+
+Fen corpses on water (before: faint lilac rings; after: ivory):
+![fen](screenshots/readability-3/pair-fen-corpses.webp)
+
+Nave fixed fight (random enemy placement differs between the two):
+![nave](screenshots/readability-3/pair-nave-fight.webp)
+
+## Perf (Nave, calls / triangles K)
+
+Draw calls swing run to run because enemies keep moving and attacking even frozen (one fixed-state pair: High before 279 / 301, after 228 / 262 / 268). Medians below.
+
+| Case | Quality | Before | After |
+|---|---|---|---|
+| fixed fight (47 enemies, 5 thralls, 10 corpses) | High | 290 calls / 751K (279/723K, 301/780K) | 262 calls / 766K (228/739K, 262/749K, 268/810K) |
+| fixed fight | Low | 237 calls / 428K (233/424K, 241/432K) | 227 calls / 408K (242/408K, 195/430K, 227/405K) |
+| bare zone, no spawns of mine (14 wave enemies) | High | 135 / 568K (135, 134) | 125 / 568K (135, 116, 125) |
+| bare zone | Low | 128 / 271K (123, 133) | 95 / 271K (82, 103, 95) |
+| tour busy fight (47 enemies) | High | 240 / 784K | 216 / 736K |
+| tour busy fight | Low | 195 / 409K | 155 / 394K |
+
+Reading it honestly: the merged pools save about 10-35 calls in the Nave (more at Low, where there is no shadow pass to dilute them), roughly 10% in a busy fight on High; **triangles did not change** (prop and enemy meshes dominate, and no art LOD was touched). Update ms stayed inside run-to-run noise (1-11 ms on this loaded box). Other zones got the same pool merge for free: Graves tour arrival 209 -> 196 calls (High), 176 -> 168 (Low). The thrall rim adds no draw calls.
+
+## Still open
+
+- Frame time on a real GPU (software renderer on a loaded VPS).
+- Nave triangles (about 570K bare at High): the pillar, statue and pew meshes are heavy; this needs lower-poly LODs, not a visibility tweak.
+- Water glints in the Nave are quieter but still the brightest speckle on screen at the top right; the Fen shares the glint scale (it uses the same low-sheen water) and is a little calmer too.
+- The Acre trees are still dark silhouettes; lifting them further means retinting the tree materials, which I did not do to keep the gloom.
+- Fen bodies still sink slightly below the water surface; the ring now marks them but the mesh is unchanged.
+- A tall thrall of the Mourner (spectral wraith) wears the rim too; it is subtle on a translucent body but unreviewed in co-op with real remote players (only the own/ally strength split is code-verified, offline has no remote legions).
+- `necro-rules.cjs` was regenerated (Acre ambient colours); deploy only matters if the server should carry the new ambient values, which it does not use for gameplay.
