@@ -10,7 +10,7 @@ export type OmenId = 'blood_moon' | 'drowned_week' | 'tolling';
 export interface Omen {
   id: OmenId;
   name: string;
-  /** public/art/omens/<icon>.png */
+  /** public/art/omens/<icon>.webp */
   icon: string;
   blurb: string;
   /** Added to every combat area's elite chance. */
@@ -31,7 +31,7 @@ export const OMENS: Record<OmenId, Omen> = {
   blood_moon: {
     id: 'blood_moon',
     name: 'Blood Moon',
-    icon: 'art/omens/blood_moon.png',
+    icon: 'art/omens/blood_moon.webp',
     blurb: 'The moon runs red: elites are far more common, and every kill pays 15% more.',
     eliteBonus: 0.06,
     waveSizeMult: 1,
@@ -42,7 +42,7 @@ export const OMENS: Record<OmenId, Omen> = {
   drowned_week: {
     id: 'drowned_week',
     name: 'Drowned Week',
-    icon: 'art/omens/drowned_week.png',
+    icon: 'art/omens/drowned_week.webp',
     blurb: 'A cold mist rolls in and the dead arrive in larger waves: 25% bigger, 20% more XP and gold.',
     eliteBonus: 0,
     waveSizeMult: 1.25,
@@ -53,7 +53,7 @@ export const OMENS: Record<OmenId, Omen> = {
   tolling: {
     id: 'tolling',
     name: 'The Tolling',
-    icon: 'art/omens/tolling.png',
+    icon: 'art/omens/tolling.webp',
     blurb: 'Every bell in the diocese is ringing: elites come Bell-Tolled, and they drop twice the shards.',
     eliteBonus: 0.03,
     waveSizeMult: 1,

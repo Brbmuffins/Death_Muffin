@@ -13,7 +13,7 @@ const WHY: Record<string, string> = {
   labor: 'Your laborers came home with this.',
 };
 
-const iconOf = (itemId: string) => itemMeta(itemId).icon ?? `art/items/${itemId}.png`;
+const iconOf = (itemId: string) => itemMeta(itemId).icon ?? `art/items/${itemId}.webp`;
 
 /**
  * "The Sexton's Ledger": what an AFK session brought back. Shown when work stops, with the things worth feeling good about

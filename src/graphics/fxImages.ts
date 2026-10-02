@@ -7,28 +7,28 @@ import * as THREE from 'three';
  * until an image arrives the texture draws nothing (additive black), never a fallback box.
  */
 export const FX_IMAGES = {
-  skull: 'art/fx/skull.png',
-  boneShard: 'art/fx/bone-shard.png',
-  bloodSigil: 'art/fx/blood-sigil.png',
-  frostFan: 'art/fx/frost-fan.png',
-  rime: 'art/fx/rime.png',
-  boneRing: 'art/fx/bone-ring.png',
+  skull: 'art/fx/skull.webp',
+  boneShard: 'art/fx/bone-shard.webp',
+  bloodSigil: 'art/fx/blood-sigil.webp',
+  frostFan: 'art/fx/frost-fan.webp',
+  rime: 'art/fx/rime.webp',
+  boneRing: 'art/fx/bone-ring.webp',
   // Spell variety sprites (gemini-jobs/spells-v5.json).
-  crescent: 'art/fx/crescent.png',
-  seedBud: 'art/fx/seed-bud.png',
-  wisp: 'art/fx/wisp.png',
-  rallySigil: 'art/fx/rally-sigil.png',
-  veilStreak: 'art/fx/veil-streak.png',
+  crescent: 'art/fx/crescent.webp',
+  seedBud: 'art/fx/seed-bud.webp',
+  wisp: 'art/fx/wisp.webp',
+  rallySigil: 'art/fx/rally-sigil.webp',
+  veilStreak: 'art/fx/veil-streak.webp',
   // Release 0.3 class sprites (art-manifest/gemini-jobs/classes-v1.json).
-  graveOutline: 'art/fx/grave-outline.png',
-  crow: 'art/fx/crow.png',
-  hookChain: 'art/fx/hook-chain.png',
-  soundRing: 'art/fx/sound-ring.png',
-  lanternCone: 'art/fx/lantern-cone.png',
-  veilRift: 'art/fx/veil-rift.png',
+  graveOutline: 'art/fx/grave-outline.webp',
+  crow: 'art/fx/crow.webp',
+  hookChain: 'art/fx/hook-chain.webp',
+  soundRing: 'art/fx/sound-ring.webp',
+  lanternCone: 'art/fx/lantern-cone.webp',
+  veilRift: 'art/fx/veil-rift.webp',
   // Area-boss telegraphs (gemini-jobs/bosses-v1.json).
-  tideCrest: 'art/fx/tide-crest.png',
-  drownedHand: 'art/fx/drowned-hand.png',
+  tideCrest: 'art/fx/tide-crest.webp',
+  drownedHand: 'art/fx/drowned-hand.webp',
 } as const;
 export type FxImage = keyof typeof FX_IMAGES;
 

@@ -123,7 +123,7 @@ export class GrimoirePanel extends SimplePanel {
   /** The badge of the rune socketed in a rite, on its socket button. */
   private pip(id: AbilityId): string {
     const r = this.runes && isRuneRite(id) ? this.runes.state().sockets[id as RuneRite] : undefined;
-    return r ? `<img class="cw-rune-pip" src="art/items/${r}.png" alt="" draggable="false" />` : '';
+    return r ? `<img class="cw-rune-pip" src="art/items/${r}.webp" alt="" draggable="false" />` : '';
   }
 
   /**
@@ -138,7 +138,7 @@ export class GrimoirePanel extends SimplePanel {
     const cur = sockets[rite];
     const def = cur ? RUNES[cur] : null;
     const now = def
-      ? `<div class="cw-rune-frame"><img src="art/items/${def.id}.png" alt="" /></div>
+      ? `<div class="cw-rune-frame"><img src="art/items/${def.id}.webp" alt="" /></div>
          <div class="txt"><b>${esc(def.name)}</b>${def.lines.map((l) => `<p>${esc(l)}</p>`).join('')}${def.cost ? `<p class="cost">${esc(def.cost)}</p>` : ''}
          <button type="button" class="cw-button small" data-rune-out ${this.runeBusy ? 'disabled' : ''}>Take the rune out</button></div>`
       : `<div class="cw-rune-frame empty" aria-hidden="true">◇</div>
@@ -146,11 +146,11 @@ export class GrimoirePanel extends SimplePanel {
     const list = runesFor(rite).map((r) => {
       const n = owned[r.id] ?? 0;
       const on = cur === r.id;
-      if (on) return `<div class="cw-rune-opt on"><img src="art/items/${r.id}.png" alt="" /><span><span class="nm">${esc(r.name)}<i>${r.rarity}</i></span><span class="sh">${esc(r.short)}</span></span><span class="go">Socketed</span></div>`;
+      if (on) return `<div class="cw-rune-opt on"><img src="art/items/${r.id}.webp" alt="" /><span><span class="nm">${esc(r.name)}<i>${r.rarity}</i></span><span class="sh">${esc(r.short)}</span></span><span class="go">Socketed</span></div>`;
       if (n > 0) {
-        return `<button type="button" class="cw-rune-opt" data-rune="${r.id}" ${this.runeBusy ? 'disabled' : ''} aria-label="Socket ${esc(r.name)} into ${esc(name)}"><img src="art/items/${r.id}.png" alt="" /><span><span class="nm">${esc(r.name)}<i>${r.rarity} · you have ${n}</i></span><span class="sh">${esc(r.short)}</span></span><span class="go">${cur ? 'Swap in' : 'Socket'}</span></button>`;
+        return `<button type="button" class="cw-rune-opt" data-rune="${r.id}" ${this.runeBusy ? 'disabled' : ''} aria-label="Socket ${esc(r.name)} into ${esc(name)}"><img src="art/items/${r.id}.webp" alt="" /><span><span class="nm">${esc(r.name)}<i>${r.rarity} · you have ${n}</i></span><span class="sh">${esc(r.short)}</span></span><span class="go">${cur ? 'Swap in' : 'Socket'}</span></button>`;
       }
-      return `<div class="cw-rune-opt sealed" title="${esc(runeSources(r.id))}"><img src="art/items/${r.id}.png" alt="" style="filter:grayscale(1) brightness(0.6)" /><span><span class="nm">${esc(r.name)}<i>${r.rarity}</i></span><span class="sh">${esc(r.short)}</span></span><span class="go">Not found yet</span></div>`;
+      return `<div class="cw-rune-opt sealed" title="${esc(runeSources(r.id))}"><img src="art/items/${r.id}.webp" alt="" style="filter:grayscale(1) brightness(0.6)" /><span><span class="nm">${esc(r.name)}<i>${r.rarity}</i></span><span class="sh">${esc(r.short)}</span></span><span class="go">Not found yet</span></div>`;
     });
     return `<div class="cw-rune-box" data-runebox><h3>Rune socket <small>${esc(name)}</small></h3>
       <div class="cw-rune-now">${now}</div>

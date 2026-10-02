@@ -4,7 +4,7 @@ import { SKILLS, type SkillId } from '../gameplay/gatheringRules';
 import type { Inventory } from '../gameplay/loot';
 import { preserveScroll } from './preserveScroll';
 
-const iconOf = (itemId: string) => itemMeta(itemId).icon ?? `art/items/${itemId}.png`;
+const iconOf = (itemId: string) => itemMeta(itemId).icon ?? `art/items/${itemId}.webp`;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
 /**

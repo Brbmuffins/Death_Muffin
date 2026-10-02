@@ -127,7 +127,7 @@ function runeCard(id: AbilityId, runes: RuneSockets): string {
   const r = isRuneRite(id) ? runes[id as RuneRite] : undefined;
   if (!r) return '';
   const d = RUNES[r];
-  return `<div class="spell-rune"><img src="art/items/${r}.png" alt="" /><div><b>${esc(d.name)}</b><p>${d.lines.map(esc).join(' ')}${d.cost ? ` <em>${esc(d.cost)}</em>` : ''}</p></div></div>`;
+  return `<div class="spell-rune"><img src="art/items/${r}.webp" alt="" /><div><b>${esc(d.name)}</b><p>${d.lines.map(esc).join(' ')}${d.cost ? ` <em>${esc(d.cost)}</em>` : ''}</p></div></div>`;
 }
 
 /**
@@ -278,9 +278,9 @@ export class HUD {
           </div>
         </div>
         <div class="hud-currency">
-          <span title="Gold"><img src="art/ui/gold.png" alt="Gold" /><b data-gold></b></span>
+          <span title="Gold"><img src="art/ui/gold.webp" alt="Gold" /><b data-gold></b></span>
           <span title="Thralls"><span class="thrall-ico" style="color:var(--cw-bone-300)">${ICON.skull}</span><b data-thrallnum></b></span>
-          <span title="Soul Shards"><img src="art/ui/soul_shard.png" alt="Soul shards" /><b data-shards></b></span>
+          <span title="Soul Shards"><img src="art/ui/soul_shard.webp" alt="Soul shards" /><b data-shards></b></span>
         </div>
         <div class="hud-save" data-save></div>
       </div>
@@ -362,7 +362,7 @@ export class HUD {
   /** The badge of the rune socketed in a rite, or nothing. */
   private runePip(id: AbilityId): string {
     const r = isRuneRite(id) ? this.runes[id as RuneRite] : undefined;
-    return r ? `<img class="rune-pip" src="art/items/${r}.png" alt="" draggable="false" title="${esc(RUNES[r].name)}" />` : '';
+    return r ? `<img class="rune-pip" src="art/items/${r}.webp" alt="" draggable="false" title="${esc(RUNES[r].name)}" />` : '';
   }
 
   /** The sockets changed: redraw the slots so each rite wears its rune. */

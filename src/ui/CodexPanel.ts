@@ -264,8 +264,8 @@ export class CodexPanel {
         <div class="txt">
           <div class="hd"><h3>${g.rite}</h3><span class="meta">${g.runes.filter((r) => found.has(r.id)).length} of ${g.runes.length} found</span></div>
           ${g.runes.map((r) => found.has(r.id)
-            ? `<div class="cw-rune-opt on" style="grid-template-columns:44px 1fr;margin-top:8px"><img src="art/items/${r.id}.png" alt="" style="width:44px;height:44px" /><span><span class="nm">${r.name}<i>${r.rarity}</i></span><span class="sh"><b>${r.short}.</b> ${r.lines.join(' ')}${r.cost ? ` <em style="font-style:normal;color:#e7b07a">${r.cost}</em>` : ''}</span><span class="sh" style="opacity:.7"><i style="font-style:italic">${r.lore}</i> Drops from ${r.sources}.</span></span></div>`
-            : `<div class="cw-rune-opt sealed" style="grid-template-columns:44px 1fr;margin-top:8px"><img src="art/items/${r.id}.png" alt="" style="width:44px;height:44px;filter:grayscale(1) brightness(0.55)" /><span><span class="nm">${r.name}<i>${r.rarity}</i></span><span class="sh">Not found yet. Drops from ${r.sources}.</span></span></div>`).join('')}
+            ? `<div class="cw-rune-opt on" style="grid-template-columns:44px 1fr;margin-top:8px"><img src="art/items/${r.id}.webp" alt="" style="width:44px;height:44px" /><span><span class="nm">${r.name}<i>${r.rarity}</i></span><span class="sh"><b>${r.short}.</b> ${r.lines.join(' ')}${r.cost ? ` <em style="font-style:normal;color:#e7b07a">${r.cost}</em>` : ''}</span><span class="sh" style="opacity:.7"><i style="font-style:italic">${r.lore}</i> Drops from ${r.sources}.</span></span></div>`
+            : `<div class="cw-rune-opt sealed" style="grid-template-columns:44px 1fr;margin-top:8px"><img src="art/items/${r.id}.webp" alt="" style="width:44px;height:44px;filter:grayscale(1) brightness(0.55)" /><span><span class="nm">${r.name}<i>${r.rarity}</i></span><span class="sh">Not found yet. Drops from ${r.sources}.</span></span></div>`).join('')}
         </div>
       </article>`).join('');
     return `<p class="tip">${CODEX_RUNES_COUNSEL}</p>${rows}`;

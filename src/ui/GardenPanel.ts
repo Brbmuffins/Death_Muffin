@@ -6,7 +6,7 @@ import type { Inventory } from '../gameplay/loot';
 import { preserveScroll } from './preserveScroll';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-const iconOf = (itemId: string) => itemMeta(itemId).icon ?? `art/items/${itemId}.png`;
+const iconOf = (itemId: string) => itemMeta(itemId).icon ?? `art/items/${itemId}.webp`;
 
 /**
  * Grave Gardening (U): four Mourning Beds and two Coffin Patches. Plant a seed (bone meal makes it grow a quarter faster) and come

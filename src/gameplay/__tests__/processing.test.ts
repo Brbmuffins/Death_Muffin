@@ -16,7 +16,7 @@ describe('Professions G6: processing', () => {
       expect(level).toBeGreaterThanOrEqual(1);
       expect(qty).toBeGreaterThanOrEqual(1);
     }
-    for (const id of Object.keys(PROCESSING_ITEMS)) expect(existsSync(`public/art/items/${id}.png`), id).toBe(true);
+    for (const id of Object.keys(PROCESSING_ITEMS)) expect(existsSync(`public/art/items/${id}.webp`), id).toBe(true);
     expect(new Set(PROCESSING_RECIPES.map((r) => r[0])).size).toBe(PROCESSING_RECIPES.length);
   });
 

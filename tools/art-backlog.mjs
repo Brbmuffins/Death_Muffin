@@ -1,7 +1,7 @@
 /**
  * art-backlog.mjs — list generated art that no game code references yet (the "art ready, code
  * pending" roadmap in docs/ART-BACKLOG.md). A file counts as referenced when its public path
- * (`art/items/x.png`, `models/props/x.glb`) or, for GLBs, its model id appears as a string anywhere
+ * (`art/items/x.webp`, `models/props/x.glb`) or, for GLBs, its model id appears as a string anywhere
  * in src/ or index.html, or when it is an item icon whose id is a known item (icons resolve by name).
  *
  *   node tools/art-backlog.mjs            print unreferenced files grouped by folder
@@ -26,7 +26,7 @@ const loaded = srcFiles.filter((f) => {
 });
 const code = [...loaded.map((f) => texts.get(f)), readFileSync(join(ROOT, 'index.html'), 'utf8')].join('\n');
 
-// Item icons also resolve by convention (InventoryPanel/LootView: `art/items/<id>.png`), so an
+// Item icons also resolve by convention (InventoryPanel/LootView: `art/items/<id>.webp`), so an
 // icon is live as soon as its id is a known item in content/items.ts.
 const itemIds = new Set([...readFileSync(join(ROOT, 'src', 'content', 'items.ts'), 'utf8').matchAll(/^ {2}([a-z0-9_]+): /gm)].map((m) => m[1]));
 
