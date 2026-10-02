@@ -323,7 +323,7 @@ export class InventoryPanel {
     if (!picks.length) return;
     const offer = document.createElement('span');
     offer.className = 'cw-belt-offer';
-    offer.innerHTML = `Put your best tools on the belt? <button class="cw-button small" data-belt-yes>Put ${picks.length === 1 ? 'it' : `${picks.length} tools`} on the belt</button><button class="cw-button small ghost" data-belt-no>No thanks</button>`;
+    offer.innerHTML = `Belt your best tools? <button class="cw-button small" data-belt-yes title="Moves the best hatchet, pickaxe, rod and spade in your bag onto the tool belt">Put ${picks.length === 1 ? 'it' : picks.length} on the belt</button><button class="cw-button small ghost" data-belt-no>No thanks</button>`;
     offer.querySelector('[data-belt-yes]')!.addEventListener('click', () => {
       dismissOffer(this.characterId);
       void this.moveToBelt(picks.map((p) => ({ slot_index: p.slot_index, equipped: 1 as const })));

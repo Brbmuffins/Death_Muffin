@@ -752,7 +752,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.inventoryPanel.statContext = this.statContext;
     this.inventoryPanel.onSheet = () => this.togglePanel('sheet');
     this.inventoryPanel.onEquipped = () => this.onboarding.show('gearEquip');
-    this.inventoryPanel.onToolBelted = () => this.onboarding.show('toolBelt');
+    this.inventoryPanel.onToolBelted = () => this.onboarding.show('toolBelt', 0, true);
     this.sheetPanel = new CharacterSheetPanel(this.root, this.statContext, () => this.onboarding.show('statSheet'));
     this.forgePanel = new ForgePanel(this.root, this.character.id, this.inventory, (inv, profs) => {
       this.inventory.replace(inv);

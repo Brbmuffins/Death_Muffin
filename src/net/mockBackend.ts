@@ -543,6 +543,7 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       items: placed.stored,
       rejected: placed.rejected,
       leveledUp: batch.leveled > 0,
+      toolTier,
       skills: [{ ...prof }],
     });
   }

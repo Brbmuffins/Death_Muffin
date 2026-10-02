@@ -6,6 +6,8 @@ For AFK, run `npm run dev -- --host 127.0.0.1 --port 5199 --strictPort`, then `n
 
 For gathering visuals, run `node tools/qa/gather-tools-smoke.cjs` against the same offline preview. It starts all four AFK skills, checks each hand tool stays at a usable size, confirms the node circle stays visible while working, and verifies class gear returns when paused. Screenshots are written to `DM_QA_ARTIFACT_DIR` (or the system temporary directory). `DM_QA_CLASS='Hollow Knight' DM_QA_SKILL=woodcutting` checks a class with two weapon props.
 
+For the gathering tool belt, run `node tools/qa/tool-belt-smoke.cjs` against an offline preview (it needs no live server). It tools up a new character, takes the one-time "Belt your best tools?" offer, checks the belt tools set the gathering tier, unbelts into the bag, starts AFK woodcutting and reads the hero's held tool and the Skills line, then fills the bag and checks the readable refusal. Screenshots go to `DM_QA_ARTIFACT_DIR`.
+
 For the five Release 0.3 classes, use the same dev server and run `node tools/qa/new-blood-smoke.cjs`.
 It checks class selection at 1280×800, world entry, resource orbs, hero models, hotbars and a
 primary hit. It also casts Warden Lantern Cone, Witch Harvest and Veil Tear in their class runs.

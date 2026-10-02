@@ -132,6 +132,10 @@ Crossworlds clips are gone (replaced by CC0 layers).
 
 Bag 24 to 48 slots (`BAG_SLOTS` in `gatheringRules.ts` is the one source; saves send `bagSize`, a server treats a missing one as 24 so a stale tab cannot wipe slots 24-47), the Ossuary Vault (`vault.cjs`, 120 shared slots, key V, migration `017-vault.sql`), Salvaging (`salvage.cjs`, Bone Grinder in the Acre, seventh skill) and Reliquary locks plus Sell all junk. Pure move and yield rules live in `vaultRules.ts` and `salvageRules.ts` and are bundled for the server. **Deploy needs migration 017** (`deploy-release.sh <rev> .../017-vault.sql`). Sexton's Mantle now needs total level 693 (seven skills). Offline-to-online sync does not carry the offline vault. Smoke: `tools/qa/vault-salvage-smoke.cjs`.
 
+### Tool belt (branch `dm/tool-belt`, not deployed)
+
+Four reserved inventory slots 110-113 (hatchet, pickaxe, rod, spade; rows are `equipped=1`, `equipped_slot='belt_<kind>'`, so bag saves, crafting, sell, Salvage and the Vault never touch them; no migration). `POST /api/inventory/belt` (`backend/tool-belt.cjs`) moves a tool bag<->belt transactionally (swap needs no space; unbelt with a full bag is refused readably). Gather/AFK read belt + bag (`getBeltTools` in gather-store). `offline-full-sync` accepts 110-113 (tool kind must match the slot). Client: belt row under the paper doll (`src/ui/toolBelt.ts`, `InventoryPanel`), one-time "Belt your best tools?" offer (dismissal in localStorage `dm_belt_offer_<id>`), Skills shows the active tool and where it is, hero's hand tool tinted by metal. Smoke: `tools/qa/tool-belt-smoke.cjs`. Deploy needs no migration, but the server files (`tool-belt.cjs`, `server.js`, gathering/*.cjs) and a client build both go out together.
+
 ### 2026-10-01 release and next work
 
 - The frozen candidate passed typecheck, 497 client tests, nine server suites, a production build, and local spell-swap, reagent, Fen and Mire Mother browser checks. Fen performance was 289 calls / 486,775 triangles / 1.849 ms update versus 231 / 485,691 / 1.64 ms in the Graves sample.

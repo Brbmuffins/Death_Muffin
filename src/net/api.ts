@@ -218,6 +218,8 @@ export interface GatherReply {
   items: { itemId: string; qty: number }[];
   rejected: { itemId: string; qty: number }[];
   leveledUp: boolean;
+  /** Tier of the best tool the server found on the belt or in the bag (0 = none). */
+  toolTier?: number;
   skills: Profession[];
 }
 
