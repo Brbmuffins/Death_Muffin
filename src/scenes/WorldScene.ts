@@ -109,6 +109,7 @@ import { SettingsPanel, WaystonePanel } from '../ui/MiscPanels';
 import { ProfessionsPanel } from '../ui/ProfessionsPanel';
 import { CodexPanel } from '../ui/CodexPanel';
 import { Onboarding, type TipId } from '../ui/Onboarding';
+import type { Busy } from '../ui/counselCadence';
 import { CodexJournal, browserStorage, type CodexIds, type CodexKind } from '../gameplay/codexJournal';
 import { CURSOR } from '../ui/cursors';
 import { audio } from '../audio/Audio';
@@ -437,7 +438,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.closePanels();
     this.gathering?.stop('panel');
     this.grimoirePanel.open(select);
-    this.onboarding.show('grimoire');
+    this.onboarding.show('grimoire', 0, { kind: 'asked' });
   }
 
   /** Areas the nav may walk: the saved seals, or everything under dev access. */
@@ -649,7 +650,6 @@ export class WorldScene implements GameScene, RuntimeView {
     void this.dataReady.then(() => getCosmetics(this.character.id)).then((v) => this.applyCosmetics(v.selected)).catch(() => {});
     this.scope.interval(() => void this.checkLabor(false), 5 * 60_000);
     this.onboarding.show('welcome', 900);
-    this.onboarding.show('move', 1600);
     // First time in the world as a Knight: Rage works nothing like essence.
     if (this.discipline.family === 'knight') this.onboarding.show('knight_rage', 2600);
     if (this.discipline.family === 'warden') this.onboarding.show('warden_oil', 2600);
@@ -884,7 +884,8 @@ export class WorldScene implements GameScene, RuntimeView {
         this.hud.toast(`${BOONS[id].name} — ${BOONS[id].blurb}`, 'good');
       },
     );
-    this.onboarding = new Onboarding(this.root, this.character.id);
+    this.onboarding = new Onboarding(this.root, this.character.id, undefined, () => this.now);
+    this.onboarding.busy = () => this.counselBusy();
     this.onboarding.keyFor = (ability) => {
       const i = this.loadout.indexOf(ability as AbilityId);
       return i >= 0 ? String(i + 1) : null;
@@ -893,8 +894,8 @@ export class WorldScene implements GameScene, RuntimeView {
       this.codexPanel.dispose();
       this.onboarding.dispose();
     });
-    const rmb = 'Right-click or press 5 for your fifth equipped rite · click swap below its icon to change it';
-    this.hud.hint(OFFLINE ? `OFFLINE EDITION — progress stays on this device · ${rmb}` : rmb);
+    const rmb = 'Right-click or 5 casts your fifth rite · swap it below its icon';
+    this.hud.hint(OFFLINE ? 'Offline edition: progress stays on this device · Right-click or 5: fifth rite' : rmb);
     this.scope.add(() => {
       this.closePanels();
       this.hud.dispose();
@@ -1064,7 +1065,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const state = this.guidanceState();
     for (const id of NPC_IDS) {
       this.npcNew.set(id, this.guidance.hasSomethingNew(id, state));
-      if (this.npcViews.distanceTo(id, p.x, p.z) < 14 && this.guidance.firstSight(id)) this.onboarding.show('people', 2200);
+      if (this.npcViews.distanceTo(id, p.x, p.z) < 14 && this.guidance.firstSight(id)) this.onboarding.show('people', 45_000);
     }
     // A dismissal holds until the best suggestion changes; turning the line off in Settings hides it for good.
     const top = nextSuggestion(state, null);
@@ -1181,7 +1182,7 @@ export class WorldScene implements GameScene, RuntimeView {
     else if (p === 'ascension') this.ascensionPanel.open();
     else if (p === 'grimoire') {
       this.grimoirePanel.open();
-      this.onboarding.show('grimoire');
+      this.onboarding.show('grimoire', 0, { kind: 'asked' });
     } else this.waystonePanel.open();
   }
 
@@ -1737,7 +1738,7 @@ export class WorldScene implements GameScene, RuntimeView {
       }
       case 'lectern':
         // The Covenant Lectern by the Acre spawn: the Codex (First Rites will live here too).
-        this.onboarding.show('codex');
+        this.onboarding.show('codex', 0, { kind: 'asked' });
         return this.togglePanel('codex');
       case 'boss': {
         // One awake boss per world (area bosses brief §2.3).
@@ -2466,14 +2467,19 @@ export class WorldScene implements GameScene, RuntimeView {
         }
         if (Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 40) {
           this.codexDiscover('dead', ev.def);
-          if (ev.def === 'deacon') this.onboarding.show('deacon');
-          const firstSight = FIRST_SIGHT_TIPS[ev.def];
-          if (firstSight) this.onboarding.show(firstSight, 600);
-          if (ev.elite) this.onboarding.show('elite');
+          // Counsel about the dead only where the player can fight them (a spawn in the next hall over is not a lesson yet).
+          if (!AREAS[this.area].safe) {
+            if (ev.def === 'deacon') this.onboarding.show('deacon');
+            const firstSight = FIRST_SIGHT_TIPS[ev.def];
+            if (firstSight) this.onboarding.show(firstSight, 600);
+            if (ev.elite) this.onboarding.show('elite');
+            // The first dead seen up close in a hunting ground: how to fight.
+            this.onboarding.show('move');
+          }
         }
         break;
       case 'corpse':
-        if (Math.hypot(ev.corpse.x - this.player.x, ev.corpse.z - this.player.z) < 12) this.onboarding.show('exhume');
+        if (!AREAS[this.area].safe && Math.hypot(ev.corpse.x - this.player.x, ev.corpse.z - this.player.z) < 12) this.onboarding.show('exhume');
         if (ev.corpse.kind === 'toxic') this.auraFx.set(`c${ev.corpse.id}`, this.bb('toxic_stink', ev.corpse.x, ev.corpse.z));
         break;
     }
@@ -2484,10 +2490,63 @@ export class WorldScene implements GameScene, RuntimeView {
     this.codex.discover(kind, id);
   }
 
+  /** The screen rows of both speakers when a conversation opened, measured before the camera moved. */
+  private talkView: { npc: NpcId; npcY: number; playerY: number; pxPerUnit: number } | null = null;
+
+  /**
+   * While someone is talking, the conversation card covers the top of the view. Keep the speaker and the hero below it: the camera
+   * eases toward the midpoint and a little north, by exactly as much as it takes (nothing when both are already clear of the card).
+   */
+  private talkFocus(): { x: number; z: number } | null {
+    const id = this.dialogue.talkingTo;
+    if (!id) {
+      this.talkView = null;
+      return null;
+    }
+    const p = this.player;
+    const n = NPCS[id];
+    const H = window.innerHeight;
+    if (!this.talkView || this.talkView.npc !== id) {
+      const rowOf = (x: number, z: number) => ((1 - new THREE.Vector3(x, 1.0, z).project(this.rig.camera).y) / 2) * H;
+      const npcY = rowOf(n.x, n.z);
+      this.talkView = { npc: id, npcY, playerY: rowOf(p.x, p.z), pxPerUnit: Math.max(8, rowOf(n.x, n.z + 1) - npcY) };
+    }
+    const v = this.talkView;
+    const card = this.dialogue.cardBottom;
+    const top = Math.min(v.npcY, v.playerY);
+    const bottom = Math.max(v.npcY, v.playerY);
+    let push = card === null ? 0 : Math.max(0, card + 72 - top) / v.pxPerUnit;
+    push = Math.min(push, Math.max(0, H - 150 - bottom) / v.pxPerUnit);
+    return { x: (p.x + n.x) / 2, z: p.z - push };
+  }
+
+  /** When the player was last in a fight; the Covenant counsel cadence reads it (see ui/counselCadence.ts). */
+  private lastCombatAt = -1e9;
+  private lastHurtAt = -1e9;
+
+  private counselBusy(): Busy {
+    return {
+      combat: this.now - this.lastCombatAt < 4000,
+      hurt: this.now - this.lastHurtAt < 4000,
+      talking: this.dialogue.isOpen,
+      banner: this.hud.bannerActive,
+      dead: !this.player.alive,
+      panel: this.panelOpen() && !this.dialogue.isOpen,
+      area: this.area,
+      safe: AREAS[this.area].safe,
+    };
+  }
+
   /** Throttled onboarding triggers that depend on state rather than events. */
   private tickOnboarding(now: number) {
     if (now - this.lastTipCheck < 400 || !this.player.alive) return;
     this.lastTipCheck = now;
+    // Calm counsel waits for quiet: three living enemies within 9 m (or the boss awake) is a fight; a blow taken (see takeDamage) is too.
+    if (this.bossState().active) this.lastHurtAt = this.lastCombatAt = now;
+    else {
+      let near = 0;
+      for (const e of this.enemiesMap().values()) if (e.state !== 'dead' && Math.hypot(e.x - this.player.x, e.z - this.player.z) < 9 && ++near >= 3) { this.lastCombatAt = now; break; }
+    }
     const cost = this.progression.waveCost();
     if (cost !== null && (this.character.gold ?? 0) >= cost) this.onboarding.show('wave');
     // Kit counsel, as each moment first comes up.
@@ -3049,6 +3108,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (this.player.hp < this.player.stats.maxHp * 0.5) this.onboarding.show('hurt');
     this.cancelRecall();
     if (taken >= 1) this.floating.spawn(this.player.x, 2, this.player.z, `-${Math.round(taken)}`, 'hurt');
+    this.lastCombatAt = this.lastHurtAt = this.now;
     this.hud.hitFlash();
     audio.play('hurt');
     this.rig.shake(from === 'boss' ? 0.35 : 0.12);
@@ -3768,7 +3828,8 @@ export class WorldScene implements GameScene, RuntimeView {
       const b = this.bossState();
       this.bossView(b.id ?? 'prelate').sync(b, dt);
     }
-    this.rig.update(dt, p.x, p.z);
+    const talkFocus = this.talkFocus();
+    this.rig.update(dt, talkFocus ? talkFocus.x : p.x, talkFocus ? talkFocus.z : p.z);
     audio.setListener(p.x, p.z);
     if (p.moving) {
       this.stepT -= dt * p.stats.moveSpeed;
@@ -3921,12 +3982,12 @@ export class WorldScene implements GameScene, RuntimeView {
     if (!this.announcedAreas.has(area)) {
       this.announcedAreas.add(area);
       this.hud.banner(def.name, def.subtitle);
-      if (area === 'cloister') this.onboarding.show('cloister', 1200);
-      if (area === 'pyre') this.onboarding.show('pyre', 1200);
-      if (area === 'fen') this.onboarding.show('fen', 1200);
-      if (area === 'warren') this.onboarding.show('warren', 1200);
-      if (area === 'alchemist_wing') this.onboarding.show('wing', 1200);
-      if (area === 'coliseum') this.onboarding.show('coliseum', 1200);
+      if (area === 'cloister') this.onboarding.show('cloister', 4500);
+      if (area === 'pyre') this.onboarding.show('pyre', 4500);
+      if (area === 'fen') this.onboarding.show('fen', 4500);
+      if (area === 'warren') this.onboarding.show('warren', 4500);
+      if (area === 'alchemist_wing') this.onboarding.show('wing', 4500, { kind: 'calm' });
+      if (area === 'coliseum') this.onboarding.show('coliseum', 4500);
     }
     this.codexDiscover('area', area);
     (this.scene.fog as THREE.FogExp2).color.set(def.ambient.fog);
@@ -3939,9 +4000,9 @@ export class WorldScene implements GameScene, RuntimeView {
     if (!this.omenTold) {
       this.omenTold = true;
       this.hud.setOmen({ name: this.omen.name, icon: this.omen.icon, blurb: `${this.omen.blurb} Changes in ${omenLeft()}.` });
-      this.onboarding.show('omen', 2600);
+      this.onboarding.show('omen', 150_000);
     }
-    if (area === 'acre') this.onboarding.show('acre', 1200);
+    if (area === 'acre') this.onboarding.show('acre', 4500);
     void this.progression.flush();
   }
 
@@ -3972,12 +4033,16 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private areaProgress(): string {
     const here = this.area;
-    if (here === 'acre') return 'Click a glowing node to gather · Walk east to the Chapterhouse for combat';
-    if (here === 'chapterhouse') return 'Walk north to the Hollow Graves · Click an enemy to attack · East door: the Alchemist\'s Wing';
-    if (here === 'alchemist_wing') return 'Brew at the Great Cauldron or the Alembic · Browse the Reagent Shelf';
+    // While the Next line is showing it already says where to go; this line then only says what the place is for.
+    const guided = !!this.nextNow;
+    if (here === 'acre') return guided ? 'A gathering sanctuary: click a glowing node to work it' : 'Click a glowing node to gather · Walk east to the Chapterhouse for combat';
+    if (here === 'chapterhouse') return guided ? 'Sanctuary: Reliquary, Workbench, Altar and Waystone · East door: the Alchemist\'s Wing' : 'Walk north to the Hollow Graves · Click an enemy to attack · East door: the Alchemist\'s Wing';
+    if (here === 'alchemist_wing') return guided ? 'Sanctuary: the Great Cauldron, the Alembic and the Reagent Shelf' : 'Brew at the Great Cauldron or the Alembic · Browse the Reagent Shelf';
     if (AREAS[here].safe) return 'Sanctuary. The dead cannot follow you here.';
     // Every pending seal off this hall (the Graves hold two: the Warren and the Ossuary), nearest first.
-    const pending = AREA_ORDER.filter((id) => AREAS[id].unlock?.area === here && !this.progression.isUnlocked(id))
+    // The seal the Next line is already counting is not repeated here.
+    const inNext = this.nextNow?.kind === 'seal' ? this.nextNow.id.slice('seal:'.length) : null;
+    const pending = AREA_ORDER.filter((id) => AREAS[id].unlock?.area === here && !this.progression.isUnlocked(id) && id !== inNext)
       .map((id) => ({ id, need: this.progression.unlockKills(AREAS[id].unlock!.kills) }))
       .sort((a, b) => a.need - b.need);
     if (pending.length) {
@@ -4054,7 +4119,7 @@ export class WorldScene implements GameScene, RuntimeView {
     }
     const nearNpc = this.nearestNpc();
     this.hud.prompt(
-      hover?.kind === 'interact'
+      hover?.kind === 'interact' && !this.dialogue.isOpen
         ? `<kbd>Click</kbd> ${this.interactPrompt(hover.it)}`
         : nearNpc && !this.dialogue.isOpen && !this.panelOpen() ? `<kbd>E</kbd> Talk to ${NPCS[nearNpc].name}` : null,
     );

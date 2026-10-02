@@ -167,7 +167,7 @@ export function suggestions(s: GuidanceState): Suggestion[] {
 
   // --- The road (the Prior) ---
   if (s.totalKills < 10 && s.ascension === 0 && s.area !== 'graves') {
-    add({ id: 'first-steps', kind: 'first-steps', topic: 'route', priority: 95, text: 'Walk north into the Hollow Graves and fight your first dead', place: 'graves', target: areaCentre('graves'), data: { area: AREAS.graves.name } });
+    add({ id: 'first-steps', kind: 'first-steps', topic: 'route', priority: 95, text: s.area === 'acre' ? 'Walk east to the Chapterhouse, then north to the Hollow Graves' : 'Walk north into the Hollow Graves and fight your first dead', place: 'graves', target: areaCentre('graves'), data: { area: AREAS.graves.name } });
   }
   if (s.canAscend) {
     add({ id: 'ascend', kind: 'ascend', topic: 'route', priority: 72, text: `The Altar of Ascension is ready: +${s.ashesOnAscend} Ashes when you choose`, place: 'chapterhouse', target: spot('altar'), pingInPlace: true, data: { ashes: s.ashesOnAscend } });
@@ -208,13 +208,13 @@ export function suggestions(s: GuidanceState): Suggestion[] {
     add({ id: 'labor-idle', kind: 'labor-idle', topic: 'acre', priority: 35, text: 'A Grave Laborer stands idle: give them a post (H)', place: 'acre', data: { idle: s.labor.unlocked - s.labor.assigned } });
   }
   if (['woodcutting', 'mining', 'fishing', 'gravedigging'].every((k) => (s.skills[k] ?? 1) <= 1) && !(s.labor && s.labor.assigned > 0)) {
-    add({ id: 'gather-intro', kind: 'gather-intro', topic: 'acre', priority: 42, text: 'Gathering in the Sexton’s Acre trains skills and feeds the Workbench (P)', place: 'acre', target: areaCentre('acre'), data: {} });
+    add({ id: 'gather-intro', kind: 'gather-intro', topic: 'acre', priority: 42, text: 'Gathering in the Sexton’s Acre trains skills and supplies your crafting (P)', place: 'acre', target: areaCentre('acre'), data: {} });
   }
 
   // --- Brewing (the Apothecary) ---
   const alchemy = s.skills.alchemy ?? 1;
   if (s.dust >= GRAVE_DUST_FOR_TONIC && alchemy < 5) {
-    add({ id: 'brew-dust', kind: 'brew-dust', topic: 'brew', priority: 45, text: `You carry ${s.dust} Grave Dust: brew a tonic at the Great Cauldron in the Alchemist’s Wing`, place: 'alchemist_wing', target: spot('wing_cauldron'), pingInPlace: true, data: { dust: s.dust } });
+    add({ id: 'brew-dust', kind: 'brew-dust', topic: 'brew', priority: s.area === 'alchemist_wing' ? 62 : 45, text: `You carry ${s.dust} Grave Dust: brew a tonic at the Great Cauldron in the Alchemist’s Wing`, place: 'alchemist_wing', target: spot('wing_cauldron'), pingInPlace: true, data: { dust: s.dust } });
   } else if (alchemy <= 1 && s.dust < GRAVE_DUST_FOR_TONIC) {
     add({ id: 'brew-first', kind: 'brew-first', topic: 'brew', priority: 12, text: 'Four Grave Dust brew your first tonic; the dead of the Graves drop it', quiet: true, data: { dust: s.dust } });
   }

@@ -33,7 +33,7 @@ const item = (name: string, rarity: Rarity, sell: number, lore: string, art: str
 
 /** Mob reagents, zone herbs and their seeds, and the boss ichors. All gathered-material shaped (stack 250). */
 export const REAGENT_ITEMS: Record<string, ReagentItem> = {
-  reagent_grave_dust: item('Grave Dust', 'common', 2, 'Sifted from what the dead leave behind. Take it to the Workbench, Alchemy tab: four dust brew a Grave-Dust Tonic, no garden needed.', 'dust'),
+  reagent_grave_dust: item('Grave Dust', 'common', 2, 'Sifted from what the dead leave behind. Take it to the Great Cauldron in the Alchemist\'s Wing: four dust brew a Grave-Dust Tonic, no garden needed.', 'dust'),
   reagent_wraith_ectoplasm: item('Wraith Ectoplasm', 'uncommon', 8, 'Cold, weightless and faintly singing. Choir Wraiths and Weeping Seraphs shed it when they unravel. Brews into haste and insight.', 'ecto'),
   reagent_plague_bile: item('Plague Bile', 'rare', 16, 'Bottled from the Cloister dead, still green and still spoiling. The base of the lifesteal and rot-proof brews.', 'bile'),
   reagent_cinder_ash: item('Cinder Ash', 'rare', 16, 'Grey ash with a red heart that never cools. Falls from the Pyre; brews into fire-proofing.', 'ash'),

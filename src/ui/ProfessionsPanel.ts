@@ -12,7 +12,7 @@ const BLURB: Record<SkillId, string> = {
   fishing: 'Fish the drifting spots on black water. The Cooking Fire renders fish into fillets and flasks.',
   gravedigging: 'Dig pauper’s graves, mounds and tombs for bones, grave goods and a little gold.',
   gardening: 'Plant seeds and saplings in the Mourning Beds and Coffin Patches (Garden, U). They grow while you are away.',
-  alchemy: 'Brew herbs and bone meal into flasks and elixirs in the Alchemist\'s Wing (east of the Chapterhouse) or the Workbench (C, Alchemy tab).',
+  alchemy: 'Brew herbs and bone meal into flasks and elixirs in the Alchemist\'s Wing, through the Chapterhouse\'s east door.',
   salvaging: 'Break spare gear down at the Bone Grinder in the Sexton’s Acre for ingots, planks and reagents. Higher levels add a chance of an extra material.',
 };
 
@@ -89,7 +89,7 @@ export class ProfessionsPanel {
           : id === 'gardening'
             ? 'Plant in the Garden (U).'
             : id === 'alchemy'
-              ? 'Brew at the Workbench (C).'
+              ? 'Brew at the Great Cauldron in the Alchemist\'s Wing.'
               : id === 'salvaging'
                 ? 'Grind gear at the Bone Grinder in the Acre.'
               : 'Every node is open to you.';

@@ -44,13 +44,20 @@ Some of the most polished corners of the game right now (updated 2 October 2026)
 
 ## Your first hour
 
-1. **Start in the Sexton's Acre.** This is a safe gathering area. Click a Coffin-Oak, Copper or Tin Seam, Still Pool, or Pauper's Grave to begin a level 1 skill. Press **P** to see your skills. You can leave gathering for later if you want to fight immediately.
-2. **Walk east into the Chapterhouse.** This safe hub has the Reliquary for your inventory, the Workbench for crafting, the Altar of Ascension, and a Waystone. Press **T** to channel a return here when you need a break.
-3. **Go north into the Hollow Graves.** Hold **WASD** to move, or click ground to set a destination. Click enemies to use your basic attack, aim with the mouse, and use **1–5** for equipped rites. Watch the ground for attack warnings. The count beneath the minimap shows progress toward the next sealed area.
-4. **Collect loot and grow stronger.** Open the Reliquary with **I** to equip items. Spend gold on **Damage** and **Wave Speed** in the HUD. Wave Speed has a separate active dial, so you can turn the pressure back down after buying a tier.
-5. **Read what you meet.** Hover a rite for its cost and targeting advice, open the **Codex** with **K** for enemies and professions, and follow the Covenant counsel tips as they appear.
+Nothing in the first hour is a quest, and nothing can be failed or missed. This is the route most players take, and what the game says along the way. Skip any of it, in any order.
 
-![The Sexton's Acre, a safe place to learn gathering](docs/screenshots/sextons-acre.webp)
+![The opening: one counsel card, the Next line and the Sexton](docs/screenshots/first-hour-opening.webp)
+
+1. **Minutes 0-2: the Sexton's Acre.** You start in a safe gathering yard with no enemies. One Covenant counsel card ("Take your time") explains the controls, and the **Next** line under the minimap offers a single optional suggestion: *Walk east to the Chapterhouse, then north to the Hollow Graves*. The Sexton (a gold **!** over his head; click him or press **E**) explains gathering, Grave Laborers and the daily Contracts when you ask. To begin a skill, click a Coffin-Oak, Copper or Tin Seam, Still Pool or Pauper's Grave; **P** shows your skills. You can leave gathering for later.
+2. **Minutes 2-3: the Chapterhouse.** East of the Acre, a safe hub with the Reliquary for your bag, the Workbench for smelting and tools, the Altar of Ascension, a Waystone and the Prior, who points the way when asked. The east door leads to the **Alchemist's Wing**, where the Apothecary brews. **T** channels a return here whenever you want a break.
+3. **Minutes 3-15: the Hollow Graves.** Go north through the Chapterhouse. Move with **WASD** or by clicking the ground, click an enemy for your basic attack, and use **1-4** and **Right-click** for rites. The first dead you meet bring one short fight card ("Walk among the dead"), and the first corpse brings the necromancer's main lesson: **Exhume** raises it as a thrall. A card about one kind of enemy appears the first time you see it, and **Hurt?** appears when your health drops below half. The first levels come quickly (level 4 after a couple of minutes of fighting in our test runs), and each level can unlock a new rite for the **Grimoire (L)**.
+4. **Minutes 5-20: loot and the first seal.** Loot goes to the **Reliquary (I)**, a 48-slot bag. A green **▲** on a bag item means it beats what you wear; **J** is the Character sheet. When the bag fills, **Sell all junk**, the **Vault (V)** and the **Bone Grinder** make room. The count under the minimap (and the Next line) tracks your first seal: 300 kills in the Graves open the **Marrow Ossuary**, whose dead are tougher and whose loot is better. Elites carry **soul shards**; two wake the Gravedigger King.
+5. **Whenever you like: brewing.** The dead drop **Grave Dust**; four brew a first tonic at the Great Cauldron in the Alchemist's Wing. The Apothecary tells you what to brew and where each reagent falls.
+6. **Read what you meet.** Hover a rite for its cost and targeting advice, and open the **Codex (K)** for enemies, rites and professions.
+
+**How the guidance behaves.** It never blocks you and never repeats itself: one Covenant counsel card at a time; a card that only explains a quiet idea waits until a fight is over, no conversation is open and no panel is up; a card about something you just did (opening the Vault, placing a rite on a key) appears at once; the **Hurt?** card jumps the queue; and a card about a place waits until you are there. The Next line and the area text under the minimap never say the same thing. Drag a card by its header to move it. Every card stays reachable through **Settings → Show tips again** and the **Codex (K)**.
+
+![A short fight card in the Hollow Graves](docs/screenshots/first-hour-first-fight.webp)
 
 **Medium** is the default difficulty for each character. The Brbmuffins developer account can use auto combat on **Easy**; it turns on when switching to Easy unless turned off. **G** toggles it; clicking or moving takes manual control. Auto gathering and AFK professions remain available to every player.
 
@@ -60,7 +67,7 @@ Some of the most polished corners of the game right now (updated 2 October 2026)
 |---|---|
 | A new fight | Follow the main route through the Plague Cloister to the **Cinder Pyre**. Fire enemies leave burning ground; the Cinder Regent's ash circles are safe during Conflagration. After 800 Pyre kills, enter the **Mourning Fen** from the Drowned Nave's west wall and fight the Mire Mother from the dry hummocks. |
 | Finding a build | Collect a five-piece armor set for any discipline. Necromancers can also try a staff, scythe, wand or ritual sickle: each changes the basic attack. Equip a skull focus, grimoire or mourning bell in the off-hand if your weapon leaves that hand free. |
-| Gathering and brewing | Dead in the Hollow Graves drop **Grave Dust**. Four dust make a **Grave-Dust Tonic** in the Alchemist's Wing (or the Workbench's Alchemy tab), with no garden required. Forage Rot-cap in the Cloister, Ash-bloom in the Pyre, and bog myrtle or drowned lotus in the Fen for later recipes. |
+| Gathering and brewing | Dead in the Hollow Graves drop **Grave Dust**. Four dust make a **Grave-Dust Tonic** at the Great Cauldron in the Alchemist's Wing, with no garden required. Forage Rot-cap in the Cloister, Ash-bloom in the Pyre, and bog myrtle or drowned lotus in the Fen for later recipes. |
 | A longer goal | Fill Sexton's Contracts, grow herbs in the Acre, send Grave Laborers to work, and unlock capes and companions as your skills rise. The **Codex (K)** lists enemies, weapons, brews, reagents and professions. |
 
 The landing page previews the fire realm and its enemies with a lightweight purple fire glow and drifting embers. **Settings → Reduced motion** tones down effects in game if you prefer a quieter screen.
@@ -78,7 +85,9 @@ Nothing in Death Muffin is a quest, and nothing can be failed or missed. If you 
 | **The Apothecary** | The Alchemist's Wing, at her counter (through the Chapterhouse's east door) | What to brew, where each reagent falls, and how elixirs and tonics work. |
 | **The Next line** | Under the minimap | One short suggestion from the same advice, such as *Hollow Graves: 172 / 300 to open the Marrow Ossuary*, *Your laborers are ready in the Acre* or *The Gravedigger King waits at the King's Grave, 2 soul shards*. A gold marker or arrow on the minimap points the way. |
 
-**Talking.** Click a person, or stand close and press **E**. They turn to face you, and a gold **!** over their head means they have something new to say (a seal you have broken, a king you have buried, a full bag, laborers waiting). Every conversation has three or four buttons: *Where should I go next?*, *Tell me about...* and *Goodbye*. Their answers use your real numbers: your level, your kill counts, your shards, your bag. Press **Esc**, press **E** again, or walk away to end a conversation.
+**Talking.** Click a person, or stand close and press **E**. They turn to face you, and a gold **!** over their head means they have something new to say (a seal you have broken, a king you have buried, a full bag, laborers waiting). Every conversation has three or four buttons: *Where should I go next?*, *Tell me about...* and *Goodbye*. Their answers use your real numbers: your level, your kill counts, your shards, your bag. The camera eases north while a conversation card is open, so you and the speaker stay in view below it. Press **Esc**, press **E** again, or walk away to end a conversation.
+
+![Talking to the Sexton: the camera keeps him and you below the card](docs/screenshots/first-hour-sexton-talk.webp)
 
 **The Next line.** It updates as you play and shows only the single best suggestion. Press its **x** to hide the current one; a different suggestion will appear when your situation changes. **Settings** can turn the line off, and turn the minimap marker off separately. The **Codex (K)** has a **People** tab listing who stands where and what to ask them. What you have heard is remembered per character in this browser.
 
@@ -391,7 +400,7 @@ Ashes buy permanent **Covenant Boons** at the Altar, including more health, chea
 
 When co-op is available, joining places you in a world with room for up to **10 players**. Players in the same world share chat, combat, gathering node depletion, and boss activity; each character receives their own finds and progression. Press **Enter** to chat. If the realtime service is unavailable, the game continues as a solo world.
 
-**Covenant counsel** cards appear when you first encounter important systems. You can move them, turn them off in Settings, or choose **Show tips again** there. Hover or focus an ability icon for its cost, target, effects, and combat tip. The **Codex (K)** records rites, enemies, bosses, and professions you have encountered.
+**Covenant counsel** cards appear when you first encounter important systems, one at a time and at a calm moment (see *Your first hour*). You can move them, turn them off in Settings, or choose **Show tips again** there. Hover or focus an ability icon for its cost, target, effects, and combat tip. The **Codex (K)** records rites, enemies, bosses, and professions you have encountered.
 
 ![A Covenant counsel tip in game](docs/screenshots/covenant-counsel.webp)
 

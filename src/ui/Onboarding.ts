@@ -1,11 +1,17 @@
 import { onSettingsChange, settings, updateSettings } from '../app/settings';
 import { browserStorage, type StorageLike } from '../gameplay/codexJournal';
+import {
+  NOT_BUSY, canShow, groupOf, makeEntry, pickNext, prune, shouldPreempt, shouldYield, showMs,
+  type Busy, type CadenceState, type QueuedTip, type ShownCard, type TipKind,
+} from './counselCadence';
 
 /**
  * First-time contextual tips, shown once per character. A small reliquary card
  * movable by its header: it never takes focus or pauses play, dismisses on click or
- * after at least 25s (longer cards stay longer), and queues so two tips never stack. "Don't show tips" (here or in
- * Settings) turns the whole sequence off via app/settings `tips`.
+ * after at least 25s (fight-time cards 14s; longer cards stay longer), and queues so two tips never stack.
+ * WHEN a queued tip may appear is decided by ui/counselCadence.ts (calm tips wait for a calm moment, tips about one
+ * subject keep their distance, stale ones are dropped). "Don't show tips" (here or in Settings) turns the whole
+ * sequence off via app/settings `tips`; Settings -> Show tips again replays them.
  */
 export type TipId =
   | 'minimap'
@@ -162,12 +168,12 @@ export const TIPS: Record<TipId, Tip> = {
     body: 'Choose a class here whenever you want. Your level, gold, items and permanent progress stay with the same character. Changing discipline returns you safely to the Chapterhouse with its new model and passives.',
   },
   welcome: {
-    title: 'The Sexton\'s Acre',
-    body: 'Begin at your own pace: this gathering sanctuary has <b>no enemies</b>. Click a tree, ore seam, fishing spot or grave to work it; <kbd>P</kbd> opens Skills. When you want combat, walk <b>east</b> to the Chapterhouse, then <b>north</b> through its open gate into the Hollow Graves. <kbd>T</kbd> returns you to the Chapterhouse. <kbd>Esc</kbd> sets difficulty and graphics.',
+    title: 'Take your time',
+    body: 'This gathering sanctuary has <b>no enemies</b>. <kbd>Click</kbd> a tree, ore seam, pool or grave to work it (<kbd>P</kbd> shows your Skills), or walk on whenever you like. Move with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or by clicking the ground. The <b>Next</b> line under the minimap offers one optional suggestion at a time. <kbd>Esc</kbd> opens Settings.',
   },
   move: {
     title: 'Walk among the dead',
-    body: 'Hold <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to walk freely. You can also <kbd>Click</kbd> the ground to walk to that spot; holding a movement key takes over. Aim with the mouse and <kbd>Click</kbd> an enemy for your basic attack. Press <kbd>1</kbd>–<kbd>4</kbd> for rites, <kbd>Right-click</kbd> (or <kbd>5</kbd>) for your fifth rite, or <kbd>Shift</kbd>+<kbd>Click</kbd> to attack without moving.',
+    body: 'Aim with the mouse and <kbd>Click</kbd> an enemy for your basic attack; <kbd>Shift</kbd>+<kbd>Click</kbd> attacks without moving. Press <kbd>1</kbd>–<kbd>4</kbd> for rites and <kbd>Right-click</kbd> (or <kbd>5</kbd>) for your fifth. Watch the ground for warning rings and step out of them.',
   },
   exhume: {
     title: 'A corpse lies near',
@@ -427,7 +433,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   reagent: {
     title: 'Reagents',
-    body: 'Grave Dust, ectoplasm, bile, ash and boss ichor are <b>Alchemy reagents</b>. Take them to the <b>Alchemist\'s Wing</b> (the Chapterhouse\'s east door; the Workbench <kbd>C</kbd> Alchemy tab works too): four Grave Dust brew a tonic at level 1, no garden needed. Better reagents make better elixirs as your Alchemy rises; every brew is an Elixir or a Tonic you drink with <kbd>Z</kbd> or <kbd>X</kbd>.',
+    body: 'Grave Dust, ectoplasm, bile, ash and boss ichor are <b>Alchemy reagents</b>. Take them to the <b>Alchemist\'s Wing</b> (the Chapterhouse\'s east door): four Grave Dust brew a tonic at level 1, no garden needed. Better reagents make better elixirs as your Alchemy rises; every brew is an Elixir or a Tonic you drink with <kbd>Z</kbd> or <kbd>X</kbd>.',
   },
   tool: {
     title: 'Gathering tools',
@@ -463,7 +469,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   bag_full: {
     title: 'Your bag is full',
-    body: 'Gathering stops when nothing more fits. Open the Reliquary (<kbd>I</kbd>) to sell or equip things, store materials in the Vault (<kbd>V</kbd>, in the Chapterhouse), grind spare gear at the Bone Grinder, or take materials to the stations: the Bone Kiln, the Sawpit and the Cooking Fire stand by the Acre door.',
+    body: 'Nothing more fits: gathering stops and loot stays on the ground until you free a slot. Sell junk in the Reliquary (<kbd>I</kbd>), move materials to the Vault (<kbd>V</kbd>), or grind spare gear at the Bone Grinder in the Acre.',
   },
   skill_up: {
     title: 'A skill rises',
@@ -475,7 +481,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   bag_filling: {
     title: 'Your Reliquary is filling',
-    body: 'Make room before it fills: the <b>Vault</b> (<kbd>V</kbd>) in the Chapterhouse keeps materials and gear for every character on this account, and the <b>Bone Grinder</b> in the Acre turns spare gear into ingots, planks and reagents. In the Reliquary (<kbd>I</kbd>), <b>Sell all junk</b> clears common and uncommon gear, and the padlock keeps an item out of every bulk button.',
+    body: 'Make room before it fills: the <b>Vault</b> (<kbd>V</kbd>, in the Chapterhouse or the Acre) keeps materials and gear for every character on this account, and the <b>Bone Grinder</b> in the Acre turns spare gear into ingots, planks and reagents. In the Reliquary (<kbd>I</kbd>), <b>Sell all junk</b> clears common and uncommon gear, and the padlock keeps an item out of every bulk button.',
   },
   vault: {
     title: 'The Ossuary Vault',
@@ -543,16 +549,29 @@ export const TIPS: Record<TipId, Tip> = {
   },
 };
 
-const SHOW_MS = 25000;
-const GAP_MS = 500;
+/** How often a waiting tip re-checks whether the moment is right. */
+const PUMP_MS = 1000;
+/** Default card position: top-left under the hero frame. The left-edge readouts (Kill Chain, Bone Ward, brews) start below it. */
+const DEFAULT_X = 18;
+const DEFAULT_Y = 70;
+/** Showing a tip also counts these as seen: the Acre card is the same lesson as the opening welcome. */
+const ALSO_SEEN: Partial<Record<TipId, TipId[]>> = { welcome: ['acre'] };
 const tipsKey = (characterId: number) => `dm_tips_v1_${characterId}`;
 const POSITION_KEY = 'dm_counsel_position_v1';
 const TIP_IDS = Object.keys(TIPS) as TipId[];
 
 export class Onboarding {
   private seen = new Set<TipId>();
-  private queue: TipId[] = [];
+  private queue: QueuedTip[] = [];
+  private seq = 0;
   private pending = new Set<TipId>();
+  private shown: ShownCard | null = null;
+  private shownEntry: QueuedTip | null = null;
+  private lastClosedAt: number;
+  private groupShownAt: Record<string, number> = {};
+  private pumpTimer = 0;
+  /** What the scene is busy with right now (a fight, a conversation, a banner, an open panel); calm tips wait it out. */
+  busy: () => Busy = () => NOT_BUSY;
   private el: HTMLDivElement | null = null;
   private timers = new Set<number>();
   private hideTimer = 0;
@@ -567,8 +586,12 @@ export class Onboarding {
     private root: HTMLElement,
     characterId: number,
     private storage: StorageLike | null = browserStorage(),
+    /** Milliseconds on any monotonic clock (the scene passes its game clock); only differences matter. */
+    private clock: () => number = () => performance.now(),
   ) {
     this.key = tipsKey(characterId);
+    // A fresh session may open with its first card after about three seconds, not twenty.
+    this.lastClosedAt = this.clock() - 17_000;
     try {
       const raw = this.storage?.getItem(this.key);
       const list: unknown = raw ? JSON.parse(raw) : [];
@@ -586,28 +609,80 @@ export class Onboarding {
     });
   }
 
-  /** Show a tip once per character (no-op when seen, queued, or tips are off). */
-  show(id: TipId, delayMs = 0, priority = false) {
-    if (!settings.tips || this.seen.has(id) || this.pending.has(id) || this.queue.includes(id)) return;
+  /**
+   * Ask for a tip: once per character, never twice at the same time. Whether and when it appears is the cadence's call
+   * (counselCadence.ts); `opts.kind` overrides the tip's usual kind for one call (the Codex lectern is "asked", the 40-kill
+   * nudge is "calm"), and `true`/`bump` puts it ahead of others of its kind.
+   */
+  show(id: TipId, delayMs = 0, opts: boolean | { kind?: TipKind; bump?: boolean } = {}) {
+    if (!settings.tips || this.seen.has(id) || this.pending.has(id) || this.queue.some((t) => t.id === id) || this.shown?.id === id) return;
     if (delayMs > 0) {
       this.pending.add(id);
       this.later(() => {
         this.pending.delete(id);
-        this.show(id, 0, priority);
+        this.show(id, 0, opts);
       }, delayMs);
       return;
     }
-    if (this.el) {
-      if (priority) this.queue.unshift(id);
-      else this.queue.push(id);
-    }
-    else this.present(id);
+    const o = typeof opts === 'boolean' ? { bump: opts } : opts;
+    const entry = makeEntry(id, this.clock(), ++this.seq, !!o.bump);
+    if (o.kind) entry.kind = o.kind;
+    this.queue.push(entry);
+    this.pump();
   }
 
-  private present(id: TipId) {
-    if (!settings.tips || this.seen.has(id)) return this.next();
+  private cadence(over: Partial<CadenceState> = {}): CadenceState {
+    return { now: this.clock(), lastClosedAt: this.lastClosedAt, groupShownAt: this.groupShownAt, busy: this.busy(), ...over };
+  }
+
+  /** Decide, now, whether the card on screen should step aside and whether the next waiting tip may open; re-check in a second. */
+  private pump() {
+    this.cancel(this.pumpTimer);
+    this.pumpTimer = 0;
+    if (!settings.tips) return;
+    this.queue = prune(this.queue, this.clock());
+    if (this.el && this.shown && this.shownEntry) {
+      const s = this.cadence();
+      const waiting = pickNext(this.queue, this.cadence({ lastClosedAt: -Infinity }));
+      if (shouldPreempt(this.shown, waiting, s) && waiting) {
+        // The urgent tip takes the place at once (it must not wait out the gap the swap itself starts, or the old card would return).
+        this.sendBack();
+        this.queue = this.queue.filter((t) => t !== waiting);
+        this.present(waiting);
+      } else if (shouldYield(this.shown, s)) this.sendBack();
+    }
+    if (!this.el) {
+      const next = pickNext(this.queue, this.cadence());
+      if (next) {
+        this.queue = this.queue.filter((t) => t !== next);
+        this.present(next);
+      }
+    }
+    if (this.queue.length) this.pumpTimer = this.later(() => this.pump(), PUMP_MS);
+  }
+
+  /** The card on screen leaves before it was read (a fight began, something urgent came): it returns at the front of the line. */
+  private sendBack() {
+    const entry = this.shownEntry;
+    if (entry) {
+      this.seen.delete(entry.id as TipId);
+      for (const extra of ALSO_SEEN[entry.id as TipId] ?? []) this.seen.delete(extra);
+      this.persist();
+      this.queue.unshift({ ...entry, queuedAt: this.clock() });
+    }
+    this.dismiss();
+  }
+
+  private present(entry: QueuedTip) {
+    const id = entry.id as TipId;
+    if (!settings.tips || this.seen.has(id)) return;
     this.seen.add(id);
+    for (const extra of ALSO_SEEN[id] ?? []) this.seen.add(extra);
     this.persist();
+    this.shown = { id, kind: entry.kind, shownAt: this.clock() };
+    this.shownEntry = entry;
+    const group = groupOf(id);
+    if (group) this.groupShownAt[group] = this.clock();
     const tip = TIPS[id];
     const body = tip.body.replace(/\{key:(\w+)\}/g, (_m, ability: string) => {
       const k = this.keyFor?.(ability);
@@ -615,11 +690,12 @@ export class Onboarding {
     });
     const el = document.createElement('div');
     el.className = 'cw-plate cw-tip';
+    el.dataset.kind = entry.kind;
     el.setAttribute('role', 'status');
     el.setAttribute('aria-live', 'polite');
     // Give each card at least 25 seconds and longer counsel more reading time.
     const words = body.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
-    const ms = Math.max(SHOW_MS, 5000 + words * 600);
+    const ms = showMs(entry.kind, words);
     el.style.setProperty('--tip-ms', `${ms}ms`);
     el.innerHTML = `
       <div class="kicker" data-move role="button" tabindex="0" aria-label="Move Covenant counsel card" title="Drag this card, or use arrow keys"><span>⋮⋮ Covenant counsel</span><span class="move-hint">Move this card</span></div>
@@ -698,14 +774,21 @@ export class Onboarding {
     this.hideTimer = this.later(() => this.dismiss(), remaining);
   }
 
-  private place(el: HTMLElement, x = this.position?.x ?? 18, y = this.position?.y ?? 100) {
+  /**
+   * Put the card on screen. Without explicit coordinates it goes where the player last dragged it, or to the default corner.
+   */
+  private place(el: HTMLElement, x?: number, y?: number) {
     const bounds = el.getBoundingClientRect();
-    this.position = {
-      x: Math.max(8, Math.min(x, window.innerWidth - bounds.width - 8)),
-      y: Math.max(8, Math.min(y, window.innerHeight - bounds.height - 8)),
-    };
-    el.style.left = `${this.position.x}px`;
-    el.style.top = `${this.position.y}px`;
+    const px = x ?? this.position?.x ?? DEFAULT_X;
+    // In co-op the party list fills the top-left corner: start under it.
+    const party = document.querySelector<HTMLElement>('.hud-party');
+    const below = party && party.childElementCount ? party.getBoundingClientRect().bottom + 8 : 0;
+    const py = y ?? this.position?.y ?? Math.max(DEFAULT_Y, below);
+    const cx = Math.max(8, Math.min(px, window.innerWidth - bounds.width - 8));
+    const cy = Math.max(8, Math.min(py, window.innerHeight - bounds.height - 8));
+    if (x !== undefined || y !== undefined) this.position = { x: cx, y: cy };
+    el.style.left = `${cx}px`;
+    el.style.top = `${cy}px`;
   }
 
   private savePosition() {
@@ -720,18 +803,17 @@ export class Onboarding {
     this.cancel(this.hideTimer);
     el.classList.add('out');
     this.later(() => el.remove(), 220);
-    this.later(() => this.next(), GAP_MS);
-  }
-
-  private next() {
-    const id = this.queue.shift();
-    if (id && !this.el) this.present(id);
+    this.shown = null;
+    this.shownEntry = null;
+    this.lastClosedAt = this.clock();
+    this.later(() => this.pump(), 300);
   }
 
   /** Forget which tips this character has seen, so the whole sequence plays again. */
   reset() {
     this.clear();
     this.seen.clear();
+    this.groupShownAt = {};
     this.persist();
   }
 
@@ -739,6 +821,9 @@ export class Onboarding {
   private clear() {
     this.queue = [];
     this.pending.clear();
+    this.shown = null;
+    this.shownEntry = null;
+    this.pumpTimer = 0;
     for (const t of this.timers) window.clearTimeout(t);
     this.timers.clear();
     this.el?.remove();

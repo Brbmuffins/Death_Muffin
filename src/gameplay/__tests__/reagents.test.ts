@@ -76,9 +76,9 @@ describe('reagents: catalogue', () => {
     expect(codexReagentRecipes()).toHaveLength(REAGENT_RECIPES.length);
   });
 
-  it('the first-pickup counsel tip points at the Workbench Alchemy tab', () => {
-    expect(TIPS.reagent.body).toMatch(/Workbench/);
-    expect(TIPS.reagent.body).toMatch(/Alchemy tab/);
+  it('the first-pickup counsel tip points at the Alchemist\'s Wing, not the Workbench', () => {
+    expect(TIPS.reagent.body).toMatch(/Alchemist.s Wing/);
+    expect(TIPS.reagent.body).not.toMatch(/Workbench/);
   });
 });
 
