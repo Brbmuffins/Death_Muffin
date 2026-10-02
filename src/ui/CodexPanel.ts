@@ -26,6 +26,9 @@ import {
   CODEX_STATS,
   CODEX_STATS_COUNSEL,
   CODEX_AFFIX_COUNSEL,
+  CODEX_LEGION_COUNSEL,
+  codexLegionExamples,
+  codexLegionTiers,
   codexAffixRows,
   CODEX_WEAPON_TIERS,
   COVENANT_LORE,
@@ -243,7 +246,16 @@ export class CodexPanel {
     const rows = codexAffixRows()
       .map((r) => `<tr class="${r.necro ? 'necro' : ''}"><td>${r.necro ? '\u2020 ' : ''}${r.word}</td><td>${r.low}</td><td>${r.high}</td></tr>`)
       .join('');
-    return `<p class="tip">${CODEX_AFFIX_COUNSEL}</p><table class="cw-codex-table"><thead><tr><th>Name</th><th>Item level 10</th><th>Item level 40</th></tr></thead><tbody>${rows}</tbody></table>`;
+    const legion = `
+      <article class="cw-codex-entry">
+        <div class="txt">
+          <div class="hd"><h3>The Legion kit</h3><span class="meta">Y · thrall gear</span></div>
+          <p>${CODEX_LEGION_COUNSEL}</p>
+          <table class="cw-codex-table"><thead><tr><th>Spare piece</th><th>Slot</th><th>Stat points</th><th>Gives your thralls</th></tr></thead><tbody>${codexLegionExamples().map((r) => `<tr><td>${r.item}</td><td>${r.slot}</td><td>${r.points}</td><td>${r.gives}</td></tr>`).join('')}</tbody></table>
+          <table class="cw-codex-table"><thead><tr><th>Reinforce tier</th><th>Gold</th><th>Total</th><th>Legion bonus</th></tr></thead><tbody>${codexLegionTiers().map((r) => `<tr><td>${r.tier}</td><td>${r.cost.toLocaleString()}</td><td>${r.total.toLocaleString()}</td><td>${r.bonus}</td></tr>`).join('')}</tbody></table>
+        </div>
+      </article>`;
+    return `<p class="tip">${CODEX_AFFIX_COUNSEL}</p><table class="cw-codex-table"><thead><tr><th>Name</th><th>Item level 10</th><th>Item level 40</th></tr></thead><tbody>${rows}</tbody></table>${legion}`;
   }
 
   private sets() {

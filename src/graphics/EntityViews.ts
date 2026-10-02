@@ -14,6 +14,8 @@ import { wingClock, type WingOpts } from './wingFlap';
 import { smoothSpeed, stepSpeed, turnToward } from './locomotion';
 import { separateBodies, type CrowdBody } from './crowdSeparation';
 import { hitstop } from './hitstop';
+import { disposeProp, upgradeThrallProp } from './gearProps';
+import { gearTier } from '../content/gear';
 import { knockActive, knockImpulse, settleDepth, stepKnock, type Knock } from './knockback';
 
 const ENEMY_SLUG: Record<EnemyId, CreatureSlug> = {
@@ -112,6 +114,16 @@ const THRALL_LOOK: Partial<Record<ThrallKind, { tint: number; emissive: number; 
   plaguebearer: { tint: 0xb9c48a, emissive: 0x5a6a18, glow: 0.35, scale: 0.8, ring: 0.7 },
 };
 
+/** What the legion's kit looks like on a thrall (gameplay/legionKit.ts decides the pieces; this only dresses the model). */
+export interface ThrallKitLook {
+  weapon?: { itemId: string; rarity?: string };
+  armor?: { itemId: string; rarity?: string };
+}
+/** Kinds with the humanoid thrall skeleton: the only ones that wear body tint and carry the kit's bow, staff or blade. */
+const KIT_BODIES = new Set<ThrallKind>(['warrior', 'shieldbearer', 'archer', 'bonemage']);
+/** How much of the kit armour's colour washes over the chest and hands: enough to read as plate or leather, far short of a recolour. */
+const KIT_ARMOR_STRENGTH = 0.32;
+
 interface View {
   c: Creature;
   x: number;
@@ -204,9 +216,9 @@ function killAffixFx(v: View) {
   v.affixFx = undefined;
 }
 
-function boneSword() {
+function boneSword(color = 0x6f6a74) {
   const g = new THREE.Group();
-  const metal = new THREE.MeshStandardMaterial({ color: 0x6f6a74, metalness: 0.7, roughness: 0.45 });
+  const metal = new THREE.MeshStandardMaterial({ color, metalness: 0.7, roughness: 0.45 });
   const blade = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.95, 0.02), metal);
   blade.position.y = 0.55;
   const guard = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.05, 0.05), metal);
@@ -281,6 +293,8 @@ export class EntityViews {
     private effects: Effects,
     /** The discipline that raised a thrall (its owner's), so each necromancer's legion looks like its own. */
     private legionOf?: (owner: string) => DisciplineId | null,
+    /** The kit a thrall's owner has given the legion, or null (only your own legion wears yours). Read when a thrall is raised. */
+    private kitOf?: (owner: string) => ThrallKitLook | null,
   ) {
     scene.add(this.group);
   }
@@ -382,19 +396,40 @@ export class EntityViews {
     // Discipline legions have their own meshes; thralls raised from corpses (archers, mages, hounds, bearers) keep theirs.
     const legion = kindLook ? null : LEGION[t.kind === 'wraith' ? 'mourner' : (this.legionOf?.(t.owner) ?? '')];
     const look = kindLook;
+    // The Legion kit dresses thralls raised from now on, the same ones that carry its stats.
+    const kit = KIT_BODIES.has(t.kind) ? (this.kitOf?.(t.owner) ?? null) : null;
     const c = new Creature(legion?.slug ?? THRALL_SLUG[t.kind], {
+      gearTint: !!kit?.armor,
       tint: look?.tint ?? legion?.tint ?? (wraith ? 0xb9c4ff : 0xf4ecff),
       emissive: look?.emissive ?? legion?.emissive ?? (wraith ? 0x8f9ed1 : 0x1f8f86),
       emissiveIntensity: wraith ? 1.1 : (look?.glow ?? legion?.glow ?? 0.18) + (t.empowered ? 0.22 : 0),
       spectral: wraith,
       scale: kindLook?.scale ?? (t.kind === 'shieldbearer' ? 1.1 : 1),
     });
+    // The kit weapon's metal colours the warriors' blade; the archer's bow and the bone mage's staff become the baked GLB props.
+    const weapon = kit?.weapon ? gearTier(kit.weapon.itemId, kit.weapon.rarity) : null;
+    const own = (prop: THREE.Group) => {
+      // Props are private to one thrall: free them with it (Creature.dispose only knows its own body).
+      const dispose = c.dispose.bind(c);
+      c.dispose = () => { dispose(); disposeProp(prop); };
+      return prop;
+    };
     if ((t.kind === 'warrior' || t.kind === 'shieldbearer') && (!legion || legion.armed)) {
       // Blade carried up and forward; `follow` keeps it from whipping around with the wrist while walking.
-      c.attach('R_Hand', boneSword(), new THREE.Vector3(0, 1, 0.55), 0.6);
+      c.attach('R_Hand', weapon ? own(boneSword(weapon.color)) : boneSword(), new THREE.Vector3(0, 1, 0.55), 0.6);
       c.attach('L_Hand', roundShield(t.kind === 'shieldbearer' ? 0.5 : 0.32), new THREE.Vector3(0, 1, 0), 0.5);
-    } else if (t.kind === 'archer') c.attach('L_Hand', boneBow(), new THREE.Vector3(0, 1, 0), 0.5);
-    else if (t.kind === 'bonemage') c.attach('R_Hand', boneStaff(), new THREE.Vector3(0, 1, 0.12), 0.15);
+    } else if (t.kind === 'archer') {
+      const bow = boneBow();
+      c.attach('L_Hand', kit?.weapon ? own(upgradeThrallProp(bow, 'bow', kit.weapon.itemId, kit.weapon.rarity)) : bow, new THREE.Vector3(0, 1, 0), 0.5);
+    } else if (t.kind === 'bonemage') {
+      const staff = boneStaff();
+      c.attach('R_Hand', kit?.weapon ? own(upgradeThrallProp(staff, 'staff', kit.weapon.itemId, kit.weapon.rarity)) : staff, new THREE.Vector3(0, 1, 0.12), 0.15);
+    }
+    // Kit armour tints the torso and hands in the piece's metal colour, lightly (the thrall stays bone).
+    if (kit?.armor) {
+      const tier = gearTier(kit.armor.itemId, kit.armor.rarity);
+      for (const region of ['chest', 'hands'] as const) c.setRegionTint(region, { color: tier.color, glow: tier.glow, strength: KIT_ARMOR_STRENGTH });
+    }
     this.group.add(c.root);
     const v: View = { c, x: t.x, z: t.z, facing: t.facing, lastState: '', kind: t.kind, animSkip: 0, animDt: 0, float: wraith };
     v.ring = this.effects.decal({

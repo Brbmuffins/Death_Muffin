@@ -9,6 +9,8 @@ const ITEMS = {
   wand_iron: { type: 'weapon', rarity: 'uncommon', stack: 1 },
   helm_copper: { type: 'armor_head', rarity: 'common', stack: 1 },
   ring_copper: { type: 'ring', rarity: 'common', stack: 1 },
+  chest_iron: { type: 'armor_chest', rarity: 'rare', stack: 1 },
+  grimoire_bone: { type: 'offhand', rarity: 'common', stack: 1 },
   flask_hp_minor: { type: 'consumable', rarity: 'common', stack: 20 },
   ore_copper: { type: 'material', rarity: 'common', stack: 250 },
   log_oak: { type: 'material', rarity: 'common', stack: 250 },
@@ -71,6 +73,8 @@ function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot =
     if (sql.startsWith('UPDATE inventory SET slot_index = ?')) {
       const row = inv.find((r) => r.id === p[p.length - 1]);
       if (inv.some((r) => r !== row && r.character_id === row.character_id && r.slot_index === p[0])) throw new Error('Duplicate entry for uq_char_slot');
+      // The live table also has UNIQUE (character_id, equipped_slot): a name can be held by one row at a time (NULLs are free).
+      if (sql.includes('equipped = 1') && p[1] != null && inv.some((r) => r !== row && r.character_id === row.character_id && r.equipped_slot === p[1])) throw new Error('Duplicate entry for uq_inventory_equipped_slot');
       row.slot_index = p[0];
       if (sql.includes('equipped = 1')) Object.assign(row, { equipped: 1, equipped_slot: p[1] });
       else if (sql.includes('equipped = 0')) Object.assign(row, { equipped: 0, equipped_slot: null });

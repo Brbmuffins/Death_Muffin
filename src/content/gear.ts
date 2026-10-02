@@ -1,5 +1,6 @@
 import type { InventorySlot, ItemType } from '../net/types';
 import { ARMOR_BY_ID } from './armorSets';
+import { isKitSlot } from '../gameplay/legionRules';
 
 /** The nine equipment slots the server knows (reservedSlots in /api/inventory/equip). */
 export type EquipSlot = 'head' | 'chest' | 'legs' | 'feet' | 'hands' | 'main_hand' | 'off_hand' | 'ring' | 'trinket';
@@ -37,11 +38,11 @@ export function equipSlotOf(s: Pick<InventorySlot, 'item_type' | 'equipped_slot'
   return TYPE_TO_SLOT[s.item_type] ?? null;
 }
 
-/** What is currently worn, by slot. */
+/** What is currently worn, by slot. The Legion kit (slots 120+) is equipped too, but on the thralls, never on you. */
 export function equippedBySlot(slots: readonly InventorySlot[]): Partial<Record<EquipSlot, InventorySlot>> {
   const out: Partial<Record<EquipSlot, InventorySlot>> = {};
   for (const s of slots) {
-    if (!s.equipped) continue;
+    if (!s.equipped || isKitSlot(s.slot_index)) continue;
     const slot = equipSlotOf(s);
     if (slot) out[slot] = s;
   }

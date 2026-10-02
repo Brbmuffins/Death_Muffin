@@ -1,6 +1,6 @@
 import { AREAS, AREA_ORDER, BOSS_SUMMON_SHARDS, type AreaId } from '../content/areas';
 import { ASCENSION, BOONS, ashesForRun, boonBlocked, boonCost, boonEffects, type BoonId, type BoonRanks } from '../content/ascension';
-import { DAMAGE_UPGRADE, WAVE_UPGRADE } from '../content/upgrades';
+import { DAMAGE_UPGRADE, LEGION_UPGRADE, WAVE_UPGRADE } from '../content/upgrades';
 import { BOSSES, isBossId } from '../content/bosses';
 
 /**
@@ -19,6 +19,8 @@ export interface NecroState {
   damageTier: number;
   waveTierOwned: number;
   waveTierActive: number;
+  /** Legion reinforcement tiers bought this run (gold sink for the thrall kit; resets on Ascension like the other tiers). */
+  legionTier: number;
   soulShards: number;
   areaKills: Partial<Record<AreaId, number>>;
   unlockedAreas: AreaId[];
@@ -58,6 +60,7 @@ export function blankState(): NecroState {
     damageTier: 0,
     waveTierOwned: 0,
     waveTierActive: 0,
+    legionTier: 0,
     soulShards: 0,
     areaKills: {},
     unlockedAreas: ['chapterhouse', 'graves'],
@@ -90,6 +93,11 @@ export function damageCost(s: NecroState): number | null {
 export function waveCost(s: NecroState): number | null {
   if (s.waveTierOwned >= WAVE_UPGRADE.maxTier) return null;
   return Math.round(WAVE_UPGRADE.cost(s.waveTierOwned) * boonEffects(s.boons).waveCostMult);
+}
+
+export function legionCost(s: NecroState): number | null {
+  if (s.legionTier >= LEGION_UPGRADE.maxTier) return null;
+  return LEGION_UPGRADE.cost(s.legionTier);
 }
 
 /** Kills needed in the area before `id`'s seal breaks (Swift Seals lowers it). */
@@ -156,13 +164,14 @@ export function applySave(state: NecroState, input: SaveInput, opts?: RuleOpts):
   return { ok: true, state: s };
 }
 
-export function purchase(state: NecroState, gold: number, upgrade: 'damage' | 'wave'): RuleResult<{ gold: number; cost: number }> {
+export function purchase(state: NecroState, gold: number, upgrade: 'damage' | 'wave' | 'legion'): RuleResult<{ gold: number; cost: number }> {
   const s = copy(state);
-  const cost = upgrade === 'damage' ? damageCost(s) : upgrade === 'wave' ? waveCost(s) : null;
-  if (upgrade !== 'damage' && upgrade !== 'wave') return { ok: false, error: 'Unknown upgrade' };
+  if (upgrade !== 'damage' && upgrade !== 'wave' && upgrade !== 'legion') return { ok: false, error: 'Unknown upgrade' };
+  const cost = upgrade === 'damage' ? damageCost(s) : upgrade === 'wave' ? waveCost(s) : legionCost(s);
   if (cost === null) return { ok: false, error: 'Already at max tier' };
   if (gold < cost) return { ok: false, error: `Not enough gold (need ${cost})` };
   if (upgrade === 'damage') s.damageTier++;
+  else if (upgrade === 'legion') s.legionTier++;
   else {
     s.waveTierOwned++;
     s.waveTierActive = s.waveTierOwned;
@@ -212,6 +221,7 @@ export function ascend(state: NecroState): RuleResult<{ earned: number }> {
   s.damageTier = fx.startDamageTier;
   s.waveTierOwned = 0;
   s.waveTierActive = 0;
+  s.legionTier = 0;
   s.soulShards = fx.startShards;
   s.areaKills = {};
   s.unlockedAreas = ['chapterhouse', 'graves'];
@@ -286,6 +296,7 @@ export function normalise(raw: unknown): NecroState {
   return {
     ...b,
     ...r,
+    legionTier: clampInt(r.legionTier, 0, LEGION_UPGRADE.maxTier),
     areaKills: { ...(r.areaKills ?? {}) },
     unlockedAreas: Array.isArray(r.unlockedAreas) && r.unlockedAreas.length ? [...r.unlockedAreas] : b.unlockedAreas,
     boons: { ...(r.boons ?? {}) },

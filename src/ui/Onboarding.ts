@@ -108,6 +108,7 @@ export type TipId =
   | 'boss_regent'
   | 'tool'
   | 'toolBelt'
+  | 'legion'
   | 'acolyte'
   | 'templar'
   // Professions (docs/PROFESSIONS-ROADMAP.md §11).
@@ -442,6 +443,10 @@ export const TIPS: Record<TipId, Tip> = {
   toolBelt: {
     title: 'The tool belt',
     body: 'Four belt slots hold one tool each: hatchet, pickaxe, rod and spade. A belted tool counts for gathering exactly like one in your bag (the best of both wins) and takes <b>no bag space</b>. Select a tool and press <b>Put on belt</b>, or double-click it; double-click it on the belt to take it off, which needs a free bag slot. Skills (<kbd>P</kbd>) shows which tool each skill is using.',
+  },
+  legion: {
+    title: 'Spare gear for your legion',
+    body: 'That weapon or armor can arm your thralls instead of being salvaged. Open the <b>Legion</b> (<kbd>Y</kbd>, or the button in the Reliquary): one <b>Weapon</b> and one <b>Armour</b> slot, kept outside your bag. Its stats become thrall damage, health and attack speed, and each spare piece shows <b>▲</b> or <b>▼</b> against what the legion wears. Spend gold there to <b>Reinforce</b> the bindings. Thralls you raise from then on carry it.',
   },
   ghoul: {
     title: 'Barrow Ghoul',

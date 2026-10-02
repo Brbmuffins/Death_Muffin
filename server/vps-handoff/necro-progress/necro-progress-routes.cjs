@@ -24,6 +24,7 @@ function publicState(s) {
     damageTier: s.damageTier,
     waveTierOwned: s.waveTierOwned,
     waveTierActive: s.waveTierActive,
+    legionTier: s.legionTier,
     soulShards: s.soulShards,
     areaKills: s.areaKills,
     unlockedAreas: s.unlockedAreas,

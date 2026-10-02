@@ -10,6 +10,9 @@ import { necroWeaponTooltip } from '../content/necroWeapons';
 import { ItemLocks, junkSlots } from '../gameplay/itemLocks';
 import { isSalvageGear } from '../gameplay/salvageRules';
 import { BELT_KINDS, toolKindOf } from '../gameplay/gatheringRules';
+import { kitCandidate } from '../gameplay/legionKit';
+import { KIT_LABEL } from '../gameplay/legionRules';
+import { moveKit } from './LegionPanel';
 import { BELT_LABEL, beltOffer, beltTools, dismissOffer, isOnBelt, moveTools, offerDismissed } from './toolBelt';
 
 /** A small padlock for locked cells and the Lock button (inline SVG: no font or emoji dependency). */
@@ -58,6 +61,10 @@ export class InventoryPanel {
   onEquipped: (() => void) | null = null;
   /** Called after a tool went onto the belt: the first-time counsel hangs off it. */
   onToolBelted: (() => void) | null = null;
+  /** Opens the Legion panel (set for necromancers only: other classes raise no thralls, so they get no Legion button). */
+  onLegion: (() => void) | null = null;
+  /** Called after a piece went to the legion's kit. */
+  onLegionGiven: (() => void) | null = null;
 
   constructor(
     private root: HTMLElement,
@@ -94,6 +101,7 @@ export class InventoryPanel {
         <div class="cw-equip-col">
           <div class="cw-equip" role="group" aria-label="Equipment"></div>
           <div class="cw-toolbelt" role="group" aria-label="Tool belt"></div>
+          <button type="button" class="cw-button small cw-legion-btn" data-legion hidden aria-label="Open the Legion: gear for your thralls (Y)" title="Spare weapons and armour for your thralls (Y)">Legion · Y</button>
         </div>
         <div class="cw-bag-grid" role="grid"></div>
       </div>
@@ -183,6 +191,7 @@ export class InventoryPanel {
       grid.appendChild(cell);
     }
     this.renderEquipment();
+    this.renderLegionButton();
     this.renderToolBelt();
     this.renderTools();
     this.renderBeltOffer();
@@ -287,6 +296,17 @@ export class InventoryPanel {
     }
   }
 
+  /** The Legion button under the tool belt: a dot when a spare piece would beat what the legion wears. */
+  private renderLegionButton() {
+    const b = this.el!.querySelector<HTMLButtonElement>('[data-legion]')!;
+    b.hidden = !this.onLegion;
+    if (!this.onLegion) return;
+    const better = this.inventory.all.some((s) => kitCandidate(this.inventory.all, s)?.verdict === 'up');
+    b.classList.toggle('flag', better);
+    b.title = better ? 'A spare piece in your bag would arm your thralls better (Y)' : 'Spare weapons and armour for your thralls (Y)';
+    b.onclick = () => this.onLegion?.();
+  }
+
   /** The gathering tool belt: four slots (hatchet, pickaxe, rod, spade) under the paper doll. */
   private renderToolBelt() {
     const row = this.el!.querySelector<HTMLDivElement>('.cw-toolbelt')!;
@@ -357,6 +377,22 @@ export class InventoryPanel {
     }
   }
 
+  private async giveToLegion(slot: InventorySlot) {
+    if (this.busy) return;
+    this.busy = true;
+    this.setError('');
+    try {
+      await moveKit(this.inventory, this.characterId, [{ slot_index: slot.slot_index, equipped: 1 }]);
+      this.selected = null;
+      this.onLegionGiven?.();
+    } catch (err) {
+      this.setError(err instanceof Error ? err.message : 'The legion would not take that.');
+    } finally {
+      this.busy = false;
+      this.render();
+    }
+  }
+
   private toggleToolBelt(slot: InventorySlot) {
     return this.moveToBelt([{ slot_index: slot.slot_index, equipped: isOnBelt(slot) ? 0 : 1 }]);
   }
@@ -421,12 +457,14 @@ export class InventoryPanel {
     const locked = this.locks.isLocked(slot);
     const atGrinder = this.grinder?.near() ?? false;
     const compare = this.compareLines(slot);
+    const legion = this.onLegion ? kitCandidate(this.inventory.all, slot) : null;
     detail.innerHTML = `
       <div class="info${compare ? ' gs-wide' : ''}">
         <div class="gs-head">
           <div class="name" style="color:${RARITY_COLOR[slot.rarity]}">${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''}</div>
           <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${slot.item_type.replace('_', ' ')}${itemLevelHtml(slot, true)}</div>
           ${verdictHtml(this.statContext?.() ?? null, slot)}
+          ${legion ? `<div class="lg-line ${legion.verdict}" title="What this piece would do on your thralls, against what the legion's ${KIT_LABEL[legion.kit]} slot holds now">Legion ${KIT_LABEL[legion.kit].toLowerCase()}: <span class="ar">${legion.verdict === 'up' ? '\u25B2' : legion.verdict === 'down' ? '\u25BC' : '='}</span> ${legion.verdict === 'same' ? 'no change' : legion.text}</div>` : ''}
         </div>
         <div class="gs-col">
         ${this.statLines(slot, false)}
@@ -438,6 +476,7 @@ export class InventoryPanel {
       </div>
       <div class="cw-detail-actions">
       ${equippable ? `<button class="cw-button small" data-act>${slot.equipped ? 'Unequip' : 'Equip'}</button>` : ''}
+      ${legion ? `<button class="cw-button small" data-legiongive title="Move it to the legion's ${KIT_LABEL[legion.kit]} slot; a piece already there returns to your bag">Give to legion</button>` : ''}
       ${toolKindOf(slot.item_id) ? `<button class="cw-button small" data-toolbelt>${isOnBelt(slot) ? 'Take off belt' : 'Put on belt'}</button>` : ''}
       ${drinkable ? `<button class="cw-button small" data-act>Drink</button>` : ''}
       ${this.onBelt && slot.item_id in BREWS ? `<button class="cw-button small" data-belt>Put on belt (${BREW_KEYS[BREWS[slot.item_id].slot].toUpperCase()})</button>` : ''}
@@ -452,6 +491,7 @@ export class InventoryPanel {
     detail.querySelector('[data-salvage]')?.addEventListener('click', () => void this.salvageOne(slot));
     detail.querySelector('[data-act]')?.addEventListener('click', () => this.primaryAction(slot));
     detail.querySelector('[data-toolbelt]')?.addEventListener('click', () => void this.toggleToolBelt(slot));
+    detail.querySelector('[data-legiongive]')?.addEventListener('click', () => void this.giveToLegion(slot));
     detail.querySelector('[data-belt]')?.addEventListener('click', () => this.onBelt?.(slot.item_id));
     detail.querySelectorAll<HTMLButtonElement>('[data-sell]').forEach((b) => b.addEventListener('click', () => this.sell(slot, Number(b.dataset.sell))));
   }

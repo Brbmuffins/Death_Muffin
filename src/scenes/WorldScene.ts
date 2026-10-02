@@ -75,6 +75,8 @@ import { WorldView } from '../graphics/WorldView';
 import { updateOcclusion } from '../graphics/occlusion';
 import { equippedBySlot, gearFromIds } from '../content/gear';
 import { applySetMods, outfitSignature, resolveSetBonuses, setSignature } from '../gameplay/setBonuses';
+import { applyLegionMods, kitCandidates, kitPieces, legionOf, legionSignature } from '../gameplay/legionKit';
+import { LegionPanel } from '../ui/LegionPanel';
 import { LootRoller } from '../gameplay/lootRoll';
 import { canRoll } from '../gameplay/affixes';
 import { affixedName, type DropSource } from '../gameplay/affixRules';
@@ -217,6 +219,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private setSig = '';
   /** Sets and worn affixes together: the discipline is rebuilt when it changes. */
   private outfitSig = '';
+  /** The Legion kit and its reinforcement tier (gameplay/legionKit.ts) folded into this.discipline: it is rebuilt when they change. */
+  private legionSigApplied = '';
   /** Asks the server to roll item level and affixes for gear drops. */
   private lootRoller!: LootRoller;
   private lootAlive = true;
@@ -263,6 +267,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private laborPanel!: LaborPanel;
   private cosmeticsPanel!: CosmeticsPanel;
   private sheetPanel!: CharacterSheetPanel;
+  private legionPanel!: LegionPanel;
   private myCosmetics: { cape: string | null; pet: string | null } = { cape: null, pet: null };
   private petView: PetView | null = null;
   private laborCapNoted = new Set<number>();
@@ -481,6 +486,11 @@ export class WorldScene implements GameScene, RuntimeView {
       if (owner === this.selfId) return this.discipline.id;
       const remote = this.remotes.get(owner);
       return remote ? disciplineFor(remote.info.classIndex).id : null;
+    }, (owner) => {
+      // Only your own legion wears your kit; a friend's thralls show theirs when their client sends it (not yet).
+      if (owner !== this.selfId) return null;
+      const k = kitPieces(this.inventory?.all ?? []);
+      return k.weapon || k.armor ? { weapon: k.weapon ? { itemId: k.weapon.item_id, rarity: k.weapon.rarity } : undefined, armor: k.armor ? { itemId: k.armor.item_id, rarity: k.armor.rarity } : undefined } : null;
     });
     this.nodeViews = new NodeViews(this.scene, this.layout.nodes);
     this.npcViews = new NpcViews(this.scene);
@@ -702,6 +712,8 @@ export class WorldScene implements GameScene, RuntimeView {
       this.inventory.onChange((bag) => {
         this.locks.prune(bag);
         if (bag.filter((s) => s.slot_index >= 0 && s.slot_index < BAG_SIZE).length >= Math.ceil(BAG_SIZE * 0.8)) this.onboarding.show('bag_filling');
+        // A necromancer holding spare weapons or armour learns the legion can wear them.
+        if (this.discipline.family === 'necromancer' && kitCandidates(bag).length > 0) this.onboarding.show('legion');
       });
       this.professions = professions;
       for (const r of professions) this.skillLevels.set(r.profession_id as SkillId, r.skill_level);
@@ -728,7 +740,9 @@ export class WorldScene implements GameScene, RuntimeView {
     if (loadout.main !== was.main && loadout.main && loadout.main !== 'staff') this.onboarding.show('necroWeapon');
     const sets = setSignature(this.inventory.all);
     const outfit = outfitSignature(this.inventory.all);
-    if (loadout.thrallBonus !== this.weaponThrallBonus || outfit !== this.outfitSig) {
+    const legion = legionSignature(this.inventory.all, this.progression.local.legionTier ?? 0);
+    if (loadout.thrallBonus !== this.weaponThrallBonus || outfit !== this.outfitSig || legion !== this.legionSigApplied) {
+      this.legionSigApplied = legion;
       const gained = sets.split('|').filter((k) => k && !this.setSig.split('|').includes(k));
       this.weaponThrallBonus = loadout.thrallBonus;
       this.setSig = sets;
@@ -743,9 +757,13 @@ export class WorldScene implements GameScene, RuntimeView {
     this.sheetPanel?.render();
   }
 
+  private legionBonus() {
+    return legionOf(this.inventory?.all ?? [], this.progression?.local.legionTier ?? 0);
+  }
+
   /** Who the gear text is for; null until the player exists. The discipline already carries boons and a skull-focus swap. */
   private statContext = (): StatContext | null =>
-    this.player ? { character: this.character, slots: this.inventory.all, discipline: this.discipline, damageTier: this.progression.local.damageTier } : null;
+    this.player ? { character: this.character, slots: this.inventory.all, discipline: this.discipline, damageTier: this.progression.local.damageTier, legion: this.legionBonus() } : null;
 
   private statsLine = () => {
     const { total, bonus } = computeStats(this.character, this.inventory.all);
@@ -810,6 +828,26 @@ export class WorldScene implements GameScene, RuntimeView {
     };
     this.inventoryPanel.onToolBelted = () => this.onboarding.show('toolBelt', 0, true);
     this.sheetPanel = new CharacterSheetPanel(this.root, this.statContext, () => this.onboarding.show('statSheet'));
+    // The Legion (Y): spare weapon and armour for the thralls, and the gold sink that reinforces them. Necromancers only.
+    this.legionPanel = new LegionPanel(this.root, this.character.id, this.inventory, {
+      tier: () => this.progression.local.legionTier ?? 0,
+      cost: () => this.progression.legionCost(),
+      gold: () => this.character.gold ?? 0,
+      reinforce: () => {
+        if (!this.progression.buyLegion()) return false;
+        audio.play('buy');
+        this.applyBoons();
+        this.hud.toast(`The legion is bound tighter: tier ${this.progression.local.legionTier}`, 'good');
+        this.legionPanel.render();
+        return true;
+      },
+      thrall: () => (this.player ? { hp: this.player.stats.thrallHp, damage: this.player.stats.thrallDamage } : null),
+      onMoved: (gave) => audio.play(gave ? 'equip' : 'click'),
+    });
+    if (this.discipline.family === 'necromancer') {
+      this.inventoryPanel.onLegion = () => this.togglePanel('legion');
+      this.inventoryPanel.onLegionGiven = () => audio.play('equip');
+    }
     this.forgePanel = new ForgePanel(this.root, this.character.id, this.inventory, (inv, profs) => {
       this.inventory.replace(inv);
       this.skills.adopt(profs);
@@ -853,6 +891,7 @@ export class WorldScene implements GameScene, RuntimeView {
         primary: ABILITIES[this.kit.defaultPrimary].name,
         rites: this.kit.defaultLoadout.map((id) => ABILITIES[id].name),
         corpseAction: ABILITIES[this.kit.rmb].name,
+        legion: this.discipline.family === 'necromancer',
       },
     );
     this.classPanel = new ClassPanel(this.root, () => this.character.class_index, (index) => this.changeClass(index));
@@ -922,6 +961,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.laborPanel?.close();
     this.cosmeticsPanel?.close();
     this.sheetPanel?.close();
+    this.legionPanel?.close();
     this.dialogue?.close();
   }
 
@@ -1154,8 +1194,8 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hud.toast(d.paidBonus ? `Order filled, and the day’s bonus is yours: +${d.paidBonus.gold.toLocaleString()}g` : 'Order filled', 'good');
   }
 
-  private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'salvage' | 'sheet') {
-    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel, cosmetics: this.cosmeticsPanel, vault: this.vaultPanel, salvage: this.salvagePanel, sheet: this.sheetPanel }[p];
+  private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'salvage' | 'sheet' | 'legion') {
+    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel, cosmetics: this.cosmeticsPanel, vault: this.vaultPanel, salvage: this.salvagePanel, sheet: this.sheetPanel, legion: this.legionPanel }[p];
     const wasOpen = panel.isOpen;
     const vault = p === 'vault';
     if (!(vault && !wasOpen && !AREAS[this.area].safe)) audio.play(wasOpen ? (vault ? 'vaultClose' : 'panelClose') : vault ? 'vaultOpen' : 'panelOpen');
@@ -1179,6 +1219,7 @@ export class WorldScene implements GameScene, RuntimeView {
     else if (p === 'labor') void this.laborPanel.open();
     else if (p === 'cosmetics') void this.cosmeticsPanel.open();
     else if (p === 'sheet') this.sheetPanel.open();
+    else if (p === 'legion') this.legionPanel.open();
     else if (p === 'ascension') this.ascensionPanel.open();
     else if (p === 'grimoire') {
       this.grimoirePanel.open();
@@ -1229,6 +1270,7 @@ export class WorldScene implements GameScene, RuntimeView {
       else if (k === 't') this.startRecall();
       else if (k === 'i' || k === 'b') this.togglePanel('inventory');
       else if (k === 'j') this.togglePanel('sheet');
+      else if (k === 'y' && this.discipline.family === 'necromancer') this.togglePanel('legion');
       else if (k === 'c') this.togglePanel('forge');
       else if (k === 'p') this.togglePanel('professions');
       else if (k === 'o') this.togglePanel('contracts');
@@ -1342,7 +1384,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private panelOpen() {
-    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || !!this.shelfPanel?.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.vaultPanel?.isOpen || !!this.salvagePanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen || !!this.sheetPanel?.isOpen || !!this.dialogue?.isOpen;
+    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || !!this.shelfPanel?.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.vaultPanel?.isOpen || !!this.salvagePanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen || !!this.sheetPanel?.isOpen || !!this.legionPanel?.isOpen || !!this.dialogue?.isOpen;
   }
 
   private interactablesNear(): Interactable[] {
@@ -3019,6 +3061,8 @@ export class WorldScene implements GameScene, RuntimeView {
         essenceRegenMult: base.mods.essenceRegenMult * fx.essenceRegenMult,
       },
     };
+    // The Legion kit and its reinforcement fold in before the armor sets (withSetBonuses peels the sets off again, so the legion must sit beneath them).
+    if (base.family === 'necromancer') this.discipline = { ...this.discipline, mods: applyLegionMods(this.discipline.mods, this.legionBonus()) };
     // Armor set bonuses fold in last, the same way (flat stat bonuses go through computeStats instead).
     this.discipline = { ...this.discipline, mods: applySetMods(this.discipline.mods, resolveSetBonuses(this.inventory?.all ?? []).totals) };
     if (this.player) {
@@ -4347,6 +4391,16 @@ export class WorldScene implements GameScene, RuntimeView {
         for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d));
       },
       gold: (n: number) => this.progression.addGold(n),
+      /** Legion QA: the legion's bonus as the scene folded it into the discipline, and the mods the thralls are raised with. */
+      legion: () => ({ bonus: this.legionBonus(), mods: this.discipline.mods, tier: this.progression.local.legionTier ?? 0 }),
+      /** Legion QA: lay a corpse of `enemy` beside the hero and raise it exactly as the Exhume rite would (same stats, same intent). */
+      raise: (enemy: keyof typeof ENEMIES = 'robber', dx = 2, dz = 1) => {
+        const x = this.player.x + dx;
+        const z = this.player.z + dz;
+        this.sim?.addCorpse(x, z, 'normal', enemy, false, 0, 1, this.player.area ?? 'graves');
+        const m = this.discipline.mods;
+        this.sendIntent({ t: 'exhume', by: this.selfId, x, z, r: 0.8, kind: m.thrallKind, cap: 12, hp: this.player.stats.thrallHp, damage: this.player.stats.thrallDamage, attackSpeedMult: m.thrallAttackSpeedMult });
+      },
       shards: (n: number) => this.progression.addShards(n),
       xp: (n: number) => this.gainXp(n, this.player.x, this.player.z),
       spawn: (def: keyof typeof ENEMIES, elite = false, affix?: EliteAffix) => {

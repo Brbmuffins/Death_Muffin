@@ -43,7 +43,7 @@ leaks, and the backlog that fixes it, ordered by payoff for effort.
 | 7 | **Covenant Seals / Reliquary Fragments** as boss keys: summon an *empowered* boss (+HP, guaranteed epic) | Turns rare mats into a chase | S | Reuse the BossBrain level knob |
 | 8 | ~~**Kill streak / combo meter**~~ | Moment-to-moment juice | S | **Shipped 2026-09-30** as the Kill Chain (`gameplay/killChain.ts`): 4 s window, five tiers, +5–25% XP and gold, HUD readout, rising chime |
 | 9 | ~~**Milestone toasts**~~ | Frequent small wins | S | **Shipped 2026-09-30** (`gameplay/milestones.ts`): kill-count, per-area and best-chain purses, paid once per character in this browser. Permanent bonuses were left out: they need server-side storage |
-| 10 | Gold sinks: thrall gear upgrades, cosmetic Chapterhouse decorations | Keeps gold meaningful | M | Thrall gear models exist (unused) |
+| 10 | Gold sinks: ~~thrall gear upgrades~~, cosmetic Chapterhouse decorations | Keeps gold meaningful | M | **Thrall gear built 2026-10-02 (branch `dm/thrall-gear`, no migration)**: the Legion kit (two slots, spare weapon and armour become thrall bonuses) and **Reinforce**, 12 gold tiers (120 gold, x1.65 each, about 75k in all) that reset on Ascension. The thrall bow and bone staff models are now used. Chapterhouse decorations remain |
 
 ## 4. Rules of thumb for new features
 

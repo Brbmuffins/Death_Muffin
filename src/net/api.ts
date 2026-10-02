@@ -205,6 +205,19 @@ export async function beltTool(characterId: number, slotIndex: number, equipped:
   );
 }
 
+/** Legion kit (thrall gear): equipped 1 moves the weapon or armour in this bag slot into its kit slot, 0 returns the kit slot's piece to the bag. */
+export async function kitMove(characterId: number, slotIndex: number, equipped: 0 | 1) {
+  return decorateSlots(
+    await unwrap<InventorySlot[]>(
+      request(
+        '/api/inventory/kit',
+        { method: 'POST', body: JSON.stringify({ characterId, slot_index: slotIndex, equipped }) },
+        true,
+      ),
+    ),
+  );
+}
+
 // --- Professions & crafting ---
 export function getProfessions(characterId: number) {
   return unwrap<Profession[]>(request(`/api/professions/${characterId}`, {}, true));
@@ -299,7 +312,7 @@ const necroPost = (path: string, body: object, keepalive = false) =>
 export const necroApi = {
   get: (characterId: number) => unwrap<NecroReply>(request(`/api/necro-progress/${characterId}`, {}, true)),
   save: (characterId: number, input: SaveInput, keepalive = false) => necroPost('save', { characterId, ...input }, keepalive),
-  purchase: (characterId: number, upgrade: 'damage' | 'wave') => necroPost('purchase', { characterId, upgrade }),
+  purchase: (characterId: number, upgrade: 'damage' | 'wave' | 'legion') => necroPost('purchase', { characterId, upgrade }),
   summonPrelate: (characterId: number) => necroPost('summon-prelate', { characterId }),
   summonBoss: (characterId: number, boss: string) => necroPost('summon-boss', { characterId, boss }),
   ascend: (characterId: number) => necroPost('ascend', { characterId }),

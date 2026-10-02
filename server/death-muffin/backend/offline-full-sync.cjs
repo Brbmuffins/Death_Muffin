@@ -5,6 +5,7 @@ const runtimeNecro = path.join(__dirname, 'necro-progress/necro-rules.cjs');
 const necroRules = require(fs.existsSync(runtimeNecro) ? runtimeNecro : '../../vps-handoff/necro-progress/necro-rules.cjs');
 const contractRules = require('./gathering/contract-rules.cjs');
 const gather = require('./gathering/gathering-rules.cjs');
+const legion = require('./gathering/legion-rules.cjs');
 const lootInstances = require('./loot-instances.cjs');
 const affix = lootInstances.affix;
 
@@ -82,11 +83,11 @@ function validate(account, onlineClass) {
   if (!bounded(c.level, 1, 255) || !bounded(c.experience, 0, c.level * 100 - 1) ||
       !bounded(c.gold, 0, 2147483647) || ['stat_str', 'stat_agi', 'stat_int', 'stat_vit'].some((key) => !bounded(c[key], 0, 65535)))
     throw new RangeError('Invalid character stats');
-  if (!Array.isArray(account.slots) || account.slots.length > gather.BAG_SLOTS + 9 + gather.BELT_SLOT_COUNT) throw new RangeError('Invalid inventory');
+  if (!Array.isArray(account.slots) || account.slots.length > gather.BAG_SLOTS + 9 + gather.BELT_SLOT_COUNT + legion.KIT_SLOT_COUNT) throw new RangeError('Invalid inventory');
   const occupied = new Set();
   for (const slot of account.slots) {
     const index = slot?.slot_index;
-    if (!bounded(index, 0, gather.BAG_SLOTS - 1) && !bounded(index, 100, 108) && !gather.isBeltSlot(index)) throw new RangeError('Invalid inventory slot');
+    if (!bounded(index, 0, gather.BAG_SLOTS - 1) && !bounded(index, 100, 108) && !gather.isBeltSlot(index) && !legion.isKitSlot(index)) throw new RangeError('Invalid inventory slot');
     if (occupied.has(index) || !itemId(slot.item_id) || !bounded(slot.quantity, 1, 9999)) throw new RangeError('Invalid inventory item');
     // A rolled piece must be one legal roll (known affixes, in range for its item level); the item type is checked again against the items table in apply().
     if (slot.inst != null && (slot.quantity !== 1 || affix.instanceProblem(slot.inst, 'weapon'))) throw new RangeError('Invalid item roll');
@@ -135,7 +136,9 @@ async function apply(conn, characterId, account) {
       if (slot.quantity > max) throw new RangeError(`Too many ${slot.item_id} in one slot`);
       // Tool belt (110-113): the slot's tool kind must match the item; gear (100-108): its own equipment slot.
       const beltKind = gather.beltSlotKind(slot.slot_index);
-      if (beltKind ? gather.toolKindOf(slot.item_id) !== beltKind : slot.slot_index >= 100 && item.equipment_slot !== reservedSlots[slot.slot_index]) throw new RangeError(`Invalid equipped item ${slot.item_id}`);
+      // Legion kit (120-121): a weapon / off-hand in the weapon slot, one of the five armour pieces in the armour slot.
+      const kitId = legion.kitSlotId(slot.slot_index);
+      if (kitId ? legion.kitIdForType(item.item_type) !== kitId : beltKind ? gather.toolKindOf(slot.item_id) !== beltKind : slot.slot_index >= 100 && item.equipment_slot !== reservedSlots[slot.slot_index]) throw new RangeError(`Invalid equipped item ${slot.item_id}`);
       if (slot.inst != null) {
         const problem = affix.instanceProblem(slot.inst, item.item_type);
         if (problem) throw new RangeError(`${slot.item_id}: ${problem}`);
@@ -148,7 +151,8 @@ async function apply(conn, characterId, account) {
   await lootInstances.deleteInstances(conn, oldInstances.map((r) => Number(r.instance_id)));
   let accountId = null;
   for (const slot of account.slots) {
-    const equippedSlot = reservedSlots[slot.slot_index] ?? (gather.beltSlotKind(slot.slot_index) ? gather.beltEquippedSlot(gather.beltSlotKind(slot.slot_index)) : null);
+    const equippedSlot = reservedSlots[slot.slot_index] ?? (gather.beltSlotKind(slot.slot_index) ? gather.beltEquippedSlot(gather.beltSlotKind(slot.slot_index)) : null)
+      ?? (legion.kitSlotId(slot.slot_index) ? legion.kitEquippedSlot(legion.kitSlotId(slot.slot_index)) : null);
     if (slot.inst != null) {
       if (accountId === null) [[{ account_id: accountId }]] = await conn.execute('SELECT account_id FROM characters WHERE id = ?', [characterId]);
       const instanceId = await lootInstances.insertInstance(conn, accountId, slot.item_id, slot.inst);

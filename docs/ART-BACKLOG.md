@@ -49,7 +49,7 @@ Roadmap: [`PROFESSIONS-ROADMAP.md`](PROFESSIONS-ROADMAP.md). Wiring notes: [`age
 
 | Art | Files | Intended use | Waiting on |
 |---|---|---|---|
-| Thrall gear (2) | `public/models/props/gear_{thrall_bow,bone_staff}.glb` | Replace the code-built bow and staff on archer and bone-mage thralls | `EntityViews` attach (HANDOFF next step #7) |
+| ~~Thrall gear (2)~~ | `public/models/props/gear_{thrall_bow,bone_staff}.glb` | **Used (2026-10-02, branch `dm/thrall-gear`):** archers and bone mages carry them once the Legion kit holds a weapon; without a kit weapon the code-built stand-ins stay (`gearProps.upgradeThrallProp`, `EntityViews.makeThrall`) | — |
 | Mourner wraith thrall | `public/models/props/wraith_thrall.glb` | **Live (2026-09-30):** Mourner wraiths use it (static, hover + bob in code) | — |
 | Lich Acolyte | `public/models/lich_acolyte/character.glb` (idle, walk, cast, hurt, death) | The last 0.4 enemy archetype: raises your fallen thralls against you (Nave + Sanctum) | Specced in [`agent-briefs/mobs-barrow-ghoul-lich-acolyte.md`](agent-briefs/mobs-barrow-ghoul-lich-acolyte.md) §3 |
 | Barrow Ghoul (new, 2026-09-27 evening) | `public/models/barrow_ghoul/character.glb` (idle, walk, run, attack, dig, hurt, death; 4k tris) | Hollow Graves burrowing ambusher | Specced in [`agent-briefs/mobs-barrow-ghoul-lich-acolyte.md`](agent-briefs/mobs-barrow-ghoul-lich-acolyte.md) §2 |

@@ -14,6 +14,19 @@ export const WAVE_UPGRADE = {
   cost: (tier: number) => Math.round(120 * Math.pow(1.75, tier)),
 };
 
+/**
+ * Legion reinforcement (thrall gear, 2026-10-02): the gold sink for the Legion kit. Each tier binds the dead a little tighter:
+ * +3% thrall health and damage and +1% attack speed, on top of whatever the kit pieces give. Like Damage and Wave Speed the
+ * tiers reset when you Ascend (gold is meant to flow back into the run); the kit pieces themselves are never lost.
+ * Twelve tiers cost about 74k gold in all (damage tiers cost about 700k), the last one about 30k.
+ */
+export const LEGION_UPGRADE = {
+  maxTier: 12,
+  perTier: 0.03,
+  speedPerTier: 0.01,
+  cost: (tier: number) => Math.round(120 * Math.pow(1.65, tier)),
+};
+
 export interface WaveModifiers {
   intervalMult: number;
   capMult: number;

@@ -60,6 +60,11 @@ const TARGETS = {
     out: join(root, 'server/death-muffin/backend/gathering/vault-rules.cjs'),
     about: 'Ossuary Vault (shared stash) move rules shared by the web client, the offline mock and the Death Muffin backend.',
   },
+  legion: {
+    entry: 'src/gameplay/legionRules.ts',
+    out: join(root, 'server/death-muffin/backend/gathering/legion-rules.cjs'),
+    about: 'Legion kit (thrall gear) slots, eligibility and bonus rules shared by the web client, the offline mock and the Death Muffin backend.',
+  },
 };
 
 export const OUT = TARGETS.necro.out;
