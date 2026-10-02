@@ -600,6 +600,14 @@ export const SET_VALUE = {
   /** Percent of power per 1% wider Miasma (harness: +0.09 for most disciplines, about 2.5x that for the Rotweaver, whose kit is built on it). */
   miasmaPer1pct: 0.09,
   rotweaverMiasmaMult: 2.5,
+  /**
+   * Legendary mechanics (docs/LEGENDARY-SETS.md), percent of power. Judgment calls, not harness measurements: the sim side of each mechanic is built
+   * separately, so these keep the upgrade arrow honest ("this set changes how you play") until they can be measured. Each is per mechanic, scaled by strength.
+   */
+  legendary: {
+    thrallDeathBurst: 12, championEvery: 8, spearRally: 6, wardReflect: 10, colossusGuard: 40, litanyShatter: 1.5,
+    corpseWisp: 0.6, soulHarvestRate: 6, wraithNova: 6, miasmaSpreadsWithered: 8, witheredBurstAt: 10,
+  },
 } as const;
 
 /** The value of the worn sets' mods-only effects, for a discipline that fights with `count` thralls. */
@@ -613,6 +621,12 @@ export function setExtraPct(totals: SetTotals, disc: Discipline, count: number):
   x += (totals.add.litanyBarrier ?? 0) * 100 * V.litanyPer1pct;
   x += (totals.add.corpseHeal ?? 0) * 100 * V.corpseHealPer1pct;
   x += (totals.add.witheredMaxStacks ?? 0) * V.witheredPerStack;
+  const L = V.legendary;
+  const A = totals.add;
+  x += (A.thrallDeathBurst ?? 0) * L.thrallDeathBurst + (A.championEvery ? L.championEvery : 0) + (A.spearRally ?? 0) * L.spearRally;
+  x += (A.wardReflect ?? 0) * L.wardReflect + (A.colossusGuard ?? 0) * L.colossusGuard + (A.litanyShatter ?? 0) * L.litanyShatter;
+  x += (A.corpseWisp ?? 0) * L.corpseWisp + ((totals.mult.soulHarvestRateMult ?? 1) - 1) * L.soulHarvestRate + (A.wraithNova ?? 0) * L.wraithNova;
+  x += (A.miasmaSpreadsWithered ? L.miasmaSpreadsWithered : 0) + (A.witheredBurstAt ? L.witheredBurstAt : 0);
   x += ((totals.mult.miasmaRadiusMult ?? 1) - 1) * 100 * V.miasmaPer1pct * (disc.id === 'rotweaver' ? V.rotweaverMiasmaMult : 1);
   return x;
 }

@@ -11,7 +11,7 @@ import { devAccess, devPreference, isDevAccount, riteLevel, setDevPreference, to
 import { GrimoirePanel } from '../ui/GrimoirePanel';
 import { hitstop } from '../graphics/hitstop';
 import { preloadFxImages } from '../graphics/fxImages';
-import { ARMOR_BY_ID } from '../content/armorSets';
+import { ARMOR_BY_ID, ARMOR_PIECES } from '../content/armorSets';
 import { AREAS, AREA_ORDER, BOSS_SUMMON_SHARDS, CHAPTERHOUSE_RETURN, DOORS, PLAYER_SPAWN, type AreaId, type DoorDef, type Interactable } from '../content/areas';
 import { disciplineFor, type Discipline } from '../content/disciplines';
 import { AFFIX_TUNING, ELITE_AFFIXES, ENEMIES, WAVE_THEMES, type EliteAffix, type EnemyId } from '../content/enemies';
@@ -1066,7 +1066,7 @@ export class WorldScene implements GameScene, RuntimeView {
         const m = itemMeta(g.itemId);
         return { itemId: g.itemId, name: m.name, rarity: m.rarity, qty: g.qty, value: m.sell * g.qty };
       }).sort((a, b) => b.value - a.value);
-      const rank = { common: 0, uncommon: 1, rare: 2, epic: 3 } as const;
+      const rank = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 } as const;
       const best = [...items].sort((a, b) => rank[b.rarity] - rank[a.rarity] || b.value - a.value)[0];
       const after = this.skills.level(skill);
       const milestones = crossedMilestones(lifeBefore, lifeBefore + total).map((m) => `${m.toLocaleString()} ${SKILLS[skill].name} finds`);
@@ -3149,7 +3149,7 @@ export class WorldScene implements GameScene, RuntimeView {
     // Personal rewards for kills in (or right next to) your area.
     const near = Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 38;
     if (!this.player.alive || !near) return;
-    const reward = rollKill(ev.def, ev.area, ev.level, ev.elite, this.bossWaveTier(), Math.random, this.worldDifficulty(), 1 + this.player.brewValue('fortune', this.now));
+    const reward = rollKill(ev.def, ev.area, ev.level, ev.elite, this.bossWaveTier(), Math.random, this.worldDifficulty(), 1 + this.player.brewValue('fortune', this.now), Math.random, Math.random, this.discipline.id);
     // The chain: your own kills (thralls and DoTs credit their owner) in unsafe ground, each within the window of the last.
     let chainMult = 1;
     if (ev.killer === this.selfId && !AREAS[ev.area].safe) {
@@ -3936,7 +3936,7 @@ export class WorldScene implements GameScene, RuntimeView {
             this.progression.recordPrelateKill();
             if (this.progression.canAscend()) this.onboarding.show('ascend', 5000);
           }
-          const reward = rollBoss(this.bossWaveTier(), Math.random, this.worldDifficulty(), def.area, def.shards, def.id);
+          const reward = rollBoss(this.bossWaveTier(), Math.random, this.worldDifficulty(), def.area, def.shards, def.id, this.discipline.id);
           // First kill per character: two more shards and a guaranteed rare-or-better (browser trophy record).
           let firstKill: LootDrop | null = null;
           let firstTrophy = false;
@@ -4107,9 +4107,15 @@ export class WorldScene implements GameScene, RuntimeView {
       audio.play(lootSfx(got.items.map((item) => itemMeta(item.item_id).rarity)));
       this.onboarding.show('relic');
     }
-    if (got.items.some((item) => ARMOR_BY_ID[item.item_id])) this.onboarding.show('armor');
+    const legendary = got.items.filter((item) => itemMeta(item.item_id).rarity === 'legendary');
+    if (legendary.length) this.onboarding.show('legendary', 600);
+    else if (got.items.some((item) => ARMOR_BY_ID[item.item_id])) this.onboarding.show('armor');
     if (got.items.some((item) => item.item_id in REAGENT_ITEMS)) this.onboarding.show('reagent', 0, true);
     if (got.items.some((item) => item.instance?.affixes.length)) this.onboarding.show('affix', 1800);
+    for (const item of legendary) {
+      this.hud.toast(`Legendary: ${itemMeta(item.item_id).name}`, 'good');
+      this.floating.spawn(p.x, 2.6, p.z, 'LEGENDARY', 'big');
+    }
     for (const item of got.items) this.hud.toast(`${item.instance ? affixedName(itemMeta(item.item_id).name, item.instance.affixes) : itemMeta(item.item_id).name}${item.quantity > 1 ? ` ×${item.quantity}` : ''}`, 'good');
 
     // Visuals. A hitstop (graphics/hitstop.ts) scales only the picture's clock from here on.
@@ -4576,6 +4582,13 @@ export class WorldScene implements GameScene, RuntimeView {
       chain: () => this.chain,
       progression: this.progression,
       inventory: this.inventory,
+      /** QA: all five pieces of a legendary set (setId from content/legendarySets.ts, e.g. 'legion_unburied') into the bag. Returns the ids given. */
+      giveLegendary: async (setId: string) => {
+        const ids = ARMOR_PIECES.filter((p) => p.setId === setId && p.collection === 3).map((p) => p.id);
+        for (const id of ids) this.inventory.add({ item_id: id, quantity: 1 });
+        await this.inventory.flush();
+        return ids;
+      },
       advance: (seconds: number, render = true) => getRuntime().advance(seconds, 1 / 60, render),
       net: () => ({ id: this.realtime.selfId, ...this.realtime.stats, connected: this.realtime.connected, host: this.realtime.isHost, instance: this.realtime.instance, mirror: this.mirror ? { enemies: this.mirror.enemies.size, corpses: this.mirror.corpses.size } : null }),
       zoom: (z: number) => this.rig.setZoom(z),

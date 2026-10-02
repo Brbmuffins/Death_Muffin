@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DISCIPLINES, type DisciplineId } from '../../content/disciplines';
 import { ARMOR_BY_ID, ARMOR_PARTS, ARMOR_PIECES, type ArmorPart } from '../../content/armorSets';
+import { LEGENDARY_SET_IDS } from '../../content/legendarySets';
 import { SET_BONUSES, SET_IDS, SET_TIERS, describeEffect, type SetEffect } from '../../content/setBonuses';
 import type { Character, InventorySlot } from '../../net/types';
 import { computeStats } from '../stats';
@@ -22,11 +23,12 @@ const piece = (setId: string, part: ArmorPart, equipped: 0 | 1 = 0): InventorySl
 };
 const wear = (setId: string, parts: ArmorPart[]) => parts.map((p) => piece(setId, p, 1));
 const ctx = (slots: InventorySlot[], disc: DisciplineId = 'ossuary'): StatContext => ({ character: character(), slots, discipline: DISCIPLINES[disc], damageTier: 0 });
+const NORMAL_IDS = SET_IDS.filter((id) => !LEGENDARY_SET_IDS.includes(id));
 const FIVE: ArmorPart[] = ['head', 'chest', 'hands', 'legs', 'feet'];
 
 describe('set bonus table', () => {
   it('every set has exactly a 2, 4 and 5 piece bonus with plain text', () => {
-    expect(SET_IDS).toHaveLength(18);
+    expect(SET_IDS).toHaveLength(22);
     for (const id of SET_IDS) {
       expect(SET_BONUSES[id].map((b) => b.pieces)).toEqual(SET_TIERS);
       for (const b of SET_BONUSES[id]) expect(describeEffect(b.effect).length).toBeGreaterThan(0);
@@ -34,6 +36,7 @@ describe('set bonus table', () => {
     }
   });
   it('the ascended set is a step up from the first, tier by tier', () => {
+    const SET_IDS = NORMAL_IDS;
     const size = (e: SetEffect) =>
       Object.values(e.mult ?? {}).reduce((a, m) => a + (m - 1), 0) + Object.values(e.add ?? {}).reduce((a, v) => a + (v >= 1 ? v * 0.05 : v), 0) + Object.values(e.stats ?? {}).reduce((a, v) => a + v * 0.01, 0);
     for (const id of SET_IDS.filter((s) => !s.endsWith('_ascended'))) {
@@ -41,23 +44,47 @@ describe('set bonus table', () => {
     }
   });
   it('keeps every line inside its budget (2026-10-02 gear pass): thrall and health lines at most +30%, essence regeneration at most +45%', () => {
-    for (const id of SET_IDS) {
+    for (const id of NORMAL_IDS) {
       for (const b of SET_BONUSES[id]) {
         for (const [k, m] of Object.entries(b.effect.mult ?? {})) expect(m, `${id} ${b.pieces}pc ${k}`).toBeLessThanOrEqual(k === 'essenceRegenMult' ? 1.45 : 1.3);
       }
     }
   });
   it('a whole first set stays under +60% on any one lever, an ascended one under +90% (levers multiply across the lines)', () => {
-    for (const id of SET_IDS) {
+    for (const id of NORMAL_IDS) {
       const total = new Map<string, number>();
       for (const b of SET_BONUSES[id]) for (const [k, m] of Object.entries(b.effect.mult ?? {})) total.set(k, (total.get(k) ?? 1) * m);
       for (const [k, m] of total) expect(m, `${id} ${k}`).toBeLessThanOrEqual(id.endsWith('_ascended') ? 1.9 : 1.6);
     }
   });
-  it('the Codex lists all 18 sets with three bonuses each', () => {
+  it('the Codex lists all 22 sets with three bonuses each, the legendary ones last', () => {
     const rows = codexSetRows();
-    expect(rows).toHaveLength(18);
+    expect(rows).toHaveLength(22);
+    expect(rows.slice(-4).map((r) => r.collection)).toEqual([3, 3, 3, 3]);
     for (const r of rows) expect(r.bonuses).toHaveLength(3);
+  });
+});
+
+describe('legendary sets (docs/LEGENDARY-SETS.md)', () => {
+  const at = (id: string, n: number) => SET_BONUSES[id].filter((b) => b.pieces <= n);
+  const totals = (id: string, n: number) => at(id, n).reduce((t, b) => ({ mult: { ...t.mult, ...Object.fromEntries(Object.entries(b.effect.mult ?? {}).map(([k, v]) => [k, (t.mult[k] ?? 1) * v])) }, add: { ...t.add, ...Object.fromEntries(Object.entries(b.effect.add ?? {}).map(([k, v]) => [k, (t.add[k] ?? 0) + v])) } }), { mult: {} as Record<string, number>, add: {} as Record<string, number> });
+  it('carries exactly the numbers of the design doc', () => {
+    expect(totals('legion_unburied', 5)).toEqual({ mult: { thrallDamageMult: 1.15 }, add: { thrallDeathBurst: 0.6, thrallCap: 2, championEvery: 5, spearRally: 0.75 } });
+    expect(totals('colossus_mantle', 5)).toEqual({ mult: { thrallHpMult: 1.25 }, add: { wardReflect: 0.4, colossusGuard: 0.25, litanyShatter: 3 } });
+    expect(totals('requiem_wraiths', 5)).toEqual({ mult: { essenceRegenMult: 1.3, soulHarvestRateMult: 2 }, add: { corpseWisp: 8, wraithNova: 0.8 } });
+    expect(totals('plague_choir', 5)).toEqual({ mult: { miasmaRadiusMult: 1.15 }, add: { miasmaSpreadsWithered: 1, witheredBurstAt: 10 } });
+    expect(LEGENDARY_SET_IDS.map((id) => SET_BONUSES[id].slice(1).map((b) => b.name))).toEqual([['Bursting Dead', 'Legion Champion'], ['Reflecting Ward', 'Colossus'], ['Wisps', 'Requiem'], ['Contagion', 'Chain Plague']]);
+  });
+  it('says every mechanic plainly', () => {
+    const text = LEGENDARY_SET_IDS.flatMap((id) => SET_BONUSES[id].flatMap((b) => describeEffect(b.effect))).join('\n');
+    for (const needle of ['Thralls burst when they die (60% of their health', 'Every 5th thrall', 'Marrow Spear rallies', 'Bone Ward reflects 40%', '25% less damage taken while 3 or more thralls', 'shatters into bone shards for 3x', 'healing wisp for 8 s', 'Soul Harvest fills 2x faster', 'every wraith and wisp releases a nova (80%', 'spread their Withered stacks', 'reaches 10 Withered stacks bursts into a new Miasma']) expect(text).toContain(needle);
+  });
+  it('shows in the set tracker, with its own pieces listed as dropping from bosses', () => {
+    const worn = ['head', 'chest', 'hands'] as ArmorPart[];
+    const r = resolveSetBonuses(wear('legion_unburied', worn));
+    expect(r.sets[0]).toMatchObject({ setId: 'legion_unburied', worn: 3, collection: 3 });
+    expect(r.sets[0].missing.map((m) => m.where)).toEqual(['Area bosses', 'Area bosses']);
+    expect(r.totals.mult.thrallDamageMult).toBe(1.15);
   });
 });
 

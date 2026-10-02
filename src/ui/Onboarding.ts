@@ -42,6 +42,7 @@ export type TipId =
   | 'relic'
   | 'armor'
   | 'setBonus'
+  | 'legendary'
   | 'affix'
   | 'necroWeapon'
   | 'gearEquip'
@@ -254,6 +255,10 @@ export const TIPS: Record<TipId, Tip> = {
   setBonus: {
     title: 'A set bonus is awake',
     body: 'Two pieces of the same armor set are worn, so its first <b>set bonus</b> is active. [[Hover||Select]] any piece: <b>green lines</b> are on, grey lines need more pieces (4 and 5 are the big ones). A bag item marked <b>completes</b> in its arrow line will switch a bonus on. The Character sheet [[(<kbd>J</kbd>)||(the Sheet button in the Reliquary)]] shows what each set still needs and where it drops.',
+  },
+  legendary: {
+    title: 'A legendary set',
+    body: 'Legendary pieces are rare and <b>change how you play</b>. Each set is built for one discipline, and its pieces drop from <b>area bosses</b> (and very rarely from elites in the Cloister, Pyre and Fen); your own discipline’s set is the most likely. Wear <b>2, 4 or 5 pieces of the same set</b>: two is a nudge, four changes a mechanic, five defines the build. [[Hover||Select]] a piece for exactly what each tier does. Wearing four or more gives your hero a faint glow in the set’s colour. The Codex lists all four sets and where they drop.',
   },
   affix: {
     title: 'A rolled relic',

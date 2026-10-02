@@ -1,7 +1,7 @@
 // Shapes verified against the live /api/* endpoints (see context: inventory
 // rows come back joined with their items row).
 
-export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic';
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
 export type ItemType =
   | 'weapon'

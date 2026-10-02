@@ -11,7 +11,7 @@ import type { AbilityId } from '../content/abilities';
 import { castClipFor, planGesture, type GestureKey } from '../content/castClips';
 import { buildCape, buildHelm, buildOffhand, buildWeapon, disposeProp, gripFor } from './gearProps';
 import { capeDef } from '../content/cosmetics';
-import { gearTier, weaponKind } from '../content/gear';
+import { gearTier, legendaryAura, weaponKind } from '../content/gear';
 import type { GearRegion } from './gearTint';
 import { smoothSpeed, stepSpeed, turnToward } from './locomotion';
 
@@ -244,12 +244,14 @@ export class NecromancerAvatar {
     }
     // Body slots have no prop: they recolour their region of the body by material tier.
     const body: [GearRegion, EquipSlot][] = [['chest', 'chest'], ['legs', 'legs'], ['hands', 'hands'], ['feet', 'feet']];
+    // Four or more pieces of one legendary set: a faint set-coloured glow on the worn body regions (a uniform tweak, nothing per frame).
+    const aura = legendaryAura(items);
     for (const [region, slot] of body) {
       const item = items[slot];
       if (!item) this.c.setRegionTint(region, null);
       else {
         const t = gearTier(item.item_id, item.rarity);
-        this.c.setRegionTint(region, { color: t.color, glow: t.glow });
+        this.c.setRegionTint(region, { color: t.color, glow: aura ?? t.glow });
       }
     }
     this.applyGearVisibility();

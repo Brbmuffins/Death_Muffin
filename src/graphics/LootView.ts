@@ -107,14 +107,14 @@ export class LootView {
         ? undefined
         : new THREE.Mesh(
             beamGeo,
-            new THREE.MeshBasicMaterial({ map: fx.glow(), color, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
+            new THREE.MeshBasicMaterial({ map: fx.glow(), color, transparent: true, opacity: rarity === 'legendary' ? 0.5 : 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
           );
     beam?.position.set(px, 0, pz);
     this.group.add(icon);
     if (beam) this.group.add(beam);
     const glow = this.effects.decal({ tex: fx.glow(), color, x: px, z: pz, r: 0.9, duration: 1e9, opacity: 0.7 });
     // Rarity marker from the Binbun loot pack, in the game's rarity colour (the light pillar and glow stay).
-    const marker = rarity === 'common' || rarity === 'uncommon' ? undefined : playFx(this.effects.binbun, `loot_${rarity}`, { x: px, z: pz, colors: [RARITY_COLOR[rarity], RARITY_COLOR[rarity], '#1a1620'], scale: 0.55, alpha: 0.85 });
+    const marker = rarity === 'common' || rarity === 'uncommon' ? undefined : playFx(this.effects.binbun, rarity === 'legendary' ? 'loot_epic' : `loot_${rarity}`, { x: px, z: pz, colors: [RARITY_COLOR[rarity], RARITY_COLOR[rarity], '#1a1620'], scale: rarity === 'legendary' ? 0.8 : 0.55, alpha: 0.85 });
     this.drops.push({ kind: 'item', obj: icon, x: px, z: pz, amount: drop.quantity, item: drop, t: 0, flying: false, beam, glow, marker });
   }
 

@@ -150,6 +150,7 @@ export const RARITY_COLOR: Record<Rarity, string> = {
   uncommon: '#8fb98a',
   rare: '#8fa6e8',
   epic: '#c6a4ff',
+  legendary: '#ff9a2e',
 };
 
 /** Shape reinforcement for colour-blind readability (audit: rarity was colour-only). */
@@ -158,6 +159,7 @@ export const RARITY_MARK: Record<Rarity, string> = {
   uncommon: '◆',
   rare: '◆◆',
   epic: '◆◆◆',
+  legendary: '★',
 };
 
 export function itemMeta(id: string): ItemMeta {

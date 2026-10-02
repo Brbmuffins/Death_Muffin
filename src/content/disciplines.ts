@@ -39,6 +39,29 @@ export interface DisciplineMods {
   sacrificeLeavesCorpse: boolean;
   /** Corpses inside Miasma burst (Carrion Bloom). */
   miasmaBurstsCorpses: boolean;
+  // --- Legendary set mechanics (docs/LEGENDARY-SETS.md). All numeric and 0 = off, so set bonuses fold in/out by add/subtract. ---
+  /** Legion of the Unburied 4: a dying thrall bursts for this fraction of ITS max HP as damage around it. */
+  thrallDeathBurst: number;
+  /** Legion 5: every Nth thrall raised is a Champion (bigger, 2x damage and health). 0 = never. */
+  championEvery: number;
+  /** Legion 5: a Marrow Spear hit sends every thrall at the target, dealing this much extra damage (0.5 = +50%) for 4 s. */
+  spearRally: number;
+  /** Colossus Mantle 4: this fraction of the damage Bone Ward prevents is dealt back to the attacker. */
+  wardReflect: number;
+  /** Colossus 5: extra damage reduction while 3 or more of your thralls stand (0.2 = 20% less). */
+  colossusGuard: number;
+  /** Colossus 5: when the Black Litany barrier breaks it bursts into bone shards for this multiple of the barrier's size. */
+  litanyShatter: number;
+  /** Requiem of Wraiths 4: consuming a corpse summons a healing wisp for this many seconds (0 = off). */
+  corpseWisp: number;
+  /** Requiem 5: Soul Harvest fills this many times faster (multiplier, 1 = normal). */
+  soulHarvestRateMult: number;
+  /** Requiem 5: when Soul Harvest empowers a rite, each of your wraiths/wisps releases a nova for this fraction of your spell power. */
+  wraithNova: number;
+  /** Plague Choir 4: an enemy dying inside your Miasma spreads its Withered stacks to enemies nearby (1 = on). */
+  miasmaSpreadsWithered: number;
+  /** Plague Choir 5: an enemy reaching this many Withered stacks bursts into a fresh Miasma cloud (0 = off). Also lifts the stack cap to it. */
+  witheredBurstAt: number;
 }
 
 export interface Discipline {
@@ -72,6 +95,17 @@ const BASE: DisciplineMods = {
   litanyBarrier: 0,
   sacrificeLeavesCorpse: false,
   miasmaBurstsCorpses: false,
+  thrallDeathBurst: 0,
+  championEvery: 0,
+  spearRally: 0,
+  wardReflect: 0,
+  colossusGuard: 0,
+  litanyShatter: 0,
+  corpseWisp: 0,
+  soulHarvestRateMult: 1,
+  wraithNova: 0,
+  miasmaSpreadsWithered: 0,
+  witheredBurstAt: 0,
 };
 
 export const DISCIPLINES: Record<DisciplineId, Discipline> = {

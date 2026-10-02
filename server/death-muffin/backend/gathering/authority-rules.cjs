@@ -35,6 +35,61 @@ __export(authorityRules_exports, {
 });
 module.exports = __toCommonJS(authorityRules_exports);
 
+// src/content/legendarySets.ts
+var LEGENDARY_SETS = {
+  legion_unburied: {
+    disciplineId: "gravecaller",
+    name: "Legion of the Unburied",
+    wearer: "Gravecaller",
+    color: 3809067,
+    accent: 16742973,
+    stats: ["stat_int", "stat_vit"],
+    lore: "Forged for the one who never lets the dead lie. The legion marches in its wearer\u2019s footsteps, and does not stop.",
+    pieces: { head: "Warcrown of the Unburied", chest: "Cuirass of the Unburied", hands: "Gauntlets of the Unburied", legs: "Greaves of the Unburied", feet: "Marching Boots of the Unburied" }
+  },
+  colossus_mantle: {
+    disciplineId: "ossuary",
+    name: "Colossus Mantle",
+    wearer: "Ossuary",
+    color: 8221269,
+    accent: 15915402,
+    stats: ["stat_int", "stat_vit"],
+    lore: "A giant\u2019s ribs, hung with every vow the Covenant ever broke. What strikes the wearer is struck back.",
+    pieces: { head: "Colossus Cowl", chest: "Colossus Mantle", hands: "Colossus Fists", legs: "Colossus Cuisses", feet: "Colossus Footings" }
+  },
+  requiem_wraiths: {
+    disciplineId: "mourner",
+    name: "Requiem of Wraiths",
+    wearer: "Mourner",
+    color: 2902622,
+    accent: 8381439,
+    stats: ["stat_int", "stat_agi"],
+    lore: "Woven from the last breath of the mourned. The wraiths still sing in it, and some of them stay to help.",
+    pieces: { head: "Wraithveil Hood", chest: "Requiem Shroud", hands: "Wraithgrasp Gloves", legs: "Wraithwoven Leggings", feet: "Requiem Slippers" }
+  },
+  plague_choir: {
+    disciplineId: "rotweaver",
+    name: "Plague Choir",
+    wearer: "Rotweaver",
+    color: 4016668,
+    accent: 11992909,
+    stats: ["stat_int", "stat_vit"],
+    lore: "Sung into being by a congregation that died of its own hymn. Every note it carries is catching.",
+    pieces: { head: "Choirmaster\u2019s Mask", chest: "Plague Choir Surplice", hands: "Blightmonger\u2019s Gloves", legs: "Choir Rotleggings", feet: "Plague Choir Treads" }
+  }
+};
+var LEGENDARY_SET_IDS = Object.keys(LEGENDARY_SETS);
+var legendaryItemId = (setId, part) => `leg_${setId}_${part}`;
+var LEGENDARY_DROP = {
+  /** Per boss kill (every area boss except the starter Gravedigger King). */
+  bossChance: 0.07,
+  /** Per elite kill in a level-scaled area (Plague Cloister, Cinder Pyre, Mourning Fen). */
+  eliteChance: 3e-3,
+  /** Smart loot: the share of legendary drops that is the player's own discipline's set (the rest splits evenly over the others). */
+  ownShare: 0.7
+};
+var LEGENDARY_BOSS_AREAS = ["ossuary", "nave", "sanctum", "cloister", "pyre", "fen"];
+
 // src/content/armorSets.ts
 var ARMOR_PARTS = ["head", "chest", "hands", "legs", "feet"];
 var ARMOR_SETS = {
@@ -61,7 +116,7 @@ var ASCENDED_ARMOR_SETS = {
 };
 var PART_NAMES = { head: "Crown", chest: "Vestment", hands: "Grips", legs: "Legguards", feet: "Treads" };
 var PART_POWER = { head: 2, chest: 4, hands: 2, legs: 3, feet: 2 };
-var RARITY_SCALE = { common: 1, uncommon: 1, rare: 2, epic: 3 };
+var RARITY_SCALE = { common: 1, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
 var PART_AREA = { head: "graves", hands: "graves", chest: "ossuary", legs: "nave", feet: "sanctum" };
 var PART_RARITY = { head: "uncommon", hands: "uncommon", chest: "rare", legs: "rare", feet: "epic" };
 var ASCENDED_AREA = { head: "sanctum", hands: "sanctum", chest: "cloister", legs: "cloister", feet: "pyre" };
@@ -86,11 +141,32 @@ function piecesFor(sets, collection) {
     sell: PART_POWER[part] * ((collection === 1 ? PART_RARITY[part] : ASCENDED_RARITY[part]) === "epic" ? 22 : (collection === 1 ? PART_RARITY[part] : ASCENDED_RARITY[part]) === "rare" ? 13 : 7) + (collection === 2 ? 20 : 0)
   })));
 }
-var ARMOR_PIECES = [...piecesFor(ARMOR_SETS, 1), ...piecesFor(ASCENDED_ARMOR_SETS, 2)];
+function legendaryPieces() {
+  return Object.entries(LEGENDARY_SETS).flatMap(([setId, set]) => ARMOR_PARTS.map((part) => ({
+    id: legendaryItemId(setId, part),
+    setId,
+    disciplineId: set.disciplineId,
+    collection: 3,
+    setName: set.name,
+    part,
+    name: set.pieces[part],
+    type: `armor_${part}`,
+    rarity: "legendary",
+    // Not an area drop: bosses (and rare elites in scaled areas) roll legendaries. The area is the deepest one, for the tables that need one.
+    area: "pyre",
+    stats: { [set.stats[0]]: PART_POWER[part] * 3 + 3, [set.stats[1]]: Math.floor(PART_POWER[part] * 1.5) + 1 },
+    color: set.color,
+    accent: set.accent,
+    wearer: set.wearer,
+    lore: set.lore,
+    sell: PART_POWER[part] * 30 + 60
+  })));
+}
+var ARMOR_PIECES = [...piecesFor(ARMOR_SETS, 1), ...piecesFor(ASCENDED_ARMOR_SETS, 2), ...legendaryPieces()];
 var ARMOR_BY_ID = Object.fromEntries(ARMOR_PIECES.map((piece) => [piece.id, piece]));
 function armorLoot(area) {
   if (area === "fen") return ARMOR_PIECES.filter((piece) => piece.collection === 2).map((piece) => ({ item: piece.id, weight: 1 }));
-  return ARMOR_PIECES.filter((piece) => piece.area === area || piece.collection === 1 && (area === "cloister" || area === "pyre") && piece.area !== "graves" || piece.collection === 2 && area === "pyre" && piece.area === "cloister").map((piece) => ({ item: piece.id, weight: 1 }));
+  return ARMOR_PIECES.filter((piece) => piece.collection !== 3).filter((piece) => piece.area === area || piece.collection === 1 && (area === "cloister" || area === "pyre") && piece.area !== "graves" || piece.collection === 2 && area === "pyre" && piece.area === "cloister").map((piece) => ({ item: piece.id, weight: 1 }));
 }
 
 // src/content/necroWeapons.ts
@@ -1380,6 +1456,15 @@ function buildGroundRates() {
   }
   for (const pool of Object.values(BOSS_RUNE_POOL)) for (const r of pool) add(r, ICHOR_PER_MIN);
   for (const ichor of BOSS_ICHORS) add(ichor, ICHOR_PER_MIN);
+  if (LEGENDARY_BOSS_AREAS.length) {
+    let elitePerMin = 0;
+    for (const id of AREA_ORDER) {
+      const peak = AREA_PEAK[id];
+      if (peak && AREAS[id].scaling) elitePerMin = Math.max(elitePerMin, peak.kills * Math.min(1, AREAS[id].eliteChance + 4e-3 * 8) * LEGENDARY_DROP.eliteChance);
+    }
+    const perMin = (ICHOR_PER_MIN * LEGENDARY_DROP.bossChance + elitePerMin) * FORTUNE_PEAK;
+    for (const set of LEGENDARY_SET_IDS) for (const part of ["head", "chest", "hands", "legs", "feet"]) add(legendaryItemId(set, part), perMin * Math.max(LEGENDARY_DROP.ownShare, 1 / LEGENDARY_SET_IDS.length) / 5);
+  }
   return rates;
 }
 var GROUND_RATES = buildGroundRates();

@@ -1,5 +1,6 @@
 import { SET_BONUSES, SET_NAMES, describeEffect } from './setBonuses';
 import { ARMOR_PIECES, ARMOR_PARTS } from './armorSets';
+import { LEGENDARY_DROP } from './legendarySets';
 import { AFFIXES, MAX_AFFIXES } from '../gameplay/affixRules';
 import { KIT_RATES, pieceBonus } from '../gameplay/legionRules';
 import { LEGION_UPGRADE } from './upgrades';
@@ -825,12 +826,14 @@ export function riteSwatch(id: AbilityId): string[] {
 
 /** Armor sets tab: every set's bonuses, generated from content/setBonuses.ts so the words follow the numbers. */
 export const CODEX_SETS_COUNSEL =
-  'Wear 2, 4 or 5 pieces of the same armor set for its bonuses; they stack, so five pieces gives all three lines. Pieces from different sets or collections count separately, so two sets at two pieces each give both first bonuses. Any class can wear any set, but thrall and rite lines only help the four necromancer disciplines. Hover a piece in the Reliquary (I) to see the set, press J for what each set still needs. The ascended sets (second collection) are one step stronger than the first.';
+  'Wear 2, 4 or 5 pieces of the same armor set for its bonuses; they stack, so five pieces gives all three lines. Pieces from different sets or collections count separately, so two sets at two pieces each give both first bonuses. Any class can wear any set, but thrall and rite lines only help the four necromancer disciplines. Hover a piece in the Reliquary (I) to see the set, press J for what each set still needs. The ascended sets (second collection) are one step stronger than the first. The four Legendary sets, one per necromancer discipline, are rarer still and change how that discipline plays.';
+/** Legendary section of the Armor sets tab. */
+export const CODEX_LEGENDARY_COUNSEL = `Legendary sets are the chase gear: one per necromancer discipline, five pieces each. Two pieces are a nudge, four change a mechanic and five define the build. They drop from area bosses (about ${+(LEGENDARY_DROP.bossChance * 100).toFixed(1)}% per kill, from the Marrow Ossuary onward) and very rarely (${+(LEGENDARY_DROP.eliteChance * 100).toFixed(1)}%) from elites in the Plague Cloister, Cinder Pyre and Mourning Fen. About ${Math.round(LEGENDARY_DROP.ownShare * 100)}% of the legendaries that drop for you are your own discipline's set. Hover a piece in the Reliquary to read what each tier does.`;
 export interface CodexSetRow {
   setId: string;
   name: string;
   wearer: string;
-  collection: 1 | 2;
+  collection: 1 | 2 | 3;
   drops: string;
   bonuses: { pieces: number; name?: string; text: string }[];
 }
@@ -842,7 +845,7 @@ export const codexSetRows = (): CodexSetRow[] => {
     if (seen.has(p.setId)) continue;
     seen.add(p.setId);
     const drops = ARMOR_PARTS.map((part) => ARMOR_PIECES.find((q) => q.setId === p.setId && q.part === part)!)
-      .map((q) => `${PART_LABEL[q.part]} (${AREAS[q.area].name})`).join(', ');
+      .map((q) => (q.collection === 3 ? q.name : `${PART_LABEL[q.part]} (${AREAS[q.area].name})`)).join(', ') + (p.collection === 3 ? '. Drops from area bosses.' : '');
     rows.push({
       setId: p.setId, name: SET_NAMES[p.setId], wearer: p.wearer, collection: p.collection, drops,
       bonuses: SET_BONUSES[p.setId].map((b) => ({ pieces: b.pieces, name: b.name, text: describeEffect(b.effect).join(' \u00B7 ') })),

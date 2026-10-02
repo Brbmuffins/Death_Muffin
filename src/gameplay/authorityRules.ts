@@ -9,6 +9,7 @@
 
 import { AREAS, AREA_ORDER, type AreaId } from '../content/areas';
 import { ASCENSION } from '../content/ascension';
+import { LEGENDARY_BOSS_AREAS, LEGENDARY_DROP, LEGENDARY_SET_IDS, legendaryItemId } from '../content/legendarySets';
 import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS, BOSS_ICHOR } from '../content/reagents';
 import { AREA_RUNE_POOL, BOSS_RUNE_POOL, ELITE_RUNE_CHANCE, RUNE_WEIGHT, RUNES, SURGE_RUNE_CHANCE } from '../content/runes';
 
@@ -181,6 +182,18 @@ function buildGroundRates(): Record<string, number> {
   // Boss runes: at most a boss kill a minute is a generous honest rate (ichors use the same figure).
   for (const pool of Object.values(BOSS_RUNE_POOL)) for (const r of pool) add(r, ICHOR_PER_MIN);
   for (const ichor of BOSS_ICHORS) add(ichor, ICHOR_PER_MIN);
+  // Legendary armor (legendarySets.ts) is in no area table: a boss kill or a scaled-area elite rolls it. The ceiling is the most any one
+  // piece could drop per minute: every set is possible (a player's own gets ownShare, but a script may claim any), five pieces share a set's drops.
+  if (LEGENDARY_BOSS_AREAS.length) {
+    let elitePerMin = 0;
+    for (const id of AREA_ORDER) {
+      const peak = AREA_PEAK[id];
+      if (peak && AREAS[id].scaling) elitePerMin = Math.max(elitePerMin, peak.kills * Math.min(1, AREAS[id].eliteChance + 0.004 * 8) * LEGENDARY_DROP.eliteChance);
+    }
+    const perMin = (ICHOR_PER_MIN * LEGENDARY_DROP.bossChance + elitePerMin) * FORTUNE_PEAK;
+    // The most likely set gets ownShare of the drops, a piece is one in five of its set.
+    for (const set of LEGENDARY_SET_IDS) for (const part of ['head', 'chest', 'hands', 'legs', 'feet'] as const) add(legendaryItemId(set, part), (perMin * Math.max(LEGENDARY_DROP.ownShare, 1 / LEGENDARY_SET_IDS.length)) / 5);
+  }
   return rates;
 }
 

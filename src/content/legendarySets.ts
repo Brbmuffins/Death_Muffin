@@ -1,0 +1,83 @@
+import type { AreaId } from './areas';
+
+/**
+ * Legendary armor sets (docs/LEGENDARY-SETS.md): one rare, build-defining set per necromancer discipline. The pieces are built into
+ * ARMOR_PIECES (armorSets.ts, collection 3); the bonuses are in setBonuses.ts; this file holds the names and the drop rules, which
+ * are pure so the client (loot.ts) and the server's ground-rate ceiling (authorityRules.ts) read the same numbers.
+ */
+export type LegendaryPart = 'head' | 'chest' | 'hands' | 'legs' | 'feet';
+const PARTS: LegendaryPart[] = ['head', 'chest', 'hands', 'legs', 'feet'];
+
+export interface LegendarySet {
+  /** The discipline this set is built for (its "own" set for smart loot). */
+  disciplineId: string;
+  name: string;
+  wearer: string;
+  color: number;
+  accent: number;
+  stats: readonly [string, string];
+  lore: string;
+  /** Piece names, head to feet. */
+  pieces: Record<LegendaryPart, string>;
+}
+
+export const LEGENDARY_SETS: Record<string, LegendarySet> = {
+  legion_unburied: {
+    disciplineId: 'gravecaller', name: 'Legion of the Unburied', wearer: 'Gravecaller', color: 0x3a1f2b, accent: 0xff7a3d, stats: ['stat_int', 'stat_vit'],
+    lore: 'Forged for the one who never lets the dead lie. The legion marches in its wearer’s footsteps, and does not stop.',
+    pieces: { head: 'Warcrown of the Unburied', chest: 'Cuirass of the Unburied', hands: 'Gauntlets of the Unburied', legs: 'Greaves of the Unburied', feet: 'Marching Boots of the Unburied' },
+  },
+  colossus_mantle: {
+    disciplineId: 'ossuary', name: 'Colossus Mantle', wearer: 'Ossuary', color: 0x7d7255, accent: 0xf2d98a, stats: ['stat_int', 'stat_vit'],
+    lore: 'A giant’s ribs, hung with every vow the Covenant ever broke. What strikes the wearer is struck back.',
+    pieces: { head: 'Colossus Cowl', chest: 'Colossus Mantle', hands: 'Colossus Fists', legs: 'Colossus Cuisses', feet: 'Colossus Footings' },
+  },
+  requiem_wraiths: {
+    disciplineId: 'mourner', name: 'Requiem of Wraiths', wearer: 'Mourner', color: 0x2c4a5e, accent: 0x7fe3ff, stats: ['stat_int', 'stat_agi'],
+    lore: 'Woven from the last breath of the mourned. The wraiths still sing in it, and some of them stay to help.',
+    pieces: { head: 'Wraithveil Hood', chest: 'Requiem Shroud', hands: 'Wraithgrasp Gloves', legs: 'Wraithwoven Leggings', feet: 'Requiem Slippers' },
+  },
+  plague_choir: {
+    disciplineId: 'rotweaver', name: 'Plague Choir', wearer: 'Rotweaver', color: 0x3d4a1c, accent: 0xb6ff4d, stats: ['stat_int', 'stat_vit'],
+    lore: 'Sung into being by a congregation that died of its own hymn. Every note it carries is catching.',
+    pieces: { head: 'Choirmaster’s Mask', chest: 'Plague Choir Surplice', hands: 'Blightmonger’s Gloves', legs: 'Choir Rotleggings', feet: 'Plague Choir Treads' },
+  },
+};
+
+export const LEGENDARY_SET_IDS = Object.keys(LEGENDARY_SETS);
+export const legendaryItemId = (setId: string, part: LegendaryPart): string => `leg_${setId}_${part}`;
+/** The set built for a discipline, if it has one yet (necromancer first; other families get theirs later). */
+export const legendarySetFor = (disciplineId: string): string | undefined => LEGENDARY_SET_IDS.find((id) => LEGENDARY_SETS[id].disciplineId === disciplineId);
+
+// --- Drop rules ----------------------------------------------------------------------------------------------------------------------
+export const LEGENDARY_DROP = {
+  /** Per boss kill (every area boss except the starter Gravedigger King). */
+  bossChance: 0.07,
+  /** Per elite kill in a level-scaled area (Plague Cloister, Cinder Pyre, Mourning Fen). */
+  eliteChance: 0.003,
+  /** Smart loot: the share of legendary drops that is the player's own discipline's set (the rest splits evenly over the others). */
+  ownShare: 0.7,
+} as const;
+
+/** Bosses roll from every area but the first (the Hollow Graves are too early for build-defining gear). */
+export const LEGENDARY_BOSS_AREAS: readonly AreaId[] = ['ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'fen'];
+
+/** Which set a legendary drop is, for a player of `disciplineId`: 70% their own, the rest shared evenly (even split with no own set). */
+export function pickLegendarySet(disciplineId: string, rand: () => number): string {
+  const own = legendarySetFor(disciplineId);
+  const others = LEGENDARY_SET_IDS.filter((id) => id !== own);
+  if (!own) return others[Math.floor(rand() * others.length) % others.length];
+  if (rand() < LEGENDARY_DROP.ownShare) return own;
+  return others[Math.floor(rand() * others.length) % others.length];
+}
+
+/** The item id of one legendary drop (a uniformly random piece of the chosen set). */
+export function pickLegendaryItem(disciplineId: string, rand: () => number): string {
+  const set = pickLegendarySet(disciplineId, rand);
+  return legendaryItemId(set, PARTS[Math.floor(rand() * PARTS.length) % PARTS.length]);
+}
+
+/** The roll itself: an item id, or null. `chance` is bossChance / eliteChance. */
+export function rollLegendary(disciplineId: string, chance: number, rand: () => number = Math.random): string | null {
+  return rand() < chance ? pickLegendaryItem(disciplineId, rand) : null;
+}

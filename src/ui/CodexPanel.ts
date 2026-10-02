@@ -21,6 +21,7 @@ import {
   CODEX_WEAPONS,
   CODEX_WEAPONS_COUNSEL,
   CODEX_SETS_COUNSEL,
+  CODEX_LEGENDARY_COUNSEL,
   codexSetRows,
   type CodexSetRow,
   CODEX_STATS,
@@ -47,7 +48,7 @@ import { GATHER_SKILLS, SKILLS, actionMs, nodesForSkill, xpPerHour } from '../ga
 import { CODEX_PEOPLE_COUNSEL, codexPeopleRows } from '../content/codex';
 import type { NpcId } from '../content/npcs';
 import { generateLayout } from '../content/layout';
-import { itemMeta } from '../content/items';
+import { itemMeta, RARITY_COLOR } from '../content/items';
 import { ICON } from './icons';
 import './runes.css';
 import type { Chronicle } from '../gameplay/chronicle';
@@ -288,15 +289,16 @@ export class CodexPanel {
 
   private sets() {
     const entry = (r: CodexSetRow) => `
-        <article class="cw-codex-entry">
+        <article class="cw-codex-entry${r.collection === 3 ? ' legendary' : ''}">
           <div class="txt">
-            <div class="hd"><h3>${r.name}</h3><span class="meta">${r.wearer} \u00B7 ${r.collection === 1 ? 'First' : 'Ascended'} collection</span></div>
+            <div class="hd"><h3>${r.name}</h3><span class="meta">${r.wearer} \u00B7 ${r.collection === 3 ? 'Legendary' : r.collection === 1 ? 'First collection' : 'Ascended collection'}</span></div>
             <dl>${r.bonuses.map((b) => `<dt>${b.pieces} pieces</dt><dd>${b.name ? `<b>${b.name}.</b> ` : ''}${b.text}</dd>`).join('')}</dl>
             <p class="tip">${r.drops}</p>
           </div>
         </article>`;
     const rows = codexSetRows();
-    return `<p class="tip">${CODEX_SETS_COUNSEL}</p>` + rows.map(entry).join('');
+    return `<p class="tip">${CODEX_SETS_COUNSEL}</p>` + rows.filter((r) => r.collection !== 3).map(entry).join('') +
+      `<h3 class="cw-codex-section" style="color:${RARITY_COLOR.legendary}">Legendary sets</h3><p class="tip">${CODEX_LEGENDARY_COUNSEL}</p>` + rows.filter((r) => r.collection === 3).map(entry).join('');
   }
 
   private disciplines() {

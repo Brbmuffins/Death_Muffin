@@ -57,7 +57,7 @@ export interface SetStatus {
   setId: string;
   setName: string;
   disciplineId: string;
-  collection: 1 | 2;
+  collection: 1 | 2 | 3;
   color: number;
   accent: number;
   /** Pieces worn (distinct slots). */
@@ -109,7 +109,7 @@ export function setStatus(setId: string, wornParts: ArmorPart[]): SetStatus {
     accent: any?.accent ?? 0,
     worn,
     wornParts,
-    missing: pieces.filter((p) => !wornParts.includes(p.part)).map((p) => ({ part: p.part, name: p.name, where: AREAS[p.area].name })),
+    missing: pieces.filter((p) => !wornParts.includes(p.part)).map((p) => ({ part: p.part, name: p.name, where: p.collection === 3 ? 'Area bosses' : AREAS[p.area].name })),
     bonuses,
     next: bonuses.find((b) => !b.active)?.pieces ?? null,
   };

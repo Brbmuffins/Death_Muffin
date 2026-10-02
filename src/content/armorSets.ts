@@ -1,5 +1,6 @@
 import type { AreaId } from './areas';
 import type { ItemType, Rarity } from '../net/types';
+import { LEGENDARY_SETS, legendaryItemId } from './legendarySets';
 
 export type ArmorPart = 'head' | 'chest' | 'hands' | 'legs' | 'feet';
 export const ARMOR_PARTS: ArmorPart[] = ['head', 'chest', 'hands', 'legs', 'feet'];
@@ -43,7 +44,8 @@ export interface ArmorPiece {
   id: string;
   setId: string;
   disciplineId: string;
-  collection: 1 | 2;
+  /** 1 = first, 2 = ascended, 3 = legendary (legendarySets.ts; drops from bosses, not from an area table). */
+  collection: 1 | 2 | 3;
   setName: string;
   part: ArmorPart;
   name: string;
@@ -60,7 +62,7 @@ export interface ArmorPiece {
 
 const PART_NAMES: Record<ArmorPart, string> = { head: 'Crown', chest: 'Vestment', hands: 'Grips', legs: 'Legguards', feet: 'Treads' };
 const PART_POWER: Record<ArmorPart, number> = { head: 2, chest: 4, hands: 2, legs: 3, feet: 2 };
-const RARITY_SCALE: Record<Rarity, number> = { common: 1, uncommon: 1, rare: 2, epic: 3 };
+const RARITY_SCALE: Record<Rarity, number> = { common: 1, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
 const PART_AREA: Record<ArmorPart, AreaId> = { head: 'graves', hands: 'graves', chest: 'ossuary', legs: 'nave', feet: 'sanctum' };
 const PART_RARITY: Record<ArmorPart, Rarity> = { head: 'uncommon', hands: 'uncommon', chest: 'rare', legs: 'rare', feet: 'epic' };
 const ASCENDED_AREA: Record<ArmorPart, AreaId> = { head: 'sanctum', hands: 'sanctum', chest: 'cloister', legs: 'cloister', feet: 'pyre' };
@@ -88,7 +90,30 @@ function piecesFor(sets: Record<string, ArmorSet>, collection: 1 | 2): ArmorPiec
   })));
 }
 
-export const ARMOR_PIECES: ArmorPiece[] = [...piecesFor(ARMOR_SETS, 1), ...piecesFor(ASCENDED_ARMOR_SETS, 2)];
+/** Legendary pieces: a step above ascended at every slot (primary = 3 x power + 3, secondary = 1.5 x power + 1), same two stats as the discipline's other sets. */
+function legendaryPieces(): ArmorPiece[] {
+  return Object.entries(LEGENDARY_SETS).flatMap(([setId, set]) => ARMOR_PARTS.map((part) => ({
+    id: legendaryItemId(setId, part),
+    setId,
+    disciplineId: set.disciplineId,
+    collection: 3 as const,
+    setName: set.name,
+    part,
+    name: set.pieces[part],
+    type: `armor_${part}` as ItemType,
+    rarity: 'legendary' as Rarity,
+    // Not an area drop: bosses (and rare elites in scaled areas) roll legendaries. The area is the deepest one, for the tables that need one.
+    area: 'pyre' as AreaId,
+    stats: { [set.stats[0]]: PART_POWER[part] * 3 + 3, [set.stats[1]]: Math.floor(PART_POWER[part] * 1.5) + 1 },
+    color: set.color,
+    accent: set.accent,
+    wearer: set.wearer,
+    lore: set.lore,
+    sell: PART_POWER[part] * 30 + 60,
+  })));
+}
+
+export const ARMOR_PIECES: ArmorPiece[] = [...piecesFor(ARMOR_SETS, 1), ...piecesFor(ASCENDED_ARMOR_SETS, 2), ...legendaryPieces()];
 
 export const ARMOR_BY_ID: Record<string, ArmorPiece> = Object.fromEntries(ARMOR_PIECES.map((piece) => [piece.id, piece]));
 
@@ -96,6 +121,6 @@ export const ARMOR_BY_ID: Record<string, ArmorPiece> = Object.fromEntries(ARMOR_
 export function armorLoot(area: AreaId) {
   // The Mourning Fen (level 45+) is past every armor area: it drops the whole ascended collection, head and grips included.
   if (area === 'fen') return ARMOR_PIECES.filter((piece) => piece.collection === 2).map((piece) => ({ item: piece.id, weight: 1 }));
-  return ARMOR_PIECES.filter((piece) => piece.area === area || (piece.collection === 1 && (area === 'cloister' || area === 'pyre') && piece.area !== 'graves') || (piece.collection === 2 && area === 'pyre' && piece.area === 'cloister'))
+  return ARMOR_PIECES.filter((piece) => piece.collection !== 3).filter((piece) => piece.area === area || (piece.collection === 1 && (area === 'cloister' || area === 'pyre') && piece.area !== 'graves') || (piece.collection === 2 && area === 'pyre' && piece.area === 'cloister'))
     .map((piece) => ({ item: piece.id, weight: 1 }));
 }
