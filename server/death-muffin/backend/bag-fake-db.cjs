@@ -31,6 +31,18 @@ const ITEMS = {
   tool_pickaxe_copper: { type: 'material', rarity: 'common', stack: 1 },
   tool_rod_copper: { type: 'material', rarity: 'common', stack: 1 },
   tool_spade_copper: { type: 'material', rarity: 'common', stack: 1 },
+  // Relic runes (migration 024).
+  rune_splinter: { type: 'rune', rarity: 'uncommon', stack: 99 },
+  rune_marrow_tap: { type: 'rune', rarity: 'uncommon', stack: 99 },
+  rune_volley: { type: 'rune', rarity: 'rare', stack: 99 },
+  rune_ossuary_ring: { type: 'rune', rarity: 'rare', stack: 99 },
+  rune_impale: { type: 'rune', rarity: 'uncommon', stack: 99 },
+  rune_mass_grave: { type: 'rune', rarity: 'rare', stack: 99 },
+  rune_bone_colossus: { type: 'rune', rarity: 'epic', stack: 99 },
+  rune_creeping_rot: { type: 'rune', rarity: 'uncommon', stack: 99 },
+  rune_contagion: { type: 'rune', rarity: 'rare', stack: 99 },
+  rune_hollow_choir: { type: 'rune', rarity: 'rare', stack: 99 },
+  rune_requiem: { type: 'rune', rarity: 'epic', stack: 99 },
 };
 
 function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot = [], charLevel = 10, extra = null } = {}) {
@@ -42,6 +54,7 @@ function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot =
   // loot_instances: { id, account_id, item_id, ilvl, affixes, created_at }. inventory/account_vault rows point at them with instance_id.
   let lootRows = loot.map((l) => ({ account_id: 7, ilvl: 5, affixes: [], created_at: Date.now(), ...l }));
   let nextLoot = 1000;
+  let nextRowId = 7000;
   // One UNIQUE key per table (uq_inventory_instance, uq_account_vault_instance); cross-table duplicates are the application's to prevent.
   const uniqueInstance = (id, self, rows) => {
     if (id == null) return;
@@ -68,6 +81,18 @@ function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot =
     sql = sql.trim();
     calls.push(sql.split('\n')[0].slice(0, 60));
     if (sql.startsWith('SELECT inv.slot_index, inv.item_id, inv.quantity, inv.equipped, inv.instance_id')) return [inv.filter((r) => r.character_id === p[0] && r.slot_index >= 0 && r.slot_index <= p[1]).sort((a, b) => a.slot_index - b.slot_index).map(withLoot)];
+    // Relic runes (runes.cjs): lock every row, adjust a stack by id, delete by id, insert a bag stack or a socket row (both unique keys enforced).
+    if (sql.startsWith('SELECT id, slot_index, item_id, quantity, equipped, instance_id FROM inventory')) return [inv.filter((r) => r.character_id === p[0]).map((r) => ({ ...r }))];
+    if (sql.startsWith('UPDATE inventory SET quantity = quantity')) { inv.find((r) => r.id === p[0]).quantity += sql.includes('quantity + 1') ? 1 : -1; return [{}]; }
+    if (sql.startsWith('DELETE FROM inventory WHERE id = ?')) { inv = inv.filter((r) => r.id !== p[0]); return [{}]; }
+    if (sql.startsWith('INSERT INTO inventory (character_id, slot_index, item_id, quantity, equipped, equipped_slot) VALUES')) {
+      const socket = sql.includes(', 1, 1, ?');
+      const row = { id: nextRowId++, character_id: p[0], slot_index: p[1], item_id: p[2], quantity: 1, instance_id: null, equipped: socket ? 1 : 0, equipped_slot: socket ? p[3] : null };
+      if (inv.some((r) => r.character_id === row.character_id && r.slot_index === row.slot_index)) throw new Error('Duplicate entry for uq_char_slot');
+      if (row.equipped_slot && inv.some((r) => r.character_id === row.character_id && r.equipped_slot === row.equipped_slot)) throw new Error('Duplicate entry for uq_inventory_equipped_slot');
+      inv.push(row);
+      return [{ insertId: row.id }];
+    }
     // The tool belt (tool-belt.cjs): lock every row, then move rows by id (the unique key is character + slot).
     if (sql.startsWith('SELECT id, slot_index, item_id FROM inventory')) return [inv.filter((r) => r.character_id === p[0]).map((r) => ({ ...r }))];
     if (sql.startsWith('UPDATE inventory SET slot_index = ?')) {

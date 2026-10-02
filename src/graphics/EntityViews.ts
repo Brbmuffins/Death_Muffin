@@ -114,7 +114,7 @@ const THRALL_LOOK: Partial<Record<ThrallKind, { tint: number; emissive: number; 
   bonemage: { tint: 0xe6dccb, emissive: 0xb07a2a, glow: 0.35 },
   plaguebearer: { tint: 0xb9c48a, emissive: 0x5a6a18, glow: 0.35, scale: 0.8, ring: 0.7 },
   // Bone Colossus rune: the Tripo giant is left in its own bone-and-cloth colours (a jade glow and rim read it as yours); a wide ring under it.
-  colossus: { tint: 0xffffff, emissive: 0x1f8f86, glow: 0.3, ring: 1.7 },
+  colossus: { tint: 0xffffff, emissive: 0x1f8f86, glow: 0.1, ring: 1.7 },
 };
 
 /** What the legion's kit looks like on a thrall (gameplay/legionKit.ts decides the pieces; this only dresses the model). */
@@ -406,7 +406,8 @@ export class EntityViews {
     const look = kindLook;
     // The Legion kit dresses thralls raised from now on, the same ones that carry its stats.
     const kit = KIT_BODIES.has(t.kind) ? (this.kitOf?.(t.owner) ?? null) : null;
-    const c = new Creature(legion?.slug ?? THRALL_SLUG[t.kind], {
+    // A kind this build does not know (a newer host's) is drawn as a plain skeleton rather than breaking the room.
+    const c = new Creature(legion?.slug ?? THRALL_SLUG[t.kind] ?? 'skeleton_thrall', {
       gearTint: !!kit?.armor,
       tint: look?.tint ?? legion?.tint ?? (wraith ? 0xb9c4ff : 0xf4ecff),
       emissive: look?.emissive ?? legion?.emissive ?? (wraith ? 0x8f9ed1 : 0x1f8f86),

@@ -156,6 +156,8 @@ export class AbilitySystem {
 
   /** Bone Needle casts so far (the Volley rune fires on every 4th). */
   private needleCasts = 0;
+  /** The last Exhume raised a Bone Colossus (its cooldown is longer). */
+  private colossusCast = false;
 
   constructor(private ctx: AbilityContext) { this.newBlood = new NewBloodSystem(ctx); }
 
@@ -326,7 +328,7 @@ export class AbilitySystem {
       if (id === 'exhume' && !empowered && p.loadout.exhumeRefund > 0) p.essence = Math.min(p.stats.maxEssence, p.essence + def.essenceCost * p.loadout.exhumeRefund);
       // Apply weapon cooldown changes and elixir haste when the cooldown starts.
       // Bone Colossus: raising a giant takes Exhume out of your hands for a while.
-      const runeCool = id === 'exhume' && this.rune('exhume') === 'rune_bone_colossus' ? RUNE_TUNING.colossus.cooldownMult : 1;
+      const runeCool = id === 'exhume' && this.colossusCast ? RUNE_TUNING.colossus.cooldownMult : 1;
       p.cooldowns.set(id, now + (abilityCooldownMs(id, def.cooldownMs, p.loadout, PRIMARIES.includes(id)) * runeCool) / (1 + p.brewValue('haste', now)));
     }
     return result;
@@ -375,9 +377,10 @@ export class AbilitySystem {
       if (first) for (const e of volleyTargets({ x: p.x, z: p.z }, first, live).slice(1)) aim.push({ x: e.x, z: e.z, enemyId: e.id });
     }
     while (aim.length < RUNE_TUNING.volley.needles) aim.push(t);
+    // The volley returns what one needle would (an even share each), so it is a damage rune, not an essence one.
     aim.forEach((tt, i) => {
       const spread = { x: from.x + (i - 1) * 0.12, y: from.y, z: from.z };
-      this.launchNeedle(tt, spread, dmg, essence, false, i * 0.05);
+      this.launchNeedle(tt, spread, dmg, essence / RUNE_TUNING.volley.needles, false, i * 0.05);
     });
     nf.boneSplinters(effects, from.x, from.y, from.z, { n: 5, color: N.core, speed: 3.5 });
     effects.decal({ tex: fx.ring(), color: N.trail, x: p.x, z: p.z, r: 1.3, duration: 0.35, opacity: 0.55, growFrom: 0.4 });
@@ -707,14 +710,13 @@ export class AbilitySystem {
     const c = this.pickCorpse(t);
     if (!c) return 'no_corpse';
     const rune = this.rune('exhume');
-    const colossus = rune === 'rune_bone_colossus';
     const mass = rune === 'rune_mass_grave';
-    // Bone Colossus needs company: at least three corpses lying within reach of the one you named.
-    const company = colossus ? corpsesWithin(c, RUNE_TUNING.colossus.pickRadius, this.ctx.corpses().values()).slice(0, RUNE_TUNING.colossus.corpses) : [];
-    if (colossus && company.length < RUNE_TUNING.colossus.minCorpses) {
-      this.ctx.note?.(`The Colossus needs ${RUNE_TUNING.colossus.minCorpses} corpses close together`, 'ward');
-      return 'no_corpse';
-    }
+    // Bone Colossus needs company: at least three corpses lying within reach of the one you named, and no Colossus standing already.
+    // Otherwise the rite raises an ordinary thrall, so the legion can still be filled around the giant.
+    const company = rune === 'rune_bone_colossus' ? corpsesWithin(c, RUNE_TUNING.colossus.pickRadius, this.ctx.corpses().values()).slice(0, RUNE_TUNING.colossus.corpses) : [];
+    const standing = [...(this.ctx.thralls?.().values() ?? [])].some((t) => t.owner === this.ctx.selfId && t.kind === 'colossus' && t.state !== 'dead');
+    const colossus = company.length >= RUNE_TUNING.colossus.minCorpses && !standing;
+    this.colossusCast = colossus;
     p.face(c.x, c.z);
     avatar.cast('dig', 2.6, p.facing, CAST_FLOW.exhume.gestureSeconds, 'exhume');
     const m = discipline.mods;

@@ -55,7 +55,7 @@ Roadmap: [`PROFESSIONS-ROADMAP.md`](PROFESSIONS-ROADMAP.md). Wiring notes: [`age
 | Barrow Ghoul (new, 2026-09-27 evening) | `public/models/barrow_ghoul/character.glb` (idle, walk, run, attack, dig, hurt, death; 4k tris) | Hollow Graves burrowing ambusher | Specced in [`agent-briefs/mobs-barrow-ghoul-lich-acolyte.md`](agent-briefs/mobs-barrow-ghoul-lich-acolyte.md) §2 |
 | Area bosses (3) + portraits | `public/models/boss_{gravedigger_king,bone_abbess,drowned_congregation}/character.glb` (idle, walk, attack, cast or dig, hurt, death; 1024 px), `public/art/portraits/boss_{gravedigger_king,bone_abbess,drowned_congregation}.webp` | Bosses for the Hollow Graves, Marrow Ossuary and Drowned Nave | Boss brains + summoning |
 | Future spell icons (9) | `public/art/abilities/necro-{bone-fan,veil-step,grave-offering,soul-chain,ivory-cleave,rally-the-dead,frost-wake,carrion-seed,rot-lance}.png` | `SPELL-VARIETY-PLAN.md` spells. Reconcile that plan with the shipped Grimoire first | Ability defs |
-| Relic rune icons (11) | `public/art/items/rune_{splinter,marrow_tap,volley,ossuary_ring,impale,mass_grave,bone_colossus,creeping_rot,contagion,hollow_choir,requiem}.png` | Socketable spell modifiers (`server/proposals/relic-runes.md`) | Server `rune` item type |
+| Relic rune icons (11) | `public/art/items/rune_{splinter,marrow_tap,volley,ossuary_ring,impale,mass_grave,bone_colossus,creeping_rot,contagion,hollow_choir,requiem}.png` | Socketable spell modifiers: built on `dm/runes` (`src/content/runes.ts`, migration 024) | Wired; deploy with migration 024 |
 
 ## 3. Replay and world
 

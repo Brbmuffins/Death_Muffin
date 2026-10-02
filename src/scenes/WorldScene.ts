@@ -53,7 +53,7 @@ import { omenFor, omenLeft, type Omen } from '../content/omens';
 import { BOSS_ARENA } from '../gameplay/sim/BossBrain';
 import { makeSnapshot, WorldMirror } from '../gameplay/sim/snapshot';
 import type { BossState, Corpse, Enemy, Intent, SimEvent, Thrall, Zone } from '../gameplay/sim/types';
-import { WorldSim } from '../gameplay/sim/WorldSim';
+import { WorldSim, thrallWeight } from '../gameplay/sim/WorldSim';
 import { computeStats, STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
 import { BossView, NecromancerAvatar } from '../graphics/Avatars';
 import { prewarmCreature } from '../graphics/prewarmCreature';
@@ -738,12 +738,20 @@ export class WorldScene implements GameScene, RuntimeView {
       if (itemId) {
         audio.play('shard');
         this.hud.toast(`${RUNES[itemId].name}: ${RUNES[itemId].short}`, 'good');
-        this.onboarding.show('runeSocketed', 1200, { kind: 'asked' });
+        // Calm on purpose: it waits for the Grimoire to close instead of covering its first socket.
+        this.onboarding.show('runeSocketed', 1200);
       }
       return null;
     } catch (e) {
       return e instanceof Error ? e.message : 'The rune would not move.';
     }
+  }
+
+  /** Legion places your thralls fill against the cap (a Bone Colossus fills two). */
+  private legionPlaces() {
+    let n = 0;
+    for (const t of this.thrallsMap().values()) if (t.owner === this.selfId) n += thrallWeight(t.kind);
+    return n;
   }
 
   /** Relic runes: adopt the inventory's socket rows (only a necromancer's rites take runes), and redraw what shows them. */
@@ -1575,7 +1583,7 @@ export class WorldScene implements GameScene, RuntimeView {
     }
     if (now < this.nextAutoCombatAt) return;
     this.nextAutoCombatAt = now + 180;
-    const thralls = [...this.thrallsMap().values()].filter(t => t.owner === this.selfId).length;
+    const thralls = this.legionPlaces();
     if (p.hp < p.stats.maxHp * 0.42 && now >= this.flaskCdUntil &&
         (this.inventory.count('flask_hp_grand') || this.inventory.count('flask_hp_major') || this.inventory.count('flask_hp_minor'))) this.drinkFlask();
     const action = selectAutoCombatAction({ player: { x: p.x, z: p.z, area: p.area, essence: p.essence, maxEssence: p.resource.max,
@@ -4326,7 +4334,7 @@ export class WorldScene implements GameScene, RuntimeView {
       }),
       souls: p.souls,
       soulsMax: p.soulsMax,
-      thralls: myThralls.length,
+      thralls: myThralls.reduce((n, t) => n + thrallWeight(t.kind), 0),
       thrallCap: this.discipline.mods.thrallCap,
       gold: Math.floor(this.character.gold ?? 0),
       shards: loc.shards,
@@ -4582,6 +4590,23 @@ export class WorldScene implements GameScene, RuntimeView {
         this.mouse.x = x;
         this.mouse.y = y;
       },
+      /** Runes QA: aim the cursor at a world point (returns the ground point it resolved to). */
+      aimAt: (x: number, z: number) => {
+        const v = new THREE.Vector3(x, 0.05, z).project(this.rig.camera);
+        this.mouse.x = ((v.x + 1) / 2) * window.innerWidth;
+        this.mouse.y = ((1 - v.y) / 2) * window.innerHeight;
+        this.mouse.aiming = true;
+        this.updateCursor();
+        return { x: this.groundPoint.x, z: this.groundPoint.z };
+      },
+      /** Runes QA: lay a plain corpse at a world point. */
+      corpseAt: (x: number, z: number, enemy: keyof typeof ENEMIES = 'robber') => {
+        this.sim?.addCorpse(x, z, 'normal', enemy, false, 0, 1, this.player.area ?? 'graves');
+      },
+      /** Runes QA: the cast code, the live sockets, and the hotbar's rune badges. */
+      abilities: this.abilities,
+      runes: () => ({ ...this.player.runes }),
+      now: () => this.now,
       /** Gathering QA: every node with its live state (optionally one area). */
       nodes: (area?: AreaId) =>
         this.layout.nodes.filter((n) => !area || n.area === area).map((n) => ({ id: n.id, type: n.type, area: n.area, rich: !!n.rich, live: this.nodeLive(n.id), x: n.x, z: n.z })),

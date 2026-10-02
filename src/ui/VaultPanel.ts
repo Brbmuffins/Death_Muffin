@@ -1,3 +1,4 @@
+import { RUNES, isRuneId } from '../content/runes';
 import { getVault, vaultDeposit, vaultDepositAll, vaultSort, vaultWithdraw, type VaultState } from '../net/api';
 import type { InventorySlot } from '../net/types';
 import { RARITY_COLOR, RARITY_MARK, itemMeta } from '../content/items';
@@ -88,7 +89,7 @@ export class VaultPanel {
     btn.style.setProperty('--rarity', RARITY_COLOR[slot.rarity] ?? RARITY_COLOR.common);
     const meta = itemMeta(slot.item_id);
     const where = kind === 'bag' ? 'Click to store it in the Vault' : 'Click to take it into your bag';
-    btn.title = `${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''} (${slot.rarity})${locked ? ' · locked' : ''}\n${rollTitleLines(slot).map((l) => `${l}\n`).join('')}${slot.equipped ? 'Equipped gear cannot be stored' : where}`;
+    btn.title = `${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''} (${slot.rarity})${locked ? ' · locked' : ''}\n${rollTitleLines(slot).map((l) => `${l}\n`).join('')}${isRuneId(slot.item_id) ? `${RUNES[slot.item_id].short}: ${RUNES[slot.item_id].lines[0]}\n` : ''}${slot.equipped ? 'Equipped gear cannot be stored' : where}`;
     btn.setAttribute('aria-label', `${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''}, ${slot.rarity}${locked ? ', locked' : ''}. ${where}`);
     const img = document.createElement('img');
     img.className = 'item-icon';

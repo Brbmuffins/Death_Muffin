@@ -9,7 +9,7 @@ import { mulberry32 } from '../rng';
 import { Player } from '../Player';
 import { resourceRulesFor } from '../resources';
 import type { Corpse, Enemy, SimEvent } from '../sim/types';
-import { WorldSim } from '../sim/WorldSim';
+import { WorldSim, thrallWeight } from '../sim/WorldSim';
 import { generateLayout } from '../../content/layout';
 import type { Character, InventorySlot } from '../../net/types';
 import { EQUIP_SLOTS, equippedBySlot } from '../../content/gear';
@@ -19,6 +19,8 @@ import { abilityCooldownMs, abilityRange, pierceTargets, reapTargets, resolveWea
 import { NECRO_WEAPON_TUNING } from '../../content/necroWeapons';
 import { resolveKit, type KitName, type KitRequest } from './kits';
 import type { Difficulty } from '../../content/difficulty';
+import { RUNE_TUNING, type RuneId, type RuneRite } from '../../content/runes';
+import { corpsesWithin, impaleTarget, ringHits, splinterTarget, volleyTargets } from '../runeCast';
 
 /**
  * Headless balance harness: drives the real WorldSim with a scripted
@@ -53,6 +55,8 @@ export interface BalanceRun {
   noRiteEffects?: boolean;
   /** Experiments: one extra effect (a lever, a stat) folded on top of whatever is worn, to measure what a single number is worth. */
   effect?: SetEffect;
+  /** Relic runes socketed in the necromancer's rites (content/runes.ts): the bot casts each rite the way AbilitySystem does with that rune. */
+  runes?: Partial<Record<RuneRite, RuneId>>;
 }
 
 export interface BalanceResult {
@@ -131,7 +135,9 @@ export function runBalance(run: BalanceRun): BalanceResult {
   // rites. Keep the established necromancer bot untouched for baseline parity.
   const body = disc.family === 'necromancer' ? null : new Player(stats, nav, disc.family);
   if (body) { body.x = p.x; body.z = p.z; body.area = run.area; }
+  const runes = disc.family === 'necromancer' ? (run.runes ?? {}) : {};
   const cds = new Map<string, number>();
+  let needleCasts = 0;
   let deaths = 0;
   let deadUntil = 0;
   let lastHurt = -99;
@@ -318,13 +324,20 @@ export function runBalance(run: BalanceRun): BalanceResult {
       } else {
       // Black Litany when the field is rich.
       if (corpsesNear.length + myThralls.length * 1.5 >= 5 && near(7).length >= 3 && use('black_litany', t)) {
-        sim.apply({ t: 'litany', by: p.id, x: p.x, z: p.z, r: 7, spellPower: sp, leaveCorpses: disc.mods.sacrificeLeavesCorpse });
+        sim.apply({ t: 'litany', by: p.id, x: p.x, z: p.z, r: runes.black_litany === 'rune_requiem' ? 7 * RUNE_TUNING.requiem.radiusMult : 7,
+          spellPower: sp * (runes.black_litany === 'rune_hollow_choir' ? RUNE_TUNING.hollowChoir.powerMult : 1), leaveCorpses: disc.mods.sacrificeLeavesCorpse,
+          ...(runes.black_litany === 'rune_hollow_choir' ? { spare: true } : {}), ...(runes.black_litany === 'rune_requiem' ? { delayMs: RUNE_TUNING.requiem.delayMs } : {}) });
       }
       // Keep the legion topped up.
-      else if (corpsesNear.length && myThralls.length < disc.mods.thrallCap && use('exhume', t)) {
+      else if (corpsesNear.length && myThralls.reduce((n, th) => n + thrallWeight(th.kind), 0) < disc.mods.thrallCap && ready('exhume', t) && p.essence >= ABILITIES.exhume.essenceCost) {
         const c = corpsesNear[0];
-        sim.apply({ t: 'exhume', by: p.id, x: c.x, z: c.z, r: 0.8, kind: disc.mods.thrallKind, cap: disc.mods.thrallCap, hp: stats.thrallHp, damage: stats.thrallDamage, attackSpeedMult: disc.mods.thrallAttackSpeedMult,
-          ...(loadout.bellAllyHeal > 0 ? { allyHeal: loadout.bellAllyHeal } : {}) });
+        // Relic runes: a Colossus when three corpses lie together and none stands; Mass Grave takes up to three at once.
+        const company = runes.exhume === 'rune_bone_colossus' ? corpsesWithin(c, RUNE_TUNING.colossus.pickRadius, sim.corpses.values()).slice(0, RUNE_TUNING.colossus.corpses) : [];
+        const colossus = company.length >= RUNE_TUNING.colossus.minCorpses && !myThralls.some((th) => th.kind === 'colossus');
+        use('exhume', t);
+        if (colossus) cds.set('exhume', t + (ABILITIES.exhume.cooldownMs * RUNE_TUNING.colossus.cooldownMult) / 1000);
+        sim.apply({ t: 'exhume', by: p.id, x: c.x, z: c.z, r: colossus ? RUNE_TUNING.colossus.pickRadius : runes.exhume === 'rune_mass_grave' ? RUNE_TUNING.massGrave.pickRadius : 0.8, kind: disc.mods.thrallKind, cap: disc.mods.thrallCap, hp: stats.thrallHp, damage: stats.thrallDamage, attackSpeedMult: disc.mods.thrallAttackSpeedMult,
+          ...(loadout.bellAllyHeal > 0 ? { allyHeal: loadout.bellAllyHeal } : {}), ...(runes.exhume === 'rune_mass_grave' ? { count: RUNE_TUNING.massGrave.count } : {}), ...(colossus ? { colossus: true } : {}) });
         // Sickle: Exhume gives back part of its essence. Funeral Rites: a consumed corpse heals (WorldScene 'exhumed').
         if (loadout.exhumeRefund > 0) p.essence = Math.min(stats.maxEssence, p.essence + ABILITIES.exhume.essenceCost * loadout.exhumeRefund);
         if (disc.mods.corpseHeal && !run.noRiteEffects) p.hp = Math.min(stats.maxHp, p.hp + stats.maxHp * disc.mods.corpseHeal);
@@ -339,9 +352,10 @@ export function runBalance(run: BalanceRun): BalanceResult {
       }
       // Miasma on a clump.
       else if (nearest && near(4, nearest.x, nearest.z).length >= 4 && use('miasma', t)) {
-        sim.apply({ t: 'miasma', by: p.id, x: nearest.x, z: nearest.z, r: ABILITIES.miasma.radius * disc.mods.miasmaRadiusMult, dps: sp * ABILITIES.miasma.power, durationMs: 6000, witheredCap: disc.mods.witheredMaxStacks, bloom: disc.mods.miasmaBurstsCorpses });
+        sim.apply({ t: 'miasma', by: p.id, x: nearest.x, z: nearest.z, r: ABILITIES.miasma.radius * disc.mods.miasmaRadiusMult * (runes.miasma === 'rune_creeping_rot' ? RUNE_TUNING.creepingRot.radiusMult : 1), dps: sp * ABILITIES.miasma.power, durationMs: 6000, witheredCap: disc.mods.witheredMaxStacks, bloom: disc.mods.miasmaBurstsCorpses,
+          ...(runes.miasma === 'rune_creeping_rot' ? { creep: RUNE_TUNING.creepingRot.speed } : {}), ...(runes.miasma === 'rune_contagion' ? { contagion: true } : {}) });
       }
-      // Spear when three line up (approximation: three within 8 m in a 60° cone).
+      // Spear when three line up (approximation: three within 8 m in a 60° cone). Relic runes: a Ring where three stand within it, an Impale on the nearest.
       else if (nearest && nd < 10) {
         const dx = (nearest.x - p.x) / (nd || 1);
         const dz = (nearest.z - p.z) / (nd || 1);
@@ -351,7 +365,20 @@ export function runBalance(run: BalanceRun): BalanceResult {
           const along = rx * dx + rz * dz;
           return along > 0 && along < ABILITIES.marrow_spear.range && Math.abs(rx * dz - rz * dx) < 1.3 + e.radius;
         });
-        if (inLine.length >= 3 && use('marrow_spear', t)) {
+        if (runes.marrow_spear === 'rune_ossuary_ring') {
+          // The ring sits on the enemy that has the most company inside it.
+          let best: Enemy[] = [];
+          for (const e of enemies) {
+            if (Math.hypot(e.x - p.x, e.z - p.z) > RUNE_TUNING.ring.maxCastRange) continue;
+            const hit = ringHits(e, RUNE_TUNING.ring.radius, enemies);
+            if (hit.length > best.length) best = hit;
+          }
+          if (best.length >= 3 && use('marrow_spear', t)) sim.apply({ t: 'hit', by: p.id, ids: best.map((e) => e.id), dmg: sp * ABILITIES.marrow_spear.power * RUNE_TUNING.ring.damageMult, fracture: 1 });
+        } else if (runes.marrow_spear === 'rune_impale') {
+          const first = impaleTarget(p, dx, dz, ABILITIES.marrow_spear.range, 1.3, enemies);
+          // A player impales what matters, not every trash mob: the bot spends the essence only when it has plenty.
+          if (first && p.essence >= 50 && use('marrow_spear', t)) sim.apply({ t: 'hit', by: p.id, ids: [first.foe.id], dmg: sp * ABILITIES.marrow_spear.power * RUNE_TUNING.impale.damageMult, fracture: 1, root: true, rootS: RUNE_TUNING.impale.rootS });
+        } else if (inLine.length >= 3 && use('marrow_spear', t)) {
           sim.apply({ t: 'hit', by: p.id, ids: inLine.map((e) => e.id), dmg: sp * ABILITIES.marrow_spear.power, fracture: 1 });
         }
       }
@@ -379,12 +406,30 @@ export function runBalance(run: BalanceRun): BalanceResult {
             p.essence = Math.min(stats.maxEssence, p.essence + NECRO_WEAPON_TUNING.scythe.essencePerHit * struck.length);
           } else {
             const wither = loadout.needleWithered > 0 ? { withered: loadout.needleWithered, witheredCap: disc.mods.witheredMaxStacks } : {};
-            sim.apply({ t: 'hit', by: p.id, ids: [nearest.id], dmg: sp * SP_NEEDLE.power * loadout.needleDamageMult * crit, ...wither });
+            // Relic runes (AbilitySystem.needle): Marrow-Tap trades damage for essence, the Volley fires three half-strength needles every 4th cast, Splinters sends half to the next foe.
+            const needle = runes.bone_needle;
+            const volley = needle === 'rune_volley' && ++needleCasts % RUNE_TUNING.volley.every === 0;
+            const runeMult = needle === 'rune_marrow_tap' ? RUNE_TUNING.marrowTap.damageMult : volley ? RUNE_TUNING.volley.damageFrac : 1;
+            const dmg = sp * SP_NEEDLE.power * loadout.needleDamageMult * runeMult * crit;
+            const essence = 6 + (needle === 'rune_marrow_tap' ? RUNE_TUNING.marrowTap.essenceBonus : 0);
+            if (volley) {
+              const aim = volleyTargets(p, nearest, enemies);
+              for (let k = 0; k < RUNE_TUNING.volley.needles; k++) {
+                sim.apply({ t: 'hit', by: p.id, ids: [aim[k % aim.length].id], dmg, ...wither });
+                p.essence = Math.min(stats.maxEssence, p.essence + essence / RUNE_TUNING.volley.needles);
+              }
+            } else {
+              sim.apply({ t: 'hit', by: p.id, ids: [nearest.id], dmg, ...wither });
+              if (needle === 'rune_splinter') {
+                const next = splinterTarget(nearest, enemies);
+                if (next) sim.apply({ t: 'hit', by: p.id, ids: [next.id], dmg: dmg * RUNE_TUNING.splinter.damageFrac });
+              }
+              p.essence = Math.min(stats.maxEssence, p.essence + essence);
+            }
             if (loadout.needlePierce > 0) {
               const behind = pierceTargets(p, nearest, enemies, loadout.needlePierce);
               if (behind.length) sim.apply({ t: 'hit', by: p.id, ids: behind.map((e) => e.id), dmg: sp * SP_NEEDLE.power * loadout.needleDamageMult * NECRO_WEAPON_TUNING.staff.pierceDamageMult * crit, ...wither });
             }
-            p.essence = Math.min(stats.maxEssence, p.essence + 6);
           }
         }
       } else {

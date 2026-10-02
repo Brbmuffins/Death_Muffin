@@ -103,7 +103,7 @@ const DANGER = [
 const ASKED = [
   'rite_skull', 'rite_step', 'rite_frost', 'rite_mantle', 'rite_siphon', 'rite_prison', 'rite_hands', 'rite_storm',
   'rite_fan', 'rite_lance', 'rite_offering', 'rite_cleave', 'rite_veil', 'rite_rally', 'rite_seed',
-  'gearEquip', 'statSheet', 'setBonus', 'necroWeapon', 'runeSocketed', 'toolBelt', 'vault', 'salvage', 'bag_full', 'essence',
+  'gearEquip', 'statSheet', 'setBonus', 'necroWeapon', 'toolBelt', 'vault', 'salvage', 'bag_full', 'essence',
   'minimap', 'auto_combat', 'change_class', 'station', 'gather', 'wing',
 ];
 

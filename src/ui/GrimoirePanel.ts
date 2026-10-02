@@ -133,7 +133,7 @@ export class GrimoirePanel extends SimplePanel {
   private runeSection(rite: AbilityId): string {
     if (!this.runes) return '';
     const name = ABILITIES[rite].name;
-    if (!isRuneRite(rite)) return `<div class="cw-rune-box"><h3>Rune socket <small>${esc(name)}</small></h3><p class="cw-rune-none">${esc(name)} has no runes yet. Bone Needle, Marrow Spear, Exhume, Miasma Circle and Black Litany each take one.</p></div>`;
+    if (!isRuneRite(rite)) return `<div class="cw-rune-box" data-runebox><h3>Rune socket <small>${esc(name)}</small></h3><p class="cw-rune-none">${esc(name)} has no runes yet. Bone Needle, Marrow Spear, Exhume, Miasma Circle and Black Litany each take one.</p></div>`;
     const { sockets, owned } = this.runes.state();
     const cur = sockets[rite];
     const def = cur ? RUNES[cur] : null;

@@ -31,13 +31,13 @@ dead, **chartreuse/olive** = rot & poison, **violet** = signature ritual magic,
 ✅ *shipped 2026-09-27: the Grimoire (L) lets any four rites sit on keys 1–4; new rites Wailing Skull (lvl 3), Grave Step (5), Grave Frost (7), Bone Mantle (12).*
 
 ### Spell modifiers ("Relic runes") — the build-depth layer
-Socketable runes that change a spell's behaviour instead of its numbers:
-- Bone Needle: *Splinter* (pierces once), *Marrow Tap* (+essence, −damage), *Volley* (3 needles in a cone, longer cooldown).
-- Marrow Spear: *Ossuary Ring* (spikes erupt in a circle instead of a line), *Impale* (roots the first enemy hit).
-- Exhume: *Mass Grave* (raise from up to 3 corpses at once, each weaker), *Bone Colossus* (consume 5 corpses → one giant thrall).
+✅ *built 2026-10-02 on branch `dm/runes` (not deployed; migration 024): eleven runes, one socket per necromancer rite, dropping from elites, Grave Surges and bosses. Design, numbers and deviations: `HANDOFF.md` "Relic runes" and `BALANCE.md`; player text: README "Relic runes" and the Codex's Relic Runes tab.* Socketable runes that change a spell's behaviour instead of its numbers:
+- Bone Needle: *Splinters* (a hit splinters to a second foe), *Marrow-Tap* (+essence, −damage), *Volley* (every 4th needle is three).
+- Marrow Spear: *Ossuary Ring* (spikes erupt in a circle instead of a line), *Impaling* (stops at, and roots, the first enemy hit).
+- Exhume: *Mass Grave* (raise up to 3 corpses at once, each weaker), *Bone Colossus* (consume up to 5 corpses → one giant thrall, 2 legion places, one at a time).
 - Miasma: *Creeping Rot* (the circle drifts toward the nearest enemy), *Contagion* (withered enemies that die spread stacks).
-- Black Litany: *Hollow Choir* (no thrall sacrifice; smaller burst), *Requiem* (delayed 2s, double radius).
-Server-side these are regular items with a new `item_type: 'rune'` plus a socket table — full spec in `server/proposals/relic-runes.md` (awaiting the VPS).
+- Black Litany: *Hollow Choir* (no thrall sacrifice; smaller burst), *Requiem* (delayed 2 s, wider).
+Not built: rune upgrades, a second socket per rite, runes for the other families' rites, rune crafting, a socket UI drag-and-drop, co-op friends seeing your rune badges. `server/proposals/relic-runes.md` is superseded (no socket table: sockets are reserved inventory rows).
 
 ### Thrall variety
 - ✅ *shipped 2026-09-26* — Skeleton archer (from Bellbound corpses), bone mage (from Deacon corpses — its Bone Hex makes enemy blows 25% softer), plague bearer (from Carrion Sacs — bursts into a friendly rot pool when killed or sacrificed). The Mourner's wraiths still override. Bow/staff are code-built stand-ins.
@@ -142,8 +142,8 @@ nothing left to chase. Ranked by replay value per effort; ★ = buildable client
    early areas.
 3. **★ Discipline talents.** At levels 5 / 15 / 20 pick one of two passives per discipline, e.g. an
    Ossuary wall that damages vs. one that lasts longer. Two players of the same discipline then
-   play differently, which is cheap depth. Relic runes (`server/proposals/relic-runes.md`) are the
-   item-driven version once the server supports them.
+   play differently, which is cheap depth. Relic runes (shipped 2026-10-02, see above) are the
+   item-driven version.
 4. **★ Weekly world omens.** A rotating modifier seeded from the week: *Blood Moon* (double corpses,
    double Deacons), *Drowned Week* (the Nave floods further and water slows everyone), *Tolling*
    (every elite is Bell-Tolled). The same world plays differently each week.
@@ -161,6 +161,6 @@ Recommended order: **Ascension → Daily rites → Talents**, then omens. Ascens
 ## Technical prerequisites (track before building the above)
 
 - Server columns for upgrade tiers / shards / area kills (spec: `server/proposals/necromancer-progress.md`).
-- New item types (`rune`, thrall gear) require server `item_type` enum additions.
+- New item types (`rune` is migration 024; thrall gear needed none) require server `item_type` enum additions.
 - Server-authoritative reward grants before any tradeable economy (audit Phase 4).
 - VAT (vertex-animation-texture) crowd rendering if hordes exceed ~120 animated enemies.

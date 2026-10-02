@@ -1,5 +1,5 @@
 /* Relic runes: the Grimoire's socket panel, rune cards and the Reliquary/Codex rune lines. Jade is the Covenant's colour (Exhume's spirit). */
-.cw-rune-pip { position: absolute; right: 6px; top: 34px; width: 24px; height: 24px; border-radius: 50%; border: 1px solid #6fe3c8; background: #07060a; box-shadow: 0 0 8px rgba(111, 227, 200, 0.6); object-fit: cover; pointer-events: none; }
+.cw-grim-socket img.cw-rune-pip { position: absolute; right: 5px; top: 5px; width: 20px; height: 20px; border-radius: 50%; border: 1px solid #6fe3c8; background: #07060a; box-shadow: 0 0 8px rgba(111, 227, 200, 0.6); object-fit: cover; pointer-events: none; }
 .cw-grim-socket { --rune-bg: rgba(31, 143, 134, 0.1); }
 .cw-rune-box { margin: 0 0 12px; padding: 10px 12px; border: 1px solid rgba(111, 227, 200, 0.4); background: linear-gradient(180deg, rgba(31, 143, 134, 0.14), rgba(7, 6, 10, 0.4)); }
 .cw-rune-box h3 { margin: 0 0 6px; font-family: var(--cw-font-display); font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: #9ff5e0; font-weight: 600; display: flex; align-items: baseline; gap: 8px; }

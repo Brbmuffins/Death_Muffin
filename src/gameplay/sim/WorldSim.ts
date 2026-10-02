@@ -443,15 +443,19 @@ export class WorldSim {
   private applyExhume(x: Extract<Intent, { t: 'exhume' }>) {
     if (x.colossus) return this.raiseColossus(x);
     // Mass Grave rune: up to three corpses near the point, each at the rune's share of a thrall's health and damage (the host owns both).
+    // A lone corpse is raised at full strength: the penalty is for spreading the magic, not for having nothing to spread it over.
     const count = Math.max(1, Math.min(RUNE_TUNING.massGrave.count, Math.floor(Number.isFinite(x.count) ? x.count! : 1)));
-    const statMult = count > 1 ? RUNE_TUNING.massGrave.statMult : 1;
     const r = count > 1 ? Math.max(x.r, RUNE_TUNING.massGrave.pickRadius) : x.r;
-    let raised = 0;
-    for (let i = 0; i < count; i++) {
-      if (this.raiseOne(x, r, statMult)) raised++;
-      else break;
+    const picks = [...this.corpses.values()]
+      .filter((c) => !c.echoOwner && Math.hypot(c.x - x.x, c.z - x.z) <= r)
+      .sort((a, b) => Math.hypot(a.x - x.x, a.z - x.z) - Math.hypot(b.x - x.x, b.z - x.z))
+      .slice(0, count);
+    if (!picks.length) {
+      this.emit({ t: 'exhumed', by: x.by, ok: false, x: x.x, z: x.z });
+      return;
     }
-    if (!raised) this.emit({ t: 'exhumed', by: x.by, ok: false, x: x.x, z: x.z });
+    const statMult = picks.length > 1 ? RUNE_TUNING.massGrave.statMult : 1;
+    for (const c of picks) this.raiseFrom(x, c, statMult);
   }
 
   /** Make room for `weight` more legion places: the oldest ordinary thrall crumbles first, a Colossus last. Returns the first crumbled id. */
@@ -468,19 +472,8 @@ export class WorldSim {
     return crumbled;
   }
 
-  /** One ordinary exhume: the nearest corpse within `r` of the intent's point becomes a thrall. False when no corpse is there. */
-  private raiseOne(x: Extract<Intent, { t: 'exhume' }>, r: number, statMult: number): boolean {
-    let best: Corpse | null = null;
-    let bestD = Infinity;
-    for (const c of this.corpses.values()) {
-      if (c.echoOwner) continue;
-      const d = Math.hypot(c.x - x.x, c.z - x.z);
-      if (d <= r && d < bestD) {
-        best = c;
-        bestD = d;
-      }
-    }
-    if (!best) return false;
+  /** One ordinary exhume: this corpse becomes a thrall for the intent's owner. */
+  private raiseFrom(x: Extract<Intent, { t: 'exhume' }>, best: Corpse, statMult: number): void {
     this.removeCorpse(best, 'consumed', x.by);
     const crumbled = this.makeRoom(x.by, x.cap, 1);
     const kind = thrallFromCorpse(best, x.kind);
@@ -518,7 +511,6 @@ export class WorldSim {
     this.thralls.set(t.id, t);
     this.emit({ t: 'thrall', id: t.id, owner: t.owner, kind, x: t.x, z: t.z, empowered });
     this.emit({ t: 'exhumed', by: x.by, ok: true, corpseKind: best.kind, x: best.x, z: best.z, crumbled });
-    return true;
   }
 
   /**
@@ -1792,10 +1784,11 @@ export class WorldSim {
     }
     if (!best || bestD < 0.6) return;
     const step = Math.min((z.creep ?? 0) * dt, bestD);
-    let nx = z.x + ((best.x - z.x) / bestD) * step;
-    let nz = z.z + ((best.z - z.z) / bestD) * step;
+    const nx = z.x + ((best.x - z.x) / bestD) * step;
+    const nz = z.z + ((best.z - z.z) / bestD) * step;
+    // A ground effect: it slides over props and bodies, but never out of the hall it was cast in (no crossing a sealed door or wall).
     const area = this.nav.areaAt(z.x, z.z);
-    if (area) [nx, nz] = this.nav.resolveInArea(area, nx, nz, 0.3);
+    if (area && this.nav.areaAt(nx, nz) !== area) return;
     z.x = nx;
     z.z = nz;
   }

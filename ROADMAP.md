@@ -44,7 +44,6 @@ flowchart LR
 
   subgraph LATER["🌒 Later — new content"]
     L2[New zones<br/>Catacomb Depths · Hollow Court]:::later
-    L3[Bone Colossus · runes]:::later
     L5[Server authority step 2<br/>enforce + server-side rewards]:::later
     L4[AI companions — parked]:::later
   end
@@ -62,6 +61,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 2 Oct 2026 | Relic runes (branch `dm/runes`, not deployed, migration 024): eleven socketable spell modifiers, one socket per necromancer rite (Bone Needle, Marrow Spear, Exhume, Miasma Circle, Black Litany), set in the Grimoire (L); runes drop from elites, Grave Surges and bosses, stack, rest in the Vault and grind to reagents; the Bone Colossus rune raises one giant thrall (the `bone_colossus` model) from up to five corpses | Real-database probe (`tools/qa/runes-db-probe.cjs`), balance table in BALANCE.md, `tools/qa/runes-smoke.cjs`. |
 | 2 Oct 2026 | Fix: six early gear items (including the starting Oak Staff, the copper/iron/gold helms, the iron chestplate and the oak bow) gave no stats on the live server because of mislabeled stat keys; they now give their designed stats | Migration 023. |
 | 2 Oct 2026 | Thrall gear: the Legion panel (Y) gives your thralls a spare weapon and armour piece whose stats and necro affixes become thrall damage, health and attack speed; 12-tier Reinforce gold sink (resets on Ascension); archers and bone mages carry their bow and staff; ▲/▼ verdicts for legion candidates. Also fixes a live tool-belt bug (swapping tools would have failed on the real database) | Real-database probes for the kit and the belt (tools/qa/thrall-kit-db-probe.cjs). |
 | 2 Oct 2026 | Readability round 3: your thralls carry a jade rim light (allies' fainter) so they never blend with pale enemies; the Sexton's Acre shows its ground on arrival; Fen corpse rings read on water; the Nave is calmer (fewer glows and specks) and every zone's floor glows batch into one draw call | Before/after in docs/screenshots/readability-3/. |
@@ -191,7 +191,7 @@ Two or three bot players you can log in and play with. Recommended design:
 
 ### L2–L4
 - **New zones:** Catacomb Depths and the Hollow Court (`docs/ALCHEMY-AND-WORLDS-PLAN.md`).
-- **Content with paid art ready:** the Bone Colossus, runes (needs a migration), thrall gear.
+- **Content with paid art ready:** nothing waiting: the Bone Colossus and the runes are built (`dm/runes`, needs migration 024), thrall gear shipped.
 - **Server authority:** today the browser is trusted for level, gold and loot (fine among friends). Move rewards to the server before opening to strangers. Step 1 (plausibility guards, report-first, `AUTHORITY_MODE`) is built on `dm/server-authority`, not deployed: [docs/SERVER-AUTHORITY.md](docs/SERVER-AUTHORITY.md). Server-rolled kill rewards (step 2) remain.
 
 ---

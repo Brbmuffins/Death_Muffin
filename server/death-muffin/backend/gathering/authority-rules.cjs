@@ -1071,35 +1071,35 @@ var RUNE_IDS = [
 ];
 var RUNE_TUNING = {
   /** Bone Needle. */
-  splinter: { reach: 6, damageFrac: 0.5 },
+  splinter: { reach: 6, damageFrac: 0.3 },
   marrowTap: { essenceBonus: 4, damageMult: 0.7 },
-  volley: { every: 4, needles: 3, damageFrac: 0.5, reach: 9 },
-  /** Marrow Spear: the ring is centred on the cursor (within spear range) and as wide as the spear is long is not. */
-  ring: { radius: 3.2, maxCastRange: 12, damageMult: 1 },
-  impale: { rootS: 1.5, damageMult: 1.25 },
+  volley: { every: 4, needles: 3, damageFrac: 0.4, reach: 9 },
+  /** Marrow Spear: the ring bursts on the cursor, pulled back to the spear's reach. */
+  ring: { radius: 3, maxCastRange: 12, damageMult: 0.8 },
+  impale: { rootS: 1.5, damageMult: 1.5 },
   /** Exhume. `slots` is how many legion places the colossus fills. */
-  massGrave: { count: 3, statMult: 0.6, pickRadius: 4 },
+  massGrave: { count: 3, statMult: 0.75, pickRadius: 4 },
   colossus: {
     corpses: 5,
     minCorpses: 3,
     slots: 2,
     pickRadius: 6,
-    hpPerCorpse: 0.7,
-    damagePerCorpse: 0.4,
+    hpPerCorpse: 0.8,
+    damagePerCorpse: 0.7,
     cleaveRadius: 2.4,
     cleaveFrac: 0.6,
     range: 2.4,
-    interval: 1.7,
-    speed: 4.4,
-    /** Cooldown multiplier on Exhume's 500 ms (8 s). */
-    cooldownMult: 16
+    interval: 1.2,
+    speed: 4.8,
+    /** Cooldown multiplier on Exhume's 500 ms (4 s), applied only to a cast that raised a Colossus. */
+    cooldownMult: 8
   },
   /** Miasma Circle. */
   creepingRot: { speed: 1.5, radiusMult: 0.85, seekReach: 12 },
-  contagion: { neighbours: 2, reach: 5.5, minStacks: 2 },
+  contagion: { neighbours: 2, reach: 4.5, minStacks: 2 },
   /** Black Litany. */
   hollowChoir: { powerMult: 0.6 },
-  requiem: { delayMs: 2e3, radiusMult: 2 }
+  requiem: { delayMs: 2e3, radiusMult: 1.7 }
 };
 var pct2 = (x) => `${Math.round(x * 100)}%`;
 var T2 = RUNE_TUNING;
@@ -1134,7 +1134,7 @@ var RUNES = {
     sell: 60,
     lore: "Four breaths, then a flock.",
     short: "Every 4th needle is a volley",
-    lines: [`Every ${T2.volley.every}th needle you throw becomes a volley of ${T2.volley.needles}, aimed at ${T2.volley.needles} different enemies within ${T2.volley.reach} m (or all at one target if it stands alone).`],
+    lines: [`Every ${T2.volley.every}th needle you throw becomes a volley of ${T2.volley.needles}, aimed at ${T2.volley.needles} different enemies within ${T2.volley.reach} m (or all at one target if it stands alone). The volley returns the essence of one needle between them.`],
     cost: `Each volley needle hits for ${pct2(T2.volley.damageFrac)}.`
   },
   rune_ossuary_ring: {
@@ -1146,7 +1146,7 @@ var RUNES = {
     lore: "The dead rise in a circle, like a congregation.",
     short: "Spikes erupt in a ring",
     lines: [`Instead of a line, bone erupts in a ${T2.ring.radius} m ring at the cursor, striking everything inside and applying Fracture and Hemorrhage as usual.`],
-    cost: "It no longer reaches down a long line."
+    cost: `It no longer reaches down a long line, and strikes for ${pct2(T2.ring.damageMult)}.`
   },
   rune_impale: {
     id: "rune_impale",
@@ -1179,11 +1179,11 @@ var RUNES = {
     lore: "Five dead, bound as one, and it remembers being a wall.",
     short: "Five corpses become one giant thrall",
     lines: [
-      `Exhume consumes up to ${T2.colossus.corpses} corpses within ${T2.colossus.pickRadius} m of the cursor (at least ${T2.colossus.minCorpses}) and raises one Bone Colossus.`,
+      `When ${T2.colossus.minCorpses} or more corpses lie within ${T2.colossus.pickRadius} m of the one you name, Exhume consumes up to ${T2.colossus.corpses} of them and raises one Bone Colossus instead. With fewer, or while a Colossus stands, it raises an ordinary thrall.`,
       `Its health is ${(T2.colossus.hpPerCorpse * T2.colossus.corpses).toFixed(1)}x and its damage ${(T2.colossus.damagePerCorpse * T2.colossus.corpses).toFixed(1)}x a thrall's with five corpses (less with fewer), and every blow cleaves ${T2.colossus.cleaveRadius} m.`,
       `It fills ${T2.colossus.slots} legion places and you can only keep one: raising another replaces it.`
     ],
-    cost: `Exhume takes ${500 * T2.colossus.cooldownMult / 1e3} s to ready again after a Colossus.`
+    cost: `Exhume takes ${500 * T2.colossus.cooldownMult / 1e3} s to ready again after raising a Colossus.`
   },
   rune_creeping_rot: {
     id: "rune_creeping_rot",

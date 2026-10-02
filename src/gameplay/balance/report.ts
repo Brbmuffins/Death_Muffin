@@ -7,6 +7,7 @@
  *      BALANCE_DISCIPLINES=1,3, BALANCE_SEEDS=2 (averages seeds 42, 43, …),
  *      BALANCE_KIT=none|progress|typical|ascended|bis|auto (gear worn by the bot, balance/kits.ts; `auto` = the kit each band
  *      is meant to wear: intended=progress, geared/push=typical, max=ascended). Default none = the historical bot.
+ *      BALANCE_RUNES=bone_needle:rune_volley,exhume:rune_mass_grave (Relic runes socketed in the necromancer's rites; see also `npm run balance:runes`).
  */
 import { runBalance, type BalanceResult, type BalanceRun } from './harness';
 import { AREAS, AREA_ORDER, type AreaId } from '../../content/areas';
@@ -14,6 +15,7 @@ import type { Difficulty } from '../../content/difficulty';
 import { ascensionLevels } from '../../content/ascension';
 import { KIT_NAMES, type KitName } from './kits';
 import { BANDS } from './bands';
+import type { RuneId, RuneRite } from '../../content/runes';
 
 const MINUTES = Number(process.env.BALANCE_MINUTES ?? 3);
 const DIFFICULTY = (process.env.BALANCE_DIFFICULTY ?? 'medium') as Difficulty;
@@ -30,6 +32,7 @@ export const AUTO_KIT: Record<string, KitName> = { intended: 'progress', geared:
 const KIT = process.env.BALANCE_KIT ?? 'none';
 if (KIT !== 'auto' && !KIT_NAMES.includes(KIT as KitName)) throw new Error(`BALANCE_KIT must be auto or one of ${KIT_NAMES.join(', ')}`);
 const bandNames = list(process.env.BALANCE_BANDS) ?? Object.keys(BANDS);
+const RUNES_ENV = Object.fromEntries((list(process.env.BALANCE_RUNES) ?? []).map((pair) => pair.split(':') as [RuneRite, RuneId]));
 
 /** Kills this area requires to open the next one (for pacing). */
 function unlockKills(area: AreaId): number | null {
@@ -66,7 +69,7 @@ for (const area of areas) {
   const needed = unlockKills(area);
   for (const band of bandNames) {
     for (const classIndex of disciplines) {
-      const res = averaged({ ...(BANDS[band](lvl) as BalanceRun), area, classIndex, minutes: MINUTES, kit: KIT === 'auto' ? AUTO_KIT[band] : (KIT as KitName) });
+      const res = averaged({ ...(BANDS[band](lvl) as BalanceRun), area, classIndex, minutes: MINUTES, kit: KIT === 'auto' ? AUTO_KIT[band] : (KIT as KitName), ...(Object.keys(RUNES_ENV).length ? { runes: RUNES_ENV } : {}) });
       const r = res.run;
       const cells = [
         area, band, names[classIndex], r.kit ?? 'none', r.level, r.damageTier, r.waveTier,
