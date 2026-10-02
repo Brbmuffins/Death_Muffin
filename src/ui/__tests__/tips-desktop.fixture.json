@@ -426,5 +426,25 @@
  "runeSocketed": {
   "title": "The rune is set",
   "body": "The rite now wears the rune: a <b>jade badge</b> sits on its slot, and hovering the slot shows exactly what changed and what it costs. Swap runes in the Grimoire (<kbd>L</kbd>) to try another style; your cooldowns are not reset."
+ },
+ "depths": {
+  "title": "A stair in the dark",
+  "body": "The Warren's west chamber hides a <b>stair down to the Catacomb Depths</b>: floor after floor of small chambers, each a level older than the last. <kbd>Click</kbd> the glowing stair to go down. Slay a floor's quota and the stair beyond it opens; leaving or falling ends the run, and whatever you looted is yours. Your legion comes with you. Solo for now."
+ },
+ "depths_floor": {
+  "title": "Slay, then descend",
+  "body": "The count at the top (and under the minimap) is this floor's quota. When it is met the <b>stair down</b> glows, the minimap points to it and the dead stop coming: <kbd>Click</kbd> it to go deeper. The way back up is behind you; it ends the run, so it asks twice. The dead come through the doorways to find you, so fight in the gaps and use the walls: they stop cones and blows."
+ },
+ "depths_affix": {
+  "title": "Elites with company",
+  "body": "From depth 5 an elite carries <b>more than one affix</b>, one more every fifth floor, and all of them work at once. The target frame names them all. Burst a Shrouded one inside your Miasma, step out of Bell-Tolled rings, spend corpses before a Hungering one eats them, and keep your distance from a Vengeful one's Risen."
+ },
+ "depths_chest": {
+  "title": "The fifth floor's chest",
+  "body": "Every fifth floor holds a <b>chest</b> in a side chamber, marked on the minimap. It gives gear with at least one affix, finds from the depth's own ground, gold and experience, and now and then a Relic rune. The deeper the chest, the more it holds."
+ },
+ "depths_solo": {
+  "title": "Solo, for now",
+  "body": "The Depths are a descent for one. Leave your party, or wait until your friends have gone, and the stair will open. Co-op floors need the realtime relay to carry the layout; they are on the list."
  }
 }

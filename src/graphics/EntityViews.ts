@@ -278,6 +278,9 @@ function roundShield(r: number) {
  * ground, die into corpses that stay where they fell, and are consumed or
  * sink away; thralls get weapons, a violet summon ring and a lilac glow.
  */
+/** Every affix an elite bears: its first, then the extras the Catacomb Depths add. */
+const affixesOf = (e: Enemy): EliteAffix[] => (e.affix ? [e.affix, ...(e.extra?.map((x) => x.affix) ?? [])] : []);
+
 export class EntityViews {
   readonly group = new THREE.Group();
   private enemies = new Map<number, View>();
@@ -349,7 +352,8 @@ export class EntityViews {
     v.affix = e.affix;
     const follow = () => ({ x: v.x, z: v.z });
     const fxs: Handle[] = [];
-    switch (e.affix) {
+    // The Catacomb Depths dress an elite in every affix it bears (a second, a third), each with its own tell.
+    for (const affix of affixesOf(e)) switch (affix) {
       case 'bellTolled':
         // Bronze bell-ring pulse around the feet.
         fxs.push(this.effects.decal({ tex: fx.ring(), color: A.bell, x: e.x, z: e.z, r: 1.55 * e.scale, duration: 1e9, opacity: 0.6, pulse: 2.5, follow }));
@@ -374,7 +378,7 @@ export class EntityViews {
   /** Per-frame affix particles / shroud fade. */
   private tickAffix(v: View, e: Enemy, dt: number, nearFx: boolean) {
     const headY = HEAD_Y[ENEMIES[e.def].rig] * e.scale;
-    switch (e.affix) {
+    for (const affix of affixesOf(e)) switch (affix) {
       case 'hungering':
         if (nearFx && Math.random() < dt * 4) {
           const f = v.facing;

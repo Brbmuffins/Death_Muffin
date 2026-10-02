@@ -8,6 +8,7 @@
  */
 
 import { AREAS, AREA_ORDER, type AreaId } from '../content/areas';
+import { CHEST_PER_MIN_CEILING, DEPTH_LOOT_AREAS, FLOORS_PER_MIN_CEILING, FLOOR_DROP_CHANCE, chestDrops, depthEliteBonus, depthEnemyLevel, depthRoster, chestRunePool } from '../content/depths';
 import { ASCENSION } from '../content/ascension';
 import { LEGENDARY_BOSS_AREAS, LEGENDARY_DROP, LEGENDARY_SET_IDS, legendaryItemId } from '../content/legendarySets';
 import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS, BOSS_ICHOR } from '../content/reagents';
@@ -53,7 +54,21 @@ export const AREA_PEAK: Partial<Record<AreaId, { xp: number; gold: number; kills
   warren: { xp: 1891, gold: 1718, kills: 186 },
   coliseum: { xp: 20609, gold: 16705, kills: 477 },
   fen: { xp: 74831, gold: 25498, kills: 184 },
+  // Same settings on held floors of depth 5, 10 and 20 for a level-40 hero, the best column of any discipline, each rate scaled to enemy level 50
+  // (depth 10 for that hero; XP x1.25 per level, gold x1.15): `DEPTH_LEVELS=40 DEPTH_DEPTHS=5,10,20 DEPTH_BANDS=max npm run balance:depths`, BALANCE.md.
+  depths: { xp: 27600, gold: 16000, kills: 72 },
 };
+
+/**
+ * The Catacomb Depths (content/depths.ts). Its enemies are one level older per floor, so XP and gold per kill grow with the depth, which
+ * the character's Chronicle records (`peak.depth`). The peak above was measured on a held floor of depth `refDepth` for a hero of level
+ * `refHero` (BALANCE.md "Catacomb Depths"); `ceilingsFor` scales it to the enemy level a character could be facing, taking the deepest
+ * floor it has recorded plus `slack` (a chronicle flush is up to half a minute behind the stairs), capped at `maxDepth`.
+ */
+export const DEPTHS_AUTHORITY = { refHero: 40, refDepth: 10, slack: 3, maxDepth: 120 } as const;
+/** The Depths are open to anyone who has opened the Warren (the stair is in its west chamber). */
+const DEPTHS_GATE: AreaId = 'warren';
+export const depthBound = (deepest: number): number => Math.min(DEPTHS_AUTHORITY.maxDepth, Math.max(0, Math.trunc(Number(deepest) || 0)) + DEPTHS_AUTHORITY.slack);
 
 export const AUTHORITY = {
   /** Safety factor over the best measured honest rate: party play, a skilled human out-killing the bot, and tool noise. */
@@ -107,7 +122,7 @@ function enemyLevel(area: AreaId, characterLevel: number, rank: number): number 
  * Per-minute ceilings for a character: the best ground it has unlocked, at its Ascension rank (plus the co-op allowance), scaled by
  * the harness' own formulas for enemy level and rank. `unlocked` and `ascension` come from the character's necromancer record.
  */
-export function ceilingsFor(unlocked: readonly string[], ascension: number, characterLevel: number): Ceilings {
+export function ceilingsFor(unlocked: readonly string[], ascension: number, characterLevel: number, deepest = 0): Ceilings {
   const rank = Math.min(ASCENSION.maxRank, Math.max(0, Math.trunc(ascension) || 0) + AUTHORITY.COOP_RANK_ALLOWANCE);
   const rankMult = 1 + ASCENSION.rewardPerRank * rank;
   let xp = 0;
@@ -115,10 +130,11 @@ export function ceilingsFor(unlocked: readonly string[], ascension: number, char
   let best: AreaId | null = null;
   for (const id of AREA_ORDER) {
     const peak = AREA_PEAK[id];
-    if (!peak || !unlocked.includes(id)) continue;
-    // The harness measured a rank-0 bot at the area's base level (a level-scaled ground at its floor).
-    const baseLevel = AREAS[id].scaling ? AREAS[id].scaling!.minLevel : AREAS[id].level;
-    const lvl = enemyLevel(id, characterLevel, rank);
+    if (!peak || !unlocked.includes(id === 'depths' ? DEPTHS_GATE : id)) continue;
+    // The harness measured a rank-0 bot at the area's base level (a level-scaled ground at its floor; the Depths at their reference floor).
+    const depths = id === 'depths';
+    const baseLevel = depths ? depthEnemyLevel(DEPTHS_AUTHORITY.refDepth, DEPTHS_AUTHORITY.refHero) : AREAS[id].scaling ? AREAS[id].scaling!.minLevel : AREAS[id].level;
+    const lvl = depths ? depthEnemyLevel(depthBound(deepest), characterLevel) + rank * ASCENSION.levelsPerRank : enemyLevel(id, characterLevel, rank);
     const x = (peak.xp * (1 + XP_LEVEL_STEP * (lvl - 1))) / (1 + XP_LEVEL_STEP * (baseLevel - 1)) * rankMult * AUTHORITY.CHAIN * AUTHORITY.OMEN * AUTHORITY.WISDOM;
     const g = (peak.gold * (1 + GOLD_LEVEL_STEP * (lvl - 1))) / (1 + GOLD_LEVEL_STEP * (baseLevel - 1)) * rankMult * AUTHORITY.CHAIN * AUTHORITY.OMEN;
     if (x > xp) {
@@ -153,31 +169,47 @@ function buildGroundRates(): Record<string, number> {
   const add = (id: string, perMin: number) => {
     rates[id] = Math.max(rates[id] ?? 0, perMin);
   };
-  for (const id of AREA_ORDER) {
-    const area = AREAS[id];
-    const peak = AREA_PEAK[id];
-    if (!peak || area.safe) continue;
-    const elite = Math.min(1, area.eliteChance + 0.004 * 8);
+  /** What `kills` per minute in `lootId`'s ground drop: its loot table, its reagents (its own table plus the roster's), its elites' runes. */
+  const addGround = (lootId: AreaId, kills: number, roster: readonly { id: string; weight: number }[], eliteChance: number, extraPerMin = 0) => {
+    const area = AREAS[lootId];
+    const elite = Math.min(1, eliteChance + 0.004 * 8);
     const total = area.loot.reduce((n, l) => n + l.weight, 0) || 1;
     const dropChance = Math.min(1, area.itemChance * ITEM_CHANCE_PEAK * FORTUNE_PEAK * (1 - elite + elite * ELITE_LOOT_MULT));
-    for (const l of area.loot) add(l.item, (peak.kills * dropChance * l.weight) / total * MATERIAL_QTY);
+    for (const l of area.loot) add(l.item, ((kills * dropChance + extraPerMin) * l.weight) / total * MATERIAL_QTY);
     // Reagents: the area's own table plus the enemies in it that shed them (weighted by how often they spawn).
-    const weights = area.enemies.reduce((n, e) => n + e.weight, 0) || 1;
+    const weights = roster.reduce((n, e) => n + e.weight, 0) || 1;
     const reagentPerKill = new Map<string, number>();
     const credit = (item: string, chance: number, qty: [number, number]) => {
       const c = Math.min(1, chance * FORTUNE_PEAK * (1 - elite + elite * ELITE_REAGENT_MULT));
       reagentPerKill.set(item, (reagentPerKill.get(item) ?? 0) + c * ((qty[0] + qty[1]) / 2));
     };
-    for (const d of AREA_REAGENT_DROPS[id] ?? []) credit(d.item, d.chance, d.qty);
-    for (const e of area.enemies) for (const d of ENEMY_REAGENT_DROPS[e.id] ?? []) credit(d.item, (d.chance * e.weight) / weights, d.qty);
-    for (const [item, perKill] of reagentPerKill) add(item, peak.kills * perKill);
+    for (const d of AREA_REAGENT_DROPS[lootId] ?? []) credit(d.item, d.chance, d.qty);
+    for (const e of roster) for (const d of ENEMY_REAGENT_DROPS[e.id as keyof typeof ENEMY_REAGENT_DROPS] ?? []) credit(d.item, (d.chance * e.weight) / weights, d.qty);
+    for (const [item, perKill] of reagentPerKill) add(item, kills * perKill);
     // Relic runes: an elite's small chance and a Grave Surge's offering (about one surge every two minutes), split by the pool's weights.
-    const pool = AREA_RUNE_POOL[id] ?? [];
+    const pool = AREA_RUNE_POOL[lootId] ?? [];
     const poolWeight = pool.reduce((n, r) => n + RUNE_WEIGHT[RUNES[r].rarity], 0) || 1;
     for (const r of pool) {
       const share = RUNE_WEIGHT[RUNES[r].rarity] / poolWeight;
-      add(r, (peak.kills * elite * ELITE_RUNE_CHANCE * ITEM_CHANCE_PEAK * FORTUNE_PEAK + 0.5 * SURGE_RUNE_CHANCE) * share);
+      add(r, (kills * elite * ELITE_RUNE_CHANCE * ITEM_CHANCE_PEAK * FORTUNE_PEAK + 0.5 * SURGE_RUNE_CHANCE) * share);
     }
+  };
+  for (const id of AREA_ORDER) {
+    const area = AREAS[id];
+    const peak = AREA_PEAK[id];
+    if (!peak || area.safe || area.instance) continue;
+    addGround(id, peak.kills, area.enemies, area.eliteChance);
+  }
+  // The Catacomb Depths drop from the hunting ground whose gear matches the floor, so every id is already a drop; what is new is the
+  // pace: the Depths' own kill rate on those tables, a floor-clear drop (FLOOR_DROP_CHANCE per floor) and a chest's drops, plus the
+  // chest's rune. The deepest roster stands for the reagent mix and the deepest floor's elite chance for the elites.
+  const depthsPeak = AREA_PEAK.depths;
+  if (depthsPeak) {
+    const deep = depthRoster(DEPTHS_AUTHORITY.maxDepth);
+    const elite = AREAS.depths.eliteChance + depthEliteBonus(DEPTHS_AUTHORITY.maxDepth);
+    const floorDrops = FLOORS_PER_MIN_CEILING * FLOOR_DROP_CHANCE + CHEST_PER_MIN_CEILING * chestDrops(DEPTHS_AUTHORITY.maxDepth);
+    for (const lootId of DEPTH_LOOT_AREAS) addGround(lootId, depthsPeak.kills, deep, elite, floorDrops);
+    for (const r of chestRunePool(DEPTHS_AUTHORITY.maxDepth)) add(r, CHEST_PER_MIN_CEILING);
   }
   // Boss runes: at most a boss kill a minute is a generous honest rate (ichors use the same figure).
   for (const pool of Object.values(BOSS_RUNE_POOL)) for (const r of pool) add(r, ICHOR_PER_MIN);

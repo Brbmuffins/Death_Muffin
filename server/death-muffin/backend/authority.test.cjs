@@ -360,3 +360,82 @@ test('offline stats sync: a bare level claim is judged by the minimum window', a
   assert.equal((await authority.guardOfflineStats(a.db, { ...common, level: 200, experience: 0, env: REPORT })).needsConfirm, false);
   assert.equal((await authority.guardOfflineStats(a.db, { ...common, level: 200, experience: 0, env: ENFORCE })).needsConfirm, true);
 });
+
+// ── The Catacomb Depths: a new source of XP, gold and items that honest runs must not trip ───────────────────────────────────────────
+
+const WARREN_OPEN = { unlockedAreas: ['chapterhouse', 'graves', 'warren'], ascension: 0 };
+
+test('depths: the ceilings count the Depths once the Warren is open, and follow the deepest floor in the Chronicle', async () => {
+  const before = rules.ceilingsFor(['chapterhouse', 'graves'], 0, 30, 0);
+  const shallow = rules.ceilingsFor(WARREN_OPEN.unlockedAreas, 0, 30, 0);
+  const deep = rules.ceilingsFor(WARREN_OPEN.unlockedAreas, 0, 30, 25);
+  assert.equal(shallow.area, 'depths');
+  assert.ok(shallow.xpPerMin > before.xpPerMin, 'opening the Warren opens the Depths');
+  assert.ok(deep.xpPerMin > shallow.xpPerMin, 'a deeper record raises the ceiling');
+  assert.ok(deep.goldPerMin > shallow.goldPerMin);
+  // A character that has not opened the Warren gets nothing from a (forged) depth record.
+  assert.deepEqual(rules.ceilingsFor(['chapterhouse', 'graves'], 0, 30, 25), before);
+  assert.equal(rules.depthBound(0), rules.DEPTHS_AUTHORITY.slack);
+});
+
+for (const [name, env] of MODES) {
+  test(`${name}: a long honest Depths session (deep floors, level-scaled XP) passes where a bare Warren record would have been flagged`, async () => {
+    const c = char({ level: 40, experience: 0 });
+    // Twenty minutes at the deepest ceiling's pace is far inside the bank (60 minutes); the same haul at the Warren's own pace is not.
+    const rate = rules.ceilingsFor(WARREN_OPEN.unlockedAreas, 0, 40, 18).xpPerMin / rules.AUTHORITY.HEADROOM;
+    const gain = Math.floor(rate * 20);
+    const next = nextOf(c, { xp: 0, level: rules.splitXp(rules.totalXp(40, 0) + gain).level, ...{ xp: rules.splitXp(rules.totalXp(40, 0) + gain).xp } });
+
+    const withRecord = authorityFake({ necro: WARREN_OPEN, chronicle: { 'peak.depth': 18, playSeconds: 4000 } });
+    await withRecord.db.execute('INSERT IGNORE INTO character_authority (character_id) VALUES (?)', [1]);
+    const ok = await save(withRecord, c, next, T0, env);
+    // First save: the bank starts at FIRST_MINUTES, so the honest hour must have accrued first.
+    await authority.guardProgress(withRecord.db, { char: c, next: nextOf(c), now: T0 - 40 * MIN, env, log: quietLog() });
+    const later = await save(withRecord, c, next, T0, env);
+    assert.deepEqual(later.findings.filter((f) => f.kind === 'xp_rate'), [], 'honest Depths XP is not flagged');
+    assert.ok(ok);
+
+    // The same haul on a character that has opened only the Warren, with no Chronicle record and level 40, is judged by the (smaller) depth-3 ceiling.
+    const bare = authorityFake({ necro: { unlockedAreas: ['chapterhouse', 'graves'], ascension: 0 } });
+    await authority.guardProgress(bare.db, { char: c, next: nextOf(c), now: T0 - 40 * MIN, env, log: quietLog() });
+    const flagged = await save(bare, c, next, T0, env);
+    assert.ok(flagged.findings.some((f) => f.kind === 'xp_rate'), 'without access to the Depths the same haul is not believable');
+  });
+}
+
+test('depths: the necro summary carries the deepest recorded floor, and tolerates a missing Chronicle', async () => {
+  const withChron = authorityFake({ necro: WARREN_OPEN, chronicle: { 'peak.depth': 22 } });
+  assert.equal((await authority.necroSummary(withChron.db, 1)).deepest, 22);
+  const without = authorityFake({ necro: WARREN_OPEN });
+  assert.equal((await authority.necroSummary(without.db, 1)).deepest, 0);
+  const broken = authorityFake({ necro: WARREN_OPEN, failWith: null });
+  broken.db.execute = async (sql) => { if (/character_chronicle/.test(sql)) throw new Error('no such table'); return [[{ state: JSON.stringify(WARREN_OPEN) }]]; };
+  assert.equal((await authority.necroSummary(broken.db, 1)).deepest, 0);
+});
+
+test('depths: every drop a floor, a kill, a chest or a rune can hand out may be rolled and kept; honest chests are not flagged', async () => {
+  // A chest on a deep floor: ascended armour from the Fen, a moon-tier weapon, a rune, a finds roll and a floor-clear item.
+  const chest = ['set_gravecaller_ascended_chest', 'staff_moon', 'rune_requiem', 'gem_void_sapphire', 'ore_moon', 'flask_hp_grand'];
+  for (const id of chest) assert.equal(rules.isGroundItem(id), true, id);
+  assert.ok(rules.itemRatePerMin('rune_requiem') > 0 && rules.itemCap('rune_requiem') >= 1);
+  for (const [name, env] of MODES) {
+    const auth = authorityFake({ necro: WARREN_OPEN });
+    const db = fakeDb({ extra: auth.handler });
+    const call = harness((app, pool, opts) => mountLoot(app, pool, { ...opts, guardRoll: (req, conn, args) => authority.guardRollGear(conn, { ...args, env, log: quietLog() }) }), db);
+    const r = await call('POST /api/loot/roll-gear', { body: { characterId: 1, drops: chest.map((item_id) => ({ item_id, level: 40, source: 'boss' })) } });
+    assert.equal(r.json.success, true, `${name}: a chest's drops can be rolled`);
+    assert.equal(auth.audit.filter((a) => a.kind === 'roll_gear').length, 0, `${name}: nothing flagged`);
+  }
+  // A chest's three finds arriving in one bag save are inside the item allowance (a burst), so honest play is not flagged.
+  const auth = authorityFake({ necro: WARREN_OPEN });
+  const { out } = await bagSave(auth, [], [row(0, 'set_gravecaller_ascended_chest', 1), row(1, 'rune_requiem', 1), row(2, 'gem_void_sapphire', 2), row(3, 'ore_moon', 3)], ENFORCE);
+  assert.equal(auth.audit.length, 0);
+  assert.equal(out.notice, '');
+});
+
+test('depths: the offline edition\'s deepest floor bounds the offline ceilings the same way', () => {
+  const online = snapshot(30, 0, 500, { necro: { unlockedAreas: ['chapterhouse', 'graves', 'warren'], ascension: 0 } });
+  const deepHour = (depth) => snapshot(31, 0, 500, { necro: online.necro, chronicle: { life: { playSeconds: 3600 + 3600, 'peak.depth': depth } } });
+  const f = (depth) => authority.evaluateOffline({ online, offline: deepHour(depth) });
+  assert.deepEqual(f(20).findings.filter((x) => x.kind === 'xp_rate'), [], 'a level in two hours of deep-floor play is believable');
+});

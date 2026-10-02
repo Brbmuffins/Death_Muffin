@@ -438,6 +438,8 @@ var npcInteractableId = (id) => `npc_${id}`;
 
 // src/content/areas.ts
 var npcSpots = (area) => NPC_IDS.filter((n) => NPC_SPOTS[n].area === area).map((n) => ({ id: npcInteractableId(n), kind: "npc", label: NPC_SPOTS[n].label, x: NPC_SPOTS[n].x, z: NPC_SPOTS[n].z }));
+var DEPTHS_RECT = { x0: 150, z0: -60, x1: 190, z1: -24 };
+var DEPTHS_STAIR = { x: -67.2, z: -30 };
 var AREAS = {
   chapterhouse: {
     id: "chapterhouse",
@@ -845,7 +847,11 @@ var AREAS = {
     ],
     itemChance: 0.1,
     breaches: [[-65, -45], [-52, -45], [-39, -45], [-65, -30], [-55.5, -30], [-65, -15], [-52, -15], [-39, -15]],
-    interactables: [{ id: "waystone_warren", kind: "waystone", label: "Waystone", x: -35.5, z: -27 }],
+    interactables: [
+      { id: "waystone_warren", kind: "waystone", label: "Waystone", x: -35.5, z: -27 },
+      // The way down to the Catacomb Depths (content/depths.ts): the west chamber, glowing in the dark.
+      { id: "depths_stair", kind: "stair", label: "The Stair Down", x: DEPTHS_STAIR.x, z: DEPTHS_STAIR.z }
+    ],
     ambient: { fog: 789e3, hemiSky: 3813926, hemiGround: 657414, moon: 11049594 }
   },
   // The Bone Coliseum (2026-09-30): a wave-gauntlet pit east of the Ossuary. Four gates, fast surges, elites everywhere,
@@ -945,9 +951,42 @@ var AREAS = {
       { id: "mire_altar", kind: "boss", label: "The Mire Altar", x: -42, z: -90.2 }
     ],
     ambient: { fog: 661016, hemiSky: 2771538, hemiGround: 396302, moon: 8307908, fogMult: 1.7 }
+  },
+  // The Catacomb Depths (2026-10-02): an endless descent reached by the stair in the Warren's west chamber. An instance, not a hall
+  // on the map: this rectangle is where each run's floor is built (gameplay/depthsFloor.ts), nothing else ever stands here. Its
+  // enemies, waves, level and loot are the run's (content/depths.ts, WorldSim.startDepths), so the fields below are only the defaults
+  // the rest of the game reads: `level` is the display floor; `itemChance` is the chance an ordinary kill drops from the depth's ground.
+  depths: {
+    id: "depths",
+    name: "The Catacomb Depths",
+    subtitle: "Down, and further down",
+    theme: "depths",
+    rect: DEPTHS_RECT,
+    safe: false,
+    level: 12,
+    scaling: { minLevel: 12 },
+    instance: true,
+    enemies: [
+      { id: "rat", weight: 30 },
+      { id: "robber", weight: 22 },
+      { id: "ghoul", weight: 14 },
+      { id: "bat", weight: 12 },
+      { id: "sac", weight: 10 },
+      { id: "hound", weight: 8 }
+    ],
+    cap: 24,
+    waveSize: 6,
+    waveIntervalMs: 3800,
+    eliteChance: 0.06,
+    // No table of its own: a kill's drop is rolled on the hunting ground whose gear matches the depth (content/depths.ts depthLootArea).
+    loot: [],
+    itemChance: 0.12,
+    breaches: [],
+    interactables: [],
+    ambient: { fog: 657415, hemiSky: 3156516, hemiGround: 525829, moon: 10128496 }
   }
 };
-var AREA_ORDER = ["chapterhouse", "acre", "graves", "ossuary", "nave", "sanctum", "cloister", "pyre", "warren", "coliseum", "fen", "alchemist_wing"];
+var AREA_ORDER = ["chapterhouse", "acre", "graves", "ossuary", "nave", "sanctum", "cloister", "pyre", "warren", "coliseum", "fen", "alchemist_wing", "depths"];
 var WING_APOTHECARY_SPOT = { x: 45.1, z: 20, facing: -Math.PI / 2 };
 var BOSS_SUMMON_SHARDS = 5;
 

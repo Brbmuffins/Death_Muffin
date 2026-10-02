@@ -65,6 +65,11 @@ const PROFILES: Record<AreaId, Kind[]> = {
     { count: 130, shape: 0, colors: [0xb8a88a, 0x9c8e74], size: [0.04, 0.09], alpha: [0.25, 0.55], vy: [-0.05, 0.1], drift: [0.1, 0.08], sway: 0.4, add: 0.4 },
     { count: 40, shape: 1, colors: [0x3a3226, 0x4a4030], size: [0.08, 0.16], alpha: [0.25, 0.45], vy: [-0.3, -0.1], drift: [0.1, 0.1], sway: 0.3, add: 0 },
   ],
+  depths: [
+    // Cold lamp-dust hanging in the still air, and the odd grain of grit sifting from the vault above.
+    { count: 120, shape: 0, colors: [0xb8a47a, 0x9c8a64, 0xd0bc90], size: [0.04, 0.09], alpha: [0.25, 0.55], vy: [-0.04, 0.08], drift: [0.08, 0.06], sway: 0.35, add: 0.5 },
+    { count: 36, shape: 1, colors: [0x2c261e, 0x3a3226], size: [0.08, 0.15], alpha: [0.25, 0.45], vy: [-0.35, -0.12], drift: [0.08, 0.08], sway: 0.3, add: 0 },
+  ],
   coliseum: [
     // Bone-dust kicked up off the sand, and cold torch-sparks over the stands.
     { count: 150, shape: 0, colors: [0xd8c8a8, 0xbca888], size: [0.05, 0.11], alpha: [0.25, 0.55], vy: [0.05, 0.3], drift: [0.35, 0.2], sway: 0.6, add: 0.3 },

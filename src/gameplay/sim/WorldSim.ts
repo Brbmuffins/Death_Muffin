@@ -1,4 +1,6 @@
 import { AREAS, AREA_ORDER, GLOBAL_ENEMY_CAP, type AreaId } from '../../content/areas';
+import { DEPTHS, depthEliteBonus, depthEnemyLevel, depthRoster, depthWaveGapS, depthWaveSize, floorKills, hasChest, pickExtraAffixes } from '../../content/depths';
+import { floorHops, floorSeed, generateFloor, roomAt, type DepthsFloor } from '../depthsFloor';
 import {
   AFFIX_ORDER,
   AFFIX_TUNING,
@@ -67,6 +69,7 @@ import type {
   BossState,
   Corpse,
   CorpseGoneReason,
+  DepthsRun,
   Enemy,
   Intent,
   PlayerBody,
@@ -82,6 +85,7 @@ const VACANT_CRUMBLE_S = 8;
 /** Seconds after an arrival until Wave Speed is at full pressure (see rampTier). */
 const RAMP_S = 30;
 const AGGRO_RANGE = 15;
+const DEPTHS_AGGRO = 36;
 const CORPSE_LIFETIME = 26;
 const TOXIC_RUPTURE = 5;
 const MAX_CORPSES = 45;
@@ -170,6 +174,12 @@ export class WorldSim {
    */
   areaLevel(area: AreaId): number {
     const def = AREAS[area];
+    if (area === 'depths') {
+      // The Catacomb Depths: the highest living hero on the floor sets the level, depth raises it (content/depths.ts).
+      let top = 0;
+      for (const p of this.players.values()) if (p.alive && p.area === area && (p.level ?? 0) > top) top = Math.min(999, p.level!);
+      return depthEnemyLevel(this.depths?.depth ?? 1, top) + ascensionLevels(this.ascension);
+    }
     let level = def.level;
     if (def.scaling) {
       level = def.scaling.minLevel;
@@ -204,6 +214,8 @@ export class WorldSim {
   time = 0;
   /** The running Grave Surge, if any. */
   surge: SurgeState | null = null;
+  /** The Catacomb Depths run in progress (host-only; null between runs). */
+  depths: DepthsRun | null = null;
   /** Combat seconds until the next Grave Surge (only counts down while someone fights). */
   surgeIn = SURGE.firstDelayS;
 
@@ -367,7 +379,7 @@ export class WorldSim {
 
   /** Shrouded elites shrug off half of everything unless they stand in a player's rot. */
   damageTakenMult(e: Enemy) {
-    const shroud = e.affix === 'shrouded' && !this.inFriendlyMiasma(e) ? AFFIX_TUNING.shrouded.damageTakenMult : 1;
+    const shroud = this.hasAffix(e, 'shrouded') && !this.inFriendlyMiasma(e) ? AFFIX_TUNING.shrouded.damageTakenMult : 1;
     return shroud * ((e.sanctT ?? 0) > 0 ? SANCTIFIED.damageTakenMult : 1);
   }
 
@@ -1120,7 +1132,7 @@ export class WorldSim {
           if (e.state === 'dead' || e.area !== caster.area || Math.hypot(e.x - caster.x, e.z - caster.z) > 7 + e.radius) continue;
           const vx = e.x - caster.x, vz = e.z - caster.z;
           if ((vx * dx + vz * dz) / (Math.max(0.01, Math.hypot(vx, vz)) * len) < Math.cos(Math.PI / 5)) continue;
-          if (e.affix === 'shrouded') e.affix = undefined;
+          this.stripShroud(e);
           if (e.def === 'wraith') e.stunT = Math.max(e.stunT ?? 0, 1.5);
         }
         event(); return;
@@ -1154,7 +1166,7 @@ export class WorldSim {
       case 'last_light': {
         for (const e of this.enemies.values()) {
           if (e.state === 'dead' || e.area !== caster.area || Math.hypot(e.x - caster.x, e.z - caster.z) > 12 + e.radius) continue;
-          if (e.affix === 'shrouded') e.affix = undefined;
+          this.stripShroud(e);
           e.stunT = Math.max(e.stunT ?? 0, 1);
           this.damageEnemy(e, sp * def.power, g.by);
         }
@@ -1455,6 +1467,11 @@ export class WorldSim {
       moving: false,
     };
     if (elite) e.affix = affix ?? AFFIX_ORDER[Math.floor(this.rand() * AFFIX_ORDER.length)];
+    // The Catacomb Depths: one more affix every fifth floor (content/depths.ts extraAffixes), distinct from the first.
+    if (elite && area === 'depths' && this.depths) {
+      const more = pickExtraAffixes(this.depths.depth, e.affix, this.rand);
+      if (more.length) e.extra = more.map((a) => ({ affix: a }));
+    }
     // Common dead only carry an affix when something grants it (Nightfall's Shroud).
     else if (affix) e.affix = affix;
     this.enemies.set(e.id, e);
@@ -1549,7 +1566,7 @@ export class WorldSim {
     const id = lead ?? pickWeighted(roster, this.rand())?.id;
     if (!id || room <= 0) return [];
     const pack = ENEMIES[id].pack;
-    const roll = this.rand() < def.eliteChance + mods.eliteBonus + DIFFICULTIES[this.difficulty].eliteBonus + (this.omen?.eliteBonus ?? 0);
+    const roll = this.rand() < def.eliteChance + mods.eliteBonus + DIFFICULTIES[this.difficulty].eliteBonus + (this.omen?.eliteBonus ?? 0) + (area === 'depths' && this.depths ? depthEliteBonus(this.depths.depth) : 0);
     // Pack animals never come elite (a whole elite swarm would be a wall of health).
     const elite = id !== 'risen' && !pack && (forceElite || roll);
     // Nightfall: the common dead climb out Shrouded.
@@ -1696,7 +1713,8 @@ export class WorldSim {
     this.crumbleVacant(dt);
     for (const id of AREA_ORDER) {
       const def = AREAS[id];
-      if (def.safe || !this.nav.isUnlocked(id)) continue;
+      // The Catacomb Depths run their own waves (updateDepths).
+      if (def.safe || def.instance || !this.nav.isUnlocked(id)) continue;
       if (!this.playersIn(id).length) continue;
       if (id === BOSSES[this.bossId].area && this.boss.state.active) continue;
       let t = this.waveTimers.get(id);
@@ -1714,6 +1732,137 @@ export class WorldSim {
       }
       this.waveTimers.set(id, t);
     }
+  }
+
+  // --- The Catacomb Depths (content/depths.ts, gameplay/depthsFloor.ts) ---
+
+  /**
+   * Begin a run: open the instance's ground to walkers and build floor `depth` (1 unless a test or the harness says otherwise).
+   * The caller (the scene) puts the hero on `floor.start` and calls recallThralls there; nothing else is moved.
+   */
+  startDepths(owner: string, seed: number, depth = 1, hold = false): DepthsFloor {
+    this.nav.openInstance('depths');
+    // Wave Speed builds over the first seconds of a visit (rampTier): once per run, not per floor, so every floor runs at the dial the hero set.
+    this.arrivedAt.set('depths', this.time - RAMP_S);
+    this.depths = {
+      owner, seed, depth, need: floorKills(depth), kills: 0, stairOpen: false, floorT: 0, waveT: 0, waved: false, hold,
+      peak: depth, floors: 0, totalKills: 0,
+    };
+    return this.loadDepthsFloor();
+  }
+
+  /** Go down one floor (the stair was taken): the old floor and everything on it is cleared, a new one is built. */
+  descendDepths(): DepthsFloor | null {
+    const run = this.depths;
+    if (!run) return null;
+    if (!run.hold) run.depth++;
+    run.peak = Math.max(run.peak, run.depth);
+    run.kills = 0;
+    run.stairOpen = false;
+    return this.loadDepthsFloor();
+  }
+
+  /** The run is over (left, died or the scene closed): the ground closes and the floor's dead sink away. */
+  endDepths(): DepthsRun | null {
+    const run = this.depths;
+    if (!run) return null;
+    this.wipeDepthsGround();
+    this.nav.clearDepthsFloor();
+    this.nav.closeInstance('depths');
+    this.depths = null;
+    return run;
+  }
+
+  private loadDepthsFloor(): DepthsFloor {
+    const run = this.depths!;
+    this.wipeDepthsGround();
+    const floor = generateFloor(floorSeed(run.seed, run.depth), run.depth, { chestEvery: DEPTHS.chestEvery });
+    this.nav.loadDepthsFloor(floor);
+    run.need = floorKills(run.depth);
+    run.floorT = 0;
+    run.waveT = 0;
+    run.waved = false;
+    this.vacantS.delete('depths');
+    this.emit({ t: 'depthsFloor', depth: run.depth, need: run.need, chest: floor.chest !== null });
+    return floor;
+  }
+
+  /** Everything that lives on the Depths ground goes: its dead (no loot, no corpses), corpses, zones, walls and brands. Thralls stay with their owner. */
+  private wipeDepthsGround() {
+    for (const e of [...this.enemies.values()]) if (e.area === 'depths') this.enemies.delete(e.id);
+    for (const c of [...this.corpses.values()]) if (c.area === 'depths') this.removeCorpse(c, 'expired');
+    const r = AREAS.depths.rect;
+    for (const z of [...this.zones.values()]) {
+      if (z.x < r.x0 || z.x > r.x1 || z.z < r.z0 || z.z > r.z1) continue;
+      this.zones.delete(z.id);
+      this.emit({ t: 'zoneGone', id: z.id });
+    }
+    for (const [id, w] of [...this.walls]) if (w.x0 >= r.x0 && w.x0 <= r.x1 && w.z0 >= r.z0 && w.z0 <= r.z1) this.walls.delete(id);
+    for (const [id, b] of [...this.brands]) if (b.area === 'depths') this.brands.delete(id);
+    this.unbinds = this.unbinds.filter((u) => u.area !== 'depths');
+  }
+
+  /** Quota bookkeeping on each death (collectDead): the stair down opens when the floor's kills are in. */
+  private depthsKill(e: Enemy) {
+    const run = this.depths;
+    if (!run || e.area !== 'depths') return;
+    run.kills++;
+    run.totalKills++;
+    if (run.stairOpen || run.kills < run.need) return;
+    run.stairOpen = true;
+    run.floors++;
+    const f = this.nav.depthsFloor;
+    this.emit({ t: 'depthsClear', depth: run.depth, x: f?.stairDown.x ?? 0, z: f?.stairDown.z ?? 0 });
+  }
+
+  /**
+   * The floor's own waves. Only as many of the dead climb out as the quota still needs (kills so far + the living < quota), a wave at a
+   * time and never more than DEPTHS.cap alive, so a floor is exactly N kills of work: no endless pressure while you look for the stair.
+   * Breaches are the floor's spawn points, never in the hero's own chamber.
+   */
+  private updateDepths(dt: number) {
+    const run = this.depths;
+    if (!run) return;
+    const floor = this.nav.depthsFloor;
+    const players = this.playersIn('depths');
+    if (!floor || !players.length) return;
+    run.floorT += dt;
+    if (run.stairOpen || run.floorT < DEPTHS.firstWaveDelayS) return;
+    const alive = this.aliveIn('depths');
+    const wanted = run.need - run.kills - alive;
+    if (wanted <= 0) return;
+    run.waveT -= dt;
+    if (run.waveT > 0) return;
+    const room = Math.min(DEPTHS.cap - alive, GLOBAL_ENEMY_CAP - this.enemies.size);
+    if (room <= 0) {
+      run.waveT = 0.5;
+      return;
+    }
+    const size = depthWaveSize(run.depth);
+    const count = Math.min(wanted, room, run.waved ? size : Math.max(size, 8));
+    // The dead climb out of the nearest chambers that are not the hero's own (by doorways, not by distance through a wall): they reach the hero
+    // within a few seconds, not after a walk across the whole floor.
+    const inRooms = new Set(players.map((p) => roomAt(floor, p.x, p.z)));
+    const hops = (room: number) => Math.min(...[...inRooms].map((r) => floorHops(floor, r, room)).map((h) => (h < 0 ? 99 : h)));
+    let pool = floor.breaches.filter((b) => !inRooms.has(b.room) && players.every((p) => Math.hypot(p.x - b.x, p.z - b.z) >= SPAWN_MIN_DIST));
+    if (!pool.length) pool = floor.breaches.filter((b) => !inRooms.has(b.room));
+    if (!pool.length) pool = floor.breaches;
+    const nearest = Math.min(...pool.map((b) => hops(b.room)));
+    pool = pool.filter((b) => hops(b.room) <= nearest + 1);
+    const roster = depthRoster(run.depth);
+    let spawned = 0;
+    const picks = Math.min(pool.length, count > 6 ? 3 : count > 3 ? 2 : 1);
+    const chosen: { x: number; z: number }[] = [];
+    for (let i = 0; i < picks; i++) chosen.push(pool.splice(Math.floor(this.rand() * pool.length), 1)[0]);
+    for (let i = 0; spawned < count; i++) {
+      const b = chosen[i % chosen.length];
+      const band = this.spawnAtBreach('depths', b.x, b.z, false, roster, undefined, count - spawned);
+      if (!band.length) break;
+      spawned += band.length;
+    }
+    run.waved = true;
+    run.waveT = depthWaveGapS(run.depth);
+    if (spawned) for (const b of chosen) this.emit({ t: 'wave', area: 'depths', count: spawned, x: b.x, z: b.z });
   }
 
   // --- Gathering nodes (roadmap §7: shared depletion, per-player rewards) ---
@@ -1767,6 +1916,7 @@ export class WorldSim {
   step(dt: number): SimEvent[] {
     this.time += dt;
     this.updateWaves(dt);
+    this.updateDepths(dt);
     this.updateSurge(dt);
     this.tickPendingLitanies();
     this.updateZones(dt);
@@ -1998,6 +2148,7 @@ export class WorldSim {
       this.enemies.delete(e.id);
       this.dotAccum.delete(e.id);
       if (this.surge?.ids.delete(e.id)) this.surge.killed++;
+      this.depthsKill(e);
       const def = ENEMIES[e.def];
       if (e.withered > 0 && this.legends.size) this.spreadWithered(e);
       this.emit({
@@ -2029,7 +2180,7 @@ export class WorldSim {
         const [cx, cz] = this.nav.resolveInArea(e.area, e.x + Math.sin(a) * 1.6, e.z + Math.cos(a) * 1.6, 0.4);
         this.addCorpse(cx, cz, def.corpse, 'risen', false, a, 1, e.area);
       }
-      if (e.affix === 'vengeful') this.vengeance(e);
+      if (this.hasAffix(e, 'vengeful')) this.vengeance(e);
       // Cinder Husk: the embers it dies in stay behind as burning ground.
       if (def.emberDeath) {
         this.emberPool(e.x, e.z, EMBER_DEATH.radius, EMBER_DEATH.poolS, e.damage * EMBER_DEATH.poolDpsMult);
@@ -2110,36 +2261,53 @@ export class WorldSim {
 
   // --- Elite affixes ---
 
+  /** Does the elite carry this affix (as its first or as one of the Depths' extras)? */
+  hasAffix(e: Enemy, a: EliteAffix) {
+    return e.affix === a || !!e.extra?.some((x) => x.affix === a);
+  }
+
+  /** A Lantern Cone / Last Light strips Shrouded, from the first slot or an extra one. */
+  private stripShroud(e: Enemy) {
+    if (e.affix === 'shrouded') e.affix = undefined;
+    if (e.extra) e.extra = e.extra.filter((x) => x.affix !== 'shrouded');
+  }
+
   private tickAffix(e: Enemy, dt: number) {
-    switch (e.affix) {
+    this.tickAffixKind(e, e.affix, e, dt);
+    // Extras keep their own clocks (and run only on elites the Depths dressed).
+    if (e.extra) for (const x of e.extra) this.tickAffixKind(e, x.affix, x, dt);
+  }
+
+  private tickAffixKind(e: Enemy, kind: EliteAffix | undefined, st: { affixCd?: number; tollAt?: { t: number; x: number; z: number } }, dt: number) {
+    switch (kind) {
       case 'bellTolled': {
         const T = AFFIX_TUNING.bellTolled;
-        if (e.tollAt) {
-          if (this.time >= e.tollAt.t) {
-            const { x, z } = e.tollAt;
-            e.tollAt = undefined;
+        if (st.tollAt) {
+          if (this.time >= st.tollAt.t) {
+            const { x, z } = st.tollAt;
+            st.tollAt = undefined;
             this.soundToll(e, x, z);
           }
           return;
         }
-        e.affixCd = (e.affixCd ?? T.intervalS) - dt;
-        if (e.affixCd > 0) return;
-        e.affixCd = T.intervalS;
+        st.affixCd = (st.affixCd ?? T.intervalS) - dt;
+        if (st.affixCd > 0) return;
+        st.affixCd = T.intervalS;
         // The ring is anchored where it was rung — walking out of it is the answer.
-        e.tollAt = { t: this.time + T.windupS, x: e.x, z: e.z };
+        st.tollAt = { t: this.time + T.windupS, x: e.x, z: e.z };
         this.emit({ t: 'telegraph', id: e.id, kind: 'toll', x: e.x, z: e.z, tx: e.x, tz: e.z, ms: T.windupS * 1000, r: T.r });
         return;
       }
       case 'hungering': {
         const T = AFFIX_TUNING.hungering;
-        e.affixCd = (e.affixCd ?? T.intervalS) - dt;
-        if (e.affixCd > 0) return;
+        st.affixCd = (st.affixCd ?? T.intervalS) - dt;
+        if (st.affixCd > 0) return;
         const c = e.hp < e.maxHp ? this.nearestCorpse(e.x, e.z, T.reach) : null;
         if (!c) {
-          e.affixCd = 0.5; // look again shortly
+          st.affixCd = 0.5; // look again shortly
           return;
         }
-        e.affixCd = T.intervalS;
+        st.affixCd = T.intervalS;
         const heal = Math.min(e.maxHp - e.hp, e.maxHp * T.healFrac);
         e.hp += heal;
         this.emit({ t: 'affix', id: e.id, affix: 'hungering', x: e.x, z: e.z, tx: c.x, tz: c.z, amount: Math.round(heal) });
@@ -2177,7 +2345,8 @@ export class WorldSim {
 
   private pickTarget(e: Enemy): { x: number; z: number; player?: PlayerBody; thrall?: Thrall } | null {
     let best: { x: number; z: number; player?: PlayerBody; thrall?: Thrall } | null = null;
-    let bestD = AGGRO_RANGE;
+    // A Depths floor is a few small rooms: the dead of any chamber know where the hero is, and walk the doorways to get there.
+    let bestD = e.area === 'depths' ? DEPTHS_AGGRO : AGGRO_RANGE;
     for (const p of this.players.values()) {
       if (!p.alive || p.area !== e.area) continue;
       const d = Math.hypot(p.x - e.x, p.z - e.z);
@@ -2220,6 +2389,14 @@ export class WorldSim {
       e.facing = Math.atan2(tx - e.x, tz - e.z);
       return;
     }
+    // On a Depths floor the dead walk through the doorways (nav.depthsHop), not at the wall between them and the hero.
+    if (e.area === 'depths') {
+      const hop = this.nav.depthsHop(e.x, e.z, tx, tz);
+      if (hop) {
+        tx = hop.x;
+        tz = hop.z;
+      }
+    }
     const dx = tx - e.x;
     const dz = tz - e.z;
     const d = Math.hypot(dx, dz);
@@ -2231,9 +2408,32 @@ export class WorldSim {
     const pz = e.z;
     [e.x, e.z] = this.nav.resolveInArea(e.area, e.x + (dx / d) * step, e.z + (dz / d) * step, e.radius);
     if (this.walls.size) [e.x, e.z] = this.pushOffWalls(px, pz, e.x, e.z, e.radius);
+    // Depths: lined up on a pillar the push-out sends a body straight back; swing a little to either side to get round it.
+    if (e.area === 'depths' && step > 1e-3 && ((e.x - px) * dx + (e.z - pz) * dz) / d < step * 0.3) {
+      const [sx, sz] = this.sidestep(px, pz, dx / d, dz / d, step, e.radius, (x, z) => this.nav.resolveInArea(e.area, x, z, e.radius));
+      e.x = sx;
+      e.z = sz;
+    }
     e.facing = Math.atan2(dx, dz);
     e.moving = true;
     e.gait += step * 2.4;
+  }
+
+  /** The best of two headings 50 degrees either side of the blocked one (the one that makes more way toward the goal), or where the body stood. */
+  private sidestep(px: number, pz: number, ux: number, uz: number, step: number, _r: number, resolve: (x: number, z: number) => [number, number]): [number, number] {
+    let best: [number, number] = [px, pz];
+    let bestGain = 0;
+    for (const a of [0.87, -0.87]) {
+      const c = Math.cos(a);
+      const s = Math.sin(a);
+      const [nx, nz] = resolve(px + (ux * c - uz * s) * step, pz + (ux * s + uz * c) * step);
+      const gain = (nx - px) * ux + (nz - pz) * uz + Math.hypot(nx - px, nz - pz) * 0.5;
+      if (gain > bestGain) {
+        bestGain = gain;
+        best = [nx, nz];
+      }
+    }
+    return best;
   }
 
   /** Where a Bog Hag lays her hex: the centre of the thrall standing in the thickest knot within reach; the target itself if none. */
@@ -2586,6 +2786,11 @@ export class WorldSim {
         continue;
       }
       const dist = Math.hypot(target.x - e.x, target.z - e.z);
+      // Depths: a target in another chamber is walked to through the doorways (moveEnemy steers); nothing attacks through a wall.
+      if (e.area === 'depths' && this.nav.depthsHop(e.x, e.z, target.x, target.z)) {
+        this.moveEnemy(e, target.x, target.z, dt);
+        continue;
+      }
 
       switch (def.behavior) {
         case 'melee':
@@ -2864,7 +3069,7 @@ export class WorldSim {
 
       const engage = (tx: number, tz: number, radius: number, hit: () => void) => {
         const d = Math.hypot(tx - t.x, tz - t.z);
-        if (d > t.range + radius) {
+        if (d > t.range + radius || (this.nav.depthsFloor !== null && this.wallBetween(t.x, t.z, tx, tz))) {
           this.moveThrall(t, tx, tz, dt, 1);
           t.state = 'move';
         } else {
@@ -2931,12 +3136,22 @@ export class WorldSim {
   }
 
   private moveThrall(t: Thrall, tx: number, tz: number, dt: number, mult: number) {
+    const hop = this.nav.depthsHop(t.x, t.z, tx, tz);
+    if (hop) {
+      tx = hop.x;
+      tz = hop.z;
+    }
     const dx = tx - t.x;
     const dz = tz - t.z;
     const d = Math.hypot(dx, dz);
     if (d < 0.05) return;
     const step = Math.min(d, t.speed * mult * dt);
+    const px = t.x;
+    const pz = t.z;
     [t.x, t.z] = this.nav.resolve(t.x + (dx / d) * step, t.z + (dz / d) * step, 0.4);
+    if (this.nav.depthsFloor && step > 1e-3 && ((t.x - px) * dx + (t.z - pz) * dz) / d < step * 0.3) {
+      [t.x, t.z] = this.sidestep(px, pz, dx / d, dz / d, step, 0.4, (x, z) => this.nav.resolve(x, z, 0.4));
+    }
     t.facing = Math.atan2(dx, dz);
     t.moving = true;
     t.gait += step * 2.4;

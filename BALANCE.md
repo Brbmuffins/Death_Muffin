@@ -1,5 +1,33 @@
 # Crossworlds — Balance targets & current numbers
 
+## Catacomb Depths (2026-10-02, `npm run balance:depths`; branch `dm/depths`, not deployed)
+
+The dead on depth *d* are level `max(12, hero level) + d` (content/depths.ts; the plan said `max(20, ...)`, but a level-20 floor is a wall for the level-8 to 12 heroes the Warren admits, so the floor is the Warren's own entry level). Enemy health grows +22% and damage +15% of a level-1 body per level, so +10 depths is about +20% of both at level 40. A floor spawns only what its quota still needs, at most 24 alive, from the chambers nearest the hero. `npm run balance:depths` holds one floor of a depth (a cleared floor re-rolls the same depth) and prints the four necromancers beside the Cinder Pyre and Mourning Fen at the same hero level (`DEPTH_LEVELS`, `DEPTH_DEPTHS`, `DEPTH_BANDS`, `DEPTH_DISCIPLINES`, `BALANCE_SEEDS`, `BALANCE_MINUTES`). Medium difficulty, 4 seeds x 3 sim-minutes, mean of Ossuary / Gravecaller / Mourner / Rotweaver; intended = progress kit, geared = typical kit:
+
+| Hero level, band | Ground (enemy level) | kills/min | XP/min | gold/min | damage taken %HP/min | lowest HP % | deaths / 3 min |
+|---|---|---|---|---|---|---|---|
+| 20 intended | Pyre (30) | 90 | 8,940 | 4,418 | 59 | 0 | 0.6 |
+| | Fen (45) | 84 | 14,617 | 3,550 | 97 | 2 | 0.8 |
+| | **depth 1** (21) | 31 | 718 | 389 | 10 | 69 | 0.0 |
+| | **depth 10** (30) | 45 | 5,042 | 2,552 | 79 | 0 | 0.5 |
+| | **depth 20** (40) | 31 | 5,524 | 2,484 | 201 | 0 | 3.6 |
+| 40 intended | Pyre (40) / Fen (45) | 99 / 98 | 12,899 / 17,749 | 6,335 / 4,316 | 14 / 24 | 62 / 40 | 0.1 / 0.1 |
+| | **depth 1** (41) | 34 | 1,431 | 735 | 12 | 70 | 0.0 |
+| | **depth 10** (50) | 56 | 10,501 | 5,209 | 44 | 14 | 0.4 |
+| | **depth 20** (60) | 60 | 17,287 | 7,696 | 134 | 0 | 1.8 |
+| 43 geared | Pyre / Fen | 145 / 120 | 25,782 / 28,795 | 14,570 / 8,560 | 30 / 58 | 35 / 2 | 0.1 / 0.1 |
+| | **depth 1 / 10 / 20** | 35 / 62 / 70 | 1,776 / 13,233 / 22,720 | 980 / 6,980 / 10,984 | 13 / 36 / 110 | 77 / 45 / 0 | 0.0 / 0.0 / 1.3 |
+| 60 intended | Pyre / Fen (60) | 102 / 99 | 19,805 / 22,877 | 9,492 / 5,510 | 20 / 16 | 30 / 63 | 0.0 / 0.0 |
+| | **depth 1 / 10 / 20** | 39 / 50 / 74 | 2,463 / 12,813 / 29,136 | 1,256 / 6,238 / 12,997 | 10 / 26 / 101 | 79 / 39 / 0 | 0.0 / 0.1 / 1.1 |
+| 63 geared | Pyre / Fen | 152 / 133 | 38,976 / 41,126 | 21,580 / 11,908 | 20 / 34 | 55 / 31 | 0.1 / 0.1 |
+| | **depth 1 / 10 / 20** | 39 / 65 / 86 | 2,759 / 18,642 / 37,330 | 1,509 / 9,679 / 17,889 | 8 / 20 / 86 | 84 / 58 / 0 | 0.0 / 0.0 / 0.7 |
+
+Reading it. Depth 1 is a warm-up (nothing dangerous, little pay). Depth 10 is about as dangerous as the Pyre at the same level and pays 50-90% of its XP per minute (the harness bot never walks to the stair and floors hold their pace to what is needed, so kills per minute are 40-65% of the open grounds' on purpose: the Depths are not the XP grind, they are the "one more floor" and the chests). Depth 20 is where it bites: 1-4 deaths per 3 minutes for these bots (a human dodges telegraphs the bot does not), XP/min at or above the Pyre's from level 43. No gear was nerfed to get here ("gear should make you strong"); the curve is the level formula and the elite affix schedule alone. Non-necromancer disciplines are far behind everywhere in the harness (their kits were never tuned) and are not read here.
+
+**Authority peak** (`AREA_PEAK.depths`): `DEPTH_LEVELS=40 DEPTH_DEPTHS=5,10,20 DEPTH_BANDS=max DEPTH_DISCIPLINES=1,2,3,4,5,6,7,8,9 DEPTH_REFERENCE=pyre,fen BALANCE_DIFFICULTY=hard BALANCE_SEEDS=2` (the settings of docs/SERVER-AUTHORITY.md); best column, rescaled to enemy level 50: 27,600 XP, 16,000 gold, 72 kills per minute (Rotweaver on depth 20: 32,802 XP / 18,857 gold / 72 kills at enemy level 60).
+
+**What the harness cannot show.** The bot never walks to the stair (a real descent adds several seconds a floor), does not click chests, and does not weigh a floor's rooms; it fights what it can see and steps through doorways toward the rest. It cannot judge how the walls feel for a human (cones stop at them), how a Hungering plus Shrouded elite reads, or how a depth-20 floor feels at a human's dodge rate. Pacing (a floor takes 20-60 s) is the number a playtest should confirm.
+
 ## Relic runes (2026-10-02, `npm run balance:runes`; branch `dm/runes`, not deployed)
 
 Target from the brief: runes add build variety, not raw power, about 0-10% either way. The harness bot (balance/harness.ts) casts each rite the way `AbilitySystem` does with that rune (shared geometry in `gameplay/runeCast.ts`, shared numbers in `content/runes.ts` `RUNE_TUNING`).

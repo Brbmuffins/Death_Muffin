@@ -80,7 +80,7 @@ export const baseState = (over: Partial<GuidanceState> = {}): GuidanceState => (
 // ---------------------------------------------------------------------------
 
 /** Side halls: optional, so they never take the place of the main road in the tracker. */
-export const SIDE_AREAS: AreaId[] = ['warren', 'coliseum'];
+export const SIDE_AREAS: AreaId[] = ['warren', 'coliseum', 'depths'];
 
 export const isOpen = (s: GuidanceState, a: AreaId) => !AREAS[a].unlock || s.unlocked.includes(a);
 export const killsIn = (s: GuidanceState, a: AreaId) => s.areaKills[a] ?? 0;

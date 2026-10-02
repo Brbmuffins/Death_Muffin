@@ -147,7 +147,7 @@ nothing left to chase. Ranked by replay value per effort; ★ = buildable client
 4. **★ Weekly world omens.** A rotating modifier seeded from the week: *Blood Moon* (double corpses,
    double Deacons), *Drowned Week* (the Nave floods further and water slows everyone), *Tolling*
    (every elite is Bell-Tolled). The same world plays differently each week.
-5. **Catacomb Depths (endless descent).** A procedural endless area below the Nave: each depth
+5. **Catacomb Depths (endless descent) — BUILT 2 Oct 2026 (`dm/depths`, see README "The Catacomb Depths" and HANDOFF).** A procedural endless area below the Nave: each depth
    is +1 enemy level and a new affix, with a depth leaderboard. The leaderboard needs server
    storage; the descent itself doesn't.
 6. **Prelate Echoes.** Each Ascension rank gives the Prelate one extra mechanic from a pool (a second

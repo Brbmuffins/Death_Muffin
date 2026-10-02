@@ -81,6 +81,8 @@ export const HERE: Record<string, string[]> = {
   cloister: ['cloister'], pyre: ['pyre'], fen: ['fen'], warren: ['warren'], coliseum: ['coliseum'],
   boss_gravedigger: ['graves'], boss_abbess: ['ossuary'], boss_congregation: ['nave'], boss_saint: ['cloister'], boss_regent: ['pyre'], boss_mire: ['fen'],
   boons: ['chapterhouse'],
+  // The stair is in the Warren; the floors' own cards are shown by what the player just did.
+  depths: ['warren'],
 };
 
 const KIND_RANK: Record<TipKind, number> = { urgent: 0, danger: 1, asked: 2, calm: 3 };
@@ -105,6 +107,7 @@ const ASKED = [
   'rite_fan', 'rite_lance', 'rite_offering', 'rite_cleave', 'rite_veil', 'rite_rally', 'rite_seed',
   'gearEquip', 'statSheet', 'setBonus', 'legendary', 'necroWeapon', 'toolBelt', 'vault', 'salvage', 'bag_full', 'essence',
   'minimap', 'auto_combat', 'change_class', 'station', 'gather', 'wing',
+  'depths_floor', 'depths_affix', 'depths_chest', 'depths_solo',
 ];
 
 /** Fight-time tips that teach the kit itself (not one enemy's telegraph): they wait their turn instead of going stale. */

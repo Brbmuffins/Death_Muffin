@@ -187,6 +187,9 @@ describe('where runes drop', () => {
     for (const id of RUNE_IDS) expect(runeSources(id).length, id).toBeGreaterThan(10);
     expect(runeSources('rune_bone_colossus')).toMatch(/Bone Abbess/);
     expect(runeSources('rune_splinter')).toMatch(/any hunting ground/);
+    // The Catacomb Depths' chests hold runes too (epic ones from depth 10).
+    expect(runeSources('rune_splinter')).toMatch(/chests in the Catacomb Depths$/);
+    expect(runeSources('rune_requiem')).toMatch(/chests in the Catacomb Depths \(from depth 10\)$/);
   });
 });
 

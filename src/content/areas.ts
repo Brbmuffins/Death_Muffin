@@ -9,8 +9,8 @@ import { NPC_IDS, NPC_SPOTS, npcInteractableId } from './npcSpots';
  * (up-screen). Areas are walkable rectangles joined by door corridors that
  * stay sealed until the unlock threshold is met.
  */
-export type AreaId = 'chapterhouse' | 'acre' | 'graves' | 'ossuary' | 'nave' | 'sanctum' | 'cloister' | 'pyre' | 'warren' | 'coliseum' | 'fen' | 'alchemist_wing';
-export type Theme = 'chapter' | 'acre' | 'graveyard' | 'ossuary' | 'nave' | 'sanctum' | 'cloister' | 'pyre' | 'warren' | 'coliseum' | 'fen' | 'wing';
+export type AreaId = 'chapterhouse' | 'acre' | 'graves' | 'ossuary' | 'nave' | 'sanctum' | 'cloister' | 'pyre' | 'warren' | 'coliseum' | 'fen' | 'alchemist_wing' | 'depths';
+export type Theme = 'chapter' | 'acre' | 'graveyard' | 'ossuary' | 'nave' | 'sanctum' | 'cloister' | 'pyre' | 'warren' | 'coliseum' | 'fen' | 'wing' | 'depths';
 
 export interface Rect {
   x0: number;
@@ -20,7 +20,9 @@ export interface Rect {
 }
 
 /** cauldron / alembic open the Alchemy brewing panel and reagents the reagent shelf (the Alchemist's Wing). kiln / sawpit / fire are the Sexton's Acre processing stations (docs/PROFESSIONS-ROADMAP.md §6). */
-export type InteractKind = 'inventory' | 'forge' | 'professions' | 'upgrades' | 'waystone' | 'boss' | 'kiln' | 'sawpit' | 'fire' | 'lectern' | 'vault' | 'grinder' | 'npc' | 'cauldron' | 'alembic' | 'reagents';
+export type InteractKind = 'inventory' | 'forge' | 'professions' | 'upgrades' | 'waystone' | 'boss' | 'kiln' | 'sawpit' | 'fire' | 'lectern' | 'vault' | 'grinder' | 'npc' | 'cauldron' | 'alembic' | 'reagents'
+  // The Catacomb Depths: the Warren's stair, and the stair down / stair up / chest of a floor (content/depths.ts).
+  | 'stair' | 'depths_down' | 'depths_up' | 'depths_chest';
 
 /** The talkable people standing in `area` (content/npcSpots.ts holds their positions). */
 const npcSpots = (area: AreaId): Interactable[] =>
@@ -60,6 +62,11 @@ export interface AreaDef {
    * so XP per kill keeps pace with any character (docs/GRIND-LOOP.md §2). `level` is then only the floor shown in UI.
    */
   scaling?: { minLevel: number };
+  /**
+   * An instance (the Catacomb Depths): not a place on the map you walk to. Its ground is closed to the nav until a run opens it
+   * (Nav.openInstance), its floors are generated per run (gameplay/depthsFloor.ts), and it has no seal, waves or breaches of its own.
+   */
+  instance?: boolean;
 }
 
 export interface DoorDef {
@@ -70,6 +77,11 @@ export interface DoorDef {
   /** Corridor runs along this axis; the gate spans the other one. */
   axis: 'x' | 'z';
 }
+
+/** Where the Depths' floors are built: far east of the Coliseum, off every other hall (a 3 x 3 grid of chambers, 40 x 36 m). */
+export const DEPTHS_RECT: Rect = { x0: 150, z0: -60, x1: 190, z1: -24 };
+/** The Warren's way down: the west chamber, against the wall, where the lantern light reaches. */
+export const DEPTHS_STAIR = { x: -67.2, z: -30 };
 
 export const AREAS: Record<AreaId, AreaDef> = {
   chapterhouse: {
@@ -469,7 +481,11 @@ export const AREAS: Record<AreaId, AreaDef> = {
     ],
     itemChance: 0.1,
     breaches: [[-65, -45], [-52, -45], [-39, -45], [-65, -30], [-55.5, -30], [-65, -15], [-52, -15], [-39, -15]],
-    interactables: [{ id: 'waystone_warren', kind: 'waystone', label: 'Waystone', x: -35.5, z: -27 }],
+    interactables: [
+      { id: 'waystone_warren', kind: 'waystone', label: 'Waystone', x: -35.5, z: -27 },
+      // The way down to the Catacomb Depths (content/depths.ts): the west chamber, glowing in the dark.
+      { id: 'depths_stair', kind: 'stair', label: 'The Stair Down', x: DEPTHS_STAIR.x, z: DEPTHS_STAIR.z },
+    ],
     ambient: { fog: 0x0c0a08, hemiSky: 0x3a3226, hemiGround: 0x0a0806, moon: 0xa89a7a },
   },
   // The Bone Coliseum (2026-09-30): a wave-gauntlet pit east of the Ossuary. Four gates, fast surges, elites everywhere,
@@ -570,12 +586,45 @@ export const AREAS: Record<AreaId, AreaDef> = {
     ],
     ambient: { fog: 0x0a1618, hemiSky: 0x2a4a52, hemiGround: 0x060c0e, moon: 0x7ec4c4, fogMult: 1.7 },
   },
+  // The Catacomb Depths (2026-10-02): an endless descent reached by the stair in the Warren's west chamber. An instance, not a hall
+  // on the map: this rectangle is where each run's floor is built (gameplay/depthsFloor.ts), nothing else ever stands here. Its
+  // enemies, waves, level and loot are the run's (content/depths.ts, WorldSim.startDepths), so the fields below are only the defaults
+  // the rest of the game reads: `level` is the display floor; `itemChance` is the chance an ordinary kill drops from the depth's ground.
+  depths: {
+    id: 'depths',
+    name: 'The Catacomb Depths',
+    subtitle: 'Down, and further down',
+    theme: 'depths',
+    rect: DEPTHS_RECT,
+    safe: false,
+    level: 12,
+    scaling: { minLevel: 12 },
+    instance: true,
+    enemies: [
+      { id: 'rat', weight: 30 },
+      { id: 'robber', weight: 22 },
+      { id: 'ghoul', weight: 14 },
+      { id: 'bat', weight: 12 },
+      { id: 'sac', weight: 10 },
+      { id: 'hound', weight: 8 },
+    ],
+    cap: 24,
+    waveSize: 6,
+    waveIntervalMs: 3800,
+    eliteChance: 0.06,
+    // No table of its own: a kill's drop is rolled on the hunting ground whose gear matches the depth (content/depths.ts depthLootArea).
+    loot: [],
+    itemChance: 0.12,
+    breaches: [],
+    interactables: [],
+    ambient: { fog: 0x0a0807, hemiSky: 0x302a24, hemiGround: 0x080605, moon: 0x9a8c70 },
+  },
 };
 
-export const AREA_ORDER: AreaId[] = ['chapterhouse', 'acre', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'warren', 'coliseum', 'fen', 'alchemist_wing'];
+export const AREA_ORDER: AreaId[] = ['chapterhouse', 'acre', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'warren', 'coliseum', 'fen', 'alchemist_wing', 'depths'];
 
-/** Areas with no seal (`unlock`) are open to everyone from the start. */
-export const isAlwaysOpen = (id: AreaId) => !AREAS[id].unlock;
+/** Areas with no seal (`unlock`) are open to everyone from the start. An instance (the Depths) is open only while a run is. */
+export const isAlwaysOpen = (id: AreaId) => !AREAS[id].unlock && !AREAS[id].instance;
 
 export const DOORS: DoorDef[] = [
   { id: 'chapter_graves', a: 'chapterhouse', b: 'graves', rect: { x0: -3.5, z0: 3, x1: 3.5, z1: 9 }, axis: 'z' },

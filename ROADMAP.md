@@ -47,7 +47,7 @@ flowchart LR
   end
 
   subgraph LATER["🌒 Later — new content"]
-    L2[New zones<br/>Catacomb Depths · Hollow Court]:::later
+    L2[New zones<br/>Hollow Court]:::later
     L5[Server authority step 2<br/>enforce + server-side rewards]:::later
     L4[AI companions — parked]:::later
   end
@@ -203,7 +203,7 @@ Two or three bot players you can log in and play with. Recommended design:
 Measured in [docs/BLENDER-AUDIT.md](docs/BLENDER-AUDIT.md): props are ~65% of triangles and drawn ~5× (batch-level culling), ~160 draw calls are tiny decals, corpses are full skinned clones, ~490 MB decoded textures. **Phase 1** (no visible art change): spatially chunk PropBatch, pool decals into instanced layers, prune GLB accessors, trim `dig`/`cast` clips, PNG→WebP (~−26 MB). **Phase 2:** texture downscale by class, static corpse meshes, meshopt compression + simplify. **Phase 3:** 3D item icons, LODs, KTX2.
 
 ### L2–L4
-- **New zones:** Catacomb Depths and the Hollow Court (`docs/ALCHEMY-AND-WORLDS-PLAN.md`).
+- **New zones:** the Hollow Court (`docs/ALCHEMY-AND-WORLDS-PLAN.md`). The Catacomb Depths (W2) are built on `dm/depths` (2 Oct, not deployed, no migration): a Warren stair, seeded floors of small chambers, a quota-then-stair loop, elites with another affix and a chest every fifth floor, a Chronicle best depth. Open: co-op floors (solo for now), a depth leaderboard view beyond the public page's column, and a human playtest of the pacing.
 - **Content with paid art ready:** nothing waiting: the Bone Colossus and the runes are live (2 Oct, migration 024), thrall gear shipped.
 - **Server authority:** today the browser is trusted for level, gold and loot (fine among friends). Move rewards to the server before opening to strangers. Step 1 (plausibility guards, report-first, `AUTHORITY_MODE`) is built on `dm/server-authority`, not deployed: [docs/SERVER-AUTHORITY.md](docs/SERVER-AUTHORITY.md). Server-rolled kill rewards (step 2) remain.
 

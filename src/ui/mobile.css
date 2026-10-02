@@ -170,6 +170,10 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
   .hud-omen { left: var(--gut); top: 54px; padding: 2px 8px 2px 2px; }
   .hud-omen img { width: 22px; height: 22px; }
   .hud-omen span { font-size: 11px; }
+  .hud-depth { width: 128px; padding: 2px 6px 3px; }
+  .hud-depth .row { font-size: 11px; letter-spacing: 0.08em; gap: 6px; }
+  .hud-depth .row b { font-size: 14px; }
+  .hud-depth .cue { font-size: 10px; }
   .hud-ward { left: var(--gut); padding: 2px 8px; }
   .hud-ward .n { font-size: 16px; }
   .hud-ward .lbl { font-size: 11px; }
@@ -298,6 +302,8 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
   .hud-map { width: 116px; }
   .hud-map .frame { width: 72px; height: 72px; }
   .hud-map .prog { display: none; }
+  .hud-depth { width: 116px; }
+  .hud-depth .cue { display: none; }
   .hud-next { max-width: 116px; }
   .hud-next [data-nexttxt] { -webkit-line-clamp: 3; }
   .hud-menu { width: 116px; }

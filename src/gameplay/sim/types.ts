@@ -111,6 +111,30 @@ export interface Enemy {
   markBy?: string;
   /** Host-only, Chain Plague: scene time before this enemy may burst again. */
   plagueAt?: number;
+  /** The Catacomb Depths give elites more affixes than their first (host-only, solo). Each extra keeps its own clock. */
+  extra?: { affix: EliteAffix; affixCd?: number; tollAt?: { t: number; x: number; z: number } }[];
+}
+
+/** A run of the Catacomb Depths (host-only: the Depths are solo for now). Floors are generated from `seed` and the depth. */
+export interface DepthsRun {
+  owner: string;
+  seed: number;
+  depth: number;
+  /** Kills the floor asks for, and the ones landed so far. */
+  need: number;
+  kills: number;
+  /** The stair down is open (the quota is met). */
+  stairOpen: boolean;
+  /** Seconds on this floor, and until the next wave climbs out. */
+  floorT: number;
+  waveT: number;
+  waved: boolean;
+  /** Balance harness / tests: re-roll the same depth instead of going down when a floor is cleared. */
+  hold: boolean;
+  /** The deepest floor reached, floors cleared and kills this run. */
+  peak: number;
+  floors: number;
+  totalKills: number;
 }
 
 export type ThrallState = 'rising' | 'idle' | 'move' | 'attack' | 'dead';
@@ -371,6 +395,9 @@ export type Intent =
 
 export type SimEvent =
   | { t: 'spawn'; id: number; def: EnemyId; x: number; z: number; elite: boolean; affix?: EliteAffix }
+  // The Catacomb Depths: a floor began / its quota was met and the stair down opened (x, z = the stair).
+  | { t: 'depthsFloor'; depth: number; need: number; chest: boolean }
+  | { t: 'depthsClear'; depth: number; x: number; z: number }
   | {
       t: 'death';
       id: number;

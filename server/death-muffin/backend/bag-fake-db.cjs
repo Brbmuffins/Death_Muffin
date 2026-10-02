@@ -31,6 +31,11 @@ const ITEMS = {
   tool_pickaxe_copper: { type: 'material', rarity: 'common', stack: 1 },
   tool_rod_copper: { type: 'material', rarity: 'common', stack: 1 },
   tool_spade_copper: { type: 'material', rarity: 'common', stack: 1 },
+  // Things a Catacomb Depths chest can hold (gear, finds and a rune; authority.test.cjs).
+  set_gravecaller_ascended_chest: { type: 'armor_chest', rarity: 'epic', stack: 1 },
+  gem_void_sapphire: { type: 'material', rarity: 'epic', stack: 250 },
+  ore_moon: { type: 'material', rarity: 'epic', stack: 250 },
+  flask_hp_grand: { type: 'consumable', rarity: 'rare', stack: 20 },
   // Relic runes (migration 024).
   rune_splinter: { type: 'rune', rarity: 'uncommon', stack: 99 },
   rune_marrow_tap: { type: 'rune', rarity: 'uncommon', stack: 99 },

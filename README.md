@@ -32,6 +32,9 @@ Some of the most polished corners of the game right now (updated 2 October 2026)
 </tr><tr>
 <td><img src="docs/screenshots/legendary/legendary-tooltip.webp" alt="A legendary boot tooltip showing the Legion of the Unburied set bonuses" /><br /><sub><b>Legendary armor sets.</b> One five-piece chase set per necromancer discipline; four pieces change a mechanic, five define the build.</sub></td>
 <td><img src="docs/screenshots/legendary/legendary-codex.webp" alt="The Codex Legendary sets section explaining drops and bonuses" /><br /><sub><b>Told plainly.</b> Every tier is spelled out in the tooltip and the Codex, including where each set drops.</sub></td>
+</tr><tr>
+<td><img src="docs/screenshots/depths/floor-fight.webp" alt="A floor of the Catacomb Depths in the middle of a fight" /><br /><sub><b>The Catacomb Depths.</b> An endless descent from the Warren's west chamber: slay a floor's quota, the stair opens, and the dead grow one level older.</sub></td>
+<td><img src="docs/screenshots/depths/chest-open.webp" alt="A chest on the fifth floor of the Depths" /><br /><sub><b>A chest every fifth floor.</b> Gear, finds and now and then a Relic rune, and elites with one more affix each time.</sub></td>
 </tr></table>
 
 ## Contents
@@ -45,6 +48,7 @@ Some of the most polished corners of the game right now (updated 2 October 2026)
 - [Combat and corpses](#combat-and-corpses)
 - [Relic runes](#relic-runes)
 - [The world and its bosses](#the-world-and-its-bosses)
+- [The Catacomb Depths](#the-catacomb-depths)
 - [Gold, gear, and difficulty](#gold-gear-and-difficulty)
 - [Gear, stats and the character sheet](#gear-stats-and-the-character-sheet)
 - [Gathering and crafting](#gathering-and-crafting)
@@ -292,7 +296,7 @@ Three levels sit off the main road. Each has its own layout and its own reason t
 </tr></table>
 
 **The Catacomb Warren** (level 4 · open after 150 Graves kills · door on the Graves' west wall).
-A chambered dungeon: a three-by-three grid of rooms divided by tall half-walls, with staggered gaps and a lantern beside every gap so the doorways read in the dark. The middle chamber is the vault, a sarcophagus under four candelabra. Walls are solid to more than feet: **cones and blows stop at a wall**, so stepping behind one breaks a Bellbound Penitent's line and funnels the swarm into the gaps. Rats, Barrow Ghouls, bats, sacs and the odd Penitent live here. Good for learning to fight around corners; drops lean toward bones, tin, iron and copper gear.
+A chambered dungeon: a three-by-three grid of rooms divided by tall half-walls, with staggered gaps and a lantern beside every gap so the doorways read in the dark. The middle chamber is the vault, a sarcophagus under four candelabra. Walls are solid to more than feet: **cones and blows stop at a wall**, so stepping behind one breaks a Bellbound Penitent's line and funnels the swarm into the gaps. Rats, Barrow Ghouls, bats, sacs and the odd Penitent live here. Good for learning to fight around corners; drops lean toward bones, tin, iron and copper gear. A glowing **stair in its west chamber** leads down to [the Catacomb Depths](#the-catacomb-depths).
 
 **The Bone Coliseum** (level 11 · open after 350 Ossuary kills · door on the Ossuary's east wall).
 A wide sand pit ringed by pillars with four gates. Surges arrive fast (a wave of 14 every 4.2 seconds, cap 36) and **elites are twice as common** as in the Nave. The only shelter is four low L-shaped skull walls, each with a statue at the elbow, and the pillar ring. The roster mixes fodder (skull rats, hounds, bats) with the newer kinds (Wraiths, Gargoyles, Templars, Acolytes), so it rewards area rites, kiting and holding a wall. Better drops and more XP per minute than the Nave, and a real chance of dying.
@@ -325,6 +329,32 @@ The **Mire Mother** wakes at the Mire Altar on the marsh's heart. She sinks and 
 ![The Bell-Sworn Prelate in the Bell Sanctum](docs/screenshots/bell-sworn-prelate.webp)
 
 **Grave Surges** occasionally open a special breach in an active hunting area. Clear most of its rapid waves before it closes to earn an item and bonus gold.
+
+## The Catacomb Depths
+
+An endless descent. Behind the **Catacomb Warren's west chamber** a glowing stair leads down (the Warren opens after 150 Hollow Graves kills). Click it and you go down into a floor of small chambers; slay its quota and the stair to the next one opens. How deep can you get?
+
+![The stair in the Catacomb Warren, with its hover label](docs/screenshots/depths/warren-stair.webp)
+
+**The loop.** Every floor is a fresh, seeded maze of seven to nine chambers built from the Warren's own kit: tall half-walls that stop cones and blows, doorways with a lantern beside them, pillars, cages and coffins. The dead climb out of the chambers nearest you and come through the doorways to find you; a floor never holds more than 24 of them at once. A quiet readout under the minimap counts the floor (**Depth 7 · 12/20**; the quota is 10 kills on depth 1 and climbs to 30). When the quota is met the readout turns gold (**Stair open**), the stair glows amber, a banner says so, the minimap points to it, and the floor pays a bonus in gold and experience and usually leaves an item on the steps. Click the stair to go down. Your legion comes with you; corpses stay behind with the floor, so the first kills of each floor feed the next raising.
+
+![A floor of the Depths in the middle of a fight, with the depth readout under the minimap](docs/screenshots/depths/floor-fight.webp)
+
+**How hard.** The dead on depth *d* are level **your level + d** (never counting your level below 12), so a level-60 hero meets level-61 dead on depth 1 and level-80 dead on depth 20. Starter dead (rats, robbers, ghouls) fill depths 1-4; Penitents, Deacons, Acolytes, Wraiths and moths join from depth 5, Templars, Censer Bearers, flyers and plague doctors from 10, golems, Pyre and Fen dead from 15. Elites grow more common with depth, and **every fifth floor gives them one more affix** (two on depth 5, three on 10, all four from 15): the target frame names them all and they all act at once.
+
+![The stair open and glowing](docs/screenshots/depths/stair-open.webp)
+
+**Chests and loot.** Kills drop from the hunting ground whose gear matches the depth: the Marrow Ossuary's on depths 1-4, the Bone Coliseum's on 5-9, the Bell Sanctum's on 10-14, the Cloister's on 15-19, the Pyre's on 20-29 and the Fen's from 30 (armour sets, necromancer weapons, ores, gems and reagents included). **Every fifth floor holds a chest** in a side chamber, marked on the minimap: it gives gear with at least one affix, finds from that ground (more of them deeper), gold and experience, and one time in ten (rising to one in three) a **Relic rune**.
+
+![A chest on the fifth floor and what it left behind](docs/screenshots/depths/chest-open.webp)
+
+**Ending a run.** Dying ends it, and so does the way up (the stair at your feet when you arrive; it asks twice, so a stray click cannot end a run) or leaving by any other road (recall, a class change). Everything you looted is already yours. The deepest floor you reach is written to the **Chronicle** (Codex **K**, Chronicle tab, "Deepest descent") and shown on the public leaderboard; Ascension never resets it.
+
+**Solo for now.** The floors live in the world keeper's simulation and the realtime relay does not carry a layout, so the Depths are a descent for one. If you are in a party, the stair says so and stays shut; if a friend joins while you are down, the stair closes behind you. Playing together on a floor is on the list.
+
+On a phone or tablet it works the same way: tap the stair, tap the chest. The depth readout sits under the minimap.
+
+<img src="docs/screenshots/depths/phone-floor.webp" alt="The Depths on a phone: the depth readout under the minimap" width="300" />
 
 ## Gold, gear, and difficulty
 
@@ -475,7 +505,7 @@ Ashes buy permanent **Covenant Boons** at the Altar, including more health, chea
 
 ## Playing together and getting help
 
-When co-op is available, joining places you in a world with room for up to **10 players**. Players in the same world share chat, combat, gathering node depletion, and boss activity; each character receives their own finds and progression. Press **Enter** to chat. If the realtime service is unavailable, the game continues as a solo world.
+When co-op is available, joining places you in a world with room for up to **10 players**. Players in the same world share chat, combat, gathering node depletion, and boss activity; each character receives their own finds and progression. Press **Enter** to chat. If the realtime service is unavailable, the game continues as a solo world. The one exception is the [Catacomb Depths](#the-catacomb-depths), which are solo for now: the stair tells a party so.
 
 **Covenant counsel** cards appear when you first encounter important systems, one at a time and at a calm moment (see *Your first hour*). You can move them, turn them off in Settings, or choose **Show tips again** there. Hover or focus an ability icon for its cost, target, effects, and combat tip. The **Codex (K)** records rites, enemies, bosses, and professions you have encountered.
 

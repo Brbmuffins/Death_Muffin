@@ -102,6 +102,8 @@ export interface HudFrame {
     name: string;
     elite: boolean;
     affix: { id: EliteAffix; name: string } | null;
+    /** The Catacomb Depths: the affixes beyond the first (an elite on depth 5 bears two, on 10 three). */
+    moreAffixes?: { id: EliteAffix; name: string }[];
     hp: number;
     maxHp: number;
     statuses: { icon: string; label: string; n: number }[];
@@ -198,6 +200,11 @@ export class HUD {
         <div class="frame" data-mapframe></div>
         <div class="area" data-area></div>
         <div class="prog" data-prog></div>
+        <div class="hud-depth passive" data-depth hidden role="status" aria-live="polite">
+          <div class="row"><span class="d">Depth <b data-depth-n></b></span><span class="k" data-depth-k></span></div>
+          <div class="track"><div class="fill" data-depth-fill></div></div>
+          <div class="cue" data-depth-cue></div>
+        </div>
         <div class="hud-next" data-next hidden role="status"><div class="txt"><span class="kick">Next</span><span data-nexttxt></span></div><button type="button" data-nextx aria-label="Hide this suggestion" title="Hide this suggestion (turn the line off in Settings)">×</button></div>
         <div class="hud-menu">
           ${MENU_ROW.map(([k, i, l, t, n]) => `<button class="hud-mi" data-open="${k}" title="${t}" aria-label="${n}">${ICON[i]}<span class="lbl">${l}</span></button>`).join('')}
@@ -707,8 +714,8 @@ export class HUD {
     const t = f.boss ? null : f.target;
     this.set('tvis', !!t, () => (this.$('[data-target]').hidden = !t));
     if (t) {
-      this.set('tname', `${t.name}|${t.elite}|${t.affix?.id ?? ''}`, () => {
-        const affix = t.affix ? `<span class="affix affix-${t.affix.id}">${esc(t.affix.name)}</span>` : '';
+      this.set('tname', `${t.name}|${t.elite}|${t.affix?.id ?? ''}|${(t.moreAffixes ?? []).map((a) => a.id).join(',')}`, () => {
+        const affix = [...(t.affix ? [t.affix] : []), ...(t.moreAffixes ?? [])].map((a) => `<span class="affix affix-${a.id}">${esc(a.name)}</span>`).join('');
         this.$('[data-tname]').innerHTML = `${esc(t.name)}${t.elite ? '<span class="elite">◆ Elite</span>' : ''}${affix}`;
         this.$('[data-tblurb]').textContent = t.blurb;
       });
@@ -761,6 +768,22 @@ export class HUD {
     this.$('[data-omen-name]').textContent = o.name;
     el.title = o.blurb;
     el.setAttribute('aria-label', `${o.name}. ${o.blurb}`);
+  }
+
+  /**
+   * The Catacomb Depths readout, under the minimap and quiet: "Depth 7 · 12/20" over a thin bar. When the quota is met the count gives way to a
+   * gold "Stair open" cue (the minimap points to the stair). Null hides it.
+   */
+  setDepths(d: null | { depth: number; kills: number; need: number; open: boolean; chest: boolean }) {
+    this.set('depth.on', d !== null, () => (this.$('[data-depth]').hidden = d === null));
+    if (!d) return;
+    this.set('depth.n', d.depth, () => (this.$('[data-depth-n]').textContent = String(d.depth)));
+    this.set('depth.k', `${d.kills}/${d.need}/${d.open}`, () => {
+      this.$('[data-depth-k]').textContent = d.open ? 'Stair open' : `${d.kills}/${d.need}`;
+      this.$('[data-depth]').classList.toggle('open', d.open);
+    });
+    this.set('depth.fill', Math.round((d.kills / Math.max(1, d.need)) * 100), () => this.$('[data-depth-fill]').style.setProperty('width', `${Math.min(100, (d.kills / Math.max(1, d.need)) * 100)}%`));
+    this.set('depth.cue', `${d.open}|${d.chest}`, () => (this.$('[data-depth-cue]').textContent = d.open ? (d.chest ? 'The stair is open · a chest waits on this floor' : 'Follow the amber mark on the minimap') : d.chest ? 'A chest waits on this floor' : ''));
   }
 
   /** The Kill Chain readout: a count, the tier name and bonus, and the time left before it breaks (null hides it). */

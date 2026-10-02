@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { AREAS, AREA_ORDER, DOORS, type AreaId, type DoorDef, type Theme } from '../content/areas';
-import { NODE_COLLIDER, PROPS, WING_FLOOR, type Placement, type PropId, type Silhouette, type WorldLayout } from '../content/layout';
+import { NODE_COLLIDER, PROPS, WING_FLOOR, placementObstacle, wallObstacle, type Placement, type PropId, type Silhouette, type WallSegment, type WorldLayout } from '../content/layout';
 import type { Nav } from '../gameplay/nav';
 import { NODES } from '../gameplay/gatheringRules';
 import { mulberry32 } from '../gameplay/rng';
@@ -24,6 +24,8 @@ const FLOOR_TEX: Record<Theme, { url: string; tile: number; color: number; rough
   sanctum: { url: 'art/textures/flagstone.webp', tile: 7, color: 0x9a86aa, rough: 0.5 },
   cloister: { url: 'art/textures/cloister_floor.webp', tile: 6, color: 0xa8b4a0, rough: 0.8 },
   warren: { url: 'art/textures/warren_floor.webp', tile: 6, color: 0xb8ac98, rough: 0.9 },
+  // The Catacomb Depths: the Warren's floor, darker and cooler.
+  depths: { url: 'art/textures/warren_floor.webp', tile: 6, color: 0x8a8070, rough: 0.9 },
   coliseum: { url: 'art/textures/coliseum_floor.webp', tile: 7, color: 0xc8bca8, rough: 0.9 },
   pyre: { url: 'art/textures/pyre_floor.webp', tile: 6, color: 0xd8b498, rough: 0.85 },
   fen: { url: 'art/textures/fen_floor.webp', tile: 6, color: 0xa8c0bc, rough: 0.8 },
@@ -233,7 +235,7 @@ function silhouetteGeometry(sil: Silhouette, rand: () => number): THREE.BufferGe
 /** Colour multiplier (can exceed 1) for props that read too dark at the game camera: the Wing's hanging herbs and drying rack. */
 const PROP_LIFT: Partial<Record<PropId, number>> = { alch_herb_bundle: 3.2, alch_drying_rack: 1.9 };
 
-class PropBatch {
+export class PropBatch {
   readonly group = new THREE.Group();
   constructor(
     private id: PropId,
@@ -304,7 +306,7 @@ class PropBatch {
 }
 
 /** Box geometry with world-space UVs so one repeating material fits any size. */
-function worldUvBox(w: number, h: number, d: number, tile: number) {
+export function worldUvBox(w: number, h: number, d: number, tile: number) {
   const geo = new THREE.BoxGeometry(w, h, d);
   const uv = geo.attributes.uv as THREE.BufferAttribute;
   const spans: [number, number][] = [
@@ -322,6 +324,40 @@ function worldUvBox(w: number, h: number, d: number, tile: number) {
     }
   }
   return geo;
+}
+
+/** The wall segments as merged, textured meshes (one per texture): the world's walls and each Depths floor's partitions. */
+export function buildWallMeshes(walls: WallSegment[]): THREE.Mesh[] {
+  const byTex = new Map<string, THREE.BufferGeometry[]>();
+  for (const w of walls) {
+    const horizontal = Math.abs(w.z1 - w.z0) < 1e-3;
+    const len = horizontal ? w.x1 - w.x0 : w.z1 - w.z0;
+    const geo = horizontal ? worldUvBox(len, w.height, w.thickness, 4) : worldUvBox(w.thickness, w.height, len, 4);
+    geo.translate((w.x0 + w.x1) / 2, w.height / 2, (w.z0 + w.z1) / 2);
+    const list = byTex.get(w.texture) ?? [];
+    list.push(geo);
+    byTex.set(w.texture, list);
+  }
+  const out: THREE.Mesh[] = [];
+  for (const [tex, geos] of byTex) {
+    const merged = mergeGeometries(geos, false);
+    if (!merged) continue;
+    const mesh = new THREE.Mesh(
+      merged,
+      new THREE.MeshStandardMaterial({
+        map: assets.texture(`art/textures/${tex}.webp`, { repeat: 1 }),
+        bumpMap: assets.texture(`art/textures/${tex}.webp`, { repeat: 1 }),
+        bumpScale: 3,
+        color: tex === 'skull_wall' ? 0xc2b8ae : tex === 'wing_wall' ? 0xd8ccb8 : 0x9a92a4,
+        roughness: 0.92,
+      }),
+    );
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    applyOcclusion(mesh.material as THREE.Material);
+    out.push(mesh);
+  }
+  return out;
 }
 
 interface Gate {
@@ -511,40 +547,13 @@ export class WorldView {
       const r = NODE_COLLIDER[NODES[n.type].kind];
       if (r) nav.addObstacle({ kind: 'circle', x: n.x, z: n.z, r });
     }
-    const byTex = new Map<string, THREE.BufferGeometry[]>();
     for (const w of this.layout.walls) {
-      const horizontal = Math.abs(w.z1 - w.z0) < 1e-3;
-      const len = horizontal ? w.x1 - w.x0 : w.z1 - w.z0;
-      const geo = horizontal ? worldUvBox(len, w.height, w.thickness, 4) : worldUvBox(w.thickness, w.height, len, 4);
-      geo.translate((w.x0 + w.x1) / 2, w.height / 2, (w.z0 + w.z1) / 2);
-      const list = byTex.get(w.texture) ?? [];
-      list.push(geo);
-      byTex.set(w.texture, list);
       // Interior partitions block movement (edge walls sit outside the walkable rect).
-      const hw = horizontal ? len / 2 : w.thickness / 2;
-      const hd = horizontal ? w.thickness / 2 : len / 2;
-      const box = { kind: 'box' as const, x0: (w.x0 + w.x1) / 2 - hw, z0: (w.z0 + w.z1) / 2 - hd, x1: (w.x0 + w.x1) / 2 + hw, z1: (w.z0 + w.z1) / 2 + hd };
+      const box = wallObstacle(w);
       nav.addObstacle(box);
       if (w.height >= 2.5) nav.addSightBlocker(box);
     }
-    for (const [tex, geos] of byTex) {
-      const merged = mergeGeometries(geos, false);
-      if (!merged) continue;
-      const mesh = new THREE.Mesh(
-        merged,
-        new THREE.MeshStandardMaterial({
-          map: assets.texture(`art/textures/${tex}.webp`, { repeat: 1 }),
-          bumpMap: assets.texture(`art/textures/${tex}.webp`, { repeat: 1 }),
-          bumpScale: 3,
-          color: tex === 'skull_wall' ? 0xc2b8ae : tex === 'wing_wall' ? 0xd8ccb8 : 0x9a92a4,
-          roughness: 0.92,
-        }),
-      );
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      applyOcclusion(mesh.material as THREE.Material);
-      this.group.add(mesh);
-    }
+    for (const mesh of buildWallMeshes(this.layout.walls)) this.group.add(mesh);
   }
 
   private buildProps(nav: Nav) {
@@ -557,16 +566,8 @@ export class WorldView {
       list.push(p);
       byProp.set(key, list);
       const spec = PROPS[p.prop];
-      const c = spec.collider;
-      if (c?.kind === 'circle') nav.addObstacle({ kind: 'circle', x: p.x, z: p.z, r: c.r * p.scale });
-      else if (c?.kind === 'box') {
-        // Axis-aligned approximation of the rotated footprint.
-        const cos = Math.abs(Math.cos(p.rot));
-        const sin = Math.abs(Math.sin(p.rot));
-        const hw = (c.hw * cos + c.hd * sin) * p.scale;
-        const hd = (c.hw * sin + c.hd * cos) * p.scale;
-        nav.addObstacle({ kind: 'box', x0: p.x - hw, z0: p.z - hd, x1: p.x + hw, z1: p.z + hd });
-      }
+      const obstacle = placementObstacle(p);
+      if (obstacle) nav.addObstacle(obstacle);
       if (spec.light) {
         const src: LightSource = {
           x: p.x,
@@ -769,7 +770,7 @@ export class WorldView {
     const dummy = new THREE.Object3D();
     for (const style of styles) {
       const spots = interactables.filter((it) =>
-        style.key === 'service' ? it.kind !== 'waystone' && it.kind !== 'boss' && it.kind !== 'npc' : it.kind === style.key,
+        style.key === 'service' ? it.kind !== 'waystone' && it.kind !== 'boss' && it.kind !== 'npc' && it.kind !== 'stair' : it.kind === style.key,
       );
       if (!spots.length) continue;
       const geometry = new THREE.RingGeometry(0.89, 1, 40).rotateX(-Math.PI / 2);

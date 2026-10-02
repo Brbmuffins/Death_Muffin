@@ -61,13 +61,21 @@ async function audit(db, { characterId, accountId, kind, mode, action, detail },
 
 /** The necromancer record's unlocked grounds and Ascension rank (the server already keeps them). Unknown = a fresh character. */
 async function necroSummary(db, characterId) {
+  let out;
   try {
     const [[row]] = await db.execute('SELECT state FROM character_necro_progress WHERE character_id = ?', [characterId]);
     const s = parseJson(row && row.state, null) || {};
-    return { unlocked: Array.isArray(s.unlockedAreas) && s.unlockedAreas.length ? s.unlockedAreas : ['chapterhouse', 'graves'], ascension: num(s.ascension) };
+    out = { unlocked: Array.isArray(s.unlockedAreas) && s.unlockedAreas.length ? s.unlockedAreas : ['chapterhouse', 'graves'], ascension: num(s.ascension) };
   } catch {
-    return { unlocked: ['chapterhouse', 'graves'], ascension: 0 };
+    out = { unlocked: ['chapterhouse', 'graves'], ascension: 0 };
   }
+  // The deepest Catacomb Depths floor the Chronicle holds for the character bounds the Depths' XP and gold ceilings (0 = never been, or no Chronicle).
+  let deepest = 0;
+  try {
+    const [[row]] = await db.execute('SELECT life FROM character_chronicle WHERE character_id = ?', [characterId]);
+    deepest = num(parseJson(row && row.life, {})['peak.depth']);
+  } catch { /* no Chronicle table yet: the ceilings assume the shallowest floors */ }
+  return { ...out, deepest };
 }
 
 // ── Experience, gold, stats (POST /api/character/save-progress) ──────────────────────────────────────────────────────
@@ -77,7 +85,7 @@ async function necroSummary(db, characterId) {
  * what was found; report mode (`enforce` false) returns `write` equal to `next` and still reports every finding.
  */
 function evaluateProgress({ prev, next, state, necro, now, enforce }) {
-  const ceil = rules.ceilingsFor(necro.unlocked, necro.ascension, num(prev.level, 1));
+  const ceil = rules.ceilingsFor(necro.unlocked, necro.ascension, num(prev.level, 1), num(necro.deepest));
   const fresh = state.bucketAt == null;
   const dt = fresh ? 0 : Math.min(A.BANK_MINUTES, Math.max(0, (now - state.bucketAt) / MINUTE));
   const xpCap = ceil.xpPerMin * A.BANK_MINUTES + A.XP_BURST;
@@ -340,7 +348,8 @@ function evaluateOffline({ online, offline }) {
   const playMin = (snap) => num(snap.chronicle && snap.chronicle.life && snap.chronicle.life.playSeconds) / 60;
   const minutes = Math.min(A.OFFLINE_MAX_MINUTES, Math.max(A.OFFLINE_MIN_MINUTES, playMin(offline) - playMin(online)));
   const necro = offline.necro || {};
-  const ceil = rules.ceilingsFor(Array.isArray(necro.unlockedAreas) ? necro.unlockedAreas : ['chapterhouse', 'graves'], num(necro.ascension), num(fc.level, 1));
+  const ceil = rules.ceilingsFor(Array.isArray(necro.unlockedAreas) ? necro.unlockedAreas : ['chapterhouse', 'graves'], num(necro.ascension), num(fc.level, 1),
+    num(offline.chronicle && offline.chronicle.life && offline.chronicle.life['peak.depth']));
   const findings = [];
   const xpGain = rules.totalXp(fc.level, fc.experience) - rules.totalXp(oc.level, oc.experience);
   const xpAllowed = ceil.xpPerMin * minutes + A.XP_BURST;
