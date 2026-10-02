@@ -218,6 +218,8 @@ function addSkillXp(p, gained) {
   if (level >= LEVEL_CAP) xp = 0;
   return { level, xp, leveled };
 }
+var BELT_KINDS = ["hatchet", "pickaxe", "rod", "spade"];
+var BELT_SLOT_COUNT = BELT_KINDS.length;
 function successChance(def, level, toolTier = 0) {
   const p = (def.level === 1 ? 0.6 : 0.45) + 0.01 * (level - def.level) + 0.05 * toolTier;
   return Math.max(0.2, Math.min(0.9, p));

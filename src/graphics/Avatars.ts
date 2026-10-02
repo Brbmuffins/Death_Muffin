@@ -43,6 +43,8 @@ function skullStaff(accent: THREE.ColorRepresentation) {
  * The necromancer hero (local or remote). One generated model for every
  * discipline; the discipline colours the staff light and robe glow.
  */
+const TOOL_TINT = [0xb87333, 0x9097a0, 0xdfe4ee, 0x7a98b0, 0xd0452f, 0xaec8ff];
+
 export class NecromancerAvatar {
   readonly c: Creature;
   readonly lantern: THREE.PointLight | null;
@@ -59,6 +61,9 @@ export class NecromancerAvatar {
   private gatheringSkill: GatherSkill | null = null;
   private gatheringTools = new Map<GatherSkill, THREE.Object3D>();
   private loadingTools = new Set<GatherSkill>();
+  /** Metal tier (1 copper .. 6 moon, 0 none) of the tool each hand model shows; the best belt-or-bag tool decides it. */
+  gatheringToolTier = new Map<GatherSkill, number>();
+  private toolTier = 0;
   private disposed = false;
   /** Spell origin when there is no staff (the Knight's sword). */
   private tipObj: THREE.Object3D | null = null;
@@ -128,8 +133,12 @@ export class NecromancerAvatar {
   }
 
   /** Show the matching hand tool while gathering, then restore class gear. */
-  setGatheringTool(skill: GatherSkill | null) {
-    if (this.gatheringSkill === skill || this.disposed) return;
+  setGatheringTool(skill: GatherSkill | null, tier = 0) {
+    if (this.disposed) return;
+    this.toolTier = tier;
+    const shown = skill && this.gatheringTools.get(skill);
+    if (shown && this.gatheringToolTier.get(skill) !== tier) this.tintTool(skill, shown, tier);
+    if (this.gatheringSkill === skill) return;
     this.gatheringSkill = skill;
     this.applyGearVisibility();
     for (const [id, obj] of this.gatheringTools) obj.visible = id === skill;
@@ -153,7 +162,25 @@ export class NecromancerAvatar {
       obj.visible = this.gatheringSkill === skill;
       this.c.attach('R_Hand', obj, new THREE.Vector3(0, 1, 0.1));
       this.gatheringTools.set(skill, obj);
+      this.tintTool(skill, obj, this.toolTier);
     }).finally(() => this.loadingTools.delete(skill));
+  }
+
+  /** The hand model is one mesh per kind; the carried metal tints it (copper, iron, silver, steel, hellsteel, moonsilver). */
+  private tintTool(skill: GatherSkill, obj: THREE.Object3D, tier: number) {
+    this.gatheringToolTier.set(skill, tier);
+    const metal = TOOL_TINT[tier - 1];
+    obj.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const mats = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]) as THREE.MeshStandardMaterial[];
+      mats.forEach((m, i) => {
+        if (!m.color) return;
+        if (!m.userData.toolOwned) { m = m.clone(); m.userData.toolOwned = true; m.userData.baseColor = m.color.clone(); if (Array.isArray(mesh.material)) mesh.material[i] = m; else mesh.material = m; }
+        m.color.copy(m.userData.baseColor);
+        if (metal !== undefined) m.color.lerp(new THREE.Color(metal), 0.4);
+      });
+    });
   }
 
   /** Default props show unless a gathering tool is out or an equipped item took their hand; worn gear hides while gathering. */

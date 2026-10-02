@@ -24,6 +24,9 @@ var gatheringRules_exports = {};
 __export(gatheringRules_exports, {
   ALL_SKILLS: () => ALL_SKILLS,
   BAG_SLOTS: () => BAG_SLOTS,
+  BELT_BASE: () => BELT_BASE,
+  BELT_KINDS: () => BELT_KINDS,
+  BELT_SLOT_COUNT: () => BELT_SLOT_COUNT,
   GATHER_BURST: () => GATHER_BURST,
   GATHER_FLUSH_MS: () => GATHER_FLUSH_MS,
   GATHER_MAX_ACTIONS_PER_HOUR: () => GATHER_MAX_ACTIONS_PER_HOUR,
@@ -43,15 +46,21 @@ __export(gatheringRules_exports, {
   XP_CURVE: () => XP_CURVE,
   actionMs: () => actionMs,
   addSkillXp: () => addSkillXp,
+  beltEquippedSlot: () => beltEquippedSlot,
+  beltSlotKind: () => beltSlotKind,
+  beltSlotOf: () => beltSlotOf,
+  bestToolPerKind: () => bestToolPerKind,
   blankLedger: () => blankLedger,
   checkBudget: () => checkBudget,
   grantableItems: () => grantableItems,
+  isBeltSlot: () => isBeltSlot,
   nodesForSkill: () => nodesForSkill,
   placeItems: () => placeItems,
   rollBatch: () => rollBatch,
   rollGather: () => rollGather,
   successChance: () => successChance,
   toolItemId: () => toolItemId,
+  toolKindOf: () => toolKindOf,
   toolTierFor: () => toolTierFor,
   totalXpFor: () => totalXpFor,
   xpPerHour: () => xpPerHour,
@@ -289,6 +298,32 @@ function toolTierFor(skill, heldItemIds) {
   }
   return best;
 }
+var BELT_BASE = 110;
+var BELT_KINDS = ["hatchet", "pickaxe", "rod", "spade"];
+var BELT_SLOT_COUNT = BELT_KINDS.length;
+var isBeltSlot = (slot) => Number.isInteger(slot) && slot >= BELT_BASE && slot < BELT_BASE + BELT_SLOT_COUNT;
+function toolKindOf(itemId) {
+  for (const kind of BELT_KINDS) {
+    const prefix = `tool_${kind}_`;
+    if (itemId.startsWith(prefix) && TOOL_METALS.includes(itemId.slice(prefix.length))) return kind;
+  }
+  return null;
+}
+var beltSlotOf = (itemId) => {
+  const kind = toolKindOf(itemId);
+  return kind ? BELT_BASE + BELT_KINDS.indexOf(kind) : -1;
+};
+var beltEquippedSlot = (kind) => `belt_${kind}`;
+var beltSlotKind = (slot) => isBeltSlot(slot) ? BELT_KINDS[slot - BELT_BASE] : null;
+function bestToolPerKind(itemIds) {
+  const best = {};
+  const tier = (id) => TOOL_METALS.indexOf(id.slice(id.indexOf("_", 5) + 1));
+  for (const id of itemIds) {
+    const kind = toolKindOf(id);
+    if (kind && (!best[kind] || tier(id) > tier(best[kind]))) best[kind] = id;
+  }
+  return best;
+}
 function successChance(def, level, toolTier = 0) {
   const p = (def.level === 1 ? 0.6 : 0.45) + 0.01 * (level - def.level) + 0.05 * toolTier;
   return Math.max(0.2, Math.min(0.9, p));
@@ -380,6 +415,9 @@ function placeItems(bag, grants, maxStack) {
 0 && (module.exports = {
   ALL_SKILLS,
   BAG_SLOTS,
+  BELT_BASE,
+  BELT_KINDS,
+  BELT_SLOT_COUNT,
   GATHER_BURST,
   GATHER_FLUSH_MS,
   GATHER_MAX_ACTIONS_PER_HOUR,
@@ -399,15 +437,21 @@ function placeItems(bag, grants, maxStack) {
   XP_CURVE,
   actionMs,
   addSkillXp,
+  beltEquippedSlot,
+  beltSlotKind,
+  beltSlotOf,
+  bestToolPerKind,
   blankLedger,
   checkBudget,
   grantableItems,
+  isBeltSlot,
   nodesForSkill,
   placeItems,
   rollBatch,
   rollGather,
   successChance,
   toolItemId,
+  toolKindOf,
   toolTierFor,
   totalXpFor,
   xpPerHour,

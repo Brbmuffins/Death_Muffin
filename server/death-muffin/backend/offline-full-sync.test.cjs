@@ -90,3 +90,28 @@ test('experience must stay below the client level curve (level * 100)', () => {
   Object.assign(over.character, { level: 4, experience: 400 });
   assert.throws(() => sync.validate(over, 2), RangeError);
 });
+
+test('tool belt slots 110-113 are valid for their own tool kind only', () => {
+  const ok = (slot_index, item_id) => sync.validate(save({ slots: [{ slot_index, item_id, quantity: 1, equipped: 1 }] }), 2);
+  assert.doesNotThrow(() => ok(110, 'tool_hatchet_copper'));
+  assert.doesNotThrow(() => ok(113, 'tool_spade_moon'));
+  assert.throws(() => ok(114, 'tool_spade_moon'), RangeError);
+  assert.throws(() => ok(109, 'tool_spade_moon'), RangeError);
+  assert.throws(() => sync.validate(save({ slots: Array.from({ length: 48 + 9 + 4 + 1 }, (_, i) => ({ slot_index: i, item_id: 'bone_meal', quantity: 1 })) }), 2), RangeError);
+});
+
+test('applying a save writes belt rows as equipped with their belt equipped_slot, and rejects a mismatched tool', async () => {
+  const inserts = [];
+  const conn = {
+    async execute(sql, p) { if (sql.startsWith('INSERT INTO inventory')) inserts.push(p); return [{}]; },
+    async query(sql) {
+      if (sql.includes('FROM items')) return [[{ id: 'tool_rod_copper', stackable: 0, max_stack_size: 1, equipment_slot: null }, { id: 'tool_spade_copper', stackable: 0, max_stack_size: 1, equipment_slot: null }]];
+      return [[]];
+    },
+  };
+  const good = save({ slots: [{ slot_index: 112, item_id: 'tool_rod_copper', quantity: 1, equipped: 1 }] });
+  await sync.apply(conn, 7, good).catch((e) => { if (!(e instanceof TypeError)) throw e; });
+  assert.deepEqual(inserts[0], [7, 112, 'tool_rod_copper', 1, 1, 'belt_rod']);
+  const wrong = save({ slots: [{ slot_index: 112, item_id: 'tool_spade_copper', quantity: 1, equipped: 1 }] });
+  await assert.rejects(() => sync.apply(conn, 7, wrong), /Invalid equipped item/);
+});

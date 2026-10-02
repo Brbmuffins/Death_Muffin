@@ -197,6 +197,8 @@ var NODES = Object.fromEntries(NODE_LIST.map((n) => [n.id, n]));
 var NODE_IDS = NODE_LIST.map((n) => n.id);
 var TOOL_KIND = { woodcutting: "hatchet", mining: "pickaxe", fishing: "rod", gravedigging: "spade" };
 var TOOL_METALS = ["copper", "iron", "silver", "steel", "hell", "moon"];
+var BELT_KINDS = ["hatchet", "pickaxe", "rod", "spade"];
+var BELT_SLOT_COUNT = BELT_KINDS.length;
 
 // src/content/processing.ts
 var WOODS = [

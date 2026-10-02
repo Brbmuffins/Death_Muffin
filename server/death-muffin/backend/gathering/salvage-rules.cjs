@@ -199,6 +199,8 @@ var NODE_LIST = [
 ];
 var NODES = Object.fromEntries(NODE_LIST.map((n) => [n.id, n]));
 var NODE_IDS = NODE_LIST.map((n) => n.id);
+var BELT_KINDS = ["hatchet", "pickaxe", "rod", "spade"];
+var BELT_SLOT_COUNT = BELT_KINDS.length;
 
 // src/gameplay/salvageRules.ts
 var SALVAGE_SKILL = "salvaging";

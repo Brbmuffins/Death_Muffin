@@ -20,7 +20,7 @@ import { BREWS, BREW_KEYS, BREW_SLOTS, applyBrew, brewEffectsText, brewWard, lif
 import { MEALS } from '../content/processing';
 import { generateLayout, PROPS, type NodePlacement } from '../content/layout';
 import { GatherLoop, Skills } from '../gameplay/Gathering';
-import { NODES, SKILLS, nodesForSkill, type SkillId } from '../gameplay/gatheringRules';
+import { NODES, SKILLS, isBeltSlot, nodesForSkill, toolTierFor, type SkillId } from '../gameplay/gatheringRules';
 import type { LiveNode } from '../gameplay/gatherPlan';
 import { STOP_TEXT } from '../gameplay/gatherPlan';
 import { NodeViews } from '../graphics/NodeViews';
@@ -765,6 +765,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.inventoryPanel.statContext = this.statContext;
     this.inventoryPanel.onSheet = () => this.togglePanel('sheet');
     this.inventoryPanel.onEquipped = () => this.onboarding.show('gearEquip');
+    this.inventoryPanel.onToolBelted = () => this.onboarding.show('toolBelt', 0, true);
     this.sheetPanel = new CharacterSheetPanel(this.root, this.statContext, () => this.onboarding.show('statSheet'));
     this.forgePanel = new ForgePanel(this.root, this.character.id, this.inventory, (inv, profs) => {
       this.inventory.replace(inv);
@@ -777,6 +778,7 @@ export class WorldScene implements GameScene, RuntimeView {
       pause: () => this.gathering.stop('moved'),
       status: () => ({ active: this.gathering.afk, text: this.gathering.status, allowed: this.player.area === 'acre' }),
     }, () => this.inventory.all.map((s) => s.item_id), () => this.togglePanel('contracts'), () => this.togglePanel('garden'), () => this.togglePanel('labor'), () => this.togglePanel('cosmetics'));
+    this.professionsPanel.beltItems = () => this.inventory.all.filter((s) => isBeltSlot(s.slot_index)).map((s) => s.item_id);
     this.cosmeticsPanel = new CosmeticsPanel(this.root, this.character.id, this.inventory, (v) => this.applyCosmetics(v.selected));
     this.laborPanel = new LaborPanel(this.root, this.character.id, this.inventory, (skill) => this.skills.level(skill), (r) => this.onLaborCollected(r));
     this.laborPanel.onView = (v) => this.laborers.apply(v);
@@ -1923,7 +1925,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const g = this.gathering;
     const prog = g.progress;
     const skill = g.node ? NODES[g.node.type].skill : null;
-    this.avatar.setGatheringTool(skill);
+    this.avatar.setGatheringTool(skill, skill ? toolTierFor(skill, this.inventory.all.map((s) => s.item_id)) : 0);
     this.nodeViews.selected(g.node);
     if (g.working && g.node && (prog < this.gatherProg || this.gatherProg === 0) && prog < 0.5) {
       const def = NODES[g.node.type];

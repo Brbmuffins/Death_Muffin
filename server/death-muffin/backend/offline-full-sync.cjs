@@ -76,11 +76,11 @@ function validate(account, onlineClass) {
   if (!bounded(c.level, 1, 255) || !bounded(c.experience, 0, c.level * 100 - 1) ||
       !bounded(c.gold, 0, 2147483647) || ['stat_str', 'stat_agi', 'stat_int', 'stat_vit'].some((key) => !bounded(c[key], 0, 65535)))
     throw new RangeError('Invalid character stats');
-  if (!Array.isArray(account.slots) || account.slots.length > gather.BAG_SLOTS + 9) throw new RangeError('Invalid inventory');
+  if (!Array.isArray(account.slots) || account.slots.length > gather.BAG_SLOTS + 9 + gather.BELT_SLOT_COUNT) throw new RangeError('Invalid inventory');
   const occupied = new Set();
   for (const slot of account.slots) {
     const index = slot?.slot_index;
-    if (!bounded(index, 0, gather.BAG_SLOTS - 1) && !bounded(index, 100, 108)) throw new RangeError('Invalid inventory slot');
+    if (!bounded(index, 0, gather.BAG_SLOTS - 1) && !bounded(index, 100, 108) && !gather.isBeltSlot(index)) throw new RangeError('Invalid inventory slot');
     if (occupied.has(index) || !itemId(slot.item_id) || !bounded(slot.quantity, 1, 9999)) throw new RangeError('Invalid inventory item');
     occupied.add(index);
   }
@@ -125,13 +125,15 @@ async function apply(conn, characterId, account) {
       if (!item) throw new RangeError(`Unknown item ${slot.item_id}`);
       const max = item.stackable ? Math.max(1, Number(item.max_stack_size) || 1) : 1;
       if (slot.quantity > max) throw new RangeError(`Too many ${slot.item_id} in one slot`);
-      if (slot.slot_index >= 100 && item.equipment_slot !== reservedSlots[slot.slot_index]) throw new RangeError(`Invalid equipped item ${slot.item_id}`);
+      // Tool belt (110-113): the slot's tool kind must match the item; gear (100-108): its own equipment slot.
+      const beltKind = gather.beltSlotKind(slot.slot_index);
+      if (beltKind ? gather.toolKindOf(slot.item_id) !== beltKind : slot.slot_index >= 100 && item.equipment_slot !== reservedSlots[slot.slot_index]) throw new RangeError(`Invalid equipped item ${slot.item_id}`);
     }
   }
   await conn.execute('DELETE FROM inventory WHERE character_id = ?', [characterId]);
   for (const slot of account.slots) {
     await conn.execute('INSERT INTO inventory (character_id, slot_index, item_id, quantity, equipped, equipped_slot) VALUES (?, ?, ?, ?, ?, ?)',
-      [characterId, slot.slot_index, slot.item_id, slot.quantity, slot.slot_index >= 100 ? 1 : 0, reservedSlots[slot.slot_index] ?? null]);
+      [characterId, slot.slot_index, slot.item_id, slot.quantity, slot.slot_index >= 100 ? 1 : 0, reservedSlots[slot.slot_index] ?? (gather.beltSlotKind(slot.slot_index) ? gather.beltEquippedSlot(gather.beltSlotKind(slot.slot_index)) : null)]);
   }
 
   await conn.execute('DELETE FROM professions WHERE character_id = ?', [characterId]);

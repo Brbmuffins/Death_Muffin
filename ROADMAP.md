@@ -111,7 +111,7 @@ Driven by measurements, not guesses: the necromancer balance run across all nine
 - **Max Wave Speed is a trap.** 5–11 deaths per 3 min, first death after 5–20 s, and kills per minute *fall* to a third or less of the intended band (Nave Gravecaller 109 → 16/min). The top tiers should pay more for good play, not less. Fix: retune the tier 6–8 pressure curve and surge sizes so a careful player out-earns the intended band.
 - **Ossuary, the defensive discipline, dies most under pressure** (8–11.5 deaths at max). Its shieldbearers soak until they die, then the caster is exposed. Candidates: Bone Ward per living thrall, or a thrall HP floor.
 - **Coliseum and Sanctum spike at arrival level**; Mourner dies even at the intended band there (1.8–2.5 deaths). Check their elite rate and greeting waves.
-- **Bag pressure:** gathering tools (24 kinds) do not stack and the best one you carry counts, so tools hold 4+ bag slots. A small tool belt would free them.
+- **Bag pressure (tool belt built on `dm/tool-belt`, not deployed):** gathering tools (24 kinds) do not stack and the best one you carry counts, so tools held 4+ bag slots. The four-slot tool belt (inventory slots 110-113) frees them.
 
 
 ### X1 · The Alchemist's Wing
