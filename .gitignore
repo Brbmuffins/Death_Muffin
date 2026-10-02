@@ -1,4 +1,4 @@
-node_modules/
+node_modules
 dist/
 dist-offline/
 .env
@@ -7,7 +7,7 @@ dist-offline/
 *.local
 .ai-keys.local
 server/web-deploy/*.tar.gz
-art-src/
+art-src
 .claude/worktrees/
 *.tsbuildinfo
 __pycache__/
