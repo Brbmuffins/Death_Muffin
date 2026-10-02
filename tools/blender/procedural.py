@@ -67,7 +67,7 @@ class Gait:
         else:
             self.fwd = horizontal(rig.head[head] - rig.head[self.root])
         self.lat = UP.cross(self.fwd).normalized()  # body's left
-        self.legs = {k: Leg(rig, v['chain'], v['paw'], v.get('rigidFrom')) for k, v in r['legs'].items()}
+        self.legs = {k: Leg(rig, v['chain'], v['paw'], v.get('rigidFrom'), bool(v.get('hock'))) for k, v in r['legs'].items()}
         self.side = {k: (1 if (rig.head[v['paw']] - rig.head[self.root]).dot(self.lat) >= 0 else -1) for k, v in r['legs'].items()}
         self.leg_bones = set()
         for lg in self.legs.values():
@@ -149,10 +149,22 @@ class Gait:
                     R = Matrix.Rotation(ang, 3, self.lat)
                     pawrot = R @ rig.rest[lg.paw].to_3x3()
                 inh = rig.inherited(n, P.get(par) if par else None)
-                dist = (ankle - inh.translation).length
+                md = None
+                hk = clip.get('hock')
+                if lg.hock:
+                    # rotate the rest metatarsus direction about the body's lateral axis (positive folds the foot back)
+                    ang = 0.0
+                    if hk and g:
+                        v = (ph - g['phase'][key]) % 1.0
+                        ang = math.radians(hk['stance'] * (v / g['duty'] - 0.5) if v < g['duty'] else hk['swing'] * math.sin(math.pi * (v - g['duty']) / (1 - g['duty'])))
+                    ang += math.radians(hk.get('offset', 0.0)) if hk else 0.0
+                    md = Matrix.Rotation(ang, 3, self.lat) @ lg.meta_rest
+                    dist = (ankle - md * lg.meta_len - inh.translation).length
+                else:
+                    dist = (ankle - inh.translation).length
                 info['stretch'] = max(info['stretch'], dist / lg.reach)
                 info['contact'][key] = contact
-                sol = lg.solve(P, basis, ankle, paw_rot_world=pawrot)
+                sol = lg.solve(P, basis, ankle, paw_rot_world=pawrot, meta_dir=md)
                 info.setdefault('sol', {})[key] = sol
                 continue
             inh = rig.inherited(n, P.get(par) if par else None)

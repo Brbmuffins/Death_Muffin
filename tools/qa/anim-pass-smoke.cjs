@@ -22,10 +22,10 @@ const SHOTS = !process.env.DM_QA_NO_SHOTS;
 
 // Enemies whose rigs have a Blender recipe: the mesh-contact slip counts only vertices skinned to the recipe's named
 // legs (a dragging tail or a swaying head is not a foot), with the floor taken from the planted feet, not one stray toe.
-const QUAD_SLUG = { rat: 'skull_rat', cinderhound: 'cinderhound' };
+const QUAD_SLUG = { rat: 'skull_rat', cinderhound: 'cinderhound', hound: 'bone_hound' };
 function legBones(def) {
   const slug = QUAD_SLUG[def];
-  const f = path.join(__dirname, '../blender/recipes', `${slug}.json`);
+  const f = path.join(process.env.DM_QA_RECIPE_DIR || path.join(__dirname, '../blender/recipes'), `${slug}.json`); // DM_QA_RECIPE_DIR: measure an old rig with its old leg bones
   if (!slug || !fs.existsSync(f)) return null;
   const legs = {};
   for (const [k, leg] of Object.entries(JSON.parse(fs.readFileSync(f, 'utf8')).legs)) legs[k] = [...leg.chain, leg.paw].map((n) => n.replace(/\s/g, '_').replace(/[\[\]./:]/g, '')); // three's loader strips these from node names

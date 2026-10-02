@@ -31,7 +31,63 @@ import common  # noqa: E402
 from kin import smoothstep  # noqa: E402
 
 
-def add_leg(arm, mesh, spec):
+def seg_dist(p, a, b):
+    """Distance from p to segment a-b and the clamped parameter along it."""
+    ab = b - a
+    t = max(0.0, min(1.0, (p - a).dot(ab) / max(1e-12, ab.dot(ab))))
+    return (p - (a + ab * t)).length, t
+
+
+def reweight_capsule(mesh, spec, names, skip_idx):
+    """
+    Capsule selection (hound, tails): every vertex within `radii[i]` of bone i's segment moves its old influences onto the
+    new bones (shared by how close it is to each segment), fading out over `soft` metres at the surface and over
+    select.zTop (full, zero) in height so the top of the limb stays on the body. `rootFade` ramps in the first bone's
+    first part (a tail must stay joined to the rump). Vertices already owned by earlier new chains (`skip_idx`) are left alone.
+    """
+    sel = spec['select']
+    J = [Vector(j) for j in spec['joints']]
+    radii = sel['radii']
+    soft = sel.get('soft', 0.02)
+    zfull, zzero = sel.get('zTop', [9, 10])
+    rf = sel.get('rootFade')
+    new_idx = {mesh.vertex_groups[nm].index for nm in names}
+    moved = 0
+    for v in mesh.data.vertices:
+        p = mesh.matrix_world @ v.co
+        if p.z > zzero:
+            continue
+        s = []
+        for i in range(len(names)):
+            d, t = seg_dist(p, J[i], J[i + 1])
+            sc = 1.0 - smoothstep((d - (radii[i] - soft)) / soft)
+            if i == 0 and rf:
+                # parameter measured unclamped so points behind the root get nothing
+                ab = J[1] - J[0]
+                tu = (p - J[0]).dot(ab) / max(1e-12, ab.dot(ab))
+                sc *= smoothstep(tu / rf)
+            s.append(sc)
+        legness = max(s)
+        if legness <= 1e-3:
+            continue
+        old = [(g.group, g.weight) for g in v.groups if g.group not in new_idx]
+        taken = sum(g.weight for g in v.groups if g.group in skip_idx)
+        total = sum(w for _, w in old)
+        if total <= 0 or taken > 0.3:
+            continue
+        wleg = legness * (1.0 if p.z <= zfull else 1.0 - smoothstep((p.z - zfull) / max(1e-6, zzero - zfull)))
+        ssum = sum(s) or 1.0
+        for gi, w in old:
+            mesh.vertex_groups[gi].add([v.index], w * (1 - wleg), 'REPLACE')
+        for nm, part in zip(names, s):
+            w = wleg * total * part / ssum
+            if w > 1e-4:
+                mesh.vertex_groups[nm].add([v.index], w, 'ADD')
+        moved += 1
+    return moved
+
+
+def add_leg(arm, mesh, spec, skip_idx=frozenset()):
     off = Vector(arm.location)
     joints = [Vector(j) - off for j in spec['joints']]
     names = spec['names']
@@ -53,6 +109,8 @@ def add_leg(arm, mesh, spec):
         if nm not in mesh.vertex_groups:
             mesh.vertex_groups.new(name=nm)
     sel = spec['select']
+    if 'radii' in sel:
+        return reweight_capsule(mesh, {**spec, 'joints': [list(j) for j in joints_world(spec)]}, names, skip_idx)
     new_idx = {mesh.vertex_groups[nm].index for nm in names}
     zfull, zzero = sel['zTop'][1], sel['zTop'][0]
     el, wr = spec['joints'][1][2], spec['joints'][2][2]
@@ -85,6 +143,10 @@ def add_leg(arm, mesh, spec):
     return moved
 
 
+def joints_world(spec):
+    return spec['joints']
+
+
 def main():
     a = common.script_args()
     src, recipe_path, dst = a[0], a[1], a[2]
@@ -94,8 +156,11 @@ def main():
     common.clear_actions(arm)
     mesh = [m for m in meshes if m.vertex_groups][0]
     report = []
+    owned = set()
     for spec in recipe['rigfix']['legs']:
-        n = add_leg(arm, mesh, spec)
+        n = add_leg(arm, mesh, spec, frozenset(owned))
+        if spec.get('exclusive', True):
+            owned |= {mesh.vertex_groups[nm].index for nm in spec['names'] if not spec.get('tail')}
         report.append({'leg': spec['prefix'], 'vertices': n})
         print('RIGFIX', spec['prefix'], n, 'vertices re-weighted')
     # Normalise so each vertex's weights sum to 1 (the exporter keeps the top four).

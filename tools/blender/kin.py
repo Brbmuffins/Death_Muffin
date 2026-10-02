@@ -149,7 +149,7 @@ def two_bone(root, target, l1, l2, pole):
 class Leg:
     """IK leg: `chain` bones hip->...->last, `paw` is the child whose head is the ankle target."""
 
-    def __init__(self, rig, chain, paw, rigid_from=None):
+    def __init__(self, rig, chain, paw, rigid_from=None, hock=False):
         """
         rigid_from=k (k >= 1): bones chain[k:] are treated as one stiff piece from joint k to the ankle (the solver then
         has exactly two segments, so the answer is unique and smooth from frame to frame). A 3-bone chain solved with
@@ -159,9 +159,18 @@ class Leg:
         self.chain = chain
         self.paw = paw
         self.rigid_from = rigid_from
+        self.hock = hock
         self.joint_rest = [rig.head[b] for b in chain] + [rig.head[paw]]
         self.lengths = [(self.joint_rest[i + 1] - self.joint_rest[i]).length for i in range(len(chain))]
-        if rigid_from:
+        if hock:
+            # thigh, shin, metatarsus: the first two are solved to the hock, the metatarsus then points at the ankle
+            # along a direction the caller chooses (so the hock flexes instead of keeping the rest angle).
+            assert len(chain) == 3, 'hock legs have exactly three chain bones'
+            self.solve_joints_rest = self.joint_rest[:3]
+            self.solve_lengths = self.lengths[:2]
+            self.meta_len = self.lengths[2]
+            self.meta_rest = (self.joint_rest[3] - self.joint_rest[2]).normalized()
+        elif rigid_from:
             self.solve_joints_rest = self.joint_rest[:rigid_from + 1] + [self.joint_rest[-1]]
             self.solve_lengths = self.lengths[:rigid_from] + [(self.joint_rest[-1] - self.joint_rest[rigid_from]).length]
         else:
@@ -174,7 +183,7 @@ class Leg:
             d0 = (self.joint_rest[i + 1] - self.joint_rest[i])
             self.local_dir.append(rig.rest[b].to_3x3().inverted() @ d0)
 
-    def solve(self, P, basis, ankle, paw_rot_world=None, hint=None):
+    def solve(self, P, basis, ankle, paw_rot_world=None, hint=None, meta_dir=None):
         """
         P: pose matrices already final for every bone above the chain (others ignored).
         Fills `basis` for the chain bones and the paw, and P for them. `ankle` is a world (armature) position.
@@ -192,7 +201,14 @@ class Leg:
         joints[0] = root
         if hint is not None:
             joints = [h.copy() for h in hint]
-        if len(joints) == 3:
+        if self.hock:
+            md = (meta_dir if meta_dir is not None else self.meta_rest).normalized()
+            hockpos = ankle - md * self.meta_len
+            line = joints[2] - joints[0]
+            pole = (joints[1] - joints[0]) - line * ((joints[1] - joints[0]).dot(line) / max(1e-9, line.dot(line)))
+            s2 = two_bone(root, hockpos, self.solve_lengths[0], self.solve_lengths[1], pole)
+            sol = [s2[0], s2[1], s2[2], s2[2] + md * self.meta_len]
+        elif len(joints) == 3:
             # Two segments: closed form, with the rest pose's bend direction (carried by the body) as the pole.
             line = joints[2] - joints[0]
             pole = (joints[1] - joints[0]) - line * ((joints[1] - joints[0]).dot(line) / max(1e-9, line.dot(line)))
