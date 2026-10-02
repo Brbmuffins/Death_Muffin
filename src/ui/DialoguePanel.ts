@@ -32,6 +32,11 @@ export class DialoguePanel {
     return this.npc;
   }
 
+  /** The card's lower edge in screen pixels (null when closed): the camera keeps both speakers below it. */
+  get cardBottom(): number | null {
+    return this.el ? this.el.getBoundingClientRect().bottom : null;
+  }
+
   open(npc: NpcId) {
     if (this.npc === npc && this.el) return;
     this.close();

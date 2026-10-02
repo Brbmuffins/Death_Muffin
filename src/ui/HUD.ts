@@ -656,6 +656,11 @@ export class HUD {
   }
 
   private bannerTimer = 0;
+  /** The area-name banner is on screen (counsel cards wait for it to clear). */
+  get bannerActive() {
+    return this.$('[data-banner]').classList.contains('show');
+  }
+
   banner(title: string, sub: string, ms = 3200) {
     const el = this.$('[data-banner]');
     el.querySelector('.t')!.textContent = title;
