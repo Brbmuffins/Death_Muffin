@@ -93,7 +93,8 @@ describe('brew engine', () => {
   it('fortune multiplies the item drop chance', () => {
     const rolls = (mult: number) => {
       let n = 0;
-      for (let i = 0; i < 4000; i++) if (rollKill('risen', 'graves', 1, false, 0, () => (i + 0.5) / 4000, 'medium', mult).items.length) n++;
+      // Reagent/rune streams pinned to "no drop": only the area item roll is counted, so the ratio is exact.
+      for (let i = 0; i < 4000; i++) if (rollKill('risen', 'graves', 1, false, 0, () => (i + 0.5) / 4000, 'medium', mult, () => 0.999, () => 0.999).items.length) n++;
       return n;
     };
     const base = rolls(1);
