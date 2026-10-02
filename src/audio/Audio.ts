@@ -1,11 +1,18 @@
 import { onSettingsChange, settings } from '../app/settings';
 import type { AreaId } from '../content/areas';
+import {
+  BUS_IDS, REPEAT_WINDOW, VoiceLimiter, WindowCounter, busGain, distanceGain, culled, masterGain, panFor,
+  profileOf, repeatDropped, repeatGain, type BusId, type Duck,
+} from './mixer';
+import { SAMPLE_MAP, SampleBank } from './samples';
 
 /**
- * Mostly procedural sound, with two tiny CC0 footstep samples for texture.
- * Positional sounds are panned and attenuated
- * relative to the listener (the hero). The context starts on the first user
- * gesture, as browsers require.
+ * Procedural sound with a recorded-sample layer (CC0, `public/audio/combat/`) on
+ * the important combat sounds. Everything is routed through five buses
+ * (combat, enemies, thralls, ui, ambience) with per-bus voice caps, repeat
+ * attenuation, distance falloff and ducking; the rules are pure functions in
+ * `./mixer`. Positional sounds are panned relative to the listener (the hero).
+ * The context starts on the first user gesture, as browsers require.
  */
 export type Sfx =
   | 'needleCast'
@@ -19,6 +26,9 @@ export type Sfx =
   | 'enemyDeath'
   | 'eliteDeath'
   | 'hurt'
+  | 'thrallMelee'
+  | 'thrallShot'
+  | 'thrallMagic'
   | 'playerDeath'
   | 'toll'
   | 'tollSmall'
@@ -97,22 +107,35 @@ const MIN_GAP: Partial<Record<Sfx, number>> = {
   waterDrip: 0.5,
 };
 
-const MAX_VOICES = 36;
+/** Safety net on raw audio nodes; the real limits are the per-bus caps in mixer.ts. */
+const MAX_VOICES = 110;
 
 class AudioEngine {
   private ctx: AudioContext | null = null;
   private master!: GainNode;
-  private sfxBus!: GainNode;
-  private ambBus!: GainNode;
+  private buses = {} as Record<BusId, { dry: GainNode; wet: GainNode; dkDry: GainNode; dkWet: GainNode; hub: GainNode }>;
+  private bedGain!: GainNode;
   private verb!: ConvolverNode;
   private verbSend!: GainNode;
   private noise!: AudioBuffer;
   private brown!: AudioBuffer;
   private footsteps: AudioBuffer[] = [];
   private footstepCursor = 0;
-  private accents = new Map<string, AudioBuffer>();
-  private lastAccent = new Map<string, number>();
+  private samples = new SampleBank();
   private voices = 0;
+  private limiter = new VoiceLimiter();
+  private repeats = new WindowCounter();
+  private thin = new WindowCounter();
+  private duckState = { depth: 0, until: 0 };
+  private played = 0;
+  private dropReasons = { far: 0, repeat: 0, thin: 0, bus: 0, global: 0, gap: 0 };
+  private duckCount = 0;
+  private sampleHits = 0;
+  private analysers: { node: AnalyserNode; buf: Float32Array<ArrayBuffer>; pre: boolean }[] = [];
+  private peakOut = 0;
+  private peakPre = 0;
+  /** Mix context for the sound being started right now (play() is synchronous). */
+  private cur = { bus: 'combat' as BusId, gain: 1, trim: 1 };
   private last = new Map<Sfx, number>();
   private listener = { x: 0, z: 0 };
   private ambience: { area: AreaId | null; nodes: AudioNode[]; gain: GainNode | null } = { area: null, nodes: [], gain: null };
@@ -129,6 +152,7 @@ class AudioEngine {
     window.addEventListener('pointerdown', start);
     window.addEventListener('keydown', start);
     onSettingsChange(() => this.applyVolume());
+    if (import.meta.env.DEV) (window as unknown as { __cwAudio?: AudioEngine }).__cwAudio = this;
   }
 
   private ensure() {
@@ -142,33 +166,83 @@ class AudioEngine {
       return;
     }
     const c = this.ctx;
+    // buses -> gentle compressor -> master -> brick-wall limiter -> speakers
+    const limiter = c.createDynamicsCompressor();
+    limiter.threshold.value = -3;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.001;
+    limiter.release.value = 0.12;
+    limiter.connect(c.destination);
     this.master = c.createGain();
-    this.master.connect(c.destination);
+    this.master.connect(limiter);
     const comp = c.createDynamicsCompressor();
-    comp.threshold.value = -16;
-    comp.ratio.value = 4;
+    comp.threshold.value = -18;
+    comp.knee.value = 20;
+    comp.ratio.value = 3;
+    comp.attack.value = 0.006;
+    comp.release.value = 0.25;
     comp.connect(this.master);
-    this.sfxBus = c.createGain();
-    this.sfxBus.connect(comp);
-    this.ambBus = c.createGain();
-    this.ambBus.gain.value = 0.55;
-    this.ambBus.connect(comp);
+    for (const id of BUS_IDS) {
+      const mk = (to: AudioNode) => {
+        const g = c.createGain();
+        const d = c.createGain();
+        g.connect(d);
+        d.connect(to);
+        return [g, d] as const;
+      };
+      // wet chain feeds the reverb (connected below); both follow the bus level and ducking.
+      const [dry, dkDry] = mk(comp);
+      const wetHub = c.createGain();
+      wetHub.gain.value = 1;
+      const [wet, dkWet] = mk(wetHub);
+      this.buses[id] = { dry, wet, dkDry, dkWet, hub: wetHub };
+    }
+    this.bedGain = c.createGain();
+    this.bedGain.gain.value = 0.55;
+    this.bedGain.connect(this.buses.ambience.dry);
+    if (import.meta.env.DEV) {
+      // QA meters: `pre` before the limiter (what the mix asks for), post after it (what reaches the speakers).
+      for (const [src, pre] of [[this.master, true], [limiter, false]] as const) {
+        const node = c.createAnalyser();
+        node.fftSize = 2048;
+        src.connect(node);
+        this.analysers.push({ node, buf: new Float32Array(node.fftSize), pre });
+      }
+      setInterval(() => {
+        for (const a of this.analysers) {
+          a.node.getFloatTimeDomainData(a.buf);
+          let m = 0;
+          for (let i = 0; i < a.buf.length; i++) m = Math.max(m, Math.abs(a.buf[i]));
+          if (a.pre) this.peakPre = Math.max(this.peakPre, m);
+          else this.peakOut = Math.max(this.peakOut, m);
+        }
+      }, 25);
+    }
     this.verb = c.createConvolver();
     this.verb.buffer = this.impulse(2.8, 2.2);
     this.verbSend = c.createGain();
     this.verbSend.gain.value = 0.32;
     this.verbSend.connect(this.verb);
     this.verb.connect(comp);
+    for (const id of BUS_IDS) this.buses[id].hub.connect(this.verbSend);
     this.noise = this.makeNoise(false);
     this.brown = this.makeNoise(true);
     void this.loadFootsteps();
-    void this.loadAccents();
+    void this.samples.load(this.ctx);
     this.applyVolume();
     if (this.wantArea) this.setArea(this.wantArea);
   }
 
   private applyVolume() {
-    if (this.master) this.master.gain.value = Math.pow(settings.volume, 1.5) * 0.9;
+    if (!this.master) return;
+    const t = this.ctx!.currentTime;
+    this.master.gain.setTargetAtTime(masterGain(settings), t, 0.02);
+    for (const id of BUS_IDS) {
+      const g = busGain(id, settings);
+      this.buses[id].dry.gain.setTargetAtTime(g, t, 0.02);
+      this.buses[id].wet.gain.setTargetAtTime(g, t, 0.02);
+    }
   }
 
   private async loadFootsteps() {
@@ -183,17 +257,6 @@ class AudioEngine {
       }
     }));
     this.footsteps = clips.filter((clip): clip is AudioBuffer => clip !== null);
-  }
-
-  private async loadAccents() {
-    const ctx = this.ctx!;
-    const names = ['dark-magic-spell-1', 'dark-magic-spell-2', 'magic-cast-whoosh-2-1'];
-    await Promise.all(names.map(async (name) => {
-      try {
-        const response = await fetch(new URL(`audio/crossworlds/${name}.ogg`, document.baseURI));
-        if (response.ok) this.accents.set(name, await ctx.decodeAudioData(await response.arrayBuffer()));
-      } catch { /* Procedural sound still plays when an accent cannot load. */ }
-    }));
   }
 
   private makeNoise(brown: boolean) {
@@ -231,28 +294,28 @@ class AudioEngine {
 
   // --- voice helpers -------------------------------------------------------
 
-  /** Output node for one sound: gain (distance) → pan → sfx bus (+ reverb send). */
+  /** Output node for one sound: gain (distance, repeat, layer trim) -> pan -> its bus (+ reverb send). */
   private out(x: number | undefined, z: number | undefined, vol: number, wet = 0.4) {
     const c = this.ctx!;
     const g = c.createGain();
-    let v = vol;
+    const { bus, gain, trim } = this.cur;
+    let v = vol * gain * trim;
     let pan = 0;
     if (x !== undefined && z !== undefined) {
       const dx = x - this.listener.x;
       const dz = z - this.listener.z;
-      const d = Math.hypot(dx, dz);
-      v *= 1 / (1 + (d / 9) ** 2);
-      pan = Math.max(-0.85, Math.min(0.85, dx / 14));
+      v *= distanceGain(Math.hypot(dx, dz), bus);
+      pan = panFor(dx);
     }
     g.gain.value = v;
     const p = c.createStereoPanner();
     p.pan.value = pan;
     g.connect(p);
-    p.connect(this.sfxBus);
+    p.connect(this.buses[bus].dry);
     const send = c.createGain();
     send.gain.value = wet;
     p.connect(send);
-    send.connect(this.verbSend);
+    send.connect(this.buses[bus].wet);
     return g;
   }
 
@@ -262,16 +325,73 @@ class AudioEngine {
     node.stop(stopAt);
   }
 
-  /** Quiet source-recording layer over a generated spell, rate-limited independently. */
-  private accent(name: string, x: number | undefined, z: number | undefined, t: number, volume: number, gap = 0) {
-    const clip = this.accents.get(name);
-    if (!clip || this.voices >= MAX_VOICES || t - (this.lastAccent.get(name) ?? -Infinity) < gap) return;
-    this.lastAccent.set(name, t);
+  /** Start one recorded variant (random pick, small pitch and gain jitter). Returns false if none loaded. */
+  private sample(name: Sfx, x: number | undefined, z: number | undefined, t: number, intensity: number): boolean {
+    const hit = this.samples.pick(name);
+    if (!hit) return false;
+    const { buffer, spec } = hit;
+    const j = spec.jitter ?? 0.06;
     const source = this.ctx!.createBufferSource();
-    source.buffer = clip;
-    source.connect(this.out(x, z, volume, 0.35));
+    source.buffer = buffer;
+    source.playbackRate.value = (spec.rate ?? 1) * (1 + (Math.random() * 2 - 1) * j);
+    const o = this.out(x, z, spec.gain * (0.88 + Math.random() * 0.12) * Math.min(1.5, intensity), 0.3);
+    source.connect(o);
     source.start(t);
-    this.track(source, t + clip.duration + 0.01);
+    this.track(source, t + buffer.duration / source.playbackRate.value + 0.02);
+    this.sampleHits++;
+    return true;
+  }
+
+  /** Pull thralls and enemies down for a moment so the player's hurt / a boss tell cuts through. */
+  private duck(d: Duck, now: number) {
+    if (now < this.duckState.until && d.depth < this.duckState.depth) return;
+    this.duckState = { depth: d.depth, until: now + d.hold };
+    this.duckCount++;
+    for (const id of ['thralls', 'enemies'] as const) {
+      for (const node of [this.buses[id].dkDry, this.buses[id].dkWet]) {
+        const prm = node.gain;
+        prm.cancelScheduledValues(now);
+        prm.setTargetAtTime(1 - d.depth, now, 0.03);
+        prm.setTargetAtTime(1, now + d.hold, d.release);
+      }
+    }
+  }
+
+  private drop(reason: keyof AudioEngine['dropReasons']) {
+    this.dropReasons[reason]++;
+  }
+
+  /** Dev/QA snapshot: voices per bus, drops and loaded sample count. */
+  stats() {
+    const now = this.ctx?.currentTime ?? 0;
+    const active = {} as Record<BusId, number>;
+    for (const id of BUS_IDS) active[id] = this.limiter.active(id, now);
+    return {
+      state: this.ctx?.state ?? 'none',
+      played: this.played,
+      samplesLoaded: this.samples.loaded,
+      samplesFailed: this.samples.failed,
+      samplePlays: this.sampleHits,
+      active,
+      peakVoices: { ...this.limiter.peak },
+      dropped: this.limiter.dropped + this.dropReasons.far + this.dropReasons.repeat + this.dropReasons.thin + this.dropReasons.gap,
+      droppedByReason: { ...this.dropReasons },
+      droppedByBus: { ...this.limiter.droppedByBus },
+      ducks: this.duckCount,
+      nodes: this.voices,
+      peakOut: this.peakOut,
+      peakPre: this.peakPre,
+    };
+  }
+
+  resetStats() {
+    this.played = 0;
+    this.sampleHits = 0;
+    this.duckCount = 0;
+    this.peakOut = 0;
+    this.peakPre = 0;
+    this.limiter = new VoiceLimiter();
+    for (const k of Object.keys(this.dropReasons) as (keyof AudioEngine['dropReasons'])[]) this.dropReasons[k] = 0;
   }
 
   private env(g: GainNode, t: number, a: number, peak: number, d: number) {
@@ -336,10 +456,39 @@ class AudioEngine {
   play(name: Sfx, x?: number, z?: number, intensity = 1) {
     if (!this.ctx || this.ctx.state !== 'running' || this.voices > MAX_VOICES) return;
     const now = this.ctx.currentTime;
+    const prof = profileOf(name);
     const gap = MIN_GAP[name];
-    if (gap && now - (this.last.get(name) ?? -1) < gap) return;
+    if (gap && now - (this.last.get(name) ?? -1) < gap) {
+      this.drop('gap');
+      return;
+    }
+    if (x !== undefined && z !== undefined && culled(Math.hypot(x - this.listener.x, z - this.listener.z), prof.bus, prof.priority)) {
+      this.drop('far');
+      return;
+    }
+    const repeats = this.repeats.count(name, now, REPEAT_WINDOW);
+    if (repeatDropped(repeats, prof.priority)) {
+      this.drop('repeat');
+      return;
+    }
+    const thinKey = prof.thin ? `thin:${prof.bus}` : '';
+    if (prof.thin && this.thin.count(thinKey, now, prof.thin.window) >= prof.thin.max) {
+      this.drop('thin');
+      return;
+    }
+    if (!this.limiter.request(prof.bus, prof.priority, now, prof.dur).ok) return; // counted by the limiter
     this.last.set(name, now);
+    this.repeats.add(name, now);
+    if (thinKey) this.thin.add(thinKey, now);
+    this.played++;
+    if (prof.duck) this.duck(prof.duck, now);
     const t = now + 0.005;
+    this.cur = { bus: prof.bus, gain: repeatGain(repeats), trim: 1 };
+    const spec = SAMPLE_MAP[name];
+    if (spec && this.sample(name, x, z, t, intensity)) {
+      if (spec.mode === 'replace') return;
+      this.cur.trim = spec.synthMix ?? 0.4;
+    }
     const r = () => 0.9 + Math.random() * 0.2;
     switch (name) {
       case 'needleCast': {
@@ -371,7 +520,6 @@ class AudioEngine {
         this.burst(o, t, 0.4, 0.45, 'lowpass', 900, 200, 0.8, true);
         this.tone(o, 'sine', 220 * r(), 660, t + 0.05, 0.25, 0.6, 0.18);
         this.tone(o, 'sine', 330 * r(), 990, t + 0.1, 0.25, 0.55, 0.12);
-        this.accent('dark-magic-spell-2', x, z, t, 0.2, 2);
         break;
       }
       case 'thrallRise': {
@@ -396,7 +544,6 @@ class AudioEngine {
         this.tone(o, 'sine', 70, 28, t + 0.2, 0.01, 1.4, 1);
         this.burst(o, t + 0.2, 1.2, 0.6, 'lowpass', 1400, 120, 0.7, true);
         for (const f of [110, 130.8, 164.8, 196]) this.tone(o, 'sawtooth', f * r() * 0.5, f * 0.5, t + 0.22, 0.12, 1.6, 0.05);
-        this.accent('dark-magic-spell-1', x, z, t, 0.23, 3);
         break;
       }
       case 'enemyDeath': {
@@ -410,6 +557,21 @@ class AudioEngine {
         this.burst(o, t, 0.4, 0.7, 'lowpass', 1800, 200, 0.8, true);
         this.tone(o, 'sine', 90, 35, t, 0.005, 0.6, 0.7);
         this.bell(o, t + 0.05, 880, 1.1, 0.12);
+        break;
+      }
+      case 'thrallMelee': {
+        const o = this.out(x, z, 0.3, 0.12);
+        this.burst(o, t, 0.05, 0.6, 'bandpass', 1300 * r(), 800, 4);
+        break;
+      }
+      case 'thrallShot': {
+        const o = this.out(x, z, 0.25, 0.15);
+        this.burst(o, t, 0.1, 0.4, 'bandpass', 2200 * r(), 4200, 2);
+        break;
+      }
+      case 'thrallMagic': {
+        const o = this.out(x, z, 0.25, 0.3);
+        this.tone(o, 'sine', 520 * r(), 760, t, 0.01, 0.2, 0.1);
         break;
       }
       case 'hurt': {
@@ -719,7 +881,6 @@ class AudioEngine {
         this.burst(o, t, 0.55, 0.2, 'bandpass', 450, 3400, 0.9);
         this.tone(o, 'sine', 360 * r(), 920, t + 0.06, 0.18, 0.52, 0.12);
         this.tone(o, 'sine', 540 * r(), 1380, t + 0.11, 0.14, 0.47, 0.07);
-        this.accent('magic-cast-whoosh-2-1', x, z, t, 0.16 * intensity, 3);
         break;
       }
       case 'spiritBolt': {
@@ -767,7 +928,7 @@ class AudioEngine {
     const gain = c.createGain();
     gain.gain.value = 0.0001;
     gain.gain.setTargetAtTime(1, t, 1.2);
-    gain.connect(this.ambBus);
+    gain.connect(this.bedGain);
     const nodes: AudioNode[] = [];
     const wind = (lp: number, amt: number) => {
       const s = c.createBufferSource();
@@ -920,7 +1081,7 @@ class AudioEngine {
     if (this.bossBed) return;
     const bed = c.createGain();
     bed.gain.value = 1;
-    bed.connect(this.ambBus);
+    bed.connect(this.bedGain);
     this.bossBed = bed;
     const beat = () => {
       if (this.bossBed !== bed || !this.ctx) return;

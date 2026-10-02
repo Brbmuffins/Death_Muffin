@@ -73,7 +73,16 @@ area detail. High-quality ground VFX warm in small batches; static floor decals
 survive dense combat, and the toxic-puddle glow no longer draws a bright square.
 Production build, typecheck, VFX tests and browser graphics checks pass. Audio
 clips decoded in headless WebAudio; balance and loudness still need an ear-test.
-No deployment. Source and redistribution note: `docs/CROSSWORLDS-AUDIO.md`.
+No deployment. (The Crossworlds clips were removed 2026-10-02, see below.)
+
+2026-10-02 combat audio pass (branch `dm/combat-audio`, not deployed): CC0 sample layer
+in `public/audio/combat/` (50 files, ~0.55 MB, recipe `tools/audio/build-combat-samples.mjs`,
+provenance `docs/AUDIO-SOURCES.md`) over the synth, which remains the fallback. Mixer rules
+are pure functions in `src/audio/mixer.ts` (five buses, per-bus voice caps by priority, repeat
+attenuation, distance falloff, thrall thinning, ducking); sample map in `src/audio/samples.ts`;
+Settings has Combat / Ambience / Interface sliders. QA: `tools/qa/audio-smoke.cjs` (DEV
+`window.__cwAudio.stats()`). The mix has been measured but NOT ear-tested. The three
+Crossworlds clips are gone (replaced by CC0 layers).
 
 | Area | Status | Where |
 |---|---|---|

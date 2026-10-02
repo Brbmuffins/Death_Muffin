@@ -69,7 +69,7 @@ The landing page previews the fire realm and its enemies with a lightweight purp
 | **Enter** | Chat |
 | **Esc** | Close an open panel, then open Settings |
 
-You can also click hotbar icons. Click **swap** below any spell icon to open the Grimoire with that slot selected; right click a hotbar slot also works. In **Settings**, you can change class, difficulty, graphics, volume, reduced motion, damage numbers, gathering behavior, and counsel tips.
+You can also click hotbar icons. Click **swap** below any spell icon to open the Grimoire with that slot selected; right click a hotbar slot also works. In **Settings**, you can change class, difficulty, graphics, volume (Master, plus separate **Combat**, **Ambience** and **Interface** sliders), reduced motion, damage numbers, gathering behavior, and counsel tips.
 
 ## Choose a discipline
 
