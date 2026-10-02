@@ -44,6 +44,11 @@ async function main() {
     const bagOf = (id) => page.evaluate((i) => window.__cwDebug.inventory.all.find((s) => s.item_id === i)?.slot_index, id);
     const cell = (idx) => page.locator('.cw-bag-grid .cw-slot').nth(idx);
     const wornCount = () => page.evaluate(() => window.__cwDebug.inventory.all.filter((s) => s.equipped).length);
+    // Expected values come from the game's own set table, so retuning numbers never breaks this smoke.
+    const OSS = await page.evaluate(async () => (await import('/src/content/setBonuses.ts')).SET_BONUSES.ossuary);
+    const at = (n) => OSS.filter((b) => b.pieces <= n);
+    const multAt = (n, k) => at(n).reduce((m, b) => m * ((b.effect.mult || {})[k] ?? 1), 1);
+    const addAt = (n, k) => at(n).reduce((a, b) => a + ((b.effect.add || {})[k] ?? 0), 0);
     const mods = () => page.evaluate(async () => {
       const m = (await import('/src/app/GameRuntime.ts')).getRuntime().view.discipline.mods;
       return { thrallHpMult: m.thrallHpMult, maxHpMult: m.maxHpMult, wardPerThrall: m.wardPerThrall, litanyBarrier: m.litanyBarrier, thrallCap: m.thrallCap };
@@ -77,7 +82,7 @@ async function main() {
     // 2 pieces: the 2-piece lights up, the counsel tip fires, thrall health mod rises, the doll marks both pieces.
     await wear('set_ossuary_chest');
     await page.mouse.move(5, 5);
-    assert.equal((await mods()).thrallHpMult, base.thrallHpMult * 1.05, '2-piece folds into the discipline mods');
+    assert.ok(Math.abs((await mods()).thrallHpMult - base.thrallHpMult * multAt(2, 'thrallHpMult')) < 1e-9, '2-piece folds into the discipline mods');
     assert.equal(await page.locator('.cw-equip-slot.in-set').count(), 2, 'two worn pieces are marked on the paper doll');
     await dismissUntilTip(page, 'A set bonus is awake');
 
@@ -107,8 +112,8 @@ async function main() {
     // 5 pieces: Litany barrier and health.
     await wear('set_ossuary_feet');
     const five = await mods();
-    assert.ok(Math.abs(five.litanyBarrier - (base.litanyBarrier + 0.02)) < 1e-9, '5-piece Litany barrier');
-    assert.ok(Math.abs(five.maxHpMult - base.maxHpMult * 1.05) < 1e-9, '5-piece health');
+    assert.ok(Math.abs(five.litanyBarrier - (base.litanyBarrier + addAt(5, 'litanyBarrier'))) < 1e-9, '5-piece Litany barrier');
+    assert.ok(Math.abs(five.maxHpMult - base.maxHpMult * multAt(5, 'maxHpMult')) < 1e-9, '5-piece health');
     assert.equal(await page.locator('.cw-equip-slot.in-set').count(), 5);
     await page.mouse.move(5, 5);
     await page.waitForTimeout(150);
@@ -126,7 +131,8 @@ async function main() {
     await page.locator('.gs-line.set').first().scrollIntoViewIfNeeded();
     await page.screenshot({ path: `${out}/5-character-sheet-sets.png` });
     // Health is open by default: its breakdown lists the set multiplier on its own row.
-    assert.match(await page.locator('.gs-sheet').innerText(), /Set bonuses\s+×1\.05/);
+    { const hp = multAt(5, 'maxHpMult'); const shown = [hp.toFixed(2), String(+hp.toFixed(2))].map((t) => t.replace('.', '\\.')).join('|');
+      assert.match(await page.locator('.gs-sheet').innerText(), new RegExp(`Set bonuses\\s+×(${shown})`)); }
 
     // Codex tab lists every bonus.
     await page.keyboard.press('Escape');
