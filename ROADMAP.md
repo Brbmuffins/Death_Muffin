@@ -16,10 +16,10 @@ flowchart LR
     S2[2 Oct: 48-slot bag · Vault · Salvage]:::done
     S3[2 Oct: gear you can read<br/>upgrade arrows · sheet J]:::done
     S4[2 Oct: combat audio · strike timing]:::done
+    S5[2 Oct: visible Grave Laborers]:::done
   end
 
   subgraph NOW["🔨 Now — being built"]
-    N1[Visible Grave Laborers]:::now
     N2[Necro spell feel]:::now
     N3[Balance pass<br/>Ossuary · Wave Speed · spiky zones]:::now
     N4[Armor set bonuses]:::now
@@ -48,6 +48,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 2 Oct 2026 | Visible Grave Laborers: assigned thralls work their node in the Sexton's Acre (chop, mine, dig, fish) with the right tool, a ready badge, hover details and click-to-open (H) | Uses the dig/chop clips retargeted onto the four thrall rigs. |
 | 2 Oct 2026 | 48-slot bag; Ossuary Vault (V, 120 shared slots); Bone Grinder salvage + Salvaging skill; item locks; Sell all junk; gear stat effects, ▲/▼ upgrade arrows, verdict line, Character sheet (J) with "What you're looking for"; combat audio (CC0 samples, capped mixer, Combat/Ambience/Interface sliders); strike timing; old starter gear no longer stacks | Migrations 017 (vault) and 018 (gear unstackable). Thrall dig/chop clips built for the laborers (90 Tripo credits). |
 | 1 Oct 2026 | Necro weapons, brewing and reagents, Mourning Fen, five swappable rite slots, Offline Edition with complete save sync, Leave the world at the top of Settings | Codex cleanup; `deploy-release.sh` became the only deploy path. |
 
