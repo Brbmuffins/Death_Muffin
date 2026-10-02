@@ -2600,6 +2600,7 @@ export class WorldScene implements GameScene, RuntimeView {
       // Cone texture apex sits at the plane's bottom edge; shift so it starts at the caster.
       const E = SPELL_FX.enemy;
       this.effects.decal({ tex: fx.cone(), color: E.toll, x: ev.x, z: ev.z, r: ENEMIES.penitent.attackRange / 2, sz: 1, anchor: 1, rot: rot + Math.PI, duration: ms, opacity: 0.5, fadeIn: ms * 0.6, fadeOut: 0.05 });
+      this.effects.decal({ tex: fx.coneEdge(), color: E.toll, x: ev.x, z: ev.z, r: ENEMIES.penitent.attackRange / 2, sz: 1, anchor: 1, rot: rot + Math.PI, duration: ms, opacity: 0.8, fadeIn: ms * 0.15, fadeOut: 0.05 });
       for (let k = 0; k < 3; k++) {
         this.effects.decal({ tex: fx.ring(), color: E.toll, x: ev.x, z: ev.z, r: ENEMIES.penitent.attackRange * (0.45 + k * 0.28), duration: 0.45, opacity: 0.8 - k * 0.2, growFrom: 0.2, delay: ms + k * 0.08 });
       }
@@ -2709,7 +2710,7 @@ export class WorldScene implements GameScene, RuntimeView {
       const r = ev.r ?? 2.3;
       const W = 0x7fe0d0;
       this.effects.decal({ tex: fx.disc(), color: W, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.3, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.3 });
-      this.effects.decal({ tex: fx.ring(), color: W, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 0.9, fadeOut: 0.05, pulse: 4 });
+      this.effects.decal({ tex: fx.ring(), color: 0xc4fff2, x: ev.tx, z: ev.tz, r, duration: ms, opacity: 1, fadeOut: 0.05, pulse: 4 });
       this.fxLater.push({ at: this.now + ev.ms, run: () => {
         this.effects.decal({ tex: fx.ring(), color: 0xeaffff, x: ev.tx, z: ev.tz, r: r * 1.2, duration: 0.45, opacity: 1, growFrom: 0.3 });
         this.effects.emit({ x: ev.tx, y: 0.4, z: ev.tz, count: 18, color: W, spread: r * 0.4, speed: 1.6, up: 1.8, life: 0.8, size: 0.16 });
@@ -3237,10 +3238,23 @@ export class WorldScene implements GameScene, RuntimeView {
     const dirt = SPELL_FX.enemy.dirt;
     const curse = SPELL_FX.enemy.curse;
     const tide = 0x5f8f8a;
-    const cone = (r: number, dir: number, halfDeg: number, color: number, dur: number, delay = 0) =>
-      this.effects.decal({ tex: fx.cone(), color, x: ev.x, z: ev.z, r: r / 2, sz: 1, sx: Math.tan((halfDeg * Math.PI) / 180) / Math.tan(Math.PI / 6), anchor: 1, rot: dir + Math.PI, duration: dur, opacity: 0.5, fadeIn: dur * 0.6, fadeOut: 0.05, delay });
-    const line = (x: number, z: number, len: number, dir: number, halfWidth: number, color: number, dur: number) =>
-      this.effects.decal({ tex: fx.disc(), color, x, z, r: len / 2, sz: 1, sx: (halfWidth * 2) / len, anchor: 1, rot: dir + Math.PI, duration: dur, opacity: 0.6, fadeIn: dur * 0.7, fadeOut: 0.05 });
+    // Boss cones and lines are the shape you must leave: a brightened fill plus a bright outline, so they read on every floor
+    // (the Nave's violet debris and the Graves' dark flagstones swallowed the dim enemy tints).
+    const hot = (color: number) => {
+      const m = Math.max(color >> 16, (color >> 8) & 255, color & 255, 1);
+      const k = Math.min(2.2, 214 / m);
+      const ch = (v: number) => Math.min(255, Math.round(v * k));
+      return (ch(color >> 16) << 16) | (ch((color >> 8) & 255) << 8) | ch(color & 255);
+    };
+    const cone = (r: number, dir: number, halfDeg: number, color: number, dur: number, delay = 0) => {
+      const o = { x: ev.x, z: ev.z, r: r / 2, sz: 1, sx: Math.tan((halfDeg * Math.PI) / 180) / Math.tan(Math.PI / 6), anchor: 1, rot: dir + Math.PI, duration: dur, fadeOut: 0.05, delay, color: hot(color) };
+      this.effects.decal({ ...o, tex: fx.cone(), opacity: 0.55, fadeIn: dur * 0.6 });
+      return this.effects.decal({ ...o, tex: fx.coneEdge(), opacity: 0.95, fadeIn: dur * 0.15 });
+    };
+    const line = (x: number, z: number, len: number, dir: number, halfWidth: number, color: number, dur: number) => {
+      const o = { x, z, r: len / 2, sz: 1, sx: (halfWidth * 2) / len, anchor: 1, rot: dir + Math.PI, duration: dur, fadeOut: 0.05, color: hot(color) };
+      return this.effects.decal({ ...o, tex: fx.bar(), opacity: 0.8, fadeIn: dur * 0.3 });
+    };
     const mine = ev.players?.includes(this.selfId);
     if ((ev.kind === 'bury' || ev.kind === 'hands' || (ev.kind === 'grasp' && def.id === 'congregation')) && ms === 0 && mine && ev.root) {
       // Buried / grasped: root yourself (players are client-simulated); casting stays allowed.

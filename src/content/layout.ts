@@ -577,6 +577,11 @@ export function generateLayout(seed = 1337): WorldLayout {
       P(rand() < 0.55 ? 'bone_pile' : 'candles', x, z, a, rand() * 6, 0.8 + rand() * 0.5);
     }
     for (const [x, z] of [[45, -35.5], [52, -35.5], [61.5, -18], [39, -12]] as const) P('sarcophagus', x, z, a, Math.abs(x - 61.5) < 1 ? Math.PI / 2 : 0);
+    // The scatter above can drop a bone pile or candle stub into a coffin's footprint (one clipped through the sarcophagus at 52, -35.5): lift those out.
+    for (let i = props.length - 1; i >= 0; i--) {
+      const q = props[i];
+      if (q.area === a && (q.prop === 'bone_pile' || q.prop === 'candles') && [[45, -35.5], [52, -35.5], [61.5, -18], [39, -12]].some(([sx, sz]) => Math.hypot(q.x - sx, q.z - sz) < 2.2)) props.splice(i, 1);
+    }
     for (const [x, z] of [[33.8, -20], [62, -4], [62, -36], [44, -4]] as const) P('brazier', x, z, a, 0);
     for (const [bx, bz] of AREAS[a].breaches) decals.push({ kind: 'cracks', x: bx, z: bz, r: 1.7, color: 0x7c3aed, opacity: 0.5, rot: rand() * 6, area: a });
   }
@@ -611,7 +616,8 @@ export function generateLayout(seed = 1337): WorldLayout {
       const ang = (i / 10) * Math.PI * 2 + Math.PI / 10;
       const x = cx + Math.cos(ang) * 14.5;
       const z = cz + Math.sin(ang) * 11.8;
-      if (inRect(AREAS[a].rect, x, z, 1)) P('pillar', x, z, a, 0, 1.15);
+      // The pillar that fell directly behind the Bell Altar stood inside it; the altar is the north landmark, leave it clear.
+      if (inRect(AREAS[a].rect, x, z, 1) && Math.hypot(x, z + 126.5) > 3.5) P('pillar', x, z, a, 0, 1.15);
     }
     P('bell_altar', 0, -126.5, a, 0, 1);
     P('waystone', 6, -105, a, 0);
@@ -627,7 +633,7 @@ export function generateLayout(seed = 1337): WorldLayout {
       }
     }
     for (const [x, z] of [[-15.5, -104.5], [15.5, -104.5], [-15.5, -127.5], [15.5, -127.5]] as const) P('brazier', x, z, a, 0);
-    decals.push({ kind: 'sigil', x: cx, z: cz, r: 10.5, color: 0x7c3aed, opacity: 0.5, rot: 0, area: a });
+    decals.push({ kind: 'sigil', x: cx, z: cz, r: 10.5, color: 0x7c3aed, opacity: 0.3, rot: 0, area: a });
     windows.push({ x: 0, z: -129.9, w: 6.5, h: 11, facing: 0, y: 7.5 });
   }
 
@@ -651,7 +657,7 @@ export function generateLayout(seed = 1337): WorldLayout {
     P('arch', 59.5, -116, a, Math.PI / 2);
     // The well stands in the south garth; the north half is the Plague Saint's arena.
     P('plague_well', cx, -107.5, a, 0);
-    P('waystone', 27.5, -108, a, 0);
+    P('waystone', 27.5, -111, a, 0); // between two arcade pillars (it used to share a spot with the one at z -108.5)
     for (const [x, z] of [[35, -110], [53, -110], [35, -122], [53, -122]] as const) P('rot_garden', x, z, a, x < cx ? 0 : Math.PI);
     for (const [x, z, r] of [[31, -104.5, 0.4], [57, -127.5, 2.6], [61, -106, 1.7]] as const) P('plague_cart', x, z, a, r);
     for (const [x, z] of [[40, -104], [48, -104], [31, -127], [57, -104.5]] as const) P('candles', x, z, a);
@@ -660,7 +666,7 @@ export function generateLayout(seed = 1337): WorldLayout {
       const z = -131 + rand() * 30;
       if (clearOf(x, z, 3)) P(rand() < 0.5 ? 'bone_pile' : 'dead_tree', x, z, a);
     }
-    decals.push({ kind: 'sigil', x: cx, z: cz, r: 9, color: 0x6f8f22, opacity: 0.35, rot: 0, area: a });
+    decals.push({ kind: 'sigil', x: cx, z: cz, r: 9, color: 0x6f8f22, opacity: 0.26, rot: 0, area: a });
   }
 
   // --- The Cinder Pyre (2026-09-30): a scorched garth of black obelisks around a slag font, funeral pyres burning

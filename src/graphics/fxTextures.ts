@@ -118,6 +118,35 @@ export const fx = {
       c.fill();
     }),
 
+  /** Outline of the same 60° sector: both straight sides and the arc, with a soft glow. Cone telegraphs draw it over the fill so the shape reads on any floor. */
+  coneEdge: () =>
+    make('coneEdge', 256, (c, s) => {
+      const half = (30 * Math.PI) / 180;
+      c.lineJoin = 'round';
+      c.lineCap = 'round';
+      for (const [w, a] of [[11, 0.22], [4.5, 0.95]] as const) {
+        c.strokeStyle = `rgba(255,255,255,${a})`;
+        c.lineWidth = w;
+        c.beginPath();
+        c.moveTo(s / 2, s - 3);
+        c.arc(s / 2, s, s - 6, -Math.PI / 2 - half, -Math.PI / 2 + half);
+        c.closePath();
+        c.stroke();
+      }
+    }),
+
+  /** Soft fill with bright side and end edges: line telegraphs (lances, spoke volleys). */
+  bar: () =>
+    make('bar', 128, (c, s) => {
+      c.fillStyle = 'rgba(255,255,255,0.2)';
+      c.fillRect(0, 0, s, s);
+      for (const [w, a] of [[9, 0.25], [3.5, 0.95]] as const) {
+        c.strokeStyle = `rgba(255,255,255,${a})`;
+        c.lineWidth = w;
+        c.strokeRect(w / 2 + 1, w / 2 + 1, s - w - 2, s - w - 2);
+      }
+    }),
+
   smoke: () =>
     make('smoke', 128, (c, s) => {
       const rand = mulberry32(11);

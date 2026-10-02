@@ -171,7 +171,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
       // Area bosses (content/bosses.ts summonSpot: each arena's north edge).
       { id: 'kings_grave', kind: 'boss', label: "The King's Grave", x: -14, z: -30.5 },
     ],
-    ambient: { fog: 0x0d0a14, hemiSky: 0x3a2d55, hemiGround: 0x0b0810, moon: 0x9aa6d4 },
+    ambient: { fog: 0x0d0a14, hemiSky: 0x46386a, hemiGround: 0x0b0810, moon: 0x9aa6d4 },
   },
   ossuary: {
     id: 'ossuary',
@@ -353,7 +353,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
     itemChance: 0.14,
     breaches: [[27, -101], [61, -101], [27, -131], [61, -131], [44, -100.5], [62, -116]],
     interactables: [
-      { id: 'waystone_cloister', kind: 'waystone', label: 'Waystone', x: 27.5, z: -108 },
+      { id: 'waystone_cloister', kind: 'waystone', label: 'Waystone', x: 27.5, z: -111 },
       { id: 'saints_litter', kind: 'boss', label: "The Saint's Litter", x: 44, z: -129.5 },
     ],
     ambient: { fog: 0x0a1008, hemiSky: 0x2c3a24, hemiGround: 0x070a05, moon: 0x9cc48a },

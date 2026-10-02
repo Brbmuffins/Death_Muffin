@@ -195,6 +195,8 @@ const SETTLE_DEPTH = 0.06;
 const NO_SETTLE = -1;
 /** Seconds a corpse keeps animating: the longest death clip is 5.6 s and its fall lands near 4 s (it used to freeze at 3 s, mid-fall). */
 const CORPSE_ANIM_S = 6;
+/** Most faint corpse rings alive at once (draw-call budget). */
+const CORPSE_MARKS_MAX = 8;
 const HEAD_Y = { humanoid: 1.3, robed: 1.35, quadruped: 0.75, bloat: 1.05 } as const;
 
 function killAffixFx(v: View) {
@@ -571,6 +573,13 @@ export class EntityViews {
         }
         if (c.kind === 'toxic') {
           this.effects.decal({ tex: fx.disc(), color: 0x6f8f3a, x: c.x, z: c.z, r: 2.4 * c.scale, duration: 5, opacity: 0.35, pulse: 6, growFrom: 0.6 });
+        }
+        if (c.kind !== 'resonant' && !this.corpseRings.get(c.id)?.alive) {
+          // Every fresh corpse is a necromancer's resource, and a toppled body is dark on dark ground: a faint pale ring marks it
+          // for the 26 s it lasts. Capped so a wipe of 40 bodies does not add 40 draw calls (resonant ones keep their own, brighter ring).
+          let live = 0;
+          for (const h of this.corpseRings.values()) if (h.alive) live++;
+          if (live < CORPSE_MARKS_MAX) this.corpseRings.set(c.id, this.effects.decal({ tex: fx.ring(), color: 0xd8cdf2, x: c.x, z: c.z, r: 0.8 * Math.max(1, c.scale), duration: 26, opacity: 0.4, fadeIn: 0.8, pulse: 2 }));
         }
         if (c.kind === 'resonant') {
           if (!this.corpseRings.get(c.id)?.alive) {

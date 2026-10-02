@@ -24,6 +24,10 @@ Branch `codex/new-blood-release-20260928` tracks `origin/master` (push `HEAD:mas
 after a secret scan; the repo is public). The owner asked for commits, which overrides
 the older "stage, don't commit" note.
 
+## Zone and encounter polish (branch `dm/zone-polish`, 2 Oct 2026, not deployed)
+
+Full audit and before/after in `docs/ZONE-POLISH-AUDIT.md`; the tour is `tools/qa/zone-tour.cjs`. Done: boss cone and line telegraphs now brightened with an outline (new `coneEdge`/`bar` sprites in `fxTextures.ts`, `areaBossEvent` in `WorldScene.ts`); a faint pale ring on every fresh corpse (`EntityViews.ts`, cap 8); Fen wisp-pulse ring brighter; Sanctum and Cloister arena sigils dimmed; Ossuary sky light lifted; three prop overlaps fixed (Ossuary coffin pile, Sanctum pillar behind the altar, Cloister waystone moved to z -111 in `layout.ts` and `areas.ts`). `necro-rules.cjs` was regenerated because `areas.ts` changed. Open: Nave perf and noise, thrall vs pale-enemy silhouette, Fen corpse rings on water, Acre darkness.
+
 ## Alchemist's Wing dressing (branch `dm/wing-dressing`, 2 Oct 2026, not deployed)
 
 Reviewers found the Wing sparse. `WING_PROPS` is now ~65 placements, plus `WING_FLOOR` rugs/spills, warm de-purpled floor and wall

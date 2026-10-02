@@ -14,6 +14,7 @@ on the public site.
 | How are the systems balanced? | [BALANCE](../BALANCE.md) and source constants | Targets, samples and open balance risks |
 | What do the necromancer weapons change, and how do I regenerate them? | [Necro weapons](NECRO-WEAPONS.md) | Built; mechanics, migration 013 and model pipeline |
 | What does a brand-new player see in the first hour, and when? | [First-hour audit](FIRST-HOUR-AUDIT.md) | Dated play-through: timeline, clutter, contradictions, what was changed (counsel cadence, HUD layout) |
+| How readable are the zones and boss telegraphs, and what was polished? | [Zone polish audit](ZONE-POLISH-AUDIT.md) | Per-zone readability, clutter, lighting, prop clipping and perf; before/after of the cone, corpse and prop fixes |
 | What is proposed? | [Future content](../FUTURE_CONTENT.md), [agent briefs](agent-briefs/README.md), [profession roadmap](PROFESSIONS-ROADMAP.md) | Designs; confirm implementation in source and HANDOFF |
 | How are assets and browser checks made? | [Asset pipeline](../ASSET_PIPELINE.md), [QA guide](../tools/qa/README.md) | Procedures and test entry points |
 | How do I make or fix an animation without paying Tripo? | [Blender pipeline](BLENDER-PIPELINE.md), [animation sources](ANIMATION-SOURCES.md) | Built on `dm/blender`: scripts, bone map, measurements, limits, CC0 sources |
