@@ -12,7 +12,7 @@ The Ossuary Covenant stands in a diocese overrun by the dead. Choose one of nine
 
 ## ✨ Highlights
 
-Some of the most polished corners of the game right now (2 October 2026):
+Some of the most polished corners of the game right now (updated 2 October 2026):
 
 <table><tr>
 <td width="50%"><img src="docs/screenshots/gear-set-tooltip.webp" alt="An item tooltip that says whether it is an upgrade for your discipline and which set bonus it completes" /><br /><sub><b>Gear you can read.</b> Green ▲ / red ▼ on every bag item, a verdict for <i>your</i> discipline, and armor set bonuses that light up as you complete them.</sub></td>
@@ -20,6 +20,9 @@ Some of the most polished corners of the game right now (2 October 2026):
 </tr><tr>
 <td><img src="docs/screenshots/laborer-woodcutting.webp" alt="A Grave Laborer chopping a coffin-oak with a hatchet" /><br /><sub><b>Grave Laborers at work.</b> Your thralls chop, mine, dig and fish in the Sexton's Acre.</sub></td>
 <td><img src="docs/screenshots/ossuary-vault.webp" alt="The Ossuary Vault beside the 48-slot Reliquary" /><br /><sub><b>Room to breathe.</b> A 48-slot bag and the 120-slot Ossuary Vault shared by your characters.</sub></td>
+</tr><tr>
+<td><img src="docs/screenshots/apothecary-wing.webp" alt="The Apothecary at her counter in the Alchemist's Wing" /><br /><sub><b>The Alchemist's Wing.</b> A room for brewing, the Great Cauldron and the Apothecary, who tells you what your reagents make.</sub></td>
+<td><img src="docs/screenshots/affix-tooltip.webp" alt="A ring with three affixes and an upgrade verdict" /><br /><sub><b>Rolled loot.</b> Item levels and affixes rolled on the server; necromancer affixes marked †, verdicts in plain words.</sub></td>
 </tr></table>
 
 ## Contents
@@ -63,6 +66,8 @@ Some of the most polished corners of the game right now (2 October 2026):
 The landing page previews the fire realm and its enemies with a lightweight purple fire glow and drifting embers. **Settings → Reduced motion** tones down effects in game if you prefer a quieter screen.
 
 ## Finding your way
+
+<img src="docs/screenshots/prior-dialogue.webp" alt="Talking to the Prior, with the Next line under the minimap" />
 
 Nothing in Death Muffin is a quest, and nothing can be failed or missed. If you would like a nudge, the game gives you three ways to ask for one.
 
@@ -327,6 +332,8 @@ Your discipline then scales the result (an Ossuary necromancer has extra health,
 
 **Item level and affixes.** Gear you find now drops *rolled*. Each piece has an **item level** (the level of what dropped it, +2 from an elite, +4 from a boss, +5 from a boss's first kill) and up to **three affixes**. The server rolls them the moment the piece drops, so they cannot be edited in a save. Affixes name the item (`Gravebound Iron Helm of the Legion`) and change its colour: one affix is green, two blue, three purple (a rarer base item keeps its own colour). Bosses always leave at least one affix and a first kill at least two. An affix is either a stat (`+6 INT`, as a prefix like *Occult* or a suffix like *of the Seer*) or a **necromancer lever**, marked with a violet **†**: *Gravebound* (thralls hit harder), *of the Legion* (thrall health), *Whispering* (essence regeneration), *of the Rotting Mist* (wider Miasma), *Blighted* (more Withered stacks) and *of the Ossuary Wall* (less damage taken per thrall). The levers work for any class but only matter to the four necromancer disciplines; on another class the tooltip says "no effect for you". Hover a piece to see its item level, every affix and what each one does for *you*. The ▲/▼ arrow, the power score and the Character sheet all count affixes (the sheet has an **Item affixes** block and an "Item affixes" row inside the formulas they feed). Higher item levels and more affixes also sell for more and salvage a little richer (an extra-material chance and more Salvaging XP). **Sell all junk** and **Salvage all below rare** skip any piece with a necromancer affix. The Codex (**K**, Item affixes tab) lists every affix and its range at item levels 10 and 40. Pieces from before this update stay as they are, with their base stats and no item level.
 
+<img src="docs/screenshots/affix-tooltip.webp" alt="An affixed ring tooltip" width="300" />
+
 **The character sheet (J, or the Sheet button beside the paper doll).** Lists your final Health, Spell power, Max essence, Essence per second, Move speed, Thrall health, Thrall damage and Damage upgrade, plus your STR, AGI, INT and VIT totals. Click any line to open its breakdown: the base, your level, each worn piece, your discipline, boons, Damage tiers and the weapon line. Brews and other timed effects are not included. The Codex (**K**, Stats tab) carries the same table. The Set bonuses block lists each worn set and its bonuses.
 
 ## Gathering and crafting
@@ -355,6 +362,8 @@ With **Auto gathering** enabled in Settings, clicking a node can continue to ano
 **Salvaging** is a seventh skill, worked at the **Bone Grinder** beside the Bone Kiln in the Acre. Tick gear in its panel (or press **Salvage** on an item in the Reliquary while you stand at the Grinder) and **Salvage selected**, or use **Salvage all below rare** for every unlocked common and uncommon piece. Each piece gives an ingot by rarity (copper, iron, silver or steel, gold, hell, moon), or a plank from staffs, wands and grimoires (oak, willow, yew or ghostwood, blackthorn, bone elder), plus Grave Dust and, on better gear, Wraith Ectoplasm, Plague Bile, Cinder Ash and bone meal. Every Salvaging level adds a 0.5% chance of one extra material, and it grants a mastery cape at 99. If the yield will not fit your bag, nothing is ground. The **Codex (K → Professions)** lists the yields by rarity.
 
 **Alchemy** is brewed in **the Alchemist's Wing**, through the Chapterhouse's east door: click the **Great Cauldron** (or the Alembic) to brew, and the **Reagent Shelf** to see every herb, reagent and ichor you have found. Each day one brew is the cauldron's pick and gives one extra the first time you make it there. The Workbench's **C → Alchemy** tab still works. Start with four Grave Dust from the Hollow Graves or Catacomb Warren to brew a Grave-Dust Tonic at level 1. Later, Wraith Ectoplasm drops from spirit enemies, Plague Bile from the Cloister, and Cinder Ash from the Pyre. Area bosses always leave an ichor; the Mire Mother’s ichor combines with drowned lotus for a Moonlight Elixir. Forage Rot-cap in the Cloister and Ash-bloom in the Pyre from Gardening level 1, then grow their seeds in the Acre at Gardening 35 and 50. Bog myrtle and drowned lotus grow in the Fen. The **Codex (K → Professions → Reagents)** lists sources, brew effects, recipes and Alchemy levels. Equip an elixir or tonic on your belt in the Reliquary, then use **Z** or **X**.
+
+<table><tr><td><img src="docs/screenshots/alchemist-wing.webp" alt="The Alchemist's Wing and the Great Cauldron" /><br /><sub>The Alchemist's Wing</sub></td><td><img src="docs/screenshots/reagent-shelf.webp" alt="The Reagent Shelf collection" /><br /><sub>The Reagent Shelf</sub></td></tr></table>
 
 **Grave Laborers (H)** gather slowly for up to eight hours while you fight, explore or are away. Collect their work and the Ledger shows what they found. You begin with one laborer and gain another for every 50 total gathering levels, up to four. In the Sexton’s Acre you can **watch them work**: each laborer stands beside a node of its post with a hatchet, pickaxe, spade or fishing rod (chopping, digging or fishing; one that is full rests). A gold check over a laborer means its work is ready; hover it for the post and time, click it to open the Laborers. **Capes & Pets (N)** has a mastery cape for level 99 in each of the seven skills, total-level mantles (the Sexton’s Mantle now needs all seven at 99), and five companions found as rare charms while gathering, from laborers, or from garden harvests. Adopt a charm permanently; other players see your cape and companion.
 
