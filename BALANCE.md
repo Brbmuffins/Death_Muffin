@@ -651,3 +651,8 @@ Level 65 (the live top band): XP/min is +14% on average (range 1.02-1.32, bot no
 and 10-40 points above it when `geared` (wave speed 3 fills the bog with leeches), deaths stay at or under 0.8 per 3 minutes. Level 45 runs
 hotter on XP (+23%; the Fen's XP is a flat per-kill table, and the bot's kill rate differs most at lower gear); left as is (it is the
 entry band). Tuning that got here: leech 4 dmg / 22 hp / 4.2 speed / 5 XP, hag 12 dmg / 24 XP, wisp 9 dmg / 19 XP, sexton 25 dmg / 54 XP, cap 24.
+
+
+## Owner decision (2026-10-02): gear should make you strong
+
+Base item stats stay as they are. The gear pass measured that an ordinary kit cuts deaths at push/max Wave Speed by ~89% and that an ascended set makes max nearly safe; that is intended. Do not scale item stats down, and do not raise boss HP or late Wave Speed pressure to cancel gear (the "+35% boss HP if base stats stay" note in Polish round 2 is declined). Future tuning should target the no-gear and progress-kit bands.

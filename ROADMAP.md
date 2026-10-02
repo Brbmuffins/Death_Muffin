@@ -52,9 +52,9 @@ flowchart LR
   SHIPPED --> NOW --> POLISH --> LATER
 ```
 
-## 🟨 Waiting on the owner
+## ✅ Owner decisions
 
-- **Base item stats are too strong at high Wave Speed.** With an ordinary first set and weapon, deaths at push/max Wave Speed fall about 89% (target 30–50%), and an ascended set makes max Wave Speed nearly safe. The items' base stats (which predate the balance work) supply about 90% of that lift. Options: (a) scale every gear item's base stats to about 0.4× (a database change that weakens existing gear; BALANCE.md table 5 shows +30% kills / −44% deaths for a typical kit at max), (b) raise late Wave Speed pressure instead, or (c) leave it: gear makes you strong. Not changed until you choose.
+- **Gear should make you strong** (2 Oct 2026). Base item stats stay as they are, even though a good kit makes high Wave Speed much safer. No compensating nerfs: bosses and Wave Speed are not retuned to cancel out gear.
 
 ## 📒 Progress log
 
