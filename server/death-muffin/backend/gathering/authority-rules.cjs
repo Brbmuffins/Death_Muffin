@@ -422,7 +422,7 @@ var AREAS = {
       { id: "lectern", kind: "lectern", label: "Covenant Lectern", x: -24.2, z: 17.8 },
       ...npcSpots("acre")
     ],
-    ambient: { fog: 790288, hemiSky: 4937828, hemiGround: 2304032, moon: 12307416 }
+    ambient: { fog: 790288, hemiSky: 6978706, hemiGround: 3820088, moon: 12307416 }
   },
   graves: {
     id: "graves",
