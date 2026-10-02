@@ -57,7 +57,7 @@ async function main() {
       data: { classIndex: character.class_index, level: 2, experience: 200 },
     });
     assert.equal(badSync.status(), 400, 'invalid offline XP rejected');
-    await game.locator('[data-open="settings"]').click();
+    await game.locator('.hud-mi[data-open="settings"]').click();
     assert.equal(await game.locator('[data-diff]').inputValue(), 'medium', 'new character starts on Medium despite saved Easy');
     assert.equal(await game.locator('[data-auto]:visible').count(), 0, 'Auto Combat controls are hidden');
     assert.equal(await game.locator('[data-autogather]').count(), 1, 'Auto gathering remains available');

@@ -26,6 +26,9 @@ Some of the most polished corners of the game right now (updated 2 October 2026)
 </tr><tr>
 <td><img src="docs/screenshots/zone-polish-gravedigger-sweep.webp" alt="The Gravedigger King's sweep telegraph, outlined in gold" /><br /><sub><b>Readable boss telegraphs.</b> Cones and lines are outlined and bright, so you always know where not to stand.</sub></td>
 <td><img src="docs/screenshots/zone-polish-corpse-rings.webp" alt="Fresh corpses marked with faint rings" /><br /><sub><b>Corpses you can find.</b> Every fresh body gets a faint ring, so a necromancer never loses track of their next thrall.</sub></td>
+</tr><tr>
+<td><img src="docs/screenshots/runes/colossus-risen.webp" alt="A Bone Colossus thrall standing over its necromancer" /><br /><sub><b>Relic runes: the Bone Colossus.</b> Socket it into Exhume and five corpses become one jade-lit giant.</sub></td>
+<td><img src="docs/screenshots/runes/grimoire-colossus.webp" alt="The Grimoire rune socket explaining exactly what the rune changes" /><br /><sub><b>Runes that change the spell.</b> Eleven necromancer runes, one per rite; the Grimoire says exactly what each one does.</sub></td>
 </tr></table>
 
 ## Contents

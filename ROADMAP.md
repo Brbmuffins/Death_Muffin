@@ -33,10 +33,12 @@ flowchart LR
     S19[2 Oct: server authority step 1 — report mode]:::done
     S20[2 Oct: readability round 3]:::done
     S21[2 Oct: thrall gear — the Legion]:::done
+    S22[2 Oct: QA suite reliability · run-all]:::done
+    S23[2 Oct: relic runes · Bone Colossus]:::done
   end
 
   subgraph NOW["🔨 Now"]
-    R2[QA suite reliability<br/>every smoke trustworthy]:::now
+    R3[Legendary armor sets<br/>other session]:::now
   end
 
   subgraph POLISH["✨ Next — polish"]
@@ -61,6 +63,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 2 Oct 2026 | Relic runes: eleven necromancer runes drop from elites, Surge offerings and bosses; socket one into each rite in the Grimoire (L) to change how it behaves (Splinters, Volley, Ossuary Ring, Impaling, Mass Grave, Creeping Rot, Contagion, Hollow Choir, Requiem…). The **Bone Colossus** rune turns Exhume into one giant thrall made from up to five corpses | Migration 024. Runes add variety, not power (−2% to +10% kills/min in the harness); the Colossus's tanking and the drop rates need a playtest. |
 | 2 Oct 2026 | Relic runes (branch `dm/runes`, not deployed, migration 024): eleven socketable spell modifiers, one socket per necromancer rite (Bone Needle, Marrow Spear, Exhume, Miasma Circle, Black Litany), set in the Grimoire (L); runes drop from elites, Grave Surges and bosses, stack, rest in the Vault and grind to reagents; the Bone Colossus rune raises one giant thrall (the `bone_colossus` model) from up to five corpses | Real-database probe (`tools/qa/runes-db-probe.cjs`), balance table in BALANCE.md, `tools/qa/runes-smoke.cjs`. |
 | 2 Oct 2026 | Phones, round 2: clear menu icons with labels, and on phones one **☰ Menu** with big tiles for every panel (plus Recall home); counsel cards and prompts in touch wording; Workbench/Cauldron **Craft ×N / ×5 / Max** and bag **Sell all** with confirm; no page zoom on double tap; **Connection lost / Back online** alerts and the save warning shown on phones | Smokes: mobile-nav, craft-n, connection, afk-move, mobile-shots (4 sizes, no overlaps), first-hour (desktop). Craft batches loop the existing single-craft API (one transaction per item). |
 | 2 Oct 2026 | Phones and tablets, battery saver: a **Frame rate** setting (60 or 30 fps, default 60; the game no longer runs at 120 fps on fast screens), phones and tablets start on Graphics Low + 30 fps until the player picks their own (older saved High is treated as the old default), and the 3D view redraws only ~6 times a second while a full-screen panel covers it (the game keeps running) | Settings shows a one-line battery hint. Frame-pacing logic is unit tested. Saved choices are never overridden. |
@@ -195,7 +198,7 @@ Two or three bot players you can log in and play with. Recommended design:
 
 ### L2–L4
 - **New zones:** Catacomb Depths and the Hollow Court (`docs/ALCHEMY-AND-WORLDS-PLAN.md`).
-- **Content with paid art ready:** nothing waiting: the Bone Colossus and the runes are built (`dm/runes`, needs migration 024), thrall gear shipped.
+- **Content with paid art ready:** nothing waiting: the Bone Colossus and the runes are live (2 Oct, migration 024), thrall gear shipped.
 - **Server authority:** today the browser is trusted for level, gold and loot (fine among friends). Move rewards to the server before opening to strangers. Step 1 (plausibility guards, report-first, `AUTHORITY_MODE`) is built on `dm/server-authority`, not deployed: [docs/SERVER-AUTHORITY.md](docs/SERVER-AUTHORITY.md). Server-rolled kill rewards (step 2) remain.
 
 ---
