@@ -3,12 +3,17 @@
  * localStorage as a convenience only — every read/write is guarded because
  * storage can be unavailable (private windows, blocked site data).
  */
+import { isFpsCap, type FpsCap } from './framePacing';
 import { isDifficulty, type Difficulty } from '../content/difficulty';
 
 export type Quality = 'high' | 'low';
 
 export interface Settings {
   quality: Quality;
+  /** Frame-rate cap; 30 saves battery on phones. */
+  fps: FpsCap;
+  /** True once the player has changed Graphics or Frame rate themselves; until then phones get battery-saver defaults. */
+  graphicsChosen: boolean;
   reducedMotion: boolean;
   damageNumbers: boolean;
   volume: number; // 0..1 (master)
@@ -35,6 +40,15 @@ const characterKey = (id: number) => `${OFFLINE_PREFIX}dm_play_settings_v1_${id}
 let activeCharacter: number | null = null;
 let autoCombatAllowed = false;
 
+/** Phones and tablets: coarse primary pointer and no hover. */
+export function isTouchFirst(): boolean {
+  try {
+    return window.matchMedia('(pointer: coarse)').matches && !window.matchMedia('(hover: hover)').matches;
+  } catch {
+    return false;
+  }
+}
+
 function defaults(): Settings {
   let reduced = false;
   try {
@@ -42,7 +56,8 @@ function defaults(): Settings {
   } catch {
     /* no matchMedia */
   }
-  return { quality: 'high', reducedMotion: reduced, damageNumbers: true, volume: 0.6, combatVolume: 1, ambienceVolume: 1, interfaceVolume: 1, tips: true, guidance: true, guidancePing: true, difficulty: 'medium', autoCombat: false, autoGather: true };
+  const touchFirst = isTouchFirst();
+  return { quality: touchFirst ? 'low' : 'high', fps: touchFirst ? 30 : 60, graphicsChosen: false, reducedMotion: reduced, damageNumbers: true, volume: 0.6, combatVolume: 1, ambienceVolume: 1, interfaceVolume: 1, tips: true, guidance: true, guidancePing: true, difficulty: 'medium', autoCombat: false, autoGather: true };
 }
 
 function load(): Settings {
@@ -55,6 +70,13 @@ function load(): Settings {
       for (const k of ['volume', 'combatVolume', 'ambienceVolume', 'interfaceVolume'] as const) {
         if (typeof s[k] !== 'number' || !Number.isFinite(s[k])) s[k] = base[k];
         s[k] = Math.min(1, Math.max(0, s[k]));
+      }
+      if (!isFpsCap(s.fps)) s.fps = base.fps;
+      s.graphicsChosen = s.graphicsChosen === true;
+      // Saved 'high' on a phone is usually just the old default, not a choice: auto-optimise until the player picks.
+      if (!s.graphicsChosen && isTouchFirst()) {
+        s.quality = 'low';
+        s.fps = 30;
       }
       if (!isDifficulty(s.difficulty)) s.difficulty = base.difficulty;
       // Old browser-wide play settings cannot be attributed to an account.
@@ -107,6 +129,7 @@ export function updateSettings(patch: Partial<Settings>) {
   if (!autoCombatAllowed || (patch.difficulty ?? settings.difficulty) !== 'easy') {
     patch = { ...patch, autoCombat: false };
   }
+  if (patch.quality !== undefined || patch.fps !== undefined) patch = { ...patch, graphicsChosen: true };
   Object.assign(settings, patch);
   try {
     localStorage.setItem(KEY, JSON.stringify(settings));

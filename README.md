@@ -120,11 +120,13 @@ Nothing in Death Muffin is a quest, and nothing can be failed or missed. If you 
 | **Enter** | Chat |
 | **Esc** | Close an open panel, then open Settings |
 
-You can also click hotbar icons. Click **swap** below any spell icon to open the Grimoire with that slot selected; right click a hotbar slot also works. In **Settings**, you can change class, difficulty, graphics, volume (Master, plus separate **Combat**, **Ambience** and **Interface** sliders), reduced motion, damage numbers, gathering behavior, counsel tips, and the Next suggestion with its minimap marker.
+You can also click hotbar icons. Click **swap** below any spell icon to open the Grimoire with that slot selected; right click a hotbar slot also works. In **Settings**, you can change class, difficulty, graphics, frame rate (60 or 30 fps), volume (Master, plus separate **Combat**, **Ambience** and **Interface** sliders), reduced motion, damage numbers, gathering behavior, counsel tips, and the Next suggestion with its minimap marker.
 
 ### On a phone or tablet
 
 The HUD rearranges itself for phones (portrait and landscape) and tablets, and every panel fits the screen.
+
+**Battery saver.** New phones and tablets start on Graphics Low and 30 fps (other devices: High and 60 fps), even if an older High was saved, until you change Graphics or Frame rate yourself. Change either in **Settings**; Low + 30 fps uses far less battery. While a full-screen panel covers the world, the 3D view redraws only a few times a second (the game itself keeps running).
 
 | Touch | Action |
 |---|---|

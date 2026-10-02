@@ -3,6 +3,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { shouldProcessFrame, shouldRender } from './framePacing';
 import { onSettingsChange, settings } from './settings';
 
 /** What a scene hands the runtime: something to draw and a per-frame tick. */
@@ -33,6 +34,15 @@ export class GameRuntime {
   private backgroundTimer = 0;
   private backgroundBusy = false;
   private bloomEnabled = true;
+  private lastFrameAt = 0;
+  private lastRenderAt = 0;
+  private compactMq: MediaQueryList | null = (() => {
+    try {
+      return window.matchMedia('(max-width: 760px), (max-height: 520px)');
+    } catch {
+      return null;
+    }
+  })();
 
   /** Smoothed frame time, exposed for the debug overlay / perf checks. */
   frameMs = 16.7;
@@ -108,6 +118,10 @@ export class GameRuntime {
     const loop = () => {
       this.raf = requestAnimationFrame(loop);
       if (document.hidden) return;
+      const t = performance.now();
+      // Frame cap: skip before touching the clock so the next dt covers the whole gap.
+      if (!shouldProcessFrame(t, this.lastFrameAt, settings.fps)) return;
+      this.lastFrameAt = t;
       const dt = Math.min(this.clock.getDelta(), 0.1);
       this.frameMs += (dt * 1000 - this.frameMs) * 0.05;
       const view = this.view;
@@ -119,6 +133,10 @@ export class GameRuntime {
       // update() may have swapped the view (scene transition) — render the current one.
       const current = this.view;
       if (!current) return;
+      // A full-screen panel on a phone hides the 3D view: keep simulating, but redraw rarely.
+      const covered = document.body.classList.contains('dm-panel-open') && !!this.compactMq?.matches;
+      if (!shouldRender(t, this.lastRenderAt, covered)) return;
+      this.lastRenderAt = t;
       if (this.bloomEnabled) this.composer.render(dt);
       else this.renderer.render(current.scene, current.camera);
     };

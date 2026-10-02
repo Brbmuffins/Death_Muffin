@@ -1234,6 +1234,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private syncPanelNav() {
     const open = this.panelOpen();
     if (!open) this.panelStack = [];
+    document.body.classList.toggle('dm-panel-open', open);
     // The Back button floats over the panel's top-left corner (not inside it: panels redraw their own markup).
     const panelEl = this.panelStack.length ? [...this.root.querySelectorAll<HTMLElement>('.cw-panel-float')].find((e) => e.offsetParent) : undefined;
     let back = this.root.querySelector<HTMLButtonElement>(':scope > .cw-panel-back');
