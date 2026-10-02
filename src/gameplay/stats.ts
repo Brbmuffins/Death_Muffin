@@ -1,4 +1,5 @@
 import type { Character, InventorySlot } from '../net/types';
+import { setStatTotals } from './setBonuses';
 
 export const STAT_KEYS = ['stat_str', 'stat_agi', 'stat_int', 'stat_vit'] as const;
 export type StatKey = (typeof STAT_KEYS)[number];
@@ -18,7 +19,7 @@ export interface ComputedStats {
 
 /**
  * Displayed stats = character base stats + sum of equipped items' stat_bonus
- * JSON. Client-side only — the server stores base stats and the equipped
+ * JSON + the flat stats of active armor set bonuses (gameplay/setBonuses.ts). Client-side only — the server stores base stats and the equipped
  * flags; it never aggregates.
  */
 export function computeStats(character: Character, slots: InventorySlot[]): ComputedStats {
@@ -33,6 +34,9 @@ export function computeStats(character: Character, slots: InventorySlot[]): Comp
       bonus[k] += slot.stat_bonus[k] ?? 0;
     }
   }
+
+  const fromSets = setStatTotals(slots);
+  for (const k of STAT_KEYS) bonus[k] += fromSets[k] ?? 0;
 
   const total = Object.fromEntries(
     STAT_KEYS.map((k) => [k, base[k] + bonus[k]]),

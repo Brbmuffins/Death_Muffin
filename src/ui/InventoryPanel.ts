@@ -12,7 +12,8 @@ import { isSalvageGear } from '../gameplay/salvageRules';
 
 /** A small padlock for locked cells and the Lock button (inline SVG: no font or emoji dependency). */
 export const LOCK_SVG = '<svg viewBox="0 0 12 14" width="11" height="13" aria-hidden="true"><path d="M3 6V4.2a3 3 0 0 1 6 0V6" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="6" width="9" height="7" rx="1" fill="currentColor"/></svg>';
-import { badgeHtml, compareChipsHtml, compareTableHtml, itemStatsHtml, type StatContextSource } from './gearText';
+import { badgeHtml, compareChipsHtml, compareTableHtml, itemStatsHtml, setTooltipHtml, type StatContextSource } from './gearText';
+import { resolveSetBonuses } from '../gameplay/setBonuses';
 
 const TYPE_GLYPH: Record<string, string> = {
   weapon: '⚔',
@@ -219,6 +220,8 @@ export class InventoryPanel {
     const doll = this.el!.querySelector<HTMLDivElement>('.cw-equip')!;
     doll.innerHTML = '';
     const worn = equippedBySlot(this.inventory.all);
+    // Pieces of a set with at least two worn glow faintly in that set's accent, so you can see what counts.
+    const setOf = new Map(resolveSetBonuses(this.inventory.all).sets.filter((s) => s.worn >= 2).flatMap((s) => s.wornParts.map((p) => [p as string, s] as const)));
     for (const [at, id] of DOLL.entries()) {
       if (!id) {
         if (at === DOLL.length - 1 && this.onSheet) {
@@ -238,6 +241,12 @@ export class InventoryPanel {
       cell.setAttribute('aria-label', slot ? `${meta.label}: ${slot.name}, ${slot.rarity}` : `${meta.label}: empty`);
       if (slot) {
         cell.classList.add('filled', 'equipped');
+        const inSet = setOf.get(id);
+        if (inSet) {
+          cell.classList.add('in-set');
+          cell.style.setProperty('--set', `#${inSet.accent.toString(16).padStart(6, '0')}`);
+          cell.setAttribute('aria-label', `${meta.label}: ${slot.name}, ${slot.rarity}, part of ${inSet.setName} ${inSet.worn} of 5`);
+        }
         cell.style.setProperty('--rarity', RARITY_COLOR[slot.rarity] ?? RARITY_COLOR.common);
         const img = document.createElement('img');
         img.className = 'item-icon';
@@ -278,8 +287,7 @@ export class InventoryPanel {
     if (weapon) return `<div class="stat">${weapon.effect}</div><div class="lore">Recommended level ${weapon.level}. Only necromancers gain the effect; other classes keep the stats.</div>`;
     const piece = ARMOR_BY_ID[slot.item_id];
     if (!piece) return '';
-    const worn = this.inventory.all.filter((s) => s.equipped && ARMOR_BY_ID[s.item_id]?.setId === piece.setId).length;
-    return `<div class="lore">${piece.setName} set · ${worn}/5 worn</div><div class="lore">Any class can wear it. Stats only, no set bonus.</div>`;
+    return `${setTooltipHtml(this.statContext?.() ?? null, this.inventory.all, slot)}<div class="lore">Any class can wear it.</div>`;
   }
 
   private showTooltip(slot: InventorySlot, e: PointerEvent) {

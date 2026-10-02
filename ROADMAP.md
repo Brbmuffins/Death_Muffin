@@ -89,7 +89,7 @@ Today the four stats feed these formulas (`src/gameplay/characterStats.ts`):
 - **Character sheet (paper doll):** final health, spell power, essence, speed and thrall strength, each with a breakdown (base, level, gear, upgrades, boons) you can hover.
 - **Necro weapon effects** listed beside the stats, as the Codex does now.
 
-### N3 · Armor set bonuses
+### N3 · Armor set bonuses (built on `dm/set-bonuses`, see docs/ARMOR-SETS.md)
 The 18 armor sets (90 pieces) are themed but have **no set bonus**. Add 2-, 4- and 5-piece bonuses per set that support its discipline (for example, Ossuary: thralls take less damage; Mourner: wraith healing). Show them in the tooltip with a "3 / 5 worn" tracker.
 
 ---

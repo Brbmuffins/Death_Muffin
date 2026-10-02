@@ -1,3 +1,5 @@
+import { SET_BONUSES, SET_NAMES, describeEffect } from './setBonuses';
+import { ARMOR_PIECES, ARMOR_PARTS } from './armorSets';
 import {
   ABILITIES,
   BONE_MANTLE,
@@ -611,7 +613,7 @@ export const codexBrewRows = () =>
   Object.entries(BREWS).map(([id, b]) => ({ id, name: itemMeta(id).name, slot: slotName(b.slot), effects: brewEffectsText(b), seconds: b.seconds }));
 /** Stats tab: what STR / AGI / INT / VIT do. Numbers come from STAT_EFFECTS, the same table deriveStats uses. */
 export const CODEX_STATS_COUNSEL =
-  'Gear and levels raise four stats, and each one feeds a few numbers you can feel. Open the Reliquary (I) and every stat on a piece says what it does for you; a bag item wears a green ▲ when it is an upgrade for your discipline and a red ▼ when it is worse (hover it for the reason). Press J for the Character sheet: it lists the stats and weapons your discipline wants, your weakest slots, and where each number comes from. The arrows weigh damage, toughness, essence and speed for your discipline, with your thralls counted; weapon effects such as the scythe arc get an estimated value.';
+  'Gear and levels raise four stats, and each one feeds a few numbers you can feel. Open the Reliquary (I) and every stat on a piece says what it does for you; a bag item wears a green ▲ when it is an upgrade for your discipline and a red ▼ when it is worse (hover it for the reason). Press J for the Character sheet: it lists the stats and weapons your discipline wants, your weakest slots, where each number comes from and which armor set bonuses you have. The arrows weigh damage, toughness, essence and speed for your discipline, with your thralls counted; armor set bonuses count too (an item that finishes a set says so); weapon effects such as the scythe arc get an estimated value.';
 const f = (n: number) => String(+n.toFixed(3));
 export const CODEX_STATS: { stat: string; name: string; effects: string }[] = [
   { stat: 'VIT', name: 'Vitality', effects: `Each point: +${STAT_EFFECTS.health.perVit} health, and your thralls have ${Math.round(STAT_EFFECTS.thrall.hpShare * 100)}% of it.` },
@@ -790,3 +792,31 @@ export function hexColour(n: number): string {
 export function riteSwatch(id: AbilityId): string[] {
   return Object.values(SPELL_FX[CODEX_RITES[id].fx] as Record<string, number>).map(hexColour);
 }
+
+/** Armor sets tab: every set's bonuses, generated from content/setBonuses.ts so the words follow the numbers. */
+export const CODEX_SETS_COUNSEL =
+  'Wear 2, 4 or 5 pieces of the same armor set for its bonuses; they stack, so five pieces gives all three lines. Pieces from different sets or collections count separately, so two sets at two pieces each give both first bonuses. Any class can wear any set, but thrall and rite lines only help the four necromancer disciplines. Hover a piece in the Reliquary (I) to see the set, press J for what each set still needs. The ascended sets (second collection) are one step stronger than the first.';
+export interface CodexSetRow {
+  setId: string;
+  name: string;
+  wearer: string;
+  collection: 1 | 2;
+  drops: string;
+  bonuses: { pieces: number; name?: string; text: string }[];
+}
+const PART_LABEL: Record<string, string> = { head: 'Crown', chest: 'Vestment', hands: 'Grips', legs: 'Legguards', feet: 'Treads' };
+export const codexSetRows = (): CodexSetRow[] => {
+  const seen = new Set<string>();
+  const rows: CodexSetRow[] = [];
+  for (const p of ARMOR_PIECES) {
+    if (seen.has(p.setId)) continue;
+    seen.add(p.setId);
+    const drops = ARMOR_PARTS.map((part) => ARMOR_PIECES.find((q) => q.setId === p.setId && q.part === part)!)
+      .map((q) => `${PART_LABEL[q.part]} (${AREAS[q.area].name})`).join(', ');
+    rows.push({
+      setId: p.setId, name: SET_NAMES[p.setId], wearer: p.wearer, collection: p.collection, drops,
+      bonuses: SET_BONUSES[p.setId].map((b) => ({ pieces: b.pieces, name: b.name, text: describeEffect(b.effect).join(' \u00B7 ') })),
+    });
+  }
+  return rows.sort((a, b) => a.collection - b.collection);
+};
