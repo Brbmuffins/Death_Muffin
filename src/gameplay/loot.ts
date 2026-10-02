@@ -163,7 +163,7 @@ export function toSavePayload(slots: InventorySlot[]) {
 }
 
 export type InventorySaveState = 'saved' | 'saving' | 'retrying';
-type InventoryMutation = ({ kind: 'add'; drop: LootDrop } | { kind: 'consume'; itemId: string }) & { countAfter: number };
+type InventoryMutation = ({ kind: 'add'; drop: LootDrop } | { kind: 'consume'; itemId: string; slot?: number }) & { countAfter: number };
 
 function itemCount(slots: InventorySlot[], itemId: string) {
   return slots.filter((s) => s.item_id === itemId).reduce((n, s) => n + s.quantity, 0);
@@ -171,7 +171,9 @@ function itemCount(slots: InventorySlot[], itemId: string) {
 
 function applyInventoryMutation(slots: InventorySlot[], mutation: InventoryMutation): InventorySlot[] | null {
   if (mutation.kind === 'add') return addToSlots(slots, mutation.drop);
-  const slot = slots.find((s) => s.item_id === mutation.itemId && s.quantity > 0);
+  // A slot-specific consume (selling one copy of several) replays on that same slot, so a locked twin is never taken instead.
+  const slot = (mutation.slot !== undefined ? slots.find((s) => s.slot_index === mutation.slot && s.item_id === mutation.itemId && s.quantity > 0) : undefined)
+    ?? slots.find((s) => s.item_id === mutation.itemId && s.quantity > 0);
   // The server may already have removed it (for example as a crafting cost).
   if (!slot) return slots;
   return slots.map((s) => (s === slot ? { ...s, quantity: s.quantity - 1 } : s)).filter((s) => s.quantity > 0);
@@ -273,6 +275,18 @@ export class Inventory {
       .map((s) => (s === slot ? { ...s, quantity: s.quantity - 1 } : s))
       .filter((s) => s.quantity > 0);
     this.pendingMutations.push({ kind: 'consume', itemId, countAfter: this.count(itemId) });
+    this.dirty = true;
+    this.emit();
+    this.scheduleFlush(1500);
+    return true;
+  }
+
+  /** Consume one unit from a specific bag slot (selling one copy of several, with a locked twin elsewhere). */
+  consumeAt(slotIndex: number): boolean {
+    const slot = this.slots.find((s) => s.slot_index === slotIndex && s.quantity > 0 && !s.equipped);
+    if (!slot) return false;
+    this.slots = this.slots.map((s) => (s === slot ? { ...s, quantity: s.quantity - 1 } : s)).filter((s) => s.quantity > 0);
+    this.pendingMutations.push({ kind: 'consume', itemId: slot.item_id, slot: slotIndex, countAfter: this.count(slot.item_id) });
     this.dirty = true;
     this.emit();
     this.scheduleFlush(1500);

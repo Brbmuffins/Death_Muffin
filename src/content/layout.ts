@@ -316,7 +316,7 @@ export function generateLayout(seed = 1337): WorldLayout {
     P('altar_ascension', 0, 20.1, a, 0);
     P('rite_niches', -12.2, 26.5, a, Math.PI / 2);
     P('waystone', 9, 26.5, a, 0);
-    P('sarcophagus', 0, 27, a, 0);
+    P('sarcophagus', 0, 27, a, 0, 1.2); // the Ossuary Vault
     for (const [x, z] of [[-3, 10.5], [3, 10.5], [-3, 30.5], [3, 30.5]] as const) P('brazier', x, z, a, 0);
     for (const [x, z] of [[-10.5, 11], [10.5, 11], [-11, 15.8], [10.5, 20], [-2, 21.5], [2, 21.5], [-7.2, 26.8], [-10.8, 25.5], [1.8, 28.6], [-1.8, 28.6]] as const)
       P('candles', x, z, a);
@@ -368,6 +368,7 @@ export function generateLayout(seed = 1337): WorldLayout {
     P('brazier', -26.5, 28.5, a, 0);
     P('workbench', -23.5, 12.5, a, 0, 0.9);
     P('prop_node_bone_kiln', -23.5, 33.2, a, Math.PI);
+    P('workbench', -27, 34.4, a, Math.PI, 0.8); // the Bone Grinder
     P('covenant_lectern', -24.2, 16.8, a, 0);
     for (const [x, z] of [[-21.2, 15.6], [-21.2, 24.4]] as const) P('candles', x, z, a);
     for (const [x, z] of [[-25.4, 34.4], [-60.6, 36.6], [-44.6, 36.8]] as const) P('bone_pile', x, z, a);

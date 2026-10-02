@@ -895,7 +895,7 @@ button { font-family: inherit; }
 .cw-tabs button { min-height: 42px; padding: 9px 10px; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-text-muted); cursor: pointer; font-family: var(--cw-font-display); font-weight: 600; font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; }
 .cw-tabs button.on { color: var(--cw-bone-100); border-color: var(--cw-border-active); background: var(--cw-accent-soft); }
 
-.cw-bag-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 14px; }
+.cw-bag-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-bottom: 14px; }
 .cw-slot {
   position: relative;
   aspect-ratio: 1;
@@ -909,6 +909,8 @@ button { font-family: inherit; }
 }
 .cw-slot.filled { cursor: pointer; border-color: color-mix(in srgb, var(--rarity) 60%, transparent); box-shadow: inset 0 0 12px -4px var(--rarity); }
 .cw-slot.filled:hover { border-color: var(--rarity); }
+.cw-slot .lk { position: absolute; left: 3px; bottom: 2px; display: flex; color: #e2c98f; filter: drop-shadow(0 1px 1px #000); }
+.cw-slot.locked { box-shadow: inset 0 0 0 1px rgba(226, 201, 143, .55), inset 0 0 12px -4px var(--rarity); }
 .cw-slot.selected { outline: 2px solid var(--cw-spell-300); outline-offset: -2px; }
 .cw-slot .item-icon { width: 100%; height: 100%; object-fit: cover; display: block; }
 .cw-slot .glyph { font-size: 20px; color: var(--rarity); }
@@ -1323,3 +1325,53 @@ button { font-family: inherit; }
 .cw-cos .bar { height: 4px; margin-top: 4px; background: rgba(255,255,255,.06); }
 .cw-cos .bar i { display: block; height: 100%; background: var(--cw-ok); }
 @media (max-width: 560px) { .cw-cos-list { grid-template-columns: 1fr; } }
+
+/* ------------------------------------------------------------------ */
+/* Inventory relief: 48-slot Reliquary, Ossuary Vault, Bone Grinder     */
+/* ------------------------------------------------------------------ */
+.cw-reliquary .cw-panel-head { margin-bottom: 10px; padding-bottom: 8px; }
+.cw-reliquary .cw-stats-line { margin-bottom: 8px; }
+.cw-reliquary .cw-bag-detail { min-height: 64px; padding: 8px 12px; }
+.cw-reliquary .cw-slot { min-height: 0; }
+.cw-reliquary .cw-inv-body { margin-bottom: 8px; }
+.cw-bag-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; font-size: 13px; color: var(--cw-text-muted); }
+.cw-bag-tools .cw-tools-confirm { flex: 1; color: var(--cw-bone-100); }
+.cw-bag-tools .cw-tools-confirm b { color: #e2c98f; }
+.cw-bag-tools .cw-button { flex: none; }
+.cw-bag-tools .cw-button:disabled { opacity: .5; }
+.cw-detail-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; align-items: center; flex: none; max-width: 52%; }
+.cw-detail-actions .cw-button { display: inline-flex; align-items: center; gap: 5px; }
+.cw-detail-actions .cw-button.on { border-color: #e2c98f; color: #e2c98f; }
+.cw-detail-actions .cw-button:disabled { opacity: .5; }
+.cw-hint-text.small { font-size: 12px; }
+
+.cw-panel-float.wide.cw-vault { width: 880px; }
+.cw-vault-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+.cw-vault-cols .cw-panel-section-title { display: flex; justify-content: space-between; align-items: baseline; margin-top: 0; }
+.cw-vault-count { font-family: var(--cw-font-numeric); font-size: 12px; color: var(--cw-text-faint); letter-spacing: .04em; }
+.cw-vault-grid { margin-bottom: 8px; }
+.cw-vault-grid .cw-slot { min-height: 0; }
+.cw-vault-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
+.cw-vault-tabs button { min-height: 32px; padding: 4px 8px; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-text-muted); cursor: pointer; font-family: var(--cw-font-display); font-weight: 600; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+.cw-vault-tabs button.on { color: var(--cw-bone-100); border-color: var(--cw-border-active); background: var(--cw-accent-soft); }
+.cw-vault-tabs button small { font-family: var(--cw-font-numeric); letter-spacing: 0; opacity: .75; }
+.cw-vault-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
+.cw-vault-actions .cw-button:disabled { opacity: .5; }
+.cw-vault-note { min-height: 18px; margin-top: 6px; font-size: 12px; color: var(--cw-ok); }
+@media (max-width: 900px) { .cw-vault-cols { grid-template-columns: 1fr; } .cw-panel-float.wide.cw-vault { width: 560px; } }
+
+.cw-panel-float.wide.cw-salvage { width: 720px; }
+.cw-salvage-list { display: flex; flex-direction: column; gap: 5px; max-height: 300px; overflow: auto; margin-bottom: 12px; padding-right: 2px; }
+.cw-salv { display: grid; grid-template-columns: 20px 36px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 10px; align-items: center; padding: 6px 10px; background: var(--cw-inset); border: 1px solid color-mix(in srgb, var(--rarity) 35%, var(--cw-border)); cursor: pointer; }
+.cw-salv input { grid-row: 1 / 3; }
+.cw-salv img { grid-row: 1 / 3; width: 36px; height: 36px; object-fit: cover; border: 1px solid var(--cw-border); }
+.cw-salv .nm { font-size: 14px; color: var(--cw-bone-100); display: flex; gap: 8px; align-items: center; }
+.cw-salv .nm small { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--cw-text-faint); }
+.cw-salv .nm .lk { display: inline-flex; color: #e2c98f; }
+.cw-salv .yl { font-size: 12px; color: var(--cw-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cw-salv.on { border-color: var(--rarity); background: var(--cw-accent-soft); }
+.cw-salv.locked { opacity: .55; cursor: default; }
+.cw-salvage-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.cw-salvage-foot .cw-hint-text { flex: 1 1 200px; margin: 0; }
+.cw-salvage-foot .cw-button:disabled { opacity: .5; }
+.cw-salvage-result { margin-top: 10px; padding: 8px 12px; font-size: 13px; color: var(--cw-bone-100); background: var(--cw-inset); border: 1px solid var(--cw-border); }

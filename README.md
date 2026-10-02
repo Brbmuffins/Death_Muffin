@@ -65,6 +65,7 @@ The landing page previews the fire realm and its enemies with a lightweight purp
 | **L** | Open the Grimoire to inspect rites and set all five slots |
 | **I** or **B** / **C** / **P** / **O** / **U** / **H** / **N** | Reliquary / Workbench / Skills and AFK gathering / Sexton’s Contracts / Grave Gardening / Grave Laborers / Capes & Pets |
 | **M** / **K** | Waystone map / Codex |
+| **V** | Ossuary Vault, the shared stash (in the Chapterhouse or the Acre) |
 | **G** | Toggle auto combat on Easy (Brbmuffins developer account) |
 | **Enter** | Chat |
 | **Esc** | Close an open panel, then open Settings |
@@ -138,7 +139,7 @@ The diocese is one connected world. Kill enough enemies in the preceding area to
 
 | Area | Base level | How to open it | What to expect |
 |---|---:|---|---|
-| **The Chapterhouse** | Safe | Always open | Reliquary, Workbench, Altar, and Waystone. |
+| **The Chapterhouse** | Safe | Always open | Reliquary, Workbench, Altar, Ossuary Vault, and Waystone. |
 | **The Sexton's Acre** | Safe | Always open | Gathering nodes and processing stations; no enemy waves. |
 | **The Hollow Graves** | 1 | Always open | Your first waves, corpses, elites, and the Gravedigger King. |
 | **The Marrow Ossuary** | 5 | 300 kills in the Graves | Bone-lined halls and Crypt Deacons. |
@@ -231,7 +232,7 @@ Omens only act in combat areas. The sky tint is half-way, so each place keeps it
 
 **Milestones.** One-off gold purses for kill counts (100 up to 25,000), kills in each hunting ground (100 up to 2,500) and your best chain (10 up to 100). Each pays once per character in this browser.
 
-Gold and experience come from fighting. Open the **Reliquary (I)** to equip gear, use consumables, and see your inventory. Loot pillars mark better drops; item rarity is shown by color and marks. The **Workbench (C)** turns materials into equipment and tools. Healing flasks are used with **Q**. **Brews** are two slots: one **elixir** (combat: damage, ward, lifesteal, haste, fire/rot resist) and one **tonic** (utility: speed, essence, wisdom, fortune). A new elixir replaces the active one; drinking the same brew extends it (up to twice its length). Right-click a brew in the Reliquary to put it on your belt, then press **Z** (elixir) or **X** (tonic); active brews show with countdowns at the left edge. Lifesteal heals a share of the damage of each hit (at most 3 targets count, and one hit heals at most 1.5% of max health). Brews are local and never sent to other players; cooked meals can be eaten from the bag for healing over time.
+Gold and experience come from fighting. Open the **Reliquary (I)** to equip gear, use consumables, and see your inventory: a **48-slot bag** (8 × 6). Click an item's **padlock** to lock it; locked items are skipped by every bulk action. **Sell all junk** sells your unlocked common and uncommon gear after a confirmation that shows the count and the gold. When the bag fills, store things in the **Vault** or grind spare gear at the **Bone Grinder** (see Gathering and crafting). Loot pillars mark better drops; item rarity is shown by color and marks. The **Workbench (C)** turns materials into equipment and tools. Healing flasks are used with **Q**. **Brews** are two slots: one **elixir** (combat: damage, ward, lifesteal, haste, fire/rot resist) and one **tonic** (utility: speed, essence, wisdom, fortune). A new elixir replaces the active one; drinking the same brew extends it (up to twice its length). Right-click a brew in the Reliquary to put it on your belt, then press **Z** (elixir) or **X** (tonic); active brews show with countdowns at the left edge. Lifesteal heals a share of the damage of each hit (at most 3 targets count, and one hit heals at most 1.5% of max health). Brews are local and never sent to other players; cooked meals can be eaten from the bag for healing over time.
 
 Each discipline has two five-piece armor sets with matching icons and visible colors on the hero. The first collection begins in the Hollow Graves and completes in the Bell Sanctum; the stronger ascended collection begins in the Sanctum and completes in the Cinder Pyre. Any class can wear any set. See [the armor set guide](docs/ARMOR-SETS.md) for names and drop areas.
 
@@ -270,7 +271,7 @@ Choose difficulty in **Settings (Esc)**. **Medium** is the starting balance for 
 
 ## Gathering and crafting
 
-The **Sexton's Acre**, west of the Chapterhouse, contains every tier of the four gathering skills without combat. Click a node to work it; it depletes and later returns. Higher tiers need the matching skill level. Press **P** for your skill levels, next unlocks, and AFK controls. The **Codex (K)** has a Professions tab for node details.
+The **Sexton's Acre**, west of the Chapterhouse, contains every tier of the four gathering skills without combat, and the stations that process them (Sawpit, Bone Kiln, Cooking Fire and the Bone Grinder). Click a node to work it; it depletes and later returns. Higher tiers need the matching skill level. Press **P** for your skill levels, next unlocks, and AFK controls. The **Codex (K)** has a Professions tab for node details.
 
 | Skill | Level 1 start | What you collect and make |
 |---|---|---|
@@ -285,9 +286,13 @@ With **Auto gathering** enabled in Settings, clicking a node can continue to ano
 
 **Sexton’s Contracts (O)** offers three delivery orders a day, based on what your skills can make. Deliver from your bag for gold and sometimes an item; completing all three gives a bonus and builds a daily streak. **Grave Gardening (U)** gives you four Mourning Beds and two Coffin Patches. Plant seeds or saplings and return later; plots grow in real time even while you are away, and bone meal makes them grow faster.
 
+**Ossuary Vault (V).** A sarcophagus in the Chapterhouse holds a **120-slot shared stash** (three tabs of 40) for every character on your account. Press **V** in the Chapterhouse or the Acre. Click an item to move its whole stack across; **Deposit materials** stores every unlocked material and consumable, **Deposit all** stores everything unlocked that you are not wearing, and **Sort** merges stacks and orders the Vault by type, rarity and name. Moves stack first, then fill free slots, and a move that will not fit changes nothing. Worn gear and locked items are never stored by the bulk buttons.
+
+**Salvaging** is a seventh skill, worked at the **Bone Grinder** beside the Bone Kiln in the Acre. Tick gear in its panel (or press **Salvage** on an item in the Reliquary while you stand at the Grinder) and **Salvage selected**, or use **Salvage all below rare** for every unlocked common and uncommon piece. Each piece gives an ingot by rarity (copper, iron, silver or steel, gold, hell, moon), or a plank from staffs, wands and grimoires (oak, willow, yew or ghostwood, blackthorn, bone elder), plus Grave Dust and, on better gear, Wraith Ectoplasm, Plague Bile, Cinder Ash and bone meal. Every Salvaging level adds a 0.5% chance of one extra material, and it grants a mastery cape at 99. If the yield will not fit your bag, nothing is ground. The **Codex (K → Professions)** lists the yields by rarity.
+
 **Alchemy** is at the Workbench (**C → Alchemy**). Start with four Grave Dust from the Hollow Graves or Catacomb Warren to brew a Grave-Dust Tonic at level 1. Later, Wraith Ectoplasm drops from spirit enemies, Plague Bile from the Cloister, and Cinder Ash from the Pyre. Area bosses always leave an ichor; the Mire Mother’s ichor combines with drowned lotus for a Moonlight Elixir. Forage Rot-cap in the Cloister and Ash-bloom in the Pyre from Gardening level 1, then grow their seeds in the Acre at Gardening 35 and 50. Bog myrtle and drowned lotus grow in the Fen. The **Codex (K → Professions → Reagents)** lists sources, brew effects, recipes and Alchemy levels. Equip an elixir or tonic on your belt in the Reliquary, then use **Z** or **X**.
 
-**Grave Laborers (H)** gather slowly for up to eight hours while you fight, explore or are away. Collect their work and the Ledger shows what they found. You begin with one laborer and gain another for every 50 total gathering levels, up to four. **Capes & Pets (N)** has a mastery cape for level 99 in each skill, total-level mantles, and five companions found as rare charms while gathering, from laborers, or from garden harvests. Adopt a charm permanently; other players see your cape and companion.
+**Grave Laborers (H)** gather slowly for up to eight hours while you fight, explore or are away. Collect their work and the Ledger shows what they found. You begin with one laborer and gain another for every 50 total gathering levels, up to four. **Capes & Pets (N)** has a mastery cape for level 99 in each of the seven skills, total-level mantles (the Sexton’s Mantle now needs all seven at 99), and five companions found as rare charms while gathering, from laborers, or from garden harvests. Adopt a charm permanently; other players see your cape and companion.
 
 <table><tr>
 <td><img src="docs/screenshots/gathering.webp" alt="Working a gathering node" /><br /><sub>Working a node</sub></td>

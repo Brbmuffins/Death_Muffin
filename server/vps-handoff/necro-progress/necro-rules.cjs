@@ -381,7 +381,9 @@ var AREAS = {
       { id: "workbench", kind: "forge", label: "Ossuary Workbench", x: 8.5, z: 14 },
       { id: "niches", kind: "professions", label: "Rite Niches", x: -10.8, z: 26.5 },
       { id: "altar", kind: "upgrades", label: "Altar of Ascension", x: 0, z: 21 },
-      { id: "waystone_chapterhouse", kind: "waystone", label: "Waystone", x: 9, z: 26.5 }
+      { id: "waystone_chapterhouse", kind: "waystone", label: "Waystone", x: 9, z: 26.5 },
+      // The Ossuary Vault: the sarcophagus between the Altar and the south braziers (shared stash, key V).
+      { id: "ossuary_vault", kind: "vault", label: "Ossuary Vault", x: 0, z: 27 }
     ],
     ambient: { fog: 722960, hemiSky: 3877458, hemiGround: 657168, moon: 9412305 }
   },
@@ -406,6 +408,8 @@ var AREAS = {
       { id: "waystone_acre", kind: "waystone", label: "Waystone", x: -23, z: 25.5 },
       { id: "sawpit", kind: "sawpit", label: "Sawpit", x: -23.5, z: 12.5 },
       { id: "bone_kiln", kind: "kiln", label: "Bone Kiln", x: -23.5, z: 31.6 },
+      // Salvaging: grinds spare gear into materials and reagents.
+      { id: "bone_grinder", kind: "grinder", label: "Bone Grinder", x: -27, z: 33.2 },
       { id: "cooking_fire", kind: "fire", label: "Cooking Fire", x: -26.5, z: 28.5 },
       { id: "lectern", kind: "lectern", label: "Covenant Lectern", x: -24.2, z: 17.8 }
     ],

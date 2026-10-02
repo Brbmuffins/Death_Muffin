@@ -26,6 +26,10 @@ import { NECRO_RECIPES, isTwoHanded } from '../content/necroWeapons';
 import { REAGENT_RECIPES } from '../content/reagents';
 import { FEN_RECIPES } from '../content/fenItems';
 import { isDevAccount } from '../gameplay/devAccess';
+import * as vaultRules from '../gameplay/vaultRules';
+import * as salvageRules from '../gameplay/salvageRules';
+
+const BAG = gather.BAG_SLOTS;
 
 class MockError extends Error {
   constructor(message: string, public status: number) {
@@ -122,6 +126,8 @@ interface MockAccount {
   contracts?: { day: string; done: number[]; bonus: boolean; days: string[] };
   /** The Chronicle (mirrors character_chronicle + character_runs). */
   chronicle?: { life: Record<string, number>; run: Record<string, number>; runNo: number; runStartedAt: string; runs: { runNo: number; startedAt: string; endedAt: string; ascensionAfter: number; stats: Record<string, number> }[] };
+  /** The Ossuary Vault (mirrors account_vault; the mock has one account per character). */
+  vault?: { slot_index: number; item_id: string; quantity: number }[];
   /** POST /api/gather time budget (mirrors gather_ledger). */
   gatherLedger?: gather.GatherLedger;
   username: string;
@@ -331,14 +337,20 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
 
   if (p === '/api/inventory/save' && method === 'POST') {
     ownCharacter(acc, body.characterId);
+    // Same rule as the server (inventory-save.cjs): a save only speaks for slots 0..bagSize-1, 24 when bagSize is absent.
+    const bagSize = body.bagSize === undefined || body.bagSize === null ? 24 : Number(body.bagSize);
+    if (!Number.isInteger(bagSize) || bagSize < 1 || bagSize > BAG) return fail(`bagSize must be a whole number from 1 to ${BAG}`);
     const next: StoredSlot[] = [];
     for (const s of body.slots ?? []) {
+      if (Number(s.slot_index) >= 100) continue;
       if (!MOCK_ITEMS[s.item_id]) return fail(`Unknown item: ${s.item_id}`);
+      const index = Number(s.slot_index);
+      if (!Number.isInteger(index) || index < 0 || index >= bagSize) return fail(`each slot_index must be between 0 and ${bagSize - 1}`);
       const qty = Math.floor(Number(s.quantity));
       if (qty <= 0) continue;
-      next.push({ slot_index: Number(s.slot_index), item_id: s.item_id, quantity: qty, equipped: s.equipped ? 1 : 0 });
+      next.push({ slot_index: index, item_id: s.item_id, quantity: qty, equipped: s.equipped ? 1 : 0 });
     }
-    acc.slots = [...acc.slots.filter((s) => s.slot_index >= 100), ...next];
+    acc.slots = [...acc.slots.filter((s) => s.slot_index >= 100 || s.slot_index >= bagSize), ...next];
     return ok(acc.slots.map(joinSlot));
   }
 
@@ -350,13 +362,13 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     const gearSlot = type && equipSlotOf({ item_type: type, equipped_slot: null, item_equipment_slot: null });
     if (!gearSlot) return fail('That item cannot be equipped');
     const reserved = { head: 100, chest: 101, legs: 102, feet: 103, hands: 104, main_hand: 105, off_hand: 106, ring: 107, trinket: 108 }[gearSlot];
-    const free = () => Array.from({ length: 24 }, (_, i) => i).find((i) => !acc.slots.some((s) => s !== slot && s.slot_index === i));
+    const free = () => Array.from({ length: BAG }, (_, i) => i).find((i) => !acc.slots.some((s) => s !== slot && s.slot_index === i));
     if (body.equipped) {
       // Same rules as the server: a two-handed weapon displaces the off-hand, and an off-hand displaces a two-handed weapon.
       const displaced = acc.slots.filter((s) => s !== slot && (s.slot_index === reserved
         || (isTwoHanded(slot.item_id) && s.slot_index === 106)
         || (gearSlot === 'off_hand' && s.slot_index === 105 && isTwoHanded(s.item_id))));
-      const freeBag = Array.from({ length: 24 }, (_, i) => i).filter((i) => !acc.slots.some((s) => s !== slot && !displaced.includes(s) && s.slot_index === i));
+      const freeBag = Array.from({ length: BAG }, (_, i) => i).filter((i) => !acc.slots.some((s) => s !== slot && !displaced.includes(s) && s.slot_index === i));
       // The equipped item's own bag slot is vacated, so it can hold the first displaced piece.
       if (displaced.length > freeBag.length + 1) return fail('Not enough inventory space to swap equipment');
       const bagIndex = slot.slot_index;
@@ -370,6 +382,91 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       slot.equipped = 0;
     }
     return ok(acc.slots.map(joinSlot));
+  }
+
+  // --- The Ossuary Vault and Salvaging: the same pure rules the Death Muffin backend uses (vault-rules, salvage-rules). ---
+  const mockInfo: vaultRules.VaultInfo = (id) => {
+    const d = MOCK_ITEMS[id];
+    const gear = !!d && salvageRules.isSalvageGear(d.item_type);
+    return { maxStack: gear ? 1 : (ITEMS[id]?.stack ?? 9999), itemType: d?.item_type ?? 'material', rarity: d?.rarity ?? 'common' };
+  };
+  const bagRows = (): vaultRules.VaultRow[] => acc.slots.filter((x) => x.slot_index < BAG).map((x) => ({ slot: x.slot_index, itemId: x.item_id, qty: x.quantity, ...(x.equipped ? { fixed: true } : {}) }));
+  const vaultRows = (): vaultRules.VaultRow[] => (acc.vault ?? []).map((x) => ({ slot: x.slot_index, itemId: x.item_id, qty: x.quantity }));
+  const storeBag = (rows: vaultRules.VaultRow[]) => {
+    const equippedKept = new Map(acc.slots.filter((x) => x.slot_index < BAG && x.equipped).map((x) => [x.slot_index, x]));
+    acc.slots = [...acc.slots.filter((x) => x.slot_index >= BAG), ...rows.map((r): StoredSlot => equippedKept.get(r.slot) ?? { slot_index: r.slot, item_id: r.itemId, quantity: r.qty, equipped: 0 })];
+  };
+  const vaultView = () => ({
+    bag: acc.slots.map(joinSlot),
+    vault: (acc.vault ?? []).slice().sort((a, b) => a.slot_index - b.slot_index).map((v, i) => joinSlot({ ...v, equipped: 0 }, i)),
+  });
+  const applyVault = (r: vaultRules.VaultResult) => {
+    if (!r.ok) return fail(r.error);
+    storeBag(r.bag);
+    acc.vault = r.vault.map((x) => ({ slot_index: x.slot, item_id: x.itemId, quantity: x.qty }));
+    return ok(vaultView());
+  };
+  if ((m = p.match(/^\/api\/vault\/(\d+)$/)) && method === 'GET') {
+    ownCharacter(acc, m[1]);
+    return ok(vaultView());
+  }
+  if (p === '/api/vault/deposit' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const slot = Number(body.bagSlot);
+    if (!Number.isInteger(slot) || slot < 0 || slot >= BAG) return fail(`Choose a bag slot between 0 and ${BAG - 1}.`);
+    return applyVault(vaultRules.depositStack(bagRows(), vaultRows(), slot, body.quantity == null ? undefined : Number(body.quantity), mockInfo));
+  }
+  if (p === '/api/vault/withdraw' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const slot = Number(body.vaultSlot);
+    if (!Number.isInteger(slot) || slot < 0 || slot >= vaultRules.VAULT_SLOTS) return fail(`Choose a Vault slot between 0 and ${vaultRules.VAULT_SLOTS - 1}.`);
+    return applyVault(vaultRules.withdrawStack(bagRows(), vaultRows(), slot, body.quantity == null ? undefined : Number(body.quantity), mockInfo));
+  }
+  if (p === '/api/vault/deposit-all' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    if (body.kind !== 'materials' && body.kind !== 'all') return fail('Choose what to deposit: materials or everything.');
+    const except = Array.isArray(body.exceptSlots) ? body.exceptSlots.map(Number).filter((n: number) => Number.isInteger(n)) : [];
+    return applyVault(vaultRules.depositMany(bagRows(), vaultRows(), body.kind, except, mockInfo));
+  }
+  if (p === '/api/vault/sort' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    acc.vault = vaultRules.sortVault(vaultRows(), mockInfo).map((x) => ({ slot_index: x.slot, item_id: x.itemId, quantity: x.qty }));
+    return ok(vaultView());
+  }
+  if (p === '/api/salvage' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const slots: number[] = Array.isArray(body.slots) ? body.slots.map(Number) : [];
+    if (!slots.length) return fail('Choose some gear to salvage.');
+    if (slots.length > BAG || slots.some((n) => !Number.isInteger(n) || n < 0 || n >= BAG) || new Set(slots).size !== slots.length) return fail(`Choose gear in your bag (slots 0 to ${BAG - 1}), each once.`);
+    const bag = bagRows();
+    let prof = acc.professions.find((x) => x.profession_id === salvageRules.SALVAGE_SKILL);
+    const level = prof?.skill_level ?? 1;
+    const salvaged: { item_id: string }[] = [];
+    const yields: salvageRules.SalvageGrant[][] = [];
+    let xp = 0;
+    for (const slot of slots) {
+      const row = bag.find((r) => r.slot === slot);
+      if (!row) return fail('One of those slots is empty. Nothing was salvaged.');
+      if (row.fixed) return fail('Equipped gear cannot be salvaged. Unequip it first.');
+      const info = mockInfo(row.itemId);
+      if (!salvageRules.isSalvageGear(info.itemType)) return fail('Only weapons, armor, rings and trinkets can be salvaged.');
+      for (let n = 0; n < row.qty; n++) {
+        const out = salvageRules.salvageYield({ id: row.itemId, item_type: info.itemType, rarity: info.rarity }, level, Math.random);
+        salvaged.push({ item_id: row.itemId });
+        yields.push(out.items);
+        xp += out.xp;
+      }
+    }
+    const gained = salvageRules.mergeGrants(yields);
+    const taken = new Set(slots);
+    const after = vaultRules.addGrants(bag.filter((r) => !taken.has(r.slot)), gained.map((g) => ({ itemId: g.item_id, qty: g.quantity })), mockInfo);
+    if (!after) return fail('Make room in your bag first: the salvage will not fit. Nothing was salvaged.');
+    storeBag(after);
+    if (!prof) acc.professions.push((prof = { profession_id: salvageRules.SALVAGE_SKILL, skill_level: 1, skill_xp: 0 }));
+    const next = gather.addSkillXp({ level: prof.skill_level, xp: prof.skill_xp }, xp);
+    prof.skill_level = next.level;
+    prof.skill_xp = next.xp;
+    return ok({ bag: acc.slots.map(joinSlot), salvaged, gained, xp, level: next.level, leveledUp: next.leveled > 0, skillXp: next.xp, xpToNext: gather.xpToNext(next.level) });
   }
 
   if ((m = p.match(/^\/api\/professions\/(\d+)$/)) && method === 'GET') {
@@ -399,7 +496,7 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     const budget = gather.checkBudget(def, acc.gatherLedger ?? gather.blankLedger(), body.actions, Date.now(), body.afk === true);
     if (!budget.ok) throw new MockError(budget.error, 400);
     const bag = acc.slots
-      .filter((x) => x.slot_index < 24)
+      .filter((x) => x.slot_index < BAG)
       .map((x) => ({ slot: x.slot_index, itemId: x.equipped ? '' : x.item_id, qty: x.quantity }));
     const toolTier = gather.toolTierFor(def.skill, bag.map((s) => s.itemId));
     const batch = gather.rollBatch(def, { level: prof.skill_level, xp: prof.skill_xp }, budget.accepted, Math.random, toolTier, staff ? def.level : 0);
@@ -457,7 +554,7 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       const used = new Set(acc.slots.map((s) => s.slot_index));
       let free = 0;
       while (used.has(free)) free++;
-      if (free >= 24) return fail('Inventory full');
+      if (free >= BAG) return fail('Inventory full');
       acc.slots.push({ slot_index: free, item_id: recipe.result_item_id, quantity: recipe.result_quantity, equipped: 0 });
     }
     // Like the live server: a missing profession row is created on the first craft, and XP is 5 per required level.
@@ -566,10 +663,10 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     return next.leveled > 0;
   };
   const takeFromBag = (itemId: string, n: number) => {
-    const have = acc.slots.filter((s) => s.item_id === itemId && !s.equipped && s.slot_index < 24).reduce((t, s) => t + s.quantity, 0);
+    const have = acc.slots.filter((s) => s.item_id === itemId && !s.equipped && s.slot_index < BAG).reduce((t, s) => t + s.quantity, 0);
     if (have < n) return false;
     let left = n;
-    for (const s of acc.slots.filter((x) => x.item_id === itemId && !x.equipped && x.slot_index < 24)) { const t = Math.min(left, s.quantity); s.quantity -= t; left -= t; }
+    for (const s of acc.slots.filter((x) => x.item_id === itemId && !x.equipped && x.slot_index < BAG)) { const t = Math.min(left, s.quantity); s.quantity -= t; left -= t; }
     acc.slots = acc.slots.filter((s) => s.quantity > 0);
     return true;
   };
@@ -685,20 +782,20 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     const c = board[Number(body.slot)];
     if (!c) return fail('unknown contract');
     if (st.done.includes(c.slot)) return fail('That order is already filled.');
-    const have = acc.slots.filter((s) => s.item_id === c.itemId && !s.equipped && s.slot_index < 24).reduce((n, s) => n + s.quantity, 0);
+    const have = acc.slots.filter((s) => s.item_id === c.itemId && !s.equipped && s.slot_index < BAG).reduce((n, s) => n + s.quantity, 0);
     if (have < c.qty) return fail(`You need ${c.qty} of that in your bag.`);
     let left = c.qty;
-    for (const s of acc.slots.filter((x) => x.item_id === c.itemId && !x.equipped && x.slot_index < 24).sort((a, b) => a.slot_index - b.slot_index)) {
+    for (const s of acc.slots.filter((x) => x.item_id === c.itemId && !x.equipped && x.slot_index < BAG).sort((a, b) => a.slot_index - b.slot_index)) {
       const take = Math.min(left, s.quantity);
       s.quantity -= take;
       left -= take;
     }
     acc.slots = acc.slots.filter((s) => s.quantity > 0);
     const grant = (itemId: string, qty: number) => {
-      const stack = acc.slots.find((s) => s.item_id === itemId && s.slot_index < 24 && !s.equipped);
+      const stack = acc.slots.find((s) => s.item_id === itemId && s.slot_index < BAG && !s.equipped);
       if (stack) stack.quantity += qty;
       else {
-        const free = [...Array(24).keys()].find((i) => !acc.slots.some((s) => s.slot_index === i));
+        const free = [...Array(BAG).keys()].find((i) => !acc.slots.some((s) => s.slot_index === i));
         if (free === undefined) return false;
         acc.slots.push({ slot_index: free, item_id: itemId, quantity: qty, equipped: 0 });
       }

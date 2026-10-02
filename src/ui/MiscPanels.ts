@@ -88,6 +88,7 @@ export class SettingsPanel extends SimplePanel {
           <kbd>Click a node</kbd><span>Gather: chop a tree, mine a seam, fish a pool, dig a grave (it keeps working until the node is spent)</span>
           <kbd>I C P M</kbd><span>Reliquary · Workbench · Skills · Waystones</span>
           <kbd>K</kbd><span>Codex</span>
+          <kbd>V</kbd><span>Ossuary Vault: a shared stash (in the Chapterhouse or the Acre)</span>
           ${canUseAutoCombat() ? '<kbd>G</kbd><span>Toggle auto combat on Easy · engage nearby enemies</span>' : ''}
           <kbd>Counsel header</kbd><span>Drag to move · arrow keys while focused · remembers its position</span>
           <kbd>Settings</kbd><span>Change class · keeps your character and progress</span>

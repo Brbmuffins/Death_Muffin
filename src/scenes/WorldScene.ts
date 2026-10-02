@@ -36,7 +36,7 @@ import { selectAutoCombatAction, selectAutoCombatMovement, type AutoMoveMemory }
 import { STATUS_FX } from '../content/statuses';
 import { AbilitySystem, veilTarget, type CastResult, type CastTarget } from '../gameplay/AbilitySystem';
 import { deriveStats, xpToNext } from '../gameplay/characterStats';
-import { Inventory, rollBoss, rollFirstKillItem, rollItem, rollKill } from '../gameplay/loot';
+import { BAG_SIZE, Inventory, rollBoss, rollFirstKillItem, rollItem, rollKill } from '../gameplay/loot';
 import { Nav } from '../gameplay/nav';
 import { Player } from '../gameplay/Player';
 import { resourceRulesFor, type ResourceRules } from '../gameplay/resources';
@@ -72,13 +72,16 @@ import { Chronicle } from '../gameplay/chronicle';
 import { GatherSession, crossedMilestones, loadBests, saveBests } from '../gameplay/gatherReport';
 import { GatherReportPanel } from '../ui/GatherReportPanel';
 import { ContractsPanel } from '../ui/ContractsPanel';
+import { VaultPanel } from '../ui/VaultPanel';
+import { SalvagePanel, runSalvage } from '../ui/SalvagePanel';
+import { ItemLocks } from '../gameplay/itemLocks';
 import { GardenPanel } from '../ui/GardenPanel';
 import { LaborPanel } from '../ui/LaborPanel';
 import { CosmeticsPanel } from '../ui/CosmeticsPanel';
 import { PetView } from '../graphics/PetView';
 import { petDef, petForCharm } from '../content/cosmetics';
 import { isCape, isPet } from '../gameplay/cosmeticRules';
-import { beginAfkGather, gather, getInventory, getProfessions, getToken, OFFLINE, type GatherReply } from '../net/api';
+import { beginAfkGather, gather, getInventory, getProfessions, getToken, OFFLINE, type GatherReply, type SalvageReply } from '../net/api';
 import type { RemotePlayer, WorldSnapshot } from '../net/contracts';
 import { RealtimeClient } from '../net/realtime';
 import type { Character, Profession } from '../net/types';
@@ -227,6 +230,9 @@ export class WorldScene implements GameScene, RuntimeView {
   private gatherSession: GatherSession | null = null;
   private gatherReportPanel!: GatherReportPanel;
   private contractsPanel!: ContractsPanel;
+  private vaultPanel!: VaultPanel;
+  private salvagePanel!: SalvagePanel;
+  private locks!: ItemLocks;
   private gardenPanel!: GardenPanel;
   private laborPanel!: LaborPanel;
   private cosmeticsPanel!: CosmeticsPanel;
@@ -346,6 +352,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.progression = new Progression(character);
     this.applyBoons();
     this.inventory = new Inventory(character.id);
+    this.locks = new ItemLocks(character.id);
     this.chronicle = new Chronicle(character.id);
     this.progression.chronicle = this.chronicle;
     void this.chronicle.load();
@@ -642,6 +649,12 @@ export class WorldScene implements GameScene, RuntimeView {
     try {
       const [slots, professions] = await Promise.all([getInventory(this.character.id), getProfessions(this.character.id)]);
       this.inventory.replace(slots);
+      this.locks.prune(slots);
+      // From here on every bag change lets lapsed locks go and watches for a filling bag (counsel tip).
+      this.inventory.onChange((bag) => {
+        this.locks.prune(bag);
+        if (bag.filter((s) => s.slot_index >= 0 && s.slot_index < BAG_SIZE).length >= Math.ceil(BAG_SIZE * 0.8)) this.onboarding.show('bag_filling');
+      });
       this.professions = professions;
       for (const r of professions) this.skillLevels.set(r.profession_id as SkillId, r.skill_level);
       this.skills.adopt(professions);
@@ -722,7 +735,10 @@ export class WorldScene implements GameScene, RuntimeView {
       audio.play('coin');
       this.floating.spawn(this.player.x, 2.4, this.player.z, `+${gold.toLocaleString()}g`, 'gold');
       this.chronicle.add('sold', n);
-      this.hud.toast(`Sold ${n > 1 ? `${n}× ` : ''}${name} for ${gold.toLocaleString()} gold`, 'good');
+      this.hud.toast(`Sold ${n > 1 && !/junk item/.test(name) ? `${n}× ` : ''}${name} for ${gold.toLocaleString()} gold`, 'good');
+    }, this.locks, {
+      near: () => this.nearGrinder(),
+      salvage: async (slots) => this.onSalvaged(await runSalvage(this.inventory, this.character.id, slots)),
     });
     this.forgePanel = new ForgePanel(this.root, this.character.id, this.inventory, (inv, profs) => {
       this.inventory.replace(inv);
@@ -739,6 +755,8 @@ export class WorldScene implements GameScene, RuntimeView {
     this.laborPanel = new LaborPanel(this.root, this.character.id, this.inventory, (skill) => this.skills.level(skill), (r) => this.onLaborCollected(r));
     this.gardenPanel = new GardenPanel(this.root, this.character.id, this.inventory, (kind, r) => this.onGardenResult(kind, r));
     this.contractsPanel = new ContractsPanel(this.root, this.character.id, this.inventory, (d) => this.onContractDelivered(d));
+    this.vaultPanel = new VaultPanel(this.root, this.character.id, this.inventory, this.locks, () => this.onboarding.show('vault'));
+    this.salvagePanel = new SalvagePanel(this.root, this.character.id, this.inventory, this.locks, this.skills, (r) => this.onSalvaged(r), () => this.onboarding.show('salvage'));
     this.settingsPanel = new SettingsPanel(
       this.root,
       () => this.onLeave(),
@@ -818,6 +836,8 @@ export class WorldScene implements GameScene, RuntimeView {
     this.grimoirePanel.close();
     this.gatherReportPanel?.close();
     this.contractsPanel?.close();
+    this.vaultPanel?.close();
+    this.salvagePanel?.close();
     this.gardenPanel?.close();
     this.laborPanel?.close();
     this.cosmeticsPanel?.close();
@@ -921,6 +941,20 @@ export class WorldScene implements GameScene, RuntimeView {
     }
   }
 
+  /** Close enough to the Bone Grinder for the Reliquary's Salvage button. */
+  private nearGrinder() {
+    const g = AREAS.acre.interactables.find((i) => i.kind === 'grinder');
+    return !!g && this.area === 'acre' && Math.hypot(g.x - this.player.x, g.z - this.player.z) < INTERACT_RANGE + 2;
+  }
+
+  private onSalvaged(r: SalvageReply) {
+    this.skills.adopt([{ profession_id: 'salvaging', skill_level: r.level, skill_xp: r.skillXp }], 'salvaging');
+    audio.play('click');
+    this.floating.spawn(this.player.x, 2.3, this.player.z, `+${r.xp} Salvaging XP`, 'skill', SKILLS.salvaging.color);
+    this.hud.toast(`Ground ${r.salvaged.length} piece${r.salvaged.length === 1 ? '' : 's'}: ${r.gained.map((g) => `${g.quantity}× ${itemMeta(g.item_id).name}`).join(', ')}`, 'good');
+    this.onboarding.show('salvage');
+  }
+
   private onContractDelivered(d: ContractDelivery) {
     if (d.gold > 0) {
       this.progression.addGold(d.gold);
@@ -931,9 +965,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hud.toast(d.paidBonus ? `Order filled, and the day’s bonus is yours: +${d.paidBonus.gold.toLocaleString()}g` : 'Order filled', 'good');
   }
 
-  private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics') {
+  private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'salvage') {
     audio.play('click');
-    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel, cosmetics: this.cosmeticsPanel }[p];
+    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel, cosmetics: this.cosmeticsPanel, vault: this.vaultPanel, salvage: this.salvagePanel }[p];
     const wasOpen = panel.isOpen;
     this.closePanels();
     if (wasOpen) return;
@@ -944,6 +978,13 @@ export class WorldScene implements GameScene, RuntimeView {
     else if (p === 'settings') this.settingsPanel.open();
     else if (p === 'codex') this.codexPanel.open();
     else if (p === 'contracts') void this.contractsPanel.open();
+    else if (p === 'vault') {
+      if (!AREAS[this.area].safe) {
+        this.hud.toast('The Vault is in the Chapterhouse', 'err');
+        return;
+      }
+      void this.vaultPanel.open();
+    } else if (p === 'salvage') this.salvagePanel.open();
     else if (p === 'garden') void this.gardenPanel.open();
     else if (p === 'labor') void this.laborPanel.open();
     else if (p === 'cosmetics') void this.cosmeticsPanel.open();
@@ -1002,6 +1043,7 @@ export class WorldScene implements GameScene, RuntimeView {
       else if (k === 'u') this.togglePanel('garden');
       else if (k === 'h') this.togglePanel('labor');
       else if (k === 'n') this.togglePanel('cosmetics');
+      else if (k === 'v') this.togglePanel('vault');
       else if (k === 'm') this.togglePanel('map');
       else if (k === 'k') this.togglePanel('codex');
       else if (k === 'l') this.togglePanel('grimoire');
@@ -1100,7 +1142,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private panelOpen() {
-    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen;
+    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.vaultPanel?.isOpen || !!this.salvagePanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen;
   }
 
   private interactablesNear(): Interactable[] {
@@ -1466,6 +1508,12 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'upgrades':
         // Damage / Wave Speed are bought from the HUD anywhere; the Altar itself is where runs are burned.
         return this.togglePanel('ascension');
+      case 'vault':
+        this.gathering.stop('panel');
+        return this.togglePanel('vault');
+      case 'grinder':
+        this.gathering.stop('panel');
+        return this.togglePanel('salvage');
       case 'lectern':
         // The Covenant Lectern by the Acre spawn: the Codex (First Rites will live here too).
         this.onboarding.show('codex');
@@ -3685,6 +3733,8 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'fire': return 'Open Cooking Fire recipes';
       case 'upgrades': return 'Open Ascension';
       case 'lectern': return 'Open the Codex';
+      case 'vault': return 'Open the Ossuary Vault (V)';
+      case 'grinder': return 'Salvage gear at the Bone Grinder'; 
       case 'boss': {
         const boss = BOSSES[bossForSummon(it.id) ?? 'prelate'];
         return `Summon ${boss.name} · ${boss.shards} shards`;
@@ -4053,7 +4103,7 @@ export class WorldScene implements GameScene, RuntimeView {
       /** The Mourning Fen's eased flood scale (1 calm, 0.72 / 0.5 in the Mire Mother's phases 2 / 3). */
       fenFlood: () => this.worldView.fenFlood(),
       /** Open an Acre station as if clicked (kiln / sawpit / fire). */
-      station: (kind: 'kiln' | 'sawpit' | 'fire') => {
+      station: (kind: 'kiln' | 'sawpit' | 'fire' | 'grinder') => {
         const it = AREAS.acre.interactables.find((i) => i.kind === kind);
         if (it) this.interact(it);
       },

@@ -7,6 +7,9 @@ import {
   CODEX_PROFESSIONS_COUNSEL,
   CODEX_BREWS_COUNSEL,
   CODEX_REAGENTS_COUNSEL,
+  CODEX_SALVAGE_COUNSEL,
+  CODEX_VAULT_COUNSEL,
+  codexSalvageRows,
   codexReagentRecipes,
   codexReagentRows,
   codexBrewRows,
@@ -304,6 +307,7 @@ export class CodexPanel {
             <dt>Bone Kiln</dt><dd>Smelting, gathering tools (Mining recipes) and Bonework: bones ground into bone meal (Gravedigging).</dd>
             <dt>Sawpit</dt><dd>A plank for every log, plus staves and bows (Woodcutting recipes).</dd>
             <dt>Cooking Fire</dt><dd>A meal for every fish (heals over time), fillets, tinctures and flasks (Fishing recipes).</dd>
+            <dt>Bone Grinder</dt><dd>Grinds spare gear into ingots, planks and reagents (Salvaging). See below.</dd>
             <dt>Tools</dt><dd>A hatchet, pickaxe, rod or spade in your bag adds +5% success per metal tier to its skill (copper to moon; the best you carry counts).</dd>
           </dl>
           <p>XP/h assumes steady work at the node's own level with the node always ready; your odds improve with every level above it.</p>
@@ -329,7 +333,25 @@ export class CodexPanel {
           </table>
         </div>
       </article>`;
-    return `<p class="tip">${CODEX_PROFESSIONS_COUNSEL}</p>${sections}${stations}${brews}${reagents}`;
+    const salvage = `
+      <article class="cw-codex-entry" style="border-left:3px solid ${SKILLS.salvaging.color}">
+        <div class="txt">
+          <div class="hd"><h3>Salvaging</h3><span class="meta">${SKILLS.salvaging.rite} · Bone Grinder</span></div>
+          <p>${CODEX_SALVAGE_COUNSEL}</p>
+          <table class="cw-codex-table">
+            <thead><tr><th>Gear</th><th>Qty</th><th>Ingot (most gear)</th><th>Plank (staff, wand, grimoire)</th><th>Reagents</th><th>XP</th></tr></thead>
+            <tbody>${codexSalvageRows().map((r) => `<tr><td>${r.rarity}</td><td>${r.qty}</td><td>${r.ingots}</td><td>${r.planks}</td><td>${r.reagents}</td><td>${r.xp}</td></tr>`).join('')}</tbody>
+          </table>
+        </div>
+      </article>`;
+    const vault = `
+      <article class="cw-codex-entry">
+        <div class="txt">
+          <div class="hd"><h3>The Ossuary Vault</h3><span class="meta">V · Chapterhouse</span></div>
+          <p>${CODEX_VAULT_COUNSEL}</p>
+        </div>
+      </article>`;
+    return `<p class="tip">${CODEX_PROFESSIONS_COUNSEL}</p>${sections}${stations}${vault}${salvage}${brews}${reagents}`;
   }
 
   private lore() {

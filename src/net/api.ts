@@ -460,3 +460,49 @@ export function selectCosmetics(characterId: number, patch: { cape?: string | nu
 export function adoptPet(characterId: number, petId: string) {
   return unwrap<CosmeticsResult>(request('/api/cosmetics/adopt', { method: 'POST', body: JSON.stringify({ characterId, petId }) }, true));
 }
+
+// --- The Ossuary Vault (shared stash) and Salvaging (server/death-muffin/backend/vault.cjs, salvage.cjs) ---
+
+export interface VaultState {
+  /** The bag, as GET /api/inventory/:id. */
+  bag: InventorySlot[];
+  /** The 120 vault slots in the same row shape (slot_index 0-119). */
+  vault: InventorySlot[];
+}
+
+export function getVault(characterId: number) {
+  return unwrap<VaultState>(request(`/api/vault/${characterId}`, {}, true));
+}
+
+export function vaultDeposit(characterId: number, bagSlot: number, quantity?: number) {
+  return unwrap<VaultState>(request('/api/vault/deposit', { method: 'POST', body: JSON.stringify({ characterId, bagSlot, quantity }) }, true));
+}
+
+export function vaultWithdraw(characterId: number, vaultSlot: number, quantity?: number) {
+  return unwrap<VaultState>(request('/api/vault/withdraw', { method: 'POST', body: JSON.stringify({ characterId, vaultSlot, quantity }) }, true));
+}
+
+export function vaultDepositAll(characterId: number, kind: 'materials' | 'all', exceptSlots: number[]) {
+  return unwrap<VaultState>(request('/api/vault/deposit-all', { method: 'POST', body: JSON.stringify({ characterId, kind, exceptSlots }) }, true));
+}
+
+export function vaultSort(characterId: number) {
+  return unwrap<VaultState>(request('/api/vault/sort', { method: 'POST', body: JSON.stringify({ characterId }) }, true));
+}
+
+export interface SalvageReply {
+  bag: InventorySlot[];
+  salvaged: { item_id: string }[];
+  gained: { item_id: string; quantity: number }[];
+  /** Salvaging XP gained by this request. */
+  xp: number;
+  level: number;
+  leveledUp: boolean;
+  /** XP into the current level, and what that level needs. */
+  skillXp: number;
+  xpToNext: number;
+}
+
+export function salvageGear(characterId: number, slots: number[]) {
+  return unwrap<SalvageReply>(request('/api/salvage', { method: 'POST', body: JSON.stringify({ characterId, slots }) }, true));
+}
