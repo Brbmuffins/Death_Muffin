@@ -1541,3 +1541,17 @@ body:has(.hud-banner.show) .cw-tip:not(.dragging):not([data-kind='urgent']):not(
 /* Auto-refresh: a new release is live (WorldScene.onNewRelease). Above the HUD, never covers the hotbar. */
 .dm-update { position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); z-index: 9000; display: flex; align-items: center; gap: 12px; width: max-content; max-width: calc(100vw - 24px); padding: 8px 8px 8px 16px; background: rgba(7, 6, 10, 0.94); border: 1px solid var(--cw-border-strong); color: var(--cw-bone-100); font-size: 15px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5); }
 .dm-update button { flex: none; min-height: 32px; padding: 4px 14px; font: inherit; cursor: pointer; color: var(--cw-bone-100); background: color-mix(in srgb, var(--cw-gold, #c9a45c) 25%, #0b0910); border: 1px solid var(--cw-border-strong); }
+
+/* The one load screen (src/ui/LoadVeil.ts): world mount only. */
+.dm-loadveil {
+  position: fixed; inset: 0; z-index: 9000;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  background: radial-gradient(ellipse at 50% 42%, var(--cw-plum-850) 0%, var(--cw-obsidian-900) 55%, var(--cw-void-950) 100%);
+  color: var(--cw-text); opacity: 1; transition: opacity 0.4s ease; pointer-events: all;
+}
+.dm-loadveil.out { opacity: 0; pointer-events: none; }
+.dm-loadveil-title { font-family: var(--cw-font-display); font-size: clamp(30px, 6vw, 52px); letter-spacing: 0.12em; text-transform: uppercase; color: var(--cw-bone-100); text-shadow: var(--cw-glow-spell); }
+.dm-loadveil-track { width: min(320px, 70vw); height: 3px; background: color-mix(in srgb, var(--cw-bone-300) 14%, transparent); border-radius: 2px; overflow: hidden; }
+.dm-loadveil-bar { height: 100%; width: 100%; transform: scaleX(0); transform-origin: left; background: linear-gradient(90deg, var(--cw-veil-500), var(--cw-spell-300)); box-shadow: var(--cw-glow-spell); transition: transform 0.25s ease-out; }
+.dm-loadveil-label { font-family: var(--cw-font-body); font-size: 14px; letter-spacing: 0.08em; color: var(--cw-text-muted); }
+@media (prefers-reduced-motion: reduce) { .dm-loadveil, .dm-loadveil-bar { transition: none; } }
