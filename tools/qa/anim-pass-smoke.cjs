@@ -403,6 +403,9 @@ async function main() {
     let view;
     for (let k = 0; k < 40 && !(view && view.c.loaded); k++) { await new Promise((r) => setTimeout(r, 250)); dbg.advance(0.05, false); view = v.views.enemies.get(id); }
     dbg.advance(1.4, false);
+    // Hold the robber still so its locomotion can't change clip (run -> idle on arrival) during the check.
+    dbg.freeze(true);
+    dbg.advance(0.6, false);
     const c = view.c;
     const before = c.current?.getClip().name;
     c.flinch();
