@@ -2,6 +2,23 @@ import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { assets } from './AssetCache';
 import { CREATURE_MODELS, type CreatureSlug } from './modelPaths';
+import CLIP_TIMINGS_JSON from '../content/clipTimings.json';
+
+/**
+ * Playback for a timed strike: the clip's impact frame (`impact`, clip seconds; 35% of the clip when unmeasured)
+ * must be reached `impactIn` real seconds from now. Speed stays within 0.7–2.2×; a longer wind-up than that allows
+ * is skipped by starting part-way in. The one-shot ends `followThrough` real seconds after the impact.
+ */
+export function strikeTiming(duration: number, impact: number | undefined, impactIn: number, followThrough = 0.3) {
+  const peak = Math.min(duration, impact ?? duration * 0.35);
+  const lead = Math.max(0.08, impactIn);
+  const speed = Math.min(2.2, Math.max(0.7, peak / lead));
+  const startAt = Math.max(0, peak - lead * speed);
+  return { speed, startAt, endAt: Math.min(duration, peak + followThrough * speed), impactAfter: (peak - startAt) / speed };
+}
+
+/** Measured [duration, impact] seconds per model and clip (tools/build-clip-timings.mjs). */
+const CLIP_TIMINGS = CLIP_TIMINGS_JSON as Record<string, Record<string, number[]>>;
 import { hipAnchor, inPlaceHeroClip, stripRootTravel } from './inPlaceAnimation';
 import { applyWingFlap, type WingOpts } from './wingFlap';
 import { applyGearTint, GEAR_REGIONS, makeGearTintState, type GearRegion } from './gearTint';
@@ -147,6 +164,7 @@ export class Creature {
       this.mixer.addEventListener('finished', (e) => {
         if (e.action === this.oneShot) {
           this.oneShot = null;
+          this.oneShotEnd = null;
           if (!e.action.getClip().name.startsWith('death')) this.startLoop(true);
         }
       });
@@ -213,6 +231,29 @@ export class Creature {
     if (!this.oneShot) this.startLoop(true);
   }
 
+  /** Clip time at which the current one-shot hands back to the loop (a strike's follow-through end). */
+  private oneShotEnd: number | null = null;
+
+  /**
+   * A timed strike: plays an attack/cast one-shot so its measured impact frame (src/content/clipTimings.json,
+   * tools/build-clip-timings.mjs) lands `impactIn` seconds from now, the moment the sim applies the hit. Long
+   * wind-ups are skipped rather than played at a frantic speed, and the clip hands back to walk/idle a short
+   * follow-through after the impact instead of running its full length (a 6.6 s clip used to freeze a walking
+   * enemy in its attack pose). Rigs without a measured clip assume the impact at 35% of the clip.
+   */
+  playStrike(anim: CreatureAnim, impactIn: number, followThrough = 0.3): boolean {
+    if (!this.playOnce(anim)) return false;
+    const a = this.oneShot;
+    if (!a || a.getClip().name.startsWith('death')) return true;
+    const clip = a.getClip();
+    const timing = CLIP_TIMINGS[this.slug]?.[clip.name];
+    const t = strikeTiming(clip.duration, timing?.[1], impactIn, followThrough);
+    a.timeScale = t.speed;
+    a.time = t.startAt;
+    this.oneShotEnd = t.endAt;
+    return true;
+  }
+
   /** One-shot overlay (attack/cast/hurt/death/dig); returns to the loop after. */
   playOnce(anim: CreatureAnim, speed = 1, durationSeconds?: number, startAt = 0): boolean {
     const a = this.resolve(anim);
@@ -236,6 +277,7 @@ export class Creature {
     if (this.oneShot && this.oneShot !== a) this.oneShot.fadeOut(0.08);
     this.oneShot = a;
     this.current = a;
+    this.oneShotEnd = null;
     return true;
   }
 
@@ -243,6 +285,7 @@ export class Creature {
   releaseGesture() {
     if (!this.opts.inPlace || !this.oneShot || /^(death|hurt)\d?$/.test(this.oneShot.getClip().name)) return;
     this.oneShot = null;
+    this.oneShotEnd = null;
     this.startLoop(true);
   }
 
@@ -351,6 +394,11 @@ export class Creature {
 
   update(dt: number) {
     this.mixer?.update(dt);
+    if (this.oneShot && this.oneShotEnd !== null && this.oneShot.time >= this.oneShotEnd) {
+      this.oneShot = null;
+      this.oneShotEnd = null;
+      this.startLoop(true);
+    }
     if (!this.model) return;
     const idle = this.actions.get('idle');
     const settled = !this.oneShot && (!idle || (this.current === idle && idle.getEffectiveWeight() > 0.99));

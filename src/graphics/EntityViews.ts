@@ -721,7 +721,9 @@ export class EntityViews {
         if (key === 'dive') v.c.playOnce('dive', 1, (def.windupMs / 1000) * 1.2);
         else if (key === 'windup' || key === 'channel') {
           const cast = CASTERS.has(e.def);
-          v.c.playOnce(cast ? 'cast' : 'attack', cast ? 1.3 : 1.6);
+          // The sim lands the blow when the wind-up ends: time the swing's impact frame to it.
+          if (key === 'windup') v.c.playStrike(cast ? 'cast' : 'attack', (def.windupMs / 1000) * (e.elite ? 0.85 : 1));
+          else v.c.playOnce(cast ? 'cast' : 'attack', cast ? 1.3 : 1.6);
         } else if (key === 'walk') v.c.setLoop('walk', Math.max(0.6, e.speed / (WALK_SPEED[v.c.slug] ?? 1.5)));
         else v.c.setLoop('idle');
         v.lastState = key;
@@ -828,7 +830,8 @@ export class EntityViews {
       v.c.root.rotation.y = v.facing;
       v.c.flash = t.flash;
       const key = t.state === 'attack' && t.stateT < 0.1 ? 'attack' : t.moving ? 'move' : 'idle';
-      if (key === 'attack' && v.lastState !== 'attack') v.c.playOnce('attack', 1.7);
+      // A thrall's hit applies the instant its attack starts: open the swing just before its impact frame.
+      if (key === 'attack' && v.lastState !== 'attack') v.c.playStrike('attack', 0.12);
       else if (key === 'move' && v.lastState !== 'move') v.c.setLoop(t.speed > 6.5 ? 'run' : 'walk', 1.3);
       else if (key === 'idle' && v.lastState !== 'idle') v.c.setLoop('idle');
       v.lastState = key;
