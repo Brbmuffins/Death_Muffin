@@ -4757,15 +4757,15 @@ export class WorldScene implements GameScene, RuntimeView {
     if (focusEnemy) {
       const d = ENEMIES[focusEnemy.def];
       const statuses: { icon: string; label: string; n: number }[] = [];
-      if (focusEnemy.fracture) statuses.push({ icon: 'art/status/fracture.png', label: 'Fracture', n: focusEnemy.fracture });
-      if (focusEnemy.withered) statuses.push({ icon: 'art/status/withered.png', label: 'Withered', n: focusEnemy.withered });
-      if (focusEnemy.slowT > 0) statuses.push({ icon: 'art/status/void-rot.png', label: 'Miasma', n: 1 });
-      if ((focusEnemy.bleedT ?? 0) > 0) statuses.push({ icon: 'art/status/hemorrhage.png', label: 'Hemorrhage', n: 1 });
-      if ((focusEnemy.chillT ?? 0) > 0) statuses.push({ icon: 'art/status/chilled.png', label: 'Chilled', n: 1 });
-      if ((focusEnemy.silenceT ?? 0) > 0) statuses.push({ icon: 'art/status/silenced.png', label: 'Silenced', n: 1 });
-      if ((focusEnemy.incenseT ?? 0) > 0) statuses.push({ icon: 'art/status/incensed.png', label: 'Incensed', n: 1 });
-      if ((focusEnemy.hexT ?? 0) > 0) statuses.push({ icon: 'art/status/cursed.png', label: 'Bone Hex', n: 1 });
-      if ((focusEnemy.sanctT ?? 0) > 0) statuses.push({ icon: 'art/status/sanctified.png', label: 'Sanctified', n: 1 });
+      if (focusEnemy.fracture) statuses.push({ icon: 'art/status/fracture.webp', label: 'Fracture', n: focusEnemy.fracture });
+      if (focusEnemy.withered) statuses.push({ icon: 'art/status/withered.webp', label: 'Withered', n: focusEnemy.withered });
+      if (focusEnemy.slowT > 0) statuses.push({ icon: 'art/status/void-rot.webp', label: 'Miasma', n: 1 });
+      if ((focusEnemy.bleedT ?? 0) > 0) statuses.push({ icon: 'art/status/hemorrhage.webp', label: 'Hemorrhage', n: 1 });
+      if ((focusEnemy.chillT ?? 0) > 0) statuses.push({ icon: 'art/status/chilled.webp', label: 'Chilled', n: 1 });
+      if ((focusEnemy.silenceT ?? 0) > 0) statuses.push({ icon: 'art/status/silenced.webp', label: 'Silenced', n: 1 });
+      if ((focusEnemy.incenseT ?? 0) > 0) statuses.push({ icon: 'art/status/incensed.webp', label: 'Incensed', n: 1 });
+      if ((focusEnemy.hexT ?? 0) > 0) statuses.push({ icon: 'art/status/cursed.webp', label: 'Bone Hex', n: 1 });
+      if ((focusEnemy.sanctT ?? 0) > 0) statuses.push({ icon: 'art/status/sanctified.webp', label: 'Sanctified', n: 1 });
       const affix = focusEnemy.affix ? ELITE_AFFIXES[focusEnemy.affix] : null;
       target = {
         name: d.name,

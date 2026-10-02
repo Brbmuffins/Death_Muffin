@@ -41,7 +41,7 @@ const DOLL: (EquipSlot | null)[] = ['ring', 'head', 'trinket', 'main_hand', 'che
 
 export function itemIcon(slot: Pick<InventorySlot, 'item_id'>) {
   const meta = itemMeta(slot.item_id);
-  return meta.icon ?? `art/items/${slot.item_id}.png`;
+  return meta.icon ?? `art/items/${slot.item_id}.webp`;
 }
 
 /**

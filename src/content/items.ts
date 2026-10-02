@@ -43,8 +43,8 @@ const m = (name: string, rarity: Rarity, sell: number, lore?: string, icon?: str
 const g = (name: string, rarity: Rarity, sell: number, lore?: string): ItemMeta => ({ ...m(name, rarity, sell, lore), stack: 250 });
 
 export const ITEMS: Record<string, ItemMeta> = {
-  material_copper_shard: m('Copper Shard', 'common', 1, 'Pried from coffin fittings.', 'art/items/material_copper_shard.png'),
-  material_copper_bar: m('Copper Bar', 'common', 4, 'Smelted from grave-nails.', 'art/items/material_copper_bar.png'),
+  material_copper_shard: m('Copper Shard', 'common', 1, 'Pried from coffin fittings.', 'art/items/material_copper_shard.webp'),
+  material_copper_bar: m('Copper Bar', 'common', 4, 'Smelted from grave-nails.', 'art/items/material_copper_bar.webp'),
   ore_copper: g('Copper Ore', 'common', 1, 'Green-veined stone from the grave soil.'),
   ingot_copper: m('Copper Ingot', 'common', 4),
   ore_tin: g('Tin Ore', 'common', 1, 'Dull ore, cold as a burial ring.'),
@@ -96,7 +96,7 @@ export const ITEMS: Record<string, ItemMeta> = {
   flask_void_resist: m('Void Resist Flask', 'uncommon', 12, 'Wards off 25% of all damage for 90 seconds.'),
   ring_copper: {
     name: 'Copper Ring', type: 'ring', rarity: 'uncommon', sell: 12,
-    lore: 'A mourning band. The name inside is scratched out.', icon: 'art/items/ring_copper.png',
+    lore: 'A mourning band. The name inside is scratched out.', icon: 'art/items/ring_copper.webp',
     offlineStats: { stat_int: 2, stat_vit: 1 },
   },
   helm_copper: { name: 'Copper Helm', type: 'armor_head', rarity: 'common', sell: 10, lore: 'Dented by a grave-robber\'s spade.', offlineStats: { stat_vit: 3 } },
@@ -142,7 +142,7 @@ for (const w of NECRO_WEAPONS) ITEMS[w.id] = {
   icon: `art/items/${w.id}.svg`, offlineStats: w.stats,
 };
 
-// Relic runes (content/runes.ts; server rows from migration 024-relic-runes.sql). They stack to 99; the art is art/items/<id>.png.
+// Relic runes (content/runes.ts; server rows from migration 024-relic-runes.sql). They stack to 99; the art is art/items/<id>.webp.
 for (const r of Object.values(RUNES)) ITEMS[r.id] = { name: r.name, type: 'rune', rarity: r.rarity, sell: r.sell, lore: r.lore, stack: 99 };
 
 export const RARITY_COLOR: Record<Rarity, string> = {

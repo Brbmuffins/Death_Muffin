@@ -6,7 +6,7 @@
  * kept in the Vault and ground in the Bone Grinder. A socketed rune is an inventory row in a reserved slot (gameplay/runeRules.ts).
  *
  * Every number the sim, the cast code, the tooltips and the Codex use lives in RUNE_TUNING, so the words cannot drift from the game.
- * Item ids equal the icon file names (public/art/items/<id>.png).
+ * Item ids equal the icon file names (public/art/items/<id>.webp).
  */
 import type { AreaId } from './areas';
 

@@ -48,7 +48,7 @@ const root = join(__dirname, '../../..');
 describe('Relic rune data', () => {
   it('eleven runes, ids equal their icon files, two or three per rite', () => {
     expect(RUNE_IDS).toHaveLength(11);
-    for (const id of RUNE_IDS) expect(existsSync(join(root, 'public/art/items', `${id}.png`)), id).toBe(true);
+    for (const id of RUNE_IDS) expect(existsSync(join(root, 'public/art/items', `${id}.webp`)), id).toBe(true);
     for (const rite of RUNE_RITES) expect(runesFor(rite).length, rite).toBeGreaterThanOrEqual(2);
     expect(runesFor('exhume').map((r) => r.id)).toEqual(['rune_mass_grave', 'rune_bone_colossus']);
   });

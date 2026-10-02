@@ -1096,8 +1096,8 @@ var m = (name, rarity, sell, lore, icon) => ({
 });
 var g = (name, rarity, sell, lore) => ({ ...m(name, rarity, sell, lore), stack: 250 });
 var ITEMS = {
-  material_copper_shard: m("Copper Shard", "common", 1, "Pried from coffin fittings.", "art/items/material_copper_shard.png"),
-  material_copper_bar: m("Copper Bar", "common", 4, "Smelted from grave-nails.", "art/items/material_copper_bar.png"),
+  material_copper_shard: m("Copper Shard", "common", 1, "Pried from coffin fittings.", "art/items/material_copper_shard.webp"),
+  material_copper_bar: m("Copper Bar", "common", 4, "Smelted from grave-nails.", "art/items/material_copper_bar.webp"),
   ore_copper: g("Copper Ore", "common", 1, "Green-veined stone from the grave soil."),
   ingot_copper: m("Copper Ingot", "common", 4),
   ore_tin: g("Tin Ore", "common", 1, "Dull ore, cold as a burial ring."),
@@ -1153,7 +1153,7 @@ var ITEMS = {
     rarity: "uncommon",
     sell: 12,
     lore: "A mourning band. The name inside is scratched out.",
-    icon: "art/items/ring_copper.png",
+    icon: "art/items/ring_copper.webp",
     offlineStats: { stat_int: 2, stat_vit: 1 }
   },
   helm_copper: { name: "Copper Helm", type: "armor_head", rarity: "common", sell: 10, lore: "Dented by a grave-robber's spade.", offlineStats: { stat_vit: 3 } },

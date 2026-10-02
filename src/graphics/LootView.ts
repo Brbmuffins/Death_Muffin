@@ -108,7 +108,7 @@ export class LootView {
     // A rolled piece glows in the colour of its affix count (green, blue, purple), so a three-affix drop reads from across the room.
     const rarity = (drop.instance ? effectiveRarity(meta.rarity, drop.instance.affixes.length) : meta.rarity) as typeof meta.rarity;
     const color = new THREE.Color(RARITY_COLOR[rarity]);
-    const url = meta.icon ?? `art/items/${drop.item_id}.png`;
+    const url = meta.icon ?? `art/items/${drop.item_id}.webp`;
     let tex = this.iconTex.get(url);
     if (!tex) {
       tex = this.loader.load(url);
