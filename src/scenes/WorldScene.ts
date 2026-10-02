@@ -102,7 +102,11 @@ import { petDef, petForCharm } from '../content/cosmetics';
 import { isCape, isPet } from '../gameplay/cosmeticRules';
 import { beginAfkGather, gather, getInventory, getProfessions, getToken, OFFLINE, onServerNotice, type GatherReply, type SalvageReply } from '../net/api';
 import type { RemotePlayer, WorldSnapshot } from '../net/contracts';
-import { RealtimeClient } from '../net/realtime';
+import { RealtimeClient, type RealtimeHandlers } from '../net/realtime';
+import { isRetryableError, Reconnector, type ReconnectMode } from '../net/reconnect';
+import { clearRejoin, loadRejoin, saveRejoin } from '../net/rejoinStore';
+import { releaseWatch } from '../net/releaseWatch';
+import { UpdateNotice } from '../ui/UpdateNotice';
 import type { Character, Profession } from '../net/types';
 import { FloatingText } from '../ui/FloatingText';
 import { ForgePanel } from '../ui/ForgePanel';
@@ -681,7 +685,17 @@ export class WorldScene implements GameScene, RuntimeView {
       void this.progression.flush(true);
       void this.inventory.flush();
       void this.gathering.flush(true);
+      if (this.worldCode) saveRejoin(this.worldCode); // refreshes the 10-minute window for a reload rejoin
     });
+    // Co-op: the network came back or the tab woke up — don't wait out the backoff.
+    this.scope.on(window, 'online', () => this.reconnector?.kick());
+    this.scope.on(document, 'visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        this.reconnector?.kick();
+        void this.checkRelease();
+      }
+    });
+    if (releaseWatch()) this.scope.interval(() => void this.checkRelease(), 3 * 60 * 1000);
 
     getRuntime().setView(this);
     const inventoryReady = this.loadData();
@@ -2082,88 +2096,215 @@ export class WorldScene implements GameScene, RuntimeView {
     else this.realtime.sendIntent(intent);
   }
 
+  /** Handlers for one co-op socket (a rejoin builds a fresh set for its fresh socket). */
+  private rtHandlers(): RealtimeHandlers {
+    return {
+      onPlayerJoin: (p) => {
+        this.addRemote(p);
+        this.hud.chatLine(`${p.name} entered the world`);
+      },
+      onPlayerLeave: (id) => {
+        const r = this.remotes.get(id);
+        if (!r) return;
+        this.hud.chatLine(`${r.info.name} left`);
+        r.avatar.dispose();
+        r.pet?.dispose();
+        this.remotes.delete(id);
+        this.sim?.removePlayer(id);
+      },
+      onPlayerMove: (u) => {
+        const r = this.remotes.get(u.id);
+        if (!r) return;
+        r.tx = u.x;
+        r.tz = u.z;
+        r.facing = u.facing;
+        r.moving = u.moving;
+        r.hpFrac = u.hpFrac;
+        if (u.level) r.info.level = u.level;
+      },
+      onPlayerGear: (u) => {
+        const r = this.remotes.get(u.id);
+        if (!r) return;
+        r.avatar.setEquipment(gearFromIds(u.gear));
+        this.dressRemote(r, u.gear);
+      },
+      onChat: (m) => this.hud.chatLine(`${m.name}: ${m.text}`),
+      onDisconnect: () => this.onCoopDisconnect(),
+      onIntent: (env) => {
+        if (!this.sim || !this.isAuthority()) return;
+        // Never trust the claimed caster; the server stamps `from`.
+        this.sim.apply({ ...env.intent, by: env.from } as Intent);
+      },
+      onSnapshot: (s) => this.mirror?.applySnapshot(s),
+      onEvents: (batch) => {
+        if (!this.mirror) return;
+        this.mirror.applyEvents(batch);
+        for (const ev of batch) this.handleEvent(ev);
+      },
+      onHostChange: (hostId, snapshot) => {
+        if (hostId === this.realtime.selfId) this.becomeAuthority(snapshot);
+      },
+    };
+  }
+
+  /** The world code we are in (or were last in): what a rejoin or a reload asks the server for. */
+  private worldCode: string | null = null;
+  private reconnector: Reconnector | null = null;
+  private reconnectToasted = false;
+
   private async connectRealtime() {
+    // A reload (e.g. after a deploy) keeps the world code for 10 minutes so partners regroup instead of matchmaking apart.
+    const saved = loadRejoin();
     try {
-      const res = await this.realtime.connect(
-        {
-          characterId: this.character.id,
-          classIndex: this.character.class_index,
-          level: this.character.level,
-          x: this.player.x,
-          z: this.player.z,
-          facing: this.player.facing,
-          gear: this.currentGearIds(),
-        },
-        {
-          onPlayerJoin: (p) => {
-            this.addRemote(p);
-            this.hud.chatLine(`${p.name} entered the world`);
-          },
-          onPlayerLeave: (id) => {
-            const r = this.remotes.get(id);
-            if (!r) return;
-            this.hud.chatLine(`${r.info.name} left`);
-            r.avatar.dispose();
-            r.pet?.dispose();
-            this.remotes.delete(id);
-            this.sim?.removePlayer(id);
-          },
-          onPlayerMove: (u) => {
-            const r = this.remotes.get(u.id);
-            if (!r) return;
-            r.tx = u.x;
-            r.tz = u.z;
-            r.facing = u.facing;
-            r.moving = u.moving;
-            r.hpFrac = u.hpFrac;
-            if (u.level) r.info.level = u.level;
-          },
-          onPlayerGear: (u) => {
-            const r = this.remotes.get(u.id);
-            if (!r) return;
-            r.avatar.setEquipment(gearFromIds(u.gear));
-            this.dressRemote(r, u.gear);
-          },
-          onChat: (m) => this.hud.chatLine(`${m.name}: ${m.text}`),
-          onDisconnect: () => {
-            for (const r of this.remotes.values()) { r.avatar.dispose(); r.pet?.dispose(); }
-            this.remotes.clear();
-            this.becomeAuthority(null);
-            this.hud.toast('Lost the co-op link — the world continues solo', 'err');
-          },
-          onIntent: (env) => {
-            if (!this.sim || !this.isAuthority()) return;
-            // Never trust the claimed caster; the server stamps `from`.
-            this.sim.apply({ ...env.intent, by: env.from } as Intent);
-          },
-          onSnapshot: (s) => this.mirror?.applySnapshot(s),
-          onEvents: (batch) => {
-            if (!this.mirror) return;
-            this.mirror.applyEvents(batch);
-            for (const ev of batch) this.handleEvent(ev);
-          },
-          onHostChange: (hostId, snapshot) => {
-            if (hostId === this.realtime.selfId) this.becomeAuthority(snapshot);
-          },
-        },
-      );
-      const oldSelf = this.selfId;
-      this.selfId = this.realtime.selfId ?? 'self';
-      this.retagSelf(oldSelf);
-      for (const p of res.players) if (p.id !== this.selfId) this.addRemote(p);
-      if (!this.realtime.isHost) {
-        // Someone else owns the world: drop our local sim, mirror theirs.
-        this.mirror = new WorldMirror();
-        if (res.snapshot) this.mirror.applySnapshot(res.snapshot);
-        this.sim = null;
-      }
-      this.hud.chatLine(`Joined world ${res.instance}${this.realtime.isHost ? ' (you keep the world)' : ''}`);
+      await this.joinWorld(saved ?? undefined, 'first');
     } catch (err) {
-      // Solo — realtime is additive, never blocking.
-      if (!(err instanceof Error && /not configured/.test(err.message))) {
-        this.hud.chatLine(err instanceof Error ? err.message : 'Co-op unavailable — playing solo');
+      const msg = err instanceof Error ? err.message : 'Co-op unavailable — playing solo';
+      if (saved && !isRetryableError(err, 'first') && !/not configured/i.test(msg)) {
+        // The saved world is gone or full: forget it and matchmake like a fresh start.
+        clearRejoin();
+        try {
+          await this.joinWorld(undefined, 'first');
+          return;
+        } catch (err2) {
+          this.coopFirstFailed(err2);
+          return;
+        }
       }
+      this.coopFirstFailed(err);
     }
+  }
+
+  /** First connect failed: say so once. A service that is merely down keeps being retried quietly. */
+  private coopFirstFailed(err: unknown) {
+    // Solo — realtime is additive, never blocking.
+    if (!(err instanceof Error && /not configured/.test(err.message))) {
+      this.hud.chatLine(err instanceof Error ? err.message : 'Co-op unavailable — playing solo');
+    }
+    if (!isRetryableError(err, 'first') || this.scope.isDisposed) return;
+    this.startReconnector('first');
+  }
+
+  private startReconnector(mode: ReconnectMode) {
+    this.reconnector?.stop();
+    const r = new Reconnector({
+      mode,
+      attempt: () => this.joinWorld(mode === 'rejoin' ? this.worldCode ?? undefined : loadRejoin() ?? undefined, mode).then(() => undefined),
+      onGiveUp: (err) => {
+        this.hud.chatLine(err.message);
+        if (mode === 'rejoin') this.hud.toast(`${err.message} — the world continues solo`, 'err');
+      },
+    });
+    this.reconnector = r;
+    r.start();
+  }
+
+  /** One join attempt: connect, then run the same setup the first join always did. Throws on failure. */
+  private async joinWorld(code: string | undefined, mode: ReconnectMode) {
+    const res = await this.realtime.connect(
+      {
+        instance: code,
+        characterId: this.character.id,
+        classIndex: this.character.class_index,
+        level: this.character.level,
+        x: this.player.x,
+        z: this.player.z,
+        facing: this.player.facing,
+        gear: this.currentGearIds(),
+      },
+      this.rtHandlers(),
+    );
+    if (this.scope.isDisposed) {
+      this.realtime.disconnect();
+      return;
+    }
+    const oldSelf = this.selfId;
+    this.selfId = this.realtime.selfId ?? 'self';
+    this.retagSelf(oldSelf);
+    // A rejoin starts from a clean slate: any avatar left from before the drop is replaced by the server's roster.
+    for (const r of this.remotes.values()) { r.avatar.dispose(); r.pet?.dispose(); }
+    this.remotes.clear();
+    for (const p of res.players) if (p.id !== this.selfId) this.addRemote(p);
+    if (!this.realtime.isHost) {
+      // Someone else owns the world: drop our local sim, mirror theirs.
+      this.mirror = new WorldMirror();
+      if (res.snapshot) this.mirror.applySnapshot(res.snapshot);
+      this.sim = null;
+    }
+    this.worldCode = res.instance;
+    saveRejoin(res.instance);
+    this.reconnector = null;
+    if (mode === 'rejoin') {
+      this.reconnectToasted = false;
+      const msg = `Back in world ${res.instance} (${this.remotes.size + 1} player${this.remotes.size ? 's' : ''})`;
+      this.hud.chatLine(msg + (this.realtime.isHost ? ' — you keep the world' : ''));
+      this.hud.toast(msg, 'good');
+      this.broadcastGear(equippedBySlot(this.inventory.all), true);
+      void this.checkRelease(); // a deploy is the usual reason the link dropped
+    } else {
+      this.hud.chatLine(`Joined world ${res.instance}${this.realtime.isHost ? ' (you keep the world)' : ''}`);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Auto-refresh on a new release
+  // -------------------------------------------------------------------------
+
+  private updatePending = false;
+  private reloading = false;
+
+  /** Compare the live release.txt with the one this page loaded from; a change starts the reload countdown. */
+  private async checkRelease() {
+    const w = releaseWatch();
+    if (!w || this.updatePending || this.scope.isDisposed) return;
+    if (!(await w.changed()) || this.updatePending || this.scope.isDisposed) return;
+    this.updatePending = true;
+    const notice = new UpdateNotice(() => void this.reloadNow());
+    this.scope.add(() => notice.dispose());
+    this.hud.toast('Death Muffin was updated — reloading in 10 s', 'good');
+    let left = 10;
+    let deferredSince = 0;
+    const tick = () => {
+      if (this.reloading) return;
+      // Never yank the player out of a boss fight: wait for it to end, but not longer than two minutes.
+      if (this.bossState().active) {
+        deferredSince ||= Date.now();
+        if (Date.now() - deferredSince < 120000) {
+          notice.text('Death Muffin was updated — reloading when this boss fight ends');
+          return;
+        }
+      }
+      notice.text(`Death Muffin was updated — reloading in ${left} s`);
+      if (left-- <= 0) void this.reloadNow();
+    };
+    tick();
+    this.scope.interval(tick, 1000);
+  }
+
+  /** Save progress through the same paths pagehide uses (bounded wait), keep the co-op world code, then reload. */
+  private async reloadNow() {
+    if (this.reloading) return;
+    this.reloading = true;
+    try {
+      await Promise.race([
+        Promise.all([this.progression.flush(), this.inventory.flush(), this.gathering.flush()]),
+        new Promise((r) => window.setTimeout(r, 4000)),
+      ]);
+    } catch { /* pagehide flushes once more with keepalive */ }
+    if (this.worldCode) saveRejoin(this.worldCode);
+    location.reload();
+  }
+
+  /** The link dropped unexpectedly: carry on solo and keep trying to get back to the same world. */
+  private onCoopDisconnect() {
+    for (const r of this.remotes.values()) { r.avatar.dispose(); r.pet?.dispose(); }
+    this.remotes.clear();
+    this.becomeAuthority(null);
+    if (this.scope.isDisposed) return;
+    if (!this.reconnectToasted) {
+      this.reconnectToasted = true;
+      this.hud.toast('Reconnecting to the world… (playing solo meanwhile)', 'err');
+    }
+    this.startReconnector('rejoin');
   }
 
   /** Our socket id replaces the provisional 'self' id on sim-owned entities. */
@@ -5097,6 +5238,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.ready = false;
     audio.stopArea();
     getRuntime().setView(null);
+    this.reconnector?.stop();
+    this.reconnector = null;
+    clearRejoin(); // leaving on purpose (logout, character switch): the next visit matchmakes fresh
     this.realtime.disconnect();
     this.progression.dispose();
     this.inventory.dispose();

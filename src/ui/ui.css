@@ -1537,3 +1537,7 @@ body:has(.hud-banner.show) .cw-tip:not(.dragging):not([data-kind='urgent']):not(
   .hud-menu .hud-mi { height: 30px; }
   .hud-menu .hud-mi svg { width: 15px; height: 15px; }
 }
+
+/* Auto-refresh: a new release is live (WorldScene.onNewRelease). Above the HUD, never covers the hotbar. */
+.dm-update { position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); z-index: 9000; display: flex; align-items: center; gap: 12px; width: max-content; max-width: calc(100vw - 24px); padding: 8px 8px 8px 16px; background: rgba(7, 6, 10, 0.94); border: 1px solid var(--cw-border-strong); color: var(--cw-bone-100); font-size: 15px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5); }
+.dm-update button { flex: none; min-height: 32px; padding: 4px 14px; font: inherit; cursor: pointer; color: var(--cw-bone-100); background: color-mix(in srgb, var(--cw-gold, #c9a45c) 25%, #0b0910); border: 1px solid var(--cw-border-strong); }

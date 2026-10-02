@@ -505,7 +505,7 @@ Ashes buy permanent **Covenant Boons** at the Altar, including more health, chea
 
 ## Playing together and getting help
 
-When co-op is available, joining places you in a world with room for up to **10 players**. Players in the same world share chat, combat, gathering node depletion, and boss activity; each character receives their own finds and progression. Press **Enter** to chat. If the realtime service is unavailable, the game continues as a solo world. The one exception is the [Catacomb Depths](#the-catacomb-depths), which are solo for now: the stair tells a party so.
+When co-op is available, joining places you in a world with room for up to **10 players**. Players in the same world share chat, combat, gathering node depletion, and boss activity; each character receives their own finds and progression. Press **Enter** to chat. If the realtime service is unavailable, the game continues as a solo world. If the link drops (a deploy, a bad connection) you keep playing solo while the game retries on its own and puts you back in the same world; when a new release goes live the game saves, shows a short countdown with a **Reload now** button (waiting for a boss fight to end) and reloads straight back into your world. The one exception is the [Catacomb Depths](#the-catacomb-depths), which are solo for now: the stair tells a party so.
 
 **Covenant counsel** cards appear when you first encounter important systems, one at a time and at a calm moment (see *Your first hour*). You can move them, turn them off in Settings, or choose **Show tips again** there. Hover or focus an ability icon for its cost, target, effects, and combat tip. The **Codex (K)** records rites, enemies, bosses, and professions you have encountered.
 

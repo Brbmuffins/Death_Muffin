@@ -55,6 +55,12 @@ export class RealtimeClient {
     const token = getToken();
     if (!token) return Promise.reject(new Error('Not authenticated'));
 
+    // A retry replaces the dead socket: drop its listeners first so nothing fires twice.
+    if (this.socket) {
+      this.socket.removeAllListeners();
+      this.socket.disconnect();
+      this.socket = null;
+    }
     return new Promise((resolve, reject) => {
       const socket = io(WS_BASE, {
         auth: { token },
@@ -64,7 +70,7 @@ export class RealtimeClient {
       });
       this.socket = socket;
       socket.on('connect_error', (err) => {
-        reject(new Error(err.message === 'xhr poll error' ? 'Co-op service unreachable — playing solo' : err.message));
+        reject(new Error(/^(xhr poll error|websocket error|timeout)$/.test(err.message) ? 'Co-op service unreachable — playing solo' : err.message));
         socket.disconnect();
       });
       socket.on('connect', () => {
