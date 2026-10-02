@@ -7,7 +7,7 @@ import { MEALS } from '../content/processing';
 import { EQUIP_SLOTS, equipSlotOf, equippedBySlot, type EquipSlot } from '../content/gear';
 import { ARMOR_BY_ID } from '../content/armorSets';
 import { necroWeaponTooltip } from '../content/necroWeapons';
-import { compareChipsHtml, compareTableHtml, itemStatsHtml, type StatContextSource } from './gearText';
+import { badgeHtml, compareChipsHtml, compareTableHtml, itemStatsHtml, type StatContextSource } from './gearText';
 
 const TYPE_GLYPH: Record<string, string> = {
   weapon: '⚔',
@@ -112,6 +112,7 @@ export class InventoryPanel {
     this.el.querySelector('[data-stats]')!.innerHTML = this.statsLine();
     const grid = this.el.querySelector<HTMLDivElement>('.cw-bag-grid')!;
     grid.innerHTML = '';
+    const sctx = this.statContext?.() ?? null;
     for (let i = 0; i < BAG_SIZE; i++) {
       const slot = this.slotAt(i);
       const cell = document.createElement('button');
@@ -132,7 +133,7 @@ export class InventoryPanel {
         cell.appendChild(img);
         cell.insertAdjacentHTML(
           'beforeend',
-          `${slot.quantity > 1 ? `<span class="qty">${slot.quantity}</span>` : ''}${slot.equipped ? '<span class="eq">E</span>' : ''}<span class="rm">${RARITY_MARK[slot.rarity] ?? ''}</span>`,
+          `${slot.quantity > 1 ? `<span class="qty">${slot.quantity}</span>` : ''}${slot.equipped ? '<span class="eq">E</span>' : ''}<span class="rm">${RARITY_MARK[slot.rarity] ?? ''}</span>${badgeHtml(sctx, slot)}`,
         );
         cell.addEventListener('pointerenter', (e) => this.showTooltip(slot, e));
         cell.addEventListener('pointermove', (e) => this.moveTooltip(e));

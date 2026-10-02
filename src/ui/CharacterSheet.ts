@@ -1,5 +1,5 @@
 import { SimplePanel } from './MiscPanels';
-import { STAT_PRIMER, statSheet, type SheetLine, type SheetSection, type StatContext } from '../gameplay/gearStats';
+import { STAT_PRIMER, lookingFor, statSheet, type SheetLine, type SheetSection, type StatContext } from '../gameplay/gearStats';
 import './gear-stats.css';
 
 /**
@@ -37,6 +37,7 @@ export class CharacterSheetPanel extends SimplePanel {
     }
     const section = (s: SheetSection) => `<h3>${s.title}</h3>${s.lines.map((l) => this.line(l)).join('')}`;
     body.innerHTML = `
+      ${this.looking(ctx)}
       <p class="gs-primer">${STAT_PRIMER}</p>
       ${statSheet(ctx).map(section).join('')}
       <div class="gs-hint">Click a line to see where its number comes from. Brews and other timed effects are not included.</div>`;
@@ -50,6 +51,20 @@ export class CharacterSheetPanel extends SimplePanel {
         b.setAttribute('aria-expanded', String(this.openLines.has(id)));
       }),
     );
+  }
+
+  /** The priority in plain words, the weapon kinds to look for and the slots worth fixing first. */
+  private looking(ctx: StatContext) {
+    const l = lookingFor(ctx);
+    const weak = l.weakest.map((w) => `<li class="${w.empty ? '' : 'worn'}">${w.text}</li>`).join('');
+    return `<section class="gs-look">
+      <h3>What you're looking for</h3>
+      <div class="pri">${l.orderText}<small>${l.discipline}</small></div>
+      <p>${l.why}</p>
+      ${l.weapons ? `<div class="sub">Weapons</div><p>${l.weapons}</p>` : ''}
+      ${weak ? `<div class="sub">Weakest slots</div><ul>${weak}</ul>` : ''}
+      <div class="arrows"><span class="up" style="color:#8fe36a">\u25B2</span> in your bag = better for you than what you wear. <span style="color:#ff7b6b">\u25BC</span> = worse.</div>
+    </section>`;
   }
 
   private line(l: SheetLine) {

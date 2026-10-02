@@ -3,7 +3,8 @@ import { DISCIPLINES } from '../../content/disciplines';
 import { DAMAGE_UPGRADE } from '../../content/upgrades';
 import type { Character, InventorySlot } from '../../net/types';
 import { STAT_EFFECTS, deriveStats, describeStatDelta } from '../characterStats';
-import { compareEquip, effectText, itemStatEffects, simulateEquip, statSheet, boonShare, type StatContext } from '../gearStats';
+import { compareEquip, effectText, itemStatEffects, simulateEquip, statSheet, boonShare, STAT_PRIORITY, ROLE_WEIGHTS, itemVerdict, lookingFor, weakestSlots, loadoutExtraPct, type StatContext } from '../gearStats';
+import { resolveWeaponLoadout } from '../weaponLine';
 
 const character = (over: Partial<Character> = {}): Character => ({
   id: 1, class_index: 1, class_name: '', level: 10, experience: 0, gold: 0, stat_str: 5, stat_agi: 5, stat_int: 5, stat_vit: 5, ...over,
@@ -174,5 +175,96 @@ describe('statSheet', () => {
     const sheet = statSheet({ character: character(), slots: [], discipline: boosted, damageTier: 0 });
     expect(rowsOf(sheet, 'maxHp').rows.map((r) => r.label)).toContain('Covenant boons');
     expect(DAMAGE_UPGRADE.perTier).toBeGreaterThan(0);
+  });
+});
+
+describe('stat priority', () => {
+  it('role weights sum to 1 for every discipline', () => {
+    for (const [id, w] of Object.entries(ROLE_WEIGHTS)) expect(w.damage + w.toughness + w.sustain + w.move, id).toBeCloseTo(1, 6);
+  });
+  it('necromancers want INT or VIT first and AGI last; Ossuary leans VIT', () => {
+    for (const id of ['ossuary', 'gravecaller', 'mourner', 'rotweaver'] as const) {
+      const o = STAT_PRIORITY[id].order;
+      expect(['stat_int', 'stat_vit'], id).toContain(o[0]);
+      expect(o[3], id).toBe('stat_agi');
+    }
+    expect(STAT_PRIORITY.ossuary.order[0]).toBe('stat_vit');
+    expect(STAT_PRIORITY.gravecaller.order.slice(0, 2)).toEqual(['stat_int', 'stat_vit']);
+    expect(STAT_PRIORITY.rotweaver.weights.stat_int).toBeGreaterThan(STAT_PRIORITY.gravecaller.weights.stat_int);
+  });
+  it('a bigger legion makes INT worth more (thrall damage scales with spell power)', () => {
+    expect(STAT_PRIORITY.gravecaller.weights.stat_int).toBeGreaterThan(STAT_PRIORITY.mourner.weights.stat_int);
+  });
+});
+
+describe('itemVerdict', () => {
+  it('empty slot is always an upgrade, even for a stat-less piece', () => {
+    const ring = item('ring_plain', 0, 'ring', null);
+    const v = itemVerdict(ctx([ring]), ring)!;
+    expect(v.kind).toBe('upgrade');
+    expect(v.text).toMatch(/^Upgrade for your Gravecaller: fills an empty ring slot/);
+  });
+  it('INT gear beats VIT gear for a Gravecaller, with a reason, and the reverse reads as worse', () => {
+    const vitHelm = worn('helm_vit', 'armor_head', 100, { stat_vit: 6 });
+    const intHelm = item('helm_int', 0, 'armor_head', { stat_int: 6 });
+    const up = itemVerdict(ctx([vitHelm, intHelm]), intHelm)!;
+    expect(up.kind).toBe('upgrade');
+    expect(up.text).toMatch(/^Upgrade for your Gravecaller: \+\d+% \(more (spell power|thrall damage)\)$/);
+    const intWorn = worn('helm_int', 'armor_head', 100, { stat_int: 6 });
+    const vitBag = item('helm_vit', 0, 'armor_head', { stat_vit: 6 });
+    const down = itemVerdict(ctx([intWorn, vitBag]), vitBag)!;
+    expect(down.kind).toBe('downgrade');
+    expect(down.text).toMatch(/^Worse than your helm_int: \u2212\d+%/);
+  });
+  it('the same piece is worth more health-wise to an Ossuary than a Rotweaver', () => {
+    const old = worn('helm_a', 'armor_head', 100, { stat_int: 3 });
+    const vit = item('helm_vit', 0, 'armor_head', { stat_vit: 4 });
+    expect(itemVerdict(ctx([old, vit], 'ossuary'), vit)!.pct).toBeGreaterThan(itemVerdict(ctx([old, vit], 'rotweaver'), vit)!.pct);
+  });
+  it('is null for worn items and materials', () => {
+    const w = worn('helm_a', 'armor_head', 100, { stat_vit: 1 });
+    expect(itemVerdict(ctx([w]), w)).toBeNull();
+    const ore = item('ore', 0, 'material', null);
+    expect(itemVerdict(ctx([ore]), ore)).toBeNull();
+  });
+  it('scores weapon-line effects: a scythe over a stat-equal wand gains the arc value', () => {
+    const wand = worn('wand_bone', 'weapon', 105, { stat_int: 3 });
+    const scythe = item('scythe_bone', 0, 'weapon', { stat_int: 3 });
+    const v = itemVerdict(ctx([wand, scythe], 'gravecaller'), scythe)!;
+    expect(v.pct).toBeGreaterThan(0);
+    expect(loadoutExtraPct(resolveWeaponLoadout({ main_hand: { item_id: 'scythe_bone' } }, 'gravecaller'))).toBe(6);
+    // Other classes get no weapon-line score.
+    expect(loadoutExtraPct(resolveWeaponLoadout({ main_hand: { item_id: 'scythe_bone' } }, 'hollow_knight'))).toBe(0);
+  });
+  it('a two-hander is judged against main hand plus off-hand together', () => {
+    const sword = worn('sword_copper', 'weapon', 105, { stat_int: 4 });
+    const tome = worn('grimoire_bone', 'offhand', 106, { stat_int: 6 });
+    const staff = item('staff_bone', 0, 'weapon', { stat_int: 5 });
+    const v = itemVerdict(ctx([sword, tome, staff]), staff)!;
+    expect(v.replaced).toHaveLength(2);
+    expect(v.kind).toBe('downgrade');
+    expect(v.text).toContain('sword_copper and grimoire_bone');
+  });
+});
+
+describe('lookingFor', () => {
+  it('names the priority, weapons and the weakest slots (empty first, bag upgrade named)', () => {
+    const helm = worn('helm_a', 'armor_head', 100, { stat_vit: 1 });
+    const better = item('Iron Helm', 0, 'armor_head', { stat_vit: 6, stat_int: 3 });
+    better.name = 'Iron Helm';
+    const l = lookingFor(ctx([helm, better], 'gravecaller'));
+    expect(l.orderText).toBe('INT > VIT > STR > AGI');
+    expect(l.why).toContain('legion hit harder');
+    expect(l.weapons).toMatch(/Scythe/);
+    expect(l.weakest[0].empty).toBe(true);
+    expect(weakestSlots(ctx([helm, better]), 9).some((w) => w.text.includes('Any ring is an upgrade'))).toBe(true);
+    expect(weakestSlots(ctx([helm, better]), 9).find((w) => w.slot === 'head')!.text).toContain('Iron Helm in the bag is +');
+  });
+  it('does not call the off-hand empty behind a two-hander', () => {
+    const staff = worn('staff_bone', 'weapon', 105, { stat_int: 3 });
+    expect(weakestSlots(ctx([staff]), 9).some((w) => w.slot === 'off_hand')).toBe(false);
+  });
+  it('other classes get a priority but no necromancer weapons', () => {
+    expect(lookingFor(ctx([], 'hollow_knight')).weapons).toBeNull();
   });
 });

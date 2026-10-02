@@ -610,7 +610,7 @@ export const codexBrewRows = () =>
   Object.entries(BREWS).map(([id, b]) => ({ id, name: itemMeta(id).name, slot: slotName(b.slot), effects: brewEffectsText(b), seconds: b.seconds }));
 /** Stats tab: what STR / AGI / INT / VIT do. Numbers come from STAT_EFFECTS, the same table deriveStats uses. */
 export const CODEX_STATS_COUNSEL =
-  'Gear and levels raise four stats, and each one feeds a few numbers you can feel. Open the Reliquary (I) and every stat on a piece says what it does for you; a bag item shows what changes if you wear it instead (green is better, red is worse). Press J for the Character sheet, where each number can be opened to see where it comes from.';
+  'Gear and levels raise four stats, and each one feeds a few numbers you can feel. Open the Reliquary (I) and every stat on a piece says what it does for you; a bag item wears a green ▲ when it is an upgrade for your discipline and a red ▼ when it is worse (hover it for the reason). Press J for the Character sheet: it lists the stats and weapons your discipline wants, your weakest slots, and where each number comes from. The arrows weigh damage, toughness, essence and speed for your discipline, with your thralls counted; weapon effects such as the scythe arc get an estimated value.';
 const f = (n: number) => String(+n.toFixed(3));
 export const CODEX_STATS: { stat: string; name: string; effects: string }[] = [
   { stat: 'VIT', name: 'Vitality', effects: `Each point: +${STAT_EFFECTS.health.perVit} health, and your thralls have ${Math.round(STAT_EFFECTS.thrall.hpShare * 100)}% of it.` },

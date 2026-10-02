@@ -58,6 +58,9 @@ async function main() {
     await detail.locator('.gs-cmp').waitFor();
     const text = await detail.innerText();
     assert.match(text, /\+5 VIT/);
+    assert.match(text, /Upgrade for your Ossuary: \+\d+% \(more /, 'verdict line leads the detail');
+    assert.ok(await cell(await bagOf('helm_iron')).locator('.gs-badge.upgrade').count(), 'green arrow on the better helm');
+    assert.ok(await cell(await bagOf('ring_copper')).locator('.gs-badge.upgrade').count(), 'empty ring slot is always an upgrade');
     assert.match(text, /health/);
     assert.match(text, /Instead of copper_helm|Instead of Copper Helm/);
     assert.ok(await detail.locator('.gs-cmp .r.up').count(), 'a gain is marked green');
@@ -67,6 +70,7 @@ async function main() {
     await cell(await bagOf('scythe_bone')).click();
     await detail.locator('.gs-cmp').waitFor();
     const two = await detail.innerText();
+    assert.match(two, /Worse than your|Upgrade for your|About the same as your/, 'two-hander verdict');
     assert.match(two, /Left click becomes a reaping arc/);
     assert.match(two, /Rites recover 10% sooner/, 'losing the grimoire passive is named');
     assert.match(two, /and/, 'both displaced pieces are named');
@@ -85,11 +89,16 @@ async function main() {
     await page.locator('.gs-sheet').waitFor();
     assert.equal(await page.locator('.cw-panel-float.wide').count(), 0, 'sheet replaces the reliquary');
     const sheet = await page.locator('.gs-sheet').innerText();
+    assert.match(sheet, /what you're looking for/i, 'priority block');
+    assert.match(sheet, /VIT > INT > STR > AGI/, 'Ossuary priority');
+    assert.match(sheet, /weakest slots/i);
+    assert.match(sheet, /empty\. Any .+ is an upgrade/);
     for (const w of ['VIT: health', 'Health', 'Spell power', 'Max essence', 'Essence/s', 'Move speed', 'Thrall health', 'Thrall damage', 'Damage upgrade']) assert.ok(sheet.includes(w), w);
     const shown = await page.evaluate(() => window.__cwDebug.player.stats.maxHp);
     assert.ok(sheet.includes(String(shown)), 'sheet health equals the player stat');
-    await page.locator('[data-line="spellPower"]').click();
     await page.screenshot({ path: `${out}/character-sheet.png` });
+    await page.locator('[data-line="spellPower"]').click();
+    await page.screenshot({ path: `${out}/character-sheet-breakdown.png` });
     await dismissUntilTip(page, 'Your Character sheet');
     await page.keyboard.press('j');
     assert.equal(await page.locator('.gs-sheet').count(), 0, 'J closes the sheet');
