@@ -19,11 +19,11 @@ flowchart LR
     S5[2 Oct: visible Grave Laborers]:::done
     S6[2 Oct: armor set bonuses · tool belt]:::done
     S7[2 Oct: necro balance pass]:::done
+    S8[2 Oct: guide NPCs + Next line]:::done
   end
 
   subgraph NOW["🔨 Now — being built"]
     N2[Necro spell feel]:::now
-    N6[Guide NPCs + suggested next step<br/>Prior · Sexton · Apothecary]:::now
     N7[Alchemist's Wing room]:::now
     N8[Item level + affixes]:::now
     N9[Animation pass]:::now
@@ -49,6 +49,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 2 Oct 2026 | Guide NPCs: the Prior (Chapterhouse), the Sexton (Acre) and the Apothecary talk in voice and give context-aware advice (click or E); an optional "Next" line under the minimap with a minimap ping suggests one step at a time (seal progress, affordable bosses, ready laborers, full bag, Ascension); toggles in Settings | Codex "People" tab; README "Finding your way". |
 | 2 Oct 2026 | Art (not yet placed in game): 12 Alchemist's Wing props and three guide NPCs (the Prior, the Sexton, the Apothecary) with idle, walk and talk clips | 1,025 Tripo credits; contact sheets in docs/screenshots/alchemist-wing/. |
 | 2 Oct 2026 | Necro balance pass: max Wave Speed now pays (kills 0.54× → 1.18×, gold 1.34× → 2.50×, XP 0.61× → 1.84× of the intended band; deaths 7.8 → 2.1 per 3 min); Ossuary 10.1 → 2.2 deaths at max; Coliseum and Sanctum smoothed (≤1 death at the intended band everywhere); Wave Speed ramps in over 30 s; an empty area clears after 8 s | Measured with 8 seeds × 36 rows; details in BALANCE.md. Needs a human playtest at tiers 6–8. |
 | 2 Oct 2026 | Tool belt: four belt slots under the paper doll (hatchet, pickaxe, rod, spade) that count for gathering and take no bag space; a one-time "belt your best tools" offer; Skills shows the active tool | No migration (reserved slots 110–113). |
