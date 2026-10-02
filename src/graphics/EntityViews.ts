@@ -10,6 +10,9 @@ import * as nf from './necroFx';
 import { SPELL_FX } from '../content/abilities';
 import { audio } from '../audio/Audio';
 import type { CreatureSlug } from './modelPaths';
+import { AREAS, type AreaId } from '../content/areas';
+import { BOSSES } from '../content/bosses';
+import { runIdleSequence } from './warmModel';
 import { STATUS_FX } from '../content/statuses';
 import { wingClock, type WingOpts } from './wingFlap';
 import { smoothSpeed, stepSpeed, turnToward } from './locomotion';
@@ -1145,4 +1148,37 @@ export class EntityViews {
     for (const v of [...this.dying, ...this.fading]) v.c.dispose();
     this.group.removeFromParent();
   }
+}
+
+/** Loads and warms one body (clone, shader programs, textures) with the variant flags the real spawn uses, then frees the clone. */
+async function warmBody(slug: CreatureSlug, opts: ConstructorParameters<typeof Creature>[1]) {
+  const c = new Creature(slug, opts);
+  await c.ready;
+  c.dispose();
+}
+
+const preloaded = new Set<string>();
+
+/**
+ * Background-warms the models an area will spawn (its roster, its boss, and the player's legion) so the first wave's
+ * first draw of each type is already cheap. One body at a time, when the browser is idle; each type once per session.
+ * Returns a cancel function.
+ */
+export function preloadAreaModels(area: AreaId, legion?: DisciplineId | null): () => void {
+  const tasks: (() => Promise<void>)[] = [];
+  const add = (key: string, slug: CreatureSlug, opts: ConstructorParameters<typeof Creature>[1]) => {
+    if (preloaded.has(key)) return;
+    preloaded.add(key);
+    tasks.push(() => warmBody(slug, opts));
+  };
+  for (const { id } of AREAS[area].enemies) {
+    add(`enemy:${id}`, ENEMY_SLUG[id], { spectral: id === 'wraith', fallback: ENEMY_FALLBACK[id], wings: WINGS[id] });
+  }
+  for (const b of Object.values(BOSSES)) if (b.area === area) add(`boss:${b.modelSlug}`, b.modelSlug, { fallback: 'prelate' });
+  // Thralls wear the jade rim; the discipline's own legion body, then the plain skeleton it shares with raised dead.
+  const rim = { color: SPELL_FX.exhume.spirit, strength: THRALL_RIM_OWN };
+  const legionSlug = legion ? LEGION[legion]?.slug : undefined;
+  if (legionSlug) add(`thrall:${legionSlug}`, legionSlug, { rim });
+  add('thrall:skeleton_thrall', 'skeleton_thrall', { rim });
+  return runIdleSequence(tasks);
 }

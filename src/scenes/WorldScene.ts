@@ -68,7 +68,8 @@ import { isBinbunImpact, type BinbunId } from '../graphics/binbun/catalog';
 import type { Gallery } from '../graphics/binbun/gallery';
 import { playFx } from '../graphics/binbun/presets';
 import type { BinbunHandle } from '../graphics/binbun/BinbunFX';
-import { EntityViews } from '../graphics/EntityViews';
+import { EntityViews, preloadAreaModels } from '../graphics/EntityViews';
+import { setWarmContext } from '../graphics/warmModel';
 import { fx } from '../graphics/fxTextures';
 import * as nf from '../graphics/necroFx';
 import { LootView } from '../graphics/LootView';
@@ -426,6 +427,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.chronicle.max('peak.level', character.level ?? 1);
     this.scope.add(() => this.chronicle.dispose());
     this.scope.add(() => { this.lootAlive = false; });
+    this.scope.add(() => { this.cancelPreload?.(); setWarmContext(null); });
   }
 
   get camera() {
@@ -4455,8 +4457,14 @@ export class WorldScene implements GameScene, RuntimeView {
     return e && e.state !== 'dead' ? { x: e.x, z: e.z } : null;
   }
 
+  private cancelPreload: (() => void) | null = null;
+
   private enterArea(area: AreaId) {
     this.area = area;
+    // From here on new bodies compile their shaders and upload textures before they appear (graphics/warmModel.ts).
+    setWarmContext({ renderer: getRuntime().renderer, camera: this.rig.camera, scene: this.scene });
+    this.cancelPreload?.();
+    this.cancelPreload = preloadAreaModels(area, this.discipline.id);
     audio.setArea(area);
     this.laborers?.setActive(area === 'acre');
     const def = AREAS[area];

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { assets } from './AssetCache';
+import { warmModel } from './warmModel';
 import { CREATURE_MODELS, type CreatureSlug } from './modelPaths';
 import { hitstop } from './hitstop';
 import CLIP_TIMINGS_JSON from '../content/clipTimings.json';
@@ -170,7 +171,7 @@ export class Creature {
         this.baseHeight = (fb?.height ?? def.height) * (opts.scale ?? 1);
         return fb ? assets.model(fb.url, fb.height * (opts.scale ?? 1)) : null;
       })
-      .then((t) => {
+      .then(async (t) => {
       if (!t || this.disposed) return;
       const model = t.skinned ? cloneSkinned(t.scene) : t.scene.clone(true);
       model.scale.multiplyScalar(t.scale);
@@ -208,6 +209,12 @@ export class Creature {
       if (this.mats[0]) {
         this.baseEmissive.copy(this.mats[0].emissive);
         this.baseEmissiveIntensity = this.mats[0].emissiveIntensity;
+      }
+      // First draw of a new body compiles shaders and uploads textures; do both off the frame, then attach.
+      await warmModel(model, this.mats, t, `${!!opts.spectral}${!!opts.wings && !usedFallback}${!!opts.gearTint}${!!opts.rim}`);
+      if (this.disposed) {
+        this.mats.forEach((m) => m.dispose());
+        return;
       }
       this.model = model;
       this.root.add(model);
