@@ -64,7 +64,7 @@ export async function setupOfflineInstall() {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${onlineToken}`, ...options.headers },
     });
     const body = await response.json();
-    if (!response.ok) throw new Error(body.error || `Online request failed (${response.status}).`);
+    if (!response.ok) throw Object.assign(new Error(body.error || `Online request failed (${response.status}).`), { implausible: body.implausible === true });
     return body;
   };
   const label = (s: any) => `Level ${s.level}, ${s.experience} XP, ${s.gold} gold, ${s.items} inventory slots, ${s.professions} professions, Ascension ${s.ascension}`;
@@ -152,7 +152,14 @@ export async function setupOfflineInstall() {
     try {
       const token = getToken();
       const current = token?.startsWith('offline:') ? (await import('../net/mockBackend')).exportLocalSave(token) : localSnapshot;
-      const result = await onlineRequest('/api/offline/load', { method: 'POST', body: JSON.stringify({ snapshot: current, expectedFingerprint: onlineFingerprint }) });
+      const load = (confirmImplausible: boolean) => onlineRequest('/api/offline/load', { method: 'POST', body: JSON.stringify({ snapshot: current, expectedFingerprint: onlineFingerprint, confirmImplausible }) });
+      let result;
+      try { result = await load(false); }
+      catch (error) {
+        // Server authority: a save far ahead of the online one for the time it claims needs an explicit yes (the online save is kept either way).
+        if (!(error as { implausible?: boolean }).implausible || !window.confirm((error as Error).message)) throw error;
+        result = await load(true);
+      }
       onlineFingerprint = result.fingerprint;
       syncStatus.textContent = `Offline save loaded online: ${label(result.summary)}. Reopen the online game.`;
     } catch (error) { syncStatus.textContent = error instanceof Error ? error.message : 'Could not load offline save online.'; }

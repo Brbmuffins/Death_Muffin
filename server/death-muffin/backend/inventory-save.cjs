@@ -77,10 +77,20 @@ async function resolveInstances(conn, accountId, characterId, slots, existingByS
   return { bySlot: out, claimed };
 }
 
-/** Replace the bag rows 0..bagSize-1 with `slots` (inside the caller's transaction). Slots above bagSize are never touched. */
-async function replaceBag(conn, characterId, slots, bagSize, accountId) {
+/**
+ * Replace the bag rows 0..bagSize-1 with `slots` (inside the caller's transaction). Slots above bagSize are never touched.
+ * `guard` (optional, authority.cjs) sees the rows the bag holds and the slots sent, and may return fewer units of an item it does not
+ * believe; it never adds anything. Returns { notice } (a player-readable sentence, '' when the save was taken whole).
+ */
+async function replaceBag(conn, characterId, slots, bagSize, accountId, guard) {
+  const [existingRows] = await conn.execute('SELECT slot_index, item_id, quantity, equipped, equipped_slot, instance_id FROM inventory WHERE character_id = ?', [characterId]);
+  let notice = '';
+  if (guard) {
+    const checked = await guard(existingRows, slots);
+    slots = checked.slots;
+    notice = checked.message || '';
+  }
   const incoming = slots.map((s) => parseInt(s.slot_index, 10));
-  const [existingRows] = await conn.execute('SELECT slot_index, item_id, equipped, equipped_slot, instance_id FROM inventory WHERE character_id = ?', [characterId]);
   const existingBySlot = new Map(existingRows.map((row) => [Number(row.slot_index), row]));
   const { bySlot, claimed } = await resolveInstances(conn, accountId, characterId, slots, existingBySlot, bagSize);
   // Instances on this bag's rows that the save no longer names are gone (sold, dropped): delete them, not just detach.
@@ -113,6 +123,7 @@ async function replaceBag(conn, characterId, slots, bagSize, accountId) {
     );
   }
   await deleteInstances(conn, detached);
+  return { notice };
 }
 
 module.exports = { LEGACY_BAG_SLOTS, saveBagSize, slotProblem, replaceBag, resolveInstances, CANT_VERIFY };

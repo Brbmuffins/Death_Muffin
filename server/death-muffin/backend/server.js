@@ -12,6 +12,7 @@ const offlineFull = require('./offline-full-sync.cjs');
 const gatheringRules = require('./gathering/gathering-rules.cjs');
 const BAG_SLOTS = gatheringRules.BAG_SLOTS;
 const inventorySave = require('./inventory-save.cjs');
+const authority = require('./authority.cjs');
 
 const app  = express();
 const PORT = process.env.PORT || 5190;
@@ -625,7 +626,7 @@ app.get('/api/offline/versions', verifyJWT, async (req, res) => {
   }
 });
 
-async function loadOfflineVersion(req, res, source, account, expectedFingerprint) {
+async function loadOfflineVersion(req, res, source, account, expectedFingerprint, confirmed = false) {
   if (!req.character) return res.status(404).json({ error: 'Create an online character before syncing.' });
   if (typeof expectedFingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(expectedFingerprint))
     return res.status(400).json({ error: 'Refresh the online save comparison before loading a version.' });
@@ -642,6 +643,15 @@ async function loadOfflineVersion(req, res, source, account, expectedFingerprint
     if (offlineFull.fingerprint(before) !== expectedFingerprint) {
       await conn.rollback();
       return res.status(409).json({ error: 'The online save changed. Compare the saves again before choosing.', summary: offlineFull.summary(before) });
+    }
+    // Plausibility check of a browser-only save against the online one (authority.cjs). Report mode only logs. In enforce mode an
+    // implausible jump needs the player's explicit confirmation; nothing has been written yet, so the audit rows are committed.
+    if (source === 'offline') {
+      const check = await authority.guardOfflineLoad(conn, { characterId: locked.id, accountId: req.user.accountId, online: before, offline: account, confirmed: confirmed === true, account: { staff: await isStaffAccount(req).catch(() => false) } });
+      if (check.needsConfirm) {
+        await conn.commit();
+        return res.status(409).json({ error: check.message, implausible: true, summary: offlineFull.summary(account) });
+      }
     }
     await conn.execute('INSERT INTO character_save_versions (account_id, character_id, source, snapshot) VALUES (?, ?, ?, ?)',
       [req.user.accountId, locked.id, 'online', JSON.stringify(before)]);
@@ -661,7 +671,7 @@ async function loadOfflineVersion(req, res, source, account, expectedFingerprint
 }
 
 app.post('/api/offline/load', offlineSyncLimiter, verifyJWT, async (req, res) => {
-  await loadOfflineVersion(req, res, 'offline', req.body?.snapshot, req.body?.expectedFingerprint);
+  await loadOfflineVersion(req, res, 'offline', req.body?.snapshot, req.body?.expectedFingerprint, req.body?.confirmImplausible === true);
 });
 
 app.post('/api/offline/restore', offlineSyncLimiter, verifyJWT, async (req, res) => {
@@ -698,6 +708,11 @@ app.post('/api/offline/sync-stats', offlineSyncLimiter, verifyJWT, async (req, r
     try { merged = mergeOfflineStats(online, req.body); }
     catch { await conn.rollback(); return res.status(400).json({ error: 'Invalid offline level or XP.' }); }
     if (merged.improved) {
+      const check = await authority.guardOfflineStats(conn, { characterId: req.character.id, accountId: req.user.accountId, online, level: merged.level, experience: merged.experience, confirmed: req.body?.confirmImplausible === true, account: { staff: await isStaffAccount(req).catch(() => false) } });
+      if (check.needsConfirm) {
+        await conn.commit();
+        return res.status(409).json({ error: check.message, implausible: true });
+      }
       await conn.execute('UPDATE characters SET level = ?, experience = ? WHERE id = ?',
         [merged.level, merged.experience, req.character.id]);
     }
@@ -716,15 +731,21 @@ app.post('/api/character/save-progress', requireJWT, async (req, res) => {
     const char = await ownedCharacter(req, res, characterId);
     if (!char) return;
     const bounded = (value, fallback, min, max) => Number.isFinite(Number(value)) && value !== undefined ? Math.min(max, Math.max(min, Math.trunc(Number(value)))) : fallback;
+    const next = {
+      level: bounded(req.body.level, char.level, 1, 255), xp: bounded(req.body.xp, char.experience, 0, 2147483647), gold: bounded(req.body.gold, char.gold, 0, 2147483647),
+      stat_str: bounded(req.body.stat_str, char.stat_str, 0, 65535), stat_agi: bounded(req.body.stat_agi, char.stat_agi, 0, 65535),
+      stat_int: bounded(req.body.stat_int, char.stat_int, 0, 65535), stat_vit: bounded(req.body.stat_vit, char.stat_vit, 0, 65535),
+    };
+    // Plausibility guard (authority.cjs): AUTHORITY_MODE=report logs and changes nothing; enforce holds back what play cannot explain.
+    const verdict = await authority.guardProgress(pool, { char, next, account: { staff: await isStaffAccount(req).catch(() => false) } });
+    const w = verdict.write;
     await pool.execute(
       'UPDATE characters SET level=?, experience=?, gold=?, stat_str=?, stat_agi=?, stat_int=?, stat_vit=? WHERE id=?',
-      [bounded(req.body.level, char.level, 1, 255), bounded(req.body.xp, char.experience, 0, 2147483647), bounded(req.body.gold, char.gold, 0, 2147483647),
-       bounded(req.body.stat_str, char.stat_str, 0, 65535), bounded(req.body.stat_agi, char.stat_agi, 0, 65535),
-       bounded(req.body.stat_int, char.stat_int, 0, 65535), bounded(req.body.stat_vit, char.stat_vit, 0, 65535), char.id]
+      [w.level, w.xp, w.gold, w.stat_str, w.stat_agi, w.stat_int, w.stat_vit, char.id]
     );
     const [[updated]] = await pool.execute('SELECT * FROM characters WHERE id = ?', [char.id]);
     console.log(`[PROGRESS] ${req.user.username} char#${char.id} → Lv${updated.level} ${updated.experience}xp ${updated.gold}g`);
-    res.json({ success: true, data: updated });
+    res.json({ success: true, data: updated, ...(verdict.message ? { authority: { message: verdict.message } } : {}) });
   } catch (err) {
     console.error(`POST /api/character/save-progress char#${characterId}: ${err.message}`);
     res.status(500).json({ success: false, error: 'internal server error' });
@@ -771,6 +792,8 @@ app.post('/api/inventory/add-item', requireJWT, async (req, res) => {
     );
     if (!item)
       return res.status(404).json({ success: false, error: `unknown item: ${itemId}` });
+    const addCheck = await authority.guardAddItem(pool, { characterId: char.id, accountId: char.account_id, itemId, quantity, account: { staff: await isStaffAccount(req).catch(() => false) } });
+    if (!addCheck.allowed) return res.status(400).json({ success: false, error: addCheck.message });
 
     const stackable = !!item.stackable;
     const maxStack = stackable ? Math.max(Number(item.max_stack_size) || 1, 1) : 1;
@@ -869,10 +892,13 @@ app.post('/api/inventory/save', requireJWT, async (req, res) => {
           error: `${s.item_id} exceeds its maximum stack size of ${maxStack}`
         });
     }
+    const staff = await isStaffAccount(req).catch(() => false);
+    let notice = '';
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
-      await inventorySave.replaceBag(conn, char.id, slots, bagSize, char.account_id);
+      const guard = (existingRows, sent) => authority.guardBagSave(conn, { characterId: char.id, accountId: char.account_id, existingRows, slots: sent, bagSize, account: { staff } });
+      ({ notice } = await inventorySave.replaceBag(conn, char.id, slots, bagSize, char.account_id, guard));
       await conn.commit();
     } catch (e) {
       await conn.rollback();
@@ -881,7 +907,7 @@ app.post('/api/inventory/save', requireJWT, async (req, res) => {
       conn.release();
     }
     const [rows] = await pool.execute(INV_SELECT, [char.id]);
-    res.json({ success: true, data: rows });
+    res.json({ success: true, data: rows, ...(notice ? { authority: { message: notice } } : {}) });
   } catch (err) {
     // A save that names a relic it does not own (or one it cannot prove) is refused, readably, and nothing was written.
     if (err && err.refusal) return res.status(400).json({ success: false, error: err.message });
@@ -1920,6 +1946,7 @@ require('./garden.cjs')(app, pool, {
 });
 require('./loot.cjs')(app, pool, {
   requireAuth: requireJWT,
+  guardRoll: async (req, db, args) => authority.guardRollGear(db, { ...args, account: { staff: await isStaffAccount(req).catch(() => false) } }),
   // A horde can drop several pieces a second at most; this only stops a script hammering the roll.
   limiter: rateLimit({ windowMs: 60 * 1000, max: 600, standardHeaders: true, legacyHeaders: false }),
   ownsCharacter: async (req, characterId) => {

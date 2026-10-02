@@ -93,7 +93,7 @@ import { CosmeticsPanel } from '../ui/CosmeticsPanel';
 import { PetView } from '../graphics/PetView';
 import { petDef, petForCharm } from '../content/cosmetics';
 import { isCape, isPet } from '../gameplay/cosmeticRules';
-import { beginAfkGather, gather, getInventory, getProfessions, getToken, OFFLINE, type GatherReply, type SalvageReply } from '../net/api';
+import { beginAfkGather, gather, getInventory, getProfessions, getToken, OFFLINE, onServerNotice, type GatherReply, type SalvageReply } from '../net/api';
 import type { RemotePlayer, WorldSnapshot } from '../net/contracts';
 import { RealtimeClient } from '../net/realtime';
 import type { Character, Profession } from '../net/types';
@@ -639,6 +639,7 @@ export class WorldScene implements GameScene, RuntimeView {
     // First steps: where you are, then how to move (queued, one card at a time).
     // Server-backed progression when the auth server has it; browser storage otherwise.
     this.scope.add(this.progression.onError((msg) => this.hud.toast(msg, 'err')));
+    this.scope.add(onServerNotice((msg) => this.hud.toast(msg, 'err')));
     this.scope.add(this.progression.onSynced(() => this.onProgressSynced()));
     this.dataReady = Promise.all([inventoryReady, this.progression.connect()]);
     // The garden grows on the server's clock: say what is waiting on arrival, and as plots come ready.

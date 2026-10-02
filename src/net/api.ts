@@ -14,6 +14,15 @@ export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
+  /** Server authority (docs/SERVER-AUTHORITY.md): present only when the server held something back from a save. Player-readable. */
+  authority?: { message?: string };
+}
+
+// A save the server partly refused still succeeds; its explanation arrives here (WorldScene shows it as a toast).
+const noticeListeners = new Set<(message: string) => void>();
+export function onServerNotice(fn: (message: string) => void) {
+  noticeListeners.add(fn);
+  return () => noticeListeners.delete(fn);
 }
 
 export class ApiError extends Error {
@@ -146,6 +155,7 @@ export function changeDiscipline(characterId: number, classIndex: number) {
 async function unwrap<T>(p: Promise<ApiResponse<T>>): Promise<T> {
   const body = await p;
   if (!body.success) throw new ApiError(body.error ?? 'Unknown server error', 200);
+  if (body.authority?.message) noticeListeners.forEach((fn) => fn(body.authority!.message!));
   return body.data as T;
 }
 

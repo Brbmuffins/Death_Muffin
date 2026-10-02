@@ -22,7 +22,7 @@ const playerError = (message) => Object.assign(new Error(message), { player: tru
 /** A uniform float in [0, 1) from the OS CSPRNG. */
 const secureRandom = () => crypto.randomInt(0, 2 ** 30) / 2 ** 30;
 
-module.exports = function mountLoot(app, pool, { requireAuth, ownsCharacter, random = secureRandom, limiter }) {
+module.exports = function mountLoot(app, pool, { requireAuth, ownsCharacter, random = secureRandom, limiter, guardRoll }) {
   app.post('/api/loot/roll-gear', ...(limiter ? [limiter] : []), requireAuth, async (req, res) => {
     const conn = await pool.getConnection();
     try {
@@ -41,6 +41,12 @@ module.exports = function mountLoot(app, pool, { requireAuth, ownsCharacter, ran
       const [items] = await conn.query('SELECT id, item_type, rarity FROM items WHERE id IN (?)', [ids]);
       const meta = new Map(items.map((r) => [r.id, r]));
       if (ids.some((x) => !meta.has(x))) throw playerError('Unknown item.');
+      // Authority: only items that exist in a drop table can be rolled (authority.cjs; report mode just logs).
+      if (guardRoll) {
+        const g = await guardRoll(req, conn, { characterId: id, accountId, itemIds: ids });
+        // Nothing has been written yet: commit (keeps the audit row) rather than roll back.
+        if (!g.ok) { await conn.commit(); throw playerError(g.message); }
+      }
 
       const wanted = drops.filter((d) => affix.isAffixGear(meta.get(d.item_id).item_type)).length;
       if (wanted) {
