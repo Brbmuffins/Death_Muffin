@@ -1405,6 +1405,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (area ? !this.nav.isUnlocked(area) : !corridor) return false;
     const [tx, tz] = this.nav.resolve(x, z, 0.45);
     this.cancelRecall();
+    this.gathering.stop('moved');
     this.attackTarget = null;
     this.pendingInteract = null;
     this.queuedCast = null;
