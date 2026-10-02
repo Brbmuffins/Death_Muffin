@@ -43,7 +43,9 @@ flowchart LR
   end
 
   subgraph LATER["🌒 Later — new content"]
-    L2[New zones]:::later
+    L2[New zones<br/>Catacomb Depths · Hollow Court]:::later
+    L3[Bone Colossus · runes]:::later
+    L5[Server authority step 2<br/>enforce + server-side rewards]:::later
     L4[AI companions — parked]:::later
   end
 
