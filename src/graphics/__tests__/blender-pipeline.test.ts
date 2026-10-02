@@ -69,7 +69,7 @@ describe('tools/blender.mjs', () => {
  * mesh-based (skinned vertices of the recipe's legs touching the floor), so a regression in the rig, the weights or the
  * export shows up here. Before this pass the skull rat's walk measured spread 1.7 with 29% of its planted vertices moving forwards.
  */
-describe.each(['skull_rat', 'cinderhound'] as const)('%s gait (measured)', (slug) => {
+describe.each(['skull_rat', 'cinderhound', 'bone_hound'] as const)('%s gait (measured)', (slug) => {
   const file = `public/models/${slug}/character.glb`;
   const recipe = `tools/blender/recipes/${slug}.json`;
   const fwd = (): [number, number] => {

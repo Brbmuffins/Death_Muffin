@@ -26,7 +26,9 @@ there is nothing to license; the recipe is the exact source of every key.
 | Model | Clips | Shipped in `public/models/<slug>/character.glb` |
 |---|---|---|
 | `skull_rat` | `idle`, `walk`, `run` | yes (2026-10-02, branch `dm/blender`) |
-| `cinderhound` | `idle`, `walk`, `run` (on a rig with two new foreleg bones: `rigfix`) | yes (2026-10-02, branch `dm/blender`) |
+| `cinderhound` | `idle`, `walk`, `run` (on a rig with two new foreleg bones: `rigfix`); hock-flex hind legs from 2026-10-02 round 2 | yes (2026-10-02, branches `dm/blender`, `dm/blender-2`) |
+| `bone_hound` | `idle`, `walk`, `run` (on a rig with new leg and tail bones: `rigfix`) | yes (2026-10-02, branch `dm/blender-2`) |
+| `belfry_gargoyle` | wing motion (bones `L_/R_Wing_A/B` from `rigfix`) laid over Tripo's own `idle`, `dive`, `slash`, `hit_to_*`, `fall`, `defeat_03`, plus a new `walk` that is the Tripo idle with a faster flap. Body motion in these clips is Tripo's, re-exported through Blender. | yes (2026-10-02, branch `dm/blender-2`) |
 
 ## Retargeted library clips (proof, not in the game)
 
@@ -42,5 +44,9 @@ measurements and the decision that is left open.
 | `Spell_Simple_Enter` + `Spell_Simple_Shoot` + `Spell_Simple_Exit` | `ual_cast` | 1.47 |
 | `Idle_Talking_Loop` | `ual_talk` | 2.93 |
 | `Walk_Loop` | `ual_walk` | 1.33 |
+
+Round 2 (2026-10-02) retargeted `Idle_Talking_Loop` and `Interact` onto `npc_prior`, `npc_sexton` and `npc_apothecary`
+(`art-src/blender/retarget/<npc>/anim_ual_talk.glb`, `anim_ual_interact.glb`). Judged not better than Tripo's `agree`
+(docs/BLENDER-PIPELINE.md); not shipped, and the map gained an `Interact` -> `ual_interact` entry.
 
 If any of these is ever shipped, add a row to the first table's "Used for" column and keep this file in step.

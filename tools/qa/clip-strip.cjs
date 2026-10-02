@@ -1,12 +1,13 @@
 /**
  * clip-strip.cjs — orthographic side-view frame strip of one clip of a GLB, rendered in Chromium (three.js).
  *
- *   node tools/qa/clip-strip.cjs <out.png> <file.glb|public-url> <clip> [--frames 8] [--facing -z|+z|+x|-x]
+ *   node tools/qa/clip-strip.cjs <out.png> <file.glb|public-url> <clip> [--frames 8] [--facing -z|+z|+x|-x | --yaw degrees]
  *        [--speed 1.2 [--abs]] [--skeleton] [--cell 300] [--time-scale 1] [--from 0 --to 1] [--label text]
  *
  * Every cell is the same clip phase on a ground with fixed tick marks. With --speed (model units per second at the
  * model's own scale; body-heights per second unless --abs says model units) the body is also carried forward at that ground speed, so a planted foot stays on its tick mark
  * and a sliding foot visibly drifts. Without it the body stays in place (a stand-in for the engine, which moves it).
+ * `--yaw 90` (degrees about Y, applied instead of --facing) views a model nose-on, e.g. a +x nose with --yaw -90 faces the camera: used for wing flaps.
  * `--facing` is the direction the model's nose points in its glTF file; it is turned to screen-right.
  * Needs playwright (DM_PLAYWRIGHT_MODULE) and Chromium (DM_CHROMIUM_PATH), like model-sheet.cjs.
  */
@@ -48,7 +49,7 @@ let g, o, mixer, action, skel, ticks = new THREE.Group(); scene.add(ticks);
 window.setup = async (cfg) => {
   g = await new GLTFLoader().loadAsync('/model.glb');
   o = g.scene; scene.add(o);
-  const yaw = { '+x': 0, '-x': Math.PI, '-z': -Math.PI / 2, '+z': Math.PI / 2 }[cfg.facing];
+  const yaw = cfg.yaw !== null ? cfg.yaw * Math.PI / 180 : { '+x': 0, '-x': Math.PI, '-z': -Math.PI / 2, '+z': Math.PI / 2 }[cfg.facing];
   o.rotation.y = yaw; o.updateMatrixWorld(true);
   let box = new THREE.Box3().setFromObject(o); o.position.y -= box.min.y; o.updateMatrixWorld(true);
   window.__h = box.max.y - box.min.y; window.__ext = Math.max(box.max.x - box.min.x, box.max.z - box.min.z, window.__h); window.__cx = (box.max.x + box.min.x) / 2;
@@ -78,7 +79,7 @@ srv.listen(0, '127.0.0.1', async () => {
   const pg = await b.newPage({ viewport: { width: cell, height: cell } });
   pg.on('pageerror', (e) => console.log('pageerror', e.message));
   await pg.goto(`http://127.0.0.1:${port}/`); await pg.waitForFunction('window.ready');
-  const info = await pg.evaluate((c) => window.setup(c), { clip, facing, skeleton, cell });
+  const info = await pg.evaluate((c) => window.setup(c), { clip, facing, skeleton, cell, yaw: opt('yaw', null) === null ? null : +opt('yaw', 0) });
   const cells = [];
   const dur = info.dur;
   // Carry the body at `speed` (in body-heights per second when given as e.g. 0.9) across one loop of the clip.

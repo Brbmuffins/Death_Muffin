@@ -228,6 +228,73 @@ class Gait:
         return frames, res
 
 
+def interp(keys, u):
+    """Piecewise-linear value of [[u, v], ...] at u (clamped)."""
+    if not keys:
+        return 0.0
+    if u <= keys[0][0]:
+        return keys[0][1]
+    for (u0, v0), (u1, v1) in zip(keys, keys[1:]):
+        if u <= u1:
+            return v0 + (v1 - v0) * (u - u0) / max(1e-9, u1 - u0)
+    return keys[-1][1]
+
+
+def build_overlay(rig_glb, tripo_dir, recipe, name, spec, out_dir):
+    """
+    Lay procedural bone motion over a Tripo clip: the clip's own channels are kept, and the wing (or any other new) bones
+    named by the spec get keys on top. Needed because rigfix adds bones the Tripo presets know nothing about.
+    spec: base (anim file name), bones: {bone: {sign, fold, tip, lag}}, roll: [[u, deg]...] (mean wing angle over normalised time),
+    flap: {cycles, amp, env: [[u, 0..1]...]} (sine on top; a bone scales it by `tip` and lags by `lag` cycles; `fold` is its share of the mean roll).
+    Rolls are about the body's forward axis; for each bone the angle is applied in its own rest frame.
+    """
+    common.reset_scene()
+    arm, meshes = common.import_glb(rig_glb)
+    common.clear_actions(arm)
+    base = os.path.join(tripo_dir, spec['base'])
+    orig = os.path.join(tripo_dir, 'orig', spec['base'])
+    if os.path.exists(orig):
+        base = orig  # never stack an overlay on an installed overlay
+    arm2, meshes2 = common.import_glb(base)
+    act = arm2.animation_data.action.copy()
+    act.name = name
+    for o in [arm2] + meshes2:
+        bpy.data.objects.remove(o, do_unlink=True)
+    common.use_quaternions(arm)
+    arm.animation_data_create()
+    arm.animation_data.action = act
+    if hasattr(act, 'slots') and len(act.slots) and hasattr(arm.animation_data, 'action_slot'):
+        # Blender 4.4+ slotted actions: the copied clip's channels live in the slot made for the other armature
+        arm.animation_data.action_slot = act.slots[0]
+    rig = Rig(arm)
+    fwd = Vector(recipe['forward']).normalized()
+    f0, f1 = int(round(act.frame_range[0])), int(round(act.frame_range[1]))
+    dur = (f1 - f0) / common.FPS
+    fl = spec.get('flap', {})
+    for f in range(f0, f1 + 1):
+        u = (f - f0) / max(1, f1 - f0)
+        t = u * dur
+        base_roll = interp(spec.get('roll', [[0, 0]]), u)
+        env = interp(fl.get('env', [[0, 1]]), u) if fl else 0.0
+        for b, bs in spec['bones'].items():
+            ang = base_roll * bs.get('fold', 1.0)
+            if fl:
+                ang += env * fl['amp'] * bs.get('tip', 1.0) * math.sin(2 * math.pi * (fl['cycles'] * u + bs.get('lag', 0.0)))
+            ang *= bs.get('sign', 1.0)
+            axis = rig.rest[b].to_3x3().inverted() @ fwd
+            pb = arm.pose.bones[b]
+            pb.rotation_quaternion = Quaternion(axis.normalized(), math.radians(ang))
+            pb.location = Vector((0, 0, 0))
+            pb.keyframe_insert('rotation_quaternion', frame=f)
+    for fc in act.fcurves:
+        for kp in fc.keyframe_points:
+            kp.interpolation = 'LINEAR'
+    common.fix_hemispheres(act)
+    out = os.path.join(out_dir, f'anim_{name}.glb')
+    common.export_glb(out, arm, act)
+    return {'clip': name, 'overlay': spec['base'], 'duration': round(dur, 3), 'frames': f1 - f0 + 1, 'file': out}
+
+
 def main():
     a = common.script_args()
     rig_glb, recipe_path, out_dir = a[0], a[1], a[2]
@@ -255,6 +322,12 @@ def main():
         res['file'] = out
         results.append(res)
         print('PROCEDURAL', name, res)
+    for name, spec in recipe.get('overlays', {}).items():
+        if only and name not in only:
+            continue
+        res = build_overlay(rig_glb, os.path.dirname(rig_glb), recipe, name, spec, out_dir)
+        results.append(res)
+        print('PROCEDURAL overlay', res)
     import json
     print('RESULT ' + json.dumps(results))
 

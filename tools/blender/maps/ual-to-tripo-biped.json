@@ -169,6 +169,10 @@
     "Walk_Loop": {
       "name": "ual_walk",
       "loop": true
+    },
+    "Interact": {
+      "name": "ual_interact",
+      "loop": false
     }
   }
 }

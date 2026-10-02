@@ -29,8 +29,10 @@ for (const slug of fs.readdirSync(models).sort()) {
     // bones that are not feet on the Tripo quadrupeds). Mesh-contact numbers for the same legs are reported by measure-clips --stride.
     const recipeFile = path.join(here, 'blender', 'recipes', `${slug}.json`);
     const recipe = fs.existsSync(recipeFile) ? JSON.parse(fs.readFileSync(recipeFile, 'utf8')) : null;
-    const feet = recipe ? Object.values(recipe.legs).map((l) => l.paw) : null;
+    const feet = recipe && Object.keys(recipe.legs).length ? Object.values(recipe.legs).map((l) => l.paw) : null;
     for (const clip of ['walk', 'run']) {
+      // A rig with no legs to measure (a flier's flap loop) states its pace in the recipe: body heights per second.
+      if (recipe?.stride?.[clip]) { row[clip] = recipe.stride[clip]; continue; }
       const s = await strideOfClip(file, clip, { feet });
       if (s && s.speed > 0.01) row[clip] = +(s.speed / h).toFixed(3);
     }

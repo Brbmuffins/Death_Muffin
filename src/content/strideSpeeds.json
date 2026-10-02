@@ -1,5 +1,6 @@
 {
  "barrow_ghoul": {"walk":0.685,"run":2.04},
+ "belfry_gargoyle": {"walk":1.45},
  "bell_templar": {"walk":0.679,"run":2.04},
  "bog_hag": {"walk":0.692},
  "bone_colossus": {"walk":0.705},

@@ -81,7 +81,7 @@ const FEN_DEAD = new Set<EnemyId>(['fen_wisp', 'bog_hag', 'drowned_sexton', 'mir
 const HOVER = { wraith: 0.45 } as Partial<Record<EnemyId, number>>;
 /** Flying pack wingbeats: heavy stone, dusty moth, frantic bat, slow grieving seraph. */
 const WINGS: Partial<Record<EnemyId, WingOpts>> = {
-  gargoyle: { speed: 6, amp: 0.45, body: 0.3 },
+  // gargoyle: its wings are bones now (rigfix + tools/blender/recipes/belfry_gargoyle.json), so no shader flap.
   moth: { speed: 8, amp: 0.55, body: 0.16 },
   bat: { speed: 17, amp: 0.75, body: 0.22 },
   seraph: { speed: 3.2, amp: 0.22, body: 0.3 },
