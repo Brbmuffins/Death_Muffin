@@ -205,9 +205,9 @@ var VAULT_SLOTS = 120;
 var VAULT_TAB_SIZE = 40;
 var bySlot = (a, b) => a.slot - b.slot;
 var clone = (rows) => rows.map((r) => ({ ...r })).sort(bySlot);
-function put(rows, size, itemId, qty, maxStack) {
+function put(rows, size, itemId, qty, maxStack, inst, power) {
   let left = qty;
-  const cap = Math.max(1, maxStack);
+  const cap = inst !== void 0 ? 1 : Math.max(1, maxStack);
   if (cap > 1) {
     for (const r of rows) {
       if (left <= 0) break;
@@ -221,7 +221,7 @@ function put(rows, size, itemId, qty, maxStack) {
   for (let s = 0; s < size && left > 0; s++) {
     if (used.has(s)) continue;
     const add = Math.min(left, cap);
-    rows.push({ slot: s, itemId, qty: add });
+    rows.push({ slot: s, itemId, qty: add, ...inst !== void 0 ? { inst, ...power !== void 0 ? { power } : {} } : {} });
     used.add(s);
     left -= add;
   }
@@ -238,7 +238,7 @@ function moveStack(from, to, fromSlot, qty, toSize, info, toVault) {
   const want = qty === void 0 ? row.qty : Math.floor(Number(qty));
   if (!Number.isFinite(want) || want < 1) return { ok: false, error: "Choose how many to move." };
   const n = Math.min(want, row.qty);
-  if (put(dst, toSize, row.itemId, n, info(row.itemId).maxStack) > 0) return { ok: false, error: toVault ? NO_ROOM_VAULT : NO_ROOM_BAG };
+  if (put(dst, toSize, row.itemId, n, info(row.itemId).maxStack, row.inst, row.power) > 0) return { ok: false, error: toVault ? NO_ROOM_VAULT : NO_ROOM_BAG };
   row.qty -= n;
   const left = src.filter((r) => r.qty > 0);
   return { ok: true, bag: toVault ? left : dst.sort(bySlot), vault: toVault ? dst.sort(bySlot) : left, moved: n };
@@ -259,7 +259,7 @@ function depositMany(bag, vault, kind, exceptSlots, info) {
       keep.push(r);
       continue;
     }
-    if (put(dst, VAULT_SLOTS, r.itemId, r.qty, i.maxStack) > 0) return { ok: false, error: "The Vault cannot hold all of that. Nothing was moved. Sort the Vault or free some space." };
+    if (put(dst, VAULT_SLOTS, r.itemId, r.qty, i.maxStack, r.inst, r.power) > 0) return { ok: false, error: "The Vault cannot hold all of that. Nothing was moved. Sort the Vault or free some space." };
     moved += r.qty;
   }
   if (!moved) return { ok: false, error: kind === "materials" ? "You carry no materials to deposit." : "You carry nothing to deposit." };
@@ -271,20 +271,26 @@ var rank = (list, v) => {
   const i = list.indexOf(v);
   return i < 0 ? list.length : i;
 };
+var EFFECTIVE_BY_COUNT = ["common", "uncommon", "rare", "epic"];
 function sortVault(vault, info) {
   const totals = /* @__PURE__ */ new Map();
-  for (const r of vault) totals.set(r.itemId, (totals.get(r.itemId) ?? 0) + r.qty);
+  for (const r of vault) if (r.inst === void 0) totals.set(r.itemId, (totals.get(r.itemId) ?? 0) + r.qty);
   const stacks = [];
   for (const [itemId, total] of totals) {
     const cap = Math.max(1, info(itemId).maxStack);
     for (let left = total; left > 0; left -= cap) stacks.push({ itemId, qty: Math.min(cap, left) });
   }
+  for (const r of vault) if (r.inst !== void 0) stacks.push({ itemId: r.itemId, qty: 1, inst: r.inst, power: r.power });
+  const rarityRank = (s) => {
+    const base = rank(RARITY_ORDER, info(s.itemId).rarity);
+    return s.power === void 0 ? base : Math.min(base, rank(RARITY_ORDER, EFFECTIVE_BY_COUNT[Math.min(3, Math.floor(s.power / 1e3))]));
+  };
   stacks.sort((a, b) => {
     const ia = info(a.itemId);
     const ib = info(b.itemId);
-    return rank(TYPE_ORDER, ia.itemType) - rank(TYPE_ORDER, ib.itemType) || rank(RARITY_ORDER, ia.rarity) - rank(RARITY_ORDER, ib.rarity) || (a.itemId < b.itemId ? -1 : a.itemId > b.itemId ? 1 : 0) || b.qty - a.qty;
+    return rank(TYPE_ORDER, ia.itemType) - rank(TYPE_ORDER, ib.itemType) || rarityRank(a) - rarityRank(b) || (a.itemId < b.itemId ? -1 : a.itemId > b.itemId ? 1 : 0) || (b.power ?? 0) - (a.power ?? 0) || b.qty - a.qty || (a.inst ?? 0) - (b.inst ?? 0);
   });
-  return stacks.map((s, slot) => ({ slot, itemId: s.itemId, qty: s.qty }));
+  return stacks.map((s, slot) => ({ slot, itemId: s.itemId, qty: s.qty, ...s.inst !== void 0 ? { inst: s.inst, ...s.power !== void 0 ? { power: s.power } : {} } : {} }));
 }
 function addGrants(bag, grants, info) {
   const rows = clone(bag);

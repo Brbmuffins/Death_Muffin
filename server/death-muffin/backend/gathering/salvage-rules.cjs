@@ -22,10 +22,14 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/gameplay/salvageRules.ts
 var salvageRules_exports = {};
 __export(salvageRules_exports, {
+  SALVAGE_AFFIX_BONUS: () => SALVAGE_AFFIX_BONUS,
+  SALVAGE_AFFIX_XP: () => SALVAGE_AFFIX_XP,
   SALVAGE_BONUS_PER_LEVEL: () => SALVAGE_BONUS_PER_LEVEL,
   SALVAGE_GEAR_TYPES: () => SALVAGE_GEAR_TYPES,
+  SALVAGE_ILVL_BONUS: () => SALVAGE_ILVL_BONUS,
   SALVAGE_RARITIES: () => SALVAGE_RARITIES,
   SALVAGE_SKILL: () => SALVAGE_SKILL,
+  instanceYieldBonus: () => instanceYieldBonus,
   isSalvageGear: () => isSalvageGear,
   mergeGrants: () => mergeGrants,
   salvageItemIds: () => salvageItemIds,
@@ -208,6 +212,10 @@ var SALVAGE_GEAR_TYPES = ["weapon", "offhand", "armor_head", "armor_chest", "arm
 var isSalvageGear = (itemType) => SALVAGE_GEAR_TYPES.includes(itemType);
 var SALVAGE_RARITIES = ["common", "uncommon", "rare", "epic", "legendary", "relic"];
 var SALVAGE_BONUS_PER_LEVEL = 5e-3;
+var SALVAGE_AFFIX_BONUS = 0.12;
+var SALVAGE_ILVL_BONUS = 3e-3;
+var SALVAGE_AFFIX_XP = 0.15;
+var instanceYieldBonus = (item) => item.ilvl === void 0 && !item.affixes ? 0 : Math.min(0.9, (item.affixes ?? 0) * SALVAGE_AFFIX_BONUS + (item.ilvl ?? 0) * SALVAGE_ILVL_BONUS);
 var TIERS = {
   common: { ingots: ["ingot_copper"], planks: ["plank_oak"], qty: [1, 1], xp: 4, ecto: 0, rare: 0, meal: 0.15 },
   uncommon: { ingots: ["ingot_iron"], planks: ["plank_willow"], qty: [1, 1], xp: 9, ecto: 0.2, rare: 0, meal: 0.2 },
@@ -230,7 +238,7 @@ function salvagePreview(item) {
   if (t.ecto) reagents.push({ id: "reagent_wraith_ectoplasm", chance: t.ecto, qty: [1, 1] });
   if (t.rare) for (const id of REAGENT_RARE) reagents.push({ id, chance: t.rare / 2, qty: [1, 1] });
   if (t.meal) reagents.push({ id: "bone_meal", chance: t.meal, qty: [1, 1] });
-  return { materials: yieldsPlanks(item) ? t.planks : t.ingots, materialQty: t.qty, reagents, xp: t.xp };
+  return { materials: yieldsPlanks(item) ? t.planks : t.ingots, materialQty: t.qty, reagents, xp: Math.round(t.xp * (1 + (item.affixes ?? 0) * SALVAGE_AFFIX_XP)), extraChance: instanceYieldBonus(item) };
 }
 var between = (rand, [lo, hi]) => lo + Math.floor(rand() * (hi - lo + 1));
 var pick = (rand, list) => list[Math.min(list.length - 1, Math.floor(rand() * list.length))];
@@ -246,7 +254,9 @@ function salvageYield(item, salvagingLevel, rand) {
   if (t.ecto && rand() < t.ecto) add("reagent_wraith_ectoplasm", 1);
   if (t.rare && rand() < t.rare) add(pick(rand, REAGENT_RARE), 1);
   if (t.meal && rand() < t.meal) add("bone_meal", 1);
-  return { items: [...out].map(([item_id, quantity]) => ({ item_id, quantity })), xp: t.xp };
+  const extra = instanceYieldBonus(item);
+  if (extra > 0 && rand() < extra) add(material, 1);
+  return { items: [...out].map(([item_id, quantity]) => ({ item_id, quantity })), xp: Math.round(t.xp * (1 + (item.affixes ?? 0) * SALVAGE_AFFIX_XP)) };
 }
 function mergeGrants(lists) {
   const out = /* @__PURE__ */ new Map();
@@ -255,10 +265,14 @@ function mergeGrants(lists) {
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  SALVAGE_AFFIX_BONUS,
+  SALVAGE_AFFIX_XP,
   SALVAGE_BONUS_PER_LEVEL,
   SALVAGE_GEAR_TYPES,
+  SALVAGE_ILVL_BONUS,
   SALVAGE_RARITIES,
   SALVAGE_SKILL,
+  instanceYieldBonus,
   isSalvageGear,
   mergeGrants,
   salvageItemIds,

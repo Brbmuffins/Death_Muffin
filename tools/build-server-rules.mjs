@@ -50,6 +50,11 @@ const TARGETS = {
     out: join(root, 'server/death-muffin/backend/gathering/salvage-rules.cjs'),
     about: 'Salvaging (the Bone Grinder) yield rules shared by the web client, the offline mock and the Death Muffin backend.',
   },
+  affix: {
+    entry: 'src/gameplay/affixRules.ts',
+    out: join(root, 'server/death-muffin/backend/gathering/affix-rules.cjs'),
+    about: 'Item level and affix rules (pool, rolls, validation, names, value) shared by the web client, the offline mock and the Death Muffin backend.',
+  },
   vault: {
     entry: 'src/gameplay/vaultRules.ts',
     out: join(root, 'server/death-muffin/backend/gathering/vault-rules.cjs'),

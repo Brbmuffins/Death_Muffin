@@ -872,7 +872,7 @@ app.post('/api/inventory/save', requireJWT, async (req, res) => {
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
-      await inventorySave.replaceBag(conn, char.id, slots, bagSize);
+      await inventorySave.replaceBag(conn, char.id, slots, bagSize, char.account_id);
       await conn.commit();
     } catch (e) {
       await conn.rollback();
@@ -883,6 +883,8 @@ app.post('/api/inventory/save', requireJWT, async (req, res) => {
     const [rows] = await pool.execute(INV_SELECT, [char.id]);
     res.json({ success: true, data: rows });
   } catch (err) {
+    // A save that names a relic it does not own (or one it cannot prove) is refused, readably, and nothing was written.
+    if (err && err.refusal) return res.status(400).json({ success: false, error: err.message });
     console.error(`POST /api/inventory/save char#${characterId}: ${err.message}`);
     res.status(500).json({ success: false, error: 'internal server error' });
   }
@@ -1028,7 +1030,7 @@ app.post('/api/inventory/delete', requireJWT, async (req, res) => {
     const char = await ownedCharacter(req, res, characterId);
     if (!char) return;
     const [[slot]] = await pool.execute(
-      'SELECT item_id, quantity, equipped FROM inventory WHERE character_id = ? AND slot_index = ?',
+      'SELECT item_id, quantity, equipped, instance_id FROM inventory WHERE character_id = ? AND slot_index = ?',
       [char.id, slotIndex]
     );
     if (!slot)
@@ -1038,6 +1040,7 @@ app.post('/api/inventory/delete', requireJWT, async (req, res) => {
       'DELETE FROM inventory WHERE character_id = ? AND slot_index = ?',
       [char.id, slotIndex]
     );
+    if (slot.instance_id) await pool.execute('DELETE FROM loot_instances WHERE id = ?', [slot.instance_id]);
     console.log(`[INVENTORY] ${req.user.username} char#${char.id} deleted ${slot.item_id} x${slot.quantity} from slot ${slotIndex}`);
     const [rows] = await pool.execute(INV_SELECT, [char.id]);
     res.json({ success: true, data: rows });
@@ -1910,6 +1913,15 @@ require('./labor.cjs')(app, pool, {
 });
 require('./garden.cjs')(app, pool, {
   requireAuth: requireJWT,
+  ownsCharacter: async (req, characterId) => {
+    const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
+    return rows.length === 1;
+  },
+});
+require('./loot.cjs')(app, pool, {
+  requireAuth: requireJWT,
+  // A horde can drop several pieces a second at most; this only stops a script hammering the roll.
+  limiter: rateLimit({ windowMs: 60 * 1000, max: 600, standardHeaders: true, legacyHeaders: false }),
   ownsCharacter: async (req, characterId) => {
     const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
     return rows.length === 1;

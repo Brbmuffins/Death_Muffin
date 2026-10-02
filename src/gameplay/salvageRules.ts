@@ -19,11 +19,22 @@ export type SalvageRarity = (typeof SALVAGE_RARITIES)[number];
 
 /** +0.5% per Salvaging level of one extra material. */
 export const SALVAGE_BONUS_PER_LEVEL = 0.005;
+/** Rolled gear pays a little more: each affix adds 12% and each item level 0.3% to a second extra-material chance (capped), and 15% per affix to the XP. */
+export const SALVAGE_AFFIX_BONUS = 0.12;
+export const SALVAGE_ILVL_BONUS = 0.003;
+export const SALVAGE_AFFIX_XP = 0.15;
+
+/** Chance of one more material from a rolled piece's item level and affixes (0 for plain gear). */
+export const instanceYieldBonus = (item: Pick<SalvageItem, 'ilvl' | 'affixes'>): number =>
+  item.ilvl === undefined && !item.affixes ? 0 : Math.min(0.9, (item.affixes ?? 0) * SALVAGE_AFFIX_BONUS + (item.ilvl ?? 0) * SALVAGE_ILVL_BONUS);
 
 export interface SalvageItem {
   id: string;
   item_type: string;
   rarity: string;
+  /** A rolled instance (affixRules.ts): its item level and how many affixes it carries. Plain gear leaves both out. */
+  ilvl?: number;
+  affixes?: number;
 }
 export interface SalvageGrant {
   item_id: string;
@@ -71,13 +82,13 @@ export function salvageItemIds(): string[] {
 }
 
 /** What one salvage can give, for the panel preview (no rolling). */
-export function salvagePreview(item: SalvageItem): { materials: string[]; materialQty: [number, number]; reagents: { id: string; chance: number; qty: [number, number] }[]; xp: number } {
+export function salvagePreview(item: SalvageItem): { materials: string[]; materialQty: [number, number]; reagents: { id: string; chance: number; qty: [number, number] }[]; xp: number; extraChance: number } {
   const t = tierOf(item.rarity);
   const reagents = [{ id: 'reagent_grave_dust', chance: 1, qty: [1, 2] as [number, number] }];
   if (t.ecto) reagents.push({ id: 'reagent_wraith_ectoplasm', chance: t.ecto, qty: [1, 1] });
   if (t.rare) for (const id of REAGENT_RARE) reagents.push({ id, chance: t.rare / 2, qty: [1, 1] });
   if (t.meal) reagents.push({ id: 'bone_meal', chance: t.meal, qty: [1, 1] });
-  return { materials: yieldsPlanks(item) ? t.planks : t.ingots, materialQty: t.qty, reagents, xp: t.xp };
+  return { materials: yieldsPlanks(item) ? t.planks : t.ingots, materialQty: t.qty, reagents, xp: Math.round(t.xp * (1 + (item.affixes ?? 0) * SALVAGE_AFFIX_XP)), extraChance: instanceYieldBonus(item) };
 }
 
 const between = (rand: () => number, [lo, hi]: [number, number]) => lo + Math.floor(rand() * (hi - lo + 1));
@@ -99,7 +110,11 @@ export function salvageYield(item: SalvageItem, salvagingLevel: number, rand: ()
   if (t.rare && rand() < t.rare) add(pick(rand, REAGENT_RARE), 1);
   if (t.meal && rand() < t.meal) add('bone_meal', 1);
 
-  return { items: [...out].map(([item_id, quantity]) => ({ item_id, quantity })), xp: t.xp };
+  // Plain gear stops here (its random sequence is unchanged); a rolled piece gets one more chance at a material.
+  const extra = instanceYieldBonus(item);
+  if (extra > 0 && rand() < extra) add(material, 1);
+
+  return { items: [...out].map(([item_id, quantity]) => ({ item_id, quantity })), xp: Math.round(t.xp * (1 + (item.affixes ?? 0) * SALVAGE_AFFIX_XP)) };
 }
 
 /** Merge several yields into one list (what the bag is asked to hold). */
