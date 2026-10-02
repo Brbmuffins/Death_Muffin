@@ -6,7 +6,8 @@
     "hurt",
     "hurt2",
     "idle",
-    "attack"
+    "attack",
+    "walk"
   ],
   "tris": 4551
 }

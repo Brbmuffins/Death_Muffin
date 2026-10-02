@@ -106,6 +106,15 @@
           "amp": 3,
           "cycles": 2,
           "phase": 0.3
+        },
+        {
+          "bones": [
+            "tripo::Tail_1"
+          ],
+          "kind": "lift",
+          "amp": 0.03,
+          "cycles": 0,
+          "phase": 0.25
         }
       ]
     },
@@ -168,6 +177,16 @@
           "amp": 8,
           "cycles": 1,
           "lag": 0.08
+        },
+        {
+          "bones": [
+            "tripo::Tail_1"
+          ],
+          "kind": "lift",
+          "amp": 0.1,
+          "cycles": 0,
+          "phase": 0.25,
+          "_note": "constant: lifts the tail chain clear of the floor (the crouch drops it below the feet)"
         }
       ]
     },

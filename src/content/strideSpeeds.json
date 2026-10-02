@@ -1,10 +1,11 @@
 {
  "barrow_ghoul": {"walk":0.685,"run":2.04},
+ "belfry_gargoyle": {"walk":1.45},
  "bell_templar": {"walk":0.679,"run":2.04},
  "bog_hag": {"walk":0.692},
  "bone_colossus": {"walk":0.705},
  "bone_golem": {"walk":0.669},
- "bone_hound": {"walk":1.1},
+ "bone_hound": {"walk":0.466,"run":2.36},
  "boss_bone_abbess": {"walk":0.634},
  "boss_cinder_regent": {"walk":0.686},
  "boss_drowned_congregation": {"walk":0.567},

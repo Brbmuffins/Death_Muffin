@@ -67,7 +67,8 @@ class Gait:
         else:
             self.fwd = horizontal(rig.head[head] - rig.head[self.root])
         self.lat = UP.cross(self.fwd).normalized()  # body's left
-        self.legs = {k: Leg(rig, v['chain'], v['paw'], v.get('rigidFrom')) for k, v in r['legs'].items()}
+        self.min_reach = {k: v.get('minReach', 0.0) for k, v in r['legs'].items()}
+        self.legs = {k: Leg(rig, v['chain'], v['paw'], v.get('rigidFrom'), bool(v.get('hock'))) for k, v in r['legs'].items()}
         self.side = {k: (1 if (rig.head[v['paw']] - rig.head[self.root]).dot(self.lat) >= 0 else -1) for k, v in r['legs'].items()}
         self.leg_bones = set()
         for lg in self.legs.values():
@@ -149,10 +150,33 @@ class Gait:
                     R = Matrix.Rotation(ang, 3, self.lat)
                     pawrot = R @ rig.rest[lg.paw].to_3x3()
                 inh = rig.inherited(n, P.get(par) if par else None)
-                dist = (ankle - inh.translation).length
+                md = None
+                hk = clip.get('hock')
+                if lg.hock:
+                    # rotate the rest metatarsus direction about the body's lateral axis (positive folds the foot back)
+                    ang = 0.0
+                    if hk and g:
+                        v = (ph - g['phase'][key]) % 1.0
+                        ang = math.radians(hk['stance'] * (v / g['duty'] - 0.5) if v < g['duty'] else hk['swing'] * math.sin(math.pi * (v - g['duty']) / (1 - g['duty'])))
+                    ang += math.radians(hk.get('offset', 0.0)) if hk else 0.0
+                    md = Matrix.Rotation(ang, 3, self.lat) @ lg.meta_rest
+                    dist = (ankle - md * lg.meta_len - inh.translation).length
+                else:
+                    dist = (ankle - inh.translation).length
+                    mr = self.min_reach[key] * lg.reach
+                    if mr and g and 1e-6 < dist < mr:
+                        # a tightly folded leg turns the thin forearm into a fin that rises past the spine: open the fold
+                        # in mid-swing (weight 0 at lift-off and touch-down, so the foot never pops)
+                        v = (ph - g['phase'][key]) % 1.0
+                        w = math.sin(math.pi * (v - g['duty']) / (1 - g['duty'])) if v >= g['duty'] else 0.0
+                        if w > 0:
+                            nd = dist + (mr - dist) * w
+                            ankle = inh.translation + (ankle - inh.translation) * (nd / dist)
+                            dist = nd
                 info['stretch'] = max(info['stretch'], dist / lg.reach)
+                info.setdefault('ratio', {})[key] = dist / lg.reach
                 info['contact'][key] = contact
-                sol = lg.solve(P, basis, ankle, paw_rot_world=pawrot)
+                sol = lg.solve(P, basis, ankle, paw_rot_world=pawrot, meta_dir=md)
                 info.setdefault('sol', {})[key] = sol
                 continue
             inh = rig.inherited(n, P.get(par) if par else None)
@@ -187,19 +211,88 @@ class Gait:
                     break
                 d += 0.002
             crouch = d
-        frames, stretch, contacts = [], 0.0, []
+        frames, stretch, contacts, lows = [], 0.0, [], {}
         for i in range(n + 1):  # frame n == frame 0 so the loop closes
             b, P, info = self.pose((i % n) / n, clip, crouch)
             frames.append(b)
             if os.environ.get('PROC_DEBUG'):
                 print('DBG', i, {k: [tuple(round(c, 3) for c in j) for j in v] for k, v in info.get('sol', {}).items() if k in os.environ['PROC_DEBUG'].split(',')})
             stretch = max(stretch, info['stretch'])
+            for k_, r_ in info.get('ratio', {}).items():
+                lows[k_] = min(lows.get(k_, 9), r_)
             contacts.append(info['contact'])
         g = clip.get('gait')
-        res = {'clip': name, 'duration': dur, 'frames': n + 1, 'crouch': round(crouch, 4), 'maxStretch': round(stretch, 3)}
+        res = {'clip': name, 'duration': dur, 'frames': n + 1, 'crouch': round(crouch, 4), 'maxStretch': round(stretch, 3), 'minReach': {k_: round(v_, 2) for k_, v_ in lows.items()}}
         if g:
             res['stanceSpeed'] = round(g['stride'] / (g['duty'] * dur), 4)
         return frames, res
+
+
+def interp(keys, u):
+    """Piecewise-linear value of [[u, v], ...] at u (clamped)."""
+    if not keys:
+        return 0.0
+    if u <= keys[0][0]:
+        return keys[0][1]
+    for (u0, v0), (u1, v1) in zip(keys, keys[1:]):
+        if u <= u1:
+            return v0 + (v1 - v0) * (u - u0) / max(1e-9, u1 - u0)
+    return keys[-1][1]
+
+
+def build_overlay(rig_glb, tripo_dir, recipe, name, spec, out_dir):
+    """
+    Lay procedural bone motion over a Tripo clip: the clip's own channels are kept, and the wing (or any other new) bones
+    named by the spec get keys on top. Needed because rigfix adds bones the Tripo presets know nothing about.
+    spec: base (anim file name), bones: {bone: {sign, fold, tip, lag}}, roll: [[u, deg]...] (mean wing angle over normalised time),
+    flap: {cycles, amp, env: [[u, 0..1]...]} (sine on top; a bone scales it by `tip` and lags by `lag` cycles; `fold` is its share of the mean roll).
+    Rolls are about the body's forward axis; for each bone the angle is applied in its own rest frame.
+    """
+    common.reset_scene()
+    arm, meshes = common.import_glb(rig_glb)
+    common.clear_actions(arm)
+    base = os.path.join(tripo_dir, spec['base'])
+    orig = os.path.join(tripo_dir, 'orig', spec['base'])
+    if os.path.exists(orig):
+        base = orig  # never stack an overlay on an installed overlay
+    arm2, meshes2 = common.import_glb(base)
+    act = arm2.animation_data.action.copy()
+    act.name = name
+    for o in [arm2] + meshes2:
+        bpy.data.objects.remove(o, do_unlink=True)
+    common.use_quaternions(arm)
+    arm.animation_data_create()
+    arm.animation_data.action = act
+    if hasattr(act, 'slots') and len(act.slots) and hasattr(arm.animation_data, 'action_slot'):
+        # Blender 4.4+ slotted actions: the copied clip's channels live in the slot made for the other armature
+        arm.animation_data.action_slot = act.slots[0]
+    rig = Rig(arm)
+    fwd = Vector(recipe['forward']).normalized()
+    f0, f1 = int(round(act.frame_range[0])), int(round(act.frame_range[1]))
+    dur = (f1 - f0) / common.FPS
+    fl = spec.get('flap', {})
+    for f in range(f0, f1 + 1):
+        u = (f - f0) / max(1, f1 - f0)
+        t = u * dur
+        base_roll = interp(spec.get('roll', [[0, 0]]), u)
+        env = interp(fl.get('env', [[0, 1]]), u) if fl else 0.0
+        for b, bs in spec['bones'].items():
+            ang = base_roll * bs.get('fold', 1.0)
+            if fl:
+                ang += env * fl['amp'] * bs.get('tip', 1.0) * math.sin(2 * math.pi * (fl['cycles'] * u + bs.get('lag', 0.0)))
+            ang *= bs.get('sign', 1.0)
+            axis = rig.rest[b].to_3x3().inverted() @ fwd
+            pb = arm.pose.bones[b]
+            pb.rotation_quaternion = Quaternion(axis.normalized(), math.radians(ang))
+            pb.location = Vector((0, 0, 0))
+            pb.keyframe_insert('rotation_quaternion', frame=f)
+    for fc in act.fcurves:
+        for kp in fc.keyframe_points:
+            kp.interpolation = 'LINEAR'
+    common.fix_hemispheres(act)
+    out = os.path.join(out_dir, f'anim_{name}.glb')
+    common.export_glb(out, arm, act)
+    return {'clip': name, 'overlay': spec['base'], 'duration': round(dur, 3), 'frames': f1 - f0 + 1, 'file': out}
 
 
 def main():
@@ -229,6 +322,12 @@ def main():
         res['file'] = out
         results.append(res)
         print('PROCEDURAL', name, res)
+    for name, spec in recipe.get('overlays', {}).items():
+        if only and name not in only:
+            continue
+        res = build_overlay(rig_glb, os.path.dirname(rig_glb), recipe, name, spec, out_dir)
+        results.append(res)
+        print('PROCEDURAL overlay', res)
     import json
     print('RESULT ' + json.dumps(results))
 

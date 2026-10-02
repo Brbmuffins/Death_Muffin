@@ -101,6 +101,13 @@ Audit of a brand-new character's first stretch: `docs/FIRST-HOUR-AUDIT.md` (time
   shipped one; the spell-ready idle and talk gestures are candidates for new hooks. Decision is the orchestrator's.
 - Dev server for this branch used port 5345; `tools/qa/clip-strip.cjs` renders side-view frame strips (carry the body at the clip's ground speed with `--speed N --abs` to see planted feet on the ground ticks).
 
+## Blender round 2 (branch `dm/blender-2`, 2 Oct 2026, not deployed)
+
+- **bone_hound:** was shipping Tripo's walk, which in the game stretched the cloth/torso weights into a vertical sliver. New skeleton parts via `rigfix` (4 legs + tail), procedural idle/walk/run, no more stride override. Slip 0.85 -> 0.06. **cinderhound:** hock-flex hind legs, open foreleg fold (no shoulder fin). **skull_rat:** tail lifted off the floor in walk/run.
+- **belfry_gargoyle:** both wings are bones now; the Tripo clips carry wing motion (overlay), a flap `walk` exists, and the shader flap is off for the gargoyle only. The dive is the unchanged Tripo tumble.
+- **NPC talk gesture:** UAL `Idle_Talking_Loop` was retargeted onto the three guides and judged worse; nothing swapped.
+- Overwrote files in the shared `art-src/tripo/<slug>/` (originals in `orig/`): see the final report / docs/BLENDER-PIPELINE.md. `tools/qa/anim-pass-smoke.cjs` now takes the hound's feet from its recipe. Details: `docs/BLENDER-PIPELINE.md` "Results, round 2".
+
 ## 60-second orientation
 
 - **What it is:** Death Muffin — browser dark-fantasy ARPG (Vite + TS + Three.js),

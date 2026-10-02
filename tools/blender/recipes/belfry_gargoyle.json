@@ -1,0 +1,555 @@
+{
+  "slug": "belfry_gargoyle",
+  "source": "rigfixed.glb",
+  "forward": [
+    1,
+    0,
+    0
+  ],
+  "headBone": "Head",
+  "root": "Root",
+  "rigfix": {
+    "from": "rig.glb",
+    "legs": [
+      {
+        "prefix": "L",
+        "parent": "Spine02",
+        "exclusive": false,
+        "joints": [
+          [
+            0.1,
+            0.07,
+            0.68
+          ],
+          [
+            0.1,
+            0.3,
+            0.86
+          ],
+          [
+            0.1,
+            0.52,
+            0.58
+          ]
+        ],
+        "names": [
+          "L_Wing_A",
+          "L_Wing_B"
+        ],
+        "select": {
+          "box": [
+            {
+              "axis": "x",
+              "max": 0.12,
+              "fade": 0.03
+            },
+            {
+              "axis": "absy",
+              "min": 0.07,
+              "fade": 0.05
+            },
+            {
+              "axis": "z",
+              "min": 0.4,
+              "fade": 0.04
+            },
+            {
+              "axis": "y",
+              "min": 0.0,
+              "fade": 0.01
+            }
+          ],
+          "along": {
+            "axis": "absy",
+            "breaks": [
+              0.3
+            ],
+            "blend": 0.06
+          }
+        }
+      },
+      {
+        "prefix": "R",
+        "parent": "Spine02",
+        "exclusive": false,
+        "joints": [
+          [
+            0.1,
+            -0.07,
+            0.68
+          ],
+          [
+            0.1,
+            -0.3,
+            0.86
+          ],
+          [
+            0.1,
+            -0.52,
+            0.58
+          ]
+        ],
+        "names": [
+          "R_Wing_A",
+          "R_Wing_B"
+        ],
+        "select": {
+          "box": [
+            {
+              "axis": "x",
+              "max": 0.12,
+              "fade": 0.03
+            },
+            {
+              "axis": "absy",
+              "min": 0.07,
+              "fade": 0.05
+            },
+            {
+              "axis": "z",
+              "min": 0.4,
+              "fade": 0.04
+            },
+            {
+              "axis": "y",
+              "max": 0.0,
+              "fade": 0.01
+            }
+          ],
+          "along": {
+            "axis": "absy",
+            "breaks": [
+              0.3
+            ],
+            "blend": 0.06
+          }
+        }
+      }
+    ]
+  },
+  "legs": {},
+  "clips": {},
+  "levelFeet": false,
+  "stride": {
+    "walk": 1.45
+  },
+  "_note": "Wings: rigfix adds L_/R_Wing_A (root to wrist) and Wing_B (wrist to tip) from a thin-sheet region test; clips are overlays on Tripo's own idle (body untouched) that roll them about the forward axis (left wing + is up, right wing - is up). Overlays lay procedural wing motion over a Tripo clip (procedural.py build_overlay), because rigfix bones are unknown to the presets. 'stride' is a hand-set walk stride (body heights/s) for a rig with no legs to measure: it makes the game play the flap at ~1.1x at the gargoyle's 3.2 u/s.",
+  "overlays": {
+    "dive": {
+      "base": "anim_dive.glb",
+      "bones": {
+        "L_Wing_A": {
+          "sign": 1
+        },
+        "R_Wing_A": {
+          "sign": -1
+        },
+        "L_Wing_B": {
+          "sign": 1,
+          "fold": 0.5,
+          "tip": 0.6,
+          "lag": 0.1
+        },
+        "R_Wing_B": {
+          "sign": -1,
+          "fold": 0.5,
+          "tip": 0.6,
+          "lag": 0.1
+        }
+      },
+      "roll": [
+        [
+          0,
+          0
+        ],
+        [
+          0.5,
+          0
+        ],
+        [
+          0.62,
+          55
+        ],
+        [
+          1,
+          55
+        ]
+      ],
+      "flap": {
+        "cycles": 1.5,
+        "amp": 26,
+        "env": [
+          [
+            0,
+            1
+          ],
+          [
+            0.5,
+            1
+          ],
+          [
+            0.6,
+            0.2
+          ],
+          [
+            1,
+            0.2
+          ]
+        ]
+      }
+    },
+    "slash": {
+      "base": "anim_slash.glb",
+      "bones": {
+        "L_Wing_A": {
+          "sign": 1
+        },
+        "R_Wing_A": {
+          "sign": -1
+        },
+        "L_Wing_B": {
+          "sign": 1,
+          "fold": 0.5,
+          "tip": 0.6,
+          "lag": 0.1
+        },
+        "R_Wing_B": {
+          "sign": -1,
+          "fold": 0.5,
+          "tip": 0.6,
+          "lag": 0.1
+        }
+      },
+      "roll": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ]
+      ],
+      "flap": {
+        "cycles": 6,
+        "amp": 20,
+        "env": [
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ]
+      }
+    },
+    "hit_to_body_01": {
+      "base": "anim_hit_to_body_01.glb",
+      "bones": {
+        "L_Wing_A": {
+          "sign": 1
+        },
+        "R_Wing_A": {
+          "sign": -1
+        },
+        "L_Wing_B": {
+          "sign": 1,
+          "fold": 0.5,
+          "tip": 0.6,
+          "lag": 0.1
+        },
+        "R_Wing_B": {
+          "sign": -1,
+          "fold": 0.5,
+          "tip": 0.6,
+          "lag": 0.1
+        }
+      },
+      "roll": [
+        [
+          0,
+          0
+        ],
+        [
+          0.25,
+          35
+        ],
+        [
+          1,
+          0
+        ]
+      ],
+      "flap": {
+        "cycles": 1,
+        "amp": 10,
+        "env": [
+          [
+            0,
+            0.4
+          ],
+          [
+            1,
+            0.4
+          ]
+        ]
+      }
+    },
+    "hit_to_head": {
+      "base": "anim_hit_to_head.glb",
+      "bones": {
+        "L_Wing_A": {
+          "sign": 1
+        },
+        "R_Wing_A": {
+          "sign": -1
+        },
+        "L_Wing_B": {
+          "sign": 1,
+          "fold": 0.5,
+          "tip": 0.6,
+          "lag": 0.1
+        },
+        "R_Wing_B": {
+          "sign": -1,
+          "fold": 0.5,
+          "tip": 0.6,
+          "lag": 0.1
+        }
+      },
+      "roll": [
+        [
+          0,
+          0
+        ],
+        [
+          0.25,
+          35
+        ],
+        [
+          1,
+          0
+        ]
+      ],
+      "flap": {
+        "cycles": 1,
+        "amp": 10,
+        "env": [
+          [
+            0,
+            0.4
+          ],
+          [
+            1,
+            0.4
+          ]
+        ]
+      }
+    },
+    "fall": {
+      "base": "anim_fall.glb",
+      "bones": {
+        "L_Wing_A": {
+          "sign": 1
+        },
+        "R_Wing_A": {
+          "sign": -1
+        },
+        "L_Wing_B": {
+          "sign": 1,
+          "fold": 0.5,
+          "tip": 0.6,
+          "lag": 0.1
+        },
+        "R_Wing_B": {
+          "sign": -1,
+          "fold": 0.5,
+          "tip": 0.6,
+          "lag": 0.1
+        }
+      },
+      "roll": [
+        [
+          0,
+          0
+        ],
+        [
+          0.4,
+          -30
+        ],
+        [
+          1,
+          -45
+        ]
+      ],
+      "flap": {
+        "cycles": 1,
+        "amp": 12,
+        "env": [
+          [
+            0,
+            1
+          ],
+          [
+            0.4,
+            0.3
+          ],
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    },
+    "defeat_03": {
+      "base": "anim_defeat_03.glb",
+      "bones": {
+        "L_Wing_A": {
+          "sign": 1
+        },
+        "R_Wing_A": {
+          "sign": -1
+        },
+        "L_Wing_B": {
+          "sign": 1,
+          "fold": 0.5,
+          "tip": 0.6,
+          "lag": 0.1
+        },
+        "R_Wing_B": {
+          "sign": -1,
+          "fold": 0.5,
+          "tip": 0.6,
+          "lag": 0.1
+        }
+      },
+      "roll": [
+        [
+          0,
+          0
+        ],
+        [
+          0.3,
+          -30
+        ],
+        [
+          1,
+          -50
+        ]
+      ],
+      "flap": {
+        "cycles": 1.5,
+        "amp": 12,
+        "env": [
+          [
+            0,
+            1
+          ],
+          [
+            0.3,
+            0.3
+          ],
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    },
+    "idle": {
+      "base": "anim_idle.glb",
+      "bones": {
+        "L_Wing_A": {
+          "sign": 1
+        },
+        "R_Wing_A": {
+          "sign": -1
+        },
+        "L_Wing_B": {
+          "sign": 1,
+          "fold": 0.5,
+          "tip": 0.6,
+          "lag": 0.1
+        },
+        "R_Wing_B": {
+          "sign": -1,
+          "fold": 0.5,
+          "tip": 0.6,
+          "lag": 0.1
+        }
+      },
+      "roll": [
+        [
+          0,
+          8
+        ],
+        [
+          1,
+          8
+        ]
+      ],
+      "flap": {
+        "cycles": 13,
+        "amp": 24,
+        "env": [
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ]
+      }
+    },
+    "walk": {
+      "base": "anim_idle.glb",
+      "bones": {
+        "L_Wing_A": {
+          "sign": 1
+        },
+        "R_Wing_A": {
+          "sign": -1
+        },
+        "L_Wing_B": {
+          "sign": 1,
+          "fold": 0.5,
+          "tip": 0.6,
+          "lag": 0.1
+        },
+        "R_Wing_B": {
+          "sign": -1,
+          "fold": 0.5,
+          "tip": 0.6,
+          "lag": 0.1
+        }
+      },
+      "roll": [
+        [
+          0,
+          8
+        ],
+        [
+          1,
+          8
+        ]
+      ],
+      "flap": {
+        "cycles": 19,
+        "amp": 30,
+        "env": [
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ]
+      }
+    }
+  }
+}

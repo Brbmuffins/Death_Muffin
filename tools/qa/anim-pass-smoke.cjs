@@ -22,10 +22,10 @@ const SHOTS = !process.env.DM_QA_NO_SHOTS;
 
 // Enemies whose rigs have a Blender recipe: the mesh-contact slip counts only vertices skinned to the recipe's named
 // legs (a dragging tail or a swaying head is not a foot), with the floor taken from the planted feet, not one stray toe.
-const QUAD_SLUG = { rat: 'skull_rat', cinderhound: 'cinderhound' };
+const QUAD_SLUG = { rat: 'skull_rat', cinderhound: 'cinderhound', hound: 'bone_hound' };
 function legBones(def) {
   const slug = QUAD_SLUG[def];
-  const f = path.join(__dirname, '../blender/recipes', `${slug}.json`);
+  const f = path.join(process.env.DM_QA_RECIPE_DIR || path.join(__dirname, '../blender/recipes'), `${slug}.json`); // DM_QA_RECIPE_DIR: measure an old rig with its old leg bones
   if (!slug || !fs.existsSync(f)) return null;
   const legs = {};
   for (const [k, leg] of Object.entries(JSON.parse(fs.readFileSync(f, 'utf8')).legs)) legs[k] = [...leg.chain, leg.paw].map((n) => n.replace(/\s/g, '_').replace(/[\[\]./:]/g, '')); // three's loader strips these from node names
@@ -330,9 +330,10 @@ async function main() {
   log('enemy slip mean', report.meanBipedSlip);
 
 
-  // --- quadruped stride: the bone hound's four foot bones, planted speed along the heading as a share of ground speed.
+  // --- quadruped stride: the bone hound's four paw bones (recipe tools/blender/recipes/bone_hound.json), planted speed along the heading as a share of ground speed.
   // (The mesh/bone metrics above are unreliable on the quadruped rigs; this is the signed measure used to calibrate them.)
-  report.houndPlanted = await page.evaluate(async () => {
+  const houndFeet = Object.values(legBones('hound')).map((l) => l[l.length - 1]); // the recipe's paw bones (ankles), planted by construction
+  report.houndPlanted = await page.evaluate(async (houndFeet) => {
     const { getRuntime } = await import('/src/app/GameRuntime.ts');
     const dbg = window.__cwDebug; const scene = getRuntime().view; const V3 = scene.rig.camera.position.constructor;
     const med = (a) => { a = a.slice().sort((x, y) => x - y); return a[Math.floor(a.length / 2)]; };
@@ -340,7 +341,7 @@ async function main() {
     const id = dbg.ring('hound', 1, 14)[0]; const sim = dbg.sim(); const e = sim.enemies.get(id); e.hp = e.maxHp = 1e9;
     let view; for (let k = 0; k < 40 && !(view && view.c.loaded); k++) { await new Promise((r) => setTimeout(r, 250)); dbg.advance(0.05, false); view = scene.views.enemies.get(id); }
     dbg.advance(1.5, false);
-    const bs = ['bone_10', 'bone_11', 'bone_14', 'bone_15'].map((n) => { let f; view.c.model.traverse((o) => { if (o.name === n) f = o; }); return f; });
+    const bs = houndFeet.map((n) => { let f; view.c.model.traverse((o) => { if (o.name === n) f = o; }); return f; });
     const rows = []; let prev = null;
     for (let i = 0; i < 160; i++) {
       dbg.advance(1 / 60, false);
@@ -351,7 +352,7 @@ async function main() {
     }
     const per = bs.map((_, k) => { const ys = rows.map((r) => r[k][0]); const lo = Math.min(...ys), hi = Math.max(...ys); return med(rows.filter((r) => r[k][0] <= lo + 0.25 * (hi - lo)).map((r) => r[k][1])) / e.speed; });
     return { planted: +med(per).toFixed(2), ts: +(view.c.lastPlan?.timeScale ?? 0).toFixed(2) };
-  });
+  }, houndFeet);
   log('hound planted (signed, share of ground speed; 0 = planted)', JSON.stringify(report.houndPlanted));
   assert.ok(Math.abs(report.houndPlanted.planted) < 0.2, `hound feet planted ${report.houndPlanted.planted}`);
   assert.equal(report.enemies.robber.clip, 'run', 'robber runs on its run clip');

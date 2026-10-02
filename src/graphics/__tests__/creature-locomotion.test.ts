@@ -86,6 +86,8 @@ describe('locomotion playback', () => {
 
   it('a rig with no idle clip shuffles its walk slowly instead of trotting on the spot', async () => {
     const hound = await make('bone_hound');
+    // Every shipped quadruped has an idle clip now (the hound got a procedural one on 2026-10-02), so take it away to test the fallback.
+    (hound as unknown as { actions: Map<string, unknown> }).actions.delete('idle');
     hound.setLoop('walk', 2.5);
     hound.update(1 / 60);
     hound.setLoop('idle');

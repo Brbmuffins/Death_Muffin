@@ -1,0 +1,460 @@
+{
+  "slug": "bone_hound",
+  "source": "rigfixed.glb",
+  "forward": [
+    0,
+    1,
+    0
+  ],
+  "headBone": "tripo::Head_1",
+  "root": "tripo::Root",
+  "rigfix": {
+    "from": "rig.glb",
+    "legs": [
+      {
+        "prefix": "FL",
+        "parent": "tripo::0_Left_Limb_5",
+        "joints": [
+          [
+            -0.1,
+            0.24,
+            0.47
+          ],
+          [
+            -0.135,
+            0.1,
+            0.27
+          ],
+          [
+            -0.135,
+            0.2,
+            0.12
+          ],
+          [
+            -0.15,
+            0.3,
+            0.01
+          ]
+        ],
+        "names": [
+          "FL_Upper",
+          "FL_Lower",
+          "FL_Paw"
+        ],
+        "select": {
+          "radii": [
+            0.06,
+            0.05,
+            0.1
+          ],
+          "soft": 0.025,
+          "zTop": [
+            0.36,
+            0.46
+          ]
+        }
+      },
+      {
+        "prefix": "FR",
+        "parent": "tripo::0_Left_Limb_5",
+        "joints": [
+          [
+            0.05,
+            0.24,
+            0.47
+          ],
+          [
+            0.09,
+            0.115,
+            0.26
+          ],
+          [
+            0.085,
+            0.19,
+            0.12
+          ],
+          [
+            0.115,
+            0.27,
+            0.0
+          ]
+        ],
+        "names": [
+          "FR_Upper",
+          "FR_Lower",
+          "FR_Paw"
+        ],
+        "select": {
+          "radii": [
+            0.06,
+            0.05,
+            0.1
+          ],
+          "soft": 0.025,
+          "zTop": [
+            0.36,
+            0.46
+          ]
+        }
+      },
+      {
+        "prefix": "HL",
+        "parent": "tripo::Root",
+        "joints": [
+          [
+            -0.09,
+            -0.26,
+            0.52
+          ],
+          [
+            -0.135,
+            -0.255,
+            0.31
+          ],
+          [
+            -0.145,
+            -0.395,
+            0.19
+          ],
+          [
+            -0.155,
+            -0.36,
+            0.07
+          ],
+          [
+            -0.19,
+            -0.28,
+            0.01
+          ]
+        ],
+        "names": [
+          "HL_Thigh",
+          "HL_Shin",
+          "HL_Meta",
+          "HL_Paw"
+        ],
+        "select": {
+          "radii": [
+            0.07,
+            0.05,
+            0.05,
+            0.095
+          ],
+          "soft": 0.025,
+          "zTop": [
+            0.4,
+            0.5
+          ]
+        }
+      },
+      {
+        "prefix": "HR",
+        "parent": "tripo::Root",
+        "joints": [
+          [
+            0.04,
+            -0.26,
+            0.52
+          ],
+          [
+            0.07,
+            -0.25,
+            0.31
+          ],
+          [
+            0.08,
+            -0.385,
+            0.19
+          ],
+          [
+            0.1,
+            -0.35,
+            0.07
+          ],
+          [
+            0.14,
+            -0.29,
+            0.01
+          ]
+        ],
+        "names": [
+          "HR_Thigh",
+          "HR_Shin",
+          "HR_Meta",
+          "HR_Paw"
+        ],
+        "select": {
+          "radii": [
+            0.07,
+            0.05,
+            0.05,
+            0.095
+          ],
+          "soft": 0.025,
+          "zTop": [
+            0.4,
+            0.5
+          ]
+        }
+      },
+      {
+        "prefix": "T",
+        "parent": "tripo::Root",
+        "joints": [
+          [
+            -0.025,
+            -0.29,
+            0.52
+          ],
+          [
+            -0.025,
+            -0.42,
+            0.47
+          ],
+          [
+            -0.025,
+            -0.5,
+            0.36
+          ],
+          [
+            -0.025,
+            -0.5,
+            0.22
+          ],
+          [
+            -0.025,
+            -0.46,
+            0.16
+          ]
+        ],
+        "names": [
+          "Tail_A",
+          "Tail_B",
+          "Tail_C",
+          "Tail_D"
+        ],
+        "select": {
+          "radii": [
+            0.04,
+            0.035,
+            0.035,
+            0.035
+          ],
+          "soft": 0.02,
+          "zTop": [
+            9,
+            10
+          ],
+          "rootFade": 0.8
+        },
+        "tail": true
+      }
+    ]
+  },
+  "legs": {
+    "FL": {
+      "chain": [
+        "FL_Upper",
+        "FL_Lower"
+      ],
+      "paw": "FL_Paw"
+    },
+    "FR": {
+      "chain": [
+        "FR_Upper",
+        "FR_Lower"
+      ],
+      "paw": "FR_Paw"
+    },
+    "HL": {
+      "chain": [
+        "HL_Thigh",
+        "HL_Shin",
+        "HL_Meta"
+      ],
+      "paw": "HL_Paw",
+      "hock": true
+    },
+    "HR": {
+      "chain": [
+        "HR_Thigh",
+        "HR_Shin",
+        "HR_Meta"
+      ],
+      "paw": "HR_Paw",
+      "hock": true
+    }
+  },
+  "clips": {
+    "walk": {
+      "type": "gait",
+      "duration": 1.2,
+      "gait": {
+        "duty": 0.62,
+        "stride": 0.24,
+        "lift": 0.07,
+        "arc": 0.6,
+        "phase": {
+          "HL": 0.0,
+          "FL": 0.25,
+          "HR": 0.5,
+          "FR": 0.75
+        }
+      },
+      "paw": {
+        "stance": 0,
+        "swing": -15
+      },
+      "hock": {
+        "stance": 20,
+        "swing": 30
+      },
+      "mods": [
+        {
+          "bones": [
+            "tripo::Root"
+          ],
+          "kind": "lift",
+          "amp": 0.006,
+          "cycles": 2,
+          "phase": 0.1
+        },
+        {
+          "bones": [
+            "tripo::Root"
+          ],
+          "kind": "roll",
+          "amp": 1.2,
+          "cycles": 1
+        },
+        {
+          "bones": [
+            "tripo::Head_0",
+            "tripo::Head_1"
+          ],
+          "kind": "pitch",
+          "amp": 3,
+          "cycles": 2,
+          "phase": 0.35,
+          "lag": 0.04
+        },
+        {
+          "bones": [
+            "Tail_A",
+            "Tail_B",
+            "Tail_C",
+            "Tail_D"
+          ],
+          "kind": "yaw",
+          "amp": 9,
+          "cycles": 1,
+          "lag": 0.08
+        }
+      ]
+    },
+    "run": {
+      "type": "gait",
+      "duration": 0.5,
+      "gait": {
+        "duty": 0.44,
+        "stride": 0.36,
+        "lift": 0.09,
+        "arc": 0.6,
+        "phase": {
+          "HL": 0.0,
+          "HR": 0.08,
+          "FL": 0.5,
+          "FR": 0.58
+        }
+      },
+      "paw": {
+        "stance": 0,
+        "swing": -20
+      },
+      "hock": {
+        "stance": 30,
+        "swing": 40
+      },
+      "mods": [
+        {
+          "bones": [
+            "tripo::Root"
+          ],
+          "kind": "lift",
+          "amp": 0.02,
+          "cycles": 2,
+          "phase": 0.2
+        },
+        {
+          "bones": [
+            "tripo::Head_0",
+            "tripo::Head_1"
+          ],
+          "kind": "pitch",
+          "amp": -4,
+          "cycles": 2,
+          "phase": 0.0,
+          "lag": 0.03
+        },
+        {
+          "bones": [
+            "Tail_A",
+            "Tail_B",
+            "Tail_C",
+            "Tail_D"
+          ],
+          "kind": "yaw",
+          "amp": 8,
+          "cycles": 1,
+          "lag": 0.07
+        }
+      ]
+    },
+    "idle": {
+      "type": "idle",
+      "duration": 3.4,
+      "mods": [
+        {
+          "bones": [
+            "tripo::Root"
+          ],
+          "kind": "lift",
+          "amp": 0.004,
+          "cycles": 1
+        },
+        {
+          "bones": [
+            "tripo::Head_0",
+            "tripo::Head_1"
+          ],
+          "kind": "yaw",
+          "amp": 8,
+          "cycles": 1,
+          "lag": 0.05
+        },
+        {
+          "bones": [
+            "tripo::Head_0",
+            "tripo::Head_1"
+          ],
+          "kind": "pitch",
+          "amp": 3,
+          "cycles": 2,
+          "phase": 0.1
+        },
+        {
+          "bones": [
+            "Tail_A",
+            "Tail_B",
+            "Tail_C",
+            "Tail_D"
+          ],
+          "kind": "yaw",
+          "amp": 7,
+          "cycles": 1,
+          "lag": 0.1
+        }
+      ]
+    }
+  }
+}
