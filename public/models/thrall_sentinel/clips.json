@@ -1,7 +1,9 @@
 {
   "clips": [
     "attack2",
+    "chop",
     "death2",
+    "dig",
     "death",
     "hurt",
     "hurt2",

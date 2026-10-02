@@ -15,7 +15,8 @@ import { pipeline } from 'node:stream/promises';
 import { ART_SRC, ensureDir, loadKey, MANIFEST_DIR, readJson, redact, sha256, sleep, writeJson } from './common.mjs';
 
 const BASE = 'https://openapi.tripo3d.ai/v3';
-const BUDGET = 260;
+// 260 for the 2026-09-30 necro cast batch; +120 approved 2026-10-02 for the Grave Laborer work clips (4 thrall rigs).
+const BUDGET = 380;
 const COST = 10;
 const JOBS = join(MANIFEST_DIR, 'necro-anim-jobs.json');
 const key = loadKey('TRIPO_API_KEY');
