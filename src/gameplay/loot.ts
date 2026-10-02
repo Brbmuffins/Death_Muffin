@@ -45,7 +45,7 @@ export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boole
   if (a.loot.length && rand() < chance) items.push(rollItem(area, rand));
   // Reagents use their own stream: a seeded `rand` (balance harness, tests) keeps the same sequence it always had.
   items.push(...rollReagents(def, area, elite, itemChanceMult, reagentRand));
-  const xp = Math.round(d.xp * (1 + 0.25 * (level - 1)) * diff * (elite ? ELITE.xpMult : 1));
+  const xp = Math.round(d.xp * (1 + 0.25 * (level - 1)) * mods.xpMult * diff * (elite ? ELITE.xpMult : 1));
   return { gold, shards, items, xp };
 }
 

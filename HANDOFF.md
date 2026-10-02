@@ -128,6 +128,13 @@ Crossworlds clips are gone (replaced by CC0 layers).
 
 ## In flight (check before starting overlapping work)
 
+### Necromancer balance pass (branch `dm/balance-pass`, not deployed)
+2026-10-02. Numbers and sim rules only; details and before/after tables in `BALANCE.md` ("Necro pass"). Wave Speed density levels off
+after tier 3 (rewards, incl. new XP scaling, keep climbing), Wave Speed ramps in over the first 30 s of a visit, areas with no living player
+crumble after 8 s and greet the next arrival afresh, Ossuary/Mourner mods and the Coliseum elite rate tuned, and a harness NaN bug that
+froze the bot is fixed. `necro-rules.cjs` was regenerated (bundles `areas.ts`). Guards: `balance-necro.test.ts`. Needs a human playtest of
+tiers 6-8 before deploy.
+
 ### Inventory relief (branch `dm/inventory`, not deployed)
 
 Bag 24 to 48 slots (`BAG_SLOTS` in `gatheringRules.ts` is the one source; saves send `bagSize`, a server treats a missing one as 24 so a stale tab cannot wipe slots 24-47), the Ossuary Vault (`vault.cjs`, 120 shared slots, key V, migration `017-vault.sql`), Salvaging (`salvage.cjs`, Bone Grinder in the Acre, seventh skill) and Reliquary locks plus Sell all junk. Pure move and yield rules live in `vaultRules.ts` and `salvageRules.ts` and are bundled for the server. **Deploy needs migration 017** (`deploy-release.sh <rev> .../017-vault.sql`). Sexton's Mantle now needs total level 693 (seven skills). Offline-to-online sync does not carry the offline vault. Smoke: `tools/qa/vault-salvage-smoke.cjs`.

@@ -84,12 +84,12 @@ export const DISCIPLINES: Record<DisciplineId, Discipline> = {
     description: 'Armours itself in the dead. Raises shield-bearing thralls that hold the line while you work.',
     passive: {
       name: 'Bone Ward',
-      text: 'Thralls rise as Shieldbearers (+60% health, draw aggression). You take 6% less damage per active thrall. Black Litany grants a bone barrier.',
+      text: 'Thralls rise as Shieldbearers (+100% health, draw aggression). You take 10% less damage per active thrall (up to 60%) and have 20% more health. Black Litany grants a bone barrier.',
     },
     color: '#d8cfbd',
     portrait: 'art/portraits/ossuary.webp',
     modelSlug: 'hero_ossuary',
-    mods: { ...BASE, thrallKind: 'shieldbearer', thrallHpMult: 1.6, maxHpMult: 1.2, wardPerThrall: 0.06, litanyBarrier: 0.04 },
+    mods: { ...BASE, thrallKind: 'shieldbearer', thrallHpMult: 2, maxHpMult: 1.2, wardPerThrall: 0.1, litanyBarrier: 0.04 },
   },
   gravecaller: {
     classIndex: 2,
@@ -116,12 +116,12 @@ export const DISCIPLINES: Record<DisciplineId, Discipline> = {
     description: 'Binds spirits instead of bones. Wraiths strike from range and every rite mends the living.',
     passive: {
       name: 'Funeral Rites',
-      text: 'Exhume binds Wraiths that attack from range. Consuming a corpse heals 8% max health. +25% Grave Essence regeneration.',
+      text: 'Exhume binds Wraiths that attack from range. Consuming a corpse heals 10% max health. +25% Grave Essence regeneration.',
     },
     color: '#8f9ed1',
     portrait: 'art/portraits/mourner.webp',
     modelSlug: 'hero_mourner',
-    mods: { ...BASE, thrallKind: 'wraith', thrallHpMult: 0.9, corpseHeal: 0.08, essenceRegenMult: 1.25 },
+    mods: { ...BASE, thrallKind: 'wraith', thrallHpMult: 1, corpseHeal: 0.1, essenceRegenMult: 1.25 },
   },
   rotweaver: {
     classIndex: 4,

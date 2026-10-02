@@ -265,7 +265,7 @@ Necromancer rites also have distinct casting motions now. A scythe sweeps, wands
 The HUD has two gold upgrades:
 
 - **Damage:** each purchased tier adds 8% spell power, up to 25 tiers.
-- **Wave Speed:** buy up to 8 tiers, then choose an **active** tier from 0 up to what you own. Higher settings mean faster, larger waves, stronger enemies, more gold, more loot chances, and more elites. The diamonds mark added pressure at tiers **3** (Elite Vanguard), **6** (Restless Crypts), and **8** (Nightfall). Lower the active tier when you need room to recover.
+- **Wave Speed:** buy up to 8 tiers, then choose an **active** tier from 0 up to what you own. Higher settings mean faster, larger waves, stronger enemies, more gold, XP and loot chances, and more elites. The pressure builds over the first 30 seconds of a visit, and the wave density levels off after tier 3 while the rewards keep climbing. The diamonds mark added pressure at tiers **3** (Elite Vanguard), **6** (Restless Crypts), and **8** (Nightfall). Lower the active tier when you need room to recover.
 
 ![Nightfall at Wave Speed tier 8](docs/screenshots/nightfall.webp)
 

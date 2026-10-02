@@ -19,6 +19,8 @@ export interface WaveModifiers {
   capMult: number;
   sizeMult: number;
   rewardMult: number;
+  /** XP per kill. Rewards keep climbing with the dial even where the density terms level off. */
+  xpMult: number;
   itemChanceMult: number;
   eliteBonus: number;
   /** Faster waves are angrier waves: the dial raises danger per enemy, not just density. */
@@ -58,17 +60,33 @@ export function milestoneActive(id: WaveMilestoneId, tier: number) {
   return tier >= WAVE_MILESTONES.find((m) => m.id === id)!.tier;
 }
 
+/**
+ * Pressure per tier. The bot (and a human) clears roughly 100 bodies a minute, and the base wave rate is
+ * already about that, so every extra body per second past tier ~3 only piles up in front of you: kills/min
+ * stop rising while deaths climb (the 2026-10-02 necro pass measured 5-11 deaths per 3 minutes at tier 8
+ * and a third of the intended kill rate). So the density terms (interval, cap, wave size) climb at full
+ * rate to tier 3 and at a quarter of it after; the reward terms keep climbing, so tiers 6-8 pay more per
+ * minute than the intended band for the risk they add. Per-enemy HP, damage and elite chance stay gentle.
+ */
+const DENSITY_FULL_TIERS = 3;
+const DENSITY_TAIL = 0.55;
+export function densityTier(tier: number) {
+  return Math.min(tier, DENSITY_FULL_TIERS) + DENSITY_TAIL * Math.max(0, tier - DENSITY_FULL_TIERS);
+}
+
 export function waveModifiers(tier: number): WaveModifiers {
   const nightfall = milestoneActive('nightfall', tier);
+  const d = densityTier(tier);
   return {
-    intervalMult: 1 / (1 + 0.12 * tier),
-    capMult: 1 + 0.09 * tier,
-    sizeMult: 1 + 0.06 * tier,
+    intervalMult: 1 / (1 + 0.12 * d),
+    capMult: 1 + 0.09 * d,
+    sizeMult: 1 + 0.06 * d,
     rewardMult: 1 + 0.1 * tier + (nightfall ? 0.25 : 0),
+    xpMult: 1 + 0.05 * tier + (nightfall ? 0.15 : 0),
     itemChanceMult: 1 + 0.06 * tier + (nightfall ? 0.2 : 0),
-    eliteBonus: 0.008 * tier,
-    enemyHpMult: 1 + 0.03 * tier,
-    enemyDamageMult: 1 + 0.035 * tier,
+    eliteBonus: 0.004 * tier,
+    enemyHpMult: 1 + 0.018 * tier,
+    enemyDamageMult: 1 + 0.026 * tier,
     speedPct: Math.round(12 * tier),
   };
 }
