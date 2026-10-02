@@ -180,7 +180,8 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
   .hud-chain { left: var(--gut); min-width: 110px; padding: 4px 8px 6px; }
   .hud-chain .n { font-size: 24px; }
   .hud-brews { left: var(--gut); gap: 4px; }
-  .brew-chip { min-width: 140px; padding: 6px 10px 7px 8px; }
+  .brew-chip { width: 50px; height: 54px; padding: 3px 2px 5px; }
+  .brew-chip .glyph { margin-top: 0; }
 
   /* Counsel card (a drag still moves it: the drag writes inline left/top) */
   .cw-tip { left: var(--gut); top: 92px; padding: 8px 10px 9px; }
@@ -326,7 +327,7 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
   .hud-brews { top: auto; bottom: calc(var(--gutb) + 108px); }
   .hud-chain { top: auto; left: auto; right: 136px; bottom: calc(var(--dock) + 10px); }
 
-  .cw-tip { top: 56px; width: min(330px, calc(50vw - 20px)); max-height: calc(100vh - 56px - 150px); max-height: calc(100dvh - 56px - 150px); }
+  .cw-tip { top: 56px; width: min(330px, calc(50vw - 20px)); max-height: calc(100vh - 56px - 166px); max-height: calc(100dvh - 56px - 166px); }
   .cw-tip .body { font-size: 13px; }
   .hud-target { top: 4px; width: min(300px, calc(100vw - 2 * 200px)); }
   .hud-target .statuses { display: none; }

@@ -729,15 +729,22 @@ button { font-family: inherit; }
 .hud-ward { position: absolute; left: 22px; top: 60%; display: flex; align-items: baseline; gap: 10px; padding: 4px 12px; background: rgba(7, 6, 10, 0.55); border-left: 3px solid var(--cw-border-strong); pointer-events: auto; cursor: help; opacity: 0.6; }
 .hud-ward.on { border-left-color: #d8cfbd; opacity: 1; }
 .hud-ward .lbl { font-family: var(--cw-font-display); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cw-bone-100); text-shadow: 0 1px 4px #000; }
-.hud-brews { position: absolute; left: 22px; top: 66%; display: flex; flex-direction: column; gap: 6px; pointer-events: auto; }
+.hud-brews { position: absolute; left: 22px; top: 66%; display: flex; flex-direction: row; gap: 6px; pointer-events: auto; }
 .hud-brews[hidden] { display: none; }
-.brew-chip { position: relative; display: flex; align-items: center; gap: 8px; min-width: 176px; padding: 5px 12px 7px 8px; background: rgba(7, 6, 10, 0.62); border-left: 3px solid var(--cw-border-strong); cursor: help; opacity: 0.62; overflow: hidden; }
-.brew-chip.on { border-left-color: var(--brew); opacity: 1; }
-.brew-chip kbd { font-family: var(--cw-font-numeric); font-size: 12px; font-weight: 700; min-width: 18px; text-align: center; padding: 1px 4px; border: 1px solid var(--cw-border-strong); border-radius: 3px; color: var(--cw-bone-100); background: rgba(0, 0, 0, 0.4); }
-.brew-chip .glyph { font-size: 22px; line-height: 1; color: var(--brew); text-shadow: 0 0 8px var(--brew); }
-.brew-chip .txt { display: flex; flex-direction: column; }
-.brew-chip .lbl { font-family: var(--cw-font-display); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cw-bone-100); text-shadow: 0 1px 4px #000; }
-.brew-chip .sub { font-family: var(--cw-font-numeric); font-size: 13px; font-weight: 700; color: #efe6d0; text-shadow: 0 1px 4px #000; }
+/* Belt slot: a small square (key cap, glyph, count or timer). Empty = faint placeholder that explains itself on hover / tap. */
+.brew-chip { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: 54px; height: 58px; padding: 3px 2px 5px; background: rgba(7, 6, 10, 0.66); border: 1px solid var(--cw-border-strong); border-bottom: 3px solid var(--cw-border-strong); border-radius: 4px; cursor: pointer; overflow: hidden; }
+.brew-chip.on { border-bottom-color: var(--brew); }
+.brew-chip:not(.empty):not(.on) { border-bottom-color: color-mix(in srgb, var(--brew) 60%, var(--cw-border-strong)); }
+.brew-chip.empty { opacity: 0.5; border-style: dashed; cursor: help; }
+.brew-chip.empty:hover { opacity: 0.85; }
+.brew-chip.cd { opacity: 0.6; }
+.brew-chip:not(.empty):hover { background: rgba(30, 24, 40, 0.8); }
+.brew-chip kbd { position: absolute; top: 2px; left: 3px; font-family: var(--cw-font-numeric); font-size: 11px; font-weight: 700; min-width: 14px; text-align: center; padding: 0 3px; border: 1px solid var(--cw-border-strong); border-radius: 3px; color: var(--cw-bone-100); background: rgba(0, 0, 0, 0.5); line-height: 14px; }
+.brew-chip .glyph { font-size: 24px; line-height: 1; color: var(--brew); text-shadow: 0 0 8px var(--brew); margin-top: 8px; }
+.brew-chip.empty .glyph { text-shadow: none; }
+.brew-chip .txt { display: flex; flex-direction: column; align-items: center; max-width: 100%; }
+.brew-chip .lbl { font-family: var(--cw-font-display); font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cw-bone-100); text-shadow: 0 1px 4px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.brew-chip .sub { font-family: var(--cw-font-numeric); font-size: 12px; font-weight: 700; color: #efe6d0; text-shadow: 0 1px 4px #000; min-height: 14px; }
 .brew-chip .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255, 255, 255, 0.08); }
 .brew-chip .bar i { display: block; height: 100%; background: var(--brew); transition: width 1s linear; }
 .cw-bag-detail .brew-line, .cw-tooltip .brew-line { font-size: 12px; color: #e6d3a0; margin-top: 4px; }
