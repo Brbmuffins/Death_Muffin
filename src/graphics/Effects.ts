@@ -227,6 +227,8 @@ interface Projectile {
   color: THREE.Color;
   trail: number;
   onArrive?: (p: THREE.Vector3) => void;
+  onTrail?: (p: THREE.Vector3) => void;
+  trailAt: number;
   arc: number;
   t: number;
   dist: number;
@@ -346,11 +348,26 @@ export class Effects {
     this.binbun = new BinbunFX(this.group, (x, y, z, color, intensity, life) => this.lightFlash(x, y, z, color, intensity, life));
   }
 
+  /** Particles requested from the two rings since start (QA: how much of the load a layer is responsible for). */
+  emitted = 0;
+
   emit(o: EmitOptions) {
+    this.emitted += o.count;
     this.additive.emit(o);
   }
 
+  /** Live decals/billboards/beams from combat (the pool is capped at 160; garnish backs off well before it). */
+  get transientLoad() {
+    return this.combatTransients;
+  }
+
+  /** Grave Hands fields currently clawing out of the ground. */
+  get activeHandFields() {
+    return this.handFields.length;
+  }
+
   emitSmoke(o: EmitOptions) {
+    this.emitted += o.count;
     this.smoke.emit(o);
   }
 
@@ -442,7 +459,8 @@ export class Effects {
     });
   }
 
-  flash(o: { x: number; y: number; z: number; color: THREE.ColorRepresentation; size: number; duration: number; tex?: THREE.Texture }) {
+  /** A short-lived tinted billboard; `rise` lifts it that many units over its life (skull and spirit wisps). */
+  flash(o: { x: number; y: number; z: number; color: THREE.ColorRepresentation; size: number; duration: number; tex?: THREE.Texture; rise?: number; opacity?: number }) {
     const sprite = this.take(this.spritePool, () => {
       const s = new THREE.Sprite(
         new THREE.SpriteMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
@@ -464,7 +482,8 @@ export class Effects {
       update: (_t, k) => {
         const s = o.size * (0.35 + 0.65 * Math.sin(Math.min(1, k * 1.4) * Math.PI * 0.5));
         sprite.scale.set(s, s, s);
-        mat.opacity = k < 0.3 ? 1 : 1 - (k - 0.3) / 0.7;
+        if (o.rise) sprite.position.y = o.y + o.rise * k;
+        mat.opacity = (o.opacity ?? 1) * (k < 0.3 ? 1 : 1 - (k - 0.3) / 0.7);
       },
     });
   }
@@ -773,6 +792,8 @@ export class Effects {
     size?: number;
     arc?: number;
     onArrive?: (p: THREE.Vector3) => void;
+    /** Called about every 70 ms in flight with the shot's position (a trail of motes behind it). */
+    onTrail?: (p: THREE.Vector3) => void;
   }) {
     let mesh: THREE.Object3D;
     let pool: THREE.Object3D[];
@@ -815,6 +836,8 @@ export class Effects {
       color: new THREE.Color(o.color),
       trail: 0,
       onArrive: o.onArrive,
+      onTrail: o.onTrail,
+      trailAt: 0,
       arc: o.arc ?? 0,
       t: 0,
       dist: Math.max(0.1, lastTo.distanceTo(new THREE.Vector3(o.from.x, o.from.y, o.from.z))),
@@ -899,6 +922,10 @@ export class Effects {
       if (p.trail > 0.024) {
         p.trail = 0;
         this.additive.emit({ x: pos.x, y: pos.y, z: pos.z, count: 1, color: p.color, spread: 0.05, speed: 0.15, up: 0.1, life: 0.28, size: 0.32 });
+      }
+      if (p.onTrail && p.t - p.trailAt >= 0.07) {
+        p.trailAt = p.t;
+        p.onTrail(pos);
       }
     }
 

@@ -47,6 +47,7 @@ import { audio } from '../audio/Audio';
 import { HEMORRHAGE } from '../content/statuses';
 import { CAST_FLOW } from '../content/combatFlow';
 import { playFx } from '../graphics/binbun/presets';
+import * as nf from '../graphics/necroFx';
 import type { BinbunHandle, BinbunSpawn } from '../graphics/binbun/BinbunFX';
 import type { BinbunId } from '../graphics/binbun/catalog';
 import { NewBloodSystem } from './NewBloodSystem';
@@ -325,6 +326,9 @@ export class AbilitySystem {
     effects.emit({ x: p.x, y: 0.4, z: p.z, count: 20, color: SOUL.jade, spread: 0.6, speed: 1.2, up: 3.2, life: 0.8, size: 0.3 });
     effects.emit({ x: p.x, y: 1.4, z: p.z, count: 8, color: SOUL.pale, spread: 0.3, speed: 2.4, up: 1, life: 0.5, size: 0.22 });
     effects.lightFlash(p.x, 1.6, p.z, SOUL.jade, 26, 0.45);
+    // The harvested souls leave as a spiral of motes and two skull faces, rather than another flash.
+    nf.soulMotes(effects, p.x, p.z, SOUL.pale, { r: 1.1, n: 10, y: 0.3, up: 2.2 });
+    nf.skullWisps(effects, p.x, p.z, SOUL.pale, { n: 2, r: 0.7, y: 1.0, size: 0.55, rise: 1.2 });
     this.bb('soul_harvest_pillar', p.x, p.z);
     audio.play('soulRelease', p.x, p.z);
   }
@@ -373,6 +377,8 @@ export class AbilitySystem {
         effects.flash({ x: pos.x, y: pos.y, z: pos.z, color: N.impact, size: crit ? 1.7 : 1.05, duration: 0.2 });
         effects.emit({ x: pos.x, y: pos.y, z: pos.z, count: crit ? 16 : 8, color: N.dust, spread: 0.1, speed: 3.2, up: 1.2, life: 0.4, size: 0.13, gravity: 7 });
         if (crit) effects.emit({ x: pos.x, y: pos.y, z: pos.z, count: 10, color: N.trail, spread: 0.2, speed: 4, up: 0.5, life: 0.3, size: 0.3 });
+        // Bone splinters spit off the struck body (the needle is a sliver of bone).
+        nf.boneSplinters(effects, pos.x, pos.y, pos.z, { n: crit ? 7 : 3, color: N.core });
         // Needles fire constantly (auto combat): only crits get the extra layer, so farming stays calm.
         if (crit) this.bb('crit_hit', pos.x, pos.z, { y: pos.y });
         this.ctx.number(pos.x, pos.z, amount, crit ? 'crit' : 'hit');
@@ -393,6 +399,7 @@ export class AbilitySystem {
       effects.beam({ x: at.x, y: 1, z: at.z }, () => ({ x: e.x, y: 1, z: e.z }), N.trail, 0.02, 0.12);
       effects.flash({ x: e.x, y: 1, z: e.z, color: N.impact, size: 0.8, duration: 0.16 });
       effects.emit({ x: e.x, y: 1, z: e.z, count: 6, color: N.dust, spread: 0.1, speed: 3, up: 1, life: 0.35, size: 0.12, gravity: 7 });
+      nf.boneSplinters(effects, e.x, 1, e.z, { n: 3, color: N.core });
       this.ctx.number(e.x, e.z, dmg, 'hit');
     }
     audio.play('needleHit', next[0].x, next[0].z, 0.8);
@@ -444,6 +451,7 @@ export class AbilitySystem {
       this.ctx.number(e.x, e.z, dmg, 'hit');
       effects.emit({ x: e.x, y: 0.9, z: e.z, count: 7, color: N.dust, spread: 0.2, speed: 3, up: 1.2, life: 0.4, size: 0.13, gravity: 7 });
       effects.flash({ x: e.x, y: 1, z: e.z, color: N.impact, size: 0.9, duration: 0.16 });
+      nf.boneSplinters(effects, e.x, 0.9, e.z, { n: 4, color: N.core });
     }
     if (hitBoss) {
       this.ctx.number(b.x, b.z, dmg, 'hit');
@@ -454,6 +462,8 @@ export class AbilitySystem {
     const rot = Math.atan2(dx, dz);
     effects.decal({ tex: fxImage('crescent'), color: N.trail, x: p.x + dx * 1.3, z: p.z + dz * 1.3, r: 2.0, rot, duration: 0.32, opacity: 0.95, growFrom: 0.6, fadeOut: 0.25 });
     effects.lightFlash(p.x + dx * 1.3, 1, p.z + dz * 1.3, N.trail, 10, 0.16);
+    // The scythe drags the grave with it: dirt and dust kicked up along the arc's edge.
+    nf.graveDirt(effects, p.x + dx * 1.5, p.z + dz * 1.5, { r: 0.7, n: 5 });
     audio.play('spear', p.x, p.z, 1.1);
     if (landed) audio.play('boneHit', p.x + dx * 1.8, p.z + dz * 1.8);
     return 'ok';
@@ -514,7 +524,10 @@ export class AbilitySystem {
           const x = origin.x + dx * (i / 6) * range;
           const z = origin.z + dz * (i / 6) * range;
           effects.emit({ x, y: 0.3, z, count: 3, color: S.bone, spread: 0.25, speed: 1.4, up: 2.1, life: 0.4, size: 0.12, gravity: 9 });
+          // Grave dirt thrown up where the bone breaks the ground, and chips off the spike tips.
+          if (i % 2 === 0) nf.graveDirt(effects, x, z, { r: radius * 0.8, n: 4 * mult });
         }
+        nf.boneSplinters(effects, end.x, 0.6, end.z, { n: 6, color: S.bone, speed: 4.5 });
         effects.lightFlash(origin.x + dx * 4, 1, origin.z + dz * 4, S.crack, 12, 0.22);
         audio.play('spear', origin.x + dx * 3, origin.z + dz * 3);
         this.ctx.shake(0.055);
@@ -575,6 +588,10 @@ export class AbilitySystem {
     audio.play('exhume', c.x, c.z);
     effects.emit({ x: c.x, y: 0.2, z: c.z, count: 26, color: X.spirit, spread: 0.6, speed: 0.4, up: 3.4, life: 1, size: 0.34, gravity: -0.5 });
     effects.decal({ tex: fx.cracks(), color: X.deep, x: c.x, z: c.z, r: 1.4, rot: Math.random() * 6, duration: 1.3, opacity: 0.9, growFrom: 0.3 });
+    // Clawing the dead out of the earth: thrown soil, reaching hands, a soul-light that lifts away.
+    nf.graveDirt(effects, c.x, c.z, { r: 0.6, n: 9, up: 3 });
+    nf.spectralHands(effects, c.x, c.z, { n: 3, r: 0.6, duration: 1.2 });
+    nf.spiritWisps(effects, c.x, c.z, X.spirit, { n: 2, r: 0.3, y: 0.5, size: 0.7 });
     this.bb('exhume_lift', c.x, c.z);
     return 'ok';
   }
@@ -617,6 +634,8 @@ export class AbilitySystem {
         audio.play('miasma', x, z);
         effects.emitSmoke({ x, y: 0.4, z, count: 6, color: M.spore, spread: r * 0.6, speed: 0.5, up: 0.3, life: 0.9, size: 1.1, shrink: -0.3, drag: 0.8 });
         effects.emit({ x, y: 0.3, z, count: 16, color: M.rot, spread: r * 0.5, speed: 1.1, up: 0.6, life: 0.65, size: 0.18 });
+        // Rot spores drift up out of the cloud and hang in the air.
+        nf.rotSpores(effects, x, z, M.rot, { r: r * 0.75, n: Math.round(8 + r * 2) });
         this.bb('miasma_cloud', x, z, { scale: r / 3.8 });
       },
     });
@@ -673,6 +692,8 @@ export class AbilitySystem {
       size: 0.95,
       color: SK.jade,
       speed: W.speed,
+      // A wail of soul-light motes hangs in the air behind the skull.
+      onTrail: (pos) => nf.soulMotes(effects, pos.x, pos.z, SK.jade, { r: 0.1, n: 1, y: pos.y - 0.1, up: 0.5 }),
       to: () => {
         if (t.boss) {
           const b = this.ctx.boss();
@@ -704,6 +725,7 @@ export class AbilitySystem {
           effects.flash({ x: pos.x, y: pos.y, z: pos.z, color: SK.pale, size: killed ? 1.9 : 1.3, duration: 0.22, tex: fxImage('skull') });
           effects.decal({ tex: fx.ring(), color: SK.jade, x: pos.x, z: pos.z, r: 0.9, duration: 0.4, opacity: 0.9, growFrom: 0.3 });
           effects.emit({ x: pos.x, y: pos.y, z: pos.z, count: killed ? 18 : 10, color: SK.jade, spread: 0.2, speed: 2.4, up: 1.4, life: 0.5, size: 0.22, gravity: -1 });
+          nf.boneSplinters(effects, pos.x, pos.y, pos.z, { n: killed ? 6 : 3, color: SK.pale });
           this.ctx.number(pos.x, pos.z, dmg, killed ? 'crit' : 'hit');
         }
         const left = budget - 1 + (killed ? 1 : 0);
@@ -740,7 +762,10 @@ export class AbilitySystem {
     effects.emitSmoke({ x: ox, y: 0.9, z: oz, count: 6, color: ST.mist, spread: 0.45, speed: 0.7, up: 0.7, life: 0.75, size: 1.2, shrink: -0.4 });
     effects.emit({ x: ox, y: 1, z: oz, count: 18, color: ST.blood, spread: 0.4, speed: 2.2, up: 1.2, life: 0.45, size: 0.2, gravity: 6 });
     effects.decal({ tex: fxImage('bloodSigil'), color: ST.crimson, x: ox, z: oz, r: 1.2, duration: 0.8, opacity: 0.85, growFrom: 0.6 });
-    this.bb('grave_step_smoke', ox, oz);
+    // You leave the earth scuffed and a few red soul-lights where you stood.
+    nf.graveDirt(effects, ox, oz, { r: 0.5, n: 6 });
+    nf.soulMotes(effects, ox, oz, ST.blood, { r: 0.4, n: 4, up: 1.4 });
+    this.bb('grave_step_smoke', ox, oz, { duration: 1.4 });
     p.teleport(c.x, c.z);
     p.face(p.x + (p.x - ox), p.z + (p.z - oz));
     avatar.cast('cast', 3, p.facing, CAST_FLOW.grave_step.gestureSeconds, 'grave_step');
@@ -770,7 +795,11 @@ export class AbilitySystem {
     effects.emit({ x: p.x, y: 0.8, z: p.z, count: 8, color: ST.hot, spread: 0.2, speed: 2, up: 2.2, life: 0.35, size: 0.18 });
     effects.emitSmoke({ x: p.x, y: 0.5, z: p.z, count: 5, color: ST.mist, spread: r * 0.4, speed: 1.2, up: 0.5, life: 0.8, size: 1.2, shrink: -0.4 });
     effects.lightFlash(p.x, 1.2, p.z, ST.blood, 30, 0.35);
-    this.bb('grave_step_smoke', p.x, p.z, { scale: 1.2 });
+    // You tear up out of the grave: dirt, and bone chips knocked off the corpse.
+    nf.graveDirt(effects, p.x, p.z, { r: r * 0.5, n: 8, up: 3 });
+    nf.boneSplinters(effects, p.x, 0.5, p.z, { n: 6 });
+    // (Played once: without a duration the converted smoke loops until culled and was leaving a red blob behind.)
+    this.bb('grave_step_smoke', p.x, p.z, { scale: 1.2, duration: 1.4 });
     audio.play('bloodStep', p.x, p.z);
     this.ctx.shake(0.05);
     return 'ok';
@@ -802,6 +831,9 @@ export class AbilitySystem {
       effects.emit({ x: origin.x + dx * len * k * 0.85, y: 0.8, z: origin.z + dz * len * k * 0.85, count: 5, color: FR.pale, spread: 0.3 + k * 1.2, speed: 1.2, up: 0.4, life: 0.45, size: 0.14 });
     }
     audio.play('frost', origin.x + dx * 2, origin.z + dz * 2);
+    // Hoarfrost cracks the ground along the breath, and the cold carries a whisper of grave mist.
+    nf.crackedGround(effects, origin.x + dx * len * 0.5, origin.z + dz * len * 0.5, len * 0.5, FR.pale, { rot, sx: 0.5, duration: 1.8, opacity: 0.4 });
+    for (let i = 1; i <= 3; i++) nf.mistWhisper(effects, origin.x + dx * len * i * 0.28, origin.z + dz * len * i * 0.28, 0x8fa6c8, { r: 0.5 + i * 0.5, n: 2 });
     this.bb('grave_frost_mist', origin.x + dx * len * 0.45, origin.z + dz * len * 0.45, { rot });
     const end = { x: origin.x + dx * len, y: 0.9, z: origin.z + dz * len };
     effects.projectile({
@@ -827,6 +859,7 @@ export class AbilitySystem {
               if (shown <= 3) this.bb('frost_shard_hit', e.x, e.z);
               effects.flash({ x: e.x, y: 1, z: e.z, color: FR.pale, size: 1.2, duration: 0.18 });
               effects.emit({ x: e.x, y: 1, z: e.z, count: 10, color: FR.pale, spread: 0.2, speed: 3.4, up: 2, life: 0.5, size: 0.13, gravity: 10 });
+              if (shown <= 4) nf.boneSplinters(effects, e.x, 1, e.z, { n: 4, color: FR.pale });
             }
             this.ctx.number(e.x, e.z, shatter ? dmg * G.shatterMult : dmg, shatter ? 'crit' : 'hit');
           }
@@ -934,6 +967,7 @@ export class AbilitySystem {
     this.bb('soul_siphon_beam', p.x, p.z, { follow: () => caster(), duration: S.durationS });
     audio.play('siphon', p.x, p.z);
     const dmg = this.sp * def.power;
+    let drains = 0;
     this.timed.push({
       until: now + S.durationS * 1000,
       next: now + S.tickS * 1000,
@@ -953,6 +987,8 @@ export class AbilitySystem {
         }
         effects.emit({ x: q.x, y: q.y, z: q.z, count: 5, color: SI.pale, spread: 0.25, speed: 0.6, up: 0.3, life: 0.35, size: 0.16 });
         effects.emit({ x: p.x, y: 1.3, z: p.z, count: 3, color: SI.jade, spread: 0.2, speed: 0.3, up: 0.6, life: 0.4, size: 0.18 });
+        // The soul is drawn up out of the body: a faint skull above the target on every other pull.
+        if (++drains % 2 === 1) nf.skullWisps(effects, q.x, q.z, SI.pale, { n: 1, y: q.y + 0.3, size: 0.5, rise: 0.9, duration: 0.7 });
       },
       end: () => {
         ended = true;
@@ -977,6 +1013,12 @@ export class AbilitySystem {
     effects.decal({ tex: fxImage('boneRing'), color: PR.amber, x, z, r: r + 0.3, duration: P.rootS, opacity: 0.4, growFrom: 0.8, fadeOut: 0.3 });
     effects.emitSmoke({ x, y: 0.3, z, count: 6, color: PR.dust, spread: r * 0.8, speed: 0.9, up: 0.5, life: 0.9, size: 1.1 });
     effects.emit({ x, y: 0.4, z, count: 18, color: PR.bone, spread: r, speed: 1.8, up: 2.2, life: 0.5, size: 0.12, gravity: 9 });
+    // The cage tears up the grave: soil at the foot of every spike, and splinters off the bars.
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      nf.graveDirt(effects, x + Math.cos(a) * r * 0.9, z + Math.sin(a) * r * 0.9, { r: 0.35, n: 3 });
+    }
+    nf.boneSplinters(effects, x, 0.9, z, { n: 10, color: PR.bone, speed: r * 1.6 });
     this.bb('bone_prison_burst', x, z, { scale: r / 2.4 });
     audio.play('prison', x, z);
     this.ctx.shake(0.06);
@@ -1008,6 +1050,11 @@ export class AbilitySystem {
     const ground = effects.decal({ tex: fx.disc(), color: GH.earth, x, z, r, duration: G.durationS, opacity: 0.7, growFrom: 0.5, fadeOut: 0.4 });
     const seep = effects.decal({ tex: fx.cracks(), color: GH.seep, x, z, r: r * 0.95, rot: Math.random() * 6, duration: G.durationS, opacity: 0.35, pulse: 2, fadeOut: 0.4 });
     effects.emitSmoke({ x, y: 0.2, z, count: 8, color: GH.earth, spread: r * 0.7, speed: 0.8, up: 0.6, life: 1, size: 1.2 });
+    // The ground heaves where the hands break through.
+    for (let i = 0; i < 5; i++) {
+      const a = i * 2.4;
+      nf.graveDirt(effects, x + Math.cos(a) * r * 0.55, z + Math.sin(a) * r * 0.55, { r: 0.4, n: 3 });
+    }
     this.bb('grave_hands_pulse', x, z, { scale: r / 3.5 });
     audio.play('hands', x, z);
     const dmg = this.sp * def.power * (1 + G.perCorpse * corpses);
@@ -1023,6 +1070,10 @@ export class AbilitySystem {
           const e = this.ctx.enemies().get(id);
           if (e) effects.emit({ x: e.x, y: 0.4, z: e.z, count: 3, color: GH.bone, spread: 0.3, speed: 1.2, up: 1.2, life: 0.35, size: 0.1, gravity: 8 });
         }
+        // A spirit seeps up through the earth between the hands.
+        const a = Math.random() * Math.PI * 2;
+        const d = Math.sqrt(Math.random()) * r * 0.85;
+        nf.soulMotes(effects, x + Math.cos(a) * d, z + Math.sin(a) * d, GH.seep, { r: 0.25, n: 2, y: 0.15, up: 0.9 });
       },
       end: () => {
         visual.kill();
@@ -1078,6 +1129,9 @@ export class AbilitySystem {
         if (boss) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, boss: true });
         if (ids.length) audio.play('boneHit', c.x, c.z);
         effects.emitSmoke({ x: c.x, y: 0.4, z: c.z, count: 3, color: BS.ash, spread: r * 0.4, speed: 0.9, up: 1.4, life: 0.9, size: 1.1, shrink: -0.4 });
+        // Splinters shed off the funnel, and grave dirt is sucked up with it.
+        nf.boneSplinters(effects, c.x, 0.8, c.z, { n: ids.length ? 6 : 3, color: BS.bone, speed: r * 1.2 });
+        nf.graveDirt(effects, c.x, c.z, { r: r * 0.5, n: 3, up: 3 });
       },
       end: () => {
         ended = true;
@@ -1095,6 +1149,7 @@ export class AbilitySystem {
     avatar.cast('cast', 1.8, p.facing, CAST_FLOW.bone_mantle.gestureSeconds, 'bone_mantle');
     this.ctx.send({ t: 'signature', by: this.ctx.selfId, sig: 'mantle', x: p.x, z: p.z, dx: 0, dz: 0, sp: this.sp });
     effects.emit({ x: p.x, y: 1.3, z: p.z, count: 18, color: MN.bone, spread: 0.5, speed: 1.4, up: 1, life: 0.5, size: 0.2 });
+    nf.graveDirt(effects, p.x, p.z, { r: 0.8, n: 5 });
     return 'ok';
   }
 
@@ -1112,6 +1167,8 @@ export class AbilitySystem {
       }, MN.bone, 0.05, 0.4);
       effects.emit({ x, y: 0.4, z, count: 10, color: MN.bone, spread: 0.4, speed: 1.2, up: 1.6, life: 0.5, size: 0.16, gravity: 4 });
       effects.emitSmoke({ x, y: 0.3, z, count: 2, color: MN.dust, spread: 0.4, speed: 0.5, up: 0.4, life: 0.8, size: 0.9 });
+      // The dead are stripped to the bone: a few chips fly toward their new owner.
+      nf.boneSplinters(effects, x, 0.5, z, { n: 3, color: MN.bone, origin: mine ? 'player' : 'thrall' });
     }
     // Real bone fragments (instanced, lit, matte) rather than tinted sprites, which read as a ring of bananas.
     const handle = effects.boneOrbit({
@@ -1837,6 +1894,11 @@ export class AbilitySystem {
     effects.emit({ x, y: 0.7, z, count: 16, color: D.bone, spread: 0.25, speed: r * 2.3, up: 4.5, life: 0.9, size: 0.14, gravity: 14 });
     effects.emit({ x, y: 0.4, z, count: 8, color: D.crimson, spread: 0.3, speed: 2, up: 2.4, life: 0.8, size: 0.26, gravity: 6 });
     effects.emitSmoke({ x, y: 0.4, z, count: 4, color: D.smoke, spread: r * 0.35, speed: 1.4, up: 0.8, life: 0.75, size: 1.0, shrink: -0.3 });
+    // The body bursts out of its grave: thrown earth, a spray of bone, and its last breath leaving as a skull.
+    const who = mine ? 'player' : 'thrall';
+    nf.graveDirt(effects, x, z, { r: r * 0.4, n: 9, up: 3.2, origin: who });
+    nf.boneSplinters(effects, x, 0.8, z, { n: 8, color: D.bone, speed: r * 1.8, origin: who });
+    nf.skullWisps(effects, x, z, D.hot, { n: 1, y: 0.8, size: 0.7, rise: 1.2, origin: who });
     effects.lightFlash(x, 1.2, z, D.ember, ev.elite ? 55 : 38, 0.45);
     this.bb('corpse_explosion', x, z, { scale: r / 3 });
     if (ev.corpseKind === 'resonant') {
@@ -1872,6 +1934,9 @@ export class AbilitySystem {
     effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 48, color: L.core, spread: 1, speed: 9, up: 1.8, life: 0.55, size: 0.23 });
     effects.emit({ x: ev.x, y: 0.8, z: ev.z, count: 16, color: L.hot, spread: 0.6, speed: 5, up: 3, life: 0.45, size: 0.2 });
     effects.flash({ x: ev.x, y: 1.5, z: ev.z, color: L.core, size: Math.min(2.0, ev.r * 0.24), duration: 0.3 });
+    // A litany is sung over the dead: a ring of skulls stands on the circle, and each body gives up a soul-light.
+    nf.skullRing(effects, ev.x, ev.z, Math.min(ev.r * 0.62, 5), L.hot, { n: Math.min(8, 4 + ev.corpses + ev.thralls), origin: mine ? 'player' : 'thrall' });
+    for (const [x, z] of ev.tethers.slice(0, 5)) nf.soulMotes(effects, x, z, L.hot, { r: 0.3, n: 3, up: 1.8, origin: mine ? 'player' : 'thrall' });
     effects.lightFlash(ev.x, 2, ev.z, L.core, 32, 0.4);
     audio.play('litany', ev.x, ev.z, 1 + Math.min(0.6, (ev.corpses + ev.thralls) * 0.05));
     this.ctx.shake(0.08 + Math.min(0.08, (ev.corpses + ev.thralls) * 0.008));

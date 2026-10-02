@@ -5,6 +5,7 @@ import type { Corpse, Enemy, SimEvent, Thrall } from '../gameplay/sim/types';
 import { Creature } from './Creature';
 import type { Effects, Handle } from './Effects';
 import { fx } from './fxTextures';
+import * as nf from './necroFx';
 import { SPELL_FX } from '../content/abilities';
 import { audio } from '../audio/Audio';
 import type { CreatureSlug } from './modelPaths';
@@ -598,6 +599,11 @@ export class EntityViews {
         v.sinkT = 0;
         this.fading.push(v);
         this.effects.emit({ x: ev.x, y: 0.8, z: ev.z, count: ev.reason === 'sacrificed' ? 30 : 14, color: 0xd8cfbd, spread: 0.5, speed: 2, up: 1.2, life: 0.8, size: 0.25, gravity: 3 });
+        // A thrall that falls comes apart: bone chips and a pale soul-light that lets go (quiet; thralls die constantly).
+        if (ev.reason !== 'sacrificed') {
+          nf.boneSplinters(this.effects, ev.x, 0.7, ev.z, { n: 4, origin: 'thrall' });
+          nf.soulMotes(this.effects, ev.x, ev.z, 0xd8cfbd, { r: 0.3, n: 3, y: 0.6, up: 1.2, origin: 'thrall' });
+        }
         break;
       }
       case 'thrall': {
@@ -607,6 +613,8 @@ export class EntityViews {
         this.effects.emit({ x: ev.x, y: 0.2, z: ev.z, count: 40, color: X.spirit, spread: 0.5, speed: 0.6, up: 3.6, life: 1, size: 0.36, gravity: -0.6 });
         this.effects.emit({ x: ev.x, y: 0.2, z: ev.z, count: 16, color: X.beam, spread: 0.3, speed: 0.3, up: 5, life: 0.7, size: 0.22 });
         this.effects.emitSmoke({ x: ev.x, y: 0.2, z: ev.z, count: 6, color: 0x1c2a2a, spread: 0.6, speed: 0.8, up: 0.8, life: 1.2, size: 1.2 });
+        // Risen from the grave: soil breaks and settles. (The caster's Exhume already drew the hands and soul-light.)
+        nf.graveDirt(this.effects, ev.x, ev.z, { r: 0.5, n: 6, up: 2.6, origin: 'thrall' });
         this.effects.lightFlash(ev.x, 1.2, ev.z, X.spirit, 22, 0.6);
         break;
       }
