@@ -11,6 +11,12 @@ Triangle totals from `renderer.info` include the shadow pass on High (it renders
 > **Update 2 Oct 2026 (branch `dm/perf1`):** Phase 1 items #1 (spatial PropBatch chunking, 12 m cells) and #2 (decal layers: one InstancedMesh per texture + blend mode) are done; gold piles are single merged meshes; a `ResolutionGovernor` (src/app/framePacing.ts) lowers the pixel ratio under sustained slow frames.
 > Re-measured with `fixed-fight-perf.cjs`, High / Low: nave 277 calls / 773k tris → 188 / 438k and 240 / 388k → 120 / 250k; graves 233 / 717k → 220 / 478k and 161 / 378k → 127 / 227k. Still open from Phase 1: #3 prune, #6 WebP, #7 clip trims.
 
+> **Update 2 Oct 2026 (branch `dm/slim-assets`):** #3 prune, #7 clip trim, #5 texture downscale and #6 WebP are done (`tools/slim-models.mjs`, `tools/png-to-webp.mjs`, both idempotent).
+> public/models GLBs 84.75 MB -> 64.04 MB (prune -8.0 MB, hero cast/dig trim -2.1 MB, textures -10.6 MB); public/art 17.83 MB PNG -> 2.41 MB WebP (22 MB dir -> ~7 MB with the SVGs).
+> Decoded texture estimate (one copy of every model, w*h*4*1.33): 962 MB -> 490 MB. Hero/necromancer rigs, NPCs and the player's gear/tool props keep full size. Classes: horde enemies, thralls and clutter props 512 -> 256; bosses, elites (bone_golem, slag_brute, drowned_sexton) and landmark props 1024/512 -> 512.
+> Only the player-avatar rigs (hero_*, necromancer) had `cast`/`dig` trimmed (1.4 s / 1.6 s; the game plays 1.1 / 1.3 s): enemy/boss `cast` windups, burrowing `dig` and looping laborer `dig` on thralls play whole clips, so they stay untrimmed. `clipTimings.json` regenerated. KTX2/Basis (#10) skipped: no `toktx`/`basisu` here.
+> Before/after crops: `docs/screenshots/slim-assets/`.
+
 ## 1. Headlines
 
 1. **The 552k triangles are mostly the world's props, not characters.** In the fixed nave fight on High (332 calls, 804k tris):
