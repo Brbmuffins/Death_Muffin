@@ -10,3 +10,4 @@ server/web-deploy/*.tar.gz
 art-src/
 .claude/worktrees/
 *.tsbuildinfo
+__pycache__/
