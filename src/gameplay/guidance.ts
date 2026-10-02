@@ -214,7 +214,7 @@ export function suggestions(s: GuidanceState): Suggestion[] {
   // --- Brewing (the Apothecary) ---
   const alchemy = s.skills.alchemy ?? 1;
   if (s.dust >= GRAVE_DUST_FOR_TONIC && alchemy < 5) {
-    add({ id: 'brew-dust', kind: 'brew-dust', topic: 'brew', priority: 45, text: `You carry ${s.dust} Grave Dust: brew a tonic at the Workbench (C)`, place: 'chapterhouse', target: spot('workbench'), pingInPlace: true, data: { dust: s.dust } });
+    add({ id: 'brew-dust', kind: 'brew-dust', topic: 'brew', priority: 45, text: `You carry ${s.dust} Grave Dust: brew a tonic at the Great Cauldron in the Alchemist’s Wing`, place: 'alchemist_wing', target: spot('wing_cauldron'), pingInPlace: true, data: { dust: s.dust } });
   } else if (alchemy <= 1 && s.dust < GRAVE_DUST_FOR_TONIC) {
     add({ id: 'brew-first', kind: 'brew-first', topic: 'brew', priority: 12, text: 'Four Grave Dust brew your first tonic; the dead of the Graves drop it', quiet: true, data: { dust: s.dust } });
   }

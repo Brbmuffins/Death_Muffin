@@ -113,10 +113,10 @@ async function main() {
 
     // 4. The Apothecary, with dust in the bag (a few kills first: the very first steps outrank everything).
     await page.evaluate(() => { const p = window.__cwDebug.progression; for (let i = 0; i < 12; i++) p.recordKill('graves'); });
-    await page.evaluate(() => { const d = window.__cwDebug; d.inventory.add({ item_id: 'reagent_grave_dust', quantity: 6 }); d.player.teleport(9.8, 19.2); });
+    await page.evaluate(() => { const d = window.__cwDebug; d.inventory.add({ item_id: 'reagent_grave_dust', quantity: 6 }); d.goto('alchemist_wing'); d.player.teleport(40.6, 20); });
     await adv(1.5);
     // (the HUD line stays on the seal: the road outranks a brew; the Apothecary still answers about the dust)
-    assert.equal(((await G('suggestions')).find((x) => x.kind === 'brew-dust') || {}).text, 'You carry 6 Grave Dust: brew a tonic at the Workbench (C)');
+    assert.equal(((await G('suggestions')).find((x) => x.kind === 'brew-dust') || {}).text, 'You carry 6 Grave Dust: brew a tonic at the Great Cauldron in the Alchemist’s Wing');
     await page.keyboard.press('e');
     await adv(0.2);
     assert.deepEqual(await G('dialogue'), { open: true, npc: 'apothecary' });
@@ -125,7 +125,7 @@ async function main() {
     result.apothecaryAdvice = await say();
     await page.screenshot({ path: `${out}/07-apothecary.png` });
     // Walking away ends the talk.
-    await page.evaluate(() => { window.__cwDebug.player.teleport(0, 12); });
+    await page.evaluate(() => { const d = window.__cwDebug; d.goto('chapterhouse'); d.player.teleport(0, 12); });
     await adv(0.6);
     assert.equal((await G('dialogue')).open, false, 'walking away closes the conversation');
 

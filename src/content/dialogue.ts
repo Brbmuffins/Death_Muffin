@@ -253,9 +253,9 @@ const SEXTON_TOPICS: TopicDef[] = [
 const APOTHECARY_GREETINGS: Greeting[] = [
   {
     when: (_s, _n, met) => !met,
-    lines: () => ['Hush, mind the vials. I brew for the Covenant, here by the Workbench, until they raise me a proper wing.', 'Four Grave Dust and a little patience make a first tonic. Ask, and I will tell you what to brew.'],
+    lines: () => ['Hush, mind the vials. This is my Wing now: the Great Cauldron, the Alembic, and the Shelf where every reagent you find gets its place.', 'Four Grave Dust and a little patience make a first tonic. Ask, and I will tell you what to brew.'],
   },
-  { when: (_s, news) => !!has(news, 'dust:first'), lines: (s) => [`You are carrying ${s.dust} Grave Dust, enough for a tonic. The Workbench, Alchemy tab (C).`] },
+  { when: (_s, news) => !!has(news, 'dust:first'), lines: (s) => [`You are carrying ${s.dust} Grave Dust, enough for a tonic. Bring it to the Great Cauldron, here in the Wing.`] },
   { when: (_s, news) => !!has(news, 'reagent:fen'), lines: () => ['The Fen grows bog myrtle and drowned lotus. The Mire Mother’s ichor and a lotus make a Moonlight Elixir, if you are brave.'] },
   { when: (_s, news) => !!has(news, 'reagent:pyre'), lines: () => ['Cinder Ash from the Pyre, and ash-bloom if you grow it. Both go into stronger elixirs.'] },
   { when: (_s, news) => !!has(news, 'reagent:cloister'), lines: () => ['Plague Bile from the Cloister, and rot-cap if you forage it. Do not taste either.'] },
@@ -280,7 +280,7 @@ function apothecaryAdvice(sg: Suggestion | null, s: GuidanceState): string[] {
   const d = sg.data;
   switch (sg.kind) {
     case 'brew-dust':
-      return [`You carry ${d.dust} Grave Dust. At the Workbench (C), Alchemy tab, four of them brew a Grave-Dust Tonic: more essence regeneration for a minute.`, 'The first brew anyone can make from what the dead drop.'];
+      return [`You carry ${d.dust} Grave Dust. At the Great Cauldron here (or the Workbench's Alchemy tab), four of them brew a Grave-Dust Tonic: more essence regeneration for a minute.`, 'The first brew anyone can make from what the dead drop.'];
     case 'brew-first':
       return ['Grave Dust drops now and then from the dead of the Hollow Graves and the Catacomb Warren. Four make your first tonic.', `You hold ${d.dust}. Keep killing; it will come.`];
     default:
@@ -293,7 +293,7 @@ const APOTHECARY_TOPICS: TopicDef[] = [
     id: 'brewing',
     label: 'Brewing',
     lines: (s) => [
-      'The Workbench (C), Alchemy tab. Each recipe wants reagents and a level in Alchemy, which brewing itself trains.',
+      'The Great Cauldron or the Alembic here in the Wing (the Workbench’s Alchemy tab works too). Each recipe wants reagents and a level in Alchemy, which brewing itself trains.',
       s.dust >= GRAVE_DUST_FOR_TONIC ? `You have the dust for a first tonic (${s.dust}).` : `Four Grave Dust make your first tonic. You hold ${s.dust}.`,
     ],
   },

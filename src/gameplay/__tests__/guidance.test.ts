@@ -145,7 +145,8 @@ describe('suggested next step: the Acre and the Workbench', () => {
 
   it('brews: enough dust is a pointer to the Workbench; too little is a quiet hint only the Apothecary gives', () => {
     const rich = suggestions(baseState({ totalKills: 30, dust: 5 })).find((x) => x.kind === 'brew-dust')!;
-    expect(rich.text).toBe('You carry 5 Grave Dust: brew a tonic at the Workbench (C)');
+    expect(rich.text).toBe('You carry 5 Grave Dust: brew a tonic at the Great Cauldron in the Alchemist’s Wing');
+    expect(rich.target).toBeDefined(); // the Great Cauldron's spot
     const poor = suggestions(baseState({ totalKills: 30, dust: 1 })).find((x) => x.kind === 'brew-first')!;
     expect(poor.quiet).toBe(true);
     expect(nextSuggestion(baseState({ totalKills: 30, dust: 1, areaKills: { graves: 5 } }))!.kind).not.toBe('brew-first');
