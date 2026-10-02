@@ -39,13 +39,14 @@ flowchart LR
 
   subgraph NOW["🔨 Now"]
     R3[Legendary armor sets<br/>other session]:::now
+    R4[Catacomb Depths<br/>built · not deployed]:::now
   end
 
   subgraph POLISH["✨ Next — polish"]
   end
 
   subgraph LATER["🌒 Later — new content"]
-    L2[New zones<br/>Catacomb Depths · Hollow Court]:::later
+    L2[New zones<br/>Hollow Court]:::later
     L5[Server authority step 2<br/>enforce + server-side rewards]:::later
     L4[AI companions — parked]:::later
   end
@@ -197,7 +198,7 @@ Two or three bot players you can log in and play with. Recommended design:
 - **Decisions needed:** how strong bots should be, whether they loot or level, and the API budget.
 
 ### L2–L4
-- **New zones:** Catacomb Depths and the Hollow Court (`docs/ALCHEMY-AND-WORLDS-PLAN.md`).
+- **New zones:** the Hollow Court (`docs/ALCHEMY-AND-WORLDS-PLAN.md`). The Catacomb Depths (W2) are built on `dm/depths` (2 Oct, not deployed, no migration): a Warren stair, seeded floors of small chambers, a quota-then-stair loop, elites with another affix and a chest every fifth floor, a Chronicle best depth. Open: co-op floors (solo for now), a depth leaderboard view beyond the public page's column, and a human playtest of the pacing.
 - **Content with paid art ready:** nothing waiting: the Bone Colossus and the runes are live (2 Oct, migration 024), thrall gear shipped.
 - **Server authority:** today the browser is trusted for level, gold and loot (fine among friends). Move rewards to the server before opening to strangers. Step 1 (plausibility guards, report-first, `AUTHORITY_MODE`) is built on `dm/server-authority`, not deployed: [docs/SERVER-AUTHORITY.md](docs/SERVER-AUTHORITY.md). Server-rolled kill rewards (step 2) remain.
 

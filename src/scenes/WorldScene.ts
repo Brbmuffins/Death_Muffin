@@ -985,7 +985,8 @@ export class WorldScene implements GameScene, RuntimeView {
     this.scope.add(() => this.classPanel.dispose());
     this.waystonePanel = new WaystonePanel(
       this.root,
-      () => AREA_ORDER.filter((a) => this.progression.isUnlocked(a)),
+      // The Depths are an instance with no waystone: never a destination.
+      () => AREA_ORDER.filter((a) => !AREAS[a].instance && this.progression.isUnlocked(a)),
       (a) => this.travel(a),
     );
     this.codex = new CodexJournal(this.character.id);
@@ -4490,11 +4491,13 @@ export class WorldScene implements GameScene, RuntimeView {
         name: d.name,
         elite: focusEnemy.elite,
         affix: focusEnemy.affix && affix ? { id: focusEnemy.affix, name: affix.name } : null,
+        // The Depths give elites more than one affix: the frame names every one.
+        moreAffixes: (focusEnemy.extra ?? []).map((x) => ({ id: x.affix, name: ELITE_AFFIXES[x.affix].name })),
         hp: focusEnemy.hp,
         maxHp: focusEnemy.maxHp,
         statuses,
         // The affix is the actionable read on an elite; the lore line otherwise.
-        blurb: affix ? affix.blurb : d.blurb,
+        blurb: affix ? [affix.blurb, ...(focusEnemy.extra ?? []).map((x) => ELITE_AFFIXES[x.affix].blurb)].join(' ') : d.blurb,
       };
     }
     const nearNpc = this.nearestNpc();
@@ -4714,7 +4717,7 @@ export class WorldScene implements GameScene, RuntimeView {
       },
       /** Catacomb Depths QA: drive a run without the walk. `enter(seed)` starts at depth 1, `fill()` meets the floor's quota (kills what is alive and counts the rest), `descend()` takes the open stair. */
       depths: {
-        enter: (seed?: number) => this.depths.enter(seed),
+        enter: (seed?: number, depth?: number) => this.depths.enter(seed, depth),
         descend: () => this.depths.descend(),
         leave: () => { this.depths.leave(); return this.depths.leave(); },
         openChest: () => this.depths.openChest(),

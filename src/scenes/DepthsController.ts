@@ -1,6 +1,6 @@
 import type * as THREE from 'three';
 import { DEPTHS_STAIR, type Interactable } from '../content/areas';
-import { DEPTHS, depthEnemyLevel, depthLootArea, extraAffixes, hasChest } from '../content/depths';
+import { DEPTHS, depthEnemyLevel, depthLootArea, depthsEntryBlock, extraAffixes, hasChest } from '../content/depths';
 import { ITEMS } from '../content/items';
 import type { DepthsFloor } from '../gameplay/depthsFloor';
 import { rollChest, rollFloorClear } from '../gameplay/depthsRewards';
@@ -114,10 +114,7 @@ export class DepthsController {
 
   /** Why the stair will not take you down right now, or null if it will. */
   canEnter(): string | null {
-    if (this.host.partySize() > 0) return 'The Depths are solo for now: leave your party to go down.';
-    if (!this.host.sim() || !this.host.isAuthority()) return 'The Depths are solo for now: only the keeper of the world can go down.';
-    if (!this.host.player.alive) return 'You are in no state to descend.';
-    return null;
+    return depthsEntryBlock({ partySize: this.host.partySize(), keeper: !!this.host.sim() && this.host.isAuthority(), alive: this.host.player.alive });
   }
 
   /** The hover line for each stair, chest and exit. */
@@ -184,7 +181,7 @@ export class DepthsController {
   // --- Entering, descending, leaving ----------------------------------------------------------------------------------------------
 
   /** Click the Warren's stair: start a run on depth 1. */
-  enter(seed = (Math.random() * 0x100000000) >>> 0): boolean {
+  enter(seed = (Math.random() * 0x100000000) >>> 0, depth = 1): boolean {
     const why = this.canEnter();
     const sim = this.host.sim();
     if (why || !sim) {
@@ -199,10 +196,10 @@ export class DepthsController {
     this.endNote = null;
     this.lastStairOpen = false;
     this.leaveArmedUntil = 0;
-    const floor = sim.startDepths(this.host.selfId(), seed, 1);
+    const floor = sim.startDepths(this.host.selfId(), seed, depth);
     this.view.load(floor);
     this.host.chronicle.add('depths.runs');
-    this.host.chronicle.max('peak.depth', 1);
+    this.host.chronicle.max('peak.depth', depth);
     this.arrive(floor, 'You go down');
     this.host.tip('depths_floor', 1800, { kind: 'asked' });
     return true;

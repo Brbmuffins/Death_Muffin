@@ -121,23 +121,53 @@ function beyond(d: FloorDoor, toward: 'b' | 'a'): { x: number; z: number } {
   return { x: d.x + d.dir.x * s * 2, z: d.z + d.dir.z * s * 2 };
 }
 
+/** A doorway's mouth: how far either side of its wall line a body is still "in the doorway", and how far it is allowed from the doorway's middle. */
+const MOUTH_DEPTH = 1.6;
+const MOUTH_HALF = DOOR_W / 2 + 0.5;
+
 /**
- * The next place to head for when walking from (fx, fz) to (tx, tz): null when both are in the same room (or off the floor),
- * otherwise the doorway to cross (then the point just past it). Everything that walks a floor steers by this: enemies, thralls and
- * the hero's click-to-move. O(1).
+ * The next place to head for when walking from (fx, fz) to (tx, tz): null when both are in the same room and clear of its doorways, otherwise
+ * the doorway to cross (then the point just past it), or, from inside a doorway's mouth, the point that takes a body clear of the wall's end.
+ * Everything that walks a floor steers by this: enemies, thralls and the hero's click-to-move. O(1).
+ *
+ * A body standing in a doorway belongs to whichever chamber its coordinates fall in, and the straight line to a target hard against that wall
+ * would clip the wall's end: so from inside the mouth the walker first steps straight out, on the side it is heading for (the far side when it is
+ * crossing, its own room's side when it is not), and only then turns for the target.
  */
 export function floorHop(f: DepthsFloor, fx: number, fz: number, tx: number, tz: number): { x: number; z: number } | null {
   const a = roomAt(f, fx, fz);
   const b = roomAt(f, tx, tz);
-  if (a < 0 || b < 0 || a === b) return null;
-  const di = f.next[a][b];
-  if (di < 0) return null;
-  const d = f.doors[di];
-  const fromA = d.a === a;
-  const here = Math.hypot(fx - d.x, fz - d.z);
-  // Standing in the doorway: step through to the far side.
-  if (here < 1.25) return beyond(d, fromA ? 'b' : 'a');
-  return { x: d.x, z: d.z };
+  if (a < 0 || b < 0) return null;
+  const through = a === b ? -1 : f.next[a][b];
+  if (a !== b && through < 0) return null;
+  // Inside the mouth of a doorway that leads where we are going (or, in the same room, of any doorway of the room)?
+  const doors = a === b ? f.rooms[a].adj.map((x) => x.door) : [through];
+  for (const di of doors) {
+    const d = f.doors[di];
+    const along = (fx - d.x) * d.dir.x + (fz - d.z) * d.dir.z;
+    const across = (fx - d.x) * -d.dir.z + (fz - d.z) * d.dir.x;
+    if (Math.abs(along) >= MOUTH_DEPTH || Math.abs(across) >= MOUTH_HALF) continue;
+    // Which side to step out on: the far side when crossing, the side of our own room's middle otherwise.
+    const room = f.rooms[a];
+    const side = a === b ? Math.sign((room.cx - d.x) * d.dir.x + (room.cz - d.z) * d.dir.z) || 1 : d.a === a ? 1 : -1;
+    const t = Math.max(-(DOOR_W / 2 - 0.6), Math.min(DOOR_W / 2 - 0.6, across));
+    return { x: d.x + -d.dir.z * t + d.dir.x * side * 2.1, z: d.z + d.dir.x * t + d.dir.z * side * 2.1 };
+  }
+  if (a === b) return null;
+  return { x: f.doors[through].x, z: f.doors[through].z };
+}
+
+/** Doorways between two rooms on the shortest route (0 = the same room, -1 = unreachable). */
+export function floorHops(f: DepthsFloor, a: number, b: number): number {
+  if (a < 0 || b < 0) return -1;
+  let n = 0;
+  for (let at = a; at !== b; n++) {
+    const di = f.next[at][b];
+    if (di < 0 || n > f.rooms.length) return -1;
+    const d = f.doors[di];
+    at = d.a === at ? d.b : d.a;
+  }
+  return n;
 }
 
 /** Waypoints from one point to another across the floor (doorway, past the doorway, ... then the goal). Empty route = walk straight. */

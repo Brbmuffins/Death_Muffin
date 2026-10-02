@@ -1,6 +1,6 @@
 import { AREAS, AREA_ORDER, GLOBAL_ENEMY_CAP, type AreaId } from '../../content/areas';
 import { DEPTHS, depthEliteBonus, depthEnemyLevel, depthRoster, depthWaveGapS, depthWaveSize, floorKills, hasChest, pickExtraAffixes } from '../../content/depths';
-import { floorSeed, generateFloor, roomAt, type DepthsFloor } from '../depthsFloor';
+import { floorHops, floorSeed, generateFloor, roomAt, type DepthsFloor } from '../depthsFloor';
 import {
   AFFIX_ORDER,
   AFFIX_TUNING,
@@ -1653,6 +1653,8 @@ export class WorldSim {
    */
   startDepths(owner: string, seed: number, depth = 1, hold = false): DepthsFloor {
     this.nav.openInstance('depths');
+    // Wave Speed builds over the first seconds of a visit (rampTier): once per run, not per floor, so every floor runs at the dial the hero set.
+    this.arrivedAt.set('depths', this.time - RAMP_S);
     this.depths = {
       owner, seed, depth, need: floorKills(depth), kills: 0, stairOpen: false, floorT: 0, waveT: 0, waved: false, hold,
       peak: depth, floors: 0, totalKills: 0,
@@ -1691,7 +1693,6 @@ export class WorldSim {
     run.floorT = 0;
     run.waveT = 0;
     run.waved = false;
-    this.arrivedAt.set('depths', this.time);
     this.vacantS.delete('depths');
     this.emit({ t: 'depthsFloor', depth: run.depth, need: run.need, chest: floor.chest !== null });
     return floor;
@@ -1750,10 +1751,15 @@ export class WorldSim {
     }
     const size = depthWaveSize(run.depth);
     const count = Math.min(wanted, room, run.waved ? size : Math.max(size, 8));
+    // The dead climb out of the nearest chambers that are not the hero's own (by doorways, not by distance through a wall): they reach the hero
+    // within a few seconds, not after a walk across the whole floor.
     const inRooms = new Set(players.map((p) => roomAt(floor, p.x, p.z)));
+    const hops = (room: number) => Math.min(...[...inRooms].map((r) => floorHops(floor, r, room)).map((h) => (h < 0 ? 99 : h)));
     let pool = floor.breaches.filter((b) => !inRooms.has(b.room) && players.every((p) => Math.hypot(p.x - b.x, p.z - b.z) >= SPAWN_MIN_DIST));
     if (!pool.length) pool = floor.breaches.filter((b) => !inRooms.has(b.room));
     if (!pool.length) pool = floor.breaches;
+    const nearest = Math.min(...pool.map((b) => hops(b.room)));
+    pool = pool.filter((b) => hops(b.room) <= nearest + 1);
     const roster = depthRoster(run.depth);
     let spawned = 0;
     const picks = Math.min(pool.length, count > 6 ? 3 : count > 3 ? 2 : 1);

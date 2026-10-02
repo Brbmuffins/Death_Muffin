@@ -117,10 +117,10 @@ export class StairView {
     const colour = open ? pal.open : pal.sealed;
     const flick = 0.85 + 0.15 * Math.sin(this.t * 2.2) * Math.sin(this.t * 1.3);
     this.glow.color.setHex(colour);
-    this.glow.opacity = (0.1 + 0.55 * this.level) * flick;
+    this.glow.opacity = (0.08 + 0.36 * this.level) * flick;
     this.stepMats.forEach((m, i) => {
       m.emissive.setHex(colour);
-      m.emissiveIntensity = (0.05 + 0.55 * this.level) * ((i + 1) / this.stepMats.length) * (this.kind === 'up' ? 0.5 : 1);
+      m.emissiveIntensity = (0.04 + 0.4 * this.level) * ((i + 1) / this.stepMats.length) * (this.kind === 'up' ? 0.5 : 1);
     });
     this.ring.color.setHex(colour);
     this.ring.opacity = (0.18 + 0.6 * this.level) * (0.8 + 0.2 * Math.sin(this.t * 3));

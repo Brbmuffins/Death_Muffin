@@ -24,7 +24,7 @@ const depths = list(process.env.DEPTH_DEPTHS, ['1', '10', '20']).map(Number);
 const bands = list(process.env.DEPTH_BANDS, ['intended', 'geared']);
 const disciplines = list(process.env.DEPTH_DISCIPLINES, ['1', '2', '3', '4']).map(Number);
 const reference = list(process.env.DEPTH_REFERENCE, ['pyre', 'fen']) as AreaId[];
-const names: Record<number, string> = { 1: 'Ossuary', 2: 'Gravecaller', 3: 'Mourner', 4: 'Rotweaver' };
+const names: Record<number, string> = { 1: 'Ossuary', 2: 'Gravecaller', 3: 'Mourner', 4: 'Rotweaver', 5: 'Grave Warden', 6: 'Bell Monk', 7: 'Carrion Witch', 8: 'Hollow Knight', 9: 'Veilwalker' };
 const AUTO_KIT: Record<string, KitName> = { intended: 'progress', geared: 'typical', push: 'typical', max: 'ascended' };
 
 function averaged(run: BalanceRun): BalanceResult {
@@ -37,7 +37,7 @@ function averaged(run: BalanceRun): BalanceResult {
   return avg as unknown as BalanceResult;
 }
 
-const cols: [string, number][] = [['ground', 10], ['lvl', 4], ['dead', 5], ['band', 9], ['disc', 13], ['kills/m', 8], ['floors/m', 9], ['xp/m', 8], ['gold/m', 8], ['hurt%/m', 8], ['minHp', 6], ['deaths', 7], ['1st†s', 6], ['ttk s', 6], ['peak', 5]];
+const cols: [string, number][] = [['ground', 10], ['lvl', 4], ['dead', 5], ['band', 9], ['disc', 14], ['kills/m', 8], ['floors/m', 9], ['xp/m', 8], ['gold/m', 8], ['hurt%/m', 8], ['minHp', 6], ['deaths', 7], ['1st†s', 6], ['ttk s', 6], ['peak', 5]];
 const pad = (s: string | number, n: number) => String(s).padEnd(n);
 const rows: string[] = [cols.map(([h, n]) => pad(h, n)).join('')];
 for (const lvl of levels) {

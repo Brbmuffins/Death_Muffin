@@ -121,6 +121,8 @@ a roster of ≤4 new enemies plus reused ones, one boss on `BossBrain`, and loot
 
 ### W2. The Catacomb Depths — endless descent (best grind per unit of effort)
 
+> **Built 2 Oct 2026 on `dm/depths` (not deployed, no migration).** Deviations from the text below: enemy level is `max(12, hero) + depth` (a level-20 floor is a wall for the Warren's first visitors; see `content/depths.ts`); the Chronicle already had a best-value JSON, so the best depth is `peak.depth` there (no column, no table, no leaderboard rewrite beyond one column on the public page); floors are a seeded 3x3 grid with up to two chambers filled in; the Depths are solo for now. Details: HANDOFF.md "Catacomb Depths", BALANCE.md, README.
+
 - **Where**: a stair in the Catacomb Warren. It's an *instance*, not a map region: floors are assembled from
   the Warren's chamber kit (walls, `Nav.addSightBlocker`) with a seeded layout.
 - **Loop**: each floor = clear N kills → the stair opens. **Depth d** = enemy level `max(20, player) + d`, plus one

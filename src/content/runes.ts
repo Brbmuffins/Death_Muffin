@@ -277,5 +277,5 @@ export function runeSources(id: RuneId): string {
   const from = bosses.filter((b) => names[b]).map((b) => names[b]);
   const rarity = RUNES[id].rarity;
   const grounds = rarity === 'uncommon' ? 'any hunting ground' : rarity === 'rare' ? 'the Marrow Ossuary and deeper' : 'the Bell Sanctum and deeper';
-  return `${from.length ? `${from.join(', ')}; ` : ''}elites and Grave Surges in ${grounds}`;
+  return `${from.length ? `${from.join(', ')}; ` : ''}elites and Grave Surges in ${grounds}; chests in the Catacomb Depths${rarity === 'epic' ? ' (from depth 10)' : ''}`;
 }

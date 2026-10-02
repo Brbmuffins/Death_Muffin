@@ -102,6 +102,8 @@ export interface HudFrame {
     name: string;
     elite: boolean;
     affix: { id: EliteAffix; name: string } | null;
+    /** The Catacomb Depths: the affixes beyond the first (an elite on depth 5 bears two, on 10 three). */
+    moreAffixes?: { id: EliteAffix; name: string }[];
     hp: number;
     maxHp: number;
     statuses: { icon: string; label: string; n: number }[];
@@ -712,8 +714,8 @@ export class HUD {
     const t = f.boss ? null : f.target;
     this.set('tvis', !!t, () => (this.$('[data-target]').hidden = !t));
     if (t) {
-      this.set('tname', `${t.name}|${t.elite}|${t.affix?.id ?? ''}`, () => {
-        const affix = t.affix ? `<span class="affix affix-${t.affix.id}">${esc(t.affix.name)}</span>` : '';
+      this.set('tname', `${t.name}|${t.elite}|${t.affix?.id ?? ''}|${(t.moreAffixes ?? []).map((a) => a.id).join(',')}`, () => {
+        const affix = [...(t.affix ? [t.affix] : []), ...(t.moreAffixes ?? [])].map((a) => `<span class="affix affix-${a.id}">${esc(a.name)}</span>`).join('');
         this.$('[data-tname]').innerHTML = `${esc(t.name)}${t.elite ? '<span class="elite">◆ Elite</span>' : ''}${affix}`;
         this.$('[data-tblurb]').textContent = t.blurb;
       });

@@ -118,6 +118,36 @@ describe('Depths floor generator', () => {
     }
   });
 
+  it('a body in a doorway gets clear of the wall\'s end to reach a target hard against the wall (it used to jitter in the mouth forever)', () => {
+    for (const seed of SEEDS.slice(0, 40)) {
+      const f = generateFloor(seed, 3);
+      const nav = new Nav();
+      nav.openInstance('depths');
+      nav.loadDepthsFloor(f);
+      for (const d of f.doors) {
+        const perp = { x: -d.dir.z, z: d.dir.x };
+        for (const side of [1, -1]) for (const bias of [1, -1]) {
+          // Start in the middle of the mouth; the goal is 1.5 m out on one side and just beside the wall's end.
+          let x = d.x + d.dir.x * side * -0.2;
+          let z = d.z + d.dir.z * side * -0.2;
+          const goal = { x: d.x + d.dir.x * side * 1.5 + perp.x * bias * 3.2, z: d.z + d.dir.z * side * 1.5 + perp.z * bias * 3.2 };
+          // Goals that sit behind a lantern or in a prop's lee are not the test (the layout check covers reachability); the wall is.
+          if (nav.blocked(goal.x, goal.z, 0.9) || f.props.some((p) => Math.hypot(p.x - goal.x, p.z - goal.z) < 1.6)) continue;
+          let reached = false;
+          for (let i = 0; i < 700 && !reached; i++) {
+            if (Math.hypot(goal.x - x, goal.z - z) < 0.5) reached = true;
+            const hop = floorHop(f, x, z, goal.x, goal.z) ?? goal;
+            const dx = hop.x - x;
+            const dz = hop.z - z;
+            const len = Math.hypot(dx, dz) || 1;
+            [x, z] = nav.resolve(x + (dx / len) * 0.12, z + (dz / len) * 0.12, 0.35);
+          }
+          expect(reached, `seed ${seed} door ${d.a}-${d.b} side ${side} bias ${bias}`).toBe(true);
+        }
+      }
+    }
+  });
+
   it('the tall partitions block sight and bodies; the nav forgets a floor when it is cleared', () => {
     const f = generateFloor(99, 5);
     const nav = new Nav();

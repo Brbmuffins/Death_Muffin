@@ -33,6 +33,18 @@ export const DEPTHS = {
   bannerMs: 3200,
 } as const;
 
+/**
+ * Why the stair will not take a hero down right now, in the words the stair says (null = it will). The Depths are solo for now: the
+ * floors live in the keeper's sim and the realtime relay does not carry a layout, so a party (or a guest, who only mirrors the world)
+ * is told so instead of being taken down alone.
+ */
+export function depthsEntryBlock(o: { partySize: number; keeper: boolean; alive: boolean }): string | null {
+  if (o.partySize > 0) return 'The Depths are solo for now: leave your party to go down.';
+  if (!o.keeper) return 'The Depths are solo for now: only the keeper of the world can go down.';
+  if (!o.alive) return 'You are in no state to descend.';
+  return null;
+}
+
 /** Kills a floor asks for before the stair down opens: 10 on depth 1, rising to 30 from depth 21. */
 export const floorKills = (depth: number): number => Math.min(30, 9 + Math.max(1, Math.floor(depth)));
 
