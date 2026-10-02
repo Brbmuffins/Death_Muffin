@@ -1,6 +1,7 @@
 /*
  * Phone + tablet layout (2026-10-02, owner: "so I can play on my phone and tablet — lots of UI overlaps").
- * Overrides only, loaded last (index.html). Desktop (wide AND tall) is untouched by everything below except the touch rules.
+ * Overrides only, loaded last (index.html). Every layout block requires (pointer: coarse): a desktop/laptop with a mouse keeps the
+ * desktop HUD at any window size (owner, 2026-10-02: mobile formatting only on a mobile device).
  *
  *   tablet      max-width 1024px, taller than 520px  — the hotbar and currencies fit, the upgrades plate sits above them
  *   compact     max-width 760px (phone portrait)  OR  max-height 520px (phone landscape)
@@ -67,7 +68,7 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
 .cw-panel-float.has-back .cw-panel-head { padding-left: 92px; }
 
 /* --- Tablet: everything fits along the bottom ------------------------------------------------ */
-@media (max-width: 1024px) and (min-height: 521px) and (min-width: 761px) {
+@media (pointer: coarse) and (max-width: 1024px) and (min-height: 521px) and (min-width: 761px) {
   .hud-orb { width: 92px; height: 92px; }
   .hud-slot button { width: 50px; height: 50px; }
   .hud-slots { gap: 8px; }
@@ -82,7 +83,7 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
 }
 
 /* --- Compact (phones): shared ---------------------------------------------------------------- */
-@media (max-width: 760px), (max-height: 520px) {
+@media (pointer: coarse) and (max-width: 760px), (pointer: coarse) and (max-height: 520px) {
   .hud { --gut: max(6px, env(safe-area-inset-left)); --gutr: max(6px, env(safe-area-inset-right)); --gutb: max(4px, env(safe-area-inset-bottom)); --slot: 42px; }
 
   /* Dock pieces */
@@ -245,12 +246,12 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
   .cw-panel-float .cw-panel-actions, .cw-panel-float .cw-bag-detail .actions, .cw-bag-tools { flex-wrap: wrap; }
   .cw-bag-tools .cw-button { flex: 0 1 auto; }
 }
-@media (max-width: 480px) {
+@media (pointer: coarse) and (max-width: 480px) {
   .cw-reliquary .cw-inv-body .cw-bag-grid, .cw-bag-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
 
 /* --- Compact portrait ------------------------------------------------------------------------- */
-@media (max-width: 760px) and (min-height: 521px) {
+@media (pointer: coarse) and (max-width: 760px) and (min-height: 521px) {
   .hud { --dock: 136px; }
   .hud-altar {
     display: grid;
@@ -293,7 +294,7 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
 }
 
 /* --- Compact landscape ------------------------------------------------------------------------ */
-@media (max-height: 520px) {
+@media (pointer: coarse) and (max-height: 520px) {
   .hud { --dock: 84px; --slot: 40px; }
   .hud-altar { display: flex; justify-content: space-between; align-items: flex-end; }
   .hud-souls { height: 16px; padding: 0 8px; margin-bottom: 2px; }
@@ -352,7 +353,7 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
 }
 
 /* Auto-refresh notice: full-width card, thumb-sized button. */
-@media (max-width: 760px), (max-height: 520px), (pointer: coarse) {
+@media (pointer: coarse) {
   .dm-update { width: calc(100vw - 24px); font-size: 13px; padding: 6px 6px 6px 12px; }
   .dm-update .dm-update-msg { flex: 1; min-width: 0; }
   .dm-update button { min-height: 44px; min-width: 96px; touch-action: manipulation; }

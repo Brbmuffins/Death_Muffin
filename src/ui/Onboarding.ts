@@ -849,7 +849,7 @@ export class Onboarding {
    */
   private place(el: HTMLElement, x?: number, y?: number) {
     // Phones: unless the player dragged it, the layout sheet (mobile.css) places the card around the compact HUD.
-    if (x === undefined && y === undefined && !this.position && window.matchMedia?.('(max-width: 760px), (max-height: 520px)').matches) {
+    if (x === undefined && y === undefined && !this.position && window.matchMedia?.('(pointer: coarse) and (max-width: 760px), (pointer: coarse) and (max-height: 520px)').matches) {
       el.style.left = '';
       el.style.top = '';
       return;

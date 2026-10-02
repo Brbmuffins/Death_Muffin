@@ -38,7 +38,7 @@ export class GameRuntime {
   private lastRenderAt = 0;
   private compactMq: MediaQueryList | null = (() => {
     try {
-      return window.matchMedia('(max-width: 760px), (max-height: 520px)');
+      return window.matchMedia('(pointer: coarse) and (max-width: 760px), (pointer: coarse) and (max-height: 520px)');
     } catch {
       return null;
     }
