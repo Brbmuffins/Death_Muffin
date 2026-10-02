@@ -1,4 +1,5 @@
 import { ABILITIES, HOTBAR, type AbilityId, type HotbarSlot } from '../content/abilities';
+import { touchNow } from './touchText';
 import type { Discipline } from '../content/disciplines';
 import type { EliteAffix } from '../content/enemies';
 import { DAMAGE_UPGRADE, WAVE_MILESTONES, WAVE_UPGRADE, milestones } from '../content/upgrades';
@@ -508,8 +509,9 @@ export class HUD {
       const button = this.$('[data-auto]') as HTMLButtonElement;
       button.hidden = !f.autoCombatVisible;
       button.disabled = !f.autoCombatAvailable;
-      button.textContent = f.autoCombatAvailable ? (f.autoCombat ? 'Auto: On · G' : 'Auto: Off · G') : 'Auto: Easy only';
-      button.title = f.autoCombatAvailable ? 'Toggle auto combat (G)' : 'Available on Easy difficulty';
+      const touch = touchNow();
+      button.textContent = f.autoCombatAvailable ? (f.autoCombat ? (touch ? 'Auto: On' : 'Auto: On · G') : (touch ? 'Auto: Off' : 'Auto: Off · G')) : 'Auto: Easy only';
+      button.title = f.autoCombatAvailable ? (touch ? 'Toggle auto combat' : 'Toggle auto combat (G)') : 'Available on Easy difficulty';
       button.setAttribute('aria-pressed', String(f.autoCombat));
     });
     const hpFrac = Math.max(0, f.hp / f.maxHp);

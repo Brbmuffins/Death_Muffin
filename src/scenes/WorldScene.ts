@@ -111,6 +111,7 @@ import { SettingsPanel, WaystonePanel } from '../ui/MiscPanels';
 import { ProfessionsPanel } from '../ui/ProfessionsPanel';
 import { CodexPanel } from '../ui/CodexPanel';
 import { Onboarding, type TipId } from '../ui/Onboarding';
+import { touchNow } from '../ui/touchText';
 import type { Busy } from '../ui/counselCadence';
 import { CodexJournal, browserStorage, type CodexIds, type CodexKind } from '../gameplay/codexJournal';
 import { CURSOR } from '../ui/cursors';
@@ -945,7 +946,8 @@ export class WorldScene implements GameScene, RuntimeView {
       this.onboarding.dispose();
     });
     const rmb = 'Right-click or 5 casts your fifth rite · swap it below its icon';
-    this.hud.hint(OFFLINE ? 'Offline edition: progress stays on this device · Right-click or 5: fifth rite' : rmb);
+    const rmbTouch = 'Tap your fifth rite to cast it · swap it below its icon';
+    this.hud.hint(touchNow() ? (OFFLINE ? 'Offline edition: progress stays on this device' : rmbTouch) : OFFLINE ? 'Offline edition: progress stays on this device · Right-click or 5: fifth rite' : rmb);
     this.scope.add(() => {
       this.closePanels();
       this.hud.dispose();
@@ -1140,8 +1142,8 @@ export class WorldScene implements GameScene, RuntimeView {
       const full = v.slots.filter((s) => s.capped && !this.laborCapNoted.has(s.slot));
       for (const s of full) this.laborCapNoted.add(s.slot);
       for (const s of v.slots) if (!s.capped) this.laborCapNoted.delete(s.slot);
-      if (arrival && waiting.length) this.hud.toast(`Your laborers have gathered about ${items.toLocaleString()} finds (H)`, 'good');
-      else if (full.length) this.hud.toast(`A laborer has filled up: collect what they gathered (H)`, 'good');
+      if (arrival && waiting.length) this.hud.toast(`Your laborers have gathered about ${items.toLocaleString()} finds${touchNow() ? '' : ' (H)'}`, 'good');
+      else if (full.length) this.hud.toast(`A laborer has filled up: collect what they gathered${touchNow() ? '' : ' (H)'}`, 'good');
     } catch {
       /* a nicety: try again next time */
     }
@@ -1169,9 +1171,9 @@ export class WorldScene implements GameScene, RuntimeView {
       const ready = v.plots.filter((p) => p.state === 'ready').length;
       const growing = v.plots.filter((p) => p.state === 'growing').length;
       if (ready > 0 && (arrival || ready > this.gardenReady)) {
-        this.hud.toast(`${ready} plot${ready === 1 ? ' is' : 's are'} ready in your garden (U)`, 'good');
+        this.hud.toast(`${ready} plot${ready === 1 ? ' is' : 's are'} ready in your garden${touchNow() ? '' : ' (U)'}`, 'good');
       } else if (arrival && growing > 0) {
-        this.hud.toast(`${growing} plot${growing === 1 ? ' is' : 's are'} still growing in your garden (U)`);
+        this.hud.toast(`${growing} plot${growing === 1 ? ' is' : 's are'} still growing in your garden${touchNow() ? '' : ' (U)'}`);
       }
       this.gardenReady = ready;
     } catch {
@@ -1321,7 +1323,10 @@ export class WorldScene implements GameScene, RuntimeView {
     updateSettings({ autoCombat: !settings.autoCombat });
     this.autoTargetId = null;
     this.autoAim = null;
-    this.hud.toast(settings.autoCombat ? 'Auto combat on — your hero engages nearby enemies. Click or use keys to take control; G turns it off.' : 'Auto combat off — click enemies and use your rites manually.', 'good');
+    const touch = touchNow();
+    this.hud.toast(settings.autoCombat
+      ? (touch ? 'Auto combat on — your hero engages nearby enemies. Tap the ground or drag to take control; the Auto button in the Menu turns it off.' : 'Auto combat on — your hero engages nearby enemies. Click or use keys to take control; G turns it off.')
+      : (touch ? 'Auto combat off — tap enemies and use your rites manually.' : 'Auto combat off — click enemies and use your rites manually.'), 'good');
   }
 
   // -------------------------------------------------------------------------
@@ -1791,7 +1796,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (!b) return;
     this.belt[b.slot] = id;
     try { localStorage.setItem(this.beltKey(), JSON.stringify(this.belt)); } catch { /* ignore */ }
-    this.hud.toast(`${b.label} is on your belt: press ${BREW_KEYS[b.slot].toUpperCase()} to drink it`, 'good');
+    this.hud.toast(`${b.label} is on your belt: ${touchNow() ? 'tap its chip on the left' : `press ${BREW_KEYS[b.slot].toUpperCase()}`} to drink it`, 'good');
   }
 
   /** HUD tray rows: one per slot, the active brew (countdown) or the belted one waiting. Null when there is nothing to show. */
@@ -1858,7 +1863,7 @@ export class WorldScene implements GameScene, RuntimeView {
       AREAS[a].interactables.some((it) => it.kind === 'waystone' && Math.hypot(it.x - this.player.x, it.z - this.player.z) < 5),
     );
     if (!nearStone && this.area !== 'chapterhouse') {
-      this.hud.toast('Stand beside a waystone to travel (or press T to return home)', 'err');
+      this.hud.toast(touchNow() ? 'Stand beside a waystone to travel' : 'Stand beside a waystone to travel (or press T to return home)', 'err');
       return;
     }
     const stone = AREAS[area].interactables.find((it) => it.kind === 'waystone');
@@ -3247,7 +3252,7 @@ export class WorldScene implements GameScene, RuntimeView {
       if (learned.length) {
         const shown = learned.slice(0, 3).map((id) => ABILITIES[id].name);
         const names = learned.length > 3 ? `${shown.join(', ')} and ${learned.length - 3} more` : shown.join(', ');
-        this.hud.toast(`${names} ${learned.length > 1 ? 'join' : 'joins'} your Grimoire. Click here, press L or use the Grimoire button to place it.`, 'good', () => this.openGrimoire());
+        this.hud.toast(`${names} ${learned.length > 1 ? 'join' : 'joins'} your Grimoire. ${touchNow() ? 'Tap here or use the Grimoire button to place it.' : 'Click here, press L or use the Grimoire button to place it.'}`, 'good', () => this.openGrimoire());
         this.grimoirePanel.render();
         this.markSeen([]);
         this.hud.pulseGrimoire();
@@ -4280,7 +4285,7 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'upgrades': return 'Open Ascension';
       case 'lectern': return 'Open the Codex';
       case 'npc': return `Talk to ${it.label}`;
-      case 'vault': return 'Open the Ossuary Vault (V)';
+      case 'vault': return touchNow() ? 'Open the Ossuary Vault' : 'Open the Ossuary Vault (V)';
       case 'grinder': return 'Salvage gear at the Bone Grinder';
       case 'cauldron': return 'Brew at the Great Cauldron';
       case 'alembic': return 'Brew at the Alembic';
@@ -4327,8 +4332,8 @@ export class WorldScene implements GameScene, RuntimeView {
     const nearNpc = this.nearestNpc();
     this.hud.prompt(
       hover?.kind === 'interact' && !this.dialogue.isOpen
-        ? `<kbd>Click</kbd> ${this.interactPrompt(hover.it)}`
-        : nearNpc && !this.dialogue.isOpen && !this.panelOpen() ? `<kbd>E</kbd> Talk to ${NPCS[nearNpc].name}` : null,
+        ? `<kbd>${touchNow() ? 'Tap' : 'Click'}</kbd> ${this.interactPrompt(hover.it)}`
+        : nearNpc && !this.dialogue.isOpen && !this.panelOpen() ? `<kbd>${touchNow() ? 'Tap' : 'E'}</kbd> Talk to ${NPCS[nearNpc].name}` : null,
     );
     const b = this.bossState();
     const myThralls = [...this.thrallsMap().values()].filter((t) => t.owner === this.selfId);
