@@ -1,6 +1,8 @@
 import { API_BASE } from './config';
 import type { Character, InventorySlot, Profession, Recipe } from './types';
 import type { NecroState, SaveInput } from '../gameplay/necroRules';
+import { decorateSlots, type DropInstance } from '../gameplay/affixes';
+import type { DropSource } from '../gameplay/affixRules';
 
 /**
  * REST client for the existing Node/Express auth server.
@@ -148,38 +150,57 @@ async function unwrap<T>(p: Promise<ApiResponse<T>>): Promise<T> {
 }
 
 // --- Inventory — new system ---
-export function getInventory(characterId: number) {
-  return unwrap<InventorySlot[]>(request(`/api/inventory/${characterId}`, {}, true));
+export async function getInventory(characterId: number) {
+  return decorateSlots(await unwrap<InventorySlot[]>(request(`/api/inventory/${characterId}`, {}, true)));
 }
 
 /** `bagSize` tells the server which bag slots this save speaks for; without it a server assumes the old 24-slot bag. */
-export function saveInventory(characterId: number, slots: unknown[], bagSize?: number) {
-  return unwrap<InventorySlot[]>(
-    request(
-      '/api/inventory/save',
-      { method: 'POST', body: JSON.stringify({ characterId, slots, bagSize }) },
-      true,
+export async function saveInventory(characterId: number, slots: unknown[], bagSize?: number) {
+  return decorateSlots(
+    await unwrap<InventorySlot[]>(
+      request(
+        '/api/inventory/save',
+        { method: 'POST', body: JSON.stringify({ characterId, slots, bagSize }) },
+        true,
+      ),
     ),
   );
 }
 
-export function equipItem(characterId: number, slotIndex: number, equipped: 0 | 1) {
-  return unwrap<InventorySlot[]>(
-    request(
-      '/api/inventory/equip',
-      { method: 'POST', body: JSON.stringify({ characterId, slot_index: slotIndex, equipped }) },
-      true,
+export async function equipItem(characterId: number, slotIndex: number, equipped: 0 | 1) {
+  return decorateSlots(
+    await unwrap<InventorySlot[]>(
+      request(
+        '/api/inventory/equip',
+        { method: 'POST', body: JSON.stringify({ characterId, slot_index: slotIndex, equipped }) },
+        true,
+      ),
     ),
   );
+}
+
+/** One drop the server rolled (POST /api/loot/roll-gear): `instance_id` is null for anything that is not gear. */
+export interface RolledDrop {
+  item_id: string;
+  instance_id: number | null;
+  ilvl: number;
+  affixes: DropInstance['affixes'];
+}
+
+/** Ask the server to roll item level and affixes for gear drops. `level` is the level of whatever dropped them. */
+export function rollLoot(characterId: number, drops: { item_id: string; level: number; source: DropSource }[]) {
+  return unwrap<RolledDrop[]>(request('/api/loot/roll-gear', { method: 'POST', body: JSON.stringify({ characterId, drops }) }, true));
 }
 
 /** Gathering tool belt: equipped 1 moves the tool in this bag slot onto its belt slot, 0 returns the belt slot's tool to the bag. */
-export function beltTool(characterId: number, slotIndex: number, equipped: 0 | 1) {
-  return unwrap<InventorySlot[]>(
-    request(
-      '/api/inventory/belt',
-      { method: 'POST', body: JSON.stringify({ characterId, slot_index: slotIndex, equipped }) },
-      true,
+export async function beltTool(characterId: number, slotIndex: number, equipped: 0 | 1) {
+  return decorateSlots(
+    await unwrap<InventorySlot[]>(
+      request(
+        '/api/inventory/belt',
+        { method: 'POST', body: JSON.stringify({ characterId, slot_index: slotIndex, equipped }) },
+        true,
+      ),
     ),
   );
 }
@@ -483,24 +504,29 @@ export interface VaultState {
   vault: InventorySlot[];
 }
 
+const readVault = async (p: Promise<ApiResponse<VaultState>>): Promise<VaultState> => {
+  const v = await unwrap<VaultState>(p);
+  return { bag: decorateSlots(v.bag), vault: decorateSlots(v.vault) };
+};
+
 export function getVault(characterId: number) {
-  return unwrap<VaultState>(request(`/api/vault/${characterId}`, {}, true));
+  return readVault(request(`/api/vault/${characterId}`, {}, true));
 }
 
 export function vaultDeposit(characterId: number, bagSlot: number, quantity?: number) {
-  return unwrap<VaultState>(request('/api/vault/deposit', { method: 'POST', body: JSON.stringify({ characterId, bagSlot, quantity }) }, true));
+  return readVault(request('/api/vault/deposit', { method: 'POST', body: JSON.stringify({ characterId, bagSlot, quantity }) }, true));
 }
 
 export function vaultWithdraw(characterId: number, vaultSlot: number, quantity?: number) {
-  return unwrap<VaultState>(request('/api/vault/withdraw', { method: 'POST', body: JSON.stringify({ characterId, vaultSlot, quantity }) }, true));
+  return readVault(request('/api/vault/withdraw', { method: 'POST', body: JSON.stringify({ characterId, vaultSlot, quantity }) }, true));
 }
 
 export function vaultDepositAll(characterId: number, kind: 'materials' | 'all', exceptSlots: number[]) {
-  return unwrap<VaultState>(request('/api/vault/deposit-all', { method: 'POST', body: JSON.stringify({ characterId, kind, exceptSlots }) }, true));
+  return readVault(request('/api/vault/deposit-all', { method: 'POST', body: JSON.stringify({ characterId, kind, exceptSlots }) }, true));
 }
 
 export function vaultSort(characterId: number) {
-  return unwrap<VaultState>(request('/api/vault/sort', { method: 'POST', body: JSON.stringify({ characterId }) }, true));
+  return readVault(request('/api/vault/sort', { method: 'POST', body: JSON.stringify({ characterId }) }, true));
 }
 
 export interface SalvageReply {
@@ -516,6 +542,7 @@ export interface SalvageReply {
   xpToNext: number;
 }
 
-export function salvageGear(characterId: number, slots: number[]) {
-  return unwrap<SalvageReply>(request('/api/salvage', { method: 'POST', body: JSON.stringify({ characterId, slots }) }, true));
+export async function salvageGear(characterId: number, slots: number[]) {
+  const r = await unwrap<SalvageReply>(request('/api/salvage', { method: 'POST', body: JSON.stringify({ characterId, slots }) }, true));
+  return { ...r, bag: decorateSlots(r.bag) };
 }

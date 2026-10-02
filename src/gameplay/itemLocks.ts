@@ -1,6 +1,7 @@
 import type { InventorySlot } from '../net/types';
 import { browserStorage, type StorageLike } from './codexJournal';
 import { isSalvageGear } from './salvageRules';
+import { affixIsNecro } from './affixRules';
 
 /**
  * Reliquary locks: a locked bag item is skipped by every bulk action (Sell all junk, Deposit materials and Deposit all, Salvage all).
@@ -74,12 +75,15 @@ export class ItemLocks {
 
 const SELL_JUNK_RARITIES = ['common', 'uncommon'];
 
-/** The bag slots "Sell all junk" would sell: unlocked, unequipped common and uncommon gear that has a sell value. */
+/** A rolled piece with a necromancer affix is never bulk-sold or bulk-salvaged: that is the roll people are hunting. */
+const hasNecroAffix = (s: InventorySlot) => !!s.inst && s.inst.affixes.some(affixIsNecro);
+
+/** The bag slots "Sell all junk" would sell: unlocked, unequipped common and uncommon gear that has a sell value (and no necromancer affix). */
 export function junkSlots(slots: InventorySlot[], locks: Pick<ItemLocks, 'isLocked'>): InventorySlot[] {
-  return slots.filter((s) => !s.equipped && s.slot_index >= 0 && s.slot_index < 100 && isSalvageGear(s.item_type) && SELL_JUNK_RARITIES.includes(s.rarity) && s.sell_value > 0 && !locks.isLocked(s));
+  return slots.filter((s) => !s.equipped && s.slot_index >= 0 && s.slot_index < 100 && isSalvageGear(s.item_type) && SELL_JUNK_RARITIES.includes(s.rarity) && s.sell_value > 0 && !locks.isLocked(s) && !hasNecroAffix(s));
 }
 
 /** Gear the Bone Grinder's "Salvage all below rare" takes: unlocked, unequipped common and uncommon gear. */
 export function salvageBelowRare(slots: InventorySlot[], locks: Pick<ItemLocks, 'isLocked'>): InventorySlot[] {
-  return slots.filter((s) => !s.equipped && s.slot_index >= 0 && s.slot_index < 100 && isSalvageGear(s.item_type) && SELL_JUNK_RARITIES.includes(s.rarity) && !locks.isLocked(s));
+  return slots.filter((s) => !s.equipped && s.slot_index >= 0 && s.slot_index < 100 && isSalvageGear(s.item_type) && SELL_JUNK_RARITIES.includes(s.rarity) && !locks.isLocked(s) && !hasNecroAffix(s));
 }

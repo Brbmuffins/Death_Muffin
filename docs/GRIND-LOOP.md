@@ -35,7 +35,7 @@ leaks, and the backlog that fixes it, ordered by payoff for effort.
 | # | Feature | Why it hooks | Effort | Notes |
 |---|---|---|---|---|
 | 1 | ~~**Plague Cloister** (level-scaled zone)~~ | XP never plateaus; a new place to explore | L | **Shipped 2026-09-29**, with the Plague Saint |
-| 2 | **Loot upgrade chase**: item level + affix rolls on drops (e.g. "+8% needle damage"), rarity beams already exist | Every drop *might* be better; the core ARPG slot machine | L | Needs server item_instance rows (the table exists) |
+| 2 | ~~**Loot upgrade chase**~~ | Every drop *might* be better; the core ARPG slot machine | L | **Built 2026-10-02 (branch `dm/affixes`, migration 020)**: server-rolled item level and 0-3 affixes per gear drop (`loot_instances`), necromancer levers, readable tooltips, Vault/Salvage/offline carry the roll. See HANDOFF. The legacy `item_instance` table was Crossworlds', so the new one is `loot_instances` |
 | 3 | **Salvage** gear → materials, and **gems into sockets** (runes brief: `build-depth-aspects-runes.md`) | Gives gems, fragments and duplicate gear a purpose | M | Migration 005 plus a Reliquary panel |
 | 4 | **Daily Sexton's Contracts** ("kill 200 in the Nave", "cook 20 meals") → shards and seals | A reason to log in daily | M | Icon `sexton_contract.png` exists (unused) |
 | 5 | ~~**Omens**~~ | Novelty, and a reason to replay old zones | M | **Shipped 2026-09-30** (`content/omens.ts`): Blood Moon, Drowned Week and The Tolling rotate each UTC week; effects on elites, wave size, rewards and the sky. The `daily_rite` icon is still unused |
@@ -51,5 +51,6 @@ leaks, and the backlog that fixes it, ordered by payoff for effort.
   "no gathered material is a dead end".
 - Every new system should add at least one reward at a timescale that is currently thin.
 - Keep performance flat. Measure with `tools/qa/flyers-rites-smoke.cjs` (its perf block).
-- Loot is client-rolled and the server only validates ids and stacks (a friends-game trust model). Don't build
-  anything competitive on top of it without moving drops server-side first.
+- Gear is now rolled by the server (item level and affixes, `loot.cjs`); *which* item drops, gold and XP are still client-rolled and the
+  server only validates ids and stacks (a friends-game trust model). Don't build anything competitive on top of that without moving
+  drops server-side first.

@@ -14,7 +14,7 @@ import { BELT_LABEL, beltOffer, beltTools, dismissOffer, isOnBelt, moveTools, of
 
 /** A small padlock for locked cells and the Lock button (inline SVG: no font or emoji dependency). */
 export const LOCK_SVG = '<svg viewBox="0 0 12 14" width="11" height="13" aria-hidden="true"><path d="M3 6V4.2a3 3 0 0 1 6 0V6" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="6" width="9" height="7" rx="1" fill="currentColor"/></svg>';
-import { badgeHtml, compareChipsHtml, compareTableHtml, itemStatsHtml, setTooltipHtml, type StatContextSource } from './gearText';
+import { badgeHtml, compareChipsHtml, compareTableHtml, itemLevelHtml, itemStatsHtml, setTooltipHtml, verdictHtml, type StatContextSource } from './gearText';
 import { resolveSetBonuses } from '../gameplay/setBonuses';
 
 const TYPE_GLYPH: Record<string, string> = {
@@ -366,8 +366,8 @@ export class InventoryPanel {
     return compareTableHtml(this.statContext?.() ?? null, slot);
   }
 
-  private statLines(slot: InventorySlot) {
-    return itemStatsHtml(this.statContext?.() ?? null, slot);
+  private statLines(slot: InventorySlot, withVerdict = true) {
+    return itemStatsHtml(this.statContext?.() ?? null, slot, withVerdict);
   }
 
   private setLine(slot: InventorySlot) {
@@ -384,6 +384,7 @@ export class InventoryPanel {
     this.tooltip.innerHTML = `
       <div class="name" style="color:${RARITY_COLOR[slot.rarity]}">${slot.name}</div>
       <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${slot.item_type.replace('_', ' ')}</div>
+      ${itemLevelHtml(slot)}
       ${this.statLines(slot)}
       ${this.setLine(slot)}
       ${compareChipsHtml(this.statContext?.() ?? null, slot)}
@@ -422,10 +423,13 @@ export class InventoryPanel {
     const compare = this.compareLines(slot);
     detail.innerHTML = `
       <div class="info${compare ? ' gs-wide' : ''}">
+        <div class="gs-head">
+          <div class="name" style="color:${RARITY_COLOR[slot.rarity]}">${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''}</div>
+          <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${slot.item_type.replace('_', ' ')}${itemLevelHtml(slot, true)}</div>
+          ${verdictHtml(this.statContext?.() ?? null, slot)}
+        </div>
         <div class="gs-col">
-        <div class="name" style="color:${RARITY_COLOR[slot.rarity]}">${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''}</div>
-        <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${slot.item_type.replace('_', ' ')}</div>
-        ${this.statLines(slot)}
+        ${this.statLines(slot, false)}
         ${this.setLine(slot)}
         ${brewSummary(slot.item_id) ? `<div class="brew-line">${brewSummary(slot.item_id)}</div>` : ''}
         ${meta.lore && !compare ? `<div class="lore">${meta.lore}</div>` : ''}

@@ -28,8 +28,11 @@ import { FEN_RECIPES } from '../content/fenItems';
 import { isDevAccount } from '../gameplay/devAccess';
 import * as vaultRules from '../gameplay/vaultRules';
 import * as salvageRules from '../gameplay/salvageRules';
+import * as affixRules from '../gameplay/affixRules';
 
 const BAG = gather.BAG_SLOTS;
+/** Mirrors inventory-save.cjs CANT_VERIFY. */
+const CANT_VERIFY = 'One of your relics could not be verified. Reload the game to refresh your Reliquary.';
 
 class MockError extends Error {
   constructor(message: string, public status: number) {
@@ -111,6 +114,10 @@ interface StoredSlot {
   item_id: string;
   quantity: number;
   equipped: 0 | 1;
+  /** A rolled piece (mirrors inventory.instance_id): the roll itself lives in MockAccount.instances, never on the row. */
+  instance_id?: number;
+  /** Only in the portable save (exportLocalSave / importOnlineSave): the roll inline, as offline-full-sync.cjs expects. */
+  inst?: affixRules.ItemInstanceData;
 }
 
 interface MockAccount {
@@ -127,7 +134,10 @@ interface MockAccount {
   /** The Chronicle (mirrors character_chronicle + character_runs). */
   chronicle?: { life: Record<string, number>; run: Record<string, number>; runNo: number; runStartedAt: string; runs: { runNo: number; startedAt: string; endedAt: string; ascensionAfter: number; stats: Record<string, number> }[] };
   /** The Ossuary Vault (mirrors account_vault; the mock has one account per character). */
-  vault?: { slot_index: number; item_id: string; quantity: number }[];
+  vault?: { slot_index: number; item_id: string; quantity: number; instance_id?: number }[];
+  /** Rolled loot (mirrors loot_instances) and the next id. Only POST /api/loot/roll-gear writes it. */
+  instances?: Record<string, { item_id: string; ilvl: number; affixes: affixRules.AffixRoll[] }>;
+  nextInstance?: number;
   /** POST /api/gather time budget (mirrors gather_ledger). */
   gatherLedger?: gather.GatherLedger;
   username: string;
@@ -166,7 +176,17 @@ function saveDb(db: MockDb) {
 export function exportLocalSave(token: string): MockAccount {
   const account = accountFor(loadDb(), token);
   if (!account.character) throw new MockError('Create a local character before syncing.', 400);
-  return JSON.parse(JSON.stringify(account));
+  const copy = JSON.parse(JSON.stringify(account)) as MockAccount;
+  // The portable save carries each roll inline (the online server mints fresh instances from it), not our local ids.
+  for (const slot of copy.slots) {
+    const inst = slot.instance_id ? copy.instances?.[slot.instance_id] : undefined;
+    delete slot.instance_id;
+    if (inst) slot.inst = { ilvl: inst.ilvl, affixes: inst.affixes };
+  }
+  delete copy.instances;
+  delete copy.nextInstance;
+  delete copy.vault;
+  return copy;
 }
 
 /** Keep the current local player; import an online save as another local player. */
@@ -179,6 +199,17 @@ export function importOnlineSave(snapshot: MockAccount): string {
   for (let n = 2; db.accounts[username]; n++) username = `${stem}_${n}`;
   const copy = JSON.parse(JSON.stringify(snapshot)) as MockAccount;
   copy.username = username;
+  // Online rolls arrive inline; give each a local instance id.
+  copy.instances = {};
+  copy.nextInstance = 1;
+  for (const slot of copy.slots) {
+    const inst = slot.inst;
+    delete slot.inst;
+    if (inst && affixRules.instanceProblem(inst, MOCK_ITEMS[slot.item_id]?.item_type ?? 'material') === null) {
+      copy.instances[copy.nextInstance] = { item_id: slot.item_id, ilvl: inst.ilvl, affixes: affixRules.cleanInstance(inst).affixes };
+      slot.instance_id = copy.nextInstance++;
+    }
+  }
   if (Object.values(db.accounts).some((a) => a.character?.id === copy.character!.id)) {
     copy.character!.id = db.nextCharacterId++;
   }
@@ -188,9 +219,11 @@ export function importOnlineSave(snapshot: MockAccount): string {
   return `offline:${username}`;
 }
 
-function joinSlot(s: StoredSlot, i: number): InventorySlot {
+function joinSlot(s: StoredSlot, i: number, acc?: MockAccount): InventorySlot {
   const def = MOCK_ITEMS[s.item_id];
+  const roll = s.instance_id && acc?.instances ? acc.instances[s.instance_id] : undefined;
   return {
+    ...(roll && s.instance_id ? { instance_id: s.instance_id, ilvl: roll.ilvl, affixes: roll.affixes } : {}),
     id: i + 1,
     slot_index: s.slot_index,
     quantity: s.quantity,
@@ -289,6 +322,7 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
   }
 
   const acc = accountFor(db, token);
+  const join = (s: StoredSlot, i: number) => joinSlot(s, i, acc);
   const characterResponse = () => ({ ...acc.character, auto_combat_allowed: import.meta.env.DEV && acc.username.toLowerCase() === 'brbmuffins' });
 
   if (p === '/character' && method === 'GET') {
@@ -332,7 +366,7 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
   let m: RegExpMatchArray | null;
   if ((m = p.match(/^\/api\/inventory\/(\d+)$/)) && method === 'GET') {
     ownCharacter(acc, m[1]);
-    return ok(acc.slots.map(joinSlot));
+    return ok(acc.slots.map(join));
   }
 
   if (p === '/api/inventory/save' && method === 'POST') {
@@ -341,6 +375,9 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     const bagSize = body.bagSize === undefined || body.bagSize === null ? 24 : Number(body.bagSize);
     if (!Number.isInteger(bagSize) || bagSize < 1 || bagSize > BAG) return fail(`bagSize must be a whole number from 1 to ${BAG}`);
     const next: StoredSlot[] = [];
+    const claimed = new Set<number>();
+    const instances = acc.instances ?? (acc.instances = {});
+    const held = (id: number) => acc.slots.some((x) => x.instance_id === id && !(x.slot_index >= 0 && x.slot_index < bagSize)) || (acc.vault ?? []).some((x) => x.instance_id === id);
     for (const s of body.slots ?? []) {
       if (Number(s.slot_index) >= 100) continue;
       if (!MOCK_ITEMS[s.item_id]) return fail(`Unknown item: ${s.item_id}`);
@@ -348,10 +385,46 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       if (!Number.isInteger(index) || index < 0 || index >= bagSize) return fail(`each slot_index must be between 0 and ${bagSize - 1}`);
       const qty = Math.floor(Number(s.quantity));
       if (qty <= 0) continue;
-      next.push({ slot_index: index, item_id: s.item_id, quantity: qty, equipped: s.equipped ? 1 : 0 });
+      // A save may only NAME a roll the mock minted for this account (same rule as inventory-save.cjs); an omitted id keeps the slot's own.
+      let instance_id: number | undefined;
+      if (s.instance_id === undefined) {
+        const before = acc.slots.find((x) => x.slot_index === index && x.item_id === s.item_id);
+        instance_id = before?.instance_id;
+      } else if (s.instance_id !== null) {
+        instance_id = Number(s.instance_id);
+        if (!Number.isInteger(instance_id) || qty !== 1 || claimed.has(instance_id) || instances[instance_id]?.item_id !== s.item_id || held(instance_id)) return fail(CANT_VERIFY);
+      }
+      if (instance_id !== undefined) claimed.add(instance_id);
+      next.push({ slot_index: index, item_id: s.item_id, quantity: qty, equipped: s.equipped ? 1 : 0, ...(instance_id !== undefined ? { instance_id } : {}) });
     }
+    // A relic the save no longer names is gone (sold, thrown away).
+    for (const x of acc.slots) if (x.instance_id && x.slot_index >= 0 && x.slot_index < bagSize && !claimed.has(x.instance_id)) delete instances[x.instance_id];
     acc.slots = [...acc.slots.filter((s) => s.slot_index >= 100 || s.slot_index >= bagSize), ...next];
-    return ok(acc.slots.map(joinSlot));
+    return ok(acc.slots.map(join));
+  }
+
+  // Item level and affixes: the only place loot is rolled (the same rules as server/death-muffin/backend/loot.cjs, with Math.random).
+  if (p === '/api/loot/roll-gear' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const drops = body.drops;
+    if (!Array.isArray(drops) || !drops.length || drops.length > 12) return fail('Roll between 1 and 12 drops at a time.');
+    const instances = acc.instances ?? (acc.instances = {});
+    const out: { item_id: string; instance_id: number | null; ilvl: number; affixes: affixRules.AffixRoll[] }[] = [];
+    for (const d of drops) {
+      const def = d && MOCK_ITEMS[d.item_id];
+      if (!def || !affixRules.DROP_SOURCES.includes(d.source)) return fail(def ? 'That drop could not be rolled.' : 'Unknown item.');
+      if (!affixRules.isAffixGear(def.item_type)) {
+        out.push({ item_id: d.item_id, instance_id: null, ilvl: 0, affixes: [] });
+        continue;
+      }
+      const level = affixRules.clampDropLevel(d.level, Number(acc.character?.level) || 1);
+      const inst = affixRules.rollInstance({ rarity: def.rarity }, level, d.source, Math.random);
+      const id = acc.nextInstance ?? 1;
+      acc.nextInstance = id + 1;
+      instances[id] = { item_id: d.item_id, ilvl: inst.ilvl, affixes: inst.affixes };
+      out.push({ item_id: d.item_id, instance_id: id, ilvl: inst.ilvl, affixes: inst.affixes });
+    }
+    return ok(out);
   }
 
   if (p === '/api/inventory/equip' && method === 'POST') {
@@ -381,7 +454,7 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       slot.slot_index = bagIndex;
       slot.equipped = 0;
     }
-    return ok(acc.slots.map(joinSlot));
+    return ok(acc.slots.map(join));
   }
 
   // The gathering tool belt: the same moves as server/death-muffin/backend/tool-belt.cjs.
@@ -405,7 +478,7 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       slot.slot_index = bagIndex;
       slot.equipped = 0;
     }
-    return ok(acc.slots.map(joinSlot));
+    return ok(acc.slots.map(join));
   }
 
   // --- The Ossuary Vault and Salvaging: the same pure rules the Death Muffin backend uses (vault-rules, salvage-rules). ---
@@ -414,20 +487,24 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     const gear = !!d && salvageRules.isSalvageGear(d.item_type);
     return { maxStack: gear ? 1 : (ITEMS[id]?.stack ?? 9999), itemType: d?.item_type ?? 'material', rarity: d?.rarity ?? 'common' };
   };
-  const bagRows = (): vaultRules.VaultRow[] => acc.slots.filter((x) => x.slot_index < BAG).map((x) => ({ slot: x.slot_index, itemId: x.item_id, qty: x.quantity, ...(x.equipped ? { fixed: true } : {}) }));
-  const vaultRows = (): vaultRules.VaultRow[] => (acc.vault ?? []).map((x) => ({ slot: x.slot_index, itemId: x.item_id, qty: x.quantity }));
+  const instRow = (id: number | undefined) => {
+    const roll = id !== undefined && id !== null ? acc.instances?.[id] : undefined;
+    return roll && id !== undefined ? { inst: id, power: affixRules.instancePower(roll), ilvl: roll.ilvl, nAffix: roll.affixes.length } : {};
+  };
+  const bagRows = (): (vaultRules.VaultRow & { ilvl?: number; nAffix?: number })[] => acc.slots.filter((x) => x.slot_index < BAG).map((x) => ({ slot: x.slot_index, itemId: x.item_id, qty: x.quantity, ...(x.equipped ? { fixed: true } : {}), ...instRow(x.instance_id) }));
+  const vaultRows = (): vaultRules.VaultRow[] => (acc.vault ?? []).map((x) => ({ slot: x.slot_index, itemId: x.item_id, qty: x.quantity, ...instRow(x.instance_id) }));
   const storeBag = (rows: vaultRules.VaultRow[]) => {
     const equippedKept = new Map(acc.slots.filter((x) => x.slot_index < BAG && x.equipped).map((x) => [x.slot_index, x]));
-    acc.slots = [...acc.slots.filter((x) => x.slot_index >= BAG), ...rows.map((r): StoredSlot => equippedKept.get(r.slot) ?? { slot_index: r.slot, item_id: r.itemId, quantity: r.qty, equipped: 0 })];
+    acc.slots = [...acc.slots.filter((x) => x.slot_index >= BAG), ...rows.map((r): StoredSlot => equippedKept.get(r.slot) ?? { slot_index: r.slot, item_id: r.itemId, quantity: r.qty, equipped: 0, ...(r.inst !== undefined ? { instance_id: r.inst } : {}) })];
   };
   const vaultView = () => ({
-    bag: acc.slots.map(joinSlot),
-    vault: (acc.vault ?? []).slice().sort((a, b) => a.slot_index - b.slot_index).map((v, i) => joinSlot({ ...v, equipped: 0 }, i)),
+    bag: acc.slots.map(join),
+    vault: (acc.vault ?? []).slice().sort((a, b) => a.slot_index - b.slot_index).map((v, i) => joinSlot({ ...v, equipped: 0 }, i, acc)),
   });
   const applyVault = (r: vaultRules.VaultResult) => {
     if (!r.ok) return fail(r.error);
     storeBag(r.bag);
-    acc.vault = r.vault.map((x) => ({ slot_index: x.slot, item_id: x.itemId, quantity: x.qty }));
+    acc.vault = r.vault.map((x) => ({ slot_index: x.slot, item_id: x.itemId, quantity: x.qty, ...(x.inst !== undefined ? { instance_id: x.inst } : {}) }));
     return ok(vaultView());
   };
   if ((m = p.match(/^\/api\/vault\/(\d+)$/)) && method === 'GET') {
@@ -454,7 +531,7 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
   }
   if (p === '/api/vault/sort' && method === 'POST') {
     ownCharacter(acc, body.characterId);
-    acc.vault = vaultRules.sortVault(vaultRows(), mockInfo).map((x) => ({ slot_index: x.slot, item_id: x.itemId, quantity: x.qty }));
+    acc.vault = vaultRules.sortVault(vaultRows(), mockInfo).map((x) => ({ slot_index: x.slot, item_id: x.itemId, quantity: x.qty, ...(x.inst !== undefined ? { instance_id: x.inst } : {}) }));
     return ok(vaultView());
   }
   if (p === '/api/salvage' && method === 'POST') {
@@ -467,6 +544,7 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     const level = prof?.skill_level ?? 1;
     const salvaged: { item_id: string }[] = [];
     const yields: salvageRules.SalvageGrant[][] = [];
+    const spent: number[] = [];
     let xp = 0;
     for (const slot of slots) {
       const row = bag.find((r) => r.slot === slot);
@@ -474,8 +552,9 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       if (row.fixed) return fail('Equipped gear cannot be salvaged. Unequip it first.');
       const info = mockInfo(row.itemId);
       if (!salvageRules.isSalvageGear(info.itemType)) return fail('Only weapons, armor, rings and trinkets can be salvaged.');
+      if (row.inst !== undefined) spent.push(row.inst);
       for (let n = 0; n < row.qty; n++) {
-        const out = salvageRules.salvageYield({ id: row.itemId, item_type: info.itemType, rarity: info.rarity }, level, Math.random);
+        const out = salvageRules.salvageYield({ id: row.itemId, item_type: info.itemType, rarity: info.rarity, ...(row.inst !== undefined ? { ilvl: row.ilvl, affixes: row.nAffix } : {}) }, level, Math.random);
         salvaged.push({ item_id: row.itemId });
         yields.push(out.items);
         xp += out.xp;
@@ -486,11 +565,12 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     const after = vaultRules.addGrants(bag.filter((r) => !taken.has(r.slot)), gained.map((g) => ({ itemId: g.item_id, qty: g.quantity })), mockInfo);
     if (!after) return fail('Make room in your bag first: the salvage will not fit. Nothing was salvaged.');
     storeBag(after);
+    for (const id of spent) delete acc.instances?.[id];
     if (!prof) acc.professions.push((prof = { profession_id: salvageRules.SALVAGE_SKILL, skill_level: 1, skill_xp: 0 }));
     const next = gather.addSkillXp({ level: prof.skill_level, xp: prof.skill_xp }, xp);
     prof.skill_level = next.level;
     prof.skill_xp = next.xp;
-    return ok({ bag: acc.slots.map(joinSlot), salvaged, gained, xp, level: next.level, leveledUp: next.leveled > 0, skillXp: next.xp, xpToNext: gather.xpToNext(next.level) });
+    return ok({ bag: acc.slots.map(join), salvaged, gained, xp, level: next.level, leveledUp: next.leveled > 0, skillXp: next.xp, xpToNext: gather.xpToNext(next.level) });
   }
 
   if ((m = p.match(/^\/api\/professions\/(\d+)$/)) && method === 'GET') {
@@ -595,7 +675,7 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       earner.skill_xp -= earner.skill_level * 50;
       earner.skill_level += 1;
     }
-    return ok({ updatedInventory: acc.slots.map(joinSlot), updatedProfession: earner });
+    return ok({ updatedInventory: acc.slots.map(join), updatedProfession: earner });
   }
 
   if (p === '/api/character/save-progress' && method === 'POST') {

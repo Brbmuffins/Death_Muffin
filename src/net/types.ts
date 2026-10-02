@@ -32,6 +32,18 @@ export interface InventorySlot {
   icon_id: string | null;
   sell_value: number;
   crafted: 0 | 1;
+  /**
+   * Item level and affixes (migration 020, GRIND-LOOP #2). The server sends the raw columns of a rolled piece; `decorateSlot`
+   * (gameplay/affixes.ts) reads them once into `inst` and rewrites name, rarity and sell value. Plain rows have none of these.
+   */
+  instance_id?: number | null;
+  ilvl?: number | null;
+  affixes?: { id: string; v: number }[] | string | null;
+  inst?: { id: number; ilvl: number; affixes: { id: string; v: number }[] };
+  /** The item's own name, rarity and price before its affixes changed them. */
+  base_name?: string;
+  base_rarity?: Rarity;
+  base_sell?: number;
 }
 
 export interface Profession {
