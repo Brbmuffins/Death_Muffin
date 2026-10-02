@@ -50,6 +50,16 @@ async function main() {
     await settle();
     await page.screenshot({ path: `${out}/02-wing-wide.png` });
     const wing = await stats();
+    // The dressed Wing must stay within ~15% of the Chapterhouse (draw calls and triangles) on Low.
+    assert.ok(wing.calls <= chapter.calls * 1.15, `Wing draw calls ${wing.calls} vs Chapterhouse ${chapter.calls}`);
+    assert.ok(wing.tris <= chapter.tris * 1.15, `Wing triangles ${wing.tris} vs Chapterhouse ${chapter.tris}`);
+    // North half and east half of the room (the dressing is the point of these shots).
+    await page.evaluate(() => { window.__cwDebug.teleport(33, 16); window.__cwDebug.advance(2); });
+    await settle();
+    await page.screenshot({ path: `${out}/02b-wing-north.png` });
+    await page.evaluate(() => { window.__cwDebug.teleport(39, 22); window.__cwDebug.advance(2); });
+    await settle();
+    await page.screenshot({ path: `${out}/02c-wing-east.png` });
     // Close view of the cauldron.
     await page.evaluate(() => { window.__cwDebug.teleport(33, 22); window.__cwDebug.zoom(0.7); window.__cwDebug.advance(2); });
     await settle();
@@ -84,6 +94,12 @@ async function main() {
     const unknown = await page.$$eval('.cw-shelf-item:not(.found) .nm', (els) => els.length);
     assert.ok(unknown > 0, 'unfound reagents stay hidden');
     await page.screenshot({ path: `${out}/06-reagent-shelf.png` });
+    // The Sexton carries a spade (NPC_LOOKS.sexton.held): walk to him in the Acre and look.
+    await page.evaluate(() => { window.__cwDebug.teleport(-26, 25.2); window.__cwDebug.zoom(0.25); window.__cwDebug.advance(2); });
+    await page.waitForTimeout(3500);
+    await page.evaluate(() => window.__cwDebug.advance(2));
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: `${out}/07-sexton-spade.png` });
     assert.deepEqual(errors, []);
     console.log(JSON.stringify({ area, chapter, wing, before, after, found, errors }));
   } finally { await browser.close(); }

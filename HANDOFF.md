@@ -24,6 +24,13 @@ Branch `codex/new-blood-release-20260928` tracks `origin/master` (push `HEAD:mas
 after a secret scan; the repo is public). The owner asked for commits, which overrides
 the older "stage, don't commit" note.
 
+## Alchemist's Wing dressing (branch `dm/wing-dressing`, 2 Oct 2026, not deployed)
+
+Reviewers found the Wing sparse. `WING_PROPS` is now ~65 placements, plus `WING_FLOOR` rugs/spills, warm de-purpled floor and wall
+textures (`tools/make-wing-textures.mjs`), brightened herb bundles/drying rack (`PROP_LIFT`), and the Sexton holds `tool_spade`
+(`NPC_LOOKS.sexton.held`). Perf on Low: Wing 140 calls / 394k tris vs Chapterhouse 125 / 356k (the smoke asserts <= +15%). Details and
+screenshots: `docs/ALCHEMIST-WING-ART.md` "Dressing pass". Door lane and station rings are unit-tested.
+
 ## Animation pass (branch `dm/anim-pass`, 2 Oct 2026, not deployed)
 
 - **Models faced the wrong way.** Every Tripo biped (enemies, thralls, bosses, laborers) faces +X in its GLB and only the

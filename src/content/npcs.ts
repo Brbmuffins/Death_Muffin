@@ -71,11 +71,14 @@ export interface NpcLook {
   tint: number;
   emissive: number;
   glow: number;
+  /** A prop GLB (public/models/props) held in the right hand, scaled so its longest side is `length` world units. */
+  held?: { prop: string; length: number };
 }
 
 export const NPC_LOOKS: Record<NpcId, NpcLook> = {
   prior: { slug: 'npc_prior', fallback: 'deacon', scale: 1, tint: 0xffffff, emissive: 0x4b2f8a, glow: 0.08 },
-  sexton: { slug: 'npc_sexton', fallback: 'grave_robber', scale: 1, tint: 0xffffff, emissive: 0x6b4a1f, glow: 0.08 },
+  // The gravedigger's spade is the gathering tool prop (the model itself is empty-handed).
+  sexton: { slug: 'npc_sexton', fallback: 'grave_robber', scale: 1, tint: 0xffffff, emissive: 0x6b4a1f, glow: 0.08, held: { prop: 'tool_spade', length: 1.3 } },
   apothecary: { slug: 'npc_apothecary', fallback: 'plague_doctor', scale: 1, tint: 0xffffff, emissive: 0x2f7a47, glow: 0.08 },
 };
 

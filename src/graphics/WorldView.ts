@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { AREAS, AREA_ORDER, DOORS, type AreaId, type DoorDef, type Theme } from '../content/areas';
-import { NODE_COLLIDER, PROPS, type Placement, type PropId, type Silhouette, type WorldLayout } from '../content/layout';
+import { NODE_COLLIDER, PROPS, WING_FLOOR, type Placement, type PropId, type Silhouette, type WorldLayout } from '../content/layout';
 import type { Nav } from '../gameplay/nav';
 import { NODES } from '../gameplay/gatheringRules';
 import { mulberry32 } from '../gameplay/rng';
@@ -26,8 +26,8 @@ const FLOOR_TEX: Record<Theme, { url: string; tile: number; color: number; rough
   coliseum: { url: 'art/textures/coliseum_floor.webp', tile: 7, color: 0xc8bca8, rough: 0.9 },
   pyre: { url: 'art/textures/pyre_floor.webp', tile: 6, color: 0xd8b498, rough: 0.85 },
   fen: { url: 'art/textures/fen_floor.webp', tile: 6, color: 0xa8c0bc, rough: 0.8 },
-  // The Alchemist's Wing: the Chapterhouse flagstones, warmed toward oak-and-candle brown.
-  wing: { url: 'art/textures/flagstone.webp', tile: 6, color: 0xe6d0a8, rough: 0.7 },
+  // The Alchemist's Wing: a de-purpled, warmed flagstone variant (tools/make-wing-textures.mjs).
+  wing: { url: 'art/textures/wing_floor.webp', tile: 6, color: 0xe8dcc8, rough: 0.75 },
 };
 
 export interface LightSource {
@@ -221,6 +221,9 @@ function silhouetteGeometry(sil: Silhouette, rand: () => number): THREE.BufferGe
  * swaps to the generated GLB (every mesh instanced with the same transforms)
  * once it loads.
  */
+/** Colour multiplier (can exceed 1) for props that read too dark at the game camera: the Wing's hanging herbs and drying rack. */
+const PROP_LIFT: Partial<Record<PropId, number>> = { alch_herb_bundle: 3.2, alch_drying_rack: 1.9 };
+
 class PropBatch {
   readonly group = new THREE.Group();
   constructor(
@@ -245,9 +248,19 @@ class PropBatch {
         .makeTranslation(-center.x * t.scale, t.groundOffset, -center.z * t.scale)
         .multiply(new THREE.Matrix4().makeScale(t.scale, t.scale, t.scale));
       const parts: { geometry: THREE.BufferGeometry; material: THREE.Material; local: THREE.Matrix4 }[] = [];
+      const lift = PROP_LIFT[id];
       t.scene.traverse((o) => {
         const m = o as THREE.Mesh;
-        if (m.isMesh) parts.push({ geometry: m.geometry, material: m.material as THREE.Material, local: norm.clone().multiply(m.matrixWorld) });
+        if (!m.isMesh) return;
+        let material = m.material as THREE.Material;
+        // Props the GLB pipeline leaves too dark for the camera get a private, brightened material (the cached one stays shared).
+        if (lift && (material as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
+          material = material.clone();
+          const std = material as THREE.MeshStandardMaterial;
+          std.color.setRGB(lift, lift, lift * 0.92);
+          if (std.map) { std.emissiveMap = std.map; std.emissive.setRGB(0.14, 0.14, 0.12); }
+        }
+        parts.push({ geometry: m.geometry, material, local: norm.clone().multiply(m.matrixWorld) });
       });
       if (parts.length) {
         this.group.clear();
@@ -375,6 +388,7 @@ export class WorldView {
     this.effects.decal({ tex: fx.ring(), color: 0xeac58b, x: sawpit.x, z: sawpit.z, r: 1.4, duration: 1e9, persistent: true, opacity: 0.3, fadeIn: 0.01 });
     this.buildWindows();
     this.buildDecals();
+    this.buildWingFloor();
     this.buildInteractableMarkers();
     this.buildGates();
     this.buildFlames();
@@ -509,7 +523,7 @@ export class WorldView {
           map: assets.texture(`art/textures/${tex}.webp`, { repeat: 1 }),
           bumpMap: assets.texture(`art/textures/${tex}.webp`, { repeat: 1 }),
           bumpScale: 3,
-          color: tex === 'skull_wall' ? 0xc2b8ae : 0x9a92a4,
+          color: tex === 'skull_wall' ? 0xc2b8ae : tex === 'wing_wall' ? 0xd8ccb8 : 0x9a92a4,
           roughness: 0.92,
         }),
       );
@@ -593,6 +607,89 @@ export class WorldView {
       this.group.add(shaft);
       this.effects.decal({ tex: fx.glow(), color: 0x5a3bb8, x: shaft.position.x, z: shaft.position.z, r: w.w, duration: 1e9, persistent: true, opacity: 0.35, fadeIn: 0.01 });
     }
+  }
+
+  /** The Alchemist's Wing's rugs and spills: thin canvas-textured planes just above the flagstones (drawn once, lit by the pools). */
+  private buildWingFloor() {
+    const rugTex = (color: number, alt: number) => {
+      const cv = document.createElement('canvas');
+      cv.width = 256;
+      cv.height = 128;
+      const g = cv.getContext('2d')!;
+      const hex = (n: number, k = 1) => `rgb(${Math.min(255, ((n >> 16) & 255) * k) | 0},${Math.min(255, ((n >> 8) & 255) * k) | 0},${Math.min(255, (n & 255) * k) | 0})`;
+      g.fillStyle = hex(color, 0.45);
+      g.fillRect(0, 0, 256, 128);
+      g.fillStyle = hex(color, 0.8);
+      g.fillRect(14, 14, 228, 100);
+      g.strokeStyle = hex(alt, 0.55);
+      g.lineWidth = 4;
+      g.strokeRect(8, 8, 240, 112);
+      g.lineWidth = 2;
+      g.strokeRect(20, 20, 216, 88);
+      g.fillStyle = hex(alt, 0.5);
+      for (let i = 0; i < 5; i++) {
+        const cx = 36 + i * 46;
+        g.beginPath();
+        g.moveTo(cx, 64 - 26); g.lineTo(cx + 18, 64); g.lineTo(cx, 64 + 26); g.lineTo(cx - 18, 64);
+        g.closePath();
+        g.fill();
+        g.fillStyle = hex(color, 0.55);
+        g.beginPath();
+        g.moveTo(cx, 64 - 11); g.lineTo(cx + 8, 64); g.lineTo(cx, 64 + 11); g.lineTo(cx - 8, 64);
+        g.closePath();
+        g.fill();
+        g.fillStyle = hex(alt, 0.5);
+      }
+      // Wear and fray.
+      const rnd = mulberry32(color);
+      for (let i = 0; i < 1400; i++) {
+        g.fillStyle = `rgba(20,12,8,${(0.08 + rnd() * 0.2).toFixed(2)})`;
+        g.fillRect(rnd() * 256, rnd() * 128, 2 + rnd() * 6, 1 + rnd() * 3);
+      }
+      const t = new THREE.CanvasTexture(cv);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = 4;
+      return t;
+    };
+    const stainTex = (() => {
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = 128;
+      const g = cv.getContext('2d')!;
+      const rnd = mulberry32(77);
+      for (let i = 0; i < 9; i++) {
+        const cx = 64 + (rnd() - 0.5) * 50, cy = 64 + (rnd() - 0.5) * 50, r = 14 + rnd() * 26;
+        const grad = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+        grad.addColorStop(0, 'rgba(255,255,255,0.55)');
+        grad.addColorStop(0.7, 'rgba(255,255,255,0.3)');
+        grad.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = grad;
+        g.fillRect(0, 0, 128, 128);
+      }
+      const t = new THREE.CanvasTexture(cv);
+      t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    })();
+    WING_FLOOR.forEach((f, i) => {
+      const rug = f.kind === 'rug';
+      const mat = new THREE.MeshStandardMaterial({
+        map: rug ? rugTex(f.color, f.alt ?? 0xc9a25a) : stainTex,
+        color: rug ? 0xb4a490 : f.color,
+        roughness: 1,
+        metalness: 0,
+        transparent: !rug,
+        opacity: rug ? 1 : 0.85,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+        polygonOffsetUnits: -2,
+      });
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(f.w, f.d).rotateX(-Math.PI / 2), mat);
+      mesh.position.set(f.x, rug ? 0.012 + i * 0.001 : 0.011, f.z);
+      mesh.rotation.y = f.rot;
+      mesh.receiveShadow = true;
+      mesh.renderOrder = 1;
+      this.group.add(mesh);
+    });
   }
 
   private buildDecals() {
