@@ -40,8 +40,19 @@ describe('set bonus table', () => {
       SET_TIERS.forEach((_, i) => expect(size(SET_BONUSES[`${id}_ascended`][i].effect), `${id} tier ${i}`).toBeGreaterThanOrEqual(size(SET_BONUSES[id][i].effect)));
     }
   });
-  it('keeps numbers modest: no multiplier above +15%', () => {
-    for (const id of SET_IDS) for (const b of SET_BONUSES[id]) for (const m of Object.values(b.effect.mult ?? {})) expect(m).toBeLessThanOrEqual(1.15);
+  it('keeps every line inside its budget (2026-10-02 gear pass): thrall and health lines at most +30%, essence regeneration at most +45%', () => {
+    for (const id of SET_IDS) {
+      for (const b of SET_BONUSES[id]) {
+        for (const [k, m] of Object.entries(b.effect.mult ?? {})) expect(m, `${id} ${b.pieces}pc ${k}`).toBeLessThanOrEqual(k === 'essenceRegenMult' ? 1.45 : 1.3);
+      }
+    }
+  });
+  it('a whole first set stays under +60% on any one lever, an ascended one under +90% (levers multiply across the lines)', () => {
+    for (const id of SET_IDS) {
+      const total = new Map<string, number>();
+      for (const b of SET_BONUSES[id]) for (const [k, m] of Object.entries(b.effect.mult ?? {})) total.set(k, (total.get(k) ?? 1) * m);
+      for (const [k, m] of total) expect(m, `${id} ${k}`).toBeLessThanOrEqual(id.endsWith('_ascended') ? 1.9 : 1.6);
+    }
   });
   it('the Codex lists all 18 sets with three bonuses each', () => {
     const rows = codexSetRows();
@@ -64,8 +75,8 @@ describe('resolveSetBonuses', () => {
   it('bonuses stack: five pieces gives all three lines', () => {
     const t = resolveSetBonuses(wear('gravecaller', FIVE)).totals;
     expect(t.add.thrallCap).toBe(1);
-    expect(t.mult.thrallDamageMult).toBeCloseTo(1.04 * 1.05, 6);
-    expect(t.mult.thrallAttackSpeedMult).toBeCloseTo(1.08, 6);
+    expect(t.mult.thrallDamageMult).toBeCloseTo(1.08 * 1.14, 6);
+    expect(t.mult.thrallAttackSpeedMult).toBeCloseTo(1.1, 6);
   });
   it('mixed collections count separately', () => {
     const slots = [...wear('ossuary', ['head', 'chest', 'hands']), ...wear('ossuary_ascended', ['legs', 'feet'])];
@@ -76,8 +87,8 @@ describe('resolveSetBonuses', () => {
   it('two different sets at two pieces each give both first bonuses', () => {
     const r = resolveSetBonuses([...wear('ossuary', ['head', 'chest']), ...wear('mourner', ['hands', 'legs'])]);
     expect(r.active).toHaveLength(2);
-    expect(r.totals.mult.thrallHpMult).toBeCloseTo(1.05, 6);
-    expect(r.totals.mult.essenceRegenMult).toBeCloseTo(1.05, 6);
+    expect(r.totals.mult.thrallHpMult).toBeCloseTo(1.2, 6);
+    expect(r.totals.mult.essenceRegenMult).toBeCloseTo(1.3, 6);
   });
   it('ignores bag pieces and non-armor', () => {
     expect(resolveSetBonuses([piece('ossuary', 'head'), piece('ossuary', 'chest')]).sets).toEqual([]);
@@ -100,17 +111,17 @@ describe('plugging into the pipeline', () => {
     const base = DISCIPLINES.gravecaller;
     const mods = applySetMods(base.mods, resolveSetBonuses(slots).totals);
     expect(mods.thrallCap).toBe(base.mods.thrallCap + 1);
-    expect(mods.thrallAttackSpeedMult).toBeCloseTo(base.mods.thrallAttackSpeedMult * 1.08, 6);
+    expect(mods.thrallAttackSpeedMult).toBeCloseTo(base.mods.thrallAttackSpeedMult * 1.1, 6);
     const plain = deriveStats(character(), slots, base, 0);
     const withSets = deriveStats(character(), slots, { ...base, mods }, 0);
-    expect(withSets.thrallDamage).toBeCloseTo(plain.thrallDamage * 1.04 * 1.05, 6);
+    expect(withSets.thrallDamage).toBeCloseTo(plain.thrallDamage * 1.08 * 1.14, 6);
   });
   it('withSetBonuses re-bases a discipline and is idempotent', () => {
     const base = DISCIPLINES.rotweaver;
     const five = wear('rotweaver', FIVE);
     const d = withSetBonuses(base, five);
-    expect(d.mods.witheredMaxStacks).toBe(base.mods.witheredMaxStacks + 1 + 1);
-    expect(d.mods.miasmaRadiusMult).toBeCloseTo(base.mods.miasmaRadiusMult * 1.05 * 1.05 * 1.1, 6);
+    expect(d.mods.witheredMaxStacks).toBe(base.mods.witheredMaxStacks + 2 + 1);
+    expect(d.mods.miasmaRadiusMult).toBeCloseTo(base.mods.miasmaRadiusMult * 1.12 * 1.08 * 1.12, 6);
     expect(withSetBonuses(d, five)).toBe(d);
     expect(withSetBonuses(d, wear('rotweaver', FIVE.slice(0, 3))).mods.witheredMaxStacks).toBe(base.mods.witheredMaxStacks);
     expect(withoutSetBonuses(d).mods.witheredMaxStacks).toBe(base.mods.witheredMaxStacks);
@@ -144,15 +155,15 @@ describe('gear score and verdict', () => {
     expect(itemVerdict(ctx([...worn, chest], 'gravecaller'), chest)!.setNote).toBe('completes Gravecall 2-piece');
   });
   it('breaking a set makes a slightly better-statted piece Worse and says what breaks', () => {
-    const worn = wear('gravecaller', ['head', 'chest']);
-    const rival = { ...piece('mourner', 'head'), stat_bonus: { stat_int: 3, stat_vit: 2 } };
+    const worn = wear('gravecaller', ['head', 'chest', 'hands', 'legs']);
+    const rival = { ...piece('mourner', 'legs'), stat_bonus: { stat_int: 3, stat_vit: 2 } };
     const c = ctx([...worn, rival], 'gravecaller');
-    // same stats as the worn crown, nothing else changes: only the set bonus is lost
-    const same = { ...rival, stat_bonus: worn[0].stat_bonus };
+    // same stats as the worn legguards, nothing else changes: only the set bonus is lost
+    const same = { ...rival, stat_bonus: worn[3].stat_bonus };
     const v = itemVerdict(ctx([...worn, same], 'gravecaller'), same)!;
     expect(v.kind).toBe('downgrade');
-    expect(v.text).toMatch(/^Worse than your .*— breaks your Gravecall 2-piece$/);
-    expect(c.slots).toHaveLength(3);
+    expect(v.text).toMatch(/^Worse than your .*— breaks your Gravecall 4-piece$/);
+    expect(c.slots).toHaveLength(5);
   });
   it('a swap between pieces of the same set leaves the set note empty', () => {
     const worn = wear('ossuary', ['head', 'chest']);
@@ -220,7 +231,7 @@ describe('Character sheet', () => {
     const slots = wear('ossuary', FIVE);
     const scene = { ...ctx(slots), discipline: withSetBonuses(DISCIPLINES.ossuary, slots) };
     const hp = statSheet(scene).find((s) => s.id === 'derived')!.lines.find((l) => l.id === 'maxHp')!;
-    expect(hp.rows.find((r) => r.label === 'Set bonuses' && r.value.startsWith('×'))?.value).toBe('×1.05');
+    expect(hp.rows.find((r) => r.label === 'Set bonuses' && r.value.startsWith('×'))?.value).toBe(`×${+(1.02 * 1.1).toFixed(3)}`);
     expect(hp.rows.find((r) => r.label === 'Covenant boons')).toBeUndefined();
     expect(hp.rows.at(-1)!.value).toBe(String(deriveStats(character(), slots, scene.discipline, 0).maxHp));
   });

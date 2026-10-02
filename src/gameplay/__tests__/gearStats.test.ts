@@ -3,7 +3,7 @@ import { DISCIPLINES } from '../../content/disciplines';
 import { DAMAGE_UPGRADE } from '../../content/upgrades';
 import type { Character, InventorySlot } from '../../net/types';
 import { STAT_EFFECTS, deriveStats, describeStatDelta } from '../characterStats';
-import { compareEquip, effectText, itemStatEffects, simulateEquip, statSheet, boonShare, STAT_PRIORITY, ROLE_WEIGHTS, itemVerdict, lookingFor, weakestSlots, loadoutExtraPct, type StatContext } from '../gearStats';
+import { compareEquip, effectText, itemStatEffects, simulateEquip, statSheet, boonShare, STAT_PRIORITY, ROLE_WEIGHTS, itemVerdict, lookingFor, weakestSlots, loadoutExtraPct, LOADOUT_VALUE, type StatContext } from '../gearStats';
 import { resolveWeaponLoadout } from '../weaponLine';
 
 const character = (over: Partial<Character> = {}): Character => ({
@@ -227,14 +227,19 @@ describe('itemVerdict', () => {
     const ore = item('ore', 0, 'material', null);
     expect(itemVerdict(ctx([ore]), ore)).toBeNull();
   });
-  it('scores weapon-line effects: a scythe over a stat-equal wand gains the arc value', () => {
-    const wand = worn('wand_bone', 'weapon', 105, { stat_int: 3 });
+  it('scores weapon-line effects: a scythe over a stat-equal plain weapon gains the (small) arc value', () => {
+    const sword = worn('sword_copper', 'weapon', 105, { stat_int: 3 });
     const scythe = item('scythe_bone', 0, 'weapon', { stat_int: 3 });
-    const v = itemVerdict(ctx([wand, scythe], 'gravecaller'), scythe)!;
+    const v = itemVerdict(ctx([sword, scythe], 'gravecaller'), scythe)!;
     expect(v.pct).toBeGreaterThan(0);
-    expect(loadoutExtraPct(resolveWeaponLoadout({ main_hand: { item_id: 'scythe_bone' } }, 'gravecaller'))).toBe(6);
+    expect(loadoutExtraPct(resolveWeaponLoadout({ main_hand: { item_id: 'scythe_bone' } }, 'gravecaller'))).toBe(LOADOUT_VALUE.reap);
     // Other classes get no weapon-line score.
     expect(loadoutExtraPct(resolveWeaponLoadout({ main_hand: { item_id: 'scythe_bone' } }, 'hollow_knight'))).toBe(0);
+  });
+  it('a wand beats a stat-equal scythe: the bot clears with the left click, and the harness found a scythe costs it kills (2026-10-02 gear pass)', () => {
+    const wand = worn('wand_bone', 'weapon', 105, { stat_int: 3 });
+    const scythe = item('scythe_bone', 0, 'weapon', { stat_int: 3 });
+    expect(itemVerdict(ctx([wand, scythe], 'gravecaller'), scythe)!.kind).toBe('downgrade');
   });
   it('a two-hander is judged against main hand plus off-hand together', () => {
     const sword = worn('sword_copper', 'weapon', 105, { stat_int: 4 });

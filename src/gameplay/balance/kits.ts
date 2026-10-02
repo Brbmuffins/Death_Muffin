@@ -2,7 +2,8 @@ import type { InventorySlot } from '../../net/types';
 import { AREAS, type AreaId } from '../../content/areas';
 import { ARMOR_BY_ID, ARMOR_PARTS, ARMOR_PIECES, type ArmorPart } from '../../content/armorSets';
 import { NECRO_DISCIPLINES, NECRO_TIERS, NECRO_TIER_INFO, NECRO_WEAPON_BY_ID, type NecroKind, type NecroTier } from '../../content/necroWeapons';
-import { affixRange, type AffixRoll } from '../affixRules';
+import { affixRange, rollInstance, type AffixRoll } from '../affixRules';
+import { mulberry32 } from '../rng';
 
 /**
  * Representative gear kits for the balance harness (`npm run balance` with BALANCE_KIT, `npm run balance:gear`).
@@ -17,11 +18,13 @@ import { affixRange, type AffixRoll } from '../affixRules';
  *   progress  what has dropped in EARLIER hunting grounds: the discipline's own set pieces and the weapon tier of those
  *             areas, one lever affix at a middling roll on the best piece. Graves has no earlier ground, so it is `none`.
  *   typical   a completed first-collection set + a matching weapon of the area's tier + two lever affixes (q 0.5).
+ *   rolled    the `typical` items with their affixes ROLLED by the real loot rules (rollInstance: item rarity, 'kill' drops, one elite
+ *             in three, the area's item level), seeded by the run seed: what random drops, not a chosen kit, do to the curve.
  *   ascended  the ascended set + a moon weapon pair + one lever affix (q 0.75) on every worn piece, rotating through the levers.
  *   bis       as ascended, but three affixes (q 1.0) on every piece: the theoretical ceiling, never expected in play.
  */
-export type KitName = 'none' | 'progress' | 'typical' | 'ascended' | 'bis';
-export const KIT_NAMES: readonly KitName[] = ['none', 'progress', 'typical', 'ascended', 'bis'];
+export type KitName = 'none' | 'progress' | 'typical' | 'rolled' | 'ascended' | 'bis';
+export const KIT_NAMES: readonly KitName[] = ['none', 'progress', 'typical', 'rolled', 'ascended', 'bis'];
 
 export interface KitItem {
   itemId: string;
@@ -81,6 +84,8 @@ function withAffixes(items: KitItem[], levers: string[], perPiece: number, q: nu
 
 export interface KitRequest {
   kit: KitName;
+  /** `rolled` kit: the run seed. */
+  seed?: number;
   discipline: string;
   area: AreaId;
   /** Experiments: replace the discipline's weapon pair / weapon tier / lever list. */
@@ -134,7 +139,7 @@ function baseKitItems(req: KitRequest): KitItem[] {
     return items;
   }
 
-  if (req.kit === 'typical') {
+  if (req.kit === 'typical' || req.kit === 'rolled') {
     const wl = L + 2;
     const items: KitItem[] = ARMOR_PARTS.map((p) => armorItem(sets.first, p, L + 2));
     const tier = o.tier ?? tierOfArea(req.area);
@@ -143,6 +148,14 @@ function baseKitItems(req: KitRequest): KitItem[] {
     // Two lever affixes: the weapon carries the discipline's first lever, the chest its second.
     const weapon = items.findIndex((i) => NECRO_WEAPON_BY_ID[i.itemId]?.slot === 'main_hand');
     const chest = items.findIndex((i) => ARMOR_BY_ID[i.itemId]?.part === 'chest');
+    if (req.kit === 'rolled') {
+      const rand = mulberry32((req.seed ?? 42) * 7919 + 13);
+      return items.map((it, i) => {
+        const def = ARMOR_BY_ID[it.itemId] ?? NECRO_WEAPON_BY_ID[it.itemId];
+        const roll = rollInstance({ rarity: def.rarity }, L, i % 3 === 0 ? 'elite' : 'kill', rand);
+        return { ...it, ilvl: roll.ilvl, affixes: roll.affixes.map((a) => { const [lo, hi] = affixRange(a.id, roll.ilvl)!; return { id: a.id, q: hi > lo ? (a.v - lo) / (hi - lo) : 1 }; }) };
+      });
+    }
     items[weapon] = { ...items[weapon], affixes: [{ id: dk.levers[0], q: 0.5 }] };
     items[chest] = { ...items[chest], affixes: [{ id: dk.levers[1], q: 0.5 }] };
     return items;

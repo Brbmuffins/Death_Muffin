@@ -10,7 +10,7 @@ const { replaceBag, resolveInstances, CANT_VERIFY } = require('./inventory-save.
 const affix = require('./gathering/affix-rules.cjs');
 const { fakeDb, harness } = require('./bag-fake-db.cjs');
 
-const A = [{ id: 'p_thrall_dmg', v: 40 }, { id: 's_thrall_hp', v: 55 }];
+const A = [{ id: 'p_thrall_dmg', v: 90 }, { id: 's_thrall_hp', v: 160 }];
 const gear = (slot_index, id, item_id = 'helm_iron', extra = {}) => ({ slot_index, item_id, quantity: 1, instance_id: id, ...extra });
 const loot = (id, item_id = 'helm_iron', extra = {}) => ({ id, item_id, ilvl: 12, affixes: A, ...extra });
 const save = (db, slots, bagSize = 48, accountId = 7) => replaceBag(db.conn, 1, slots, bagSize, accountId);
@@ -243,12 +243,12 @@ test('applying a save creates FRESH instances for the imported rolls and deletes
     if (sql.startsWith('SELECT account_id FROM characters')) return [[{ account_id: 7 }]];
     try { return await realExecute(sql, p); } catch (e) { if (/unexpected SQL/.test(e.message)) return [{}]; throw e; } // the rest of apply() (chronicle, contracts...) is not under test
   };
-  const imported = { slot_index: 3, item_id: 'helm_iron', quantity: 1, inst: { ilvl: 22, affixes: [{ id: 'p_thrall_dmg', v: 60, extra: 'ignored' }] } };
+  const imported = { slot_index: 3, item_id: 'helm_iron', quantity: 1, inst: { ilvl: 22, affixes: [{ id: 'p_thrall_dmg', v: 100, extra: 'ignored' }] } };
   await sync.apply(conn, 1, save1([imported])).catch((e) => { if (!(e instanceof TypeError)) throw e; });
   assert.equal(db.loot.find((l) => l.id === 1), undefined, 'the replaced inventory\'s roll was deleted');
   const made = db.loot.find((l) => l.ilvl === 22);
   assert.ok(made && made.id >= 1000, 'a fresh instance, not the offline save\'s id');
-  assert.deepEqual(made.affixes, [{ id: 'p_thrall_dmg', v: 60 }], 'only id and value are stored');
+  assert.deepEqual(made.affixes, [{ id: 'p_thrall_dmg', v: 100 }], 'only id and value are stored');
   assert.equal(db.inv[0].instance_id, made.id);
   const bad = { ...imported, inst: { ilvl: 22, affixes: [{ id: 'p_thrall_dmg', v: 5000 }] } };
   await assert.rejects(() => sync.apply(conn, 1, save1([bad])), /out of range/);

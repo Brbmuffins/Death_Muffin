@@ -81,12 +81,20 @@ const statDef = (stat: AffixStat, kind: AffixKind, word: string): AffixDef => ({
   necro: false,
   weight: 9,
   unit: 'stat',
-  range: (L) => around(1 + 0.3 * L, 40),
+  range: (L) => around(0.8 + 0.07 * L, 14),
   effect: (v) => ({ stats: { [stat]: v } }),
   text: (v) => `+${v} ${STAT_NAME[stat]}`,
 });
 
-/** The whole pool. Ids are stored in the database: never rename one, only add. */
+/**
+ * The whole pool. Ids are stored in the database: never rename one, only add.
+ *
+ * Ranges (2026-10-02 gear pass, BALANCE.md): measured against the power score, calibrated on the balance harness. A median stat affix is
+ * worth about 2-3% of power at any item level (the old +0.3/level stat ranges made one affix worth 7-10%, a tier of its own), and a lever
+ * affix is sized to match a stat affix for the discipline that uses it (Gravebound for the Gravecaller, of the Legion for the Ossuary,
+ * Whispering for the Mourner, of the Rotting Mist for the Rotweaver) and about a third of one for the others. The unit tests in
+ * gameplay/__tests__/gear-balance.test.ts pin that, so retune ranges and tests together.
+ */
 export const AFFIXES: readonly AffixDef[] = [
   statDef('stat_str', 'prefix', 'Brutal'),
   statDef('stat_agi', 'prefix', 'Fleet'),
@@ -98,37 +106,37 @@ export const AFFIXES: readonly AffixDef[] = [
   statDef('stat_vit', 'suffix', 'of the Tomb'),
   {
     id: 'p_thrall_dmg', kind: 'prefix', word: 'Gravebound', group: 'thrall_dmg', necro: true, weight: 13, unit: 'pct',
-    range: (L) => around(10 * (1.5 + 0.22 * L), 150),
+    range: (L) => around(10 * (5.5 + 0.2 * L), 300),
     effect: (v) => ({ mult: { thrallDamageMult: 1 + v / 1000 } }),
     text: (v) => `Thralls hit +${tenths(v)} harder`,
   },
   {
     id: 's_thrall_hp', kind: 'suffix', word: 'of the Legion', group: 'thrall_hp', necro: true, weight: 13, unit: 'pct',
-    range: (L) => around(10 * (2 + 0.28 * L), 200),
+    range: (L) => around(10 * (10.6 + 0.38 * L), 500),
     effect: (v) => ({ mult: { thrallHpMult: 1 + v / 1000 } }),
     text: (v) => `Thralls have +${tenths(v)} health`,
   },
   {
     id: 'p_essence_regen', kind: 'prefix', word: 'Whispering', group: 'essence_regen', necro: true, weight: 11, unit: 'pct',
-    range: (L) => around(10 * (2 + 0.25 * L), 150),
+    range: (L) => around(10 * (10 + 0.42 * L), 600),
     effect: (v) => ({ mult: { essenceRegenMult: 1 + v / 1000 } }),
     text: (v) => `+${tenths(v)} essence regeneration`,
   },
   {
     id: 's_miasma', kind: 'suffix', word: 'of the Rotting Mist', group: 'miasma', necro: true, weight: 9, unit: 'pct',
-    range: (L) => around(10 * (3 + 0.35 * L), 250),
+    range: (L) => around(10 * (5.2 + 0.22 * L), 400),
     effect: (v) => ({ mult: { miasmaRadiusMult: 1 + v / 1000 } }),
     text: (v) => `Miasma is +${tenths(v)} wider`,
   },
   {
     id: 'p_withered', kind: 'prefix', word: 'Blighted', group: 'withered', necro: true, weight: 8, unit: 'count',
-    range: (L) => [1, clampInt(1 + Math.floor(L / 12), 1, 4)],
+    range: (L) => [1, clampInt(2 + Math.floor(L / 7), 2, 6)],
     effect: (v) => ({ add: { witheredMaxStacks: v } }),
     text: (v) => `+${v} max Withered stack${v === 1 ? '' : 's'}`,
   },
   {
     id: 's_ward', kind: 'suffix', word: 'of the Ossuary Wall', group: 'ward', necro: true, weight: 9, unit: 'wardPct',
-    range: (L) => around(1 + 0.12 * L, 8),
+    range: (L) => around(9 + 0.7 * L, 60),
     effect: (v) => ({ add: { wardPerThrall: v / 1000 } }),
     text: (v) => `${tenths(v)} less damage taken per thrall`,
   },

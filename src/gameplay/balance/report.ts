@@ -56,7 +56,7 @@ function averaged(run: BalanceRun): BalanceResult {
 }
 
 const cols: [string, number][] = [
-  ['area', 9], ['band', 9], ['disc', 12], ['kit', 9], ['lvl', 4], ['dmgT', 5], ['waveT', 6], ['kills/m', 8], ['gold/m', 7], ['xp/m', 6],
+  ['area', 9], ['band', 9], ['disc', 14], ['kit', 9], ['lvl', 4], ['dmgT', 5], ['waveT', 6], ['kills/m', 8], ['gold/m', 7], ['xp/m', 6],
   ['hurt%/m', 8], ['minHp', 6], ['avgHp', 6], ['deaths', 7], ['1st†s', 6], ['ttk s', 6], ['peak', 5], ['lvl+', 5], ['surge', 6], ['unlock m', 9], ['1st med', 7],
 ];
 const pad = (s: string | number, n: number) => String(s).padEnd(n);

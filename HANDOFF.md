@@ -41,6 +41,18 @@ the older "stage, don't commit" note.
 - **Crowds.** `graphics/crowdSeparation.ts` slides drawn enemies/thralls apart (view layer only, max 0.55 u, eased); the sim is unchanged.
 - QA: `tools/qa/anim-pass-smoke.cjs` (port 5336).
 
+## Gear pass (branch `dm/gear-tuning`, 2 Oct 2026, not deployed)
+
+Full write-up, tables and targets: **BALANCE.md "Gear pass"**. Numbers only (no new mechanics, affix ids unchanged); `affix-rules.cjs` was regenerated and must ship with the client.
+
+- **Harness wears gear.** `balance/kits.ts` (kits as data: none, progress, typical, rolled, ascended, bis), `bands.ts`, `gearReport.ts` (`npm run balance:gear`), `leverReport.ts` (`balance:lever`),
+  `gearScoreReport.ts` (`balance:score`), `BALANCE_KIT` on `npm run balance`. The bot plays the weapon line and applies corpse heal and the Litany barrier (it ignored both before).
+- **Finding: base item stats are ~90% of gear's lift.** A first set + weapon makes push/max Wave Speed nearly safe (deaths 2.0 -> 0.3; ascended -> 0.05). Those stats are DB rows, so not changed here;
+  BALANCE.md table 5 shows trimming them to 0.4-0.55x lands the proposed targets. **Open decision for the owner.**
+- **Retuned:** affix ranges (stat affixes were worth 7-10% of power each, now 2-3%; levers raised to match for the discipline that uses them), 12 sets' bonuses (necromancer sets lost to Carrionbloom's
+  flat INT), `gearStats` constants (`THRALL_DAMAGE_SHARE`, `THRALL_UPTIME`, `REGEN_HORIZON_S`, `SET_VALUE`, `LOADOUT_VALUE`). `docs/ARMOR-SETS.md` table regenerated and checked by `gear-balance.test.ts`.
+- **Not confirmed:** Mourner and Rotweaver wearing their own set best (power score says yes, the 32-seed harness reads 1-4% behind Gravecall); scythe is a known score/harness disagreement; levers are measured on a bot that never dodges.
+
 ## 60-second orientation
 
 - **What it is:** Death Muffin — browser dark-fantasy ARPG (Vite + TS + Three.js),

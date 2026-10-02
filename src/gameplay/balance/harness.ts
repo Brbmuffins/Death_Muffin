@@ -75,6 +75,9 @@ export interface BalanceResult {
   levelsGained: number;
   /** Seconds until the first death (-1 = survived the whole run). */
   firstDeathSec: number;
+  /** Mean number of living thralls while the bot is alive, and the thrall cap it fought with (0 for other families). */
+  avgThralls: number;
+  thrallCap: number;
 }
 
 const SP_NEEDLE = ABILITIES.bone_needle;
@@ -109,7 +112,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
   sim.ascension = run.ascension ?? 0;
   sim.setCrypts(CRYPTS);
   const baseDisc = disciplineFor(run.classIndex);
-  const worn: InventorySlot[] = run.slots ?? resolveKit({ kit: run.kit ?? 'none', discipline: baseDisc.id, area: run.area, override: run.kitOverride });
+  const worn: InventorySlot[] = run.slots ?? resolveKit({ kit: run.kit ?? 'none', discipline: baseDisc.id, area: run.area, override: run.kitOverride, seed: run.seed });
   const loadout = baseDisc.family === 'necromancer' ? resolveWeaponLoadout(equippedBySlot(worn), baseDisc.id) : NO_LOADOUT;
   // The discipline as the scene builds it: set bonuses and worn affixes folded into the mods, then the skull focus's thrall.
   const withGear = withSetBonuses(baseDisc, worn);
@@ -143,6 +146,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
   let dmgTaken = 0;
   let hpSamples = 0;
   let hpAccum = 0;
+  let thrallAccum = 0;
   let peak = 0;
   let levels = 0;
   let minHp = 1;
@@ -465,6 +469,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
     if (i % 20 === 0 && p.alive) {
       hpSamples++;
       hpAccum += p.hp / stats.maxHp;
+      if (disc.family === 'necromancer') for (const th of sim.thralls.values()) if (th.owner === p.id) thrallAccum++;
     }
   }
 
@@ -486,6 +491,8 @@ export function runBalance(run: BalanceRun): BalanceResult {
     peakEnemies: peak,
     levelsGained: levels,
     firstDeathSec: firstDeath,
+    avgThralls: hpSamples ? thrallAccum / hpSamples : 0,
+    thrallCap: disc.family === 'necromancer' ? disc.mods.thrallCap : 0,
   };
 }
 

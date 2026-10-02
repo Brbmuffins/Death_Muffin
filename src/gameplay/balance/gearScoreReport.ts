@@ -27,6 +27,10 @@ const isWeapon = (i: KitItem) => /^(staff|scythe|wand|sickle)_/.test(i.itemId);
 const isOff = (i: KitItem) => /^(skull_focus|grimoire|mourning_bell)_/.test(i.itemId);
 const part = (i: KitItem) => ARMOR_PARTS.find((p) => i.itemId.endsWith(`_${p}`));
 const withAff = (items: KitItem[], pick: (i: KitItem) => boolean, affixes: { id: string; q: number }[]) => items.map((i) => (pick(i) ? { ...i, affixes } : i));
+/** The base kit's weapon tier and item level, so a weapon swap changes the weapon KIND only. */
+const tierOf = (b: KitItem[]) => (b.find(isWeapon)?.itemId.split('_').pop() ?? 'gold');
+const ilvlOf = (b: KitItem[]) => b.find(isWeapon)?.ilvl ?? 12;
+const swapWeapons = (b: KitItem[], kinds: string[]) => b.filter((i) => !isWeapon(i) && !isOff(i)).concat(kinds.map((k) => ({ itemId: `${k}_${tierOf(b)}`, ilvl: ilvlOf(b), affixes: [] })));
 const swapSet = (items: KitItem[], set: string, parts: string[]) => items.map((i) => (part(i) && parts.includes(part(i)!) ? { ...i, itemId: `set_${set}_${part(i)}` } : i));
 
 interface Variant { name: string; make: (base: KitItem[], disc: string) => KitItem[] }
@@ -40,11 +44,11 @@ const VARIANTS: Variant[] = [
   { name: 'break set (swap chest to monk)', make: (b) => swapSet(b, 'monk', ['chest']) },
   { name: 'ascended chest + legs (mixed sets)', make: (b, d) => b.map((i) => (part(i) === 'chest' || part(i) === 'legs' ? { ...i, itemId: `set_${d}_ascended_${part(i)}` } : i)) },
   { name: 'full ascended set, first weapon', make: (b, d) => b.map((i) => (part(i) ? { ...i, itemId: `set_${d}_ascended_${part(i)}` } : i)) },
-  { name: 'weapon: staff', make: (b) => b.filter((i) => !isWeapon(i) && !isOff(i)).concat([{ itemId: 'staff_gold', ilvl: 12, affixes: [] }]) },
-  { name: 'weapon: scythe', make: (b) => b.filter((i) => !isWeapon(i) && !isOff(i)).concat([{ itemId: 'scythe_gold', ilvl: 12, affixes: [] }]) },
-  { name: 'weapon: wand + grimoire', make: (b) => b.filter((i) => !isWeapon(i) && !isOff(i)).concat([{ itemId: 'wand_gold', ilvl: 12, affixes: [] }, { itemId: 'grimoire_gold', ilvl: 12, affixes: [] }]) },
-  { name: 'weapon: sickle + skull focus', make: (b) => b.filter((i) => !isWeapon(i) && !isOff(i)).concat([{ itemId: 'sickle_gold', ilvl: 12, affixes: [] }, { itemId: 'skull_focus_gold', ilvl: 12, affixes: [] }]) },
-  { name: 'weapon: wand + mourning bell', make: (b) => b.filter((i) => !isWeapon(i) && !isOff(i)).concat([{ itemId: 'wand_gold', ilvl: 12, affixes: [] }, { itemId: 'mourning_bell_gold', ilvl: 12, affixes: [] }]) },
+  { name: 'weapon: staff', make: (b) => swapWeapons(b, ['staff']) },
+  { name: 'weapon: scythe', make: (b) => swapWeapons(b, ['scythe']) },
+  { name: 'weapon: wand + grimoire', make: (b) => swapWeapons(b, ['wand', 'grimoire']) },
+  { name: 'weapon: sickle + skull focus', make: (b) => swapWeapons(b, ['sickle', 'skull_focus']) },
+  { name: 'weapon: wand + mourning bell', make: (b) => swapWeapons(b, ['wand', 'mourning_bell']) },
   ...['p_thrall_dmg', 's_thrall_hp', 'p_essence_regen', 's_miasma', 'p_withered', 's_ward', 'p_int', 's_vit'].map((id): Variant => ({
     name: `+${id} q1 on chest`, make: (b) => withAff(b, (i) => part(i) === 'chest', [{ id, q: 1 }]),
   })),

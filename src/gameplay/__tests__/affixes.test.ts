@@ -121,7 +121,8 @@ describe('rolling', () => {
 });
 
 describe('validation (what an offline-sync import may claim)', () => {
-  const ok = { ilvl: 12, affixes: [A('p_thrall_dmg', 40), A('s_thrall_hp', 55)] };
+  const mid = (id: string, L: number) => { const [lo, hi] = affixRange(id, L)!; return Math.round((lo + hi) / 2); };
+  const ok = { ilvl: 12, affixes: [A('p_thrall_dmg', mid('p_thrall_dmg', 12)), A('s_thrall_hp', mid('s_thrall_hp', 12))] };
   it('accepts a legal roll and rejects each way of cheating', () => {
     expect(instanceProblem(ok, 'weapon')).toBeNull();
     const [lo, hi] = affixRange('p_thrall_dmg', 12)!;
