@@ -32,8 +32,11 @@ flowchart LR
     S18[2 Oct: zone + encounter polish]:::done
   end
 
-  subgraph NOW["🔨 Now — polish round 2"]
+  subgraph NOW["🔨 Now"]
     R2[QA suite reliability<br/>every smoke trustworthy]:::now
+    R4[Readability round 3<br/>thralls vs enemies · Acre light · Nave noise]:::now
+    R5[Server authority step 1<br/>report-only plausibility guards]:::now
+    R6[Thrall gear<br/>equip your legion · gold sink]:::now
   end
 
   subgraph POLISH["✨ Next — polish"]
@@ -41,7 +44,6 @@ flowchart LR
 
   subgraph LATER["🌒 Later — new content"]
     L2[New zones]:::later
-    L3[Server authority]:::later
     L4[AI companions — parked]:::later
   end
 
