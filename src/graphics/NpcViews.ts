@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { settings } from '../app/settings';
 import { NPCS, NPC_IDS, NPC_LOOKS, NPC_LOOK_RANGE, type NpcId } from '../content/npcs';
 import { Creature } from './Creature';
-import { CREATURE_MODELS } from './modelPaths';
+import { assets } from './AssetCache';
+import { CREATURE_MODELS, PROP_URL } from './modelPaths';
 
 /**
  * The people of the Covenant standing in their halls: an idle figure, a nameplate, a turn toward you when you come close, and
@@ -13,6 +14,9 @@ import { CREATURE_MODELS } from './modelPaths';
 const LOAD_RANGE = 70;
 const PLATE_RANGE = 20;
 const TURN_RATE = 4;
+const HELD_SLIDE = -0.3;
+/** Same grip the Grave Laborers use for their spade (LaborerViews GRIP): the tool's +Y rides straight up from the hand. */
+const HELD_GRIP = new THREE.Vector3(0, 1, 0.1);
 const DISPLAY_FONT = () => {
   try {
     const f = getComputedStyle(document.documentElement).getPropertyValue('--cw-font-display').trim();
@@ -151,6 +155,24 @@ export class NpcViews {
     const c = new Creature(look.slug, { scale: look.scale, tint: look.tint, emissive: look.emissive, emissiveIntensity: look.glow, fallback: look.fallback });
     n.c = c;
     n.root.add(c.root);
+    if (look.held) {
+      const { prop, length } = look.held;
+      void c.ready
+        .then(() => assets.model(PROP_URL(prop), length))
+        .then((template) => {
+          if (!template || n.c !== c) return;
+          const obj = template.scene.clone(true);
+          const size = new THREE.Box3().setFromObject(template.scene).getSize(new THREE.Vector3());
+          obj.scale.setScalar(length / Math.max(0.001, size.x, size.y, size.z));
+          // Like the gathering avatar's spade (Avatars.ts): authored lying along X, so stand it up and slide it so the hand
+          // holds the handle, not the middle.
+          if (size.x > size.y * 1.5) obj.rotation.z = -Math.PI / 2;
+          obj.position.y = HELD_SLIDE * length;
+          const holder = new THREE.Group();
+          holder.add(obj);
+          c.attach('R_Hand', holder, HELD_GRIP, 0.9);
+        });
+    }
   }
 
   setHover(id: NpcId | null) {

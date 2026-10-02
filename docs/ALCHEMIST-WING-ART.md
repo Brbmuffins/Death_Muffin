@@ -75,3 +75,14 @@ Balance 4985 -> 3960 = **1025** credits (cap 1150).
 `tools/qa/model-sheet.cjs` + `tools/qa/viewer/model-viewer.html` (render GLBs, optionally at a clip time, to PNG and a contact sheet; needs
 playwright-core via `DM_PLAYWRIGHT_MODULE`), `RETARGET_LOG`/`RETARGET_BUDGET` env overrides in `tools/ai/retarget-clips.mjs`,
 `agree`/`angry_01` clip names in `tools/build-characters.mjs`.
+
+## Dressing pass (2026-10-02, branch `dm/wing-dressing`)
+
+No new generation (0 Tripo credits). The room is dressed from `WING_PROPS` in `src/content/layout.ts` (~65 placements: all 12 `alch_*`
+props in multiples plus `workbench`, `candles`, `bone_pile`, `coffin_stack`, `covenant_lectern`, `grave_lantern`; optional `s` scale,
+`tilt`, `y`), `WING_FLOOR` (three rugs and four spills, drawn by `WorldView.buildWingFloor`), warm `wing_floor.webp` / `wing_wall.webp`
+(`node tools/make-wing-textures.mjs`, derived from the purple flagstone and wall), and `PROP_LIFT` in `WorldView.ts` (brightened private
+materials for the herb bundles and drying rack). Lights come from the props' existing `light` specs (candle benches, lanterns, vats,
+cauldron); the 5-point-light pool is unchanged. The Sexton carries `tool_spade` via `NPC_LOOKS.sexton.held` (`NpcViews.load`).
+Screenshots: `docs/screenshots/alchemist-wing/dressing/` (before-* / after-*). Low-quality perf (smoke, wide view): Chapterhouse 125 calls /
+356k tris, Wing 140 / 394k (+12% / +10.6%); before the pass the Wing was 100 / 315k against a 122 / 335k Chapterhouse.

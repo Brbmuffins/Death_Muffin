@@ -30,8 +30,9 @@ describe("the Alchemist's Wing", () => {
     }
   });
 
-  it('dresses the room with all twelve props, inside the walls, clear of the door and each other', () => {
-    expect(new Set(WING_PROPS.map((p) => p.prop)).size).toBe(12);
+  it('dresses the room densely with all twelve alch_ props, inside the walls, clear of the door and each other', () => {
+    expect(new Set(WING_PROPS.map((p) => p.prop).filter((id) => id.startsWith('alch_'))).size).toBe(12);
+    expect(WING_PROPS.length).toBeGreaterThanOrEqual(60);
     const door = DOORS.find((d) => d.id === 'chapter_wing')!.rect;
     const solid = layout.props.filter((p) => p.area === 'alchemist_wing' && PROPS[p.prop].collider && !p.y);
     for (const p of layout.props.filter((q) => q.area === 'alchemist_wing')) {
@@ -43,6 +44,21 @@ describe("the Alchemist's Wing", () => {
       if (PROPS[p.prop].collider && !p.y) expect(p.x > door.x1 + 1 || p.z < door.z0 - 0.5 || p.z > door.z1 + 0.5, p.prop).toBe(true);
     }
     for (const a of solid) for (const b of solid) if (a !== b) expect(Math.hypot(a.x - b.x, a.z - b.z), `${a.prop}/${b.prop}`).toBeGreaterThan(0.6);
+  });
+
+  it('keeps a walkable ring around every station (no solid prop within 1.1 of its click point, except the thing it is)', () => {
+    for (const it of wing.interactables) {
+      if (it.id.startsWith('npc_')) continue;
+      for (const p of layout.props.filter((q) => q.area === 'alchemist_wing' && PROPS[q.prop].collider && !q.y)) {
+        if (/cauldron|alembic|reagent_shelf/.test(p.prop)) continue;
+        expect(Math.hypot(p.x - it.x, p.z - it.z), `${p.prop} near ${it.id}`).toBeGreaterThan(1.6);
+      }
+    }
+    // The Apothecary's standing spot is open floor.
+    const npc = wing.interactables.find((i) => i.id.startsWith('npc_apothecary'))!;
+    for (const p of layout.props.filter((q) => q.area === 'alchemist_wing' && PROPS[q.prop].collider && !q.y && !/counter/.test(q.prop))) {
+      expect(Math.hypot(p.x - npc.x, p.z - npc.z), p.prop).toBeGreaterThan(1.4);
+    }
   });
 
   it('keeps every station reachable and the Apothecary anchor inside the room', () => {

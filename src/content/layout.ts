@@ -79,32 +79,97 @@ export type PropId =
 
 /**
  * The Alchemist's Wing dressing (room 26 x 24, door in the west wall at z 17-23, camera looks north): the Great Cauldron
- * in the middle, the alembic and four reagent shelves along the back (north) wall, the Apothecary's counter on the east
- * wall, a vat and drying rack in the south corners, a totem and sign by the door. `rot` turns a prop about y (model front = +z at rot 0).
+ * in the middle with its clutter, the alembic bench, herb drying and four-plus reagent shelves along the back (north) wall,
+ * the Apothecary's counter and shelving on the east wall, vats and coffin-stock in the south-east, a drying corner in the
+ * south-west, a totem and sign by the door. `rot` turns a prop about y (front = +z at rot 0, except shelves and counters,
+ * whose front is +x); `y` lifts a prop onto a table or up a wall; `s` scales it.
  */
-export const WING_PROPS: { prop: PropId; x: number; z: number; rot: number; y?: number }[] = [
+export const WING_PROPS: { prop: PropId; x: number; z: number; rot: number; y?: number; s?: number; tilt?: number }[] = [
+  // --- centrepiece and clutter
   { prop: 'alch_cauldron', x: 33, z: 19.5, rot: 0 },
+  { prop: 'alch_bone_candles', x: 30.4, z: 22.4, rot: 0 },
+  { prop: 'alch_bone_candles', x: 35.8, z: 16.8, rot: 0 },
+  { prop: 'alch_canopic_jars', x: 31.2, z: 16.9, rot: 0.4, s: 0.9 },
+  { prop: 'bone_pile', x: 35.4, z: 22.3, rot: 1.2, s: 0.55 },
+  { prop: 'candles', x: 34.9, z: 21.1, rot: 0, s: 0.8 },
+  // --- north wall: alembic bench, herb drying, reagent shelves
   { prop: 'alch_alembic', x: 24.5, z: 8.9, rot: 0 },
+  { prop: 'workbench', x: 29.2, z: 9.4, rot: 0 },
+  { prop: 'candles', x: 27.8, z: 9.4, rot: 0, y: 1.05, s: 0.7 },
+  { prop: 'alch_canopic_jars', x: 30.6, z: 9.4, rot: Math.PI, y: 1.05, s: 0.8 },
+  { prop: 'alch_herb_bundle', x: 27.6, z: 8.4, rot: 0, y: 2.3, s: 1.5 },
+  { prop: 'alch_herb_bundle', x: 29.1, z: 8.4, rot: 0.3, y: 2.0, s: 1.3 },
+  { prop: 'alch_herb_bundle', x: 30.6, z: 8.4, rot: -0.2, y: 2.3, s: 1.5 },
+  { prop: 'alch_herb_bundle', x: 32.1, z: 8.4, rot: 0.5, y: 2.1, s: 1.3 },
+  { prop: 'alch_bone_candles', x: 32.7, z: 9.2, rot: 0.7 },
   { prop: 'alch_reagent_shelf', x: 35.5, z: 8.45, rot: -Math.PI / 2 },
   { prop: 'alch_reagent_shelf', x: 37.4, z: 8.45, rot: -Math.PI / 2 },
   { prop: 'alch_reagent_shelf', x: 39.3, z: 8.45, rot: -Math.PI / 2 },
   { prop: 'alch_reagent_shelf', x: 41.2, z: 8.45, rot: -Math.PI / 2 },
+  { prop: 'alch_reagent_shelf', x: 43.1, z: 8.45, rot: -Math.PI / 2 },
+  { prop: 'alch_herb_bundle', x: 44.9, z: 8.5, rot: 0.2, y: 1.7, s: 1.4 },
+  // --- herbs hung on pegs along the side walls, where the camera sees them
+  { prop: 'alch_herb_bundle', x: 20.65, z: 13.8, rot: 0, y: 1.7, s: 1.4 },
+  { prop: 'alch_herb_bundle', x: 20.65, z: 15.0, rot: 0.6, y: 1.9, s: 1.2 },
+  { prop: 'alch_herb_bundle', x: 20.65, z: 25.2, rot: 0.2, y: 1.8, s: 1.3 },
+  { prop: 'alch_herb_bundle', x: 20.65, z: 26.4, rot: 1.0, y: 1.6, s: 1.4 },
+  // --- north-centre bench and the lectern beside the cauldron
+  { prop: 'workbench', x: 33.8, z: 13.6, rot: 0 },
+  { prop: 'candles', x: 32.6, z: 13.6, rot: 0, y: 1.05, s: 0.7 },
+  { prop: 'alch_canopic_jars', x: 34.9, z: 13.6, rot: 0.3, y: 1.05, s: 0.8 },
+  { prop: 'covenant_lectern', x: 36.4, z: 18.4, rot: 2.3 },
+  { prop: 'grave_lantern', x: 29.6, z: 13.2, rot: 0 },
+  { prop: 'grave_lantern', x: 38.4, z: 24.8, rot: 0 },
+  // --- filling the walkways: a second mortar table, floor candles
+  { prop: 'alch_mortar_table', x: 41.3, z: 15.2, rot: -0.5 },
+  { prop: 'alch_bone_candles', x: 40.2, z: 13.6, rot: 0.2 },
+  { prop: 'alch_mortar_table', x: 31.4, z: 27, rot: 0.7 },
+  { prop: 'alch_bone_candles', x: 35.6, z: 26.4, rot: 0.9 },
+  { prop: 'alch_bone_candles', x: 43.2, z: 24.2, rot: 0.3 },
+  // --- south bench and coffin stock
+  { prop: 'workbench', x: 33.4, z: 30.6, rot: 0 },
+  { prop: 'candles', x: 32.2, z: 30.6, rot: 0, y: 1.05, s: 0.7 },
+  { prop: 'bone_pile', x: 35.2, z: 30.4, rot: 0.4, s: 0.5 },
+  { prop: 'coffin_stack', x: 28.8, z: 30.9, rot: 0.05 },
+  // --- east wall: the Apothecary's counter and her stock
   { prop: 'alch_counter', x: 45.1, z: 20, rot: Math.PI },
+  { prop: 'alch_canopic_jars', x: 45.1, z: 18.4, rot: Math.PI, y: 1.2 },
+  { prop: 'candles', x: 44.9, z: 21.4, rot: 0, y: 1.2, s: 0.6 },
+  { prop: 'alch_reagent_shelf', x: 45.4, z: 13.2, rot: Math.PI },
+  { prop: 'alch_reagent_shelf', x: 45.4, z: 15.1, rot: Math.PI },
+  { prop: 'alch_reagent_shelf', x: 45.4, z: 24.6, rot: Math.PI },
+  { prop: 'alch_reagent_shelf', x: 45.4, z: 26.5, rot: Math.PI },
+  // --- south-east: the vats and the dead-stock
+  { prop: 'alch_bubbling_vat', x: 41.5, z: 27.6, rot: 0 },
+  { prop: 'alch_bubbling_vat', x: 37.3, z: 29, rot: 0.6, s: 0.8 },
+  { prop: 'coffin_stack', x: 44.6, z: 30.5, rot: 0 },
+  // --- west: totem and sign by the door, the prep bench, the drying corner
   { prop: 'alch_station_sign', x: 27.5, z: 15.8, rot: Math.PI },
   { prop: 'alch_totem_stirrer', x: 23.2, z: 14.2, rot: Math.PI },
-  { prop: 'alch_mortar_table', x: 28.5, z: 24, rot: 0 },
-  { prop: 'alch_bubbling_vat', x: 41.5, z: 27.6, rot: 0 },
-  { prop: 'alch_drying_rack', x: 22.4, z: 29.4, rot: 0 },
   { prop: 'alch_bone_candles', x: 22.6, z: 16.3, rot: 0 },
   { prop: 'alch_bone_candles', x: 22.6, z: 23.7, rot: 0 },
-  { prop: 'alch_bone_candles', x: 30.4, z: 22.4, rot: 0 },
-  { prop: 'alch_bone_candles', x: 35.8, z: 16.8, rot: 0 },
-  { prop: 'alch_canopic_jars', x: 23.4, z: 26.4, rot: Math.PI },
-  { prop: 'alch_canopic_jars', x: 45.1, z: 18.4, rot: Math.PI, y: 1.2 },
-  { prop: 'alch_herb_bundle', x: 28, z: 8.3, rot: 0, y: 2.5 },
-  { prop: 'alch_herb_bundle', x: 30.6, z: 8.3, rot: 0, y: 2.5 },
-  { prop: 'alch_herb_bundle', x: 33.2, z: 8.3, rot: 0, y: 2.5 },
-  { prop: 'alch_herb_bundle', x: 44, z: 8.3, rot: 0, y: 2.5 },
+  { prop: 'alch_mortar_table', x: 28.5, z: 24, rot: 0 },
+  { prop: 'workbench', x: 25.6, z: 26.6, rot: Math.PI / 2 },
+  { prop: 'candles', x: 25.6, z: 25.8, rot: 0, y: 1.05, s: 0.7 },
+  { prop: 'alch_canopic_jars', x: 23.4, z: 28.4, rot: Math.PI },
+  { prop: 'alch_drying_rack', x: 21.7, z: 11.4, rot: 0 },
+  { prop: 'alch_drying_rack', x: 21.7, z: 30.4, rot: 0 },
+  { prop: 'alch_herb_bundle', x: 23.4, z: 30.8, rot: 0.9, tilt: 0.25 },
+  { prop: 'alch_herb_bundle', x: 24.4, z: 31.0, rot: 2.1, tilt: -0.2, s: 0.9 },
+];
+
+/** Floor cloths and spills in the Wing (WorldView draws them as thin textured planes; none of them blocks anything). */
+export interface WingFloorPiece { kind: 'rug' | 'stain'; x: number; z: number; w: number; d: number; rot: number; color: number; alt?: number }
+export const WING_FLOOR: WingFloorPiece[] = [
+  // The runner from the door toward the Great Cauldron, the Apothecary's rug, the prep bench's mat.
+  { kind: 'rug', x: 25.4, z: 20, w: 8.4, d: 2.5, rot: 0, color: 0x7a2e24, alt: 0xc9a25a },
+  { kind: 'rug', x: 41.6, z: 20, w: 4.6, d: 3.6, rot: 0, color: 0x3d5a3a, alt: 0xc9a25a },
+  { kind: 'rug', x: 26.6, z: 26.6, w: 3.4, d: 4.2, rot: 0.08, color: 0x5a3a2a, alt: 0xb8905a },
+  // Spills: green by the vats, dark under the cauldron's clutter, a drag of lees by the north bench.
+  { kind: 'stain', x: 39.6, z: 28.4, w: 3.4, d: 2.4, rot: 0.5, color: 0x2c4a22 },
+  { kind: 'stain', x: 35.2, z: 22.2, w: 2.2, d: 1.8, rot: 1.1, color: 0x1a120c },
+  { kind: 'stain', x: 29.6, z: 11.2, w: 2.6, d: 1.6, rot: -0.3, color: 0x1a120c },
+  { kind: 'stain', x: 33.6, z: 24.2, w: 1.5, d: 1.2, rot: 2.2, color: 0x2c4a22 },
 ];
 
 export interface PropSpec {
@@ -201,7 +266,7 @@ export interface WallSegment {
   z1: number;
   height: number;
   thickness: number;
-  texture: 'stone_wall' | 'skull_wall';
+  texture: 'stone_wall' | 'skull_wall' | 'wing_wall';
   area: AreaId;
 }
 
@@ -387,9 +452,8 @@ export function generateLayout(seed = 1337): WorldLayout {
   // Every placement passes an explicit rotation, so this block never draws from `rand` (the other areas' dressing stays put).
   {
     const a: AreaId = 'alchemist_wing';
-    edgeWalls(a, 5.5, 'stone_wall', walls);
-    const W = (prop: PropId, x: number, z: number, rot: number, extra: Partial<Placement> = {}) => P(prop, x, z, a, rot, 1, extra);
-    for (const p of WING_PROPS) W(p.prop, p.x, p.z, p.rot, p.y ? { y: p.y } : {});
+    edgeWalls(a, 5.5, 'wing_wall', walls);
+    for (const p of WING_PROPS) P(p.prop, p.x, p.z, a, p.rot, p.s ?? 1, { ...(p.y ? { y: p.y } : {}), ...(p.tilt ? { tilt: p.tilt } : {}) });
     decals.push({ kind: 'sigil', x: 33, z: 19.5, r: 3.4, color: 0x6fd08a, opacity: 0.4, rot: 0, area: a });
   }
 
