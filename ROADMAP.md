@@ -30,12 +30,12 @@ flowchart LR
     S16[2 Oct: gear tuning]:::done
     S17[2 Oct: balance re-audit · boss tuning]:::done
     S18[2 Oct: zone + encounter polish]:::done
+    S19[2 Oct: server authority step 1 — report mode]:::done
   end
 
   subgraph NOW["🔨 Now"]
     R2[QA suite reliability<br/>every smoke trustworthy]:::now
     R4[Readability round 3<br/>thralls vs enemies · Acre light · Nave noise]:::now
-    R5[Server authority step 1<br/>report-only plausibility guards]:::now
     R6[Thrall gear<br/>equip your legion · gold sink]:::now
   end
 
@@ -62,6 +62,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 2 Oct 2026 | Server authority step 1 (report mode): progress saves, bag saves, item adds, gear rolls and offline loads are checked against ceilings derived from the game's own best honest rates (×3 headroom); suspicious saves are logged to `progress_audit` and nothing is changed until `AUTHORITY_MODE=enforce` | Migration 021. How to read the audit and switch modes: docs/SERVER-AUTHORITY.md. |
 | 2 Oct 2026 | Zone and encounter polish: boss cone and line telegraphs outlined and bright (Gravedigger sweep, Flood Hymn, Abbess, Plague Saint), faint rings on fresh corpses so they never vanish on dark ground, the Fen wisp pulse no longer camouflaged, three prop overlaps fixed, the Ossuary brighter | Full tour and per-zone numbers in docs/ZONE-POLISH-AUDIT.md. |
 | 2 Oct 2026 | Balance re-audit: no drift in farming after the day's changes (max Wave Speed still out-earns intended at ~2 deaths per 3 min; Ossuary level with the others); the boss bot can now reach the Mire Mother; Gravedigger King, Bone Abbess and Mire Mother were too easy and got more health (the Mire Mother also hits harder) | Boss tables in BALANCE.md ("Polish round 2"). If base item stats stay as they are, the later bosses should get about +35% health (part of the owner decision). |
 | 2 Oct 2026 | Gear tuning: the balance bot now wears realistic gear kits; stat affixes no longer dominate (INT was mandatory), the six necromancer affixes are worth taking, each necromancer's own armor set is its best set, and the ▲/▼ score agrees with real results on 33 of 35 big swaps | Tables in BALANCE.md ("Gear pass"). One open decision for the owner below. |
