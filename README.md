@@ -34,7 +34,7 @@ Some of the most polished corners of the game right now (updated 2 October 2026)
 - [Your first hour](#your-first-hour)
 - [What to explore next](#what-to-explore-next)
 - [Finding your way](#finding-your-way)
-- [Controls](#controls)
+- [Controls](#controls) (and [on a phone or tablet](#on-a-phone-or-tablet))
 - [Choose a discipline](#choose-a-discipline)
 - [Combat and corpses](#combat-and-corpses)
 - [The world and its bosses](#the-world-and-its-bosses)
@@ -121,6 +121,26 @@ Nothing in Death Muffin is a quest, and nothing can be failed or missed. If you 
 | **Esc** | Close an open panel, then open Settings |
 
 You can also click hotbar icons. Click **swap** below any spell icon to open the Grimoire with that slot selected; right click a hotbar slot also works. In **Settings**, you can change class, difficulty, graphics, volume (Master, plus separate **Combat**, **Ambience** and **Interface** sliders), reduced motion, damage numbers, gathering behavior, counsel tips, and the Next suggestion with its minimap marker.
+
+### On a phone or tablet
+
+The HUD rearranges itself for phones (portrait and landscape) and tablets, and every panel fits the screen.
+
+| Touch | Action |
+|---|---|
+| Tap ground / enemy / object | Walk there, attack, talk, or gather |
+| Drag a finger | Keep walking toward it |
+| Pinch | Zoom |
+| Tap a rite | Cast it at the enemy you tapped, or else the nearest enemy |
+| Press and hold a rite | Show its spell card (tap anywhere to close it) |
+| Flask button on the Health orb | Drink a healing flask |
+| Tap a brew on the left | Drink that elixir or tonic |
+| **Upgrades** button | Open Damage / Wave Speed (it glows when you can afford one) |
+| **‹ Back** on a panel | Return to the panel you came from (Skills → Contracts → Back) |
+| Phone Back gesture | Steps back through panels, then closes them; it never leaves the game while a panel is open |
+| ⛶ in the menu | Full screen (Android; iPhone Safari has no full screen) |
+
+Panels keep their scroll position while AFK gathering updates them.
 
 ## Choose a discipline
 

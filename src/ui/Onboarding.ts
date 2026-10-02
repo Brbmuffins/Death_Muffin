@@ -783,6 +783,12 @@ export class Onboarding {
    * Put the card on screen. Without explicit coordinates it goes where the player last dragged it, or to the default corner.
    */
   private place(el: HTMLElement, x?: number, y?: number) {
+    // Phones: unless the player dragged it, the layout sheet (mobile.css) places the card around the compact HUD.
+    if (x === undefined && y === undefined && !this.position && window.matchMedia?.('(max-width: 760px), (max-height: 520px)').matches) {
+      el.style.left = '';
+      el.style.top = '';
+      return;
+    }
     const bounds = el.getBoundingClientRect();
     const px = x ?? this.position?.x ?? DEFAULT_X;
     // In co-op the party list fills the top-left corner: start under it.

@@ -4,6 +4,8 @@ const svg = (body: string, vb = '0 0 24 24') =>
 
 export const ICON = {
   skull: svg('<path d="M12 3c-4.4 0-7.5 3-7.5 7 0 2.2 1 3.8 2.5 4.8V18h2v2h1.5v-2h3v2H15v-2h2v-3.2c1.5-1 2.5-2.6 2.5-4.8 0-4-3.1-7-7.5-7z"/><circle cx="9" cy="10.5" r="1.6" fill="currentColor"/><circle cx="15" cy="10.5" r="1.6" fill="currentColor"/><path d="M11 14h2"/>'),
+  flask: svg('<path d="M10 3h4M10.5 3v5L6 16.5A3 3 0 008.7 21h6.6a3 3 0 002.7-4.5L13.5 8V3"/><path d="M7.6 14h8.8"/>'),
+  expand: svg('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'),
   crown: svg('<path d="M4 17l1.5-9 4 4L12 6l2.5 6 4-4L20 17z"/><path d="M4 20h16"/>'),
   bag: svg('<path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 016 0v2"/><path d="M10 13h4"/>'),
   anvil: svg('<path d="M4 8h12c0 2.2 1.8 4 4 4v1H9l-2 3h8v3H6"/><path d="M7 16l-1 3"/>'),

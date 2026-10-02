@@ -22,6 +22,9 @@ export interface HudCallbacks {
   openGrimoire(select?: number | 'primary'): void;
   /** The player hid the "Next" suggestion with its X. */
   dismissNext?(): void;
+  /** Touch buttons for keys a phone doesn't have: the healing flask (Q) and the brew belt (Z/X). */
+  flask?(): void;
+  drinkBelt?(slot: string): void;
 }
 
 export interface SlotFrame {
@@ -107,8 +110,15 @@ export class HUD {
   private tooltipSlot: number | null = null;
   private tooltipHideTimer = 0;
   private tooltipKey = '';
+  /** 'touch' after a finger press: hover-only behaviour (spell card on hover/focus) is skipped. */
+  private lastPointer = '';
   private slotFrames: SlotFrame[] = [];
   private resizeTooltip = () => this.positionTooltip();
+  /** Touch: a press anywhere outside the open spell card closes it. */
+  private tooltipTouchAway = (e: PointerEvent) => {
+    this.lastPointer = e.pointerType;
+    if (e.pointerType === 'touch' && !this.tooltip.hidden && !this.tooltip.contains(e.target as Node)) this.hideTooltip();
+  };
   private tooltipKeydown = (e: KeyboardEvent) => {
     if (e.key === 'Escape' && !this.tooltip.hidden) {
       e.preventDefault();
@@ -164,6 +174,7 @@ export class HUD {
           <button data-open="grimoire" title="Grimoire (L)" aria-label="Grimoire">${ICON.grimoire}</button>
           <button data-open="codex" title="Codex (K)" aria-label="Codex">${ICON.book}</button>
           <button data-open="settings" title="Settings (Esc)" aria-label="Settings">${ICON.gear}</button>
+          <button class="hud-fullscreen" data-fullscreen title="Full screen" aria-label="Full screen">${ICON.expand}</button>
           <button class="hud-auto" data-auto hidden aria-label="Auto combat" title="Available on Easy difficulty" aria-pressed="false">Auto: Easy only</button>
         </div>
       </div>
@@ -188,6 +199,7 @@ export class HUD {
         <div class="hud-orb-wrap">
           <div class="hud-orb hp" data-hporb role="meter" aria-label="Health"><div class="liquid"></div><div class="barrier"></div></div>
           <div class="hud-orb-label" data-hptxt></div>
+          <button class="hud-flask" data-flask aria-label="Drink a healing flask (Q)" title="Healing flask (Q)">${ICON.flask}</button>
         </div>
         <div>
           <div class="hud-souls" data-souls role="meter" aria-label="Soul Harvest" aria-valuemin="0" title="Soul Harvest — kills by you or your thralls fill the skull. When full, your next Marrow Spear, Miasma or Black Litany is free and 50% larger.">
@@ -208,6 +220,7 @@ export class HUD {
         </div>
       </div>
       <div class="hud-right">
+        <button class="hud-up-toggle" data-uptoggle aria-expanded="false" aria-label="Damage and Wave Speed upgrades">${ICON.crown}<span>Upgrades</span></button>
         <div class="hud-upgrades cw-plate">
           <div class="hud-up">
             <div class="icon">${ICON.crown}</div>
@@ -256,15 +269,34 @@ export class HUD {
     this.$('[data-nextx]').addEventListener('click', () => this.cb.dismissNext?.());
     this.$('[data-buydmg]').addEventListener('click', () => this.cb.buyDamage());
     this.$('[data-auto]').addEventListener('click', () => this.cb.toggleAutoCombat());
+    this.$('[data-flask]').addEventListener('click', () => this.cb.flask?.());
+    this.$('[data-brews]').addEventListener('click', (e) => {
+      const chip = (e.target as HTMLElement).closest<HTMLElement>('[data-brew]');
+      if (chip) this.cb.drinkBelt?.(chip.dataset.brew!);
+    });
+    this.$('[data-uptoggle]').addEventListener('click', () => {
+      const right = this.$('.hud-right');
+      const open = right.classList.toggle('open');
+      this.$('[data-uptoggle]').setAttribute('aria-expanded', String(open));
+    });
+    const fs = this.$<HTMLButtonElement>('[data-fullscreen]');
+    fs.hidden = !document.fullscreenEnabled;
+    fs.addEventListener('click', () => {
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+      else void document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+    });
     this.$('[data-buywave]').addEventListener('click', () => this.cb.buyWave());
     this.el.querySelectorAll<HTMLButtonElement>('[data-dial]').forEach((b) =>
       b.addEventListener('click', () => this.cb.dialWave(Number(b.dataset.dial))),
     );
+    // Touch: tapping the card closes it (a scroll gesture on it fires no click, so it still scrolls).
+    this.tooltip.addEventListener('click', () => { if (this.lastPointer === 'touch') this.hideTooltip(); });
     this.tooltip.addEventListener('pointerenter', () => window.clearTimeout(this.tooltipHideTimer));
     this.tooltip.addEventListener('pointerleave', () => this.scheduleTooltipHide());
     this.tooltip.addEventListener('focus', () => window.clearTimeout(this.tooltipHideTimer));
     this.tooltip.addEventListener('blur', () => this.scheduleTooltipHide());
     window.addEventListener('keydown', this.tooltipKeydown, true);
+    window.addEventListener('pointerdown', this.tooltipTouchAway, true);
     window.addEventListener('resize', this.resizeTooltip);
     const chat = this.$<HTMLInputElement>('[data-chatin]');
     chat.addEventListener('keydown', (e) => {
@@ -347,14 +379,39 @@ export class HUD {
         btn.addEventListener('contextmenu', (e) => {
           e.preventDefault();
           e.stopPropagation();
+          if (this.lastPointer === 'touch') return; // a long press on a phone shows the card, it does not open the Grimoire
           this.hideTooltip();
           this.cb.openGrimoire(i === -1 ? 'primary' : i);
         });
       }
-      btn.addEventListener('pointerenter', () => this.showTooltip(i));
-      btn.addEventListener('pointerleave', () => this.scheduleTooltipHide());
-      btn.addEventListener('focus', () => this.showTooltip(i));
-      btn.addEventListener('blur', () => this.scheduleTooltipHide());
+      // Touch: a tap always casts (iOS drops the click when a tap reveals hover content, so the card never opens on a tap);
+      // press and hold shows the spell card instead, and that press does not cast.
+      let holdTimer = 0;
+      let held = false;
+      btn.addEventListener('pointerdown', (e) => {
+        this.lastPointer = e.pointerType;
+        if (e.pointerType !== 'touch') return;
+        held = false;
+        window.clearTimeout(holdTimer);
+        holdTimer = window.setTimeout(() => {
+          held = true;
+          this.showTooltip(i);
+          window.clearTimeout(this.tooltipHideTimer);
+          this.tooltipHideTimer = window.setTimeout(() => this.hideTooltip(), 4000);
+        }, 450);
+      });
+      const endHold = () => window.clearTimeout(holdTimer);
+      btn.addEventListener('pointerup', endHold);
+      btn.addEventListener('pointercancel', endHold);
+      btn.addEventListener('click', (e) => {
+        if (!held) return;
+        held = false;
+        e.stopImmediatePropagation();
+      }, { capture: true });
+      btn.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') this.showTooltip(i); });
+      btn.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') this.scheduleTooltipHide(); });
+      btn.addEventListener('focus', () => { if (this.lastPointer !== 'touch') this.showTooltip(i); });
+      btn.addEventListener('blur', () => { if (this.lastPointer !== 'touch') this.scheduleTooltipHide(); });
     }
     this.el.querySelectorAll<HTMLButtonElement>('[data-swap]').forEach((button) => {
       button.addEventListener('click', () => { this.hideTooltip(); this.cb.openGrimoire(Number(button.dataset.swap)); });
@@ -503,6 +560,8 @@ export class HUD {
       this.$('[data-xptxt]').textContent = `${f.xp.toLocaleString()} / ${f.xpNext.toLocaleString()}`;
     });
     this.set('gold', f.gold, () => (this.$('[data-gold]').textContent = f.gold.toLocaleString()));
+    const canBuy = f.gold >= Math.min(f.damageCost ?? Infinity, f.waveCost ?? Infinity);
+    this.set('canbuy', canBuy, () => this.$('[data-uptoggle]').classList.toggle('can', canBuy));
     this.set('shards', f.shards, () => (this.$('[data-shards]').textContent = String(f.shards)));
 
     this.set('dmg', `${f.damageTier}|${f.damageCost}|${f.gold >= (f.damageCost ?? Infinity)}`, () => {
@@ -548,7 +607,7 @@ export class HUD {
       const el = this.$('[data-brews]');
       const rows = f.brews.filter((b): b is NonNullable<typeof b> => !!b);
       el.hidden = !rows.length;
-      el.innerHTML = rows.map((b) => `<div class="brew-chip${b.active ? ' on' : ''}" style="--brew:#${b.color.toString(16).padStart(6, '0')}" title="${b.tip.replace(/"/g, '&quot;')}">
+      el.innerHTML = rows.map((b) => `<div class="brew-chip${b.active ? ' on' : ''}" data-brew="${b.slot}" role="button" tabindex="-1" style="--brew:#${b.color.toString(16).padStart(6, '0')}" title="${b.tip.replace(/"/g, '&quot;')}">
         <kbd>${b.key}</kbd><span class="glyph">${b.glyph}</span>
         <span class="txt"><span class="lbl">${b.label}</span><span class="sub">${b.active ? `${b.left}s` : 'ready'}${b.count ? ` · ×${b.count}` : ''}</span></span>
         <span class="bar"><i style="width:${Math.round(b.frac * 100)}%"></i></span></div>`).join('');
@@ -743,6 +802,7 @@ export class HUD {
     this.hideTooltip();
     window.removeEventListener('resize', this.resizeTooltip);
     window.removeEventListener('keydown', this.tooltipKeydown, true);
+    window.removeEventListener('pointerdown', this.tooltipTouchAway, true);
     this.el.remove();
   }
 }

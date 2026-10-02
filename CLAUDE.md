@@ -46,7 +46,10 @@ player behavior, deployment and plans. Update the handoff when you stop.
 - Server `error` strings are player-readable — show them verbatim in UI.
 - Spell colours carry meaning (see `SPELL_FX` in `src/content/abilities.ts`);
   don't make new content "just violet".
-- Desktop web game first; narrow viewport only needs sanity checks.
+- Desktop web game first, but phones and tablets are supported (since 2026-10-02): phone/tablet layout lives in
+  `src/ui/mobile.css` (loaded last). Check HUD changes with `tools/qa/mobile-shots.cjs` and touch/panel navigation with
+  `tools/qa/mobile-nav-smoke.cjs`; any new hover-only info needs a touch path (press-and-hold), and any new keyboard-only
+  action needs a button.
 - Every new player-facing mechanic ships with its help: a Covenant counsel tip (`src/ui/Onboarding.ts`,
   triggered the first time it matters), its Codex entry (`src/content/codex.ts`), the Settings key list
   if it adds a key, and the README. Re-check existing tips when a mechanic changes.
