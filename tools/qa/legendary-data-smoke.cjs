@@ -88,12 +88,12 @@ async function run1(browser, label, ctxOptions, phone, setPage) {
   await wear('head');
   await wear('chest');
   let m2 = await mods();
-  assert.ok(Math.abs(m2.thrallDamageMult - base.thrallDamageMult * multAt(2, 'thrallDamageMult')) < 1e-9, '2-piece: thralls +15%');
+  assert.ok(Math.abs(m2.thrallDamageMult - base.thrallDamageMult * multAt(2, 'thrallDamageMult')) < 1e-9, '2-piece: thralls +25%');
   assert.equal(m2.thrallDeathBurst, 0, 'no burst at 2');
   await look(SET.prefix + 'hands');
   t = await detailText();
   assert.match(t, /2 \/ 5 worn/);
-  assert.match(t, /Thralls hit \+15% harder/);
+  assert.match(t, /Thralls hit \+25% harder/);
   assert.match(t, /Bursting Dead/);
 
   await wear('hands');
@@ -104,7 +104,7 @@ async function run1(browser, label, ctxOptions, phone, setPage) {
   await look(SET.prefix + 'feet');
   t = await detailText();
   assert.match(t, /4 \/ 5 worn/);
-  assert.match(t, /Thralls burst when they die \(60% of their health/);
+  assert.match(t, /Thralls burst when they die \(80% of their health/);
   await page.screenshot({ path: `${out}/${label}-2-tooltip-four-pieces.png` });
 
   // Four pieces: the set glow is on (a uniform on the body regions).
@@ -125,7 +125,7 @@ async function run1(browser, label, ctxOptions, phone, setPage) {
   assert.match(sheet, /set bonuses/i);
   assert.match(sheet, /legion of the unburied/i);
   assert.match(sheet, /5 \/ 5/);
-  assert.match(sheet, /Every 5th thrall you raise is a Champion/);
+  assert.match(sheet, /Every 4th thrall you raise is a Champion/);
   assert.equal(await page.locator('.gs-line.set .r.up').count(), 3, 'all three tiers active');
   await page.locator('.gs-line.set').first().scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${out}/${label}-3-character-sheet.png` });
