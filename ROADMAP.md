@@ -199,6 +199,9 @@ Two or three bot players you can log in and play with. Recommended design:
 - **Accounts:** each bot is a real account and character with its own progress, flagged as a bot. Bots only join worlds you invite them to.
 - **Decisions needed:** how strong bots should be, whether they loot or level, and the API budget.
 
+### Performance (from the Blender audit)
+Measured in [docs/BLENDER-AUDIT.md](docs/BLENDER-AUDIT.md): props are ~65% of triangles and drawn ~5× (batch-level culling), ~160 draw calls are tiny decals, corpses are full skinned clones, ~490 MB decoded textures. **Phase 1** (no visible art change): spatially chunk PropBatch, pool decals into instanced layers, prune GLB accessors, trim `dig`/`cast` clips, PNG→WebP (~−26 MB). **Phase 2:** texture downscale by class, static corpse meshes, meshopt compression + simplify. **Phase 3:** 3D item icons, LODs, KTX2.
+
 ### L2–L4
 - **New zones:** Catacomb Depths and the Hollow Court (`docs/ALCHEMY-AND-WORLDS-PLAN.md`).
 - **Content with paid art ready:** nothing waiting: the Bone Colossus and the runes are live (2 Oct, migration 024), thrall gear shipped.
