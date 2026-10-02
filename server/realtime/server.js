@@ -52,7 +52,7 @@ const LIMITS = {
 };
 
 const BOSS_IDS = new Set(['prelate', 'gravedigger', 'abbess', 'congregation', 'saint', 'regent', 'mire']);
-const INTENT_TYPES = new Set(['hit', 'miasma', 'exhume', 'litany', 'summonBoss', 'recallThralls', 'detonate', 'signature', 'gather']);
+const INTENT_TYPES = new Set(['hit', 'miasma', 'exhume', 'litany', 'summonBoss', 'recallThralls', 'detonate', 'signature', 'gather', 'legend']);
 /** Host-shaped rites (discipline signatures + Bone Mantle); the host owns their shapes and clamps the aim around the caster. */
 const SIGNATURES = new Set(['wall', 'rend', 'dirge', 'bloom', 'mantle', 'offering', 'rally', 'seed', 'bash', 'vigil', 'brand',
   'lantern_cone', 'chain_pull', 'burn_the_dead', 'watchmans_ward', 'cremate', 'last_light',
@@ -140,7 +140,21 @@ function validIntent(intent) {
       // Bone Prison / Grave Hands: flags only; the host sim owns the root and slow durations.
       if ('root' in out) out.root = !!out.root;
       if ('slow' in out) out.slow = !!out.slow;
+      // Marrow Spear (legendary rally): a flag only; the host checks the caster's own clamped mods.
+      if ('spear' in out) out.spear = !!out.spear;
       break;
+    case 'legend': {
+      // Legendary set mods the sim reads for this owner. Same bounds the sim clamps to (src/gameplay/legendary.ts).
+      const m = out.mods && typeof out.mods === 'object' ? out.mods : {};
+      out.mods = {
+        thrallDeathBurst: Math.min(2, Math.max(0, num(m.thrallDeathBurst))),
+        championEvery: Math.min(20, Math.max(0, Math.floor(num(m.championEvery)))),
+        spearRally: Math.min(3, Math.max(0, num(m.spearRally))),
+        miasmaSpreadsWithered: num(m.miasmaSpreadsWithered) > 0 ? 1 : 0,
+        witheredBurstAt: Math.min(12, Math.max(0, Math.floor(num(m.witheredBurstAt)))),
+      };
+      break;
+    }
     case 'miasma':
       out.r = Math.min(8, Math.max(0.5, num(out.r, 3)));
       out.dps = Math.min(20000, Math.max(0, num(out.dps)));

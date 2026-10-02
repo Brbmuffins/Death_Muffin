@@ -1,5 +1,6 @@
 import type { AreaId } from '../../content/areas';
 import type { ThrallKind } from '../../content/disciplines';
+import type { SimLegend } from '../legendary';
 import type { CorpseKind, EliteAffix, EnemyId } from '../../content/enemies';
 import type { BossId } from '../../content/bosses';
 
@@ -102,6 +103,12 @@ export interface Enemy {
   affixCd?: number;
   /** Host-only: a telegraphed Bell-Tolled ring waiting to sound. */
   tollAt?: { t: number; x: number; z: number };
+  /** Host-only, legendary Marrow Spear rally: seconds left, the extra damage thralls deal to it, and whose legion it is. */
+  markT?: number;
+  markBonus?: number;
+  markBy?: string;
+  /** Host-only, Chain Plague: scene time before this enemy may burst again. */
+  plagueAt?: number;
 }
 
 export type ThrallState = 'rising' | 'idle' | 'move' | 'attack' | 'dead';
@@ -131,6 +138,8 @@ export interface Thrall {
   moving: boolean;
   /** Rally the Dead: seconds of +damage/+attack speed left (snapshot flag bit 2 of the empowered field). */
   rallyT?: number;
+  /** Legion Champion (legendary set): 2x health and damage, a bigger model (snapshot flag bit 3 of the empowered field). */
+  champion?: boolean;
   /** Veilwalker Echo expires on the host after ten seconds. */
   echoUntil?: number;
   /** Mourning Bell: the share of max health each of this wraith's hits heals allies for. */
@@ -272,7 +281,11 @@ export type Intent =
       root?: boolean;
       /** Grave Hands: slow the targets briefly (Miasma's slow; the host owns the duration). */
       slow?: boolean;
+      /** Marrow Spear: a legendary rally may mark the nearest target (the host checks the caster's mods). */
+      spear?: boolean;
     }
+  /** The caster's legendary-set mods the shared sim needs (host-clamped; resent on change and every few seconds). */
+  | { t: 'legend'; by: string; mods: Partial<SimLegend> }
   | {
       t: 'miasma';
       by: string;
@@ -434,6 +447,8 @@ export type SimEvent =
   | { t: 'surgeFailed'; area: AreaId; x: number; z: number }
   /** `theme`: a procession (content/enemies WAVE_THEMES) rather than the usual mix. */
   | { t: 'wave'; area: AreaId; count: number; x: number; z: number; theme?: string }
+  /** Legendary set moments, VFX only: a thrall's death burst, a spear rally mark, Contagion spreading, a Chain Plague burst. */
+  | { t: 'legend'; kind: 'deathBurst' | 'rally' | 'spread' | 'plague'; by: string; x: number; z: number; r?: number; id?: number }
   | { t: 'dmg'; x: number; z: number; amount: number; kind: 'dot' | 'thrall' | 'burst' | 'litany' | 'hit'; by: string }
   | {
       t: 'boss';

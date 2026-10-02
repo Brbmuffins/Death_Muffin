@@ -54,6 +54,7 @@ import type { Omen } from '../../content/omens';
 import type { ThrallKind } from '../../content/disciplines';
 import { BONE_HEX, CHILL, HEMORRHAGE, PLAGUE_BURST, SANCTIFIED } from '../../content/statuses';
 import type { Nav } from '../nav';
+import { LEGEND, clampSimLegend, simLegendActive, type SimLegend } from '../legendary';
 import { pickWeighted } from '../rng';
 import { BOSS_RADIUS, makeBossBrains, type BossBrain, type CoverBox } from './BossBrain';
 import { BOSSES, isBossId, type BossId } from '../../content/bosses';
@@ -217,6 +218,16 @@ export class WorldSim {
   private crypts: { area: AreaId; x: number; z: number }[] = [];
   private dotAccum = new Map<number, number>();
   private bloomed = new Set<number>();
+  /** Legendary set mods per owner (host-clamped from the owner's 'legend' intent); empty = every legendary mechanic off. */
+  private legends = new Map<string, SimLegend>();
+  /** Thralls raised per owner, for the Legion Champion (every Nth). Lives as long as the sim does. */
+  private raised = new Map<string, number>();
+  /** The owner's last real Miasma cast (what a Chain Plague burst copies), and the burst clouds standing. */
+  private lastMiasma = new Map<string, { r: number; dps: number; durationMs: number; cap: number; bloom: boolean }>();
+  private plagueZones = new Set<number>();
+  /** Legendary spear rally on the boss. */
+  private bossMark: { by: string; until: number; bonus: number } | null = null;
+  private anyPlague = false;
 
   constructor(
     private nav: Nav,
@@ -257,6 +268,10 @@ export class WorldSim {
   removePlayer(id: string) {
     this.players.delete(id);
     for (const t of [...this.thralls.values()]) if (t.owner === id) this.killThrall(t, 'crumbled');
+    this.legends.delete(id);
+    this.raised.delete(id);
+    this.lastMiasma.delete(id);
+    this.anyPlague = [...this.legends.values()].some((v) => v.witheredBurstAt > 0);
   }
 
   playersIn(area: AreaId) {
@@ -290,6 +305,13 @@ export class WorldSim {
         return this.applySignature(intent);
       case 'gather':
         return this.applyGather(intent);
+      case 'legend': {
+        const l = clampSimLegend(intent.mods);
+        if (simLegendActive(l)) this.legends.set(intent.by, l);
+        else this.legends.delete(intent.by);
+        this.anyPlague = [...this.legends.values()].some((v) => v.witheredBurstAt > 0);
+        return;
+      }
       case 'recallThralls':
         for (const t of this.thralls.values()) {
           if (t.owner !== intent.by) continue;
@@ -359,6 +381,7 @@ export class WorldSim {
     }
     const caster = this.players.get(h.by);
     const from = caster ? { x: caster.x, z: caster.z } : undefined;
+    if (h.spear) this.spearRally(h, caster);
     for (const id of h.ids) {
       const e = this.enemies.get(id);
       // Underground (tunnelling or winding up its eruption): no damage and no statuses either.
@@ -386,6 +409,43 @@ export class WorldSim {
     }
   }
 
+  /** Legion Champion 5: a Marrow Spear hit marks its nearest target; the owner's thralls turn on it and hit it harder for a few seconds. */
+  private spearRally(h: Extract<Intent, { t: 'hit' }>, caster: PlayerBody | undefined) {
+    const leg = this.legends.get(h.by);
+    if (!leg || leg.spearRally <= 0) return;
+    let mark: Enemy | null = null;
+    let bestD = Infinity;
+    if (!h.boss) {
+      for (const id of h.ids) {
+        const e = this.enemies.get(id);
+        if (!e || e.state === 'dead' || e.state === 'burrow') continue;
+        const d = caster ? Math.hypot(e.x - caster.x, e.z - caster.z) : 0;
+        if (d < bestD) (mark = e), (bestD = d);
+      }
+    }
+    const b = this.boss.state;
+    if (mark) {
+      mark.markT = LEGEND.rallyS;
+      mark.markBonus = leg.spearRally;
+      mark.markBy = h.by;
+      this.emit({ t: 'legend', kind: 'rally', by: h.by, x: mark.x, z: mark.z, id: mark.id });
+    } else if (h.boss && b.active) {
+      this.bossMark = { by: h.by, until: this.time + LEGEND.rallyS, bonus: leg.spearRally };
+      this.emit({ t: 'legend', kind: 'rally', by: h.by, x: b.x, z: b.z, id: -1 });
+    } else return;
+    for (const t of this.ownedThralls(h.by)) {
+      if (t.state === 'rising') continue;
+      t.target = mark ? mark.id : null;
+    }
+  }
+
+  /** The legion's extra damage on whatever the owner's Marrow Spear marked (1 when nothing is). */
+  private rallyMult(t: Thrall, e: Enemy | null): number {
+    if (e) return (e.markT ?? 0) > 0 && e.markBy === t.owner ? 1 + (e.markBonus ?? 0) : 1;
+    const m = this.bossMark;
+    return m && m.by === t.owner && this.time < m.until ? 1 + m.bonus : 1;
+  }
+
   /** Add Withered stacks the way zones do (the strongest dps wins, the stacker owns the kill). */
   private wither(e: Enemy, stacks: number, cap: number, dps: number, by: string) {
     e.withered = Math.min(cap, e.withered + stacks);
@@ -407,6 +467,7 @@ export class WorldSim {
   }
 
   private applyMiasma(m: Extract<Intent, { t: 'miasma' }>) {
+    if (this.legends.get(m.by)?.witheredBurstAt) this.lastMiasma.set(m.by, { r: m.r, dps: m.dps, durationMs: m.durationMs, cap: m.witheredCap, bloom: m.bloom });
     const zone: Zone = {
       id: this.id(),
       kind: 'miasma',
@@ -457,6 +518,11 @@ export class WorldSim {
     const scale = THRALL_SCALE[kind] ?? { hp: 1, dmg: 1 };
     const empowered = best.kind === 'resonant' || best.elite;
     const base = THRALL_BASE[kind];
+    // Legion Champion: every Nth thrall this owner raises is a Champion (2x health and damage; the view makes it bigger).
+    const raisedN = (this.raised.get(x.by) ?? 0) + 1;
+    this.raised.set(x.by, raisedN);
+    const every = this.legends.get(x.by)?.championEvery ?? 0;
+    const champion = every > 0 && raisedN % every === 0;
     const slotsUsed = new Set(this.ownedThralls(x.by).map((t) => t.slot));
     let slot = 0;
     while (slotsUsed.has(slot)) slot++;
@@ -467,9 +533,9 @@ export class WorldSim {
       x: best.x,
       z: best.z,
       facing: best.facing,
-      hp: x.hp * (empowered ? 1.5 : 1) * scale.hp,
-      maxHp: x.hp * (empowered ? 1.5 : 1) * scale.hp,
-      damage: x.damage * (empowered ? 1.5 : 1) * scale.dmg,
+      hp: x.hp * (empowered ? 1.5 : 1) * scale.hp * (champion ? LEGEND.championHp : 1),
+      maxHp: x.hp * (empowered ? 1.5 : 1) * scale.hp * (champion ? LEGEND.championHp : 1),
+      damage: x.damage * (empowered ? 1.5 : 1) * scale.dmg * (champion ? LEGEND.championDamage : 1),
       attackInterval: base.interval / x.attackSpeedMult,
       range: base.range,
       speed: base.speed,
@@ -484,6 +550,7 @@ export class WorldSim {
       gait: 0,
       moving: false,
     };
+    if (champion) t.champion = true;
     if (kind === 'wraith' && x.allyHeal && x.allyHeal > 0) t.allyHeal = Math.min(NECRO_WEAPON_TUNING.mourning_bell.allyHealFrac * 1.5, x.allyHeal);
     this.thralls.set(t.id, t);
     this.emit({ t: 'thrall', id: t.id, owner: t.owner, kind, x: t.x, z: t.z, empowered });
@@ -630,8 +697,30 @@ export class WorldSim {
     t.state = 'dead';
     this.emit({ t: 'thrallGone', id: t.id, owner: t.owner, x: t.x, z: t.z, reason });
     if (t.kind === 'plaguebearer' && reason !== 'crumbled') this.plagueBurst(t);
+    // Legion of the Unburied: a thrall that is KILLED bursts into bone. Sacrificed (Litany) and crumbled (cap, recall, owner gone) ones do not.
+    if (reason === 'killed') this.deathBurst(t);
     // Only a thrall that was killed can be unbound; sacrificed and crumbled ones are safe.
     if (reason === 'killed') this.tryUnbind(t);
+  }
+
+  private deathBurst(t: Thrall) {
+    const frac = this.legends.get(t.owner)?.thrallDeathBurst ?? 0;
+    if (frac <= 0) return;
+    const dmg = frac * t.maxHp;
+    const r = LEGEND.deathBurstR;
+    let hit = 0;
+    for (const e of this.enemies.values()) {
+      if (e.state === 'dead' || Math.hypot(e.x - t.x, e.z - t.z) > r + e.radius) continue;
+      this.damageEnemy(e, dmg, t.owner);
+      hit++;
+    }
+    const b = this.boss.state;
+    if (b.active && Math.hypot(b.x - t.x, b.z - t.z) <= r + BOSS_RADIUS) {
+      this.boss.damage(dmg, t.owner, 0);
+      hit++;
+    }
+    this.emit({ t: 'legend', kind: 'deathBurst', by: t.owner, x: t.x, z: t.z, r });
+    if (hit) this.emit({ t: 'dmg', x: t.x, z: t.z, amount: Math.round(dmg), kind: 'burst', by: t.owner });
   }
 
   /** Lich Acolyte: the nearest ready acolyte in reach claims a fallen thrall; a Risen climbs out shortly after. */
@@ -1582,6 +1671,7 @@ export class WorldSim {
     this.updateWaves(dt);
     this.updateSurge(dt);
     this.updateZones(dt);
+    if (this.anyPlague) this.updatePlague();
     this.updateWalls();
     this.updateEnemies(dt);
     this.updateThralls(dt);
@@ -1597,6 +1687,7 @@ export class WorldSim {
     for (const z of [...this.zones.values()]) {
       if (this.time >= z.until) {
         this.zones.delete(z.id);
+        this.plagueZones.delete(z.id);
         this.emit({ t: 'zoneGone', id: z.id });
         continue;
       }
@@ -1765,6 +1856,7 @@ export class WorldSim {
       this.dotAccum.delete(e.id);
       if (this.surge?.ids.delete(e.id)) this.surge.killed++;
       const def = ENEMIES[e.def];
+      if (e.withered > 0 && this.legends.size) this.spreadWithered(e);
       this.emit({
         t: 'death',
         id: e.id,
@@ -1799,6 +1891,65 @@ export class WorldSim {
         this.emberPool(e.x, e.z, EMBER_DEATH.radius, EMBER_DEATH.poolS, e.damage * EMBER_DEATH.poolDpsMult);
         this.emit({ t: 'burst', kind: 'ember', x: e.x, z: e.z, r: EMBER_DEATH.radius });
       }
+    }
+  }
+
+  /**
+   * Plague Choir 4 (Contagion): an enemy dying inside its stacker's own Miasma passes its Withered stacks to up to
+   * LEGEND.spreadMax living enemies within LEGEND.spreadR (nearest first). One hop per death; the neighbours that die in the
+   * cloud pass it on again, which is the point and is bounded by the enemies alive.
+   */
+  private spreadWithered(dead: Enemy) {
+    const owner = dead.witheredOwner;
+    if (!owner || !this.legends.get(owner)?.miasmaSpreadsWithered) return;
+    let cap = 0;
+    for (const z of this.zones.values()) {
+      if (z.hostile || z.kind !== 'miasma' || z.owner !== owner) continue;
+      if (Math.hypot(dead.x - z.x, dead.z - z.z) <= z.r + dead.radius) cap = Math.max(cap, z.witheredCap);
+    }
+    if (cap <= 0) return;
+    const near = [...this.enemies.values()]
+      .filter((o) => o.id !== dead.id && o.hp > 0 && o.state !== 'dead' && o.state !== 'burrow' && o.area === dead.area && Math.hypot(o.x - dead.x, o.z - dead.z) <= LEGEND.spreadR)
+      .sort((a, b) => Math.hypot(a.x - dead.x, a.z - dead.z) - Math.hypot(b.x - dead.x, b.z - dead.z))
+      .slice(0, LEGEND.spreadMax);
+    if (!near.length) return;
+    for (const o of near) {
+      o.withered = Math.min(cap, Math.max(o.withered, 0) + dead.withered);
+      o.witheredT = Math.max(o.witheredT, WITHERED.durationMs / 1000);
+      o.witheredDps = Math.max(o.witheredDps, dead.witheredDps);
+      o.witheredOwner = owner;
+    }
+    this.emit({ t: 'legend', kind: 'spread', by: owner, x: dead.x, z: dead.z, r: LEGEND.spreadR });
+  }
+
+  /**
+   * Plague Choir 5 (Chain Plague): an enemy whose Withered stacks reach the owner's witheredBurstAt loses them and a fresh Miasma
+   * (the owner's last cast: same size, damage and duration) opens on it. 1 s cooldown per enemy; at most LEGEND.burstClouds of
+   * these clouds stand at once, so a dense pack cannot run away with it.
+   */
+  private updatePlague() {
+    for (const e of this.enemies.values()) {
+      if (e.withered <= 0 || e.state === 'dead' || e.hp <= 0) continue;
+      const owner = e.witheredOwner;
+      const at = owner ? (this.legends.get(owner)?.witheredBurstAt ?? 0) : 0;
+      if (at <= 0 || e.withered < at || this.time < (e.plagueAt ?? 0)) continue;
+      if (this.plagueZones.size >= LEGEND.burstClouds) return;
+      const last = this.lastMiasma.get(owner);
+      const r = last?.r ?? ABILITIES.miasma.radius;
+      const dps = last?.dps ?? e.witheredDps / WITHERED.dpsPerStack;
+      e.plagueAt = this.time + LEGEND.burstCdS;
+      e.withered = 0;
+      e.witheredT = 0;
+      e.witheredDps = 0;
+      const zone: Zone = {
+        id: this.id(), kind: 'miasma', owner, x: e.x, z: e.z, r,
+        until: this.time + (last?.durationMs ?? 6000) / 1000, bornAt: this.time, tick: 0, dps,
+        slow: MIASMA_SLOW, witheredCap: Math.max(last?.cap ?? 5, at), bloom: last?.bloom ?? false, hostile: false,
+      };
+      this.zones.set(zone.id, zone);
+      this.plagueZones.add(zone.id);
+      this.emit({ t: 'zone', zone });
+      this.emit({ t: 'legend', kind: 'plague', by: owner, x: e.x, z: e.z, r });
     }
   }
 
@@ -2134,6 +2285,7 @@ export class WorldSim {
       this.damageEnemy(e, Math.max(1, e.knellDamage ?? 1), e.knellOwner ?? '');
     }
     e.flash = Math.max(0, e.flash - dt * 8);
+    if ((e.markT ?? 0) > 0) e.markT! -= dt;
     if (e.slowT > 0) e.slowT -= dt;
     if ((e.wardSlowT ?? 0) > 0) e.wardSlowT! -= dt;
     if (e.fractureT > 0) {
@@ -2585,7 +2737,7 @@ export class WorldSim {
       if (target) {
         const e = target;
         engage(e.x, e.z, e.radius, () => {
-          const dealt = this.damageEnemy(e, t.damage * ((t.rallyT ?? 0) > 0 ? RALLY.damageMult : 1) * this.cursedMult(t), t.owner, t);
+          const dealt = this.damageEnemy(e, t.damage * ((t.rallyT ?? 0) > 0 ? RALLY.damageMult : 1) * this.cursedMult(t) * this.rallyMult(t, e), t.owner, t);
           if (t.kind === 'wraith') {
             e.chillT = CHILL.durationS;
             this.bellHeal(t);
@@ -2596,7 +2748,7 @@ export class WorldSim {
       } else if (bossTarget) {
         const b = this.boss.state;
         engage(b.x, b.z, BOSS_RADIUS, () => {
-          this.boss.damage(t.damage * ((t.rallyT ?? 0) > 0 ? RALLY.damageMult : 1) * this.cursedMult(t), t.owner, 0);
+          this.boss.damage(t.damage * ((t.rallyT ?? 0) > 0 ? RALLY.damageMult : 1) * this.cursedMult(t) * this.rallyMult(t, null), t.owner, 0);
           this.emit({ t: 'thrallHit', id: t.id, target: -1, x: t.x, z: t.z, tx: b.x, tz: b.z, kind: t.kind, dmg: Math.round(t.damage * this.cursedMult(t)) });
         });
       } else {

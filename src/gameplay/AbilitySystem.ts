@@ -43,6 +43,7 @@ import { fxImage } from '../graphics/fxImages';
 import { BOSS_RADIUS } from './sim/BossBrain';
 import type { BossState, Corpse, Enemy, Intent, SimEvent, Thrall } from './sim/types';
 import type { Player } from './Player';
+import { LEGEND, effectiveWitheredCap, shatterDamage, wardReflectDamage } from './legendary';
 import { audio } from '../audio/Audio';
 import { HEMORRHAGE } from '../content/statuses';
 import { CAST_FLOW } from '../content/combatFlow';
@@ -310,6 +311,7 @@ export class AbilitySystem {
       if (empowered) {
         p.spendSouls();
         this.soulRelease();
+        this.wraithNova();
       } else p.essence -= def.essenceCost;
       // A Ritual Sickle gives back a share of Exhume's essence (none was spent on an empowered cast).
       if (id === 'exhume' && !empowered && p.loadout.exhumeRefund > 0) p.essence = Math.min(p.stats.maxEssence, p.essence + def.essenceCost * p.loadout.exhumeRefund);
@@ -346,7 +348,7 @@ export class AbilitySystem {
     const lo = p.loadout;
     // Weapon line: a wand's needle strikes softer (but faster); a sickle's leaves the target Withered; a staff's pierces on.
     const dmg = this.sp * ABILITIES.bone_needle.power * lo.needleDamageMult * (0.9 + Math.random() * 0.2);
-    const withered = lo.needleWithered > 0 ? { withered: lo.needleWithered, witheredCap: this.ctx.discipline.mods.witheredMaxStacks } : {};
+    const withered = lo.needleWithered > 0 ? { withered: lo.needleWithered, witheredCap: effectiveWitheredCap(this.ctx.discipline.mods) } : {};
     const crit = Math.random() < 0.08;
     effects.projectile({
       from,
@@ -507,14 +509,15 @@ export class AbilitySystem {
             effects.flash({ x: e.x, y: 0.8, z: e.z, color: S.bone, size: 0.65, duration: 0.14 });
           }
         }
-        if (ids.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids, dmg, fracture: 1, bleed: dmg * HEMORRHAGE.dpsFrac });
+        const rally = this.ctx.discipline.mods.spearRally > 0 ? { spear: true } : {};
+        if (ids.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids, dmg, fracture: 1, bleed: dmg * HEMORRHAGE.dpsFrac, ...rally });
         const b = this.ctx.boss();
         if (b.active) {
           const rx = b.x - origin.x;
           const rz = b.z - origin.z;
           const along = rx * dx + rz * dz;
           if (along > 0 && along < range + BOSS_RADIUS && Math.abs(rx * dz - rz * dx) < halfW + BOSS_RADIUS) {
-            this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, fracture: 1, boss: true });
+            this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, fracture: 1, boss: true, ...(ids.length ? {} : rally) });
             this.ctx.number(b.x, b.z, dmg, 'spear');
           }
         }
@@ -617,7 +620,7 @@ export class AbilitySystem {
       r,
       dps: this.sp * def.power,
       durationMs: 6000,
-      witheredCap: discipline.mods.witheredMaxStacks,
+      witheredCap: effectiveWitheredCap(discipline.mods),
       bloom: discipline.mods.miasmaBurstsCorpses,
     };
     effects.projectile({
@@ -1187,6 +1190,7 @@ export class AbilitySystem {
     audio.play('mantle', ev.x, ev.z);
     if (!mine) return;
     const p = this.ctx.player;
+    if (ev.corpses > 0) this.onCorpseConsumed();
     if (!p.alive) {
       handle.kill();
       ring.kill();
@@ -1203,10 +1207,159 @@ export class AbilitySystem {
     this.ctx.shake(0.04);
   }
 
+  // ---------------------------------------------------------------------------
+  // Legendary set mechanics that resolve on the caster's own client (docs/LEGENDARY-SETS.md). Damage goes out as ordinary
+  // 'hit' intents, so a co-op guest's set works against the host's sim with no extra protocol. Every number is a mod or LEGEND.
+  // ---------------------------------------------------------------------------
+
+  /** Requiem wisps (client-owned): each orbits the caster and heals; at most LEGEND.wispCap at once. */
+  private wisps: { born: number; until: number; nextHeal: number; speed: number; radius: number; fx: Handle }[] = [];
+
+  get wispCount() {
+    return this.wisps.length;
+  }
+
+  /** A corpse of yours was consumed (Exhume, Litany, Offering, Mantle, Corpse Explosion): Requiem 4 summons a healing wisp. */
+  onCorpseConsumed() {
+    const { player: p, effects } = this.ctx;
+    const secs = this.ctx.discipline.mods.corpseWisp;
+    if (!(secs > 0) || !p.alive) return;
+    const now = this.ctx.now();
+    if (this.wisps.length >= LEGEND.wispCap) {
+      // At the cap a new corpse renews the wisp that would fade first instead of adding another.
+      const w = this.wisps.reduce((a, b) => (a.until <= b.until ? a : b));
+      w.until = now + secs * 1000;
+      w.fx.kill();
+      w.fx = this.wispFx(w, secs, p);
+      return;
+    }
+    const n = this.wisps.length;
+    const w = { born: now, until: now + secs * 1000, nextHeal: now + 1000, speed: 2.1 + n * 0.45, radius: 1.15 + n * 0.28, fx: null as unknown as Handle };
+    w.fx = this.wispFx(w, secs, p);
+    this.wisps.push(w);
+    effects.emit({ x: p.x, y: 1.2, z: p.z, count: 6, color: SOUL.pale, spread: 0.3, speed: 1.2, up: 0.8, life: 0.45, size: 0.16 });
+  }
+
+  /** One orbiting wisp: a single additive sprite (no light). */
+  private wispFx(w: { speed: number; radius: number }, secs: number, p: Player): Handle {
+    return this.ctx.effects.orbit({ tex: fxImage('wisp'), color: SOUL.jade, count: 1, radius: w.radius, y: 1.5, size: 0.6, duration: secs, speed: w.speed, follow: () => ({ x: p.x, z: p.z }) });
+  }
+
+  /** Where a wisp is now (for the nova it releases). */
+  private wispAt(w: { born: number; speed: number; radius: number }, now: number) {
+    const p = this.ctx.player;
+    const t = Math.max(0, (now - w.born) / 1000);
+    const a = t * w.speed;
+    const r = w.radius * Math.min(1, 0.25 + t * 3);
+    return { x: p.x + Math.cos(a) * r, z: p.z + Math.sin(a) * r };
+  }
+
+  private tickWisps(now: number) {
+    if (!this.wisps.length) return;
+    const p = this.ctx.player;
+    let heal = 0;
+    for (let i = this.wisps.length - 1; i >= 0; i--) {
+      const w = this.wisps[i];
+      if (!p.alive || now >= w.until) {
+        w.fx.kill();
+        this.wisps.splice(i, 1);
+        continue;
+      }
+      while (now >= w.nextHeal && w.nextHeal < w.until) {
+        heal += p.stats.maxHp * LEGEND.wispHealFrac;
+        w.nextHeal += 1000;
+      }
+    }
+    if (heal > 0 && p.alive) {
+      p.heal(heal);
+      if (heal >= 1) this.ctx.note?.(`+${Math.round(heal)}`, 'heal');
+    }
+  }
+
+  /** Requiem 5: Soul Harvest empowered a rite, so every wraith (thrall) and wisp of yours releases a nova (capped, one sound). */
+  private wraithNova() {
+    const k = this.ctx.discipline.mods.wraithNova;
+    const { player: p, effects } = this.ctx;
+    if (!(k > 0) || !p.alive) return;
+    const now = this.ctx.now();
+    const src: { x: number; z: number }[] = this.wisps.map((w) => this.wispAt(w, now));
+    for (const t of this.ctx.thralls?.().values() ?? []) if (t.owner === this.ctx.selfId && t.kind === 'wraith' && t.state !== 'dead' && t.state !== 'rising') src.push({ x: t.x, z: t.z });
+    if (!src.length) return;
+    const dmg = this.sp * k;
+    const struck = new Set<number>();
+    let shown = 0;
+    for (const s of src.slice(0, LEGEND.novaMax)) {
+      const ids: number[] = [];
+      for (const e of this.ctx.enemies().values()) {
+        if (e.state === 'dead' || e.state === 'burrow' || Math.hypot(e.x - s.x, e.z - s.z) > LEGEND.novaR + e.radius) continue;
+        ids.push(e.id);
+        if (!struck.has(e.id) && shown < 12) {
+          struck.add(e.id);
+          shown++;
+          this.ctx.number(e.x, e.z, dmg, 'hit');
+        }
+      }
+      if (ids.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids, dmg });
+      const b = this.ctx.boss();
+      if (b.active && Math.hypot(b.x - s.x, b.z - s.z) <= LEGEND.novaR + BOSS_RADIUS) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, boss: true });
+      effects.decal({ tex: fx.ring(), color: SOUL.jade, x: s.x, z: s.z, r: LEGEND.novaR, duration: 0.45, opacity: 0.8, growFrom: 0.15 });
+      effects.emit({ x: s.x, y: 0.9, z: s.z, count: 8, color: SOUL.pale, spread: 0.4, speed: 3.2, up: 0.6, life: 0.4, size: 0.16 });
+    }
+    audio.play('soulRelease', p.x, p.z, 0.8);
+  }
+
+  /** Colossus Mantle 5: the Litany barrier broke under damage; it bursts into bone shards around the caster. */
+  litanyShatter(barrierSize: number) {
+    const { player: p, effects } = this.ctx;
+    const dmg = shatterDamage(barrierSize, this.ctx.discipline.mods.litanyShatter);
+    if (dmg <= 0 || !p.alive) return;
+    const ids: number[] = [];
+    for (const e of this.ctx.enemies().values()) {
+      if (e.state === 'dead' || e.state === 'burrow' || Math.hypot(e.x - p.x, e.z - p.z) > LEGEND.shatterR + e.radius) continue;
+      ids.push(e.id);
+      if (ids.length <= 12) this.ctx.number(e.x, e.z, dmg, 'hit');
+    }
+    if (ids.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids, dmg });
+    const b = this.ctx.boss();
+    if (b.active && Math.hypot(b.x - p.x, b.z - p.z) <= LEGEND.shatterR + BOSS_RADIUS) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, boss: true });
+    effects.decal({ tex: fx.ring(), color: S.bone, x: p.x, z: p.z, r: LEGEND.shatterR, duration: 0.5, opacity: 1, growFrom: 0.1 });
+    nf.boneSplinters(effects, p.x, 1.0, p.z, { n: 12, color: S.bone, speed: 6 });
+    effects.emit({ x: p.x, y: 0.8, z: p.z, count: 14, color: S.bone, spread: 0.5, speed: 5, up: 1.2, life: 0.5, size: 0.16, gravity: 6 });
+    audio.play('boneHit', p.x, p.z, 1.1);
+    this.ctx.shake(0.07);
+  }
+
+  /**
+   * Colossus Mantle 4: Bone Ward turned `boneWard` of a blow; `wardReflect` of that is dealt back at whatever struck it. (x, z) is where
+   * the sim says the blow came from: the attacker's position for melee and ranged enemies, so the nearest body within a body-width of it
+   * is the attacker. A blow with no single owner (a zone, a boss pit) reflects nothing.
+   */
+  reflectWard(raw: number, boneWard: number, x: number, z: number) {
+    const dmg = wardReflectDamage(raw, boneWard, this.ctx.discipline.mods.wardReflect);
+    if (dmg < 1) return;
+    let best: Enemy | null = null;
+    let bestD = 0.6;
+    for (const e of this.ctx.enemies().values()) {
+      if (e.state === 'dead' || e.state === 'burrow') continue;
+      const d = Math.hypot(e.x - x, e.z - z);
+      if (d <= bestD + e.radius * 0.5 && (!best || d < bestD)) (best = e), (bestD = d);
+    }
+    const b = this.ctx.boss();
+    if (best) {
+      this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [best.id], dmg });
+      this.ctx.number(best.x, best.z, dmg, 'hit');
+      this.ctx.effects.emit({ x: best.x, y: 1, z: best.z, count: 5, color: S.bone, spread: 0.2, speed: 2.4, up: 0.8, life: 0.3, size: 0.12 });
+    } else if (b.active && Math.hypot(b.x - x, b.z - z) <= BOSS_RADIUS + 0.6) {
+      this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, boss: true });
+      this.ctx.number(b.x, b.z, dmg, 'hit');
+    }
+  }
+
   /** Per frame: the Veil Step glide, then the caster's mantle shreds enemies beside them (client-resolved, like Marrow Spear). */
   update(now: number) {
     this.newBlood.update(now);
     this.tickTimed(now);
+    this.tickWisps(now);
     if (this.dashing) {
       const d = this.dashing;
       const k = Math.min(1, (now - d.start) / d.dur);
@@ -1355,7 +1508,7 @@ export class AbilitySystem {
     const tip = avatar.tip();
     const end = { x: origin.x + dx * def.range, y: 1, z: origin.z + dz * def.range };
     const dmg = this.sp * def.power;
-    const cap = discipline.mods.witheredMaxStacks ?? DETONATE.rotWitheredCap;
+    const cap = effectiveWitheredCap(discipline.mods) ?? DETONATE.rotWitheredCap;
     effects.flash({ x: tip.x, y: tip.y, z: tip.z, color: LN.rot, size: 0.7, duration: 0.14 });
     audio.play('needleCast', p.x, p.z, 0.8);
     effects.beam(tip, () => end, LN.deep, 0.03, 0.18);
@@ -1411,6 +1564,7 @@ export class AbilitySystem {
   onOffering(ev: Extract<SimEvent, { t: 'offering' }>, mine: boolean, follow: () => { x: number; z: number } | null) {
     const { effects, player: p, discipline } = this.ctx;
     if (!ev.ok) return;
+    if (mine) this.onCorpseConsumed();
     // A jade wisp flies corpse → caster (Exhume's beam runs the other way).
     effects.decal({ tex: fx.ring(), color: X.spirit, x: ev.x, z: ev.z, r: 1.1, duration: 0.5, opacity: 0.9, growFrom: 0.3 });
     effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 14, color: X.spirit, spread: 0.3, speed: 1, up: 2.2, life: 0.6, size: 0.18 });
@@ -1560,7 +1714,7 @@ export class AbilitySystem {
     if (!c || (p.area && c.area !== p.area)) return 'no_corpse';
     p.face(c.x, c.z);
     avatar.cast('cast', 2.4, p.facing, CAST_FLOW.carrion_seed.gestureSeconds, 'carrion_seed');
-    const cap = discipline.mods.miasmaBurstsCorpses ? Math.max(CARRION_SEED.witheredCap, discipline.mods.witheredMaxStacks ?? 0) : CARRION_SEED.witheredCap;
+    const cap = discipline.mods.miasmaBurstsCorpses ? Math.max(CARRION_SEED.witheredCap, effectiveWitheredCap(discipline.mods)) : CARRION_SEED.witheredCap;
     this.ctx.send({ t: 'signature', by: this.ctx.selfId, sig: 'seed', x: c.x, z: c.z, dx: 0, dz: 0, sp: this.sp, cap });
     audio.play('miasma', c.x, c.z, 1.2);
     return 'ok';
@@ -1881,6 +2035,7 @@ export class AbilitySystem {
 
   /** Everyone sees the blast when the host reports it (ember burst + bone shrapnel). */
   onDetonated(ev: Extract<SimEvent, { t: 'detonated' }>, mine: boolean) {
+    if (mine && ev.ok) this.onCorpseConsumed();
     if (!ev.ok) return;
     const { effects } = this.ctx;
     const { x, z, r } = ev;
@@ -1942,9 +2097,11 @@ export class AbilitySystem {
     this.ctx.shake(0.08 + Math.min(0.08, (ev.corpses + ev.thralls) * 0.008));
     if (!mine) return;
     const consumed = ev.corpses + ev.resonant + ev.thralls;
+    if (ev.corpses + ev.resonant > 0) this.onCorpseConsumed();
     if (discipline.mods.litanyBarrier) {
       const barrier = p.stats.maxHp * discipline.mods.litanyBarrier * consumed;
       p.barrier += barrier;
+      if (barrier > 0) p.barrierPeak = Math.max(p.barrierPeak, p.barrier);
       if (barrier >= 1) this.ctx.note?.(`+${Math.round(barrier)} barrier`, 'ward');
     }
     if (discipline.mods.corpseHeal) {

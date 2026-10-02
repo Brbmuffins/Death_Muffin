@@ -21,8 +21,8 @@ export function makeSnapshot(sim: WorldSim, full: boolean): WorldSnapshot {
   }
   const thralls: ThrallRow[] = [];
   for (const t of sim.thralls.values()) {
-        // Field 10: bit 0 empowered, bit 1 rallied, bit 2 hexed by a Bog Hag (older clients read it as a truthy flag only).
-    thralls.push([t.id, t.owner, t.kind, r2(t.x), r2(t.z), r2(t.facing), Math.round(t.hp), Math.round(t.maxHp), T_STATES.indexOf(t.state) | (t.moving ? 16 : 0), r2(t.stateT), (t.empowered ? 1 : 0) | ((t.rallyT ?? 0) > 0 ? 2 : 0) | ((t.cursedT ?? 0) > 0 ? 4 : 0), t.speed]);
+        // Field 10: bit 0 empowered, bit 1 rallied, bit 2 hexed by a Bog Hag, bit 3 Legion Champion (older clients read it as a truthy flag only).
+    thralls.push([t.id, t.owner, t.kind, r2(t.x), r2(t.z), r2(t.facing), Math.round(t.hp), Math.round(t.maxHp), T_STATES.indexOf(t.state) | (t.moving ? 16 : 0), r2(t.stateT), (t.empowered ? 1 : 0) | ((t.rallyT ?? 0) > 0 ? 2 : 0) | ((t.cursedT ?? 0) > 0 ? 4 : 0) | (t.champion ? 8 : 0), t.speed]);
   }
   return {
     t: sim.time,
@@ -170,6 +170,7 @@ export class WorldMirror {
           slot: 0,
           bornAt: 0,
           empowered: !!(row[10] & 1),
+          ...(row[10] & 8 ? { champion: true } : {}),
           flash: 0,
           gait: 0,
           moving: false,

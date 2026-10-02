@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { LEGEND } from '../gameplay/legendary';
 import { BURROW, CENSER, ENEMIES, UNBIND, type EliteAffix, type EnemyId } from '../content/enemies';
 import type { DisciplineId, ThrallKind } from '../content/disciplines';
 import type { Corpse, Enemy, SimEvent, Thrall } from '../gameplay/sim/types';
@@ -407,11 +408,12 @@ export class EntityViews {
       gearTint: !!kit?.armor,
       tint: look?.tint ?? legion?.tint ?? (wraith ? 0xb9c4ff : 0xf4ecff),
       emissive: look?.emissive ?? legion?.emissive ?? (wraith ? 0x8f9ed1 : 0x1f8f86),
-      emissiveIntensity: wraith ? 1.1 : (look?.glow ?? legion?.glow ?? 0.18) + (t.empowered ? 0.22 : 0),
+      emissiveIntensity: (wraith ? 1.1 : (look?.glow ?? legion?.glow ?? 0.18) + (t.empowered ? 0.22 : 0)) + (t.champion ? 0.35 : 0),
       spectral: wraith,
-      scale: kindLook?.scale ?? (t.kind === 'shieldbearer' ? 1.1 : 1),
+      scale: (kindLook?.scale ?? (t.kind === 'shieldbearer' ? 1.1 : 1)) * (t.champion ? LEGEND.championScale : 1),
       // Every thrall wears the friendly jade rim (your own a bit stronger than a co-op ally's); enemies never do.
-      rim: { color: SPELL_FX.exhume.spirit, strength: this.isOwn?.(t.owner) === false ? THRALL_RIM_ALLY : THRALL_RIM_OWN },
+      // A Legion Champion wears a gold rim instead of the jade one.
+      rim: { color: t.champion ? 0xd9a441 : SPELL_FX.exhume.spirit, strength: t.champion ? 1.4 : this.isOwn?.(t.owner) === false ? THRALL_RIM_ALLY : THRALL_RIM_OWN },
     });
     // The kit weapon's metal colours the warriors' blade; the archer's bow and the bone mage's staff become the baked GLB props.
     const weapon = kit?.weapon ? gearTier(kit.weapon.itemId, kit.weapon.rarity) : null;
@@ -441,11 +443,11 @@ export class EntityViews {
     const v: View = { c, x: t.x, z: t.z, facing: t.facing, lastState: '', kind: t.kind, animSkip: 0, animDt: 0, float: wraith };
     v.ring = this.effects.decal({
       tex: fx.ring(),
-      color: wraith ? 0x8fb4ff : SPELL_FX.exhume.spirit,
+      color: t.champion ? 0xd9a441 : wraith ? 0x8fb4ff : SPELL_FX.exhume.spirit,
       x: t.x,
       z: t.z,
       // Small on purpose: a big horde of thralls otherwise paints the whole floor.
-      r: kindLook?.ring ?? (t.kind === 'hound' ? 0.6 : 0.5),
+      r: (kindLook?.ring ?? (t.kind === 'hound' ? 0.6 : 0.5)) * (t.champion ? 1.3 : 1),
       duration: 1e9,
       opacity: t.empowered ? 1 : 0.7,
       follow: () => ({ x: v.x + (v.ox ?? 0), z: v.z + (v.oz ?? 0) }),

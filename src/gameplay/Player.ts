@@ -1,5 +1,6 @@
 import { BULWARK, KNIGHT_RAGE, SOUL_HARVEST } from '../content/abilities';
 import { CHILL } from '../content/statuses';
+import { damageTakenMult } from './legendary';
 import type { AreaId } from '../content/areas';
 import type { ClassFamily } from '../content/disciplines';
 import type { DerivedStats } from './characterStats';
@@ -32,6 +33,13 @@ export class Player {
   private clockNow = 0;
   private readonly rules: ResourceRules;
   barrier = 0;
+  /** Black Litany's barrier at its largest (0 once it is gone); Colossus Mantle's Litany Shatter bursts for a multiple of it. */
+  barrierPeak = 0;
+  /** Set by takeDamage when damage (not decay) broke the Litany barrier: the size it had. The scene reads and clears it. */
+  barrierBroke = 0;
+  /** Requiem of Wraiths: Soul Harvest fills this many times faster (1 = normal), with the fraction carried between kills. */
+  soulRateMult = 1;
+  private soulAcc = 0;
   /** Bone Mantle holds the barrier until this time (scene ms); it decays as usual after. */
   barrierHoldUntil = 0;
   /** Hollow Knight — Bulwark: the shield is up until this time, perfect until the earlier one. */
@@ -140,7 +148,13 @@ export class Player {
   /** Add harvested souls; returns true on the kill that fills the meter. */
   addSouls(n = 1): boolean {
     if (this.soulsCharged) return false;
-    this.souls = Math.min(this.soulsMax, this.souls + n);
+    let gain = n;
+    if (this.soulRateMult !== 1) {
+      this.soulAcc += n * this.soulRateMult;
+      gain = Math.floor(this.soulAcc);
+      this.soulAcc -= gain;
+    }
+    this.souls = Math.min(this.soulsMax, this.souls + gain);
     return this.soulsCharged;
   }
 
@@ -181,6 +195,7 @@ export class Player {
     );
     if (this.resource.kind === 'veil' && this.resource.value <= 0) this.veilForm = false;
     if (now >= this.barrierHoldUntil) this.barrier = Math.max(0, this.barrier - this.stats.maxHp * 0.04 * dt);
+    if (this.barrier <= 0) this.barrierPeak = 0;
     if (now < this.rootedUntil) return false;
 
     const speed = this.stats.moveSpeed * (this.veilForm || now < this.betweenUntil ? 1.2 : 1) * this.moveMult * (now < this.chilledUntil ? CHILL.moveMult : 1);
@@ -229,17 +244,23 @@ export class Player {
    * `from` is where the blow came from — Bulwark only covers the front, so
    * without it a guarded hit is treated as coming from behind (no mitigation).
    */
-  takeDamage(raw: number, wardPct: number, now: number, from?: { x: number; z: number }, source?: string): number {
+  takeDamage(raw: number, wardPct: number, now: number, from?: { x: number; z: number }, source?: string, guard = 0): number {
     this.lastBlock = 'none';
     if (!this.alive || this.god) return 0;
     if (this.resource.kind === 'veil' && source !== 'toxic' && source !== 'burn' && (this.veilForm || now < this.betweenUntil)) return 0;
-    let dmg = raw * (1 - Math.min(0.6, wardPct));
+    // Bone Ward (capped 60%) and Colossus Guard stack multiplicatively; the whole stack is capped at 75% (legendary.ts). guard 0 = the old maths.
+    let dmg = raw * damageTakenMult(wardPct, guard);
     if (now < this.bulwarkUntil && this.blowIsFrontal(from)) {
       this.lastBlock = now < this.bulwarkPerfectUntil ? 'perfect' : 'front';
       dmg *= 1 - BULWARK.damageCut;
     }
     const absorbed = Math.min(this.barrier, dmg);
+    const barrierBefore = this.barrier;
     this.barrier -= absorbed;
+    if (barrierBefore > 0 && this.barrier <= 0 && this.barrierPeak > 0) {
+      this.barrierBroke = this.barrierPeak;
+      this.barrierPeak = 0;
+    }
     dmg -= absorbed;
     this.hp -= dmg;
     this.lastHurtAt = now;

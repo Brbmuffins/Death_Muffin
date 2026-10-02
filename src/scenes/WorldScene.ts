@@ -13,7 +13,8 @@ import { hitstop } from '../graphics/hitstop';
 import { preloadFxImages } from '../graphics/fxImages';
 import { ARMOR_BY_ID } from '../content/armorSets';
 import { AREAS, AREA_ORDER, BOSS_SUMMON_SHARDS, CHAPTERHOUSE_RETURN, DOORS, PLAYER_SPAWN, type AreaId, type DoorDef, type Interactable } from '../content/areas';
-import { disciplineFor, type Discipline } from '../content/disciplines';
+import { disciplineFor, type Discipline, type DisciplineMods } from '../content/disciplines';
+import { LEGEND, colossusActive, simLegendActive, simLegendOf } from '../gameplay/legendary';
 import { AFFIX_TUNING, ELITE_AFFIXES, ENEMIES, WAVE_THEMES, type EliteAffix, type EnemyId } from '../content/enemies';
 import { HEALING_FLASKS, itemMeta } from '../content/items';
 import { REAGENT_ITEMS } from '../content/reagents';
@@ -2576,15 +2577,21 @@ export class WorldScene implements GameScene, RuntimeView {
             this.player.essence = Math.min(this.player.stats.maxEssence, this.player.essence + ABILITIES.exhume.essenceCost);
             this.player.cooldowns.delete('exhume');
             this.floating.spawn(this.player.x, 2.4, this.player.z, 'The corpse is gone', 'info');
-          } else if (this.discipline.mods.corpseHeal) {
-            const amt = this.player.stats.maxHp * this.discipline.mods.corpseHeal;
-            this.player.heal(amt);
-            this.floating.spawn(this.player.x, 2.2, this.player.z, `+${Math.round(amt)}`, 'heal');
+          } else {
+            this.abilities.onCorpseConsumed();
+            if (this.discipline.mods.corpseHeal) {
+              const amt = this.player.stats.maxHp * this.discipline.mods.corpseHeal;
+              this.player.heal(amt);
+              this.floating.spawn(this.player.x, 2.2, this.player.z, `+${Math.round(amt)}`, 'heal');
+            }
           }
         }
         break;
       case 'litanyResult':
         this.abilities.onLitany(ev, ev.by === me);
+        break;
+      case 'legend':
+        this.onLegendEvent(ev);
         break;
       case 'detonated':
         if (ev.ok) this.abilities.onDetonated(ev, ev.by === me);
@@ -3219,10 +3226,35 @@ export class WorldScene implements GameScene, RuntimeView {
     if (base.family === 'necromancer') this.discipline = { ...this.discipline, mods: applyLegionMods(this.discipline.mods, this.legionBonus()) };
     // Armor set bonuses fold in last, the same way (flat stat bonuses go through computeStats instead).
     this.discipline = { ...this.discipline, mods: applySetMods(this.discipline.mods, resolveSetBonuses(this.inventory?.all ?? []).totals) };
+    // QA only (never set outside a DEV build): mods forced on through __cwDebug.forceMods.
+    if (import.meta.env.DEV && Object.keys(this.forcedMods).length) this.discipline = { ...this.discipline, mods: { ...this.discipline.mods, ...this.forcedMods } };
     if (this.player) {
       this.player.soulsMax = Math.max(10, SOUL_HARVEST.souls - fx.soulsDiscount);
+      this.player.soulRateMult = this.discipline.mods.soulHarvestRateMult ?? 1;
       this.refreshStats();
     }
+  }
+
+  /** DEV QA: mods merged over the discipline's by __cwDebug.forceMods. */
+  private forcedMods: Partial<DisciplineMods> = {};
+  /** The legendary mods the shared sim last heard from us (signature) and when; resent when they change and every few seconds (host migration, late joins). */
+  private legendSig = '';
+  private legendSentAt = -1e9;
+  /** Legendary VFX budget: a window start and how many have played in it. */
+  private legendFxAt = 0;
+  private legendFxN = 0;
+  private rallyMark: { kill(): void } | null = null;
+
+  /** Tell the sim which legendary mechanics it must run for us (only the ones it resolves: the rest happen on this client). */
+  private syncLegend(now: number, force = false) {
+    const l = simLegendOf(this.discipline.mods);
+    const sig = simLegendActive(l) ? JSON.stringify(l) : '';
+    if (!force && sig === this.legendSig && (!sig || now - this.legendSentAt < 5000)) return;
+    // Nothing to say and nothing said: stay silent (every ordinary build).
+    if (!sig && !this.legendSig) return;
+    this.legendSig = sig;
+    this.legendSentAt = now;
+    this.sendIntent({ t: 'legend', by: this.selfId, mods: l });
   }
 
   /** The difficulty the world is running at: yours solo/as host, the host's as a guest. */
@@ -3295,8 +3327,17 @@ export class WorldScene implements GameScene, RuntimeView {
     const flaskWard = brewWard(this.player.brews, from, this.now);
     const ward = this.discipline.mods.wardPerThrall * myThralls + lanternWard + autoGuard + flaskWard;
     const now = this.now;
+    // Colossus Mantle: extra reduction while 3+ thralls stand (stacks multiplicatively; Player.takeDamage caps the whole at 75%).
+    const guard = colossusActive(this.discipline.mods, myThralls) ? this.discipline.mods.colossusGuard : 0;
     // The blow's origin lets Bulwark decide whether it covered this one.
-    const taken = this.player.takeDamage(raw, ward, now, { x, z }, from);
+    const taken = this.player.takeDamage(raw, ward, now, { x, z }, from, guard);
+    // Legendary: Bone Ward reflects part of what it prevented; a Litany barrier broken by this blow shatters.
+    if (this.discipline.mods.wardReflect > 0) this.abilities.reflectWard(raw, Math.min(LEGEND.wardCap, this.discipline.mods.wardPerThrall * myThralls), x, z);
+    if (this.player.barrierBroke > 0) {
+      const size = this.player.barrierBroke;
+      this.player.barrierBroke = 0;
+      if (this.discipline.mods.litanyShatter > 0) this.abilities.litanyShatter(size);
+    }
     if (chillMs && taken > 0 && this.player.alive) {
       this.player.chilledUntil = Math.max(this.player.chilledUntil, now + chillMs);
       this.floating.spawn(this.player.x, 2.5, this.player.z, 'Chilled', 'info');
@@ -3329,6 +3370,55 @@ export class WorldScene implements GameScene, RuntimeView {
       this.effects.emit({ x: this.player.x, y: 1.8, z: this.player.z, count: 12, color: SPELL_FX.affix.bell, spread: 0.3, speed: 1.2, up: 0.4, life: 0.5, size: 0.2 });
     }
     if (!this.player.alive) this.onDeath();
+  }
+
+  /**
+   * Legendary set VFX from the sim (death burst, rally mark, Contagion, Chain Plague). Reuses existing rings, splinters and spores;
+   * at most LEGEND_FX_MAX per half second so a swarm of bursts can't paint the screen, and only near the camera.
+   */
+  private onLegendEvent(ev: Extract<SimEvent, { t: 'legend' }>) {
+    if (Math.hypot(ev.x - this.player.x, ev.z - this.player.z) > 28) return;
+    if (ev.kind === 'rally') {
+      this.rallyMark?.kill();
+      const id = ev.id ?? -1;
+      this.rallyMark = this.effects.decal({
+        tex: fx.sigil(), color: 0xd9a441, x: ev.x, z: ev.z, r: 0.95, duration: LEGEND.rallyS, opacity: 0.85, pulse: 2.5, spin: 0.8,
+        follow: () => {
+          if (id < 0) {
+            const b = this.bossState();
+            return b.active ? { x: b.x, z: b.z } : null;
+          }
+          const e = this.enemiesMap().get(id);
+          return e ? { x: e.x, z: e.z } : null;
+        },
+      });
+      this.floating.spawn(ev.x, 2.2, ev.z, 'Rally', 'info');
+      return;
+    }
+    if (this.now - this.legendFxAt > 500) {
+      this.legendFxAt = this.now;
+      this.legendFxN = 0;
+    }
+    if (++this.legendFxN > 6) return;
+    const r = ev.r ?? 3;
+    switch (ev.kind) {
+      case 'deathBurst':
+        this.effects.decal({ tex: fx.ring(), color: 0xe8dcc0, x: ev.x, z: ev.z, r, duration: 0.4, opacity: 0.9, growFrom: 0.2 });
+        nf.boneSplinters(this.effects, ev.x, 0.9, ev.z, { n: 10, color: 0xe8dcc0, speed: 5.5 });
+        this.effects.emit({ x: ev.x, y: 0.7, z: ev.z, count: 12, color: 0xe8dcc0, spread: r * 0.3, speed: 4, up: 1.4, life: 0.45, size: 0.18, gravity: 6 });
+        if (this.legendFxN === 1) audio.play('boneHit', ev.x, ev.z, 1.0);
+        break;
+      case 'spread':
+        this.effects.decal({ tex: fx.ring(), color: SPELL_FX.miasma.rot, x: ev.x, z: ev.z, r: r * 0.7, duration: 0.35, opacity: 0.7, growFrom: 0.2 });
+        nf.rotSpores(this.effects, ev.x, ev.z, SPELL_FX.miasma.rot, { r: r * 0.5, n: 6 });
+        break;
+      case 'plague':
+        this.effects.decal({ tex: fx.ring(), color: SPELL_FX.miasma.rot, x: ev.x, z: ev.z, r, duration: 0.5, opacity: 0.9, growFrom: 0.15 });
+        nf.rotSpores(this.effects, ev.x, ev.z, SPELL_FX.miasma.rot, { r: r * 0.6, n: 10 });
+        this.effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 14, color: SPELL_FX.miasma.rot, spread: r * 0.4, speed: 2.6, up: 1.2, life: 0.55, size: 0.22 });
+        if (this.legendFxN === 1) audio.play('miasma', ev.x, ev.z, 0.7);
+        break;
+    }
   }
 
   /** The Drowned Sexton's chain: drag the hero `m` metres toward the hook (never into him), a chain of splashes along the way. */
@@ -3946,6 +4036,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (moved) this.cancelRecall();
     this.tickCombat(now);
     this.abilities.update(now);
+    this.syncLegend(now);
     // Walking follows its path. Once standing, the mouse turns the hero to aim
     // without changing position or replacing the clicked destination.
     if (p.alive && this.mouse.aiming && !p.moving && !p.hasPath && !this.attackTarget && this.autoAim === null && now >= p.castUntil && !this.gathering.active) {
@@ -4613,6 +4704,22 @@ export class WorldScene implements GameScene, RuntimeView {
         this.sendIntent(id === 'prelate' ? { t: 'summonBoss', by: this.selfId } : { t: 'summonBoss', by: this.selfId, boss: id });
       },
       god: (on = true) => (this.player.god = on),
+      /** Legendary-set QA: merge mods over the discipline's (e.g. forceMods({ thrallDeathBurst: 0.6 })); forceMods({}) keeps them, forceMods(null) clears. */
+      forceMods: (m: Partial<DisciplineMods> | null) => {
+        this.forcedMods = m === null ? {} : { ...this.forcedMods, ...m };
+        this.applyBoons();
+        this.syncLegend(this.now, true);
+        return this.discipline.mods;
+      },
+      /** Legendary QA: sim-side state the mechanics keep (wisps, barrier peak, thrall champions). */
+      legendState: () => ({
+        wisps: this.abilities.wispCount,
+        barrier: this.player.barrier,
+        barrierPeak: this.player.barrierPeak,
+        souls: this.player.souls,
+        champions: [...this.thrallsMap().values()].filter((t) => t.owner === this.selfId && t.champion).length,
+        thralls: [...this.thrallsMap().values()].filter((t) => t.owner === this.selfId).length,
+      }),
       /** README shot: the four discipline heroes standing in a row beside the player. */
       lineup: () => {
         const ids = ['ossuary', 'gravecaller', 'mourner', 'rotweaver'] as const;
