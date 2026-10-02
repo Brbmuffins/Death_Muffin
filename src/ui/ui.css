@@ -1485,3 +1485,15 @@ body:has(.hud-banner.show) .cw-tip:not(.dragging):not([data-kind='urgent']):not(
 .cw-shelf-item .nm { font-size: 13px; line-height: 1.2; }
 .cw-shelf-item .ct { font-family: var(--cw-font-numeric); font-size: 12px; color: var(--cw-text-faint); min-height: 14px; }
 .cw-recipe .name .botd { font-style: normal; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #8fe39a; margin-left: 8px; }
+
+/* Workbench quantity controls: touch-sized (40px), wrap under the recipe text on phones. */
+.cw-recipe { flex-wrap: wrap; }
+.cw-craft-qty { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.cw-qty-step { display: inline-flex; align-items: stretch; gap: 4px; }
+.cw-craft-qty .cw-button.small { min-height: 40px; min-width: 40px; justify-content: center; }
+.cw-qty-input { width: 56px; min-height: 40px; box-sizing: border-box; text-align: center; font: inherit; font-family: var(--cw-font-numeric); color: inherit; background: var(--cw-inset); border: 1px solid var(--cw-border); }
+.cw-craft-go { flex: 1 1 110px; }
+@media (max-width: 640px) {
+  .cw-recipe { flex-direction: column; align-items: stretch; gap: 10px; }
+  .cw-craft-qty { width: 100%; }
+}
