@@ -37,26 +37,50 @@ const isPlayerRig = (rel) => /^(hero_[^/]+|necromancer)\/character\.glb$/.test(r
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
 const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(d, e.name)) : e.name.endsWith('.glb') ? [join(d, e.name)] : []));
 
-/** Cut an animation to [0, keep] seconds: drop later keys, interpolate a final key at `keep` (linear/slerp-free: nearest-lerp per component). */
+/** Cut an animation to exactly [0, keep] seconds: later keys are dropped and the first key past `keep` is replaced by the
+ *  value interpolated at `keep` (static tracks are often just two keys spanning the whole clip). Samplers can share one
+ *  input accessor, so every cut is planned from the untouched times before anything is rewritten. */
 function trimAnimation(anim, keep) {
-  let changed = false;
+  const plans = [];
+  const inputs = new Map();
   for (const s of anim.listSamplers()) {
     const input = s.getInput();
+    if (!inputs.has(input)) inputs.set(input, input.getArray());
+    const orig = inputs.get(input);
+    const i = orig.findIndex((t) => t > keep + 1e-6);
+    if (i < 0) continue;
+    plans.push({ s, input, orig, i });
+  }
+  const done = new Set();
+  for (const { s, input, orig, i } of plans) {
     const output = s.getOutput();
-    const times = input.getArray();
-    if (times[times.length - 1] <= keep + 1e-6) continue;
     const stride = output.getElementSize();
     const vals = output.getArray();
-    // Last key at or before `keep`, plus one key past it so playback up to `keep` interpolates exactly.
-    let end = times.findIndex((t) => t > keep);
-    end = Math.min(times.length - 1, end);
-    const n = end + 1;
-    if (n >= times.length) continue;
-    input.setArray(times.slice(0, n));
-    output.setArray(vals.slice(0, n * stride));
-    changed = true;
+    const n = i + 1;
+    const out = vals.slice(0, n * stride);
+    if (i > 0 && s.getInterpolation() === 'LINEAR') {
+      const f = (keep - orig[i - 1]) / (orig[i] - orig[i - 1]);
+      let len = 0;
+      for (let c = 0; c < stride; c++) {
+        const a = vals[(i - 1) * stride + c], b = vals[i * stride + c];
+        out[i * stride + c] = a + (b - a) * f;
+        len += out[i * stride + c] ** 2;
+      }
+      if (stride === 4 && s.getOutput().getType() === 'VEC4') {
+        len = Math.sqrt(len) || 1;
+        for (let c = 0; c < 4; c++) out[i * stride + c] /= len;
+      }
+    } else if (i > 0) {
+      for (let c = 0; c < stride; c++) out[i * stride + c] = vals[(i - 1) * stride + c];
+    }
+    output.setArray(out);
+    if (!done.has(input)) {
+      const t = orig.slice(0, n);
+      t[i] = keep;
+      input.setArray(t);
+      done.add(input);
+    }
   }
-  return changed;
 }
 
 let before = 0, after = 0, n = 0;
