@@ -330,6 +330,7 @@ export class EntityViews {
       spectral: wraith,
       fallback: ENEMY_FALLBACK[e.def],
       wings: WINGS[e.def],
+      hitstop: true,
     });
     c.root.scale.setScalar(e.scale / (e.def === 'risen' ? 1 : 1));
     this.group.add(c.root);

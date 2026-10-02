@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BUDGET_MAX, FRAME, HitStop, MIN_GAP, hitstopSeconds } from '../hitstop';
+import { BUDGET_MAX, FRAME, HitStop, MIN_GAP, REFILL, hitstopSeconds, pictureDt } from '../hitstop';
 import { KNOCK_MAX, knockActive, knockImpulse, settleDepth, stepKnock, type Knock } from '../knockback';
 
 describe('hitstop', () => {
@@ -37,8 +37,14 @@ describe('hitstop', () => {
       h.request(1); // heavy hits every frame
       frozen += FRAME - h.tick(FRAME);
     }
-    expect(frozen / secs).toBeLessThan(0.16);
-    expect(frozen).toBeLessThanOrEqual(BUDGET_MAX + secs * 0.12 + 1e-6);
+    expect(frozen / secs).toBeLessThan(0.055);
+    expect(frozen).toBeLessThanOrEqual(BUDGET_MAX + secs * REFILL + 1e-6);
+  });
+
+  it('exempts everything but struck enemies from the frozen clock', () => {
+    expect(pictureDt(FRAME, true, 0)).toBe(0);
+    expect(pictureDt(FRAME, false, 0)).toBe(FRAME);
+    expect(pictureDt(FRAME, true, 1)).toBe(FRAME);
   });
 
   it('is off when disabled (reduced motion)', () => {

@@ -4,7 +4,7 @@ import { assets } from './AssetCache';
 import { warmModel } from './warmModel';
 import { buildBudget } from './buildBudget';
 import { CREATURE_MODELS, type CreatureSlug } from './modelPaths';
-import { hitstop } from './hitstop';
+import { hitstop, pictureDt } from './hitstop';
 import CLIP_TIMINGS_JSON from '../content/clipTimings.json';
 
 /**
@@ -93,6 +93,10 @@ export interface CreatureOptions {
   wings?: WingOpts;
   /** Thralls: a soft fresnel rim so friendly dead read at a glance against the horde (see friendRim.ts). */
   rim?: FriendRim;
+  /** Struck enemies only: freeze with a hitstop. The hero, thralls and everything else keep animating through it. */
+  hitstop?: boolean;
+  /** Crossfade seconds for idle/walk/run changes (default 0.28; the hero uses a quicker blend so the body answers the stick). */
+  locomotionFade?: number;
 }
 
 const FLASH_COLOR = new THREE.Color(0xfff0dc);
@@ -281,7 +285,7 @@ export class Creature {
     return this.loop === 'idle' && !!next && next !== this.actions.get('idle');
   }
 
-  private startLoop(fade: boolean, fadeS = FADE_LOCOMOTION) {
+  private startLoop(fade: boolean, fadeS = this.opts.locomotionFade ?? FADE_LOCOMOTION) {
     const next = this.resolve(this.loop);
     if (!next) return;
     next.setLoop(THREE.LoopRepeat, Infinity);
@@ -555,8 +559,8 @@ export class Creature {
   }
 
   update(dtReal: number) {
-    // A hitstop freezes the picture (this clock only, never the sim's).
-    const dt = dtReal * hitstop.scale;
+    // A hitstop freezes a struck enemy's picture (this clock only, never the sim's); the hero and thralls are exempt.
+    const dt = pictureDt(dtReal, !!this.opts.hitstop, hitstop.scale);
     const f = this.flinchAct;
     if (f && f.isRunning()) {
       // Ease the flinch in over ~50 ms and out over the last ~180 ms so it never pops.
