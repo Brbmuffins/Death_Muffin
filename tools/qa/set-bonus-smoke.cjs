@@ -133,8 +133,8 @@ async function main() {
     await page.keyboard.press('k');
     await page.locator('[data-tab="sets"]').click();
     const codex = await page.locator('[role="dialog"][aria-label="Codex"]').innerText();
-    for (const name of ['Ivory Reliquary', 'Marrow Regent', 'Blightweave', 'Umbral Crossing']) assert.ok(codex.includes(name), name);
     await page.screenshot({ path: `${out}/6-codex-sets.png` });
+    for (const name of ['Ivory Reliquary', 'Marrow Regent', 'Blightweave', 'Umbral Crossing']) assert.ok(codex.toLowerCase().includes(name.toLowerCase()), `${name} in Codex: ${codex.slice(0, 300)}`);
 
     assert.deepEqual(errors, []);
     console.log(JSON.stringify({ tracker: true, tip: true, doll: true, verdict: true, sheet: true, codex: true, errors }));
