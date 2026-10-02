@@ -1,0 +1,1999 @@
+[
+ {
+  "base": {
+   "on": {
+    "calls": 281,
+    "tris": 749358
+   },
+   "off": {
+    "calls": 225,
+    "tris": 415971
+   }
+  },
+  "rows": [
+   {
+    "name": "enemies",
+    "objects": 33,
+    "inst": 0,
+    "skinned": 26,
+    "plain": 7,
+    "mainCalls": 22,
+    "mainTris": 83017,
+    "shadowCalls": 8,
+    "shadowTris": 31370
+   },
+   {
+    "name": "thralls",
+    "objects": 25,
+    "inst": 0,
+    "skinned": 5,
+    "plain": 20,
+    "mainCalls": 25,
+    "mainTris": 23035,
+    "shadowCalls": 5,
+    "shadowTris": 21855
+   },
+   {
+    "name": "corpses",
+    "objects": 10,
+    "inst": 0,
+    "skinned": 10,
+    "plain": 0,
+    "mainCalls": 10,
+    "mainTris": 37530,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "player",
+    "objects": 5,
+    "inst": 0,
+    "skinned": 1,
+    "plain": 4,
+    "mainCalls": 5,
+    "mainTris": 12075,
+    "shadowCalls": 1,
+    "shadowTris": 11749
+   },
+   {
+    "name": "npcs",
+    "objects": 13,
+    "inst": 0,
+    "skinned": 3,
+    "plain": 10,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 1,
+    "shadowTris": 7866
+   },
+   {
+    "name": "nodes(gather)",
+    "objects": 84,
+    "inst": 81,
+    "skinned": 0,
+    "plain": 3,
+    "mainCalls": 1,
+    "mainTris": 336,
+    "shadowCalls": 2,
+    "shadowTris": 12276
+   },
+   {
+    "name": "loot",
+    "objects": 0,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "bosses",
+    "objects": 1,
+    "inst": 0,
+    "skinned": 1,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "laborers",
+    "objects": 0,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "world:prop batches (instanced GLB props)",
+    "objects": 129,
+    "inst": 129,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 20,
+    "mainTris": 251872,
+    "shadowCalls": 24,
+    "shadowTris": 244430
+   },
+   {
+    "name": "world:architecture meshes (floors/walls/gates/etc)",
+    "objects": 112,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 112,
+    "mainCalls": 17,
+    "mainTris": 7866,
+    "shadowCalls": 15,
+    "shadowTris": 3841
+   },
+   {
+    "name": "world:flames/mist points",
+    "objects": 3,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 3,
+    "mainCalls": 3,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "other (effects/VFX/decals/rings/etc)",
+    "objects": 186,
+    "inst": 16,
+    "skinned": 0,
+    "plain": 170,
+    "mainCalls": 122,
+    "mainTris": 240,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   }
+  ],
+  "slugs": {
+   "enemies:moth": 4,
+   "enemies:hound": 5,
+   "enemies:penitent": 5,
+   "enemies:robber": 10,
+   "enemies:sac": 3,
+   "enemies:bat": 3,
+   "enemies:ghoul": 3,
+   "thralls:thrall_legionnaire": 5,
+   "corpses:grave_robber": 10
+  },
+  "propRows": [
+   {
+    "tris": 1143,
+    "inst": 33,
+    "cast": true,
+    "total": 37719
+   },
+   {
+    "tris": 1505,
+    "inst": 20,
+    "cast": true,
+    "total": 30100
+   },
+   {
+    "tris": 2908,
+    "inst": 10,
+    "cast": true,
+    "total": 29080
+   },
+   {
+    "tris": 2591,
+    "inst": 11,
+    "cast": true,
+    "total": 28501
+   },
+   {
+    "tris": 811,
+    "inst": 35,
+    "cast": false,
+    "total": 28385
+   },
+   {
+    "tris": 2710,
+    "inst": 9,
+    "cast": true,
+    "total": 24390
+   },
+   {
+    "tris": 1658,
+    "inst": 14,
+    "cast": true,
+    "total": 23212
+   },
+   {
+    "tris": 1505,
+    "inst": 14,
+    "cast": true,
+    "total": 21070
+   },
+   {
+    "tris": 2419,
+    "inst": 8,
+    "cast": false,
+    "total": 19352
+   },
+   {
+    "tris": 888,
+    "inst": 21,
+    "cast": true,
+    "total": 18648
+   },
+   {
+    "tris": 2591,
+    "inst": 7,
+    "cast": true,
+    "total": 18137
+   },
+   {
+    "tris": 1505,
+    "inst": 12,
+    "cast": true,
+    "total": 18060
+   },
+   {
+    "tris": 2246,
+    "inst": 8,
+    "cast": true,
+    "total": 17968
+   },
+   {
+    "tris": 1324,
+    "inst": 13,
+    "cast": false,
+    "total": 17212
+   },
+   {
+    "tris": 1508,
+    "inst": 11,
+    "cast": false,
+    "total": 16588
+   },
+   {
+    "tris": 1505,
+    "inst": 11,
+    "cast": true,
+    "total": 16555
+   },
+   {
+    "tris": 1324,
+    "inst": 12,
+    "cast": false,
+    "total": 15888
+   },
+   {
+    "tris": 2197,
+    "inst": 7,
+    "cast": true,
+    "total": 15379
+   },
+   {
+    "tris": 1259,
+    "inst": 12,
+    "cast": false,
+    "total": 15108
+   },
+   {
+    "tris": 1505,
+    "inst": 10,
+    "cast": true,
+    "total": 15050
+   },
+   {
+    "tris": 1505,
+    "inst": 9,
+    "cast": true,
+    "total": 13545
+   },
+   {
+    "tris": 1324,
+    "inst": 10,
+    "cast": false,
+    "total": 13240
+   },
+   {
+    "tris": 1324,
+    "inst": 10,
+    "cast": false,
+    "total": 13240
+   },
+   {
+    "tris": 1505,
+    "inst": 8,
+    "cast": true,
+    "total": 12040
+   },
+   {
+    "tris": 2908,
+    "inst": 4,
+    "cast": true,
+    "total": 11632
+   }
+  ],
+  "propTotals": {
+   "batches": 129,
+   "tris": 912513,
+   "inst": 603
+  },
+  "area": "graves",
+  "areaName": "graves",
+  "quality": "high"
+ },
+ {
+  "base": {
+   "on": {
+    "calls": 233,
+    "tris": 652403
+   },
+   "off": {
+    "calls": 185,
+    "tris": 358398
+   }
+  },
+  "rows": [
+   {
+    "name": "enemies",
+    "objects": 76,
+    "inst": 0,
+    "skinned": 63,
+    "plain": 13,
+    "mainCalls": 33,
+    "mainTris": 113497,
+    "shadowCalls": 8,
+    "shadowTris": 18432
+   },
+   {
+    "name": "thralls",
+    "objects": 25,
+    "inst": 0,
+    "skinned": 5,
+    "plain": 20,
+    "mainCalls": 23,
+    "mainTris": 23011,
+    "shadowCalls": 5,
+    "shadowTris": 21855
+   },
+   {
+    "name": "corpses",
+    "objects": 10,
+    "inst": 0,
+    "skinned": 10,
+    "plain": 0,
+    "mainCalls": 10,
+    "mainTris": 37530,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "player",
+    "objects": 5,
+    "inst": 0,
+    "skinned": 1,
+    "plain": 4,
+    "mainCalls": 5,
+    "mainTris": 12075,
+    "shadowCalls": 1,
+    "shadowTris": 11749
+   },
+   {
+    "name": "npcs",
+    "objects": 13,
+    "inst": 0,
+    "skinned": 3,
+    "plain": 10,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 1,
+    "shadowTris": 7772
+   },
+   {
+    "name": "nodes(gather)",
+    "objects": 84,
+    "inst": 81,
+    "skinned": 0,
+    "plain": 3,
+    "mainCalls": 1,
+    "mainTris": 336,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "loot",
+    "objects": 0,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "bosses",
+    "objects": 1,
+    "inst": 0,
+    "skinned": 1,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "laborers",
+    "objects": 0,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "world:prop batches (instanced GLB props)",
+    "objects": 129,
+    "inst": 129,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 18,
+    "mainTris": 163695,
+    "shadowCalls": 24,
+    "shadowTris": 231607
+   },
+   {
+    "name": "world:architecture meshes (floors/walls/gates/etc)",
+    "objects": 112,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 112,
+    "mainCalls": 16,
+    "mainTris": 8106,
+    "shadowCalls": 9,
+    "shadowTris": 2590
+   },
+   {
+    "name": "world:flames/mist points",
+    "objects": 3,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 3,
+    "mainCalls": 3,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "other (effects/VFX/decals/rings/etc)",
+    "objects": 187,
+    "inst": 16,
+    "skinned": 0,
+    "plain": 171,
+    "mainCalls": 76,
+    "mainTris": 148,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   }
+  ],
+  "slugs": {
+   "enemies:moth": 7,
+   "enemies:hound": 8,
+   "enemies:penitent": 8,
+   "enemies:robber": 16,
+   "enemies:sac": 6,
+   "enemies:bat": 6,
+   "enemies:ghoul": 6,
+   "enemies:rat": 13,
+   "enemies:deacon": 3,
+   "enemies:golem": 3,
+   "thralls:thrall_legionnaire": 5,
+   "corpses:grave_robber": 10
+  },
+  "propRows": [
+   {
+    "tris": 1143,
+    "inst": 33,
+    "cast": true,
+    "total": 37719
+   },
+   {
+    "tris": 1505,
+    "inst": 20,
+    "cast": true,
+    "total": 30100
+   },
+   {
+    "tris": 2908,
+    "inst": 10,
+    "cast": true,
+    "total": 29080
+   },
+   {
+    "tris": 2591,
+    "inst": 11,
+    "cast": true,
+    "total": 28501
+   },
+   {
+    "tris": 811,
+    "inst": 35,
+    "cast": false,
+    "total": 28385
+   },
+   {
+    "tris": 2710,
+    "inst": 9,
+    "cast": true,
+    "total": 24390
+   },
+   {
+    "tris": 1658,
+    "inst": 14,
+    "cast": true,
+    "total": 23212
+   },
+   {
+    "tris": 1505,
+    "inst": 14,
+    "cast": true,
+    "total": 21070
+   },
+   {
+    "tris": 2419,
+    "inst": 8,
+    "cast": false,
+    "total": 19352
+   },
+   {
+    "tris": 888,
+    "inst": 21,
+    "cast": true,
+    "total": 18648
+   },
+   {
+    "tris": 2591,
+    "inst": 7,
+    "cast": true,
+    "total": 18137
+   },
+   {
+    "tris": 1505,
+    "inst": 12,
+    "cast": true,
+    "total": 18060
+   },
+   {
+    "tris": 2246,
+    "inst": 8,
+    "cast": true,
+    "total": 17968
+   },
+   {
+    "tris": 1324,
+    "inst": 13,
+    "cast": false,
+    "total": 17212
+   },
+   {
+    "tris": 1508,
+    "inst": 11,
+    "cast": false,
+    "total": 16588
+   },
+   {
+    "tris": 1505,
+    "inst": 11,
+    "cast": true,
+    "total": 16555
+   },
+   {
+    "tris": 1324,
+    "inst": 12,
+    "cast": false,
+    "total": 15888
+   },
+   {
+    "tris": 2197,
+    "inst": 7,
+    "cast": true,
+    "total": 15379
+   },
+   {
+    "tris": 1259,
+    "inst": 12,
+    "cast": false,
+    "total": 15108
+   },
+   {
+    "tris": 1505,
+    "inst": 10,
+    "cast": true,
+    "total": 15050
+   },
+   {
+    "tris": 1505,
+    "inst": 9,
+    "cast": true,
+    "total": 13545
+   },
+   {
+    "tris": 1324,
+    "inst": 10,
+    "cast": false,
+    "total": 13240
+   },
+   {
+    "tris": 1324,
+    "inst": 10,
+    "cast": false,
+    "total": 13240
+   },
+   {
+    "tris": 1505,
+    "inst": 8,
+    "cast": true,
+    "total": 12040
+   },
+   {
+    "tris": 2908,
+    "inst": 4,
+    "cast": true,
+    "total": 11632
+   }
+  ],
+  "propTotals": {
+   "batches": 129,
+   "tris": 912513,
+   "inst": 603
+  },
+  "area": "ossuary",
+  "areaName": "ossuary",
+  "quality": "high"
+ },
+ {
+  "base": {
+   "on": {
+    "calls": 309,
+    "tris": 581461
+   },
+   "off": {
+    "calls": 262,
+    "tris": 263259
+   }
+  },
+  "rows": [
+   {
+    "name": "enemies",
+    "objects": 61,
+    "inst": 0,
+    "skinned": 55,
+    "plain": 6,
+    "mainCalls": 16,
+    "mainTris": 73849,
+    "shadowCalls": 8,
+    "shadowTris": 36087
+   },
+   {
+    "name": "thralls",
+    "objects": 25,
+    "inst": 0,
+    "skinned": 5,
+    "plain": 20,
+    "mainCalls": 25,
+    "mainTris": 23035,
+    "shadowCalls": 5,
+    "shadowTris": 21855
+   },
+   {
+    "name": "corpses",
+    "objects": 10,
+    "inst": 0,
+    "skinned": 10,
+    "plain": 0,
+    "mainCalls": 10,
+    "mainTris": 37530,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "player",
+    "objects": 5,
+    "inst": 0,
+    "skinned": 1,
+    "plain": 4,
+    "mainCalls": 5,
+    "mainTris": 12075,
+    "shadowCalls": 1,
+    "shadowTris": 11749
+   },
+   {
+    "name": "npcs",
+    "objects": 13,
+    "inst": 0,
+    "skinned": 3,
+    "plain": 10,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "nodes(gather)",
+    "objects": 84,
+    "inst": 81,
+    "skinned": 0,
+    "plain": 3,
+    "mainCalls": 3,
+    "mainTris": 4504,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "loot",
+    "objects": 0,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "bosses",
+    "objects": 1,
+    "inst": 0,
+    "skinned": 1,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "laborers",
+    "objects": 0,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "world:prop batches (instanced GLB props)",
+    "objects": 129,
+    "inst": 129,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 11,
+    "mainTris": 78072,
+    "shadowCalls": 23,
+    "shadowTris": 245532
+   },
+   {
+    "name": "world:architecture meshes (floors/walls/gates/etc)",
+    "objects": 112,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 112,
+    "mainCalls": 11,
+    "mainTris": 7786,
+    "shadowCalls": 10,
+    "shadowTris": 2979
+   },
+   {
+    "name": "world:flames/mist points",
+    "objects": 3,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 3,
+    "mainCalls": 3,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "other (effects/VFX/decals/rings/etc)",
+    "objects": 259,
+    "inst": 22,
+    "skinned": 0,
+    "plain": 237,
+    "mainCalls": 178,
+    "mainTris": 26408,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   }
+  ],
+  "slugs": {
+   "enemies:robber": 9,
+   "enemies:rat": 13,
+   "enemies:hound": 6,
+   "enemies:sac": 6,
+   "enemies:deacon": 6,
+   "enemies:penitent": 6,
+   "enemies:golem": 6,
+   "enemies:moth": 3,
+   "enemies:bat": 3,
+   "enemies:ghoul": 3,
+   "enemies:censer": 3,
+   "enemies:wraith": 3,
+   "enemies:gargoyle": 3,
+   "enemies:seraph": 3,
+   "enemies:acolyte": 3,
+   "enemies:templar": 3,
+   "thralls:thrall_legionnaire": 5,
+   "corpses:grave_robber": 10
+  },
+  "propRows": [
+   {
+    "tris": 1143,
+    "inst": 33,
+    "cast": true,
+    "total": 37719
+   },
+   {
+    "tris": 1505,
+    "inst": 20,
+    "cast": true,
+    "total": 30100
+   },
+   {
+    "tris": 2908,
+    "inst": 10,
+    "cast": true,
+    "total": 29080
+   },
+   {
+    "tris": 2591,
+    "inst": 11,
+    "cast": true,
+    "total": 28501
+   },
+   {
+    "tris": 811,
+    "inst": 35,
+    "cast": false,
+    "total": 28385
+   },
+   {
+    "tris": 2710,
+    "inst": 9,
+    "cast": true,
+    "total": 24390
+   },
+   {
+    "tris": 1658,
+    "inst": 14,
+    "cast": true,
+    "total": 23212
+   },
+   {
+    "tris": 1505,
+    "inst": 14,
+    "cast": true,
+    "total": 21070
+   },
+   {
+    "tris": 2419,
+    "inst": 8,
+    "cast": false,
+    "total": 19352
+   },
+   {
+    "tris": 888,
+    "inst": 21,
+    "cast": true,
+    "total": 18648
+   },
+   {
+    "tris": 2591,
+    "inst": 7,
+    "cast": true,
+    "total": 18137
+   },
+   {
+    "tris": 1505,
+    "inst": 12,
+    "cast": true,
+    "total": 18060
+   },
+   {
+    "tris": 2246,
+    "inst": 8,
+    "cast": true,
+    "total": 17968
+   },
+   {
+    "tris": 1324,
+    "inst": 13,
+    "cast": false,
+    "total": 17212
+   },
+   {
+    "tris": 1508,
+    "inst": 11,
+    "cast": false,
+    "total": 16588
+   },
+   {
+    "tris": 1505,
+    "inst": 11,
+    "cast": true,
+    "total": 16555
+   },
+   {
+    "tris": 1324,
+    "inst": 12,
+    "cast": false,
+    "total": 15888
+   },
+   {
+    "tris": 2197,
+    "inst": 7,
+    "cast": true,
+    "total": 15379
+   },
+   {
+    "tris": 1259,
+    "inst": 12,
+    "cast": false,
+    "total": 15108
+   },
+   {
+    "tris": 1505,
+    "inst": 10,
+    "cast": true,
+    "total": 15050
+   },
+   {
+    "tris": 1505,
+    "inst": 9,
+    "cast": true,
+    "total": 13545
+   },
+   {
+    "tris": 1324,
+    "inst": 10,
+    "cast": false,
+    "total": 13240
+   },
+   {
+    "tris": 1324,
+    "inst": 10,
+    "cast": false,
+    "total": 13240
+   },
+   {
+    "tris": 1505,
+    "inst": 8,
+    "cast": true,
+    "total": 12040
+   },
+   {
+    "tris": 2908,
+    "inst": 4,
+    "cast": true,
+    "total": 11632
+   }
+  ],
+  "propTotals": {
+   "batches": 129,
+   "tris": 912513,
+   "inst": 603
+  },
+  "area": "sanctum",
+  "areaName": "sanctum",
+  "quality": "high"
+ },
+ {
+  "base": {
+   "on": {
+    "calls": 227,
+    "tris": 482831
+   },
+   "off": {
+    "calls": 187,
+    "tris": 249562
+   }
+  },
+  "rows": [
+   {
+    "name": "enemies",
+    "objects": 63,
+    "inst": 0,
+    "skinned": 57,
+    "plain": 6,
+    "mainCalls": 18,
+    "mainTris": 74655,
+    "shadowCalls": 8,
+    "shadowTris": 34048
+   },
+   {
+    "name": "thralls",
+    "objects": 25,
+    "inst": 0,
+    "skinned": 5,
+    "plain": 20,
+    "mainCalls": 25,
+    "mainTris": 23035,
+    "shadowCalls": 5,
+    "shadowTris": 21855
+   },
+   {
+    "name": "corpses",
+    "objects": 10,
+    "inst": 0,
+    "skinned": 10,
+    "plain": 0,
+    "mainCalls": 10,
+    "mainTris": 37530,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "player",
+    "objects": 5,
+    "inst": 0,
+    "skinned": 1,
+    "plain": 4,
+    "mainCalls": 5,
+    "mainTris": 12075,
+    "shadowCalls": 1,
+    "shadowTris": 11749
+   },
+   {
+    "name": "npcs",
+    "objects": 13,
+    "inst": 0,
+    "skinned": 3,
+    "plain": 10,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "nodes(gather)",
+    "objects": 84,
+    "inst": 81,
+    "skinned": 0,
+    "plain": 3,
+    "mainCalls": 3,
+    "mainTris": 936,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "loot",
+    "objects": 0,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "bosses",
+    "objects": 1,
+    "inst": 0,
+    "skinned": 1,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "laborers",
+    "objects": 0,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "world:prop batches (instanced GLB props)",
+    "objects": 129,
+    "inst": 129,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 13,
+    "mainTris": 78651,
+    "shadowCalls": 17,
+    "shadowTris": 162650
+   },
+   {
+    "name": "world:architecture meshes (floors/walls/gates/etc)",
+    "objects": 112,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 112,
+    "mainCalls": 8,
+    "mainTris": 7732,
+    "shadowCalls": 9,
+    "shadowTris": 2967
+   },
+   {
+    "name": "world:flames/mist points",
+    "objects": 3,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 3,
+    "mainCalls": 3,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "other (effects/VFX/decals/rings/etc)",
+    "objects": 213,
+    "inst": 28,
+    "skinned": 0,
+    "plain": 185,
+    "mainCalls": 102,
+    "mainTris": 14948,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   }
+  ],
+  "slugs": {
+   "enemies:penitent": 3,
+   "enemies:deacon": 3,
+   "enemies:robber": 3,
+   "enemies:hound": 3,
+   "enemies:sac": 6,
+   "enemies:censer": 6,
+   "enemies:wraith": 3,
+   "enemies:golem": 6,
+   "enemies:gargoyle": 3,
+   "enemies:seraph": 3,
+   "enemies:acolyte": 6,
+   "enemies:templar": 6,
+   "enemies:plague_doctor": 3,
+   "enemies:flagellant": 3,
+   "enemies:rat": 3,
+   "enemies:moth": 3,
+   "thralls:thrall_legionnaire": 5,
+   "corpses:grave_robber": 10
+  },
+  "propRows": [
+   {
+    "tris": 1143,
+    "inst": 33,
+    "cast": true,
+    "total": 37719
+   },
+   {
+    "tris": 1505,
+    "inst": 20,
+    "cast": true,
+    "total": 30100
+   },
+   {
+    "tris": 2908,
+    "inst": 10,
+    "cast": true,
+    "total": 29080
+   },
+   {
+    "tris": 2591,
+    "inst": 11,
+    "cast": true,
+    "total": 28501
+   },
+   {
+    "tris": 811,
+    "inst": 35,
+    "cast": false,
+    "total": 28385
+   },
+   {
+    "tris": 2710,
+    "inst": 9,
+    "cast": true,
+    "total": 24390
+   },
+   {
+    "tris": 1658,
+    "inst": 14,
+    "cast": true,
+    "total": 23212
+   },
+   {
+    "tris": 1505,
+    "inst": 14,
+    "cast": true,
+    "total": 21070
+   },
+   {
+    "tris": 2419,
+    "inst": 8,
+    "cast": false,
+    "total": 19352
+   },
+   {
+    "tris": 888,
+    "inst": 21,
+    "cast": true,
+    "total": 18648
+   },
+   {
+    "tris": 2591,
+    "inst": 7,
+    "cast": true,
+    "total": 18137
+   },
+   {
+    "tris": 1505,
+    "inst": 12,
+    "cast": true,
+    "total": 18060
+   },
+   {
+    "tris": 2246,
+    "inst": 8,
+    "cast": true,
+    "total": 17968
+   },
+   {
+    "tris": 1324,
+    "inst": 13,
+    "cast": false,
+    "total": 17212
+   },
+   {
+    "tris": 1508,
+    "inst": 11,
+    "cast": false,
+    "total": 16588
+   },
+   {
+    "tris": 1505,
+    "inst": 11,
+    "cast": true,
+    "total": 16555
+   },
+   {
+    "tris": 1324,
+    "inst": 12,
+    "cast": false,
+    "total": 15888
+   },
+   {
+    "tris": 2197,
+    "inst": 7,
+    "cast": true,
+    "total": 15379
+   },
+   {
+    "tris": 1259,
+    "inst": 12,
+    "cast": false,
+    "total": 15108
+   },
+   {
+    "tris": 1505,
+    "inst": 10,
+    "cast": true,
+    "total": 15050
+   },
+   {
+    "tris": 1505,
+    "inst": 9,
+    "cast": true,
+    "total": 13545
+   },
+   {
+    "tris": 1324,
+    "inst": 10,
+    "cast": false,
+    "total": 13240
+   },
+   {
+    "tris": 1324,
+    "inst": 10,
+    "cast": false,
+    "total": 13240
+   },
+   {
+    "tris": 1505,
+    "inst": 8,
+    "cast": true,
+    "total": 12040
+   },
+   {
+    "tris": 2908,
+    "inst": 4,
+    "cast": true,
+    "total": 11632
+   }
+  ],
+  "propTotals": {
+   "batches": 129,
+   "tris": 912513,
+   "inst": 603
+  },
+  "area": "cloister",
+  "areaName": "cloister",
+  "quality": "high"
+ },
+ {
+  "base": {
+   "on": {
+    "calls": 182,
+    "tris": 409658
+   },
+   "off": {
+    "calls": 149,
+    "tris": 233843
+   }
+  },
+  "rows": [
+   {
+    "name": "enemies",
+    "objects": 48,
+    "inst": 0,
+    "skinned": 45,
+    "plain": 3,
+    "mainCalls": 12,
+    "mainTris": 55170,
+    "shadowCalls": 8,
+    "shadowTris": 31056
+   },
+   {
+    "name": "thralls",
+    "objects": 25,
+    "inst": 0,
+    "skinned": 5,
+    "plain": 20,
+    "mainCalls": 25,
+    "mainTris": 23035,
+    "shadowCalls": 5,
+    "shadowTris": 21855
+   },
+   {
+    "name": "corpses",
+    "objects": 10,
+    "inst": 0,
+    "skinned": 10,
+    "plain": 0,
+    "mainCalls": 10,
+    "mainTris": 37530,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "player",
+    "objects": 5,
+    "inst": 0,
+    "skinned": 1,
+    "plain": 4,
+    "mainCalls": 5,
+    "mainTris": 12075,
+    "shadowCalls": 1,
+    "shadowTris": 11749
+   },
+   {
+    "name": "npcs",
+    "objects": 13,
+    "inst": 0,
+    "skinned": 3,
+    "plain": 10,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "nodes(gather)",
+    "objects": 84,
+    "inst": 81,
+    "skinned": 0,
+    "plain": 3,
+    "mainCalls": 3,
+    "mainTris": 936,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "loot",
+    "objects": 0,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "bosses",
+    "objects": 1,
+    "inst": 0,
+    "skinned": 1,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "laborers",
+    "objects": 0,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "world:prop batches (instanced GLB props)",
+    "objects": 129,
+    "inst": 129,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 10,
+    "mainTris": 54105,
+    "shadowCalls": 14,
+    "shadowTris": 109338
+   },
+   {
+    "name": "world:architecture meshes (floors/walls/gates/etc)",
+    "objects": 112,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 112,
+    "mainCalls": 6,
+    "mainTris": 7196,
+    "shadowCalls": 5,
+    "shadowTris": 1817
+   },
+   {
+    "name": "world:flames/mist points",
+    "objects": 3,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 3,
+    "mainCalls": 3,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "other (effects/VFX/decals/rings/etc)",
+    "objects": 201,
+    "inst": 39,
+    "skinned": 0,
+    "plain": 162,
+    "mainCalls": 75,
+    "mainTris": 43796,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   }
+  ],
+  "slugs": {
+   "enemies:plague_doctor": 3,
+   "enemies:flagellant": 3,
+   "enemies:sac": 3,
+   "enemies:rat": 3,
+   "enemies:acolyte": 3,
+   "enemies:censer": 3,
+   "enemies:moth": 3,
+   "enemies:templar": 3,
+   "enemies:golem": 3,
+   "enemies:slag_brute": 4,
+   "enemies:pyre_priest": 6,
+   "enemies:cinder_husk": 4,
+   "enemies:cinderhound": 7,
+   "thralls:thrall_legionnaire": 5,
+   "corpses:grave_robber": 10
+  },
+  "propRows": [
+   {
+    "tris": 1143,
+    "inst": 33,
+    "cast": true,
+    "total": 37719
+   },
+   {
+    "tris": 1505,
+    "inst": 20,
+    "cast": true,
+    "total": 30100
+   },
+   {
+    "tris": 2908,
+    "inst": 10,
+    "cast": true,
+    "total": 29080
+   },
+   {
+    "tris": 2591,
+    "inst": 11,
+    "cast": true,
+    "total": 28501
+   },
+   {
+    "tris": 811,
+    "inst": 35,
+    "cast": false,
+    "total": 28385
+   },
+   {
+    "tris": 2710,
+    "inst": 9,
+    "cast": true,
+    "total": 24390
+   },
+   {
+    "tris": 1658,
+    "inst": 14,
+    "cast": true,
+    "total": 23212
+   },
+   {
+    "tris": 1505,
+    "inst": 14,
+    "cast": true,
+    "total": 21070
+   },
+   {
+    "tris": 2419,
+    "inst": 8,
+    "cast": false,
+    "total": 19352
+   },
+   {
+    "tris": 888,
+    "inst": 21,
+    "cast": true,
+    "total": 18648
+   },
+   {
+    "tris": 2591,
+    "inst": 7,
+    "cast": true,
+    "total": 18137
+   },
+   {
+    "tris": 1505,
+    "inst": 12,
+    "cast": true,
+    "total": 18060
+   },
+   {
+    "tris": 2246,
+    "inst": 8,
+    "cast": true,
+    "total": 17968
+   },
+   {
+    "tris": 1324,
+    "inst": 13,
+    "cast": false,
+    "total": 17212
+   },
+   {
+    "tris": 1508,
+    "inst": 11,
+    "cast": false,
+    "total": 16588
+   },
+   {
+    "tris": 1505,
+    "inst": 11,
+    "cast": true,
+    "total": 16555
+   },
+   {
+    "tris": 1324,
+    "inst": 12,
+    "cast": false,
+    "total": 15888
+   },
+   {
+    "tris": 2197,
+    "inst": 7,
+    "cast": true,
+    "total": 15379
+   },
+   {
+    "tris": 1259,
+    "inst": 12,
+    "cast": false,
+    "total": 15108
+   },
+   {
+    "tris": 1505,
+    "inst": 10,
+    "cast": true,
+    "total": 15050
+   },
+   {
+    "tris": 1505,
+    "inst": 9,
+    "cast": true,
+    "total": 13545
+   },
+   {
+    "tris": 1324,
+    "inst": 10,
+    "cast": false,
+    "total": 13240
+   },
+   {
+    "tris": 1324,
+    "inst": 10,
+    "cast": false,
+    "total": 13240
+   },
+   {
+    "tris": 1505,
+    "inst": 8,
+    "cast": true,
+    "total": 12040
+   },
+   {
+    "tris": 2908,
+    "inst": 4,
+    "cast": true,
+    "total": 11632
+   }
+  ],
+  "propTotals": {
+   "batches": 129,
+   "tris": 912513,
+   "inst": 603
+  },
+  "area": "pyre",
+  "areaName": "pyre",
+  "quality": "high"
+ },
+ {
+  "base": {
+   "on": {
+    "calls": 174,
+    "tris": 531484
+   },
+   "off": {
+    "calls": 137,
+    "tris": 256338
+   }
+  },
+  "rows": [
+   {
+    "name": "enemies",
+    "objects": 48,
+    "inst": 0,
+    "skinned": 28,
+    "plain": 20,
+    "mainCalls": 14,
+    "mainTris": 48342,
+    "shadowCalls": 8,
+    "shadowTris": 18705
+   },
+   {
+    "name": "thralls",
+    "objects": 25,
+    "inst": 0,
+    "skinned": 5,
+    "plain": 20,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 5,
+    "shadowTris": 21855
+   },
+   {
+    "name": "corpses",
+    "objects": 10,
+    "inst": 0,
+    "skinned": 10,
+    "plain": 0,
+    "mainCalls": 10,
+    "mainTris": 37530,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "player",
+    "objects": 5,
+    "inst": 0,
+    "skinned": 1,
+    "plain": 4,
+    "mainCalls": 5,
+    "mainTris": 12075,
+    "shadowCalls": 1,
+    "shadowTris": 11749
+   },
+   {
+    "name": "npcs",
+    "objects": 13,
+    "inst": 0,
+    "skinned": 3,
+    "plain": 10,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "nodes(gather)",
+    "objects": 84,
+    "inst": 81,
+    "skinned": 0,
+    "plain": 3,
+    "mainCalls": 5,
+    "mainTris": 16033,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "loot",
+    "objects": 0,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "bosses",
+    "objects": 1,
+    "inst": 0,
+    "skinned": 1,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "laborers",
+    "objects": 0,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "world:prop batches (instanced GLB props)",
+    "objects": 129,
+    "inst": 129,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 18,
+    "mainTris": 134396,
+    "shadowCalls": 19,
+    "shadowTris": 221284
+   },
+   {
+    "name": "world:architecture meshes (floors/walls/gates/etc)",
+    "objects": 112,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 112,
+    "mainCalls": 12,
+    "mainTris": 7796,
+    "shadowCalls": 4,
+    "shadowTris": 1553
+   },
+   {
+    "name": "world:flames/mist points",
+    "objects": 3,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 3,
+    "mainCalls": 3,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "other (effects/VFX/decals/rings/etc)",
+    "objects": 206,
+    "inst": 32,
+    "skinned": 0,
+    "plain": 174,
+    "mainCalls": 70,
+    "mainTris": 166,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   }
+  ],
+  "slugs": {
+   "enemies:slag_brute": 4,
+   "enemies:pyre_priest": 6,
+   "enemies:cinder_husk": 4,
+   "enemies:cinderhound": 7,
+   "enemies:fen_wisp": 5,
+   "enemies:mire_leech": 12,
+   "enemies:bog_hag": 4,
+   "enemies:drowned_sexton": 3,
+   "enemies:wraith": 3,
+   "thralls:thrall_legionnaire": 5,
+   "corpses:grave_robber": 10
+  },
+  "propRows": [
+   {
+    "tris": 1143,
+    "inst": 33,
+    "cast": true,
+    "total": 37719
+   },
+   {
+    "tris": 1505,
+    "inst": 20,
+    "cast": true,
+    "total": 30100
+   },
+   {
+    "tris": 2908,
+    "inst": 10,
+    "cast": true,
+    "total": 29080
+   },
+   {
+    "tris": 2591,
+    "inst": 11,
+    "cast": true,
+    "total": 28501
+   },
+   {
+    "tris": 811,
+    "inst": 35,
+    "cast": false,
+    "total": 28385
+   },
+   {
+    "tris": 2710,
+    "inst": 9,
+    "cast": true,
+    "total": 24390
+   },
+   {
+    "tris": 1658,
+    "inst": 14,
+    "cast": true,
+    "total": 23212
+   },
+   {
+    "tris": 1505,
+    "inst": 14,
+    "cast": true,
+    "total": 21070
+   },
+   {
+    "tris": 2419,
+    "inst": 8,
+    "cast": false,
+    "total": 19352
+   },
+   {
+    "tris": 888,
+    "inst": 21,
+    "cast": true,
+    "total": 18648
+   },
+   {
+    "tris": 2591,
+    "inst": 7,
+    "cast": true,
+    "total": 18137
+   },
+   {
+    "tris": 1505,
+    "inst": 12,
+    "cast": true,
+    "total": 18060
+   },
+   {
+    "tris": 2246,
+    "inst": 8,
+    "cast": true,
+    "total": 17968
+   },
+   {
+    "tris": 1324,
+    "inst": 13,
+    "cast": false,
+    "total": 17212
+   },
+   {
+    "tris": 1508,
+    "inst": 11,
+    "cast": false,
+    "total": 16588
+   },
+   {
+    "tris": 1505,
+    "inst": 11,
+    "cast": true,
+    "total": 16555
+   },
+   {
+    "tris": 1324,
+    "inst": 12,
+    "cast": false,
+    "total": 15888
+   },
+   {
+    "tris": 2197,
+    "inst": 7,
+    "cast": true,
+    "total": 15379
+   },
+   {
+    "tris": 1259,
+    "inst": 12,
+    "cast": false,
+    "total": 15108
+   },
+   {
+    "tris": 1505,
+    "inst": 10,
+    "cast": true,
+    "total": 15050
+   },
+   {
+    "tris": 1505,
+    "inst": 9,
+    "cast": true,
+    "total": 13545
+   },
+   {
+    "tris": 1324,
+    "inst": 10,
+    "cast": false,
+    "total": 13240
+   },
+   {
+    "tris": 1324,
+    "inst": 10,
+    "cast": false,
+    "total": 13240
+   },
+   {
+    "tris": 1505,
+    "inst": 8,
+    "cast": true,
+    "total": 12040
+   },
+   {
+    "tris": 2908,
+    "inst": 4,
+    "cast": true,
+    "total": 11632
+   }
+  ],
+  "propTotals": {
+   "batches": 129,
+   "tris": 912513,
+   "inst": 603
+  },
+  "area": "fen",
+  "areaName": "fen",
+  "quality": "high"
+ }
+]

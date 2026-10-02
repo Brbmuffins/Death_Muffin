@@ -1,0 +1,688 @@
+{
+ "props": [
+  {
+   "id": "pillar",
+   "tris": 1505,
+   "total": 88,
+   "tall": true,
+   "worldTris": 132440,
+   "areas": {
+    "chapterhouse": 8,
+    "ossuary": 11,
+    "nave": 14,
+    "sanctum": 9,
+    "cloister": 20,
+    "pyre": 10,
+    "warren": 4,
+    "coliseum": 12
+   }
+  },
+  {
+   "id": "candles",
+   "tris": 1324,
+   "total": 65,
+   "tall": false,
+   "worldTris": 86060,
+   "areas": {
+    "chapterhouse": 10,
+    "alchemist_wing": 6,
+    "acre": 2,
+    "graves": 13,
+    "ossuary": 6,
+    "nave": 10,
+    "sanctum": 12,
+    "cloister": 4,
+    "warren": 2
+   }
+  },
+  {
+   "id": "dead_tree",
+   "tris": 2591,
+   "total": 25,
+   "tall": true,
+   "worldTris": 64775,
+   "areas": {
+    "acre": 4,
+    "graves": 7,
+    "cloister": 1,
+    "pyre": 2,
+    "fen": 11
+   }
+  },
+  {
+   "id": "bone_pile",
+   "tris": 2114,
+   "total": 25,
+   "tall": false,
+   "worldTris": 52850,
+   "areas": {
+    "chapterhouse": 2,
+    "alchemist_wing": 2,
+    "acre": 3,
+    "graves": 3,
+    "ossuary": 5,
+    "pyre": 2,
+    "warren": 5,
+    "coliseum": 3
+   }
+  },
+  {
+   "id": "statue",
+   "tris": 2908,
+   "total": 18,
+   "tall": true,
+   "worldTris": 52344,
+   "areas": {
+    "graves": 4,
+    "nave": 10,
+    "coliseum": 4
+   }
+  },
+  {
+   "id": "fence",
+   "tris": 1143,
+   "total": 41,
+   "tall": true,
+   "worldTris": 46863,
+   "areas": {
+    "acre": 8,
+    "graves": 33
+   }
+  },
+  {
+   "id": "tombstone_round",
+   "tris": 811,
+   "total": 46,
+   "tall": false,
+   "worldTris": 37306,
+   "areas": {
+    "acre": 4,
+    "graves": 35,
+    "warren": 2,
+    "fen": 5
+   }
+  },
+  {
+   "id": "grave_lantern",
+   "tris": 1658,
+   "total": 21,
+   "tall": true,
+   "worldTris": 34818,
+   "areas": {
+    "alchemist_wing": 2,
+    "warren": 14,
+    "fen": 2,
+    "graves": 3
+   }
+  },
+  {
+   "id": "bone_candelabrum",
+   "tris": 2246,
+   "total": 15,
+   "tall": true,
+   "worldTris": 33690,
+   "areas": {
+    "warren": 4,
+    "coliseum": 8,
+    "ossuary": 3
+   }
+  },
+  {
+   "id": "brazier",
+   "tris": 1418,
+   "total": 21,
+   "tall": false,
+   "worldTris": 29778,
+   "areas": {
+    "chapterhouse": 4,
+    "acre": 1,
+    "graves": 2,
+    "ossuary": 4,
+    "nave": 6,
+    "sanctum": 4
+   }
+  },
+  {
+   "id": "alch_reagent_shelf",
+   "tris": 2710,
+   "total": 9,
+   "tall": true,
+   "worldTris": 24390,
+   "areas": {
+    "alchemist_wing": 9
+   }
+  },
+  {
+   "id": "tombstone_cross",
+   "tris": 888,
+   "total": 27,
+   "tall": true,
+   "worldTris": 23976,
+   "areas": {
+    "acre": 4,
+    "graves": 21,
+    "fen": 2
+   }
+  },
+  {
+   "id": "alch_bone_candles",
+   "tris": 2419,
+   "total": 8,
+   "tall": false,
+   "worldTris": 19352,
+   "areas": {
+    "alchemist_wing": 8
+   }
+  },
+  {
+   "id": "sarcophagus",
+   "tris": 1726,
+   "total": 10,
+   "tall": false,
+   "worldTris": 17260,
+   "areas": {
+    "chapterhouse": 1,
+    "graves": 3,
+    "ossuary": 4,
+    "nave": 1,
+    "warren": 1
+   }
+  },
+  {
+   "id": "alch_herb_bundle",
+   "tris": 1508,
+   "total": 11,
+   "tall": false,
+   "worldTris": 16588,
+   "areas": {
+    "alchemist_wing": 11
+   }
+  },
+  {
+   "id": "gibbet_cage",
+   "tris": 2339,
+   "total": 7,
+   "tall": true,
+   "worldTris": 16373,
+   "areas": {
+    "warren": 2,
+    "coliseum": 4,
+    "graves": 1
+   }
+  },
+  {
+   "id": "cinder_obelisk",
+   "tris": 2197,
+   "total": 7,
+   "tall": true,
+   "worldTris": 15379,
+   "areas": {
+    "pyre": 7
+   }
+  },
+  {
+   "id": "workbench",
+   "tris": 2187,
+   "total": 7,
+   "tall": false,
+   "worldTris": 15309,
+   "areas": {
+    "chapterhouse": 1,
+    "alchemist_wing": 4,
+    "acre": 2
+   }
+  },
+  {
+   "id": "fen_hummock",
+   "tris": 1259,
+   "total": 12,
+   "tall": false,
+   "worldTris": 15108,
+   "areas": {
+    "fen": 12
+   }
+  },
+  {
+   "id": "arch",
+   "tris": 2359,
+   "total": 6,
+   "tall": true,
+   "worldTris": 14154,
+   "areas": {
+    "nave": 3,
+    "cloister": 2,
+    "pyre": 1
+   }
+  },
+  {
+   "id": "waystone",
+   "tris": 1254,
+   "total": 11,
+   "tall": true,
+   "worldTris": 13794,
+   "areas": {
+    "chapterhouse": 1,
+    "acre": 1,
+    "graves": 1,
+    "ossuary": 1,
+    "nave": 1,
+    "sanctum": 1,
+    "cloister": 1,
+    "pyre": 1,
+    "warren": 1,
+    "coliseum": 1,
+    "fen": 1
+   }
+  },
+  {
+   "id": "church_pew",
+   "tris": 2145,
+   "total": 5,
+   "tall": false,
+   "worldTris": 10725,
+   "areas": {
+    "fen": 1,
+    "nave": 4
+   }
+  },
+  {
+   "id": "alch_canopic_jars",
+   "tris": 1977,
+   "total": 5,
+   "tall": false,
+   "worldTris": 9885,
+   "areas": {
+    "alchemist_wing": 5
+   }
+  },
+  {
+   "id": "coffin_stack",
+   "tris": 1938,
+   "total": 5,
+   "tall": true,
+   "worldTris": 9690,
+   "areas": {
+    "alchemist_wing": 2,
+    "warren": 2,
+    "graves": 1
+   }
+  },
+  {
+   "id": "pyre_stack",
+   "tris": 2254,
+   "total": 4,
+   "tall": true,
+   "worldTris": 9016,
+   "areas": {
+    "pyre": 4
+   }
+  },
+  {
+   "id": "alch_mortar_table",
+   "tris": 2342,
+   "total": 3,
+   "tall": false,
+   "worldTris": 7026,
+   "areas": {
+    "alchemist_wing": 3
+   }
+  },
+  {
+   "id": "plague_cart",
+   "tris": 2283,
+   "total": 3,
+   "tall": true,
+   "worldTris": 6849,
+   "areas": {
+    "cloister": 3
+   }
+  },
+  {
+   "id": "mausoleum",
+   "tris": 3397,
+   "total": 2,
+   "tall": true,
+   "worldTris": 6794,
+   "areas": {
+    "graves": 2
+   }
+  },
+  {
+   "id": "drowned_statue",
+   "tris": 2187,
+   "total": 3,
+   "tall": true,
+   "worldTris": 6561,
+   "areas": {
+    "fen": 2,
+    "nave": 1
+   }
+  },
+  {
+   "id": "rot_garden",
+   "tris": 1638,
+   "total": 4,
+   "tall": false,
+   "worldTris": 6552,
+   "areas": {
+    "cloister": 4
+   }
+  },
+  {
+   "id": "organ_pipes",
+   "tris": 2582,
+   "total": 2,
+   "tall": true,
+   "worldTris": 5164,
+   "areas": {
+    "sanctum": 2
+   }
+  },
+  {
+   "id": "alch_drying_rack",
+   "tris": 2467,
+   "total": 2,
+   "tall": true,
+   "worldTris": 4934,
+   "areas": {
+    "alchemist_wing": 2
+   }
+  },
+  {
+   "id": "covenant_lectern",
+   "tris": 2368,
+   "total": 2,
+   "tall": true,
+   "worldTris": 4736,
+   "areas": {
+    "alchemist_wing": 1,
+    "acre": 1
+   }
+  },
+  {
+   "id": "stained_glass",
+   "tris": 2258,
+   "total": 2,
+   "tall": true,
+   "worldTris": 4516,
+   "areas": {
+    "nave": 2
+   }
+  },
+  {
+   "id": "alch_bubbling_vat",
+   "tris": 2064,
+   "total": 2,
+   "tall": false,
+   "worldTris": 4128,
+   "areas": {
+    "alchemist_wing": 2
+   }
+  },
+  {
+   "id": "bell_altar",
+   "tris": 3569,
+   "total": 1,
+   "tall": true,
+   "worldTris": 3569,
+   "areas": {
+    "sanctum": 1
+   }
+  },
+  {
+   "id": "reliquary",
+   "tris": 1742,
+   "total": 2,
+   "tall": false,
+   "worldTris": 3484,
+   "areas": {
+    "chapterhouse": 1,
+    "warren": 1
+   }
+  },
+  {
+   "id": "rite_niches",
+   "tris": 3196,
+   "total": 1,
+   "tall": true,
+   "worldTris": 3196,
+   "areas": {
+    "chapterhouse": 1
+   }
+  },
+  {
+   "id": "alch_cauldron",
+   "tris": 3051,
+   "total": 1,
+   "tall": false,
+   "worldTris": 3051,
+   "areas": {
+    "alchemist_wing": 1
+   }
+  },
+  {
+   "id": "altar_ascension",
+   "tris": 3035,
+   "total": 1,
+   "tall": true,
+   "worldTris": 3035,
+   "areas": {
+    "chapterhouse": 1
+   }
+  },
+  {
+   "id": "alch_alembic",
+   "tris": 2926,
+   "total": 1,
+   "tall": true,
+   "worldTris": 2926,
+   "areas": {
+    "alchemist_wing": 1
+   }
+  },
+  {
+   "id": "slag_font",
+   "tris": 2683,
+   "total": 1,
+   "tall": true,
+   "worldTris": 2683,
+   "areas": {
+    "pyre": 1
+   }
+  },
+  {
+   "id": "prop_node_bone_kiln",
+   "tris": 2660,
+   "total": 1,
+   "tall": true,
+   "worldTris": 2660,
+   "areas": {
+    "acre": 1
+   }
+  },
+  {
+   "id": "alch_counter",
+   "tris": 2534,
+   "total": 1,
+   "tall": false,
+   "worldTris": 2534,
+   "areas": {
+    "alchemist_wing": 1
+   }
+  },
+  {
+   "id": "abbess_reliquary",
+   "tris": 2525,
+   "total": 1,
+   "tall": true,
+   "worldTris": 2525,
+   "areas": {
+    "ossuary": 1
+   }
+  },
+  {
+   "id": "plague_well",
+   "tris": 2431,
+   "total": 1,
+   "tall": true,
+   "worldTris": 2431,
+   "areas": {
+    "cloister": 1
+   }
+  },
+  {
+   "id": "ember_altar",
+   "tris": 2370,
+   "total": 1,
+   "tall": true,
+   "worldTris": 2370,
+   "areas": {
+    "pyre": 1
+   }
+  },
+  {
+   "id": "kings_grave",
+   "tris": 2356,
+   "total": 1,
+   "tall": true,
+   "worldTris": 2356,
+   "areas": {
+    "graves": 1
+   }
+  },
+  {
+   "id": "alch_station_sign",
+   "tris": 2274,
+   "total": 1,
+   "tall": true,
+   "worldTris": 2274,
+   "areas": {
+    "alchemist_wing": 1
+   }
+  },
+  {
+   "id": "saints_litter",
+   "tris": 2184,
+   "total": 1,
+   "tall": true,
+   "worldTris": 2184,
+   "areas": {
+    "cloister": 1
+   }
+  },
+  {
+   "id": "skull_wall",
+   "tris": 2071,
+   "total": 1,
+   "tall": false,
+   "worldTris": 2071,
+   "areas": {
+    "ossuary": 1
+   }
+  },
+  {
+   "id": "mire_altar",
+   "tris": 1995,
+   "total": 1,
+   "tall": false,
+   "worldTris": 1995,
+   "areas": {
+    "fen": 1
+   }
+  },
+  {
+   "id": "drowned_font",
+   "tris": 1962,
+   "total": 1,
+   "tall": true,
+   "worldTris": 1962,
+   "areas": {
+    "nave": 1
+   }
+  },
+  {
+   "id": "alch_totem_stirrer",
+   "tris": 1528,
+   "total": 1,
+   "tall": false,
+   "worldTris": 1528,
+   "areas": {
+    "alchemist_wing": 1
+   }
+  }
+ ],
+ "areas": {
+  "chapterhouse": {
+   "tris": 48320,
+   "casterTris": 19525,
+   "batches": 10,
+   "instances": 30
+  },
+  "ossuary": {
+   "tris": 60233,
+   "casterTris": 27072,
+   "batches": 9,
+   "instances": 36
+  },
+  "nave": {
+   "tris": 99200,
+   "casterTris": 67146,
+   "batches": 11,
+   "instances": 53
+  },
+  "sanctum": {
+   "tris": 45092,
+   "casterTris": 23532,
+   "batches": 6,
+   "instances": 29
+  },
+  "cloister": {
+   "tris": 61975,
+   "casterTris": 50127,
+   "batches": 9,
+   "instances": 37
+  },
+  "pyre": {
+   "tris": 57521,
+   "casterTris": 53293,
+   "batches": 9,
+   "instances": 29
+  },
+  "warren": {
+   "tris": 66332,
+   "casterTris": 48024,
+   "batches": 11,
+   "instances": 38
+  },
+  "coliseum": {
+   "tris": 64612,
+   "casterTris": 58270,
+   "batches": 6,
+   "instances": 32
+  },
+  "alchemist_wing": {
+   "tris": 129096,
+   "casterTris": 44084,
+   "batches": 18,
+   "instances": 62
+  },
+  "acre": {
+   "tris": 47368,
+   "casterTris": 29342,
+   "batches": 11,
+   "instances": 31
+  },
+  "graves": {
+   "tris": 165744,
+   "casterTris": 105791,
+   "batches": 15,
+   "instances": 130
+  },
+  "fen": {
+   "tris": 62524,
+   "casterTris": 39221,
+   "batches": 9,
+   "instances": 37
+  }
+ }
+}

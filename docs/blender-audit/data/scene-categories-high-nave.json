@@ -1,0 +1,334 @@
+[
+ {
+  "base": {
+   "on": {
+    "calls": 332,
+    "tris": 803855
+   },
+   "off": {
+    "calls": 283,
+    "tris": 451047
+   }
+  },
+  "rows": [
+   {
+    "name": "enemies",
+    "objects": 47,
+    "inst": 0,
+    "skinned": 40,
+    "plain": 7,
+    "mainCalls": 28,
+    "mainTris": 116160,
+    "shadowCalls": 8,
+    "shadowTris": 33851
+   },
+   {
+    "name": "thralls",
+    "objects": 25,
+    "inst": 0,
+    "skinned": 5,
+    "plain": 20,
+    "mainCalls": 25,
+    "mainTris": 23035,
+    "shadowCalls": 5,
+    "shadowTris": 21855
+   },
+   {
+    "name": "corpses",
+    "objects": 10,
+    "inst": 0,
+    "skinned": 10,
+    "plain": 0,
+    "mainCalls": 10,
+    "mainTris": 37530,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "player",
+    "objects": 5,
+    "inst": 0,
+    "skinned": 1,
+    "plain": 4,
+    "mainCalls": 5,
+    "mainTris": 12075,
+    "shadowCalls": 1,
+    "shadowTris": 11749
+   },
+   {
+    "name": "npcs",
+    "objects": 13,
+    "inst": 0,
+    "skinned": 3,
+    "plain": 10,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "nodes(gather)",
+    "objects": 84,
+    "inst": 81,
+    "skinned": 0,
+    "plain": 3,
+    "mainCalls": 2,
+    "mainTris": 4408,
+    "shadowCalls": 1,
+    "shadowTris": 2958
+   },
+   {
+    "name": "loot",
+    "objects": 0,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "bosses",
+    "objects": 1,
+    "inst": 0,
+    "skinned": 1,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "laborers",
+    "objects": 0,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 0,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "world:prop batches (instanced GLB props)",
+    "objects": 129,
+    "inst": 129,
+    "skinned": 0,
+    "plain": 0,
+    "mainCalls": 22,
+    "mainTris": 246695,
+    "shadowCalls": 24,
+    "shadowTris": 279416
+   },
+   {
+    "name": "world:architecture meshes (floors/walls/gates/etc)",
+    "objects": 112,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 112,
+    "mainCalls": 27,
+    "mainTris": 7918,
+    "shadowCalls": 10,
+    "shadowTris": 2979
+   },
+   {
+    "name": "world:flames/mist points",
+    "objects": 3,
+    "inst": 0,
+    "skinned": 0,
+    "plain": 3,
+    "mainCalls": 3,
+    "mainTris": 0,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   },
+   {
+    "name": "other (effects/VFX/decals/rings/etc)",
+    "objects": 219,
+    "inst": 22,
+    "skinned": 0,
+    "plain": 197,
+    "mainCalls": 161,
+    "mainTris": 3226,
+    "shadowCalls": 0,
+    "shadowTris": 0
+   }
+  ],
+  "slugs": {
+   "enemies:deacon": 6,
+   "enemies:penitent": 6,
+   "enemies:wraith": 4,
+   "enemies:sac": 5,
+   "enemies:hound": 5,
+   "enemies:gargoyle": 5,
+   "enemies:robber": 4,
+   "enemies:censer": 3,
+   "enemies:bat": 3,
+   "enemies:acolyte": 3,
+   "enemies:templar": 3,
+   "thralls:thrall_legionnaire": 5,
+   "corpses:grave_robber": 10
+  },
+  "propRows": [
+   {
+    "tris": 1143,
+    "inst": 33,
+    "cast": true,
+    "total": 37719
+   },
+   {
+    "tris": 1505,
+    "inst": 20,
+    "cast": true,
+    "total": 30100
+   },
+   {
+    "tris": 2908,
+    "inst": 10,
+    "cast": true,
+    "total": 29080
+   },
+   {
+    "tris": 2591,
+    "inst": 11,
+    "cast": true,
+    "total": 28501
+   },
+   {
+    "tris": 811,
+    "inst": 35,
+    "cast": false,
+    "total": 28385
+   },
+   {
+    "tris": 2710,
+    "inst": 9,
+    "cast": true,
+    "total": 24390
+   },
+   {
+    "tris": 1658,
+    "inst": 14,
+    "cast": true,
+    "total": 23212
+   },
+   {
+    "tris": 1505,
+    "inst": 14,
+    "cast": true,
+    "total": 21070
+   },
+   {
+    "tris": 2419,
+    "inst": 8,
+    "cast": false,
+    "total": 19352
+   },
+   {
+    "tris": 888,
+    "inst": 21,
+    "cast": true,
+    "total": 18648
+   },
+   {
+    "tris": 2591,
+    "inst": 7,
+    "cast": true,
+    "total": 18137
+   },
+   {
+    "tris": 1505,
+    "inst": 12,
+    "cast": true,
+    "total": 18060
+   },
+   {
+    "tris": 2246,
+    "inst": 8,
+    "cast": true,
+    "total": 17968
+   },
+   {
+    "tris": 1324,
+    "inst": 13,
+    "cast": false,
+    "total": 17212
+   },
+   {
+    "tris": 1508,
+    "inst": 11,
+    "cast": false,
+    "total": 16588
+   },
+   {
+    "tris": 1505,
+    "inst": 11,
+    "cast": true,
+    "total": 16555
+   },
+   {
+    "tris": 1324,
+    "inst": 12,
+    "cast": false,
+    "total": 15888
+   },
+   {
+    "tris": 2197,
+    "inst": 7,
+    "cast": true,
+    "total": 15379
+   },
+   {
+    "tris": 1259,
+    "inst": 12,
+    "cast": false,
+    "total": 15108
+   },
+   {
+    "tris": 1505,
+    "inst": 10,
+    "cast": true,
+    "total": 15050
+   },
+   {
+    "tris": 1505,
+    "inst": 9,
+    "cast": true,
+    "total": 13545
+   },
+   {
+    "tris": 1324,
+    "inst": 10,
+    "cast": false,
+    "total": 13240
+   },
+   {
+    "tris": 1324,
+    "inst": 10,
+    "cast": false,
+    "total": 13240
+   },
+   {
+    "tris": 1505,
+    "inst": 8,
+    "cast": true,
+    "total": 12040
+   },
+   {
+    "tris": 2908,
+    "inst": 4,
+    "cast": true,
+    "total": 11632
+   }
+  ],
+  "propTotals": {
+   "batches": 129,
+   "tris": 912513,
+   "inst": 603
+  },
+  "area": "nave",
+  "areaName": "nave",
+  "quality": "high"
+ }
+]
