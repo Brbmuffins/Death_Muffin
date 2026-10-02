@@ -10,46 +10,42 @@ flowchart LR
   classDef now fill:#4a2d5c,stroke:#c6a4ff,color:#f4ecff
   classDef next fill:#2f3550,stroke:#8fa8ff,color:#eef1ff
   classDef later fill:#3a3a3a,stroke:#9a9a9a,color:#eeeeee
-  classDef decide fill:#5c4a1f,stroke:#ffcf66,color:#fff6df
 
   subgraph SHIPPED["✅ Shipped 1 Oct 2026"]
-    S1[Necro weapons + cast animations]:::done
-    S2[Brewing, reagents, Alchemy skill]:::done
-    S3[Mourning Fen + Mire Mother]:::done
-    S4[Five swappable rite slots]:::done
-    S5[Offline Edition + complete save sync]:::done
-    S6[Leave the world at top of Settings]:::done
+    S1[Necro weapons, brews, Mourning Fen]:::done
+    S2[Five swappable rite slots]:::done
+    S3[Offline Edition + complete save sync]:::done
   end
 
-  subgraph NOW["🔨 Now"]
-    N1[Inventory relief<br/>bigger bag · Vault · Salvage]:::now
-    N2[Gear you can read<br/>stat effects · compare · character sheet]:::now
-    N3[Armor set bonuses]:::now
+  subgraph NOW["🔨 Now — being built"]
+    N1[Inventory relief<br/>48-slot bag · Vault · Salvage]:::now
+    N2[Gear you can read<br/>stat effects · compare · sheet · upgrade arrows]:::now
+    N4[Combat audio<br/>real impacts · calm mixer]:::now
+    N5[Strike timing<br/>swings land with the hit]:::now
   end
 
-  subgraph NEXT["🧭 Next"]
-    X1[The Alchemist's Wing<br/>a whole room for brewing]:::next
-    X2[Combat feel + animation pass<br/>less clipping, smoother motion]:::next
-    X3[Loot item level + affixes]:::next
-    X4[Open audits<br/>4-discipline visual · audio · New Blood XP pace]:::next
+  subgraph POLISH["✨ Next — polish what exists"]
+    P1[Necro spell feel<br/>darker, readable VFX]:::next
+    P2[Visible Grave Laborers<br/>thralls work the Acre]:::next
+    P3[Zone and encounter polish<br/>from the balance + clip audits]:::next
+    P4[Armor set bonuses]:::next
+    P5[Animation pass<br/>clipping · sliding · crowds]:::next
   end
 
-  subgraph LATER["🌒 Later"]
-    L1[AI companions<br/>parked by the owner]:::later
-    L2[New zones<br/>Catacomb Depths · Hollow Court]:::later
-    L3[Bone Colossus · runes · thrall gear]:::later
-    L4[Server authority<br/>anti-cheat for saves and loot]:::later
+  subgraph LATER["🌒 Later — new content"]
+    L0[Alchemist's Wing]:::later
+    L1[Item level + affixes]:::later
+    L2[New zones]:::later
+    L3[Server authority]:::later
+    L4[AI companions — parked]:::later
   end
 
-  SHIPPED --> NOW
-  N1 --> X1
-  N2 --> N3 --> X3
-  N2 --> X2
-  NOW --> NEXT --> LATER
-  X2 --> L1
+  SHIPPED --> NOW --> POLISH --> LATER
 ```
 
-**Legend:** 🟪 Now · 🟦 Next · ⬜ Later · 🟨 needs an owner decision first · 🟩 shipped
+**Principle (owner, 1 Oct 2026):** polish and improve what exists before adding more. The game should be immersive but not overwhelming. The necromancer is the main class; the other classes are bonus work.
+
+**Legend:** 🟪 Now · 🟦 Next · ⬜ Later · 🟩 shipped
 
 ---
 
@@ -87,12 +83,22 @@ The 18 armor sets (90 pieces) are themed but have **no set bonus**. Add 2-, 4- a
 
 ---
 
-## 🧭 Next
+## ✨ Next — polish what exists
+
+### P1 · Necro spell feel
+Every necromancer rite should look and sound necromantic: bone, grave dirt, soul-light and rot rather than generic magic. Keep each spell's meaning colour (`SPELL_FX`) but add necro motifs (bone shards, spectral hands, skull wisps, ground sigils), keep effects readable in a crowd, and cap particle counts so a full legion never turns into noise.
+
+### P2 · Visible Grave Laborers
+Assigned laborers appear as thralls at their node in the Sexton's Acre and work it: chopping, mining, digging, fishing, picking herbs, with the matching tool. Thrall models have no work clips yet; retargeting chop, dig and mine onto the four thrall rigs costs about 120 Tripo credits.
+
+### P3 · Zone and encounter polish
+Driven by measurements, not guesses: the necromancer balance run across all nine hunting grounds, the clip audit, and the loot audit (what fills the bag). Results and the resulting fixes are listed here as they land.
+
 
 ### X1 · The Alchemist's Wing
 A dedicated room off the Chapterhouse: cauldrons and alembics as brewing stations, reagent shelves showing what you have found, a drying rack for herbs, and an NPC apothecary who hands out brewing orders. Art goes through the existing Gemini → Tripo pipeline (`ASSET_PIPELINE.md`; about 6,300 Tripo credits left). Brewing moves from the Workbench tab into the room, and the room becomes the home of higher-tier recipes (discovery, quality, concoctions from `docs/ALCHEMY-AND-WORLDS-PLAN.md`).
 
-### X2 · Combat feel and animation pass
+### X2 · Combat feel and animation pass (P5)
 Keep the art style; make motion smoother. Practical steps, in the order that pays most:
 
 0. **Found 1 Oct 2026: attacks are out of sync.** Enemy wind-ups last 0.38–1.3 s, but the attack clip is played at a fixed 1.6× speed (`EntityViews.ts`), so its impact frame shows about 1.3 s in (main clip) or about 0.3 s in (the random second variant). Damage therefore lands before or after the visible swing, and the clip is cut when the enemy walks again. Fix (code only): bake each clip's measured impact time (`tools/measure-clips.mjs`) into a table, scale each swing so its impact lands at the end of the wind-up, and let the follow-through finish before blending to walk. Quadruped rigs (bone hound, skull rat, cinderhound) need the tool taught their bone names.
