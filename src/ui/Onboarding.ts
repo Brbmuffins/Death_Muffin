@@ -100,6 +100,7 @@ export type TipId =
   | 'templar'
   // Professions (docs/PROFESSIONS-ROADMAP.md §11).
   | 'acre'
+  | 'laborers_working'
   | 'gather'
   | 'bag_full'
   | 'skill_up'
@@ -419,6 +420,10 @@ export const TIPS: Record<TipId, Tip> = {
   acre: {
     title: "The Sexton's Acre",
     body: 'No waves ever come here. <kbd>Click</kbd> a tree, an ore seam, a fishing spot on the pond or a burial plot, and your necromancer keeps working it until it is spent. Coffin-Oaks just north of the entrance, the nearby Copper Seam and Pauper’s Grave, and Still Pools on the pond are usable at <b>level 1</b>. The stronger nodes lie further from the door. Press <kbd>P</kbd> to see your skills.',
+  },
+  laborers_working: {
+    title: 'Your laborers at work',
+    body: 'The dead you sent to work (<kbd>H</kbd>) stand at their posts in the Acre: chopping, mining, digging or fishing. A gold check over one means it has finished work for you to collect. <kbd>Hover</kbd> a laborer to see its post and time, or <kbd>click</kbd> it to open the Laborers.',
   },
   gather: {
     title: 'Working a node',

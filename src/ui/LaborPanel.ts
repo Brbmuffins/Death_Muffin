@@ -21,6 +21,8 @@ export class LaborPanel {
   private tick = 0;
   private off: (() => void) | null = null;
   private pick = new Map<number, string>();
+  /** Told whenever the panel learns a fresh labor view, so the laborers standing in the Acre can follow it. */
+  onView: ((v: LaborView) => void) | null = null;
 
   constructor(
     private root: HTMLElement,
@@ -60,6 +62,7 @@ export class LaborPanel {
   private set(v: LaborView) {
     this.view = v;
     this.skew = v.now - Date.now();
+    this.onView?.(v);
   }
 
   close() {

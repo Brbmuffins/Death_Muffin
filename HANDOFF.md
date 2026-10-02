@@ -119,6 +119,10 @@ No deployment. Source and redistribution note: `docs/CROSSWORLDS-AUDIO.md`.
 
 ## In flight (check before starting overlapping work)
 
+### Visible Grave Laborers (branch `dm/laborer-world`, not deployed, client only)
+
+In the Sexton's Acre each assigned laborer (H panel) now stands beside a node of its post and works it. `graphics/LaborerViews.ts` owns it (models and tools load on the first Acre visit, nothing updates outside the Acre); pure rules (node pick, standing spot, clip per skill, hover text) are in `graphics/laborerLayout.ts`. `Creature.loopRange(anim, start, end)` loops a clip segment (thrall `chop` 0.7-3.0 s); `dig` loops whole; fishing is idle with a rod. WorldScene only forwards hooks (`setActive` in `enterArea`, `update`, hover/click, `laborPanel.onView`, `checkLabor`). A gold check marks ready work; hover shows post and time; click opens H. One quiet `audio.play` call site (`LaborerViews.beats`). Smoke: `tools/qa/laborers-smoke.cjs` (port 5325). Needs the thrall GLBs with `dig` and `chop` clips (already in `public/models`).
+
 ### Inventory relief (branch `dm/inventory`, not deployed)
 
 Bag 24 to 48 slots (`BAG_SLOTS` in `gatheringRules.ts` is the one source; saves send `bagSize`, a server treats a missing one as 24 so a stale tab cannot wipe slots 24-47), the Ossuary Vault (`vault.cjs`, 120 shared slots, key V, migration `017-vault.sql`), Salvaging (`salvage.cjs`, Bone Grinder in the Acre, seventh skill) and Reliquary locks plus Sell all junk. Pure move and yield rules live in `vaultRules.ts` and `salvageRules.ts` and are bundled for the server. **Deploy needs migration 017** (`deploy-release.sh <rev> .../017-vault.sql`). Sexton's Mantle now needs total level 693 (seven skills). Offline-to-online sync does not carry the offline vault. Smoke: `tools/qa/vault-salvage-smoke.cjs`.
