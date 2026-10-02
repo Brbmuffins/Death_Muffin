@@ -482,7 +482,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   people: {
     title: 'People of the Covenant',
-    body: 'Some of the Covenant still stand in these halls: the <b>Prior</b> in the Chapterhouse, the <b>Sexton</b> in the Acre, the <b>Apothecary</b> at her counter in the Alchemist's Wing (the Chapterhouse's east door). Click one, or stand close and press <kbd>E</kbd>. A gold <b>!</b> means they have something new to say. They only advise. The <b>Next</b> line under the minimap shows one suggestion; Settings can hide it.',
+    body: 'Some of the Covenant still stand in these halls: the <b>Prior</b> in the Chapterhouse, the <b>Sexton</b> in the Acre, the <b>Apothecary</b> at her counter in the Alchemist’s Wing (the Chapterhouse’s east door). Click one, or stand close and press <kbd>E</kbd>. A gold <b>!</b> means they have something new to say. They only advise. The <b>Next</b> line under the minimap shows one suggestion; Settings can hide it.',
   },
   station: {
     title: 'A working station',
