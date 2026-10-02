@@ -87,9 +87,10 @@ sudo systemctl is-active death-muffin-auth.service death-muffin-realtime.service
 
 echo "== Clients (assets first, entry pages last)"
 for d in assets art models fx audio; do [ -d "$SRC/dist/$d" ] && sudo cp -a "$SRC/dist/$d" "$PUBLIC/play/"; done
+sudo cp -a "$SRC/dist/index.html" "$PUBLIC/play/index.html"
+# release.txt goes after index.html: open tabs auto-reload when it changes, and must then fetch the new page.
 echo "$SHA $(date -u +%FT%TZ)" > "$CAND/release.txt"
 sudo cp "$CAND/release.txt" "$PUBLIC/play/release.txt"
-sudo cp -a "$SRC/dist/index.html" "$PUBLIC/play/index.html"
 (cd "$SRC/dist-offline" && sudo cp -a $(ls -A | grep -vx -e index.html -e sw.js) "$PUBLIC/offline/")
 sudo cp -a "$SRC/dist-offline/sw.js" "$SRC/dist-offline/index.html" "$PUBLIC/offline/"
 sudo chown -R root:root "$PUBLIC/play" "$PUBLIC/offline"
