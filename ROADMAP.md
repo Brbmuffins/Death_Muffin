@@ -24,10 +24,10 @@ flowchart LR
     S10[2 Oct: necro spell feel · animation pass]:::done
     S11[2 Oct: Wing dressed · Sexton's spade]:::done
     S12[2 Oct: animation 2 — hitstop · knockback · settle]:::done
+    S13[2 Oct: Blender pipeline — new rat + cinderhound gaits]:::done
   end
 
   subgraph NOW["🔨 Now — being built"]
-    W5[Blender animation pipeline<br/>quadruped gaits first]:::now
     W2[Gear tuning<br/>affixes + sets vs the power curve]:::now
     W3[First-hour polish<br/>calm onboarding]:::now
   end
@@ -51,6 +51,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 2 Oct 2026 | Blender animation pipeline (headless Blender 4.5 LTS, `node tools/blender.mjs`): procedural gaits, rig fixes, loop/drift cleanup, IK foot-lock, CC0 retargeting. First results: skull rat and cinderhound got new idle/walk/run (the cinderhound's forelegs had no bones; added) — foot slip 1.04 → 0.08 and 1.53 → 0.09 | 0 Tripo credits. Quaternius CC0 library tested on the Gravecaller; not swapped in (not clearly better). |
 | 2 Oct 2026 | Animation 2: hitstop on heavy hits (visual only, rationed), eased knockback, corpses settle into the ground (and no longer freeze mid-fall), real run clips for the grave robber and censer bearer, corrected hound strides | 20 Tripo credits. Skull rat and cinderhound gaits go to the Blender pipeline. |
 | 2 Oct 2026 | The Alchemist's Wing dressed: ~65 props (benches, shelves, herbs, rugs, candle pools), warm stone floor and walls instead of purple; the Sexton carries his spade | 0 Tripo credits (existing props and procedural textures). |
 | 2 Oct 2026 | Necro spell feel: all 22 necromancer rites gained capped bone, grave-dirt, soul-light, rot-spore, skull and spectral-hand motifs (thinner for thralls, off on Low); animation pass: enemies, thralls, bosses and NPCs no longer face 90° sideways, measured stride speeds cut foot sliding (slip ~1.4 → ~0.3), weapon/tool grips no longer sink into bodies, additive hit flinch, smoothed turning, softer crowd overlap | Spell before/after sheets in docs/screenshots/spell-feel/; animation evidence in docs/screenshots/anim-pass/. |
