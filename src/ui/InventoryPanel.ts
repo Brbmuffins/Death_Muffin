@@ -336,11 +336,11 @@ export class InventoryPanel {
         </div>
         ${compare ? `<div class="gs-col">${compare}</div>` : ''}
       </div>
+      <div class="cw-detail-actions">
       ${equippable ? `<button class="cw-button small" data-act>${slot.equipped ? 'Unequip' : 'Equip'}</button>` : ''}
       ${drinkable ? `<button class="cw-button small" data-act>Drink</button>` : ''}
       ${this.onBelt && slot.item_id in BREWS ? `<button class="cw-button small" data-belt>Put on belt (${BREW_KEYS[BREWS[slot.item_id].slot].toUpperCase()})</button>` : ''}
       ${edible ? `<button class="cw-button small" data-act>Eat</button>` : ''}
-      <div class="cw-detail-actions">
       ${!slot.equipped ? `<button class="cw-button small ${locked ? 'on' : ''}" data-lock title="${locked ? 'Unlock: bulk actions may take it again' : 'Lock: Sell all junk, Deposit and Salvage all will skip it'}">${LOCK_SVG} ${locked ? 'Unlock' : 'Lock'}</button>` : ''}
       ${this.grinder && !slot.equipped && isSalvageGear(slot.item_type) ? `<button class="cw-button small" data-salvage ${atGrinder ? '' : 'disabled'} title="${atGrinder ? 'Break it down for materials and reagents' : 'Stand at the Bone Grinder in the Sexton’s Acre to salvage'}">Salvage</button>${atGrinder ? '' : '<span class="cw-hint-text small">Needs the Bone Grinder (Acre)</span>'}` : ''}
       ${this.onSold && !slot.equipped && slot.sell_value > 0 ? `<button class="cw-button small" data-sell="1" ${locked ? 'disabled title="Unlock it to sell"' : ''}>Sell (${slot.sell_value}g)</button>` : ''}

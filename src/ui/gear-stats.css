@@ -24,10 +24,16 @@
 .cw-bag-detail .info { flex: 1; min-width: 0; }
 .cw-bag-detail .info.gs-wide { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 0 18px; align-items: start; }
 .cw-bag-detail .info.gs-wide .gs-cmp { margin-top: 0; }
-/* Action buttons stack in a narrow column so the item text and its comparison get the width. */
-.cw-bag-detail:has(.info.gs-wide) { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 6px 14px; }
-.cw-bag-detail:has(.info.gs-wide) > .info { grid-column: 1; grid-row: 1 / span 8; }
-.cw-bag-detail:has(.info.gs-wide) > .cw-button { grid-column: 2; }
+/* One layout for the detail strip: item text (+ its comparison) on the left, every action stacked in one column
+   on the right (Equip/Drink/Eat first, then Lock, Salvage, Sell), so nothing stretches or falls off the bottom. */
+.cw-bag-detail { display: grid; grid-template-columns: minmax(0, 1fr) 148px; align-items: start; gap: 6px 14px; }
+.cw-bag-detail > .cw-hint-text { grid-column: 1 / -1; }
+.cw-detail-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.cw-detail-actions > * { grid-column: 1 / -1; }
+.cw-detail-actions > .cw-button { width: 100%; justify-content: center; }
+/* Lock and Salvage are secondary: they share one row. */
+.cw-detail-actions > [data-lock], .cw-detail-actions > [data-salvage] { grid-column: auto; padding-left: 4px; padding-right: 4px; }
+.cw-detail-actions > .cw-hint-text { font-size: 11px; line-height: 1.25; text-align: center; }
 
 .cw-equip-sheet { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 0; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-bone-300); cursor: pointer; font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
 .cw-equip-sheet:hover { border-color: var(--cw-border-active); background: var(--cw-accent-soft); }
