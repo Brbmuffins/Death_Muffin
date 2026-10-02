@@ -69,6 +69,7 @@ import type { Gallery } from '../graphics/binbun/gallery';
 import { playFx } from '../graphics/binbun/presets';
 import type { BinbunHandle } from '../graphics/binbun/BinbunFX';
 import { EntityViews, preloadAreaModels } from '../graphics/EntityViews';
+import { warmColdPaths } from '../graphics/coldWarm';
 import { setWarmContext } from '../graphics/warmModel';
 import { fx } from '../graphics/fxTextures';
 import * as nf from '../graphics/necroFx';
@@ -4629,7 +4630,10 @@ export class WorldScene implements GameScene, RuntimeView {
     // From here on new bodies compile their shaders and upload textures before they appear (graphics/warmModel.ts).
     setWarmContext({ renderer: getRuntime().renderer, camera: this.rig.camera, scene: this.scene });
     this.cancelPreload?.();
-    this.cancelPreload = preloadAreaModels(area, this.discipline.id);
+    const cancelModels = preloadAreaModels(area, this.discipline.id);
+    // Cold paths (loot kit + icons, FX textures, Binbun effects) after the bodies: idle-time, one piece per turn.
+    const cancelCold = warmColdPaths({ area, binbun: this.effects.binbun, loot: this.loot });
+    this.cancelPreload = () => (cancelModels(), cancelCold());
     audio.setArea(area);
     this.laborers?.setActive(area === 'acre');
     const def = AREAS[area];

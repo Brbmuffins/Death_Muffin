@@ -15,6 +15,7 @@ const { chromium } = require(process.env.DM_PLAYWRIGHT_MODULE);
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   page.setDefaultTimeout(150000);
   await page.addInitScript(() => localStorage.setItem('dm_settings_v1', JSON.stringify({ quality: 'high', tips: false, autoCombat: false })));
+  if (process.env.DM_QA_NOBUDGET) await page.addInitScript(() => { window.__cwNoBudget = true; });
   await page.goto(process.env.DM_QA_URL);
   await page.getByRole('button', { name: 'New to the Covenant? Create an account' }).click();
   const n = `co_${Date.now() % 1000000}`;

@@ -6,6 +6,7 @@ import type { Effects, Handle } from './Effects';
 import { fx } from './fxTextures';
 import { playFx } from './binbun/presets';
 import { effectiveRarity } from '../gameplay/affixRules';
+import { warmObjects } from './warmModel';
 
 type Kind = 'gold' | 'shard' | 'item';
 
@@ -60,6 +61,8 @@ export class LootView {
   readonly group = new THREE.Group();
   private drops: Drop[] = [];
   private iconTex = new Map<string, THREE.Texture>();
+  /** One sprite material per icon, shared by every drop of that item (a new material per drop meant a new program lookup + upload each time). */
+  private iconMat = new Map<string, THREE.SpriteMaterial>();
   private loader = new THREE.TextureLoader();
 
   constructor(
@@ -97,6 +100,47 @@ export class LootView {
     this.effects.lightFlash(x, 1.2, z, 0xa26bff, 20, 0.6);
   }
 
+  private materialFor(url: string): THREE.SpriteMaterial {
+    let mat = this.iconMat.get(url);
+    if (!mat) {
+      let tex = this.iconTex.get(url);
+      if (!tex) {
+        tex = this.loader.load(url);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        this.iconTex.set(url, tex);
+      }
+      mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+      this.iconMat.set(url, mat);
+    }
+    return mat;
+  }
+
+  /**
+   * Cold-path warm (idle, at area entry): loads and uploads the icons this area can drop, and compiles the programs the
+   * first drop would otherwise build mid-fight (sprite, rarity beam, coin pile, shard). Returns the tasks to run one per idle turn.
+   */
+  warmTasks(itemIds: string[]): (() => Promise<unknown>)[] {
+    const tasks: (() => Promise<unknown>)[] = [];
+    const kit = new THREE.Group();
+    const sample = this.materialFor('art/items/bone_meal.webp');
+    kit.add(new THREE.Sprite(sample));
+    kit.add(new THREE.Mesh(beamGeo, new THREE.MeshBasicMaterial({ map: fx.glow(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })));
+    kit.add(new THREE.Mesh(pileGeometry(4), coinMat));
+    kit.add(new THREE.Mesh(shardGeo, shardMat));
+    tasks.push(() => warmObjects([kit], [fx.glow()]));
+    for (const id of itemIds) {
+      const url = itemMeta(id).icon ?? `art/items/${id}.webp`;
+      if (this.iconMat.has(url)) continue;
+      tasks.push(async () => {
+        const tex = this.materialFor(url).map!;
+        // Upload only once the image has decoded; before that a texture would upload empty and re-upload at first draw.
+        for (let i = 0; i < 60 && !(tex.image as HTMLImageElement | undefined)?.complete; i++) await new Promise((r) => setTimeout(r, 50));
+        await warmObjects([], [tex]);
+      });
+    }
+    return tasks;
+  }
+
   /** QA: where every drop lies, so a script can walk the hero over it and use the real pickup path. */
   debugDrops() {
     return this.drops.map((d) => ({ kind: d.kind, id: d.item?.item_id ?? null, x: d.x, z: d.z }));
@@ -109,13 +153,7 @@ export class LootView {
     const rarity = (drop.instance ? effectiveRarity(meta.rarity, drop.instance.affixes.length) : meta.rarity) as typeof meta.rarity;
     const color = new THREE.Color(RARITY_COLOR[rarity]);
     const url = meta.icon ?? `art/items/${drop.item_id}.webp`;
-    let tex = this.iconTex.get(url);
-    if (!tex) {
-      tex = this.loader.load(url);
-      tex.colorSpace = THREE.SRGBColorSpace;
-      this.iconTex.set(url, tex);
-    }
-    const icon = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+    const icon = new THREE.Sprite(this.materialFor(url));
     icon.scale.setScalar(0.62);
     icon.position.set(px, 0.7, pz);
     const beam =
@@ -189,7 +227,6 @@ export class LootView {
       this.group.remove(d.beam);
       (d.beam.material as THREE.Material).dispose();
     }
-    if (d.kind === 'item') ((d.obj as THREE.Sprite).material as THREE.Material).dispose();
     this.drops.splice(i, 1);
   }
 
@@ -199,6 +236,7 @@ export class LootView {
 
   dispose() {
     this.group.removeFromParent();
+    this.iconMat.forEach((m) => m.dispose());
     this.iconTex.forEach((t) => t.dispose());
   }
 }

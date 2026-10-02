@@ -78,7 +78,12 @@ export class UploadQueue {
 /** Every texture a material references (maps, normal/roughness/emissive maps, …). */
 export function materialTextures(mats: Iterable<THREE.Material>): Set<THREE.Texture> {
   const out = new Set<THREE.Texture>();
-  for (const m of mats) for (const v of Object.values(m)) if ((v as THREE.Texture)?.isTexture) out.add(v as THREE.Texture);
+  for (const m of mats) {
+    for (const v of Object.values(m)) if ((v as THREE.Texture)?.isTexture) out.add(v as THREE.Texture);
+    // ShaderMaterials (Binbun effects) keep their textures in uniforms.
+    const u = (m as THREE.ShaderMaterial).uniforms;
+    if (u) for (const k of Object.keys(u)) if ((u[k]?.value as THREE.Texture)?.isTexture) out.add(u[k].value as THREE.Texture);
+  }
   return out;
 }
 
@@ -118,6 +123,35 @@ export function warmModel(model: THREE.Object3D, mats: Iterable<THREE.Material>,
     }
   });
   return Promise.race([warm, new Promise<void>((r) => setTimeout(r, WARM_TIMEOUT_MS))]);
+}
+
+/**
+ * Warms effect / prop objects that are not creature bodies (loot kit, Binbun effects): compiles their shader programs
+ * and uploads their textures (a couple per frame). Resolves at once without a warm context or in a hidden tab. Never rejects.
+ */
+export async function warmObjects(objs: THREE.Object3D[], extraTextures: Iterable<THREE.Texture> = []): Promise<void> {
+  const c = ctx;
+  if (!c || (typeof document !== 'undefined' && document.hidden)) return;
+  if (!uploads || uploadsFor !== c.renderer) {
+    uploadsFor = c.renderer;
+    uploads = new UploadQueue((t) => c.renderer.initTexture(t));
+  }
+  const q = uploads;
+  const mats = new Set<THREE.Material>();
+  for (const o of objs) o.traverse((n) => {
+    const m = (n as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+    if (Array.isArray(m)) m.forEach((x) => mats.add(x));
+    else if (m) mats.add(m);
+  });
+  const texs = new Set([...materialTextures(mats), ...extraTextures]);
+  try {
+    await Promise.race([
+      Promise.all([...objs.map((o) => c.renderer.compileAsync(o, c.camera, c.scene)), ...[...texs].map((t) => q.enqueue(t))]),
+      new Promise<void>((r) => setTimeout(r, WARM_TIMEOUT_MS)),
+    ]);
+  } catch (err) {
+    console.warn('[graphics] object warm failed', err);
+  }
 }
 
 /**

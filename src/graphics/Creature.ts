@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { assets } from './AssetCache';
 import { warmModel } from './warmModel';
+import { buildBudget } from './buildBudget';
 import { CREATURE_MODELS, type CreatureSlug } from './modelPaths';
 import { hitstop } from './hitstop';
 import CLIP_TIMINGS_JSON from '../content/clipTimings.json';
@@ -173,6 +174,8 @@ export class Creature {
       })
       .then(async (t) => {
       if (!t || this.disposed) return;
+      // Clone + material variants: one budgeted chunk, so a wave's bodies spread over a few frames.
+      const model = await buildBudget.run(() => {
       const model = t.skinned ? cloneSkinned(t.scene) : t.scene.clone(true);
       model.scale.multiplyScalar(t.scale);
       model.position.y = t.groundOffset;
@@ -210,8 +213,16 @@ export class Creature {
         this.baseEmissive.copy(this.mats[0].emissive);
         this.baseEmissiveIntensity = this.mats[0].emissiveIntensity;
       }
+      return model;
+      });
       // First draw of a new body compiles shaders and uploads textures; do both off the frame, then attach.
       await warmModel(model, this.mats, t, `${!!opts.spectral}${!!opts.wings && !usedFallback}${!!opts.gearTint}${!!opts.rim}`);
+      if (this.disposed) {
+        this.mats.forEach((m) => m.dispose());
+        return;
+      }
+      // Mixer + one action per clip: a second budgeted chunk (visual only; logic never waits on `loaded`).
+      await buildBudget.run(() => {
       if (this.disposed) {
         this.mats.forEach((m) => m.dispose());
         return;
@@ -234,6 +245,7 @@ export class Creature {
       for (const [bone, obj, dir, follow, fit] of this.pendingAttach) this.attach(bone, obj, dir, follow, fit);
       this.pendingAttach = [];
       this.startLoop(false);
+      });
     });
   }
 
