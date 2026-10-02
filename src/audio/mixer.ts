@@ -99,6 +99,24 @@ export const PROFILES: Record<Sfx, Profile> = {
   error: P('ui', 3, 0.2),
   chainTier: P('ui', 4, 1),
   chainBreak: P('ui', 4, 0.6),
+  // Second pass: more rites (all the player's own casts).
+  siphon: P('combat', PLAYER, 1.5),
+  prison: P('combat', PLAYER, 1.1),
+  hands: P('combat', PLAYER, 1.1),
+  storm: P('combat', PLAYER, 1.7),
+  soulRelease: P('combat', PLAYER, 1.4),
+  sigWall: P('combat', PLAYER, 1),
+  sigRend: P('combat', PLAYER, 0.9),
+  sigDirge: P('combat', PLAYER, 2.2),
+  sigBloom: P('combat', PLAYER, 1),
+  // Interface additions.
+  panelOpen: P('ui', 2, 0.2),
+  panelClose: P('ui', 2, 0.2),
+  equip: P('ui', 3, 0.35),
+  lootRare: P('ui', 4, 0.7),
+  lootEpic: P('ui', 5, 1.6),
+  vaultOpen: P('ui', 3, 1.2),
+  vaultClose: P('ui', 3, 1),
   // World / ambience.
   gate: P('ambience', 6, 2.5),
   wave: P('ambience', 5, 1.2),
@@ -107,7 +125,18 @@ export const PROFILES: Record<Sfx, Profile> = {
   pick: P('ambience', 2, 0.25),
   splash: P('ambience', 2, 0.4),
   shovel: P('ambience', 2, 0.3),
+  reel: P('ambience', 2, 1),
+  sawpit: P('ambience', 2, 1.4),
+  kiln: P('ambience', 2, 1.9),
+  cook: P('ambience', 2, 1.2),
+  grind: P('ambience', 2, 1.4),
+  craft: P('ambience', 3, 0.4),
   distantBell: P('ambience', 0, 2.7),
+  bogBubble: P('ambience', 0, 0.9),
+  crowCaw: P('ambience', 0, 0.4),
+  windGust: P('ambience', 0, 3.6),
+  crowdMoan: P('ambience', 0, 3.6),
+  dustFall: P('ambience', 0, 0.6),
   graveCreak: P('ambience', 0, 0.8),
   waterDrip: P('ambience', 0, 0.3),
   emberCrackle: P('ambience', 0, 0.3),
@@ -266,4 +295,49 @@ export function pickVariant(count: number, last: number, rnd: number): number {
   if (count <= 1) return 0;
   const i = Math.min(count - 2, Math.floor(rnd * (count - 1)));
   return i >= last && last >= 0 ? i + 1 : i;
+}
+
+// --- combat activity: ambience steps back while a fight is on ----------------
+
+/** Weight one started sound adds to the combat-activity meter. */
+export function activityWeight(bus: BusId, priority: Priority): number {
+  if (bus === 'combat') return 0.06 + 0.012 * priority;
+  if (bus === 'enemies') return 0.04;
+  if (bus === 'thralls') return 0.015;
+  return 0;
+}
+
+/** Leaky meter of recent combat sounds: 0 in a quiet zone, 1 in a heavy fight. */
+export class CombatActivity {
+  static readonly HALF_LIFE = 2.5;
+  private value = 0;
+  private at = 0;
+  level(now: number): number {
+    return this.value * Math.pow(0.5, Math.max(0, now - this.at) / CombatActivity.HALF_LIFE);
+  }
+  bump(now: number, weight: number) {
+    this.value = Math.min(1.5, this.level(now) + weight);
+    this.at = now;
+  }
+  reset() {
+    this.value = 0;
+    this.at = 0;
+  }
+}
+
+/** Zone-bed gain multiplier at a given combat level (the boss drum is not ducked). */
+export const BED_DUCK_DEPTH = 0.5;
+export function bedDuckGain(level: number): number {
+  return 1 - BED_DUCK_DEPTH * Math.min(1, Math.max(0, level));
+}
+/** Sparse ambient details wait until the fight has died down. */
+export function accentsAllowed(level: number): boolean {
+  return level < 0.2;
+}
+
+/** Highest rarity picked up this frame decides the loot sound; common and uncommon share the plain one. */
+export function lootSfx(rarities: readonly string[]): Sfx {
+  if (rarities.includes('epic') || rarities.includes('legendary')) return 'lootEpic';
+  if (rarities.includes('rare')) return 'lootRare';
+  return 'item';
 }

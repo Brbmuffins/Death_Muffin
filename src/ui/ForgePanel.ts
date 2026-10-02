@@ -31,7 +31,6 @@ export class ForgePanel {
   private professions: Profession[] = [];
   private tab: Tab = 'mining';
   private busy = false;
-  private station: Station | null = null;
 
   constructor(
     private root: HTMLElement,
@@ -43,6 +42,9 @@ export class ForgePanel {
   get isOpen() {
     return this.el !== null;
   }
+
+  /** The Acre station the panel is open on (null: the Workbench). */
+  station: Station | null = null;
 
   /** The Workbench (every rite), or one Acre station locked to its rite. */
   async open(station?: Station) {
