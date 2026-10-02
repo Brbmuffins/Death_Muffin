@@ -1,7 +1,7 @@
 /**
  * slim-models.mjs — in-place, idempotent size pass over the shipped GLBs in public/models.
  *
- *   node tools/slim-models.mjs [--dry] [--no-trim] [--dir public/models] [--only <slug-or-path-substring> ...]
+ *   node tools/slim-models.mjs [--dry] [--no-trim] [--textures] [--dir public/models] [--only <slug-or-path-substring> ...]
  *
  * 1. prune()  — drops accessors/materials/textures nothing references (quantize() in build-characters.mjs
  *               leaves the pre-quantize float accessors behind, ~170 KB per character).
@@ -11,11 +11,15 @@
  *               plus a margin. Every other model keeps its full clips: enemies, bosses and thralls play `cast`/`dig`
  *               whole (laborers loop `dig`; burrowing enemies play it for BURROW.digS).
  *
+ * 4. --textures — downscale textures by class (see TEXTURE_CAP; only ever shrinks, WebP q82). Hero rigs, the player's
+ *               gear/tool props and NPCs are never touched.
+ *
  * Prints before/after bytes per file. Re-running is a no-op (files are only written when smaller).
  */
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { dedup, prune } from '@gltf-transform/functions';
+import { dedup, prune, textureCompress } from '@gltf-transform/functions';
+import sharp from 'sharp';
 import { readdirSync, statSync, existsSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,6 +28,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const DRY = args.includes('--dry');
 const NO_TRIM = args.includes('--no-trim');
+const TEXTURES = args.includes('--textures');
 const di = args.indexOf('--dir');
 const DIR = di >= 0 ? args[di + 1] : join(ROOT, 'public', 'models');
 const only = [];
@@ -33,6 +38,20 @@ if (oi >= 0) for (const a of args.slice(oi + 1)) if (!a.startsWith('--')) only.p
 /** Seconds to keep per clip, on rigs whose clips run through inPlaceHeroClip (played windows 1.1 s / 1.3 s). */
 const HERO_TRIM = { cast: 1.4, dig: 1.6 };
 const isPlayerRig = (rel) => /^(hero_[^/]+|necromancer)\/character\.glb$/.test(rel);
+
+
+/** Texture edge cap (px) by class; first match wins, no match = leave alone. Textures only shrink, never grow. */
+const BIG_PROPS = /^(arch|pillar|statue|drowned_statue|stained_glass|organ_pipes|altar_ascension|ember_altar|mire_altar|cinder_obelisk|waystone|workbench|abbess_reliquary|saints_litter|dead_tree|choir_wraith|mausoleum|bell_altar)\.glb$/;
+function textureCap(rel) {
+  if (/^hero_|^necromancer\//.test(rel)) return 0; // player avatars: full quality
+  if (/^npc_/.test(rel)) return 0; // dialogue close-ups
+  if (/^props\/(gear_|tool_)/.test(rel)) return 0; // worn / held by the player
+  if (/^(boss_|prelate|bone_golem|slag_brute|drowned_sexton)/.test(rel)) return 512; // bosses and elites: 1024 -> 512
+  if (/^props\//.test(rel)) return BIG_PROPS.test(rel.slice(6)) ? 512 : 256; // landmarks 512, clutter 256
+  return 256; // horde enemies and thralls: 512 -> 256
+}
+/** Decoded GPU estimate: w*h*4 bytes + 1/3 for mips. */
+const texBytes = (doc) => doc.getRoot().listTextures().reduce((n, t) => { const [w, h] = t.getSize() ?? [0, 0]; return n + w * h * 4 * 4 / 3; }, 0);
 
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
 const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(d, e.name)) : e.name.endsWith('.glb') ? [join(d, e.name)] : []));
@@ -83,7 +102,7 @@ function trimAnimation(anim, keep) {
   }
 }
 
-let before = 0, after = 0, n = 0;
+let before = 0, after = 0, n = 0, tex0 = 0, tex1 = 0;
 for (const file of walk(DIR).sort()) {
   const rel = relative(DIR, file).split('\\').join('/');
   if (only.length && !only.some((o) => rel.includes(o))) continue;
@@ -95,7 +114,13 @@ for (const file of walk(DIR).sort()) {
       if (keep) trimAnimation(anim, keep);
     }
   }
+  const t0 = texBytes(doc);
+  const cap = TEXTURES ? textureCap(rel) : 0;
+  const biggest = Math.max(0, ...doc.getRoot().listTextures().map((t) => Math.max(...(t.getSize() ?? [0]))));
+  if (cap && biggest > cap) await doc.transform(textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [cap, cap], quality: 82 }));
   await doc.transform(dedup(), prune());
+  tex0 += t0;
+  tex1 += texBytes(doc);
   const bytes = await io.writeBinary(doc);
   const size1 = bytes.byteLength;
   before += size0;
@@ -108,4 +133,4 @@ for (const file of walk(DIR).sort()) {
     after += size0;
   }
 }
-console.log(`\n${n} files  ${(before / 1e6).toFixed(2)} MB -> ${(after / 1e6).toFixed(2)} MB  (${((1 - after / before) * 100).toFixed(1)}% smaller)${DRY ? '  [dry run]' : ''}`);
+console.log(`\n${n} files  ${(before / 1e6).toFixed(2)} MB -> ${(after / 1e6).toFixed(2)} MB  (${((1 - after / before) * 100).toFixed(1)}% smaller)  decoded texture estimate (one copy of each model) ${(tex0 / 1e6).toFixed(0)} MB -> ${(tex1 / 1e6).toFixed(0)} MB${DRY ? '  [dry run]' : ''}`);
