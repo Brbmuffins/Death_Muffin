@@ -25,13 +25,17 @@ import type { LiveNode } from '../gameplay/gatherPlan';
 import { STOP_TEXT } from '../gameplay/gatherPlan';
 import { NodeViews } from '../graphics/NodeViews';
 import { LaborerViews } from '../graphics/LaborerViews';
+import { NpcViews } from '../graphics/NpcViews';
+import { DialoguePanel } from '../ui/DialoguePanel';
+import { NPCS, NPC_IDS, NPC_TALK_RANGE, npcFromInteractable, type NpcId } from '../content/npcs';
+import { Guidance, bossTrophyKey, nextSuggestion, readTrophies, suggestions as guidanceSuggestions, summarizeContracts, summarizeLabor, type ContractSummary, type GuidanceState, type LaborSummary, type Suggestion } from '../gameplay/guidance';
 import { addToSlots } from '../gameplay/loot';
 import { WAVE_MILESTONES, damageBonusPct, milestoneActive, waveModifiers } from '../content/upgrades';
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
 import { BOONS, ascensionLevels, ascensionRewardMult, roman } from '../content/ascension';
 import { AscensionPanel } from '../ui/AscensionPanel';
 import { ClassPanel } from '../ui/ClassPanel';
-import { changeDiscipline, getCosmetics, getGarden, getLabor, type ContractDelivery, type CosmeticsView, type GardenResult, type LaborResult } from '../net/api';
+import { changeDiscipline, getContracts, getCosmetics, getGarden, getLabor, type LaborView, type ContractDelivery, type CosmeticsView, type GardenResult, type LaborResult } from '../net/api';
 import { canUseAutoCombat, onSettingsChange, setActiveCharacter, settings, updateSettings } from '../app/settings';
 import { selectAutoCombatAction, selectAutoCombatMovement, type AutoMoveMemory } from '../gameplay/autoCombat';
 import { STATUS_FX } from '../content/statuses';
@@ -309,6 +313,18 @@ export class WorldScene implements GameScene, RuntimeView {
   private nodeViews!: NodeViews;
   /** Grave Laborers standing at their posts while the player is in the Acre (graphics/LaborerViews.ts). */
   private laborers!: LaborerViews;
+  // Gentle guidance: the people of the Covenant, the conversation card and the optional "Next" line.
+  private npcViews!: NpcViews;
+  private dialogue!: DialoguePanel;
+  private guidance!: Guidance;
+  private laborSummary: LaborSummary | null = null;
+  private contractSummary: ContractSummary | null = null;
+  private nextDismissed: string | null = null;
+  private nextTopId: string | null = null;
+  private nextNow: Suggestion | null = null;
+  private npcNew = new Map<NpcId, boolean>();
+  private guideT = 0;
+  private guideDirty = true;
   private gatherProg = 0;
   private lastNodeSync = 0;
   private skillLevels = new Map<SkillId, number>();
@@ -449,7 +465,9 @@ export class WorldScene implements GameScene, RuntimeView {
       return remote ? disciplineFor(remote.info.classIndex).id : null;
     });
     this.nodeViews = new NodeViews(this.scene, this.layout.nodes);
-    this.laborers = new LaborerViews(this.scene, this.effects, this.layout, { fetch: () => getLabor(this.character.id), onSeen: () => this.onboarding.show('laborers_working', 1500) });
+    this.npcViews = new NpcViews(this.scene);
+    this.guidance = new Guidance(this.character.id);
+    this.laborers = new LaborerViews(this.scene, this.effects, this.layout, { fetch: () => getLabor(this.character.id).then((v) => { this.noteLabor(v); return v; }), onSeen: () => this.onboarding.show('laborers_working', 1500) });
     const prelate = new BossView(this.scene, this.effects);
     this.bossViews.set('prelate', prelate);
     this.scope.add(prewarmCreature(prelate.c, getRuntime().renderer, this.rig.camera, this.scene));
@@ -609,6 +627,8 @@ export class WorldScene implements GameScene, RuntimeView {
     void this.dataReady.then(() => window.setTimeout(() => void this.checkGarden(true), 4000));
     this.scope.interval(() => void this.checkGarden(false), 60_000);
     void this.dataReady.then(() => window.setTimeout(() => void this.checkLabor(true), 6000));
+    void this.dataReady.then(() => this.refreshContracts());
+    this.scope.add(onSettingsChange(() => { this.guideDirty = true; }));
     void this.dataReady.then(() => getCosmetics(this.character.id)).then((v) => this.applyCosmetics(v.selected)).catch(() => {});
     this.scope.interval(() => void this.checkLabor(false), 5 * 60_000);
     this.onboarding.show('welcome', 900);
@@ -748,6 +768,7 @@ export class WorldScene implements GameScene, RuntimeView {
         else this.hud.chatLine('(solo) Nobody hears you in the dark.');
       },
       openGrimoire: (select) => this.openGrimoire(select),
+      dismissNext: () => { this.nextDismissed = this.nextNow?.id ?? null; this.guideDirty = true; },
     }, this.hotbar, this.discipline, this.primary);
     this.hud.minimap.onNavigate = (x, z) => this.navigateFromMinimap(x, z);
     this.loadBelt();
@@ -781,9 +802,10 @@ export class WorldScene implements GameScene, RuntimeView {
     this.professionsPanel.beltItems = () => this.inventory.all.filter((s) => isBeltSlot(s.slot_index)).map((s) => s.item_id);
     this.cosmeticsPanel = new CosmeticsPanel(this.root, this.character.id, this.inventory, (v) => this.applyCosmetics(v.selected));
     this.laborPanel = new LaborPanel(this.root, this.character.id, this.inventory, (skill) => this.skills.level(skill), (r) => this.onLaborCollected(r));
-    this.laborPanel.onView = (v) => this.laborers.apply(v);
+    this.laborPanel.onView = (v) => { this.laborers.apply(v); this.noteLabor(v); };
     this.gardenPanel = new GardenPanel(this.root, this.character.id, this.inventory, (kind, r) => this.onGardenResult(kind, r));
     this.contractsPanel = new ContractsPanel(this.root, this.character.id, this.inventory, (d) => this.onContractDelivered(d));
+    this.dialogue = new DialoguePanel(this.root, this.guidance, () => this.guidanceState(), { onChange: (npc) => { this.npcViews.setTalking(npc); this.guideDirty = true; }, sound: () => audio.play('click') });
     this.vaultPanel = new VaultPanel(this.root, this.character.id, this.inventory, this.locks, () => this.onboarding.show('vault'));
     this.salvagePanel = new SalvagePanel(this.root, this.character.id, this.inventory, this.locks, this.skills, (r) => this.onSalvaged(r), () => this.onboarding.show('salvage'));
     this.settingsPanel = new SettingsPanel(
@@ -817,6 +839,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.codex = new CodexJournal(this.character.id);
     this.gatherReportPanel = new GatherReportPanel(this.root, () => this.togglePanel('inventory'));
     this.codexPanel = new CodexPanel(this.root, this.codex, this.discipline.id, this.chronicle);
+    this.codexPanel.metNpc = (id) => this.guidance.met(id);
     this.grimoirePanel = new GrimoirePanel(
       this.root,
       () => ({ rites: { primary: this.primary, keys: this.loadout }, level: riteLevel(this.character.level), unseen: unseenRites(this.seen, riteLevel(this.character.level), this.kit), kit: this.kit }),
@@ -871,6 +894,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.laborPanel?.close();
     this.cosmeticsPanel?.close();
     this.sheetPanel?.close();
+    this.dialogue?.close();
   }
 
   private async changeClass(index: number) {
@@ -923,11 +947,115 @@ export class WorldScene implements GameScene, RuntimeView {
     }).catch(() => this.hud.toast(`Your laborers brought ${total.toLocaleString()} finds`, 'good'));
   }
 
+  // -------------------------------------------------------------------------
+  // Gentle guidance: the people of the Covenant, the conversation card and the "Next" line
+  // -------------------------------------------------------------------------
+
+  private noteLabor(v: LaborView) {
+    this.laborSummary = summarizeLabor(v);
+    this.guideDirty = true;
+  }
+
+  private async refreshContracts() {
+    try {
+      this.contractSummary = summarizeContracts(await getContracts(this.character.id));
+      this.guideDirty = true;
+    } catch {
+      /* a nicety: the contract suggestion simply stays quiet */
+    }
+  }
+
+  /** A plain snapshot of the character for the pure selectors in gameplay/guidance.ts. */
+  private guidanceState(): GuidanceState {
+    const loc = this.progression.local;
+    const bag = this.inventory.all.filter((s) => s.slot_index >= 0 && s.slot_index < BAG_SIZE).length;
+    return {
+      level: this.character.level ?? 1,
+      area: this.area,
+      ascension: loc.ascension,
+      canAscend: this.progression.canAscend(),
+      ashesOnAscend: this.progression.ashesOnAscend(),
+      shards: loc.shards,
+      unlocked: [...loc.unlocked],
+      areaKills: { ...loc.areaKills },
+      unlockMult: this.progression.boons.unlockKillsMult,
+      bossesBeaten: readTrophies(browserStorage(), this.character.id),
+      prelateThisRun: loc.run.prelateKills > 0,
+      totalKills: loc.totalKills,
+      skills: Object.fromEntries(this.skills.rows().map((r) => [r.profession_id, r.skill_level])),
+      bagUsed: bag,
+      bagSize: BAG_SIZE,
+      dust: this.inventory.count('reagent_grave_dust'),
+      labor: this.laborSummary,
+      contracts: this.contractSummary,
+    };
+  }
+
+  private nearestNpc(): NpcId | null {
+    let best: NpcId | null = null;
+    let bestD = NPC_TALK_RANGE;
+    for (const id of NPC_IDS) {
+      const d = this.npcViews.distanceTo(id, this.player.x, this.player.z);
+      if (d < bestD) {
+        bestD = d;
+        best = id;
+      }
+    }
+    return best;
+  }
+
+  private talkKey() {
+    if (!this.player.alive) return;
+    if (this.dialogue.isOpen) return void this.dialogue.close();
+    const id = this.nearestNpc();
+    if (id) this.talkTo(id);
+  }
+
+  private talkTo(id: NpcId) {
+    if (!this.player.alive) return;
+    this.gathering.stop('panel');
+    this.closePanels();
+    this.player.stop();
+    this.attackTarget = null;
+    this.pendingInteract = null;
+    this.player.face(NPCS[id].x, NPCS[id].z);
+    audio.play('click');
+    this.dialogue.open(id);
+    this.guideDirty = true;
+  }
+
+  /** Every frame: figures, conversation range; twice a second: the "Next" line and who has something new. */
+  private tickGuidance(dt: number) {
+    const p = this.player;
+    this.npcViews.update(dt, p.x, p.z, (id) => !!this.npcNew.get(id));
+    const talking = this.dialogue.talkingTo;
+    if (talking && this.npcViews.distanceTo(talking, p.x, p.z) > NPC_TALK_RANGE + 3.5) this.dialogue.close();
+    this.guideT -= dt;
+    if (this.guideT > 0 && !this.guideDirty) return;
+    this.guideT = 0.5;
+    this.guideDirty = false;
+    const state = this.guidanceState();
+    for (const id of NPC_IDS) {
+      this.npcNew.set(id, this.guidance.hasSomethingNew(id, state));
+      if (this.npcViews.distanceTo(id, p.x, p.z) < 14 && this.guidance.firstSight(id)) this.onboarding.show('people', 2200);
+    }
+    // A dismissal holds until the best suggestion changes; turning the line off in Settings hides it for good.
+    const top = nextSuggestion(state, null);
+    if ((top?.id ?? null) !== this.nextTopId) {
+      this.nextTopId = top?.id ?? null;
+      this.nextDismissed = null;
+    }
+    this.nextNow = settings.guidance ? nextSuggestion(state, this.nextDismissed) : null;
+    this.hud.next(this.nextNow?.text ?? null);
+  }
+
   /** Tell the player when their laborers have work waiting: on arrival, and once when a laborer is full. */
   private async checkLabor(arrival: boolean) {
     try {
       const v = await getLabor(this.character.id);
       this.laborers.apply(v);
+      this.noteLabor(v);
+      void this.refreshContracts();
       const waiting = v.slots.filter((s) => s.nodeType && s.elapsedMs >= 30 * 60_000);
       const items = waiting.reduce((n, s) => n + s.estItems, 0);
       const full = v.slots.filter((s) => s.capped && !this.laborCapNoted.has(s.slot));
@@ -993,6 +1121,8 @@ export class WorldScene implements GameScene, RuntimeView {
       this.floating.spawn(this.player.x, 2.4, this.player.z, `+${d.gold.toLocaleString()}g`, 'gold');
     }
     this.chronicle.add('contracts');
+    this.contractSummary = summarizeContracts(d);
+    this.guideDirty = true;
     this.hud.toast(d.paidBonus ? `Order filled, and the day’s bonus is yours: +${d.paidBonus.gold.toLocaleString()}g` : 'Order filled', 'good');
   }
 
@@ -1081,6 +1211,7 @@ export class WorldScene implements GameScene, RuntimeView {
       else if (k === 'k') this.togglePanel('codex');
       else if (k === 'l') this.togglePanel('grimoire');
       else if (k === 'g') this.toggleAutoCombat();
+      else if (k === 'e') this.talkKey();
       // Escape closes whatever panel is open first; with nothing open it opens Settings.
       else if (k === 'escape') {
         if (this.panelOpen() && !this.settingsPanel.isOpen) this.closePanels();
@@ -1174,12 +1305,13 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hud.nodeTip(hn ? this.nodeTipText(hn) : hl >= 0 ? this.laborers.tip(hl) : null, this.mouse.x, this.mouse.y);
     const h = this.hover as Hover;
     this.views.hoverId = h?.kind === 'enemy' ? h.id : null;
+    this.npcViews.setHover(h?.kind === 'interact' && h.it.kind === 'npc' ? npcFromInteractable(h.it.id) ?? null : null);
     const cur = h?.kind === 'enemy' || h?.kind === 'boss' ? CURSOR.attack : h?.kind === 'interact' || h?.kind === 'node' || h?.kind === 'laborer' ? CURSOR.interact : CURSOR.default;
     if (this.canvas.style.cursor !== cur) this.canvas.style.cursor = cur;
   }
 
   private panelOpen() {
-    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.vaultPanel?.isOpen || !!this.salvagePanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen || !!this.sheetPanel?.isOpen;
+    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.vaultPanel?.isOpen || !!this.salvagePanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen || !!this.sheetPanel?.isOpen || !!this.dialogue?.isOpen;
   }
 
   private interactablesNear(): Interactable[] {
@@ -1555,6 +1687,11 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'grinder':
         this.gathering.stop('panel');
         return this.togglePanel('salvage');
+      case 'npc': {
+        const id = npcFromInteractable(it.id);
+        if (id) this.talkTo(id);
+        return;
+      }
       case 'lectern':
         // The Covenant Lectern by the Acre spawn: the Codex (First Rites will live here too).
         this.onboarding.show('codex');
@@ -2955,7 +3092,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   /** First kill of an area boss by this character? Recorded in browser storage (no new server fields). */
   private claimTrophy(id: BossId): boolean {
-    const key = `${import.meta.env.VITE_OFFLINE_BUILD === '1' ? 'dm_offline_' : ''}dm_boss_trophies_v1:${this.character.id}`;
+    const key = `${import.meta.env.VITE_OFFLINE_BUILD === '1' ? 'dm_offline_' : ''}${bossTrophyKey(this.character.id)}`;
     try {
       const got: string[] = JSON.parse(localStorage.getItem(key) ?? '[]');
       if (got.includes(id)) return false;
@@ -3453,6 +3590,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.gathering.update(dt);
     this.tickGatherVisuals(dt);
     this.laborers.update(dt, p.x, p.z);
+    this.tickGuidance(dt);
     this.waystoneMotes(dt);
     if (moved) this.cancelRecall();
     this.tickCombat(now);
@@ -3778,6 +3916,7 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'fire': return 'Open Cooking Fire recipes';
       case 'upgrades': return 'Open Ascension';
       case 'lectern': return 'Open the Codex';
+      case 'npc': return `Talk to ${it.label}`;
       case 'vault': return 'Open the Ossuary Vault (V)';
       case 'grinder': return 'Salvage gear at the Bone Grinder'; 
       case 'boss': {
@@ -3819,7 +3958,12 @@ export class WorldScene implements GameScene, RuntimeView {
         blurb: affix ? affix.blurb : d.blurb,
       };
     }
-    this.hud.prompt(hover?.kind === 'interact' ? `<kbd>Click</kbd> ${this.interactPrompt(hover.it)}` : null);
+    const nearNpc = this.nearestNpc();
+    this.hud.prompt(
+      hover?.kind === 'interact'
+        ? `<kbd>Click</kbd> ${this.interactPrompt(hover.it)}`
+        : nearNpc && !this.dialogue.isOpen && !this.panelOpen() ? `<kbd>E</kbd> Talk to ${NPCS[nearNpc].name}` : null,
+    );
     const b = this.bossState();
     const myThralls = [...this.thrallsMap().values()].filter((t) => t.owner === this.selfId);
     const saveText =
@@ -3909,6 +4053,8 @@ export class WorldScene implements GameScene, RuntimeView {
         corpses: this.corpsesMap().values(),
         boss: b.active ? { x: b.x, z: b.z } : null,
         waystones: AREA_ORDER.flatMap((a) => AREAS[a].interactables.filter((i) => i.kind === 'waystone')),
+        npcs: NPC_IDS.map((id) => ({ x: NPCS[id].x, z: NPCS[id].z, fresh: !!this.npcNew.get(id) })),
+        ping: settings.guidance && settings.guidancePing && this.nextNow?.target && (this.nextNow.pingInPlace || this.nextNow.place !== this.area) ? this.nextNow.target : null,
       });
       this.hud.party([
         {
@@ -4152,6 +4298,26 @@ export class WorldScene implements GameScene, RuntimeView {
         const it = AREAS.acre.interactables.find((i) => i.kind === kind);
         if (it) this.interact(it);
       },
+      /** Guidance QA: the state the selectors see, the suggestion list, the NPC figures, and talking by id. */
+      guidance: {
+        state: () => this.guidanceState(),
+        suggestions: () => guidanceSuggestions(this.guidanceState()),
+        next: () => this.nextNow,
+        npcs: () => this.npcViews.debug().map((n) => ({ ...n, new: !!this.npcNew.get(n.id) })),
+        talk: (id: NpcId) => this.talkTo(id),
+        dialogue: () => ({ open: this.dialogue.isOpen, npc: this.dialogue.talkingTo }),
+        memory: () => this.guidance.mem,
+        /** Record a first-kill trophy exactly as a real boss kill does (no fight), then refresh the line. */
+        beatBoss: (id: BossId) => { const fresh = this.claimTrophy(id); this.guideDirty = true; return fresh; },
+        setLabor: (s: LaborSummary | null) => { this.laborSummary = s; this.guideDirty = true; },
+        setContracts: (s: ContractSummary | null) => { this.contractSummary = s; this.guideDirty = true; },
+        refresh: () => { this.guideDirty = true; this.tickGuidance(0); },
+        /** Screen point over an NPC's chest (to click it with the real mouse). */
+        screenOf: (id: NpcId) => {
+          const v = new THREE.Vector3(NPCS[id].x, 1.2, NPCS[id].z).project(this.rig.camera);
+          return [Math.round(((v.x + 1) / 2) * window.innerWidth), Math.round(((1 - v.y) / 2) * window.innerHeight)];
+        },
+      },
       /** Grave Laborer QA: slots, posts, spots, modes. */
       laborers: () => this.laborers.debug(),
       /** Put the mouse over a laborer slot (hover card QA); returns the screen point. */
@@ -4203,6 +4369,8 @@ export class WorldScene implements GameScene, RuntimeView {
     this.views.dispose();
     this.nodeViews.dispose();
     this.laborers.dispose();
+    this.dialogue?.close();
+    this.npcViews.dispose();
     for (const v of this.bossViews.values()) v.dispose();
     this.loot.dispose();
     this.avatar.dispose();

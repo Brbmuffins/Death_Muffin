@@ -623,7 +623,7 @@ export class WorldView {
     const dummy = new THREE.Object3D();
     for (const style of styles) {
       const spots = interactables.filter((it) =>
-        style.key === 'service' ? it.kind !== 'waystone' && it.kind !== 'boss' : it.kind === style.key,
+        style.key === 'service' ? it.kind !== 'waystone' && it.kind !== 'boss' && it.kind !== 'npc' : it.kind === style.key,
       );
       if (!spots.length) continue;
       const geometry = new THREE.RingGeometry(0.89, 1, 40).rotateX(-Math.PI / 2);

@@ -113,7 +113,9 @@ export type TipId =
   // Inventory relief: a filling bag, the shared Vault and the Bone Grinder.
   | 'bag_filling'
   | 'vault'
-  | 'salvage';
+  | 'salvage'
+  // People of the Covenant (first sight of an NPC).
+  | 'people';
 
 interface Tip {
   title: string;
@@ -472,6 +474,10 @@ export const TIPS: Record<TipId, Tip> = {
   salvage: {
     title: 'Salvaging',
     body: 'The Bone Grinder breaks unwanted gear into <b>ingots</b> (or <b>planks</b> from staffs, wands and grimoires) by rarity, plus <b>Grave Dust</b> and other reagents, and trains Salvaging. If the yield will not fit your bag, nothing is ground. Worn and locked gear is never touched.',
+  },
+  people: {
+    title: 'People of the Covenant',
+    body: 'Some of the Covenant still stand in these halls: the <b>Prior</b> in the Chapterhouse, the <b>Sexton</b> in the Acre, the <b>Apothecary</b> by the Workbench. Click one, or stand close and press <kbd>E</kbd>. A gold <b>!</b> means they have something new to say. They only advise. The <b>Next</b> line under the minimap shows one suggestion; Settings can hide it.',
   },
   station: {
     title: 'A working station',

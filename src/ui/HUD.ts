@@ -20,6 +20,8 @@ export interface HudCallbacks {
   toggleAutoCombat(): void;
   /** Open the Grimoire with a socket preselected (a rite index 0–4 or the LMB primary). */
   openGrimoire(select?: number | 'primary'): void;
+  /** The player hid the "Next" suggestion with its X. */
+  dismissNext?(): void;
 }
 
 export interface SlotFrame {
@@ -153,6 +155,7 @@ export class HUD {
         <div class="frame" data-mapframe></div>
         <div class="area" data-area></div>
         <div class="prog" data-prog></div>
+        <div class="hud-next" data-next hidden role="status"><div class="txt"><span class="kick">Next</span><span data-nexttxt></span></div><button type="button" data-nextx aria-label="Hide this suggestion" title="Hide this suggestion (turn the line off in Settings)">×</button></div>
         <div class="hud-menu">
           <button data-open="inventory" title="Reliquary (I)" aria-label="Reliquary">${ICON.bag}</button>
           <button data-open="forge" title="Workbench (C)" aria-label="Workbench">${ICON.anvil}</button>
@@ -250,6 +253,7 @@ export class HUD {
     this.el.querySelectorAll<HTMLButtonElement>('[data-open]').forEach((b) =>
       b.addEventListener('click', () => { this.hideTooltip(); this.cb.open(b.dataset.open as 'inventory'); }),
     );
+    this.$('[data-nextx]').addEventListener('click', () => this.cb.dismissNext?.());
     this.$('[data-buydmg]').addEventListener('click', () => this.cb.buyDamage());
     this.$('[data-auto]').addEventListener('click', () => this.cb.toggleAutoCombat());
     this.$('[data-buywave]').addEventListener('click', () => this.cb.buyWave());
@@ -685,6 +689,15 @@ export class HUD {
       const el = this.$('[data-prompt]');
       el.hidden = !html;
       if (html) el.innerHTML = html;
+    });
+  }
+
+  /** The optional "Next" suggestion under the minimap (plain text); null hides it. */
+  next(text: string | null) {
+    this.set('next', text ?? '', () => {
+      const el = this.$('[data-next]');
+      el.hidden = !text;
+      this.$('[data-nexttxt]').textContent = text ?? '';
     });
   }
 

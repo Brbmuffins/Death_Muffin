@@ -27,6 +27,7 @@ Some of the most polished corners of the game right now (2 October 2026):
 - [Highlights](#-highlights)
 - [Your first hour](#your-first-hour)
 - [What to explore next](#what-to-explore-next)
+- [Finding your way](#finding-your-way)
 - [Controls](#controls)
 - [Choose a discipline](#choose-a-discipline)
 - [Combat and corpses](#combat-and-corpses)
@@ -61,6 +62,21 @@ Some of the most polished corners of the game right now (2 October 2026):
 
 The landing page previews the fire realm and its enemies with a lightweight purple fire glow and drifting embers. **Settings → Reduced motion** tones down effects in game if you prefer a quieter screen.
 
+## Finding your way
+
+Nothing in Death Muffin is a quest, and nothing can be failed or missed. If you would like a nudge, the game gives you three ways to ask for one.
+
+| Who or what | Where | What it tells you |
+|---|---|---|
+| **The Prior** | The Chapterhouse, near the Altar | Where to hunt next, how the seals and the kings of the dead work, and when the Altar of Ascension is ready. |
+| **The Sexton** | The Sexton's Acre, near the Covenant Lectern | Gathering, your Grave Laborers, the Bone Grinder and the Vault, and the day's Contracts. |
+| **The Apothecary** | The Chapterhouse, beside the Workbench | What to brew, where each reagent falls, and how elixirs and tonics work. (An Alchemist's Wing will give them a proper room later.) |
+| **The Next line** | Under the minimap | One short suggestion from the same advice, such as *Hollow Graves: 172 / 300 to open the Marrow Ossuary*, *Your laborers are ready in the Acre* or *The Gravedigger King waits at the King's Grave, 2 soul shards*. A gold marker or arrow on the minimap points the way. |
+
+**Talking.** Click a person, or stand close and press **E**. They turn to face you, and a gold **!** over their head means they have something new to say (a seal you have broken, a king you have buried, a full bag, laborers waiting). Every conversation has three or four buttons: *Where should I go next?*, *Tell me about...* and *Goodbye*. Their answers use your real numbers: your level, your kill counts, your shards, your bag. Press **Esc**, press **E** again, or walk away to end a conversation.
+
+**The Next line.** It updates as you play and shows only the single best suggestion. Press its **x** to hide the current one; a different suggestion will appear when your situation changes. **Settings** can turn the line off, and turn the minimap marker off separately. The **Codex (K)** has a **People** tab listing who stands where and what to ask them. What you have heard is remembered per character in this browser.
+
 ## Controls
 
 | Input | Action |
@@ -80,12 +96,13 @@ The landing page previews the fire realm and its enemies with a lightweight purp
 | **I** or **B** / **C** / **P** / **O** / **U** / **H** / **N** | Reliquary / Workbench / Skills and AFK gathering / Sexton’s Contracts / Grave Gardening / Grave Laborers / Capes & Pets |
 | **J** | Character sheet: your numbers and where each comes from |
 | **M** / **K** | Waystone map / Codex |
+| **E** | Talk to the Prior, the Sexton or the Apothecary when you stand beside them |
 | **V** | Ossuary Vault, the shared stash (in the Chapterhouse or the Acre) |
 | **G** | Toggle auto combat on Easy (Brbmuffins developer account) |
 | **Enter** | Chat |
 | **Esc** | Close an open panel, then open Settings |
 
-You can also click hotbar icons. Click **swap** below any spell icon to open the Grimoire with that slot selected; right click a hotbar slot also works. In **Settings**, you can change class, difficulty, graphics, volume (Master, plus separate **Combat**, **Ambience** and **Interface** sliders), reduced motion, damage numbers, gathering behavior, and counsel tips.
+You can also click hotbar icons. Click **swap** below any spell icon to open the Grimoire with that slot selected; right click a hotbar slot also works. In **Settings**, you can change class, difficulty, graphics, volume (Master, plus separate **Combat**, **Ambience** and **Interface** sliders), reduced motion, damage numbers, gathering behavior, counsel tips, and the Next suggestion with its minimap marker.
 
 ## Choose a discipline
 
