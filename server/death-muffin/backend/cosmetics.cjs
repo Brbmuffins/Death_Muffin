@@ -11,7 +11,7 @@
 const rules = require('./gathering/cosmetic-rules.cjs');
 const { removeFromBag } = require('./contracts.cjs');
 
-const SKILL_IDS = ['woodcutting', 'mining', 'fishing', 'gravedigging', 'gardening', 'alchemy'];
+const SKILL_IDS = ['woodcutting', 'mining', 'fishing', 'gravedigging', 'gardening', 'alchemy', 'salvaging'];
 const num = (v) => Number(v) || 0;
 
 module.exports = function mountCosmetics(app, pool, { requireAuth, ownsCharacter }) {

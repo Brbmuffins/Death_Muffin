@@ -11,12 +11,12 @@
 
 import { petChance, petForSkill } from '../content/cosmetics';
 
-export type SkillId = 'woodcutting' | 'mining' | 'fishing' | 'gravedigging' | 'gardening' | 'alchemy';
+export type SkillId = 'woodcutting' | 'mining' | 'fishing' | 'gravedigging' | 'gardening' | 'alchemy' | 'salvaging';
 /** Skills worked on world nodes. Gardening mostly uses plots; its only nodes are the zone herb patches (Cloister, Pyre). */
-export type GatherSkill = Exclude<SkillId, 'alchemy'>;
+export type GatherSkill = Exclude<SkillId, 'alchemy' | 'salvaging'>;
 /** The four classic node skills (tools, laborers, the Skills grid). Gardening's herb patches sit outside this list. */
 export const GATHER_SKILLS: Exclude<GatherSkill, 'gardening'>[] = ['woodcutting', 'mining', 'fishing', 'gravedigging'];
-export const ALL_SKILLS: SkillId[] = ['woodcutting', 'mining', 'fishing', 'gravedigging', 'gardening', 'alchemy'];
+export const ALL_SKILLS: SkillId[] = ['woodcutting', 'mining', 'fishing', 'gravedigging', 'gardening', 'alchemy', 'salvaging'];
 
 export interface SkillMeta {
   name: string;
@@ -38,6 +38,7 @@ export const SKILLS: Record<SkillId, SkillMeta> = {
   gravedigging: { name: 'Gravedigging', rite: 'Rite of the Sexton', color: '#d8cfa8', gesture: 'dig', sfx: 'shovel', verb: 'Dig' },
   gardening: { name: 'Grave Gardening', rite: 'Rite of the Mourning Bed', color: '#9fc27a', gesture: 'cast', sfx: 'shovel', verb: 'Tend' },
   alchemy: { name: 'Alchemy', rite: 'Rite of the Alembic', color: '#b48be0', gesture: 'cast', sfx: 'splash', verb: 'Brew' },
+  salvaging: { name: 'Salvaging', rite: 'Rite of the Bone Grinder', color: '#c9b087', gesture: 'cast', sfx: 'shovel', verb: 'Grind' },
 };
 
 /** One RuneScape tick. Most nodes take 4–8 ticks per action. */
@@ -363,7 +364,7 @@ export function checkBudget(def: NodeDef, ledger: GatherLedger, claimed: number,
 
 // ── Bag placement (shared by the server grant and the offline mock) ──────────
 
-export const BAG_SLOTS = 24;
+export const BAG_SLOTS = 48;
 /** Gathered materials stack to this many (migration 002 sets max_stack_size to match). */
 export const MATERIAL_STACK = 250;
 
@@ -383,7 +384,7 @@ export interface Placement {
 }
 
 /**
- * Where a grant lands: top up existing stacks, then fill free slots 0–23.
+ * Where a grant lands: top up existing stacks, then fill free slots 0..BAG_SLOTS-1.
  * `maxStack(itemId)` returns 1 for gear. Anything that doesn't fit is rejected.
  */
 export function placeItems(bag: BagRow[], grants: ItemGrant[], maxStack: (itemId: string) => number): Placement {

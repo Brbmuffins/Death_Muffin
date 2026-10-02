@@ -94,7 +94,7 @@ describe('gathering rules', () => {
     const p = placeItems(bag, [{ itemId: 'log_oak', qty: 5 }], () => 250);
     expect(p.updates).toEqual([{ slot: 0, qty: 250 }]);
     expect(p.inserts).toEqual([{ slot: 1, itemId: 'log_oak', qty: 3 }]);
-    const full = Array.from({ length: 24 }, (_, i) => ({ slot: i, itemId: 'staff_oak', qty: 1 }));
+    const full = Array.from({ length: 48 }, (_, i) => ({ slot: i, itemId: 'staff_oak', qty: 1 }));
     expect(placeItems(full, [{ itemId: 'log_oak', qty: 2 }], () => 250).rejected).toEqual([{ itemId: 'log_oak', qty: 2 }]);
   });
 

@@ -104,7 +104,11 @@ export type TipId =
   | 'bag_full'
   | 'skill_up'
   | 'rich_node'
-  | 'station';
+  | 'station'
+  // Inventory relief: a filling bag, the shared Vault and the Bone Grinder.
+  | 'bag_filling'
+  | 'vault'
+  | 'salvage';
 
 interface Tip {
   title: string;
@@ -422,7 +426,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   bag_full: {
     title: 'Your bag is full',
-    body: 'Gathering stops when nothing more fits. Open the Reliquary (<kbd>I</kbd>) to drop or equip things, or take materials to the stations: the Bone Kiln, the Sawpit and the Cooking Fire stand by the Acre door.',
+    body: 'Gathering stops when nothing more fits. Open the Reliquary (<kbd>I</kbd>) to sell or equip things, store materials in the Vault (<kbd>V</kbd>, in the Chapterhouse), grind spare gear at the Bone Grinder, or take materials to the stations: the Bone Kiln, the Sawpit and the Cooking Fire stand by the Acre door.',
   },
   skill_up: {
     title: 'A skill rises',
@@ -431,6 +435,18 @@ export const TIPS: Record<TipId, Tip> = {
   rich_node: {
     title: 'A rich node',
     body: 'Gold-lit nodes in the hunting grounds hold more before they are spent and come back twice as fast. Taking a hit stops gathering, so clear the dead around it first.',
+  },
+  bag_filling: {
+    title: 'Your Reliquary is filling',
+    body: 'Make room before it fills: the <b>Vault</b> (<kbd>V</kbd>) in the Chapterhouse keeps materials and gear for every character on this account, and the <b>Bone Grinder</b> in the Acre turns spare gear into ingots, planks and reagents. In the Reliquary (<kbd>I</kbd>), <b>Sell all junk</b> clears common and uncommon gear, and the padlock keeps an item out of every bulk button.',
+  },
+  vault: {
+    title: 'The Ossuary Vault',
+    body: 'One stash of 120 slots, shared by all your characters. <kbd>Click</kbd> an item to move its whole stack across; <b>Deposit materials</b>, <b>Deposit all</b> and <b>Sort</b> do it in bulk, and locked items always stay in your bag. It opens with <kbd>V</kbd> in the Chapterhouse or the Acre, and a move that will not fit changes nothing.',
+  },
+  salvage: {
+    title: 'Salvaging',
+    body: 'The Bone Grinder breaks unwanted gear into <b>ingots</b> (or <b>planks</b> from staffs, wands and grimoires) by rarity, plus <b>Grave Dust</b> and other reagents, and trains Salvaging. If the yield will not fit your bag, nothing is ground. Worn and locked gear is never touched.',
   },
   station: {
     title: 'A working station',

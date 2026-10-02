@@ -79,14 +79,15 @@ var CHARM_ITEMS = Object.fromEntries(
 
 // src/gameplay/gatheringRules.ts
 var GATHER_SKILLS = ["woodcutting", "mining", "fishing", "gravedigging"];
-var ALL_SKILLS = ["woodcutting", "mining", "fishing", "gravedigging", "gardening", "alchemy"];
+var ALL_SKILLS = ["woodcutting", "mining", "fishing", "gravedigging", "gardening", "alchemy", "salvaging"];
 var SKILLS = {
   woodcutting: { name: "Woodcutting", rite: "Rite of Coffin-Oak", color: "#c9a36b", gesture: "dig", sfx: "chop", verb: "Chop" },
   mining: { name: "Mining", rite: "Rite of Grave-Iron", color: "#b7bcc4", gesture: "dig", sfx: "pick", verb: "Mine" },
   fishing: { name: "Fishing", rite: "Rite of the Black Water", color: "#6fb3c8", gesture: "cast", sfx: "splash", verb: "Fish" },
   gravedigging: { name: "Gravedigging", rite: "Rite of the Sexton", color: "#d8cfa8", gesture: "dig", sfx: "shovel", verb: "Dig" },
   gardening: { name: "Grave Gardening", rite: "Rite of the Mourning Bed", color: "#9fc27a", gesture: "cast", sfx: "shovel", verb: "Tend" },
-  alchemy: { name: "Alchemy", rite: "Rite of the Alembic", color: "#b48be0", gesture: "cast", sfx: "splash", verb: "Brew" }
+  alchemy: { name: "Alchemy", rite: "Rite of the Alembic", color: "#b48be0", gesture: "cast", sfx: "splash", verb: "Brew" },
+  salvaging: { name: "Salvaging", rite: "Rite of the Bone Grinder", color: "#c9b087", gesture: "cast", sfx: "shovel", verb: "Grind" }
 };
 var TICK_MS = 600;
 var LEVEL_CAP = 99;
@@ -343,7 +344,7 @@ function checkBudget(def, ledger, claimed, now, afk = false) {
   const lastAt = afk ? Math.max(ledger.lastAt, now - windowMs) + accepted * actionMs(def) : now;
   return { ok: true, accepted, ledger: { lastAt, hourStart, hourActions: hourActions + accepted } };
 }
-var BAG_SLOTS = 24;
+var BAG_SLOTS = 48;
 var MATERIAL_STACK = 250;
 function placeItems(bag, grants, maxStack) {
   const rows = bag.map((r) => ({ ...r }));

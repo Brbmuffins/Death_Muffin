@@ -45,6 +45,16 @@ const TARGETS = {
     out: join(root, 'server/death-muffin/backend/gathering/contract-rules.cjs'),
     about: "Sexton's Contracts (the daily delivery board) shared by the web client and the Death Muffin backend.",
   },
+  salvage: {
+    entry: 'src/gameplay/salvageRules.ts',
+    out: join(root, 'server/death-muffin/backend/gathering/salvage-rules.cjs'),
+    about: 'Salvaging (the Bone Grinder) yield rules shared by the web client, the offline mock and the Death Muffin backend.',
+  },
+  vault: {
+    entry: 'src/gameplay/vaultRules.ts',
+    out: join(root, 'server/death-muffin/backend/gathering/vault-rules.cjs'),
+    about: 'Ossuary Vault (shared stash) move rules shared by the web client, the offline mock and the Death Muffin backend.',
+  },
 };
 
 export const OUT = TARGETS.necro.out;
@@ -68,6 +78,8 @@ async function bundle(target) {
 
 export const bundleRules = () => bundle(TARGETS.necro);
 export const bundleGatheringRules = () => bundle(TARGETS.gathering);
+/** Output path and freshly bundled text for any target (used by the freshness tests). */
+export const bundleRulesFor = async (key) => ({ out: TARGETS[key].out, text: await bundle(TARGETS[key]) });
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   let stale = false;

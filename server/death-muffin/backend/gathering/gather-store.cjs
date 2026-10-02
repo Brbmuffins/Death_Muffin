@@ -39,8 +39,8 @@ function createMysqlGatherStore(pool) {
         },
         async getBag() {
           const [rows] = await conn.query(
-            'SELECT slot_index, item_id, quantity, equipped FROM inventory WHERE character_id = ? AND slot_index BETWEEN 0 AND 23 FOR UPDATE',
-            [characterId],
+            'SELECT slot_index, item_id, quantity, equipped FROM inventory WHERE character_id = ? AND slot_index BETWEEN 0 AND ? FOR UPDATE',
+            [characterId, rules.BAG_SLOTS - 1],
           );
           // Equipped rows hold their slot but never take a stack.
           return rows.map((r) => ({ slot: Number(r.slot_index), itemId: Number(r.equipped) ? '' : r.item_id, qty: Number(r.quantity) }));

@@ -119,6 +119,10 @@ No deployment. Source and redistribution note: `docs/CROSSWORLDS-AUDIO.md`.
 
 ## In flight (check before starting overlapping work)
 
+### Inventory relief (branch `dm/inventory`, not deployed)
+
+Bag 24 to 48 slots (`BAG_SLOTS` in `gatheringRules.ts` is the one source; saves send `bagSize`, a server treats a missing one as 24 so a stale tab cannot wipe slots 24-47), the Ossuary Vault (`vault.cjs`, 120 shared slots, key V, migration `017-vault.sql`), Salvaging (`salvage.cjs`, Bone Grinder in the Acre, seventh skill) and Reliquary locks plus Sell all junk. Pure move and yield rules live in `vaultRules.ts` and `salvageRules.ts` and are bundled for the server. **Deploy needs migration 017** (`deploy-release.sh <rev> .../017-vault.sql`). Sexton's Mantle now needs total level 693 (seven skills). Offline-to-online sync does not carry the offline vault. Smoke: `tools/qa/vault-salvage-smoke.cjs`.
+
 ### 2026-10-01 release and next work
 
 - The frozen candidate passed typecheck, 497 client tests, nine server suites, a production build, and local spell-swap, reagent, Fen and Mire Mother browser checks. Fen performance was 289 calls / 486,775 triangles / 1.849 ms update versus 231 / 485,691 / 1.64 ms in the Graves sample.

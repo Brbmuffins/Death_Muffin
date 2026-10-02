@@ -96,7 +96,7 @@ describe('save before changing class', () => {
       await inventory.flush();
       expect(saveInventory).toHaveBeenLastCalledWith(7, expect.arrayContaining([
         expect.objectContaining({ item_id: 'flask_hp_minor', quantity: 2 }),
-      ]));
+      ]), 48);
     } finally { inventory.dispose(); }
 
     const usingFlask = new Inventory(7);

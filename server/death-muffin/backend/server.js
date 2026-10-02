@@ -9,6 +9,9 @@ const crypto     = require('crypto');
 const rateLimit  = require('express-rate-limit');
 const { mergeOfflineStats } = require('./offline-sync.cjs');
 const offlineFull = require('./offline-full-sync.cjs');
+const gatheringRules = require('./gathering/gathering-rules.cjs');
+const BAG_SLOTS = gatheringRules.BAG_SLOTS;
+const inventorySave = require('./inventory-save.cjs');
 
 const app  = express();
 const PORT = process.env.PORT || 5190;
@@ -733,16 +736,7 @@ app.post('/api/character/save-progress', requireJWT, async (req, res) => {
 
 
 
-const INV_SELECT = `
-  SELECT inv.id, inv.slot_index, inv.quantity, inv.equipped, inv.equipped_slot,
-         i.id AS item_id, i.name, i.rarity, i.item_type,
-         i.equipment_slot AS item_equipment_slot,
-         i.stat_bonus, i.modifiers, i.icon_id, i.sell_value, i.crafted,
-         i.stackable, i.max_stack_size
-  FROM inventory inv
-  JOIN items i ON i.id = inv.item_id
-  WHERE inv.character_id = ?
-  ORDER BY inv.slot_index`;
+const { INV_SELECT } = require('./bag-store.cjs');
 
 app.get('/api/inventory/:characterId', requireJWT, async (req, res) => {
   try {
@@ -787,9 +781,9 @@ app.post('/api/inventory/add-item', requireJWT, async (req, res) => {
       const [bagRows] = await conn.execute(
         `SELECT id, slot_index, item_id, quantity
            FROM inventory
-          WHERE character_id = ? AND slot_index BETWEEN 0 AND 23
+          WHERE character_id = ? AND slot_index BETWEEN 0 AND ?
           ORDER BY slot_index FOR UPDATE`,
-        [char.id]
+        [char.id, BAG_SLOTS - 1]
       );
 
       if (stackable) {
@@ -806,7 +800,7 @@ app.post('/api/inventory/add-item', requireJWT, async (req, res) => {
       }
 
       const occupied = new Set(bagRows.map(row => Number(row.slot_index)));
-      for (let slot = 0; slot < 24 && remaining > 0; slot++) {
+      for (let slot = 0; slot < BAG_SLOTS && remaining > 0; slot++) {
         if (occupied.has(slot)) continue;
         const added = Math.min(remaining, maxStack);
         await conn.execute(
@@ -842,13 +836,12 @@ app.post('/api/inventory/save', requireJWT, async (req, res) => {
   // Equipped gear lives in reserved slots 100-108 (managed by /equip). Older clients echo those rows back
   // with the bag, which made every save fail; the save owns the bag only, so ignore them.
   const slots = req.body.slots.filter(s => !(Number(s && s.slot_index) >= 100 && Number(s.slot_index) <= 108));
-  const incomingSlots = slots.map(s => parseInt(s.slot_index, 10));
-  if (slots.length > 24)
-    return res.status(400).json({ success: false, error: 'inventory cannot exceed 24 slots' });
-  if (incomingSlots.some(n => isNaN(n) || n < 0 || n >= 24))
-    return res.status(400).json({ success: false, error: 'each slot_index must be between 0 and 23' });
-  if (new Set(incomingSlots).size !== incomingSlots.length)
-    return res.status(400).json({ success: false, error: 'duplicate slot_index values are not allowed' });
+  // A stale 24-slot tab sends no bagSize; the save then only touches slots 0-23 (see inventory-save.cjs).
+  const bagSize = inventorySave.saveBagSize(req.body.bagSize);
+  if (bagSize === null)
+    return res.status(400).json({ success: false, error: `bagSize must be a whole number from 1 to ${BAG_SLOTS}` });
+  const slotError = inventorySave.slotProblem(slots, bagSize);
+  if (slotError) return res.status(400).json({ success: false, error: slotError });
   if (slots.some(s => typeof s.item_id !== 'string' || !s.item_id.trim() ||
       !Number.isInteger(Number(s.quantity)) || Number(s.quantity) < 1))
     return res.status(400).json({ success: false, error: 'each slot requires an item_id and positive integer quantity' });
@@ -879,39 +872,7 @@ app.post('/api/inventory/save', requireJWT, async (req, res) => {
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
-      const [existingRows] = await conn.execute(
-        'SELECT slot_index, item_id, equipped, equipped_slot FROM inventory WHERE character_id = ?',
-        [char.id]
-      );
-      const existingBySlot = new Map(existingRows.map(row => [Number(row.slot_index), row]));
-      if (incomingSlots.length > 0) {
-        const ph = incomingSlots.map(() => '?').join(',');
-        await conn.execute(
-          `DELETE FROM inventory
-            WHERE character_id = ? AND slot_index BETWEEN 0 AND 23
-              AND slot_index NOT IN (${ph})`,
-          [char.id, ...incomingSlots]
-        );
-      } else {
-        await conn.execute(
-          'DELETE FROM inventory WHERE character_id = ? AND slot_index BETWEEN 0 AND 23',
-          [char.id]
-        );
-      }
-      for (const s of slots) {
-        const existing = existingBySlot.get(Number(s.slot_index));
-        const preserveEquipment = existing && existing.item_id === s.item_id;
-        await conn.execute(
-          `INSERT INTO inventory
-             (character_id, slot_index, item_id, quantity, equipped, equipped_slot)
-           VALUES (?, ?, ?, ?, ?, ?)
-           ON DUPLICATE KEY UPDATE item_id=VALUES(item_id), quantity=VALUES(quantity),
-             equipped=VALUES(equipped), equipped_slot=VALUES(equipped_slot)`,
-          [char.id, s.slot_index, s.item_id, s.quantity ?? 1,
-           preserveEquipment && existing.equipped ? 1 : 0,
-           preserveEquipment ? existing.equipped_slot : null]
-        );
-      }
+      await inventorySave.replaceBag(conn, char.id, slots, bagSize);
       await conn.commit();
     } catch (e) {
       await conn.rollback();
@@ -963,10 +924,10 @@ app.post('/api/inventory/equip', requireJWT, async (req, res) => {
         [char.id]
       );
       const occupiedBag = new Set(allRows
-        .filter(row => row.id !== inv.id && row.slot_index >= 0 && row.slot_index < 24)
+        .filter(row => row.id !== inv.id && row.slot_index >= 0 && row.slot_index < BAG_SLOTS)
         .map(row => Number(row.slot_index)));
       const freeBag = [];
-      for (let i = 0; i < 24; i++) if (!occupiedBag.has(i)) freeBag.push(i);
+      for (let i = 0; i < BAG_SLOTS; i++) if (!occupiedBag.has(i)) freeBag.push(i);
 
       if (equipped) {
         const reservedSlot = reservedSlots[inv.equipment_slot];
@@ -1060,8 +1021,8 @@ app.get('/api/game/equipment/:characterId', requireGameServerToken, async (req, 
 app.post('/api/inventory/delete', requireJWT, async (req, res) => {
   const { characterId } = req.body;
   const slotIndex = Number(req.body.slot_index);
-  if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= 24)
-    return res.status(400).json({ success: false, error: 'slot_index must be between 0 and 23' });
+  if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= BAG_SLOTS)
+    return res.status(400).json({ success: false, error: `slot_index must be between 0 and ${BAG_SLOTS - 1}` });
 
   try {
     const char = await ownedCharacter(req, res, characterId);
@@ -1113,14 +1074,14 @@ app.get('/api/professions/:characterId', requireJWT, async (req, res) => {
 
 // ── POST /api/professions/award-xp ──────────────────────────────────────────
 
-const gatheringRules = require('./gathering/gathering-rules.cjs');
 const PROFESSION_NAMES = Object.freeze({
   woodcutting: 'Woodcutting',
   fishing: 'Fishing',
   mining: 'Mining',
   gravedigging: 'Gravedigging',
   gardening: 'Grave Gardening',
-  alchemy: 'Alchemy'
+  alchemy: 'Alchemy',
+  salvaging: 'Salvaging'
 });
 const VALID_PROFESSION_IDS = new Set(Object.keys(PROFESSION_NAMES));
 
@@ -1212,7 +1173,7 @@ app.get('/api/professions/recipes/:characterId', requireJWT, async (req, res) =>
     'SELECT profession_id, skill_level FROM professions WHERE character_id = ?',
     [characterId]
   );
-  const levels = { woodcutting: 1, fishing: 1, mining: 1, gravedigging: 1, gardening: 1, alchemy: 1 }; // defaults
+  const levels = { woodcutting: 1, fishing: 1, mining: 1, gravedigging: 1, gardening: 1, alchemy: 1, salvaging: 1 }; // defaults
   for (const p of profs) levels[p.profession_id] = p.skill_level;
 
   // Load all recipes with ingredients + result item name
@@ -1373,7 +1334,7 @@ app.post('/api/craft', requireJWT, async (req, res) => {
       }
     }
 
-    // Award the result while honoring stack limits and the 24-slot bag boundary.
+    // Award the result while honoring stack limits and the bag boundary.
     let remaining = Math.max(1, Number(recipe.result_quantity) || 1);
     const maxStack = recipe.stackable ? Math.max(1, Number(recipe.max_stack_size) || 1) : 1;
     if (recipe.stackable) {
@@ -1401,8 +1362,8 @@ app.post('/api/craft', requireJWT, async (req, res) => {
     const usedSlots = new Set(occupiedRows.map(row => row.slot_index));
     while (remaining > 0) {
       let emptySlot = 0;
-      while (emptySlot < 24 && usedSlots.has(emptySlot)) emptySlot++;
-      if (emptySlot >= 24) {
+      while (emptySlot < BAG_SLOTS && usedSlots.has(emptySlot)) emptySlot++;
+      if (emptySlot >= BAG_SLOTS) {
         const err = new Error('Inventory is full');
         err.playerMessage = err.message;
         throw err;
@@ -1948,6 +1909,20 @@ require('./labor.cjs')(app, pool, {
   },
 });
 require('./garden.cjs')(app, pool, {
+  requireAuth: requireJWT,
+  ownsCharacter: async (req, characterId) => {
+    const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
+    return rows.length === 1;
+  },
+});
+require('./vault.cjs')(app, pool, {
+  requireAuth: requireJWT,
+  ownsCharacter: async (req, characterId) => {
+    const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
+    return rows.length === 1;
+  },
+});
+require('./salvage.cjs')(app, pool, {
   requireAuth: requireJWT,
   ownsCharacter: async (req, characterId) => {
     const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);

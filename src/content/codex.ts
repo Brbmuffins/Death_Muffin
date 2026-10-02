@@ -38,6 +38,7 @@ import {
 } from './abilities';
 import { BREWS, brewEffectsText, slotName } from './brews';
 import { itemMeta } from './items';
+import { SALVAGE_RARITIES, salvagePreview } from '../gameplay/salvageRules';
 import { AREA_REAGENT_DROPS, BOSS_ICHOR, ENEMY_REAGENT_DROPS, REAGENT_ITEMS, REAGENT_RECIPES } from './reagents';
 import { AREAS, BOSS_SUMMON_SHARDS, type AreaId } from './areas';
 import type { DisciplineId } from './disciplines';
@@ -677,6 +678,22 @@ export const codexReagentRecipes = () =>
     seconds: BREWS[result].seconds,
     slot: slotName(BREWS[result].slot),
   }));
+
+/** Codex: Salvaging and the Ossuary Vault. The yield rows come from salvageRules so the numbers never drift. */
+export const CODEX_SALVAGE_COUNSEL =
+  "Salvaging is a skill of its own, trained at the Bone Grinder in the Sexton's Acre (by the Bone Kiln). Feed it gear from your bag and it gives back an ingot (or a plank from a staff, wand or grimoire) by rarity, plus Grave Dust and sometimes other reagents. Every level adds a 0.5% chance of one extra material. XP per piece rises with rarity. Worn gear and locked items are never taken, and if the yield will not fit your bag nothing is ground. Open the Reliquary (I) and use Salvage on an item while you stand at the Grinder, or open the Grinder itself to tick several pieces, or use Salvage all below rare.";
+export const codexSalvageRows = () => {
+  const nameList = (ids: string[]) => ids.map((id) => itemMeta(id).name).join(' or ');
+  return SALVAGE_RARITIES.map((rarity) => {
+    const ingot = salvagePreview({ id: 'helm', item_type: 'armor_head', rarity });
+    const plank = salvagePreview({ id: 'staff', item_type: 'weapon', rarity });
+    const qty = ingot.materialQty[0] === ingot.materialQty[1] ? `${ingot.materialQty[0]}` : `${ingot.materialQty[0]}-${ingot.materialQty[1]}`;
+    const extras = ingot.reagents.filter((r) => r.id !== 'reagent_grave_dust').map((r) => `${itemMeta(r.id).name} ${Math.round(r.chance * 100)}%`);
+    return { rarity, qty, ingots: nameList(ingot.materials), planks: nameList(plank.materials), reagents: `Grave Dust 1-2${extras.length ? `, ${extras.join(', ')}` : ''}`, xp: ingot.xp };
+  });
+};
+export const CODEX_VAULT_COUNSEL =
+  "The Ossuary Vault is a sarcophagus in the Chapterhouse that holds 120 slots, shared by every character on your account. Press V in the Chapterhouse or the Acre (anywhere else the dead are too close). Click an item to move its whole stack across; Deposit materials stores every unlocked material and consumable, Deposit all stores everything unlocked that you are not wearing, and Sort merges stacks and orders the Vault by type, rarity and name. A move stacks first, then fills free slots, and one that will not fit is refused with nothing changed. The padlock in the Reliquary (I) locks an item out of every bulk button: Sell all junk, the Vault's bulk buttons and Salvage all below rare.";
 
 export const CODEX_TRAVEL_COUNSEL = 'Click a walkable spot on the minimap to choose a fixed destination. Travel follows the same paths as ground clicks; locked halls remain closed. The amber marker shows where you are going. Hover or focus a spell icon for detailed rite counsel.';
 

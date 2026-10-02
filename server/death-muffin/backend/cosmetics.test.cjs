@@ -40,7 +40,7 @@ function harness(db, { owned = true } = {}) {
   };
 }
 
-const ALL99 = { woodcutting: 99, mining: 99, fishing: 99, gravedigging: 99, gardening: 99, alchemy: 99 };
+const ALL99 = { woodcutting: 99, mining: 99, fishing: 99, gravedigging: 99, gardening: 99, alchemy: 99, salvaging: 99 };
 
 test('a new character has no capes or pets, and nothing worn', async () => {
   const call = harness(fakeDb());
@@ -67,7 +67,7 @@ test('total-level mantles and the Sexton\'s Mantle unlock from combined levels',
   const call = harness(fakeDb({ levels: ALL99 }));
   const v = (await call('GET /api/cosmetics/:characterId', { params: { characterId: '1' } })).json.data;
   assert.ok(v.capes.every((c) => c.unlocked), 'every cape at all 99');
-  assert.equal(v.totalLevel, 594);
+  assert.equal(v.totalLevel, 693);
 });
 
 test('adopting spends exactly one charm, keeps the pet for good, and walks the first one out', async () => {

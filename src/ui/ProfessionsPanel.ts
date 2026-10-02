@@ -13,6 +13,7 @@ const BLURB: Record<SkillId, string> = {
   gravedigging: 'Dig pauper’s graves, mounds and tombs for bones, grave goods and a little gold.',
   gardening: 'Plant seeds and saplings in the Mourning Beds and Coffin Patches (Garden, U). They grow while you are away.',
   alchemy: 'Brew herbs and bone meal into flasks and elixirs at the Workbench (C, Alchemy tab).',
+  salvaging: 'Break spare gear down at the Bone Grinder in the Sexton’s Acre for ingots, planks and reagents. Higher levels add a chance of an extra material.',
 };
 
 /**
@@ -84,6 +85,8 @@ export class ProfessionsPanel {
             ? 'Plant in the Garden (U).'
             : id === 'alchemy'
               ? 'Brew at the Workbench (C).'
+              : id === 'salvaging'
+                ? 'Grind gear at the Bone Grinder in the Acre.'
               : 'Every node is open to you.';
       const choices = !isGather(id) ? [] : nodesForSkill(id).filter(n => n.level <= skills.gateLevel(id));
       const selected = selections.get(id) ?? choices[0]?.id;

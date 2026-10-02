@@ -4,14 +4,16 @@ import { ITEMS } from '../content/items';
 import { waveModifiers } from '../content/upgrades';
 import { saveInventory } from '../net/api';
 import type { InventorySlot } from '../net/types';
+import { BAG_SLOTS } from './gatheringRules';
 import { pickWeighted, randInt } from './rng';
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
 import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS, bossIchor } from '../content/reagents';
 import type { BossId } from '../content/bosses';
 
-export const BAG_COLS = 6;
-export const BAG_ROWS = 4;
-export const BAG_SIZE = BAG_COLS * BAG_ROWS; // matches Unity's 4×6 bag
+/** One source of truth: gatheringRules.BAG_SLOTS (also bundled for the server). 8 columns × 6 rows = 48. */
+export const BAG_SIZE = BAG_SLOTS;
+export const BAG_COLS = 8;
+export const BAG_ROWS = BAG_SIZE / BAG_COLS;
 
 export interface LootDrop {
   item_id: string;
@@ -149,7 +151,7 @@ export function addToSlots(slots: InventorySlot[], drop: LootDrop): InventorySlo
 /**
  * The save endpoint owns the bag only (slot_index 0..BAG_SIZE-1). Equipped gear lives in reserved
  * slots (100+) that /api/inventory/equip manages, so it is never sent back: one equipped item used to
- * make every save fail with "each slot_index must be between 0 and 23".
+ * make every save fail with "each slot_index must be between 0 and 23" (when the bag grew).
  */
 export function toSavePayload(slots: InventorySlot[]) {
   return slots.filter((s) => s.slot_index >= 0 && s.slot_index < BAG_SIZE).map((s) => ({
@@ -161,7 +163,7 @@ export function toSavePayload(slots: InventorySlot[]) {
 }
 
 export type InventorySaveState = 'saved' | 'saving' | 'retrying';
-type InventoryMutation = ({ kind: 'add'; drop: LootDrop } | { kind: 'consume'; itemId: string }) & { countAfter: number };
+type InventoryMutation = ({ kind: 'add'; drop: LootDrop } | { kind: 'consume'; itemId: string; slot?: number }) & { countAfter: number };
 
 function itemCount(slots: InventorySlot[], itemId: string) {
   return slots.filter((s) => s.item_id === itemId).reduce((n, s) => n + s.quantity, 0);
@@ -169,7 +171,9 @@ function itemCount(slots: InventorySlot[], itemId: string) {
 
 function applyInventoryMutation(slots: InventorySlot[], mutation: InventoryMutation): InventorySlot[] | null {
   if (mutation.kind === 'add') return addToSlots(slots, mutation.drop);
-  const slot = slots.find((s) => s.item_id === mutation.itemId && s.quantity > 0);
+  // A slot-specific consume (selling one copy of several) replays on that same slot, so a locked twin is never taken instead.
+  const slot = (mutation.slot !== undefined ? slots.find((s) => s.slot_index === mutation.slot && s.item_id === mutation.itemId && s.quantity > 0) : undefined)
+    ?? slots.find((s) => s.item_id === mutation.itemId && s.quantity > 0);
   // The server may already have removed it (for example as a crafting cost).
   if (!slot) return slots;
   return slots.map((s) => (s === slot ? { ...s, quantity: s.quantity - 1 } : s)).filter((s) => s.quantity > 0);
@@ -277,6 +281,18 @@ export class Inventory {
     return true;
   }
 
+  /** Consume one unit from a specific bag slot (selling one copy of several, with a locked twin elsewhere). */
+  consumeAt(slotIndex: number): boolean {
+    const slot = this.slots.find((s) => s.slot_index === slotIndex && s.quantity > 0 && !s.equipped);
+    if (!slot) return false;
+    this.slots = this.slots.map((s) => (s === slot ? { ...s, quantity: s.quantity - 1 } : s)).filter((s) => s.quantity > 0);
+    this.pendingMutations.push({ kind: 'consume', itemId: slot.item_id, slot: slotIndex, countAfter: this.count(slot.item_id) });
+    this.dirty = true;
+    this.emit();
+    this.scheduleFlush(1500);
+    return true;
+  }
+
   private scheduleFlush(ms: number) {
     window.clearTimeout(this.timer);
     this.timer = window.setTimeout(() => void this.flush(), ms);
@@ -321,7 +337,7 @@ export class Inventory {
     this.pendingMutations = [];
     this.inFlightMutations = sentMutations;
     try {
-      const saved = await saveInventory(this.characterId, toSavePayload(sent));
+      const saved = await saveInventory(this.characterId, toSavePayload(sent), BAG_SIZE);
       // Only adopt the server rows if nothing changed while the request flew.
       if (this.slots === sent) this.slots = saved;
       else this.dirty = true;

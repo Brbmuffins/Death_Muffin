@@ -21,7 +21,7 @@ function fakeDb({ bag = [], level = 1, xp = 0 } = {}) {
     if (sql.startsWith('SELECT id, quantity FROM inventory')) return [inv.filter((r) => r.item_id === p[1] && !r.equipped && r.slot_index <= p[2]).sort((a, b) => a.slot_index - b.slot_index).map((r) => ({ id: r.id, quantity: r.quantity }))];
     if (sql.startsWith('DELETE FROM inventory')) { inv = inv.filter((r) => r.id !== p[0]); return [{}]; }
     if (sql.startsWith('UPDATE inventory SET quantity = quantity - ?')) { inv.find((r) => r.id === p[1]).quantity -= p[0]; return [{}]; }
-    if (sql.startsWith('SELECT slot_index, item_id, quantity, equipped FROM inventory')) return [inv.filter((r) => r.slot_index <= 23).map((r) => ({ ...r }))];
+    if (sql.startsWith('SELECT slot_index, item_id, quantity, equipped FROM inventory')) return [inv.filter((r) => r.slot_index <= 47).map((r) => ({ ...r }))];
     if (sql.startsWith('UPDATE inventory SET quantity = ? WHERE')) { inv.find((r) => r.slot_index === p[2]).quantity = p[0]; return [{}]; }
     if (sql.startsWith('INSERT INTO inventory')) { inv.push({ id: nextId++, character_id: p[0], slot_index: p[1], item_id: p[2], quantity: p[3], equipped: 0 }); return [{}]; }
     throw new Error(`unexpected SQL: ${sql.slice(0, 80)}`);
@@ -116,7 +116,7 @@ test('harvest waits for the plot, then pays the crop, XP and (by luck) a seed ba
 });
 
 test('a full bag refuses the harvest and changes nothing', async () => {
-  const bag = [{ slot_index: 0, item_id: 'seed_mourning_moss', quantity: 1 }, ...Array.from({ length: 23 }, (_, i) => ({ slot_index: i + 1, item_id: `junk_${i}`, quantity: 1 }))];
+  const bag = [{ slot_index: 0, item_id: 'seed_mourning_moss', quantity: 1 }, ...Array.from({ length: 47 }, (_, i) => ({ slot_index: i + 1, item_id: `junk_${i}`, quantity: 1 }))];
   const db = fakeDb({ bag });
   const call = harness(db, { random: () => 0.99 });
   await call('POST /api/garden/plant', { body: { characterId: 1, plot: 'h0', seedId: 'seed_mourning_moss' } }); // frees slot 0

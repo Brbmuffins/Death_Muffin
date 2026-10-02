@@ -30,7 +30,8 @@ export const CAPES: CapeDef[] = [
   { id: 'cape_gravedigging', name: 'Cape of the Sexton', lore: 'Mastery of the spade. The dead are quiet around it.', color: 0x4a4030, trim: 0xe0d6a8, skill: 'gravedigging' },
   { id: 'cape_gardening', name: 'Cape of the Mourning Bed', lore: 'Mastery of the garden. Something is always growing on it.', color: 0x34552f, trim: 0xb5e08a, skill: 'gardening' },
   { id: 'cape_alchemy', name: 'Cape of the Alembic', lore: 'Mastery of the brew. It shifts colour when you are not looking.', color: 0x4a2f6b, trim: 0xd9b6ff, skill: 'alchemy' },
-  { id: 'cape_sexton', name: 'The Sexton’s Mantle', lore: 'Ninety-nine in every rite. The Covenant has no higher thanks to give.', color: 0x1a1420, trim: 0xe2c98f, total: 594 },
+  { id: 'cape_salvaging', name: 'Cape of the Bone Grinder', lore: 'Mastery of the grinder. Nothing is wasted, and nothing stays whole.', color: 0x4d4130, trim: 0xe3c89a, skill: 'salvaging' },
+  { id: 'cape_sexton', name: 'The Sexton’s Mantle', lore: 'Ninety-nine in every rite. The Covenant has no higher thanks to give.', color: 0x1a1420, trim: 0xe2c98f, total: 693 },
 ];
 
 export const capeDef = (id: string) => CAPES.find((c) => c.id === id);

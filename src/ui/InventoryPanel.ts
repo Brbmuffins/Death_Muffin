@@ -8,6 +8,11 @@ import { MEALS } from '../content/processing';
 import { EQUIP_SLOTS, equipSlotOf, equippedBySlot, type EquipSlot } from '../content/gear';
 import { ARMOR_BY_ID } from '../content/armorSets';
 import { necroWeaponTooltip } from '../content/necroWeapons';
+import { ItemLocks, junkSlots } from '../gameplay/itemLocks';
+import { isSalvageGear } from '../gameplay/salvageRules';
+
+/** A small padlock for locked cells and the Lock button (inline SVG: no font or emoji dependency). */
+export const LOCK_SVG = '<svg viewBox="0 0 12 14" width="11" height="13" aria-hidden="true"><path d="M3 6V4.2a3 3 0 0 1 6 0V6" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="6" width="9" height="7" rx="1" fill="currentColor"/></svg>';
 
 const TYPE_GLYPH: Record<string, string> = {
   weapon: '⚔',
@@ -31,7 +36,7 @@ export function itemIcon(slot: Pick<InventorySlot, 'item_id'>) {
 }
 
 /**
- * The Reliquary: 4×6 bag, hover tooltips, equip/unequip. Equip goes straight
+ * The Reliquary: 8×6 bag, hover tooltips, equip/unequip. Equip goes straight
  * to POST /api/inventory/equip and the server's slot array becomes truth.
  */
 export class InventoryPanel {
@@ -40,6 +45,8 @@ export class InventoryPanel {
   private selected: number | null = null;
   private busy = false;
   private off: (() => void) | null = null;
+  private offLocks: (() => void) | null = null;
+  private confirmJunk = false;
 
   constructor(
     private root: HTMLElement,
@@ -51,6 +58,9 @@ export class InventoryPanel {
     private onBelt?: (itemId: string) => void,
     /** Selling (2026-09-29): gold is credited by the scene, like any pickup. */
     private onSold?: (gold: number, name: string, quantity: number) => void,
+    /** Per-character item locks (bulk actions skip locked items) and the Bone Grinder hook for the detail's Salvage button. */
+    private locks: ItemLocks = new ItemLocks(characterId),
+    private grinder?: { near: () => boolean; salvage: (slots: number[]) => Promise<void> },
   ) {}
 
   get isOpen() {
@@ -60,7 +70,7 @@ export class InventoryPanel {
   open() {
     if (this.el) return;
     this.el = document.createElement('div');
-    this.el.className = 'cw-plate cw-panel-float wide';
+    this.el.className = 'cw-plate cw-panel-float wide cw-reliquary';
     this.el.setAttribute('role', 'dialog');
     this.el.setAttribute('aria-label', 'Reliquary');
     this.el.innerHTML = `
@@ -73,6 +83,7 @@ export class InventoryPanel {
         <div class="cw-equip" role="group" aria-label="Equipment"></div>
         <div class="cw-bag-grid" role="grid"></div>
       </div>
+      <div class="cw-bag-tools" data-tools></div>
       <div class="cw-bag-detail" data-detail></div>
       <div class="cw-error" data-error></div>
     `;
@@ -83,12 +94,16 @@ export class InventoryPanel {
     this.tooltip.style.display = 'none';
     this.root.appendChild(this.tooltip);
     this.off = this.inventory.onChange(() => this.render());
+    this.offLocks = this.locks.onChange(() => this.render());
     this.render();
   }
 
   close() {
     this.off?.();
     this.off = null;
+    this.offLocks?.();
+    this.offLocks = null;
+    this.confirmJunk = false;
     this.el?.remove();
     this.el = null;
     this.tooltip?.remove();
@@ -113,8 +128,10 @@ export class InventoryPanel {
       if (slot) {
         cell.classList.add('filled');
         if (slot.equipped) cell.classList.add('equipped');
+        const locked = this.locks.isLocked(slot);
+        if (locked) cell.classList.add('locked');
         cell.style.setProperty('--rarity', RARITY_COLOR[slot.rarity] ?? RARITY_COLOR.common);
-        cell.setAttribute('aria-label', `${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''}, ${slot.rarity}${slot.equipped ? ', equipped' : ''}`);
+        cell.setAttribute('aria-label', `${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''}, ${slot.rarity}${slot.equipped ? ', equipped' : ''}${locked ? ', locked' : ''}`);
         const img = document.createElement('img');
         img.className = 'item-icon';
         img.src = itemIcon(slot);
@@ -125,7 +142,7 @@ export class InventoryPanel {
         cell.appendChild(img);
         cell.insertAdjacentHTML(
           'beforeend',
-          `${slot.quantity > 1 ? `<span class="qty">${slot.quantity}</span>` : ''}${slot.equipped ? '<span class="eq">E</span>' : ''}<span class="rm">${RARITY_MARK[slot.rarity] ?? ''}</span>`,
+          `${slot.quantity > 1 ? `<span class="qty">${slot.quantity}</span>` : ''}${slot.equipped ? '<span class="eq">E</span>' : ''}${locked ? `<span class="lk" title="Locked">${LOCK_SVG}</span>` : ''}<span class="rm">${RARITY_MARK[slot.rarity] ?? ''}</span>`,
         );
         cell.addEventListener('pointerenter', (e) => this.showTooltip(slot, e));
         cell.addEventListener('pointermove', (e) => this.moveTooltip(e));
@@ -145,7 +162,48 @@ export class InventoryPanel {
       grid.appendChild(cell);
     }
     this.renderEquipment();
+    this.renderTools();
     this.renderDetail();
+  }
+
+  /** Sell all junk: the count and gold are shown, then confirmed in place. Locked items are never included. */
+  private renderTools() {
+    const tools = this.el!.querySelector<HTMLDivElement>('[data-tools]')!;
+    if (!this.onSold) {
+      tools.innerHTML = '';
+      return;
+    }
+    const junk = junkSlots(this.inventory.all, this.locks);
+    const gold = junk.reduce((n, s) => n + s.sell_value * s.quantity, 0);
+    const used = this.inventory.all.filter((s) => s.slot_index >= 0 && s.slot_index < BAG_SIZE).length;
+    if (this.confirmJunk && junk.length) {
+      tools.innerHTML = `<span class="cw-tools-confirm">Sell <b>${junk.length}</b> junk item${junk.length === 1 ? '' : 's'} (common and uncommon gear, nothing locked) for <b>${gold.toLocaleString()}g</b>?</span>
+        <button class="cw-button small" data-junk-yes>Sell them</button><button class="cw-button small ghost" data-junk-no>Cancel</button>`;
+      tools.querySelector('[data-junk-yes]')!.addEventListener('click', () => this.sellJunk());
+      tools.querySelector('[data-junk-no]')!.addEventListener('click', () => { this.confirmJunk = false; this.render(); });
+      return;
+    }
+    this.confirmJunk = false;
+    tools.innerHTML = `<span class="cw-tools-count" data-bagcount>${used} / ${BAG_SIZE} slots</span>
+      <button class="cw-button small" data-junk ${junk.length ? '' : 'disabled'} title="Sells unlocked common and uncommon gear. Lock an item to keep it out.">Sell all junk${junk.length ? ` (${junk.length} · ${gold.toLocaleString()}g)` : ''}</button>`;
+    tools.querySelector('[data-junk]')?.addEventListener('click', () => { this.confirmJunk = true; this.render(); });
+  }
+
+  private sellJunk() {
+    if (!this.onSold) return;
+    this.confirmJunk = false;
+    const list = junkSlots(this.inventory.all, this.locks);
+    let gold = 0;
+    let count = 0;
+    for (const slot of list) {
+      for (let i = 0; i < slot.quantity && this.inventory.consumeAt(slot.slot_index); i++) {
+        gold += slot.sell_value;
+        count++;
+      }
+    }
+    this.selected = null;
+    if (count) this.onSold(gold, `${count} junk item${count === 1 ? '' : 's'}`, count);
+    this.render();
   }
 
   /** Worn gear (server slots 100+) is invisible to the bag grid, so it gets its own paper-doll. */
@@ -258,6 +316,8 @@ export class InventoryPanel {
     const equippable = equipSlotOf(slot) !== null;
     const drinkable = slot.item_id in HEALING_FLASKS || slot.item_id in BUFF_FLASKS;
     const edible = slot.item_id in MEALS;
+    const locked = this.locks.isLocked(slot);
+    const atGrinder = this.grinder?.near() ?? false;
     detail.innerHTML = `
       <div class="info">
         <div class="name" style="color:${RARITY_COLOR[slot.rarity]}">${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''}</div>
@@ -272,9 +332,15 @@ export class InventoryPanel {
       ${drinkable ? `<button class="cw-button small" data-act>Drink</button>` : ''}
       ${this.onBelt && slot.item_id in BREWS ? `<button class="cw-button small" data-belt>Put on belt (${BREW_KEYS[BREWS[slot.item_id].slot].toUpperCase()})</button>` : ''}
       ${edible ? `<button class="cw-button small" data-act>Eat</button>` : ''}
-      ${this.onSold && !slot.equipped && slot.sell_value > 0 ? `<button class="cw-button small" data-sell="1">Sell (${slot.sell_value}g)</button>` : ''}
-      ${this.onSold && !slot.equipped && slot.sell_value > 0 && slot.quantity > 1 ? `<button class="cw-button small" data-sell="${slot.quantity}">Sell all ×${slot.quantity} (${(slot.sell_value * slot.quantity).toLocaleString()}g)</button>` : ''}
+      <div class="cw-detail-actions">
+      ${!slot.equipped ? `<button class="cw-button small ${locked ? 'on' : ''}" data-lock title="${locked ? 'Unlock: bulk actions may take it again' : 'Lock: Sell all junk, Deposit and Salvage all will skip it'}">${LOCK_SVG} ${locked ? 'Unlock' : 'Lock'}</button>` : ''}
+      ${this.grinder && !slot.equipped && isSalvageGear(slot.item_type) ? `<button class="cw-button small" data-salvage ${atGrinder ? '' : 'disabled'} title="${atGrinder ? 'Break it down for materials and reagents' : 'Stand at the Bone Grinder in the Sexton’s Acre to salvage'}">Salvage</button>${atGrinder ? '' : '<span class="cw-hint-text small">Needs the Bone Grinder (Acre)</span>'}` : ''}
+      ${this.onSold && !slot.equipped && slot.sell_value > 0 ? `<button class="cw-button small" data-sell="1" ${locked ? 'disabled title="Unlock it to sell"' : ''}>Sell (${slot.sell_value}g)</button>` : ''}
+      ${this.onSold && !slot.equipped && slot.sell_value > 0 && slot.quantity > 1 ? `<button class="cw-button small" data-sell="${slot.quantity}" ${locked ? 'disabled' : ''}>Sell all ×${slot.quantity} (${(slot.sell_value * slot.quantity).toLocaleString()}g)</button>` : ''}
+      </div>
     `;
+    detail.querySelector('[data-lock]')?.addEventListener('click', () => this.locks.toggle(slot));
+    detail.querySelector('[data-salvage]')?.addEventListener('click', () => void this.salvageOne(slot));
     detail.querySelector('[data-act]')?.addEventListener('click', () => this.primaryAction(slot));
     detail.querySelector('[data-belt]')?.addEventListener('click', () => this.onBelt?.(slot.item_id));
     detail.querySelectorAll<HTMLButtonElement>('[data-sell]').forEach((b) => b.addEventListener('click', () => this.sell(slot, Number(b.dataset.sell))));
@@ -284,11 +350,27 @@ export class InventoryPanel {
   private sell(slot: InventorySlot, quantity: number) {
     if (slot.equipped || !this.onSold) return;
     let sold = 0;
-    for (let i = 0; i < quantity && this.inventory.consume(slot.item_id); i++) sold++;
+    if (this.locks.isLocked(slot)) return;
+    for (let i = 0; i < quantity && this.inventory.consumeAt(slot.slot_index); i++) sold++;
     if (!sold) return;
     this.onSold(sold * slot.sell_value, slot.name, sold);
-    if (!this.inventory.count(slot.item_id)) this.selected = null;
+    if (!this.slotAt(slot.slot_index)) this.selected = null;
     this.render();
+  }
+
+  private async salvageOne(slot: InventorySlot) {
+    if (this.busy || !this.grinder) return;
+    this.busy = true;
+    this.setError('');
+    try {
+      await this.grinder.salvage([slot.slot_index]);
+      this.selected = null;
+    } catch (err) {
+      this.setError(err instanceof Error ? err.message : 'Salvage failed');
+    } finally {
+      this.busy = false;
+      this.render();
+    }
   }
 
   private primaryAction(slot: InventorySlot) {
