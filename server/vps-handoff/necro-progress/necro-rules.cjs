@@ -479,7 +479,7 @@ var AREAS = {
       // Area bosses (content/bosses.ts summonSpot: each arena's north edge).
       { id: "kings_grave", kind: "boss", label: "The King's Grave", x: -14, z: -30.5 }
     ],
-    ambient: { fog: 854548, hemiSky: 3812693, hemiGround: 722960, moon: 10135252 }
+    ambient: { fog: 854548, hemiSky: 4601962, hemiGround: 722960, moon: 10135252 }
   },
   ossuary: {
     id: "ossuary",
@@ -661,7 +661,7 @@ var AREAS = {
     itemChance: 0.14,
     breaches: [[27, -101], [61, -101], [27, -131], [61, -131], [44, -100.5], [62, -116]],
     interactables: [
-      { id: "waystone_cloister", kind: "waystone", label: "Waystone", x: 27.5, z: -108 },
+      { id: "waystone_cloister", kind: "waystone", label: "Waystone", x: 27.5, z: -111 },
       { id: "saints_litter", kind: "boss", label: "The Saint's Litter", x: 44, z: -129.5 }
     ],
     ambient: { fog: 659464, hemiSky: 2898468, hemiGround: 461317, moon: 10273930 }
