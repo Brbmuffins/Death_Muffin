@@ -11,7 +11,11 @@ export interface Settings {
   quality: Quality;
   reducedMotion: boolean;
   damageNumbers: boolean;
-  volume: number; // 0..1
+  volume: number; // 0..1 (master)
+  /** Mixer sliders, 0..1, applied under the master volume. */
+  combatVolume: number;
+  ambienceVolume: number;
+  interfaceVolume: number;
   /** First-time onboarding tips (ui/Onboarding). */
   tips: boolean;
   /** Session difficulty; in co-op the world keeper's setting applies. */
@@ -35,7 +39,7 @@ function defaults(): Settings {
   } catch {
     /* no matchMedia */
   }
-  return { quality: 'high', reducedMotion: reduced, damageNumbers: true, volume: 0.6, tips: true, difficulty: 'medium', autoCombat: false, autoGather: true };
+  return { quality: 'high', reducedMotion: reduced, damageNumbers: true, volume: 0.6, combatVolume: 1, ambienceVolume: 1, interfaceVolume: 1, tips: true, difficulty: 'medium', autoCombat: false, autoGather: true };
 }
 
 function load(): Settings {
@@ -45,6 +49,10 @@ function load(): Settings {
     if (raw) {
       const stored = JSON.parse(raw) as Partial<Settings>;
       const s = { ...base, ...stored } as Settings;
+      for (const k of ['volume', 'combatVolume', 'ambienceVolume', 'interfaceVolume'] as const) {
+        if (typeof s[k] !== 'number' || !Number.isFinite(s[k])) s[k] = base[k];
+        s[k] = Math.min(1, Math.max(0, s[k]));
+      }
       if (!isDifficulty(s.difficulty)) s.difficulty = base.difficulty;
       // Old browser-wide play settings cannot be attributed to an account.
       // Each character starts on Medium until its own preference is loaded.

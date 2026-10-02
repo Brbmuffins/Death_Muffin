@@ -2047,7 +2047,7 @@ export class WorldScene implements GameScene, RuntimeView {
         break;
       }
       case 'thrallHit': {
-        audio.play('boneHit', ev.tx, ev.tz);
+        audio.play(ev.kind === 'archer' ? 'thrallShot' : ev.kind === 'wraith' || ev.kind === 'bonemage' ? 'thrallMagic' : 'thrallMelee', ev.tx, ev.tz);
         const color = ev.kind === 'wraith' ? 0x8f9ed1 : ev.kind === 'bonemage' ? STATUS_FX.hex.amber : 0xd8cfbd;
         if (ev.kind === 'wraith' || ev.kind === 'bonemage') {
           this.effects.projectile({ from: { x: ev.x, y: 1.3, z: ev.z }, to: () => ({ x: ev.tx, y: 1, z: ev.tz }), kind: 'orb', color, speed: ev.kind === 'bonemage' ? 14 : 20 });

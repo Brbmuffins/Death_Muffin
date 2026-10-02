@@ -61,6 +61,9 @@ export class SettingsPanel extends SimplePanel {
         <label class="row">Graphics
           <select data-q><option value="high">High (bloom, shadows)</option><option value="low">Low (fast)</option></select></label>
         <label class="row">Volume<input type="range" min="0" max="1" step="0.05" data-vol aria-label="Master volume" /></label>
+        <label class="row">Combat<input type="range" min="0" max="1" step="0.05" data-vol-combat aria-label="Combat volume: spells, hits, thralls and enemies" /></label>
+        <label class="row">Ambience<input type="range" min="0" max="1" step="0.05" data-vol-amb aria-label="Ambience volume: wind, drones, footsteps and gathering" /></label>
+        <label class="row">Interface<input type="range" min="0" max="1" step="0.05" data-vol-ui aria-label="Interface volume: clicks, coins and level-up chimes" /></label>
         <label class="row">Reduce motion (no camera shake)<input type="checkbox" data-rm /></label>
         <label class="row">Damage numbers<input type="checkbox" data-dn /></label>
         <label class="row">Don't show tips<input type="checkbox" data-tips /></label>
@@ -123,6 +126,12 @@ export class SettingsPanel extends SimplePanel {
     const vol = this.el!.querySelector<HTMLInputElement>('[data-vol]')!;
     vol.value = String(settings.volume);
     vol.addEventListener('input', () => updateSettings({ volume: Number(vol.value) }));
+    const mixer: [string, 'combatVolume' | 'ambienceVolume' | 'interfaceVolume'][] = [['[data-vol-combat]', 'combatVolume'], ['[data-vol-amb]', 'ambienceVolume'], ['[data-vol-ui]', 'interfaceVolume']];
+    for (const [sel, key] of mixer) {
+      const slider = this.el!.querySelector<HTMLInputElement>(sel)!;
+      slider.value = String(settings[key]);
+      slider.addEventListener('input', () => updateSettings({ [key]: Number(slider.value) }));
+    }
     const rm = this.el!.querySelector<HTMLInputElement>('[data-rm]')!;
     rm.checked = settings.reducedMotion;
     rm.addEventListener('change', () => updateSettings({ reducedMotion: rm.checked }));
