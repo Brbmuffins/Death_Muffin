@@ -1506,3 +1506,11 @@ body:has(.hud-banner.show) .cw-tip:not(.dragging):not([data-kind='urgent']):not(
   .cw-recipe { flex-direction: column; align-items: stretch; gap: 10px; }
   .cw-craft-qty { width: 100%; }
 }
+
+/* Short desktop screens (1280x800): the labelled menu's two rows must clear the Damage / Wave Speed plate. */
+@media (max-height: 900px) and (min-height: 521px) and (min-width: 761px) {
+  .hud-map { gap: 5px; }
+  .hud-menu { gap: 2px; }
+  .hud-menu .hud-mi { height: 30px; }
+  .hud-menu .hud-mi svg { width: 15px; height: 15px; }
+}
