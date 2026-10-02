@@ -43,6 +43,8 @@ export interface HudCallbacks {
   dismissNext?(): void;
   /** Touch buttons for keys a phone doesn't have: the healing flask (Q) and the brew belt (Z/X). */
   flask?(): void;
+  /** Touch: Recall to the Chapterhouse (T on a keyboard). */
+  recall?(): void;
   drinkBelt?(slot: string): void;
 }
 
@@ -528,7 +530,7 @@ export class HUD {
     const necro = this.discipline?.family === 'necromancer';
     const tiles = MENU_SHEET.filter(([k]) => k !== 'legion' || necro)
       .map(([k, i, l]) => `<button type="button" class="tile" data-open="${k}">${ICON[i]}<span>${l.replace('&', '&amp;')}</span></button>`).join('');
-    sheet.innerHTML = `<div class="card"><div class="head"><h2>Menu</h2><button type="button" class="x" data-menuclose aria-label="Close menu">${ICON.close}</button></div><div class="grid">${tiles}<button type="button" class="tile auto" data-menuauto hidden></button></div></div>`;
+    sheet.innerHTML = `<div class="card"><div class="head"><h2>Menu</h2><button type="button" class="x" data-menuclose aria-label="Close menu">${ICON.close}</button></div><div class="grid">${tiles}<button type="button" class="tile" data-menurecall>${ICON.home}<span>Recall home</span></button><button type="button" class="tile auto" data-menuauto hidden></button></div></div>`;
     this.menuSheet = sheet;
     this.el.appendChild(sheet);
     const setOpen = (open: boolean) => {
@@ -542,6 +544,7 @@ export class HUD {
       const tile = t.closest<HTMLButtonElement>('[data-open]');
       if (tile) { setOpen(false); this.cb.open(tile.dataset.open as HudPanel); return; }
       if (t.closest('[data-menuauto]')) { this.cb.toggleAutoCombat(); return; }
+      if (t.closest('[data-menurecall]')) { setOpen(false); this.cb.recall?.(); return; }
       if (t === sheet || t.closest('[data-menuclose]')) setOpen(false);
     });
     window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sheet.hidden) { e.stopImmediatePropagation(); setOpen(false); } }, true);

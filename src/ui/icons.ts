@@ -11,6 +11,7 @@ export const ICON = {
   anvil: svg('<path d="M3 15h11c0 2 1.5 3 3 3H7c1.5 0 2.5-1 2.5-3"/><path d="M3 15c0-2 1.5-3 3-3h12v1.5c-1.5 1-3 1.5-4 1.5"/><path d="M5 21h12"/><path d="M15 3l4 4-2 2-4-4z"/><path d="M14 6l-4 4"/>'),
   candle: svg('<path d="M12 3c1.2 1.4 1.4 2.6 0 4-1.4-1.4-1.2-2.6 0-4z"/><path d="M9 9h6v11H9z"/><path d="M6 20h12"/>'),
   gear: svg('<circle cx="12" cy="12" r="3"/><path d="M10.4 3h3.2l.5 2.4 1.7.9 2.3-.9 1.6 2.8-1.8 1.7v1.9l1.8 1.7-1.6 2.8-2.3-.9-1.7.9-.5 2.4h-3.2l-.5-2.4-1.7-.9-2.3.9-1.6-2.8 1.8-1.7v-1.9L4.3 7.2l1.6-2.8 2.3.9 1.7-.9z"/>'),
+  home: svg('<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/><path d="M10 20v-5h4v5"/>'),
   stone: svg('<path d="M3 7l6-2 6 2 6-2v12l-6 2-6-2-6 2z"/><path d="M9 5v12M15 7v12"/>'),
   map: svg('<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/>'),
   /** Gathering skills: pickaxe crossed with a hatchet. */

@@ -140,9 +140,12 @@ The HUD rearranges itself for phones (portrait and landscape) and tablets, and e
 | **Upgrades** button | Open Damage / Wave Speed (it glows when you can afford one) |
 | **‹ Back** on a panel | Return to the panel you came from (Skills → Contracts → Back) |
 | Phone Back gesture | Steps back through panels, then closes them; it never leaves the game while a panel is open |
-| ⛶ in the menu | Full screen (Android; iPhone Safari has no full screen) |
+| **☰ Menu** | Big labelled tiles for every panel: Bag, Character, Spells, Craft, Skills, Contracts, Garden, Laborers, Legion, Capes & Pets, Vault, Map, Codex, Settings, plus **Recall home** and Auto combat |
+| ⛶ next to the Menu | Full screen (Android; iPhone Safari has no full screen) |
 
 Panels keep their scroll position while AFK gathering updates them.
+
+Double tap and pinch never zoom the page (pinch zooms the camera). Counsel cards, prompts and hints use touch wording ("Tap…", "the Menu") on a phone and keyboard wording on a computer. If your connection drops you keep playing: the game says **Connection lost**, saves retry on their own, and **Back online ✓** appears when it is back.
 
 ## Choose a discipline
 
@@ -419,6 +422,9 @@ With **Auto gathering** enabled in Settings, clicking a node can continue to ano
 <td><img src="docs/screenshots/skills-panel.webp" alt="The Skills panel" /><br /><sub>Skills (P)</sub></td>
 <td><img src="docs/screenshots/codex-professions.webp" alt="The Codex Professions tab" /><br /><sub>Codex professions</sub></td>
 </tr></table>
+
+
+**Craft many at once.** Every Workbench and Cauldron recipe has a quantity control: − / +, **×5**, **Max** (as many as your materials and bag room allow) and **Craft ×N**. A batch stops at the first problem and tells you how many were made. In the bag, stacks have **Sell all (N · gold)** with a confirm in place; locked items are never sold.
 
 ## Ascension
 

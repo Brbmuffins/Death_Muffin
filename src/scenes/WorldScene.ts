@@ -812,6 +812,7 @@ export class WorldScene implements GameScene, RuntimeView {
       },
       open: (p) => this.togglePanel(p),
       flask: () => this.drinkFlask(),
+      recall: () => this.startRecall(),
       drinkBelt: (slot) => this.drinkBelt(slot as BrewSlot),
       toggleAutoCombat: () => this.toggleAutoCombat(),
       chat: (text) => {
