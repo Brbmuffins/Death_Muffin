@@ -508,6 +508,8 @@ export class InventoryPanel {
     detail.querySelector('[data-belt]')?.addEventListener('click', () => this.onBelt?.(slot.item_id));
     detail.querySelector('[data-sellall]')?.addEventListener('click', () => { this.confirmSellAll = `${slot.slot_index}:${slot.item_id}`; this.render(); });
     detail.querySelector('[data-sellall-no]')?.addEventListener('click', () => { this.confirmSellAll = null; this.render(); });
+    // On a phone the bag detail sits at the bottom of a scrolled panel: keep the confirm buttons in view.
+    detail.querySelector('[data-sellall-no]')?.scrollIntoView({ block: 'nearest' });
     detail.querySelectorAll<HTMLButtonElement>('[data-sell]').forEach((b) => b.addEventListener('click', () => this.sell(slot, Number(b.dataset.sell))));
   }
 
