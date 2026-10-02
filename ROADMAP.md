@@ -94,6 +94,13 @@ Assigned laborers appear as thralls at their node in the Sexton's Acre and work 
 ### P3 · Zone and encounter polish
 Driven by measurements, not guesses: the necromancer balance run across all nine hunting grounds, the clip audit, and the loot audit (what fills the bag). Results and the resulting fixes are listed here as they land.
 
+**Necromancer balance run (2 Oct 2026, 4 disciplines × 9 hunting grounds × 4 seeds, 3 min each):**
+- At the intended pressure the necromancers are healthy almost everywhere (0–1.8 deaths per 3 min).
+- **Max Wave Speed is a trap.** 5–11 deaths per 3 min, first death after 5–20 s, and kills per minute *fall* to a third or less of the intended band (Nave Gravecaller 109 → 16/min). The top tiers should pay more for good play, not less. Fix: retune the tier 6–8 pressure curve and surge sizes so a careful player out-earns the intended band.
+- **Ossuary, the defensive discipline, dies most under pressure** (8–11.5 deaths at max). Its shieldbearers soak until they die, then the caster is exposed. Candidates: Bone Ward per living thrall, or a thrall HP floor.
+- **Coliseum and Sanctum spike at arrival level**; Mourner dies even at the intended band there (1.8–2.5 deaths). Check their elite rate and greeting waves.
+- **Bag pressure:** gathering tools (24 kinds) do not stack and the best one you carry counts, so tools hold 4+ bag slots. A small tool belt would free them.
+
 
 ### X1 · The Alchemist's Wing
 A dedicated room off the Chapterhouse: cauldrons and alembics as brewing stations, reagent shelves showing what you have found, a drying rack for herbs, and an NPC apothecary who hands out brewing orders. Art goes through the existing Gemini → Tripo pipeline (`ASSET_PIPELINE.md`; about 6,300 Tripo credits left). Brewing moves from the Workbench tab into the room, and the room becomes the home of higher-tier recipes (discovery, quality, concoctions from `docs/ALCHEMY-AND-WORLDS-PLAN.md`).
