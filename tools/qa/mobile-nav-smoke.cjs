@@ -21,10 +21,14 @@ const { VIRTUAL_TIMERS, newCharacter, step } = require('./lib/first-hour-lib.cjs
   await step(page, 1);
   const frame = () => page.evaluate(() => window.__cwDebug.advance(0.05));
   const title = async () => { await frame(); return page.evaluate(() => [...document.querySelectorAll('.cw-panel-float')].find((e) => e.offsetParent)?.querySelector('.cw-title,h2')?.textContent?.trim() ?? null); };
-  const tap = async (sel) => { await page.locator(sel).first().tap(); await frame(); };
+  const tap = async (sel) => {
+    // Phone: the panel buttons live in the Menu sheet; open it first.
+    if (sel.startsWith('.hud-menusheet')) { await page.locator('.hud-menu [data-menu]').tap(); await frame(); assert.ok(await page.locator('.hud-menusheet').isVisible(), 'Menu sheet opens'); }
+    await page.locator(sel).first().tap(); await frame();
+  };
   const url0 = page.url();
 
-  await tap('.hud-menu [data-open="professions"]');
+  await tap('.hud-menusheet [data-open="professions"]');
   assert.equal(await title(), 'Skills');
   assert.equal(await page.locator('[data-back]').count(), 0, 'a top-level panel has no Back');
   await tap('[data-contracts]');
@@ -50,7 +54,7 @@ const { VIRTUAL_TIMERS, newCharacter, step } = require('./lib/first-hour-lib.cjs
   assert.equal(await title(), null, 'phone Back: Skills -> closed');
   assert.equal(page.url(), url0, 'still in the game');
   // Closing with the X leaves no stray history entry behind.
-  await tap('.hud-menu [data-open="inventory"]');
+  await tap('.hud-menusheet [data-open="inventory"]');
   await tap('.cw-panel-float [data-close]');
   await frame(); await frame();
   assert.equal(await title(), null);
@@ -89,7 +93,7 @@ const { VIRTUAL_TIMERS, newCharacter, step } = require('./lib/first-hour-lib.cjs
   assert.equal(await page.locator('.hud-spell-tooltip').isVisible(), false, 'a tap elsewhere closes the spell card');
   // AFK farming redraws the Skills panel every tick: the scroll position must survive it.
   await page.evaluate(() => window.__cwDebug.advance(0));
-  await tap('.hud-menu [data-open="professions"]');
+  await tap('.hud-menusheet [data-open="professions"]');
   const scrolled = await page.evaluate(() => { const p = [...document.querySelectorAll('.cw-panel-float')].find((e) => e.offsetParent); p.scrollTop = 400; return p.scrollTop; });
   assert.ok(scrolled > 50, `Skills panel scrolls on a phone (${scrolled})`);
   await page.evaluate(() => { window.__cwDebug.skillsTick(); window.__cwDebug.skillsTick(); });

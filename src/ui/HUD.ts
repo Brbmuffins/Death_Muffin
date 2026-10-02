@@ -10,12 +10,30 @@ import { spellTooltip } from './spellTooltip';
 /** Key caps under each hotbar slot (slot 5 is the right-click action). */
 const SLOT_KEYS = ['1', '2', '3', '4', 'RMB', 'R'];
 let nextTooltipId = 0;
+export type HudPanel = 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'sheet' | 'legion';
+/** Desktop row: icon + short label. Tiles of the phone menu sheet: icon + full name. */
+const MENU_ROW: Array<[HudPanel, keyof typeof ICON, string, string, string]> = [
+  ['inventory', 'bag', 'Bag', 'Reliquary (I)', 'Reliquary'],
+  ['forge', 'anvil', 'Craft', 'Workbench (C)', 'Workbench'],
+  ['professions', 'skills', 'Skills', 'Skills (P)', 'Skills'],
+  ['map', 'waymap', 'Map', 'Waystones (M)', 'Waystones'],
+  ['grimoire', 'grimoire', 'Spells', 'Grimoire (L)', 'Grimoire'],
+  ['codex', 'book', 'Codex', 'Codex (K)', 'Codex'],
+  ['settings', 'gear', 'Settings', 'Settings (Esc)', 'Settings'],
+];
+const MENU_SHEET: Array<[HudPanel, keyof typeof ICON, string]> = [
+  ['inventory', 'bag', 'Bag'], ['sheet', 'person', 'Character'], ['grimoire', 'grimoire', 'Spells'],
+  ['forge', 'anvil', 'Craft'], ['professions', 'skills', 'Skills'], ['contracts', 'contract', 'Contracts'],
+  ['garden', 'sprout', 'Garden'], ['labor', 'shovel', 'Laborers'], ['legion', 'legion', 'Legion'],
+  ['cosmetics', 'cape', 'Capes & Pets'], ['vault', 'chest', 'Vault'], ['map', 'waymap', 'Map'],
+  ['codex', 'book', 'Codex'], ['settings', 'gear', 'Settings'],
+];
 export interface HudCallbacks {
   cast(slot: HotbarSlot): void;
   buyDamage(): void;
   buyWave(): void;
   dialWave(delta: number): void;
-  open(panel: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'grimoire'): void;
+  open(panel: HudPanel): void;
   chat(text: string): void;
   toggleAutoCombat(): void;
   /** Open the Grimoire with a socket preselected (a rite index 0–4 or the LMB primary). */
@@ -167,13 +185,8 @@ export class HUD {
         <div class="prog" data-prog></div>
         <div class="hud-next" data-next hidden role="status"><div class="txt"><span class="kick">Next</span><span data-nexttxt></span></div><button type="button" data-nextx aria-label="Hide this suggestion" title="Hide this suggestion (turn the line off in Settings)">×</button></div>
         <div class="hud-menu">
-          <button data-open="inventory" title="Reliquary (I)" aria-label="Reliquary">${ICON.bag}</button>
-          <button data-open="forge" title="Workbench (C)" aria-label="Workbench">${ICON.anvil}</button>
-          <button data-open="professions" title="Rites (P)" aria-label="Rites">${ICON.candle}</button>
-          <button data-open="map" title="Waystones (M)" aria-label="Waystones">${ICON.stone}</button>
-          <button data-open="grimoire" title="Grimoire (L)" aria-label="Grimoire">${ICON.grimoire}</button>
-          <button data-open="codex" title="Codex (K)" aria-label="Codex">${ICON.book}</button>
-          <button data-open="settings" title="Settings (Esc)" aria-label="Settings">${ICON.gear}</button>
+          ${MENU_ROW.map(([k, i, l, t, n]) => `<button class="hud-mi" data-open="${k}" title="${t}" aria-label="${n}">${ICON[i]}<span class="lbl">${l}</span></button>`).join('')}
+          <button class="hud-menubtn" data-menu aria-haspopup="dialog" aria-expanded="false" aria-label="Open menu">${ICON.menu}<span>Menu</span></button>
           <button class="hud-fullscreen" data-fullscreen title="Full screen" aria-label="Full screen">${ICON.expand}</button>
           <button class="hud-auto" data-auto hidden aria-label="Auto combat" title="Available on Easy difficulty" aria-pressed="false">Auto: Easy only</button>
         </div>
@@ -263,9 +276,10 @@ export class HUD {
 
     this.bindSlots();
     this.$('[data-grimbtn]').addEventListener('click', () => { this.hideTooltip(); this.cb.openGrimoire(); });
-    this.el.querySelectorAll<HTMLButtonElement>('[data-open]').forEach((b) =>
-      b.addEventListener('click', () => { this.hideTooltip(); this.cb.open(b.dataset.open as 'inventory'); }),
+    this.el.querySelectorAll<HTMLButtonElement>('.hud-menu [data-open]').forEach((b) =>
+      b.addEventListener('click', () => { this.hideTooltip(); this.cb.open(b.dataset.open as HudPanel); }),
     );
+    this.buildMenuSheet();
     this.$('[data-nextx]').addEventListener('click', () => this.cb.dismissNext?.());
     this.$('[data-buydmg]').addEventListener('click', () => this.cb.buyDamage());
     this.$('[data-auto]').addEventListener('click', () => this.cb.toggleAutoCombat());
@@ -501,6 +515,37 @@ export class HUD {
     this.tooltip.hidden = true;
   }
 
+  private menuSheet!: HTMLElement;
+
+  /** Phone/tablet: the "Menu" button opens a grid of big labelled tiles for every panel. */
+  private buildMenuSheet() {
+    const sheet = document.createElement('div');
+    sheet.className = 'hud-menusheet';
+    sheet.hidden = true;
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-label', 'Menu');
+    const necro = this.discipline?.family === 'necromancer';
+    const tiles = MENU_SHEET.filter(([k]) => k !== 'legion' || necro)
+      .map(([k, i, l]) => `<button type="button" class="tile" data-open="${k}">${ICON[i]}<span>${l.replace('&', '&amp;')}</span></button>`).join('');
+    sheet.innerHTML = `<div class="card"><div class="head"><h2>Menu</h2><button type="button" class="x" data-menuclose aria-label="Close menu">${ICON.close}</button></div><div class="grid">${tiles}<button type="button" class="tile auto" data-menuauto hidden></button></div></div>`;
+    this.menuSheet = sheet;
+    this.el.appendChild(sheet);
+    const setOpen = (open: boolean) => {
+      sheet.hidden = !open;
+      this.$('[data-menu]').setAttribute('aria-expanded', String(open));
+      if (open) this.hideTooltip();
+    };
+    this.$('[data-menu]').addEventListener('click', () => setOpen(sheet.hidden));
+    sheet.addEventListener('click', (e) => {
+      const t = e.target as HTMLElement;
+      const tile = t.closest<HTMLButtonElement>('[data-open]');
+      if (tile) { setOpen(false); this.cb.open(tile.dataset.open as HudPanel); return; }
+      if (t.closest('[data-menuauto]')) { this.cb.toggleAutoCombat(); return; }
+      if (t === sheet || t.closest('[data-menuclose]')) setOpen(false);
+    });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sheet.hidden) { e.stopImmediatePropagation(); setOpen(false); } }, true);
+  }
+
   update(f: HudFrame) {
     this.slotFrames = f.slots;
     this.refreshTooltip();
@@ -511,6 +556,11 @@ export class HUD {
       button.textContent = f.autoCombatAvailable ? (f.autoCombat ? 'Auto: On · G' : 'Auto: Off · G') : 'Auto: Easy only';
       button.title = f.autoCombatAvailable ? 'Toggle auto combat (G)' : 'Available on Easy difficulty';
       button.setAttribute('aria-pressed', String(f.autoCombat));
+      const mt = this.$<HTMLButtonElement>('[data-menuauto]');
+      mt.hidden = !f.autoCombatVisible;
+      mt.disabled = !f.autoCombatAvailable;
+      mt.textContent = button.textContent;
+      mt.setAttribute('aria-pressed', String(f.autoCombat));
     });
     const hpFrac = Math.max(0, f.hp / f.maxHp);
     this.set('hp', Math.round(hpFrac * 400), () => this.$('[data-hporb]').style.setProperty('--fill', `${hpFrac * 100}%`));
