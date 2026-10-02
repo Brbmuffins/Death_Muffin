@@ -171,7 +171,7 @@ Removing thrall damage entirely costs a Gravecaller 12-29% of its kills/min and 
 | 5 | Max band, ascended kit does not trivialise it: >= 0.5 deaths per 3 min and clear <= +50% | 1.81x, 0.05 deaths (Pyre 1.66x / 0.22, Fen 1.52x / 0.16) | **missed, too strong** (stats) |
 | 6 | No single affix mandatory: median roll of any affix <= 1.6x the best stat affix; a max roll < 9% of power | <= 1.3x everywhere (tests) | met |
 | 7 | Randomly rolled gear: affixes add 4-16% of power on average, < 26% at the 90th percentile | 7-14%, p90 10-21% (was 10-26%, p90 17-42%) | met |
-| 8 | Each necromancer's own set is its best set (power score, both collections, margin >= 1.5 points) | margins 2.1-8.3 points | met by the score; **not confirmed by the harness** for Mourner and Rotweaver (below) |
+| 8 | Each necromancer's own set is its best set (power score, both collections, margin >= 1.5 points) | margins 2.1-7.3 points | met by the score; **not confirmed by the harness** for Mourner and Rotweaver (below) |
 | 9 | The up/down arrow ranks like the harness | structural swaps rho 0.87, weapons 0.42, single affixes unresolvable | partly (below) |
 
 ### Tuning: every number changed and why
