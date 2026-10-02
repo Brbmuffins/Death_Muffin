@@ -65,6 +65,8 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 | Progression pacing to review | New Blood classes gain XP much more slowly than necromancers in the current Medium bot | Graves level-1 sample: necromancers 364–391 XP/min, New Blood 42–106 XP/min; human checks needed before retuning |
 | Housekeeping for the owner | Seven `zz_*` test accounts in the live DB; six merged worktrees in `wt/`; about 11 GB of old update zips and stages in `vps-handoffs/DeathMuffin/` | Owner deletes; nothing was removed |
 
+2026-10-02 necro spell feel (branch `dm/spell-feel`, not deployed): `src/graphics/necroFx.ts` adds capped, Low-skipped, reduced-motion-thinned bone/dirt/soul/spore/skull motifs to every necromancer rite (visuals only). Audit, per-rite before/after sheets and perf notes in `docs/NECRO-SPELL-FEEL.md`; QA: `tools/qa/spell-feel-smoke.cjs`. Frame time was not measurable on the loaded VPS, so check it on a real GPU.
+
 ### Historical baseline — verified in 2026-09-26, not a current status table
 
 2026-09-29 local pass: New Blood rites now have distinct procedural cast sounds,

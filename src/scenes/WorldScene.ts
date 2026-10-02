@@ -63,6 +63,7 @@ import { playFx } from '../graphics/binbun/presets';
 import type { BinbunHandle } from '../graphics/binbun/BinbunFX';
 import { EntityViews } from '../graphics/EntityViews';
 import { fx } from '../graphics/fxTextures';
+import * as nf from '../graphics/necroFx';
 import { LootView } from '../graphics/LootView';
 import { WorldView } from '../graphics/WorldView';
 import { updateOcclusion } from '../graphics/occlusion';
@@ -2084,6 +2085,10 @@ export class WorldScene implements GameScene, RuntimeView {
         for (const [fx0, fz0, tx, tz] of ev.leaps) {
           this.effects.beam({ x: fx0, y: 0.8, z: fz0 }, () => ({ x: tx, y: 0.8, z: tz }), R.jade, 0.06, 0.35);
           this.effects.emit({ x: tx, y: 0.6, z: tz, count: 10, color: R.bone, spread: 0.5, speed: 3, up: 1.5, life: 0.5, size: 0.14, gravity: 8 });
+          // The thrall's claw: a spectral slash across the target, and bone chips where it bites.
+          const own = ev.by === me ? 'player' : 'thrall';
+          nf.boneSplinters(this.effects, tx, 0.8, tz, { n: 4, color: R.bone, origin: own });
+          nf.slashMark(this.effects, tx, tz, R.pale, { rot: Math.atan2(tx - fx0, tz - fz0), r: 1.0, origin: own });
           this.bb('rend_impact', tx, tz);
         }
         this.effects.decal({ tex: fx.ring(), color: R.jade, x: ev.x, z: ev.z, r: 3, duration: 0.5, opacity: 1, growFrom: 0.3 });
@@ -2160,6 +2165,7 @@ export class WorldScene implements GameScene, RuntimeView {
         this.effects.decal({ tex: fx.ring(), color: ev.kind === 'toxic' ? 0x8fa05a : 0xb58cff, x: ev.x, z: ev.z, r: ev.r, duration: 0.5, growFrom: 0.2, opacity: 1 });
         this.effects.emit({ x: ev.x, y: 0.6, z: ev.z, count: 30, color: ev.kind === 'toxic' ? 0x8fa05a : 0xb58cff, spread: ev.r * 0.5, speed: 3, up: 1.5, life: 0.8, size: 0.35 });
         this.effects.emitSmoke({ x: ev.x, y: 0.4, z: ev.z, count: 8, color: ev.kind === 'toxic' ? 0x3d4a22 : 0x3a2d55, spread: ev.r * 0.4, speed: 1.2, up: 0.8, life: 1.4, size: 1.6, shrink: -1 });
+        if (ev.kind === 'toxic' || ev.kind === 'bloom') nf.rotSpores(this.effects, ev.x, ev.z, ev.kind === 'toxic' ? 0x8fa05a : SPELL_FX.bloom.petal, { r: ev.r * 0.6, n: 8 });
         break;
       case 'exhumed':
         if (ev.by === me) {
@@ -2485,6 +2491,11 @@ export class WorldScene implements GameScene, RuntimeView {
         this.effects.decal({ tex: dirge ? fx.ring() : fx.sigil(), color: dirge ? D.frost : B.petal, x: z.x, z: z.z, r: z.r * 0.95, duration: dur, opacity: 0.6, pulse: dirge ? 6 : 2, spin: dirge ? 0 : 0.9, fadeOut: 0.6 }),
       ]);
       this.effects.emit({ x: z.x, y: 0.4, z: z.z, count: dirge ? 30 : 18, color: dirge ? D.pale : B.petal, spread: z.r * 0.5, speed: 0.6, up: dirge ? 2 : 1.2, life: 1, size: 0.22 });
+      // Grave mist and soul-lights: the dirge is sung over the dead; the bloom sheds rot spores.
+      if (dirge) {
+        nf.mistWhisper(this.effects, z.x, z.z, D.deep, { r: z.r * 0.6, n: 3 });
+        nf.spiritWisps(this.effects, z.x, z.z, D.pale, { n: 3, r: z.r * 0.6, y: 0.3, size: 0.8 });
+      } else nf.rotSpores(this.effects, z.x, z.z, B.petal, { r: z.r * 0.7, n: 12 });
       if (dirge) audio.play('tollSmall', z.x, z.z);
       this.bb(dirge ? 'dirge_area' : 'plague_bloom_area', z.x, z.z, { scale: dirge ? z.r / 6 : z.r / 2.4 });
       return;
@@ -3594,6 +3605,15 @@ export class WorldScene implements GameScene, RuntimeView {
       const t = i / 6;
       this.effects.emit({ x: ev.x0 + (ev.x1 - ev.x0) * t, y: 0.3, z: ev.z0 + (ev.z1 - ev.z0) * t, count: 6, color: W.bone, spread: 0.3, speed: 1.5, up: 2.5, life: 0.6, size: 0.14, gravity: 9 });
     }
+    // The wall tears out of the grave: soil along its foot, chips off the ribs, a crack in the ground beneath it.
+    const cx = mesh.userData.center.x as number;
+    const cz = mesh.userData.center.z as number;
+    for (let i = 0; i <= 4; i++) {
+      const t = i / 4;
+      nf.graveDirt(this.effects, ev.x0 + (ev.x1 - ev.x0) * t, ev.z0 + (ev.z1 - ev.z0) * t, { r: 0.4, n: 3 });
+    }
+    nf.boneSplinters(this.effects, cx, 1, cz, { n: 8, color: W.bone, speed: 4.5 });
+    nf.crackedGround(this.effects, cx, cz, len * 0.5, W.dust, { rot: Math.atan2(ev.x1 - ev.x0, ev.z1 - ev.z0), sx: 0.22, duration: 2.2, opacity: 0.6 });
     audio.play('boneHit', mesh.userData.center.x, mesh.userData.center.z);
     this.rig.shake(0.15);
   }
@@ -4043,6 +4063,11 @@ export class WorldScene implements GameScene, RuntimeView {
         });
       },
       cast: (slot: HotbarSlot) => this.castSlot(slot),
+      /** A/B switch for the necromantic motif layer (graphics/necroFx.ts), so one build can capture before and after. */
+      necroMotifs: (on?: boolean) => {
+        if (on !== undefined) nf.setMotifsEnabled(on);
+        return { ...nf.motifStats, emitted: this.effects.emitted };
+      },
       /** BinbunVFX QA: play one converted effect at the player, e.g. vfx('bone_fan_hit', [0xe8dcc0]). */
       vfx: (id: BinbunId, colors?: THREE.ColorRepresentation[], o: Partial<BinbunSpawn> = {}) => {
         const h = this.effects.binbun.spawn(id, { x: this.player.x, y: 0.05, z: this.player.z, colors, once: isBinbunImpact(id), ...o });
