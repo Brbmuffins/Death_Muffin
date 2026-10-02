@@ -37,7 +37,7 @@ async function main() {
     await page.waitForTimeout(700);
     await page.screenshot({ path: `${out}/02-tray-active.png` });
     const chips = await page.$$eval('.brew-chip', (els) => els.map((e) => e.textContent.replace(/\s+/g, ' ').trim()));
-    assert.equal(chips.length, 2);
+    assert.equal(chips.length, 3, "belt always shows Heal, Elixir, Tonic");
     // Inventory: tooltip line + belt button.
     await page.keyboard.press('i');
     await page.locator('.cw-bag-grid .cw-slot').filter({ has: page.locator('img[src*="elixir_moonlight"]') }).first().click();

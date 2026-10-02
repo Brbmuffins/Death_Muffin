@@ -123,6 +123,7 @@ import { CodexPanel } from '../ui/CodexPanel';
 import { Onboarding, type TipId } from '../ui/Onboarding';
 import { DepthsController } from './DepthsController';
 import { touchNow } from '../ui/touchText';
+import { HEAL_COOLDOWN_S, HEAL_ORDER, beltState, emptyHint, emptyPressText, healPick } from '../gameplay/beltRules';
 import type { Busy } from '../ui/counselCadence';
 import { CodexJournal, browserStorage, type CodexIds, type CodexKind } from '../gameplay/codexJournal';
 import { CURSOR } from '../ui/cursors';
@@ -721,6 +722,7 @@ export class WorldScene implements GameScene, RuntimeView {
     void this.dataReady.then(() => getCosmetics(this.character.id)).then((v) => this.applyCosmetics(v.selected)).catch(() => {});
     this.scope.interval(() => void this.checkLabor(false), 5 * 60_000);
     this.onboarding.show('welcome', 900);
+    this.onboarding.show('belt', 90_000);
     // First time in the world as a Knight: Rage works nothing like essence.
     if (this.discipline.family === 'knight') this.onboarding.show('knight_rage', 2600);
     if (this.discipline.family === 'warden') this.onboarding.show('warden_oil', 2600);
@@ -897,7 +899,7 @@ export class WorldScene implements GameScene, RuntimeView {
       open: (p) => this.togglePanel(p),
       flask: () => this.drinkFlask(),
       recall: () => this.startRecall(),
-      drinkBelt: (slot) => this.drinkBelt(slot as BrewSlot),
+      drinkBelt: (slot) => (slot === 'heal' ? this.drinkFlask() : this.drinkBelt(slot as BrewSlot)),
       toggleAutoCombat: () => this.toggleAutoCombat(),
       chat: (text) => {
         if (this.realtime.connected) this.realtime.sendChat(text);
@@ -1875,7 +1877,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private drinkBelt(slot: BrewSlot) {
     const id = this.beltBrew(slot);
     if (!id) {
-      if (this.player.alive) this.floating.spawn(this.player.x, 2.4, this.player.z, `No ${slot} on your belt`, 'info');
+      if (this.player.alive) this.floating.spawn(this.player.x, 2.4, this.player.z, emptyPressText(slot, touchNow()), 'info');
+      if (this.player.alive) this.hud.toast(emptyHint(slot, touchNow()));
       return;
     }
     this.drinkBuff(id);
@@ -1897,29 +1900,49 @@ export class WorldScene implements GameScene, RuntimeView {
     if (!b) return;
     this.belt[b.slot] = id;
     try { localStorage.setItem(this.beltKey(), JSON.stringify(this.belt)); } catch { /* ignore */ }
-    this.hud.toast(`${b.label} is on your belt: ${touchNow() ? 'tap its chip on the left' : `press ${BREW_KEYS[b.slot].toUpperCase()}`} to drink it`, 'good');
+    this.hud.toast(`${b.label} is on your belt: ${touchNow() ? 'tap its slot on the left' : `press ${BREW_KEYS[b.slot].toUpperCase()}`} to drink it`, 'good');
   }
 
-  /** HUD tray rows: one per slot, the active brew (countdown) or the belted one waiting. Null when there is nothing to show. */
+  /** HUD belt: always three slots (Q heal, Z elixir, X tonic); an empty one carries the line that says how to fill it. */
   private brewTray() {
     const now = this.now;
-    return BREW_SLOTS.map((slot) => {
+    const touch = touchNow();
+    const heal = (() => {
+      const id = healPick((f) => this.inventory.count(f));
+      const total = HEAL_ORDER.reduce((n, f) => n + this.inventory.count(f), 0);
+      const cdLeft = Math.max(0, this.flaskCdUntil - now);
+      const state = beltState({ hasItem: !!id, cooling: cdLeft > 0 });
+      const pct = id ? Math.round(HEALING_FLASKS[id] * 100) : 0;
+      return {
+        slot: 'heal', key: 'Q', label: 'Heal', glyph: '✚', color: 0xe0709c, active: false, left: 0,
+        frac: state === 'cooling' ? cdLeft / (HEAL_COOLDOWN_S * 1000) : 0, count: total, empty: state === 'empty',
+        tip: id
+          ? `Healing: ${itemMeta(id).name} restores ${pct}% of your health (${total} carried). ${touch ? 'Tap to drink' : 'Press Q to drink'}; sips are ${HEAL_COOLDOWN_S}s apart.`
+          : emptyHint('heal', touch),
+      };
+    })();
+    const brews = BREW_SLOTS.map((slot) => {
       const act = this.player.brews[slot];
       const live = act && now < act.until ? act : null;
       const beltId = this.beltBrew(slot);
       const shown = live ? live.id : beltId;
-      if (!shown) return null;
+      const key = BREW_KEYS[slot].toUpperCase();
+      if (!shown) {
+        return { slot, key, label: slotName(slot), glyph: slot === 'elixir' ? '⚗' : '✧', color: 0x8a8aa0, active: false, left: 0, frac: 0, count: 0, empty: true, tip: emptyHint(slot, touch) };
+      }
       const def = BREWS[shown];
       const left = live ? Math.ceil((live.until - now) / 1000) : 0;
+      const use = touch ? 'Tap' : `Press ${key}`;
       return {
-        slot, key: BREW_KEYS[slot].toUpperCase(), label: def.label, glyph: def.glyph, color: def.color, active: !!live, left,
+        slot, key, label: def.label, glyph: def.glyph, color: def.color, active: !!live, left, empty: false,
         frac: live ? Math.min(1, (live.until - now) / (def.seconds * 1000)) : 0,
         count: beltId ? this.inventory.count(beltId) : 0,
         tip: live
-          ? `${slotName(slot)}: ${def.label} · ${brewEffectsText(def)} · ${left}s left. ${beltId ? `Press ${BREW_KEYS[slot].toUpperCase()} for another (${this.inventory.count(beltId)} on your belt).` : ''}`
-          : `${slotName(slot)} on your belt: ${def.label} · ${brewEffectsText(def)} for ${def.seconds}s. Press ${BREW_KEYS[slot].toUpperCase()} to drink (${this.inventory.count(shown)} left).`,
+          ? `${slotName(slot)}: ${def.label} · ${brewEffectsText(def)} · ${left}s left. ${beltId ? `${use} for another (${this.inventory.count(beltId)} on your belt).` : ''}`
+          : `${slotName(slot)} on your belt: ${def.label} · ${brewEffectsText(def)} for ${def.seconds}s. ${use} to drink (${this.inventory.count(shown)} left).`,
       };
     });
+    return [heal, ...brews];
   }
 
   private drinkFlask(prefer?: string) {
@@ -1927,12 +1950,13 @@ export class WorldScene implements GameScene, RuntimeView {
     if (prefer && prefer in BREWS) return this.drinkBuff(prefer);
     const now = this.now;
     if (!this.player.alive || now < this.flaskCdUntil) return;
-    const id = prefer && prefer in HEALING_FLASKS ? prefer : ['flask_hp_grand', 'flask_hp_major', 'flask_hp_minor'].find((f) => this.inventory.count(f) > 0);
+    const id = prefer && prefer in HEALING_FLASKS ? prefer : healPick((f) => this.inventory.count(f));
     if (!id || !this.inventory.consume(id)) {
-      this.floating.spawn(this.player.x, 2.4, this.player.z, 'No healing flasks', 'info');
+      this.floating.spawn(this.player.x, 2.4, this.player.z, emptyPressText('heal', touchNow()), 'info');
+      this.hud.toast(emptyHint('heal', touchNow()));
       return;
     }
-    this.flaskCdUntil = now + 1500;
+    this.flaskCdUntil = now + HEAL_COOLDOWN_S * 1000;
     const amount = this.player.stats.maxHp * HEALING_FLASKS[id];
     this.player.heal(amount);
     this.floating.spawn(this.player.x, 2.2, this.player.z, `+${Math.round(amount)}`, 'heal');

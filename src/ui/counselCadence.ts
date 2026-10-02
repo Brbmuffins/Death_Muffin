@@ -120,7 +120,7 @@ const GROUPS: Record<string, string[]> = {
     'plague_doctor', 'flagellant', 'cinder_husk', 'pyre_priest', 'cinderhound', 'slag_brute', 'bog_hag', 'mire_leech', 'fen_wisp', 'drowned_sexton'],
   gear: ['relic', 'armor', 'legendary', 'affix', 'tool', 'legion', 'rune'],
   bag: ['bag_filling'],
-  brew: ['reagent', 'brew', 'meal'],
+  brew: ['reagent', 'brew', 'meal', 'belt'],
   acre: ['acre', 'rich_node', 'skill_up', 'laborers_working'],
   road: ['gate', 'wave', 'codex'],
 };

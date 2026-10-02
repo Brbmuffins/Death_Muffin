@@ -95,8 +95,8 @@ export interface HudFrame {
   areaProgress: string;
   /** Ossuary's Bone Ward: damage shaved off by the thralls standing now. Null for other disciplines. */
   ward: null | { pct: number; thralls: number; perThrall: number };
-  /** The brew tray: one row per belt slot (elixir, tonic), null when that slot has nothing active or belted. */
-  brews: ({ slot: string; key: string; label: string; glyph: string; color: number; active: boolean; left: number; frac: number; count: number; tip: string } | null)[];
+  /** The belt: always three slots (heal Q, elixir Z, tonic X); `empty` ones show a faint placeholder and the how-to-fill tip. */
+  brews: { slot: string; key: string; label: string; glyph: string; color: number; active: boolean; left: number; frac: number; count: number; empty: boolean; tip: string }[];
   save: { text: string; warn: boolean };
   target: null | {
     name: string;
@@ -695,14 +695,31 @@ export class HUD {
       el.innerHTML = `<span class="lbl">Bone Ward</span><span class="n">−${f.ward.pct}%</span>`;
       el.title = `Each active thrall shields you from ${Math.round(f.ward.perThrall * 100)}% of incoming damage (you have ${f.ward.thralls}; the most it gives is 60%).`;
     });
-    this.set('brews', f.brews.map((b) => (b ? `${b.label}|${b.active}|${b.left}|${b.count}` : '-')).join(';'), () => {
+    this.set('brews', f.brews.map((b) => `${b.slot}|${b.label}|${b.active}|${b.left}|${b.count}|${b.empty}|${Math.round(b.frac * 8)}|${b.tip.length}`).join(';'), () => {
       const el = this.$('[data-brews]');
-      const rows = f.brews.filter((b): b is NonNullable<typeof b> => !!b);
-      el.hidden = !rows.length;
-      el.innerHTML = rows.map((b) => `<div class="brew-chip${b.active ? ' on' : ''}" data-brew="${b.slot}" role="button" tabindex="-1" style="--brew:#${b.color.toString(16).padStart(6, '0')}" title="${b.tip.replace(/"/g, '&quot;')}">
-        <kbd>${b.key}</kbd><span class="glyph">${b.glyph}</span>
-        <span class="txt"><span class="lbl">${b.label}</span><span class="sub">${b.active ? `${b.left}s` : 'ready'}${b.count ? ` · ×${b.count}` : ''}</span></span>
-        <span class="bar"><i style="width:${Math.round(b.frac * 100)}%"></i></span></div>`).join('');
+      el.hidden = !f.brews.length;
+      // Update the three slots in place: replacing them would swallow a tap that lands while a timer redraws.
+      for (const b of f.brews) {
+        let chip = el.querySelector<HTMLElement>(`[data-brew="${b.slot}"]`);
+        if (!chip) {
+          chip = document.createElement('div');
+          chip.dataset.brew = b.slot;
+          chip.setAttribute('role', 'button');
+          chip.tabIndex = -1;
+          chip.innerHTML = '<kbd></kbd><span class="glyph"></span><span class="txt"><span class="lbl"></span><span class="sub"></span></span><span class="bar"><i></i></span>';
+          el.appendChild(chip);
+        }
+        chip.className = `brew-chip${b.active ? ' on' : ''}${b.empty ? ' empty' : ''}${b.frac && !b.active ? ' cd' : ''}`;
+        chip.style.setProperty('--brew', `#${b.color.toString(16).padStart(6, '0')}`);
+        chip.title = b.tip;
+        chip.setAttribute('aria-label', b.tip);
+        const q = (sel: string) => chip!.querySelector<HTMLElement>(sel)!;
+        q('kbd').textContent = b.key;
+        q('.glyph').textContent = b.glyph;
+        q('.lbl').textContent = b.label;
+        q('.sub').textContent = b.empty ? '' : b.active ? `${b.left}s` : b.count ? `×${b.count}` : 'ready';
+        q('.bar i').style.width = `${Math.round(b.frac * 100)}%`;
+      }
     });
     this.set('prog', f.areaProgress, () => (this.$('[data-prog]').innerHTML = f.areaProgress));
     this.set('save', f.save.text, () => {

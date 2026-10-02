@@ -85,6 +85,7 @@ export type TipId =
   | 'ghoul'
   | 'meal'
   | 'brew'
+  | 'belt'
   | 'reagent'
   | 'plague_doctor'
   | 'flagellant'
@@ -240,7 +241,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   hurt: {
     title: 'Hurt?',
-    body: '[[Press <kbd>Q</kbd> to drink a healing flask. <kbd>T</kbd> returns you to the Chapterhouse. Falling costs nothing but the walk back, and <kbd>−</kbd> on the Wave Speed dial eases the pressure.||Tap the flask button on your Health orb to drink a healing flask. Falling costs nothing but the walk back, and the − button on the Wave Speed dial eases the pressure.]]',
+    body: '[[Press <kbd>Q</kbd> (the <b>Heal</b> slot at the left edge) to drink a healing flask. <kbd>T</kbd> returns you to the Chapterhouse. Falling costs nothing but the walk back, and <kbd>−</kbd> on the Wave Speed dial eases the pressure.||Tap the flask button on your Health orb, or the <b>Heal</b> slot at the left edge, to drink a healing flask. Falling costs nothing but the walk back, and the − button on the Wave Speed dial eases the pressure.]]',
   },
   elite: {
     title: 'An elite',
@@ -462,9 +463,13 @@ export const TIPS: Record<TipId, Tip> = {
     title: 'Well fed',
     body: 'A cooked meal <b>heals over time</b> and stacks with a flask. Cook fish at the Cooking Fire in the Acre; the rarer the fish, the bigger the meal. One meal at a time.',
   },
+  belt: {
+    title: 'Your belt',
+    body: 'Three slots wait at the left edge: <b>Heal</b>, <b>Elixir</b> and <b>Tonic</b>. [[Press <kbd>Q</kbd>, <kbd>Z</kbd> or <kbd>X</kbd>||Tap a slot]] to drink what is in it. They stay empty until you brew: <b>Moss Tonic</b> (level 1) makes healing potions, and the Alchemist\'s Wing in the Chapterhouse\'s east door brews elixirs and tonics. [[Hover||Press and hold]] an empty slot to read how to fill it.',
+  },
   brew: {
     title: 'Elixirs and tonics',
-    body: 'You can hold <b>one elixir</b> (combat: damage, wards) and <b>one tonic</b> (utility: speed) at once. A new elixir <b>replaces</b> the old one; the same brew again extends it. [[Right-click||Select]] a brew in the Reliquary to <b>put it on your belt</b>, then [[press <kbd>Z</kbd> for your elixir and <kbd>X</kbd> for your tonic||tap its chip on the left to drink it]]. Active brews and their timers sit at the left edge of the screen.',
+    body: 'You can hold <b>one elixir</b> (combat: damage, wards) and <b>one tonic</b> (utility: speed) at once. A new elixir <b>replaces</b> the old one; the same brew again extends it. [[Right-click||Select]] a brew in the Reliquary to <b>put it on your belt</b>, then [[press <kbd>Z</kbd> for your elixir and <kbd>X</kbd> for your tonic||tap its chip on the left to drink it]]. The belt at the left edge shows both slots and their timers.',
   },
   reagent: {
     title: 'Reagents',

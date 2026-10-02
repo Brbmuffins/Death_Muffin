@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { equipSlotOf, equippedBySlot, gearTier, offhandKind, weaponKind } from '../gear';
 import type { InventorySlot } from '../../net/types';
+import { ITEMS } from '../items';
 
 const slot = (o: Partial<InventorySlot>) =>
   ({ id: 1, slot_index: 0, quantity: 1, equipped: 0, item_id: 'x', name: 'x', rarity: 'common', item_type: 'material', stat_bonus: null, icon_id: null, sell_value: 0, crafted: 0, ...o }) as InventorySlot;
@@ -12,6 +13,14 @@ describe('equipSlotOf', () => {
     expect(equipSlotOf(slot({ item_type: 'armor_feet' }))).toBe('feet');
     expect(equipSlotOf(slot({ item_type: 'offhand' }))).toBe('off_hand');
     expect(equipSlotOf(slot({ item_type: 'material' }))).toBeNull();
+  });
+  it('puts augments (trinkets) in the trinket slot, whether or not the server row has a slot', () => {
+    expect(equipSlotOf(slot({ item_id: 'augment_iron', item_type: 'trinket', item_equipment_slot: null }))).toBe('trinket');
+    expect(equipSlotOf(slot({ item_id: 'augment_iron', item_type: 'trinket', item_equipment_slot: 'trinket' }))).toBe('trinket');
+  });
+  it('every gear item in the catalogue resolves to a slot (server migration 026 fills the same mapping)', () => {
+    const gear = ['weapon', 'offhand', 'armor_head', 'armor_chest', 'armor_legs', 'armor_feet', 'armor_hands', 'ring', 'trinket'];
+    for (const [id, it] of Object.entries(ITEMS)) if (gear.includes(it.type)) expect(equipSlotOf(slot({ item_id: id, item_type: it.type })), id).not.toBeNull();
   });
 });
 
