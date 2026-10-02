@@ -451,6 +451,9 @@ export class InventoryPanel {
     if (this.tooltip) this.tooltip.style.display = 'none';
   }
 
+  /** `slot:item` of the stack whose Sell all is awaiting its in-place confirm. */
+  private confirmSellAll: string | null = null;
+
   private renderDetail() {
     const detail = this.el!.querySelector<HTMLDivElement>('[data-detail]')!;
     const slot = this.selected !== null ? this.slotAt(this.selected) : undefined;
@@ -492,7 +495,9 @@ export class InventoryPanel {
       ${!slot.equipped ? `<button class="cw-button small ${locked ? 'on' : ''}" data-lock title="${locked ? 'Unlock: bulk actions may take it again' : 'Lock: Sell all junk, Deposit and Salvage all will skip it'}">${LOCK_SVG} ${locked ? 'Unlock' : 'Lock'}</button>` : ''}
       ${this.grinder && !slot.equipped && isSalvageGear(slot.item_type) ? `<button class="cw-button small" data-salvage ${atGrinder ? '' : 'disabled'} title="${atGrinder ? 'Break it down for materials and reagents' : 'Stand at the Bone Grinder in the Sexton’s Acre to salvage'}">Salvage</button>${atGrinder ? '' : '<span class="cw-hint-text small">Needs the Bone Grinder (Acre)</span>'}` : ''}
       ${this.onSold && !slot.equipped && slot.sell_value > 0 ? `<button class="cw-button small" data-sell="1" ${locked ? 'disabled title="Unlock it to sell"' : ''}>Sell (${slot.sell_value}g)</button>` : ''}
-      ${this.onSold && !slot.equipped && slot.sell_value > 0 && slot.quantity > 1 ? `<button class="cw-button small" data-sell="${slot.quantity}" ${locked ? 'disabled' : ''}>Sell all ×${slot.quantity} (${(slot.sell_value * slot.quantity).toLocaleString()}g)</button>` : ''}
+      ${this.onSold && !slot.equipped && slot.sell_value > 0 && slot.quantity > 1 ? (this.confirmSellAll === `${slot.slot_index}:${slot.item_id}` && !locked
+        ? `<span class="cw-tools-confirm">Sell all <b>${slot.quantity}</b> ${slot.name} for <b>${(slot.sell_value * slot.quantity).toLocaleString()}g</b>?</span><button class="cw-button small primary" data-sell="${slot.quantity}">Sell them</button><button class="cw-button small ghost" data-sellall-no>Cancel</button>`
+        : `<button class="cw-button small" data-sellall ${locked ? 'disabled title="Unlock it to sell"' : ''}>Sell all (${slot.quantity} · ${(slot.sell_value * slot.quantity).toLocaleString()}g)</button>`) : ''}
       </div>
     `;
     detail.querySelector('[data-lock]')?.addEventListener('click', () => this.locks.toggle(slot));
@@ -501,12 +506,17 @@ export class InventoryPanel {
     detail.querySelector('[data-toolbelt]')?.addEventListener('click', () => void this.toggleToolBelt(slot));
     detail.querySelector('[data-legiongive]')?.addEventListener('click', () => void this.giveToLegion(slot));
     detail.querySelector('[data-belt]')?.addEventListener('click', () => this.onBelt?.(slot.item_id));
+    detail.querySelector('[data-sellall]')?.addEventListener('click', () => { this.confirmSellAll = `${slot.slot_index}:${slot.item_id}`; this.render(); });
+    detail.querySelector('[data-sellall-no]')?.addEventListener('click', () => { this.confirmSellAll = null; this.render(); });
+    // On a phone the bag detail sits at the bottom of a scrolled panel: keep the confirm buttons in view.
+    detail.querySelector('[data-sellall-no]')?.scrollIntoView({ block: 'nearest' });
     detail.querySelectorAll<HTMLButtonElement>('[data-sell]').forEach((b) => b.addEventListener('click', () => this.sell(slot, Number(b.dataset.sell))));
   }
 
   /** Sell from the bag (never equipped gear). Each unit goes through consume(), so saves stay race-safe. */
   private sell(slot: InventorySlot, quantity: number) {
     if (slot.equipped || !this.onSold) return;
+    this.confirmSellAll = null;
     let sold = 0;
     if (this.locks.isLocked(slot)) return;
     for (let i = 0; i < quantity && this.inventory.consumeAt(slot.slot_index); i++) sold++;
