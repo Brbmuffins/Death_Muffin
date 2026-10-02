@@ -132,6 +132,10 @@ Crossworlds clips are gone (replaced by CC0 layers).
 
 Bag 24 to 48 slots (`BAG_SLOTS` in `gatheringRules.ts` is the one source; saves send `bagSize`, a server treats a missing one as 24 so a stale tab cannot wipe slots 24-47), the Ossuary Vault (`vault.cjs`, 120 shared slots, key V, migration `017-vault.sql`), Salvaging (`salvage.cjs`, Bone Grinder in the Acre, seventh skill) and Reliquary locks plus Sell all junk. Pure move and yield rules live in `vaultRules.ts` and `salvageRules.ts` and are bundled for the server. **Deploy needs migration 017** (`deploy-release.sh <rev> .../017-vault.sql`). Sexton's Mantle now needs total level 693 (seven skills). Offline-to-online sync does not carry the offline vault. Smoke: `tools/qa/vault-salvage-smoke.cjs`.
 
+### Armor set bonuses (branch `dm/set-bonuses`, not deployed)
+
+2/4/5-piece bonuses for all 18 sets, client-side only (no server or migration change). Table and wiring in `docs/ARMOR-SETS.md`; data in `src/content/setBonuses.ts`, resolution in `src/gameplay/setBonuses.ts`. Flat stats enter `computeStats`; multipliers/additions fold into the discipline `mods` in `WorldScene.applyBoons` (rebuilt by `refreshStats` when the active set signature changes). `gearStats` re-bases the discipline per outfit (`withSetBonuses`) so verdicts and the gear score count gaining/losing a bonus; mods-only effects are valued in `SET_VALUE`. UI: tooltip tracker, paper-doll `.in-set` glow, Character sheet "Set bonuses", Codex "Armor sets" tab, counsel tip `setBonus`. Tests: `src/gameplay/__tests__/setBonuses.test.ts`; smoke: `tools/qa/set-bonus-smoke.cjs`. Numbers are untuned against the balance harness (it equips no gear).
+
 ### 2026-10-01 release and next work
 
 - The frozen candidate passed typecheck, 497 client tests, nine server suites, a production build, and local spell-swap, reagent, Fen and Mire Mother browser checks. Fen performance was 289 calls / 486,775 triangles / 1.849 ms update versus 231 / 485,691 / 1.64 ms in the Graves sample.

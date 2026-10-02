@@ -5,7 +5,7 @@ import './gear-stats.css';
 /**
  * The Character sheet (J): the numbers your gear and level actually produce, and where each one comes from.
  * Every line expands to its breakdown (base, level, each worn item, discipline, damage tiers, weapon line, boons).
- * Sections come from gameplay/gearStats.ts statSheet(), so armor set bonuses can later be one more section there.
+ * Sections come from gameplay/gearStats.ts statSheet(); the Set bonuses section lists each worn set as an always-open checklist.
  */
 export class CharacterSheetPanel extends SimplePanel {
   private openLines = new Set<string>(['maxHp']);
@@ -68,10 +68,11 @@ export class CharacterSheetPanel extends SimplePanel {
   }
 
   private line(l: SheetLine) {
-    const open = this.openLines.has(l.id);
+    const isSet = l.id.startsWith('set:');
+    const open = isSet || this.openLines.has(l.id);
     const rows = l.rows.map((r) => `<div class="r ${r.tone ?? ''} ${r.total ? 'total' : ''}"><span>${r.label}</span><b>${r.value}</b></div>`).join('');
-    return `<div class="gs-line${open ? ' open' : ''}">
-      <button type="button" data-line="${l.id}" aria-expanded="${open}"><span class="chev">▸</span><span class="lbl">${l.label}</span><span class="val">${l.value}</span><span class="help">${l.help}</span></button>
+    return `<div class="gs-line${open ? ' open' : ''}${isSet ? ' set' : ''}">
+      <button type="button" ${isSet ? 'tabindex="-1"' : `data-line="${l.id}"`} aria-expanded="${open}"><span class="chev">▸</span><span class="lbl">${l.label}</span><span class="val">${l.value}</span><span class="help">${l.help}</span></button>
       <div class="gs-rows">${rows}</div>
     </div>`;
   }

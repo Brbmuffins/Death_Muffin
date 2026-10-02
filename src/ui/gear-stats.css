@@ -89,3 +89,30 @@
 .gs-look li::before { content: '\25B2'; position: absolute; left: 0; color: #8fe36a; font-size: 11px; top: 4px; }
 .gs-look li.worn::before { content: '\25CF'; color: var(--cw-text-faint); }
 .gs-look .arrows { margin-top: 8px; font-size: 12px; color: var(--cw-text-faint); }
+
+/* Armor set bonuses. Green = active, grey = needs more pieces, gold = wearing this piece would switch it on. */
+.gs-set { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--cw-border); font-size: 12px; line-height: 1.35; }
+.gs-set .hd { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 3px; }
+.gs-set .nm { color: var(--cw-bone-100); font-weight: 700; }
+.gs-set .ct { font-family: var(--cw-font-numeric); color: var(--cw-text-faint); white-space: nowrap; }
+.gs-set .ct.on { color: var(--cw-ok); }
+.gs-set .ct em { font-style: normal; color: var(--cw-gold-300, #e2c98f); }
+.gs-set .b { display: flex; gap: 6px; padding: 1px 0; color: var(--cw-text-faint); }
+.gs-set .b .n { flex: none; width: 12px; text-align: center; font-family: var(--cw-font-numeric); opacity: .8; }
+.gs-set .b.on { color: var(--cw-ok); }
+.gs-set .b.soon { color: var(--cw-gold-300, #e2c98f); }
+.gs-set .b i { opacity: .8; }
+
+/* Paper doll: pieces of a set with two or more worn glow softly in that set's accent. */
+.cw-equip-slot.in-set { box-shadow: inset 0 0 0 1px var(--set), inset 0 0 9px -2px var(--set); }
+.cw-equip-slot.in-set::after { content: ''; position: absolute; left: 3px; bottom: 3px; width: 6px; height: 6px; border-radius: 50%; background: var(--set); box-shadow: 0 0 4px var(--set); }
+
+/* Character sheet: set blocks are always open and read as a checklist. */
+.gs-line.set > button { cursor: default; }
+.gs-line.set .gs-rows { display: block; }
+.gs-line.set .gs-rows .r { max-width: none; }
+.gs-line.set .gs-rows .r span { white-space: normal; }
+.gs-line.set .gs-rows .r b { flex: none; min-width: 64px; text-align: right; font-weight: 600; color: var(--cw-text-faint); }
+.gs-line.set .gs-rows .r.up span, .gs-line.set .gs-rows .r.up b { color: var(--cw-ok); }
+.gs-line.set .chev { visibility: hidden; }
+.gs-line.set .val { color: var(--cw-ok); }

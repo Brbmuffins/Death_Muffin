@@ -20,6 +20,9 @@ import {
   CODEX_SEALED,
   CODEX_WEAPONS,
   CODEX_WEAPONS_COUNSEL,
+  CODEX_SETS_COUNSEL,
+  codexSetRows,
+  type CodexSetRow,
   CODEX_STATS,
   CODEX_STATS_COUNSEL,
   CODEX_WEAPON_TIERS,
@@ -43,6 +46,7 @@ const TABS = [
   { id: 'rites', label: 'Rites' },
   { id: 'disciplines', label: 'Disciplines' },
   { id: 'weapons', label: 'Weapons' },
+  { id: 'sets', label: 'Armor sets' },
   { id: 'stats', label: 'Stats' },
   { id: 'dead', label: 'The Dead' },
   { id: 'diocese', label: 'The Diocese' },
@@ -130,6 +134,8 @@ export class CodexPanel {
           ? this.disciplines()
           : this.tab === 'weapons'
             ? this.weapons()
+          : this.tab === 'sets'
+            ? this.sets()
           : this.tab === 'stats'
             ? this.stats()
           : this.tab === 'dead'
@@ -221,6 +227,19 @@ export class CodexPanel {
             <p class="tip"><b>Use it well.</b> ${w.tip}</p>
           </div>
         </article>`).join('') + `<table class="cw-codex-table"><thead><tr><th>Tier</th><th>Recommended level</th><th>Drops in</th></tr></thead><tbody>${ladder}</tbody></table>`;
+  }
+
+  private sets() {
+    const entry = (r: CodexSetRow) => `
+        <article class="cw-codex-entry">
+          <div class="txt">
+            <div class="hd"><h3>${r.name}</h3><span class="meta">${r.wearer} \u00B7 ${r.collection === 1 ? 'First' : 'Ascended'} collection</span></div>
+            <dl>${r.bonuses.map((b) => `<dt>${b.pieces} pieces</dt><dd>${b.name ? `<b>${b.name}.</b> ` : ''}${b.text}</dd>`).join('')}</dl>
+            <p class="tip">${r.drops}</p>
+          </div>
+        </article>`;
+    const rows = codexSetRows();
+    return `<p class="tip">${CODEX_SETS_COUNSEL}</p>` + rows.map(entry).join('');
   }
 
   private disciplines() {

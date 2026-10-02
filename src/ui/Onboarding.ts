@@ -32,6 +32,7 @@ export type TipId =
   | 'surge'
   | 'relic'
   | 'armor'
+  | 'setBonus'
   | 'necroWeapon'
   | 'gearEquip'
   | 'statSheet'
@@ -212,7 +213,11 @@ export const TIPS: Record<TipId, Tip> = {
   },
   armor: {
     title: 'Set armor',
-    body: 'Armor comes in five-piece sets, one look per discipline, and <b>any class can wear any set</b>. Open your Reliquary (<kbd>I</kbd>) and double-click a piece to wear it; it shows on your hero. Stats only: there is no set bonus. Later areas drop the rarer, stronger sets.',
+    body: 'Armor comes in five-piece sets, one look per discipline, and <b>any class can wear any set</b>. Open your Reliquary (<kbd>I</kbd>) and double-click a piece to wear it; it shows on your hero. Wear <b>2, 4 or 5 pieces of the same set</b> to unlock set bonuses; hover a piece to see them. Later areas drop the rarer, stronger sets.',
+  },
+  setBonus: {
+    title: 'A set bonus is awake',
+    body: 'Two pieces of the same armor set are worn, so its first <b>set bonus</b> is active. Hover any piece: <b>green lines</b> are on, grey lines need more pieces (4 and 5 are the big ones). A bag item marked <b>completes</b> in its arrow line will switch a bonus on. The Character sheet (<kbd>J</kbd>) shows what each set still needs and where it drops.',
   },
   gearEquip: {
     title: 'Gear you can read',
@@ -220,7 +225,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   statSheet: {
     title: 'Your Character sheet',
-    body: 'At the top: <b>what you are looking for</b>, the stats and weapons that suit your discipline and the slots most worth fixing. Below: every number your hero fights with. Click a line to see where it comes from. Armor set bonuses will join it later.',
+    body: 'At the top: <b>what you are looking for</b>, the stats and weapons that suit your discipline and the slots most worth fixing. Below: every number your hero fights with. Click a line to see where it comes from. The <b>Set bonuses</b> block lists what your armor sets give and which piece completes the next one.',
   },
   necroWeapon: {
     title: 'A weapon that changes your left click',

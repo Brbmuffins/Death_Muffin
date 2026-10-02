@@ -67,6 +67,7 @@ import { LootView } from '../graphics/LootView';
 import { WorldView } from '../graphics/WorldView';
 import { updateOcclusion } from '../graphics/occlusion';
 import { equippedBySlot, gearFromIds } from '../content/gear';
+import { applySetMods, resolveSetBonuses, setSignature } from '../gameplay/setBonuses';
 import { abilityCooldownMs, abilityRange, resolveWeaponLoadout } from '../gameplay/weaponLine';
 import { Chronicle } from '../gameplay/chronicle';
 import { GatherSession, crossedMilestones, loadBests, saveBests } from '../gameplay/gatherReport';
@@ -196,6 +197,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private discipline: Discipline;
   /** Skull Focus (gold and above): extra thrall cap from the worn off-hand. */
   private weaponThrallBonus = 0;
+  /** Which armor set bonuses are folded into this.discipline (gameplay/setBonuses.ts). */
+  private setSig = '';
   /** Resource rules for the active discipline's family (HUD orb label/colour). */
   private resourceRules: ResourceRules;
   /** The active family's kit: which rites this class plays. */
@@ -681,9 +684,14 @@ export class WorldScene implements GameScene, RuntimeView {
     const was = this.player.loadout;
     this.player.loadout = loadout;
     if (loadout.main !== was.main && loadout.main && loadout.main !== 'staff') this.onboarding.show('necroWeapon');
-    if (loadout.thrallBonus !== this.weaponThrallBonus) {
+    const sets = setSignature(this.inventory.all);
+    if (loadout.thrallBonus !== this.weaponThrallBonus || sets !== this.setSig) {
+      const gained = sets.split('|').filter((k) => k && !this.setSig.split('|').includes(k));
       this.weaponThrallBonus = loadout.thrallBonus;
+      this.setSig = sets;
       this.applyBoons();
+      // The first time any armor set bonus switches on, explain it.
+      if (gained.length) this.onboarding.show('setBonus');
       return;
     }
     if (this.sim && (this.isAuthority())) this.sim.waveTier = this.progression.local.waveTierActive;
@@ -2729,6 +2737,8 @@ export class WorldScene implements GameScene, RuntimeView {
         essenceRegenMult: base.mods.essenceRegenMult * fx.essenceRegenMult,
       },
     };
+    // Armor set bonuses fold in last, the same way (flat stat bonuses go through computeStats instead).
+    this.discipline = { ...this.discipline, mods: applySetMods(this.discipline.mods, resolveSetBonuses(this.inventory?.all ?? []).totals) };
     if (this.player) {
       this.player.soulsMax = Math.max(10, SOUL_HARVEST.souls - fx.soulsDiscount);
       this.refreshStats();

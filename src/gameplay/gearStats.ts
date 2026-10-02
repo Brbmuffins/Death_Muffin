@@ -14,6 +14,7 @@ import {
   type StatDeltaLine,
 } from './characterStats';
 import { resolveWeaponLoadout, type WeaponLoadout } from './weaponLine';
+import { diffSetBonuses, effectRelevant, resolveSetBonuses, setDiffText, withSetBonuses, withoutSetBonuses, type SetDiff, type SetStatus, type SetTotals } from './setBonuses';
 
 /**
  * Gear you can read: everything the Reliquary tooltips, the compare block and the Character sheet say about
@@ -28,8 +29,9 @@ export interface StatContext {
   damageTier: number;
 }
 
+/** Derived stats for `slots`: the discipline is re-based on the set bonuses those slots would give (gameplay/setBonuses.ts). */
 const derive = (ctx: StatContext, slots: readonly InventorySlot[] = ctx.slots, character: Character = ctx.character) =>
-  deriveStats(character, slots as InventorySlot[], ctx.discipline, ctx.damageTier);
+  deriveStats(character, slots as InventorySlot[], withSetBonuses(ctx.discipline, slots), ctx.damageTier);
 
 // --- 1. What a single stat line on an item does for THIS character -----------------------------
 
@@ -112,6 +114,8 @@ export interface EquipComparison {
   lost: string[];
   /** STR/AGI/INT/VIT totals that move. */
   statChanges: { stat: StatKey; before: number; after: number }[];
+  /** Armor set bonuses the swap switches on or off (only ones that do something for this discipline). */
+  sets: SetDiff;
 }
 
 /** What would change if you equipped this bag item now; null when it is already worn, or is not gear. */
@@ -136,6 +140,7 @@ export function compareEquip(ctx: StatContext, item: InventorySlot): EquipCompar
     gained: ea.filter((e) => !idsB.has(e.id)).map((e) => e.text),
     lost: eb.filter((e) => !idsA.has(e.id)).map((e) => e.text),
     statChanges: STAT_KEYS.filter((k) => tb[k] !== ta[k]).map((k) => ({ stat: k, before: tb[k], after: ta[k] })),
+    sets: diffSetBonuses(ctx.slots, sim.slots, ctx.discipline),
   };
 }
 
@@ -156,7 +161,7 @@ export interface SheetLine {
   help: string;
   rows: SheetRow[];
 }
-/** A titled block of lines. A later "Set bonuses" section is one more entry here. */
+/** A titled block of lines. */
 export interface SheetSection {
   id: string;
   title: string;
@@ -184,10 +189,38 @@ function gearRows(slots: readonly InventorySlot[], per: (bonus: Record<string, n
 /** The share of the discipline's multipliers that came from Covenant boons (folded into `discipline.mods` by the scene). */
 export function boonShare(discipline: Discipline): { maxHpMult: number; essenceRegenMult: number } {
   const base = DISCIPLINES[discipline.id]?.mods ?? discipline.mods;
+  const mine = withoutSetBonuses(discipline).mods; // armor sets are listed on their own row
   return {
-    maxHpMult: discipline.mods.maxHpMult / base.maxHpMult,
-    essenceRegenMult: discipline.mods.essenceRegenMult / base.essenceRegenMult,
+    maxHpMult: mine.maxHpMult / base.maxHpMult,
+    essenceRegenMult: mine.essenceRegenMult / base.essenceRegenMult,
   };
+}
+
+/** Set bonuses for the Character sheet: one line per set you wear, every bonus listed, active ones green. */
+export function setSheetLines(sets: SetStatus[], discipline: Pick<Discipline, 'family'>): SheetLine[] {
+  if (!sets.length) {
+    return [{
+      id: 'set:none', label: 'No set worn', value: '0 / 5',
+      help: 'Wear 2, 4 or 5 pieces of one armor set for a bonus. Crowns and grips of the first sets drop in the Hollow Graves.', rows: [],
+    }];
+  }
+  return sets.map((s) => {
+    const rows: SheetRow[] = s.bonuses.map((b) => {
+      const note = effectRelevant(b.effect, discipline) ? '' : ' (no effect for your class)';
+      return {
+        label: `${b.pieces} pieces${b.name ? ` \u00B7 ${b.name}` : ''}: ${b.lines.join(' \u00B7 ')}${note}`,
+        value: b.active ? 'Active' : `${b.pieces - s.worn} more`,
+        tone: b.active ? 'up' : undefined,
+      };
+    });
+    if (s.next) for (const m of s.missing) rows.push({ label: `Need: ${m.name}`, value: m.where });
+    const left = s.next ? s.next - s.worn : 0;
+    return {
+      id: `set:${s.setId}`, label: s.setName, value: `${s.worn} / 5`,
+      help: s.next ? `${left} more ${left === 1 ? 'piece' : 'pieces'} for the ${s.next}-piece bonus.` : 'Full set worn: every bonus is active.',
+      rows,
+    };
+  });
 }
 
 export function statSheet(ctx: StatContext): SheetSection[] {
@@ -197,6 +230,14 @@ export function statSheet(ctx: StatContext): SheetSection[] {
   const level = d.level;
   const baseMods = DISCIPLINES[discipline.id]?.mods ?? discipline.mods;
   const boons = boonShare(discipline);
+  const setRes = resolveSetBonuses(slots);
+  const setMult = setRes.totals.mult;
+  const setStats = setRes.totals.stats as Record<string, number>;
+  /** What the worn set bonuses add through one stat formula ("Set bonuses  +24"). */
+  const setRow = (per: (b: Record<string, number>) => number, digits = 1, unit = ''): SheetRow | null => {
+    const v = per(setStats);
+    return v ? { label: 'Set bonuses', value: signed(v, digits) + unit, tone: v > 0 ? 'up' : 'down' } : null;
+  };
   const dmgMult = 1 + DAMAGE_UPGRADE.perTier * damageTier;
   const loadout = resolveWeaponLoadout(equippedBySlot(slots), discipline.id);
   const num = (k: StatKey) => character[k] ?? 0;
@@ -212,8 +253,10 @@ export function statSheet(ctx: StatContext): SheetSection[] {
       { label: `Level ${level}`, value: signed((level - 1) * E.health.perLevel) },
       { label: `Your VIT ${num('stat_vit')}`, value: signed(num('stat_vit') * E.health.perVit) },
       gearRows(slots, (b) => (b.stat_vit ?? 0) * E.health.perVit),
+      setRow((b) => (b.stat_vit ?? 0) * E.health.perVit),
       multRow(`${discipline.name}`, baseMods.maxHpMult),
       multRow('Covenant boons', boons.maxHpMult),
+      multRow('Set bonuses', setMult.maxHpMult ?? 1),
       final('Health', formatDerived('maxHp', d.maxHp)),
     ),
   };
@@ -224,6 +267,7 @@ export function statSheet(ctx: StatContext): SheetSection[] {
       { label: `Level ${level}`, value: signed((level - 1) * E.spell.perLevel) },
       { label: `Your INT ${num('stat_int')}, STR ${num('stat_str')}, AGI ${num('stat_agi')}`, value: signed(num('stat_int') * E.spell.perInt + num('stat_str') * E.spell.perStr + num('stat_agi') * E.spell.perAgi) },
       gearRows(slots, (b) => (b.stat_int ?? 0) * E.spell.perInt + (b.stat_str ?? 0) * E.spell.perStr + (b.stat_agi ?? 0) * E.spell.perAgi),
+      setRow((b) => (b.stat_int ?? 0) * E.spell.perInt + (b.stat_str ?? 0) * E.spell.perStr + (b.stat_agi ?? 0) * E.spell.perAgi),
       multRow(`Damage upgrades (${tiers})`, dmgMult),
       multRow('Weapon line (staff)', loadout.spellMult),
       final('Spell power', formatDerived('spellPower', d.spellPower)),
@@ -236,6 +280,7 @@ export function statSheet(ctx: StatContext): SheetSection[] {
       { label: `Level ${level}`, value: signed(level * E.essence.perLevel) },
       { label: `Your INT ${num('stat_int')}`, value: signed(num('stat_int') * E.essence.perInt) },
       gearRows(slots, (b) => (b.stat_int ?? 0) * E.essence.perInt),
+      setRow((b) => (b.stat_int ?? 0) * E.essence.perInt),
       final('Max essence', formatDerived('maxEssence', d.maxEssence)),
     ),
   };
@@ -245,8 +290,10 @@ export function statSheet(ctx: StatContext): SheetSection[] {
       { label: 'Base', value: String(E.essenceRegen.base) },
       { label: `Your INT ${num('stat_int')}`, value: signed(num('stat_int') * E.essenceRegen.perInt) },
       gearRows(slots, (b) => (b.stat_int ?? 0) * E.essenceRegen.perInt),
+      setRow((b) => (b.stat_int ?? 0) * E.essenceRegen.perInt),
       multRow(`${discipline.name}`, baseMods.essenceRegenMult),
       multRow('Covenant boons', boons.essenceRegenMult),
+      multRow('Set bonuses', setMult.essenceRegenMult ?? 1),
       final('Essence/s', formatDerived('essenceRegen', d.essenceRegen)),
     ),
   };
@@ -256,6 +303,7 @@ export function statSheet(ctx: StatContext): SheetSection[] {
       { label: 'Base', value: `${E.moveSpeed.base} m/s` },
       { label: `Your AGI ${num('stat_agi')}`, value: `${signed(num('stat_agi') * E.moveSpeed.perAgi * 100)}%` },
       gearRows(slots, (b) => (b.stat_agi ?? 0) * E.moveSpeed.perAgi * 100, 1, '%'),
+      setRow((b) => (b.stat_agi ?? 0) * E.moveSpeed.perAgi * 100, 1, '%'),
       final('Move speed', `${formatDerived('moveSpeed', d.moveSpeed)} m/s`),
     ),
   };
@@ -265,6 +313,7 @@ export function statSheet(ctx: StatContext): SheetSection[] {
       { label: 'Your health', value: formatDerived('maxHp', d.maxHp) },
       { label: 'Thrall share', value: mult(E.thrall.hpShare) },
       multRow(`${discipline.name} thralls`, baseMods.thrallHpMult),
+      multRow('Set bonuses', setMult.thrallHpMult ?? 1),
       final('Thrall health', formatDerived('thrallHp', d.thrallHp)),
     ),
   };
@@ -274,6 +323,7 @@ export function statSheet(ctx: StatContext): SheetSection[] {
       { label: 'Your spell power (no staff)', value: formatDerived('spellPower', d.spellPower / loadout.spellMult) },
       { label: 'Thrall share', value: mult(E.thrall.damageShare) },
       multRow(`${discipline.name} thralls`, baseMods.thrallDamageMult),
+      multRow('Set bonuses', setMult.thrallDamageMult ?? 1),
       final('Thrall damage', formatDerived('thrallDamage', d.thrallDamage)),
     ),
   };
@@ -284,11 +334,12 @@ export function statSheet(ctx: StatContext): SheetSection[] {
 
   const statLine = (k: StatKey, help: string): SheetLine => ({
     id: k, label: STAT_LABELS[k], value: String(total[k]), help,
-    rows: rowsOf({ label: 'Character', value: String(base[k]) }, gearRows(slots, (b) => b[k] ?? 0, 0), final(STAT_LABELS[k], String(total[k]))),
+    rows: rowsOf({ label: 'Character', value: String(base[k]) }, gearRows(slots, (b) => b[k] ?? 0, 0), setRow((b) => b[k] ?? 0, 0), final(STAT_LABELS[k], String(total[k]))),
   });
 
   return [
     { id: 'derived', title: 'What you can do', lines: [health, spell, essence, regen, move, thrallHp, thrallDmg, dmgUp] },
+    { id: 'sets', title: 'Set bonuses', lines: setSheetLines(setRes.sets, discipline) },
     {
       id: 'stats', title: 'Stats',
       lines: [
@@ -298,7 +349,6 @@ export function statSheet(ctx: StatContext): SheetSection[] {
         statLine('stat_vit', 'Health, and through it thrall health.'),
       ],
     },
-    // Set bonuses (a later step) will be appended here as one more SheetSection.
   ];
 }
 
@@ -376,11 +426,12 @@ const refCharacter = (over: Partial<Character> = {}): Character => ({
 });
 
 /** Percent of power each part is worth, keyed by the derived number it comes from (for "why" text). */
-export type ScoreTerm = DerivedKey | 'weapon';
+export type ScoreTerm = DerivedKey | 'weapon' | 'set';
 
-function powerTerms(d: DerivedStats, disc: Discipline, count: number, extraPct: number): Record<ScoreTerm, number> {
+function powerTerms(d: DerivedStats, disc: Discipline, count: number, extraPct: number, refDisc: Discipline = disc, setPct = 0): Record<ScoreTerm, number> {
   const w = ROLE_WEIGHTS[disc.id] ?? NECRO_ROLE;
-  const ref = referenceParts(disc);
+  // The yardstick never includes armor sets, so gaining or losing a set bonus moves the score instead of cancelling out.
+  const ref = referenceParts(withoutSetBonuses(refDisc));
   const t: Record<ScoreTerm, number> = {
     spellPower: (w.damage * d.spellPower) / ref.damage,
     thrallDamage: (w.damage * count * d.thrallDamage * disc.mods.thrallAttackSpeedMult) / ref.damage,
@@ -390,9 +441,11 @@ function powerTerms(d: DerivedStats, disc: Discipline, count: number, extraPct: 
     essenceRegen: (w.sustain * 0.5 * d.essenceRegen) / ref.sustain,
     moveSpeed: (w.move * d.moveSpeed) / ref.move,
     weapon: 0,
+    set: 0,
   };
   const base = Object.values(t).reduce((a, b) => a + b, 0);
   t.weapon = (base * extraPct) / 100;
+  t.set = (base * setPct) / 100;
   return t;
 }
 
@@ -429,6 +482,39 @@ export function loadoutExtraPct(l: WeaponLoadout): number {
   return x;
 }
 
+/**
+ * Value of the set-bonus effects that deriveStats cannot see, in percent of power (judgment calls, tunable like
+ * LOADOUT_VALUE). Thrall health / damage / attack speed / cap, health, essence regen and flat stats are already
+ * in the maths above and are NOT repeated here. Rite effects only count for necromancers.
+ */
+export const SET_VALUE = {
+  /** "Less damage per thrall" multiplies the toughness part by 1 / (1 - ward x thralls), capped at this much reduction. */
+  wardCap: 0.6,
+  /** Percent of power per 1% of max health a Black Litany barrier grants per corpse. */
+  litanyPer1pct: 0.4,
+  /** Percent of power per 1% of max health a consumed corpse heals. */
+  corpseHealPer1pct: 0.5,
+  /** Percent of power per extra Withered stack. */
+  witheredPerStack: 1.5,
+  /** Percent of power per 1% wider Miasma. */
+  miasmaPer1pct: 0.4,
+} as const;
+
+/** The value of the worn sets' mods-only effects, for a discipline that fights with `count` thralls. */
+export function setExtraPct(totals: SetTotals, disc: Discipline, count: number): number {
+  if (disc.family !== 'necromancer') return 0;
+  const w = ROLE_WEIGHTS[disc.id] ?? NECRO_ROLE;
+  const V = SET_VALUE;
+  let x = 0;
+  const ward = totals.add.wardPerThrall ?? 0;
+  if (ward) x += w.toughness * 100 * (1 / (1 - Math.min(V.wardCap, ward * count)) - 1);
+  x += (totals.add.litanyBarrier ?? 0) * 100 * V.litanyPer1pct;
+  x += (totals.add.corpseHeal ?? 0) * 100 * V.corpseHealPer1pct;
+  x += (totals.add.witheredMaxStacks ?? 0) * V.witheredPerStack;
+  x += ((totals.mult.miasmaRadiusMult ?? 1) - 1) * 100 * V.miasmaPer1pct;
+  return x;
+}
+
 export interface Power {
   total: number;
   terms: Record<ScoreTerm, number>;
@@ -438,8 +524,10 @@ export interface Power {
 export function gearPower(ctx: StatContext, slots: readonly InventorySlot[] = ctx.slots): Power {
   const now = resolveWeaponLoadout(equippedBySlot(ctx.slots), ctx.discipline.id);
   const then = resolveWeaponLoadout(equippedBySlot(slots), ctx.discipline.id);
-  const count = thrallCount(ctx.discipline, then.thrallBonus - now.thrallBonus);
-  const terms = powerTerms(derive(ctx, slots), ctx.discipline, count, loadoutExtraPct(then));
+  // The discipline as `slots` would leave it: set bonuses can change the thrall cap and thrall attack speed too.
+  const disc = withSetBonuses(ctx.discipline, slots);
+  const count = thrallCount(disc, then.thrallBonus - now.thrallBonus);
+  const terms = powerTerms(derive(ctx, slots), disc, count, loadoutExtraPct(then), ctx.discipline, setExtraPct(resolveSetBonuses(slots).totals, disc, count));
   return { total: Object.values(terms).reduce((a, b) => a + b, 0), terms };
 }
 
@@ -487,6 +575,9 @@ export interface ItemVerdict {
   reason: string;
   /** The full one-liner. */
   text: string;
+  /** Set bonuses the swap switches on / off, and the phrase for them ("completes Ivory Reliquary 4-piece"). */
+  sets: SetDiff;
+  setNote: string;
 }
 
 const REASON: Record<ScoreTerm, [string, string]> = {
@@ -498,6 +589,7 @@ const REASON: Record<ScoreTerm, [string, string]> = {
   essenceRegen: ['faster essence regen', 'slower essence regen'],
   moveSpeed: ['faster movement', 'slower movement'],
   weapon: ['a better weapon effect', 'a worse weapon effect'],
+  set: ['a set bonus', 'a lost set bonus'],
 };
 
 const SAME_AT = 1;
@@ -527,15 +619,17 @@ export function itemVerdict(ctx: StatContext, item: InventorySlot): ItemVerdict 
   const names = replaced.map((r) => r.name).join(' and ');
   const slotLabel = EQUIP_SLOTS.find((e) => e.id === sim.gearSlot)?.label.toLowerCase() ?? 'gear';
   const tail = reason ? ` (${reason})` : '';
+  const sets = diffSetBonuses(ctx.slots, sim.slots, ctx.discipline);
+  const setNote = setDiffText(sets);
   const text =
-    kind === 'upgrade'
+    (kind === 'upgrade'
       ? empty
         ? `Upgrade for your ${ctx.discipline.name}: fills an empty ${slotLabel} slot${pct >= 1 ? ` (+${num(pct)}, ${reason})` : ''}`
         : `Upgrade for your ${ctx.discipline.name}: +${num(pct)}${tail}`
       : kind === 'downgrade'
         ? `Worse than your ${names}: \u2212${num(pct)}${tail}`
-        : `About the same as your ${names}`;
-  return { kind, pct, empty, replaced, reason, text };
+        : `About the same as your ${names}`) + (setNote ? ` \u2014 ${setNote}` : '');
+  return { kind, pct, empty, replaced, reason, text, sets, setNote };
 }
 
 // --- "What you're looking for" ----------------------------------------------------------------------
