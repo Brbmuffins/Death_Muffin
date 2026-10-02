@@ -16,7 +16,7 @@ describe('zone ambience data', () => {
       expect(ZONE_BEDS[id], id).toBeDefined();
       expect(ZONE_ACCENTS[id], id).toBeDefined();
     }
-    expect(AREA_IDS.length).toBe(11);
+    expect(AREA_IDS.length).toBe(12); // 11 hunting/safe areas + the Alchemist's Wing
   });
   it('keeps beds low, from real loops, with a synth fallback', () => {
     for (const id of AREA_IDS) {
