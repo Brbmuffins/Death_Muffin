@@ -204,12 +204,122 @@ export interface DecalOptions {
 }
 
 interface Transient {
-  mesh: THREE.Mesh | THREE.Sprite;
+  /** Pooled scene object, or none for an instance in a decal layer (`release` frees that). */
+  mesh?: THREE.Mesh | THREE.Sprite;
   t: number;
   duration: number;
   update: (t: number, k: number, dt: number) => void;
-  pool: THREE.Object3D[];
+  pool?: THREE.Object3D[];
+  release?: () => void;
   persistent?: boolean;
+}
+
+/** One live decal's per-frame state, written by its transient and flushed into its layer's instance buffers. */
+interface DecalInstance {
+  x: number;
+  y: number;
+  z: number;
+  rotY: number;
+  sx: number;
+  sz: number;
+  color: THREE.Color;
+  opacity: number;
+}
+
+/**
+ * Every live decal with one texture + blend mode, drawn as one InstancedMesh (per-instance colour and opacity).
+ * Decals used to be a mesh and material each: ~160 of a fight's ~280 draw calls were two-triangle ground decals.
+ */
+class DecalLayer {
+  readonly items: DecalInstance[] = [];
+  /** Seconds the layer has had nothing to draw; long-idle layers are freed (one-off textures must not pile up). */
+  idleS = 0;
+  mesh: THREE.InstancedMesh;
+  private readonly material: THREE.MeshBasicMaterial;
+  private opacity!: THREE.InstancedBufferAttribute;
+  private static readonly geometry = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+  private static readonly m = new THREE.Matrix4();
+  private static readonly q = new THREE.Quaternion();
+  private static readonly p = new THREE.Vector3();
+  private static readonly s = new THREE.Vector3();
+  private static readonly up = new THREE.Vector3(0, 1, 0);
+
+  constructor(private readonly parent: THREE.Group, map: THREE.Texture, blending: THREE.Blending, private capacity = 32) {
+    this.material = new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending });
+    // Per-instance opacity (instanceColor already carries the tint).
+    this.material.onBeforeCompile = (shader) => {
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nattribute float aDecalOpacity;\nvarying float vDecalOpacity;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvDecalOpacity = aDecalOpacity;');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying float vDecalOpacity;')
+        .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.a *= vDecalOpacity;');
+    };
+    this.material.customProgramCacheKey = () => 'dm-decal-layer';
+    this.mesh = this.make();
+  }
+
+  private make() {
+    const geo = DecalLayer.geometry.clone();
+    this.opacity = new THREE.InstancedBufferAttribute(new Float32Array(this.capacity), 1);
+    this.opacity.setUsage(THREE.DynamicDrawUsage);
+    geo.setAttribute('aDecalOpacity', this.opacity);
+    const mesh = new THREE.InstancedMesh(geo, this.material, this.capacity);
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.setColorAt(0, new THREE.Color());
+    mesh.instanceColor!.setUsage(THREE.DynamicDrawUsage);
+    mesh.count = 0;
+    // A few hundred triangles spread around the player: cheaper to draw than to bound every frame.
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 2;
+    this.parent.add(mesh);
+    return mesh;
+  }
+
+  add(d: DecalInstance) {
+    this.items.push(d);
+    if (this.items.length > this.capacity) {
+      this.capacity *= 2;
+      this.parent.remove(this.mesh);
+      this.mesh.geometry.dispose();
+      this.mesh.dispose();
+      this.mesh = this.make();
+    }
+  }
+
+  remove(d: DecalInstance) {
+    const i = this.items.indexOf(d);
+    if (i >= 0) this.items.splice(i, 1);
+  }
+
+  flush() {
+    const { m, q, p, s, up } = DecalLayer;
+    const mesh = this.mesh;
+    let n = 0;
+    for (const d of this.items) {
+      if (d.opacity <= 0) continue;
+      q.setFromAxisAngle(up, d.rotY);
+      m.compose(p.set(d.x, d.y, d.z), q, s.set(d.sx, 1, d.sz));
+      mesh.setMatrixAt(n, m);
+      mesh.setColorAt(n, d.color);
+      this.opacity.setX(n, d.opacity);
+      n++;
+    }
+    mesh.count = n;
+    mesh.visible = n > 0;
+    if (n) {
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.instanceColor!.needsUpdate = true;
+      this.opacity.needsUpdate = true;
+    }
+  }
+
+  dispose() {
+    this.parent.remove(this.mesh);
+    this.mesh.geometry.dispose();
+    this.mesh.dispose();
+    this.material.dispose();
+  }
 }
 
 export interface Handle {
@@ -289,7 +399,8 @@ export class Effects {
   private transients: Transient[] = [];
   /** How many entries in `transients` are combat visuals (not persistent scenery); capped at 160. */
   private combatTransients = 0;
-  private decalPool: THREE.Object3D[] = [];
+  /** Live decals, one instanced layer per texture + blend mode. */
+  private decalLayers = new Map<string, DecalLayer>();
   private spritePool: THREE.Object3D[] = [];
   private beamPool: THREE.Object3D[] = [];
   private projectiles: Projectile[] = [];
@@ -388,9 +499,7 @@ export class Effects {
       const [old] = this.transients.splice(oldest, 1);
       this.combatTransients--;
       old.t = old.duration;
-      old.mesh.visible = false;
-      this.group.remove(old.mesh);
-      old.pool.push(old.mesh);
+      this.retire(old);
     }
     tr.update(tr.t, tr.t / tr.duration, 0);
     this.transients.push(tr);
@@ -405,24 +514,26 @@ export class Effects {
     };
   }
 
+  /** Return a finished transient's mesh to its pool, or its instance to its decal layer. */
+  private retire(tr: Transient) {
+    tr.release?.();
+    if (!tr.mesh) return;
+    tr.mesh.visible = false;
+    this.group.remove(tr.mesh);
+    tr.pool?.push(tr.mesh);
+  }
+
   decal(o: DecalOptions): Handle {
-    const mesh = this.take(this.decalPool, () => {
-      const m = new THREE.Mesh(
-        new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
-        new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide }),
-      );
-      m.renderOrder = 2;
-      return m;
-    }) as THREE.Mesh;
-    const mat = mesh.material as THREE.MeshBasicMaterial;
-    mat.map = o.tex ?? fx.disc();
-    mat.color.set(o.color);
-    mat.blending = o.blending ?? THREE.AdditiveBlending;
-    mat.needsUpdate = true;
+    const tex = o.tex ?? fx.disc();
+    const blending = o.blending ?? THREE.AdditiveBlending;
+    const key = `${tex.uuid}|${blending}`;
+    let layer = this.decalLayers.get(key);
+    if (!layer) this.decalLayers.set(key, (layer = new DecalLayer(this.group, tex, blending)));
+    const d: DecalInstance = { x: 0, y: 0, z: 0, rotY: o.rot ?? 0, sx: 0, sz: 0, color: new THREE.Color(o.color), opacity: 0 };
+    layer.add(d);
     const base = o.opacity ?? 1;
     const fadeIn = o.fadeIn ?? 0.12;
     const fadeOut = o.fadeOut ?? 0.25;
-    mesh.geometry.translate(0, 0, 0);
     const anchor = o.anchor ?? 0;
     let hidden = false;
     const place = () => {
@@ -430,32 +541,32 @@ export class Effects {
       hidden = !!o.follow && !f;
       const x = f ? f.x : o.x;
       const z = f ? f.z : o.z;
-      mesh.position.set(x + Math.sin(o.rot ?? 0) * anchor * o.r, o.y ?? 0.04, z + Math.cos(o.rot ?? 0) * anchor * o.r);
+      d.x = x + Math.sin(o.rot ?? 0) * anchor * o.r;
+      d.y = o.y ?? 0.04;
+      d.z = z + Math.cos(o.rot ?? 0) * anchor * o.r;
     };
     place();
-    mesh.rotation.set(0, o.rot ?? 0, 0);
     const delay = o.delay ?? 0;
-    if (delay) mat.opacity = 0;
     return this.add({
-      mesh,
       t: -delay,
       duration: o.duration,
-      pool: this.decalPool,
+      release: () => layer.remove(d),
       persistent: o.persistent,
       update: (t, k) => {
         if (t < 0) {
-          mat.opacity = 0;
+          d.opacity = 0;
           return;
         }
         if (o.follow) place();
         const grow = o.growFrom !== undefined ? o.growFrom + (1 - o.growFrom) * Math.min(1, k * 1.2) : 1;
         const s = o.r * 2 * grow;
-        mesh.scale.set(s * (o.sx ?? 1), 1, s * (o.sz ?? 1));
-        if (o.spin) mesh.rotation.y = (o.rot ?? 0) + o.spin * t;
+        d.sx = s * (o.sx ?? 1);
+        d.sz = s * (o.sz ?? 1);
+        if (o.spin) d.rotY = (o.rot ?? 0) + o.spin * t;
         const inA = Math.min(1, t / fadeIn);
         const outA = Math.min(1, (o.duration - t) / fadeOut);
         const pulse = o.pulse ? 0.75 + 0.25 * Math.sin(t * o.pulse) : 1;
-        mat.opacity = hidden ? 0 : base * Math.max(0, Math.min(inA, outA)) * pulse;
+        d.opacity = hidden ? 0 : base * Math.max(0, Math.min(inA, outA)) * pulse;
       },
     });
   }
@@ -884,14 +995,20 @@ export class Effects {
       const tr = this.transients[i];
       tr.t += dt;
       if (tr.t >= tr.duration) {
-        tr.mesh.visible = false;
-        this.group.remove(tr.mesh);
-        tr.pool.push(tr.mesh);
+        this.retire(tr);
         this.transients.splice(i, 1);
         if (!tr.persistent) this.combatTransients--;
         continue;
       }
       tr.update(tr.t, tr.t / tr.duration, dt);
+    }
+    for (const [key, layer] of this.decalLayers) {
+      layer.flush();
+      layer.idleS = layer.items.length ? 0 : layer.idleS + dtReal;
+      if (layer.idleS > 5) {
+        layer.dispose();
+        this.decalLayers.delete(key);
+      }
     }
 
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -967,6 +1084,8 @@ export class Effects {
 
   dispose() {
     this.binbun.dispose();
+    for (const layer of this.decalLayers.values()) layer.dispose();
+    this.decalLayers.clear();
     const geometries = new Set<THREE.BufferGeometry>();
     const materials = new Set<THREE.Material>();
     const collect = (o: THREE.Object3D) => {
@@ -979,7 +1098,7 @@ export class Effects {
     this.group.traverse(collect);
     // Expired pooled meshes are no longer children of the scene group, but
     // their GPU resources still belong to this Effects instance.
-    for (const pool of [this.decalPool, this.spritePool, this.beamPool, this.needlePool, this.orbPool, this.spriteShotPool]) {
+    for (const pool of [this.spritePool, this.beamPool, this.needlePool, this.orbPool, this.spriteShotPool]) {
       for (const mesh of pool) collect(mesh);
       pool.length = 0;
     }

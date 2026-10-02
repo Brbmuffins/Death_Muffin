@@ -94,9 +94,16 @@ describe('spell presentation and hit timing', () => {
   it('bounds cosmetic mesh growth during crowded bursts and clears expired effects', () => {
     const { effects, step } = setup();
     const baseline = effects.group.children.length;
-    for (let i = 0; i < 300; i++) effects.decal({ x: i, z: 0, r: 1, color: 0xffffff, duration: 0.5 });
-    expect(effects.group.children.length).toBe(baseline + 160);
+    const tex = new THREE.Texture();
+    for (let i = 0; i < 300; i++) effects.decal({ tex, x: i, z: 0, r: 1, color: 0xffffff, duration: 0.5 });
+    // Live decals are capped at 160 and share one instanced layer per texture.
+    expect(effects.transientLoad).toBe(160);
+    expect(effects.group.children.length).toBe(baseline + 1);
     step(0.6);
+    expect(effects.transientLoad).toBe(0);
+    // One-off textures each get a layer; an emptied layer is freed after a few idle seconds.
+    for (let i = 0; i < 20; i++) effects.decal({ tex: new THREE.Texture(), x: i, z: 0, r: 1, color: 0xffffff, duration: 0.5 });
+    step(6);
     expect(effects.group.children.length).toBe(baseline);
     effects.dispose();
   });

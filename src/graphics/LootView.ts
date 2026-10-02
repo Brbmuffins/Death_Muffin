@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { itemMeta, RARITY_COLOR } from '../content/items';
 import type { LootDrop } from '../gameplay/loot';
 import type { Effects, Handle } from './Effects';
@@ -25,6 +26,27 @@ interface Drop {
 
 const coinGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.025, 10);
 const coinMat = new THREE.MeshStandardMaterial({ color: 0xc9a24a, metalness: 0.85, roughness: 0.35, emissive: 0x3a2808, emissiveIntensity: 0.4 });
+/** A pile of n coins as one merged geometry (one draw call per pile, not one per coin), built once per size. */
+const pileGeos = new Map<number, THREE.BufferGeometry>();
+function pileGeometry(n: number) {
+  let g = pileGeos.get(n);
+  if (!g) {
+    const m = new THREE.Matrix4();
+    const coins: THREE.BufferGeometry[] = [];
+    for (let i = 0; i < n; i++) {
+      m.compose(
+        new THREE.Vector3((Math.random() - 0.5) * 0.35, 0.02 + i * 0.02, (Math.random() - 0.5) * 0.35),
+        new THREE.Quaternion().setFromEuler(new THREE.Euler((Math.random() - 0.5) * 0.4, Math.random() * 3, (Math.random() - 0.5) * 0.4)),
+        new THREE.Vector3(1, 1, 1),
+      );
+      coins.push(coinGeo.clone().applyMatrix4(m));
+    }
+    g = mergeGeometries(coins)!;
+    for (const c of coins) c.dispose();
+    pileGeos.set(n, g);
+  }
+  return g;
+}
 const shardGeo = new THREE.OctahedronGeometry(0.18).scale(0.6, 1.4, 0.6);
 const shardMat = new THREE.MeshStandardMaterial({ color: 0xb58cff, emissive: 0x7c3aed, emissiveIntensity: 2.2, roughness: 0.2, metalness: 0.1 });
 const beamGeo = new THREE.CylinderGeometry(0.22, 0.34, 6, 10, 1, true).translate(0, 3, 0);
@@ -56,14 +78,8 @@ export class LootView {
   gold(x: number, z: number, amount: number) {
     if (amount <= 0) return;
     const [px, pz] = this.scatter(x, z);
-    const pile = new THREE.Group();
-    const n = Math.min(9, 2 + Math.floor(amount / 4));
-    for (let i = 0; i < n; i++) {
-      const c = new THREE.Mesh(coinGeo, coinMat);
-      c.position.set((Math.random() - 0.5) * 0.35, 0.02 + i * 0.02, (Math.random() - 0.5) * 0.35);
-      c.rotation.set((Math.random() - 0.5) * 0.4, Math.random() * 3, (Math.random() - 0.5) * 0.4);
-      pile.add(c);
-    }
+    const pile = new THREE.Mesh(pileGeometry(Math.min(9, 2 + Math.floor(amount / 4))), coinMat);
+    pile.rotation.y = Math.random() * Math.PI * 2;
     pile.position.set(px, 0, pz);
     this.group.add(pile);
     this.drops.push({ kind: 'gold', obj: pile, x: px, z: pz, amount, t: 0, flying: false });

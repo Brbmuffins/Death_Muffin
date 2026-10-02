@@ -37,6 +37,14 @@ export interface KillReward {
  * kill rolls their own — no contention, PvE-only assumption). Item ids are
  * restricted to ids the live server knows (content/items.ts).
  */
+/**
+ * Ordinary kills drop less, but what drops is worth more (owner, 2026-10-02: "keep it valuable, it's just a lot"): half the
+ * area-table rolls, material stacks doubled so material income holds, and the client rolls that gear at elite quality
+ * (WorldScene.onKill). Elites, bosses, runes, reagents and legendaries are unchanged. Gold keeps its total but lands as one
+ * pile every `goldEveryKills` kills (and on every elite).
+ */
+export const KILL_LOOT = { itemChanceMult: 0.5, materialQtyMult: 2, goldEveryKills: 4 } as const;
+
 export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boolean, waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium', itemChanceMult = 1, reagentRand: () => number = Math.random, runeRand: () => number = Math.random, disciplineId?: string): KillReward {
   const d = ENEMIES[def];
   const a = AREAS[area];
@@ -46,8 +54,8 @@ export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boole
   const gold = Math.round(randInt(rand, d.gold[0], d.gold[1]) * levelMult * mods.rewardMult * diff * (elite ? ELITE.goldMult : 1));
   const shards = elite ? (rand() < 0.25 ? 2 : 1) : 0;
   const items: LootDrop[] = [];
-  const chance = Math.min(1, a.itemChance * mods.itemChanceMult * itemChanceMult * (elite ? 6 : 1));
-  if (a.loot.length && rand() < chance) items.push(rollItem(area, rand));
+  const chance = Math.min(1, a.itemChance * mods.itemChanceMult * itemChanceMult * (elite ? 6 : KILL_LOOT.itemChanceMult));
+  if (a.loot.length && rand() < chance) items.push(rollItem(area, rand, elite ? 1 : KILL_LOOT.materialQtyMult));
   // Legendary armor (content/legendarySets.ts): a very rare elite drop in the level-scaled areas, weighted to the player's discipline.
   // Rolled only when a discipline is passed, so seeded runs (balance harness, tests) keep their sequence.
   if (disciplineId && elite && a.scaling) {
@@ -109,10 +117,10 @@ export function rollBossRune(boss: BossId, first: boolean, rand: () => number = 
   return id ? { item_id: id, quantity: 1 } : null;
 }
 
-export function rollItem(area: AreaId, rand = Math.random): LootDrop {
+export function rollItem(area: AreaId, rand = Math.random, materialQtyMult = 1): LootDrop {
   const pick = pickWeighted(AREAS[area].loot, rand())!;
   const meta = ITEMS[pick.item];
-  return { item_id: pick.item, quantity: meta?.type === 'material' ? 1 + (rand() < 0.35 ? 1 : 0) : 1 };
+  return { item_id: pick.item, quantity: meta?.type === 'material' ? (1 + (rand() < 0.35 ? 1 : 0)) * materialQtyMult : 1 };
 }
 
 /**

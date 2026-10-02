@@ -234,6 +234,8 @@ function silhouetteGeometry(sil: Silhouette, rand: () => number): THREE.BufferGe
  */
 /** Colour multiplier (can exceed 1) for props that read too dark at the game camera: the Wing's hanging herbs and drying rack. */
 const PROP_LIFT: Partial<Record<PropId, number>> = { alch_herb_bundle: 3.2, alch_drying_rack: 1.9 };
+/** Side (m) of the culling cells a prop batch is split into; well under the 60 m shadow camera and the view footprint. */
+const PROP_CELL = 12;
 
 export class PropBatch {
   readonly group = new THREE.Group();
@@ -286,21 +288,32 @@ export class PropBatch {
     const e = new THREE.Euler();
     const s = new THREE.Vector3();
     const p = new THREE.Vector3();
+    // One InstancedMesh per part *per cell*: culling is per mesh, so an area-wide batch was drawn
+    // (and shadow-cast) whole whenever any one of its props was in view (~5x overdraw, BLENDER-AUDIT §1.2).
+    const cells = new Map<string, Placement[]>();
+    for (const pl of this.placements) {
+      const key = `${Math.floor(pl.x / PROP_CELL)},${Math.floor(pl.z / PROP_CELL)}`;
+      const list = cells.get(key);
+      if (list) list.push(pl);
+      else cells.set(key, [pl]);
+    }
     for (const part of parts) {
       if (this.tall) applyOcclusion(part.material);
-      const inst = new THREE.InstancedMesh(part.geometry, part.material, this.placements.length);
-      this.placements.forEach((pl, i) => {
-        e.set(pl.tilt ?? 0, pl.rot, (pl.tilt ?? 0) * 0.6);
-        q.setFromEuler(e);
-        s.setScalar(pl.scale);
-        p.set(pl.x, pl.y ?? 0, pl.z);
-        m.compose(p, q, s).multiply(part.local);
-        inst.setMatrixAt(i, m);
-      });
-      inst.castShadow = this.tall;
-      inst.receiveShadow = true;
-      inst.computeBoundingSphere();
-      this.group.add(inst);
+      for (const list of cells.values()) {
+        const inst = new THREE.InstancedMesh(part.geometry, part.material, list.length);
+        list.forEach((pl, i) => {
+          e.set(pl.tilt ?? 0, pl.rot, (pl.tilt ?? 0) * 0.6);
+          q.setFromEuler(e);
+          s.setScalar(pl.scale);
+          p.set(pl.x, pl.y ?? 0, pl.z);
+          m.compose(p, q, s).multiply(part.local);
+          inst.setMatrixAt(i, m);
+        });
+        inst.castShadow = this.tall;
+        inst.receiveShadow = true;
+        inst.computeBoundingSphere();
+        this.group.add(inst);
+      }
     }
   }
 }

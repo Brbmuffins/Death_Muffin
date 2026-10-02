@@ -3,7 +3,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { shouldProcessFrame, shouldRender } from './framePacing';
+import { ResolutionGovernor, shouldProcessFrame, shouldRender } from './framePacing';
 import { onSettingsChange, settings } from './settings';
 
 /** What a scene hands the runtime: something to draw and a per-frame tick. */
@@ -57,6 +57,8 @@ export class GameRuntime {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Error checks read the shader logs synchronously, stalling on every compile; dev builds keep them.
+    renderer.debug.checkShaderErrors = import.meta.env.DEV;
     this.renderer = renderer;
 
     this.composer = new EffectComposer(renderer);
@@ -76,9 +78,19 @@ export class GameRuntime {
     this.applyQuality();
   }
 
+  /** Lowers the render resolution while the GPU can't hold the frame cap (see ResolutionGovernor). */
+  readonly resolution = new ResolutionGovernor();
+  private qualityKey = '';
+
   private applyQuality() {
     const high = settings.quality === 'high';
-    const ratio = high ? Math.min(window.devicePixelRatio, 1.5) : 1;
+    // Any settings change lands here; only a graphics change restarts the governor at full resolution.
+    const key = `${settings.quality}|${settings.fps}`;
+    if (key !== this.qualityKey) {
+      this.qualityKey = key;
+      this.resolution.reset();
+    }
+    const ratio = (high ? Math.min(window.devicePixelRatio, 1.5) : 1) * this.resolution.scale;
     this.renderer.setPixelRatio(ratio);
     this.composer.setPixelRatio(ratio);
     this.renderer.shadowMap.enabled = high;
@@ -139,6 +151,7 @@ export class GameRuntime {
       this.lastRenderAt = t;
       if (this.bloomEnabled) this.composer.render(dt);
       else this.renderer.render(current.scene, current.camera);
+      if (!covered && this.resolution.frame(dt, this.frameMs, settings.fps)) this.applyQuality();
     };
     loop();
     this.backgroundTimer = window.setInterval(() => {

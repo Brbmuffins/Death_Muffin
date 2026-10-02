@@ -380,6 +380,9 @@ io.on('connection', (socket) => {
     player.facing = num(pos.facing);
     player.moving = !!pos.moving;
     player.hpFrac = Math.min(1, Math.max(0, num(pos.hpFrac, 1)));
+    // Level rides along (optional) so partners see level-ups without a rejoin.
+    const level = Math.trunc(num(pos.level));
+    if (level >= 1 && level <= 999) player.level = level;
     socket.volatile.to(socket.data.worldId).emit('player:move', {
       id: socket.id,
       x: player.x,
@@ -387,6 +390,7 @@ io.on('connection', (socket) => {
       facing: player.facing,
       moving: player.moving,
       hpFrac: player.hpFrac,
+      level: player.level,
     });
   });
 

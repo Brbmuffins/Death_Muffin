@@ -8,6 +8,9 @@ Scripts are in `tools/blender/audit/` and `tools/qa/scene-*.cjs`; raw data in `d
 GPU frame time on a real phone was *not* measured (SwiftShader is a CPU rasteriser), so "gain" below means triangles, draw calls, MB, not fps.
 Triangle totals from `renderer.info` include the shadow pass on High (it renders the casters a second time).
 
+> **Update 2 Oct 2026 (branch `dm/perf1`):** Phase 1 items #1 (spatial PropBatch chunking, 12 m cells) and #2 (decal layers: one InstancedMesh per texture + blend mode) are done; gold piles are single merged meshes; a `ResolutionGovernor` (src/app/framePacing.ts) lowers the pixel ratio under sustained slow frames.
+> Re-measured with `fixed-fight-perf.cjs`, High / Low: nave 277 calls / 773k tris → 188 / 438k and 240 / 388k → 120 / 250k; graves 233 / 717k → 220 / 478k and 161 / 378k → 127 / 227k. Still open from Phase 1: #3 prune, #6 WebP, #7 clip trims.
+
 ## 1. Headlines
 
 1. **The 552k triangles are mostly the world's props, not characters.** In the fixed nave fight on High (332 calls, 804k tris):

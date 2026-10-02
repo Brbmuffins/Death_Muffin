@@ -43,7 +43,7 @@ import { selectAutoCombatAction, selectAutoCombatMovement, type AutoMoveMemory }
 import { STATUS_FX } from '../content/statuses';
 import { AbilitySystem, veilTarget, type CastResult, type CastTarget } from '../gameplay/AbilitySystem';
 import { deriveStats, xpToNext } from '../gameplay/characterStats';
-import { BAG_SIZE, Inventory, rollBoss, rollBossRune, rollFirstKillItem, rollKill, rollSurgeItem } from '../gameplay/loot';
+import { BAG_SIZE, Inventory, KILL_LOOT, rollBoss, rollBossRune, rollFirstKillItem, rollKill, rollSurgeItem } from '../gameplay/loot';
 import { Nav } from '../gameplay/nav';
 import { Player } from '../gameplay/Player';
 import { resourceRulesFor, type ResourceRules } from '../gameplay/resources';
@@ -2116,6 +2116,7 @@ export class WorldScene implements GameScene, RuntimeView {
             r.facing = u.facing;
             r.moving = u.moving;
             r.hpFrac = u.hpFrac;
+            if (u.level) r.info.level = u.level;
           },
           onPlayerGear: (u) => {
             const r = this.remotes.get(u.id);
@@ -3189,6 +3190,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.effects.lightFlash(ev.x, 2, ev.z, SPELL_FX.surge.glow, 70, 1.2);
   }
 
+  /** Kill gold not yet dropped (see KILL_LOOT.goldEveryKills). */
+  private goldPool = { amount: 0, kills: 0 };
+
   private onKill(ev: Extract<SimEvent, { t: 'death' }>) {
     // A boss's skull niche is part of the fight, not a kill: no souls, loot, XP or area progress.
     if (ENEMIES[ev.def].inert) return;
@@ -3215,9 +3219,15 @@ export class WorldScene implements GameScene, RuntimeView {
     reward.gold = Math.round(reward.gold * asc);
     // Tonic of wisdom: a share more experience from every kill.
     reward.xp = Math.round(reward.xp * asc * (1 + this.player.brewValue('wisdom', this.now)));
-    this.loot.gold(ev.x, ev.z, reward.gold);
+    // Gold pools over a few kills into one bigger pile (same total, a fraction of the clutter); elites always pay out.
+    this.goldPool.amount += reward.gold;
+    if (ev.elite || ++this.goldPool.kills >= KILL_LOOT.goldEveryKills) {
+      this.loot.gold(ev.x, ev.z, this.goldPool.amount);
+      this.goldPool.amount = this.goldPool.kills = 0;
+    }
     if (reward.shards) this.loot.shard(ev.x, ev.z, reward.shards);
-    this.dropItems(ev.x, ev.z, reward.items, ev.level, ev.elite ? 'elite' : 'kill');
+    // Ordinary kills drop half as often (KILL_LOOT), so their gear rolls at elite quality.
+    this.dropItems(ev.x, ev.z, reward.items, ev.level, 'elite');
     this.gainXp(reward.xp, ev.x, ev.z);
     if (ev.area === 'depths') this.depths.recordKill();
     else this.progression.recordKill(ev.area, this.bossWaveTier());
@@ -4220,7 +4230,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
     if (this.realtime.connected && now - this.lastMoveSent >= MOVE_SEND_MS) {
       this.lastMoveSent = now;
-      this.realtime.sendMove({ x: p.x, z: p.z, facing: p.facing, moving: p.moving, hpFrac: p.hp / p.stats.maxHp });
+      this.realtime.sendMove({ x: p.x, z: p.z, facing: p.facing, moving: p.moving, hpFrac: p.hp / p.stats.maxHp, level: this.character.level });
     }
 
     // Loot pickup.
@@ -4713,7 +4723,8 @@ export class WorldScene implements GameScene, RuntimeView {
         },
         ...[...this.remotes.values()].map((r) => {
           const d = disciplineFor(r.info.classIndex);
-          return { id: r.info.id, name: r.info.name, discipline: d.name, portrait: `art/portraits/${d.id}.webp`, hpFrac: r.hpFrac };
+          // Partners' level: sent at join and refreshed with every position update.
+          return { id: r.info.id, name: r.info.name, discipline: r.info.level ? `${d.name} · Level ${r.info.level}` : d.name, portrait: `art/portraits/${d.id}.webp`, hpFrac: r.hpFrac };
         }),
       ]);
     }

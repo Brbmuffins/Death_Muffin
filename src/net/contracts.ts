@@ -52,6 +52,8 @@ export interface PlayerMove {
   facing: number;
   moving: boolean;
   hpFrac: number;
+  /** Character level, so partners' frames follow level-ups mid-session (older clients/servers omit it). */
+  level?: number;
 }
 
 /**
