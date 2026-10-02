@@ -109,6 +109,7 @@ async function main() {
     await page.mouse.move(5, 5);
     const noScroll = () => page.evaluate(() => { const el = document.querySelector('.cw-reliquary'); return { scroll: el.scrollHeight, client: el.clientHeight, bottom: Math.round(el.getBoundingClientRect().bottom) }; });
     const fit = await noScroll();
+    await page.screenshot({ path: `${out}/reliquary-fit-check.png` }); // captured before the assertion, so a failure shows why
     assert.ok(fit.scroll <= fit.client + 1, `the detail strip fits without scrolling (${fit.scroll} > ${fit.client})`);
     assert.ok(fit.bottom <= 680, `and stays clear of the hotbar (bottom ${fit.bottom})`);
     await page.screenshot({ path: `${out}/reliquary-selected.png` });

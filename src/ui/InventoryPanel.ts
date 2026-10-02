@@ -201,8 +201,14 @@ export class InventoryPanel {
   /** Sell all junk: the count and gold are shown, then confirmed in place. Locked items are never included. */
   private renderTools() {
     const tools = this.el!.querySelector<HTMLDivElement>('[data-tools]')!;
+    // The Legion button lives in this footer row (beside the slot count) so it costs no height of its own. The row is rebuilt
+    // below, so lift the button out first and put it back after; it keeps its click handler because it is the same element.
+    const legionBtn = this.el!.querySelector<HTMLButtonElement>('[data-legion]');
+    legionBtn?.remove();
+    const placeLegion = () => { if (legionBtn) tools.insertBefore(legionBtn, tools.querySelector('[data-junk], [data-junk-yes]')); };
     if (!this.onSold) {
       tools.innerHTML = '';
+      placeLegion();
       return;
     }
     const junk = junkSlots(this.inventory.all, this.locks);
@@ -213,12 +219,14 @@ export class InventoryPanel {
         <button class="cw-button small" data-junk-yes>Sell them</button><button class="cw-button small ghost" data-junk-no>Cancel</button>`;
       tools.querySelector('[data-junk-yes]')!.addEventListener('click', () => this.sellJunk());
       tools.querySelector('[data-junk-no]')!.addEventListener('click', () => { this.confirmJunk = false; this.render(); });
+      placeLegion();
       return;
     }
     this.confirmJunk = false;
     tools.innerHTML = `<span class="cw-tools-count" data-bagcount>${used} / ${BAG_SIZE} slots</span>
       <button class="cw-button small" data-junk ${junk.length ? '' : 'disabled'} title="Sells unlocked common and uncommon gear. Lock an item to keep it out.">Sell all junk${junk.length ? ` (${junk.length} · ${gold.toLocaleString()}g)` : ''}</button>`;
     tools.querySelector('[data-junk]')?.addEventListener('click', () => { this.confirmJunk = true; this.render(); });
+    placeLegion();
   }
 
   private sellJunk() {
