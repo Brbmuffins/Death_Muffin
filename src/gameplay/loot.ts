@@ -10,6 +10,7 @@ import { pickWeighted, randInt } from './rng';
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
 import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS, bossIchor } from '../content/reagents';
 import type { BossId } from '../content/bosses';
+import { AREA_RUNE_POOL, BOSS_REPEAT_RUNE_CHANCE, BOSS_RUNE_POOL, ELITE_RUNE_CHANCE, SURGE_RUNE_CHANCE, pickRune } from '../content/runes';
 
 /** One source of truth: gatheringRules.BAG_SLOTS (also bundled for the server). 8 columns × 6 rows = 48. */
 export const BAG_SIZE = BAG_SLOTS;
@@ -35,7 +36,7 @@ export interface KillReward {
  * kill rolls their own — no contention, PvE-only assumption). Item ids are
  * restricted to ids the live server knows (content/items.ts).
  */
-export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boolean, waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium', itemChanceMult = 1, reagentRand: () => number = Math.random): KillReward {
+export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boolean, waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium', itemChanceMult = 1, reagentRand: () => number = Math.random, runeRand: () => number = Math.random): KillReward {
   const d = ENEMIES[def];
   const a = AREAS[area];
   const mods = waveModifiers(waveTier);
@@ -48,6 +49,11 @@ export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boole
   if (a.loot.length && rand() < chance) items.push(rollItem(area, rand));
   // Reagents use their own stream: a seeded `rand` (balance harness, tests) keeps the same sequence it always had.
   items.push(...rollReagents(def, area, elite, itemChanceMult, reagentRand));
+  // Relic runes (content/runes.ts): a small chance from elites, on their own stream so seeded harness runs keep every other roll.
+  if (elite) {
+    const rune = rollEliteRune(area, itemChanceMult * mods.itemChanceMult, runeRand);
+    if (rune) items.push(rune);
+  }
   const xp = Math.round(d.xp * (1 + 0.25 * (level - 1)) * mods.xpMult * diff * (elite ? ELITE.xpMult : 1));
   return { gold, shards, items, xp };
 }
@@ -64,6 +70,36 @@ export function rollReagents(def: EnemyId, area: AreaId, elite: boolean, itemCha
     out.push({ item_id: s.item, quantity: randInt(rand, s.qty[0], s.qty[1]) });
   }
   return out;
+}
+
+/** An elite's rune: ELITE_RUNE_CHANCE (times the item-chance multipliers), from the area's pool; null where the ground sheds none. */
+export function rollEliteRune(area: AreaId, itemChanceMult = 1, rand: () => number = Math.random): LootDrop | null {
+  const pool = AREA_RUNE_POOL[area];
+  if (!pool?.length || rand() >= Math.min(1, ELITE_RUNE_CHANCE * itemChanceMult)) return null;
+  const id = pickRune(pool, rand);
+  return id ? { item_id: id, quantity: 1 } : null;
+}
+
+/** A Grave Surge's offering: the area's item, or (SURGE_RUNE_CHANCE) a rune from the area's pool in its place. */
+export function rollSurgeItem(area: AreaId, rand: () => number = Math.random): LootDrop {
+  const pool = AREA_RUNE_POOL[area];
+  if (pool?.length && rand() < SURGE_RUNE_CHANCE) {
+    const id = pickRune(pool, rand);
+    if (id) return { item_id: id, quantity: 1 };
+  }
+  return rollItem(area, rand);
+}
+
+/**
+ * A boss's rune: the Prelate always leaves one and so does a boss's first kill per character (`first`); repeats roll
+ * BOSS_REPEAT_RUNE_CHANCE. Drawn from that boss's own pool (BOSS_RUNE_POOL).
+ */
+export function rollBossRune(boss: BossId, first: boolean, rand: () => number = Math.random): LootDrop | null {
+  const pool = BOSS_RUNE_POOL[boss];
+  if (!pool?.length) return null;
+  if (!(boss === 'prelate' || first) && rand() >= BOSS_REPEAT_RUNE_CHANCE) return null;
+  const id = pickRune(pool, rand);
+  return id ? { item_id: id, quantity: 1 } : null;
 }
 
 export function rollItem(area: AreaId, rand = Math.random): LootDrop {
@@ -111,7 +147,8 @@ export function rollFirstKillItem(area: AreaId, rand = Math.random): LootDrop {
 export function addToSlots(slots: InventorySlot[], drop: LootDrop): InventorySlot[] | null {
   const meta = ITEMS[drop.item_id];
   const cap = meta?.stack ?? Infinity;
-  const stack = slots.find((s) => s.item_id === drop.item_id && (s.item_type === 'material' || meta?.type === 'material') && s.quantity < cap);
+  const stackable = (type?: string) => type === 'material' || type === 'rune';
+  const stack = slots.find((s) => s.item_id === drop.item_id && s.slot_index < BAG_SIZE && !s.equipped && (stackable(s.item_type) || stackable(meta?.type)) && s.quantity < cap);
   if (stack) {
     const add = Math.min(drop.quantity, cap - stack.quantity);
     const next = slots.map((s) => (s === stack ? { ...s, quantity: s.quantity + add } : s));

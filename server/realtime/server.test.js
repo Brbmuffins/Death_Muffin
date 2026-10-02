@@ -146,3 +146,32 @@ test('visible gear keeps only known slots and plain item ids', () => {
   assert.equal(Object.keys(cleanGear({ legs: 'x'.repeat(80) })).length, 0, 'over-long ids are dropped');
   assert.deepEqual(cleanGear({ cape: 'cape_mining', pet: 'pet_grave_rat', ring: 'x' }), { cape: 'cape_mining', pet: 'pet_grave_rat' }, 'capes and pets ride along with the gear');
 });
+
+test('Relic rune fields: every one is clamped (Impale, Creeping Rot, Contagion, Mass Grave, Bone Colossus, Hollow Choir, Requiem)', () => {
+  const hit = (extra) => validIntent({ t: 'hit', ids: [1], dmg: 5, root: true, ...extra });
+  assert.equal(hit({ rootS: 99 }).rootS, 1.5);
+  assert.equal(hit({ rootS: -3 }).rootS, 0);
+  assert.equal(hit({}).rootS, undefined, 'a plain Bone Prison claim carries no length');
+  const m = validIntent({ t: 'miasma', x: 0, z: 0, r: 3, dps: 1, durationMs: 6000, creep: 50, contagion: 1 });
+  assert.equal(m.creep, 1.5);
+  assert.equal(m.contagion, true);
+  assert.equal(validIntent({ t: 'miasma', x: 0, z: 0, r: 3, dps: 1, durationMs: 6000, creep: -4 }).creep, 0);
+  const col = validIntent({ t: 'exhume', x: 0, z: 0, r: 99, count: 50, colossus: true });
+  assert.equal(col.r, 6, 'the colossus looks 6 m for company');
+  assert.equal(col.count, 3);
+  assert.equal(col.colossus, true);
+  const plain = validIntent({ t: 'exhume', x: 0, z: 0, r: 99 });
+  assert.equal(plain.r, 4);
+  assert.equal(plain.colossus, false);
+  assert.equal(plain.count, undefined);
+  assert.equal(validIntent({ t: 'exhume', x: 0, z: 0, r: 1, count: -4 }).count, 1);
+  const choir = validIntent({ t: 'litany', x: 0, z: 0, r: 99, spellPower: 5, spare: 1 });
+  assert.equal(choir.r, 11, 'without a delay the radius stays within the Soul Harvest maximum');
+  assert.equal(choir.spare, true);
+  const req = validIntent({ t: 'litany', x: 0, z: 0, r: 99, spellPower: 5, delayMs: 99999 });
+  assert.equal(req.r, 22, 'Requiem doubles even a Soul Harvest litany (21 m)');
+  assert.equal(req.delayMs, 2000);
+  const none = validIntent({ t: 'litany', x: 0, z: 0, r: 14, spellPower: 5, delayMs: -5 });
+  assert.equal(none.delayMs, 0);
+  assert.equal(none.r, 11, 'a zero delay is no Requiem');
+});

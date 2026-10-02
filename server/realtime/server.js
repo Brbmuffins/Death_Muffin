@@ -140,15 +140,24 @@ function validIntent(intent) {
       // Bone Prison / Grave Hands: flags only; the host sim owns the root and slow durations.
       if ('root' in out) out.root = !!out.root;
       if ('slow' in out) out.slow = !!out.slow;
+      // Impale rune: a root length in seconds, never more than the rune's 1.5 s (the host clamps again).
+      if ('rootS' in out) out.rootS = Math.min(1.5, Math.max(0, num(out.rootS)));
       break;
     case 'miasma':
       out.r = Math.min(8, Math.max(0.5, num(out.r, 3)));
       out.dps = Math.min(20000, Math.max(0, num(out.dps)));
       out.durationMs = Math.min(10000, Math.max(500, num(out.durationMs, 6000)));
       out.witheredCap = Math.min(10, Math.max(1, num(out.witheredCap, 5)));
+      // Relic runes: Creeping Rot drifts at most 1.5 m/s; Contagion is a flag (the host owns both effects).
+      if ('creep' in out) out.creep = Math.min(1.5, Math.max(0, num(out.creep)));
+      if ('contagion' in out) out.contagion = !!out.contagion;
       break;
     case 'exhume':
-      out.r = Math.min(4, Math.max(0.2, num(out.r, 1)));
+      // Bone Colossus looks for corpses within 6 m of the point, Mass Grave within 4 m, a plain exhume within 4 m of a corpse it already named.
+      out.colossus = !!out.colossus;
+      out.r = Math.min(out.colossus ? 6 : 4, Math.max(0.2, num(out.r, 1)));
+      // Mass Grave rune: up to three corpses at once (the host applies the weaker stats itself).
+      if ('count' in out) out.count = Math.min(3, Math.max(1, Math.floor(num(out.count, 1))));
       out.cap = Math.min(8, Math.max(1, num(out.cap, 3)));
       out.hp = Math.min(1e6, Math.max(1, num(out.hp, 50)));
       out.damage = Math.min(1e5, Math.max(0, num(out.damage, 5)));
@@ -156,9 +165,13 @@ function validIntent(intent) {
       break;
     case 'litany':
       // 7m base; a Soul Harvest-empowered litany is 50% larger (10.5m).
-      out.r = Math.min(11, Math.max(1, num(out.r, 7)));
+      // Requiem rune: the burst lands up to 2 s later over twice the radius (21 m with Soul Harvest), so r may reach 22 only with a delay.
+      if ('delayMs' in out) out.delayMs = Math.min(2000, Math.max(0, Math.floor(num(out.delayMs))));
+      out.r = Math.min(out.delayMs > 0 ? 22 : 11, Math.max(1, num(out.r, 7)));
       out.spellPower = Math.min(1e5, Math.max(0, num(out.spellPower)));
       out.leaveCorpses = !!out.leaveCorpses;
+      // Hollow Choir rune: thralls are spared instead of sacrificed.
+      if ('spare' in out) out.spare = !!out.spare;
       break;
     case 'summonBoss':
       // Area bosses: which boss to wake; older clients send none and mean the Prelate. The host keeps one awake.

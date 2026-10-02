@@ -7,6 +7,8 @@ import { MAX_PARTY_SIZE } from '../net/config';
 import { ICON } from './icons';
 import { Minimap, type MinimapFrame } from './Minimap';
 import { spellTooltip } from './spellTooltip';
+import { RUNES, isRuneRite, type RuneRite } from '../content/runes';
+import type { RuneSockets } from '../gameplay/runeRules';
 
 /** Key caps under each hotbar slot (slot 5 is the right-click action). */
 const SLOT_KEYS = ['1', '2', '3', '4', 'RMB', 'R'];
@@ -118,6 +120,14 @@ export interface PartyMember {
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
+/** The rune line on a rite's card: which rune sits in it and what it changes. */
+function runeCard(id: AbilityId, runes: RuneSockets): string {
+  const r = isRuneRite(id) ? runes[id as RuneRite] : undefined;
+  if (!r) return '';
+  const d = RUNES[r];
+  return `<div class="spell-rune"><img src="art/items/${r}.png" alt="" /><div><b>${esc(d.name)}</b><p>${d.lines.map(esc).join(' ')}${d.cost ? ` <em>${esc(d.cost)}</em>` : ''}</p></div></div>`;
+}
+
 /**
  * The in-world HUD. Built once; `update()` only writes DOM when a value
  * changes, so it's cheap to call every frame.
@@ -134,6 +144,8 @@ export class HUD {
   /** 'touch' after a finger press: hover-only behaviour (spell card on hover/focus) is skipped. */
   private lastPointer = '';
   private slotFrames: SlotFrame[] = [];
+  /** Relic runes socketed in the rites (a small rune badge on the slot and a line on its card). */
+  private runes: RuneSockets = {};
   private resizeTooltip = () => this.positionTooltip();
   /** Touch: a press anywhere outside the open spell card closes it. */
   private tooltipTouchAway = (e: PointerEvent) => {
@@ -335,9 +347,26 @@ export class HUD {
     const a = ABILITIES[this.primary];
     return `
           <button data-slot="0" aria-label="${a.name} (left click). Open the Grimoire to inspect this slot">
-            <img src="${a.icon}" alt="" draggable="false" />
+            <img src="${a.icon}" alt="" draggable="false" />${this.runePip(this.primary)}
           </button>
           <span class="key">LMB</span>`;
+  }
+
+  /** The badge of the rune socketed in a rite, or nothing. */
+  private runePip(id: AbilityId): string {
+    const r = isRuneRite(id) ? this.runes[id as RuneRite] : undefined;
+    return r ? `<img class="rune-pip" src="art/items/${r}.png" alt="" draggable="false" title="${esc(RUNES[r].name)}" />` : '';
+  }
+
+  /** The sockets changed: redraw the slots so each rite wears its rune. */
+  setRunes(runes: RuneSockets) {
+    this.runes = runes;
+    this.$('[data-primarywrap]').innerHTML = this.primaryHtml();
+    this.$('.hud-slots').innerHTML = this.slotsHtml();
+    for (const key of [...this.cache.keys()]) if (/^(cd|cdt|res|emp|lock)\d+$/.test(key)) this.cache.delete(key);
+    this.bindSlots();
+    this.tooltipKey = '';
+    this.refreshTooltip();
   }
 
   /** The LMB socket's primary changed (Grimoire). */
@@ -368,7 +397,7 @@ export class HUD {
       return `
         <div class="hud-slot${alt ? ' alt' : ''}">
           <button data-slot="${i + 1}" aria-label="${a.name} (${alt ? 'right-click or key 5' : a.slot === 6 ? 'key R or 6' : `key ${i + 1}`})">
-            <img src="${a.icon}" alt="" draggable="false" />
+            <img src="${a.icon}" alt="" draggable="false" />${this.runePip(id)}
             <span class="cd" data-cd="${i + 1}"></span>
             <span class="cdtext" data-cdt="${i + 1}"></span>
             ${a.essenceCost ? `<span class="cost">${a.essenceCost}</span>` : ''}
@@ -469,7 +498,7 @@ export class HUD {
     const state = this.slotFrames[i] ?? {};
     const id = i === -1 ? this.primary : this.hotbar[i];
     // The rite id is part of the key: a Grimoire swap puts a different rite in the same slot.
-    const key = `${i}|${id}|${!!state.empowered}|${!!state.locked}|${state.affordable}|${Math.ceil((state.left ?? 0) / 1000)}`;
+    const key = `${i}|${id}|${isRuneRite(id) ? this.runes[id as RuneRite] ?? '' : ''}|${!!state.empowered}|${!!state.locked}|${state.affordable}|${Math.ceil((state.left ?? 0) / 1000)}`;
     if (key === this.tooltipKey) return;
     this.tooltipKey = key;
     const data = spellTooltip(id, this.discipline, { ...(i === -1 ? {} : state), key: i === -1 ? 'LMB' : i < 5 ? SLOT_KEYS[i] : undefined });
@@ -482,6 +511,7 @@ export class HUD {
       <div class="spell-metrics">${data.metrics.map((m) => `<div><span>${esc(m.label)}</span><b>${esc(m.value)}</b></div>`).join('')}</div>
       <p class="spell-targeting">${esc(data.targeting)}</p>
       <ul class="spell-details">${data.details.map((d) => `<li>${esc(d)}</li>`).join('')}</ul>
+      ${runeCard(id, this.runes)}
       <div class="spell-tip"><b>Combat tip</b><p>${esc(data.tip)}</p></div>
       <div class="spell-footer">${i < 5 ? 'Click swap below this slot or press L · ' : ''}Codex (K) · Esc closes this card</div>`;
     this.tooltip.scrollTop = scroll;

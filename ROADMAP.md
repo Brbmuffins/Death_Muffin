@@ -44,7 +44,6 @@ flowchart LR
 
   subgraph LATER["🌒 Later — new content"]
     L2[New zones<br/>Catacomb Depths · Hollow Court]:::later
-    L3[Bone Colossus · runes]:::later
     L5[Server authority step 2<br/>enforce + server-side rewards]:::later
     L4[AI companions — parked]:::later
   end
@@ -62,6 +61,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 2 Oct 2026 | Relic runes (branch `dm/runes`, not deployed, migration 024): eleven socketable spell modifiers, one socket per necromancer rite (Bone Needle, Marrow Spear, Exhume, Miasma Circle, Black Litany), set in the Grimoire (L); runes drop from elites, Grave Surges and bosses, stack, rest in the Vault and grind to reagents; the Bone Colossus rune raises one giant thrall (the `bone_colossus` model) from up to five corpses | Real-database probe (`tools/qa/runes-db-probe.cjs`), balance table in BALANCE.md, `tools/qa/runes-smoke.cjs`. |
 | 2 Oct 2026 | Phones, round 2: clear menu icons with labels, and on phones one **☰ Menu** with big tiles for every panel (plus Recall home); counsel cards and prompts in touch wording; Workbench/Cauldron **Craft ×N / ×5 / Max** and bag **Sell all** with confirm; no page zoom on double tap; **Connection lost / Back online** alerts and the save warning shown on phones | Smokes: mobile-nav, craft-n, connection, afk-move, mobile-shots (4 sizes, no overlaps), first-hour (desktop). Craft batches loop the existing single-craft API (one transaction per item). |
 | 2 Oct 2026 | Phones and tablets, battery saver: a **Frame rate** setting (60 or 30 fps, default 60; the game no longer runs at 120 fps on fast screens), phones and tablets start on Graphics Low + 30 fps until the player picks their own (older saved High is treated as the old default), and the 3D view redraws only ~6 times a second while a full-screen panel covers it (the game keeps running) | Settings shows a one-line battery hint. Frame-pacing logic is unit tested. Saved choices are never overridden. |
 | 2 Oct 2026 | Phones and tablets: a compact HUD for phone portrait and landscape (two-row dock, orbs with readings inside, upgrades behind a button, full-screen panels) and a tablet fit; touch play (tap a rite to cast at your target or the nearest enemy, hold for the spell card, drag to walk, pinch to zoom, flask and brew buttons); a **‹ Back** button on panels opened from another panel, and the phone's Back gesture steps back through panels; panels no longer jump to the top while AFK gathering | `tools/qa/mobile-shots.cjs` (no HUD overlaps at 390×844, 844×390, 820×1180, 1180×820) and `tools/qa/mobile-nav-smoke.cjs`. Counsel tips still name keys (WASD, Esc). |
@@ -195,7 +195,7 @@ Two or three bot players you can log in and play with. Recommended design:
 
 ### L2–L4
 - **New zones:** Catacomb Depths and the Hollow Court (`docs/ALCHEMY-AND-WORLDS-PLAN.md`).
-- **Content with paid art ready:** the Bone Colossus, runes (needs a migration), thrall gear.
+- **Content with paid art ready:** nothing waiting: the Bone Colossus and the runes are built (`dm/runes`, needs migration 024), thrall gear shipped.
 - **Server authority:** today the browser is trusted for level, gold and loot (fine among friends). Move rewards to the server before opening to strangers. Step 1 (plausibility guards, report-first, `AUTHORITY_MODE`) is built on `dm/server-authority`, not deployed: [docs/SERVER-AUTHORITY.md](docs/SERVER-AUTHORITY.md). Server-rolled kill rewards (step 2) remain.
 
 ---

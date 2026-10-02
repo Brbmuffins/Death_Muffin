@@ -53,6 +53,8 @@ import type { BinbunId } from '../graphics/binbun/catalog';
 import { NewBloodSystem } from './NewBloodSystem';
 import { NECRO_WEAPON_TUNING } from '../content/necroWeapons';
 import { abilityCooldownMs, abilityLockMs, abilityRange, pierceTargets, reapTargets } from './weaponLine';
+import { RUNES, RUNE_TUNING, type RuneId, type RuneRite } from '../content/runes';
+import { corpsesWithin, impaleTarget, ringCenter, ringHits, splinterTarget, volleyTargets } from './runeCast';
 
 /**
  * Veil Step's destination: walk from (x, z) toward (tx, tz) in small steps and keep the last point
@@ -152,7 +154,18 @@ export class AbilitySystem {
   private vigilUntil = 0;
   private lastVigilAt = 0;
 
+  /** Bone Needle casts so far (the Volley rune fires on every 4th). */
+  private needleCasts = 0;
+  /** The last Exhume raised a Bone Colossus (its cooldown is longer). */
+  private colossusCast = false;
+
   constructor(private ctx: AbilityContext) { this.newBlood = new NewBloodSystem(ctx); }
+
+  /** The rune socketed in a rite, if any. Runes change the rite's behaviour; auto combat, hotkeys and the mouse all cast through here. */
+  rune(rite: RuneRite): RuneId | undefined {
+    const id = this.ctx.player.runes[rite];
+    return id && RUNES[id]?.rite === rite ? id : undefined;
+  }
 
   /** The realtime socket id replaces the provisional solo id once connected. */
   setSelf(id: string) {
@@ -314,7 +327,9 @@ export class AbilitySystem {
       // A Ritual Sickle gives back a share of Exhume's essence (none was spent on an empowered cast).
       if (id === 'exhume' && !empowered && p.loadout.exhumeRefund > 0) p.essence = Math.min(p.stats.maxEssence, p.essence + def.essenceCost * p.loadout.exhumeRefund);
       // Apply weapon cooldown changes and elixir haste when the cooldown starts.
-      p.cooldowns.set(id, now + abilityCooldownMs(id, def.cooldownMs, p.loadout, PRIMARIES.includes(id)) / (1 + p.brewValue('haste', now)));
+      // Bone Colossus: raising a giant takes Exhume out of your hands for a while.
+      const runeCool = id === 'exhume' && this.colossusCast ? RUNE_TUNING.colossus.cooldownMult : 1;
+      p.cooldowns.set(id, now + (abilityCooldownMs(id, def.cooldownMs, p.loadout, PRIMARIES.includes(id)) * runeCool) / (1 + p.brewValue('haste', now)));
     }
     return result;
   }
@@ -342,13 +357,44 @@ export class AbilitySystem {
     const from = avatar.tip();
     effects.flash({ x: from.x, y: from.y, z: from.z, color: N.trail, size: 0.7, duration: 0.14 });
     audio.play('needleCast', p.x, p.z);
-    const enemyId = t.enemyId;
     const lo = p.loadout;
+    const rune = this.rune('bone_needle');
     // Weapon line: a wand's needle strikes softer (but faster); a sickle's leaves the target Withered; a staff's pierces on.
-    const dmg = this.sp * ABILITIES.bone_needle.power * lo.needleDamageMult * (0.9 + Math.random() * 0.2);
+    // Marrow-Tap trades a third of the damage for essence; the Volley's needles each carry half.
+    const volley = rune === 'rune_volley' && ++this.needleCasts % RUNE_TUNING.volley.every === 0;
+    const runeMult = rune === 'rune_marrow_tap' ? RUNE_TUNING.marrowTap.damageMult : volley ? RUNE_TUNING.volley.damageFrac : 1;
+    const dmg = this.sp * ABILITIES.bone_needle.power * lo.needleDamageMult * runeMult * (0.9 + Math.random() * 0.2);
+    const essence = NEEDLE_ESSENCE + (rune === 'rune_marrow_tap' ? RUNE_TUNING.marrowTap.essenceBonus : 0);
+    if (!volley) {
+      this.launchNeedle(t, from, dmg, essence, rune === 'rune_splinter');
+      return 'ok';
+    }
+    // Volley: this needle and two more, at the enemies nearest the target (or all at the target when it stands alone).
+    const aim: CastTarget[] = [t];
+    if (!t.boss && t.enemyId !== undefined) {
+      const live = [...this.ctx.enemies().values()].filter((e) => e.state !== 'dead');
+      const first = live.find((e) => e.id === t.enemyId);
+      if (first) for (const e of volleyTargets({ x: p.x, z: p.z }, first, live).slice(1)) aim.push({ x: e.x, z: e.z, enemyId: e.id });
+    }
+    while (aim.length < RUNE_TUNING.volley.needles) aim.push(t);
+    // The volley returns what one needle would (an even share each), so it is a damage rune, not an essence one.
+    aim.forEach((tt, i) => {
+      const spread = { x: from.x + (i - 1) * 0.12, y: from.y, z: from.z };
+      this.launchNeedle(tt, spread, dmg, essence / RUNE_TUNING.volley.needles, false, i * 0.05);
+    });
+    nf.boneSplinters(effects, from.x, from.y, from.z, { n: 5, color: N.core, speed: 3.5 });
+    effects.decal({ tex: fx.ring(), color: N.trail, x: p.x, z: p.z, r: 1.3, duration: 0.35, opacity: 0.55, growFrom: 0.4 });
+    return 'ok';
+  }
+
+  /** One needle in flight: damage on arrival, essence back, and (Splinters) a shard to the nearest other enemy. */
+  private launchNeedle(t: CastTarget, from: Vec3, dmg: number, essence: number, splinters: boolean, delayS = 0) {
+    const { player: p, effects } = this.ctx;
+    const lo = p.loadout;
+    const enemyId = t.enemyId;
     const withered = lo.needleWithered > 0 ? { withered: lo.needleWithered, witheredCap: this.ctx.discipline.mods.witheredMaxStacks } : {};
     const crit = Math.random() < 0.08;
-    effects.projectile({
+    const go = () => effects.projectile({
       from,
       kind: 'needle',
       color: N.trail,
@@ -371,8 +417,9 @@ export class AbilitySystem {
           if (!this.ctx.enemies().has(enemyId!)) return;
           this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [enemyId!], dmg: amount, ...withered });
           if (lo.needlePierce > 0) this.pierceBeyond(enemyId!, pos, dmg * NECRO_WEAPON_TUNING.staff.pierceDamageMult, lo.needlePierce, withered);
+          if (splinters) this.splinter(enemyId!, pos, dmg);
         }
-        p.essence = Math.min(p.stats.maxEssence, p.essence + NEEDLE_ESSENCE);
+        p.essence = Math.min(p.stats.maxEssence, p.essence + essence);
         audio.play('needleHit', pos.x, pos.z, crit ? 1.4 : 1);
         effects.flash({ x: pos.x, y: pos.y, z: pos.z, color: N.impact, size: crit ? 1.7 : 1.05, duration: 0.2 });
         effects.emit({ x: pos.x, y: pos.y, z: pos.z, count: crit ? 16 : 8, color: N.dust, spread: 0.1, speed: 3.2, up: 1.2, life: 0.4, size: 0.13, gravity: 7 });
@@ -384,7 +431,24 @@ export class AbilitySystem {
         this.ctx.number(pos.x, pos.z, amount, crit ? 'crit' : 'hit');
       },
     });
-    return 'ok';
+    if (delayS > 0) this.timed.push({ until: this.ctx.now() + delayS * 1000 + 50, next: this.ctx.now() + delayS * 1000, every: 1e9, tick: () => { go(); return true; } });
+    else go();
+  }
+
+  /** Splinters rune: a shard of the needle flies to the nearest other enemy for half the damage. */
+  private splinter(firstId: number, at: { x: number; z: number }, dmg: number) {
+    const { effects } = this.ctx;
+    const first = this.ctx.enemies().get(firstId);
+    const pool = [...this.ctx.enemies().values()].filter((e) => e.state !== 'dead');
+    const e = splinterTarget(first ?? { id: firstId, x: at.x, z: at.z }, pool);
+    if (!e) return;
+    const amount = dmg * RUNE_TUNING.splinter.damageFrac;
+    this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [e.id], dmg: amount });
+    effects.beam({ x: at.x, y: 1, z: at.z }, () => ({ x: e.x, y: 1, z: e.z }), N.core, 0.03, 0.16);
+    effects.flash({ x: e.x, y: 1, z: e.z, color: N.core, size: 0.7, duration: 0.16 });
+    nf.boneSplinters(effects, e.x, 1, e.z, { n: 3, color: N.core });
+    nf.boneSplinters(effects, at.x, 1, at.z, { n: 6, color: N.core, speed: 4.5 });
+    this.ctx.number(e.x, e.z, amount, 'hit');
   }
 
   /** Staff needle: it carries on through the nearest enemy behind its target, in its lane. */
@@ -473,10 +537,15 @@ export class AbilitySystem {
   private spear(t: CastTarget, mult = 1): CastResult {
     const { player: p, effects, avatar } = this.ctx;
     const def = ABILITIES.marrow_spear;
+    const rune = this.rune('marrow_spear');
+    const ring = rune === 'rune_ossuary_ring';
+    const impale = rune === 'rune_impale';
     const range = def.range * mult;
     const radius = def.radius * mult;
-    let dx = t.x - p.x;
-    let dz = t.z - p.z;
+    // Ossuary Ring: the spear flies to the cursor (within its reach) and bursts there in a ring instead of a line.
+    const centre = ring ? ringCenter({ x: p.x, z: p.z }, { x: t.x, z: t.z }, RUNE_TUNING.ring.maxCastRange * mult) : null;
+    let dx = (centre?.x ?? t.x) - p.x;
+    let dz = (centre?.z ?? t.z) - p.z;
     const len = Math.hypot(dx, dz) || 1;
     dx /= len;
     dz /= len;
@@ -484,7 +553,7 @@ export class AbilitySystem {
     avatar.cast('cast', 2.4, p.facing, CAST_FLOW.marrow_spear.gestureSeconds, 'marrow_spear');
     const origin = { x: p.x, z: p.z };
     const dmg = this.sp * def.power;
-    const end = { x: origin.x + dx * range, y: 0.3, z: origin.z + dz * range };
+    const end = centre ? { x: centre.x, y: 0.3, z: centre.z } : { x: origin.x + dx * range, y: 0.3, z: origin.z + dz * range };
     const tip = avatar.tip();
     // A clean ivory release precedes the eruption. Resolve the live line on
     // impact, rather than hurting enemies before any bone reaches them.
@@ -494,7 +563,9 @@ export class AbilitySystem {
       from: tip, to: () => end, kind: 'needle', color: S.bone, speed: 48,
       onArrive: () => {
         if (!p.alive) return;
+        if (centre) return this.spearRing(centre, RUNE_TUNING.ring.radius * mult, dmg * RUNE_TUNING.ring.damageMult);
         const halfW = radius + 0.2;
+        if (impale) return this.spearImpale(origin, dx, dz, range, halfW, dmg * RUNE_TUNING.impale.damageMult, end);
         const ids: number[] = [];
         for (const e of this.ctx.enemies().values()) {
           if (e.state === 'dead') continue;
@@ -536,6 +607,76 @@ export class AbilitySystem {
     return 'ok';
   }
 
+  /** Ossuary Ring rune: bone erupts in a ring around `c`, striking everything inside it (Fracture and Hemorrhage as for the line). */
+  private spearRing(c: { x: number; z: number }, r: number, dmg: number) {
+    const { effects } = this.ctx;
+    const foes = [...this.ctx.enemies().values()].filter((e) => e.state !== 'dead');
+    const hit = ringHits(c, r, foes);
+    for (const e of hit) {
+      this.ctx.number(e.x, e.z, dmg, 'spear');
+      effects.flash({ x: e.x, y: 0.8, z: e.z, color: S.bone, size: 0.65, duration: 0.14 });
+    }
+    if (hit.length) this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: hit.map((e) => e.id), dmg, fracture: 1, bleed: dmg * HEMORRHAGE.dpsFrac });
+    const b = this.ctx.boss();
+    if (b.active && Math.hypot(b.x - c.x, b.z - c.z) <= r + BOSS_RADIUS) {
+      this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, fracture: 1, boss: true });
+      this.ctx.number(b.x, b.z, dmg, 'spear');
+    }
+    // A rim of tall spikes, an inner ring, a spoke cracked into the ground and a hard shake: a circle of bone, not a line.
+    effects.spikeRing(c.x, c.z, r * 0.95, Math.round(10 + r * 3), 1.1);
+    effects.spikeRing(c.x, c.z, r * 0.5, 6, 0.9);
+    effects.decal({ tex: fx.ring(), color: S.bone, x: c.x, z: c.z, r: r * 1.05, duration: 0.7, opacity: 0.85, growFrom: 0.3 });
+    effects.decal({ tex: fx.cracks(), color: S.crack, x: c.x, z: c.z, r, duration: 0.8, opacity: 0.6, rot: Math.random() * 6 });
+    nf.graveDirt(effects, c.x, c.z, { r: r * 0.8, n: 8, up: 3 });
+    nf.boneSplinters(effects, c.x, 0.6, c.z, { n: 8, color: S.bone, speed: 4.5 });
+    effects.lightFlash(c.x, 1, c.z, S.crack, 14, 0.25);
+    audio.play('spear', c.x, c.z);
+    this.ctx.shake(0.07);
+  }
+
+  /** Impaling rune: the spear stops at the first enemy it meets, skewers it for more and roots it. */
+  private spearImpale(origin: { x: number; z: number }, dx: number, dz: number, range: number, halfW: number, dmg: number, end: { x: number; z: number }) {
+    const { effects } = this.ctx;
+    const foes = [...this.ctx.enemies().values()].filter((e) => e.state !== 'dead');
+    const hit = impaleTarget(origin, dx, dz, range, halfW, foes);
+    const b = this.ctx.boss();
+    let bossAlong = Infinity;
+    if (b.active) {
+      const rx = b.x - origin.x;
+      const rz = b.z - origin.z;
+      const along = rx * dx + rz * dz;
+      if (along > 0 && along < range + BOSS_RADIUS && Math.abs(rx * dz - rz * dx) < halfW + BOSS_RADIUS) bossAlong = along;
+    }
+    if (!hit && bossAlong === Infinity) {
+      // Nothing to skewer: the spear sinks into the ground at the end of its reach.
+      effects.spikeLine(origin.x, origin.z, dx, dz, 2, 0.6, false);
+      nf.graveDirt(effects, end.x, end.z, { r: 0.6, n: 4 });
+      audio.play('spear', end.x, end.z);
+      return;
+    }
+    let tx: number, tz: number, along: number;
+    if (hit && hit.along <= bossAlong) {
+      const e = hit.foe;
+      this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [e.id], dmg, fracture: 1, bleed: dmg * HEMORRHAGE.dpsFrac, root: true, rootS: RUNE_TUNING.impale.rootS });
+      this.ctx.number(e.x, e.z, dmg, 'spear');
+      [tx, tz, along] = [e.x, e.z, hit.along];
+      // The roots that hold it: a cage of bone around the body.
+      effects.spikeRing(e.x, e.z, 0.95, 9, RUNE_TUNING.impale.rootS + 0.1);
+      effects.decal({ tex: fx.ring(), color: S.crack, x: e.x, z: e.z, r: 1.3, duration: RUNE_TUNING.impale.rootS, opacity: 0.7, growFrom: 0.5, fadeOut: 0.4 });
+    } else {
+      // A boss shrugs the root off but takes the blow.
+      this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: [], dmg, fracture: 1, boss: true });
+      this.ctx.number(b.x, b.z, dmg, 'spear');
+      [tx, tz, along] = [b.x, b.z, bossAlong];
+    }
+    effects.spikeLine(origin.x, origin.z, dx, dz, Math.max(1.5, along), 0.5, false);
+    effects.flash({ x: tx, y: 1, z: tz, color: S.bone, size: 1.4, duration: 0.2 });
+    nf.boneSplinters(effects, tx, 1, tz, { n: 8, color: S.bone, speed: 4.5 });
+    effects.lightFlash(tx, 1, tz, S.crack, 14, 0.25);
+    audio.play('spear', tx, tz);
+    this.ctx.shake(0.06);
+  }
+
   /**
    * Nearest corpse to the cursor (within `pickRadius`, and within `range` of
    * the caster), else the nearest one to the player. Shared by Exhume and
@@ -568,6 +709,14 @@ export class AbilitySystem {
     const { player: p, discipline, avatar, effects } = this.ctx;
     const c = this.pickCorpse(t);
     if (!c) return 'no_corpse';
+    const rune = this.rune('exhume');
+    const mass = rune === 'rune_mass_grave';
+    // Bone Colossus needs company: at least three corpses lying within reach of the one you named, and no Colossus standing already.
+    // Otherwise the rite raises an ordinary thrall, so the legion can still be filled around the giant.
+    const company = rune === 'rune_bone_colossus' ? corpsesWithin(c, RUNE_TUNING.colossus.pickRadius, this.ctx.corpses().values()).slice(0, RUNE_TUNING.colossus.corpses) : [];
+    const standing = [...(this.ctx.thralls?.().values() ?? [])].some((t) => t.owner === this.ctx.selfId && t.kind === 'colossus' && t.state !== 'dead');
+    const colossus = company.length >= RUNE_TUNING.colossus.minCorpses && !standing;
+    this.colossusCast = colossus;
     p.face(c.x, c.z);
     avatar.cast('dig', 2.6, p.facing, CAST_FLOW.exhume.gestureSeconds, 'exhume');
     const m = discipline.mods;
@@ -576,13 +725,15 @@ export class AbilitySystem {
       by: this.ctx.selfId,
       x: c.x,
       z: c.z,
-      r: 0.8,
+      r: colossus ? RUNE_TUNING.colossus.pickRadius : mass ? RUNE_TUNING.massGrave.pickRadius : 0.8,
       kind: m.thrallKind,
       cap: m.thrallCap,
       hp: p.stats.thrallHp,
       damage: p.stats.thrallDamage,
       attackSpeedMult: m.thrallAttackSpeedMult,
       ...(p.loadout.bellAllyHeal > 0 ? { allyHeal: p.loadout.bellAllyHeal } : {}),
+      ...(mass ? { count: RUNE_TUNING.massGrave.count } : {}),
+      ...(colossus ? { colossus: true } : {}),
     });
     effects.beam(avatar.tip(), () => ({ x: c.x, y: 0.3, z: c.z }), X.beam, 0.06, 0.4);
     audio.play('exhume', c.x, c.z);
@@ -593,6 +744,31 @@ export class AbilitySystem {
     nf.spectralHands(effects, c.x, c.z, { n: 3, r: 0.6, duration: 1.2 });
     nf.spiritWisps(effects, c.x, c.z, X.spirit, { n: 2, r: 0.3, y: 0.5, size: 0.7 });
     this.bb('exhume_lift', c.x, c.z);
+    if (mass) {
+      // Mass Grave: the other graves in reach open too (jade beams from the caster to each).
+      for (const o of corpsesWithin(c, RUNE_TUNING.massGrave.pickRadius, this.ctx.corpses().values()).slice(0, RUNE_TUNING.massGrave.count)) {
+        if (o.id === c.id) continue;
+        effects.beam(avatar.tip(), () => ({ x: o.x, y: 0.3, z: o.z }), X.beam, 0.04, 0.35);
+        effects.decal({ tex: fx.cracks(), color: X.deep, x: o.x, z: o.z, r: 1.2, rot: Math.random() * 6, duration: 1.2, opacity: 0.9, growFrom: 0.3 });
+        nf.graveDirt(effects, o.x, o.z, { r: 0.5, n: 6, up: 2.6 });
+        nf.spectralHands(effects, o.x, o.z, { n: 2, r: 0.5, duration: 1.1 });
+        effects.emit({ x: o.x, y: 0.2, z: o.z, count: 18, color: X.spirit, spread: 0.5, speed: 0.4, up: 3, life: 1, size: 0.3, gravity: -0.5 });
+      }
+    } else if (colossus) {
+      // The bones are drawn together: a jade thread from each corpse to the centre, motes streaming in, a ring of the Covenant's colour.
+      const cx = company.reduce((a, o) => a + o.x, 0) / company.length;
+      const cz = company.reduce((a, o) => a + o.z, 0) / company.length;
+      for (const o of company) {
+        effects.beam({ x: o.x, y: 0.4, z: o.z }, () => ({ x: cx, y: 1.2, z: cz }), X.beam, 0.05, 0.7);
+        effects.emit({ x: o.x, y: 0.3, z: o.z, count: 14, color: X.spirit, spread: 0.4, speed: 2.2, up: 1.2, life: 0.8, size: 0.3 });
+        nf.boneSplinters(effects, o.x, 0.4, o.z, { n: 5, color: N.core, speed: 3 });
+      }
+      effects.decal({ tex: fx.sigil(), color: X.spirit, x: cx, z: cz, r: 3.2, duration: 1.4, opacity: 0.8, growFrom: 1.4, spin: 0.8 });
+      effects.decal({ tex: fx.ring(), color: X.beam, x: cx, z: cz, r: 3.6, duration: 0.9, opacity: 0.9, growFrom: 0.4 });
+      effects.emit({ x: cx, y: 0.4, z: cz, count: 36, color: X.spirit, spread: 3, speed: 5, up: 0.4, life: 0.5, size: 0.3, inward: true, drag: 0 });
+      effects.lightFlash(cx, 1.5, cz, X.spirit, 34, 0.9);
+      this.ctx.shake(0.1);
+    }
     return 'ok';
   }
 
@@ -608,7 +784,9 @@ export class AbilitySystem {
     }
     p.face(x, z);
     avatar.cast('cast', 2.2, p.facing, CAST_FLOW.miasma.gestureSeconds, 'miasma');
-    const r = def.radius * discipline.mods.miasmaRadiusMult * mult;
+    const rune = this.rune('miasma');
+    // Creeping Rot gives up a little width for a circle that walks to its prey.
+    const r = def.radius * discipline.mods.miasmaRadiusMult * mult * (rune === 'rune_creeping_rot' ? RUNE_TUNING.creepingRot.radiusMult : 1);
     const intent: Intent = {
       t: 'miasma',
       by: this.ctx.selfId,
@@ -619,6 +797,8 @@ export class AbilitySystem {
       durationMs: 6000,
       witheredCap: discipline.mods.witheredMaxStacks,
       bloom: discipline.mods.miasmaBurstsCorpses,
+      ...(rune === 'rune_creeping_rot' ? { creep: RUNE_TUNING.creepingRot.speed } : {}),
+      ...(rune === 'rune_contagion' ? { contagion: true } : {}),
     };
     effects.projectile({
       from: avatar.tip(),
@@ -636,7 +816,8 @@ export class AbilitySystem {
         effects.emit({ x, y: 0.3, z, count: 16, color: M.rot, spread: r * 0.5, speed: 1.1, up: 0.6, life: 0.65, size: 0.18 });
         // Rot spores drift up out of the cloud and hang in the air.
         nf.rotSpores(effects, x, z, M.rot, { r: r * 0.75, n: Math.round(8 + r * 2) });
-        this.bb('miasma_cloud', x, z, { scale: r / 3.8 });
+        // A creeping circle gets its cloud from the zone view, which follows it as it drifts.
+        if (rune !== 'rune_creeping_rot') this.bb('miasma_cloud', x, z, { scale: r / 3.8 });
       },
     });
     return 'ok';
@@ -1850,15 +2031,19 @@ export class AbilitySystem {
   private litany(mult = 1): CastResult {
     const { player: p, avatar, discipline } = this.ctx;
     const def = ABILITIES.black_litany;
+    const rune = this.rune('black_litany');
     avatar.cast('cast', 1.6, p.facing, CAST_FLOW.black_litany.gestureSeconds, 'black_litany');
     this.ctx.send({
       t: 'litany',
       by: this.ctx.selfId,
       x: p.x,
       z: p.z,
-      r: def.radius * mult,
-      spellPower: this.sp,
+      // Requiem doubles the radius (the burst lands later); Hollow Choir hits softer and spares the thralls.
+      r: def.radius * mult * (rune === 'rune_requiem' ? RUNE_TUNING.requiem.radiusMult : 1),
+      spellPower: this.sp * (rune === 'rune_hollow_choir' ? RUNE_TUNING.hollowChoir.powerMult : 1),
       leaveCorpses: discipline.mods.sacrificeLeavesCorpse,
+      ...(rune === 'rune_hollow_choir' ? { spare: true } : {}),
+      ...(rune === 'rune_requiem' ? { delayMs: RUNE_TUNING.requiem.delayMs } : {}),
     });
     return 'ok';
   }
@@ -1917,7 +2102,7 @@ export class AbilitySystem {
   }
 
   /** VFX + self-effects when the host reports the litany outcome. */
-  onLitany(ev: { x: number; z: number; r: number; corpses: number; resonant: number; thralls: number; tethers: [number, number][] }, mine: boolean) {
+  onLitany(ev: { x: number; z: number; r: number; corpses: number; resonant: number; thralls: number; spared?: number; tethers: [number, number][] }, mine: boolean) {
     const { effects, avatar, player: p, discipline } = this.ctx;
     const tip = mine ? avatar.tip() : new THREE.Vector3(ev.x, 1.6, ev.z);
     for (const [x, z] of ev.tethers.slice(0, 10)) {
@@ -1938,6 +2123,14 @@ export class AbilitySystem {
     nf.skullRing(effects, ev.x, ev.z, Math.min(ev.r * 0.62, 5), L.hot, { n: Math.min(8, 4 + ev.corpses + ev.thralls), origin: mine ? 'player' : 'thrall' });
     for (const [x, z] of ev.tethers.slice(0, 5)) nf.soulMotes(effects, x, z, L.hot, { r: 0.3, n: 3, up: 1.8, origin: mine ? 'player' : 'thrall' });
     effects.lightFlash(ev.x, 2, ev.z, L.core, 32, 0.4);
+    // Hollow Choir: the spared thralls glow where they stand (a jade halo and soul-lights rising from each).
+    if (ev.spared) {
+      for (const th of this.ctx.thralls?.().values() ?? []) {
+        if (th.owner !== (mine ? this.ctx.selfId : th.owner) || Math.hypot(th.x - ev.x, th.z - ev.z) > ev.r) continue;
+        effects.decal({ tex: fx.ring(), color: X.spirit, x: th.x, z: th.z, r: 1.2, duration: 0.9, opacity: 0.9, growFrom: 0.3 });
+        nf.soulMotes(effects, th.x, th.z, X.beam, { r: 0.35, n: 4, up: 2.2, origin: 'thrall' });
+      }
+    }
     audio.play('litany', ev.x, ev.z, 1 + Math.min(0.6, (ev.corpses + ev.thralls) * 0.05));
     this.ctx.shake(0.08 + Math.min(0.08, (ev.corpses + ev.thralls) * 0.008));
     if (!mine) return;

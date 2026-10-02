@@ -1,0 +1,31 @@
+/* Relic runes: the Grimoire's socket panel, rune cards and the Reliquary/Codex rune lines. Jade is the Covenant's colour (Exhume's spirit). */
+.cw-grim-socket img.cw-rune-pip { position: absolute; right: 5px; top: 5px; width: 20px; height: 20px; border-radius: 50%; border: 1px solid #6fe3c8; background: #07060a; box-shadow: 0 0 8px rgba(111, 227, 200, 0.6); object-fit: cover; pointer-events: none; }
+.cw-grim-socket { --rune-bg: rgba(31, 143, 134, 0.1); }
+.cw-rune-box { margin: 0 0 12px; padding: 10px 12px; border: 1px solid rgba(111, 227, 200, 0.4); background: linear-gradient(180deg, rgba(31, 143, 134, 0.14), rgba(7, 6, 10, 0.4)); }
+.cw-rune-box h3 { margin: 0 0 6px; font-family: var(--cw-font-display); font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: #9ff5e0; font-weight: 600; display: flex; align-items: baseline; gap: 8px; }
+.cw-rune-box h3 small { font-size: 11px; letter-spacing: 0.04em; text-transform: none; color: var(--cw-bone-300); font-weight: 400; }
+.cw-rune-now { display: flex; gap: 10px; align-items: flex-start; }
+.cw-rune-frame { width: 56px; height: 56px; flex: none; display: grid; place-items: center; border: 2px solid rgba(111, 227, 200, 0.55); border-radius: 50%; background: radial-gradient(circle, rgba(31, 143, 134, 0.25), #07060a 70%); box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8); overflow: hidden; }
+.cw-rune-frame.empty { border-style: dashed; border-color: rgba(111, 227, 200, 0.3); color: rgba(159, 245, 224, 0.4); font-size: 22px; }
+.cw-rune-frame img { width: 100%; height: 100%; object-fit: cover; }
+.cw-rune-now .txt { flex: 1; min-width: 0; }
+.cw-rune-now .txt b { color: #d9fff4; font-size: 14px; }
+.cw-rune-now .txt p { margin: 3px 0 0; font-size: 12px; line-height: 1.4; color: var(--cw-bone-200); }
+.cw-rune-now .txt p.cost { color: #e7b07a; }
+.cw-rune-list { display: grid; gap: 6px; margin-top: 10px; }
+.cw-rune-opt { display: grid; grid-template-columns: 38px 1fr auto; gap: 10px; align-items: center; padding: 6px 8px; font: inherit; text-align: left; color: inherit; background: var(--cw-inset); border: 1px solid var(--cw-border); cursor: pointer; }
+.cw-rune-opt img { width: 38px; height: 38px; border-radius: 6px; object-fit: cover; }
+.cw-rune-opt .nm { font-weight: 600; font-size: 13px; color: var(--cw-bone-100); }
+.cw-rune-opt .nm i { font-style: normal; font-weight: 400; color: var(--cw-bone-300); margin-left: 6px; font-size: 11px; }
+.cw-rune-opt .sh { display: block; font-size: 11.5px; color: var(--cw-bone-200); line-height: 1.35; }
+.cw-rune-opt .go { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #9ff5e0; }
+.cw-rune-opt:hover:not(:disabled), .cw-rune-opt:focus-visible { border-color: #6fe3c8; outline: none; }
+.cw-rune-opt.on { border-color: #6fe3c8; background: rgba(31, 143, 134, 0.18); cursor: default; }
+.cw-rune-opt.sealed { opacity: 0.55; cursor: default; }
+.cw-rune-opt.sealed .go { color: var(--cw-bone-300); letter-spacing: 0; text-transform: none; max-width: 150px; text-align: right; }
+.cw-rune-err { color: #ff9d8a; font-size: 12px; min-height: 0; margin-top: 6px; }
+.cw-rune-none { font-size: 12px; color: var(--cw-bone-300); margin: 0; }
+.cw-rune-line { font-size: 12px; line-height: 1.4; margin: 4px 0 0; color: var(--cw-bone-200); }
+.cw-rune-line b { color: #9ff5e0; }
+.cw-rune-line em { font-style: normal; color: #e7b07a; }
+.cw-rune-rite { color: #9ff5e0; }

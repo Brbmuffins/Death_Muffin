@@ -112,6 +112,8 @@ export type TipId =
   | 'tool'
   | 'toolBelt'
   | 'legion'
+  | 'rune'
+  | 'runeSocketed'
   | 'acolyte'
   | 'templar'
   // Professions (docs/PROFESSIONS-ROADMAP.md §11).
@@ -468,6 +470,14 @@ export const TIPS: Record<TipId, Tip> = {
   legion: {
     title: 'Spare gear for your legion',
     body: 'That weapon or armor can arm your thralls instead of being salvaged. Open the <b>Legion</b> [[(<kbd>Y</kbd>, or the button in the Reliquary)||(the button in the Reliquary)]]: one <b>Weapon</b> and one <b>Armour</b> slot, kept outside your bag. Its stats become thrall damage, health and attack speed, and each spare piece shows <b>▲</b> or <b>▼</b> against what the legion wears. Spend gold there to <b>Reinforce</b> the bindings. Thralls you raise from then on carry it.',
+  },
+  rune: {
+    title: 'A Relic rune',
+    body: 'Runes change <b>how</b> a rite behaves, not how hard it hits: one turns five corpses into a single giant, another delays Black Litany and doubles it. Open the <b>Grimoire</b>{p:L}, choose a rite and socket the rune under the bar. One rune per rite, and it fits only its own. Take it out whenever you like; it is never lost. Runes stack in the Reliquary, can rest in the Vault and can be ground at the Bone Grinder. The Codex{p:K} lists them all.',
+  },
+  runeSocketed: {
+    title: 'The rune is set',
+    body: 'The rite now wears the rune: a <b>jade badge</b> sits on its slot, and [[hovering||pressing and holding]] the slot shows exactly what changed and what it costs. Swap runes in the Grimoire{p:L} to try another style; your cooldowns are not reset.',
   },
   ghoul: {
     title: 'Barrow Ghoul',

@@ -24,6 +24,8 @@ export function makeSnapshot(sim: WorldSim, full: boolean): WorldSnapshot {
         // Field 10: bit 0 empowered, bit 1 rallied, bit 2 hexed by a Bog Hag (older clients read it as a truthy flag only).
     thralls.push([t.id, t.owner, t.kind, r2(t.x), r2(t.z), r2(t.facing), Math.round(t.hp), Math.round(t.maxHp), T_STATES.indexOf(t.state) | (t.moving ? 16 : 0), r2(t.stateT), (t.empowered ? 1 : 0) | ((t.rallyT ?? 0) > 0 ? 2 : 0) | ((t.cursedT ?? 0) > 0 ? 4 : 0), t.speed]);
   }
+  const zpos: [number, number, number][] = [];
+  for (const z of sim.zones.values()) if (z.creep) zpos.push([z.id, r2(z.x), r2(z.z)]);
   return {
     t: sim.time,
     waveTier: sim.waveTier,
@@ -33,6 +35,7 @@ export function makeSnapshot(sim: WorldSim, full: boolean): WorldSnapshot {
     thralls,
     boss: { ...sim.bossState },
     depleted: sim.depletedNodes(),
+    ...(zpos.length ? { zpos } : {}),
     ...(full ? { corpses: [...sim.corpses.values()], zones: [...sim.zones.values()] } : {}),
   };
 }
@@ -196,6 +199,10 @@ export class WorldMirror {
     if (s.zones) {
       this.zones.clear();
       for (const z of s.zones) this.zones.set(z.id, z);
+    }
+    if (Array.isArray(s.zpos)) for (const [id, x, z] of s.zpos) {
+      const zone = this.zones.get(id);
+      if (zone) { zone.x = x; zone.z = z; }
     }
     this.bossState = s.boss;
     if (Array.isArray(s.depleted)) {

@@ -70,6 +70,11 @@ const TARGETS = {
     out: join(root, 'server/death-muffin/backend/gathering/legion-rules.cjs'),
     about: 'Legion kit (thrall gear) slots, eligibility and bonus rules shared by the web client, the offline mock and the Death Muffin backend.',
   },
+  runes: {
+    entry: 'src/gameplay/runeRules.ts',
+    out: join(root, 'server/death-muffin/backend/gathering/rune-rules.cjs'),
+    about: 'Relic rune sockets (slots, which rune fits which rite) shared by the web client, the offline mock and the Death Muffin backend.',
+  },
 };
 
 export const OUT = TARGETS.necro.out;

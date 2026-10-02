@@ -13,6 +13,9 @@ export const SALVAGE_SKILL = 'salvaging';
 /** Item types the grinder accepts (the same list the Reliquary treats as gear). */
 export const SALVAGE_GEAR_TYPES = ['weapon', 'offhand', 'armor_head', 'armor_chest', 'armor_legs', 'armor_feet', 'armor_hands', 'ring', 'trinket'] as const;
 export const isSalvageGear = (itemType: string) => (SALVAGE_GEAR_TYPES as readonly string[]).includes(itemType);
+/** Relic runes (content/runes.ts) can be ground too, one at a time, and give reagents only (no ingots or planks). */
+export const isSalvageRune = (itemType: string) => itemType === 'rune';
+export const isSalvageable = (itemType: string) => isSalvageGear(itemType) || isSalvageRune(itemType);
 
 export const SALVAGE_RARITIES = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'relic'] as const;
 export type SalvageRarity = (typeof SALVAGE_RARITIES)[number];
@@ -73,6 +76,8 @@ const tierOf = (rarity: string): Tier => TIERS[(SALVAGE_RARITIES as readonly str
 export const yieldsPlanks = (item: { id: string }) => /staff|wand|grimoire|tome|crozier|book/.test(item.id);
 
 const REAGENT_RARE = ['reagent_plague_bile', 'reagent_cinder_ash'];
+/** A rune is ground to reagents only: a little more Grave Dust than gear gives. */
+const RUNE_DUST: [number, number] = [2, 4];
 
 /** Every id salvaging can ever return (for tests, previews and the migration check). */
 export function salvageItemIds(): string[] {
@@ -84,10 +89,12 @@ export function salvageItemIds(): string[] {
 /** What one salvage can give, for the panel preview (no rolling). */
 export function salvagePreview(item: SalvageItem): { materials: string[]; materialQty: [number, number]; reagents: { id: string; chance: number; qty: [number, number] }[]; xp: number; extraChance: number } {
   const t = tierOf(item.rarity);
-  const reagents = [{ id: 'reagent_grave_dust', chance: 1, qty: [1, 2] as [number, number] }];
+  const rune = isSalvageRune(item.item_type);
+  const reagents = [{ id: 'reagent_grave_dust', chance: 1, qty: (rune ? RUNE_DUST : [1, 2]) as [number, number] }];
   if (t.ecto) reagents.push({ id: 'reagent_wraith_ectoplasm', chance: t.ecto, qty: [1, 1] });
   if (t.rare) for (const id of REAGENT_RARE) reagents.push({ id, chance: t.rare / 2, qty: [1, 1] });
   if (t.meal) reagents.push({ id: 'bone_meal', chance: t.meal, qty: [1, 1] });
+  if (rune) return { materials: [], materialQty: [0, 0], reagents, xp: t.xp, extraChance: 0 };
   return { materials: yieldsPlanks(item) ? t.planks : t.ingots, materialQty: t.qty, reagents, xp: Math.round(t.xp * (1 + (item.affixes ?? 0) * SALVAGE_AFFIX_XP)), extraChance: instanceYieldBonus(item) };
 }
 
@@ -100,6 +107,14 @@ export function salvageYield(item: SalvageItem, salvagingLevel: number, rand: ()
   const level = Math.max(1, Math.min(LEVEL_CAP, Math.floor(Number(salvagingLevel)) || 1));
   const out = new Map<string, number>();
   const add = (id: string, n: number) => out.set(id, (out.get(id) ?? 0) + n);
+
+  if (isSalvageRune(item.item_type)) {
+    add('reagent_grave_dust', between(rand, RUNE_DUST));
+    if (t.ecto && rand() < t.ecto) add('reagent_wraith_ectoplasm', 1);
+    if (t.rare && rand() < t.rare) add(pick(rand, REAGENT_RARE), 1);
+    if (t.meal && rand() < t.meal) add('bone_meal', 1);
+    return { items: [...out].map(([item_id, quantity]) => ({ item_id, quantity })), xp: t.xp };
+  }
 
   const material = pick(rand, yieldsPlanks(item) ? t.planks : t.ingots);
   add(material, between(rand, t.qty));

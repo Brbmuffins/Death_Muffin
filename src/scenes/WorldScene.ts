@@ -42,7 +42,7 @@ import { selectAutoCombatAction, selectAutoCombatMovement, type AutoMoveMemory }
 import { STATUS_FX } from '../content/statuses';
 import { AbilitySystem, veilTarget, type CastResult, type CastTarget } from '../gameplay/AbilitySystem';
 import { deriveStats, xpToNext } from '../gameplay/characterStats';
-import { BAG_SIZE, Inventory, rollBoss, rollFirstKillItem, rollItem, rollKill } from '../gameplay/loot';
+import { BAG_SIZE, Inventory, rollBoss, rollBossRune, rollFirstKillItem, rollKill, rollSurgeItem } from '../gameplay/loot';
 import { Nav } from '../gameplay/nav';
 import { Player } from '../gameplay/Player';
 import { resourceRulesFor, type ResourceRules } from '../gameplay/resources';
@@ -53,7 +53,7 @@ import { omenFor, omenLeft, type Omen } from '../content/omens';
 import { BOSS_ARENA } from '../gameplay/sim/BossBrain';
 import { makeSnapshot, WorldMirror } from '../gameplay/sim/snapshot';
 import type { BossState, Corpse, Enemy, Intent, SimEvent, Thrall, Zone } from '../gameplay/sim/types';
-import { WorldSim } from '../gameplay/sim/WorldSim';
+import { WorldSim, thrallWeight } from '../gameplay/sim/WorldSim';
 import { computeStats, STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
 import { BossView, NecromancerAvatar } from '../graphics/Avatars';
 import { prewarmCreature } from '../graphics/prewarmCreature';
@@ -75,6 +75,10 @@ import { WorldView } from '../graphics/WorldView';
 import { updateOcclusion } from '../graphics/occlusion';
 import { equippedBySlot, gearFromIds } from '../content/gear';
 import { applySetMods, outfitSignature, resolveSetBonuses, setSignature } from '../gameplay/setBonuses';
+import { loadRunesFound, recordRunesFound } from '../gameplay/runeJournal';
+import { ownedRunes, socketsOf, socketsSignature, type RuneSockets } from '../gameplay/runeRules';
+import { RUNES, type RuneId, type RuneRite } from '../content/runes';
+import { runeSocket } from '../net/api';
 import { applyLegionMods, kitCandidates, kitPieces, legionOf, legionSignature } from '../gameplay/legionKit';
 import { LegionPanel } from '../ui/LegionPanel';
 import { LootRoller } from '../gameplay/lootRoll';
@@ -726,6 +730,8 @@ export class WorldScene implements GameScene, RuntimeView {
         if (bag.filter((s) => s.slot_index >= 0 && s.slot_index < BAG_SIZE).length >= Math.ceil(BAG_SIZE * 0.8)) this.onboarding.show('bag_filling');
         // A necromancer holding spare weapons or armour learns the legion can wear them.
         if (this.discipline.family === 'necromancer' && kitCandidates(bag).length > 0) this.onboarding.show('legion');
+        // The first Relic rune in the bag (picked up, or already there): how to socket it.
+        if (this.discipline.family === 'necromancer' && Object.keys(ownedRunes(bag)).length > 0) this.onboarding.show('rune');
       });
       this.professions = professions;
       for (const r of professions) this.skillLevels.set(r.profession_id as SkillId, r.skill_level);
@@ -734,6 +740,38 @@ export class WorldScene implements GameScene, RuntimeView {
     } catch (err) {
       this.hud.toast(err instanceof Error ? err.message : 'Failed to load your reliquary', 'err');
     }
+  }
+
+  /** Socket a rune into a rite (or take it out): the server moves it and answers with the whole bag. Returns a player-readable error, or null. */
+  private async socketRune(rite: RuneRite, itemId: RuneId | null): Promise<string | null> {
+    try {
+      await this.inventory.exclusive(async () => this.inventory.replace(await runeSocket(this.character.id, rite, itemId)));
+      if (itemId) {
+        audio.play('shard');
+        this.hud.toast(`${RUNES[itemId].name}: ${RUNES[itemId].short}`, 'good');
+        // Calm on purpose: it waits for the Grimoire to close instead of covering its first socket.
+        this.onboarding.show('runeSocketed', 1200);
+      }
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : 'The rune would not move.';
+    }
+  }
+
+  /** Legion places your thralls fill against the cap (a Bone Colossus fills two). */
+  private legionPlaces() {
+    let n = 0;
+    for (const t of this.thrallsMap().values()) if (t.owner === this.selfId) n += thrallWeight(t.kind);
+    return n;
+  }
+
+  /** Relic runes: adopt the inventory's socket rows (only a necromancer's rites take runes), and redraw what shows them. */
+  private setRunes(sockets: RuneSockets) {
+    const next = this.discipline.family === 'necromancer' ? sockets : {};
+    if (socketsSignature(next) === socketsSignature(this.player.runes)) return;
+    this.player.runes = next;
+    this.grimoirePanel?.render();
+    this.hud?.setRunes?.(next);
   }
 
   /** The left click's reach with the worn weapon (a scythe's arc is short, a staff's needle long). */
@@ -747,6 +785,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.player.setStats(stats);
     // Necro weapon line: the worn weapon/off-hand change the left click and add a passive (gameplay/weaponLine.ts).
     const loadout = resolveWeaponLoadout(equippedBySlot(this.inventory.all), this.discipline.id);
+    this.setRunes(socketsOf(this.inventory.all));
     const was = this.player.loadout;
     this.player.loadout = loadout;
     if (loadout.main !== was.main && loadout.main && loadout.main !== 'staff') this.onboarding.show('necroWeapon');
@@ -861,6 +900,8 @@ export class WorldScene implements GameScene, RuntimeView {
     });
     if (this.discipline.family === 'necromancer') {
       this.inventoryPanel.onLegion = () => this.togglePanel('legion');
+      this.inventoryPanel.onRune = (rite, id) => this.socketRune(rite, id);
+      this.inventoryPanel.socketed = (rite) => this.player?.runes[rite];
       this.inventoryPanel.onLegionGiven = () => audio.play('equip');
     }
     this.forgePanel = new ForgePanel(this.root, this.character.id, this.inventory, (inv, profs) => {
@@ -872,7 +913,10 @@ export class WorldScene implements GameScene, RuntimeView {
       this.hud.toast('Crafted', 'good');
     });
     this.shelfPanel = new ReagentShelfPanel(this.root, this.character.id, this.inventory);
-    this.inventory.onChange((slots) => recordFound(browserStorage(), this.character.id, slots.map((s) => s.item_id)));
+    this.inventory.onChange((slots) => {
+      recordFound(browserStorage(), this.character.id, slots.map((s) => s.item_id));
+      if (recordRunesFound(browserStorage(), this.character.id, slots.map((s) => s.item_id)).grew) this.codexPanel?.refresh?.();
+    });
     this.professionsPanel = new ProfessionsPanel(this.root, {
       start: type => this.startAfkGathering(type),
       pause: () => this.gathering.stop('moved'),
@@ -920,12 +964,17 @@ export class WorldScene implements GameScene, RuntimeView {
     this.gatherReportPanel = new GatherReportPanel(this.root, () => this.togglePanel('inventory'));
     this.codexPanel = new CodexPanel(this.root, this.codex, this.discipline.id, this.chronicle);
     this.codexPanel.metNpc = (id) => this.guidance.met(id);
+    this.codexPanel.runesFound = () => loadRunesFound(browserStorage(), this.character.id);
     this.grimoirePanel = new GrimoirePanel(
       this.root,
       () => ({ rites: { primary: this.primary, keys: this.loadout }, level: riteLevel(this.character.level), unseen: unseenRites(this.seen, riteLevel(this.character.level), this.kit), kit: this.kit }),
       (slot, id) => this.setRite(slot, id),
       (id) => this.setPrimary(id),
       (ids) => this.markSeen(ids),
+      {
+        state: () => ({ sockets: this.player?.runes ?? socketsOf(this.inventory.all), owned: ownedRunes(this.inventory.all) }),
+        socket: (rite, itemId) => this.socketRune(rite, itemId),
+      },
     );
     this.ascensionPanel = new AscensionPanel(
       this.root,
@@ -1687,7 +1736,7 @@ export class WorldScene implements GameScene, RuntimeView {
     }
     if (now < this.nextAutoCombatAt) return;
     this.nextAutoCombatAt = now + 180;
-    const thralls = [...this.thrallsMap().values()].filter(t => t.owner === this.selfId).length;
+    const thralls = this.legionPlaces();
     if (p.hp < p.stats.maxHp * 0.42 && now >= this.flaskCdUntil &&
         (this.inventory.count('flask_hp_grand') || this.inventory.count('flask_hp_major') || this.inventory.count('flask_hp_minor'))) this.drinkFlask();
     const action = selectAutoCombatAction({ player: { x: p.x, z: p.z, area: p.area, essence: p.essence, maxEssence: p.resource.max,
@@ -2542,8 +2591,30 @@ export class WorldScene implements GameScene, RuntimeView {
         this.auraFx.delete(`c${ev.id}`);
         break;
       case 'thrall':
-        if (Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 40) this.bb('thrall_rise', ev.x, ev.z);
+        if (Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 40) this.bb('thrall_rise', ev.x, ev.z, ev.kind === 'colossus' ? { scale: 2.4 } : {});
+        if (ev.kind === 'colossus') this.colossusRises(ev.x, ev.z, ev.owner === me);
         break;
+      case 'contagion': {
+        // Contagion rune: a thread of rot from the dying body to the next, and spores where it lands.
+        const L = SPELL_FX.lance;
+        this.effects.beam({ x: ev.x, y: 0.9, z: ev.z }, () => ({ x: ev.tx, y: 1, z: ev.tz }), L.rot, 0.05, 0.45);
+        this.effects.emit({ x: ev.tx, y: 0.9, z: ev.tz, count: 10, color: L.rot, spread: 0.3, speed: 1.4, up: 1, life: 0.6, size: 0.2 });
+        nf.rotSpores(this.effects, ev.tx, ev.tz, L.rot, { r: 0.6, n: 5 });
+        if (Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 24) audio.play('miasma', ev.tx, ev.tz);
+        break;
+      }
+      case 'requiem': {
+        // Requiem rune: the ground is marked; a ring of skulls closes in over the warning and the burst follows.
+        const L = SPELL_FX.litany;
+        const sec = ev.ms / 1000;
+        this.effects.decal({ tex: fx.sigil(), color: L.core, x: ev.x, z: ev.z, r: ev.r, duration: sec, opacity: 0.55, growFrom: 0.6, spin: 0.5, fadeOut: 0.3 });
+        this.effects.decal({ tex: fx.ring(), color: L.hot, x: ev.x, z: ev.z, r: ev.r, duration: sec, opacity: 0.9, growFrom: 1.0, pulse: 4 });
+        this.effects.decal({ tex: fx.ring(), color: L.core, x: ev.x, z: ev.z, r: ev.r * 0.45, duration: sec, opacity: 0.5, growFrom: 1.6 });
+        nf.skullRing(this.effects, ev.x, ev.z, Math.min(ev.r * 0.7, 9), L.hot, { n: 8, origin: ev.by === me ? 'player' : 'thrall' });
+        audio.play('toll', ev.x, ev.z);
+        this.fxLater.push({ at: this.now + ev.ms * 0.5, run: () => audio.play('tollSmall', ev.x, ev.z) });
+        break;
+      }
       case 'heal':
         if (ev.player === me && this.player.alive) {
           const amount = ev.frac ? this.player.stats.maxHp * ev.frac : ev.amount;
@@ -2575,7 +2646,7 @@ export class WorldScene implements GameScene, RuntimeView {
             // Someone else claimed it first: refund.
             this.player.essence = Math.min(this.player.stats.maxEssence, this.player.essence + ABILITIES.exhume.essenceCost);
             this.player.cooldowns.delete('exhume');
-            this.floating.spawn(this.player.x, 2.4, this.player.z, 'The corpse is gone', 'info');
+            this.floating.spawn(this.player.x, 2.4, this.player.z, ev.why === 'few' ? 'Too few corpses for a Colossus' : 'The corpse is gone', 'info');
           } else if (this.discipline.mods.corpseHeal) {
             const amt = this.player.stats.maxHp * this.discipline.mods.corpseHeal;
             this.player.heal(amt);
@@ -2985,10 +3056,15 @@ export class WorldScene implements GameScene, RuntimeView {
     const color = z.kind === 'toxic' ? SPELL_FX.enemy.toxic : SPELL_FX.miasma.deep;
     // Toxic (hostile) and rot (a detonated sac, now yours) pools are cracked ground; miasma is a sigil.
     const pool = z.kind === 'toxic' || z.kind === 'rot';
+    // Creeping Rot rune: the circle walks, so its drawing follows the zone's live position (the host's, or the mirror's from the snapshots).
+    const follow = z.creep ? () => { const live = (this.sim?.zones ?? this.mirror?.zones)?.get(z.id); return live ? { x: live.x, z: live.z } : null; } : undefined;
     const handles = [
-      this.effects.decal({ tex: fx.disc(), color, x: z.x, z: z.z, r: z.r, duration: dur, opacity: z.kind === 'toxic' ? 0.5 : 0.66, growFrom: 0.3, fadeOut: 0.6 }),
-      this.effects.decal({ tex: pool ? fx.cracks() : fx.sigil(), color: z.kind === 'toxic' ? SPELL_FX.enemy.rot : SPELL_FX.miasma.rot, x: z.x, z: z.z, r: z.r * 0.95, duration: dur, opacity: 0.22, spin: pool ? 0 : 0.6, fadeOut: 0.6 }),
+      this.effects.decal({ tex: fx.disc(), color, x: z.x, z: z.z, r: z.r, duration: dur, opacity: z.kind === 'toxic' ? 0.5 : 0.66, growFrom: 0.3, fadeOut: 0.6, follow }),
+      this.effects.decal({ tex: pool ? fx.cracks() : fx.sigil(), color: z.kind === 'toxic' ? SPELL_FX.enemy.rot : SPELL_FX.miasma.rot, x: z.x, z: z.z, r: z.r * 0.95, duration: dur, opacity: 0.22, spin: pool ? 0 : 0.6, fadeOut: 0.6, follow }),
     ];
+    if (z.creep) handles.push(this.bb('miasma_cloud', z.x, z.z, { scale: z.r / 3.8, duration: dur, follow: follow as BinbunSpawn['follow'] }));
+    // Contagion rune: a sickly green ring marks a circle that spreads.
+    if (z.contagion) handles.push(this.effects.decal({ tex: fx.ring(), color: SPELL_FX.lance.rot, x: z.x, z: z.z, r: z.r * 1.02, duration: dur, opacity: 0.55, pulse: 3, fadeOut: 0.6, follow }));
     if (pool) handles.push(this.bb('toxic_puddle', z.x, z.z, { scale: z.r / 2.6, duration: dur, colors: z.kind === 'toxic' ? [SPELL_FX.enemy.toxic, SPELL_FX.enemy.rot, 0x1a2010] : undefined }));
     this.zoneFx.set(z.id, handles);
   }
@@ -3035,6 +3111,20 @@ export class WorldScene implements GameScene, RuntimeView {
     } else this.hud.toast(`A Grave Surge erupts in ${AREAS[ev.area].name}`, 'err');
   }
 
+  /** Bone Colossus rune: the ground heaves as the giant stands up (the cast already drew the pull of the bones). */
+  private colossusRises(x: number, z: number, mine: boolean) {
+    const X = SPELL_FX.exhume;
+    this.effects.decal({ tex: fx.ring(), color: X.beam, x, z, r: 4.2, duration: 0.8, opacity: 0.9, growFrom: 0.2 });
+    this.effects.decal({ tex: fx.cracks(), color: X.deep, x, z, r: 3.2, duration: 2.2, opacity: 0.8, growFrom: 0.5, fadeOut: 0.8 });
+    this.effects.emit({ x, y: 0.3, z, count: 60, color: X.spirit, spread: 1.6, speed: 1.4, up: 5, life: 1.2, size: 0.4, gravity: -0.4 });
+    this.effects.emitSmoke({ x, y: 0.3, z, count: 10, color: 0x2a2f2c, spread: 1.6, speed: 1.2, up: 0.9, life: 1.5, size: 2.2, shrink: -0.8 });
+    nf.graveDirt(this.effects, x, z, { r: 1.6, n: 16, up: 4.5, origin: 'thrall' });
+    nf.boneSplinters(this.effects, x, 0.8, z, { n: 12, color: SPELL_FX.needle.core, speed: 5 });
+    this.effects.lightFlash(x, 2, z, X.spirit, 40, 1.0);
+    audio.play('litany', x, z, 0.8);
+    if (mine || Math.hypot(x - this.player.x, z - this.player.z) < 20) this.rig.shake(mine ? 0.24 : 0.14);
+  }
+
   private onSurgeCleared(ev: Extract<SimEvent, { t: 'surgeCleared' }>) {
     this.surgeFx?.kill();
     this.surgeFx = null;
@@ -3045,7 +3135,7 @@ export class WorldScene implements GameScene, RuntimeView {
     // Personal reward: a guaranteed item from the area's table plus bonus gold.
     const level = AREAS[ev.area].level + ascensionLevels(this.worldAscension());
     const gold = Math.round((24 + 10 * level) * waveModifiers(this.bossWaveTier()).rewardMult * DIFFICULTIES[this.worldDifficulty()].rewardMult);
-    this.dropItems(ev.x, ev.z, [rollItem(ev.area)], level, 'surge');
+    this.dropItems(ev.x, ev.z, [rollSurgeItem(ev.area)], level, 'surge');
     this.loot.gold(ev.x, ev.z, gold);
     this.effects.emit({ x: ev.x, y: 0.4, z: ev.z, count: 70, color: SPELL_FX.surge.glow, spread: 1, speed: 1.2, up: 4, life: 1.4, size: 0.34 });
     this.effects.lightFlash(ev.x, 2, ev.z, SPELL_FX.surge.glow, 70, 1.2);
@@ -3849,11 +3939,16 @@ export class WorldScene implements GameScene, RuntimeView {
           const reward = rollBoss(this.bossWaveTier(), Math.random, this.worldDifficulty(), def.area, def.shards, def.id);
           // First kill per character: two more shards and a guaranteed rare-or-better (browser trophy record).
           let firstKill: LootDrop | null = null;
+          let firstTrophy = false;
           if (def.id !== 'prelate' && this.claimTrophy(def.id)) {
+            firstTrophy = true;
             reward.shards += 2;
             firstKill = rollFirstKillItem(def.area);
             this.hud.toast(`First kill: ${def.name}. A trophy for the Codex, two more shards and a rare relic.`, 'good');
           }
+          // Relic rune: the Prelate and every first kill always leave one, repeats 35% (content/runes.ts).
+          const bossRune = rollBossRune(def.id, firstTrophy);
+          if (bossRune) reward.items.push(bossRune);
           this.loot.gold(ev.x, ev.z, reward.gold);
           this.loot.shard(ev.x, ev.z, reward.shards);
           const bossLevel = AREAS[def.area].level + ascensionLevels(this.worldAscension());
@@ -4411,7 +4506,7 @@ export class WorldScene implements GameScene, RuntimeView {
       }),
       souls: p.souls,
       soulsMax: p.soulsMax,
-      thralls: myThralls.length,
+      thralls: myThralls.reduce((n, t) => n + thrallWeight(t.kind), 0),
       thrallCap: this.discipline.mods.thrallCap,
       gold: Math.floor(this.character.gold ?? 0),
       shards: loc.shards,
@@ -4671,6 +4766,23 @@ export class WorldScene implements GameScene, RuntimeView {
         this.mouse.x = x;
         this.mouse.y = y;
       },
+      /** Runes QA: aim the cursor at a world point (returns the ground point it resolved to). */
+      aimAt: (x: number, z: number) => {
+        const v = new THREE.Vector3(x, 0.05, z).project(this.rig.camera);
+        this.mouse.x = ((v.x + 1) / 2) * window.innerWidth;
+        this.mouse.y = ((1 - v.y) / 2) * window.innerHeight;
+        this.mouse.aiming = true;
+        this.updateCursor();
+        return { x: this.groundPoint.x, z: this.groundPoint.z };
+      },
+      /** Runes QA: lay a plain corpse at a world point. */
+      corpseAt: (x: number, z: number, enemy: keyof typeof ENEMIES = 'robber') => {
+        this.sim?.addCorpse(x, z, 'normal', enemy, false, 0, 1, this.player.area ?? 'graves');
+      },
+      /** Runes QA: the cast code, the live sockets, and the hotbar's rune badges. */
+      abilities: this.abilities,
+      runes: () => ({ ...this.player.runes }),
+      now: () => this.now,
       /** Gathering QA: every node with its live state (optionally one area). */
       nodes: (area?: AreaId) =>
         this.layout.nodes.filter((n) => !area || n.area === area).map((n) => ({ id: n.id, type: n.type, area: n.area, rich: !!n.rich, live: this.nodeLive(n.id), x: n.x, z: n.z })),

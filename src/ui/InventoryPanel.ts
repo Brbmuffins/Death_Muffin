@@ -8,7 +8,10 @@ import { EQUIP_SLOTS, equipSlotOf, equippedBySlot, type EquipSlot } from '../con
 import { ARMOR_BY_ID } from '../content/armorSets';
 import { necroWeaponTooltip } from '../content/necroWeapons';
 import { ItemLocks, junkSlots } from '../gameplay/itemLocks';
-import { isSalvageGear } from '../gameplay/salvageRules';
+import { isSalvageable } from '../gameplay/salvageRules';
+import { ABILITIES } from '../content/abilities';
+import { RUNES, isRuneId, runeSources, type RuneId, type RuneRite } from '../content/runes';
+import './runes.css';
 import { BELT_KINDS, toolKindOf } from '../gameplay/gatheringRules';
 import { kitCandidate } from '../gameplay/legionKit';
 import { KIT_LABEL } from '../gameplay/legionRules';
@@ -63,6 +66,10 @@ export class InventoryPanel {
   onToolBelted: (() => void) | null = null;
   /** Opens the Legion panel (set for necromancers only: other classes raise no thralls, so they get no Legion button). */
   onLegion: (() => void) | null = null;
+  /** Socket a Relic rune into its rite (the scene moves it on the server and answers with a readable error, or null). */
+  onRune: ((rite: RuneRite, id: RuneId) => Promise<string | null>) | null = null;
+  /** The rune currently socketed in a rite, if any (to say what a socket would replace). */
+  socketed: (rite: RuneRite) => RuneId | undefined = () => undefined;
   /** Called after a piece went to the legion's kit. */
   onLegionGiven: (() => void) | null = null;
 
@@ -414,7 +421,17 @@ export class InventoryPanel {
     return itemStatsHtml(this.statContext?.() ?? null, slot, withVerdict);
   }
 
+  /** A Relic rune says exactly what it changes, what it costs, which rite it fits and where it drops. */
+  private runeLines(slot: InventorySlot) {
+    if (!isRuneId(slot.item_id)) return '';
+    const r = RUNES[slot.item_id];
+    const rite = ABILITIES[r.rite].name;
+    const now = this.socketed(r.rite);
+    return `<div class="cw-rune-line"><b>Fits ${rite}.</b> ${r.lines.map((l) => l).join(' ')}</div>${r.cost ? `<div class="cw-rune-line"><em>Cost: ${r.cost}</em></div>` : ''}<div class="cw-rune-line">${now ? (now === r.id ? 'Already socketed in this rite.' : `Replaces ${RUNES[now].name}, which returns to your bag.`) : `Socket it in the Grimoire or with the button below.`} Drops from ${runeSources(r.id)}.</div>`;
+  }
+
   private setLine(slot: InventorySlot) {
+    if (slot.item_type === 'rune') return this.runeLines(slot);
     const weapon = necroWeaponTooltip(slot.item_id);
     if (weapon) return `<div class="stat">${weapon.effect}</div><div class="lore">Recommended level ${weapon.level}. Only necromancers gain the effect; other classes keep the stats.</div>`;
     const piece = ARMOR_BY_ID[slot.item_id];
@@ -493,13 +510,15 @@ export class InventoryPanel {
       ${this.onBelt && slot.item_id in BREWS ? `<button class="cw-button small" data-belt>Put on belt (${BREW_KEYS[BREWS[slot.item_id].slot].toUpperCase()})</button>` : ''}
       ${edible ? `<button class="cw-button small" data-act>Eat</button>` : ''}
       ${!slot.equipped ? `<button class="cw-button small ${locked ? 'on' : ''}" data-lock title="${locked ? 'Unlock: bulk actions may take it again' : 'Lock: Sell all junk, Deposit and Salvage all will skip it'}">${LOCK_SVG} ${locked ? 'Unlock' : 'Lock'}</button>` : ''}
-      ${this.grinder && !slot.equipped && isSalvageGear(slot.item_type) ? `<button class="cw-button small" data-salvage ${atGrinder ? '' : 'disabled'} title="${atGrinder ? 'Break it down for materials and reagents' : 'Stand at the Bone Grinder in the Sexton’s Acre to salvage'}">Salvage</button>${atGrinder ? '' : '<span class="cw-hint-text small">Needs the Bone Grinder (Acre)</span>'}` : ''}
+      ${slot.item_type === 'rune' && isRuneId(slot.item_id) && this.onRune ? `<button class="cw-button small" data-runesocket title="Move one into the ${ABILITIES[RUNES[slot.item_id].rite].name} socket">Socket into ${ABILITIES[RUNES[slot.item_id].rite].name}</button>` : ''}
+      ${this.grinder && !slot.equipped && isSalvageable(slot.item_type) ? `<button class="cw-button small" data-salvage ${atGrinder ? '' : 'disabled'} title="${atGrinder ? 'Break it down for materials and reagents' : 'Stand at the Bone Grinder in the Sexton’s Acre to salvage'}">Salvage</button>${atGrinder ? '' : '<span class="cw-hint-text small">Needs the Bone Grinder (Acre)</span>'}` : ''}
       ${this.onSold && !slot.equipped && slot.sell_value > 0 ? `<button class="cw-button small" data-sell="1" ${locked ? 'disabled title="Unlock it to sell"' : ''}>Sell (${slot.sell_value}g)</button>` : ''}
       ${this.onSold && !slot.equipped && slot.sell_value > 0 && slot.quantity > 1 ? (this.confirmSellAll === `${slot.slot_index}:${slot.item_id}` && !locked
         ? `<span class="cw-tools-confirm">Sell all <b>${slot.quantity}</b> ${slot.name} for <b>${(slot.sell_value * slot.quantity).toLocaleString()}g</b>?</span><button class="cw-button small primary" data-sell="${slot.quantity}">Sell them</button><button class="cw-button small ghost" data-sellall-no>Cancel</button>`
         : `<button class="cw-button small" data-sellall ${locked ? 'disabled title="Unlock it to sell"' : ''}>Sell all (${slot.quantity} · ${(slot.sell_value * slot.quantity).toLocaleString()}g)</button>`) : ''}
       </div>
     `;
+    detail.querySelector('[data-runesocket]')?.addEventListener('click', () => void this.socketRune(slot));
     detail.querySelector('[data-lock]')?.addEventListener('click', () => this.locks.toggle(slot));
     detail.querySelector('[data-salvage]')?.addEventListener('click', () => void this.salvageOne(slot));
     detail.querySelector('[data-act]')?.addEventListener('click', () => this.primaryAction(slot));
@@ -511,6 +530,20 @@ export class InventoryPanel {
     // On a phone the bag detail sits at the bottom of a scrolled panel: keep the confirm buttons in view.
     detail.querySelector('[data-sellall-no]')?.scrollIntoView({ block: 'nearest' });
     detail.querySelectorAll<HTMLButtonElement>('[data-sell]').forEach((b) => b.addEventListener('click', () => this.sell(slot, Number(b.dataset.sell))));
+  }
+
+  private async socketRune(slot: InventorySlot) {
+    if (this.busy || !this.onRune || !isRuneId(slot.item_id)) return;
+    this.busy = true;
+    this.setError('');
+    try {
+      const err = await this.onRune(RUNES[slot.item_id].rite, slot.item_id);
+      if (err) this.setError(err);
+      else if (!this.slotAt(slot.slot_index)) this.selected = null;
+    } finally {
+      this.busy = false;
+      this.render();
+    }
   }
 
   /** Sell from the bag (never equipped gear). Each unit goes through consume(), so saves stay race-safe. */

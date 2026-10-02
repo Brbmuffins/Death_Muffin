@@ -6,6 +6,7 @@ const necroRules = require(fs.existsSync(runtimeNecro) ? runtimeNecro : '../../v
 const contractRules = require('./gathering/contract-rules.cjs');
 const gather = require('./gathering/gathering-rules.cjs');
 const legion = require('./gathering/legion-rules.cjs');
+const rune = require('./gathering/rune-rules.cjs');
 const lootInstances = require('./loot-instances.cjs');
 const affix = lootInstances.affix;
 
@@ -83,11 +84,11 @@ function validate(account, onlineClass) {
   if (!bounded(c.level, 1, 255) || !bounded(c.experience, 0, c.level * 100 - 1) ||
       !bounded(c.gold, 0, 2147483647) || ['stat_str', 'stat_agi', 'stat_int', 'stat_vit'].some((key) => !bounded(c[key], 0, 65535)))
     throw new RangeError('Invalid character stats');
-  if (!Array.isArray(account.slots) || account.slots.length > gather.BAG_SLOTS + 9 + gather.BELT_SLOT_COUNT + legion.KIT_SLOT_COUNT) throw new RangeError('Invalid inventory');
+  if (!Array.isArray(account.slots) || account.slots.length > gather.BAG_SLOTS + 9 + gather.BELT_SLOT_COUNT + legion.KIT_SLOT_COUNT + rune.RUNE_SLOT_COUNT) throw new RangeError('Invalid inventory');
   const occupied = new Set();
   for (const slot of account.slots) {
     const index = slot?.slot_index;
-    if (!bounded(index, 0, gather.BAG_SLOTS - 1) && !bounded(index, 100, 108) && !gather.isBeltSlot(index) && !legion.isKitSlot(index)) throw new RangeError('Invalid inventory slot');
+    if (!bounded(index, 0, gather.BAG_SLOTS - 1) && !bounded(index, 100, 108) && !gather.isBeltSlot(index) && !legion.isKitSlot(index) && !rune.isRuneSlot(index)) throw new RangeError('Invalid inventory slot');
     if (occupied.has(index) || !itemId(slot.item_id) || !bounded(slot.quantity, 1, 9999)) throw new RangeError('Invalid inventory item');
     // A rolled piece must be one legal roll (known affixes, in range for its item level); the item type is checked again against the items table in apply().
     if (slot.inst != null && (slot.quantity !== 1 || affix.instanceProblem(slot.inst, 'weapon'))) throw new RangeError('Invalid item roll');
@@ -138,6 +139,10 @@ async function apply(conn, characterId, account) {
       const beltKind = gather.beltSlotKind(slot.slot_index);
       // Legion kit (120-121): a weapon / off-hand in the weapon slot, one of the five armour pieces in the armour slot.
       const kitId = legion.kitSlotId(slot.slot_index);
+      // Relic rune sockets (130-134): one rune, and only the rite's own.
+      const runeRite = rune.runeSlotRite(slot.slot_index);
+      if (runeRite && (slot.quantity !== 1 || slot.inst != null || !rune.runeFits(slot.item_id, runeRite))) throw new RangeError(`Invalid equipped item ${slot.item_id}`);
+      if (runeRite) continue;
       if (kitId ? legion.kitIdForType(item.item_type) !== kitId : beltKind ? gather.toolKindOf(slot.item_id) !== beltKind : slot.slot_index >= 100 && item.equipment_slot !== reservedSlots[slot.slot_index]) throw new RangeError(`Invalid equipped item ${slot.item_id}`);
       if (slot.inst != null) {
         const problem = affix.instanceProblem(slot.inst, item.item_type);
@@ -152,7 +157,8 @@ async function apply(conn, characterId, account) {
   let accountId = null;
   for (const slot of account.slots) {
     const equippedSlot = reservedSlots[slot.slot_index] ?? (gather.beltSlotKind(slot.slot_index) ? gather.beltEquippedSlot(gather.beltSlotKind(slot.slot_index)) : null)
-      ?? (legion.kitSlotId(slot.slot_index) ? legion.kitEquippedSlot(legion.kitSlotId(slot.slot_index)) : null);
+      ?? (legion.kitSlotId(slot.slot_index) ? legion.kitEquippedSlot(legion.kitSlotId(slot.slot_index)) : null)
+      ?? (rune.runeSlotRite(slot.slot_index) ? rune.runeEquippedSlot(rune.runeSlotRite(slot.slot_index)) : null);
     if (slot.inst != null) {
       if (accountId === null) [[{ account_id: accountId }]] = await conn.execute('SELECT account_id FROM characters WHERE id = ?', [characterId]);
       const instanceId = await lootInstances.insertInstance(conn, accountId, slot.item_id, slot.inst);

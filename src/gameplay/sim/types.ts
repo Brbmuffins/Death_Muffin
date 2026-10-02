@@ -43,6 +43,8 @@ export interface Enemy {
   witheredT: number;
   witheredDps: number;
   witheredOwner: string;
+  /** Contagion rune (host-only): a Contagion circle withered this enemy, so its Withered stacks jump to neighbours when it dies. */
+  contagious?: boolean;
   slowT: number;
   /** Watchman's Ward slows movement by 25%, independently of Miasma. */
   wardSlowT?: number;
@@ -197,6 +199,10 @@ export interface Zone {
   bloom: boolean;
   /** Hostile zones damage players and thralls; friendly ones damage enemies. */
   hostile: boolean;
+  /** Creeping Rot rune: metres per second this Miasma circle drifts toward the nearest enemy (host-clamped). Its position rides every snapshot. */
+  creep?: number;
+  /** Contagion rune: enemies this circle withers pass their stacks on when they die. */
+  contagion?: boolean;
   /** Plague Bloom: generation in the chain and seconds until it seeds the next corpse. */
   gen?: number;
   spreadT?: number;
@@ -270,6 +276,8 @@ export type Intent =
       witheredCap?: number;
       /** Bone Prison: root the targets (the host owns the duration). */
       root?: boolean;
+      /** Impale rune: root for this many seconds instead (host-clamped to the rune's 1.5 s). */
+      rootS?: number;
       /** Grave Hands: slow the targets briefly (Miasma's slow; the host owns the duration). */
       slow?: boolean;
     }
@@ -283,6 +291,10 @@ export type Intent =
       durationMs: number;
       witheredCap: number;
       bloom: boolean;
+      /** Creeping Rot rune: drift speed in m/s (host-clamped). */
+      creep?: number;
+      /** Contagion rune. */
+      contagion?: boolean;
     }
   | {
       t: 'exhume';
@@ -297,6 +309,10 @@ export type Intent =
       attackSpeedMult: number;
       /** Mourning Bell: each wraith hit heals allies by this share of their max health (host-clamped, 0..0.03). */
       allyHeal?: number;
+      /** Mass Grave rune: raise up to this many corpses at once (host-clamped to 3) at the rune's share of the thrall's stats. */
+      count?: number;
+      /** Bone Colossus rune: consume up to five corpses within the radius (at least three) and raise one giant thrall. */
+      colossus?: boolean;
     }
   | {
       t: 'litany';
@@ -306,6 +322,10 @@ export type Intent =
       r: number;
       spellPower: number;
       leaveCorpses: boolean;
+      /** Hollow Choir rune: nothing is sacrificed; thralls in range only lend their voices. */
+      spare?: boolean;
+      /** Requiem rune: the burst lands this many ms later (host-clamped to 2000). */
+      delayMs?: number;
     }
   /** `boss` (area bosses, 2026-09-28); missing = the Prelate, for older clients. */
   | { t: 'summonBoss'; by: string; boss?: BossId }
@@ -362,7 +382,11 @@ export type SimEvent =
   | { t: 'zone'; zone: Zone }
   | { t: 'zoneGone'; id: number }
   | { t: 'burst'; kind: 'toxic' | 'bloom' | 'ember'; x: number; z: number; r: number }
-  | { t: 'exhumed'; by: string; ok: boolean; corpseKind?: CorpseKind; x: number; z: number; crumbled?: number }
+  | { t: 'exhumed'; by: string; ok: boolean; corpseKind?: CorpseKind; x: number; z: number; crumbled?: number; why?: 'few' }
+  /** Contagion rune: Withered stacks jump from a dying enemy to a neighbour. */
+  | { t: 'contagion'; x: number; z: number; tx: number; tz: number; stacks: number }
+  /** Requiem rune: a Black Litany has been marked and bursts `ms` from now. */
+  | { t: 'requiem'; by: string; x: number; z: number; r: number; ms: number }
   | {
       t: 'litanyResult';
       by: string;
@@ -372,6 +396,8 @@ export type SimEvent =
       corpses: number;
       resonant: number;
       thralls: number;
+      /** Hollow Choir rune: thralls that lent their voice and were spared. */
+      spared?: number;
       targets: number;
       tethers: [number, number][];
     }

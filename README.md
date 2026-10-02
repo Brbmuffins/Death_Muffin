@@ -37,6 +37,7 @@ Some of the most polished corners of the game right now (updated 2 October 2026)
 - [Controls](#controls) (and [on a phone or tablet](#on-a-phone-or-tablet))
 - [Choose a discipline](#choose-a-discipline)
 - [Combat and corpses](#combat-and-corpses)
+- [Relic runes](#relic-runes)
 - [The world and its bosses](#the-world-and-its-bosses)
 - [Gold, gear, and difficulty](#gold-gear-and-difficulty)
 - [Gear, stats and the character sheet](#gear-stats-and-the-character-sheet)
@@ -207,6 +208,34 @@ Necromancers also fill a **Soul Harvest** meter through kills by themselves or t
 - Read an elite's tag in the target frame. Soul shards come from elites and pay for boss summons.
 - Step out of marked ground before it resolves. Use **Q** for a flask, **T** to recall, or reduce the Wave Speed dial when fights get too dense.
 - Death returns you to the Chapterhouse without taking your level, gold, or gear.
+
+## Relic runes
+
+Runes are the build-depth layer for the four necromancer disciplines. A rune does not make a rite hit harder; it changes **what the rite does**, and most trade something for it. Each of the five necromancer rites (**Bone Needle, Marrow Spear, Exhume, Miasma Circle, Black Litany**) has **one socket**, and a rune fits only the rite it was made for.
+
+![The Grimoire with the Bone Colossus rune socketed in Exhume](docs/screenshots/runes/grimoire-colossus.webp)
+
+**Getting and using them.** Runes drop from **elites** (about 1 elite in 170), from **Grave Surge** offerings (a quarter of them), and from **bosses**: the Prelate and the *first* kill of every other boss always leave one, repeat kills do about a third of the time. The first hunting grounds shed only uncommon runes; rare ones start in the Marrow Ossuary and epic ones in the Bell Sanctum. They stack in the Reliquary, rest in the Ossuary Vault, sell for gold and can be ground at the Bone Grinder (one at a time, into reagents only). Select one in the Reliquary and its detail strip says exactly what it changes, what it costs and where it drops; **Socket into ...** moves one into its rite. The **Grimoire (L)** shows a socket under the bar for whichever rite you select: click a rune to set it, **Take the rune out** to free it (or set another and the old one returns to your bag; nothing is ever lost). A jade badge on the hotbar slot shows a rite wearing a rune, and hovering the slot lists the change. The **Codex's Relic Runes tab** lists all eleven.
+
+| Rite | Rune | What it does | What it costs |
+|---|---|---|---|
+| Bone Needle | **Splinters** | A hit splinters to the nearest other enemy within 6 m for 30% of the damage | none |
+| | **Marrow-Tap** | Each hit returns 4 more Grave Essence (10) | needles hit for 30% less |
+| | **Volley** | Every 4th needle is three, aimed at three different enemies within 9 m (all at one if it stands alone) | each volley needle hits for 40%; the three together return one needle's essence |
+| Marrow Spear | **Ossuary Ring** | Bone erupts in a 3 m ring on the cursor instead of a line | it strikes for 80% and no longer reaches down a line |
+| | **Impaling** | The spear stops at the first enemy, hits it for 50% more and roots it for 1.5 s (a boss takes the hit but shrugs off the root) | it no longer pierces the line behind |
+| Exhume | **Mass Grave** | Raises up to 3 corpses near the cursor at once | each thrall has 75% health and damage (a lone corpse is raised at full strength) |
+| | **Bone Colossus** | With 3 or more corpses within 6 m of the one you name, consumes up to 5 and raises **one giant thrall**: 4x the health and 3.5x the damage of a thrall at five corpses (less with fewer), every blow cleaving 2.4 m; fills 2 legion places; you keep one | Exhume takes 4 s to ready after raising it; with fewer corpses, or while a Colossus stands, Exhume raises an ordinary thrall |
+| Miasma Circle | **Creeping Rot** | The circle drifts 1.5 m/s toward the nearest enemy | 15% narrower |
+| | **Contagion** | A Withered enemy that dies spreads its stacks (minus one) to the 2 nearest within 4.5 m; they spread it again | none |
+| Black Litany | **Hollow Choir** | Nothing is sacrificed: your thralls sing and stay (they still add to the burst) | the burst hits for 40% less |
+| | **Requiem** | The ground is marked; the burst lands 2 s later over 1.7x the radius, taking the corpses and thralls then | enemies can walk out of it, and it can take more of your thralls |
+
+<img src="docs/screenshots/runes/colossus.webp" alt="The Bone Colossus rising from five corpses" width="420" /> <img src="docs/screenshots/runes/mass-grave.webp" alt="Mass Grave raising three thralls" width="300" /> <img src="docs/screenshots/runes/requiem.webp" alt="Requiem marking the ground" width="300" />
+
+The Bone Colossus rising from five corpses, Mass Grave's three weaker thralls, and Requiem's warning sigil.
+
+A Bone Needle rune works with the needle, not with a scythe's arc. In co-op a rune changes your own casts: your friends see the effect (the creeping circle, the Colossus, the Requiem warning ring, the contagion arcs) but not your badges.
 
 ## The world and its bosses
 

@@ -86,7 +86,7 @@ export const withdrawStack = (bag: VaultRow[], vault: VaultRow[], vaultSlot: num
   moveStack(vault, bag, vaultSlot, qty, BAG_SLOTS, info, false);
 
 export type DepositKind = 'materials' | 'all';
-const isMaterialLike = (type: string) => type === 'material' || type === 'consumable';
+const isMaterialLike = (type: string) => type === 'material' || type === 'consumable' || type === 'rune';
 
 /** Deposit every bag stack of `kind` (never equipped rows, never `exceptSlots`). All or nothing. */
 export function depositMany(bag: VaultRow[], vault: VaultRow[], kind: DepositKind, exceptSlots: number[], info: VaultInfo): VaultResult {
@@ -109,7 +109,7 @@ export function depositMany(bag: VaultRow[], vault: VaultRow[], kind: DepositKin
   return { ok: true, bag: keep, vault: dst.sort(bySlot), moved };
 }
 
-const TYPE_ORDER = ['weapon', 'offhand', 'armor_head', 'armor_chest', 'armor_legs', 'armor_feet', 'armor_hands', 'ring', 'trinket', 'consumable', 'material'];
+const TYPE_ORDER = ['weapon', 'offhand', 'armor_head', 'armor_chest', 'armor_legs', 'armor_feet', 'armor_hands', 'ring', 'trinket', 'rune', 'consumable', 'material'];
 const RARITY_ORDER = ['relic', 'legendary', 'epic', 'rare', 'uncommon', 'common'];
 const rank = (list: string[], v: string) => {
   const i = list.indexOf(v);

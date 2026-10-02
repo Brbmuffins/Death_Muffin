@@ -1,5 +1,34 @@
 # Crossworlds — Balance targets & current numbers
 
+## Relic runes (2026-10-02, `npm run balance:runes`; branch `dm/runes`, not deployed)
+
+Target from the brief: runes add build variety, not raw power, about 0-10% either way. The harness bot (balance/harness.ts) casts each rite the way `AbilitySystem` does with that rune (shared geometry in `gameplay/runeCast.ts`, shared numbers in `content/runes.ts` `RUNE_TUNING`).
+`npm run balance:runes` runs the four necromancers with one rune at a time against the same seeds with none (`RUNE_TUNE="ring.damageMult=0.8,..."` tries a number without editing; `RUNE_KIT`, `RUNE_AREA`, `RUNE_BAND`, `RUNE_ONLY`, `RUNE_DISCIPLINES`); `BALANCE_RUNES=bone_needle:rune_volley,exhume:rune_bone_colossus npm run balance` puts runes in the normal report.
+
+**Nave, push band (Wave Speed 6), no gear, 16 seeds x 3 sim-minutes, kills per minute versus no rune** (no rune: Ossuary 152, Gravecaller 112, Mourner 93, Rotweaver 97 kills/min):
+
+| Rune | Ossuary | Gravecaller | Mourner | Rotweaver | Mean kills | Mean gold | Mean time to kill | Mean damage taken |
+|---|---|---|---|---|---|---|---|---|
+| Splinters | +3.4% | +13.6% | +5.3% | +12.5% | **+8.7%** | +12.3% | +1.8% | -6% |
+| Marrow-Tap | +18.5% | -5.2% | -5.5% | -7.9% | **0.0%** | -0.1% | -11.6% | +4% |
+| Volley | +4.4% | -2.7% | +8.5% | -2.7% | **+1.9%** | +3.1% | -1.6% | -6% |
+| Ossuary Ring | +5.6% | +2.7% | +14.8% | +17.3% | **+10.1%** | +11.6% | -4.7% | -6% |
+| Impaling | -0.2% | -11.0% | +9.8% | -5.9% | **-1.8%** | -4.1% | -5.8% | +7% |
+| Mass Grave | -4.1% | +4.2% | +7.8% | -0.9% | **+1.8%** | +0.7% | -6.5% | +4% |
+| Bone Colossus | -9.6% | -0.9% | +8.8% | -7.4% | **-2.3%** (-1.8% with the final 4.0x / 3.5x, 24 seeds) | -2.8% | +1.6% | +4% |
+| Creeping Rot | +0.4% | -3.2% | +1.1% | +3.8% | **+0.5%** | -1.0% | +0.9% | -4% |
+| Contagion | +0.7% | +8.0% | +3.6% | +13.7% | **+6.5%** | +8.5% | +9.1% | -5% |
+| Hollow Choir | +2.9% | +4.0% | +5.2% | +6.4% | **+4.6%** | +4.8% | +5.1% | -10% |
+| Requiem | +7.9% | +1.6% | +9.3% | +8.8% | **+6.9%** | +9.5% | +9.2% | -7% |
+
+Every mean sits between -3% and +10%. The per-discipline spread (for example Marrow-Tap +18.5% on the Ossuary and -5% to -8% on the others) is mostly seed noise plus real discipline differences (the Ossuary bot is essence-starved, so essence runes pay it more); 16 seeds leave about +-4 points per cell.
+
+What the tuning moved (first pass at the spec's numbers, then the shipped ones): Splinters 50% -> 30% of the damage (was +14%), Volley needles 50% -> 40% and the volley returns one needle's essence between the three (it was +12% mostly from tripled essence), Ossuary Ring 100% -> 80% damage and 3.2 -> 3.0 m, Impaling +25% -> +50% damage (the bot now spends it only above 50 essence), Mass Grave 60% -> 75% stats (it was -5%: a pure loss whenever the legion was already at its cap), Contagion reach 5.5 -> 4.5 m, Requiem 2x -> 1.7x radius (was +11%), Bone Colossus 2x -> 3.5x damage, 3.5x -> 4x health, 1.7 s -> 1.2 s swing, 6 s -> 4 s cooldown (was -7% to -15%).
+
+**Gear (typical kit, Bell Sanctum, 12 seeds):** the bot is capped by the wave supply there (165 kills/min, 0 deaths with no rune), so kills/min moves under 1% for every rune except the Colossus (-3.0%); the time-to-kill column carries the signal (Splinters -11%, Ossuary Ring -11%, Colossus +31%, Marrow-Tap +12%). **Four-rune build** (Volley + Colossus + Contagion + Requiem, Nave, 4 seeds, Gravecaller / Rotweaver): intended band 105.5 / 103.9 kills/min against 111.8 / 100.0 with no rune (-6% / +4%), push band 112.8 / 107.3 against 102.8 / 97.9 (+10% / +10%).
+
+**What the harness cannot see.** Enemies never leave a Requiem or a Ring, the bot does not choose targets (Impaling on an elite, the Colossus as a tank for a boss, Creeping Rot into a corner), and nothing here tests the Colossus against the bosses; the Colossus is deliberately a little below parity in kills per minute (it is one big body: strong against elites and bosses, weaker at filling the legion), and that is the one thing a human playtest should confirm. `src/gameplay/__tests__/runes.test.ts` pins the behaviour, not these percentages.
+
 ## Polish round 2 (2026-10-02, 8 seeds, 3 sim-minutes; bosses 6 seeds)
 
 Re-audit after the strike timing, run clips, set bonuses, retuned affixes and the gear harness changes of the same day. Nothing in the farming numbers had

@@ -37,6 +37,7 @@ module.exports = function mountSalvage(app, pool, { requireAuth, ownsCharacter, 
       const level = num(prof.skill_level) || 1;
 
       const taken = new Set(slots);
+      const partial = new Map();
       const salvaged = [];
       const yields = [];
       const spentInstances = [];
@@ -46,9 +47,12 @@ module.exports = function mountSalvage(app, pool, { requireAuth, ownsCharacter, 
         if (!row) throw playerError('One of those slots is empty. Nothing was salvaged.');
         if (row.fixed) throw playerError('Equipped gear cannot be salvaged. Unequip it first.');
         const meta = info(row.itemId);
-        if (!salvage.isSalvageGear(meta.itemType)) throw playerError('Only weapons, armor, rings and trinkets can be salvaged.');
+        if (!salvage.isSalvageable(meta.itemType)) throw playerError('Only weapons, armor, rings, trinkets and runes can be salvaged.');
         if (row.inst) spentInstances.push(row.inst);
-        for (let n = 0; n < row.qty; n++) {
+        // A rune stack is ground one rune at a time (the rest stay in the bag); gear never stacks.
+        const isRune = salvage.isSalvageRune(meta.itemType);
+        if (isRune && row.qty > 1) partial.set(slot, { ...row, qty: row.qty - 1 });
+        for (let n = 0; n < (isRune ? 1 : row.qty); n++) {
           // A rolled piece (item level, affixes) pays a little more; plain gear rolls exactly as before.
           const out = salvage.salvageYield({ id: row.itemId, item_type: meta.itemType, rarity: meta.rarity, ...(row.inst ? { ilvl: row.ilvl, affixes: row.nAffix } : {}) }, level, random);
           salvaged.push({ item_id: row.itemId });
@@ -57,7 +61,7 @@ module.exports = function mountSalvage(app, pool, { requireAuth, ownsCharacter, 
         }
       }
       const gained = salvage.mergeGrants(yields);
-      const left = bag.filter((r) => !taken.has(r.slot));
+      const left = bag.filter((r) => !taken.has(r.slot) || partial.has(r.slot)).map((r) => partial.get(r.slot) ?? r);
       const yieldInfo = await store.loadInfo(conn, gained.map((g) => g.item_id));
       const after = store.vaultRules.addGrants(left, gained.map((g) => ({ itemId: g.item_id, qty: g.quantity })), (item) => yieldInfo(item));
       if (!after) throw playerError('Make room in your bag first: the salvage will not fit. Nothing was salvaged.');

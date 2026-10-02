@@ -414,5 +414,13 @@
  "rite_mantle": {
   "title": "Bone Mantle",
   "body": "Cast it standing among the dead: each corpse within 6m thickens a barrier that holds for 6 seconds, while whirling shards cut whatever reaches you. With no corpses you still get a thin mantle."
+ },
+ "rune": {
+  "title": "A Relic rune",
+  "body": "Runes change <b>how</b> a rite behaves, not how hard it hits: one turns five corpses into a single giant, another delays Black Litany and doubles it. Open the <b>Grimoire</b> (<kbd>L</kbd>), choose a rite and socket the rune under the bar. One rune per rite, and it fits only its own. Take it out whenever you like; it is never lost. Runes stack in the Reliquary, can rest in the Vault and can be ground at the Bone Grinder. The Codex (<kbd>K</kbd>) lists them all."
+ },
+ "runeSocketed": {
+  "title": "The rune is set",
+  "body": "The rite now wears the rune: a <b>jade badge</b> sits on its slot, and hovering the slot shows exactly what changed and what it costs. Swap runes in the Grimoire (<kbd>L</kbd>) to try another style; your cooldowns are not reset."
  }
 }

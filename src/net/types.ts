@@ -13,7 +13,8 @@ export type ItemType =
   | 'offhand'
   | 'ring'
   | 'trinket'
-  | 'material';
+  | 'material'
+  | 'rune';
 
 export interface InventorySlot {
   id: number;

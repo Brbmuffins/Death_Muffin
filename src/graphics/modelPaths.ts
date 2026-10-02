@@ -45,6 +45,8 @@ export const CREATURE_MODELS = {
   wraith_thrall: { url: 'models/props/wraith_thrall.glb', height: 1.95 },
   skull_rat: m('skull_rat', 0.5),
   bone_golem: m('bone_golem', 3.1),
+  // Bone Colossus rune thrall (2026-10-02): the player's own giant. Jade-lit bone and violet Covenant cloth, so it never reads as the enemy Bone Golem.
+  bone_colossus: m('bone_colossus', 3.2),
   // Flying pack (2026-09-28). Gargoyle and seraph are rigged (biped); moth and bat are static
   // meshes. All four flap their wings in the vertex shader (graphics/wingFlap.ts).
   belfry_gargoyle: m('belfry_gargoyle', 2.0),

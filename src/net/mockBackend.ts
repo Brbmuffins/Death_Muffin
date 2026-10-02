@@ -21,6 +21,7 @@ import * as cosmeticRules from '../gameplay/cosmeticRules';
 import { itemMeta } from '../content/items';
 import * as gather from '../gameplay/gatheringRules';
 import * as legion from '../gameplay/legionRules';
+import * as runeRules from '../gameplay/runeRules';
 import { PROCESSING_RECIPES } from '../content/processing';
 import { ALCHEMY_RECIPES } from '../content/alchemy';
 import { NECRO_RECIPES, isTwoHanded } from '../content/necroWeapons';
@@ -508,6 +509,43 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     return ok(acc.slots.map(join));
   }
 
+  // Relic rune sockets: the same moves as server/death-muffin/backend/runes.cjs.
+  if (p === '/api/inventory/rune' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const rite = String(body.rite ?? '');
+    const itemId = body.itemId === null || body.itemId === undefined ? null : String(body.itemId);
+    if (!runeRules.isRuneRite(rite)) return fail('That is not a rite that takes a rune.');
+    if (itemId !== null && !runeRules.runeFits(itemId, rite)) return fail(runeRules.isRuneId(itemId) ? "That rune doesn't fit this rite." : 'That is not a rune.');
+    const socketSlot = runeRules.runeSlotIndex(rite);
+    const current = acc.slots.find((s) => s.slot_index === socketSlot);
+    const cap = (id: string) => ITEMS[id]?.stack ?? 99;
+    const giveBack = (id: string): boolean => {
+      const stack = acc.slots.find((s) => s.slot_index < BAG && s.item_id === id && !s.equipped && s.instance_id === undefined && s.quantity < cap(id));
+      if (stack) { stack.quantity++; return true; }
+      const free = Array.from({ length: BAG }, (_, i) => i).find((i) => !acc.slots.some((s) => s.slot_index === i));
+      if (free === undefined) return false;
+      acc.slots.push({ slot_index: free, item_id: id, quantity: 1, equipped: 0 });
+      return true;
+    };
+    if (itemId === null) {
+      if (!current) return fail('That socket is empty.');
+      acc.slots = acc.slots.filter((s) => s !== current);
+      if (!giveBack(current.item_id)) { acc.slots.push(current); return fail('Your bag is full. Make room, then take the rune out.'); }
+      return ok(acc.slots.map(join));
+    }
+    if (current?.item_id === itemId) return ok(acc.slots.map(join));
+    const from = acc.slots.find((s) => s.slot_index < BAG && s.item_id === itemId && !s.equipped && s.instance_id === undefined && s.quantity > 0);
+    if (!from) return fail("You don't have that rune.");
+    const before = JSON.stringify(acc.slots);
+    if (from.quantity > 1) from.quantity--; else acc.slots = acc.slots.filter((s) => s !== from);
+    if (current) {
+      acc.slots = acc.slots.filter((s) => s !== current);
+      if (!giveBack(current.item_id)) { acc.slots = JSON.parse(before); return fail('Your bag is full. Make room, then take the rune out.'); }
+    }
+    acc.slots.push({ slot_index: socketSlot, item_id: itemId, quantity: 1, equipped: 1 });
+    return ok(acc.slots.map(join));
+  }
+
   // --- The Ossuary Vault and Salvaging: the same pure rules the Death Muffin backend uses (vault-rules, salvage-rules). ---
   const mockInfo: vaultRules.VaultInfo = (id) => {
     const d = MOCK_ITEMS[id];
@@ -570,6 +608,7 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     let prof = acc.professions.find((x) => x.profession_id === salvageRules.SALVAGE_SKILL);
     const level = prof?.skill_level ?? 1;
     const salvaged: { item_id: string }[] = [];
+    const partial = new Map<number, (typeof bag)[number]>();
     const yields: salvageRules.SalvageGrant[][] = [];
     const spent: number[] = [];
     let xp = 0;
@@ -578,9 +617,12 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       if (!row) return fail('One of those slots is empty. Nothing was salvaged.');
       if (row.fixed) return fail('Equipped gear cannot be salvaged. Unequip it first.');
       const info = mockInfo(row.itemId);
-      if (!salvageRules.isSalvageGear(info.itemType)) return fail('Only weapons, armor, rings and trinkets can be salvaged.');
+      if (!salvageRules.isSalvageable(info.itemType)) return fail('Only weapons, armor, rings, trinkets and runes can be salvaged.');
       if (row.inst !== undefined) spent.push(row.inst);
-      for (let n = 0; n < row.qty; n++) {
+      // A rune stack is ground one rune at a time (the rest stay in the bag).
+      const isRune = salvageRules.isSalvageRune(info.itemType);
+      if (isRune && row.qty > 1) partial.set(slot, { ...row, qty: row.qty - 1 });
+      for (let n = 0; n < (isRune ? 1 : row.qty); n++) {
         const out = salvageRules.salvageYield({ id: row.itemId, item_type: info.itemType, rarity: info.rarity, ...(row.inst !== undefined ? { ilvl: row.ilvl, affixes: row.nAffix } : {}) }, level, Math.random);
         salvaged.push({ item_id: row.itemId });
         yields.push(out.items);
@@ -589,7 +631,7 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     }
     const gained = salvageRules.mergeGrants(yields);
     const taken = new Set(slots);
-    const after = vaultRules.addGrants(bag.filter((r) => !taken.has(r.slot)), gained.map((g) => ({ itemId: g.item_id, qty: g.quantity })), mockInfo);
+    const after = vaultRules.addGrants(bag.filter((r) => !taken.has(r.slot) || partial.has(r.slot)).map((r) => partial.get(r.slot) ?? r), gained.map((g) => ({ itemId: g.item_id, qty: g.quantity })), mockInfo);
     if (!after) return fail('Make room in your bag first: the salvage will not fit. Nothing was salvaged.');
     storeBag(after);
     for (const id of spent) delete acc.instances?.[id];
