@@ -1,0 +1,6 @@
+{
+  "_note": "In-engine stride measurements that replace the clip-derived value (body-heights per second). The quadruped rigs have leaf bones that are not feet, and the clip-derived number came out 1.5x too fast for bone_hound (1.474). bone_hound: signed planted-foot speed along the heading, measured in the browser (feet bone_10/11/14/15, amplitude 0.48) with the playback forced: 0.85 of ground speed at 0.3x, 0.74 at 1x, 0.3 at 2.8x, so the planted feet stop near 3.7x playback. 1.1 body-heights/s puts the playback there at the hound's pace. Procedure: tools/qa/anim-pass-smoke.cjs reports it, see HANDOFF.",
+  "bone_hound": {
+    "walk": 1.1
+  }
+}

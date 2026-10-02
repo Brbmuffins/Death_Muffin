@@ -9,6 +9,7 @@ import { kitFor, type Kit } from '../content/kits';
 import { assignableRites, assignRite, LOADOUT_SLOTS, loadRites, loadSeen, saveRites, saveSeen, unseenRites } from '../gameplay/loadout';
 import { devAccess, devPreference, isDevAccount, riteLevel, setDevPreference, tokenUsername } from '../gameplay/devAccess';
 import { GrimoirePanel } from '../ui/GrimoirePanel';
+import { hitstop } from '../graphics/hitstop';
 import { preloadFxImages } from '../graphics/fxImages';
 import { ARMOR_BY_ID } from '../content/armorSets';
 import { AREAS, AREA_ORDER, BOSS_SUMMON_SHARDS, CHAPTERHOUSE_RETURN, DOORS, PLAYER_SPAWN, type AreaId, type DoorDef, type Interactable } from '../content/areas';
@@ -2224,6 +2225,7 @@ export class WorldScene implements GameScene, RuntimeView {
         this.auraFx.get(`e${ev.id}`)?.kill();
         this.auraFx.delete(`e${ev.id}`);
         audio.play(ev.elite ? 'eliteDeath' : 'enemyDeath', ev.x, ev.z);
+        if (ev.elite && Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 16) hitstop.request(0.8);
         this.worldView.addRipple(ev.x, ev.z, ev.elite ? 2 : 1.4);
         this.fireDeath(ev);
         this.onKill(ev);
@@ -3443,8 +3445,15 @@ export class WorldScene implements GameScene, RuntimeView {
     }
   }
 
+  /** Boss impacts that stop the picture for a few frames (many-orb rains and telegraphs do not). */
+  private static readonly BOSS_STOP: Partial<Record<string, number>> = {
+    slam: 1, maul: 1, sweep: 0.8, toll: 0.8, cleave: 1, conflagration: 1, surface: 1, bury: 0.7, lance: 0.6, hands: 0.7, swing: 0.8, defeated: 1,
+  };
+
   private onBossEvent(ev: Extract<SimEvent, { t: 'boss' }>) {
     const ms = (ev.ms ?? 0) / 1000;
+    const stop = WorldScene.BOSS_STOP[ev.kind];
+    if (stop && (ms === 0 || ev.kind === 'defeated') && Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 18) hitstop.request(stop);
     switch (ev.kind) {
       case 'awaken': {
         const def = BOSSES[ev.boss ?? 'prelate'];
@@ -3735,7 +3744,8 @@ export class WorldScene implements GameScene, RuntimeView {
     if (got.items.some((item) => item.instance?.affixes.length)) this.onboarding.show('affix', 1800);
     for (const item of got.items) this.hud.toast(`${item.instance ? affixedName(itemMeta(item.item_id).name, item.instance.affixes) : itemMeta(item.item_id).name}${item.quantity > 1 ? ` ×${item.quantity}` : ''}`, 'good');
 
-    // Visuals.
+    // Visuals. A hitstop (graphics/hitstop.ts) scales only the picture's clock from here on.
+    hitstop.frame(dt);
     this.avatar.update(dt, p.x, p.z, p.facing, p.moving, p.stats.moveSpeed);
     this.petView?.update(dt, p.x, p.z, p.facing);
     for (const tick of this.lineupTicks) tick(dt);

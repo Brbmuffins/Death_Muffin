@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { BinbunFX } from './binbun/BinbunFX';
 import { fx } from './fxTextures';
 import { assets } from './AssetCache';
+import { hitstop } from './hitstop';
 
 type Vec3 = { x: number; y: number; z: number };
 
@@ -870,7 +871,9 @@ export class Effects {
     if (this.spikes.length > 300) this.spikes.splice(0, this.spikes.length - 300);
   }
 
-  update(dt: number, camera: THREE.PerspectiveCamera, viewportHeight: number) {
+  update(dtReal: number, camera: THREE.PerspectiveCamera, viewportHeight: number) {
+    // Particles hang in the air during a hitstop.
+    const dt = dtReal * hitstop.scale;
     this.time += dt;
     const scale = (viewportHeight * 0.5) / Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
     this.additive.update(dt, scale);

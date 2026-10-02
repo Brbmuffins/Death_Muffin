@@ -37,6 +37,15 @@ for (const slug of fs.readdirSync(models).sort()) {
     log.push(`${slug}: skipped (${err.message})`);
   }
 }
+// In-engine measurements win over the clip-derived numbers (see tools/stride-overrides.json).
+const overridesFile = path.join(here, 'stride-overrides.json');
+if (fs.existsSync(overridesFile)) {
+  for (const [slug, row] of Object.entries(JSON.parse(fs.readFileSync(overridesFile, 'utf8')))) {
+    if (slug.startsWith('_') || !out[slug]) continue;
+    log.push(`${slug.padEnd(28)} override ${JSON.stringify(row)} (was ${JSON.stringify(out[slug])})`);
+    out[slug] = { ...out[slug], ...row };
+  }
+}
 const dest = path.join(root, 'src/content/strideSpeeds.json');
 fs.writeFileSync(dest, `{\n${Object.entries(out).map(([k, v]) => ` ${JSON.stringify(k)}: ${JSON.stringify(v)}`).join(',\n')}\n}\n`);
 console.log(log.join('\n'));

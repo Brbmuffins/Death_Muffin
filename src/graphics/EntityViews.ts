@@ -13,6 +13,8 @@ import { STATUS_FX } from '../content/statuses';
 import { wingClock, type WingOpts } from './wingFlap';
 import { smoothSpeed, stepSpeed, turnToward } from './locomotion';
 import { separateBodies, type CrowdBody } from './crowdSeparation';
+import { hitstop } from './hitstop';
+import { knockActive, knockImpulse, settleDepth, stepKnock, type Knock } from './knockback';
 
 const ENEMY_SLUG: Record<EnemyId, CreatureSlug> = {
   robber: 'grave_robber',
@@ -147,6 +149,13 @@ interface View {
   /** Eased slide of the drawn body off its sim position, so a pack does not stack (crowdSeparation.ts). */
   ox?: number;
   oz?: number;
+  /** Visual knockback spring (knockback.ts): the drawn body is shoved and eases back; the sim position is untouched. */
+  kn?: Knock;
+  /** Last seen hp, to size a hit. */
+  lastHp?: number;
+  /** Death settle: seconds since the body landed (undefined = not landed yet), its resting y, and whether it is skipped. */
+  settleT?: number;
+  settleY?: number;
 }
 
 /** One shared low-poly mound for every burrowed ghoul (grave-dirt brown, never a player colour). */
@@ -175,6 +184,17 @@ const MAX_CROWD = 140;
 const CROWD_EASE = 9;
 const CROWD_FOOTPRINT = 1.12;
 const CROWDED_SHADOW_CASTERS = 8;
+/** A hit that takes this share of max hp (elites: the lower one) and leaves the target standing freezes the picture for a few frames. */
+const HEAVY_HIT = 0.22;
+const HEAVY_HIT_ELITE = 0.12;
+/** Heavy hits farther than this from the hero do not freeze the screen. */
+const HITSTOP_RANGE = 16;
+/** How far a landed body eases down into the ground (world units, before its scale). */
+const SETTLE_DEPTH = 0.06;
+/** settleT of a corpse laid down at once (late join, sacrificed thrall): it never plays the landing. */
+const NO_SETTLE = -1;
+/** Seconds a corpse keeps animating: the longest death clip is 5.6 s and its fall lands near 4 s (it used to freeze at 3 s, mid-fall). */
+const CORPSE_ANIM_S = 6;
 const HEAD_Y = { humanoid: 1.3, robed: 1.35, quadruped: 0.75, bloat: 1.05 } as const;
 
 function killAffixFx(v: View) {
@@ -540,7 +560,7 @@ export class EntityViews {
           cr.root.rotation.y = lookupCorpseFacing?.(c) ?? c.facing;
           cr.root.scale.setScalar(c.scale);
           this.group.add(cr.root);
-          const v: View = { c: cr, x: c.x, z: c.z, facing: c.facing, lastState: 'corpse', animSkip: 0, animDt: 0, dieT: 5 };
+          const v: View = { c: cr, x: c.x, z: c.z, facing: c.facing, lastState: 'corpse', animSkip: 0, animDt: 0, dieT: 5, settleT: NO_SETTLE };
           const tryHold = () => {
             if (!cr.loaded) return void setTimeout(tryHold, 150);
             if (!cr.holdLastFrame('death')) cr.toppled = 1;
@@ -660,6 +680,48 @@ export class EntityViews {
         break;
       }
     }
+  }
+
+  private focusX = 0;
+  private focusZ = 0;
+
+  /**
+   * React to hp lost since the last frame: a visual shove away from the hero (bigger for harder hits, smaller for heavy
+   * bodies and for an enemy mid-swing) and, for a heavy blow that leaves the target standing, a hitstop request.
+   */
+  private onHit(v: View, e: Enemy, fx: number, fz: number, near: boolean) {
+    const prev = v.lastHp ?? e.hp;
+    v.lastHp = e.hp;
+    const drop = prev - e.hp;
+    if (drop <= 0 || !near || v.under || e.hp <= 0 || ENEMIES[e.def].inert) return;
+    const frac = drop / Math.max(1, e.maxHp);
+    const committed = e.state === 'windup' || e.state === 'channel';
+    const imp = knockImpulse(frac * (committed ? 0.4 : 1), e.scale * e.scale, e.x - fx, e.z - fz);
+    const k = (v.kn ??= { x: 0, z: 0, vx: 0, vz: 0 });
+    k.vx += imp.vx;
+    k.vz += imp.vz;
+    if (frac >= (e.elite ? HEAVY_HIT_ELITE : HEAVY_HIT) && Math.hypot(e.x - fx, e.z - fz) < HITSTOP_RANGE) hitstop.request(Math.min(1, frac * 1.6));
+  }
+
+  /** Dust puff where a body lands. */
+  private landingDust(v: View) {
+    if (Math.abs(v.x - this.focusX) > 24 || Math.abs(v.z - this.focusZ) > 20) return;
+    const k = v.c.root.scale.x;
+    this.effects.emitSmoke({ x: v.x, y: 0.1, z: v.z, count: 3, color: 0x5d544a, spread: 0.45 * k, speed: 0.7, up: 0.25, life: 0.8, size: 0.9 * k });
+    this.effects.emit({ x: v.x, y: 0.1, z: v.z, count: 5, color: 0x7a6f60, spread: 0.4 * k, speed: 1.1, up: 0.7, life: 0.4, size: 0.1, gravity: 8 });
+  }
+
+  /** Death settle: once the fall has mostly played the body lands (dust) and eases a little way into the ground. */
+  private settle(v: View, dt: number) {
+    if (v.settleT === undefined) {
+      if (!v.c.hasLanded()) return;
+      v.settleT = 0;
+      v.settleY = v.c.toppled ? 0 : v.c.root.position.y;
+      this.landingDust(v);
+    }
+    v.settleT += dt;
+    const base = v.c.toppled ? v.c.root.position.y : (v.settleY ?? 0);
+    v.c.root.position.y = base - settleDepth(v.settleT, SETTLE_DEPTH * v.c.root.scale.x);
   }
 
   private syncFacing(v: View, target: number, dt: number) {
@@ -816,6 +878,7 @@ export class EntityViews {
       // flinch never cuts a stride or a swing. Throttled per enemy, near the camera only.
       const fresh = e.flash > 0.9 && (v.lastFlash ?? 0) < 0.5;
       v.lastFlash = e.flash;
+      this.onHit(v, e, focusX, focusZ, nearFx);
       if (fresh && nearFx && !v.under && performance.now() >= (v.flinchAt ?? 0) && v.c.has('hurt')) {
         v.flinchAt = performance.now() + 700;
         v.c.flinch();
@@ -943,12 +1006,22 @@ export class EntityViews {
     }
 
     this.separateCrowd(enemies, thralls, dt, focusX, focusZ);
+    this.focusX = focusX;
+    this.focusZ = focusZ;
+    // Knockback springs ride on top of the crowd offset (drawn position only), frozen along with everything else in a hitstop.
+    for (const v of this.enemies.values()) {
+      if (!v.kn || !knockActive(v.kn)) continue;
+      stepKnock(v.kn, dt * hitstop.scale);
+      v.c.root.position.x += v.kn.x;
+      v.c.root.position.z += v.kn.z;
+    }
 
     for (let i = this.dying.length - 1; i >= 0; i--) {
       const v = this.dying[i];
       v.dieT! += dt;
       v.c.update(dt);
       this.topple(v, dt);
+      this.settle(v, dt);
       // No corpse arrived (corpse kind "none"): crumble away.
       if (v.dieT! > 1.4) {
         this.dying.splice(i, 1);
@@ -957,8 +1030,9 @@ export class EntityViews {
       }
     }
     for (const v of this.corpses.values()) {
-      if ((v.dieT = (v.dieT ?? 0) + dt) < 3) v.c.update(dt);
+      if ((v.dieT = (v.dieT ?? 0) + dt) < CORPSE_ANIM_S) v.c.update(dt);
       this.topple(v, dt);
+      if (v.settleT !== NO_SETTLE) this.settle(v, dt);
     }
     for (let i = this.fading.length - 1; i >= 0; i--) {
       const v = this.fading[i];

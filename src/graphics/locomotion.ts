@@ -19,6 +19,8 @@ export const DEFAULT_WALK = 0.7;
 /** Slowest and fastest playback of a locomotion clip. Past the fast end the feet slide a little rather than flail. */
 export const LOCO_MIN = 0.4;
 export const WALK_MAX = 3;
+/** Hard ceiling for small walk-only bodies (the quadrupeds): a hound's gait is quick, 4.5x its 0.87 s stride is still a plausible gallop. */
+export const WALK_HARD_MAX = 4.5;
 export const RUN_MAX = 2.4;
 /** A model with a run clip switches to it once the walk would need this many times its natural pace, and back below RUN_DOWN. */
 export const RUN_UP = 2;
@@ -36,7 +38,7 @@ export interface LocomotionPlan {
 
 /** Largest walk playback for a body of this height: big bosses keep a heavier cadence than a rat. */
 export function walkCap(height: number): number {
-  return Math.min(WALK_MAX, Math.max(1.6, WALK_MAX * Math.sqrt(2 / Math.max(0.1, height))));
+  return Math.min(WALK_HARD_MAX, Math.max(1.6, WALK_MAX * Math.sqrt(2 / Math.max(0.1, height))));
 }
 
 /**

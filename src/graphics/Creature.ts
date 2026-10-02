@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { assets } from './AssetCache';
 import { CREATURE_MODELS, type CreatureSlug } from './modelPaths';
+import { hitstop } from './hitstop';
 import CLIP_TIMINGS_JSON from '../content/clipTimings.json';
 
 /**
@@ -29,7 +30,7 @@ export function wrapRange(t: number, start: number, end: number): number {
 
 /** Measured [duration, impact] seconds per model and clip (tools/build-clip-timings.mjs). */
 const CLIP_TIMINGS = CLIP_TIMINGS_JSON as Record<string, Record<string, number[]>>;
-import { hipAnchor, inPlaceHeroClip, stripRootTravel } from './inPlaceAnimation';
+import { hipAnchor, inPlaceHeroClip, landingTime, stripRootTravel } from './inPlaceAnimation';
 import { planLocomotion, STRIDES, type LocomotionPlan } from './locomotion';
 import { applyWingFlap, type WingOpts } from './wingFlap';
 import { applyGearTint, GEAR_REGIONS, makeGearTintState, type GearRegion } from './gearTint';
@@ -522,7 +523,17 @@ export class Creature {
     }
   }
 
-  update(dt: number) {
+  /** True once a dying body has come to rest (its death clip's landing moment, or the tip-over for models without one). */
+  hasLanded(): boolean {
+    if (this.toppled) return this.toppled >= 0.8;
+    const a = this.oneShot;
+    if (!a || !a.getClip().name.startsWith('death')) return false;
+    return a.time >= landingTime(a.getClip());
+  }
+
+  update(dtReal: number) {
+    // A hitstop freezes the picture (this clock only, never the sim's).
+    const dt = dtReal * hitstop.scale;
     const f = this.flinchAct;
     if (f && f.isRunning()) {
       // Ease the flinch in over ~50 ms and out over the last ~180 ms so it never pops.

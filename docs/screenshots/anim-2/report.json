@@ -1,0 +1,307 @@
+{
+ "impact": {
+  "hitstop": {
+   "frozenFrames": 3,
+   "count": 1,
+   "simAdvanced": 0.2,
+   "granted": 0.05,
+   "lightCount": 0,
+   "share": 0.14,
+   "reducedMotionCount": 0
+  },
+  "knockback": {
+   "peak": 0.26,
+   "awayFromHero": true,
+   "settledOffset": 0,
+   "simMoved": 0
+  },
+  "settle": {
+   "sink": 0.06,
+   "minY": -0.06,
+   "monotonicAfterLanding": true,
+   "corpseDrawnDelta": 0,
+   "hasCorpse": true,
+   "finalY": -0.06,
+   "landedAt": 1.6
+  }
+ },
+ "enemies": {
+  "robber": {
+   "ground": 2.7,
+   "slip": 0.18,
+   "slipLoco": 0.18,
+   "slipBones": 0.35,
+   "slipBonesLoco": 0.35,
+   "oneShotShare": 0,
+   "clip": "run",
+   "ts": 0.75,
+   "capped": false,
+   "quad": false
+  },
+  "hound": {
+   "ground": 4.75,
+   "slip": 1.33,
+   "slipLoco": 1.33,
+   "slipBones": 0.84,
+   "slipBonesLoco": 0.84,
+   "oneShotShare": 0,
+   "clip": "walk",
+   "ts": 3.92,
+   "capped": false,
+   "quad": true
+  },
+  "penitent": {
+   "ground": 2,
+   "slip": 0.12,
+   "slipLoco": 0.12,
+   "slipBones": 0.14,
+   "slipBonesLoco": 0.14,
+   "oneShotShare": 0,
+   "clip": "walk",
+   "ts": 1.42,
+   "capped": false,
+   "quad": false
+  },
+  "sac": {
+   "ground": 1.4,
+   "slip": 0.14,
+   "slipLoco": 0.14,
+   "slipBones": 0.17,
+   "slipBonesLoco": 0.17,
+   "oneShotShare": 0,
+   "clip": "walk",
+   "ts": 1.41,
+   "capped": false,
+   "quad": false
+  },
+  "deacon": {
+   "ground": 2.15,
+   "slip": 0.21,
+   "slipLoco": 0.21,
+   "slipBones": 0.34,
+   "slipBonesLoco": 0.34,
+   "oneShotShare": 0,
+   "clip": "walk",
+   "ts": 1.41,
+   "capped": false,
+   "quad": false
+  },
+  "risen": {
+   "ground": 2.98,
+   "slip": 0.25,
+   "slipLoco": 0.25,
+   "slipBones": 0.35,
+   "slipBonesLoco": 0.35,
+   "oneShotShare": 0,
+   "clip": "run",
+   "ts": 0.79,
+   "capped": false,
+   "quad": false
+  },
+  "censer": {
+   "ground": 2.55,
+   "slip": 0.15,
+   "slipLoco": 0.15,
+   "slipBones": 0.17,
+   "slipBonesLoco": 0.17,
+   "oneShotShare": 0,
+   "clip": "walk",
+   "ts": 1.86,
+   "capped": false,
+   "quad": false
+  },
+  "rat": {
+   "ground": 4.8,
+   "slip": 0.79,
+   "slipLoco": 0.79,
+   "slipBones": 0.73,
+   "slipBonesLoco": 0.73,
+   "oneShotShare": 0,
+   "clip": "walk",
+   "ts": 4.5,
+   "capped": true,
+   "quad": true
+  },
+  "golem": {
+   "ground": 1.53,
+   "slip": 0.16,
+   "slipLoco": 0.16,
+   "slipBones": 0.15,
+   "slipBonesLoco": 0.15,
+   "oneShotShare": 0,
+   "clip": "walk",
+   "ts": 0.72,
+   "capped": false,
+   "quad": false
+  },
+  "ghoul": {
+   "ground": 2.41,
+   "slip": 0.14,
+   "slipLoco": 0.14,
+   "slipBones": 0.17,
+   "slipBonesLoco": 0.17,
+   "oneShotShare": 0,
+   "clip": "walk",
+   "ts": 1.76,
+   "capped": false,
+   "quad": false
+  },
+  "acolyte": {
+   "ground": 2.15,
+   "slip": 0.21,
+   "slipLoco": 0.21,
+   "slipBones": 0.5,
+   "slipBonesLoco": 0.5,
+   "oneShotShare": 0,
+   "clip": "walk",
+   "ts": 1.57,
+   "capped": false,
+   "quad": false
+  },
+  "templar": {
+   "ground": 1.79,
+   "slip": 0.2,
+   "slipLoco": 0.2,
+   "slipBones": 0.34,
+   "slipBonesLoco": 0.34,
+   "oneShotShare": 0,
+   "clip": "walk",
+   "ts": 1.14,
+   "capped": false,
+   "quad": false
+  },
+  "plague_doctor": {
+   "ground": 1.97,
+   "slip": 0.29,
+   "slipLoco": 0.29,
+   "slipBones": 0.4,
+   "slipBonesLoco": 0.4,
+   "oneShotShare": 0,
+   "clip": "walk",
+   "ts": 1.3,
+   "capped": false,
+   "quad": false
+  },
+  "flagellant": {
+   "ground": 2.74,
+   "slip": 0.24,
+   "slipLoco": 0.24,
+   "slipBones": 0.37,
+   "slipBonesLoco": 0.37,
+   "oneShotShare": 0,
+   "clip": "run",
+   "ts": 0.69,
+   "capped": false,
+   "quad": false
+  },
+  "cinder_husk": {
+   "ground": 2.35,
+   "slip": 0.15,
+   "slipLoco": 0.15,
+   "slipBones": 0.2,
+   "slipBonesLoco": 0.2,
+   "oneShotShare": 0,
+   "clip": "walk",
+   "ts": 1.69,
+   "capped": false,
+   "quad": false
+  },
+  "pyre_priest": {
+   "ground": 2.09,
+   "slip": 0.3,
+   "slipLoco": 0.3,
+   "slipBones": 0.49,
+   "slipBonesLoco": 0.49,
+   "oneShotShare": 0,
+   "clip": "walk",
+   "ts": 1.59,
+   "capped": false,
+   "quad": false
+  },
+  "cinderhound": {
+   "ground": 5.05,
+   "slip": 1.66,
+   "slipLoco": 1.66,
+   "slipBones": 1.09,
+   "slipBonesLoco": 1.09,
+   "oneShotShare": 0,
+   "clip": "walk",
+   "ts": 3.43,
+   "capped": false,
+   "quad": true
+  },
+  "slag_brute": {
+   "ground": 1.38,
+   "slip": 0.22,
+   "slipLoco": 0.22,
+   "slipBones": 0.17,
+   "slipBonesLoco": 0.17,
+   "oneShotShare": 0,
+   "clip": "walk",
+   "ts": 0.84,
+   "capped": false,
+   "quad": false
+  },
+  "bog_hag": {
+   "ground": 1.94,
+   "slip": 0.37,
+   "slipLoco": 0.37,
+   "slipBones": 0.59,
+   "slipBonesLoco": 0.59,
+   "oneShotShare": 0,
+   "clip": "walk",
+   "ts": 1.33,
+   "capped": false,
+   "quad": false
+  },
+  "drowned_sexton": {
+   "ground": 1.7,
+   "slip": 0.16,
+   "slipLoco": 0.16,
+   "slipBones": 0.15,
+   "slipBonesLoco": 0.15,
+   "oneShotShare": 0,
+   "clip": "walk",
+   "ts": 1,
+   "capped": false,
+   "quad": false
+  }
+ },
+ "meanBipedSlip": 0.21,
+ "houndPlanted": {
+  "planted": 0.14,
+  "ts": 3.67
+ },
+ "heading": 0.9824188983645192,
+ "hero": {
+  "clip": "run",
+  "ts": 1.3905450803547112,
+  "residual": 0,
+  "maxTurnPerFrame": 0.18987157661077703
+ },
+ "flinch": {
+  "before": "attack",
+  "after": "attack",
+  "running": true,
+  "additive": true
+ },
+ "crowd": {
+  "bodies": 47,
+  "simOverlaps": 18,
+  "drawnOverlaps": 7,
+  "samples": 16
+ },
+ "perf": {
+  "counts": {
+   "enemies": 47,
+   "thralls": 0,
+   "corpses": 0,
+   "dying": 0,
+   "fading": 0,
+   "loot": 0,
+   "remotes": 0,
+   "frameMs": 83.90732106576951
+  },
+  "cpuMsPerStep": 1.21
+ }
+}
