@@ -21,11 +21,14 @@ flowchart LR
     S7[2 Oct: necro balance pass]:::done
     S8[2 Oct: guide NPCs + Next line]:::done
     S9[2 Oct: Alchemist's Wing · affixes · audio 2]:::done
+    S10[2 Oct: necro spell feel · animation pass]:::done
   end
 
   subgraph NOW["🔨 Now — being built"]
-    N2[Necro spell feel]:::now
-    N9[Animation pass]:::now
+    W1[Animation 2<br/>hitstop · knockback · run clips]:::now
+    W2[Gear tuning<br/>affixes + sets vs the power curve]:::now
+    W3[First-hour polish<br/>calm onboarding]:::now
+    W4[Wing dressing + Sexton's spade]:::now
   end
 
   subgraph POLISH["✨ Next — polish"]
@@ -47,6 +50,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 2 Oct 2026 | Necro spell feel: all 22 necromancer rites gained capped bone, grave-dirt, soul-light, rot-spore, skull and spectral-hand motifs (thinner for thralls, off on Low); animation pass: enemies, thralls, bosses and NPCs no longer face 90° sideways, measured stride speeds cut foot sliding (slip ~1.4 → ~0.3), weapon/tool grips no longer sink into bodies, additive hit flinch, smoothed turning, softer crowd overlap | Spell before/after sheets in docs/screenshots/spell-feel/; animation evidence in docs/screenshots/anim-pass/. |
 | 2 Oct 2026 | The Alchemist's Wing (east door of the Chapterhouse): the Great Cauldron and Alembic brew everything, a daily "brew of the day" bonus, the Reagent Shelf collection, and the Apothecary at her counter; item level + affixes rolled on the server (6 necromancer affixes, names like "Gravebound … of the Legion", counted by the upgrade arrows, sheet, Vault, salvage); audio pass 2 (ambience beds for every zone that duck in fights, gathering and station sounds, the remaining necro rites) | Migration 020 (loot_instances). Probed end to end against a scratch database. |
 | 2 Oct 2026 | Guide NPCs: the Prior (Chapterhouse), the Sexton (Acre) and the Apothecary talk in voice and give context-aware advice (click or E); an optional "Next" line under the minimap with a minimap ping suggests one step at a time (seal progress, affordable bosses, ready laborers, full bag, Ascension); toggles in Settings | Codex "People" tab; README "Finding your way". |
 | 2 Oct 2026 | Art (not yet placed in game): 12 Alchemist's Wing props and three guide NPCs (the Prior, the Sexton, the Apothecary) with idle, walk and talk clips | 1,025 Tripo credits; contact sheets in docs/screenshots/alchemist-wing/. |
