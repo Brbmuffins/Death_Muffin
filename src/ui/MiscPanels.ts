@@ -67,6 +67,8 @@ export class SettingsPanel extends SimplePanel {
         <label class="row">Reduce motion (no camera shake)<input type="checkbox" data-rm /></label>
         <label class="row">Damage numbers<input type="checkbox" data-dn /></label>
         <label class="row">Don't show tips<input type="checkbox" data-tips /></label>
+        <label class="row">Show the “Next” suggestion under the minimap<input type="checkbox" data-guidance aria-label="Show the Next suggestion under the minimap" /></label>
+        <label class="row">Point to it on the minimap<input type="checkbox" data-guideping aria-label="Point the Next suggestion out on the minimap" /></label>
         </section>
         <section class="cw-settings-section"><h3>Character and help</h3>
         ${this.dev ? '<label class="row">Dev access (preview as a normal player when off)<input type="checkbox" data-dev aria-label="Dev access" /></label>' : ''}
@@ -92,6 +94,7 @@ export class SettingsPanel extends SimplePanel {
           <kbd>I C P M</kbd><span>Reliquary · Workbench · Skills · Waystones</span>
           <kbd>J</kbd><span>Character sheet: your stats, and where each number comes from</span>
           <kbd>K</kbd><span>Codex</span>
+          <kbd>E</kbd><span>Talk to the Prior, the Sexton or the Apothecary when you stand close (or click them)</span>
           <kbd>V</kbd><span>Ossuary Vault: a shared stash (in the Chapterhouse or the Acre)</span>
           ${canUseAutoCombat() ? '<kbd>G</kbd><span>Toggle auto combat on Easy · engage nearby enemies</span>' : ''}
           <kbd>Counsel header</kbd><span>Drag to move · arrow keys while focused · remembers its position</span>
@@ -141,6 +144,13 @@ export class SettingsPanel extends SimplePanel {
     const tips = this.el!.querySelector<HTMLInputElement>('[data-tips]')!;
     tips.checked = !settings.tips;
     tips.addEventListener('change', () => updateSettings({ tips: !tips.checked }));
+    const guide = this.el!.querySelector<HTMLInputElement>('[data-guidance]')!;
+    const ping = this.el!.querySelector<HTMLInputElement>('[data-guideping]')!;
+    guide.checked = settings.guidance;
+    ping.checked = settings.guidancePing;
+    ping.disabled = !settings.guidance;
+    guide.addEventListener('change', () => { updateSettings({ guidance: guide.checked }); ping.disabled = !guide.checked; });
+    ping.addEventListener('change', () => updateSettings({ guidancePing: ping.checked }));
     const dev = this.el!.querySelector<HTMLInputElement>('[data-dev]');
     if (dev && this.dev) {
       dev.checked = this.dev.get();

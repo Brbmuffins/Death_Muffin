@@ -18,6 +18,9 @@ export interface Settings {
   interfaceVolume: number;
   /** First-time onboarding tips (ui/Onboarding). */
   tips: boolean;
+  /** The compact "Next" suggestion under the minimap (gameplay/guidance.ts), and its minimap ping. Both default on. */
+  guidance: boolean;
+  guidancePing: boolean;
   /** Session difficulty; in co-op the world keeper's setting applies. */
   difficulty: Difficulty;
   /** Fight nearby enemies and manage basic rites while standing. */
@@ -39,7 +42,7 @@ function defaults(): Settings {
   } catch {
     /* no matchMedia */
   }
-  return { quality: 'high', reducedMotion: reduced, damageNumbers: true, volume: 0.6, combatVolume: 1, ambienceVolume: 1, interfaceVolume: 1, tips: true, difficulty: 'medium', autoCombat: false, autoGather: true };
+  return { quality: 'high', reducedMotion: reduced, damageNumbers: true, volume: 0.6, combatVolume: 1, ambienceVolume: 1, interfaceVolume: 1, tips: true, guidance: true, guidancePing: true, difficulty: 'medium', autoCombat: false, autoGather: true };
 }
 
 function load(): Settings {

@@ -14,6 +14,10 @@ export interface MinimapFrame {
   waystones: { x: number; z: number }[];
   /** Accepted final movement destination; null when the route ends. */
   destination?: { x: number; z: number } | null;
+  /** The people of the Covenant; `fresh` = they have something new to say. */
+  npcs?: { x: number; z: number; fresh: boolean }[];
+  /** Where the "Next" suggestion points: a pulsing ring when on the map, an edge arrow when beyond it. */
+  ping?: { x: number; z: number } | null;
 }
 
 /** Circular top-right minimap, north-up, centred on the player. */
@@ -48,6 +52,43 @@ export class Minimap {
       event.stopPropagation();
     });
     this.canvas.addEventListener('wheel', event => event.stopPropagation(), { passive: true });
+  }
+
+  /** The suggestion ping: a soft gold ring where it is, or a small arrow on the rim pointing toward it. */
+  private drawPing(c: CanvasRenderingContext2D, dx: number, dz: number, half: number) {
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 380);
+    const px = dx * SCALE;
+    const pz = dz * SCALE;
+    const d = Math.hypot(px, pz);
+    c.save();
+    c.strokeStyle = '#f5dd8f';
+    c.fillStyle = '#f5dd8f';
+    if (d < half - 10) {
+      c.globalAlpha = 0.55 + 0.4 * pulse;
+      c.lineWidth = 2;
+      c.beginPath();
+      c.arc(half + px, half + pz, 6 + 3 * pulse, 0, Math.PI * 2);
+      c.stroke();
+      c.beginPath();
+      c.arc(half + px, half + pz, 2, 0, Math.PI * 2);
+      c.fill();
+    } else {
+      const ang = Math.atan2(pz, px);
+      c.translate(half + Math.cos(ang) * (half - 9), half + Math.sin(ang) * (half - 9));
+      c.rotate(ang);
+      c.globalAlpha = 0.7 + 0.3 * pulse;
+      c.strokeStyle = '#07060a';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(6, 0);
+      c.lineTo(-4, -5);
+      c.lineTo(-1.5, 0);
+      c.lineTo(-4, 5);
+      c.closePath();
+      c.fill();
+      c.stroke();
+    }
+    c.restore();
   }
 
   draw(f: MinimapFrame) {
@@ -107,6 +148,22 @@ export class Minimap {
       c.fillStyle = '#9b5cff';
       c.fillRect(tx(w.x) - 2, tz(w.z) - 3, 4, 6);
     }
+    for (const p of f.npcs ?? []) {
+      const sx = tx(p.x);
+      const sz = tz(p.z);
+      if (Math.hypot(sx - half, sz - half) > half - 3) continue;
+      c.fillStyle = p.fresh ? '#f5dd8f' : '#c9a85a';
+      c.strokeStyle = '#07060a';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(sx, sz - 4.5);
+      c.lineTo(sx + 3.5, sz);
+      c.lineTo(sx, sz + 4.5);
+      c.lineTo(sx - 3.5, sz);
+      c.closePath();
+      c.fill();
+      c.stroke();
+    }
     for (const k of f.corpses) dot(k.x, k.z, 1.2, 'rgba(216,207,189,0.35)');
     for (const e of f.enemies) dot(e.x, e.z, e.elite ? 3 : 1.8, e.elite ? '#c6a4ff' : '#c9b9a0');
     for (const t of f.thralls) dot(t.x, t.z, 2, '#6fe3c8');
@@ -128,6 +185,8 @@ export class Minimap {
       c.moveTo(x, z - 6); c.lineTo(x, z + 6);
       c.stroke();
     }
+
+    if (f.ping) this.drawPing(c, f.ping.x - f.px, f.ping.z - f.pz, half);
 
     // Player arrow.
     c.save();

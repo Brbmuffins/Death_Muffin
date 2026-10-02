@@ -37,6 +37,8 @@ import { ENEMIES, type EnemyId } from '../content/enemies';
 import { BOSSES, type BossId } from '../content/bosses';
 import type { CodexJournal } from '../gameplay/codexJournal';
 import { GATHER_SKILLS, SKILLS, actionMs, nodesForSkill, xpPerHour } from '../gameplay/gatheringRules';
+import { CODEX_PEOPLE_COUNSEL, codexPeopleRows } from '../content/codex';
+import type { NpcId } from '../content/npcs';
 import { generateLayout } from '../content/layout';
 import { itemMeta } from '../content/items';
 import { ICON } from './icons';
@@ -50,6 +52,7 @@ const TABS = [
   { id: 'stats', label: 'Stats' },
   { id: 'dead', label: 'The Dead' },
   { id: 'diocese', label: 'The Diocese' },
+  { id: 'people', label: 'People' },
   { id: 'professions', label: 'Professions' },
   { id: 'lore', label: 'Covenant Lore' },
   { id: 'chronicle', label: 'Chronicle' },
@@ -142,7 +145,9 @@ export class CodexPanel {
             ? this.dead()
             : this.tab === 'diocese'
               ? this.diocese()
-              : this.tab === 'professions'
+              : this.tab === 'people'
+                ? this.people()
+                : this.tab === 'professions'
                 ? this.professions()
                 : this.tab === 'chronicle'
                   ? this.chronicleTab()
@@ -386,6 +391,26 @@ export class CodexPanel {
         </div>
       </article>`;
     return `<p class="tip">${CODEX_PROFESSIONS_COUNSEL}</p>${sections}${stations}${vault}${salvage}${brews}${reagents}`;
+  }
+
+  /** Who has been spoken to (set by the scene from the guidance memory). */
+  metNpc: (id: NpcId) => boolean = () => false;
+
+  /** People of the Covenant: where each stands and what to ask them. They are always listed; the mark shows whom you have met. */
+  private people() {
+    const rows = codexPeopleRows()
+      .map(
+        (p) => `
+        <article class="cw-codex-entry">
+          <div class="txt">
+            <div class="hd"><h3>${p.name}</h3><span class="meta">${this.metNpc(p.id) ? 'Met' : 'Not yet met'} · ${p.where}</span></div>
+            <p>${p.blurb}</p>
+            <p><b>Ask about:</b> ${p.ask}</p>
+          </div>
+        </article>`,
+      )
+      .join('');
+    return `<p class="cw-codex-note">${CODEX_PEOPLE_COUNSEL}</p>${rows}`;
   }
 
   private lore() {

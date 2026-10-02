@@ -43,6 +43,7 @@ import { itemMeta } from './items';
 import { SALVAGE_RARITIES, salvagePreview } from '../gameplay/salvageRules';
 import { AREA_REAGENT_DROPS, BOSS_ICHOR, ENEMY_REAGENT_DROPS, REAGENT_ITEMS, REAGENT_RECIPES } from './reagents';
 import { AREAS, BOSS_SUMMON_SHARDS, type AreaId } from './areas';
+import { NPCS, NPC_IDS, type NpcId } from './npcs';
 import type { DisciplineId } from './disciplines';
 import { ABBESS, BOSSES, CONGREGATION, GRAVEDIGGER, MIRE, REGENT, SAINT, type BossId } from './bosses';
 import { BOG, HAG_HEX, SEXTON_HOOK, WISP_PULSE } from './fen';
@@ -774,6 +775,27 @@ export const COVENANT_LORE = {
     'Your charter is short. Go down into the Hollow Graves and take back what the bell has taken, one body at a time. Push on through the Ossuary and the drowned Nave to the Sanctum, where the Prelate still keeps his bell. The dead you raise are not your servants. They are on loan, and the Covenant expects them returned.',
   ],
 } as const;
+
+/** Codex: the people who stand in the halls. Where they stand comes from content/npcs.ts, so the two cannot drift. */
+export const CODEX_PEOPLE_COUNSEL =
+  'Three of the Covenant still stand in the halls and will talk. Click one, or stand close and press E. They advise and never command: ask where to go next, or ask about a subject. A gold ! over a head means they have something new to say. The Next line under the minimap (and its ping on the map) shows one suggestion drawn from the same advice; turn either off in Settings.';
+export interface PeopleEntry {
+  id: NpcId;
+  name: string;
+  title: string;
+  where: string;
+  ask: string;
+  blurb: string;
+}
+export const codexPeopleRows = (): PeopleEntry[] =>
+  NPC_IDS.map((id) => ({
+    id,
+    name: NPCS[id].name,
+    title: NPCS[id].title,
+    where: `${AREAS[NPCS[id].area].name}${id === 'apothecary' ? ', beside the Workbench' : id === 'prior' ? ', near the Altar' : ', near the Covenant Lectern'}`,
+    ask: { prior: 'Where to hunt next, the seals, the kings of the dead, Ascension.', sexton: 'Gathering, Grave Laborers, the Bone Grinder, the Vault, Contracts.', apothecary: 'What to brew, where reagents fall, elixirs and tonics.' }[id],
+    blurb: NPCS[id].blurb,
+  }));
 
 // ---------------------------------------------------------------------------
 // Helpers

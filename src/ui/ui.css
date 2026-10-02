@@ -1391,3 +1391,63 @@ button { font-family: inherit; }
 @media (max-width: 760px) { .cw-equip-col { width: 100%; } }
 .cw-bag-tools:has(.cw-belt-offer) { flex-wrap: wrap; row-gap: 6px; }
 .cw-bag-tools .cw-belt-offer { flex: 1 0 100%; }
+
+/* ------------------------------------------------------------------ */
+/* People of the Covenant: conversation card and the "Next" line         */
+/* ------------------------------------------------------------------ */
+
+.cw-dialogue {
+  position: absolute;
+  left: 50%;
+  top: 64px; /* high on the screen: the player and the speaker stand at the middle and stay in view */
+  transform: translateX(-50%);
+  width: 560px;
+  max-width: calc(100vw - 32px);
+  padding: 14px 20px 16px;
+  z-index: 5;
+  border-top: 2px solid var(--npc-accent, var(--cw-spell-400));
+  animation: cw-dialogue-in 0.22s ease-out;
+}
+@keyframes cw-dialogue-in { from { opacity: 0; transform: translateX(-50%) translateY(-8px); } }
+@media (prefers-reduced-motion: reduce) { .cw-dialogue { animation: none; } }
+.cw-dialogue .hd { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+.cw-dialogue .nm { font-family: var(--cw-font-display); font-weight: 700; font-size: 22px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cw-bone-100); line-height: 1.1; }
+.cw-dialogue .ti { font-size: 13px; color: var(--npc-accent, var(--cw-spell-300)); letter-spacing: 0.04em; }
+.cw-dialogue .x { background: none; border: 0; color: var(--cw-text-muted); font-size: 24px; line-height: 1; cursor: pointer; padding: 0 4px; }
+.cw-dialogue .x:hover, .cw-dialogue .x:focus-visible { color: var(--cw-bone-100); }
+.cw-dialogue .say { font-size: 16px; line-height: 1.5; color: var(--cw-text); min-height: 48px; }
+.cw-dialogue .say p { margin: 0 0 6px; }
+.cw-dialogue .ch { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.cw-dialogue .choice {
+  text-align: left;
+  font: inherit;
+  font-size: 15px;
+  color: var(--cw-bone-100);
+  background: var(--cw-inset);
+  border: 1px solid var(--cw-border);
+  padding: 7px 12px;
+  cursor: pointer;
+}
+.cw-dialogue .choice:hover, .cw-dialogue .choice:focus-visible { border-color: var(--cw-border-active); background: var(--cw-accent-soft); outline: none; }
+.cw-dialogue .choice.fresh::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 9px; border-radius: 50%; background: #e8c15a; vertical-align: 1px; }
+
+.hud-next {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 220px;
+  padding: 5px 4px 5px 10px;
+  background: rgba(7, 6, 10, 0.7);
+  border: 1px solid var(--cw-border);
+  border-left: 2px solid #e8c15a;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--cw-bone-100);
+  text-align: left;
+  pointer-events: auto;
+}
+.hud-next[hidden] { display: none; }
+.hud-next .kick { display: block; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: #e8c15a; }
+.hud-next .txt { flex: 1; }
+.hud-next button { background: none; border: 0; color: var(--cw-text-muted); font-size: 17px; line-height: 1; cursor: pointer; padding: 0 4px; }
+.hud-next button:hover, .hud-next button:focus-visible { color: var(--cw-bone-100); }

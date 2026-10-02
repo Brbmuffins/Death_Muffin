@@ -1,6 +1,7 @@
 import type { EnemyId } from './enemies';
 import { armorLoot } from './armorSets';
 import { necroWeaponLoot } from './necroWeapons';
+import { NPC_IDS, NPC_SPOTS, npcInteractableId } from './npcSpots';
 
 /**
  * One connected world (audit: "one continuous farming space assembled from
@@ -19,7 +20,11 @@ export interface Rect {
 }
 
 /** kiln / sawpit / fire are the Sexton's Acre processing stations (docs/PROFESSIONS-ROADMAP.md §6). */
-export type InteractKind = 'inventory' | 'forge' | 'professions' | 'upgrades' | 'waystone' | 'boss' | 'kiln' | 'sawpit' | 'fire' | 'lectern' | 'vault' | 'grinder';
+export type InteractKind = 'inventory' | 'forge' | 'professions' | 'upgrades' | 'waystone' | 'boss' | 'kiln' | 'sawpit' | 'fire' | 'lectern' | 'vault' | 'grinder' | 'npc';
+
+/** The talkable people standing in `area` (content/npcSpots.ts holds their positions). */
+const npcSpots = (area: AreaId): Interactable[] =>
+  NPC_IDS.filter((n) => NPC_SPOTS[n].area === area).map((n) => ({ id: npcInteractableId(n), kind: 'npc' as const, label: NPC_SPOTS[n].label, x: NPC_SPOTS[n].x, z: NPC_SPOTS[n].z }));
 
 export interface Interactable {
   id: string;
@@ -91,6 +96,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
       { id: 'waystone_chapterhouse', kind: 'waystone', label: 'Waystone', x: 9, z: 26.5 },
       // The Ossuary Vault: the sarcophagus between the Altar and the south braziers (shared stash, key V).
       { id: 'ossuary_vault', kind: 'vault', label: 'Ossuary Vault', x: 0, z: 27 },
+      ...npcSpots('chapterhouse'),
     ],
     ambient: { fog: 0x0b0810, hemiSky: 0x3b2a52, hemiGround: 0x0a0710, moon: 0x8f9ed1 },
   },
@@ -119,6 +125,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
       { id: 'bone_grinder', kind: 'grinder', label: 'Bone Grinder', x: -27, z: 33.2 },
       { id: 'cooking_fire', kind: 'fire', label: 'Cooking Fire', x: -26.5, z: 28.5 },
       { id: 'lectern', kind: 'lectern', label: 'Covenant Lectern', x: -24.2, z: 17.8 },
+      ...npcSpots('acre'),
     ],
     ambient: { fog: 0x0c0f10, hemiSky: 0x4b5864, hemiGround: 0x232820, moon: 0xbbcbd8 },
   },

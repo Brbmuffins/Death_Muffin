@@ -358,7 +358,17 @@ var NECRO_RECIPES = NECRO_WEAPONS.map((w) => {
   return [`craft_${w.id}`, w.name, wood ? "woodcutting" : "mining", r.level, w.id, 1, r.ing];
 });
 
+// src/content/npcSpots.ts
+var NPC_IDS = ["prior", "sexton", "apothecary"];
+var NPC_SPOTS = {
+  prior: { area: "chapterhouse", x: -3.4, z: 15.8, label: "The Prior" },
+  sexton: { area: "acre", x: -26, z: 23, label: "The Sexton" },
+  apothecary: { area: "chapterhouse", x: 8.3, z: 17.2, label: "The Apothecary" }
+};
+var npcInteractableId = (id) => `npc_${id}`;
+
 // src/content/areas.ts
+var npcSpots = (area) => NPC_IDS.filter((n) => NPC_SPOTS[n].area === area).map((n) => ({ id: npcInteractableId(n), kind: "npc", label: NPC_SPOTS[n].label, x: NPC_SPOTS[n].x, z: NPC_SPOTS[n].z }));
 var AREAS = {
   chapterhouse: {
     id: "chapterhouse",
@@ -383,7 +393,8 @@ var AREAS = {
       { id: "altar", kind: "upgrades", label: "Altar of Ascension", x: 0, z: 21 },
       { id: "waystone_chapterhouse", kind: "waystone", label: "Waystone", x: 9, z: 26.5 },
       // The Ossuary Vault: the sarcophagus between the Altar and the south braziers (shared stash, key V).
-      { id: "ossuary_vault", kind: "vault", label: "Ossuary Vault", x: 0, z: 27 }
+      { id: "ossuary_vault", kind: "vault", label: "Ossuary Vault", x: 0, z: 27 },
+      ...npcSpots("chapterhouse")
     ],
     ambient: { fog: 722960, hemiSky: 3877458, hemiGround: 657168, moon: 9412305 }
   },
@@ -411,7 +422,8 @@ var AREAS = {
       // Salvaging: grinds spare gear into materials and reagents.
       { id: "bone_grinder", kind: "grinder", label: "Bone Grinder", x: -27, z: 33.2 },
       { id: "cooking_fire", kind: "fire", label: "Cooking Fire", x: -26.5, z: 28.5 },
-      { id: "lectern", kind: "lectern", label: "Covenant Lectern", x: -24.2, z: 17.8 }
+      { id: "lectern", kind: "lectern", label: "Covenant Lectern", x: -24.2, z: 17.8 },
+      ...npcSpots("acre")
     ],
     ambient: { fog: 790288, hemiSky: 4937828, hemiGround: 2304032, moon: 12307416 }
   },

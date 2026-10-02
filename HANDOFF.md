@@ -84,6 +84,14 @@ Settings has Combat / Ambience / Interface sliders. QA: `tools/qa/audio-smoke.cj
 `window.__cwAudio.stats()`). The mix has been measured but NOT ear-tested. The three
 Crossworlds clips are gone (replaced by CC0 layers).
 
+2026-10-02 gentle guidance (branch `dm/guidance`, not deployed): three talkable people (the Prior and the Apothecary in the
+Chapterhouse, the Sexton in the Acre) and an optional "Next" line under the minimap. Positions/names/looks: `src/content/npcs.ts`
+(stand-in models in `NPC_LOOKS`; swap in `npc_prior` / `npc_sexton` / `npc_apothecary` by adding them to `modelPaths.ts` and editing
+the `slug` there; `talk` clip is optional). Pure selectors: `src/gameplay/guidance.ts` (suggestions, news, per-character memory in
+`dm_guidance_v1:<charId>`); words: `src/content/dialogue.ts`; UI: `ui/DialoguePanel.ts`, `graphics/NpcViews.ts`, HUD `data-next`, minimap
+ping. Key **E**; Settings has two toggles (`guidance`, `guidancePing`, default on). Tests: `gameplay/__tests__/guidance.test.ts`; QA:
+`tools/qa/guidance-smoke.cjs`. Suggestion priorities live in `suggestions()`; add a rule there plus a line in `dialogue.ts`.
+
 | Area | Status | Where |
 |---|---|---|
 | Runtime (one renderer, bloom, QA stepping) | ✅ | `src/app/` |
