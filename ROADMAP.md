@@ -22,13 +22,13 @@ flowchart LR
     S8[2 Oct: guide NPCs + Next line]:::done
     S9[2 Oct: Alchemist's Wing · affixes · audio 2]:::done
     S10[2 Oct: necro spell feel · animation pass]:::done
+    S11[2 Oct: Wing dressed · Sexton's spade]:::done
   end
 
   subgraph NOW["🔨 Now — being built"]
     W1[Animation 2<br/>hitstop · knockback · run clips]:::now
     W2[Gear tuning<br/>affixes + sets vs the power curve]:::now
     W3[First-hour polish<br/>calm onboarding]:::now
-    W4[Wing dressing + Sexton's spade]:::now
   end
 
   subgraph POLISH["✨ Next — polish"]
@@ -50,6 +50,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 2 Oct 2026 | The Alchemist's Wing dressed: ~65 props (benches, shelves, herbs, rugs, candle pools), warm stone floor and walls instead of purple; the Sexton carries his spade | 0 Tripo credits (existing props and procedural textures). |
 | 2 Oct 2026 | Necro spell feel: all 22 necromancer rites gained capped bone, grave-dirt, soul-light, rot-spore, skull and spectral-hand motifs (thinner for thralls, off on Low); animation pass: enemies, thralls, bosses and NPCs no longer face 90° sideways, measured stride speeds cut foot sliding (slip ~1.4 → ~0.3), weapon/tool grips no longer sink into bodies, additive hit flinch, smoothed turning, softer crowd overlap | Spell before/after sheets in docs/screenshots/spell-feel/; animation evidence in docs/screenshots/anim-pass/. |
 | 2 Oct 2026 | The Alchemist's Wing (east door of the Chapterhouse): the Great Cauldron and Alembic brew everything, a daily "brew of the day" bonus, the Reagent Shelf collection, and the Apothecary at her counter; item level + affixes rolled on the server (6 necromancer affixes, names like "Gravebound … of the Legion", counted by the upgrade arrows, sheet, Vault, salvage); audio pass 2 (ambience beds for every zone that duck in fights, gathering and station sounds, the remaining necro rites) | Migration 020 (loot_instances). Probed end to end against a scratch database. |
 | 2 Oct 2026 | Guide NPCs: the Prior (Chapterhouse), the Sexton (Acre) and the Apothecary talk in voice and give context-aware advice (click or E); an optional "Next" line under the minimap with a minimap ping suggests one step at a time (seal progress, affordable bosses, ready laborers, full bag, Ascension); toggles in Settings | Codex "People" tab; README "Finding your way". |
@@ -138,6 +139,9 @@ A dedicated room off the Chapterhouse: cauldrons and alembics as brewing station
 5. **Crowds:** stronger separation and steering so packs do not stack, plus formation slots for thralls around the caster.
 6. **Impact:** a two- or three-frame hitstop on heavy hits, eased knockback, and a death "settle" into the ground.
 7. **Replace the worst Tripo clips** with retargeted library clips where measurements say they are beyond fixing.
+
+### X2b · Blender animation pipeline (queued after Animation 2)
+Headless Blender on the server, driven by scripts: retarget CC0 animation libraries (e.g. Quaternius) onto the Tripo rigs instead of paying for Tripo presets, clean loop seams and root drift, IK foot-locking so feet truly plant, procedural clips (talk gestures, work loops) and rig fixes (the gargoyle's one-boned wing). Verified with `tools/measure-clips.mjs` and rendered frame strips. Hand-keyed signature animation stays a human animator's job; the pipeline makes it easy to drop such clips in.
 
 ### X3 · Loot item level and affixes
 **Built 2 Oct 2026 on branch `dm/affixes` (not deployed; needs migration 020).** Gear rolls an item level and up to three affixes on the server, so each drop is a real upgrade decision; necromancer levers (thrall damage and health, essence regeneration, Miasma, Withered, ward) plug into the stat pipeline that armor sets use. Next for it: tune the ranges against the balance harness, then crafting or re-rolling (gold sink) and affix-aware set drops. See `docs/GRIND-LOOP.md` §3 #2.
