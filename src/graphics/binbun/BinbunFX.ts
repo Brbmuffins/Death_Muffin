@@ -530,6 +530,24 @@ export class BinbunFX {
     return live;
   }
 
+  /**
+   * Builds one pooled instance of `id` ahead of its first play and hands its objects to `warm` (shader programs +
+   * texture uploads), so the first real spawn is a pool pop. Fail-open; a no-op when already warm or disabled.
+   */
+  async warm(id: BinbunId, warm: (objs: THREE.Object3D[]) => Promise<void>): Promise<void> {
+    if (!this.enabled || (this.pool.get(id)?.length ?? 0) > 0) return;
+    const t = await loadBinbun(id);
+    if (!t || (this.pool.get(id)?.length ?? 0) > 0) return;
+    const inst = new Instance(t);
+    this.built.add(inst);
+    const objs: THREE.Object3D[] = [inst.root];
+    for (const p of inst.parts) if (p.kind === 'particles' && p.world) objs.push(p.mesh);
+    await warm(objs);
+    const list = this.pool.get(id) ?? [];
+    list.push(inst);
+    this.pool.set(id, list);
+  }
+
   /** How many effects are playing (QA). */
   get count() {
     return this.live.filter((l) => !l.dead).length;

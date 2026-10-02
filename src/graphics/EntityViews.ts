@@ -20,6 +20,7 @@ import { separateBodies, type CrowdBody } from './crowdSeparation';
 import { hitstop } from './hitstop';
 import { disposeProp, upgradeThrallProp } from './gearProps';
 import { gearTier } from '../content/gear';
+import { depthRoster } from '../content/depths';
 import { knockActive, knockImpulse, settleDepth, stepKnock, type Knock } from './knockback';
 
 const ENEMY_SLUG: Record<EnemyId, CreatureSlug> = {
@@ -1174,6 +1175,8 @@ export function preloadAreaModels(area: AreaId, legion?: DisciplineId | null): (
   for (const { id } of AREAS[area].enemies) {
     add(`enemy:${id}`, ENEMY_SLUG[id], { spectral: id === 'wraith', fallback: ENEMY_FALLBACK[id], wings: WINGS[id] });
   }
+  // The Depths have no roster of their own: floors draw from depthRoster (new kinds join every five floors), so warm the first two bands.
+  if (area === 'depths') for (const { id } of [...depthRoster(1), ...depthRoster(5)]) add(`enemy:${id}`, ENEMY_SLUG[id], { spectral: id === 'wraith', fallback: ENEMY_FALLBACK[id], wings: WINGS[id] });
   for (const b of Object.values(BOSSES)) if (b.area === area) add(`boss:${b.modelSlug}`, b.modelSlug, { fallback: 'prelate' });
   // Thralls wear the jade rim; the discipline's own legion body, then the plain skeleton it shares with raised dead.
   const rim = { color: SPELL_FX.exhume.spirit, strength: THRALL_RIM_OWN };
