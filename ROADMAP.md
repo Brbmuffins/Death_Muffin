@@ -142,7 +142,8 @@ A dedicated room off the Chapterhouse: cauldrons and alembics as brewing station
 6. **Impact:** a two- or three-frame hitstop on heavy hits, eased knockback, and a death "settle" into the ground.
 7. **Replace the worst Tripo clips** with retargeted library clips where measurements say they are beyond fixing.
 
-### X2b · Blender animation pipeline (queued after Animation 2)
+### X2b · Blender animation pipeline (built 2 Oct 2026 on branch `dm/blender`, not deployed)
+Built: `tools/blender.mjs` (procedural gaits, rigfix, cleanup, retarget), skull rat + cinderhound gaits rebuilt, CC0 retarget proof; see `docs/BLENDER-PIPELINE.md`. Still open: the gargoyle wing, bone_hound gait recipe, shipping retargeted gestures (talk, spell-ready idle), quadruped retarget. Original brief:
 Headless Blender on the server, driven by scripts: retarget CC0 animation libraries (e.g. Quaternius) onto the Tripo rigs instead of paying for Tripo presets, clean loop seams and root drift, IK foot-locking so feet truly plant, procedural clips (talk gestures, work loops) and rig fixes (the gargoyle's one-boned wing). Verified with `tools/measure-clips.mjs` and rendered frame strips. Hand-keyed signature animation stays a human animator's job; the pipeline makes it easy to drop such clips in.
 
 ### X3 · Loot item level and affixes

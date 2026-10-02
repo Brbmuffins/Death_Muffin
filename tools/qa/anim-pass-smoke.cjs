@@ -19,6 +19,18 @@ const { chromium } = require(process.env.DM_PLAYWRIGHT_MODULE || 'playwright');
 const URL = process.env.DM_QA_URL || 'http://127.0.0.1:5336/?offline';
 const OUT = process.env.DM_QA_ARTIFACT_DIR || path.join(__dirname, '../../docs/screenshots/anim-pass');
 const SHOTS = !process.env.DM_QA_NO_SHOTS;
+
+// Enemies whose rigs have a Blender recipe: the mesh-contact slip counts only vertices skinned to the recipe's named
+// legs (a dragging tail or a swaying head is not a foot), with the floor taken from the planted feet, not one stray toe.
+const QUAD_SLUG = { rat: 'skull_rat', cinderhound: 'cinderhound' };
+function legBones(def) {
+  const slug = QUAD_SLUG[def];
+  const f = path.join(__dirname, '../blender/recipes', `${slug}.json`);
+  if (!slug || !fs.existsSync(f)) return null;
+  const legs = {};
+  for (const [k, leg] of Object.entries(JSON.parse(fs.readFileSync(f, 'utf8')).legs)) legs[k] = [...leg.chain, leg.paw].map((n) => n.replace(/\s/g, '_').replace(/[\[\]./:]/g, '')); // three's loader strips these from node names
+  return legs;
+}
 const log = (...a) => console.error(new Date().toISOString().slice(11, 19), ...a);
 
 async function openHero(browser, errors) {
@@ -163,7 +175,7 @@ async function main() {
   if (only.length) defs.splice(0, defs.length, ...defs.filter((d) => only.includes(d)));
   report.enemies = {};
   for (const def of defs) {
-    report.enemies[def] = await page.evaluate(async (def) => {
+    report.enemies[def] = await page.evaluate(async ([def, legNames]) => {
     const { getRuntime } = await import('/src/app/GameRuntime.ts');
     const dbg = window.__cwDebug;
     const scene = getRuntime().view;
@@ -194,6 +206,8 @@ async function main() {
       view.c.model.traverse((o) => { if (o.isSkinnedMesh) skinned.push(o); });
       const verts = () => {
         view.c.model.updateMatrixWorld(true);
+        // Defensive: advance(.., false) may not render, and getVertexPosition reads skeleton.boneMatrices, which only skeleton.update() refreshes.
+        for (const m of skinned) m.skeleton.update();
         const out = [];
         const t = new V3();
         for (const m of skinned) {
@@ -204,6 +218,20 @@ async function main() {
         }
         return out;
       };
+      // Limb mask (dominant joint in the leg set) per skinned mesh vertex, when this rig has a recipe.
+      // legMask[m][i] = leg number + 1 of the leg whose bones dominate vertex i (0 = not a leg).
+      const legKeys = legNames ? Object.keys(legNames) : [];
+      const masks = legNames ? skinned.map((m) => {
+        const si = m.geometry.attributes.skinIndex, sw = m.geometry.attributes.skinWeight;
+        const mk = new Uint8Array(si.count);
+        for (let i = 0; i < si.count; i++) {
+          let bk = 0;
+          for (let k = 1; k < 4; k++) if (sw.getComponent(i, k) > sw.getComponent(i, bk)) bk = k;
+          const nm = m.skeleton.bones[si.getComponent(i, bk)].name;
+          mk[i] = legKeys.findIndex((lk) => legNames[lk].includes(nm)) + 1;
+        }
+        return mk;
+      }) : null;
       const meshFrames = [];
       const samples = [];
       let prev = null;
@@ -236,28 +264,57 @@ async function main() {
       const meshSlip = (loco_only) => {
         let ymin0 = Infinity, ymax0 = -Infinity;
         for (const a of meshFrames[0].v) for (let i = 1; i < a.length; i += 3) { ymin0 = Math.min(ymin0, a[i]); ymax0 = Math.max(ymax0, a[i]); }
-        const band = 0.04 * (ymax0 - ymin0);
+        const band = (masks ? 0.02 : 0.04) * (ymax0 - ymin0);
+        const lowest = (fr) => {
+          let lo = Infinity;
+          for (let m = 0; m < skinned.length; m++) { const a = fr.v[m]; for (let i = 0; i < a.length / 3; i++) if (!masks || masks[m][i]) lo = Math.min(lo, a[i * 3 + 1]); }
+          return lo;
+        };
+        const los = meshFrames.map(lowest);
+        const floor = masks ? [...los].sort((x, y) => x - y)[Math.floor(0.2 * (los.length - 1))] : null;
         const speeds = [];
         for (let f = 1; f < meshFrames.length; f++) {
           if (loco_only && (meshFrames[f].os || meshFrames[f - 1].os)) continue;
-          let lo = Infinity;
-          for (const a of meshFrames[f].v) for (let i = 1; i < a.length; i += 3) lo = Math.min(lo, a[i]);
-          let lo0 = Infinity;
-          for (const a of meshFrames[f - 1].v) for (let i = 1; i < a.length; i += 3) lo0 = Math.min(lo0, a[i]);
+          const lo = floor ?? los[f], lo0 = floor ?? los[f - 1];
           for (let m = 0; m < skinned.length; m++) {
             const a = meshFrames[f].v[m], b = meshFrames[f - 1].v[m];
             for (let i = 0; i < a.length; i += 3) {
+              if (masks && !masks[m][i / 3]) continue;
               if (a[i + 1] > lo + band || b[i + 1] > lo0 + band) continue;
               speeds.push(Math.hypot(a[i] - b[i], a[i + 2] - b[i + 2]) * 60);
             }
           }
         }
+        if (loco_only === 'quartiles') { const t = speeds.slice().sort((x, y) => x - y); return [0.1, 0.25, 0.5, 0.75, 0.9].map((q) => +(t[Math.floor(q * (t.length - 1))] / ground).toFixed(2)); }
         return speeds.length > 20 ? med(speeds) / ground : NaN;
       };
+      // slipFeet: per leg, the lowest vertex of that leg while it touches the floor (within 2% of the body's height) in two successive
+      // frames, its horizontal speed over the ground speed. Counts one sample per planted leg per frame, so swing frames near the floor
+      // and the spread of toes do not dilute it. 0 = planted, 1 = riding the body.
+      const feetSlip = () => {
+        if (!masks) return null;
+        let ymin0 = Infinity, ymax0 = -Infinity;
+        for (const a of meshFrames[0].v) for (let i = 1; i < a.length; i += 3) { ymin0 = Math.min(ymin0, a[i]); ymax0 = Math.max(ymax0, a[i]); }
+        const band = 0.02 * (ymax0 - ymin0);
+        const lowOf = (fr, leg) => { let best = null; for (let m = 0; m < skinned.length; m++) { const a = fr.v[m]; for (let i = 0; i < a.length / 3; i++) if (masks[m][i] === leg + 1 && (!best || a[i * 3 + 1] < best.y)) best = { m, i, y: a[i * 3 + 1] }; } return best; };
+        const lows = meshFrames.map((fr) => legKeys.map((_, l) => lowOf(fr, l)));
+        const have = lows.flat().filter(Boolean); // a leg with no skinned vertices (the old cinderhound has no foreleg bones) is skipped
+        if (!have.length) return null;
+        const floor = have.map((b) => b.y).sort((x, y) => x - y)[Math.floor(0.1 * (have.length - 1))];
+        const sp = [];
+        for (let f = 1; f < meshFrames.length; f++) legKeys.forEach((_, l) => {
+          const b = lows[f][l];
+          if (!b) return;
+          const pv = meshFrames[f - 1].v[b.m];
+          if (b.y > floor + band || pv[b.i * 3 + 1] > floor + band) return;
+          sp.push(Math.hypot(meshFrames[f].v[b.m][b.i * 3] - pv[b.i * 3], meshFrames[f].v[b.m][b.i * 3 + 2] - pv[b.i * 3 + 2]) * 60);
+        });
+        return sp.length > 10 ? +(med(sp) / ground).toFixed(2) : null;
+      };
       // slip = mesh-contact slip over every moving frame; slipLoco = only frames with no swing / cast one-shot covering the stride; slipBones = the older foot-bone metric (a 22% height window, which counts a robed caster's low swing as planted).
-      return { ground: +ground.toFixed(2), slip: +meshSlip(false).toFixed(2), slipLoco: +meshSlip(true).toFixed(2), slipBones: +slipOf(samples).toFixed(2), slipBonesLoco: loco.length > 10 ? +slipOf(loco).toFixed(2) : null, oneShotShare: +(1 - loco.length / samples.length).toFixed(2), clip: plan?.clip, ts: +(plan?.timeScale ?? 0).toFixed(2), capped: (plan?.residual ?? 0) > 0.15, quad };
+      return { ground: +ground.toFixed(2), slip: +meshSlip(false).toFixed(2), slipLoco: +meshSlip(true).toFixed(2), slipBones: +slipOf(samples).toFixed(2), slipBonesLoco: loco.length > 10 ? +slipOf(loco).toFixed(2) : null, oneShotShare: +(1 - loco.length / samples.length).toFixed(2), slipQuartiles: meshSlip('quartiles'), slipFeet: feetSlip(), clip: plan?.clip, ts: +(plan?.timeScale ?? 0).toFixed(2), capped: (plan?.residual ?? 0) > 0.15, quad };
     }
-  }, def);
+  }, [def, legBones(def)]);
   }
   if (process.env.DM_QA_ENEMIES_ONLY) {
     for (const [d, v] of Object.entries(report.enemies)) console.log(d.padEnd(16), JSON.stringify(v));

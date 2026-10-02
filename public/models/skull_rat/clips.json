@@ -1,5 +1,7 @@
 {
   "clips": [
+    "idle",
+    "run",
     "walk"
   ],
   "tris": 2097

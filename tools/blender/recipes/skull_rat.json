@@ -1,0 +1,231 @@
+{
+  "slug": "skull_rat",
+  "source": "rig.glb",
+  "forward": [
+    0,
+    -1,
+    0
+  ],
+  "headBone": "tripo::Head_1",
+  "root": "tripo::Root",
+  "legs": {
+    "FL": {
+      "chain": [
+        "tripo::0_Right_Limb_2",
+        "tripo::0_Right_Limb_3",
+        "tripo::0_Right_Limb_4"
+      ],
+      "paw": "tripo::0_Right_Limb_5",
+      "rigidFrom": 1
+    },
+    "FR": {
+      "chain": [
+        "bone_18",
+        "bone_19",
+        "bone_20"
+      ],
+      "paw": "bone_21",
+      "rigidFrom": 1
+    },
+    "HL": {
+      "chain": [
+        "tripo::0_Left_Limb_0",
+        "tripo::0_Left_Limb_1",
+        "tripo::0_Left_Limb_2"
+      ],
+      "paw": "tripo::0_Left_Limb_3",
+      "rigidFrom": 1
+    },
+    "HR": {
+      "chain": [
+        "tripo::1_Left_Limb_0",
+        "tripo::1_Left_Limb_1",
+        "tripo::1_Left_Limb_2"
+      ],
+      "paw": "tripo::1_Left_Limb_3",
+      "rigidFrom": 1
+    }
+  },
+  "clips": {
+    "walk": {
+      "type": "gait",
+      "duration": 1.0,
+      "gait": {
+        "duty": 0.7,
+        "stride": 0.26,
+        "lift": 0.07,
+        "phase": {
+          "HL": 0.0,
+          "FL": 0.25,
+          "HR": 0.5,
+          "FR": 0.75
+        },
+        "arc": 0.6
+      },
+      "paw": {
+        "stance": 0,
+        "swing": -18
+      },
+      "mods": [
+        {
+          "bones": [
+            "tripo::Root"
+          ],
+          "kind": "lift",
+          "amp": 0.006,
+          "cycles": 2,
+          "phase": 0.1
+        },
+        {
+          "bones": [
+            "tripo::Root"
+          ],
+          "kind": "roll",
+          "amp": 1.5,
+          "cycles": 1
+        },
+        {
+          "bones": [
+            "tripo::Tail_0",
+            "tripo::Tail_1",
+            "tripo::Tail_2",
+            "tripo::Tail_3",
+            "tripo::Tail_4"
+          ],
+          "kind": "yaw",
+          "amp": 9,
+          "cycles": 1,
+          "lag": 0.09
+        },
+        {
+          "bones": [
+            "tripo::Head_0",
+            "tripo::Head_1"
+          ],
+          "kind": "pitch",
+          "amp": 3,
+          "cycles": 2,
+          "phase": 0.3
+        }
+      ]
+    },
+    "run": {
+      "type": "gait",
+      "duration": 0.4,
+      "gait": {
+        "duty": 0.36,
+        "stride": 0.46,
+        "lift": 0.1,
+        "phase": {
+          "FL": 0.0,
+          "FR": 0.1,
+          "HL": 0.5,
+          "HR": 0.6
+        },
+        "arc": 0.6
+      },
+      "paw": {
+        "stance": 0,
+        "swing": -18
+      },
+      "mods": [
+        {
+          "bones": [
+            "tripo::Root"
+          ],
+          "kind": "lift",
+          "amp": 0.02,
+          "cycles": 2,
+          "phase": 0.25
+        },
+        {
+          "bones": [
+            "tripo::Spine_0"
+          ],
+          "kind": "pitch",
+          "amp": 7,
+          "cycles": 2,
+          "phase": 0.0
+        },
+        {
+          "bones": [
+            "tripo::Root"
+          ],
+          "kind": "pitch",
+          "amp": 2,
+          "cycles": 2,
+          "phase": 0.5
+        },
+        {
+          "bones": [
+            "tripo::Tail_0",
+            "tripo::Tail_1",
+            "tripo::Tail_2",
+            "tripo::Tail_3",
+            "tripo::Tail_4"
+          ],
+          "kind": "yaw",
+          "amp": 8,
+          "cycles": 1,
+          "lag": 0.08
+        }
+      ]
+    },
+    "idle": {
+      "type": "idle",
+      "duration": 3.0,
+      "mods": [
+        {
+          "bones": [
+            "tripo::Root"
+          ],
+          "kind": "lift",
+          "amp": 0.004,
+          "cycles": 1
+        },
+        {
+          "bones": [
+            "tripo::Spine_0"
+          ],
+          "kind": "pitch",
+          "amp": 1.5,
+          "cycles": 1,
+          "phase": 0.2
+        },
+        {
+          "bones": [
+            "tripo::Head_0",
+            "tripo::Head_1"
+          ],
+          "kind": "yaw",
+          "amp": 9,
+          "cycles": 1,
+          "lag": 0.05
+        },
+        {
+          "bones": [
+            "tripo::Head_0",
+            "tripo::Head_1"
+          ],
+          "kind": "pitch",
+          "amp": 4,
+          "cycles": 2,
+          "phase": 0.1
+        },
+        {
+          "bones": [
+            "tripo::Tail_0",
+            "tripo::Tail_1",
+            "tripo::Tail_2",
+            "tripo::Tail_3",
+            "tripo::Tail_4"
+          ],
+          "kind": "yaw",
+          "amp": 6,
+          "cycles": 1,
+          "lag": 0.12
+        }
+      ]
+    }
+  }
+}

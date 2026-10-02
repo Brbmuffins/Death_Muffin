@@ -25,8 +25,13 @@ for (const slug of fs.readdirSync(models).sort()) {
   try {
     const h = await bindHeight(file);
     const row = {};
+    // Quadruped rigs with a Blender recipe: the recipe names the paws, so those are the feet (the generic guess picks leaf
+    // bones that are not feet on the Tripo quadrupeds). Mesh-contact numbers for the same legs are reported by measure-clips --stride.
+    const recipeFile = path.join(here, 'blender', 'recipes', `${slug}.json`);
+    const recipe = fs.existsSync(recipeFile) ? JSON.parse(fs.readFileSync(recipeFile, 'utf8')) : null;
+    const feet = recipe ? Object.values(recipe.legs).map((l) => l.paw) : null;
     for (const clip of ['walk', 'run']) {
-      const s = await strideOfClip(file, clip);
+      const s = await strideOfClip(file, clip, { feet });
       if (s && s.speed > 0.01) row[clip] = +(s.speed / h).toFixed(3);
     }
     if (Object.keys(row).length) {

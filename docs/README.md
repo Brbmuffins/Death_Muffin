@@ -15,6 +15,7 @@ on the public site.
 | What do the necromancer weapons change, and how do I regenerate them? | [Necro weapons](NECRO-WEAPONS.md) | Built; mechanics, migration 013 and model pipeline |
 | What is proposed? | [Future content](../FUTURE_CONTENT.md), [agent briefs](agent-briefs/README.md), [profession roadmap](PROFESSIONS-ROADMAP.md) | Designs; confirm implementation in source and HANDOFF |
 | How are assets and browser checks made? | [Asset pipeline](../ASSET_PIPELINE.md), [QA guide](../tools/qa/README.md) | Procedures and test entry points |
+| How do I make or fix an animation without paying Tripo? | [Blender pipeline](BLENDER-PIPELINE.md), [animation sources](ANIMATION-SOURCES.md) | Built on `dm/blender`: scripts, bone map, measurements, limits, CC0 sources |
 | How is the separate hosted service operated? | [VPS handoff](DEATH-MUFFIN-HANDOFF.md), [server operations](../SERVER_OPERATIONS.md) | Deployment and service boundaries |
 | What is `server/web-deploy/`? | [Legacy Crossworlds deploy README](../server/web-deploy/README.md) | A separate `/play/` site, not the Death Muffin deployment path |
 

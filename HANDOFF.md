@@ -64,9 +64,23 @@ screenshots: `docs/ALCHEMIST-WING-ART.md` "Dressing pass". Door lane and station
   (clip-derived 1.474 was about 1.5x too fast; planted feet now ~0 of ground speed instead of +0.3). `tools/measure-clips.mjs` gained `contactStrideOfClip` (mesh-based; agrees with the bone method on
   bipeds). The smoke's slip is now mesh-contact slip, with the old foot-bone number kept as `slipBones`.
 - **Robed casters:** their old 0.5-0.7 "slip" was mostly the metric (the 22%-of-height planted window counts their low swing as planted); with a 10% window the feet are at 0.14 vs the robber's 0.11. Remaining mesh slip is robe hem.
-- **Unresolved:** `skull_rat` and `cinderhound` still slide. Their rigs have leaf bones that are not feet and (cinderhound) legs that move against each other, so neither
+- **Resolved on `dm/blender`:** `skull_rat` and `cinderhound` slid (fixed by procedural gaits, see the Blender section above). Original note: `skull_rat` and `cinderhound` still slide. Their rigs have leaf bones that are not feet and (cinderhound) legs that move against each other, so neither
   bone nor mesh metrics are trustworthy on them. A quadruped run preset does not exist. The honest fix is a new quadruped model/rig or a hand-keyed gait.
 - QA: `tools/qa/anim-pass-smoke.cjs` (port 5342 used here) now also checks hitstop / knockback / settle and the hound's planted feet; `DM_QA_IMPACT_ONLY`, `DM_QA_ENEMIES_ONLY`, `DM_QA_ONLY=def,def` narrow it.
+
+## Blender animation pipeline (branch `dm/blender`, 2 Oct 2026, not deployed)
+
+- **What:** `tools/blender.mjs` + `tools/blender/*.py` (headless Blender 4.5 at `/home/ubuntu/tools/blender/blender`): `procedural` (quadruped gaits and idles from
+  `tools/blender/recipes/*.json`), `rigfix` (new bones + re-weighting), `cleanup` (loop seam, root drift, IK foot-lock), `retarget` (CC0 Quaternius clips onto the Tripo biped
+  via `tools/blender/maps/`). Output is `anim_<name>.glb`, so `build-characters.mjs` is unchanged. Full guide, bone map, limits: `docs/BLENDER-PIPELINE.md`; sources/licences: `docs/ANIMATION-SOURCES.md`.
+- **Shipped (models rebuilt):** `skull_rat` and `cinderhound` now have `idle`, `walk` and `run` (procedural; Tripo's walk preset is kept in `art-src/tripo/<slug>/orig/`). The cinderhound got two
+  foreleg bone chains (`rigfix`): its forelegs used to be skinned to the neck/chest bone, which is why its legs worked against each other. Browser mesh slip (`anim-pass-smoke`): rat 0.72 -> 0.06,
+  cinderhound 1.27 -> 0.08 (`slipFeet` 1.04 -> 0.06 and 1.53 -> 0.08). `strideSpeeds.json`: rat walk 0.623 / run 5.362, cinderhound walk 0.589 / run 3.19 (body heights per second).
+- **Measurement fix:** the old quadruped slip counted tail/head vertices and took the floor from one toe; The smoke now
+  masks to the recipe's legs, uses a percentile floor, refreshes the skeleton before reading vertices, and reports `slipFeet`. (Its biped mean read 0.21 on 2026-10-02; the biped method is unchanged apart from the defensive skeleton refresh.) `measure-clips.mjs --stride <glb> <clip> --legs <recipe>` is the offline equivalent.
+- **Not shipped:** the UAL retarget proof on `hero_gravecaller` (`art-src/blender/retarget/`; strips in `docs/screenshots/blender/retarget-*.png`). Cast is not clearly better than the shipped one, idle is a 2.5 s loop against a 15 s
+  shipped one; the spell-ready idle and talk gestures are candidates for new hooks. Decision is the orchestrator's.
+- Dev server for this branch used port 5345; `tools/qa/clip-strip.cjs` renders side-view frame strips (carry the body at the clip's ground speed with `--speed N --abs` to see planted feet on the ground ticks).
 
 ## 60-second orientation
 
