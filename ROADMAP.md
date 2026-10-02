@@ -23,10 +23,11 @@ flowchart LR
     S9[2 Oct: Alchemist's Wing · affixes · audio 2]:::done
     S10[2 Oct: necro spell feel · animation pass]:::done
     S11[2 Oct: Wing dressed · Sexton's spade]:::done
+    S12[2 Oct: animation 2 — hitstop · knockback · settle]:::done
   end
 
   subgraph NOW["🔨 Now — being built"]
-    W1[Animation 2<br/>hitstop · knockback · run clips]:::now
+    W5[Blender animation pipeline<br/>quadruped gaits first]:::now
     W2[Gear tuning<br/>affixes + sets vs the power curve]:::now
     W3[First-hour polish<br/>calm onboarding]:::now
   end
@@ -50,6 +51,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 2 Oct 2026 | Animation 2: hitstop on heavy hits (visual only, rationed), eased knockback, corpses settle into the ground (and no longer freeze mid-fall), real run clips for the grave robber and censer bearer, corrected hound strides | 20 Tripo credits. Skull rat and cinderhound gaits go to the Blender pipeline. |
 | 2 Oct 2026 | The Alchemist's Wing dressed: ~65 props (benches, shelves, herbs, rugs, candle pools), warm stone floor and walls instead of purple; the Sexton carries his spade | 0 Tripo credits (existing props and procedural textures). |
 | 2 Oct 2026 | Necro spell feel: all 22 necromancer rites gained capped bone, grave-dirt, soul-light, rot-spore, skull and spectral-hand motifs (thinner for thralls, off on Low); animation pass: enemies, thralls, bosses and NPCs no longer face 90° sideways, measured stride speeds cut foot sliding (slip ~1.4 → ~0.3), weapon/tool grips no longer sink into bodies, additive hit flinch, smoothed turning, softer crowd overlap | Spell before/after sheets in docs/screenshots/spell-feel/; animation evidence in docs/screenshots/anim-pass/. |
 | 2 Oct 2026 | The Alchemist's Wing (east door of the Chapterhouse): the Great Cauldron and Alembic brew everything, a daily "brew of the day" bonus, the Reagent Shelf collection, and the Apothecary at her counter; item level + affixes rolled on the server (6 necromancer affixes, names like "Gravebound … of the Legion", counted by the upgrade arrows, sheet, Vault, salvage); audio pass 2 (ambience beds for every zone that duck in fights, gathering and station sounds, the remaining necro rites) | Migration 020 (loot_instances). Probed end to end against a scratch database. |
@@ -62,7 +64,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 | 2 Oct 2026 | 48-slot bag; Ossuary Vault (V, 120 shared slots); Bone Grinder salvage + Salvaging skill; item locks; Sell all junk; gear stat effects, ▲/▼ upgrade arrows, verdict line, Character sheet (J) with "What you're looking for"; combat audio (CC0 samples, capped mixer, Combat/Ambience/Interface sliders); strike timing; old starter gear no longer stacks | Migrations 017 (vault) and 018 (gear unstackable). Thrall dig/chop clips built for the laborers (90 Tripo credits). |
 | 1 Oct 2026 | Necro weapons, brewing and reagents, Mourning Fen, five swappable rite slots, Offline Edition with complete save sync, Leave the world at the top of Settings | Codex cleanup; `deploy-release.sh` became the only deploy path. |
 
-**Owner approvals in force:** deploy when all checks pass; push after a secret scan; up to 1,500 Tripo credits without asking (spent so far against it: 1,025 — Alchemist's Wing props and the three guide NPCs); keep following this roadmap.
+**Owner approvals in force:** deploy when all checks pass; push after a secret scan; up to 1,500 Tripo credits without asking (spent so far against it: 1,045 — Wing props and guide NPCs 1,025; robber/censer run clips 20); keep following this roadmap.
 
 **Principle (owner, 1 Oct 2026):** polish and improve what exists before adding more. The game should be immersive but not overwhelming. The necromancer is the main class; the other classes are bonus work.
 
