@@ -11,6 +11,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const sharp = require('sharp');
 const { chromium } = require(process.env.DM_PLAYWRIGHT_MODULE || 'playwright');
+const { SWIFTSHADER_ARGS, preloadModules } = require('./lib/qa-common.cjs');
 
 const OUT = process.env.DM_QA_ARTIFACT_DIR || 'docs/screenshots/necro-anim';
 const URL = process.env.DM_QA_URL || 'http://127.0.0.1:5304/?offline';
@@ -46,7 +47,7 @@ async function strip(frames, label, file) {
 async function main() {
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await chromium.launch({ headless: true, executablePath: process.env.DM_CHROMIUM_PATH,
-    args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+    args: SWIFTSHADER_ARGS });
   const report = [];
   try {
     for (const [disc, slug] of DISCIPLINES) {
@@ -63,7 +64,8 @@ async function main() {
       await page.fill('#cw-pass', 'TestingAnim');
       await page.locator('#cw-login-btn').click();
       await page.locator('.cw-disc').filter({ hasText: disc }).click();
-      await page.waitForFunction(() => window.__cwDebug?.avatar.c.loaded, null, { timeout: 60000 });
+      await page.waitForFunction(() => window.__cwDebug?.avatar.c.loaded, null, { timeout: 90000 });
+      await preloadModules(page, { combatFlow: '/src/content/combatFlow.ts' });
       await page.evaluate(() => { window.__cwDebug.god?.(true); window.__cwDebug.zoom(0.4); window.__cwDebug.advance(0.5); });
       const have = await page.evaluate(() => ['slam', 'sweep', 'flick', 'channel', 'summon', 'hurt', 'death'].filter(n => window.__cwDebug.avatar.c.has(n)));
       assert.deepEqual(have, ['slam', 'sweep', 'flick', 'channel', 'summon', 'hurt', 'death'], `${slug} clips`);
@@ -71,8 +73,8 @@ async function main() {
       // Hide the HUD and frame the hero: project its body centre through the game camera.
       await page.addStyleTag({ content: '#ui-root { display: none !important; }' });
       await page.evaluate(() => window.__cwDebug.advance(0.3));
-      const at = await page.evaluate(async () => {
-        const scene = (await import('/src/app/GameRuntime.ts')).getRuntime().view;
+      const at = await page.evaluate(() => {
+        const scene = window.__qaMods.runtime.getRuntime().view;
         const v = scene.avatar.c.root.position.clone();
         v.y += 1.0;
         v.project(scene.rig.camera);
@@ -82,9 +84,9 @@ async function main() {
       const shot = () => withRetry(() => page.screenshot({ clip, timeout: 90000 }));
 
       for (const [clip, [weapon, ability, kind]] of Object.entries(CASES)) {
-        const equip = await page.evaluate(async ({ weapon, ability, kind }) => {
-          const scene = (await import('/src/app/GameRuntime.ts')).getRuntime().view;
-          const { CAST_FLOW } = await import('/src/content/combatFlow.ts');
+        const equip = await page.evaluate(({ weapon, ability, kind }) => {
+          const scene = window.__qaMods.runtime.getRuntime().view;
+          const { CAST_FLOW } = window.__qaMods.combatFlow;
           scene.avatar.setEquipment(weapon ? { main_hand: { item_id: weapon } } : {});
           window.__cwDebug.advance(0.3);
           scene.avatar.cast(kind, 2, scene.avatar.c.root.rotation.y, CAST_FLOW[ability].gestureSeconds, ability);
@@ -106,9 +108,9 @@ async function main() {
       }
 
       // A sword (or any kind without an entry) keeps today's gesture.
-      const legacy = await page.evaluate(async () => {
-        const scene = (await import('/src/app/GameRuntime.ts')).getRuntime().view;
-        const { CAST_FLOW } = await import('/src/content/combatFlow.ts');
+      const legacy = await page.evaluate(() => {
+        const scene = window.__qaMods.runtime.getRuntime().view;
+        const { CAST_FLOW } = window.__qaMods.combatFlow;
         scene.avatar.setEquipment({ main_hand: { item_id: 'sword_copper' } });
         scene.avatar.cast('cast', 3, 0, CAST_FLOW.black_litany.gestureSeconds, 'black_litany');
         return scene.avatar.c.oneShot.getClip().name;
@@ -121,6 +123,13 @@ async function main() {
         await page.evaluate(() => window.__cwDebug.advance(0.5));
         const dur = await page.evaluate((anim) => {
           const c = window.__cwDebug.avatar.c;
+          // The hit-react is an additive overlay (Creature.flinch), not a one-shot: assert the overlay runs.
+          if (anim === 'hurt') {
+            c.oneShot = null;
+            c.actions.forEach(a => a.stop());
+            if (!c.playOnce('hurt', 1) || !c.flinchAct || !c.flinchAct.isRunning()) throw new Error('flinch overlay did not start');
+            return c.flinchAct.getClip().duration;
+          }
           // Variants are picked at random: retry until the wanted one plays.
           for (let i = 0; i < 60; i++) {
             c.oneShot = null;

@@ -16,7 +16,8 @@ async function main() {
     const shot = (file) => shotFile(page, file);
     // Mark every counsel tip but 'reagent' as seen (for likely character ids), so the reagent tip is not stuck in the queue.
     const onboardingSrc = require('node:fs').readFileSync(require('node:path').join(__dirname, '../../src/ui/Onboarding.ts'), 'utf8');
-    const union = onboardingSrc.slice(onboardingSrc.indexOf('export type TipId ='), onboardingSrc.indexOf(';', onboardingSrc.indexOf('export type TipId =')));
+    const unionStart = onboardingSrc.indexOf('export type TipId ='); // the union has ';' inside its comments, so end it at the next top-level statement
+    const union = onboardingSrc.slice(unionStart, onboardingSrc.indexOf('\nexport ', unionStart + 20));
     const tipIds = [...union.matchAll(/'([A-Za-z_]+)'/g)].map((m) => m[1]).filter((t) => t !== 'reagent');
     await page.addInitScript((ids) => {
       localStorage.setItem('dm_settings_v1', JSON.stringify({ quality: 'low', tips: true, autoCombat: false }));
@@ -79,10 +80,12 @@ async function main() {
     console.log(JSON.stringify({ gravesKills: kills, batches, graveDust: found }));
     // The first reagent pickup places its counsel next after the current card.
     let tipShown = false;
-    for (let i = 0; i < 40 && !tipShown; i++) {
-      const title = await page.locator('.cw-tip:not(.out) .title').first().textContent({ timeout: 1000 }).catch(() => '');
-      tipShown = title === 'Reagents';
-      if (!tipShown) { await page.locator('.cw-tip:not(.out)').first().click({ timeout: 1000 }).catch(() => {}); await page.waitForTimeout(750); }
+    const tipDeadline = Date.now() + 120000;
+    while (!tipShown && Date.now() < tipDeadline) {
+      const titles = await page.evaluate(() => [...document.querySelectorAll('.cw-tip:not(.out)')].map((e) => (e.querySelector('.title')?.textContent || e.textContent || '').trim()));
+      tipShown = titles.some((t) => /^Reagents/.test(t));
+      if (!tipShown && titles.length) await page.locator('.cw-tip:not(.out)').first().click({ timeout: 2000 }).catch(() => {}); // step the other card aside
+      if (!tipShown) await page.waitForTimeout(750);
     }
     if (!tipShown) console.log('DEBUG tips', JSON.stringify(await page.evaluate(() => [...document.querySelectorAll('.cw-tip')].map((e) => e.className + ' | ' + e.textContent.slice(0, 80)))));
     assert.ok(tipShown, 'first reagent pickup shows its counsel after the current card');

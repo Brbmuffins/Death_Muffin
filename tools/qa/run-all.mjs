@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Run the offline-preview browser smokes against ONE fresh Vite server, one at a time.
 //
-//   node tools/qa/run-all.mjs [--port 5348] [--tree <dir>] [--only a,b] [--skip a,b] [--timeout 420]
+//   node tools/qa/run-all.mjs [--port 5348] [--tree <dir>] [--only a,b] [--skip a,b] [--timeout 600]
 //                             [--out <dir>] [--retries 1] [--list] [--no-retry]
 //
 // - Starts a new Vite on 127.0.0.1:<port> from <tree> (default: the repo this file is in), warms it up, and
@@ -27,7 +27,7 @@ const flag = (name) => args.includes('--' + name);
 
 const TREE = path.resolve(opt('tree', path.resolve(HERE, '../..')));
 const PORT = Number(opt('port', 5348));
-const DEFAULT_TIMEOUT = Number(opt('timeout', 420)) * 1000;
+const DEFAULT_TIMEOUT = Number(opt('timeout', 600)) * 1000;
 const RETRIES = flag('no-retry') ? 0 : Number(opt('retries', 1));
 const STAMP = new Date().toISOString().replace(/[:.]/g, '-');
 const OUT = path.resolve(opt('out', path.join(os.tmpdir(), `dm-qa-${STAMP}`)));
@@ -41,7 +41,7 @@ const NOT_OFFLINE = new Set([
 ]);
 const DISCS = ['Gravecaller', 'Ossuary', 'Mourner', 'Rotweaver'];
 // Per-script budgets in seconds where the default is not enough (measured on a loaded box).
-const TIMEOUTS = { 'necro-audit': 600, 'anim-pass-smoke': 600, 'spell-feel-smoke': 600, 'first-hour-smoke': 600, 'guidance-smoke': 480 };
+const TIMEOUTS = { 'necro-audit': 900, 'spell-feel-smoke': 900 };
 
 function discover() {
   const list = fs.readdirSync(QA_DIR).filter((f) => f.endsWith('-smoke.cjs')).map((f) => f.replace(/\.cjs$/, '')).filter((n) => !NOT_OFFLINE.has(n)).sort();
