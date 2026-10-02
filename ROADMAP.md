@@ -30,11 +30,13 @@ flowchart LR
     S16[2 Oct: gear tuning]:::done
   end
 
-  subgraph NOW["🔨 Now — being built"]
+  subgraph NOW["🔨 Now — polish round 2"]
+    R1[Balance re-audit<br/>all zones + bosses, with today's changes]:::now
+    R2[QA suite reliability<br/>every smoke trustworthy]:::now
+    R3[Zone + encounter polish<br/>readability · telegraphs · corpses]:::now
   end
 
   subgraph POLISH["✨ Next — polish"]
-    P6[Second polish round<br/>re-run audits · flaky flyers smoke]:::next
   end
 
   subgraph LATER["🌒 Later — new content"]
