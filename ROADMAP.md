@@ -32,11 +32,11 @@ flowchart LR
     S18[2 Oct: zone + encounter polish]:::done
     S19[2 Oct: server authority step 1 — report mode]:::done
     S20[2 Oct: readability round 3]:::done
+    S21[2 Oct: thrall gear — the Legion]:::done
   end
 
   subgraph NOW["🔨 Now"]
     R2[QA suite reliability<br/>every smoke trustworthy]:::now
-    R6[Thrall gear<br/>equip your legion · gold sink]:::now
   end
 
   subgraph POLISH["✨ Next — polish"]
@@ -62,6 +62,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 2 Oct 2026 | Thrall gear: the Legion panel (Y) gives your thralls a spare weapon and armour piece whose stats and necro affixes become thrall damage, health and attack speed; 12-tier Reinforce gold sink (resets on Ascension); archers and bone mages carry their bow and staff; ▲/▼ verdicts for legion candidates. Also fixes a live tool-belt bug (swapping tools would have failed on the real database) | Real-database probes for the kit and the belt (tools/qa/thrall-kit-db-probe.cjs). |
 | 2 Oct 2026 | Readability round 3: your thralls carry a jade rim light (allies' fainter) so they never blend with pale enemies; the Sexton's Acre shows its ground on arrival; Fen corpse rings read on water; the Nave is calmer (fewer glows and specks) and every zone's floor glows batch into one draw call | Before/after in docs/screenshots/readability-3/. |
 | 2 Oct 2026 | Server authority step 1 (report mode): progress saves, bag saves, item adds, gear rolls and offline loads are checked against ceilings derived from the game's own best honest rates (×3 headroom); suspicious saves are logged to `progress_audit` and nothing is changed until `AUTHORITY_MODE=enforce` | Migration 021. How to read the audit and switch modes: docs/SERVER-AUTHORITY.md. |
 | 2 Oct 2026 | Zone and encounter polish: boss cone and line telegraphs outlined and bright (Gravedigger sweep, Flood Hymn, Abbess, Plague Saint), faint rings on fresh corpses so they never vanish on dark ground, the Fen wisp pulse no longer camouflaged, three prop overlaps fixed, the Ossuary brighter | Full tour and per-zone numbers in docs/ZONE-POLISH-AUDIT.md. |
