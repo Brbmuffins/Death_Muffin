@@ -3,7 +3,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { ResolutionGovernor, shouldProcessFrame, shouldRender } from './framePacing';
+import { ResolutionGovernor, budgetFps, shouldProcessFrame, shouldRender } from './framePacing';
 import { onSettingsChange, settings } from './settings';
 
 /** What a scene hands the runtime: something to draw and a per-frame tick. */
@@ -85,10 +85,11 @@ export class GameRuntime {
   private applyQuality() {
     const high = settings.quality === 'high';
     // Any settings change lands here; only a graphics change restarts the governor at full resolution.
-    const key = `${settings.quality}|${settings.fps}`;
+    const key = `${settings.quality}|${settings.fps}|${settings.autoResolution}`;
     if (key !== this.qualityKey) {
       this.qualityKey = key;
       this.resolution.reset();
+      this.resolution.hold();
     }
     const ratio = (high ? Math.min(window.devicePixelRatio, 1.5) : 1) * this.resolution.scale;
     this.renderer.setPixelRatio(ratio);
@@ -115,6 +116,8 @@ export class GameRuntime {
 
   setView(view: RuntimeView | null) {
     this.view = view;
+    // A scene swap is a load: slow frames around it are not a GPU problem.
+    this.resolution.hold();
     if (view) {
       this.renderPass.scene = view.scene;
       this.renderPass.camera = view.camera;
@@ -151,7 +154,7 @@ export class GameRuntime {
       this.lastRenderAt = t;
       if (this.bloomEnabled) this.composer.render(dt);
       else this.renderer.render(current.scene, current.camera);
-      if (!covered && this.resolution.frame(dt, this.frameMs, settings.fps)) this.applyQuality();
+      if (!covered && settings.autoResolution && this.resolution.frame(dt, this.frameMs, budgetFps(settings.fps))) this.applyQuality();
     };
     loop();
     this.backgroundTimer = window.setInterval(() => {

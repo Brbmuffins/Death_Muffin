@@ -10,10 +10,12 @@ export type Quality = 'high' | 'low';
 
 export interface Settings {
   quality: Quality;
-  /** Frame-rate cap; 30 saves battery on phones. */
+  /** Frame-rate cap: 0 = Max (the display's refresh rate, desktop default), 60, or 30 (battery saver, phone default). */
   fps: FpsCap;
   /** True once the player has changed Graphics or Frame rate themselves; until then phones get battery-saver defaults. */
   graphicsChosen: boolean;
+  /** Let the game lower the render resolution when the GPU can't hold the frame rate (ResolutionGovernor). */
+  autoResolution: boolean;
   reducedMotion: boolean;
   damageNumbers: boolean;
   volume: number; // 0..1 (master)
@@ -57,7 +59,7 @@ function defaults(): Settings {
     /* no matchMedia */
   }
   const touchFirst = isTouchFirst();
-  return { quality: touchFirst ? 'low' : 'high', fps: touchFirst ? 30 : 60, graphicsChosen: false, reducedMotion: reduced, damageNumbers: true, volume: 0.6, combatVolume: 1, ambienceVolume: 1, interfaceVolume: 1, tips: true, guidance: true, guidancePing: true, difficulty: 'medium', autoCombat: false, autoGather: true };
+  return { quality: touchFirst ? 'low' : 'high', fps: touchFirst ? 30 : 0, graphicsChosen: false, autoResolution: true, reducedMotion: reduced, damageNumbers: true, volume: 0.6, combatVolume: 1, ambienceVolume: 1, interfaceVolume: 1, tips: true, guidance: true, guidancePing: true, difficulty: 'medium', autoCombat: false, autoGather: true };
 }
 
 function load(): Settings {
@@ -73,11 +75,14 @@ function load(): Settings {
       }
       if (!isFpsCap(s.fps)) s.fps = base.fps;
       s.graphicsChosen = s.graphicsChosen === true;
+      s.autoResolution = s.autoResolution !== false;
       // Saved 'high' on a phone is usually just the old default, not a choice: auto-optimise until the player picks.
       if (!s.graphicsChosen && isTouchFirst()) {
         s.quality = 'low';
         s.fps = 30;
       }
+      // Desktop players who never picked a rate get Max: the old 60 default was a cap that throttled 120/144 Hz screens.
+      if (!s.graphicsChosen && !isTouchFirst()) s.fps = 0;
       if (!isDifficulty(s.difficulty)) s.difficulty = base.difficulty;
       // Old browser-wide play settings cannot be attributed to an account.
       // Each character starts on Medium until its own preference is loaded.

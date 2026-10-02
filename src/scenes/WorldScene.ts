@@ -4627,6 +4627,8 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private enterArea(area: AreaId) {
     this.area = area;
+    // Loading frames are slow for reasons that pass: the resolution governor stands down for a few seconds.
+    getRuntime().resolution.hold();
     // From here on new bodies compile their shaders and upload textures before they appear (graphics/warmModel.ts).
     setWarmContext({ renderer: getRuntime().renderer, camera: this.rig.camera, scene: this.scene });
     this.cancelPreload?.();

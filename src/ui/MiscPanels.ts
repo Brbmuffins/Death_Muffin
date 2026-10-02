@@ -61,7 +61,9 @@ export class SettingsPanel extends SimplePanel {
         <label class="row">Graphics
           <select data-q><option value="high">High (bloom, shadows)</option><option value="low">Low (fast)</option></select></label>
         <label class="row">Frame rate
-          <select data-fps><option value="60">60 — smooth</option><option value="30">30 — battery saver</option></select></label>
+          <select data-fps><option value="0">Max — your screen's refresh rate</option><option value="60">60 — smooth</option><option value="30">30 — battery saver</option></select></label>
+        <label class="row">Auto resolution<input type="checkbox" data-autores aria-label="Auto resolution: lower the render resolution if the frame rate can't hold" /></label>
+        <p class="cw-settings-note">Auto resolution only steps in after several seconds of sustained slow frames. Turn it off to keep a constant sharp picture.</p>
         <p class="cw-settings-note">${isTouchFirst() && !settings.graphicsChosen ? 'Set for phones automatically — Low + 30 fps saves battery. Change it any time.' : 'On a phone: Graphics Low + 30 fps uses far less battery.'}</p>
         <label class="row">Volume<input type="range" min="0" max="1" step="0.05" data-vol aria-label="Master volume" /></label>
         <label class="row">Combat<input type="range" min="0" max="1" step="0.05" data-vol-combat aria-label="Combat volume: spells, hits, thralls and enemies" /></label>
@@ -132,7 +134,10 @@ export class SettingsPanel extends SimplePanel {
     q.addEventListener('change', () => updateSettings({ quality: q.value as Quality }));
     const fps = this.el!.querySelector<HTMLSelectElement>('[data-fps]')!;
     fps.value = String(settings.fps);
-    fps.addEventListener('change', () => updateSettings({ fps: Number(fps.value) === 30 ? 30 : 60 }));
+    fps.addEventListener('change', () => updateSettings({ fps: Number(fps.value) === 30 ? 30 : Number(fps.value) === 60 ? 60 : 0 }));
+    const autoRes = this.el!.querySelector<HTMLInputElement>('[data-autores]')!;
+    autoRes.checked = settings.autoResolution;
+    autoRes.addEventListener('change', () => updateSettings({ autoResolution: autoRes.checked }));
     const vol = this.el!.querySelector<HTMLInputElement>('[data-vol]')!;
     vol.value = String(settings.volume);
     vol.addEventListener('input', () => updateSettings({ volume: Number(vol.value) }));
