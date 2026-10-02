@@ -68,9 +68,9 @@ export function rigNames(byName, file = '') {
 /**
  * Ground speed a looping locomotion clip implies, in model units per second: the median horizontal speed of the planted
  * feet relative to the body (so authored root motion, which the game strips, does not matter). Biped rigs use both feet;
- * quadruped rigs use the four lowest limb tips. Returns { speed, feet, lift } or null for a clip with no foot motion.
+ * quadruped rigs use the four lowest limb tips, or `feet` when the caller names them (a Blender recipe's paws). Returns { speed, feet, lift } or null for a clip with no foot motion.
  */
-export async function strideOfClip(file, clipName) {
+export async function strideOfClip(file, clipName, { feet: feetOpt = null } = {}) {
   const doc = await io.read(file);
   const { top, byName, map } = buildTree(doc);
   const rig = rigNames(byName, file);
@@ -90,7 +90,8 @@ export async function strideOfClip(file, clipName) {
     top.updateMatrixWorld(true);
   };
   let feet;
-  if (!rig.quad) feet = ['L_Foot', 'R_Foot'];
+  if (feetOpt) feet = feetOpt;
+  else if (!rig.quad) feet = ['L_Foot', 'R_Foot'];
   else {
     // Leaf bones (limb tips) that sit lowest on average, ignoring head and tail.
     const leaves = [...byName.values()].filter((o) => o.children.length === 0 && /Limb|bone_/.test(o.name) && !/Head|Tail/.test(o.name));
@@ -183,7 +184,9 @@ export async function bindHeight(file) {
  * quadrupeds, whose "foot" bones are not where their names say (a leaf bone that never moves is not a foot).
  * Returns { speed, height } in glTF units, or null when the clip has no body.
  */
-export async function contactStrideOfClip(file, clipName, { contact = 0.04 } = {}) {
+export async function contactStrideOfClip(file, clipName, { contact: contactOpt, bones = null, signed = false, fwd: fwdOpt = null, debug = false } = {}) {
+  // Mesh-wide mode: lowest 4% of the body counts as touching. Limb-only mode takes the floor from the planted feet themselves, so a tighter 2% band applies.
+  const contact = contactOpt ?? (bones ? 0.02 : 0.04);
   const doc = await io.read(file);
   const { top, byName, map } = buildTree(doc);
   const rig = rigNames(byName, file);
@@ -220,12 +223,23 @@ export async function contactStrideOfClip(file, clipName, { contact = 0.04 } = {
         jnt.getElement(i, el); ji.set(el.slice(0, 4), i * 4);
         wgt.getElement(i, el); jw.set(el.slice(0, 4), i * 4);
       }
-      prims.push({ joints, ibm, bind, ji, jw, count });
+      // Which vertices belong to the named limb bones (dominant joint), so a dragging tail or a swaying head never counts as a foot.
+      let keep = null;
+      if (bones) {
+        keep = new Uint8Array(count);
+        for (let i = 0; i < count; i++) {
+          let bk = 0;
+          for (let k = 1; k < 4; k++) if (jw[i * 4 + k] > jw[i * 4 + bk]) bk = k;
+          keep[i] = bones.has(joints[ji[i * 4 + bk]].name) ? 1 : 0;
+        }
+      }
+      prims.push({ joints, ibm, bind, ji, jw, count, keep });
     }
   }
   if (!prims.length) return null;
   const total = prims.reduce((n, pr) => n + pr.count, 0);
   const frames = [];
+  let fwd = new THREE.Vector3(1, 0, 0);
   const m = new THREE.Matrix4(), v = new THREE.Vector3(), acc = new THREE.Vector3();
   for (let t = 0; t < dur - 1e-6; t += dt) {
     pose(t);
@@ -249,25 +263,81 @@ export async function contactStrideOfClip(file, clipName, { contact = 0.04 } = {
     }
     const hip = byName.get(rig.hip).getWorldPosition(new THREE.Vector3());
     frames.push({ pos: out, hx: hip.x, hz: hip.z });
+    if (frames.length === 1) {
+      const h0 = byName.get(rig.head).getWorldPosition(new THREE.Vector3());
+      fwd = new THREE.Vector3(h0.x - hip.x, 0, h0.z - hip.z).normalize();
+      if (fwdOpt) fwd = new THREE.Vector3(fwdOpt[0], 0, fwdOpt[1]).normalize();
+      else if (!rig.quad) fwd = byName.get(rig.lToe).getWorldPosition(new THREE.Vector3()).sub(byName.get(rig.lFoot).getWorldPosition(new THREE.Vector3())).setY(0).normalize();
+    }
   }
   let lo = Infinity, hi = -Infinity;
   for (const f of frames) for (let i = 1; i < f.pos.length; i += 3) { lo = Math.min(lo, f.pos[i]); hi = Math.max(hi, f.pos[i]); }
   const height = hi - lo;
   const n = frames.length;
-  const speeds = [];
+  // Per-vertex candidate flag (limb vertices only when `bones` is given) in the same order as the frame arrays.
+  const cand = new Uint8Array(total);
+  { let o = 0; for (const pr of prims) for (let i = 0; i < pr.count; i++) cand[o++] = pr.keep ? pr.keep[i] : 1; }
+  // Ground = a low percentile of each frame's lowest candidate vertex: planted feet define the floor, and a toe that dips
+  // below it for a few frames in the swing (or a flight phase in a run) must not move the floor for the whole clip.
+  const mins = frames.map((f) => { let m = Infinity; for (let i = 0; i < total; i++) if (cand[i]) m = Math.min(m, f.pos[i * 3 + 1]); return m; }).sort((x, y) => x - y);
+  const ground = mins[Math.floor(0.2 * (mins.length - 1))];
+  let out_dbg;
+  const speeds = [], back = [], perFrame = [];
   for (let f = 0; f < n; f++) {
+    const fb = [];
     const a = frames[(f + n - 1) % n], b = frames[(f + 1) % n], c = frames[f];
-    let ymin = Infinity;
-    for (let i = 1; i < c.pos.length; i += 3) ymin = Math.min(ymin, c.pos[i]);
-    const cut = ymin + contact * height;
+    let cut;
+    if (bones) cut = ground + contact * height;
+    else { let ymin = Infinity; for (let i = 1; i < c.pos.length; i += 3) ymin = Math.min(ymin, c.pos[i]); cut = ymin + contact * height; }
     for (let i = 0; i < total; i++) {
-      if (c.pos[i * 3 + 1] > cut) continue;
+      if (!cand[i] || c.pos[i * 3 + 1] > cut) continue;
       const dx = (b.pos[i * 3] - b.hx) - (a.pos[i * 3] - a.hx), dz = (b.pos[i * 3 + 2] - b.hz) - (a.pos[i * 3 + 2] - a.hz);
       speeds.push(Math.hypot(dx, dz) / (2 * dt));
+      back.push(-(dx * fwd.x + dz * fwd.z) / (2 * dt));
+      fb.push(back[back.length - 1]);
     }
+    perFrame.push(fb);
+    if (debug) { let m = Infinity; for (let i = 0; i < total; i++) if (cand[i]) m = Math.min(m, c.pos[i * 3 + 1]); (out_dbg ??= []).push(+(m - ground).toFixed(3)); }
   }
-  speeds.sort((x, y) => x - y);
-  return { speed: speeds.length ? +speeds[Math.floor(speeds.length / 2)].toFixed(3) : 0, height: +height.toFixed(3), samples: speeds.length };
+  const pct = (arr, p) => { const t = [...arr].sort((x, y) => x - y); return t.length ? t[Math.min(t.length - 1, Math.floor(p * t.length))] : 0; };
+  const out = { speed: +pct(speeds, 0.5).toFixed(3), height: +height.toFixed(3), samples: speeds.length };
+  if (signed) {
+    // `back` is the planted vertices' speed backwards along the body's forward axis. A clean gait has every planted vertex
+    // at one backward speed; `spread` is the interquartile range over the median, `wrong` the share moving forwards.
+    const med = pct(back, 0.5);
+    out.speed = +med.toFixed(3);
+    out.spread = med > 1e-6 ? +((pct(back, 0.75) - pct(back, 0.25)) / med).toFixed(3) : null;
+    out.wrong = +(back.filter((x) => x < 0.25 * med).length / Math.max(1, back.length)).toFixed(3);
+  }
+  if (debug) { out.minY = out_dbg; out.groundAbs = +ground.toFixed(4); }
+  if (debug) out.perFrame = perFrame.map((fb) => [fb.length, fb.length ? +pct(fb, 0.5).toFixed(2) : null]);
+  return out;
+}
+
+/**
+ * World positions (relative to the hip bone's ground position) of the named bones at 30 fps over one clip.
+ * Returns { dt, frames: [{ [bone]: [x, y, z] }] }. Used by the gait tests and the foot-lock checks.
+ */
+export async function boneTrack(file, clipName, boneNames) {
+  const doc = await io.read(file);
+  const { top, byName, map } = buildTree(doc);
+  const rig = rigNames(byName, file);
+  const anim = doc.getRoot().listAnimations().find((a) => a.getName() === clipName) ?? doc.getRoot().listAnimations()[0];
+  const chans = anim.listChannels().map((c) => ({ obj: map.get(c.getTargetNode()), path: c.getTargetPath(), times: c.getSampler().getInput().getArray(), vals: c.getSampler().getOutput().getArray() }));
+  const dur = Math.max(...chans.map((c) => c.times[c.times.length - 1]));
+  const dt = 1 / 30, p = new THREE.Vector3(), q = new THREE.Quaternion(), frames = [];
+  for (let t = 0; t <= dur + 1e-6; t += dt) {
+    for (const c of chans) {
+      if (c.path === 'rotation') { sample(c.vals, c.times, t, 4, q, true); c.obj.quaternion.copy(q); }
+      else if (c.path === 'translation') { sample(c.vals, c.times, t, 3, p, false); c.obj.position.copy(p); }
+    }
+    top.updateMatrixWorld(true);
+    const hip = byName.get(rig.hip).getWorldPosition(new THREE.Vector3());
+    const row = {};
+    for (const n of boneNames) { const w = byName.get(n).getWorldPosition(new THREE.Vector3()); row[n] = [w.x - hip.x, w.y, w.z - hip.z]; }
+    frames.push(row);
+  }
+  return { dt, dur, frames };
 }
 
 /** Combat clips store Hip position relative to their standing first frame (build-characters COMBAT_TRIMS). */
@@ -341,7 +411,32 @@ export async function measureFile(file) {
   return results;
 }
 
-if (process.argv[1].endsWith('measure-clips.mjs')) {
+/** Bone names of every leg in a Blender recipe (chain + paw + all their descendants are filled in by the caller's skeleton). */
+export async function legBonesOf(recipePath, file) {
+  const { readFileSync } = await import('node:fs');
+  const rec = JSON.parse(readFileSync(recipePath, 'utf8'));
+  const names = new Set();
+  for (const leg of Object.values(rec.legs ?? {})) { for (const b of leg.chain) names.add(b); names.add(leg.paw); }
+  // Bones below a paw (toes) belong to the foot too.
+  const doc = await io.read(file);
+  const kids = new Map(doc.getRoot().listNodes().map((n) => [n.getName(), n.listChildren().map((c) => c.getName())]));
+  const stack = [...names];
+  while (stack.length) for (const k of kids.get(stack.pop()) ?? []) if (!names.has(k)) { names.add(k); stack.push(k); }
+  return names;
+}
+
+if (process.argv[1].endsWith('measure-clips.mjs') && process.argv.includes('--stride')) {
+  // node tools/measure-clips.mjs --stride <file.glb> <clip>[,<clip>] [--legs recipe.json]
+  const args = process.argv.slice(2).filter((a) => a !== '--stride');
+  const li = args.indexOf('--legs');
+  const legs = li >= 0 ? args.splice(li, 2)[1] : null;
+  const [file, clips] = args;
+  const bones = legs ? await legBonesOf(legs, file) : null;
+  // The recipe knows which way the body faces (Blender Z-up armature space -> glTF: x stays, y becomes -z).
+  const rf = legs ? JSON.parse((await import('node:fs')).readFileSync(legs, 'utf8')).forward : null;
+  const fwd = rf ? [rf[0], -rf[1]] : null;
+  for (const c of clips.split(',')) console.log(file.split('/').slice(-2).join('/'), c, JSON.stringify(await contactStrideOfClip(file, c, { bones, signed: true, fwd })));
+} else if (process.argv[1].endsWith('measure-clips.mjs')) {
   const args = process.argv.slice(2);
   const json = args.includes('--json');
   const files = [];

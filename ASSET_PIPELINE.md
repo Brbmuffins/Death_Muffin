@@ -103,6 +103,13 @@ records                   art-manifest/images.json, art-manifest/tripo/<id>.json
 - Legacy: `tools/build-models.mjs` is the old v1 FBX pipeline for the retired
   Unity-era heroes; kept for reference only.
 
+### 3b. Free animation: Blender
+
+Clips do not have to come from Tripo's preset list (10 credits each, and the quadruped list is one walk). `node tools/blender.mjs`
+writes the same `anim_<name>.glb` files from code: quadruped gaits and idles (`procedural`), extra bones (`rigfix`), loop/drift/foot
+fixes (`cleanup`) and CC0 library retargets (`retarget`), then `node tools/blender.mjs build <slug>` runs the steps above plus
+`build-stride-speeds` and `build-clip-timings`. See `docs/BLENDER-PIPELINE.md`; sources in `docs/ANIMATION-SOURCES.md`.
+
 ## 4. Register in code
 
 - Creatures: `src/graphics/modelPaths.ts` → `CREATURE_MODELS` (slug → url + world height).

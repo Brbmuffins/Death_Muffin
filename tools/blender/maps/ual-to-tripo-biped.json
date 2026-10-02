@@ -1,0 +1,174 @@
+{
+  "_note": "Quaternius Universal Animation Library (CC0) -> Tripo v1 biped (hero_*, necromancer, skeleton_thrall, grave_robber ...). Tripo has no fingers: finger bones are simply not mapped. Pelvis, *Twist* bones and NeckTwist02 keep their rest pose.",
+  "source_forward": [
+    0,
+    -1,
+    0
+  ],
+  "target_forward": [
+    1,
+    0,
+    0
+  ],
+  "hip": {
+    "src": "pelvis",
+    "dst": "Hip"
+  },
+  "scale": "auto",
+  "bones": [
+    {
+      "src": "pelvis",
+      "dst": "Hip"
+    },
+    {
+      "src": "spine_01",
+      "dst": "Waist"
+    },
+    {
+      "src": "spine_02",
+      "dst": "Spine01"
+    },
+    {
+      "src": "spine_03",
+      "dst": "Spine02"
+    },
+    {
+      "src": "neck_01",
+      "dst": "NeckTwist01"
+    },
+    {
+      "src": "Head",
+      "dst": "Head"
+    },
+    {
+      "src": "clavicle_l",
+      "dst": "L_Clavicle"
+    },
+    {
+      "src": "upperarm_l",
+      "dst": "L_Upperarm",
+      "mode": "aim",
+      "aim": {
+        "src": "lowerarm_l",
+        "dst": "L_Forearm"
+      }
+    },
+    {
+      "src": "lowerarm_l",
+      "dst": "L_Forearm",
+      "mode": "aim",
+      "aim": {
+        "src": "hand_l",
+        "dst": "L_Hand"
+      }
+    },
+    {
+      "src": "hand_l",
+      "dst": "L_Hand"
+    },
+    {
+      "src": "thigh_l",
+      "dst": "L_Thigh",
+      "mode": "aim",
+      "aim": {
+        "src": "calf_l",
+        "dst": "L_Calf"
+      }
+    },
+    {
+      "src": "calf_l",
+      "dst": "L_Calf",
+      "mode": "aim",
+      "aim": {
+        "src": "foot_l",
+        "dst": "L_Foot"
+      }
+    },
+    {
+      "src": "foot_l",
+      "dst": "L_Foot"
+    },
+    {
+      "src": "ball_l",
+      "dst": "L_ToeBase"
+    },
+    {
+      "src": "clavicle_r",
+      "dst": "R_Clavicle"
+    },
+    {
+      "src": "upperarm_r",
+      "dst": "R_Upperarm",
+      "mode": "aim",
+      "aim": {
+        "src": "lowerarm_r",
+        "dst": "R_Forearm"
+      }
+    },
+    {
+      "src": "lowerarm_r",
+      "dst": "R_Forearm",
+      "mode": "aim",
+      "aim": {
+        "src": "hand_r",
+        "dst": "R_Hand"
+      }
+    },
+    {
+      "src": "hand_r",
+      "dst": "R_Hand"
+    },
+    {
+      "src": "thigh_r",
+      "dst": "R_Thigh",
+      "mode": "aim",
+      "aim": {
+        "src": "calf_r",
+        "dst": "R_Calf"
+      }
+    },
+    {
+      "src": "calf_r",
+      "dst": "R_Calf",
+      "mode": "aim",
+      "aim": {
+        "src": "foot_r",
+        "dst": "R_Foot"
+      }
+    },
+    {
+      "src": "foot_r",
+      "dst": "R_Foot"
+    },
+    {
+      "src": "ball_r",
+      "dst": "R_ToeBase"
+    }
+  ],
+  "clips": {
+    "Idle_Loop": {
+      "name": "ual_idle",
+      "loop": true
+    },
+    "Spell_Simple_Idle_Loop": {
+      "name": "ual_spell_idle",
+      "loop": true
+    },
+    "Spell_Simple_Shoot": {
+      "name": "ual_cast",
+      "sequence": [
+        "Spell_Simple_Enter",
+        "Spell_Simple_Shoot",
+        "Spell_Simple_Exit"
+      ]
+    },
+    "Idle_Talking_Loop": {
+      "name": "ual_talk",
+      "loop": true
+    },
+    "Walk_Loop": {
+      "name": "ual_walk",
+      "loop": true
+    }
+  }
+}

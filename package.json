@@ -13,6 +13,7 @@
     "build:vfx": "node tools/binbun-port.mjs",
     "test:vfx": "node tools/binbun-port.test.mjs",
     "build:characters": "node tools/build-characters.mjs",
+    "blender": "node tools/blender.mjs",
     "balance": "vite-node src/gameplay/balance/report.ts",
     "balance:boss": "vite-node src/gameplay/balance/bossReport.ts",
     "build:server-rules": "node tools/build-server-rules.mjs",
