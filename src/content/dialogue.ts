@@ -280,7 +280,7 @@ function apothecaryAdvice(sg: Suggestion | null, s: GuidanceState): string[] {
   const d = sg.data;
   switch (sg.kind) {
     case 'brew-dust':
-      return [`You carry ${d.dust} Grave Dust. At the Great Cauldron here (or the Workbench's Alchemy tab), four of them brew a Grave-Dust Tonic: more essence regeneration for a minute.`, 'The first brew anyone can make from what the dead drop.'];
+      return [`You carry ${d.dust} Grave Dust. At the Great Cauldron here, four of them brew a Grave-Dust Tonic: more essence regeneration for a minute.`, 'The first brew anyone can make from what the dead drop.'];
     case 'brew-first':
       return ['Grave Dust drops now and then from the dead of the Hollow Graves and the Catacomb Warren. Four make your first tonic.', `You hold ${d.dust}. Keep killing; it will come.`];
     default:
@@ -293,7 +293,7 @@ const APOTHECARY_TOPICS: TopicDef[] = [
     id: 'brewing',
     label: 'Brewing',
     lines: (s) => [
-      'The Great Cauldron or the Alembic here in the Wing (the Workbench’s Alchemy tab works too). Each recipe wants reagents and a level in Alchemy, which brewing itself trains.',
+      'The Great Cauldron or the Alembic here in the Wing. Each recipe wants reagents and a level in Alchemy, which brewing itself trains.',
       s.dust >= GRAVE_DUST_FOR_TONIC ? `You have the dust for a first tonic (${s.dust}).` : `Four Grave Dust make your first tonic. You hold ${s.dust}.`,
     ],
   },

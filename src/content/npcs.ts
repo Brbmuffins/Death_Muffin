@@ -53,7 +53,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
     title: 'Brewer of the Covenant',
     ...NPC_SPOTS_POS.apothecary,
     rest: -0.9,
-    blurb: 'Brews for the Covenant at the Workbench, until the Alchemist’s Wing is raised. Ask what to brew, where reagents fall, and how elixirs and tonics differ.',
+    blurb: 'Brews for the Covenant in the Alchemist’s Wing, through the Chapterhouse’s east door. Ask what to brew, where reagents fall, and how elixirs and tonics differ.',
     accent: 0x8fd18a,
   },
 };

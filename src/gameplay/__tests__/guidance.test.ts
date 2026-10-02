@@ -143,7 +143,7 @@ describe('suggested next step: the Acre and the Workbench', () => {
     expect(suggestions(baseState({ totalKills: 30, labor: { unlocked: 1, assigned: 1, ready: 0 } })).some((x) => x.kind === 'gather-intro')).toBe(false);
   });
 
-  it('brews: enough dust is a pointer to the Workbench; too little is a quiet hint only the Apothecary gives', () => {
+  it('brews: enough dust is a pointer to the Wing; too little is a quiet hint only the Apothecary gives', () => {
     const rich = suggestions(baseState({ totalKills: 30, dust: 5 })).find((x) => x.kind === 'brew-dust')!;
     expect(rich.text).toBe('You carry 5 Grave Dust: brew a tonic at the Great Cauldron in the Alchemist’s Wing');
     expect(rich.target).toBeDefined(); // the Great Cauldron's spot
@@ -151,6 +151,14 @@ describe('suggested next step: the Acre and the Workbench', () => {
     expect(poor.quiet).toBe(true);
     expect(nextSuggestion(baseState({ totalKills: 30, dust: 1, areaKills: { graves: 5 } }))!.kind).not.toBe('brew-first');
     expect(suggestions(baseState({ totalKills: 30, dust: 9, skills: { alchemy: 8 } })).some((x) => x.kind === 'brew-dust')).toBe(false);
+  });
+
+  it('standing in the Wing with dust, brewing is what the Next line offers; elsewhere the road still comes first', () => {
+    const base = { totalKills: 40, dust: 6, areaKills: { graves: 20 } };
+    expect(nextSuggestion(baseState({ ...base, area: 'chapterhouse' }))!.kind).toBe('seal');
+    expect(nextSuggestion(baseState({ ...base, area: 'alchemist_wing' }))!.kind).toBe('brew-dust');
+    // a full bag still outranks it
+    expect(nextSuggestion(baseState({ ...base, area: 'alchemist_wing', bagUsed: 47, bagSize: 48 }))!.kind).toBe('bag-full');
   });
 
   it('each person answers on their own subject', () => {
