@@ -1,6 +1,6 @@
 # Death Muffin — Roadmap
 
-*Updated 1 October 2026. The player guide is [README.md](README.md); build status and history are in [HANDOFF.md](HANDOFF.md).*
+*Updated 2 October 2026. The player guide is [README.md](README.md); build status and history are in [HANDOFF.md](HANDOFF.md).*
 
 The roadmap below runs left to right. **Now** is the next build session, **Next** follows it, and **Later** is waiting for a decision or for the earlier work. Each box links to a section below.
 
@@ -11,25 +11,24 @@ flowchart LR
   classDef next fill:#2f3550,stroke:#8fa8ff,color:#eef1ff
   classDef later fill:#3a3a3a,stroke:#9a9a9a,color:#eeeeee
 
-  subgraph SHIPPED["✅ Shipped 1 Oct 2026"]
-    S1[Necro weapons, brews, Mourning Fen]:::done
-    S2[Five swappable rite slots]:::done
-    S3[Offline Edition + complete save sync]:::done
+  subgraph SHIPPED["✅ Shipped"]
+    S1[1 Oct: weapons, brews, Fen,<br/>five rite slots, Offline Edition]:::done
+    S2[2 Oct: 48-slot bag · Vault · Salvage]:::done
+    S3[2 Oct: gear you can read<br/>upgrade arrows · sheet J]:::done
+    S4[2 Oct: combat audio · strike timing]:::done
   end
 
   subgraph NOW["🔨 Now — being built"]
-    N1[Inventory relief<br/>48-slot bag · Vault · Salvage]:::now
-    N2[Gear you can read<br/>stat effects · compare · sheet · upgrade arrows]:::now
-    N4[Combat audio<br/>real impacts · calm mixer]:::now
-    N5[Strike timing<br/>swings land with the hit]:::now
+    N1[Visible Grave Laborers]:::now
+    N2[Necro spell feel]:::now
+    N3[Balance pass<br/>Ossuary · Wave Speed · spiky zones]:::now
+    N4[Armor set bonuses]:::now
+    N5[Tool belt]:::now
   end
 
-  subgraph POLISH["✨ Next — polish what exists"]
-    P1[Necro spell feel<br/>darker, readable VFX]:::next
-    P2[Visible Grave Laborers<br/>thralls work the Acre]:::next
-    P3[Zone and encounter polish<br/>from the balance + clip audits]:::next
-    P4[Armor set bonuses]:::next
+  subgraph POLISH["✨ Next — polish"]
     P5[Animation pass<br/>clipping · sliding · crowds]:::next
+    P6[Second polish round<br/>re-run audits]:::next
   end
 
   subgraph LATER["🌒 Later — new content"]
@@ -42,6 +41,17 @@ flowchart LR
 
   SHIPPED --> NOW --> POLISH --> LATER
 ```
+
+## 📒 Progress log
+
+Newest first. Each entry is a live release (`release.txt` on the site shows the deployed commit).
+
+| Date | Shipped | Notes |
+|---|---|---|
+| 2 Oct 2026 | 48-slot bag; Ossuary Vault (V, 120 shared slots); Bone Grinder salvage + Salvaging skill; item locks; Sell all junk; gear stat effects, ▲/▼ upgrade arrows, verdict line, Character sheet (J) with "What you're looking for"; combat audio (CC0 samples, capped mixer, Combat/Ambience/Interface sliders); strike timing; old starter gear no longer stacks | Migrations 017 (vault) and 018 (gear unstackable). Thrall dig/chop clips built for the laborers (90 Tripo credits). |
+| 1 Oct 2026 | Necro weapons, brewing and reagents, Mourning Fen, five swappable rite slots, Offline Edition with complete save sync, Leave the world at the top of Settings | Codex cleanup; `deploy-release.sh` became the only deploy path. |
+
+**Owner approvals in force:** deploy when all checks pass; push after a secret scan; up to 1,500 Tripo credits without asking (spent so far against it: 0); keep following this roadmap.
 
 **Principle (owner, 1 Oct 2026):** polish and improve what exists before adding more. The game should be immersive but not overwhelming. The necromancer is the main class; the other classes are bonus work.
 
