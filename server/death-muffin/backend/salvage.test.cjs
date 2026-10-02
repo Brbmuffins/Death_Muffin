@@ -76,3 +76,10 @@ test('yields stack onto existing stacks and use freed slots', async () => {
 test('someone else\'s character is refused', async () => {
   assert.equal((await go(call(fakeDb(), { owned: false }), [0])).status, 403);
 });
+
+test('belt slots (110-113) are out of bag range: salvage refuses them and leaves the belt alone', async () => {
+  const db = fakeDb({ bag: [{ slot_index: 0, item_id: 'staff_oak', quantity: 1 }], equipped: [{ slot_index: 110, item_id: 'tool_hatchet_copper', equipped_slot: 'belt_hatchet' }] });
+  const r = (await go(call(db, { random: () => 0 }), [110])).json;
+  assert.equal(r.success, false);
+  assert.equal(db.inv.filter((x) => x.slot_index === 110).length, 1);
+});

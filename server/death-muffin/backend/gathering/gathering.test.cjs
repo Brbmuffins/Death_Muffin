@@ -182,3 +182,23 @@ test('staff skip the level gate (only): budget still applies, XP lands on the re
   const burst = await call({ nodeType: 'bone_elder', actions: 40 }, true);
   assert.equal(burst.json.data.accepted, rules.GATHER_BURST, 'the time budget still clamps staff');
 });
+
+test('tools on the belt count like tools in the bag: the best of belt and bag wins', async () => {
+  const tier = async (char) => (await harness({ char }).call({ nodeType: 'coffin_oak', actions: 1 })).json.data.toolTier;
+  assert.equal(await tier({}), 0);
+  assert.equal(await tier({ belt: ['tool_hatchet_iron'] }), 2);
+  assert.equal(await tier({ bag: [{ slot: 0, itemId: 'tool_hatchet_copper', qty: 1 }] }), 1);
+  assert.equal(await tier({ belt: ['tool_hatchet_copper'], bag: [{ slot: 0, itemId: 'tool_hatchet_steel', qty: 1 }] }), 4, 'a better bag tool still wins');
+  assert.equal(await tier({ belt: ['tool_hatchet_steel'], bag: [{ slot: 0, itemId: 'tool_hatchet_copper', qty: 1 }] }), 4);
+  assert.equal(await tier({ belt: ['tool_pickaxe_moon'] }), 0, 'another kind of tool does nothing');
+});
+
+test('a belt tool also counts for AFK gathering and takes no bag space', async () => {
+  const bag = Array.from({ length: 48 }, (_, i) => ({ slot: i, itemId: i === 0 ? 'log_oak' : 'staff_oak', qty: i === 0 ? 10 : 1 }));
+  const h = harness({ char: { belt: ['tool_hatchet_hell'], bag } });
+  await h.call({ nodeType: 'coffin_oak' }, 'startAfk');
+  h.tick(60000);
+  const r = await h.call({ nodeType: 'coffin_oak', actions: 2, afk: true });
+  assert.equal(r.json.data.toolTier, 5);
+  assert.equal(h.char().bag.length, 48, 'the belt is not part of the bag');
+});

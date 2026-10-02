@@ -1378,3 +1378,12 @@ button { font-family: inherit; }
 .cw-salvage-foot .cw-hint-text { flex: 1 1 200px; margin: 0; }
 .cw-salvage-foot .cw-button:disabled { opacity: .5; }
 .cw-salvage-result { margin-top: 10px; padding: 8px 12px; font-size: 13px; color: var(--cw-bone-100); background: var(--cw-inset); border: 1px solid var(--cw-border); }
+
+/* Gathering tool belt: four small slots under the paper doll (fits the 1280x800 Reliquary; the doll column was shorter than the bag). */
+.cw-equip-col { display: flex; flex-direction: column; gap: 6px; flex: none; }
+.cw-toolbelt { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; padding-top: 5px; border-top: 1px solid var(--cw-border); }
+.cw-belt-slot { min-height: 0; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; }
+.cw-belt-slot.empty { opacity: 0.6; }
+.cw-belt-slot .slot-label { position: absolute; left: 0; right: 0; bottom: 1px; font-size: 7px; letter-spacing: .02em; text-transform: uppercase; color: var(--cw-text-faint); text-align: center; }
+.cw-belt-offer { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--cw-bone-100); }
+@media (max-width: 760px) { .cw-equip-col { width: 100%; } }

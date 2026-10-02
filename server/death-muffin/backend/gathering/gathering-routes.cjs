@@ -60,8 +60,9 @@ function createGatherHandlers({ store, ownsCharacter, isStaff = async () => fals
         const budget = rules.checkBudget(def, await tx.getLedger(), claimed, now(), body.afk === true);
         if (!budget.ok) throw new PlayerError(budget.error);
         const bag = await tx.getBag();
-        // Tools are read from the bag here, never from the request.
-        const toolTier = rules.toolTierFor(def.skill, bag.map((s) => s.itemId));
+        // Tools are read from the bag and the tool belt here, never from the request. The best one counts.
+        const belt = tx.getBeltTools ? await tx.getBeltTools() : [];
+        const toolTier = rules.toolTierFor(def.skill, [...bag.map((s) => s.itemId), ...belt]);
         const batch = rules.rollBatch(def, skill, budget.accepted, rng, toolTier, staff ? def.level : 0);
         const stacks = await tx.maxStacks(batch.items.map((g) => g.itemId));
         for (const g of batch.items) if (!stacks.has(g.itemId)) throw new PlayerError('This node is not available on the server yet');

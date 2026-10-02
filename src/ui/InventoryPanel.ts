@@ -9,6 +9,8 @@ import { ARMOR_BY_ID } from '../content/armorSets';
 import { necroWeaponTooltip } from '../content/necroWeapons';
 import { ItemLocks, junkSlots } from '../gameplay/itemLocks';
 import { isSalvageGear } from '../gameplay/salvageRules';
+import { BELT_KINDS, toolKindOf } from '../gameplay/gatheringRules';
+import { BELT_LABEL, beltOffer, beltTools, dismissOffer, isOnBelt, moveTools, offerDismissed } from './toolBelt';
 
 /** A small padlock for locked cells and the Lock button (inline SVG: no font or emoji dependency). */
 export const LOCK_SVG = '<svg viewBox="0 0 12 14" width="11" height="13" aria-hidden="true"><path d="M3 6V4.2a3 3 0 0 1 6 0V6" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="6" width="9" height="7" rx="1" fill="currentColor"/></svg>';
@@ -53,6 +55,8 @@ export class InventoryPanel {
   onSheet: (() => void) | null = null;
   /** Called after the server accepted an equip (not an unequip): the first-time counsel hangs off it. */
   onEquipped: (() => void) | null = null;
+  /** Called after a tool went onto the belt: the first-time counsel hangs off it. */
+  onToolBelted: (() => void) | null = null;
 
   constructor(
     private root: HTMLElement,
@@ -86,7 +90,10 @@ export class InventoryPanel {
       </div>
       <div class="cw-stats-line" data-stats></div>
       <div class="cw-inv-body">
-        <div class="cw-equip" role="group" aria-label="Equipment"></div>
+        <div class="cw-equip-col">
+          <div class="cw-equip" role="group" aria-label="Equipment"></div>
+          <div class="cw-toolbelt" role="group" aria-label="Tool belt"></div>
+        </div>
         <div class="cw-bag-grid" role="grid"></div>
       </div>
       <div class="cw-bag-tools" data-tools></div>
@@ -161,6 +168,11 @@ export class InventoryPanel {
         });
         cell.addEventListener('dblclick', () => this.primaryAction(slot));
         cell.addEventListener('contextmenu', (e) => {
+          if (toolKindOf(slot.item_id)) {
+            e.preventDefault();
+            void this.toggleToolBelt(slot);
+            return;
+          }
           if (!this.onBelt || !(slot.item_id in BREWS)) return;
           e.preventDefault();
           this.onBelt(slot.item_id);
@@ -170,7 +182,9 @@ export class InventoryPanel {
       grid.appendChild(cell);
     }
     this.renderEquipment();
+    this.renderToolBelt();
     this.renderTools();
+    this.renderBeltOffer();
     this.renderDetail();
   }
 
@@ -264,6 +278,80 @@ export class InventoryPanel {
     }
   }
 
+  /** The gathering tool belt: four slots (hatchet, pickaxe, rod, spade) under the paper doll. */
+  private renderToolBelt() {
+    const row = this.el!.querySelector<HTMLDivElement>('.cw-toolbelt')!;
+    row.innerHTML = '';
+    const on = beltTools(this.inventory.all);
+    for (const kind of BELT_KINDS) {
+      const slot = on[kind];
+      const cell = document.createElement('button');
+      cell.className = 'cw-slot cw-belt-slot';
+      cell.setAttribute('aria-label', slot ? `Tool belt, ${BELT_LABEL[kind]}: ${slot.name}` : `Tool belt, ${BELT_LABEL[kind]}: empty`);
+      if (slot) {
+        cell.classList.add('filled', 'equipped');
+        cell.style.setProperty('--rarity', RARITY_COLOR[slot.rarity] ?? RARITY_COLOR.common);
+        const img = document.createElement('img');
+        img.className = 'item-icon';
+        img.src = itemIcon(slot);
+        img.alt = '';
+        img.onerror = () => img.replaceWith(Object.assign(document.createElement('span'), { className: 'glyph', textContent: '◆' }));
+        cell.appendChild(img);
+        cell.addEventListener('pointerenter', (e) => this.showTooltip(slot, e));
+        cell.addEventListener('pointermove', (e) => this.moveTooltip(e));
+        cell.addEventListener('pointerleave', () => this.hideTooltip());
+        cell.addEventListener('click', () => {
+          this.selected = this.selected === slot.slot_index ? null : slot.slot_index;
+          this.render();
+        });
+        cell.addEventListener('dblclick', () => void this.toggleToolBelt(slot));
+        if (this.selected === slot.slot_index) cell.classList.add('selected');
+      } else {
+        cell.classList.add('empty');
+        cell.disabled = true;
+        cell.insertAdjacentHTML('beforeend', `<span class="slot-label">${BELT_LABEL[kind]}</span>`);
+      }
+      row.appendChild(cell);
+    }
+  }
+
+  /** The one-time offer: an empty belt and tools in the bag. Offered, never forced; "No thanks" is remembered per character. */
+  private renderBeltOffer() {
+    const tools = this.el!.querySelector<HTMLDivElement>('[data-tools]')!;
+    if (this.confirmJunk || offerDismissed(this.characterId)) return;
+    const picks = beltOffer(this.inventory.all);
+    if (!picks.length) return;
+    const offer = document.createElement('span');
+    offer.className = 'cw-belt-offer';
+    offer.innerHTML = `Put your best tools on the belt? <button class="cw-button small" data-belt-yes>Put ${picks.length === 1 ? 'it' : `${picks.length} tools`} on the belt</button><button class="cw-button small ghost" data-belt-no>No thanks</button>`;
+    offer.querySelector('[data-belt-yes]')!.addEventListener('click', () => {
+      dismissOffer(this.characterId);
+      void this.moveToBelt(picks.map((p) => ({ slot_index: p.slot_index, equipped: 1 as const })));
+    });
+    offer.querySelector('[data-belt-no]')!.addEventListener('click', () => { dismissOffer(this.characterId); this.render(); });
+    tools.prepend(offer);
+  }
+
+  private async moveToBelt(moves: { slot_index: number; equipped: 0 | 1 }[]) {
+    if (this.busy) return;
+    this.busy = true;
+    this.setError('');
+    try {
+      await moveTools(this.inventory, this.characterId, moves);
+      this.selected = null;
+      if (moves.some((m) => m.equipped)) this.onToolBelted?.();
+    } catch (err) {
+      this.setError(err instanceof Error ? err.message : 'The belt would not take that.');
+    } finally {
+      this.busy = false;
+      this.render();
+    }
+  }
+
+  private toggleToolBelt(slot: InventorySlot) {
+    return this.moveToBelt([{ slot_index: slot.slot_index, equipped: isOnBelt(slot) ? 0 : 1 }]);
+  }
+
   /** What equipping this instead of the worn piece changes for this character (gearText.ts). */
   private compareLines(slot: InventorySlot) {
     return compareTableHtml(this.statContext?.() ?? null, slot);
@@ -338,6 +426,7 @@ export class InventoryPanel {
       </div>
       <div class="cw-detail-actions">
       ${equippable ? `<button class="cw-button small" data-act>${slot.equipped ? 'Unequip' : 'Equip'}</button>` : ''}
+      ${toolKindOf(slot.item_id) ? `<button class="cw-button small" data-toolbelt>${isOnBelt(slot) ? 'Take off belt' : 'Put on belt'}</button>` : ''}
       ${drinkable ? `<button class="cw-button small" data-act>Drink</button>` : ''}
       ${this.onBelt && slot.item_id in BREWS ? `<button class="cw-button small" data-belt>Put on belt (${BREW_KEYS[BREWS[slot.item_id].slot].toUpperCase()})</button>` : ''}
       ${edible ? `<button class="cw-button small" data-act>Eat</button>` : ''}
@@ -350,6 +439,7 @@ export class InventoryPanel {
     detail.querySelector('[data-lock]')?.addEventListener('click', () => this.locks.toggle(slot));
     detail.querySelector('[data-salvage]')?.addEventListener('click', () => void this.salvageOne(slot));
     detail.querySelector('[data-act]')?.addEventListener('click', () => this.primaryAction(slot));
+    detail.querySelector('[data-toolbelt]')?.addEventListener('click', () => void this.toggleToolBelt(slot));
     detail.querySelector('[data-belt]')?.addEventListener('click', () => this.onBelt?.(slot.item_id));
     detail.querySelectorAll<HTMLButtonElement>('[data-sell]').forEach((b) => b.addEventListener('click', () => this.sell(slot, Number(b.dataset.sell))));
   }
@@ -383,6 +473,7 @@ export class InventoryPanel {
 
   private primaryAction(slot: InventorySlot) {
     if (slot.item_id in HEALING_FLASKS || slot.item_id in BUFF_FLASKS || slot.item_id in MEALS) this.onUse(slot.item_id);
+    else if (toolKindOf(slot.item_id)) void this.toggleToolBelt(slot);
     else if (equipSlotOf(slot) !== null) void this.toggleEquip(slot);
   }
 

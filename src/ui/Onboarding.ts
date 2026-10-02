@@ -98,6 +98,7 @@ export type TipId =
   | 'boss_saint'
   | 'boss_regent'
   | 'tool'
+  | 'toolBelt'
   | 'acolyte'
   | 'templar'
   // Professions (docs/PROFESSIONS-ROADMAP.md §11).
@@ -412,7 +413,11 @@ export const TIPS: Record<TipId, Tip> = {
   },
   tool: {
     title: 'Gathering tools',
-    body: 'Keep a tool in your bag and it speeds that skill up: <b>+5% success per metal tier</b> (the best one you carry counts). Forge hatchets, pickaxes, rods and spades at the Bone Kiln (Tools tab) or the Workbench.',
+    body: 'Carry a tool and it speeds that skill up: <b>+5% success per metal tier</b> (the best one you carry counts). Forge hatchets, pickaxes, rods and spades at the Bone Kiln (Tools tab) or the Workbench. Put them on the <b>tool belt</b> under the paper doll in the Reliquary (<kbd>I</kbd>) and they stop taking bag space.',
+  },
+  toolBelt: {
+    title: 'The tool belt',
+    body: 'Four belt slots hold one tool each: hatchet, pickaxe, rod and spade. A belted tool counts for gathering exactly like one in your bag (the best of both wins) and takes <b>no bag space</b>. Select a tool and press <b>Put on belt</b>, or double-click it; double-click it on the belt to take it off, which needs a free bag slot. Skills (<kbd>P</kbd>) shows which tool each skill is using.',
   },
   ghoul: {
     title: 'Barrow Ghoul',

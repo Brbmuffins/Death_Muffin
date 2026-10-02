@@ -135,3 +135,14 @@ test('bad slots are refused with readable errors', async () => {
   assert.match((await c('POST /api/vault/withdraw', { body: { characterId: 1, vaultSlot: 120 } })).json.error, /between 0 and 119/);
   assert.match((await dep(c, { bagSlot: 0, quantity: 0 })).json.error, /how many/);
 });
+
+test('belt tools (slots 110-113) are never deposited, listed in the bag or counted by deposit-all', async () => {
+  const db = fakeDb({ bag: [{ slot_index: 0, item_id: 'ore_copper', quantity: 5 }], equipped: [{ slot_index: 110, item_id: 'tool_hatchet_copper', equipped_slot: 'belt_hatchet' }] });
+  const c = call(db);
+  const r = (await c('POST /api/vault/deposit-all', { body: { characterId: 1, kind: 'all', exceptSlots: [] } })).json;
+  assert.equal(r.success, true);
+  assert.equal(db.vault.some((v) => v.item_id === 'tool_hatchet_copper'), false);
+  assert.equal(db.inv.filter((x) => x.slot_index === 110).length, 1);
+  assert.equal(db.inv.length, 1, 'only the belt row is left in the inventory table');
+  assert.equal((await dep(c, { bagSlot: 110 })).json.success, false, 'a belt slot is not a bag slot');
+});

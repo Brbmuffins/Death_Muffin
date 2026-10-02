@@ -32,6 +32,9 @@ export class ProfessionsPanel {
     status(): { active: boolean; text: string; allowed: boolean };
   }, private heldItems?: () => string[], private onContracts?: () => void, private onGarden?: () => void, private onLabor?: () => void, private onCosmetics?: () => void) {}
 
+  /** Item ids on the tool belt (set by the scene), so the tool line can say where the active tool is. */
+  beltItems: (() => string[]) | null = null;
+
   get isOpen() {
     return this.el !== null;
   }
@@ -49,9 +52,11 @@ export class ProfessionsPanel {
   private toolLine(id: SkillId) {
     if (!TOOL_KIND[id] || !this.heldItems) return '';
     const tier = toolTierFor(id, this.heldItems());
+    // Where the active tool is: the best of belt and bag counts; a tie reads as the belt.
+    const where = tier ? (toolTierFor(id, this.beltItems?.() ?? []) === tier ? 'on belt' : 'in bag') : '';
     return tier
-      ? `<div class="next">Tool: ${itemMeta(toolItemId(id, tier)).name} · +${tier * 5}% success</div>`
-      : '<div class="next">No tool: forge one at the Bone Kiln for +5% or more.</div>';
+      ? `<div class="next" data-tool="${id}">Tool: ${itemMeta(toolItemId(id, tier)).name} · +${tier * 5}% success · ${where}</div>`
+      : '<div class="next" data-tool="none">No tool: forge one at the Bone Kiln for +5% or more.</div>';
   }
 
   open(skills: Skills) {

@@ -45,6 +45,14 @@ function createMysqlGatherStore(pool) {
           // Equipped rows hold their slot but never take a stack.
           return rows.map((r) => ({ slot: Number(r.slot_index), itemId: Number(r.equipped) ? '' : r.item_id, qty: Number(r.quantity) }));
         },
+        /** Item ids on the tool belt (reserved slots BELT_BASE..): they count as carried tools but never take bag space. */
+        async getBeltTools() {
+          const [rows] = await conn.query(
+            'SELECT item_id FROM inventory WHERE character_id = ? AND slot_index BETWEEN ? AND ? FOR UPDATE',
+            [characterId, rules.BELT_BASE, rules.BELT_BASE + rules.BELT_SLOT_COUNT - 1],
+          );
+          return rows.map((r) => r.item_id);
+        },
         async maxStacks(ids) {
           const unique = [...new Set(ids)];
           const out = new Map();
@@ -113,6 +121,9 @@ function createMemoryGatherStore({ characters = {}, items = {} } = {}) {
         },
         async getBag() {
           return c.bag.map((r) => ({ ...r }));
+        },
+        async getBeltTools() {
+          return [...(c.belt || [])];
         },
         async maxStacks(ids) {
           return new Map(ids.filter((id) => items[id] !== undefined).map((id) => [id, items[id]]));

@@ -833,9 +833,9 @@ app.post('/api/inventory/save', requireJWT, async (req, res) => {
   const { characterId } = req.body;
   if (!Array.isArray(req.body.slots))
     return res.status(400).json({ success: false, error: 'slots must be an array' });
-  // Equipped gear lives in reserved slots 100-108 (managed by /equip). Older clients echo those rows back
+  // Equipped gear lives in reserved slots 100-108 (managed by /equip) and the tool belt in 110-113 (/belt). Older clients echo those rows back
   // with the bag, which made every save fail; the save owns the bag only, so ignore them.
-  const slots = req.body.slots.filter(s => !(Number(s && s.slot_index) >= 100 && Number(s.slot_index) <= 108));
+  const slots = req.body.slots.filter(s => !(Number(s && s.slot_index) >= 100 && Number(s.slot_index) <= gatheringRules.BELT_BASE + gatheringRules.BELT_SLOT_COUNT - 1));
   // A stale 24-slot tab sends no bagSize; the save then only touches slots 0-23 (see inventory-save.cjs).
   const bagSize = inventorySave.saveBagSize(req.body.bagSize);
   if (bagSize === null)
@@ -1000,7 +1000,7 @@ app.get('/api/game/equipment/:characterId', requireGameServerToken, async (req, 
     const [items] = await pool.execute(
       `SELECT inv.slot_index, inv.item_id, inv.equipped_slot, i.stat_bonus
          FROM inventory inv JOIN items i ON i.id = inv.item_id
-        WHERE inv.character_id = ? AND inv.equipped = 1 AND inv.equipped_slot IS NOT NULL
+        WHERE inv.character_id = ? AND inv.equipped = 1 AND inv.equipped_slot IS NOT NULL AND inv.slot_index < 110
         ORDER BY inv.equipped_slot`,
       [characterId]
     );
@@ -1916,6 +1916,13 @@ require('./garden.cjs')(app, pool, {
   },
 });
 require('./vault.cjs')(app, pool, {
+  requireAuth: requireJWT,
+  ownsCharacter: async (req, characterId) => {
+    const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
+    return rows.length === 1;
+  },
+});
+require('./tool-belt.cjs')(app, pool, {
   requireAuth: requireJWT,
   ownsCharacter: async (req, characterId) => {
     const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);

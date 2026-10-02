@@ -384,6 +384,30 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     return ok(acc.slots.map(joinSlot));
   }
 
+  // The gathering tool belt: the same moves as server/death-muffin/backend/tool-belt.cjs.
+  if (p === '/api/inventory/belt' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const index = Number(body.slot_index);
+    const slot = acc.slots.find((s) => s.slot_index === index);
+    if (body.equipped) {
+      if (!slot || !(index >= 0 && index < BAG)) return fail('There is nothing in that slot.');
+      const target = gather.beltSlotOf(slot.item_id);
+      if (target < 0) return fail('Only gathering tools fit on the belt.');
+      const other = acc.slots.find((s) => s.slot_index === target);
+      slot.slot_index = target;
+      slot.equipped = 1;
+      if (other) { other.slot_index = index; other.equipped = 0; }
+    } else {
+      if (!gather.isBeltSlot(index)) return fail('That is not a belt slot.');
+      if (!slot) return fail('The belt slot is empty.');
+      const bagIndex = Array.from({ length: BAG }, (_, i) => i).find((i) => !acc.slots.some((s) => s.slot_index === i));
+      if (bagIndex === undefined) return fail('Your bag is full. Make room, then take the tool off the belt.');
+      slot.slot_index = bagIndex;
+      slot.equipped = 0;
+    }
+    return ok(acc.slots.map(joinSlot));
+  }
+
   // --- The Ossuary Vault and Salvaging: the same pure rules the Death Muffin backend uses (vault-rules, salvage-rules). ---
   const mockInfo: vaultRules.VaultInfo = (id) => {
     const d = MOCK_ITEMS[id];
@@ -498,7 +522,9 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     const bag = acc.slots
       .filter((x) => x.slot_index < BAG)
       .map((x) => ({ slot: x.slot_index, itemId: x.equipped ? '' : x.item_id, qty: x.quantity }));
-    const toolTier = gather.toolTierFor(def.skill, bag.map((s) => s.itemId));
+    // The tool belt (slots 110-113) counts like the bag, as on the server.
+    const belt = acc.slots.filter((x) => gather.isBeltSlot(x.slot_index)).map((x) => x.item_id);
+    const toolTier = gather.toolTierFor(def.skill, [...bag.map((s) => s.itemId), ...belt]);
     const batch = gather.rollBatch(def, { level: prof.skill_level, xp: prof.skill_xp }, budget.accepted, Math.random, toolTier, staff ? def.level : 0);
     const placed = gather.placeItems(bag, batch.items, (id) => (MOCK_ITEMS[id]?.item_type === 'material' ? (ITEMS[id]?.stack ?? 9999) : 1));
     for (const u of placed.updates) acc.slots.find((x) => x.slot_index === u.slot)!.quantity = u.qty;

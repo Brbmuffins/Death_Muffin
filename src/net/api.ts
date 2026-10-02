@@ -173,6 +173,17 @@ export function equipItem(characterId: number, slotIndex: number, equipped: 0 | 
   );
 }
 
+/** Gathering tool belt: equipped 1 moves the tool in this bag slot onto its belt slot, 0 returns the belt slot's tool to the bag. */
+export function beltTool(characterId: number, slotIndex: number, equipped: 0 | 1) {
+  return unwrap<InventorySlot[]>(
+    request(
+      '/api/inventory/belt',
+      { method: 'POST', body: JSON.stringify({ characterId, slot_index: slotIndex, equipped }) },
+      true,
+    ),
+  );
+}
+
 // --- Professions & crafting ---
 export function getProfessions(characterId: number) {
   return unwrap<Profession[]>(request(`/api/professions/${characterId}`, {}, true));

@@ -252,6 +252,42 @@ export function toolTierFor(skill: SkillId, heldItemIds: Iterable<string>): numb
   return best;
 }
 
+/**
+ * The tool belt (2026-10-02): four reserved inventory slots, one per tool kind, outside the bag. Belt rows are
+ * `equipped = 1` with `equipped_slot = 'belt_<kind>'`, so bag saves, crafting, selling, the Vault and Salvage never touch them.
+ * Tools on the belt count for gathering exactly like tools in the bag (the best of both wins).
+ */
+export const BELT_BASE = 110;
+export const BELT_KINDS = ['hatchet', 'pickaxe', 'rod', 'spade'] as const;
+export type BeltKind = (typeof BELT_KINDS)[number];
+export const BELT_SLOT_COUNT = BELT_KINDS.length;
+export const isBeltSlot = (slot: number) => Number.isInteger(slot) && slot >= BELT_BASE && slot < BELT_BASE + BELT_SLOT_COUNT;
+/** The tool kind an item id is, or null (not a tool, or an unknown metal). */
+export function toolKindOf(itemId: string): BeltKind | null {
+  for (const kind of BELT_KINDS) {
+    const prefix = `tool_${kind}_`;
+    if (itemId.startsWith(prefix) && (TOOL_METALS as readonly string[]).includes(itemId.slice(prefix.length))) return kind;
+  }
+  return null;
+}
+/** Reserved inventory slot for a tool's belt place, or -1. */
+export const beltSlotOf = (itemId: string) => {
+  const kind = toolKindOf(itemId);
+  return kind ? BELT_BASE + BELT_KINDS.indexOf(kind) : -1;
+};
+export const beltEquippedSlot = (kind: BeltKind) => `belt_${kind}`;
+export const beltSlotKind = (slot: number): BeltKind | null => (isBeltSlot(slot) ? BELT_KINDS[slot - BELT_BASE] : null);
+/** For the "put your best tools on the belt" offer: the highest-tier tool of each kind, by item id. */
+export function bestToolPerKind(itemIds: Iterable<string>): Partial<Record<BeltKind, string>> {
+  const best: Partial<Record<BeltKind, string>> = {};
+  const tier = (id: string) => TOOL_METALS.indexOf(id.slice(id.indexOf('_', 5) + 1) as (typeof TOOL_METALS)[number]);
+  for (const id of itemIds) {
+    const kind = toolKindOf(id);
+    if (kind && (!best[kind] || tier(id) > tier(best[kind]!))) best[kind] = id;
+  }
+  return best;
+}
+
 /** Chance that one action succeeds. Tools are optional speed-ups (roadmap §12 q2): +5% per tier. */
 export function successChance(def: NodeDef, level: number, toolTier = 0) {
   const p = (def.level === 1 ? 0.6 : 0.45) + 0.01 * (level - def.level) + 0.05 * toolTier;

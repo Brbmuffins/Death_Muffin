@@ -22,6 +22,12 @@ const ITEMS = {
   reagent_plague_bile: { type: 'material', rarity: 'rare', stack: 250 },
   reagent_cinder_ash: { type: 'material', rarity: 'rare', stack: 250 },
   bone_meal: { type: 'material', rarity: 'common', stack: 250 },
+  tool_hatchet_copper: { type: 'material', rarity: 'common', stack: 1 },
+  tool_hatchet_iron: { type: 'material', rarity: 'common', stack: 1 },
+  tool_hatchet_steel: { type: 'material', rarity: 'uncommon', stack: 1 },
+  tool_pickaxe_copper: { type: 'material', rarity: 'common', stack: 1 },
+  tool_rod_copper: { type: 'material', rarity: 'common', stack: 1 },
+  tool_spade_copper: { type: 'material', rarity: 'common', stack: 1 },
 };
 
 function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0 } = {}) {
@@ -42,6 +48,16 @@ function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0 } = {})
     sql = sql.trim();
     calls.push(sql.split('\n')[0].slice(0, 60));
     if (sql.startsWith('SELECT slot_index, item_id, quantity, equipped FROM inventory')) return [inv.filter((r) => r.slot_index >= 0 && r.slot_index <= p[1]).sort((a, b) => a.slot_index - b.slot_index).map((r) => ({ ...r }))];
+    // The tool belt (tool-belt.cjs): lock every row, then move rows by id (the unique key is character + slot).
+    if (sql.startsWith('SELECT id, slot_index, item_id FROM inventory')) return [inv.filter((r) => r.character_id === p[0]).map((r) => ({ ...r }))];
+    if (sql.startsWith('UPDATE inventory SET slot_index = ?')) {
+      const row = inv.find((r) => r.id === p[p.length - 1]);
+      if (inv.some((r) => r !== row && r.character_id === row.character_id && r.slot_index === p[0])) throw new Error('Duplicate entry for uq_char_slot');
+      row.slot_index = p[0];
+      if (sql.includes('equipped = 1')) Object.assign(row, { equipped: 1, equipped_slot: p[1] });
+      else if (sql.includes('equipped = 0')) Object.assign(row, { equipped: 0, equipped_slot: null });
+      return [{}];
+    }
     if (sql.startsWith('SELECT slot_index, item_id, equipped, equipped_slot FROM inventory')) return [inv.map((r) => ({ ...r }))];
     if (sql.startsWith('SELECT slot_index, item_id, quantity FROM account_vault')) return [vlt.filter((r) => r.account_id === p[0]).sort((a, b) => a.slot_index - b.slot_index).map((r) => ({ ...r }))];
     if (sql.includes('FROM inventory inv')) return [inv.filter((r) => r.character_id === p[0]).sort((a, b) => a.slot_index - b.slot_index).map(joined)];
