@@ -2,6 +2,7 @@ import { deliverContract, getContracts, getInventory, type ContractBoard, type C
 import { RARITY_COLOR, itemMeta } from '../content/items';
 import { SKILLS, type SkillId } from '../gameplay/gatheringRules';
 import type { Inventory } from '../gameplay/loot';
+import { preserveScroll } from './preserveScroll';
 
 const iconOf = (itemId: string) => itemMeta(itemId).icon ?? `art/items/${itemId}.png`;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -99,13 +100,14 @@ export class ContractsPanel {
           <span>Bonus for all three: <b>${b.bonus.gold.toLocaleString()}g</b> + ${esc(b.bonus.item.name)} ${b.bonus.claimed ? '<i>(claimed today)</i>' : ''}</span>
           <span>Streak: <b>${b.streak}</b> day${b.streak === 1 ? '' : 's'}</span>
         </div>`;
-    this.el.innerHTML = `
+    const panel = this.el;
+    preserveScroll(panel, () => { panel.innerHTML = `
       <div class="cw-panel-head">
         <h2 class="cw-title">Sexton’s Contracts</h2>
         <button class="cw-icon-btn" data-close aria-label="Close contracts">✕</button>
       </div>
       ${body}
-      <div class="cw-error" data-error>${this.error && b ? esc(this.error) : ''}</div>`;
+      <div class="cw-error" data-error>${this.error && b ? esc(this.error) : ''}</div>`; });
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
     this.el.querySelectorAll<HTMLButtonElement>('[data-deliver]').forEach((btn) => btn.addEventListener('click', () => void this.deliver(Number(btn.dataset.deliver))));
   }

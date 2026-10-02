@@ -3,6 +3,7 @@ import { RARITY_COLOR, itemMeta } from '../content/items';
 import { COMPOST_ITEM, seedDef } from '../content/gardening';
 import { remainingText } from '../gameplay/gardeningRules';
 import type { Inventory } from '../gameplay/loot';
+import { preserveScroll } from './preserveScroll';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 const iconOf = (itemId: string) => itemMeta(itemId).icon ?? `art/items/${itemId}.png`;
@@ -131,7 +132,8 @@ export class GardenPanel {
           })
           .join('');
     const level = v ? `<span class="cw-skill-total">Grave Gardening <b>${v.level}</b> · ${v.xp.toLocaleString()} / ${v.xpToNext.toLocaleString()} xp</span>` : '';
-    this.el.innerHTML = `
+    const panel = this.el;
+    preserveScroll(panel, () => { panel.innerHTML = `
       <div class="cw-panel-head">
         <h2 class="cw-title">Grave Gardening</h2>
         ${level}
@@ -139,7 +141,7 @@ export class GardenPanel {
       </div>
       <p class="cw-codex-note">Plant a seed and come back: it keeps growing while you are away. Bone meal from the Bone Kiln grows a plot a quarter faster.</p>
       <div class="cw-plots">${cards}</div>
-      <div class="cw-error" data-error>${this.error && v ? esc(this.error) : ''}</div>`;
+      <div class="cw-error" data-error>${this.error && v ? esc(this.error) : ''}</div>`; });
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
     this.el.querySelectorAll<HTMLSelectElement>('[data-seed]').forEach((sel) => sel.addEventListener('change', () => {
       const cur = this.choice.get(sel.dataset.seed!)!;

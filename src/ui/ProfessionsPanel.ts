@@ -4,6 +4,7 @@ import { ALL_SKILLS, GATHER_SKILLS, LEVEL_CAP, SKILLS, TOOL_KIND, nodesForSkill,
 /** Gardening and alchemy have no nodes to work: they live in the Garden panel and at the Workbench. */
 const isGather = (id: SkillId): id is GatherSkill => (GATHER_SKILLS as SkillId[]).includes(id);
 import { itemMeta } from '../content/items';
+import { preserveScroll } from './preserveScroll';
 
 /** What each skill is for, and where its processing happens (roadmap §3). */
 const BLURB: Record<SkillId, string> = {
@@ -111,7 +112,8 @@ export class ProfessionsPanel {
           ${afk}
         </div>`;
     }).join('');
-    this.el.innerHTML = `
+    const panel = this.el;
+    preserveScroll(panel, () => { panel.innerHTML = `
       <div class="cw-panel-head">
         <h2 class="cw-title">Skills</h2>
         <span class="cw-skill-total">Total level <b>${skills.total()}</b></span>
@@ -127,7 +129,7 @@ export class ProfessionsPanel {
       <p class="cw-hint-text">Choose a node and Start AFK in the Sexton’s Acre. Keep the game open; your hero repeats, changes nodes and waits for respawns until the bag fills. Skills can stay open. Moving, casting or other panels pause work.</p>
       ${status ? `<div class="cw-afk-status"><span data-afk-status></span><button class="cw-button small" data-pause-afk ${!status.active || this.busy ? 'disabled' : ''}>Pause AFK</button></div>` : ''}
       <div class="cw-skill-grid">${cards}</div>
-    `;
+    `; });
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
     this.el.querySelector('[data-contracts]')?.addEventListener('click', () => this.onContracts?.());
     this.el.querySelector('[data-garden]')?.addEventListener('click', () => this.onGarden?.());
