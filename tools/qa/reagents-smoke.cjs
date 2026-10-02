@@ -4,18 +4,20 @@
 //   DM_QA_URL=http://127.0.0.1:5305/?offline node tools/qa/reagents-smoke.cjs
 const assert = require('node:assert/strict');
 const { chromium } = require(process.env.DM_PLAYWRIGHT_MODULE || 'playwright');
+const { SWIFTSHADER_ARGS, watchErrors, shot: shotFile } = require('./lib/qa-common.cjs');
 
 async function main() {
   const out = process.env.DM_QA_ARTIFACT_DIR || 'docs/screenshots/reagents';
   const browser = await chromium.launch({ headless: true, executablePath: process.env.DM_CHROMIUM_PATH || undefined,
-    args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+    args: SWIFTSHADER_ARGS });
   try {
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-    const errors = [];
-    const shot = async (path) => { for (let i = 0; i < 4; i++) { try { return await page.screenshot({ path, timeout: 60000 }); } catch (e) { if (i === 3) throw e; } } };
-    page.on('pageerror', (e) => errors.push(e.message));
+    const { errors } = watchErrors(page);
+    const shot = (file) => shotFile(page, file);
     // Mark every counsel tip but 'reagent' as seen (for likely character ids), so the reagent tip is not stuck in the queue.
-    const tipIds = [...require('node:fs').readFileSync('src/ui/Onboarding.ts', 'utf8').matchAll(/^  \| '([a-z_]+)'/gm)].map((m) => m[1]).filter((t) => t !== 'reagent');
+    const onboardingSrc = require('node:fs').readFileSync(require('node:path').join(__dirname, '../../src/ui/Onboarding.ts'), 'utf8');
+    const union = onboardingSrc.slice(onboardingSrc.indexOf('export type TipId ='), onboardingSrc.indexOf(';', onboardingSrc.indexOf('export type TipId =')));
+    const tipIds = [...union.matchAll(/'([A-Za-z_]+)'/g)].map((m) => m[1]).filter((t) => t !== 'reagent');
     await page.addInitScript((ids) => {
       localStorage.setItem('dm_settings_v1', JSON.stringify({ quality: 'low', tips: true, autoCombat: false }));
       for (let c = 0; c < 40; c++) localStorage.setItem(`dm_tips_v1_${c}`, JSON.stringify(ids));
@@ -31,37 +33,61 @@ async function main() {
     await page.waitForFunction(() => window.__cwDebug?.avatar.c.loaded, null, { timeout: 60000 });
     const dust = () => page.evaluate(() => window.__cwDebug.inventory.count('reagent_grave_dust'));
 
-    // --- 1. Kill Graves mobs until Grave Dust drops (1% per kill, 1-2 dust; 600 kills is a generous cap).
+    // --- 1. Kill Graves mobs until Grave Dust drops (1% per kill, 1-2 dust). The first batch pins Math.random low for
+    // the kill so the real reagent roll succeeds on the first kill; later batches (a safety net if the drop table
+    // changed) are unpinned. Loot is then collected through the real pickup path: items wait where they land and the
+    // hero walks over them (pickup radius 1.3 m; only gold and shards fly to the player).
     await page.evaluate(() => { const d = window.__cwDebug; d.god(true); d.unlockAll(); d.goto('graves'); d.advance(0.5); d.clear(); d.advance(0.2); });
     let kills = 0;
-    let drops = 0;
-    while ((await dust()) === 0 && kills < 600) {
-      kills += await page.evaluate(() => {
-        const d = window.__cwDebug;
-        const sim = d.sim();
-        d.ring('robber', 40, 0.9);
+    let batches = 0;
+    const killBatch = (pin) => page.evaluate((pin) => {
+      const d = window.__cwDebug;
+      const sim = d.sim();
+      const real = Math.random;
+      if (pin) Math.random = () => 0.0005;
+      try {
+        d.ring('robber', pin ? 2 : 30, 1.5);
         let n = 0;
         for (const e of [...sim.enemies.values()]) { sim.damageEnemy(e, 1e9, d.self(), { x: d.player.x, z: d.player.z }); n++; }
-        d.advance(2, false);
+        d.advance(1.5, false);
         return n;
-      });
+      } finally { Math.random = real; }
+    }, pin);
+    const sweepLoot = async () => {
+      // Walk the hero over every item on the ground (re-read each step: a pickup removes it).
+      for (let guard = 0; guard < 60; guard++) {
+        const left = await page.evaluate(() => {
+          const d = window.__cwDebug;
+          const item = d.lootDrops().find((x) => x.kind === 'item');
+          if (!item) return 0;
+          d.teleport(item.x, item.z);
+          d.advance(0.5, false);
+          return d.lootDrops().filter((x) => x.kind === 'item').length;
+        });
+        if (!left) return;
+      }
+    };
+    while ((await dust()) === 0 && batches < 12) {
+      kills += await killBatch(batches === 0);
+      batches++;
+      await sweepLoot();
     }
+    assert.ok((await dust()) > 0, `no Grave Dust after ${kills} kills`);
     await page.evaluate(() => window.__cwDebug.advance(2));
     const found = await dust();
-    drops = found;
     assert.ok(found > 0, `no Grave Dust in ${kills} kills`);
-    console.log(JSON.stringify({ gravesKills: kills, graveDust: found }));
-    await page.waitForTimeout(400);
-    await shot(`${out}/01-dust-drop.png`);
+    console.log(JSON.stringify({ gravesKills: kills, batches, graveDust: found }));
     // The first reagent pickup places its counsel next after the current card.
     let tipShown = false;
-    for (let i = 0; i < 12 && !tipShown; i++) {
+    for (let i = 0; i < 40 && !tipShown; i++) {
       const title = await page.locator('.cw-tip:not(.out) .title').first().textContent({ timeout: 1000 }).catch(() => '');
       tipShown = title === 'Reagents';
       if (!tipShown) { await page.locator('.cw-tip:not(.out)').first().click({ timeout: 1000 }).catch(() => {}); await page.waitForTimeout(750); }
     }
+    if (!tipShown) console.log('DEBUG tips', JSON.stringify(await page.evaluate(() => [...document.querySelectorAll('.cw-tip')].map((e) => e.className + ' | ' + e.textContent.slice(0, 80)))));
     assert.ok(tipShown, 'first reagent pickup shows its counsel after the current card');
     console.log(JSON.stringify({ reagentTipShown: tipShown }));
+    // Screenshots come after the tip check: counsel cards expire on wall-clock time and a screenshot can take 10+ s on a loaded box.
     await shot(`${out}/02-reagent-tip.png`);
 
     // --- 2. Give exactly the starter cost and brew it at the Workbench, Alchemy tab.

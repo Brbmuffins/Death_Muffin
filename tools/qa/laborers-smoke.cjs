@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const { chromium } = require(process.env.DM_PLAYWRIGHT_MODULE || 'playwright');
 const artifactDir = process.env.DM_QA_ARTIFACT_DIR || require('node:os').tmpdir();
+const { watchErrors } = require('./lib/qa-common.cjs');
 const URL = process.env.DM_QA_URL || 'http://127.0.0.1:5325/?offline';
 const POSTS = [['woodcutting', 'coffin_oak'], ['mining', 'seam_iron'], ['gravedigging', 'grave_crypt'], ['fishing', 'pool_carp']];
 
@@ -14,10 +15,7 @@ async function main() {
   try {
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     page.setDefaultTimeout(120000);
-    const errors = [];
-    page.on('pageerror', e => errors.push(e.message));
-    page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
-    const bad = new Set(); page.on('response', r => { if (r.status() >= 400) bad.add(r.status() + ' ' + r.url()); });
+    const { errors, bad } = watchErrors(page); // @fontsource 403s are ignored (node_modules symlinked outside the Vite root)
     await page.addInitScript(() => localStorage.setItem('dm_settings_v1', JSON.stringify({ quality: 'high', tips: false, autoCombat: false, autoGather: false })));
     await page.goto(URL);
     await page.getByRole('button', { name: 'New to the Covenant? Create an account' }).click();
@@ -117,7 +115,7 @@ async function main() {
     out.hiddenOutside = await page.evaluate(async () => !(await import('/src/app/GameRuntime.ts')).getRuntime().view.laborers.group.visible);
     assert.ok(out.hiddenOutside, 'laborers hidden outside the Acre');
     out.badResponses = [...bad];
-    assert.equal(errors.filter(e => !/status of 403/.test(e)).length, 0, JSON.stringify(errors));
+    assert.equal(errors.length, 0, JSON.stringify(errors));
     out.errors = errors;
     console.log(JSON.stringify(out, null, 1));
   } finally { await browser.close(); }

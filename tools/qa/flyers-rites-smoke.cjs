@@ -9,6 +9,7 @@ const assert = require('node:assert/strict');
 const os = require('node:os');
 const path = require('node:path');
 const { chromium } = require(process.env.DM_PLAYWRIGHT_MODULE || 'playwright');
+const { SWIFTSHADER_ARGS, watchErrors, preloadModules, shot: shotFile, waitGame } = require('./lib/qa-common.cjs');
 
 const OUT = process.env.DM_QA_ARTIFACT_DIR || os.tmpdir();
 
@@ -16,13 +17,11 @@ async function main() {
   const browser = await chromium.launch({
     headless: true,
     executablePath: process.env.DM_CHROMIUM_PATH || undefined,
-    args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+    args: SWIFTSHADER_ARGS,
   });
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-  const errors = [];
+  const { errors } = watchErrors(page);
   const models = [];
-  page.on('pageerror', (e) => errors.push(e.message));
-  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   page.on('response', (r) => r.url().endsWith('.glb') && models.push([r.url().split('/').pop(), r.status()]));
   await page.addInitScript(() => localStorage.setItem('dm_settings_v1', JSON.stringify({ quality: 'high', tips: false, autoCombat: false })));
   await page.goto(process.env.DM_QA_URL || 'http://127.0.0.1:5199/?offline');
@@ -34,7 +33,8 @@ async function main() {
   await page.locator('#cw-login-btn').click();
   await page.locator('.cw-disc').filter({ hasText: 'Gravecaller' }).click();
   await page.waitForFunction(() => window.__cwDebug?.avatar.c.loaded, null, { timeout: 60000 });
-  const shot = async (name) => page.screenshot({ path: path.join(OUT, `qa-${name}.png`) });
+  await preloadModules(page);
+  const shot = async (name) => shotFile(page, path.join(OUT, `qa-${name}.png`));
 
   // --- Flyers: one of each around the hero, then a gargoyle mid-dive.
   await page.evaluate(() => {
@@ -54,7 +54,6 @@ async function main() {
     d.advance(2.5);
     return ids.length;
   });
-  await page.waitForTimeout(1500);
   await page.evaluate(() => window.__cwDebug.advance(0.6));
   await shot('flyers');
   const flapped = await page.evaluate(() => window.__cwDebug.sim().enemies.size);
@@ -71,13 +70,14 @@ async function main() {
   await shot('gargoyle-dive');
 
   // --- Rites: Bone Mantle on a pile of corpses, then the four new rites on a pack.
-  const casts = await page.evaluate(async () => {
+  const casts = await page.evaluate(() => {
     const d = window.__cwDebug;
-    const scene = (await import('/src/app/GameRuntime.ts')).getRuntime().view;
+    const { runtime, devAccess } = window.__qaMods;
+    const scene = runtime.getRuntime().view;
     d.clear();
     d.unlockAll();
     // Every rite, as the dev account has it (runtime overlay only, never saved).
-    (await import('/src/gameplay/devAccess.ts')).devAccess.active = true;
+    devAccess.devAccess.active = true;
     d.freeze(true);
     const p = d.player;
     const out = {};
@@ -101,13 +101,12 @@ async function main() {
     d.advance(0.5);
     return out;
   });
-  await page.waitForTimeout(600);
   await page.evaluate(() => window.__cwDebug.advance(0.3));
   await shot('bone-mantle');
   for (const [id, wait] of [['bone_prison', 0.25], ['grave_hands', 0.7], ['bone_storm', 0.9], ['soul_siphon', 0.8]]) {
-    const r = await page.evaluate(async ([rite, wait]) => {
+    const r = await page.evaluate(([rite, wait]) => {
       const d = window.__cwDebug;
-      const scene = (await import('/src/app/GameRuntime.ts')).getRuntime().view;
+      const scene = window.__qaMods.runtime.getRuntime().view;
       d.clear();
       const p = d.player;
       const list = [];
@@ -126,7 +125,6 @@ async function main() {
       d.advance(wait);
       return { res, hp: list.map((e) => Math.round(e.hp)), root: list.map((e) => e.rootT ?? 0) };
     }, [id, wait]);
-    await page.waitForTimeout(400);
     await page.evaluate(() => window.__cwDebug.advance(0.05));
     await shot(id.replace('_', '-'));
     assert.equal(r.res, 'ok', `${id} cast`);
