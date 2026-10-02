@@ -107,14 +107,16 @@
         "FL_Upper",
         "FL_Lower"
       ],
-      "paw": "FL_Paw"
+      "paw": "FL_Paw",
+      "minReach": 0.6
     },
     "FR": {
       "chain": [
         "FR_Upper",
         "FR_Lower"
       ],
-      "paw": "FR_Paw"
+      "paw": "FR_Paw",
+      "minReach": 0.6
     },
     "HL": {
       "chain": [
@@ -123,7 +125,7 @@
         "bone_8"
       ],
       "paw": "bone_9",
-      "rigidFrom": 1
+      "hock": true
     },
     "HR": {
       "chain": [
@@ -132,7 +134,7 @@
         "tripo::1_Right_Limb_2"
       ],
       "paw": "tripo::1_Right_Limb_3",
-      "rigidFrom": 1
+      "hock": true
     }
   },
   "clips": {
@@ -198,7 +200,11 @@
           "cycles": 1,
           "lag": 0.08
         }
-      ]
+      ],
+      "hock": {
+        "stance": 12,
+        "swing": 25
+      }
     },
     "run": {
       "type": "gait",
@@ -263,7 +269,11 @@
           "cycles": 1,
           "lag": 0.07
         }
-      ]
+      ],
+      "hock": {
+        "stance": 25,
+        "swing": 40
+      }
     },
     "idle": {
       "type": "idle",

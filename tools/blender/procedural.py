@@ -67,6 +67,7 @@ class Gait:
         else:
             self.fwd = horizontal(rig.head[head] - rig.head[self.root])
         self.lat = UP.cross(self.fwd).normalized()  # body's left
+        self.min_reach = {k: v.get('minReach', 0.0) for k, v in r['legs'].items()}
         self.legs = {k: Leg(rig, v['chain'], v['paw'], v.get('rigidFrom'), bool(v.get('hock'))) for k, v in r['legs'].items()}
         self.side = {k: (1 if (rig.head[v['paw']] - rig.head[self.root]).dot(self.lat) >= 0 else -1) for k, v in r['legs'].items()}
         self.leg_bones = set()
@@ -162,7 +163,18 @@ class Gait:
                     dist = (ankle - md * lg.meta_len - inh.translation).length
                 else:
                     dist = (ankle - inh.translation).length
+                    mr = self.min_reach[key] * lg.reach
+                    if mr and g and 1e-6 < dist < mr:
+                        # a tightly folded leg turns the thin forearm into a fin that rises past the spine: open the fold
+                        # in mid-swing (weight 0 at lift-off and touch-down, so the foot never pops)
+                        v = (ph - g['phase'][key]) % 1.0
+                        w = math.sin(math.pi * (v - g['duty']) / (1 - g['duty'])) if v >= g['duty'] else 0.0
+                        if w > 0:
+                            nd = dist + (mr - dist) * w
+                            ankle = inh.translation + (ankle - inh.translation) * (nd / dist)
+                            dist = nd
                 info['stretch'] = max(info['stretch'], dist / lg.reach)
+                info.setdefault('ratio', {})[key] = dist / lg.reach
                 info['contact'][key] = contact
                 sol = lg.solve(P, basis, ankle, paw_rot_world=pawrot, meta_dir=md)
                 info.setdefault('sol', {})[key] = sol
@@ -199,16 +211,18 @@ class Gait:
                     break
                 d += 0.002
             crouch = d
-        frames, stretch, contacts = [], 0.0, []
+        frames, stretch, contacts, lows = [], 0.0, [], {}
         for i in range(n + 1):  # frame n == frame 0 so the loop closes
             b, P, info = self.pose((i % n) / n, clip, crouch)
             frames.append(b)
             if os.environ.get('PROC_DEBUG'):
                 print('DBG', i, {k: [tuple(round(c, 3) for c in j) for j in v] for k, v in info.get('sol', {}).items() if k in os.environ['PROC_DEBUG'].split(',')})
             stretch = max(stretch, info['stretch'])
+            for k_, r_ in info.get('ratio', {}).items():
+                lows[k_] = min(lows.get(k_, 9), r_)
             contacts.append(info['contact'])
         g = clip.get('gait')
-        res = {'clip': name, 'duration': dur, 'frames': n + 1, 'crouch': round(crouch, 4), 'maxStretch': round(stretch, 3)}
+        res = {'clip': name, 'duration': dur, 'frames': n + 1, 'crouch': round(crouch, 4), 'maxStretch': round(stretch, 3), 'minReach': {k_: round(v_, 2) for k_, v_ in lows.items()}}
         if g:
             res['stanceSpeed'] = round(g['stride'] / (g['duty'] * dur), 4)
         return frames, res
