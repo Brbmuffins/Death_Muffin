@@ -26,15 +26,15 @@ flowchart LR
     S12[2 Oct: animation 2 — hitstop · knockback · settle]:::done
     S13[2 Oct: Blender pipeline — new rat + cinderhound gaits]:::done
     S14[2 Oct: first-hour polish]:::done
+    S15[2 Oct: Blender round 2 — hound · gargoyle wings]:::done
   end
 
   subgraph NOW["🔨 Now — being built"]
     W2[Gear tuning<br/>affixes + sets vs the power curve]:::now
-    W6[Blender round 2<br/>hound · gargoyle wings · NPC talk]:::now
   end
 
   subgraph POLISH["✨ Next — polish"]
-    P6[Second polish round<br/>re-run audits]:::next
+    P6[Second polish round<br/>re-run audits · flaky flyers smoke]:::next
   end
 
   subgraph LATER["🌒 Later — new content"]
@@ -52,6 +52,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 2 Oct 2026 | Blender round 2: the bone hound's walk no longer stretches its body (new leg and tail bones, procedural idle/walk/run, slip 0.85 → 0.06); cinderhound hind legs flex properly and the shoulder poke is gone; the skull rat's tail no longer drags; the belfry gargoyle has real bones in both wings and flaps from clips instead of a shader | CC0 talk gesture tested on the guide NPCs and kept out (reads as waiting, not talking). |
 | 2 Oct 2026 | First-hour polish: one counsel card at a time, calm tips wait out fights, fight lessons match what is happening (cards on screen 95% → 59% of the first 160 s), one clear route from the Acre, HUD collisions fixed, the camera keeps a speaking NPC in view, no stale "Workbench" brewing directions | Audit in docs/FIRST-HOUR-AUDIT.md; README "Your first hour" rewritten. |
 | 2 Oct 2026 | Blender animation pipeline (headless Blender 4.5 LTS, `node tools/blender.mjs`): procedural gaits, rig fixes, loop/drift cleanup, IK foot-lock, CC0 retargeting. First results: skull rat and cinderhound got new idle/walk/run (the cinderhound's forelegs had no bones; added) — foot slip 1.04 → 0.08 and 1.53 → 0.09 | 0 Tripo credits. Quaternius CC0 library tested on the Gravecaller; not swapped in (not clearly better). |
 | 2 Oct 2026 | Animation 2: hitstop on heavy hits (visual only, rationed), eased knockback, corpses settle into the ground (and no longer freeze mid-fall), real run clips for the grave robber and censer bearer, corrected hound strides | 20 Tripo credits. Skull rat and cinderhound gaits go to the Blender pipeline. |
