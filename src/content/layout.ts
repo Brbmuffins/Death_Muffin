@@ -62,14 +62,57 @@ export type PropId =
   | 'ember_altar'
   // The Mourning Fen (2026-09-30).
   | 'fen_hummock'
-  | 'mire_altar';
+  | 'mire_altar'
+  // The Alchemist's Wing (public/models/props/alch_*.glb, docs/ALCHEMIST-WING-ART.md).
+  | 'alch_cauldron'
+  | 'alch_alembic'
+  | 'alch_reagent_shelf'
+  | 'alch_drying_rack'
+  | 'alch_mortar_table'
+  | 'alch_bubbling_vat'
+  | 'alch_counter'
+  | 'alch_bone_candles'
+  | 'alch_canopic_jars'
+  | 'alch_herb_bundle'
+  | 'alch_station_sign'
+  | 'alch_totem_stirrer';
+
+/**
+ * The Alchemist's Wing dressing (room 26 x 24, door in the west wall at z 17-23, camera looks north): the Great Cauldron
+ * in the middle, the alembic and four reagent shelves along the back (north) wall, the Apothecary's counter on the east
+ * wall, a vat and drying rack in the south corners, a totem and sign by the door. `rot` turns a prop about y (model front = +z at rot 0).
+ */
+export const WING_PROPS: { prop: PropId; x: number; z: number; rot: number; y?: number }[] = [
+  { prop: 'alch_cauldron', x: 33, z: 19.5, rot: 0 },
+  { prop: 'alch_alembic', x: 24.5, z: 8.9, rot: 0 },
+  { prop: 'alch_reagent_shelf', x: 35.5, z: 8.45, rot: -Math.PI / 2 },
+  { prop: 'alch_reagent_shelf', x: 37.4, z: 8.45, rot: -Math.PI / 2 },
+  { prop: 'alch_reagent_shelf', x: 39.3, z: 8.45, rot: -Math.PI / 2 },
+  { prop: 'alch_reagent_shelf', x: 41.2, z: 8.45, rot: -Math.PI / 2 },
+  { prop: 'alch_counter', x: 45.1, z: 20, rot: Math.PI },
+  { prop: 'alch_station_sign', x: 27.5, z: 15.8, rot: Math.PI },
+  { prop: 'alch_totem_stirrer', x: 23.2, z: 14.2, rot: Math.PI },
+  { prop: 'alch_mortar_table', x: 28.5, z: 24, rot: 0 },
+  { prop: 'alch_bubbling_vat', x: 41.5, z: 27.6, rot: 0 },
+  { prop: 'alch_drying_rack', x: 22.4, z: 29.4, rot: 0 },
+  { prop: 'alch_bone_candles', x: 22.6, z: 16.3, rot: 0 },
+  { prop: 'alch_bone_candles', x: 22.6, z: 23.7, rot: 0 },
+  { prop: 'alch_bone_candles', x: 30.4, z: 22.4, rot: 0 },
+  { prop: 'alch_bone_candles', x: 35.8, z: 16.8, rot: 0 },
+  { prop: 'alch_canopic_jars', x: 23.4, z: 26.4, rot: Math.PI },
+  { prop: 'alch_canopic_jars', x: 45.1, z: 18.4, rot: Math.PI, y: 1.2 },
+  { prop: 'alch_herb_bundle', x: 28, z: 8.3, rot: 0, y: 2.5 },
+  { prop: 'alch_herb_bundle', x: 30.6, z: 8.3, rot: 0, y: 2.5 },
+  { prop: 'alch_herb_bundle', x: 33.2, z: 8.3, rot: 0, y: 2.5 },
+  { prop: 'alch_herb_bundle', x: 44, z: 8.3, rot: 0, y: 2.5 },
+];
 
 export interface PropSpec {
   /** Target world height of the generated model. */
   height: number;
   collider?: { kind: 'circle'; r: number } | { kind: 'box'; hw: number; hd: number };
   /** Emits light (candle flames / brazier fire). */
-  light?: { color: number; intensity: number; distance: number; y: number; flames: number; spread: number };
+  light?: { color: number; intensity: number; distance: number; y: number; flames: number; spread: number; /** Floor light-pool tint (default warm amber). */ pool?: number };
 }
 
 export const PROPS: Record<PropId, PropSpec> = {
@@ -120,6 +163,19 @@ export const PROPS: Record<PropId, PropSpec> = {
   fen_hummock: { height: 1.1 },
   // Teal witch-fire: marsh-cold, never the Chapterhouse braziers' violet.
   mire_altar: { height: 1.3, collider: { kind: 'circle', r: 1.1 }, light: { color: 0x5fc4b4, intensity: 9, distance: 11, y: 1.8, flames: 0, spread: 0.3 } },
+  // The Alchemist's Wing. Heights and footprints from docs/ALCHEMIST-WING-ART.md; green = vat/cauldron glow, amber = candles.
+  alch_cauldron: { height: 1.3, collider: { kind: 'circle', r: 0.72 }, light: { color: 0x7be07a, intensity: 10, distance: 9, y: 1.7, flames: 0, spread: 0.3, pool: 0x4fa85a } },
+  alch_alembic: { height: 1.8, collider: { kind: 'box', hw: 0.65, hd: 0.55 }, light: { color: 0xffa860, intensity: 3.5, distance: 6, y: 1.0, flames: 0, spread: 0.2 } },
+  alch_reagent_shelf: { height: 2.0, collider: { kind: 'box', hw: 0.4, hd: 0.9 } },
+  alch_drying_rack: { height: 2.0, collider: { kind: 'box', hw: 0.5, hd: 0.9 } },
+  alch_mortar_table: { height: 1.0, collider: { kind: 'box', hw: 0.36, hd: 0.45 } },
+  alch_bubbling_vat: { height: 1.1, collider: { kind: 'circle', r: 0.65 }, light: { color: 0x9be86a, intensity: 7, distance: 8, y: 1.5, flames: 0, spread: 0.3, pool: 0x5fb04a } },
+  alch_counter: { height: 1.2, collider: { kind: 'box', hw: 0.82, hd: 1.2 } },
+  alch_bone_candles: { height: 1.0, collider: { kind: 'circle', r: 0.28 }, light: { color: 0xffb46b, intensity: 3.5, distance: 6, y: 1.2, flames: 4, spread: 0.18 } },
+  alch_canopic_jars: { height: 0.8, collider: { kind: 'box', hw: 0.22, hd: 0.5 } },
+  alch_herb_bundle: { height: 0.9 },
+  alch_station_sign: { height: 2.4, collider: { kind: 'box', hw: 0.32, hd: 0.7 }, light: { color: 0x8be89a, intensity: 3, distance: 6, y: 1.9, flames: 0, spread: 0.2, pool: 0x4fa85a } },
+  alch_totem_stirrer: { height: 1.2, collider: { kind: 'box', hw: 0.5, hd: 0.67 } },
   cinder_obelisk: { height: 4.2, collider: { kind: 'circle', r: 0.75 }, light: { color: 0xff7a2a, intensity: 7, distance: 8, y: 3.4, flames: 0, spread: 0.2 } },
 };
 
@@ -129,6 +185,8 @@ export interface Placement {
   z: number;
   rot: number;
   scale: number;
+  /** Height above the floor (hung herb bundles, jars on a counter). Default 0. */
+  y?: number;
   /** Small lean for weathered tombstones. */
   tilt?: number;
   area: AreaId;
@@ -323,6 +381,16 @@ export function generateLayout(seed = 1337): WorldLayout {
     P('bone_pile', -11.2, 30.6, a);
     P('bone_pile', 11.2, 30.3, a);
     decals.push({ kind: 'sigil', x: 0, z: 21, r: 2.6, color: 0x9b5cff, opacity: 0.7, rot: 0, area: a });
+  }
+
+  // --- The Alchemist's Wing (safe workshop east of the Chapterhouse) ---
+  // Every placement passes an explicit rotation, so this block never draws from `rand` (the other areas' dressing stays put).
+  {
+    const a: AreaId = 'alchemist_wing';
+    edgeWalls(a, 5.5, 'stone_wall', walls);
+    const W = (prop: PropId, x: number, z: number, rot: number, extra: Partial<Placement> = {}) => P(prop, x, z, a, rot, 1, extra);
+    for (const p of WING_PROPS) W(p.prop, p.x, p.z, p.rot, p.y ? { y: p.y } : {});
+    decals.push({ kind: 'sigil', x: 33, z: 19.5, r: 3.4, color: 0x6fd08a, opacity: 0.4, rot: 0, area: a });
   }
 
   // --- The Sexton's Acre (non-combat gathering zone) ---

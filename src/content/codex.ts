@@ -665,7 +665,7 @@ export const CODEX_WEAPON_TIERS = NECRO_TIERS.map((t) => ({ tier: t, label: NECR
 
 /** Codex: Reagents. Rows are generated from the drop tables and recipes so the numbers never drift. */
 export const CODEX_REAGENTS_COUNSEL =
-  'You do not need a garden to start Alchemy. Kill the dead and they drop reagents: Grave Dust (Hollow Graves, Catacomb Warren), Wraith Ectoplasm (Choir Wraiths and Weeping Seraphs anywhere), Plague Bile (Plague Cloister) and Cinder Ash (Cinder Pyre). Every area boss always leaves one ichor. Rot-cap and Ash-bloom are foraged from patches in the Cloister and the Pyre (Gardening level 1) and their seeds grow in the Acre. Take it all to the Workbench (C), Alchemy tab. Elites drop reagents four times as often.';
+  'You do not need a garden to start Alchemy. Kill the dead and they drop reagents: Grave Dust (Hollow Graves, Catacomb Warren), Wraith Ectoplasm (Choir Wraiths and Weeping Seraphs anywhere), Plague Bile (Plague Cloister) and Cinder Ash (Cinder Pyre). Every area boss always leaves one ichor. Rot-cap and Ash-bloom are foraged from patches in the Cloister and the Pyre (Gardening level 1) and their seeds grow in the Acre. Take it all to the Alchemist’s Wing, east of the Chapterhouse (the Workbench’s Alchemy tab (C) works too). Elites drop reagents four times as often.';
 const pctText = (c: number) => `${Math.round(c * 1000) / 10}% per kill`;
 export const codexReagentRows = () => {
   const usedIn = (id: string) => REAGENT_RECIPES.filter((r) => r[6].some(([i]) => i === id)).map((r) => itemMeta(r[4]).name);
@@ -715,6 +715,9 @@ export const CODEX_TRAVEL_COUNSEL = 'Click a walkable spot on the minimap to cho
 export const CODEX_AREAS: Record<AreaId, AreaEntry> = {
   chapterhouse: {
     dangers: 'None. The dead cannot follow you here. The Reliquary, the Ossuary Workbench, the Rite Niches, the Altar of Ascension and a waystone wait for you.',
+  },
+  alchemist_wing: {
+    dangers: "None. No waves ever reach the Wing. Through the Chapterhouse's east door: the Great Cauldron and the Alembic brew every flask, tonic and elixir (the Workbench's Alchemy tab still works too), and the Reagent Shelf shows which reagents you have found and how many you hold. The Apothecary keeps the counter.",
   },
   acre: {
     dangers: "None. No waves ever reach the Acre. Trees, ore seams, black-water fishing spots and burial plots of every tier are here to work, with the stronger ones further from the Chapterhouse door. The Sawpit, Bone Kiln and Cooking Fire stand by the entrance.",

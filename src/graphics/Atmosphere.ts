@@ -29,6 +29,11 @@ interface Kind {
 }
 
 const PROFILES: Record<AreaId, Kind[]> = {
+  // The Alchemist's Wing: green-gold steam motes rising off the vats, and a few warm dust specks.
+  alchemist_wing: [
+    { count: 90, shape: 0, colors: [0x9ad07a, 0xc8e0a0, 0x7ab88a], size: [0.05, 0.1], alpha: [0.25, 0.55], vy: [0.05, 0.28], drift: [0.1, 0.07], sway: 0.5, add: 0.7 },
+    { count: 40, shape: 0, colors: [0xe0c890, 0xc9b078], size: [0.04, 0.07], alpha: [0.2, 0.4], vy: [-0.03, 0.06], drift: [0.06, 0.04], sway: 0.3, add: 0.4 },
+  ],
   chapterhouse: [
     { count: 70, shape: 0, colors: [0xd8c8a8, 0xbfae92], size: [0.05, 0.1], alpha: [0.25, 0.5], vy: [-0.05, 0.08], drift: [0.08, 0.05], sway: 0.25, add: 0.6 },
   ],

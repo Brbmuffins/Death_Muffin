@@ -1019,6 +1019,11 @@ class AudioEngine {
         wind(420, 0.1);
         drone(55, 0.018);
         break;
+      case 'alchemist_wing':
+        // A warm, close workshop: a faint hearth-breath and a low simmering drone.
+        wind(260, 0.04);
+        drone(58.3, 0.02);
+        break;
       case 'fen':
         // Marsh night: a thin reedy wind, a wet low drone, and the drips and creaks as accents.
         wind(900, 0.07);
@@ -1045,6 +1050,7 @@ class AudioEngine {
         warren: ['waterDrip', 'graveCreak'],
         coliseum: ['distantBell', 'graveCreak'],
         fen: ['waterDrip', 'waterDrip', 'graveCreak'],
+        alchemist_wing: ['waterDrip', 'emberCrackle', 'waterDrip'],
       };
       const sounds = palette[area];
       const distance = 7 + Math.random() * 9;

@@ -82,6 +82,7 @@ export type TipId =
   | 'chain'
   | 'omen'
   | 'warren'
+  | 'wing'
   | 'coliseum'
   | 'cinder_husk'
   | 'pyre_priest'
@@ -361,6 +362,10 @@ export const TIPS: Record<TipId, Tip> = {
     title: 'The Catacomb Warren',
     body: 'Nine chambers split by <b>tall half-walls</b>. Walls stop cones and blows, so break line of sight to a caster by stepping behind one, and fight in the gaps where the swarm has to funnel.',
   },
+  wing: {
+    title: "The Alchemist's Wing",
+    body: 'A safe workshop for brewing. <kbd>Click</kbd> the <b>Great Cauldron</b> (or the Alembic) to brew flasks, tonics and elixirs, and the <b>Reagent Shelf</b> to see every herb, reagent and ichor you have found. Today\'s <b>brew of the day</b> gives one extra the first time you make it. Drink with <kbd>Z</kbd> (elixir) and <kbd>X</kbd> (tonic).',
+  },
   coliseum: {
     title: 'The Bone Coliseum',
     body: 'A pit with <b>four gates</b> and fast surges: twice the elites, richer drops. Fight from the pillar islands, and clear each surge before the next arrives.',
@@ -415,7 +420,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   reagent: {
     title: 'Reagents',
-    body: 'Grave Dust, ectoplasm, bile, ash and boss ichor are <b>Alchemy reagents</b>. Take them to the Workbench (<kbd>C</kbd>), <b>Alchemy tab</b>: four Grave Dust brew a tonic at level 1, no garden needed. Better reagents make better elixirs as your Alchemy rises; every brew is an Elixir or a Tonic you drink with <kbd>Z</kbd> or <kbd>X</kbd>.',
+    body: 'Grave Dust, ectoplasm, bile, ash and boss ichor are <b>Alchemy reagents</b>. Take them to the <b>Alchemist\'s Wing</b> (the Chapterhouse\'s east door; the Workbench <kbd>C</kbd> Alchemy tab works too): four Grave Dust brew a tonic at level 1, no garden needed. Better reagents make better elixirs as your Alchemy rises; every brew is an Elixir or a Tonic you drink with <kbd>Z</kbd> or <kbd>X</kbd>.',
   },
   tool: {
     title: 'Gathering tools',

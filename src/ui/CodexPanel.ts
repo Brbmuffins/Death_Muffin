@@ -341,6 +341,7 @@ export class CodexPanel {
             <dt>Bone Kiln</dt><dd>Smelting, gathering tools (Mining recipes) and Bonework: bones ground into bone meal (Gravedigging).</dd>
             <dt>Sawpit</dt><dd>A plank for every log, plus staves and bows (Woodcutting recipes).</dd>
             <dt>Cooking Fire</dt><dd>A meal for every fish (heals over time), fillets, tinctures and flasks (Fishing recipes).</dd>
+            <dt>Great Cauldron &amp; Alembic</dt><dd>The Alchemist's Wing, through the Chapterhouse's east door: every Alchemy brew, plus a daily bonus brew. The Reagent Shelf there lists every reagent you have found.</dd>
             <dt>Bone Grinder</dt><dd>Grinds spare gear into ingots, planks and reagents (Salvaging). See below.</dd>
             <dt>Tools</dt><dd>A hatchet, pickaxe, rod or spade in your bag adds +5% success per metal tier to its skill (copper to moon; the best you carry counts).</dd>
           </dl>
@@ -358,7 +359,7 @@ export class CodexPanel {
     const reagents = `
       <article class="cw-codex-entry">
         <div class="txt">
-          <div class="hd"><h3>Reagents</h3><span class="meta">Workbench · Alchemy tab</span></div>
+          <div class="hd"><h3>Reagents</h3><span class="meta">Alchemist's Wing · Alchemy</span></div>
           <p>${CODEX_REAGENTS_COUNSEL}</p>
           <dl>${codexReagentRows().map((r) => `<dt>${r.name}</dt><dd>${r.from}${r.usedIn ? `. Brews: ${r.usedIn}.` : ''}</dd>`).join('')}</dl>
           <table class="cw-codex-table">

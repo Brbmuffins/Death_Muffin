@@ -116,6 +116,8 @@ Driven by measurements, not guesses: the necromancer balance run across all nine
 
 
 ### X1 · The Alchemist's Wing
+**Status (2 Oct 2026, branch `dm/alchemy-wing`):** room, stations, Reagent Shelf, brew of the day, help and smoke built; the Apothecary NPC and the herb-order quests are not (anchor `WING_APOTHECARY_SPOT` in `areas.ts`).
+
 A dedicated room off the Chapterhouse: cauldrons and alembics as brewing stations, reagent shelves showing what you have found, a drying rack for herbs, and an NPC apothecary who hands out brewing orders. Art goes through the existing Gemini → Tripo pipeline (`ASSET_PIPELINE.md`; about 6,300 Tripo credits left). Brewing moves from the Workbench tab into the room, and the room becomes the home of higher-tier recipes (discovery, quality, concoctions from `docs/ALCHEMY-AND-WORLDS-PLAN.md`).
 
 ### X2 · Combat feel and animation pass (P5)

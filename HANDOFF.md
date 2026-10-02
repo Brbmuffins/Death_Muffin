@@ -128,6 +128,8 @@ Crossworlds clips are gone (replaced by CC0 layers).
 
 ## In flight (check before starting overlapping work)
 
+- **Alchemist's Wing (branch `dm/alchemy-wing`, 2026-10-02, not merged/deployed).** Area `alchemist_wing` (x 20-46, z 8-32) through the Chapterhouse's east door (`chapter_wing`, z 17-23); props in `WING_PROPS` (layout.ts, no `rand` use so other areas do not shift); stations: cauldron + alembic open `ForgePanel.open('cauldron')` (alchemy only, brew-of-the-day bonus from `content/wing.ts`), shelf opens `ui/ReagentShelfPanel.ts` ("found" is browser-local). Workbench Alchemy tab keeps working with a hint. Apothecary NPC not placed: use `WING_APOTHECARY_SPOT` (areas.ts). QA: `tools/qa/alchemy-wing-smoke.cjs`. No server change, no migration. Rerun `npm run build:server-rules` after merging (area list is in the generated rules).
+
 ### Visible Grave Laborers (branch `dm/laborer-world`, not deployed, client only)
 
 In the Sexton's Acre each assigned laborer (H panel) now stands beside a node of its post and works it. `graphics/LaborerViews.ts` owns it (models and tools load on the first Acre visit, nothing updates outside the Acre); pure rules (node pick, standing spot, clip per skill, hover text) are in `graphics/laborerLayout.ts`. `Creature.loopRange(anim, start, end)` loops a clip segment (thrall `chop` 0.7-3.0 s); `dig` loops whole; fishing is idle with a rod. WorldScene only forwards hooks (`setActive` in `enterArea`, `update`, hover/click, `laborPanel.onView`, `checkLabor`). A gold check marks ready work; hover shows post and time; click opens H. One quiet `audio.play` call site (`LaborerViews.beats`). Smoke: `tools/qa/laborers-smoke.cjs` (port 5325). Needs the thrall GLBs with `dig` and `chop` clips (already in `public/models`).
