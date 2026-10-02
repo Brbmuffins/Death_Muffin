@@ -1,6 +1,7 @@
 import { ABILITIES, DETONATE, LITANY_PER_CORPSE } from '../../content/abilities';
 import { bogMult } from '../../content/fen';
 import { AREAS, type AreaId } from '../../content/areas';
+import { chestBonus, depthLootArea, floorBonus, hasChest } from '../../content/depths';
 import { disciplineFor } from '../../content/disciplines';
 import { deriveStats, xpToNext } from '../characterStats';
 import { rollKill } from '../loot';
@@ -55,6 +56,8 @@ export interface BalanceRun {
   noRiteEffects?: boolean;
   /** Experiments: one extra effect (a lever, a stat) folded on top of whatever is worn, to measure what a single number is worth. */
   effect?: SetEffect;
+  /** The Catacomb Depths (`area: 'depths'`): the floor depth to hold. A cleared floor re-rolls the same depth, so the row measures that depth alone. */
+  depth?: number;
   /** Relic runes socketed in the necromancer's rites (content/runes.ts): the bot casts each rite the way AbilitySystem does with that rune. */
   runes?: Partial<Record<RuneRite, RuneId>>;
 }
@@ -82,6 +85,8 @@ export interface BalanceResult {
   /** Mean number of living thralls while the bot is alive, and the thrall cap it fought with (0 for other families). */
   avgThralls: number;
   thrallCap: number;
+  /** Catacomb Depths rows: floors cleared per simulated minute (0 elsewhere). */
+  floorsPerMin: number;
 }
 
 const SP_NEEDLE = ABILITIES.bone_needle;
@@ -129,7 +134,12 @@ export function runBalance(run: BalanceRun): BalanceResult {
   for (const [k, v] of Object.entries(run.effect?.stats ?? {})) (character as unknown as Record<string, number>)[k] += v as number;
   let stats = deriveStats(character, worn, disc, run.damageTier);
   const area = AREAS[run.area];
-  const home = { x: (area.rect.x0 + area.rect.x1) / 2, z: area.rect.z1 - 4 };
+  let home = { x: (area.rect.x0 + area.rect.x1) / 2, z: area.rect.z1 - 4 };
+  // The Catacomb Depths: a held floor of the given depth (sim.startDepths builds it and opens its ground to the bot).
+  if (run.area === 'depths') {
+    const floor = sim.startDepths('bot', (run.seed ?? 42) * 7919 + 13, run.depth ?? 1, true);
+    home = { x: floor.start.x, z: floor.start.z };
+  }
   const p = { id: 'bot', x: home.x, z: home.z, hp: stats.maxHp, essence: resource.initial(resource.max(stats)), alive: true };
   // New families use the real Player body for resource drift and defensive
   // rites. Keep the established necromancer bot untouched for baseline parity.
@@ -158,6 +168,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
   let minHp = 1;
   let surgesCleared = 0;
   let surgesFailed = 0;
+  let floorsCleared = 0;
   let firstDeath = -1;
   const startMaxHp = stats.maxHp;
   const born = new Map<number, number>();
@@ -208,8 +219,10 @@ export function runBalance(run: BalanceRun): BalanceResult {
 
     // --- Bot decisions ---
     if (p.alive) {
-      const enemies = [...sim.enemies.values()].filter((e) => e.state !== 'dead' && (e.state !== 'rising' && e.state !== 'burrow') && e.area === run.area);
-      peak = Math.max(peak, enemies.length);
+      const everyone = [...sim.enemies.values()].filter((e) => e.state !== 'dead' && (e.state !== 'rising' && e.state !== 'burrow') && e.area === run.area);
+      peak = Math.max(peak, everyone.length);
+      // On a Depths floor the bot (like a player) only fights what it can see: the walls stop its eyes, and it walks the doorways toward the rest.
+      const enemies = run.area === 'depths' ? everyone.filter((e) => !nav.sightBlocked(p.x, p.z, e.x, e.z)) : everyone;
       let nearest: Enemy | null = null;
       let nd = Infinity;
       for (const e of enemies) {
@@ -433,9 +446,15 @@ export function runBalance(run: BalanceRun): BalanceResult {
           }
         }
       } else {
-        // Wander toward the area's middle when idle.
-        const cx = (area.rect.x0 + area.rect.x1) / 2;
-        const cz = (area.rect.z0 + area.rect.z1) / 2;
+        // Wander toward the area's middle when idle (on a Depths floor: toward the nearest of the dead, through the doorways).
+        let cx = (area.rect.x0 + area.rect.x1) / 2;
+        let cz = (area.rect.z0 + area.rect.z1) / 2;
+        if (run.area === 'depths' && everyone.length) {
+          const near = everyone.reduce((a, b) => (Math.hypot(a.x - p.x, a.z - p.z) <= Math.hypot(b.x - p.x, b.z - p.z) ? a : b));
+          const hop = nav.depthsHop(p.x, p.z, near.x, near.z);
+          cx = hop ? hop.x : near.x;
+          cz = hop ? hop.z : near.z;
+        }
         const d = Math.hypot(cx - p.x, cz - p.z);
         if (d > 3) {
           const step = stats.moveSpeed * dt * bog();
@@ -448,7 +467,22 @@ export function runBalance(run: BalanceRun): BalanceResult {
     // --- Step the world ---
     const events: SimEvent[] = sim.step(dt);
     for (const ev of events) {
-      if (ev.t === 'surgeCleared') surgesCleared++;
+      if (ev.t === 'depthsClear') {
+        // A floor cleared pays its bonus (and a chest every fifth), then the bot goes down: a held depth re-rolls the same floor.
+        const lvl = sim.areaLevel('depths');
+        const fb = floorBonus(ev.depth, lvl);
+        const cb = hasChest(ev.depth) ? chestBonus(ev.depth, lvl) : { gold: 0, xp: 0 };
+        gold += fb.gold + cb.gold;
+        xp += fb.xp + cb.xp;
+        character.experience += fb.xp + cb.xp;
+        floorsCleared++;
+        const next = sim.descendDepths();
+        if (next) {
+          p.x = next.start.x;
+          p.z = next.start.z;
+          home = { x: next.start.x, z: next.start.z };
+        }
+      } else if (ev.t === 'surgeCleared') surgesCleared++;
       else if (ev.t === 'surgeFailed') surgesFailed++;
       else if (ev.t === 'spawn') born.set(ev.id, t);
       else if (ev.t === 'death') {
@@ -457,7 +491,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
         born.delete(ev.id);
         if (!p.alive) continue;
         kills++;
-        const r = rollKill(ev.def, ev.area, ev.level, ev.elite, run.waveTier, rand, sim.difficulty);
+        const r = rollKill(ev.def, ev.area === 'depths' ? depthLootArea(sim.depths?.depth ?? 1) : ev.area, ev.level, ev.elite, run.waveTier, rand, sim.difficulty);
         gold += r.gold;
         xp += r.xp;
         shards += r.shards;
@@ -538,6 +572,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
     firstDeathSec: firstDeath,
     avgThralls: hpSamples ? thrallAccum / hpSamples : 0,
     thrallCap: disc.family === 'necromancer' ? disc.mods.thrallCap : 0,
+    floorsPerMin: floorsCleared / mins,
   };
 }
 

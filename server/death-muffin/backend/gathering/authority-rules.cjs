@@ -24,9 +24,11 @@ var authorityRules_exports = {};
 __export(authorityRules_exports, {
   AREA_PEAK: () => AREA_PEAK,
   AUTHORITY: () => AUTHORITY,
+  DEPTHS_AUTHORITY: () => DEPTHS_AUTHORITY,
   GROUND_RATES: () => GROUND_RATES,
   LEVEL_CAP: () => LEVEL_CAP,
   ceilingsFor: () => ceilingsFor,
+  depthBound: () => depthBound,
   isGroundItem: () => isGroundItem,
   itemCap: () => itemCap,
   itemRatePerMin: () => itemRatePerMin,
@@ -366,6 +368,8 @@ var npcInteractableId = (id) => `npc_${id}`;
 
 // src/content/areas.ts
 var npcSpots = (area) => NPC_IDS.filter((n) => NPC_SPOTS[n].area === area).map((n) => ({ id: npcInteractableId(n), kind: "npc", label: NPC_SPOTS[n].label, x: NPC_SPOTS[n].x, z: NPC_SPOTS[n].z }));
+var DEPTHS_RECT = { x0: 150, z0: -60, x1: 190, z1: -24 };
+var DEPTHS_STAIR = { x: -67.2, z: -30 };
 var AREAS = {
   chapterhouse: {
     id: "chapterhouse",
@@ -773,7 +777,11 @@ var AREAS = {
     ],
     itemChance: 0.1,
     breaches: [[-65, -45], [-52, -45], [-39, -45], [-65, -30], [-55.5, -30], [-65, -15], [-52, -15], [-39, -15]],
-    interactables: [{ id: "waystone_warren", kind: "waystone", label: "Waystone", x: -35.5, z: -27 }],
+    interactables: [
+      { id: "waystone_warren", kind: "waystone", label: "Waystone", x: -35.5, z: -27 },
+      // The way down to the Catacomb Depths (content/depths.ts): the west chamber, glowing in the dark.
+      { id: "depths_stair", kind: "stair", label: "The Stair Down", x: DEPTHS_STAIR.x, z: DEPTHS_STAIR.z }
+    ],
     ambient: { fog: 789e3, hemiSky: 3813926, hemiGround: 657414, moon: 11049594 }
   },
   // The Bone Coliseum (2026-09-30): a wave-gauntlet pit east of the Ossuary. Four gates, fast surges, elites everywhere,
@@ -873,187 +881,43 @@ var AREAS = {
       { id: "mire_altar", kind: "boss", label: "The Mire Altar", x: -42, z: -90.2 }
     ],
     ambient: { fog: 661016, hemiSky: 2771538, hemiGround: 396302, moon: 8307908, fogMult: 1.7 }
+  },
+  // The Catacomb Depths (2026-10-02): an endless descent reached by the stair in the Warren's west chamber. An instance, not a hall
+  // on the map: this rectangle is where each run's floor is built (gameplay/depthsFloor.ts), nothing else ever stands here. Its
+  // enemies, waves, level and loot are the run's (content/depths.ts, WorldSim.startDepths), so the fields below are only the defaults
+  // the rest of the game reads: `level` is the display floor; `itemChance` is the chance an ordinary kill drops from the depth's ground.
+  depths: {
+    id: "depths",
+    name: "The Catacomb Depths",
+    subtitle: "Down, and further down",
+    theme: "depths",
+    rect: DEPTHS_RECT,
+    safe: false,
+    level: 12,
+    scaling: { minLevel: 12 },
+    instance: true,
+    enemies: [
+      { id: "rat", weight: 30 },
+      { id: "robber", weight: 22 },
+      { id: "ghoul", weight: 14 },
+      { id: "bat", weight: 12 },
+      { id: "sac", weight: 10 },
+      { id: "hound", weight: 8 }
+    ],
+    cap: 24,
+    waveSize: 6,
+    waveIntervalMs: 3800,
+    eliteChance: 0.06,
+    // No table of its own: a kill's drop is rolled on the hunting ground whose gear matches the depth (content/depths.ts depthLootArea).
+    loot: [],
+    itemChance: 0.12,
+    breaches: [],
+    interactables: [],
+    ambient: { fog: 657415, hemiSky: 3156516, hemiGround: 525829, moon: 10128496 }
   }
 };
-var AREA_ORDER = ["chapterhouse", "acre", "graves", "ossuary", "nave", "sanctum", "cloister", "pyre", "warren", "coliseum", "fen", "alchemist_wing"];
+var AREA_ORDER = ["chapterhouse", "acre", "graves", "ossuary", "nave", "sanctum", "cloister", "pyre", "warren", "coliseum", "fen", "alchemist_wing", "depths"];
 var WING_APOTHECARY_SPOT = { x: 45.1, z: 20, facing: -Math.PI / 2 };
-
-// src/content/ascension.ts
-var ASCENSION = {
-  /** Prelate kills this run needed before the Altar will take the run. */
-  prelateKillsRequired: 1,
-  /** Every enemy (and the Prelate) is this many levels older per rank. */
-  levelsPerRank: 3,
-  /** Gold and XP bonus per rank, on top of what the older enemies already pay. */
-  rewardPerRank: 0.05,
-  maxRank: 20
-};
-
-// src/content/reagents.ts
-var item = (name, rarity, sell, lore, art) => ({ name, rarity, sell, lore, stack: 250, art });
-var REAGENT_ITEMS = {
-  reagent_grave_dust: item("Grave Dust", "common", 2, "Sifted from what the dead leave behind. Take it to the Great Cauldron in the Alchemist's Wing: four dust brew a Grave-Dust Tonic, no garden needed.", "dust"),
-  reagent_wraith_ectoplasm: item("Wraith Ectoplasm", "uncommon", 8, "Cold, weightless and faintly singing. Choir Wraiths and Weeping Seraphs shed it when they unravel. Brews into haste and insight.", "ecto"),
-  reagent_plague_bile: item("Plague Bile", "rare", 16, "Bottled from the Cloister dead, still green and still spoiling. The base of the lifesteal and rot-proof brews.", "bile"),
-  reagent_cinder_ash: item("Cinder Ash", "rare", 16, "Grey ash with a red heart that never cools. Falls from the Pyre; brews into fire-proofing.", "ash"),
-  herb_rot_cap: item("Rot-cap", "rare", 24, "A pale mushroom that grows out of the Cloister flagstones. Forage it there, or plant its seed in the Acre (Gardening 35).", "rotcap"),
-  seed_rot_cap: item("Rot-cap Seed", "rare", 10, "Plant it in a Mourning Bed (Grave Gardening 35). Foraged in the Plague Cloister.", "seed_rotcap"),
-  herb_ash_bloom: item("Ash-bloom", "rare", 40, "A black flower that only opens in cinders. Forage it in the Pyre, or plant its seed in the Acre (Gardening 50).", "ashbloom"),
-  seed_ash_bloom: item("Ash-bloom Seed", "rare", 14, "Plant it in a Mourning Bed (Grave Gardening 50). Foraged in the Cinder Pyre.", "seed_ashbloom"),
-  ichor_gravedigger: item("Gravedigger Ichor", "epic", 60, "The Gravedigger King's blood, black as churned earth. Guaranteed from his spoils; top-tier elixirs need it.", "ichor_earth"),
-  ichor_abbess: item("Abbess Ichor", "epic", 60, "Marrow-pale and never quite still. Guaranteed from the Bone Abbess; top-tier elixirs need it.", "ichor_bone"),
-  ichor_congregation: item("Congregation Ichor", "epic", 60, "Drowned-blue, and it hums a hymn. Guaranteed from the Drowned Congregation; top-tier elixirs need it.", "ichor_water"),
-  ichor_prelate: item("Prelate Ichor", "epic", 60, "Bell-bronze and heavy. Guaranteed from the Bell-Sworn Prelate; top-tier elixirs need it.", "ichor_bell"),
-  ichor_plague_saint: item("Plague Saint Ichor", "epic", 60, "The Saint's own blight, sweet and green. Guaranteed from the Plague Saint; top-tier elixirs need it.", "ichor_rot"),
-  ichor_regent: item("Regent Ichor", "epic", 60, "Liquid ember that does not burn the glass. Guaranteed from the Cinder Regent; top-tier elixirs need it.", "ichor_fire")
-};
-var BOSS_ICHOR = {
-  gravedigger: "ichor_gravedigger",
-  abbess: "ichor_abbess",
-  congregation: "ichor_congregation",
-  prelate: "ichor_prelate",
-  saint: "ichor_plague_saint",
-  regent: "ichor_regent",
-  mire: "ichor_mire"
-};
-var ELITE_REAGENT_MULT = 4;
-var AREA_REAGENT_DROPS = {
-  graves: [{ item: "reagent_grave_dust", chance: 0.01, qty: [1, 2] }],
-  warren: [{ item: "reagent_grave_dust", chance: 0.012, qty: [1, 2] }],
-  cloister: [{ item: "reagent_plague_bile", chance: 0.01, qty: [1, 1] }],
-  pyre: [{ item: "reagent_cinder_ash", chance: 0.012, qty: [1, 1] }]
-};
-var ENEMY_REAGENT_DROPS = {
-  wraith: [{ item: "reagent_wraith_ectoplasm", chance: 0.1, qty: [1, 1] }],
-  seraph: [{ item: "reagent_wraith_ectoplasm", chance: 0.08, qty: [1, 1] }]
-};
-var brew = (name, rarity, sell, lore, def, recipe, art) => ({ name, rarity, sell, lore, def, recipe, art });
-var REAGENT_BREW_LIST = [
-  ["tonic_grave_dust", brew(
-    "Grave-Dust Tonic",
-    "common",
-    6,
-    "Tonic. +20% essence regeneration for 60 seconds. Four pinches of grave dust in black water: the first brew anyone can make from what the dead drop.",
-    { slot: "tonic", effects: [{ kind: "essence", value: 0.2 }], seconds: 60, label: "Dust-breathed", color: 14208957, glyph: "\u2234" },
-    { id: "brew_grave_dust_tonic", name: "Brew Grave-Dust Tonic", level: 1, qty: 2, ings: [["reagent_grave_dust", 4]] },
-    "flask_tonic_dust"
-  )],
-  ["elixir_wraithquick", brew(
-    "Wraithquick Elixir",
-    "uncommon",
-    28,
-    "Elixir. +15% cooldown recovery for 45 seconds. Ectoplasm sings in the glass, and your rites come back quicker for it.",
-    { slot: "elixir", effects: [{ kind: "haste", value: 0.15 }], seconds: 45, label: "Wraithquick", color: 9417983, glyph: "\u21F6" },
-    { id: "brew_wraithquick", name: "Brew Wraithquick Elixir", level: 10, qty: 1, ings: [["reagent_wraith_ectoplasm", 2], ["reagent_grave_dust", 2]] },
-    "flask_haste"
-  )],
-  ["tonic_graveluck", brew(
-    "Grave-Luck Tonic",
-    "uncommon",
-    36,
-    "Tonic. +15% item drop chance for 60 seconds. Nightshade and a fistful of grave dust: the dead hold on to their things a little less tightly.",
-    { slot: "tonic", effects: [{ kind: "fortune", value: 0.15 }], seconds: 60, label: "Grave-lucky", color: 15254362, glyph: "\u25C6" },
-    { id: "brew_graveluck", name: "Brew Grave-Luck Tonic", level: 22, qty: 1, ings: [["reagent_grave_dust", 6], ["herb_nightshade", 2]] },
-    "flask_fortune"
-  )],
-  ["tonic_insight", brew(
-    "Sexton's Insight",
-    "uncommon",
-    40,
-    "Tonic. +15% experience from kills for 60 seconds. Ectoplasm and mourning moss steeped together; every death teaches a little more.",
-    { slot: "tonic", effects: [{ kind: "wisdom", value: 0.15 }], seconds: 60, label: "Insightful", color: 15128319, glyph: "\u2727" },
-    { id: "brew_insight", name: "Brew Sexton's Insight", level: 28, qty: 1, ings: [["reagent_wraith_ectoplasm", 3], ["herb_mourning_moss", 3]] },
-    "flask_wisdom"
-  )],
-  ["elixir_leechblood", brew(
-    "Leechblood Elixir",
-    "rare",
-    52,
-    "Elixir. Heal 4% of the damage you deal for 45 seconds (up to three targets per hit, at most 1.5% of your health per hit). Plague bile that remembers being alive.",
-    { slot: "elixir", effects: [{ kind: "lifesteal", value: 0.04 }], seconds: 45, label: "Leechblood", color: 12728904, glyph: "\u2756" },
-    { id: "brew_leechblood", name: "Brew Leechblood Elixir", level: 38, qty: 1, ings: [["reagent_plague_bile", 2], ["reagent_grave_dust", 3]] },
-    "flask_lifesteal"
-  )],
-  ["elixir_rotproof", brew(
-    "Rot-Proof Elixir",
-    "rare",
-    48,
-    "Elixir. 40% less rot and plague damage for 75 seconds (adds to other wards; the total caps at 60%). Bile and rot-cap, taken before the Plague Saint.",
-    { slot: "elixir", effects: [{ kind: "resist_rot", value: 0.4 }], seconds: 75, label: "Rot-proof", color: 13099082, glyph: "\u2725" },
-    { id: "brew_rotproof", name: "Brew Rot-Proof Elixir", level: 42, qty: 1, ings: [["reagent_plague_bile", 1], ["herb_rot_cap", 3]] },
-    "flask_rotproof"
-  )],
-  ["elixir_cinderskin", brew(
-    "Cinderskin Elixir",
-    "rare",
-    60,
-    "Elixir. 40% less fire damage for 75 seconds (adds to other wards; the total caps at 60%). Cinder ash and ash-bloom: walk the Pyre as if it were a hearth.",
-    { slot: "elixir", effects: [{ kind: "resist_fire", value: 0.4 }], seconds: 75, label: "Cinderskin", color: 16742954, glyph: "\u25B2" },
-    { id: "brew_cinderskin", name: "Brew Cinderskin Elixir", level: 52, qty: 1, ings: [["reagent_cinder_ash", 1], ["herb_ash_bloom", 3]] },
-    "flask_cinderskin"
-  )],
-  ["tonic_ghostwalk", brew(
-    "Ghostwalk Tonic",
-    "rare",
-    90,
-    "Tonic. +30% essence regeneration and +10% move speed for 75 seconds. Ectoplasm and wolfsbane: you drift more than you walk.",
-    { slot: "tonic", effects: [{ kind: "essence", value: 0.3 }, { kind: "speed", value: 0.1 }], seconds: 75, label: "Ghostwalking", color: 7332808, glyph: "\u2248" },
-    { id: "brew_ghostwalk", name: "Brew Ghostwalk Tonic", level: 62, qty: 1, ings: [["reagent_wraith_ectoplasm", 4], ["herb_wolfsbane", 2]] },
-    "flask_ghostwalk"
-  )],
-  ["elixir_bloodmoon", brew(
-    "Bloodmoon Elixir",
-    "epic",
-    200,
-    "Elixir. +20% spell damage and heal 6% of the damage you deal for 60 seconds. Two kings' ichor and plague bile, drunk under a red moon.",
-    { slot: "elixir", effects: [{ kind: "damage", value: 0.2 }, { kind: "lifesteal", value: 0.06 }], seconds: 60, label: "Bloodmoon", color: 13652072, glyph: "\u25D0" },
-    { id: "brew_bloodmoon", name: "Brew Bloodmoon Elixir", level: 70, qty: 1, ings: [["ichor_gravedigger", 1], ["ichor_abbess", 1], ["reagent_plague_bile", 2]] },
-    "flask_bloodmoon"
-  )],
-  ["elixir_hymnal", brew(
-    "Hymnal Elixir",
-    "epic",
-    170,
-    "Elixir. 15% less damage taken, 20% less rot and plague damage, and heal 3% of the damage you deal, for 75 seconds. The drowned hymn and the Saint's blight, made to cancel each other out.",
-    { slot: "elixir", effects: [{ kind: "ward", value: 0.15 }, { kind: "resist_rot", value: 0.2 }, { kind: "lifesteal", value: 0.03 }], seconds: 75, label: "Hymnal", color: 12175615, glyph: "\u2671" },
-    { id: "brew_hymnal", name: "Brew Hymnal Elixir", level: 78, qty: 1, ings: [["ichor_congregation", 1], ["ichor_plague_saint", 1], ["reagent_wraith_ectoplasm", 4]] },
-    "flask_hymnal"
-  )],
-  ["elixir_regent", brew(
-    "Regent's Vigil Elixir",
-    "epic",
-    300,
-    "Elixir. +12% spell damage, 15% less damage taken and +10% cooldown recovery for 60 seconds. The Regent's ichor and the Prelate's, bound with cinder ash: the last word in elixirs.",
-    { slot: "elixir", effects: [{ kind: "damage", value: 0.12 }, { kind: "ward", value: 0.15 }, { kind: "haste", value: 0.1 }], seconds: 60, label: "Regent's Vigil", color: 16761946, glyph: "\u265B" },
-    { id: "brew_regent_vigil", name: "Brew Regent's Vigil Elixir", level: 85, qty: 1, ings: [["ichor_regent", 1], ["ichor_prelate", 1], ["reagent_cinder_ash", 3]] },
-    "flask_regent"
-  )]
-];
-var REAGENT_BREWS = Object.fromEntries(REAGENT_BREW_LIST.map(([id, b]) => [id, b.def]));
-var SERVER_EFFECT = {
-  damage: "damage_amp",
-  ward: "resist_void",
-  lifesteal: "lifesteal",
-  haste: "cooldown_rate",
-  resist_fire: "resist_fire",
-  resist_rot: "resist_rot",
-  speed: "move_speed",
-  essence: "essence_regen",
-  wisdom: "xp_amp",
-  fortune: "drop_amp"
-};
-function brewStat(def) {
-  const [first, ...rest] = def.effects;
-  const stat = { value: first.value, effect: SERVER_EFFECT[first.kind], duration: def.seconds };
-  if (rest.length) stat.effects = def.effects.map((e) => ({ effect: SERVER_EFFECT[e.kind], value: e.value }));
-  return stat;
-}
-var REAGENT_BREW_ITEMS = Object.fromEntries(
-  REAGENT_BREW_LIST.map(([id, b]) => [id, { name: b.name, rarity: b.rarity, sell: b.sell, lore: b.lore, stack: 99, stat: brewStat(b.def), art: b.art }])
-);
-var REAGENT_RECIPES = REAGENT_BREW_LIST.map(([id, b]) => [b.recipe.id, b.recipe.name, "alchemy", b.recipe.level, id, b.recipe.qty, b.recipe.ings]);
-var ALL_REAGENT_IDS = [...Object.keys(REAGENT_ITEMS), ...Object.keys(REAGENT_BREW_ITEMS)];
-var ICHORS = Object.values(BOSS_ICHOR);
 
 // src/content/runes.ts
 var RUNE_IDS = [
@@ -1256,6 +1120,234 @@ var BOSS_RUNE_POOL = {
   mire: [...RUNE_ORDER]
 };
 
+// src/content/depths.ts
+var DEPTHS = {
+  /**
+   * The spec said `max(20, player) + d`. A level-20 floor is wrong for the first visitors: the Warren opens at 150 Graves kills (level ~8-12),
+   * and enemy health grows 22% of a level-1 body per level (x5 at level 20 against x2.3 at level 12), so depth 1 would be a wall. The floor
+   * is the Warren's own entry level instead: `max(12, your level) + depth`. A level-60 hero meets level-61 dead on depth 1 (the Pyre and the
+   * Fen are level-scaled the same way) and level-80 dead on depth 20.
+   */
+  minLevel: 12,
+  /** The hero's level is read as the highest among the living players on the floor (solo only for now). */
+  levelsPerDepth: 1,
+  /** Most dead alive at once on a floor (the plan's "~24"); the global cap (72) is far above it. */
+  cap: 24,
+  /** Every Nth floor holds a chest and gives elites one more affix. */
+  chestEvery: 5,
+  extraAffixEvery: 5,
+  /** Elites carry at most this many affixes beyond their first (the pool holds four in all). */
+  maxExtraAffixes: 3,
+  /** Seconds after a floor begins before the first of the dead climbs out. */
+  firstWaveDelayS: 1.4,
+  /** A floor-clear banner stays this long (ms). */
+  bannerMs: 3200
+};
+var depthEnemyLevel = (depth, heroLevel) => Math.max(DEPTHS.minLevel, Math.floor(heroLevel) || 1) + Math.floor(Math.max(1, depth) * DEPTHS.levelsPerDepth);
+var depthEliteBonus = (depth) => Math.min(0.14, 5e-3 * Math.max(0, depth));
+var BANDS = [
+  { from: 1, add: [{ id: "rat", weight: 30 }, { id: "robber", weight: 22 }, { id: "ghoul", weight: 14 }, { id: "bat", weight: 12 }, { id: "sac", weight: 10 }, { id: "hound", weight: 8 }] },
+  { from: 5, add: [{ id: "penitent", weight: 12 }, { id: "deacon", weight: 8 }, { id: "acolyte", weight: 6 }, { id: "wraith", weight: 6 }, { id: "moth", weight: 6 }] },
+  { from: 10, add: [{ id: "templar", weight: 8 }, { id: "censer", weight: 6 }, { id: "gargoyle", weight: 8 }, { id: "seraph", weight: 6 }, { id: "plague_doctor", weight: 8 }, { id: "flagellant", weight: 8 }] },
+  { from: 15, add: [{ id: "golem", weight: 5 }, { id: "cinder_husk", weight: 8 }, { id: "cinderhound", weight: 8 }, { id: "pyre_priest", weight: 6 }, { id: "slag_brute", weight: 5 }, { id: "bog_hag", weight: 7 }, { id: "drowned_sexton", weight: 4 }] }
+];
+function depthRoster(depth) {
+  const out = /* @__PURE__ */ new Map();
+  for (const b of BANDS) {
+    if (depth < b.from) continue;
+    for (const e of b.add) out.set(e.id, e.weight);
+  }
+  const bands = BANDS.filter((b) => depth >= b.from).length;
+  const fade = Math.pow(0.6, Math.max(0, bands - 1));
+  for (const e of BANDS[0].add) out.set(e.id, Math.max(3, Math.round(e.weight * fade)));
+  return [...out].map(([id, weight]) => ({ id, weight }));
+}
+var DEPTH_LOOT_AREAS = ["ossuary", "coliseum", "sanctum", "cloister", "pyre", "fen"];
+var FLOOR_DROP_CHANCE = 0.65;
+var chestDrops = (depth) => 3 + Math.floor(Math.max(0, depth - 5) / 10);
+function chestRunePool(depth) {
+  return RUNE_ORDER.filter((id) => RUNES[id].rarity !== "epic" || depth >= 10);
+}
+var CHEST_PER_MIN_CEILING = 0.5;
+var FLOORS_PER_MIN_CEILING = 3;
+
+// src/content/ascension.ts
+var ASCENSION = {
+  /** Prelate kills this run needed before the Altar will take the run. */
+  prelateKillsRequired: 1,
+  /** Every enemy (and the Prelate) is this many levels older per rank. */
+  levelsPerRank: 3,
+  /** Gold and XP bonus per rank, on top of what the older enemies already pay. */
+  rewardPerRank: 0.05,
+  maxRank: 20
+};
+
+// src/content/reagents.ts
+var item = (name, rarity, sell, lore, art) => ({ name, rarity, sell, lore, stack: 250, art });
+var REAGENT_ITEMS = {
+  reagent_grave_dust: item("Grave Dust", "common", 2, "Sifted from what the dead leave behind. Take it to the Great Cauldron in the Alchemist's Wing: four dust brew a Grave-Dust Tonic, no garden needed.", "dust"),
+  reagent_wraith_ectoplasm: item("Wraith Ectoplasm", "uncommon", 8, "Cold, weightless and faintly singing. Choir Wraiths and Weeping Seraphs shed it when they unravel. Brews into haste and insight.", "ecto"),
+  reagent_plague_bile: item("Plague Bile", "rare", 16, "Bottled from the Cloister dead, still green and still spoiling. The base of the lifesteal and rot-proof brews.", "bile"),
+  reagent_cinder_ash: item("Cinder Ash", "rare", 16, "Grey ash with a red heart that never cools. Falls from the Pyre; brews into fire-proofing.", "ash"),
+  herb_rot_cap: item("Rot-cap", "rare", 24, "A pale mushroom that grows out of the Cloister flagstones. Forage it there, or plant its seed in the Acre (Gardening 35).", "rotcap"),
+  seed_rot_cap: item("Rot-cap Seed", "rare", 10, "Plant it in a Mourning Bed (Grave Gardening 35). Foraged in the Plague Cloister.", "seed_rotcap"),
+  herb_ash_bloom: item("Ash-bloom", "rare", 40, "A black flower that only opens in cinders. Forage it in the Pyre, or plant its seed in the Acre (Gardening 50).", "ashbloom"),
+  seed_ash_bloom: item("Ash-bloom Seed", "rare", 14, "Plant it in a Mourning Bed (Grave Gardening 50). Foraged in the Cinder Pyre.", "seed_ashbloom"),
+  ichor_gravedigger: item("Gravedigger Ichor", "epic", 60, "The Gravedigger King's blood, black as churned earth. Guaranteed from his spoils; top-tier elixirs need it.", "ichor_earth"),
+  ichor_abbess: item("Abbess Ichor", "epic", 60, "Marrow-pale and never quite still. Guaranteed from the Bone Abbess; top-tier elixirs need it.", "ichor_bone"),
+  ichor_congregation: item("Congregation Ichor", "epic", 60, "Drowned-blue, and it hums a hymn. Guaranteed from the Drowned Congregation; top-tier elixirs need it.", "ichor_water"),
+  ichor_prelate: item("Prelate Ichor", "epic", 60, "Bell-bronze and heavy. Guaranteed from the Bell-Sworn Prelate; top-tier elixirs need it.", "ichor_bell"),
+  ichor_plague_saint: item("Plague Saint Ichor", "epic", 60, "The Saint's own blight, sweet and green. Guaranteed from the Plague Saint; top-tier elixirs need it.", "ichor_rot"),
+  ichor_regent: item("Regent Ichor", "epic", 60, "Liquid ember that does not burn the glass. Guaranteed from the Cinder Regent; top-tier elixirs need it.", "ichor_fire")
+};
+var BOSS_ICHOR = {
+  gravedigger: "ichor_gravedigger",
+  abbess: "ichor_abbess",
+  congregation: "ichor_congregation",
+  prelate: "ichor_prelate",
+  saint: "ichor_plague_saint",
+  regent: "ichor_regent",
+  mire: "ichor_mire"
+};
+var ELITE_REAGENT_MULT = 4;
+var AREA_REAGENT_DROPS = {
+  graves: [{ item: "reagent_grave_dust", chance: 0.01, qty: [1, 2] }],
+  warren: [{ item: "reagent_grave_dust", chance: 0.012, qty: [1, 2] }],
+  cloister: [{ item: "reagent_plague_bile", chance: 0.01, qty: [1, 1] }],
+  pyre: [{ item: "reagent_cinder_ash", chance: 0.012, qty: [1, 1] }]
+};
+var ENEMY_REAGENT_DROPS = {
+  wraith: [{ item: "reagent_wraith_ectoplasm", chance: 0.1, qty: [1, 1] }],
+  seraph: [{ item: "reagent_wraith_ectoplasm", chance: 0.08, qty: [1, 1] }]
+};
+var brew = (name, rarity, sell, lore, def, recipe, art) => ({ name, rarity, sell, lore, def, recipe, art });
+var REAGENT_BREW_LIST = [
+  ["tonic_grave_dust", brew(
+    "Grave-Dust Tonic",
+    "common",
+    6,
+    "Tonic. +20% essence regeneration for 60 seconds. Four pinches of grave dust in black water: the first brew anyone can make from what the dead drop.",
+    { slot: "tonic", effects: [{ kind: "essence", value: 0.2 }], seconds: 60, label: "Dust-breathed", color: 14208957, glyph: "\u2234" },
+    { id: "brew_grave_dust_tonic", name: "Brew Grave-Dust Tonic", level: 1, qty: 2, ings: [["reagent_grave_dust", 4]] },
+    "flask_tonic_dust"
+  )],
+  ["elixir_wraithquick", brew(
+    "Wraithquick Elixir",
+    "uncommon",
+    28,
+    "Elixir. +15% cooldown recovery for 45 seconds. Ectoplasm sings in the glass, and your rites come back quicker for it.",
+    { slot: "elixir", effects: [{ kind: "haste", value: 0.15 }], seconds: 45, label: "Wraithquick", color: 9417983, glyph: "\u21F6" },
+    { id: "brew_wraithquick", name: "Brew Wraithquick Elixir", level: 10, qty: 1, ings: [["reagent_wraith_ectoplasm", 2], ["reagent_grave_dust", 2]] },
+    "flask_haste"
+  )],
+  ["tonic_graveluck", brew(
+    "Grave-Luck Tonic",
+    "uncommon",
+    36,
+    "Tonic. +15% item drop chance for 60 seconds. Nightshade and a fistful of grave dust: the dead hold on to their things a little less tightly.",
+    { slot: "tonic", effects: [{ kind: "fortune", value: 0.15 }], seconds: 60, label: "Grave-lucky", color: 15254362, glyph: "\u25C6" },
+    { id: "brew_graveluck", name: "Brew Grave-Luck Tonic", level: 22, qty: 1, ings: [["reagent_grave_dust", 6], ["herb_nightshade", 2]] },
+    "flask_fortune"
+  )],
+  ["tonic_insight", brew(
+    "Sexton's Insight",
+    "uncommon",
+    40,
+    "Tonic. +15% experience from kills for 60 seconds. Ectoplasm and mourning moss steeped together; every death teaches a little more.",
+    { slot: "tonic", effects: [{ kind: "wisdom", value: 0.15 }], seconds: 60, label: "Insightful", color: 15128319, glyph: "\u2727" },
+    { id: "brew_insight", name: "Brew Sexton's Insight", level: 28, qty: 1, ings: [["reagent_wraith_ectoplasm", 3], ["herb_mourning_moss", 3]] },
+    "flask_wisdom"
+  )],
+  ["elixir_leechblood", brew(
+    "Leechblood Elixir",
+    "rare",
+    52,
+    "Elixir. Heal 4% of the damage you deal for 45 seconds (up to three targets per hit, at most 1.5% of your health per hit). Plague bile that remembers being alive.",
+    { slot: "elixir", effects: [{ kind: "lifesteal", value: 0.04 }], seconds: 45, label: "Leechblood", color: 12728904, glyph: "\u2756" },
+    { id: "brew_leechblood", name: "Brew Leechblood Elixir", level: 38, qty: 1, ings: [["reagent_plague_bile", 2], ["reagent_grave_dust", 3]] },
+    "flask_lifesteal"
+  )],
+  ["elixir_rotproof", brew(
+    "Rot-Proof Elixir",
+    "rare",
+    48,
+    "Elixir. 40% less rot and plague damage for 75 seconds (adds to other wards; the total caps at 60%). Bile and rot-cap, taken before the Plague Saint.",
+    { slot: "elixir", effects: [{ kind: "resist_rot", value: 0.4 }], seconds: 75, label: "Rot-proof", color: 13099082, glyph: "\u2725" },
+    { id: "brew_rotproof", name: "Brew Rot-Proof Elixir", level: 42, qty: 1, ings: [["reagent_plague_bile", 1], ["herb_rot_cap", 3]] },
+    "flask_rotproof"
+  )],
+  ["elixir_cinderskin", brew(
+    "Cinderskin Elixir",
+    "rare",
+    60,
+    "Elixir. 40% less fire damage for 75 seconds (adds to other wards; the total caps at 60%). Cinder ash and ash-bloom: walk the Pyre as if it were a hearth.",
+    { slot: "elixir", effects: [{ kind: "resist_fire", value: 0.4 }], seconds: 75, label: "Cinderskin", color: 16742954, glyph: "\u25B2" },
+    { id: "brew_cinderskin", name: "Brew Cinderskin Elixir", level: 52, qty: 1, ings: [["reagent_cinder_ash", 1], ["herb_ash_bloom", 3]] },
+    "flask_cinderskin"
+  )],
+  ["tonic_ghostwalk", brew(
+    "Ghostwalk Tonic",
+    "rare",
+    90,
+    "Tonic. +30% essence regeneration and +10% move speed for 75 seconds. Ectoplasm and wolfsbane: you drift more than you walk.",
+    { slot: "tonic", effects: [{ kind: "essence", value: 0.3 }, { kind: "speed", value: 0.1 }], seconds: 75, label: "Ghostwalking", color: 7332808, glyph: "\u2248" },
+    { id: "brew_ghostwalk", name: "Brew Ghostwalk Tonic", level: 62, qty: 1, ings: [["reagent_wraith_ectoplasm", 4], ["herb_wolfsbane", 2]] },
+    "flask_ghostwalk"
+  )],
+  ["elixir_bloodmoon", brew(
+    "Bloodmoon Elixir",
+    "epic",
+    200,
+    "Elixir. +20% spell damage and heal 6% of the damage you deal for 60 seconds. Two kings' ichor and plague bile, drunk under a red moon.",
+    { slot: "elixir", effects: [{ kind: "damage", value: 0.2 }, { kind: "lifesteal", value: 0.06 }], seconds: 60, label: "Bloodmoon", color: 13652072, glyph: "\u25D0" },
+    { id: "brew_bloodmoon", name: "Brew Bloodmoon Elixir", level: 70, qty: 1, ings: [["ichor_gravedigger", 1], ["ichor_abbess", 1], ["reagent_plague_bile", 2]] },
+    "flask_bloodmoon"
+  )],
+  ["elixir_hymnal", brew(
+    "Hymnal Elixir",
+    "epic",
+    170,
+    "Elixir. 15% less damage taken, 20% less rot and plague damage, and heal 3% of the damage you deal, for 75 seconds. The drowned hymn and the Saint's blight, made to cancel each other out.",
+    { slot: "elixir", effects: [{ kind: "ward", value: 0.15 }, { kind: "resist_rot", value: 0.2 }, { kind: "lifesteal", value: 0.03 }], seconds: 75, label: "Hymnal", color: 12175615, glyph: "\u2671" },
+    { id: "brew_hymnal", name: "Brew Hymnal Elixir", level: 78, qty: 1, ings: [["ichor_congregation", 1], ["ichor_plague_saint", 1], ["reagent_wraith_ectoplasm", 4]] },
+    "flask_hymnal"
+  )],
+  ["elixir_regent", brew(
+    "Regent's Vigil Elixir",
+    "epic",
+    300,
+    "Elixir. +12% spell damage, 15% less damage taken and +10% cooldown recovery for 60 seconds. The Regent's ichor and the Prelate's, bound with cinder ash: the last word in elixirs.",
+    { slot: "elixir", effects: [{ kind: "damage", value: 0.12 }, { kind: "ward", value: 0.15 }, { kind: "haste", value: 0.1 }], seconds: 60, label: "Regent's Vigil", color: 16761946, glyph: "\u265B" },
+    { id: "brew_regent_vigil", name: "Brew Regent's Vigil Elixir", level: 85, qty: 1, ings: [["ichor_regent", 1], ["ichor_prelate", 1], ["reagent_cinder_ash", 3]] },
+    "flask_regent"
+  )]
+];
+var REAGENT_BREWS = Object.fromEntries(REAGENT_BREW_LIST.map(([id, b]) => [id, b.def]));
+var SERVER_EFFECT = {
+  damage: "damage_amp",
+  ward: "resist_void",
+  lifesteal: "lifesteal",
+  haste: "cooldown_rate",
+  resist_fire: "resist_fire",
+  resist_rot: "resist_rot",
+  speed: "move_speed",
+  essence: "essence_regen",
+  wisdom: "xp_amp",
+  fortune: "drop_amp"
+};
+function brewStat(def) {
+  const [first, ...rest] = def.effects;
+  const stat = { value: first.value, effect: SERVER_EFFECT[first.kind], duration: def.seconds };
+  if (rest.length) stat.effects = def.effects.map((e) => ({ effect: SERVER_EFFECT[e.kind], value: e.value }));
+  return stat;
+}
+var REAGENT_BREW_ITEMS = Object.fromEntries(
+  REAGENT_BREW_LIST.map(([id, b]) => [id, { name: b.name, rarity: b.rarity, sell: b.sell, lore: b.lore, stack: 99, stat: brewStat(b.def), art: b.art }])
+);
+var REAGENT_RECIPES = REAGENT_BREW_LIST.map(([id, b]) => [b.recipe.id, b.recipe.name, "alchemy", b.recipe.level, id, b.recipe.qty, b.recipe.ings]);
+var ALL_REAGENT_IDS = [...Object.keys(REAGENT_ITEMS), ...Object.keys(REAGENT_BREW_ITEMS)];
+var ICHORS = Object.values(BOSS_ICHOR);
+
 // src/gameplay/authorityRules.ts
 var LEVEL_CAP = 255;
 function totalXp(level, xp) {
@@ -1280,8 +1372,13 @@ var AREA_PEAK = {
   pyre: { xp: 43551, gold: 29779, kills: 195 },
   warren: { xp: 1891, gold: 1718, kills: 186 },
   coliseum: { xp: 20609, gold: 16705, kills: 477 },
-  fen: { xp: 74831, gold: 25498, kills: 184 }
+  fen: { xp: 74831, gold: 25498, kills: 184 },
+  // Measured with the same settings on a held floor of depth 10 for a level-40 hero (enemy level 50): `npm run balance:depths`, BALANCE.md.
+  depths: { xp: 3e4, gold: 12e3, kills: 150 }
 };
+var DEPTHS_AUTHORITY = { refHero: 40, refDepth: 10, slack: 3, maxDepth: 120 };
+var DEPTHS_GATE = "warren";
+var depthBound = (deepest) => Math.min(DEPTHS_AUTHORITY.maxDepth, Math.max(0, Math.trunc(Number(deepest) || 0)) + DEPTHS_AUTHORITY.slack);
 var AUTHORITY = {
   /** Safety factor over the best measured honest rate: party play, a skilled human out-killing the bot, and tool noise. */
   HEADROOM: 3,
@@ -1318,7 +1415,7 @@ function enemyLevel(area, characterLevel, rank) {
   const base = a.scaling ? Math.max(a.scaling.minLevel, characterLevel) : a.level;
   return base + rank * ASCENSION.levelsPerRank;
 }
-function ceilingsFor(unlocked, ascension, characterLevel) {
+function ceilingsFor(unlocked, ascension, characterLevel, deepest = 0) {
   const rank = Math.min(ASCENSION.maxRank, Math.max(0, Math.trunc(ascension) || 0) + AUTHORITY.COOP_RANK_ALLOWANCE);
   const rankMult = 1 + ASCENSION.rewardPerRank * rank;
   let xp = 0;
@@ -1326,9 +1423,10 @@ function ceilingsFor(unlocked, ascension, characterLevel) {
   let best = null;
   for (const id of AREA_ORDER) {
     const peak = AREA_PEAK[id];
-    if (!peak || !unlocked.includes(id)) continue;
-    const baseLevel = AREAS[id].scaling ? AREAS[id].scaling.minLevel : AREAS[id].level;
-    const lvl = enemyLevel(id, characterLevel, rank);
+    if (!peak || !unlocked.includes(id === "depths" ? DEPTHS_GATE : id)) continue;
+    const depths = id === "depths";
+    const baseLevel = depths ? depthEnemyLevel(DEPTHS_AUTHORITY.refDepth, DEPTHS_AUTHORITY.refHero) : AREAS[id].scaling ? AREAS[id].scaling.minLevel : AREAS[id].level;
+    const lvl = depths ? depthEnemyLevel(depthBound(deepest), characterLevel) + rank * ASCENSION.levelsPerRank : enemyLevel(id, characterLevel, rank);
     const x = peak.xp * (1 + XP_LEVEL_STEP * (lvl - 1)) / (1 + XP_LEVEL_STEP * (baseLevel - 1)) * rankMult * AUTHORITY.CHAIN * AUTHORITY.OMEN * AUTHORITY.WISDOM;
     const g = peak.gold * (1 + GOLD_LEVEL_STEP * (lvl - 1)) / (1 + GOLD_LEVEL_STEP * (baseLevel - 1)) * rankMult * AUTHORITY.CHAIN * AUTHORITY.OMEN;
     if (x > xp) {
@@ -1354,29 +1452,41 @@ function buildGroundRates() {
   const add = (id, perMin) => {
     rates[id] = Math.max(rates[id] ?? 0, perMin);
   };
-  for (const id of AREA_ORDER) {
-    const area = AREAS[id];
-    const peak = AREA_PEAK[id];
-    if (!peak || area.safe) continue;
-    const elite = Math.min(1, area.eliteChance + 4e-3 * 8);
+  const addGround = (lootId, kills, roster, eliteChance, extraPerMin = 0) => {
+    const area = AREAS[lootId];
+    const elite = Math.min(1, eliteChance + 4e-3 * 8);
     const total = area.loot.reduce((n, l) => n + l.weight, 0) || 1;
     const dropChance = Math.min(1, area.itemChance * ITEM_CHANCE_PEAK * FORTUNE_PEAK * (1 - elite + elite * ELITE_LOOT_MULT));
-    for (const l of area.loot) add(l.item, peak.kills * dropChance * l.weight / total * MATERIAL_QTY);
-    const weights = area.enemies.reduce((n, e) => n + e.weight, 0) || 1;
+    for (const l of area.loot) add(l.item, (kills * dropChance + extraPerMin) * l.weight / total * MATERIAL_QTY);
+    const weights = roster.reduce((n, e) => n + e.weight, 0) || 1;
     const reagentPerKill = /* @__PURE__ */ new Map();
     const credit = (item2, chance, qty) => {
       const c = Math.min(1, chance * FORTUNE_PEAK * (1 - elite + elite * ELITE_REAGENT_MULT));
       reagentPerKill.set(item2, (reagentPerKill.get(item2) ?? 0) + c * ((qty[0] + qty[1]) / 2));
     };
-    for (const d of AREA_REAGENT_DROPS[id] ?? []) credit(d.item, d.chance, d.qty);
-    for (const e of area.enemies) for (const d of ENEMY_REAGENT_DROPS[e.id] ?? []) credit(d.item, d.chance * e.weight / weights, d.qty);
-    for (const [item2, perKill] of reagentPerKill) add(item2, peak.kills * perKill);
-    const pool = AREA_RUNE_POOL[id] ?? [];
+    for (const d of AREA_REAGENT_DROPS[lootId] ?? []) credit(d.item, d.chance, d.qty);
+    for (const e of roster) for (const d of ENEMY_REAGENT_DROPS[e.id] ?? []) credit(d.item, d.chance * e.weight / weights, d.qty);
+    for (const [item2, perKill] of reagentPerKill) add(item2, kills * perKill);
+    const pool = AREA_RUNE_POOL[lootId] ?? [];
     const poolWeight = pool.reduce((n, r) => n + RUNE_WEIGHT[RUNES[r].rarity], 0) || 1;
     for (const r of pool) {
       const share = RUNE_WEIGHT[RUNES[r].rarity] / poolWeight;
-      add(r, (peak.kills * elite * ELITE_RUNE_CHANCE * ITEM_CHANCE_PEAK * FORTUNE_PEAK + 0.5 * SURGE_RUNE_CHANCE) * share);
+      add(r, (kills * elite * ELITE_RUNE_CHANCE * ITEM_CHANCE_PEAK * FORTUNE_PEAK + 0.5 * SURGE_RUNE_CHANCE) * share);
     }
+  };
+  for (const id of AREA_ORDER) {
+    const area = AREAS[id];
+    const peak = AREA_PEAK[id];
+    if (!peak || area.safe || area.instance) continue;
+    addGround(id, peak.kills, area.enemies, area.eliteChance);
+  }
+  const depthsPeak = AREA_PEAK.depths;
+  if (depthsPeak) {
+    const deep = depthRoster(DEPTHS_AUTHORITY.maxDepth);
+    const elite = AREAS.depths.eliteChance + depthEliteBonus(DEPTHS_AUTHORITY.maxDepth);
+    const floorDrops = FLOORS_PER_MIN_CEILING * FLOOR_DROP_CHANCE + CHEST_PER_MIN_CEILING * chestDrops(DEPTHS_AUTHORITY.maxDepth);
+    for (const lootId of DEPTH_LOOT_AREAS) addGround(lootId, depthsPeak.kills, deep, elite, floorDrops);
+    for (const r of chestRunePool(DEPTHS_AUTHORITY.maxDepth)) add(r, CHEST_PER_MIN_CEILING);
   }
   for (const pool of Object.values(BOSS_RUNE_POOL)) for (const r of pool) add(r, ICHOR_PER_MIN);
   for (const ichor of BOSS_ICHORS) add(ichor, ICHOR_PER_MIN);
@@ -1396,9 +1506,11 @@ function itemCap(itemId) {
 0 && (module.exports = {
   AREA_PEAK,
   AUTHORITY,
+  DEPTHS_AUTHORITY,
   GROUND_RATES,
   LEVEL_CAP,
   ceilingsFor,
+  depthBound,
   isGroundItem,
   itemCap,
   itemRatePerMin,

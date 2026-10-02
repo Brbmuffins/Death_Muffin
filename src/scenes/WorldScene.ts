@@ -115,6 +115,7 @@ import { SettingsPanel, WaystonePanel } from '../ui/MiscPanels';
 import { ProfessionsPanel } from '../ui/ProfessionsPanel';
 import { CodexPanel } from '../ui/CodexPanel';
 import { Onboarding, type TipId } from '../ui/Onboarding';
+import { DepthsController } from './DepthsController';
 import { touchNow } from '../ui/touchText';
 import type { Busy } from '../ui/counselCadence';
 import { CodexJournal, browserStorage, type CodexIds, type CodexKind } from '../gameplay/codexJournal';
@@ -258,6 +259,8 @@ export class WorldScene implements GameScene, RuntimeView {
   /** Open graves (Gravedigger P3) until the fight ends. */
   private pitFx: Handle[] = [];
   private chronicle!: Chronicle;
+  /** The Catacomb Depths: the Warren's stair, a run's floors, their stairs, chest and readout. */
+  private depths!: DepthsController;
   /** Kill Chain (GRIND-LOOP §3 #8) and the milestone claims that ride on it (§3 #9). */
   private chain = new KillChain();
   private chainTold = false;
@@ -638,6 +641,31 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hud.setDev(devAccess.active);
     this.markSeen([]);
     this.bindInput();
+    const self = this;
+    this.depths = new DepthsController({
+      scene: this.scene,
+      nav: this.nav,
+      worldView: this.worldView,
+      get player() { return self.player; },
+      get hud() { return self.hud; },
+      get effects() { return self.effects; },
+      get floating() { return self.floating; },
+      get loot() { return self.loot; },
+      get rig() { return self.rig; },
+      get chronicle() { return self.chronicle; },
+      sim: () => this.sim,
+      selfId: () => this.selfId,
+      partySize: () => this.remotes.size,
+      isAuthority: () => !this.mirror && this.isAuthority(),
+      level: () => this.character.level,
+      rewardMult: () => ascensionRewardMult(this.worldAscension()) * this.omen.rewardMult,
+      teleportTo: (x, z) => this.teleportTo(x, z),
+      dropItems: (x, z, items, level, source) => this.dropItems(x, z, items, level, source),
+      gainXp: (xp, x, z) => this.gainXp(xp, x, z),
+      giveGold: (x, z, amount) => this.loot.gold(x, z, amount),
+      tip: (id, delayMs, opts) => this.onboarding.show(id, delayMs, opts),
+    });
+    this.scope.add(() => this.depths.dispose());
     this.scope.add(this.progression.onChange(() => this.refreshStats()));
     this.scope.add(onSettingsChange((s) => this.onDifficultySetting(s.difficulty)));
     // The Binbun layer is extra polish: High quality only, so Low stays light and calm.
@@ -1178,7 +1206,8 @@ export class WorldScene implements GameScene, RuntimeView {
       this.nextTopId = top?.id ?? null;
       this.nextDismissed = null;
     }
-    this.nextNow = settings.guidance ? nextSuggestion(state, this.nextDismissed) : null;
+    // Down the stairs the floor is the whole task; the Next line has nothing to add.
+    this.nextNow = settings.guidance && this.area !== 'depths' ? nextSuggestion(state, this.nextDismissed) : null;
     this.hud.next(this.nextNow?.text ?? null);
   }
 
@@ -1575,6 +1604,8 @@ export class WorldScene implements GameScene, RuntimeView {
         if (Math.abs(it.x - this.player.x) < 26 && Math.abs(it.z - this.player.z) < 22) out.push(it);
       }
     }
+    // A Depths floor's own stairs and chest.
+    out.push(...this.depths.interactables());
     return out;
   }
 
@@ -1946,6 +1977,14 @@ export class WorldScene implements GameScene, RuntimeView {
         return this.togglePanel('professions');
       case 'waystone':
         return this.togglePanel('map');
+      case 'stair':
+        return void this.depths.enter();
+      case 'depths_down':
+        return void this.depths.descend();
+      case 'depths_up':
+        return void this.depths.leave();
+      case 'depths_chest':
+        return void this.depths.openChest();
       case 'kiln':
       case 'sawpit':
       case 'fire':
@@ -2464,6 +2503,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private handleEvent(ev: SimEvent) {
     this.views.onEvent(ev);
+    this.depths?.onEvent(ev);
     this.remoteGesture(ev);
     const me = this.selfId;
     switch (ev.t) {
@@ -3149,7 +3189,9 @@ export class WorldScene implements GameScene, RuntimeView {
     // Personal rewards for kills in (or right next to) your area.
     const near = Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 38;
     if (!this.player.alive || !near) return;
-    const reward = rollKill(ev.def, ev.area, ev.level, ev.elite, this.bossWaveTier(), Math.random, this.worldDifficulty(), 1 + this.player.brewValue('fortune', this.now));
+    // The Depths drop from the hunting ground whose gear matches the floor's depth.
+    const lootArea = this.depths.lootArea(ev.area) ?? ev.area;
+    const reward = rollKill(ev.def, lootArea, ev.level, ev.elite, this.bossWaveTier(), Math.random, this.worldDifficulty(), 1 + this.player.brewValue('fortune', this.now));
     // The chain: your own kills (thralls and DoTs credit their owner) in unsafe ground, each within the window of the last.
     let chainMult = 1;
     if (ev.killer === this.selfId && !AREAS[ev.area].safe) {
@@ -3169,7 +3211,8 @@ export class WorldScene implements GameScene, RuntimeView {
     if (reward.shards) this.loot.shard(ev.x, ev.z, reward.shards);
     this.dropItems(ev.x, ev.z, reward.items, ev.level, ev.elite ? 'elite' : 'kill');
     this.gainXp(reward.xp, ev.x, ev.z);
-    this.progression.recordKill(ev.area, this.bossWaveTier());
+    if (ev.area === 'depths') this.depths.recordKill();
+    else this.progression.recordKill(ev.area, this.bossWaveTier());
     this.checkUnlocks();
     this.checkMilestones();
   }
@@ -3469,12 +3512,14 @@ export class WorldScene implements GameScene, RuntimeView {
     this.avatar.c.playOnce('death', 1);
     audio.play('playerDeath');
     this.chronicle.add('deaths');
+    this.depths.onPlayerDeath();
     this.hud.death(true, 'The Chapterhouse will call you back…');
     this.closePanels();
   }
 
   private respawn() {
     this.deadUntil = 0;
+    this.depths.finishAfterDeath();
     this.player.revive();
     this.player.teleport(CHAPTERHOUSE_RETURN.x, CHAPTERHOUSE_RETURN.z);
     this.rig.snap(this.player.x, this.player.z);
@@ -4061,6 +4106,7 @@ export class WorldScene implements GameScene, RuntimeView {
     // Area transitions.
     const area = p.area ?? this.area;
     if (area !== this.area) this.enterArea(area);
+    this.depths.update(dt, now, p.area === 'depths');
 
     // Authoritative world (host/solo) or mirror (guest).
     if (this.sim && this.isAuthority()) {
@@ -4308,7 +4354,8 @@ export class WorldScene implements GameScene, RuntimeView {
     const def = AREAS[area];
     if (!this.announcedAreas.has(area)) {
       this.announcedAreas.add(area);
-      this.hud.banner(def.name, def.subtitle);
+      // The Depths announce each floor themselves (DepthsController.arrive).
+      if (area !== 'depths') this.hud.banner(def.name, def.subtitle);
       if (area === 'cloister') this.onboarding.show('cloister', 4500);
       if (area === 'pyre') this.onboarding.show('pyre', 4500);
       if (area === 'fen') this.onboarding.show('fen', 4500);
@@ -4365,6 +4412,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (here === 'acre') return guided ? 'A gathering sanctuary: click a glowing node to work it' : 'Click a glowing node to gather · Walk east to the Chapterhouse for combat';
     if (here === 'chapterhouse') return guided ? 'Sanctuary: Reliquary, Workbench, Altar and Waystone · East door: the Alchemist\'s Wing' : 'Walk north to the Hollow Graves · Click an enemy to attack · East door: the Alchemist\'s Wing';
     if (here === 'alchemist_wing') return guided ? 'Sanctuary: the Great Cauldron, the Alembic and the Reagent Shelf' : 'Brew at the Great Cauldron or the Alembic · Browse the Reagent Shelf';
+    if (here === 'depths') return this.depths.progressLine();
     if (AREAS[here].safe) return 'Sanctuary. The dead cannot follow you here.';
     // Every pending seal off this hall (the Graves hold two: the Warren and the Ossuary), nearest first.
     // The seal the Next line is already counting is not repeated here.
@@ -4405,6 +4453,11 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'cauldron': return 'Brew at the Great Cauldron';
       case 'alembic': return 'Brew at the Alembic';
       case 'reagents': return 'Browse the Reagent Shelf';
+      case 'stair':
+      case 'depths_down':
+      case 'depths_up':
+      case 'depths_chest':
+        return this.depths.prompt(it);
       case 'boss': {
         const boss = BOSSES[bossForSummon(it.id) ?? 'prelate'];
         return `Summon ${boss.name} · ${boss.shards} shards`;
@@ -4479,6 +4532,7 @@ export class WorldScene implements GameScene, RuntimeView {
       ? { count: this.chain.count, name: chainTier?.name ?? 'Chain', bonus: chainTier?.bonus ?? 0, frac: this.chain.frac(now), tier: chainTier ? CHAIN.tiers.indexOf(chainTier) + 1 : 0 }
       : null);
 
+    this.hud.setDepths(this.depths.hudState());
     this.hud.update({
       autoCombat: settings.autoCombat,
       autoCombatAvailable: canUseAutoCombat() && settings.difficulty === 'easy',
@@ -4528,6 +4582,9 @@ export class WorldScene implements GameScene, RuntimeView {
 
     if (now - this.lastMapDraw > 100) {
       this.lastMapDraw = now;
+      // Down the stairs the open stair is the one thing to point at.
+      const depthsMap = this.depths.mapFloor();
+      const depthsPing = depthsMap?.down.open ? { x: depthsMap.down.x, z: depthsMap.down.z } : null;
       this.hud.drawMap({
         destination: p.destination,
         px: p.x,
@@ -4540,8 +4597,10 @@ export class WorldScene implements GameScene, RuntimeView {
         corpses: this.corpsesMap().values(),
         boss: b.active ? { x: b.x, z: b.z } : null,
         waystones: AREA_ORDER.flatMap((a) => AREAS[a].interactables.filter((i) => i.kind === 'waystone')),
+        stairs: AREAS.warren.interactables.filter((i) => i.kind === 'stair'),
+        depths: this.depths.mapFloor(),
         npcs: NPC_IDS.map((id) => ({ x: NPCS[id].x, z: NPCS[id].z, fresh: !!this.npcNew.get(id) })),
-        ping: settings.guidance && settings.guidancePing && this.nextNow?.target && (this.nextNow.pingInPlace || this.nextNow.place !== this.area) ? this.nextNow.target : null,
+        ping: depthsPing ?? (settings.guidance && settings.guidancePing && this.nextNow?.target && (this.nextNow.pingInPlace || this.nextNow.place !== this.area) ? this.nextNow.target : null),
       });
       this.hud.party([
         {
@@ -4652,6 +4711,26 @@ export class WorldScene implements GameScene, RuntimeView {
           simMs = (performance.now() - s0) / benchFrames;
         }
         return { ...render, sceneTris: Math.round(sceneTris), casters, casterTris: Math.round(casterTris), types, skinned, meshes, instanced, lights, programs: r.info.programs?.length ?? 0, geometries: r.info.memory.geometries, textures: r.info.memory.textures, updateMs, simMs, ...this.views.counts() };
+      },
+      /** Catacomb Depths QA: drive a run without the walk. `enter(seed)` starts at depth 1, `fill()` meets the floor's quota (kills what is alive and counts the rest), `descend()` takes the open stair. */
+      depths: {
+        enter: (seed?: number) => this.depths.enter(seed),
+        descend: () => this.depths.descend(),
+        leave: () => { this.depths.leave(); return this.depths.leave(); },
+        openChest: () => this.depths.openChest(),
+        state: () => ({ run: this.sim?.depths ? { ...this.sim.depths } : null, hud: this.depths.hudState(), ctl: this.depths.debug(), floor: this.nav.depthsFloor ? { seed: this.nav.depthsFloor.seed, depth: this.nav.depthsFloor.depth, rooms: this.nav.depthsFloor.rooms.filter((r) => r.active).length, doors: this.nav.depthsFloor.doors.length, stairDown: this.nav.depthsFloor.stairDown, stairUp: this.nav.depthsFloor.stairUp, chest: this.nav.depthsFloor.chest, start: this.nav.depthsFloor.start } : null }),
+        /** Kill everything alive on the floor and keep killing what climbs out until the quota is met. */
+        fill: () => {
+          const sim = this.sim;
+          if (!sim?.depths) return false;
+          for (let i = 0; i < 80 && !sim.depths.stairOpen; i++) {
+            for (const e of sim.enemies.values()) if (e.area === 'depths') e.hp = 0;
+            getRuntime().advance(0.5, 1 / 30, false);
+          }
+          return sim.depths.stairOpen;
+        },
+        /** Walk the hero to a floor point (teleport, thralls follow). */
+        to: (x: number, z: number) => this.teleportTo(x, z),
       },
       goto: (a: AreaId) => {
         const r = AREAS[a].rect;

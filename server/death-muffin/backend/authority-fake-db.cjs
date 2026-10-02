@@ -7,11 +7,12 @@
  *   auth.handler       (sql, params) => result | undefined, for bag-fake-db's `extra` hook
  *   auth.rows / auth.audit / auth.state(id)
  */
-function authorityFake({ necro = null, sell = {}, failWith = null } = {}) {
+function authorityFake({ necro = null, sell = {}, failWith = null, chronicle = null } = {}) {
   const rows = new Map(); // character_id -> row
   const audit = [];
   const blank = (id) => ({ character_id: id, xp_bucket: 0, gold_bucket: 0, bucket_at: null, gold_credit: 0, item_budget: null, last_progress_at: null, last_bag_at: null, xp_accepted: 0, gold_accepted: 0, flags: 0 });
   let necroState = necro;
+  let chronicleLife = chronicle;
 
   const handler = (sql, p = []) => {
     sql = sql.trim().replace(/\s+/g, ' ');
@@ -45,6 +46,7 @@ function authorityFake({ necro = null, sell = {}, failWith = null } = {}) {
       return [{}];
     }
     if (sql.startsWith('SELECT state FROM character_necro_progress')) return [necroState ? [{ state: JSON.stringify(necroState) }] : []];
+    if (sql.startsWith('SELECT life FROM character_chronicle')) return [chronicleLife ? [{ life: JSON.stringify(chronicleLife) }] : []];
     if (sql.startsWith('SELECT id, sell_value FROM items')) return [p[0].map((id) => ({ id, sell_value: sell[id] ?? 10 }))];
     return undefined;
   };
@@ -59,6 +61,7 @@ function authorityFake({ necro = null, sell = {}, failWith = null } = {}) {
     handler, audit, rows,
     state: (id) => rows.get(id),
     setNecro: (n) => { necroState = n; },
+    setChronicle: (life) => { chronicleLife = life; },
     db: { execute: run, query: run },
   };
 }

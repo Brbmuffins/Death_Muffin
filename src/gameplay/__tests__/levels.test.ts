@@ -54,7 +54,8 @@ describe('level layouts', () => {
     }
     const seen = new Set<AreaId>(['chapterhouse']);
     for (let n = 0; n < AREA_ORDER.length; n++) for (const d of DOORS) if (seen.has(d.a) || seen.has(d.b)) { seen.add(d.a); seen.add(d.b); }
-    expect([...seen].sort()).toEqual([...AREA_ORDER].sort());
+    // The Catacomb Depths are an instance: no door leads there, a run opens it (gameplay/depthsFloor.ts, depths-floor.test.ts).
+    expect([...seen].sort()).toEqual(AREA_ORDER.filter((id) => !AREAS[id].instance).sort());
   });
 
   it('every unlock chain leads back to an open area and needs a real number of kills', () => {
@@ -86,6 +87,17 @@ describe('level layouts', () => {
     const ok = reach(id, start, a.breaches as [number, number][]);
     const bad = a.breaches.filter((_, i) => !ok[i]);
     expect(bad, `${id} unreachable`).toEqual([]);
+  });
+
+  it('the Warren\'s stair down to the Depths stands in a clear spot, reachable on foot from the waystone', () => {
+    const stair = AREAS.warren.interactables.find((i) => i.kind === 'stair')!;
+    expect(stair).toBeDefined();
+    expect(stair.id).toBe('depths_stair');
+    const way = AREAS.warren.interactables.find((i) => i.kind === 'waystone')!;
+    // The player stands 1.4 m south of an interactable to use it.
+    expect(reach('warren', [way.x, way.z + 1.6], [[stair.x, stair.z + 1.4]])[0]).toBe(true);
+    // No Warren prop sits on or crowds the stair.
+    for (const p of generateLayout().props) if (p.area === 'warren') expect(Math.hypot(p.x - stair.x, p.z - stair.z), `${p.prop} at ${p.x.toFixed(1)},${p.z.toFixed(1)}`).toBeGreaterThan(2.4);
   });
 
   it('the Warren has nine chambers whose gaps all connect (the vault is reachable from the door)', () => {

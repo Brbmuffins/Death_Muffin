@@ -195,7 +195,7 @@ export class CodexPanel {
     return `
       <p class="cw-codex-note">Everything you do is written here. Lifetime totals never reset; each Ascension closes a run and opens the next. Counting began on the day the Chronicle was opened.</p>
       <div class="cw-chron">
-        ${group('Combat', rows([['Foes slain', n(life.kills)], ...areas, ...bosses, ['Deaths', n(life.deaths)], ['Highest level', n(life['peak.level'])], ['Highest wave tier', n(life['peak.wave'])]]))}
+        ${group('Combat', rows([['Foes slain', n(life.kills)], ...areas, ...bosses, ['Deaths', n(life.deaths)], ...(life['peak.depth'] ? [['Deepest descent', `Depth ${n(life['peak.depth'])}`] as [string, string], ['Depths floors cleared', n(life['depths.floors'])] as [string, string], ['Depths chests opened', n(life['depths.chests'])] as [string, string]] : []), ['Highest level', n(life['peak.level'])], ['Highest wave tier', n(life['peak.wave'])]]))}
         ${group('Economy', rows([['Gold earned', n(life['gold.earned'])], ['Gold spent', n(life['gold.spent'])], ['Items sold', n(life.sold)], ['Items crafted', n(life.crafted)]]))}
         ${group('Gathering', rows([...skills, ['AFK time', dur(life.afkSeconds)]]))}
         ${group('Time', rows([['Time played', dur(life.playSeconds)], ['Runs completed', n(c.runNo - 1)], ['This run', `#${c.runNo}`]]))}
@@ -349,14 +349,17 @@ export class CodexPanel {
       const dead = a.enemies.length
         ? `<dt>The dead</dt><dd>${[...seen, ...(unseen ? [`${unseen} unrecorded`] : [])].join(', ')}</dd>`
         : '';
+      // The Depths have no fixed level (the dead are yours plus the depth) and keep a personal best in the Chronicle.
+      const best = a.instance ? `<dt>Your deepest</dt><dd>${this.chronicle?.view().life['peak.depth'] ? `Depth ${Math.floor(this.chronicle.view().life['peak.depth'])}` : 'You have not been down yet'}</dd>` : '';
       return `
         <article class="cw-codex-entry">
           <div class="txt">
-            <div class="hd"><h3>${a.name}</h3><span class="meta">Level ${a.level}</span></div>
+            <div class="hd"><h3>${a.name}</h3><span class="meta">${a.instance ? 'Your level + depth' : `Level ${a.level}`}</span></div>
             <p class="quote">${a.subtitle}</p>
             <dl>
-              <dt>Unsealed</dt><dd>${areaUnlockText(id)}</dd>
+              <dt>${a.instance ? 'Reached' : 'Unsealed'}</dt><dd>${areaUnlockText(id)}</dd>
               <dt>Dangers</dt><dd>${CODEX_AREAS[id].dangers}</dd>
+              ${best}
               ${dead}
             </dl>
           </div>

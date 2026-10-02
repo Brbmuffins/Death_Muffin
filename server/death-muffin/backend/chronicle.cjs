@@ -8,19 +8,29 @@
  *   POST /api/chronicle/ascend         -> { characterId, ascension }  archives the current run, starts the next
  */
 
-const AREAS = ['chapterhouse', 'acre', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'warren', 'coliseum', 'fen'];
+const AREAS = ['chapterhouse', 'acre', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'warren', 'coliseum', 'fen', 'depths'];
 const BOSSES = ['gravedigger', 'abbess', 'congregation', 'prelate', 'saint', 'regent', 'mire'];
 const SKILLS = ['woodcutting', 'mining', 'fishing', 'gravedigging', 'gardening'];
 
 /** Counters that add up. Dotted keys group related numbers (kills.graves, boss.saint, gathered.mining). */
 const SUM_KEYS = new Set([
   'kills', 'deaths', 'sold', 'crafted', 'contracts', 'playSeconds', 'afkSeconds', 'gold.earned', 'gold.spent',
+  // The Catacomb Depths: runs begun, floors cleared and chests opened (kills.depths rides the area list above).
+  'depths.runs', 'depths.floors', 'depths.chests',
   ...AREAS.map((a) => `kills.${a}`),
   ...BOSSES.map((b) => `boss.${b}`),
   ...SKILLS.map((s) => `gathered.${s}`),
 ]);
 /** Counters that keep the best value seen. */
-const MAX_KEYS = new Set(['peak.level', 'peak.wave']);
+const MAX_KEYS = new Set(['peak.level', 'peak.wave', 'peak.depth']);
+/**
+ * The deepest floor of the Catacomb Depths is a number the public leaderboard shows, kept in the lifetime JSON like every other best (so
+ * Ascension never resets it and no migration is needed). A request may raise it by a handful of floors at a time (a 30 s flush covers a
+ * few at the very best) and never past a hard ceiling; the numbers are cosmetic, this just keeps a typo or a forged request from
+ * putting a nonsense depth in front of friends.
+ */
+const PEAK_DEPTH_STEP = 25;
+const PEAK_DEPTH_MAX = 999;
 
 const MAX_DELTA = 50_000_000;
 /** Interpolated, not bound: mysql2's execute() sends a bound numeric LIMIT as a double and MySQL 8 rejects it (ER_WRONG_ARGUMENTS). */
@@ -38,11 +48,15 @@ function sanitize(input, allowed) {
   return out;
 }
 
-/** Fold sanitized deltas/maxes into a counter object (returns a new object). */
+/** Fold sanitized deltas/maxes into a counter object (returns a new object). `peak.depth` is bounded (see PEAK_DEPTH_STEP). */
 function merge(base, deltas, maxes) {
   const out = { ...(base && typeof base === 'object' ? base : {}) };
   for (const [k, v] of Object.entries(deltas)) out[k] = (Number(out[k]) || 0) + v;
-  for (const [k, v] of Object.entries(maxes)) out[k] = Math.max(Number(out[k]) || 0, v);
+  for (const [k, v] of Object.entries(maxes)) {
+    const had = Number(out[k]) || 0;
+    const value = k === 'peak.depth' ? Math.min(v, PEAK_DEPTH_MAX, had + PEAK_DEPTH_STEP) : v;
+    out[k] = Math.max(had, value);
+  }
   return out;
 }
 
@@ -154,3 +168,5 @@ module.exports.sanitize = sanitize;
 module.exports.merge = merge;
 module.exports.SUM_KEYS = SUM_KEYS;
 module.exports.MAX_KEYS = MAX_KEYS;
+module.exports.PEAK_DEPTH_STEP = PEAK_DEPTH_STEP;
+module.exports.PEAK_DEPTH_MAX = PEAK_DEPTH_MAX;

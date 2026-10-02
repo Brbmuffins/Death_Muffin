@@ -12,6 +12,7 @@ module.exports = function mountLeaderboard(app, pool) {
                  COALESCE(p.boss_kills, 0) AS bossKills,
                  COALESCE(p.total_kills, 0) AS totalKills,
                  COALESCE(CAST(JSON_EXTRACT(cc.life, '$.playSeconds') AS UNSIGNED), 0) AS playSeconds,
+                 COALESCE(CAST(JSON_EXTRACT(cc.life, '$."peak.depth"') AS UNSIGNED), 0) AS bestDepth,
                  COALESCE(cc.run_no, 1) - 1 AS runs
           FROM characters c JOIN accounts a ON a.id = c.account_id
           LEFT JOIN character_necro_progress p ON p.character_id = c.id
@@ -20,7 +21,7 @@ module.exports = function mountLeaderboard(app, pool) {
           ORDER BY ascension DESC, bossKills DESC, totalKills DESC, c.level DESC, c.id ASC
           LIMIT 25
         `);
-        cached = rows.map((row, index) => ({ rank: index + 1, username: row.username, classIndex: row.class_index, hasDiscipline: !!row.has_discipline, level: row.level, ascension: row.ascension, bossKills: row.bossKills, totalKills: row.totalKills, playSeconds: Number(row.playSeconds) || 0, runs: Number(row.runs) || 0 }));
+        cached = rows.map((row, index) => ({ rank: index + 1, username: row.username, classIndex: row.class_index, hasDiscipline: !!row.has_discipline, level: row.level, ascension: row.ascension, bossKills: row.bossKills, totalKills: row.totalKills, playSeconds: Number(row.playSeconds) || 0, runs: Number(row.runs) || 0, bestDepth: Number(row.bestDepth) || 0 }));
         cachedAt = Date.now();
       }
       res.json({ players: cached, updatedAt: new Date(cachedAt).toISOString() });

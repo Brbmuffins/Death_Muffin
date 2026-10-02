@@ -1,9 +1,10 @@
-import { AREAS, AREA_ORDER, DOORS, type AreaId, type Rect } from './areas';
+import { AREAS, AREA_ORDER, DEPTHS_STAIR, DOORS, type AreaId, type Rect } from './areas';
 export type { Rect };
 import { mulberry32 } from '../gameplay/rng';
 import { NODES, type NodeKind } from '../gameplay/gatheringRules';
 import { FEN_BOG, FEN_HUMMOCKS } from './fen';
 import { ABBESS_NICHE_SPOTS, BOSSES, GRAVEDIGGER_PITS, summonSpot, type BossId } from './bosses';
+import type { BoxObstacle, Obstacle } from '../gameplay/nav';
 
 /**
  * Deterministic world dressing. Pure data (no three.js) so the navigation
@@ -268,6 +269,32 @@ export interface WallSegment {
   thickness: number;
   texture: 'stone_wall' | 'skull_wall' | 'wing_wall';
   area: AreaId;
+}
+
+/** The box a wall segment blocks (what WorldView.buildWalls adds to the nav: the segment's length by its thickness, centred on it). */
+export function wallObstacle(w: WallSegment): BoxObstacle {
+  const horizontal = Math.abs(w.z1 - w.z0) < 1e-3;
+  const len = horizontal ? w.x1 - w.x0 : w.z1 - w.z0;
+  const hw = horizontal ? len / 2 : w.thickness / 2;
+  const hd = horizontal ? w.thickness / 2 : len / 2;
+  const mx = (w.x0 + w.x1) / 2;
+  const mz = (w.z0 + w.z1) / 2;
+  return { kind: 'box', x0: mx - hw, z0: mz - hd, x1: mx + hw, z1: mz + hd };
+}
+
+/** The collider a placed prop blocks with (null for decor you can walk through); WorldView.buildProps registers the same one. */
+export function placementObstacle(p: Placement): Obstacle | null {
+  const c = PROPS[p.prop].collider;
+  if (c?.kind === 'circle') return { kind: 'circle', x: p.x, z: p.z, r: c.r * p.scale };
+  if (c?.kind === 'box') {
+    // Axis-aligned approximation of the rotated footprint.
+    const cos = Math.abs(Math.cos(p.rot));
+    const sin = Math.abs(Math.sin(p.rot));
+    const hw = (c.hw * cos + c.hd * sin) * p.scale;
+    const hd = (c.hw * sin + c.hd * cos) * p.scale;
+    return { kind: 'box', x0: p.x - hw, z0: p.z - hd, x1: p.x + hw, z1: p.z + hd };
+  }
+  return null;
 }
 
 export interface Decal {
@@ -701,7 +728,8 @@ export function generateLayout(seed = 1337): WorldLayout {
     const a: AreaId = 'warren';
     const wr = mulberry32(seed ^ 0x3a44e7);
     // Scatter never lands on a spawn breach.
-    const free = (x: number, z: number, r: number) => clearOf(x, z, r) && AREAS.warren.breaches.every(([bx, bz]) => Math.hypot(bx - x, bz - z) > 2.5);
+    // Scatter keeps off the stair down to the Depths too (the west chamber): it must be a clear, lit spot.
+    const free = (x: number, z: number, r: number) => clearOf(x, z, r) && AREAS.warren.breaches.every(([bx, bz]) => Math.hypot(bx - x, bz - z) > 2.5) && Math.hypot(DEPTHS_STAIR.x - x, DEPTHS_STAIR.z - z) > 3.6 + r;
     edgeWalls(a, 6, 'stone_wall', walls);
     const r = AREAS.warren.rect;
     const XS = [-58.7, -45.3];

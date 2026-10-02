@@ -19,7 +19,7 @@ async function refreshLeaderboard() {
     for (const player of data.players) {
       const row = document.createElement('tr');
       const className = player.hasDiscipline ? disciplines[player.classIndex] : legacy[player.classIndex];
-      for (const value of [player.rank, player.username, className || 'Necromancer', player.level, player.ascension, player.bossKills, player.totalKills, hoursLabel(player.playSeconds), player.runs]) {
+      for (const value of [player.rank, player.username, className || 'Necromancer', player.level, player.ascension, player.bossKills, player.totalKills, player.bestDepth ? `Depth ${player.bestDepth}` : '—', hoursLabel(player.playSeconds), player.runs]) {
         const cell = document.createElement('td');
         cell.textContent = typeof value === 'number' ? value.toLocaleString() : value;
         row.appendChild(cell);

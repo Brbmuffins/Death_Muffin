@@ -1,4 +1,5 @@
 import { AREAS, AREA_ORDER, DOORS, type AreaId } from '../content/areas';
+import type { DepthsMapFloor } from '../scenes/DepthsController';
 import { MINIMAP_SCALE as SCALE, MINIMAP_SIZE, minimapWalkable, minimapWorldPoint } from './minimapCoordinates';
 
 export interface MinimapFrame {
@@ -12,6 +13,10 @@ export interface MinimapFrame {
   corpses: Iterable<{ x: number; z: number }>;
   boss: { x: number; z: number } | null;
   waystones: { x: number; z: number }[];
+  /** The Warren's stair down to the Depths (a small amber mark on the map). */
+  stairs?: { x: number; z: number }[];
+  /** The Depths floor you are on (its chambers, doorways and stairs are drawn in place of the Depths rectangle). */
+  depths?: DepthsMapFloor | null;
   /** Accepted final movement destination; null when the route ends. */
   destination?: { x: number; z: number } | null;
   /** The people of the Covenant; `fresh` = they have something new to say. */
@@ -91,6 +96,50 @@ export class Minimap {
     c.restore();
   }
 
+  /** A Depths floor: each chamber as a room, doorways as gaps, the stair down (amber when open), the way up and the chest. */
+  private drawDepths(c: CanvasRenderingContext2D, d: DepthsMapFloor, tx: (x: number) => number, tz: (z: number) => number) {
+    for (const r of d.rooms) {
+      if (!r.active) continue;
+      c.fillStyle = '#231d2b';
+      c.strokeStyle = 'rgba(216,207,189,0.45)';
+      c.lineWidth = 1;
+      c.fillRect(tx(r.x0), tz(r.z0), (r.x1 - r.x0) * SCALE, (r.z1 - r.z0) * SCALE);
+      c.strokeRect(tx(r.x0) + 0.5, tz(r.z0) + 0.5, (r.x1 - r.x0) * SCALE, (r.z1 - r.z0) * SCALE);
+    }
+    c.fillStyle = '#2a2233';
+    for (const door of d.doors) {
+      const w = 4.6 * SCALE;
+      const t = 3.2 * SCALE;
+      if (door.wall === 'x') c.fillRect(tx(door.x) - t / 2, tz(door.z) - w / 2, t, w);
+      else c.fillRect(tx(door.x) - w / 2, tz(door.z) - t / 2, w, t);
+    }
+    const mark = (x: number, z: number, color: string, shape: 'down' | 'up' | 'box') => {
+      const sx = tx(x);
+      const sz = tz(z);
+      c.fillStyle = color;
+      c.strokeStyle = '#07060a';
+      c.lineWidth = 1;
+      c.beginPath();
+      if (shape === 'box') c.rect(sx - 3.5, sz - 3, 7, 6);
+      else if (shape === 'down') {
+        c.moveTo(sx - 5, sz - 4);
+        c.lineTo(sx + 5, sz - 4);
+        c.lineTo(sx, sz + 5);
+        c.closePath();
+      } else {
+        c.moveTo(sx - 5, sz + 4);
+        c.lineTo(sx + 5, sz + 4);
+        c.lineTo(sx, sz - 5);
+        c.closePath();
+      }
+      c.fill();
+      c.stroke();
+    };
+    mark(d.up.x, d.up.z, '#8fb8d8', 'up');
+    mark(d.down.x, d.down.z, d.down.open ? '#ffb347' : '#6a4a6a', 'down');
+    if (d.chest) mark(d.chest.x, d.chest.z, '#f3d27a', 'box');
+  }
+
   draw(f: MinimapFrame) {
     this.px = f.px;
     this.pz = f.pz;
@@ -106,6 +155,8 @@ export class Minimap {
 
     // Areas + doors.
     for (const id of AREA_ORDER) {
+      // The Depths are an instance: only the floor you stand on is drawn (below), never the empty rectangle.
+      if (AREAS[id].instance) continue;
       const r = AREAS[id].rect;
       const open = f.unlocked(id);
       c.fillStyle = open ? (AREAS[id].safe ? '#2a2233' : '#231d2b') : '#110e15';
@@ -144,9 +195,26 @@ export class Minimap {
       c.arc(sx, sz, r, 0, Math.PI * 2);
       c.fill();
     };
+    if (f.depths) this.drawDepths(c, f.depths, tx, tz);
     for (const w of f.waystones) {
       c.fillStyle = '#9b5cff';
       c.fillRect(tx(w.x) - 2, tz(w.z) - 3, 4, 6);
+    }
+    for (const st of f.stairs ?? []) {
+      const sx = tx(st.x);
+      const sz = tz(st.z);
+      if (Math.hypot(sx - half, sz - half) > half - 3) continue;
+      // A little downward chevron in amber: the way to the Depths.
+      c.fillStyle = '#ffb347';
+      c.strokeStyle = '#07060a';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(sx - 4, sz - 3);
+      c.lineTo(sx + 4, sz - 3);
+      c.lineTo(sx, sz + 4);
+      c.closePath();
+      c.fill();
+      c.stroke();
     }
     for (const p of f.npcs ?? []) {
       const sx = tx(p.x);

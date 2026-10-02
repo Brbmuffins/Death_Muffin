@@ -1,4 +1,5 @@
 import { AREAS, AREA_ORDER, DOORS, isAlwaysOpen, type AreaId, type DoorDef, type Rect } from '../content/areas';
+import { floorHop, floorObstacles, floorPath, floorSightBoxes, type DepthsFloor } from './depthsFloor';
 
 export interface CircleObstacle {
   kind: 'circle';
@@ -42,18 +43,60 @@ export class Nav {
   private obstacles: Obstacle[] = [];
   private grid = new Map<string, Obstacle[]>();
   private unlocked = new Set<AreaId>(AREA_ORDER.filter(isAlwaysOpen));
+  /** Instance areas (the Depths) that a run has opened. Kept apart from `unlocked` so setUnlocked (called on every seal) never closes one. */
+  private instances = new Set<AreaId>();
 
   setUnlocked(areas: Iterable<AreaId>) {
-    this.unlocked = new Set(areas);
+    // An instance is opened by its run, never by a seal or by dev access.
+    this.unlocked = new Set([...areas].filter((id) => !AREAS[id].instance));
     for (const id of AREA_ORDER) if (isAlwaysOpen(id)) this.unlocked.add(id);
   }
 
   isUnlocked(area: AreaId) {
-    return this.unlocked.has(area);
+    return this.unlocked.has(area) || this.instances.has(area);
   }
 
   isDoorOpen(door: DoorDef) {
-    return this.unlocked.has(door.a) && this.unlocked.has(door.b);
+    return this.isUnlocked(door.a) && this.isUnlocked(door.b);
+  }
+
+  /** The current floor of the Catacomb Depths (null between runs). Its walls and props are obstacles, its tall walls block sight, and it routes walkers through its doorways. */
+  private floor: DepthsFloor | null = null;
+  private floorObs: Obstacle[] = [];
+  private floorSight: BoxObstacle[] = [];
+
+  get depthsFloor(): DepthsFloor | null {
+    return this.floor;
+  }
+
+  /** Open an instance area to walkers (a run began). */
+  openInstance(id: AreaId) {
+    this.instances.add(id);
+  }
+
+  closeInstance(id: AreaId) {
+    this.instances.delete(id);
+  }
+
+  /** Replace the Depths' floor: the old floor's colliders go, the new one's come in. */
+  loadDepthsFloor(floor: DepthsFloor) {
+    this.clearDepthsFloor();
+    this.floor = floor;
+    this.floorObs = floorObstacles(floor);
+    for (const o of this.floorObs) this.addObstacle(o);
+    this.floorSight = floorSightBoxes(floor);
+  }
+
+  clearDepthsFloor() {
+    for (const o of this.floorObs) this.removeObstacle(o);
+    this.floorObs = [];
+    this.floorSight = [];
+    this.floor = null;
+  }
+
+  /** The next place to steer for when walking across the Depths floor (null = straight on, or not on the floor). */
+  depthsHop(fx: number, fz: number, tx: number, tz: number): { x: number; z: number } | null {
+    return this.floor ? floorHop(this.floor, fx, fz, tx, tz) : null;
   }
 
   /** Tall standing walls (dungeon partitions): they stop cones as well as bodies. */
@@ -63,11 +106,27 @@ export class Nav {
     this.sightBlockers.push(b);
   }
 
+  private removeObstacle(o: Obstacle) {
+    const i = this.obstacles.indexOf(o);
+    if (i >= 0) this.obstacles.splice(i, 1);
+    const [x0, z0, x1, z1] = o.kind === 'circle' ? [o.x - o.r, o.z - o.r, o.x + o.r, o.z + o.r] : [o.x0, o.z0, o.x1, o.z1];
+    for (let cx = Math.floor(x0 / CELL); cx <= Math.floor(x1 / CELL); cx++) {
+      for (let cz = Math.floor(z0 / CELL); cz <= Math.floor(z1 / CELL); cz++) {
+        const k = `${cx},${cz}`;
+        const list = this.grid.get(k);
+        if (!list) continue;
+        const at = list.indexOf(o);
+        if (at >= 0) list.splice(at, 1);
+        if (!list.length) this.grid.delete(k);
+      }
+    }
+  }
+
   /** Does the straight line a→b pass through a tall wall? (Liang–Barsky against each box.) */
   sightBlocked(ax: number, az: number, bx: number, bz: number): boolean {
     const dx = bx - ax;
     const dz = bz - az;
-    for (const w of this.sightBlockers) {
+    for (const w of this.floorSight.length ? [...this.sightBlockers, ...this.floorSight] : this.sightBlockers) {
       let t0 = 0;
       let t1 = 1;
       let hit = true;
@@ -105,7 +164,7 @@ export class Nav {
 
   private walkables(): Rect[] {
     const list: Rect[] = [];
-    for (const id of AREA_ORDER) if (this.unlocked.has(id)) list.push(AREAS[id].rect);
+    for (const id of AREA_ORDER) if (this.isUnlocked(id)) list.push(AREAS[id].rect);
     for (const d of DOORS) if (this.isDoorOpen(d)) list.push(d.rect);
     return list;
   }
@@ -190,6 +249,7 @@ export class Nav {
   route(fx: number, fz: number, tx: number, tz: number): { x: number; z: number }[] {
     const from = this.areaAt(fx, fz) ?? this.nearestArea(fx, fz);
     const to = this.areaAt(tx, tz) ?? this.nearestArea(tx, tz);
+    if (from === 'depths' && to === 'depths' && this.floor) return floorPath(this.floor, fx, fz, tx, tz);
     if (!from || !to || from === to) return [{ x: tx, z: tz }];
     // BFS over open doors.
     const prev = new Map<AreaId, { area: AreaId; door: DoorDef }>();

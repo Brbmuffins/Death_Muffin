@@ -744,6 +744,20 @@ button { font-family: inherit; }
 .hud-ward .n { font-family: var(--cw-font-numeric); font-weight: 700; font-size: 20px; color: #efe6d0; text-shadow: 0 1px 4px #000; }
 
 /* Kill Chain: a quiet count on the left edge that warms up as the tier climbs. */
+/* The Catacomb Depths readout: under the minimap, quiet. Brightens (gold, a slow pulse) when the stair opens. */
+.hud-depth { width: 176px; padding: 4px 8px 5px; background: rgba(7, 6, 10, 0.5); border-bottom: 2px solid var(--cw-border-strong); text-align: center; text-shadow: 0 1px 4px #000; --depth: var(--cw-bone-300); }
+.hud-depth[hidden] { display: none; }
+.hud-depth .row { display: flex; align-items: baseline; justify-content: center; gap: 10px; font-family: var(--cw-font-display); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cw-bone-100); }
+.hud-depth .row b { font-family: var(--cw-font-numeric); font-size: 16px; color: var(--depth); }
+.hud-depth .row .k { font-family: var(--cw-font-numeric); letter-spacing: 0.06em; color: var(--depth); }
+.hud-depth .track { height: 3px; margin-top: 4px; background: rgba(7, 6, 10, 0.9); }
+.hud-depth .track .fill { height: 100%; width: 0; background: var(--depth); transition: width 0.25s ease-out; }
+.hud-depth .cue { font-size: 11px; letter-spacing: 0.04em; color: var(--cw-text-muted); margin-top: 3px; line-height: 1.25; }
+.hud-depth .cue:empty { display: none; }
+.hud-depth.open { --depth: #ffb347; border-bottom-color: #ffb347; animation: cw-depth-open 2.4s ease-in-out infinite; }
+.hud-depth.open .cue { color: #ffcf85; }
+@keyframes cw-depth-open { 0%, 100% { box-shadow: 0 6px 18px -10px rgba(255, 179, 71, 0.2); } 50% { box-shadow: 0 6px 22px -8px rgba(255, 179, 71, 0.55); } }
+@media (prefers-reduced-motion: reduce) { .hud-depth.open { animation: none; } }
 .hud-chain { position: absolute; left: 22px; top: 48%; min-width: 150px; padding: 6px 12px 8px; background: rgba(7, 6, 10, 0.55); border-left: 3px solid var(--cw-border-strong); text-shadow: 0 1px 4px #000; --chain: var(--cw-bone-300); }
 .hud-chain[data-tier='1'] { --chain: #e6d3a0; }
 .hud-chain[data-tier='2'] { --chain: #f0b25a; }
