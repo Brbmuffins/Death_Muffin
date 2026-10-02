@@ -5,6 +5,7 @@ import { waveModifiers } from '../content/upgrades';
 import { saveInventory } from '../net/api';
 import type { InventorySlot } from '../net/types';
 import { BAG_SLOTS } from './gatheringRules';
+import { decorateSlot, type DropInstance } from './affixes';
 import { pickWeighted, randInt } from './rng';
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
 import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS, bossIchor } from '../content/reagents';
@@ -18,6 +19,8 @@ export const BAG_ROWS = BAG_SIZE / BAG_COLS;
 export interface LootDrop {
   item_id: string;
   quantity: number;
+  /** The server's roll for a piece of gear (item level and affixes), attached by LootRoller before the drop lands on the ground. */
+  instance?: DropInstance;
 }
 
 export interface KillReward {
@@ -129,7 +132,7 @@ export function addToSlots(slots: InventorySlot[], drop: LootDrop): InventorySlo
   }
   return [
     ...slots,
-    {
+    decorateSlot({
       // Joined item fields come back from the server on save; local placeholders until then.
       id: 0,
       slot_index: free,
@@ -143,7 +146,9 @@ export function addToSlots(slots: InventorySlot[], drop: LootDrop): InventorySlo
       icon_id: null,
       sell_value: meta?.sell ?? 0,
       crafted: 0,
-    },
+      // A rolled piece keeps the server's roll from the moment it is picked up (the save names it by id).
+      ...(drop.instance ? { instance_id: drop.instance.id, ilvl: drop.instance.ilvl, affixes: drop.instance.affixes } : {}),
+    }),
   ];
 }
 
@@ -159,6 +164,8 @@ export function toSavePayload(slots: InventorySlot[]) {
     item_id: s.item_id,
     quantity: s.quantity,
     equipped: s.equipped,
+    // Only the id of a roll the server made: the server rejects anything it did not mint for this account.
+    instance_id: s.instance_id ?? null,
   }));
 }
 

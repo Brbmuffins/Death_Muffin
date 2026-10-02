@@ -11,6 +11,7 @@
 const gather = require('./gathering/gathering-rules.cjs');
 const salvage = require('./gathering/salvage-rules.cjs');
 const store = require('./bag-store.cjs');
+const { deleteInstances } = require('./loot-instances.cjs');
 
 const num = (v) => Number(v) || 0;
 const playerError = (message) => Object.assign(new Error(message), { player: true });
@@ -38,6 +39,7 @@ module.exports = function mountSalvage(app, pool, { requireAuth, ownsCharacter, 
       const taken = new Set(slots);
       const salvaged = [];
       const yields = [];
+      const spentInstances = [];
       let xp = 0;
       for (const slot of slots) {
         const row = bag.find((r) => r.slot === slot);
@@ -45,8 +47,10 @@ module.exports = function mountSalvage(app, pool, { requireAuth, ownsCharacter, 
         if (row.fixed) throw playerError('Equipped gear cannot be salvaged. Unequip it first.');
         const meta = info(row.itemId);
         if (!salvage.isSalvageGear(meta.itemType)) throw playerError('Only weapons, armor, rings and trinkets can be salvaged.');
+        if (row.inst) spentInstances.push(row.inst);
         for (let n = 0; n < row.qty; n++) {
-          const out = salvage.salvageYield({ id: row.itemId, item_type: meta.itemType, rarity: meta.rarity }, level, random);
+          // A rolled piece (item level, affixes) pays a little more; plain gear rolls exactly as before.
+          const out = salvage.salvageYield({ id: row.itemId, item_type: meta.itemType, rarity: meta.rarity, ...(row.inst ? { ilvl: row.ilvl, affixes: row.nAffix } : {}) }, level, random);
           salvaged.push({ item_id: row.itemId });
           yields.push(out.items);
           xp += out.xp;
@@ -58,6 +62,7 @@ module.exports = function mountSalvage(app, pool, { requireAuth, ownsCharacter, 
       const after = store.vaultRules.addGrants(left, gained.map((g) => ({ itemId: g.item_id, qty: g.quantity })), (item) => yieldInfo(item));
       if (!after) throw playerError('Make room in your bag first: the salvage will not fit. Nothing was salvaged.');
       await store.writeBag(conn, id, bag, after);
+      await deleteInstances(conn, spentInstances);
 
       const next = gather.addSkillXp({ level, xp: num(prof.skill_xp) }, xp);
       await conn.execute('UPDATE professions SET skill_level = ?, skill_xp = ? WHERE character_id = ? AND profession_id = ?', [next.level, next.xp, id, salvage.SALVAGE_SKILL]);

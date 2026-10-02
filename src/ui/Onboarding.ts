@@ -33,6 +33,7 @@ export type TipId =
   | 'relic'
   | 'armor'
   | 'setBonus'
+  | 'affix'
   | 'necroWeapon'
   | 'gearEquip'
   | 'statSheet'
@@ -223,6 +224,10 @@ export const TIPS: Record<TipId, Tip> = {
   setBonus: {
     title: 'A set bonus is awake',
     body: 'Two pieces of the same armor set are worn, so its first <b>set bonus</b> is active. Hover any piece: <b>green lines</b> are on, grey lines need more pieces (4 and 5 are the big ones). A bag item marked <b>completes</b> in its arrow line will switch a bonus on. The Character sheet (<kbd>J</kbd>) shows what each set still needs and where it drops.',
+  },
+  affix: {
+    title: 'A rolled relic',
+    body: 'Gear now drops with an <b>item level</b> and up to <b>three affixes</b>, rolled by the server so nobody can edit them. More affixes means a richer colour; a higher item level means bigger numbers. <b>Violet † lines</b> feed your legion, essence and rites. Hover a piece: the arrow says if it beats what you wear. Salvage and selling pay more for good rolls.',
   },
   gearEquip: {
     title: 'Gear you can read',

@@ -72,7 +72,11 @@ import { LootView } from '../graphics/LootView';
 import { WorldView } from '../graphics/WorldView';
 import { updateOcclusion } from '../graphics/occlusion';
 import { equippedBySlot, gearFromIds } from '../content/gear';
-import { applySetMods, resolveSetBonuses, setSignature } from '../gameplay/setBonuses';
+import { applySetMods, outfitSignature, resolveSetBonuses, setSignature } from '../gameplay/setBonuses';
+import { LootRoller } from '../gameplay/lootRoll';
+import { canRoll } from '../gameplay/affixes';
+import { affixedName, type DropSource } from '../gameplay/affixRules';
+import type { LootDrop } from '../gameplay/loot';
 import { abilityCooldownMs, abilityRange, resolveWeaponLoadout } from '../gameplay/weaponLine';
 import { Chronicle } from '../gameplay/chronicle';
 import { GatherSession, crossedMilestones, loadBests, saveBests } from '../gameplay/gatherReport';
@@ -208,6 +212,11 @@ export class WorldScene implements GameScene, RuntimeView {
   private weaponThrallBonus = 0;
   /** Which armor set bonuses are folded into this.discipline (gameplay/setBonuses.ts). */
   private setSig = '';
+  /** Sets and worn affixes together: the discipline is rebuilt when it changes. */
+  private outfitSig = '';
+  /** Asks the server to roll item level and affixes for gear drops. */
+  private lootRoller!: LootRoller;
+  private lootAlive = true;
   /** Resource rules for the active discipline's family (HUD orb label/colour). */
   private resourceRules: ResourceRules;
   /** The active family's kit: which rites this class plays. */
@@ -382,12 +391,14 @@ export class WorldScene implements GameScene, RuntimeView {
     this.progression = new Progression(character);
     this.applyBoons();
     this.inventory = new Inventory(character.id);
+    this.lootRoller = new LootRoller(character.id);
     this.locks = new ItemLocks(character.id);
     this.chronicle = new Chronicle(character.id);
     this.progression.chronicle = this.chronicle;
     void this.chronicle.load();
     this.chronicle.max('peak.level', character.level ?? 1);
     this.scope.add(() => this.chronicle.dispose());
+    this.scope.add(() => { this.lootAlive = false; });
   }
 
   get camera() {
@@ -714,10 +725,12 @@ export class WorldScene implements GameScene, RuntimeView {
     this.player.loadout = loadout;
     if (loadout.main !== was.main && loadout.main && loadout.main !== 'staff') this.onboarding.show('necroWeapon');
     const sets = setSignature(this.inventory.all);
-    if (loadout.thrallBonus !== this.weaponThrallBonus || sets !== this.setSig) {
+    const outfit = outfitSignature(this.inventory.all);
+    if (loadout.thrallBonus !== this.weaponThrallBonus || outfit !== this.outfitSig) {
       const gained = sets.split('|').filter((k) => k && !this.setSig.split('|').includes(k));
       this.weaponThrallBonus = loadout.thrallBonus;
       this.setSig = sets;
+      this.outfitSig = outfit;
       this.applyBoons();
       // The first time any armor set bonus switches on, explain it.
       if (gained.length) this.onboarding.show('setBonus');
@@ -2763,7 +2776,7 @@ export class WorldScene implements GameScene, RuntimeView {
     // Personal reward: a guaranteed item from the area's table plus bonus gold.
     const level = AREAS[ev.area].level + ascensionLevels(this.worldAscension());
     const gold = Math.round((24 + 10 * level) * waveModifiers(this.bossWaveTier()).rewardMult * DIFFICULTIES[this.worldDifficulty()].rewardMult);
-    this.loot.item(ev.x, ev.z, rollItem(ev.area));
+    this.dropItems(ev.x, ev.z, [rollItem(ev.area)], level, 'surge');
     this.loot.gold(ev.x, ev.z, gold);
     this.effects.emit({ x: ev.x, y: 0.4, z: ev.z, count: 70, color: SPELL_FX.surge.glow, spread: 1, speed: 1.2, up: 4, life: 1.4, size: 0.34 });
     this.effects.lightFlash(ev.x, 2, ev.z, SPELL_FX.surge.glow, 70, 1.2);
@@ -2795,11 +2808,25 @@ export class WorldScene implements GameScene, RuntimeView {
     reward.xp = Math.round(reward.xp * asc * (1 + this.player.brewValue('wisdom', this.now)));
     this.loot.gold(ev.x, ev.z, reward.gold);
     if (reward.shards) this.loot.shard(ev.x, ev.z, reward.shards);
-    for (const item of reward.items) this.loot.item(ev.x, ev.z, item);
+    this.dropItems(ev.x, ev.z, reward.items, ev.level, ev.elite ? 'elite' : 'kill');
     this.gainXp(reward.xp, ev.x, ev.z);
     this.progression.recordKill(ev.area, this.bossWaveTier());
     this.checkUnlocks();
     this.checkMilestones();
+  }
+
+  /**
+   * Put drops on the ground. Gear first gets its item level and affixes from the server (LootRoller): the piece appears a moment
+   * later, rolled. Anything the server cannot roll lands as plain gear. Materials never wait.
+   */
+  private dropItems(x: number, z: number, items: LootDrop[], level: number, source: DropSource) {
+    const gear = items.filter((d) => canRoll(d.item_id));
+    for (const item of items) if (!gear.includes(item)) this.loot.item(x, z, item);
+    if (!gear.length) return;
+    void this.lootRoller.attach(gear, level, source).then(() => {
+      if (!this.lootAlive) return;
+      for (const item of gear) this.loot.item(x, z, item);
+    });
   }
 
   /** A new chain tier: a floating call-out, a chime that climbs with the tier, and a flash of the tier colour. */
@@ -3529,14 +3556,17 @@ export class WorldScene implements GameScene, RuntimeView {
           }
           const reward = rollBoss(this.bossWaveTier(), Math.random, this.worldDifficulty(), def.area, def.shards, def.id);
           // First kill per character: two more shards and a guaranteed rare-or-better (browser trophy record).
+          let firstKill: LootDrop | null = null;
           if (def.id !== 'prelate' && this.claimTrophy(def.id)) {
             reward.shards += 2;
-            reward.items.push(rollFirstKillItem(def.area));
+            firstKill = rollFirstKillItem(def.area);
             this.hud.toast(`First kill: ${def.name}. A trophy for the Codex, two more shards and a rare relic.`, 'good');
           }
           this.loot.gold(ev.x, ev.z, reward.gold);
           this.loot.shard(ev.x, ev.z, reward.shards);
-          for (const item of reward.items) this.loot.item(ev.x, ev.z, item);
+          const bossLevel = AREAS[def.area].level + ascensionLevels(this.worldAscension());
+          this.dropItems(ev.x, ev.z, reward.items, bossLevel, 'boss');
+          if (firstKill) this.dropItems(ev.x, ev.z, [firstKill], bossLevel, 'first_kill');
           this.gainXp(reward.xp, ev.x, ev.z);
           this.effects.lightFlash(ev.x, 3, ev.z, 0xc6a4ff, 100, 2);
           this.rig.shake(0.7);
@@ -3691,7 +3721,8 @@ export class WorldScene implements GameScene, RuntimeView {
     }
     if (got.items.some((item) => ARMOR_BY_ID[item.item_id])) this.onboarding.show('armor');
     if (got.items.some((item) => item.item_id in REAGENT_ITEMS)) this.onboarding.show('reagent', 0, true);
-    for (const item of got.items) this.hud.toast(`${itemMeta(item.item_id).name}${item.quantity > 1 ? ` ×${item.quantity}` : ''}`, 'good');
+    if (got.items.some((item) => item.instance?.affixes.length)) this.onboarding.show('affix', 1800);
+    for (const item of got.items) this.hud.toast(`${item.instance ? affixedName(itemMeta(item.item_id).name, item.instance.affixes) : itemMeta(item.item_id).name}${item.quantity > 1 ? ` ×${item.quantity}` : ''}`, 'good');
 
     // Visuals.
     this.avatar.update(dt, p.x, p.z, p.facing, p.moving, p.stats.moveSpeed);
@@ -4213,6 +4244,9 @@ export class WorldScene implements GameScene, RuntimeView {
         const a = this.player.area ?? 'graves';
         return this.sim?.spawnEnemy(def, a, this.player.x + 3, this.player.z - 3, elite, false, affix).id;
       },
+      /** QA: drop `n` pieces of gear beside the hero, rolled by the server (or the offline mock) like a kill's. */
+      dropGear: (itemId: string, level = 10, source: DropSource = 'kill', n = 1) => this.dropItems(this.player.x, this.player.z, Array.from({ length: n }, () => ({ item_id: itemId, quantity: 1 })), level, source),
+      rollsPending: () => this.lootRoller.pending,
       /** Open a Grave Surge in the current area right now. */
       surge: () => {
         const a = this.player.area;

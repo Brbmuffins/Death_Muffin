@@ -68,7 +68,7 @@ export class CharacterSheetPanel extends SimplePanel {
   }
 
   private line(l: SheetLine) {
-    const isSet = l.id.startsWith('set:');
+    const isSet = l.id.startsWith('set:') || l.id.startsWith('affix:');
     const open = isSet || this.openLines.has(l.id);
     const rows = l.rows.map((r) => `<div class="r ${r.tone ?? ''} ${r.total ? 'total' : ''}"><span>${r.label}</span><b>${r.value}</b></div>`).join('');
     return `<div class="gs-line${open ? ' open' : ''}${isSet ? ' set' : ''}">

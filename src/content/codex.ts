@@ -1,5 +1,6 @@
 import { SET_BONUSES, SET_NAMES, describeEffect } from './setBonuses';
 import { ARMOR_PIECES, ARMOR_PARTS } from './armorSets';
+import { AFFIXES, MAX_AFFIXES } from '../gameplay/affixRules';
 import {
   ABILITIES,
   BONE_MANTLE,
@@ -845,3 +846,23 @@ export const codexSetRows = (): CodexSetRow[] => {
   }
   return rows.sort((a, b) => a.collection - b.collection);
 };
+
+/** Item level and affixes tab: rows come from the affix pool (gameplay/affixRules.ts), so the ranges are the ones the server rolls. */
+export const CODEX_AFFIX_COUNSEL =
+  `Gear drops with an item level (ilvl) and up to ${MAX_AFFIXES} affixes, rolled by the server when it drops, so they cannot be edited. A piece's colour follows its affix count: one affix is green, two blue, three purple (a rarer base item keeps its own colour). The item level is the level of what dropped it, plus 2 from an elite, 4 from a boss and 5 from a boss's first kill; it sets how big the numbers can be. Bosses always leave an affix and a first kill leaves two or more. Violet † lines are necromancer levers (thralls, essence, Miasma, Withered stacks, ward); they work for any class but only matter to the four necromancer disciplines. Affixes are named on the item: the first prefix goes before the name and the first suffix after it. The arrow on a bag item and the Character sheet (J) count affixes. Salvaging and selling pay more for a high item level and for every affix; Sell all junk and Salvage all skip pieces with a necromancer affix.`;
+export interface CodexAffixRow {
+  word: string;
+  kind: string;
+  necro: boolean;
+  low: string;
+  high: string;
+}
+/** Each affix at two item levels (10 and 40): the weakest roll, and "up to" the strongest, in the affix's own words. */
+export const codexAffixRows = (): CodexAffixRow[] =>
+  AFFIXES.map((a) => {
+    const line = (L: number) => {
+      const [lo, hi] = a.range(L);
+      return lo === hi ? a.text(lo) : `${a.text(lo)} (up to ${a.text(hi)})`;
+    };
+    return { word: a.kind === 'prefix' ? `${a.word} \u2026` : `\u2026 ${a.word}`, kind: a.kind, necro: a.necro, low: line(10), high: line(40) };
+  });

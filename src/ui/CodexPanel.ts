@@ -25,6 +25,8 @@ import {
   type CodexSetRow,
   CODEX_STATS,
   CODEX_STATS_COUNSEL,
+  CODEX_AFFIX_COUNSEL,
+  codexAffixRows,
   CODEX_WEAPON_TIERS,
   COVENANT_LORE,
   DEAD_ORDER,
@@ -49,6 +51,7 @@ const TABS = [
   { id: 'disciplines', label: 'Disciplines' },
   { id: 'weapons', label: 'Weapons' },
   { id: 'sets', label: 'Armor sets' },
+  { id: 'affixes', label: 'Item affixes' },
   { id: 'stats', label: 'Stats' },
   { id: 'dead', label: 'The Dead' },
   { id: 'diocese', label: 'The Diocese' },
@@ -139,6 +142,8 @@ export class CodexPanel {
             ? this.weapons()
           : this.tab === 'sets'
             ? this.sets()
+          : this.tab === 'affixes'
+            ? this.affixes()
           : this.tab === 'stats'
             ? this.stats()
           : this.tab === 'dead'
@@ -232,6 +237,13 @@ export class CodexPanel {
             <p class="tip"><b>Use it well.</b> ${w.tip}</p>
           </div>
         </article>`).join('') + `<table class="cw-codex-table"><thead><tr><th>Tier</th><th>Recommended level</th><th>Drops in</th></tr></thead><tbody>${ladder}</tbody></table>`;
+  }
+
+  private affixes() {
+    const rows = codexAffixRows()
+      .map((r) => `<tr class="${r.necro ? 'necro' : ''}"><td>${r.necro ? '\u2020 ' : ''}${r.word}</td><td>${r.low}</td><td>${r.high}</td></tr>`)
+      .join('');
+    return `<p class="tip">${CODEX_AFFIX_COUNSEL}</p><table class="cw-codex-table"><thead><tr><th>Name</th><th>Item level 10</th><th>Item level 40</th></tr></thead><tbody>${rows}</tbody></table>`;
   }
 
   private sets() {

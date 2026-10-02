@@ -14,7 +14,9 @@ import {
   type StatDeltaLine,
 } from './characterStats';
 import { resolveWeaponLoadout, type WeaponLoadout } from './weaponLine';
-import { diffSetBonuses, effectRelevant, resolveSetBonuses, setDiffText, withSetBonuses, withoutSetBonuses, type SetDiff, type SetStatus, type SetTotals } from './setBonuses';
+import { diffSetBonuses, effectRelevant, foldEffect, resolveSetBonuses, setDiffText, withSetBonuses, withoutSetBonuses, type SetDiff, type SetStatus, type SetTotals } from './setBonuses';
+import { affixLines, type AffixLine } from './affixes';
+import { affixEffect, type AffixStat } from './affixRules';
 
 /**
  * Gear you can read: everything the Reliquary tooltips, the compare block and the Character sheet say about
@@ -55,6 +57,29 @@ export function itemStatEffects(ctx: StatContext, item: Pick<InventorySlot, 'sta
     out.push({ stat: k, value: v, head: `${v > 0 ? '+' : ''}${v} ${STAT_LABELS[k]}`, lines: describeStatDelta(base, derive(ctx, ctx.slots, bumped)) });
   }
   return out;
+}
+
+export interface ItemAffixEffect extends AffixLine {
+  /** The derived numbers this affix moves for THIS character (on top of what is worn now); empty when it does nothing for them. */
+  lines: StatDeltaLine[];
+  /** False for necromancer-only levers on another class. */
+  relevant: boolean;
+}
+
+/** For every affix on a rolled piece: what it does for this character, run through deriveStats like the base stat lines. */
+export function itemAffixEffects(ctx: StatContext, item: Pick<InventorySlot, 'inst'>): ItemAffixEffect[] {
+  const base = derive(ctx);
+  const disc = withSetBonuses(ctx.discipline, ctx.slots);
+  return affixLines(item).map((l) => {
+    const e = affixEffect(l.roll);
+    let after: DerivedStats;
+    if (e.stats) {
+      const bumped = { ...ctx.character } as Character;
+      for (const [k, v] of Object.entries(e.stats)) (bumped as unknown as Record<string, number>)[k] = (ctx.character[k as AffixStat] ?? 0) + (v as number);
+      after = derive(ctx, ctx.slots, bumped);
+    } else after = deriveStats(ctx.character, ctx.slots as InventorySlot[], { ...disc, mods: foldEffect(disc.mods, e) }, ctx.damageTier);
+    return { ...l, lines: describeStatDelta(base, after), relevant: effectRelevant(e, ctx.discipline) };
+  });
 }
 
 /** "+48 health (+22 thrall health)": thralls grouped in brackets so your own numbers lead. */
@@ -223,6 +248,25 @@ export function setSheetLines(sets: SetStatus[], discipline: Pick<Discipline, 'f
   });
 }
 
+/** Item affixes for the Character sheet: one line per worn rolled piece, every affix listed; necromancer levers marked. */
+export function affixSheetLines(slots: readonly InventorySlot[], discipline: Pick<Discipline, 'family'>): SheetLine[] {
+  const worn = EQUIP_SLOTS.map((e) => equippedBySlot(slots)[e.id]).filter((w): w is InventorySlot => !!w?.inst);
+  if (!worn.length) {
+    return [{ id: 'affix:none', label: 'No affixes worn', value: '0', help: 'Gear can drop with an item level and up to three affixes. Hover a piece in your bag to see what each would do for you.', rows: [] }];
+  }
+  return worn.map((w) => ({
+    id: `affix:${w.item_id}:${w.slot_index}`,
+    label: w.name,
+    value: `ilvl ${w.inst!.ilvl}`,
+    help: `${w.inst!.affixes.length} ${w.inst!.affixes.length === 1 ? 'affix' : 'affixes'}. Their numbers are inside the lines above (marked "Item affixes").`,
+    rows: affixLines(w).map((l) => ({
+      label: `${l.necro ? '\u2020 ' : ''}${l.text}${effectRelevant(affixEffect(l.roll), discipline) ? '' : ' (no effect for your class)'}`,
+      value: `roll ${Math.round(l.quality * 100)}%`,
+      tone: 'up' as const,
+    })),
+  }));
+}
+
 export function statSheet(ctx: StatContext): SheetSection[] {
   const { character, slots, discipline, damageTier } = ctx;
   const d = derive(ctx);
@@ -231,12 +275,26 @@ export function statSheet(ctx: StatContext): SheetSection[] {
   const baseMods = DISCIPLINES[discipline.id]?.mods ?? discipline.mods;
   const boons = boonShare(discipline);
   const setRes = resolveSetBonuses(slots);
-  const setMult = setRes.totals.mult;
-  const setStats = setRes.totals.stats as Record<string, number>;
+  const setMult = setRes.setTotals.mult;
+  const setStats = setRes.setTotals.stats as Record<string, number>;
+  const affMult = setRes.affixTotals.mult;
   /** What the worn set bonuses add through one stat formula ("Set bonuses  +24"). */
   const setRow = (per: (b: Record<string, number>) => number, digits = 1, unit = ''): SheetRow | null => {
     const v = per(setStats);
     return v ? { label: 'Set bonuses', value: signed(v, digits) + unit, tone: v > 0 ? 'up' : 'down' } : null;
+  };
+  /** What the affixes on each worn piece add through one stat formula (one row per piece, so you can see which item gave it). */
+  const affixRows = (per: (b: Record<string, number>) => number, digits = 1, unit = ''): SheetRow[] => {
+    const rows: SheetRow[] = [];
+    for (const { id } of EQUIP_SLOTS) {
+      const w = equippedBySlot(slots)[id];
+      if (!w?.inst) continue;
+      const stats: Record<string, number> = {};
+      for (const a of w.inst.affixes) for (const [k, v] of Object.entries(affixEffect(a).stats ?? {})) stats[k] = (stats[k] ?? 0) + (v as number);
+      const v = per(stats);
+      if (v) rows.push({ label: `${w.name} (affixes)`, value: signed(v, digits) + unit, tone: v > 0 ? 'up' : 'down' });
+    }
+    return rows;
   };
   const dmgMult = 1 + DAMAGE_UPGRADE.perTier * damageTier;
   const loadout = resolveWeaponLoadout(equippedBySlot(slots), discipline.id);
@@ -253,10 +311,12 @@ export function statSheet(ctx: StatContext): SheetSection[] {
       { label: `Level ${level}`, value: signed((level - 1) * E.health.perLevel) },
       { label: `Your VIT ${num('stat_vit')}`, value: signed(num('stat_vit') * E.health.perVit) },
       gearRows(slots, (b) => (b.stat_vit ?? 0) * E.health.perVit),
+      affixRows((b) => (b.stat_vit ?? 0) * E.health.perVit),
       setRow((b) => (b.stat_vit ?? 0) * E.health.perVit),
       multRow(`${discipline.name}`, baseMods.maxHpMult),
       multRow('Covenant boons', boons.maxHpMult),
       multRow('Set bonuses', setMult.maxHpMult ?? 1),
+      multRow('Item affixes', affMult.maxHpMult ?? 1),
       final('Health', formatDerived('maxHp', d.maxHp)),
     ),
   };
@@ -267,6 +327,7 @@ export function statSheet(ctx: StatContext): SheetSection[] {
       { label: `Level ${level}`, value: signed((level - 1) * E.spell.perLevel) },
       { label: `Your INT ${num('stat_int')}, STR ${num('stat_str')}, AGI ${num('stat_agi')}`, value: signed(num('stat_int') * E.spell.perInt + num('stat_str') * E.spell.perStr + num('stat_agi') * E.spell.perAgi) },
       gearRows(slots, (b) => (b.stat_int ?? 0) * E.spell.perInt + (b.stat_str ?? 0) * E.spell.perStr + (b.stat_agi ?? 0) * E.spell.perAgi),
+      affixRows((b) => (b.stat_int ?? 0) * E.spell.perInt + (b.stat_str ?? 0) * E.spell.perStr + (b.stat_agi ?? 0) * E.spell.perAgi),
       setRow((b) => (b.stat_int ?? 0) * E.spell.perInt + (b.stat_str ?? 0) * E.spell.perStr + (b.stat_agi ?? 0) * E.spell.perAgi),
       multRow(`Damage upgrades (${tiers})`, dmgMult),
       multRow('Weapon line (staff)', loadout.spellMult),
@@ -280,6 +341,7 @@ export function statSheet(ctx: StatContext): SheetSection[] {
       { label: `Level ${level}`, value: signed(level * E.essence.perLevel) },
       { label: `Your INT ${num('stat_int')}`, value: signed(num('stat_int') * E.essence.perInt) },
       gearRows(slots, (b) => (b.stat_int ?? 0) * E.essence.perInt),
+      affixRows((b) => (b.stat_int ?? 0) * E.essence.perInt),
       setRow((b) => (b.stat_int ?? 0) * E.essence.perInt),
       final('Max essence', formatDerived('maxEssence', d.maxEssence)),
     ),
@@ -290,10 +352,12 @@ export function statSheet(ctx: StatContext): SheetSection[] {
       { label: 'Base', value: String(E.essenceRegen.base) },
       { label: `Your INT ${num('stat_int')}`, value: signed(num('stat_int') * E.essenceRegen.perInt) },
       gearRows(slots, (b) => (b.stat_int ?? 0) * E.essenceRegen.perInt),
+      affixRows((b) => (b.stat_int ?? 0) * E.essenceRegen.perInt),
       setRow((b) => (b.stat_int ?? 0) * E.essenceRegen.perInt),
       multRow(`${discipline.name}`, baseMods.essenceRegenMult),
       multRow('Covenant boons', boons.essenceRegenMult),
       multRow('Set bonuses', setMult.essenceRegenMult ?? 1),
+      multRow('Item affixes', affMult.essenceRegenMult ?? 1),
       final('Essence/s', formatDerived('essenceRegen', d.essenceRegen)),
     ),
   };
@@ -303,6 +367,7 @@ export function statSheet(ctx: StatContext): SheetSection[] {
       { label: 'Base', value: `${E.moveSpeed.base} m/s` },
       { label: `Your AGI ${num('stat_agi')}`, value: `${signed(num('stat_agi') * E.moveSpeed.perAgi * 100)}%` },
       gearRows(slots, (b) => (b.stat_agi ?? 0) * E.moveSpeed.perAgi * 100, 1, '%'),
+      affixRows((b) => (b.stat_agi ?? 0) * E.moveSpeed.perAgi * 100, 1, '%'),
       setRow((b) => (b.stat_agi ?? 0) * E.moveSpeed.perAgi * 100, 1, '%'),
       final('Move speed', `${formatDerived('moveSpeed', d.moveSpeed)} m/s`),
     ),
@@ -314,6 +379,7 @@ export function statSheet(ctx: StatContext): SheetSection[] {
       { label: 'Thrall share', value: mult(E.thrall.hpShare) },
       multRow(`${discipline.name} thralls`, baseMods.thrallHpMult),
       multRow('Set bonuses', setMult.thrallHpMult ?? 1),
+      multRow('Item affixes', affMult.thrallHpMult ?? 1),
       final('Thrall health', formatDerived('thrallHp', d.thrallHp)),
     ),
   };
@@ -324,6 +390,7 @@ export function statSheet(ctx: StatContext): SheetSection[] {
       { label: 'Thrall share', value: mult(E.thrall.damageShare) },
       multRow(`${discipline.name} thralls`, baseMods.thrallDamageMult),
       multRow('Set bonuses', setMult.thrallDamageMult ?? 1),
+      multRow('Item affixes', affMult.thrallDamageMult ?? 1),
       final('Thrall damage', formatDerived('thrallDamage', d.thrallDamage)),
     ),
   };
@@ -334,12 +401,13 @@ export function statSheet(ctx: StatContext): SheetSection[] {
 
   const statLine = (k: StatKey, help: string): SheetLine => ({
     id: k, label: STAT_LABELS[k], value: String(total[k]), help,
-    rows: rowsOf({ label: 'Character', value: String(base[k]) }, gearRows(slots, (b) => b[k] ?? 0, 0), setRow((b) => b[k] ?? 0, 0), final(STAT_LABELS[k], String(total[k]))),
+    rows: rowsOf({ label: 'Character', value: String(base[k]) }, gearRows(slots, (b) => b[k] ?? 0, 0), affixRows((b) => b[k] ?? 0, 0), setRow((b) => b[k] ?? 0, 0), final(STAT_LABELS[k], String(total[k]))),
   });
 
   return [
     { id: 'derived', title: 'What you can do', lines: [health, spell, essence, regen, move, thrallHp, thrallDmg, dmgUp] },
     { id: 'sets', title: 'Set bonuses', lines: setSheetLines(setRes.sets, discipline) },
+    { id: 'affixes', title: 'Item affixes', lines: affixSheetLines(slots, discipline) },
     {
       id: 'stats', title: 'Stats',
       lines: [
@@ -592,6 +660,9 @@ const REASON: Record<ScoreTerm, [string, string]> = {
   set: ['a set bonus', 'a lost set bonus'],
 };
 
+/** The reason for a swing in mods-only value when no set bonus changed (item affixes: ward, Miasma, Withered stacks, corpse healing). */
+const REASON_AFFIX: [string, string] = ['stronger ward or rite effects', 'weaker ward or rite effects'];
+
 const SAME_AT = 1;
 const num = (x: number) => `${Math.round(Math.abs(x))}%`;
 
@@ -615,12 +686,14 @@ export function itemVerdict(ctx: StatContext, item: InventorySlot): ItemVerdict 
     const dv = (b.terms[k] - a.terms[k]) * sign;
     if (dv > bestVal) { bestVal = dv; best = k; }
   }
-  const reason = bestVal > 0 ? REASON[best][sign > 0 ? 0 : 1] : '';
+  const sets = diffSetBonuses(ctx.slots, sim.slots, ctx.discipline);
+  const setNote = setDiffText(sets);
+  // The `set` term is every mods-only effect: a set bonus, or ward / Miasma / Withered affixes. Name what actually moved.
+  const viaAffix = best === 'set' && !sets.gained.length && !sets.lost.length;
+  const reason = bestVal > 0 ? (viaAffix ? REASON_AFFIX : REASON[best])[sign > 0 ? 0 : 1] : '';
   const names = replaced.map((r) => r.name).join(' and ');
   const slotLabel = EQUIP_SLOTS.find((e) => e.id === sim.gearSlot)?.label.toLowerCase() ?? 'gear';
   const tail = reason ? ` (${reason})` : '';
-  const sets = diffSetBonuses(ctx.slots, sim.slots, ctx.discipline);
-  const setNote = setDiffText(sets);
   const text =
     (kind === 'upgrade'
       ? empty

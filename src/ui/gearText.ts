@@ -1,7 +1,8 @@
 import type { InventorySlot } from '../net/types';
 import { STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
 import { formatDerived, type StatDeltaLine } from '../gameplay/characterStats';
-import { compareEquip, effectText, itemStatEffects, itemVerdict, simulateEquip, type StatContext } from '../gameplay/gearStats';
+import { compareEquip, effectText, itemAffixEffects, itemStatEffects, itemVerdict, simulateEquip, type StatContext } from '../gameplay/gearStats';
+import { affixLines } from '../gameplay/affixes';
 import { ARMOR_BY_ID } from '../content/armorSets';
 import type { SetDiff } from '../gameplay/setBonuses';
 import { effectRelevant, setDiffText, setStatus, wornArmor } from '../gameplay/setBonuses';
@@ -28,16 +29,38 @@ export function badgeHtml(ctx: StatContext | null, slot: InventorySlot): string 
   return `<span class="gs-badge ${v.kind}" title="${esc(v.text)}">${ARROW[v.kind]}</span>`;
 }
 
-/** "+6 VIT → +48 health (+22 thrall health)" for each stat on the item, for THIS character. */
-export function itemStatsHtml(ctx: StatContext | null, slot: InventorySlot): string {
-  const lead = verdictHtml(ctx, slot);
-  if (!slot.stat_bonus) return lead;
+/** "Item level 22 · 2 affixes" under the type line of a rolled piece; nothing for plain gear. */
+export function itemLevelHtml(slot: InventorySlot, inline = false): string {
+  const inst = slot.inst;
+  if (!inst) return '';
+  const n = inst.affixes.length;
+  const text = `Item level <b>${inst.ilvl}</b> \u00B7 ${n ? `${n} ${n === 1 ? 'affix' : 'affixes'}` : 'no affixes'}`;
+  return inline ? ` <span class="gs-ilvl-inline">\u00B7 ${text}</span>` : `<div class="gs-ilvl">${text}</div>`;
+}
+
+/** The affix lines: what each rolled line says, and (for you) what it does. Necromancer levers are marked and tinted. */
+export function affixesHtml(ctx: StatContext | null, slot: InventorySlot): string {
+  if (!slot.inst) return '';
+  if (!ctx) return affixLines(slot).map((l) => `<div class="stat gs-affix${l.necro ? ' necro' : ''}"><b>${esc(l.text)}</b></div>`).join('');
+  return itemAffixEffects(ctx, slot)
+    .map((e) => {
+      const fx = e.lines.length ? effectText(e.lines) : e.relevant ? '' : 'no effect for you';
+      return `<div class="stat gs-stat gs-affix${e.necro ? ' necro' : ''}${e.relevant ? '' : ' idle'}"><b>${e.necro ? '<i class="mk" aria-hidden="true">\u2020</i>' : ''}${esc(e.text)}</b>${fx ? `<span class="fx" title="${esc(fx)}">${esc(fx)}</span>` : ''}</div>`;
+    })
+    .join('');
+}
+
+/** "+6 VIT → +48 health (+22 thrall health)" for each stat on the item, for THIS character; then the item's affixes. */
+export function itemStatsHtml(ctx: StatContext | null, slot: InventorySlot, withVerdict = true): string {
+  const lead = withVerdict ? verdictHtml(ctx, slot) : '';
+  const extra = affixesHtml(ctx, slot);
+  if (!slot.stat_bonus) return lead + extra;
   if (!ctx) {
-    return STAT_KEYS.filter((k) => slot.stat_bonus![k]).map((k) => `<div class="stat">+${slot.stat_bonus![k]} ${STAT_LABELS[k]}</div>`).join('');
+    return STAT_KEYS.filter((k) => slot.stat_bonus![k]).map((k) => `<div class="stat">+${slot.stat_bonus![k]} ${STAT_LABELS[k]}</div>`).join('') + extra;
   }
   return lead + itemStatEffects(ctx, slot)
-    .map((e) => `<div class="stat gs-stat"><b>${esc(e.head)}</b><span class="fx">${e.lines.length ? esc(effectText(e.lines)) : 'no effect for you'}</span></div>`)
-    .join('');
+    .map((e) => `<div class="stat gs-stat"><b>${esc(e.head)}</b><span class="fx" title="${e.lines.length ? esc(effectText(e.lines)) : 'no effect for you'}">${e.lines.length ? esc(effectText(e.lines)) : 'no effect for you'}</span></div>`)
+    .join('') + extra;
 }
 
 const chip = (l: StatDeltaLine) => `<span class="${l.tone}">${l.text} ${l.label}</span>`;

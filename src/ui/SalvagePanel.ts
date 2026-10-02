@@ -6,6 +6,7 @@ import { LOCK_SVG, itemIcon } from './InventoryPanel';
 import { salvageBelowRare, type ItemLocks } from '../gameplay/itemLocks';
 import { SALVAGE_RARITIES, isSalvageGear, salvagePreview } from '../gameplay/salvageRules';
 import type { Skills } from '../gameplay/Gathering';
+import { rollOf } from '../gameplay/affixes';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -79,11 +80,11 @@ export class SalvagePanel {
 
   /** "2-3 Silver Ingot or Steel Ingot, Grave Dust 1-2, ..." for one piece. */
   private previewLine(slot: InventorySlot) {
-    const p = salvagePreview({ id: slot.item_id, item_type: slot.item_type, rarity: slot.rarity });
+    const p = salvagePreview({ id: slot.item_id, item_type: slot.item_type, rarity: slot.base_rarity ?? slot.rarity, ...rollOf(slot) });
     const mats = p.materials.map((id) => itemMeta(id).name).join(' or ');
     const qty = p.materialQty[0] === p.materialQty[1] ? `${p.materialQty[0]}` : `${p.materialQty[0]}-${p.materialQty[1]}`;
     const reagents = p.reagents.map((r) => `${itemMeta(r.id).name}${r.qty[0] !== r.qty[1] ? ` ×${r.qty[0]}-${r.qty[1]}` : ''}${r.chance < 1 ? ` (${Math.round(r.chance * 100)}%)` : ''}`).join(', ');
-    return `${qty} ${mats} · ${reagents}`;
+    return `${qty} ${mats}${p.extraChance > 0 ? ` (+1 ${Math.round(p.extraChance * 100)}%)` : ''} · ${reagents}`;
   }
 
   private render() {
@@ -97,7 +98,7 @@ export class SalvagePanel {
     const level = this.skills.shown('salvaging');
     const picked = gear.filter((g) => this.chosen.has(g.slot_index));
     const below = salvageBelowRare(this.inventory.all, this.locks);
-    const xp = picked.reduce((n, g) => n + salvagePreview({ id: g.item_id, item_type: g.item_type, rarity: g.rarity }).xp, 0);
+    const xp = picked.reduce((n, g) => n + salvagePreview({ id: g.item_id, item_type: g.item_type, rarity: g.base_rarity ?? g.rarity, ...rollOf(g) }).xp, 0);
     const r = this.result;
     this.el.innerHTML = `
       <div class="cw-panel-head">
@@ -105,14 +106,14 @@ export class SalvagePanel {
         <span class="cw-skill-total">Salvaging <b>${level.level}</b> <small>${level.xp.toLocaleString()} / ${level.next.toLocaleString()} XP</small></span>
         <button class="cw-icon-btn" data-close aria-label="Close grinder">✕</button>
       </div>
-      <p class="cw-codex-note">Feed it gear you will not wear. It gives back <b>ingots</b> (or <b>planks</b> from staffs, wands and grimoires) by rarity, plus <b>Grave Dust</b> and other alchemy reagents. Higher Salvaging adds a chance of an extra material (+0.5% a level).</p>
+      <p class="cw-codex-note">Feed it gear you will not wear. It gives back <b>ingots</b> (or <b>planks</b> from staffs, wands and grimoires) by rarity, plus <b>Grave Dust</b> and other alchemy reagents. Higher Salvaging adds a chance of an extra material (+0.5% a level); gear with a high item level or affixes adds more.</p>
       <div class="cw-salvage-list" role="group" aria-label="Gear in your bag">${gear.length ? gear.map((g) => {
         const locked = this.locks.isLocked(g);
         const on = this.chosen.has(g.slot_index);
         return `<label class="cw-salv ${locked ? 'locked' : ''} ${on ? 'on' : ''}" style="--rarity:${RARITY_COLOR[g.rarity] ?? RARITY_COLOR.common}">
           <input type="checkbox" data-pick="${g.slot_index}" ${on ? 'checked' : ''} ${locked || this.busy ? 'disabled' : ''} aria-label="Salvage ${esc(g.name)}" />
           <img src="${itemIcon(g)}" alt="" onerror="this.style.visibility='hidden'" />
-          <span class="nm"><b style="color:${RARITY_COLOR[g.rarity] ?? RARITY_COLOR.common}">${esc(g.name)}</b> <small>${RARITY_MARK[g.rarity] ?? ''} ${g.rarity}</small>${locked ? `<span class="lk" title="Locked">${LOCK_SVG}</span>` : ''}</span>
+          <span class="nm"><b style="color:${RARITY_COLOR[g.rarity] ?? RARITY_COLOR.common}">${esc(g.name)}</b> <small>${RARITY_MARK[g.rarity] ?? ''} ${g.rarity}${g.inst ? ` · ilvl ${g.inst.ilvl}` : ''}</small>${locked ? `<span class="lk" title="Locked">${LOCK_SVG}</span>` : ''}</span>
           <span class="yl">${esc(this.previewLine(g))}</span>
         </label>`;
       }).join('') : '<p class="cw-hint-text">You carry no gear to salvage. Worn gear never appears here.</p>'}</div>

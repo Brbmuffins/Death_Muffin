@@ -5,6 +5,8 @@ const runtimeNecro = path.join(__dirname, 'necro-progress/necro-rules.cjs');
 const necroRules = require(fs.existsSync(runtimeNecro) ? runtimeNecro : '../../vps-handoff/necro-progress/necro-rules.cjs');
 const contractRules = require('./gathering/contract-rules.cjs');
 const gather = require('./gathering/gathering-rules.cjs');
+const lootInstances = require('./loot-instances.cjs');
+const affix = lootInstances.affix;
 
 const parse = (value, fallback = null) => {
   if (value == null) return fallback;
@@ -40,7 +42,9 @@ async function capture(conn, characterId, username) {
     stat_str: Number(c.stat_str), stat_agi: Number(c.stat_agi), stat_int: Number(c.stat_int), stat_vit: Number(c.stat_vit),
     pos_x: Number(c.pos_x), pos_y: Number(c.pos_y), pos_z: Number(c.pos_z), pos_map: c.pos_map, orientation: Number(c.orientation),
   };
-  const [inventory] = await conn.execute('SELECT slot_index, item_id, quantity, equipped, equipped_slot FROM inventory WHERE character_id = ? ORDER BY slot_index', [characterId]);
+  const [inventory] = await conn.execute(
+    `SELECT inv.slot_index, inv.item_id, inv.quantity, inv.equipped, inv.equipped_slot, li.ilvl, li.affixes
+       FROM inventory inv LEFT JOIN loot_instances li ON li.id = inv.instance_id WHERE inv.character_id = ? ORDER BY inv.slot_index`, [characterId]);
   const [professions] = await conn.execute('SELECT profession_id, skill_level, skill_xp FROM professions WHERE character_id = ? ORDER BY profession_id', [characterId]);
   const [[necroRow]] = await conn.execute('SELECT state FROM character_necro_progress WHERE character_id = ?', [characterId]);
   const [[chronRow]] = await conn.execute('SELECT life, run, run_no, run_started_at FROM character_chronicle WHERE character_id = ?', [characterId]);
@@ -54,7 +58,9 @@ async function capture(conn, characterId, username) {
   const doneToday = contractRows.filter((r) => r.day === today);
   return {
     username, character,
-    slots: inventory.map((row) => ({ slot_index: Number(row.slot_index), item_id: row.item_id, quantity: Number(row.quantity), equipped: Number(row.equipped) ? 1 : 0, equipped_slot: row.equipped_slot })),
+    // A rolled piece carries its item level and affixes (never its server id: an import mints fresh, validated instances).
+    slots: inventory.map((row) => ({ slot_index: Number(row.slot_index), item_id: row.item_id, quantity: Number(row.quantity), equipped: Number(row.equipped) ? 1 : 0, equipped_slot: row.equipped_slot,
+      ...(row.ilvl != null ? { inst: { ilvl: Number(row.ilvl), affixes: lootInstances.parseAffixes(row.affixes) } } : {}) })),
     professions: professions.map((row) => ({ profession_id: row.profession_id, skill_level: Number(row.skill_level), skill_xp: Number(row.skill_xp) })),
     necro: necroRules.normalise(parse(necroRow?.state, necroRules.blankState())),
     chronicle: {
@@ -82,6 +88,8 @@ function validate(account, onlineClass) {
     const index = slot?.slot_index;
     if (!bounded(index, 0, gather.BAG_SLOTS - 1) && !bounded(index, 100, 108) && !gather.isBeltSlot(index)) throw new RangeError('Invalid inventory slot');
     if (occupied.has(index) || !itemId(slot.item_id) || !bounded(slot.quantity, 1, 9999)) throw new RangeError('Invalid inventory item');
+    // A rolled piece must be one legal roll (known affixes, in range for its item level); the item type is checked again against the items table in apply().
+    if (slot.inst != null && (slot.quantity !== 1 || affix.instanceProblem(slot.inst, 'weapon'))) throw new RangeError('Invalid item roll');
     occupied.add(index);
   }
   if (!Array.isArray(account.professions) || account.professions.length > 12) throw new RangeError('Invalid professions');
@@ -118,7 +126,7 @@ async function apply(conn, characterId, account) {
   const reservedSlots = { 100: 'head', 101: 'chest', 102: 'legs', 103: 'feet', 104: 'hands', 105: 'main_hand', 106: 'off_hand', 107: 'ring', 108: 'trinket' };
   const ids = [...new Set(account.slots.map((s) => s.item_id))];
   if (ids.length) {
-    const [known] = await conn.query('SELECT id, stackable, max_stack_size, equipment_slot FROM items WHERE id IN (?)', [ids]);
+    const [known] = await conn.query('SELECT id, stackable, max_stack_size, equipment_slot, item_type FROM items WHERE id IN (?)', [ids]);
     const policy = new Map(known.map((r) => [r.id, r]));
     for (const slot of account.slots) {
       const item = policy.get(slot.item_id);
@@ -128,12 +136,28 @@ async function apply(conn, characterId, account) {
       // Tool belt (110-113): the slot's tool kind must match the item; gear (100-108): its own equipment slot.
       const beltKind = gather.beltSlotKind(slot.slot_index);
       if (beltKind ? gather.toolKindOf(slot.item_id) !== beltKind : slot.slot_index >= 100 && item.equipment_slot !== reservedSlots[slot.slot_index]) throw new RangeError(`Invalid equipped item ${slot.item_id}`);
+      if (slot.inst != null) {
+        const problem = affix.instanceProblem(slot.inst, item.item_type);
+        if (problem) throw new RangeError(`${slot.item_id}: ${problem}`);
+      }
     }
   }
+  // The replaced inventory's rolled pieces go with it; the imported ones are re-created below as fresh instances of this account.
+  const [oldInstances] = await conn.query('SELECT instance_id FROM inventory WHERE character_id = ? AND instance_id IS NOT NULL', [characterId]);
   await conn.execute('DELETE FROM inventory WHERE character_id = ?', [characterId]);
+  await lootInstances.deleteInstances(conn, oldInstances.map((r) => Number(r.instance_id)));
+  let accountId = null;
   for (const slot of account.slots) {
+    const equippedSlot = reservedSlots[slot.slot_index] ?? (gather.beltSlotKind(slot.slot_index) ? gather.beltEquippedSlot(gather.beltSlotKind(slot.slot_index)) : null);
+    if (slot.inst != null) {
+      if (accountId === null) [[{ account_id: accountId }]] = await conn.execute('SELECT account_id FROM characters WHERE id = ?', [characterId]);
+      const instanceId = await lootInstances.insertInstance(conn, accountId, slot.item_id, slot.inst);
+      await conn.execute('INSERT INTO inventory (character_id, slot_index, item_id, quantity, equipped, equipped_slot, instance_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [characterId, slot.slot_index, slot.item_id, slot.quantity, slot.slot_index >= 100 ? 1 : 0, equippedSlot, instanceId]);
+      continue;
+    }
     await conn.execute('INSERT INTO inventory (character_id, slot_index, item_id, quantity, equipped, equipped_slot) VALUES (?, ?, ?, ?, ?, ?)',
-      [characterId, slot.slot_index, slot.item_id, slot.quantity, slot.slot_index >= 100 ? 1 : 0, reservedSlots[slot.slot_index] ?? (gather.beltSlotKind(slot.slot_index) ? gather.beltEquippedSlot(gather.beltSlotKind(slot.slot_index)) : null)]);
+      [characterId, slot.slot_index, slot.item_id, slot.quantity, slot.slot_index >= 100 ? 1 : 0, equippedSlot]);
   }
 
   await conn.execute('DELETE FROM professions WHERE character_id = ?', [characterId]);

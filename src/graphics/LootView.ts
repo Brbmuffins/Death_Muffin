@@ -4,6 +4,7 @@ import type { LootDrop } from '../gameplay/loot';
 import type { Effects, Handle } from './Effects';
 import { fx } from './fxTextures';
 import { playFx } from './binbun/presets';
+import { effectiveRarity } from '../gameplay/affixRules';
 
 type Kind = 'gold' | 'shard' | 'item';
 
@@ -83,7 +84,9 @@ export class LootView {
   item(x: number, z: number, drop: LootDrop) {
     const [px, pz] = this.scatter(x, z, 0.7);
     const meta = itemMeta(drop.item_id);
-    const color = new THREE.Color(RARITY_COLOR[meta.rarity]);
+    // A rolled piece glows in the colour of its affix count (green, blue, purple), so a three-affix drop reads from across the room.
+    const rarity = (drop.instance ? effectiveRarity(meta.rarity, drop.instance.affixes.length) : meta.rarity) as typeof meta.rarity;
+    const color = new THREE.Color(RARITY_COLOR[rarity]);
     const url = meta.icon ?? `art/items/${drop.item_id}.png`;
     let tex = this.iconTex.get(url);
     if (!tex) {
@@ -95,7 +98,7 @@ export class LootView {
     icon.scale.setScalar(0.62);
     icon.position.set(px, 0.7, pz);
     const beam =
-      meta.rarity === 'common'
+      rarity === 'common'
         ? undefined
         : new THREE.Mesh(
             beamGeo,
@@ -106,7 +109,7 @@ export class LootView {
     if (beam) this.group.add(beam);
     const glow = this.effects.decal({ tex: fx.glow(), color, x: px, z: pz, r: 0.9, duration: 1e9, opacity: 0.7 });
     // Rarity marker from the Binbun loot pack, in the game's rarity colour (the light pillar and glow stay).
-    const marker = meta.rarity === 'common' || meta.rarity === 'uncommon' ? undefined : playFx(this.effects.binbun, `loot_${meta.rarity}`, { x: px, z: pz, colors: [RARITY_COLOR[meta.rarity], RARITY_COLOR[meta.rarity], '#1a1620'], scale: 0.55, alpha: 0.85 });
+    const marker = rarity === 'common' || rarity === 'uncommon' ? undefined : playFx(this.effects.binbun, `loot_${rarity}`, { x: px, z: pz, colors: [RARITY_COLOR[rarity], RARITY_COLOR[rarity], '#1a1620'], scale: 0.55, alpha: 0.85 });
     this.drops.push({ kind: 'item', obj: icon, x: px, z: pz, amount: drop.quantity, item: drop, t: 0, flying: false, beam, glow, marker });
   }
 

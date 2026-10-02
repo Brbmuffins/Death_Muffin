@@ -3,6 +3,8 @@ import type { Discipline, DisciplineMods } from '../content/disciplines';
 import { AREAS } from '../content/areas';
 import { ARMOR_BY_ID, ARMOR_PIECES, ARMOR_PARTS, type ArmorPart, type ArmorPiece } from '../content/armorSets';
 import { equippedBySlot } from '../content/gear';
+import { affixSignature, wornAffixTotals } from './affixes';
+import type { AffixTotals } from './affixRules';
 import {
   SET_NAMES,
   bonusesOf,
@@ -23,7 +25,11 @@ import {
  *     builds the boon-adjusted discipline (WorldScene.applyBoons).
  */
 
-/** The combined mult / add / stat effect of every active bonus. */
+/**
+ * The combined mult / add / stat effect of every active bonus. Worn item affixes (affixes.ts) ride the same three pipelines, so
+ * `SetResolution.totals` is sets + affixes together: that is what the engine folds in. The sheet attributes them separately
+ * through `setTotals` and `affixTotals`.
+ */
 export interface SetTotals {
   mult: Partial<Record<SetMultKey, number>>;
   add: Partial<Record<SetAddKey, number>>;
@@ -67,7 +73,12 @@ export interface SetResolution {
   /** Sets with at least one worn piece, most worn first (ascended before first on a tie). */
   sets: SetStatus[];
   active: ResolvedBonus[];
+  /** Set bonuses AND worn-gear affixes: everything the stat pipeline folds in. */
   totals: SetTotals;
+  /** Set bonuses only. */
+  setTotals: SetTotals;
+  /** Worn-gear affixes only. */
+  affixTotals: SetTotals;
 }
 
 const PIECES_BY_SET = new Map<string, ArmorPiece[]>();
@@ -115,11 +126,17 @@ export function resolveSetBonuses(slots: readonly InventorySlot[]): SetResolutio
   const bySet = new Map<string, ArmorPart[]>();
   for (const p of wornArmor(slots)) bySet.set(p.setId, [...(bySet.get(p.setId) ?? []), p.part]);
   const sets = [...bySet].map(([id, parts]) => setStatus(id, parts)).sort((a, b) => b.worn - a.worn || b.collection - a.collection);
-  const totals = emptyTotals();
+  const setTotals = emptyTotals();
   const active: ResolvedBonus[] = [];
-  for (const s of sets) for (const b of s.bonuses) if (b.active) { active.push(b); addEffect(totals, b.effect); }
-  return { sets, active, totals };
+  for (const s of sets) for (const b of s.bonuses) if (b.active) { active.push(b); addEffect(setTotals, b.effect); }
+  const affixTotals = asSetTotals(wornAffixTotals(slots));
+  const totals = emptyTotals();
+  for (const t of [setTotals, affixTotals]) addEffect(totals, t);
+  return { sets, active, totals, setTotals, affixTotals };
 }
+
+/** Affix totals have the same shape as set totals (the keys are a subset), so they merge with the same code. */
+const asSetTotals = (t: AffixTotals): SetTotals => ({ mult: { ...t.mult }, add: { ...t.add }, stats: { ...t.stats } });
 
 /** Flat stats from set bonuses (added to gear in computeStats). */
 export function setStatTotals(slots: readonly InventorySlot[]): Partial<Record<SetStatKey, number>> {
@@ -129,6 +146,12 @@ export function setStatTotals(slots: readonly InventorySlot[]): Partial<Record<S
 /** A short stable string for the active bonuses; the scene rebuilds the discipline when it changes. */
 export function setSignature(slots: readonly InventorySlot[]): string {
   return resolveSetBonuses(slots).active.map((b) => `${b.setId}:${b.pieces}`).join('|');
+}
+
+/** Sets and worn rolls together: the scene rebuilds the discipline when this changes. */
+export function outfitSignature(slots: readonly InventorySlot[]): string {
+  const rolls = affixSignature(slots);
+  return setSignature(slots) + (rolls ? `#${rolls}` : '');
 }
 
 // --- Folding into the discipline mods ---------------------------------------------------------------
@@ -158,6 +181,11 @@ export function withSetBonuses(d: Discipline, slots: readonly InventorySlot[]): 
   const bare = now ? shift(d.mods, now, -1) : d.mods;
   if (!now && !Object.keys(next.mult).length && !Object.keys(next.add).length) return d;
   return { ...d, mods: applySetMods(bare, next) };
+}
+
+/** The mods with one more effect folded in (an item's affix, judged on top of what is already worn); applySetMods' bookkeeping is not touched. */
+export function foldEffect(mods: DisciplineMods, e: SetEffect): DisciplineMods {
+  return shift(mods, { mult: e.mult ?? {}, add: e.add ?? {}, stats: {} }, 1);
 }
 
 /** The discipline with set bonuses removed (to tell boons and sets apart on the sheet). */

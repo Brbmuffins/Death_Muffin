@@ -137,7 +137,7 @@ Keep the art style; make motion smoother. Practical steps, in the order that pay
 7. **Replace the worst Tripo clips** with retargeted library clips where measurements say they are beyond fixing.
 
 ### X3 · Loot item level and affixes
-Already the next item in the grind loop (`docs/GRIND-LOOP.md` §3 #2). Items roll an item level and affixes on the server, so each drop is a real upgrade decision. It depends on N2, which makes stats readable.
+**Built 2 Oct 2026 on branch `dm/affixes` (not deployed; needs migration 020).** Gear rolls an item level and up to three affixes on the server, so each drop is a real upgrade decision; necromancer levers (thrall damage and health, essence regeneration, Miasma, Withered, ward) plug into the stat pipeline that armor sets use. Next for it: tune the ranges against the balance harness, then crafting or re-rolling (gold sink) and affix-aware set drops. See `docs/GRIND-LOOP.md` §3 #2.
 
 ### X4 · Open audits
 - Four-discipline visual audit (`tools/qa/necro-audit.cjs`, run one discipline at a time).

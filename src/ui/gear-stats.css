@@ -23,6 +23,12 @@
 /* The detail strip gets the compare table beside the item text instead of stacking taller. */
 .cw-bag-detail .info { flex: 1; min-width: 0; }
 .cw-bag-detail .info.gs-wide { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 0 18px; align-items: start; }
+/* The name, type, item level and upgrade verdict span the whole strip; stats and the comparison sit below in two columns. */
+.cw-bag-detail .info.gs-wide .gs-head { grid-column: 1 / -1; }
+.cw-bag-detail .gs-head .gs-verdict { margin: 2px 0 4px; }
+.cw-bag-detail .gs-stat .fx { font-size: 11px; }
+.gs-ilvl-inline { color: var(--cw-text-muted); text-transform: none; }
+.gs-ilvl-inline b { color: var(--cw-bone-100); font-family: var(--cw-font-numeric); }
 .cw-bag-detail .info.gs-wide .gs-cmp { margin-top: 0; }
 /* One layout for the detail strip: item text (+ its comparison) on the left, every action stacked in one column
    on the right (Equip/Drink/Eat first, then Lock, Salvage, Sell), so nothing stretches or falls off the bottom. */
@@ -116,3 +122,30 @@
 .gs-line.set .gs-rows .r.up span, .gs-line.set .gs-rows .r.up b { color: var(--cw-ok); }
 .gs-line.set .chev { visibility: hidden; }
 .gs-line.set .val { color: var(--cw-ok); }
+
+
+/* Item level and affixes. Necromancer levers are tinted violet and carry a dagger so they read at a glance. */
+.gs-ilvl { font-size: 12px; color: var(--cw-text-muted); margin: 1px 0 3px; }
+.gs-ilvl b { color: var(--cw-bone-100); font-family: var(--cw-font-numeric); }
+.gs-affix b { color: #9fc4ff; }
+.gs-affix.necro b { color: var(--cw-spell-300); }
+.gs-affix .mk { font-style: normal; margin-right: 4px; opacity: .9; }
+.gs-affix.idle b { opacity: .55; }
+.gs-affix.idle .fx { font-style: italic; }
+.cw-codex-table tr.necro td:first-child { color: var(--cw-spell-300); font-weight: 600; }
+
+/* The Reliquary is wider and a little taller so a rolled piece's name, item level, upgrade line, base stats, affixes and the comparison
+   fit the detail strip at 1280x800 without scrolling. */
+.cw-panel-float.wide.cw-reliquary { width: 780px; top: 12px; max-height: calc(100vh - 140px); }
+.cw-reliquary .cw-inv-body { justify-content: center; }
+.cw-reliquary [data-error]:empty { display: none; }
+.cw-panel-float.wide.cw-reliquary { padding-top: 16px; padding-bottom: 16px; }
+/* Name and type share a line in the detail strip (they wrap onto two when the name is long). */
+.cw-bag-detail .gs-head .name, .cw-bag-detail .gs-head .type { display: inline-block; vertical-align: baseline; }
+.cw-bag-detail .gs-head .type { margin-left: 10px; }
+.cw-reliquary .cw-inv-body { margin-bottom: 4px; }
+.cw-reliquary .cw-bag-detail { padding-top: 6px; padding-bottom: 6px; }
+/* In the detail strip each stat or affix is one line: the number first, what it does for you after it (cut with an ellipsis, full text on hover and in the tooltip). */
+.cw-bag-detail .gs-stat { flex-wrap: nowrap; }
+.cw-bag-detail .gs-stat b { flex: none; }
+.cw-bag-detail .gs-stat .fx { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
