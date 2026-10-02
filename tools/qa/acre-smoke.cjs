@@ -1,14 +1,14 @@
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { chromium } = require(process.env.DM_PLAYWRIGHT_MODULE || 'playwright');
+const { SWIFTSHADER_ARGS, watchErrors } = require('./lib/qa-common.cjs');
 const artifactDir = process.env.DM_QA_ARTIFACT_DIR || require('node:os').tmpdir();
 async function main() {
- const browser = await chromium.launch({ headless: true, executablePath: process.env.DM_CHROMIUM_PATH || undefined, args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+ const browser = await chromium.launch({ headless: true, executablePath: process.env.DM_CHROMIUM_PATH || undefined, args: SWIFTSHADER_ARGS });
  try {
   for (const quality of ['low', 'high']) {
    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-   const errors = []; page.on('pageerror', e => errors.push(e.message));
-   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+   const { errors } = watchErrors(page); // ignores @fontsource 403s (node_modules symlinked outside the Vite root)
    await page.addInitScript(q => localStorage.setItem('dm_settings_v1', JSON.stringify({ quality: q, tips: false, autoCombat: false, autoGather: false })), quality);
    await page.goto(process.env.DM_QA_URL || 'http://127.0.0.1:5199/?offline');
    await page.getByRole('button', { name: 'New to the Covenant? Create an account' }).click();

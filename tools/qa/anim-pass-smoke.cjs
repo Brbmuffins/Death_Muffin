@@ -31,6 +31,7 @@ function legBones(def) {
   for (const [k, leg] of Object.entries(JSON.parse(fs.readFileSync(f, 'utf8')).legs)) legs[k] = [...leg.chain, leg.paw].map((n) => n.replace(/\s/g, '_').replace(/[\[\]./:]/g, '')); // three's loader strips these from node names
   return legs;
 }
+const { watchErrors, preloadModules, shot: shotFile } = require('./lib/qa-common.cjs');
 const log = (...a) => console.error(new Date().toISOString().slice(11, 19), ...a);
 
 async function openHero(browser, errors) {
@@ -48,6 +49,7 @@ async function openHero(browser, errors) {
   await page.locator('.cw-disc').filter({ hasText: 'Gravecaller' }).click();
   await page.waitForFunction(() => window.__cwDebug?.avatar.c.loaded, null, { timeout: 90000 });
   await page.evaluate(() => { const d = window.__cwDebug; d.goto('graves'); d.unlockAll?.(); d.god(true); d.clear(); d.zoom(0.4); d.advance(0.5); });
+  await preloadModules(page, { hitstop: '/src/graphics/hitstop.ts', settings: '/src/app/settings.ts', enemies: '/src/content/enemies.ts', api: '/src/net/api.ts' });
   return page;
 }
 
@@ -61,9 +63,9 @@ async function main() {
 
   // --- impact feel: hitstop, visual knockback, death settle (all drawn-only; the sim is never touched) ---
   report.impact = await page.evaluate(async () => {
-    const { getRuntime } = await import('/src/app/GameRuntime.ts');
-    const { hitstop, FRAME } = await import('/src/graphics/hitstop.ts');
-    const { settings } = await import('/src/app/settings.ts');
+    const { getRuntime } = window.__qaMods.runtime;
+    const { hitstop, FRAME } = window.__qaMods.hitstop;
+    const { settings } = window.__qaMods.settings;
     const dbg = window.__cwDebug;
     const scene = getRuntime().view;
     const spawn = async (def, dist) => {
@@ -167,7 +169,7 @@ async function main() {
 
   // --- enemies: heading and foot slip ---
   const defs = await page.evaluate(async () => {
-    const { ENEMIES } = await import('/src/content/enemies.ts');
+    const { ENEMIES } = window.__qaMods.enemies;
     const skip = new Set(['niche', 'fen_wisp', 'mire_leech', 'moth', 'bat', 'wraith', 'gargoyle', 'seraph']);
     return Object.keys(ENEMIES).filter((d) => !skip.has(d));
   });
@@ -176,7 +178,7 @@ async function main() {
   report.enemies = {};
   for (const def of defs) {
     report.enemies[def] = await page.evaluate(async ([def, legNames]) => {
-    const { getRuntime } = await import('/src/app/GameRuntime.ts');
+    const { getRuntime } = window.__qaMods.runtime;
     const dbg = window.__cwDebug;
     const scene = getRuntime().view;
     const V3 = scene.rig.camera.position.constructor;
@@ -334,7 +336,7 @@ async function main() {
   // (The mesh/bone metrics above are unreliable on the quadruped rigs; this is the signed measure used to calibrate them.)
   const houndFeet = Object.values(legBones('hound')).map((l) => l[l.length - 1]); // the recipe's paw bones (ankles), planted by construction
   report.houndPlanted = await page.evaluate(async (houndFeet) => {
-    const { getRuntime } = await import('/src/app/GameRuntime.ts');
+    const { getRuntime } = window.__qaMods.runtime;
     const dbg = window.__cwDebug; const scene = getRuntime().view; const V3 = scene.rig.camera.position.constructor;
     const med = (a) => { a = a.slice().sort((x, y) => x - y); return a[Math.floor(a.length / 2)]; };
     dbg.clear(); scene.player.x = 0; scene.player.z = 0;
@@ -359,7 +361,7 @@ async function main() {
 
   // --- heading: biped toes point along the heading ---
   report.heading = await page.evaluate(async () => {
-    const { getRuntime } = await import('/src/app/GameRuntime.ts');
+    const { getRuntime } = window.__qaMods.runtime;
     const dbg = window.__cwDebug;
     const scene = getRuntime().view;
     const V3 = scene.rig.camera.position.constructor;
@@ -379,7 +381,7 @@ async function main() {
 
   // --- hero: run matches movement, turns are rate limited ---
   report.hero = await page.evaluate(async () => {
-    const { getRuntime } = await import('/src/app/GameRuntime.ts');
+    const { getRuntime } = window.__qaMods.runtime;
     const dbg = window.__cwDebug;
     const v = getRuntime().view;
     dbg.clear();
@@ -396,7 +398,7 @@ async function main() {
 
   // --- additive flinch ---
   report.flinch = await page.evaluate(async () => {
-    const { getRuntime } = await import('/src/app/GameRuntime.ts');
+    const { getRuntime } = window.__qaMods.runtime;
     const dbg = window.__cwDebug;
     const v = getRuntime().view;
     dbg.clear(); v.player.x = 0; v.player.z = 0;
@@ -418,9 +420,9 @@ async function main() {
 
   // --- crowd: 36 enemies converge on a standing hero; count overlapping pairs (centres closer than 80% of the radii) ---
   await page.evaluate(() => { const dbg = window.__cwDebug; dbg.clear(); dbg.ring('risen', 12, 7); dbg.ring('robber', 12, 9); dbg.ring('penitent', 12, 11); });
-  await page.evaluate(async () => { const { getRuntime } = await import('/src/app/GameRuntime.ts'); const v = getRuntime().view; for (let k = 0; k < 60 && [...v.views.enemies.values()].some((x) => !x.c.loaded); k++) { await new Promise((r) => setTimeout(r, 250)); window.__cwDebug.advance(0.05, false); } });
+  await page.evaluate(async () => { const { getRuntime } = window.__qaMods.runtime; const v = getRuntime().view; for (let k = 0; k < 60 && [...v.views.enemies.values()].some((x) => !x.c.loaded); k++) { await new Promise((r) => setTimeout(r, 250)); window.__cwDebug.advance(0.05, false); } });
   const sample = () => page.evaluate(async () => {
-    const { getRuntime } = await import('/src/app/GameRuntime.ts');
+    const { getRuntime } = window.__qaMods.runtime;
     const dbg = window.__cwDebug; const v = getRuntime().view;
     const items = [...dbg.sim().enemies.values()].map((e) => ({ e, view: v.views.enemies.get(e.id) })).filter((o) => o.view && o.e.state !== 'rising');
     const count = (get) => { let n = 0; for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) { const a = get(items[i]), b = get(items[j]); if (Math.hypot(a[0] - b[0], a[1] - b[1]) < (items[i].e.radius + items[j].e.radius) * 0.8) n++; } return n; };
@@ -447,8 +449,8 @@ async function main() {
     await page.evaluate(() => { const d = window.__cwDebug; d.clear(); d.zoom(0.1); d.advance(2); });
     await page.addStyleTag({ content: '#ui-root { display: none !important; }' });
     const equip = (id) => page.evaluate(async (id) => {
-      const { getRuntime } = await import('/src/app/GameRuntime.ts');
-      const { equipItem } = await import('/src/net/api.ts');
+      const { getRuntime } = window.__qaMods.runtime;
+      const { equipItem } = window.__qaMods.api;
       const v = getRuntime().view;
       if (!v.inventory.all.some((s) => s.item_id === id)) { v.inventory.add({ item_id: id, quantity: 1 }); await v.inventory.flush(); }
       const s = v.inventory.all.find((x) => x.item_id === id && !x.equipped);
@@ -456,12 +458,12 @@ async function main() {
     }, id);
     for (const [name, ids] of [['staff', ['staff_gold']], ['scythe', ['scythe_gold']], ['wand', ['wand_gold']], ['sickle', ['sickle_gold']], ['wand-grimoire', ['wand_gold', 'grimoire_gold']], ['wand-bell', ['wand_gold', 'mourning_bell_gold']]]) {
       for (const id of ids) await equip(id);
-      await page.waitForFunction(async () => { const { getRuntime } = await import('/src/app/GameRuntime.ts'); return [...getRuntime().view.avatar.worn.values()].every((w) => w.obj.userData.model === true); }, null, { timeout: 30000 }).catch(() => {});
+      await page.waitForFunction(async () => { const { getRuntime } = window.__qaMods.runtime; return [...getRuntime().view.avatar.worn.values()].every((w) => w.obj.userData.model === true); }, null, { timeout: 30000 }).catch(() => {});
       await page.evaluate(() => window.__cwDebug.advance(0.6));
       await page.screenshot({ path: path.join(OUT, `weapon-${name}-idle.png`), clip: { x: 300, y: 150, width: 300, height: 300 } });
       await page.evaluate(() => { const d = window.__cwDebug; d.clear(); d.ring('robber', 1, 4); d.freeze(true); d.advance(0.3, false); });
       await page.evaluate(async () => {
-        const { getRuntime } = await import('/src/app/GameRuntime.ts');
+        const { getRuntime } = window.__qaMods.runtime;
         const v = getRuntime().view;
         v.player.cooldowns?.clear?.(); v.player.castUntil = 0;
         const e = [...v.enemiesMap().values()][0];

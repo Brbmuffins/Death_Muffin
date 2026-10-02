@@ -4332,6 +4332,8 @@ export class WorldScene implements GameScene, RuntimeView {
       },
       counts: () => ({ ...this.views.counts(), loot: this.loot.count, remotes: this.remotes.size, frameMs: getRuntime().frameMs }),
       teleport: (x: number, z: number) => this.teleportTo(x, z),
+      /** QA: positions of every drop on the ground (items wait to be walked over, within 1.3 m). */
+      lootDrops: () => this.loot.debugDrops(),
       /** Ascension QA: count a Prelate kill for this run, then open the Altar. */
       prelateSlain: () => {
         this.progression.recordPrelateKill();
