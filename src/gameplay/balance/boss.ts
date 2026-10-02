@@ -9,6 +9,10 @@ import { BOSSES, type BossId } from '../../content/bosses';
 import type { Enemy, SimEvent } from '../sim/types';
 import { WorldSim } from '../sim/WorldSim';
 import { botCharacter } from './harness';
+import { EQUIP_SLOTS, equippedBySlot } from '../../content/gear';
+import { withSetBonuses } from '../setBonuses';
+import { resolveWeaponLoadout } from '../weaponLine';
+import { resolveKit, type KitName } from './kits';
 import type { Difficulty } from '../../content/difficulty';
 
 /**
@@ -33,6 +37,8 @@ export interface BossRun {
   seed?: number;
   difficulty?: Difficulty;
   ascension?: number;
+  /** Gear kit worn (balance/kits.ts); replaces the share of the `gearStats` stand-in its slots cover, as in the farming harness. Default none. */
+  kit?: KitName;
   /** Which boss (default the Prelate). */
   boss?: BossId;
 }
@@ -68,15 +74,21 @@ const DT = 0.05;
 export function runBossFight(run: BossRun): BossResult {
   const rand = mulberry32(run.seed ?? 42);
   const nav = new Nav();
-  nav.setUnlocked(['chapterhouse', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister', 'pyre']);
+  nav.setUnlocked(['chapterhouse', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'warren', 'coliseum', 'fen']);
   const bossId: BossId = run.boss ?? 'prelate';
   const area = BOSSES[bossId].area;
   const BOSS_ARENA = BOSSES[bossId].arena;
   const sim = new WorldSim(nav, rand);
   sim.difficulty = run.difficulty ?? 'medium';
   sim.ascension = run.ascension ?? 0;
-  const disc = disciplineFor(run.classIndex);
-  const stats = deriveStats(botCharacter(run.classIndex, run.level, run.gearStats), [], disc, run.damageTier);
+  const baseDisc = disciplineFor(run.classIndex);
+  const worn = resolveKit({ kit: run.kit ?? 'none', discipline: baseDisc.id, area: BOSSES[bossId].area, seed: run.seed });
+  const loadout = baseDisc.family === 'necromancer' ? resolveWeaponLoadout(equippedBySlot(worn), baseDisc.id) : null;
+  const withGear = withSetBonuses(baseDisc, worn);
+  const disc = loadout?.thrallBonus ? { ...withGear, mods: { ...withGear.mods, thrallCap: withGear.mods.thrallCap + loadout.thrallBonus } } : withGear;
+  const covered = new Set(Object.keys(equippedBySlot(worn))).size;
+  const standIn = run.gearStats * (1 - covered / EQUIP_SLOTS.length);
+  const stats = deriveStats(botCharacter(run.classIndex, run.level, standIn), worn, disc, run.damageTier);
   const sp = stats.spellPower;
   const reaction = run.reactionS ?? 0.35;
   const p = { id: 'bot', x: BOSS_ARENA.x, z: BOSS_ARENA.z + 9, hp: stats.maxHp, essence: stats.maxEssence };

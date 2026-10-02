@@ -41,7 +41,7 @@ export const BOSSES: Record<BossId, BossDef> = {
     summonId: 'kings_grave',
     summonLabel: "The King's Grave",
     shards: 2,
-    baseHp: 15500,
+    baseHp: 22000,
     modelSlug: 'boss_gravedigger_king',
     portrait: 'art/portraits/boss_gravedigger_king.webp',
     color: 0xe0a458,
@@ -58,7 +58,7 @@ export const BOSSES: Record<BossId, BossDef> = {
     summonId: 'abbess_reliquary',
     summonLabel: "The Abbess's Reliquary",
     shards: 3,
-    baseHp: 13000,
+    baseHp: 17000,
     modelSlug: 'boss_bone_abbess',
     portrait: 'art/portraits/boss_bone_abbess.webp',
     color: 0xc8a06a,
@@ -126,7 +126,7 @@ export const BOSSES: Record<BossId, BossDef> = {
     summonId: 'mire_altar',
     summonLabel: 'The Mire Altar',
     shards: 7,
-    baseHp: 32000,
+    baseHp: 42000,
     modelSlug: 'boss_mire_mother',
     portrait: '',
     color: 0x5fc4b4,
@@ -216,10 +216,10 @@ export const REGENT = {
  */
 export const MIRE = {
   /** Resurface: a ripple ring on a hummock; it bursts for `dmg` when the windup ends. `cdP` = seconds between resurfaces per phase. */
-  surface: { r: 3.7, windupMs: [2300, 2000, 1750] as [number, number, number], dmg: 42, cd: [13, 11, 9.5] as [number, number, number], windedS: 2.8, huntChance: 0.65 },
-  maul: { r: 3.4, halfDeg: 60, windupMs: 900, dmg: 26, cd: 3.2 },
+  surface: { r: 3.7, windupMs: [2300, 2000, 1750] as [number, number, number], dmg: 160, cd: [13, 11, 9.5] as [number, number, number], windedS: 2.8, huntChance: 0.65 },
+  maul: { r: 3.4, halfDeg: 60, windupMs: 900, dmg: 80, cd: 3.2 },
   /** Drowned hands rise under players wading in the open water and root them. */
-  hands: { rings: [2, 4] as [number, number], r: 1.5, windupMs: 1300, dmg: 15, rootS: 1, cd: [9, 7.5, 6.5] as [number, number, number] },
+  hands: { rings: [2, 4] as [number, number], r: 1.5, windupMs: 1300, dmg: 45, rootS: 1, cd: [9, 7.5, 6.5] as [number, number, number] },
   /** Phase 3: raise a Risen from each corpse in the Fen (at most `maxCorpses`); none left = the rite fails and she staggers. */
   rite: { windupMs: 2600, maxCorpses: 6, cd: 13, failStaggerS: 3 },
   /** Phase adds ring the arena on the change. */
