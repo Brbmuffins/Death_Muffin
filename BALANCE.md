@@ -1,5 +1,76 @@
 # Crossworlds — Balance targets & current numbers
 
+## Polish round 2 (2026-10-02, 8 seeds, 3 sim-minutes; bosses 6 seeds)
+
+Re-audit after the strike timing, run clips, set bonuses, retuned affixes and the gear harness changes of the same day. Nothing in the farming numbers had
+drifted; the boss pass found three bosses that were too easy and one harness hole (below).
+
+### 1. Necromancer matrix (4 disciplines x 9 grounds x intended/push/max; kit `none`, and `progress` (intended) / `typical` (push, max))
+Means over the 36 area x discipline rows. "Necro pass" = the table above in "Necro pass (2026-10-02)" (kit `none`).
+
+| Band | kit | kills/min | gold/min | XP/min | deaths / 3 min (worst row) | median first death | necro pass deaths |
+|---|---|---|---|---|---|---|---|
+| intended | none | 97 | 1736 | 4178 | 0.30 (1.1) | 169 s | <= 1.0 per row |
+| intended | progress | 107 | 2057 | 4873 | 0.01 (0.1) | 180 s | |
+| push | none | 115 (1.19x intended) | 3303 | 6347 | 1.61 (2.9) | 87 s | 1.7 |
+| push | typical | 171 | 5465 | 9568 | 0.19 (1.0) | 171 s | |
+| max | none | 112 (1.15x) | 3978 (2.29x) | 7068 (1.69x) | **1.99** (2.9) | 65 s | 2.1 (3.4) |
+| max | typical | 177 | 7084 | 11411 | 0.27 (1.6) | 161 s | |
+
+Targets from the necro pass: max out-earns intended (kills 1.15x, gold 2.3x, XP 1.7x: held; necro pass 1.18x / 2.50x / 1.84x); deaths 2-4 per 3 min at max without gear
+(2.0, worst row 2.9: held); at most 1 per 3 min at intended (0.3; two rows sit at 1.0 and 1.1: Pyre Rotweaver, Coliseum Mourner, within the old seed noise); no zone spike
+(max deaths Graves 0.4, Warren 1.3, the other seven 2.2-2.4; the same shape as before). Per discipline at max: Ossuary 2.2, Gravecaller 2.2, Rotweaver 2.0, Mourner 1.7, so the Ossuary
+ties for most deaths with the Gravecaller rather than being the outlier it was (10.1 before the necro pass). Ossuary still earns most (145 kills/min vs 96-103 at max).
+
+Drift: max deaths 2.1 -> 2.0, push 1.7 -> 1.6, kills ratio 1.18x -> 1.15x, gold 2.50x -> 2.29x, XP 1.84x -> 1.69x. All within the noise of the 8-seed means; the strike-timing, set-bonus and
+affix changes did not move the kit-less bot. The one remaining odd corner is Coliseum, where max earns only 1.02x the intended kills (133 vs 131) because the intended rate there is already high; gold and XP still climb (2.3x / 1.8x).
+With a kit the gear-pass picture is unchanged: typical + max pushes deaths to 0.27 (0.0 in seven grounds), but the **Fen (1.4 deaths) and Pyre (0.7)** keep a real edge because the base gear stats are flat
+and those grounds are level 30 and 45 (same as table 2 of the gear pass). The remaining "gear trivialises max Wave Speed" gap is the owner decision in ROADMAP (base item stats); not touched.
+
+### 2. Area bosses (`npm run balance:boss`, `BALANCE_BOSS=<id>`, `BALANCE_KIT=none|auto`; 6 seeds x 4 necromancers, intended = arrival level, geared = +3 levels)
+The boss harness now wears gear kits (`kit` on `BossRun`; `auto` = progress at intended, typical at geared; set bonuses and the skull-focus thrall bonus are folded as in the farming harness; staff / scythe / wand
+play-style is not modelled in the boss bot). It also had a hole: the Mire Mother's nav area (Fen) was not unlocked, so the bot never reached her (0 damage dealt or taken, every row a "timeout").
+
+Kit `none`, dodging, intended band (kill time of winning runs, min HP across seeds); "no dodge" = never leaves a telegraph.
+
+| Boss (area level) | before: dodge time / min HP | before: no dodge | after: dodge time / min HP | after: no dodge |
+|---|---|---|---|---|
+| Gravedigger King (1) | 84-116 s / 65-100% | wins 24/24, 31-37% | **123-164 s** / 65-100% | wins 24/24, 28-35% |
+| Bone Abbess (4) | 114-141 s / 75-84% | wins 24/24, 24-33% | **152-207 s** / 64-84% | wins 24/24, 24-33% |
+| Drowned Congregation (9) | 134-160 s / 21-30% | 0/24 | unchanged | unchanged |
+| Bell-Sworn Prelate (13) | 159-170 s / 27-37% | 1/24 | unchanged | unchanged |
+| Plague Saint (20) | 139-156 s / 33-60% | 0/24 | unchanged | unchanged |
+| Cinder Regent (30) | 118-129 s / 26-34% | 0/24 | unchanged | unchanged |
+| Mire Mother (45) | (unreachable, harness) 108-141 s / 90% once reachable | wins 24/24, 75-89%, 1-3% per minute damage | **143-190 s** / 66-95% | wins 24/24, 20-55%, 130-170%/min |
+
+Changes (all in `src/content/bosses.ts`; `necro-rules.cjs` regenerated since it bundles it):
+- Gravedigger King `baseHp` 15500 -> 22000, Bone Abbess 13000 -> 17000: the first two bosses died in 84-141 s to a careful arrival-level bot, against a 150-210 s target. They stay the gentlest bosses (a non-dodger still wins).
+- Mire Mother `baseHp` 32000 -> 42000 and damage x1.9 (surface 42 -> 160 with the ring windups unchanged, maul 26 -> 80, hands 15 -> 45). She was by far the easiest boss: 1-3% of max health per minute taken by a dodging bot,
+  75-89% minimum health even for a bot that ignores every telegraph, killed in under 2.5 minutes. Now a non-dodger drops to 20-55% and a dodger is still barely touched (the bot only sidesteps the ripple rings; real play also has the open-water hands, the flood and the phase-3 rite, which it does not model, so she is probably harder in practice than the table says).
+  A non-dodging bot still wins; it takes about 150%/min. Raising it further only makes the surface ring a one-shot, so it was left here for a human playtest.
+- Guard tests: `src/gameplay/__tests__/balance-bosses.test.ts` (every boss: a careful bot wins in 100-300 s through three phases, ignoring telegraphs costs > 60% of max health a minute).
+
+With a typical kit (`BALANCE_KIT=auto`; same seeds): the kits shorten every fight by 25-45% at the intended band and 40-65% at the geared band, e.g. Prelate intended 87-98 s, geared 56-71 s; Saint 80-97 s / 56-75 s; Regent 79-91 s / 53-67 s;
+Congregation 83-100 s / 44-56 s. Gravedigger at the geared band with a first set dies in 33-50 s (dps 470-665 vs 140-190 kit-less), the Abbess in 30-54 s. Bosses with real mechanics (Congregation, Saint, Regent, Prelate) still punish a
+non-dodger at the intended band with a kit (Saint 0/24, Regent 17/24 wins at 0-34% HP), so they are not trivial, but they are short. This is the same base-stat effect as the gear pass (a first set doubles damage); bosses were **not** inflated to absorb it because
+the owner's base-stat decision (ROADMAP) would double-count. If the owner leaves the item stats as they are, the boss HP of Congregation through Regent should rise about +35% to keep the 2.5-3.5 minute target for a geared player.
+
+### 3. Other classes (indices 5-9; Graves, Ossuary, Nave, Sanctum; intended and max; kit none; 4 seeds)
+Nothing is broken and nothing moved in a bad direction. Deaths per 3 minutes are 5-9 at both bands (the New Blood bot still never dodges or retreats), down from 8-11 at Nave and Sanctum before the necro pass rules (the vacancy/ramp rules help them too).
+Kills/min: 9-31 at the intended band; Hollow Knight stays the slowest (7.5 kills/min at Sanctum max, 9.0 intended, 66-80 minutes of kills to unlock the next ground), Carrion Witch and Grave Warden lead. These are bot-quality figures, not tuning targets; the bot skips most defensive rites (see New Blood simulation).
+No numbers changed.
+
+### Reproduce
+```bash
+BALANCE_SEEDS=8 BALANCE_DISCIPLINES=1,2,3,4 BALANCE_AREAS=graves,ossuary,nave,sanctum,cloister,pyre,warren,coliseum,fen BALANCE_BANDS=intended,push,max BALANCE_KIT=none npm run balance   # then BALANCE_KIT=progress (intended), =typical (push,max)
+BALANCE_BOSS=mire BALANCE_SEEDS=6 BALANCE_KIT=auto npm run balance:boss      # every boss id; kit none by default
+```
+
+### Unfinished
+- Bosses are not rebalanced for gear (waiting on the base-stat decision); see the +35% note above.
+- The boss bot does not use the staff / scythe / wand play-style, the Litany barrier or the open-water mechanics of the Fen; human playtest of the Mire Mother and the Abbess is still needed.
+- The Fen with a kit is the only ground that is still comfortably dangerous; that is the base-stat story, not a number to tune here.
+
 ## Gear pass (2026-10-02, 8 seeds, 3 sim-minutes)
 
 The harness used to wear no gear (only the `gearStats` stand-in: stat points for "ordinary gear"), so item stats, armor sets, the necromancer weapon line

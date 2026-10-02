@@ -1,5 +1,5 @@
 /**
- * Prelate report: `npm run balance:boss`. One row per band × discipline × dodge,
+ * Boss report: `npm run balance:boss`. One row per band × discipline × dodge,
  * averaged over seeds. Targets live in BALANCE.md.
  *
  * Env: BALANCE_SEEDS=3, BALANCE_BANDS=intended,geared, BALANCE_DISCIPLINES=1,3.
@@ -8,12 +8,17 @@ import { AREAS } from '../../content/areas';
 import { runBossFight, type BossResult, type BossRun } from './boss';
 import type { Difficulty } from '../../content/difficulty';
 import { ascensionLevels } from '../../content/ascension';
+import { KIT_NAMES, type KitName } from './kits';
 import { BOSSES, isBossId, type BossId } from '../../content/bosses';
 
 /** `npm run balance:boss -- --boss abbess` (or BALANCE_BOSS=abbess); default the Prelate. */
 const argBoss = process.argv[process.argv.indexOf('--boss') + 1];
 const BOSS: BossId = isBossId(argBoss) ? argBoss : isBossId(process.env.BALANCE_BOSS) ? process.env.BALANCE_BOSS : 'prelate';
 
+/** Gear kit worn (BALANCE_KIT=none|progress|typical|ascended; `auto` = progress at intended, typical at geared). */
+const KIT = process.env.BALANCE_KIT ?? 'none';
+if (KIT !== 'auto' && !KIT_NAMES.includes(KIT as KitName)) throw new Error('BALANCE_KIT must be auto or a kit name');
+const kitFor = (band: string): KitName => (KIT === 'auto' ? (band === 'intended' ? 'progress' : 'typical') : (KIT as KitName));
 const DIFFICULTY = (process.env.BALANCE_DIFFICULTY ?? 'medium') as Difficulty;
 /** World Ascension rank; bands then anchor on the aged area level. */
 const ASC = Math.max(0, Number(process.env.BALANCE_ASCENSION ?? 0));
@@ -45,7 +50,7 @@ let maxHp = 0;
 for (const band of bandNames) {
   for (const classIndex of disciplines) {
     for (const dodge of [true, false]) {
-      const rs = Array.from({ length: SEEDS }, (_, i) => runBossFight({ ...BANDS[band], classIndex, dodge, difficulty: DIFFICULTY, seed: 42 + i, ascension: ASC, boss: BOSS }));
+      const rs = Array.from({ length: SEEDS }, (_, i) => runBossFight({ ...BANDS[band], kit: kitFor(band), classIndex, dodge, difficulty: DIFFICULTY, seed: 42 + i, ascension: ASC, boss: BOSS }));
       maxHp = rs[0].bossMaxHp;
       const wins = rs.filter((r) => r.outcome === 'win');
       const cells = [
