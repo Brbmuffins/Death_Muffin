@@ -363,7 +363,8 @@ var NPC_IDS = ["prior", "sexton", "apothecary"];
 var NPC_SPOTS = {
   prior: { area: "chapterhouse", x: -3.4, z: 15.8, label: "The Prior" },
   sexton: { area: "acre", x: -26, z: 23, label: "The Sexton" },
-  apothecary: { area: "chapterhouse", x: 8.3, z: 17.2, label: "The Apothecary" }
+  // Behind her counter in the Alchemist's Wing (areas.ts WING_APOTHECARY_SPOT), a little inside so she is clickable.
+  apothecary: { area: "alchemist_wing", x: 44.2, z: 20, label: "The Apothecary" }
 };
 var npcInteractableId = (id) => `npc_${id}`;
 
@@ -711,6 +712,32 @@ var AREAS = {
     ],
     ambient: { fog: 1312774, hemiSky: 4858898, hemiGround: 787459, moon: 14191178 }
   },
+  // The Alchemist's Wing (2026-10): a safe workshop east of the Chapterhouse, reached by the Chapterhouse's east door.
+  // Brewing lives here (cauldron + alembic); the reagent shelf shows what you have found. Props: layout.ts "Alchemist's Wing".
+  alchemist_wing: {
+    id: "alchemist_wing",
+    name: "The Alchemist's Wing",
+    subtitle: "Where the dead are distilled",
+    theme: "wing",
+    rect: { x0: 20, z0: 8, x1: 46, z1: 32 },
+    safe: true,
+    level: 1,
+    enemies: [],
+    cap: 0,
+    waveSize: 0,
+    waveIntervalMs: 0,
+    eliteChance: 0,
+    loot: [],
+    itemChance: 0,
+    breaches: [],
+    interactables: [
+      ...npcSpots("alchemist_wing"),
+      { id: "wing_cauldron", kind: "cauldron", label: "The Great Cauldron", x: 33, z: 19.5 },
+      { id: "wing_alembic", kind: "alembic", label: "Alembic", x: 24.5, z: 10.5 },
+      { id: "wing_reagent_shelf", kind: "reagents", label: "Reagent Shelf", x: 38.5, z: 10.5 }
+    ],
+    ambient: { fog: 659469, hemiSky: 11048044, hemiGround: 2761752, moon: 13156512 }
+  },
   // The Catacomb Warren (2026-09-30): a chambered side dungeon off the Hollow Graves. Half-walls divide nine chambers;
   // they break Penitent cones and Ossuary-style line of sight, so the rooms are the fun.
   warren: {
@@ -852,7 +879,8 @@ var AREAS = {
     ambient: { fog: 661016, hemiSky: 2771538, hemiGround: 396302, moon: 8307908, fogMult: 1.7 }
   }
 };
-var AREA_ORDER = ["chapterhouse", "acre", "graves", "ossuary", "nave", "sanctum", "cloister", "pyre", "warren", "coliseum", "fen"];
+var AREA_ORDER = ["chapterhouse", "acre", "graves", "ossuary", "nave", "sanctum", "cloister", "pyre", "warren", "coliseum", "fen", "alchemist_wing"];
+var WING_APOTHECARY_SPOT = { x: 45.1, z: 20, facing: -Math.PI / 2 };
 var BOSS_SUMMON_SHARDS = 5;
 
 // src/content/ascension.ts

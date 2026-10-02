@@ -26,6 +26,8 @@ const FLOOR_TEX: Record<Theme, { url: string; tile: number; color: number; rough
   coliseum: { url: 'art/textures/coliseum_floor.webp', tile: 7, color: 0xc8bca8, rough: 0.9 },
   pyre: { url: 'art/textures/pyre_floor.webp', tile: 6, color: 0xd8b498, rough: 0.85 },
   fen: { url: 'art/textures/fen_floor.webp', tile: 6, color: 0xa8c0bc, rough: 0.8 },
+  // The Alchemist's Wing: the Chapterhouse flagstones, warmed toward oak-and-candle brown.
+  wing: { url: 'art/textures/flagstone.webp', tile: 6, color: 0xe6d0a8, rough: 0.7 },
 };
 
 export interface LightSource {
@@ -36,6 +38,8 @@ export interface LightSource {
   intensity: number;
   distance: number;
   group?: string;
+  /** Floor light-pool tint override (the Alchemist's Wing's green glow). */
+  pool?: number;
   lit: boolean;
   brazier: boolean;
 }
@@ -265,7 +269,7 @@ class PropBatch {
         e.set(pl.tilt ?? 0, pl.rot, (pl.tilt ?? 0) * 0.6);
         q.setFromEuler(e);
         s.setScalar(pl.scale);
-        p.set(pl.x, 0, pl.z);
+        p.set(pl.x, pl.y ?? 0, pl.z);
         m.compose(p, q, s).multiply(part.local);
         inst.setMatrixAt(i, m);
       });
@@ -545,6 +549,7 @@ export class WorldView {
           intensity: spec.light.intensity,
           distance: spec.light.distance,
           group: p.group,
+          pool: spec.light.pool,
           lit: true,
           brazier: p.prop === 'brazier',
         };
@@ -599,7 +604,7 @@ export class WorldView {
     for (const s of this.lightSources) {
       this.effects.decal({
         tex: fx.lightPool(),
-        color: s.brazier ? 0x7a4fd6 : 0xc9864a,
+        color: s.pool ?? (s.brazier ? 0x7a4fd6 : 0xc9864a),
         x: s.x,
         z: s.z,
         r: s.distance * 0.42,

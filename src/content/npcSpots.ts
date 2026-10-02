@@ -18,7 +18,8 @@ export interface NpcSpot {
 export const NPC_SPOTS: Record<NpcId, NpcSpot> = {
   prior: { area: 'chapterhouse', x: -3.4, z: 15.8, label: 'The Prior' },
   sexton: { area: 'acre', x: -26, z: 23, label: 'The Sexton' },
-  apothecary: { area: 'chapterhouse', x: 8.3, z: 17.2, label: 'The Apothecary' },
+  // Behind her counter in the Alchemist's Wing (areas.ts WING_APOTHECARY_SPOT), a little inside so she is clickable.
+  apothecary: { area: 'alchemist_wing', x: 44.2, z: 20, label: 'The Apothecary' },
 };
 
 export const npcInteractableId = (id: NpcId) => `npc_${id}`;

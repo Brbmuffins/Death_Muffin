@@ -93,6 +93,8 @@ import { RealtimeClient } from '../net/realtime';
 import type { Character, Profession } from '../net/types';
 import { FloatingText } from '../ui/FloatingText';
 import { ForgePanel } from '../ui/ForgePanel';
+import { ReagentShelfPanel } from '../ui/ReagentShelfPanel';
+import { recordFound } from '../content/wing';
 import { HUD, type HudFrame } from '../ui/HUD';
 import { InventoryPanel } from '../ui/InventoryPanel';
 import { CharacterSheetPanel } from '../ui/CharacterSheet';
@@ -347,6 +349,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private inventoryPanel!: InventoryPanel;
   private forgePanel!: ForgePanel;
+  private shelfPanel!: ReagentShelfPanel;
   private professionsPanel!: ProfessionsPanel;
   private settingsPanel!: SettingsPanel;
   private classPanel!: ClassPanel;
@@ -794,6 +797,8 @@ export class WorldScene implements GameScene, RuntimeView {
       this.chronicle.add('crafted');
       this.hud.toast('Crafted', 'good');
     });
+    this.shelfPanel = new ReagentShelfPanel(this.root, this.character.id, this.inventory);
+    this.inventory.onChange((slots) => recordFound(browserStorage(), this.character.id, slots.map((s) => s.item_id)));
     this.professionsPanel = new ProfessionsPanel(this.root, {
       start: type => this.startAfkGathering(type),
       pause: () => this.gathering.stop('moved'),
@@ -881,6 +886,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.ascensionPanel?.close();
     this.inventoryPanel.close();
     this.forgePanel.close();
+    this.shelfPanel?.close();
     this.professionsPanel.close();
     this.settingsPanel.close();
     this.waystonePanel.close();
@@ -1311,7 +1317,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private panelOpen() {
-    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.vaultPanel?.isOpen || !!this.salvagePanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen || !!this.sheetPanel?.isOpen || !!this.dialogue?.isOpen;
+    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || !!this.shelfPanel?.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.vaultPanel?.isOpen || !!this.salvagePanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen || !!this.sheetPanel?.isOpen || !!this.dialogue?.isOpen;
   }
 
   private interactablesNear(): Interactable[] {
@@ -1325,7 +1331,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private navigateFromMinimap(x: number, z: number): boolean {
-    if (!this.ready || !this.player.alive || this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen) return false;
+    if (!this.ready || !this.player.alive || this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.shelfPanel?.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen) return false;
     const area = this.nav.areaAt(x, z);
     const corridor = DOORS.some(d => this.nav.isDoorOpen(d) && x >= d.rect.x0 && x <= d.rect.x1 && z >= d.rect.z0 && z <= d.rect.z1);
     if (area ? !this.nav.isUnlocked(area) : !corridor) return false;
@@ -1429,7 +1435,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private tickCombat(now: number) {
     const p = this.player;
     if (!p.alive || this.recallAt) return;
-    if (this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen) {
+    if (this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || this.shelfPanel?.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen) {
       this.queuedCast = null;
       this.autoTargetId = null;
       this.autoAim = null;
@@ -1678,6 +1684,19 @@ export class WorldScene implements GameScene, RuntimeView {
         audio.play('click');
         this.onboarding.show('station');
         return void this.forgePanel.open(it.kind);
+      case 'cauldron':
+      case 'alembic':
+        this.gathering.stop('panel');
+        this.closePanels();
+        audio.play('click');
+        this.onboarding.show('wing');
+        return void this.forgePanel.open('cauldron');
+      case 'reagents':
+        this.gathering.stop('panel');
+        this.closePanels();
+        audio.play('click');
+        this.onboarding.show('wing');
+        return this.shelfPanel.open();
       case 'upgrades':
         // Damage / Wave Speed are bought from the HUD anywhere; the Altar itself is where runs are burned.
         return this.togglePanel('ascension');
@@ -3727,7 +3746,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const target = milestoneActive('nightfall', tier) ? 1 : 0;
     this.nightK += (target - this.nightK) * Math.min(1, dt * 0.8);
     // Intensity only (never toggle light visibility — that recompiles shaders).
-    const acre = this.area === 'acre';
+    const acre = this.area === 'acre' || this.area === 'alchemist_wing'; // the Wing is a lit indoor workshop: no nightfall dimming
     const night = acre ? 0 : this.nightK;
     this.moon.intensity = (acre ? 2.65 : 2.4) * (1 - 0.6 * night);
     this.hemi.intensity = (acre ? 1.12 : 0.95) * (1 - 0.3 * night);
@@ -3836,6 +3855,7 @@ export class WorldScene implements GameScene, RuntimeView {
       if (area === 'pyre') this.onboarding.show('pyre', 1200);
       if (area === 'fen') this.onboarding.show('fen', 1200);
       if (area === 'warren') this.onboarding.show('warren', 1200);
+      if (area === 'alchemist_wing') this.onboarding.show('wing', 1200);
       if (area === 'coliseum') this.onboarding.show('coliseum', 1200);
     }
     this.codexDiscover('area', area);
@@ -3883,7 +3903,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private areaProgress(): string {
     const here = this.area;
     if (here === 'acre') return 'Click a glowing node to gather · Walk east to the Chapterhouse for combat';
-    if (here === 'chapterhouse') return 'Walk north to the Hollow Graves · Click an enemy to attack';
+    if (here === 'chapterhouse') return 'Walk north to the Hollow Graves · Click an enemy to attack · East door: the Alchemist\'s Wing';
+    if (here === 'alchemist_wing') return 'Brew at the Great Cauldron or the Alembic · Browse the Reagent Shelf';
     if (AREAS[here].safe) return 'Sanctuary. The dead cannot follow you here.';
     // Every pending seal off this hall (the Graves hold two: the Warren and the Ossuary), nearest first.
     const pending = AREA_ORDER.filter((id) => AREAS[id].unlock?.area === here && !this.progression.isUnlocked(id))
@@ -3918,7 +3939,10 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'lectern': return 'Open the Codex';
       case 'npc': return `Talk to ${it.label}`;
       case 'vault': return 'Open the Ossuary Vault (V)';
-      case 'grinder': return 'Salvage gear at the Bone Grinder'; 
+      case 'grinder': return 'Salvage gear at the Bone Grinder';
+      case 'cauldron': return 'Brew at the Great Cauldron';
+      case 'alembic': return 'Brew at the Alembic';
+      case 'reagents': return 'Browse the Reagent Shelf';
       case 'boss': {
         const boss = BOSSES[bossForSummon(it.id) ?? 'prelate'];
         return `Summon ${boss.name} · ${boss.shards} shards`;
@@ -4294,8 +4318,8 @@ export class WorldScene implements GameScene, RuntimeView {
       /** The Mourning Fen's eased flood scale (1 calm, 0.72 / 0.5 in the Mire Mother's phases 2 / 3). */
       fenFlood: () => this.worldView.fenFlood(),
       /** Open an Acre station as if clicked (kiln / sawpit / fire). */
-      station: (kind: 'kiln' | 'sawpit' | 'fire' | 'grinder') => {
-        const it = AREAS.acre.interactables.find((i) => i.kind === kind);
+      station: (kind: 'kiln' | 'sawpit' | 'fire' | 'grinder' | 'cauldron' | 'alembic' | 'reagents') => {
+        const it = AREA_ORDER.flatMap((a) => AREAS[a].interactables).find((i) => i.kind === kind);
         if (it) this.interact(it);
       },
       /** Guidance QA: the state the selectors see, the suggestion list, the NPC figures, and talking by id. */

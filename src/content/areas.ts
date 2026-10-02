@@ -9,8 +9,8 @@ import { NPC_IDS, NPC_SPOTS, npcInteractableId } from './npcSpots';
  * (up-screen). Areas are walkable rectangles joined by door corridors that
  * stay sealed until the unlock threshold is met.
  */
-export type AreaId = 'chapterhouse' | 'acre' | 'graves' | 'ossuary' | 'nave' | 'sanctum' | 'cloister' | 'pyre' | 'warren' | 'coliseum' | 'fen';
-export type Theme = 'chapter' | 'acre' | 'graveyard' | 'ossuary' | 'nave' | 'sanctum' | 'cloister' | 'pyre' | 'warren' | 'coliseum' | 'fen';
+export type AreaId = 'chapterhouse' | 'acre' | 'graves' | 'ossuary' | 'nave' | 'sanctum' | 'cloister' | 'pyre' | 'warren' | 'coliseum' | 'fen' | 'alchemist_wing';
+export type Theme = 'chapter' | 'acre' | 'graveyard' | 'ossuary' | 'nave' | 'sanctum' | 'cloister' | 'pyre' | 'warren' | 'coliseum' | 'fen' | 'wing';
 
 export interface Rect {
   x0: number;
@@ -19,8 +19,8 @@ export interface Rect {
   z1: number;
 }
 
-/** kiln / sawpit / fire are the Sexton's Acre processing stations (docs/PROFESSIONS-ROADMAP.md §6). */
-export type InteractKind = 'inventory' | 'forge' | 'professions' | 'upgrades' | 'waystone' | 'boss' | 'kiln' | 'sawpit' | 'fire' | 'lectern' | 'vault' | 'grinder' | 'npc';
+/** cauldron / alembic open the Alchemy brewing panel and reagents the reagent shelf (the Alchemist's Wing). kiln / sawpit / fire are the Sexton's Acre processing stations (docs/PROFESSIONS-ROADMAP.md §6). */
+export type InteractKind = 'inventory' | 'forge' | 'professions' | 'upgrades' | 'waystone' | 'boss' | 'kiln' | 'sawpit' | 'fire' | 'lectern' | 'vault' | 'grinder' | 'npc' | 'cauldron' | 'alembic' | 'reagents';
 
 /** The talkable people standing in `area` (content/npcSpots.ts holds their positions). */
 const npcSpots = (area: AreaId): Interactable[] =>
@@ -404,6 +404,32 @@ export const AREAS: Record<AreaId, AreaDef> = {
     ],
     ambient: { fog: 0x140806, hemiSky: 0x4a2412, hemiGround: 0x0c0403, moon: 0xd88a4a },
   },
+  // The Alchemist's Wing (2026-10): a safe workshop east of the Chapterhouse, reached by the Chapterhouse's east door.
+  // Brewing lives here (cauldron + alembic); the reagent shelf shows what you have found. Props: layout.ts "Alchemist's Wing".
+  alchemist_wing: {
+    id: 'alchemist_wing',
+    name: "The Alchemist's Wing",
+    subtitle: 'Where the dead are distilled',
+    theme: 'wing',
+    rect: { x0: 20, z0: 8, x1: 46, z1: 32 },
+    safe: true,
+    level: 1,
+    enemies: [],
+    cap: 0,
+    waveSize: 0,
+    waveIntervalMs: 0,
+    eliteChance: 0,
+    loot: [],
+    itemChance: 0,
+    breaches: [],
+    interactables: [
+      ...npcSpots('alchemist_wing'),
+      { id: 'wing_cauldron', kind: 'cauldron', label: 'The Great Cauldron', x: 33, z: 19.5 },
+      { id: 'wing_alembic', kind: 'alembic', label: 'Alembic', x: 24.5, z: 10.5 },
+      { id: 'wing_reagent_shelf', kind: 'reagents', label: 'Reagent Shelf', x: 38.5, z: 10.5 },
+    ],
+    ambient: { fog: 0x0a100d, hemiSky: 0xa8946c, hemiGround: 0x2a2418, moon: 0xc8c0a0 },
+  },
   // The Catacomb Warren (2026-09-30): a chambered side dungeon off the Hollow Graves. Half-walls divide nine chambers;
   // they break Penitent cones and Ossuary-style line of sight, so the rooms are the fun.
   warren: {
@@ -546,7 +572,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
   },
 };
 
-export const AREA_ORDER: AreaId[] = ['chapterhouse', 'acre', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'warren', 'coliseum', 'fen'];
+export const AREA_ORDER: AreaId[] = ['chapterhouse', 'acre', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'warren', 'coliseum', 'fen', 'alchemist_wing'];
 
 /** Areas with no seal (`unlock`) are open to everyone from the start. */
 export const isAlwaysOpen = (id: AreaId) => !AREAS[id].unlock;
@@ -555,6 +581,8 @@ export const DOORS: DoorDef[] = [
   { id: 'chapter_graves', a: 'chapterhouse', b: 'graves', rect: { x0: -3.5, z0: 3, x1: 3.5, z1: 9 }, axis: 'z' },
   // Overlaps both rooms by a metre, like every door, so bodies can cross the seam.
   { id: 'chapter_acre', a: 'chapterhouse', b: 'acre', rect: { x0: -21, z0: 17, x1: -12, z1: 23 }, axis: 'x' },
+  // The Chapterhouse's east wall (its west wall holds the Acre door, its north wall the Graves): 1 m overlap each side.
+  { id: 'chapter_wing', a: 'chapterhouse', b: 'alchemist_wing', rect: { x0: 12, z0: 17, x1: 21, z1: 23 }, axis: 'x' },
   { id: 'graves_ossuary', a: 'graves', b: 'ossuary', rect: { x0: 25, z0: -22, x1: 33, z1: -14 }, axis: 'x' },
   { id: 'graves_nave', a: 'graves', b: 'nave', rect: { x0: -4, z0: -45, x1: 4, z1: -35 }, axis: 'z' },
   { id: 'nave_sanctum', a: 'nave', b: 'sanctum', rect: { x0: -4, z0: -103, x1: 4, z1: -95 }, axis: 'z' },
@@ -573,6 +601,8 @@ export function doorTarget(door: DoorDef): AreaId {
 
 // A fixed, safe starting point beside the Acre's entrance and beginner nodes.
 export const PLAYER_SPAWN = { x: -26, z: 20 };
+/** Where the Apothecary (npc_apothecary) should stand: in the counter's gap, facing the cauldron. The orchestrator moves her here at merge time. */
+export const WING_APOTHECARY_SPOT = { x: 45.1, z: 20, facing: -Math.PI / 2 };
 export const CHAPTERHOUSE_RETURN = { x: 0, z: 24 };
 
 /** Soul shards required at the Sundered Bell to awaken the Prelate. */
