@@ -424,14 +424,14 @@ export function statSheet(ctx: StatContext): SheetSection[] {
 //
 // One "power" number per discipline, built only from deriveStats outputs (so it follows the real math):
 //
-//   damage    = spell power + thralls x thrall damage x thrall attack speed
+//   damage    = spell power + thralls x thrall damage x thrall attack speed x THRALL_DAMAGE_SHARE
 //   toughness = health + thralls x thrall health x THRALL_TOUGH_SHARE   (thralls soak hits, but only partly for you)
-//   sustain   = max essence and essence/s (half each)
+//   sustain   = max essence and essence/s x REGEN_HORIZON_S (half each)
 //   move      = move speed
 //
 // Each part is divided by its value for a reference hero of the same discipline (REFERENCE) so they share a
 // scale, then weighted by the discipline's role (ROLE_WEIGHTS, summing to 1). "Thralls" is the discipline's
-// thrall cap for necromancers and 0 for every other class. Item scores and stat priorities are both
+// thrall cap x THRALL_UPTIME for necromancers and 0 for every other class. Item scores and stat priorities are both
 // percent changes of this one number, so the arrows and the priority list can never disagree.
 
 export type PowerPart = 'damage' | 'toughness' | 'sustain' | 'move';
@@ -439,6 +439,22 @@ export type RoleWeights = Record<PowerPart, number>;
 
 /** Thralls count for a quarter of their health when judging how tough you are. */
 export const THRALL_TOUGH_SHARE = 0.25;
+/**
+ * Thralls count for this share of their raw damage when judging how hard you hit. Measured on the harness (BALANCE.md "Gear pass"):
+ * zeroing thrall damage costs a Gravecaller about a quarter of its kills/min and the other three necromancers 7-15%, which is what
+ * a 0.15 share gives for 5 and 3 thralls. (1 would mean every thrall lands a full spell-power hit per second.)
+ */
+export const THRALL_DAMAGE_SHARE = 0.15;
+/** The legion is rarely at its cap: the bot keeps 80-90% of it up at the intended band and 65-85% at max Wave Speed (harness `avgThralls`); the share above and this uptime were calibrated together. */
+export const THRALL_UPTIME = 0.7;
+/**
+ * A thrall above the discipline's own cap (set bonus, skull focus, Covenant boon) counts in full. The lever experiment (cap +1..+3 on
+ * a kit-less bot) could not tell it from zero, but the 32-seed set comparison could: the Gravecall set, whose five-piece line is +1 cap,
+ * out-clears each necromancer's own set by 4-6% for the three-thrall disciplines. Kept as a constant so it can be revisited.
+ */
+export const EXTRA_THRALL_VALUE = 1;
+/** Essence regeneration is judged over this many seconds, so it weighs against the pool the way a fight does (harness: +10% regen is worth about +0.6%). */
+export const REGEN_HORIZON_S = 25;
 
 /** The hero the weights are measured on: mid-game, every stat at 10, no gear. */
 export const REFERENCE = { level: 20, stat: 10 } as const;
@@ -461,14 +477,17 @@ type Parts = Record<PowerPart, number>;
 
 /** How many thralls the discipline fights with (necromancer family only). */
 function thrallCount(d: Discipline, bonus = 0) {
-  return d.family === 'necromancer' ? d.mods.thrallCap + bonus : 0;
+  if (d.family !== 'necromancer') return 0;
+  const base = DISCIPLINES[d.id]?.mods.thrallCap ?? d.mods.thrallCap;
+  const cap = d.mods.thrallCap + bonus;
+  return (Math.min(cap, base) + Math.max(0, cap - base) * EXTRA_THRALL_VALUE) * THRALL_UPTIME;
 }
 
 function partsOf(d: DerivedStats, disc: Discipline, count: number): Parts {
   return {
-    damage: d.spellPower + count * d.thrallDamage * disc.mods.thrallAttackSpeedMult,
+    damage: d.spellPower + count * d.thrallDamage * disc.mods.thrallAttackSpeedMult * THRALL_DAMAGE_SHARE,
     toughness: d.maxHp + count * d.thrallHp * THRALL_TOUGH_SHARE,
-    sustain: 0.5 * d.maxEssence + 0.5 * d.essenceRegen,
+    sustain: 0.5 * d.maxEssence + 0.5 * d.essenceRegen * REGEN_HORIZON_S,
     move: d.moveSpeed,
   };
 }
@@ -482,7 +501,7 @@ function referenceParts(disc: Discipline): Parts {
     const d = deriveStats(c, [], disc, 0);
     // Reference energy terms use the same halves, scaled so each part is ~1 at the reference hero.
     const p = partsOf(d, disc, thrallCount(disc));
-    r = { damage: p.damage, toughness: p.toughness, sustain: 0.5 * d.maxEssence + 0.5 * d.essenceRegen, move: p.move };
+    r = { damage: p.damage, toughness: p.toughness, sustain: p.sustain, move: p.move };
     refCache.set(key, r);
   }
   return r;
@@ -502,11 +521,11 @@ function powerTerms(d: DerivedStats, disc: Discipline, count: number, extraPct: 
   const ref = referenceParts(withoutSetBonuses(refDisc));
   const t: Record<ScoreTerm, number> = {
     spellPower: (w.damage * d.spellPower) / ref.damage,
-    thrallDamage: (w.damage * count * d.thrallDamage * disc.mods.thrallAttackSpeedMult) / ref.damage,
+    thrallDamage: (w.damage * count * d.thrallDamage * disc.mods.thrallAttackSpeedMult * THRALL_DAMAGE_SHARE) / ref.damage,
     maxHp: (w.toughness * d.maxHp) / ref.toughness,
     thrallHp: (w.toughness * count * d.thrallHp * THRALL_TOUGH_SHARE) / ref.toughness,
     maxEssence: (w.sustain * 0.5 * d.maxEssence) / ref.sustain,
-    essenceRegen: (w.sustain * 0.5 * d.essenceRegen) / ref.sustain,
+    essenceRegen: (w.sustain * 0.5 * d.essenceRegen * REGEN_HORIZON_S) / ref.sustain,
     moveSpeed: (w.move * d.moveSpeed) / ref.move,
     weapon: 0,
     set: 0,
@@ -523,19 +542,23 @@ function powerTerms(d: DerivedStats, disc: Discipline, count: number, extraPct: 
  * already counted by the maths above and are NOT repeated here.)
  */
 export const LOADOUT_VALUE = {
-  /** Reaping arc: hits 3, pays souls and essence. */
-  reap: 6,
-  /** Staff: the needle reaches farther and pierces. */
-  pierce: 3,
-  /** Wand: share of your damage that is the left click, times its net speed-up. */
-  primaryShare: 0.4,
+  /**
+   * Reaping arc: hits 3, pays souls and essence. Small on purpose: the harness bot loses 10-25% kills/min and takes 40-90% more damage
+   * with a scythe (a 3 m arc means standing in the pack, and the bot never kites), but a player who kites gets the full arc, so the
+   * score stays near neutral instead of copying the bot's weakness. (BALANCE.md "Gear pass" lists it as a known disagreement.)
+   */
+  reap: 2,
+  /** Staff: the needle reaches farther and pierces. (Harness: no measurable clear-rate gain over a wand at equal tier.) */
+  pierce: 2,
+  /** Wand: share of your damage that is the left click, times its net speed-up. The bot's output is mostly Bone Needle (harness: a wand matches a staff despite 5 INT and 10% spell power less). */
+  primaryShare: 0.8,
   /** Sickle: Withered stacks; Exhume refund. */
   withered: 3,
   exhume: 2,
-  /** Grimoire: rites are about 45% of your output, and recover 1/0.9 as often. */
-  riteShare: 0.45,
-  /** Mourning bell (Mourner): heals the party. */
-  bell: 2,
+  /** Grimoire: rites are about 20% of the bot's output (harness: +2-3% kills at the same tier), and recover 1/0.9 as often. */
+  riteShare: 0.2,
+  /** Mourning bell (Mourner): heals the party. (Harness: indistinguishable from its stats alone.) */
+  bell: 1,
 } as const;
 
 export function loadoutExtraPct(l: WeaponLoadout): number {
@@ -558,14 +581,17 @@ export function loadoutExtraPct(l: WeaponLoadout): number {
 export const SET_VALUE = {
   /** "Less damage per thrall" multiplies the toughness part by 1 / (1 - ward x thralls), capped at this much reduction. */
   wardCap: 0.6,
-  /** Percent of power per 1% of max health a Black Litany barrier grants per corpse. */
-  litanyPer1pct: 0.4,
-  /** Percent of power per 1% of max health a consumed corpse heals. */
-  corpseHealPer1pct: 0.5,
-  /** Percent of power per extra Withered stack. */
-  witheredPerStack: 1.5,
-  /** Percent of power per 1% wider Miasma. */
-  miasmaPer1pct: 0.4,
+  /** Scale on the ward value: the harness finds +3% per thrall worth about +2.3% kills (not the full toughness share the formula would give). */
+  wardScale: 0.4,
+  /** Percent of power per 1% of max health a Black Litany barrier grants per corpse (harness: no measurable clear-rate or damage effect on its own). */
+  litanyPer1pct: 0.1,
+  /** Percent of power per 1% of max health a consumed corpse heals (harness: small; the bot sustains with flasks-free regen anyway). */
+  corpseHealPer1pct: 0.25,
+  /** Percent of power per extra Withered stack (harness: about +0.65% kills/min per stack). */
+  witheredPerStack: 0.65,
+  /** Percent of power per 1% wider Miasma (harness: +0.09 for most disciplines, about 2.5x that for the Rotweaver, whose kit is built on it). */
+  miasmaPer1pct: 0.09,
+  rotweaverMiasmaMult: 2.5,
 } as const;
 
 /** The value of the worn sets' mods-only effects, for a discipline that fights with `count` thralls. */
@@ -575,11 +601,11 @@ export function setExtraPct(totals: SetTotals, disc: Discipline, count: number):
   const V = SET_VALUE;
   let x = 0;
   const ward = totals.add.wardPerThrall ?? 0;
-  if (ward) x += w.toughness * 100 * (1 / (1 - Math.min(V.wardCap, ward * count)) - 1);
+  if (ward) x += V.wardScale * w.toughness * 100 * (1 / (1 - Math.min(V.wardCap, ward * count)) - 1);
   x += (totals.add.litanyBarrier ?? 0) * 100 * V.litanyPer1pct;
   x += (totals.add.corpseHeal ?? 0) * 100 * V.corpseHealPer1pct;
   x += (totals.add.witheredMaxStacks ?? 0) * V.witheredPerStack;
-  x += ((totals.mult.miasmaRadiusMult ?? 1) - 1) * 100 * V.miasmaPer1pct;
+  x += ((totals.mult.miasmaRadiusMult ?? 1) - 1) * 100 * V.miasmaPer1pct * (disc.id === 'rotweaver' ? V.rotweaverMiasmaMult : 1);
   return x;
 }
 

@@ -60,44 +60,44 @@ const stat = (s: SetEffect['stats']): SetEffect => ({ stats: s });
 export const SET_BONUSES: Record<string, SetBonusDef[]> = {
   // --- Necromancer sets: built on the levers each discipline already has ---------------------------
   ossuary: [
-    { pieces: 2, effect: { mult: { thrallHpMult: 1.05 } } },
-    { pieces: 4, effect: { mult: { thrallHpMult: 1.05 }, add: { wardPerThrall: 0.015 } } },
-    { pieces: 5, name: 'Reliquary Bulwark', effect: { mult: { maxHpMult: 1.05 }, add: { litanyBarrier: 0.02 } } },
+    { pieces: 2, effect: { mult: { thrallHpMult: 1.2, maxHpMult: 1.02 } } },
+    { pieces: 4, effect: { mult: { thrallHpMult: 1.1 }, add: { wardPerThrall: 0.05 } } },
+    { pieces: 5, name: 'Reliquary Bulwark', effect: { mult: { maxHpMult: 1.1 }, add: { litanyBarrier: 0.04 } } },
   ],
   ossuary_ascended: [
-    { pieces: 2, effect: { mult: { thrallHpMult: 1.07 } } },
-    { pieces: 4, effect: { mult: { thrallHpMult: 1.06 }, add: { wardPerThrall: 0.02 } } },
-    { pieces: 5, name: 'Regent’s Ossuary', effect: { mult: { maxHpMult: 1.08 }, add: { litanyBarrier: 0.03 } } },
+    { pieces: 2, effect: { mult: { thrallHpMult: 1.3, maxHpMult: 1.03 } } },
+    { pieces: 4, effect: { mult: { thrallHpMult: 1.12 }, add: { wardPerThrall: 0.065 } } },
+    { pieces: 5, name: 'Regent’s Ossuary', effect: { mult: { maxHpMult: 1.14 }, add: { litanyBarrier: 0.06 } } },
   ],
   gravecaller: [
-    { pieces: 2, effect: { mult: { thrallDamageMult: 1.04 } } },
-    { pieces: 4, effect: { mult: { thrallAttackSpeedMult: 1.08 } } },
-    { pieces: 5, name: 'Legion Call', effect: { mult: { thrallDamageMult: 1.05 }, add: { thrallCap: 1 } } },
+    { pieces: 2, effect: { mult: { thrallDamageMult: 1.08 } } },
+    { pieces: 4, effect: { mult: { thrallAttackSpeedMult: 1.1 } } },
+    { pieces: 5, name: 'Legion Call', effect: { mult: { thrallDamageMult: 1.14 }, add: { thrallCap: 1 } } },
   ],
   gravecaller_ascended: [
-    { pieces: 2, effect: { mult: { thrallDamageMult: 1.06 } } },
-    { pieces: 4, effect: { mult: { thrallAttackSpeedMult: 1.1, thrallDamageMult: 1.04 } } },
-    { pieces: 5, name: 'Sovereign Legion', effect: { mult: { thrallDamageMult: 1.08, thrallAttackSpeedMult: 1.05 }, add: { thrallCap: 1 } } },
+    { pieces: 2, effect: { mult: { thrallDamageMult: 1.14 } } },
+    { pieces: 4, effect: { mult: { thrallAttackSpeedMult: 1.14, thrallDamageMult: 1.04 } } },
+    { pieces: 5, name: 'Sovereign Legion', effect: { mult: { thrallDamageMult: 1.14, thrallAttackSpeedMult: 1.06 }, add: { thrallCap: 1 } } },
   ],
   mourner: [
-    { pieces: 2, effect: { mult: { essenceRegenMult: 1.05 } } },
-    { pieces: 4, effect: { mult: { thrallHpMult: 1.05 }, add: { corpseHeal: 0.02 } } },
-    { pieces: 5, name: 'Widow’s Chorus', effect: { mult: { essenceRegenMult: 1.08, thrallDamageMult: 1.08 } } },
+    { pieces: 2, effect: { mult: { essenceRegenMult: 1.3, maxHpMult: 1.06 } } },
+    { pieces: 4, effect: { mult: { thrallHpMult: 1.2, maxHpMult: 1.05 }, add: { corpseHeal: 0.03 } } },
+    { pieces: 5, name: 'Widow’s Chorus', effect: { mult: { essenceRegenMult: 1.2, thrallDamageMult: 1.2, maxHpMult: 1.04 } } },
   ],
   mourner_ascended: [
-    { pieces: 2, effect: { mult: { essenceRegenMult: 1.07 } } },
-    { pieces: 4, effect: { mult: { thrallHpMult: 1.06 }, add: { corpseHeal: 0.03 } } },
-    { pieces: 5, name: 'Requiem Hush', effect: { mult: { essenceRegenMult: 1.1, thrallDamageMult: 1.1 }, add: { corpseHeal: 0.01 } } },
+    { pieces: 2, effect: { mult: { essenceRegenMult: 1.45, maxHpMult: 1.12 } } },
+    { pieces: 4, effect: { mult: { thrallHpMult: 1.3, maxHpMult: 1.08 }, add: { corpseHeal: 0.05 } } },
+    { pieces: 5, name: 'Requiem Hush', effect: { mult: { essenceRegenMult: 1.3, thrallDamageMult: 1.2, maxHpMult: 1.07 }, add: { corpseHeal: 0.02 } } },
   ],
   rotweaver: [
-    { pieces: 2, effect: { mult: { miasmaRadiusMult: 1.05 } } },
-    { pieces: 4, effect: { mult: { miasmaRadiusMult: 1.05 }, add: { witheredMaxStacks: 1 } } },
-    { pieces: 5, name: 'Blight Bloom', effect: { mult: { miasmaRadiusMult: 1.1 }, add: { witheredMaxStacks: 1 } } },
+    { pieces: 2, effect: { mult: { miasmaRadiusMult: 1.12 } } },
+    { pieces: 4, effect: { mult: { miasmaRadiusMult: 1.08 }, add: { witheredMaxStacks: 2 } } },
+    { pieces: 5, name: 'Blight Bloom', effect: { mult: { miasmaRadiusMult: 1.12, maxHpMult: 1.03 }, add: { witheredMaxStacks: 1 } } },
   ],
   rotweaver_ascended: [
-    { pieces: 2, effect: { mult: { miasmaRadiusMult: 1.07 } } },
-    { pieces: 4, effect: { mult: { miasmaRadiusMult: 1.05 }, add: { witheredMaxStacks: 2 } } },
-    { pieces: 5, name: 'Plague Song', effect: { mult: { miasmaRadiusMult: 1.12, maxHpMult: 1.05 }, add: { witheredMaxStacks: 1 } } },
+    { pieces: 2, effect: { mult: { miasmaRadiusMult: 1.16 } } },
+    { pieces: 4, effect: { mult: { miasmaRadiusMult: 1.1 }, add: { witheredMaxStacks: 3 } } },
+    { pieces: 5, name: 'Plague Song', effect: { mult: { miasmaRadiusMult: 1.16, maxHpMult: 1.05 }, add: { witheredMaxStacks: 1 } } },
   ],
   // --- Other disciplines: flat stats plus health / essence regeneration (all they have to scale) ------
   warden: [
@@ -121,14 +121,14 @@ export const SET_BONUSES: Record<string, SetBonusDef[]> = {
     { pieces: 5, name: 'Final Note', effect: stat({ stat_agi: 4, stat_str: 4 }) },
   ],
   witch: [
-    { pieces: 2, effect: stat({ stat_int: 3 }) },
+    { pieces: 2, effect: stat({ stat_int: 2 }) },
     { pieces: 4, effect: { mult: { essenceRegenMult: 1.06 } } },
-    { pieces: 5, name: 'Thorn Bloom', effect: { stats: { stat_int: 3 }, mult: { maxHpMult: 1.04 } } },
+    { pieces: 5, name: 'Thorn Bloom', effect: { stats: { stat_int: 2 }, mult: { maxHpMult: 1.04 } } },
   ],
   witch_ascended: [
-    { pieces: 2, effect: stat({ stat_int: 4 }) },
+    { pieces: 2, effect: stat({ stat_int: 3 }) },
     { pieces: 4, effect: { mult: { essenceRegenMult: 1.08 } } },
-    { pieces: 5, name: 'Rootbound Covenant', effect: { stats: { stat_int: 4 }, mult: { maxHpMult: 1.06 } } },
+    { pieces: 5, name: 'Rootbound Covenant', effect: { stats: { stat_int: 3 }, mult: { maxHpMult: 1.06 } } },
   ],
   knight: [
     { pieces: 2, effect: stat({ stat_str: 3 }) },
@@ -142,12 +142,12 @@ export const SET_BONUSES: Record<string, SetBonusDef[]> = {
   ],
   veil: [
     { pieces: 2, effect: stat({ stat_agi: 3 }) },
-    { pieces: 4, effect: stat({ stat_int: 3 }) },
+    { pieces: 4, effect: stat({ stat_int: 2 }) },
     { pieces: 5, name: 'Edge of Worlds', effect: { stats: { stat_agi: 3 }, mult: { essenceRegenMult: 1.06 } } },
   ],
   veil_ascended: [
     { pieces: 2, effect: stat({ stat_agi: 4 }) },
-    { pieces: 4, effect: stat({ stat_int: 4 }) },
+    { pieces: 4, effect: stat({ stat_int: 3 }) },
     { pieces: 5, name: 'Shadowless', effect: { stats: { stat_agi: 4 }, mult: { essenceRegenMult: 1.08 } } },
   ],
 };

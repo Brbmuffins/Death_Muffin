@@ -25,28 +25,30 @@ The catalog lives in `src/content/armorSets.ts`. Run `node tools/generate-armor-
 
 Wear 2, 4 or 5 pieces of the **same** set (the first and ascended collections count separately) for a bonus. Bonuses stack: five pieces gives the 2, 4 and 5 piece lines together. Two sets at two pieces each give both first bonuses. Numbers live in `src/content/setBonuses.ts`; the Reliquary tooltip, the Character sheet, the Codex "Armor sets" tab and this table are generated or checked against it.
 
-The four necromancer sets use the levers their discipline already has: **Ossuary** (thrall health, ward per thrall, Black Litany barrier, health), **Gravecaller** (thrall damage and attack speed, +1 thrall cap at five), **Mourner** (essence regeneration, corpse healing, wraith damage), **Rotweaver** (Miasma radius, maximum Withered stacks). The ascended sets are a step up at every tier. The other five disciplines have no thralls or rites to scale, so their sets give flat STR/AGI/INT/VIT and maximum health or essence regeneration. Any class may wear any set; lines a class cannot use (thrall and rite effects on a non-necromancer) are shown as "no effect for your class" and are not counted in its gear score.
+The four necromancer sets use the levers their discipline already has: **Ossuary** (thrall health, ward per thrall, Black Litany barrier, health), **Gravecaller** (thrall damage and attack speed, +1 thrall cap at five), **Mourner** (essence regeneration, corpse healing, wraith damage, and health to make up for a set with no VIT), **Rotweaver** (Miasma radius, maximum Withered stacks, a little health). The ascended sets are a step up at every tier. The other five disciplines have no thralls or rites to scale, so their sets give flat STR/AGI/INT/VIT and maximum health or essence regeneration. Any class may wear any set; lines a class cannot use (thrall and rite effects on a non-necromancer) are shown as "no effect for your class" and are not counted in its gear score.
 
 | Set | Discipline | 2 pieces | 4 pieces | 5 pieces |
 | --- | --- | --- | --- | --- |
-| Gravecall | Gravecaller | Thralls hit +4% harder | Thralls attack +8% faster | **Legion Call**: Thralls hit +5% harder · +1 thrall cap |
+| Gravecall | Gravecaller | Thralls hit +8% harder | Thralls attack +10% faster | **Legion Call**: Thralls hit +14% harder · +1 thrall cap |
 | Lamplight | Grave Warden | +3 VIT | +5% maximum health | **Lamplight Vigil**: +3 STR · +4% maximum health |
 | Bellwake | Bell Monk | +3 AGI | +3 STR | **Measured Toll**: +3 AGI · +3 STR |
-| Ivory Reliquary | Ossuary | Thralls have +5% health | Thralls have +5% health · 1.5% less damage taken per thrall | **Reliquary Bulwark**: +5% maximum health · Black Litany barrier +2% max health per corpse |
-| Widowveil | Mourner | +5% essence regeneration | Thralls have +5% health · Consumed corpses heal +2% max health | **Widow’s Chorus**: +8% essence regeneration · Thralls hit +8% harder |
-| Carrionbloom | Carrion Witch | +3 INT | +6% essence regeneration | **Thorn Bloom**: +3 INT · +4% maximum health |
-| Blightweave | Rotweaver | Miasma is +5% wider | Miasma is +5% wider · +1 max Withered stacks | **Blight Bloom**: Miasma is +10% wider · +1 max Withered stacks |
+| Ivory Reliquary | Ossuary | +2% maximum health · Thralls have +20% health | Thralls have +10% health · 5% less damage taken per thrall | **Reliquary Bulwark**: +10% maximum health · Black Litany barrier +4% max health per corpse |
+| Widowveil | Mourner | +6% maximum health · +30% essence regeneration | +5% maximum health · Thralls have +20% health · Consumed corpses heal +3% max health | **Widow’s Chorus**: +4% maximum health · +20% essence regeneration · Thralls hit +20% harder |
+| Carrionbloom | Carrion Witch | +2 INT | +6% essence regeneration | **Thorn Bloom**: +2 INT · +4% maximum health |
+| Blightweave | Rotweaver | Miasma is +12% wider | Miasma is +8% wider · +2 max Withered stacks | **Blight Bloom**: +3% maximum health · Miasma is +12% wider · +1 max Withered stacks |
 | Hollow Oath | Hollow Knight | +3 STR | +5% maximum health | **Broken Vow**: +3 VIT · +3 STR |
-| Threshold | Veilwalker | +3 AGI | +3 INT | **Edge of Worlds**: +3 AGI · +6% essence regeneration |
-| Epitaph Sovereign (ascended) | Gravecaller | Thralls hit +6% harder | Thralls hit +4% harder · Thralls attack +10% faster | **Sovereign Legion**: Thralls hit +8% harder · Thralls attack +5% faster · +1 thrall cap |
+| Threshold | Veilwalker | +3 AGI | +2 INT | **Edge of Worlds**: +3 AGI · +6% essence regeneration |
+| Epitaph Sovereign (ascended) | Gravecaller | Thralls hit +14% harder | Thralls hit +4% harder · Thralls attack +14% faster | **Sovereign Legion**: Thralls hit +14% harder · Thralls attack +6% faster · +1 thrall cap |
 | Nightwatch Beacon (ascended) | Grave Warden | +4 VIT | +7% maximum health | **Last Watch**: +4 STR · +5% maximum health |
 | Last Toll (ascended) | Bell Monk | +4 AGI | +4 STR | **Final Note**: +4 AGI · +4 STR |
-| Marrow Regent (ascended) | Ossuary | Thralls have +7% health | Thralls have +6% health · 2% less damage taken per thrall | **Regent’s Ossuary**: +8% maximum health · Black Litany barrier +3% max health per corpse |
-| Pale Requiem (ascended) | Mourner | +7% essence regeneration | Thralls have +6% health · Consumed corpses heal +3% max health | **Requiem Hush**: +10% essence regeneration · Thralls hit +10% harder · Consumed corpses heal +1% max health |
-| Thorn Covenant (ascended) | Carrion Witch | +4 INT | +8% essence regeneration | **Rootbound Covenant**: +4 INT · +6% maximum health |
-| Virulent Choir (ascended) | Rotweaver | Miasma is +7% wider | Miasma is +5% wider · +2 max Withered stacks | **Plague Song**: +5% maximum health · Miasma is +12% wider · +1 max Withered stacks |
+| Marrow Regent (ascended) | Ossuary | +3% maximum health · Thralls have +30% health | Thralls have +12% health · 6.5% less damage taken per thrall | **Regent’s Ossuary**: +14% maximum health · Black Litany barrier +6% max health per corpse |
+| Pale Requiem (ascended) | Mourner | +12% maximum health · +45% essence regeneration | +8% maximum health · Thralls have +30% health · Consumed corpses heal +5% max health | **Requiem Hush**: +7% maximum health · +30% essence regeneration · Thralls hit +20% harder · Consumed corpses heal +2% max health |
+| Thorn Covenant (ascended) | Carrion Witch | +3 INT | +8% essence regeneration | **Rootbound Covenant**: +3 INT · +6% maximum health |
+| Virulent Choir (ascended) | Rotweaver | Miasma is +16% wider | Miasma is +10% wider · +3 max Withered stacks | **Plague Song**: +5% maximum health · Miasma is +16% wider · +1 max Withered stacks |
 | Oathbreaker (ascended) | Hollow Knight | +4 STR | +7% maximum health | **Shield Remains**: +4 VIT · +4 STR |
-| Umbral Crossing (ascended) | Veilwalker | +4 AGI | +4 INT | **Shadowless**: +4 AGI · +8% essence regeneration |
+| Umbral Crossing (ascended) | Veilwalker | +4 AGI | +3 INT | **Shadowless**: +4 AGI · +8% essence regeneration |
+
+**How the numbers were set (2026-10-02 gear pass, BALANCE.md).** Each necromancer's own set should be its best set. The power score (below), calibrated against the balance harness, puts the whole-set bonuses of the first sets at roughly 6 to 11 points of power for their own discipline and the ascended sets at 8 to 16; a rival necromancer set is worth 2 to 6 less, and the flat-stat sets (Carrionbloom, Threshold and so on) about 4 to 6. Stats on the pieces themselves are the same for every INT/VIT set, so the bonus lines are what separate them. `gear-balance.test.ts` pins "own set first by at least 1.5 points" in both collections. The harness cannot resolve differences this small (a 32-seed run reads every INT/VIT set within about 4% of the others), so no necromancer set is mandatory and the STR/AGI sets (Bellwake, Hollow Oath, Lamplight, Threshold) are the ones to avoid for a necromancer.
 
 ### How bonuses plug into the game
 
@@ -57,4 +59,4 @@ Nothing new runs in the sim or the ability code. Bonuses are computed client-sid
 
 ### Gear score
 
-`gearStats` re-bases the discipline on the outfit it is judging (`withSetBonuses`), so swapping a piece changes the derived numbers exactly as wearing it would. Effects `deriveStats` cannot see (ward per thrall, Litany barrier, corpse healing, Withered stacks, Miasma radius) are valued as a percent of power in `SET_VALUE` (judgment calls, necromancers only). The upgrade arrow and verdict add the set effect: "Upgrade for your Ossuary: +9% (...) — completes Ivory Reliquary 4-piece", "Worse than your Gravecall Crown: −2% — breaks your Gravecall 2-piece".
+`gearStats` re-bases the discipline on the outfit it is judging (`withSetBonuses`), so swapping a piece changes the derived numbers exactly as wearing it would. Effects `deriveStats` cannot see (ward per thrall, Litany barrier, corpse healing, Withered stacks, Miasma radius) are valued as a percent of power in `SET_VALUE`, and the weapon line in `LOADOUT_VALUE`; both were set from harness measurements in the 2026-10-02 gear pass (necromancers only). Thrall damage counts for `THRALL_DAMAGE_SHARE` (0.15) of its raw value and a legion for `THRALL_UPTIME` (0.7) of its cap, essence regeneration is judged over `REGEN_HORIZON_S` seconds. The upgrade arrow and verdict add the set effect: "Upgrade for your Ossuary: +9% (...) — completes Ivory Reliquary 4-piece", "Worse than your Gravecall Crown: −2% — breaks your Gravecall 2-piece".

@@ -4,12 +4,16 @@
  * for each discipline. Targets live in BALANCE.md.
  *
  * Env: BALANCE_MINUTES (default 3), BALANCE_AREAS=graves,nave, BALANCE_BANDS=intended,max,
- *      BALANCE_DISCIPLINES=1,3, BALANCE_SEEDS=2 (averages seeds 42, 43, …).
+ *      BALANCE_DISCIPLINES=1,3, BALANCE_SEEDS=2 (averages seeds 42, 43, …),
+ *      BALANCE_KIT=none|progress|typical|ascended|bis|auto (gear worn by the bot, balance/kits.ts; `auto` = the kit each band
+ *      is meant to wear: intended=progress, geared/push=typical, max=ascended). Default none = the historical bot.
  */
 import { runBalance, type BalanceResult, type BalanceRun } from './harness';
 import { AREAS, AREA_ORDER, type AreaId } from '../../content/areas';
 import type { Difficulty } from '../../content/difficulty';
 import { ascensionLevels } from '../../content/ascension';
+import { KIT_NAMES, type KitName } from './kits';
+import { BANDS } from './bands';
 
 const MINUTES = Number(process.env.BALANCE_MINUTES ?? 3);
 const DIFFICULTY = (process.env.BALANCE_DIFFICULTY ?? 'medium') as Difficulty;
@@ -21,17 +25,10 @@ const areas = (list(process.env.BALANCE_AREAS) ?? ['graves', 'ossuary', 'nave', 
 const disciplines = (list(process.env.BALANCE_DISCIPLINES) ?? ['1', '2', '3', '4', '5', '6', '7', '8', '9']).map(Number);
 const names: Record<number, string> = { 1: 'Ossuary', 2: 'Gravecaller', 3: 'Mourner', 4: 'Rotweaver', 5: 'Grave Warden', 6: 'Bell Monk', 7: 'Carrion Witch', 8: 'Hollow Knight', 9: 'Veilwalker' };
 
-/** Level bands relative to the area's level: how a player plausibly arrives and pushes. */
-const BANDS: Record<string, (lvl: number) => Partial<BalanceRun>> = {
-  /** Just arrived: at the area's level, a few damage tiers, waves at base speed. */
-  intended: (lvl) => ({ level: lvl, damageTier: Math.round(lvl * 0.6), waveTier: 0, gearStats: Math.round(lvl * 0.8) }),
-  /** Settled in: a few levels up, more damage, moderate Wave Speed. */
-  geared: (lvl) => ({ level: lvl + 3, damageTier: Math.round(lvl * 0.9), waveTier: 3, gearStats: Math.round(lvl) }),
-  /** Greedy: arrived-level power with Wave Speed pushed hard. */
-  push: (lvl) => ({ level: lvl, damageTier: Math.round(lvl * 0.6), waveTier: 6, gearStats: Math.round(lvl * 0.8) }),
-  /** Reckless: arrived-level power at max Wave Speed. Should kill a careless player. */
-  max: (lvl) => ({ level: lvl, damageTier: Math.round(lvl * 0.6), waveTier: 8, gearStats: Math.round(lvl * 0.8) }),
-};
+/** The kit each band is meant to wear (BALANCE.md, gear pass). */
+export const AUTO_KIT: Record<string, KitName> = { intended: 'progress', geared: 'typical', push: 'typical', max: 'ascended' };
+const KIT = process.env.BALANCE_KIT ?? 'none';
+if (KIT !== 'auto' && !KIT_NAMES.includes(KIT as KitName)) throw new Error(`BALANCE_KIT must be auto or one of ${KIT_NAMES.join(', ')}`);
 const bandNames = list(process.env.BALANCE_BANDS) ?? Object.keys(BANDS);
 
 /** Kills this area requires to open the next one (for pacing). */
@@ -59,7 +56,7 @@ function averaged(run: BalanceRun): BalanceResult {
 }
 
 const cols: [string, number][] = [
-  ['area', 9], ['band', 9], ['disc', 12], ['lvl', 4], ['dmgT', 5], ['waveT', 6], ['kills/m', 8], ['gold/m', 7], ['xp/m', 6],
+  ['area', 9], ['band', 9], ['disc', 14], ['kit', 9], ['lvl', 4], ['dmgT', 5], ['waveT', 6], ['kills/m', 8], ['gold/m', 7], ['xp/m', 6],
   ['hurt%/m', 8], ['minHp', 6], ['avgHp', 6], ['deaths', 7], ['1st†s', 6], ['ttk s', 6], ['peak', 5], ['lvl+', 5], ['surge', 6], ['unlock m', 9], ['1st med', 7],
 ];
 const pad = (s: string | number, n: number) => String(s).padEnd(n);
@@ -69,10 +66,10 @@ for (const area of areas) {
   const needed = unlockKills(area);
   for (const band of bandNames) {
     for (const classIndex of disciplines) {
-      const res = averaged({ ...(BANDS[band](lvl) as BalanceRun), area, classIndex, minutes: MINUTES });
+      const res = averaged({ ...(BANDS[band](lvl) as BalanceRun), area, classIndex, minutes: MINUTES, kit: KIT === 'auto' ? AUTO_KIT[band] : (KIT as KitName) });
       const r = res.run;
       const cells = [
-        area, band, names[classIndex], r.level, r.damageTier, r.waveTier,
+        area, band, names[classIndex], r.kit ?? 'none', r.level, r.damageTier, r.waveTier,
         res.killsPerMin.toFixed(1), res.goldPerMin.toFixed(0), res.xpPerMin.toFixed(0),
         res.dmgPctPerMin.toFixed(0), res.minHpPct.toFixed(0), res.avgHpPct.toFixed(0), res.deaths.toFixed(SEEDS > 1 ? 1 : 0),
         res.firstDeathSec < 0 ? '-' : res.firstDeathSec.toFixed(0),

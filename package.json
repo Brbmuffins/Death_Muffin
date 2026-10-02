@@ -16,6 +16,9 @@
     "blender": "node tools/blender.mjs",
     "balance": "vite-node src/gameplay/balance/report.ts",
     "balance:boss": "vite-node src/gameplay/balance/bossReport.ts",
+    "balance:gear": "vite-node src/gameplay/balance/gearReport.ts",
+    "balance:lever": "vite-node src/gameplay/balance/leverReport.ts",
+    "balance:score": "vite-node src/gameplay/balance/gearScoreReport.ts",
     "build:server-rules": "node tools/build-server-rules.mjs",
     "build:death-muffin": "DEPLOY_BASE=/death-muffin/play/ VITE_API_BASE=/death-muffin/api VITE_WS_BASE=https://muffindevelopment.com VITE_WS_PATH=/death-muffin/rt/socket.io npm run build",
     "build:offline": "VITE_OFFLINE_BUILD=1 DEPLOY_BASE=/death-muffin/offline/ VITE_WS_BASE= vite build --outDir dist-offline && node tools/generate-offline-sw.mjs dist-offline /death-muffin/offline/"
