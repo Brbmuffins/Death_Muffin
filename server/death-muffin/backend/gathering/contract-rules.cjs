@@ -255,7 +255,7 @@ for (const skill of Object.keys(TOOL_KIND)) {
       name: `${METAL_NAME[i]} ${TOOL_NAMES[kind]}`,
       rarity: METAL_RARITY[i],
       sell: 10 * (i + 1) * (i + 1),
-      lore: `Keep it in your bag: +${5 * (i + 1)}% gathering success (the best tool you carry counts).`,
+      lore: `Carry it in your bag or on the tool belt: +${5 * (i + 1)}% gathering success (the best tool you carry counts).`,
       kind: "material",
       stack: 1
     };
