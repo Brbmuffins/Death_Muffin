@@ -29,6 +29,9 @@ Some of the most polished corners of the game right now (updated 2 October 2026)
 </tr><tr>
 <td><img src="docs/screenshots/runes/colossus-risen.webp" alt="A Bone Colossus thrall standing over its necromancer" /><br /><sub><b>Relic runes: the Bone Colossus.</b> Socket it into Exhume and five corpses become one jade-lit giant.</sub></td>
 <td><img src="docs/screenshots/runes/grimoire-colossus.webp" alt="The Grimoire rune socket explaining exactly what the rune changes" /><br /><sub><b>Runes that change the spell.</b> Eleven necromancer runes, one per rite; the Grimoire says exactly what each one does.</sub></td>
+</tr><tr>
+<td><img src="docs/screenshots/legendary/legendary-tooltip.webp" alt="A legendary boot tooltip showing the Legion of the Unburied set bonuses" /><br /><sub><b>Legendary armor sets.</b> One five-piece chase set per necromancer discipline; four pieces change a mechanic, five define the build.</sub></td>
+<td><img src="docs/screenshots/legendary/legendary-codex.webp" alt="The Codex Legendary sets section explaining drops and bonuses" /><br /><sub><b>Told plainly.</b> Every tier is spelled out in the tooltip and the Codex, including where each set drops.</sub></td>
 </tr></table>
 
 ## Contents

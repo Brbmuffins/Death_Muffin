@@ -35,10 +35,12 @@ flowchart LR
     S21[2 Oct: thrall gear — the Legion]:::done
     S22[2 Oct: QA suite reliability · run-all]:::done
     S23[2 Oct: relic runes · Bone Colossus]:::done
+    S24[2 Oct: legendary armor sets]:::done
   end
 
   subgraph NOW["🔨 Now"]
-    R3[Legendary armor sets<br/>other session]:::now
+    R3[Phones round 3<br/>Back to Menu · AFK survives menus · tap tooltips]:::now
+    R4[Performance phase 1<br/>prop culling · decal batching · lighter downloads]:::now
   end
 
   subgraph POLISH["✨ Next — polish"]
@@ -63,6 +65,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 2 Oct 2026 | **Legendary armor sets**: four five-piece chase sets, one per necromancer discipline (Legion of the Unburied, Colossus Mantle, Requiem of Wraiths, Plague Choir). 2 pieces nudge, 4 change a mechanic (thralls burst on death, the Bone Ward reflects, corpses summon healing wisps, Miasma spreads Withered), 5 define the build (Champion thralls + Marrow Spear rally, Colossus guard + Litany shatter, Soul Harvest ×2 + wraith novas, Withered bursts into new Miasma). Area bosses from the Marrow Ossuary on drop them (~7%, ~70% your own discipline's set), elites in the scaled zones very rarely (0.3%). Amber rarity, a set-coloured glow at 4+ pieces, a Codex section and a first-drop counsel tip | Migration 025. Harness: full set ≈ ×1.13 clear speed on average (up to ×1.5 at push/max bands), modest at the intended band; drop rates and the Mourner's extra risk need a playtest. Rune spears (Ossuary Ring, Impale) also rally. Co-op: the host sim runs burst/Champion/rally/plague mechanics for guests. Perf: +0.4 ms frame update with 3 wisps. |
 | 2 Oct 2026 | Relic runes: eleven necromancer runes drop from elites, Surge offerings and bosses; socket one into each rite in the Grimoire (L) to change how it behaves (Splinters, Volley, Ossuary Ring, Impaling, Mass Grave, Creeping Rot, Contagion, Hollow Choir, Requiem…). The **Bone Colossus** rune turns Exhume into one giant thrall made from up to five corpses | Migration 024. Runes add variety, not power (−2% to +10% kills/min in the harness); the Colossus's tanking and the drop rates need a playtest. |
 | 2 Oct 2026 | Relic runes (branch `dm/runes`, not deployed, migration 024): eleven socketable spell modifiers, one socket per necromancer rite (Bone Needle, Marrow Spear, Exhume, Miasma Circle, Black Litany), set in the Grimoire (L); runes drop from elites, Grave Surges and bosses, stack, rest in the Vault and grind to reagents; the Bone Colossus rune raises one giant thrall (the `bone_colossus` model) from up to five corpses | Real-database probe (`tools/qa/runes-db-probe.cjs`), balance table in BALANCE.md, `tools/qa/runes-smoke.cjs`. |
 | 2 Oct 2026 | Phones, round 2: clear menu icons with labels, and on phones one **☰ Menu** with big tiles for every panel (plus Recall home); counsel cards and prompts in touch wording; Workbench/Cauldron **Craft ×N / ×5 / Max** and bag **Sell all** with confirm; no page zoom on double tap; **Connection lost / Back online** alerts and the save warning shown on phones | Smokes: mobile-nav, craft-n, connection, afk-move, mobile-shots (4 sizes, no overlaps), first-hour (desktop). Craft batches loop the existing single-craft API (one transaction per item). |
