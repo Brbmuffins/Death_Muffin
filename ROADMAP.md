@@ -17,23 +17,24 @@ flowchart LR
     S3[2 Oct: gear you can read<br/>upgrade arrows · sheet J]:::done
     S4[2 Oct: combat audio · strike timing]:::done
     S5[2 Oct: visible Grave Laborers]:::done
-    S6[2 Oct: armor set bonuses]:::done
+    S6[2 Oct: armor set bonuses · tool belt]:::done
+    S7[2 Oct: necro balance pass]:::done
   end
 
   subgraph NOW["🔨 Now — being built"]
     N2[Necro spell feel]:::now
-    N3[Balance pass<br/>Ossuary · Wave Speed · spiky zones]:::now
-    N5[Tool belt]:::now
+    N6[Guide NPCs + suggested next step<br/>Prior · Sexton · Apothecary]:::now
+    N7[Alchemist's Wing room]:::now
+    N8[Item level + affixes]:::now
+    N9[Animation pass]:::now
+    N10[Audio pass 2<br/>ambience · gathering · rites]:::now
   end
 
   subgraph POLISH["✨ Next — polish"]
-    P5[Animation pass<br/>clipping · sliding · crowds]:::next
     P6[Second polish round<br/>re-run audits]:::next
   end
 
   subgraph LATER["🌒 Later — new content"]
-    L0[Alchemist's Wing]:::later
-    L1[Item level + affixes]:::later
     L2[New zones]:::later
     L3[Server authority]:::later
     L4[AI companions — parked]:::later
@@ -48,12 +49,15 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 2 Oct 2026 | Art (not yet placed in game): 12 Alchemist's Wing props and three guide NPCs (the Prior, the Sexton, the Apothecary) with idle, walk and talk clips | 1,025 Tripo credits; contact sheets in docs/screenshots/alchemist-wing/. |
+| 2 Oct 2026 | Necro balance pass: max Wave Speed now pays (kills 0.54× → 1.18×, gold 1.34× → 2.50×, XP 0.61× → 1.84× of the intended band; deaths 7.8 → 2.1 per 3 min); Ossuary 10.1 → 2.2 deaths at max; Coliseum and Sanctum smoothed (≤1 death at the intended band everywhere); Wave Speed ramps in over 30 s; an empty area clears after 8 s | Measured with 8 seeds × 36 rows; details in BALANCE.md. Needs a human playtest at tiers 6–8. |
+| 2 Oct 2026 | Tool belt: four belt slots under the paper doll (hatchet, pickaxe, rod, spade) that count for gathering and take no bag space; a one-time "belt your best tools" offer; Skills shows the active tool | No migration (reserved slots 110–113). |
 | 2 Oct 2026 | Armor set bonuses at 2/4/5 pieces for all 18 sets (necro sets drive thralls, ward, essence, Miasma, Withered); upgrade arrows and verdicts count set bonuses ("completes your 4-piece" / "breaks your 2-piece"); Set bonuses on the Character sheet and a Codex Armor sets tab | Table in docs/ARMOR-SETS.md. |
 | 2 Oct 2026 | Visible Grave Laborers: assigned thralls work their node in the Sexton's Acre (chop, mine, dig, fish) with the right tool, a ready badge, hover details and click-to-open (H) | Uses the dig/chop clips retargeted onto the four thrall rigs. |
 | 2 Oct 2026 | 48-slot bag; Ossuary Vault (V, 120 shared slots); Bone Grinder salvage + Salvaging skill; item locks; Sell all junk; gear stat effects, ▲/▼ upgrade arrows, verdict line, Character sheet (J) with "What you're looking for"; combat audio (CC0 samples, capped mixer, Combat/Ambience/Interface sliders); strike timing; old starter gear no longer stacks | Migrations 017 (vault) and 018 (gear unstackable). Thrall dig/chop clips built for the laborers (90 Tripo credits). |
 | 1 Oct 2026 | Necro weapons, brewing and reagents, Mourning Fen, five swappable rite slots, Offline Edition with complete save sync, Leave the world at the top of Settings | Codex cleanup; `deploy-release.sh` became the only deploy path. |
 
-**Owner approvals in force:** deploy when all checks pass; push after a secret scan; up to 1,500 Tripo credits without asking (spent so far against it: 0); keep following this roadmap.
+**Owner approvals in force:** deploy when all checks pass; push after a secret scan; up to 1,500 Tripo credits without asking (spent so far against it: 1,025 — Alchemist's Wing props and the three guide NPCs); keep following this roadmap.
 
 **Principle (owner, 1 Oct 2026):** polish and improve what exists before adding more. The game should be immersive but not overwhelming. The necromancer is the main class; the other classes are bonus work.
 
@@ -106,7 +110,7 @@ Assigned laborers appear as thralls at their node in the Sexton's Acre and work 
 ### P3 · Zone and encounter polish
 Driven by measurements, not guesses: the necromancer balance run across all nine hunting grounds, the clip audit, and the loot audit (what fills the bag). Results and the resulting fixes are listed here as they land.
 
-**Necromancer balance run (2 Oct 2026, 4 disciplines × 9 hunting grounds × 4 seeds, 3 min each):**
+**Necromancer balance run (2 Oct 2026, 4 disciplines × 9 hunting grounds × 4 seeds, 3 min each).** The first three findings below were fixed on `dm/balance-pass` the same day (see `BALANCE.md`, "Necro pass"): max Wave Speed 7.8 → 2.1 deaths per 3 min and 1.18× the intended kill rate; Ossuary level with the others; every intended-band row at ≤ 1 death. Awaiting a human playtest of tiers 6-8. Findings as measured:
 - At the intended pressure the necromancers are healthy almost everywhere (0–1.8 deaths per 3 min).
 - **Max Wave Speed is a trap.** 5–11 deaths per 3 min, first death after 5–20 s, and kills per minute *fall* to a third or less of the intended band (Nave Gravecaller 109 → 16/min). The top tiers should pay more for good play, not less. Fix: retune the tier 6–8 pressure curve and surge sizes so a careful player out-earns the intended band.
 - **Ossuary, the defensive discipline, dies most under pressure** (8–11.5 deaths at max). Its shieldbearers soak until they die, then the caster is exposed. Candidates: Bone Ward per living thrall, or a thrall HP floor.

@@ -1,0 +1,19 @@
+{
+  "id": "npc_prior",
+  "input": "art-src/concepts/npc_prior.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 8000,
+    "texture_quality": "standard"
+  },
+  "rig": {
+    "model": "v1.0-20240301",
+    "rig_type": "biped"
+  },
+  "animations": [
+    "preset:biped:idle",
+    "preset:biped:walk",
+    "preset:biped:cast_a_spell"
+  ],
+  "animationMode": "single"
+}

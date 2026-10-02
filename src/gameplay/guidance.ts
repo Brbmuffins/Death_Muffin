@@ -196,7 +196,7 @@ export function suggestions(s: GuidanceState): Suggestion[] {
 
   // --- The Acre (the Sexton) ---
   if (s.bagSize > 0 && s.bagUsed / s.bagSize >= BAG_FULL_FRACTION) {
-    add({ id: 'bag-full', kind: 'bag-full', topic: 'acre', priority: 88, text: 'Your bag is nearly full: salvage spare gear at the Bone Grinder, or stash it in the Vault (V)', place: 'acre', target: spot('bone_grinder'), pingInPlace: true, data: { used: s.bagUsed, size: s.bagSize } });
+    add({ id: 'bag-full', kind: 'bag-full', topic: 'acre', priority: 88, text: 'Your bag is nearly full: salvage or stash spare gear (Acre, V)', place: 'acre', target: spot('bone_grinder'), pingInPlace: true, data: { used: s.bagUsed, size: s.bagSize } });
   }
   if (s.labor && s.labor.ready > 0) {
     add({ id: 'labor-ready', kind: 'labor-ready', topic: 'acre', priority: 70, text: s.labor.ready === 1 ? 'A laborer’s work is ready: collect it in the Acre (H)' : 'Your laborers are ready in the Acre (H)', place: 'acre', target: spot(npcInteractableId('sexton')), data: { ready: s.labor.ready } });

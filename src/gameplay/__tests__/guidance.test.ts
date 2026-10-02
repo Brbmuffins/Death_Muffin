@@ -354,7 +354,10 @@ describe('looks and help', () => {
       const look = NPC_LOOKS[id];
       expect(CREATURE_MODELS[look.slug], id).toBeDefined();
       expect(existsSync(`public/${CREATURE_MODELS[look.slug].url}`), look.slug).toBe(true);
-      if (look.fallback) expect(CREATURE_MODELS[look.fallback]).toBeDefined();
+      if (look.fallback) {
+        expect(CREATURE_MODELS[look.fallback]).toBeDefined();
+        expect(existsSync(`public/${CREATURE_MODELS[look.fallback].url}`), look.fallback).toBe(true);
+      }
     }
   });
 

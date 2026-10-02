@@ -83,8 +83,8 @@ function glowTexture(): THREE.Texture {
   cv.width = cv.height = 128;
   const g = cv.getContext('2d')!;
   const grad = g.createRadialGradient(64, 64, 6, 64, 64, 62);
-  grad.addColorStop(0, 'rgba(255,255,255,0.55)');
-  grad.addColorStop(0.55, 'rgba(255,255,255,0.18)');
+  grad.addColorStop(0, 'rgba(255,255,255,0.95)');
+  grad.addColorStop(0.5, 'rgba(255,255,255,0.4)');
   grad.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = grad;
   g.fillRect(0, 0, 128, 128);
@@ -104,6 +104,8 @@ interface Npc {
   headY: number;
   talking: boolean;
   isNew: boolean;
+  /** Seconds until the next emphatic gesture while talking (models with a `talk2` clip only). */
+  gestureT: number;
 }
 
 export class NpcViews {
@@ -140,7 +142,7 @@ export class NpcViews {
       glow.renderOrder = 3;
       root.add(plate, bang, glow);
       this.group.add(root);
-      this.npcs.set(id, { id, c: null, root, plate, bang, glow, yaw: def.rest, headY, talking: false, isNew: false });
+      this.npcs.set(id, { id, c: null, root, plate, bang, glow, yaw: def.rest, headY, talking: false, isNew: false, gestureT: 6 });
     }
   }
 
@@ -161,6 +163,7 @@ export class NpcViews {
       const t = n.id === id;
       if (t === n.talking) continue;
       n.talking = t;
+      n.gestureT = 5 + Math.random() * 4;
       if (n.c?.loaded && n.c.has('talk')) n.c.setLoop(t ? 'talk' : 'idle', 1);
     }
   }
@@ -185,6 +188,11 @@ export class NpcViews {
       if (near && !n.c) this.load(n);
       n.root.visible = near;
       if (!near) continue;
+      if (n.talking && n.c?.loaded && n.c.has('talk2') && (n.gestureT -= dt) <= 0) {
+        n.gestureT = 9 + Math.random() * 6;
+        n.c.playOnce('talk2');
+      }
+      if (n.c?.loaded) n.c.setLoop(n.talking && n.c.has('talk') ? 'talk' : 'idle', 1);
       n.c?.update(dt);
       // Turn toward the player when close (or while talking), back to rest otherwise.
       const want = n.talking || dist < NPC_LOOK_RANGE ? Math.atan2(px - def.x, pz - def.z) : def.rest;
@@ -202,14 +210,14 @@ export class NpcViews {
         n.bang.position.y = n.headY + 0.75 + bob;
       }
       const pulse = calm ? 0.5 : 0.5 + 0.5 * Math.sin(this.clock * 1.8 + def.z);
-      (n.glow.material as THREE.MeshBasicMaterial).opacity = fresh ? 0.28 + 0.2 * pulse : 0;
+      (n.glow.material as THREE.MeshBasicMaterial).opacity = fresh ? 0.5 + 0.3 * pulse : 0;
       n.glow.visible = fresh;
     }
   }
 
   /** QA: where the figure is and what shows. */
   debug() {
-    return [...this.npcs.values()].map((n) => ({ id: n.id, model: n.c?.slug ?? null, loaded: !!n.c?.loaded, visible: n.root.visible, yaw: +n.yaw.toFixed(2), bang: n.bang.visible, plate: n.plate.visible, x: n.root.position.x, z: n.root.position.z }));
+    return [...this.npcs.values()].map((n) => ({ id: n.id, model: n.c?.slug ?? null, hasTalk: !!n.c?.loaded && n.c.has('talk'), hasTalk2: !!n.c?.loaded && n.c.has('talk2'), talking: n.talking, loaded: !!n.c?.loaded, visible: n.root.visible, yaw: +n.yaw.toFixed(2), bang: n.bang.visible, plate: n.plate.visible, x: n.root.position.x, z: n.root.position.z }));
   }
 
   dispose() {

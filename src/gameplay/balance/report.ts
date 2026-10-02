@@ -52,12 +52,15 @@ function averaged(run: BalanceRun): BalanceResult {
   // Earliest first death across seeds (-1 only if every seed survived).
   const deaths = results.map((r) => r.firstDeathSec).filter((s) => s >= 0);
   avg.firstDeathSec = deaths.length ? Math.min(...deaths) : -1;
+  // Median over seeds (a seed that never died counts as the whole run): one unlucky seed no longer sets the column.
+  const firsts = results.map((r) => (r.firstDeathSec >= 0 ? r.firstDeathSec : MINUTES * 60)).sort((a, b) => a - b);
+  avg.firstDeathMedSec = firsts[Math.floor(firsts.length / 2)];
   return avg as unknown as BalanceResult;
 }
 
 const cols: [string, number][] = [
-  ['area', 8], ['band', 9], ['disc', 12], ['lvl', 4], ['dmgT', 5], ['waveT', 6], ['kills/m', 8], ['gold/m', 7], ['xp/m', 6],
-  ['hurt%/m', 8], ['minHp', 6], ['avgHp', 6], ['deaths', 7], ['1st†s', 6], ['ttk s', 6], ['peak', 5], ['lvl+', 5], ['surge', 6], ['unlock m', 8],
+  ['area', 9], ['band', 9], ['disc', 12], ['lvl', 4], ['dmgT', 5], ['waveT', 6], ['kills/m', 8], ['gold/m', 7], ['xp/m', 6],
+  ['hurt%/m', 8], ['minHp', 6], ['avgHp', 6], ['deaths', 7], ['1st†s', 6], ['ttk s', 6], ['peak', 5], ['lvl+', 5], ['surge', 6], ['unlock m', 9], ['1st med', 7],
 ];
 const pad = (s: string | number, n: number) => String(s).padEnd(n);
 const rows: string[] = [cols.map(([h, n]) => pad(h, n)).join('')];
@@ -76,6 +79,7 @@ for (const area of areas) {
         res.avgTtkSec.toFixed(1), res.peakEnemies.toFixed(0), res.levelsGained.toFixed(SEEDS > 1 ? 1 : 0),
         `${res.surgesCleared.toFixed(0)}/${(res.surgesCleared + res.surgesFailed).toFixed(0)}`,
         needed && res.killsPerMin ? (needed / res.killsPerMin).toFixed(1) : '-',
+        ((res as BalanceResult & { firstDeathMedSec?: number }).firstDeathMedSec ?? (res.firstDeathSec < 0 ? MINUTES * 60 : res.firstDeathSec)).toFixed(0),
       ];
       rows.push(cells.map((c, i) => pad(c, cols[i][1])).join(''));
     }

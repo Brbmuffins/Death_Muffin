@@ -473,7 +473,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
     cap: 36,
     waveSize: 14,
     waveIntervalMs: 4200,
-    eliteChance: 0.16,
+    eliteChance: 0.13,
     unlock: { area: 'ossuary', kills: 350 },
     loot: [
       ...necroWeaponLoot('coliseum'),

@@ -17,7 +17,9 @@ async function main() {
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(m.text()); });
+    // A failed request is an error unless it is the @fontsource files a symlinked node_modules cannot serve from outside the Vite root (known, docs in HANDOFF).
+    page.on('response', (r) => { if (r.status() >= 400 && !/\/node_modules\/@fontsource\//.test(r.url())) errors.push(`HTTP ${r.status()} ${r.url()}`); });
     await page.addInitScript(() => localStorage.setItem('dm_settings_v1', JSON.stringify({ quality: 'low', tips: false, autoCombat: false })));
     await page.goto(process.env.DM_QA_URL || 'http://127.0.0.1:5338/?offline');
     await page.getByRole('button', { name: 'New to the Covenant? Create an account' }).click();
@@ -39,7 +41,8 @@ async function main() {
     let npcs = await G('npcs');
     assert.equal(npcs.length, 3);
     result.models = Object.fromEntries(npcs.map((n) => [n.id, n.model]));
-    assert.ok(npcs.every((n) => n.model), 'every person has a (stand-in) model once the player is near');
+    assert.ok(npcs.every((n) => n.model), 'every person has a model once the player is near');
+    assert.deepEqual(result.models, { prior: 'npc_prior', sexton: 'npc_sexton', apothecary: 'npc_apothecary' }, 'the real NPC models are in use (stand-ins are only the fallback)');
 
     // 1. Fresh character, starting in the Acre: the Sexton is in view, the line points to the Graves.
     assert.match(await nextText(), /Hollow Graves/);
@@ -67,6 +70,10 @@ async function main() {
     assert.match(await say(), /Sexton/);
     assert.equal((await choices()).length, 3);
     result.sextonGreeting = await say();
+    {
+      const sx0 = (await G('npcs')).find((n) => n.id === 'sexton');
+      assert.ok(sx0.talking && sx0.hasTalk, 'the Sexton plays his talk clip while the card is open');
+    }
     await page.screenshot({ path: `${out}/02-sexton-greeting.png` });
     // facing: the sexton has turned toward the player
     await adv(1);
@@ -128,6 +135,7 @@ async function main() {
     await page.evaluate(() => { window.__cwDebug.inventory.all.forEach((s) => window.__cwDebug.inventory.consume(s.item_id)); });
     await page.evaluate(() => { const p = window.__cwDebug.progression; for (let i = 0; i < 160; i++) p.recordKill('graves'); });
     assert.equal(await record('172 kills in the Graves'), 'Hollow Graves: 172 / 300 to open the Marrow Ossuary');
+    await adv(0.6);
     await page.screenshot({ path: `${out}/08-chapterhouse-next-seal.png` });
     await page.evaluate(() => { window.__cwDebug.progression.addShards(2); });
     assert.match(await record('2 shards'), /Gravedigger King waits at the King's Grave — 2 soul shards/);
@@ -157,6 +165,7 @@ async function main() {
     assert.match(await record('Prelate felled'), /Altar of Ascension is ready: \+\d+ Ashes/);
     await page.evaluate(() => { const d = window.__cwDebug; for (let i = 0; i < 46; i++) d.inventory.add({ item_id: i % 2 ? 'helm_copper' : 'staff_oak', quantity: 1 }); });
     assert.match(await record('bag nearly full'), /bag is nearly full/);
+    await adv(0.6); // let the minimap redraw with the ping
     await page.screenshot({ path: `${out}/10-next-bag-full.png` });
     await page.evaluate(() => { const d = window.__cwDebug; d.inventory.all.filter((s) => s.item_id === 'helm_copper' || s.item_id === 'staff_oak').forEach((s) => { while (d.inventory.count(s.item_id) > 0) d.inventory.consume(s.item_id); }); });
     await G('setLabor', { unlocked: 2, assigned: 2, ready: 2 });
@@ -180,6 +189,7 @@ async function main() {
     assert.equal(await page.locator('[data-next]').isVisible(), false, 'Settings turns the line off');
     await page.screenshot({ path: `${out}/11-settings-toggle.png` });
     await page.locator('[data-guidance]').check();
+    await page.evaluate(() => document.activeElement && document.activeElement.blur()); // keys are ignored while a checkbox has focus
     await page.keyboard.press('Escape');
     await adv(0.8);
     assert.equal(await page.locator('[data-next]').isVisible(), true, 'and back on');

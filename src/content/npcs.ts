@@ -59,12 +59,13 @@ export const NPCS: Record<NpcId, NpcDef> = {
 };
 
 /**
- * How each figure looks until the real models arrive. `slug` must be a CREATURE_MODELS key (graphics/modelPaths.ts): when
- * `npc_prior` / `npc_sexton` / `npc_apothecary` are added there, change the slug here (keep the old one as `fallback`).
- * Every clip use in NpcViews is optional (`has('talk')`-style), so a stand-in with only idle/walk works.
+ * How each figure looks. `slug` must be a CREATURE_MODELS key (graphics/modelPaths.ts): the real `npc_*` models, with the old
+ * stand-ins (deacon, grave robber, plague doctor) kept as `fallback`. Every clip use in NpcViews is optional (`has('talk')`-style),
+ * so a model with only idle/walk works.
  */
 export interface NpcLook {
-  slug: 'necromancer' | 'deacon' | 'grave_robber' | 'plague_doctor' | 'penitent' | 'bell_templar' | 'lich_acolyte';
+  slug: 'npc_prior' | 'npc_sexton' | 'npc_apothecary' | 'necromancer' | 'deacon' | 'grave_robber' | 'plague_doctor' | 'penitent' | 'bell_templar' | 'lich_acolyte';
+  /** Shown instead if the model fails to load (an older deploy without the new GLBs). */
   fallback?: NpcLook['slug'];
   scale: number;
   tint: number;
@@ -73,9 +74,9 @@ export interface NpcLook {
 }
 
 export const NPC_LOOKS: Record<NpcId, NpcLook> = {
-  prior: { slug: 'deacon', scale: 0.95, tint: 0xf3ecff, emissive: 0x4b2f8a, glow: 0.07 },
-  sexton: { slug: 'grave_robber', scale: 1.0, tint: 0xf0e6d0, emissive: 0x6b4a1f, glow: 0.1 },
-  apothecary: { slug: 'plague_doctor', scale: 0.95, tint: 0xe2f2dc, emissive: 0x2f7a47, glow: 0.08 },
+  prior: { slug: 'npc_prior', fallback: 'deacon', scale: 1, tint: 0xffffff, emissive: 0x4b2f8a, glow: 0.08 },
+  sexton: { slug: 'npc_sexton', fallback: 'grave_robber', scale: 1, tint: 0xffffff, emissive: 0x6b4a1f, glow: 0.08 },
+  apothecary: { slug: 'npc_apothecary', fallback: 'plague_doctor', scale: 1, tint: 0xffffff, emissive: 0x2f7a47, glow: 0.08 },
 };
 
 /** Distance (world units) inside which an NPC turns to look at the player, and the walk-up range for the E key. */

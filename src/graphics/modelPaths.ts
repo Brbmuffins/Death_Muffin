@@ -73,6 +73,10 @@ export const CREATURE_MODELS = {
   mire_leech: { url: 'models/props/mire_leech.glb', height: 0.6 },
   fen_wisp: { url: 'models/props/fen_wisp.glb', height: 1.15 },
   boss_mire_mother: m('boss_mire_mother', 4.4),
+  // Guide NPCs (2026-10-02, docs/ALCHEMIST-WING-ART.md). Clips: idle, walk, talk (+ talk2 on the Prior).
+  npc_prior: m('npc_prior', 1.8),
+  npc_sexton: m('npc_sexton', 1.8),
+  npc_apothecary: m('npc_apothecary', 1.75),
 } satisfies Record<string, CreatureModelDef>;
 
 export type CreatureSlug = keyof typeof CREATURE_MODELS;
