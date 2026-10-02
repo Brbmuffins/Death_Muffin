@@ -24,6 +24,7 @@ import { NODES, SKILLS, nodesForSkill, type SkillId } from '../gameplay/gatherin
 import type { LiveNode } from '../gameplay/gatherPlan';
 import { STOP_TEXT } from '../gameplay/gatherPlan';
 import { NodeViews } from '../graphics/NodeViews';
+import { LaborerViews } from '../graphics/LaborerViews';
 import { addToSlots } from '../gameplay/loot';
 import { WAVE_MILESTONES, damageBonusPct, milestoneActive, waveModifiers } from '../content/upgrades';
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
@@ -169,6 +170,7 @@ type Hover =
   | { kind: 'boss' }
   | { kind: 'interact'; it: Interactable }
   | { kind: 'node'; node: NodePlacement }
+  | { kind: 'laborer'; slot: number }
   | null;
 
 /**
@@ -302,6 +304,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private skills = new Skills();
   private gathering!: GatherLoop;
   private nodeViews!: NodeViews;
+  /** Grave Laborers standing at their posts while the player is in the Acre (graphics/LaborerViews.ts). */
+  private laborers!: LaborerViews;
   private gatherProg = 0;
   private lastNodeSync = 0;
   private skillLevels = new Map<SkillId, number>();
@@ -442,6 +446,7 @@ export class WorldScene implements GameScene, RuntimeView {
       return remote ? disciplineFor(remote.info.classIndex).id : null;
     });
     this.nodeViews = new NodeViews(this.scene, this.layout.nodes);
+    this.laborers = new LaborerViews(this.scene, this.effects, this.layout, { fetch: () => getLabor(this.character.id), onSeen: () => this.onboarding.show('laborers_working', 1500) });
     const prelate = new BossView(this.scene, this.effects);
     this.bossViews.set('prelate', prelate);
     this.scope.add(prewarmCreature(prelate.c, getRuntime().renderer, this.rig.camera, this.scene));
@@ -766,6 +771,7 @@ export class WorldScene implements GameScene, RuntimeView {
     }, () => this.inventory.all.map((s) => s.item_id), () => this.togglePanel('contracts'), () => this.togglePanel('garden'), () => this.togglePanel('labor'), () => this.togglePanel('cosmetics'));
     this.cosmeticsPanel = new CosmeticsPanel(this.root, this.character.id, this.inventory, (v) => this.applyCosmetics(v.selected));
     this.laborPanel = new LaborPanel(this.root, this.character.id, this.inventory, (skill) => this.skills.level(skill), (r) => this.onLaborCollected(r));
+    this.laborPanel.onView = (v) => this.laborers.apply(v);
     this.gardenPanel = new GardenPanel(this.root, this.character.id, this.inventory, (kind, r) => this.onGardenResult(kind, r));
     this.contractsPanel = new ContractsPanel(this.root, this.character.id, this.inventory, (d) => this.onContractDelivered(d));
     this.vaultPanel = new VaultPanel(this.root, this.character.id, this.inventory, this.locks, () => this.onboarding.show('vault'));
@@ -911,6 +917,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private async checkLabor(arrival: boolean) {
     try {
       const v = await getLabor(this.character.id);
+      this.laborers.apply(v);
       const waiting = v.slots.filter((s) => s.nodeType && s.elapsedMs >= 30 * 60_000);
       const items = waiting.reduce((n, s) => n + s.estItems, 0);
       const full = v.slots.filter((s) => s.capped && !this.laborCapNoted.has(s.slot));
@@ -1145,15 +1152,19 @@ export class WorldScene implements GameScene, RuntimeView {
         const kind = NODES[n.type].kind;
         test(n.x, kind === 'tree' ? 1.6 : kind === 'pool' ? 0.1 : 0.5, n.z, { kind: 'node', node: n }, kind === 'tree' ? 14 : 6);
       }
+      // Grave Laborers at their posts; a small bonus, so a click right on a node still picks the node.
+      for (const l of this.laborers.pickList) test(l.x, 1.0, l.z, { kind: 'laborer', slot: l.slot }, 18);
     }
     this.hover = best;
     const picked = this.hover as Hover;
     const hn = picked?.kind === 'node' && !this.panelOpen() ? picked.node : null;
     this.nodeViews.hover(hn, hn ? this.skills.gateLevel(NODES[hn.type].skill) >= NODES[hn.type].level : true);
-    this.hud.nodeTip(hn ? this.nodeTipText(hn) : null, this.mouse.x, this.mouse.y);
+    const hl = picked?.kind === 'laborer' && !this.panelOpen() ? picked.slot : -1;
+    this.laborers.setHover(hl);
+    this.hud.nodeTip(hn ? this.nodeTipText(hn) : hl >= 0 ? this.laborers.tip(hl) : null, this.mouse.x, this.mouse.y);
     const h = this.hover as Hover;
     this.views.hoverId = h?.kind === 'enemy' ? h.id : null;
-    const cur = h?.kind === 'enemy' || h?.kind === 'boss' ? CURSOR.attack : h?.kind === 'interact' || h?.kind === 'node' ? CURSOR.interact : CURSOR.default;
+    const cur = h?.kind === 'enemy' || h?.kind === 'boss' ? CURSOR.attack : h?.kind === 'interact' || h?.kind === 'node' || h?.kind === 'laborer' ? CURSOR.interact : CURSOR.default;
     if (this.canvas.style.cursor !== cur) this.canvas.style.cursor = cur;
   }
 
@@ -1195,6 +1206,10 @@ export class WorldScene implements GameScene, RuntimeView {
     this.cancelRecall();
     this.queuedCast = null;
     const h = this.hover;
+    if (h?.kind === 'laborer' && !this.mouse.shift) {
+      if (!this.laborPanel.isOpen) this.togglePanel('labor');
+      return;
+    }
     if (h?.kind === 'node' && !this.mouse.shift) {
       this.attackTarget = null;
       this.pendingInteract = null;
@@ -3425,6 +3440,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (now < this.mealUntil && p.alive) p.heal(this.mealRate * dt);
     this.gathering.update(dt);
     this.tickGatherVisuals(dt);
+    this.laborers.update(dt, p.x, p.z);
     this.waystoneMotes(dt);
     if (moved) this.cancelRecall();
     this.tickCombat(now);
@@ -3661,6 +3677,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private enterArea(area: AreaId) {
     this.area = area;
     audio.setArea(area);
+    this.laborers?.setActive(area === 'acre');
     const def = AREAS[area];
     if (!this.announcedAreas.has(area)) {
       this.announcedAreas.add(area);
@@ -4123,6 +4140,19 @@ export class WorldScene implements GameScene, RuntimeView {
         const it = AREAS.acre.interactables.find((i) => i.kind === kind);
         if (it) this.interact(it);
       },
+      /** Grave Laborer QA: slots, posts, spots, modes. */
+      laborers: () => this.laborers.debug(),
+      /** Put the mouse over a laborer slot (hover card QA); returns the screen point. */
+      hoverLaborer: (slot: number) => {
+        const l = this.laborers.pickList.find((x) => x.slot === slot);
+        if (!l) return null;
+        const v = new THREE.Vector3(l.x, 1.0, l.z).project(this.rig.camera);
+        this.mouse.x = ((v.x + 1) / 2) * window.innerWidth;
+        this.mouse.y = ((1 - v.y) / 2) * window.innerHeight;
+        this.mouse.aiming = true;
+        this.updateCursor();
+        return [Math.round(this.mouse.x), Math.round(this.mouse.y)];
+      },
       /** Put the mouse over a node (hover card + ring QA). */
       hoverNode: (id: string) => {
         const n = this.layout.nodes.find((x) => x.id === id);
@@ -4160,6 +4190,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.remotes.clear();
     this.views.dispose();
     this.nodeViews.dispose();
+    this.laborers.dispose();
     for (const v of this.bossViews.values()) v.dispose();
     this.loot.dispose();
     this.avatar.dispose();

@@ -17,13 +17,23 @@ export function strikeTiming(duration: number, impact: number | undefined, impac
   return { speed, startAt, endAt: Math.min(duration, peak + followThrough * speed), impactAfter: (peak - startAt) / speed };
 }
 
+/**
+ * Keeps a looping clip inside [start, end): a time before `start` jumps to it, a time at or past `end` wraps back
+ * into the range. Lets one long clip (the thralls' 6.6 s `chop`) repeat just its working stroke. Pure.
+ */
+export function wrapRange(t: number, start: number, end: number): number {
+  if (!(end > start)) return t;
+  if (t < start) return start;
+  return t >= end ? start + ((t - start) % (end - start)) : t;
+}
+
 /** Measured [duration, impact] seconds per model and clip (tools/build-clip-timings.mjs). */
 const CLIP_TIMINGS = CLIP_TIMINGS_JSON as Record<string, Record<string, number[]>>;
 import { hipAnchor, inPlaceHeroClip, stripRootTravel } from './inPlaceAnimation';
 import { applyWingFlap, type WingOpts } from './wingFlap';
 import { applyGearTint, GEAR_REGIONS, makeGearTintState, type GearRegion } from './gearTint';
 
-export type CreatureAnim = 'idle' | 'walk' | 'run' | 'attack' | 'cast' | 'hurt' | 'death' | 'dig' | 'dive' | CombatAnim;
+export type CreatureAnim = 'idle' | 'walk' | 'run' | 'attack' | 'cast' | 'hurt' | 'death' | 'dig' | 'chop' | 'dive' | CombatAnim;
 /** Necromancer combat gestures (content/castClips.ts); only the four necro heroes carry them. */
 export type CombatAnim = 'slam' | 'sweep' | 'flick' | 'channel' | 'summon';
 
@@ -36,6 +46,7 @@ const FALLBACK: Record<CreatureAnim, CreatureAnim[]> = {
   hurt: ['hurt'],
   death: ['death'],
   dig: ['dig', 'cast', 'attack'],
+  chop: ['chop', 'attack', 'dig'],
   dive: ['dive', 'attack', 'cast'],
   slam: ['slam', 'attack', 'cast'],
   sweep: ['sweep', 'attack', 'cast'],
@@ -220,9 +231,24 @@ export class Creature {
     this.current = next;
   }
 
+  /** Loop only the [start, end) seconds of a clip (see wrapRange); any later setLoop to another clip clears it. */
+  private range: { anim: CreatureAnim; start: number; end: number } | null = null;
+
+  /** Like setLoop, but repeats just a segment of the clip (e.g. one chop stroke). Falls back to the whole clip if missing. */
+  loopRange(anim: CreatureAnim, start: number, end: number, speed = 1) {
+    this.setLoop(anim, speed);
+    this.range = { anim, start, end };
+  }
+
+  /** Playhead (clip seconds) of the running action, for timing effects to a beat; 0 before the model loads. */
+  playhead(): number {
+    return this.current?.time ?? 0;
+  }
+
   /** Base looping state (idle/walk/run). `speed` scales playback. */
   setLoop(anim: CreatureAnim, speed = 1) {
     this.loopSpeed = speed;
+    if (this.range && this.range.anim !== anim) this.range = null;
     if (this.current && this.loop === anim) {
       if (!this.oneShot) this.current.timeScale = speed;
       return;
@@ -394,6 +420,11 @@ export class Creature {
 
   update(dt: number) {
     this.mixer?.update(dt);
+    const r = this.range;
+    if (r && this.current && !this.oneShot && this.current === this.resolve(r.anim)) {
+      const t = wrapRange(this.current.time, r.start, r.end);
+      if (t !== this.current.time) this.current.time = t;
+    }
     if (this.oneShot && this.oneShotEnd !== null && this.oneShot.time >= this.oneShotEnd) {
       this.oneShot = null;
       this.oneShotEnd = null;
