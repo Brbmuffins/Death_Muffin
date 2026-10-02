@@ -27,10 +27,10 @@ flowchart LR
     S13[2 Oct: Blender pipeline — new rat + cinderhound gaits]:::done
     S14[2 Oct: first-hour polish]:::done
     S15[2 Oct: Blender round 2 — hound · gargoyle wings]:::done
+    S16[2 Oct: gear tuning]:::done
   end
 
   subgraph NOW["🔨 Now — being built"]
-    W2[Gear tuning<br/>affixes + sets vs the power curve]:::now
   end
 
   subgraph POLISH["✨ Next — polish"]
@@ -46,12 +46,17 @@ flowchart LR
   SHIPPED --> NOW --> POLISH --> LATER
 ```
 
+## 🟨 Waiting on the owner
+
+- **Base item stats are too strong at high Wave Speed.** With an ordinary first set and weapon, deaths at push/max Wave Speed fall about 89% (target 30–50%), and an ascended set makes max Wave Speed nearly safe. The items' base stats (which predate the balance work) supply about 90% of that lift. Options: (a) scale every gear item's base stats to about 0.4× (a database change that weakens existing gear; BALANCE.md table 5 shows +30% kills / −44% deaths for a typical kit at max), (b) raise late Wave Speed pressure instead, or (c) leave it: gear makes you strong. Not changed until you choose.
+
 ## 📒 Progress log
 
 Newest first. Each entry is a live release (`release.txt` on the site shows the deployed commit).
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 2 Oct 2026 | Gear tuning: the balance bot now wears realistic gear kits; stat affixes no longer dominate (INT was mandatory), the six necromancer affixes are worth taking, each necromancer's own armor set is its best set, and the ▲/▼ score agrees with real results on 33 of 35 big swaps | Tables in BALANCE.md ("Gear pass"). One open decision for the owner below. |
 | 2 Oct 2026 | Blender round 2: the bone hound's walk no longer stretches its body (new leg and tail bones, procedural idle/walk/run, slip 0.85 → 0.06); cinderhound hind legs flex properly and the shoulder poke is gone; the skull rat's tail no longer drags; the belfry gargoyle has real bones in both wings and flaps from clips instead of a shader | CC0 talk gesture tested on the guide NPCs and kept out (reads as waiting, not talking). |
 | 2 Oct 2026 | First-hour polish: one counsel card at a time, calm tips wait out fights, fight lessons match what is happening (cards on screen 95% → 59% of the first 160 s), one clear route from the Acre, HUD collisions fixed, the camera keeps a speaking NPC in view, no stale "Workbench" brewing directions | Audit in docs/FIRST-HOUR-AUDIT.md; README "Your first hour" rewritten. |
 | 2 Oct 2026 | Blender animation pipeline (headless Blender 4.5 LTS, `node tools/blender.mjs`): procedural gaits, rig fixes, loop/drift cleanup, IK foot-lock, CC0 retargeting. First results: skull rat and cinderhound got new idle/walk/run (the cinderhound's forelegs had no bones; added) — foot slip 1.04 → 0.08 and 1.53 → 0.09 | 0 Tripo credits. Quaternius CC0 library tested on the Gravecaller; not swapped in (not clearly better). |
