@@ -36,10 +36,31 @@ async function main() {
     // One click unlocks the AudioContext (browsers require a gesture).
     await page.mouse.click(640, 400);
     await page.waitForFunction(() => window.__cwAudio?.stats().state === 'running', null, { timeout: 15000 });
-    await page.waitForFunction(() => window.__cwAudio.stats().samplesLoaded > 0 && window.__cwAudio.stats().samplesLoaded + window.__cwAudio.stats().samplesFailed >= 48, null, { timeout: 30000 });
+    await page.waitForFunction(() => window.__cwAudio.stats().samplesLoaded > 0 && window.__cwAudio.stats().samplesLoaded + window.__cwAudio.stats().samplesFailed >= window.__cwAudio.stats().samplesExpected, null, { timeout: 30000 });
     const loaded = await page.evaluate(() => window.__cwAudio.stats());
-    assert.ok(loaded.samplesLoaded >= 45, `sample buffers loaded: ${loaded.samplesLoaded}`);
+    assert.equal(loaded.samplesLoaded, loaded.samplesExpected, `sample buffers loaded: ${loaded.samplesLoaded}/${loaded.samplesExpected}`);
     assert.equal(loaded.samplesFailed, 0, 'no sample failed to load');
+
+    // --- the recorded zone beds replace the synthesised ones once loaded -----------
+    await page.evaluate(() => { window.__cwDebug.goto('graves'); window.__cwDebug.advance(1); });
+    await page.waitForFunction(() => window.__cwAudio.stats().bedKind === 'loops', null, { timeout: 15000 });
+
+    // --- every new sound plays (gathering, processing, rites, interface, details) ----
+    const NEW_SOUNDS = ['chop', 'pick', 'shovel', 'splash', 'reel', 'sawpit', 'kiln', 'cook', 'grind', 'craft', 'vaultOpen', 'vaultClose',
+      'frost', 'siphon', 'prison', 'hands', 'storm', 'soulRelease', 'sigWall', 'sigRend', 'sigDirge', 'sigBloom',
+      'flail', 'chain', 'palm', 'pyre', 'ward', 'choir', 'bloodRite', 'spiritBolt', 'crow',
+      'panelOpen', 'panelClose', 'equip', 'lootRare', 'lootEpic', 'levelUp',
+      'distantBell', 'waterDrip', 'emberCrackle', 'bogBubble', 'crowCaw', 'windGust', 'crowdMoan', 'dustFall'];
+    const newPlay = await page.evaluate(async (names) => {
+      const a = window.__cwAudio;
+      a.resetStats();
+      for (const n of names) { a.play(n); await new Promise((r) => setTimeout(r, 140)); }
+      const st = a.stats();
+      return { played: st.played, samplePlays: st.samplePlays, dropped: st.droppedByReason, total: names.length, peakOut: st.peakOut };
+    }, NEW_SOUNDS);
+    assert.ok(newPlay.played >= NEW_SOUNDS.length - 2, `new sounds played ${newPlay.played}/${newPlay.total}`);
+    assert.ok(newPlay.samplePlays >= NEW_SOUNDS.length - 2, `new sounds used their samples ${newPlay.samplePlays}/${newPlay.total}`);
+    assert.ok(newPlay.peakOut < 0.7, `one-at-a-time sounds peak ${newPlay.peakOut}`);
 
     // --- Settings sliders ------------------------------------------------------
     await page.keyboard.press('Escape');
@@ -80,6 +101,7 @@ async function main() {
       d.ring('robber', 4, 3.5, true);
     });
     const samples = [];
+    let minBedDuck = 1;
     for (let i = 0; i < 60; i++) {
       await page.evaluate((i) => {
         const d = window.__cwDebug;
@@ -90,22 +112,68 @@ async function main() {
       }, i);
       if (i === 30) await page.evaluate(() => window.__cwDebug.boss('prelate'));
       samples.push(await page.evaluate(() => window.__cwAudio.stats()));
+      minBedDuck = Math.min(minBedDuck, samples[samples.length - 1].bedDuck);
       await page.waitForTimeout(80);
     }
     const end = samples[samples.length - 1];
+    assert.ok(minBedDuck < 0.8, `ambience bed ducks under combat: min gain ${minBedDuck.toFixed(2)}`);
+    assert.ok(end.peakOut < 0.7, `busy fight post-limiter peak ${end.peakOut.toFixed(3)} must stay under 0.7`);
     const peakVoices = end.peakVoices;
     for (const [bus, cap] of Object.entries(CAP)) assert.ok(peakVoices[bus] <= cap + RESERVE, `${bus} peak ${peakVoices[bus]} exceeds cap ${cap + RESERVE}`);
     assert.ok(peakVoices.thralls <= CAP.thralls, 'thrall bus never above its cap');
     assert.ok(end.played > 40, `sounds played during fight: ${end.played}`);
     assert.ok(end.samplePlays > 20, `sample layer used: ${end.samplePlays}`);
-    assert.ok(end.peakOut < 0.99, `post-limiter peak ${end.peakOut.toFixed(3)} must stay below clipping`);
     const counts = await page.evaluate(() => window.__cwDebug.counts());
+
+    // --- ambient-only mix per zone: bed plus one of each sparse detail, no fighting -----
+    await page.evaluate(() => { window.__cwDebug.clear(); window.__cwDebug.god(); window.__cwDebug.unlockAll(); });
+    // The fight's activity decays (half-life 2.5 s) and the bed comes back up.
+    await page.waitForFunction(() => window.__cwAudio.stats().bedDuck > 0.9, null, { timeout: 30000 });
+    const afterFight = await page.evaluate(() => window.__cwAudio.stats());
+    const ambient = {};
+    for (const area of ['chapterhouse', 'acre', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'warren', 'coliseum', 'fen']) {
+      for (let tries = 0; tries < 6; tries++) {
+        await page.evaluate((a) => { window.__cwDebug.unlockAll(); window.__cwDebug.goto(a); window.__cwDebug.advance(1.5); window.__cwDebug.clear(); window.__cwDebug.advance(0.5); }, area);
+        if (await page.evaluate(() => window.__cwAudio.stats().area) === area) break;
+        await page.waitForTimeout(500);
+      }
+      await page.waitForTimeout(3500); // crossfade settles
+      const bedOnly = await page.evaluate(async () => {
+        const a = window.__cwAudio;
+        a.resetStats();
+        await new Promise((r) => setTimeout(r, 2000));
+        const st = a.stats();
+        return { bedPeak: +st.busPeak.ambience.toFixed(3), bedRms: +st.busRms.ambience.toFixed(4), bedPostPeak: +st.peakOut.toFixed(3) };
+      });
+      ambient[area] = await page.evaluate(async () => {
+        const a = window.__cwAudio;
+        a.resetStats();
+        const p = window.__cwDebug.player;
+        for (const n of ['distantBell', 'crowCaw', 'waterDrip', 'emberCrackle', 'bogBubble', 'windGust', 'crowdMoan', 'dustFall', 'graveCreak']) {
+          a.play(n, p.x + 8, p.z + 5);
+          await new Promise((r) => setTimeout(r, 450));
+        }
+        await new Promise((r) => setTimeout(r, 1200));
+        const st = a.stats();
+        return { area: st.area, bed: st.bedKind, ambiencePeak: +st.busPeak.ambience.toFixed(3), ambienceRms: +st.busRms.ambience.toFixed(4), prePeak: +st.peakPre.toFixed(3), postPeak: +st.peakOut.toFixed(3) };
+      });
+      Object.assign(ambient[area], bedOnly);
+      assert.equal(ambient[area].area, area);
+      assert.equal(ambient[area].bed, 'loops', `${area} plays the recorded bed`);
+      assert.ok(ambient[area].postPeak < 0.7, `${area} ambient peak ${ambient[area].postPeak}`);
+    }
+    const worstAmbient = Object.entries(ambient).reduce((m, [k, v]) => (v.postPeak > m.v ? { k, v: v.postPeak } : m), { k: '', v: 0 });
     assert.deepEqual(errors, []);
     // Failed requests must not be audio files (other 4xx, e.g. optional art, are reported but not fatal).
     assert.deepEqual([...badResponses].filter((u) => /\.(ogg|mp3|wav)\b/.test(u)), [], 'audio files all served');
     console.log(JSON.stringify({
       samplesLoaded: loaded.samplesLoaded, peakVoices, played: end.played, samplePlays: end.samplePlays, dropped: end.dropped,
       droppedByReason: end.droppedByReason, droppedByBus: end.droppedByBus, ducks: end.ducks, peakPreLimiter: +end.peakPre.toFixed(3), peakPostLimiter: +end.peakOut.toFixed(3),
+      mixReport: {
+        busyFight: { busPeak: Object.fromEntries(Object.entries(end.busPeak).map(([k, v]) => [k, +v.toFixed(3)])), busRms: Object.fromEntries(Object.entries(end.busRms).map(([k, v]) => [k, +v.toFixed(4)])), minBedDuck: +minBedDuck.toFixed(2) },
+        ambientOnly: ambient, worstAmbient,
+        newSounds: newPlay,
+      },
       sceneCounts: counts, thrallThinning: { played: burst.afterThralls.played, thinned: burst.afterThralls.droppedByReason.thin }, errors, otherFailedRequests: [...badResponses].slice(0, 5),
     }, null, 1));
   } finally {

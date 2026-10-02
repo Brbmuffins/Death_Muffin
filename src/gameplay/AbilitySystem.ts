@@ -326,7 +326,7 @@ export class AbilitySystem {
     effects.emit({ x: p.x, y: 1.4, z: p.z, count: 8, color: SOUL.pale, spread: 0.3, speed: 2.4, up: 1, life: 0.5, size: 0.22 });
     effects.lightFlash(p.x, 1.6, p.z, SOUL.jade, 26, 0.45);
     this.bb('soul_harvest_pillar', p.x, p.z);
-    audio.play('shard', p.x, p.z);
+    audio.play('soulRelease', p.x, p.z);
   }
 
   private needle(t: CastTarget): CastResult {
@@ -932,7 +932,7 @@ export class AbilitySystem {
     const first = target();
     const core = first ? this.bb('soul_orb', first.x, first.z, { follow: () => target(), duration: S.durationS, colors: [SI.jade, SI.pale, SI.deep] }) : null;
     this.bb('soul_siphon_beam', p.x, p.z, { follow: () => caster(), duration: S.durationS });
-    audio.play('shard', p.x, p.z);
+    audio.play('siphon', p.x, p.z);
     const dmg = this.sp * def.power;
     this.timed.push({
       until: now + S.durationS * 1000,
@@ -978,7 +978,7 @@ export class AbilitySystem {
     effects.emitSmoke({ x, y: 0.3, z, count: 6, color: PR.dust, spread: r * 0.8, speed: 0.9, up: 0.5, life: 0.9, size: 1.1 });
     effects.emit({ x, y: 0.4, z, count: 18, color: PR.bone, spread: r, speed: 1.8, up: 2.2, life: 0.5, size: 0.12, gravity: 9 });
     this.bb('bone_prison_burst', x, z, { scale: r / 2.4 });
-    audio.play('boneHit', x, z);
+    audio.play('prison', x, z);
     this.ctx.shake(0.06);
     const dmg = this.sp * def.power;
     const { ids, boss } = this.inCircle(x, z, r);
@@ -1009,7 +1009,7 @@ export class AbilitySystem {
     const seep = effects.decal({ tex: fx.cracks(), color: GH.seep, x, z, r: r * 0.95, rot: Math.random() * 6, duration: G.durationS, opacity: 0.35, pulse: 2, fadeOut: 0.4 });
     effects.emitSmoke({ x, y: 0.2, z, count: 8, color: GH.earth, spread: r * 0.7, speed: 0.8, up: 0.6, life: 1, size: 1.2 });
     this.bb('grave_hands_pulse', x, z, { scale: r / 3.5 });
-    audio.play('raise', x, z);
+    audio.play('hands', x, z);
     const dmg = this.sp * def.power * (1 + G.perCorpse * corpses);
     this.timed.push({
       until: now + G.durationS * 1000,
@@ -1050,7 +1050,7 @@ export class AbilitySystem {
     const bones = effects.boneOrbit({ fallbackTex: fxImage('boneShard'), fallbackColor: BS.bone, count: B.shards, radius: r * 0.8, y: 0.25, size: 0.34, duration: life, speed: 7, follow, funnel: true });
     const dust = this.bb('bone_storm_dust', c.x, c.z, { follow, duration: life, colors: [BS.bone, BS.ash, BS.dust] });
     const ring = effects.decal({ tex: fx.ring(), color: BS.ash, x: c.x, z: c.z, r, duration: life, opacity: 0.35, spin: 2, fadeOut: 0.4, follow });
-    audio.play('boneHit', c.x, c.z);
+    audio.play('storm', c.x, c.z);
     const dmg = this.sp * def.power;
     let last = now;
     this.timed.push({
@@ -1786,6 +1786,7 @@ export class AbilitySystem {
     const color = sig === 'wall' ? SPELL_FX.wall.amber : sig === 'rend' ? SPELL_FX.rend.jade : sig === 'dirge' ? SPELL_FX.dirge.frost : SPELL_FX.bloom.petal;
     effects.emit({ x: p.x, y: 1.4, z: p.z, count: 24, color, spread: 0.4, speed: 1.6, up: 1.2, life: 0.6, size: 0.24 });
     effects.lightFlash(p.x, 1.8, p.z, color, 24, 0.4);
+    audio.play(sig === 'wall' ? 'sigWall' : sig === 'rend' ? 'sigRend' : sig === 'dirge' ? 'sigDirge' : 'sigBloom', p.x, p.z);
     return 'ok';
   }
 

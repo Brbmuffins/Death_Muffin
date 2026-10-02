@@ -84,6 +84,20 @@ Settings has Combat / Ambience / Interface sliders. QA: `tools/qa/audio-smoke.cj
 `window.__cwAudio.stats()`). The mix has been measured but NOT ear-tested. The three
 Crossworlds clips are gone (replaced by CC0 layers).
 
+2026-10-02 audio pass 2 (branch `dm/audio-2`, not deployed): zone beds are now data
+(`src/audio/ambience.ts`: per-area loop layers with the old synth wind as fallback, weighted
+sparse details with 8-40 s gaps) over five generated 12 s loops in `public/audio/ambience/`; the
+bed passes through `bedDuck`, which a leaky combat-activity meter (`CombatActivity` in
+`mixer.ts`) pulls to 50% during fights (the boss drum bypasses it; details wait for quiet).
+New sample layers in `public/audio/world/` (79 files, recipe `tools/audio/build-world-samples.mjs`)
+for gathering and stations (chop, mine, dig, splash, reel, sawpit, kiln, cook, grind, craft,
+Vault open/close), the remaining necromancer rites (Frost, Siphon, Prison, Hands, Storm, Soul
+Harvest release, the four signatures) and some other classes' rites, panel open/close, equip,
+level up, loot (rare / epic distinct), and ambient details. Call sites are one-liners in
+`AbilitySystem`, `WorldScene` (`togglePanel`, `onGatherCycle`, `onSalvaged`, loot, equip,
+craft by station) and `ForgePanel.station`. The audio smoke prints a per-bus mix report. NOT
+ear-tested; all gains were set from measured peaks, not by listening.
+
 | Area | Status | Where |
 |---|---|---|
 | Runtime (one renderer, bloom, QA stepping) | ✅ | `src/app/` |

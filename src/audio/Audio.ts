@@ -1,10 +1,11 @@
 import { onSettingsChange, settings } from '../app/settings';
 import type { AreaId } from '../content/areas';
 import {
-  BUS_IDS, REPEAT_WINDOW, VoiceLimiter, WindowCounter, busGain, distanceGain, culled, masterGain, panFor,
-  profileOf, repeatDropped, repeatGain, type BusId, type Duck,
+  BUS_IDS, CombatActivity, REPEAT_WINDOW, VoiceLimiter, WindowCounter, accentsAllowed, activityWeight, bedDuckGain, busGain,
+  distanceGain, culled, masterGain, panFor, profileOf, repeatDropped, repeatGain, type BusId, type Duck,
 } from './mixer';
-import { SAMPLE_MAP, SampleBank } from './samples';
+import { LOOP_TRIM, ZONE_BEDS, accentGap, bedReady, pickAccent } from './ambience';
+import { SAMPLE_MAP, SampleBank, allSampleNames } from './samples';
 
 /**
  * Procedural sound with a recorded-sample layer (CC0, `public/audio/combat/`) on
@@ -81,7 +82,37 @@ export type Sfx =
   // Sparse environmental detail between combat sounds.
   | 'distantBell'
   | 'graveCreak'
-  | 'waterDrip';
+  | 'waterDrip'
+  | 'bogBubble'
+  | 'crowCaw'
+  | 'windGust'
+  | 'crowdMoan'
+  | 'dustFall'
+  // Processing stations and the Vault (second pass).
+  | 'reel'
+  | 'sawpit'
+  | 'kiln'
+  | 'cook'
+  | 'grind'
+  | 'craft'
+  | 'vaultOpen'
+  | 'vaultClose'
+  // More rites.
+  | 'siphon'
+  | 'prison'
+  | 'hands'
+  | 'storm'
+  | 'soulRelease'
+  | 'sigWall'
+  | 'sigRend'
+  | 'sigDirge'
+  | 'sigBloom'
+  // Interface.
+  | 'panelOpen'
+  | 'panelClose'
+  | 'equip'
+  | 'lootRare'
+  | 'lootEpic';
 
 const MIN_GAP: Partial<Record<Sfx, number>> = {
   needleHit: 0.04,
@@ -105,6 +136,18 @@ const MIN_GAP: Partial<Record<Sfx, number>> = {
   distantBell: 3,
   graveCreak: 3,
   waterDrip: 0.5,
+  panelOpen: 0.08,
+  panelClose: 0.08,
+  equip: 0.15,
+  lootRare: 0.4,
+  lootEpic: 0.8,
+  reel: 0.3,
+  craft: 0.2,
+  crowCaw: 4,
+  windGust: 6,
+  crowdMoan: 6,
+  bogBubble: 0.6,
+  dustFall: 1.5,
 };
 
 /** Safety net on raw audio nodes; the real limits are the per-bus caps in mixer.ts. */
@@ -115,6 +158,15 @@ class AudioEngine {
   private master!: GainNode;
   private buses = {} as Record<BusId, { dry: GainNode; wet: GainNode; dkDry: GainNode; dkWet: GainNode; hub: GainNode }>;
   private bedGain!: GainNode;
+  /** Zone beds pass through this so a fight can pull them down; the boss drum bypasses it. */
+  private bedDuck!: GainNode;
+  private activity = new CombatActivity();
+  private lastDuckApply = -1;
+  private duckTimer: ReturnType<typeof setInterval> | null = null;
+  private busMeters: { id: BusId; node: AnalyserNode; buf: Float32Array<ArrayBuffer> }[] = [];
+  private busPeak = Object.fromEntries(BUS_IDS.map((id) => [id, 0])) as Record<BusId, number>;
+  private busSq = Object.fromEntries(BUS_IDS.map((id) => [id, 0])) as Record<BusId, number>;
+  private busTicks = 0;
   private verb!: ConvolverNode;
   private verbSend!: GainNode;
   private noise!: AudioBuffer;
@@ -140,6 +192,7 @@ class AudioEngine {
   private listener = { x: 0, z: 0 };
   private ambience: { area: AreaId | null; nodes: AudioNode[]; gain: GainNode | null } = { area: null, nodes: [], gain: null };
   private wantArea: AreaId | null = null;
+  private bedKind: 'loops' | 'synth' | 'none' = 'none';
   private bossBed: GainNode | null = null;
   private ambienceAccentTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -201,7 +254,17 @@ class AudioEngine {
     this.bedGain = c.createGain();
     this.bedGain.gain.value = 0.55;
     this.bedGain.connect(this.buses.ambience.dry);
+    this.bedDuck = c.createGain();
+    this.bedDuck.connect(this.bedGain);
+    this.duckTimer = setInterval(() => this.applyBedDuck(), 400);
     if (import.meta.env.DEV) {
+      // Per-bus meters on the dry path after the bus gain and ducking (the reverb send is not metered).
+      for (const id of BUS_IDS) {
+        const node = c.createAnalyser();
+        node.fftSize = 2048;
+        this.buses[id].dkDry.connect(node);
+        this.busMeters.push({ id, node, buf: new Float32Array(node.fftSize) });
+      }
       // QA meters: `pre` before the limiter (what the mix asks for), post after it (what reaches the speakers).
       for (const [src, pre] of [[this.master, true], [limiter, false]] as const) {
         const node = c.createAnalyser();
@@ -210,6 +273,19 @@ class AudioEngine {
         this.analysers.push({ node, buf: new Float32Array(node.fftSize), pre });
       }
       setInterval(() => {
+        this.busTicks++;
+        for (const b of this.busMeters) {
+          b.node.getFloatTimeDomainData(b.buf);
+          let m = 0;
+          let sq = 0;
+          for (let i = 0; i < b.buf.length; i++) {
+            const v = b.buf[i];
+            m = Math.max(m, Math.abs(v));
+            sq += v * v;
+          }
+          this.busPeak[b.id] = Math.max(this.busPeak[b.id], m);
+          this.busSq[b.id] += sq / b.buf.length;
+        }
         for (const a of this.analysers) {
           a.node.getFloatTimeDomainData(a.buf);
           let m = 0;
@@ -229,7 +305,10 @@ class AudioEngine {
     this.noise = this.makeNoise(false);
     this.brown = this.makeNoise(true);
     void this.loadFootsteps();
-    void this.samples.load(this.ctx);
+    void this.samples.load(this.ctx).then(() => {
+      // The recorded beds arrived after the synthesised one started: crossfade to them.
+      if (this.wantArea && this.ctx) this.setArea(this.wantArea, true);
+    });
     this.applyVolume();
     if (this.wantArea) this.setArea(this.wantArea);
   }
@@ -357,6 +436,13 @@ class AudioEngine {
     }
   }
 
+  /** Pull the zone bed down while a fight is on, and let it back up when it ends. */
+  private applyBedDuck() {
+    if (!this.ctx || !this.bedDuck) return;
+    const t = this.ctx.currentTime;
+    this.bedDuck.gain.setTargetAtTime(bedDuckGain(this.activity.level(t)), t, 0.35);
+  }
+
   private drop(reason: keyof AudioEngine['dropReasons']) {
     this.dropReasons[reason]++;
   }
@@ -370,6 +456,7 @@ class AudioEngine {
       state: this.ctx?.state ?? 'none',
       played: this.played,
       samplesLoaded: this.samples.loaded,
+      samplesExpected: allSampleNames().length,
       samplesFailed: this.samples.failed,
       samplePlays: this.sampleHits,
       active,
@@ -381,6 +468,12 @@ class AudioEngine {
       nodes: this.voices,
       peakOut: this.peakOut,
       peakPre: this.peakPre,
+      busPeak: { ...this.busPeak },
+      busRms: Object.fromEntries(BUS_IDS.map((id) => [id, this.busTicks ? Math.sqrt(this.busSq[id] / this.busTicks) : 0])) as Record<BusId, number>,
+      combatLevel: this.activity.level(now),
+      bedDuck: this.bedDuck?.gain.value ?? 1,
+      area: this.ambience.area,
+      bedKind: this.bedKind,
     };
   }
 
@@ -390,6 +483,11 @@ class AudioEngine {
     this.duckCount = 0;
     this.peakOut = 0;
     this.peakPre = 0;
+    this.busTicks = 0;
+    for (const id of BUS_IDS) {
+      this.busPeak[id] = 0;
+      this.busSq[id] = 0;
+    }
     this.limiter = new VoiceLimiter();
     for (const k of Object.keys(this.dropReasons) as (keyof AudioEngine['dropReasons'])[]) this.dropReasons[k] = 0;
   }
@@ -481,6 +579,14 @@ class AudioEngine {
     this.repeats.add(name, now);
     if (thinKey) this.thin.add(thinKey, now);
     this.played++;
+    const weight = activityWeight(prof.bus, prof.priority);
+    if (weight) {
+      this.activity.bump(now, weight);
+      if (now - this.lastDuckApply > 0.1) {
+        this.lastDuckApply = now;
+        this.applyBedDuck();
+      }
+    }
     if (prof.duck) this.duck(prof.duck, now);
     const t = now + 0.005;
     this.cur = { bus: prof.bus, gain: repeatGain(repeats), trim: 1 };
@@ -889,6 +995,163 @@ class AudioEngine {
         this.tone(o, 'sine', 650 * r(), 1150, t, 0.015, 0.25, 0.12);
         break;
       }
+      // --- second pass: synthesised fallbacks (the recorded layer plays when loaded) ---
+      case 'reel': {
+        const o = this.out(x, z, 0.3, 0.3);
+        for (let i = 0; i < 6; i++) this.burst(o, t + i * 0.07, 0.02, 0.4, 'bandpass', 2800 + i * 90, 2400, 6);
+        this.burst(o, t + 0.45, 0.35, 0.3, 'bandpass', 1300, 500, 0.8);
+        break;
+      }
+      case 'sawpit': {
+        const o = this.out(x, z, 0.3, 0.2);
+        this.burst(o, t, 0.4, 0.28, 'bandpass', 1500, 2200, 2);
+        this.burst(o, t + 0.5, 0.4, 0.28, 'bandpass', 2200, 1400, 2);
+        this.burst(o, t + 1.05, 0.1, 0.4, 'lowpass', 500, 160, 1, true);
+        break;
+      }
+      case 'kiln': {
+        const o = this.out(x, z, 0.35, 0.3);
+        this.burst(o, t, 1.2, 0.35, 'lowpass', 900, 250, 0.8, true);
+        for (let i = 0; i < 6; i++) this.burst(o, t + 0.1 + Math.random() * 1.1, 0.02, 0.4, 'highpass', 4000, 4000, 1);
+        break;
+      }
+      case 'cook': {
+        const o = this.out(x, z, 0.3, 0.25);
+        this.burst(o, t, 1, 0.3, 'highpass', 4500, 6000, 0.8);
+        this.tone(o, 'triangle', 640 * r(), 600, t, 0.002, 0.3, 0.08);
+        break;
+      }
+      case 'grind': {
+        const o = this.out(x, z, 0.4, 0.2);
+        this.burst(o, t, 1.1, 0.3, 'lowpass', 800, 400, 1.2, true);
+        for (let i = 0; i < 4; i++) this.burst(o, t + 0.12 + i * 0.2, 0.05, 0.5, 'bandpass', 1100 * r(), 700, 4);
+        break;
+      }
+      case 'craft': {
+        const o = this.out(x, z, 0.35, 0.25);
+        this.tone(o, 'triangle', 1500 * r(), 1300, t, 0.001, 0.25, 0.14);
+        this.burst(o, t, 0.06, 0.55, 'bandpass', 2000, 1200, 3);
+        break;
+      }
+      case 'vaultOpen':
+      case 'vaultClose': {
+        const o = this.out(undefined, undefined, 0.4, 0.5);
+        const open = name === 'vaultOpen';
+        this.burst(o, t, 0.7, 0.25, 'bandpass', open ? 300 : 700, open ? 700 : 250, 5, true);
+        this.tone(o, 'sine', open ? 110 : 90, 50, t + (open ? 0.5 : 0.05), 0.005, 0.3, 0.4);
+        this.burst(o, t + (open ? 0.05 : 0.15), 0.04, 0.5, 'bandpass', 2400, 2400, 5);
+        break;
+      }
+      case 'siphon': {
+        const o = this.out(x, z, 0.4, 0.5);
+        this.burst(o, t, 1.3, 0.25, 'bandpass', 900, 500, 2);
+        this.tone(o, 'sine', 330, 190, t, 0.1, 1.2, 0.1);
+        break;
+      }
+      case 'prison': {
+        const o = this.out(x, z, 0.5, 0.35);
+        for (let i = 0; i < 4; i++) this.burst(o, t + i * 0.06, 0.06, 0.7, 'bandpass', 1200 - i * 150, 700, 4);
+        this.tone(o, 'sine', 100, 48, t + 0.1, 0.005, 0.5, 0.5);
+        break;
+      }
+      case 'hands': {
+        const o = this.out(x, z, 0.5, 0.4);
+        this.burst(o, t, 0.5, 0.45, 'lowpass', 700, 180, 0.9, true);
+        for (let i = 0; i < 5; i++) this.burst(o, t + 0.15 + i * 0.1, 0.06, 0.4, 'bandpass', 900 + Math.random() * 600, 600, 3);
+        break;
+      }
+      case 'storm': {
+        const o = this.out(x, z, 0.5, 0.4);
+        this.burst(o, t, 1.5, 0.35, 'bandpass', 500, 1700, 1.5);
+        for (let i = 0; i < 8; i++) this.burst(o, t + 0.1 + i * 0.15, 0.04, 0.4, 'bandpass', 1500 + Math.random() * 800, 1000, 5);
+        break;
+      }
+      case 'soulRelease': {
+        const o = this.out(x, z, 0.5, 0.7);
+        this.burst(o, t, 0.5, 0.3, 'bandpass', 400, 3200, 1.5);
+        this.bell(o, t + 0.45, 523 * r(), 1.2, 0.1);
+        this.tone(o, 'sine', 80, 40, t + 0.45, 0.01, 0.7, 0.45);
+        break;
+      }
+      case 'sigWall': {
+        const o = this.out(x, z, 0.55, 0.4);
+        this.tone(o, 'sine', 70, 38, t, 0.005, 0.7, 0.8);
+        this.burst(o, t, 0.5, 0.5, 'lowpass', 1100, 200, 0.9, true);
+        break;
+      }
+      case 'sigRend': {
+        const o = this.out(x, z, 0.5, 0.3);
+        this.burst(o, t, 0.35, 0.5, 'bandpass', 3000, 900, 1.5);
+        this.burst(o, t + 0.2, 0.08, 0.5, 'lowpass', 500, 180, 1, true);
+        break;
+      }
+      case 'sigDirge': {
+        const o = this.out(x, z, 0.5, 0.9);
+        this.bell(o, t, 130 * r(), 2, 0.12);
+        this.tone(o, 'sine', 65, 60, t, 0.2, 1.6, 0.3);
+        break;
+      }
+      case 'sigBloom': {
+        const o = this.out(x, z, 0.5, 0.5);
+        this.burst(o, t, 0.7, 0.35, 'bandpass', 600, 1200, 1.2);
+        for (let i = 0; i < 6; i++) {
+          const f = 160 + Math.random() * 260;
+          this.tone(o, 'sine', f, f * 1.7, t + 0.08 + i * 0.09, 0.005, 0.07, 0.14);
+        }
+        break;
+      }
+      case 'panelOpen':
+      case 'panelClose': {
+        const o = this.out(undefined, undefined, 0.2, 0.15);
+        const open = name === 'panelOpen';
+        this.burst(o, t, 0.1, 0.4, 'bandpass', open ? 1400 : 1900, open ? 2600 : 900, 1.2);
+        break;
+      }
+      case 'equip': {
+        const o = this.out(undefined, undefined, 0.3, 0.2);
+        this.burst(o, t, 0.1, 0.4, 'bandpass', 900, 500, 1);
+        this.tone(o, 'triangle', 1700 * r(), 1500, t + 0.07, 0.002, 0.18, 0.1);
+        break;
+      }
+      case 'lootRare': {
+        const o = this.out(undefined, undefined, 0.3, 0.6);
+        this.bell(o, t, 988, 0.9, 0.09);
+        break;
+      }
+      case 'lootEpic': {
+        const o = this.out(undefined, undefined, 0.35, 0.8);
+        this.bell(o, t, 660, 1.6, 0.11);
+        this.bell(o, t + 0.1, 990, 1.4, 0.08);
+        break;
+      }
+      case 'bogBubble': {
+        const o = this.out(x, z, 0.2, 0.8);
+        const f = 180 + Math.random() * 120;
+        this.tone(o, 'sine', f, f * 2.2, t, 0.004, 0.14, 0.2);
+        this.tone(o, 'sine', f * 1.4, f * 3, t + 0.22, 0.004, 0.1, 0.12);
+        break;
+      }
+      case 'crowCaw': {
+        const o = this.out(x, z, 0.25, 0.8);
+        this.tone(o, 'sawtooth', 600 * r(), 330, t, 0.02, 0.22, 0.06);
+        this.burst(o, t, 0.2, 0.12, 'bandpass', 1500, 900, 3);
+        break;
+      }
+      case 'windGust': {
+        const o = this.out(x, z, 0.25, 0.7);
+        this.burst(o, t, 3.2, 0.25, 'bandpass', 400, 900, 1, true);
+        break;
+      }
+      case 'crowdMoan': {
+        const o = this.out(x, z, 0.2, 0.9);
+        this.burst(o, t, 3, 0.18, 'bandpass', 350, 450, 5);
+        break;
+      }
+      case 'dustFall': {
+        const o = this.out(x, z, 0.18, 0.5);
+        for (let i = 0; i < 6; i++) this.burst(o, t + i * 0.09, 0.03, 0.3, 'highpass', 3200, 3200, 1);
+        break;
+      }
       case 'distantBell': {
         const o = this.out(x, z, 0.12, 0.95);
         const f = 147 * r();
@@ -913,10 +1176,14 @@ class AudioEngine {
 
   // --- ambience ------------------------------------------------------------
 
-  /** Crossfade to the area's ambience bed. */
-  setArea(area: AreaId) {
+  /**
+   * Crossfade to the area's ambience bed: recorded noise loops when they have loaded,
+   * otherwise the synthesised wind, plus low drones. `force` rebuilds the current area
+   * (used once the loops finish loading).
+   */
+  setArea(area: AreaId, force = false) {
     this.wantArea = area;
-    if (!this.ctx || this.ambience.area === area) return;
+    if (!this.ctx || (this.ambience.area === area && !force)) return;
     if (this.ambienceAccentTimer) clearTimeout(this.ambienceAccentTimer);
     const c = this.ctx;
     const t = c.currentTime;
@@ -928,8 +1195,9 @@ class AudioEngine {
     const gain = c.createGain();
     gain.gain.value = 0.0001;
     gain.gain.setTargetAtTime(1, t, 1.2);
-    gain.connect(this.bedGain);
+    gain.connect(this.bedDuck);
     const nodes: AudioNode[] = [];
+    const bed = ZONE_BEDS[area];
     const wind = (lp: number, amt: number) => {
       const s = c.createBufferSource();
       s.buffer = this.brown;
@@ -952,6 +1220,25 @@ class AudioEngine {
       lfo.start();
       nodes.push(s, lfo);
     };
+    const loop = (file: string, amt: number, rate = 1, lp?: number) => {
+      const s = c.createBufferSource();
+      s.buffer = this.samples.buffer(file)!;
+      s.loop = true;
+      s.playbackRate.value = rate;
+      // Start each layer at a random point so two layers of one file never phase together.
+      const g = c.createGain();
+      g.gain.value = amt;
+      if (lp) {
+        const f = c.createBiquadFilter();
+        f.type = 'lowpass';
+        f.frequency.value = lp;
+        s.connect(f);
+        f.connect(g);
+      } else s.connect(g);
+      g.connect(gain);
+      s.start(0, Math.random() * s.buffer.duration);
+      nodes.push(s);
+    };
     const drone = (f: number, amt: number) => {
       for (const det of [-3, 4]) {
         const o = c.createOscillator();
@@ -970,90 +1257,31 @@ class AudioEngine {
         nodes.push(o);
       }
     };
-    switch (area) {
-      case 'chapterhouse':
-        wind(300, 0.06);
-        drone(55, 0.018);
-        break;
-      case 'acre':
-        wind(900, 0.14);
-        wind(320, 0.07);
-        break;
-      case 'graves':
-        wind(700, 0.22);
-        wind(260, 0.12);
-        break;
-      case 'ossuary':
-        wind(350, 0.08);
-        drone(49, 0.03);
-        break;
-      case 'nave':
-        wind(450, 0.1);
-        drone(41.2, 0.026);
-        drone(61.7, 0.014);
-        break;
-      case 'sanctum':
-        wind(380, 0.08);
-        drone(36.7, 0.034);
-        break;
-      case 'cloister':
-        // Damp garth: a low mossy wind and a distant, sick hum.
-        wind(520, 0.1);
-        wind(200, 0.08);
-        drone(43.7, 0.02);
-        break;
-      case 'pyre':
-        // A furnace bed: a roaring, slowly breathing wind over a low forge drone (the crackle is the accent).
-        wind(650, 0.16);
-        wind(240, 0.14);
-        drone(46.2, 0.03);
-        break;
-      case 'warren':
-        // Close earth: barely any wind, a deep tunnel drone.
-        wind(240, 0.05);
-        drone(41.2, 0.024);
-        break;
-      case 'coliseum':
-        // The crowd of the dead: a broad murmur over a low drone.
-        wind(1100, 0.09);
-        wind(420, 0.1);
-        drone(55, 0.018);
-        break;
-      case 'fen':
-        // Marsh night: a thin reedy wind, a wet low drone, and the drips and creaks as accents.
-        wind(900, 0.07);
-        wind(300, 0.09);
-        drone(38.9, 0.026);
-        break;
-    }
+    const recorded = bedReady(area, (f) => this.samples.has(f));
+    this.bedKind = recorded ? 'loops' : 'synth';
+    if (recorded) for (const l of bed.loops) loop(l.file, l.gain * LOOP_TRIM, l.rate, l.lp);
+    else for (const [lp, amt] of bed.wind) wind(lp, amt);
+    for (const [f, amt] of bed.drones) drone(f, amt);
     this.ambience = { area, nodes, gain };
-    this.scheduleAmbienceAccent(area);
+    this.scheduleAmbienceAccent(area, true);
   }
 
-  private scheduleAmbienceAccent(area: AreaId) {
+  /** One sparse detail per long, random gap; skipped (and retried soon) while a fight is on. */
+  private scheduleAmbienceAccent(area: AreaId, first = false) {
+    const delay = first ? accentGap(area, Math.random()) * 0.5 : accentGap(area, Math.random());
     this.ambienceAccentTimer = setTimeout(() => {
       if (this.ambience.area !== area || !this.ctx) return;
-      const palette: Record<AreaId, readonly Sfx[]> = {
-        chapterhouse: ['graveCreak', 'distantBell'],
-        acre: ['graveCreak', 'distantBell'],
-        graves: ['graveCreak', 'distantBell'],
-        ossuary: ['waterDrip', 'graveCreak'],
-        nave: ['waterDrip', 'distantBell'],
-        sanctum: ['distantBell', 'graveCreak'],
-        cloister: ['waterDrip', 'graveCreak'],
-        pyre: ['emberCrackle', 'emberCrackle', 'graveCreak'],
-        warren: ['waterDrip', 'graveCreak'],
-        coliseum: ['distantBell', 'graveCreak'],
-        fen: ['waterDrip', 'waterDrip', 'graveCreak'],
-      };
-      const sounds = palette[area];
+      if (!accentsAllowed(this.activity.level(this.ctx.currentTime))) {
+        this.ambienceAccentTimer = setTimeout(() => this.scheduleAmbienceAccent(area, true), 4000);
+        return;
+      }
       const distance = 7 + Math.random() * 9;
       const angle = Math.random() * Math.PI * 2;
-      this.play(sounds[Math.floor(Math.random() * sounds.length)],
+      this.play(pickAccent(area, Math.random()),
         this.listener.x + Math.cos(angle) * distance,
         this.listener.z + Math.sin(angle) * distance);
       this.scheduleAmbienceAccent(area);
-    }, 9000 + Math.random() * 9000);
+    }, delay * 1000);
   }
 
   stopArea() {
@@ -1066,6 +1294,7 @@ class AudioEngine {
       setTimeout(() => old.nodes.forEach((n) => (n as AudioScheduledSourceNode).stop?.()), 3000);
     }
     this.ambience = { area: null, nodes: [], gain: null };
+    this.bedKind = 'none';
     this.setBossBed(false);
   }
 

@@ -39,9 +39,13 @@ export class ForgePanel {
     return this.el !== null;
   }
 
+  /** The Acre station the panel is open on (null: the Workbench). */
+  station: Station | null = null;
+
   /** The Workbench (every rite), or one Acre station locked to its rite. */
   async open(station?: Station) {
     if (this.el) return;
+    this.station = station ?? null;
     const st = station ? STATIONS[station] : null;
     if (st && !st.tabs.includes(this.tab)) this.tab = st.tabs[0];
     const tabs = st?.tabs ?? PROFESSIONS;

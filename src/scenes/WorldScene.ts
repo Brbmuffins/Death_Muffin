@@ -100,6 +100,7 @@ import { Onboarding, type TipId } from '../ui/Onboarding';
 import { CodexJournal, browserStorage, type CodexIds, type CodexKind } from '../gameplay/codexJournal';
 import { CURSOR } from '../ui/cursors';
 import { audio } from '../audio/Audio';
+import { lootSfx } from '../audio/mixer';
 
 const SNAPSHOT_MS = 100;
 const MOVE_SEND_MS = 100;
@@ -764,13 +765,18 @@ export class WorldScene implements GameScene, RuntimeView {
     // Gear you can read: stat lines and compare blocks speak for this character, and J opens the sheet.
     this.inventoryPanel.statContext = this.statContext;
     this.inventoryPanel.onSheet = () => this.togglePanel('sheet');
-    this.inventoryPanel.onEquipped = () => this.onboarding.show('gearEquip');
+    this.inventoryPanel.onEquipped = () => {
+      audio.play('equip');
+      this.onboarding.show('gearEquip');
+    };
     this.inventoryPanel.onToolBelted = () => this.onboarding.show('toolBelt', 0, true);
     this.sheetPanel = new CharacterSheetPanel(this.root, this.statContext, () => this.onboarding.show('statSheet'));
     this.forgePanel = new ForgePanel(this.root, this.character.id, this.inventory, (inv, profs) => {
       this.inventory.replace(inv);
       this.skills.adopt(profs);
       this.chronicle.add('crafted');
+      const station = this.forgePanel.station;
+      audio.play(station === 'sawpit' ? 'sawpit' : station === 'kiln' ? 'kiln' : station === 'fire' ? 'cook' : 'craft');
       this.hud.toast('Crafted', 'good');
     });
     this.professionsPanel = new ProfessionsPanel(this.root, {
@@ -980,7 +986,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private onSalvaged(r: SalvageReply) {
     this.skills.adopt([{ profession_id: 'salvaging', skill_level: r.level, skill_xp: r.skillXp }], 'salvaging');
-    audio.play('click');
+    audio.play('grind');
     this.floating.spawn(this.player.x, 2.3, this.player.z, `+${r.xp} Salvaging XP`, 'skill', SKILLS.salvaging.color);
     this.hud.toast(`Ground ${r.salvaged.length} piece${r.salvaged.length === 1 ? '' : 's'}: ${r.gained.map((g) => `${g.quantity}× ${itemMeta(g.item_id).name}`).join(', ')}`, 'good');
     this.onboarding.show('salvage');
@@ -997,9 +1003,10 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private togglePanel(p: 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'salvage' | 'sheet') {
-    audio.play('click');
     const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel, cosmetics: this.cosmeticsPanel, vault: this.vaultPanel, salvage: this.salvagePanel, sheet: this.sheetPanel }[p];
     const wasOpen = panel.isOpen;
+    const vault = p === 'vault';
+    if (!(vault && !wasOpen && !AREAS[this.area].safe)) audio.play(wasOpen ? (vault ? 'vaultClose' : 'panelClose') : vault ? 'vaultOpen' : 'panelOpen');
     this.closePanels();
     if (wasOpen) return;
     if (!(p === 'professions' && this.gathering?.afk)) this.gathering?.stop('panel');
@@ -1083,8 +1090,10 @@ export class WorldScene implements GameScene, RuntimeView {
       else if (k === 'g') this.toggleAutoCombat();
       // Escape closes whatever panel is open first; with nothing open it opens Settings.
       else if (k === 'escape') {
-        if (this.panelOpen() && !this.settingsPanel.isOpen) this.closePanels();
-        else this.togglePanel('settings');
+        if (this.panelOpen() && !this.settingsPanel.isOpen) {
+          audio.play('panelClose');
+          this.closePanels();
+        } else this.togglePanel('settings');
       }
       else this.keys.add(k);
       this.mouse.shift = e.shiftKey;
@@ -1819,7 +1828,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private onGatherCycle(def: (typeof NODES)[string], success: boolean, node: NodePlacement) {
     const p = this.player;
-    audio.play(SKILLS[def.skill].sfx, node.x, node.z);
+    audio.play(success && def.skill === 'fishing' ? 'reel' : SKILLS[def.skill].sfx, node.x, node.z);
     if (!success) return;
     const color = SKILLS[def.skill].color;
     this.floating.spawn(p.x, 2.3, p.z, `+${def.xp} ${SKILLS[def.skill].name} XP`, 'skill', color);
@@ -3520,7 +3529,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.floating.spawn(p.x, 2.3, p.z, `+${got.shards} soul shard${got.shards > 1 ? 's' : ''}`, 'shard');
     }
     if (got.items.length) {
-      audio.play('item');
+      audio.play(lootSfx(got.items.map((item) => itemMeta(item.item_id).rarity)));
       this.onboarding.show('relic');
     }
     if (got.items.some((item) => ARMOR_BY_ID[item.item_id])) this.onboarding.show('armor');
