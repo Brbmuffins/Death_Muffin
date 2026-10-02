@@ -10,8 +10,21 @@ The Ossuary Covenant stands in a diocese overrun by the dead. Choose one of nine
 
 **Release status:** This guide matches the live game as of **2 October 2026**: the 48-slot bag, Ossuary Vault and salvage, readable gear with upgrade arrows and the Character sheet, new combat audio, plus everything from 1 October (armor sets, Cinder Pyre and Mourning Fen, necromancer weapons and brews, five swappable rite slots, the Offline Edition). See the **[visual roadmap](ROADMAP.md)** for what is coming next, and [the handoff](HANDOFF.md) for development status.
 
+## ✨ Highlights
+
+Some of the most polished corners of the game right now (2 October 2026):
+
+<table><tr>
+<td width="50%"><img src="docs/screenshots/gear-set-tooltip.webp" alt="An item tooltip that says whether it is an upgrade for your discipline and which set bonus it completes" /><br /><sub><b>Gear you can read.</b> Green ▲ / red ▼ on every bag item, a verdict for <i>your</i> discipline, and armor set bonuses that light up as you complete them.</sub></td>
+<td width="50%"><img src="docs/screenshots/character-sheet.webp" alt="The Character sheet with what you're looking for and your weakest slots" /><br /><sub><b>Character sheet (J).</b> What your discipline wants, your weakest slots, and where every number comes from.</sub></td>
+</tr><tr>
+<td><img src="docs/screenshots/laborer-woodcutting.webp" alt="A Grave Laborer chopping a coffin-oak with a hatchet" /><br /><sub><b>Grave Laborers at work.</b> Your thralls chop, mine, dig and fish in the Sexton's Acre.</sub></td>
+<td><img src="docs/screenshots/ossuary-vault.webp" alt="The Ossuary Vault beside the 48-slot Reliquary" /><br /><sub><b>Room to breathe.</b> A 48-slot bag and the 120-slot Ossuary Vault shared by your characters.</sub></td>
+</tr></table>
+
 ## Contents
 
+- [Highlights](#-highlights)
 - [Your first hour](#your-first-hour)
 - [What to explore next](#what-to-explore-next)
 - [Controls](#controls)
@@ -273,6 +286,8 @@ Choose difficulty in **Settings (Esc)**. **Medium** is the starting balance for 
 
 ## Gear, stats and the character sheet
 
+<img src="docs/screenshots/character-sheet.webp" alt="Character sheet" width="420" align="right" />
+
 Gear carries four stats. Each one feeds a few numbers you can feel, and the game shows you which:
 
 | Stat | What each point gives you |
@@ -308,17 +323,23 @@ The **Sexton's Acre**, west of the Chapterhouse, contains every tier of the four
 
 Carry a matching hatchet, pickaxe, rod, or spade to improve gathering success; the best one you carry counts. Tools can live **on the tool belt**: four slots under the paper doll in the Reliquary (hatchet, pickaxe, rod, spade; reserved inventory slots 110-113). Select a tool and press **Put on belt** (or double-click it); double-click it on the belt to take it off, which needs a free bag slot. A belted tool counts exactly like one in the bag (the best of belt and bag wins, for manual, auto and AFK gathering), takes no bag space, is never sold, salvaged or stored by the bulk buttons, and is what the hero holds while gathering. With an empty belt and tools in your bag, the Reliquary offers once to put your best tools on the belt. **Skills (P)** shows which tool each skill is using. The Workbench crafts stronger tools from ingots and planks. Some hunting grounds also hold richer nodes, but enemy hits interrupt gathering there.
 
+<img src="docs/screenshots/tool-belt.webp" alt="The tool belt under the paper doll" width="460" />
+
 With **Auto gathering** enabled in Settings, clicking a node can continue to another of the same kind. For longer sessions, use **P → choose a node tier → Start AFK** while in the Acre. Your character keeps working while the game is open. A full bag pauses work; movement, casting, or **Pause AFK** stops it. Closing the game ends the session, so it does not earn rewards while offline. When work stops, **the Sexton’s Ledger** shows your finds, their worth, skill gains and personal bests.
 
 **Sexton’s Contracts (O)** offers three delivery orders a day, based on what your skills can make. Deliver from your bag for gold and sometimes an item; completing all three gives a bonus and builds a daily streak. **Grave Gardening (U)** gives you four Mourning Beds and two Coffin Patches. Plant seeds or saplings and return later; plots grow in real time even while you are away, and bone meal makes them grow faster.
 
 **Ossuary Vault (V).** A sarcophagus in the Chapterhouse holds a **120-slot shared stash** (three tabs of 40) for every character on your account. Press **V** in the Chapterhouse or the Acre. Click an item to move its whole stack across; **Deposit materials** stores every unlocked material and consumable, **Deposit all** stores everything unlocked that you are not wearing, and **Sort** merges stacks and orders the Vault by type, rarity and name. Moves stack first, then fill free slots, and a move that will not fit changes nothing. Worn gear and locked items are never stored by the bulk buttons.
 
+<table><tr><td><img src="docs/screenshots/ossuary-vault.webp" alt="Ossuary Vault" /><br /><sub>The Ossuary Vault (V)</sub></td><td><img src="docs/screenshots/bone-grinder.webp" alt="Bone Grinder salvage panel" /><br /><sub>Salvage at the Bone Grinder</sub></td></tr></table>
+
 **Salvaging** is a seventh skill, worked at the **Bone Grinder** beside the Bone Kiln in the Acre. Tick gear in its panel (or press **Salvage** on an item in the Reliquary while you stand at the Grinder) and **Salvage selected**, or use **Salvage all below rare** for every unlocked common and uncommon piece. Each piece gives an ingot by rarity (copper, iron, silver or steel, gold, hell, moon), or a plank from staffs, wands and grimoires (oak, willow, yew or ghostwood, blackthorn, bone elder), plus Grave Dust and, on better gear, Wraith Ectoplasm, Plague Bile, Cinder Ash and bone meal. Every Salvaging level adds a 0.5% chance of one extra material, and it grants a mastery cape at 99. If the yield will not fit your bag, nothing is ground. The **Codex (K → Professions)** lists the yields by rarity.
 
 **Alchemy** is at the Workbench (**C → Alchemy**). Start with four Grave Dust from the Hollow Graves or Catacomb Warren to brew a Grave-Dust Tonic at level 1. Later, Wraith Ectoplasm drops from spirit enemies, Plague Bile from the Cloister, and Cinder Ash from the Pyre. Area bosses always leave an ichor; the Mire Mother’s ichor combines with drowned lotus for a Moonlight Elixir. Forage Rot-cap in the Cloister and Ash-bloom in the Pyre from Gardening level 1, then grow their seeds in the Acre at Gardening 35 and 50. Bog myrtle and drowned lotus grow in the Fen. The **Codex (K → Professions → Reagents)** lists sources, brew effects, recipes and Alchemy levels. Equip an elixir or tonic on your belt in the Reliquary, then use **Z** or **X**.
 
 **Grave Laborers (H)** gather slowly for up to eight hours while you fight, explore or are away. Collect their work and the Ledger shows what they found. You begin with one laborer and gain another for every 50 total gathering levels, up to four. In the Sexton’s Acre you can **watch them work**: each laborer stands beside a node of its post with a hatchet, pickaxe, spade or fishing rod (chopping, digging or fishing; one that is full rests). A gold check over a laborer means its work is ready; hover it for the post and time, click it to open the Laborers. **Capes & Pets (N)** has a mastery cape for level 99 in each of the seven skills, total-level mantles (the Sexton’s Mantle now needs all seven at 99), and five companions found as rare charms while gathering, from laborers, or from garden harvests. Adopt a charm permanently; other players see your cape and companion.
+
+<table><tr><td><img src="docs/screenshots/laborer-woodcutting.webp" alt="Laborer chopping" /></td><td><img src="docs/screenshots/laborer-mining.webp" alt="Laborer mining" /></td></tr></table>
 
 <table><tr>
 <td><img src="docs/screenshots/gathering.webp" alt="Working a gathering node" /><br /><sub>Working a node</sub></td>
