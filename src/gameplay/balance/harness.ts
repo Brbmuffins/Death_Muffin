@@ -1,4 +1,4 @@
-import { ABILITIES, DETONATE, LITANY_PER_CORPSE } from '../../content/abilities';
+import { ABILITIES, DETONATE, LITANY_PER_CORPSE, SOUL_HARVEST } from '../../content/abilities';
 import { bogMult } from '../../content/fen';
 import { AREAS, type AreaId } from '../../content/areas';
 import { disciplineFor } from '../../content/disciplines';
@@ -7,6 +7,7 @@ import { rollKill } from '../loot';
 import { Nav } from '../nav';
 import { mulberry32 } from '../rng';
 import { Player } from '../Player';
+import { LEGEND, colossusActive, damageTakenMult, effectiveWitheredCap, shatterDamage, simLegendActive, simLegendOf, wardReflectDamage } from '../legendary';
 import { resourceRulesFor } from '../resources';
 import type { Corpse, Enemy, SimEvent } from '../sim/types';
 import { WorldSim, thrallWeight } from '../sim/WorldSim';
@@ -57,6 +58,11 @@ export interface BalanceRun {
   effect?: SetEffect;
   /** Relic runes socketed in the necromancer's rites (content/runes.ts): the bot casts each rite the way AbilitySystem does with that rune. */
   runes?: Partial<Record<RuneRite, RuneId>>;
+  /**
+   * Model Soul Harvest (50 kills fill the meter; the next Marrow Spear / Miasma / Black Litany is free and 50% larger). Off by default
+   * because the long-standing baselines never modelled it; the Requiem legendary set (fill rate, wraith nova) only means something with it on.
+   */
+  soulHarvest?: boolean;
 }
 
 export interface BalanceResult {
@@ -133,6 +139,9 @@ export function runBalance(run: BalanceRun): BalanceResult {
   const p = { id: 'bot', x: home.x, z: home.z, hp: stats.maxHp, essence: resource.initial(resource.max(stats)), alive: true };
   // New families use the real Player body for resource drift and defensive
   // rites. Keep the established necromancer bot untouched for baseline parity.
+  // Legendary set mechanics the shared sim runs (death burst, Champions, spear rally, Contagion, Chain Plague): no-op unless a mod is on.
+  const legendMods = simLegendOf(disc.mods);
+  if (simLegendActive(legendMods)) sim.apply({ t: 'legend', by: p.id, mods: legendMods });
   const body = disc.family === 'necromancer' ? null : new Player(stats, nav, disc.family);
   if (body) { body.x = p.x; body.z = p.z; body.area = run.area; }
   const runes = disc.family === 'necromancer' ? (run.runes ?? {}) : {};
@@ -178,6 +187,36 @@ export function runBalance(run: BalanceRun): BalanceResult {
   };
   /** Damage barrier (Black Litany with a Reliquary set): absorbs hits first and melts at 4% of max health per second. */
   let barrier = 0;
+  /** Legendary: the Litany barrier at its largest (Litany Shatter), the Soul Harvest meter (opt-in model), and Requiem wisps (expiry times). */
+  let barrierPeak = 0;
+  let souls = 0;
+  let soulAcc = 0;
+  const wisps: number[] = [];
+  const M = disc.mods;
+  const strike = (x: number, z: number, r: number, dmg: number) => {
+    const ids = [...sim.enemies.values()].filter((e) => e.state !== 'dead' && e.state !== 'burrow' && Math.hypot(e.x - x, e.z - z) <= r + e.radius).map((e) => e.id);
+    if (ids.length) sim.apply({ t: 'hit', by: p.id, ids, dmg });
+  };
+  const consumed = (t: number) => {
+    if (!(M.corpseWisp > 0)) return;
+    if (wisps.length >= LEGEND.wispCap) wisps[wisps.indexOf(Math.min(...wisps))] = t + M.corpseWisp;
+    else wisps.push(t + M.corpseWisp);
+  };
+  /** Soul Harvest: charged meter makes the next spear/miasma/litany free and larger; returns whether this cast is empowered. */
+  const useRite = (id: keyof typeof ABILITIES, t: number) => {
+    if (run.soulHarvest && souls >= SOUL_HARVEST.souls && SOUL_HARVEST.spells.includes(id) && ready(id, t)) {
+      cds.set(id, t + abilityCooldownMs(id, ABILITIES[id].cooldownMs, loadout, false) / 1000);
+      return 'empowered' as const;
+    }
+    return use(id, t) ? ('normal' as const) : null;
+  };
+  const release = (t: number) => {
+    souls = 0;
+    if (!(M.wraithNova > 0)) return;
+    const src: { x: number; z: number }[] = wisps.filter((u) => u > t).map(() => ({ x: p.x, z: p.z }));
+    for (const th of sim.thralls.values()) if (th.owner === p.id && th.kind === 'wraith' && th.state !== 'rising') src.push({ x: th.x, z: th.z });
+    for (const sx of src.slice(0, LEGEND.novaMax)) strike(sx.x, sx.z, LEGEND.novaR, stats.spellPower * M.wraithNova);
+  };
 
   for (let i = 0; i < steps; i++) {
     const t = i * dt;
@@ -191,6 +230,11 @@ export function runBalance(run: BalanceRun): BalanceResult {
     }
     if (p.alive) {
       if (barrier > 0) barrier = Math.max(0, barrier - stats.maxHp * 0.04 * dt);
+      else barrierPeak = 0;
+      if (wisps.length) {
+        for (let w = wisps.length - 1; w >= 0; w--) if (wisps[w] <= t) wisps.splice(w, 1);
+        p.hp = Math.min(stats.maxHp, p.hp + stats.maxHp * LEGEND.wispHealFrac * wisps.length * dt);
+      }
       if (body) {
         body.x = p.x; body.z = p.z; body.hp = p.hp; body.essence = p.essence;
         body.lastResourceGainAt = lastResourceGain * 1000;
@@ -323,10 +367,13 @@ export function runBalance(run: BalanceRun): BalanceResult {
         }
       } else {
       // Black Litany when the field is rich.
-      if (corpsesNear.length + myThralls.length * 1.5 >= 5 && near(7).length >= 3 && use('black_litany', t)) {
-        sim.apply({ t: 'litany', by: p.id, x: p.x, z: p.z, r: runes.black_litany === 'rune_requiem' ? 7 * RUNE_TUNING.requiem.radiusMult : 7,
+      let rite: 'empowered' | 'normal' | null = null;
+      if (corpsesNear.length + myThralls.length * 1.5 >= 5 && near(7).length >= 3 && (rite = useRite('black_litany', t))) {
+        const litanyR = rite === 'empowered' ? 7 * SOUL_HARVEST.areaMult : 7;
+        sim.apply({ t: 'litany', by: p.id, x: p.x, z: p.z, r: runes.black_litany === 'rune_requiem' ? litanyR * RUNE_TUNING.requiem.radiusMult : litanyR,
           spellPower: sp * (runes.black_litany === 'rune_hollow_choir' ? RUNE_TUNING.hollowChoir.powerMult : 1), leaveCorpses: disc.mods.sacrificeLeavesCorpse,
           ...(runes.black_litany === 'rune_hollow_choir' ? { spare: true } : {}), ...(runes.black_litany === 'rune_requiem' ? { delayMs: RUNE_TUNING.requiem.delayMs } : {}) });
+        if (rite === 'empowered') release(t);
       }
       // Keep the legion topped up.
       else if (corpsesNear.length && myThralls.reduce((n, th) => n + thrallWeight(th.kind), 0) < disc.mods.thrallCap && ready('exhume', t) && p.essence >= ABILITIES.exhume.essenceCost) {
@@ -341,6 +388,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
         // Sickle: Exhume gives back part of its essence. Funeral Rites: a consumed corpse heals (WorldScene 'exhumed').
         if (loadout.exhumeRefund > 0) p.essence = Math.min(stats.maxEssence, p.essence + ABILITIES.exhume.essenceCost * loadout.exhumeRefund);
         if (disc.mods.corpseHeal && !run.noRiteEffects) p.hp = Math.min(stats.maxHp, p.hp + stats.maxHp * disc.mods.corpseHeal);
+        consumed(t);
       }
       // Corpse Explosion when a body lies under a pack (and the legion is full, or bodies are plentiful).
       else if (
@@ -349,11 +397,13 @@ export function runBalance(run: BalanceRun): BalanceResult {
         use('corpse_explosion', t)
       ) {
         sim.apply({ t: 'detonate', by: p.id, corpseId: burst.id, dmg: sp * ABILITIES.corpse_explosion.power });
+        consumed(t);
       }
       // Miasma on a clump.
-      else if (nearest && near(4, nearest.x, nearest.z).length >= 4 && use('miasma', t)) {
-        sim.apply({ t: 'miasma', by: p.id, x: nearest.x, z: nearest.z, r: ABILITIES.miasma.radius * disc.mods.miasmaRadiusMult * (runes.miasma === 'rune_creeping_rot' ? RUNE_TUNING.creepingRot.radiusMult : 1), dps: sp * ABILITIES.miasma.power, durationMs: 6000, witheredCap: disc.mods.witheredMaxStacks, bloom: disc.mods.miasmaBurstsCorpses,
+      else if (nearest && near(4, nearest.x, nearest.z).length >= 4 && (rite = useRite('miasma', t))) {
+        sim.apply({ t: 'miasma', by: p.id, x: nearest.x, z: nearest.z, r: ABILITIES.miasma.radius * disc.mods.miasmaRadiusMult * (rite === 'empowered' ? SOUL_HARVEST.areaMult : 1) * (runes.miasma === 'rune_creeping_rot' ? RUNE_TUNING.creepingRot.radiusMult : 1), dps: sp * ABILITIES.miasma.power, durationMs: 6000, witheredCap: effectiveWitheredCap(disc.mods), bloom: disc.mods.miasmaBurstsCorpses,
           ...(runes.miasma === 'rune_creeping_rot' ? { creep: RUNE_TUNING.creepingRot.speed } : {}), ...(runes.miasma === 'rune_contagion' ? { contagion: true } : {}) });
+        if (rite === 'empowered') release(t);
       }
       // Spear when three line up (approximation: three within 8 m in a 60° cone). Relic runes: a Ring where three stand within it, an Impale on the nearest.
       else if (nearest && nd < 10) {
@@ -373,14 +423,15 @@ export function runBalance(run: BalanceRun): BalanceResult {
             const hit = ringHits(e, RUNE_TUNING.ring.radius, enemies);
             if (hit.length > best.length) best = hit;
           }
-          if (best.length >= 3 && use('marrow_spear', t)) sim.apply({ t: 'hit', by: p.id, ids: best.map((e) => e.id), dmg: sp * ABILITIES.marrow_spear.power * RUNE_TUNING.ring.damageMult, fracture: 1 });
+          if (best.length >= 3 && (rite = useRite('marrow_spear', t))) sim.apply({ t: 'hit', by: p.id, ids: best.map((e) => e.id), dmg: sp * ABILITIES.marrow_spear.power * RUNE_TUNING.ring.damageMult, fracture: 1, ...(disc.mods.spearRally > 0 ? { spear: true } : {}) });
         } else if (runes.marrow_spear === 'rune_impale') {
           const first = impaleTarget(p, dx, dz, ABILITIES.marrow_spear.range, 1.3, enemies);
           // A player impales what matters, not every trash mob: the bot spends the essence only when it has plenty.
-          if (first && p.essence >= 50 && use('marrow_spear', t)) sim.apply({ t: 'hit', by: p.id, ids: [first.foe.id], dmg: sp * ABILITIES.marrow_spear.power * RUNE_TUNING.impale.damageMult, fracture: 1, root: true, rootS: RUNE_TUNING.impale.rootS });
-        } else if (inLine.length >= 3 && use('marrow_spear', t)) {
-          sim.apply({ t: 'hit', by: p.id, ids: inLine.map((e) => e.id), dmg: sp * ABILITIES.marrow_spear.power, fracture: 1 });
+          if (first && p.essence >= 50 && (rite = useRite('marrow_spear', t))) sim.apply({ t: 'hit', by: p.id, ids: [first.foe.id], dmg: sp * ABILITIES.marrow_spear.power * RUNE_TUNING.impale.damageMult, fracture: 1, root: true, rootS: RUNE_TUNING.impale.rootS, ...(disc.mods.spearRally > 0 ? { spear: true } : {}) });
+        } else if (inLine.length >= 3 && (rite = useRite('marrow_spear', t))) {
+          sim.apply({ t: 'hit', by: p.id, ids: inLine.map((e) => e.id), dmg: sp * ABILITIES.marrow_spear.power, fracture: 1, ...(disc.mods.spearRally > 0 ? { spear: true } : {}) });
         }
+        if (rite === 'empowered') release(t);
       }
       // Needle the nearest; close distance if out of range, back off if swarmed. The weapon line changes what the left click is:
       // a staff reaches farther and pierces, a scythe reaps a close arc, a wand fires faster and softer, a sickle withers.
@@ -405,7 +456,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
             if (struck.length) sim.apply({ t: 'hit', by: p.id, ids: struck.map((e) => e.id), dmg: sp * SP_NEEDLE.power * NECRO_WEAPON_TUNING.scythe.damageMult * crit });
             p.essence = Math.min(stats.maxEssence, p.essence + NECRO_WEAPON_TUNING.scythe.essencePerHit * struck.length);
           } else {
-            const wither = loadout.needleWithered > 0 ? { withered: loadout.needleWithered, witheredCap: disc.mods.witheredMaxStacks } : {};
+            const wither = loadout.needleWithered > 0 ? { withered: loadout.needleWithered, witheredCap: effectiveWitheredCap(disc.mods) } : {};
             // Relic runes (AbilitySystem.needle): Marrow-Tap trades damage for essence, the Volley fires three half-strength needles every 4th cast, Splinters sends half to the next foe.
             const needle = runes.bone_needle;
             const volley = needle === 'rune_volley' && ++needleCasts % RUNE_TUNING.volley.every === 0;
@@ -457,6 +508,12 @@ export function runBalance(run: BalanceRun): BalanceResult {
         born.delete(ev.id);
         if (!p.alive) continue;
         kills++;
+        if (run.soulHarvest && souls < SOUL_HARVEST.souls) {
+          soulAcc += M.soulHarvestRateMult;
+          const whole = Math.floor(soulAcc);
+          soulAcc -= whole;
+          souls = Math.min(SOUL_HARVEST.souls, souls + whole);
+        }
         const r = rollKill(ev.def, ev.area, ev.level, ev.elite, run.waveTier, rand, sim.difficulty);
         gold += r.gold;
         xp += r.xp;
@@ -479,7 +536,11 @@ export function runBalance(run: BalanceRun): BalanceResult {
       } else if (ev.t === 'litanyResult' && ev.by === p.id && p.alive) {
         // Reliquary barrier per body consumed, and the Mourner's corpse heal (AbilitySystem.onLitany).
         if (run.noRiteEffects) { /* pre-gear-pass bot */ } else {
-        if (disc.mods.litanyBarrier) barrier += stats.maxHp * disc.mods.litanyBarrier * (ev.corpses + ev.resonant + ev.thralls);
+        if (disc.mods.litanyBarrier) {
+          barrier += stats.maxHp * disc.mods.litanyBarrier * (ev.corpses + ev.resonant + ev.thralls);
+          barrierPeak = Math.max(barrierPeak, barrier);
+        }
+        if (ev.corpses + ev.resonant > 0) consumed(t);
         if (disc.mods.corpseHeal) p.hp = Math.min(stats.maxHp, p.hp + stats.maxHp * disc.mods.corpseHeal * (ev.corpses + ev.resonant) * 0.5);
         }
       } else if (ev.t === 'heal' && ev.player === p.id && p.alive) {
@@ -488,17 +549,34 @@ export function runBalance(run: BalanceRun): BalanceResult {
         const myThralls = [...sim.thralls.values()].filter((th) => th.owner === p.id).length;
         const lanternWard = [...sim.zones.values()].some((z) => z.kind === 'warden_ward' && Math.hypot(z.x - p.x, z.z - p.z) <= z.r) ? 0.2 : 0;
         const ward = disc.mods.wardPerThrall * myThralls + lanternWard;
+        const guard = colossusActive(disc.mods, myThralls) ? disc.mods.colossusGuard : 0;
         let dmg: number;
         if (body) {
           body.x = p.x; body.z = p.z; body.hp = p.hp; body.essence = p.essence;
-          dmg = body.takeDamage(ev.dmg, ward, t * 1000, { x: ev.x, z: ev.z }, ev.from);
+          dmg = body.takeDamage(ev.dmg, ward, t * 1000, { x: ev.x, z: ev.z }, ev.from, guard);
           p.hp = body.hp; p.essence = body.essence;
         } else {
-          dmg = ev.dmg * (1 - Math.min(0.6, ward));
+          dmg = ev.dmg * damageTakenMult(ward, guard);
           const absorbed = Math.min(barrier, dmg);
+          const barrierBefore = barrier;
           barrier -= absorbed;
+          // Colossus Mantle: damage broke the Litany barrier, so it shatters around the bot.
+          if (barrierBefore > 0 && barrier <= 0 && barrierPeak > 0) {
+            if (M.litanyShatter > 0) strike(p.x, p.z, LEGEND.shatterR, shatterDamage(barrierPeak, M.litanyShatter));
+            barrierPeak = 0;
+          }
           p.hp -= dmg - absorbed;
           dmg -= absorbed;
+        }
+        // Colossus Mantle: Bone Ward reflects part of what it prevented at whatever struck (the enemy standing at the blow's origin).
+        if (M.wardReflect > 0) {
+          const back = wardReflectDamage(ev.dmg, Math.min(LEGEND.wardCap, M.wardPerThrall * myThralls), M.wardReflect);
+          if (back > 0) {
+            let tgt: Enemy | null = null;
+            let td = 0.6;
+            for (const e of sim.enemies.values()) if (e.state !== 'dead') { const d = Math.hypot(e.x - ev.x, e.z - ev.z); if (d <= td + e.radius * 0.5) { td = d; tgt = e; } }
+            if (tgt) sim.apply({ t: 'hit', by: p.id, ids: [(tgt as Enemy).id], dmg: back });
+          }
         }
         dmgTaken += dmg;
         if (dmg > 0) lastHurt = t;

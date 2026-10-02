@@ -175,3 +175,10 @@ test('Relic rune fields: every one is clamped (Impale, Creeping Rot, Contagion, 
   assert.equal(none.delayMs, 0);
   assert.equal(none.r, 11, 'a zero delay is no Requiem');
 });
+
+test('legend intents (legendary set mods) are accepted and clamped; the spear flag is a boolean', () => {
+  const l = validIntent({ t: 'legend', mods: { thrallDeathBurst: 99, championEvery: 5.7, spearRally: -1, miasmaSpreadsWithered: 9, witheredBurstAt: 500, evil: 1 } });
+  assert.deepEqual(l.mods, { thrallDeathBurst: 2, championEvery: 5, spearRally: 0, miasmaSpreadsWithered: 1, witheredBurstAt: 12 });
+  assert.deepEqual(validIntent({ t: 'legend' }).mods, { thrallDeathBurst: 0, championEvery: 0, spearRally: 0, miasmaSpreadsWithered: 0, witheredBurstAt: 0 });
+  assert.equal(validIntent({ t: 'hit', ids: [1], dmg: 5, spear: 'yes' }).spear, true);
+});
