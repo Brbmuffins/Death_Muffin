@@ -1,0 +1,9 @@
+{
+  "id": "prop_alch_counter",
+  "input": "art-src/concepts/props/alch_counter.png",
+  "generation": {
+    "model": "P1-20260311",
+    "face_limit": 2800,
+    "texture_quality": "standard"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "budget": 100,
+  "jobs": [
+    {
+      "hero": "npc_prior",
+      "preset": "angry_01",
+      "taskId": "caff343f-d0e0-40b7-b3c2-1a7f61aee0e2",
+      "rigTaskId": "e93d27bf-f7ad-4e91-83b9-b8c90cf57c08",
+      "status": "success",
+      "createdAt": "2026-10-02T02:02:44.944Z",
+      "credits": 10,
+      "fileHash": "sha256:4a366647594f69fd8524709e4933a62158690af8640b32b60b2b672d0bfda0b6"
+    },
+    {
+      "hero": "npc_prior",
+      "preset": "greet_01",
+      "taskId": "067d25d0-fb29-4500-874d-16ab9581bbe0",
+      "rigTaskId": "e93d27bf-f7ad-4e91-83b9-b8c90cf57c08",
+      "status": "success",
+      "createdAt": "2026-10-02T02:03:02.804Z",
+      "credits": 10,
+      "fileHash": "sha256:83f0a05503f5b723918a91591c1c930cb66901e4bcea8aab8f4711c1dad188e9"
+    },
+    {
+      "hero": "npc_prior",
+      "preset": "greet_02",
+      "taskId": "8040083a-ed50-46cc-a1c2-108364082bef",
+      "rigTaskId": "e93d27bf-f7ad-4e91-83b9-b8c90cf57c08",
+      "status": "success",
+      "createdAt": "2026-10-02T02:03:07.451Z",
+      "credits": 10,
+      "fileHash": "sha256:ae5021b38053bb2cd13cb1f36bc025eb6769529671dee86a067b9ae7816a6ebd"
+    },
+    {
+      "hero": "npc_prior",
+      "preset": "agree",
+      "taskId": "26717c07-d153-4d77-a5c2-248a0400b96e",
+      "rigTaskId": "e93d27bf-f7ad-4e91-83b9-b8c90cf57c08",
+      "status": "success",
+      "createdAt": "2026-10-02T02:03:15.614Z",
+      "credits": 10,
+      "fileHash": "sha256:e912edb3e8c08aba2a6bee03951d8d469ab2ba28898d8b8c6a0b9a0520a45368"
+    },
+    {
+      "hero": "npc_sexton",
+      "preset": "agree",
+      "taskId": "61563b6f-61de-41df-9a46-fccc20b41091",
+      "rigTaskId": "7e064434-a366-4af2-8081-853f39a50059",
+      "status": "success",
+      "createdAt": "2026-10-02T02:05:02.173Z",
+      "credits": 10,
+      "fileHash": "sha256:a0cd7019cc8d09feb69d8b91c1b73374ed912e1387774f7b92ef120128923e9e"
+    },
+    {
+      "hero": "npc_apothecary",
+      "preset": "agree",
+      "taskId": "5aef5c10-31f3-4d2f-815c-aa58a2c5e2d2",
+      "rigTaskId": "3fcaf66e-cef0-47f1-9735-4f9785a31118",
+      "status": "success",
+      "createdAt": "2026-10-02T02:05:11.709Z",
+      "credits": 10,
+      "fileHash": "sha256:3c5e0598649c915c45d78a3fe626bdc2c400911f4352235c433438a5cad08d98"
+    }
+  ]
+}

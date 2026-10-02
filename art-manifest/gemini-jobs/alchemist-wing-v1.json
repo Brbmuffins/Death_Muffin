@@ -1,0 +1,137 @@
+[
+  {
+    "id": "concept_alch_cauldron",
+    "out": "art-src/concepts/props/alch_cauldron.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, tarnished copper, candle-wax ivory, with small muted spell-colour accents). Compact, chunky, readable silhouette from a top-down camera. Subject: a very large squat black iron cauldron on three stubby clawed legs over a bed of glowing embers, riveted bands, bone handles, thick bubbling green-violet brew heaped just over the rim, a bone ladle resting in it."
+  },
+  {
+    "id": "concept_alch_alembic",
+    "out": "art-src/concepts/props/alch_alembic.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, tarnished copper, candle-wax ivory, with small muted spell-colour accents). Compact, chunky, readable silhouette from a top-down camera. Subject: a copper alembic distillery rig: a round-bellied tarnished copper pot on a small iron stand with a flame beneath, a tall onion-shaped helm, a long coiled copper condenser pipe, and a glass collecting flask with amber liquid, all joined in one compact object."
+  },
+  {
+    "id": "concept_alch_reagent_shelf",
+    "out": "art-src/concepts/props/alch_reagent_shelf.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, tarnished copper, candle-wax ivory, with small muted spell-colour accents). Compact, chunky, readable silhouette from a top-down camera. Subject: a tall dark-wood reagent shelf unit, three tiers, crammed with stoppered glass jars of murky liquids, small animal skulls, bundled herbs, bone-handled scoops, and a candle stub; iron brackets."
+  },
+  {
+    "id": "concept_alch_drying_rack",
+    "out": "art-src/concepts/props/alch_drying_rack.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, tarnished copper, candle-wax ivory, with small muted spell-colour accents). Compact, chunky, readable silhouette from a top-down camera. Subject: a wooden drying rack: two crooked posts with cross beams from which many bundles of dried herbs, dark flowers and small roots hang upside down on twine, a few dried bats; a wicker basket at the base."
+  },
+  {
+    "id": "concept_alch_mortar_table",
+    "out": "art-src/concepts/props/alch_mortar_table.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, tarnished copper, candle-wax ivory, with small muted spell-colour accents). Compact, chunky, readable silhouette from a top-down camera. Subject: a heavy low stone-topped work table with a big stone mortar and pestle, a brass scale with weights, small corked vials, a scatter of crushed herbs and an open recipe tome; iron-banded legs."
+  },
+  {
+    "id": "concept_alch_bubbling_vat",
+    "out": "art-src/concepts/props/alch_bubbling_vat.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, tarnished copper, candle-wax ivory, with small muted spell-colour accents). Compact, chunky, readable silhouette from a top-down camera. Subject: a wide round wooden vat bound in iron hoops, half-sunk and filled to the brim with glowing sickly green liquid with large bubbles and wisps of vapour, a short ladder-step and a skull-topped stirring paddle propped against it."
+  },
+  {
+    "id": "concept_alch_counter",
+    "out": "art-src/concepts/props/alch_counter.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, tarnished copper, candle-wax ivory, with small muted spell-colour accents). Compact, chunky, readable silhouette from a top-down camera. Subject: an apothecary counter: a long dark-wood shop counter with a front carved with a skull and crossed bones, top holding a brass hand-bell, a ledger, rows of small labelled bottles and a candle, with a back rail of tiny drawers."
+  },
+  {
+    "id": "concept_alch_bone_candles",
+    "out": "art-src/concepts/props/alch_bone_candles.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, tarnished copper, candle-wax ivory, with small muted spell-colour accents). Compact, chunky, readable silhouette from a top-down camera. Subject: a cluster of five tall bone-white tallow candles of varying heights melted together on a rounded base of stacked small skulls and femurs, wax drips, small warm flames."
+  },
+  {
+    "id": "concept_alch_specimen_jars",
+    "out": "art-src/concepts/props/alch_specimen_jars.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, tarnished copper, candle-wax ivory, with small muted spell-colour accents). Compact, chunky, readable silhouette from a top-down camera. Subject: a small group of three large glass specimen jars of different heights on a short dark-wood plinth, in cloudy preservative fluid: a pale floating hand, an eyeball cluster, and a coiled grotesque creature; iron lids with wax seals."
+  },
+  {
+    "id": "concept_alch_herb_bundle",
+    "out": "art-src/concepts/props/alch_herb_bundle.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, tarnished copper, candle-wax ivory, with small muted spell-colour accents). Compact, chunky, readable silhouette from a top-down camera. Subject: a large hanging bundle of dried herbs, dark thistles, pale flowers and red berries tied with twine at the top, with a loop of rope above for hanging, a tiny bone charm tied in; compact and dense."
+  },
+  {
+    "id": "concept_alch_station_sign",
+    "out": "art-src/concepts/props/alch_station_sign.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, tarnished copper, candle-wax ivory, with small muted spell-colour accents). Compact, chunky, readable silhouette from a top-down camera. Subject: a brewing-station sign totem: a tall black iron post with a swinging hanging sign shaped like a cauldron with a bubble and a skull, bone ornament at the top, a little lantern hook with a green lantern."
+  },
+  {
+    "id": "concept_alch_totem_stirrer",
+    "out": "art-src/concepts/props/alch_totem_stirrer.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, tarnished copper, candle-wax ivory, with small muted spell-colour accents). Compact, chunky, readable silhouette from a top-down camera. Subject: a freestanding alchemist's sigil standing stone, waist-high, carved with a circle of alchemical symbols, with a bowl of glowing violet reagent set into the top and bones leaning against it."
+  },
+  {
+    "id": "concept_npc_prior",
+    "out": "art-src/concepts/npc_prior.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Creature source for 3D modeling. Using the attached sheet ONLY as a style and palette reference, design the Prior: an elderly, kindly but severe priest of the Covenant, guardian of the Chapterhouse. Frail old man with a bald liver-spotted head, long white beard, deep-set eyes, wearing long layered ash-grey and dark violet vestments with a bone-white stole embroidered with a small black bell, a hooded mantle resting on the shoulders (not covering the face), and a long rosary of small bone beads and a skull bead hanging from the belt. Palette: ash grey, dark violet, bone ivory, tarnished gold trim. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally with EMPTY open hands, legs straight and slightly apart (robes end above the ankles so legs are visible), standing upright, so it can be rigged. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette."
+  },
+  {
+    "id": "concept_npc_sexton",
+    "out": "art-src/concepts/npc_sexton.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Creature source for 3D modeling. Using the attached sheet ONLY as a style and palette reference, design the Sexton: a stooped, broad-shouldered middle-aged gravedigger and caretaker of the churchyard. Weathered face with a grizzled beard and a floppy sackcloth hood pushed back, mud-stained brown wool coat with rolled sleeves, a leather apron, heavy boots caked in grave dirt, a ring of iron keys and a small unlit iron lantern hanging from his belt, a coil of rope over one shoulder. Palette: earthy browns, muted olive, soot black, a touch of warm lantern brass. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally with EMPTY open hands (no spade held, no weapon), legs straight and slightly apart, standing upright (not hunched), so it can be rigged. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette."
+  },
+  {
+    "id": "concept_npc_apothecary",
+    "out": "art-src/concepts/npc_apothecary.png",
+    "refs": [
+      "necromancer-character-minions-reference.png"
+    ],
+    "aspect": "3:4",
+    "prompt": "Creature source for 3D modeling. Using the attached sheet ONLY as a style and palette reference, design the Apothecary: a lean, brisk alchemist-healer. NOT a plague doctor: no beak mask, no wide-brim hat. Instead a young-looking woman with a tight cloth cap, a pair of round brass goggles pushed up on the forehead, a half-face linen cloth mask pulled down around the neck, hair in a braid, wearing a rust-red and charcoal high-collared tunic, a thick stained leather apron with pockets, long leather gloves, a bandolier of corked glass vials in green, amber and violet across the chest, small copper tools and a pouch on the belt. Palette: charcoal, rust red, tarnished copper, leather brown, small glowing vial accents. Single full-body character, FRONT VIEW, strict T-pose: arms straight out horizontally with EMPTY open hands, legs straight and slightly apart, standing upright, so it can be rigged. Entire body visible head to feet, centered. Plain flat light grey background (#c8c8c8), neutral studio lighting, no shadows, no text, no other characters. Dark fantasy game art, readable silhouette."
+  }
+]
