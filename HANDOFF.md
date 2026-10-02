@@ -41,6 +41,26 @@ the older "stage, don't commit" note.
 - **Crowds.** `graphics/crowdSeparation.ts` slides drawn enemies/thralls apart (view layer only, max 0.55 u, eased); the sim is unchanged.
 - QA: `tools/qa/anim-pass-smoke.cjs` (port 5336).
 
+## Animation pass 2 (branch `dm/anim-2`, 2 Oct 2026, not deployed)
+
+- **Hitstop** (`graphics/hitstop.ts`): a 2-4 frame freeze of the picture clock only (`Creature.update` and `Effects.update` scale their dt by `hitstop.scale`;
+  the sim never sees it). Triggers: a hit taking >=22% of an enemy's max hp (elites 12%) that leaves it standing (this is "big rites", whatever
+  casts them), elite deaths within 16 u, boss impacts and boss defeat within 18 u (`WorldScene.BOSS_STOP`). Rationed: 0.3 s gap and a leaky budget,
+  so sustained crowd fights freeze about 12% of the time at most. Off under reduced motion.
+- **Knockback** (`graphics/knockback.ts`, `EntityViews.onHit`): a critically damped spring on the drawn root, away from the hero, sized by the share of hp
+  lost and the body's mass (scale squared; 40% while winding up). Max 0.6 u, settles in about 0.45 s, frozen during hitstop. Sim positions untouched.
+- **Death settle** (`EntityViews.settle`): when the death clip reaches its landing moment (`landingTime`, from the Hip height track) the body eases 0.06 u into the
+  ground and puffs dust. Only y changes; a corpse's x/z never move. Corpses used to stop animating at 3 s, which froze `death2` (5.6 s) mid-fall;
+  they now animate for 6 s.
+- **Locomotion:** `grave_robber` and `censer_bearer` got a retargeted biped `run` (20 credits, `art-manifest/anim2-jobs.json`), so they run at a natural cadence
+  instead of a 2x walk. Walk-only cap for small bodies is now 4.5x (`WALK_HARD_MAX`). `tools/stride-overrides.json` holds an in-engine stride for `bone_hound`
+  (clip-derived 1.474 was about 1.5x too fast; planted feet now ~0 of ground speed instead of +0.3). `tools/measure-clips.mjs` gained `contactStrideOfClip` (mesh-based; agrees with the bone method on
+  bipeds). The smoke's slip is now mesh-contact slip, with the old foot-bone number kept as `slipBones`.
+- **Robed casters:** their old 0.5-0.7 "slip" was mostly the metric (the 22%-of-height planted window counts their low swing as planted); with a 10% window the feet are at 0.14 vs the robber's 0.11. Remaining mesh slip is robe hem.
+- **Unresolved:** `skull_rat` and `cinderhound` still slide. Their rigs have leaf bones that are not feet and (cinderhound) legs that move against each other, so neither
+  bone nor mesh metrics are trustworthy on them. A quadruped run preset does not exist. The honest fix is a new quadruped model/rig or a hand-keyed gait.
+- QA: `tools/qa/anim-pass-smoke.cjs` (port 5342 used here) now also checks hitstop / knockback / settle and the hound's planted feet; `DM_QA_IMPACT_ONLY`, `DM_QA_ENEMIES_ONLY`, `DM_QA_ONLY=def,def` narrow it.
+
 ## 60-second orientation
 
 - **What it is:** Death Muffin — browser dark-fantasy ARPG (Vite + TS + Three.js),

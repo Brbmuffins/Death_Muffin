@@ -1,0 +1,25 @@
+{
+  "budget": 300,
+  "jobs": [
+    {
+      "hero": "grave_robber",
+      "preset": "run",
+      "taskId": "1366b5b6-113b-4ab0-9034-314a27fc7941",
+      "rigTaskId": "12349b14-d36d-497e-8a00-7214fde8c4bd",
+      "status": "success",
+      "createdAt": "2026-10-02T04:09:37.218Z",
+      "credits": 10,
+      "fileHash": "sha256:80023418fa3f5079583ead147833043cc8b5d7cb346de751a5ce1dbfe73c71ba"
+    },
+    {
+      "hero": "censer_bearer",
+      "preset": "run",
+      "taskId": "26a50fc4-5c4a-40fd-b2ef-c8a2b331bfb6",
+      "rigTaskId": "990c1d03-ecd0-441c-b5a7-44a389d82241",
+      "status": "success",
+      "createdAt": "2026-10-02T04:09:46.135Z",
+      "credits": 10,
+      "fileHash": "sha256:fd81ad99caedffc3876799e7aca016c0bc2b82afbc019310d0d194ab38dde05b"
+    }
+  ]
+}

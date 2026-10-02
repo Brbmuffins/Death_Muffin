@@ -47,12 +47,120 @@ async function main() {
   let page = await openHero(browser, errors);
   const report = {};
 
+  // --- impact feel: hitstop, visual knockback, death settle (all drawn-only; the sim is never touched) ---
+  report.impact = await page.evaluate(async () => {
+    const { getRuntime } = await import('/src/app/GameRuntime.ts');
+    const { hitstop, FRAME } = await import('/src/graphics/hitstop.ts');
+    const { settings } = await import('/src/app/settings.ts');
+    const dbg = window.__cwDebug;
+    const scene = getRuntime().view;
+    const spawn = async (def, dist) => {
+      dbg.clear(); scene.player.x = 0; scene.player.z = 0;
+      const id = dbg.ring(def, 1, dist)[0];
+      const e = dbg.sim().enemies.get(id);
+      e.hp = e.maxHp = 100;
+      let view;
+      for (let k = 0; k < 40 && !(view && view.c.loaded); k++) { await new Promise((r) => setTimeout(r, 250)); dbg.advance(0.05, false); view = scene.views.enemies.get(id); }
+      dbg.advance(1.4, false);
+      return { id, e, view };
+    };
+    const out = {};
+    settings.reducedMotion = false;
+
+    // Hitstop: a heavy hit freezes the mixer for 2-4 frames; the sim clock keeps running; it is rationed.
+    {
+      hitstop.reset();
+      const { id, e, view } = await spawn('flagellant', 6);
+      dbg.freeze(true);
+      const sim = dbg.sim();
+      dbg.advance(0.3, false);
+      sim.damageEnemy(e, 40, 'qa');
+      const t0 = sim.time, a0 = view.c.current.time;
+      let frozen = 0, steps = 0, c0 = hitstop.count;
+      for (let i = 0; i < 12; i++) { const before = view.c.current.time; dbg.advance(1 / 60, false); if (hitstop.scale === 0) frozen++; steps++; void before; }
+      out.hitstop = { frozenFrames: frozen, count: hitstop.count - c0, simAdvanced: +(sim.time - t0).toFixed(3), granted: +hitstop.total.toFixed(3) };
+      // Light hits never freeze.
+      hitstop.reset(); c0 = hitstop.count;
+      e.hp = e.maxHp = 100; sim.damageEnemy(e, 3, 'qa'); dbg.advance(0.2, false);
+      out.hitstop.lightCount = hitstop.count - c0;
+      // A flood of heavy hits is rationed: simulated 10 s of constant heavy hits freezes < 16% of the time.
+      hitstop.reset();
+      let fr = 0;
+      for (let i = 0; i < 600; i++) { hitstop.request(1); hitstop.frame(FRAME); if (hitstop.scale === 0) fr++; }
+      out.hitstop.share = +(fr / 600).toFixed(3);
+      // Reduced motion switches it off.
+      hitstop.reset(); settings.reducedMotion = true; c0 = hitstop.count;
+      e.hp = 100; sim.damageEnemy(e, 40, 'qa'); dbg.advance(0.1, false);
+      out.hitstop.reducedMotionCount = hitstop.count - c0;
+      settings.reducedMotion = false; hitstop.reset();
+      dbg.freeze(false);
+    }
+
+    // Knockback: the drawn root is shoved away from the hero and relaxes back to the sim position.
+    {
+      const { id, e, view } = await spawn('risen', 5);
+      dbg.freeze(true);
+      const sim = dbg.sim();
+      dbg.advance(0.2, false);
+      const dist = () => Math.hypot(view.c.root.position.x - e.x, view.c.root.position.z - e.z);
+      const away = () => (view.c.root.position.x - e.x) * e.x + (view.c.root.position.z - e.z) * e.z;
+      const sx = e.x, sz = e.z;
+      sim.damageEnemy(e, 40, 'qa');
+      let peak = 0, dir = 0;
+      for (let i = 0; i < 20; i++) { dbg.advance(1 / 60, false); if (dist() > peak) { peak = dist(); dir = away(); } }
+      dbg.advance(1.0, false);
+      out.knockback = { peak: +peak.toFixed(2), awayFromHero: dir > 0, settledOffset: +dist().toFixed(3), simMoved: Math.hypot(e.x - sx, e.z - sz) };
+      dbg.freeze(false);
+    }
+
+    // Death settle: the corpse lands (y eases down a little), its true position never moves.
+    {
+      const { id, e, view } = await spawn('robber', 5);
+      const sim = dbg.sim();
+      dbg.freeze(true);
+      sim.damageEnemy(e, 1e6, 'qa');
+      const ys = [];
+      let corpse = null;
+      for (let i = 0; i < 420; i++) {
+        dbg.advance(1 / 60, false);
+        ys.push(+view.c.root.position.y.toFixed(3)); (window.__dp ??= []).push([+view.c.hasLanded(), view.settleT]);
+        if (!corpse) corpse = [...sim.corpses.values()][0] ?? null;
+      }
+      const cv = corpse && scene.views.corpses?.get?.(corpse.id);
+      const vv = cv ?? view;
+      out.settle = {
+        sink: +(Math.max(...ys.slice(0, 10)) - ys[ys.length - 1]).toFixed(3), minY: Math.min(...ys),
+        monotonicAfterLanding: ys.slice(-60).every((y, i, a) => i === 0 || y <= a[i - 1] + 1e-6),
+        corpseDrawnDelta: corpse ? +Math.hypot(view.c.root.position.x - corpse.x, view.c.root.position.z - corpse.z).toFixed(3) : null,
+        hasCorpse: !!corpse,
+        finalY: ys[ys.length - 1], landedAt: window.__dp.findIndex((d) => d[0]) / 60,
+      };
+      void vv;
+      dbg.freeze(false);
+    }
+    return out;
+  });
+  log('impact', JSON.stringify(report.impact));
+  const I = report.impact;
+  assert.ok(I.hitstop.frozenFrames >= 2 && I.hitstop.frozenFrames <= 4, `hitstop frames ${I.hitstop.frozenFrames}`);
+  assert.equal(I.hitstop.count, 1, 'one freeze per heavy hit');
+  assert.ok(I.hitstop.simAdvanced > 0.15, 'sim clock kept running through the freeze');
+  assert.equal(I.hitstop.lightCount, 0, 'light hit does not freeze');
+  assert.ok(I.hitstop.share < 0.16, `hitstop share ${I.hitstop.share}`);
+  assert.equal(I.hitstop.reducedMotionCount, 0, 'no hitstop under reduced motion');
+  assert.ok(I.knockback.peak > 0.05 && I.knockback.peak <= 0.6 + 1e-6 && I.knockback.awayFromHero, 'knockback shoves away');
+  assert.ok(I.knockback.settledOffset < 0.01 && I.knockback.simMoved === 0, 'knockback relaxes; sim untouched');
+  assert.ok(I.settle.hasCorpse && I.settle.sink > 0.02 && I.settle.corpseDrawnDelta < 0.05, 'corpse settles in place');
+  if (process.env.DM_QA_IMPACT_ONLY) { await browser.close(); return; }
+
   // --- enemies: heading and foot slip ---
   const defs = await page.evaluate(async () => {
     const { ENEMIES } = await import('/src/content/enemies.ts');
     const skip = new Set(['niche', 'fen_wisp', 'mire_leech', 'moth', 'bat', 'wraith', 'gargoyle', 'seraph']);
     return Object.keys(ENEMIES).filter((d) => !skip.has(d));
   });
+  const only = (process.env.DM_QA_ONLY || '').split(',').filter(Boolean);
+  if (only.length) defs.splice(0, defs.length, ...defs.filter((d) => only.includes(d)));
   report.enemies = {};
   for (const def of defs) {
     report.enemies[def] = await page.evaluate(async (def) => {
@@ -81,6 +189,22 @@ async function main() {
       });
       const quad = feet.length !== 2;
       const use = quad ? leaves.map((o) => [o, o.getWorldPosition(new V3()).y]).sort((a, b) => a[1] - b[1]).slice(0, 4).map((a) => a[0]) : feet;
+      // Mesh-contact slip: the skinned vertices touching the ground in two successive frames should not move in the world.
+      const skinned = [];
+      view.c.model.traverse((o) => { if (o.isSkinnedMesh) skinned.push(o); });
+      const verts = () => {
+        view.c.model.updateMatrixWorld(true);
+        const out = [];
+        const t = new V3();
+        for (const m of skinned) {
+          const n = m.geometry.attributes.position.count;
+          const a = new Float32Array(n * 3);
+          for (let i = 0; i < n; i++) { m.getVertexPosition(i, t); t.applyMatrix4(m.matrixWorld); a[i * 3] = t.x; a[i * 3 + 1] = t.y; a[i * 3 + 2] = t.z; }
+          out.push(a);
+        }
+        return out;
+      };
+      const meshFrames = [];
       const samples = [];
       let prev = null;
       for (let i = 0; i < 150; i++) {
@@ -90,22 +214,55 @@ async function main() {
         if (!ee.moving) { prev = null; if (Math.hypot(ee.x, ee.z) < 3.5) break; continue; }
         const fp = use.map((f) => f.getWorldPosition(new V3()));
         const rp = view.c.root.position.clone();
-        if (prev) samples.push({ rootV: Math.hypot(rp.x - prev.rp.x, rp.z - prev.rp.z) * 60, feet: fp.map((p, k) => ({ y: p.y, v: Math.hypot(p.x - prev.fp[k].x, p.z - prev.fp[k].z) * 60 })), plan: view.c.lastPlan });
+        if (prev) meshFrames.push({ v: verts(), os: !!view.c.oneShot, rootV: Math.hypot(rp.x - prev.rp.x, rp.z - prev.rp.z) * 60 });
+        if (prev) samples.push({ rootV: Math.hypot(rp.x - prev.rp.x, rp.z - prev.rp.z) * 60, feet: fp.map((p, k) => ({ y: p.y, v: Math.hypot(p.x - prev.fp[k].x, p.z - prev.fp[k].z) * 60 })), plan: view.c.lastPlan, os: !!view.c.oneShot });
         prev = { fp, rp };
       }
       if (samples.length < 20) { return 'few'; }
       const ground = med(samples.map((s) => s.rootV));
-      const slips = [];
-      for (let k = 0; k < use.length; k++) {
-        const ys = samples.map((s) => s.feet[k].y);
-        const lo = Math.min(...ys), hi = Math.max(...ys);
-        const st = samples.filter((s) => s.feet[k].y <= lo + 0.22 * (hi - lo)).map((s) => s.feet[k].v);
-        if (st.length) slips.push(med(st));
-      }
+      // Planted-foot speed over a set of samples (the lowest 22% of each foot's height range counts as planted).
+      const slipOf = (set) => {
+        const slips = [];
+        for (let k = 0; k < use.length; k++) {
+          const ys = samples.map((s) => s.feet[k].y);
+          const lo = Math.min(...ys), hi = Math.max(...ys);
+          const st = set.filter((s) => s.feet[k].y <= lo + 0.22 * (hi - lo)).map((s) => s.feet[k].v);
+          if (st.length) slips.push(med(st));
+        }
+        return slips.length ? med(slips) / ground : NaN;
+      };
+      const loco = samples.filter((s) => !s.os);
       const plan = samples[10].plan;
-      return { ground: +ground.toFixed(2), slip: +(med(slips) / ground).toFixed(2), clip: plan?.clip, ts: +(plan?.timeScale ?? 0).toFixed(2), capped: (plan?.residual ?? 0) > 0.15, quad };
+      const meshSlip = (loco_only) => {
+        let ymin0 = Infinity, ymax0 = -Infinity;
+        for (const a of meshFrames[0].v) for (let i = 1; i < a.length; i += 3) { ymin0 = Math.min(ymin0, a[i]); ymax0 = Math.max(ymax0, a[i]); }
+        const band = 0.04 * (ymax0 - ymin0);
+        const speeds = [];
+        for (let f = 1; f < meshFrames.length; f++) {
+          if (loco_only && (meshFrames[f].os || meshFrames[f - 1].os)) continue;
+          let lo = Infinity;
+          for (const a of meshFrames[f].v) for (let i = 1; i < a.length; i += 3) lo = Math.min(lo, a[i]);
+          let lo0 = Infinity;
+          for (const a of meshFrames[f - 1].v) for (let i = 1; i < a.length; i += 3) lo0 = Math.min(lo0, a[i]);
+          for (let m = 0; m < skinned.length; m++) {
+            const a = meshFrames[f].v[m], b = meshFrames[f - 1].v[m];
+            for (let i = 0; i < a.length; i += 3) {
+              if (a[i + 1] > lo + band || b[i + 1] > lo0 + band) continue;
+              speeds.push(Math.hypot(a[i] - b[i], a[i + 2] - b[i + 2]) * 60);
+            }
+          }
+        }
+        return speeds.length > 20 ? med(speeds) / ground : NaN;
+      };
+      // slip = mesh-contact slip over every moving frame; slipLoco = only frames with no swing / cast one-shot covering the stride; slipBones = the older foot-bone metric (a 22% height window, which counts a robed caster's low swing as planted).
+      return { ground: +ground.toFixed(2), slip: +meshSlip(false).toFixed(2), slipLoco: +meshSlip(true).toFixed(2), slipBones: +slipOf(samples).toFixed(2), slipBonesLoco: loco.length > 10 ? +slipOf(loco).toFixed(2) : null, oneShotShare: +(1 - loco.length / samples.length).toFixed(2), clip: plan?.clip, ts: +(plan?.timeScale ?? 0).toFixed(2), capped: (plan?.residual ?? 0) > 0.15, quad };
     }
   }, def);
+  }
+  if (process.env.DM_QA_ENEMIES_ONLY) {
+    for (const [d, v] of Object.entries(report.enemies)) console.log(d.padEnd(16), JSON.stringify(v));
+    await browser.close();
+    return;
   }
   const bip = Object.entries(report.enemies).filter(([, v]) => typeof v === 'object' && !v.quad && !v.capped);
   assert.ok(bip.length >= 8, 'measured enough biped enemies');
@@ -114,6 +271,33 @@ async function main() {
   assert.ok(avg < 0.45, `mean slip ${avg.toFixed(2)}`);
   report.meanBipedSlip = +avg.toFixed(2);
   log('enemy slip mean', report.meanBipedSlip);
+
+
+  // --- quadruped stride: the bone hound's four foot bones, planted speed along the heading as a share of ground speed.
+  // (The mesh/bone metrics above are unreliable on the quadruped rigs; this is the signed measure used to calibrate them.)
+  report.houndPlanted = await page.evaluate(async () => {
+    const { getRuntime } = await import('/src/app/GameRuntime.ts');
+    const dbg = window.__cwDebug; const scene = getRuntime().view; const V3 = scene.rig.camera.position.constructor;
+    const med = (a) => { a = a.slice().sort((x, y) => x - y); return a[Math.floor(a.length / 2)]; };
+    dbg.clear(); scene.player.x = 0; scene.player.z = 0;
+    const id = dbg.ring('hound', 1, 14)[0]; const sim = dbg.sim(); const e = sim.enemies.get(id); e.hp = e.maxHp = 1e9;
+    let view; for (let k = 0; k < 40 && !(view && view.c.loaded); k++) { await new Promise((r) => setTimeout(r, 250)); dbg.advance(0.05, false); view = scene.views.enemies.get(id); }
+    dbg.advance(1.5, false);
+    const bs = ['bone_10', 'bone_11', 'bone_14', 'bone_15'].map((n) => { let f; view.c.model.traverse((o) => { if (o.name === n) f = o; }); return f; });
+    const rows = []; let prev = null;
+    for (let i = 0; i < 160; i++) {
+      dbg.advance(1 / 60, false);
+      const ee = sim.enemies.get(id); if (!ee || !ee.moving) { prev = null; continue; }
+      const h = view.c.root.rotation.y; const fp = bs.map((b) => b.getWorldPosition(new V3()));
+      if (prev) rows.push(fp.map((p, k) => [p.y, ((p.x - prev[k].x) * Math.sin(h) + (p.z - prev[k].z) * Math.cos(h)) * 60]));
+      prev = fp;
+    }
+    const per = bs.map((_, k) => { const ys = rows.map((r) => r[k][0]); const lo = Math.min(...ys), hi = Math.max(...ys); return med(rows.filter((r) => r[k][0] <= lo + 0.25 * (hi - lo)).map((r) => r[k][1])) / e.speed; });
+    return { planted: +med(per).toFixed(2), ts: +(view.c.lastPlan?.timeScale ?? 0).toFixed(2) };
+  });
+  log('hound planted (signed, share of ground speed; 0 = planted)', JSON.stringify(report.houndPlanted));
+  assert.ok(Math.abs(report.houndPlanted.planted) < 0.2, `hound feet planted ${report.houndPlanted.planted}`);
+  assert.equal(report.enemies.robber.clip, 'run', 'robber runs on its run clip');
 
   // --- heading: biped toes point along the heading ---
   report.heading = await page.evaluate(async () => {

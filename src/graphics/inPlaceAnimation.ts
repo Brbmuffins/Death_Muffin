@@ -87,3 +87,33 @@ export function hipAnchor(clip: THREE.AnimationClip | undefined): { x: number; y
   const t = clip?.tracks.find((tr) => tr.name === 'Hip.position');
   return t ? { x: t.values[0], y: t.values[1], z: t.values[2] } : undefined;
 }
+
+const landings = new WeakMap<THREE.AnimationClip, number>();
+
+/**
+ * Seconds into a death clip at which the body has come to rest on the ground: the first moment the Hip (its local Z is
+ * height) is within 10% of its lowest point. Clips without a Hip track assume 70% of their length.
+ */
+export function landingTime(clip: THREE.AnimationClip): number {
+  const hit = landings.get(clip);
+  if (hit !== undefined) return hit;
+  let t = clip.duration * 0.7;
+  const track = clip.tracks.find((tr) => tr.name === 'Hip.position');
+  if (track && track.times.length > 2) {
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 2; i < track.values.length; i += 3) {
+      lo = Math.min(lo, track.values[i]);
+      hi = Math.max(hi, track.values[i]);
+    }
+    if (hi - lo > 1e-4) {
+      for (let i = 0; i < track.times.length; i++) {
+        if (track.values[i * 3 + 2] <= lo + 0.1 * (hi - lo)) {
+          t = track.times[i];
+          break;
+        }
+      }
+    }
+  }
+  landings.set(clip, t);
+  return t;
+}

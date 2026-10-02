@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CREATURE_MODELS } from '../modelPaths';
 import {
-  angleDelta, DEFAULT_WALK, LOCO_MIN, planLocomotion, RUN_DOWN, RUN_MAX, RUN_UP, smoothSpeed, STRIDES, stepSpeed, turnToward, walkCap, WALK_MAX,
+  angleDelta, DEFAULT_WALK, LOCO_MIN, planLocomotion, RUN_DOWN, RUN_MAX, RUN_UP, smoothSpeed, STRIDES, stepSpeed, turnToward, walkCap, WALK_HARD_MAX, WALK_MAX,
 } from '../locomotion';
 
 const ROW = { walk: 0.7, run: 2.1 };
@@ -38,7 +38,8 @@ describe('planLocomotion', () => {
   });
 
   it('keeps a heavier cadence for a big body than a small one', () => {
-    expect(walkCap(0.5)).toBe(WALK_MAX);
+    expect(walkCap(0.5)).toBe(WALK_HARD_MAX);
+    expect(walkCap(1.8)).toBeGreaterThan(WALK_MAX * 0.99);
     expect(walkCap(4.6)).toBeLessThan(walkCap(1.8));
     expect(walkCap(100)).toBeGreaterThanOrEqual(1.6);
   });

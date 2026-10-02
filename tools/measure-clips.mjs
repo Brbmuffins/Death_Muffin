@@ -176,6 +176,100 @@ export async function bindHeight(file) {
   return hi - lo;
 }
 
+/**
+ * Stride by the mesh instead of by bones: the skinned vertices touching the ground (the lowest 4% of the body's height
+ * in each frame) are the planted parts, and their horizontal speed relative to the hip is the speed the ground must
+ * slide under the body for them to stay put. Needs no knowledge of the rig's bone names, so it also measures the
+ * quadrupeds, whose "foot" bones are not where their names say (a leaf bone that never moves is not a foot).
+ * Returns { speed, height } in glTF units, or null when the clip has no body.
+ */
+export async function contactStrideOfClip(file, clipName, { contact = 0.04 } = {}) {
+  const doc = await io.read(file);
+  const { top, byName, map } = buildTree(doc);
+  const rig = rigNames(byName, file);
+  const anim = doc.getRoot().listAnimations().find((a) => a.getName() === clipName);
+  if (!anim) return null;
+  const chans = anim.listChannels().map((c) => ({
+    obj: map.get(c.getTargetNode()), path: c.getTargetPath(), times: c.getSampler().getInput().getArray(), vals: c.getSampler().getOutput().getArray(),
+  }));
+  const dur = Math.max(...chans.map((c) => c.times[c.times.length - 1]));
+  const dt = 1 / 30;
+  const p = new THREE.Vector3(), q = new THREE.Quaternion();
+  const pose = (t) => {
+    for (const c of chans) {
+      if (c.path === 'rotation') { sample(c.vals, c.times, t, 4, q, true); c.obj.quaternion.copy(q); }
+      else if (c.path === 'translation') { sample(c.vals, c.times, t, 3, p, false); c.obj.position.copy(p); }
+    }
+    top.updateMatrixWorld(true);
+  };
+  // Skinned prims: bind positions, joints and weights.
+  const prims = [];
+  for (const n of doc.getRoot().listNodes()) {
+    const mesh = n.getMesh(), skin = n.getSkin();
+    if (!mesh || !skin) continue;
+    const joints = skin.listJoints().map((j) => map.get(j));
+    const ibm = skin.getInverseBindMatrices().getArray();
+    for (const prim of mesh.listPrimitives()) {
+      const pos = prim.getAttribute('POSITION'), jnt = prim.getAttribute('JOINTS_0'), wgt = prim.getAttribute('WEIGHTS_0');
+      if (!pos || !jnt || !wgt) continue;
+      const count = pos.getCount();
+      const bind = new Float32Array(count * 3), ji = new Uint16Array(count * 4), jw = new Float32Array(count * 4);
+      const el = [];
+      for (let i = 0; i < count; i++) {
+        pos.getElement(i, el); bind.set(el.slice(0, 3), i * 3);
+        jnt.getElement(i, el); ji.set(el.slice(0, 4), i * 4);
+        wgt.getElement(i, el); jw.set(el.slice(0, 4), i * 4);
+      }
+      prims.push({ joints, ibm, bind, ji, jw, count });
+    }
+  }
+  if (!prims.length) return null;
+  const total = prims.reduce((n, pr) => n + pr.count, 0);
+  const frames = [];
+  const m = new THREE.Matrix4(), v = new THREE.Vector3(), acc = new THREE.Vector3();
+  for (let t = 0; t < dur - 1e-6; t += dt) {
+    pose(t);
+    const out = new Float32Array(total * 3);
+    let o = 0;
+    for (const pr of prims) {
+      const mats = pr.joints.map((j, k) => new THREE.Matrix4().multiplyMatrices(j.matrixWorld, m.fromArray(pr.ibm, k * 16)));
+      for (let i = 0; i < pr.count; i++) {
+        v.fromArray(pr.bind, i * 3);
+        acc.set(0, 0, 0);
+        let ws = 0;
+        for (let k = 0; k < 4; k++) {
+          const w = pr.jw[i * 4 + k];
+          if (w <= 0) continue;
+          acc.addScaledVector(v.clone().applyMatrix4(mats[pr.ji[i * 4 + k]]), w);
+          ws += w;
+        }
+        if (ws > 0) acc.divideScalar(ws);
+        out[o++] = acc.x; out[o++] = acc.y; out[o++] = acc.z;
+      }
+    }
+    const hip = byName.get(rig.hip).getWorldPosition(new THREE.Vector3());
+    frames.push({ pos: out, hx: hip.x, hz: hip.z });
+  }
+  let lo = Infinity, hi = -Infinity;
+  for (const f of frames) for (let i = 1; i < f.pos.length; i += 3) { lo = Math.min(lo, f.pos[i]); hi = Math.max(hi, f.pos[i]); }
+  const height = hi - lo;
+  const n = frames.length;
+  const speeds = [];
+  for (let f = 0; f < n; f++) {
+    const a = frames[(f + n - 1) % n], b = frames[(f + 1) % n], c = frames[f];
+    let ymin = Infinity;
+    for (let i = 1; i < c.pos.length; i += 3) ymin = Math.min(ymin, c.pos[i]);
+    const cut = ymin + contact * height;
+    for (let i = 0; i < total; i++) {
+      if (c.pos[i * 3 + 1] > cut) continue;
+      const dx = (b.pos[i * 3] - b.hx) - (a.pos[i * 3] - a.hx), dz = (b.pos[i * 3 + 2] - b.hz) - (a.pos[i * 3 + 2] - a.hz);
+      speeds.push(Math.hypot(dx, dz) / (2 * dt));
+    }
+  }
+  speeds.sort((x, y) => x - y);
+  return { speed: speeds.length ? +speeds[Math.floor(speeds.length / 2)].toFixed(3) : 0, height: +height.toFixed(3), samples: speeds.length };
+}
+
 /** Combat clips store Hip position relative to their standing first frame (build-characters COMBAT_TRIMS). */
 const RELATIVE_HIP = new Set(['slam', 'sweep', 'flick', 'channel', 'summon']);
 
