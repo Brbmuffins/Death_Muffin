@@ -75,6 +75,10 @@ import type {
   SimNode,
 } from './types';
 
+/** An area with no living player for this long sinks back into its graves (see crumbleVacant). */
+const VACANT_CRUMBLE_S = 8;
+/** Seconds after an arrival until Wave Speed is at full pressure (see rampTier). */
+const RAMP_S = 30;
 const AGGRO_RANGE = 15;
 const CORPSE_LIFETIME = 26;
 const TOXIC_RUPTURE = 5;
@@ -199,6 +203,10 @@ export class WorldSim {
   private events: SimEvent[] = [];
   private nextId = 1;
   private waveTimers = new Map<AreaId, number>();
+  /** Seconds each hunting ground has stood without a living player (see crumbleVacant). */
+  private vacantS = new Map<AreaId, number>();
+  /** When each hunting ground last greeted an arrival (Wave Speed builds up from here, see rampTier). */
+  private arrivedAt = new Map<AreaId, number>();
   /** Regular waves spawned per area (Elite Vanguard alternates). */
   private waveCounts = new Map<AreaId, number>();
   /** Ossuary Walls standing right now (segments enemies can't cross). */
@@ -1220,7 +1228,7 @@ export class WorldSim {
   spawnEnemy(def: EnemyId, area: AreaId, x: number, z: number, elite: boolean, rising = true, affix?: EliteAffix): Enemy {
     const d = ENEMIES[def];
     const level = this.areaLevel(area);
-    const wave = waveModifiers(this.waveTier);
+    const wave = waveModifiers(this.rampTier(area));
     const diff = DIFFICULTIES[this.difficulty];
     const hp = d.hp * enemyHpScale(level) * wave.enemyHpMult * diff.enemyHpMult * (elite ? ELITE.hpMult : 1) * this.partyHpScale();
     const e: Enemy = {
@@ -1280,7 +1288,7 @@ export class WorldSim {
 
   private spawnWave(area: AreaId, first = false) {
     const def = AREAS[area];
-    const mods = waveModifiers(this.waveTier);
+    const mods = waveModifiers(this.rampTier(area));
     const cap = Math.round(def.cap * mods.capMult);
     const room = Math.min(cap - this.aliveIn(area), GLOBAL_ENEMY_CAP - this.enemies.size);
     if (room <= 0) return;
@@ -1295,7 +1303,7 @@ export class WorldSim {
     // Elite Vanguard: every other wave after the greeting climbs out behind an elite.
     const n = first ? 0 : (this.waveCounts.get(area) ?? 0) + 1;
     if (!first) this.waveCounts.set(area, n);
-    const vanguard = !first && n % 2 === 1 && milestoneActive('vanguard', this.waveTier);
+    const vanguard = !first && n % 2 === 1 && milestoneActive('vanguard', this.rampTier(area));
     // Processions: now and then a wave arrives as a themed band instead of the usual mix.
     const themes = WAVE_THEMES[area];
     const theme: WaveTheme | undefined =
@@ -1345,7 +1353,7 @@ export class WorldSim {
     room = Infinity,
   ): Enemy[] {
     const def = AREAS[area];
-    const mods = waveModifiers(this.waveTier);
+    const mods = waveModifiers(this.rampTier(area));
     const at = () => {
       const ang = this.rand() * Math.PI * 2;
       const rr = 0.5 + this.rand() * 2.4;
@@ -1358,7 +1366,7 @@ export class WorldSim {
     // Pack animals never come elite (a whole elite swarm would be a wall of health).
     const elite = id !== 'risen' && !pack && (forceElite || roll);
     // Nightfall: the common dead climb out Shrouded.
-    const shroud = !elite && milestoneActive('nightfall', this.waveTier) && this.rand() < NIGHTFALL_SHROUD_CHANCE ? 'shrouded' : elite ? this.omen?.affix : undefined;
+    const shroud = !elite && milestoneActive('nightfall', this.rampTier(area)) && this.rand() < NIGHTFALL_SHROUD_CHANCE ? 'shrouded' : elite ? this.omen?.affix : undefined;
     const [x, z] = at();
     const band = [this.spawnEnemy(id, area, x, z, elite, true, shroud)];
     if (pack) {
@@ -1442,7 +1450,7 @@ export class WorldSim {
   private spawnSurgeWave(s: SurgeState) {
     const def = AREAS[s.area];
     const room = GLOBAL_ENEMY_CAP - this.enemies.size;
-    const count = Math.min(room, Math.round(def.waveSize * SURGE.waveSizeMult * waveModifiers(this.waveTier).sizeMult));
+    const count = Math.min(room, Math.round(def.waveSize * SURGE.waveSizeMult * waveModifiers(this.rampTier(s.area)).sizeMult));
     if (count <= 0) return;
     let spawned = 0;
     while (spawned < count) {
@@ -1463,8 +1471,42 @@ export class WorldSim {
     this.surgeIn = (SURGE.minIntervalS + this.rand() * (SURGE.maxIntervalS - SURGE.minIntervalS)) * restless;
   }
 
+  /**
+   * The dead only stay up while someone is there to haunt: an area with no living player for
+   * VACANT_CRUMBLE_S sinks back into its graves (no loot, no corpses) and greets the next arrival afresh.
+   * Without it a death at high Wave Speed was a spiral: you walked back in, thrall-less, into the
+   * whole mob that killed you.
+   */
+  private crumbleVacant(dt: number) {
+    for (const id of AREA_ORDER) {
+      if (AREAS[id].safe) continue;
+      if (this.playersIn(id).length) {
+        this.vacantS.delete(id);
+        continue;
+      }
+      const v = (this.vacantS.get(id) ?? 0) + dt;
+      this.vacantS.set(id, v);
+      if (v < VACANT_CRUMBLE_S) continue;
+      for (const e of [...this.enemies.values()]) if (e.area === id) this.enemies.delete(e.id);
+      if (this.surge?.area === id) this.surge = null;
+      // Coming back is a fresh arrival: the greeting wave opens the area again.
+      this.waveTimers.delete(id);
+    }
+  }
+
+  /**
+   * Wave Speed builds over the first RAMP_S seconds of a visit: the arrival wave is a plain greeting and the dial
+   * reaches its full pressure only once the legion has had time to rise. (At tier 8 the second wave used to land
+   * about four seconds in, on a caster with no thralls and no corpses: first deaths came at 6-8 s.)
+   * Milestone affixes arrive as the ramp passes their tier.
+   */
+  private rampTier(area: AreaId) {
+    const since = this.time - (this.arrivedAt.get(area) ?? -Infinity);
+    return this.waveTier * Math.max(0, Math.min(1, since / RAMP_S));
+  }
+
   private updateWaves(dt: number) {
-    const mods = waveModifiers(this.waveTier);
+    this.crumbleVacant(dt);
     for (const id of AREA_ORDER) {
       const def = AREAS[id];
       if (def.safe || !this.nav.isUnlocked(id)) continue;
@@ -1473,14 +1515,15 @@ export class WorldSim {
       let t = this.waveTimers.get(id);
       if (t === undefined) {
         // First visit: open with a heavier wave so the area feels inhabited.
+        this.arrivedAt.set(id, this.time);
         this.spawnWave(id, true);
-        this.waveTimers.set(id, (def.waveIntervalMs / 1000) * mods.intervalMult);
+        this.waveTimers.set(id, (def.waveIntervalMs / 1000) * waveModifiers(this.rampTier(id)).intervalMult);
         continue;
       }
       t -= dt;
       if (t <= 0) {
         this.spawnWave(id);
-        t = (def.waveIntervalMs / 1000) * mods.intervalMult;
+        t = (def.waveIntervalMs / 1000) * waveModifiers(this.rampTier(id)).intervalMult;
       }
       this.waveTimers.set(id, t);
     }

@@ -106,7 +106,7 @@ Assigned laborers appear as thralls at their node in the Sexton's Acre and work 
 ### P3 · Zone and encounter polish
 Driven by measurements, not guesses: the necromancer balance run across all nine hunting grounds, the clip audit, and the loot audit (what fills the bag). Results and the resulting fixes are listed here as they land.
 
-**Necromancer balance run (2 Oct 2026, 4 disciplines × 9 hunting grounds × 4 seeds, 3 min each):**
+**Necromancer balance run (2 Oct 2026, 4 disciplines × 9 hunting grounds × 4 seeds, 3 min each).** The first three findings below were fixed on `dm/balance-pass` the same day (see `BALANCE.md`, "Necro pass"): max Wave Speed 7.8 → 2.1 deaths per 3 min and 1.18× the intended kill rate; Ossuary level with the others; every intended-band row at ≤ 1 death. Awaiting a human playtest of tiers 6-8. Findings as measured:
 - At the intended pressure the necromancers are healthy almost everywhere (0–1.8 deaths per 3 min).
 - **Max Wave Speed is a trap.** 5–11 deaths per 3 min, first death after 5–20 s, and kills per minute *fall* to a third or less of the intended band (Nave Gravecaller 109 → 16/min). The top tiers should pay more for good play, not less. Fix: retune the tier 6–8 pressure curve and surge sizes so a careful player out-earns the intended band.
 - **Ossuary, the defensive discipline, dies most under pressure** (8–11.5 deaths at max). Its shieldbearers soak until they die, then the caster is exposed. Candidates: Bone Ward per living thrall, or a thrall HP floor.

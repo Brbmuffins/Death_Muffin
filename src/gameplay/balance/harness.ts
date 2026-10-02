@@ -321,7 +321,11 @@ export function runBalance(run: BalanceRun): BalanceResult {
           [p.x, p.z] = nav.resolve(p.x + ((nearest.x - p.x) / nd) * step, p.z + ((nearest.z - p.z) / nd) * step, 0.45);
         } else if (near(1.6).length >= 3 && p.hp < stats.maxHp * 0.5) {
           const step = stats.moveSpeed * dt * bog();
-          [p.x, p.z] = nav.resolve(p.x - ((nearest.x - p.x) / nd) * step, p.z - ((nearest.z - p.z) / nd) * step, 0.45);
+          // An enemy standing exactly on the bot (nd = 0) used to make this 0/0: a NaN position froze the bot
+          // forever (no kills, no damage taken), which hid whole rows of the max band behind "0 deaths".
+          const ux = nd > 1e-6 ? (nearest.x - p.x) / nd : 1;
+          const uz = nd > 1e-6 ? (nearest.z - p.z) / nd : 0;
+          [p.x, p.z] = nav.resolve(p.x - ux * step, p.z - uz * step, 0.45);
         }
         if (nd <= SP_NEEDLE.range + 0.4 && ready('bone_needle', t)) {
           cds.set('bone_needle', t + SP_NEEDLE.cooldownMs / 1000);

@@ -43,6 +43,97 @@ The full **medium / 3-minute / seeds 42–44** run on 2026-09-28 covered all fou
 
 At geared Wave Speed 3, every new class still averaged at least 5.3 deaths in every area. This bot currently skips Shield Bash, Grave Slam, Resonant Step, Knell, Choir, Chain Pull, Cremate, Hook Pull, Hex Charm, and Echo; it therefore understates several kits' offense and control. It also enters close combat without reacting to telegraphs. The next balance pass should exercise those rites and movement before setting numeric buffs, followed by a human playtest.
 
+## Necro pass (2026-10-02)
+
+Four necromancer disciplines x nine hunting grounds x `intended,geared,push,max`, **8 seeds, 3 sim-minutes**
+(`BALANCE_SEEDS=8`; the report now also prints `1st med`, the median seed's first death, because the
+min-over-seeds `1st†s` is set by one unlucky seed). "Old" = the code at the start of the pass with only the
+harness fix below, so the comparison is like for like.
+
+### What was wrong (measured, not guessed)
+1. **A harness bug hid part of the problem.** When an enemy stood exactly on the bot, the back-off step divided
+   0 by 0 and the bot's position became NaN for the rest of the run: no kills, no damage, no deaths (seen as
+   rows with ~0 kills/min and 0 deaths at max). Fixed in `harness.ts`. The true old max band is *worse*
+   than the baseline table in the ROADMAP: mean 7.8 deaths per 3 min (max 12.1).
+2. **Past tier ~3 more density is pure danger.** The bot clears about 100 bodies/min and the base wave rate is
+   already about that, so at tier 8 (supply 2.9x) the field just sat at the cap (peak 60-72 enemies vs ~40 at
+   the intended band). Kills/min do not rise with supply; they fall as deaths climb. Per-enemy HP x1.24,
+   damage x1.28 and +6.4% elite chance stacked on top.
+3. **Death was a spiral.** After a death the whole mob stayed in the area; the caster walked back in 12 s later
+   with no thralls and no corpses into the pile that killed it (lives of 10-20 s, 5-11 deaths).
+4. **The second wave landed ~4 s in** at tier 8 (interval 3 s): first deaths at 5-8 s, before a single thrall.
+5. XP did not scale with Wave Speed at all, so tier 8 could never out-earn the intended band in XP.
+
+### What changed
+| Change | Where | Why |
+|---|---|---|
+| Density terms (interval, cap, wave size) climb at full rate to tier 3 and at **0.55x** after (`densityTier`) | `upgrades.ts` | tiers 0-3 are unchanged (the healthy rows); past that, extra supply only piles up |
+| Per-enemy terms gentler: HP +1.8%/tier (was 3), damage +2.6% (was 3.5), elite +0.4% (was 0.8) | `upgrades.ts` | tier 8: HP x1.14, damage x1.21, elites +3.2% |
+| **XP scales with the dial**: +5%/tier, +15% Nightfall (tier 8: x1.55). Gold stays +10%/tier, +25% Nightfall | `upgrades.ts`, `loot.ts` | rewards keep climbing while density levels off: that is the pay for the risk |
+| **Ramp**: Wave Speed builds linearly over the first 30 s of a visit (`rampTier`); the arrival wave is a plain greeting; Vanguard/Nightfall appear as the ramp passes their tier | `WorldSim.ts` | first deaths were 5-8 s in, with no legion up yet |
+| **Vacant areas crumble**: no living player in an area for 8 s removes its enemies (no loot) and the next arrival gets a fresh greeting wave | `WorldSim.ts` | breaks the death spiral; a death now costs the 12 s respawn plus rebuilding the legion, not the whole run |
+| Ossuary: thrall HP x1.6 -> x2.0, Bone Ward 6% -> 10% per thrall (3 thralls: 18% -> 30%) | `disciplines.ts` | the caster is protected for longer after the shieldbearers' first losses |
+| Mourner: thrall HP x0.9 -> x1.0, corpse heal 8% -> 10% | `disciplines.ts` | weakest necro in Coliseum/Sanctum at the intended band |
+| Coliseum elite chance 16% -> 13% | `areas.ts` | smaller arrival spike; the farm rate and gold are kept |
+| `report.ts`: area column widened (the `coliseum` rows ran into the band name and were dropped by greps); `1st med` column | `report.ts` | |
+| Guard tests | `__tests__/balance-necro.test.ts` | curve shape, arrival ramp, vacancy, and the target rows |
+
+`necro-rules.cjs` was regenerated (it bundles `areas.ts`; only the Coliseum elite chance changed).
+
+### Results (means over the 4 necromancers x 9 areas, 8 seeds; ratios are to the *intended* band of the same row)
+| Band | | kills/min | gold/min | XP/min | deaths / 3 min | median first death |
+|---|---|---|---|---|---|---|
+| max (tier 8) | old | 0.54x | 1.34x | 0.61x | **7.8** (max row 12.1) | 8-34 s |
+| max (tier 8) | **new** | **1.18x** | **2.50x** | **1.84x** | **2.1** (max row 3.4) | 41-161 s |
+| push (tier 6) | old | 0.79x | 1.51x | 0.90x | 5.7 | 19-57 s |
+| push (tier 6) | new | 1.21x | 2.03x | 1.60x | 1.7 | 47-180 s |
+| geared (tier 3) | old | 1.30x | 2.12x | 1.55x | 1.3 | |
+| geared (tier 3) | new | 1.41x | 2.13x | 1.80x | 0.4 | |
+
+Per area at max (deaths old -> new): Graves 4.1 -> 0.5, Warren 4.4 -> 1.3, Ossuary 6.1 -> 2.4, Coliseum 10.0 -> 2.8,
+Nave 9.7 -> 2.4, Sanctum 9.8 -> 2.5, Cloister 8.9 -> 2.5, Pyre 9.2 -> 2.4, Fen 8.2 -> 2.1.
+
+Target rows (per discipline; kills/min, gold/min, XP/min, deaths, median first death):
+| Row | old max | new max | intended (unchanged) |
+|---|---|---|---|
+| Nave Gravecaller | 30 / 695 / 544 / 9.9 / 7 s | 104 / 2298 / 2772 / 2.5 / 33 s | 107 / 1143 / 1879 |
+| Nave Ossuary | 34 / 637 / 512 / 11.8 / 8 s | 150 / 3185 / 3937 / 2.5 / 54 s | 125 / 1384 / 2251 |
+| Nave Mourner | 28 / 719 / 566 / 9.6 / 7 s | 111 / 2491 / 3009 / 2.6 / 40 s | 90 / 1018 / 1668 |
+| Nave Rotweaver | 45 / 1220 / 940 / 7.4 / 9 s | 100 / 2330 / 2861 / 2.1 / 36 s | 103 / 1147 / 1879 |
+| Sanctum Gravecaller | 25 / 1208 / 984 / 9.1 / 21 s | 79 / 3199 / 4209 / 2.8 / 38 s | 80 / 1680 / 2877 |
+| Coliseum Ossuary | 47 / 727 / 627 / 12.1 / 12 s | 185 / 2765 / 3614 / 3.4 / 35 s | 178 / 1916 / 3248 |
+| Coliseum Mourner | 35 / 802 / 647 / 9.8 / 11 s | 102 / 2207 / 2797 / 2.9 / 25 s | 82 / 1030 / 1717 |
+
+Max by discipline (mean of 9 areas): Ossuary 10.1 -> **2.2** deaths, Gravecaller 7.3 -> 2.2, Mourner 7.2 -> 2.0,
+Rotweaver 6.6 -> 2.0. Ossuary is now level with the others rather than the worst; it is still the top earner
+(143 kills/min vs ~100) as it was at the intended band (111 vs 87-95).
+
+Intended band (healthy rows): kills/min, gold and XP are within +-10% of the old numbers in every one of the
+36 rows (the largest moves are Coliseum Mourner/Rotweaver kills +16%, from fewer spiral deaths). Intended deaths
+per 3 min: Coliseum Ossuary 1.9 -> 0.9, Mourner 1.5 -> 1.0, Rotweaver 1.4 -> 0.5; Sanctum Mourner 1.9 -> 0.9,
+Gravecaller 1.0 -> 0.3; every row is now at most 1.0.
+
+Bosses: `npm run balance:boss` (3 seeds) is unchanged for Gravecaller and Rotweaver (dodgers win 166-173 s; non-dodgers
+wipe). Ossuary (higher thrall HP and Bone Ward) wins 1 in 6-8 non-dodging intended runs with ~2% boss HP left
+(was 0/6); Mourner is unchanged.
+
+Other classes (indices 5-9, 4 seeds, Graves/Ossuary/Nave/Sanctum, intended and max): nothing broke. They
+benefit from the same wave/ramp/vacancy rules; max-band deaths fall from 8.8-13.5 to 4.8-8.8 and kills/min roughly
+double. Their intended-band gold moved -30% to +30% on 4 seeds (noise; the bot still dies 5-8 times per run, see the
+New Blood section above), so these rows are not retuned.
+
+### Closed open issues
+- Gravecaller weakest under pressure: gone (all four at 2.0-2.2 deaths at max; the spiral was the cause).
+- Ossuary discipline swings hardest: now level with the others (see above).
+- Nave at max Wave Speed kills arrival-level bots within ~5 s: median first death 40 s, deaths 9.7 -> 2.4.
+
+### Still open
+- Death at max is a smaller spiral, not none; the bot has no flasks/dodging, so a human should land lower.
+- Ossuary's win rate against a non-dodging Prelate rose from 0 to ~1 in 6-8.
+- A human playtest of tier 6-8 (ramp, vacancy greeting waves, XP) is still needed.
+- The vacancy rule means leaving an area for 8+ s and coming back triggers a fresh greeting wave (a small, bounded farm).
+
+
 `npm run balance` drives the real `WorldSim` with a scripted necromancer bot
 (`src/gameplay/balance/harness.ts`) and prints one row per area × level band ×
 discipline. The bot is **an upper bound on kill efficiency** (perfect targeting,
@@ -104,7 +195,7 @@ unlock in 2.7–3.7 min, and push/max either harmless (Graves, Sanctum) or a
 - The first-visit arrival wave is a fixed 1.3× greeting that ignores the Wave Speed dial (was 1.6× × dial).
 - Unlock thresholds 200/280/360 → 300/420/520 kills (unlocks already earned stay unlocked).
 
-### Open issues
+### Open issues (2026-09-26; the first three are closed by the 2026-10-02 necro pass above)
 - **Gravecaller is the weakest discipline under pressure** (worst push/max rows in every area):
   warriors with 0.85× HP die fast, and five of them don't ward the caster. Candidates: Bone Ward
   per thrall, or a thrall HP floor.
