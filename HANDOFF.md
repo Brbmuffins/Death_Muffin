@@ -24,6 +24,10 @@ Branch `codex/new-blood-release-20260928` tracks `origin/master` (push `HEAD:mas
 after a secret scan; the repo is public). The owner asked for commits, which overrides
 the older "stage, don't commit" note.
 
+## Server authority, step 1 (branch `dm/server-authority`, 2 Oct 2026, not deployed)
+
+Plausibility guards on `save-progress`, bag saves, `add-item`, `roll-gear` and the offline load/sync-stats, behind `AUTHORITY_MODE=report|enforce` (default report: logs and audit rows only, saves unchanged). Migration `021-server-authority.sql` (`character_authority`, `progress_audit`); ceilings derived from the balance harness in `src/gameplay/authorityRules.ts` (bundled by `npm run build:server-rules` to `gathering/authority-rules.cjs`). Guards fail open and skip staff. Full detail, ceilings, rollout and what is still trusted: `docs/SERVER-AUTHORITY.md`. Probe: `tools/qa/authority-db-probe.cjs` (scratch DB). Deploy with `deploy-release.sh <rev> 021-server-authority.sql`, leave `AUTHORITY_MODE` unset, watch `progress_audit` before enforcing.
+
 ## Zone and encounter polish (branch `dm/zone-polish`, 2 Oct 2026, not deployed)
 
 Full audit and before/after in `docs/ZONE-POLISH-AUDIT.md`; the tour is `tools/qa/zone-tour.cjs`. Done: boss cone and line telegraphs now brightened with an outline (new `coneEdge`/`bar` sprites in `fxTextures.ts`, `areaBossEvent` in `WorldScene.ts`); a faint pale ring on every fresh corpse (`EntityViews.ts`, cap 8); Fen wisp-pulse ring brighter; Sanctum and Cloister arena sigils dimmed; Ossuary sky light lifted; three prop overlaps fixed (Ossuary coffin pile, Sanctum pillar behind the altar, Cloister waystone moved to z -111 in `layout.ts` and `areas.ts`). `necro-rules.cjs` was regenerated because `areas.ts` changed. Open: Nave perf and noise, thrall vs pale-enemy silhouette, Fen corpse rings on water, Acre darkness.

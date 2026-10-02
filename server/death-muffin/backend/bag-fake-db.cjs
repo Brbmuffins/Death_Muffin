@@ -31,7 +31,7 @@ const ITEMS = {
   tool_spade_copper: { type: 'material', rarity: 'common', stack: 1 },
 };
 
-function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot = [], charLevel = 10 } = {}) {
+function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot = [], charLevel = 10, extra = null } = {}) {
   let inv = [
     ...bag.map((b, i) => ({ id: i + 1, equipped: 0, equipped_slot: null, character_id: 1, ...b })),
     ...equipped.map((e, i) => ({ id: 800 + i, equipped: 1, equipped_slot: e.equipped_slot || 'main_hand', character_id: 1, ...e })),
@@ -76,7 +76,7 @@ function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot =
       else if (sql.includes('equipped = 0')) Object.assign(row, { equipped: 0, equipped_slot: null });
       return [{}];
     }
-    if (sql.startsWith('SELECT slot_index, item_id, equipped, equipped_slot, instance_id FROM inventory')) return [inv.filter((r) => r.character_id === p[0]).map((r) => ({ ...r }))];
+    if (sql.startsWith('SELECT slot_index, item_id, quantity, equipped, equipped_slot, instance_id FROM inventory')) return [inv.filter((r) => r.character_id === p[0]).map((r) => ({ ...r }))];
     if (sql.startsWith('SELECT v.slot_index, v.item_id, v.quantity, v.instance_id')) return [vlt.filter((r) => r.account_id === p[0]).sort((a, b) => a.slot_index - b.slot_index).map(withLoot)];
     if (sql.includes('FROM inventory inv')) return [inv.filter((r) => r.character_id === p[0]).sort((a, b) => a.slot_index - b.slot_index).map(joined)];
     if (sql.includes('FROM account_vault v')) return [vlt.filter((r) => r.account_id === p[0]).sort((a, b) => a.slot_index - b.slot_index).map(joined)];
@@ -132,6 +132,7 @@ function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot =
     if (sql.startsWith('INSERT IGNORE INTO professions')) { prof.exists = true; return [{}]; }
     if (sql.startsWith('SELECT skill_level')) return [[{ skill_level: prof.level, skill_xp: prof.xp }]];
     if (sql.startsWith('UPDATE professions')) { prof = { ...prof, level: p[0], xp: p[1] }; return [{}]; }
+    if (extra) { const r = extra(sql, p); if (r) return r; }
     throw new Error(`unexpected SQL: ${sql.slice(0, 90)}`);
   };
   const query = async (sql, p) => {
@@ -142,6 +143,7 @@ function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot =
     if (sql.startsWith('DELETE FROM loot_instances WHERE id IN')) { for (const id of p[0]) dropInstance(id); return [{}]; }
     if (sql.startsWith('SELECT id, item_type, rarity FROM items')) return [p[0].filter((id) => ITEMS[id]).map((id) => ({ id, item_type: ITEMS[id].type, rarity: ITEMS[id].rarity }))];
     if (sql.startsWith('SELECT id, stackable')) return [p[0].filter((id) => ITEMS[id]).map((id) => ({ id, stackable: ITEMS[id].stack > 1 ? 1 : 0, max_stack_size: ITEMS[id].stack, item_type: ITEMS[id].type, rarity: ITEMS[id].rarity }))];
+    if (extra) { const r = extra(sql, p); if (r) return r; }
     throw new Error(`unexpected query: ${sql.slice(0, 80)}`);
   };
   let snap = null;

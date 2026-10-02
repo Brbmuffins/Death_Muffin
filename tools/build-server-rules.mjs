@@ -55,6 +55,11 @@ const TARGETS = {
     out: join(root, 'server/death-muffin/backend/gathering/affix-rules.cjs'),
     about: 'Item level and affix rules (pool, rolls, validation, names, value) shared by the web client, the offline mock and the Death Muffin backend.',
   },
+  authority: {
+    entry: 'src/gameplay/authorityRules.ts',
+    out: join(root, 'server/death-muffin/backend/gathering/authority-rules.cjs'),
+    about: 'Server authority plausibility numbers (XP/gold ceilings, ground-drop rates) shared by the Death Muffin backend and the tests.',
+  },
   vault: {
     entry: 'src/gameplay/vaultRules.ts',
     out: join(root, 'server/death-muffin/backend/gathering/vault-rules.cjs'),
