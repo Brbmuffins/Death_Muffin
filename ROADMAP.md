@@ -23,16 +23,18 @@ flowchart LR
 
   subgraph NOW["🔨 Now — being built"]
     N2[Necro spell feel]:::now
+    N6[Guide NPCs + suggested next step<br/>Prior · Sexton · Apothecary]:::now
+    N7[Alchemist's Wing room]:::now
+    N8[Item level + affixes]:::now
+    N9[Animation pass]:::now
+    N10[Audio pass 2<br/>ambience · gathering · rites]:::now
   end
 
   subgraph POLISH["✨ Next — polish"]
-    P5[Animation pass<br/>clipping · sliding · crowds]:::next
     P6[Second polish round<br/>re-run audits]:::next
   end
 
   subgraph LATER["🌒 Later — new content"]
-    L0[Alchemist's Wing]:::later
-    L1[Item level + affixes]:::later
     L2[New zones]:::later
     L3[Server authority]:::later
     L4[AI companions — parked]:::later
@@ -47,6 +49,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 2 Oct 2026 | Art (not yet placed in game): 12 Alchemist's Wing props and three guide NPCs (the Prior, the Sexton, the Apothecary) with idle, walk and talk clips | 1,025 Tripo credits; contact sheets in docs/screenshots/alchemist-wing/. |
 | 2 Oct 2026 | Necro balance pass: max Wave Speed now pays (kills 0.54× → 1.18×, gold 1.34× → 2.50×, XP 0.61× → 1.84× of the intended band; deaths 7.8 → 2.1 per 3 min); Ossuary 10.1 → 2.2 deaths at max; Coliseum and Sanctum smoothed (≤1 death at the intended band everywhere); Wave Speed ramps in over 30 s; an empty area clears after 8 s | Measured with 8 seeds × 36 rows; details in BALANCE.md. Needs a human playtest at tiers 6–8. |
 | 2 Oct 2026 | Tool belt: four belt slots under the paper doll (hatchet, pickaxe, rod, spade) that count for gathering and take no bag space; a one-time "belt your best tools" offer; Skills shows the active tool | No migration (reserved slots 110–113). |
 | 2 Oct 2026 | Armor set bonuses at 2/4/5 pieces for all 18 sets (necro sets drive thralls, ward, essence, Miasma, Withered); upgrade arrows and verdicts count set bonuses ("completes your 4-piece" / "breaks your 2-piece"); Set bonuses on the Character sheet and a Codex Armor sets tab | Table in docs/ARMOR-SETS.md. |
@@ -54,7 +57,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 | 2 Oct 2026 | 48-slot bag; Ossuary Vault (V, 120 shared slots); Bone Grinder salvage + Salvaging skill; item locks; Sell all junk; gear stat effects, ▲/▼ upgrade arrows, verdict line, Character sheet (J) with "What you're looking for"; combat audio (CC0 samples, capped mixer, Combat/Ambience/Interface sliders); strike timing; old starter gear no longer stacks | Migrations 017 (vault) and 018 (gear unstackable). Thrall dig/chop clips built for the laborers (90 Tripo credits). |
 | 1 Oct 2026 | Necro weapons, brewing and reagents, Mourning Fen, five swappable rite slots, Offline Edition with complete save sync, Leave the world at the top of Settings | Codex cleanup; `deploy-release.sh` became the only deploy path. |
 
-**Owner approvals in force:** deploy when all checks pass; push after a secret scan; up to 1,500 Tripo credits without asking (spent so far against it: 0); keep following this roadmap.
+**Owner approvals in force:** deploy when all checks pass; push after a secret scan; up to 1,500 Tripo credits without asking (spent so far against it: 1,025 — Alchemist's Wing props and the three guide NPCs); keep following this roadmap.
 
 **Principle (owner, 1 Oct 2026):** polish and improve what exists before adding more. The game should be immersive but not overwhelming. The necromancer is the main class; the other classes are bonus work.
 
