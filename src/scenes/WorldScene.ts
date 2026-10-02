@@ -331,6 +331,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private panelStack: PanelKey[] = [];
   private histPushed = false;
   private histIgnore = 0;
+  /** A save is retrying or the browser reports no network (see watchConnection). */
+  private netDown = false;
   private groundPoint = new THREE.Vector3();
   private hover: Hover = null;
   private attackTarget: { kind: 'enemy'; id: number } | { kind: 'boss' } | null = null;
@@ -4170,6 +4172,23 @@ export class WorldScene implements GameScene, RuntimeView {
     }
   }
 
+  /**
+   * Phones drop the connection (tunnels, Wi-Fi to mobile data, the app sent to the background). The world keeps running here and
+   * saves retry on their own; tell the player once when that starts and once when it's over, instead of failing silently.
+   */
+  private watchConnection(saveRetrying: boolean) {
+    // The Offline Edition (PWA) is offline on purpose; the DEV ?offline mock still exercises this.
+    if (import.meta.env.VITE_OFFLINE_BUILD === '1') return;
+    const down = saveRetrying || (typeof navigator !== 'undefined' && navigator.onLine === false);
+    if (down && !this.netDown) {
+      this.netDown = true;
+      this.hud.toast('Connection lost — keep playing; your progress saves as soon as you are back online', 'err');
+    } else if (!down && this.netDown) {
+      this.netDown = false;
+      this.hud.toast('Back online — progress saved ✓', 'good');
+    }
+  }
+
   private attackTargetPos(): { x: number; z: number } | null {
     const t = this.attackTarget;
     if (!t) return null;
@@ -4338,6 +4357,7 @@ export class WorldScene implements GameScene, RuntimeView {
         : this.progression.state === 'saving' || this.inventory.state === 'saving'
           ? { text: 'Saving…', warn: false }
           : { text: OFFLINE ? 'Offline save ✓' : 'Saved ✓', warn: false };
+    this.watchConnection(saveText.warn);
 
     if (this.discipline.family === 'monk' && p.alive) {
       const beat = Math.floor(now / 1200);

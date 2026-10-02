@@ -126,7 +126,9 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
   .hud-currency img { width: 16px; height: 16px; }
   .hud-currency .thrall-ico { width: 15px; height: 15px; }
   .hud-currency span { gap: 3px; }
-  .hud-save { display: none; }
+  /* Only the warning ("Save failed — retrying…") is worth the space on a phone. */
+  .hud-save:not(.warn) { display: none; }
+  .hud-save.warn { font-size: 11px; padding: 2px 6px; background: rgba(7, 6, 10, 0.8); }
   .hud-xp { display: none; }
   .cw-chat { display: none; }
 

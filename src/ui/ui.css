@@ -15,6 +15,11 @@ body {
 }
 
 #scene { position: fixed; inset: 0; display: block; touch-action: none; user-select: none; }
+/* Phones: a game, not a page. No double-tap / pinch page zoom anywhere (the canvas handles its own pinch for the camera),
+   and form fields at 16px so iOS doesn't zoom into them on focus. */
+html, body, #ui-root, #ui-root * { touch-action: manipulation; }
+#scene, .cw-tip [data-move], .hud-map canvas { touch-action: none; }
+@media (pointer: coarse) { input, select, textarea { font-size: 16px !important; } }
 
 #ui-root { position: fixed; inset: 0; pointer-events: none; }
 #ui-root > * { pointer-events: auto; }
