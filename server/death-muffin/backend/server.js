@@ -11,6 +11,7 @@ const { mergeOfflineStats } = require('./offline-sync.cjs');
 const offlineFull = require('./offline-full-sync.cjs');
 const gatheringRules = require('./gathering/gathering-rules.cjs');
 const legionRules = require('./gathering/legion-rules.cjs');
+const runeRules = require('./gathering/rune-rules.cjs');
 const BAG_SLOTS = gatheringRules.BAG_SLOTS;
 const inventorySave = require('./inventory-save.cjs');
 const authority = require('./authority.cjs');
@@ -857,9 +858,9 @@ app.post('/api/inventory/save', requireJWT, async (req, res) => {
   const { characterId } = req.body;
   if (!Array.isArray(req.body.slots))
     return res.status(400).json({ success: false, error: 'slots must be an array' });
-  // Equipped gear lives in reserved slots 100-108 (managed by /equip), the tool belt in 110-113 (/belt) and the Legion kit in 120-121 (/kit).
+  // Equipped gear lives in reserved slots 100-108 (managed by /equip), the tool belt in 110-113 (/belt), the Legion kit in 120-121 (/kit) and the rune sockets in 130-134 (/rune).
   // Older clients echo those rows back with the bag, which made every save fail; the save owns the bag only, so ignore them.
-  const slots = req.body.slots.filter(s => !(Number(s && s.slot_index) >= 100 && Number(s.slot_index) <= legionRules.KIT_BASE + legionRules.KIT_SLOT_COUNT - 1));
+  const slots = req.body.slots.filter(s => !(Number(s && s.slot_index) >= 100 && Number(s.slot_index) <= runeRules.RUNE_BASE + runeRules.RUNE_SLOT_COUNT - 1));
   // A stale 24-slot tab sends no bagSize; the save then only touches slots 0-23 (see inventory-save.cjs).
   const bagSize = inventorySave.saveBagSize(req.body.bagSize);
   if (bagSize === null)
@@ -1970,6 +1971,13 @@ require('./tool-belt.cjs')(app, pool, {
   },
 });
 require('./thrall-kit.cjs')(app, pool, {
+  requireAuth: requireJWT,
+  ownsCharacter: async (req, characterId) => {
+    const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
+    return rows.length === 1;
+  },
+});
+require('./runes.cjs')(app, pool, {
   requireAuth: requireJWT,
   ownsCharacter: async (req, characterId) => {
     const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);

@@ -74,6 +74,8 @@ export interface WorldSnapshot {
   /** Full corpse + zone lists ride along every Nth snapshot for resync. */
   corpses?: Corpse[];
   zones?: Zone[];
+  /** Creeping Rot rune: [zone id, x, z] of every drifting circle, in every snapshot (the full zone list is too rare to follow them). */
+  zpos?: [number, number, number][];
   boss: BossState;
   /** Depleted gathering nodes: [nodeId, seconds until back] (absent from older hosts). */
   depleted?: [string, number][];

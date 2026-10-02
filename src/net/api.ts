@@ -228,6 +228,19 @@ export async function kitMove(characterId: number, slotIndex: number, equipped: 
   );
 }
 
+/** Relic runes: socket one rune (an item id) into a rite, or null to take the socketed one out. Answers the whole bag, sockets included. */
+export async function runeSocket(characterId: number, rite: string, itemId: string | null) {
+  return decorateSlots(
+    await unwrap<InventorySlot[]>(
+      request(
+        '/api/inventory/rune',
+        { method: 'POST', body: JSON.stringify({ characterId, rite, itemId }) },
+        true,
+      ),
+    ),
+  );
+}
+
 // --- Professions & crafting ---
 export function getProfessions(characterId: number) {
   return unwrap<Profession[]>(request(`/api/professions/${characterId}`, {}, true));

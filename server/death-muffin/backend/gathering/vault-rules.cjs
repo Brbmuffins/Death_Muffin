@@ -245,7 +245,7 @@ function moveStack(from, to, fromSlot, qty, toSize, info, toVault) {
 }
 var depositStack = (bag, vault, bagSlot, qty, info) => moveStack(bag, vault, bagSlot, qty, VAULT_SLOTS, info, true);
 var withdrawStack = (bag, vault, vaultSlot, qty, info) => moveStack(vault, bag, vaultSlot, qty, BAG_SLOTS, info, false);
-var isMaterialLike = (type) => type === "material" || type === "consumable";
+var isMaterialLike = (type) => type === "material" || type === "consumable" || type === "rune";
 function depositMany(bag, vault, kind, exceptSlots, info) {
   const except = new Set(exceptSlots);
   const src = clone(bag);
@@ -265,7 +265,7 @@ function depositMany(bag, vault, kind, exceptSlots, info) {
   if (!moved) return { ok: false, error: kind === "materials" ? "You carry no materials to deposit." : "You carry nothing to deposit." };
   return { ok: true, bag: keep, vault: dst.sort(bySlot), moved };
 }
-var TYPE_ORDER = ["weapon", "offhand", "armor_head", "armor_chest", "armor_legs", "armor_feet", "armor_hands", "ring", "trinket", "consumable", "material"];
+var TYPE_ORDER = ["weapon", "offhand", "armor_head", "armor_chest", "armor_legs", "armor_feet", "armor_hands", "ring", "trinket", "rune", "consumable", "material"];
 var RARITY_ORDER = ["relic", "legendary", "epic", "rare", "uncommon", "common"];
 var rank = (list, v) => {
   const i = list.indexOf(v);

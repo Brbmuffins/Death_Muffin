@@ -30,6 +30,8 @@ import {
   codexLegionExamples,
   codexLegionTiers,
   codexAffixRows,
+  codexRuneRows,
+  CODEX_RUNES_COUNSEL,
   CODEX_WEAPON_TIERS,
   COVENANT_LORE,
   DEAD_ORDER,
@@ -47,6 +49,7 @@ import type { NpcId } from '../content/npcs';
 import { generateLayout } from '../content/layout';
 import { itemMeta } from '../content/items';
 import { ICON } from './icons';
+import './runes.css';
 import type { Chronicle } from '../gameplay/chronicle';
 
 const TABS = [
@@ -55,6 +58,7 @@ const TABS = [
   { id: 'weapons', label: 'Weapons' },
   { id: 'sets', label: 'Armor sets' },
   { id: 'affixes', label: 'Item affixes' },
+  { id: 'runes', label: 'Relic Runes' },
   { id: 'stats', label: 'Stats' },
   { id: 'dead', label: 'The Dead' },
   { id: 'diocese', label: 'The Diocese' },
@@ -128,6 +132,11 @@ export class CodexPanel {
     this.offJournal();
   }
 
+  /** Redraw after something outside the journal changed (a rune was found). */
+  refresh() {
+    this.render();
+  }
+
   private render() {
     if (!this.el) return;
     this.el.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) => {
@@ -147,6 +156,8 @@ export class CodexPanel {
             ? this.sets()
           : this.tab === 'affixes'
             ? this.affixes()
+          : this.tab === 'runes'
+            ? this.runes()
           : this.tab === 'stats'
             ? this.stats()
           : this.tab === 'dead'
@@ -240,6 +251,23 @@ export class CodexPanel {
             <p class="tip"><b>Use it well.</b> ${w.tip}</p>
           </div>
         </article>`).join('') + `<table class="cw-codex-table"><thead><tr><th>Tier</th><th>Recommended level</th><th>Drops in</th></tr></thead><tbody>${ladder}</tbody></table>`;
+  }
+
+  /** Runes you have not held yet show their name and where they drop, not what they do (the sealed-page rule of the bestiary). */
+  runesFound: () => ReadonlySet<string> = () => new Set();
+
+  private runes() {
+    const found = this.runesFound();
+    const rows = codexRuneRows().map((g) => `
+      <article class="cw-codex-entry">
+        <div class="txt">
+          <div class="hd"><h3>${g.rite}</h3><span class="meta">${g.runes.filter((r) => found.has(r.id)).length} of ${g.runes.length} found</span></div>
+          ${g.runes.map((r) => found.has(r.id)
+            ? `<div class="cw-rune-opt on" style="grid-template-columns:44px 1fr;margin-top:8px"><img src="art/items/${r.id}.png" alt="" style="width:44px;height:44px" /><span><span class="nm">${r.name}<i>${r.rarity}</i></span><span class="sh"><b>${r.short}.</b> ${r.lines.join(' ')}${r.cost ? ` <em style="font-style:normal;color:#e7b07a">${r.cost}</em>` : ''}</span><span class="sh" style="opacity:.7"><i style="font-style:italic">${r.lore}</i> Drops from ${r.sources}.</span></span></div>`
+            : `<div class="cw-rune-opt sealed" style="grid-template-columns:44px 1fr;margin-top:8px"><img src="art/items/${r.id}.png" alt="" style="width:44px;height:44px;filter:grayscale(1) brightness(0.55)" /><span><span class="nm">${r.name}<i>${r.rarity}</i></span><span class="sh">Not found yet. Drops from ${r.sources}.</span></span></div>`).join('')}
+        </div>
+      </article>`).join('');
+    return `<p class="tip">${CODEX_RUNES_COUNSEL}</p>${rows}`;
   }
 
   private affixes() {

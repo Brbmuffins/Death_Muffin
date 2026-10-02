@@ -115,7 +115,8 @@ test('the Vault and Salvage cannot touch a kit piece', async () => {
 
 test('the save route drops echoed kit rows rather than failing (server.js filter range)', () => {
   const src = require('node:fs').readFileSync(require('node:path').join(__dirname, 'server.js'), 'utf8');
-  assert.match(src, /legionRules\.KIT_BASE \+ legionRules\.KIT_SLOT_COUNT - 1/);
+  // The filter runs 100 .. the last Relic rune socket (runes.cjs), which sits above the kit: it must still cover both kit slots.
+  assert.match(src, /runeRules\.RUNE_BASE \+ runeRules\.RUNE_SLOT_COUNT - 1/);
   assert.match(src, /require\('\.\/thrall-kit\.cjs'\)/);
 });
 
@@ -129,7 +130,7 @@ const save = (slots) => ({
 test('offline sync accepts kit slots 120-121 and rejects 119, 122 and a belt-sized overflow', () => {
   const ok = [{ slot_index: 120, item_id: 'staff_oak', quantity: 1, equipped: 1 }, { slot_index: 121, item_id: 'chest_iron', quantity: 1, equipped: 1 }];
   assert.doesNotThrow(() => sync.validate(save(ok), 2));
-  for (const slot_index of [119, 122, 130]) assert.throws(() => sync.validate(save([{ slot_index, item_id: 'staff_oak', quantity: 1 }]), 2), RangeError);
+  for (const slot_index of [119, 122, 135]) assert.throws(() => sync.validate(save([{ slot_index, item_id: 'staff_oak', quantity: 1 }]), 2), RangeError);
 });
 
 test('offline sync apply files kit rows with their kit_ equipped_slot and checks the piece fits its slot', async () => {

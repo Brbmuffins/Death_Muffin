@@ -105,6 +105,7 @@ const THRALL_SLUG: Record<ThrallKind, CreatureSlug> = {
   archer: 'skeleton_thrall',
   bonemage: 'skeleton_thrall',
   plaguebearer: 'carrion_sac',
+  colossus: 'bone_colossus',
 };
 
 /** Tint / glow per thrall kind (colour language: bone ivory-amber, rot olive, spirit cold blue). */
@@ -112,6 +113,8 @@ const THRALL_LOOK: Partial<Record<ThrallKind, { tint: number; emissive: number; 
   archer: { tint: 0xf2e6cc, emissive: 0x6b4a1f, glow: 0.25 },
   bonemage: { tint: 0xe6dccb, emissive: 0xb07a2a, glow: 0.35 },
   plaguebearer: { tint: 0xb9c48a, emissive: 0x5a6a18, glow: 0.35, scale: 0.8, ring: 0.7 },
+  // Bone Colossus rune: the Tripo giant is left in its own bone-and-cloth colours (a jade glow and rim read it as yours); a wide ring under it.
+  colossus: { tint: 0xffffff, emissive: 0x1f8f86, glow: 0.3, ring: 1.7 },
 };
 
 /** What the legion's kit looks like on a thrall (gameplay/legionKit.ts decides the pieces; this only dresses the model). */

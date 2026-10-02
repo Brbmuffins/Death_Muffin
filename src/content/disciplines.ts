@@ -17,7 +17,7 @@ export type DisciplineId = 'ossuary' | 'gravecaller' | 'mourner' | 'rotweaver' |
  */
 export type ClassFamily = 'necromancer' | 'warden' | 'monk' | 'witch' | 'knight' | 'veil';
 /** warrior/shieldbearer/wraith come from the discipline; hound, archer, bonemage and plaguebearer from the corpse. */
-export type ThrallKind = 'warrior' | 'shieldbearer' | 'wraith' | 'hound' | 'archer' | 'bonemage' | 'plaguebearer';
+export type ThrallKind = 'warrior' | 'shieldbearer' | 'wraith' | 'hound' | 'archer' | 'bonemage' | 'plaguebearer' | 'colossus';
 
 export interface DisciplineMods {
   thrallCap: number;

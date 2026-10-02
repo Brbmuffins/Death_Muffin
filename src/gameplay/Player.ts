@@ -7,6 +7,7 @@ import type { Nav } from './nav';
 import { resourceRulesFor, type ResourceKind, type ResourceRules } from './resources';
 import { brewValue, emptyBrews, type ActiveBrews, type BrewKind } from '../content/brews';
 import { NO_LOADOUT, type WeaponLoadout } from './weaponLine';
+import type { RuneSockets } from './runeRules';
 
 const OUT_OF_COMBAT_MS = 5000;
 
@@ -53,6 +54,8 @@ export class Player {
   god = false;
   /** What the equipped necro weapon line changes (scene-set from worn gear; weaponLine.ts). */
   loadout: WeaponLoadout = NO_LOADOUT;
+  /** Relic runes socketed in the five necromancer rites (scene-set from the inventory's socket rows; runeRules.ts). */
+  runes: RuneSockets = {};
   /** Soul Harvest meter (client-side): kills credited to you or your thralls. */
   souls = 0;
   /** Souls needed to charge the meter (Soul Hunger boons lower it). */

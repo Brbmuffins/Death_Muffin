@@ -4,7 +4,7 @@ import { RARITY_COLOR, RARITY_MARK, itemMeta } from '../content/items';
 import type { Inventory } from '../gameplay/loot';
 import { LOCK_SVG, itemIcon } from './InventoryPanel';
 import { salvageBelowRare, type ItemLocks } from '../gameplay/itemLocks';
-import { SALVAGE_RARITIES, isSalvageGear, salvagePreview } from '../gameplay/salvageRules';
+import { SALVAGE_RARITIES, isSalvageable, salvagePreview } from '../gameplay/salvageRules';
 import type { Skills } from '../gameplay/Gathering';
 import { rollOf } from '../gameplay/affixes';
 
@@ -74,7 +74,7 @@ export class SalvagePanel {
   private gear(): InventorySlot[] {
     const rank = (r: string) => SALVAGE_RARITIES.indexOf(r as (typeof SALVAGE_RARITIES)[number]);
     return this.inventory.all
-      .filter((s) => !s.equipped && s.slot_index >= 0 && s.slot_index < 100 && isSalvageGear(s.item_type))
+      .filter((s) => !s.equipped && s.slot_index >= 0 && s.slot_index < 100 && isSalvageable(s.item_type))
       .sort((a, b) => rank(a.rarity) - rank(b.rarity) || a.slot_index - b.slot_index);
   }
 
@@ -83,6 +83,8 @@ export class SalvagePanel {
     const p = salvagePreview({ id: slot.item_id, item_type: slot.item_type, rarity: slot.base_rarity ?? slot.rarity, ...rollOf(slot) });
     const mats = p.materials.map((id) => itemMeta(id).name).join(' or ');
     const qty = p.materialQty[0] === p.materialQty[1] ? `${p.materialQty[0]}` : `${p.materialQty[0]}-${p.materialQty[1]}`;
+    // A rune is ground one at a time into reagents only.
+    if (!p.materials.length) return `one rune${slot.quantity > 1 ? ` (of ${slot.quantity})` : ''} · ${p.reagents.map((r) => `${itemMeta(r.id).name}${r.qty[0] !== r.qty[1] ? ` ×${r.qty[0]}-${r.qty[1]}` : ''}${r.chance < 1 ? ` (${Math.round(r.chance * 100)}%)` : ''}`).join(', ')}`;
     const reagents = p.reagents.map((r) => `${itemMeta(r.id).name}${r.qty[0] !== r.qty[1] ? ` ×${r.qty[0]}-${r.qty[1]}` : ''}${r.chance < 1 ? ` (${Math.round(r.chance * 100)}%)` : ''}`).join(', ');
     return `${qty} ${mats}${p.extraChance > 0 ? ` (+1 ${Math.round(p.extraChance * 100)}%)` : ''} · ${reagents}`;
   }
@@ -106,7 +108,7 @@ export class SalvagePanel {
         <span class="cw-skill-total">Salvaging <b>${level.level}</b> <small>${level.xp.toLocaleString()} / ${level.next.toLocaleString()} XP</small></span>
         <button class="cw-icon-btn" data-close aria-label="Close grinder">✕</button>
       </div>
-      <p class="cw-codex-note">Feed it gear you will not wear. It gives back <b>ingots</b> (or <b>planks</b> from staffs, wands and grimoires) by rarity, plus <b>Grave Dust</b> and other alchemy reagents. Higher Salvaging adds a chance of an extra material (+0.5% a level); gear with a high item level or affixes adds more.</p>
+      <p class="cw-codex-note">Feed it gear you will not wear. It gives back <b>ingots</b> (or <b>planks</b> from staffs, wands and grimoires) by rarity, plus <b>Grave Dust</b> and other alchemy reagents. Higher Salvaging adds a chance of an extra material (+0.5% a level); gear with a high item level or affixes adds more. A spare <b>Relic rune</b> is ground one at a time into reagents only.</p>
       <div class="cw-salvage-list" role="group" aria-label="Gear in your bag">${gear.length ? gear.map((g) => {
         const locked = this.locks.isLocked(g);
         const on = this.chosen.has(g.slot_index);

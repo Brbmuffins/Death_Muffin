@@ -1055,6 +1055,207 @@ var REAGENT_RECIPES = REAGENT_BREW_LIST.map(([id, b]) => [b.recipe.id, b.recipe.
 var ALL_REAGENT_IDS = [...Object.keys(REAGENT_ITEMS), ...Object.keys(REAGENT_BREW_ITEMS)];
 var ICHORS = Object.values(BOSS_ICHOR);
 
+// src/content/runes.ts
+var RUNE_IDS = [
+  "rune_splinter",
+  "rune_marrow_tap",
+  "rune_volley",
+  "rune_ossuary_ring",
+  "rune_impale",
+  "rune_mass_grave",
+  "rune_bone_colossus",
+  "rune_creeping_rot",
+  "rune_contagion",
+  "rune_hollow_choir",
+  "rune_requiem"
+];
+var RUNE_TUNING = {
+  /** Bone Needle. */
+  splinter: { reach: 6, damageFrac: 0.5 },
+  marrowTap: { essenceBonus: 4, damageMult: 0.7 },
+  volley: { every: 4, needles: 3, damageFrac: 0.5, reach: 9 },
+  /** Marrow Spear: the ring is centred on the cursor (within spear range) and as wide as the spear is long is not. */
+  ring: { radius: 3.2, maxCastRange: 12, damageMult: 1 },
+  impale: { rootS: 1.5, damageMult: 1.25 },
+  /** Exhume. `slots` is how many legion places the colossus fills. */
+  massGrave: { count: 3, statMult: 0.6, pickRadius: 4 },
+  colossus: {
+    corpses: 5,
+    minCorpses: 3,
+    slots: 2,
+    pickRadius: 6,
+    hpPerCorpse: 0.7,
+    damagePerCorpse: 0.4,
+    cleaveRadius: 2.4,
+    cleaveFrac: 0.6,
+    range: 2.4,
+    interval: 1.7,
+    speed: 4.4,
+    /** Cooldown multiplier on Exhume's 500 ms (8 s). */
+    cooldownMult: 16
+  },
+  /** Miasma Circle. */
+  creepingRot: { speed: 1.5, radiusMult: 0.85, seekReach: 12 },
+  contagion: { neighbours: 2, reach: 5.5, minStacks: 2 },
+  /** Black Litany. */
+  hollowChoir: { powerMult: 0.6 },
+  requiem: { delayMs: 2e3, radiusMult: 2 }
+};
+var pct2 = (x) => `${Math.round(x * 100)}%`;
+var T2 = RUNE_TUNING;
+var RUNES = {
+  rune_splinter: {
+    id: "rune_splinter",
+    name: "Rune of Splinters",
+    rite: "bone_needle",
+    rarity: "uncommon",
+    sell: 25,
+    lore: "The needle shatters on bone and the shards keep looking.",
+    short: "Hits splinter to a second foe",
+    lines: [`When a needle hits, a splinter flies to the nearest other enemy within ${T2.splinter.reach} m for ${pct2(T2.splinter.damageFrac)} of the damage.`],
+    cost: null
+  },
+  rune_marrow_tap: {
+    id: "rune_marrow_tap",
+    name: "Rune of Marrow-Tap",
+    rite: "bone_needle",
+    rarity: "uncommon",
+    sell: 25,
+    lore: "Every wound is a spigot.",
+    short: "More essence, softer needle",
+    lines: [`Each needle hit returns ${T2.marrowTap.essenceBonus} more Grave Essence.`],
+    cost: `Needles hit for ${pct2(1 - T2.marrowTap.damageMult)} less.`
+  },
+  rune_volley: {
+    id: "rune_volley",
+    name: "Rune of the Volley",
+    rite: "bone_needle",
+    rarity: "rare",
+    sell: 60,
+    lore: "Four breaths, then a flock.",
+    short: "Every 4th needle is a volley",
+    lines: [`Every ${T2.volley.every}th needle you throw becomes a volley of ${T2.volley.needles}, aimed at ${T2.volley.needles} different enemies within ${T2.volley.reach} m (or all at one target if it stands alone).`],
+    cost: `Each volley needle hits for ${pct2(T2.volley.damageFrac)}.`
+  },
+  rune_ossuary_ring: {
+    id: "rune_ossuary_ring",
+    name: "Ossuary Ring Rune",
+    rite: "marrow_spear",
+    rarity: "rare",
+    sell: 60,
+    lore: "The dead rise in a circle, like a congregation.",
+    short: "Spikes erupt in a ring",
+    lines: [`Instead of a line, bone erupts in a ${T2.ring.radius} m ring at the cursor, striking everything inside and applying Fracture and Hemorrhage as usual.`],
+    cost: "It no longer reaches down a long line."
+  },
+  rune_impale: {
+    id: "rune_impale",
+    name: "Rune of Impaling",
+    rite: "marrow_spear",
+    rarity: "uncommon",
+    sell: 25,
+    lore: "One thorn, driven deep.",
+    short: "Skewers and roots the first foe",
+    lines: [`The spear stops at the first enemy it meets, hits it for ${pct2(T2.impale.damageMult - 1)} more and roots it for ${T2.impale.rootS} s (a boss shrugs the root off but takes the hit).`],
+    cost: "It no longer pierces the line behind."
+  },
+  rune_mass_grave: {
+    id: "rune_mass_grave",
+    name: "Mass Grave Rune",
+    rite: "exhume",
+    rarity: "rare",
+    sell: 60,
+    lore: "Why dig one grave when the field is full?",
+    short: "Raise up to 3 corpses at once",
+    lines: [`Exhume raises up to ${T2.massGrave.count} corpses near the cursor at once, each with ${pct2(T2.massGrave.statMult)} of the usual thrall health and damage.`],
+    cost: "Each thrall is weaker, and it spends more corpses."
+  },
+  rune_bone_colossus: {
+    id: "rune_bone_colossus",
+    name: "Bone Colossus Rune",
+    rite: "exhume",
+    rarity: "epic",
+    sell: 150,
+    lore: "Five dead, bound as one, and it remembers being a wall.",
+    short: "Five corpses become one giant thrall",
+    lines: [
+      `Exhume consumes up to ${T2.colossus.corpses} corpses within ${T2.colossus.pickRadius} m of the cursor (at least ${T2.colossus.minCorpses}) and raises one Bone Colossus.`,
+      `Its health is ${(T2.colossus.hpPerCorpse * T2.colossus.corpses).toFixed(1)}x and its damage ${(T2.colossus.damagePerCorpse * T2.colossus.corpses).toFixed(1)}x a thrall's with five corpses (less with fewer), and every blow cleaves ${T2.colossus.cleaveRadius} m.`,
+      `It fills ${T2.colossus.slots} legion places and you can only keep one: raising another replaces it.`
+    ],
+    cost: `Exhume takes ${500 * T2.colossus.cooldownMult / 1e3} s to ready again after a Colossus.`
+  },
+  rune_creeping_rot: {
+    id: "rune_creeping_rot",
+    name: "Creeping Rot Rune",
+    rite: "miasma",
+    rarity: "uncommon",
+    sell: 25,
+    lore: "Rot that has learned to walk.",
+    short: "The circle crawls toward foes",
+    lines: [`The circle drifts ${T2.creepingRot.speed} m/s toward the nearest enemy within ${T2.creepingRot.seekReach} m of it.`],
+    cost: `The circle is ${pct2(1 - T2.creepingRot.radiusMult)} narrower.`
+  },
+  rune_contagion: {
+    id: "rune_contagion",
+    name: "Contagion Rune",
+    rite: "miasma",
+    rarity: "rare",
+    sell: 60,
+    lore: "It does not stop at the grave.",
+    short: "Dying Withered foes infect others",
+    lines: [`A Withered enemy that dies spreads its Withered stacks (minus one) to the ${T2.contagion.neighbours} nearest enemies within ${T2.contagion.reach} m, and those spread it again when they die (it needs ${T2.contagion.minStacks} stacks to jump).`],
+    cost: null
+  },
+  rune_hollow_choir: {
+    id: "rune_hollow_choir",
+    name: "Hollow Choir Rune",
+    rite: "black_litany",
+    rarity: "rare",
+    sell: 60,
+    lore: "The dead sing, and are not spent.",
+    short: "Your thralls sing instead of dying",
+    lines: ["Black Litany no longer sacrifices your thralls. They still lend their voices to its power."],
+    cost: `The burst hits for ${pct2(1 - T2.hollowChoir.powerMult)} less.`
+  },
+  rune_requiem: {
+    id: "rune_requiem",
+    name: "Requiem Rune",
+    rite: "black_litany",
+    rarity: "epic",
+    sell: 150,
+    lore: "A hymn is only terrible once it is finished.",
+    short: "The burst lands 2 s later, twice as wide",
+    lines: [`Black Litany marks the ground, then bursts ${T2.requiem.delayMs / 1e3} s later over ${T2.requiem.radiusMult}x the radius. Corpses and thralls are consumed when it bursts.`],
+    cost: "Enemies can walk out of it, and it can take more of your thralls."
+  }
+};
+var RUNE_ORDER = [...RUNE_IDS];
+var byRarity = (...rarities) => RUNE_ORDER.filter((id) => rarities.includes(RUNES[id].rarity));
+var AREA_RUNE_POOL = {
+  graves: byRarity("uncommon"),
+  ossuary: byRarity("uncommon", "rare"),
+  nave: byRarity("uncommon", "rare"),
+  sanctum: byRarity("uncommon", "rare", "epic"),
+  cloister: byRarity("uncommon", "rare", "epic"),
+  pyre: byRarity("uncommon", "rare", "epic"),
+  fen: byRarity("uncommon", "rare", "epic"),
+  warren: byRarity("uncommon", "rare"),
+  coliseum: byRarity("uncommon", "rare", "epic")
+};
+var RUNE_WEIGHT = { uncommon: 3, rare: 2, epic: 1 };
+var ELITE_RUNE_CHANCE = 6e-3;
+var SURGE_RUNE_CHANCE = 0.25;
+var BOSS_RUNE_POOL = {
+  gravedigger: ["rune_splinter", "rune_marrow_tap", "rune_mass_grave"],
+  abbess: ["rune_ossuary_ring", "rune_impale", "rune_bone_colossus", "rune_volley"],
+  congregation: ["rune_creeping_rot", "rune_contagion", "rune_hollow_choir"],
+  prelate: ["rune_requiem", ...RUNE_ORDER],
+  saint: ["rune_creeping_rot", "rune_contagion", "rune_hollow_choir", "rune_requiem", "rune_bone_colossus"],
+  regent: [...RUNE_ORDER],
+  mire: [...RUNE_ORDER]
+};
+
 // src/gameplay/authorityRules.ts
 var LEVEL_CAP = 255;
 function totalXp(level, xp) {
@@ -1170,7 +1371,14 @@ function buildGroundRates() {
     for (const d of AREA_REAGENT_DROPS[id] ?? []) credit(d.item, d.chance, d.qty);
     for (const e of area.enemies) for (const d of ENEMY_REAGENT_DROPS[e.id] ?? []) credit(d.item, d.chance * e.weight / weights, d.qty);
     for (const [item2, perKill] of reagentPerKill) add(item2, peak.kills * perKill);
+    const pool = AREA_RUNE_POOL[id] ?? [];
+    const poolWeight = pool.reduce((n, r) => n + RUNE_WEIGHT[RUNES[r].rarity], 0) || 1;
+    for (const r of pool) {
+      const share = RUNE_WEIGHT[RUNES[r].rarity] / poolWeight;
+      add(r, (peak.kills * elite * ELITE_RUNE_CHANCE * ITEM_CHANCE_PEAK * FORTUNE_PEAK + 0.5 * SURGE_RUNE_CHANCE) * share);
+    }
   }
+  for (const pool of Object.values(BOSS_RUNE_POOL)) for (const r of pool) add(r, ICHOR_PER_MIN);
   for (const ichor of BOSS_ICHORS) add(ichor, ICHOR_PER_MIN);
   return rates;
 }

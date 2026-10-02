@@ -8,6 +8,7 @@ import { CHARM_ITEMS } from './cosmetics';
 import { ARMOR_PIECES } from './armorSets';
 import { NECRO_WEAPONS } from './necroWeapons';
 import { REAGENT_BREW_ITEMS, REAGENT_ITEMS, reagentIcon } from './reagents';
+import { RUNES } from './runes';
 
 /**
  * Client-side display metadata for item ids the live server knows about
@@ -140,6 +141,9 @@ for (const w of NECRO_WEAPONS) ITEMS[w.id] = {
   name: w.name, type: w.type, rarity: w.rarity, sell: w.sell, lore: w.lore,
   icon: `art/items/${w.id}.svg`, offlineStats: w.stats,
 };
+
+// Relic runes (content/runes.ts; server rows from migration 024-relic-runes.sql). They stack to 99; the art is art/items/<id>.png.
+for (const r of Object.values(RUNES)) ITEMS[r.id] = { name: r.name, type: 'rune', rarity: r.rarity, sell: r.sell, lore: r.lore, stack: 99 };
 
 export const RARITY_COLOR: Record<Rarity, string> = {
   common: '#b9b2a4',

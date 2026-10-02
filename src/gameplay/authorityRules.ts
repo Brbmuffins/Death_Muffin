@@ -10,6 +10,7 @@
 import { AREAS, AREA_ORDER, type AreaId } from '../content/areas';
 import { ASCENSION } from '../content/ascension';
 import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS, BOSS_ICHOR } from '../content/reagents';
+import { AREA_RUNE_POOL, BOSS_RUNE_POOL, ELITE_RUNE_CHANCE, RUNE_WEIGHT, RUNES, SURGE_RUNE_CHANCE } from '../content/runes';
 
 // ── Experience arithmetic ─────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -169,7 +170,16 @@ function buildGroundRates(): Record<string, number> {
     for (const d of AREA_REAGENT_DROPS[id] ?? []) credit(d.item, d.chance, d.qty);
     for (const e of area.enemies) for (const d of ENEMY_REAGENT_DROPS[e.id] ?? []) credit(d.item, (d.chance * e.weight) / weights, d.qty);
     for (const [item, perKill] of reagentPerKill) add(item, peak.kills * perKill);
+    // Relic runes: an elite's small chance and a Grave Surge's offering (about one surge every two minutes), split by the pool's weights.
+    const pool = AREA_RUNE_POOL[id] ?? [];
+    const poolWeight = pool.reduce((n, r) => n + RUNE_WEIGHT[RUNES[r].rarity], 0) || 1;
+    for (const r of pool) {
+      const share = RUNE_WEIGHT[RUNES[r].rarity] / poolWeight;
+      add(r, (peak.kills * elite * ELITE_RUNE_CHANCE * ITEM_CHANCE_PEAK * FORTUNE_PEAK + 0.5 * SURGE_RUNE_CHANCE) * share);
+    }
   }
+  // Boss runes: at most a boss kill a minute is a generous honest rate (ichors use the same figure).
+  for (const pool of Object.values(BOSS_RUNE_POOL)) for (const r of pool) add(r, ICHOR_PER_MIN);
   for (const ichor of BOSS_ICHORS) add(ichor, ICHOR_PER_MIN);
   return rates;
 }

@@ -31,6 +31,8 @@ __export(salvageRules_exports, {
   SALVAGE_SKILL: () => SALVAGE_SKILL,
   instanceYieldBonus: () => instanceYieldBonus,
   isSalvageGear: () => isSalvageGear,
+  isSalvageRune: () => isSalvageRune,
+  isSalvageable: () => isSalvageable,
   mergeGrants: () => mergeGrants,
   salvageItemIds: () => salvageItemIds,
   salvagePreview: () => salvagePreview,
@@ -210,6 +212,8 @@ var BELT_SLOT_COUNT = BELT_KINDS.length;
 var SALVAGE_SKILL = "salvaging";
 var SALVAGE_GEAR_TYPES = ["weapon", "offhand", "armor_head", "armor_chest", "armor_legs", "armor_feet", "armor_hands", "ring", "trinket"];
 var isSalvageGear = (itemType) => SALVAGE_GEAR_TYPES.includes(itemType);
+var isSalvageRune = (itemType) => itemType === "rune";
+var isSalvageable = (itemType) => isSalvageGear(itemType) || isSalvageRune(itemType);
 var SALVAGE_RARITIES = ["common", "uncommon", "rare", "epic", "legendary", "relic"];
 var SALVAGE_BONUS_PER_LEVEL = 5e-3;
 var SALVAGE_AFFIX_BONUS = 0.12;
@@ -227,6 +231,7 @@ var TIERS = {
 var tierOf = (rarity) => TIERS[SALVAGE_RARITIES.includes(rarity) ? rarity : "common"];
 var yieldsPlanks = (item) => /staff|wand|grimoire|tome|crozier|book/.test(item.id);
 var REAGENT_RARE = ["reagent_plague_bile", "reagent_cinder_ash"];
+var RUNE_DUST = [2, 4];
 function salvageItemIds() {
   const ids = /* @__PURE__ */ new Set(["reagent_grave_dust", "reagent_wraith_ectoplasm", "bone_meal", ...REAGENT_RARE]);
   for (const t of Object.values(TIERS)) for (const id of [...t.ingots, ...t.planks]) ids.add(id);
@@ -234,10 +239,12 @@ function salvageItemIds() {
 }
 function salvagePreview(item) {
   const t = tierOf(item.rarity);
-  const reagents = [{ id: "reagent_grave_dust", chance: 1, qty: [1, 2] }];
+  const rune = isSalvageRune(item.item_type);
+  const reagents = [{ id: "reagent_grave_dust", chance: 1, qty: rune ? RUNE_DUST : [1, 2] }];
   if (t.ecto) reagents.push({ id: "reagent_wraith_ectoplasm", chance: t.ecto, qty: [1, 1] });
   if (t.rare) for (const id of REAGENT_RARE) reagents.push({ id, chance: t.rare / 2, qty: [1, 1] });
   if (t.meal) reagents.push({ id: "bone_meal", chance: t.meal, qty: [1, 1] });
+  if (rune) return { materials: [], materialQty: [0, 0], reagents, xp: t.xp, extraChance: 0 };
   return { materials: yieldsPlanks(item) ? t.planks : t.ingots, materialQty: t.qty, reagents, xp: Math.round(t.xp * (1 + (item.affixes ?? 0) * SALVAGE_AFFIX_XP)), extraChance: instanceYieldBonus(item) };
 }
 var between = (rand, [lo, hi]) => lo + Math.floor(rand() * (hi - lo + 1));
@@ -247,6 +254,13 @@ function salvageYield(item, salvagingLevel, rand) {
   const level = Math.max(1, Math.min(LEVEL_CAP, Math.floor(Number(salvagingLevel)) || 1));
   const out = /* @__PURE__ */ new Map();
   const add = (id, n) => out.set(id, (out.get(id) ?? 0) + n);
+  if (isSalvageRune(item.item_type)) {
+    add("reagent_grave_dust", between(rand, RUNE_DUST));
+    if (t.ecto && rand() < t.ecto) add("reagent_wraith_ectoplasm", 1);
+    if (t.rare && rand() < t.rare) add(pick(rand, REAGENT_RARE), 1);
+    if (t.meal && rand() < t.meal) add("bone_meal", 1);
+    return { items: [...out].map(([item_id, quantity]) => ({ item_id, quantity })), xp: t.xp };
+  }
   const material = pick(rand, yieldsPlanks(item) ? t.planks : t.ingots);
   add(material, between(rand, t.qty));
   if (rand() < level * SALVAGE_BONUS_PER_LEVEL) add(material, 1);
@@ -274,6 +288,8 @@ function mergeGrants(lists) {
   SALVAGE_SKILL,
   instanceYieldBonus,
   isSalvageGear,
+  isSalvageRune,
+  isSalvageable,
   mergeGrants,
   salvageItemIds,
   salvagePreview,

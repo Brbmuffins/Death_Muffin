@@ -4,6 +4,7 @@ import { AFFIXES, MAX_AFFIXES } from '../gameplay/affixRules';
 import { KIT_RATES, pieceBonus } from '../gameplay/legionRules';
 import { LEGION_UPGRADE } from './upgrades';
 import { ITEMS } from './items';
+import { BOSS_REPEAT_RUNE_CHANCE, ELITE_RUNE_CHANCE, RUNE_RITES, SURGE_RUNE_CHANCE, runeSources, runesFor, type RuneId } from './runes';
 import {
   ABILITIES,
   BONE_MANTLE,
@@ -701,7 +702,7 @@ export const codexReagentRecipes = () =>
 
 /** Codex: Salvaging and the Ossuary Vault. The yield rows come from salvageRules so the numbers never drift. */
 export const CODEX_SALVAGE_COUNSEL =
-  "Salvaging is a skill of its own, trained at the Bone Grinder in the Sexton's Acre (by the Bone Kiln). Feed it gear from your bag and it gives back an ingot (or a plank from a staff, wand or grimoire) by rarity, plus Grave Dust and sometimes other reagents. Every level adds a 0.5% chance of one extra material. XP per piece rises with rarity. Worn gear and locked items are never taken, and if the yield will not fit your bag nothing is ground. Open the Reliquary (I) and use Salvage on an item while you stand at the Grinder, or open the Grinder itself to tick several pieces, or use Salvage all below rare.";
+  "Salvaging is a skill of its own, trained at the Bone Grinder in the Sexton's Acre (by the Bone Kiln). Feed it gear from your bag and it gives back an ingot (or a plank from a staff, wand or grimoire) by rarity, plus Grave Dust and sometimes other reagents. Every level adds a 0.5% chance of one extra material. XP per piece rises with rarity. Worn gear and locked items are never taken (a spare Relic rune can be ground too, one at a time, into reagents only), and if the yield will not fit your bag nothing is ground. Open the Reliquary (I) and use Salvage on an item while you stand at the Grinder, or open the Grinder itself to tick several pieces, or use Salvage all below rare.";
 export const codexSalvageRows = () => {
   const nameList = (ids: string[]) => ids.map((id) => itemMeta(id).name).join(' or ');
   return SALVAGE_RARITIES.map((rarity) => {
@@ -888,4 +889,14 @@ export const codexLegionTiers = () =>
     cost: LEGION_UPGRADE.cost(i),
     total: Array.from({ length: i + 1 }, (_, k) => LEGION_UPGRADE.cost(k)).reduce((a, b) => a + b, 0),
     bonus: `+${+((i + 1) * LEGION_UPGRADE.perTier * 100).toFixed(1)}% health and damage, +${+((i + 1) * LEGION_UPGRADE.speedPerTier * 100).toFixed(1)}% attack speed`,
+  }));
+
+/** Codex: Relic runes. Every number in the lines comes from RUNE_TUNING (content/runes.ts), so the words follow the game. */
+export const CODEX_RUNES_COUNSEL =
+  `Runes are the build-depth layer: each changes how a rite behaves, not how hard it hits, and the five necromancer rites (Bone Needle, Marrow Spear, Exhume, Miasma Circle, Black Litany) take one each. Open the Grimoire (L), pick a rite and socket a rune from your bag; a rune fits only its own rite, a jade badge on the hotbar slot shows it, and hovering the slot says exactly what changed. Taking a rune out, or setting another in its place, returns it to your bag: nothing is ever lost. Runes stack in the Reliquary, can rest in the Ossuary Vault, sell for gold and can be ground at the Bone Grinder (one at a time, into reagents only). They drop from elites (${+(ELITE_RUNE_CHANCE * 100).toFixed(1)}% a kill), from Grave Surge offerings (${SURGE_RUNE_CHANCE * 100}% of them) and from bosses: the Prelate and every boss's first kill always leave one, repeat kills ${BOSS_REPEAT_RUNE_CHANCE * 100}% of the time. The first grounds shed uncommon runes only; rares start in the Marrow Ossuary and epics in the Bell Sanctum. A Bone Needle rune works with the needle, not with a scythe's arc. Runes are for the necromancer disciplines (Ossuary, Gravecaller, Mourner, Rotweaver).`;
+export interface CodexRuneRow { id: RuneId; name: string; rarity: string; rite: string; short: string; lines: string[]; cost: string | null; lore: string; sources: string }
+export const codexRuneRows = (): { rite: string; runes: CodexRuneRow[] }[] =>
+  RUNE_RITES.map((rite) => ({
+    rite: ABILITIES[rite].name,
+    runes: runesFor(rite).map((r) => ({ id: r.id, name: r.name, rarity: r.rarity, rite: ABILITIES[rite].name, short: r.short, lines: r.lines, cost: r.cost, lore: r.lore, sources: runeSources(r.id) })),
   }));

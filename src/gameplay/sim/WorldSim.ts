@@ -61,6 +61,7 @@ import { FEN_LURE, HAG_HEX, SEXTON_HOOK, WISP_PULSE } from '../../content/fen';
 import { NODES, RICH_RESPAWN, RICH_YIELD, type NodeDef } from '../gatheringRules';
 import { NODE_REACH } from '../../content/layout';
 import { NECRO_WEAPON_TUNING } from '../../content/necroWeapons';
+import { RUNE_TUNING } from '../../content/runes';
 import type {
   BossState,
   Corpse,
@@ -100,7 +101,12 @@ const THRALL_BASE = {
   archer: { range: 7.5, interval: 1.3, speed: 5.4 },
   bonemage: { range: 6.5, interval: 1.8, speed: 5.2 },
   plaguebearer: { range: 1.3, interval: 1.2, speed: 4.8 },
+  // Bone Colossus rune (content/runes.ts): one giant, slow, wide-cleaving thrall.
+  colossus: { range: RUNE_TUNING.colossus.range, interval: RUNE_TUNING.colossus.interval, speed: RUNE_TUNING.colossus.speed },
 } as const;
+
+/** Legion places a thrall fills against the cap: the Bone Colossus takes more than one. */
+export const thrallWeight = (kind: ThrallKind): number => (kind === 'colossus' ? RUNE_TUNING.colossus.slots : 1);
 
 /** Proper segment intersection (touching endpoints don't count). */
 function segmentsCross(ax: number, az: number, bx: number, bz: number, cx: number, cz: number, dx: number, dz: number) {
@@ -379,7 +385,7 @@ export class WorldSim {
       }
       // Grave Frost: the host owns the duration; a claim can only ask for it.
       if (h.chill) e.chillT = Math.max(e.chillT ?? 0, GRAVE_FROST.chillS);
-      if (h.root) e.rootT = Math.max(e.rootT ?? 0, BONE_PRISON.rootS);
+      if (h.root) e.rootT = Math.max(e.rootT ?? 0, typeof h.rootS === 'number' && h.rootS > 0 ? Math.min(RUNE_TUNING.impale.rootS, h.rootS) : BONE_PRISON.rootS);
       if (h.slow) e.slowT = Math.max(e.slowT, GRAVE_HANDS.tickS + 0.2);
       // Rot Lance: one Withered stack at most per hit, up to a clamped cap; dps scales with the hit.
       if (h.withered && h.withered > 0) this.wither(e, 1, Math.min(12, Math.max(1, Math.floor(h.witheredCap ?? DETONATE.rotWitheredCap))), h.dmg * WITHERED.dpsPerStack, h.by);
@@ -423,6 +429,9 @@ export class WorldSim {
       bloom: m.bloom,
       hostile: false,
     };
+    // Relic runes: Creeping Rot (a drifting circle; the host owns the speed) and Contagion (what it withers spreads on death).
+    if (typeof m.creep === 'number' && m.creep > 0) zone.creep = Math.min(RUNE_TUNING.creepingRot.speed, m.creep);
+    if (m.contagion) zone.contagion = true;
     this.zones.set(zone.id, zone);
     this.emit({ t: 'zone', zone });
   }
@@ -432,27 +441,48 @@ export class WorldSim {
   }
 
   private applyExhume(x: Extract<Intent, { t: 'exhume' }>) {
+    if (x.colossus) return this.raiseColossus(x);
+    // Mass Grave rune: up to three corpses near the point, each at the rune's share of a thrall's health and damage (the host owns both).
+    const count = Math.max(1, Math.min(RUNE_TUNING.massGrave.count, Math.floor(Number.isFinite(x.count) ? x.count! : 1)));
+    const statMult = count > 1 ? RUNE_TUNING.massGrave.statMult : 1;
+    const r = count > 1 ? Math.max(x.r, RUNE_TUNING.massGrave.pickRadius) : x.r;
+    let raised = 0;
+    for (let i = 0; i < count; i++) {
+      if (this.raiseOne(x, r, statMult)) raised++;
+      else break;
+    }
+    if (!raised) this.emit({ t: 'exhumed', by: x.by, ok: false, x: x.x, z: x.z });
+  }
+
+  /** Make room for `weight` more legion places: the oldest ordinary thrall crumbles first, a Colossus last. Returns the first crumbled id. */
+  private makeRoom(owner: string, cap: number, weight: number): number | undefined {
+    let crumbled: number | undefined;
+    const owned = this.ownedThralls(owner).sort((a, b) => (a.kind === 'colossus' ? 1 : 0) - (b.kind === 'colossus' ? 1 : 0) || a.bornAt - b.bornAt);
+    let used = owned.reduce((n, t) => n + thrallWeight(t.kind), 0);
+    while (owned.length && used + weight > cap) {
+      const o = owned.shift()!;
+      used -= thrallWeight(o.kind);
+      crumbled ??= o.id;
+      this.killThrall(o, 'crumbled');
+    }
+    return crumbled;
+  }
+
+  /** One ordinary exhume: the nearest corpse within `r` of the intent's point becomes a thrall. False when no corpse is there. */
+  private raiseOne(x: Extract<Intent, { t: 'exhume' }>, r: number, statMult: number): boolean {
     let best: Corpse | null = null;
     let bestD = Infinity;
     for (const c of this.corpses.values()) {
       if (c.echoOwner) continue;
       const d = Math.hypot(c.x - x.x, c.z - x.z);
-      if (d <= x.r && d < bestD) {
+      if (d <= r && d < bestD) {
         best = c;
         bestD = d;
       }
     }
-    if (!best) {
-      this.emit({ t: 'exhumed', by: x.by, ok: false, x: x.x, z: x.z });
-      return;
-    }
+    if (!best) return false;
     this.removeCorpse(best, 'consumed', x.by);
-    let crumbled: number | undefined;
-    const owned = this.ownedThralls(x.by).sort((a, b) => a.bornAt - b.bornAt);
-    if (owned.length >= x.cap) {
-      crumbled = owned[0].id;
-      this.killThrall(owned[0], 'crumbled');
-    }
+    const crumbled = this.makeRoom(x.by, x.cap, 1);
     const kind = thrallFromCorpse(best, x.kind);
     const scale = THRALL_SCALE[kind] ?? { hp: 1, dmg: 1 };
     const empowered = best.kind === 'resonant' || best.elite;
@@ -467,9 +497,9 @@ export class WorldSim {
       x: best.x,
       z: best.z,
       facing: best.facing,
-      hp: x.hp * (empowered ? 1.5 : 1) * scale.hp,
-      maxHp: x.hp * (empowered ? 1.5 : 1) * scale.hp,
-      damage: x.damage * (empowered ? 1.5 : 1) * scale.dmg,
+      hp: x.hp * (empowered ? 1.5 : 1) * scale.hp * statMult,
+      maxHp: x.hp * (empowered ? 1.5 : 1) * scale.hp * statMult,
+      damage: x.damage * (empowered ? 1.5 : 1) * scale.dmg * statMult,
       attackInterval: base.interval / x.attackSpeedMult,
       range: base.range,
       speed: base.speed,
@@ -488,9 +518,75 @@ export class WorldSim {
     this.thralls.set(t.id, t);
     this.emit({ t: 'thrall', id: t.id, owner: t.owner, kind, x: t.x, z: t.z, empowered });
     this.emit({ t: 'exhumed', by: x.by, ok: true, corpseKind: best.kind, x: best.x, z: best.z, crumbled });
+    return true;
   }
 
+  /**
+   * Bone Colossus rune: the corpses nearest the point (up to five, at least three, within the rune's radius) are consumed and one giant thrall
+   * rises where they lay. Its strength scales with how many were spent; the host owns every number. A player keeps one colossus: a new one replaces it.
+   */
+  private raiseColossus(x: Extract<Intent, { t: 'exhume' }>) {
+    const T = RUNE_TUNING.colossus;
+    const r = Math.min(T.pickRadius, Math.max(0.2, x.r));
+    const near = [...this.corpses.values()]
+      .filter((c) => !c.echoOwner && Math.hypot(c.x - x.x, c.z - x.z) <= r)
+      .sort((a, b) => Math.hypot(a.x - x.x, a.z - x.z) - Math.hypot(b.x - x.x, b.z - x.z))
+      .slice(0, T.corpses);
+    if (near.length < T.minCorpses) {
+      this.emit({ t: 'exhumed', by: x.by, ok: false, x: x.x, z: x.z, why: 'few' });
+      return;
+    }
+    const n = near.length;
+    const cx = near.reduce((a, c) => a + c.x, 0) / n;
+    const cz = near.reduce((a, c) => a + c.z, 0) / n;
+    const empowered = near.some((c) => c.kind === 'resonant' || c.elite);
+    for (const c of near) this.removeCorpse(c, 'consumed', x.by);
+    for (const old of this.ownedThralls(x.by)) if (old.kind === 'colossus') this.killThrall(old, 'crumbled');
+    const crumbled = this.makeRoom(x.by, x.cap, T.slots);
+    const slotsUsed = new Set(this.ownedThralls(x.by).map((t) => t.slot));
+    let slot = 0;
+    while (slotsUsed.has(slot)) slot++;
+    const hp = x.hp * T.hpPerCorpse * n;
+    const t: Thrall = {
+      id: this.id(),
+      owner: x.by,
+      kind: 'colossus',
+      x: cx,
+      z: cz,
+      facing: near[0].facing,
+      hp,
+      maxHp: hp,
+      damage: x.damage * T.damagePerCorpse * n,
+      attackInterval: THRALL_BASE.colossus.interval / x.attackSpeedMult,
+      range: THRALL_BASE.colossus.range,
+      speed: THRALL_BASE.colossus.speed,
+      state: 'rising',
+      stateT: 0,
+      attackCd: 0.8,
+      target: null,
+      slot,
+      bornAt: this.time,
+      empowered,
+      flash: 0,
+      gait: 0,
+      moving: false,
+    };
+    this.thralls.set(t.id, t);
+    this.emit({ t: 'thrall', id: t.id, owner: t.owner, kind: 'colossus', x: t.x, z: t.z, empowered });
+    this.emit({ t: 'exhumed', by: x.by, ok: true, corpseKind: near[0].kind, x: cx, z: cz, crumbled });
+  }
+
+  /** Requiem rune: litanies waiting to burst (host-only). */
+  private pendingLitanies: { at: number; l: Extract<Intent, { t: 'litany' }> }[] = [];
+
   private applyLitany(l: Extract<Intent, { t: 'litany' }>) {
+    // Requiem rune: mark the ground now, burst later. What the burst eats (corpses, thralls) is decided then.
+    const delay = Math.min(RUNE_TUNING.requiem.delayMs, Math.max(0, Number.isFinite(l.delayMs) ? l.delayMs! : 0));
+    if (delay > 0) {
+      this.pendingLitanies.push({ at: this.time + delay / 1000, l: { ...l, delayMs: 0 } });
+      this.emit({ t: 'requiem', by: l.by, x: l.x, z: l.z, r: l.r, ms: delay });
+      return;
+    }
     let corpses = 0;
     let resonant = 0;
     const tethers: [number, number][] = [];
@@ -507,6 +603,8 @@ export class WorldSim {
       if (Math.hypot(t.x - l.x, t.z - l.z) > l.r) continue;
       thralls++;
       tethers.push([t.x, t.z]);
+      // Hollow Choir rune: the thrall sings and stays.
+      if (l.spare) continue;
       this.killThrall(t, 'sacrificed');
       if (l.leaveCorpses) this.addCorpse(t.x, t.z, 'normal', 'risen', false, t.facing, 1, this.nav.areaAt(t.x, t.z) ?? 'graves');
     }
@@ -525,8 +623,16 @@ export class WorldSim {
       this.boss.damage(dmg, l.by, 0);
       targets++;
     }
-    this.emit({ t: 'litanyResult', by: l.by, x: l.x, z: l.z, r: l.r, corpses, resonant, thralls, targets, tethers });
+    this.emit({ t: 'litanyResult', by: l.by, x: l.x, z: l.z, r: l.r, corpses, resonant, thralls: l.spare ? 0 : thralls, ...(l.spare ? { spared: thralls } : {}), targets, tethers });
     if (targets) this.emit({ t: 'dmg', x: l.x, z: l.z, amount: Math.round(dmg), kind: 'litany', by: l.by });
+  }
+
+  private tickPendingLitanies() {
+    if (!this.pendingLitanies.length) return;
+    const due = this.pendingLitanies.filter((p) => this.time >= p.at);
+    if (!due.length) return;
+    this.pendingLitanies = this.pendingLitanies.filter((p) => this.time < p.at);
+    for (const p of due) this.applyLitany(p.l);
   }
 
   /**
@@ -1581,6 +1687,7 @@ export class WorldSim {
     this.time += dt;
     this.updateWaves(dt);
     this.updateSurge(dt);
+    this.tickPendingLitanies();
     this.updateZones(dt);
     this.updateWalls();
     this.updateEnemies(dt);
@@ -1603,6 +1710,7 @@ export class WorldSim {
       z.tick -= dt;
       const pulse = z.tick <= 0;
       if (pulse) z.tick = 1;
+      if (z.creep && z.kind === 'miasma') this.creepZone(z, dt);
       if (z.kind === 'dirge') {
         this.tickDirge(z, pulse);
         continue;
@@ -1640,6 +1748,7 @@ export class WorldSim {
             e.witheredT = 5;
             e.witheredDps = Math.max(e.witheredDps, z.dps);
             e.witheredOwner = z.owner;
+            if (z.contagion) e.contagious = true;
           }
         }
         const b = this.boss.state;
@@ -1666,6 +1775,47 @@ export class WorldSim {
           if (Math.hypot(t.x - z.x, t.z - z.z) < z.r) this.hurtThrall(t, z.dps);
         }
       }
+    }
+  }
+
+  /** Creeping Rot rune: the circle drifts toward the nearest enemy within reach, staying inside its hall. */
+  private creepZone(z: Zone, dt: number) {
+    let best: Enemy | null = null;
+    let bestD: number = RUNE_TUNING.creepingRot.seekReach;
+    for (const e of this.enemies.values()) {
+      if (e.state === 'dead' || e.state === 'rising' || e.state === 'burrow') continue;
+      const d = Math.hypot(e.x - z.x, e.z - z.z);
+      if (d < bestD) {
+        bestD = d;
+        best = e;
+      }
+    }
+    if (!best || bestD < 0.6) return;
+    const step = Math.min((z.creep ?? 0) * dt, bestD);
+    let nx = z.x + ((best.x - z.x) / bestD) * step;
+    let nz = z.z + ((best.z - z.z) / bestD) * step;
+    const area = this.nav.areaAt(z.x, z.z);
+    if (area) [nx, nz] = this.nav.resolveInArea(area, nx, nz, 0.3);
+    z.x = nx;
+    z.z = nz;
+  }
+
+  /** Contagion rune: a dying enemy that a Contagion circle withered hands its stacks (minus one) to its nearest neighbours. */
+  private spreadContagion(e: Enemy) {
+    const C = RUNE_TUNING.contagion;
+    if (!e.contagious || e.withered < C.minStacks) return;
+    const stacks = e.withered - 1;
+    const neighbours = [...this.enemies.values()]
+      .filter((o) => o !== e && o.state !== 'dead' && o.hp > 0 && o.area === e.area && Math.hypot(o.x - e.x, o.z - e.z) <= C.reach)
+      .sort((a, b) => Math.hypot(a.x - e.x, a.z - e.z) - Math.hypot(b.x - e.x, b.z - e.z))
+      .slice(0, C.neighbours);
+    for (const o of neighbours) {
+      o.withered = Math.max(o.withered, stacks);
+      o.witheredT = Math.max(o.witheredT, 5);
+      o.witheredDps = Math.max(o.witheredDps, e.witheredDps);
+      o.witheredOwner = e.witheredOwner;
+      o.contagious = true;
+      this.emit({ t: 'contagion', x: e.x, z: e.z, tx: o.x, tz: o.z, stacks });
     }
   }
 
@@ -1781,6 +1931,7 @@ export class WorldSim {
         const echo = this.addCorpse(e.x + 0.45, e.z + 0.45, 'normal', e.def, false, e.facing, 0.65, e.area);
         if (echo) { echo.echoOwner = '*'; echo.expiresAt = this.time + 20; }
       }
+      this.spreadContagion(e);
       if ((e.hexT ?? 0) > 0 && e.hexOwner) {
         const neighbours = [...this.enemies.values()].filter((other) => other.state !== 'dead' && other.area === e.area
           && Math.hypot(other.x - e.x, other.z - e.z) <= 6)
@@ -2591,6 +2742,8 @@ export class WorldSim {
             this.bellHeal(t);
           }
           else if (t.kind === 'bonemage') e.hexT = BONE_HEX.durationS;
+          // Bone Colossus: every blow also cleaves what stands around its target.
+          else if (t.kind === 'colossus') this.colossusCleave(t, e);
           this.emit({ t: 'thrallHit', id: t.id, target: e.id, x: t.x, z: t.z, tx: e.x, tz: e.z, kind: t.kind, dmg: Math.round(dealt) });
         });
       } else if (bossTarget) {
@@ -2611,6 +2764,15 @@ export class WorldSim {
           t.state = 'move';
         } else if (t.state === 'move') t.state = 'idle';
       }
+    }
+  }
+
+  private colossusCleave(t: Thrall, main: Enemy) {
+    const C = RUNE_TUNING.colossus;
+    const dmg = t.damage * ((t.rallyT ?? 0) > 0 ? RALLY.damageMult : 1) * this.cursedMult(t) * C.cleaveFrac;
+    for (const o of this.enemies.values()) {
+      if (o === main || o.state === 'dead' || o.state === 'burrow' || Math.hypot(o.x - main.x, o.z - main.z) > C.cleaveRadius + o.radius) continue;
+      this.damageEnemy(o, dmg, t.owner, t);
     }
   }
 
