@@ -1,5 +1,8 @@
 import { onSettingsChange, settings, updateSettings } from '../app/settings';
 import { browserStorage, type StorageLike } from '../gameplay/codexJournal';
+import { ABILITIES } from '../content/abilities';
+import { touchNow } from './touchText';
+export { touchNow };
 import {
   NOT_BUSY, canShow, groupOf, makeEntry, pickNext, prune, shouldPreempt, shouldYield, showMs,
   type Busy, type CadenceState, type QueuedTip, type ShownCard, type TipKind,
@@ -135,10 +138,28 @@ interface Tip {
   body: string;
 }
 
+/**
+ * Tip text is written once for the keyboard. Markup resolved per device by renderText:
+ *   [[desktop||touch]]  the two wordings (touch may be empty to drop the phrase)
+ *   {p:X}               " (<kbd>X</kbd>)" on desktop; " (in the Menu)" the first time on touch, then nothing
+ *   {key:<abilityId>}   the rite's key on desktop; its name on touch
+ */
+export function renderText(text: string, touch: boolean, keyFor?: (ability: string) => string | null): string {
+  let menu = 0;
+  return text
+    .replace(/\[\[([\s\S]*?)\|\|([\s\S]*?)\]\]/g, (_m, d: string, t: string) => (touch ? t : d))
+    .replace(/\{p:(\w)\}/g, (_m, k: string) => (touch ? (menu++ ? '' : ' (in the Menu)') : ` (<kbd>${k}</kbd>)`))
+    .replace(/\{key:(\w+)\}/g, (_m, ability: string) => {
+      if (touch) return (ABILITIES as Record<string, { name: string } | undefined>)[ability]?.name ?? 'that rite';
+      const k = keyFor?.(ability);
+      return k ? `<kbd>${k}</kbd>` : 'a key from your Grimoire (<kbd>L</kbd>)';
+    });
+}
+
 export const TIPS: Record<TipId, Tip> = {
   warden_oil: {
     title: 'Keep the lantern lit',
-    body: '<b>Oil</b> refills slowly. Burn nearby corpses with <kbd>3</kbd> or <kbd>Right-click</kbd> to reclaim 20 oil per body and leave fire behind. Your lantern cone strips Shrouded and stuns wraiths; plant a ward to protect allies.',
+    body: '<b>Oil</b> refills slowly. Burn nearby corpses with [[<kbd>3</kbd> or <kbd>Right-click</kbd>||the third rite on your hotbar]] to reclaim 20 oil per body and leave fire behind. Your lantern cone strips Shrouded and stuns wraiths; plant a ward to protect allies.',
   },
   monk_beat: {
     title: 'Hear the beat',
@@ -146,23 +167,23 @@ export const TIPS: Record<TipId, Tip> = {
   },
   witch_offal: {
     title: 'Feed the crows',
-    body: '<b>Offal</b> comes from corpses. Harvest one with <kbd>1</kbd> to gain 30 Offal and summon pecking crows. Butcher a body with <kbd>Right-click</kbd> to leave three healing charms for allies.',
+    body: '<b>Offal</b> comes from corpses. Harvest one with [[<kbd>1</kbd>||your first rite]] to gain 30 Offal and summon pecking crows. Butcher a body with [[<kbd>Right-click</kbd>||your fifth rite]] to leave three healing charms for allies.',
   },
   veil_forms: {
     title: 'Walk the Veil',
-    body: '<kbd>1</kbd> changes form. Veil form drains your meter and protects you from enemy attacks while you move faster; your spirit attacks deal less damage. Life form refills Veil. Lay a body to rest for healing and echo corpses, then raise or cross to an echo.',
+    body: '[[<kbd>1</kbd>||Your first rite]] changes form. Veil form drains your meter and protects you from enemy attacks while you move faster; your spirit attacks deal less damage. Life form refills Veil. Lay a body to rest for healing and echo corpses, then raise or cross to an echo.',
   },
   minimap: {
     title: 'Choose your path',
-    body: 'Click a walkable spot on the minimap to travel there. The amber marker shows your fixed destination. Click another spot to change it; sealed halls stay closed. Hover a spell icon for its cost, targeting, effects and a useful combat tip.',
+    body: '[[Click||Tap]] a walkable spot on the minimap to travel there. The amber marker shows your fixed destination. [[Click||Tap]] another spot to change it; sealed halls stay closed. [[Hover||Press and hold]] a spell icon for its cost, targeting, effects and a useful combat tip.',
   },
   auto_combat: {
     title: 'Settle into the fight',
-    body: 'On Easy, auto combat engages enemies in the current area, uses equipped rites and may cast your signature when useful. It drinks healing flasks and mends you while under attack. The Hollow Knight also guards automatically. Click or use movement keys to take control. Toggle it with <kbd>G</kbd> or the Auto button.',
+    body: 'On Easy, auto combat engages enemies in the current area, uses equipped rites and may cast your signature when useful. It drinks healing flasks and mends you while under attack. The Hollow Knight also guards automatically. [[Click or use movement keys||Tap the ground or drag a finger]] to take control. Toggle it with [[<kbd>G</kbd> or the Auto button||the Auto button in the Menu]].',
   },
   knight_rage: {
     title: 'Rage, not essence',
-    body: 'You are the <b>Hollow Knight</b>: no thralls, no Grave Essence. <b>Rage</b> builds when you are hit, when <kbd>LMB</kbd> Hollow Cut catches a body, and fastest of all from a perfect block — hold <kbd>3</kbd> Bulwark <b>facing</b> the blow. Spend it on <kbd>2</kbd> Grave Slam. <kbd>4</kbd> Corpse Vigil is your only heal, so keep a body spare.',
+    body: 'You are the <b>Hollow Knight</b>: no thralls, no Grave Essence. <b>Rage</b> builds when you are hit, when [[<kbd>LMB</kbd> ||]]Hollow Cut catches a body, and fastest of all from a perfect block — [[hold <kbd>3</kbd> Bulwark||tap Bulwark]] <b>facing</b> the blow. Spend it on [[<kbd>2</kbd> ||]]Grave Slam. [[<kbd>4</kbd> ||]]Corpse Vigil is your only heal, so keep a body spare.',
   },
   change_class: {
     title: 'A new discipline',
@@ -170,19 +191,19 @@ export const TIPS: Record<TipId, Tip> = {
   },
   welcome: {
     title: 'Take your time',
-    body: 'This gathering sanctuary has <b>no enemies</b>. <kbd>Click</kbd> a tree, ore seam, pool or grave to work it (<kbd>P</kbd> shows your Skills), or walk on whenever you like. Move with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or by clicking the ground. The <b>Next</b> line under the minimap offers one optional suggestion at a time. <kbd>Esc</kbd> opens Settings.',
+    body: 'This gathering sanctuary has <b>no enemies</b>. [[<kbd>Click</kbd>||Tap]] a tree, ore seam, pool or grave to work it ([[<kbd>P</kbd> shows your Skills||Skills in the Menu shows them]]), or walk on whenever you like. [[Move with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or by clicking the ground.||Tap the ground to walk, or drag a finger to keep walking.]] The <b>Next</b> line under the minimap offers one optional suggestion at a time. [[<kbd>Esc</kbd> opens Settings.||The Menu opens Settings.]]',
   },
   move: {
     title: 'Walk among the dead',
-    body: 'Aim with the mouse and <kbd>Click</kbd> an enemy for your basic attack; <kbd>Shift</kbd>+<kbd>Click</kbd> attacks without moving. Press <kbd>1</kbd>–<kbd>4</kbd> for rites and <kbd>Right-click</kbd> (or <kbd>5</kbd>) for your fifth. Watch the ground for warning rings and step out of them.',
+    body: '[[Aim with the mouse and <kbd>Click</kbd> an enemy for your basic attack; <kbd>Shift</kbd>+<kbd>Click</kbd> attacks without moving. Press <kbd>1</kbd>–<kbd>4</kbd> for rites and <kbd>Right-click</kbd> (or <kbd>5</kbd>) for your fifth. ||Tap an enemy for your basic attack. Tap a rite on your hotbar to cast it at that enemy (or the nearest one); press and hold a rite to read its card. ]]Watch the ground for warning rings and step out of them.',
   },
   exhume: {
     title: 'A corpse lies near',
-    body: 'Press {key:exhume} to Exhume the corpse nearest your cursor and raise it as your thrall. Unclaimed bodies rot away.',
+    body: '[[Press {key:exhume} to Exhume the corpse nearest your cursor and raise it as your thrall.||Tap {key:exhume} on your hotbar to raise a corpse near your target as your thrall.]] Unclaimed bodies rot away.',
   },
   wave: {
     title: 'Wave Speed',
-    body: 'You can afford to <b>Quicken</b> the waves (lower right). Faster waves bring more dead and richer rewards. The three diamonds are milestones (tiers 3, 6 and 8) that add wave affixes; hover them. Use <kbd>−</kbd> to dial the active tier back down whenever the pressure is too much.',
+    body: 'You can afford to <b>Quicken</b> the waves (lower right). Faster waves bring more dead and richer rewards. The three diamonds are milestones (tiers 3, 6 and 8) that add wave affixes[[; hover them||]]. Use [[<kbd>−</kbd>||the − button]] to dial the active tier back down whenever the pressure is too much.',
   },
   deacon: {
     title: 'Kill the Crypt Deacon first',
@@ -202,15 +223,15 @@ export const TIPS: Record<TipId, Tip> = {
   },
   litany: {
     title: 'Black Litany',
-    body: 'Press {key:black_litany} to give everything within 7m (corpses and thralls) to one burst. The more you give, the harder it hits. Pull the pack onto a pile of bodies first.',
+    body: '[[Press||Tap]] {key:black_litany} to give everything within 7m (corpses and thralls) to one burst. The more you give, the harder it hits. Pull the pack onto a pile of bodies first.',
   },
   burst: {
     title: 'Corpse Explosion',
-    body: '<kbd>Right-click</kbd> a corpse to burst it under a pack. Best when the dead are already on you, or your legion is full.',
+    body: '[[<kbd>Right-click</kbd> a corpse to burst it under a pack.||Tap your fifth rite to burst a corpse under a pack.]] Best when the dead are already on you, or your legion is full.',
   },
   hurt: {
     title: 'Hurt?',
-    body: 'Press <kbd>Q</kbd> to drink a healing flask. <kbd>T</kbd> returns you to the Chapterhouse. Falling costs nothing but the walk back, and <kbd>−</kbd> on the Wave Speed dial eases the pressure.',
+    body: '[[Press <kbd>Q</kbd> to drink a healing flask. <kbd>T</kbd> returns you to the Chapterhouse. Falling costs nothing but the walk back, and <kbd>−</kbd> on the Wave Speed dial eases the pressure.||Tap the flask button on your Health orb to drink a healing flask. Falling costs nothing but the walk back, and the − button on the Wave Speed dial eases the pressure.]]',
   },
   elite: {
     title: 'An elite',
@@ -222,39 +243,39 @@ export const TIPS: Record<TipId, Tip> = {
   },
   relic: {
     title: 'A relic',
-    body: 'Loot goes to your Reliquary (<kbd>I</kbd>). Equip gear there; the Workbench (<kbd>C</kbd>) turns ore and bars into more.',
+    body: 'Loot goes to your Reliquary{p:I}. Equip gear there; the Workbench{p:C} turns ore and bars into more.',
   },
   armor: {
     title: 'Set armor',
-    body: 'Armor comes in five-piece sets, one look per discipline, and <b>any class can wear any set</b>. Open your Reliquary (<kbd>I</kbd>) and double-click a piece to wear it; it shows on your hero. Wear <b>2, 4 or 5 pieces of the same set</b> to unlock set bonuses; hover a piece to see them. Later areas drop the rarer, stronger sets.',
+    body: 'Armor comes in five-piece sets, one look per discipline, and <b>any class can wear any set</b>. Open your Reliquary{p:I} and [[double-click a piece to wear it||select a piece, then press <b>Equip</b>, to wear it]]; it shows on your hero. Wear <b>2, 4 or 5 pieces of the same set</b> to unlock set bonuses; [[hover||select]] a piece to see them. Later areas drop the rarer, stronger sets.',
   },
   setBonus: {
     title: 'A set bonus is awake',
-    body: 'Two pieces of the same armor set are worn, so its first <b>set bonus</b> is active. Hover any piece: <b>green lines</b> are on, grey lines need more pieces (4 and 5 are the big ones). A bag item marked <b>completes</b> in its arrow line will switch a bonus on. The Character sheet (<kbd>J</kbd>) shows what each set still needs and where it drops.',
+    body: 'Two pieces of the same armor set are worn, so its first <b>set bonus</b> is active. [[Hover||Select]] any piece: <b>green lines</b> are on, grey lines need more pieces (4 and 5 are the big ones). A bag item marked <b>completes</b> in its arrow line will switch a bonus on. The Character sheet [[(<kbd>J</kbd>)||(the Sheet button in the Reliquary)]] shows what each set still needs and where it drops.',
   },
   affix: {
     title: 'A rolled relic',
-    body: 'Gear now drops with an <b>item level</b> and up to <b>three affixes</b>, rolled by the server so nobody can edit them. More affixes means a richer colour; a higher item level means bigger numbers. <b>Violet † lines</b> feed your legion, essence and rites. Hover a piece: the arrow says if it beats what you wear. Salvage and selling pay more for good rolls.',
+    body: 'Gear now drops with an <b>item level</b> and up to <b>three affixes</b>, rolled by the server so nobody can edit them. More affixes means a richer colour; a higher item level means bigger numbers. <b>Violet † lines</b> feed your legion, essence and rites. [[Hover||Select]] a piece: the arrow says if it beats what you wear. Salvage and selling pay more for good rolls.',
   },
   gearEquip: {
     title: 'Gear you can read',
-    body: 'Hover or select a piece in the Reliquary (<kbd>I</kbd>) and every stat says what it does for <b>you</b>: <b>VIT</b> is health, <b>INT</b> is spell power and essence. A bag item wears a small <b>green ▲</b> when it beats what you wear for your discipline, and a <b>red ▼</b> when it is worse; hover it for why. Press <kbd>J</kbd> to see which stats to look for.',
+    body: '[[Hover or select||Select]] a piece in the Reliquary{p:I} and every stat says what it does for <b>you</b>: <b>VIT</b> is health, <b>INT</b> is spell power and essence. A bag item wears a small <b>green ▲</b> when it beats what you wear for your discipline, and a <b>red ▼</b> when it is worse; [[hover||select]] it for why. [[Press <kbd>J</kbd>||Open the Sheet button in the Reliquary]] to see which stats to look for.',
   },
   statSheet: {
     title: 'Your Character sheet',
-    body: 'At the top: <b>what you are looking for</b>, the stats and weapons that suit your discipline and the slots most worth fixing. Below: every number your hero fights with. Click a line to see where it comes from. The <b>Set bonuses</b> block lists what your armor sets give and which piece completes the next one.',
+    body: 'At the top: <b>what you are looking for</b>, the stats and weapons that suit your discipline and the slots most worth fixing. Below: every number your hero fights with. [[Click||Tap]] a line to see where it comes from. The <b>Set bonuses</b> block lists what your armor sets give and which piece completes the next one.',
   },
   necroWeapon: {
-    title: 'A weapon that changes your left click',
-    body: 'Necromancer weapons change your <b>Bone Needle</b> (left click): a <b>Scythe</b> becomes a close reaping arc that pays a soul per kill, a <b>Wand</b> casts faster but softer, a <b>Ritual Sickle</b> leaves targets Withered, and a <b>Staff</b> reaches farther and pierces. Off-hands add a passive. Hover any piece in the Reliquary (<kbd>I</kbd>) for its line; the Codex (<kbd>K</kbd>) lists them all.',
+    title: 'A weapon that changes your [[left click||basic attack]]',
+    body: 'Necromancer weapons change your <b>Bone Needle</b>[[ (left click)||]]: a <b>Scythe</b> becomes a close reaping arc that pays a soul per kill, a <b>Wand</b> casts faster but softer, a <b>Ritual Sickle</b> leaves targets Withered, and a <b>Staff</b> reaches farther and pierces. Off-hands add a passive. [[Hover||Select]] any piece in the Reliquary{p:I} for its line; the Codex{p:K} lists them all.',
   },
   codex: {
     title: 'The Codex',
-    body: 'Press <kbd>K</kbd> for everything you have met: every rite, every kind of dead, and how to beat it.',
+    body: '[[Press <kbd>K</kbd> for||The Codex, in the Menu, holds]] everything you have met: every rite, every kind of dead, and how to beat it.',
   },
   signature: {
     title: 'Your signature rite awakens',
-    body: 'Level 10: press <kbd>R</kbd> for your class\'s own rite. Hover the new slot to read what it does. On Easy, Auto may also use it when the fight calls for it.',
+    body: 'Level 10: [[press <kbd>R</kbd> for your class\'s own rite. Hover the new slot||tap the new slot on your hotbar for your class\'s own rite. Press and hold it]] to read what it does. On Easy, Auto may also use it when the fight calls for it.',
   },
   ascend: {
     title: 'The Altar of Ascension stirs',
@@ -278,11 +299,11 @@ export const TIPS: Record<TipId, Tip> = {
   },
   grimoire: {
     title: 'The Grimoire',
-    body: 'New rites have come to you. Click <b>swap</b> below a hotbar spell, use <b>Swap spells</b> at the end of the bar, or press <kbd>L</kbd> to open the Grimoire. Choose any unlocked class rite for slots <kbd>1</kbd>–<kbd>5</kbd>; slot 5 also uses right-click. Necromancers learn extra alternatives, while other classes can rearrange their five rites. Your signature stays on <kbd>R</kbd>. Each rite keeps its cooldown, and Easy auto uses equipped rites.',
+    body: 'New rites have come to you. [[Click||Tap]] <b>swap</b> below a hotbar spell, use <b>Swap spells</b> at the end of the bar[[, or press <kbd>L</kbd> to open the Grimoire||, or open the Grimoire from the Menu]]. Choose any unlocked class rite for [[slots <kbd>1</kbd>–<kbd>5</kbd>; slot 5 also uses right-click.||slots 1–5.]] Necromancers learn extra alternatives, while other classes can rearrange their five rites. Your signature stays on [[<kbd>R</kbd>||the sixth slot]]. Each rite keeps its cooldown, and Easy auto uses equipped rites.',
   },
   rite_skull: {
     title: 'Wailing Skull',
-    body: 'The skull hunts the enemy nearest your cursor, then leaps on to two more, each bite a little weaker. Finish a wounded foe with it and it earns an extra leap. Good for elites and stragglers.',
+    body: 'The skull hunts the enemy nearest [[your cursor||your target]], then leaps on to two more, each bite a little weaker. Finish a wounded foe with it and it earns an extra leap. Good for elites and stragglers.',
   },
   rite_step: {
     title: 'Grave Step',
@@ -362,7 +383,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   omen: {
     title: 'The Week’s Omen',
-    body: 'One omen hangs over the diocese each week (the icon on the left, hover it for the rules), the same for everyone: <b>Blood Moon</b> (more elites), <b>Drowned Week</b> (bigger waves) or <b>The Tolling</b> (Bell-Tolled elites, double shards). It changes on Monday, UTC.',
+    body: 'One omen hangs over the diocese each week (the icon on the left[[, hover it for the rules||]]), the same for everyone: <b>Blood Moon</b> (more elites), <b>Drowned Week</b> (bigger waves) or <b>The Tolling</b> (Bell-Tolled elites, double shards). It changes on Monday, UTC.',
   },
   chain: {
     title: 'Kill Chain',
@@ -378,7 +399,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   wing: {
     title: "The Alchemist's Wing",
-    body: 'A safe workshop for brewing. <kbd>Click</kbd> the <b>Great Cauldron</b> (or the Alembic) to brew flasks, tonics and elixirs, and the <b>Reagent Shelf</b> to see every herb, reagent and ichor you have found. Today\'s <b>brew of the day</b> gives one extra the first time you make it. Drink with <kbd>Z</kbd> (elixir) and <kbd>X</kbd> (tonic).',
+    body: 'A safe workshop for brewing. [[<kbd>Click</kbd>||Tap]] the <b>Great Cauldron</b> (or the Alembic) to brew flasks, tonics and elixirs, and the <b>Reagent Shelf</b> to see every herb, reagent and ichor you have found. Today\'s <b>brew of the day</b> gives one extra the first time you make it. [[Drink with <kbd>Z</kbd> (elixir) and <kbd>X</kbd> (tonic).||Tap a brew chip on the left to drink it.]]',
   },
   coliseum: {
     title: 'The Bone Coliseum',
@@ -430,23 +451,23 @@ export const TIPS: Record<TipId, Tip> = {
   },
   brew: {
     title: 'Elixirs and tonics',
-    body: 'You can hold <b>one elixir</b> (combat: damage, wards) and <b>one tonic</b> (utility: speed) at once. A new elixir <b>replaces</b> the old one; the same brew again extends it. Right-click a brew in the Reliquary to <b>put it on your belt</b>, then press <kbd>Z</kbd> for your elixir and <kbd>X</kbd> for your tonic. Active brews and their timers sit at the left edge of the screen.',
+    body: 'You can hold <b>one elixir</b> (combat: damage, wards) and <b>one tonic</b> (utility: speed) at once. A new elixir <b>replaces</b> the old one; the same brew again extends it. [[Right-click||Select]] a brew in the Reliquary to <b>put it on your belt</b>, then [[press <kbd>Z</kbd> for your elixir and <kbd>X</kbd> for your tonic||tap its chip on the left to drink it]]. Active brews and their timers sit at the left edge of the screen.',
   },
   reagent: {
     title: 'Reagents',
-    body: 'Grave Dust, ectoplasm, bile, ash and boss ichor are <b>Alchemy reagents</b>. Take them to the <b>Alchemist\'s Wing</b> (the Chapterhouse\'s east door): four Grave Dust brew a tonic at level 1, no garden needed. Better reagents make better elixirs as your Alchemy rises; every brew is an Elixir or a Tonic you drink with <kbd>Z</kbd> or <kbd>X</kbd>.',
+    body: 'Grave Dust, ectoplasm, bile, ash and boss ichor are <b>Alchemy reagents</b>. Take them to the <b>Alchemist\'s Wing</b> (the Chapterhouse\'s east door): four Grave Dust brew a tonic at level 1, no garden needed. Better reagents make better elixirs as your Alchemy rises; every brew is an Elixir or a Tonic you drink [[with <kbd>Z</kbd> or <kbd>X</kbd>||by tapping its chip on the left]].',
   },
   tool: {
     title: 'Gathering tools',
-    body: 'Carry a tool and it speeds that skill up: <b>+5% success per metal tier</b> (the best one you carry counts). Forge hatchets, pickaxes, rods and spades at the Bone Kiln (Tools tab) or the Workbench. Put them on the <b>tool belt</b> under the paper doll in the Reliquary (<kbd>I</kbd>) and they stop taking bag space.',
+    body: 'Carry a tool and it speeds that skill up: <b>+5% success per metal tier</b> (the best one you carry counts). Forge hatchets, pickaxes, rods and spades at the Bone Kiln (Tools tab) or the Workbench. Put them on the <b>tool belt</b> under the paper doll in the Reliquary{p:I} and they stop taking bag space.',
   },
   toolBelt: {
     title: 'The tool belt',
-    body: 'Four belt slots hold one tool each: hatchet, pickaxe, rod and spade. A belted tool counts for gathering exactly like one in your bag (the best of both wins) and takes <b>no bag space</b>. Select a tool and press <b>Put on belt</b>, or double-click it; double-click it on the belt to take it off, which needs a free bag slot. Skills (<kbd>P</kbd>) shows which tool each skill is using.',
+    body: 'Four belt slots hold one tool each: hatchet, pickaxe, rod and spade. A belted tool counts for gathering exactly like one in your bag (the best of both wins) and takes <b>no bag space</b>. Select a tool and press <b>Put on belt</b>[[, or double-click it; double-click it on the belt to take it off||; select it on the belt and press <b>Take off belt</b> to take it off]], which needs a free bag slot. Skills{p:P} shows which tool each skill is using.',
   },
   legion: {
     title: 'Spare gear for your legion',
-    body: 'That weapon or armor can arm your thralls instead of being salvaged. Open the <b>Legion</b> (<kbd>Y</kbd>, or the button in the Reliquary): one <b>Weapon</b> and one <b>Armour</b> slot, kept outside your bag. Its stats become thrall damage, health and attack speed, and each spare piece shows <b>▲</b> or <b>▼</b> against what the legion wears. Spend gold there to <b>Reinforce</b> the bindings. Thralls you raise from then on carry it.',
+    body: 'That weapon or armor can arm your thralls instead of being salvaged. Open the <b>Legion</b> [[(<kbd>Y</kbd>, or the button in the Reliquary)||(the button in the Reliquary)]]: one <b>Weapon</b> and one <b>Armour</b> slot, kept outside your bag. Its stats become thrall damage, health and attack speed, and each spare piece shows <b>▲</b> or <b>▼</b> against what the legion wears. Spend gold there to <b>Reinforce</b> the bindings. Thralls you raise from then on carry it.',
   },
   ghoul: {
     title: 'Barrow Ghoul',
@@ -462,23 +483,23 @@ export const TIPS: Record<TipId, Tip> = {
   },
   acre: {
     title: "The Sexton's Acre",
-    body: 'No waves ever come here. <kbd>Click</kbd> a tree, an ore seam, a fishing spot on the pond or a burial plot, and your necromancer keeps working it until it is spent. Coffin-Oaks just north of the entrance, the nearby Copper Seam and Pauper’s Grave, and Still Pools on the pond are usable at <b>level 1</b>. The stronger nodes lie further from the door. Press <kbd>P</kbd> to see your skills.',
+    body: 'No waves ever come here. [[<kbd>Click</kbd>||Tap]] a tree, an ore seam, a fishing spot on the pond or a burial plot, and your necromancer keeps working it until it is spent. Coffin-Oaks just north of the entrance, the nearby Copper Seam and Pauper’s Grave, and Still Pools on the pond are usable at <b>level 1</b>. The stronger nodes lie further from the door. [[Press <kbd>P</kbd> to see your skills.||Skills in the Menu shows your levels.]]',
   },
   laborers_working: {
     title: 'Your laborers at work',
-    body: 'The dead you sent to work (<kbd>H</kbd>) stand at their posts in the Acre: chopping, mining, digging or fishing. A gold check over one means it has finished work for you to collect. <kbd>Hover</kbd> a laborer to see its post and time, or <kbd>click</kbd> it to open the Laborers.',
+    body: 'The dead you sent to work[[ (<kbd>H</kbd>)||]] stand at their posts in the Acre: chopping, mining, digging or fishing. A gold check over one means it has finished work for you to collect. [[<kbd>Hover</kbd> a laborer to see its post and time, or <kbd>click</kbd> it||Tap a laborer]] to open the Laborers.',
   },
   gather: {
     title: 'Working a node',
-    body: 'Each swing, cast or dig is one work cycle; the ring under you fills as it goes. Every success gives skill XP and a find. For hands-off work in the Acre, open <kbd>P</kbd>, choose a node and <b>Start AFK</b>. Keep the game open: your hero changes nodes and waits for respawns until your bag fills. Skills can stay open; moving, casting or other panels pause work. <b>Pause AFK</b> stops it whenever you like.',
+    body: 'Each swing, cast or dig is one work cycle; the ring under you fills as it goes. Every success gives skill XP and a find. For hands-off work in the Acre, open [[<kbd>P</kbd>||Skills in the Menu]], choose a node and <b>Start AFK</b>. Keep the game open: your hero changes nodes and waits for respawns until your bag fills. Skills can stay open; moving, casting or other panels pause work. <b>Pause AFK</b> stops it whenever you like.',
   },
   bag_full: {
     title: 'Your bag is full',
-    body: 'Nothing more fits: gathering stops and loot stays on the ground until you free a slot. Sell junk in the Reliquary (<kbd>I</kbd>), move materials to the Vault (<kbd>V</kbd>), or grind spare gear at the Bone Grinder in the Acre.',
+    body: 'Nothing more fits: gathering stops and loot stays on the ground until you free a slot. Sell junk in the Reliquary{p:I}, move materials to the Vault[[ (<kbd>V</kbd>)||]], or grind spare gear at the Bone Grinder in the Acre.',
   },
   skill_up: {
     title: 'A skill rises',
-    body: 'Each level improves your odds on every node of that skill and opens a stronger one. The Skills panel (<kbd>P</kbd>) shows what the next level unlocks and your total level.',
+    body: 'Each level improves your odds on every node of that skill and opens a stronger one. The Skills panel{p:P} shows what the next level unlocks and your total level.',
   },
   rich_node: {
     title: 'A rich node',
@@ -486,11 +507,11 @@ export const TIPS: Record<TipId, Tip> = {
   },
   bag_filling: {
     title: 'Your Reliquary is filling',
-    body: 'Make room before it fills: the <b>Vault</b> (<kbd>V</kbd>, in the Chapterhouse or the Acre) keeps materials and gear for every character on this account, and the <b>Bone Grinder</b> in the Acre turns spare gear into ingots, planks and reagents. In the Reliquary (<kbd>I</kbd>), <b>Sell all junk</b> clears common and uncommon gear, and the padlock keeps an item out of every bulk button.',
+    body: 'Make room before it fills: the <b>Vault</b> ([[<kbd>V</kbd>, ||]]in the Chapterhouse or the Acre) keeps materials and gear for every character on this account, and the <b>Bone Grinder</b> in the Acre turns spare gear into ingots, planks and reagents. In the Reliquary{p:I}, <b>Sell all junk</b> clears common and uncommon gear, and the padlock keeps an item out of every bulk button.',
   },
   vault: {
     title: 'The Ossuary Vault',
-    body: 'One stash of 120 slots, shared by all your characters. <kbd>Click</kbd> an item to move its whole stack across; <b>Deposit materials</b>, <b>Deposit all</b> and <b>Sort</b> do it in bulk, and locked items always stay in your bag. It opens with <kbd>V</kbd> in the Chapterhouse or the Acre, and a move that will not fit changes nothing.',
+    body: 'One stash of 120 slots, shared by all your characters. [[<kbd>Click</kbd>||Tap]] an item to move its whole stack across; <b>Deposit materials</b>, <b>Deposit all</b> and <b>Sort</b> do it in bulk, and locked items always stay in your bag. [[It opens with <kbd>V</kbd> in||Tap the Vault in]] the Chapterhouse or the Acre, and a move that will not fit changes nothing.',
   },
   salvage: {
     title: 'Salvaging',
@@ -498,39 +519,39 @@ export const TIPS: Record<TipId, Tip> = {
   },
   people: {
     title: 'People of the Covenant',
-    body: 'Some of the Covenant still stand in these halls: the <b>Prior</b> in the Chapterhouse, the <b>Sexton</b> in the Acre, the <b>Apothecary</b> at her counter in the Alchemist’s Wing (the Chapterhouse’s east door). Click one, or stand close and press <kbd>E</kbd>. A gold <b>!</b> means they have something new to say. They only advise. The <b>Next</b> line under the minimap shows one suggestion; Settings can hide it.',
+    body: 'Some of the Covenant still stand in these halls: the <b>Prior</b> in the Chapterhouse, the <b>Sexton</b> in the Acre, the <b>Apothecary</b> at her counter in the Alchemist’s Wing (the Chapterhouse’s east door). [[Click one, or stand close and press <kbd>E</kbd>.||Tap one to talk.]] A gold <b>!</b> means they have something new to say. They only advise. The <b>Next</b> line under the minimap shows one suggestion; Settings can hide it.',
   },
   station: {
     title: 'A working station',
-    body: 'Stations turn what you gather into something useful. The Sawpit’s warm gold light marks where to click for wood recipes. Recipes need the matching skill level and their ingredients in your bag; crafting grants skill XP too. The server checks every recipe, and its reason is shown if one fails.',
+    body: 'Stations turn what you gather into something useful. The Sawpit’s warm gold light marks where to [[click||tap]] for wood recipes. Recipes need the matching skill level and their ingredients in your bag; crafting grants skill XP too. The server checks every recipe, and its reason is shown if one fails.',
   },
   rite_fan: {
     title: 'Bone Fan',
-    body: 'Your left click now throws three slivers, each at a different enemy near the one you click. It clears packs fast but is weaker on one target (the Prelate only ever takes one sliver). Swap back to Bone Needle on the Grimoire\'s <b>LMB</b> socket for bosses.',
+    body: 'Your [[left click||basic attack]] now throws three slivers, each at a different enemy near the one you [[click||tap]]. It clears packs fast but is weaker on one target (the Prelate only ever takes one sliver). Swap back to Bone Needle on the Grimoire\'s <b>[[LMB||basic attack]]</b> socket for bosses.',
   },
   rite_lance: {
     title: 'Rot Lance',
-    body: 'Your left click now pierces the first two enemies in line and leaves Withered ticking on each. Line the dead up; the rot keeps working while you move on.',
+    body: 'Your [[left click||basic attack]] now pierces the first two enemies in line and leaves Withered ticking on each. Line the dead up; the rot keeps working while you move on.',
   },
   rite_offering: {
     title: 'Grave Offering',
-    body: 'Press {key:grave_offering} on a corpse to burn it into Grave Essence and a little health. Spend the bodies you won\'t raise: when your legion is full, or when essence runs dry.',
+    body: '[[Press {key:grave_offering} on a corpse||Tap {key:grave_offering} near a corpse]] to burn it into Grave Essence and a little health. Spend the bodies you won\'t raise: when your legion is full, or when essence runs dry.',
   },
   rite_cleave: {
     title: 'Ivory Cleave',
-    body: 'Press {key:ivory_cleave} to sweep a bone crescent through everything in a wide arc in front of you, Fracturing it. Cleave the pack that reaches you, then Spear the line.',
+    body: '[[Press||Tap]] {key:ivory_cleave} to sweep a bone crescent through everything in a wide arc in front of you, Fracturing it. Cleave the pack that reaches you, then Spear the line.',
   },
   rite_veil: {
     title: 'Veil Step',
-    body: 'Press {key:veil_step} to slip a few metres toward the cursor, no corpse needed. It stops at walls and sealed doors. Use it to leave a cone or a bell ring; auto combat never does.',
+    body: '[[Press {key:veil_step} to slip a few metres toward the cursor||Tap {key:veil_step} to slip a few metres toward where you last tapped]], no corpse needed. It stops at walls and sealed doors. Use it to leave a cone or a bell ring; auto combat never does.',
   },
   rite_rally: {
     title: 'Rally the Dead',
-    body: 'With thralls at your side, press {key:rally_dead} with the cursor on the enemy you want dead: your legion heals, hits harder and faster, and turns on it. The jade sigils show who is rallied.',
+    body: 'With thralls at your side, [[press {key:rally_dead} with the cursor on the enemy you want dead||tap {key:rally_dead} while your target is the enemy you want dead]]: your legion heals, hits harder and faster, and turns on it. The jade sigils show who is rallied.',
   },
   rite_seed: {
     title: 'Carrion Seed',
-    body: 'Press {key:carrion_seed} on a corpse in the pack\'s path. The bud arms in a moment, then bursts in rot when an enemy comes close. One seed at a time; if another rite uses that corpse, the seed goes with it.',
+    body: '[[Press {key:carrion_seed} on||Tap {key:carrion_seed} near]] a corpse in the pack\'s path. The bud arms in a moment, then bursts in rot when an enemy comes close. One seed at a time; if another rite uses that corpse, the seed goes with it.',
   },
   rite_siphon: {
     title: 'Soul Siphon',
@@ -689,10 +710,8 @@ export class Onboarding {
     const group = groupOf(id);
     if (group) this.groupShownAt[group] = this.clock();
     const tip = TIPS[id];
-    const body = tip.body.replace(/\{key:(\w+)\}/g, (_m, ability: string) => {
-      const k = this.keyFor?.(ability);
-      return k ? `<kbd>${k}</kbd>` : 'a key from your Grimoire (<kbd>L</kbd>)';
-    });
+    const touch = touchNow();
+    const body = renderText(tip.body, touch, this.keyFor ?? undefined);
     const el = document.createElement('div');
     el.className = 'cw-plate cw-tip';
     el.dataset.kind = entry.kind;
@@ -703,10 +722,10 @@ export class Onboarding {
     const ms = showMs(entry.kind, words);
     el.style.setProperty('--tip-ms', `${ms}ms`);
     el.innerHTML = `
-      <div class="kicker" data-move role="button" tabindex="0" aria-label="Move Covenant counsel card" title="Drag this card, or use arrow keys"><span>⋮⋮ Covenant counsel</span><span class="move-hint">Move this card</span></div>
-      <div class="title">${tip.title}</div>
+      <div class="kicker" data-move role="button" tabindex="0" aria-label="Move Covenant counsel card" title="${touch ? 'Drag this card' : 'Drag this card, or use arrow keys'}"><span>⋮⋮ Covenant counsel</span><span class="move-hint">Move this card</span></div>
+      <div class="title">${renderText(tip.title, touch)}</div>
       <div class="body">${body}</div>
-      <div class="foot"><span>Click to dismiss</span><button type="button" data-skip>Don't show tips</button></div>
+      <div class="foot"><span>${touch ? 'Tap to dismiss' : 'Click to dismiss'}</span><button type="button" data-skip>Don't show tips</button></div>
       <div class="timer"></div>`;
     el.addEventListener('click', e => { if (!(e.target as HTMLElement).closest('[data-move]')) this.dismiss(); });
     el.querySelector('[data-skip]')!.addEventListener('click', (e) => {
