@@ -663,6 +663,10 @@ button { font-family: inherit; }
 .hud-menu button { width: 26px; height: 34px; padding: 0; display: grid; place-items: center; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-bone-300); cursor: pointer; }
 .hud-menu button:hover { border-color: var(--cw-border-active); color: var(--cw-bone-100); }
 .hud-menu svg { width: 20px; height: 20px; }
+.hud-menu .hud-mi { width: 46px; height: 34px; gap: 1px; align-content: center; justify-items: center; }
+.hud-menu .hud-mi svg { width: 17px; height: 17px; }
+.hud-menu .hud-mi .lbl { font-size: 10px; line-height: 1; letter-spacing: 0.01em; font-family: var(--cw-font-body); }
+.hud-menu .hud-menubtn, .hud-menusheet { display: none; }
 .hud-menu .hud-auto { width: 100%; height: 26px; font-size: 11px; letter-spacing: .04em; }
 .hud-menu .hud-auto[hidden] { display: none; }
 .dm-offline-install { position: fixed; z-index: 1000; left: 14px; bottom: 14px; width: min(390px, calc(100vw - 28px)); max-height: min(85vh, 760px); overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 7px; font-size: 13px; }
