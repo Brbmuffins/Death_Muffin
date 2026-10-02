@@ -62,6 +62,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 2 Oct 2026 | Behind the scenes: the automated test suite is reliable again (35 of 36 checks pass first time, the last passes on retry) and one command now runs the whole suite, retries flaky checks once and writes a pass/fail report | `node tools/qa/run-all.mjs`; see tools/qa/README.md. No gameplay change. |
 | 2 Oct 2026 | Fix: six early gear items (including the starting Oak Staff, the copper/iron/gold helms, the iron chestplate and the oak bow) gave no stats on the live server because of mislabeled stat keys; they now give their designed stats | Migration 023. |
 | 2 Oct 2026 | Thrall gear: the Legion panel (Y) gives your thralls a spare weapon and armour piece whose stats and necro affixes become thrall damage, health and attack speed; 12-tier Reinforce gold sink (resets on Ascension); archers and bone mages carry their bow and staff; ▲/▼ verdicts for legion candidates. Also fixes a live tool-belt bug (swapping tools would have failed on the real database) | Real-database probes for the kit and the belt (tools/qa/thrall-kit-db-probe.cjs). |
 | 2 Oct 2026 | Readability round 3: your thralls carry a jade rim light (allies' fainter) so they never blend with pale enemies; the Sexton's Acre shows its ground on arrival; Fen corpse rings read on water; the Nave is calmer (fewer glows and specks) and every zone's floor glows batch into one draw call | Before/after in docs/screenshots/readability-3/. |
