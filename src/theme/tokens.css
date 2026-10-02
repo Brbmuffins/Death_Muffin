@@ -65,6 +65,7 @@
   --cw-rarity-uncommon: #8fb98a;
   --cw-rarity-rare: #8fa6e8;
   --cw-rarity-epic: #c6a4ff;
+  --cw-rarity-legendary: #ff9a2e;
 }
 
 @media (prefers-reduced-motion: reduce) {

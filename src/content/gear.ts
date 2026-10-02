@@ -1,5 +1,5 @@
 import type { InventorySlot, ItemType } from '../net/types';
-import { ARMOR_BY_ID } from './armorSets';
+import { ARMOR_BY_ID, ARMOR_PIECES } from './armorSets';
 import { isKitSlot } from '../gameplay/legionRules';
 
 /** The nine equipment slots the server knows (reservedSlots in /api/inventory/equip). */
@@ -89,10 +89,27 @@ function dimColor(hex: number, k: number): number {
   return (c(16) << 16) | (c(8) << 8) | c(0);
 }
 
+/** Pieces of one legendary set worn together that wake its glow on the hero. */
+export const LEGENDARY_AURA_PIECES = 4;
+
+/**
+ * The glow colour of a worn legendary set (4 or more pieces of the same one), or null. It is only a brighter emissive tell on the body
+ * regions the hero already tints (no light, no particles, no per-frame work), and dimmed so it stays an accent rather than a flood.
+ */
+export function legendaryAura(items: Partial<Record<string, { item_id: string } | undefined>>): number | null {
+  const count = new Map<string, number>();
+  for (const it of Object.values(items)) {
+    const p = it && ARMOR_BY_ID[it.item_id];
+    if (p && p.collection === 3) count.set(p.setId, (count.get(p.setId) ?? 0) + 1);
+  }
+  for (const [setId, n] of count) if (n >= LEGENDARY_AURA_PIECES) return dimColor(ARMOR_PIECES.find((p) => p.setId === setId)!.accent, 0.5);
+  return null;
+}
+
 /** Guess a material tier from the item id ("helm_iron", "sword_copper", "staff_oak" …). */
 export function gearTier(itemId: string, rarity?: string): GearTier {
   const armor = ARMOR_BY_ID[itemId];
-  if (armor) return { color: armor.color, metal: armor.disciplineId === 'knight' || armor.disciplineId === 'warden' ? 0.75 : 0.24, rough: armor.collection === 2 ? 0.38 : 0.55, glow: armor.collection === 2 || armor.rarity === 'epic' ? dimColor(armor.accent, armor.collection === 2 ? 0.22 : 0.14) : undefined };
+  if (armor) return { color: armor.color, metal: armor.disciplineId === 'knight' || armor.disciplineId === 'warden' ? 0.75 : 0.24, rough: armor.collection === 3 ? 0.3 : armor.collection === 2 ? 0.38 : 0.55, glow: armor.collection === 3 ? dimColor(armor.accent, 0.3) : armor.collection === 2 || armor.rarity === 'epic' ? dimColor(armor.accent, armor.collection === 2 ? 0.22 : 0.14) : undefined };
   for (const key of ['moon', 'hell', 'gold', 'steel', 'iron', 'copper', 'bone']) if (itemId.includes(key)) return TIERS[key];
   if (/oak|wood|apprentice|spike/.test(itemId)) return TIERS.wood;
   // Unknown ids: let rarity pick a look so nothing renders as a grey placeholder.

@@ -103,7 +103,7 @@ const DANGER = [
 const ASKED = [
   'rite_skull', 'rite_step', 'rite_frost', 'rite_mantle', 'rite_siphon', 'rite_prison', 'rite_hands', 'rite_storm',
   'rite_fan', 'rite_lance', 'rite_offering', 'rite_cleave', 'rite_veil', 'rite_rally', 'rite_seed',
-  'gearEquip', 'statSheet', 'setBonus', 'necroWeapon', 'toolBelt', 'vault', 'salvage', 'bag_full', 'essence',
+  'gearEquip', 'statSheet', 'setBonus', 'legendary', 'necroWeapon', 'toolBelt', 'vault', 'salvage', 'bag_full', 'essence',
   'minimap', 'auto_combat', 'change_class', 'station', 'gather', 'wing',
 ];
 
@@ -115,7 +115,7 @@ const GROUPS: Record<string, string[]> = {
   lesson: LESSONS,
   enemy: ['deacon', 'elite', 'surge', 'sanctify', 'procession', 'censer', 'wraith', 'swarm', 'golem', 'gargoyle', 'moth', 'bats', 'seraph', 'ghoul', 'acolyte', 'templar',
     'plague_doctor', 'flagellant', 'cinder_husk', 'pyre_priest', 'cinderhound', 'slag_brute', 'bog_hag', 'mire_leech', 'fen_wisp', 'drowned_sexton'],
-  gear: ['relic', 'armor', 'affix', 'tool', 'legion'],
+  gear: ['relic', 'armor', 'legendary', 'affix', 'tool', 'legion'],
   bag: ['bag_filling'],
   brew: ['reagent', 'brew', 'meal'],
   acre: ['acre', 'rich_node', 'skill_up', 'laborers_working'],

@@ -1,4 +1,5 @@
 import { ARMOR_PIECES, ARMOR_SETS, ASCENDED_ARMOR_SETS } from './armorSets';
+import { LEGENDARY_SETS } from './legendarySets';
 
 /**
  * Armor set bonuses: 2, 4 and 5 pieces of one set. Every effect is one the game already reads, so a bonus
@@ -54,6 +55,18 @@ export function describeEffect(e: SetEffect): string[] {
   if (a.wardPerThrall) out.push(`${pct(a.wardPerThrall)} less damage taken per thrall`);
   if (a.corpseHeal) out.push(`Consumed corpses heal +${pct(a.corpseHeal)} max health`);
   if (a.litanyBarrier) out.push(`Black Litany barrier +${pct(a.litanyBarrier)} max health per corpse`);
+  // Legendary mechanics: said plainly, so the tooltip alone explains what the set does.
+  if (a.thrallDeathBurst) out.push(`Thralls burst when they die (${pct(a.thrallDeathBurst)} of their health as damage to enemies around them)`);
+  if (a.championEvery) out.push(`Every ${a.championEvery}th thrall you raise is a Champion (bigger, with 2x damage and health)`);
+  if (a.spearRally) out.push(`Marrow Spear rallies your legion: every thrall charges the target and hits +${pct(a.spearRally)} harder for 4 s`);
+  if (a.wardReflect) out.push(`Bone Ward reflects ${pct(a.wardReflect)} of the damage it blocks back at the attacker`);
+  if (a.colossusGuard) out.push(`${pct(a.colossusGuard)} less damage taken while 3 or more thralls stand`);
+  if (a.litanyShatter) out.push(`When the Black Litany barrier breaks it shatters into bone shards for ${+a.litanyShatter.toFixed(1)}x its size`);
+  if (a.corpseWisp) out.push(`Consuming a corpse summons a healing wisp for ${a.corpseWisp} s`);
+  if (m.soulHarvestRateMult && m.soulHarvestRateMult !== 1) out.push(`Soul Harvest fills ${+m.soulHarvestRateMult.toFixed(2)}x faster`);
+  if (a.wraithNova) out.push(`When Soul Harvest empowers a rite, every wraith and wisp releases a nova (${pct(a.wraithNova)} of your spell power)`);
+  if (a.miasmaSpreadsWithered) out.push('Enemies that die in your Miasma spread their Withered stacks to enemies nearby');
+  if (a.witheredBurstAt) out.push(`An enemy that reaches ${a.witheredBurstAt} Withered stacks bursts into a new Miasma cloud (stack cap raised to ${a.witheredBurstAt})`);
   return out;
 }
 
@@ -101,6 +114,27 @@ export const SET_BONUSES: Record<string, SetBonusDef[]> = {
     { pieces: 2, effect: { mult: { miasmaRadiusMult: 1.16 } } },
     { pieces: 4, effect: { mult: { miasmaRadiusMult: 1.1 }, add: { witheredMaxStacks: 3 } } },
     { pieces: 5, name: 'Plague Song', effect: { mult: { miasmaRadiusMult: 1.16, maxHpMult: 1.05 }, add: { witheredMaxStacks: 1 } } },
+  ],
+  // --- Legendary sets (docs/LEGENDARY-SETS.md): build-defining; 4 pieces change a mechanic, 5 define the build -------------
+  legion_unburied: [
+    { pieces: 2, effect: { mult: { thrallDamageMult: 1.15 } } },
+    { pieces: 4, name: 'Bursting Dead', effect: { add: { thrallDeathBurst: 0.6 } } },
+    { pieces: 5, name: 'Legion Champion', effect: { add: { thrallCap: 2, championEvery: 5, spearRally: 0.75 } } },
+  ],
+  colossus_mantle: [
+    { pieces: 2, effect: { mult: { thrallHpMult: 1.25 } } },
+    { pieces: 4, name: 'Reflecting Ward', effect: { add: { wardReflect: 0.4 } } },
+    { pieces: 5, name: 'Colossus', effect: { add: { colossusGuard: 0.25, litanyShatter: 3 } } },
+  ],
+  requiem_wraiths: [
+    { pieces: 2, effect: { mult: { essenceRegenMult: 1.3 } } },
+    { pieces: 4, name: 'Wisps', effect: { add: { corpseWisp: 8 } } },
+    { pieces: 5, name: 'Requiem', effect: { mult: { soulHarvestRateMult: 2 }, add: { wraithNova: 0.8 } } },
+  ],
+  plague_choir: [
+    { pieces: 2, effect: { mult: { miasmaRadiusMult: 1.15 } } },
+    { pieces: 4, name: 'Contagion', effect: { add: { miasmaSpreadsWithered: 1 } } },
+    { pieces: 5, name: 'Chain Plague', effect: { add: { witheredBurstAt: 10 } } },
   ],
   // --- Other disciplines: flat stats plus health / essence regeneration (all they have to scale) ------
   warden: [
@@ -159,6 +193,7 @@ export const SET_BONUSES: Record<string, SetBonusDef[]> = {
 export const SET_NAMES: Record<string, string> = Object.fromEntries([
   ...Object.entries(ARMOR_SETS).map(([d, s]) => [d, s.name]),
   ...Object.entries(ASCENDED_ARMOR_SETS).map(([d, s]) => [`${d}_ascended`, s.name]),
+  ...Object.entries(LEGENDARY_SETS).map(([id, s]) => [id, s.name]),
 ]);
 
 export const bonusesOf = (setId: string): SetBonusDef[] => SET_BONUSES[setId] ?? [];

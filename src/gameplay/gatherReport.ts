@@ -48,7 +48,7 @@ export interface ItemInfo {
   sell: number;
 }
 
-const RARITY_RANK: Record<Rarity, number> = { common: 0, uncommon: 1, rare: 2, epic: 3 };
+const RARITY_RANK: Record<Rarity, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
 
 /** Lifetime finds worth a line of their own. */
 export const MILESTONES = [100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000];

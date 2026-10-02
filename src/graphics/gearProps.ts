@@ -379,7 +379,7 @@ export function buildHelm(itemId: string, rarity?: string): THREE.Group {
   g.add(seat);
   seat.add(dome, brim);
   if (set) {
-    const accent = new THREE.MeshStandardMaterial({ color: set.accent, metalness: 0.65, roughness: 0.35, emissive: set.rarity === 'epic' ? set.accent : 0x000000, emissiveIntensity: 0.32 });
+    const accent = new THREE.MeshStandardMaterial({ color: set.accent, metalness: 0.65, roughness: 0.35, emissive: set.rarity === 'epic' || set.collection === 3 ? set.accent : 0x000000, emissiveIntensity: 0.32 });
     const jewel = new THREE.Mesh(new THREE.OctahedronGeometry(0.04), accent);
     jewel.position.set(0, 0.08, 0.145);
     seat.add(jewel);
@@ -407,7 +407,7 @@ export function buildHelm(itemId: string, rarity?: string): THREE.Group {
       crown.position.y = 0.19;
       seat.add(crown);
     }
-    if (set.collection === 2) {
+    if (set.collection >= 2) {
       const upperRim = new THREE.Mesh(new THREE.TorusGeometry(0.165, 0.014, 6, 24), accent);
       upperRim.rotation.x = Math.PI / 2;
       upperRim.position.y = 0.16;

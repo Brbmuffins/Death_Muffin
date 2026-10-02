@@ -1103,6 +1103,8 @@ button { font-family: inherit; }
 .cw-codex-entry.disc .passive { color: var(--cw-bone-300); }
 .cw-codex-entry.disc .passive b { color: var(--disc-color); }
 .cw-codex-entry.disc.mine { border-color: color-mix(in srgb, var(--disc-color) 55%, transparent); box-shadow: inset 0 0 18px -8px var(--disc-color); }
+.cw-codex-entry.legendary { border-color: color-mix(in srgb, #ff9a2e 55%, transparent); box-shadow: inset 0 0 18px -8px #ff9a2e; }
+.cw-codex-section { margin: 18px 0 4px; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; }
 .cw-codex-entry.sealed { align-items: center; opacity: 0.62; border-style: dashed; }
 .cw-codex-entry.sealed .seal { flex: none; width: 34px; height: 34px; display: grid; place-items: center; color: var(--cw-stone-500); }
 .cw-codex-entry.sealed .seal svg { width: 26px; height: 26px; }

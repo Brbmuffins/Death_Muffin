@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { ARMOR_PARTS, ARMOR_PIECES, ARMOR_SETS, ASCENDED_ARMOR_SETS } from '../armorSets';
 import { AREAS } from '../areas';
+import { LEGENDARY_SETS } from '../legendarySets';
 import { ITEMS } from '../items';
 import { gearTier } from '../gear';
 import { handleMock } from '../../net/mockBackend';
@@ -13,16 +14,18 @@ describe('discipline armor integration', () => {
     const sql = {
       1: readFileSync(resolve('server/death-muffin/backend/migrations/011-class-armor.sql'), 'utf8'),
       2: readFileSync(resolve('server/death-muffin/backend/migrations/012-ascended-armor.sql'), 'utf8'),
+      3: readFileSync(resolve('server/death-muffin/backend/migrations/025-legendary-sets.sql'), 'utf8'),
     };
-    expect(ARMOR_PIECES).toHaveLength((Object.keys(ARMOR_SETS).length + Object.keys(ASCENDED_ARMOR_SETS).length) * ARMOR_PARTS.length);
+    expect(ARMOR_PIECES).toHaveLength((Object.keys(ARMOR_SETS).length + Object.keys(ASCENDED_ARMOR_SETS).length + Object.keys(LEGENDARY_SETS).length) * ARMOR_PARTS.length);
     for (const piece of ARMOR_PIECES) {
-      expect(AREAS[piece.area].loot.some((drop) => drop.item === piece.id), piece.id).toBe(true);
+      // Legendary pieces are not in any area table: bosses and scaled-area elites roll them (legendarySets.ts).
+      expect(AREAS[piece.area].loot.some((drop) => drop.item === piece.id), piece.id).toBe(piece.collection !== 3);
       expect(ITEMS[piece.id]?.type, piece.id).toBe(`armor_${piece.part}`);
       expect(ITEMS[piece.id]?.offlineStats).toEqual(piece.stats);
       expect(gearTier(piece.id).color).toBe(piece.color);
       expect(existsSync(resolve(`public/art/items/${piece.id}.svg`)), piece.id).toBe(true);
       expect(sql[piece.collection]).toContain(`'${piece.id}'`);
-      expect(sql[piece.collection === 1 ? 2 : 1]).not.toContain(`'${piece.id}'`);
+      for (const other of [1, 2, 3] as const) if (other !== piece.collection) expect(sql[other]).not.toContain(`'${piece.id}'`);
     }
   });
 

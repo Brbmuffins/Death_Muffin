@@ -10,6 +10,7 @@ import { pickWeighted, randInt } from './rng';
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
 import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS, bossIchor } from '../content/reagents';
 import type { BossId } from '../content/bosses';
+import { LEGENDARY_BOSS_AREAS, LEGENDARY_DROP, rollLegendary } from '../content/legendarySets';
 
 /** One source of truth: gatheringRules.BAG_SLOTS (also bundled for the server). 8 columns × 6 rows = 48. */
 export const BAG_SIZE = BAG_SLOTS;
@@ -35,7 +36,7 @@ export interface KillReward {
  * kill rolls their own — no contention, PvE-only assumption). Item ids are
  * restricted to ids the live server knows (content/items.ts).
  */
-export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boolean, waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium', itemChanceMult = 1, reagentRand: () => number = Math.random): KillReward {
+export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boolean, waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium', itemChanceMult = 1, reagentRand: () => number = Math.random, disciplineId?: string): KillReward {
   const d = ENEMIES[def];
   const a = AREAS[area];
   const mods = waveModifiers(waveTier);
@@ -46,6 +47,12 @@ export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boole
   const items: LootDrop[] = [];
   const chance = Math.min(1, a.itemChance * mods.itemChanceMult * itemChanceMult * (elite ? 6 : 1));
   if (a.loot.length && rand() < chance) items.push(rollItem(area, rand));
+  // Legendary armor (content/legendarySets.ts): a very rare elite drop in the level-scaled areas, weighted to the player's discipline.
+  // Rolled only when a discipline is passed, so seeded runs (balance harness, tests) keep their sequence.
+  if (disciplineId && elite && a.scaling) {
+    const id = rollLegendary(disciplineId, LEGENDARY_DROP.eliteChance, rand);
+    if (id) items.push({ item_id: id, quantity: 1 });
+  }
   // Reagents use their own stream: a seeded `rand` (balance harness, tests) keeps the same sequence it always had.
   items.push(...rollReagents(def, area, elite, itemChanceMult, reagentRand));
   const xp = Math.round(d.xp * (1 + 0.25 * (level - 1)) * mods.xpMult * diff * (elite ? ELITE.xpMult : 1));
@@ -77,11 +84,16 @@ export function rollItem(area: AreaId, rand = Math.random): LootDrop {
  * loot and scales gold/XP by its shard cost (2/3/4 of the Prelate's 5) and returns fewer shards. Pass the boss id and
  * the spoils always include its ichor.
  */
-export function rollBoss(waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium', area: AreaId = 'sanctum', costShards = 5, boss?: BossId): KillReward {
+export function rollBoss(waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium', area: AreaId = 'sanctum', costShards = 5, boss?: BossId, disciplineId?: string): KillReward {
   const mods = waveModifiers(waveTier);
   const diff = DIFFICULTIES[difficulty].rewardMult;
   const k = costShards / 5;
   const items = [rollItem(area, rand), rollItem(area, rand), rollItem(area, rand)];
+  // Legendary armor: each area boss (past the Hollow Graves) has a chance, weighted to the player's discipline ("smart loot").
+  if (disciplineId && LEGENDARY_BOSS_AREAS.includes(area)) {
+    const id = rollLegendary(disciplineId, LEGENDARY_DROP.bossChance, rand);
+    if (id) items.push({ item_id: id, quantity: 1 });
+  }
   // Every boss leaves exactly one ichor: the top-tier Alchemy reagent (content/reagents.ts).
   if (boss) items.push({ item_id: bossIchor(boss), quantity: 1 });
   return { gold: Math.round(320 * k * mods.rewardMult * diff), shards: costShards >= 5 ? 3 : Math.max(1, costShards - 1), items, xp: Math.round(900 * k * diff) };
