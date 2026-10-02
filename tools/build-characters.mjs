@@ -43,6 +43,9 @@ const CLIP_NAMES = {
   hit_to_side: 'hurt3',
   box_01: 'attack2',
   front_kick_01: 'attack2',
+  // Guide NPCs (2026-10-02): a calm explaining gesture and an emphatic sermon gesture, both in place.
+  agree: 'talk',
+  angry_01: 'talk2',
 };
 
 /** Per-slug texture budget (px). Hero and boss get more; horde enemies less. */

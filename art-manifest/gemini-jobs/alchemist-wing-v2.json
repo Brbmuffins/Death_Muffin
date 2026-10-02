@@ -1,0 +1,11 @@
+[
+  {
+    "id": "concept_alch_canopic_jars",
+    "out": "art-src/concepts/props/alch_canopic_jars.png",
+    "refs": [
+      "necromancer-world-farming-gameplay-reference.png"
+    ],
+    "aspect": "1:1",
+    "prompt": "3D modeling reference image of a single isolated game prop, three-quarter view from slightly above, the whole object visible and centered, plain flat light grey background (#c8c8c8), even neutral studio lighting, no cast shadows, no ground plane, no text, no other objects. Dark fantasy style matching the attached screenshot (soot-dark stone, blackened iron, aged bone, tarnished copper, candle-wax ivory, with small muted spell-colour accents). Compact, chunky, readable silhouette from a top-down camera. Subject: three opaque glazed-ceramic and iron-banded specimen jars of different heights on a short dark-wood plinth, in the manner of canopic jars: each jar is NOT transparent glass but solid dark green, amber and bone-white glazed pottery with a sculpted lid shaped like a small skull, a hand-painted pictogram on the front (a hand, an eye, a coiled worm) and a wax-sealed rope around the neck."
+  }
+]

@@ -33,7 +33,7 @@ import { hipAnchor, inPlaceHeroClip, stripRootTravel } from './inPlaceAnimation'
 import { applyWingFlap, type WingOpts } from './wingFlap';
 import { applyGearTint, GEAR_REGIONS, makeGearTintState, type GearRegion } from './gearTint';
 
-export type CreatureAnim = 'idle' | 'walk' | 'run' | 'attack' | 'cast' | 'hurt' | 'death' | 'dig' | 'chop' | 'dive' | CombatAnim;
+export type CreatureAnim = 'idle' | 'walk' | 'run' | 'attack' | 'cast' | 'hurt' | 'death' | 'dig' | 'chop' | 'dive' | 'talk' | CombatAnim;
 /** Necromancer combat gestures (content/castClips.ts); only the four necro heroes carry them. */
 export type CombatAnim = 'slam' | 'sweep' | 'flick' | 'channel' | 'summon';
 
@@ -48,6 +48,7 @@ const FALLBACK: Record<CreatureAnim, CreatureAnim[]> = {
   dig: ['dig', 'cast', 'attack'],
   chop: ['chop', 'attack', 'dig'],
   dive: ['dive', 'attack', 'cast'],
+  talk: ['talk', 'idle'],
   slam: ['slam', 'attack', 'cast'],
   sweep: ['sweep', 'attack', 'cast'],
   flick: ['flick', 'cast', 'attack'],
