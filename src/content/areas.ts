@@ -127,7 +127,7 @@ export const AREAS: Record<AreaId, AreaDef> = {
       { id: 'lectern', kind: 'lectern', label: 'Covenant Lectern', x: -24.2, z: 17.8 },
       ...npcSpots('acre'),
     ],
-    ambient: { fog: 0x0c0f10, hemiSky: 0x4b5864, hemiGround: 0x232820, moon: 0xbbcbd8 },
+    ambient: { fog: 0x0c0f10, hemiSky: 0x6a7c92, hemiGround: 0x3a4a38, moon: 0xbbcbd8 },
   },
   graves: {
     id: 'graves',

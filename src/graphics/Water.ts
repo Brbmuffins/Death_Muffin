@@ -189,7 +189,7 @@ const FRAG_COLOR = /* glsl */ `
     float patchy = smoothstep(0.1, 0.7, texture2D(uNormals, wp * 0.021 + uTime * 0.004).x);
     float glint = pow(max(dot(R, normalize(vec3(0.12, 0.42, -0.9))), 0.0), 220.0) * patchy;
     outgoingLight = mix(outgoingLight, uDeep, depth * 0.6);
-    outgoingLight += uRim * (fres * 0.6 + rippleLight * 0.3) + uMoon * glint * 0.6;
+    outgoingLight += uRim * (fres * 0.6 + rippleLight * 0.3) + uMoon * glint * 0.6 * mix(0.3, 1.0, smoothstep(0.25, 1.0, vSheen));
     // A still mirror of the moonlit sky, broken up by the swell.
     outgoingLight += uMoon * vSheen * (0.025 + 0.05 * patchy + 0.2 * fres);
     diffuseColor.a = smoothstep(0.0, 0.45, vEdge) * mix(0.5, 0.86, depth);

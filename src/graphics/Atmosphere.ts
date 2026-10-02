@@ -51,8 +51,8 @@ const PROFILES: Record<AreaId, Kind[]> = {
     { count: 280, shape: 0, colors: [0xe8dcc0, 0xcbb994, 0xf2e8d2], size: [0.05, 0.12], alpha: [0.3, 0.65], vy: [-0.06, 0.1], drift: [0.1, 0.06], sway: 0.35, add: 0.5 },
   ],
   nave: [
-    { count: 150, shape: 3, colors: [0x8f95c8, 0xa8a4d8], size: [0.35, 0.6], alpha: [0.1, 0.2], vy: [-11, -8], drift: [0.4, 0.1], sway: 0, add: 0.8 },
-    { count: 90, shape: 0, colors: [0xbcc4f0, 0xd8dcff], size: [0.05, 0.08], alpha: [0.45, 0.8], vy: [-6, -4], drift: [0, 0], sway: 0, add: 0.9 },
+    { count: 100, shape: 3, colors: [0x8f95c8, 0xa8a4d8], size: [0.35, 0.6], alpha: [0.07, 0.14], vy: [-11, -8], drift: [0.4, 0.1], sway: 0, add: 0.8 },
+    { count: 60, shape: 0, colors: [0xbcc4f0, 0xd8dcff], size: [0.05, 0.08], alpha: [0.3, 0.55], vy: [-6, -4], drift: [0, 0], sway: 0, add: 0.9 },
     { count: 60, shape: 0, colors: [0x5a5890, 0x6c68a6], size: [0.1, 0.18], alpha: [0.15, 0.3], vy: [-0.04, 0.05], drift: [0.05, 0.05], sway: 0.3, add: 0 },
   ],
   cloister: [
