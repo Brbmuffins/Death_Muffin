@@ -9,7 +9,7 @@
 import { runBalance, type BalanceResult, type BalanceRun } from './harness';
 import { AREAS, type AreaId } from '../../content/areas';
 import { BANDS } from './bands';
-import type { SetEffect } from '../../content/setBonuses';
+import { SET_BONUSES, type SetEffect } from '../../content/setBonuses';
 import type { KitName } from './kits';
 
 const MINUTES = Number(process.env.BALANCE_MINUTES ?? 3);
@@ -19,12 +19,21 @@ const areas = list(process.env.BALANCE_AREAS, ['nave', 'sanctum']) as AreaId[];
 const bands = list(process.env.BALANCE_BANDS, ['intended', 'push', 'max']);
 const KIT = (process.env.BALANCE_KIT ?? 'none') as KitName;
 
-/** The full-set sum of every tier in docs/LEGENDARY-SETS.md (the numbers the set bonuses carry). */
+/** The full-set sum of every tier, read from SET_BONUSES (multipliers multiply, additions add) so the report never drifts from the game. */
+function fullSet(id: string): SetEffect {
+  const out: { mult: Record<string, number>; add: Record<string, number> } = { mult: {}, add: {} };
+  for (const tier of SET_BONUSES[id]) {
+    for (const [k, v] of Object.entries(tier.effect.mult ?? {})) out.mult[k] = (out.mult[k] ?? 1) * (v as number);
+    for (const [k, v] of Object.entries(tier.effect.add ?? {})) out.add[k] = (out.add[k] ?? 0) + (v as number);
+  }
+  return out as SetEffect;
+}
+
 export const FULL_SETS: Record<number, { name: string; effect: SetEffect; soul: boolean }> = {
-  2: { name: 'Gravecaller / Legion of the Unburied', soul: false, effect: { mult: { thrallDamageMult: 1.15 }, add: { thrallDeathBurst: 0.6, thrallCap: 2, championEvery: 5, spearRally: 0.75 } } },
-  1: { name: 'Ossuary / Colossus Mantle', soul: false, effect: { mult: { thrallHpMult: 1.25 }, add: { wardReflect: 0.4, colossusGuard: 0.25, litanyShatter: 3 } } },
-  3: { name: 'Mourner / Requiem of Wraiths', soul: true, effect: { mult: { essenceRegenMult: 1.3, soulHarvestRateMult: 2 }, add: { corpseWisp: 8, wraithNova: 0.8 } } },
-  4: { name: 'Rotweaver / Plague Choir', soul: false, effect: { mult: { miasmaRadiusMult: 1.15 }, add: { miasmaSpreadsWithered: 1, witheredBurstAt: 10 } } },
+  2: { name: 'Gravecaller / Legion of the Unburied', soul: false, effect: fullSet('legion_unburied') },
+  1: { name: 'Ossuary / Colossus Mantle', soul: false, effect: fullSet('colossus_mantle') },
+  3: { name: 'Mourner / Requiem of Wraiths', soul: true, effect: fullSet('requiem_wraiths') },
+  4: { name: 'Rotweaver / Plague Choir', soul: false, effect: fullSet('plague_choir') },
 };
 
 function avg(run: BalanceRun): BalanceResult {
