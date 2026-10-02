@@ -11,7 +11,13 @@ import { resourceRulesFor } from '../resources';
 import type { Corpse, Enemy, SimEvent } from '../sim/types';
 import { WorldSim } from '../sim/WorldSim';
 import { generateLayout } from '../../content/layout';
-import type { Character } from '../../net/types';
+import type { Character, InventorySlot } from '../../net/types';
+import { EQUIP_SLOTS, equippedBySlot } from '../../content/gear';
+import { foldEffect, withSetBonuses } from '../setBonuses';
+import type { SetEffect } from '../../content/setBonuses';
+import { abilityCooldownMs, abilityRange, pierceTargets, reapTargets, resolveWeaponLoadout, NO_LOADOUT } from '../weaponLine';
+import { NECRO_WEAPON_TUNING } from '../../content/necroWeapons';
+import { resolveKit, type KitName, type KitRequest } from './kits';
 import type { Difficulty } from '../../content/difficulty';
 
 /**
@@ -33,6 +39,20 @@ export interface BalanceRun {
   difficulty?: Difficulty;
   /** World Ascension rank (enemies run older). */
   ascension?: number;
+  /**
+   * Gear kit worn by the bot (balance/kits.ts). `none` / absent = the harness as it always was. A kit replaces the share of
+   * the `gearStats` stand-in that its slots cover (the stand-in is "ordinary gear in all nine slots"), so a kit is judged
+   * against the gear it displaces rather than stacked on top of it.
+   */
+  kit?: KitName;
+  /** Explicit worn rows (experiments); wins over `kit`. */
+  slots?: InventorySlot[];
+  /** Experiments: change the kit's weapon pair, tier or lever list (balance/kits.ts KitRequest.override). */
+  kitOverride?: KitRequest['override'];
+  /** Regression: skip the corpse-heal and Litany-barrier effects the bot gained in the gear pass (the pre-2026-10-02 bot never applied them). */
+  noRiteEffects?: boolean;
+  /** Experiments: one extra effect (a lever, a stat) folded on top of whatever is worn, to measure what a single number is worth. */
+  effect?: SetEffect;
 }
 
 export interface BalanceResult {
@@ -88,10 +108,19 @@ export function runBalance(run: BalanceRun): BalanceResult {
   sim.difficulty = run.difficulty ?? 'medium';
   sim.ascension = run.ascension ?? 0;
   sim.setCrypts(CRYPTS);
-  const disc = disciplineFor(run.classIndex);
+  const baseDisc = disciplineFor(run.classIndex);
+  const worn: InventorySlot[] = run.slots ?? resolveKit({ kit: run.kit ?? 'none', discipline: baseDisc.id, area: run.area, override: run.kitOverride });
+  const loadout = baseDisc.family === 'necromancer' ? resolveWeaponLoadout(equippedBySlot(worn), baseDisc.id) : NO_LOADOUT;
+  // The discipline as the scene builds it: set bonuses and worn affixes folded into the mods, then the skull focus's thrall.
+  const withGear = withSetBonuses(baseDisc, worn);
+  const geared = loadout.thrallBonus ? { ...withGear, mods: { ...withGear.mods, thrallCap: withGear.mods.thrallCap + loadout.thrallBonus } } : withGear;
+  const disc = run.effect ? { ...geared, mods: foldEffect(geared.mods, run.effect) } : geared;
   const resource = resourceRulesFor(disc.family);
-  const character = botCharacter(run.classIndex, run.level, run.gearStats ?? 0);
-  let stats = deriveStats(character, [], disc, run.damageTier);
+  const covered = new Set(Object.keys(equippedBySlot(worn))).size;
+  const standIn = (run.gearStats ?? 0) * (1 - covered / EQUIP_SLOTS.length);
+  const character = botCharacter(run.classIndex, run.level, standIn);
+  for (const [k, v] of Object.entries(run.effect?.stats ?? {})) (character as unknown as Record<string, number>)[k] += v as number;
+  let stats = deriveStats(character, worn, disc, run.damageTier);
   const area = AREAS[run.area];
   const home = { x: (area.rect.x0 + area.rect.x1) / 2, z: area.rect.z1 - 4 };
   const p = { id: 'bot', x: home.x, z: home.z, hp: stats.maxHp, essence: resource.initial(resource.max(stats)), alive: true };
@@ -133,9 +162,12 @@ export function runBalance(run: BalanceRun): BalanceResult {
     const a = ABILITIES[id];
     if (!ready(id, t) || p.essence < a.essenceCost) return false;
     p.essence -= a.essenceCost;
-    cds.set(id, t + a.cooldownMs / 1000);
+    // A grimoire shortens every rite (the left click is exempt), exactly as the player's cooldowns do.
+    cds.set(id, t + abilityCooldownMs(id, a.cooldownMs, loadout, id === 'bone_needle') / 1000);
     return true;
   };
+  /** Damage barrier (Black Litany with a Reliquary set): absorbs hits first and melts at 4% of max health per second. */
+  let barrier = 0;
 
   for (let i = 0; i < steps; i++) {
     const t = i * dt;
@@ -148,6 +180,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
       if (body) { body.revive(); p.essence = body.essence; }
     }
     if (p.alive) {
+      if (barrier > 0) barrier = Math.max(0, barrier - stats.maxHp * 0.04 * dt);
       if (body) {
         body.x = p.x; body.z = p.z; body.hp = p.hp; body.essence = p.essence;
         body.lastResourceGainAt = lastResourceGain * 1000;
@@ -286,7 +319,11 @@ export function runBalance(run: BalanceRun): BalanceResult {
       // Keep the legion topped up.
       else if (corpsesNear.length && myThralls.length < disc.mods.thrallCap && use('exhume', t)) {
         const c = corpsesNear[0];
-        sim.apply({ t: 'exhume', by: p.id, x: c.x, z: c.z, r: 0.8, kind: disc.mods.thrallKind, cap: disc.mods.thrallCap, hp: stats.thrallHp, damage: stats.thrallDamage, attackSpeedMult: disc.mods.thrallAttackSpeedMult });
+        sim.apply({ t: 'exhume', by: p.id, x: c.x, z: c.z, r: 0.8, kind: disc.mods.thrallKind, cap: disc.mods.thrallCap, hp: stats.thrallHp, damage: stats.thrallDamage, attackSpeedMult: disc.mods.thrallAttackSpeedMult,
+          ...(loadout.bellAllyHeal > 0 ? { allyHeal: loadout.bellAllyHeal } : {}) });
+        // Sickle: Exhume gives back part of its essence. Funeral Rites: a consumed corpse heals (WorldScene 'exhumed').
+        if (loadout.exhumeRefund > 0) p.essence = Math.min(stats.maxEssence, p.essence + ABILITIES.exhume.essenceCost * loadout.exhumeRefund);
+        if (disc.mods.corpseHeal && !run.noRiteEffects) p.hp = Math.min(stats.maxHp, p.hp + stats.maxHp * disc.mods.corpseHeal);
       }
       // Corpse Explosion when a body lies under a pack (and the legion is full, or bodies are plentiful).
       else if (
@@ -314,9 +351,11 @@ export function runBalance(run: BalanceRun): BalanceResult {
           sim.apply({ t: 'hit', by: p.id, ids: inLine.map((e) => e.id), dmg: sp * ABILITIES.marrow_spear.power, fracture: 1 });
         }
       }
-      // Needle the nearest; close distance if out of range, back off if swarmed.
+      // Needle the nearest; close distance if out of range, back off if swarmed. The weapon line changes what the left click is:
+      // a staff reaches farther and pierces, a scythe reaps a close arc, a wand fires faster and softer, a sickle withers.
       if (nearest) {
-        if (nd > SP_NEEDLE.range - 0.5) {
+        const reach = abilityRange('bone_needle', SP_NEEDLE.range, loadout);
+        if (nd > reach - 0.5) {
           const step = stats.moveSpeed * dt * bog();
           [p.x, p.z] = nav.resolve(p.x + ((nearest.x - p.x) / nd) * step, p.z + ((nearest.z - p.z) / nd) * step, 0.45);
         } else if (near(1.6).length >= 3 && p.hp < stats.maxHp * 0.5) {
@@ -327,11 +366,22 @@ export function runBalance(run: BalanceRun): BalanceResult {
           const uz = nd > 1e-6 ? (nearest.z - p.z) / nd : 0;
           [p.x, p.z] = nav.resolve(p.x - ux * step, p.z - uz * step, 0.45);
         }
-        if (nd <= SP_NEEDLE.range + 0.4 && ready('bone_needle', t)) {
-          cds.set('bone_needle', t + SP_NEEDLE.cooldownMs / 1000);
-          const crit = rand() < 0.08;
-          sim.apply({ t: 'hit', by: p.id, ids: [nearest.id], dmg: sp * SP_NEEDLE.power * (crit ? 1.8 : 1) });
-          p.essence = Math.min(stats.maxEssence, p.essence + 6);
+        if (nd <= reach + 0.4 && ready('bone_needle', t)) {
+          cds.set('bone_needle', t + abilityCooldownMs('bone_needle', SP_NEEDLE.cooldownMs, loadout, true) / 1000);
+          const crit = rand() < 0.08 ? 1.8 : 1;
+          if (loadout.reap) {
+            const struck = reapTargets(p, nearest, enemies);
+            if (struck.length) sim.apply({ t: 'hit', by: p.id, ids: struck.map((e) => e.id), dmg: sp * SP_NEEDLE.power * NECRO_WEAPON_TUNING.scythe.damageMult * crit });
+            p.essence = Math.min(stats.maxEssence, p.essence + NECRO_WEAPON_TUNING.scythe.essencePerHit * struck.length);
+          } else {
+            const wither = loadout.needleWithered > 0 ? { withered: loadout.needleWithered, witheredCap: disc.mods.witheredMaxStacks } : {};
+            sim.apply({ t: 'hit', by: p.id, ids: [nearest.id], dmg: sp * SP_NEEDLE.power * loadout.needleDamageMult * crit, ...wither });
+            if (loadout.needlePierce > 0) {
+              const behind = pierceTargets(p, nearest, enemies, loadout.needlePierce);
+              if (behind.length) sim.apply({ t: 'hit', by: p.id, ids: behind.map((e) => e.id), dmg: sp * SP_NEEDLE.power * loadout.needleDamageMult * NECRO_WEAPON_TUNING.staff.pierceDamageMult * crit, ...wither });
+            }
+            p.essence = Math.min(stats.maxEssence, p.essence + 6);
+          }
         }
       } else {
         // Wander toward the area's middle when idle.
@@ -367,7 +417,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
           character.experience -= xpToNext(character.level);
           character.level++;
           levels++;
-          stats = deriveStats(character, [], disc, run.damageTier);
+          stats = deriveStats(character, worn, disc, run.damageTier);
           if (body) { body.hp = p.hp; body.essence = p.essence; body.setStats(stats); p.hp = body.hp; p.essence = body.essence; }
         }
       } else if (ev.t === 'newBlood' && ev.by === p.id && ev.ok) {
@@ -377,8 +427,14 @@ export function runBalance(run: BalanceRun): BalanceResult {
         }
         if (ev.kind === 'harvest') { crowsUntil = t + 6; nextCrowPeck = t; }
         if (ev.kind === 'heal' && ev.player === p.id && ev.amount) p.hp = Math.min(stats.maxHp, p.hp + stats.maxHp * ev.amount);
+      } else if (ev.t === 'litanyResult' && ev.by === p.id && p.alive) {
+        // Reliquary barrier per body consumed, and the Mourner's corpse heal (AbilitySystem.onLitany).
+        if (run.noRiteEffects) { /* pre-gear-pass bot */ } else {
+        if (disc.mods.litanyBarrier) barrier += stats.maxHp * disc.mods.litanyBarrier * (ev.corpses + ev.resonant + ev.thralls);
+        if (disc.mods.corpseHeal) p.hp = Math.min(stats.maxHp, p.hp + stats.maxHp * disc.mods.corpseHeal * (ev.corpses + ev.resonant) * 0.5);
+        }
       } else if (ev.t === 'heal' && ev.player === p.id && p.alive) {
-        p.hp = Math.min(stats.maxHp, p.hp + ev.amount);
+        p.hp = Math.min(stats.maxHp, p.hp + ev.amount + (ev.frac ? stats.maxHp * ev.frac : 0));
       } else if (ev.t === 'hurt' && ev.player === p.id && p.alive) {
         const myThralls = [...sim.thralls.values()].filter((th) => th.owner === p.id).length;
         const lanternWard = [...sim.zones.values()].some((z) => z.kind === 'warden_ward' && Math.hypot(z.x - p.x, z.z - p.z) <= z.r) ? 0.2 : 0;
@@ -390,7 +446,10 @@ export function runBalance(run: BalanceRun): BalanceResult {
           p.hp = body.hp; p.essence = body.essence;
         } else {
           dmg = ev.dmg * (1 - Math.min(0.6, ward));
-          p.hp -= dmg;
+          const absorbed = Math.min(barrier, dmg);
+          barrier -= absorbed;
+          p.hp -= dmg - absorbed;
+          dmg -= absorbed;
         }
         dmgTaken += dmg;
         if (dmg > 0) lastHurt = t;
