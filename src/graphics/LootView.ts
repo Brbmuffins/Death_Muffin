@@ -81,6 +81,11 @@ export class LootView {
     this.effects.lightFlash(x, 1.2, z, 0xa26bff, 20, 0.6);
   }
 
+  /** QA: where every drop lies, so a script can walk the hero over it and use the real pickup path. */
+  debugDrops() {
+    return this.drops.map((d) => ({ kind: d.kind, id: d.item?.item_id ?? null, x: d.x, z: d.z }));
+  }
+
   item(x: number, z: number, drop: LootDrop) {
     const [px, pz] = this.scatter(x, z, 0.7);
     const meta = itemMeta(drop.item_id);

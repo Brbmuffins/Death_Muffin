@@ -149,11 +149,15 @@ async function newCharacter(page, discipline, name) {
   await page.evaluate(IN_PAGE, WATCH);
   // From here the game runs only when we step it, and every clock the game reads is the same virtual one: a slow machine must not
   // make a counsel card age faster than the game seconds it is shown for.
-  await page.evaluate(() => {
+  // Math.random is seeded too (DM_QA_SEED, default 7): drops and spawns vary per run otherwise, and a toast that lands on a banner
+  // in one run and not in the next made this check flaky. With the virtual clocks the whole hour is reproducible.
+  await page.evaluate((seed) => {
     window.requestAnimationFrame = () => 0;
     const base = performance.now();
     performance.now = () => base + window.__vt.now();
-  });
+    let a = seed | 0;
+    Math.random = () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }, Number(process.env.DM_QA_SEED || 7));
 }
 
 // Step the game and the UI timers together in 0.5 s slices, one browser round trip per slice. onSlice gets {gt, n, rects}.

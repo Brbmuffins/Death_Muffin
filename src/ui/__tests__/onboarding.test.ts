@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { TIPS } from '../Onboarding';
+import { TIPS, renderText } from '../Onboarding';
+import fixture from './tips-desktop.fixture.json';
 
 describe('onboarding tips', () => {
   it('every tip has a title and a body', () => {
@@ -19,5 +20,39 @@ describe('onboarding tips', () => {
   it('opens with a welcome before the movement lesson', () => {
     const ids = Object.keys(TIPS);
     expect(ids.indexOf('welcome')).toBeLessThan(ids.indexOf('move'));
+  });
+});
+
+describe('onboarding tips by device', () => {
+  const keyFor = (id: string) => ({ exhume: '2', black_litany: '3', grave_offering: '4', ivory_cleave: '1', veil_step: '5', carrion_seed: '4' } as Record<string, string>)[id] ?? null;
+  // The tip table as it was before touch wording existed (keys resolved with the same stub).
+  const before = fixture as Record<string, { title: string; body: string }>;
+  const oldBody = (b: string) => b.replace(/\{key:(\w+)\}/g, (_m, a: string) => { const k = keyFor(a); return k ? `<kbd>${k}</kbd>` : 'a key from your Grimoire (<kbd>L</kbd>)'; });
+
+  it('every tip reads byte-for-byte as before on desktop', () => {
+    expect(Object.keys(TIPS).sort()).toEqual(Object.keys(before).sort());
+    for (const [id, tip] of Object.entries(TIPS)) {
+      expect(renderText(tip.title, false), id).toBe(before[id].title);
+      expect(renderText(tip.body, false, keyFor), id).toBe(oldBody(before[id].body));
+    }
+  });
+
+  it('touch text names no keyboard or mouse input', () => {
+    let changed = 0;
+    for (const [id, tip] of Object.entries(TIPS)) {
+      const text = renderText(`${tip.title} ${tip.body}`, true, keyFor);
+      expect(text, id).not.toMatch(/<kbd>|WASD|\bclick|right-click|\bEsc\b|\bhover|\bmouse|\bcursor|\bLMB\b/i);
+      expect(text, id).not.toMatch(/\[\[|\]\]|\{p:|\{key:/);
+      if (text !== renderText(`${tip.title} ${tip.body}`, false, keyFor)) changed++;
+    }
+    expect(changed).toBeGreaterThan(40);
+  });
+
+  it('touch wording reads naturally in a few samples', () => {
+    expect(renderText(TIPS.welcome.body, true)).toContain('drag a finger');
+    expect(renderText(TIPS.warden_oil.body, true)).toContain('the third rite on your hotbar');
+    expect(renderText('Loot goes to your Reliquary{p:I}; the Workbench{p:C} crafts.', true)).toBe('Loot goes to your Reliquary (in the Menu); the Workbench crafts.');
+    expect(renderText('Press {key:exhume} now', true)).toBe('Press Exhume now');
+    expect(renderText('Press {key:exhume} now', false, keyFor)).toBe('Press <kbd>2</kbd> now');
   });
 });

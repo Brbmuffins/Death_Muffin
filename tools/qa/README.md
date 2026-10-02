@@ -1,3 +1,26 @@
+# Running the whole suite
+
+`node tools/qa/run-all.mjs [--port 5348] [--tree <dir>] [--only a,b] [--skip a,b] [--timeout 600] [--out <dir>] [--no-retry] [--list]`
+
+Starts ONE fresh Vite on `127.0.0.1:<port>` from `<tree>` (default: the repo containing the script; long-lived dev servers go stale after big merges, with "GameRuntime not initialised"), warms it up, then runs every offline-preview smoke one at a time, each in its own process group with a timeout (a hung run is killed together with its Chromium, by PID, never `pkill`). Vite is stopped by PID at the end, on Ctrl-C and on errors. Use ports 5347-5349 on the shared VPS; the runner refuses a port that is already serving.
+
+- Names are the script file name without `.cjs` (`acre-smoke`); `necro-audit` runs once per discipline (`necro-audit:Ossuary`, `DM_QA_DISC`) so each fits its budget; `--only necro-audit` expands to all four. `--list` prints what would run.
+- Not in the default list (they need something else): `live-*`, `new-blood-live-smoke` (public site), `coop-ten-smoke` (isolated realtime server, see below), `offline-edition-smoke` (built PWA preview), `*-probe` (scratch MySQL), `easy-auto-balance` (a sample, not pass/fail), `first-hour-audit` and the image tools (report/art output).
+- A failure is retried once: pass-on-retry is reported as **flaky**, fail-twice as **broken**. Exit code 1 only when something is broken.
+- Output in `--out` (default `$TMPDIR/dm-qa-<stamp>`): `summary.json`, `summary.md` (matrix plus the log tail of every failed attempt), `logs/<script>.log`, `shots/<script>/` (each script gets its own `DM_QA_ARTIFACT_DIR`).
+- The runner sets `DM_QA_URL`, `DM_OFFLINE_URL`, `DM_PLAYWRIGHT_MODULE` and `DM_CHROMIUM_PATH` (VPS defaults; export them to override). The machine is shared: on a loaded box every screenshot can take 10+ s, so a full run takes an hour or more.
+
+## Writing smokes that stay reliable
+
+Shared helpers live in `tools/qa/lib/qa-common.cjs`:
+
+- `watchErrors(page)`: collects page errors and console errors but ignores favicon, offline-realtime noise and `@fontsource` 403s (Vite refuses font files when `node_modules` is a symlink that points outside the Vite root; the page is fine). Also reports a renderer crash.
+- `preloadModules(page, extra)`: loads `GameRuntime`/`devAccess` (plus any `/src/...` paths in `extra`) onto `window.__qaMods` and polls for them. Do not `await import(...)` inside a long `page.evaluate`: on a loaded machine Playwright reports "Resulting promise was garbage collected". Keep evaluates synchronous and put waits on game state in Node.
+- `waitGame(page, fn, arg)`: poll a page condition while stepping the game clock (`__cwDebug.advance`), instead of `waitForTimeout`.
+- `shot(page, file)`: screenshot with retries. `retryTransient(fn)`: retry only known load-related Playwright errors, never assertions.
+- Read expectations from game data (the set table, `AREA_REAGENT_DROPS`, ...) instead of copying numbers; they change when balance does.
+- Loot: items do not fly to the player (only gold and shards do; items are picked up within 1.3 m). Use `__cwDebug.lootDrops()` + `teleport()` to walk over them. `reagents-smoke` also pins `Math.random` only for the kill so the real 1% Grave Dust roll succeeds on the first batch.
+
 # AFK and ten-player browser checks
 
 These tests use development debug hooks and temporary offline accounts. Install Playwright separately, or set `DM_PLAYWRIGHT_MODULE` to its installed module path and `DM_CHROMIUM_PATH` to a Chromium executable. Screenshots and measurements go to `DM_QA_ARTIFACT_DIR` (default: the system temporary directory).

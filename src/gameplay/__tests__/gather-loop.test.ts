@@ -104,6 +104,38 @@ describe('the gathering loop', () => {
     expect(loop.working).toBe(true);
   });
 
+  it('stops working when the hero ends up away from the node (safety net)', () => {
+    const { loop, hooks, player, tick } = setup();
+    loop.startAfk(oakA);
+    tick(300);
+    expect(loop.working).toBe(true);
+    player.x = 12; // moved by something that never called stop()
+    tick(100);
+    expect(loop.active).toBe(false);
+    expect(loop.afk).toBe(false);
+    expect(loop.status).toBe('Paused');
+    expect(hooks.onStop).toHaveBeenCalledWith('moved', undefined);
+    const cycles = (hooks.onCycle as ReturnType<typeof vi.fn>).mock.calls.length;
+    tick(5000);
+    expect((hooks.onCycle as ReturnType<typeof vi.fn>).mock.calls.length).toBe(cycles);
+  });
+
+  it('stops working when a path starts mid-work, but AFK node-hopping still walks', () => {
+    const a = setup();
+    a.loop.startAfk(oakA);
+    a.tick(300);
+    a.player.moveAlong([{ x: 9, z: 9 }]);
+    a.tick(100);
+    expect(a.loop.active).toBe(false);
+    const b = setup();
+    b.loop.startAfk(oakA);
+    b.tick(100);
+    b.live.delete('acre_1');
+    b.tick(100);
+    expect(b.loop.node?.id).toBe('acre_2');
+    expect(b.loop.afk).toBe(true);
+  });
+
   it('batches cycles to the server and adopts its answer (server wins)', async () => {
     const { loop, hooks, skills, tick } = setup();
     loop.start(oakA);

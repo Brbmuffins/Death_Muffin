@@ -34,7 +34,7 @@ Some of the most polished corners of the game right now (updated 2 October 2026)
 - [Your first hour](#your-first-hour)
 - [What to explore next](#what-to-explore-next)
 - [Finding your way](#finding-your-way)
-- [Controls](#controls)
+- [Controls](#controls) (and [on a phone or tablet](#on-a-phone-or-tablet))
 - [Choose a discipline](#choose-a-discipline)
 - [Combat and corpses](#combat-and-corpses)
 - [Relic runes](#relic-runes)
@@ -121,7 +121,32 @@ Nothing in Death Muffin is a quest, and nothing can be failed or missed. If you 
 | **Enter** | Chat |
 | **Esc** | Close an open panel, then open Settings |
 
-You can also click hotbar icons. Click **swap** below any spell icon to open the Grimoire with that slot selected; right click a hotbar slot also works. In **Settings**, you can change class, difficulty, graphics, volume (Master, plus separate **Combat**, **Ambience** and **Interface** sliders), reduced motion, damage numbers, gathering behavior, counsel tips, and the Next suggestion with its minimap marker.
+You can also click hotbar icons. Click **swap** below any spell icon to open the Grimoire with that slot selected; right click a hotbar slot also works. In **Settings**, you can change class, difficulty, graphics, frame rate (60 or 30 fps), volume (Master, plus separate **Combat**, **Ambience** and **Interface** sliders), reduced motion, damage numbers, gathering behavior, counsel tips, and the Next suggestion with its minimap marker.
+
+### On a phone or tablet
+
+The HUD rearranges itself for phones (portrait and landscape) and tablets, and every panel fits the screen.
+
+**Battery saver.** New phones and tablets start on Graphics Low and 30 fps (other devices: High and 60 fps), even if an older High was saved, until you change Graphics or Frame rate yourself. Change either in **Settings**; Low + 30 fps uses far less battery. While a full-screen panel covers the world, the 3D view redraws only a few times a second (the game itself keeps running).
+
+| Touch | Action |
+|---|---|
+| Tap ground / enemy / object | Walk there, attack, talk, or gather |
+| Drag a finger | Keep walking toward it |
+| Pinch | Zoom |
+| Tap a rite | Cast it at the enemy you tapped, or else the nearest enemy |
+| Press and hold a rite | Show its spell card (tap anywhere to close it) |
+| Flask button on the Health orb | Drink a healing flask |
+| Tap a brew on the left | Drink that elixir or tonic |
+| **Upgrades** button | Open Damage / Wave Speed (it glows when you can afford one) |
+| **‹ Back** on a panel | Return to the panel you came from (Skills → Contracts → Back) |
+| Phone Back gesture | Steps back through panels, then closes them; it never leaves the game while a panel is open |
+| **☰ Menu** | Big labelled tiles for every panel: Bag, Character, Spells, Craft, Skills, Contracts, Garden, Laborers, Legion, Capes & Pets, Vault, Map, Codex, Settings, plus **Recall home** and Auto combat |
+| ⛶ next to the Menu | Full screen (Android; iPhone Safari has no full screen) |
+
+Panels keep their scroll position while AFK gathering updates them.
+
+Double tap and pinch never zoom the page (pinch zooms the camera). Counsel cards, prompts and hints use touch wording ("Tap…", "the Menu") on a phone and keyboard wording on a computer. If your connection drops you keep playing: the game says **Connection lost**, saves retry on their own, and **Back online ✓** appears when it is back.
 
 ## Choose a discipline
 
@@ -426,6 +451,9 @@ With **Auto gathering** enabled in Settings, clicking a node can continue to ano
 <td><img src="docs/screenshots/skills-panel.webp" alt="The Skills panel" /><br /><sub>Skills (P)</sub></td>
 <td><img src="docs/screenshots/codex-professions.webp" alt="The Codex Professions tab" /><br /><sub>Codex professions</sub></td>
 </tr></table>
+
+
+**Craft many at once.** Every Workbench and Cauldron recipe has a quantity control: − / +, **×5**, **Max** (as many as your materials and bag room allow) and **Craft ×N**. A batch stops at the first problem and tells you how many were made. In the bag, stacks have **Sell all (N · gold)** with a confirm in place; locked items are never sold.
 
 ## Ascension
 

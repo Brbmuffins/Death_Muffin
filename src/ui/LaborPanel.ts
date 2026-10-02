@@ -4,6 +4,7 @@ import { NODES, SKILLS, type SkillId } from '../gameplay/gatheringRules';
 import { LABOR, assignBlocker, estimate, postsFor } from '../gameplay/laborRules';
 import { durationText } from '../gameplay/gatherReport';
 import type { Inventory } from '../gameplay/loot';
+import { preserveScroll } from './preserveScroll';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -130,7 +131,8 @@ export class LaborPanel {
             </article>`;
           })
           .join('');
-    this.el.innerHTML = `
+    const panel = this.el;
+    preserveScroll(panel, () => { panel.innerHTML = `
       <div class="cw-panel-head">
         <h2 class="cw-title">Grave Laborers</h2>
         ${v ? `<span class="cw-skill-total">Gathering levels <b>${v.totalLevel}</b></span>` : ''}
@@ -138,7 +140,7 @@ export class LaborPanel {
       </div>
       <p class="cw-codex-note">Send the dead to work a post and they keep at it, slowly, for up to eight hours, even while you are away. They gather a fraction of what you would and earn a quarter of the XP. Collect when you like.</p>
       <div class="cw-labs">${cards}</div>
-      <div class="cw-error" data-error>${this.error && v ? esc(this.error) : ''}</div>`;
+      <div class="cw-error" data-error>${this.error && v ? esc(this.error) : ''}</div>`; });
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
     this.el.querySelectorAll<HTMLSelectElement>('[data-post]').forEach((sel) => sel.addEventListener('change', () => {
       this.pick.set(Number(sel.dataset.post), sel.value);

@@ -1,0 +1,345 @@
+/*
+ * Phone + tablet layout (2026-10-02, owner: "so I can play on my phone and tablet — lots of UI overlaps").
+ * Overrides only, loaded last (index.html). Desktop (wide AND tall) is untouched by everything below except the touch rules.
+ *
+ *   tablet      max-width 1024px, taller than 520px  — the hotbar and currencies fit, the upgrades plate sits above them
+ *   compact     max-width 760px (phone portrait)  OR  max-height 520px (phone landscape)
+ *     portrait  two-row dock at the bottom: [HP orb · Soul meter · Essence orb] over a full-width rite row;
+ *               minimap column top-right, hero frame / counsel card / readouts in the left column
+ *     landscape one-row dock: HP orb bottom-left, rites bottom-centre, Essence orb bottom-right;
+ *               counsel card left, conversation card right, minimap column top-right
+ *   touch       (pointer: coarse) or body.touch: flask button, tappable brews, bigger hit areas, no key caps
+ */
+
+/* --- Touch ---------------------------------------------------------------------------------- */
+.hud-flask, .hud-up-toggle, .hud-menu .hud-fullscreen { display: none; }
+.hud button, .cw-panel-float button, .cw-tip, .cw-dialogue button { touch-action: manipulation; }
+.hud, .cw-panel-float { -webkit-tap-highlight-color: transparent; }
+html, body { overscroll-behavior: none; }
+.hud-flask {
+  position: absolute;
+  top: -6px;
+  right: -14px;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  padding: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, #3b1430, #12060e 75%);
+  border: 1px solid color-mix(in srgb, #c85a8a 60%, var(--cw-border-strong));
+  color: #f2b6d2;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+}
+.hud-flask svg { width: 22px; height: 22px; }
+.hud-flask:active { transform: scale(0.94); }
+.hud-orb-wrap { position: relative; }
+.hud-brews .brew-chip { cursor: pointer; }
+.hud-slot button, .hud-flask, .hud-menu button { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+
+@media (pointer: coarse) {
+  .hud-flask { display: grid; }
+  .hud-menu .hud-fullscreen:not([hidden]) { display: grid; }
+  .hud-slot button:hover { box-shadow: inset 0 0 0 2px #07060a, 0 0 0 1px #07060a; }
+  .hud-slot .key, .brew-chip kbd { display: none; }
+  .hud-hint { display: none; }
+  .cw-panel-float .cw-icon-btn { min-width: 44px; min-height: 44px; }
+  .cw-chat { display: none; }
+}
+body.touch .hud-flask, body.touch .hud-menu .hud-fullscreen:not([hidden]) { display: grid; }
+body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { display: none; }
+
+/* Back: shown on a panel that was opened from another one (Skills -> Contracts). It floats over the panel's head
+   (WorldScene.syncPanelNav positions it), and the head makes room for it. */
+.cw-panel-back {
+  position: fixed;
+  z-index: 7;
+  height: 40px;
+  min-width: 0;
+  padding: 0 12px;
+  font: 600 13px var(--cw-font-body);
+  letter-spacing: 0.06em;
+  color: var(--cw-bone-100);
+  background: var(--cw-inset);
+  white-space: nowrap;
+  touch-action: manipulation;
+}
+.cw-panel-float.has-back .cw-panel-head { padding-left: 92px; }
+
+/* --- Tablet: everything fits along the bottom ------------------------------------------------ */
+@media (max-width: 1024px) and (min-height: 521px) and (min-width: 761px) {
+  .hud-orb { width: 92px; height: 92px; }
+  .hud-slot button { width: 50px; height: 50px; }
+  .hud-slots { gap: 8px; }
+  .hud-slots-wrap { padding: 8px 10px 6px; }
+  .hud-slot.alt { padding-left: 8px; }
+  .hud-grimoire-btn { margin-left: 8px; padding: 6px 6px; }
+  .hud-grimoire-btn > span:not(.pip) { display: none; }
+  .hud-altar { gap: 6px; }
+  /* Upgrades + currencies stack above the Essence orb instead of beside it. */
+  .hud-right { bottom: 168px; right: 12px; }
+  .hud-upgrades { position: static; }
+}
+
+/* --- Compact (phones): shared ---------------------------------------------------------------- */
+@media (max-width: 760px), (max-height: 520px) {
+  .hud { --gut: max(6px, env(safe-area-inset-left)); --gutr: max(6px, env(safe-area-inset-right)); --gutb: max(4px, env(safe-area-inset-bottom)); --slot: 42px; }
+
+  /* Dock pieces */
+  .hud-altar { left: var(--gut); right: var(--gutr); bottom: var(--gutb); transform: none; gap: 4px; }
+  .hud-slots-wrap { padding: 6px 6px 5px; margin-bottom: 0; }
+  .hud-slots-wrap::before { display: none; }
+  .hud-slots { gap: 4px; }
+  .hud-slot { gap: 0; }
+  .hud-slot button { width: var(--slot); height: var(--slot); }
+  .hud-slot .key, .hud-slot .swap { display: none; }
+  .hud-slot.alt { padding-left: 4px; margin-left: 2px; }
+  .hud-slot .cdtext { font-size: 14px; }
+  .hud-slot .cost { font-size: 10px; }
+  .hud-slots-wrap > .hud-slot.primary { margin-right: 4px; }
+  .hud-grimoire-btn { margin-left: 4px; width: 38px; height: var(--slot); padding: 0; justify-content: center; }
+  .hud-grimoire-btn > span:not(.pip) { display: none; }
+  .hud-souls { padding: 2px 8px; margin-bottom: 3px; }
+  .hud-souls .n { min-width: 36px; font-size: 11px; }
+  .hud-thralls { margin-top: 3px; min-height: 8px; }
+  .hud-thralls i { width: 7px; height: 7px; }
+  /* Orbs: the reading sits inside the orb. */
+  .hud-orb { width: 58px; height: 58px; border-width: 2px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--cw-bone-300) 40%, transparent), 0 0 0 3px #0b090e, 0 8px 18px rgba(0, 0, 0, 0.8); }
+  .hud-orb-wrap { justify-content: flex-end; }
+  .hud-orb-label { position: absolute; left: 0; right: 0; bottom: 18px; text-align: center; font-size: 11px; pointer-events: none; }
+  .hud-orb-label small { display: none; }
+  .hud-orb-wrap:has(.hud-orb-label:empty) .hud-orb-label { display: none; }
+  .hud-flask { top: -14px; right: -10px; width: 36px; height: 36px; }
+
+  /* Upgrades: behind a button; opens as a popover. Currencies stay visible. */
+  .hud-right { display: flex; flex-direction: row; align-items: center; gap: 8px; position: absolute; }
+  .hud-up-toggle {
+    display: flex; align-items: center; gap: 5px; height: 32px; padding: 0 9px;
+    background: rgba(7, 6, 10, 0.85); border: 1px solid var(--cw-border-strong); color: var(--cw-bone-100);
+    font: 600 11px var(--cw-font-body); letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;
+  }
+  .hud-up-toggle svg { width: 16px; height: 16px; }
+  .hud-up-toggle.can { border-color: #e2c98f; box-shadow: 0 0 10px rgba(226, 201, 143, 0.45); color: #e2c98f; }
+  .hud-right .hud-upgrades { display: none; }
+  .hud-right.open .hud-upgrades { display: block; position: absolute; right: 0; bottom: calc(100% + 6px); width: min(270px, calc(100vw - 12px)); z-index: 4; }
+  .hud-currency { gap: 8px; padding: 2px 4px; font-size: 13px; }
+  .hud-currency img { width: 16px; height: 16px; }
+  .hud-currency .thrall-ico { width: 15px; height: 15px; }
+  .hud-currency span { gap: 3px; }
+  /* Only the warning ("Save failed — retrying…") is worth the space on a phone. */
+  .hud-save:not(.warn) { display: none; }
+  .hud-save.warn { font-size: 11px; padding: 2px 6px; background: rgba(7, 6, 10, 0.8); }
+  .hud-xp { display: none; }
+  .cw-chat { display: none; }
+
+  /* Minimap column */
+  .hud-map { top: max(6px, env(safe-area-inset-top)); right: var(--gutr); width: 128px; gap: 4px; }
+  .hud-map .frame { width: 96px; height: 96px; }
+  .hud-map .area { font-size: 12px; letter-spacing: 0.06em; line-height: 1.15; }
+  .hud-map .prog { font-size: 11px; max-width: 128px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .hud-next { max-width: 128px; font-size: 11.5px; padding: 3px 2px 3px 7px; }
+  .hud-next [data-nexttxt] { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .hud-menu { gap: 4px; width: 128px; flex-wrap: nowrap; }
+  .hud-menu .hud-mi { display: none; }
+  .hud-menu .hud-menubtn { display: flex; flex: 1; align-items: center; justify-content: center; gap: 6px; height: 36px; font-family: var(--cw-font-display); font-weight: 700; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cw-bone-100); border-color: var(--cw-border-active); }
+  .hud-menu .hud-menubtn:active { transform: scale(0.97); }
+  .hud-menu .hud-fullscreen { width: 36px; height: 36px; flex: none; }
+  .hud-menu svg { width: 18px; height: 18px; }
+  .hud-menu .hud-menubtn svg { width: 20px; height: 20px; }
+  .hud-menu .hud-auto { flex-basis: 100%; }
+  .hud-menu { flex-wrap: wrap; }
+  .hud-menusheet:not([hidden]) { position: fixed; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); background: rgba(4, 3, 7, 0.72); }
+  .hud-menusheet .card { width: min(100%, 460px); max-height: 100%; overflow-y: auto; overscroll-behavior: contain; background: var(--cw-panel, #100c16); border: 1px solid var(--cw-border-strong); padding: 10px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8); }
+  .hud-menusheet .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .hud-menusheet h2 { margin: 0; font-family: var(--cw-font-display); font-size: 16px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cw-bone-100); }
+  .hud-menusheet .x { width: 44px; height: 44px; display: grid; place-items: center; padding: 0; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-bone-200); }
+  .hud-menusheet .x svg { width: 20px; height: 20px; }
+  .hud-menusheet .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .hud-menusheet .tile { min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 6px 4px; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-bone-200); font-family: var(--cw-font-body); font-size: 13px; line-height: 1.1; text-align: center; touch-action: manipulation; }
+  .hud-menusheet .tile svg { width: 26px; height: 26px; }
+  .hud-menusheet .tile:active { border-color: var(--cw-border-active); color: var(--cw-bone-100); background: color-mix(in srgb, var(--cw-inset) 70%, var(--cw-border-active)); }
+  .hud-menusheet .tile.auto { grid-column: 1 / -1; min-height: 56px; font-size: 14px; }
+  .hud-menusheet .tile.auto[hidden] { display: none; }
+  .hud-menu .hud-auto { width: 100%; height: 28px; }
+
+  /* Left column */
+  .hud-party { display: flex; top: max(6px, env(safe-area-inset-top)); left: var(--gut); max-height: 52px; overflow: hidden; }
+  .hud-member { width: 180px; padding: 3px 6px 3px 3px; }
+  .hud-member:not(:first-child) { display: none; }
+  .hud-member img { width: 28px; height: 28px; }
+  .hud-omen { left: var(--gut); top: 54px; padding: 2px 8px 2px 2px; }
+  .hud-omen img { width: 22px; height: 22px; }
+  .hud-omen span { font-size: 11px; }
+  .hud-ward { left: var(--gut); padding: 2px 8px; }
+  .hud-ward .n { font-size: 16px; }
+  .hud-ward .lbl { font-size: 11px; }
+  .hud-chain { left: var(--gut); min-width: 110px; padding: 4px 8px 6px; }
+  .hud-chain .n { font-size: 24px; }
+  .hud-brews { left: var(--gut); gap: 4px; }
+  .brew-chip { min-width: 140px; padding: 6px 10px 7px 8px; }
+
+  /* Counsel card (a drag still moves it: the drag writes inline left/top) */
+  .cw-tip { left: var(--gut); top: 92px; padding: 8px 10px 9px; }
+  .cw-tip .title { font-size: 15px; }
+  .cw-tip .body { font-size: 13.5px; line-height: 1.4; }
+  .cw-tip .move-hint { display: none; }
+  .cw-tip .foot { margin-top: 5px; }
+  .cw-tip .foot button { padding: 6px 0; }
+
+  /* Target / boss frames */
+  .hud-target .nm { font-size: 14px; letter-spacing: 0.06em; }
+  .hud-target .blurb { display: none; }
+  .hud-target .statuses { min-height: 0; }
+  .hud-boss { padding: 6px 10px 8px; }
+  .hud-boss .nm { font-size: 15px; letter-spacing: 0.1em; }
+  .hud-boss .track { height: 10px; }
+
+  /* Banner, toasts, prompt */
+  .hud-banner { top: 16%; width: calc(100vw - 24px); }
+  .hud-banner .t { font-size: 24px; letter-spacing: 0.1em; }
+  .hud-banner .s { font-size: 14px; }
+  .hud-banner .rule { width: 160px; margin: 5px auto; }
+  .hud-toasts { top: auto; width: calc(100vw - 24px); flex-direction: column-reverse; }
+  .hud:has(.hud-banner.show) .hud-toasts { transform: translateX(-50%); }
+  .hud-toast { max-width: 100%; font-size: 13px; padding: 6px 12px; }
+  .hud-prompt { max-width: calc(100vw - 24px); font-size: 13px; padding: 6px 12px; white-space: normal; text-align: center; }
+  .hud-prompt kbd { display: none; }
+  .hud-nodetip { font-size: 12px; }
+  .hud-death .t { font-size: 32px; }
+  .hud-death .s { font-size: 15px; }
+
+  /* Spell card: centred above the dock */
+  .hud-spell-tooltip { max-width: calc(100vw - 16px) !important; max-height: min(44vh, 360px) !important; max-height: min(44dvh, 360px) !important; overflow-y: auto; padding: 10px 12px !important; font-size: 13px; }
+  .hud-spell-tooltip .spell-name { font-size: 18px; }
+
+  /* Conversation card */
+  .cw-dialogue { padding: 10px 14px 12px; overflow-y: auto; animation: cw-dialogue-in-m 0.2s ease-out; }
+  .cw-dialogue .nm { font-size: 17px; }
+  .cw-dialogue .say { font-size: 14px; line-height: 1.45; min-height: 0; }
+  .cw-dialogue .choice { font-size: 14px; padding: 9px 12px; }
+  @keyframes cw-dialogue-in-m { from { opacity: 0; } }
+
+  /* Panels: fill the screen (minus the dock in portrait). Widths set per panel elsewhere are beaten here. */
+  .cw-panel-float, .cw-panel-float.wide, .cw-panel-float.wide.cw-reliquary, .cw-panel-float.lg-panel, .cw-panel-float.wide.cw-shelf, .cw-panel-float.wide.cw-vault {
+    left: var(--gut, 6px) !important;
+    right: var(--gutr, 6px) !important;
+    top: max(6px, env(safe-area-inset-top)) !important;
+    width: auto !important;
+    max-width: none !important;
+    transform: none !important;
+    padding: 12px 12px 14px !important;
+  }
+  .cw-panel-head { margin-bottom: 10px; padding-bottom: 8px; gap: 8px; }
+  .cw-panel-head .cw-title { font-size: 19px; }
+  .cw-panel-float img, .cw-panel-float canvas { max-width: 100%; }
+  /* Reliquary: the bag grid shrinks to the screen (its 1fr columns otherwise keep the 62px icon width). */
+  .cw-reliquary .cw-inv-body .cw-bag-grid, .cw-bag-grid { flex: 1 1 auto; min-width: 0; width: 100%; grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  .cw-bag-grid .cw-slot img { max-width: 100%; }
+  .cw-bag-detail { grid-template-columns: minmax(0, 1fr); }
+  .cw-panel-float .cw-button.small { max-width: 100%; white-space: normal; }
+  .cw-panel-float .cw-panel-actions, .cw-panel-float .cw-bag-detail .actions, .cw-bag-tools { flex-wrap: wrap; }
+  .cw-bag-tools .cw-button { flex: 0 1 auto; }
+}
+@media (max-width: 480px) {
+  .cw-reliquary .cw-inv-body .cw-bag-grid, .cw-bag-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+
+/* --- Compact portrait ------------------------------------------------------------------------- */
+@media (max-width: 760px) and (min-height: 521px) {
+  .hud { --dock: 136px; }
+  .hud-altar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'hp souls ess' 'hp thralls ess' 'slots slots slots';
+    align-items: end;
+    column-gap: 10px;
+    row-gap: 2px;
+  }
+  .hud-altar > div:not(.hud-orb-wrap) { display: contents; }
+  .hud-altar > .hud-orb-wrap:first-child { grid-area: hp; }
+  .hud-altar > .hud-orb-wrap:last-child { grid-area: ess; }
+  .hud-souls { grid-area: souls; margin: 0; }
+  .hud-thralls { grid-area: thralls; margin: 0 0 4px; }
+  .hud-slots-wrap { grid-area: slots; justify-content: center; margin-top: 4px; }
+  /* 8 buttons across the width: LMB, 4 rites, RMB, R, Grimoire */
+  .hud { --slot: clamp(34px, calc((100vw - 74px) / 7.6), 48px); }
+
+  .hud-right { left: var(--gut); right: var(--gutr); bottom: calc(var(--dock) + 4px); justify-content: space-between; }
+  .hud-currency { order: -1; background: rgba(7, 6, 10, 0.55); }
+
+  .hud-prompt { bottom: calc(var(--dock) + 46px); }
+  .hud-toasts { bottom: calc(var(--dock) + 84px); }
+  .hud-ward { top: auto; bottom: calc(var(--dock) + 130px); }
+  .hud-brews { top: auto; bottom: calc(var(--dock) + 168px); }
+  .hud-chain { top: 47%; }
+
+  .cw-tip { width: calc(100vw - 128px - 22px); max-height: calc(45vh - 92px); max-height: calc(45dvh - 92px); }
+  body:has([data-target]:not([hidden])) .cw-tip:not(.dragging), body:has([data-boss]:not([hidden])) .cw-tip:not(.dragging) { top: 170px; max-height: calc(45vh - 170px); }
+  .hud-target, .hud-boss { left: var(--gut); top: 92px; transform: none; width: calc(100vw - 128px - 22px); text-align: left; }
+  /* While a panel is open the counsel card moves to the bottom, over the dock, out of the panel's way. */
+  body:has(.cw-panel-float) .cw-tip:not(.dragging) { top: auto; bottom: var(--gutb, 4px); left: 6px; width: calc(100vw - 12px); max-height: 30vh; }
+
+  .cw-dialogue { left: var(--gut); right: var(--gutr); top: auto; bottom: calc(var(--dock) + 4px); transform: none; width: auto; max-width: none; max-height: 44vh; max-height: 44dvh; }
+
+  .cw-panel-float, .cw-panel-float.wide, .cw-panel-float.wide.cw-reliquary, .cw-panel-float.lg-panel, .cw-panel-float.wide.cw-shelf, .cw-panel-float.wide.cw-vault {
+    max-height: calc(100vh - var(--dock, 136px) - 14px) !important;
+    max-height: calc(100dvh - var(--dock, 136px) - 14px) !important;
+  }
+}
+
+/* --- Compact landscape ------------------------------------------------------------------------ */
+@media (max-height: 520px) {
+  .hud { --dock: 84px; --slot: 40px; }
+  .hud-altar { display: flex; justify-content: space-between; align-items: flex-end; }
+  .hud-souls { height: 16px; padding: 0 8px; margin-bottom: 2px; }
+  .hud-thralls { display: none; }
+  .hud-slots-wrap { padding: 4px 5px; }
+
+  .hud-map { width: 116px; }
+  .hud-map .frame { width: 72px; height: 72px; }
+  .hud-map .prog { display: none; }
+  .hud-next { max-width: 116px; }
+  .hud-next [data-nexttxt] { -webkit-line-clamp: 3; }
+  .hud-menu { width: 116px; }
+  .hud-menu .hud-menubtn { height: 30px; }
+  .hud-menu .hud-fullscreen { width: 30px; height: 30px; }
+  .hud-menusheet .grid { grid-template-columns: repeat(5, 1fr); }
+  .hud-menusheet .card { width: min(100%, 720px); }
+  .hud-menusheet .tile { min-height: 58px; }
+  .hud-menusheet .tile svg { width: 22px; height: 22px; }
+  .hud-menu .hud-auto { height: 24px; }
+  /* Currencies + upgrades button: just above the Essence orb */
+  .hud-right { right: var(--gutr); bottom: calc(var(--gutb) + 64px); flex-direction: column; align-items: flex-end; gap: 4px; }
+  .hud-currency { flex-direction: row; background: rgba(7, 6, 10, 0.55); }
+  .hud-up-toggle { height: 28px; }
+  .hud-up-toggle span { display: none; }
+  .hud-right.open .hud-upgrades { bottom: 0; right: calc(100% + 6px); max-height: calc(100vh - 12px); overflow: auto; }
+
+  .hud-omen { left: 192px; top: max(6px, env(safe-area-inset-top)); }
+  .hud-ward { top: auto; bottom: calc(var(--gutb) + 74px); }
+  .hud-brews { top: auto; bottom: calc(var(--gutb) + 108px); }
+  .hud-chain { top: auto; left: auto; right: 136px; bottom: calc(var(--dock) + 10px); }
+
+  .cw-tip { top: 56px; width: min(330px, calc(50vw - 20px)); max-height: calc(100vh - 56px - 150px); max-height: calc(100dvh - 56px - 150px); }
+  .cw-tip .body { font-size: 13px; }
+  .hud-target { top: 4px; width: min(300px, calc(100vw - 2 * 200px)); }
+  .hud-target .statuses { display: none; }
+  .hud-boss { top: 4px; width: min(380px, calc(100vw - 2 * 196px)); }
+  .hud-boss .ph { margin-bottom: 2px; font-size: 10px; }
+
+  .hud-banner { top: 12%; }
+  .hud-banner .t { font-size: 22px; }
+  .hud-toasts { bottom: calc(var(--dock) + 40px); max-width: min(420px, calc(100vw - 2 * 140px)); }
+  .hud-prompt { bottom: calc(var(--dock) + 6px); }
+
+  .cw-dialogue { left: auto; right: 132px; top: max(6px, env(safe-area-inset-top)); transform: none; width: min(380px, calc(100vw - 132px - 360px)); min-width: 260px; max-height: calc(100vh - var(--dock) - 14px); max-height: calc(100dvh - var(--dock) - 14px); }
+
+  .cw-panel-float, .cw-panel-float.wide, .cw-panel-float.wide.cw-reliquary, .cw-panel-float.lg-panel, .cw-panel-float.wide.cw-shelf, .cw-panel-float.wide.cw-vault {
+    left: max(8px, env(safe-area-inset-left)) !important;
+    right: max(8px, env(safe-area-inset-right)) !important;
+    max-height: calc(100vh - 12px) !important;
+    max-height: calc(100dvh - 12px) !important;
+  }
+  /* A panel covers the dock in landscape: the counsel card sits in its lower-right corner instead. */
+  body:has(.cw-panel-float) .cw-tip:not(.dragging) { top: auto; left: auto; right: 10px; bottom: 10px; max-height: 45vh; }
+}

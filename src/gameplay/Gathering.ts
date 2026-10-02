@@ -1,7 +1,7 @@
 import type { GatherReply } from '../net/api';
 import { devAccess } from './devAccess';
 import type { Profession } from '../net/types';
-import type { NodePlacement } from '../content/layout';
+import { NODE_REACH, type NodePlacement } from '../content/layout';
 import {
   ALL_SKILLS,
   GATHER_FLUSH_MS,
@@ -113,6 +113,9 @@ export interface GatherHooks {
   onError(message: string): void;
   autoEnabled(): boolean;
 }
+
+/** How far past the stand ring the hero may drift before work stops. */
+const WORK_SLACK = 1.0;
 
 type Phase = 'walk' | 'work' | 'wait';
 
@@ -230,7 +233,9 @@ export class GatherLoop {
       this.beginWork();
       return;
     }
-    // Working.
+    // Working. Safety net: the hero must still be standing at the node. Any move (input
+    // we missed, a push, a teleport) ends the work instead of "cutting" from across the map.
+    if (h.player.hasPath || Math.hypot(n.x - h.player.x, n.z - h.player.z) > NODE_REACH[def.kind] + WORK_SLACK) return this.stop('moved');
     if (!h.live(n.id)) return this.onDepleted(n);
     this.cycleT += dt * 1000;
     if (this.cycleT < actionMs(def)) return;

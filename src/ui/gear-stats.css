@@ -165,3 +165,9 @@
 .cw-bag-detail .lg-line { font-size: 12px; color: var(--cw-text-muted); margin: 0 0 4px; }
 .cw-bag-detail .lg-line.up .ar, .cw-bag-detail .lg-line.up { color: #8fe36a; }
 .cw-bag-detail .lg-line.down .ar, .cw-bag-detail .lg-line.down { color: #ff7b6b; }
+
+/* Sell all (stack): confirm-in-place, touch-sized, sits with the other sell buttons. */
+.cw-detail-actions > [data-sellall], .cw-detail-actions > [data-sellall-no], .cw-detail-actions > [data-sell]:not([data-sell='1']), .cw-detail-actions > .cw-tools-confirm { order: 3; }
+.cw-detail-actions > [data-sellall], .cw-detail-actions > [data-sellall-no], .cw-detail-actions > [data-sell]:not([data-sell='1']) { min-height: 40px; }
+.cw-detail-actions > .cw-tools-confirm { font-size: 13px; color: var(--cw-bone-100); }
+.cw-detail-actions > .cw-tools-confirm b { color: #e2c98f; }
