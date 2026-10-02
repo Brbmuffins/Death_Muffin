@@ -132,7 +132,7 @@ async function run1(browser, label, ctxOptions, phone, setPage) {
 
   // Codex: Armor sets tab has a Legendary section with all four sets.
   await page.keyboard.press('Escape');
-  await page.keyboard.press('Escape');
+  await page.locator('.gs-sheet').waitFor({ state: 'hidden' });
   if (phone) { await page.locator('.hud-menu [data-menu]').tap(); await page.locator('.hud-menusheet [data-open="codex"]').tap(); } else await page.keyboard.press('k');
   await page.locator('[data-tab="sets"]').click();
   const codex = await page.locator('[role="dialog"][aria-label="Codex"]').innerText();
