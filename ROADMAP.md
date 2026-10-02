@@ -29,11 +29,11 @@ flowchart LR
     S15[2 Oct: Blender round 2 — hound · gargoyle wings]:::done
     S16[2 Oct: gear tuning]:::done
     S17[2 Oct: balance re-audit · boss tuning]:::done
+    S18[2 Oct: zone + encounter polish]:::done
   end
 
   subgraph NOW["🔨 Now — polish round 2"]
     R2[QA suite reliability<br/>every smoke trustworthy]:::now
-    R3[Zone + encounter polish<br/>readability · telegraphs · corpses]:::now
   end
 
   subgraph POLISH["✨ Next — polish"]
@@ -58,6 +58,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 2 Oct 2026 | Zone and encounter polish: boss cone and line telegraphs outlined and bright (Gravedigger sweep, Flood Hymn, Abbess, Plague Saint), faint rings on fresh corpses so they never vanish on dark ground, the Fen wisp pulse no longer camouflaged, three prop overlaps fixed, the Ossuary brighter | Full tour and per-zone numbers in docs/ZONE-POLISH-AUDIT.md. |
 | 2 Oct 2026 | Balance re-audit: no drift in farming after the day's changes (max Wave Speed still out-earns intended at ~2 deaths per 3 min; Ossuary level with the others); the boss bot can now reach the Mire Mother; Gravedigger King, Bone Abbess and Mire Mother were too easy and got more health (the Mire Mother also hits harder) | Boss tables in BALANCE.md ("Polish round 2"). If base item stats stay as they are, the later bosses should get about +35% health (part of the owner decision). |
 | 2 Oct 2026 | Gear tuning: the balance bot now wears realistic gear kits; stat affixes no longer dominate (INT was mandatory), the six necromancer affixes are worth taking, each necromancer's own armor set is its best set, and the ▲/▼ score agrees with real results on 33 of 35 big swaps | Tables in BALANCE.md ("Gear pass"). One open decision for the owner below. |
 | 2 Oct 2026 | Blender round 2: the bone hound's walk no longer stretches its body (new leg and tail bones, procedural idle/walk/run, slip 0.85 → 0.06); cinderhound hind legs flex properly and the shoulder poke is gone; the skull rat's tail no longer drags; the belfry gargoyle has real bones in both wings and flaps from clips instead of a shader | CC0 talk gesture tested on the guide NPCs and kept out (reads as waiting, not talking). |

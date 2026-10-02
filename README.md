@@ -23,6 +23,9 @@ Some of the most polished corners of the game right now (updated 2 October 2026)
 </tr><tr>
 <td><img src="docs/screenshots/apothecary-wing.webp" alt="The Apothecary at her counter in the Alchemist's Wing" /><br /><sub><b>The Alchemist's Wing.</b> A room for brewing, the Great Cauldron and the Apothecary, who tells you what your reagents make.</sub></td>
 <td><img src="docs/screenshots/affix-tooltip.webp" alt="A ring with three affixes and an upgrade verdict" /><br /><sub><b>Rolled loot.</b> Item levels and affixes rolled on the server; necromancer affixes marked †, verdicts in plain words.</sub></td>
+</tr><tr>
+<td><img src="docs/screenshots/zone-polish-gravedigger-sweep.webp" alt="The Gravedigger King's sweep telegraph, outlined in gold" /><br /><sub><b>Readable boss telegraphs.</b> Cones and lines are outlined and bright, so you always know where not to stand.</sub></td>
+<td><img src="docs/screenshots/zone-polish-corpse-rings.webp" alt="Fresh corpses marked with faint rings" /><br /><sub><b>Corpses you can find.</b> Every fresh body gets a faint ring, so a necromancer never loses track of their next thrall.</sub></td>
 </tr></table>
 
 ## Contents
