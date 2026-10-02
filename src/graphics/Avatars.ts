@@ -9,10 +9,15 @@ import { fx } from './fxTextures';
 import type { EquipSlot } from '../content/gear';
 import type { AbilityId } from '../content/abilities';
 import { castClipFor, planGesture, type GestureKey } from '../content/castClips';
-import { buildCape, buildHelm, buildOffhand, buildWeapon, disposeProp } from './gearProps';
+import { buildCape, buildHelm, buildOffhand, buildWeapon, disposeProp, gripFor } from './gearProps';
 import { capeDef } from '../content/cosmetics';
 import { gearTier, weaponKind } from '../content/gear';
 import type { GearRegion } from './gearTint';
+import { smoothSpeed, stepSpeed, turnToward } from './locomotion';
+
+/** Heroes ease toward a new heading (1/s) but never faster than this (rad/s), so a flip of direction is a visible turn. */
+const HERO_TURN_RATE = 12;
+const HERO_TURN_MAX = 13;
 
 /** How much a held staff follows the wrist (0 = pinned upright, 1 = fully hand-driven). */
 const STAFF_FOLLOW = 0.15;
@@ -43,6 +48,8 @@ function skullStaff(accent: THREE.ColorRepresentation) {
  * The necromancer hero (local or remote). One generated model for every
  * discipline; the discipline colours the staff light and robe glow.
  */
+/** Where the hand holds each tool along its length, from the middle toward the handle end (share of the length). */
+const TOOL_GRIP: Record<GatherSkill, number> = { woodcutting: -0.3, mining: -0.15, fishing: -0.3, gravedigging: -0.3, gardening: -0.3 };
 const TOOL_TINT = [0xb87333, 0x9097a0, 0xdfe4ee, 0x7a98b0, 0xd0452f, 0xaec8ff];
 
 export class NecromancerAvatar {
@@ -68,6 +75,10 @@ export class NecromancerAvatar {
   /** Spell origin when there is no staff (the Knight's sword). */
   private tipObj: THREE.Object3D | null = null;
   private moving = false;
+  private lastX: number | null = null;
+  private lastZ = 0;
+  /** Smoothed real ground speed (units/s), from how far the hero moved. */
+  private groundSpeed = 0;
   castLock = 0;
 
   constructor(scene: THREE.Scene, accent: string, withLight: boolean, slug: CreatureSlug = 'necromancer') {
@@ -159,10 +170,17 @@ export class NecromancerAvatar {
       // Normalize by the longest axis so a spade never becomes giant in-hand.
       const size = new THREE.Box3().setFromObject(template.scene).getSize(new THREE.Vector3());
       obj.scale.setScalar(tool.length / Math.max(0.001, size.x, size.y, size.z));
-      obj.visible = this.gatheringSkill === skill;
-      this.c.attach('R_Hand', obj, new THREE.Vector3(0, 1, 0.1));
-      this.gatheringTools.set(skill, obj);
-      this.tintTool(skill, obj, this.toolTier);
+      // Tools are centred on their middle, and the spade is authored lying along X. Stand the long axis up and slide the
+      // model along it so the hand holds the handle end (GRIP_AT, a share of the length) instead of the middle.
+      const inner = obj;
+      if (size.x > size.y * 1.5) inner.rotation.z = Math.PI / 2;
+      inner.position.y = -TOOL_GRIP[skill] * tool.length;
+      const holder = new THREE.Group();
+      holder.add(inner);
+      holder.visible = this.gatheringSkill === skill;
+      this.c.attach('R_Hand', holder, new THREE.Vector3(0, 1, 0.1));
+      this.gatheringTools.set(skill, holder);
+      this.tintTool(skill, holder, this.toolTier);
     }).finally(() => this.loadingTools.delete(skill));
   }
 
@@ -218,7 +236,10 @@ export class NecromancerAvatar {
       if (!item) continue;
       const obj = slot === 'head' ? buildHelm(item.item_id, item.rarity) : slot === 'off_hand' ? buildOffhand(item.item_id, item.rarity) : buildWeapon(item.item_id, item.rarity);
       if (slot === 'head') this.c.attach(bone, obj, new THREE.Vector3(0, 1, 0));
-      else this.c.attach(bone, obj, new THREE.Vector3(0, 1, 0.1), slot === 'main_hand' && obj.userData.tip ? STAFF_FOLLOW * 2 : 0.5);
+      else {
+        const grip = gripFor(slot, item.item_id, !!obj.userData.tip);
+        this.c.attach(bone, obj, grip.dir, grip.follow, grip.fit);
+      }
       this.worn.set(slot, { obj, key: item.item_id });
     }
     // Body slots have no prop: they recolour their region of the body by material tier.
@@ -259,15 +280,21 @@ export class NecromancerAvatar {
 
   update(dt: number, x: number, z: number, facing: number, moving: boolean, speed: number) {
     this.c.root.position.set(x, 0, z);
-    let d = facing - this.c.root.rotation.y;
-    while (d > Math.PI) d -= Math.PI * 2;
-    while (d < -Math.PI) d += Math.PI * 2;
-    this.c.root.rotation.y += d * Math.min(1, dt * 14);
+    this.c.root.rotation.y = turnToward(this.c.root.rotation.y, facing, dt, HERO_TURN_RATE, HERO_TURN_MAX);
+    // Real ground speed from the frame's displacement (a teleport reads as standing still); the walk / run clip is
+    // played at the pace that matches it, so the feet stay planted whatever the hero's move-speed stats are.
+    const inst = this.lastX === null ? speed : stepSpeed(x - this.lastX, z - this.lastZ, dt);
+    this.lastX = x;
+    this.lastZ = z;
+    this.groundSpeed = moving ? smoothSpeed(this.groundSpeed || inst, inst, dt, 0.12) : 0;
     if (moving !== this.moving) {
       this.moving = moving;
-      this.c.setLoop(moving ? 'run' : 'idle', moving ? speed / 5.2 : 1);
-      if (moving) this.c.releaseGesture();
-    }
+      if (moving) {
+        this.groundSpeed = speed;
+        this.c.setGroundSpeed(speed);
+        this.c.releaseGesture();
+      } else this.c.setLoop('idle');
+    } else if (moving) this.c.setGroundSpeed(this.groundSpeed);
     this.castLock = Math.max(0, this.castLock - dt);
     this.c.update(dt);
     if (this.cape) {
@@ -327,6 +354,9 @@ export class BossView {
   private readonly mire: boolean;
   /** Mire Mother: 0 standing, 1 fully under the water. */
   private sunk = 0;
+  private lastX: number | null = null;
+  private lastZ = 0;
+  private groundSpeed = 0;
 
   constructor(scene: THREE.Scene, private effects: Effects, slug: CreatureSlug = 'prelate', private color = 0xa26bff) {
     this.saint = slug === 'boss_plague_saint';
@@ -359,10 +389,11 @@ export class BossView {
       }
     }
     this.c.root.position.set(b.x, -4.6 * (1 - this.rise) * (1 - this.rise) - this.sunk * 4.4, b.z);
-    let d = b.facing - this.c.root.rotation.y;
-    while (d > Math.PI) d -= Math.PI * 2;
-    while (d < -Math.PI) d += Math.PI * 2;
-    this.c.root.rotation.y += d * Math.min(1, dt * 3);
+    this.c.root.rotation.y = turnToward(this.c.root.rotation.y, b.facing, dt, 3);
+    const inst = this.lastX === null ? 0 : stepSpeed(b.x - this.lastX, b.z - this.lastZ, dt, 6);
+    this.lastX = b.x;
+    this.lastZ = b.z;
+    this.groundSpeed = smoothSpeed(this.groundSpeed, inst, dt, 0.25);
     this.c.flash = b.active ? b.flash : 0;
     // The Regent's pale cape and molten plate white out under a close 16-24 light: a warm, low glow instead.
     const glow = this.regent || this.mire ? 4 + b.phase * 2 : 16 + b.phase * 8;
@@ -371,10 +402,10 @@ export class BossView {
       this.lastState = b.state;
       if (b.state === 'toll' || b.state === 'rain' || b.state === 'summon') this.c.playOnce('cast', 1.1);
       else if (b.state === 'slam') this.c.playOnce('attack', 1.3);
-      else if (b.state === 'move') this.c.setLoop('walk', 0.9 + b.phase * 0.15);
+      else if (b.state === 'move') this.c.setGroundSpeed(this.groundSpeed || 2);
       else if (b.state === 'dead') this.c.playOnce('death', 0.8);
       else this.c.setLoop('idle');
-    }
+    } else if (b.state === 'move') this.c.setGroundSpeed(this.groundSpeed);
     if (this.saint && b.active) {
       // Her clip set is small (idle/walk/attack/cast), so the blight itself is the tell: she swells and
       // sheds more rot each phase.

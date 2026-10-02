@@ -50,14 +50,139 @@ function sample(arr, times, t, stride, out, isQuat) {
   }
 }
 
+/**
+ * Bone names per rig. The biped heroes and enemies share one skeleton (Hip, R_Hand, ...); the quadrupeds (bone hound,
+ * skull rat, cinderhound) are a different Tripo rig: their root is `tripo::Root`, the head leads the bite, and there is
+ * no hand or toe bone, so the head stands in for the striking hand and the body's forward is hip-to-head.
+ */
+export function rigNames(byName, file = '') {
+  if (byName.has('Hip')) {
+    for (const n of ['R_Hand', 'L_Hand', 'Head', 'L_Foot', 'L_ToeBase']) if (!byName.has(n)) throw new Error(`${file}: no ${n}`);
+    return { quad: false, hip: 'Hip', head: 'Head', rHand: 'R_Hand', lHand: 'L_Hand', lFoot: 'L_Foot', lToe: 'L_ToeBase' };
+  }
+  const head = ['tripo::Head_1', 'tripo::Head_0'].find((n) => byName.has(n));
+  if (!byName.has('tripo::Root') || !head) throw new Error(`${file}: no Hip and not a known quadruped rig`);
+  return { quad: true, hip: 'tripo::Root', head, rHand: head, lHand: head, lFoot: null, lToe: null };
+}
+
+/**
+ * Ground speed a looping locomotion clip implies, in model units per second: the median horizontal speed of the planted
+ * feet relative to the body (so authored root motion, which the game strips, does not matter). Biped rigs use both feet;
+ * quadruped rigs use the four lowest limb tips. Returns { speed, feet, lift } or null for a clip with no foot motion.
+ */
+export async function strideOfClip(file, clipName) {
+  const doc = await io.read(file);
+  const { top, byName, map } = buildTree(doc);
+  const rig = rigNames(byName, file);
+  const anim = doc.getRoot().listAnimations().find((a) => a.getName() === clipName);
+  if (!anim) return null;
+  const chans = anim.listChannels().map((c) => ({
+    obj: map.get(c.getTargetNode()), path: c.getTargetPath(), times: c.getSampler().getInput().getArray(), vals: c.getSampler().getOutput().getArray(),
+  }));
+  const dur = Math.max(...chans.map((c) => c.times[c.times.length - 1]));
+  const dt = 1 / 30;
+  const p = new THREE.Vector3(), q = new THREE.Quaternion();
+  const pose = (t) => {
+    for (const c of chans) {
+      if (c.path === 'rotation') { sample(c.vals, c.times, t, 4, q, true); c.obj.quaternion.copy(q); }
+      else if (c.path === 'translation') { sample(c.vals, c.times, t, 3, p, false); c.obj.position.copy(p); }
+    }
+    top.updateMatrixWorld(true);
+  };
+  let feet;
+  if (!rig.quad) feet = ['L_Foot', 'R_Foot'];
+  else {
+    // Leaf bones (limb tips) that sit lowest on average, ignoring head and tail.
+    const leaves = [...byName.values()].filter((o) => o.children.length === 0 && /Limb|bone_/.test(o.name) && !/Head|Tail/.test(o.name));
+    pose(0);
+    const ys = leaves.map((o) => o.getWorldPosition(new THREE.Vector3()).y);
+    const order = leaves.map((_, i) => i).sort((a, b) => ys[a] - ys[b]);
+    feet = order.slice(0, 4).map((i) => leaves[i].name);
+  }
+  const series = feet.map(() => []);
+  for (let t = 0; t < dur - 1e-6; t += dt) {
+    pose(t);
+    const hip = byName.get(rig.hip).getWorldPosition(new THREE.Vector3());
+    feet.forEach((n, i) => {
+      const f = byName.get(n).getWorldPosition(new THREE.Vector3());
+      series[i].push({ x: f.x - hip.x, z: f.z - hip.z, y: f.y });
+    });
+  }
+  const median = (a) => { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : 0; };
+  const speeds = [];
+  let lift = 0;
+  for (const s of series) {
+    const n = s.length;
+    const ymin = Math.min(...s.map((r) => r.y)), ymax = Math.max(...s.map((r) => r.y));
+    lift = Math.max(lift, ymax - ymin);
+    const cut = ymin + 0.22 * (ymax - ymin);
+    const v = [];
+    for (let i = 0; i < n; i++) {
+      if (s[i].y > cut) continue;
+      const a = s[(i + n - 1) % n], b = s[(i + 1) % n];
+      v.push(Math.hypot(b.x - a.x, b.z - a.z) / (2 * dt));
+    }
+    if (v.length) speeds.push(median(v));
+  }
+  if (!speeds.length) return null;
+  return { speed: +median(speeds).toFixed(3), feet, lift: +lift.toFixed(3), duration: +dur.toFixed(2) };
+}
+
+/**
+ * Rest-pose height of the skinned mesh, glTF units: the same number AssetCache measures (Box3 of the skinned model) and
+ * scales to the model's target height. Vertices are skinned by hand (joint world matrix x inverse bind matrix), because
+ * the quantised POSITION accessors are normalised to +-1 and only the skin brings them back to the skeleton's size.
+ */
+export async function bindHeight(file) {
+  const doc = await io.read(file);
+  const { top, map } = buildTree(doc);
+  top.updateMatrixWorld(true);
+  let lo = Infinity, hi = -Infinity;
+  const v = new THREE.Vector3(), acc = new THREE.Vector3(), m = new THREE.Matrix4();
+  for (const n of doc.getRoot().listNodes()) {
+    const mesh = n.getMesh();
+    if (!mesh) continue;
+    const skin = n.getSkin();
+    const joints = skin?.listJoints().map((j) => map.get(j));
+    const ibm = skin?.getInverseBindMatrices()?.getArray();
+    const mats = joints?.map((j, i) => new THREE.Matrix4().multiplyMatrices(j.matrixWorld, new THREE.Matrix4().fromArray(ibm, i * 16)));
+    for (const prim of mesh.listPrimitives()) {
+      const pos = prim.getAttribute('POSITION');
+      const jnt = prim.getAttribute('JOINTS_0'), wgt = prim.getAttribute('WEIGHTS_0');
+      const norm = (_a, x) => x; // getElement already de-normalises
+      const el = [], jel = [], wel = [];
+      for (let i = 0; i < pos.getCount(); i++) {
+        pos.getElement(i, el);
+        v.set(norm(pos, el[0]), norm(pos, el[1]), norm(pos, el[2]));
+        if (mats && jnt && wgt) {
+          jnt.getElement(i, jel);
+          wgt.getElement(i, wel);
+          acc.set(0, 0, 0);
+          let wsum = 0;
+          for (let k = 0; k < 4; k++) {
+            const w = norm(wgt, wel[k]);
+            if (w <= 0) continue;
+            acc.addScaledVector(v.clone().applyMatrix4(mats[jel[k]]), w);
+            wsum += w;
+          }
+          if (wsum > 0) v.copy(acc).divideScalar(wsum);
+        } else v.applyMatrix4(map.get(n).matrixWorld);
+        lo = Math.min(lo, v.y);
+        hi = Math.max(hi, v.y);
+      }
+    }
+  }
+  void m;
+  return hi - lo;
+}
+
 /** Combat clips store Hip position relative to their standing first frame (build-characters COMBAT_TRIMS). */
 const RELATIVE_HIP = new Set(['slam', 'sweep', 'flick', 'channel', 'summon']);
 
 export async function measureFile(file) {
   const doc = await io.read(file);
   const { top, byName, map } = buildTree(doc);
-  const need = ['Hip', 'R_Hand', 'L_Hand', 'Head', 'L_Foot', 'L_ToeBase'];
-  for (const n of need) if (!byName.has(n)) throw new Error(`${file}: no ${n}`);
+  const rig = rigNames(byName, file);
   const results = [];
   const idleHip = doc.getRoot().listAnimations().find((a) => a.getName() === 'idle')
     ?.listChannels().find((c) => c.getTargetNode()?.getName() === 'Hip' && c.getTargetPath() === 'translation')
@@ -82,9 +207,8 @@ export async function measureFile(file) {
       }
       top.updateMatrixWorld(true);
       const w = (n) => byName.get(n).getWorldPosition(new THREE.Vector3());
-      const toe = w('L_ToeBase'), foot = w('L_Foot');
-      const fwd = toe.sub(foot).setY(0).normalize();
-      const hip = w('Hip'), head = w('Head'), rh = w('R_Hand'), lh = w('L_Hand');
+      const hip = w(rig.hip), head = w(rig.head), rh = w(rig.rHand), lh = w(rig.lHand);
+      const fwd = rig.lToe ? w(rig.lToe).sub(w(rig.lFoot)).setY(0).normalize() : head.clone().sub(hip).setY(0).normalize();
       rows.push({ t, hip, head, rh, lh, fwd });
     }
     const f0 = rows[0];

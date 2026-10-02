@@ -5,6 +5,7 @@ import { fx } from './fxTextures';
 import { assets } from './AssetCache';
 import { PROP_URL } from './modelPaths';
 import { NECRO_MODEL, NECRO_WEAPON_BY_ID, type NecroKind } from '../content/necroWeapons';
+import type { GripFit } from './Creature';
 
 /**
  * Code-built props for equipped gear (no art budget): every prop's +Y is its long axis with the
@@ -417,4 +418,52 @@ export function buildCape(color: number, trim: number): THREE.Group {
   emblem.position.set(0, -0.3, top + 0.06);
   back.add(body, hem, collar, clasp, emblem);
   return g;
+}
+
+
+// --- Grips: how each kind of prop sits in the hand ---------------------------------------------------------------------
+
+/**
+ * Per-kind grip. `lean` tilts the prop's long axis away from the body ([outward, forward], tangent of the angle);
+ * `offset` shifts it in the character's frame ([outward, up, forward] metres, mirrored for the right hand); `roll` turns
+ * it about its own axis; `follow` is how much it rides the wrist (0 = held upright whatever the arm does, 1 = hand-driven).
+ * Tuned against src/graphics/__tests__/prop-clipping.test.ts, which measures vertices buried in or resting on the robe.
+ */
+export interface GripSpec {
+  lean: [number, number];
+  offset?: [number, number, number];
+  roll?: number;
+  follow: number;
+}
+
+const BASE_GRIP: GripSpec = { lean: [0, 0.1], follow: 0.5 };
+
+export const GRIPS: Record<string, GripSpec> = {
+  // main hand
+  staff: { lean: [0.06, 0.1], follow: 0.3 },
+  scythe: { lean: [0.06, 0.1], follow: 0.3 },
+  wand: { lean: [0.35, 0.3], follow: 0.3 },
+  sickle: { lean: [0.35, 0.3], follow: 0.3 },
+  // off hand
+  skull_focus: { lean: [0.25, 0.1], follow: 0.5 },
+  grimoire: { lean: [0.45, 0.15], offset: [0.04, 0.02, 0.06], follow: 0.5 },
+  mourning_bell: { lean: [-0.5, 0.2], offset: [0.05, 0, 0.06], follow: 0.5 },
+};
+
+export interface Grip {
+  dir: THREE.Vector3;
+  follow: number;
+  fit: GripFit;
+}
+
+/** The grip for an equipped main-hand or off-hand item. The right hand is the character's -X side, the left +X. */
+export function gripFor(slot: 'main_hand' | 'off_hand', itemId: string, hasTip: boolean): Grip {
+  const side = slot === 'main_hand' ? -1 : 1;
+  const kind = NECRO_WEAPON_BY_ID[itemId]?.kind ?? (slot === 'main_hand' ? weaponKind(itemId) : offhandKind(itemId));
+  const spec = GRIPS[kind] ?? { ...BASE_GRIP, follow: slot === 'main_hand' && hasTip ? 0.3 : BASE_GRIP.follow };
+  return {
+    dir: new THREE.Vector3(side * spec.lean[0], 1, spec.lean[1]),
+    follow: spec.follow,
+    fit: { roll: spec.roll, offset: spec.offset ? new THREE.Vector3(side * spec.offset[0], spec.offset[1], spec.offset[2]) : undefined },
+  };
 }

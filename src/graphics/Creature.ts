@@ -30,6 +30,7 @@ export function wrapRange(t: number, start: number, end: number): number {
 /** Measured [duration, impact] seconds per model and clip (tools/build-clip-timings.mjs). */
 const CLIP_TIMINGS = CLIP_TIMINGS_JSON as Record<string, Record<string, number[]>>;
 import { hipAnchor, inPlaceHeroClip, stripRootTravel } from './inPlaceAnimation';
+import { planLocomotion, STRIDES, type LocomotionPlan } from './locomotion';
 import { applyWingFlap, type WingOpts } from './wingFlap';
 import { applyGearTint, GEAR_REGIONS, makeGearTintState, type GearRegion } from './gearTint';
 
@@ -55,6 +56,16 @@ const FALLBACK: Record<CreatureAnim, CreatureAnim[]> = {
   summon: ['summon', 'dig', 'cast'],
 };
 
+/**
+ * How a held prop sits in the hand beyond "its +Y along `dir`": a shift in the character's frame at the calibration pose
+ * (metres: x to the character's left, y up, z forward; the caller mirrors it for the right hand) and a roll about the
+ * prop's own long axis, so a book or blade can face the right way and clear the body.
+ */
+export interface GripFit {
+  offset?: THREE.Vector3;
+  roll?: number;
+}
+
 export interface CreatureOptions {
   /** Heroes only: let equipped body gear recolour chest/legs/hands/feet (see gearTint.ts). */
   gearTint?: boolean;
@@ -77,6 +88,18 @@ export interface CreatureOptions {
 }
 
 const FLASH_COLOR = new THREE.Color(0xfff0dc);
+/** Crossfade seconds: locomotion eases (idle / walk / run), a return from a swing a little quicker, a swing itself snaps. */
+const FADE_LOCOMOTION = 0.28;
+const FADE_RETURN = 0.2;
+/** The tripo biped rig faces +X in its GLB; gameplay headings use +Z. */
+const BIPED_YAW = -Math.PI / 2;
+/** Quadruped rigs have no Hip bone; measured head-versus-tail at heading 0 (2026-10-02). The skull rat already faces +Z. */
+const RIG_YAW: Partial<Record<string, number>> = { bone_hound: Math.PI, cinderhound: Math.PI };
+/** Playback of a walk-only rig (the quadrupeds) standing in for idle: a slow shuffle instead of trotting on the spot. */
+const IDLE_STAND_IN = 0.2;
+/** Seconds of the hurt clip an additive flinch uses, and how fast it plays. */
+const FLINCH_SECONDS = 0.5;
+const FLINCH_SPEED = 1.35;
 /** One-shots that may have numbered variety clips (tools/build-characters.mjs CLIP_NAMES). */
 const VARIANTS = new Set<CreatureAnim>(['attack', 'hurt', 'death']);
 
@@ -103,13 +126,21 @@ export class Creature {
   private oneShot: THREE.AnimationAction | null = null;
   /** Shared uniform state for body-gear tints; only patched into materials when `gearTint` is set. */
   private readonly gearTint = makeGearTintState();
-  private pendingAttach: [string, THREE.Object3D, THREE.Vector3 | undefined, number | undefined][] = [];
+  private pendingAttach: [string, THREE.Object3D, THREE.Vector3 | undefined, number | undefined, GripFit | undefined][] = [];
   private calibrate: { obj: THREE.Object3D; dir: THREE.Vector3; frames: number }[] = [];
   /** Calibrated attachments, re-checked while idle so a bad first pose self-heals. */
-  private attached: { obj: THREE.Object3D; dir: THREE.Vector3; follow?: number; baseQ?: THREE.Quaternion }[] = [];
+  private attached: { obj: THREE.Object3D; dir: THREE.Vector3; follow?: number; baseQ?: THREE.Quaternion; fit?: GripFit }[] = [];
   private settledT = 0;
   private recheckT = 0;
   private disposed = false;
+  /** Slug whose measured strides apply (the requested model, or its stand-in when that one failed to load). */
+  private rigSlug: string;
+  /** World height of the loaded model (def height x scale option), before the owner's root scale. */
+  private baseHeight: number;
+  private locoRun = false;
+  /** Additive hit-react laid over whatever is playing (see flinch). */
+  private flinchAct: THREE.AnimationAction | null = null;
+  private flinchStrength = 0;
   private flashV = 0;
   /** Set by the owner when the model has no death clip (tip over instead). */
   toppled = 0;
@@ -121,12 +152,16 @@ export class Creature {
     this.shadowOn = opts.castShadow ?? true;
     const def = CREATURE_MODELS[slug];
     const fb = opts.fallback ? CREATURE_MODELS[opts.fallback] : null;
+    this.rigSlug = slug;
+    this.baseHeight = def.height * (opts.scale ?? 1);
     let usedFallback = false;
     this.ready = assets
       .model(def.url, def.height * (opts.scale ?? 1))
       .then((t) => {
         if (t) return t;
         usedFallback = true;
+        this.rigSlug = opts.fallback ?? slug;
+        this.baseHeight = (fb?.height ?? def.height) * (opts.scale ?? 1);
         return fb ? assets.model(fb.url, fb.height * (opts.scale ?? 1)) : null;
       })
       .then((t) => {
@@ -134,7 +169,9 @@ export class Creature {
       const model = t.skinned ? cloneSkinned(t.scene) : t.scene.clone(true);
       model.scale.multiplyScalar(t.scale);
       model.position.y = t.groundOffset;
-      model.rotation.y += opts.modelYaw ?? 0;
+      // Biped rigs (anything with a Hip bone) face +X in the GLB. Heroes pass their own yaw; every other biped gets the
+      // same one, so enemies, thralls and bosses face (and swing their legs) along their heading instead of sideways.
+      model.rotation.y += opts.modelYaw ?? RIG_YAW[this.rigSlug] ?? (model.getObjectByName('Hip') ? BIPED_YAW : 0);
       const wingPhase = Math.random() * Math.PI * 2;
       model.traverse((o) => {
         const mesh = o as THREE.Mesh;
@@ -176,11 +213,11 @@ export class Creature {
         if (e.action === this.oneShot) {
           this.oneShot = null;
           this.oneShotEnd = null;
-          if (!e.action.getClip().name.startsWith('death')) this.startLoop(true);
+          if (!e.action.getClip().name.startsWith('death')) this.startLoop(true, FADE_RETURN);
         }
       });
       this.loaded = true;
-      for (const [bone, obj, dir, follow] of this.pendingAttach) this.attach(bone, obj, dir, follow);
+      for (const [bone, obj, dir, follow, fit] of this.pendingAttach) this.attach(bone, obj, dir, follow, fit);
       this.pendingAttach = [];
       this.startLoop(false);
     });
@@ -213,22 +250,35 @@ export class Creature {
     return null;
   }
 
-  private startLoop(fade: boolean) {
+  /** True when the loop being asked for has no clip of its own and borrows another (the quadrupeds' idle is their walk). */
+  private standIn(next: THREE.AnimationAction | null) {
+    return this.loop === 'idle' && !!next && next !== this.actions.get('idle');
+  }
+
+  private startLoop(fade: boolean, fadeS = FADE_LOCOMOTION) {
     const next = this.resolve(this.loop);
     if (!next) return;
     next.setLoop(THREE.LoopRepeat, Infinity);
     next.clampWhenFinished = false;
-    next.timeScale = this.loopSpeed;
+    next.timeScale = this.standIn(next) ? IDLE_STAND_IN : this.loopSpeed;
     if (next === this.current && !this.oneShot) return;
     next.enabled = true;
-    if (fade && this.current) {
-      next.reset().setEffectiveWeight(1).fadeIn(0.18).play();
-      if (this.current !== next) this.current.fadeOut(0.18);
+    const prev = this.current;
+    if (fade && prev) {
+      next.reset().setEffectiveWeight(1);
+      // Walk and run share a step cycle: land the new clip in the same phase so the legs do not scramble mid-blend.
+      if (prev !== next && this.isStride(prev) && this.isStride(next)) next.time = (prev.time / prev.getClip().duration) * next.getClip().duration;
+      next.fadeIn(fadeS).play();
+      if (prev !== next) prev.fadeOut(fadeS);
     } else {
       next.reset().setEffectiveWeight(1).play();
-      if (this.current && this.current !== next) this.current.stop();
+      if (prev && prev !== next) prev.stop();
     }
     this.current = next;
+  }
+
+  private isStride(a: THREE.AnimationAction) {
+    return a === this.actions.get('walk') || a === this.actions.get('run');
   }
 
   /** Loop only the [start, end) seconds of a clip (see wrapRange); any later setLoop to another clip clears it. */
@@ -250,11 +300,32 @@ export class Creature {
     this.loopSpeed = speed;
     if (this.range && this.range.anim !== anim) this.range = null;
     if (this.current && this.loop === anim) {
-      if (!this.oneShot) this.current.timeScale = speed;
+      if (!this.oneShot) this.current.timeScale = this.standIn(this.current) ? IDLE_STAND_IN : speed;
       return;
     }
     this.loop = anim;
     if (!this.oneShot) this.startLoop(true);
+  }
+
+  /** The last locomotion plan (QA and tests read it; null until setGroundSpeed has run). */
+  lastPlan: LocomotionPlan | null = null;
+
+  /** World height of this body right now: the model's height, the scale option and the owner's root scale. */
+  worldHeight(): number {
+    return this.baseHeight * this.root.scale.x;
+  }
+
+  /**
+   * Walk or run at the pace that matches `ground` (units per second of real movement), with this model's measured
+   * stride (src/content/strideSpeeds.json) so the feet stay planted. Call it every frame the body moves; it only
+   * touches the mixer when the clip or its speed changes.
+   */
+  setGroundSpeed(ground: number): LocomotionPlan {
+    const plan = planLocomotion(STRIDES[this.rigSlug], this.worldHeight(), ground, this.actions.has('run'), this.locoRun);
+    this.locoRun = plan.clip === 'run';
+    this.lastPlan = plan;
+    this.setLoop(plan.clip, plan.timeScale);
+    return plan;
   }
 
   /** Clip time at which the current one-shot hands back to the loop (a strike's follow-through end). */
@@ -282,6 +353,9 @@ export class Creature {
 
   /** One-shot overlay (attack/cast/hurt/death/dig); returns to the loop after. */
   playOnce(anim: CreatureAnim, speed = 1, durationSeconds?: number, startAt = 0): boolean {
+    // A hit-react is laid over whatever is playing (walking, swinging, casting) instead of replacing it.
+    if (anim === 'hurt' && this.actions.has('hurt')) return this.flinch();
+    if (anim === 'death') this.flinchAct?.stop();
     const a = this.resolve(anim);
     if (!a) return false;
     // Don't let a hurt flinch cancel an attack or a death.
@@ -307,12 +381,40 @@ export class Creature {
     return true;
   }
 
+  /**
+   * A short additive flinch: the first half-second of the `hurt` clip, as a difference from its first frame, added on
+   * top of the running animation. The body jolts and recovers without losing its stride or cutting a swing. Weaker while
+   * a one-shot (a swing or a cast) is playing. Returns false for a rig with no hurt clip.
+   */
+  flinch(strength = 0.85): boolean {
+    if (!this.mixer) return false;
+    if (!this.flinchAct) {
+      const src = this.actions.get('hurt');
+      if (!src) return false;
+      const base = src.getClip();
+      const sub = THREE.AnimationUtils.subclip(base, 'flinch', 0, Math.max(2, Math.round(Math.min(base.duration, FLINCH_SECONDS * FLINCH_SPEED) * 30)), 30);
+      THREE.AnimationUtils.makeClipAdditive(sub, 0, sub.clone(), 30);
+      const a = this.mixer.clipAction(sub);
+      a.blendMode = THREE.AdditiveAnimationBlendMode;
+      a.setLoop(THREE.LoopOnce, 1);
+      a.clampWhenFinished = false;
+      this.flinchAct = a;
+    }
+    if (this.oneShot?.getClip().name.startsWith('death')) return true;
+    const a = this.flinchAct;
+    this.flinchStrength = strength * (this.oneShot ? 0.5 : 1);
+    a.enabled = true;
+    a.timeScale = FLINCH_SPEED;
+    a.reset().setEffectiveWeight(0).play();
+    return true;
+  }
+
   /** Let locomotion blend out a hero gesture as soon as walking resumes. */
   releaseGesture() {
     if (!this.opts.inPlace || !this.oneShot || /^(death|hurt)\d?$/.test(this.oneShot.getClip().name)) return;
     this.oneShot = null;
     this.oneShotEnd = null;
-    this.startLoop(true);
+    this.startLoop(true, FADE_RETURN);
   }
 
   /** Jump a clip to its last frame (corpses of late joiners, etc.). */
@@ -337,15 +439,15 @@ export class Creature {
    * toward `dir` by (1 - follow), so it rides the hand without flailing when the
    * wrist swings through a run cycle. Omit it for weapons that should swing freely.
    */
-  attach(boneName: string, obj: THREE.Object3D, dir?: THREE.Vector3, follow?: number) {
+  attach(boneName: string, obj: THREE.Object3D, dir?: THREE.Vector3, follow?: number, fit?: GripFit) {
     if (!this.model) {
-      this.pendingAttach.push([boneName, obj, dir, follow]);
+      this.pendingAttach.push([boneName, obj, dir, follow, fit]);
       return;
     }
     if (dir) {
       const d = dir.clone().normalize();
       this.calibrate.push({ obj, dir: d, frames: 4 });
-      this.attached.push({ obj, dir: d, follow });
+      this.attached.push({ obj, dir: d, follow, fit });
     }
     let bone: THREE.Object3D | undefined;
     this.model.traverse((o) => {
@@ -419,6 +521,12 @@ export class Creature {
   }
 
   update(dt: number) {
+    const f = this.flinchAct;
+    if (f && f.isRunning()) {
+      // Ease the flinch in over ~50 ms and out over the last ~180 ms so it never pops.
+      const edge = FLINCH_SPEED;
+      f.setEffectiveWeight(this.flinchStrength * Math.max(0, Math.min(1, f.time / (0.05 * edge), (f.getClip().duration - f.time) / (0.18 * edge))));
+    }
     this.mixer?.update(dt);
     const r = this.range;
     if (r && this.current && !this.oneShot && this.current === this.resolve(r.anim)) {
@@ -428,7 +536,7 @@ export class Creature {
     if (this.oneShot && this.oneShotEnd !== null && this.oneShot.time >= this.oneShotEnd) {
       this.oneShot = null;
       this.oneShotEnd = null;
-      this.startLoop(true);
+      this.startLoop(true, FADE_RETURN);
     }
     if (!this.model) return;
     const idle = this.actions.get('idle');
@@ -495,6 +603,13 @@ export class Creature {
       const want = c.dir.clone().applyQuaternion(rootQ).applyQuaternion(parentQ.invert());
       c.obj.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), want.normalize());
       const rec = this.attached.find((a) => a.obj === c.obj);
+      const fit = rec?.fit;
+      if (fit?.roll) c.obj.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), fit.roll));
+      if (fit?.offset) {
+        // Character-frame metres -> the bone's local frame (undo its orientation and its inherited scale).
+        const s = parent.getWorldScale(new THREE.Vector3()).x || 1;
+        c.obj.position.copy(fit.offset).applyQuaternion(rootQ).applyQuaternion(parentQ).divideScalar(s);
+      }
       if (rec && rec.follow !== undefined) rec.baseQ = c.obj.quaternion.clone();
       this.calibrate.splice(i, 1);
     }
