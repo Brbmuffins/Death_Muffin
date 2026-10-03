@@ -117,6 +117,8 @@ const FLASH_COLOR = new THREE.Color(0xfff0dc);
 /** Crossfade seconds: locomotion eases (idle / walk / run), a return from a swing a little quicker, a swing itself snaps. */
 const FADE_LOCOMOTION = 0.28;
 const FADE_RETURN = 0.2;
+/** How fast a socketed prop's follow eases between clips (per second). */
+const FOLLOW_EASE = 8;
 /** The tripo biped rig faces +X in its GLB; gameplay headings use +Z. */
 const BIPED_YAW = -Math.PI / 2;
 /** Quadruped rigs have no Hip bone; measured head-versus-tail at heading 0 (2026-10-02). The skull rat already faces +Z. */
@@ -167,10 +169,10 @@ export class Creature {
   private oneShot: THREE.AnimationAction | null = null;
   /** Shared uniform state for body-gear tints; only patched into materials when `gearTint` is set. */
   private readonly gearTint = makeGearTintState();
-  private pendingAttach: [string, THREE.Object3D, THREE.Vector3 | undefined, number | undefined, GripFit | undefined, GripSocketData | undefined][] = [];
+  private pendingAttach: [string, THREE.Object3D, THREE.Vector3 | undefined, number | undefined, GripFit | undefined, GripSocketData | undefined, Readonly<Record<string, number>> | undefined][] = [];
   private calibrate: { obj: THREE.Object3D; dir: THREE.Vector3; frames: number }[] = [];
   /** Calibrated attachments, re-checked while idle so a bad first pose self-heals. Socketed ones are placed exactly and only steady if `follow` < 1. */
-  private attached: { obj: THREE.Object3D; dir: THREE.Vector3; follow?: number; baseQ?: THREE.Quaternion; fit?: GripFit; socketed?: boolean }[] = [];
+  private attached: { obj: THREE.Object3D; dir: THREE.Vector3; follow?: number; baseQ?: THREE.Quaternion; fit?: GripFit; socketed?: boolean; clipFollow?: Readonly<Record<string, number>>; f?: number }[] = [];
   private settledT = 0;
   private recheckT = 0;
   private disposed = false;
@@ -279,7 +281,7 @@ export class Creature {
         }
       });
       this.loaded = true;
-      for (const [bone, obj, dir, follow, fit, socket] of this.pendingAttach) this.attach(bone, obj, dir, follow, fit, socket);
+      for (const [bone, obj, dir, follow, fit, socket, clipFollow] of this.pendingAttach) this.attach(bone, obj, dir, follow, fit, socket, clipFollow);
       this.pendingAttach = [];
       this.startLoop(false);
       });
@@ -512,18 +514,19 @@ export class Creature {
    * toward `dir` by (1 - follow), so it rides the hand without flailing when the
    * wrist swings through a run cycle. Omit it for weapons that should swing freely.
    * With a `socket` the prop is placed exactly from the first frame (no calibration) and rides the wrist rigidly;
-   * `follow` < 1 still applies the same steadying, for the rare grip whose clips would bury it.
+   * `follow` < 1 still applies the same steadying; `clipFollow` lowers it for the named clips only (the ones that would
+   * bury the prop, chosen offline), easing in and out so the hand-over never snaps.
    */
-  attach(boneName: string, obj: THREE.Object3D, dir?: THREE.Vector3, follow?: number, fit?: GripFit, socket?: GripSocketData) {
+  attach(boneName: string, obj: THREE.Object3D, dir?: THREE.Vector3, follow?: number, fit?: GripFit, socket?: GripSocketData, clipFollow?: Readonly<Record<string, number>>) {
     if (!this.model) {
-      this.pendingAttach.push([boneName, obj, dir, follow, fit, socket]);
+      this.pendingAttach.push([boneName, obj, dir, follow, fit, socket, clipFollow]);
       return;
     }
     if (socket && this.rigSlug !== this.slug) socket = undefined; // sockets are measured on the hero's own rig
     if (dir) {
       const d = dir.clone().normalize();
       if (!socket) this.calibrate.push({ obj, dir: d, frames: 4 });
-      this.attached.push({ obj, dir: d, follow, fit, socketed: !!socket });
+      this.attached.push({ obj, dir: d, follow, fit, socketed: !!socket, clipFollow, f: follow ?? 1 });
     }
     let bone: THREE.Object3D | undefined;
     this.model.traverse((o) => {
@@ -620,6 +623,7 @@ export class Creature {
       f.setEffectiveWeight(this.flinchStrength * Math.max(0, Math.min(1, f.time / (0.05 * edge), (f.getClip().duration - f.time) / (0.18 * edge))));
     }
     this.mixer?.update(dt);
+    this.stepDt = dt;
     const r = this.range;
     if (r && this.current && !this.oneShot && this.current === this.resolve(r.anim)) {
       const t = wrapRange(this.current.time, r.start, r.end);
@@ -635,7 +639,7 @@ export class Creature {
     const settled = !this.oneShot && (!idle || (this.current === idle && idle.getEffectiveWeight() > 0.99));
     this.settledT = settled ? this.settledT + dt : 0;
     if (this.calibrate.length) this.runCalibration();
-    else if (this.attached.some((a) => a.baseQ && (a.follow ?? 1) < 1)) this.steadyAttachments();
+    else if (this.attached.some((a) => a.baseQ && ((a.follow ?? 1) < 1 || a.clipFollow))) this.steadyAttachments();
     if (!this.calibrate.length && this.attached.length && this.settledT > 0.6 && (this.recheckT -= dt) <= 0) {
       this.recheckT = 2;
       this.recheckAttachments();
@@ -648,6 +652,7 @@ export class Creature {
    */
   steadyEvery = 1;
   private steadyN = 0;
+  private stepDt = 0;
 
   /** Pull each `follow` attachment's +Y back toward its aim direction, keeping the bone's roll. */
   private steadyAttachments() {
@@ -660,9 +665,19 @@ export class Creature {
     this.root.matrixWorld.decompose(S_POS, S_ROOT_Q, S_SCALE);
     S_SEEN.clear();
     S_SEEN.add(this.root);
+    const clip = this.current?.getClip().name ?? '';
+    const dt = this.stepDt * every;
     for (const a of this.attached) {
       const parent = a.obj.parent;
-      if (!a.baseQ || !parent || (a.follow ?? 1) >= 1) continue;
+      if (!a.baseQ || !parent) continue;
+      // Per-clip stabiliser: ease toward this clip's follow (a few frames either way), so a hand-over never snaps.
+      const want = a.clipFollow ? a.clipFollow[clip] ?? a.follow ?? 1 : a.follow ?? 1;
+      const cur = a.f ?? 1;
+      a.f = cur < want ? Math.min(want, cur + FOLLOW_EASE * dt) : Math.max(want, cur - FOLLOW_EASE * dt);
+      if (a.f >= 1) {
+        a.obj.quaternion.copy(a.baseQ);
+        continue;
+      }
       let n = 0;
       for (let o: THREE.Object3D | null = parent; o && !S_SEEN.has(o); o = o.parent) S_CHAIN[n++] = o;
       for (let i = n - 1; i >= 0; i--) {
@@ -677,7 +692,7 @@ export class Creature {
       S_UP.set(0, 1, 0).applyQuaternion(S_DRIVEN);
       S_WANT.copy(a.dir).applyQuaternion(S_ROOT_Q);
       S_LOCKED.setFromUnitVectors(S_UP, S_WANT).multiply(S_DRIVEN);
-      S_DRIVEN.slerp(S_LOCKED, 1 - (a.follow ?? 1));
+      S_DRIVEN.slerp(S_LOCKED, 1 - a.f);
       a.obj.quaternion.copy(S_PARENT_Q.invert().multiply(S_DRIVEN));
     }
   }

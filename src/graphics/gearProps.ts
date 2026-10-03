@@ -6,7 +6,7 @@ import { assets } from './AssetCache';
 import { PROP_URL } from './modelPaths';
 import { NECRO_MODEL, NECRO_WEAPON_BY_ID, type NecroKind } from '../content/necroWeapons';
 import type { GripFit } from './Creature';
-import { GRIP_SOCKETS, GRIP_SOCKET_FOLLOW, type GripSocket } from './gripSockets.generated';
+import { GRIP_SOCKETS, GRIP_CLIP_FOLLOW, type GripSocket } from './gripSockets.generated';
 
 /**
  * Code-built props for equipped gear (no art budget): every prop's +Y is its long axis with the
@@ -527,9 +527,9 @@ export function gripFor(slot: 'main_hand' | 'off_hand', itemId: string, hasTip: 
   };
 }
 
-/** How much a socketed prop rides the wrist: 1 = rigidly; a lower value is the small stabiliser kept for a grip whose clips would bury it. */
-export function socketFollow(rig: string, kind: string): number {
-  return GRIP_SOCKET_FOLLOW[rig]?.[kind] ?? 1;
+/** The clips in which a socketed prop is steadied (follow < 1) because the clip itself would bury it; elsewhere it rides the wrist. */
+export function socketClipFollow(rig: string, kind: string): Readonly<Record<string, number>> | undefined {
+  return GRIP_CLIP_FOLLOW[rig]?.[kind];
 }
 
 /** The precomputed grip socket for a hero rig and prop kind (necromancer heroes only; others use the runtime calibration). */

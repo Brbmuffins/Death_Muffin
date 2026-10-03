@@ -28,7 +28,7 @@ vi.mock('../fxTextures', async () => {
 });
 
 const { NecromancerAvatar } = await import('../Avatars');
-const { GRIP_SOCKETS, GRIP_SOCKET_FOLLOW } = await import('../gripSockets.generated');
+const { GRIP_SOCKETS, GRIP_CLIP_FOLLOW } = await import('../gripSockets.generated');
 for (const f of [...MAINS, ...OFFS]) store.props.set(`gear_${f}.glb`, `public/models/props/gear_${f}.glb`);
 
 interface Fit { out: number; fwd: number; shift: number; follow: number }
@@ -38,9 +38,11 @@ const KIND_CONFIG: Record<string, number> = { staff: 0, skull_focus: 0, scythe: 
 const KINDS: [string, 'R_Hand' | 'L_Hand', number][] = [...MAINS.map((k) => [k, 'R_Hand', -1] as [string, 'R_Hand', number]), ...OFFS.map((k) => [k, 'L_Hand', 1] as [string, 'L_Hand', number])];
 const MOVES: Partial<Fit>[] = [{ out: 0.1 }, { out: -0.1 }, { fwd: 0.1 }, { fwd: -0.1 }, { shift: 0.02 }, { shift: -0.02 }, { follow: -1 }, { follow: 1 }];
 const SKIP = !process.env.GRIP_FIT;
+// GRIP_FIT=orient: stage 1 only; GRIP_FIT=clips: stage 2 only; GRIP_FIT=1: both.
 
+const STAGE = process.env.GRIP_FIT;
 describe.skipIf(SKIP)('grip socket fit', () => {
-  it('fits sockets', async () => {
+  it.skipIf(STAGE === 'clips')('fits sockets', async () => {
     let seed = 12345;
     vi.spyOn(Math, 'random').mockImplementation(() => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; });
     const base = (JSON.parse(readFileSync('docs/gear-clip/baseline.json', 'utf8')) as { cells: Record<string, [number, number]> }).cells;
@@ -48,7 +50,7 @@ describe.skipIf(SKIP)('grip socket fit', () => {
     const prior = existsSync('tools/grip-fit.json') ? JSON.parse(readFileSync('tools/grip-fit.json', 'utf8')) : {};
     const result: Record<string, Record<string, Fit>> = {};
     const mutSockets = GRIP_SOCKETS as unknown as Record<string, Record<string, number[]>>;
-    const mutFollow = GRIP_SOCKET_FOLLOW as unknown as Record<string, Record<string, number>>;
+    const mutFollow = GRIP_CLIP_FOLLOW as unknown as Record<string, Record<string, Record<string, number>>>;
     const only = process.env.GRIP_FIT_HERO;
     for (const hero of HEROES) {
       if (only && hero !== only) { result[hero] = prior[hero] ?? {}; continue; }
@@ -57,7 +59,8 @@ describe.skipIf(SKIP)('grip socket fit', () => {
       const apply = (kind: string, bone: string, side: number, f: Fit) => {
         const s = socket(rig, bone, side, grips[kind], f);
         mutSockets[hero][kind] = [...(s.pos as THREE.Vector3).toArray(), ...(s.q as THREE.Quaternion).toArray()];
-        mutFollow[hero][kind] = f.follow;
+        mutFollow[hero][kind] = {}; // stage 1 fits the orientation with the stabiliser at `follow` in every clip
+        for (const c of clips) mutFollow[hero][kind][c] = f.follow;
       };
       const score = (kind: string, f: Fit, cells: Record<string, { worst: number; p95: number }>) => {
         let v = 0;
@@ -103,5 +106,54 @@ describe.skipIf(SKIP)('grip socket fit', () => {
       writeFileSync('tools/grip-fit.json', JSON.stringify(result, null, 1) + '\n');
     }
     expect(Object.keys(result).length).toBe(4);
+  }, 3_000_000);
+
+  // Stage 2: with the orientations fixed and every prop riding the wrist, pick per clip the highest follow whose penetration
+  // stays within the baseline (worst and p95, the guard's tolerance); a clip where nothing fits takes the least-bad level.
+  it.skipIf(STAGE === 'orient')('fits per-clip follow', async () => {
+    let seed = 12345;
+    vi.spyOn(Math, 'random').mockImplementation(() => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; });
+    const base = (JSON.parse(readFileSync('docs/gear-clip/baseline.json', 'utf8')) as { cells: Record<string, [number, number]> }).cells;
+    const grips = readGrips();
+    const fit = JSON.parse(readFileSync('tools/grip-fit.json', 'utf8')) as Record<string, Record<string, Fit & { clips?: Record<string, number> }>>;
+    const mutSockets = GRIP_SOCKETS as unknown as Record<string, Record<string, number[]>>;
+    const mutFollow = GRIP_CLIP_FOLLOW as unknown as Record<string, Record<string, Record<string, number>>>;
+    const LEVELS = [1, 0.9, 0.8, 0.65, 0.5, 0.35, 0.2];
+    const only = process.env.GRIP_FIT_HERO;
+    for (const hero of HEROES) {
+      if (only && hero !== only) continue;
+      const rig = await loadRig(hero);
+      const clips = clipNames(hero);
+      for (const [kind, bone, side] of KINDS) {
+        const s = socket(rig, bone, side, grips[kind], fit[hero][kind]);
+        mutSockets[hero][kind] = [...(s.pos as THREE.Vector3).toArray(), ...(s.q as THREE.Quaternion).toArray()];
+        fit[hero][kind].clips = {};
+      }
+      const chosen: Record<string, Record<string, { level: number; excess: number }>> = {};
+      for (const level of LEVELS) {
+        for (const [kind] of KINDS) mutFollow[hero][kind] = Object.fromEntries(clips.map((c) => [c, level]));
+        const cfg: Record<string, { worst: number; p95: number }>[] = [];
+        for (const [m, o] of CONFIGS) cfg.push((await measureConfig(NecromancerAvatar, hero, m, o, clips, store)).cells);
+        for (const [kind] of KINDS) {
+          for (const clip of clips) {
+            const c = cfg[KIND_CONFIG[kind]][`${kind}|${clip}|pen`];
+            const b = base[`${hero}|${kind}|${clip}|pen`];
+            if (!c || !b) continue;
+            const excess = Math.max(c.worst - (b[0] + Math.max(0.004, b[0] * 0.1) - 0.002), c.p95 - (b[1] + Math.max(0.004, b[1] * 0.1) - 0.002));
+            const cur = ((chosen[kind] ??= {})[clip]);
+            if (!cur || (cur.excess > 0 && excess < cur.excess - 1e-4)) chosen[kind][clip] = { level, excess };
+          }
+        }
+        console.log(hero, 'level', level);
+      }
+      for (const [kind] of KINDS) {
+        const clipsOut: Record<string, number> = {};
+        for (const [clip, v] of Object.entries(chosen[kind] ?? {})) if (v.level < 1) clipsOut[clip] = v.level;
+        fit[hero][kind].clips = clipsOut;
+        fit[hero][kind].follow = 1;
+        console.log(hero, kind, JSON.stringify(clipsOut), 'unresolved', Object.entries(chosen[kind] ?? {}).filter(([, v]) => v.excess > 0).map(([c]) => c).join(','));
+      }
+      writeFileSync('tools/grip-fit.json', JSON.stringify(fit, null, 1) + '\n');
+    }
   }, 3_000_000);
 });
