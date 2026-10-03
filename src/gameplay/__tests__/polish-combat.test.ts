@@ -6,6 +6,7 @@ import type { SimEvent } from '../sim/types';
 import { ENEMIES, type EnemyId } from '../../content/enemies';
 import { AREAS } from '../../content/areas';
 import { waveModifiers } from '../../content/upgrades';
+import { damageTakenScale } from '../hitNumber';
 
 function world(seed = 1) {
   const nav = new Nav();
@@ -226,5 +227,23 @@ describe('corpses behind a wall', () => {
     const ev = sim.apply({ t: 'detonate', by: 'p1', corpseId: far.id, dmg: 10 }) ?? [];
     void ev;
     expect(sim.corpses.has(far.id)).toBe(true);
+  });
+});
+
+describe('damage numbers', () => {
+  it('scale by what the host really takes off (Fracture, Sanctified, Shrouded)', () => {
+    for (const [fracture, sanct, affix, rot] of [[0, 0, undefined, false], [2, 0, undefined, false], [0, 5, undefined, false], [1, 0, 'shrouded', false], [1, 0, 'shrouded', true], [3, 5, 'shrouded', false]] as const) {
+      const sim = world(21);
+      const p = sim.players.get('p1')!;
+      const e = sim.spawnEnemy('robber', 'graves', p.x + 3, p.z, !!affix, false, affix);
+      e.hp = e.maxHp = 1e6;
+      e.fracture = fracture;
+      e.fractureT = 99;
+      e.sanctT = sanct;
+      if (rot) sim.apply({ t: 'miasma', by: 'p1', x: e.x, z: e.z, r: 4, dps: 0, durationMs: 6000, witheredCap: 5, bloom: false });
+      const before = e.hp;
+      sim.damageEnemy(e, 1000, 'p1');
+      expect((before - e.hp) / 1000).toBeCloseTo(damageTakenScale(e, rot), 6);
+    }
   });
 });

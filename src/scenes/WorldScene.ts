@@ -3,7 +3,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import type { GameScene } from './SceneManager';
 import { getRuntime, type RuntimeView } from '../app/GameRuntime';
 import { Scope } from '../app/Scope';
-import { ABILITIES, PRIMARIES, BULWARK, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
+import { ABILITIES, FRACTURE, PRIMARIES, BULWARK, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
 import { CAST_FLOW } from '../content/combatFlow';
 import { kitFor, type Kit } from '../content/kits';
 import { assignableRites, assignRite, LOADOUT_SLOTS, loadRites, loadSeen, saveRites, saveSeen, unseenRites } from '../gameplay/loadout';
@@ -41,6 +41,7 @@ import { changeDiscipline, getContracts, getCosmetics, getGarden, getLabor, type
 import { canUseAutoCombat, onSettingsChange, setActiveCharacter, settings, updateSettings } from '../app/settings';
 import { selectAutoCombatAction, selectAutoCombatMovement, type AutoMoveMemory } from '../gameplay/autoCombat';
 import { STATUS_FX } from '../content/statuses';
+import { damageTakenScale } from '../gameplay/hitNumber';
 import { AbilitySystem, veilTarget, type CastResult, type CastTarget } from '../gameplay/AbilitySystem';
 import { deriveStats, xpToNext } from '../gameplay/characterStats';
 import { BAG_SIZE, Inventory, KILL_LOOT, rollBoss, rollBossRune, rollFirstKillItem, rollKill, rollSurgeItem } from '../gameplay/loot';
@@ -51,7 +52,7 @@ import { Progression } from '../gameplay/progression';
 import { CHAIN, KillChain } from '../gameplay/killChain';
 import { newlyReached } from '../gameplay/milestones';
 import { omenFor, omenLeft, type Omen } from '../content/omens';
-import { BOSS_ARENA, BOSS_RING_PAD } from '../gameplay/sim/BossBrain';
+import { BOSS_ARENA, BOSS_RADIUS, BOSS_RING_PAD } from '../gameplay/sim/BossBrain';
 import { makeSnapshot, WorldMirror } from '../gameplay/sim/snapshot';
 import type { BossState, Corpse, Enemy, Intent, SimEvent, Thrall, Zone } from '../gameplay/sim/types';
 import { CONE_REACH_PAD, WorldSim, thrallWeight } from '../gameplay/sim/WorldSim';
@@ -645,7 +646,7 @@ export class WorldScene implements GameScene, RuntimeView {
       corpses: () => this.corpsesMap(),
       thrallCount: () => [...this.thrallsMap().values()].filter((t) => t.owner === this.selfId).length,
       send: (i) => this.sendIntent(i),
-      number: (x, z, amount, kind) => this.floating.spawn(x, 1.6, z, Math.round(amount).toString(), kind === 'crit' ? 'crit' : 'hit'),
+      number: (x, z, amount, kind) => this.floating.spawn(x, 1.6, z, Math.round(amount * this.hitNumberScale(x, z)).toString(), kind === 'crit' ? 'crit' : 'hit'),
       shake: (a) => this.rig.shake(a),
       note: (text, kind) => this.floating.spawn(this.player.x, 2.4, this.player.z, text, kind),
       now: () => this.now,
@@ -2168,6 +2169,36 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private isAuthority() {
     return !this.realtime.connected || this.realtime.isHost;
+  }
+
+  /**
+   * What the body at (x, z) really takes of a blow: Fractured bodies take more, Sanctified and Shrouded ones less (WorldSim.damageEnemy).
+   * The rites name their damage before the host applies those, so the number floating up scales by them: it is what the health bar loses.
+   */
+  private hitNumberScale(x: number, z: number): number {
+    const b = this.bossState();
+    if (b.active && Math.hypot(b.x - x, b.z - z) < BOSS_RADIUS + 0.3) return 1 + FRACTURE.perStack * (b.fracture ?? 0);
+    let best: Enemy | null = null;
+    let bestD = 0.75;
+    for (const e of this.enemiesMap().values()) {
+      if (e.state === 'dead') continue;
+      const d = Math.hypot(e.x - x, e.z - z);
+      if (d < bestD) {
+        bestD = d;
+        best = e;
+      }
+    }
+    if (!best) return 1;
+    return damageTakenScale(best, best.affix === 'shrouded' && this.inFriendlyRot(best));
+  }
+
+  /** Inside a player-owned Miasma circle or Corpse Explosion rot pool (what lifts a Shrouded elite's guard)? */
+  private inFriendlyRot(e: { x: number; z: number; radius: number }): boolean {
+    for (const zone of (this.sim?.zones ?? this.mirror?.zones ?? new Map<number, Zone>()).values()) {
+      if (zone.hostile || (zone.kind !== 'miasma' && zone.kind !== 'rot')) continue;
+      if (Math.hypot(e.x - zone.x, e.z - zone.z) <= zone.r + e.radius) return true;
+    }
+    return false;
   }
 
   private enemiesMap(): Map<number, Enemy> {
