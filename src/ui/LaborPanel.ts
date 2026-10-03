@@ -158,12 +158,11 @@ export class LaborPanel {
     this.render();
     try {
       let result: LaborResult;
+      let staleBag = false;
       if (kind === 'collect') {
-        result = await this.inventory.exclusive(async () => {
-          const r = await collectLabor(this.characterId, slot);
-          this.inventory.replace(await getInventory(this.characterId));
-          return r;
-        });
+        const out = await this.inventory.exclusiveAction(() => collectLabor(this.characterId, slot), () => getInventory(this.characterId));
+        result = out.reply;
+        if (out.bagStale) staleBag = true;
       } else {
         const post = kind === 'assign' ? this.pick.get(slot) ?? null : null;
         const blocked = post ? assignBlocker(post, this.levels()) : null;
@@ -172,6 +171,7 @@ export class LaborPanel {
       }
       this.set(result);
       if (result.collected) this.onCollected(result);
+      if (staleBag) this.error = 'Collected, but your bag could not be refreshed. Close and reopen your bag to see it.';
     } catch (err) {
       this.error = err instanceof Error ? err.message : 'The dead do not answer.';
     } finally {

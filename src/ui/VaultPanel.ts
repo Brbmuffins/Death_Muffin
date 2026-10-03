@@ -161,7 +161,8 @@ export class VaultPanel {
 
   /** Run a server move with no bag save in flight, adopt the reply's bag, and show its vault. */
   private async run(note: string, call: () => Promise<VaultState>) {
-    if (this.busy) return;
+    // No state yet = the opening load is still in flight; a move now would overlap it and its stale reply would win.
+    if (this.busy || !this.state) return;
     this.busy = true;
     this.error = '';
     this.note = '';

@@ -23,6 +23,24 @@ describe('Chronicle', () => {
     vi.clearAllMocks();
   });
 
+  it('keeps counting what is mid-flush: view() does not dip while the save is in flight', async () => {
+    let finish!: () => void;
+    api.addChronicle.mockImplementationOnce(() => new Promise<void>((r) => { finish = () => r(); }));
+    const c = new Chronicle(1);
+    await c.load();
+    c.add('kills', 5);
+    c.max('peak.level', 7);
+    const flushing = c.flush();
+    expect(c.view().life.kills).toBe(105);
+    expect(c.view().life['peak.level']).toBe(7);
+    c.add('kills', 1);
+    expect(c.view().life.kills).toBe(106);
+    finish();
+    await flushing;
+    expect(c.view().life.kills).toBe(106);
+    c.dispose();
+  });
+
   it('shows the saved record plus unflushed counters, and maxima keep the best', async () => {
     const c = new Chronicle(1);
     await c.load();

@@ -5,6 +5,7 @@ import { ALL_SKILLS, GATHER_SKILLS, LEVEL_CAP, SKILLS, TOOL_KIND, nodesForSkill,
 const isGather = (id: SkillId): id is GatherSkill => (GATHER_SKILLS as SkillId[]).includes(id);
 import { itemMeta } from '../content/items';
 import { preserveScroll } from './preserveScroll';
+import { controlUnderPointer } from './redrawGuard';
 
 /** What each skill is for, and where its processing happens (roadmap §3). */
 const BLURB: Record<SkillId, string> = {
@@ -67,6 +68,15 @@ export class ProfessionsPanel {
     this.el.setAttribute('role', 'dialog');
     this.el.setAttribute('aria-label', 'Skills');
     this.root.appendChild(this.el);
+    this.render(skills);
+  }
+
+  /**
+   * The redraw the scene asks for when XP or a level changes (every AFK work cycle). It waits while the pointer is over a control, so
+   * a press on Pause AFK / Start AFK is not lost to a redraw between press and release; the next change catches it up.
+   */
+  refresh(skills: Skills) {
+    if (!this.el || controlUnderPointer(this.el)) return;
     this.render(skills);
   }
 

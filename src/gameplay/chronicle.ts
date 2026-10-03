@@ -13,6 +13,8 @@ export class Chronicle {
   private data: ChronicleData = { ...EMPTY_CHRONICLE, life: {}, run: {}, runs: [] };
   private sums: Record<string, number> = {};
   private maxes: Record<string, number> = {};
+  /** The batch a flush has sent and the server has not yet confirmed: still part of what view() shows. */
+  private sending: { sums: Record<string, number>; maxes: Record<string, number> } | null = null;
   private fraction = { playSeconds: 0, afkSeconds: 0 };
   private timer: ReturnType<typeof setInterval> | undefined;
   private inFlight = false;
@@ -59,8 +61,11 @@ export class Chronicle {
   view(): ChronicleData {
     const fold = (base: Record<string, number>) => {
       const out = { ...base };
-      for (const [k, v] of Object.entries(this.sums)) out[k] = (out[k] ?? 0) + v;
-      for (const [k, v] of Object.entries(this.maxes)) out[k] = Math.max(out[k] ?? 0, v);
+      for (const part of [this.sending, { sums: this.sums, maxes: this.maxes }]) {
+        if (!part) continue;
+        for (const [k, v] of Object.entries(part.sums)) out[k] = (out[k] ?? 0) + v;
+        for (const [k, v] of Object.entries(part.maxes)) out[k] = Math.max(out[k] ?? 0, v);
+      }
       return out;
     };
     return { ...this.data, life: fold(this.data.life), run: fold(this.data.run) };
@@ -78,6 +83,7 @@ export class Chronicle {
     this.sums = {};
     this.maxes = {};
     this.inFlight = true;
+    this.sending = { sums, maxes };
     try {
       await addChronicle(this.characterId, sums, maxes);
       // The saved record now includes them; keep the local copy in step so view() doesn't double count.
@@ -94,6 +100,7 @@ export class Chronicle {
       for (const [k, v] of Object.entries(sums)) this.sums[k] = (this.sums[k] ?? 0) + v;
       for (const [k, v] of Object.entries(maxes)) this.maxes[k] = Math.max(this.maxes[k] ?? 0, v);
     } finally {
+      this.sending = null;
       this.inFlight = false;
     }
   }
