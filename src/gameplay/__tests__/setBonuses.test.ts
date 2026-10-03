@@ -67,24 +67,24 @@ describe('set bonus table', () => {
 
 describe('legendary sets (docs/LEGENDARY-SETS.md)', () => {
   const at = (id: string, n: number) => SET_BONUSES[id].filter((b) => b.pieces <= n);
-  const totals = (id: string, n: number) => at(id, n).reduce((t, b) => ({ mult: { ...t.mult, ...Object.fromEntries(Object.entries(b.effect.mult ?? {}).map(([k, v]) => [k, (t.mult[k] ?? 1) * v])) }, add: { ...t.add, ...Object.fromEntries(Object.entries(b.effect.add ?? {}).map(([k, v]) => [k, (t.add[k] ?? 0) + v])) } }), { mult: {} as Record<string, number>, add: {} as Record<string, number> });
+  const totals = (id: string, n: number) => at(id, n).reduce((t, b) => ({ mult: { ...t.mult, ...Object.fromEntries(Object.entries(b.effect.mult ?? {}).map(([k, v]) => [k, +((t.mult[k] ?? 1) * v).toFixed(6)])) }, add: { ...t.add, ...Object.fromEntries(Object.entries(b.effect.add ?? {}).map(([k, v]) => [k, +((t.add[k] ?? 0) + v).toFixed(6)])) } }), { mult: {} as Record<string, number>, add: {} as Record<string, number> });
   it('carries exactly the numbers of the design doc', () => {
-    expect(totals('legion_unburied', 5)).toEqual({ mult: { thrallDamageMult: 1.25, thrallAttackSpeedMult: 1.1 }, add: { thrallDeathBurst: 0.8, thrallCap: 2, championEvery: 4, spearRally: 1 } });
-    expect(totals('colossus_mantle', 5)).toEqual({ mult: { thrallHpMult: 1.35, thrallDamageMult: 1.15 }, add: { wardReflect: 0.6, colossusGuard: 0.3, litanyShatter: 4 } });
-    expect(totals('requiem_wraiths', 5)).toEqual({ mult: { essenceRegenMult: 1.4, maxHpMult: 1.1, soulHarvestRateMult: 2, thrallAttackSpeedMult: 1.15 }, add: { corpseWisp: 10, corpseHeal: 0.02, wraithNova: 1.2 } });
-    expect(totals('plague_choir', 5)).toEqual({ mult: { miasmaRadiusMult: 1.25, maxHpMult: 1.08 }, add: { miasmaSpreadsWithered: 1, witheredBurstAt: 8 } });
+    expect(totals('legion_unburied', 5)).toEqual({ mult: { thrallDamageMult: 1.1, thrallAttackSpeedMult: 1.1, thrallHpMult: 1.4 }, add: { thrallDeathBurst: 1, thrallCap: 2, championEvery: 4, spearRally: 1 } });
+    expect(totals('colossus_mantle', 5)).toEqual({ mult: { thrallHpMult: 1.5, thrallDamageMult: 1.3, maxHpMult: 1.188 }, add: { wardReflect: 1, wardPerThrall: 0.08, colossusGuard: 0.35, litanyShatter: 6, litanyBarrier: 0.04 } });
+    expect(totals('requiem_wraiths', 5)).toEqual({ mult: { essenceRegenMult: 1.7, maxHpMult: 1.2, thrallHpMult: 1.3, soulHarvestRateMult: 3, thrallAttackSpeedMult: 1.3, thrallDamageMult: 1.7 }, add: { corpseWisp: 14, corpseHeal: 0.04, wraithNova: 6 } });
+    expect(totals('plague_choir', 5)).toEqual({ mult: { miasmaRadiusMult: 1.75, maxHpMult: 1.2096 }, add: { miasmaSpreadsWithered: 1, witheredMaxStacks: 3, witheredBurstAt: 8 } });
     expect(LEGENDARY_SET_IDS.map((id) => SET_BONUSES[id].slice(1).map((b) => b.name))).toEqual([['Bursting Dead', 'Legion Champion'], ['Reflecting Ward', 'Colossus'], ['Wisps', 'Requiem'], ['Contagion', 'Chain Plague']]);
   });
   it('says every mechanic plainly', () => {
     const text = LEGENDARY_SET_IDS.flatMap((id) => SET_BONUSES[id].flatMap((b) => describeEffect(b.effect))).join('\n');
-    for (const needle of ['Thralls burst when they die (80% of their health', 'Every 4th thrall', 'Marrow Spear rallies', 'Bone Ward reflects 60%', '30% less damage taken while 3 or more thralls', 'shatters into bone shards for 4x', 'healing wisp for 10 s', 'Soul Harvest fills 2x faster', 'every wraith and wisp releases a nova (120%', 'spread their Withered stacks', 'reaches 8 Withered stacks bursts into a new Miasma']) expect(text).toContain(needle);
+    for (const needle of ['Thralls burst when they die (100% of their health', 'Every 4th thrall', 'Marrow Spear rallies', 'Bone Ward reflects 100%', '35% less damage taken while 3 or more thralls', 'shatters into bone shards for 6x', 'healing wisp for 14 s', 'Soul Harvest fills 3x faster', 'every wraith and wisp releases a nova (600%', 'spread their Withered stacks', 'reaches 8 Withered stacks bursts into a new Miasma']) expect(text).toContain(needle);
   });
   it('shows in the set tracker, with its own pieces listed as dropping from bosses', () => {
     const worn = ['head', 'chest', 'hands'] as ArmorPart[];
     const r = resolveSetBonuses(wear('legion_unburied', worn));
     expect(r.sets[0]).toMatchObject({ setId: 'legion_unburied', worn: 3, collection: 3 });
     expect(r.sets[0].missing.map((m) => m.where)).toEqual(['Area bosses', 'Area bosses']);
-    expect(r.totals.mult.thrallDamageMult).toBe(1.25);
+    expect(r.totals.mult.thrallDamageMult).toBe(1.1);
   });
 });
 
