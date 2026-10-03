@@ -104,6 +104,10 @@ const SIGNATURES = new Set(['wall', 'rend', 'dirge', 'bloom', 'mantle', 'offerin
   'toll', 'resonant_step', 'knell', 'sound_the_corpse', 'great_toll',
   'hook_throw', 'harvest', 'crow_swarm', 'hook_pull', 'hex_charm', 'butcher', 'murder_of_crows',
   'echo', 'veil_tear', 'crossing', 'lay_to_rest']);
+/** Intents that need an x/z. */
+const POINT_INTENTS = new Set(['recallThralls', 'miasma', 'litany', 'exhume']);
+/** ThrallKind (src/content/disciplines.ts): the host sim looks the kind up in THRALL_BASE and throws on anything else. */
+const THRALL_KINDS = new Set(['warrior', 'shieldbearer', 'hound', 'wraith', 'archer', 'bonemage', 'plaguebearer', 'colossus']);
 const WORLD_BOUND = 400; // |x|,|z| sanity bound in world units
 
 if (DEV_TRUST_TOKENS && process.env.NODE_ENV === 'production') {
@@ -219,6 +223,8 @@ function validIntent(intent) {
   if (bytes(intent) > LIMITS.intentBytes) return null;
   const out = { ...intent };
   for (const k of ['x', 'z']) if (k in out && !inWorld(out[k])) return null;
+  // These act at a point: without one the host sim would read NaN (a recall without x/z made every neighbour's position NaN in separate()).
+  if (POINT_INTENTS.has(out.t) && !(typeof out.x === 'number' && typeof out.z === 'number')) return null;
   switch (out.t) {
     case 'hit':
       if (!Array.isArray(out.ids) || out.ids.length > 64 || !out.ids.every(Number.isInteger)) return null;
@@ -272,6 +278,7 @@ function validIntent(intent) {
     case 'exhume':
       // Bone Colossus looks for corpses within 6 m of the point, Mass Grave within 4 m, a plain exhume within 4 m of a corpse it already named.
       out.colossus = !!out.colossus;
+      out.kind = THRALL_KINDS.has(out.kind) ? out.kind : 'warrior';
       out.r = Math.min(out.colossus ? 6 : 4, Math.max(0.2, num(out.r, 1)));
       // Mass Grave rune: up to three corpses at once (the host applies the weaker stats itself).
       if ('count' in out) out.count = Math.min(3, Math.max(1, Math.floor(num(out.count, 1))));
