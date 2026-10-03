@@ -1263,6 +1263,18 @@ Gear and runes grind into materials. Metal gear gives ingots; staffs, wands, gri
 | Epic | Gold Ingot x2 | Blackthorn Plank x2 | Grave Dust 100%, Wraith Ectoplasm 40%, Plague Bile 15%, Cinder Ash 15%, Bone Meal 30% | 36 |
 | Legendary | Hell Ingot x2-3 | Bone Elder Plank x2-3 | Grave Dust 100%, Wraith Ectoplasm 50%, Plague Bile 25%, Cinder Ash 25%, Bone Meal 35% | 64 |
 
+## Trade goods and the Sexton
+
+Gems, Reliquary Fragments and Covenant Seals have no recipe, so the Sexton's Contracts (O) buy them: on about 20% of days the hard order is a relic order for a fixed handful, paid at 2x the sell price (and one Grave Garnet back; the rarer gems are never paid out). Tin and Bronze Ingots are ordered like any smelted good. Pet charms are adopted, seeds and saplings are planted, and everything else is a recipe ingredient.
+
+| Item | Rarity | Order unlocks at | Quantity asked | Gold paid (before the slot fee) |
+|---|---|---|---|---|
+| Grave Garnet | Uncommon | Mining 10 | 3 | 120 |
+| Reliquary Fragment | Rare | Fishing 30 | 3 | 150 |
+| Bone Opal | Rare | Mining 30 | 2 | 180 |
+| Void Sapphire | Epic | Mining 60 | 1 | 180 |
+| Covenant Seal | Epic | Gravedigging 70 | 2 | 240 |
+
 ## How to upgrade gear
 
 There is no upgrade bench: gear gets better by **item level** and **affixes**, both rolled by the server when it drops, and by **set bonuses** when you wear matching pieces. Replace a piece when a better roll or a better set comes along; salvage or sell the rest.

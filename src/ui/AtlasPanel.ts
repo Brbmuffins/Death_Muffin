@@ -8,6 +8,7 @@ import { NECRO_WEAPONS } from '../content/necroWeapons';
 import { STAT_LABELS } from '../gameplay/stats';
 import { itemVerdict, STAT_PRIORITY, type StatContext } from '../gameplay/gearStats';
 import { salvagePreview } from '../gameplay/salvageRules';
+import { orderInfo, RELIC_PREMIUM } from '../gameplay/contractRules';
 import {
   FIT_LABEL, SOURCE_LABEL, affixCountOdds, cosmeticsInfo, atlasSlot, fitBand, fitTable, fmtChance, fmtQty, getAtlas, gearForSlot, isRecommendedKind, itemLevelAt, oneIn,
   placesFor, skillName, sourcesFor, type AtlasItem, type DropSource, type FitBand, type RecipeInfo,
@@ -432,6 +433,13 @@ export class AtlasPanel extends SimplePanel {
     if (made.length) parts.push(`<section><h4>How to make it</h4>${made.map((r) => this.recipeHtml(r)).join('')}</section>`);
     const used = atlas.usedIn.get(id) ?? [];
     if (used.length) parts.push(`<section><h4>Used in</h4><div class="at-links">${used.slice(0, 14).map((r) => `<button data-go="${r.result}">${esc(ITEMS[r.result]?.name ?? r.result)}</button>`).join('')}${used.length > 14 ? `<span class="at-faint">+${used.length - 14} more</span>` : ''}</div></section>`);
+
+    // The Sexton's orders (Contracts, O): where gems, fragments, seals and smelted goods go.
+    const order = !it.gear ? orderInfo(id) : null;
+    if (order && (order.relicQty || id.startsWith('ingot_'))) {
+      const what = order.relicQty ? `A relic order asks for ${order.relicQty} (about one hard order in five, from ${skillName(order.skill)} ${order.level}) and pays ${RELIC_PREMIUM}x the sell price.` : `Ordered like any smelted good, from ${skillName(order.skill)} ${order.level}.`;
+      parts.push(`<section><h4>Sexton’s orders</h4><p>${esc(what)}</p></section>`);
+    }
 
     // Salvage.
     if (it.gear || m.type === 'rune') {
