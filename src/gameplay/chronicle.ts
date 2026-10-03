@@ -61,7 +61,7 @@ export class Chronicle {
   view(): ChronicleData {
     const fold = (base: Record<string, number>) => {
       const out = { ...base };
-      for (const part of [this.sending, this]) {
+      for (const part of [this.sending, { sums: this.sums, maxes: this.maxes }]) {
         if (!part) continue;
         for (const [k, v] of Object.entries(part.sums)) out[k] = (out[k] ?? 0) + v;
         for (const [k, v] of Object.entries(part.maxes)) out[k] = Math.max(out[k] ?? 0, v);
