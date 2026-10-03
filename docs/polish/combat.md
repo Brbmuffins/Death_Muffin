@@ -38,10 +38,10 @@ Severity: **H** you lose to it or it misleads every fight, **M** you notice it, 
 
 | Issue | Why left |
 |---|---|
-| Bone Needle runes (Splinters, Marrow-Tap, Volley) do nothing under a scythe's reaping arc | Documented in the Codex rune text as intended; making them work is a design call (see owner decisions) |
-| Legion kit and Damage upgrades only reach thralls raised after the change | By design (stated in `legionKit.ts`); the HUD does not say so. A player who buys a tier mid-fight sees nothing change until the next Exhume |
+| ~~Bone Needle runes (Splinters, Marrow-Tap, Volley) do nothing under a scythe's reaping arc~~ | Closed 3 Oct 2026 (owner decision 1): Marrow-Tap and Splinters ride the arc once per swing; the Volley stays needle-only |
+| ~~Legion kit and Damage upgrades only reach thralls raised after the change~~ | Closed 3 Oct 2026 (owner decision 2) for Damage and Reinforce tiers: standing thralls get a one-time bump at purchase. A kit *piece* swap still reaches only the next thralls raised, and the Legion panel says so |
 | Hostile ground pools (`z.r + player radius`) and the Plague Doctor flask etc. use different body rules (centre vs body) | Small (0.45 m), pools are damage-over-time not one-shot telegraphs |
-| Easy auto does not dodge boss telegraph rings or hymn cones | Needs a movement design; Easy auto only steps away from windups within 4 m |
+| ~~Easy auto does not dodge boss telegraph rings or hymn cones~~ | Closed 3 Oct 2026 (owner decision 3): see `src/gameplay/autoDodge.ts`. Still true: Easy auto never walks up to a boss by itself and ignores Hymn cover (pews) |
 | Withered ticks and Miasma slow can still kill / affect a ghoul while it is burrowed | Intended per the code comments? unclear; leave until a playtest says it matters |
 | Command: Rend multiplies by legion size (five thralls on one clump cleave it five times at 2.5x) | Reads as the design ("your whole legion"); the harness shows no outlier |
 | Boss bots never use the staff / scythe / wand play-style, Litany barrier or Fen open-water mechanics | Unchanged from BALANCE.md "Unfinished" |
@@ -71,8 +71,8 @@ search at most every 1.5 s.
 
 ## Owner decisions
 
-1. Should Bone Needle runes work under a scythe? Marrow-Tap and Splinters could ride the arc (once per swing); the Volley has no
-   scythe equivalent.
-2. Should buying Damage or a Legion tier refresh the thralls already standing (a one-time stat bump), or keep "applies to the next
-   Exhume" and say so on the HUD?
-3. Should Easy auto learn to leave boss rings and cones (it would make Easy auto survivable at the Regent and the Congregation)?
+Decided 3 Oct 2026 and **implemented** on branch `claude/combat-owner-decisions` (not deployed; no migration; the realtime relay needs its one-line whitelist change deployed before or with the client, an older relay just drops the new intent):
+
+1. **Bone Needle runes ride the scythe arc: done.** Marrow-Tap and Splinters trigger once per reaping swing, not once per enemy hit. Marrow-Tap: the swing hits 30% softer (the rune's existing cost) and returns its +4 essence once, only if the swing landed. Splinters: one shard per swing, from the nearest enemy struck to the nearest enemy the arc missed, for 30% of the swing's damage (never at a foe the same swing hit; no shard off a boss-only swing, like the needle). The Volley stays needle-only. Codex rune text, the rune lines in the Grimoire, and the README no longer say the runes skip the scythe. `AbilitySystem.reap`, mirrored by the balance harness.
+2. **Damage and Reinforce purchases refresh standing thralls: done.** New `refreshThralls` intent (`new / old` multipliers for health, damage and attack speed, host-clamped to 1..1.25; health scales with its fraction kept, so it is never a heal). The scene sends it only when the buyer has living thralls, pulses each one, and the toast says how many were strengthened. HUD Damage tooltip, both toasts, the Legion panel and its Reinforce tooltip, the Covenant tip, Codex and README were reworded. Kit piece swaps are *not* refreshed (not asked): the Legion panel says so.
+3. **Easy auto dodges boss telegraphs: done.** `autoDodge.ts` turns each boss `telegraph` event (the same events the renderer draws; the host's `resolve` geometry with its pads) into a ring, cone, spoke, grave or burning-floor shape, adds hostile ground pools from the sim's zones, and `selectAutoCombatMovement` steps to the nearest safe point (rings of candidates, most room first, nav line clear, inside the hall), commits to it while it stays safe (no wobble between two equal exits), never walks back into a shape (holds position and keeps attacking), and drops each shape when its blow lands. Conflagration: runs to the nearest ash circle. Easy-auto gating (dev accounts, server side) is untouched.
