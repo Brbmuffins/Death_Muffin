@@ -50,3 +50,51 @@ describe('enemy telegraphs are honest', () => {
     }
   }
 });
+
+describe('thrall behaviour', () => {
+  const raise = (sim: WorldSim, n: number) => {
+    const p = sim.players.get('p1')!;
+    for (let i = 0; i < n; i++) sim.addCorpse(p.x + 2 + i, p.z + 2, 'normal', 'robber', false, 0, 1, 'graves');
+    for (const c of [...sim.corpses.values()]) sim.apply({ t: 'exhume', by: 'p1', x: c.x, z: c.z, r: 0.8, kind: 'warrior', cap: 6, hp: 50, damage: 5, attackSpeedMult: 1 });
+    sim.step(1.2);
+  };
+
+  it('a thrall stands in its own seat once its neighbours have fallen (no two on one spot)', () => {
+    const sim = world(5);
+    raise(sim, 5);
+    const all = [...sim.thralls.values()].sort((a, b) => a.slot - b.slot);
+    expect(all.length).toBe(5);
+    // Lose the middle ones: the survivors keep slots 0, 3, 4 and must still be apart.
+    sim.killThrall(all[1], 'killed');
+    sim.killThrall(all[2], 'killed');
+    for (let i = 0; i < 160; i++) {
+      sim.enemies.clear();
+      sim.step(0.05);
+    }
+    const live = [...sim.thralls.values()];
+    expect(live.length).toBe(3);
+    for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) expect(Math.hypot(live[i].x - live[j].x, live[i].z - live[j].z)).toBeGreaterThan(1.2);
+  });
+
+  it('a thrall lets go of a ghoul that dug in, and picks something it can hurt', () => {
+    const sim = world(6);
+    raise(sim, 2);
+    const p = sim.players.get('p1')!;
+    const ghoul = sim.spawnEnemy('ghoul', 'graves', p.x + 3, p.z, false, false);
+    const th = [...sim.thralls.values()][0];
+    th.target = ghoul.id;
+    ghoul.state = 'burrow';
+    sim.step(0.05);
+    expect(th.target).not.toBe(ghoul.id);
+  });
+
+  it('a thrall does not chase an enemy in the next hall', () => {
+    const sim = world(7);
+    raise(sim, 1);
+    const p = sim.players.get('p1')!;
+    const far = sim.spawnEnemy('robber', 'ossuary', p.x + 2, p.z, false, false);
+    const th = [...sim.thralls.values()][0];
+    sim.step(0.05);
+    expect(th.target).not.toBe(far.id);
+  });
+});

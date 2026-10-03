@@ -3053,12 +3053,14 @@ export class WorldSim {
 
       let target = t.target !== null ? this.enemies.get(t.target) : undefined;
       const bossTarget = this.boss.state.active && this.boss.state.state !== 'sunk' && Math.hypot(this.boss.state.x - owner.x, this.boss.state.z - owner.z) < 16;
-      if (!target || target.state === 'dead' || Math.hypot(target.x - owner.x, target.z - owner.z) > THRALL_LEASH) {
+      // A target that went underground (a digging ghoul), or stands in another hall, is not one to keep swinging at.
+      if (!target || target.state === 'dead' || target.state === 'burrow' || (target.erupting != null && target.state === 'windup') || (owner.area !== null && target.area !== owner.area)
+        || Math.hypot(target.x - owner.x, target.z - owner.z) > THRALL_LEASH) {
         target = undefined;
         t.target = null;
         let bestD = 10;
         for (const e of this.enemies.values()) {
-          if (e.state === 'dead' || (e.state === 'rising' || e.state === 'burrow')) continue;
+          if (e.state === 'dead' || (e.state === 'rising' || e.state === 'burrow') || (e.erupting != null && e.state === 'windup') || (owner.area !== null && e.area !== owner.area)) continue;
           if (Math.hypot(e.x - owner.x, e.z - owner.z) > THRALL_LEASH - 2) continue;
           const d = Math.hypot(e.x - t.x, e.z - t.z);
           if (d < bestD) {
@@ -3106,8 +3108,10 @@ export class WorldSim {
         });
       } else {
         // Formation ring around the owner.
-        const count = Math.max(3, this.ownedThralls(t.owner).length);
-        const ang = (t.slot / count) * Math.PI * 2 + Math.PI;
+        // Seats are dealt by rank among the living (slot numbers have gaps once thralls fall, and a gap folded two onto one spot).
+        const mine = this.ownedThralls(t.owner).sort((a, b) => a.slot - b.slot);
+        const count = Math.max(3, mine.length);
+        const ang = (Math.max(0, mine.indexOf(t)) / count) * Math.PI * 2 + Math.PI;
         const fx = owner.x + Math.sin(ang) * 1.9;
         const fz = owner.z + Math.cos(ang) * 1.9;
         const d = Math.hypot(fx - t.x, fz - t.z);
