@@ -75,6 +75,37 @@ Recommendation for a human to confirm: **B at about x1.5 on the primary and the 
 
 Reproduce: `BALANCE_SEEDS=8 BALANCE_AREAS=graves,ossuary,nave,sanctum BALANCE_BANDS=intended,max BALANCE_KIT=none npm run balance`; `dodge: false` in a `runBalance` call reproduces the old standing bot for the New Blood rows.
 
+## Combat owner decisions (2026-10-03, branch `claude/combat-owner-decisions`, not deployed)
+
+Three owner decisions (docs/polish/combat.md): Bone Needle runes ride the scythe arc, Damage and Reinforce purchases refresh standing thralls, Easy auto dodges boss telegraphs.
+
+**Before / after, bands unchanged.** `BALANCE_SEEDS=8 npm run balance` (8 seeds, 3 sim-minutes, 9 classes x 4 grounds x 4 bands, all 144 rows) and `npm run balance:boss` (3 seeds, the Prelate) are **byte-identical** before and after: the harness bot never wields a scythe, never buys a tier mid-run and is not Easy auto, so none of the three changes can move a default row. That is the honest "no regression"; the buffs below are measured separately. (Bands are the BALANCE.md targets above: nothing moved, so none broke.)
+
+**Runes under a scythe** (`RUNE_KIT=typical RUNE_WEAPON=scythe RUNE_SEEDS=8 npm run balance:runes`, kit's main hand swapped for a scythe, 4 necromancers x 8 seeds x 3 sim-minutes; kills per minute versus the same scythe with no rune; before the change a rune under a scythe did nothing, so before = 0.0% by construction):
+
+| Ground, band | Splinters kills / ttk / hurt | Marrow-Tap kills / ttk / hurt | Volley |
+|---|---|---|---|
+| Nave, push | +2.6% / +9.1% / -1% | -1.7% / +11.3% / -15% | 0.0% (needle-only) |
+| Nave, intended | +1.4% / -2.0% / -22% | -0.1% / +2.2% / +3% | 0.0% |
+
+Per discipline the spread is wider (Nave push: Marrow-Tap Gravecaller +14.1%, Rotweaver -13.1%; the bot spends its extra essence on rites, so a softer swing pays only for the builds that cast), which is bot noise at 8 seeds, not a band break. Everything sits inside the "runes add variety, 0-10% either way" target on average, so **no effect was scaled down**. The scythe rules: Marrow-Tap = the swing hits 30% softer and returns +4 essence once per landed swing; Splinters = one 30% shard per swing to the nearest foe the arc missed.
+
+**Thrall refresh** is a one-time bump at the moment of purchase: the largest single step is the first Damage tier (+8% thrall damage) or one Reinforce tier (+3% health and damage, +1% attack speed), applied to thralls that would otherwise lose it until their next Exhume (a legion is re-raised constantly, so the lasting stats were already there). Host-clamped to 1.25x. It cannot move a harness row (no purchases mid-run); the unit tests pin the arithmetic (health keeps its fraction, never a heal; the other player's thralls and dead thralls untouched).
+
+**Easy auto dodge** (dev accounts only, gating untouched): `src/gameplay/__tests__/auto-dodge.test.ts` first runs the real boss brains against the dodge's shapes (16 telegraph kinds across the seven bosses, a 0.55 m grid of bystanders each: who the host hurts is exactly who the shape says), then an end-to-end fight: a hero standing 5 m from each boss for 90 game-seconds across all three phases (2 seeds, blows taken counted from the brain's `hurt` events; pool ticks count per tick):
+
+| Boss | blows taken, standing still | blows taken, Easy auto with the dodge |
+|---|---|---|
+| Bell-Sworn Prelate | 100 | 0 |
+| Gravedigger King | 84 | 0 |
+| Bone Abbess | 97 | 0 |
+| Drowned Congregation | 92 | 0 |
+| Plague Saint | 900 (mostly rot-pool ticks) | 62 |
+| Cinder Regent | 1,339 (mostly coal-pool ticks) | 54 |
+| Mire Mother | 46 | 0 |
+
+What it still does not do: walk up to a boss on its own (Easy auto only chases enemies), use the Congregation's pews as cover, or dodge things that are not telegraphs (adds' melee, the Fen's leeches, Hags' hexes). Cost: nothing when no boss is awake and no pool is down; otherwise one pass over the live shapes and the zones per frame while Easy auto is on, and a re-plan (about 500 point tests) only when it stands in a shape.
+
 ## Catacomb Depths (2026-10-02, `npm run balance:depths`; branch `dm/depths`, not deployed)
 
 The dead on depth *d* are level `max(12, hero level) + d` (content/depths.ts; the plan said `max(20, ...)`, but a level-20 floor is a wall for the level-8 to 12 heroes the Warren admits, so the floor is the Warren's own entry level). Enemy health grows +22% and damage +15% of a level-1 body per level, so +10 depths is about +20% of both at level 40. A floor spawns only what its quota still needs, at most 24 alive, from the chambers nearest the hero. `npm run balance:depths` holds one floor of a depth (a cleared floor re-rolls the same depth) and prints the four necromancers beside the Cinder Pyre and Mourning Fen at the same hero level (`DEPTH_LEVELS`, `DEPTH_DEPTHS`, `DEPTH_BANDS`, `DEPTH_DISCIPLINES`, `BALANCE_SEEDS`, `BALANCE_MINUTES`). Medium difficulty, 4 seeds x 3 sim-minutes, mean of Ossuary / Gravecaller / Mourner / Rotweaver; intended = progress kit, geared = typical kit:

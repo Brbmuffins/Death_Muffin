@@ -185,7 +185,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   auto_combat: {
     title: 'Settle into the fight',
-    body: 'On Easy, auto combat engages enemies in the current area, uses equipped rites and may cast your signature when useful. It drinks healing flasks and mends you while under attack. The Hollow Knight also guards automatically. Click or use movement keys to take control. Toggle it with <kbd>G</kbd> or the Auto button.',
+    body: 'On Easy, auto combat engages enemies in the current area, uses equipped rites and may cast your signature when useful. It drinks healing flasks and mends you while under attack. It steps out of boss telegraphs (rings, cones, spokes, burning ground) and hostile pools on its own, then carries on attacking. The Hollow Knight also guards automatically. Click or use movement keys to take control. Toggle it with <kbd>G</kbd> or the Auto button.',
   },
   knight_rage: {
     title: 'Rage, not essence',
@@ -485,7 +485,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   legion: {
     title: 'Spare gear for your legion',
-    body: 'That weapon or armor can arm your thralls instead of being salvaged. Open the <b>Legion</b> (<kbd>Y</kbd>, or the button in the Reliquary): one <b>Weapon</b> and one <b>Armour</b> slot, kept outside your bag. Its stats become thrall damage, health and attack speed, and each spare piece shows <b>▲</b> or <b>▼</b> against what the legion wears. Spend gold there to <b>Reinforce</b> the bindings. Thralls you raise from then on carry it.',
+    body: 'That weapon or armor can arm your thralls instead of being salvaged. Open the <b>Legion</b> (<kbd>Y</kbd>, or the button in the Reliquary): one <b>Weapon</b> and one <b>Armour</b> slot, kept outside your bag. Its stats become thrall damage, health and attack speed, and each spare piece shows <b>▲</b> or <b>▼</b> against what the legion wears. Spend gold there to <b>Reinforce</b> the bindings: it strengthens the thralls you have standing at once. A swapped piece reaches the thralls you raise next.',
   },
   rune: {
     title: 'A Relic rune',
@@ -589,7 +589,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   rite_veil: {
     title: 'Veil Step',
-    body: 'Press {key:veil_step} to slip a few metres toward the cursor, no corpse needed. It stops at walls and sealed doors. Use it to leave a cone or a bell ring; auto combat never does.',
+    body: 'Press {key:veil_step} to slip a few metres toward the cursor, no corpse needed. It stops at walls and sealed doors. Use it to leave a cone or a bell ring; auto combat never casts it (it only walks out of boss telegraphs and pools).',
   },
   rite_rally: {
     title: 'Rally the Dead',

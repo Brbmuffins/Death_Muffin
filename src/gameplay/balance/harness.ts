@@ -541,9 +541,17 @@ export function runBalance(run: BalanceRun): BalanceResult {
           cds.set('bone_needle', t + abilityCooldownMs('bone_needle', SP_NEEDLE.cooldownMs, loadout, true) / 1000);
           const crit = rand() < 0.08 ? 1.8 : 1;
           if (loadout.reap) {
+            // Bone Needle runes ride the arc once per swing (AbilitySystem.reap): Marrow-Tap softens the swing and tops up essence once, Splinters throws one shard to a foe the arc missed.
+            const reapRune = runes.bone_needle;
+            const tap = reapRune === 'rune_marrow_tap';
             const struck = reapTargets(p, nearest, enemies);
-            if (struck.length) sim.apply({ t: 'hit', by: p.id, ids: struck.map((e) => e.id), dmg: sp * SP_NEEDLE.power * NECRO_WEAPON_TUNING.scythe.damageMult * crit });
-            p.essence = Math.min(stats.maxEssence, p.essence + NECRO_WEAPON_TUNING.scythe.essencePerHit * struck.length);
+            const swing = sp * SP_NEEDLE.power * NECRO_WEAPON_TUNING.scythe.damageMult * (tap ? RUNE_TUNING.marrowTap.damageMult : 1) * crit;
+            if (struck.length) sim.apply({ t: 'hit', by: p.id, ids: struck.map((e) => e.id), dmg: swing });
+            if (reapRune === 'rune_splinter' && struck.length) {
+              const next = splinterTarget(struck[0], enemies.filter((e) => e === struck[0] || !struck.includes(e)));
+              if (next) sim.apply({ t: 'hit', by: p.id, ids: [next.id], dmg: swing * RUNE_TUNING.splinter.damageFrac });
+            }
+            p.essence = Math.min(stats.maxEssence, p.essence + NECRO_WEAPON_TUNING.scythe.essencePerHit * struck.length + (tap && struck.length ? RUNE_TUNING.marrowTap.essenceBonus : 0));
           } else {
             const wither = loadout.needleWithered > 0 ? { withered: loadout.needleWithered, witheredCap: effectiveWitheredCap(disc.mods) } : {};
             // Relic runes (AbilitySystem.needle): Marrow-Tap trades damage for essence, the Volley fires three half-strength needles every 4th cast, Splinters sends half to the next foe.

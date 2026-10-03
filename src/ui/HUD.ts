@@ -572,7 +572,7 @@ export class HUD {
       this.$<HTMLButtonElement>('[data-buydmg]').disabled = f.damageCost === null || f.gold < f.damageCost;
       this.$('[data-buydmg]').title = f.damageCost === null
         ? `Damage is at its highest tier (+${f.damagePct}% to all your damage).`
-        : `Empower: +${Math.round(DAMAGE_UPGRADE.perTier * 100)}% damage per tier, tier ${f.damageTier} of ${DAMAGE_UPGRADE.maxTier}. This one takes you from +${f.damagePct}% to +${damageBonusPct(f.damageTier + 1)}%. ${f.raisesThralls ? 'Thralls already standing keep their old strength: it applies to thralls you raise from now on. ' : ''}Resets when you Ascend.`;
+        : `Empower: +${Math.round(DAMAGE_UPGRADE.perTier * 100)}% damage per tier, tier ${f.damageTier} of ${DAMAGE_UPGRADE.maxTier}. This one takes you from +${f.damagePct}% to +${damageBonusPct(f.damageTier + 1)}%${f.raisesThralls ? ', and your thralls already standing hit harder at once' : ''}. Resets when you Ascend.`;
     });
     this.set('wave', `${f.waveOwned}|${f.waveActive}|${f.waveCost}|${f.gold >= (f.waveCost ?? Infinity)}`, () => {
       this.$('[data-wavepct]').textContent = `+${f.wavePct}%`;

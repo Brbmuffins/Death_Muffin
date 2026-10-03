@@ -41,6 +41,7 @@ import { ClassPanel } from '../ui/ClassPanel';
 import { changeDiscipline, getContracts, getCosmetics, getGarden, getLabor, type LaborView, type ContractDelivery, type CosmeticsView, type GardenResult, type LaborResult } from '../net/api';
 import { canUseAutoCombat, onSettingsChange, setActiveCharacter, settings, updateSettings } from '../app/settings';
 import { selectAutoCombatAction, selectAutoCombatMovement, type AutoMoveMemory } from '../gameplay/autoCombat';
+import { BossTelegraphs, poolHazard, type Hazard } from '../gameplay/autoDodge';
 import { STATUS_FX } from '../content/statuses';
 import { damageTakenScale } from '../gameplay/hitNumber';
 import { AbilitySystem, veilTarget, type CastResult, type CastTarget } from '../gameplay/AbilitySystem';
@@ -56,7 +57,7 @@ import { omenFor, omenLeft, type Omen } from '../content/omens';
 import { BOSS_ARENA, BOSS_RADIUS, BOSS_RING_PAD } from '../gameplay/sim/BossBrain';
 import { makeSnapshot, WorldMirror } from '../gameplay/sim/snapshot';
 import type { BossState, Corpse, Enemy, Intent, SimEvent, Thrall, Zone } from '../gameplay/sim/types';
-import { CONE_REACH_PAD, WorldSim, thrallWeight } from '../gameplay/sim/WorldSim';
+import { CONE_REACH_PAD, PLAYER_RADIUS, WorldSim, thrallWeight } from '../gameplay/sim/WorldSim';
 import { computeStats, STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
 import { BossView, NecromancerAvatar } from '../graphics/Avatars';
 import { prewarmCreature } from '../graphics/prewarmCreature';
@@ -88,7 +89,7 @@ import { loadRunesFound, recordRunesFound } from '../gameplay/runeJournal';
 import { ownedRunes, socketsOf, socketsSignature, type RuneSockets } from '../gameplay/runeRules';
 import { RUNES, type RuneId, type RuneRite } from '../content/runes';
 import { runeSocket } from '../net/api';
-import { applyLegionMods, kitCandidates, kitPieces, legionOf, legionSignature } from '../gameplay/legionKit';
+import { applyLegionMods, kitCandidates, kitPieces, legionOf, legionSignature, thrallRefresh, type ThrallNumbers } from '../gameplay/legionKit';
 import { LegionPanel } from '../ui/LegionPanel';
 import { LootRoller } from '../gameplay/lootRoll';
 import { canRoll } from '../gameplay/affixes';
@@ -361,6 +362,9 @@ export class WorldScene implements GameScene, RuntimeView {
   private nextAutoCombatAt = 0;
   /** Easy auto movement memory: sticky target, closing hysteresis, committed dodges, smoothed turns. */
   private autoMoveMem: AutoMoveMemory = {};
+  /** Live boss telegraphs for Easy auto's dodge: fed by the same boss events that draw them. */
+  private readonly telegraphs = new BossTelegraphs();
+  private readonly dodgeHazards: Hazard[] = [];
   private autoTargetId: number | null = null;
   private autoAim: CastTarget | null = null;
   private queuedCast: { slot: HotbarSlot; target: CastTarget; until: number } | null = null;
@@ -917,6 +921,45 @@ export class WorldScene implements GameScene, RuntimeView {
     this.sheetPanel?.render();
   }
 
+  /**
+   * Easy auto's dodge list: the live boss telegraphs plus hostile ground pools near the hero (the shapes the host will hit-test).
+   * Reuses one array; empty (and free) when no boss is awake and no pool is down.
+   */
+  private autoDodgeHazards(): readonly Hazard[] {
+    const out = this.dodgeHazards;
+    out.length = 0;
+    if (!this.bossState().active) this.telegraphs.clear();
+    out.push(...this.telegraphs.active(this.now));
+    const zones = this.sim?.zones ?? this.mirror?.zones;
+    if (zones) {
+      const p = this.player;
+      for (const z of zones.values()) if (z.hostile && z.dps > 0 && Math.hypot(z.x - p.x, z.z - p.z) < 40) out.push(poolHazard(z, PLAYER_RADIUS));
+    }
+    return out;
+  }
+
+  /** What a thrall raised now would carry (the numbers a purchase changes). Null until the player exists. */
+  private thrallNumbers(): ThrallNumbers | null {
+    return this.player ? { hp: this.player.stats.thrallHp, damage: this.player.stats.thrallDamage, speedMult: this.discipline.mods.thrallAttackSpeedMult } : null;
+  }
+
+  /**
+   * A Damage or Reinforce purchase bumps the thralls already standing, once (the sim keeps their health fraction: no heal). Returns how many
+   * of yours were standing, so the toast can say so; the sim does the arithmetic (or the host, in co-op) from the same before / after ratio.
+   */
+  private refreshStandingThralls(before: ThrallNumbers | null): number {
+    const after = this.thrallNumbers();
+    if (!before || !after) return 0;
+    const r = thrallRefresh(before, after);
+    if (!r) return 0;
+    const mine = [...this.thrallsMap().values()].filter((t) => t.owner === this.selfId && t.state !== 'dead');
+    if (!mine.length) return 0;
+    this.sendIntent({ t: 'refreshThralls', by: this.selfId, ...r });
+    // One soft pulse per thrall (a legion is capped at a handful): the purchase is felt where it lands.
+    for (const t of mine) this.effects.flash({ x: t.x, y: 1.1, z: t.z, color: 0xc6a4ff, size: 1.3, duration: 0.35 });
+    return mine.length;
+  }
+
   private legionBonus() {
     return legionOf(this.inventory?.all ?? [], this.progression?.local.legionTier ?? 0);
   }
@@ -941,9 +984,11 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hud = new HUD(this.root, {
       cast: (slot) => this.castSlot(slot),
       buyDamage: () => {
+        const before = this.thrallNumbers();
         if (this.progression.buyDamage()) {
           audio.play('buy');
-          this.hud.toast(`Damage empowered: +${damageBonusPct(this.progression.local.damageTier)}%${this.discipline.family === 'necromancer' ? '. Thralls you raise from now on carry it' : ''}`, 'good');
+          const n = this.refreshStandingThralls(before);
+          this.hud.toast(`Damage empowered: +${damageBonusPct(this.progression.local.damageTier)}%${n ? `. ${n === 1 ? 'Your thrall hits' : `Your ${n} thralls hit`} harder at once.` : ''}`, 'good');
           this.effects.emit({ x: this.player.x, y: 1, z: this.player.z, count: 40, color: 0xc6a4ff, spread: 0.6, speed: 2, up: 2.5, life: 1, size: 0.3 });
         }
       },
@@ -1001,10 +1046,12 @@ export class WorldScene implements GameScene, RuntimeView {
       cost: () => this.progression.legionCost(),
       gold: () => this.character.gold ?? 0,
       reinforce: () => {
+        const before = this.thrallNumbers();
         if (!this.progression.buyLegion()) return false;
         audio.play('buy');
         this.applyBoons();
-        this.hud.toast(`The legion is bound tighter: tier ${this.progression.local.legionTier}. Thralls you raise from now on carry it`, 'good');
+        const n = this.refreshStandingThralls(before);
+        this.hud.toast(`The legion is bound tighter: tier ${this.progression.local.legionTier}${n ? `. ${n === 1 ? 'Your thrall is' : `Your ${n} thralls are`} stronger at once.` : ''}`, 'good');
         this.legionPanel.render();
         return true;
       },
@@ -4190,6 +4237,7 @@ export class WorldScene implements GameScene, RuntimeView {
   };
 
   private onBossEvent(ev: Extract<SimEvent, { t: 'boss' }>) {
+    this.telegraphs.onEvent(ev, this.now);
     if (ev.kind === 'awaken') perfNote(`boss ${ev.boss ?? ''}`);
     const ms = (ev.ms ?? 0) / 1000;
     const stop = WorldScene.BOSS_STOP[ev.kind];
@@ -4392,7 +4440,7 @@ export class WorldScene implements GameScene, RuntimeView {
       !this.attackTarget && !this.pendingInteract && !this.gathering.active && !this.keys.size
       ? selectAutoCombatMovement({ player: { x: p.x, z: p.z, area: p.area, essence: p.essence, maxEssence: p.resource.max,
           hp: p.hp, maxHp: p.stats.maxHp },
-        enemies: this.enemiesMap().values(), primary: this.primary, primaryRange: this.primaryRange(), family: this.discipline.family, nav: this.nav }, this.autoMoveMem, now, dt) : null;
+        enemies: this.enemiesMap().values(), primary: this.primary, primaryRange: this.primaryRange(), family: this.discipline.family, nav: this.nav, hazards: this.autoDodgeHazards() }, this.autoMoveMem, now, dt) : null;
     if (!autoMove) this.autoMoveMem.dir = null;
     // Drowned Congregation: the water rises each phase; wading outside her dais is slower.
     {

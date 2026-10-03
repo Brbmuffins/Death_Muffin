@@ -441,10 +441,11 @@ export class AbilitySystem {
   }
 
   /** Splinters rune: a shard of the needle flies to the nearest other enemy for half the damage. */
-  private splinter(firstId: number, at: { x: number; z: number }, dmg: number) {
+  private splinter(firstId: number, at: { x: number; z: number }, dmg: number, skip?: ReadonlySet<number>) {
     const { effects } = this.ctx;
     const first = this.ctx.enemies().get(firstId);
-    const pool = [...this.ctx.enemies().values()].filter((e) => !gone(e));
+    // `skip`: enemies the same scythe swing already struck (a splinter is for a foe the arc missed).
+    const pool = [...this.ctx.enemies().values()].filter((e) => !gone(e) && !skip?.has(e.id));
     const e = splinterTarget(first ?? { id: firstId, x: at.x, z: at.z }, pool);
     if (!e) return;
     const amount = dmg * RUNE_TUNING.splinter.damageFrac;
@@ -502,7 +503,9 @@ export class AbilitySystem {
     dz /= l;
     p.face(p.x + dx, p.z + dz);
     avatar.cast('attack', 2.6, p.facing, T.gestureSeconds);
-    const dmg = this.sp * ABILITIES.bone_needle.power * T.damageMult * (0.9 + Math.random() * 0.2);
+    // Bone Needle runes ride the arc, once per swing: Marrow-Tap softens the swing and tops up essence once, Splinters throws one shard. (The Volley is needle-only.)
+    const rune = this.rune('bone_needle');
+    const dmg = this.sp * ABILITIES.bone_needle.power * T.damageMult * (rune === 'rune_marrow_tap' ? RUNE_TUNING.marrowTap.damageMult : 1) * (0.9 + Math.random() * 0.2);
     const pool = [];
     for (const e of this.ctx.enemies().values()) if (!gone(e)) pool.push(e);
     const struck = reapTargets({ x: p.x, z: p.z }, { x: t.x, z: t.z }, pool);
@@ -527,7 +530,9 @@ export class AbilitySystem {
       effects.flash({ x: b.x, y: 1.6, z: b.z, color: N.impact, size: 1.2, duration: 0.18 });
     }
     const landed = hits.length + (hitBoss ? 1 : 0);
-    if (landed) p.essence = Math.min(p.stats.maxEssence, p.essence + T.essencePerHit * landed);
+    if (landed) p.essence = Math.min(p.stats.maxEssence, p.essence + T.essencePerHit * landed + (rune === 'rune_marrow_tap' ? RUNE_TUNING.marrowTap.essenceBonus : 0));
+    // Splinters: one shard per swing, off the nearest enemy struck, to the nearest one the arc did not touch.
+    if (rune === 'rune_splinter' && hits.length) this.splinter(hits[0].id, { x: hits[0].x, z: hits[0].z }, dmg, new Set(hits.map((e) => e.id)));
     const rot = Math.atan2(dx, dz);
     effects.decal({ tex: fxImage('crescent'), color: N.trail, x: p.x + dx * 1.3, z: p.z + dz * 1.3, r: 2.0, rot, duration: 0.32, opacity: 0.95, growFrom: 0.6, fadeOut: 0.25 });
     effects.lightFlash(p.x + dx * 1.3, 1, p.z + dz * 1.3, N.trail, 10, 0.16);

@@ -372,6 +372,11 @@ export type Intent =
   /** `boss` (area bosses, 2026-09-28); missing = the Prelate, for older clients. */
   | { t: 'summonBoss'; by: string; boss?: BossId }
   | { t: 'recallThralls'; by: string; x: number; z: number }
+  /**
+   * Buying a Damage tier or a Legion tier: a one-time bump for every thrall the owner has standing. The multipliers are new / old of the
+   * owner's thrall health, damage and attack speed (host-clamped to 1..THRALL_REFRESH_MAX); health scales with its fraction kept, never a heal.
+   */
+  | { t: 'refreshThralls'; by: string; hpMult: number; damageMult: number; speedMult: number }
   /** Host-shaped rites (discipline signatures + Bone Mantle): aim point, aim direction and the caster's spell power. */
   | {
       t: 'signature';

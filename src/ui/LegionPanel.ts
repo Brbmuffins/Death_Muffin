@@ -84,7 +84,7 @@ export class LegionPanel extends SimplePanel {
         <section class="lg-total" aria-label="What your legion has now">
           <h3>Your legion now</h3>
           ${lines.length ? `<ul>${lines.map((l) => `<li>${l}</li>`).join('')}</ul>` : '<p class="lg-dim">Spare gear becomes thrall damage, health and attack speed. Give the legion a piece.</p>'}
-          ${t ? `<p class="lg-dim">A thrall raised now: <b>${Math.round(t.hp)}</b> health, hits for <b>${t.damage.toFixed(1)}</b>. Ones already standing keep their own.</p>` : ''}
+          ${t ? `<p class="lg-dim">A thrall raised now: <b>${Math.round(t.hp)}</b> health, hits for <b>${t.damage.toFixed(1)}</b>. Reinforcing also strengthens the thralls already standing, once; swapping a kit piece reaches the next ones you raise.</p>` : ''}
         </section>
         ${this.reinforceBlock(tier)}
       </div>
@@ -145,9 +145,8 @@ export class LegionPanel extends SimplePanel {
       <div class="lg-pips" aria-hidden="true">${bar}</div>
       <p>${tier ? `Bound: <b>+${pct(now.hp)}</b> health and damage, <b>+${pct(now.speed)}</b> attack speed.` : 'Spend gold to bind the dead tighter.'}</p>
       ${cost === null ? '<p class="lg-dim">Fully reinforced. The bindings reset when you Ascend.</p>'
-        : `<div class="lg-buy"><button class="cw-button small" data-reinforce ${afford ? '' : 'disabled'} title="${afford ? `Costs gold, rises with each tier (you hold ${have.toLocaleString()}g)` : `You need ${(cost - have).toLocaleString()} more gold`}">Reinforce · ${cost.toLocaleString()}g</button>
-           <span class="lg-dim">Next: +${pct(next.hp)} health and damage, +${pct(next.speed)} attack speed</span></div>
-           <p class="lg-dim">Applies to thralls you raise from now on; those already standing keep their old strength.</p>`}
+        : `<div class="lg-buy"><button class="cw-button small" data-reinforce ${afford ? '' : 'disabled'} title="${afford ? `Costs gold, rises with each tier (you hold ${have.toLocaleString()}g). Thralls already standing are strengthened at once` : `You need ${(cost - have).toLocaleString()} more gold`}">Reinforce · ${cost.toLocaleString()}g</button>
+           <span class="lg-dim">Next: +${pct(next.hp)} health and damage, +${pct(next.speed)} attack speed</span></div>`}
     </section>`;
   }
 

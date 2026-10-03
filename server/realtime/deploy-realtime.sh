@@ -97,7 +97,7 @@ const LIMITS = {
 const SNAPSHOT_INTEREST_RADIUS = 64;
 
 const BOSS_IDS = new Set(['prelate', 'gravedigger', 'abbess', 'congregation', 'saint', 'regent', 'mire']);
-const INTENT_TYPES = new Set(['hit', 'miasma', 'exhume', 'litany', 'summonBoss', 'recallThralls', 'detonate', 'signature', 'gather', 'legend']);
+const INTENT_TYPES = new Set(['hit', 'miasma', 'exhume', 'litany', 'summonBoss', 'recallThralls', 'detonate', 'signature', 'gather', 'legend', 'refreshThralls']);
 /** Host-shaped rites (discipline signatures + Bone Mantle); the host owns their shapes and clamps the aim around the caster. */
 const SIGNATURES = new Set(['wall', 'rend', 'dirge', 'bloom', 'mantle', 'offering', 'rally', 'seed', 'bash', 'vigil', 'brand',
   'lantern_cone', 'chain_pull', 'burn_the_dead', 'watchmans_ward', 'cremate', 'last_light',
@@ -249,6 +249,14 @@ function validIntent(intent) {
         miasmaSpreadsWithered: num(m.miasmaSpreadsWithered) > 0 ? 1 : 0,
         witheredBurstAt: Math.min(12, Math.max(0, Math.floor(num(m.witheredBurstAt)))),
       };
+      break;
+    }
+    case 'refreshThralls': {
+      // Buying a Damage or Legion tier: one-time multipliers for the owner's standing thralls, 1..1.25 (src/content/upgrades.ts THRALL_REFRESH_MAX; the host clamps again).
+      const f = (v) => Math.min(1.25, Math.max(1, num(v, 1)));
+      out.hpMult = f(out.hpMult);
+      out.damageMult = f(out.damageMult);
+      out.speedMult = f(out.speedMult);
       break;
     }
     case 'miasma':

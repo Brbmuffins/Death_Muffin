@@ -183,6 +183,13 @@ test('legend intents (legendary set mods) are accepted and clamped; the spear fl
   assert.equal(validIntent({ t: 'hit', ids: [1], dmg: 5, spear: 'yes' }).spear, true);
 });
 
+test('refreshThralls intents (Damage / Legion purchases) are accepted and clamped to 1..1.25', () => {
+  const r = validIntent({ t: 'refreshThralls', hpMult: 9, damageMult: 1.08, speedMult: -3, evil: 1 });
+  assert.deepEqual([r.t, r.hpMult, r.damageMult, r.speedMult], ['refreshThralls', 1.25, 1.08, 1]);
+  const none = validIntent({ t: 'refreshThralls', hpMult: 'x' });
+  assert.deepEqual([none.hpMult, none.damageMult, none.speedMult], [1, 1, 1]);
+});
+
 const row = (id, x, z) => [id, 'robber', x, z, 0, 10, 10, 1, 0, 0, 2, 1, 'nave', 0];
 const trow = (id, owner, x, z) => [id, owner, 'warrior', x, z, 0, 10, 10, 0, 0, 0, 2];
 

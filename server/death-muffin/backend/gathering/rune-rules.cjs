@@ -96,7 +96,7 @@ var RUNES = {
     sell: 25,
     lore: "The needle shatters on bone and the shards keep looking.",
     short: "Hits splinter to a second foe",
-    lines: [`When a needle hits, a splinter flies to the nearest other enemy within ${T.splinter.reach} m for ${pct(T.splinter.damageFrac)} of the damage.`],
+    lines: [`When a needle hits, a splinter flies to the nearest other enemy within ${T.splinter.reach} m for ${pct(T.splinter.damageFrac)} of the damage. Under a scythe, each reaping swing throws one splinter, from the nearest enemy it struck to the nearest one it missed.`],
     cost: null
   },
   rune_marrow_tap: {
@@ -107,8 +107,8 @@ var RUNES = {
     sell: 25,
     lore: "Every wound is a spigot.",
     short: "More essence, softer needle",
-    lines: [`Each needle hit returns ${T.marrowTap.essenceBonus} more Grave Essence.`],
-    cost: `Needles hit for ${pct(1 - T.marrowTap.damageMult)} less.`
+    lines: [`Each needle hit returns ${T.marrowTap.essenceBonus} more Grave Essence. Under a scythe, each swing that lands returns ${T.marrowTap.essenceBonus} more once, however many enemies it strikes.`],
+    cost: `Needles and scythe swings hit for ${pct(1 - T.marrowTap.damageMult)} less.`
   },
   rune_volley: {
     id: "rune_volley",
@@ -118,7 +118,7 @@ var RUNES = {
     sell: 60,
     lore: "Four breaths, then a flock.",
     short: "Every 4th needle is a volley",
-    lines: [`Every ${T.volley.every}th needle you throw becomes a volley of ${T.volley.needles}, aimed at ${T.volley.needles} different enemies within ${T.volley.reach} m (or all at one target if it stands alone). The volley returns the essence of one needle between them.`],
+    lines: [`Every ${T.volley.every}th needle you throw becomes a volley of ${T.volley.needles}, aimed at ${T.volley.needles} different enemies within ${T.volley.reach} m (or all at one target if it stands alone). The volley returns the essence of one needle between them. Needle only: a scythe's swing is not a volley.`],
     cost: `Each volley needle hits for ${pct(T.volley.damageFrac)}.`
   },
   rune_ossuary_ring: {
