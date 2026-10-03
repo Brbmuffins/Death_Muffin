@@ -63,7 +63,17 @@ const SETTLE = +(process.env.DM_QA_SETTLE || 12000);
     const p = d.perf(60);
     return { objects, meshes, instancedMeshes: inst, visibleObjects: vis, updateMatrixWorldMs: +umw.toFixed(3), traverseVisibleMs: +tv.toFixed(3), geometries: r.info.memory.geometries, textures: r.info.memory.textures, programs: r.info.programs?.length, calls: p.calls, tris: p.triangles, updateMs: +p.updateMs.toFixed(2) };
   });
-  const res = { quality: Q, timeToPlayMs: Math.round(tPlay - t0), longTasksToPlay: { count: lt.length, totalMs: sum(lt), maxMs: Math.round(Math.max(0, ...lt.map((x) => x[1]))) }, longTasksPlus: { count: ltAll.length, totalMs: sum(ltAll), maxMs: Math.round(Math.max(0, ...ltAll.map((x) => x[1]))) }, netToPlay: diff(atPlay, before), netAfterSettle: diff(settled, before), scene };
+  // Steady-state read per zone once everything has had time to arrive (the bare zone: no enemies, so base and streamed builds compare like for like).
+  const zones = [];
+  for (const a of (process.env.DM_QA_AREAS || 'acre,nave,graves').split(',')) {
+    await page.evaluate((x) => { const d = window.__cwDebug; d.god(true); d.unlockAll(); d.goto(x); d.advance(1); d.zoom(0.8); d.advance(1); }, a);
+    await page.waitForTimeout(+(process.env.DM_QA_ZONE_WAIT || 8000));
+    const reads = [];
+    for (let i = 0; i < 3; i++) reads.push(await page.evaluate(() => { const p = window.__cwDebug.perf(60); return { calls: p.calls, tris: p.triangles, casters: p.casters, casterTris: p.casterTris, ms: +p.updateMs.toFixed(2) }; }));
+    const med = (k) => reads.map((r) => r[k]).sort((x, y) => x - y)[1];
+    zones.push({ area: a, calls: med('calls'), tris: med('tris'), casters: med('casters'), casterTris: med('casterTris'), updateMs: med('ms') });
+  }
+  const res = { prime: await page.evaluate(() => window.__cwDebug.stream?.().prime), zones, quality: Q, timeToPlayMs: Math.round(tPlay - t0), longTasksToPlay: { count: lt.length, totalMs: sum(lt), maxMs: Math.round(Math.max(0, ...lt.map((x) => x[1]))) }, longTasksPlus: { count: ltAll.length, totalMs: sum(ltAll), maxMs: Math.round(Math.max(0, ...ltAll.map((x) => x[1]))) }, netToPlay: diff(atPlay, before), netAfterSettle: diff(settled, before), scene };
   console.log(JSON.stringify(res, null, 1));
   if (process.env.DM_QA_OUT) fs.writeFileSync(process.env.DM_QA_OUT, JSON.stringify(res, null, 1));
   await browser.close();

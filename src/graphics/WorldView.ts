@@ -240,11 +240,16 @@ function silhouetteGeometry(sil: Silhouette, rand: () => number): THREE.BufferGe
 const PROP_LIFT: Partial<Record<PropId, number>> = { alch_herb_bundle: 3.2, alch_drying_rack: 1.9 };
 /** Side (m) of the culling cells a prop batch is split into; well under the 60 m shadow camera and the view footprint. */
 const PROP_CELL = 12;
+/** Props further than this from the hero (cell edge) stop casting moon shadows: the view reaches ~30 m sideways at the widest zoom, ~20 m ahead. */
+const SHADOW_RANGE = 32;
 
 export class PropBatch {
   readonly group = new THREE.Group();
   /** Resolves once the generated GLB (if any) has replaced the stand-in, so a warm-up can compile the real materials. Never rejects. */
   readonly ready: Promise<void>;
+  /** The culling cells' meshes with the sphere that bounds them, so shadow casting can follow the player (updateShadows). */
+  private cells: { mesh: THREE.InstancedMesh; x: number; z: number; r: number }[] = [];
+  private shadowFocus: { x: number; z: number; range: number } | null = null;
   constructor(
     private id: PropId,
     private placements: Placement[],
@@ -288,6 +293,21 @@ export class PropBatch {
     }).catch(() => undefined);
   }
 
+  private castsAt(x: number, z: number, r: number) {
+    const f = this.shadowFocus;
+    return !f || Math.hypot(x - f.x, z - f.z) - r <= f.range;
+  }
+
+  /** Only the cells within `range` m of the focus cast shadows: beyond that they are off screen, but still cost the moon's shadow pass. */
+  updateShadows(x: number, z: number, range: number) {
+    this.shadowFocus = { x, z, range };
+    if (!this.tall) return;
+    for (const c of this.cells) {
+      const on = this.castsAt(c.x, c.z, c.r);
+      if (c.mesh.castShadow !== on) c.mesh.castShadow = on;
+    }
+  }
+
   private build(parts: { geometry: THREE.BufferGeometry; material: THREE.Material; local: THREE.Matrix4 }[], _v: number) {
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
@@ -297,6 +317,7 @@ export class PropBatch {
     // One InstancedMesh per part *per cell*: culling is per mesh, so an area-wide batch was drawn
     // (and shadow-cast) whole whenever any one of its props was in view (~5x overdraw, BLENDER-AUDIT §1.2).
     const cells = new Map<string, Placement[]>();
+    this.cells = [];
     for (const pl of this.placements) {
       const key = `${Math.floor(pl.x / PROP_CELL)},${Math.floor(pl.z / PROP_CELL)}`;
       const list = cells.get(key);
@@ -315,9 +336,12 @@ export class PropBatch {
           m.compose(p, q, s).multiply(part.local);
           inst.setMatrixAt(i, m);
         });
-        inst.castShadow = this.tall;
         inst.receiveShadow = true;
         inst.computeBoundingSphere();
+        const bs = inst.boundingSphere!;
+        this.cells.push({ mesh: inst, x: bs.center.x, z: bs.center.z, r: bs.radius });
+        // Tall props only (low clutter never casts); and only near the player once a focus is known (updateShadows).
+        inst.castShadow = this.tall && this.castsAt(bs.center.x, bs.center.z, bs.radius);
         this.group.add(inst);
       }
     }
@@ -452,6 +476,9 @@ export class WorldView {
   private wanted = new Set<AreaId>();
   private wantedKey = '';
   private prioArea: AreaId | null = null;
+  private shadowAt: { x: number; z: number } | null = null;
+  private shadowDirty = true;
+  private primeStats = { buildMs: 0, totalMs: 0 };
   private warmCtx: { renderer: THREE.WebGLRenderer; camera: THREE.Camera } | null = null;
   private uploads: UploadQueue | null = null;
   private floorMats = new Map<Theme, THREE.MeshStandardMaterial>();
@@ -643,6 +670,7 @@ export class WorldView {
       onProgress?.(loadProgress(startLeft - need.length - total(), startLeft));
       await new Promise((r) => setTimeout(r, 0));
     }
+    this.primeStats.buildMs = Math.round(performance.now() - t0);
     // Built; now wait for their GLBs to land and their shaders and textures to warm.
     let warmed = 0;
     for (const c of need) void this.chunkReady(c).then(() => warmed++);
@@ -650,6 +678,7 @@ export class WorldView {
       onProgress?.(loadProgress(startLeft - need.length + warmed, startLeft));
       await new Promise((r) => setTimeout(r, 30));
     }
+    this.primeStats.totalMs = Math.round(performance.now() - t0);
     onProgress?.(1);
   }
 
@@ -664,6 +693,13 @@ export class WorldView {
       // Never show a hole: an area that is about to be drawn and is not built yet is built now.
       for (const id of v) this.ensureBuilt(id);
       for (const c of this.chunks.values()) this.applyShown(c);
+      this.shadowDirty = true;
+    }
+    // Shadow casting follows the player (moves 2 m, or an area just came into view).
+    if (this.shadowDirty || !this.shadowAt || Math.hypot(x - this.shadowAt.x, z - this.shadowAt.z) > 2) {
+      this.shadowDirty = false;
+      this.shadowAt = { x, z };
+      for (const c of this.chunks.values()) if (c.group.visible) for (const b of c.batches) b.updateShadows(x, z, SHADOW_RANGE);
     }
     if (this.queue.size) this.queue.runSlice(1.5);
   }
@@ -676,7 +712,7 @@ export class WorldView {
       if (c.built) built.push(c.id);
       if (c.group.visible) shown.push(c.id);
     }
-    return { built, shown, pending: this.queue.size };
+    return { built, shown, pending: this.queue.size, prime: this.primeStats };
   }
 
   /** The Mourning Fen's dry ground (content/fen.ts FEN_HUMMOCKS): low peat mounds with a pale teal rim, two draw calls. */

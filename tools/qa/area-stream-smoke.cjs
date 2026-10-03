@@ -72,6 +72,11 @@ const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ') + msg); if (!o
   }
   const veils = await page.evaluate(() => window.__veils);
   check(veils === 1, `no further veil after mount (${veils} total)`);
+  // The veil itself (the real one is up for well under a second on a good machine, so show a still of it): mid-progress, over the live world.
+  await page.evaluate(async () => { const { LoadVeil } = await import('/src/ui/LoadVeil.ts'); window.__v = new LoadVeil(); window.__v.progress(0.55); });
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: path.join(OUT, 'veil.png') });
+  await page.evaluate(() => window.__v.dispose());
   const final = await page.evaluate(() => window.__cwDebug.stream());
   console.log('final', JSON.stringify(final));
   check(errors.length === 0, `no page errors ${errors.slice(0, 3).join(' | ')}`);
