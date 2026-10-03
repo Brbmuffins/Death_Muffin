@@ -1435,6 +1435,7 @@ body:not(.touch):has(.cw-panel-float) .cw-tip:not(.dragging):not([data-kind='urg
 .cw-panel-float.wide.cw-vault { width: 880px; }
 .cw-vault-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
 .cw-vault-cols .cw-panel-section-title { display: flex; justify-content: space-between; align-items: baseline; margin-top: 0; }
+.cw-vault-grid > .cw-hint-text { grid-column: 1 / -1; } /* the loading line sat in one 8-column cell and wrapped a word per line */
 .cw-vault-count { font-family: var(--cw-font-numeric); font-size: 12px; color: var(--cw-text-faint); letter-spacing: .04em; }
 .cw-vault-grid { margin-bottom: 8px; }
 .cw-vault-grid .cw-slot { min-height: 0; }
