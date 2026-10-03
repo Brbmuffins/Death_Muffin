@@ -11,3 +11,12 @@ describe('plotStateAt', () => {
     expect(plotStateAt({ seedId: null, readyAt: 0, state: 'empty' }, 1e12)).toBe('empty');
   });
 });
+
+import { useCompost } from '../gardenView';
+describe('useCompost', () => {
+  it('a tick left over from the last bone meal is not sent', () => {
+    expect(useCompost(true, 0)).toBe(false);
+    expect(useCompost(true, 2)).toBe(true);
+    expect(useCompost(false, 2)).toBe(false);
+  });
+});

@@ -4,7 +4,7 @@ import { COMPOST_ITEM, seedDef } from '../content/gardening';
 import { remainingText } from '../gameplay/gardeningRules';
 import type { Inventory } from '../gameplay/loot';
 import { preserveScroll } from './preserveScroll';
-import { plotStateAt } from './gardenView';
+import { plotStateAt, useCompost } from './gardenView';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 const iconOf = (itemId: string) => itemMeta(itemId).icon ?? `art/items/${itemId}.webp`;
@@ -118,7 +118,7 @@ export class GardenPanel {
                   ? `<div class="row"><select data-seed="${p.plot}" aria-label="Seed for ${esc(p.label)}">${seeds.map((s) => `<option value="${s.id}" ${s.id === pick.seed ? 'selected' : ''}>${esc(s.name)} ×${s.qty}${s.ok ? '' : ` (Lv ${s.level})`}</option>`).join('')}</select>
                      ${meal ? `<label class="cw-check"><input type="checkbox" data-compost="${p.plot}" ${pick.compost ? 'checked' : ''}/> Bone meal (${meal})</label>` : ''}
                      <button class="cw-button small" data-plant="${p.plot}" ${disabled ? 'disabled' : ''}>Plant</button></div>
-                     ${chosen && !chosen.ok ? `<div class="rw">Requires Grave Gardening ${chosen.level}.</div>` : chosen ? `<div class="rw">Grows in ${remainingText(seedDef(chosen.id)!.growMin * 60_000 * (pick.compost ? 0.75 : 1))}.</div>` : ''}`
+                     ${chosen && !chosen.ok ? `<div class="rw">Requires Grave Gardening ${chosen.level}.</div>` : chosen ? `<div class="rw">Grows in ${remainingText(seedDef(chosen.id)!.growMin * 60_000 * (useCompost(pick.compost, meal) ? 0.75 : 1))}.</div>` : ''}`
                   : `<div class="rw">${p.kind === 'tree' ? 'No saplings. Coffin-Oaks and Churchyard Yews sometimes drop them.' : 'No seeds. Dig graves in the Sexton’s Acre for Mourning Moss seeds.'}</div>`}
               </article>`;
             }
@@ -166,7 +166,7 @@ export class GardenPanel {
     try {
       const pick = this.choice.get(plot);
       const { reply: result, bagStale } = await this.inventory.exclusiveAction(
-        () => (kind === 'plant' ? plantGarden(this.characterId, plot, pick?.seed ?? '', !!pick?.compost) : harvestGarden(this.characterId, plot)),
+        () => (kind === 'plant' ? plantGarden(this.characterId, plot, pick?.seed ?? '', useCompost(!!pick?.compost, this.inventory.count(COMPOST_ITEM))) : harvestGarden(this.characterId, plot)),
         () => getInventory(this.characterId),
       );
       this.set(result);

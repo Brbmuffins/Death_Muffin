@@ -815,9 +815,9 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     pr.skill_xp = next.xp;
     return next.leveled > 0;
   };
+  const bagHas = (itemId: string, n: number) => acc.slots.filter((s) => s.item_id === itemId && !s.equipped && s.slot_index < BAG).reduce((t, s) => t + s.quantity, 0) >= n;
   const takeFromBag = (itemId: string, n: number) => {
-    const have = acc.slots.filter((s) => s.item_id === itemId && !s.equipped && s.slot_index < BAG).reduce((t, s) => t + s.quantity, 0);
-    if (have < n) return false;
+    if (!bagHas(itemId, n)) return false;
     let left = n;
     for (const s of acc.slots.filter((x) => x.item_id === itemId && !x.equipped && x.slot_index < BAG)) { const t = Math.min(left, s.quantity); s.quantity -= t; left -= t; }
     acc.slots = acc.slots.filter((s) => s.quantity > 0);
@@ -833,8 +833,10 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     const view = gardenView(now);
     const blocked = gardenRules.plantBlocker(gardenRules.plotDef(body.plot), body.seedId, view.level, plotsOf()[body.plot], now);
     if (blocked) return fail(blocked);
-    if (!takeFromBag(body.seedId, 1)) return fail('You have no such seed in your bag.');
-    if (body.compost && !takeFromBag(gardenRules.COMPOST_ITEM, 1)) return fail('You have no bone meal in your bag.');
+    if (!bagHas(body.seedId, 1)) return fail('You have no such seed in your bag.');
+    if (body.compost && !bagHas(gardenRules.COMPOST_ITEM, 1)) return fail('You have no bone meal in your bag.');
+    takeFromBag(body.seedId, 1);
+    if (body.compost) takeFromBag(gardenRules.COMPOST_ITEM, 1);
     const seed = gardenRules.seedDef(body.seedId)!;
     plotsOf()[body.plot] = { plot: body.plot, seedId: seed.id, plantedAt: now, readyAt: now + gardenRules.growMs(seed, !!body.compost), composted: !!body.compost };
     const leveledUp = gardenXp(seed.plantXp);
