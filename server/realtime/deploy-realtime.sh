@@ -91,6 +91,9 @@ const LIMITS = {
   gearPerSec: 2,
 };
 
+/** A guest only needs the world around it: enemies/thralls farther than this from the recipient are left out of ITS copy of a snapshot (metres; the minimap reaches ~45, the screen less). */
+const SNAPSHOT_INTEREST_RADIUS = 64;
+
 const BOSS_IDS = new Set(['prelate', 'gravedigger', 'abbess', 'congregation', 'saint', 'regent', 'mire']);
 const INTENT_TYPES = new Set(['hit', 'miasma', 'exhume', 'litany', 'summonBoss', 'recallThralls', 'detonate', 'signature', 'gather', 'legend']);
 /** Host-shaped rites (discipline signatures + Bone Mantle); the host owns their shapes and clamps the aim around the caster. */
@@ -131,6 +134,55 @@ const bytes = (v) => {
     return Infinity;
   }
 };
+/**
+ * Size of a snapshot without serialising it twice: cheap row-count estimate when it is clearly small, the exact JSON size
+ * once it gets near the cap. (The transport's maxHttpBufferSize still bounds any single frame.)
+ */
+function snapshotBytes(snap) {
+  const n = (a) => (Array.isArray(a) ? a.length : 0);
+  const est = 2048 + n(snap.enemies) * 110 + n(snap.thralls) * 110 + n(snap.corpses) * 350 + n(snap.zones) * 450 + n(snap.zpos) * 40 + n(snap.depleted) * 40;
+  return est <= LIMITS.snapshotBytes / 2 ? est : bytes(snap);
+}
+
+/** Dropped-message counters, with a rate-limited console line per kind so journalctl shows it without flooding. */
+const drops = { snapshotOversize: 0, snapshotRate: 0, snapshotInvalid: 0, eventsOversize: 0, eventsRate: 0 };
+const lastDropLog = {};
+function noteDrop(kind, who, detail = '') {
+  drops[kind]++;
+  const now = Date.now();
+  if (now - (lastDropLog[kind] || 0) < 10000) return;
+  lastDropLog[kind] = now;
+  console.warn(`[realtime] DROP ${kind} (total ${drops[kind]}) from ${who}${detail ? ` ${detail}` : ''}`);
+}
+
+/**
+ * Per-recipient interest filter: the snapshot as one guest should see it. Returns the SAME object when nothing is
+ * out of range, so the common case stays a single shared broadcast. Rows keep the legacy shape (older guests just see
+ * fewer entities, exactly as if the rest had despawned).
+ */
+function snapshotFor(snap, x, z, recipientId) {
+  if (!Array.isArray(snap.enemies) || !Array.isArray(snap.thralls)) return snap;
+  const r2 = SNAPSHOT_INTEREST_RADIUS * SNAPSHOT_INTEREST_RADIUS;
+  const near = (rx, rz) => !((rx - x) * (rx - x) + (rz - z) * (rz - z) > r2);
+  const enemies = snap.enemies.filter((e) => near(e[2], e[3]));
+  const thralls = snap.thralls.filter((t) => t[1] === recipientId || near(t[3], t[4]));
+  if (enemies.length === snap.enemies.length && thralls.length === snap.thralls.length) return snap;
+  return { ...snap, enemies, thralls };
+}
+
+/** Relay a host snapshot to everyone else in its world: one shared encode for guests that need all of it, one per guest that gets a trimmed copy. */
+function relaySnapshot(socket, world, snap) {
+  const shared = [];
+  for (const [id, p] of world.players) {
+    if (id === socket.id) continue;
+    const mine = p.located ? snapshotFor(snap, p.x, p.z, id) : snap;
+    if (mine === snap) shared.push(id);
+    else io.sockets.sockets.get(id)?.volatile.emit('world:snapshot', mine);
+  }
+  if (shared.length === world.players.size - 1) socket.volatile.to(socket.data.worldId).emit('world:snapshot', snap);
+  else if (shared.length) io.volatile.to(shared).emit('world:snapshot', snap);
+}
+
 const num = (v, fallback = 0) => (Number.isFinite(Number(v)) ? Number(v) : fallback);
 const inWorld = (v) => Math.abs(num(v, 1e9)) <= WORLD_BOUND;
 
@@ -262,7 +314,7 @@ function validIntent(intent) {
 const httpServer = http.createServer((req, res) => {
   if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', uptime: process.uptime(), worlds: summary() }));
+    res.end(JSON.stringify({ status: 'ok', uptime: process.uptime(), worlds: summary(), drops }));
   } else {
     res.writeHead(404);
     res.end();
@@ -274,6 +326,8 @@ const httpServer = http.createServer((req, res) => {
 const io = new Server(httpServer, {
   cors: { origin: CORS_ORIGINS },
   maxHttpBufferSize: 256 * 1024,
+  // Snapshots are repetitive JSON (about a quarter of their size once deflated); the browser negotiates this natively. Small frames skip it.
+  perMessageDeflate: { threshold: 1024, zlibDeflateOptions: { level: 1 }, serverNoContextTakeover: true, clientNoContextTakeover: true },
   ...(process.env.REALTIME_PATH ? { path: process.env.REALTIME_PATH } : {}),
 });
 
@@ -377,6 +431,7 @@ io.on('connection', (socket) => {
     if (!player || !inWorld(pos && pos.x) || !inWorld(pos && pos.z)) return;
     player.x = num(pos.x);
     player.z = num(pos.z);
+    player.located = true; // from here on the snapshot interest filter can use this position
     player.facing = num(pos.facing);
     player.moving = !!pos.moving;
     player.hpFrac = Math.min(1, Math.max(0, num(pos.hpFrac, 1)));
@@ -397,18 +452,22 @@ io.on('connection', (socket) => {
   // Host-only authoritative channels.
   socket.on('world:snapshot', (snap) => {
     const world = myWorld();
-    if (!world || !isHost() || !allow(socket, 'snap', LIMITS.snapshotsPerSec)) return;
-    if (!snap || typeof snap !== 'object' || bytes(snap) > LIMITS.snapshotBytes) return;
+    if (!world || !isHost()) return;
+    if (!allow(socket, 'snap', LIMITS.snapshotsPerSec)) return noteDrop('snapshotRate', socket.data.username);
+    if (!snap || typeof snap !== 'object') return noteDrop('snapshotInvalid', socket.data.username);
+    const size = snapshotBytes(snap);
+    if (size > LIMITS.snapshotBytes) return noteDrop('snapshotOversize', socket.data.username, `${size} B > ${LIMITS.snapshotBytes} B, ${Array.isArray(snap.enemies) ? snap.enemies.length : '?'} enemies`);
     // Keep the freshest full-list snapshot for host migration / late joiners.
     if (snap.corpses || !world.snapshot) world.snapshot = snap;
     else world.snapshot = { ...world.snapshot, ...snap, corpses: world.snapshot.corpses, zones: world.snapshot.zones };
-    socket.volatile.to(socket.data.worldId).emit('world:snapshot', snap);
+    relaySnapshot(socket, world, snap);
   });
 
   socket.on('world:events', (batch) => {
     const world = myWorld();
-    if (!world || !isHost() || !allow(socket, 'events', LIMITS.eventsPerSec)) return;
-    if (!Array.isArray(batch) || batch.length > 400 || bytes(batch) > LIMITS.eventsBytes) return;
+    if (!world || !isHost()) return;
+    if (!allow(socket, 'events', LIMITS.eventsPerSec)) return noteDrop('eventsRate', socket.data.username);
+    if (!Array.isArray(batch) || batch.length > 400 || bytes(batch) > LIMITS.eventsBytes) return noteDrop('eventsOversize', socket.data.username, Array.isArray(batch) ? `${batch.length} events` : 'not an array');
     socket.to(socket.data.worldId).emit('world:events', batch);
   });
 
@@ -454,7 +513,7 @@ if (require.main === module) {
   });
 }
 
-module.exports = { validIntent, pickWorld, worlds, LIMITS, httpServer, cleanGear };
+module.exports = { validIntent, pickWorld, worlds, LIMITS, httpServer, cleanGear, snapshotBytes, snapshotFor, drops, SNAPSHOT_INTEREST_RADIUS };
 CWEOF_SERVER
 
 cat > "$DIR/package.json" <<'CWEOF_PKG'

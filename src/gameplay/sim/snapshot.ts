@@ -104,7 +104,9 @@ export class WorldMirror {
   difficulty: Difficulty = 'medium';
   ascension = 0;
   time = 0;
-  private targets = new Map<string, Target>();
+  // Latest snapshot position per entity, keyed by numeric id (string keys would allocate per entity per frame in update()).
+  private enemyTargets = new Map<number, Target>();
+  private thrallTargets = new Map<number, Target>();
 
   applySnapshot(s: WorldSnapshot) {
     this.time = s.t;
@@ -144,9 +146,10 @@ export class WorldMirror {
       e.speed = row[10];
       e.scale = row[11];
       e.affix = affixFrom(row[13]);
-      this.targets.set(`e${e.id}`, { x: row[2], z: row[3], facing: row[4] });
+      const tg = this.enemyTargets.get(e.id);
+      if (tg) { tg.x = row[2]; tg.z = row[3]; tg.facing = row[4]; } else this.enemyTargets.set(e.id, { x: row[2], z: row[3], facing: row[4] });
     }
-    for (const id of [...this.enemies.keys()]) if (!seenE.has(id)) this.enemies.delete(id);
+    for (const id of this.enemies.keys()) if (!seenE.has(id)) { this.enemies.delete(id); this.enemyTargets.delete(id); }
 
     const seenT = new Set<number>();
     for (const row of s.thralls) {
@@ -189,9 +192,10 @@ export class WorldMirror {
       t.moving = !!(row[8] & 16);
       t.rallyT = row[10] & 2 ? 0.3 : 0;
       t.cursedT = row[10] & 4 ? 0.3 : 0;
-      this.targets.set(`t${t.id}`, { x: row[3], z: row[4], facing: row[5] });
+      const tg = this.thrallTargets.get(t.id);
+      if (tg) { tg.x = row[3]; tg.z = row[4]; tg.facing = row[5]; } else this.thrallTargets.set(t.id, { x: row[3], z: row[4], facing: row[5] });
     }
-    for (const id of [...this.thralls.keys()]) if (!seenT.has(id)) this.thralls.delete(id);
+    for (const id of this.thralls.keys()) if (!seenT.has(id)) { this.thralls.delete(id); this.thrallTargets.delete(id); }
 
     if (s.corpses) {
       this.corpses.clear();
@@ -218,8 +222,8 @@ export class WorldMirror {
       else if (ev.t === 'corpseGone') this.corpses.delete(ev.id);
       else if (ev.t === 'zone') this.zones.set(ev.zone.id, ev.zone);
       else if (ev.t === 'zoneGone') this.zones.delete(ev.id);
-      else if (ev.t === 'death') this.enemies.delete(ev.id);
-      else if (ev.t === 'thrallGone') this.thralls.delete(ev.id);
+      else if (ev.t === 'death') (this.enemies.delete(ev.id), this.enemyTargets.delete(ev.id));
+      else if (ev.t === 'thrallGone') (this.thralls.delete(ev.id), this.thrallTargets.delete(ev.id));
       else if (ev.t === 'seedGone') {
         const c = this.corpses.get(ev.corpseId);
         if (c) c.seedOwner = undefined;
@@ -236,7 +240,7 @@ export class WorldMirror {
     for (const e of this.enemies.values()) {
       e.stateT += dt;
       e.flash = Math.max(0, e.flash - dt * 5);
-      const t = this.targets.get(`e${e.id}`);
+      const t = this.enemyTargets.get(e.id);
       if (!t) continue;
       e.x += (t.x - e.x) * k;
       e.z += (t.z - e.z) * k;
@@ -245,7 +249,7 @@ export class WorldMirror {
     for (const th of this.thralls.values()) {
       th.stateT += dt;
       th.flash = Math.max(0, th.flash - dt * 5);
-      const t = this.targets.get(`t${th.id}`);
+      const t = this.thrallTargets.get(th.id);
       if (!t) continue;
       th.x += (t.x - th.x) * k;
       th.z += (t.z - th.z) * k;

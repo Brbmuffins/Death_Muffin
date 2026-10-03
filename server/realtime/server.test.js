@@ -3,7 +3,7 @@ process.env.DEV_TRUST_TOKENS = '1';
 process.env.NODE_ENV = 'test';
 const test = require('node:test');
 const assert = require('node:assert');
-const { validIntent, pickWorld, worlds, cleanGear } = require('./server');
+const { validIntent, pickWorld, worlds, cleanGear, snapshotBytes, snapshotFor, drops, LIMITS, SNAPSHOT_INTEREST_RADIUS } = require('./server');
 
 test('rejects unknown or malformed intents', () => {
   assert.equal(validIntent(null), null);
@@ -181,4 +181,35 @@ test('legend intents (legendary set mods) are accepted and clamped; the spear fl
   assert.deepEqual(l.mods, { thrallDeathBurst: 2, championEvery: 5, spearRally: 0, miasmaSpreadsWithered: 1, witheredBurstAt: 12 });
   assert.deepEqual(validIntent({ t: 'legend' }).mods, { thrallDeathBurst: 0, championEvery: 0, spearRally: 0, miasmaSpreadsWithered: 0, witheredBurstAt: 0 });
   assert.equal(validIntent({ t: 'hit', ids: [1], dmg: 5, spear: 'yes' }).spear, true);
+});
+
+const row = (id, x, z) => [id, 'robber', x, z, 0, 10, 10, 1, 0, 0, 2, 1, 'nave', 0];
+const trow = (id, owner, x, z) => [id, owner, 'warrior', x, z, 0, 10, 10, 0, 0, 0, 2];
+
+test('snapshotFor leaves a snapshot alone when everything is in range (one shared broadcast)', () => {
+  const snap = { t: 1, waveTier: 0, enemies: [row(1, 3, 4), row(2, -10, 10)], thralls: [trow(5, 'a', 1, 1)], boss: { active: false } };
+  assert.equal(snapshotFor(snap, 0, 0, 'g'), snap);
+});
+
+test('snapshotFor trims far enemies and thralls for one guest but keeps that guest\'s own thralls and every other field', () => {
+  const far = SNAPSHOT_INTEREST_RADIUS + 50;
+  const snap = { t: 7, waveTier: 2, enemies: [row(1, 3, 4), row(2, far, 0), row(3, 0, -far)], thralls: [trow(5, 'a', far, far), trow(6, 'g', far, far), trow(7, 'a', 2, 2)], boss: { active: true }, zpos: [[1, 2, 3]], corpses: [{ id: 9 }] };
+  const mine = snapshotFor(snap, 0, 0, 'g');
+  assert.notEqual(mine, snap);
+  assert.deepEqual(mine.enemies.map((e) => e[0]), [1]);
+  assert.deepEqual(mine.thralls.map((t) => t[0]), [6, 7], 'own thralls always ride along');
+  assert.deepEqual({ ...mine, enemies: 0, thralls: 0 }, { ...snap, enemies: 0, thralls: 0 });
+  assert.equal(snap.enemies.length, 3, 'the host\'s snapshot is not mutated');
+  // Malformed rows are kept (never silently lost to a filter), non-array lists pass through.
+  assert.equal(snapshotFor({ t: 1, enemies: 'x', thralls: [] }, 0, 0, 'g').enemies, 'x');
+  assert.equal(snapshotFor({ t: 1, enemies: [[1]], thralls: [] }, 0, 0, 'g').enemies.length, 1);
+});
+
+test('snapshotBytes: cheap estimate when small, exact JSON size near the cap', () => {
+  const small = { enemies: [row(1, 1, 1)], thralls: [], boss: {} };
+  assert.ok(snapshotBytes(small) < LIMITS.snapshotBytes / 2);
+  const big = { enemies: Array.from({ length: 2500 }, (_, i) => row(i, i, i)), thralls: [], boss: {} };
+  assert.equal(snapshotBytes(big), Buffer.byteLength(JSON.stringify(big)));
+  assert.ok(snapshotBytes(big) > LIMITS.snapshotBytes, '2500 enemies is over the cap and would be counted as a drop');
+  assert.equal(typeof drops.snapshotOversize, 'number');
 });
