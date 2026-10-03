@@ -3,6 +3,7 @@ import { RARITY_COLOR, itemMeta } from '../content/items';
 import { SKILLS, type SkillId } from '../gameplay/gatheringRules';
 import type { Inventory } from '../gameplay/loot';
 import { preserveScroll } from './preserveScroll';
+import { boardExpired } from './contractsView';
 
 const iconOf = (itemId: string) => itemMeta(itemId).icon ?? `art/items/${itemId}.webp`;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -38,7 +39,7 @@ export class ContractsPanel {
     this.el.setAttribute('aria-label', 'Sexton’s Contracts');
     this.root.appendChild(this.el);
     this.off = this.inventory.onChange(() => this.render());
-    this.tick = window.setInterval(() => this.tickRender(), 30_000);
+    this.tick = window.setInterval(() => void this.tickBoard(), 30_000);
     this.render();
     try {
       this.board = await getContracts(this.characterId);
@@ -69,6 +70,17 @@ export class ContractsPanel {
    * The countdown tick. Redrawing replaces the buttons, so a click that starts on one while a redraw lands is lost: skip the redraw
    * while the pointer is over a control or a dropdown is open, and catch up on the next tick.
    */
+  /** The 30 s tick: after the daily reset, fetch the new board before anything can be delivered against the old one. */
+  private async tickBoard() {
+    if (this.board && !this.busy && boardExpired(this.board.resetsAt, Date.now())) {
+      try {
+        const fresh = await getContracts(this.characterId);
+        if (this.el) this.board = fresh;
+      } catch { /* keep the old board; the next tick tries again */ }
+    }
+    this.tickRender();
+  }
+
   private tickRender() {
     if (!this.el || this.el.querySelector('button:hover, select:hover, select:focus, input:hover, input:focus')) return;
     this.render();
