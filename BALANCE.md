@@ -17,6 +17,38 @@ Note on (c): kills/min dip slightly from tier 6 to tier 8 while gold and XP clim
 
 Checks: `npx tsc --noEmit` clean; `npm test` 1,153 tests green (`runes.test.ts` needs `npm ci --prefix server/realtime` first or it fails on a missing `dotenv`). No server-mirrored file changed, so no `build:server-rules` or `test:server` run was required.
 
+## New Blood kit polish (3 Oct 2026, branch `claude/newblood-kit-polish`, not deployed)
+
+Owner brief: no new classes or content, polish the five New Blood kits. Three parts.
+
+**1. The five rites the bot never cast, verified end to end.** Chain Pull, Hook Pull, Butcher, Echo and Crossing were read from the client (`NewBloodSystem.cast`) through the host (`WorldSim.applyNewBlood`) and driven through the real `AbilitySystem` -> `WorldSim` wiring in `src/gameplay/__tests__/newblood-rites-e2e.test.ts`. **No bug found:** pulls drag, damage and root the target, are refused beyond 10 m / on a boss, and charge their cost; Butcher spends one real corpse (never an echo) into three charms that heal 5% on touch; Echo raises only an echo corpse into a 10 s wraith; Crossing blinks to an echo within 12 m and keeps the echo. The harness bot now casts all five through the same host paths (`balance-newblood.test.ts` pins it): pulls on a body that stands off (> 3.5 m Warden, > 4 m Witch), Butcher under 75% HP with a corpse within 3 m (credits the 5% charm), Echo on the nearest echo corpse with an enemy within 9 m, Crossing under 50% HP to the echo furthest from the fight (the bot then moves to the event's landing point). That alone lifted Veilwalker (326 -> 432 XP/min at Graves) and left the others unchanged.
+
+**2. Knell text.** The sim has always been three independent damage beats 1.2 s apart (`knellDamage` each); the tooltip said "the next three tolls hurt it harder". Now: "Mark a target. Three bell beats, 1.2 s apart, each strike it for damage of their own." The Codex reads the same string; the README does not mention Knell.
+
+**3. Per-class tuning** (only existing numbers; the x1.5 damage and x2 XP catch-up are untouched). Measured `BALANCE_SEEDS=8 BALANCE_AREAS=graves,ossuary,nave,sanctum BALANCE_BANDS=intended BALANCE_KIT=none npm run balance` (XP/min, deaths per 3 min). Necromancer mean 376 Graves / 1,983 Nave (unchanged). "Before" = master 14ad4db.
+
+| Class | Graves XP before -> after | Nave XP before -> after | Graves / Nave deaths before -> after |
+|---|---|---|---|
+| Grave Warden | 431 -> 384 | 1,005 -> 931 | 2.3 -> 2.6 / 4.0 -> 4.3 |
+| Bell Monk | 407 -> 321 | 1,061 -> 955 | 3.5 -> 4.3 / 5.0 -> 5.0 |
+| Carrion Witch | 412 -> 363 | 755 -> 812 | 0.6 -> 1.9 / 3.6 -> 3.1 |
+| Hollow Knight | 364 -> 365 | 725 -> 838 | 2.6 -> 2.9 / 5.0 -> 4.6 |
+| Veilwalker | 326 -> 376 | 725 -> 837 | 1.3 -> 0.8 / 2.0 -> 2.0 |
+| Spread (max/min) | 1.32x -> 1.20x | 1.46x -> 1.18x | |
+
+Ossuary / Sanctum after: Warden 643 / 1,010, Monk 599 / 1,167, Witch 506 / 893, Knight 577 / 892, Veilwalker 509 / 825 (Monk leads at Sanctum, 1.4x the Veilwalker).
+
+Changes (the Graves ceiling is spawn-limited, so the three leaders were cut and the three laggards were lifted with Nave-heavy levers):
+- Grave Warden: Flail Swing cooldown 0.6 -> 0.7 s.
+- Bell Monk: Palm Strike cooldown 0.4 -> 0.43 s and power 1.0 -> 0.9; Toll power 1.2 -> 1.0.
+- Carrion Witch: Hook Throw power 1.0 -> 1.05; Crow Swarm power 0.4 -> 0.1 (it was the Graves-only engine; the lever that let the Witch drop under the necromancer mean); Hook Pull and Hex Charm cost 10 -> 5 and 20 -> 10 Offal (the Witch starved her own rites at Nave: +17% XP there).
+- Hollow Knight: Bulwark 12 -> 9 s, Corpse Vigil 15 -> 12 s, Grave Slam 9 -> 8 s, Oath Unbroken 60 -> 45 s (all rites unlocked after the first levels, so Graves barely moves).
+- Veilwalker: Spirit Bolt power 1.0 -> 0.72; Veil Tear cooldown 10 -> 8 s and power 0.4 -> 0.75; Lay to Rest 6 -> 5 s; Between Worlds 60 -> 45 s.
+
+No tooltip or Codex line quotes any of these numbers (they print cooldown, cost and range from the definitions), so none went stale. No `*-rules.cjs` source changed.
+
+Still open: the melee three still die 2.6-5 times per 3 minutes; the Witch at Graves is pinned by Crow Swarm now being near-decorative at 0.1 (a human-play question: if it feels dead, raise it and accept ~390 XP/min at Graves, 4% over the necromancer mean); Monk at Sanctum is the one row more than 20% above its siblings. Bot, not player, numbers; a human playtest of the five is still the real test.
+
 ## New Blood leveling audit (2026-10-03, branch `claude/newblood-leveling-audit`, harness only, not deployed)
 
 Question: why do the New Blood classes (5 Grave Warden, 6 Bell Monk, 7 Carrion Witch, 8 Hollow Knight, 9 Veilwalker) level 4-8x slower than the four necromancers in `npm run balance`? **Answer: mostly a real gameplay gap (the necromancer's thralls), with a harness-bot part that is now fixed.** No class power, XP formula, zone or boss number was changed.

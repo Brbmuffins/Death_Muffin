@@ -49,6 +49,18 @@ describe('New Blood bot fidelity', () => {
     expect(sum(veil, 'lay_to_rest')).toBeGreaterThan(0);
   });
 
+  it('casts Chain Pull, Hook Pull, Butcher, Echo and Crossing through the real host paths', () => {
+    const seeds = [42, 43, 44, 45];
+    const cast = (c: number) => seeds.map((s) => runBalance(sanctum(c, s)).casts);
+    expect(sum(cast(5), 'chain_pull')).toBeGreaterThan(0);
+    const witch = cast(7);
+    expect(sum(witch, 'hook_pull')).toBeGreaterThan(0);
+    expect(sum(witch, 'butcher')).toBeGreaterThan(0);
+    const veil = cast(9);
+    expect(sum(veil, 'echo')).toBeGreaterThan(0);
+    expect(sum(veil, 'crossing')).toBeGreaterThan(0);
+  });
+
   it('steps out of telegraphed attacks: dodging dies less often than standing still', () => {
     const deaths = (dodge: boolean) => [42, 43, 44].reduce((s, seed) => s + runBalance(graves(5, { seed, dodge })).deaths, 0);
     expect(deaths(true)).toBeLessThan(deaths(false));
