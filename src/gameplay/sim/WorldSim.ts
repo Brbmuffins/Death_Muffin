@@ -521,8 +521,9 @@ export class WorldSim {
     // A lone corpse is raised at full strength: the penalty is for spreading the magic, not for having nothing to spread it over.
     const count = Math.max(1, Math.min(RUNE_TUNING.massGrave.count, Math.floor(Number.isFinite(x.count) ? x.count! : 1)));
     const r = count > 1 ? Math.max(x.r, RUNE_TUNING.massGrave.pickRadius) : x.r;
+    const hall = this.players.get(x.by)?.area ?? null;
     const picks = [...this.corpses.values()]
-      .filter((c) => !c.echoOwner && Math.hypot(c.x - x.x, c.z - x.z) <= r)
+      .filter((c) => !c.echoOwner && (!hall || c.area === hall) && Math.hypot(c.x - x.x, c.z - x.z) <= r)
       .sort((a, b) => Math.hypot(a.x - x.x, a.z - x.z) - Math.hypot(b.x - x.x, b.z - x.z))
       .slice(0, count);
     if (!picks.length) {
@@ -714,7 +715,8 @@ export class WorldSim {
    */
   private applyDetonate(d: Extract<Intent, { t: 'detonate' }>) {
     const c = this.corpses.get(d.corpseId);
-    if (!c || c.echoOwner) {
+    const hall = this.players.get(d.by)?.area ?? null;
+    if (!c || c.echoOwner || (hall && c.area !== hall)) {
       // Claimed by someone else first (the caster refunds on ok:false).
       this.emit({ t: 'detonated', by: d.by, ok: false, corpseId: d.corpseId, x: 0, z: 0, r: 0 });
       return;

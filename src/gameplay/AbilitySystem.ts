@@ -692,7 +692,10 @@ export class AbilitySystem {
     const p = this.ctx.player;
     let best: Corpse | null = null;
     let bestD = pickRadius;
+    // Only the dead of the hall you stand in: a body behind a wall is out of reach (a thrall raised there would be stranded).
+    const here = (c: Corpse) => !p.area || !c.area || c.area === p.area;
     for (const c of this.ctx.corpses().values()) {
+      if (!here(c)) continue;
       const d = Math.hypot(c.x - t.x, c.z - t.z);
       if (d < bestD && Math.hypot(c.x - p.x, c.z - p.z) <= range) {
         bestD = d;
@@ -702,6 +705,7 @@ export class AbilitySystem {
     if (best) return best;
     bestD = 7;
     for (const c of this.ctx.corpses().values()) {
+      if (!here(c)) continue;
       const d = Math.hypot(c.x - p.x, c.z - p.z);
       if (d < bestD) {
         bestD = d;

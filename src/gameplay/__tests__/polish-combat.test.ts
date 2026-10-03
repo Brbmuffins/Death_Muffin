@@ -213,3 +213,18 @@ describe('Command: Rend', () => {
     for (const t of sim.thralls.values()) expect(t.x).toBeLessThan(r.x1 + 1.5);
   });
 });
+
+describe('corpses behind a wall', () => {
+  it('cannot be raised or burst from the next hall', () => {
+    const sim = world(17);
+    const p = sim.players.get('p1')!;
+    sim.addCorpse(p.x + 2, p.z, 'normal', 'robber', false, 0, 1, 'ossuary');
+    const far = [...sim.corpses.values()][0];
+    sim.apply({ t: 'exhume', by: 'p1', x: far.x, z: far.z, r: 1, kind: 'warrior', cap: 3, hp: 10, damage: 1, attackSpeedMult: 1 });
+    expect(sim.thralls.size).toBe(0);
+    expect(sim.corpses.has(far.id)).toBe(true);
+    const ev = sim.apply({ t: 'detonate', by: 'p1', corpseId: far.id, dmg: 10 }) ?? [];
+    void ev;
+    expect(sim.corpses.has(far.id)).toBe(true);
+  });
+});
