@@ -4,6 +4,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ResolutionGovernor, shouldProcessFrame, shouldRender } from './framePacing';
+import { perfFrame } from '../net/perfBeacon';
 import { onSettingsChange, settings } from './settings';
 
 /** What a scene hands the runtime: something to draw and a per-frame tick. */
@@ -60,6 +61,7 @@ export class GameRuntime {
     // Error checks read the shader logs synchronously, stalling on every compile; dev builds keep them.
     renderer.debug.checkShaderErrors = import.meta.env.DEV;
     this.renderer = renderer;
+    renderer.info.autoReset = false;
 
     this.composer = new EffectComposer(renderer);
     this.renderPass = new RenderPass(new THREE.Scene(), new THREE.PerspectiveCamera());
@@ -134,6 +136,7 @@ export class GameRuntime {
       // Frame cap: skip before touching the clock so the next dt covers the whole gap.
       if (!shouldProcessFrame(t, this.lastFrameAt, settings.fps)) return;
       this.lastFrameAt = t;
+      perfFrame(t);
       const dt = Math.min(this.clock.getDelta(), 0.1);
       this.frameMs += (dt * 1000 - this.frameMs) * 0.05;
       const view = this.view;
@@ -149,6 +152,7 @@ export class GameRuntime {
       const covered = document.body.classList.contains('dm-panel-open') && !!this.compactMq?.matches;
       if (!shouldRender(t, this.lastRenderAt, covered)) return;
       this.lastRenderAt = t;
+      this.renderer.info.reset(); // autoReset is off: calls/triangles below cover every pass of this frame (perf beacon)
       if (this.bloomEnabled) this.composer.render(dt);
       else this.renderer.render(current.scene, current.camera);
       if (!covered && this.resolution.frame(dt, this.frameMs, settings.fps)) this.applyQuality();

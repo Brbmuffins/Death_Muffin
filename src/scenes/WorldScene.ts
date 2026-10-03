@@ -106,6 +106,7 @@ import { isCape, isPet } from '../gameplay/cosmeticRules';
 import { beginAfkGather, gather, getInventory, getProfessions, getToken, OFFLINE, onServerNotice, type GatherReply, type SalvageReply } from '../net/api';
 import type { RemotePlayer, WorldSnapshot } from '../net/contracts';
 import { RealtimeClient, type RealtimeHandlers } from '../net/realtime';
+import { PerfBeacon, perfBeaconWanted, perfNote, perfSessionInfo, setPerfBeacon } from '../net/perfBeacon';
 import { isRetryableError, Reconnector, type ReconnectMode } from '../net/reconnect';
 import { clearRejoin, loadRejoin, saveRejoin } from '../net/rejoinStore';
 import { releaseWatch } from '../net/releaseWatch';
@@ -719,6 +720,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const inventoryReady = this.loadData();
     // Offline dev tokens are not JWTs: only try co-op there when asked (?offline&coop).
     if (!OFFLINE || (import.meta.env.DEV && new URLSearchParams(location.search).has('coop'))) void this.connectRealtime();
+    if (perfBeaconWanted()) this.startPerfBeacon();
     if (import.meta.env.DEV) this.installDebug();
 
     this.enterArea('acre');
@@ -2193,6 +2195,45 @@ export class WorldScene implements GameScene, RuntimeView {
   private reconnector: Reconnector | null = null;
   private reconnectToasted = false;
 
+  /** Perf beacon (net/perfBeacon.ts): context is read once per 15 s report, never per frame. */
+  private startPerfBeacon() {
+    const rt = getRuntime();
+    const beacon = new PerfBeacon({
+      send: (p) => this.realtime.sendPerf(p),
+      connected: () => this.realtime.connected,
+      session: () => perfSessionInfo(rt.renderer.getContext()),
+      context: () => {
+        const r = rt.renderer;
+        const info = r.info;
+        const heap = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize;
+        const c = this.views.counts();
+        return {
+          q: settings.quality,
+          cap: settings.fps,
+          sc: Math.round(rt.resolution.scale * 100) / 100,
+          dpr: Math.round(window.devicePixelRatio * 100) / 100,
+          cv: `${r.domElement.width}x${r.domElement.height}`,
+          calls: info.render.calls,
+          tris: info.render.triangles,
+          prog: info.programs?.length ?? 0,
+          geo: info.memory.geometries,
+          tex: info.memory.textures,
+          heap: heap === undefined ? undefined : Math.round(heap / 1048576),
+          area: this.area,
+          en: c.enemies,
+          th: c.thralls,
+          co: c.corpses,
+          fx: this.effects.transientLoad,
+          host: this.realtime.isHost ? 1 : 0,
+          pl: this.remotes.size + 1,
+        };
+      },
+    });
+    beacon.start();
+    setPerfBeacon(beacon);
+    this.scope.add(() => (setPerfBeacon(null), beacon.stop()));
+  }
+
   private async connectRealtime() {
     // A reload (e.g. after a deploy) keeps the world code for 10 minutes so partners regroup instead of matchmaking apart.
     const saved = loadRejoin();
@@ -3620,6 +3661,7 @@ export class WorldScene implements GameScene, RuntimeView {
       }
       if (this.grimoireUnlocked()) this.onboarding.show('grimoire', 3200);
       audio.play('levelUp');
+      perfNote(`level ${this.character.level}`);
       this.effects.emit({ x: this.player.x, y: 0.2, z: this.player.z, count: 90, color: 0xf1d9a8, spread: 0.8, speed: 0.8, up: 5, life: 1.5, size: 0.35 });
       this.effects.decal({ tex: fx.sigil(), color: 0xe2c98f, x: this.player.x, z: this.player.z, r: 2.4, duration: 1.8, opacity: 1, growFrom: 0.2, spin: 1.2 });
       this.effects.lightFlash(this.player.x, 2, this.player.z, 0xf1d9a8, 50, 1);
@@ -4141,6 +4183,7 @@ export class WorldScene implements GameScene, RuntimeView {
   };
 
   private onBossEvent(ev: Extract<SimEvent, { t: 'boss' }>) {
+    if (ev.kind === 'awaken') perfNote(`boss ${ev.boss ?? ''}`);
     const ms = (ev.ms ?? 0) / 1000;
     const stop = WorldScene.BOSS_STOP[ev.kind];
     if (stop && (ms === 0 || ev.kind === 'defeated') && Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 18) hitstop.request(stop);
@@ -4641,6 +4684,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private enterArea(area: AreaId) {
     this.area = area;
+    perfNote(`area ${area}`);
     // From here on new bodies compile their shaders and upload textures before they appear (graphics/warmModel.ts).
     setWarmContext({ renderer: getRuntime().renderer, camera: this.rig.camera, scene: this.scene });
     this.cancelPreload?.();

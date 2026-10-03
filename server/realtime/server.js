@@ -42,6 +42,8 @@ const LIMITS = {
   intentBytes: 2 * 1024,
   moveBytes: 256,
   gearBytes: 512,
+  perfBytes: 2 * 1024,
+  perfIntervalMs: 5000,
   // per-socket per-second budgets
   movesPerSec: 30,
   intentsPerSec: 40,
@@ -271,7 +273,60 @@ function validIntent(intent) {
   return out;
 }
 
+/** Client performance beacon (src/net/perfBeacon.ts): last PERF_KEEP reports per username, newest last. */
+const PERF_KEEP = 40;
+const perfReports = new Map();
+const pnum = (v, max = 1e9) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(-max, Math.round(v * 10) / 10)) : 0);
+const pstr = (v, n) => (typeof v === 'string' ? v.replace(/[^\x20-\x7e]/g, '?').slice(0, n) : '');
+/** Validate + rate-limit one report. `state` is per socket ({ at }). Returns the cleaned report or null. Never trusts shape or size. */
+function acceptPerf(state, raw, now = Date.now()) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  if (now - (state.at || 0) < LIMITS.perfIntervalMs) return null;
+  if (bytes(raw) > LIMITS.perfBytes) return null;
+  state.at = now;
+  const lt = Array.isArray(raw.lt) ? raw.lt : [];
+  const r = {
+    at: now,
+    win: pnum(raw.win), fps: pnum(raw.fps, 1000), p50: pnum(raw.p50), p95: pnum(raw.p95), max: pnum(raw.max), maxAt: pnum(raw.maxAt),
+    lt: [pnum(lt[0]), pnum(lt[1]), pnum(lt[2])], hid: pnum(raw.hid),
+    q: pstr(raw.q, 12), cap: pnum(raw.cap), sc: pnum(raw.sc), dpr: pnum(raw.dpr), cv: pstr(raw.cv, 12),
+    calls: pnum(raw.calls), tris: pnum(raw.tris), prog: pnum(raw.prog), geo: pnum(raw.geo), tex: pnum(raw.tex), heap: pnum(raw.heap),
+    area: pstr(raw.area, 16), en: pnum(raw.en), th: pnum(raw.th), co: pnum(raw.co), fx: pnum(raw.fx),
+    host: raw.host ? 1 : 0, pl: pnum(raw.pl),
+    ev: (Array.isArray(raw.ev) ? raw.ev : []).slice(0, 8).map((e) => pstr(e, 40)),
+  };
+  if (typeof raw.gpu === 'string') {
+    r.gpu = pstr(raw.gpu, 80);
+    r.hc = pnum(raw.hc);
+    r.dmem = pnum(raw.dmem);
+    r.plat = pstr(raw.plat, 20);
+  }
+  return r;
+}
+function storePerf(username, r) {
+  let list = perfReports.get(username);
+  if (!list) perfReports.set(username, (list = []));
+  list.push(r);
+  if (list.length > PERF_KEEP) list.shift();
+  // Bound the number of tracked usernames too (dev servers see throwaway names).
+  if (perfReports.size > 500) perfReports.delete(perfReports.keys().next().value);
+}
+function perfLine(username, r) {
+  const gpu = r.gpu ? ` gpu=${r.gpu.slice(0, 40)}` : '';
+  return `[perf] ${username} ${r.area} fps=${r.fps} frame=${r.p50}/${r.p95}/${r.max}ms longtasks=${r.lt.join('/')} hidden=${r.hid}ms calls=${r.calls} tris=${r.tris} programs=${r.prog} heap=${r.heap}MB q=${r.q} scale=${r.sc}${gpu} ev=[${r.ev.join('; ')}]`;
+}
+
 const httpServer = http.createServer((req, res) => {
+  if (req.url === '/perf') {
+    // Local-only (the service binds 127.0.0.1 in production and Nginx never routes this path); refuse anything proxied or remote anyway.
+    const ra = req.socket.remoteAddress || '';
+    if (!(ra === '127.0.0.1' || ra === '::1' || ra === '::ffff:127.0.0.1') || req.headers['x-forwarded-for']) {
+      res.writeHead(404);
+      return res.end();
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify(Object.fromEntries(perfReports)));
+  }
   if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: 'ok', uptime: process.uptime(), worlds: summary(), drops }));
@@ -384,6 +439,13 @@ io.on('connection', (socket) => {
     socket.to(socket.data.worldId).emit('player:gear', { id: socket.id, gear: player.gear });
   });
 
+  socket.on('perf:report', (raw) => {
+    const r = acceptPerf((socket.data.perf ??= { at: 0 }), raw);
+    if (!r) return;
+    storePerf(socket.data.username, r);
+    console.log(perfLine(socket.data.username, r));
+  });
+
   socket.on('player:move', (pos) => {
     const world = myWorld();
     if (!world || !allow(socket, 'move', LIMITS.movesPerSec) || bytes(pos) > LIMITS.moveBytes) return;
@@ -473,4 +535,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { validIntent, pickWorld, worlds, LIMITS, httpServer, cleanGear, snapshotBytes, snapshotFor, drops, SNAPSHOT_INTEREST_RADIUS };
+module.exports = { validIntent, pickWorld, worlds, LIMITS, httpServer, cleanGear, acceptPerf, perfReports, storePerf, perfLine, snapshotBytes, snapshotFor, drops, SNAPSHOT_INTEREST_RADIUS };

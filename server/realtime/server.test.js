@@ -3,7 +3,7 @@ process.env.DEV_TRUST_TOKENS = '1';
 process.env.NODE_ENV = 'test';
 const test = require('node:test');
 const assert = require('node:assert');
-const { validIntent, pickWorld, worlds, cleanGear, snapshotBytes, snapshotFor, drops, LIMITS, SNAPSHOT_INTEREST_RADIUS } = require('./server');
+const { validIntent, pickWorld, worlds, cleanGear, acceptPerf, perfReports, storePerf, perfLine, snapshotBytes, snapshotFor, drops, LIMITS, SNAPSHOT_INTEREST_RADIUS } = require('./server');
 
 test('rejects unknown or malformed intents', () => {
   assert.equal(validIntent(null), null);
@@ -212,4 +212,33 @@ test('snapshotBytes: cheap estimate when small, exact JSON size near the cap', (
   assert.equal(snapshotBytes(big), Buffer.byteLength(JSON.stringify(big)));
   assert.ok(snapshotBytes(big) > LIMITS.snapshotBytes, '2500 enemies is over the cap and would be counted as a drop');
   assert.equal(typeof drops.snapshotOversize, 'number');
+});
+
+test('perf beacon: validates shape, caps size, rate-limits per socket, sanitises', () => {
+  const st = { at: 0 };
+  const good = { v: 1, win: 15000, fps: 58.3, p50: 16.6, p95: 24, max: 900.123, lt: [3, 210, 120], hid: 0, area: 'hollow\nGraves', q: 'high', ev: ['area x', 5, 'y'.repeat(100)], gpu: 'ANGLE (NVIDIA)', evil: 'x' };
+  assert.equal(acceptPerf({ at: 0 }, null, 1e6), null);
+  assert.equal(acceptPerf({ at: 0 }, [1, 2], 1e6), null, 'arrays are not reports');
+  assert.equal(acceptPerf({ at: 0 }, 'str', 1e6), null);
+  assert.equal(acceptPerf({ at: 0 }, { ...good, pad: 'x'.repeat(LIMITS.perfBytes) }, 1e6), null, 'over the size cap');
+  const r = acceptPerf(st, good, 1e6);
+  assert.ok(r);
+  assert.equal(r.max, 900.1);
+  assert.equal(r.area, 'hollow?Graves');
+  assert.equal(r.evil, undefined, 'unknown fields are dropped');
+  assert.equal(r.ev.length, 3);
+  assert.equal(r.ev[2].length, 40);
+  assert.equal(r.gpu, 'ANGLE (NVIDIA)');
+  assert.equal(acceptPerf(st, good, 1e6 + LIMITS.perfIntervalMs - 1), null, 'faster than 1 per 5 s');
+  assert.ok(acceptPerf(st, good, 1e6 + LIMITS.perfIntervalMs), 'allowed again after 5 s');
+  assert.equal(acceptPerf({ at: 0 }, { fps: 'lots', p50: NaN, lt: 'x' }, 1e6).fps, 0, 'non-numbers become 0');
+});
+
+test('perf beacon: keeps the last 40 reports per user and formats one log line', () => {
+  const r = acceptPerf({ at: 0 }, { fps: 60, p50: 16.7, p95: 20, max: 80, lt: [1, 60, 60], area: 'acre', ev: ['level 3'] }, 1e6);
+  for (let i = 0; i < 55; i++) storePerf('perf_tester', r);
+  assert.equal(perfReports.get('perf_tester').length, 40);
+  const line = perfLine('perf_tester', r);
+  assert.match(line, /^\[perf\] perf_tester acre fps=60 frame=16.7\/20\/80ms longtasks=1\/60\/60 /);
+  assert.ok(!line.includes('\n'));
 });

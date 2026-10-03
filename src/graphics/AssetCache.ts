@@ -1,3 +1,4 @@
+import { perfNote } from '../net/perfBeacon';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
@@ -25,6 +26,7 @@ class AssetCache {
     const key = `${url}@${targetHeight}`;
     let p = this.models.get(key);
     if (!p) {
+      perfNote(`model ${url.split('/').pop()}`);
       p = this.loader
         .loadAsync(url)
         .then((gltf) => {

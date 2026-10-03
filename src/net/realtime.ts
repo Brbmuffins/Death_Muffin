@@ -137,6 +137,11 @@ export class RealtimeClient {
     this.socket?.emit('world:events', batch);
   }
 
+  /** Performance beacon (see perfBeacon.ts): one small report per 15 s, fire-and-forget. */
+  sendPerf(payload: unknown) {
+    this.socket?.volatile.emit('perf:report', payload);
+  }
+
   sendChat(text: string) {
     this.socket?.emit('chat:send', text);
   }
