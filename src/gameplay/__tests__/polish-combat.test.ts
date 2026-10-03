@@ -163,3 +163,38 @@ describe('Wave Speed label', () => {
     expect(waveModifiers(8).speedPct).toBeLessThan(96);
   });
 });
+
+describe('thrall pathing', () => {
+  it('gets round a pinch between two props instead of pushing at it forever', () => {
+    const nav = new Nav();
+    nav.setUnlocked(['chapterhouse', 'graves']);
+    const sim = new WorldSim(nav, mulberry32(3));
+    const r = AREAS.graves.rect;
+    const cx = (r.x0 + r.x1) / 2;
+    const cz = (r.z0 + r.z1) / 2;
+    sim.setPlayer({ id: 'p1', x: cx, z: cz, alive: true, area: 'graves' });
+    sim.step(0.05);
+    for (const e of [...sim.enemies.values()]) sim.enemies.delete(e.id);
+    // Two posts 0.2m apart: a body 0.8m wide cannot pass between them.
+    nav.addObstacle({ kind: 'circle', x: cx + 2, z: cz - 0.6, r: 0.5 });
+    nav.addObstacle({ kind: 'circle', x: cx + 2, z: cz + 0.6, r: 0.5 });
+    sim.addCorpse(cx + 0.5, cz, 'normal', 'robber', false, 0, 1, 'graves');
+    const c = [...sim.corpses.values()][0];
+    sim.apply({ t: 'exhume', by: 'p1', x: c.x, z: c.z, r: 1, kind: 'warrior', cap: 3, hp: 1e6, damage: 1, attackSpeedMult: 1 });
+    sim.step(1.2);
+    const th = [...sim.thralls.values()][0];
+    th.x = cx + 1.2;
+    th.z = cz;
+    const foe = sim.spawnEnemy('robber', 'graves', cx + 4.5, cz, false, false);
+    foe.speed = 0;
+    foe.attackCd = 1e9;
+    let reached = false;
+    for (let i = 0; i < 200 && !reached; i++) {
+      sim.step(0.05);
+      th.hp = th.maxHp;
+      for (const e of sim.enemies.values()) if (e !== foe) sim.enemies.delete(e.id);
+      reached = Math.hypot(th.x - foe.x, th.z - foe.z) < th.range + foe.radius + 0.3;
+    }
+    expect(reached).toBe(true);
+  });
+});

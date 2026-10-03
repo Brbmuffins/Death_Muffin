@@ -3153,6 +3153,15 @@ export class WorldSim {
       tx = hop.x;
       tz = hop.z;
     }
+    // A way round a prop it was wedged on (found below), followed for a few seconds.
+    const way = t.detour;
+    if (way?.length && this.time < (t.detourUntil ?? 0)) {
+      while (way.length && Math.hypot(way[0].x - t.x, way[0].z - t.z) < 0.5) way.shift();
+      if (way.length) {
+        tx = way[0].x;
+        tz = way[0].z;
+      }
+    } else if (way) t.detour = undefined;
     const dx = tx - t.x;
     const dz = tz - t.z;
     const d = Math.hypot(dx, dz);
@@ -3161,9 +3170,22 @@ export class WorldSim {
     const px = t.x;
     const pz = t.z;
     [t.x, t.z] = this.nav.resolve(t.x + (dx / d) * step, t.z + (dz / d) * step, 0.4);
-    if (this.nav.depthsFloor && step > 1e-3 && ((t.x - px) * dx + (t.z - pz) * dz) / d < step * 0.3) {
+    const gained = ((t.x - px) * dx + (t.z - pz) * dz) / d;
+    // Lined up on a prop or a pillar the push-out sends a body straight back: swing a little to either side to get round it (Depths floors and the open grounds alike).
+    if (step > 1e-3 && gained < step * 0.3) {
       [t.x, t.z] = this.sidestep(px, pz, dx / d, dz / d, step, 0.4, (x, z) => this.nav.resolve(x, z, 0.4));
-    }
+      // Wedged between two props a body cannot squeeze through: ask the grid for a way round (rarely, and only after it has really stalled).
+      t.stallT = (t.stallT ?? 0) + dt;
+      if (t.stallT > 0.5 && this.time >= (t.nextPathAt ?? 0) && !this.nav.depthsFloor) {
+        t.nextPathAt = this.time + 1.5;
+        t.stallT = 0;
+        const path = this.nav.findPath(t.x, t.z, tx, tz, 0.4);
+        if (path.length > 1) {
+          t.detour = path.slice(0, -1);
+          t.detourUntil = this.time + 3;
+        }
+      }
+    } else if (t.stallT) t.stallT = 0;
     t.facing = Math.atan2(dx, dz);
     t.moving = true;
     t.gait += step * 2.4;
