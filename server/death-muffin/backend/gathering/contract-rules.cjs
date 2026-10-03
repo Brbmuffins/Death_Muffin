@@ -31,6 +31,7 @@ __export(contractRules_exports, {
   dayKey: () => dayKey,
   generateBoard: () => generateBoard,
   nextResetMs: () => nextResetMs,
+  orderInfo: () => orderInfo,
   streakOf: () => streakOf
 });
 module.exports = __toCommonJS(contractRules_exports);
@@ -52,6 +53,15 @@ var CHARM_ITEMS = Object.fromEntries(
 );
 
 // src/gameplay/gatheringRules.ts
+var SKILLS = {
+  woodcutting: { name: "Woodcutting", rite: "Rite of Coffin-Oak", color: "#c9a36b", gesture: "dig", sfx: "chop", verb: "Chop" },
+  mining: { name: "Mining", rite: "Rite of Grave-Iron", color: "#b7bcc4", gesture: "dig", sfx: "pick", verb: "Mine" },
+  fishing: { name: "Fishing", rite: "Rite of the Black Water", color: "#6fb3c8", gesture: "cast", sfx: "splash", verb: "Fish" },
+  gravedigging: { name: "Gravedigging", rite: "Rite of the Sexton", color: "#d8cfa8", gesture: "dig", sfx: "shovel", verb: "Dig" },
+  gardening: { name: "Grave Gardening", rite: "Rite of the Mourning Bed", color: "#9fc27a", gesture: "cast", sfx: "shovel", verb: "Tend" },
+  alchemy: { name: "Alchemy", rite: "Rite of the Alembic", color: "#b48be0", gesture: "cast", sfx: "splash", verb: "Brew" },
+  salvaging: { name: "Salvaging", rite: "Rite of the Bone Grinder", color: "#c9b087", gesture: "cast", sfx: "shovel", verb: "Grind" }
+};
 var petLine = (skill, level) => {
   const pet = petForSkill(skill);
   return pet ? [{ item: pet.charm, chance: petChance(level) }] : [];
@@ -1270,6 +1280,11 @@ function candidatesFor(levels) {
   for (const s of SEEDS) if (s.kind === "herb" && s.level <= level("gardening")) add({ itemId: s.harvest, skill: "gardening", level: s.level, processed: true });
   return out.sort((a, b) => a.level - b.level || a.itemId.localeCompare(b.itemId));
 }
+function orderInfo(itemId) {
+  const all = Object.fromEntries(Object.keys(SKILLS).map((k) => [k, 99]));
+  const c = candidatesFor(all).find((x) => x.itemId === itemId);
+  return c ? { skill: c.skill, level: c.level, relicQty: c.fixedQty ?? null } : null;
+}
 var HARD_REWARDS = [
   { minLevel: 60, item: { itemId: "gem_void_sapphire", qty: 1 } },
   { minLevel: 30, item: { itemId: "gem_bone_opal", qty: 1 } },
@@ -1336,5 +1351,6 @@ function streakOf(doneDays, today) {
   dayKey,
   generateBoard,
   nextResetMs,
+  orderInfo,
   streakOf
 });
