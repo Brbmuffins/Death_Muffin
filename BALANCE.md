@@ -34,7 +34,7 @@ Owner brief: no new classes or content, polish the five New Blood kits. Three pa
 | Carrion Witch | 412 -> 363 | 755 -> 812 | 0.6 -> 1.9 / 3.6 -> 3.1 |
 | Hollow Knight | 364 -> 365 | 725 -> 838 | 2.6 -> 2.9 / 5.0 -> 4.6 |
 | Veilwalker | 326 -> 376 | 725 -> 837 | 1.3 -> 0.8 / 2.0 -> 2.0 |
-| Spread (max/min) | 1.32x -> 1.20x | 1.46x -> 1.17x | |
+| Spread (max/min) | 1.32x -> 1.20x | 1.46x -> 1.18x | |
 
 Ossuary / Sanctum after: Warden 643 / 1,010, Monk 599 / 1,167, Witch 506 / 893, Knight 577 / 892, Veilwalker 509 / 825 (Monk leads at Sanctum, 1.4x the Veilwalker).
 
