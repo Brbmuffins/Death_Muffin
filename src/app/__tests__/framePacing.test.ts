@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ResolutionGovernor, budgetFps, shouldProcessFrame, shouldRender, isFpsCap } from '../framePacing';
+import { ResolutionGovernor, budgetFps, shouldProcessFrame, isFpsCap } from '../framePacing';
 
 describe('frame pacing', () => {
   it('always processes the first frame', () => {
@@ -24,11 +24,6 @@ describe('frame pacing', () => {
       expect(n).toBeGreaterThanOrEqual(lo);
       expect(n).toBeLessThanOrEqual(hi);
     }
-  });
-  it('throttles rendering only while covered', () => {
-    expect(shouldRender(1000, 990, false)).toBe(true);
-    expect(shouldRender(1000, 990, true)).toBe(false);
-    expect(shouldRender(1200, 990, true)).toBe(true);
   });
   it('Max (0) never skips a frame, even on a 144 Hz screen', () => {
     let last = 1;

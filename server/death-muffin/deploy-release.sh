@@ -3,7 +3,9 @@
 #
 #   deploy-release.sh [rev] [migration.sql ...]
 #
-# 1. Exports <rev> with `git archive` into deploy/candidate-<sha>/src and builds the play and offline clients there.
+# 1. Exports <rev> with `git archive` into deploy/candidate-<sha>/src and builds the play client there.
+#    (Phones/tablets and the offline edition are NOT published here: they come from the `mobile` branch via deploy-mobile.sh,
+#    which must be run FIRST when a release changes anything they depend on. This build redirects phones to /death-muffin/mobile/.)
 # 2. Runs typecheck, client tests and server tests on that export.
 # 3. Backs up the DB, runtime server files and public entry pages, and writes ROLLBACK.sh.
 # 4. Applies the named migrations (each must be additive / idempotent), installs server code, restarts realtime then auth.
@@ -37,7 +39,6 @@ for m in "$@"; do test -f "$SRC/server/death-muffin/backend/migrations/$m"; done
   npx vitest run --reporter=dot
   npm run -s test:server
   npm run -s build:death-muffin
-  npm run -s build:offline
 )
 B="$SRC/server/death-muffin/backend"
 for f in "$B"/server.js "$B"/*.cjs "$B"/gathering/*.cjs "$SRC/server/vps-handoff/necro-progress/necro-rules.cjs" "$SRC/server/realtime/server.js"; do
@@ -47,17 +48,15 @@ done
 test -f "$SRC/dist/index.html"
 test -f "$SRC/dist/precache.html"
 test -f "$SRC/dist/asset-manifest.json"
-test -f "$SRC/dist-offline/sw.js"
 
 echo "== Backup -> $BK"
-mkdir -p "$BK/backend/gathering" "$BK/backend/necro-progress" "$BK/realtime" "$BK/play" "$BK/offline"
+mkdir -p "$BK/backend/gathering" "$BK/backend/necro-progress" "$BK/realtime" "$BK/play"
 sudo mysqldump --single-transaction death_muffin > "$BK/death_muffin.sql"
 cp -a "$RUNTIME/backend/server.js" "$RUNTIME/backend/"*.cjs "$BK/backend/"
 cp -a "$RUNTIME/backend/gathering/"*.cjs "$BK/backend/gathering/"
 cp -a "$RUNTIME/backend/necro-progress/"*.cjs "$BK/backend/necro-progress/"
 cp -a "$RUNTIME/realtime/server.js" "$BK/realtime/"
 sudo cp -a "$PUBLIC/play/index.html" "$BK/play/"
-sudo cp -a "$PUBLIC/offline/." "$BK/offline/"
 cat > "$BK/ROLLBACK.sh" <<EOF
 #!/usr/bin/env bash
 # Restores code and entry pages from before release $SHA. Additive tables and newer player data stay.
@@ -68,7 +67,6 @@ cp -a '$BK/backend/necro-progress/'*.cjs '$RUNTIME/backend/necro-progress/'
 cp -a '$BK/realtime/server.js' '$RUNTIME/realtime/'
 sudo systemctl restart death-muffin-realtime.service death-muffin-auth.service
 sudo cp -a '$BK/play/index.html' '$PUBLIC/play/index.html'
-sudo cp -a '$BK/offline/.' '$PUBLIC/offline/'
 echo 'Rolled back to the pre-$SHA code. Full DB dump: $BK/death_muffin.sql'
 EOF
 chmod 700 "$BK/ROLLBACK.sh"
@@ -105,15 +103,11 @@ sudo cp "$CAND/release-notes.json" "$PUBLIC/play/release-notes.json"
 # release.txt goes after index.html: open tabs auto-reload when it changes, and must then fetch the new page.
 echo "$SHA $(date -u +%FT%TZ)" > "$CAND/release.txt"
 sudo cp "$CAND/release.txt" "$PUBLIC/play/release.txt"
-(cd "$SRC/dist-offline" && sudo cp -a $(ls -A | grep -vx -e index.html -e sw.js) "$PUBLIC/offline/")
-sudo cp -a "$SRC/dist-offline/sw.js" "$SRC/dist-offline/index.html" "$PUBLIC/offline/"
-sudo chown -R root:root "$PUBLIC/play" "$PUBLIC/offline"
-sudo chmod -R a+rX "$PUBLIC/play" "$PUBLIC/offline"
+sudo chown -R root:root "$PUBLIC/play"
+sudo chmod -R a+rX "$PUBLIC/play"
 
 echo "== Verify"
 curl -sSf https://muffindevelopment.com/death-muffin/play/ | cmp - "$SRC/dist/index.html"
-curl -sSf https://muffindevelopment.com/death-muffin/offline/ | cmp - "$SRC/dist-offline/index.html"
-curl -sSf https://muffindevelopment.com/death-muffin/offline/sw.js | cmp - "$SRC/dist-offline/sw.js"
 curl -sSf https://muffindevelopment.com/death-muffin/api/health; echo
 echo "Release $SHA published. Rollback: $BK/ROLLBACK.sh"
 

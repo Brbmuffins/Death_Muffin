@@ -3,7 +3,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { ResolutionGovernor, budgetFps, shouldProcessFrame, shouldRender } from './framePacing';
+import { ResolutionGovernor, budgetFps, shouldProcessFrame } from './framePacing';
 import { perfFrame } from '../net/perfBeacon';
 import { onSettingsChange, settings } from './settings';
 
@@ -36,14 +36,6 @@ export class GameRuntime {
   private backgroundBusy = false;
   private bloomEnabled = true;
   private lastFrameAt = 0;
-  private lastRenderAt = 0;
-  private compactMq: MediaQueryList | null = (() => {
-    try {
-      return window.matchMedia('(pointer: coarse) and (max-width: 760px), (pointer: coarse) and (max-height: 520px)');
-    } catch {
-      return null;
-    }
-  })();
 
   /** Smoothed frame time, exposed for the debug overlay / perf checks. */
   frameMs = 16.7;
@@ -151,14 +143,10 @@ export class GameRuntime {
       // update() may have swapped the view (scene transition) — render the current one.
       const current = this.view;
       if (!current) return;
-      // A full-screen panel on a phone hides the 3D view: keep simulating, but redraw rarely.
-      const covered = document.body.classList.contains('dm-panel-open') && !!this.compactMq?.matches;
-      if (!shouldRender(t, this.lastRenderAt, covered)) return;
-      this.lastRenderAt = t;
       this.renderer.info.reset(); // autoReset is off: calls/triangles below cover every pass of this frame (perf beacon)
       if (this.bloomEnabled) this.composer.render(dt);
       else this.renderer.render(current.scene, current.camera);
-      if (!covered && settings.autoResolution && this.resolution.frame(dt, this.frameMs, budgetFps(settings.fps))) this.applyQuality();
+      if (settings.autoResolution && this.resolution.frame(dt, this.frameMs, budgetFps(settings.fps))) this.applyQuality();
     };
     loop();
     this.backgroundTimer = window.setInterval(() => {

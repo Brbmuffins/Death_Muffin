@@ -1,4 +1,4 @@
-/** "Death Muffin was updated" bar: a countdown and a Reload now button (44px tap target on phones, see ui.css/mobile.css). */
+/** "Death Muffin was updated" bar: a countdown and a Reload now button. */
 export class UpdateNotice {
   private el: HTMLDivElement;
   private msg: HTMLSpanElement;

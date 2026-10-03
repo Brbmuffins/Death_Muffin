@@ -139,32 +139,11 @@ You can also click hotbar icons. Click **swap** below any spell icon to open the
 - **Frame rate and resolution.** In **Settings**, **Frame rate** can be **Max** (no cap, the default on a computer until you choose), 60 or 30 fps. **Auto resolution** lowers the picture's resolution only when the machine keeps missing its frame rate; turn it off for a constant sharp picture.
 - **Belt.** Three slots at the left edge are always visible: **Q** Heal, **Z** Elixir, **X** Tonic. Empty ones say how to fill them.
 - **Co-op and updates.** If the connection drops, the game retries on its own and returns you to the same world. When a new release goes live it saves, waits for any boss fight to end, and reloads you in.
-- **Computer first.** The desktop HUD stays at any window size; the phone and tablet layout appears only on touch devices.
+- **Computer first.** This is the PC build; phones and tablets are redirected to their own build (see below).
 
 ### On a phone or tablet
 
-The HUD rearranges itself for phones (portrait and landscape) and tablets, and every panel fits the screen.
-
-**Battery saver.** New phones and tablets start on Graphics Low and 30 fps (other devices: High and Max, the screen's own refresh rate, so 120/144 Hz monitors run at full speed), even if an older High was saved, until you change Graphics or Frame rate yourself. Change either in **Settings**; Low + 30 fps uses far less battery. **Auto resolution** (on by default) lowers the render resolution only after several seconds of sustained slow frames, at most once every 20 s, never right after a load; turn it off for a constant sharp picture. While a full-screen panel covers the world, the 3D view redraws only a few times a second (the game itself keeps running).
-
-| Touch | Action |
-|---|---|
-| Tap ground / enemy / object | Walk there, attack, talk, or gather |
-| Drag a finger | Keep walking toward it |
-| Pinch | Zoom |
-| Tap a rite | Cast it at the enemy you tapped, or else the nearest enemy |
-| Press and hold a rite | Show its spell card (tap anywhere to close it) |
-| Flask button on the Health orb | Drink a healing flask |
-| Tap a brew on the left | Drink that elixir or tonic |
-| **Upgrades** button | Open Damage / Wave Speed (it glows when you can afford one) |
-| **‹ Back** on a panel | Return to the panel you came from (Skills → Contracts → Back) |
-| Phone Back gesture | Steps back through panels, then closes them; it never leaves the game while a panel is open |
-| **☰ Menu** | Big labelled tiles for every panel: Bag, Character, Spells, Craft, Skills, Contracts, Garden, Laborers, Legion, Capes & Pets, Vault, Map, Codex, Settings, plus **Recall home** and Auto combat |
-| ⛶ next to the Menu | Full screen (Android; iPhone Safari has no full screen) |
-
-Panels keep their scroll position while AFK gathering updates them.
-
-Double tap and pinch never zoom the page (pinch zooms the camera). Counsel cards, prompts and hints use touch wording ("Tap…", "the Menu") on a phone and keyboard wording on a computer. If your connection drops you keep playing: the game says **Connection lost**, saves retry on their own, and **Back online ✓** appears when it is back.
+Phones and tablets play a separate build at **[muffindevelopment.com/death-muffin/mobile/](https://muffindevelopment.com/death-muffin/mobile/)**: the same game, accounts and co-op worlds, with a phone HUD, touch controls and a battery-saver default. Opening the PC address on a touch-only device sends you there automatically. To play the PC version on such a device anyway, add `?pc=1` to the address (`/death-muffin/play/?pc=1`). The mobile build is kept on its own `mobile` branch and catches up with PC changes from time to time, so it can lag the PC version by a release. A laptop with a touchscreen and a mouse or trackpad stays on the PC build.
 
 ## Choose a discipline
 
@@ -360,9 +339,6 @@ An endless descent. Behind the **Catacomb Warren's west chamber** a glowing stai
 
 **Solo for now.** The floors live in the world keeper's simulation and the realtime relay does not carry a layout, so the Depths are a descent for one. If you are in a party, the stair says so and stays shut; if a friend joins while you are down, the stair closes behind you. Playing together on a floor is on the list.
 
-On a phone or tablet it works the same way: tap the stair, tap the chest. The depth readout sits under the minimap.
-
-<img src="docs/screenshots/depths/phone-floor.webp" alt="The Depths on a phone: the depth readout under the minimap" width="300" />
 
 ## Gold, gear, and difficulty
 
@@ -532,4 +508,4 @@ The standalone **Death Muffin Offline** edition lives at [muffindevelopment.com/
 
 Before anything is replaced, the server keeps a copy of **both** versions. The panel lists your last saved versions, and **Restore** puts any of them back. If the online character changed after you compared (for example, another tab was still playing), the load is refused until you compare again. Close any open online game tab first and reopen it afterwards. Your password is only used to sign in for the sync and is not stored by the offline edition.
 
-Developers can still run `npm run dev` with `?offline` for the browser mock, or run `npm run build:offline` to prepare the standalone edition in `dist-offline/`.
+Developers can still run `npm run dev` with `?offline` for the browser mock, or run `npm run build:offline` to prepare the standalone edition in `dist-offline/`. The published offline edition is built and deployed from the `mobile` branch (`deploy-mobile.sh`), because it is the one used on phones.

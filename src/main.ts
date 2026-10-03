@@ -9,10 +9,6 @@ import { ApiError, getCharacter, getToken, OFFLINE, setToken } from './net/api';
 import type { Character } from './net/types';
 import { startReleaseBaseline } from './net/releaseWatch';
 
-// iOS Safari ignores user-scalable=no: cancel its page pinch/double-tap zoom gestures (the game zooms its own camera).
-for (const type of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
-document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
-
 const runtime = initRuntime(document.getElementById('scene') as HTMLCanvasElement);
 if (import.meta.env.VITE_OFFLINE_BUILD === '1') void import('./offline/install').then(({ setupOfflineInstall }) => setupOfflineInstall());
 

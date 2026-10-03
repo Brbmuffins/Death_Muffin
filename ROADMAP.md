@@ -69,6 +69,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 3 Oct 2026 | PC first: the phone and tablet layer moves to its own `mobile` branch and build at `/death-muffin/mobile/` (touch-only devices are redirected there; `?pc=1` opts out); this build carries no touch code. Not deployed yet. | Branch `dm/pc-only`; deploy `mobile` first. |
 | 3 Oct 2026 | **Missing icons fixed.** The Grand Healing Flask and Moonlight Elixir icons and the Prelate portrait no longer 404; the server now logs requests it refuses | Quick fix, `2021523`. |
 | 3 Oct 2026 | **No more first-fight hitches.** A warm-up render runs behind the login load screen, so creatures' first appearance no longer compiles shaders mid-fight. Root cause: shaders were compiled for the screen, but High quality draws through the bloom target, so every first draw recompiled | `14e12ef`. 16 of 16 probed spawns needed no new shaders or textures. |
 | 3 Oct 2026 | **Thralls and controls feel snappier.** 15 thralls cost about 20% less CPU, distant creatures animate less often, the HUD redraws at 20 Hz and corpses stop animating once they land. Feel: only struck enemies freeze on a hit (not you), your movement blends in 0.16 s, a new **Max** frame-rate option (desktop default until you choose), and resolution changes more calmly with an **Auto resolution** toggle in Settings | `0fccb70`. Matrix updates per frame 942 → 211 in the thrall-legion test. |

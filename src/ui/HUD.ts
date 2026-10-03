@@ -1,5 +1,4 @@
 import { ABILITIES, HOTBAR, type AbilityId, type HotbarSlot } from '../content/abilities';
-import { touchNow } from './touchText';
 import type { Discipline } from '../content/disciplines';
 import type { EliteAffix } from '../content/enemies';
 import { DAMAGE_UPGRADE, WAVE_MILESTONES, WAVE_UPGRADE, damageBonusPct, milestones, waveModifiers } from '../content/upgrades';
@@ -14,7 +13,7 @@ import type { RuneSockets } from '../gameplay/runeRules';
 const SLOT_KEYS = ['1', '2', '3', '4', 'RMB', 'R'];
 let nextTooltipId = 0;
 export type HudPanel = 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'sheet' | 'legion';
-/** Desktop row: icon + short label. Tiles of the phone menu sheet: icon + full name. */
+/** Menu row: icon + short label, tooltip with the key, aria name. */
 const MENU_ROW: Array<[HudPanel, keyof typeof ICON, string, string, string]> = [
   ['inventory', 'bag', 'Bag', 'Reliquary (I)', 'Reliquary'],
   ['forge', 'anvil', 'Craft', 'Workbench (C)', 'Workbench'],
@@ -23,13 +22,6 @@ const MENU_ROW: Array<[HudPanel, keyof typeof ICON, string, string, string]> = [
   ['grimoire', 'grimoire', 'Spells', 'Grimoire (L)', 'Grimoire'],
   ['codex', 'book', 'Codex', 'Codex (K)', 'Codex'],
   ['settings', 'gear', 'Settings', 'Settings (Esc)', 'Settings'],
-];
-const MENU_SHEET: Array<[HudPanel, keyof typeof ICON, string]> = [
-  ['inventory', 'bag', 'Bag'], ['sheet', 'person', 'Character'], ['grimoire', 'grimoire', 'Spells'],
-  ['forge', 'anvil', 'Craft'], ['professions', 'skills', 'Skills'], ['contracts', 'contract', 'Contracts'],
-  ['garden', 'sprout', 'Garden'], ['labor', 'shovel', 'Laborers'], ['legion', 'legion', 'Legion'],
-  ['cosmetics', 'cape', 'Capes & Pets'], ['vault', 'chest', 'Vault'], ['map', 'waymap', 'Map'],
-  ['codex', 'book', 'Codex'], ['settings', 'gear', 'Settings'],
 ];
 export interface HudCallbacks {
   cast(slot: HotbarSlot): void;
@@ -43,11 +35,6 @@ export interface HudCallbacks {
   openGrimoire(select?: number | 'primary'): void;
   /** The player hid the "Next" suggestion with its X. */
   dismissNext?(): void;
-  /** Touch buttons for keys a phone doesn't have: the healing flask (Q) and the brew belt (Z/X). */
-  flask?(): void;
-  /** Touch: Recall to the Chapterhouse (T on a keyboard). */
-  recall?(): void;
-  drinkBelt?(slot: string): void;
 }
 
 export interface SlotFrame {
@@ -143,17 +130,10 @@ export class HUD {
   private tooltipSlot: number | null = null;
   private tooltipHideTimer = 0;
   private tooltipKey = '';
-  /** 'touch' after a finger press: hover-only behaviour (spell card on hover/focus) is skipped. */
-  private lastPointer = '';
   private slotFrames: SlotFrame[] = [];
   /** Relic runes socketed in the rites (a small rune badge on the slot and a line on its card). */
   private runes: RuneSockets = {};
   private resizeTooltip = () => this.positionTooltip();
-  /** Touch: a press anywhere outside the open spell card closes it. */
-  private tooltipTouchAway = (e: PointerEvent) => {
-    this.lastPointer = e.pointerType;
-    if (e.pointerType === 'touch' && !this.tooltip.hidden && !this.tooltip.contains(e.target as Node)) this.hideTooltip();
-  };
   private tooltipKeydown = (e: KeyboardEvent) => {
     if (e.key === 'Escape' && !this.tooltip.hidden) {
       e.preventDefault();
@@ -208,8 +188,6 @@ export class HUD {
         <div class="hud-next" data-next hidden role="status"><div class="txt"><span class="kick">Next</span><span data-nexttxt></span></div><button type="button" data-nextx aria-label="Hide this suggestion" title="Hide this suggestion (turn the line off in Settings)">×</button></div>
         <div class="hud-menu">
           ${MENU_ROW.map(([k, i, l, t, n]) => `<button class="hud-mi" data-open="${k}" title="${t}" aria-label="${n}">${ICON[i]}<span class="lbl">${l}</span></button>`).join('')}
-          <button class="hud-menubtn" data-menu aria-haspopup="dialog" aria-expanded="false" aria-label="Open menu">${ICON.menu}<span>Menu</span></button>
-          <button class="hud-fullscreen" data-fullscreen title="Full screen" aria-label="Full screen">${ICON.expand}</button>
           <button class="hud-auto" data-auto hidden aria-label="Auto combat" title="Available on Easy difficulty" aria-pressed="false">Auto: Easy only</button>
         </div>
       </div>
@@ -234,7 +212,6 @@ export class HUD {
         <div class="hud-orb-wrap">
           <div class="hud-orb hp" data-hporb role="meter" aria-label="Health"><div class="liquid"></div><div class="barrier"></div></div>
           <div class="hud-orb-label" data-hptxt></div>
-          <button class="hud-flask" data-flask aria-label="Drink a healing flask (Q)" title="Healing flask (Q)">${ICON.flask}</button>
         </div>
         <div>
           <div class="hud-souls" data-souls role="meter" aria-label="Soul Harvest" aria-valuemin="0" title="Soul Harvest — kills by you or your thralls fill the skull. When full, your next Marrow Spear, Miasma or Black Litany is free and 50% larger.">
@@ -255,7 +232,6 @@ export class HUD {
         </div>
       </div>
       <div class="hud-right">
-        <button class="hud-up-toggle" data-uptoggle aria-expanded="false" aria-label="Damage and Wave Speed upgrades">${ICON.crown}<span>Upgrades</span></button>
         <div class="hud-upgrades cw-plate">
           <div class="hud-up">
             <div class="icon">${ICON.crown}</div>
@@ -301,38 +277,18 @@ export class HUD {
     this.el.querySelectorAll<HTMLButtonElement>('.hud-menu [data-open]').forEach((b) =>
       b.addEventListener('click', () => { this.hideTooltip(); this.cb.open(b.dataset.open as HudPanel); }),
     );
-    this.buildMenuSheet();
     this.$('[data-nextx]').addEventListener('click', () => this.cb.dismissNext?.());
     this.$('[data-buydmg]').addEventListener('click', () => this.cb.buyDamage());
     this.$('[data-auto]').addEventListener('click', () => this.cb.toggleAutoCombat());
-    this.$('[data-flask]').addEventListener('click', () => this.cb.flask?.());
-    this.$('[data-brews]').addEventListener('click', (e) => {
-      const chip = (e.target as HTMLElement).closest<HTMLElement>('[data-brew]');
-      if (chip) this.cb.drinkBelt?.(chip.dataset.brew!);
-    });
-    this.$('[data-uptoggle]').addEventListener('click', () => {
-      const right = this.$('.hud-right');
-      const open = right.classList.toggle('open');
-      this.$('[data-uptoggle]').setAttribute('aria-expanded', String(open));
-    });
-    const fs = this.$<HTMLButtonElement>('[data-fullscreen]');
-    fs.hidden = !document.fullscreenEnabled;
-    fs.addEventListener('click', () => {
-      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
-      else void document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
-    });
     this.$('[data-buywave]').addEventListener('click', () => this.cb.buyWave());
     this.el.querySelectorAll<HTMLButtonElement>('[data-dial]').forEach((b) =>
       b.addEventListener('click', () => this.cb.dialWave(Number(b.dataset.dial))),
     );
-    // Touch: tapping the card closes it (a scroll gesture on it fires no click, so it still scrolls).
-    this.tooltip.addEventListener('click', () => { if (this.lastPointer === 'touch') this.hideTooltip(); });
     this.tooltip.addEventListener('pointerenter', () => window.clearTimeout(this.tooltipHideTimer));
     this.tooltip.addEventListener('pointerleave', () => this.scheduleTooltipHide());
     this.tooltip.addEventListener('focus', () => window.clearTimeout(this.tooltipHideTimer));
     this.tooltip.addEventListener('blur', () => this.scheduleTooltipHide());
     window.addEventListener('keydown', this.tooltipKeydown, true);
-    window.addEventListener('pointerdown', this.tooltipTouchAway, true);
     window.addEventListener('resize', this.resizeTooltip);
     const chat = this.$<HTMLInputElement>('[data-chatin]');
     chat.addEventListener('keydown', (e) => {
@@ -432,39 +388,14 @@ export class HUD {
         btn.addEventListener('contextmenu', (e) => {
           e.preventDefault();
           e.stopPropagation();
-          if (this.lastPointer === 'touch') return; // a long press on a phone shows the card, it does not open the Grimoire
           this.hideTooltip();
           this.cb.openGrimoire(i === -1 ? 'primary' : i);
         });
       }
-      // Touch: a tap always casts (iOS drops the click when a tap reveals hover content, so the card never opens on a tap);
-      // press and hold shows the spell card instead, and that press does not cast.
-      let holdTimer = 0;
-      let held = false;
-      btn.addEventListener('pointerdown', (e) => {
-        this.lastPointer = e.pointerType;
-        if (e.pointerType !== 'touch') return;
-        held = false;
-        window.clearTimeout(holdTimer);
-        holdTimer = window.setTimeout(() => {
-          held = true;
-          this.showTooltip(i);
-          window.clearTimeout(this.tooltipHideTimer);
-          this.tooltipHideTimer = window.setTimeout(() => this.hideTooltip(), 4000);
-        }, 450);
-      });
-      const endHold = () => window.clearTimeout(holdTimer);
-      btn.addEventListener('pointerup', endHold);
-      btn.addEventListener('pointercancel', endHold);
-      btn.addEventListener('click', (e) => {
-        if (!held) return;
-        held = false;
-        e.stopImmediatePropagation();
-      }, { capture: true });
-      btn.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') this.showTooltip(i); });
-      btn.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') this.scheduleTooltipHide(); });
-      btn.addEventListener('focus', () => { if (this.lastPointer !== 'touch') this.showTooltip(i); });
-      btn.addEventListener('blur', () => { if (this.lastPointer !== 'touch') this.scheduleTooltipHide(); });
+      btn.addEventListener('pointerenter', () => this.showTooltip(i));
+      btn.addEventListener('pointerleave', () => this.scheduleTooltipHide());
+      btn.addEventListener('focus', () => this.showTooltip(i));
+      btn.addEventListener('blur', () => this.scheduleTooltipHide());
     }
     this.el.querySelectorAll<HTMLButtonElement>('[data-swap]').forEach((button) => {
       button.addEventListener('click', () => { this.hideTooltip(); this.cb.openGrimoire(Number(button.dataset.swap)); });
@@ -555,38 +486,6 @@ export class HUD {
     this.tooltip.hidden = true;
   }
 
-  private menuSheet!: HTMLElement;
-
-  /** Phone/tablet: the "Menu" button opens a grid of big labelled tiles for every panel. */
-  private buildMenuSheet() {
-    const sheet = document.createElement('div');
-    sheet.className = 'hud-menusheet';
-    sheet.hidden = true;
-    sheet.setAttribute('role', 'dialog');
-    sheet.setAttribute('aria-label', 'Menu');
-    const necro = this.discipline?.family === 'necromancer';
-    const tiles = MENU_SHEET.filter(([k]) => k !== 'legion' || necro)
-      .map(([k, i, l]) => `<button type="button" class="tile" data-open="${k}">${ICON[i]}<span>${l.replace('&', '&amp;')}</span></button>`).join('');
-    sheet.innerHTML = `<div class="card"><div class="head"><h2>Menu</h2><button type="button" class="x" data-menuclose aria-label="Close menu">${ICON.close}</button></div><div class="grid">${tiles}<button type="button" class="tile" data-menurecall>${ICON.home}<span>Recall home</span></button><button type="button" class="tile auto" data-menuauto hidden></button></div></div>`;
-    this.menuSheet = sheet;
-    this.el.appendChild(sheet);
-    const setOpen = (open: boolean) => {
-      sheet.hidden = !open;
-      this.$('[data-menu]').setAttribute('aria-expanded', String(open));
-      if (open) this.hideTooltip();
-    };
-    this.$('[data-menu]').addEventListener('click', () => setOpen(sheet.hidden));
-    sheet.addEventListener('click', (e) => {
-      const t = e.target as HTMLElement;
-      const tile = t.closest<HTMLButtonElement>('[data-open]');
-      if (tile) { setOpen(false); this.cb.open(tile.dataset.open as HudPanel); return; }
-      if (t.closest('[data-menuauto]')) { this.cb.toggleAutoCombat(); return; }
-      if (t.closest('[data-menurecall]')) { setOpen(false); this.cb.recall?.(); return; }
-      if (t === sheet || t.closest('[data-menuclose]')) setOpen(false);
-    });
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sheet.hidden) { e.stopImmediatePropagation(); setOpen(false); } }, true);
-  }
-
   update(f: HudFrame) {
     this.slotFrames = f.slots;
     this.refreshTooltip();
@@ -594,15 +493,9 @@ export class HUD {
       const button = this.$('[data-auto]') as HTMLButtonElement;
       button.hidden = !f.autoCombatVisible;
       button.disabled = !f.autoCombatAvailable;
-      const touch = touchNow();
-      button.textContent = f.autoCombatAvailable ? (f.autoCombat ? (touch ? 'Auto: On' : 'Auto: On · G') : (touch ? 'Auto: Off' : 'Auto: Off · G')) : 'Auto: Easy only';
-      button.title = f.autoCombatAvailable ? (touch ? 'Toggle auto combat' : 'Toggle auto combat (G)') : 'Available on Easy difficulty';
+      button.textContent = f.autoCombatAvailable ? (f.autoCombat ? 'Auto: On · G' : 'Auto: Off · G') : 'Auto: Easy only';
+      button.title = f.autoCombatAvailable ? 'Toggle auto combat (G)' : 'Available on Easy difficulty';
       button.setAttribute('aria-pressed', String(f.autoCombat));
-      const mt = this.$<HTMLButtonElement>('[data-menuauto]');
-      mt.hidden = !f.autoCombatVisible;
-      mt.disabled = !f.autoCombatAvailable;
-      mt.textContent = button.textContent;
-      mt.setAttribute('aria-pressed', String(f.autoCombat));
     });
     const hpFrac = Math.max(0, f.hp / f.maxHp);
     this.set('hp', Math.round(hpFrac * 400), () => this.$('[data-hporb]').style.setProperty('--fill', `${hpFrac * 100}%`));
@@ -652,8 +545,6 @@ export class HUD {
       this.$('[data-xptxt]').textContent = `${f.xp.toLocaleString()} / ${f.xpNext.toLocaleString()}`;
     });
     this.set('gold', f.gold, () => (this.$('[data-gold]').textContent = f.gold.toLocaleString()));
-    const canBuy = f.gold >= Math.min(f.damageCost ?? Infinity, f.waveCost ?? Infinity);
-    this.set('canbuy', canBuy, () => this.$('[data-uptoggle]').classList.toggle('can', canBuy));
     this.set('shards', f.shards, () => (this.$('[data-shards]').textContent = String(f.shards)));
 
     this.set('dmg', `${f.damageTier}|${f.damageCost}|${f.gold >= (f.damageCost ?? Infinity)}`, () => {
@@ -713,8 +604,6 @@ export class HUD {
         if (!chip) {
           chip = document.createElement('div');
           chip.dataset.brew = b.slot;
-          chip.setAttribute('role', 'button');
-          chip.tabIndex = -1;
           chip.innerHTML = '<kbd></kbd><span class="glyph"></span><span class="txt"><span class="lbl"></span><span class="sub"></span></span><span class="bar"><i></i></span>';
           el.appendChild(chip);
         }
@@ -939,7 +828,6 @@ export class HUD {
     this.hideTooltip();
     window.removeEventListener('resize', this.resizeTooltip);
     window.removeEventListener('keydown', this.tooltipKeydown, true);
-    window.removeEventListener('pointerdown', this.tooltipTouchAway, true);
     this.el.remove();
   }
 }

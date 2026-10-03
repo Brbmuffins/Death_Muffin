@@ -24,13 +24,10 @@ describe('belt rules', () => {
     expect(beltState({ hasItem: true, cooling: true })).toBe('cooling');
     expect(beltState({ hasItem: false, active: true })).toBe('active');
   });
-  it('empty hints say how to fill the slot, with touch wording on phones', () => {
-    expect(emptyHint('tonic', false)).toMatch(/Alchemist's Wing.*right-click.*Press X/);
-    expect(emptyHint('tonic', true)).toMatch(/select.*Tap this slot/);
-    expect(emptyHint('tonic', true)).not.toMatch(/right-click|press X/);
-    expect(emptyHint('heal', false)).toMatch(/Moss Tonic.*Press Q/);
-    expect(emptyHint('heal', true)).not.toMatch(/Press Q/);
-    expect(emptyPressText('elixir', false)).toBe('Empty elixir slot');
-    expect(emptyPressText('heal', true).length).toBeLessThan(24);
+  it('empty hints say how to fill the slot', () => {
+    expect(emptyHint('tonic')).toMatch(/Alchemist's Wing.*right-click.*Press X/);
+    expect(emptyHint('heal')).toMatch(/Moss Tonic.*Press Q/);
+    expect(emptyPressText('elixir')).toBe('Empty elixir slot');
+    expect(emptyPressText('heal').length).toBeLessThan(24);
   });
 });

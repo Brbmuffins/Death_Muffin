@@ -46,10 +46,11 @@ player behavior, deployment and plans. Update the handoff when you stop.
 - Server `error` strings are player-readable — show them verbatim in UI.
 - Spell colours carry meaning (see `SPELL_FX` in `src/content/abilities.ts`);
   don't make new content "just violet".
-- Desktop web game first, but phones and tablets are supported (since 2026-10-02): phone/tablet layout lives in
-  `src/ui/mobile.css` (loaded last). Check HUD changes with `tools/qa/mobile-shots.cjs` and touch/panel navigation with
-  `tools/qa/mobile-nav-smoke.cjs`; any new hover-only info needs a touch path (press-and-hold), and any new keyboard-only
-  action needs a button.
+- **PC-first (owner, 2026-10-03: "tuning the PC version is priority over mobile").** This branch has no phone/tablet layer: no touch
+  controls, no `mobile.css`, no phone checks. Do not add touch paths or phone layouts here; PC players with a touchscreen use the mouse path.
+  Phones and the offline edition live on the **`mobile` branch**, built by `server/death-muffin/deploy-mobile.sh` at
+  `/death-muffin/mobile/` (offline edition at `/death-muffin/offline/`). Master is merged into `mobile` from time to time (see the top of
+  `HANDOFF.md`); the play page redirects phones there (add `?pc=1` to stay on the PC build).
 - Every new player-facing mechanic ships with its help: a Covenant counsel tip (`src/ui/Onboarding.ts`,
   triggered the first time it matters), its Codex entry (`src/content/codex.ts`), the Settings key list
   if it adds a key, and the README. Re-check existing tips when a mechanic changes.
