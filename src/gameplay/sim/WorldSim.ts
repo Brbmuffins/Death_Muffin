@@ -381,6 +381,8 @@ export class WorldSim {
       case 'refreshThralls':
         return this.applyRefreshThralls(intent);
       case 'recallThralls':
+        // A relayed intent without a point must not turn thrall positions into NaN (separate() spreads NaN to every body they touch).
+        if (!Number.isFinite(intent.x) || !Number.isFinite(intent.z)) return;
         for (const t of this.thralls.values()) {
           if (t.owner !== intent.by) continue;
           t.x = intent.x + (this.rand() - 0.5) * 2;
@@ -616,7 +618,8 @@ export class WorldSim {
   private raiseFrom(x: Extract<Intent, { t: 'exhume' }>, best: Corpse, statMult: number): void {
     this.removeCorpse(best, 'consumed', x.by);
     const crumbled = this.makeRoom(x.by, x.cap, 1);
-    const kind = thrallFromCorpse(best, x.kind);
+    // `x.kind` comes over the wire: anything the sim does not know raises an ordinary warrior rather than throwing mid-frame.
+    const kind = thrallFromCorpse(best, Object.prototype.hasOwnProperty.call(THRALL_BASE, x.kind) ? x.kind : 'warrior');
     const scale = THRALL_SCALE[kind] ?? { hp: 1, dmg: 1 };
     const empowered = best.kind === 'resonant' || best.elite;
     const base = THRALL_BASE[kind];

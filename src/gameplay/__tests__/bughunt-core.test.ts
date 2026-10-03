@@ -201,3 +201,23 @@ describe('core bug hunt: host migration', () => {
     expect(a.radius).toBeCloseTo(e.radius, 5);
   });
 });
+
+describe('core bug hunt: malformed co-op intents never reach the world as NaN or throw', () => {
+  it('recallThralls without a point leaves the legion where it stands, and neighbours unharmed', () => {
+    const { sim } = world();
+    sim.addCorpse(1, -16, 'normal', 'robber', false, 0, 1, 'graves');
+    sim.apply({ t: 'exhume', by: 'p1', x: 1, z: -16, r: 1, kind: 'warrior', cap: 3, hp: 50, damage: 5, attackSpeedMult: 1 });
+    const e = sim.spawnEnemy('robber', 'graves', 1.2, -16, false, false);
+    sim.apply({ t: 'recallThralls', by: 'p1' } as never);
+    for (let i = 0; i < 20; i++) sim.step(0.05);
+    for (const t of sim.thralls.values()) expect(Number.isFinite(t.x) && Number.isFinite(t.z)).toBe(true);
+    expect(Number.isFinite(e.x) && Number.isFinite(e.z)).toBe(true);
+  });
+
+  it('an exhume naming an unknown thrall kind raises an ordinary thrall instead of throwing', () => {
+    const { sim } = world();
+    sim.addCorpse(1, -16, 'normal', 'robber', false, 0, 1, 'graves');
+    expect(() => sim.apply({ t: 'exhume', by: 'p1', x: 1, z: -16, r: 1, kind: 'dragon', cap: 3, hp: 50, damage: 5, attackSpeedMult: 1 } as never)).not.toThrow();
+    expect([...sim.thralls.values()].map((t) => t.kind)).toEqual(['warrior']);
+  });
+});
