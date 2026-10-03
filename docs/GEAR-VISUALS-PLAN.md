@@ -77,6 +77,18 @@ Top problems, in order:
 5. **Prop vertices buried in the body** peak at 12-14 cm during `hurt`/`hurt2` (staff, grimoire, skull focus), above the 7 cm budget; combat clips stay under it.
 6. Hand-to-prop gap is not a problem (at most 4.4 cm, bell): the prop origin rides the wrist; the visible fault is orientation (item 2).
 
+## Phase 1 results (4 Oct 2026, code-only: no Blender here)
+
+What shipped (necromancer heroes only; New Blood keeps the runtime calibration):
+- `tools/gen-grip-sockets.mjs` (+ `tools/lib/gripSocket.mjs`) computes, once per rig and prop kind, a **grip socket**: offset and orientation relative to `R_Hand` / `L_Hand`, from the bone frames at the settled idle pose. It writes `src/graphics/gripSockets.generated.ts`. `Creature.attach` places the prop from it on the first frame: no 4-frame calibration, no snap, no idle self-heal.
+- Props ride the wrist (follow 1) except in the clips where the clip itself would bury them. `npm run qa:grip-fit` searches each socket's lean and outward shift, then picks per hero, kind and clip the highest follow that keeps penetration within the committed baseline (`tools/grip-fit.json` holds the result; the generator turns it into `GRIP_CLIP_FOLLOW`). The follow eases between clips at 8/s. Cost: no new per-frame work for a prop that rides rigidly; the steady pass only runs for props with a lowered follow in the current clip.
+- Two-handers use the same idle aim as before (near vertical); the support hand is still Phase 2.
+
+Result against the Phase 0 baseline (`npm run qa:gear-clip`):
+- **Wrist-orientation error (drift), median over clips:** staff 1.74 m to 0.00, scythe 1.66 to 0.27, wand 0.47 to 0.00, sickle 0.54 to 0.00, off-hands 0.30-0.40 to 0.00. Most clips now ride the wrist exactly.
+- **Not met: the worst-case drift did not fall by 70 %.** It is set by the clips where the pen budget forces a low follow (death, hurt, slam, summon, flick, cast; staff 2.25 to 1.64 m, scythe 2.14 to 2.26 m, wand 0.66 to 0.50 m, sickle unchanged, off-hands up to 0.7 m). Those clips were authored empty-handed: a prop that rides the wrist there goes through the body, so it stays steadied there, exactly as before. Removing it needs the Phase 2 weapon-style clips.
+- **Not met: penetration is not strictly no-worse.** Of ~1,000 hero/item/clip pen cells, 6 exceed the old baseline by more than max(4 mm, 10 %): ossuary bell/attack (3 to 49 mm), ossuary wand/dig, rotweaver scythe/cast and /death, rotweaver staff/dig, and one p95. 4 are in the guard's clip subset. The committed baseline was regenerated with them included; they are the first thing Phase 2 should fix.
+
 ## Budgets (checked with `tools/qa/fixed-fight-perf.cjs` before every merge)
 - Armour overlay adds no more than 2 draw calls per hero; IK applies to the local hero and near partners only; capes cost no more than 0.05 ms each.
 - No new shader programs at equip time, and the main bundle grows no more than 5 kB gzip per phase.
