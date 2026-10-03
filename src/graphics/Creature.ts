@@ -4,7 +4,7 @@ import { assets } from './AssetCache';
 import { warmModel } from './warmModel';
 import { buildBudget } from './buildBudget';
 import { CREATURE_MODELS, type CreatureSlug } from './modelPaths';
-import { hitstop } from './hitstop';
+import { hitstop, pictureDt } from './hitstop';
 import CLIP_TIMINGS_JSON from '../content/clipTimings.json';
 
 /**
@@ -93,8 +93,23 @@ export interface CreatureOptions {
   wings?: WingOpts;
   /** Thralls: a soft fresnel rim so friendly dead read at a glance against the horde (see friendRim.ts). */
   rim?: FriendRim;
+  /** Struck enemies only: freeze with a hitstop. The hero, thralls and everything else keep animating through it. */
+  hitstop?: boolean;
+  /** Crossfade seconds for idle/walk/run changes (default 0.28; the hero uses a quicker blend so the body answers the stick). */
+  locomotionFade?: number;
 }
 
+/** Scratch objects for the per-frame attachment steadying (single-threaded: never held across calls). */
+const S_ROOT_Q = new THREE.Quaternion();
+const S_PARENT_Q = new THREE.Quaternion();
+const S_DRIVEN = new THREE.Quaternion();
+const S_LOCKED = new THREE.Quaternion();
+const S_UP = new THREE.Vector3();
+const S_WANT = new THREE.Vector3();
+const S_POS = new THREE.Vector3();
+const S_SCALE = new THREE.Vector3();
+const S_SEEN = new Set<THREE.Object3D>();
+const S_CHAIN: THREE.Object3D[] = [];
 const FLASH_COLOR = new THREE.Color(0xfff0dc);
 /** Crossfade seconds: locomotion eases (idle / walk / run), a return from a swing a little quicker, a swing itself snaps. */
 const FADE_LOCOMOTION = 0.28;
@@ -298,7 +313,7 @@ export class Creature {
     return this.loop === 'idle' && !!next && next !== this.actions.get('idle');
   }
 
-  private startLoop(fade: boolean, fadeS = FADE_LOCOMOTION) {
+  private startLoop(fade: boolean, fadeS = this.opts.locomotionFade ?? FADE_LOCOMOTION) {
     const next = this.resolve(this.loop);
     if (!next) return;
     next.setLoop(THREE.LoopRepeat, Infinity);
@@ -350,8 +365,14 @@ export class Creature {
     if (!this.oneShot) this.startLoop(true);
   }
 
+  /** True while a one-shot (swing, cast, death) is playing: the view layer never throttles those. */
+  get busy(): boolean {
+    return this.oneShot !== null;
+  }
+
   /** The last locomotion plan (QA and tests read it; null until setGroundSpeed has run). */
   lastPlan: LocomotionPlan | null = null;
+  private lastGround = -1;
 
   /** World height of this body right now: the model's height, the scale option and the owner's root scale. */
   worldHeight(): number {
@@ -364,7 +385,11 @@ export class Creature {
    * touches the mixer when the clip or its speed changes.
    */
   setGroundSpeed(ground: number): LocomotionPlan {
-    const plan = planLocomotion(STRIDES[this.rigSlug], this.worldHeight(), ground, this.actions.has('run'), this.locoRun);
+    const prev = this.lastPlan;
+    // Steady pace on the same clip: nothing to change (this runs every frame for every walking body).
+    if (prev && this.loop === prev.clip && !this.oneShot && Math.abs(ground - this.lastGround) < 0.01 * Math.max(1, ground)) return prev;
+    this.lastGround = ground;
+    const plan = planLocomotion(STRIDES[this.rigSlug], this.worldHeight(), ground, this.actions.has('run'), this.locoRun, prev ?? undefined);
     this.locoRun = plan.clip === 'run';
     this.lastPlan = plan;
     this.setLoop(plan.clip, plan.timeScale);
@@ -572,8 +597,8 @@ export class Creature {
   }
 
   update(dtReal: number) {
-    // A hitstop freezes the picture (this clock only, never the sim's).
-    const dt = dtReal * hitstop.scale;
+    // A hitstop freezes a struck enemy's picture (this clock only, never the sim's); the hero and thralls are exempt.
+    const dt = pictureDt(dtReal, !!this.opts.hitstop, hitstop.scale);
     const f = this.flinchAct;
     if (f && f.isRunning()) {
       // Ease the flinch in over ~50 ms and out over the last ~180 ms so it never pops.
@@ -603,49 +628,66 @@ export class Creature {
     }
   }
 
+  /**
+   * How many mixer updates pass between attachment corrections: the view layer raises it for mid-distance / far bodies
+   * (set before each update). Settled idle bodies also steady at a third of the rate: their bones barely move.
+   */
+  steadyEvery = 1;
+  private steadyN = 0;
+
   /** Pull each `follow` attachment's +Y back toward its aim direction, keeping the bone's roll. */
   private steadyAttachments() {
-    this.root.updateMatrixWorld(true);
-    const rootQ = this.root.getWorldQuaternion(new THREE.Quaternion());
-    const parentQ = new THREE.Quaternion();
-    const driven = new THREE.Quaternion();
-    const locked = new THREE.Quaternion();
-    const up = new THREE.Vector3();
+    const every = this.settledT > 0.6 && !this.oneShot ? Math.max(3, this.steadyEvery) : this.steadyEvery;
+    if (every > 1 && ++this.steadyN < every) return;
+    this.steadyN = 0;
+    // Refresh only the bone chains the attachments hang from (the mixer already posed the local transforms), each ancestor
+    // once, instead of walking the whole skeleton and every mesh with root.updateMatrixWorld(true) per body per frame.
+    this.root.updateWorldMatrix(true, false);
+    this.root.matrixWorld.decompose(S_POS, S_ROOT_Q, S_SCALE);
+    S_SEEN.clear();
+    S_SEEN.add(this.root);
     for (const a of this.attached) {
       const parent = a.obj.parent;
       if (!a.baseQ || !parent) continue;
-      parent.getWorldQuaternion(parentQ);
-      driven.copy(parentQ).multiply(a.baseQ);
-      up.set(0, 1, 0).applyQuaternion(driven);
-      const want = a.dir.clone().applyQuaternion(rootQ);
-      locked.setFromUnitVectors(up, want).multiply(driven);
-      driven.slerp(locked, 1 - (a.follow ?? 1));
-      a.obj.quaternion.copy(parentQ.invert().multiply(driven));
+      let n = 0;
+      for (let o: THREE.Object3D | null = parent; o && !S_SEEN.has(o); o = o.parent) S_CHAIN[n++] = o;
+      for (let i = n - 1; i >= 0; i--) {
+        const o = S_CHAIN[i];
+        if (o.matrixAutoUpdate) o.updateMatrix();
+        if (o.parent) o.matrixWorld.multiplyMatrices(o.parent.matrixWorld, o.matrix);
+        else o.matrixWorld.copy(o.matrix);
+        S_SEEN.add(o);
+      }
+      parent.matrixWorld.decompose(S_POS, S_PARENT_Q, S_SCALE);
+      S_DRIVEN.copy(S_PARENT_Q).multiply(a.baseQ);
+      S_UP.set(0, 1, 0).applyQuaternion(S_DRIVEN);
+      S_WANT.copy(a.dir).applyQuaternion(S_ROOT_Q);
+      S_LOCKED.setFromUnitVectors(S_UP, S_WANT).multiply(S_DRIVEN);
+      S_DRIVEN.slerp(S_LOCKED, 1 - (a.follow ?? 1));
+      a.obj.quaternion.copy(S_PARENT_Q.invert().multiply(S_DRIVEN));
     }
   }
 
   /** Re-align any attachment whose +Y has drifted >25° from its intended direction. */
   private recheckAttachments() {
-    this.root.updateMatrixWorld(true);
-    const rootQ = new THREE.Quaternion();
-    this.root.getWorldQuaternion(rootQ);
-    const worldUp = new THREE.Vector3();
-    const q = new THREE.Quaternion();
+    this.root.getWorldQuaternion(S_ROOT_Q);
     for (const a of this.attached) {
-      a.obj.getWorldQuaternion(q);
-      worldUp.set(0, 1, 0).applyQuaternion(q);
-      const want = a.dir.clone().applyQuaternion(rootQ);
-      if (worldUp.angleTo(want) > (25 * Math.PI) / 180) this.calibrate.push({ obj: a.obj, dir: a.dir, frames: 1 });
+      a.obj.getWorldQuaternion(S_PARENT_Q);
+      S_UP.set(0, 1, 0).applyQuaternion(S_PARENT_Q);
+      S_WANT.copy(a.dir).applyQuaternion(S_ROOT_Q);
+      if (S_UP.angleTo(S_WANT) > (25 * Math.PI) / 180) this.calibrate.push({ obj: a.obj, dir: a.dir, frames: 1 });
     }
     if (this.calibrate.length) this.runCalibration();
   }
 
   private runCalibration() {
+    // Only calibrate against a settled idle pose (not bind pose, not a one-shot). A body that is fighting or walking has
+    // nothing to do here: bail out before touching any matrices (this used to walk the whole skeleton every frame).
+    const settled = this.settledT > 0.25;
+    if (!settled) return;
     this.root.updateMatrixWorld(true);
     const rootQ = new THREE.Quaternion();
     this.root.getWorldQuaternion(rootQ);
-    // Only calibrate against a settled idle pose (not bind pose, not a one-shot).
-    const settled = this.settledT > 0.25;
     for (let i = this.calibrate.length - 1; i >= 0; i--) {
       const c = this.calibrate[i];
       if (!settled || --c.frames > 0) continue;

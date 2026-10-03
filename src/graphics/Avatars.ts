@@ -83,7 +83,7 @@ export class NecromancerAvatar {
 
   constructor(scene: THREE.Scene, accent: string, withLight: boolean, slug: CreatureSlug = 'necromancer') {
     // Generated heroes face +X; gameplay headings use +Z.
-    this.c = new Creature(slug, { inPlace: true, gearTint: true, modelYaw: -Math.PI / 2, emissive: accent, emissiveIntensity: 0.04, fallback: 'necromancer' });
+    this.c = new Creature(slug, { inPlace: true, gearTint: true, modelYaw: -Math.PI / 2, emissive: accent, emissiveIntensity: 0.04, fallback: 'necromancer', locomotionFade: 0.16 });
     if (slug === 'hero_hollow_knight' || slug === 'hero_grave_warden' || slug === 'hero_bell_monk' || slug === 'hero_carrion_witch' || slug === 'hero_veilwalker') {
       // New Blood heroes use their authored gear or bare hands.
       this.staff = null;
@@ -364,7 +364,7 @@ export class BossView {
     this.saint = slug === 'boss_plague_saint';
     this.regent = slug === 'boss_cinder_regent';
     this.mire = slug === 'boss_mire_mother';
-    this.c = new Creature(slug, { emissive: slug === 'prelate' ? 0x3b1d5e : 0x000000, emissiveIntensity: slug === 'prelate' ? 0.05 : 0, fallback: 'prelate' });
+    this.c = new Creature(slug, { emissive: slug === 'prelate' ? 0x3b1d5e : 0x000000, emissiveIntensity: slug === 'prelate' ? 0.05 : 0, fallback: 'prelate', hitstop: true });
     this.c.root.visible = false;
     scene.add(this.c.root);
     this.light = new THREE.PointLight(color, 0, 14, 1.4);

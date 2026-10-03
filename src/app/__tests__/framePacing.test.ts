@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ResolutionGovernor, shouldProcessFrame, shouldRender, isFpsCap } from '../framePacing';
+import { ResolutionGovernor, budgetFps, shouldProcessFrame, shouldRender, isFpsCap } from '../framePacing';
 
 describe('frame pacing', () => {
   it('always processes the first frame', () => {
@@ -30,7 +30,18 @@ describe('frame pacing', () => {
     expect(shouldRender(1000, 990, true)).toBe(false);
     expect(shouldRender(1200, 990, true)).toBe(true);
   });
+  it('Max (0) never skips a frame, even on a 144 Hz screen', () => {
+    let last = 1;
+    let n = 0;
+    for (let t = 1; t < 1001; t += 1000 / 144) {
+      if (shouldProcessFrame(t, last, 0)) { n++; last = t; }
+    }
+    expect(n).toBeGreaterThan(140);
+    expect(budgetFps(0)).toBe(60);
+    expect(budgetFps(30)).toBe(30);
+  });
   it('validates caps', () => {
+    expect(isFpsCap(0)).toBe(true);
     expect(isFpsCap(30)).toBe(true);
     expect(isFpsCap(45)).toBe(false);
     expect(isFpsCap('30')).toBe(false);
@@ -53,11 +64,29 @@ describe('resolution governor', () => {
 
   it('steps down under sustained slow frames, never below the floor', () => {
     const g = new ResolutionGovernor();
-    run(g, 5, 30);
-    expect(g.scale).toBeLessThan(1);
-    run(g, 120, 40);
+    run(g, 6, 30);
+    expect(g.scale).toBe(0.9);
+    run(g, 600, 40);
     expect(g.scale).toBeGreaterThanOrEqual(ResolutionGovernor.MIN);
     expect(g.scale).toBeLessThan(0.65);
+  });
+
+  it('does not act on a 3 s dip, and changes at most once per 20 s', () => {
+    const g = new ResolutionGovernor();
+    expect(run(g, 3, 40)).toBe(0);
+    const g2 = new ResolutionGovernor();
+    // 60 s of steady misses: first change after ~3.5 s, then one per 20 s at most.
+    expect(run(g2, 60, 40)).toBeLessThanOrEqual(4);
+    expect(run(new ResolutionGovernor(), 21, 40)).toBeLessThanOrEqual(2);
+  });
+
+  it('stands down while held (area entry / scene load) and restarts its trend afterwards', () => {
+    const g = new ResolutionGovernor();
+    g.hold();
+    expect(run(g, 9, 40)).toBe(0);
+    expect(g.scale).toBe(1);
+    run(g, 6, 40);
+    expect(g.scale).toBe(0.9);
   });
 
   it('ignores a short hitch', () => {
@@ -75,14 +104,14 @@ describe('resolution governor', () => {
 
   it('climbs back with headroom, and a raise that fails at once becomes the ceiling', () => {
     const g = new ResolutionGovernor();
-    run(g, 5, 30);
+    run(g, 6, 30);
     const low = g.scale;
-    run(g, 15, 14);
+    run(g, 40, 14);
     expect(g.scale).toBeGreaterThan(low);
     const raised = g.scale;
-    run(g, 4, 30);
+    run(g, 25, 30);
     expect(g.scale).toBeLessThan(raised);
-    run(g, 60, 14);
+    run(g, 200, 14);
     expect(g.scale).toBeLessThan(raised);
   });
 

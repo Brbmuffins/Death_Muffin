@@ -5,19 +5,27 @@ import { settings } from '../app/settings';
  * mixers and particles see, never the sim clock, so damage, cooldowns and networking are untouched.
  *
  * Crowds must not stutter, so freezes are rationed: a minimum gap between them and a leaky budget (a freeze spends its
- * length; the budget refills at REFILL seconds per second), which caps the share of time spent frozen at about 12%.
+ * length; the budget refills at REFILL seconds per second), which caps the share of time spent frozen at about 5%.
+ *
+ * Only struck enemies (Creature option `hitstop`) freeze. The hero, thralls and the camera keep their own clock, so the
+ * player's own body never stalls and the game never feels like it hitches on a big hit.
  */
 export const FRAME = 1 / 60;
 export const MIN_FRAMES = 2;
 export const MAX_FRAMES = 4;
 export const MIN_GAP = 0.3;
-export const BUDGET_MAX = 0.25;
-export const REFILL = 0.12;
+export const BUDGET_MAX = 0.1;
+export const REFILL = 0.045;
 
 /** Freeze length in seconds for an impact weight in 0..1 (0 = light, 1 = boss slam). */
 export function hitstopSeconds(weight: number): number {
   const w = Math.min(1, Math.max(0, weight));
   return Math.round(MIN_FRAMES + w * (MAX_FRAMES - MIN_FRAMES)) * FRAME;
+}
+
+/** The dt a body's animation clock sees: struck enemies (`stoppable`) get the frozen clock, everyone else the real one. */
+export function pictureDt(dtReal: number, stoppable: boolean, scale: number): number {
+  return stoppable ? dtReal * scale : dtReal;
 }
 
 export class HitStop {

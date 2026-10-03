@@ -126,6 +126,7 @@ import { CodexPanel } from '../ui/CodexPanel';
 import { Onboarding, type TipId } from '../ui/Onboarding';
 import { DepthsController } from './DepthsController';
 import { touchNow } from '../ui/touchText';
+import { hudDue } from '../graphics/animLod';
 import { HEAL_COOLDOWN_S, HEAL_ORDER, beltState, emptyHint, emptyPressText, healPick } from '../gameplay/beltRules';
 import type { Busy } from '../ui/counselCadence';
 import { CodexJournal, browserStorage, type CodexIds, type CodexKind } from '../gameplay/codexJournal';
@@ -133,6 +134,8 @@ import { CURSOR } from '../ui/cursors';
 import { audio } from '../audio/Audio';
 import { lootSfx } from '../audio/mixer';
 
+/** Minimum gap between HUD readout redraws (~20 Hz). */
+const HUD_INTERVAL_MS = 50;
 const SNAPSHOT_MS = 100;
 const MOVE_SEND_MS = 100;
 const RESPAWN_MS = 4000;
@@ -702,6 +705,7 @@ export class WorldScene implements GameScene, RuntimeView {
       if (this.effects.binbun.enabled) preloadBinbun(GROUND_FX_PRELOAD);
     }));
     this.scope.add(this.inventory.onChange(() => this.refreshStats()));
+    this.scope.add(this.inventory.onChange(() => { this.brewRev++; }));
     this.scope.on(window, 'pagehide', () => {
       void this.progression.flush(true);
       void this.inventory.flush();
@@ -1572,14 +1576,23 @@ export class WorldScene implements GameScene, RuntimeView {
       this.onPrimaryClick();
     });
     this.scope.on<WheelEvent>(this.canvas, 'wheel', (e) => this.rig.onWheel(e), { passive: true });
+    this.scope.on(window, 'resize', () => { this.canvasRect = null; });
     this.scope.on<MouseEvent>(window, 'contextmenu', (e) => {
       if (!(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) e.preventDefault();
     });
   }
 
+  private canvasRect: DOMRect | null = null;
+  private canvasRectAt = 0;
+
   private updateCursor() {
     const cam = this.rig.camera;
-    const rect = this.canvas.getBoundingClientRect();
+    // The canvas fills the window: read its rect once a second (and on resize), not every frame after the HUD dirtied layout.
+    if (!this.canvasRect || this.now - this.canvasRectAt > 1000) {
+      this.canvasRect = this.canvas.getBoundingClientRect();
+      this.canvasRectAt = this.now;
+    }
+    const rect = this.canvasRect;
     this.ndc.set(((this.mouse.x - rect.left) / rect.width) * 2 - 1, -((this.mouse.y - rect.top) / rect.height) * 2 + 1);
     this.raycaster.setFromCamera(this.ndc, cam);
     this.raycaster.ray.intersectPlane(this.groundPlane, this.groundPoint);
@@ -1911,6 +1924,7 @@ export class WorldScene implements GameScene, RuntimeView {
     try {
       const raw = JSON.parse(localStorage.getItem(this.beltKey()) ?? '{}') as Partial<Record<BrewSlot, string>>;
       for (const slot of BREW_SLOTS) this.belt[slot] = raw[slot] && BREWS[raw[slot]!]?.slot === slot ? raw[slot]! : null;
+      this.brewRev++;
     } catch { /* storage unavailable: the belt auto-fills */ }
   }
 
@@ -1918,6 +1932,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const b = BREWS[id];
     if (!b) return;
     this.belt[b.slot] = id;
+    this.brewRev++;
     try { localStorage.setItem(this.beltKey(), JSON.stringify(this.belt)); } catch { /* ignore */ }
     this.hud.toast(`${b.label} is on your belt: ${touchNow() ? 'tap its slot on the left' : `press ${BREW_KEYS[b.slot].toUpperCase()}`} to drink it`, 'good');
   }
@@ -1926,6 +1941,25 @@ export class WorldScene implements GameScene, RuntimeView {
   private brewTray() {
     const now = this.now;
     const touch = touchNow();
+    // The tray's text only changes when the bag or belt changes, a brew starts or ends, or a timer ticks into a new
+    // second / eighth: rebuild then, hand back the same objects otherwise (no per-frame Object.keys + tooltip strings).
+    const cdLeft0 = Math.max(0, this.flaskCdUntil - now);
+    let sig = `${this.brewRev}|${touch}|${Math.ceil(cdLeft0 / 125)}`;
+    for (const slot of BREW_SLOTS) {
+      const act = this.player.brews[slot];
+      if (act && now < act.until) sig += `|${act.id}:${Math.ceil((act.until - now) / 1000)}:${Math.round(Math.min(1, (act.until - now) / ((BREWS[act.id]?.seconds ?? 1) * 1000)) * 8)}`;
+      else sig += '|-';
+    }
+    if (this.brewTrayCache && this.brewTrayCache.sig === sig) return this.brewTrayCache.tray;
+    const tray = this.buildBrewTray(now, touch);
+    this.brewTrayCache = { sig, tray };
+    return tray;
+  }
+
+  private brewRev = 0;
+  private brewTrayCache: { sig: string; tray: HudFrame['brews'] } | null = null;
+
+  private buildBrewTray(now: number, touch: boolean) {
     const heal = (() => {
       const id = healPick((f) => this.inventory.count(f));
       const total = HEAL_ORDER.reduce((n, f) => n + this.inventory.count(f), 0);
@@ -4704,6 +4738,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private enterArea(area: AreaId) {
     this.area = area;
     perfNote(`area ${area}`);
+    // Loading frames are slow for reasons that pass: the resolution governor stands down for a few seconds.
+    getRuntime().resolution.hold();
     // From here on new bodies compile their shaders and upload textures before they appear (graphics/warmModel.ts).
     setWarmContext({ renderer: getRuntime().renderer, camera: this.rig.camera, scene: this.scene });
     this.cancelPreload?.();
@@ -4828,8 +4864,25 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private lastMapDraw = 0;
+  private lastHudAt = -1e9;
   private updateHud(now: number) {
     const p = this.player;
+    // Timers that must tick every frame stay out of the throttle: the Kill Chain break and the monk's bell beat.
+    const broke = this.chain.tick(now);
+    if (broke >= CHAIN.reportAt) {
+      audio.play('chainBreak');
+      this.floating.spawn(this.player.x, 2.6, this.player.z, `Chain broken: ${broke}`, 'info');
+    }
+    if (this.discipline.family === 'monk' && p.alive) {
+      const beat = Math.floor(now / 1200);
+      if (beat !== this.lastMonkBeat) {
+        this.lastMonkBeat = beat;
+        audio.play('tollSmall', p.x, p.z, 0.18);
+      }
+    }
+    // The readouts redraw at ~20 Hz (cooldown sweeps, bars and counters don't need 60); the DOM is only touched when a value changed.
+    if (!hudDue(now, this.lastHudAt, HUD_INTERVAL_MS)) return;
+    this.lastHudAt = now;
     const loc = this.progression.local;
     const hover = this.hover;
     let target: HudFrame['target'] = null;
@@ -4877,20 +4930,7 @@ export class WorldScene implements GameScene, RuntimeView {
           : { text: OFFLINE ? 'Offline save ✓' : 'Saved ✓', warn: false };
     this.watchConnection(saveText.warn);
 
-    if (this.discipline.family === 'monk' && p.alive) {
-      const beat = Math.floor(now / 1200);
-      if (beat !== this.lastMonkBeat) {
-        this.lastMonkBeat = beat;
-        audio.play('tollSmall', p.x, p.z, 0.18);
-      }
-    }
-
-    // Kill Chain readout; a long chain that breaks is remembered with a low thud.
-    const broke = this.chain.tick(now);
-    if (broke >= CHAIN.reportAt) {
-      audio.play('chainBreak');
-      this.floating.spawn(this.player.x, 2.6, this.player.z, `Chain broken: ${broke}`, 'info');
-    }
+    // Kill Chain readout (the chain itself ticked above).
     const chainTier = this.chain.tier;
     this.hud.setChain(this.chain.active && p.alive
       ? { count: this.chain.count, name: chainTier?.name ?? 'Chain', bonus: chainTier?.bonus ?? 0, frac: this.chain.frac(now), tier: chainTier ? CHAIN.tiers.indexOf(chainTier) + 1 : 0 }

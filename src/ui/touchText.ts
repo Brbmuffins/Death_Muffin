@@ -1,8 +1,15 @@
-/** Phones and tablets, decided at the moment a card is shown (a player may switch devices). */
+/** Phones and tablets, decided when a card is shown (a player may switch devices); re-read at most twice a second. */
+let cached = false;
+let cachedAt = -1e9;
+
 export function touchNow(): boolean {
+  const t = typeof performance !== 'undefined' ? performance.now() : 0;
+  if (t - cachedAt < 500 && t >= cachedAt) return cached;
+  cachedAt = t;
   try {
-    return document.body.classList.contains('touch') || window.matchMedia('(pointer: coarse)').matches;
+    cached = document.body.classList.contains('touch') || window.matchMedia('(pointer: coarse)').matches;
   } catch {
-    return false;
+    cached = false;
   }
+  return cached;
 }
