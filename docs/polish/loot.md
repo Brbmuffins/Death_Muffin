@@ -19,7 +19,7 @@ Scope: drops, tooltips, icons, affixes, sets and legendaries, runes, bag, Vault,
 | 13 | README, Codex, LEGENDARY-SETS updated for 3, 4, 6, 7, 11 | doc | | Done. The first-hour tip text is pinned by a fixture and was left alone |
 | 14 | Gems (3), Reliquary Fragment, Covenant Seal, Tin/Bronze ingots, seeds with no plot: sell-only trade goods | medium (dead ends) | no recipe, labor or contract uses them | Open: needs a use (new content), owner decision |
 | 15 | Legacy item rows (copper bar/shard, ingots, plank_oak, flasks) have no migration in the repo, so their server stack caps cannot be diffed with the client's 99 | medium | `tools` scan: all 263 migration-defined items match | Open: diff against live `items` read-only before the next release |
-| 16 | Chest and Legs doll glyphs are identical, loot toast per pickup (8 s each, 4 max) is noisy while farming | low | screenshots | Open |
+| 16 | Chest and Legs doll glyphs are identical, loot toast per pickup (8 s each, 4 max) is noisy while farming | low | screenshots | Fixed: Legs glyph is now ‖; pickups merge into "Name ×N", commons live 3.5 s and yield first, rare+ keep 8 s and a gold edge `1b2c17e` |
 | 17 | Gold sinks end at Damage (2.0M total), Wave Speed (14k) and Legion (75k); all reset on Ascension | design | upgrades.ts | Open: no change made |
 
 Perf (rule: no frame-time or load-time cost): `LootView.update` gained one counting pass over the ground drops (tens at most). No assets load at startup (new SVGs load only when shown). Fixed-fight `graves,nave`, base a3081d6 vs branch (calls / tris / updateMs, noisy: base alone ranged 143-163 calls on graves-high): see the report. Main bundle gzip 444.94 kB -> 446.54 kB.

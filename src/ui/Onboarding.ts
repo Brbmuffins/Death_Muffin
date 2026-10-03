@@ -632,6 +632,11 @@ const tipsKey = (characterId: number) => `dm_tips_v1_${characterId}`;
 const POSITION_KEY = 'dm_counsel_position_v1';
 const TIP_IDS = Object.keys(TIPS) as TipId[];
 
+/** The queue without the tips whose context has gone (see Onboarding.stale). */
+export function dropStale<T extends { id: string }>(queue: T[], stale: (id: string) => boolean): T[] {
+  return queue.some((t) => stale(t.id)) ? queue.filter((t) => !stale(t.id)) : queue;
+}
+
 export class Onboarding {
   private seen = new Set<TipId>();
   private queue: QueuedTip[] = [];
@@ -644,6 +649,11 @@ export class Onboarding {
   private pumpTimer = 0;
   /** What the scene is busy with right now (a fight, a conversation, a banner, an open panel); calm tips wait it out. */
   busy: () => Busy = () => NOT_BUSY;
+  /**
+   * True when a tip's context no longer holds (the "first thrall" card with no thrall alive after a respawn). A queued or
+   * returning card that is stale is dropped; it was not marked seen, so it comes back the next time its moment truly arrives.
+   */
+  stale: (id: TipId) => boolean = () => false;
   private el: HTMLDivElement | null = null;
   private timers = new Set<number>();
   private hideTimer = 0;
@@ -712,7 +722,7 @@ export class Onboarding {
     this.cancel(this.pumpTimer);
     this.pumpTimer = 0;
     if (!settings.tips) return;
-    this.queue = prune(this.queue, this.clock());
+    this.queue = dropStale(prune(this.queue, this.clock()), (id) => this.stale(id as TipId));
     if (this.el && this.shown && this.shownEntry) {
       const s = this.cadence();
       const waiting = pickNext(this.queue, this.cadence({ lastClosedAt: -Infinity }));
@@ -740,7 +750,7 @@ export class Onboarding {
       this.seen.delete(entry.id as TipId);
       for (const extra of ALSO_SEEN[entry.id as TipId] ?? []) this.seen.delete(extra);
       this.persist();
-      this.queue.unshift({ ...entry, queuedAt: this.clock() });
+      if (!this.stale(entry.id as TipId)) this.queue.unshift({ ...entry, queuedAt: this.clock() });
     }
     this.dismiss();
   }

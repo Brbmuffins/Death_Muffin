@@ -815,6 +815,9 @@ button { font-family: inherit; }
 .hud-nodetip .spent { color: var(--cw-bone-400, #8c8478); font-style: italic; }
 .hud-toast.err { border-color: color-mix(in srgb, var(--cw-danger) 60%, transparent); }
 .hud-toast.good { border-color: color-mix(in srgb, var(--cw-spell-400) 70%, transparent); }
+/* Pickups: commons are a quiet, short line; rare and better keep the full size and a gold edge. */
+.hud-toast.loot.minor { padding: 4px 12px; font-size: 13px; color: var(--cw-bone-200); border-color: var(--cw-border-strong); }
+.hud-toast.loot.major { border-color: #e2c98f; color: #f1e2b8; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(-6px); } }
 @keyframes toast-out { to { opacity: 0; transform: translateY(-6px); } }
 
