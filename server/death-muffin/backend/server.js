@@ -746,7 +746,11 @@ app.post('/api/character/save-progress', requireJWT, async (req, res) => {
   try {
     const char = await ownedCharacter(req, res, characterId);
     if (!char) return;
-    const bounded = (value, fallback, min, max) => Number.isFinite(Number(value)) && value !== undefined ? Math.min(max, Math.max(min, Math.trunc(Number(value)))) : fallback;
+    // Only a number (or a non-blank numeric string) is a value: Number(null), Number(''), Number([]) and Number(false) are all 0 and used to wipe the field.
+    const bounded = (value, fallback, min, max) => {
+      const n = typeof value === 'number' ? value : typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN;
+      return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.trunc(n))) : fallback;
+    };
     const next = {
       level: bounded(req.body.level, char.level, 1, 255), xp: bounded(req.body.xp, char.experience, 0, 2147483647), gold: bounded(req.body.gold, char.gold, 0, 2147483647),
       stat_str: bounded(req.body.stat_str, char.stat_str, 0, 65535), stat_agi: bounded(req.body.stat_agi, char.stat_agi, 0, 65535),

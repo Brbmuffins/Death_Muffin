@@ -82,3 +82,19 @@ test('gold/adjust: staff may credit, anyone may spend, nobody can go below zero 
   const spent = await loadServer({ pool: player.pool }).call('POST /api/gold/adjust', { body: { characterId: 1, amount: -40 } });
   assert.equal(spent.json.data.gold, 60, 'spending is open to everyone');
 });
+
+// ── POST /api/character/save-progress ───────────────────────────────────────────────────────────────────────────────────
+
+test('save-progress: a null, blank or non-numeric field keeps the stored value instead of zeroing it', async () => {
+  // JSON.stringify turns a NaN into null, and Number(null) / Number('') / Number([]) are all 0.
+  const f = fakePool({ character: { level: 7, experience: 42, gold: 900, stat_str: 6 }, onQuery: (sql) => {
+    if (/^SELECT \* FROM characters WHERE id = \?$/.test(sql)) return [[{ ...f.owned }]];
+    if (/^UPDATE characters SET level/.test(sql)) return [{ affectedRows: 1 }];
+  } });
+  const srv = loadServer({ pool: f.pool });
+  const r = await srv.call('POST /api/character/save-progress', { body: { characterId: 1, level: 7, xp: null, gold: '', stat_str: [], stat_agi: false, stat_int: 'abc' } });
+  assert.equal(r.json.success, true);
+  const update = f.log.find((q) => /^UPDATE characters SET level/.test(q.sql));
+  // level, experience, gold, str, agi, int, vit, id
+  assert.deepEqual(update.params, [7, 42, 900, 6, 5, 5, 10, 1]);
+});
