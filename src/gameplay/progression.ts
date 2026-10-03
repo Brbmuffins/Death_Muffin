@@ -591,7 +591,19 @@ export class Progression {
   async flush(keepalive = false): Promise<void> {
     window.clearTimeout(this.timer);
     this.timer = 0;
-    if (!this.dirtyServer || this.inFlight) return;
+    if (!this.dirtyServer) return;
+    if (this.inFlight) {
+      // The tab is closing and a save is already out (it may be cut off): push the newest gains now rather than skip them.
+      if (!keepalive) return;
+      this.dirtyServer = false;
+      try {
+        await saveProgress(this.payload(), true);
+        await this.flushNecro(true);
+      } catch {
+        this.dirtyServer = true;
+      }
+      return;
+    }
     this.inFlight = true;
     this.dirtyServer = false;
     this.saveState = 'saving';

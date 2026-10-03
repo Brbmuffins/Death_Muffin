@@ -99,4 +99,26 @@ describe('sync fixes: progression', () => {
     expect(p.local.boons.vigil).toBe(1);
     p.dispose();
   });
+
+  it('the final keepalive flush on page close still sends gains made while a save was in flight', async () => {
+    const p = await serverProgression();
+    let release!: () => void;
+    vi.mocked(saveProgress).mockImplementationOnce(() => new Promise((resolve) => { release = () => resolve({ success: true } as never); }));
+    p.addGold(5);
+    const first = p.flush(); // in flight, carrying 5 gold
+    await settle();
+    p.addGold(40);
+    p.recordKill('graves');
+    const closing = p.flush(true); // pagehide
+    await settle();
+    const calls = vi.mocked(saveProgress).mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[1][0]).toMatchObject({ gold: 145 });
+    expect(calls[1][1]).toBe(true);
+    expect(necroApi.save).toHaveBeenCalledWith(9, expect.objectContaining({ areaKills: { graves: 1 } }), true);
+    release();
+    await releaseNewestFirst();
+    await Promise.all([first, closing]);
+    p.dispose();
+  });
 });
