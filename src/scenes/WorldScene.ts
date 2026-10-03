@@ -240,6 +240,21 @@ function doorDirection(d: DoorDef): string {
 
 
 type PanelKey = 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'salvage' | 'sheet' | 'legion' | 'atlas';
+/**
+ * Keys a focused form control needs for itself: a <select> uses the arrows/Enter/Space/Home/End, and a button or link the
+ * player reached with the keyboard (:focus-visible, so never one they just clicked) is activated by Enter/Space. Without
+ * this the hotkey handler swallowed them (preventDefault on arrows and Space, Enter sent focus to the chat box), so
+ * Settings could not be driven from the keyboard. Esc and the letter hotkeys still pass through.
+ */
+export function focusOwnsKey(el: Element | null, k: string): boolean {
+  if (!(el instanceof HTMLElement)) return false;
+  if (el instanceof HTMLSelectElement) return ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'enter', ' ', 'home', 'end', 'pageup', 'pagedown'].includes(k);
+  if ((k === 'enter' || k === ' ') && el.matches('button, a[href], summary, [role="button"]')) {
+    try { return el.matches(':focus-visible'); } catch { return false; }
+  }
+  return false;
+}
+
 export class WorldScene implements GameScene, RuntimeView {
   readonly scene = new THREE.Scene();
   readonly bloom = { strength: 0.75, radius: 0.55, threshold: 0.85 };
@@ -1504,6 +1519,7 @@ export class WorldScene implements GameScene, RuntimeView {
       if (!this.ready) return;
       if (document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement) return;
       const k = e.key.toLowerCase();
+      if (focusOwnsKey(document.activeElement, k)) return;
       if (/^[1-4]$/.test(k)) this.keys.add(k);
       if (k === 'enter') {
         this.hud.focusChat();
