@@ -110,7 +110,13 @@ interface Npc {
   isNew: boolean;
   /** Seconds until the next emphatic gesture while talking (models with a `talk2` clip only). */
   gestureT: number;
+  /** Seconds of animation time not yet handed to the mixer (distance LOD). */
+  animDt: number;
 }
+
+/** Figures nearer than this animate every frame; up to NPC_LOD_FAR ~24 Hz; beyond that ~10 Hz. */
+const NPC_LOD_NEAR = 12;
+const NPC_LOD_FAR = 24;
 
 export class NpcViews {
   readonly group = new THREE.Group();
@@ -146,7 +152,7 @@ export class NpcViews {
       glow.renderOrder = 3;
       root.add(plate, bang, glow);
       this.group.add(root);
-      this.npcs.set(id, { id, c: null, root, plate, bang, glow, yaw: def.rest, headY, talking: false, isNew: false, gestureT: 6 });
+      this.npcs.set(id, { id, c: null, root, plate, bang, glow, yaw: def.rest, headY, talking: false, isNew: false, gestureT: 6, animDt: 0 });
     }
   }
 
@@ -215,7 +221,14 @@ export class NpcViews {
         n.c.playOnce('talk2');
       }
       if (n.c?.loaded) n.c.setLoop(n.talking && n.c.has('talk') ? 'talk' : 'idle', 1);
-      n.c?.update(dt);
+      // Animation LOD: a figure across the yard animates at ~24 Hz, a distant one at ~10 Hz (skipped time accumulates).
+      n.animDt += dt;
+      const every = n.talking || dist < NPC_LOD_NEAR ? 0 : dist < NPC_LOD_FAR ? 1 / 24 : 1 / 10;
+      if (n.animDt >= every) {
+        if (n.c) n.c.steadyEvery = every === 0 ? 1 : 2;
+        n.c?.update(n.animDt);
+        n.animDt = 0;
+      }
       // Turn toward the player when close (or while talking), back to rest otherwise.
       const want = n.talking || dist < NPC_LOOK_RANGE ? Math.atan2(px - def.x, pz - def.z) : def.rest;
       let diff = want - n.yaw;

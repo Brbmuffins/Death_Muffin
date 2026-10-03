@@ -11,6 +11,7 @@ for (const file of process.argv.slice(2)) {
   const nt = r.census0.thralls;
   console.log(`== ${file}: ${r.area} enemies ${r.census0.enemies} thralls ${nt} corpses ${r.census0.corpses}`);
   console.log(`nonGL JS ${per(js)} ms/frame (busy ${per(busy)}, GL compile ${per(gl)})  per-thrall ${nt ? (js / frames / nt).toFixed(3) : '-'} ms  heap growth ${(r.metricsDelta.JSHeapUsedSize / 1e6).toFixed(1)} MB/${frames} fr`);
+  console.log(`CPU thread time ${(r.metricsDelta.ThreadTime * 1000 / frames).toFixed(3)} ms/frame   allocated ${r.allocBytes ? (r.allocBytes / frames / 1024).toFixed(1) : '?'} KB/frame`);
   console.log(`GC self ${per(pick(/garbage collector/i))} (${(pick(/garbage collector/i) / js * 100).toFixed(1)}% of nonGL)  updateMatrixWorld self ${per(pick(/^updateMatrixWorld/))} (${(pick(/^updateMatrixWorld/) / js * 100).toFixed(1)}%)  (program) ${per(pick(/^\(program\)/))}`);
   if (r.topIncl) {
     console.log('inclusive ms/frame:');
