@@ -154,3 +154,28 @@ describe('sync fixes: gathering', () => {
     await Promise.all([first, closing]);
   });
 });
+
+describe('sync fixes: inventory', () => {
+  it('the page-close flush is a keepalive request and still goes out when a save is already in flight', async () => {
+    vi.stubGlobal('window', { setTimeout, clearTimeout });
+    const { saveInventory } = await import('../../net/api');
+    const { Inventory } = await import('../loot');
+    const releases: Array<() => void> = [];
+    vi.mocked(saveInventory).mockReset().mockImplementation(() => new Promise((resolve) => releases.push(() => resolve([] as never))) as never);
+    const inv = new Inventory(7);
+    inv.add({ item_id: 'flask_hp_minor', quantity: 1 });
+    const first = inv.flush(); // in flight with 1 flask
+    await settle();
+    inv.add({ item_id: 'flask_hp_minor', quantity: 2 }); // picked up just before the tab closes
+    const closing = inv.flush(true);
+    await settle();
+    const calls = vi.mocked(saveInventory).mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[1][3]).toBe(true);
+    expect(calls[1][1]).toEqual(expect.arrayContaining([expect.objectContaining({ item_id: 'flask_hp_minor', quantity: 3 })]));
+    releases.forEach((r) => r());
+    await Promise.all([first, closing]);
+    inv.dispose();
+    vi.unstubAllGlobals();
+  });
+});

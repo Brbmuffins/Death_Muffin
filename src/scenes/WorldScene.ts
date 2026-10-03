@@ -753,7 +753,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.scope.add(this.inventory.onChange(() => { this.brewRev++; }));
     this.scope.on(window, 'pagehide', () => {
       void this.progression.flush(true);
-      void this.inventory.flush();
+      void this.inventory.flush(true);
       void this.gathering.flush(true);
       if (this.worldCode) saveRejoin(this.worldCode); // refreshes the 10-minute window for a reload rejoin
     });
