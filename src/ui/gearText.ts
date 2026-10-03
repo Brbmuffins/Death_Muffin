@@ -130,3 +130,15 @@ export function setTooltipHtml(ctx: StatContext | null, slots: readonly Inventor
   }).join('');
   return `<div class="gs-set"><div class="hd"><span class="nm">${esc(now.setName)}</span><span class="ct${now.worn >= 2 ? ' on' : ''}">${now.worn} / 5 worn${gain ? ` <em>\u2192 ${after.worn} with this</em>` : ''}</span></div>${lines}</div>`;
 }
+
+/**
+ * "Sell all junk" and "Salvage all below rare" must never take a piece you would be glad to wear: one that is an upgrade for this
+ * character (an empty slot counts) or completes a set bonus. Without a character context nothing is spared.
+ */
+export function keepsForYou(ctx: StatContext | null): ((slot: InventorySlot) => boolean) | undefined {
+  if (!ctx) return undefined;
+  return (slot) => {
+    const v = itemVerdict(ctx, slot);
+    return !!v && (v.kind === 'upgrade' || v.sets.gained.length > 0);
+  };
+}

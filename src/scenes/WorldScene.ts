@@ -1027,6 +1027,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.dialogue = new DialoguePanel(this.root, this.guidance, () => this.guidanceState(), { onChange: (npc) => { this.npcViews.setTalking(npc); this.guideDirty = true; }, sound: () => audio.play('click') });
     this.vaultPanel = new VaultPanel(this.root, this.character.id, this.inventory, this.locks, () => this.onboarding.show('vault'));
     this.salvagePanel = new SalvagePanel(this.root, this.character.id, this.inventory, this.locks, this.skills, (r) => this.onSalvaged(r), () => this.onboarding.show('salvage'));
+    this.salvagePanel.statContext = this.statContext;
     this.settingsPanel = new SettingsPanel(
       this.root,
       () => this.onLeave(),

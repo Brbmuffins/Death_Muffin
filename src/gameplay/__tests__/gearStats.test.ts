@@ -273,3 +273,23 @@ describe('lookingFor', () => {
     expect(lookingFor(ctx([], 'hollow_knight')).weapons).toBeNull();
   });
 });
+
+describe('bulk sell and salvage spare what you would wear', () => {
+  it('Sell all junk and Salvage all below rare skip an upgrade (an empty slot counts) and take the rest', async () => {
+    const { keepsForYou } = await import('../../ui/gearText');
+    const { junkSlots, salvageBelowRare } = await import('../itemLocks');
+    const helmet = { ...item('helm_x', 0, 'armor_head', { stat_vit: 6 }), sell_value: 5 };
+    const wornHelm = worn('helm_good', 'armor_head', 100, { stat_vit: 20 });
+    const spareHelm = { ...item('helm_poor', 1, 'armor_head', { stat_vit: 1 }), sell_value: 5 };
+    const noLock = { isLocked: () => false };
+    // Empty head slot: the first helm is an upgrade, so it is kept.
+    const empty = ctx([helmet]);
+    expect(junkSlots([helmet], noLock, keepsForYou(empty)).map((s) => s.item_id)).toEqual([]);
+    expect(salvageBelowRare([helmet], noLock, keepsForYou(empty)).map((s) => s.item_id)).toEqual([]);
+    // A better helm is worn: the weak spare is junk again.
+    const full = ctx([wornHelm, spareHelm]);
+    expect(junkSlots([wornHelm, spareHelm], noLock, keepsForYou(full)).map((s) => s.item_id)).toEqual(['helm_poor']);
+    // No context (character not ready): the old behaviour, nothing spared.
+    expect(junkSlots([helmet], noLock, keepsForYou(null)).map((s) => s.item_id)).toEqual(['helm_x']);
+  });
+});
