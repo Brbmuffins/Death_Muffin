@@ -13,6 +13,8 @@ import { applyOcclusion } from './occlusion';
 import { Water } from './Water';
 import { Atmosphere } from './Atmosphere';
 import { FEN_HUMMOCKS } from '../content/fen';
+import { BuildQueue, buildOrder, loadProgress, rectDistance, requiredAreas, visibleAreas } from './areaStreaming';
+import { UploadQueue, materialTextures } from './warmModel';
 
 /** `glow` (a colour): a self-lit share of the texture (emissive), for floors so dark they vanish even under bright lights. */
 const FLOOR_TEX: Record<Theme, { url: string; tile: number; color: number; rough: number; glow?: number }> = {
@@ -53,6 +55,8 @@ export interface LightSource {
   pool?: number;
   lit: boolean;
   brazier: boolean;
+  /** The area this light belongs to (hidden areas' lights are skipped); Depths lights carry none. */
+  area?: AreaId;
 }
 
 // ---------------------------------------------------------------------------
@@ -236,9 +240,16 @@ function silhouetteGeometry(sil: Silhouette, rand: () => number): THREE.BufferGe
 const PROP_LIFT: Partial<Record<PropId, number>> = { alch_herb_bundle: 3.2, alch_drying_rack: 1.9 };
 /** Side (m) of the culling cells a prop batch is split into; well under the 60 m shadow camera and the view footprint. */
 const PROP_CELL = 12;
+/** Props further than this from the hero (cell edge) stop casting moon shadows: the view reaches ~30 m sideways at the widest zoom, ~20 m ahead. */
+const SHADOW_RANGE = 32;
 
 export class PropBatch {
   readonly group = new THREE.Group();
+  /** Resolves once the generated GLB (if any) has replaced the stand-in, so a warm-up can compile the real materials. Never rejects. */
+  readonly ready: Promise<void>;
+  /** The culling cells' meshes with the sphere that bounds them, so shadow casting can follow the player (updateShadows). */
+  private cells: { mesh: THREE.InstancedMesh; x: number; z: number; r: number }[] = [];
+  private shadowFocus: { x: number; z: number; range: number } | null = null;
   constructor(
     private id: PropId,
     private placements: Placement[],
@@ -252,7 +263,7 @@ export class PropBatch {
     const exists = id.startsWith('prop_node_')
       ? fetch(url, { method: 'HEAD' }).then((r) => r.ok && !(r.headers.get('content-type') ?? '').includes('text/html')).catch(() => false)
       : Promise.resolve(true);
-    void exists.then((ok) => (ok ? assets.model(url, PROPS[id].height) : null)).then((t) => {
+    this.ready = exists.then((ok) => (ok ? assets.model(url, PROPS[id].height) : null)).then((t) => {
       if (!t) return;
       t.scene.updateMatrixWorld(true);
       const bounds = new THREE.Box3().setFromObject(t.scene);
@@ -279,7 +290,22 @@ export class PropBatch {
         this.group.clear();
         this.build(parts, 1);
       }
-    });
+    }).catch(() => undefined);
+  }
+
+  private castsAt(x: number, z: number, r: number) {
+    const f = this.shadowFocus;
+    return !f || Math.hypot(x - f.x, z - f.z) - r <= f.range;
+  }
+
+  /** Only the cells within `range` m of the focus cast shadows: beyond that they are off screen, but still cost the moon's shadow pass. */
+  updateShadows(x: number, z: number, range: number) {
+    this.shadowFocus = { x, z, range };
+    if (!this.tall) return;
+    for (const c of this.cells) {
+      const on = this.castsAt(c.x, c.z, c.r);
+      if (c.mesh.castShadow !== on) c.mesh.castShadow = on;
+    }
   }
 
   private build(parts: { geometry: THREE.BufferGeometry; material: THREE.Material; local: THREE.Matrix4 }[], _v: number) {
@@ -291,6 +317,7 @@ export class PropBatch {
     // One InstancedMesh per part *per cell*: culling is per mesh, so an area-wide batch was drawn
     // (and shadow-cast) whole whenever any one of its props was in view (~5x overdraw, BLENDER-AUDIT §1.2).
     const cells = new Map<string, Placement[]>();
+    this.cells = [];
     for (const pl of this.placements) {
       const key = `${Math.floor(pl.x / PROP_CELL)},${Math.floor(pl.z / PROP_CELL)}`;
       const list = cells.get(key);
@@ -309,9 +336,12 @@ export class PropBatch {
           m.compose(p, q, s).multiply(part.local);
           inst.setMatrixAt(i, m);
         });
-        inst.castShadow = this.tall;
         inst.receiveShadow = true;
         inst.computeBoundingSphere();
+        const bs = inst.boundingSphere!;
+        this.cells.push({ mesh: inst, x: bs.center.x, z: bs.center.z, r: bs.radius });
+        // Tall props only (low clutter never casts); and only near the player once a focus is known (updateShadows).
+        inst.castShadow = this.tall && this.castsAt(bs.center.x, bs.center.z, bs.radius);
         this.group.add(inst);
       }
     }
@@ -407,6 +437,16 @@ const FLAME_FS = /* glsl */ `
   }
 `;
 
+interface Chunk {
+  id: AreaId;
+  group: THREE.Group;
+  /** Build steps still to run. */
+  left: number;
+  built: boolean;
+  batches: PropBatch[];
+  warm: Promise<void> | null;
+}
+
 /**
  * Everything static in the world: floors, walls, props, windows, gates, candle
  * flames, light pools and ground mist. Registers colliders with the Nav.
@@ -415,8 +455,6 @@ export class WorldView {
   readonly group = new THREE.Group();
   readonly lightSources: LightSource[] = [];
   private gates: Gate[] = [];
-  private flames!: THREE.Points;
-  private flameGroups: (string | undefined)[] = [];
   private pointLights: THREE.PointLight[] = [];
   private lightAssignT = 0;
   private time = 0;
@@ -430,40 +468,255 @@ export class WorldView {
   /** The Fen's dry hummocks: one instanced mound and one rim ring, rescaled while the Mire Mother floods the marsh. */
   private hummocks: { mound: THREE.InstancedMesh; rim: THREE.InstancedMesh; cur: number; target: number } | null = null;
 
+  /** Streaming state: one group per area, built a few steps at a time and shown only near the player (graphics/areaStreaming.ts). */
+  private chunks = new Map<AreaId, Chunk>();
+  private queue = new BuildQueue();
+  /** Always drawn: the ground beyond the walls, door floors, paths, gates, silhouettes, markers. */
+  private fixed = new THREE.Group();
+  private wanted = new Set<AreaId>();
+  private wantedKey = '';
+  private prioArea: AreaId | null = null;
+  private shadowAt: { x: number; z: number } | null = null;
+  private shadowDirty = true;
+  private primeStats = { buildMs: 0, totalMs: 0 };
+  private warmCtx: { renderer: THREE.WebGLRenderer; camera: THREE.Camera } | null = null;
+  private uploads: UploadQueue | null = null;
+  private floorMats = new Map<Theme, THREE.MeshStandardMaterial>();
+  private flameData = new Map<AreaId, { pos: number[]; phase: number[]; groups: (string | undefined)[] }>();
+  private flameMat!: THREE.ShaderMaterial;
+  private flamePoints: { points: THREE.Points; groups: (string | undefined)[] }[] = [];
+  private candleOff = new Set<string>();
+  private floodTarget = 1;
+  private poolLists = new Map<string, LightSource[]>();
+  private propLists = new Map<AreaId, Map<string, Placement[]>>();
+
   constructor(
     scene: THREE.Scene,
     private layout: WorldLayout,
     nav: Nav,
     private effects: Effects,
   ) {
+    this.scene = scene;
     scene.add(this.group);
-    this.buildFloors();
-    this.buildWalls(nav);
-    this.buildProps(nav);
+    this.group.add(this.fixed);
+    this.buildFixedFloors();
+    this.registerWalls(nav);
+    this.registerProps(nav);
     // Reuse the five existing dynamic lights for a warm workshop beacon.
     const sawpit = AREAS.acre.interactables.find(it => it.kind === 'sawpit')!;
-    this.lightSources.push({ x: sawpit.x, y: 1.6, z: sawpit.z, color: 0xffd29a, intensity: 3, distance: 7, lit: true, brazier: false });
+    this.lightSources.push({ x: sawpit.x, y: 1.6, z: sawpit.z, color: 0xffd29a, intensity: 3, distance: 7, lit: true, brazier: false, area: 'acre' });
     this.effects.decal({ tex: fx.ring(), color: 0xeac58b, x: sawpit.x, z: sawpit.z, r: 1.4, duration: 1e9, persistent: true, opacity: 0.3, fadeIn: 0.01 });
-    this.buildWindows();
     this.buildDecals();
-    this.buildWingFloor();
     this.buildInteractableMarkers();
     this.buildGates();
-    this.buildFlames();
+    this.buildFlameData();
     this.buildMist();
     this.buildSilhouettes();
-    this.buildHummocks();
     this.water = new Water([...layout.water, ...layout.bog, ...layout.ponds], layout.puddles);
-    this.group.add(this.water.mesh, this.atmosphere.points);
+    this.fixed.add(this.water.mesh, this.atmosphere.points);
     for (let i = 0; i < 5; i++) {
       const l = new THREE.PointLight(0xffb46b, 0, 8, 1.8);
       this.group.add(l);
       this.pointLights.push(l);
     }
+    this.initChunks();
+    this.focusPriority('acre');
+  }
+
+  private scene: THREE.Scene;
+
+  // -------------------------------------------------------------------------
+  // Streaming: build and show only the areas near the player
+  // -------------------------------------------------------------------------
+
+  /** The renderer the idle warm-up compiles shaders and uploads textures on (set once the scene is lit). */
+  attachRenderer(renderer: THREE.WebGLRenderer, camera: THREE.Camera) {
+    this.warmCtx = { renderer, camera };
+    this.uploads = new UploadQueue((t) => renderer.initTexture(t));
+  }
+
+  private initChunks() {
+    for (const id of AREA_ORDER) {
+      const group = new THREE.Group();
+      group.name = `area:${id}`;
+      group.visible = false;
+      group.matrixWorldAutoUpdate = false;
+      this.group.add(group);
+      const chunk: Chunk = { id, group, left: 0, built: false, batches: [], warm: null };
+      this.chunks.set(id, chunk);
+      const steps: (() => void)[] = [];
+      const r = AREAS[id].rect;
+      steps.push(() => this.buildFloor(chunk, r.x0 - 0.8, r.z0 - 0.8, r.x1 + 0.8, r.z1 + 0.8, AREAS[id].theme));
+      for (const [key, list] of this.propLists.get(id) ?? []) {
+        steps.push(() => {
+          const batch = new PropBatch(list[0].prop, list, PROPS[list[0].prop].height > 1.5);
+          chunk.batches.push(batch);
+          group.add(batch.group);
+        });
+      }
+      const windows = this.layout.windows.filter((w) => this.windowArea(w.x, w.z) === id);
+      if (windows.length) steps.push(() => this.buildWindows(chunk, windows));
+      if (this.poolLists.get(id)?.length) steps.push(() => this.buildPools(chunk, this.poolLists.get(id)!, id));
+      if (this.flameData.get(id)) steps.push(() => this.buildFlames(chunk, this.flameData.get(id)!));
+      if (id === 'alchemist_wing') steps.push(() => this.buildWingFloor(group));
+      if (id === 'fen') steps.push(() => this.buildHummocks(group));
+      chunk.left = steps.length;
+      steps.forEach((run, i) => {
+        this.queue.add({
+          prio: 1e6 + i,
+          tag: id,
+          run: () => {
+            run();
+            if (--chunk.left === 0) this.finishChunk(chunk);
+          },
+        });
+      });
+    }
+  }
+
+  /** The area a wall-mounted window belongs to: the nearest area rectangle. */
+  private windowArea(x: number, z: number): AreaId {
+    let best: AreaId = AREA_ORDER[0];
+    let bd = Infinity;
+    for (const id of AREA_ORDER) {
+      const d = rectDistance(AREAS[id].rect, x, z);
+      if (d < bd) (bd = d, (best = id));
+    }
+    return best;
+  }
+
+  private finishChunk(chunk: Chunk) {
+    chunk.built = true;
+    // Static from here on: freeze local matrices so a drawn area costs no per-frame matrix work, a hidden one none at all.
+    chunk.group.traverse((o) => {
+      o.updateMatrix();
+      o.matrixAutoUpdate = false;
+    });
+    chunk.group.updateMatrixWorld(true);
+    this.applyShown(chunk);
+    void this.chunkReady(chunk);
+  }
+
+  private applyShown(chunk: Chunk) {
+    const show = chunk.built && this.wanted.has(chunk.id);
+    chunk.group.visible = show;
+    chunk.group.matrixWorldAutoUpdate = show;
+  }
+
+  /** Orders the remaining build steps nearest-first around `area` (door graph). */
+  private focusPriority(area: AreaId) {
+    if (this.prioArea === area) return;
+    this.prioArea = area;
+    const rank = new Map(buildOrder(area).map((id, i) => [id, i] as const));
+    let step = 0;
+    this.queue.reprioritise((t) => (rank.get(t.tag as AreaId) ?? 99) * 1000 + step++);
+  }
+
+  /** Builds an area's remaining steps right now (it is about to be on screen). */
+  private ensureBuilt(id: AreaId) {
+    const chunk = this.chunks.get(id)!;
+    if (!chunk.built) this.queue.runWhere((t) => t.tag === id);
+  }
+
+  private chunkReady(chunk: Chunk): Promise<void> {
+    if (!chunk.warm) {
+      chunk.warm = Promise.all(chunk.batches.map((b) => b.ready))
+        .then(() => this.compileChunk(chunk))
+        .catch((err) => console.warn('[graphics] area warm failed', err));
+    }
+    return chunk.warm;
+  }
+
+  /** Compiles the shader programs and uploads the textures an area's real materials need, so showing it later costs no first-draw stall. */
+  private async compileChunk(chunk: Chunk) {
+    const ctx = this.warmCtx;
+    if (!ctx || (typeof document !== 'undefined' && document.hidden)) return;
+    const mats = new Set<THREE.Material>();
+    chunk.group.traverse((o) => {
+      const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+      if (Array.isArray(m)) m.forEach((x) => mats.add(x));
+      else if (m) mats.add(m);
+    });
+    // compile() only looks at visible objects: show the group for the synchronous traversal, then put it back.
+    const was = chunk.group.visible;
+    chunk.group.visible = true;
+    let compiled: Promise<unknown> = Promise.resolve();
+    try {
+      compiled = ctx.renderer.compileAsync(chunk.group, ctx.camera, this.scene);
+    } finally {
+      chunk.group.visible = was;
+    }
+    const q = this.uploads;
+    await Promise.all([compiled, ...(q ? [...materialTextures(mats)].map((t) => q.enqueue(t)) : [])]);
+  }
+
+  /**
+   * Builds and warms the starting area and its door neighbours, then resolves (capped at `capMs`: a slow network never traps the player).
+   * `onProgress` gets 0..1. The rest of the world keeps building a little each frame afterwards (update()).
+   */
+  async prime(start: AreaId, at: { x: number; z: number }, onProgress?: (f: number) => void, capMs = 8000): Promise<void> {
+    // The start area, its door neighbours, and anything else already on screen from the spawn point.
+    const ids = [...new Set([...requiredAreas(start), ...visibleAreas(at.x, at.z, start)])];
+    const need = ids.map((id) => this.chunks.get(id)!);
+    const rank = new Map(ids.map((id, i) => [id as string, i]));
+    let step = 0;
+    this.queue.reprioritise((t) => (rank.get(t.tag!) ?? 50) * 1000 + step++);
+    this.prioArea = null;
+    const t0 = performance.now();
+    const total = () => need.reduce((n, c) => n + c.left, 0);
+    const startLeft = total() + need.length;
+    while (need.some((c) => !c.built) && performance.now() - t0 < capMs) {
+      this.queue.runSlice(8);
+      onProgress?.(loadProgress(startLeft - need.length - total(), startLeft));
+      await new Promise((r) => setTimeout(r, 0));
+    }
+    this.primeStats.buildMs = Math.round(performance.now() - t0);
+    // Built; now wait for their GLBs to land and their shaders and textures to warm.
+    let warmed = 0;
+    for (const c of need) void this.chunkReady(c).then(() => warmed++);
+    while (warmed < need.length && performance.now() - t0 < capMs) {
+      onProgress?.(loadProgress(startLeft - need.length + warmed, startLeft));
+      await new Promise((r) => setTimeout(r, 30));
+    }
+    this.primeStats.totalMs = Math.round(performance.now() - t0);
+    onProgress?.(1);
+  }
+
+  /** Called every frame: draw the areas around the player, keep the rest hidden, and keep building in the background. */
+  private stream(area: AreaId | null, x: number, z: number) {
+    if (area) this.focusPriority(area);
+    const v = visibleAreas(x, z, area);
+    const key = [...v].join();
+    if (key !== this.wantedKey) {
+      this.wantedKey = key;
+      this.wanted = v;
+      // Never show a hole: an area that is about to be drawn and is not built yet is built now.
+      for (const id of v) this.ensureBuilt(id);
+      for (const c of this.chunks.values()) this.applyShown(c);
+      this.shadowDirty = true;
+    }
+    // Shadow casting follows the player (moves 2 m, or an area just came into view).
+    if (this.shadowDirty || !this.shadowAt || Math.hypot(x - this.shadowAt.x, z - this.shadowAt.z) > 2) {
+      this.shadowDirty = false;
+      this.shadowAt = { x, z };
+      for (const c of this.chunks.values()) if (c.group.visible) for (const b of c.batches) b.updateShadows(x, z, SHADOW_RANGE);
+    }
+    if (this.queue.size) this.queue.runSlice(1.5);
+  }
+
+  /** QA: which areas are built and drawn. */
+  streamStats() {
+    const built: string[] = [];
+    const shown: string[] = [];
+    for (const c of this.chunks.values()) {
+      if (c.built) built.push(c.id);
+      if (c.group.visible) shown.push(c.id);
+    }
+    return { built, shown, pending: this.queue.size, prime: this.primeStats };
   }
 
   /** The Mourning Fen's dry ground (content/fen.ts FEN_HUMMOCKS): low peat mounds with a pale teal rim, two draw calls. */
-  private buildHummocks() {
+  private buildHummocks(group: THREE.Group) {
     const n = FEN_HUMMOCKS.length;
     const mound = new THREE.InstancedMesh(
       new THREE.CylinderGeometry(0.9, 1, 0.34, 18, 1).translate(0, 0.17, 0),
@@ -477,9 +730,9 @@ export class WorldView {
       n,
     );
     rim.renderOrder = 3;
-    this.hummocks = { mound, rim, cur: 1, target: 1 };
+    this.hummocks = { mound, rim, cur: 1, target: this.floodTarget };
     this.layoutHummocks(1);
-    this.group.add(mound, rim);
+    group.add(mound, rim);
   }
 
   private layoutHummocks(k: number) {
@@ -498,6 +751,7 @@ export class WorldView {
 
   /** The marsh floods (Mire Mother phase 2/3): the dry radius eases to `k` times its calm size. Only moves while it changes. */
   setFenFlood(k: number) {
+    this.floodTarget = k;
     if (this.hummocks) this.hummocks.target = k;
   }
   /** Current eased flood scale (for QA). */
@@ -505,7 +759,42 @@ export class WorldView {
     return this.hummocks?.cur ?? 1;
   }
 
-  private buildFloors() {
+  private matFor(theme: Theme) {
+    let m = this.floorMats.get(theme);
+    if (!m) {
+      const f = FLOOR_TEX[theme];
+      const map = assets.texture(f.url, { repeat: 1 });
+      m = new THREE.MeshStandardMaterial({ map, color: f.color, roughness: f.rough, metalness: 0.05, bumpMap: map, bumpScale: 2.2 });
+      if (f.glow) {
+        m.emissive.set(f.glow);
+        m.emissiveMap = map;
+      }
+      // No roughnessMap: a per-tile gloss map clips point-light highlights to
+      // square tile shapes that bloom into glowing squares. Uniform damp stone reads better.
+      this.floorMats.set(theme, m);
+    }
+    return m;
+  }
+
+  private floorPlane(x0: number, z0: number, x1: number, z1: number, theme: Theme, y = 0) {
+    const w = x1 - x0;
+    const d = z1 - z0;
+    const geo = new THREE.PlaneGeometry(w, d).rotateX(-Math.PI / 2);
+    const uv = geo.attributes.uv as THREE.BufferAttribute;
+    const tile = FLOOR_TEX[theme].tile;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, (x0 + uv.getX(i) * w) / tile, (z0 + uv.getY(i) * d) / tile);
+    const mesh = new THREE.Mesh(geo, this.matFor(theme));
+    mesh.position.set((x0 + x1) / 2, y, (z0 + z1) / 2);
+    mesh.receiveShadow = true;
+    return mesh;
+  }
+
+  private buildFloor(chunk: Chunk, x0: number, z0: number, x1: number, z1: number, theme: Theme) {
+    chunk.group.add(this.floorPlane(x0, z0, x1, z1, theme));
+  }
+
+  /** The always-drawn ground: beyond the walls, the door thresholds and the paths (a few flat quads). */
+  private buildFixedFloors() {
     // Beyond the walls: dark earth swallowed by fog.
     const outside = new THREE.Mesh(
       new THREE.PlaneGeometry(420, 420).rotateX(-Math.PI / 2),
@@ -513,46 +802,12 @@ export class WorldView {
     );
     outside.position.set(20, -0.06, -60);
     outside.receiveShadow = true;
-    this.group.add(outside);
-
-    const mats = new Map<Theme, THREE.MeshStandardMaterial>();
-    const matFor = (theme: Theme) => {
-      let m = mats.get(theme);
-      if (!m) {
-        const f = FLOOR_TEX[theme];
-        const map = assets.texture(f.url, { repeat: 1 });
-        m = new THREE.MeshStandardMaterial({ map, color: f.color, roughness: f.rough, metalness: 0.05, bumpMap: map, bumpScale: 2.2 });
-        if (f.glow) {
-          m.emissive.set(f.glow);
-          m.emissiveMap = map;
-        }
-        // No roughnessMap: a per-tile gloss map clips point-light highlights to
-        // square tile shapes that bloom into glowing squares. Uniform damp stone reads better.
-        mats.set(theme, m);
-      }
-      return m;
-    };
-    const plane = (x0: number, z0: number, x1: number, z1: number, theme: Theme, y = 0) => {
-      const w = x1 - x0;
-      const d = z1 - z0;
-      const geo = new THREE.PlaneGeometry(w, d).rotateX(-Math.PI / 2);
-      const uv = geo.attributes.uv as THREE.BufferAttribute;
-      const tile = FLOOR_TEX[theme].tile;
-      for (let i = 0; i < uv.count; i++) uv.setXY(i, (x0 + uv.getX(i) * w) / tile, (z0 + uv.getY(i) * d) / tile);
-      const mesh = new THREE.Mesh(geo, matFor(theme));
-      mesh.position.set((x0 + x1) / 2, y, (z0 + z1) / 2);
-      mesh.receiveShadow = true;
-      this.group.add(mesh);
-    };
-    for (const id of AREA_ORDER) {
-      const r = AREAS[id].rect;
-      plane(r.x0 - 0.8, r.z0 - 0.8, r.x1 + 0.8, r.z1 + 0.8, AREAS[id].theme);
-    }
-    for (const d of DOORS) plane(d.rect.x0, d.rect.z0, d.rect.x1, d.rect.z1, 'chapter', 0.005);
-    for (const p of this.layout.paths) plane(p.x0, p.z0, p.x1, p.z1, 'nave', 0.008);
+    this.fixed.add(outside);
+    for (const d of DOORS) this.fixed.add(this.floorPlane(d.rect.x0, d.rect.z0, d.rect.x1, d.rect.z1, 'chapter', 0.005));
+    for (const p of this.layout.paths) this.fixed.add(this.floorPlane(p.x0, p.z0, p.x1, p.z1, 'nave', 0.008));
   }
 
-  private buildWalls(nav: Nav) {
+  private registerWalls(nav: Nav) {
     // Deep water (the Acre's pond) blocks feet; fishing spots sit on its shore.
     for (const p of this.layout.ponds) nav.addObstacle({ kind: 'box', x0: p.x0, z0: p.z0, x1: p.x1, z1: p.z1 });
     // Gathering nodes block like props (fishing spots sit on the water and block nothing).
@@ -566,18 +821,20 @@ export class WorldView {
       nav.addObstacle(box);
       if (w.height >= 2.5) nav.addSightBlocker(box);
     }
-    for (const mesh of buildWallMeshes(this.layout.walls)) this.group.add(mesh);
+    // Walls stay one merged mesh per texture, always drawn: a few hundred boxes, and splitting them per area only added draw calls on screen.
+    for (const mesh of buildWallMeshes(this.layout.walls)) this.fixed.add(mesh);
   }
 
-  private buildProps(nav: Nav) {
+  /** Colliders and light sources are pure data: registered for the whole world at once. Only the pictures are built lazily (initChunks). */
+  private registerProps(nav: Nav) {
     // One batch per prop kind *per area*: world-wide batches have world-sized bounding spheres,
     // so the camera and the moon's shadow pass could never cull a single far-off tombstone.
-    const byProp = new Map<string, Placement[]>();
     for (const p of this.layout.props) {
-      const key = `${p.prop}|${p.area}`;
-      const list = byProp.get(key) ?? [];
+      let byProp = this.propLists.get(p.area);
+      if (!byProp) this.propLists.set(p.area, (byProp = new Map()));
+      const list = byProp.get(p.prop) ?? [];
       list.push(p);
-      byProp.set(key, list);
+      byProp.set(p.prop, list);
       const spec = PROPS[p.prop];
       const obstacle = placementObstacle(p);
       if (obstacle) nav.addObstacle(obstacle);
@@ -593,27 +850,23 @@ export class WorldView {
           pool: spec.light.pool,
           lit: true,
           brazier: p.prop === 'brazier',
+          area: p.area,
         };
         this.lightSources.push(src);
         if (src.brazier) this.braziers.push(src);
       }
     }
-    for (const list of byProp.values()) {
-      const id = list[0].prop;
-      const tall = PROPS[id].height > 1.5;
-      this.group.add(new PropBatch(id, list, tall).group);
-    }
   }
 
-  private buildWindows() {
+  private buildWindows(chunk: Chunk, windows: WorldLayout['windows']) {
     const tex = assets.texture('art/textures/stained_glass.webp');
-    for (const w of this.layout.windows) {
+    for (const w of windows) {
       const mat = new THREE.MeshBasicMaterial({ map: tex, color: 0xcfb8ff, transparent: true, depthWrite: false, toneMapped: false });
       const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w.w, w.h), mat);
       mesh.position.set(w.x, w.y, w.z);
       mesh.rotation.y = w.facing;
       mesh.translateZ(0.5);
-      this.group.add(mesh);
+      chunk.group.add(mesh);
       // A slanted shaft of coloured light down to the floor.
       const shaft = new THREE.Mesh(
         new THREE.PlaneGeometry(w.w * 0.9, 14),
@@ -631,13 +884,12 @@ export class WorldView {
       shaft.rotation.y = w.facing;
       shaft.translateZ(5);
       shaft.rotateX(-0.55);
-      this.group.add(shaft);
-      this.effects.decal({ tex: fx.glow(), color: 0x5a3bb8, x: shaft.position.x, z: shaft.position.z, r: w.w, duration: 1e9, persistent: true, opacity: 0.35, fadeIn: 0.01 });
+      chunk.group.add(shaft);
     }
   }
 
   /** The Alchemist's Wing's rugs and spills: thin canvas-textured planes just above the flagstones (drawn once, lit by the pools). */
-  private buildWingFloor() {
+  private buildWingFloor(parent: THREE.Object3D) {
     const rugTex = (color: number, alt: number) => {
       const cv = document.createElement('canvas');
       cv.width = 256;
@@ -715,11 +967,15 @@ export class WorldView {
       mesh.rotation.y = f.rot;
       mesh.receiveShadow = true;
       mesh.renderOrder = 1;
-      this.group.add(mesh);
+      parent.add(mesh);
     });
   }
 
   private buildDecals() {
+    // The windows' floor glow is a decal (one shared instanced layer), so it stays eager; the panes and shafts are built per area.
+    for (const w of this.layout.windows) {
+      this.effects.decal({ tex: fx.glow(), color: 0x5a3bb8, x: w.x + Math.sin(w.facing) * 5, z: w.z + Math.cos(w.facing) * 5, r: w.w, duration: 1e9, persistent: true, opacity: 0.35, fadeIn: 0.01 });
+    }
     for (const d of this.layout.decals) {
       const tex = d.kind === 'sigil' ? fx.sigil() : fx.cracks();
       this.effects.decal({ tex, color: d.color, x: d.x, z: d.z, r: d.r, rot: d.rot, duration: 1e9, persistent: true, opacity: d.opacity, fadeIn: 0.01, y: 0.02, spin: d.kind === 'sigil' ? 0.03 : 0 });
@@ -737,10 +993,20 @@ export class WorldView {
       list.push(s);
       byArea.set(area, list);
     }
-    const poolMat = new THREE.MeshBasicMaterial({ map: fx.lightPool(), vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
-    this.poolMat = poolMat;
+    this.poolMat = new THREE.MeshBasicMaterial({ map: fx.lightPool(), vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    this.poolLists = byArea;
+    const other = byArea.get('other');
+    if (other) this.fixed.add(this.poolMesh(other, 'other'));
+  }
+
+  private buildPools(chunk: Chunk, list: LightSource[], area: string) {
+    chunk.group.add(this.poolMesh(list, area));
+  }
+
+  private poolMesh(list: LightSource[], area: string) {
+    const poolMat = this.poolMat!;
     const tint = new THREE.Color();
-    for (const [area, list] of byArea) {
+    {
       const tone = POOL_TONE[area] ?? { gain: 1, scale: 1 };
       const pos: number[] = [];
       const uv: number[] = [];
@@ -766,7 +1032,7 @@ export class WorldView {
       g.computeBoundingSphere();
       const m = new THREE.Mesh(g, poolMat);
       m.renderOrder = 2;
-      this.group.add(m);
+      return m;
     }
   }
 
@@ -806,7 +1072,7 @@ export class WorldView {
       // over the Drowned Font without altering the water's colour or surface.
       markers.renderOrder = 3;
       markers.computeBoundingSphere();
-      this.group.add(markers);
+      this.fixed.add(markers);
       this.interactMarkers.push(markers);
     }
   }
@@ -848,7 +1114,7 @@ export class WorldView {
       );
       seal.position.set(0, 2.5, 0.12);
       root.add(seal);
-      this.group.add(root);
+      this.fixed.add(root);
       this.gates.push({ door, bars, seal, open: false, lift: 0 });
     }
   }
@@ -865,49 +1131,56 @@ export class WorldView {
     }
   }
 
-  private buildFlames() {
-    const pos: number[] = [];
-    const phase: number[] = [];
-    const lit: number[] = [];
+  /** The candle flames' positions for the whole world (one seeded pass, so they look exactly as before), bucketed by area; the Points are built per area. */
+  private buildFlameData() {
     const rand = mulberry32(99);
     for (const p of this.layout.props) {
       const spec = PROPS[p.prop].light;
       if (!spec || !spec.flames) continue;
+      let d = this.flameData.get(p.area);
+      if (!d) this.flameData.set(p.area, (d = { pos: [], phase: [], groups: [] }));
       for (let i = 0; i < spec.flames; i++) {
         const a = rand() * Math.PI * 2;
         const r = rand() * spec.spread * p.scale;
-        pos.push(p.x + Math.cos(a) * r, (0.35 + rand() * 0.45) * p.scale + 0.12, p.z + Math.sin(a) * r);
-        phase.push(rand() * 10);
-        lit.push(1);
-        this.flameGroups.push(p.group);
+        d.pos.push(p.x + Math.cos(a) * r, (0.35 + rand() * 0.45) * p.scale + 0.12, p.z + Math.sin(a) * r);
+        d.phase.push(rand() * 10);
+        d.groups.push(p.group);
       }
     }
+    this.flameMat = new THREE.ShaderMaterial({
+      vertexShader: FLAME_VS,
+      fragmentShader: FLAME_FS,
+      uniforms: { uTime: { value: 0 }, uScale: { value: 400 }, uMap: { value: fx.glow() } },
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+  }
+
+  private buildFlames(chunk: Chunk, d: { pos: number[]; phase: number[]; groups: (string | undefined)[] }) {
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    geo.setAttribute('aPhase', new THREE.Float32BufferAttribute(phase, 1));
-    geo.setAttribute('aLit', new THREE.Float32BufferAttribute(lit, 1));
-    this.flames = new THREE.Points(
-      geo,
-      new THREE.ShaderMaterial({
-        vertexShader: FLAME_VS,
-        fragmentShader: FLAME_FS,
-        uniforms: { uTime: { value: 0 }, uScale: { value: 400 }, uMap: { value: fx.glow() } },
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-      }),
-    );
-    this.flames.frustumCulled = false;
-    this.group.add(this.flames);
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(d.pos, 3));
+    geo.setAttribute('aPhase', new THREE.Float32BufferAttribute(d.phase, 1));
+    geo.setAttribute('aLit', new THREE.Float32BufferAttribute(d.groups.map((g) => (g && this.candleOff.has(g) ? 0 : 1)), 1));
+    const points = new THREE.Points(geo, this.flameMat);
+    // Culled per area (one sphere, padded for the flicker): the world-wide Points it replaces was drawn whole whenever anything was in view.
+    geo.computeBoundingSphere();
+    geo.boundingSphere!.radius += 3;
+    this.flamePoints.push({ points, groups: d.groups });
+    chunk.group.add(points);
   }
 
   /** Sanctum candle groups gutter out as the Prelate advances through phases. */
   setCandleGroup(group: string, litOn: boolean) {
-    const attr = this.flames.geometry.attributes.aLit as THREE.BufferAttribute;
-    this.flameGroups.forEach((g, i) => {
-      if (g === group) attr.setX(i, litOn ? 1 : 0);
-    });
-    attr.needsUpdate = true;
+    if (litOn) this.candleOff.delete(group);
+    else this.candleOff.add(group);
+    for (const f of this.flamePoints) {
+      const attr = f.points.geometry.attributes.aLit as THREE.BufferAttribute;
+      f.groups.forEach((g, i) => {
+        if (g === group) attr.setX(i, litOn ? 1 : 0);
+      });
+      attr.needsUpdate = true;
+    }
     for (const s of this.lightSources) if (s.group === group) s.lit = litOn;
   }
 
@@ -967,7 +1240,7 @@ export class WorldView {
     );
     this.mist.frustumCulled = false;
     this.mist.renderOrder = 4;
-    this.group.add(this.mist);
+    this.fixed.add(this.mist);
   }
 
   private buildSilhouettes() {
@@ -981,7 +1254,7 @@ export class WorldView {
     // Nearly the fog colour: they read as shapes in the murk, never as detail.
     const mat = new THREE.MeshLambertMaterial({ color: 0x2a2436, emissive: 0x0b0912 });
     applyOcclusion(mat);
-    this.group.add(new THREE.Mesh(merged, mat));
+    this.fixed.add(new THREE.Mesh(merged, mat));
   }
 
   /** Is this point standing in water (the nave's flood or a graveyard puddle)? */
@@ -1005,12 +1278,13 @@ export class WorldView {
   update(dt: number, focusX: number, focusZ: number, camera: THREE.PerspectiveCamera, viewportHeight: number) {
     this.time += dt;
     const scale = (viewportHeight * 0.5) / Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
-    const fm = this.flames.material as THREE.ShaderMaterial;
+    const fm = this.flameMat;
     fm.uniforms.uTime.value = this.time;
     fm.uniforms.uScale.value = scale;
     (this.mist.material as THREE.ShaderMaterial).uniforms.uScale.value = scale;
 
     const area = this.areaAt(focusX, focusZ);
+    this.stream(area, focusX, focusZ);
     if (area && area !== this.focusArea) {
       this.focusArea = area;
       this.water.setMoon(AREAS[area].ambient.moon);
@@ -1061,7 +1335,7 @@ export class WorldView {
     if (this.lightAssignT <= 0) {
       this.lightAssignT = 0.3;
       const near = this.lightSources
-        .filter((s) => s.lit)
+        .filter((s) => s.lit && (!s.area || this.wanted.has(s.area)))
         .map((s) => ({ s, d: (s.x - focusX) ** 2 + (s.z - focusZ) ** 2 }))
         .sort((a, b) => a.d - b.d)
         .slice(0, this.pointLights.length);

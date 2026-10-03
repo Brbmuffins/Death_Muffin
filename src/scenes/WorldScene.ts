@@ -70,6 +70,7 @@ import { playFx } from '../graphics/binbun/presets';
 import type { BinbunHandle } from '../graphics/binbun/BinbunFX';
 import { EntityViews, preloadAreaModels } from '../graphics/EntityViews';
 import { warmColdPaths } from '../graphics/coldWarm';
+import { LoadVeil } from '../ui/LoadVeil';
 import { setWarmContext } from '../graphics/warmModel';
 import { fx } from '../graphics/fxTextures';
 import * as nf from '../graphics/necroFx';
@@ -506,7 +507,20 @@ export class WorldScene implements GameScene, RuntimeView {
     setActiveCharacter(this.character.id, this.character.auto_combat_allowed === true);
     this.buildScene();
     this.nav.setUnlocked(this.openAreas());
+    // The one load screen: up while the starting area and its neighbours are built and warmed; the rest of the world builds in the background.
+    const veil = new LoadVeil();
+    this.scope.add(() => veil.dispose());
     this.worldView = new WorldView(this.scene, this.layout, this.nav, this.effects);
+    this.worldView.attachRenderer(getRuntime().renderer, this.rig.camera);
+    void this.worldView
+      .prime('acre', PLAYER_SPAWN, (f) => veil.progress(f))
+      .then(() => new Promise<void>((resolve) => {
+        const t0 = performance.now();
+        const wait = () => (this.avatar?.c.loaded || performance.now() - t0 > 4000 ? resolve() : window.setTimeout(wait, 50));
+        wait();
+      }))
+      .catch((err) => console.warn('[world] area prime failed', err))
+      .then(() => veil.finish());
     this.dressWaystones();
     for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d), true);
     this.views = new EntityViews(this.scene, this.effects, (owner) => {
@@ -5209,6 +5223,7 @@ export class WorldScene implements GameScene, RuntimeView {
       flushGather: () => this.gathering.flush(),
       /** The Mourning Fen's eased flood scale (1 calm, 0.72 / 0.5 in the Mire Mother's phases 2 / 3). */
       fenFlood: () => this.worldView.fenFlood(),
+      stream: () => this.worldView.streamStats(),
       /** Open an Acre station as if clicked (kiln / sawpit / fire). */
       station: (kind: 'kiln' | 'sawpit' | 'fire' | 'grinder' | 'cauldron' | 'alembic' | 'reagents') => {
         const it = AREA_ORDER.flatMap((a) => AREAS[a].interactables).find((i) => i.kind === kind);
