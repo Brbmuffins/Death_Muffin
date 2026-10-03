@@ -13,7 +13,8 @@ import { EQUIP_SLOTS, equippedBySlot } from '../../content/gear';
 import { withSetBonuses } from '../setBonuses';
 import { NO_LOADOUT, abilityCooldownMs, abilityRange, pierceTargets, reapTargets, resolveWeaponLoadout } from '../weaponLine';
 import { NECRO_WEAPON_TUNING } from '../../content/necroWeapons';
-import { effectiveWitheredCap } from '../legendary';
+import { colossusActive, effectiveWitheredCap } from '../legendary';
+import { Player } from '../Player';
 import { resolveKit, type KitName, type KitRequest } from './kits';
 import type { Difficulty } from '../../content/difficulty';
 
@@ -61,6 +62,9 @@ export interface BossResult {
   bySource: Record<string, number>;
   minHpPct: number;
   flasksUsed: number;
+  /** Litany barrier raised / soaked over the fight, as % of max HP (0 without a Reliquary set). */
+  barrierMadePct: number;
+  barrierAbsorbedPct: number;
   /** Player-side damage per second into the boss (all sources). */
   dps: number;
 }
@@ -94,6 +98,8 @@ export function runBossFight(run: BossRun): BossResult {
   const standIn = run.gearStats * (1 - covered / EQUIP_SLOTS.length);
   const stats = deriveStats(botCharacter(run.classIndex, run.level, standIn), worn, disc, run.damageTier);
   const sp = stats.spellPower;
+  /** The real Player body, used for what it owns in a fight: incoming damage (Bone Ward, guard, Litany barrier). Position, health and essence stay the bot's. */
+  const body = new Player(stats, nav, 'necromancer');
   const reaction = run.reactionS ?? 0.35;
   const p = { id: 'bot', x: BOSS_ARENA.x, z: BOSS_ARENA.z + 9, hp: stats.maxHp, essence: stats.maxEssence };
   const cds = new Map<string, number>();
@@ -128,6 +134,8 @@ export function runBossFight(run: BossRun): BossResult {
   const dangers: Danger[] = [];
   const bySource: Record<string, number> = {};
   let minHp = 1;
+  let barrierAbsorbed = 0;
+  let barrierMade = 0;
   let flasks = run.flasks ?? 4;
   let flasksUsed = 0;
   let flaskCd = 0;
@@ -150,6 +158,9 @@ export function runBossFight(run: BossRun): BossResult {
 
   for (; steps < maxSteps; steps++) {
     t = steps * DT;
+    // The barrier melts at 4% of max health a second (Player.update).
+    if (body.barrier > 0) body.barrier = Math.max(0, body.barrier - stats.maxHp * 0.04 * DT);
+    else body.barrierPeak = 0;
     const inCombat = t - lastHurt < 5;
     p.hp = Math.min(stats.maxHp, p.hp + stats.maxHp * (inCombat ? 0.004 : 0.045) * DT);
     p.essence = Math.min(stats.maxEssence, p.essence + stats.essenceRegen * DT);
@@ -260,10 +271,23 @@ export function runBossFight(run: BossRun): BossResult {
         if (ev.kind === 'phase' && ev.phase === 2) phase2At = t;
         if (ev.kind === 'phase' && ev.phase === 3) phase3At = t;
         if (ev.kind === 'defeated' && ev.killer) outcome = 'win';
+      } else if (ev.t === 'litanyResult' && ev.by === p.id) {
+        // Reliquary barrier per body consumed, and the Mourner's corpse heal (AbilitySystem.onLitany).
+        const consumed = ev.corpses + ev.resonant + ev.thralls;
+        if (disc.mods.litanyBarrier) {
+          body.barrier += stats.maxHp * disc.mods.litanyBarrier * consumed;
+          if (consumed > 0) body.barrierPeak = Math.max(body.barrierPeak, body.barrier);
+          barrierMade += stats.maxHp * disc.mods.litanyBarrier * consumed;
+        }
+        if (disc.mods.corpseHeal) p.hp = Math.min(stats.maxHp, p.hp + stats.maxHp * disc.mods.corpseHeal * (ev.corpses + ev.resonant) * 0.5);
       } else if (ev.t === 'hurt' && ev.player === p.id) {
-        const ward = 1 - Math.min(0.6, disc.mods.wardPerThrall * [...sim.thralls.values()].filter((th) => th.owner === p.id).length);
-        const dmg = ev.dmg * ward;
-        p.hp -= dmg;
+        // The real Player body takes the blow: Bone Ward (capped), Colossus guard, then the Litany barrier before health (Player.takeDamage).
+        const mine = [...sim.thralls.values()].filter((th) => th.owner === p.id).length;
+        body.hp = p.hp;
+        const barrierBefore = body.barrier;
+        const dmg = body.takeDamage(ev.dmg, disc.mods.wardPerThrall * mine, t * 1000, { x: ev.x, z: ev.z }, ev.from, colossusActive(disc.mods, mine) ? disc.mods.colossusGuard : 0);
+        barrierAbsorbed += barrierBefore - body.barrier;
+        p.hp = body.hp;
         dmgTaken += dmg;
         lastHurt = t;
         const src = ev.from === 'boss' ? 'prelate' : 'adds';
@@ -297,6 +321,8 @@ export function runBossFight(run: BossRun): BossResult {
     bySource: pct,
     minHpPct: minHp * 100,
     flasksUsed,
+    barrierMadePct: (barrierMade / stats.maxHp) * 100,
+    barrierAbsorbedPct: (barrierAbsorbed / stats.maxHp) * 100,
     dps: (bossMaxHp - bossHpLeft) / secs,
   };
 }
