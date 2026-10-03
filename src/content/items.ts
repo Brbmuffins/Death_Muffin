@@ -118,6 +118,9 @@ export const ITEMS: Record<string, ItemMeta> = {
 // Grave Gardening (content/gardening.ts; server rows from migration 007-gardening.sql).
 for (const [id, g] of Object.entries(GARDEN_ITEMS)) ITEMS[id] ??= { name: g.name, type: 'material', rarity: g.rarity, sell: g.sell, lore: g.lore, stack: g.stack };
 
+// The two saplings' art was drawn under the plot names, not the item ids (docs/polish/atlas-findings.md).
+for (const [id, icon] of Object.entries({ sapling_oak: 'art/items/sapling_coffin_oak.webp', sapling_yew: 'art/items/sapling_churchyard_yew.webp' })) if (ITEMS[id]) ITEMS[id].icon = icon;
+
 // Pet charms (content/cosmetics.ts; server rows from migration 010-cosmetics.sql).
 for (const [id, c] of Object.entries(CHARM_ITEMS)) ITEMS[id] ??= { name: c.name, type: 'material', rarity: c.rarity, sell: c.sell, lore: c.lore, stack: 1 };
 
