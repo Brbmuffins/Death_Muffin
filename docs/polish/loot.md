@@ -1,0 +1,25 @@
+# Loot, gear and progression polish pass (2026-10-03, branch `dm/polish-loot`)
+
+Scope: drops, tooltips, icons, affixes, sets and legendaries, runes, bag, Vault, salvage, equip rules, upgrades, economy. Content is frozen; fixes only.
+
+| # | Issue | Severity | Evidence | Status |
+|---|---|---|---|---|
+| 1 | 8 items had no icon (5 pet charms, Mire ichor, 2 saplings) so 404s and glyph fallbacks | low | item catalogue scan | Fixed: SVG icons from `tools/build-reagent-icons.mjs`, sapling art mapped; `itemIcons.test.ts` pins every item to a file |
+| 2 | Offline mock accepted stacks over the server cap and let crafts overfill stacks, hiding the cap-mismatch bug class in dev | medium | mockBackend save/craft | Fixed + `mockBags.test.ts` |
+| 3 | "Reliquary full" floating text spawned every frame while standing on a drop (up to 56 DOM nodes) | medium (perf) | `LootView.update` retried each frame, `WorldScene` spawned each time | Fixed: once per 2.5 s, plus a once-a-minute toast saying what to do |
+| 4 | Ground drops never expired: sprites, light pillars, glow decals and soul markers piled up forever in long hunts; also fed the server's 300 unclaimed-relic limit | high (perf) | no cleanup in `LootView` | Fixed: gold/shards drift in after 30 s, items after 75 s, past 60 items the oldest are called in; nothing is deleted, a full bag keeps the item. `lootView.test.ts` |
+| 5 | Empower / Quicken showed only a price | low | HUD | Fixed: hover says what the next tier gives (Wave Speed: gold, XP, drop %) |
+| 6 | 8 of 9 armour sets in every area's table are not yours (about 1 piece in 9 was your own); necromancer weapons dropped for every class; first-kill trophy could be another class's armour; Depths chests the same | high (loot quality) | `armorLoot` equal weights | Fixed: smart loot (`gameplay/smartLoot.ts`): half of the armour weight is your set, necro weapons a third as often for other families, trophies favour your set, Depths follow. Authority ground-rate ceilings take the max over disciplines so enforce mode does not clamp honest pick-ups. Tests `smartLoot.test.ts`. Owner decision: 50% |
+| 7 | Sell all junk / Salvage all below rare could sell the helm you were about to wear (any uncommon piece, upgrades and set completions included) | high (data loss) | `junkSlots` | Fixed: spares upgrades (empty slot counts) and set completers; confirm text says so |
+| 8 | Tooltip type line read "armor head", "material" for potions, no hint of two-handed weapons | low | tooltip screenshot | Fixed (`itemTypeLabel`) |
+| 9 | Vault tooltips showed only a name for gear without affixes | medium | `VaultPanel` | Fixed: kind, base stats, price |
+| 10 | Client `addToSlots` let a gear quantity above 1 sit in one slot (server max stack 1 = a 400 save loop) | medium | repro with `kit_iron_warden` x3 | Fixed + `bagCaps.test.ts` |
+| 11 | A full legendary set needed about 233 boss kills (uniform piece, 5 pieces, 70% own, 7%) | high (chase pacing) | coupon-collector arithmetic | Fixed: drops favour pieces not worn/in bag, about 5 drops per set. Owner decision |
+| 12 | Upgrade cost comment said 700k for damage tiers; real total is 2.0M | doc | arithmetic | Fixed |
+| 13 | README, Codex, LEGENDARY-SETS updated for 3, 4, 6, 7, 11 | doc | | Done. The first-hour tip text is pinned by a fixture and was left alone |
+| 14 | Gems (3), Reliquary Fragment, Covenant Seal, Tin/Bronze ingots, seeds with no plot: sell-only trade goods | medium (dead ends) | no recipe, labor or contract uses them | Open: needs a use (new content), owner decision |
+| 15 | Legacy item rows (copper bar/shard, ingots, plank_oak, flasks) have no migration in the repo, so their server stack caps cannot be diffed with the client's 99 | medium | `tools` scan: all 263 migration-defined items match | Open: diff against live `items` read-only before the next release |
+| 16 | Chest and Legs doll glyphs are identical, loot toast per pickup (8 s each, 4 max) is noisy while farming | low | screenshots | Open |
+| 17 | Gold sinks end at Damage (2.0M total), Wave Speed (14k) and Legion (75k); all reset on Ascension | design | upgrades.ts | Open: no change made |
+
+Perf (rule: no frame-time or load-time cost): `LootView.update` gained one counting pass over the ground drops (tens at most). No assets load at startup (new SVGs load only when shown). Fixed-fight `graves,nave`, base a3081d6 vs branch (calls / tris / updateMs, noisy: base alone ranged 143-163 calls on graves-high): see the report. Main bundle gzip 444.94 kB -> 446.54 kB.
