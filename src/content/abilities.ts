@@ -95,7 +95,7 @@ export const NEW_BLOOD_ABILITIES: Record<NewBloodId, AbilityDef> = {
   palm_strike: newRite('palm_strike', 0, 'Palm Strike', 'monk', 'palm-strike', 'enemy', 400, 0, 1.8, 0, 1, 'A quick palm strike. Hits on the bell beat deal extra damage and Resonance.'),
   toll: newRite('toll', 1, 'Toll', 'monk', 'toll', 'self', 4500, 0, 0, 4, 1.2, 'Ring around you and interrupt casters. Spend 25 Resonance to stun.'),
   resonant_step: newRite('resonant_step', 2, 'Resonant Step', 'monk', 'resonant-step', 'direction', 6000, 0, 5, 0.8, 1, 'Dash through enemies, striking every body along the path.'),
-  knell: newRite('knell', 3, 'Knell', 'monk', 'knell', 'enemy', 9000, 15, 9, 0, 0.6, 'Mark a target. The next three tolls hurt it harder.', 3),
+  knell: newRite('knell', 3, 'Knell', 'monk', 'knell', 'enemy', 9000, 15, 9, 0, 0.6, 'Mark a target. Three bell beats, 1.2 s apart, each strike it for damage of their own.', 3),
   choir_of_one: newRite('choir_of_one', 4, 'Choir of One', 'monk', 'choir-of-one', 'self', 20000, 30, 0, 2.5, 0.5, 'For six seconds every beat emits a small toll ring.', 5),
   sound_the_corpse: newRite('sound_the_corpse', 5, 'Sound the Corpse', 'monk', 'sound-the-corpse', 'corpse', 7000, 0, 10, 1.2, 0.8, 'Sound a corpse as a resonant bell. Tolls near it strike harder.'),
   great_toll: newRite('great_toll', 6, 'Great Toll', 'monk', 'great-toll', 'self', 50000, 0, 0, 9, 2, 'Spend all Resonance on a great toll that damages and silences foes.', 10),
