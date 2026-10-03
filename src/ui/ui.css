@@ -635,11 +635,12 @@ button { font-family: inherit; }
 .hud-up .buy b { font-size: 13px; color: #e2c98f; }
 .hud-up .buy:hover:not(:disabled) { border-color: var(--cw-border-active); box-shadow: var(--cw-glow-spell); }
 .hud-up .buy:disabled { opacity: 0.45; cursor: not-allowed; }
-.hud-wave-dial { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; color: var(--cw-text-muted); }
+.hud-wave-dial { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; color: var(--cw-text-muted); }
 .hud-wave-dial button { width: 22px; height: 22px; padding: 0; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-bone-100); cursor: pointer; }
 .hud-wave-dial button:hover:not(:disabled) { border-color: var(--cw-border-active); }
 .hud-wave-dial button:disabled { opacity: 0.35; }
-.hud-wave-dial .hud-milestone { margin-left: auto; text-align: right; cursor: help; }
+.hud-wave-dial .hud-milestone { flex: 1 0 100%; text-align: left; cursor: help; } /* its own line: beside the dial it wrapped to three */
+.hud-wave-dial .hud-milestone:empty { display: none; }
 .hud-wave-dial .hud-milestone.on { color: #d9a441; }
 .hud-wave-dial .tier { font-family: var(--cw-font-numeric); color: var(--cw-bone-100); min-width: 64px; text-align: center; }
 
