@@ -92,7 +92,7 @@ export class SettingsPanel extends SimplePanel {
           <kbd>Hover / focus</kbd><span>Spell icon: cost, targeting, effects and combat counsel</span>
           <kbd>Shift+Click</kbd><span>Cast ${this.kitHelp.primary} without moving</span>
           <kbd>1–5 (hold)</kbd><span>Cast your equipped rites at the cursor</span>
-          <kbd>L</kbd><span>Grimoire · click swap below a hotbar spell to choose any unlocked class rite</span>
+          <kbd>L</kbd><span>Grimoire · click the swap arrows below a hotbar spell (they appear once you learn a second rite) to choose any unlocked class rite</span>
           <kbd>RMB · 5</kbd><span>Cast your fifth equipped rite (starts as ${this.kitHelp.corpseAction})</span>
           <kbd>R · 6</kbd><span>Signature rite (unlocks at level 10)</span>
           <kbd>Q</kbd><span>Drink a healing flask</span>

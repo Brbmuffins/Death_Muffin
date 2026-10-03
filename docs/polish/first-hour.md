@@ -14,11 +14,11 @@ Played login, discipline select, Acre, Chapterhouse, first Graves fights, level-
 | 8 | Grimoire tip was 11 lines, repeated the panel's own text | Low | Fixed: 4 lines |
 | 9 | Sign-up error "username must be at least 3 characters" lower case | Low | Fixed (first letter capitalised, text otherwise verbatim) |
 | 10 | Settings key list missed O U H N | Low | Fixed |
-| 11 | Area text counts the Warren seal (0/150) while Next counts the Ossuary (0/300) | Low | Open: both are true (side hall vs main road) but the formats differ ("Slay 0/150" vs "0 / 300"); owner call |
-| 12 | "Your first thrall" card returned after a respawn with no thrall alive | Low | Open: sendBack re-queues a card that has lost its context |
-| 13 | "Bone Ward -0%" readout shown with no thralls | Low | Open: Ossuary-only readout, harmless noise |
+| 11 | Area text counts the Warren seal (0/150) while Next counts the Ossuary (0/300) | Low | Resolved 3 Oct 2026 (owner decision): one formatter, `formatSealProgress` in `gameplay/guidance.ts`, reads "Ossuary seal: 0/300 kills" / "Warren seal: 0/150 kills" everywhere (area text, Next line, the Prior) |
+| 12 | "Your first thrall" card returned after a respawn with no thrall alive | Low | Fixed: `Onboarding.stale` drops a queued or returning card whose context is gone (thrall card with no thrall) `1b2c17e` |
+| 13 | "Bone Ward -0%" readout shown with no thralls | Low | Fixed: readout hidden at 0% / no thralls `1b2c17e` |
 | 14 | Hurt? (urgent) still covers a panel's tabs at 1280 | Low | Open on purpose (it must not vanish) |
-| 15 | Hotbar shows SWAP under every slot from level 1 | Low | Open: owner call (discoverability vs clutter) |
+| 15 | Hotbar shows SWAP under every slot from level 1 | Low | Resolved 3 Oct 2026 (owner decision): hidden until the first alternative rite is learned (`swapReady`), then a small swap icon; the one-time Grimoire tip names it |
 
 No console errors, no 404 (fontsource 403s are the known symlinked-node_modules artefact).
 

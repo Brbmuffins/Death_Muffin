@@ -5,6 +5,7 @@ import { getRuntime, type RuntimeView } from '../app/GameRuntime';
 import { Scope } from '../app/Scope';
 import { ABILITIES, FRACTURE, PRIMARIES, BULWARK, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
 import { CAST_FLOW } from '../content/combatFlow';
+import { swapReady } from '../ui/firstHourRules';
 import { kitFor, type Kit } from '../content/kits';
 import { assignableRites, assignRite, LOADOUT_SLOTS, loadRites, loadSeen, saveRites, saveSeen, unseenRites } from '../gameplay/loadout';
 import { devAccess, devPreference, isDevAccount, riteLevel, setDevPreference, tokenUsername } from '../gameplay/devAccess';
@@ -30,7 +31,7 @@ import { LaborerViews } from '../graphics/LaborerViews';
 import { NpcViews } from '../graphics/NpcViews';
 import { DialoguePanel } from '../ui/DialoguePanel';
 import { NPCS, NPC_IDS, NPC_TALK_RANGE, npcFromInteractable, type NpcId } from '../content/npcs';
-import { Guidance, bossTrophyKey, nextSuggestion, readTrophies, suggestions as guidanceSuggestions, summarizeContracts, summarizeLabor, type ContractSummary, type GuidanceState, type LaborSummary, type Suggestion } from '../gameplay/guidance';
+import { Guidance, formatSealProgress, bossTrophyKey, nextSuggestion, readTrophies, suggestions as guidanceSuggestions, summarizeContracts, summarizeLabor, type ContractSummary, type GuidanceState, type LaborSummary, type Suggestion } from '../gameplay/guidance';
 import { addToSlots } from '../gameplay/loot';
 import { WAVE_MILESTONES, damageBonusPct, milestoneActive, waveModifiers } from '../content/upgrades';
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
@@ -40,6 +41,7 @@ import { ClassPanel } from '../ui/ClassPanel';
 import { changeDiscipline, getContracts, getCosmetics, getGarden, getLabor, type LaborView, type ContractDelivery, type CosmeticsView, type GardenResult, type LaborResult } from '../net/api';
 import { canUseAutoCombat, onSettingsChange, setActiveCharacter, settings, updateSettings } from '../app/settings';
 import { selectAutoCombatAction, selectAutoCombatMovement, type AutoMoveMemory } from '../gameplay/autoCombat';
+import { BossTelegraphs, poolHazard, type Hazard } from '../gameplay/autoDodge';
 import { STATUS_FX } from '../content/statuses';
 import { damageTakenScale } from '../gameplay/hitNumber';
 import { AbilitySystem, veilTarget, type CastResult, type CastTarget } from '../gameplay/AbilitySystem';
@@ -55,7 +57,7 @@ import { omenFor, omenLeft, type Omen } from '../content/omens';
 import { BOSS_ARENA, BOSS_RADIUS, BOSS_RING_PAD } from '../gameplay/sim/BossBrain';
 import { makeSnapshot, WorldMirror } from '../gameplay/sim/snapshot';
 import type { BossState, Corpse, Enemy, Intent, SimEvent, Thrall, Zone } from '../gameplay/sim/types';
-import { CONE_REACH_PAD, WorldSim, thrallWeight } from '../gameplay/sim/WorldSim';
+import { CONE_REACH_PAD, PLAYER_RADIUS, WorldSim, thrallWeight } from '../gameplay/sim/WorldSim';
 import { computeStats, STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
 import { BossView, NecromancerAvatar } from '../graphics/Avatars';
 import { prewarmCreature } from '../graphics/prewarmCreature';
@@ -87,7 +89,7 @@ import { loadRunesFound, recordRunesFound } from '../gameplay/runeJournal';
 import { ownedRunes, socketsOf, socketsSignature, type RuneSockets } from '../gameplay/runeRules';
 import { RUNES, type RuneId, type RuneRite } from '../content/runes';
 import { runeSocket } from '../net/api';
-import { applyLegionMods, kitCandidates, kitPieces, legionOf, legionSignature } from '../gameplay/legionKit';
+import { applyLegionMods, kitCandidates, kitPieces, legionOf, legionSignature, thrallRefresh, type ThrallNumbers } from '../gameplay/legionKit';
 import { LegionPanel } from '../ui/LegionPanel';
 import { LootRoller } from '../gameplay/lootRoll';
 import { canRoll } from '../gameplay/affixes';
@@ -361,6 +363,9 @@ export class WorldScene implements GameScene, RuntimeView {
   private nextAutoCombatAt = 0;
   /** Easy auto movement memory: sticky target, closing hysteresis, committed dodges, smoothed turns. */
   private autoMoveMem: AutoMoveMemory = {};
+  /** Live boss telegraphs for Easy auto's dodge: fed by the same boss events that draw them. */
+  private readonly telegraphs = new BossTelegraphs();
+  private readonly dodgeHazards: Hazard[] = [];
   private autoTargetId: number | null = null;
   private autoAim: CastTarget | null = null;
   private queuedCast: { slot: HotbarSlot; target: CastTarget; until: number } | null = null;
@@ -466,7 +471,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   /** At least one level-gated Grimoire rite is learned (the Grimoire is worth opening). */
   private grimoireUnlocked() {
-    return this.kit.grimoire.some((id) => unlockLevel(id) > 1 && riteLevel(this.character.level) >= unlockLevel(id));
+    return swapReady(this.kit.grimoire, riteLevel(this.character.level));
   }
 
   /** Grimoire LMB socket: equip a primary (left-click attack; auto combat uses it too). */
@@ -486,6 +491,7 @@ export class WorldScene implements GameScene, RuntimeView {
     let changed = false;
     for (const id of ids) if (!this.seen.has(id)) (this.seen.add(id), (changed = true));
     if (changed) saveSeen(browserStorage(), this.character.id, this.seen);
+    this.hud?.setSwapReady(this.grimoireUnlocked());
     this.hud?.setGrimoireNew(unseenRites(this.seen, riteLevel(this.character.level), this.kit).length > 0);
   }
 
@@ -922,6 +928,45 @@ export class WorldScene implements GameScene, RuntimeView {
     this.sheetPanel?.render();
   }
 
+  /**
+   * Easy auto's dodge list: the live boss telegraphs plus hostile ground pools near the hero (the shapes the host will hit-test).
+   * Reuses one array; empty (and free) when no boss is awake and no pool is down.
+   */
+  private autoDodgeHazards(): readonly Hazard[] {
+    const out = this.dodgeHazards;
+    out.length = 0;
+    if (!this.bossState().active) this.telegraphs.clear();
+    out.push(...this.telegraphs.active(this.now));
+    const zones = this.sim?.zones ?? this.mirror?.zones;
+    if (zones) {
+      const p = this.player;
+      for (const z of zones.values()) if (z.hostile && z.dps > 0 && Math.hypot(z.x - p.x, z.z - p.z) < 40) out.push(poolHazard(z, PLAYER_RADIUS));
+    }
+    return out;
+  }
+
+  /** What a thrall raised now would carry (the numbers a purchase changes). Null until the player exists. */
+  private thrallNumbers(): ThrallNumbers | null {
+    return this.player ? { hp: this.player.stats.thrallHp, damage: this.player.stats.thrallDamage, speedMult: this.discipline.mods.thrallAttackSpeedMult } : null;
+  }
+
+  /**
+   * A Damage or Reinforce purchase bumps the thralls already standing, once (the sim keeps their health fraction: no heal). Returns how many
+   * of yours were standing, so the toast can say so; the sim does the arithmetic (or the host, in co-op) from the same before / after ratio.
+   */
+  private refreshStandingThralls(before: ThrallNumbers | null): number {
+    const after = this.thrallNumbers();
+    if (!before || !after) return 0;
+    const r = thrallRefresh(before, after);
+    if (!r) return 0;
+    const mine = [...this.thrallsMap().values()].filter((t) => t.owner === this.selfId && t.state !== 'dead');
+    if (!mine.length) return 0;
+    this.sendIntent({ t: 'refreshThralls', by: this.selfId, ...r });
+    // One soft pulse per thrall (a legion is capped at a handful): the purchase is felt where it lands.
+    for (const t of mine) this.effects.flash({ x: t.x, y: 1.1, z: t.z, color: 0xc6a4ff, size: 1.3, duration: 0.35 });
+    return mine.length;
+  }
+
   private legionBonus() {
     return legionOf(this.inventory?.all ?? [], this.progression?.local.legionTier ?? 0);
   }
@@ -946,9 +991,11 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hud = new HUD(this.root, {
       cast: (slot) => this.castSlot(slot),
       buyDamage: () => {
+        const before = this.thrallNumbers();
         if (this.progression.buyDamage()) {
           audio.play('buy');
-          this.hud.toast(`Damage empowered: +${damageBonusPct(this.progression.local.damageTier)}%`, 'good');
+          const n = this.refreshStandingThralls(before);
+          this.hud.toast(`Damage empowered: +${damageBonusPct(this.progression.local.damageTier)}%${n ? `. ${n === 1 ? 'Your thrall hits' : `Your ${n} thralls hit`} harder at once.` : ''}`, 'good');
           this.effects.emit({ x: this.player.x, y: 1, z: this.player.z, count: 40, color: 0xc6a4ff, spread: 0.6, speed: 2, up: 2.5, life: 1, size: 0.3 });
         }
       },
@@ -975,6 +1022,7 @@ export class WorldScene implements GameScene, RuntimeView {
       openGrimoire: (select) => this.openGrimoire(select),
       dismissNext: () => { this.nextDismissed = this.nextNow?.id ?? null; this.guideDirty = true; },
     }, this.hotbar, this.discipline, this.primary);
+    this.hud.setSwapReady(this.grimoireUnlocked());
     this.hud.minimap.onNavigate = (x, z) => this.navigateFromMinimap(x, z);
     this.loadBelt();
     this.inventoryPanel = new InventoryPanel(this.root, this.character.id, this.inventory, this.statsLine, (id) => this.drinkFlask(id), (id) => this.setBelt(id), (gold, name, n) => {
@@ -1008,10 +1056,12 @@ export class WorldScene implements GameScene, RuntimeView {
       cost: () => this.progression.legionCost(),
       gold: () => this.character.gold ?? 0,
       reinforce: () => {
+        const before = this.thrallNumbers();
         if (!this.progression.buyLegion()) return false;
         audio.play('buy');
         this.applyBoons();
-        this.hud.toast(`The legion is bound tighter: tier ${this.progression.local.legionTier}`, 'good');
+        const n = this.refreshStandingThralls(before);
+        this.hud.toast(`The legion is bound tighter: tier ${this.progression.local.legionTier}${n ? `. ${n === 1 ? 'Your thrall is' : `Your ${n} thralls are`} stronger at once.` : ''}`, 'good');
         this.legionPanel.render();
         return true;
       },
@@ -1112,6 +1162,8 @@ export class WorldScene implements GameScene, RuntimeView {
     );
     this.onboarding = new Onboarding(this.root, this.character.id, undefined, () => this.now);
     this.onboarding.busy = () => this.counselBusy();
+    // A returning "first thrall" card is dropped when no thrall of yours stands (a respawn), not shown over an empty field.
+    this.onboarding.stale = (id) => id === 'thrall' && ![...this.thrallsMap().values()].some((t) => t.owner === this.selfId);
     this.onboarding.keyFor = (ability) => {
       const i = this.loadout.indexOf(ability as AbilityId);
       return i >= 0 ? String(i + 1) : null;
@@ -1120,8 +1172,8 @@ export class WorldScene implements GameScene, RuntimeView {
       this.codexPanel.dispose();
       this.onboarding.dispose();
     });
-    const rmb = 'Right-click or 5 casts your fifth rite · swap it below its icon';
-    const rmbTouch = 'Tap your fifth rite to cast it · swap it below its icon';
+    const rmb = 'Right-click or 5 casts your fifth rite';
+    const rmbTouch = 'Tap your fifth rite to cast it';
     this.hud.hint(touchNow() ? (OFFLINE ? 'Offline edition: progress stays on this device' : rmbTouch) : OFFLINE ? 'Offline edition: progress stays on this device · Right-click or 5: fifth rite' : rmb);
     this.scope.add(() => {
       this.closePanels();
@@ -2724,7 +2776,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.onboarding.show('skill_up');
     }
     this.professions = this.skills.rows();
-    if (this.professionsPanel?.isOpen) this.professionsPanel.render(this.skills);
+    if (this.professionsPanel?.isOpen) this.professionsPanel.refresh(this.skills);
   }
 
   private onNodeSpent(id: string) {
@@ -4332,6 +4384,7 @@ export class WorldScene implements GameScene, RuntimeView {
   };
 
   private onBossEvent(ev: Extract<SimEvent, { t: 'boss' }>) {
+    this.telegraphs.onEvent(ev, this.now);
     if (ev.kind === 'awaken') perfNote(`boss ${ev.boss ?? ''}`);
     const ms = (ev.ms ?? 0) / 1000;
     const stop = WorldScene.BOSS_STOP[ev.kind];
@@ -4535,7 +4588,7 @@ export class WorldScene implements GameScene, RuntimeView {
       !this.attackTarget && !this.pendingInteract && !this.gathering.active && !this.keys.size
       ? selectAutoCombatMovement({ player: { x: p.x, z: p.z, area: p.area, essence: p.essence, maxEssence: p.resource.max,
           hp: p.hp, maxHp: p.stats.maxHp },
-        enemies: this.enemiesMap().values(), primary: this.primary, primaryRange: this.primaryRange(), family: this.discipline.family, nav: this.nav }, this.autoMoveMem, now, dt) : null;
+        enemies: this.enemiesMap().values(), primary: this.primary, primaryRange: this.primaryRange(), family: this.discipline.family, nav: this.nav, hazards: this.autoDodgeHazards() }, this.autoMoveMem, now, dt) : null;
     if (!autoMove) this.autoMoveMem.dir = null;
     // Drowned Congregation: the water rises each phase; wading outside her dais is slower.
     {
@@ -4649,7 +4702,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.hud.toast(`Legendary: ${itemMeta(item.item_id).name}`, 'good');
       this.floating.spawn(p.x, 2.6, p.z, 'LEGENDARY', 'big');
     }
-    for (const item of got.items) this.hud.toast(`${item.instance ? affixedName(itemMeta(item.item_id).name, item.instance.affixes) : itemMeta(item.item_id).name}${item.quantity > 1 ? ` ×${item.quantity}` : ''}`, 'good');
+    for (const item of got.items) this.hud.lootToast(item.instance ? affixedName(itemMeta(item.item_id).name, item.instance.affixes) : itemMeta(item.item_id).name, item.quantity, itemMeta(item.item_id).rarity);
 
     // Visuals. A hitstop (graphics/hitstop.ts) scales only the picture's clock from here on.
     hitstop.frame(dt);
@@ -4943,7 +4996,9 @@ export class WorldScene implements GameScene, RuntimeView {
   private wardReadout() {
     const perThrall = this.discipline.mods.wardPerThrall;
     const thralls = [...this.thrallsMap().values()].filter((t) => t.owner === this.selfId).length;
-    return { pct: Math.round(Math.min(0.6, perThrall * thralls) * 100), thralls, perThrall };
+    const pct = Math.round(Math.min(0.6, perThrall * thralls) * 100);
+    // "Bone Ward -0%" with an empty legion is noise: the readout appears with the first thrall.
+    return pct > 0 ? { pct, thralls, perThrall } : null;
   }
 
   private areaProgress(): string {
@@ -4966,7 +5021,7 @@ export class WorldScene implements GameScene, RuntimeView {
       return pending.map(({ id, need }) => {
         // A seal may open a door in another hall (the Fen's is the Nave's west wall): say where.
         const door = DOORS.find((d) => d.b === id && d.a !== here);
-        return `Slay <b>${Math.min(need, kills)}/${need}</b> to unseal ${AREAS[id].name}${door ? ` (${doorDirection(door)})` : ''}`;
+        return `${formatSealProgress(id, kills, need)}${door ? ` (${doorDirection(door)})` : ''}`;
       }).join('<br>');
     }
     if (here === 'sanctum') {
@@ -5121,6 +5176,7 @@ export class WorldScene implements GameScene, RuntimeView {
       areaName: AREAS[this.area].name,
       areaProgress: this.areaProgress(),
       ward: this.discipline.mods.wardPerThrall > 0 ? this.wardReadout() : null,
+      raisesThralls: this.discipline.family === 'necromancer',
       brews: this.brewTray(),
       save: saveText,
       target,

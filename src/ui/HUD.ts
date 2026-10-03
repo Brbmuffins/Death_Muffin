@@ -5,6 +5,8 @@ import type { EliteAffix } from '../content/enemies';
 import { DAMAGE_UPGRADE, WAVE_MILESTONES, WAVE_UPGRADE, damageBonusPct, milestones, waveModifiers } from '../content/upgrades';
 import { MAX_PARTY_SIZE } from '../net/config';
 import { ICON } from './icons';
+import { isMinorLoot, lootToastLine, lootToastMs } from './lootToast';
+import type { Rarity } from '../net/types';
 import { Minimap, type MinimapFrame } from './Minimap';
 import { spellTooltip } from './spellTooltip';
 import { RUNES, isRuneRite, type RuneRite } from '../content/runes';
@@ -13,6 +15,9 @@ import type { RuneSockets } from '../gameplay/runeRules';
 /** Key caps under each hotbar slot (slot 5 is the right-click action). */
 const SLOT_KEYS = ['1', '2', '3', '4', 'RMB', 'R'];
 let nextTooltipId = 0;
+/** Two small opposed arrows: the hotbar's swap affordance (replaces the old SWAP text). */
+const SWAP_ICON = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h15m-4-4l4 4-4 4"/><path d="M20 16H5m4-4l-4 4 4 4"/></svg>';
+
 export type HudPanel = 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'sheet' | 'legion' | 'atlas';
 /** Desktop row: icon + short label. Tiles of the phone menu sheet: icon + full name. */
 const MENU_ROW: Array<[HudPanel, keyof typeof ICON, string, string, string]> = [
@@ -96,6 +101,8 @@ export interface HudFrame {
   areaProgress: string;
   /** Ossuary's Bone Ward: damage shaved off by the thralls standing now. Null for other disciplines. */
   ward: null | { pct: number; thralls: number; perThrall: number };
+  /** The player raises thralls: Damage tiers only reach thralls raised after the purchase (legionKit.ts), and the tooltip says so. */
+  raisesThralls?: boolean;
   /** The belt: always three slots (heal Q, elixir Z, tonic X); `empty` ones show a faint placeholder and the how-to-fill tip. */
   brews: { slot: string; key: string; label: string; glyph: string; color: number; active: boolean; left: number; frac: number; count: number; empty: boolean; tip: string }[];
   save: { text: string; warn: boolean };
@@ -398,6 +405,15 @@ export class HUD {
     b.classList.add('pulse');
   }
 
+  /** Swap controls stay hidden until the first alternative rite is learned (see firstHourRules.swapReady). */
+  private swapOn = false;
+
+  setSwapReady(on: boolean) {
+    if (this.swapOn === on) return;
+    this.swapOn = on;
+    this.setHotbar(this.hotbar);
+  }
+
   private slotsHtml() {
     return this.hotbar.map((id, i) => {
       const a = ABILITIES[id];
@@ -410,7 +426,7 @@ export class HUD {
             <span class="cdtext" data-cdt="${i + 1}"></span>
             ${a.essenceCost ? `<span class="cost">${a.essenceCost}</span>` : ''}
           </button>
-          ${i < 5 ? `<button class="key swap" data-swap="${i}" aria-label="Swap ${a.name} in ${alt ? 'right-click or slot 5' : `slot ${i + 1}`}">${SLOT_KEYS[i]} <span>swap</span></button>` : `<span class="key">${SLOT_KEYS[i] ?? i + 1}</span>`}
+          ${i < 5 && this.swapOn ? `<button class="key swap" data-swap="${i}" title="Swap this rite (L)" aria-label="Swap ${a.name} in ${alt ? 'right-click or slot 5' : `slot ${i + 1}`}">${SLOT_KEYS[i]}<span class="swap-ico" aria-hidden="true">${SWAP_ICON}</span></button>` : `<span class="key">${SLOT_KEYS[i] ?? i + 1}</span>`}
         </div>`;
     }).join('');
   }
@@ -521,7 +537,7 @@ export class HUD {
       <ul class="spell-details">${data.details.map((d) => `<li>${esc(d)}</li>`).join('')}</ul>
       ${runeCard(id, this.runes)}
       <div class="spell-tip"><b>Combat tip</b><p>${esc(data.tip)}</p></div>
-      <div class="spell-footer">${i < 5 ? 'Click swap below this slot or press L · ' : ''}Codex (K) · Esc closes this card</div>`;
+      <div class="spell-footer">${i < 5 ? 'Click the swap arrows below this slot or press L · ' : ''}Codex (K) · Esc closes this card</div>`;
     this.tooltip.scrollTop = scroll;
     this.positionTooltip();
   }
@@ -657,7 +673,7 @@ export class HUD {
     this.set('canbuy', canBuy, () => this.$('[data-uptoggle]').classList.toggle('can', canBuy));
     this.set('shards', f.shards, () => (this.$('[data-shards]').textContent = String(f.shards)));
 
-    this.set('dmg', `${f.damageTier}|${f.damageCost}|${f.gold >= (f.damageCost ?? Infinity)}`, () => {
+    this.set('dmg', `${f.damageTier}|${f.damageCost}|${f.gold >= (f.damageCost ?? Infinity)}|${!!f.raisesThralls}`, () => {
       this.$('[data-dmgpct]').textContent = `+${f.damagePct}%`;
       this.$('[data-dmgbar]').style.width = `${(f.damageTier / DAMAGE_UPGRADE.maxTier) * 100}%`;
       this.$('[data-dmggems]').innerHTML = milestones(f.damageTier, DAMAGE_UPGRADE.maxTier).map((on) => `<i class="${on ? 'on' : ''}"></i>`).join('');
@@ -665,7 +681,7 @@ export class HUD {
       this.$<HTMLButtonElement>('[data-buydmg]').disabled = f.damageCost === null || f.gold < f.damageCost;
       this.$('[data-buydmg]').title = f.damageCost === null
         ? `Damage is at its highest tier (+${f.damagePct}% to all your damage).`
-        : `Empower: +${Math.round(DAMAGE_UPGRADE.perTier * 100)}% damage per tier, tier ${f.damageTier} of ${DAMAGE_UPGRADE.maxTier}. This one takes you from +${f.damagePct}% to +${damageBonusPct(f.damageTier + 1)}%. Resets when you Ascend.`;
+        : `Empower: +${Math.round(DAMAGE_UPGRADE.perTier * 100)}% damage per tier, tier ${f.damageTier} of ${DAMAGE_UPGRADE.maxTier}. This one takes you from +${f.damagePct}% to +${damageBonusPct(f.damageTier + 1)}%${f.raisesThralls ? ', and your thralls already standing hit harder at once' : ''}. Resets when you Ascend.`;
     });
     this.set('wave', `${f.waveOwned}|${f.waveActive}|${f.waveCost}|${f.gold >= (f.waveCost ?? Infinity)}`, () => {
       this.$('[data-wavepct]').textContent = `+${f.wavePct}%`;
@@ -697,10 +713,10 @@ export class HUD {
       this.$<HTMLButtonElement>('[data-dial="1"]').disabled = f.waveActive >= f.waveOwned;
     });
     this.set('area', f.areaName, () => (this.$('[data-area]').textContent = f.areaName));
-    this.set('ward', f.ward ? `${f.ward.pct}|${f.ward.thralls}` : '', () => {
+    this.set('ward', f.ward && f.ward.pct > 0 ? `${f.ward.pct}|${f.ward.thralls}` : '', () => {
       const el = this.$('[data-ward]');
-      el.hidden = !f.ward;
-      if (!f.ward) return;
+      el.hidden = !f.ward || f.ward.pct <= 0;
+      if (!f.ward || f.ward.pct <= 0) return;
       el.classList.toggle('on', f.ward.pct > 0);
       el.innerHTML = `<span class="lbl">Bone Ward</span><span class="n">−${f.ward.pct}%</span>`;
       el.title = `Each active thrall shields you from ${Math.round(f.ward.perThrall * 100)}% of incoming damage (you have ${f.ward.thralls}; the most it gives is 60%).`;
@@ -850,6 +866,46 @@ export class HUD {
     const duration = Math.max(6000, 2000 + text.split(/\s+/).length * 400);
     el.style.setProperty('--toast-ms', `${duration}ms`);
     setTimeout(() => el.remove(), duration + 700);
+  }
+
+  /** Live pickup toasts by item name, so a repeat pickup bumps the count instead of stacking another box. */
+  private lootToasts = new Map<string, { el: HTMLElement; total: number; timer: number }>();
+
+  /**
+   * A pickup. The same item picked up again while its toast is up becomes "Name ×3" and restarts its clock; commons and
+   * uncommons live 3.5 s and are the first to make room, rare and better keep the full time and a gold edge.
+   */
+  lootToast(name: string, qty: number, rarity: Rarity) {
+    const box = this.$('[data-toasts]');
+    const live = this.lootToasts.get(name);
+    if (live && live.el.isConnected) {
+      live.total += qty;
+      window.clearTimeout(live.timer);
+      live.el.textContent = lootToastLine(name, live.total);
+      // Restart the fade: remove and re-add the animation, and move it to the newest spot.
+      live.el.style.animation = 'none';
+      void live.el.offsetWidth;
+      live.el.style.animation = '';
+      box.appendChild(live.el);
+      live.timer = window.setTimeout(() => this.dropLoot(name, live.el), lootToastMs(rarity) + 700);
+      return;
+    }
+    const el = document.createElement('div');
+    const minor = isMinorLoot(rarity);
+    el.className = `hud-toast good loot ${minor ? 'minor' : 'major'}`;
+    el.dataset.rarity = rarity;
+    el.textContent = lootToastLine(name, qty);
+    const ms = lootToastMs(rarity);
+    el.style.setProperty('--toast-ms', `${ms}ms`);
+    box.appendChild(el);
+    // Room for a drop: the oldest minor pickup goes first, then the oldest of anything (four at most with loot in the stack).
+    while (box.children.length > 4) (box.querySelector('.loot.minor') ?? box.firstChild)?.remove();
+    this.lootToasts.set(name, { el, total: qty, timer: window.setTimeout(() => this.dropLoot(name, el), ms + 700) });
+  }
+
+  private dropLoot(name: string, el: HTMLElement) {
+    el.remove();
+    if (this.lootToasts.get(name)?.el === el) this.lootToasts.delete(name);
   }
 
   private bannerTimer = 0;

@@ -1,7 +1,7 @@
 import { AREAS, type AreaId } from './areas';
 import { BOSSES, BOSS_IDS, type BossId } from './bosses';
 import type { NpcId } from './npcs';
-import { lowerThe, bossBeaten, bossesWaiting, isOpen, pendingSeals, suggestionFor, BAG_FULL_FRACTION, GRAVE_DUST_FOR_TONIC, type GuidanceState, type NewsItem, type Suggestion } from '../gameplay/guidance';
+import { formatSealProgress, lowerThe, bossBeaten, bossesWaiting, isOpen, pendingSeals, suggestionFor, BAG_FULL_FRACTION, GRAVE_DUST_FOR_TONIC, type GuidanceState, type NewsItem, type Suggestion } from '../gameplay/guidance';
 
 /**
  * What the people of the Covenant say. Plain text only (the panel escapes it), two to three short lines per answer.
@@ -98,7 +98,7 @@ function priorAdvice(sg: Suggestion | null, s: GuidanceState): string[] {
     case 'seal': {
       const lvl = Number(d.level);
       const note = s.level + 2 < lvl ? `You are level ${s.level}; a few more levels will make that road kinder.` : `You are level ${s.level}. You are strong enough for it.`;
-      return [`The road onward is sealed. Slay ${n(Number(d.need) - Number(d.kills))} more of the dead in ${d.from}, and ${d.to} will open (${d.kills} of ${d.need} so far).`, note];
+      return [`The road onward is sealed. Slay ${n(Number(d.need) - Number(d.kills))} more of the dead in ${d.from}, and ${d.to} will open. ${d.seal}.`, note];
     }
     case 'boss-ready':
       return [`${d.boss} stirs at ${d.at}, in ${d.area}. You hold the ${d.shards} soul shards it asks.`, BOSS_HINT[BOSS_IDS.find((id) => BOSSES[id].name === d.boss)!]];
@@ -133,7 +133,7 @@ const PRIOR_TOPICS: TopicDef[] = [
       const seals = pendingSeals(s).filter((x) => !x.side);
       const first = 'Slay enough of the dead in a hall and the seal to the next breaks by itself. There is nothing to carry or to buy.';
       const now = seals[0]
-        ? `Now: ${seals[0].kills} of ${seals[0].need} in ${lowerThe(AREAS[seals[0].from].name)} opens ${lowerThe(AREAS[seals[0].area].name)}.`
+        ? `Now: ${formatSealProgress(seals[0].area, seals[0].kills, seals[0].need)}, in ${lowerThe(AREAS[seals[0].from].name)}.`
         : 'Every seal on the main road is broken.';
       const side = sideHalls(s);
       return [first, now, ...(side.length ? [`Two side halls open sooner: ${side.join(' and ')}.`] : [])];
@@ -240,7 +240,7 @@ const SEXTON_TOPICS: TopicDef[] = [
     id: 'contracts',
     label: 'The daily Contracts',
     lines: (s) => [
-      'Three orders a day (O), easy to hard, drawn from what your skills can make. Deliver from your bag for gold, and sometimes an item.',
+      'Three orders a day (O), easy to hard, drawn from what your skills can make. Deliver from your bag for gold, and sometimes an item. Now and then I want gems, fragments or seals; I pay double for those.',
       s.contracts ? (s.contracts.open === 0 ? 'Today’s board is done. A fresh one comes tomorrow; finishing all three pays a bonus and builds a streak.' : `${s.contracts.open} of today’s ${s.contracts.total} are still open.`) : 'Fill all three for a bonus, and a streak that grows each day.',
     ],
   },

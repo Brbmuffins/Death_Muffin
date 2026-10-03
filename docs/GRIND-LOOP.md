@@ -24,7 +24,7 @@ leaks, and the backlog that fixes it, ordered by payoff for effort.
    - `gem_grave_garnet`, `gem_bone_opal`, `gem_void_sapphire`;
    - `reliquary_fragment`, `covenant_seal`.
 
-   **Selling** now exists (bag → Sell / Sell all). Real uses still need designing (§3).
+   **Selling** exists (bag → Sell / Sell all). **Uses added 2026-10-03**: the Sexton's Contracts ask for the gems, the Fragment and the Seal (relic orders) and for Tin and Bronze Ingots, no migration (`docs/polish/loot.md` item 14; `trade-goods.test.ts` pins that nothing droppable is sell-only). Seeds all have plots already. Recipes, rune sockets and boss keys (§3 #3, #7) remain open.
 3. **Crafted duds.** Swiftness, Forge-Tempered and Void Resist flasks did nothing. They are **fixed** (timed buffs).
    `kit_iron_warden` (`resist_blast`) is still inert.
 4. **Gold has few sinks** (Damage / Wave Speed tiers only), so it piles up once those are bought.
@@ -35,7 +35,7 @@ leaks, and the backlog that fixes it, ordered by payoff for effort.
 | # | Feature | Why it hooks | Effort | Notes |
 |---|---|---|---|---|
 | 1 | ~~**Plague Cloister** (level-scaled zone)~~ | XP never plateaus; a new place to explore | L | **Shipped 2026-09-29**, with the Plague Saint |
-| 2 | ~~**Loot upgrade chase**~~ | Every drop *might* be better; the core ARPG slot machine | L | **Built 2026-10-02 (branch `dm/affixes`, migration 020)**: server-rolled item level and 0-3 affixes per gear drop (`loot_instances`), necromancer levers, readable tooltips, Vault/Salvage/offline carry the roll. See HANDOFF. The legacy `item_instance` table was Crossworlds', so the new one is `loot_instances` |
+| 2 | ~~**Loot upgrade chase**~~ | Every drop *might* be better; the core ARPG slot machine | L | **Built 2026-10-02 (branch `dm/affixes`, migration 020)**: server-rolled item level and 0-3 affixes per gear drop (`loot_instances`), necromancer levers, readable tooltips, Vault/Salvage/offline carry the roll. Ranges tuned 2 and 3 Oct (BALANCE.md "Affix tuning": a good drop is a 5-9% upgrade, affixes never outclass a completed set). See HANDOFF. The legacy `item_instance` table was Crossworlds', so the new one is `loot_instances` |
 | 3 | **Salvage** gear → materials, and **gems into sockets** (runes brief: `build-depth-aspects-runes.md`) | Gives gems, fragments and duplicate gear a purpose | M | Migration 005 plus a Reliquary panel |
 | 4 | **Daily Sexton's Contracts** ("kill 200 in the Nave", "cook 20 meals") → shards and seals | A reason to log in daily | M | Icon `sexton_contract.png` exists (unused) |
 | 5 | ~~**Omens**~~ | Novelty, and a reason to replay old zones | M | **Shipped 2026-09-30** (`content/omens.ts`): Blood Moon, Drowned Week and The Tolling rotate each UTC week; effects on elites, wave size, rewards and the sky. The `daily_rite` icon is still unused |

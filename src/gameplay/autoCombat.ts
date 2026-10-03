@@ -4,6 +4,7 @@ import { BOSS_RADIUS } from './sim/BossBrain';
 import type { BossState, Corpse, Enemy } from './sim/types';
 import type { ClassFamily } from '../content/disciplines';
 import { AREAS, type AreaId } from '../content/areas';
+import { dodgeStep, stepIntoHazard, type DodgeMemory, type Hazard } from './autoDodge';
 
 export interface AutoCombatInput {
   /** hp/maxHp let Bone Mantle answer pressure; omitted, it only waits for corpse fuel. */
@@ -310,12 +311,16 @@ export interface AutoMoveMemory {
   /** Line-of-sight check cadence (ms) and its last answer. */
   sightAt?: number;
   blocked?: boolean;
+  /** The safe spot chosen when leaving a boss telegraph or a hostile pool (autoDodge.ts). */
+  dodge?: DodgeMemory;
 }
 /** The nav queries movement needs to walk around props instead of into them (optional for tests). */
 export interface AutoMoveNav {
   clearLine(x0: number, z0: number, x1: number, z1: number, r?: number): boolean;
   findPath(fx: number, fz: number, tx: number, tz: number): { x: number; z: number }[];
 }
+/** What Easy auto's movement reads: where the hero and the enemies are, and (optionally) the live shapes to stay out of. */
+export type AutoMoveInput = Pick<AutoCombatInput, 'player' | 'enemies' | 'primary' | 'primaryRange' | 'family'> & { nav?: AutoMoveNav; hazards?: readonly Hazard[] };
 const STICKY_TARGET_M = 2;
 const CLOSE_START = 0.2;
 const CLOSE_STOP = 1.1;
@@ -324,7 +329,7 @@ const TURN_SECONDS = 0.1;
 
 /** A local engagement direction; manual movement, panels and gathering gate its use in the scene. */
 export function selectAutoCombatMovement(
-  input: Pick<AutoCombatInput, 'player' | 'enemies' | 'primary' | 'primaryRange' | 'family'> & { nav?: AutoMoveNav },
+  input: AutoMoveInput,
   mem?: AutoMoveMemory,
   now = 0,
   dt = 0,
@@ -349,8 +354,18 @@ export function selectAutoCombatMovement(
   return out;
 }
 
-function rawAutoMovement(input: Pick<AutoCombatInput, 'player' | 'enemies' | 'primary' | 'primaryRange' | 'family'> & { nav?: AutoMoveNav }, mem: AutoMoveMemory | undefined, now: number): { x: number; z: number } | null {
+function rawAutoMovement(input: AutoMoveInput, mem: AutoMoveMemory | undefined, now: number): { x: number; z: number } | null {
   const p = input.player;
+  // Boss telegraphs, hymn cones and hostile pools come first: step out to the nearest safe spot, and (below) never walk back in.
+  const hazards = input.hazards;
+  if (hazards?.length || mem?.dodge?.goal) {
+    const rect = p.area ? AREAS[p.area].rect : null;
+    const out = dodgeStep(p, hazards ?? [], mem ? (mem.dodge ??= {}) : undefined, now, { rect, nav: input.nav });
+    if (out) {
+      if (mem) mem.evade = null; // the ordinary dodge must not resume a stale side
+      return out;
+    }
+  }
   const enemies = [...input.enemies].filter((e) => e.hp > 0 && e.state !== 'dead' && (e.state !== 'rising' && e.state !== 'burrow') && (!p.area || e.area === p.area))
     .sort((a, b) => distance(p, a) - distance(p, b));
   let nearest = enemies[0];
@@ -414,11 +429,14 @@ function rawAutoMovement(input: Pick<AutoCombatInput, 'player' | 'enemies' | 'pr
         const wp = mem.route[0];
         if (wp) {
           const l = Math.hypot(wp.x - p.x, wp.z - p.z) || 1;
-          return { x: (wp.x - p.x) / l, z: (wp.z - p.z) / l };
+          const step = { x: (wp.x - p.x) / l, z: (wp.z - p.z) / l };
+          return hazards && stepIntoHazard(p, step, hazards) ? null : step;
         }
       } else mem.route = null;
     }
-    return safe([{ x: dx, z: dz }, center]);
+    // Hold here, still attacking, rather than walking into a ring, cone or pool; the way clears when the blow lands.
+    const step = safe([{ x: dx, z: dz }, center]);
+    return hazards && stepIntoHazard(p, step, hazards) ? null : step;
   }
   if (reach >= 7 && d < 3 && enemies.filter((e) => distance(p, e) < 3.5).length >= 2) return evade([{ x: -dx, z: -dz }, center]);
   return null;

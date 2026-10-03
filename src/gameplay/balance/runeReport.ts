@@ -4,7 +4,7 @@
  * seeds with no rune. Runes should add build variety, not raw power: about 0-10% either way.
  *
  * Env: RUNE_TUNE="ring.damageMult=0.85,volley.damageFrac=0.35" overrides RUNE_TUNING numbers for this run only (to try a value before editing content/runes.ts),
- *      RUNE_AREA (nave), RUNE_BAND (push), RUNE_SEEDS (6), RUNE_MINUTES (3), RUNE_DISCIPLINES (1,2,3,4), RUNE_KIT (typical|none|...), RUNE_ONLY (comma list of rune ids).
+ *      RUNE_WEAPON (scythe, with RUNE_KIT=typical), RUNE_AREA (nave), RUNE_BAND (push), RUNE_SEEDS (6), RUNE_MINUTES (3), RUNE_DISCIPLINES (1,2,3,4), RUNE_KIT (typical|none|...), RUNE_ONLY (comma list of rune ids).
  * Weapons: the kit's staff makes the left click a needle; a scythe would ignore the needle runes, so the default kit is the historical bare bot (`none`)
  * plus the `typical` kit as a second table (RUNE_KIT=typical).
  */
@@ -13,6 +13,7 @@ import { AREAS, type AreaId } from '../../content/areas';
 import { RUNES, RUNE_IDS, RUNE_TUNING, type RuneId } from '../../content/runes';
 import { BANDS } from './bands';
 import type { KitName } from './kits';
+import type { NecroKind } from '../../content/necroWeapons';
 
 // RUNE_TUNE: dotted paths into RUNE_TUNING, applied before anything runs (the object is plain data at run time).
 for (const pair of (process.env.RUNE_TUNE ?? '').split(',').filter(Boolean)) {
@@ -31,6 +32,8 @@ const MINUTES = Number(process.env.RUNE_MINUTES ?? 3);
 const kit = (process.env.RUNE_KIT ?? 'none') as KitName;
 const discs = (process.env.RUNE_DISCIPLINES ?? '1,2,3,4').split(',').map(Number);
 const only = process.env.RUNE_ONLY ? process.env.RUNE_ONLY.split(',') : null;
+/** RUNE_WEAPON=scythe: swap the kit's main hand (needs RUNE_KIT other than none), to measure the runes riding a scythe's arc. */
+const weapon = process.env.RUNE_WEAPON as NecroKind | undefined;
 const names: Record<number, string> = { 1: 'ossuary', 2: 'gravecaller', 3: 'mourner', 4: 'rotweaver' };
 
 const mean = (rs: BalanceResult[], f: (r: BalanceResult) => number) => rs.reduce((a, r) => a + f(r), 0) / rs.length;
@@ -42,7 +45,7 @@ const sum = (rs: BalanceResult[]) => ({
 
 const bandRun = BANDS[band](AREAS[area].level) as BalanceRun;
 const go = (classIndex: number, rune?: RuneId) =>
-  Array.from({ length: SEEDS }, (_, s) => runBalance({ ...bandRun, area, classIndex, minutes: MINUTES, seed: 42 + s, kit, ...(rune ? { runes: { [RUNES[rune].rite]: rune } } : {}) }));
+  Array.from({ length: SEEDS }, (_, s) => runBalance({ ...bandRun, area, classIndex, minutes: MINUTES, seed: 42 + s, kit, ...(weapon ? { kitOverride: { main: weapon, off: null } } : {}), ...(rune ? { runes: { [RUNES[rune].rite]: rune } } : {}) }));
 
 console.log(`rune balance: ${area} ${band}, kit ${kit}, ${SEEDS} seeds x ${MINUTES} min (percent change versus no rune; ttk and hurt: lower is better)`);
 const totals: Record<string, { kills: number; ttk: number; hurt: number }[]> = {};

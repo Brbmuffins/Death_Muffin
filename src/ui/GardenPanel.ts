@@ -4,6 +4,7 @@ import { COMPOST_ITEM, seedDef } from '../content/gardening';
 import { remainingText } from '../gameplay/gardeningRules';
 import type { Inventory } from '../gameplay/loot';
 import { preserveScroll } from './preserveScroll';
+import { plotStateAt, useCompost } from './gardenView';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 const iconOf = (itemId: string) => itemMeta(itemId).icon ?? `art/items/${itemId}.webp`;
@@ -101,10 +102,11 @@ export class GardenPanel {
       ? `<p class="cw-hint-text">${this.error ? esc(this.error) : 'Tending the beds…'}</p>`
       : v.plots
           .map((p) => {
+            const state = plotStateAt(p, now);
             const seed = p.seedId ? seedDef(p.seedId) : undefined;
             const crop = seed ? itemMeta(seed.harvest) : undefined;
             const head = `<div class="hd"><b>${esc(p.label)}</b><span class="meta">${p.kind === 'tree' ? 'Tree patch' : 'Herb bed'}</span></div>`;
-            if (p.state === 'empty') {
+            if (state === 'empty') {
               const seeds = this.seedsFor(p.kind, v.level);
               const pick = this.choice.get(p.plot) ?? { seed: seeds.find((s) => s.ok)?.id ?? seeds[0]?.id ?? '', compost: false };
               if (!seeds.some((s) => s.id === pick.seed)) pick.seed = seeds.find((s) => s.ok)?.id ?? seeds[0]?.id ?? '';
@@ -116,18 +118,18 @@ export class GardenPanel {
                   ? `<div class="row"><select data-seed="${p.plot}" aria-label="Seed for ${esc(p.label)}">${seeds.map((s) => `<option value="${s.id}" ${s.id === pick.seed ? 'selected' : ''}>${esc(s.name)} ×${s.qty}${s.ok ? '' : ` (Lv ${s.level})`}</option>`).join('')}</select>
                      ${meal ? `<label class="cw-check"><input type="checkbox" data-compost="${p.plot}" ${pick.compost ? 'checked' : ''}/> Bone meal (${meal})</label>` : ''}
                      <button class="cw-button small" data-plant="${p.plot}" ${disabled ? 'disabled' : ''}>Plant</button></div>
-                     ${chosen && !chosen.ok ? `<div class="rw">Requires Grave Gardening ${chosen.level}.</div>` : chosen ? `<div class="rw">Grows in ${remainingText(seedDef(chosen.id)!.growMin * 60_000 * (pick.compost ? 0.75 : 1))}.</div>` : ''}`
+                     ${chosen && !chosen.ok ? `<div class="rw">Requires Grave Gardening ${chosen.level}.</div>` : chosen ? `<div class="rw">Grows in ${remainingText(seedDef(chosen.id)!.growMin * 60_000 * (useCompost(pick.compost, meal) ? 0.75 : 1))}.</div>` : ''}`
                   : `<div class="rw">${p.kind === 'tree' ? 'No saplings. Coffin-Oaks and Churchyard Yews sometimes drop them.' : 'No seeds. Dig graves in the Sexton’s Acre for Mourning Moss seeds.'}</div>`}
               </article>`;
             }
             const total = Math.max(1, p.readyAt - p.plantedAt);
             const left = Math.max(0, p.readyAt - now);
-            const pct = p.state === 'ready' ? 100 : Math.min(100, Math.round(((total - left) / total) * 100));
-            return `<article class="cw-plot ${p.state}" data-plot="${p.plot}" style="--rarity:${RARITY_COLOR[crop?.rarity ?? 'common']}">${head}
+            const pct = state === 'ready' ? 100 : Math.min(100, Math.round(((total - left) / total) * 100));
+            return `<article class="cw-plot ${state}" data-plot="${p.plot}" style="--rarity:${RARITY_COLOR[crop?.rarity ?? 'common']}">${head}
               <div class="row"><img src="${iconOf(seed!.harvest)}" alt="" onerror="this.style.visibility='hidden'" />
                 <div class="grow"><div class="bar" aria-hidden="true"><i style="width:${pct}%"></i></div>
-                <div class="rw">${esc(crop?.name ?? seed!.harvest)} · ${p.state === 'ready' ? '<b>Ready to harvest</b>' : `${remainingText(left)} left`}${p.composted ? ' · <i>bone meal</i>' : ''}</div></div>
-                <button class="cw-button small" data-harvest="${p.plot}" ${p.state !== 'ready' || this.busy ? 'disabled' : ''}>Harvest</button></div>
+                <div class="rw">${esc(crop?.name ?? seed!.harvest)} · ${state === 'ready' ? '<b>Ready to harvest</b>' : `${remainingText(left)} left`}${p.composted ? ' · <i>bone meal</i>' : ''}</div></div>
+                <button class="cw-button small" data-harvest="${p.plot}" ${state !== 'ready' || this.busy ? 'disabled' : ''}>Harvest</button></div>
             </article>`;
           })
           .join('');
@@ -163,13 +165,13 @@ export class GardenPanel {
     this.render();
     try {
       const pick = this.choice.get(plot);
-      const result = await this.inventory.exclusive(async () => {
-        const r = kind === 'plant' ? await plantGarden(this.characterId, plot, pick?.seed ?? '', !!pick?.compost) : await harvestGarden(this.characterId, plot);
-        this.inventory.replace(await getInventory(this.characterId));
-        return r;
-      });
+      const { reply: result, bagStale } = await this.inventory.exclusiveAction(
+        () => (kind === 'plant' ? plantGarden(this.characterId, plot, pick?.seed ?? '', useCompost(!!pick?.compost, this.inventory.count(COMPOST_ITEM))) : harvestGarden(this.characterId, plot)),
+        () => getInventory(this.characterId),
+      );
       this.set(result);
       this.onResult(kind, result);
+      if (bagStale) this.error = 'Done, but your bag could not be refreshed. Close and reopen your bag to see it.';
     } catch (err) {
       this.error = err instanceof Error ? err.message : 'The garden refuses.';
     } finally {

@@ -1,8 +1,9 @@
-import { ABILITIES, DETONATE, LITANY_PER_CORPSE, SOUL_HARVEST } from '../../content/abilities';
+import { ABILITIES, DETONATE, GRAVE_SLAM, HOLLOW_CUT, LITANY_PER_CORPSE, SHIELD_BASH, SOUL_HARVEST, unlockLevel } from '../../content/abilities';
 import { bogMult } from '../../content/fen';
 import { AREAS, type AreaId } from '../../content/areas';
 import { chestBonus, depthLootArea, floorBonus, hasChest } from '../../content/depths';
 import { disciplineFor } from '../../content/disciplines';
+import { ENEMIES } from '../../content/enemies';
 import { deriveStats, xpToNext } from '../characterStats';
 import { rollKill } from '../loot';
 import { Nav } from '../nav';
@@ -66,6 +67,12 @@ export interface BalanceRun {
    * because the long-standing baselines never modelled it; the Requiem legendary set (fill rate, wraith nova) only means something with it on.
    */
   soulHarvest?: boolean;
+  /**
+   * New Blood bot only: sidestep telegraphed attacks (cones, rings, eruptions) after a human's reaction time, the way a player
+   * and the Easy auto brain do. Default on; `false` is the 2026-09-28 bot that stood still. The necromancer bot never dodges
+   * (its baselines predate this), so a necromancer row is not affected by this flag.
+   */
+  dodge?: boolean;
 }
 
 export interface BalanceResult {
@@ -93,6 +100,8 @@ export interface BalanceResult {
   thrallCap: number;
   /** Catacomb Depths rows: floors cleared per simulated minute (0 elsewhere). */
   floorsPerMin: number;
+  /** Rites the bot cast through its cooldown gate, by ability id (the necromancer's left-click needle is not counted). */
+  casts: Record<string, number>;
 }
 
 const SP_NEEDLE = ABILITIES.bone_needle;
@@ -159,11 +168,18 @@ export function runBalance(run: BalanceRun): BalanceResult {
   let needleCasts = 0;
   let deaths = 0;
   let deadUntil = 0;
+  const castCount: Record<string, number> = {};
   let lastHurt = -99;
   let lastResourceGain = -99;
   let crowsUntil = 0;
   let nextCrowPeck = 0;
   let vigilUntil = 0;
+  let choirUntil = 0;
+  /** The sidestep in progress (New Blood bot): a unit direction, when it starts (reaction time) and when the blow lands. */
+  let sidestep: { dx: number; dz: number; from: number; until: number } | null = null;
+  let nextChoir = 0;
+  let murderUntil = 0;
+  let nextMurder = 0;
   let kills = 0;
   let gold = 0;
   let xp = 0;
@@ -192,6 +208,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
     const a = ABILITIES[id];
     if (!ready(id, t) || p.essence < a.essenceCost) return false;
     p.essence -= a.essenceCost;
+    castCount[id] = (castCount[id] ?? 0) + 1;
     // A grimoire shortens every rite (the left click is exempt), exactly as the player's cooldowns do.
     cds.set(id, t + abilityCooldownMs(id, a.cooldownMs, loadout, id === 'bone_needle') / 1000);
     return true;
@@ -234,6 +251,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
     // --- Player upkeep ---
     if (!p.alive && t >= deadUntil) {
       p.alive = true;
+      sidestep = null;
       p.hp = stats.maxHp;
       p.x = home.x;
       p.z = home.z;
@@ -304,14 +322,14 @@ export function runBalance(run: BalanceRun): BalanceResult {
           sim.apply({ t: 'signature', by: p.id, sig: name, x, z, dx: x - p.x, dz: z - p.z, sp: power,
             ...(dur === undefined ? {} : { dur }) });
         const hit = (id: keyof typeof ABILITIES, range: number, gain = 0, mult = 1, bleed = 0) => {
-          if (!nearest || nd > range || !use(id, t)) return false;
+          if (!nearest || nd - nearest.radius > range || !use(id, t)) return false;
           sim.apply({ t: 'hit', by: p.id, ids: [nearest.id], dmg: sp * ABILITIES[id].power * mult,
             ...(bleed ? { bleed } : {}) });
           p.essence = Math.min(resource.max(stats), p.essence + gain); if (gain) lastResourceGain = t;
           return true;
         };
         const arc = (id: 'flail_swing' | 'hollow_cut', range: number, halfDegrees: number, gainPerHit = 0) => {
-          if (!nearest || nd > range || !use(id, t)) return false;
+          if (!nearest || nd - nearest.radius > range || !use(id, t)) return false;
           const dx = (nearest.x - p.x) / (nd || 1), dz = (nearest.z - p.z) / (nd || 1);
           const ids = enemies.filter((e) => {
             const ex = e.x - p.x, ez = e.z - p.z, d = Math.hypot(ex, ez);
@@ -323,14 +341,28 @@ export function runBalance(run: BalanceRun): BalanceResult {
         };
         if (nearest) {
           const range = disc.family === 'witch' ? 8 : disc.family === 'veil' ? 11 : disc.family === 'monk' ? 1.8 : 3;
-          if (nd > range - 0.4) {
+          // Reach is edge to edge, as in the game (NewBloodSystem.target, AbilitySystem.hollowCut): a body's radius counts.
+          const dodging = sidestep !== null && t < sidestep.until;
+          if (dodging && t >= sidestep!.from) {
+            const step = stats.moveSpeed * dt * bog();
+            [p.x, p.z] = nav.resolve(p.x + sidestep!.dx * step, p.z + sidestep!.dz * step, 0.45);
+          } else if (!dodging && nd - nearest.radius > range - 0.4) {
             const step = stats.moveSpeed * dt * bog();
             [p.x, p.z] = nav.resolve(p.x + (nearest.x - p.x) / nd * step, p.z + (nearest.z - p.z) / nd * step, 0.45);
           }
+          // Rites unlock with the hero's level, which climbs during the run (a level-1 Warden has no Burn the Dead yet).
+          const lv = character.level;
+          const open = (id: keyof typeof ABILITIES) => lv >= unlockLevel(id);
+          const ux = nd > 1e-6 ? (nearest.x - p.x) / nd : 1, uz = nd > 1e-6 ? (nearest.z - p.z) / nd : 0;
+          /** A dash of `m` metres toward the nearest body, stopped by walls (the client's `dash`). */
+          const dash = (m: number) => { [p.x, p.z] = nav.resolve(p.x + ux * m, p.z + uz * m, 0.45); };
           if (disc.family === 'warden') {
-            if (corpsesNear.length && use('burn_the_dead', t)) send('burn_the_dead', corpsesNear[0].x, corpsesNear[0].z);
-            if (run.level >= 5 && near(5).length >= 2 && use('watchmans_ward', t)) send('watchmans_ward', p.x, p.z);
-            if (run.level >= 10 && p.hp < stats.maxHp * 0.7 && near(12).length && use('last_light', t)) send('last_light', p.x, p.z);
+            if (open('burn_the_dead') && corpsesNear.length && use('burn_the_dead', t)) send('burn_the_dead', corpsesNear[0].x, corpsesNear[0].z);
+            // Cremate: one corpse under a pack becomes a fire pillar.
+            const pyre = corpsesNear.find((c) => enemies.some((e) => Math.hypot(e.x - c.x, e.z - c.z) <= 2.5));
+            if (pyre && use('cremate', t)) send('cremate', pyre.x, pyre.z);
+            if (open('watchmans_ward') && near(5).length >= 2 && use('watchmans_ward', t)) send('watchmans_ward', p.x, p.z);
+            if (open('last_light') && p.hp < stats.maxHp * 0.7 && near(12).length && use('last_light', t)) send('last_light', p.x, p.z);
             if (nd <= 7 && use('lantern_cone', t)) {
               const dx = (nearest.x - p.x) / (nd || 1), dz = (nearest.z - p.z) / (nd || 1);
               const ids = enemies.filter((e) => {
@@ -347,11 +379,29 @@ export function runBalance(run: BalanceRun): BalanceResult {
               p.essence -= spend;
               send('toll', p.x, p.z, sp * (1 + spend / 100), spend ? 0.6 : undefined);
             }
+            // Resonant Step: close a gap by dashing through the bodies in between.
+            if (nd - nearest.radius > 2.5 && nd < 8 && use('resonant_step', t)) {
+              send('resonant_step', p.x + ux * 5, p.z + uz * 5);
+              dash(5);
+            }
+            if (open('knell') && nd <= 9 && use('knell', t)) send('knell', nearest.x, nearest.z);
+            if (open('choir_of_one') && t >= choirUntil && near(4).length >= 3 && use('choir_of_one', t)) { choirUntil = t + 6; nextChoir = t + 1.2; }
+            if (t < choirUntil && t >= nextChoir) { nextChoir += 1.2; send('toll', p.x, p.z, sp * 0.5); }
+            const bell = corpsesNear.find((c) => enemies.some((e) => Math.hypot(e.x - c.x, e.z - c.z) <= 3.5));
+            if (bell && use('sound_the_corpse', t)) send('sound_the_corpse', bell.x, bell.z);
+            if (open('great_toll') && p.essence >= 90 && near(8).length >= 4 && use('great_toll', t)) {
+              const spend = p.essence;
+              p.essence = 0;
+              send('great_toll', p.x, p.z, sp * (1 + spend / 100));
+            }
             const beat = t % 1.2 <= 0.15 || t % 1.2 >= 1.05;
             hit('palm_strike', 1.8, beat ? 12 : 8, beat ? 1.4 : 1);
           } else if (disc.family === 'witch') {
             if (corpsesNear.length && use('harvest', t)) send('harvest', corpsesNear[0].x, corpsesNear[0].z);
             if (nd <= 7 && use('crow_swarm', t)) send('crow_swarm', nearest.x, nearest.z);
+            if (open('hex_charm') && nd <= 9 && use('hex_charm', t)) send('hex_charm', nearest.x, nearest.z);
+            if (open('murder_of_crows') && near(6).length >= 3 && t >= murderUntil && use('murder_of_crows', t)) { murderUntil = t + 8; nextMurder = t; }
+            if (t < murderUntil && t >= nextMurder) { nextMurder = t + 0.5; send('murder_of_crows', nearest.x, nearest.z); }
             if (t < crowsUntil && t >= nextCrowPeck && nd <= 3) {
               sim.apply({ t: 'hit', by: p.id, ids: [nearest.id], dmg: sp * 0.35 });
               nextCrowPeck = t + 0.5;
@@ -362,20 +412,46 @@ export function runBalance(run: BalanceRun): BalanceResult {
               if (p.essence > 20 && nd <= 5) body.veilForm = true;
               else if (p.essence <= 8 || nd > 8) body.veilForm = false;
             }
-            if (nd <= 8 && use('veil_tear', t)) send('veil_tear', nearest.x, nearest.z);
+            if (open('veil_tear') && nd <= 8 && use('veil_tear', t)) send('veil_tear', nearest.x, nearest.z);
+            // Lay to Rest: a corpse heals 6% (and leaves two echoes); Between Worlds: five seconds of Veil protection when low.
+            if (p.hp < stats.maxHp * 0.85 && corpsesNear.length && use('lay_to_rest', t)) {
+              send('lay_to_rest', corpsesNear[0].x, corpsesNear[0].z);
+              p.hp = Math.min(stats.maxHp, p.hp + stats.maxHp * 0.06);
+            }
+            if (body && open('between_worlds') && p.hp < stats.maxHp * 0.4 && use('between_worlds', t)) body.betweenUntil = (t + 5) * 1000;
             hit('spirit_bolt', 11, 0, body?.veilForm ? 0.7 : 1);
           } else {
-            if (body && run.level >= 3 && nd <= 2.5 && p.hp < stats.maxHp * 0.85 && use('bulwark', t)) {
+            if (body && open('bulwark') && nd <= 2.5 && p.hp < stats.maxHp * 0.85 && use('bulwark', t)) {
               body.face(nearest.x, nearest.z);
               body.bulwarkUntil = (t + 2) * 1000;
               body.bulwarkPerfectUntil = (t + 0.25) * 1000;
             }
-            if (body && run.level >= 10 && p.hp < stats.maxHp * 0.35 && use('oath_unbroken', t)) body.unbreakableUntil = (t + 6) * 1000;
-            if (run.level >= 5 && p.hp < stats.maxHp * 0.65 && corpsesNear.length && use('corpse_vigil', t)) {
+            if (body && open('oath_unbroken') && p.hp < stats.maxHp * 0.35 && use('oath_unbroken', t)) body.unbreakableUntil = (t + 6) * 1000;
+            if (open('corpse_vigil') && p.hp < stats.maxHp * 0.65 && corpsesNear.length && use('corpse_vigil', t)) {
               send('vigil', corpsesNear[0].x, corpsesNear[0].z);
               vigilUntil = t + 4;
             }
-            arc('hollow_cut', 2.4, 55, 4);
+            // Grave Slam: leap into the thickest knot of bodies within ten metres and bring the ground down on it (needs 30 Rage).
+            if (p.essence >= ABILITIES.grave_slam.essenceCost && ready('grave_slam', t)) {
+              let knot: Enemy | null = null;
+              let knotN = 2;
+              for (const e of near(GRAVE_SLAM.leapM + 2)) {
+                const n = enemies.filter((o) => Math.hypot(o.x - e.x, o.z - e.z) <= GRAVE_SLAM.slamR).length;
+                if (n > knotN) { knotN = n; knot = e; }
+              }
+              if (knot && use('grave_slam', t)) {
+                const l = Math.hypot(knot.x - p.x, knot.z - p.z) || 1;
+                const reach = Math.min(GRAVE_SLAM.leapM, l);
+                [p.x, p.z] = nav.resolve(p.x + (knot.x - p.x) / l * reach, p.z + (knot.z - p.z) / l * reach, 0.45);
+                strike(p.x, p.z, GRAVE_SLAM.slamR, sp * ABILITIES.grave_slam.power);
+              }
+            }
+            // Shield Bash: a three-metre charge that stuns the first body in the way, used to close a short gap.
+            if (nd - nearest.radius > 1.4 && nd < 4.5 && use('shield_bash', t)) {
+              send('bash', p.x, p.z);
+              dash(Math.min(SHIELD_BASH.dashM, Math.max(0, nd - nearest.radius - 0.9)));
+            }
+            arc('hollow_cut', HOLLOW_CUT.reach, HOLLOW_CUT.halfAngleDeg, HOLLOW_CUT.rage);
           }
         }
       } else {
@@ -465,9 +541,17 @@ export function runBalance(run: BalanceRun): BalanceResult {
           cds.set('bone_needle', t + abilityCooldownMs('bone_needle', SP_NEEDLE.cooldownMs, loadout, true) / 1000);
           const crit = rand() < 0.08 ? 1.8 : 1;
           if (loadout.reap) {
+            // Bone Needle runes ride the arc once per swing (AbilitySystem.reap): Marrow-Tap softens the swing and tops up essence once, Splinters throws one shard to a foe the arc missed.
+            const reapRune = runes.bone_needle;
+            const tap = reapRune === 'rune_marrow_tap';
             const struck = reapTargets(p, nearest, enemies);
-            if (struck.length) sim.apply({ t: 'hit', by: p.id, ids: struck.map((e) => e.id), dmg: sp * SP_NEEDLE.power * NECRO_WEAPON_TUNING.scythe.damageMult * crit });
-            p.essence = Math.min(stats.maxEssence, p.essence + NECRO_WEAPON_TUNING.scythe.essencePerHit * struck.length);
+            const swing = sp * SP_NEEDLE.power * NECRO_WEAPON_TUNING.scythe.damageMult * (tap ? RUNE_TUNING.marrowTap.damageMult : 1) * crit;
+            if (struck.length) sim.apply({ t: 'hit', by: p.id, ids: struck.map((e) => e.id), dmg: swing });
+            if (reapRune === 'rune_splinter' && struck.length) {
+              const next = splinterTarget(struck[0], enemies.filter((e) => e === struck[0] || !struck.includes(e)));
+              if (next) sim.apply({ t: 'hit', by: p.id, ids: [next.id], dmg: swing * RUNE_TUNING.splinter.damageFrac });
+            }
+            p.essence = Math.min(stats.maxEssence, p.essence + NECRO_WEAPON_TUNING.scythe.essencePerHit * struck.length + (tap && struck.length ? RUNE_TUNING.marrowTap.essenceBonus : 0));
           } else {
             const wither = loadout.needleWithered > 0 ? { withered: loadout.needleWithered, witheredCap: effectiveWitheredCap(disc.mods) } : {};
             // Relic runes (AbilitySystem.needle): Marrow-Tap trades damage for essence, the Volley fires three half-strength needles every 4th cast, Splinters sends half to the next foe.
@@ -532,6 +616,27 @@ export function runBalance(run: BalanceRun): BalanceResult {
           p.x = next.start.x;
           p.z = next.start.z;
           home = { x: next.start.x, z: next.start.z };
+        }
+      } else if (ev.t === 'telegraph' && p.alive && body && run.dodge !== false) {
+        // Read the telegraph: where would the blow land, and which way out is shortest? Ring-shaped blows push the bot radially out of
+        // the ring, cones (a caster's bolt line, 30 degrees either side of its aim) send it sideways. A human needs ~0.25 s to react.
+        const REACT = 0.25;
+        const ringAt = ev.kind === 'toll' ? { x: ev.x, z: ev.z } : { x: ev.tx, z: ev.tz };
+        if (ev.r !== undefined && ev.kind !== 'hook' && ev.kind !== 'raise') {
+          const d = Math.hypot(p.x - ringAt.x, p.z - ringAt.z);
+          if (d <= ev.r + 0.5) {
+            const ux = d > 1e-6 ? (p.x - ringAt.x) / d : 1, uz = d > 1e-6 ? (p.z - ringAt.z) / d : 0;
+            sidestep = { dx: ux, dz: uz, from: t + REACT, until: t + ev.ms / 1000 };
+          }
+        } else if (ev.kind === 'cone') {
+          const e = sim.enemies.get(ev.id);
+          const reach = (e ? ENEMIES[e.def].attackRange : 6) + 0.4;
+          const ax = ev.tx - ev.x, az = ev.tz - ev.z, al = Math.hypot(ax, az) || 1;
+          const vx = p.x - ev.x, vz = p.z - ev.z, vl = Math.hypot(vx, vz) || 1;
+          if (vl <= reach + 0.5 && (vx * ax + vz * az) / (vl * al) > Math.cos((35 * Math.PI) / 180)) {
+            const side = (ax * vz - az * vx) >= 0 ? 1 : -1;
+            sidestep = { dx: (-az / al) * side, dz: (ax / al) * side, from: t + REACT, until: t + ev.ms / 1000 };
+          }
         }
       } else if (ev.t === 'surgeCleared') surgesCleared++;
       else if (ev.t === 'surgeFailed') surgesFailed++;
@@ -651,6 +756,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
     avgThralls: hpSamples ? thrallAccum / hpSamples : 0,
     thrallCap: disc.family === 'necromancer' ? disc.mods.thrallCap : 0,
     floorsPerMin: floorsCleared / mins,
+    casts: castCount,
   };
 }
 

@@ -24,6 +24,14 @@ Branch `codex/new-blood-release-20260928` tracks `origin/master` (push `HEAD:mas
 after a secret scan; the repo is public). The owner asked for commits, which overrides
 the older "stage, don't commit" note.
 
+## Server bug hunt (branch `claude/server-bug-hunt`, 3 Oct 2026, not deployed, no migration)
+
+Read-through of the backend and the realtime service; 13 fixes, each with a failing test first (`docs/polish/server-bug-hunt.md` has the table and the suspected-but-unconfirmed list).
+Worst: a `null` socket payload crashed the realtime service; `/api/craft` could be pointed at another player's bag with `characterId: "1e1"`; `/api/gold/adjust` was an open gold credit.
+New test helper `server/death-muffin/backend/server-harness.cjs` (+ `server-routes.test.cjs`) calls the routes in `server.js` without a database. Deploying needs the backend and realtime
+restarts (`deploy-release.sh`); `server/realtime/deploy-realtime.sh` was refreshed with `tools/embed-realtime.mjs`.
+
+## PC-only master + separate mobile build (branch `dm/pc-only`, 3 Oct 2026, not deployed)
 ## This is the `mobile` branch (phones/tablets), split from master on 2026-10-03
 
 The owner decided PC tuning comes first: master is PC-only (no touch layer, no `mobile.css`); this branch keeps the phone/tablet
@@ -270,7 +278,7 @@ Hidden preview panes throttle rendering — drive time with `__cwDebug.advance(s
 | Offline Edition | Downloadable PWA at `/death-muffin/offline/` plus complete save sync with saved versions and restore | Live end-to-end check: load, 409 on a stale fingerprint, 400 on an unknown item with rollback, versions, restore. `offline-edition-smoke.cjs` passes against production |
 | Validation | 497 client tests, 88 server tests, typecheck, both builds | Offline-preview smoke suite: 17/21 pass. `necro-audit` exceeds a 600 s cap (run per discipline with `DM_QA_DISC`); `flyers-rites` hits a Playwright "promise was garbage collected" at line 108; `reagents` only collects loot landing within 1.3 m (items do not fly to the player), so it can miss dust; `acre` only fails when `node_modules` is symlinked from outside the Vite root |
 | Fixed 2026-10-01 | Server XP curve now `level × 100` like the client; Ritual Sickle no longer refunds an empowered Exhume; held keys repeat slot 5; Leave the world is at the top of Settings | |
-| Progression pacing to review | New Blood classes gain XP much more slowly than necromancers in the current Medium bot | Graves level-1 sample: necromancers 364–391 XP/min, New Blood 42–106 XP/min; human checks needed before retuning |
+| Progression pacing to review | New Blood classes gain XP much more slowly than necromancers in the current Medium bot | Graves level-1 sample: necromancers 364–391 XP/min, New Blood 42–106 XP/min. 2026-10-03 audit (BALANCE.md "New Blood leveling audit"): part was bot error (fixed, New Blood now 100–180 XP/min there, gap 3–6×); the rest is real (no thralls, dies 4–5× per 3 min); options with numbers are in BALANCE.md; human checks needed before retuning |
 | Housekeeping for the owner | Seven `zz_*` test accounts in the live DB; six merged worktrees in `wt/`; about 11 GB of old update zips and stages in `vps-handoffs/DeathMuffin/` | Owner deletes; nothing was removed |
 
 2026-10-02 necro spell feel (branch `dm/spell-feel`, not deployed): `src/graphics/necroFx.ts` adds capped, Low-skipped, reduced-motion-thinned bone/dirt/soul/spore/skull motifs to every necromancer rite (visuals only). Audit, per-rite before/after sheets and perf notes in `docs/NECRO-SPELL-FEEL.md`; QA: `tools/qa/spell-feel-smoke.cjs`. Frame time was not measurable on the loaded VPS, so check it on a real GPU.

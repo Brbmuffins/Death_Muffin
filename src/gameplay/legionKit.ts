@@ -1,6 +1,6 @@
 import type { InventorySlot } from '../net/types';
 import type { DisciplineMods } from '../content/disciplines';
-import { LEGION_UPGRADE } from '../content/upgrades';
+import { LEGION_UPGRADE, THRALL_REFRESH_MAX } from '../content/upgrades';
 import { BAG_SIZE } from './loot';
 import {
   KIT_IDS,
@@ -21,7 +21,8 @@ import {
  * The Legion kit on the client: finds the two kit rows in the inventory, turns them (and the reinforcement tier) into a LegionBonus
  * (legionRules.ts has the math), and folds that into the discipline mods the scene builds. Nothing here reaches the sim: the
  * thralls only ever see thrallHpMult / thrallDamageMult / thrallAttackSpeedMult / wardPerThrall, exactly as with set bonuses.
- * Thralls already standing keep the stats they were raised with; the bonus applies to every thrall raised after a change.
+ * A kit piece swap applies to thralls raised after the change. Buying a Damage tier or a Reinforce tier ALSO bumps the thralls already
+ * standing, once, through the `refreshThralls` intent (thrallRefresh below builds it from the owner's thrall stats before and after).
  */
 
 export const pieceOf = (slot: InventorySlot): KitPiece => ({ itemType: slot.item_type, statBonus: slot.stat_bonus, affixes: slot.inst?.affixes ?? null });
@@ -59,6 +60,31 @@ export function legionSignature(slots: readonly InventorySlot[], tier: number): 
   const w = kitPieces(slots);
   const roll = (s?: InventorySlot) => (s ? `${s.item_id}~${(s.inst?.affixes ?? []).map((a) => `${a.id}=${a.v}`).join(',')}` : '-');
   return `${roll(w.weapon)}|${roll(w.armor)}|${tier}`;
+}
+
+// --- Refreshing standing thralls ---------------------------------------------------------------------------------------
+
+/** The owner's thrall numbers: health and damage per thrall (characterStats) and the discipline's attack speed multiplier. */
+export interface ThrallNumbers {
+  hp: number;
+  damage: number;
+  speedMult: number;
+}
+
+export interface ThrallRefresh {
+  hpMult: number;
+  damageMult: number;
+  speedMult: number;
+}
+
+/**
+ * The one-time bump a purchase gives thralls already standing: new / old of each number (never below 1, never above THRALL_REFRESH_MAX).
+ * Null when the purchase changed nothing a thrall carries.
+ */
+export function thrallRefresh(before: ThrallNumbers, after: ThrallNumbers): ThrallRefresh | null {
+  const ratio = (a: number, b: number) => (a > 0 && b > 0 ? Math.min(THRALL_REFRESH_MAX, Math.max(1, b / a)) : 1);
+  const r = { hpMult: ratio(before.hp, after.hp), damageMult: ratio(before.damage, after.damage), speedMult: ratio(before.speedMult, after.speedMult) };
+  return r.hpMult > 1.0005 || r.damageMult > 1.0005 || r.speedMult > 1.0005 ? r : null;
 }
 
 // --- Words -------------------------------------------------------------------------------------------------------

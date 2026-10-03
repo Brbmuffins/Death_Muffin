@@ -200,6 +200,18 @@ test('equipped rolled gear cannot be salvaged', async () => {
 
 // --- Offline full sync -------------------------------------------------------------------------------------------------------
 
+test('rolls from the previous (2 Oct) affix ranges stay valid after the 3 Oct tuning, and nothing re-checks a stored roll on a bag save', async () => {
+  // Top-of-range rolls at ilvl 47 under the old ranges: above the NEW ranges, so only the legacy envelope keeps them legal.
+  const old = [{ id: 'p_thrall_dmg', v: 194 }, { id: 's_thrall_hp', v: 370 }, { id: 'p_essence_regen', v: 387 }];
+  assert.ok(old[0].v > affix.affixRange('p_thrall_dmg', 47)[1], 'the fixture is above the new range');
+  assert.equal(affix.instanceProblem({ ilvl: 47, affixes: old }, 'armor_chest'), null);
+  assert.notEqual(affix.instanceProblem({ ilvl: 47, affixes: [{ id: 'p_thrall_dmg', v: 9999 }] }, 'armor_chest'), null, 'a forged value is still refused');
+  const db = fakeDb({ loot: [{ id: 1, item_id: 'helm_iron', ilvl: 47, affixes: old }] });
+  await save(db, [gear(3, 1)]);
+  const [rows] = await db.conn.execute('SELECT inv.id FROM inventory inv WHERE inv.character_id = ?', [1]);
+  assert.deepEqual(rows[0].affixes, old, 'the stored roll comes back untouched');
+});
+
 const save1 = (slots) => ({
   username: 't',
   character: { id: 7, class_index: 2, class_name: 'Ossuary', level: 4, experience: 120, gold: 50, stat_str: 5, stat_agi: 5, stat_int: 8, stat_vit: 10, pos_x: 0, pos_y: 0, pos_z: 0, pos_map: 'HUB', orientation: 0 },

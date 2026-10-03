@@ -118,11 +118,7 @@ export class CosmeticsPanel {
     }));
     this.el.querySelectorAll<HTMLButtonElement>('[data-adopt]').forEach((b) => b.addEventListener('click', () => {
       const id = b.dataset.adopt!;
-      void this.act(() => this.inventory.exclusive(async () => {
-        const r = await adoptPet(this.characterId, id);
-        this.inventory.replace(await getInventory(this.characterId));
-        return r;
-      }));
+      void this.act(async () => (await this.inventory.exclusiveAction(() => adoptPet(this.characterId, id), () => getInventory(this.characterId))).reply);
     }));
   }
 

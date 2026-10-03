@@ -1,5 +1,111 @@
 # Crossworlds — Balance targets & current numbers
 
+## Necro pressure pass (3 Oct 2026, `claude/necro-pressure-balance`): re-measure, no tuning needed
+
+Brief: re-check the three ROADMAP P3 findings on current master (8bb1bd3) before touching numbers. Four necromancers x nine grounds x `intended,push,max`, kit `none`, medium, **8 seeds, 3 sim-minutes** (`BALANCE_AREAS=graves,warren,ossuary,coliseum,nave,sanctum,cloister,pyre,fen BALANCE_DISCIPLINES=1,2,3,4 BALANCE_SEEDS=8 BALANCE_BANDS=intended,push,max npm run balance`).
+Result: **all three findings are already closed by the 2 Oct "Necro pass" above (the ROADMAP bullets list them as findings "as measured" before that fix). Nothing is still true, so no number was changed** and there is no "after" column: the table is master as it stands.
+
+| Finding | Re-measured on master | Verdict |
+|---|---|---|
+| (a) Ossuary dies most at max Wave Speed | deaths / 3 min at max: Ossuary **2.10**, Gravecaller 2.11, Rotweaver 2.04, Mourner 1.66 (the old numbers were 8-11.5). Ossuary still earns most (148 kills/min vs 93-105). Worst single Ossuary rows: Coliseum 3.3, Nave 2.6, Sanctum 2.6 (target 2-4) | closed |
+| (b) Coliseum / Sanctum spike at arrival level, Mourner dies at the intended band | intended deaths: Coliseum Mourner **0.3** (was 1.8-2.5), Sanctum Mourner 0.4; Coliseum mean 0.53, Sanctum 0.38 against an all-ground mean of 0.28. Highest intended rows: Pyre Gravecaller 1.1, Cloister Gravecaller 1.0 (not Coliseum/Sanctum), Coliseum Ossuary 0.8 | closed |
+| (c) Tiers 6-8 should pay more, not less | max vs intended, mean of 36 rows: kills 1.17x, gold 2.31x, XP 1.71x; push (tier 6): 1.24x / 1.92x / 1.55x. Max beats push on gold (+20%) and XP (+10%); kills/min are 6% under push (112 vs 119) because deaths rise 1.5 -> 2.0 | closed (see note) |
+
+Band means (kills / gold / XP per minute, deaths per 3 min): intended 96 / 1,740 / 4,177 / 0.28; push 119 / 3,349 / 6,471 / 1.49; max 112 / 4,012 / 7,139 / 1.98. Max deaths by ground: Graves 0.3, Warren 1.0, Ossuary 2.3, Coliseum 2.5, Nave 2.4, Sanctum 2.3, Cloister 2.4, Pyre 2.4, Fen 2.2. Intended deaths by ground: 0.0 / 0.0 / 0.2 / 0.5 / 0.2 / 0.4 / 0.4 / 0.7 / 0.3. These match the 2 Oct figures within seed noise (max 1.15x / 2.29x / 1.69x / 1.99 deaths then).
+
+Note on (c): kills/min dip slightly from tier 6 to tier 8 while gold and XP climb. That is by design from the necro pass (density levels off past tier 3, rewards keep rising); I did not retune because the pay still rises where it counts and the bot (no dodging, no flasks) over-dies there. A human playtest of tiers 6-8 remains the open question, as before.
+
+Checks: `npx tsc --noEmit` clean; `npm test` 1,153 tests green (`runes.test.ts` needs `npm ci --prefix server/realtime` first or it fails on a missing `dotenv`). No server-mirrored file changed, so no `build:server-rules` or `test:server` run was required.
+
+## New Blood leveling audit (2026-10-03, branch `claude/newblood-leveling-audit`, harness only, not deployed)
+
+Question: why do the New Blood classes (5 Grave Warden, 6 Bell Monk, 7 Carrion Witch, 8 Hollow Knight, 9 Veilwalker) level 4-8x slower than the four necromancers in `npm run balance`? **Answer: mostly a real gameplay gap (the necromancer's thralls), with a harness-bot part that is now fixed.** No class power, XP formula, zone or boss number was changed.
+
+### What was a harness bug (fixed, `src/gameplay/__tests__/balance-newblood.test.ts`)
+The New Blood bot under-measured its classes. XP itself is not a cause: `rollKill` takes no class input, the game awards it per kill whoever lands it, and the bot already counted every kill (the game's kill-chain multiplier is modelled for nobody).
+1. **Rites cast before they unlock.** Burn the Dead and Veil Tear (level 3) were cast at level 1 (over-credit); every gate read the starting level, not the level reached during the run. Now `character.level` against `unlockLevel(id)`.
+2. **Reach measured centre to centre.** The game counts the body's radius (`NewBloodSystem.target`, `hollowCut`). The Hollow Knight approached to 2.6 m but could cut only at 2.4 m, a dead zone that left it idle against any enemy that stopped there: 14.5 -> 26 kills/min at Graves by itself.
+3. **Half the kit never cast.** Added Cremate, Resonant Step, Knell, Choir of One, Sound the Corpse, Great Toll, Hex Charm, Murder of Crows, Lay to Rest, Between Worlds, Shield Bash and Grave Slam (all existed in the sim; none had a bug, every cast reports ok). Still skipped: Chain Pull, Hook Pull, Butcher, Echo, Crossing (control or positional).
+4. **Never stepped out of a telegraph.** Half of the damage a New Blood bot took came from telegraphed blows (caster cones, dust, eruptions, rings), which a player and the Easy auto brain sidestep. The bot now reads `telegraph` events and sidesteps after a 0.25 s reaction (`BalanceRun.dodge`, default on, New Blood only; the necromancer bot never dodged and its rows are byte-identical to before).
+`BalanceResult.casts` now reports casts per ability, so "does the bot use the kit" can be read off a run.
+
+### Numbers (medium, 3 sim-minutes, 8 seeds, kit none; XP/min, mean of the 4 necromancers vs the mean of the 5 New Blood)
+
+| Ground, band | Necromancers XP/min | New Blood before | New Blood after the harness fix | Gap before -> after | NB deaths / 3 min before -> after | Levels per 3 min, necro / NB after |
+|---|---|---|---|---|---|---|
+| Graves intended | 370 | 82 | 123 | 4.5x -> 3.0x | 6.0 -> 4.0 | 4.0 / 1.9 |
+| Ossuary intended | 897 | 141 | 228 | 6.4x -> 3.9x | 6.5 -> 4.8 | 3.6 / 0.8 |
+| Nave intended | 1,930 | 204 | 364 | 9.5x -> 5.3x | 7.7 -> 5.2 | 4.6 / 0.7 |
+| Sanctum intended | 2,875 | 323 | 576 | 8.9x -> 5.0x | 6.5 -> 4.3 | 5.1 / 0.9 |
+| Graves max | 919 | 127 | 179 | 7.2x -> 5.1x | 6.2 -> 4.7 | 6.5 / 2.3 |
+| Nave max | 3,256 | 316 | 592 | 10.3x -> 5.5x | 7.7 -> 5.5 | 7.3 / 1.4 |
+| Sanctum max | 4,880 | 486 | 859 | 10.0x -> 5.7x | 6.6 -> 4.4 | 8.2 / 1.4 |
+
+(Ossuary max: 1,816 vs 209 -> 330, 8.7x -> 5.5x.) The harness fixes buy +50% to +85% XP/min (Hollow Knight and Bell Monk gain most, Veilwalker least), so the true gap is **3-6x**, not 4-10x. Best fixed class per ground is the Bell Monk or Grave Warden, worst the Veilwalker or Carrion Witch at the deeper grounds.
+
+### What is left is real: where the necromancer's lead comes from
+Graves intended and Nave intended, 4 seeds (kills/min, XP/min, deaths per 3 min):
+
+| Row | Graves | Nave |
+|---|---|---|
+| Necromancers with thralls | 90 / 372 / 0.0 | 110 / 1,983 / 0.1 |
+| Necromancers, thrall cap forced to 0 (the needle and the AoE rites alone) | 72 / 300 / 0.1 | 71 / 1,234 / 2.2 |
+| New Blood, final bot | 34 / 122 / 4.0 | 28 / 363 / 5.3 |
+| New Blood, bot never dodges | 27 / 92 / 5.8 | 21 / 244 / 7.5 |
+| New Blood, cannot die (+500 VIT) | 50 / 208 / 0.0 | 49 / 796 / 0.1 |
+
+1. **Thralls are worth about 20-35% of a necromancer's kills and nearly all its survival.** Without them a necromancer still kills 72 a minute (it kites at 11 m, with Corpse Explosion every 0.6 s and Marrow Spear lines) but takes 87-150% HP a minute instead of 18-48%.
+2. **A New Blood hero cannot survive its own position.** It fights inside the pack at 1.8-3 m (Monk, Warden, Knight) or 8-11 m with no body in front (Witch, Veilwalker); it takes 190-230% of its HP a minute and dies 4-5 times in 3 minutes, which at 12 s a respawn is about 30% of the run, and each respawn walks back into the same pack (lives last 10-25 s). Immortal, the same bots reach 50 kills/min, so deaths cost about 35-45% of the output, the rest is raw damage.
+3. **Raw damage is lower for the same spell power.** All classes share `spellPower`. A necromancer chains AoE (Corpse Explosion 1.8x, Spear 2.1x, Litany 1.5x at level 1) fuelled by every kill's corpse; a level-1 New Blood has one 1.0x single-target or short-arc primary plus two or three rites, several corpse-gated.
+4. **XP/min amplifies kill rate**, since XP per kill is flat per enemy and level: kills/min differ 2.6-5.7x and XP/min 3-6x. Enemy XP also scales with the enemy's level, which in the level-scaled grounds follows the hero, so a faster leveller is paid more per kill (not separately measured here).
+5. Not modelled for any class, and so not an explanation: the kill-chain XP multiplier (rewards kill rate, which would widen the gap in the live game), healing flasks, the shared cast lock, gear.
+
+### Owner options (nothing applied; the owner asked for a human check before retuning class power)
+Measured on the fixed bot (4 seeds x 5 New Blood, XP/min versus necromancer 372 at Graves / 1,983 at Nave, 4.0 / 4.8 necromancer levels per 3 min):
+
+| Option | Graves XP/min (levels/3 min, deaths) | Nave XP/min (levels, deaths) | What it changes |
+|---|---|---|---|
+| Today | 122 (1.9, 4.0) | 363 (0.7, 5.3) | |
+| **A. Survivability:** New Blood +50% max HP (or an equal damage-taken cut), +100% as the upper bound | +50%: 144 (1.9, 2.8); +100%: 164 (2.2, 1.9) | +50%: 419 (0.9, 4.5); +100%: 525 (1.2, 3.5) | Removes deaths but not the slow kills; at Nave even +100% only reaches 27% of the necromancer. Cheapest, least effective alone. |
+| **B. Damage:** every New Blood primary and rite x1.5 (x2 as the upper bound) | x1.5: 187 (2.4, 2.6); x2: 244 (3.0, 1.7) | x1.5: 601 (1.3, 4.1); x2: 827 (2.1, 3.3) | The bigger lever: x2 puts Graves at 66% and Nave at 42% of the necromancer, and halves deaths. Touches boss and PvE balance for these classes, so re-run `npm run balance:boss`. |
+| **A+B:** +50% HP and x1.5 damage | 218 (2.6, 1.4) | 709 (1.6, 3.3) | Roughly the Option B x2 result with fewer deaths. |
+| **C. Pacing only, no combat change:** an XP catch-up multiplier for non-necromancer disciplines for the first ~15 levels (x2-x3, fading to x1) | x2.5 would roughly match the necromancer's XP/min at Graves (122 -> about 300), arithmetic only, not simulated | same | Leaves kit power alone, so a human playtest can judge class feel separately. Cheapest to reverse; does nothing for the 4-5 deaths per 3 minutes. |
+
+Recommendation for a human to confirm: **B at about x1.5 on the primary and the cheap rites, plus C for the early levels**, then a playtest of the Monk, Warden and Knight (the melee three die most). Do not judge the Veilwalker or Witch from this harness: both are ranged with no body in front, and their gap (3.4-5x after the fix) is the largest at depth. A human with flasks, dodge-rolling and gear will close more of it than the bot does, so expect the in-game gap to be smaller than 3-6x; the first thing to check by hand is whether a level-1 Warden, Monk or Knight can survive Graves without help.
+
+Reproduce: `BALANCE_SEEDS=8 BALANCE_AREAS=graves,ossuary,nave,sanctum BALANCE_BANDS=intended,max BALANCE_KIT=none npm run balance`; `dodge: false` in a `runBalance` call reproduces the old standing bot for the New Blood rows.
+
+## Combat owner decisions (2026-10-03, branch `claude/combat-owner-decisions`, not deployed)
+
+Three owner decisions (docs/polish/combat.md): Bone Needle runes ride the scythe arc, Damage and Reinforce purchases refresh standing thralls, Easy auto dodges boss telegraphs.
+
+**Before / after, bands unchanged.** `BALANCE_SEEDS=8 npm run balance` (8 seeds, 3 sim-minutes, 9 classes x 4 grounds x 4 bands, all 144 rows) and `npm run balance:boss` (3 seeds, the Prelate) are **byte-identical** before and after: the harness bot never wields a scythe, never buys a tier mid-run and is not Easy auto, so none of the three changes can move a default row. That is the honest "no regression"; the buffs below are measured separately. (Bands are the BALANCE.md targets above: nothing moved, so none broke.)
+
+**Runes under a scythe** (`RUNE_KIT=typical RUNE_WEAPON=scythe RUNE_SEEDS=8 npm run balance:runes`, kit's main hand swapped for a scythe, 4 necromancers x 8 seeds x 3 sim-minutes; kills per minute versus the same scythe with no rune; before the change a rune under a scythe did nothing, so before = 0.0% by construction):
+
+| Ground, band | Splinters kills / ttk / hurt | Marrow-Tap kills / ttk / hurt | Volley |
+|---|---|---|---|
+| Nave, push | +2.6% / +9.1% / -1% | -1.7% / +11.3% / -15% | 0.0% (needle-only) |
+| Nave, intended | +1.4% / -2.0% / -22% | -0.1% / +2.2% / +3% | 0.0% |
+
+Per discipline the spread is wider (Nave push: Marrow-Tap Gravecaller +14.1%, Rotweaver -13.1%; the bot spends its extra essence on rites, so a softer swing pays only for the builds that cast), which is bot noise at 8 seeds, not a band break. Everything sits inside the "runes add variety, 0-10% either way" target on average, so **no effect was scaled down**. The scythe rules: Marrow-Tap = the swing hits 30% softer and returns +4 essence once per landed swing; Splinters = one 30% shard per swing to the nearest foe the arc missed.
+
+**Thrall refresh** is a one-time bump at the moment of purchase: the largest single step is the first Damage tier (+8% thrall damage) or one Reinforce tier (+3% health and damage, +1% attack speed), applied to thralls that would otherwise lose it until their next Exhume (a legion is re-raised constantly, so the lasting stats were already there). Host-clamped to 1.25x. It cannot move a harness row (no purchases mid-run); the unit tests pin the arithmetic (health keeps its fraction, never a heal; the other player's thralls and dead thralls untouched).
+
+**Easy auto dodge** (dev accounts only, gating untouched): `src/gameplay/__tests__/auto-dodge.test.ts` first runs the real boss brains against the dodge's shapes (16 telegraph kinds across the seven bosses, a 0.55 m grid of bystanders each: who the host hurts is exactly who the shape says), then an end-to-end fight: a hero standing 5 m from each boss for 90 game-seconds across all three phases (2 seeds, blows taken counted from the brain's `hurt` events; pool ticks count per tick):
+
+| Boss | blows taken, standing still | blows taken, Easy auto with the dodge |
+|---|---|---|
+| Bell-Sworn Prelate | 100 | 0 |
+| Gravedigger King | 84 | 0 |
+| Bone Abbess | 97 | 0 |
+| Drowned Congregation | 92 | 0 |
+| Plague Saint | 900 (mostly rot-pool ticks) | 62 |
+| Cinder Regent | 1,339 (mostly coal-pool ticks) | 54 |
+| Mire Mother | 46 | 0 |
+
+What it still does not do: walk up to a boss on its own (Easy auto only chases enemies), use the Congregation's pews as cover, or dodge things that are not telegraphs (adds' melee, the Fen's leeches, Hags' hexes). Cost: nothing when no boss is awake and no pool is down; otherwise one pass over the live shapes and the zones per frame while Easy auto is on, and a re-plan (about 500 point tests) only when it stands in a shape.
+
 ## Catacomb Depths (2026-10-02, `npm run balance:depths`; branch `dm/depths`, not deployed)
 
 The dead on depth *d* are level `max(12, hero level) + d` (content/depths.ts; the plan said `max(20, ...)`, but a level-20 floor is a wall for the level-8 to 12 heroes the Warren admits, so the floor is the Warren's own entry level). Enemy health grows +22% and damage +15% of a level-1 body per level, so +10 depths is about +20% of both at level 40. A floor spawns only what its quota still needs, at most 24 alive, from the chambers nearest the hero. `npm run balance:depths` holds one floor of a depth (a cleared floor re-rolls the same depth) and prints the four necromancers beside the Cinder Pyre and Mourning Fen at the same hero level (`DEPTH_LEVELS`, `DEPTH_DEPTHS`, `DEPTH_BANDS`, `DEPTH_DISCIPLINES`, `BALANCE_SEEDS`, `BALANCE_MINUTES`). Medium difficulty, 4 seeds x 3 sim-minutes, mean of Ossuary / Gravecaller / Mourner / Rotweaver; intended = progress kit, geared = typical kit:
@@ -85,8 +191,8 @@ With a kit the gear-pass picture is unchanged: typical + max pushes deaths to 0.
 and those grounds are level 30 and 45 (same as table 2 of the gear pass). The remaining "gear trivialises max Wave Speed" gap is the owner decision in ROADMAP (base item stats); not touched.
 
 ### 2. Area bosses (`npm run balance:boss`, `BALANCE_BOSS=<id>`, `BALANCE_KIT=none|auto`; 6 seeds x 4 necromancers, intended = arrival level, geared = +3 levels)
-The boss harness now wears gear kits (`kit` on `BossRun`; `auto` = progress at intended, typical at geared; set bonuses and the skull-focus thrall bonus are folded as in the farming harness; staff / scythe / wand
-play-style is not modelled in the boss bot). It also had a hole: the Mire Mother's nav area (Fen) was not unlocked, so the bot never reached her (0 damage dealt or taken, every row a "timeout").
+The boss harness now wears gear kits (`kit` on `BossRun`; `auto` = progress at intended, typical at geared; set bonuses and the skull-focus thrall bonus are folded as in the farming harness; the staff / scythe / wand
+play-style was not modelled in the boss bot at the time; it is now, see "Boss bot coverage"). It also had a hole: the Mire Mother's nav area (Fen) was not unlocked, so the bot never reached her (0 damage dealt or taken, every row a "timeout").
 
 Kit `none`, dodging, intended band (kill time of winning runs, min HP across seeds); "no dodge" = never leaves a telegraph.
 
@@ -125,8 +231,109 @@ BALANCE_BOSS=mire BALANCE_SEEDS=6 BALANCE_KIT=auto npm run balance:boss      # e
 
 ### Unfinished
 - Bosses are not rebalanced for gear (waiting on the base-stat decision); see the +35% note above.
-- The boss bot does not use the staff / scythe / wand play-style, the Litany barrier or the open-water mechanics of the Fen; human playtest of the Mire Mother and the Abbess is still needed.
+- ~~The boss bot does not use the staff / scythe / wand play-style, the Litany barrier or the open-water mechanics of the Fen~~: done 2026-10-03 ("Boss bot coverage" below). Still open: a human playtest of the Mire Mother, the Abbess and a scythe Mourner; the Mire Mother's phase-3 rite is not modelled.
 - The Fen with a kit is the only ground that is still comfortably dangerous; that is the base-stat story, not a number to tune here.
+
+## Boss bot coverage (2026-10-03, 8 seeds, solo, Medium, no migration)
+
+Until now the boss bot ignored the necromancer weapon line, the Litany barrier and the Fen's open water, so boss numbers for those builds were unmeasured. The bot (`src/gameplay/balance/boss.ts`) now plays them through the
+real code paths (`weaponLine.ts` helpers, the real `Player.takeDamage`, `content/fen.ts` `bogMult`/`FEN_HUMMOCKS`), not copies of the rules:
+
+| What | How the bot does it |
+|---|---|
+| Staff | Needle reach x1.25, +10% spell power (`deriveStats`), pierces the add behind its target (`pierceTargets`, x0.8). A needle that hits the boss itself does not pierce, as in play. |
+| Scythe | The left click is the reaping arc (`reapTargets`, 3 m + body, up to 3 targets, the boss takes one slot, 520 ms swing, +4 essence per target). The scythe bot walks up to the boss and stays there; it dodges telegraphs like any dodger. |
+| Wand | Needle cadence x1.3, damage x0.85 (`abilityCooldownMs`). |
+| Sickle | Needle withers adds (not the boss, as in play); Exhume refunds essence. |
+| Grimoire | Rite cooldowns shortened (`abilityCooldownMs`); skull focus thrall bonus was already folded. |
+| Litany barrier | Damage goes through a real `Player` body: Bone Ward (capped), Colossus guard, then the barrier before health; the bot raises barrier per body consumed (as `AbilitySystem.onLitany`) and it melts at 4% max health/s. New `barrierMadePct` / `barrierAbsorbedPct` on `BossResult`, `barrier%` in the report. |
+| Open water | Wading slows the bot as in `WorldScene`: the Fen bog (hummocks dry, flood shrinks them and deepens the slow, `bogMult`) and the Congregation's nave water from phase 2. Roots (hands, grasps, burial) stop movement, casting continues. A careful (dodging) bot in the Fen stands on a dry hummock at casting range (or scythe reach) and hops off the one the ripple ring is drawn on; a careless bot wades. `wadingPct`, `rootedS`, `wade%`, `rooted s` report it. |
+
+Not modelled: the Mire Mother's phase-3 rite (the bot spends corpses as it always did, so the rite is usually starved and she staggers), hummock-hopping for a non-dodging bot, Colossus Litany Shatter, off-hand mourning bell heals, essence flasks/brews. The barrier is cast on the bot's old timing (boss within 7 m, 3+ bodies), not ahead of a known telegraph, so a dodger often lets it melt unused (0-11% of max health absorbed); a human who times it will get more.
+
+### Reproduce
+```bash
+BALANCE_BOSS=all BALANCE_SEEDS=8 BALANCE_KIT=typical BALANCE_WEAPONS=staff,scythe,wand,sickle npm run balance:boss     # every boss x band x discipline x weapon x dodge/no dodge, with a deaths column
+BALANCE_BOSS=mire,saint BALANCE_KIT=auto BALANCE_BANDS=intended BALANCE_WEAPONS=staff,scythe BALANCE_DODGE=yes npm run balance:boss   # auto = progress kit at intended, typical at geared
+```
+`BALANCE_WEAPONS` (`kit` = the discipline's own weapon), `BALANCE_BOSS` (`all`, a list, or `--boss id`) and `BALANCE_DODGE` are new; `deaths` = runs ending in a wipe (a solo death resets the boss). Weapons are worn through `BossRun.kitOverride`, so they need a kit other than `none`; with the
+`progress` kit the Graves has no earlier weapon tier, so the Gravedigger rows are identical for every weapon.
+
+### Results: kill time in seconds of winning runs, **after** (before), dodging bot; `(Nd)` = wipes out of 8, `x` = it mostly wipes
+Bold = the new bot moved it. "Before" is the same kit and weapon, played the old way (every weapon fought as the plain needle). `progress` kit at the intended band (the band future tuning should target):
+
+| Boss | Discipline | staff | scythe | wand | sickle |
+|---|---|---|---|---|---|
+| Gravedigger | Ossuary | 156 | 156 | 156 | 156 |
+| Gravedigger | Gravecaller | 121 | 121 | 121 | 121 |
+| Gravedigger | Mourner | 158 | 158 | 158 | 158 |
+| Gravedigger | Rotweaver | 142 | 142 | 142 | 142 |
+| Abbess | Ossuary | 122 | **193** (144) | **136** (151) | 151 |
+| Abbess | Gravecaller | 109 | **153** (129) | **119** (132) | **131** (132) |
+| Abbess | Mourner | 120 | **191** (142) | **130** (144) | 144 |
+| Abbess | Rotweaver | 97 | **150** (112) | **100** (110) | **107** (110) |
+| Congregation | Ossuary | **87** (94) | **130** (103) | **101** (109) | 110 |
+| Congregation | Gravecaller | **73** (77) | **92** (86) | **79** (83) | 85 |
+| Congregation | Mourner | **85** (91) | **123** (101) | **93** (99) | 100 |
+| Congregation | Rotweaver | **80** (84) | **113** (94) | **85** (91) | **90** (91) |
+| Prelate | Ossuary | 93 | **138** (105) | **102** (110) | 109 |
+| Prelate | Gravecaller | 77 | **103** (88) | **80** (86) | **86** (87) |
+| Prelate | Mourner | **88** (89) | **x (7d)** (101) | **92** (98) | 99 |
+| Prelate | Rotweaver | **81** (80) | **112** (91) | **80** (87) | **86** (87) |
+| Saint | Ossuary | 92 | **169** (104) | **96** (115) | 111 |
+| Saint | Gravecaller | 76 | **117** (85) | **69** (77) | 80 |
+| Saint | Mourner | **87** (88) | **165** (96) | **93** (98) | **102** (100) |
+| Saint | Rotweaver | 77 | **117** (85) | **73** (84) | **80** (83) |
+| Regent | Ossuary | 84 | **140** (94) | **91** (98) | 99 |
+| Regent | Gravecaller | 75 | **129** (84) | **73** (78) | 78 |
+| Regent | Mourner | 81 | **139** (92) | **84** (91) | 92 |
+| Regent | Rotweaver | 72 | **111** (80) | **72** (78) | **77** (79) |
+| Mire Mother | Ossuary | **123** (118) | **168** (138) | **124** (141) | 142 |
+| Mire Mother | Gravecaller | **72** (80) | **113** (88) | **74** (84) | **77** (84) |
+| Mire Mother | Mourner | **120** (118) | **164 (1d)** (134) | **119** (126) | **130 (1d)** (128) |
+| Mire Mother | Rotweaver | **93** (92) | **125** (109) | **93** (104) | **100** (106) |
+
+`typical` kit (completed first set + the area's weapon tier) at the geared band:
+
+| Boss | Discipline | staff | scythe | wand | sickle |
+|---|---|---|---|---|---|
+| Gravedigger | Ossuary | 46 | **62** (52) | **50** (52) | 52 |
+| Gravedigger | Gravecaller | 31 | **34** (33) | **31** (33) | 33 |
+| Gravedigger | Mourner | 45 | **63** (50) | **47** (50) | 50 |
+| Gravedigger | Rotweaver | 39 | **50** (44) | **39** (42) | 42 |
+| Abbess | Ossuary | 51 | **72** (57) | **55** (60) | **58** (60) |
+| Abbess | Gravecaller | 27 | **40** (30) | **28** (30) | **29** (30) |
+| Abbess | Mourner | 49 | **71** (55) | **50** (55) | **53** (55) |
+| Abbess | Rotweaver | 38 | **50** (43) | **39** (42) | **41** (42) |
+| Congregation | Ossuary | **51** (55) | **78** (63) | **61** (65) | 66 |
+| Congregation | Gravecaller | **39** (42) | **44** (47) | **41** (44) | 44 |
+| Congregation | Mourner | **48** (52) | **71** (59) | **53** (56) | **56** (57) |
+| Congregation | Rotweaver | **42** (44) | **58** (50) | **44** (47) | 47 |
+| Prelate | Ossuary | 68 | **95** (77) | **74** (80) | 80 |
+| Prelate | Gravecaller | **53** (54) | **54** (59) | **52** (56) | 56 |
+| Prelate | Mourner | **64** (65) | **87** (73) | **66** (71) | 72 |
+| Prelate | Rotweaver | 55 | **72** (61) | **55** (59) | **58** (59) |
+| Saint | Ossuary | 70 | **121** (79) | **75** (82) | 84 |
+| Saint | Gravecaller | 54 | **66** (62) | **53** (55) | 57 |
+| Saint | Mourner | 67 | **120** (79) | **70** (75) | 77 |
+| Saint | Rotweaver | 54 | **82** (61) | **54** (58) | **59** (62) |
+| Regent | Ossuary | 62 | **101** (71) | **69** (73) | 75 |
+| Regent | Gravecaller | 54 | **81** (60) | **51** (55) | 53 |
+| Regent | Mourner | 61 | **101** (68) | **62** (67) | 67 |
+| Regent | Rotweaver | 49 | **73** (56) | **49** (53) | **52** (54) |
+| Mire Mother | Ossuary | **122** (118) | **169** (136) | **121** (137) | 137 |
+| Mire Mother | Gravecaller | **78** (87) | **120** (91) | **90** (97) | **95** (97) |
+| Mire Mother | Mourner | **119** (116) | **163 (2d)** (131) | **122** (138) | **137** (138) |
+| Mire Mother | Rotweaver | 90 | **115 (3d)** (101) | **93** (103) | **98** (103) |
+
+### What changed and what it says
+1. **Staff and sickle are unchanged** (the old bot already got their stat effects; they only add pierce/wither on adds, which barely matter in a boss fight). **Wand gets 5-17% faster** (the cadence was never used) and the grimoire (Rotweaver's off-hand) gains 1-6% from shorter rites.
+2. **The scythe is the slowest style on every boss, 10-90% slower than the staff** (Saint Ossuary 92 -> 154 s with the typical kit, Prelate 98 -> 124 s). The scythe's cost is standing in melee (walking after a moving boss, leaving the telegraph and coming back, adds, maul/slam cones) and its needle dps being 16% lower than a staff's (1.15 / 0.52 s vs 1.0 / 0.38 s) with the cleave worth little on one boss. In exchange it takes 2-6x the damage: a careful scythe Mourner now **wipes 7 of 8 at the Prelate** with the progress kit, and 1-3 of 8 at the Mire Mother with the typical kit (geared band: Mourner 2/8, Rotweaver 3/8); the staff, wand and sickle never wipe there. A non-dodging scythe bot wipes at every boss with real mechanics (Gravedigger excepted); that row is a floor, not a player.
+3. **The Fen mattered more than the table said.** A dodger at the Mire Mother used to take 0-6% of max health a minute (min HP 62-97%); with wading, hands and hummock-hopping it still wins in about the same time (staff -1 to -8%) but dips to 33-90% (Ossuary 97 -> 50%, Mourner 64 -> 35%, `hurt%/m` 0-6 -> 2-11). The Mire Mother is still the longest fight (113-185 s with the typical kit at the intended band) and the only boss inside the 150-210 s target for the Ossuary and Mourner there; Gravecaller and Rotweaver (sickle line) kill her in 72-135 s.
+4. **Out of band (reported, not changed).** With the progress kit and a dodging bot the **Congregation, Prelate, Saint, Regent and the Gravecaller/Rotweaver Mire Mother die in 69-111 s against the 150-210 s target** with a staff, wand or sickle; the Abbess (97-151 s) and Gravedigger (121-158 s) sit at the low edge. This is the gear effect already recorded under "Polish round 2" and the owner's decision not to inflate boss HP against it (see the base-stats note at the end of this file), and it is the same for every weapon, so nothing here is weapon-specific. If the owner does want the progress-kit band at 150-210 s, the multipliers on `baseHp` would be about x1.4 (Abbess), x1.9 (Congregation), x1.9 (Prelate), x2.0 (Saint), x2.1 (Regent) and x1.6 (Mire Mother; Ossuary/Mourner x1.4, Gravecaller/Rotweaver x1.8-2.3) for staff/wand, which is a retune, not a number to nudge here. The scythe lands in or near the target (113-193 s) almost everywhere, because its melee cost is what the other styles lack.
+5. **Scythe at the Prelate and the Mire Mother is the one weapon-specific band problem**: lethal for a Mourner (no ward, no barrier, thin health) and for the Rotweaver at the Mire Mother. There is no obvious small number behind it (it is melee exposure to the maul/slam cones plus bog wading on the dodge), so it is an owner decision: let the scythe keep a boss-only advantage (a bigger boss share of the arc, or reach 3 -> 3.5 m, which the Codex text already calls "close"), or accept it as the high-risk style.
+
+Tests: `src/gameplay/__tests__/balance-boss-coverage.test.ts` (weapon styles differ, the scythe stands at the boss and pays for it, the barrier is raised and soaks damage, the Fen bot wades and is rooted when careless and hops when careful).
 
 ## Gear pass (2026-10-02, 8 seeds, 3 sim-minutes)
 
@@ -717,3 +924,72 @@ Base item stats stay as they are. The gear pass measured that an ordinary kit cu
 ## Combat polish pass (3 Oct 2026, `dm/polish-combat`)
 
 Sim changes (thrall targeting/pathing, hall-bound corpse rites) measured with 3 seeds, Graves and Nave, intended and push, four necromancers: kills/min 112.3 -> 113.5, damage taken 66.8% -> 65.3%/min, deaths 0.53 -> 0.47. Inside seed noise; nothing tuned. See docs/polish/combat.md.
+
+## Affix tuning (3 Oct 2026, branch `claude/affix-tuning`)
+
+Owner direction: polish, "reduce the loot, keep it valuable". Numbers only: no new affix, item or migration; affix ids, counts per rarity and drop-source odds are unchanged. Instrument: `npm run balance:affix` (new; the power score of an affix roll, a good drop, a rolled kit, a completed armour set and a legendary set, side by side, takes seconds), plus `balance:gear` (kit `rolled` vs `none`), `balance:score` and `balance:lever`. As in the 2 Oct pass, the sim bot cannot resolve a single affix (swaps move kills/min by -3..+3%, the noise floor), so affix values come from the power score, which the lever table calibrates.
+
+### What was measured before (power score, plain typical kit, one median-rolled affix on the chest; mean over the four necromancers)
+| Affix | ilvl 12 | 25 | 47 | 70 |
+|---|---|---|---|---|
+| best stat (INT) | 2.1% | 2.5% | 3.0% | 3.6% |
+| Gravebound (thrall damage) | 0.9 | 1.3 | 2.0 | 2.7 |
+| of the Legion (thrall health) | 0.9 | 1.1 | 1.5 | 1.6 |
+| Whispering (essence regen) | 1.2 | 1.0 | 0.8 | 0.7 |
+| of the Rotting Mist (Miasma) | 1.0 | 1.4 | 2.0 | 2.6 |
+| Blighted (Withered) | 1.2 | 1.8 | 2.4 | 2.4 |
+| of the Ossuary Wall (ward) | 0.7 | 1.0 | 1.7 | 2.1 |
+| spread of the six levers (best / worst) | 1.8x | 1.8x | 2.9x | 3.9x |
+
+Findings: (1) the levers grew faster with item level than stats, so at ilvl 70 Gravebound and Miasma were worth 75% of an INT roll on average and 1.4x INT for their home discipline; (2) essence regeneration *fell* with item level (the score divides it by a pool that grows with level: +15% regen is 1.2% at ilvl 12, +38% only 0.8% at 47); (3) a rolled 7-piece kit added 9-14% of power on average, 17-22% at the 90th percentile (Gravecaller highest); (4) legendary full-set bonus lines are worth 24-47% of power, ascended sets 10-19%, first sets 6-13%, so no affix roll can outclass a set; the closest case is three best affixes at ilvl 70 on one Mourner piece (6.7%) against the Mourner first set (6.2%, its flat lines shrink with level).
+
+### What changed (`affixRules.ts`; tenths of a percent for the percentage affixes)
+| Affix | centre old -> new (ilvl 12 / 47 / 70) | range at ilvl 47, old -> new |
+|---|---|---|
+| stat affixes (8) | 0.8+0.07L -> same up to ilvl 25, then 0.045 per level (1.6 / 3.5 / 4.6 points) | 3-5 -> 2-5; ilvl 70: 4-7 -> 3-6; unchanged up to 25 |
+| Gravebound | 10(5.5+0.2L) -> 10(6.5+0.1L) | 10.4-19.4% -> 7.8-14.6% |
+| of the Legion | 10(10.6+0.38L) -> 10(9.5+0.34L) | 19.9-37% -> 17.8-33.1% |
+| Whispering | 10(10+0.42L) -> 10(10+0.5L) | 20.8-38.7% -> 23.4-43.6% |
+| of the Rotting Mist | 10(5.2+0.22L) -> 10(5.2+0.12L) | 10.9-20.2% -> 7.6-14.1% |
+| Blighted | 1..2+L/7 (cap 6) -> 1..2+L/9 (cap 4) | 1-6 -> 1-4 |
+| of the Ossuary Wall | 9+0.7L (cap 60) -> 12+0.55L (cap 55), per mille | 2.9-5.4% -> 2.6-4.9% |
+
+### After (same instrument)
+| Affix, mean median value | ilvl 12 | 25 | 47 | 70 |
+|---|---|---|---|---|
+| best stat (INT) | 2.1% | 2.5% | 3.0% | 3.0% |
+| Gravebound | 0.9 | 1.1 | 1.5 | 1.9 |
+| of the Legion | 0.8 | 1.0 | 1.3 | 1.5 |
+| Whispering | 1.2 | 1.1 | 0.9 | 0.8 |
+| of the Rotting Mist | 0.9 | 1.1 | 1.4 | 1.8 |
+| Blighted (median stack count unchanged in this table; expected count -17% above ilvl 36) | 1.2 | 1.8 | 1.8 | 1.8 |
+| of the Ossuary Wall | 0.7 | 1.0 | 1.5 | 1.8 |
+| spread of the levers | 1.8x | 1.8x | 2.0x | 2.4x |
+
+| Item and kit numbers (power score) | before | after |
+|---|---|---|
+| Good drop, 3 affixes at 90% on one piece (4 necromancers), ilvl 12 / 25 / 47 / 70 | 5.1-5.7 / 5.6-6.7 / 6.6-9.8 / 6.7-11.9% | 5.0-5.8 / 5.9-6.1 / 6.8-8.4 / 6.2-9.0% |
+| Good drop, Occult + home lever at 75%, ilvl 70 | 5.3-10.3% | 4.9-7.6% |
+| Rolled 7-piece kit, mean / p90, Pyre | 10.0-13.9 / 14.1-21.2% | 9.1-12.4 / 13.0-18.8% |
+| Rolled 7-piece kit, mean / p90, Fen | 10.6-13.2 / 15.6-22.1% | 8.7-10.5 / 12.9-16.7% |
+| Completed set bonus lines, for comparison | first 6-13%, ascended 10-19%, legendary 24-47% | unchanged |
+
+Reading: a good drop (two or three decent affixes on one slot) is still a 4-9% upgrade, the middle of the 5-15% target at the levels the zones actually drop; the top end (ilvl 70, perfect lever) no longer reaches 12%. Levers are within 2.0x of each other up to ilvl 47 (was 2.9x), and the remaining gap is essence regeneration, which the power score undervalues at high level (the harness lever table has +30% regen at +1.6% kills, between thrall damage and thrall health), so it was raised (slope 0.42 -> 0.5 per level) but not chased to the score. Home levers stay within 1.35x of the best stat affix at every ilvl (test). Three best affixes max-rolled on one piece stay under the whole ascended set's bonus lines at every ilvl (test); full-kit affix power (9-12%) sits at or under one first/ascended set, far under a legendary set.
+
+### Stored items stay valid (no migration)
+`affixRange` is now what NEW rolls use. Validation (`instanceProblem`: offline-sync import, the mock backend, forged-roll checks) uses `affixAcceptRange`: the widest of the current range and the previous generation's (`legacy` on each affix), so an item rolled under the 2 Oct ranges is legal after this change. The first build's ranges (4045faa) are not kept: it never stored a roll. Nothing else re-checks a stored roll: bag save only names an `instance_id` (ownership and item match are checked, not the values), and GET/Vault/Salvage read `ilvl` and `affixes` as stored. Tooltips clamp the quality bar at 100% for an old roll above the new range. Tests: `affixes.test.ts` (every old range endpoint legal at every ilvl 1-99), `affix-paths.test.cjs` (server bundle plus bag save), `gear-balance.test.ts` (home lever vs stat, good drop 3-12%, affixes under the ascended set, rolled kit mean < 14% and p90 < 22%).
+
+### Server and client
+`gathering/affix-rules.cjs` (and `legion-rules.cjs`, which bundles the same module) were regenerated with `npm run build:server-rules`; `loot.cjs` rolls with the bundle, the client mirrors it through `affixRules.ts`, and the offline mock shares the source. No mismatch found. The server bundle must ship with the client build (deploy copies `gathering/*.cjs`).
+
+### Harness check (`balance:gear`, kit `rolled` vs `none`, Pyre and Fen push, 4 necromancers, 8 seeds, same seeds; base 8bb1bd3 vs this branch)
+| | before | after |
+|---|---|---|
+| kills/min vs no kit (mean of 8 rows) | x1.30 | x1.32 |
+| damage taken vs no kit | x0.64 | x0.62 |
+| deaths per 3 min with the rolled kit | 0.61 | 0.58 |
+
+Unchanged inside seed noise, as expected: the rolls differ per range, and the bot cannot resolve a 1-3% change. This is a "no regression" check; the sizes above come from the power score. `balance:score` baseline (before): Spearman against kills/min 0.46 over all swaps (the single-affix swaps are below the noise floor, unchanged from the 2 Oct finding).
+
+### Legendary sets, re-measured (`legendaryReport.ts`, kit none, 4 seeds, Nave and Sanctum, intended/push/max, mechanics and set multipliers only, 24 rows)
+Mean clear speed **x1.15**, mean damage taken **x0.92** (LEGENDARY-SETS.md quoted x1.17 / x0.86 after the 2 Oct tuning, an earlier pass x1.13). Still true: the full legendary set is nowhere near the +40-80% target in the sim (the power score puts the same bonus lines at +24-47%, a judgment value for mechanics the bot does not use well). By band: intended x1.0-1.1 (survival gains on Mourner/Sanctum), push x1.07-1.41, max x0.86-1.62; the Ossuary reads about flat on clear speed (its mechanics are defensive; its damage taken is noisy). Not retuned here: the task is affix ranges, and raising a legendary is a content/owner call. If the owner wants legendaries to feel like a +40% jump, the lever is `setBonuses.ts` (the mechanic strengths), not affixes. Affix tuning does not touch this: affixes stay far below a legendary set either way.

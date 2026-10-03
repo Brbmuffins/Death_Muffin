@@ -44,6 +44,8 @@ Server log: `journalctl -u <api unit> | grep '\[AUTHORITY\]'`.
 | `POST /api/loot/roll-gear` | the item must exist in a drop table (area loot, mob reagent, boss ichor) | log `roll_gear` | "That drop could not be rolled." |
 | `POST /api/offline/load` | the offline save is compared with the online one | log `offline_load` | 409 `implausible: true` until the request carries `confirmImplausible: true`; the client asks the player and re-sends |
 | `POST /api/offline/sync-stats` | same, with only level/XP to judge | log | same 409 |
+| `POST /api/gold/adjust` (legacy) | crediting gold is staff-only in every mode; spending is open and row-locked | - | - |
+| `POST /api/combat/kill`, `/api/loot/roll`, `/api/loot/drop` (legacy) | pay XP, gold or items for a client-chosen enemy id; the browser never calls them | unchanged | 403 for non-staff |
 
 Notes:
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ITEMS } from '../../content/items';
-import { bonusFor, candidatesFor, CONTRACT_SLOTS, dayKey, generateBoard, nextResetMs, streakOf } from '../contractRules';
+import { bonusFor, candidatesFor, CONTRACT_SLOTS, dayKey, generateBoard, nextResetMs, RELIC_ORDERS, streakOf } from '../contractRules';
 
 describe('contract board', () => {
   it('is deterministic per character and day, and differs between days and characters', () => {
@@ -18,7 +18,8 @@ describe('contract board', () => {
         expect(new Set(board.map((o) => o.itemId)).size).toBe(CONTRACT_SLOTS);
         for (const o of board) {
           expect(ITEMS[o.itemId], o.itemId).toBeTruthy();
-          expect(o.qty).toBeGreaterThanOrEqual(4);
+          // Relic orders (rare gems, fragments, seals) ask for a fixed one to three.
+          expect(o.qty).toBeGreaterThanOrEqual(RELIC_ORDERS.some((r) => r.itemId === o.itemId) ? 1 : 4);
           expect(o.qty).toBeLessThanOrEqual(90);
           expect(o.rewardGold).toBeGreaterThan(0);
           if (o.rewardItem) expect(ITEMS[o.rewardItem.itemId], o.rewardItem.itemId).toBeTruthy();

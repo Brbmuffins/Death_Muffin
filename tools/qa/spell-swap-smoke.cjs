@@ -22,11 +22,12 @@ async function main() {
     await page.locator('#cw-login-btn').click();
     await page.locator('.cw-disc').filter({ hasText: 'Ossuary' }).first().click();
     await page.waitForFunction(() => window.__cwDebug?.avatar.c.loaded, null, { timeout: 60000 });
-    assert.equal(await page.locator('[data-swap]').count(), 5, 'five visible swap controls');
+    assert.equal(await page.locator('[data-swap]').count(), 0, 'no swap controls at level 1: nothing to swap yet');
     assert.deepEqual(await page.evaluate(() => window.__cwDebug.loadout()),
       ['marrow_spear', 'exhume', 'miasma', 'black_litany', 'corpse_explosion']);
 
-    await page.locator('[data-swap="4"]').click();
+    await page.keyboard.press('l');
+    await page.locator('.cw-grim-socket[data-socket="4"]').click();
     assert.equal(await page.locator('.cw-grim-socket.on').getAttribute('data-socket'), '4');
     assert.equal(await page.locator('.cw-grim-socket').count(), 6, 'LMB and five rite sockets');
     await page.screenshot({ path: `${out}/grimoire.png`, timeout: 60000 });
@@ -35,6 +36,8 @@ async function main() {
     await page.keyboard.press('Escape');
     const levelAfterXp = await page.evaluate(() => { const d = window.__cwDebug; d.xp(1500); return d.player.stats.level; });
     assert.ok(levelAfterXp >= 5, 'new rite level reached');
+    assert.equal(await page.locator('[data-swap]').count(), 5, 'five swap icons once a rite can be swapped');
+    assert.equal((await page.locator('[data-swap="0"]').innerText()).includes('swap'), false, 'the icon replaces the SWAP text');
     await page.locator('[data-swap="4"]').click();
     assert.equal(await page.locator('.cw-grim-socket.on').getAttribute('data-socket'), '4', 'explicit swap keeps its selected slot');
     await page.locator('[data-pick="grave_step"]').click();

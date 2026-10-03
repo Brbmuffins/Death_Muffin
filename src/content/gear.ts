@@ -8,7 +8,7 @@ export type EquipSlot = 'head' | 'chest' | 'legs' | 'feet' | 'hands' | 'main_han
 export const EQUIP_SLOTS: { id: EquipSlot; label: string; glyph: string }[] = [
   { id: 'head', label: 'Head', glyph: '⛨' },
   { id: 'chest', label: 'Chest', glyph: '⛊' },
-  { id: 'legs', label: 'Legs', glyph: '⛊' },
+  { id: 'legs', label: 'Legs', glyph: '‖' },
   { id: 'feet', label: 'Feet', glyph: '◭' },
   { id: 'hands', label: 'Hands', glyph: '✋' },
   { id: 'main_hand', label: 'Main hand', glyph: '⚔' },

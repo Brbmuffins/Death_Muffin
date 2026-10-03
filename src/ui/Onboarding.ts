@@ -190,7 +190,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   auto_combat: {
     title: 'Settle into the fight',
-    body: 'On Easy, auto combat engages enemies in the current area, uses equipped rites and may cast your signature when useful. It drinks healing flasks and mends you while under attack. The Hollow Knight also guards automatically. [[Click or use movement keys||Tap the ground or drag a finger]] to take control. Toggle it with [[<kbd>G</kbd> or the Auto button||the Auto button in the Menu]].',
+    body: 'On Easy, auto combat engages enemies in the current area, uses equipped rites and may cast your signature when useful. It drinks healing flasks and mends you while under attack. It steps out of boss telegraphs (rings, cones, spokes, burning ground) and hostile pools on its own, then carries on attacking. The Hollow Knight also guards automatically. [[Click or use movement keys||Tap the ground or drag a finger]] to take control. Toggle it with [[<kbd>G</kbd> or the Auto button||the Auto button in the Menu]].',
   },
   knight_rage: {
     title: 'Rage, not essence',
@@ -318,7 +318,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   grimoire: {
     title: 'The Grimoire',
-    body: 'New rites have come to you. [[Click||Tap]] <b>swap</b> below a hotbar spell[[ (or press <kbd>L</kbd>)||, or open the Grimoire from the Menu,]] to choose which unlocked rites sit on [[slots <kbd>1</kbd>–<kbd>5</kbd>; slot 5 also uses right-click||slots 1–5]]. Your signature stays on [[<kbd>R</kbd>||the sixth slot]]. Each rite keeps its cooldown.',
+    body: 'New rites have come to you. [[Click||Tap]] the <b>swap arrows</b> below a hotbar spell[[ (or press <kbd>L</kbd>)||, or open the Grimoire from the Menu,]] to choose which unlocked rites sit on [[slots <kbd>1</kbd>–<kbd>5</kbd>; slot 5 also uses right-click||slots 1–5]]. Your signature stays on [[<kbd>R</kbd>||the sixth slot]]. Each rite keeps its cooldown.',
   },
   rite_skull: {
     title: 'Wailing Skull',
@@ -490,7 +490,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   legion: {
     title: 'Spare gear for your legion',
-    body: 'That weapon or armor can arm your thralls instead of being salvaged. Open the <b>Legion</b> [[(<kbd>Y</kbd>, or the button in the Reliquary)||(the button in the Reliquary)]]: one <b>Weapon</b> and one <b>Armour</b> slot, kept outside your bag. Its stats become thrall damage, health and attack speed, and each spare piece shows <b>▲</b> or <b>▼</b> against what the legion wears. Spend gold there to <b>Reinforce</b> the bindings. Thralls you raise from then on carry it.',
+    body: 'That weapon or armor can arm your thralls instead of being salvaged. Open the <b>Legion</b> [[(<kbd>Y</kbd>, or the button in the Reliquary)||(the button in the Reliquary)]]: one <b>Weapon</b> and one <b>Armour</b> slot, kept outside your bag. Its stats become thrall damage, health and attack speed, and each spare piece shows <b>▲</b> or <b>▼</b> against what the legion wears. Spend gold there to <b>Reinforce</b> the bindings: it strengthens the thralls you have standing at once. A swapped piece reaches the thralls you raise next.',
   },
   rune: {
     title: 'A Relic rune',
@@ -594,7 +594,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   rite_veil: {
     title: 'Veil Step',
-    body: '[[Press {key:veil_step} to slip a few metres toward the cursor||Tap {key:veil_step} to slip a few metres toward where you last tapped]], no corpse needed. It stops at walls and sealed doors. Use it to leave a cone or a bell ring; auto combat never does.',
+    body: '[[Press {key:veil_step} to slip a few metres toward the cursor||Tap {key:veil_step} to slip a few metres toward where you last tapped]], no corpse needed. It stops at walls and sealed doors. Use it to leave a cone or a bell ring; auto combat never casts it (it only walks out of boss telegraphs and pools).',
   },
   rite_rally: {
     title: 'Rally the Dead',
@@ -637,6 +637,11 @@ const tipsKey = (characterId: number) => `dm_tips_v1_${characterId}`;
 const POSITION_KEY = 'dm_counsel_position_v1';
 const TIP_IDS = Object.keys(TIPS) as TipId[];
 
+/** The queue without the tips whose context has gone (see Onboarding.stale). */
+export function dropStale<T extends { id: string }>(queue: T[], stale: (id: string) => boolean): T[] {
+  return queue.some((t) => stale(t.id)) ? queue.filter((t) => !stale(t.id)) : queue;
+}
+
 export class Onboarding {
   private seen = new Set<TipId>();
   private queue: QueuedTip[] = [];
@@ -649,6 +654,11 @@ export class Onboarding {
   private pumpTimer = 0;
   /** What the scene is busy with right now (a fight, a conversation, a banner, an open panel); calm tips wait it out. */
   busy: () => Busy = () => NOT_BUSY;
+  /**
+   * True when a tip's context no longer holds (the "first thrall" card with no thrall alive after a respawn). A queued or
+   * returning card that is stale is dropped; it was not marked seen, so it comes back the next time its moment truly arrives.
+   */
+  stale: (id: TipId) => boolean = () => false;
   private el: HTMLDivElement | null = null;
   private timers = new Set<number>();
   private hideTimer = 0;
@@ -717,7 +727,7 @@ export class Onboarding {
     this.cancel(this.pumpTimer);
     this.pumpTimer = 0;
     if (!settings.tips) return;
-    this.queue = prune(this.queue, this.clock());
+    this.queue = dropStale(prune(this.queue, this.clock()), (id) => this.stale(id as TipId));
     if (this.el && this.shown && this.shownEntry) {
       const s = this.cadence();
       const waiting = pickNext(this.queue, this.cadence({ lastClosedAt: -Infinity }));
@@ -745,7 +755,7 @@ export class Onboarding {
       this.seen.delete(entry.id as TipId);
       for (const extra of ALSO_SEEN[entry.id as TipId] ?? []) this.seen.delete(extra);
       this.persist();
-      this.queue.unshift({ ...entry, queuedAt: this.clock() });
+      if (!this.stale(entry.id as TipId)) this.queue.unshift({ ...entry, queuedAt: this.clock() });
     }
     this.dismiss();
   }

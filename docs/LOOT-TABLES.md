@@ -1263,6 +1263,18 @@ Gear and runes grind into materials. Metal gear gives ingots; staffs, wands, gri
 | Epic | Gold Ingot x2 | Blackthorn Plank x2 | Grave Dust 100%, Wraith Ectoplasm 40%, Plague Bile 15%, Cinder Ash 15%, Bone Meal 30% | 36 |
 | Legendary | Hell Ingot x2-3 | Bone Elder Plank x2-3 | Grave Dust 100%, Wraith Ectoplasm 50%, Plague Bile 25%, Cinder Ash 25%, Bone Meal 35% | 64 |
 
+## Trade goods and the Sexton
+
+Gems, Reliquary Fragments and Covenant Seals have no recipe, so the Sexton's Contracts (O) buy them: on about 20% of days the hard order is a relic order for a fixed handful, paid at 2x the sell price (and one Grave Garnet back; the rarer gems are never paid out). Tin and Bronze Ingots are ordered like any smelted good. Pet charms are adopted, seeds and saplings are planted, and everything else is a recipe ingredient.
+
+| Item | Rarity | Order unlocks at | Quantity asked | Gold paid (before the slot fee) |
+|---|---|---|---|---|
+| Grave Garnet | Uncommon | Mining 10 | 3 | 120 |
+| Reliquary Fragment | Rare | Fishing 30 | 3 | 150 |
+| Bone Opal | Rare | Mining 30 | 2 | 180 |
+| Void Sapphire | Epic | Mining 60 | 1 | 180 |
+| Covenant Seal | Epic | Gravedigging 70 | 2 | 240 |
+
 ## How to upgrade gear
 
 There is no upgrade bench: gear gets better by **item level** and **affixes**, both rolled by the server when it drops, and by **set bonuses** when you wear matching pieces. Replace a piece when a better roll or a better set comes along; salvage or sell the rest.
@@ -1304,20 +1316,20 @@ Violet lines in the game (necromancer levers) are marked "levers". Ranges are at
 
 | Affix | Kind | Weight | Item level 10 | Item level 40 |
 |---|---|---|---|---|
-| Brutal | prefix | 9 | +1 STR to +2 STR | +3 STR to +5 STR |
-| Fleet | prefix | 9 | +1 AGI to +2 AGI | +3 AGI to +5 AGI |
-| Occult | prefix | 9 | +1 INT to +2 INT | +3 INT to +5 INT |
-| Stout | prefix | 9 | +1 VIT to +2 VIT | +3 VIT to +5 VIT |
-| of the Reaver | suffix | 9 | +1 STR to +2 STR | +3 STR to +5 STR |
-| of the Hound | suffix | 9 | +1 AGI to +2 AGI | +3 AGI to +5 AGI |
-| of the Seer | suffix | 9 | +1 INT to +2 INT | +3 INT to +5 INT |
-| of the Tomb | suffix | 9 | +1 VIT to +2 VIT | +3 VIT to +5 VIT |
-| Gravebound (levers) | prefix | 13 | Thralls hit +5.3% harder to +9.8% harder | Thralls hit +9.5% harder to +17.6% harder |
-| of the Legion (levers) | suffix | 13 | Thralls have +10.1% health to +18.7% health | Thralls have +18.1% health to +33.5% health |
-| Whispering (levers) | prefix | 11 | +9.9% essence regeneration to +18.5% essence regeneration | +18.8% essence regeneration to +34.8% essence regeneration |
-| of the Rotting Mist (levers) | suffix | 9 | Miasma is +5.2% wider to +9.6% wider | Miasma is +9.8% wider to +18.2% wider |
-| Blighted (levers) | prefix | 8 | +1 max Withered stack to +3 max Withered stacks | +1 max Withered stack to +6 max Withered stacks |
-| of the Ossuary Wall (levers) | suffix | 9 | 1.1% less damage taken per thrall to 2.1% less damage taken per thrall | 2.6% less damage taken per thrall to 4.8% less damage taken per thrall |
+| Brutal | prefix | 9 | +1 STR to +2 STR | +2 STR to +4 STR |
+| Fleet | prefix | 9 | +1 AGI to +2 AGI | +2 AGI to +4 AGI |
+| Occult | prefix | 9 | +1 INT to +2 INT | +2 INT to +4 INT |
+| Stout | prefix | 9 | +1 VIT to +2 VIT | +2 VIT to +4 VIT |
+| of the Reaver | suffix | 9 | +1 STR to +2 STR | +2 STR to +4 STR |
+| of the Hound | suffix | 9 | +1 AGI to +2 AGI | +2 AGI to +4 AGI |
+| of the Seer | suffix | 9 | +1 INT to +2 INT | +2 INT to +4 INT |
+| of the Tomb | suffix | 9 | +1 VIT to +2 VIT | +2 VIT to +4 VIT |
+| Gravebound (levers) | prefix | 13 | Thralls hit +5.3% harder to +9.8% harder | Thralls hit +7.4% harder to +13.7% harder |
+| of the Legion (levers) | suffix | 13 | Thralls have +9% health to +16.8% health | Thralls have +16.2% health to +30% health |
+| Whispering (levers) | prefix | 11 | +10.5% essence regeneration to +19.5% essence regeneration | +21% essence regeneration to +39% essence regeneration |
+| of the Rotting Mist (levers) | suffix | 9 | Miasma is +4.5% wider to +8.3% wider | Miasma is +7% wider to +13% wider |
+| Blighted (levers) | prefix | 8 | +1 max Withered stack to +3 max Withered stacks | +1 max Withered stack to +4 max Withered stacks |
+| of the Ossuary Wall (levers) | suffix | 9 | 1.2% less damage taken per thrall to 2.3% less damage taken per thrall | 2.4% less damage taken per thrall to 4.4% less damage taken per thrall |
 
 ### Armor set bonuses
 
