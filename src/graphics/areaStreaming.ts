@@ -5,7 +5,7 @@ import { AREAS, AREA_ORDER, DOORS, type AreaId, type Rect } from '../content/are
  * small work queue that builds them a slice at a time. WorldView owns the meshes; this owns the decisions (unit-tested).
  */
 
-/** An area is drawn when its rectangle is this close (m) to the player. At the widest zoom the view reaches ~30 m sideways and ~20 m ahead of the hero; 45 m leaves a margin and the fog hides the rest. */
+/** An area is always drawn when its rectangle is this close (m) to the player (a floor under the camera-footprint rule below, which is what reaches the screen corners of wide windows). */
 export const VISIBLE_RADIUS = 45;
 
 export function rectDistance(r: Rect, x: number, z: number) {
@@ -25,10 +25,14 @@ export function doorNeighbours(area: AreaId): AreaId[] {
 }
 
 /** The areas to draw for a player at (x, z) standing in `current`: the current area, and every area near enough to be on screen (so a door never shows a hole). */
-export function visibleAreas(x: number, z: number, current: AreaId | null, radius = VISIBLE_RADIUS): Set<AreaId> {
+export function visibleAreas(x: number, z: number, current: AreaId | null, radius = VISIBLE_RADIUS, view?: Rect | null): Set<AreaId> {
   const out = new Set<AreaId>();
   if (current) out.add(current);
-  for (const id of AREA_ORDER) if (rectDistance(AREAS[id].rect, x, z) <= radius) out.add(id);
+  for (const id of AREA_ORDER) {
+    const r = AREAS[id].rect;
+    // Near enough to the hero, or touching what the camera really sees (its ground footprint: wider than `radius` on a wide window / the widest zoom).
+    if (rectDistance(r, x, z) <= radius || (view && r.x0 <= view.x1 && r.x1 >= view.x0 && r.z0 <= view.z1 && r.z1 >= view.z0)) out.add(id);
+  }
   return out;
 }
 

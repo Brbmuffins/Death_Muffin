@@ -80,6 +80,7 @@ import * as nf from '../graphics/necroFx';
 import { LootView } from '../graphics/LootView';
 import { WorldView } from '../graphics/WorldView';
 import { updateOcclusion } from '../graphics/occlusion';
+import { shadowHalfExtent } from '../graphics/viewFootprint';
 import { equippedBySlot, gearFromIds } from '../content/gear';
 import { applySetMods, outfitSignature, resolveSetBonuses, setSignature } from '../gameplay/setBonuses';
 import { loadRunesFound, recordRunesFound } from '../gameplay/runeJournal';
@@ -141,7 +142,6 @@ import { snapShadowTarget } from '../graphics/shadowCadence';
 /** The moon's offset from the hero, its shadow-map size and the world size of one shadow texel (60 m frustum). */
 const MOON_OFFSET = { x: -14, y: 30, z: 12 };
 const MOON_MAP = 1024;
-const MOON_TEXEL = 60 / MOON_MAP;
 const HUD_INTERVAL_MS = 50;
 const SNAPSHOT_MS = 100;
 const MOVE_SEND_MS = 100;
@@ -4525,8 +4525,11 @@ export class WorldScene implements GameScene, RuntimeView {
     this.rig.camera.updateMatrixWorld();
     this.occlusionFocus.set(p.x, 1.1, p.z);
     updateOcclusion(this.rig.camera, this.occlusionFocus);
-    // The shadow camera follows the hero in whole-texel steps (no shimmer); a jump (teleport, area change) refreshes the map at once.
-    const snap = snapShadowTarget(p.x, p.z, MOON_OFFSET, MOON_TEXEL, this.moonSnap);
+    // The shadow box is sized to what the camera sees (wide windows / far zoom), then the shadow camera follows the hero in
+    // whole-texel steps of THAT box (no shimmer); a resize or a jump (teleport, area change) refreshes the map at once.
+    if (this.fitMoonShadow()) getRuntime().refreshShadows();
+    const sc = this.moon.shadow.camera;
+    const snap = snapShadowTarget(p.x, p.z, MOON_OFFSET, (sc.right - sc.left) / MOON_MAP, this.moonSnap);
     if (Math.abs(snap.x - this.moon.target.position.x) + Math.abs(snap.z - this.moon.target.position.z) > 6) getRuntime().refreshShadows();
     this.moon.position.set(snap.x + MOON_OFFSET.x, snap.y + MOON_OFFSET.y, snap.z + MOON_OFFSET.z);
     this.moon.target.position.set(snap.x, snap.y, snap.z);
@@ -4538,6 +4541,18 @@ export class WorldScene implements GameScene, RuntimeView {
     this.floating.update(dt, this.rig.camera);
     this.tickOnboarding(now);
     this.updateHud(now);
+  }
+
+  /** The moon's shadow box covers the whole screen: a wide window or the widest zoom reaches past the fixed 30 m half-size, and shadows (pillars, walls) used to stop dead at the screen corners. Grows in 4 m steps (30 m at the default view, 48 m at most). */
+  /** Sizes the moon's shadow box to the camera's ground footprint; true when it changed. */
+  private fitMoonShadow(): boolean {
+    const sc = this.moon.shadow.camera;
+    const half = shadowHalfExtent(this.rig.camera, sc.matrixWorldInverse, 30, 48);
+    if (half === sc.right) return false;
+    sc.left = sc.bottom = -half;
+    sc.right = sc.top = half;
+    sc.updateProjectionMatrix();
+    return true;
   }
 
   /** Milestone banners when the world's Wave Speed crosses one, and Nightfall's darker moon. */
