@@ -58,6 +58,9 @@ export const MOCK_ITEMS: Record<string, ItemDef> = Object.fromEntries(
   ]),
 );
 
+/** The server's max_stack_size for an item: gear never stacks, everything else uses the catalogue's cap (99 by default, like the table). */
+const mockStackCap = (id: string): number => (MOCK_ITEMS[id] && salvageRules.isSalvageGear(MOCK_ITEMS[id].item_type) ? 1 : (ITEMS[id]?.stack ?? 99));
+
 type R = [string, string, string, number, string, number, [string, number][]];
 // [id, name, profession, level, result, qty, ingredients]
 const RECIPE_ROWS: R[] = [
@@ -387,6 +390,8 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       if (!Number.isInteger(index) || index < 0 || index >= bagSize) return fail(`each slot_index must be between 0 and ${bagSize - 1}`);
       const qty = Math.floor(Number(s.quantity));
       if (qty <= 0) continue;
+      // The live server refuses a stack over the item's cap (client stack caps that drift from the server's loop on this 400).
+      if (qty > mockStackCap(s.item_id)) return fail(`${s.item_id} exceeds its maximum stack size of ${mockStackCap(s.item_id)}`);
       // A save may only NAME a roll the mock minted for this account (same rule as inventory-save.cjs); an omitted id keeps the slot's own.
       let instance_id: number | undefined;
       if (s.instance_id === undefined) {
@@ -724,14 +729,24 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       }
     }
     acc.slots = acc.slots.filter((s) => s.quantity > 0);
-    const stack = acc.slots.find((s) => s.item_id === recipe.result_item_id && MOCK_ITEMS[s.item_id]?.item_type === 'material');
-    if (stack) stack.quantity += recipe.result_quantity;
-    else {
+    // Like the live server: top up stacks below the item's cap, then open new slots for the rest ('Inventory is full' when none is free).
+    const cap = mockStackCap(recipe.result_item_id);
+    let remaining = recipe.result_quantity;
+    if (cap > 1) {
+      for (const s of acc.slots.filter((x) => x.item_id === recipe.result_item_id && !x.equipped && x.slot_index < BAG && x.quantity < cap).sort((a, b) => a.slot_index - b.slot_index)) {
+        const add = Math.min(remaining, cap - s.quantity);
+        s.quantity += add;
+        remaining -= add;
+      }
+    }
+    while (remaining > 0) {
       const used = new Set(acc.slots.map((s) => s.slot_index));
       let free = 0;
       while (used.has(free)) free++;
-      if (free >= BAG) return fail('Inventory full');
-      acc.slots.push({ slot_index: free, item_id: recipe.result_item_id, quantity: recipe.result_quantity, equipped: 0 });
+      if (free >= BAG) return fail('Inventory is full');
+      const add = Math.min(remaining, cap);
+      acc.slots.push({ slot_index: free, item_id: recipe.result_item_id, quantity: add, equipped: 0 });
+      remaining -= add;
     }
     // Like the live server: a missing profession row is created on the first craft, and XP is 5 per required level.
     let earner = prof;
