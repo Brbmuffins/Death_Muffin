@@ -118,7 +118,7 @@ export const DISCIPLINES: Record<DisciplineId, Discipline> = {
     description: 'Armours itself in the dead. Raises shield-bearing thralls that hold the line while you work.',
     passive: {
       name: 'Bone Ward',
-      text: 'Thralls rise as Shieldbearers (+100% health, draw aggression). You take 10% less damage per active thrall (up to 60%) and have 20% more health. Black Litany grants a bone barrier.',
+      text: 'Thralls rise as Shieldbearers (+100% health, draw aggression). You take 10% less damage per active thrall (30% at the usual three, 60% at most) and have 20% more health. Black Litany grants a bone barrier.',
     },
     color: '#d8cfbd',
     portrait: 'art/portraits/ossuary.webp',
