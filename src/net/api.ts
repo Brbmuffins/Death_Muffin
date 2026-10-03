@@ -165,12 +165,13 @@ export async function getInventory(characterId: number) {
 }
 
 /** `bagSize` tells the server which bag slots this save speaks for; without it a server assumes the old 24-slot bag. */
-export async function saveInventory(characterId: number, slots: unknown[], bagSize?: number) {
+/** `keepalive` lets the final save on tab close finish after the page is gone. */
+export async function saveInventory(characterId: number, slots: unknown[], bagSize?: number, keepalive = false) {
   return decorateSlots(
     await unwrap<InventorySlot[]>(
       request(
         '/api/inventory/save',
-        { method: 'POST', body: JSON.stringify({ characterId, slots, bagSize }) },
+        { method: 'POST', body: JSON.stringify({ characterId, slots, bagSize }), keepalive },
         true,
       ),
     ),

@@ -145,8 +145,10 @@ describe('Progression server mode', () => {
     await settle();
     await settle();
     expect(server.state!.summonsPending).toBe(1);
-    p.recordPrelateKill();
+    p.recordPrelateKill(); // urgent: its own save is already out, so flush() below returns at once
     await p.flush();
+    await settle();
+    await settle();
     expect(server.state!.run.prelateKills).toBe(1);
     expect(p.ascend()).toBeGreaterThan(0);
     await settle();

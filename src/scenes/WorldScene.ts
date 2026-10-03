@@ -112,6 +112,7 @@ import { isCape, isPet } from '../gameplay/cosmeticRules';
 import { beginAfkGather, gather, getInventory, getProfessions, getToken, OFFLINE, onServerNotice, type GatherReply, type SalvageReply } from '../net/api';
 import type { RemotePlayer, WorldSnapshot } from '../net/contracts';
 import { RealtimeClient, type RealtimeHandlers } from '../net/realtime';
+import { EventCoalescer } from '../net/eventCoalescer';
 import { PerfBeacon, perfBeaconWanted, perfNote, perfSessionInfo, setPerfBeacon } from '../net/perfBeacon';
 import { isRetryableError, Reconnector, type ReconnectMode } from '../net/reconnect';
 import { clearRejoin, loadRejoin, saveRejoin } from '../net/rejoinStore';
@@ -341,6 +342,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private nightK = 0;
   private snapshotCount = 0;
   private lastMoveSent = 0;
+  /** Host event batches, held under the relay's 60/s budget (see EventCoalescer). */
+  private eventOut = new EventCoalescer((b) => this.realtime.sendEvents(b));
   private lastPrune = 0;
   private lineupTicks: ((dt: number) => void)[] = [];
   /** DEV: the BinbunVFX review grid, if open. */
@@ -753,7 +756,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.scope.add(this.inventory.onChange(() => { this.brewRev++; }));
     this.scope.on(window, 'pagehide', () => {
       void this.progression.flush(true);
-      void this.inventory.flush();
+      void this.inventory.flush(true);
       void this.gathering.flush(true);
       if (this.worldCode) saveRejoin(this.worldCode); // refreshes the 10-minute window for a reload rejoin
     });
@@ -4508,14 +4511,17 @@ export class WorldScene implements GameScene, RuntimeView {
       const events = this.sim.step(dt);
       for (const ev of events) this.handleEvent(ev);
       if (this.realtime.connected) {
-        this.realtime.sendEvents(events);
+        this.eventOut.push(events, now);
         if (now - this.lastSnapshot >= SNAPSHOT_MS) {
           this.lastSnapshot = now;
           this.snapshotCount++;
           this.realtime.sendSnapshot(makeSnapshot(this.sim, this.snapshotCount % 20 === 0));
         }
-      }
-    } else this.mirror?.update(dt);
+      } else this.eventOut.clear();
+    } else {
+      this.eventOut.clear();
+      this.mirror?.update(dt);
+    }
 
     if (this.realtime.connected && now - this.lastMoveSent >= MOVE_SEND_MS) {
       this.lastMoveSent = now;

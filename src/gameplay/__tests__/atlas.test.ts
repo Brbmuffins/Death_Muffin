@@ -210,8 +210,9 @@ describe('atlas: the percentages match the real rolls', () => {
       expect(s.chance).toBeCloseTo((LEGENDARY_DROP.bossChance * legendaryShare(id.includes('legion') ? 'legion_unburied' : 'requiem_wraiths', disc)) / 5, 12);
       expect(near(boss / N, s.chance, N), `${disc} ${id} boss: ${boss / N} vs ${s.chance}`).toBe(true);
     }
-    // No legendary in the Hollow Graves, and a boss kill's chances over the 20 pieces add up to the 7% roll.
-    expect(src('leg_legion_unburied_chest', (x) => x.placeId === 'gravedigger')).toBeUndefined();
+    // The Gravedigger King rolls the lower starter chance, and a boss kill's chances over the 20 pieces add up to the boss roll.
+    const gd = src('leg_legion_unburied_chest', (x) => x.placeId === 'gravedigger' && x.kind === 'boss', 'gravecaller')!;
+    expect(gd.chance).toBeCloseTo((LEGENDARY_DROP.starterBossChance * legendaryShare('legion_unburied', 'gravecaller')) / 5, 12);
     const parts = ['head', 'chest', 'hands', 'legs', 'feet'] as const;
     const all = LEGENDARY_SET_IDS.flatMap((set) => parts.map((p) => src(legendaryItemId(set, p), (x) => x.placeId === 'abbess' && x.kind === 'boss', 'rotweaver')!.chance));
     expect(all.reduce((a, b) => a + b, 0)).toBeCloseTo(LEGENDARY_DROP.bossChance, 12);

@@ -52,7 +52,9 @@ export const legendarySetFor = (disciplineId: string): string | undefined => LEG
 // --- Drop rules ----------------------------------------------------------------------------------------------------------------------
 export const LEGENDARY_DROP = {
   /** Per boss kill (every area boss except the starter Gravedigger King). */
-  bossChance: 0.07,
+  bossChance: 0.15,
+  /** Per Gravedigger King kill (the starter boss, Hollow Graves): lower, so the first legendary can be seen early (owner, 3 Oct 2026). */
+  starterBossChance: 0.03,
   /** Per elite kill in a level-scaled area (Plague Cloister, Cinder Pyre, Mourning Fen). */
   eliteChance: 0.003,
   /** Smart loot: the share of legendary drops that is the player's own discipline's set (the rest splits evenly over the others). */
@@ -61,6 +63,12 @@ export const LEGENDARY_DROP = {
 
 /** Bosses roll from every area but the first (the Hollow Graves are too early for build-defining gear). */
 export const LEGENDARY_BOSS_AREAS: readonly AreaId[] = ['ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'fen'];
+/** The starter boss's area: legendaries drop there at the lower starterBossChance. */
+export const LEGENDARY_STARTER_AREA: AreaId = 'graves';
+
+/** Legendary chance for one boss kill in `area` (owner, 3 Oct 2026: 15% from the Abbess onward, 3% for the Gravedigger King). */
+export const legendaryBossChance = (area: AreaId): number =>
+  LEGENDARY_BOSS_AREAS.includes(area) ? LEGENDARY_DROP.bossChance : area === LEGENDARY_STARTER_AREA ? LEGENDARY_DROP.starterBossChance : 0;
 
 /** Which set a legendary drop is, for a player of `disciplineId`: 70% their own, the rest shared evenly (even split with no own set). */
 export function pickLegendarySet(disciplineId: string, rand: () => number): string {

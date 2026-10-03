@@ -51,6 +51,7 @@ Some of the most polished corners of the game right now (updated 3 October 2026)
 - [The Catacomb Depths](#the-catacomb-depths)
 - [Gold, gear, and difficulty](#gold-gear-and-difficulty)
 - [Gear, stats and the character sheet](#gear-stats-and-the-character-sheet)
+- [Getting better gear (upgrade guide)](#getting-better-gear-upgrade-guide)
 - [Loot tables and the Gear Atlas](#-loot-tables--gear-atlas)
 - [Gathering and crafting](#gathering-and-crafting)
 - [Ascension](#ascension)
@@ -437,6 +438,40 @@ Three thralls without the kit (left) and with it (right): the archer's baked bow
 
 **The character sheet (J, or the Sheet button beside the paper doll).** Lists your final Health, Spell power, Max essence, Essence per second, Move speed, Thrall health, Thrall damage and Damage upgrade, plus your STR, AGI, INT and VIT totals. Click any line to open its breakdown: the base, your level, each worn piece, your discipline, boons, Damage tiers and the weapon line. Brews and other timed effects are not included. The Codex (**K**, Stats tab) carries the same table. The Set bonuses block lists each worn set and its bonuses.
 
+## Getting better gear (upgrade guide)
+
+*The short version: kill bosses for legendaries, follow the green ▲ for everything else, and open the Gear Atlas (**.**) → **Best for me** when you are not sure what to chase next.*
+
+**1. Follow the arrows.** Every gear item in your bag shows a **green ▲** when it beats what you wear in that slot for *your* discipline, and a **red ▼** when it is worse. Hover it to see why (`+12% (more thrall damage)`). The Character sheet (**J**) lists your **weakest slots**, so you know which slot to fill first.
+
+**2. Hunt where your gear is.** Every ground drops gear of its own material: **Bone** in the Hollow Graves and Bone Warren, **Iron** in the Ossuary and Coliseum, **Gold** in the Nave and Sanctum, **Hell** in the Cloister and Pyre, and **Moon** (rarely) in the Pyre. Gear from a stronger ground has a higher **item level** and up to **three affixes**:
+- an elite adds +2 item levels, a boss +4, and a boss's first kill +5;
+- **Wave Speed** and the **Hard** difficulty raise loot chances and the number of elites;
+- the ground favours your own discipline, so about half the armour it drops is from your sets.
+
+**3. Finish your armour sets.** Each discipline has two five-piece sets: the **first collection** (Hollow Graves → Bell Sanctum) and the stronger **ascended collection** (Bell Sanctum → Cinder Pyre). Set bonuses switch on at 2, 4 and 5 pieces. An item that completes a set says so on its tooltip, and **Sell all junk** never sells it.
+
+**4. Craft the gaps.** The **Workbench** makes every necromancer weapon in all five materials from planks and ingots (Carpentry: staff, wand, grimoire; Smithing: scythe, sickle, skull focus, bell). Gathering skills (Woodcutting, Mining and the rest) feed it. The Gear Atlas shows the recipe for any craftable piece.
+
+**5. Chase legendaries (the end-game sets).** There is one legendary set per necromancer discipline, five pieces each: two pieces are a nudge, four change a mechanic, and five define the build. **How to get them:**
+
+| Source | Chance of a legendary piece |
+|---|---|
+| Any area boss from the **Bone Abbess** onward (Abbess, Drowned Congregation, Bell-Sworn Prelate, Plague Saint, Cinder Regent, Mire Mother) | **15% per kill** |
+| The **Gravedigger King** (Hollow Graves, the first boss) | **3% per kill** |
+| An **elite** in a level-scaled ground (Plague Cloister, Cinder Pyre, Mourning Fen) or a deep Catacomb Depths floor | 0.3% per elite |
+
+- **Your own set comes first:** 70% of the legendaries that drop for a necromancer are their own discipline's set. The five New Blood classes have no set of their own, so they get one of the four necromancer sets.
+- **Duplicates are rare:** a drop favours the pieces you don't hold yet, so a full set takes about 5 drops. That is about 33 boss kills from the Abbess onward for any set, or about 48 for your own discipline's full set.
+- **Bosses cost soul shards** to summon (elites drop them, and bosses hand some back). Boss loot, legendaries included, goes only to players who are **alive and within 38 m** when the boss dies, the same rule as ordinary kills.
+- Hover a legendary piece to read each tier of its bonus; the Codex has a Legendary sets section.
+
+**6. Socket runes.** Relic runes (from elites, surges and bosses) change how a rite behaves; socket them in the Grimoire (**L**). See [Relic runes](#relic-runes).
+
+**7. Spend gold on power that stays.** **Damage** tiers (+8% spell power each) and the Legion's **Reinforce** tiers (thrall health, damage and speed) both strengthen thralls already standing the moment you buy. They reset on Ascension.
+
+**8. Keep the bag clean.** Lock (padlock) anything you want to keep. **Salvage** spare gear at the Bone Grinder for reagents, park pieces in the **Ossuary Vault**, or give spares to your thralls in the **Legion** panel (**Y**).
+
 ## 📖 Loot tables & gear atlas
 
 *What can drop, how often, where, and what is worth wearing.* The full tables are in **[docs/LOOT-TABLES.md](docs/LOOT-TABLES.md)**, generated from the same tables the game rolls (`npm run gen:loot`; a test fails if the file goes stale): every hunting ground's drop table with ordinary-kill, elite and Grave Surge chances, each boss's spoils and first-kill trophy, runes, reagents, legendary armor by discipline, the Catacomb Depths, gathering finds, every recipe, salvage yields and how affixes and item level work.
@@ -464,7 +499,7 @@ Carry a matching hatchet, pickaxe, rod, or spade to improve gathering success; t
 
 With **Auto gathering** enabled in Settings, clicking a node can continue to another of the same kind. For longer sessions, use **P → choose a node tier → Start AFK** while in the Acre. Your character keeps working while the game is open. A full bag pauses work; movement, casting, or **Pause AFK** stops it. Closing the game ends the session, so it does not earn rewards while offline. When work stops, **the Sexton’s Ledger** shows your finds, their worth, skill gains and personal bests.
 
-**Sexton’s Contracts (O)** offers three delivery orders a day, based on what your skills can make. Deliver from your bag for gold and sometimes an item; completing all three gives a bonus and builds a daily streak. Tin and Bronze Ingots are ordered like any other smelted good, and about one day in five the hard order is a **relic order**: two or three Grave Garnets, Bone Opals, Reliquary Fragments or Covenant Seals (one Void Sapphire), whichever your levels can find, paid at twice their sell price. That is where the gems, fragments and seals go. **Grave Gardening (U)** gives you four Mourning Beds and two Coffin Patches. Plant seeds or saplings and return later; plots grow in real time even while you are away, and bone meal makes them grow faster.
+**Sexton’s Contracts (O)** offers three delivery orders a day, based on what your skills can make. Deliver from your bag for gold and sometimes an item; completing all three gives a bonus and builds a daily streak. Tin and Bronze Ingots are ordered like any other smelted good, and the **Workbench** turns the old trade goods into gear: **Tin Augment** (2 Tin Ingots, Mining 5), **Garnet Ring** (a Grave Garnet and 2 Copper Bars, Mining 8), **Bronze Warden Kit** (6 Bronze Ingots and 2 Oak Planks, Mining 12) and **Opal Flask** (a Bone Opal and 3 River Fillets make 2 Forge-Tempered Flasks, Fishing 20); each is worth no more at the vendor than what it eats. About one day in five the hard order is a **relic order**: two or three Grave Garnets, Bone Opals, Reliquary Fragments or Covenant Seals (one Void Sapphire), whichever your levels can find, paid at twice their sell price. That is where the gems, fragments and seals go. **Grave Gardening (U)** gives you four Mourning Beds and two Coffin Patches. Plant seeds or saplings and return later; plots grow in real time even while you are away, and bone meal makes them grow faster.
 
 **Ossuary Vault (V).** A sarcophagus in the Chapterhouse holds a **120-slot shared stash** (three tabs of 40) for every character on your account. Press **V** in the Chapterhouse or the Acre. Click an item to move its whole stack across; **Deposit materials** stores every unlocked material and consumable, **Deposit all** stores everything unlocked that you are not wearing, and **Sort** merges stacks and orders the Vault by type, rarity and name. Moves stack first, then fill free slots, and a move that will not fit changes nothing. Worn gear and locked items are never stored by the bulk buttons.
 

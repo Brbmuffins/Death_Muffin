@@ -1,6 +1,6 @@
 # Proposal: Workbench recipes for the old sell-only trade goods
 
-Status: **not built**. Needs a new migration (recipe rows only; every result and ingredient below is an existing item row).
+Status: **implemented** 3 Oct 2026 on branch `claude/trade-goods-recipes` as `server/death-muffin/backend/migrations/028-trade-goods-recipes.sql` (generated from `src/content/tradeGoods.ts`; `tools/build-trade-goods-sql.mjs --check`). One change: the Bronze Warden Kit takes `ingot_bronze` x6 + `plank_oak` x2 (60 in, 55 out), because the table's 3 x 9 + 2 x 3 = 33 in against 55 out broke the proposal's own "never pays out more than it eats" rule. The rune-socket gem idea below stays an open owner question.
 Context: `docs/polish/loot.md` item 14. The Sexton's Contracts already use all of these (no migration); this adds a second use each.
 
 Recipes live in the live `recipes` / `recipe_ingredients` tables (migrations 004, 009, 014 are generated from the content files), so they cannot ship without SQL.

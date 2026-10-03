@@ -22,3 +22,8 @@ Boss 7% per kill (Ossuary onward), elite 0.3% in the scaled areas, 70% of drops 
 (`pickLegendaryItem(..., owned)`: worn or in the bag; the Vault is not asked), so a set fills in about five drops instead of the eleven a uniform pick
 needs, and a repeat only follows a full set. The server's ground-rate ceiling for a legendary piece lost its one-in-five discount for the same reason
 (the piece you are missing can take every drop of its set). `owned` is read only when a legendary actually drops.
+
+## Drop rates (owner, 3 Oct 2026)
+Raised after live players went ~20 qualifying boss kills without one (7% each, Gravedigger excluded): **15% per boss kill from the Bone Abbess onward,
+3% per Gravedigger King kill**, elites unchanged at 0.3% (level-scaled grounds and deep Depths floors). `legendaryBossChance(area)` in
+`content/legendarySets.ts` is the one source for loot, the Gear Atlas, the generated LOOT-TABLES and the server authority ceilings.

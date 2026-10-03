@@ -140,6 +140,8 @@ export class Progression {
   private timer = 0;
   private inFlight = false;
   private remoteInFlight = 0;
+  /** Necro-progress requests run one at a time, so their replies are adopted in the order the server applied them. */
+  private necroChain: Promise<unknown> = Promise.resolve();
   private listeners = new Set<() => void>();
   /** Lifetime stats (set by the scene): kills, gold and Ascension runs feed it from here. */
   chronicle: Chronicle | null = null;
@@ -205,20 +207,32 @@ export class Progression {
     this.syncListeners.forEach((fn) => fn());
   }
 
+  /**
+   * Run a necro-progress request after every earlier one has been answered. Overlapping requests used to be adopted in
+   * whatever order the replies arrived: an older reply (computed before a newer save) landed last and rolled kills,
+   * a just-opened seal or a boon back for a moment.
+   */
+  private serial<T>(task: () => Promise<T>): Promise<T> {
+    const run = this.necroChain.then(task);
+    this.necroChain = run.then(() => undefined, () => undefined);
+    return run;
+  }
+
   /** Fire a server mutation; on success adopt its state, on failure report and resync. */
   private remote(call: () => Promise<NecroReply>) {
     if (this.mode !== 'server') return;
     this.remoteInFlight++;
-    call()
-      .then((r) => this.adopt(r.progress))
-      .catch((err) => {
-        this.errorListeners.forEach((fn) => fn(err instanceof Error ? err.message : 'Progress could not be saved'));
-        return necroApi
-          .get(this.character.id)
-          .then((r) => this.adopt(r.progress))
-          .catch(() => undefined);
-      })
-      .finally(() => { this.remoteInFlight--; });
+    void this.serial(() =>
+      call()
+        .then((r) => this.adopt(r.progress))
+        .catch((err) => {
+          this.errorListeners.forEach((fn) => fn(err instanceof Error ? err.message : 'Progress could not be saved'));
+          return necroApi
+            .get(this.character.id)
+            .then((r) => this.adopt(r.progress))
+            .catch(() => undefined);
+        }),
+    ).finally(() => { this.remoteInFlight--; });
   }
 
   private get hasPending() {
@@ -475,7 +489,7 @@ export class Progression {
     if (this.mode === 'server') {
       // Shards picked up since the last save must reach the server before it charges them.
       this.remote(async () => {
-        await this.flushNecro();
+        await this.sendNecro();
         return necroApi.summonPrelate(this.character.id);
       });
     }
@@ -490,7 +504,7 @@ export class Progression {
     this.saveLocal();
     if (this.mode === 'server') {
       this.remote(async () => {
-        await this.flushNecro();
+        await this.sendNecro();
         return necroApi.summonBoss(this.character.id, boss);
       });
     }
@@ -502,8 +516,13 @@ export class Progression {
     this.addShards(BOSSES[boss].shards);
   }
 
-  /** Send gathered deltas now (server mode). Failures put them back for the next try. */
-  private async flushNecro(keepalive = false) {
+  /** Send gathered deltas now (server mode), after any request already out. A keepalive flush (tab closing) goes at once. */
+  private flushNecro(keepalive = false): Promise<void> {
+    return keepalive ? this.sendNecro(true) : this.serial(() => this.sendNecro());
+  }
+
+  /** The save itself, outside the queue (for callers already inside it). Failures put the unsent deltas back for the next try. */
+  private async sendNecro(keepalive = false) {
     if (this.mode !== 'server' || !this.hasPending) return;
     const sent = this.pending;
     const wave = this.pendingWaveActive;
@@ -572,7 +591,19 @@ export class Progression {
   async flush(keepalive = false): Promise<void> {
     window.clearTimeout(this.timer);
     this.timer = 0;
-    if (!this.dirtyServer || this.inFlight) return;
+    if (!this.dirtyServer) return;
+    if (this.inFlight) {
+      // The tab is closing and a save is already out (it may be cut off): push the newest gains now rather than skip them.
+      if (!keepalive) return;
+      this.dirtyServer = false;
+      try {
+        await saveProgress(this.payload(), true);
+        await this.flushNecro(true);
+      } catch {
+        this.dirtyServer = true;
+      }
+      return;
+    }
     this.inFlight = true;
     this.dirtyServer = false;
     this.saveState = 'saving';
