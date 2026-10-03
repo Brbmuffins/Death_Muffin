@@ -43,6 +43,7 @@ export type TipId =
   | 'affix'
   | 'necroWeapon'
   | 'gearEquip'
+  | 'atlas'
   | 'statSheet'
   | 'codex'
   | 'signature'
@@ -269,6 +270,10 @@ export const TIPS: Record<TipId, Tip> = {
   gearEquip: {
     title: 'Gear you can read',
     body: 'Hover or select a piece in the Reliquary{p:I} and every stat says what it does for <b>you</b>: <b>VIT</b> is health, <b>INT</b> is spell power and essence. A bag item wears a small <b>green ▲</b> when it beats what you wear for your discipline, and a <b>red ▼</b> when it is worse; hover it for why. Press <kbd>J</kbd> to see which stats to look for.',
+  },
+  atlas: {
+    title: 'The Gear Atlas',
+    body: 'What is worth wearing, and where does it drop? The <b>Gear Atlas</b> [[(<kbd>.</kbd> key)||(in the Menu)]] lists every piece with its drop chances, how to craft it and a <b>green ▲</b> or <b>red ▼</b> against what you wear. <b>Best for me</b> shows your top upgrades.',
   },
   statSheet: {
     title: 'Your Character sheet',

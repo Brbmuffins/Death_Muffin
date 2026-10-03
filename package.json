@@ -19,6 +19,7 @@
     "balance:gear": "vite-node src/gameplay/balance/gearReport.ts",
     "balance:lever": "vite-node src/gameplay/balance/leverReport.ts",
     "balance:score": "vite-node src/gameplay/balance/gearScoreReport.ts",
+    "gen:loot": "vite-node tools/gen-loot-tables.ts",
     "balance:runes": "vite-node src/gameplay/balance/runeReport.ts",
     "balance:depths": "vite-node src/gameplay/balance/depthsReport.ts",
     "build:server-rules": "node tools/build-server-rules.mjs",

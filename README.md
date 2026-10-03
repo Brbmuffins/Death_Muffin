@@ -51,6 +51,7 @@ Some of the most polished corners of the game right now (updated 3 October 2026)
 - [The Catacomb Depths](#the-catacomb-depths)
 - [Gold, gear, and difficulty](#gold-gear-and-difficulty)
 - [Gear, stats and the character sheet](#gear-stats-and-the-character-sheet)
+- [Loot tables and the Gear Atlas](#-loot-tables--gear-atlas)
 - [Gathering and crafting](#gathering-and-crafting)
 - [Ascension](#ascension)
 - [Playing together and getting help](#playing-together-and-getting-help)
@@ -125,6 +126,7 @@ Nothing in Death Muffin is a quest, and nothing can be failed or missed. If you 
 | **J** | Character sheet: your numbers and where each comes from |
 | **Y** | Legion (necromancers): spare weapon and armour for your thralls, and Reinforce |
 | **M** / **K** | Waystone map / Codex |
+| **.** (period) | Gear Atlas: where every piece drops and how often, how to craft it, and what suits your discipline (also **Atlas** in the Menu) |
 | **E** | Talk to the Prior, the Sexton or the Apothecary when you stand beside them |
 | **V** | Ossuary Vault, the shared stash (in the Chapterhouse or the Acre) |
 | **G** | Toggle auto combat on Easy (Brbmuffins developer account) |
@@ -432,6 +434,16 @@ Three thralls without the kit (left) and with it (right): the archer's baked bow
 **Reinforce** is the gold sink: twelve tiers, each +3% thrall health and damage and +1% attack speed, for 120 gold at the first tier and 1.65 times more each time (the last costs 29,615; all twelve about 75,000). Like Damage and Wave Speed the tiers reset when you Ascend; the kit pieces stay. On the overall power score (Gravecaller, level 20) a copper kit is worth about +1%, an iron kit +2.6%, an iron kit at tier 6 +7.5%, tier 12 alone +9% and the best kit at tier 12 about +20%; the other necromancers gain 5-16% at the top, since thralls are a smaller part of their power.
 
 **The character sheet (J, or the Sheet button beside the paper doll).** Lists your final Health, Spell power, Max essence, Essence per second, Move speed, Thrall health, Thrall damage and Damage upgrade, plus your STR, AGI, INT and VIT totals. Click any line to open its breakdown: the base, your level, each worn piece, your discipline, boons, Damage tiers and the weapon line. Brews and other timed effects are not included. The Codex (**K**, Stats tab) carries the same table. The Set bonuses block lists each worn set and its bonuses.
+
+## 📖 Loot tables & gear atlas
+
+*What can drop, how often, where, and what is worth wearing.* The full tables are in **[docs/LOOT-TABLES.md](docs/LOOT-TABLES.md)**, generated from the same tables the game rolls (`npm run gen:loot`; a test fails if the file goes stale): every hunting ground's drop table with ordinary-kill, elite and Grave Surge chances, each boss's spoils and first-kill trophy, runes, reagents, legendary armor by discipline, the Catacomb Depths, gathering finds, every recipe, salvage yields and how affixes and item level work.
+
+In game, the **Gear Atlas** (press **.**, or **Atlas** in the Menu on a phone) is the same data as an AtlasLoot-and-Pawn-style browser: browse by slot, by area or boss, by set, or by materials and brews; every row shows where it drops with its chance, how to craft it, a fit badge for *your* discipline and a green ▲ / red ▼ against what you wear in that slot. **Best for me** lists the top upgrades you do not own yet. Tap or hover a row for the full source list, the recipe tree one level deep, what the item is used in, its set bonuses and the odds of rolled affixes. Percentages are per kill at default settings (Medium difficulty, Wave Speed 0, no fortune tonic); the page says what moves them.
+
+<p><img src="docs/screenshots/atlas/atlas-slot-detail.webp" alt="The Gear Atlas by slot: Colossus Mantle with an Ideal fit badge, an upgrade arrow and its drop sources" /><br /><sub>The Gear Atlas: every chest piece for your discipline with a fit badge and an upgrade arrow; the detail pane lists each source with its chance.</sub></p>
+
+**Capes & pets.** There are no legendary (or any rarer) capes: all ten capes are one tier, earned purely by skill levels, with no drop, shop or crafting route. The seven **mastery capes** need level 99 in their skill (Woodcutting, Mining, Fishing, Gravedigging, Grave Gardening, Alchemy, Salvaging); the **Apprentice's Mantle** needs a total level of 100, the **Journeyman's Mantle** 300 and **The Sexton's Mantle** 693 (99 in all seven). Five **pets** (Tithe Bat, Grave Rat, Drowned Pup rare; Wee Thrall, Shroud Moth epic) come from a charm, a rare find while you work its skill (about 1 in 3,500 successful actions, a little likelier on higher-tier nodes; the Shroud Moth's charm also drops about once per 35 Mourning Bed harvests). Capes and pets are **purely cosmetic**: no stats, no combat effect. Open **Capes & Pets** (**N**, or the Menu), press **Wear** on an unlocked cape, **Adopt** on a charm in your bag, then **Call** on a pet. [docs/LOOT-TABLES.md](docs/LOOT-TABLES.md#capes-and-pets) has the full list, and the Atlas has a Capes & pets view under Materials & brews.
 
 ## Gathering and crafting
 

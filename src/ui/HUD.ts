@@ -12,7 +12,7 @@ import type { RuneSockets } from '../gameplay/runeRules';
 /** Key caps under each hotbar slot (slot 5 is the right-click action). */
 const SLOT_KEYS = ['1', '2', '3', '4', 'RMB', 'R'];
 let nextTooltipId = 0;
-export type HudPanel = 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'sheet' | 'legion';
+export type HudPanel = 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'sheet' | 'legion' | 'atlas';
 /** Menu row: icon + short label, tooltip with the key, aria name. */
 const MENU_ROW: Array<[HudPanel, keyof typeof ICON, string, string, string]> = [
   ['inventory', 'bag', 'Bag', 'Reliquary (I)', 'Reliquary'],
@@ -20,6 +20,7 @@ const MENU_ROW: Array<[HudPanel, keyof typeof ICON, string, string, string]> = [
   ['professions', 'skills', 'Skills', 'Skills (P)', 'Skills'],
   ['map', 'waymap', 'Map', 'Waystones (M)', 'Waystones'],
   ['grimoire', 'grimoire', 'Spells', 'Grimoire (L)', 'Grimoire'],
+  ['atlas', 'atlas', 'Atlas', 'Gear Atlas (.)', 'Gear Atlas'],
   ['codex', 'book', 'Codex', 'Codex (K)', 'Codex'],
   ['settings', 'gear', 'Settings', 'Settings (Esc)', 'Settings'],
 ];

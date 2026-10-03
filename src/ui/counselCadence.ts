@@ -118,7 +118,7 @@ const GROUPS: Record<string, string[]> = {
   lesson: LESSONS,
   enemy: ['deacon', 'elite', 'surge', 'sanctify', 'procession', 'censer', 'wraith', 'swarm', 'golem', 'gargoyle', 'moth', 'bats', 'seraph', 'ghoul', 'acolyte', 'templar',
     'plague_doctor', 'flagellant', 'cinder_husk', 'pyre_priest', 'cinderhound', 'slag_brute', 'bog_hag', 'mire_leech', 'fen_wisp', 'drowned_sexton'],
-  gear: ['relic', 'armor', 'legendary', 'affix', 'tool', 'legion', 'rune'],
+  gear: ['relic', 'armor', 'legendary', 'affix', 'atlas', 'tool', 'legion', 'rune'],
   bag: ['bag_filling'],
   brew: ['reagent', 'brew', 'meal', 'belt'],
   acre: ['acre', 'rich_node', 'skill_up', 'laborers_working'],

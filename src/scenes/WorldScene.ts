@@ -91,7 +91,7 @@ import { applyLegionMods, kitCandidates, kitPieces, legionOf, legionSignature } 
 import { LegionPanel } from '../ui/LegionPanel';
 import { LootRoller } from '../gameplay/lootRoll';
 import { canRoll } from '../gameplay/affixes';
-import { affixedName, type DropSource } from '../gameplay/affixRules';
+import { affixedName, isAffixGear, type DropSource } from '../gameplay/affixRules';
 import type { LootDrop } from '../gameplay/loot';
 import { abilityCooldownMs, abilityRange, resolveWeaponLoadout } from '../gameplay/weaponLine';
 import { Chronicle } from '../gameplay/chronicle';
@@ -127,6 +127,7 @@ import type { StatContext } from '../gameplay/gearStats';
 import { SettingsPanel, WaystonePanel } from '../ui/MiscPanels';
 import { ProfessionsPanel } from '../ui/ProfessionsPanel';
 import { CodexPanel } from '../ui/CodexPanel';
+import { AtlasLauncher } from '../ui/AtlasLauncher';
 import { Onboarding, type TipId } from '../ui/Onboarding';
 import { DepthsController } from './DepthsController';
 import { hudDue } from '../graphics/animLod';
@@ -233,7 +234,7 @@ function doorDirection(d: DoorDef): string {
 }
 
 
-type PanelKey = 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'salvage' | 'sheet' | 'legion';
+type PanelKey = 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'salvage' | 'sheet' | 'legion' | 'atlas';
 export class WorldScene implements GameScene, RuntimeView {
   readonly scene = new THREE.Scene();
   readonly bloom = { strength: 0.75, radius: 0.55, threshold: 0.85 };
@@ -300,6 +301,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private cosmeticsPanel!: CosmeticsPanel;
   private sheetPanel!: CharacterSheetPanel;
   private legionPanel!: LegionPanel;
+  /** The Gear Atlas (. key): a doorway only; its panel, CSS and data load on first open (ui/AtlasLauncher.ts). */
+  private atlasPanel!: AtlasLauncher;
   private myCosmetics: { cape: string | null; pet: string | null } = { cape: null, pet: null };
   private petView: PetView | null = null;
   private laborCapNoted = new Set<number>();
@@ -983,6 +986,12 @@ export class WorldScene implements GameScene, RuntimeView {
     };
     this.inventoryPanel.onToolBelted = () => this.onboarding.show('toolBelt', 0, true);
     this.sheetPanel = new CharacterSheetPanel(this.root, this.statContext, () => this.onboarding.show('statSheet'));
+    this.atlasPanel = new AtlasLauncher(this.root, {
+      statContext: this.statContext,
+      slots: () => this.inventory.all,
+      level: () => this.character.level,
+      area: () => this.area,
+    }, () => this.hud.toast('The Gear Atlas could not load. Check your connection and try again.', 'err'));
     // The Legion (Y): spare weapon and armour for the thralls, and the gold sink that reinforces them. Necromancers only.
     this.legionPanel = new LegionPanel(this.root, this.character.id, this.inventory, {
       tier: () => this.progression.local.legionTier ?? 0,
@@ -1067,6 +1076,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.gatherReportPanel = new GatherReportPanel(this.root, () => this.togglePanel('inventory'));
     this.codexPanel = new CodexPanel(this.root, this.codex, this.discipline.id, this.chronicle);
     this.codexPanel.metNpc = (id) => this.guidance.met(id);
+    this.codexPanel.onAtlas = () => this.togglePanel('atlas');
     this.codexPanel.runesFound = () => loadRunesFound(browserStorage(), this.character.id);
     this.grimoirePanel = new GrimoirePanel(
       this.root,
@@ -1129,6 +1139,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.cosmeticsPanel?.close();
     this.sheetPanel?.close();
     this.legionPanel?.close();
+    this.atlasPanel?.close();
     this.dialogue?.close();
   }
 
@@ -1363,7 +1374,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private togglePanel(p: PanelKey) {
-    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel, cosmetics: this.cosmeticsPanel, vault: this.vaultPanel, salvage: this.salvagePanel, sheet: this.sheetPanel, legion: this.legionPanel }[p];
+    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel, cosmetics: this.cosmeticsPanel, vault: this.vaultPanel, salvage: this.salvagePanel, sheet: this.sheetPanel, legion: this.legionPanel, atlas: this.atlasPanel }[p];
     const wasOpen = panel.isOpen;
     const vault = p === 'vault';
     if (!(vault && !wasOpen && !AREAS[this.area].safe)) audio.play(wasOpen ? (vault ? 'vaultClose' : 'panelClose') : vault ? 'vaultOpen' : 'panelOpen');
@@ -1388,6 +1399,7 @@ export class WorldScene implements GameScene, RuntimeView {
     else if (p === 'cosmetics') void this.cosmeticsPanel.open();
     else if (p === 'sheet') this.sheetPanel.open();
     else if (p === 'legion') this.legionPanel.open();
+    else if (p === 'atlas') this.atlasPanel.open();
     else if (p === 'ascension') this.ascensionPanel.open();
     else if (p === 'grimoire') {
       this.grimoirePanel.open();
@@ -1450,6 +1462,7 @@ export class WorldScene implements GameScene, RuntimeView {
       else if (k === 'v') this.togglePanel('vault');
       else if (k === 'm') this.togglePanel('map');
       else if (k === 'k') this.togglePanel('codex');
+      else if (k === '.') this.togglePanel('atlas');
       else if (k === 'l') this.togglePanel('grimoire');
       else if (k === 'g') this.toggleAutoCombat();
       else if (k === 'e') this.talkKey();
@@ -1563,7 +1576,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private panelOpen() {
-    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || !!this.shelfPanel?.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.vaultPanel?.isOpen || !!this.salvagePanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen || !!this.sheetPanel?.isOpen || !!this.legionPanel?.isOpen || !!this.dialogue?.isOpen;
+    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || !!this.shelfPanel?.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.vaultPanel?.isOpen || !!this.salvagePanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen || !!this.sheetPanel?.isOpen || !!this.legionPanel?.isOpen || !!this.atlasPanel?.isOpen || !!this.dialogue?.isOpen;
   }
 
   private interactablesNear(): Interactable[] {
@@ -4476,6 +4489,8 @@ export class WorldScene implements GameScene, RuntimeView {
     if (got.items.length) {
       audio.play(lootSfx(got.items.map((item) => itemMeta(item.item_id).rarity)));
       this.onboarding.show('relic');
+      // The first piece of gear: point at the Atlas (a calm tip; it waits for a quiet moment).
+      if (got.items.some((item) => isAffixGear(itemMeta(item.item_id).type))) this.onboarding.show('atlas', 2500);
     }
     const legendary = got.items.filter((item) => itemMeta(item.item_id).rarity === 'legendary');
     if (legendary.length) this.onboarding.show('legendary', 600);
