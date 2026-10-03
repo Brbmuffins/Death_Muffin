@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Nav } from '../nav';
+import { Player } from '../Player';
+import type { DerivedStats } from '../characterStats';
 import { WorldSim } from '../sim/WorldSim';
 import { mulberry32 } from '../rng';
 import { SURGE } from '../../content/enemies';
@@ -86,5 +88,36 @@ describe('core bug hunt: socket id change (join / rejoin)', () => {
     expect([...sim.thralls.values()][0].owner).toBe('new');
     expect([...sim.zones.values()].every((z) => z.owner !== 'old')).toBe(true);
     expect(sim.players.has('old')).toBe(false);
+  });
+});
+
+describe('core bug hunt: respawn state', () => {
+  const stats: DerivedStats = { level: 12, maxHp: 100, spellPower: 20, maxEssence: 150, essenceRegen: 5, moveSpeed: 5.4, thrallHp: 45, thrallDamage: 8, damageBonusPct: 0 };
+
+  it('a Veilwalker who dies in Veil form (toxic and burn get through it) does not rise still in Veil form', () => {
+    const p = new Player(stats, new Nav(), 'veil');
+    p.veilForm = true;
+    p.takeDamage(1000, 0, 1000, undefined, 'toxic');
+    expect(p.alive).toBe(false);
+    p.revive();
+    expect(p.veilForm).toBe(false);
+  });
+
+  it('revive clears roots, guards and timers left from before the death', () => {
+    const p = new Player(stats, new Nav(), 'warden');
+    p.rootedUntil = 1e9;
+    p.bulwarkUntil = 1e9;
+    p.unbreakableUntil = 1e9;
+    p.betweenUntil = 1e9;
+    p.castUntil = 1e9;
+    p.takeDamage(1e6, 0, 5);
+    p.unbreakableUntil = 0;
+    p.takeDamage(1e6, 0, 5);
+    p.revive();
+    expect(p.rootedUntil).toBe(0);
+    expect(p.bulwarkUntil).toBe(0);
+    expect(p.unbreakableUntil).toBe(0);
+    expect(p.betweenUntil).toBe(0);
+    expect(p.castUntil).toBe(0);
   });
 });
