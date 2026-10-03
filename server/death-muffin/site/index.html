@@ -23,7 +23,7 @@
     <link rel="preload" href="assets/covenant-pyre.webp" as="image" />
     <!-- ?v= is a cache buster: Cloudflare overrides nginx's no-cache on .css/.js with a 4h
          browser TTL, so a deploy is invisible until the URL changes. Bump on every site edit. -->
-    <link rel="stylesheet" href="styles.css?v=4" />
+    <link rel="stylesheet" href="styles.css?v=5" />
     <script src="app.js?v=3" defer></script>
   </head>
   <body>
@@ -39,6 +39,13 @@
       <div class="mist mist--two" aria-hidden="true"></div>
 
       <section class="account" aria-label="Death Muffin account access">
+        <!-- Site alert: edit or delete this block (and bump styles.css?v) when the notice is no longer needed. -->
+        <aside class="site-alert" role="status">
+          <strong class="site-alert__title">Known issue: lag in the web version</strong>
+          <p>Online web players have been experiencing lag. The dev team is working on it. Until it's fixed, try the
+            <a href="https://github.com/Brbmuffins/Death_Muffin/releases/latest/download/DeathMuffinLauncher-win-x64.zip" rel="noopener">Windows launcher</a>
+            as an alternative.</p>
+        </aside>
         <header class="brand">
           <span class="brand__sigil" aria-hidden="true">
             <i></i>

@@ -1909,3 +1909,27 @@ button {
   .account__footer > * { white-space: nowrap; flex-shrink: 0; }
   .account__footer > span:first-child { flex-basis: 100%; text-align: center; }
 }
+
+/* Site alert (index.html): a short notice above the account form. */
+.site-alert {
+  margin: 0 0 18px;
+  padding: 12px 14px 12px 16px;
+  border: 1px solid rgba(232, 166, 109, 0.55);
+  border-left: 4px solid var(--ember);
+  border-radius: 6px;
+  background: rgba(40, 22, 14, 0.88);
+  color: var(--bone-bright);
+  font: 14px/1.45 var(--body);
+  box-shadow: 0 6px 24px var(--shadow);
+}
+.site-alert__title {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--ember);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.site-alert p { margin: 0; }
+.site-alert a { color: var(--lilac); font-weight: 600; }
+.site-alert a:hover, .site-alert a:focus-visible { color: var(--bone-bright); }
