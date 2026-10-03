@@ -3984,7 +3984,8 @@ export class WorldScene implements GameScene, RuntimeView {
       return (ch(color >> 16) << 16) | (ch((color >> 8) & 255) << 8) | ch(color & 255);
     };
     const cone = (r: number, dir: number, halfDeg: number, color: number, dur: number, delay = 0) => {
-      const o = { x: ev.x, z: ev.z, r: r / 2, sz: 1, sx: Math.tan((halfDeg * Math.PI) / 180) / Math.tan(Math.PI / 6), anchor: 1, rot: dir + Math.PI, duration: dur, fadeOut: 0.05, delay, color: hot(color) };
+      // The melee cones strike 0.3m past their nominal reach (BossBrain), so the picture draws that too.
+      const o = { x: ev.x, z: ev.z, r: (r + 0.3) / 2, sz: 1, sx: Math.tan((halfDeg * Math.PI) / 180) / Math.tan(Math.PI / 6), anchor: 1, rot: dir + Math.PI, duration: dur, fadeOut: 0.05, delay, color: hot(color) };
       this.effects.decal({ ...o, tex: fx.cone(), opacity: 0.55, fadeIn: dur * 0.6 });
       return this.effects.decal({ ...o, tex: fx.coneEdge(), opacity: 0.95, fadeIn: dur * 0.15 });
     };
