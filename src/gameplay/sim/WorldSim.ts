@@ -2714,6 +2714,8 @@ export class WorldSim {
       if ((e.hookCd ?? 0) > 0) e.hookCd! -= dt;
       e.attackCd -= dt * ((e.chillT ?? 0) > 0 ? CHILL.attackRateMult : 1) * ((e.incenseT ?? 0) > 0 ? CENSER.attackRateMult : 1) * (this.frenzied(e) ? FRENZY.attackRateMult : 1);
       const def = ENEMIES[e.def];
+      // Elites wind up 15% faster (the windup branch below): a telegraph must fill in the time the blow really takes.
+      const wms = def.windupMs * (e.elite ? 0.85 : 1);
       if (def.aura) this.censerPulse(e, dt);
 
       if (e.state === 'windup' || e.state === 'channel') {
@@ -2764,7 +2766,7 @@ export class WorldSim {
           e.channelCorpse = corpse.id;
           e.aimX = corpse.x;
           e.aimZ = corpse.z;
-          this.emit({ t: 'telegraph', id: e.id, kind: 'raise', x: e.x, z: e.z, tx: corpse.x, tz: corpse.z, ms: 1500 });
+          this.emit({ t: 'telegraph', id: e.id, kind: 'raise', x: e.x, z: e.z, tx: corpse.x, tz: corpse.z, ms: 1500 * (e.elite ? 0.85 : 1) });
           continue;
         }
         // No corpse to steal: bless the nearest wounded ally instead (Sanctified).
@@ -2813,7 +2815,7 @@ export class WorldSim {
             e.aimX = target.x;
             e.aimZ = target.z;
             e.facing = Math.atan2(target.x - e.x, target.z - e.z);
-            this.emit({ t: 'telegraph', id: e.id, kind: 'hook', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs * (e.elite ? 0.85 : 1), r: SEXTON_HOOK.range });
+            this.emit({ t: 'telegraph', id: e.id, kind: 'hook', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms, r: SEXTON_HOOK.range });
             break;
           }
           if (def.dive && e.attackCd <= 0 && dist >= def.dive.minRange && dist <= def.dive.range && !this.wallBetween(e.x, e.z, target.x, target.z)) {
@@ -2825,7 +2827,7 @@ export class WorldSim {
             e.aimX = target.x;
             e.aimZ = target.z;
             e.facing = Math.atan2(target.x - e.x, target.z - e.z);
-            this.emit({ t: 'telegraph', id: e.id, kind: 'dive', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs * (e.elite ? 0.85 : 1), r: def.dive.radius });
+            this.emit({ t: 'telegraph', id: e.id, kind: 'dive', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms, r: def.dive.radius });
             break;
           }
           if (dist <= def.attackRange + 0.35 && e.attackCd <= 0) {
@@ -2835,7 +2837,7 @@ export class WorldSim {
             e.aimZ = target.z;
             e.facing = Math.atan2(target.x - e.x, target.z - e.z);
             if (def.behavior === 'hazard') {
-              this.emit({ t: 'telegraph', id: e.id, kind: 'slam', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, ...(def.slamRadius ? { r: def.slamRadius } : {}) });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'slam', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms, ...(def.slamRadius ? { r: def.slamRadius } : {}) });
             }
           } else if (dist > def.attackRange * 0.8) {
             let tx = target.x;
@@ -2865,20 +2867,20 @@ export class WorldSim {
               e.aimX = hx;
               e.aimZ = hz;
               e.facing = Math.atan2(hx - e.x, hz - e.z);
-              this.emit({ t: 'telegraph', id: e.id, kind: 'hex', x: e.x, z: e.z, tx: hx, tz: hz, ms: def.windupMs, r: HAG_HEX.radius });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'hex', x: e.x, z: e.z, tx: hx, tz: hz, ms: wms, r: HAG_HEX.radius });
             } else if (def.attack === 'pulse') {
-              this.emit({ t: 'telegraph', id: e.id, kind: 'pulse', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: WISP_PULSE.radius });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'pulse', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms, r: WISP_PULSE.radius });
             } else if (def.attack === 'scream') {
-              this.emit({ t: 'telegraph', id: e.id, kind: 'scream', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: SCREAM.radius });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'scream', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms, r: SCREAM.radius });
             } else if (def.attack === 'dust') {
-              this.emit({ t: 'telegraph', id: e.id, kind: 'dust', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: DUST.radius });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'dust', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms, r: DUST.radius });
             } else if (def.attack === 'flask') {
-              this.emit({ t: 'telegraph', id: e.id, kind: 'flask', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: PLAGUE_FLASK.radius });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'flask', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms, r: PLAGUE_FLASK.radius });
             } else if (def.attack === 'ember') {
-              this.emit({ t: 'telegraph', id: e.id, kind: 'ember', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: EMBER_BOLT.radius });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'ember', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms, r: EMBER_BOLT.radius });
             } else if (def.attack === 'curse') {
-              this.emit({ t: 'telegraph', id: e.id, kind: 'curse', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
-            } else this.emit({ t: 'telegraph', id: e.id, kind: 'cone', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'curse', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms });
+            } else this.emit({ t: 'telegraph', id: e.id, kind: 'cone', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms });
           } else if (dist > def.attackRange - 1.5) this.moveEnemy(e, target.x, target.z, dt);
           else if (dist < 3.5) {
             let rx = e.x * 2 - target.x;
@@ -2906,7 +2908,7 @@ export class WorldSim {
               e.channelCorpse = corpse.id;
               e.aimX = corpse.x;
               e.aimZ = corpse.z;
-              this.emit({ t: 'telegraph', id: e.id, kind: 'raise', x: e.x, z: e.z, tx: corpse.x, tz: corpse.z, ms: 1500 });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'raise', x: e.x, z: e.z, tx: corpse.x, tz: corpse.z, ms: 1500 * (e.elite ? 0.85 : 1) });
               break;
             }
             if (dist <= def.attackRange) {
@@ -2914,7 +2916,7 @@ export class WorldSim {
               e.stateT = 0;
               e.aimX = target.x;
               e.aimZ = target.z;
-              this.emit({ t: 'telegraph', id: e.id, kind: 'curse', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'curse', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms });
               break;
             }
           }
