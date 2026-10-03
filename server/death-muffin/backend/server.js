@@ -1704,19 +1704,43 @@ app.post('/api/loot/drop', requireJWT, async (req, res) => {
 
 // ─── Gold ────────────────────────────────────────────────────────────────────
 
+const GOLD_MAX = 2147483647;
+// Gold is earned in play and saved through /save-progress (plausibility-guarded). The browser never calls this route, and it used to
+// let any player credit any amount, which bypassed that guard entirely: crediting is staff-only, spending (negative) stays open.
 app.post('/api/gold/adjust', requireJWT, async (req, res) => {
-  const { characterId, amount } = req.body;
-  if (amount === undefined || typeof amount !== 'number' || !Number.isInteger(amount))
+  const { characterId, amount } = req.body || {};
+  if (amount === undefined || typeof amount !== 'number' || !Number.isInteger(amount) || Math.abs(amount) > GOLD_MAX)
     return res.status(400).json({ success: false, error: 'amount must be an integer' });
   try {
     const char = await ownedCharacter(req, res, characterId);
     if (!char) return;
+    if (amount > 0 && !(await isStaffAccount(req).catch(() => false)))
+      return res.status(403).json({ success: false, error: 'gold cannot be added directly' });
 
-    const newGold = (char.gold ?? 0) + amount;
-    if (newGold < 0)
-      return res.status(400).json({ success: false, error: `insufficient funds (have ${char.gold ?? 0}, need ${-amount})` });
-
-    await pool.execute('UPDATE characters SET gold = ? WHERE id = ?', [newGold, char.id]);
+    // Read-modify-write under the row lock so two requests cannot both spend the same coins.
+    const conn = await pool.getConnection();
+    let newGold;
+    try {
+      await conn.beginTransaction();
+      const [[locked]] = await conn.execute('SELECT gold FROM characters WHERE id = ? FOR UPDATE', [char.id]);
+      const have = Number(locked && locked.gold) || 0;
+      newGold = have + amount;
+      if (newGold < 0) {
+        await conn.rollback();
+        return res.status(400).json({ success: false, error: `insufficient funds (have ${have}, need ${-amount})` });
+      }
+      if (newGold > GOLD_MAX) {
+        await conn.rollback();
+        return res.status(400).json({ success: false, error: 'gold would exceed the maximum' });
+      }
+      await conn.execute('UPDATE characters SET gold = ? WHERE id = ?', [newGold, char.id]);
+      await conn.commit();
+    } catch (e) {
+      await conn.rollback().catch(() => {});
+      throw e;
+    } finally {
+      conn.release();
+    }
     console.log(`[GOLD] ${req.user.username} char#${char.id} gold adjusted by ${amount > 0 ? '+' : ''}${amount} (total: ${newGold})`);
     res.json({ success: true, data: { gold: newGold } });
   } catch (err) {

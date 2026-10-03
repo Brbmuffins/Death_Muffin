@@ -38,3 +38,47 @@ test('craft works on the character that ownership was proven for, not on the raw
   assert.ok(touched.length >= 2, 'the craft reached the profession and inventory queries');
   assert.deepEqual([...new Set(touched)], [1], 'every query used the verified numeric character id');
 });
+
+// ── POST /api/gold/adjust ───────────────────────────────────────────────────────────────────────────────────────────────
+
+/** A pool whose characters row holds `gold`, with a staff flag on the account; records UPDATEs. */
+function goldPool({ gold = 100, staff = false } = {}) {
+  const state = { gold, updates: [] };
+  const f = fakePool({
+    character: { gold },
+    onQuery: (sql, params) => {
+      if (/FROM accounts WHERE id/.test(sql)) return [[{ role: staff ? 'gm' : 'player', gm_enabled: 0 }]];
+      if (/SELECT gold FROM characters/.test(sql)) return [[{ gold: state.gold }]];
+      if (/UPDATE characters SET gold/.test(sql)) { state.gold = params[0]; state.updates.push(params[0]); return [{ affectedRows: 1 }]; }
+    },
+  });
+  // fakePool answers accounts lookups itself before onQuery; route them through it for this test.
+  const inner = f.pool.execute;
+  f.pool.execute = async (sql, params) => (/FROM accounts WHERE id/.test(sql) ? [[{ role: staff ? 'gm' : 'player', gm_enabled: 0 }]] : inner(sql, params));
+  return { ...f, state };
+}
+
+test('gold/adjust: a player cannot credit gold to themselves', async () => {
+  const g = goldPool({ gold: 100 });
+  const r = await loadServer({ pool: g.pool }).call('POST /api/gold/adjust', { body: { characterId: 1, amount: 1_000_000 } });
+  assert.equal(r.status, 403);
+  assert.equal(r.json.success, false);
+  assert.deepEqual(g.state.updates, [], 'nothing was written');
+});
+
+test('gold/adjust: staff may credit, anyone may spend, nobody can go below zero or past the column', async () => {
+  const staff = goldPool({ gold: 100, staff: true });
+  const srv = loadServer({ pool: staff.pool });
+  assert.equal((await srv.call('POST /api/gold/adjust', { body: { characterId: 1, amount: 50 } })).json.data.gold, 150);
+  assert.equal((await srv.call('POST /api/gold/adjust', { body: { characterId: 1, amount: -30 } })).json.data.gold, 120);
+  const broke = await srv.call('POST /api/gold/adjust', { body: { characterId: 1, amount: -500 } });
+  assert.equal(broke.status, 400);
+  assert.match(broke.json.error, /insufficient funds \(have 120, need 500\)/);
+  const over = await srv.call('POST /api/gold/adjust', { body: { characterId: 1, amount: 2_147_483_600 } });
+  assert.equal(over.status, 400);
+  assert.equal(staff.state.gold, 120, 'a refused adjustment changes nothing');
+
+  const player = goldPool({ gold: 100 });
+  const spent = await loadServer({ pool: player.pool }).call('POST /api/gold/adjust', { body: { characterId: 1, amount: -40 } });
+  assert.equal(spent.json.data.gold, 60, 'spending is open to everyone');
+});
