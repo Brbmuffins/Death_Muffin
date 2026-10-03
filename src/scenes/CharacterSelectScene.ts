@@ -4,6 +4,7 @@ import { loadOrCreateCharacter } from '../net/api';
 import type { Character } from '../net/types';
 import type { NecroBackdrop } from '../graphics/NecroBackdrop';
 import { dismissSplash } from '../ui/splash';
+import { recommendedForFirstRun } from '../ui/firstHourRules';
 
 /** Choose a playable discipline. New families retain a legacy character slot. */
 export class CharacterSelectScene implements GameScene {
@@ -34,7 +35,11 @@ export class CharacterSelectScene implements GameScene {
       const btn = document.createElement('button');
       btn.className = 'cw-disc';
       btn.style.setProperty('--disc-color', d.color);
+      // This screen is only reached by an account with no character yet (main.ts resume(): 404 -> select).
+      const recommended = recommendedForFirstRun(d.id, false);
+      if (recommended) btn.classList.add('recommended');
       btn.innerHTML = `
+        ${recommended ? '<span class="rec-badge">Recommended for your first run</span>' : ''}
         ${d.family === 'necromancer' ? '<span class="legacy">Necromancer</span>' : ''}
         <img class="portrait" src="art/portraits/${d.id}.webp" alt="" onerror="this.src='${d.portrait}'" />
         <span class="body">
