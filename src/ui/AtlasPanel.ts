@@ -9,7 +9,7 @@ import { STAT_LABELS } from '../gameplay/stats';
 import { itemVerdict, STAT_PRIORITY, type StatContext } from '../gameplay/gearStats';
 import { salvagePreview } from '../gameplay/salvageRules';
 import {
-  FIT_LABEL, SOURCE_LABEL, affixCountOdds, atlasSlot, fitBand, fitTable, fmtChance, fmtQty, getAtlas, gearForSlot, isRecommendedKind, itemLevelAt, oneIn,
+  FIT_LABEL, SOURCE_LABEL, affixCountOdds, cosmeticsInfo, atlasSlot, fitBand, fitTable, fmtChance, fmtQty, getAtlas, gearForSlot, isRecommendedKind, itemLevelAt, oneIn,
   placesFor, skillName, sourcesFor, type AtlasItem, type DropSource, type FitBand, type RecipeInfo,
 } from '../gameplay/atlas';
 import type { InventorySlot } from '../net/types';
@@ -32,7 +32,7 @@ export interface AtlasDeps {
 }
 
 type View = 'slot' | 'where' | 'set' | 'mats' | 'best';
-type MatsKind = 'materials' | 'brews' | 'reagents';
+type MatsKind = 'materials' | 'brews' | 'reagents' | 'cosmetics';
 
 const VIEWS: { id: View; label: string }[] = [
   { id: 'best', label: 'Best for me' },
@@ -61,7 +61,7 @@ const statText = (stats: Record<string, number>) => Object.entries(stats).filter
 
 const isBrewLike = (id: string) => id in BREWS || /^(flask_|elixir_|tonic_|meal_)/.test(id);
 const isReagentLike = (id: string) => /^(reagent_|herb_|seed_|sapling_|ichor_)/.test(id) || ITEMS[id]?.type === 'rune';
-const matsKindOf = (id: string): MatsKind => (isBrewLike(id) ? 'brews' : isReagentLike(id) ? 'reagents' : 'materials');
+const matsKindOf = (id: string): MatsKind => (id.startsWith('charm_') ? 'cosmetics' : isBrewLike(id) ? 'brews' : isReagentLike(id) ? 'reagents' : 'materials');
 
 /** Remembered while the game runs, so reopening lands where you left off. */
 const memory: { view: View; slot: EquipSlot; where: string; set: string; mats: MatsKind; reach: boolean; sel: string | null } = {
@@ -177,7 +177,7 @@ export class AtlasPanel extends SimplePanel {
       const opt = (c: number, label: string) => `<optgroup label="${label}">${atlas.sets.filter((s) => s.collection === c).map((s) => `<option value="${s.id}" ${s.id === memory.set ? 'selected' : ''}>${esc(s.name)} (${DISCIPLINES[s.disciplineId as DisciplineId]?.name ?? s.disciplineId})</option>`).join('')}</optgroup>`;
       html = `<label class="at-select">Set <select data-set aria-label="Armor set">${opt(3, 'Legendary')}${opt(2, 'Ascended')}${opt(1, 'First collection')}</select></label>`;
     } else if (memory.view === 'mats') {
-      const k: [MatsKind, string][] = [['materials', 'Materials'], ['brews', 'Brews & food'], ['reagents', 'Reagents, runes & seeds']];
+      const k: [MatsKind, string][] = [['materials', 'Materials'], ['brews', 'Brews & food'], ['reagents', 'Reagents, runes & seeds'], ['cosmetics', 'Capes & pets']];
       html = `<div class="at-chips" role="group" aria-label="Kind">${k.map(([id, l]) => `<button data-mats="${id}" class="${id === memory.mats ? 'on' : ''}">${l}</button>`).join('')}</div>`;
     } else {
       html = `<label class="at-check"><input type="checkbox" data-reach ${memory.reach ? 'checked' : ''}/> Only what is in reach of level ${this.deps.level()}</label><span class="at-note">Top upgrades per slot for your ${esc(DISCIPLINES[this.disc].name)}, from what you do not own yet.</span>`;
@@ -269,7 +269,7 @@ export class AtlasPanel extends SimplePanel {
       list.innerHTML = `<p class="at-empty">${this.q ? 'Nothing by that name.' : memory.view === 'best' ? 'No upgrade in reach for any slot. Untick the level filter to see further ahead.' : 'Nothing here.'}</p>`;
       return;
     }
-    const setHead = memory.view === 'set' && !this.q ? this.setHeader() : '';
+    const setHead = memory.view === 'set' && !this.q ? this.setHeader() : memory.view === 'mats' && memory.mats === 'cosmetics' && !this.q ? this.cosmeticsHeader() : '';
     list.innerHTML = setHead + rows.map((r) => (r.head ? `<h3 class="at-head">${esc(r.head)}</h3>` : this.rowHtml(r.id!, r.place))).join('');
   }
 
@@ -341,6 +341,14 @@ export class AtlasPanel extends SimplePanel {
     }
     const more = (here.length ? here.length : drops.length) - 1;
     return { text: `${shortPlace(top)} · ${shortEvent(top.event)} ${fmtChance(top.chance)}${more > 0 ? ` · +${more} more` : ''}`, title };
+  }
+
+  /** Capes and pets are not items: a card list above the pet charms (which are). */
+  private cosmeticsHeader(): string {
+    const c = cosmeticsInfo();
+    return `<div class="at-set"><div class="at-set-hd"><b>Capes &amp; pets</b></div>${c.notes.map((n) => `<p class="at-faint">${esc(n)}</p>`).join('')}
+      <h3 class="at-head">Capes</h3>${c.capes.map((x) => `<div class="at-bonus on"><span class="n">\u2740</span><span><b>${esc(x.name)}</b>: ${esc(x.requirement)}</span></div>`).join('')}
+      <h3 class="at-head">Pet charms (tap one for where it turns up)</h3></div>`;
   }
 
   private setHeader(): string {

@@ -6,6 +6,7 @@ Found while building `src/gameplay/atlas.ts` (every number in the Atlas and in `
 
 - Every loot-table entry (all 9 hunting grounds, every boss) is a known item id, and appears in the Atlas with ordinary, elite and Grave Surge odds that add up to the area's `itemChance` (x0.5 ordinary, x6 elite).
 - No item is unobtainable: each of the 304 catalogue ids has a drop, a gathering find, a harvest, a recipe or a salvage source (legendary pieces drop from bosses and elites).
+- **Capes and pets (checked for the owner's question on legendary capes):** there are 10 capes and 5 pets and no legendary or other rarity on capes at all; every cape has an obtainable requirement (level 99 in one of the 7 skills, or total level 100 / 300 / 693 of a possible 693), and every pet charm drops from its skill's gathering nodes (the Shroud Moth's also from Mourning Bed harvests). No cape is without a source. Capes are pure cosmetics, not items, so they cannot drop, be crafted or bought.
 - No recipe references a missing item; every recipe ingredient has a source or a recipe of its own.
 - The Atlas percentages were checked against 100k-600k rolls of the real `rollKill` / `rollBoss` / `rollFirstKillItem` / `rollBossRune` / `rollEliteRune` / `rollSurgeItem` / `rollGather` / Depths `rollChest` (`src/gameplay/__tests__/atlas.test.ts`).
 

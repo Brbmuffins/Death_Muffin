@@ -11,6 +11,7 @@ import { LEGENDARY_BOSS_AREAS, LEGENDARY_DROP, LEGENDARY_SETS, LEGENDARY_SET_IDS
 import { NECRO_TIER_INFO, NECRO_WEAPONS } from '../content/necroWeapons';
 import { SET_BONUSES, SET_NAMES, describeEffect } from '../content/setBonuses';
 import { SEEDS } from '../content/gardening';
+import { CAPES, GARDEN_PET_CHANCE, PETS, PET_CHANCE, type CapeDef } from '../content/cosmetics';
 import { CHEST_KILLS, FLOOR_DROP_CHANCE, DEPTHS, chestDrops, chestRuneChance, chestRunePool, depthLootArea, hasChest } from '../content/depths';
 import { ALL_RECIPE_ROWS } from '../content/recipes';
 import { BREWS } from '../content/brews';
@@ -345,6 +346,10 @@ function buildSources(): Map<string, DropSource[]> {
     add(s.harvest, { kind: 'garden', placeId: `seed:${s.id}`, place: 'Mourning Bed (Sexton’s Acre)', event: `Harvest ${ITEMS[s.id]?.name ?? s.id} (Gardening ${s.level}, ${s.growMin} min)`, chance: 1, qty: s.yields, note: `${Math.round(s.seedBack * 100)}% to give a seed back` });
   }
 
+  // Pets: the Shroud Moth's charm also turns up when a Mourning Bed is harvested.
+  const moth = PETS.find((p) => p.skill === 'gardening');
+  if (moth) add(moth.charm, { kind: 'garden', placeId: 'garden:charm', place: 'Mourning Bed (Sexton\u2019s Acre)', event: 'Harvest a plot', chance: GARDEN_PET_CHANCE, qty: [1, 1], note: 'one charm in about 35 harvests' });
+
   // Salvage: what the Bone Grinder pays, by rarity (metal gear gives ingots; staffs, wands and books give planks).
   for (const rarity of ['common', 'uncommon', 'rare', 'epic', 'legendary'] as Rarity[]) {
     const metal = salvagePreview({ id: 'sword', item_type: 'weapon', rarity });
@@ -466,6 +471,31 @@ export function placesFor(disciplineId: string): Place[] {
     }
   }
   return atlas.places.map((p) => ({ ...p, items: [...p.items, ...[...(extra.get(p.id) ?? [])].filter((i) => !p.items.includes(i))] }));
+}
+
+// --- Capes and pets ----------------------------------------------------------------------------------------------------------------
+
+export interface CosmeticsInfo {
+  capes: { id: string; name: string; lore: string; requirement: string; skill?: string }[];
+  pets: { id: string; name: string; rarity: Rarity; charm: string; skill: string; lore: string; sources: DropSource[] }[];
+  notes: string[];
+}
+
+const capeRequirement = (c: CapeDef) => (c.skill ? `Level 99 in ${SKILLS[c.skill].name}` : `Total level ${c.total} across all ${Object.keys(SKILLS).length} skills`);
+
+/** Every cape and pet, how each is earned (from content/cosmetics.ts and the gathering nodes), and what they do (nothing but look). */
+export function cosmeticsInfo(): CosmeticsInfo {
+  const atlas = getAtlas();
+  return {
+    capes: CAPES.map((c) => ({ id: c.id, name: c.name, lore: c.lore, requirement: capeRequirement(c), skill: c.skill })),
+    pets: PETS.map((p) => ({ id: p.id, name: p.name, rarity: p.rarity, charm: p.charm, skill: SKILLS[p.skill].name, lore: p.lore, sources: atlas.sources.get(p.charm) ?? [] })),
+    notes: [
+      `Capes and pets are purely cosmetic: they give no stats, no drops and no combat effect, and capes are not items (they never take a bag slot or drop). A pet's charm is an item.`,
+      `Capes are earned by skill levels alone (no drops, shops or crafting). A mastery cape needs level 99 in its skill; the three mantles need a total level. All of them are one tier: there are no rarer or legendary capes.`,
+      `Pets come from charms, a rare find while you work (about 1 in ${Math.round(1 / PET_CHANCE).toLocaleString('en-US')} successful actions on the matching skill's nodes, a little likelier on higher tiers). Adopt a charm in Capes & Pets and the companion is yours for good (the charm is spent); until then it can be sold (250 gold) or kept in the Vault.`,
+      'To use them: open Capes & Pets (the N key, or Capes & Pets in the Menu), press Wear on an unlocked cape (Take off to remove it), Adopt on a charm in your bag, then Call on an adopted pet (Send away to dismiss it). Other players see what you wear.',
+    ],
+  };
 }
 
 // --- Upgrading -------------------------------------------------------------------------------------------------------------------

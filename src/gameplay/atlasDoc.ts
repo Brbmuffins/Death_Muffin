@@ -16,7 +16,7 @@ import { STAT_PRIORITY, RECOMMENDED_WEAPONS } from './gearStats';
 import { NECRO_KIND_LABEL } from '../content/necroWeapons';
 import { salvagePreview, SALVAGE_BONUS_PER_LEVEL, SALVAGE_AFFIX_BONUS, SALVAGE_ILVL_BONUS } from './salvageRules';
 import {
-  ILVL_OFFSETS, SCALING_NOTES, SOURCE_LABEL, affixCountOdds, depthBands, fmtChance, fmtQty, getAtlas, legendaryShare, oneIn, skillName, stationOf, tableShares,
+  ILVL_OFFSETS, SCALING_NOTES, cosmeticsInfo, SOURCE_LABEL, affixCountOdds, depthBands, fmtChance, fmtQty, getAtlas, legendaryShare, oneIn, skillName, stationOf, tableShares,
   type DropSource,
 } from './atlas';
 import type { Rarity } from '../net/types';
@@ -165,6 +165,24 @@ function recipesSection(): string {
   return out.join('\n');
 }
 
+function cosmeticsSection(): string {
+  const c = cosmeticsInfo();
+  const out: string[] = ['## Capes and pets', ''];
+  for (const n of c.notes) out.push(`- ${n}`);
+  out.push('', '### Capes', '');
+  out.push(table(['Cape', 'How to earn it', 'Notes'], c.capes.map((x) => [x.name, x.requirement, x.lore])));
+  out.push('', '### Pets', '');
+  const rows = c.pets.map((p) => {
+    const g = p.sources.filter((x) => x.kind === 'gather').map((x) => x.chance);
+    const h = p.sources.find((x) => x.kind === 'garden');
+    const parts = [`any ${p.skill} node, ${g.length} in all: ${withOdds(Math.min(...g))} on the lowest tier to ${withOdds(Math.max(...g))} on the highest`];
+    if (h) parts.push(`${h.place}: ${h.event.toLowerCase()} ${withOdds(h.chance)}`);
+    return [p.name, rarityMark(p.rarity), `${name(p.charm)} (${p.skill})`, parts.join('; ')];
+  });
+  out.push(table(['Pet', 'Rarity', 'Charm', 'Where the charm turns up (per successful action)'], rows));
+  return out.join('\n');
+}
+
 function salvageSection(): string {
   const out: string[] = ['## Salvage (the Bone Grinder)', ''];
   out.push(`Gear and runes grind into materials. Metal gear gives ingots; staffs, wands, grimoires and books give planks. Each Salvaging level adds ${pct(SALVAGE_BONUS_PER_LEVEL)} of one extra material; a rolled piece adds ${pct(SALVAGE_AFFIX_BONUS)} per affix and ${pct(SALVAGE_ILVL_BONUS)} per item level to a second extra-material chance.`);
@@ -259,6 +277,7 @@ export function renderLootTables(): string {
   out.push(gatheringSection(), '');
   out.push(gardenSection(), '');
   out.push(recipesSection());
+  out.push(cosmeticsSection(), '');
   out.push(salvageSection(), '');
   out.push(upgradeSection(), '');
   out.push(wantsSection(), '');

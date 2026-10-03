@@ -1219,6 +1219,38 @@ Level is the skill level needed. Stations: the Workbench in the Chapterhouse doe
 | Hymnal Elixir | 78 | 1 Congregation Ichor, 1 Plague Saint Ichor, 4 Wraith Ectoplasm | Great Cauldron (Alchemist’s Wing) |
 | Regent's Vigil Elixir | 85 | 1 Regent Ichor, 1 Prelate Ichor, 3 Cinder Ash | Great Cauldron (Alchemist’s Wing) |
 
+## Capes and pets
+
+- Capes and pets are purely cosmetic: they give no stats, no drops and no combat effect, and capes are not items (they never take a bag slot or drop). A pet's charm is an item.
+- Capes are earned by skill levels alone (no drops, shops or crafting). A mastery cape needs level 99 in its skill; the three mantles need a total level. All of them are one tier: there are no rarer or legendary capes.
+- Pets come from charms, a rare find while you work (about 1 in 3,500 successful actions on the matching skill's nodes, a little likelier on higher tiers). Adopt a charm in Capes & Pets and the companion is yours for good (the charm is spent); until then it can be sold (250 gold) or kept in the Vault.
+- To use them: open Capes & Pets (the N key, or Capes & Pets in the Menu), press Wear on an unlocked cape (Take off to remove it), Adopt on a charm in your bag, then Call on an adopted pet (Send away to dismiss it). Other players see what you wear.
+
+### Capes
+
+| Cape | How to earn it | Notes |
+|---|---|---|
+| Apprentice’s Mantle | Total level 100 across all 7 skills | A plain grey mantle, sewn by someone who believed in you. |
+| Journeyman’s Mantle | Total level 300 across all 7 skills | Stitched with the small marks of every trade you have tried. |
+| Cape of Coffin-Oak | Level 99 in Woodcutting | Mastery of the axe. It smells faintly of sawdust and old promises. |
+| Cape of Grave-Iron | Level 99 in Mining | Mastery of the pick. Heavy, and cold to the touch. |
+| Cape of the Black Water | Level 99 in Fishing | Mastery of the line. It is always a little damp. |
+| Cape of the Sexton | Level 99 in Gravedigging | Mastery of the spade. The dead are quiet around it. |
+| Cape of the Mourning Bed | Level 99 in Grave Gardening | Mastery of the garden. Something is always growing on it. |
+| Cape of the Alembic | Level 99 in Alchemy | Mastery of the brew. It shifts colour when you are not looking. |
+| Cape of the Bone Grinder | Level 99 in Salvaging | Mastery of the grinder. Nothing is wasted, and nothing stays whole. |
+| The Sexton’s Mantle | Total level 693 across all 7 skills | Ninety-nine in every rite. The Covenant has no higher thanks to give. |
+
+### Pets
+
+| Pet | Rarity | Charm | Where the charm turns up (per successful action) |
+|---|---|---|---|
+| Tithe Bat | Rare | Tithe Bat Charm (Woodcutting) | any Woodcutting node, 7 in all: 0.029% (1 in 3,465) on the lowest tier to 0.054% (1 in 1,842) on the highest |
+| Grave Rat | Rare | Grave Rat Charm (Mining) | any Mining node, 9 in all: 0.029% (1 in 3,465) on the lowest tier to 0.051% (1 in 1,944) on the highest |
+| Drowned Pup | Rare | Drowned Pup Charm (Fishing) | any Fishing node, 6 in all: 0.029% (1 in 3,465) on the lowest tier to 0.051% (1 in 1,944) on the highest |
+| Wee Thrall | Epic | Wee Thrall Charm (Gravedigging) | any Gravedigging node, 6 in all: 0.029% (1 in 3,465) on the lowest tier to 0.049% (1 in 2,059) on the highest |
+| Shroud Moth | Epic | Shroud Moth Charm (Grave Gardening) | any Grave Gardening node, 2 in all: 0.029% (1 in 3,465) on the lowest tier to 0.029% (1 in 3,465) on the highest; Mourning Bed (Sexton’s Acre): harvest a plot 2.86% (1 in 35) |
+
 ## Salvage (the Bone Grinder)
 
 Gear and runes grind into materials. Metal gear gives ingots; staffs, wands, grimoires and books give planks. Each Salvaging level adds 0.5% of one extra material; a rolled piece adds 12% per affix and 0.3% per item level to a second extra-material chance.

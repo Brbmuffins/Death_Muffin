@@ -15,7 +15,7 @@ import { rollChest, rollFloorClear } from '../depthsRewards';
 import { mulberry32 } from '../rng';
 import { rollAffixCount } from '../affixRules';
 import {
-  SCALING_NOTES, affixCountOdds, isRecommendedKind, peersOf, atlasSlot, depthBands, fitBand, fitTable, fmtChance, getAtlas, legendaryShare, oneIn, placesFor, powerGainPct, referenceContext,
+  SCALING_NOTES, affixCountOdds, cosmeticsInfo, isRecommendedKind, peersOf, atlasSlot, depthBands, fitBand, fitTable, fmtChance, getAtlas, legendaryShare, oneIn, placesFor, powerGainPct, referenceContext,
   sourcesFor, unobtainable,
 } from '../atlas';
 
@@ -271,6 +271,19 @@ describe('atlas: the percentages match the real rolls', () => {
     }
     expect(ok / N).toBeCloseTo(successChance(node, 99, 6), 2);
     expect(near(seal / ok, src('covenant_seal', (s) => s.placeId === 'node:grave_barrow_king')!.chance, ok)).toBe(true);
+  });
+});
+
+describe('atlas: capes and pets', () => {
+  it('every cape is earnable by levels and every pet charm has a way to be found', () => {
+    const c = cosmeticsInfo();
+    expect(c.capes.length).toBe(10);
+    expect(c.capes.every((x) => /^(Level 99 in |Total level \d+)/.test(x.requirement))).toBe(true);
+    expect(c.pets.length).toBe(5);
+    for (const p of c.pets) {
+      expect(ITEMS[p.charm], p.charm).toBeTruthy();
+      expect(p.sources.length, p.charm).toBeGreaterThan(0);
+    }
   });
 });
 
