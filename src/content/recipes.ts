@@ -3,6 +3,7 @@ import { ALCHEMY_RECIPES } from './alchemy';
 import { NECRO_RECIPES } from './necroWeapons';
 import { REAGENT_RECIPES } from './reagents';
 import { FEN_RECIPES } from './fenItems';
+import { TRADE_GOODS_RECIPES } from './tradeGoods';
 
 /**
  * Every Workbench / station recipe the client knows, one list: [id, name, profession, level, result, quantity, ingredients].
@@ -41,4 +42,4 @@ export const BASE_RECIPE_ROWS: RecipeRow[] = [
   ['craft_oak_staff', 'Oak Staff', 'woodcutting', 3, 'staff_oak', 1, [['plank_oak', 3]]],
 ];
 
-export const ALL_RECIPE_ROWS: RecipeRow[] = [...BASE_RECIPE_ROWS, ...PROCESSING_RECIPES, ...ALCHEMY_RECIPES, ...NECRO_RECIPES, ...REAGENT_RECIPES, ...FEN_RECIPES];
+export const ALL_RECIPE_ROWS: RecipeRow[] = [...BASE_RECIPE_ROWS, ...PROCESSING_RECIPES, ...ALCHEMY_RECIPES, ...NECRO_RECIPES, ...REAGENT_RECIPES, ...FEN_RECIPES, ...TRADE_GOODS_RECIPES];

@@ -1088,11 +1088,13 @@ Level is the skill level needed. Stations: the Workbench in the Chapterhouse doe
 | Tin Ingot | 3 | 3 Tin Ore | Workbench or Bone Kiln |
 | Copper Ring | 3 | 2 Copper Bar | Workbench or Bone Kiln |
 | Copper Augment | 5 | 1 Copper Ingot | Workbench or Bone Kiln |
+| Copper Augment | 5 | 2 Tin Ingot | Workbench or Bone Kiln |
 | Iron Ingot | 5 | 3 Iron Ore | Workbench or Bone Kiln |
 | Copper Plate | 5 | 4 Copper Bar | Workbench or Bone Kiln |
 | Copper Sword | 5 | 3 Copper Bar | Workbench or Bone Kiln |
 | Iron Helm | 8 | 2 Iron Ingot | Workbench or Bone Kiln |
 | Bronze Ingot | 8 | 3 Bronze Ore | Workbench or Bone Kiln |
+| Copper Ring | 8 | 1 Grave Garnet, 2 Copper Bar | Workbench or Bone Kiln |
 | Iron Hatchet | 8 | 3 Iron Ingot, 2 Elm Plank | Workbench or Bone Kiln |
 | Iron Pickaxe | 8 | 3 Iron Ingot, 2 Elm Plank | Workbench or Bone Kiln |
 | Iron Fishing Rod | 8 | 3 Iron Ingot, 2 Elm Plank | Workbench or Bone Kiln |
@@ -1106,6 +1108,7 @@ Level is the skill level needed. Stations: the Workbench in the Chapterhouse doe
 | Iron Augment | 12 | 1 Iron Ingot | Workbench or Bone Kiln |
 | Silver Ingot | 12 | 3 Silver Ore | Workbench or Bone Kiln |
 | Iron Warden Kit | 12 | 3 Iron Ingot, 2 Oak Plank | Workbench or Bone Kiln |
+| Iron Warden Kit | 12 | 6 Bronze Ingot, 2 Oak Plank | Workbench or Bone Kiln |
 | Silver Hatchet | 14 | 3 Silver Ingot, 2 Willow Plank | Workbench or Bone Kiln |
 | Silver Pickaxe | 14 | 3 Silver Ingot, 2 Willow Plank | Workbench or Bone Kiln |
 | Silver Fishing Rod | 14 | 3 Silver Ingot, 2 Willow Plank | Workbench or Bone Kiln |
@@ -1151,6 +1154,7 @@ Level is the skill level needed. Stations: the Workbench in the Chapterhouse doe
 | Major Healing Flask | 8 | 4 River Fillet, 1 Iron Ingot | Workbench |
 | Major Healing Flask | 10 | 3 River Fillet, 2 Bone Meal | Workbench |
 | Smoked Crypt Eel | 12 | 2 Crypt Eel | Cooking Fire (Sexton’s Acre) or Workbench |
+| Forge-Tempered Flask x2 | 20 | 1 Bone Opal, 3 River Fillet | Workbench |
 | Bell Carp Stew | 28 | 2 Bell Carp | Cooking Fire (Sexton’s Acre) or Workbench |
 | Drowned Pike Fillet | 42 | 2 Drowned Pike | Cooking Fire (Sexton’s Acre) or Workbench |
 | Lanternfish Supper | 60 | 2 Lanternfish | Cooking Fire (Sexton’s Acre) or Workbench |
@@ -1265,7 +1269,7 @@ Gear and runes grind into materials. Metal gear gives ingots; staffs, wands, gri
 
 ## Trade goods and the Sexton
 
-Gems, Reliquary Fragments and Covenant Seals have no recipe, so the Sexton's Contracts (O) buy them: on about 20% of days the hard order is a relic order for a fixed handful, paid at 2x the sell price (and one Grave Garnet back; the rarer gems are never paid out). Tin and Bronze Ingots are ordered like any smelted good. Pet charms are adopted, seeds and saplings are planted, and everything else is a recipe ingredient.
+Reliquary Fragments, Covenant Seals and the Void Sapphire have no recipe, and Grave Garnets and Bone Opals have only one each (the Workbench's Garnet Ring and Opal Flask, never worth more at the vendor than what they eat), so the Sexton's Contracts (O) buy them: on about 20% of days the hard order is a relic order for a fixed handful, paid at 2x the sell price (and one Grave Garnet back; the rarer gems are never paid out). Tin and Bronze Ingots are ordered like any smelted good, and also make a Tin Augment and a Bronze Warden Kit at the Workbench. Pet charms are adopted, seeds and saplings are planted, and everything else is a recipe ingredient.
 
 | Item | Rarity | Order unlocks at | Quantity asked | Gold paid (before the slot fee) |
 |---|---|---|---|---|
