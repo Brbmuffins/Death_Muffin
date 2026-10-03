@@ -126,6 +126,8 @@ export class AtlasPanel extends SimplePanel {
     body.querySelectorAll<HTMLButtonElement>('[data-view]').forEach((b) => b.addEventListener('click', () => {
       memory.view = b.dataset.view as View;
       this.el!.classList.remove('detail-open');
+      this.sel = null;
+      this.trail = [];
       this.q = '';
       q.value = '';
       this.render();
@@ -180,7 +182,7 @@ export class AtlasPanel extends SimplePanel {
       const k: [MatsKind, string][] = [['materials', 'Materials'], ['brews', 'Brews & food'], ['reagents', 'Reagents, runes & seeds'], ['cosmetics', 'Capes & pets']];
       html = `<div class="at-chips" role="group" aria-label="Kind">${k.map(([id, l]) => `<button data-mats="${id}" class="${id === memory.mats ? 'on' : ''}">${l}</button>`).join('')}</div>`;
     } else {
-      html = `<label class="at-check"><input type="checkbox" data-reach ${memory.reach ? 'checked' : ''}/> Only what is in reach of level ${this.deps.level()}</label><span class="at-note">Top upgrades per slot for your ${esc(DISCIPLINES[this.disc].name)}, from what you do not own yet.</span>`;
+      html = `<label class="at-check"><input type="checkbox" data-reach ${memory.reach ? 'checked' : ''}/> Only what is in reach of level ${this.deps.level()}</label><span class="at-note">Top upgrades per slot for your ${esc(DISCIPLINES[this.disc].name)} that you do not own yet, then the legendary chase.</span>`;
     }
     sub.innerHTML = this.q ? `<span class="at-note">Searching every item. Clear the box to go back.</span>` : html;
   }
@@ -223,9 +225,16 @@ export class AtlasPanel extends SimplePanel {
     // Best for me: per slot, the biggest upgrades you do not own.
     const out: { head?: string; id?: string }[] = [];
     const level = this.deps.level();
+    const ownSet = legendarySetFor(this.disc);
+    const chase: { id: string; pct: number }[] = [];
     for (const { id: slot } of EQUIP_SLOTS) {
+      for (const i of gearForSlot(slot)) {
+        if (i.rarity !== 'legendary' || this.owned.has(i.id) || (ownSet && i.setId !== ownSet)) continue;
+        const v = this.verdict(i.id);
+        if (v && v.kind === 'upgrade') chase.push({ id: i.id, pct: v.pct });
+      }
       const picks = gearForSlot(slot)
-        .filter((i) => !this.owned.has(i.id) && (!memory.reach || i.level <= level + 10))
+        .filter((i) => i.rarity !== 'legendary' && !this.owned.has(i.id) && (!memory.reach || i.level <= level + 10))
         .map((i) => ({ i, v: this.verdict(i.id) }))
         .filter((x) => x.v && x.v.kind === 'upgrade' && (x.v.pct > 0 || x.v.empty))
         .sort((a, b) => (b.v!.pct - a.v!.pct) || a.i.level - b.i.level)
@@ -233,6 +242,11 @@ export class AtlasPanel extends SimplePanel {
       if (!picks.length) continue;
       out.push({ head: SLOT_SHORT[slot] });
       for (const p of picks) out.push({ id: p.i.id });
+    }
+    // The legendary chase comes last: very rare, so it never crowds out what you can actually find this week.
+    if (chase.length) {
+      out.push({ head: 'The legendary chase (rare boss drops)' });
+      for (const c of chase.sort((a, b) => b.pct - a.pct).slice(0, 5)) out.push({ id: c.id });
     }
     return out;
   }

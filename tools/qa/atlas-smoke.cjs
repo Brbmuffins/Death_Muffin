@@ -6,7 +6,7 @@
 const assert = require('node:assert/strict');
 const { mkdirSync } = require('node:fs');
 const { chromium } = require(process.env.DM_PLAYWRIGHT_MODULE || 'playwright');
-const { watchErrors } = require('./lib/qa-common.cjs');
+const { watchErrors, shot } = require('./lib/qa-common.cjs');
 
 async function main() {
   const browser = await chromium.launch({ headless: true, executablePath: process.env.DM_CHROMIUM_PATH || undefined, args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
@@ -35,12 +35,14 @@ async function main() {
       d.advance(1);
     });
     // Wear the copper helm and the bone staff so arrows have something to beat.
-    await page.keyboard.press('i');
-    await page.waitForSelector('.cw-bag-grid');
+    if (!touch) await page.keyboard.press('i');
+    if (!touch) await page.waitForSelector('.cw-bag-grid');
     const idx = (id) => page.evaluate((i) => window.__cwDebug.inventory.all.find((s) => s.item_id === i)?.slot_index, id);
-    for (const id of ['helm_copper', 'staff_bone']) await page.locator('.cw-bag-grid .cw-slot').nth(await idx(id)).dblclick();
-    await page.waitForFunction(() => window.__cwDebug.inventory.all.filter((s) => s.equipped).length >= 2);
-    await page.keyboard.press('Escape');
+    if (!touch) {
+      for (const id of ['helm_copper', 'staff_bone']) await page.locator('.cw-bag-grid .cw-slot').nth(await idx(id)).dblclick();
+      await page.waitForFunction(() => window.__cwDebug.inventory.all.filter((s) => s.equipped).length >= 2);
+    }
+    if (!touch) await page.keyboard.press('Escape');
     await page.waitForTimeout(200);
 
     // Open from the key (desktop) or the Menu tile (phone). Hot path: the chunk is fetched on first open.
@@ -56,7 +58,7 @@ async function main() {
     assert.ok(await rowCount() > 3, 'Best for me lists upgrades');
     assert.ok(await page.locator('.cw-atlas .at-arrow.up').count(), 'upgrade arrows show');
     await page.waitForTimeout(400);
-    await page.screenshot({ path: `${out}/atlas-best-${tag}.png` });
+    await shot(page, `${out}/atlas-best-${tag}.png`);
 
     // By slot (chest): fit badges and arrows, best first.
     await page.locator('.cw-atlas [data-view="slot"]').click();
@@ -66,16 +68,16 @@ async function main() {
     await page.locator('.cw-atlas .at-row').first().click();
     await page.waitForSelector('.cw-atlas .at-detail .at-dname');
     const detail = await page.locator('.cw-atlas .at-detail').innerText();
-    assert.match(detail, /Where it drops/);
+    assert.match(detail, /where it drops/i);
     await page.waitForTimeout(300);
-    await page.screenshot({ path: `${out}/atlas-slot-detail-${tag}.png` });
+    await shot(page, `${out}/atlas-slot-detail-${tag}.png`);
 
     // Craftable item: recipe tree one level deep, ingredients link on.
     await page.locator('.cw-atlas [data-view="slot"]').click();
     await page.locator('.cw-atlas [data-slot="main_hand"]').click();
     await page.locator('.cw-atlas .at-row', { hasText: 'Reliquary Staff' }).first().click();
     await page.waitForSelector('.cw-atlas .at-recipe');
-    assert.match(await page.locator('.cw-atlas .at-detail').innerText(), /How to make it/);
+    assert.match(await page.locator('.cw-atlas .at-detail').innerText(), /how to make it/i);
     await page.locator('.cw-atlas .at-recipe button[data-go]').first().click();
     assert.ok(await page.locator('.cw-atlas .at-back').count(), 'a back control exists');
 
@@ -83,14 +85,14 @@ async function main() {
     await page.locator('.cw-atlas [data-view="where"]').click();
     await page.selectOption('.cw-atlas [data-where]', 'abbess');
     assert.ok(await rowCount() > 10, 'boss lists its spoils');
-    assert.match(await page.locator('.cw-atlas .at-list').innerText(), /Abbess Ichor/);
+    assert.match(await page.locator('.cw-atlas .at-list').textContent(), /Abbess Ichor/i);
     await page.waitForTimeout(300);
-    await page.screenshot({ path: `${out}/atlas-where-${tag}.png` });
+    await shot(page, `${out}/atlas-where-${tag}.png`);
 
     // By set.
     await page.locator('.cw-atlas [data-view="set"]').click();
     assert.ok(await page.locator('.cw-atlas .at-set .at-bonus').count() >= 3, 'set bonuses show');
-    await page.screenshot({ path: `${out}/atlas-set-${tag}.png` });
+    await shot(page, `${out}/atlas-set-${tag}.png`);
 
     // Materials.
     await page.locator('.cw-atlas [data-view="mats"]').click();
@@ -100,7 +102,7 @@ async function main() {
     await page.fill('.cw-atlas [data-q]', 'moon');
     assert.ok(await rowCount() > 3, 'search finds Moon items');
     await page.fill('.cw-atlas [data-q]', 'zzzzzz');
-    assert.match(await page.locator('.cw-atlas .at-list').innerText(), /Nothing by that name/);
+    assert.match(await page.locator('.cw-atlas .at-list').textContent(), /Nothing by that name/);
     await page.fill('.cw-atlas [data-q]', '');
 
     // Close: nothing of it remains in the DOM (no ticking panel when shut).
