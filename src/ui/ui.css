@@ -346,6 +346,7 @@ button { font-family: inherit; }
 .cw-disc .legacy { position: absolute; top: 8px; right: 8px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cw-text-faint); background: rgba(0,0,0,0.55); padding: 2px 6px; }
 .cw-disc .rec-badge { position: absolute; top: 8px; left: 8px; z-index: 1; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #1a1408; background: var(--cw-gold-400, #d9b45a); padding: 2px 7px; box-shadow: 0 0 10px rgba(226,201,143,0.35); }
 .cw-disc.recommended { border-color: var(--cw-border-active); }
+.cw-disc.recommended .legacy { top: 34px; } /* the badge is almost as wide as a card at 1280 and covered the NECROMANCER tag */
 .cw-disc:disabled { opacity: 0.5; cursor: wait; }
 
 /* ------------------------------------------------------------------ */
