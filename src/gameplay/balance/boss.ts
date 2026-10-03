@@ -11,7 +11,9 @@ import { WorldSim } from '../sim/WorldSim';
 import { botCharacter } from './harness';
 import { EQUIP_SLOTS, equippedBySlot } from '../../content/gear';
 import { withSetBonuses } from '../setBonuses';
-import { resolveWeaponLoadout } from '../weaponLine';
+import { NO_LOADOUT, abilityCooldownMs, abilityRange, pierceTargets, reapTargets, resolveWeaponLoadout } from '../weaponLine';
+import { NECRO_WEAPON_TUNING } from '../../content/necroWeapons';
+import { effectiveWitheredCap } from '../legendary';
 import { resolveKit, type KitName, type KitRequest } from './kits';
 import type { Difficulty } from '../../content/difficulty';
 
@@ -85,9 +87,9 @@ export function runBossFight(run: BossRun): BossResult {
   sim.ascension = run.ascension ?? 0;
   const baseDisc = disciplineFor(run.classIndex);
   const worn = resolveKit({ kit: run.kit ?? 'none', discipline: baseDisc.id, area: BOSSES[bossId].area, override: run.kitOverride, seed: run.seed });
-  const loadout = baseDisc.family === 'necromancer' ? resolveWeaponLoadout(equippedBySlot(worn), baseDisc.id) : null;
+  const loadout = baseDisc.family === 'necromancer' ? resolveWeaponLoadout(equippedBySlot(worn), baseDisc.id) : NO_LOADOUT;
   const withGear = withSetBonuses(baseDisc, worn);
-  const disc = loadout?.thrallBonus ? { ...withGear, mods: { ...withGear.mods, thrallCap: withGear.mods.thrallCap + loadout.thrallBonus } } : withGear;
+  const disc = loadout.thrallBonus ? { ...withGear, mods: { ...withGear.mods, thrallCap: withGear.mods.thrallCap + loadout.thrallBonus } } : withGear;
   const covered = new Set(Object.keys(equippedBySlot(worn))).size;
   const standIn = run.gearStats * (1 - covered / EQUIP_SLOTS.length);
   const stats = deriveStats(botCharacter(run.classIndex, run.level, standIn), worn, disc, run.damageTier);
@@ -100,9 +102,12 @@ export function runBossFight(run: BossRun): BossResult {
     const a = ABILITIES[id];
     if (!ready(id, t) || p.essence < a.essenceCost) return false;
     p.essence -= a.essenceCost;
-    cds.set(id, t + a.cooldownMs / 1000);
+    // A grimoire shortens every rite (the left click is exempt), exactly as the player's cooldowns do.
+    cds.set(id, t + abilityCooldownMs(id, a.cooldownMs, loadout, false) / 1000);
     return true;
   };
+  /** How close a scythe bot stands to the boss's centre (arc reach + body, with a margin so a step back still lands). */
+  const meleeReach = abilityRange('bone_needle', ABILITIES.bone_needle.range, loadout) + BOSS_RADIUS - 0.4;
   const place = (alive = true) => sim.setPlayer({ id: p.id, x: p.x, z: p.z, alive, area: alive ? area : null, level: run.level });
 
   // Arrive with a full legion (raised during the Sanctum trash).
@@ -169,6 +174,9 @@ export function runBossFight(run: BossRun): BossResult {
       // Step straight out of the circle (sideways if standing on its centre).
       if (Math.hypot(p.x - threat.x, p.z - threat.z) < 0.2) move(p.x + 1, p.z);
       else move(threat.x, threat.z, true);
+    } else if (loadout.reap) {
+      // A scythe is a 3 m arc: the reaper walks up to the boss and stays there (the rites reach from anywhere).
+      if (bd > meleeReach) move(b.x, b.z);
     } else if (bd > 9) move(b.x, b.z);
     else if (bd < 5.5) move(b.x, b.z, true);
 
@@ -190,6 +198,8 @@ export function runBossFight(run: BossRun): BossResult {
     if (b.active) {
       if (corpseNear && myThralls.length < disc.mods.thrallCap && use('exhume', t)) {
         sim.apply({ t: 'exhume', by: p.id, x: corpseNear.x, z: corpseNear.z, r: 0.8, kind: disc.mods.thrallKind, cap: disc.mods.thrallCap, hp: stats.thrallHp, damage: stats.thrallDamage, attackSpeedMult: disc.mods.thrallAttackSpeedMult });
+        // Sickle: Exhume gives back part of its essence (AbilitySystem.cast).
+        if (loadout.exhumeRefund > 0) p.essence = Math.min(stats.maxEssence, p.essence + ABILITIES.exhume.essenceCost * loadout.exhumeRefund);
       } else if (bd <= 7 && myThralls.length + corpses.length >= 3 && use('black_litany', t)) {
         sim.apply({ t: 'litany', by: p.id, x: p.x, z: p.z, r: 7, spellPower: sp, leaveCorpses: disc.mods.sacrificeLeavesCorpse });
       } else if (corpseByBoss && use('corpse_explosion', t)) {
@@ -199,17 +209,42 @@ export function runBossFight(run: BossRun): BossResult {
       } else if (bd <= ABILITIES.marrow_spear.range && use('marrow_spear', t)) {
         sim.apply({ t: 'hit', by: p.id, ids: [], dmg: sp * ABILITIES.marrow_spear.power, fracture: 1, boss: true });
       }
-      // Needle: adds that walk up first, otherwise the Prelate.
+      // Needle: adds that walk up first, otherwise the Prelate. The weapon line changes what the left click is (AbilitySystem.needle / .reap):
+      // a staff reaches farther and pierces the add behind its target, a scythe reaps a close arc (up to three bodies, the boss among them),
+      // a wand fires faster and softer, a sickle withers adds. A needle that hits the boss itself carries no wither and no pierce (as in play).
       if (ready('bone_needle', t)) {
         const needle = ABILITIES.bone_needle;
+        const reach = abilityRange('bone_needle', needle.range, loadout);
         const crit = rand() < 0.08 ? 1.8 : 1;
-        if (nearAdd) {
-          cds.set('bone_needle', t + needle.cooldownMs / 1000);
-          sim.apply({ t: 'hit', by: p.id, ids: [nearAdd.id], dmg: sp * needle.power * crit });
+        const cd = abilityCooldownMs('bone_needle', needle.cooldownMs, loadout, true) / 1000;
+        const addInReach = nearAdd && nad <= reach + 0.4 ? nearAdd : null;
+        const bossInReach = bd <= reach + BOSS_RADIUS;
+        if (loadout.reap) {
+          if (addInReach || bossInReach) {
+            cds.set('bone_needle', t + cd);
+            const aim = addInReach ?? b;
+            const T = NECRO_WEAPON_TUNING.scythe;
+            const dmg = sp * needle.power * T.damageMult * crit;
+            const struck = reapTargets(p, aim, adds);
+            const hitBoss = bossInReach && reapTargets(p, aim, [{ x: b.x, z: b.z, radius: BOSS_RADIUS }]).length > 0;
+            const ids = struck.slice(0, Math.max(0, T.maxHits - (hitBoss ? 1 : 0))).map((e) => e.id);
+            if (ids.length) sim.apply({ t: 'hit', by: p.id, ids, dmg });
+            if (hitBoss) sim.apply({ t: 'hit', by: p.id, ids: [], dmg, boss: true });
+            p.essence = Math.min(stats.maxEssence, p.essence + T.essencePerHit * (ids.length + (hitBoss ? 1 : 0)));
+          }
+        } else if (addInReach) {
+          cds.set('bone_needle', t + cd);
+          const wither = loadout.needleWithered > 0 ? { withered: loadout.needleWithered, witheredCap: effectiveWitheredCap(disc.mods) } : {};
+          const dmg = sp * needle.power * loadout.needleDamageMult * crit;
+          sim.apply({ t: 'hit', by: p.id, ids: [addInReach.id], dmg, ...wither });
+          if (loadout.needlePierce > 0) {
+            const behind = pierceTargets(p, addInReach, adds, loadout.needlePierce);
+            if (behind.length) sim.apply({ t: 'hit', by: p.id, ids: behind.map((e) => e.id), dmg: dmg * NECRO_WEAPON_TUNING.staff.pierceDamageMult, ...wither });
+          }
           p.essence = Math.min(stats.maxEssence, p.essence + 6);
-        } else if (bd <= needle.range + BOSS_RADIUS) {
-          cds.set('bone_needle', t + needle.cooldownMs / 1000);
-          sim.apply({ t: 'hit', by: p.id, ids: [], dmg: sp * needle.power * crit, boss: true });
+        } else if (bossInReach) {
+          cds.set('bone_needle', t + cd);
+          sim.apply({ t: 'hit', by: p.id, ids: [], dmg: sp * needle.power * loadout.needleDamageMult * crit, boss: true });
           p.essence = Math.min(stats.maxEssence, p.essence + 6);
         }
       }
