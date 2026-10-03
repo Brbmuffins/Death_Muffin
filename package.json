@@ -16,6 +16,7 @@
     "blender": "node tools/blender.mjs",
     "balance": "vite-node src/gameplay/balance/report.ts",
     "balance:boss": "vite-node src/gameplay/balance/bossReport.ts",
+    "balance:affix": "vite-node src/gameplay/balance/affixReport.ts",
     "balance:gear": "vite-node src/gameplay/balance/gearReport.ts",
     "balance:lever": "vite-node src/gameplay/balance/leverReport.ts",
     "balance:score": "vite-node src/gameplay/balance/gearScoreReport.ts",

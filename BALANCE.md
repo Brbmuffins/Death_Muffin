@@ -835,3 +835,72 @@ Base item stats stay as they are. The gear pass measured that an ordinary kit cu
 ## Combat polish pass (3 Oct 2026, `dm/polish-combat`)
 
 Sim changes (thrall targeting/pathing, hall-bound corpse rites) measured with 3 seeds, Graves and Nave, intended and push, four necromancers: kills/min 112.3 -> 113.5, damage taken 66.8% -> 65.3%/min, deaths 0.53 -> 0.47. Inside seed noise; nothing tuned. See docs/polish/combat.md.
+
+## Affix tuning (3 Oct 2026, branch `claude/affix-tuning`)
+
+Owner direction: polish, "reduce the loot, keep it valuable". Numbers only: no new affix, item or migration; affix ids, counts per rarity and drop-source odds are unchanged. Instrument: `npm run balance:affix` (new; the power score of an affix roll, a good drop, a rolled kit, a completed armour set and a legendary set, side by side, takes seconds), plus `balance:gear` (kit `rolled` vs `none`), `balance:score` and `balance:lever`. As in the 2 Oct pass, the sim bot cannot resolve a single affix (swaps move kills/min by -3..+3%, the noise floor), so affix values come from the power score, which the lever table calibrates.
+
+### What was measured before (power score, plain typical kit, one median-rolled affix on the chest; mean over the four necromancers)
+| Affix | ilvl 12 | 25 | 47 | 70 |
+|---|---|---|---|---|
+| best stat (INT) | 2.1% | 2.5% | 3.0% | 3.6% |
+| Gravebound (thrall damage) | 0.9 | 1.3 | 2.0 | 2.7 |
+| of the Legion (thrall health) | 0.9 | 1.1 | 1.5 | 1.6 |
+| Whispering (essence regen) | 1.2 | 1.0 | 0.8 | 0.7 |
+| of the Rotting Mist (Miasma) | 1.0 | 1.4 | 2.0 | 2.6 |
+| Blighted (Withered) | 1.2 | 1.8 | 2.4 | 2.4 |
+| of the Ossuary Wall (ward) | 0.7 | 1.0 | 1.7 | 2.1 |
+| spread of the six levers (best / worst) | 1.8x | 1.8x | 2.9x | 3.9x |
+
+Findings: (1) the levers grew faster with item level than stats, so at ilvl 70 Gravebound and Miasma were worth 75% of an INT roll on average and 1.4x INT for their home discipline; (2) essence regeneration *fell* with item level (the score divides it by a pool that grows with level: +15% regen is 1.2% at ilvl 12, +38% only 0.8% at 47); (3) a rolled 7-piece kit added 9-14% of power on average, 17-22% at the 90th percentile (Gravecaller highest); (4) legendary full-set bonus lines are worth 24-47% of power, ascended sets 10-19%, first sets 6-13%, so no affix roll can outclass a set; the closest case is three best affixes at ilvl 70 on one Mourner piece (6.7%) against the Mourner first set (6.2%, its flat lines shrink with level).
+
+### What changed (`affixRules.ts`; tenths of a percent for the percentage affixes)
+| Affix | centre old -> new (ilvl 12 / 47 / 70) | range at ilvl 47, old -> new |
+|---|---|---|
+| stat affixes (8) | 0.8+0.07L -> same up to ilvl 25, then 0.045 per level (1.6 / 3.5 / 4.6 points) | 3-5 -> 2-5; ilvl 70: 4-7 -> 3-6; unchanged up to 25 |
+| Gravebound | 10(5.5+0.2L) -> 10(6.5+0.1L) | 10.4-19.4% -> 7.8-14.6% |
+| of the Legion | 10(10.6+0.38L) -> 10(9.5+0.34L) | 19.9-37% -> 17.8-33.1% |
+| Whispering | 10(10+0.42L) -> 10(10+0.5L) | 20.8-38.7% -> 23.4-43.6% |
+| of the Rotting Mist | 10(5.2+0.22L) -> 10(5.2+0.12L) | 10.9-20.2% -> 7.6-14.1% |
+| Blighted | 1..2+L/7 (cap 6) -> 1..2+L/9 (cap 4) | 1-6 -> 1-4 |
+| of the Ossuary Wall | 9+0.7L (cap 60) -> 12+0.55L (cap 55), per mille | 2.9-5.4% -> 2.6-4.9% |
+
+### After (same instrument)
+| Affix, mean median value | ilvl 12 | 25 | 47 | 70 |
+|---|---|---|---|---|
+| best stat (INT) | 2.1% | 2.5% | 3.0% | 3.0% |
+| Gravebound | 0.9 | 1.1 | 1.5 | 1.9 |
+| of the Legion | 0.8 | 1.0 | 1.3 | 1.5 |
+| Whispering | 1.2 | 1.1 | 0.9 | 0.8 |
+| of the Rotting Mist | 0.9 | 1.1 | 1.4 | 1.8 |
+| Blighted (median stack count unchanged in this table; expected count -17% above ilvl 36) | 1.2 | 1.8 | 1.8 | 1.8 |
+| of the Ossuary Wall | 0.7 | 1.0 | 1.5 | 1.8 |
+| spread of the levers | 1.8x | 1.8x | 2.0x | 2.4x |
+
+| Item and kit numbers (power score) | before | after |
+|---|---|---|
+| Good drop, 3 affixes at 90% on one piece (4 necromancers), ilvl 12 / 25 / 47 / 70 | 5.1-5.7 / 5.6-6.7 / 6.6-9.8 / 6.7-11.9% | 5.0-5.8 / 5.9-6.1 / 6.8-8.4 / 6.2-9.0% |
+| Good drop, Occult + home lever at 75%, ilvl 70 | 5.3-10.3% | 4.9-7.6% |
+| Rolled 7-piece kit, mean / p90, Pyre | 10.0-13.9 / 14.1-21.2% | 9.1-12.4 / 13.0-18.8% |
+| Rolled 7-piece kit, mean / p90, Fen | 10.6-13.2 / 15.6-22.1% | 8.7-10.5 / 12.9-16.7% |
+| Completed set bonus lines, for comparison | first 6-13%, ascended 10-19%, legendary 24-47% | unchanged |
+
+Reading: a good drop (two or three decent affixes on one slot) is still a 4-9% upgrade, the middle of the 5-15% target at the levels the zones actually drop; the top end (ilvl 70, perfect lever) no longer reaches 12%. Levers are within 2.0x of each other up to ilvl 47 (was 2.9x), and the remaining gap is essence regeneration, which the power score undervalues at high level (the harness lever table has +30% regen at +1.6% kills, between thrall damage and thrall health), so it was raised (slope 0.42 -> 0.5 per level) but not chased to the score. Home levers stay within 1.35x of the best stat affix at every ilvl (test). Three best affixes max-rolled on one piece stay under the whole ascended set's bonus lines at every ilvl (test); full-kit affix power (9-12%) sits at or under one first/ascended set, far under a legendary set.
+
+### Stored items stay valid (no migration)
+`affixRange` is now what NEW rolls use. Validation (`instanceProblem`: offline-sync import, the mock backend, forged-roll checks) uses `affixAcceptRange`: the widest of the current range and the previous generation's (`legacy` on each affix), so an item rolled under the 2 Oct ranges is legal after this change. The first build's ranges (4045faa) are not kept: it never stored a roll. Nothing else re-checks a stored roll: bag save only names an `instance_id` (ownership and item match are checked, not the values), and GET/Vault/Salvage read `ilvl` and `affixes` as stored. Tooltips clamp the quality bar at 100% for an old roll above the new range. Tests: `affixes.test.ts` (every old range endpoint legal at every ilvl 1-99), `affix-paths.test.cjs` (server bundle plus bag save), `gear-balance.test.ts` (home lever vs stat, good drop 3-12%, affixes under the ascended set, rolled kit mean < 14% and p90 < 22%).
+
+### Server and client
+`gathering/affix-rules.cjs` (and `legion-rules.cjs`, which bundles the same module) were regenerated with `npm run build:server-rules`; `loot.cjs` rolls with the bundle, the client mirrors it through `affixRules.ts`, and the offline mock shares the source. No mismatch found. The server bundle must ship with the client build (deploy copies `gathering/*.cjs`).
+
+### Harness check (`balance:gear`, kit `rolled` vs `none`, Pyre and Fen push, 4 necromancers, 8 seeds, same seeds; base 8bb1bd3 vs this branch)
+| | before | after |
+|---|---|---|
+| kills/min vs no kit (mean of 8 rows) | x1.30 | x1.32 |
+| damage taken vs no kit | x0.64 | x0.62 |
+| deaths per 3 min with the rolled kit | 0.61 | 0.58 |
+
+Unchanged inside seed noise, as expected: the rolls differ per range, and the bot cannot resolve a 1-3% change. This is a "no regression" check; the sizes above come from the power score. `balance:score` baseline (before): Spearman against kills/min 0.46 over all swaps (the single-affix swaps are below the noise floor, unchanged from the 2 Oct finding).
+
+### Legendary sets, re-measured (`legendaryReport.ts`, kit none, 4 seeds, Nave and Sanctum, intended/push/max, mechanics and set multipliers only, 24 rows)
+Mean clear speed **x1.15**, mean damage taken **x0.92** (LEGENDARY-SETS.md quoted x1.17 / x0.86 after the 2 Oct tuning, an earlier pass x1.13). Still true: the full legendary set is nowhere near the +40-80% target in the sim (the power score puts the same bonus lines at +24-47%, a judgment value for mechanics the bot does not use well). By band: intended x1.0-1.1 (survival gains on Mourner/Sanctum), push x1.07-1.41, max x0.86-1.62; the Ossuary reads about flat on clear speed (its mechanics are defensive; its damage taken is noisy). Not retuned here: the task is affix ranges, and raising a legendary is a content/owner call. If the owner wants legendaries to feel like a +40% jump, the lever is `setBonuses.ts` (the mechanic strengths), not affixes. Affix tuning does not touch this: affixes stay far below a legendary set either way.
