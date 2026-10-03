@@ -51,7 +51,7 @@ import { Progression } from '../gameplay/progression';
 import { CHAIN, KillChain } from '../gameplay/killChain';
 import { newlyReached } from '../gameplay/milestones';
 import { omenFor, omenLeft, type Omen } from '../content/omens';
-import { BOSS_ARENA } from '../gameplay/sim/BossBrain';
+import { BOSS_ARENA, BOSS_RING_PAD } from '../gameplay/sim/BossBrain';
 import { makeSnapshot, WorldMirror } from '../gameplay/sim/snapshot';
 import type { BossState, Corpse, Enemy, Intent, SimEvent, Thrall, Zone } from '../gameplay/sim/types';
 import { CONE_REACH_PAD, WorldSim, thrallWeight } from '../gameplay/sim/WorldSim';
@@ -4055,7 +4055,7 @@ export class WorldScene implements GameScene, RuntimeView {
         }
         for (const [x, z] of ev.targets ?? []) {
           if (ms > 0) {
-            this.effects.decal({ tex: fx.disc(), color: tide, x, z, r: ev.r ?? 1.4, duration: ms, opacity: 0.5, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.3 });
+            this.effects.decal({ tex: fx.disc(), color: tide, x, z, r: (ev.r ?? 1.4) + 0.2, duration: ms, opacity: 0.5, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.3 });
             this.effects.decal({ tex: fxImage('drownedHand'), color: 0x8fb4c8, x, z, r: (ev.r ?? 1.4) * 0.9, duration: ms, opacity: 0.8, growFrom: 0.2, fadeOut: 0.05 });
           } else this.effects.emit({ x, y: 0.3, z, count: 16, color: 0x8fb4c8, spread: 0.6, speed: 1.2, up: 2.4, life: 0.7, size: 0.22 });
         }
@@ -4094,7 +4094,7 @@ export class WorldScene implements GameScene, RuntimeView {
           this.hud.toast('Rot Rain: leave the circles! The pools they leave behind heal her.', 'err');
         }
         for (const [x, z] of ev.targets ?? []) {
-          if (ms > 0) this.effects.decal({ tex: fx.disc(), color: SPELL_FX.enemy.toxic, x, z, r: ev.r ?? 2, duration: ms, opacity: 0.55, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.2 });
+          if (ms > 0) this.effects.decal({ tex: fx.disc(), color: SPELL_FX.enemy.toxic, x, z, r: (ev.r ?? 2) + BOSS_RING_PAD, duration: ms, opacity: 0.55, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.2 });
           else this.effects.emitSmoke({ x, y: 0.3, z, count: 3, color: 0x4a5a22, spread: 1, speed: 1.2, up: 1, life: 1, size: 1.1 });
         }
         if (ms > 0) this.hud.toast('Rot Rain: step out of the green, then keep her out of it.', 'err');
@@ -4136,8 +4136,8 @@ export class WorldScene implements GameScene, RuntimeView {
         const E = SPELL_FX.enemy;
         for (const [x, z] of ev.targets ?? []) {
           if (ms > 0) {
-            this.effects.decal({ tex: fx.disc(), color: E.ember, x, z, r: ev.r ?? 1.8, duration: ms, opacity: 0.55, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.2 });
-            this.effects.decal({ tex: fx.ring(), color: E.emberCore, x, z, r: ev.r ?? 1.8, duration: ms, opacity: 0.9, fadeOut: 0.05 });
+            this.effects.decal({ tex: fx.disc(), color: E.ember, x, z, r: (ev.r ?? 1.8) + BOSS_RING_PAD, duration: ms, opacity: 0.55, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.2 });
+            this.effects.decal({ tex: fx.ring(), color: E.emberCore, x, z, r: (ev.r ?? 1.8) + BOSS_RING_PAD, duration: ms, opacity: 0.9, fadeOut: 0.05 });
             this.effects.projectile({ from: { x: ev.x, y: 3.4, z: ev.z }, to: () => ({ x, y: 0.3, z }), kind: 'orb', color: E.ember, speed: Math.max(5, Math.hypot(x - ev.x, z - ev.z) / Math.max(0.3, ms)), arc: 45 });
           } else {
             this.bb('vengeful_burst', x, z, { scale: (ev.r ?? 1.8) / 1.4, colors: [E.ember, E.emberCore, E.emberDeep] });
@@ -4191,8 +4191,8 @@ export class WorldScene implements GameScene, RuntimeView {
         // Mire Mother: ripple rings converge on a hummock for the whole windup; when they meet, she bursts out under it.
         const T = 0x5fc4b4;
         if (ms > 0) {
-          this.effects.decal({ tex: fx.disc(), color: T, x: ev.x, z: ev.z, r: ev.r ?? 3.7, duration: ms, opacity: 0.4, fadeIn: ms * 0.9, fadeOut: 0.05, growFrom: 0.3 });
-          this.effects.decal({ tex: fx.ring(), color: 0xc8fff4, x: ev.x, z: ev.z, r: ev.r ?? 3.7, duration: ms, opacity: 0.95, pulse: 4, fadeOut: 0.05 });
+          this.effects.decal({ tex: fx.disc(), color: T, x: ev.x, z: ev.z, r: (ev.r ?? 3.7) + 0.3, duration: ms, opacity: 0.4, fadeIn: ms * 0.9, fadeOut: 0.05, growFrom: 0.3 });
+          this.effects.decal({ tex: fx.ring(), color: 0xc8fff4, x: ev.x, z: ev.z, r: (ev.r ?? 3.7) + 0.3, duration: ms, opacity: 0.95, pulse: 4, fadeOut: 0.05 });
           for (let k = 0; k < 3; k++) this.effects.decal({ tex: fx.ring(), color: T, x: ev.x, z: ev.z, r: (ev.r ?? 3.7) * 1.8, duration: Math.max(0.3, ms / 3), opacity: 0.8, growFrom: 1, delay: (ms / 3) * k });
           for (let k = 0; k < 6; k++) this.worldView.addRipple(ev.x, ev.z, 1.4);
           this.hud.toast('The Mire Mother sinks: leave the ringed hummock before she surfaces!', 'err');
@@ -4212,7 +4212,7 @@ export class WorldScene implements GameScene, RuntimeView {
         const T = 0x7fb4a8;
         for (const [x, z] of ev.targets ?? []) {
           if (ms > 0) {
-            this.effects.decal({ tex: fx.disc(), color: T, x, z, r: ev.r ?? 1.5, duration: ms, opacity: 0.5, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.3 });
+            this.effects.decal({ tex: fx.disc(), color: T, x, z, r: (ev.r ?? 1.5) + 0.2, duration: ms, opacity: 0.5, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.3 });
             this.effects.decal({ tex: fxImage('drownedHand'), color: 0x8fb4c8, x, z, r: (ev.r ?? 1.5) * 0.9, duration: ms, opacity: 0.85, growFrom: 0.2, fadeOut: 0.05 });
           } else {
             this.effects.emit({ x, y: 0.3, z, count: 14, color: T, spread: 0.6, speed: 1.2, up: 2.4, life: 0.7, size: 0.22 });
@@ -4343,7 +4343,7 @@ export class WorldScene implements GameScene, RuntimeView {
         break;
       case 'toll':
         if (ms === 0) audio.play('bossToll', ev.x, ev.z);
-        if (ms > 0) this.effects.decal({ tex: fx.disc(), color: SPELL_FX.boss.bronze, x: ev.x, z: ev.z, r: ev.r ?? 6.5, duration: ms, opacity: 0.75, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.15 });
+        if (ms > 0) this.effects.decal({ tex: fx.disc(), color: SPELL_FX.boss.bronze, x: ev.x, z: ev.z, r: (ev.r ?? 6.5) + BOSS_RING_PAD, duration: ms, opacity: 0.75, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.15 });
         else {
           for (let k = 0; k < 3; k++) this.effects.decal({ tex: fx.ring(), color: SPELL_FX.boss.bronze, x: ev.x, z: ev.z, r: (ev.r ?? 6.5) * (0.8 + k * 0.25), duration: 0.6, opacity: 1 - k * 0.25, growFrom: 0.1, delay: k * 0.07 });
           this.effects.emit({ x: ev.x, y: 1, z: ev.z, count: 70, color: SPELL_FX.boss.bronze, spread: 2, speed: 7, up: 1, life: 0.7, size: 0.35 });
@@ -4356,7 +4356,7 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'rain': {
         const circles = ev.targets ?? [[ev.x, ev.z]];
         for (const [x, z] of circles) {
-          if (ms > 0) this.effects.decal({ tex: fx.disc(), color: SPELL_FX.boss.bronze, x, z, r: ev.r ?? 2.3, duration: ms, opacity: 0.8, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.3 });
+          if (ms > 0) this.effects.decal({ tex: fx.disc(), color: SPELL_FX.boss.bronze, x, z, r: (ev.r ?? 2.3) + BOSS_RING_PAD, duration: ms, opacity: 0.8, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.3 });
           else {
             this.effects.emit({ x, y: 0.5, z, count: 24, color: SPELL_FX.boss.shard, spread: 0.6, speed: 3, up: 2, life: 0.6, size: 0.25, gravity: 6 });
             this.effects.flash({ x, y: 0.6, z, color: SPELL_FX.boss.bronze, size: 2.2, duration: 0.25 });
