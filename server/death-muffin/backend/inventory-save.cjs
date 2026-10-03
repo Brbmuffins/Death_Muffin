@@ -19,9 +19,13 @@ function saveBagSize(raw) {
 
 /** Player-readable problem with a save's slot list, or null. `slots` already excludes the reserved equipment rows. */
 function slotProblem(slots, bagSize) {
-  const indexes = slots.map((s) => parseInt(s.slot_index, 10));
+  // parseInt('5abc') is 5 and parseInt(5.5) is 5, but MySQL would reject the one and round the other to 6: only whole numbers count.
+  const indexes = slots.map((s) => {
+    const raw = s && typeof s === 'object' ? s.slot_index : undefined;
+    return typeof raw === 'number' || (typeof raw === 'string' && /^\s*\d+\s*$/.test(raw)) ? Number(raw) : NaN;
+  });
   if (slots.length > bagSize) return `inventory cannot exceed ${bagSize} slots`;
-  if (indexes.some((n) => isNaN(n) || n < 0 || n >= bagSize)) return `each slot_index must be between 0 and ${bagSize - 1}`;
+  if (indexes.some((n) => !Number.isInteger(n) || n < 0 || n >= bagSize)) return `each slot_index must be between 0 and ${bagSize - 1}`;
   if (new Set(indexes).size !== indexes.length) return 'duplicate slot_index values are not allowed';
   return null;
 }

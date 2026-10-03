@@ -249,3 +249,51 @@ test('perf beacon: keeps the last 40 reports per user and formats one log line',
   assert.match(line, /^\[perf\] perf_tester acre fps=60 frame=16.7\/20\/80ms longtasks=1\/60\/60 /);
   assert.ok(!line.includes('\n'));
 });
+
+// ── live socket: a malformed payload must never take the service down ─────────────────────────────────────────────────
+
+const { io: connectClient } = require('socket.io-client');
+const { httpServer, io: realtimeIo } = require('./server');
+test.after(() => { realtimeIo.close(); });
+
+async function listen() {
+  await new Promise((resolve) => httpServer.listen(0, '127.0.0.1', resolve));
+  return `http://127.0.0.1:${httpServer.address().port}`;
+}
+const open = (url, name) =>
+  new Promise((resolve, reject) => {
+    const c = connectClient(url, { auth: { token: `offline:${name}` }, transports: ['websocket'], forceNew: true });
+    c.on('connect', () => resolve(c));
+    c.on('connect_error', reject);
+  });
+const join = (c, info) => new Promise((resolve) => c.emit('world:join', info, resolve));
+const settle = (ms = 150) => new Promise((resolve) => setTimeout(resolve, ms));
+
+test('null payloads on world:join and player:move are ignored, not fatal', async () => {
+  const url = await listen();
+  const a = await open(url, 'nullpayload_a');
+  const b = await open(url, 'nullpayload_b');
+  try {
+    const first = await join(a, null);
+    assert.equal(first.success, true, 'a null join info is treated as an empty one');
+    a.emit('player:move', null);
+    a.emit('player:move', 'north');
+    a.emit('player:gear', null);
+    a.emit('world:intent', null);
+    a.emit('chat:send', null);
+    await settle();
+    const second = await join(b, { instance: undefined });
+    assert.equal(second.success, true, 'the service is still answering');
+  } finally {
+    a.close();
+    b.close();
+  }
+});
+
+test('snapshotFor tolerates malformed rows from a host instead of throwing', () => {
+  const snap = { enemies: [null, 'x', [1, 1, 500, 500], [2, 1, 1, 1]], thralls: [undefined, [1, 'me', 0, 1, 1]], corpses: [] };
+  let out;
+  assert.doesNotThrow(() => { out = snapshotFor(snap, 0, 0, 'me'); });
+  assert.deepEqual(out.enemies, [[2, 1, 1, 1]], 'only well-formed rows within range survive');
+  assert.deepEqual(out.thralls, [[1, 'me', 0, 1, 1]]);
+});

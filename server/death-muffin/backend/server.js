@@ -72,7 +72,9 @@ app.use(express.json({ limit: '512kb' }));
 app.use((req, res, next) => {
   const json = res.json.bind(res);
   res.json = (body) => {
-    if (res.statusCode >= 400 && res.statusCode < 500 && res.statusCode !== 401 && res.statusCode !== 404) {
+    // Most module routes refuse a player with a 200 { success: false, error } (the client reads the flag), which this log never saw.
+    const refusedBody = res.statusCode < 400 && body && body.success === false && typeof body.error === 'string';
+    if ((res.statusCode >= 400 && res.statusCode < 500 && res.statusCode !== 401 && res.statusCode !== 404) || refusedBody) {
       const path = String(req.originalUrl || req.url).split('?')[0].replace(/\/\d+(?=\/|$)/g, '/:id');
       const err = body && typeof body.error === 'string' ? body.error.slice(0, 160) : '';
       console.warn(`[refused] ${req.method} ${path} ${res.statusCode} ${err}`);
@@ -280,15 +282,19 @@ function characterXpToNext(level) {
   return Math.max(1, Number(level) || 1) * 100;
 }
 
+const MAX_CHARACTER_LEVEL = 255;
+
 async function normalizeCharacterProgress(char) {
   let level = Math.max(1, Number(char.level) || 1);
   let experience = Math.max(0, Number(char.experience) || 0);
   let xpToNext = characterXpToNext(level);
-  while (experience >= xpToNext) {
+  // 255 is the level every save path caps at (save-progress, offline sync); XP left over at the cap is trimmed, not turned into levels.
+  while (experience >= xpToNext && level < MAX_CHARACTER_LEVEL) {
     experience -= xpToNext;
     level++;
     xpToNext = characterXpToNext(level);
   }
+  if (experience >= xpToNext) experience = xpToNext - 1;
 
   if (level !== Number(char.level) || experience !== Number(char.experience)) {
     await pool.execute(
@@ -364,7 +370,7 @@ app.post('/character', verifyJWT, async (req, res) => {
     const characterToken = jwt.sign(
       { accountId: req.user.accountId, username: req.user.username, characterId },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN }
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
     const gear = await getGearLoadout(characterId);
     res.status(result.affectedRows === 1 ? 201 : 200).json({
@@ -410,7 +416,8 @@ app.patch('/character/position', verifyJWT, async (req, res) => {
   const x = parseFloat(req.body.x), y = parseFloat(req.body.y), z = parseFloat(req.body.z);
   const orientation = parseFloat(req.body.orientation);
   const isLogout = req.body.logout === true;
-  if ([x, y, z, orientation].some(v => isNaN(v)))
+  // Finite and bounded (the offline import uses the same 100000): Infinity and 1e30 are not NaN but the position columns cannot hold them.
+  if ([x, y, z, orientation].some(v => !Number.isFinite(v) || Math.abs(v) >= 100000))
     return res.status(400).json({ error: 'x, y, z, and orientation must be numbers' });
 
   let map;
@@ -509,6 +516,9 @@ app.get('/items', async (req, res) => {
 app.use((err, req, res, next) => {
   if (err.type === 'entity.parse.failed')
     return res.status(400).json({ error: 'invalid JSON body' });
+  // The 512 KB body limit: say so in JSON (the client shows server error strings verbatim) instead of Express's HTML page.
+  if (err.type === 'entity.too.large')
+    return res.status(413).json({ error: 'That request is too large for the server to accept.' });
   next(err);
 });
 
@@ -746,7 +756,11 @@ app.post('/api/character/save-progress', requireJWT, async (req, res) => {
   try {
     const char = await ownedCharacter(req, res, characterId);
     if (!char) return;
-    const bounded = (value, fallback, min, max) => Number.isFinite(Number(value)) && value !== undefined ? Math.min(max, Math.max(min, Math.trunc(Number(value)))) : fallback;
+    // Only a number (or a non-blank numeric string) is a value: Number(null), Number(''), Number([]) and Number(false) are all 0 and used to wipe the field.
+    const bounded = (value, fallback, min, max) => {
+      const n = typeof value === 'number' ? value : typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN;
+      return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.trunc(n))) : fallback;
+    };
     const next = {
       level: bounded(req.body.level, char.level, 1, 255), xp: bounded(req.body.xp, char.experience, 0, 2147483647), gold: bounded(req.body.gold, char.gold, 0, 2147483647),
       stat_str: bounded(req.body.stat_str, char.stat_str, 0, 65535), stat_agi: bounded(req.body.stat_agi, char.stat_agi, 0, 65535),
@@ -869,14 +883,15 @@ app.post('/api/inventory/add-item', requireJWT, async (req, res) => {
 });
 
 app.post('/api/inventory/save', requireJWT, async (req, res) => {
-  const { characterId } = req.body;
-  if (!Array.isArray(req.body.slots))
+  const body = req.body || {};
+  const { characterId } = body;
+  if (!Array.isArray(body.slots))
     return res.status(400).json({ success: false, error: 'slots must be an array' });
   // Equipped gear lives in reserved slots 100-108 (managed by /equip), the tool belt in 110-113 (/belt), the Legion kit in 120-121 (/kit) and the rune sockets in 130-134 (/rune).
   // Older clients echo those rows back with the bag, which made every save fail; the save owns the bag only, so ignore them.
-  const slots = req.body.slots.filter(s => !(Number(s && s.slot_index) >= 100 && Number(s.slot_index) <= runeRules.RUNE_BASE + runeRules.RUNE_SLOT_COUNT - 1));
+  const slots = body.slots.filter(s => !(Number(s && s.slot_index) >= 100 && Number(s.slot_index) <= runeRules.RUNE_BASE + runeRules.RUNE_SLOT_COUNT - 1));
   // A stale 24-slot tab sends no bagSize; the save then only touches slots 0-23 (see inventory-save.cjs).
-  const bagSize = inventorySave.saveBagSize(req.body.bagSize);
+  const bagSize = inventorySave.saveBagSize(body.bagSize);
   if (bagSize === null)
     return res.status(400).json({ success: false, error: `bagSize must be a whole number from 1 to ${BAG_SLOTS}` });
   const slotError = inventorySave.slotProblem(slots, bagSize);
@@ -1285,12 +1300,14 @@ app.get('/api/professions/recipes/:characterId', requireJWT, async (req, res) =>
 // ── POST /api/craft ──────────────────────────────────────────────────────────
 
 app.post('/api/craft', requireJWT, async (req, res) => {
-  const { characterId, recipeId } = req.body;
-  if (!characterId || !recipeId)
+  const { characterId: claimedCharacterId, recipeId } = req.body;
+  if (!claimedCharacterId || !recipeId)
     return res.json({ success: false, error: 'Missing characterId or recipeId' });
 
-  const char = await ownedCharacter(req, res, characterId);
+  const char = await ownedCharacter(req, res, claimedCharacterId);
   if (!char) return;
+  // Ownership was proven for the parsed id: parseInt('1e1') is 1 but MySQL reads the string '1e1' as 10, so never query with the raw value.
+  const characterId = char.id;
 
   const conn = await pool.getConnection();
   try {
@@ -1540,6 +1557,15 @@ app.get('/api/health', async (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime(), db, timestamp: new Date().toISOString() });
 });
 
+// The old Crossworlds reward routes (combat/kill, loot/roll, loot/drop) pay XP, gold or items for an enemy instance id the client simply makes
+// up; the browser never calls them. Report mode leaves them as they were (nothing is enforced there); enforce mode (docs/SERVER-AUTHORITY.md)
+// would otherwise have a hole next to its guards, so only staff may use them.
+async function legacyRewardAllowed(req) {
+  if (authority.authorityMode() !== 'enforce') return true;
+  return isStaffAccount(req).catch(() => false);
+}
+const LEGACY_REWARD_CLOSED = { success: false, error: 'This reward route is closed.' };
+
 // ─── Loot ────────────────────────────────────────────────────────────────────
 
 const LOOT_TABLES = {
@@ -1583,6 +1609,7 @@ app.post('/api/loot/roll', requireJWT, async (req, res) => {
   try {
     const char = await ownedCharacter(req, res, characterId);
     if (!char) return;
+    if (!(await legacyRewardAllowed(req))) return res.status(403).json(LEGACY_REWARD_CLOSED);
 
     const entry = rollLoot(enemyType);
     if (!entry || entry.type === 'nothing')
@@ -1611,7 +1638,7 @@ app.post('/api/loot/roll', requireJWT, async (req, res) => {
 
       for (const drop of drops) {
         let slot = null;
-        for (let i = 0; i < 200; i++) { if (!usedSlots.has(i)) { slot = i; usedSlots.add(i); break; } }
+        for (let i = 0; i < BAG_SLOTS; i++) { if (!usedSlots.has(i)) { slot = i; usedSlots.add(i); break; } } // the bag only: 100+ are equipment, belt, kit and rune rows
         if (slot === null) break; // inventory full — skip remaining drops silently
         await conn.execute(
           'INSERT INTO inventory (character_id, slot_index, item_id, quantity) VALUES (?, ?, ?, ?)',
@@ -1662,7 +1689,7 @@ async function rollDbLoot(conn, charId, sourceId) {
   );
   const usedSlots = new Set(invRows.map(r => r.slot_index));
   let slot = null;
-  for (let i = 0; i < 200; i++) { if (!usedSlots.has(i)) { slot = i; break; } }
+  for (let i = 0; i < BAG_SLOTS; i++) { if (!usedSlots.has(i)) { slot = i; break; } } // the bag only: 100+ are equipment, belt, kit and rune rows
   if (slot === null) return null;
 
   const qty = picked.min_quantity + Math.floor(Math.random() * (picked.max_quantity - picked.min_quantity + 1));
@@ -1680,6 +1707,7 @@ app.post('/api/loot/drop', requireJWT, async (req, res) => {
   try {
     const char = await ownedCharacter(req, res, characterId);
     if (!char) return;
+    if (!(await legacyRewardAllowed(req))) return res.status(403).json(LEGACY_REWARD_CLOSED);
 
     const conn = await pool.getConnection();
     let dropped = null;
@@ -1702,19 +1730,43 @@ app.post('/api/loot/drop', requireJWT, async (req, res) => {
 
 // ─── Gold ────────────────────────────────────────────────────────────────────
 
+const GOLD_MAX = 2147483647;
+// Gold is earned in play and saved through /save-progress (plausibility-guarded). The browser never calls this route, and it used to
+// let any player credit any amount, which bypassed that guard entirely: crediting is staff-only, spending (negative) stays open.
 app.post('/api/gold/adjust', requireJWT, async (req, res) => {
-  const { characterId, amount } = req.body;
-  if (amount === undefined || typeof amount !== 'number' || !Number.isInteger(amount))
+  const { characterId, amount } = req.body || {};
+  if (amount === undefined || typeof amount !== 'number' || !Number.isInteger(amount) || Math.abs(amount) > GOLD_MAX)
     return res.status(400).json({ success: false, error: 'amount must be an integer' });
   try {
     const char = await ownedCharacter(req, res, characterId);
     if (!char) return;
+    if (amount > 0 && !(await isStaffAccount(req).catch(() => false)))
+      return res.status(403).json({ success: false, error: 'gold cannot be added directly' });
 
-    const newGold = (char.gold ?? 0) + amount;
-    if (newGold < 0)
-      return res.status(400).json({ success: false, error: `insufficient funds (have ${char.gold ?? 0}, need ${-amount})` });
-
-    await pool.execute('UPDATE characters SET gold = ? WHERE id = ?', [newGold, char.id]);
+    // Read-modify-write under the row lock so two requests cannot both spend the same coins.
+    const conn = await pool.getConnection();
+    let newGold;
+    try {
+      await conn.beginTransaction();
+      const [[locked]] = await conn.execute('SELECT gold FROM characters WHERE id = ? FOR UPDATE', [char.id]);
+      const have = Number(locked && locked.gold) || 0;
+      newGold = have + amount;
+      if (newGold < 0) {
+        await conn.rollback();
+        return res.status(400).json({ success: false, error: `insufficient funds (have ${have}, need ${-amount})` });
+      }
+      if (newGold > GOLD_MAX) {
+        await conn.rollback();
+        return res.status(400).json({ success: false, error: 'gold would exceed the maximum' });
+      }
+      await conn.execute('UPDATE characters SET gold = ? WHERE id = ?', [newGold, char.id]);
+      await conn.commit();
+    } catch (e) {
+      await conn.rollback().catch(() => {});
+      throw e;
+    } finally {
+      conn.release();
+    }
     console.log(`[GOLD] ${req.user.username} char#${char.id} gold adjusted by ${amount > 0 ? '+' : ''}${amount} (total: ${newGold})`);
     res.json({ success: true, data: { gold: newGold } });
   } catch (err) {
@@ -1804,6 +1856,7 @@ app.post('/api/combat/kill', requireJWT, async (req, res) => {
   try {
     const char = await ownedCharacter(req, res, characterId);
     if (!char) return;
+    if (!(await legacyRewardAllowed(req))) return res.status(403).json(LEGACY_REWARD_CLOSED);
 
     // ── Duplicate kill rate limiter ──────────────────────────────────────────
     const now      = Date.now();
@@ -2013,4 +2066,12 @@ require('./contracts.cjs')(app, pool, {
   },
 });
 require('./discipline.cjs')(app, pool, { verifyJWT, formatCharacter, getGearLoadout, invalidateLeaderboard, maxIndex: MAX_DISCIPLINE_INDEX });
+// Last resort for anything a route throws outside its own try (Express 5 forwards a rejected async handler here): JSON like every other
+// failure, one journal line instead of a stack dump, and nothing internal in the reply.
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  const status = Number(err && err.status) >= 400 && Number(err.status) < 500 ? Number(err.status) : 500;
+  if (status >= 500) console.error(`${req.method} ${String(req.originalUrl || req.url).split('?')[0]}: ${err && err.message}`);
+  res.status(status).json(status >= 500 ? { success: false, error: 'internal server error' } : { success: false, error: 'That request could not be read.' });
+});
 app.listen(PORT, '127.0.0.1', () => console.log(`Death Muffin account service listening on ${PORT}`));
