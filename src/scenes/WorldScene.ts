@@ -3340,9 +3340,11 @@ export class WorldScene implements GameScene, RuntimeView {
       const dz = ev.tz - ev.z;
       const dir = Math.atan2(dx, dz);
       const len = ev.r ?? SEXTON_HOOK.range;
-      const hx = ev.x + Math.sin(dir) * len * 0.5;
-      const hz = ev.z + Math.cos(dir) * len * 0.5;
-      this.effects.decal({ tex: fx.disc(), color: 0xa8743a, x: hx, z: hz, r: len / 2, sz: 1, sx: (SEXTON_HOOK.halfWidth * 2) / len, rot: dir + Math.PI, duration: ms, opacity: 0.55, fadeIn: ms * 0.7, fadeOut: 0.05 });
+      // The chain catches 0.6m past its reach and 0.3m either side of the line (WorldSim strike 'hook'): draw all of it.
+      const lenDrawn = len + 0.6;
+      const hx = ev.x + Math.sin(dir) * lenDrawn * 0.5;
+      const hz = ev.z + Math.cos(dir) * lenDrawn * 0.5;
+      this.effects.decal({ tex: fx.disc(), color: 0xa8743a, x: hx, z: hz, r: lenDrawn / 2, sz: 1, sx: ((SEXTON_HOOK.halfWidth + 0.3) * 2) / lenDrawn, rot: dir + Math.PI, duration: ms, opacity: 0.55, fadeIn: ms * 0.7, fadeOut: 0.05 });
       this.effects.decal({ tex: fx.ring(), color: 0xe0a458, x: ev.x + Math.sin(dir) * len, z: ev.z + Math.cos(dir) * len, r: 0.9, duration: ms, opacity: 0.8, fadeOut: 0.05 });
       audio.play('boneHit', ev.x, ev.z);
     } else if (ev.kind === 'curse') {
