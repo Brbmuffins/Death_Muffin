@@ -220,3 +220,43 @@ test('PATCH /character/position: Infinity and absurd coordinates are a 400, not 
   const ok = await srv.call('PATCH /character/position', { user, body: { x: 12.5, y: 0, z: -3, orientation: 1.2 } });
   assert.equal(ok.status, 200);
 });
+
+// ── legacy reward routes under AUTHORITY_MODE=enforce ───────────────────────────────────────────────────────────────────
+
+async function withMode(mode, fn) {
+  const saved = process.env.AUTHORITY_MODE;
+  process.env.AUTHORITY_MODE = mode;
+  try { return await fn(); } finally { if (saved === undefined) delete process.env.AUTHORITY_MODE; else process.env.AUTHORITY_MODE = saved; }
+}
+
+test('enforce mode closes the legacy reward routes to players: kill, loot/roll and loot/drop mint XP, gold and items for any instance id', async () => {
+  await withMode('enforce', async () => {
+    const f = fakePool();
+    const srv = loadServer({ pool: f.pool });
+    // The hit gate only needs a client-chosen id, so a script can loop hit + kill with fresh ids at HTTP speed.
+    const body = { characterId: 1, enemyLevel: 100, enemyCategory: 'boss', enemyInstanceId: 'made-up-1', damageDealt: 1 };
+    assert.equal((await srv.call('POST /api/combat/hit', { body })).status, 200);
+    const kill = await srv.call('POST /api/combat/kill', { body });
+    assert.equal(kill.status, 403);
+    const roll = await srv.call('POST /api/loot/roll', { body: { characterId: 1, enemyType: 'elite' } });
+    assert.equal(roll.status, 403);
+    const drop = await srv.call('POST /api/loot/drop', { body: { characterId: 1, sourceId: 'boss' } });
+    assert.equal(drop.status, 403);
+    assert.deepEqual(f.log.filter((q) => /^(UPDATE characters|INSERT INTO inventory)/.test(q.sql)), [], 'nothing was paid');
+  });
+});
+
+test('report mode keeps the legacy reward routes exactly as they were', async () => {
+  await withMode('report', async () => {
+    const f = fakePool({ onQuery: (sql) => {
+      if (/FROM loot_tables/.test(sql)) return [[]];
+      if (/SELECT level, experience, gold FROM characters/.test(sql)) return [[{ level: 1, experience: 0, gold: 0 }]];
+    } });
+    const srv = loadServer({ pool: f.pool });
+    const body = { characterId: 1, enemyLevel: 3, enemyCategory: 'grunt', enemyInstanceId: 'a1', damageDealt: 1 };
+    await srv.call('POST /api/combat/hit', { body });
+    const kill = await srv.call('POST /api/combat/kill', { body });
+    assert.equal(kill.status, 200, JSON.stringify(kill.json));
+    assert.equal((await srv.call('POST /api/loot/drop', { body: { characterId: 1, sourceId: 'grunt' } })).status, 200);
+  });
+});

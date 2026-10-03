@@ -1555,6 +1555,15 @@ app.get('/api/health', async (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime(), db, timestamp: new Date().toISOString() });
 });
 
+// The old Crossworlds reward routes (combat/kill, loot/roll, loot/drop) pay XP, gold or items for an enemy instance id the client simply makes
+// up; the browser never calls them. Report mode leaves them as they were (nothing is enforced there); enforce mode (docs/SERVER-AUTHORITY.md)
+// would otherwise have a hole next to its guards, so only staff may use them.
+async function legacyRewardAllowed(req) {
+  if (authority.authorityMode() !== 'enforce') return true;
+  return isStaffAccount(req).catch(() => false);
+}
+const LEGACY_REWARD_CLOSED = { success: false, error: 'This reward route is closed.' };
+
 // ─── Loot ────────────────────────────────────────────────────────────────────
 
 const LOOT_TABLES = {
@@ -1598,6 +1607,7 @@ app.post('/api/loot/roll', requireJWT, async (req, res) => {
   try {
     const char = await ownedCharacter(req, res, characterId);
     if (!char) return;
+    if (!(await legacyRewardAllowed(req))) return res.status(403).json(LEGACY_REWARD_CLOSED);
 
     const entry = rollLoot(enemyType);
     if (!entry || entry.type === 'nothing')
@@ -1695,6 +1705,7 @@ app.post('/api/loot/drop', requireJWT, async (req, res) => {
   try {
     const char = await ownedCharacter(req, res, characterId);
     if (!char) return;
+    if (!(await legacyRewardAllowed(req))) return res.status(403).json(LEGACY_REWARD_CLOSED);
 
     const conn = await pool.getConnection();
     let dropped = null;
@@ -1843,6 +1854,7 @@ app.post('/api/combat/kill', requireJWT, async (req, res) => {
   try {
     const char = await ownedCharacter(req, res, characterId);
     if (!char) return;
+    if (!(await legacyRewardAllowed(req))) return res.status(403).json(LEGACY_REWARD_CLOSED);
 
     // ── Duplicate kill rate limiter ──────────────────────────────────────────
     const now      = Date.now();
