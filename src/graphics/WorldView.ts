@@ -231,6 +231,9 @@ function silhouetteGeometry(sil: Silhouette, rand: () => number): THREE.BufferGe
   return merged;
 }
 
+/** Pooled flame lights (nearest lit sources). Fixed at runtime: every lit material loops over all point lights; baked pool decals carry the rest of the glow. */
+const WORLD_POINT_LIGHTS = 3;
+
 /**
  * Instanced batch of one prop kind. Starts with the code-built stand-in and
  * swaps to the generated GLB (every mesh instanced with the same transforms)
@@ -502,7 +505,7 @@ export class WorldView {
     this.buildFixedFloors();
     this.registerWalls(nav);
     this.registerProps(nav);
-    // Reuse the five existing dynamic lights for a warm workshop beacon.
+    // Reuse the pooled dynamic lights for a warm workshop beacon.
     const sawpit = AREAS.acre.interactables.find(it => it.kind === 'sawpit')!;
     this.lightSources.push({ x: sawpit.x, y: 1.6, z: sawpit.z, color: 0xffd29a, intensity: 3, distance: 7, lit: true, brazier: false, area: 'acre' });
     this.effects.decal({ tex: fx.ring(), color: 0xeac58b, x: sawpit.x, z: sawpit.z, r: 1.4, duration: 1e9, persistent: true, opacity: 0.3, fadeIn: 0.01 });
@@ -514,7 +517,7 @@ export class WorldView {
     this.buildSilhouettes();
     this.water = new Water([...layout.water, ...layout.bog, ...layout.ponds], layout.puddles);
     this.fixed.add(this.water.mesh, this.atmosphere.points);
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < WORLD_POINT_LIGHTS; i++) {
       const l = new THREE.PointLight(0xffb46b, 0, 8, 1.8);
       this.group.add(l);
       this.pointLights.push(l);
