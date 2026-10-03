@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { AREAS, type AreaId } from '../../content/areas';
-import { ARMOR_PIECES } from '../../content/armorSets';
+import { ARMOR_PARTS, ARMOR_PIECES } from '../../content/armorSets';
 import { DISCIPLINES } from '../../content/disciplines';
 import { EQUIP_SLOTS, equippedBySlot } from '../../content/gear';
 import { NECRO_WEAPON_BY_ID } from '../../content/necroWeapons';
@@ -152,6 +152,29 @@ describe('affixes against the power score', () => {
         const gain = (f(good) / f(plain) - 1) * 100;
         expect(gain, `good drop for ${d} at ilvl ${L}`).toBeGreaterThan(3);
         expect(gain, `good drop for ${d} at ilvl ${L}`).toBeLessThan(12);
+      }
+    }
+  });
+  it('affixes never outclass a completed set: three max-rolled best affixes on one piece stay under the whole ascended set bonus (bonus lines only)', () => {
+    for (const L of [12, 25, 47, 70]) {
+      for (const d of NECRO) {
+        const disc = DISCIPLINES[d];
+        const level = Math.max(1, L - 2);
+        const ch = botCharacter(disc.classIndex, level, (0.8 * level * 2) / EQUIP_SLOTS.length);
+        const f = (items: KitItem[]) => gearPower({ character: ch, slots: kitSlots(items), discipline: disc, damageTier: Math.round(level * 0.6) }).total;
+        const ids = ARMOR_PARTS.map((part) => `set_${d}_ascended_${part}`);
+        const setBonus = (f(ids.map((itemId) => ({ itemId, ilvl: L, affixes: [] }))) / f(ids.map((itemId) => ({ itemId, plain: true, ilvl: L, affixes: [] }))) - 1) * 100;
+        const picks: string[] = [];
+        const groups = new Set<string>();
+        for (const id of [...AFFIXES.map((a) => a.id)].sort((a, b) => value(b, L, d, 1) - value(a, L, d, 1))) {
+          const g = AFFIXES.find((a) => a.id === id)!.group;
+          if (picks.length < 3 && !groups.has(g)) { picks.push(id); groups.add(g); }
+        }
+        const plain: KitItem[] = kitItems({ kit: 'typical', discipline: d, area: L <= 12 ? 'nave' : L <= 25 ? 'cloister' : 'fen' }).map((i) => ({ ...i, ilvl: L, affixes: [] }));
+        const chest = plain.findIndex((i) => i.itemId.endsWith('_chest'));
+        const best = plain.map((i, k) => (k === chest ? { ...i, affixes: picks.map((id) => ({ id, q: 1 })) } : i));
+        const gain = (f(best) / f(plain) - 1) * 100;
+        expect(gain, `${picks.join('+')} for ${d} at ilvl ${L}: ${gain.toFixed(1)} vs ascended set ${setBonus.toFixed(1)}`).toBeLessThan(setBonus);
       }
     }
   });

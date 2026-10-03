@@ -140,7 +140,7 @@ export const AFFIXES: readonly AffixDef[] = [
   },
   {
     id: 'p_withered', kind: 'prefix', word: 'Blighted', group: 'withered', necro: true, weight: 8, unit: 'count',
-    range: (L) => [1, clampInt(2 + Math.floor(L / 9), 2, 5)],
+    range: (L) => [1, clampInt(2 + Math.floor(L / 9), 2, 4)],
     legacy: [(L) => [1, clampInt(2 + Math.floor(L / 7), 2, 6)]],
     effect: (v) => ({ add: { witheredMaxStacks: v } }),
     text: (v) => `+${v} max Withered stack${v === 1 ? '' : 's'}`,
