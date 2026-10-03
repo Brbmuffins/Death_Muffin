@@ -544,6 +544,8 @@ When co-op is available, joining places you in a world with room for up to **10 
 
 ![A Covenant counsel tip in game](docs/screenshots/covenant-counsel.webp)
 
+**Found a bug?** Open **Settings → Report a bug**, pick what kind of problem it is and describe what happened. Your area, level, discipline and game version are attached for you. Reports are read every day; the same screen lists your recent reports and what became of each one (for example *Fixed in an upcoming update*, or *Need more detail* with a note). How the daily triage works: [server/death-muffin/bug-agent/README.md](server/death-muffin/bug-agent/README.md).
+
 For technical setup and deployment, see [docs/README.md](docs/README.md) and the [VPS handoff](docs/DEATH-MUFFIN-HANDOFF.md).
 
 ## Offline play status

@@ -583,3 +583,31 @@ export async function salvageGear(characterId: number, slots: number[]) {
   const r = await unwrap<SalvageReply>(request('/api/salvage', { method: 'POST', body: JSON.stringify({ characterId, slots }) }, true));
   return { ...r, bag: decorateSlots(r.bag) };
 }
+
+// --- Bug reports (Settings → Report a bug; read daily by server/death-muffin/bug-agent) ---
+export type BugCategory = 'bug' | 'combat' | 'ui' | 'performance' | 'balance' | 'other';
+
+export interface BugReportInput {
+  category: BugCategory;
+  message: string;
+  characterId?: number;
+  context?: Record<string, string | number | boolean | string[]>;
+}
+
+export interface MyBugReport {
+  id: number;
+  category: BugCategory;
+  message: string;
+  /** Player-facing status ("Received", "Fixed in an upcoming update", ...). */
+  status: string;
+  note: string | null;
+  createdAt: string;
+}
+
+export function sendBugReport(report: BugReportInput) {
+  return unwrap<{ id: number }>(request('/api/bug-reports', { method: 'POST', body: JSON.stringify(report) }, true));
+}
+
+export function getMyBugReports() {
+  return unwrap<MyBugReport[]>(request('/api/bug-reports/mine', {}, true));
+}

@@ -1061,6 +1061,17 @@ button { font-family: inherit; }
 .cw-settings-section h3 { margin: 0 0 6px; font-family: var(--cw-font-display); font-size: 17px; letter-spacing: .1em; text-transform: uppercase; color: var(--cw-bone-100); }
 .cw-settings-section .row:last-child { border-bottom: 0; }
 .cw-settings-section .row .cw-button { width: auto; min-height: 38px; }
+/* Settings → Report a bug */
+.cw-bugreport textarea { display: block; box-sizing: border-box; width: 100%; margin-top: 10px; min-height: 120px; resize: vertical; background: var(--cw-inset); color: var(--cw-text); border: 1px solid var(--cw-border); padding: 9px 10px; font: inherit; font-size: 14px; line-height: 1.5; }
+.cw-bugreport textarea:focus { outline: 1px solid var(--cw-spell-400); }
+.cw-bugreport-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+.cw-bugreport-actions [data-count] { margin-right: auto; }
+.cw-bugreport-actions .cw-button { width: auto; min-height: 38px; }
+.cw-bugreport-list { list-style: none; margin: 0; padding: 0; }
+.cw-bugreport-list li { padding: 8px 0; border-bottom: 1px solid var(--cw-border); }
+.cw-bugreport-list li:last-child { border-bottom: 0; }
+.cw-bugreport-list p { margin: 4px 0 0; font-size: 13px; color: var(--cw-text-muted); overflow-wrap: anywhere; }
+.cw-bugreport-list .cw-bugreport-note { color: var(--cw-text); border-left: 2px solid var(--cw-spell-400); padding-left: 8px; }
 .cw-settings > [data-leave] { margin-top: 18px; }
 .cw-keys { display: grid; grid-template-columns: auto 1fr; gap: 9px 16px; margin-top: 10px; font-size: 14px; color: var(--cw-text-muted); }
 .cw-keys kbd { font-family: var(--cw-font-numeric); color: var(--cw-bone-100); border: 1px solid var(--cw-border); padding: 0 5px; text-align: center; }

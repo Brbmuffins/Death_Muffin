@@ -1,0 +1,10 @@
+[Unit]
+Description=Run the Death Muffin bug-report agent daily
+
+[Timer]
+OnCalendar=*-*-* 09:00:00 UTC
+RandomizedDelaySec=10m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

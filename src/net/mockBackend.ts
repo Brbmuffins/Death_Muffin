@@ -99,6 +99,7 @@ interface MockAccount {
   /** Sexton's Contracts: which of today's orders are filled (mirrors character_contracts). */
   contracts?: { day: string; done: number[]; bonus: boolean; days: string[] };
   /** The Chronicle (mirrors character_chronicle + character_runs). */
+  bugReports?: { id: number; category: string; message: string; createdAt: string }[];
   chronicle?: { life: Record<string, number>; run: Record<string, number>; runNo: number; runStartedAt: string; runs: { runNo: number; startedAt: string; endedAt: string; ascensionAfter: number; stats: Record<string, number> }[] };
   /** The Ossuary Vault (mirrors account_vault; the mock has one account per character). */
   vault?: { slot_index: number; item_id: string; quantity: number; instance_id?: number }[];
@@ -974,6 +975,18 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
       paidBonus = { gold: b.gold, item: b.item };
     }
     return ok({ ...contractView().view, gold, items, paidBonus });
+  }
+
+  // --- Bug reports: the offline edition keeps them on the device (there is no agent to read them). ---
+  if (p === '/api/bug-reports' && method === 'POST') {
+    const message = String(body.message ?? '').trim();
+    if (message.length < 10) return fail('Please describe the problem in at least 10 characters.');
+    const list = (acc.bugReports ??= []);
+    list.push({ id: list.length + 1, category: String(body.category ?? 'bug'), message: message.slice(0, 2000), createdAt: new Date().toISOString() });
+    return ok({ id: list.length });
+  }
+  if (p === '/api/bug-reports/mine' && method === 'GET') {
+    return ok([...(acc.bugReports ?? [])].reverse().slice(0, 10).map((r) => ({ ...r, status: 'Saved on this device', note: null })));
   }
 
   // --- Chronicle: lifetime stats and archived runs (the real server whitelists keys; the mock trusts them). ---

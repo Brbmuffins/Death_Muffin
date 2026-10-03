@@ -8,6 +8,7 @@ import { NecroBackdrop } from './graphics/NecroBackdrop';
 import { ApiError, getCharacter, getToken, OFFLINE, setToken } from './net/api';
 import type { Character } from './net/types';
 import { startReleaseBaseline } from './net/releaseWatch';
+import { installErrorRing } from './net/errorRing';
 
 const runtime = initRuntime(document.getElementById('scene') as HTMLCanvasElement);
 if (import.meta.env.VITE_OFFLINE_BUILD === '1') void import('./offline/install').then(({ setupOfflineInstall }) => setupOfflineInstall());
@@ -22,6 +23,7 @@ if (import.meta.env.DEV) {
     return res.text();
   };
 }
+installErrorRing(); // the last few uncaught errors ride along with a bug report (Settings → Report a bug)
 startReleaseBaseline(); // remembers which release this page was loaded from (play build only)
 const manager = new SceneManager();
 let backdrop: NecroBackdrop | null = null;

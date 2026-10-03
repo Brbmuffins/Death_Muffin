@@ -1118,6 +1118,14 @@ export class WorldScene implements GameScene, RuntimeView {
         corpseAction: ABILITIES[this.kit.rmb].name,
         legion: this.discipline.family === 'necromancer',
       },
+      () => ({
+        characterId: this.character.id,
+        area: this.area,
+        level: this.character.level,
+        discipline: this.discipline.name,
+        release: releaseWatch()?.known ?? null,
+        coop: !!this.realtime.instance,
+      }),
     );
     this.classPanel = new ClassPanel(this.root, () => this.character.class_index, (index) => this.changeClass(index));
     this.scope.add(() => this.classPanel.dispose());

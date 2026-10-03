@@ -1,6 +1,7 @@
 import { canUseAutoCombat, settings, updateSettings, type Quality } from '../app/settings';
 import { AREAS, type AreaId } from '../content/areas';
 import { DIFFICULTIES, DIFFICULTY_ORDER, isDifficulty } from '../content/difficulty';
+import { BugReportView, type BugReportContext } from './BugReportView';
 
 export abstract class SimplePanel {
   protected el: HTMLDivElement | null = null;
@@ -40,6 +41,8 @@ export class SettingsPanel extends SimplePanel {
     private kitHelp: { primary: string; rites: string[]; corpseAction: string; legion?: boolean } = {
       primary: 'Bone Needle', rites: ['Marrow Spear', 'Exhume', 'Miasma', 'Black Litany'], corpseAction: 'Corpse Explosion', legion: true,
     },
+    /** Settings → Report a bug: what the report attaches on its own. */
+    private bugContext?: () => BugReportContext,
   ) {
     super(root);
   }
@@ -78,6 +81,7 @@ export class SettingsPanel extends SimplePanel {
         </section>
         <section class="cw-settings-section"><h3>Character and help</h3>
         ${this.dev ? '<label class="row">Dev access (preview as a normal player when off)<input type="checkbox" data-dev aria-label="Dev access" /></label>' : ''}
+        ${this.bugContext ? '<label class="row">Found a bug or something odd?<button type="button" class="cw-button" data-bugreport>Report a bug</button></label>' : ''}
         ${this.onResetTips ? '<label class="row">New to the Covenant?<button type="button" class="cw-button" data-resettips>Show tips again</button></label>' : ''}
         ${this.onChangeClass ? '<label class="row">Class<button type="button" class="cw-button" aria-label="Change class" data-changeclass>Change class</button></label>' : ''}
         ${code ? `<label class="row">Party world code<b style="font-family:var(--cw-font-numeric)">${code}</b></label>` : ''}
@@ -182,6 +186,21 @@ export class SettingsPanel extends SimplePanel {
     });
     this.el!.querySelector('[data-leave]')!.addEventListener('click', () => this.onLeave());
     this.el!.querySelector('[data-changeclass]')?.addEventListener('click', () => this.onChangeClass?.());
+    this.el!.querySelector('[data-bugreport]')?.addEventListener('click', () => this.openBugReport());
+  }
+
+  /** Swap the Settings body for the report form; Back restores Settings. The panel stays open, so hotkeys stay blocked. */
+  openBugReport() {
+    if (!this.bugContext) return;
+    if (!this.el) this.open();
+    const body = this.el!.querySelector<HTMLElement>('.cw-settings');
+    if (!body) return;
+    const host = document.createElement('div');
+    body.replaceWith(host);
+    new BugReportView(host, this.bugContext, () => {
+      this.close();
+      this.open();
+    }).render();
   }
 }
 

@@ -1,0 +1,22 @@
+# Daily Death Muffin bug-report agent (see run-bug-agent.sh). Installed by install.sh.
+# Home is read-only except what the run needs: the worktree root, the repo's git metadata (worktree + branch), Claude's own
+# state (login, session config) and the agent's run logs. check.sh narrows this further for test runs (no network, .git read-only).
+[Unit]
+Description=Death Muffin daily bug-report agent
+After=network-online.target mysql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+Environment=HOME=/home/ubuntu
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/ubuntu/death-muffin/bug-agent/run-bug-agent.sh
+ProtectHome=read-only
+ReadWritePaths=/home/ubuntu/vps-handoffs/DeathMuffin/wt /home/ubuntu/vps-handoffs/DeathMuffin/game/.git /home/ubuntu/.claude /home/ubuntu/.claude.json /home/ubuntu/.npm /home/ubuntu/.cache /home/ubuntu/death-muffin/bug-agent/runs
+PrivateTmp=yes
+NoNewPrivileges=yes
+TimeoutStartSec=4h
+Nice=10
+CPUQuota=150%
