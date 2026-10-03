@@ -48,6 +48,12 @@ describe('onboarding tips by device', () => {
     expect(changed).toBeGreaterThan(40);
   });
 
+  it('auto combat is owner-only: its text is dropped for everyone else', () => {
+    expect(renderText('Hold 1.{auto} On Easy, Auto (G) plays for you.{/auto}', false)).toBe('Hold 1.');
+    expect(renderText(TIPS.signature.body, false)).not.toMatch(/\bAuto\b|\bEasy\b/);
+    expect(renderText(TIPS.grimoire.body, false)).not.toMatch(/\bauto\b|\bEasy\b/i);
+  });
+
   it('touch wording reads naturally in a few samples', () => {
     expect(renderText(TIPS.welcome.body, true)).toContain('drag a finger');
     expect(renderText(TIPS.warden_oil.body, true)).toContain('the third rite on your hotbar');

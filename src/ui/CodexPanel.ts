@@ -1,4 +1,5 @@
 import { ABILITIES } from '../content/abilities';
+import { gateAuto } from '../app/settings';
 import { AREAS, AREA_ORDER } from '../content/areas';
 import {
   BEHAVIOUR_LABEL,
@@ -221,7 +222,7 @@ export class CodexPanel {
           <div class="txt">
             <div class="hd"><h3>${a.name}</h3><span class="meta">${key} · ${cost} · ${secs(a.cooldownMs)}</span></div>
             <p>${a.description}</p>
-            <p class="tip"><b>Use it well.</b> ${r.tip}</p>
+            <p class="tip"><b>Use it well.</b> ${gateAuto(r.tip)}</p>
             <div class="swatch" title="Colour identity">
               <span class="chips">${riteSwatch(id).map((c) => `<i style="background:${c}"></i>`).join('')}</span>
               <span>${r.colour}</span>
@@ -249,7 +250,7 @@ export class CodexPanel {
           <div class="txt">
             <div class="hd"><h3>${w.name}</h3><span class="meta">${w.hands} · ${w.suits}</span></div>
             <p>${w.change}</p>
-            <p class="tip"><b>Use it well.</b> ${w.tip}</p>
+            <p class="tip"><b>Use it well.</b> ${gateAuto(w.tip)}</p>
           </div>
         </article>`).join('') + `<table class="cw-codex-table"><thead><tr><th>Tier</th><th>Recommended level</th><th>Drops in</th></tr></thead><tbody>${ladder}</tbody></table>`;
   }

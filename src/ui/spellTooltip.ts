@@ -1,3 +1,4 @@
+import { canUseAutoCombat } from '../app/settings';
 import {
   ABILITIES,
   BONE_FAN,
@@ -228,7 +229,7 @@ export function spellTooltip(id: AbilityId, discipline?: Discipline, state: Spel
   const control = a.slot === 0
     ? 'Click an enemy, or Shift + click to cast in place.'
     : a.slot === 6
-        ? 'Press R or 6, or click this icon. On Easy, Auto may cast it in a suitable fight.'
+        ? `Press R or 6, or click this icon.${canUseAutoCombat() ? ' On Easy, Auto may cast it in a suitable fight.' : ''}`
         : gKey === 'RMB' || gKey === '5'
           ? 'Right-click, press 5 or click this icon. Aim before casting. Change this slot in the Grimoire (L).'
         : gKey
