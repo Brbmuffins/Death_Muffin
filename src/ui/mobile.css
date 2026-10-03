@@ -226,7 +226,7 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
   @keyframes cw-dialogue-in-m { from { opacity: 0; } }
 
   /* Panels: fill the screen (minus the dock in portrait). Widths set per panel elsewhere are beaten here. */
-  .cw-panel-float, .cw-panel-float.wide, .cw-panel-float.wide.cw-reliquary, .cw-panel-float.lg-panel, .cw-panel-float.wide.cw-shelf, .cw-panel-float.wide.cw-vault {
+  .cw-panel-float, .cw-panel-float.wide, .cw-panel-float.wide.cw-reliquary, .cw-panel-float.lg-panel, .cw-panel-float.wide.cw-shelf, .cw-panel-float.wide.cw-vault, .cw-panel-float.cw-forge {
     left: var(--gut, 6px) !important;
     right: var(--gutr, 6px) !important;
     top: max(6px, env(safe-area-inset-top)) !important;
@@ -287,7 +287,7 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
 
   .cw-dialogue { left: var(--gut); right: var(--gutr); top: auto; bottom: calc(var(--dock) + 4px); transform: none; width: auto; max-width: none; max-height: 44vh; max-height: 44dvh; }
 
-  .cw-panel-float, .cw-panel-float.wide, .cw-panel-float.wide.cw-reliquary, .cw-panel-float.lg-panel, .cw-panel-float.wide.cw-shelf, .cw-panel-float.wide.cw-vault {
+  .cw-panel-float, .cw-panel-float.wide, .cw-panel-float.wide.cw-reliquary, .cw-panel-float.lg-panel, .cw-panel-float.wide.cw-shelf, .cw-panel-float.wide.cw-vault, .cw-panel-float.cw-forge {
     max-height: calc(100vh - var(--dock, 136px) - 14px) !important;
     max-height: calc(100dvh - var(--dock, 136px) - 14px) !important;
   }
@@ -342,7 +342,7 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
 
   .cw-dialogue { left: auto; right: 132px; top: max(6px, env(safe-area-inset-top)); transform: none; width: min(380px, calc(100vw - 132px - 360px)); min-width: 260px; max-height: calc(100vh - var(--dock) - 14px); max-height: calc(100dvh - var(--dock) - 14px); }
 
-  .cw-panel-float, .cw-panel-float.wide, .cw-panel-float.wide.cw-reliquary, .cw-panel-float.lg-panel, .cw-panel-float.wide.cw-shelf, .cw-panel-float.wide.cw-vault {
+  .cw-panel-float, .cw-panel-float.wide, .cw-panel-float.wide.cw-reliquary, .cw-panel-float.lg-panel, .cw-panel-float.wide.cw-shelf, .cw-panel-float.wide.cw-vault, .cw-panel-float.cw-forge {
     left: max(8px, env(safe-area-inset-left)) !important;
     right: max(8px, env(safe-area-inset-right)) !important;
     max-height: calc(100vh - 12px) !important;

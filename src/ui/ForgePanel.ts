@@ -61,7 +61,7 @@ export class ForgePanel {
     const tabs = st?.tabs ?? PROFESSIONS;
     const title = st?.title ?? 'Ossuary Workbench';
     this.el = document.createElement('div');
-    this.el.className = 'cw-plate cw-panel-float';
+    this.el.className = 'cw-plate cw-panel-float cw-forge';
     this.el.setAttribute('role', 'dialog');
     this.el.setAttribute('aria-label', title);
     this.el.innerHTML = `

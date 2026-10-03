@@ -1246,6 +1246,7 @@ body:not(.touch):has(.cw-panel-float) .cw-tip:not(.dragging):not([data-kind='urg
 .hud-slot button.locked::after { content: '10'; position: absolute; inset: auto 0 2px 0; text-align: center; font: 600 11px var(--cw-font-numeric); color: var(--cw-bone-300); }
 /* Altar of Ascension */
 .cw-panel-float.wide { width: 680px; }
+.cw-panel-float.cw-forge { width: 720px; max-width: calc(100vw - 32px); } /* name, ingredients and the quantity controls sit on one row */
 .cw-ascend { display: flex; flex-direction: column; gap: 10px; }
 .cw-ascend .head { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .cw-ascend .head > div { background: var(--cw-inset); border: 1px solid var(--cw-border); padding: 6px 8px; display: flex; flex-direction: column; }

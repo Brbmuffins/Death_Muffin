@@ -99,6 +99,7 @@ export class SettingsPanel extends SimplePanel {
           <kbd>T</kbd><span>Return to the Chapterhouse</span>
           <kbd>Click a node</kbd><span>Gather: chop a tree, mine a seam, fish a pool, dig a grave (it keeps working until the node is spent)</span>
           <kbd>I C P M</kbd><span>Reliquary · Workbench · Skills · Waystones</span>
+          <kbd>O U H N</kbd><span>Contracts · Garden · Laborers · Capes and Pets (also reached from Skills and the Menu)</span>
           <kbd>J</kbd><span>Character sheet: your stats, and where each number comes from</span>
           ${this.kitHelp.legion ? '<kbd>Y</kbd><span>Legion: spare weapon and armour for your thralls, and Reinforce (necromancers)</span>' : ''}
           <kbd>K</kbd><span>Codex</span>
