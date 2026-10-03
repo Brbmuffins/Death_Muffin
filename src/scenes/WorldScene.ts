@@ -54,7 +54,7 @@ import { omenFor, omenLeft, type Omen } from '../content/omens';
 import { BOSS_ARENA } from '../gameplay/sim/BossBrain';
 import { makeSnapshot, WorldMirror } from '../gameplay/sim/snapshot';
 import type { BossState, Corpse, Enemy, Intent, SimEvent, Thrall, Zone } from '../gameplay/sim/types';
-import { WorldSim, thrallWeight } from '../gameplay/sim/WorldSim';
+import { CONE_REACH_PAD, WorldSim, thrallWeight } from '../gameplay/sim/WorldSim';
 import { computeStats, STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
 import { BossView, NecromancerAvatar } from '../graphics/Avatars';
 import { prewarmCreature } from '../graphics/prewarmCreature';
@@ -3215,8 +3215,10 @@ export class WorldScene implements GameScene, RuntimeView {
       const rot = Math.atan2(ev.tx - ev.x, ev.tz - ev.z);
       // Cone texture apex sits at the plane's bottom edge; shift so it starts at the caster.
       const E = SPELL_FX.enemy;
-      this.effects.decal({ tex: fx.cone(), color: E.toll, x: ev.x, z: ev.z, r: ENEMIES.penitent.attackRange / 2, sz: 1, anchor: 1, rot: rot + Math.PI, duration: ms, opacity: 0.5, fadeIn: ms * 0.6, fadeOut: 0.05 });
-      this.effects.decal({ tex: fx.coneEdge(), color: E.toll, x: ev.x, z: ev.z, r: ENEMIES.penitent.attackRange / 2, sz: 1, anchor: 1, rot: rot + Math.PI, duration: ms, opacity: 0.8, fadeIn: ms * 0.15, fadeOut: 0.05 });
+      // The sim's cone reaches attackRange + 0.4 (a body's width): draw all of it, so nobody is hit standing outside the red.
+      const reach = (ENEMIES.penitent.attackRange + CONE_REACH_PAD) / 2;
+      this.effects.decal({ tex: fx.cone(), color: E.toll, x: ev.x, z: ev.z, r: reach, sz: 1, anchor: 1, rot: rot + Math.PI, duration: ms, opacity: 0.5, fadeIn: ms * 0.6, fadeOut: 0.05 });
+      this.effects.decal({ tex: fx.coneEdge(), color: E.toll, x: ev.x, z: ev.z, r: reach, sz: 1, anchor: 1, rot: rot + Math.PI, duration: ms, opacity: 0.8, fadeIn: ms * 0.15, fadeOut: 0.05 });
       for (let k = 0; k < 3; k++) {
         this.effects.decal({ tex: fx.ring(), color: E.toll, x: ev.x, z: ev.z, r: ENEMIES.penitent.attackRange * (0.45 + k * 0.28), duration: 0.45, opacity: 0.8 - k * 0.2, growFrom: 0.2, delay: ms + k * 0.08 });
       }

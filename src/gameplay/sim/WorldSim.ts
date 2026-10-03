@@ -89,6 +89,8 @@ const DEPTHS_AGGRO = 36;
 const CORPSE_LIFETIME = 26;
 const TOXIC_RUPTURE = 5;
 const MAX_CORPSES = 45;
+/** A cone blow reaches this far beyond the enemy's attackRange (a body's width); the telegraph draws it too. */
+export const CONE_REACH_PAD = 0.4;
 const THRALL_LEASH = 13;
 const THRALL_TELEPORT = 24;
 const PLAYER_RADIUS = 0.45;
@@ -2593,7 +2595,7 @@ export class WorldSim {
         const vx = x - e.x;
         const vz = z - e.z;
         const d = Math.hypot(vx, vz);
-        if (d > def.attackRange + 0.4) return false;
+        if (d > def.attackRange + CONE_REACH_PAD) return false;
         if (this.wallBetween(e.x, e.z, x, z)) return false; // the cone breaks on an Ossuary Wall
         return (vx * dirX + vz * dirZ) / (d * len || 1) > Math.cos((30 * Math.PI) / 180);
       };
