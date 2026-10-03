@@ -73,8 +73,8 @@ This becomes the CI gate: a change may not raise any pair's worst penetration. *
 Phases 0, 1, 2, 5 and 6 are code plus Blender scripting and **need no Tripo credits**. Phase 3 may use about 300–600 Tripo credits for the base
 armour shapes if hand-built shapes don't read well. Rough order: 0 → 1 → 2 → 5 → 6 → 4 → 3. Phases 0 and 1 fix most of the visible clipping.
 
-## Owner decisions
-1. Should armour change the silhouette (Phase 3 overlays), or stay tint-only?
-2. When a helm is worn, should the hood or hair be hidden, and should there be a "Hide helm" option?
-3. Equipping: a short gesture with a dissolve, or instant?
-4. Should the five New Blood classes get the same treatment at the same time, or should the four necromancers go first?
+## Owner decisions (answered 3 Oct 2026)
+1. Armour: **fitted skinned overlay pieces** (Phase 3 goes ahead).
+2. Helms: **hide the hood/hair under a helm, plus a "Hide helm" setting**.
+3. Swap moment: **instant, no gesture** (Phase 6 drops the equip gesture and keeps exact socket placement + warmed materials, so nothing snaps or hitches; no dissolve).
+4. Scope: **the four necromancers first**, New Blood afterwards on the same pipeline.
