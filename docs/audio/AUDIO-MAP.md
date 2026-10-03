@@ -8,7 +8,7 @@ Clip names in the table are exactly the lines of `docs/audio/esm-fantasy-game-fi
 
 - Sound ids mapped: **181** (90 existing ids, call sites unchanged, plus 91 new ids).
 - Fully mapped: 167; `partial` (pack clip used, imperfect fit, listen first): 11; `keep` (no pack clip fits, existing sound stays): 3.
-- New events to wire (silent or overloaded today): 91 ids across 14 files.
+- New events to wire (silent or overloaded today): 91 ids.
 
 The pack is 517 clips; 318 are referenced (including layers), the rest are listed under "Rejected" or are spare footstep variants.
 
