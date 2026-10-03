@@ -361,6 +361,5 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
 
 /* Load screen on phones: keep it clear of notches and the on-screen keyboard area. */
 @media (max-width: 760px), (max-height: 520px) {
-  .dm-loadveil { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); gap: 12px; }
-  .dm-loadveil-title { font-size: clamp(24px, 9vw, 36px); text-align: center; }
+  .dm-splash-copy { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
 }

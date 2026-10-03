@@ -1,6 +1,7 @@
 import type { GameScene } from './SceneManager';
 import { login, register, setToken, OFFLINE } from '../net/api';
 import type { NecroBackdrop } from '../graphics/NecroBackdrop';
+import { dismissSplash } from '../ui/splash';
 
 type Mode = 'login' | 'register';
 const STANDALONE = import.meta.env.VITE_OFFLINE_BUILD === '1';
@@ -41,6 +42,7 @@ export class LoginScene implements GameScene {
     this.el.appendChild(shell);
     this.root.appendChild(this.el);
     this.render();
+    dismissSplash();
   }
 
   private render() {

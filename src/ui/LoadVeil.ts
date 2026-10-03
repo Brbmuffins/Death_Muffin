@@ -3,6 +3,7 @@
  * warmed, then faded away. Nowhere else in normal play: door walks, waystones, recall and the Depths stream in the background instead.
  * Keys are held back while it is up so a hero cannot be steered blind; the co-op sim is untouched.
  */
+import { dismissSplash, splashArtAttrs } from './splash';
 
 /** Pure: the label for a progress fraction. */
 export function veilLabel(f: number): string {
@@ -24,22 +25,40 @@ export class LoadVeil {
 
   constructor() {
     this.el = document.createElement('div');
-    this.el.className = 'dm-loadveil';
+    this.el.className = 'dm-splash dm-loadveil';
     this.el.setAttribute('role', 'status');
     this.el.setAttribute('aria-live', 'polite');
+    // Same markup as the index.html splash (classes live in its inline CSS) so the handoff is invisible.
+    const art = document.createElement('img');
+    art.className = 'dm-splash-art in';
+    art.alt = '';
+    const a = splashArtAttrs();
+    art.srcset = a.srcset;
+    art.sizes = '100vw';
+    art.src = a.src;
+    const shade = document.createElement('div');
+    shade.className = 'dm-splash-shade';
+    const copy = document.createElement('div');
+    copy.className = 'dm-splash-copy';
     const title = document.createElement('div');
-    title.className = 'dm-loadveil-title';
+    title.className = 'dm-splash-title';
     title.textContent = 'Death Muffin';
-    this.label = document.createElement('div');
-    this.label.className = 'dm-loadveil-label';
-    this.label.textContent = veilLabel(0);
+    const tag = document.createElement('p');
+    tag.className = 'dm-splash-tag';
+    tag.textContent = veilLabel(0);
+    this.label = tag; // the italic line under the title carries the progress wording
+    const status = document.createElement('div');
+    status.className = 'dm-splash-status';
+    status.textContent = 'Opening the Covenant';
     const track = document.createElement('div');
-    track.className = 'dm-loadveil-track';
+    track.className = 'dm-splash-track';
     this.bar = document.createElement('div');
-    this.bar.className = 'dm-loadveil-bar';
+    this.bar.className = 'dm-splash-bar';
     track.appendChild(this.bar);
-    this.el.append(title, track, this.label);
+    copy.append(title, tag, track, status);
+    this.el.append(art, shade, copy);
     document.body.appendChild(this.el);
+    dismissSplash(); // the veil (same art) now covers the screen; the page splash, if still up, can go
     window.addEventListener('keydown', this.blockKeys, true);
     window.addEventListener('keyup', this.blockKeys, true);
   }
