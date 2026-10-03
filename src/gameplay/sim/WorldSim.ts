@@ -3133,9 +3133,16 @@ export class WorldSim {
       } else {
         // Formation ring around the owner.
         // Seats are dealt by rank among the living (slot numbers have gaps once thralls fall, and a gap folded two onto one spot).
-        const mine = this.ownedThralls(t.owner).sort((a, b) => a.slot - b.slot);
-        const count = Math.max(3, mine.length);
-        const ang = (Math.max(0, mine.indexOf(t)) / count) * Math.PI * 2 + Math.PI;
+        // (a plain loop: no array is built per thrall per tick)
+        let living = 0;
+        let rank = 0;
+        for (const o of this.thralls.values()) {
+          if (o.owner !== t.owner || o.state === 'dead') continue;
+          living++;
+          if (o.slot < t.slot) rank++;
+        }
+        const count = Math.max(3, living);
+        const ang = (rank / count) * Math.PI * 2 + Math.PI;
         const fx = owner.x + Math.sin(ang) * 1.9;
         const fz = owner.z + Math.cos(ang) * 1.9;
         const d = Math.hypot(fx - t.x, fz - t.z);
