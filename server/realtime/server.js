@@ -40,6 +40,8 @@ const LIMITS = {
   snapshotBytes: 96 * 1024,
   eventsBytes: 64 * 1024,
   intentBytes: 2 * 1024,
+  /** Most ids one `hit` may name: the world's enemy cap (GLOBAL_ENEMY_CAP in src/content/areas.ts; a unit test keeps them equal). A rite sweeping every body must not be dropped whole. */
+  hitIds: 72,
   moveBytes: 256,
   gearBytes: 512,
   perfBytes: 2 * 1024,
@@ -187,7 +189,7 @@ function validIntent(intent) {
   if (POINT_INTENTS.has(out.t) && !(typeof out.x === 'number' && typeof out.z === 'number')) return null;
   switch (out.t) {
     case 'hit':
-      if (!Array.isArray(out.ids) || out.ids.length > 64 || !out.ids.every(Number.isInteger)) return null;
+      if (!Array.isArray(out.ids) || out.ids.length > LIMITS.hitIds || !out.ids.every(Number.isInteger)) return null;
       out.dmg = Math.min(Math.max(0, num(out.dmg)), 100000);
       out.fracture = Math.min(3, Math.max(0, num(out.fracture)));
       out.boss = !!out.boss;

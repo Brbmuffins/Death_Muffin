@@ -422,8 +422,19 @@ export class Inventory {
     });
   }
 
-  async flush(): Promise<void> {
-    if (!this.dirty || this.inFlight || this.held) return;
+  async flush(keepalive = false): Promise<void> {
+    if (!this.dirty || this.held) return;
+    if (this.inFlight) {
+      // The tab is closing with a save already out (it may be cut off): send the newest bag now rather than skip it.
+      if (!keepalive) return;
+      this.dirty = false;
+      try {
+        await saveInventory(this.characterId, toSavePayload(this.slots), BAG_SIZE, true);
+      } catch {
+        this.dirty = true;
+      }
+      return;
+    }
     this.inFlight = true;
     this.dirty = false;
     this.state = 'saving';
@@ -432,7 +443,7 @@ export class Inventory {
     this.pendingMutations = [];
     this.inFlightMutations = sentMutations;
     try {
-      const saved = await saveInventory(this.characterId, toSavePayload(sent), BAG_SIZE);
+      const saved = await (keepalive ? saveInventory(this.characterId, toSavePayload(sent), BAG_SIZE, true) : saveInventory(this.characterId, toSavePayload(sent), BAG_SIZE));
       // Only adopt the server rows if nothing changed while the request flew.
       if (this.slots === sent) this.slots = saved;
       else this.dirty = true;

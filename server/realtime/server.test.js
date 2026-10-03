@@ -45,8 +45,13 @@ test('an empowered litany fits the radius clamp', () => {
   assert.equal(validIntent({ t: 'litany', x: 0, z: 0, r: 99, spellPower: 10 }).r, 11);
 });
 
+test('a hit naming every body the world can hold (the enemy cap) is accepted whole', () => {
+  const ids = Array.from({ length: LIMITS.hitIds }, (_, i) => 100000 + i);
+  assert.deepEqual(validIntent({ t: 'hit', ids, dmg: 1 }).ids, ids);
+});
+
 test('oversized intents are dropped', () => {
-  assert.equal(validIntent({ t: 'hit', ids: Array.from({ length: 65 }, (_, i) => i), dmg: 1 }), null);
+  assert.equal(validIntent({ t: 'hit', ids: Array.from({ length: LIMITS.hitIds + 1 }, (_, i) => i), dmg: 1 }), null);
   assert.equal(validIntent({ t: 'summonBoss', junk: 'x'.repeat(5000) }), null);
 });
 
