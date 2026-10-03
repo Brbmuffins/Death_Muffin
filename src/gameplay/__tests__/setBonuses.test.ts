@@ -69,15 +69,15 @@ describe('legendary sets (docs/LEGENDARY-SETS.md)', () => {
   const at = (id: string, n: number) => SET_BONUSES[id].filter((b) => b.pieces <= n);
   const totals = (id: string, n: number) => at(id, n).reduce((t, b) => ({ mult: { ...t.mult, ...Object.fromEntries(Object.entries(b.effect.mult ?? {}).map(([k, v]) => [k, (t.mult[k] ?? 1) * v])) }, add: { ...t.add, ...Object.fromEntries(Object.entries(b.effect.add ?? {}).map(([k, v]) => [k, (t.add[k] ?? 0) + v])) } }), { mult: {} as Record<string, number>, add: {} as Record<string, number> });
   it('carries exactly the numbers of the design doc', () => {
-    expect(totals('legion_unburied', 5)).toEqual({ mult: { thrallDamageMult: 1.25, thrallAttackSpeedMult: 1.1 }, add: { thrallDeathBurst: 0.8, thrallCap: 2, championEvery: 4, spearRally: 1 } });
-    expect(totals('colossus_mantle', 5)).toEqual({ mult: { thrallHpMult: 1.35, thrallDamageMult: 1.15 }, add: { wardReflect: 0.6, colossusGuard: 0.3, litanyShatter: 4 } });
-    expect(totals('requiem_wraiths', 5)).toEqual({ mult: { essenceRegenMult: 1.4, maxHpMult: 1.1, soulHarvestRateMult: 2, thrallAttackSpeedMult: 1.15 }, add: { corpseWisp: 10, corpseHeal: 0.02, wraithNova: 1.2 } });
-    expect(totals('plague_choir', 5)).toEqual({ mult: { miasmaRadiusMult: 1.25, maxHpMult: 1.08 }, add: { miasmaSpreadsWithered: 1, witheredBurstAt: 8 } });
+    expect(totals('legion_unburied', 5)).toEqual({ mult: { thrallDamageMult: 1.25, thrallAttackSpeedMult: 1.1 }, add: { thrallDeathBurst: 1, thrallCap: 2, championEvery: 4, spearRally: 0.75 } });
+    expect(totals('colossus_mantle', 5)).toEqual({ mult: { thrallHpMult: 1.5 * 1.1, thrallDamageMult: 1.25, maxHpMult: 1.1 * 1.06 }, add: { wardReflect: 0.6, wardPerThrall: 0.05, colossusGuard: 0.22, litanyShatter: 4, litanyBarrier: 0.05 } });
+    expect(totals('requiem_wraiths', 5)).toEqual({ mult: { essenceRegenMult: 1.4, maxHpMult: 1.1 * 1.1 * 1.12, thrallHpMult: 1.4, soulHarvestRateMult: 2, thrallAttackSpeedMult: 1.15, thrallDamageMult: 1.3 }, add: { corpseWisp: 12, corpseHeal: 0.06, wraithNova: 3 } });
+    expect(totals('plague_choir', 5)).toEqual({ mult: { miasmaRadiusMult: 1.3 * 1.1, maxHpMult: 1.1 * 1.05 }, add: { miasmaSpreadsWithered: 1, witheredMaxStacks: 2, witheredBurstAt: 6 } });
     expect(LEGENDARY_SET_IDS.map((id) => SET_BONUSES[id].slice(1).map((b) => b.name))).toEqual([['Bursting Dead', 'Legion Champion'], ['Reflecting Ward', 'Colossus'], ['Wisps', 'Requiem'], ['Contagion', 'Chain Plague']]);
   });
   it('says every mechanic plainly', () => {
     const text = LEGENDARY_SET_IDS.flatMap((id) => SET_BONUSES[id].flatMap((b) => describeEffect(b.effect))).join('\n');
-    for (const needle of ['Thralls burst when they die (80% of their health', 'Every 4th thrall', 'Marrow Spear rallies', 'Bone Ward reflects 60%', '30% less damage taken while 3 or more thralls', 'shatters into bone shards for 4x', 'healing wisp for 10 s', 'Soul Harvest fills 2x faster', 'every wraith and wisp releases a nova (120%', 'spread their Withered stacks', 'reaches 8 Withered stacks bursts into a new Miasma']) expect(text).toContain(needle);
+    for (const needle of ['Thralls burst when they die (100% of their health', 'Every 4th thrall', 'Marrow Spear rallies', 'Bone Ward reflects 60%', '22% less damage taken while 3 or more thralls', 'shatters into bone shards for 4x', 'healing wisp for 12 s', 'Soul Harvest fills 2x faster', 'every wraith and wisp releases a nova (300%', 'spread their Withered stacks', 'reaches 6 Withered stacks bursts into a new Miasma']) expect(text).toContain(needle);
   });
   it('shows in the set tracker, with its own pieces listed as dropping from bosses', () => {
     const worn = ['head', 'chest', 'hands'] as ArmorPart[];

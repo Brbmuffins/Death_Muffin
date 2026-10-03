@@ -117,9 +117,9 @@ export const SET_BONUSES: Record<string, SetBonusDef[]> = {
   ],
   // --- Legendary sets (docs/LEGENDARY-SETS.md): build-defining; 4 pieces change a mechanic, 5 define the build -------------
   legion_unburied: [
-    { pieces: 2, effect: { mult: { thrallDamageMult: 1.3 } } },
-    { pieces: 4, name: 'Bursting Dead', effect: { mult: { thrallAttackSpeedMult: 1.12 }, add: { thrallDeathBurst: 1 } } },
-    { pieces: 5, name: 'Legion Champion', effect: { add: { thrallCap: 2, championEvery: 4, spearRally: 1 } } },
+    { pieces: 2, effect: { mult: { thrallDamageMult: 1.25 } } },
+    { pieces: 4, name: 'Bursting Dead', effect: { mult: { thrallAttackSpeedMult: 1.1 }, add: { thrallDeathBurst: 1 } } },
+    { pieces: 5, name: 'Legion Champion', effect: { add: { thrallCap: 2, championEvery: 4, spearRally: 0.75 } } },
   ],
   colossus_mantle: [
     { pieces: 2, effect: { mult: { thrallHpMult: 1.5, thrallDamageMult: 1.25, maxHpMult: 1.1 } } },

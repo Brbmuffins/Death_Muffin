@@ -33,7 +33,7 @@ const DODGES = (list(process.env.BALANCE_DODGE) ?? ['yes', 'no']).map((d) => d =
 const DIFFICULTY = (process.env.BALANCE_DIFFICULTY ?? 'medium') as Difficulty;
 /** World Ascension rank; bands then anchor on the aged area level. */
 const ASC = Math.max(0, Number(process.env.BALANCE_ASCENSION ?? 0));
-const LEGENDARY = !!process.env.BALANCE_LEGENDARY;
+const LEGENDARY = !!process.env.BALANCE_LEGENDARY && process.env.BALANCE_LEGENDARY !== '0';
 const SEEDS = Math.max(1, Number(process.env.BALANCE_SEEDS ?? 3));
 const disciplines = (list(process.env.BALANCE_DISCIPLINES) ?? ['1', '2', '3', '4']).map(Number);
 const names: Record<number, string> = { 1: 'Ossuary', 2: 'Gravecaller', 3: 'Mourner', 4: 'Rotweaver' };

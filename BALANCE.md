@@ -994,6 +994,22 @@ Unchanged inside seed noise, as expected: the rolls differ per range, and the bo
 ### Legendary sets, re-measured (`legendaryReport.ts`, kit none, 4 seeds, Nave and Sanctum, intended/push/max, mechanics and set multipliers only, 24 rows)
 Mean clear speed **x1.15**, mean damage taken **x0.92** (LEGENDARY-SETS.md quoted x1.17 / x0.86 after the 2 Oct tuning, an earlier pass x1.13). Still true: the full legendary set is nowhere near the +40-80% target in the sim (the power score puts the same bonus lines at +24-47%, a judgment value for mechanics the bot does not use well). By band: intended x1.0-1.1 (survival gains on Mourner/Sanctum), push x1.07-1.41, max x0.86-1.62; the Ossuary reads about flat on clear speed (its mechanics are defensive; its damage taken is noisy). Not retuned here: the task is affix ranges, and raising a legendary is a content/owner call. If the owner wants legendaries to feel like a +40% jump, the lever is `setBonuses.ts` (the mechanic strengths), not affixes. Affix tuning does not touch this: affixes stay far below a legendary set either way.
 
+## Legendary power (3 Oct 2026, owner: polish, no new content or mechanics)
+Target: a full legendary set at power (clear speed / damage taken) about 1.4-1.8 per discipline, max/min spread <= 1.15, first < ascended < legendary and 2pc < 4pc < 5pc. Numbers only, in `setBonuses.ts` (mechanic strengths and set multipliers; the mechanics, drop rates and shapes in `legendary.ts` are untouched). Harness wiring checked: the Mourner wisp heal and nova are modelled the same as `AbilitySystem` (3 wisps x 2% max HP/s, nova from wisps and wraith thralls), so no dead wiring was found; the Mourner was simply under-powered (it had no thrall damage or health in the set and a 10% max-health total). The Ossuary legendary lacked the maximum health and per-thrall ward its ascended set has, so it read below that set. `bossReport.ts` now treats `BALANCE_LEGENDARY=0` as off (it was read as on).
+
+`legendaryReport.ts`, kit none, 4 seeds, Nave and Sanctum, intended/push/max (clear-speed x / damage-taken x / power):
+
+| Discipline | Ascended full | Before leg5 | After leg5 |
+|---|---|---|---|
+| Ossuary | 1.06 / 0.65 / 1.64 | 1.06 / 0.96 / 1.10 | 1.11 / 0.67 / 1.66 |
+| Gravecaller | 1.11 / 0.94 / 1.17 | 1.26 / 0.89 / 1.42 | 1.29 / 0.82 / 1.59 |
+| Mourner | 1.09 / 0.69 / 1.59 | 1.11 / 0.91 / 1.22 | 1.14 / 0.69 / 1.65 |
+| Rotweaver | 1.03 / 1.11 / 0.93 | 1.25 / 0.87 / 1.44 | 1.34 / 0.81 / 1.66 |
+
+Spread max/min 1.31 -> 1.05; mean full set x1.17 clear / x0.91 damage -> x1.22 / x0.74. Clear speed barely moves (spawn-limited, and the Ossuary and Mourner are defensive) so the +40-80% shows as survival: power 1.59-1.66. Changes (full-set totals): Legion thrall damage +25% (kept), attack speed +10%, death burst 100%, Marrow Spear rally 75%, +2 cap; Colossus +50% thrall health/+25% damage/+10% health (2pc), 10% more thrall health + 5% ward per thrall (4pc), 22% guard, +6% health, barrier +5% (5pc); Requiem 12 s wisps, corpses heal 6%, +40% thrall health, +30% thrall damage, +10/+10/+12% max health, nova 300%; Plague Choir +30% Miasma (+10% at 4pc), +10% health, +2 Withered stacks, burst at 6 stacks. Set-tier ordering holds (2pc 0.95-1.16 < 4pc 1.19-1.41 < 5pc 1.59-1.66).
+
+Boss check (`balance:boss`, 8 seeds, abbess/congregation/prelate/saint/regent/mire, kit auto, dodge yes, intended and geared, `BALANCE_LEGENDARY=1` vs `0`): no deaths added, every kill time >= 60% of the non-legendary time (min 0.60, mean 0.90). By discipline (mean / worst): Ossuary 0.99 / 0.95, Gravecaller 0.68 / 0.60, Mourner 0.97 / 0.95, Rotweaver 0.94 / 0.83. Gravecaller is the fast one (thrall damage compounds on a boss); it was 0.55 worst with thrall damage +30% and was trimmed to stay at the floor.
+
 ## Scythe boss reach (3 Oct 2026, owner decision)
 The scythe's arc reaches **4 m against a boss** (3 m against everything else), so a reaper can fight from the edge of boss rings and cones. The boss bot's Fen stand-off now follows that reach (it hard-coded 3.5 m). `BALANCE_SEEDS=8 BALANCE_BOSS=prelate,mire,saint,congregation BALANCE_KIT=auto BALANCE_WEAPONS=scythe BALANCE_DODGE=yes npm run balance:boss`, 32 rows (4 necromancers x 2 bands):
 
