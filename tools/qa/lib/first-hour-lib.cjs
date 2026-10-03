@@ -145,7 +145,7 @@ async function newCharacter(page, discipline, name) {
   await page.fill('#cw-pass', 'TestingFirstHour1');
   await page.locator('#cw-login-btn').click();
   await page.locator('.cw-disc').filter({ hasText: discipline }).first().click();
-  await page.waitForFunction(() => window.__cwDebug?.avatar.c.loaded, null, { timeout: 90000 });
+  await page.waitForFunction(() => window.__cwDebug?.avatar.c.loaded, null, { timeout: Number(process.env.DM_LOAD_MS || 90000) });
   await page.evaluate(IN_PAGE, WATCH);
   // From here the game runs only when we step it, and every clock the game reads is the same virtual one: a slow machine must not
   // make a counsel card age faster than the game seconds it is shown for.

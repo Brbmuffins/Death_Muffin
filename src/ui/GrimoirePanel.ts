@@ -48,7 +48,7 @@ export class GrimoirePanel extends SimplePanel {
   open(select?: Socket) {
     if (select !== undefined) this.selected = select;
     if (this.el) return this.render();
-    this.mount('Grimoire', '<div data-body></div>');
+    this.mount('Grimoire|Spells · L', '<div data-body></div>');
     this.el!.classList.add('cw-grimoire');
     const { unseen } = this.state();
     this.fresh = new Set(unseen);

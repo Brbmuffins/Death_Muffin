@@ -635,11 +635,12 @@ button { font-family: inherit; }
 .hud-up .buy b { font-size: 13px; color: #e2c98f; }
 .hud-up .buy:hover:not(:disabled) { border-color: var(--cw-border-active); box-shadow: var(--cw-glow-spell); }
 .hud-up .buy:disabled { opacity: 0.45; cursor: not-allowed; }
-.hud-wave-dial { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; color: var(--cw-text-muted); }
+.hud-wave-dial { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; color: var(--cw-text-muted); }
 .hud-wave-dial button { width: 22px; height: 22px; padding: 0; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-bone-100); cursor: pointer; }
 .hud-wave-dial button:hover:not(:disabled) { border-color: var(--cw-border-active); }
 .hud-wave-dial button:disabled { opacity: 0.35; }
-.hud-wave-dial .hud-milestone { margin-left: auto; text-align: right; cursor: help; }
+.hud-wave-dial .hud-milestone { flex: 1 0 100%; text-align: left; cursor: help; } /* its own line: beside the dial it wrapped to three */
+.hud-wave-dial .hud-milestone:empty { display: none; }
 .hud-wave-dial .hud-milestone.on { color: #d9a441; }
 .hud-wave-dial .tier { font-family: var(--cw-font-numeric); color: var(--cw-bone-100); min-width: 64px; text-align: center; }
 
@@ -928,6 +929,7 @@ button { font-family: inherit; }
 .cw-class-panel .cw-disc[aria-current="true"] { border-color: var(--disc-color); }
 .cw-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--cw-border); }
 .cw-panel-head .cw-title { font-size: 24px; }
+.cw-title .aka { margin-left: 12px; font-family: var(--cw-font-body); font-size: 12px; font-weight: 400; letter-spacing: 0.08em; color: var(--cw-text-muted); white-space: nowrap; }
 .cw-afk-status { display: flex; gap: 16px; align-items: center; justify-content: space-between; padding: 12px 14px; border: 1px solid var(--cw-border); background: var(--cw-inset); color: var(--cw-bone-100); }
 .cw-afk-controls { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 .cw-afk-controls select { flex: 1; min-width: 140px; max-width: 100%; min-height: 40px; background: var(--cw-inset); color: var(--cw-bone-100); padding: 8px 10px; border: 1px solid var(--cw-border); }
@@ -1157,6 +1159,8 @@ button { font-family: inherit; }
 }
 /* The area / level banner is big and brief: a calm card on screen steps aside for those three seconds instead of sitting under it (a fight-time card stays: it matters more). */
 body:has(.hud-banner.show) .cw-tip:not(.dragging):not([data-kind='urgent']):not([data-kind='danger']) { opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
+/* Desktop: a big panel opens over the left of the screen at 1280 wide, where the card sits. A card the player did not ask for (calm / fight-time) steps aside the moment a panel opens, instead of hiding its title and tabs until the cadence sends it back (6 s). Hurt? and the panel's own counsel (asked) stay. */
+body:not(.touch):has(.cw-panel-float) .cw-tip:not(.dragging):not([data-kind='urgent']):not([data-kind='asked']) { opacity: 0; pointer-events: none; transition: opacity 0.15s ease; }
 .cw-tip.out { opacity: 0; transform: translateY(6px); transition: opacity 0.2s ease, transform 0.2s ease; pointer-events: none; }
 @keyframes tip-in { from { opacity: 0; } }
 .cw-tip .kicker { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cw-spell-300); }
@@ -1242,6 +1246,7 @@ body:has(.hud-banner.show) .cw-tip:not(.dragging):not([data-kind='urgent']):not(
 .hud-slot button.locked::after { content: '10'; position: absolute; inset: auto 0 2px 0; text-align: center; font: 600 11px var(--cw-font-numeric); color: var(--cw-bone-300); }
 /* Altar of Ascension */
 .cw-panel-float.wide { width: 680px; }
+.cw-panel-float.cw-forge { width: 720px; max-width: calc(100vw - 32px); } /* name, ingredients and the quantity controls sit on one row */
 .cw-ascend { display: flex; flex-direction: column; gap: 10px; }
 .cw-ascend .head { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .cw-ascend .head > div { background: var(--cw-inset); border: 1px solid var(--cw-border); padding: 6px 8px; display: flex; flex-direction: column; }
@@ -1532,6 +1537,8 @@ body:has(.hud-banner.show) .cw-tip:not(.dragging):not([data-kind='urgent']):not(
 .cw-craft-qty .cw-button.small { min-height: 40px; min-width: 40px; justify-content: center; }
 .cw-qty-input { width: 56px; min-height: 40px; box-sizing: border-box; text-align: center; font: inherit; font-family: var(--cw-font-numeric); color: inherit; background: var(--cw-inset); border: 1px solid var(--cw-border); }
 .cw-craft-go { flex: 1 1 110px; }
+/* A recipe's name needs room to read: the controls drop under it when the panel is narrow (at 1280 wide the name wrapped to three lines and the ingredients to four). */
+.cw-recipe .info { flex: 1 1 220px; }
 @media (max-width: 640px) {
   .cw-recipe { flex-direction: column; align-items: stretch; gap: 10px; }
   .cw-craft-qty { width: 100%; }

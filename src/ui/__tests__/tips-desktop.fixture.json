@@ -121,7 +121,7 @@
  },
  "signature": {
   "title": "Your signature rite awakens",
-  "body": "Level 10: press <kbd>R</kbd> for your class's own rite. Hover the new slot to read what it does. On Easy, Auto may also use it when the fight calls for it."
+  "body": "Level 10: press <kbd>R</kbd> for your class's own rite. Hover the new slot to read what it does."
  },
  "ascend": {
   "title": "The Altar of Ascension stirs",
@@ -145,7 +145,7 @@
  },
  "grimoire": {
   "title": "The Grimoire",
-  "body": "New rites have come to you. Click <b>swap</b> below a hotbar spell, use <b>Swap spells</b> at the end of the bar, or press <kbd>L</kbd> to open the Grimoire. Choose any unlocked class rite for slots <kbd>1</kbd>–<kbd>5</kbd>; slot 5 also uses right-click. Necromancers learn extra alternatives, while other classes can rearrange their five rites. Your signature stays on <kbd>R</kbd>. Each rite keeps its cooldown, and Easy auto uses equipped rites."
+  "body": "New rites have come to you. Click <b>swap</b> below a hotbar spell (or press <kbd>L</kbd>) to choose which unlocked rites sit on slots <kbd>1</kbd>–<kbd>5</kbd>; slot 5 also uses right-click. Your signature stays on <kbd>R</kbd>. Each rite keeps its cooldown."
  },
  "rite_skull": {
   "title": "Wailing Skull",
