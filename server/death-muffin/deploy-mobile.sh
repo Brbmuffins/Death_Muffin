@@ -32,6 +32,7 @@ rm -rf "$CAND"
 mkdir -p "$SRC"
 git -C "$REPO" archive "$SHA" | tar -x -C "$SRC"
 ln -s "$REPO/node_modules" "$SRC/node_modules"
+[ -d "$REPO/server/realtime/node_modules" ] && ln -s "$REPO/server/realtime/node_modules" "$SRC/server/realtime/node_modules"
 (
   cd "$SRC"
   npx tsc --noEmit -p .
