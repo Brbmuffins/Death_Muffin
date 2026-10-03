@@ -14,6 +14,7 @@ import { NODES, SKILLS } from './gatheringRules';
 import { KILL_LOOT } from './loot';
 import { STAT_PRIORITY, RECOMMENDED_WEAPONS } from './gearStats';
 import { NECRO_KIND_LABEL } from '../content/necroWeapons';
+import { RELIC_ORDERS, RELIC_PREMIUM, RELIC_CHANCE } from './contractRules';
 import { salvagePreview, SALVAGE_BONUS_PER_LEVEL, SALVAGE_AFFIX_BONUS, SALVAGE_ILVL_BONUS } from './salvageRules';
 import {
   ILVL_OFFSETS, SCALING_NOTES, cosmeticsInfo, SOURCE_LABEL, affixCountOdds, depthBands, fmtChance, fmtQty, getAtlas, legendaryShare, oneIn, skillName, stationOf, tableShares,
@@ -196,6 +197,11 @@ function salvageSection(): string {
   return out.join('\n');
 }
 
+function relicSection(): string {
+  const rows = RELIC_ORDERS.map((r) => [name(r.itemId), rarityMark(ITEMS[r.itemId].rarity), `${skillName(r.skill)} ${r.level}`, String(r.qty), String(Math.round(r.qty * ITEMS[r.itemId].sell * RELIC_PREMIUM))]);
+  return ['## Trade goods and the Sexton', '', `Gems, Reliquary Fragments and Covenant Seals have no recipe, so the Sexton's Contracts (O) buy them: on about ${pct(RELIC_CHANCE)} of days the hard order is a relic order for a fixed handful, paid at ${RELIC_PREMIUM}x the sell price (and one Grave Garnet back; the rarer gems are never paid out). Tin and Bronze Ingots are ordered like any smelted good. Pet charms are adopted, seeds and saplings are planted, and everything else is a recipe ingredient.`, '', table(['Item', 'Rarity', 'Order unlocks at', 'Quantity asked', 'Gold paid (before the slot fee)'], rows)].join('\n');
+}
+
 function upgradeSection(): string {
   const out: string[] = ['## How to upgrade gear', ''];
   out.push('There is no upgrade bench: gear gets better by **item level** and **affixes**, both rolled by the server when it drops, and by **set bonuses** when you wear matching pieces. Replace a piece when a better roll or a better set comes along; salvage or sell the rest.');
@@ -279,6 +285,7 @@ export function renderLootTables(): string {
   out.push(recipesSection());
   out.push(cosmeticsSection(), '');
   out.push(salvageSection(), '');
+  out.push(relicSection(), '');
   out.push(upgradeSection(), '');
   out.push(wantsSection(), '');
   return out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';

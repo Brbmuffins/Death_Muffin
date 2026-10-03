@@ -24,7 +24,7 @@ leaks, and the backlog that fixes it, ordered by payoff for effort.
    - `gem_grave_garnet`, `gem_bone_opal`, `gem_void_sapphire`;
    - `reliquary_fragment`, `covenant_seal`.
 
-   **Selling** now exists (bag → Sell / Sell all). Real uses still need designing (§3).
+   **Selling** exists (bag → Sell / Sell all). **Uses added 2026-10-03**: the Sexton's Contracts ask for the gems, the Fragment and the Seal (relic orders) and for Tin and Bronze Ingots, no migration (`docs/polish/loot.md` item 14; `trade-goods.test.ts` pins that nothing droppable is sell-only). Seeds all have plots already. Recipes, rune sockets and boss keys (§3 #3, #7) remain open.
 3. **Crafted duds.** Swiftness, Forge-Tempered and Void Resist flasks did nothing. They are **fixed** (timed buffs).
    `kit_iron_warden` (`resist_blast`) is still inert.
 4. **Gold has few sinks** (Damage / Wave Speed tiers only), so it piles up once those are bought.

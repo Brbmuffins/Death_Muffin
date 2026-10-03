@@ -3,7 +3,7 @@ import { SEEDS } from '../content/gardening';
 import { ALCHEMY_RECIPES } from '../content/alchemy';
 import { MOB_REAGENTS, REAGENT_RECIPES } from '../content/reagents';
 import { PROCESSING_RECIPES } from '../content/processing';
-import { NODES, type SkillId } from './gatheringRules';
+import { NODES, SKILLS, type SkillId } from './gatheringRules';
 
 /**
  * Sexton's Contracts: the ONE source of truth for the daily delivery board, shared by the client (mock backend + display)
@@ -68,7 +68,28 @@ interface Candidate {
   skill: SkillId;
   level: number;
   processed: boolean;
+  /** A relic order asks for a fixed handful (these drop one in hundreds) and pays RELIC_PREMIUM instead of the usual 1.6x. */
+  fixedQty?: number;
 }
+
+/**
+ * Trade goods that used to be sell-only (2026-10-03, docs/polish/loot.md item 14). The gems, the Reliquary Fragment and the Covenant
+ * Seal are rare finds from mining, the carp pools and the Barrow-King's tomb, so the Sexton asks for a small fixed number at the level
+ * that finds them, and pays 2x their sell price where an ordinary order pays 1.6x. Nothing here pays an item back that another order
+ * asks for, and nothing sells to a vendor for more than it was worth, so there is no gold loop.
+ */
+export const RELIC_PREMIUM = 2;
+/** Share of days on which the hard order is a relic order (when the character's levels allow one). */
+export const RELIC_CHANCE = 0.2;
+export const RELIC_ORDERS: { itemId: string; skill: SkillId; level: number; qty: number }[] = [
+  { itemId: 'gem_grave_garnet', skill: 'mining', level: 10, qty: 3 },
+  { itemId: 'reliquary_fragment', skill: 'fishing', level: 30, qty: 3 },
+  { itemId: 'gem_bone_opal', skill: 'mining', level: 30, qty: 2 },
+  { itemId: 'gem_void_sapphire', skill: 'mining', level: 60, qty: 1 },
+  { itemId: 'covenant_seal', skill: 'gravedigging', level: 70, qty: 2 },
+];
+/** Smelted tin and bronze are asked for like any other processed good (the Workbench has no recipe that eats them). */
+const SMELTED_ORDERS: [itemId: string, level: number][] = [['ingot_tin', 3], ['ingot_bronze', 8]];
 
 /** Everything this character could plausibly hand in today, cheapest tier first. */
 export function candidatesFor(levels: Partial<Record<SkillId, number>>): Candidate[] {
@@ -80,6 +101,8 @@ export function candidatesFor(levels: Partial<Record<SkillId, number>>): Candida
     seen.add(c.itemId);
     out.push(c);
   };
+  for (const [itemId, req] of SMELTED_ORDERS) if (req <= level('mining')) add({ itemId, skill: 'mining', level: req, processed: true });
+  for (const r of RELIC_ORDERS) if (r.level <= level(r.skill)) add({ itemId: r.itemId, skill: r.skill, level: r.level, processed: false, fixedQty: r.qty });
   // Zone herb patches are skipped: their herbs come in through the seed list below at the level they can be planted.
   for (const n of Object.values(NODES)) if (n.skill !== 'gardening' && n.level <= level(n.skill)) add({ itemId: n.item, skill: n.skill, level: n.level, processed: false });
   for (const [, , skill, req, result] of PROCESSING_RECIPES) {
@@ -96,6 +119,13 @@ export function candidatesFor(levels: Partial<Record<SkillId, number>>): Candida
   return out.sort((a, b) => a.level - b.level || a.itemId.localeCompare(b.itemId));
 }
 
+/** What the Sexton asks of this item, if he ever does: the skill and level that unlock the order, and the fixed quantity of a relic order. */
+export function orderInfo(itemId: string): { skill: SkillId; level: number; relicQty: number | null } | null {
+  const all = Object.fromEntries(Object.keys(SKILLS).map((k) => [k, 99])) as Record<SkillId, number>;
+  const c = candidatesFor(all).find((x) => x.itemId === itemId);
+  return c ? { skill: c.skill, level: c.level, relicQty: c.fixedQty ?? null } : null;
+}
+
 const HARD_REWARDS: { minLevel: number; item: ContractItem }[] = [
   { minLevel: 60, item: { itemId: 'gem_void_sapphire', qty: 1 } },
   { minLevel: 30, item: { itemId: 'gem_bone_opal', qty: 1 } },
@@ -109,7 +139,10 @@ const MEDIUM_REWARDS: ContractItem[] = [
 /** Today's board for a character. Same inputs, same board: the server and the offline mock agree. */
 export function generateBoard(characterId: number, day: string, levels: Partial<Record<SkillId, number>>): Contract[] {
   const rand = mulberry32(hashString(`${characterId}:${day}`));
-  const pool = candidatesFor(levels);
+  const all = candidatesFor(levels);
+  // Relic orders only ever stand in for the hard slot (see RELIC_CHANCE), so the bands are built from the ordinary goods.
+  const relics = all.filter((c) => c.fixedQty);
+  const pool = all.filter((c) => !c.fixedQty);
   // Never fewer than three orders: a brand-new character with a thin pool still gets a board.
   const cands = pool.length >= CONTRACT_SLOTS ? pool : [...pool, ...candidatesFor({}).filter((c) => !pool.includes(c))];
   const third = Math.max(1, Math.floor(cands.length / 3));
@@ -119,16 +152,22 @@ export function generateBoard(characterId: number, day: string, levels: Partial<
   for (let slot = 0; slot < CONTRACT_SLOTS; slot++) {
     const band = bands[slot].filter((c) => !used.has(c.itemId));
     const from = band.length ? band : cands.filter((c) => !used.has(c.itemId));
-    const pick = from[Math.floor(rand() * from.length)] ?? cands[slot % cands.length];
+    let pick = from[Math.floor(rand() * from.length)] ?? cands[slot % cands.length];
+    // Every day the dice are rolled in the same order, so a board does not depend on whether relics were available.
+    const relicRoll = rand();
+    const relicPick = relics[Math.floor(rand() * relics.length)];
+    if (slot === 2 && relicRoll < RELIC_CHANCE && relicPick) pick = relicPick;
     used.add(pick.itemId);
     // Higher tiers ask for fewer; processed goods (three logs a plank) ask for far fewer; the hard order asks for less than the easy.
     let qty = Math.round(Math.min(80, Math.max(12, 70 - pick.level * 0.5)) * [1, 0.8, 0.6][slot]);
     if (pick.processed) qty = Math.max(6, Math.round(qty * 0.4));
     qty = Math.max(4, qty + Math.floor(rand() * 5) - 2);
+    if (pick.fixedQty) qty = pick.fixedQty;
     const sell = itemMeta(pick.itemId).sell;
-    const rewardGold = Math.round(qty * sell * 1.6 + 20 * (slot + 1));
+    const rewardGold = Math.round(qty * sell * (pick.fixedQty ? RELIC_PREMIUM : 1.6) + 20 * (slot + 1));
     let rewardItem: ContractItem | null = null;
-    if (slot === 2) rewardItem = HARD_REWARDS.find((r) => pick.level >= r.minLevel)!.item;
+    // A relic order hands back only the plainest gem: the rarer gems it asks for are never paid out again.
+    if (slot === 2) rewardItem = pick.fixedQty ? HARD_REWARDS[HARD_REWARDS.length - 1].item : HARD_REWARDS.find((r) => pick.level >= r.minLevel)!.item;
     else if (slot === 1 && rand() < 0.35) rewardItem = MEDIUM_REWARDS[Math.floor(rand() * MEDIUM_REWARDS.length)];
     board.push({ slot, itemId: pick.itemId, qty, skill: pick.skill, rewardGold, rewardItem });
   }
