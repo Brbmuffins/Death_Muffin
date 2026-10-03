@@ -362,6 +362,8 @@ export function runBalance(run: BalanceRun): BalanceResult {
             // Cremate: one corpse under a pack becomes a fire pillar.
             const pyre = corpsesNear.find((c) => enemies.some((e) => Math.hypot(e.x - c.x, e.z - c.z) <= 2.5));
             if (pyre && use('cremate', t)) send('cremate', pyre.x, pyre.z);
+            // Chain Pull: drag the nearest body that stands off (a caster or archer) into flail reach.
+            if (open('chain_pull') && nd - nearest.radius > 3.5 && nd - nearest.radius <= ABILITIES.chain_pull.range && use('chain_pull', t)) send('chain_pull', nearest.x, nearest.z);
             if (open('watchmans_ward') && near(5).length >= 2 && use('watchmans_ward', t)) send('watchmans_ward', p.x, p.z);
             if (open('last_light') && p.hp < stats.maxHp * 0.7 && near(12).length && use('last_light', t)) send('last_light', p.x, p.z);
             if (nd <= 7 && use('lantern_cone', t)) {
@@ -399,6 +401,14 @@ export function runBalance(run: BalanceRun): BalanceResult {
             hit('palm_strike', 1.8, beat ? 12 : 8, beat ? 1.4 : 1);
           } else if (disc.family === 'witch') {
             if (corpsesNear.length && use('harvest', t)) send('harvest', corpsesNear[0].x, corpsesNear[0].z);
+            // Butcher: carve a corpse underfoot into healing charms when hurt (the witch walks over one: 5%).
+            const carve = corpsesNear.find((c) => Math.hypot(c.x - p.x, c.z - p.z) <= 3);
+            if (open('butcher') && carve && p.hp < stats.maxHp * 0.75 && use('butcher', t)) {
+              send('butcher', carve.x, carve.z);
+              p.hp = Math.min(stats.maxHp, p.hp + stats.maxHp * 0.05);
+            }
+            // Hook Pull: drag a standing-off body to the hook.
+            if (open('hook_pull') && nd - nearest.radius > 4 && nd - nearest.radius <= ABILITIES.hook_pull.range && use('hook_pull', t)) send('hook_pull', nearest.x, nearest.z);
             if (nd <= 7 && use('crow_swarm', t)) send('crow_swarm', nearest.x, nearest.z);
             if (open('hex_charm') && nd <= 9 && use('hex_charm', t)) send('hex_charm', nearest.x, nearest.z);
             if (open('murder_of_crows') && near(6).length >= 3 && t >= murderUntil && use('murder_of_crows', t)) { murderUntil = t + 8; nextMurder = t; }
@@ -419,6 +429,16 @@ export function runBalance(run: BalanceRun): BalanceResult {
               send('lay_to_rest', corpsesNear[0].x, corpsesNear[0].z);
               p.hp = Math.min(stats.maxHp, p.hp + stats.maxHp * 0.06);
             }
+            // Echoes: the corpse-shadows a kill leaves (the Veilwalker's own, or a Lay to Rest pair) within the rites' reach.
+            const echoes = [...sim.corpses.values()].filter((c) => c.echoOwner && (c.echoOwner === '*' || c.echoOwner === p.id)
+              && Math.hypot(c.x - p.x, c.z - p.z) <= ABILITIES.crossing.range);
+            // Crossing: blink to the echo furthest from the fight when hurt.
+            const refuge = echoes.filter((c) => Math.hypot(c.x - nearest.x, c.z - nearest.z) > 8)
+              .sort((a, b) => Math.hypot(b.x - nearest.x, b.z - nearest.z) - Math.hypot(a.x - nearest.x, a.z - nearest.z))[0];
+            if (open('crossing') && refuge && p.hp < stats.maxHp * 0.5 && use('crossing', t)) send('crossing', refuge.x, refuge.z);
+            // Echo: raise the nearest echo into a spectral ally while enemies are close.
+            const raise = echoes.sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z))[0];
+            if (open('echo') && raise && nd <= 9 && use('echo', t)) send('echo', raise.x, raise.z);
             if (body && open('between_worlds') && p.hp < stats.maxHp * 0.4 && use('between_worlds', t)) body.betweenUntil = (t + 5) * 1000;
             hit('spirit_bolt', 11, 0, body?.veilForm ? 0.7 : 1);
           } else {
@@ -674,6 +694,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
           lastResourceGain = t;
         }
         if (ev.kind === 'harvest') { crowsUntil = t + 6; nextCrowPeck = t; }
+        if (ev.kind === 'crossing' && ev.tx != null && ev.tz != null) { p.x = ev.tx; p.z = ev.tz; }
         if (ev.kind === 'heal' && ev.player === p.id && ev.amount) p.hp = Math.min(stats.maxHp, p.hp + stats.maxHp * ev.amount);
       } else if (ev.t === 'litanyResult' && ev.by === p.id && p.alive) {
         // Reliquary barrier per body consumed, and the Mourner's corpse heal (AbilitySystem.onLitany).
