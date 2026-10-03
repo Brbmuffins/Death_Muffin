@@ -1,0 +1,6488 @@
+{
+ "version": 1,
+ "unit": "metres",
+ "cells": {
+  "hero_gravecaller|cape|attack|hem": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|attack|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|cast|hem": [
+   0.0351,
+   0.0314
+  ],
+  "hero_gravecaller|cape|cast|pen": [
+   0.038,
+   0.0346
+  ],
+  "hero_gravecaller|cape|channel|hem": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|channel|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|death2|hem": [
+   0.0895,
+   0.0666
+  ],
+  "hero_gravecaller|cape|death2|pen": [
+   0.0515,
+   0.009
+  ],
+  "hero_gravecaller|cape|death|hem": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|death|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|dig|hem": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|dig|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|flick|hem": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|flick|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|hurt2|hem": [
+   0.0772,
+   0.0535
+  ],
+  "hero_gravecaller|cape|hurt2|pen": [
+   0.0684,
+   0.0486
+  ],
+  "hero_gravecaller|cape|hurt|hem": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|hurt|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|idle|hem": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|idle|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|run|hem": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|run|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|slam|hem": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|slam|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|summon|hem": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|summon|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|sweep|hem": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|sweep|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|walk|hem": [
+   0,
+   0
+  ],
+  "hero_gravecaller|cape|walk|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|grimoire|attack|drift": [
+   0.42,
+   0.3012
+  ],
+  "hero_gravecaller|grimoire|attack|gap": [
+   0.0273,
+   0.0196
+  ],
+  "hero_gravecaller|grimoire|attack|pen": [
+   0.0313,
+   0.0266
+  ],
+  "hero_gravecaller|grimoire|cast|drift": [
+   0.2024,
+   0.1947
+  ],
+  "hero_gravecaller|grimoire|cast|gap": [
+   0.0063,
+   0.0061
+  ],
+  "hero_gravecaller|grimoire|cast|pen": [
+   0.0471,
+   0.0118
+  ],
+  "hero_gravecaller|grimoire|channel|drift": [
+   0.3519,
+   0.342
+  ],
+  "hero_gravecaller|grimoire|channel|gap": [
+   0.0311,
+   0.0234
+  ],
+  "hero_gravecaller|grimoire|channel|pen": [
+   0.0062,
+   0.0048
+  ],
+  "hero_gravecaller|grimoire|death2|drift": [
+   0.2398,
+   0.2326
+  ],
+  "hero_gravecaller|grimoire|death2|gap": [
+   0.0324,
+   0.0295
+  ],
+  "hero_gravecaller|grimoire|death2|pen": [
+   0.0095,
+   0
+  ],
+  "hero_gravecaller|grimoire|death|drift": [
+   0.474,
+   0.413
+  ],
+  "hero_gravecaller|grimoire|death|gap": [
+   0.0238,
+   0.0227
+  ],
+  "hero_gravecaller|grimoire|death|pen": [
+   0.0346,
+   0.0243
+  ],
+  "hero_gravecaller|grimoire|dig|drift": [
+   0.1496,
+   0.1495
+  ],
+  "hero_gravecaller|grimoire|dig|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|grimoire|dig|pen": [
+   0.0283,
+   0.0271
+  ],
+  "hero_gravecaller|grimoire|flick|drift": [
+   0.2962,
+   0.2799
+  ],
+  "hero_gravecaller|grimoire|flick|gap": [
+   0.0305,
+   0.0298
+  ],
+  "hero_gravecaller|grimoire|flick|pen": [
+   0.0326,
+   0.0278
+  ],
+  "hero_gravecaller|grimoire|hurt2|drift": [
+   0.3159,
+   0.2935
+  ],
+  "hero_gravecaller|grimoire|hurt2|gap": [
+   0.0198,
+   0.0158
+  ],
+  "hero_gravecaller|grimoire|hurt2|pen": [
+   0.034,
+   0.0205
+  ],
+  "hero_gravecaller|grimoire|hurt|drift": [
+   0.2836,
+   0.2715
+  ],
+  "hero_gravecaller|grimoire|hurt|gap": [
+   0.029,
+   0.0274
+  ],
+  "hero_gravecaller|grimoire|hurt|pen": [
+   0.0937,
+   0.0764
+  ],
+  "hero_gravecaller|grimoire|idle|drift": [
+   0.0279,
+   0.0247
+  ],
+  "hero_gravecaller|grimoire|idle|gap": [
+   0.0022,
+   0.0019
+  ],
+  "hero_gravecaller|grimoire|idle|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|grimoire|run|drift": [
+   0.3003,
+   0.2925
+  ],
+  "hero_gravecaller|grimoire|run|gap": [
+   0.026,
+   0.0248
+  ],
+  "hero_gravecaller|grimoire|run|pen": [
+   0.0343,
+   0.0259
+  ],
+  "hero_gravecaller|grimoire|slam|drift": [
+   0.4205,
+   0.4044
+  ],
+  "hero_gravecaller|grimoire|slam|gap": [
+   0.0252,
+   0.0217
+  ],
+  "hero_gravecaller|grimoire|slam|pen": [
+   0.0308,
+   0.0238
+  ],
+  "hero_gravecaller|grimoire|summon|drift": [
+   0.363,
+   0.3575
+  ],
+  "hero_gravecaller|grimoire|summon|gap": [
+   0.0246,
+   0.0228
+  ],
+  "hero_gravecaller|grimoire|summon|pen": [
+   0.0306,
+   0.028
+  ],
+  "hero_gravecaller|grimoire|sweep|drift": [
+   0.2891,
+   0.288
+  ],
+  "hero_gravecaller|grimoire|sweep|gap": [
+   0.0198,
+   0.0183
+  ],
+  "hero_gravecaller|grimoire|sweep|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|grimoire|walk|drift": [
+   0.1056,
+   0.1043
+  ],
+  "hero_gravecaller|grimoire|walk|gap": [
+   0.0173,
+   0.0172
+  ],
+  "hero_gravecaller|grimoire|walk|pen": [
+   0.0306,
+   0.0294
+  ],
+  "hero_gravecaller|helm|attack|float": [
+   0,
+   0
+  ],
+  "hero_gravecaller|helm|attack|sink": [
+   0.0246,
+   0.022
+  ],
+  "hero_gravecaller|helm|cast|float": [
+   0,
+   0
+  ],
+  "hero_gravecaller|helm|cast|sink": [
+   0.0166,
+   0.0166
+  ],
+  "hero_gravecaller|helm|channel|float": [
+   0,
+   0
+  ],
+  "hero_gravecaller|helm|channel|sink": [
+   0.0249,
+   0.0244
+  ],
+  "hero_gravecaller|helm|death2|float": [
+   0,
+   0
+  ],
+  "hero_gravecaller|helm|death2|sink": [
+   0.0453,
+   0.0399
+  ],
+  "hero_gravecaller|helm|death|float": [
+   0,
+   0
+  ],
+  "hero_gravecaller|helm|death|sink": [
+   0.0245,
+   0.0235
+  ],
+  "hero_gravecaller|helm|dig|float": [
+   0,
+   0
+  ],
+  "hero_gravecaller|helm|dig|sink": [
+   0.0166,
+   0.0166
+  ],
+  "hero_gravecaller|helm|flick|float": [
+   0,
+   0
+  ],
+  "hero_gravecaller|helm|flick|sink": [
+   0.0175,
+   0.0168
+  ],
+  "hero_gravecaller|helm|hurt2|float": [
+   0,
+   0
+  ],
+  "hero_gravecaller|helm|hurt2|sink": [
+   0.0372,
+   0.0312
+  ],
+  "hero_gravecaller|helm|hurt|float": [
+   0,
+   0
+  ],
+  "hero_gravecaller|helm|hurt|sink": [
+   0.0202,
+   0.0192
+  ],
+  "hero_gravecaller|helm|idle|float": [
+   0,
+   0
+  ],
+  "hero_gravecaller|helm|idle|sink": [
+   0.0174,
+   0.0166
+  ],
+  "hero_gravecaller|helm|run|float": [
+   0,
+   0
+  ],
+  "hero_gravecaller|helm|run|sink": [
+   0.0283,
+   0.0282
+  ],
+  "hero_gravecaller|helm|slam|float": [
+   0,
+   0
+  ],
+  "hero_gravecaller|helm|slam|sink": [
+   0.0243,
+   0.0238
+  ],
+  "hero_gravecaller|helm|summon|float": [
+   0,
+   0
+  ],
+  "hero_gravecaller|helm|summon|sink": [
+   0.0176,
+   0.0166
+  ],
+  "hero_gravecaller|helm|sweep|float": [
+   0,
+   0
+  ],
+  "hero_gravecaller|helm|sweep|sink": [
+   0.0166,
+   0.0166
+  ],
+  "hero_gravecaller|helm|walk|float": [
+   0,
+   0
+  ],
+  "hero_gravecaller|helm|walk|sink": [
+   0.0179,
+   0.0177
+  ],
+  "hero_gravecaller|mourning_bell|attack|drift": [
+   0.4774,
+   0.3724
+  ],
+  "hero_gravecaller|mourning_bell|attack|gap": [
+   0.0443,
+   0.014
+  ],
+  "hero_gravecaller|mourning_bell|attack|pen": [
+   0.0416,
+   0
+  ],
+  "hero_gravecaller|mourning_bell|cast|drift": [
+   0.3374,
+   0.3287
+  ],
+  "hero_gravecaller|mourning_bell|cast|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|mourning_bell|cast|pen": [
+   0.0402,
+   0.0101
+  ],
+  "hero_gravecaller|mourning_bell|channel|drift": [
+   0.4049,
+   0.39
+  ],
+  "hero_gravecaller|mourning_bell|channel|gap": [
+   0.0265,
+   0.0209
+  ],
+  "hero_gravecaller|mourning_bell|channel|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|mourning_bell|death2|drift": [
+   0.2567,
+   0.2466
+  ],
+  "hero_gravecaller|mourning_bell|death2|gap": [
+   0.0086,
+   0.0067
+  ],
+  "hero_gravecaller|mourning_bell|death2|pen": [
+   0.0151,
+   0
+  ],
+  "hero_gravecaller|mourning_bell|death|drift": [
+   0.4269,
+   0.4087
+  ],
+  "hero_gravecaller|mourning_bell|death|gap": [
+   0.021,
+   0.0181
+  ],
+  "hero_gravecaller|mourning_bell|death|pen": [
+   0.0276,
+   0.0003
+  ],
+  "hero_gravecaller|mourning_bell|dig|drift": [
+   0.1694,
+   0.1688
+  ],
+  "hero_gravecaller|mourning_bell|dig|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|mourning_bell|dig|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|mourning_bell|flick|drift": [
+   0.4305,
+   0.4198
+  ],
+  "hero_gravecaller|mourning_bell|flick|gap": [
+   0.0169,
+   0.0157
+  ],
+  "hero_gravecaller|mourning_bell|flick|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|mourning_bell|hurt2|drift": [
+   0.4167,
+   0.4157
+  ],
+  "hero_gravecaller|mourning_bell|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|mourning_bell|hurt2|pen": [
+   0.0197,
+   0
+  ],
+  "hero_gravecaller|mourning_bell|hurt|drift": [
+   0.4155,
+   0.413
+  ],
+  "hero_gravecaller|mourning_bell|hurt|gap": [
+   0.0068,
+   0.0029
+  ],
+  "hero_gravecaller|mourning_bell|hurt|pen": [
+   0.0044,
+   0.0002
+  ],
+  "hero_gravecaller|mourning_bell|idle|drift": [
+   0.042,
+   0.0377
+  ],
+  "hero_gravecaller|mourning_bell|idle|gap": [
+   0.0021,
+   0.0018
+  ],
+  "hero_gravecaller|mourning_bell|idle|pen": [
+   0.0426,
+   0.0378
+  ],
+  "hero_gravecaller|mourning_bell|run|drift": [
+   0.3226,
+   0.2823
+  ],
+  "hero_gravecaller|mourning_bell|run|gap": [
+   0.0053,
+   0.0026
+  ],
+  "hero_gravecaller|mourning_bell|run|pen": [
+   0.0334,
+   0.0017
+  ],
+  "hero_gravecaller|mourning_bell|slam|drift": [
+   0.4799,
+   0.4633
+  ],
+  "hero_gravecaller|mourning_bell|slam|gap": [
+   0.0425,
+   0.0293
+  ],
+  "hero_gravecaller|mourning_bell|slam|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|mourning_bell|summon|drift": [
+   0.3956,
+   0.3845
+  ],
+  "hero_gravecaller|mourning_bell|summon|gap": [
+   0.0368,
+   0.0344
+  ],
+  "hero_gravecaller|mourning_bell|summon|pen": [
+   0.034,
+   0.0049
+  ],
+  "hero_gravecaller|mourning_bell|sweep|drift": [
+   0.4503,
+   0.4498
+  ],
+  "hero_gravecaller|mourning_bell|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|mourning_bell|sweep|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|mourning_bell|walk|drift": [
+   0.1124,
+   0.1093
+  ],
+  "hero_gravecaller|mourning_bell|walk|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|mourning_bell|walk|pen": [
+   0.0627,
+   0.0541
+  ],
+  "hero_gravecaller|scythe|attack|drift": [
+   2.0202,
+   1.5393
+  ],
+  "hero_gravecaller|scythe|attack|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|scythe|attack|pen": [
+   0.0752,
+   0.0691
+  ],
+  "hero_gravecaller|scythe|cast|drift": [
+   1.0522,
+   1.0476
+  ],
+  "hero_gravecaller|scythe|cast|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|scythe|cast|pen": [
+   0.0483,
+   0.0121
+  ],
+  "hero_gravecaller|scythe|channel|drift": [
+   1.6415,
+   1.6399
+  ],
+  "hero_gravecaller|scythe|channel|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|scythe|channel|pen": [
+   0.008,
+   0
+  ],
+  "hero_gravecaller|scythe|death2|drift": [
+   1.1812,
+   1.1805
+  ],
+  "hero_gravecaller|scythe|death2|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|scythe|death2|pen": [
+   0.0427,
+   0
+  ],
+  "hero_gravecaller|scythe|death|drift": [
+   1.7908,
+   1.6472
+  ],
+  "hero_gravecaller|scythe|death|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|scythe|death|pen": [
+   0.0452,
+   0.0365
+  ],
+  "hero_gravecaller|scythe|dig|drift": [
+   0.3407,
+   0.3399
+  ],
+  "hero_gravecaller|scythe|dig|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|scythe|dig|pen": [
+   0.072,
+   0.0036
+  ],
+  "hero_gravecaller|scythe|flick|drift": [
+   2.0072,
+   1.9001
+  ],
+  "hero_gravecaller|scythe|flick|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|scythe|flick|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|scythe|hurt2|drift": [
+   1.8911,
+   1.8424
+  ],
+  "hero_gravecaller|scythe|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|scythe|hurt2|pen": [
+   0.0632,
+   0.0418
+  ],
+  "hero_gravecaller|scythe|hurt|drift": [
+   1.6184,
+   1.5984
+  ],
+  "hero_gravecaller|scythe|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|scythe|hurt|pen": [
+   0.0236,
+   0.0012
+  ],
+  "hero_gravecaller|scythe|idle|drift": [
+   0.1947,
+   0.1446
+  ],
+  "hero_gravecaller|scythe|idle|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|scythe|idle|pen": [
+   0.0498,
+   0.0294
+  ],
+  "hero_gravecaller|scythe|run|drift": [
+   1.7024,
+   1.5208
+  ],
+  "hero_gravecaller|scythe|run|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|scythe|run|pen": [
+   0.0424,
+   0.0418
+  ],
+  "hero_gravecaller|scythe|slam|drift": [
+   2.0182,
+   1.9604
+  ],
+  "hero_gravecaller|scythe|slam|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|scythe|slam|pen": [
+   0.0432,
+   0.0423
+  ],
+  "hero_gravecaller|scythe|summon|drift": [
+   2.123,
+   1.9528
+  ],
+  "hero_gravecaller|scythe|summon|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|scythe|summon|pen": [
+   0.0573,
+   0.03
+  ],
+  "hero_gravecaller|scythe|sweep|drift": [
+   1.651,
+   1.6185
+  ],
+  "hero_gravecaller|scythe|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|scythe|sweep|pen": [
+   0.0271,
+   0
+  ],
+  "hero_gravecaller|scythe|walk|drift": [
+   0.4794,
+   0.4519
+  ],
+  "hero_gravecaller|scythe|walk|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|scythe|walk|pen": [
+   0.0526,
+   0.0266
+  ],
+  "hero_gravecaller|sickle|attack|drift": [
+   0.6401,
+   0.4467
+  ],
+  "hero_gravecaller|sickle|attack|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|attack|pen": [
+   0.0406,
+   0.0229
+  ],
+  "hero_gravecaller|sickle|cast|drift": [
+   0.3815,
+   0.3774
+  ],
+  "hero_gravecaller|sickle|cast|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|cast|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|channel|drift": [
+   0.484,
+   0.4719
+  ],
+  "hero_gravecaller|sickle|channel|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|channel|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|death2|drift": [
+   0.5022,
+   0.5012
+  ],
+  "hero_gravecaller|sickle|death2|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|death2|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|death|drift": [
+   0.6271,
+   0.5803
+  ],
+  "hero_gravecaller|sickle|death|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|death|pen": [
+   0.0159,
+   0.0141
+  ],
+  "hero_gravecaller|sickle|dig|drift": [
+   0.1484,
+   0.1482
+  ],
+  "hero_gravecaller|sickle|dig|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|dig|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|flick|drift": [
+   0.7454,
+   0.6791
+  ],
+  "hero_gravecaller|sickle|flick|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|flick|pen": [
+   0.0091,
+   0.0072
+  ],
+  "hero_gravecaller|sickle|hurt2|drift": [
+   0.6201,
+   0.6
+  ],
+  "hero_gravecaller|sickle|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|hurt2|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|hurt|drift": [
+   0.5021,
+   0.5015
+  ],
+  "hero_gravecaller|sickle|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|hurt|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|idle|drift": [
+   0.0761,
+   0.0594
+  ],
+  "hero_gravecaller|sickle|idle|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|idle|pen": [
+   0.0127,
+   0.0117
+  ],
+  "hero_gravecaller|sickle|run|drift": [
+   0.5725,
+   0.5081
+  ],
+  "hero_gravecaller|sickle|run|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|run|pen": [
+   0.007,
+   0.0038
+  ],
+  "hero_gravecaller|sickle|slam|drift": [
+   0.6382,
+   0.6166
+  ],
+  "hero_gravecaller|sickle|slam|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|slam|pen": [
+   0.0399,
+   0.0364
+  ],
+  "hero_gravecaller|sickle|summon|drift": [
+   0.7158,
+   0.6772
+  ],
+  "hero_gravecaller|sickle|summon|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|summon|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|sweep|drift": [
+   0.5368,
+   0.5344
+  ],
+  "hero_gravecaller|sickle|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|sweep|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|walk|drift": [
+   0.1697,
+   0.1578
+  ],
+  "hero_gravecaller|sickle|walk|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|sickle|walk|pen": [
+   0.0125,
+   0.0087
+  ],
+  "hero_gravecaller|skull_focus|attack|drift": [
+   0.49,
+   0.3354
+  ],
+  "hero_gravecaller|skull_focus|attack|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|skull_focus|attack|pen": [
+   0.035,
+   0.0328
+  ],
+  "hero_gravecaller|skull_focus|cast|drift": [
+   0.2393,
+   0.2285
+  ],
+  "hero_gravecaller|skull_focus|cast|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|skull_focus|cast|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|skull_focus|channel|drift": [
+   0.418,
+   0.4075
+  ],
+  "hero_gravecaller|skull_focus|channel|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|skull_focus|channel|pen": [
+   0.0231,
+   0.016
+  ],
+  "hero_gravecaller|skull_focus|death2|drift": [
+   0.2719,
+   0.2632
+  ],
+  "hero_gravecaller|skull_focus|death2|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|skull_focus|death2|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|skull_focus|death|drift": [
+   0.4524,
+   0.4371
+  ],
+  "hero_gravecaller|skull_focus|death|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|skull_focus|death|pen": [
+   0.0118,
+   0.0067
+  ],
+  "hero_gravecaller|skull_focus|dig|drift": [
+   0.16,
+   0.1599
+  ],
+  "hero_gravecaller|skull_focus|dig|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|skull_focus|dig|pen": [
+   0.0354,
+   0.0297
+  ],
+  "hero_gravecaller|skull_focus|flick|drift": [
+   0.3646,
+   0.3372
+  ],
+  "hero_gravecaller|skull_focus|flick|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|skull_focus|flick|pen": [
+   0.0339,
+   0.0323
+  ],
+  "hero_gravecaller|skull_focus|hurt2|drift": [
+   0.3544,
+   0.3459
+  ],
+  "hero_gravecaller|skull_focus|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|skull_focus|hurt2|pen": [
+   0.0077,
+   0.0053
+  ],
+  "hero_gravecaller|skull_focus|hurt|drift": [
+   0.3471,
+   0.3345
+  ],
+  "hero_gravecaller|skull_focus|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|skull_focus|hurt|pen": [
+   0.1057,
+   0.1002
+  ],
+  "hero_gravecaller|skull_focus|idle|drift": [
+   0.0379,
+   0.0337
+  ],
+  "hero_gravecaller|skull_focus|idle|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|skull_focus|idle|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|skull_focus|run|drift": [
+   0.3543,
+   0.3496
+  ],
+  "hero_gravecaller|skull_focus|run|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|skull_focus|run|pen": [
+   0.0349,
+   0.0346
+  ],
+  "hero_gravecaller|skull_focus|slam|drift": [
+   0.4864,
+   0.4405
+  ],
+  "hero_gravecaller|skull_focus|slam|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|skull_focus|slam|pen": [
+   0.0323,
+   0.0278
+  ],
+  "hero_gravecaller|skull_focus|summon|drift": [
+   0.4594,
+   0.4433
+  ],
+  "hero_gravecaller|skull_focus|summon|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|skull_focus|summon|pen": [
+   0.0257,
+   0.0241
+  ],
+  "hero_gravecaller|skull_focus|sweep|drift": [
+   0.3628,
+   0.3604
+  ],
+  "hero_gravecaller|skull_focus|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|skull_focus|sweep|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|skull_focus|walk|drift": [
+   0.1231,
+   0.1211
+  ],
+  "hero_gravecaller|skull_focus|walk|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|skull_focus|walk|pen": [
+   0.0327,
+   0.0252
+  ],
+  "hero_gravecaller|staff|attack|drift": [
+   2.1507,
+   1.6388
+  ],
+  "hero_gravecaller|staff|attack|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|staff|attack|pen": [
+   0.0665,
+   0.0567
+  ],
+  "hero_gravecaller|staff|cast|drift": [
+   1.1161,
+   1.1117
+  ],
+  "hero_gravecaller|staff|cast|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|staff|cast|pen": [
+   0.0542,
+   0.0136
+  ],
+  "hero_gravecaller|staff|channel|drift": [
+   1.7399,
+   1.7362
+  ],
+  "hero_gravecaller|staff|channel|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|staff|channel|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|staff|death2|drift": [
+   1.2295,
+   1.2287
+  ],
+  "hero_gravecaller|staff|death2|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|staff|death2|pen": [
+   0.0097,
+   0.0054
+  ],
+  "hero_gravecaller|staff|death|drift": [
+   1.9066,
+   1.7502
+  ],
+  "hero_gravecaller|staff|death|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|staff|death|pen": [
+   0.046,
+   0.0443
+  ],
+  "hero_gravecaller|staff|dig|drift": [
+   0.3625,
+   0.3616
+  ],
+  "hero_gravecaller|staff|dig|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|staff|dig|pen": [
+   0.0591,
+   0.003
+  ],
+  "hero_gravecaller|staff|flick|drift": [
+   2.1196,
+   1.9937
+  ],
+  "hero_gravecaller|staff|flick|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|staff|flick|pen": [
+   0.026,
+   0.0244
+  ],
+  "hero_gravecaller|staff|hurt2|drift": [
+   1.9837,
+   1.9405
+  ],
+  "hero_gravecaller|staff|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|staff|hurt2|pen": [
+   0.0912,
+   0.0683
+  ],
+  "hero_gravecaller|staff|hurt|drift": [
+   1.7126,
+   1.6893
+  ],
+  "hero_gravecaller|staff|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|staff|hurt|pen": [
+   0.0034,
+   0.0002
+  ],
+  "hero_gravecaller|staff|idle|drift": [
+   0.2028,
+   0.1508
+  ],
+  "hero_gravecaller|staff|idle|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|staff|idle|pen": [
+   0.0575,
+   0.053
+  ],
+  "hero_gravecaller|staff|run|drift": [
+   1.7788,
+   1.5939
+  ],
+  "hero_gravecaller|staff|run|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|staff|run|pen": [
+   0.0408,
+   0.0385
+  ],
+  "hero_gravecaller|staff|slam|drift": [
+   2.1469,
+   2.08
+  ],
+  "hero_gravecaller|staff|slam|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|staff|slam|pen": [
+   0.0438,
+   0.0427
+  ],
+  "hero_gravecaller|staff|summon|drift": [
+   2.2381,
+   2.0485
+  ],
+  "hero_gravecaller|staff|summon|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|staff|summon|pen": [
+   0.086,
+   0.0599
+  ],
+  "hero_gravecaller|staff|sweep|drift": [
+   1.7483,
+   1.7091
+  ],
+  "hero_gravecaller|staff|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|staff|sweep|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|staff|walk|drift": [
+   0.5008,
+   0.472
+  ],
+  "hero_gravecaller|staff|walk|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|staff|walk|pen": [
+   0.0433,
+   0.0239
+  ],
+  "hero_gravecaller|wand|attack|drift": [
+   0.5583,
+   0.3894
+  ],
+  "hero_gravecaller|wand|attack|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|attack|pen": [
+   0.0382,
+   0.0125
+  ],
+  "hero_gravecaller|wand|cast|drift": [
+   0.3321,
+   0.3286
+  ],
+  "hero_gravecaller|wand|cast|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|cast|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|channel|drift": [
+   0.4201,
+   0.4119
+  ],
+  "hero_gravecaller|wand|channel|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|channel|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|death2|drift": [
+   0.4334,
+   0.4326
+  ],
+  "hero_gravecaller|wand|death2|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|death2|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|death|drift": [
+   0.5465,
+   0.5061
+  ],
+  "hero_gravecaller|wand|death|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|death|pen": [
+   0.0241,
+   0.0213
+  ],
+  "hero_gravecaller|wand|dig|drift": [
+   0.1284,
+   0.1282
+  ],
+  "hero_gravecaller|wand|dig|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|dig|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|flick|drift": [
+   0.647,
+   0.5874
+  ],
+  "hero_gravecaller|wand|flick|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|flick|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|hurt2|drift": [
+   0.5412,
+   0.523
+  ],
+  "hero_gravecaller|wand|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|hurt2|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|hurt|drift": [
+   0.4368,
+   0.4366
+  ],
+  "hero_gravecaller|wand|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|hurt|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|idle|drift": [
+   0.0657,
+   0.0513
+  ],
+  "hero_gravecaller|wand|idle|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|idle|pen": [
+   0.0134,
+   0.0115
+  ],
+  "hero_gravecaller|wand|run|drift": [
+   0.4983,
+   0.4419
+  ],
+  "hero_gravecaller|wand|run|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|run|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|slam|drift": [
+   0.556,
+   0.5376
+  ],
+  "hero_gravecaller|wand|slam|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|slam|pen": [
+   0.0413,
+   0.029
+  ],
+  "hero_gravecaller|wand|summon|drift": [
+   0.6206,
+   0.5844
+  ],
+  "hero_gravecaller|wand|summon|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|summon|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|sweep|drift": [
+   0.4674,
+   0.4656
+  ],
+  "hero_gravecaller|wand|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|sweep|pen": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|walk|drift": [
+   0.147,
+   0.1367
+  ],
+  "hero_gravecaller|wand|walk|gap": [
+   0,
+   0
+  ],
+  "hero_gravecaller|wand|walk|pen": [
+   0.0094,
+   0.003
+  ],
+  "hero_mourner|cape|attack|hem": [
+   0,
+   0
+  ],
+  "hero_mourner|cape|attack|pen": [
+   0.006,
+   0
+  ],
+  "hero_mourner|cape|cast|hem": [
+   0.0692,
+   0.0561
+  ],
+  "hero_mourner|cape|cast|pen": [
+   0.0408,
+   0.0395
+  ],
+  "hero_mourner|cape|channel|hem": [
+   0,
+   0
+  ],
+  "hero_mourner|cape|channel|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|cape|death2|hem": [
+   0.1091,
+   0.0995
+  ],
+  "hero_mourner|cape|death2|pen": [
+   0.0637,
+   0.0282
+  ],
+  "hero_mourner|cape|death|hem": [
+   0,
+   0
+  ],
+  "hero_mourner|cape|death|pen": [
+   0.0024,
+   0
+  ],
+  "hero_mourner|cape|dig|hem": [
+   0,
+   0
+  ],
+  "hero_mourner|cape|dig|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|cape|flick|hem": [
+   0,
+   0
+  ],
+  "hero_mourner|cape|flick|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|cape|hurt2|hem": [
+   0.096,
+   0.0757
+  ],
+  "hero_mourner|cape|hurt2|pen": [
+   0.0611,
+   0.0475
+  ],
+  "hero_mourner|cape|hurt|hem": [
+   0,
+   0
+  ],
+  "hero_mourner|cape|hurt|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|cape|idle|hem": [
+   0,
+   0
+  ],
+  "hero_mourner|cape|idle|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|cape|run|hem": [
+   0,
+   0
+  ],
+  "hero_mourner|cape|run|pen": [
+   0.0269,
+   0.024
+  ],
+  "hero_mourner|cape|slam|hem": [
+   0,
+   0
+  ],
+  "hero_mourner|cape|slam|pen": [
+   0.0116,
+   0.0031
+  ],
+  "hero_mourner|cape|summon|hem": [
+   0,
+   0
+  ],
+  "hero_mourner|cape|summon|pen": [
+   0.0005,
+   0
+  ],
+  "hero_mourner|cape|sweep|hem": [
+   0.0067,
+   0.0062
+  ],
+  "hero_mourner|cape|sweep|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|cape|walk|hem": [
+   0,
+   0
+  ],
+  "hero_mourner|cape|walk|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|grimoire|attack|drift": [
+   0.434,
+   0.3005
+  ],
+  "hero_mourner|grimoire|attack|gap": [
+   0.0201,
+   0.017
+  ],
+  "hero_mourner|grimoire|attack|pen": [
+   0.0942,
+   0.0799
+  ],
+  "hero_mourner|grimoire|cast|drift": [
+   0.1935,
+   0.1864
+  ],
+  "hero_mourner|grimoire|cast|gap": [
+   0.0058,
+   0.0036
+  ],
+  "hero_mourner|grimoire|cast|pen": [
+   0.0431,
+   0.0429
+  ],
+  "hero_mourner|grimoire|channel|drift": [
+   0.3562,
+   0.3496
+  ],
+  "hero_mourner|grimoire|channel|gap": [
+   0.0175,
+   0.0149
+  ],
+  "hero_mourner|grimoire|channel|pen": [
+   0.0941,
+   0.0751
+  ],
+  "hero_mourner|grimoire|death2|drift": [
+   0.2465,
+   0.235
+  ],
+  "hero_mourner|grimoire|death2|gap": [
+   0.0217,
+   0.0185
+  ],
+  "hero_mourner|grimoire|death2|pen": [
+   0.0679,
+   0.0442
+  ],
+  "hero_mourner|grimoire|death|drift": [
+   0.4763,
+   0.407
+  ],
+  "hero_mourner|grimoire|death|gap": [
+   0.026,
+   0.0196
+  ],
+  "hero_mourner|grimoire|death|pen": [
+   0.0923,
+   0.0854
+  ],
+  "hero_mourner|grimoire|dig|drift": [
+   0.1443,
+   0.1442
+  ],
+  "hero_mourner|grimoire|dig|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|grimoire|dig|pen": [
+   0.0874,
+   0.0806
+  ],
+  "hero_mourner|grimoire|flick|drift": [
+   0.2969,
+   0.2833
+  ],
+  "hero_mourner|grimoire|flick|gap": [
+   0.0202,
+   0.0155
+  ],
+  "hero_mourner|grimoire|flick|pen": [
+   0.0762,
+   0.0733
+  ],
+  "hero_mourner|grimoire|hurt2|drift": [
+   0.3129,
+   0.2916
+  ],
+  "hero_mourner|grimoire|hurt2|gap": [
+   0.0141,
+   0.0098
+  ],
+  "hero_mourner|grimoire|hurt2|pen": [
+   0.083,
+   0.0741
+  ],
+  "hero_mourner|grimoire|hurt|drift": [
+   0.278,
+   0.2742
+  ],
+  "hero_mourner|grimoire|hurt|gap": [
+   0.0152,
+   0.015
+  ],
+  "hero_mourner|grimoire|hurt|pen": [
+   0.0889,
+   0.0873
+  ],
+  "hero_mourner|grimoire|idle|drift": [
+   0.029,
+   0.0257
+  ],
+  "hero_mourner|grimoire|idle|gap": [
+   0.0017,
+   0.0016
+  ],
+  "hero_mourner|grimoire|idle|pen": [
+   0.0312,
+   0.0298
+  ],
+  "hero_mourner|grimoire|run|drift": [
+   0.3199,
+   0.299
+  ],
+  "hero_mourner|grimoire|run|gap": [
+   0.02,
+   0.0182
+  ],
+  "hero_mourner|grimoire|run|pen": [
+   0.0893,
+   0.0879
+  ],
+  "hero_mourner|grimoire|slam|drift": [
+   0.4395,
+   0.3994
+  ],
+  "hero_mourner|grimoire|slam|gap": [
+   0.0108,
+   0.0078
+  ],
+  "hero_mourner|grimoire|slam|pen": [
+   0.0816,
+   0.078
+  ],
+  "hero_mourner|grimoire|summon|drift": [
+   0.3515,
+   0.3457
+  ],
+  "hero_mourner|grimoire|summon|gap": [
+   0.0188,
+   0.0156
+  ],
+  "hero_mourner|grimoire|summon|pen": [
+   0.0721,
+   0.0638
+  ],
+  "hero_mourner|grimoire|sweep|drift": [
+   0.2769,
+   0.2759
+  ],
+  "hero_mourner|grimoire|sweep|gap": [
+   0.0186,
+   0.0175
+  ],
+  "hero_mourner|grimoire|sweep|pen": [
+   0.0334,
+   0.0331
+  ],
+  "hero_mourner|grimoire|walk|drift": [
+   0.1094,
+   0.1081
+  ],
+  "hero_mourner|grimoire|walk|gap": [
+   0.0168,
+   0.0166
+  ],
+  "hero_mourner|grimoire|walk|pen": [
+   0.0694,
+   0.0678
+  ],
+  "hero_mourner|helm|attack|float": [
+   0,
+   0
+  ],
+  "hero_mourner|helm|attack|sink": [
+   0.0381,
+   0.0375
+  ],
+  "hero_mourner|helm|cast|float": [
+   0,
+   0
+  ],
+  "hero_mourner|helm|cast|sink": [
+   0.0391,
+   0.0391
+  ],
+  "hero_mourner|helm|channel|float": [
+   0,
+   0
+  ],
+  "hero_mourner|helm|channel|sink": [
+   0.0383,
+   0.0383
+  ],
+  "hero_mourner|helm|death2|float": [
+   0,
+   0
+  ],
+  "hero_mourner|helm|death2|sink": [
+   0.0386,
+   0.0386
+  ],
+  "hero_mourner|helm|death|float": [
+   0,
+   0
+  ],
+  "hero_mourner|helm|death|sink": [
+   0.0387,
+   0.0387
+  ],
+  "hero_mourner|helm|dig|float": [
+   0,
+   0
+  ],
+  "hero_mourner|helm|dig|sink": [
+   0.038,
+   0.0374
+  ],
+  "hero_mourner|helm|flick|float": [
+   0,
+   0
+  ],
+  "hero_mourner|helm|flick|sink": [
+   0.038,
+   0.038
+  ],
+  "hero_mourner|helm|hurt2|float": [
+   0,
+   0
+  ],
+  "hero_mourner|helm|hurt2|sink": [
+   0.0382,
+   0.0382
+  ],
+  "hero_mourner|helm|hurt|float": [
+   0,
+   0
+  ],
+  "hero_mourner|helm|hurt|sink": [
+   0.0384,
+   0.0384
+  ],
+  "hero_mourner|helm|idle|float": [
+   0,
+   0
+  ],
+  "hero_mourner|helm|idle|sink": [
+   0.0382,
+   0.0382
+  ],
+  "hero_mourner|helm|run|float": [
+   0,
+   0
+  ],
+  "hero_mourner|helm|run|sink": [
+   0.038,
+   0.0375
+  ],
+  "hero_mourner|helm|slam|float": [
+   0,
+   0
+  ],
+  "hero_mourner|helm|slam|sink": [
+   0.0381,
+   0.038
+  ],
+  "hero_mourner|helm|summon|float": [
+   0,
+   0
+  ],
+  "hero_mourner|helm|summon|sink": [
+   0.038,
+   0.0376
+  ],
+  "hero_mourner|helm|sweep|float": [
+   0,
+   0
+  ],
+  "hero_mourner|helm|sweep|sink": [
+   0.0382,
+   0.0381
+  ],
+  "hero_mourner|helm|walk|float": [
+   0,
+   0
+  ],
+  "hero_mourner|helm|walk|sink": [
+   0.0381,
+   0.0376
+  ],
+  "hero_mourner|mourning_bell|attack|drift": [
+   0.4769,
+   0.3725
+  ],
+  "hero_mourner|mourning_bell|attack|gap": [
+   0.0307,
+   0.017
+  ],
+  "hero_mourner|mourning_bell|attack|pen": [
+   0.0411,
+   0
+  ],
+  "hero_mourner|mourning_bell|cast|drift": [
+   0.3375,
+   0.3288
+  ],
+  "hero_mourner|mourning_bell|cast|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|mourning_bell|cast|pen": [
+   0.0471,
+   0.0118
+  ],
+  "hero_mourner|mourning_bell|channel|drift": [
+   0.4039,
+   0.3887
+  ],
+  "hero_mourner|mourning_bell|channel|gap": [
+   0.0182,
+   0.0146
+  ],
+  "hero_mourner|mourning_bell|channel|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|mourning_bell|death2|drift": [
+   0.2565,
+   0.2464
+  ],
+  "hero_mourner|mourning_bell|death2|gap": [
+   0.0087,
+   0.0049
+  ],
+  "hero_mourner|mourning_bell|death2|pen": [
+   0.0024,
+   0
+  ],
+  "hero_mourner|mourning_bell|death|drift": [
+   0.4274,
+   0.4091
+  ],
+  "hero_mourner|mourning_bell|death|gap": [
+   0.0231,
+   0.0157
+  ],
+  "hero_mourner|mourning_bell|death|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|mourning_bell|dig|drift": [
+   0.1732,
+   0.1726
+  ],
+  "hero_mourner|mourning_bell|dig|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|mourning_bell|dig|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|mourning_bell|flick|drift": [
+   0.4302,
+   0.4209
+  ],
+  "hero_mourner|mourning_bell|flick|gap": [
+   0.0129,
+   0.0122
+  ],
+  "hero_mourner|mourning_bell|flick|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|mourning_bell|hurt2|drift": [
+   0.4165,
+   0.4155
+  ],
+  "hero_mourner|mourning_bell|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|mourning_bell|hurt2|pen": [
+   0.0391,
+   0.0028
+  ],
+  "hero_mourner|mourning_bell|hurt|drift": [
+   0.4153,
+   0.4129
+  ],
+  "hero_mourner|mourning_bell|hurt|gap": [
+   0.0059,
+   0.0027
+  ],
+  "hero_mourner|mourning_bell|hurt|pen": [
+   0.016,
+   0.0077
+  ],
+  "hero_mourner|mourning_bell|idle|drift": [
+   0.0421,
+   0.0377
+  ],
+  "hero_mourner|mourning_bell|idle|gap": [
+   0.0012,
+   0.001
+  ],
+  "hero_mourner|mourning_bell|idle|pen": [
+   0.0301,
+   0.0263
+  ],
+  "hero_mourner|mourning_bell|run|drift": [
+   0.3373,
+   0.2992
+  ],
+  "hero_mourner|mourning_bell|run|gap": [
+   0.0027,
+   0.0013
+  ],
+  "hero_mourner|mourning_bell|run|pen": [
+   0.0081,
+   0.001
+  ],
+  "hero_mourner|mourning_bell|slam|drift": [
+   0.4799,
+   0.4633
+  ],
+  "hero_mourner|mourning_bell|slam|gap": [
+   0.0375,
+   0.0202
+  ],
+  "hero_mourner|mourning_bell|slam|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|mourning_bell|summon|drift": [
+   0.3952,
+   0.3841
+  ],
+  "hero_mourner|mourning_bell|summon|gap": [
+   0.0294,
+   0.0281
+  ],
+  "hero_mourner|mourning_bell|summon|pen": [
+   0.0623,
+   0.0386
+  ],
+  "hero_mourner|mourning_bell|sweep|drift": [
+   0.4501,
+   0.4495
+  ],
+  "hero_mourner|mourning_bell|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|mourning_bell|sweep|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|mourning_bell|walk|drift": [
+   0.1124,
+   0.1094
+  ],
+  "hero_mourner|mourning_bell|walk|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|mourning_bell|walk|pen": [
+   0.0524,
+   0.0441
+  ],
+  "hero_mourner|scythe|attack|drift": [
+   2.0346,
+   1.5517
+  ],
+  "hero_mourner|scythe|attack|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|scythe|attack|pen": [
+   0.0525,
+   0.0456
+  ],
+  "hero_mourner|scythe|cast|drift": [
+   1.0528,
+   1.0488
+  ],
+  "hero_mourner|scythe|cast|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|scythe|cast|pen": [
+   0.0093,
+   0.0023
+  ],
+  "hero_mourner|scythe|channel|drift": [
+   1.643,
+   1.6365
+  ],
+  "hero_mourner|scythe|channel|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|scythe|channel|pen": [
+   0.011,
+   0
+  ],
+  "hero_mourner|scythe|death2|drift": [
+   1.1737,
+   1.173
+  ],
+  "hero_mourner|scythe|death2|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|scythe|death2|pen": [
+   0.0207,
+   0
+  ],
+  "hero_mourner|scythe|death|drift": [
+   1.806,
+   1.66
+  ],
+  "hero_mourner|scythe|death|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|scythe|death|pen": [
+   0.0501,
+   0.0475
+  ],
+  "hero_mourner|scythe|dig|drift": [
+   0.3725,
+   0.3719
+  ],
+  "hero_mourner|scythe|dig|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|scythe|dig|pen": [
+   0.0721,
+   0.0717
+  ],
+  "hero_mourner|scythe|flick|drift": [
+   2.0457,
+   1.9073
+  ],
+  "hero_mourner|scythe|flick|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|scythe|flick|pen": [
+   0.029,
+   0.0272
+  ],
+  "hero_mourner|scythe|hurt2|drift": [
+   1.8755,
+   1.8324
+  ],
+  "hero_mourner|scythe|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|scythe|hurt2|pen": [
+   0.1022,
+   0.0134
+  ],
+  "hero_mourner|scythe|hurt|drift": [
+   1.6154,
+   1.5936
+  ],
+  "hero_mourner|scythe|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|scythe|hurt|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|scythe|idle|drift": [
+   0.1934,
+   0.1439
+  ],
+  "hero_mourner|scythe|idle|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|scythe|idle|pen": [
+   0.0278,
+   0.0153
+  ],
+  "hero_mourner|scythe|run|drift": [
+   1.6578,
+   1.5154
+  ],
+  "hero_mourner|scythe|run|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|scythe|run|pen": [
+   0.0494,
+   0.0482
+  ],
+  "hero_mourner|scythe|slam|drift": [
+   2.0381,
+   1.9702
+  ],
+  "hero_mourner|scythe|slam|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|scythe|slam|pen": [
+   0.0519,
+   0.0498
+  ],
+  "hero_mourner|scythe|summon|drift": [
+   2.1385,
+   1.9554
+  ],
+  "hero_mourner|scythe|summon|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|scythe|summon|pen": [
+   0.0339,
+   0.0242
+  ],
+  "hero_mourner|scythe|sweep|drift": [
+   1.6491,
+   1.6125
+  ],
+  "hero_mourner|scythe|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|scythe|sweep|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|scythe|walk|drift": [
+   0.4744,
+   0.4472
+  ],
+  "hero_mourner|scythe|walk|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|scythe|walk|pen": [
+   0.0337,
+   0.0332
+  ],
+  "hero_mourner|sickle|attack|drift": [
+   0.6431,
+   0.4489
+  ],
+  "hero_mourner|sickle|attack|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|attack|pen": [
+   0.0293,
+   0.0097
+  ],
+  "hero_mourner|sickle|cast|drift": [
+   0.3805,
+   0.3765
+  ],
+  "hero_mourner|sickle|cast|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|cast|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|channel|drift": [
+   0.4749,
+   0.4738
+  ],
+  "hero_mourner|sickle|channel|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|channel|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|death2|drift": [
+   0.501,
+   0.5
+  ],
+  "hero_mourner|sickle|death2|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|death2|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|death|drift": [
+   0.6303,
+   0.5812
+  ],
+  "hero_mourner|sickle|death|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|death|pen": [
+   0.0203,
+   0.0192
+  ],
+  "hero_mourner|sickle|dig|drift": [
+   0.1747,
+   0.1743
+  ],
+  "hero_mourner|sickle|dig|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|dig|pen": [
+   0.0638,
+   0.0624
+  ],
+  "hero_mourner|sickle|flick|drift": [
+   0.7614,
+   0.6911
+  ],
+  "hero_mourner|sickle|flick|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|flick|pen": [
+   0.0111,
+   0.0095
+  ],
+  "hero_mourner|sickle|hurt2|drift": [
+   0.6199,
+   0.5996
+  ],
+  "hero_mourner|sickle|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|hurt2|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|hurt|drift": [
+   0.5004,
+   0.5003
+  ],
+  "hero_mourner|sickle|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|hurt|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|idle|drift": [
+   0.0759,
+   0.0593
+  ],
+  "hero_mourner|sickle|idle|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|idle|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|run|drift": [
+   0.5685,
+   0.5013
+  ],
+  "hero_mourner|sickle|run|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|run|pen": [
+   0.0441,
+   0.0293
+  ],
+  "hero_mourner|sickle|slam|drift": [
+   0.6415,
+   0.6192
+  ],
+  "hero_mourner|sickle|slam|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|slam|pen": [
+   0.0297,
+   0.0228
+  ],
+  "hero_mourner|sickle|summon|drift": [
+   0.719,
+   0.6756
+  ],
+  "hero_mourner|sickle|summon|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|summon|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|sweep|drift": [
+   0.5354,
+   0.5333
+  ],
+  "hero_mourner|sickle|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|sweep|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|walk|drift": [
+   0.1687,
+   0.1569
+  ],
+  "hero_mourner|sickle|walk|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|sickle|walk|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|skull_focus|attack|drift": [
+   0.4897,
+   0.3354
+  ],
+  "hero_mourner|skull_focus|attack|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|skull_focus|attack|pen": [
+   0.0941,
+   0.0918
+  ],
+  "hero_mourner|skull_focus|cast|drift": [
+   0.2394,
+   0.2285
+  ],
+  "hero_mourner|skull_focus|cast|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|skull_focus|cast|pen": [
+   0.0011,
+   0.0003
+  ],
+  "hero_mourner|skull_focus|channel|drift": [
+   0.4162,
+   0.4051
+  ],
+  "hero_mourner|skull_focus|channel|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|skull_focus|channel|pen": [
+   0.0867,
+   0.0764
+  ],
+  "hero_mourner|skull_focus|death2|drift": [
+   0.2717,
+   0.2631
+  ],
+  "hero_mourner|skull_focus|death2|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|skull_focus|death2|pen": [
+   0.0101,
+   0.0049
+  ],
+  "hero_mourner|skull_focus|death|drift": [
+   0.4527,
+   0.4371
+  ],
+  "hero_mourner|skull_focus|death|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|skull_focus|death|pen": [
+   0.0844,
+   0.0779
+  ],
+  "hero_mourner|skull_focus|dig|drift": [
+   0.162,
+   0.1619
+  ],
+  "hero_mourner|skull_focus|dig|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|skull_focus|dig|pen": [
+   0.0926,
+   0.0924
+  ],
+  "hero_mourner|skull_focus|flick|drift": [
+   0.3636,
+   0.3362
+  ],
+  "hero_mourner|skull_focus|flick|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|skull_focus|flick|pen": [
+   0.0948,
+   0.0933
+  ],
+  "hero_mourner|skull_focus|hurt2|drift": [
+   0.3544,
+   0.3459
+  ],
+  "hero_mourner|skull_focus|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|skull_focus|hurt2|pen": [
+   0.0702,
+   0.0651
+  ],
+  "hero_mourner|skull_focus|hurt|drift": [
+   0.3472,
+   0.3343
+  ],
+  "hero_mourner|skull_focus|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|skull_focus|hurt|pen": [
+   0.0922,
+   0.0921
+  ],
+  "hero_mourner|skull_focus|idle|drift": [
+   0.0379,
+   0.0337
+  ],
+  "hero_mourner|skull_focus|idle|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|skull_focus|idle|pen": [
+   0.0263,
+   0.0226
+  ],
+  "hero_mourner|skull_focus|run|drift": [
+   0.3696,
+   0.338
+  ],
+  "hero_mourner|skull_focus|run|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|skull_focus|run|pen": [
+   0.0935,
+   0.0895
+  ],
+  "hero_mourner|skull_focus|slam|drift": [
+   0.4867,
+   0.4404
+  ],
+  "hero_mourner|skull_focus|slam|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|skull_focus|slam|pen": [
+   0.0899,
+   0.0829
+  ],
+  "hero_mourner|skull_focus|summon|drift": [
+   0.4597,
+   0.4434
+  ],
+  "hero_mourner|skull_focus|summon|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|skull_focus|summon|pen": [
+   0.0922,
+   0.0916
+  ],
+  "hero_mourner|skull_focus|sweep|drift": [
+   0.3629,
+   0.3605
+  ],
+  "hero_mourner|skull_focus|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|skull_focus|sweep|pen": [
+   0.0151,
+   0
+  ],
+  "hero_mourner|skull_focus|walk|drift": [
+   0.1229,
+   0.121
+  ],
+  "hero_mourner|skull_focus|walk|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|skull_focus|walk|pen": [
+   0.0943,
+   0.0842
+  ],
+  "hero_mourner|staff|attack|drift": [
+   2.1396,
+   1.6292
+  ],
+  "hero_mourner|staff|attack|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|staff|attack|pen": [
+   0.0502,
+   0.0488
+  ],
+  "hero_mourner|staff|cast|drift": [
+   1.1156,
+   1.1108
+  ],
+  "hero_mourner|staff|cast|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|staff|cast|pen": [
+   0.0564,
+   0.0416
+  ],
+  "hero_mourner|staff|channel|drift": [
+   1.7391,
+   1.7349
+  ],
+  "hero_mourner|staff|channel|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|staff|channel|pen": [
+   0.0087,
+   0
+  ],
+  "hero_mourner|staff|death2|drift": [
+   1.2373,
+   1.2365
+  ],
+  "hero_mourner|staff|death2|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|staff|death2|pen": [
+   0.0262,
+   0.0211
+  ],
+  "hero_mourner|staff|death|drift": [
+   1.8948,
+   1.7402
+  ],
+  "hero_mourner|staff|death|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|staff|death|pen": [
+   0.0569,
+   0.0506
+  ],
+  "hero_mourner|staff|dig|drift": [
+   0.3884,
+   0.3877
+  ],
+  "hero_mourner|staff|dig|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|staff|dig|pen": [
+   0.0848,
+   0.0829
+  ],
+  "hero_mourner|staff|flick|drift": [
+   2.1292,
+   2.0185
+  ],
+  "hero_mourner|staff|flick|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|staff|flick|pen": [
+   0.0451,
+   0.043
+  ],
+  "hero_mourner|staff|hurt2|drift": [
+   1.9968,
+   1.9466
+  ],
+  "hero_mourner|staff|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|staff|hurt2|pen": [
+   0.0451,
+   0.0251
+  ],
+  "hero_mourner|staff|hurt|drift": [
+   1.7154,
+   1.6936
+  ],
+  "hero_mourner|staff|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|staff|hurt|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|staff|idle|drift": [
+   0.2033,
+   0.1508
+  ],
+  "hero_mourner|staff|idle|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|staff|idle|pen": [
+   0.063,
+   0.0502
+  ],
+  "hero_mourner|staff|run|drift": [
+   1.7618,
+   1.6129
+  ],
+  "hero_mourner|staff|run|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|staff|run|pen": [
+   0.0437,
+   0.043
+  ],
+  "hero_mourner|staff|slam|drift": [
+   2.1314,
+   2.0725
+  ],
+  "hero_mourner|staff|slam|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|staff|slam|pen": [
+   0.0519,
+   0.0499
+  ],
+  "hero_mourner|staff|summon|drift": [
+   2.2259,
+   2.0469
+  ],
+  "hero_mourner|staff|summon|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|staff|summon|pen": [
+   0.067,
+   0.0632
+  ],
+  "hero_mourner|staff|sweep|drift": [
+   1.7502,
+   1.7144
+  ],
+  "hero_mourner|staff|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|staff|sweep|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|staff|walk|drift": [
+   0.5043,
+   0.4753
+  ],
+  "hero_mourner|staff|walk|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|staff|walk|pen": [
+   0.0145,
+   0.0126
+  ],
+  "hero_mourner|wand|attack|drift": [
+   0.5583,
+   0.3895
+  ],
+  "hero_mourner|wand|attack|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|attack|pen": [
+   0.0467,
+   0.015
+  ],
+  "hero_mourner|wand|cast|drift": [
+   0.3323,
+   0.3288
+  ],
+  "hero_mourner|wand|cast|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|cast|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|channel|drift": [
+   0.4141,
+   0.413
+  ],
+  "hero_mourner|wand|channel|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|channel|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|death2|drift": [
+   0.4339,
+   0.4332
+  ],
+  "hero_mourner|wand|death2|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|death2|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|death|drift": [
+   0.5465,
+   0.5061
+  ],
+  "hero_mourner|wand|death|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|death|pen": [
+   0.0279,
+   0.025
+  ],
+  "hero_mourner|wand|dig|drift": [
+   0.1507,
+   0.1504
+  ],
+  "hero_mourner|wand|dig|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|dig|pen": [
+   0.0844,
+   0.0842
+  ],
+  "hero_mourner|wand|flick|drift": [
+   0.6579,
+   0.5999
+  ],
+  "hero_mourner|wand|flick|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|flick|pen": [
+   0.0149,
+   0.014
+  ],
+  "hero_mourner|wand|hurt2|drift": [
+   0.5412,
+   0.523
+  ],
+  "hero_mourner|wand|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|hurt2|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|hurt|drift": [
+   0.437,
+   0.4368
+  ],
+  "hero_mourner|wand|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|hurt|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|idle|drift": [
+   0.0656,
+   0.0512
+  ],
+  "hero_mourner|wand|idle|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|idle|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|run|drift": [
+   0.4964,
+   0.4378
+  ],
+  "hero_mourner|wand|run|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|run|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|slam|drift": [
+   0.556,
+   0.5376
+  ],
+  "hero_mourner|wand|slam|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|slam|pen": [
+   0.0447,
+   0.0303
+  ],
+  "hero_mourner|wand|summon|drift": [
+   0.6208,
+   0.5846
+  ],
+  "hero_mourner|wand|summon|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|summon|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|sweep|drift": [
+   0.4675,
+   0.4658
+  ],
+  "hero_mourner|wand|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|sweep|pen": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|walk|drift": [
+   0.1469,
+   0.1366
+  ],
+  "hero_mourner|wand|walk|gap": [
+   0,
+   0
+  ],
+  "hero_mourner|wand|walk|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|cape|attack|hem": [
+   0,
+   0
+  ],
+  "hero_ossuary|cape|attack|pen": [
+   0.0071,
+   0
+  ],
+  "hero_ossuary|cape|cast|hem": [
+   0.1245,
+   0.1075
+  ],
+  "hero_ossuary|cape|cast|pen": [
+   0.0662,
+   0.0662
+  ],
+  "hero_ossuary|cape|channel|hem": [
+   0,
+   0
+  ],
+  "hero_ossuary|cape|channel|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|cape|death2|hem": [
+   0.1449,
+   0.1231
+  ],
+  "hero_ossuary|cape|death2|pen": [
+   0.0798,
+   0.0499
+  ],
+  "hero_ossuary|cape|death|hem": [
+   0,
+   0
+  ],
+  "hero_ossuary|cape|death|pen": [
+   0.031,
+   0.0304
+  ],
+  "hero_ossuary|cape|dig|hem": [
+   0,
+   0
+  ],
+  "hero_ossuary|cape|dig|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|cape|flick|hem": [
+   0,
+   0
+  ],
+  "hero_ossuary|cape|flick|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|cape|hurt2|hem": [
+   0.1331,
+   0.0765
+  ],
+  "hero_ossuary|cape|hurt2|pen": [
+   0.0714,
+   0.0542
+  ],
+  "hero_ossuary|cape|hurt|hem": [
+   0,
+   0
+  ],
+  "hero_ossuary|cape|hurt|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|cape|idle|hem": [
+   0,
+   0
+  ],
+  "hero_ossuary|cape|idle|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|cape|run|hem": [
+   0,
+   0
+  ],
+  "hero_ossuary|cape|run|pen": [
+   0.0132,
+   0.0007
+  ],
+  "hero_ossuary|cape|slam|hem": [
+   0,
+   0
+  ],
+  "hero_ossuary|cape|slam|pen": [
+   0.0297,
+   0.0035
+  ],
+  "hero_ossuary|cape|summon|hem": [
+   0.0141,
+   0.0008
+  ],
+  "hero_ossuary|cape|summon|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|cape|sweep|hem": [
+   0.0626,
+   0.0585
+  ],
+  "hero_ossuary|cape|sweep|pen": [
+   0.0059,
+   0
+  ],
+  "hero_ossuary|cape|walk|hem": [
+   0,
+   0
+  ],
+  "hero_ossuary|cape|walk|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|grimoire|attack|drift": [
+   0.4378,
+   0.2883
+  ],
+  "hero_ossuary|grimoire|attack|gap": [
+   0.0091,
+   0.006
+  ],
+  "hero_ossuary|grimoire|attack|pen": [
+   0.0642,
+   0.0474
+  ],
+  "hero_ossuary|grimoire|cast|drift": [
+   0.1856,
+   0.1764
+  ],
+  "hero_ossuary|grimoire|cast|gap": [
+   0.0162,
+   0.0162
+  ],
+  "hero_ossuary|grimoire|cast|pen": [
+   0.0942,
+   0.0432
+  ],
+  "hero_ossuary|grimoire|channel|drift": [
+   0.3637,
+   0.3437
+  ],
+  "hero_ossuary|grimoire|channel|gap": [
+   0.0107,
+   0.0087
+  ],
+  "hero_ossuary|grimoire|channel|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|grimoire|death2|drift": [
+   0.2459,
+   0.2405
+  ],
+  "hero_ossuary|grimoire|death2|gap": [
+   0.0128,
+   0.0095
+  ],
+  "hero_ossuary|grimoire|death2|pen": [
+   0.0413,
+   0.0373
+  ],
+  "hero_ossuary|grimoire|death|drift": [
+   0.4587,
+   0.4057
+  ],
+  "hero_ossuary|grimoire|death|gap": [
+   0.0399,
+   0.0126
+  ],
+  "hero_ossuary|grimoire|death|pen": [
+   0.0673,
+   0.0666
+  ],
+  "hero_ossuary|grimoire|dig|drift": [
+   0.134,
+   0.1339
+  ],
+  "hero_ossuary|grimoire|dig|gap": [
+   0.01,
+   0.0099
+  ],
+  "hero_ossuary|grimoire|dig|pen": [
+   0.0575,
+   0.0569
+  ],
+  "hero_ossuary|grimoire|flick|drift": [
+   0.2896,
+   0.2874
+  ],
+  "hero_ossuary|grimoire|flick|gap": [
+   0.0129,
+   0.0123
+  ],
+  "hero_ossuary|grimoire|flick|pen": [
+   0.039,
+   0.0382
+  ],
+  "hero_ossuary|grimoire|hurt2|drift": [
+   0.2962,
+   0.2786
+  ],
+  "hero_ossuary|grimoire|hurt2|gap": [
+   0.018,
+   0.0148
+  ],
+  "hero_ossuary|grimoire|hurt2|pen": [
+   0.045,
+   0.0441
+  ],
+  "hero_ossuary|grimoire|hurt|drift": [
+   0.2843,
+   0.2791
+  ],
+  "hero_ossuary|grimoire|hurt|gap": [
+   0.0133,
+   0.0132
+  ],
+  "hero_ossuary|grimoire|hurt|pen": [
+   0.1249,
+   0.1248
+  ],
+  "hero_ossuary|grimoire|idle|drift": [
+   0.031,
+   0.0275
+  ],
+  "hero_ossuary|grimoire|idle|gap": [
+   0.0016,
+   0.0015
+  ],
+  "hero_ossuary|grimoire|idle|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|grimoire|run|drift": [
+   0.3259,
+   0.3031
+  ],
+  "hero_ossuary|grimoire|run|gap": [
+   0.0097,
+   0.0079
+  ],
+  "hero_ossuary|grimoire|run|pen": [
+   0.0298,
+   0.0207
+  ],
+  "hero_ossuary|grimoire|slam|drift": [
+   0.4652,
+   0.389
+  ],
+  "hero_ossuary|grimoire|slam|gap": [
+   0.0056,
+   0.0039
+  ],
+  "hero_ossuary|grimoire|slam|pen": [
+   0.0651,
+   0.0532
+  ],
+  "hero_ossuary|grimoire|summon|drift": [
+   0.3589,
+   0.3468
+  ],
+  "hero_ossuary|grimoire|summon|gap": [
+   0.0158,
+   0.0136
+  ],
+  "hero_ossuary|grimoire|summon|pen": [
+   0.0577,
+   0.0519
+  ],
+  "hero_ossuary|grimoire|sweep|drift": [
+   0.261,
+   0.2598
+  ],
+  "hero_ossuary|grimoire|sweep|gap": [
+   0.0142,
+   0.0134
+  ],
+  "hero_ossuary|grimoire|sweep|pen": [
+   0.0344,
+   0.0323
+  ],
+  "hero_ossuary|grimoire|walk|drift": [
+   0.1111,
+   0.11
+  ],
+  "hero_ossuary|grimoire|walk|gap": [
+   0.0105,
+   0.0099
+  ],
+  "hero_ossuary|grimoire|walk|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|helm|attack|float": [
+   0,
+   0
+  ],
+  "hero_ossuary|helm|attack|sink": [
+   0.053,
+   0.053
+  ],
+  "hero_ossuary|helm|cast|float": [
+   0,
+   0
+  ],
+  "hero_ossuary|helm|cast|sink": [
+   0.053,
+   0.053
+  ],
+  "hero_ossuary|helm|channel|float": [
+   0,
+   0
+  ],
+  "hero_ossuary|helm|channel|sink": [
+   0.053,
+   0.053
+  ],
+  "hero_ossuary|helm|death2|float": [
+   0,
+   0
+  ],
+  "hero_ossuary|helm|death2|sink": [
+   0.053,
+   0.053
+  ],
+  "hero_ossuary|helm|death|float": [
+   0,
+   0
+  ],
+  "hero_ossuary|helm|death|sink": [
+   0.053,
+   0.053
+  ],
+  "hero_ossuary|helm|dig|float": [
+   0,
+   0
+  ],
+  "hero_ossuary|helm|dig|sink": [
+   0.053,
+   0.053
+  ],
+  "hero_ossuary|helm|flick|float": [
+   0,
+   0
+  ],
+  "hero_ossuary|helm|flick|sink": [
+   0.053,
+   0.053
+  ],
+  "hero_ossuary|helm|hurt2|float": [
+   0,
+   0
+  ],
+  "hero_ossuary|helm|hurt2|sink": [
+   0.053,
+   0.053
+  ],
+  "hero_ossuary|helm|hurt|float": [
+   0,
+   0
+  ],
+  "hero_ossuary|helm|hurt|sink": [
+   0.053,
+   0.053
+  ],
+  "hero_ossuary|helm|idle|float": [
+   0,
+   0
+  ],
+  "hero_ossuary|helm|idle|sink": [
+   0.053,
+   0.053
+  ],
+  "hero_ossuary|helm|run|float": [
+   0,
+   0
+  ],
+  "hero_ossuary|helm|run|sink": [
+   0.053,
+   0.053
+  ],
+  "hero_ossuary|helm|slam|float": [
+   0,
+   0
+  ],
+  "hero_ossuary|helm|slam|sink": [
+   0.053,
+   0.053
+  ],
+  "hero_ossuary|helm|summon|float": [
+   0,
+   0
+  ],
+  "hero_ossuary|helm|summon|sink": [
+   0.053,
+   0.053
+  ],
+  "hero_ossuary|helm|sweep|float": [
+   0,
+   0
+  ],
+  "hero_ossuary|helm|sweep|sink": [
+   0.053,
+   0.053
+  ],
+  "hero_ossuary|helm|walk|float": [
+   0,
+   0
+  ],
+  "hero_ossuary|helm|walk|sink": [
+   0.053,
+   0.053
+  ],
+  "hero_ossuary|mourning_bell|attack|drift": [
+   0.4762,
+   0.3731
+  ],
+  "hero_ossuary|mourning_bell|attack|gap": [
+   0.0325,
+   0.0229
+  ],
+  "hero_ossuary|mourning_bell|attack|pen": [
+   0.0034,
+   0
+  ],
+  "hero_ossuary|mourning_bell|cast|drift": [
+   0.3383,
+   0.3296
+  ],
+  "hero_ossuary|mourning_bell|cast|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|mourning_bell|cast|pen": [
+   0.0373,
+   0.0093
+  ],
+  "hero_ossuary|mourning_bell|channel|drift": [
+   0.4045,
+   0.3901
+  ],
+  "hero_ossuary|mourning_bell|channel|gap": [
+   0.013,
+   0.0118
+  ],
+  "hero_ossuary|mourning_bell|channel|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|mourning_bell|death2|drift": [
+   0.2561,
+   0.246
+  ],
+  "hero_ossuary|mourning_bell|death2|gap": [
+   0.0111,
+   0.0062
+  ],
+  "hero_ossuary|mourning_bell|death2|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|mourning_bell|death|drift": [
+   0.4276,
+   0.4097
+  ],
+  "hero_ossuary|mourning_bell|death|gap": [
+   0.0311,
+   0.0261
+  ],
+  "hero_ossuary|mourning_bell|death|pen": [
+   0.0032,
+   0
+  ],
+  "hero_ossuary|mourning_bell|dig|drift": [
+   0.1672,
+   0.1666
+  ],
+  "hero_ossuary|mourning_bell|dig|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|mourning_bell|dig|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|mourning_bell|flick|drift": [
+   0.4292,
+   0.4179
+  ],
+  "hero_ossuary|mourning_bell|flick|gap": [
+   0.0109,
+   0.0088
+  ],
+  "hero_ossuary|mourning_bell|flick|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|mourning_bell|hurt2|drift": [
+   0.4157,
+   0.4148
+  ],
+  "hero_ossuary|mourning_bell|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|mourning_bell|hurt2|pen": [
+   0.0506,
+   0.0073
+  ],
+  "hero_ossuary|mourning_bell|hurt|drift": [
+   0.4146,
+   0.4123
+  ],
+  "hero_ossuary|mourning_bell|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|mourning_bell|hurt|pen": [
+   0.0069,
+   0.0024
+  ],
+  "hero_ossuary|mourning_bell|idle|drift": [
+   0.042,
+   0.0377
+  ],
+  "hero_ossuary|mourning_bell|idle|gap": [
+   0.0028,
+   0.0024
+  ],
+  "hero_ossuary|mourning_bell|idle|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|mourning_bell|run|drift": [
+   0.3403,
+   0.2946
+  ],
+  "hero_ossuary|mourning_bell|run|gap": [
+   0.0109,
+   0.0067
+  ],
+  "hero_ossuary|mourning_bell|run|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|mourning_bell|slam|drift": [
+   0.4789,
+   0.4633
+  ],
+  "hero_ossuary|mourning_bell|slam|gap": [
+   0.0335,
+   0.03
+  ],
+  "hero_ossuary|mourning_bell|slam|pen": [
+   0.0066,
+   0
+  ],
+  "hero_ossuary|mourning_bell|summon|drift": [
+   0.3957,
+   0.3843
+  ],
+  "hero_ossuary|mourning_bell|summon|gap": [
+   0.0312,
+   0.0303
+  ],
+  "hero_ossuary|mourning_bell|summon|pen": [
+   0.0523,
+   0.0339
+  ],
+  "hero_ossuary|mourning_bell|sweep|drift": [
+   0.4493,
+   0.4486
+  ],
+  "hero_ossuary|mourning_bell|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|mourning_bell|sweep|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|mourning_bell|walk|drift": [
+   0.1123,
+   0.1092
+  ],
+  "hero_ossuary|mourning_bell|walk|gap": [
+   0.0004,
+   0
+  ],
+  "hero_ossuary|mourning_bell|walk|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|scythe|attack|drift": [
+   2.0464,
+   1.559
+  ],
+  "hero_ossuary|scythe|attack|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|scythe|attack|pen": [
+   0.0777,
+   0.0726
+  ],
+  "hero_ossuary|scythe|cast|drift": [
+   1.0622,
+   1.058
+  ],
+  "hero_ossuary|scythe|cast|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|scythe|cast|pen": [
+   0.0388,
+   0.0106
+  ],
+  "hero_ossuary|scythe|channel|drift": [
+   1.6559,
+   1.6524
+  ],
+  "hero_ossuary|scythe|channel|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|scythe|channel|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|scythe|death2|drift": [
+   1.1662,
+   1.1655
+  ],
+  "hero_ossuary|scythe|death2|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|scythe|death2|pen": [
+   0.0308,
+   0
+  ],
+  "hero_ossuary|scythe|death|drift": [
+   1.8136,
+   1.6641
+  ],
+  "hero_ossuary|scythe|death|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|scythe|death|pen": [
+   0.0755,
+   0.0719
+  ],
+  "hero_ossuary|scythe|dig|drift": [
+   0.3431,
+   0.3423
+  ],
+  "hero_ossuary|scythe|dig|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|scythe|dig|pen": [
+   0.075,
+   0.0523
+  ],
+  "hero_ossuary|scythe|flick|drift": [
+   2.0105,
+   1.8929
+  ],
+  "hero_ossuary|scythe|flick|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|scythe|flick|pen": [
+   0.0578,
+   0.0541
+  ],
+  "hero_ossuary|scythe|hurt2|drift": [
+   1.8867,
+   1.8462
+  ],
+  "hero_ossuary|scythe|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|scythe|hurt2|pen": [
+   0.0762,
+   0.0472
+  ],
+  "hero_ossuary|scythe|hurt|drift": [
+   1.6298,
+   1.6075
+  ],
+  "hero_ossuary|scythe|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|scythe|hurt|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|scythe|idle|drift": [
+   0.192,
+   0.1427
+  ],
+  "hero_ossuary|scythe|idle|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|scythe|idle|pen": [
+   0.0242,
+   0.0199
+  ],
+  "hero_ossuary|scythe|run|drift": [
+   1.6186,
+   1.5867
+  ],
+  "hero_ossuary|scythe|run|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|scythe|run|pen": [
+   0.0768,
+   0.076
+  ],
+  "hero_ossuary|scythe|slam|drift": [
+   2.0412,
+   1.9781
+  ],
+  "hero_ossuary|scythe|slam|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|scythe|slam|pen": [
+   0.078,
+   0.0766
+  ],
+  "hero_ossuary|scythe|summon|drift": [
+   2.1238,
+   1.9437
+  ],
+  "hero_ossuary|scythe|summon|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|scythe|summon|pen": [
+   0.0684,
+   0.0496
+  ],
+  "hero_ossuary|scythe|sweep|drift": [
+   1.6639,
+   1.6263
+  ],
+  "hero_ossuary|scythe|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|scythe|sweep|pen": [
+   0.0029,
+   0.0013
+  ],
+  "hero_ossuary|scythe|walk|drift": [
+   0.4755,
+   0.4481
+  ],
+  "hero_ossuary|scythe|walk|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|scythe|walk|pen": [
+   0.0513,
+   0.0506
+  ],
+  "hero_ossuary|sickle|attack|drift": [
+   0.6445,
+   0.4498
+  ],
+  "hero_ossuary|sickle|attack|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|sickle|attack|pen": [
+   0.0651,
+   0.0316
+  ],
+  "hero_ossuary|sickle|cast|drift": [
+   0.3802,
+   0.3763
+  ],
+  "hero_ossuary|sickle|cast|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|sickle|cast|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|sickle|channel|drift": [
+   0.4819,
+   0.4726
+  ],
+  "hero_ossuary|sickle|channel|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|sickle|channel|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|sickle|death2|drift": [
+   0.4994,
+   0.4984
+  ],
+  "hero_ossuary|sickle|death2|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|sickle|death2|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|sickle|death|drift": [
+   0.6316,
+   0.582
+  ],
+  "hero_ossuary|sickle|death|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|sickle|death|pen": [
+   0.065,
+   0.0634
+  ],
+  "hero_ossuary|sickle|dig|drift": [
+   0.1471,
+   0.1469
+  ],
+  "hero_ossuary|sickle|dig|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|sickle|dig|pen": [
+   0.0515,
+   0.0514
+  ],
+  "hero_ossuary|sickle|flick|drift": [
+   0.749,
+   0.6759
+  ],
+  "hero_ossuary|sickle|flick|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|sickle|flick|pen": [
+   0.0623,
+   0.0612
+  ],
+  "hero_ossuary|sickle|hurt2|drift": [
+   0.6207,
+   0.6002
+  ],
+  "hero_ossuary|sickle|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|sickle|hurt2|pen": [
+   0.0132,
+   0
+  ],
+  "hero_ossuary|sickle|hurt|drift": [
+   0.5009,
+   0.5003
+  ],
+  "hero_ossuary|sickle|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|sickle|hurt|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|sickle|idle|drift": [
+   0.0757,
+   0.0592
+  ],
+  "hero_ossuary|sickle|idle|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|sickle|idle|pen": [
+   0.0161,
+   0.0128
+  ],
+  "hero_ossuary|sickle|run|drift": [
+   0.5579,
+   0.5307
+  ],
+  "hero_ossuary|sickle|run|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|sickle|run|pen": [
+   0.0477,
+   0.043
+  ],
+  "hero_ossuary|sickle|slam|drift": [
+   0.6428,
+   0.6204
+  ],
+  "hero_ossuary|sickle|slam|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|sickle|slam|pen": [
+   0.0603,
+   0.0454
+  ],
+  "hero_ossuary|sickle|summon|drift": [
+   0.7194,
+   0.6742
+  ],
+  "hero_ossuary|sickle|summon|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|sickle|summon|pen": [
+   0.0045,
+   0
+  ],
+  "hero_ossuary|sickle|sweep|drift": [
+   0.5352,
+   0.5333
+  ],
+  "hero_ossuary|sickle|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|sickle|sweep|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|sickle|walk|drift": [
+   0.1684,
+   0.1567
+  ],
+  "hero_ossuary|sickle|walk|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|sickle|walk|pen": [
+   0.0093,
+   0.0014
+  ],
+  "hero_ossuary|skull_focus|attack|drift": [
+   0.4891,
+   0.3358
+  ],
+  "hero_ossuary|skull_focus|attack|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|skull_focus|attack|pen": [
+   0.0671,
+   0.0652
+  ],
+  "hero_ossuary|skull_focus|cast|drift": [
+   0.2397,
+   0.2289
+  ],
+  "hero_ossuary|skull_focus|cast|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|skull_focus|cast|pen": [
+   0.0152,
+   0.0123
+  ],
+  "hero_ossuary|skull_focus|channel|drift": [
+   0.4186,
+   0.4083
+  ],
+  "hero_ossuary|skull_focus|channel|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|skull_focus|channel|pen": [
+   0.0601,
+   0.0573
+  ],
+  "hero_ossuary|skull_focus|death2|drift": [
+   0.2716,
+   0.2629
+  ],
+  "hero_ossuary|skull_focus|death2|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|skull_focus|death2|pen": [
+   0.0187,
+   0
+  ],
+  "hero_ossuary|skull_focus|death|drift": [
+   0.4532,
+   0.4376
+  ],
+  "hero_ossuary|skull_focus|death|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|skull_focus|death|pen": [
+   0.0589,
+   0.0552
+  ],
+  "hero_ossuary|skull_focus|dig|drift": [
+   0.159,
+   0.1589
+  ],
+  "hero_ossuary|skull_focus|dig|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|skull_focus|dig|pen": [
+   0.0676,
+   0.066
+  ],
+  "hero_ossuary|skull_focus|flick|drift": [
+   0.3651,
+   0.3372
+  ],
+  "hero_ossuary|skull_focus|flick|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|skull_focus|flick|pen": [
+   0.0675,
+   0.0671
+  ],
+  "hero_ossuary|skull_focus|hurt2|drift": [
+   0.3549,
+   0.3464
+  ],
+  "hero_ossuary|skull_focus|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|skull_focus|hurt2|pen": [
+   0.0521,
+   0.0475
+  ],
+  "hero_ossuary|skull_focus|hurt|drift": [
+   0.3477,
+   0.3347
+  ],
+  "hero_ossuary|skull_focus|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|skull_focus|hurt|pen": [
+   0.1182,
+   0.0922
+  ],
+  "hero_ossuary|skull_focus|idle|drift": [
+   0.0379,
+   0.0337
+  ],
+  "hero_ossuary|skull_focus|idle|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|skull_focus|idle|pen": [
+   0.0357,
+   0.0323
+  ],
+  "hero_ossuary|skull_focus|run|drift": [
+   0.3756,
+   0.3293
+  ],
+  "hero_ossuary|skull_focus|run|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|skull_focus|run|pen": [
+   0.0643,
+   0.0639
+  ],
+  "hero_ossuary|skull_focus|slam|drift": [
+   0.4867,
+   0.4406
+  ],
+  "hero_ossuary|skull_focus|slam|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|skull_focus|slam|pen": [
+   0.06,
+   0.0578
+  ],
+  "hero_ossuary|skull_focus|summon|drift": [
+   0.4597,
+   0.443
+  ],
+  "hero_ossuary|skull_focus|summon|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|skull_focus|summon|pen": [
+   0.0616,
+   0.0614
+  ],
+  "hero_ossuary|skull_focus|sweep|drift": [
+   0.3634,
+   0.361
+  ],
+  "hero_ossuary|skull_focus|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|skull_focus|sweep|pen": [
+   0.008,
+   0.0059
+  ],
+  "hero_ossuary|skull_focus|walk|drift": [
+   0.1229,
+   0.1209
+  ],
+  "hero_ossuary|skull_focus|walk|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|skull_focus|walk|pen": [
+   0.068,
+   0.0665
+  ],
+  "hero_ossuary|staff|attack|drift": [
+   2.13,
+   1.6231
+  ],
+  "hero_ossuary|staff|attack|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|staff|attack|pen": [
+   0.077,
+   0.0706
+  ],
+  "hero_ossuary|staff|cast|drift": [
+   1.1082,
+   1.1034
+  ],
+  "hero_ossuary|staff|cast|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|staff|cast|pen": [
+   0.0677,
+   0.0169
+  ],
+  "hero_ossuary|staff|channel|drift": [
+   1.7284,
+   1.7271
+  ],
+  "hero_ossuary|staff|channel|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|staff|channel|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|staff|death2|drift": [
+   1.2417,
+   1.2409
+  ],
+  "hero_ossuary|staff|death2|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|staff|death2|pen": [
+   0.0216,
+   0.0163
+  ],
+  "hero_ossuary|staff|death|drift": [
+   1.8884,
+   1.7367
+  ],
+  "hero_ossuary|staff|death|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|staff|death|pen": [
+   0.0765,
+   0.071
+  ],
+  "hero_ossuary|staff|dig|drift": [
+   0.3577,
+   0.3568
+  ],
+  "hero_ossuary|staff|dig|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|staff|dig|pen": [
+   0.0564,
+   0.0472
+  ],
+  "hero_ossuary|staff|flick|drift": [
+   2.1139,
+   1.9977
+  ],
+  "hero_ossuary|staff|flick|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|staff|flick|pen": [
+   0.0447,
+   0.0436
+  ],
+  "hero_ossuary|staff|hurt2|drift": [
+   1.9883,
+   1.9381
+  ],
+  "hero_ossuary|staff|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|staff|hurt2|pen": [
+   0.1361,
+   0.0522
+  ],
+  "hero_ossuary|staff|hurt|drift": [
+   1.7038,
+   1.6824
+  ],
+  "hero_ossuary|staff|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|staff|hurt|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|staff|idle|drift": [
+   0.2045,
+   0.1518
+  ],
+  "hero_ossuary|staff|idle|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|staff|idle|pen": [
+   0.0546,
+   0.0482
+  ],
+  "hero_ossuary|staff|run|drift": [
+   1.7157,
+   1.677
+  ],
+  "hero_ossuary|staff|run|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|staff|run|pen": [
+   0.0764,
+   0.0747
+  ],
+  "hero_ossuary|staff|slam|drift": [
+   2.1285,
+   2.066
+  ],
+  "hero_ossuary|staff|slam|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|staff|slam|pen": [
+   0.0757,
+   0.0734
+  ],
+  "hero_ossuary|staff|summon|drift": [
+   2.2371,
+   2.0557
+  ],
+  "hero_ossuary|staff|summon|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|staff|summon|pen": [
+   0.1124,
+   0.0937
+  ],
+  "hero_ossuary|staff|sweep|drift": [
+   1.7384,
+   1.7033
+  ],
+  "hero_ossuary|staff|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|staff|sweep|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|staff|walk|drift": [
+   0.5035,
+   0.4747
+  ],
+  "hero_ossuary|staff|walk|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|staff|walk|pen": [
+   0.0576,
+   0.0561
+  ],
+  "hero_ossuary|wand|attack|drift": [
+   0.5583,
+   0.3895
+  ],
+  "hero_ossuary|wand|attack|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|attack|pen": [
+   0.0711,
+   0.0435
+  ],
+  "hero_ossuary|wand|cast|drift": [
+   0.3321,
+   0.3286
+  ],
+  "hero_ossuary|wand|cast|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|cast|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|channel|drift": [
+   0.4207,
+   0.4118
+  ],
+  "hero_ossuary|wand|channel|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|channel|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|death2|drift": [
+   0.4335,
+   0.4327
+  ],
+  "hero_ossuary|wand|death2|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|death2|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|death|drift": [
+   0.5465,
+   0.5061
+  ],
+  "hero_ossuary|wand|death|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|death|pen": [
+   0.0488,
+   0.0472
+  ],
+  "hero_ossuary|wand|dig|drift": [
+   0.127,
+   0.1268
+  ],
+  "hero_ossuary|wand|dig|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|dig|pen": [
+   0.0311,
+   0.0304
+  ],
+  "hero_ossuary|wand|flick|drift": [
+   0.6463,
+   0.5866
+  ],
+  "hero_ossuary|wand|flick|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|flick|pen": [
+   0.0628,
+   0.0531
+  ],
+  "hero_ossuary|wand|hurt2|drift": [
+   0.5412,
+   0.523
+  ],
+  "hero_ossuary|wand|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|hurt2|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|hurt|drift": [
+   0.4368,
+   0.4367
+  ],
+  "hero_ossuary|wand|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|hurt|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|idle|drift": [
+   0.0656,
+   0.0512
+  ],
+  "hero_ossuary|wand|idle|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|idle|pen": [
+   0.0017,
+   0
+  ],
+  "hero_ossuary|wand|run|drift": [
+   0.4872,
+   0.4635
+  ],
+  "hero_ossuary|wand|run|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|run|pen": [
+   0.0095,
+   0.0082
+  ],
+  "hero_ossuary|wand|slam|drift": [
+   0.556,
+   0.5376
+  ],
+  "hero_ossuary|wand|slam|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|slam|pen": [
+   0.0741,
+   0.0606
+  ],
+  "hero_ossuary|wand|summon|drift": [
+   0.6207,
+   0.5844
+  ],
+  "hero_ossuary|wand|summon|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|summon|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|sweep|drift": [
+   0.4674,
+   0.4656
+  ],
+  "hero_ossuary|wand|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|sweep|pen": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|walk|drift": [
+   0.1469,
+   0.1366
+  ],
+  "hero_ossuary|wand|walk|gap": [
+   0,
+   0
+  ],
+  "hero_ossuary|wand|walk|pen": [
+   0,
+   0
+  ],
+  "hero_rotweaver|cape|attack|hem": [
+   0,
+   0
+  ],
+  "hero_rotweaver|cape|attack|pen": [
+   0.0105,
+   0
+  ],
+  "hero_rotweaver|cape|cast|hem": [
+   0.0717,
+   0.0644
+  ],
+  "hero_rotweaver|cape|cast|pen": [
+   0.0738,
+   0.0668
+  ],
+  "hero_rotweaver|cape|channel|hem": [
+   0,
+   0
+  ],
+  "hero_rotweaver|cape|channel|pen": [
+   0,
+   0
+  ],
+  "hero_rotweaver|cape|death2|hem": [
+   0.0989,
+   0.0755
+  ],
+  "hero_rotweaver|cape|death2|pen": [
+   0.1011,
+   0.0758
+  ],
+  "hero_rotweaver|cape|death|hem": [
+   0,
+   0
+  ],
+  "hero_rotweaver|cape|death|pen": [
+   0.0274,
+   0.026
+  ],
+  "hero_rotweaver|cape|dig|hem": [
+   0,
+   0
+  ],
+  "hero_rotweaver|cape|dig|pen": [
+   0,
+   0
+  ],
+  "hero_rotweaver|cape|flick|hem": [
+   0,
+   0
+  ],
+  "hero_rotweaver|cape|flick|pen": [
+   0,
+   0
+  ],
+  "hero_rotweaver|cape|hurt2|hem": [
+   0.096,
+   0.0121
+  ],
+  "hero_rotweaver|cape|hurt2|pen": [
+   0.096,
+   0.0857
+  ],
+  "hero_rotweaver|cape|hurt|hem": [
+   0,
+   0
+  ],
+  "hero_rotweaver|cape|hurt|pen": [
+   0,
+   0
+  ],
+  "hero_rotweaver|cape|idle|hem": [
+   0,
+   0
+  ],
+  "hero_rotweaver|cape|idle|pen": [
+   0,
+   0
+  ],
+  "hero_rotweaver|cape|run|hem": [
+   0,
+   0
+  ],
+  "hero_rotweaver|cape|run|pen": [
+   0.0061,
+   0.0003
+  ],
+  "hero_rotweaver|cape|slam|hem": [
+   0,
+   0
+  ],
+  "hero_rotweaver|cape|slam|pen": [
+   0.0216,
+   0.0057
+  ],
+  "hero_rotweaver|cape|summon|hem": [
+   0,
+   0
+  ],
+  "hero_rotweaver|cape|summon|pen": [
+   0.0014,
+   0
+  ],
+  "hero_rotweaver|cape|sweep|hem": [
+   0.0401,
+   0.0365
+  ],
+  "hero_rotweaver|cape|sweep|pen": [
+   0.0412,
+   0.0373
+  ],
+  "hero_rotweaver|cape|walk|hem": [
+   0,
+   0
+  ],
+  "hero_rotweaver|cape|walk|pen": [
+   0,
+   0
+  ],
+  "hero_rotweaver|grimoire|attack|drift": [
+   0.4389,
+   0.2909
+  ],
+  "hero_rotweaver|grimoire|attack|gap": [
+   0.0102,
+   0.008
+  ],
+  "hero_rotweaver|grimoire|attack|pen": [
+   0.0642,
+   0.0534
+  ],
+  "hero_rotweaver|grimoire|cast|drift": [
+   0.186,
+   0.1773
+  ],
+  "hero_rotweaver|grimoire|cast|gap": [
+   0.0136,
+   0.0135
+  ],
+  "hero_rotweaver|grimoire|cast|pen": [
+   0.0501,
+   0.0248
+  ],
+  "hero_rotweaver|grimoire|channel|drift": [
+   0.3642,
+   0.3461
+  ],
+  "hero_rotweaver|grimoire|channel|gap": [
+   0.0125,
+   0.0108
+  ],
+  "hero_rotweaver|grimoire|channel|pen": [
+   0.0044,
+   0
+  ],
+  "hero_rotweaver|grimoire|death2|drift": [
+   0.247,
+   0.2409
+  ],
+  "hero_rotweaver|grimoire|death2|gap": [
+   0.014,
+   0.0113
+  ],
+  "hero_rotweaver|grimoire|death2|pen": [
+   0.0464,
+   0.0417
+  ],
+  "hero_rotweaver|grimoire|death|drift": [
+   0.4627,
+   0.4035
+  ],
+  "hero_rotweaver|grimoire|death|gap": [
+   0.0418,
+   0.0124
+  ],
+  "hero_rotweaver|grimoire|death|pen": [
+   0.0835,
+   0.0779
+  ],
+  "hero_rotweaver|grimoire|dig|drift": [
+   0.1351,
+   0.135
+  ],
+  "hero_rotweaver|grimoire|dig|gap": [
+   0.0068,
+   0.0068
+  ],
+  "hero_rotweaver|grimoire|dig|pen": [
+   0.0578,
+   0.0568
+  ],
+  "hero_rotweaver|grimoire|flick|drift": [
+   0.2919,
+   0.2858
+  ],
+  "hero_rotweaver|grimoire|flick|gap": [
+   0.0123,
+   0.0119
+  ],
+  "hero_rotweaver|grimoire|flick|pen": [
+   0.0426,
+   0.0384
+  ],
+  "hero_rotweaver|grimoire|hurt2|drift": [
+   0.2993,
+   0.2811
+  ],
+  "hero_rotweaver|grimoire|hurt2|gap": [
+   0.0167,
+   0.0149
+  ],
+  "hero_rotweaver|grimoire|hurt2|pen": [
+   0.047,
+   0.0463
+  ],
+  "hero_rotweaver|grimoire|hurt|drift": [
+   0.2826,
+   0.28
+  ],
+  "hero_rotweaver|grimoire|hurt|gap": [
+   0.0138,
+   0.0132
+  ],
+  "hero_rotweaver|grimoire|hurt|pen": [
+   0.1198,
+   0.1192
+  ],
+  "hero_rotweaver|grimoire|idle|drift": [
+   0.0307,
+   0.0273
+  ],
+  "hero_rotweaver|grimoire|idle|gap": [
+   0.0018,
+   0.0017
+  ],
+  "hero_rotweaver|grimoire|idle|pen": [
+   0,
+   0
+  ],
+  "hero_rotweaver|grimoire|run|drift": [
+   0.3405,
+   0.2834
+  ],
+  "hero_rotweaver|grimoire|run|gap": [
+   0.0118,
+   0.0117
+  ],
+  "hero_rotweaver|grimoire|run|pen": [
+   0.0437,
+   0.0424
+  ],
+  "hero_rotweaver|grimoire|slam|drift": [
+   0.4623,
+   0.3905
+  ],
+  "hero_rotweaver|grimoire|slam|gap": [
+   0.006,
+   0.0034
+  ],
+  "hero_rotweaver|grimoire|slam|pen": [
+   0.0654,
+   0.0565
+  ],
+  "hero_rotweaver|grimoire|summon|drift": [
+   0.3551,
+   0.344
+  ],
+  "hero_rotweaver|grimoire|summon|gap": [
+   0.0135,
+   0.0123
+  ],
+  "hero_rotweaver|grimoire|summon|pen": [
+   0.0564,
+   0.0522
+  ],
+  "hero_rotweaver|grimoire|sweep|drift": [
+   0.2626,
+   0.2614
+  ],
+  "hero_rotweaver|grimoire|sweep|gap": [
+   0.0159,
+   0.0134
+  ],
+  "hero_rotweaver|grimoire|sweep|pen": [
+   0.0374,
+   0.0351
+  ],
+  "hero_rotweaver|grimoire|walk|drift": [
+   0.1112,
+   0.1101
+  ],
+  "hero_rotweaver|grimoire|walk|gap": [
+   0.0134,
+   0.0132
+  ],
+  "hero_rotweaver|grimoire|walk|pen": [
+   0,
+   0
+  ],
+  "hero_rotweaver|helm|attack|float": [
+   0,
+   0
+  ],
+  "hero_rotweaver|helm|attack|sink": [
+   0.0375,
+   0.0375
+  ],
+  "hero_rotweaver|helm|cast|float": [
+   0,
+   0
+  ],
+  "hero_rotweaver|helm|cast|sink": [
+   0.0377,
+   0.0375
+  ],
+  "hero_rotweaver|helm|channel|float": [
+   0,
+   0
+  ],
+  "hero_rotweaver|helm|channel|sink": [
+   0.0378,
+   0.0377
+  ],
+  "hero_rotweaver|helm|death2|float": [
+   0,
+   0
+  ],
+  "hero_rotweaver|helm|death2|sink": [
+   0.0379,
+   0.0376
+  ],
+  "hero_rotweaver|helm|death|float": [
+   0,
+   0
+  ],
+  "hero_rotweaver|helm|death|sink": [
+   0.0378,
+   0.0376
+  ],
+  "hero_rotweaver|helm|dig|float": [
+   0,
+   0
+  ],
+  "hero_rotweaver|helm|dig|sink": [
+   0.0376,
+   0.0376
+  ],
+  "hero_rotweaver|helm|flick|float": [
+   0,
+   0
+  ],
+  "hero_rotweaver|helm|flick|sink": [
+   0.0373,
+   0.0373
+  ],
+  "hero_rotweaver|helm|hurt2|float": [
+   0,
+   0
+  ],
+  "hero_rotweaver|helm|hurt2|sink": [
+   0.0377,
+   0.0377
+  ],
+  "hero_rotweaver|helm|hurt|float": [
+   0,
+   0
+  ],
+  "hero_rotweaver|helm|hurt|sink": [
+   0.0377,
+   0.0377
+  ],
+  "hero_rotweaver|helm|idle|float": [
+   0,
+   0
+  ],
+  "hero_rotweaver|helm|idle|sink": [
+   0.0376,
+   0.0376
+  ],
+  "hero_rotweaver|helm|run|float": [
+   0,
+   0
+  ],
+  "hero_rotweaver|helm|run|sink": [
+   0.0375,
+   0.0374
+  ],
+  "hero_rotweaver|helm|slam|float": [
+   0,
+   0
+  ],
+  "hero_rotweaver|helm|slam|sink": [
+   0.0376,
+   0.0375
+  ],
+  "hero_rotweaver|helm|summon|float": [
+   0,
+   0
+  ],
+  "hero_rotweaver|helm|summon|sink": [
+   0.0375,
+   0.0371
+  ],
+  "hero_rotweaver|helm|sweep|float": [
+   0,
+   0
+  ],
+  "hero_rotweaver|helm|sweep|sink": [
+   0.0377,
+   0.0377
+  ],
+  "hero_rotweaver|helm|walk|float": [
+   0,
+   0
+  ],
+  "hero_rotweaver|helm|walk|sink": [
+   0.0375,
+   0.0374
+  ],
+  "hero_rotweaver|mourning_bell|attack|drift": [
+   0.4766,
+   0.3726
+  ],
+  "hero_rotweaver|mourning_bell|attack|gap": [
+   0.0294,
+   0.0192
+  ],
+  "hero_rotweaver|mourning_bell|attack|pen": [
+   0.07,
+   0.0024
+  ],
+  "hero_rotweaver|mourning_bell|cast|drift": [
+   0.3378,
+   0.3291
+  ],
+  "hero_rotweaver|mourning_bell|cast|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|mourning_bell|cast|pen": [
+   0.0495,
+   0.0124
+  ],
+  "hero_rotweaver|mourning_bell|channel|drift": [
+   0.4046,
+   0.39
+  ],
+  "hero_rotweaver|mourning_bell|channel|gap": [
+   0.0118,
+   0.011
+  ],
+  "hero_rotweaver|mourning_bell|channel|pen": [
+   0,
+   0
+  ],
+  "hero_rotweaver|mourning_bell|death2|drift": [
+   0.2565,
+   0.2464
+  ],
+  "hero_rotweaver|mourning_bell|death2|gap": [
+   0.0109,
+   0.0061
+  ],
+  "hero_rotweaver|mourning_bell|death2|pen": [
+   0.0643,
+   0
+  ],
+  "hero_rotweaver|mourning_bell|death|drift": [
+   0.4276,
+   0.4094
+  ],
+  "hero_rotweaver|mourning_bell|death|gap": [
+   0.0237,
+   0.0183
+  ],
+  "hero_rotweaver|mourning_bell|death|pen": [
+   0.0184,
+   0
+  ],
+  "hero_rotweaver|mourning_bell|dig|drift": [
+   0.1671,
+   0.1665
+  ],
+  "hero_rotweaver|mourning_bell|dig|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|mourning_bell|dig|pen": [
+   0,
+   0
+  ],
+  "hero_rotweaver|mourning_bell|flick|drift": [
+   0.4297,
+   0.4186
+  ],
+  "hero_rotweaver|mourning_bell|flick|gap": [
+   0.0133,
+   0.0112
+  ],
+  "hero_rotweaver|mourning_bell|flick|pen": [
+   0,
+   0
+  ],
+  "hero_rotweaver|mourning_bell|hurt2|drift": [
+   0.4163,
+   0.4155
+  ],
+  "hero_rotweaver|mourning_bell|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|mourning_bell|hurt2|pen": [
+   0.0342,
+   0.0058
+  ],
+  "hero_rotweaver|mourning_bell|hurt|drift": [
+   0.4152,
+   0.4129
+  ],
+  "hero_rotweaver|mourning_bell|hurt|gap": [
+   0.0022,
+   0.0001
+  ],
+  "hero_rotweaver|mourning_bell|hurt|pen": [
+   0.0091,
+   0.0051
+  ],
+  "hero_rotweaver|mourning_bell|idle|drift": [
+   0.0421,
+   0.0377
+  ],
+  "hero_rotweaver|mourning_bell|idle|gap": [
+   0.0025,
+   0.0021
+  ],
+  "hero_rotweaver|mourning_bell|idle|pen": [
+   0,
+   0
+  ],
+  "hero_rotweaver|mourning_bell|run|drift": [
+   0.3447,
+   0.2814
+  ],
+  "hero_rotweaver|mourning_bell|run|gap": [
+   0.0035,
+   0.0033
+  ],
+  "hero_rotweaver|mourning_bell|run|pen": [
+   0,
+   0
+  ],
+  "hero_rotweaver|mourning_bell|slam|drift": [
+   0.4797,
+   0.4633
+  ],
+  "hero_rotweaver|mourning_bell|slam|gap": [
+   0.0298,
+   0.0219
+  ],
+  "hero_rotweaver|mourning_bell|slam|pen": [
+   0.0525,
+   0.0213
+  ],
+  "hero_rotweaver|mourning_bell|summon|drift": [
+   0.3953,
+   0.3841
+  ],
+  "hero_rotweaver|mourning_bell|summon|gap": [
+   0.03,
+   0.0249
+  ],
+  "hero_rotweaver|mourning_bell|summon|pen": [
+   0.0333,
+   0.0227
+  ],
+  "hero_rotweaver|mourning_bell|sweep|drift": [
+   0.45,
+   0.4493
+  ],
+  "hero_rotweaver|mourning_bell|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|mourning_bell|sweep|pen": [
+   0,
+   0
+  ],
+  "hero_rotweaver|mourning_bell|walk|drift": [
+   0.1124,
+   0.1094
+  ],
+  "hero_rotweaver|mourning_bell|walk|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|mourning_bell|walk|pen": [
+   0.0089,
+   0.001
+  ],
+  "hero_rotweaver|scythe|attack|drift": [
+   2.0366,
+   1.5504
+  ],
+  "hero_rotweaver|scythe|attack|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|scythe|attack|pen": [
+   0.1019,
+   0.0875
+  ],
+  "hero_rotweaver|scythe|cast|drift": [
+   1.0623,
+   1.0577
+  ],
+  "hero_rotweaver|scythe|cast|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|scythe|cast|pen": [
+   0.0398,
+   0.01
+  ],
+  "hero_rotweaver|scythe|channel|drift": [
+   1.6563,
+   1.6537
+  ],
+  "hero_rotweaver|scythe|channel|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|scythe|channel|pen": [
+   0.0439,
+   0
+  ],
+  "hero_rotweaver|scythe|death2|drift": [
+   1.1726,
+   1.1718
+  ],
+  "hero_rotweaver|scythe|death2|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|scythe|death2|pen": [
+   0.0734,
+   0.0419
+  ],
+  "hero_rotweaver|scythe|death|drift": [
+   1.803,
+   1.655
+  ],
+  "hero_rotweaver|scythe|death|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|scythe|death|pen": [
+   0.0455,
+   0.0361
+  ],
+  "hero_rotweaver|scythe|dig|drift": [
+   0.3513,
+   0.3505
+  ],
+  "hero_rotweaver|scythe|dig|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|scythe|dig|pen": [
+   0.091,
+   0.0887
+  ],
+  "hero_rotweaver|scythe|flick|drift": [
+   2.0064,
+   1.9079
+  ],
+  "hero_rotweaver|scythe|flick|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|scythe|flick|pen": [
+   0.0707,
+   0.0595
+  ],
+  "hero_rotweaver|scythe|hurt2|drift": [
+   1.8986,
+   1.8512
+  ],
+  "hero_rotweaver|scythe|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|scythe|hurt2|pen": [
+   0.102,
+   0.0719
+  ],
+  "hero_rotweaver|scythe|hurt|drift": [
+   1.6332,
+   1.6122
+  ],
+  "hero_rotweaver|scythe|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|scythe|hurt|pen": [
+   0.0668,
+   0.0033
+  ],
+  "hero_rotweaver|scythe|idle|drift": [
+   0.1927,
+   0.1429
+  ],
+  "hero_rotweaver|scythe|idle|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|scythe|idle|pen": [
+   0.0785,
+   0.0652
+  ],
+  "hero_rotweaver|scythe|run|drift": [
+   1.6736,
+   1.5054
+  ],
+  "hero_rotweaver|scythe|run|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|scythe|run|pen": [
+   0.0553,
+   0.0553
+  ],
+  "hero_rotweaver|scythe|slam|drift": [
+   2.0268,
+   1.9715
+  ],
+  "hero_rotweaver|scythe|slam|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|scythe|slam|pen": [
+   0.056,
+   0.0534
+  ],
+  "hero_rotweaver|scythe|summon|drift": [
+   2.1114,
+   1.9413
+  ],
+  "hero_rotweaver|scythe|summon|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|scythe|summon|pen": [
+   0.0791,
+   0.0442
+  ],
+  "hero_rotweaver|scythe|sweep|drift": [
+   1.6664,
+   1.6319
+  ],
+  "hero_rotweaver|scythe|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|scythe|sweep|pen": [
+   0.063,
+   0.0163
+  ],
+  "hero_rotweaver|scythe|walk|drift": [
+   0.4791,
+   0.4515
+  ],
+  "hero_rotweaver|scythe|walk|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|scythe|walk|pen": [
+   0.0471,
+   0.03
+  ],
+  "hero_rotweaver|sickle|attack|drift": [
+   0.6392,
+   0.4459
+  ],
+  "hero_rotweaver|sickle|attack|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|sickle|attack|pen": [
+   0.0469,
+   0.0431
+  ],
+  "hero_rotweaver|sickle|cast|drift": [
+   0.3831,
+   0.3791
+  ],
+  "hero_rotweaver|sickle|cast|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|sickle|cast|pen": [
+   0,
+   0
+  ],
+  "hero_rotweaver|sickle|channel|drift": [
+   0.4812,
+   0.4733
+  ],
+  "hero_rotweaver|sickle|channel|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|sickle|channel|pen": [
+   0.0279,
+   0.007
+  ],
+  "hero_rotweaver|sickle|death2|drift": [
+   0.5026,
+   0.5017
+  ],
+  "hero_rotweaver|sickle|death2|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|sickle|death2|pen": [
+   0.0207,
+   0.0038
+  ],
+  "hero_rotweaver|sickle|death|drift": [
+   0.6258,
+   0.581
+  ],
+  "hero_rotweaver|sickle|death|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|sickle|death|pen": [
+   0.0405,
+   0.0395
+  ],
+  "hero_rotweaver|sickle|dig|drift": [
+   0.1573,
+   0.157
+  ],
+  "hero_rotweaver|sickle|dig|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|sickle|dig|pen": [
+   0.1065,
+   0.1058
+  ],
+  "hero_rotweaver|sickle|flick|drift": [
+   0.7472,
+   0.6845
+  ],
+  "hero_rotweaver|sickle|flick|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|sickle|flick|pen": [
+   0.0639,
+   0.0524
+  ],
+  "hero_rotweaver|sickle|hurt2|drift": [
+   0.622,
+   0.6019
+  ],
+  "hero_rotweaver|sickle|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|sickle|hurt2|pen": [
+   0.0018,
+   0
+  ],
+  "hero_rotweaver|sickle|hurt|drift": [
+   0.5043,
+   0.5036
+  ],
+  "hero_rotweaver|sickle|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|sickle|hurt|pen": [
+   0.0018,
+   0.0001
+  ],
+  "hero_rotweaver|sickle|idle|drift": [
+   0.0759,
+   0.0592
+  ],
+  "hero_rotweaver|sickle|idle|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|sickle|idle|pen": [
+   0.0544,
+   0.0478
+  ],
+  "hero_rotweaver|sickle|run|drift": [
+   0.554,
+   0.5079
+  ],
+  "hero_rotweaver|sickle|run|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|sickle|run|pen": [
+   0.0199,
+   0.0121
+  ],
+  "hero_rotweaver|sickle|slam|drift": [
+   0.6368,
+   0.6159
+  ],
+  "hero_rotweaver|sickle|slam|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|sickle|slam|pen": [
+   0.0479,
+   0.0456
+  ],
+  "hero_rotweaver|sickle|summon|drift": [
+   0.713,
+   0.6768
+  ],
+  "hero_rotweaver|sickle|summon|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|sickle|summon|pen": [
+   0.0398,
+   0.0299
+  ],
+  "hero_rotweaver|sickle|sweep|drift": [
+   0.5391,
+   0.5366
+  ],
+  "hero_rotweaver|sickle|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|sickle|sweep|pen": [
+   0,
+   0
+  ],
+  "hero_rotweaver|sickle|walk|drift": [
+   0.1701,
+   0.1582
+  ],
+  "hero_rotweaver|sickle|walk|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|sickle|walk|pen": [
+   0.0308,
+   0.0253
+  ],
+  "hero_rotweaver|skull_focus|attack|drift": [
+   0.4891,
+   0.3358
+  ],
+  "hero_rotweaver|skull_focus|attack|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|skull_focus|attack|pen": [
+   0.0677,
+   0.0665
+  ],
+  "hero_rotweaver|skull_focus|cast|drift": [
+   0.2397,
+   0.2288
+  ],
+  "hero_rotweaver|skull_focus|cast|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|skull_focus|cast|pen": [
+   0.0124,
+   0.0031
+  ],
+  "hero_rotweaver|skull_focus|channel|drift": [
+   0.4185,
+   0.4082
+  ],
+  "hero_rotweaver|skull_focus|channel|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|skull_focus|channel|pen": [
+   0.0622,
+   0.0596
+  ],
+  "hero_rotweaver|skull_focus|death2|drift": [
+   0.2716,
+   0.2629
+  ],
+  "hero_rotweaver|skull_focus|death2|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|skull_focus|death2|pen": [
+   0.0203,
+   0
+  ],
+  "hero_rotweaver|skull_focus|death|drift": [
+   0.4532,
+   0.4375
+  ],
+  "hero_rotweaver|skull_focus|death|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|skull_focus|death|pen": [
+   0.0577,
+   0.0541
+  ],
+  "hero_rotweaver|skull_focus|dig|drift": [
+   0.1591,
+   0.159
+  ],
+  "hero_rotweaver|skull_focus|dig|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|skull_focus|dig|pen": [
+   0.0678,
+   0.0648
+  ],
+  "hero_rotweaver|skull_focus|flick|drift": [
+   0.3651,
+   0.3373
+  ],
+  "hero_rotweaver|skull_focus|flick|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|skull_focus|flick|pen": [
+   0.0677,
+   0.067
+  ],
+  "hero_rotweaver|skull_focus|hurt2|drift": [
+   0.3549,
+   0.3464
+  ],
+  "hero_rotweaver|skull_focus|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|skull_focus|hurt2|pen": [
+   0.0525,
+   0.0484
+  ],
+  "hero_rotweaver|skull_focus|hurt|drift": [
+   0.3476,
+   0.3347
+  ],
+  "hero_rotweaver|skull_focus|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|skull_focus|hurt|pen": [
+   0.1223,
+   0.1112
+  ],
+  "hero_rotweaver|skull_focus|idle|drift": [
+   0.0379,
+   0.0337
+  ],
+  "hero_rotweaver|skull_focus|idle|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|skull_focus|idle|pen": [
+   0.0376,
+   0.0345
+  ],
+  "hero_rotweaver|skull_focus|run|drift": [
+   0.3902,
+   0.3123
+  ],
+  "hero_rotweaver|skull_focus|run|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|skull_focus|run|pen": [
+   0.067,
+   0.0668
+  ],
+  "hero_rotweaver|skull_focus|slam|drift": [
+   0.4867,
+   0.4406
+  ],
+  "hero_rotweaver|skull_focus|slam|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|skull_focus|slam|pen": [
+   0.0613,
+   0.0562
+  ],
+  "hero_rotweaver|skull_focus|summon|drift": [
+   0.4597,
+   0.443
+  ],
+  "hero_rotweaver|skull_focus|summon|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|skull_focus|summon|pen": [
+   0.063,
+   0.0599
+  ],
+  "hero_rotweaver|skull_focus|sweep|drift": [
+   0.3633,
+   0.361
+  ],
+  "hero_rotweaver|skull_focus|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|skull_focus|sweep|pen": [
+   0.0104,
+   0.0091
+  ],
+  "hero_rotweaver|skull_focus|walk|drift": [
+   0.1229,
+   0.1209
+  ],
+  "hero_rotweaver|skull_focus|walk|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|skull_focus|walk|pen": [
+   0.0684,
+   0.0658
+  ],
+  "hero_rotweaver|staff|attack|drift": [
+   2.1375,
+   1.6298
+  ],
+  "hero_rotweaver|staff|attack|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|staff|attack|pen": [
+   0.0969,
+   0.09
+  ],
+  "hero_rotweaver|staff|cast|drift": [
+   1.1079,
+   1.1035
+  ],
+  "hero_rotweaver|staff|cast|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|staff|cast|pen": [
+   0.1063,
+   0.03
+  ],
+  "hero_rotweaver|staff|channel|drift": [
+   1.7273,
+   1.7231
+  ],
+  "hero_rotweaver|staff|channel|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|staff|channel|pen": [
+   0.0418,
+   0
+  ],
+  "hero_rotweaver|staff|death2|drift": [
+   1.2375,
+   1.2368
+  ],
+  "hero_rotweaver|staff|death2|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|staff|death2|pen": [
+   0.0613,
+   0.0466
+  ],
+  "hero_rotweaver|staff|death|drift": [
+   1.8967,
+   1.7438
+  ],
+  "hero_rotweaver|staff|death|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|staff|death|pen": [
+   0.0932,
+   0.0497
+  ],
+  "hero_rotweaver|staff|dig|drift": [
+   0.3714,
+   0.3706
+  ],
+  "hero_rotweaver|staff|dig|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|staff|dig|pen": [
+   0.0918,
+   0.0916
+  ],
+  "hero_rotweaver|staff|flick|drift": [
+   2.1346,
+   1.9996
+  ],
+  "hero_rotweaver|staff|flick|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|staff|flick|pen": [
+   0.0678,
+   0.0589
+  ],
+  "hero_rotweaver|staff|hurt2|drift": [
+   1.9783,
+   1.9314
+  ],
+  "hero_rotweaver|staff|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|staff|hurt2|pen": [
+   0.0803,
+   0.048
+  ],
+  "hero_rotweaver|staff|hurt|drift": [
+   1.701,
+   1.6785
+  ],
+  "hero_rotweaver|staff|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|staff|hurt|pen": [
+   0.0372,
+   0.0019
+  ],
+  "hero_rotweaver|staff|idle|drift": [
+   0.2039,
+   0.1516
+  ],
+  "hero_rotweaver|staff|idle|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|staff|idle|pen": [
+   0.0898,
+   0.0706
+  ],
+  "hero_rotweaver|staff|run|drift": [
+   1.7461,
+   1.5698
+  ],
+  "hero_rotweaver|staff|run|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|staff|run|pen": [
+   0.0543,
+   0.05
+  ],
+  "hero_rotweaver|staff|slam|drift": [
+   2.1398,
+   2.0711
+  ],
+  "hero_rotweaver|staff|slam|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|staff|slam|pen": [
+   0.0568,
+   0.0544
+  ],
+  "hero_rotweaver|staff|summon|drift": [
+   2.2472,
+   2.058
+  ],
+  "hero_rotweaver|staff|summon|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|staff|summon|pen": [
+   0.1116,
+   0.1013
+  ],
+  "hero_rotweaver|staff|sweep|drift": [
+   1.7361,
+   1.6987
+  ],
+  "hero_rotweaver|staff|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|staff|sweep|pen": [
+   0.0325,
+   0
+  ],
+  "hero_rotweaver|staff|walk|drift": [
+   0.5007,
+   0.472
+  ],
+  "hero_rotweaver|staff|walk|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|staff|walk|pen": [
+   0.0469,
+   0.0342
+  ],
+  "hero_rotweaver|wand|attack|drift": [
+   0.5583,
+   0.3895
+  ],
+  "hero_rotweaver|wand|attack|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|wand|attack|pen": [
+   0.0448,
+   0.04
+  ],
+  "hero_rotweaver|wand|cast|drift": [
+   0.3322,
+   0.3287
+  ],
+  "hero_rotweaver|wand|cast|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|wand|cast|pen": [
+   0,
+   0
+  ],
+  "hero_rotweaver|wand|channel|drift": [
+   0.4162,
+   0.4124
+  ],
+  "hero_rotweaver|wand|channel|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|wand|channel|pen": [
+   0.015,
+   0
+  ],
+  "hero_rotweaver|wand|death2|drift": [
+   0.4337,
+   0.4329
+  ],
+  "hero_rotweaver|wand|death2|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|wand|death2|pen": [
+   0.0159,
+   0.0122
+  ],
+  "hero_rotweaver|wand|death|drift": [
+   0.5465,
+   0.5061
+  ],
+  "hero_rotweaver|wand|death|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|wand|death|pen": [
+   0.0405,
+   0.038
+  ],
+  "hero_rotweaver|wand|dig|drift": [
+   0.1365,
+   0.1362
+  ],
+  "hero_rotweaver|wand|dig|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|wand|dig|pen": [
+   0.1046,
+   0.1033
+  ],
+  "hero_rotweaver|wand|flick|drift": [
+   0.6511,
+   0.5921
+  ],
+  "hero_rotweaver|wand|flick|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|wand|flick|pen": [
+   0.0533,
+   0.0473
+  ],
+  "hero_rotweaver|wand|hurt2|drift": [
+   0.5412,
+   0.523
+  ],
+  "hero_rotweaver|wand|hurt2|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|wand|hurt2|pen": [
+   0.0095,
+   0
+  ],
+  "hero_rotweaver|wand|hurt|drift": [
+   0.4369,
+   0.4368
+  ],
+  "hero_rotweaver|wand|hurt|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|wand|hurt|pen": [
+   0.0095,
+   0.0005
+  ],
+  "hero_rotweaver|wand|idle|drift": [
+   0.0656,
+   0.0512
+  ],
+  "hero_rotweaver|wand|idle|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|wand|idle|pen": [
+   0.0547,
+   0.0486
+  ],
+  "hero_rotweaver|wand|run|drift": [
+   0.4806,
+   0.4395
+  ],
+  "hero_rotweaver|wand|run|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|wand|run|pen": [
+   0.0147,
+   0.0088
+  ],
+  "hero_rotweaver|wand|slam|drift": [
+   0.556,
+   0.5376
+  ],
+  "hero_rotweaver|wand|slam|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|wand|slam|pen": [
+   0.0449,
+   0.0381
+  ],
+  "hero_rotweaver|wand|summon|drift": [
+   0.6207,
+   0.5845
+  ],
+  "hero_rotweaver|wand|summon|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|wand|summon|pen": [
+   0.0486,
+   0.0269
+  ],
+  "hero_rotweaver|wand|sweep|drift": [
+   0.4675,
+   0.4657
+  ],
+  "hero_rotweaver|wand|sweep|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|wand|sweep|pen": [
+   0.0058,
+   0
+  ],
+  "hero_rotweaver|wand|walk|drift": [
+   0.1469,
+   0.1366
+  ],
+  "hero_rotweaver|wand|walk|gap": [
+   0,
+   0
+  ],
+  "hero_rotweaver|wand|walk|pen": [
+   0.0315,
+   0.0284
+  ]
+ },
+ "support": {
+  "hero_gravecaller|scythe|attack": [
+   0.2297,
+   0.4313
+  ],
+  "hero_gravecaller|scythe|cast": [
+   0.2354,
+   0.8717
+  ],
+  "hero_gravecaller|scythe|channel": [
+   0.1206,
+   0.2722
+  ],
+  "hero_gravecaller|scythe|death": [
+   0.2816,
+   0.4476
+  ],
+  "hero_gravecaller|scythe|death2": [
+   0.494,
+   0.7148
+  ],
+  "hero_gravecaller|scythe|dig": [
+   0.4391,
+   0.4551
+  ],
+  "hero_gravecaller|scythe|flick": [
+   0.2206,
+   0.3725
+  ],
+  "hero_gravecaller|scythe|hurt": [
+   0.1776,
+   0.2263
+  ],
+  "hero_gravecaller|scythe|hurt2": [
+   0.1823,
+   0.2757
+  ],
+  "hero_gravecaller|scythe|idle": [
+   0.4723,
+   0.4916
+  ],
+  "hero_gravecaller|scythe|run": [
+   0.4919,
+   0.6597
+  ],
+  "hero_gravecaller|scythe|slam": [
+   0.2036,
+   0.2737
+  ],
+  "hero_gravecaller|scythe|summon": [
+   0.1762,
+   0.2877
+  ],
+  "hero_gravecaller|scythe|sweep": [
+   0.2008,
+   0.3137
+  ],
+  "hero_gravecaller|scythe|walk": [
+   0.4848,
+   0.5455
+  ],
+  "hero_gravecaller|staff|attack": [
+   0.2158,
+   0.4337
+  ],
+  "hero_gravecaller|staff|cast": [
+   0.2805,
+   0.8729
+  ],
+  "hero_gravecaller|staff|channel": [
+   0.0855,
+   0.2751
+  ],
+  "hero_gravecaller|staff|death": [
+   0.3732,
+   0.468
+  ],
+  "hero_gravecaller|staff|death2": [
+   0.4859,
+   0.7053
+  ],
+  "hero_gravecaller|staff|dig": [
+   0.5024,
+   0.5173
+  ],
+  "hero_gravecaller|staff|flick": [
+   0.1947,
+   0.4141
+  ],
+  "hero_gravecaller|staff|hurt": [
+   0.1678,
+   0.2333
+  ],
+  "hero_gravecaller|staff|hurt2": [
+   0.2085,
+   0.2997
+  ],
+  "hero_gravecaller|staff|idle": [
+   0.4669,
+   0.4835
+  ],
+  "hero_gravecaller|staff|run": [
+   0.4862,
+   0.669
+  ],
+  "hero_gravecaller|staff|slam": [
+   0.1842,
+   0.2811
+  ],
+  "hero_gravecaller|staff|summon": [
+   0.1879,
+   0.2871
+  ],
+  "hero_gravecaller|staff|sweep": [
+   0.2355,
+   0.3313
+  ],
+  "hero_gravecaller|staff|walk": [
+   0.4763,
+   0.5352
+  ],
+  "hero_mourner|scythe|attack": [
+   0.2467,
+   0.4303
+  ],
+  "hero_mourner|scythe|cast": [
+   0.2601,
+   0.8968
+  ],
+  "hero_mourner|scythe|channel": [
+   0.1047,
+   0.3017
+  ],
+  "hero_mourner|scythe|death": [
+   0.373,
+   0.502
+  ],
+  "hero_mourner|scythe|death2": [
+   0.4649,
+   0.7358
+  ],
+  "hero_mourner|scythe|dig": [
+   0.5068,
+   0.5276
+  ],
+  "hero_mourner|scythe|flick": [
+   0.2297,
+   0.3833
+  ],
+  "hero_mourner|scythe|hurt": [
+   0.2273,
+   0.262
+  ],
+  "hero_mourner|scythe|hurt2": [
+   0.2045,
+   0.2908
+  ],
+  "hero_mourner|scythe|idle": [
+   0.4411,
+   0.4617
+  ],
+  "hero_mourner|scythe|run": [
+   0.4702,
+   0.6556
+  ],
+  "hero_mourner|scythe|slam": [
+   0.2184,
+   0.291
+  ],
+  "hero_mourner|scythe|summon": [
+   0.2018,
+   0.2753
+  ],
+  "hero_mourner|scythe|sweep": [
+   0.2791,
+   0.3544
+  ],
+  "hero_mourner|scythe|walk": [
+   0.4574,
+   0.5239
+  ],
+  "hero_mourner|staff|attack": [
+   0.2019,
+   0.446
+  ],
+  "hero_mourner|staff|cast": [
+   0.2753,
+   0.8822
+  ],
+  "hero_mourner|staff|channel": [
+   0.0547,
+   0.2963
+  ],
+  "hero_mourner|staff|death": [
+   0.3853,
+   0.4978
+  ],
+  "hero_mourner|staff|death2": [
+   0.4734,
+   0.7416
+  ],
+  "hero_mourner|staff|dig": [
+   0.5935,
+   0.6066
+  ],
+  "hero_mourner|staff|flick": [
+   0.1699,
+   0.4296
+  ],
+  "hero_mourner|staff|hurt": [
+   0.2322,
+   0.2678
+  ],
+  "hero_mourner|staff|hurt2": [
+   0.2284,
+   0.3045
+  ],
+  "hero_mourner|staff|idle": [
+   0.4503,
+   0.4696
+  ],
+  "hero_mourner|staff|run": [
+   0.4784,
+   0.6455
+  ],
+  "hero_mourner|staff|slam": [
+   0.1732,
+   0.295
+  ],
+  "hero_mourner|staff|summon": [
+   0.1907,
+   0.2893
+  ],
+  "hero_mourner|staff|sweep": [
+   0.298,
+   0.3715
+  ],
+  "hero_mourner|staff|walk": [
+   0.4666,
+   0.5265
+  ],
+  "hero_ossuary|scythe|attack": [
+   0.242,
+   0.4498
+  ],
+  "hero_ossuary|scythe|cast": [
+   0.3133,
+   0.8636
+  ],
+  "hero_ossuary|scythe|channel": [
+   0.059,
+   0.3071
+  ],
+  "hero_ossuary|scythe|death": [
+   0.3983,
+   0.4816
+  ],
+  "hero_ossuary|scythe|death2": [
+   0.4803,
+   0.7148
+  ],
+  "hero_ossuary|scythe|dig": [
+   0.5219,
+   0.5368
+  ],
+  "hero_ossuary|scythe|flick": [
+   0.242,
+   0.3997
+  ],
+  "hero_ossuary|scythe|hurt": [
+   0.201,
+   0.2679
+  ],
+  "hero_ossuary|scythe|hurt2": [
+   0.25,
+   0.3152
+  ],
+  "hero_ossuary|scythe|idle": [
+   0.4621,
+   0.4773
+  ],
+  "hero_ossuary|scythe|run": [
+   0.4842,
+   0.6303
+  ],
+  "hero_ossuary|scythe|slam": [
+   0.2127,
+   0.2984
+  ],
+  "hero_ossuary|scythe|summon": [
+   0.2183,
+   0.3084
+  ],
+  "hero_ossuary|scythe|sweep": [
+   0.2953,
+   0.3678
+  ],
+  "hero_ossuary|scythe|walk": [
+   0.4747,
+   0.5372
+  ],
+  "hero_ossuary|staff|attack": [
+   0.2049,
+   0.4653
+  ],
+  "hero_ossuary|staff|cast": [
+   0.297,
+   0.8334
+  ],
+  "hero_ossuary|staff|channel": [
+   0.0047,
+   0.3267
+  ],
+  "hero_ossuary|staff|death": [
+   0.393,
+   0.47
+  ],
+  "hero_ossuary|staff|death2": [
+   0.4957,
+   0.726
+  ],
+  "hero_ossuary|staff|dig": [
+   0.5755,
+   0.5937
+  ],
+  "hero_ossuary|staff|flick": [
+   0.1934,
+   0.4263
+  ],
+  "hero_ossuary|staff|hurt": [
+   0.2253,
+   0.2806
+  ],
+  "hero_ossuary|staff|hurt2": [
+   0.2584,
+   0.3179
+  ],
+  "hero_ossuary|staff|idle": [
+   0.4735,
+   0.4918
+  ],
+  "hero_ossuary|staff|run": [
+   0.4959,
+   0.6199
+  ],
+  "hero_ossuary|staff|slam": [
+   0.1779,
+   0.3042
+  ],
+  "hero_ossuary|staff|summon": [
+   0.1885,
+   0.3208
+  ],
+  "hero_ossuary|staff|sweep": [
+   0.3017,
+   0.3746
+  ],
+  "hero_ossuary|staff|walk": [
+   0.4882,
+   0.5371
+  ],
+  "hero_rotweaver|scythe|attack": [
+   0.2282,
+   0.4316
+  ],
+  "hero_rotweaver|scythe|cast": [
+   0.2238,
+   0.8419
+  ],
+  "hero_rotweaver|scythe|channel": [
+   0.0847,
+   0.2845
+  ],
+  "hero_rotweaver|scythe|death": [
+   0.283,
+   0.4459
+  ],
+  "hero_rotweaver|scythe|death2": [
+   0.4501,
+   0.7218
+  ],
+  "hero_rotweaver|scythe|dig": [
+   0.4835,
+   0.4956
+  ],
+  "hero_rotweaver|scythe|flick": [
+   0.2256,
+   0.3891
+  ],
+  "hero_rotweaver|scythe|hurt": [
+   0.2271,
+   0.2544
+  ],
+  "hero_rotweaver|scythe|hurt2": [
+   0.2176,
+   0.2668
+  ],
+  "hero_rotweaver|scythe|idle": [
+   0.4276,
+   0.4466
+  ],
+  "hero_rotweaver|scythe|run": [
+   0.4471,
+   0.5972
+  ],
+  "hero_rotweaver|scythe|slam": [
+   0.1882,
+   0.2669
+  ],
+  "hero_rotweaver|scythe|summon": [
+   0.1476,
+   0.2903
+  ],
+  "hero_rotweaver|scythe|sweep": [
+   0.2559,
+   0.3335
+  ],
+  "hero_rotweaver|scythe|walk": [
+   0.4421,
+   0.5147
+  ],
+  "hero_rotweaver|staff|attack": [
+   0.2238,
+   0.4155
+  ],
+  "hero_rotweaver|staff|cast": [
+   0.2728,
+   0.8583
+  ],
+  "hero_rotweaver|staff|channel": [
+   0.0925,
+   0.2785
+  ],
+  "hero_rotweaver|staff|death": [
+   0.3441,
+   0.4683
+  ],
+  "hero_rotweaver|staff|death2": [
+   0.4412,
+   0.7097
+  ],
+  "hero_rotweaver|staff|dig": [
+   0.4634,
+   0.4814
+  ],
+  "hero_rotweaver|staff|flick": [
+   0.2435,
+   0.3871
+  ],
+  "hero_rotweaver|staff|hurt": [
+   0.2085,
+   0.2524
+  ],
+  "hero_rotweaver|staff|hurt2": [
+   0.2265,
+   0.2829
+  ],
+  "hero_rotweaver|staff|idle": [
+   0.4206,
+   0.4392
+  ],
+  "hero_rotweaver|staff|run": [
+   0.4399,
+   0.6252
+  ],
+  "hero_rotweaver|staff|slam": [
+   0.2019,
+   0.2631
+  ],
+  "hero_rotweaver|staff|summon": [
+   0.1811,
+   0.2796
+  ],
+  "hero_rotweaver|staff|sweep": [
+   0.2639,
+   0.3389
+  ],
+  "hero_rotweaver|staff|walk": [
+   0.434,
+   0.5108
+  ]
+ }
+}
