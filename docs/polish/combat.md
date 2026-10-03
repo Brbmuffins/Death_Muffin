@@ -39,7 +39,7 @@ Severity: **H** you lose to it or it misleads every fight, **M** you notice it, 
 | Issue | Why left |
 |---|---|
 | Bone Needle runes (Splinters, Marrow-Tap, Volley) do nothing under a scythe's reaping arc | Documented in the Codex rune text as intended; making them work is a design call (see owner decisions) |
-| Legion kit and Damage upgrades only reach thralls raised after the change | By design (stated in `legionKit.ts`); the HUD does not say so. A player who buys a tier mid-fight sees nothing change until the next Exhume |
+| Legion kit and Damage upgrades only reach thralls raised after the change | By design (stated in `legionKit.ts`); the HUD did not say so (now fixed in wording only, mechanic unchanged: Damage tooltip, Damage and Reinforce toasts and the Legion panel say "applies to thralls you raise from now on" `1b2c17e`). A player who buys a tier mid-fight sees nothing change until the next Exhume |
 | Hostile ground pools (`z.r + player radius`) and the Plague Doctor flask etc. use different body rules (centre vs body) | Small (0.45 m), pools are damage-over-time not one-shot telegraphs |
 | Easy auto does not dodge boss telegraph rings or hymn cones | Needs a movement design; Easy auto only steps away from windups within 4 m |
 | Withered ticks and Miasma slow can still kill / affect a ghoul while it is burrowed | Intended per the code comments? unclear; leave until a playtest says it matters |
