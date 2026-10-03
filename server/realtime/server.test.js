@@ -249,3 +249,21 @@ test('perf beacon: keeps the last 40 reports per user and formats one log line',
   assert.match(line, /^\[perf\] perf_tester acre fps=60 frame=16.7\/20\/80ms longtasks=1\/60\/60 /);
   assert.ok(!line.includes('\n'));
 });
+
+test('intents that act at a point must carry one (a missing x/z used to reach the host sim as NaN)', () => {
+  for (const t of ['recallThralls', 'miasma', 'litany', 'exhume']) {
+    assert.equal(validIntent({ t }), null, `${t} without a point`);
+    assert.equal(validIntent({ t, x: 1 }), null, `${t} without z`);
+    assert.equal(validIntent({ t, x: 'a', z: 2 }), null, `${t} with a non-numeric x`);
+    assert.ok(validIntent({ t, x: 1, z: 2 }), `${t} with a point`);
+  }
+});
+
+test('exhume names a known thrall kind (an unknown one made the host sim throw)', () => {
+  for (const kind of ['warrior', 'shieldbearer', 'hound', 'wraith', 'archer', 'bonemage', 'plaguebearer', 'colossus']) {
+    assert.equal(validIntent({ t: 'exhume', x: 0, z: 0, kind }).kind, kind);
+  }
+  assert.equal(validIntent({ t: 'exhume', x: 0, z: 0, kind: 'dragon' }).kind, 'warrior');
+  assert.equal(validIntent({ t: 'exhume', x: 0, z: 0, kind: { a: 1 } }).kind, 'warrior');
+  assert.equal(validIntent({ t: 'exhume', x: 0, z: 0 }).kind, 'warrior');
+});
