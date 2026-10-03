@@ -3,13 +3,15 @@
 #
 #   deploy-mobile.sh [rev]      (default rev: the `mobile` branch tip)
 #
-# Client only. Served at /death-muffin/mobile/ (static, no nginx change). It uses the same API, accounts and co-op
+# Client only. Served at /death-muffin/mobile/ (static, no nginx change). It ALSO builds and publishes the Offline Edition PWA
+# (/death-muffin/offline/) because phones use it and need the touch layer; master's deploy-release.sh no longer touches /offline/. It uses the same API, accounts and co-op
 # server as the PC build, so this script NEVER installs server code, runs migrations or restarts services:
 # that belongs to master's deploy-release.sh.
 #
-# 1. Exports <rev> with `git archive`, runs typecheck + client tests, builds with `npm run build:death-muffin-mobile`.
+# 1. Exports <rev> with `git archive`, runs typecheck + client tests, builds `npm run build:death-muffin-mobile` and `npm run build:offline`.
 # 2. Backs up the current /var/www/death-muffin/mobile/ (if any) and writes ROLLBACK.sh.
-# 3. Publishes hashed assets first, then index.html, then release.txt (open tabs auto-reload when release.txt changes).
+# 3. Publishes hashed assets first, then index.html, then release.txt (open tabs auto-reload when release.txt changes);
+#    the offline edition's files first, then its sw.js and index.html.
 # 4. Verifies the public page matches the build.
 set -euo pipefail
 
@@ -35,14 +37,17 @@ ln -s "$REPO/node_modules" "$SRC/node_modules"
   npx tsc --noEmit -p .
   npx vitest run --reporter=dot
   npm run -s build:death-muffin-mobile
+  npm run -s build:offline
 )
+test -f "$SRC/dist-offline/sw.js"
 test -f "$SRC/dist/index.html"
 grep -q '/death-muffin/mobile/assets/' "$SRC/dist/index.html"
 if grep -q '/death-muffin/play/' "$SRC/dist/index.html"; then echo "built index.html still points at /death-muffin/play/"; exit 1; fi
 
 echo "== Backup -> $BK"
-mkdir -p "$BK/mobile"
+mkdir -p "$BK/mobile" "$BK/offline"
 if [ -d "$PUBLIC/mobile" ]; then sudo cp -a "$PUBLIC/mobile/." "$BK/mobile/"; fi
+sudo cp -a "$PUBLIC/offline/." "$BK/offline/"
 cat > "$BK/ROLLBACK.sh" <<EOT
 #!/usr/bin/env bash
 # Restores the mobile client from before $SHA (if there was none, removes it).
@@ -52,7 +57,8 @@ if [ -n "\$(ls -A '$BK/mobile')" ]; then
 else
   sudo rm -rf '$PUBLIC/mobile'
 fi
-echo 'Mobile client rolled back to before $SHA'
+sudo cp -a '$BK/offline/.' '$PUBLIC/offline/'
+echo 'Mobile client and offline edition rolled back to before $SHA'
 EOT
 chmod 700 "$BK/ROLLBACK.sh"
 
@@ -63,12 +69,16 @@ sudo cp -a "$SRC/dist/precache.html" "$SRC/dist/asset-manifest.json" "$PUBLIC/mo
 sudo cp -a "$SRC/dist/index.html" "$PUBLIC/mobile/index.html"
 echo "$SHA $(date -u +%FT%TZ)" > "$CAND/release.txt"
 sudo cp "$CAND/release.txt" "$PUBLIC/mobile/release.txt"
-sudo chown -R root:root "$PUBLIC/mobile"
-sudo chmod -R a+rX "$PUBLIC/mobile"
+(cd "$SRC/dist-offline" && sudo cp -a $(ls -A | grep -vx -e index.html -e sw.js) "$PUBLIC/offline/")
+sudo cp -a "$SRC/dist-offline/sw.js" "$SRC/dist-offline/index.html" "$PUBLIC/offline/"
+sudo chown -R root:root "$PUBLIC/mobile" "$PUBLIC/offline"
+sudo chmod -R a+rX "$PUBLIC/mobile" "$PUBLIC/offline"
 
 echo "== Verify"
 curl -sSf "$URL/" | cmp - "$SRC/dist/index.html"
 curl -sSf "$URL/release.txt" | grep -q "^$SHA "
+curl -sSf https://muffindevelopment.com/death-muffin/offline/ | cmp - "$SRC/dist-offline/index.html"
+curl -sSf https://muffindevelopment.com/death-muffin/offline/sw.js | cmp - "$SRC/dist-offline/sw.js"
 echo "Mobile $SHA published at $URL/. Rollback: $BK/ROLLBACK.sh"
 
 # Discord notice (optional): the webhook URL lives outside the repo (the repo is public). Never fails the deploy.

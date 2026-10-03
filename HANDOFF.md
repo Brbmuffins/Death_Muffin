@@ -40,8 +40,9 @@ layer and is built and deployed on its own at **https://muffindevelopment.com/de
   `deploy-mobile.sh`. Any new hover-only info or keyboard-only action that arrived from master needs a touch path here.
 - Phones that open `/death-muffin/play/` are redirected here by master's play page (unless the URL has `?pc=1`). This build has a
   "Play the PC version" link in Settings.
-- The offline edition (`build:offline`, `/death-muffin/offline/`) is currently built by master's `deploy-release.sh`; see master's HANDOFF
-  for the decision on where it is built going forward.
+- The offline edition (`build:offline`, `/death-muffin/offline/`, the PWA phones use) is built and published by `deploy-mobile.sh` from this branch
+  (master's `deploy-release.sh` no longer touches `/offline/`). After a master deploy that changes offline-sync/server contracts, merge master here
+  and redeploy. First-time order: deploy mobile FIRST, then master.
 
 ## Effect budget (branch `dm/vfx-budget`, 3 Oct 2026, deployed in `be8a674`, no migration)
 
