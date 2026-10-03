@@ -1,6 +1,5 @@
 import type { GameScene } from './SceneManager';
 import { PLAYABLE_DISCIPLINES } from '../content/disciplines';
-import { classByIndex } from '../gameplay/classes';
 import { loadOrCreateCharacter } from '../net/api';
 import type { Character } from '../net/types';
 import type { NecroBackdrop } from '../graphics/NecroBackdrop';
@@ -35,7 +34,7 @@ export class CharacterSelectScene implements GameScene {
       btn.className = 'cw-disc';
       btn.style.setProperty('--disc-color', d.color);
       btn.innerHTML = `
-        <span class="legacy">${classByIndex(d.classIndex).name}</span>
+        ${d.family === 'necromancer' ? '<span class="legacy">Necromancer</span>' : ''}
         <img class="portrait" src="art/portraits/${d.id}.webp" alt="" onerror="this.src='${d.portrait}'" />
         <span class="body">
           <span class="name">${d.name}</span>
