@@ -192,6 +192,53 @@ export class GameRuntime {
 
   private qaClock = 0;
 
+  private warmTarget: THREE.WebGLRenderTarget | null = null;
+  private tinyTarget() {
+    // Same flavour of target the composer's RenderPass draws into (half-float, linear), so program keys match; 4x4 so it costs nothing.
+    return (this.warmTarget ??= new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType }));
+  }
+
+  /**
+   * Warm-up draw of the active view (see graphics/warmRender.ts). Full: exactly the frame path (composer on High). Small: the same scene state
+   * into a 4x4 target (or a 1 px scissor with bloom off), so programs, depth variants, geometry and texture uploads happen without a full-size pass.
+   */
+  warmRender(small: boolean): boolean {
+    const v = this.view;
+    if (!v) return false;
+    if (!small) {
+      if (this.bloomEnabled) this.composer.render(0);
+      else this.renderer.render(v.scene, v.camera);
+      return true;
+    }
+    const r = this.renderer;
+    if (this.bloomEnabled) {
+      r.setRenderTarget(this.tinyTarget());
+      try { r.render(v.scene, v.camera); } finally { r.setRenderTarget(null); }
+    } else {
+      r.setScissorTest(true);
+      r.setScissor(0, 0, 1, 1);
+      try { r.render(v.scene, v.camera); } finally { r.setScissorTest(false); }
+    }
+    return true;
+  }
+
+  /** The target real frames draw into (null: the screen, bloom off), for compiling the right program flavour. */
+  frameTarget(): THREE.WebGLRenderTarget | null {
+    return this.bloomEnabled ? this.tinyTarget() : null;
+  }
+
+  /** Parallel shader compile of `obj` for the same target flavour as `warmRender(small)`. */
+  async warmCompile(obj: THREE.Object3D, small: boolean): Promise<void> {
+    const v = this.view;
+    if (!v) return;
+    const r = this.renderer;
+    const rt = this.bloomEnabled ? this.tinyTarget() : null;
+    let p: Promise<unknown>;
+    r.setRenderTarget(rt);
+    try { p = r.compileAsync(obj, v.camera, v.scene); } finally { r.setRenderTarget(null); }
+    await p;
+  }
+
   /** QA: render the current view and read the canvas back as a data URL. */
   capture(type = 'image/webp', quality = 0.9): string | null {
     const v = this.view;

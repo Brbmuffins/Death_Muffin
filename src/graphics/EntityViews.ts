@@ -13,6 +13,7 @@ import type { CreatureSlug } from './modelPaths';
 import { AREAS, type AreaId } from '../content/areas';
 import { BOSSES } from '../content/bosses';
 import { runIdleSequence } from './warmModel';
+import { NPCS, NPC_IDS, NPC_LOOKS } from '../content/npcs';
 import { STATUS_FX } from '../content/statuses';
 import { wingClock, type WingOpts } from './wingFlap';
 import { smoothSpeed, stepSpeed, turnToward } from './locomotion';
@@ -1184,4 +1185,74 @@ export function preloadAreaModels(area: AreaId, legion?: DisciplineId | null): (
   if (legionSlug) add(`thrall:${legionSlug}`, legionSlug, { rim });
   add('thrall:skeleton_thrall', 'skeleton_thrall', { rim });
   return runIdleSequence(tasks);
+}
+
+/** One body the warm-up stage can draw: `make` builds a fresh Creature with the options its real spawn uses. */
+export interface BodySpec {
+  key: string;
+  make: () => Creature;
+}
+
+/**
+ * Every body kind a player can meet in `areas`: the enemy rosters (plus the Depths' first bands), the area bosses, the legion and the thrall
+ * kinds with the props they hold, and the guide NPCs standing there. One spec per template + program variant (spectral / wings / gearTint /
+ * rim), because tint, emissive and scale never change a program (an elite is the same program as its plain kin). Options mirror makeEnemy /
+ * makeThrall: if those gain a new program-affecting option, add it here too. See graphics/warmRender.ts.
+ */
+export function stageSpecs(areas: readonly AreaId[], legion?: DisciplineId | null): BodySpec[] {
+  const out: BodySpec[] = [];
+  const seen = new Set<string>();
+  const add = (key: string, make: () => Creature) => {
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ key, make });
+  };
+  const enemy = (id: EnemyId) => add(`enemy:${id}`, () => new Creature(ENEMY_SLUG[id], { spectral: id === 'wraith', fallback: ENEMY_FALLBACK[id], wings: WINGS[id], tint: id === 'risen' ? 0x8a8078 : 0xffffff }));
+  for (const a of areas) {
+    for (const { id } of AREAS[a].enemies) enemy(id);
+    if (a === 'depths') for (const { id } of [...depthRoster(1), ...depthRoster(5)]) enemy(id);
+    for (const b of Object.values(BOSSES)) if (b.area === a) add(`boss:${b.modelSlug}`, () => new Creature(b.modelSlug, { fallback: 'prelate' }));
+  }
+  const rim = { color: SPELL_FX.exhume.spirit, strength: THRALL_RIM_OWN };
+  const legionDef = legion ? LEGION[legion] : undefined;
+  if (legionDef) {
+    add(`thrall:${legionDef.slug}`, () => {
+      const c = new Creature(legionDef.slug, { rim });
+      if (legionDef.armed) {
+        c.attach('R_Hand', boneSword(), new THREE.Vector3(0, 1, 0.55), 0.6);
+        c.attach('L_Hand', roundShield(0.32), new THREE.Vector3(0, 1, 0), 0.5);
+      }
+      return c;
+    });
+  }
+  // The raised dead keep the plain skeleton and the props their kind holds; the kit variant also tints (gearTint is its own program).
+  add('thrall:warrior', () => {
+    const c = new Creature('skeleton_thrall', { rim, gearTint: true });
+    c.attach('R_Hand', boneSword(), new THREE.Vector3(0, 1, 0.55), 0.6);
+    c.attach('L_Hand', roundShield(0.5), new THREE.Vector3(0, 1, 0), 0.5);
+    return c;
+  });
+  add('thrall:skeleton_thrall', () => new Creature('skeleton_thrall', { rim }));
+  add('thrall:archer', () => {
+    const c = new Creature('skeleton_thrall', { rim });
+    c.attach('L_Hand', boneBow(), new THREE.Vector3(0, 1, 0), 0.5);
+    return c;
+  });
+  add('thrall:bonemage', () => {
+    const c = new Creature('skeleton_thrall', { rim });
+    c.attach('R_Hand', boneStaff(), new THREE.Vector3(0, 1, 0.12), 0.15);
+    return c;
+  });
+  add('thrall:wraith', () => new Creature(LEGION.mourner.slug, { rim, spectral: true }));
+  add('thrall:hound', () => new Creature('bone_hound', { rim }));
+  add('thrall:plaguebearer', () => new Creature('carrion_sac', { rim }));
+  add('thrall:colossus', () => new Creature('bone_colossus', { rim }));
+  for (const id of NPC_IDS) {
+    if (!areas.includes(NPCS[id].area as AreaId)) continue;
+    const look = NPC_LOOKS[id];
+    add(`npc:${id}`, () => new Creature(look.slug, { scale: look.scale, tint: look.tint, emissive: look.emissive, emissiveIntensity: look.glow, fallback: look.fallback }));
+  }
+  // What the first minute touches comes first (the stage may run out of veil time): your dead, the people, the roster, bosses last.
+  const rank = (k: string) => (k.startsWith('thrall:') ? 0 : k.startsWith('npc:') ? 1 : k.startsWith('enemy:') ? 2 : 3);
+  return out.map((s, i) => ({ s, i })).sort((a, b) => rank(a.s.key) - rank(b.s.key) || a.i - b.i).map((x) => x.s);
 }

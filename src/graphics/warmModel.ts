@@ -11,6 +11,23 @@ export interface WarmContext {
   camera: THREE.Camera;
   /** The live scene: its lights and fog decide which program variants the real draw needs. */
   scene: THREE.Scene;
+  /**
+   * The target the real frame draws into when it is not the screen (the bloom composer's half-float buffer on High). three keys every
+   * program on the target's colour space / tone mapping, so compiling for the screen leaves the first real draw to recompile; compile for this.
+   */
+  target?: () => THREE.WebGLRenderTarget | null;
+}
+
+/** compileAsync for the same program flavour the real frame uses (see WarmContext.target). */
+function compileFor(c: WarmContext, obj: THREE.Object3D): Promise<unknown> {
+  const rt = c.target?.() ?? null;
+  if (!rt) return c.renderer.compileAsync(obj, c.camera, c.scene);
+  c.renderer.setRenderTarget(rt);
+  try {
+    return c.renderer.compileAsync(obj, c.camera, c.scene);
+  } finally {
+    c.renderer.setRenderTarget(null);
+  }
 }
 
 let ctx: WarmContext | null = null;
@@ -117,7 +134,7 @@ export function warmModel(model: THREE.Object3D, mats: Iterable<THREE.Material>,
     }
     const q = uploads;
     try {
-      await Promise.all([c.renderer.compileAsync(model, c.camera, c.scene), ...[...materialTextures(mats)].map((t) => q.enqueue(t))]);
+      await Promise.all([compileFor(c, model), ...[...materialTextures(mats)].map((t) => q.enqueue(t))]);
     } catch (err) {
       console.warn('[graphics] model warm failed', err);
     }
@@ -146,7 +163,7 @@ export async function warmObjects(objs: THREE.Object3D[], extraTextures: Iterabl
   const texs = new Set([...materialTextures(mats), ...extraTextures]);
   try {
     await Promise.race([
-      Promise.all([...objs.map((o) => c.renderer.compileAsync(o, c.camera, c.scene)), ...[...texs].map((t) => q.enqueue(t))]),
+      Promise.all([...objs.map((o) => compileFor(c, o)), ...[...texs].map((t) => q.enqueue(t))]),
       new Promise<void>((r) => setTimeout(r, WARM_TIMEOUT_MS)),
     ]);
   } catch (err) {

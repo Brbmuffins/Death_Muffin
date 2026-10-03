@@ -479,7 +479,7 @@ export class WorldView {
   private shadowAt: { x: number; z: number } | null = null;
   private shadowDirty = true;
   private primeStats = { buildMs: 0, totalMs: 0 };
-  private warmCtx: { renderer: THREE.WebGLRenderer; camera: THREE.Camera } | null = null;
+  private warmCtx: { renderer: THREE.WebGLRenderer; camera: THREE.Camera; target?: () => THREE.WebGLRenderTarget | null } | null = null;
   private uploads: UploadQueue | null = null;
   private floorMats = new Map<Theme, THREE.MeshStandardMaterial>();
   private flameData = new Map<AreaId, { pos: number[]; phase: number[]; groups: (string | undefined)[] }>();
@@ -530,8 +530,8 @@ export class WorldView {
   // -------------------------------------------------------------------------
 
   /** The renderer the idle warm-up compiles shaders and uploads textures on (set once the scene is lit). */
-  attachRenderer(renderer: THREE.WebGLRenderer, camera: THREE.Camera) {
-    this.warmCtx = { renderer, camera };
+  attachRenderer(renderer: THREE.WebGLRenderer, camera: THREE.Camera, target?: () => THREE.WebGLRenderTarget | null) {
+    this.warmCtx = { renderer, camera, target };
     this.uploads = new UploadQueue((t) => renderer.initTexture(t));
   }
 
@@ -642,8 +642,12 @@ export class WorldView {
     chunk.group.visible = true;
     let compiled: Promise<unknown> = Promise.resolve();
     try {
+      // For the target real frames draw into (the composer on High): programs are keyed on it, so a screen compile would be redone at first show.
+      const rt = ctx.target?.() ?? null;
+      if (rt) ctx.renderer.setRenderTarget(rt);
       compiled = ctx.renderer.compileAsync(chunk.group, ctx.camera, this.scene);
     } finally {
+      if (ctx.target?.()) ctx.renderer.setRenderTarget(null);
       chunk.group.visible = was;
     }
     const q = this.uploads;

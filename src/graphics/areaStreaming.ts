@@ -37,6 +37,21 @@ export function requiredAreas(start: AreaId): AreaId[] {
   return [start, ...doorNeighbours(start)];
 }
 
+/** `start` plus every area within `hops` door-steps of it (hops 1 = requiredAreas). */
+export function areasWithin(start: AreaId, hops: number): AreaId[] {
+  const out: AreaId[] = [start];
+  let frontier: AreaId[] = [start];
+  for (let h = 0; h < hops; h++) {
+    const next: AreaId[] = [];
+    for (const a of frontier) for (const n of doorNeighbours(a)) if (!out.includes(n)) {
+      out.push(n);
+      next.push(n);
+    }
+    frontier = next;
+  }
+  return out;
+}
+
 /** Build order: breadth-first over the door graph from `start`, then anything not reachable by doors (the Depths). Every area is eventually built, nearest first. */
 export function buildOrder(start: AreaId): AreaId[] {
   const seen = new Set<AreaId>([start]);

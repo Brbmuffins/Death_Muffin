@@ -7,6 +7,8 @@ export function prewarmCreature(
   renderer: THREE.WebGLRenderer,
   camera: THREE.Camera,
   scene: THREE.Scene,
+  /** The target real frames draw into (composer on High), so the program flavour matches (see warmModel.WarmContext.target). */
+  target?: () => THREE.WebGLRenderTarget | null,
 ): () => void {
   let cancelled = false;
   let idle = 0;
@@ -40,7 +42,11 @@ export function prewarmCreature(
         }
         schedule(next);
       } else {
-        void renderer.compileAsync(creature.root, camera, scene).catch((error: unknown) => {
+        const rt = target?.() ?? null;
+        if (rt) renderer.setRenderTarget(rt);
+        const compiled = renderer.compileAsync(creature.root, camera, scene);
+        if (rt) renderer.setRenderTarget(null);
+        void compiled.catch((error: unknown) => {
           console.warn('[graphics] boss prewarm failed', error);
         });
       }
