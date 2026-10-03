@@ -317,6 +317,11 @@ export class WorldScene implements GameScene, RuntimeView {
   private realtime = new RealtimeClient();
   private selfId = 'self';
   private remotes = new Map<string, Remote>();
+  /** Item ids worn or in the bag, read only when a legendary drops (legendary pieces you already hold do not repeat until the set is complete). */
+  private ownedItemIds = (): ReadonlySet<string> => new Set(this.inventory.all.map((s) => s.item_id));
+  /** When the 'Reliquary full' call-out last showed (loot is retried every frame under the player's feet). */
+  private bagFullAt = -1e9;
+  private bagFullToastAt = -1e9;
   private lastSnapshot = 0;
   /** World wave tier last frame (milestone banners) and the Nightfall light blend 0..1. */
   private seenWaveTier = -1;
@@ -711,6 +716,7 @@ export class WorldScene implements GameScene, RuntimeView {
       partySize: () => this.remotes.size,
       isAuthority: () => !this.mirror && this.isAuthority(),
       level: () => this.character.level,
+      disciplineId: () => this.discipline.id,
       rewardMult: () => ascensionRewardMult(this.worldAscension()) * this.omen.rewardMult,
       teleportTo: (x, z) => this.teleportTo(x, z),
       dropItems: (x, z, items, level, source) => this.dropItems(x, z, items, level, source),
@@ -1025,6 +1031,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.dialogue = new DialoguePanel(this.root, this.guidance, () => this.guidanceState(), { onChange: (npc) => { this.npcViews.setTalking(npc); this.guideDirty = true; }, sound: () => audio.play('click') });
     this.vaultPanel = new VaultPanel(this.root, this.character.id, this.inventory, this.locks, () => this.onboarding.show('vault'));
     this.salvagePanel = new SalvagePanel(this.root, this.character.id, this.inventory, this.locks, this.skills, (r) => this.onSalvaged(r), () => this.onboarding.show('salvage'));
+    this.salvagePanel.statContext = this.statContext;
     this.settingsPanel = new SettingsPanel(
       this.root,
       () => this.onLeave(),
@@ -3484,7 +3491,7 @@ export class WorldScene implements GameScene, RuntimeView {
     // Personal reward: a guaranteed item from the area's table plus bonus gold.
     const level = AREAS[ev.area].level + ascensionLevels(this.worldAscension());
     const gold = Math.round((24 + 10 * level) * waveModifiers(this.bossWaveTier()).rewardMult * DIFFICULTIES[this.worldDifficulty()].rewardMult);
-    this.dropItems(ev.x, ev.z, [rollSurgeItem(ev.area)], level, 'surge');
+    this.dropItems(ev.x, ev.z, [rollSurgeItem(ev.area, Math.random, this.discipline.id)], level, 'surge');
     this.loot.gold(ev.x, ev.z, gold);
     this.effects.emit({ x: ev.x, y: 0.4, z: ev.z, count: 70, color: SPELL_FX.surge.glow, spread: 1, speed: 1.2, up: 4, life: 1.4, size: 0.34 });
     this.effects.lightFlash(ev.x, 2, ev.z, SPELL_FX.surge.glow, 70, 1.2);
@@ -3503,7 +3510,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (!this.player.alive || !near) return;
     // The Depths drop from the hunting ground whose gear matches the floor's depth.
     const lootArea = this.depths.lootArea(ev.area) ?? ev.area;
-    const reward = rollKill(ev.def, lootArea, ev.level, ev.elite, this.bossWaveTier(), Math.random, this.worldDifficulty(), 1 + this.player.brewValue('fortune', this.now), Math.random, Math.random, this.discipline.id);
+    const reward = rollKill(ev.def, lootArea, ev.level, ev.elite, this.bossWaveTier(), Math.random, this.worldDifficulty(), 1 + this.player.brewValue('fortune', this.now), Math.random, Math.random, this.discipline.id, this.ownedItemIds);
     // The chain: your own kills (thralls and DoTs credit their owner) in unsafe ground, each within the window of the last.
     let chainMult = 1;
     if (ev.killer === this.selfId && !AREAS[ev.area].safe) {
@@ -4384,14 +4391,14 @@ export class WorldScene implements GameScene, RuntimeView {
             this.progression.recordPrelateKill();
             if (this.progression.canAscend()) this.onboarding.show('ascend', 5000);
           }
-          const reward = rollBoss(this.bossWaveTier(), Math.random, this.worldDifficulty(), def.area, def.shards, def.id, this.discipline.id);
+          const reward = rollBoss(this.bossWaveTier(), Math.random, this.worldDifficulty(), def.area, def.shards, def.id, this.discipline.id, this.ownedItemIds);
           // First kill per character: two more shards and a guaranteed rare-or-better (browser trophy record).
           let firstKill: LootDrop | null = null;
           let firstTrophy = false;
           if (def.id !== 'prelate' && this.claimTrophy(def.id)) {
             firstTrophy = true;
             reward.shards += 2;
-            firstKill = rollFirstKillItem(def.area);
+            firstKill = rollFirstKillItem(def.area, Math.random, this.discipline.id);
             this.hud.toast(`First kill: ${def.name}. A trophy for the Codex, two more shards and a rare relic.`, 'good');
           }
           // Relic rune: the Prelate and every first kill always leave one, repeats 35% (content/runes.ts).
@@ -4538,7 +4545,16 @@ export class WorldScene implements GameScene, RuntimeView {
     // Loot pickup.
     const got = this.loot.update(dt, p.x, p.z, (d) => {
       if (!this.inventory.add(d)) {
-        this.floating.spawn(p.x, 2.4, p.z, 'Reliquary full', 'info');
+        // Asked every frame while standing on the drop: say it once in a while, not 60 times a second.
+        if (now - this.bagFullAt > 2500) {
+          this.bagFullAt = now;
+          this.floating.spawn(p.x, 2.4, p.z, 'Reliquary full', 'info');
+          // Say what to do about it, but only now and then (the call-out above is the reminder).
+          if (now - this.bagFullToastAt > 60000) {
+            this.bagFullToastAt = now;
+            this.hud.toast('Your Reliquary is full. Sell spare gear (Sell all junk) or, back in the Chapterhouse or the Acre, store materials in the Vault (V). What you cannot carry waits on the ground.', 'err');
+          }
+        }
         return false;
       }
       return true;

@@ -7,6 +7,8 @@ import type { InventorySlot } from '../net/types';
 import { BAG_SLOTS } from './gatheringRules';
 import { decorateSlot, type DropInstance } from './affixes';
 import { pickWeighted, randInt } from './rng';
+import { smartTable } from './smartLoot';
+import { ARMOR_BY_ID } from '../content/armorSets';
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
 import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS, bossIchor } from '../content/reagents';
 import type { BossId } from '../content/bosses';
@@ -45,7 +47,7 @@ export interface KillReward {
  */
 export const KILL_LOOT = { itemChanceMult: 0.5, materialQtyMult: 2, goldEveryKills: 4 } as const;
 
-export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boolean, waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium', itemChanceMult = 1, reagentRand: () => number = Math.random, runeRand: () => number = Math.random, disciplineId?: string): KillReward {
+export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boolean, waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium', itemChanceMult = 1, reagentRand: () => number = Math.random, runeRand: () => number = Math.random, disciplineId?: string, ownedIds?: () => ReadonlySet<string>): KillReward {
   const d = ENEMIES[def];
   const a = AREAS[area];
   const mods = waveModifiers(waveTier);
@@ -55,11 +57,11 @@ export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boole
   const shards = elite ? (rand() < 0.25 ? 2 : 1) : 0;
   const items: LootDrop[] = [];
   const chance = Math.min(1, a.itemChance * mods.itemChanceMult * itemChanceMult * (elite ? 6 : KILL_LOOT.itemChanceMult));
-  if (a.loot.length && rand() < chance) items.push(rollItem(area, rand, elite ? 1 : KILL_LOOT.materialQtyMult));
+  if (a.loot.length && rand() < chance) items.push(rollItem(area, rand, elite ? 1 : KILL_LOOT.materialQtyMult, disciplineId));
   // Legendary armor (content/legendarySets.ts): a very rare elite drop in the level-scaled areas, weighted to the player's discipline.
   // Rolled only when a discipline is passed, so seeded runs (balance harness, tests) keep their sequence.
   if (disciplineId && elite && a.scaling) {
-    const id = rollLegendary(disciplineId, LEGENDARY_DROP.eliteChance, rand);
+    const id = rollLegendary(disciplineId, LEGENDARY_DROP.eliteChance, rand, ownedIds);
     if (id) items.push({ item_id: id, quantity: 1 });
   }
   // Reagents use their own stream: a seeded `rand` (balance harness, tests) keeps the same sequence it always had.
@@ -96,13 +98,13 @@ export function rollEliteRune(area: AreaId, itemChanceMult = 1, rand: () => numb
 }
 
 /** A Grave Surge's offering: the area's item, or (SURGE_RUNE_CHANCE) a rune from the area's pool in its place. */
-export function rollSurgeItem(area: AreaId, rand: () => number = Math.random): LootDrop {
+export function rollSurgeItem(area: AreaId, rand: () => number = Math.random, disciplineId?: string): LootDrop {
   const pool = AREA_RUNE_POOL[area];
   if (pool?.length && rand() < SURGE_RUNE_CHANCE) {
     const id = pickRune(pool, rand);
     if (id) return { item_id: id, quantity: 1 };
   }
-  return rollItem(area, rand);
+  return rollItem(area, rand, 1, disciplineId);
 }
 
 /**
@@ -117,25 +119,27 @@ export function rollBossRune(boss: BossId, first: boolean, rand: () => number = 
   return id ? { item_id: id, quantity: 1 } : null;
 }
 
-export function rollItem(area: AreaId, rand = Math.random, materialQtyMult = 1): LootDrop {
-  const pick = pickWeighted(AREAS[area].loot, rand())!;
+export function rollItem(area: AreaId, rand = Math.random, materialQtyMult = 1, disciplineId?: string): LootDrop {
+  const pick = pickWeighted(disciplineId ? smartTable(area, disciplineId) : AREAS[area].loot, rand())!;
   const meta = ITEMS[pick.item];
   return { item_id: pick.item, quantity: meta?.type === 'material' ? (1 + (rand() < 0.35 ? 1 : 0)) * materialQtyMult : 1 };
 }
+
+export { SMART_LOOT, smartTable } from './smartLoot';
 
 /**
  * A boss's spoils. The Prelate's are unchanged (Sanctum loot, 3 shards back); an area boss rolls its own area's
  * loot and scales gold/XP by its shard cost (2/3/4 of the Prelate's 5) and returns fewer shards. Pass the boss id and
  * the spoils always include its ichor.
  */
-export function rollBoss(waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium', area: AreaId = 'sanctum', costShards = 5, boss?: BossId, disciplineId?: string): KillReward {
+export function rollBoss(waveTier: number, rand = Math.random, difficulty: Difficulty = 'medium', area: AreaId = 'sanctum', costShards = 5, boss?: BossId, disciplineId?: string, ownedIds?: () => ReadonlySet<string>): KillReward {
   const mods = waveModifiers(waveTier);
   const diff = DIFFICULTIES[difficulty].rewardMult;
   const k = costShards / 5;
-  const items = [rollItem(area, rand), rollItem(area, rand), rollItem(area, rand)];
+  const items = [rollItem(area, rand, 1, disciplineId), rollItem(area, rand, 1, disciplineId), rollItem(area, rand, 1, disciplineId)];
   // Legendary armor: each area boss (past the Hollow Graves) has a chance, weighted to the player's discipline ("smart loot").
   if (disciplineId && LEGENDARY_BOSS_AREAS.includes(area)) {
-    const id = rollLegendary(disciplineId, LEGENDARY_DROP.bossChance, rand);
+    const id = rollLegendary(disciplineId, LEGENDARY_DROP.bossChance, rand, ownedIds);
     if (id) items.push({ item_id: id, quantity: 1 });
   }
   // Every boss leaves exactly one ichor: the top-tier Alchemy reagent (content/reagents.ts).
@@ -144,9 +148,14 @@ export function rollBoss(waveTier: number, rand = Math.random, difficulty: Diffi
 }
 
 /** A boss's first kill per character: a guaranteed rare-or-better item from ids the server knows. */
-export function rollFirstKillItem(area: AreaId, rand = Math.random): LootDrop {
+export function rollFirstKillItem(area: AreaId, rand = Math.random, disciplineId?: string): LootDrop {
+  // A trophy is meant to be worn: when the area drops rare-or-better armour of the player's own set, three times in four it is one of those.
+  if (disciplineId) {
+    const own = AREAS[area].loot.map((e) => e.item).filter((id) => ARMOR_BY_ID[id]?.disciplineId === disciplineId && (ITEMS[id]?.rarity === 'rare' || ITEMS[id]?.rarity === 'epic'));
+    if (own.length && rand() < 0.75) return { item_id: own[Math.floor(rand() * own.length)], quantity: 1 };
+  }
   for (let i = 0; i < 30; i++) {
-    const d = rollItem(area, rand);
+    const d = rollItem(area, rand, 1, disciplineId);
     const r = ITEMS[d.item_id]?.rarity;
     if (r === 'rare' || r === 'epic') return d;
   }
@@ -166,8 +175,9 @@ export function rollFirstKillItem(area: AreaId, rand = Math.random): LootDrop {
  */
 export function addToSlots(slots: InventorySlot[], drop: LootDrop): InventorySlot[] | null {
   const meta = ITEMS[drop.item_id];
-  const cap = meta?.stack ?? Infinity;
   const stackable = (type?: string) => type === 'material' || type === 'rune';
+  // Gear never stacks on the server (max_stack_size 1, migration 018): a quantity above 1 spreads over slots instead of looping on a 400.
+  const cap = meta?.stack ?? (meta && !stackable(meta.type) ? 1 : Infinity);
   const stack = slots.find((s) => s.item_id === drop.item_id && s.slot_index < BAG_SIZE && !s.equipped && (stackable(s.item_type) || stackable(meta?.type)) && s.quantity < cap);
   if (stack) {
     const add = Math.min(drop.quantity, cap - stack.quantity);

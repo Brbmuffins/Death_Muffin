@@ -7,6 +7,8 @@ import { BAG_SIZE, type Inventory } from '../gameplay/loot';
 import { VAULT_SLOTS, VAULT_TAB_SIZE } from '../gameplay/vaultRules';
 import type { ItemLocks } from '../gameplay/itemLocks';
 import { LOCK_SVG, itemIcon } from './InventoryPanel';
+import { itemTypeLabel } from './gearText';
+import { STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 const GLYPH = '◆';
@@ -89,7 +91,9 @@ export class VaultPanel {
     btn.style.setProperty('--rarity', RARITY_COLOR[slot.rarity] ?? RARITY_COLOR.common);
     const meta = itemMeta(slot.item_id);
     const where = kind === 'bag' ? 'Click to store it in the Vault' : 'Click to take it into your bag';
-    btn.title = `${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''} (${slot.rarity})${locked ? ' · locked' : ''}\n${rollTitleLines(slot).map((l) => `${l}\n`).join('')}${isRuneId(slot.item_id) ? `${RUNES[slot.item_id].short}: ${RUNES[slot.item_id].lines[0]}\n` : ''}${slot.equipped ? 'Equipped gear cannot be stored' : where}`;
+    // What the Reliquary tooltip would say, in plain text: the kind of item, its base stats, then the roll, the price and the move.
+    const stats = slot.stat_bonus ? STAT_KEYS.filter((k) => slot.stat_bonus![k]).map((k) => `+${slot.stat_bonus![k]} ${STAT_LABELS[k]}`).join(', ') : '';
+    btn.title = `${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''} (${slot.rarity} ${itemTypeLabel(slot)})${locked ? ' · locked' : ''}\n${stats ? `${stats}\n` : ''}${rollTitleLines(slot).map((l) => `${l}\n`).join('')}${isRuneId(slot.item_id) ? `${RUNES[slot.item_id].short}: ${RUNES[slot.item_id].lines[0]}\n` : ''}${slot.sell_value > 0 ? `Worth ${slot.sell_value}g${slot.quantity > 1 ? ' each' : ''}\n` : ''}${slot.equipped ? 'Equipped gear cannot be stored' : where}`;
     btn.setAttribute('aria-label', `${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''}, ${slot.rarity}${locked ? ', locked' : ''}. ${where}`);
     const img = document.createElement('img');
     img.className = 'item-icon';

@@ -1169,12 +1169,13 @@ var ITEMS = {
   helm_gold: { name: "Gold-Tempered Helm", type: "armor_head", rarity: "rare", sell: 60, lore: "Prelate's regalia, bell-dented.", offlineStats: { stat_vit: 6, stat_int: 4 } },
   kit_iron_warden: { name: "Iron Warden Kit", type: "trinket", rarity: "rare", sell: 55, offlineStats: { stat_vit: 4, stat_int: 4 } }
 };
-for (const [id, g2] of Object.entries(GARDEN_ITEMS)) ITEMS[id] ??= { name: g2.name, type: "material", rarity: g2.rarity, sell: g2.sell, lore: g2.lore, stack: g2.stack };
-for (const [id, c] of Object.entries(CHARM_ITEMS)) ITEMS[id] ??= { name: c.name, type: "material", rarity: c.rarity, sell: c.sell, lore: c.lore, stack: 1 };
+var GARDEN_ICON = { sapling_oak: "art/items/sapling_coffin_oak.webp", sapling_yew: "art/items/sapling_churchyard_yew.webp" };
+for (const [id, g2] of Object.entries(GARDEN_ITEMS)) ITEMS[id] ??= { name: g2.name, type: "material", rarity: g2.rarity, sell: g2.sell, lore: g2.lore, stack: g2.stack, icon: GARDEN_ICON[id] };
+for (const [id, c] of Object.entries(CHARM_ITEMS)) ITEMS[id] ??= { name: c.name, type: "material", rarity: c.rarity, sell: c.sell, lore: c.lore, stack: 1, icon: `art/items/${id}.svg` };
 for (const [id, a] of Object.entries(ALCHEMY_ITEMS)) ITEMS[id] ??= { name: a.name, type: "material", rarity: a.rarity, sell: a.sell, lore: a.lore, stack: a.stack, icon: `art/items/${id}.svg` };
 for (const [id, r] of Object.entries(REAGENT_ITEMS)) ITEMS[id] ??= { name: r.name, type: "material", rarity: r.rarity, sell: r.sell, lore: r.lore, stack: r.stack, icon: reagentIcon(id) };
 for (const [id, r] of Object.entries(REAGENT_BREW_ITEMS)) ITEMS[id] ??= { name: r.name, type: "material", rarity: r.rarity, sell: r.sell, lore: r.lore, stack: r.stack, icon: reagentIcon(id) };
-for (const [id, f] of Object.entries(FEN_ITEMS)) ITEMS[id] ??= { name: f.name, type: "material", rarity: f.rarity, sell: f.sell, lore: f.lore, stack: f.stack };
+for (const [id, f] of Object.entries(FEN_ITEMS)) ITEMS[id] ??= { name: f.name, type: "material", rarity: f.rarity, sell: f.sell, lore: f.lore, stack: f.stack, ...id.startsWith("ichor_") ? { icon: `art/items/${id}.svg` } : {} };
 for (const [id, p] of Object.entries(PROCESSING_ITEMS)) ITEMS[id] ??= { name: p.name, type: "material", rarity: p.rarity, sell: p.sell, lore: p.lore, stack: p.stack };
 for (const piece of ARMOR_PIECES) ITEMS[piece.id] = {
   name: piece.name,

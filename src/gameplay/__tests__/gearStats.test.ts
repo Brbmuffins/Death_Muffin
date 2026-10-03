@@ -273,3 +273,36 @@ describe('lookingFor', () => {
     expect(lookingFor(ctx([], 'hollow_knight')).weapons).toBeNull();
   });
 });
+
+describe('bulk sell and salvage spare what you would wear', () => {
+  it('Sell all junk and Salvage all below rare skip an upgrade (an empty slot counts) and take the rest', async () => {
+    const { keepsForYou } = await import('../../ui/gearText');
+    const { junkSlots, salvageBelowRare } = await import('../itemLocks');
+    const helmet = { ...item('helm_x', 0, 'armor_head', { stat_vit: 6 }), sell_value: 5 };
+    const wornHelm = worn('helm_good', 'armor_head', 100, { stat_vit: 20 });
+    const spareHelm = { ...item('helm_poor', 1, 'armor_head', { stat_vit: 1 }), sell_value: 5 };
+    const noLock = { isLocked: () => false };
+    // Empty head slot: the first helm is an upgrade, so it is kept.
+    const empty = ctx([helmet]);
+    expect(junkSlots([helmet], noLock, keepsForYou(empty)).map((s) => s.item_id)).toEqual([]);
+    expect(salvageBelowRare([helmet], noLock, keepsForYou(empty)).map((s) => s.item_id)).toEqual([]);
+    // A better helm is worn: the weak spare is junk again.
+    const full = ctx([wornHelm, spareHelm]);
+    expect(junkSlots([wornHelm, spareHelm], noLock, keepsForYou(full)).map((s) => s.item_id)).toEqual(['helm_poor']);
+    // No context (character not ready): the old behaviour, nothing spared.
+    expect(junkSlots([helmet], noLock, keepsForYou(null)).map((s) => s.item_id)).toEqual(['helm_x']);
+  });
+});
+
+describe('item type label in tooltips', () => {
+  it('names what the thing is instead of the raw item_type', async () => {
+    const { itemTypeLabel } = await import('../../ui/gearText');
+    expect(itemTypeLabel({ item_id: 'helm_iron', item_type: 'armor_head' })).toBe('head armor');
+    expect(itemTypeLabel({ item_id: 'flask_hp_minor', item_type: 'material' })).toBe('potion');
+    expect(itemTypeLabel({ item_id: 'ore_iron', item_type: 'material' })).toBe('material');
+    expect(itemTypeLabel({ item_id: 'staff_iron', item_type: 'weapon' })).toBe('two-handed weapon');
+    expect(itemTypeLabel({ item_id: 'sword_copper', item_type: 'weapon' })).toBe('weapon');
+    expect(itemTypeLabel({ item_id: 'rune_splinter', item_type: 'rune' })).toBe('relic rune');
+    expect(itemTypeLabel({ item_id: 'tool_pickaxe_iron', item_type: 'material' })).toBe('gathering tool');
+  });
+});

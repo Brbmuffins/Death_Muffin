@@ -12,6 +12,8 @@ import { CHEST_PER_MIN_CEILING, DEPTH_LOOT_AREAS, FLOORS_PER_MIN_CEILING, FLOOR_
 import { ASCENSION } from '../content/ascension';
 import { LEGENDARY_BOSS_AREAS, LEGENDARY_DROP, LEGENDARY_SET_IDS, legendaryItemId } from '../content/legendarySets';
 import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS, BOSS_ICHOR } from '../content/reagents';
+import { smartTable } from './smartLoot';
+import { DISCIPLINES } from '../content/disciplines';
 import { AREA_RUNE_POOL, BOSS_RUNE_POOL, ELITE_RUNE_CHANCE, RUNE_WEIGHT, RUNES, SURGE_RUNE_CHANCE } from '../content/runes';
 
 // ── Experience arithmetic ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -173,9 +175,13 @@ function buildGroundRates(): Record<string, number> {
   const addGround = (lootId: AreaId, kills: number, roster: readonly { id: string; weight: number }[], eliteChance: number, extraPerMin = 0) => {
     const area = AREAS[lootId];
     const elite = Math.min(1, eliteChance + 0.004 * 8);
-    const total = area.loot.reduce((n, l) => n + l.weight, 0) || 1;
     const dropChance = Math.min(1, area.itemChance * ITEM_CHANCE_PEAK * FORTUNE_PEAK * (1 - elite + elite * ELITE_LOOT_MULT));
-    for (const l of area.loot) add(l.item, ((kills * dropChance + extraPerMin) * l.weight) / total * MATERIAL_QTY);
+    // The table as listed, and every discipline's smart-loot version of it (loot.ts smartTable weights a player's own armour up): an
+    // item's ceiling is the most any of them could pick up.
+    for (const table of [area.loot, ...Object.keys(DISCIPLINES).map((d) => smartTable(lootId, d))]) {
+      const total = table.reduce((n, l) => n + l.weight, 0) || 1;
+      for (const l of table) add(l.item, ((kills * dropChance + extraPerMin) * l.weight) / total * MATERIAL_QTY);
+    }
     // Reagents: the area's own table plus the enemies in it that shed them (weighted by how often they spawn).
     const weights = roster.reduce((n, e) => n + e.weight, 0) || 1;
     const reagentPerKill = new Map<string, number>();
@@ -223,8 +229,9 @@ function buildGroundRates(): Record<string, number> {
       if (peak && AREAS[id].scaling) elitePerMin = Math.max(elitePerMin, peak.kills * Math.min(1, AREAS[id].eliteChance + 0.004 * 8) * LEGENDARY_DROP.eliteChance);
     }
     const perMin = (ICHOR_PER_MIN * LEGENDARY_DROP.bossChance + elitePerMin) * FORTUNE_PEAK;
-    // The most likely set gets ownShare of the drops, a piece is one in five of its set.
-    for (const set of LEGENDARY_SET_IDS) for (const part of ['head', 'chest', 'hands', 'legs', 'feet'] as const) add(legendaryItemId(set, part), (perMin * Math.max(LEGENDARY_DROP.ownShare, 1 / LEGENDARY_SET_IDS.length)) / 5);
+    // The most likely set gets ownShare of the drops. A drop favours pieces you do not hold (legendarySets.pickLegendaryItem), so the one piece
+    // still missing can take ALL of its set's drops: no one-in-five discount.
+    for (const set of LEGENDARY_SET_IDS) for (const part of ['head', 'chest', 'hands', 'legs', 'feet'] as const) add(legendaryItemId(set, part), perMin * Math.max(LEGENDARY_DROP.ownShare, 1 / LEGENDARY_SET_IDS.length));
   }
   return rates;
 }

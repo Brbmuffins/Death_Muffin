@@ -20,7 +20,7 @@ import { BELT_LABEL, beltOffer, beltTools, dismissOffer, isOnBelt, moveTools, of
 
 /** A small padlock for locked cells and the Lock button (inline SVG: no font or emoji dependency). */
 export const LOCK_SVG = '<svg viewBox="0 0 12 14" width="11" height="13" aria-hidden="true"><path d="M3 6V4.2a3 3 0 0 1 6 0V6" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="6" width="9" height="7" rx="1" fill="currentColor"/></svg>';
-import { badgeHtml, compareChipsHtml, compareTableHtml, itemLevelHtml, itemStatsHtml, setTooltipHtml, verdictHtml, type StatContextSource } from './gearText';
+import { badgeHtml, compareChipsHtml, compareTableHtml, itemLevelHtml, itemStatsHtml, itemTypeLabel, keepsForYou, setTooltipHtml, verdictHtml, type StatContextSource } from './gearText';
 import { resolveSetBonuses } from '../gameplay/setBonuses';
 
 const TYPE_GLYPH: Record<string, string> = {
@@ -218,11 +218,11 @@ export class InventoryPanel {
       placeLegion();
       return;
     }
-    const junk = junkSlots(this.inventory.all, this.locks);
+    const junk = junkSlots(this.inventory.all, this.locks, keepsForYou(this.statContext?.() ?? null));
     const gold = junk.reduce((n, s) => n + s.sell_value * s.quantity, 0);
     const used = this.inventory.all.filter((s) => s.slot_index >= 0 && s.slot_index < BAG_SIZE).length;
     if (this.confirmJunk && junk.length) {
-      tools.innerHTML = `<span class="cw-tools-confirm">Sell <b>${junk.length}</b> junk item${junk.length === 1 ? '' : 's'} (common and uncommon gear, nothing locked) for <b>${gold.toLocaleString()}g</b>?</span>
+      tools.innerHTML = `<span class="cw-tools-confirm">Sell <b>${junk.length}</b> junk item${junk.length === 1 ? '' : 's'} (common and uncommon gear; locked items and upgrades for you are kept) for <b>${gold.toLocaleString()}g</b>?</span>
         <button class="cw-button small" data-junk-yes>Sell them</button><button class="cw-button small ghost" data-junk-no>Cancel</button>`;
       tools.querySelector('[data-junk-yes]')!.addEventListener('click', () => this.sellJunk());
       tools.querySelector('[data-junk-no]')!.addEventListener('click', () => { this.confirmJunk = false; this.render(); });
@@ -231,7 +231,7 @@ export class InventoryPanel {
     }
     this.confirmJunk = false;
     tools.innerHTML = `<span class="cw-tools-count" data-bagcount>${used} / ${BAG_SIZE} slots</span>
-      <button class="cw-button small" data-junk ${junk.length ? '' : 'disabled'} title="Sells unlocked common and uncommon gear. Lock an item to keep it out.">Sell all junk${junk.length ? ` (${junk.length} · ${gold.toLocaleString()}g)` : ''}</button>`;
+      <button class="cw-button small" data-junk ${junk.length ? '' : 'disabled'} title="Sells unlocked common and uncommon gear, except pieces that would upgrade you (the green arrow). Lock an item to keep it out.">Sell all junk${junk.length ? ` (${junk.length} · ${gold.toLocaleString()}g)` : ''}</button>`;
     tools.querySelector('[data-junk]')?.addEventListener('click', () => { this.confirmJunk = true; this.render(); });
     placeLegion();
   }
@@ -239,7 +239,7 @@ export class InventoryPanel {
   private sellJunk() {
     if (!this.onSold) return;
     this.confirmJunk = false;
-    const list = junkSlots(this.inventory.all, this.locks);
+    const list = junkSlots(this.inventory.all, this.locks, keepsForYou(this.statContext?.() ?? null));
     let gold = 0;
     let count = 0;
     for (const slot of list) {
@@ -444,7 +444,7 @@ export class InventoryPanel {
     const meta = itemMeta(slot.item_id);
     this.tooltip.innerHTML = `
       <div class="name" style="color:${RARITY_COLOR[slot.rarity]}">${slot.name}</div>
-      <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${slot.item_type.replace('_', ' ')}</div>
+      <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${itemTypeLabel(slot)}</div>
       ${itemLevelHtml(slot)}
       ${this.statLines(slot)}
       ${this.setLine(slot)}
@@ -490,7 +490,7 @@ export class InventoryPanel {
       <div class="info${compare ? ' gs-wide' : ''}">
         <div class="gs-head">
           <div class="name" style="color:${RARITY_COLOR[slot.rarity]}">${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''}</div>
-          <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${slot.item_type.replace('_', ' ')}${itemLevelHtml(slot, true)}</div>
+          <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${itemTypeLabel(slot)}${itemLevelHtml(slot, true)}</div>
           ${verdictHtml(this.statContext?.() ?? null, slot)}
           ${legion ? `<div class="lg-line ${legion.verdict}" title="What this piece would do on your thralls, against what the legion's ${KIT_LABEL[legion.kit]} slot holds now">Legion ${KIT_LABEL[legion.kit].toLowerCase()}: <span class="ar">${legion.verdict === 'up' ? '\u25B2' : legion.verdict === 'down' ? '\u25BC' : '='}</span> ${legion.verdict === 'same' ? 'no change' : legion.text}</div>` : ''}
         </div>

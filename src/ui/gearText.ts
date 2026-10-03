@@ -4,6 +4,10 @@ import { formatDerived, type StatDeltaLine } from '../gameplay/characterStats';
 import { compareEquip, effectText, itemAffixEffects, itemStatEffects, itemVerdict, simulateEquip, type StatContext } from '../gameplay/gearStats';
 import { affixLines } from '../gameplay/affixes';
 import { ARMOR_BY_ID } from '../content/armorSets';
+import { BUFF_FLASKS, HEALING_FLASKS } from '../content/items';
+import { MEALS } from '../content/processing';
+import { isTwoHanded } from '../content/necroWeapons';
+import { toolKindOf } from '../gameplay/gatheringRules';
 import type { SetDiff } from '../gameplay/setBonuses';
 import { effectRelevant, setDiffText, setStatus, wornArmor } from '../gameplay/setBonuses';
 import './gear-stats.css';
@@ -129,4 +133,46 @@ export function setTooltipHtml(ctx: StatContext | null, slots: readonly Inventor
     return `<div class="b ${cls}"><span class="n">${b.pieces}</span><span class="t">${mark} ${b.name ? `<b>${esc(b.name)}</b>: ` : ''}${esc(b.lines.join(' \u00B7 '))}${note}</span></div>`;
   }).join('');
   return `<div class="gs-set"><div class="hd"><span class="nm">${esc(now.setName)}</span><span class="ct${now.worn >= 2 ? ' on' : ''}">${now.worn} / 5 worn${gain ? ` <em>\u2192 ${after.worn} with this</em>` : ''}</span></div>${lines}</div>`;
+}
+
+/**
+ * "Sell all junk" and "Salvage all below rare" must never take a piece you would be glad to wear: one that is an upgrade for this
+ * character (an empty slot counts) or completes a set bonus. Without a character context nothing is spared.
+ */
+export function keepsForYou(ctx: StatContext | null): ((slot: InventorySlot) => boolean) | undefined {
+  if (!ctx) return undefined;
+  return (slot) => {
+    const v = itemVerdict(ctx, slot);
+    return !!v && (v.kind === 'upgrade' || v.sets.gained.length > 0);
+  };
+}
+
+const TYPE_WORDS: Record<string, string> = {
+  weapon: 'weapon',
+  offhand: 'off-hand',
+  armor_head: 'head armor',
+  armor_chest: 'chest armor',
+  armor_legs: 'leg armor',
+  armor_feet: 'foot armor',
+  armor_hands: 'hand armor',
+  ring: 'ring',
+  trinket: 'trinket',
+  rune: 'relic rune',
+};
+
+/**
+ * The word after the rarity in a tooltip ("rare head armor", "uncommon potion"). The raw item_type read "armor head" and called every
+ * flask, meal, seed and tool a "material"; this names what the thing is, and says when a weapon takes both hands.
+ */
+export function itemTypeLabel(slot: Pick<InventorySlot, 'item_id' | 'item_type'>): string {
+  if (slot.item_type === 'material') {
+    if (slot.item_id in HEALING_FLASKS || slot.item_id in BUFF_FLASKS) return 'potion';
+    if (slot.item_id in MEALS) return 'meal';
+    if (toolKindOf(slot.item_id)) return 'gathering tool';
+    if (slot.item_id.startsWith('charm_')) return 'pet charm';
+    if (slot.item_id.startsWith('seed_') || slot.item_id.startsWith('sapling_')) return 'seed';
+    return 'material';
+  }
+  const base = TYPE_WORDS[slot.item_type] ?? slot.item_type.replace(/_/g, ' ');
+  return slot.item_type === 'weapon' && isTwoHanded(slot.item_id) ? `two-handed ${base}` : base;
 }

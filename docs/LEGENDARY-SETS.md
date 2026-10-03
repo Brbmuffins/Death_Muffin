@@ -15,3 +15,10 @@ Contract (commit on `dm/legendary-base`): the mechanics are `DisciplineMods` fie
 with 0 = off (`soulHarvestRateMult` is a multiplier, 1 = normal), and `SetAddKey` / `SetMultKey` in `src/content/setBonuses.ts`
 accept them, so a set bonus folds them in through the existing `applySetMods` / `withSetBonuses` path. Data/drops/UI and the
 sim mechanics are built separately against this contract. Migration number reserved: **025** (024 is relic runes).
+
+## Drop rules (polish pass, 2026-10-03)
+
+Boss 7% per kill (Ossuary onward), elite 0.3% in the scaled areas, 70% of drops are your discipline's set. A drop now **favours pieces you do not hold**
+(`pickLegendaryItem(..., owned)`: worn or in the bag; the Vault is not asked), so a set fills in about five drops instead of the eleven a uniform pick
+needs, and a repeat only follows a full set. The server's ground-rate ceiling for a legendary piece lost its one-in-five discount for the same reason
+(the piece you are missing can take every drop of its set). `owned` is read only when a legendary actually drops.

@@ -2,7 +2,7 @@ import { ABILITIES, HOTBAR, type AbilityId, type HotbarSlot } from '../content/a
 import { touchNow } from './touchText';
 import type { Discipline } from '../content/disciplines';
 import type { EliteAffix } from '../content/enemies';
-import { DAMAGE_UPGRADE, WAVE_MILESTONES, WAVE_UPGRADE, milestones } from '../content/upgrades';
+import { DAMAGE_UPGRADE, WAVE_MILESTONES, WAVE_UPGRADE, damageBonusPct, milestones, waveModifiers } from '../content/upgrades';
 import { MAX_PARTY_SIZE } from '../net/config';
 import { ICON } from './icons';
 import { Minimap, type MinimapFrame } from './Minimap';
@@ -662,6 +662,9 @@ export class HUD {
       this.$('[data-dmggems]').innerHTML = milestones(f.damageTier, DAMAGE_UPGRADE.maxTier).map((on) => `<i class="${on ? 'on' : ''}"></i>`).join('');
       this.$('[data-dmgcost]').textContent = f.damageCost === null ? 'Max' : `${f.damageCost.toLocaleString()}g`;
       this.$<HTMLButtonElement>('[data-buydmg]').disabled = f.damageCost === null || f.gold < f.damageCost;
+      this.$('[data-buydmg]').title = f.damageCost === null
+        ? `Damage is at its highest tier (+${f.damagePct}% to all your damage).`
+        : `Empower: +${Math.round(DAMAGE_UPGRADE.perTier * 100)}% damage per tier, tier ${f.damageTier} of ${DAMAGE_UPGRADE.maxTier}. This one takes you from +${f.damagePct}% to +${damageBonusPct(f.damageTier + 1)}%. Resets when you Ascend.`;
     });
     this.set('wave', `${f.waveOwned}|${f.waveActive}|${f.waveCost}|${f.gold >= (f.waveCost ?? Infinity)}`, () => {
       this.$('[data-wavepct]').textContent = `+${f.wavePct}%`;
@@ -682,6 +685,12 @@ export class HUD {
       ms.title = (active.length ? active : next ? [next] : []).map((m) => `${m.name} (tier ${m.tier}): ${m.blurb}`).join('\n');
       this.$('[data-wavecost]').textContent = f.waveCost === null ? 'Max' : `${f.waveCost.toLocaleString()}g`;
       this.$<HTMLButtonElement>('[data-buywave]').disabled = f.waveCost === null || f.gold < f.waveCost;
+      const now = waveModifiers(f.waveOwned);
+      const nxt = waveModifiers(f.waveOwned + 1);
+      const pct = (a: number, b: number) => Math.round((b / a - 1) * 100);
+      this.$('[data-buywave]').title = f.waveCost === null
+        ? 'Wave Speed is at its highest tier. Use the dial to run any tier you own.'
+        : `Quicken: tier ${f.waveOwned} of ${WAVE_UPGRADE.maxTier}. The next tier brings faster, angrier waves and pays +${pct(now.rewardMult, nxt.rewardMult)}% gold, +${pct(now.xpMult, nxt.xpMult)}% XP and +${pct(now.itemChanceMult, nxt.itemChanceMult)}% item drops more. The dial picks which tier you actually run (0 to ${f.waveOwned}). Resets when you Ascend.`;
       this.$('[data-wavetier]').textContent = `Tier ${f.waveActive} / ${f.waveOwned}`;
       this.$<HTMLButtonElement>('[data-dial="-1"]').disabled = f.waveActive <= 0;
       this.$<HTMLButtonElement>('[data-dial="1"]').disabled = f.waveActive >= f.waveOwned;

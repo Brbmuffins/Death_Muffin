@@ -7,6 +7,7 @@ import { salvageBelowRare, type ItemLocks } from '../gameplay/itemLocks';
 import { SALVAGE_RARITIES, isSalvageable, salvagePreview } from '../gameplay/salvageRules';
 import type { Skills } from '../gameplay/Gathering';
 import { rollOf } from '../gameplay/affixes';
+import { keepsForYou, type StatContextSource } from './gearText';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -32,6 +33,8 @@ export class SalvagePanel {
   private result: SalvageReply | null = null;
   private off: (() => void) | null = null;
   private offLocks: (() => void) | null = null;
+  /** The character's numbers (set by the scene): "Salvage all below rare" spares pieces that would upgrade you. */
+  statContext: StatContextSource | null = null;
 
   constructor(
     private root: HTMLElement,
@@ -99,7 +102,7 @@ export class SalvagePanel {
     }
     const level = this.skills.shown('salvaging');
     const picked = gear.filter((g) => this.chosen.has(g.slot_index));
-    const below = salvageBelowRare(this.inventory.all, this.locks);
+    const below = salvageBelowRare(this.inventory.all, this.locks, keepsForYou(this.statContext?.() ?? null));
     const xp = picked.reduce((n, g) => n + salvagePreview({ id: g.item_id, item_type: g.item_type, rarity: g.base_rarity ?? g.rarity, ...rollOf(g) }).xp, 0);
     const r = this.result;
     this.el.innerHTML = `
@@ -122,7 +125,7 @@ export class SalvagePanel {
       <div class="cw-salvage-foot">
         <span class="cw-hint-text">${picked.length ? `${picked.length} chosen · about <b>${xp}</b> Salvaging XP` : 'Tick the gear to grind. Locked items cannot be chosen.'}</span>
         <button class="cw-button small" data-go ${picked.length && !this.busy ? '' : 'disabled'}>Salvage selected</button>
-        <button class="cw-button small" data-below ${below.length && !this.busy ? '' : 'disabled'} title="Every unlocked common and uncommon piece in your bag">Salvage all below rare${below.length ? ` (${below.length})` : ''}</button>
+        <button class="cw-button small" data-below ${below.length && !this.busy ? '' : 'disabled'} title="Every unlocked common and uncommon piece in your bag, except pieces that would upgrade you">Salvage all below rare${below.length ? ` (${below.length})` : ''}</button>
       </div>
       ${r ? `<div class="cw-salvage-result" data-result><b>Ground ${r.salvaged.length} piece${r.salvaged.length === 1 ? '' : 's'}</b> for ${r.gained.map((g) => `${g.quantity}× ${esc(itemMeta(g.item_id).name)}`).join(', ')} · +${r.xp} Salvaging XP${r.leveledUp ? ` · <b>Salvaging level ${r.level}</b>` : ''}</div>` : ''}
       <div class="cw-error" data-error>${esc(this.error)}</div>`;
