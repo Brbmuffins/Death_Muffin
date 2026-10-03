@@ -77,7 +77,8 @@ export class LoginScene implements GameScene {
     const errorEl = this.panel!.querySelector<HTMLDivElement>('#cw-login-error')!;
 
     const fail = (message: string) => {
-      errorEl.textContent = message;
+      // Server strings are shown as sent; only the first letter is capitalised ("username must be at least 3 characters").
+      errorEl.textContent = message.charAt(0).toUpperCase() + message.slice(1);
       this.panel!.classList.remove('shake');
       void this.panel!.offsetWidth;
       this.panel!.classList.add('shake');
