@@ -2577,7 +2577,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.onboarding.show('skill_up');
     }
     this.professions = this.skills.rows();
-    if (this.professionsPanel?.isOpen) this.professionsPanel.render(this.skills);
+    if (this.professionsPanel?.isOpen) this.professionsPanel.refresh(this.skills);
   }
 
   private onNodeSpent(id: string) {
