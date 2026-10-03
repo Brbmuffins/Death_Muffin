@@ -4,6 +4,7 @@ import { NPCS, NPC_IDS, NPC_LOOKS, NPC_LOOK_RANGE, type NpcId } from '../content
 import { Creature } from './Creature';
 import { assets } from './AssetCache';
 import { CREATURE_MODELS, PROP_URL } from './modelPaths';
+import { distanceInterval } from './animLod';
 
 /**
  * The people of the Covenant standing in their halls: an idle figure, a nameplate, a turn toward you when you come close, and
@@ -223,7 +224,7 @@ export class NpcViews {
       if (n.c?.loaded) n.c.setLoop(n.talking && n.c.has('talk') ? 'talk' : 'idle', 1);
       // Animation LOD: a figure across the yard animates at ~24 Hz, a distant one at ~10 Hz (skipped time accumulates).
       n.animDt += dt;
-      const every = n.talking || dist < NPC_LOD_NEAR ? 0 : dist < NPC_LOD_FAR ? 1 / 24 : 1 / 10;
+      const every = distanceInterval(dist, n.talking, NPC_LOD_NEAR, NPC_LOD_FAR);
       if (n.animDt >= every) {
         if (n.c) n.c.steadyEvery = every === 0 ? 1 : 2;
         n.c?.update(n.animDt);

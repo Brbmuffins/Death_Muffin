@@ -52,10 +52,22 @@ const DISC = process.env.DM_QA_DISC || 'Gravecaller', SECS = +(process.env.DM_QA
   const m0 = Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map((x) => [x.name, x.value]));
   await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
   await cdp.send('Profiler.start');
-  const fr = await page.evaluate(async (s) => { const d = window.__cwDebug; const t0 = performance.now(); let worst = 0; for (let i = 0; i < s; i++) { const a = performance.now(); d.advance(1, 1 / 60, false); worst = Math.max(worst, performance.now() - a); window.__refill(); } const ms = performance.now() - t0; return { frames: s * 60, ms, worst, updMsPerFrame: ms / (s * 60) }; }, SECS);
+  // N back-to-back windows of SECS seconds: per-window thread CPU time lets the summary take the median (the VPS is shared and noisy).
+  const WINDOWS = +(process.env.DM_QA_WINDOWS || 5);
+  const windows = []; const fr = { frames: 0, ms: 0, worst: 0 };
+  const thread = async () => (await cdp.send('Performance.getMetrics')).metrics.find((x) => x.name === 'ThreadTime').value;
+  for (let w = 0; w < WINDOWS; w++) {
+    const t0 = await thread();
+    const one = await page.evaluate(async (s) => { const d = window.__cwDebug; const t0 = performance.now(); let worst = 0; for (let i = 0; i < s; i++) { const a = performance.now(); d.advance(1, 1 / 60, false); worst = Math.max(worst, performance.now() - a); window.__refill(); } const ms = performance.now() - t0; return { frames: s * 60, ms, worst }; }, SECS);
+    windows.push({ frames: one.frames, wallMs: one.ms, threadMs: ((await thread()) - t0) * 1000, worst: one.worst });
+    fr.frames += one.frames; fr.ms += one.ms; fr.worst = Math.max(fr.worst, one.worst);
+  }
+  fr.updMsPerFrame = fr.ms / fr.frames;
   const { profile } = await cdp.send('Profiler.stop');
   const heapProf = (await cdp.send('HeapProfiler.stopSampling')).profile;
-  let allocBytes = 0; (function walk(n) { allocBytes += n.selfSize; (n.children || []).forEach(walk); })(heapProf.head);
+  let allocBytes = 0; const allocBy = {};
+  (function walk(n) { allocBytes += n.selfSize; if (n.selfSize) { const cf = n.callFrame; const k = `${cf.functionName || '(anon)'} ${cf.url.replace(/^.*\/(src|node_modules)\//, '$1/').replace(/\?.*$/, '')}:${cf.lineNumber + 1}`; allocBy[k] = (allocBy[k] || 0) + n.selfSize; } (n.children || []).forEach(walk); })(heapProf.head);
+  const allocTop = Object.entries(allocBy).sort((a, b) => b[1] - a[1]).slice(0, 25);
   fr.renderMs = await page.evaluate(() => { const d = window.__cwDebug; const r0 = performance.now(); for (let i = 0; i < 20; i++) d.advance(0, 1 / 60, true); return (performance.now() - r0) / 20; });
   const m1 = Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map((x) => [x.name, x.value]));
   const census1 = await page.evaluate(() => ({ dom: document.getElementsByTagName('*').length, ...window.__cwDebug.counts() }));
@@ -70,7 +82,7 @@ const DISC = process.env.DM_QA_DISC || 'Gravecaller', SECS = +(process.env.DM_QA
   profile.samples.forEach((id, i) => { const w = dt[i] / 1000; const seen = new Set(); for (let cur = id; cur !== undefined; cur = parent.get(cur)) { const cf = byId.get(cur).callFrame; if (cf.functionName === '(idle)') break; const k = `${cf.functionName || '(anon)'} ${cf.url.replace(/^.*\/(src|node_modules)\//, '$1/')}`; if (seen.has(k)) continue; seen.add(k); incl[k] = (incl[k] || 0) + w; } });
   const top = (o, n) => Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, n).map(([k, v]) => [k, +v.toFixed(1)]);
   const res = { url: URL, area: AREA, q: Q, loadMs, loadBytes, loadReqs, setup, census0, census1, frames: fr, upd: +fr.updMsPerFrame.toFixed(3), renderMs: +fr.renderMs.toFixed(1), busyMs: +(total - idle).toFixed(0), idleMs: +idle.toFixed(0),
-    allocBytes, metricsDelta: Object.fromEntries(['ThreadTime', 'LayoutCount', 'RecalcStyleCount', 'ScriptDuration', 'TaskDuration', 'LayoutDuration', 'RecalcStyleDuration', 'JSHeapUsedSize', 'Nodes'].map((k) => [k, +(m1[k] - m0[k]).toFixed(3)])), heap0: m0.JSHeapUsedSize, heap1: m1.JSHeapUsedSize, topFn: top(agg, 40), topFile: top(fileAgg, 25), topIncl: top(incl, 60) };
+    allocBytes, windows, allocTop, metricsDelta: Object.fromEntries(['ThreadTime', 'LayoutCount', 'RecalcStyleCount', 'ScriptDuration', 'TaskDuration', 'LayoutDuration', 'RecalcStyleDuration', 'JSHeapUsedSize', 'Nodes'].map((k) => [k, +(m1[k] - m0[k]).toFixed(3)])), heap0: m0.JSHeapUsedSize, heap1: m1.JSHeapUsedSize, topFn: top(agg, 40), topFile: top(fileAgg, 25), topIncl: top(incl, 60) };
   fs.writeFileSync(OUT, JSON.stringify(res, null, 1));
   console.log(JSON.stringify({ upd: res.upd, renderMs: res.renderMs, busyMs: res.busyMs, idleMs: res.idleMs, loadMs, loadBytes, metricsDelta: res.metricsDelta, census0, setup }));
   await browser.close();

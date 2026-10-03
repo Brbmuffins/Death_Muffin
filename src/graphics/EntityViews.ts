@@ -18,6 +18,7 @@ import { wingClock, type WingOpts } from './wingFlap';
 import { smoothSpeed, stepSpeed, turnToward } from './locomotion';
 import { separateBodies, type CrowdBody } from './crowdSeparation';
 import { hitstop } from './hitstop';
+import { allowBurst, animInterval } from './animLod';
 import { disposeProp, upgradeThrallProp } from './gearProps';
 import { gearTier } from '../content/gear';
 import { depthRoster } from '../content/depths';
@@ -210,9 +211,6 @@ const MAX_CROWD = 140;
 const CROWD_EASE = 9;
 const CROWD_FOOTPRINT = 1.12;
 const CROWDED_SHADOW_CASTERS = 8;
-/** Animation LOD: seconds between mixer updates for mid-distance and far / off-screen bodies. */
-const ANIM_MID_S = 1 / 24;
-const ANIM_FAR_S = 1 / 10;
 /** Concurrent additive flinches are capped: at most this many may start inside FLINCH_WINDOW_MS. */
 const FLINCH_BURST = 6;
 const FLINCH_WINDOW_MS = 380;
@@ -917,12 +915,7 @@ export class EntityViews {
 
   /** A flinch adds a whole extra blend over the skeleton: in a big crowd only a few may be live at once. */
   private flinchBudget(): boolean {
-    const t = performance.now();
-    const q = this.flinchStarts;
-    while (q.length && t - q[0] > FLINCH_WINDOW_MS) q.shift();
-    if (q.length >= FLINCH_BURST) return false;
-    q.push(t);
-    return true;
+    return allowBurst(this.flinchStarts, performance.now(), FLINCH_BURST, FLINCH_WINDOW_MS);
   }
 
   private tickAnim(v: View, dt: number, fx0: number, fz0: number, crowded: boolean) {
@@ -930,11 +923,7 @@ export class EntityViews {
     // off-screen ~10 Hz. Skipped time accumulates so motion stays correct; a swing or cast always runs at full rate
     // (its impact frame is timed to the sim). `crowded` pulls the bands in when a high Wave Speed fills the room.
     v.animDt += dt;
-    const ax = Math.abs(v.x - fx0);
-    const az = Math.abs(v.z - fz0);
-    const nearX = crowded ? 10 : 13;
-    const nearZ = crowded ? 9 : 11;
-    const interval = v.c.busy || (ax < nearX && az < nearZ) ? 0 : ax > 26 || az > 22 ? ANIM_FAR_S : ANIM_MID_S;
+    const interval = animInterval(Math.abs(v.x - fx0), Math.abs(v.z - fz0), v.c.busy, crowded);
     if (v.animDt < interval) return;
     v.c.steadyEvery = interval === 0 ? 1 : 2;
     v.c.update(v.animDt);

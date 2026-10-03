@@ -124,6 +124,7 @@ import { CodexPanel } from '../ui/CodexPanel';
 import { Onboarding, type TipId } from '../ui/Onboarding';
 import { DepthsController } from './DepthsController';
 import { touchNow } from '../ui/touchText';
+import { hudDue } from '../graphics/animLod';
 import { HEAL_COOLDOWN_S, HEAL_ORDER, beltState, emptyHint, emptyPressText, healPick } from '../gameplay/beltRules';
 import type { Busy } from '../ui/counselCadence';
 import { CodexJournal, browserStorage, type CodexIds, type CodexKind } from '../gameplay/codexJournal';
@@ -4803,7 +4804,7 @@ export class WorldScene implements GameScene, RuntimeView {
       }
     }
     // The readouts redraw at ~20 Hz (cooldown sweeps, bars and counters don't need 60); the DOM is only touched when a value changed.
-    if (now - this.lastHudAt < HUD_INTERVAL_MS && now >= this.lastHudAt) return;
+    if (!hudDue(now, this.lastHudAt, HUD_INTERVAL_MS)) return;
     this.lastHudAt = now;
     const loc = this.progression.local;
     const hover = this.hover;
