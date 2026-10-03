@@ -23,6 +23,9 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 var contractRules_exports = {};
 __export(contractRules_exports, {
   CONTRACT_SLOTS: () => CONTRACT_SLOTS,
+  RELIC_CHANCE: () => RELIC_CHANCE,
+  RELIC_ORDERS: () => RELIC_ORDERS,
+  RELIC_PREMIUM: () => RELIC_PREMIUM,
   bonusFor: () => bonusFor,
   candidatesFor: () => candidatesFor,
   dayKey: () => dayKey,
@@ -1235,6 +1238,16 @@ function mulberry32(seed) {
   };
 }
 var MOB_REAGENT_LEVELS = [["reagent_grave_dust", 1], ["reagent_wraith_ectoplasm", 10], ["reagent_plague_bile", 38], ["reagent_cinder_ash", 52]];
+var RELIC_PREMIUM = 2;
+var RELIC_CHANCE = 0.2;
+var RELIC_ORDERS = [
+  { itemId: "gem_grave_garnet", skill: "mining", level: 10, qty: 3 },
+  { itemId: "reliquary_fragment", skill: "fishing", level: 30, qty: 3 },
+  { itemId: "gem_bone_opal", skill: "mining", level: 30, qty: 2 },
+  { itemId: "gem_void_sapphire", skill: "mining", level: 60, qty: 1 },
+  { itemId: "covenant_seal", skill: "gravedigging", level: 70, qty: 2 }
+];
+var SMELTED_ORDERS = [["ingot_tin", 3], ["ingot_bronze", 8]];
 function candidatesFor(levels) {
   const level = (s) => Math.max(1, levels[s] ?? 1);
   const seen = /* @__PURE__ */ new Set();
@@ -1244,6 +1257,8 @@ function candidatesFor(levels) {
     seen.add(c.itemId);
     out.push(c);
   };
+  for (const [itemId, req] of SMELTED_ORDERS) if (req <= level("mining")) add({ itemId, skill: "mining", level: req, processed: true });
+  for (const r of RELIC_ORDERS) if (r.level <= level(r.skill)) add({ itemId: r.itemId, skill: r.skill, level: r.level, processed: false, fixedQty: r.qty });
   for (const n of Object.values(NODES)) if (n.skill !== "gardening" && n.level <= level(n.skill)) add({ itemId: n.item, skill: n.skill, level: n.level, processed: false });
   for (const [, , skill, req, result] of PROCESSING_RECIPES) {
     if (result.startsWith("tool_")) continue;
@@ -1266,7 +1281,9 @@ var MEDIUM_REWARDS = [
 ];
 function generateBoard(characterId, day, levels) {
   const rand = mulberry32(hashString(`${characterId}:${day}`));
-  const pool = candidatesFor(levels);
+  const all = candidatesFor(levels);
+  const relics = all.filter((c) => c.fixedQty);
+  const pool = all.filter((c) => !c.fixedQty);
   const cands = pool.length >= CONTRACT_SLOTS ? pool : [...pool, ...candidatesFor({}).filter((c) => !pool.includes(c))];
   const third = Math.max(1, Math.floor(cands.length / 3));
   const bands = [cands.slice(0, third), cands.slice(third, third * 2), cands.slice(third * 2)].map((b, i) => b.length ? b : cands.slice(i));
@@ -1275,15 +1292,19 @@ function generateBoard(characterId, day, levels) {
   for (let slot = 0; slot < CONTRACT_SLOTS; slot++) {
     const band = bands[slot].filter((c) => !used.has(c.itemId));
     const from = band.length ? band : cands.filter((c) => !used.has(c.itemId));
-    const pick = from[Math.floor(rand() * from.length)] ?? cands[slot % cands.length];
+    let pick = from[Math.floor(rand() * from.length)] ?? cands[slot % cands.length];
+    const relicRoll = rand();
+    const relicPick = relics[Math.floor(rand() * relics.length)];
+    if (slot === 2 && relicRoll < RELIC_CHANCE && relicPick) pick = relicPick;
     used.add(pick.itemId);
     let qty = Math.round(Math.min(80, Math.max(12, 70 - pick.level * 0.5)) * [1, 0.8, 0.6][slot]);
     if (pick.processed) qty = Math.max(6, Math.round(qty * 0.4));
     qty = Math.max(4, qty + Math.floor(rand() * 5) - 2);
+    if (pick.fixedQty) qty = pick.fixedQty;
     const sell = itemMeta(pick.itemId).sell;
-    const rewardGold = Math.round(qty * sell * 1.6 + 20 * (slot + 1));
+    const rewardGold = Math.round(qty * sell * (pick.fixedQty ? RELIC_PREMIUM : 1.6) + 20 * (slot + 1));
     let rewardItem = null;
-    if (slot === 2) rewardItem = HARD_REWARDS.find((r) => pick.level >= r.minLevel).item;
+    if (slot === 2) rewardItem = pick.fixedQty ? HARD_REWARDS[HARD_REWARDS.length - 1].item : HARD_REWARDS.find((r) => pick.level >= r.minLevel).item;
     else if (slot === 1 && rand() < 0.35) rewardItem = MEDIUM_REWARDS[Math.floor(rand() * MEDIUM_REWARDS.length)];
     board.push({ slot, itemId: pick.itemId, qty, skill: pick.skill, rewardGold, rewardItem });
   }
@@ -1307,6 +1328,9 @@ function streakOf(doneDays, today) {
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   CONTRACT_SLOTS,
+  RELIC_CHANCE,
+  RELIC_ORDERS,
+  RELIC_PREMIUM,
   bonusFor,
   candidatesFor,
   dayKey,
