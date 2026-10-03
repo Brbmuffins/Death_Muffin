@@ -14,6 +14,12 @@ Every day at 09:00 UTC `death-muffin-bug-agent.timer` runs `run-bug-agent.sh`:
    `note`; `fixed` is downgraded to `triaged` if the branch is red), writes `~/death-muffin/bug-agent/runs/<date>.md`
    and posts the summary to the Discord release webhook. A branch with no commits is deleted.
 
+**Discord.** Every post goes to `~/death-muffin/private/discord-deathmuffin-webhook.url` (the Death Muffin channel) when
+that file exists, else to the older `discord-github-webhook.url` (MuffinCore alerts). Two kinds: the daily triage summary
+(fixes on the branch, awaiting review) and, from `deploy-release.sh`, **"Player-reported bugs fixed — live now"** when a
+release contains `Bug report #<id>: …` commits. That deploy step also sets those reports to `released`, which players see
+as *Fixed — live now*.
+
 **Nothing ships on its own.** The owner (or a Claude session) reviews `bugfix/reports-<date>`, merges it and deploys with
 `deploy-release.sh` as usual.
 

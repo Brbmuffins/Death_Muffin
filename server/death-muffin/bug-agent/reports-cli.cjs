@@ -4,6 +4,7 @@
  *
  *   node reports-cli.cjs list                   -> JSON array of 'new' reports (oldest first, at most 25)
  *   node reports-cli.cjs apply <verdicts.json>  -> validates the agent's verdicts and writes status/agent_notes/fix_ref
+ *   node reports-cli.cjs release <id,id,...>    -> marks reports whose fix just went live 'released'; prints the ones it changed
  *
  * Only ids from the batch handed to the agent (BUG_AGENT_IDS) may be updated; status must be one of the known values;
  * notes are capped. A verdict that fails validation is skipped and reported, never half-applied.
@@ -54,8 +55,15 @@ async function main() {
         applied++;
       }
       console.log(`applied ${applied}/${verdicts.length} verdicts`);
+    } else if (cmd === 'release') {
+      const ids = String(file || '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 100);
+      if (!ids.length) return void process.stdout.write('[]');
+      const marks = ids.map(() => '?').join(',');
+      const [rows] = await db.execute(`SELECT id, category FROM bug_reports WHERE id IN (${marks}) AND status <> 'released'`, ids);
+      if (rows.length) await db.execute(`UPDATE bug_reports SET status = 'released' WHERE id IN (${rows.map(() => '?').join(',')})`, rows.map((r) => r.id));
+      process.stdout.write(JSON.stringify(rows));
     } else {
-      console.error('usage: reports-cli.cjs list | apply <verdicts.json>');
+      console.error('usage: reports-cli.cjs list | apply <verdicts.json> | release <ids>');
       process.exit(2);
     }
   } finally {

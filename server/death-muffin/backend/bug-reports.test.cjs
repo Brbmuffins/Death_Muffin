@@ -84,3 +84,11 @@ test('GET mine shows player-facing status and hides notes until there is a verdi
   assert.strictEqual(body.data[1].status, 'Fixed in an upcoming update');
   assert.match(body.data[1].note, /minimap now redraws/);
 });
+
+test('a released report reads as live for the player', async () => {
+  const h = harness();
+  await h.call('POST /api/bug-reports', { message: 'Thralls stop after waystone travel.' });
+  Object.assign(h.rows[0], { status: 'released', agent_notes: 'Fixed: thralls follow you through waystones again.' });
+  const { body } = await h.call('GET /api/bug-reports/mine');
+  assert.strictEqual(body.data[0].status, 'Fixed — live now');
+});

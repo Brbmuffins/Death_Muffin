@@ -106,12 +106,13 @@ if [ "$COMMITS" = 0 ]; then
   echo "no fixes; worktree and branch removed"
 fi
 
-HOOK_FILE="$RUNTIME/private/discord-github-webhook.url"
+HOOK_FILE="$RUNTIME/private/discord-deathmuffin-webhook.url"
+[ -r "$HOOK_FILE" ] || HOOK_FILE="$RUNTIME/private/discord-github-webhook.url"
 if [ -r "$HOOK_FILE" ]; then
   python3 - "$SUMMARY" "$HOOK_FILE" <<'PY' && echo "Discord: summary sent" || echo "Discord: summary failed"
 import json, sys, urllib.request
 body, url = open(sys.argv[1]).read(), open(sys.argv[2]).read().strip()
-embed = {"title": "Death Muffin bug reports — daily agent", "description": body[:3900], "color": 0xB45309}
+embed = {"title": "Death Muffin bug reports — daily triage (fixes await review)", "description": body[:3900], "color": 0xB45309}
 req = urllib.request.Request(url, data=json.dumps({"username": "Death Muffin", "embeds": [embed], "allowed_mentions": {"parse": []}}).encode(),
                              headers={"Content-Type": "application/json", "User-Agent": "death-muffin-bug-agent"})
 urllib.request.urlopen(req, timeout=10)

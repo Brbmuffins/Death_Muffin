@@ -10,7 +10,8 @@
  */
 
 const CATEGORIES = ['bug', 'combat', 'ui', 'performance', 'balance', 'other'];
-const STATUSES = ['new', 'triaged', 'fixing', 'fixed', 'needs_info', 'duplicate', 'wontfix'];
+// 'released' is set by deploy-release.sh when a commit `Bug report #<id>: …` goes live.
+const STATUSES = ['new', 'triaged', 'fixing', 'fixed', 'released', 'needs_info', 'duplicate', 'wontfix'];
 const MESSAGE_MIN = 10;
 const MESSAGE_MAX = 2000;
 const CONTEXT_MAX_BYTES = 4000;
@@ -22,6 +23,7 @@ const STATUS_LABELS = {
   triaged: 'Looked at',
   fixing: 'Fix in progress',
   fixed: 'Fixed in an upcoming update',
+  released: 'Fixed — live now',
   needs_info: 'Need more detail',
   duplicate: 'Already known',
   wontfix: 'Working as intended',

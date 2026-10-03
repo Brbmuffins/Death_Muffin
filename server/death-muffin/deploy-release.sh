@@ -112,7 +112,9 @@ curl -sSf https://muffindevelopment.com/death-muffin/api/health; echo
 echo "Release $SHA published. Rollback: $BK/ROLLBACK.sh"
 
 # Discord notice (optional): the webhook URL lives outside the repo (the repo is public). Never fails the deploy.
-HOOK_FILE="$RUNTIME/private/discord-github-webhook.url"
+# The Death Muffin channel's webhook wins when it is set up; otherwise the older MuffinCore alerts webhook.
+HOOK_FILE="$RUNTIME/private/discord-deathmuffin-webhook.url"
+[ -r "$HOOK_FILE" ] || HOOK_FILE="$RUNTIME/private/discord-github-webhook.url"
 if [ -r "$HOOK_FILE" ]; then
   git -C "$REPO" log --no-merges --format='%s' -n 12 $RANGE | python3 -c '
 import json, sys, urllib.request
@@ -126,4 +128,29 @@ req = urllib.request.Request(url, data=json.dumps({"username": "Death Muffin", "
                              headers={"Content-Type": "application/json", "User-Agent": "death-muffin-deploy"})
 urllib.request.urlopen(req, timeout=10)
 ' "$SHA" "${PREV:-}" "$HOOK_FILE" && echo "Discord: release notice sent" || echo "Discord: notice failed (deploy is fine)"
+fi
+
+# Player bug reports fixed by this release (commits "Bug report #<id>: ..."): mark them 'released' so the reporter sees
+# "Fixed — live now" in Settings → Report a bug, and announce them. Never fails the deploy.
+FIXES=$(git -C "$REPO" log --no-merges --format='%s' $RANGE | grep -E '^Bug report #[0-9]+: ' || true)
+if [ -n "$FIXES" ]; then
+  IDS=$(printf '%s\n' "$FIXES" | sed -E 's/^Bug report #([0-9]+):.*/\1/' | sort -un | paste -sd, -)
+  NEWLY=$(node "$SRC/server/death-muffin/bug-agent/reports-cli.cjs" release "$IDS" 2>/dev/null || echo '[]')
+  echo "Bug reports released: $NEWLY"
+  if [ -r "$HOOK_FILE" ] && [ "$NEWLY" != "[]" ]; then
+    printf '%s\n' "$FIXES" | python3 -c '
+import json, sys, urllib.request
+sha, newly, url = sys.argv[1], {r["id"] for r in json.loads(sys.argv[2])}, open(sys.argv[3]).read().strip()
+lines = []
+for l in sys.stdin:
+    head, _, text = l.strip().partition(": ")
+    rid = int(head.split("#")[1])
+    if rid in newly: lines.append(f"• **#{rid}** {text[:150]}")
+embed = {"title": f"\U0001F41E Player-reported bugs fixed — live now", "url": "https://muffindevelopment.com/death-muffin/play/",
+         "description": "\n".join(lines)[:3800] + f"\n\nRelease {sha[:7]}. Thanks for the reports! Send more from Settings → Report a bug.", "color": 0x16A34A}
+req = urllib.request.Request(url, data=json.dumps({"username": "Death Muffin", "embeds": [embed], "allowed_mentions": {"parse": []}}).encode(),
+                             headers={"Content-Type": "application/json", "User-Agent": "death-muffin-deploy"})
+urllib.request.urlopen(req, timeout=10)
+' "$SHA" "$NEWLY" "$HOOK_FILE" && echo "Discord: bug-fix notice sent" || echo "Discord: bug-fix notice failed (deploy is fine)"
+  fi
 fi
