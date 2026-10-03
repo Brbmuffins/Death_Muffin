@@ -24,6 +24,13 @@ Branch `codex/new-blood-release-20260928` tracks `origin/master` (push `HEAD:mas
 after a secret scan; the repo is public). The owner asked for commits, which overrides
 the older "stage, don't commit" note.
 
+## Server bug hunt (branch `claude/server-bug-hunt`, 3 Oct 2026, not deployed, no migration)
+
+Read-through of the backend and the realtime service; 13 fixes, each with a failing test first (`docs/polish/server-bug-hunt.md` has the table and the suspected-but-unconfirmed list).
+Worst: a `null` socket payload crashed the realtime service; `/api/craft` could be pointed at another player's bag with `characterId: "1e1"`; `/api/gold/adjust` was an open gold credit.
+New test helper `server/death-muffin/backend/server-harness.cjs` (+ `server-routes.test.cjs`) calls the routes in `server.js` without a database. Deploying needs the backend and realtime
+restarts (`deploy-release.sh`); `server/realtime/deploy-realtime.sh` was refreshed with `tools/embed-realtime.mjs`.
+
 ## PC-only master + separate mobile build (branch `dm/pc-only`, 3 Oct 2026, not deployed)
 
 Owner: "tuning the PC version is priority over mobile, mobile should be its own branch." This branch strips the whole phone/tablet layer
