@@ -43,16 +43,24 @@ export function walkCap(height: number): number {
 
 /**
  * Pick walk or run (with hysteresis through `wasRun`) and the playback speed that matches `ground` (units/s) for a body
- * `height` units tall (its world height, scale included).
+ * `height` units tall (its world height, scale included). Pass `out` to fill a reused plan instead of allocating one.
  */
-export function planLocomotion(row: StrideRow | undefined, height: number, ground: number, hasRun: boolean, wasRun = false): LocomotionPlan {
+export function planLocomotion(row: StrideRow | undefined, height: number, ground: number, hasRun: boolean, wasRun = false, out?: LocomotionPlan): LocomotionPlan {
   const walkU = (row?.walk ?? DEFAULT_WALK) * height;
   const runU = hasRun && row?.run ? row.run * height : 0;
   const run = runU > 0 && ground > walkU * (wasRun ? RUN_DOWN : RUN_UP);
   const stride = run ? runU : walkU;
   const max = run ? RUN_MAX : walkCap(height);
   const timeScale = Math.min(max, Math.max(LOCO_MIN, ground / stride));
-  return { clip: run ? 'run' : 'walk', timeScale, stride, residual: ground > 1e-3 ? Math.abs(ground - timeScale * stride) / ground : 0 };
+  const residual = ground > 1e-3 ? Math.abs(ground - timeScale * stride) / ground : 0;
+  if (out) {
+    out.clip = run ? 'run' : 'walk';
+    out.timeScale = timeScale;
+    out.stride = stride;
+    out.residual = residual;
+    return out;
+  }
+  return { clip: run ? 'run' : 'walk', timeScale, stride, residual };
 }
 
 /** Exponential smoothing of a measured speed (time constant `tau` seconds), framerate independent. */

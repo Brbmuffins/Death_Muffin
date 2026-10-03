@@ -99,6 +99,13 @@ export interface CreatureOptions {
   locomotionFade?: number;
 }
 
+/** Scratch objects for the per-frame attachment steadying (single-threaded: never held across calls). */
+const S_ROOT_Q = new THREE.Quaternion();
+const S_PARENT_Q = new THREE.Quaternion();
+const S_DRIVEN = new THREE.Quaternion();
+const S_LOCKED = new THREE.Quaternion();
+const S_UP = new THREE.Vector3();
+const S_WANT = new THREE.Vector3();
 const FLASH_COLOR = new THREE.Color(0xfff0dc);
 /** Crossfade seconds: locomotion eases (idle / walk / run), a return from a swing a little quicker, a swing itself snaps. */
 const FADE_LOCOMOTION = 0.28;
@@ -337,8 +344,14 @@ export class Creature {
     if (!this.oneShot) this.startLoop(true);
   }
 
+  /** True while a one-shot (swing, cast, death) is playing: the view layer never throttles those. */
+  get busy(): boolean {
+    return this.oneShot !== null;
+  }
+
   /** The last locomotion plan (QA and tests read it; null until setGroundSpeed has run). */
   lastPlan: LocomotionPlan | null = null;
+  private lastGround = -1;
 
   /** World height of this body right now: the model's height, the scale option and the owner's root scale. */
   worldHeight(): number {
@@ -351,7 +364,11 @@ export class Creature {
    * touches the mixer when the clip or its speed changes.
    */
   setGroundSpeed(ground: number): LocomotionPlan {
-    const plan = planLocomotion(STRIDES[this.rigSlug], this.worldHeight(), ground, this.actions.has('run'), this.locoRun);
+    const prev = this.lastPlan;
+    // Steady pace on the same clip: nothing to change (this runs every frame for every walking body).
+    if (prev && this.loop === prev.clip && !this.oneShot && Math.abs(ground - this.lastGround) < 0.01 * Math.max(1, ground)) return prev;
+    this.lastGround = ground;
+    const plan = planLocomotion(STRIDES[this.rigSlug], this.worldHeight(), ground, this.actions.has('run'), this.locoRun, prev ?? undefined);
     this.locoRun = plan.clip === 'run';
     this.lastPlan = plan;
     this.setLoop(plan.clip, plan.timeScale);
@@ -590,39 +607,42 @@ export class Creature {
     }
   }
 
+  /**
+   * How many mixer updates pass between attachment corrections: the view layer raises it for mid-distance / far bodies
+   * (set before each update). Settled idle bodies also steady at a third of the rate: their bones barely move.
+   */
+  steadyEvery = 1;
+  private steadyN = 0;
+
   /** Pull each `follow` attachment's +Y back toward its aim direction, keeping the bone's roll. */
   private steadyAttachments() {
-    this.root.updateMatrixWorld(true);
-    const rootQ = this.root.getWorldQuaternion(new THREE.Quaternion());
-    const parentQ = new THREE.Quaternion();
-    const driven = new THREE.Quaternion();
-    const locked = new THREE.Quaternion();
-    const up = new THREE.Vector3();
+    const every = this.settledT > 0.6 && !this.oneShot ? Math.max(3, this.steadyEvery) : this.steadyEvery;
+    if (every > 1 && ++this.steadyN < every) return;
+    this.steadyN = 0;
+    // getWorldQuaternion refreshes just the bone chain it reads (the mixer already posed the local transforms), instead of
+    // walking the whole skeleton and every mesh with root.updateMatrixWorld(true) per body per frame.
+    this.root.getWorldQuaternion(S_ROOT_Q);
     for (const a of this.attached) {
       const parent = a.obj.parent;
       if (!a.baseQ || !parent) continue;
-      parent.getWorldQuaternion(parentQ);
-      driven.copy(parentQ).multiply(a.baseQ);
-      up.set(0, 1, 0).applyQuaternion(driven);
-      const want = a.dir.clone().applyQuaternion(rootQ);
-      locked.setFromUnitVectors(up, want).multiply(driven);
-      driven.slerp(locked, 1 - (a.follow ?? 1));
-      a.obj.quaternion.copy(parentQ.invert().multiply(driven));
+      parent.getWorldQuaternion(S_PARENT_Q);
+      S_DRIVEN.copy(S_PARENT_Q).multiply(a.baseQ);
+      S_UP.set(0, 1, 0).applyQuaternion(S_DRIVEN);
+      S_WANT.copy(a.dir).applyQuaternion(S_ROOT_Q);
+      S_LOCKED.setFromUnitVectors(S_UP, S_WANT).multiply(S_DRIVEN);
+      S_DRIVEN.slerp(S_LOCKED, 1 - (a.follow ?? 1));
+      a.obj.quaternion.copy(S_PARENT_Q.invert().multiply(S_DRIVEN));
     }
   }
 
   /** Re-align any attachment whose +Y has drifted >25° from its intended direction. */
   private recheckAttachments() {
-    this.root.updateMatrixWorld(true);
-    const rootQ = new THREE.Quaternion();
-    this.root.getWorldQuaternion(rootQ);
-    const worldUp = new THREE.Vector3();
-    const q = new THREE.Quaternion();
+    this.root.getWorldQuaternion(S_ROOT_Q);
     for (const a of this.attached) {
-      a.obj.getWorldQuaternion(q);
-      worldUp.set(0, 1, 0).applyQuaternion(q);
-      const want = a.dir.clone().applyQuaternion(rootQ);
-      if (worldUp.angleTo(want) > (25 * Math.PI) / 180) this.calibrate.push({ obj: a.obj, dir: a.dir, frames: 1 });
+      a.obj.getWorldQuaternion(S_PARENT_Q);
+      S_UP.set(0, 1, 0).applyQuaternion(S_PARENT_Q);
+      S_WANT.copy(a.dir).applyQuaternion(S_ROOT_Q);
+      if (S_UP.angleTo(S_WANT) > (25 * Math.PI) / 180) this.calibrate.push({ obj: a.obj, dir: a.dir, frames: 1 });
     }
     if (this.calibrate.length) this.runCalibration();
   }

@@ -169,6 +169,12 @@ interface View {
   /** Eased slide of the drawn body off its sim position, so a pack does not stack (crowdSeparation.ts). */
   ox?: number;
   oz?: number;
+  /** Where the last crowd pass wants this body's offset (eased toward every frame), and whether it was in that pass. */
+  tox?: number;
+  toz?: number;
+  inCrowd?: boolean;
+  /** Seconds a corpse has rested since its death clip landed (its mixer stops shortly after). */
+  restT?: number;
   /** Visual knockback spring (knockback.ts): the drawn body is shoved and eases back; the sim position is untouched. */
   kn?: Knock;
   /** Last seen hp, to size a hit. */
@@ -204,6 +210,12 @@ const MAX_CROWD = 140;
 const CROWD_EASE = 9;
 const CROWD_FOOTPRINT = 1.12;
 const CROWDED_SHADOW_CASTERS = 8;
+/** Animation LOD: seconds between mixer updates for mid-distance and far / off-screen bodies. */
+const ANIM_MID_S = 1 / 24;
+const ANIM_FAR_S = 1 / 10;
+/** Concurrent additive flinches are capped: at most this many may start inside FLINCH_WINDOW_MS. */
+const FLINCH_BURST = 6;
+const FLINCH_WINDOW_MS = 380;
 /** A hit that takes this share of max hp (elites: the lower one) and leaves the target standing freezes the picture for a few frames. */
 const HEAVY_HIT = 0.22;
 const HEAVY_HIT_ELITE = 0.12;
@@ -215,6 +227,8 @@ const SETTLE_DEPTH = 0.06;
 const NO_SETTLE = -1;
 /** Seconds a corpse keeps animating: the longest death clip is 5.6 s and its fall lands near 4 s (it used to freeze at 3 s, mid-fall). */
 const CORPSE_ANIM_S = 6;
+/** Seconds a corpse keeps animating after its death clip has landed. */
+const CORPSE_REST_S = 0.35;
 /** Most faint corpse rings alive at once (draw-call budget). */
 const CORPSE_MARKS_MAX = 8;
 /** Fresnel rim strength on thralls: own legion / a co-op ally's legion (see friendRim.ts). */
@@ -297,7 +311,6 @@ export class EntityViews {
   private frame = 0;
   private crowd: CrowdBody[] = [];
   private crowdViews: View[] = [];
-  private crowdSeen = new Set<View>();
   private crowdOut = new Float32Array(2 * (MAX_CROWD + 1));
   /** Enemy under the cursor — gets a faint lilac highlight. */
   hoverId: number | null = null;
@@ -801,7 +814,38 @@ export class EntityViews {
    * Slide drawn bodies apart where the sim leaves them overlapping. Positions are the sim's; the offsets are eased and
    * capped, applied to the model roots only (decals follow via ox/oz), and never fed back into the sim.
    */
+  private crowdAccum = 1;
+
+  /**
+   * Relax overlapping bodies. The O(n^2) pass only runs ~30 times a second (~20 in a big crowd) and leaves each body a
+   * target offset; every frame the drawn body eases toward its target, so motion stays smooth at any refresh rate.
+   */
   private separateCrowd(enemies: Map<number, Enemy>, thralls: Map<number, Thrall>, dt: number, fx0: number, fz0: number) {
+    this.crowdAccum += dt;
+    const k = Math.min(1, dt * CROWD_EASE);
+    const every = this.crowdSize > 30 ? 1 / 20 : 1 / 30;
+    if (this.crowdAccum >= every) {
+      this.crowdAccum = 0;
+      this.solveCrowd(enemies, thralls, fx0, fz0);
+    }
+    for (const map of [this.enemies, this.thralls]) {
+      for (const v of map.values()) {
+        const tx = v.inCrowd ? v.tox! : 0;
+        const tz = v.inCrowd ? v.toz! : 0;
+        if (!v.ox && !v.oz && !tx && !tz) continue;
+        // Bodies that left the crowd (far away, burrowed, rising) ease back to their sim spot.
+        v.ox = (v.ox ?? 0) + (tx - (v.ox ?? 0)) * k;
+        v.oz = (v.oz ?? 0) + (tz - (v.oz ?? 0)) * k;
+        if (!v.inCrowd && Math.abs(v.ox) < 1e-3 && Math.abs(v.oz) < 1e-3) v.ox = v.oz = 0;
+        v.c.root.position.x += v.ox;
+        v.c.root.position.z += v.oz;
+      }
+    }
+  }
+
+  private crowdSize = 0;
+
+  private solveCrowd(enemies: Map<number, Enemy>, thralls: Map<number, Thrall>, fx0: number, fz0: number) {
     const bodies = this.crowd;
     const views = this.crowdViews;
     let n = 0;
@@ -822,6 +866,8 @@ export class EntityViews {
     hero.r = 0.45;
     hero.w = 0;
     n = 1;
+    for (const v of this.enemies.values()) v.inCrowd = false;
+    for (const v of this.thralls.values()) v.inCrowd = false;
     const near = (x: number, z: number) => Math.abs(x - fx0) < 22 && Math.abs(z - fz0) < 18;
     for (const [id, e] of enemies) {
       const v = this.enemies.get(id);
@@ -835,30 +881,16 @@ export class EntityViews {
       if (n > MAX_CROWD) break;
       add(v, t.x, t.z, 0.4 * CROWD_FOOTPRINT * (THRALL_LOOK[t.kind]?.scale ?? (t.kind === 'shieldbearer' ? 1.1 : 1)), 0.8);
     }
+    this.crowdSize = n;
     const out = this.crowdOut;
     separateBodies(bodies, out, { iterations: 2, maxOffset: 0.55 }, n);
-    const k = Math.min(1, dt * CROWD_EASE);
-    const seen = this.crowdSeen;
-    seen.clear();
     for (let i = 1; i < n; i++) {
       const v = views[i - 1];
-      seen.add(v);
-      v.ox = (v.ox ?? 0) + (out[i * 2] - (v.ox ?? 0)) * k;
-      v.oz = (v.oz ?? 0) + (out[i * 2 + 1] - (v.oz ?? 0)) * k;
-      v.c.root.position.x += v.ox;
-      v.c.root.position.z += v.oz;
+      v.inCrowd = true;
+      v.tox = out[i * 2];
+      v.toz = out[i * 2 + 1];
     }
-    // Bodies that left the crowd (far away, burrowed, rising) ease back to their sim spot.
-    for (const map of [this.enemies, this.thralls]) {
-      for (const v of map.values()) {
-        if (seen.has(v) || (!v.ox && !v.oz)) continue;
-        v.ox = (v.ox ?? 0) * (1 - k);
-        v.oz = (v.oz ?? 0) * (1 - k);
-        if (Math.abs(v.ox) < 1e-3 && Math.abs(v.oz) < 1e-3) v.ox = v.oz = 0;
-        v.c.root.position.x += v.ox;
-        v.c.root.position.z += v.oz;
-      }
-    }
+    views.length = 0;
   }
 
   /** Track a body's real ground speed (smoothed) from how far it moved this frame, for its stride playback. */
@@ -881,16 +913,30 @@ export class EntityViews {
     ranked.forEach((r, i) => r.v.c.setCastShadow(i < budget));
   }
 
+  private flinchStarts: number[] = [];
+
+  /** A flinch adds a whole extra blend over the skeleton: in a big crowd only a few may be live at once. */
+  private flinchBudget(): boolean {
+    const t = performance.now();
+    const q = this.flinchStarts;
+    while (q.length && t - q[0] > FLINCH_WINDOW_MS) q.shift();
+    if (q.length >= FLINCH_BURST) return false;
+    q.push(t);
+    return true;
+  }
+
   private tickAnim(v: View, dt: number, fx0: number, fz0: number, crowded: boolean) {
-    // Keep nearby attacks fluid; distant bodies can share a lower animation rate
-    // when a high Wave Speed tier has filled the room.
-    const far = Math.abs(v.x - fx0) > 26 || Math.abs(v.z - fz0) > 22
-      || (crowded && (Math.abs(v.x - fx0) > 14 || Math.abs(v.z - fz0) > 12));
+    // Animation LOD by distance from the camera focus: near bodies update every frame, mid-distance ~24 Hz, far or
+    // off-screen ~10 Hz. Skipped time accumulates so motion stays correct; a swing or cast always runs at full rate
+    // (its impact frame is timed to the sim). `crowded` pulls the bands in when a high Wave Speed fills the room.
     v.animDt += dt;
-    if (far) {
-      v.animSkip = (v.animSkip + 1) % 3;
-      if (v.animSkip !== 0) return;
-    }
+    const ax = Math.abs(v.x - fx0);
+    const az = Math.abs(v.z - fz0);
+    const nearX = crowded ? 10 : 13;
+    const nearZ = crowded ? 9 : 11;
+    const interval = v.c.busy || (ax < nearX && az < nearZ) ? 0 : ax > 26 || az > 22 ? ANIM_FAR_S : ANIM_MID_S;
+    if (v.animDt < interval) return;
+    v.c.steadyEvery = interval === 0 ? 1 : 2;
     v.c.update(v.animDt);
     v.animDt = 0;
   }
@@ -948,7 +994,7 @@ export class EntityViews {
       const fresh = e.flash > 0.9 && (v.lastFlash ?? 0) < 0.5;
       v.lastFlash = e.flash;
       this.onHit(v, e, focusX, focusZ, nearFx);
-      if (fresh && nearFx && !v.under && performance.now() >= (v.flinchAt ?? 0) && v.c.has('hurt')) {
+      if (fresh && nearFx && !v.under && performance.now() >= (v.flinchAt ?? 0) && v.c.has('hurt') && this.flinchBudget()) {
         v.flinchAt = performance.now() + 700;
         v.c.flinch();
       }
@@ -1099,7 +1145,13 @@ export class EntityViews {
       }
     }
     for (const v of this.corpses.values()) {
-      if ((v.dieT = (v.dieT ?? 0) + dt) < CORPSE_ANIM_S) v.c.update(dt);
+      v.dieT = (v.dieT ?? 0) + dt;
+      // A corpse's mixer stops shortly after its death clip has landed (the settle ease carries the rest): no more
+      // skeleton, attachment or matrix work for bodies that will lie there for 26 s.
+      if (v.dieT < CORPSE_ANIM_S && (v.restT ?? 0) < CORPSE_REST_S) {
+        v.c.update(dt);
+        if (v.c.hasLanded()) v.restT = (v.restT ?? 0) + dt;
+      }
       this.topple(v, dt);
       if (v.settleT !== NO_SETTLE) this.settle(v, dt);
     }
