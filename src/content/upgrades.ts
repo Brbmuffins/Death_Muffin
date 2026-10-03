@@ -100,7 +100,8 @@ export function waveModifiers(tier: number): WaveModifiers {
     eliteBonus: 0.004 * tier,
     enemyHpMult: 1 + 0.018 * tier,
     enemyDamageMult: 1 + 0.026 * tier,
-    speedPct: Math.round(12 * tier),
+    // How much sooner the next wave comes (the interval is 1/(1+0.12*density)). It used to be 12 x tier, which read +96% at tier 8 for a +69% wave rate.
+    speedPct: Math.round(12 * d),
   };
 }
 

@@ -5,6 +5,7 @@ import { mulberry32 } from '../rng';
 import type { SimEvent } from '../sim/types';
 import { ENEMIES, type EnemyId } from '../../content/enemies';
 import { AREAS } from '../../content/areas';
+import { waveModifiers } from '../../content/upgrades';
 
 function world(seed = 1) {
   const nav = new Nav();
@@ -150,5 +151,15 @@ describe('thrall numbers on a boss', () => {
     expect(dmg).toBeGreaterThan(0);
     // 50 base x 1.4 rally x 1.3 (two Fracture stacks).
     expect(dmg).toBe(Math.round(50 * 1.4 * 1.3));
+  });
+});
+
+describe('Wave Speed label', () => {
+  it('says how much sooner the next wave comes', () => {
+    for (let tier = 0; tier <= 8; tier++) {
+      const m = waveModifiers(tier);
+      expect(m.speedPct).toBe(Math.round((1 / m.intervalMult - 1) * 100));
+    }
+    expect(waveModifiers(8).speedPct).toBeLessThan(96);
   });
 });
