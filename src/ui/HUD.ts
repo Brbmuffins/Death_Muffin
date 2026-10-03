@@ -832,9 +832,12 @@ export class HUD {
       el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); el.remove(); } });
     }
     const box = this.$('[data-toasts]');
+    // The same line twice (two drops, two milestones) is one toast: the older copy goes.
+    for (const old of Array.from(box.children)) if (old.textContent === text) old.remove();
     box.appendChild(el);
-    while (box.children.length > 4) box.firstChild?.remove();
-    const duration = Math.max(8000, 2000 + text.split(/\s+/).length * 400);
+    // Three at most: a kill that crosses several milestones used to stack four boxes over the middle of the fight.
+    while (box.children.length > 3) box.firstChild?.remove();
+    const duration = Math.max(6000, 2000 + text.split(/\s+/).length * 400);
     el.style.setProperty('--toast-ms', `${duration}ms`);
     setTimeout(() => el.remove(), duration + 700);
   }
