@@ -69,6 +69,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 3 Oct 2026 | **New Blood leveling audit (harness and docs only).** The New Blood bot now gates rites by level, counts reach edge to edge, casts the full kit and sidesteps telegraphs; the bot-caused part of the "4–8× slower" gap is gone (now 3–6×); the real remainder and tuning options are in BALANCE.md. No game numbers changed. Not deployed. | Branch `claude/newblood-leveling-audit`; tests in `balance-newblood.test.ts`. |
 | 3 Oct 2026 | PC first: the phone and tablet layer moves to its own `mobile` branch and build at `/death-muffin/mobile/` (touch-only devices are redirected there; `?pc=1` opts out); this build carries no touch code. Not deployed yet. | Branch `dm/pc-only`; deploy `mobile` first. |
 | 3 Oct 2026 | **Missing icons fixed.** The Grand Healing Flask and Moonlight Elixir icons and the Prelate portrait no longer 404; the server now logs requests it refuses | Quick fix, `2021523`. |
 | 3 Oct 2026 | **No more first-fight hitches.** A warm-up render runs behind the login load screen, so creatures' first appearance no longer compiles shaders mid-fight. Root cause: shaders were compiled for the screen, but High quality draws through the bloom target, so every first draw recompiled | `14e12ef`. 16 of 16 probed spawns needed no new shaders or textures. |
@@ -206,7 +207,7 @@ Headless Blender on the server, driven by scripts: retarget CC0 animation librar
 ### X4 · Open audits
 - Four-discipline visual audit (`tools/qa/necro-audit.cjs`, run one discipline at a time).
 - Audio has never been checked by ear.
-- New Blood classes level 4–8× slower than necromancers in bot runs; check with a human before retuning.
+- New Blood classes level 4–8× slower than necromancers in bot runs; check with a human before retuning. **Audited 3 Oct 2026** (BALANCE.md "New Blood leveling audit"): about a third of the gap was the bot (unlocked-rite gating, reach, unused rites, no dodging; fixed, gap now 3–6×). The rest is real: necromancer thralls tank and deal 20–35% of kills, a New Blood hero dies 4–5 times per 3 min, and its single-target kit does less damage. **Open, owner decision:** damage ×1.5 / HP +50% / early-level XP catch-up options with measured effects are in BALANCE.md; a human should first check that a level-1 Warden, Monk or Knight survives the Graves.
 
 ---
 
