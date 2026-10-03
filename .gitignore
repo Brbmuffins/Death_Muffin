@@ -11,3 +11,7 @@ art-src
 .claude/worktrees/
 *.tsbuildinfo
 __pycache__/
+
+# launcher build output
+launcher/windows/bin/
+launcher/windows/obj/

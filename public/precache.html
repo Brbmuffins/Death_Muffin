@@ -1,0 +1,32 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Death Muffin precache</title>
+<meta name="robots" content="noindex">
+<!-- Warms the HTTP cache for the Windows launcher. No game code. Reports 'dm-precache:<done>/<total>' to WebView2. -->
+<body style="background:#07060a;color:#8a8294;font:14px sans-serif">
+<p id="s">Preparing…</p>
+<script>
+(async () => {
+  const s = document.getElementById('s');
+  const post = (m) => { try { window.chrome.webview.postMessage(m); } catch (e) {} };
+  try {
+    const base = location.pathname.replace(/[^/]*$/, '');
+    const m = await (await fetch(base + 'asset-manifest.json', { cache: 'no-cache' })).json();
+    const files = m.files, total = files.length;
+    let done = 0, failed = 0, next = 0;
+    const tick = () => { s.textContent = done + '/' + total; post('dm-precache:' + done + '/' + total); };
+    tick();
+    const worker = async () => {
+      while (next < total) {
+        const f = files[next++];
+        // Default cache mode: unchanged files are revalidated (304) instead of downloaded again.
+        try { const r = await fetch(base + f[0]); if (!r.ok) throw 0; await r.arrayBuffer(); } catch (e) { failed++; }
+        done++; tick();
+      }
+    };
+    await Promise.all([worker(), worker(), worker(), worker()]);
+    s.textContent = 'done ' + done + '/' + total + (failed ? ' (' + failed + ' failed)' : '');
+    post('dm-precache-done:' + (failed ? 'failed:' + failed : 'ok'));
+  } catch (e) { s.textContent = 'failed'; post('dm-precache-done:error'); }
+})();
+</script>

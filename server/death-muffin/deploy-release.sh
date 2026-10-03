@@ -7,7 +7,7 @@
 # 2. Runs typecheck, client tests and server tests on that export.
 # 3. Backs up the DB, runtime server files and public entry pages, and writes ROLLBACK.sh.
 # 4. Applies the named migrations (each must be additive / idempotent), installs server code, restarts realtime then auth.
-# 5. Publishes hashed assets first and entry pages last, then checks the public pages match the build.
+# 5. Publishes hashed assets first and entry pages last (plus precache.html/asset-manifest.json before, release-notes.json after index.html), then checks the public pages match the build.
 # The deployed revision is written to /death-muffin/play/release.txt so "is live == HEAD?" is one curl.
 set -euo pipefail
 
@@ -45,6 +45,8 @@ for f in "$B"/server.js "$B"/*.cjs "$B"/gathering/*.cjs "$SRC/server/vps-handoff
   node --check "$f"
 done
 test -f "$SRC/dist/index.html"
+test -f "$SRC/dist/precache.html"
+test -f "$SRC/dist/asset-manifest.json"
 test -f "$SRC/dist-offline/sw.js"
 
 echo "== Backup -> $BK"
@@ -89,7 +91,17 @@ sudo systemctl is-active death-muffin-auth.service death-muffin-realtime.service
 
 echo "== Clients (assets first, entry pages last)"
 for d in assets art models fx audio; do [ -d "$SRC/dist/$d" ] && sudo cp -a "$SRC/dist/$d" "$PUBLIC/play/"; done
+# Launcher "update before play" helpers: static, no game code; the manifest lists the files just published above.
+sudo cp -a "$SRC/dist/precache.html" "$SRC/dist/asset-manifest.json" "$PUBLIC/play/"
 sudo cp -a "$SRC/dist/index.html" "$PUBLIC/play/index.html"
+# release-notes.json (news panel of the Windows launcher): same commit range as the Discord notice, published after index.html.
+RANGE="$SHA"; [ -n "$PREV" ] && git -C "$REPO" cat-file -e "$PREV^{commit}" 2>/dev/null && RANGE="$PREV..$SHA"
+git -C "$REPO" log --no-merges --format='%s' -n 12 $RANGE | python3 -c '
+import json, sys, datetime
+items = [l.strip()[:150] for l in sys.stdin if l.strip()]
+print(json.dumps({"sha": sys.argv[1], "date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "items": items}))
+' "$SHA" > "$CAND/release-notes.json" || echo '{"sha":"'"$SHA"'","date":"","items":[]}' > "$CAND/release-notes.json"
+sudo cp "$CAND/release-notes.json" "$PUBLIC/play/release-notes.json"
 # release.txt goes after index.html: open tabs auto-reload when it changes, and must then fetch the new page.
 echo "$SHA $(date -u +%FT%TZ)" > "$CAND/release.txt"
 sudo cp "$CAND/release.txt" "$PUBLIC/play/release.txt"
@@ -108,7 +120,6 @@ echo "Release $SHA published. Rollback: $BK/ROLLBACK.sh"
 # Discord notice (optional): the webhook URL lives outside the repo (the repo is public). Never fails the deploy.
 HOOK_FILE="$RUNTIME/private/discord-github-webhook.url"
 if [ -r "$HOOK_FILE" ]; then
-  RANGE="$SHA"; [ -n "$PREV" ] && git -C "$REPO" cat-file -e "$PREV^{commit}" 2>/dev/null && RANGE="$PREV..$SHA"
   git -C "$REPO" log --no-merges --format='%s' -n 12 $RANGE | python3 -c '
 import json, sys, urllib.request
 sha, prev, url = sys.argv[1], sys.argv[2], open(sys.argv[3]).read().strip()

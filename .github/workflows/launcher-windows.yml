@@ -1,0 +1,71 @@
+name: Windows launcher
+
+on:
+  push:
+    paths:
+      - 'launcher/**'
+      - '.github/workflows/launcher-windows.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Read launcher version
+        id: ver
+        shell: pwsh
+        run: |
+          [xml]$proj = Get-Content launcher/windows/DeathMuffinLauncher.csproj
+          $v = ($proj.Project.PropertyGroup | Where-Object { $_.Version } | Select-Object -First 1).Version
+          if (-not $v) { throw 'No <Version> in DeathMuffinLauncher.csproj' }
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Build (Release)
+        run: dotnet build launcher/windows/DeathMuffinLauncher.csproj -c Release
+
+      - name: Package zip
+        shell: pwsh
+        run: |
+          $out = 'launcher/windows/bin/Release/net48'
+          $stage = 'launcher-stage'
+          New-Item -ItemType Directory -Force $stage | Out-Null
+          Copy-Item "$out/DeathMuffinLauncher.exe" $stage
+          Copy-Item "$out/DeathMuffinLauncher.exe.config" $stage -ErrorAction SilentlyContinue
+          Copy-Item "$out/Microsoft.Web.WebView2.Core.dll" $stage
+          Copy-Item "$out/Microsoft.Web.WebView2.WinForms.dll" $stage
+          # WebView2Loader.dll for each architecture (the app is AnyCPU and picks the matching one).
+          Copy-Item "$out/runtimes" $stage -Recurse
+          Copy-Item launcher/windows/README.md $stage/README.md
+          # Licenses: the WebView2 SDK license ships inside the NuGet package.
+          $pkg = Join-Path $env:USERPROFILE '.nuget/packages/microsoft.web.webview2'
+          $lic = Get-ChildItem $pkg -Recurse -Include 'LICENSE*','NOTICE*' | Select-Object -First 2
+          foreach ($f in $lic) { Copy-Item $f.FullName (Join-Path $stage ("WebView2-" + $f.Name)) }
+          Compress-Archive -Path "$stage/*" -DestinationPath DeathMuffinLauncher-win-x64.zip -Force
+          (Get-Item DeathMuffinLauncher-win-x64.zip).Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DeathMuffinLauncher-win-x64
+          path: DeathMuffinLauncher-win-x64.zip
+
+      # The release is only (re)published from the default branch or a manual run; the tag is launcher-v<version>.
+      - name: Attach to GitHub Release
+        if: github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: launcher-v${{ steps.ver.outputs.version }}
+          name: Death Muffin Launcher ${{ steps.ver.outputs.version }}
+          files: DeathMuffinLauncher-win-x64.zip
+          make_latest: true
+          body: |
+            Windows launcher for Death Muffin. Unzip anywhere and run DeathMuffinLauncher.exe.
+            Needs the Microsoft Edge WebView2 Runtime (already present on Windows 11).
