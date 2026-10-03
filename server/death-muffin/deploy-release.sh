@@ -21,6 +21,8 @@ STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 CAND="$RUNTIME/deploy/candidate-$SHA"
 BK="$RUNTIME/deploy/backup-pre-release-$SHA-$STAMP"
 SRC="$CAND/src"
+# The release that is live before this one (for the Discord notice: what changed since).
+PREV=$(curl -sf "https://muffindevelopment.com/death-muffin/play/release.txt?t=$STAMP" | cut -d" " -f1 || true)
 
 echo "== Building $SHA from git (not the working tree)"
 rm -rf "$CAND"
@@ -102,3 +104,21 @@ curl -sSf https://muffindevelopment.com/death-muffin/offline/ | cmp - "$SRC/dist
 curl -sSf https://muffindevelopment.com/death-muffin/offline/sw.js | cmp - "$SRC/dist-offline/sw.js"
 curl -sSf https://muffindevelopment.com/death-muffin/api/health; echo
 echo "Release $SHA published. Rollback: $BK/ROLLBACK.sh"
+
+# Discord notice (optional): the webhook URL lives outside the repo (the repo is public). Never fails the deploy.
+HOOK_FILE="$RUNTIME/private/discord-github-webhook.url"
+if [ -r "$HOOK_FILE" ]; then
+  RANGE="$SHA"; [ -n "$PREV" ] && git -C "$REPO" cat-file -e "$PREV^{commit}" 2>/dev/null && RANGE="$PREV..$SHA"
+  git -C "$REPO" log --no-merges --format='%s' -n 12 $RANGE | python3 -c '
+import json, sys, urllib.request
+sha, prev, url = sys.argv[1], sys.argv[2], open(sys.argv[3]).read().strip()
+lines = [l.strip() for l in sys.stdin if l.strip()]
+body = "\n".join("• " + l[:150] for l in lines) or "• (no new commits)"
+compare = f"https://github.com/Brbmuffins/Death_Muffin/compare/{prev}...{sha}" if prev else f"https://github.com/Brbmuffins/Death_Muffin/commit/{sha}"
+embed = {"title": f"Death Muffin release {sha[:7]} is live", "url": "https://muffindevelopment.com/death-muffin/play/",
+         "description": body[:3800] + f"\n\n[What changed]({compare})", "color": 0x7C3AED}
+req = urllib.request.Request(url, data=json.dumps({"username": "Death Muffin", "embeds": [embed]}).encode(),
+                             headers={"Content-Type": "application/json", "User-Agent": "death-muffin-deploy"})
+urllib.request.urlopen(req, timeout=10)
+' "$SHA" "${PREV:-}" "$HOOK_FILE" && echo "Discord: release notice sent" || echo "Discord: notice failed (deploy is fine)"
+fi
