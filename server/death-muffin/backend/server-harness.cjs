@@ -21,7 +21,11 @@ function loadServer({ pool, env = {} }) {
     dotenv: { config: noop },
     bcrypt: { hash: async () => 'hash', compare: async () => true },
     jsonwebtoken: {
-      sign: (claims) => JSON.stringify(claims),
+      // Like the real library, an `expiresIn: undefined` option is an error, not "no expiry".
+      sign: (claims, _secret, opts = {}) => {
+        if ('expiresIn' in opts && !(Number.isInteger(opts.expiresIn) || (typeof opts.expiresIn === 'string' && opts.expiresIn))) throw new Error('"expiresIn" should be a number of seconds or string representing a timespan');
+        return JSON.stringify(claims);
+      },
       verify: (token) => {
         try { return JSON.parse(token); } catch { throw new Error('bad token'); }
       },

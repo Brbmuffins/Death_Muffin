@@ -180,3 +180,25 @@ test('GET /character: leftover XP past the last level cannot push the level over
   assert.equal(fix.params[0], 255, 'level stops at the cap');
   assert.ok(fix.params[1] < 255 * 100, 'the leftover experience is below one level at the cap');
 });
+
+// ── POST /character ─────────────────────────────────────────────────────────────────────────────────────────────────────
+
+test('POST /character: the character token still gets an expiry when JWT_EXPIRES_IN is not configured', async () => {
+  const saved = process.env.JWT_EXPIRES_IN;
+  delete process.env.JWT_EXPIRES_IN;
+  try {
+    const f = fakePool({ onQuery: (sql) => {
+      if (/^INSERT INTO characters/.test(sql)) return [{ insertId: 1, affectedRows: 1 }];
+      if (/^SELECT \* FROM characters WHERE id = \? AND account_id = \?$/.test(sql)) return [[{ ...f.owned }]];
+      if (/FROM character_gear/.test(sql)) return [[]];
+    } });
+    const pool = { ...f.pool };
+    const inner = pool.execute;
+    pool.execute = async (sql, params) => (/FROM accounts WHERE id/.test(sql) ? [[{ username: 'tester', role: 'player', gm_enabled: 0, gm_level: 0, gm_permissions: '' }]] : inner(sql, params));
+    const r = await loadServer({ pool }).call('POST /character', { body: { class_index: 2 } });
+    assert.equal(r.status, 201, JSON.stringify(r.json));
+    assert.ok(r.json.token, 'a character token was issued');
+  } finally {
+    if (saved !== undefined) process.env.JWT_EXPIRES_IN = saved;
+  }
+});

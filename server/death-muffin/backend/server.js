@@ -368,7 +368,7 @@ app.post('/character', verifyJWT, async (req, res) => {
     const characterToken = jwt.sign(
       { accountId: req.user.accountId, username: req.user.username, characterId },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN }
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
     const gear = await getGearLoadout(characterId);
     res.status(result.affectedRows === 1 ? 201 : 200).json({
