@@ -224,8 +224,10 @@ describe('corpses behind a wall', () => {
     sim.apply({ t: 'exhume', by: 'p1', x: far.x, z: far.z, r: 1, kind: 'warrior', cap: 3, hp: 10, damage: 1, attackSpeedMult: 1 });
     expect(sim.thralls.size).toBe(0);
     expect(sim.corpses.has(far.id)).toBe(true);
-    const ev = sim.apply({ t: 'detonate', by: 'p1', corpseId: far.id, dmg: 10 }) ?? [];
-    void ev;
+    sim.apply({ t: 'detonate', by: 'p1', corpseId: far.id, dmg: 10 });
+    expect(sim.corpses.has(far.id)).toBe(true);
+    sim.apply({ t: 'litany', by: 'p1', x: p.x, z: p.z, r: 7, spellPower: 10 });
+    sim.apply({ t: 'signature', by: 'p1', sig: 'mantle', x: p.x, z: p.z, dx: 0, dz: 0, sp: 10 });
     expect(sim.corpses.has(far.id)).toBe(true);
   });
 });

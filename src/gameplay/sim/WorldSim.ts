@@ -664,8 +664,9 @@ export class WorldSim {
     let corpses = 0;
     let resonant = 0;
     const tethers: [number, number][] = [];
+    const hall = this.players.get(l.by)?.area ?? null;
     for (const c of [...this.corpses.values()]) {
-      if (c.echoOwner) continue;
+      if (c.echoOwner || (hall && c.area !== hall)) continue;
       if (Math.hypot(c.x - l.x, c.z - l.z) > l.r) continue;
       if (c.kind === 'resonant') resonant++;
       else corpses++;
@@ -970,7 +971,7 @@ export class WorldSim {
         const [cx, cz] = clampAim(1);
         const r = ABILITIES.bone_mantle.radius;
         const near = [...this.corpses.values()]
-          .filter((c) => !c.echoOwner)
+          .filter((c) => !c.echoOwner && (!caster?.area || c.area === caster.area))
           .map((c) => ({ c, d: Math.hypot(c.x - cx, c.z - cz) }))
           .filter((o) => o.d <= r)
           .sort((a, b) => a.d - b.d)
