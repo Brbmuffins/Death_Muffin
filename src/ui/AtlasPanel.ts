@@ -363,7 +363,7 @@ export class AtlasPanel extends SimplePanel {
     const c = cosmeticsInfo();
     return `<div class="at-set"><div class="at-set-hd"><b>Capes &amp; pets</b></div>${c.notes.map((n) => `<p class="at-faint">${esc(n)}</p>`).join('')}
       <h3 class="at-head">Capes</h3>${c.capes.map((x) => `<div class="at-bonus on"><span class="n">\u2740</span><span><b>${esc(x.name)}</b>: ${esc(x.requirement)}</span></div>`).join('')}
-      <h3 class="at-head">Pet charms (tap one for where it turns up)</h3></div>`;
+      <h3 class="at-head">Pet charms (click one for where it turns up)</h3></div>`;
   }
 
   private setHeader(): string {
@@ -394,7 +394,7 @@ export class AtlasPanel extends SimplePanel {
       d.innerHTML = `<div class="at-hint"><h3>How to read this</h3>
         <p><span class="at-fit ideal">Ideal</span> <span class="at-fit good">Good</span> <span class="at-fit okay">Okay</span> <span class="at-fit poor">Poor</span> says how well a piece suits your discipline against the other pieces of its slot and rarity, by the same gear score the Character sheet uses.</p>
         <p><span class="at-arrow up">▲ +12%</span> <span class="at-arrow down">▼ 5%</span> compares it with what you wear in that slot (percent of your power).</p>
-        <p>Percentages are per kill, at default settings (Medium, Wave Speed 0, no fortune tonic). Hover a row, or tap it, for every source. Tap a name in a recipe to follow it.</p></div>`;
+        <p>Percentages are per kill, at default settings (Medium, Wave Speed 0, no fortune tonic). Hover a row, or click it, for every source. Click a name in a recipe to follow it.</p></div>`;
       return;
     }
     const id = this.sel;
