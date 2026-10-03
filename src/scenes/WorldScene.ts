@@ -2329,7 +2329,8 @@ export class WorldScene implements GameScene, RuntimeView {
     this.selfId = this.realtime.selfId ?? 'self';
     this.retagSelf(oldSelf);
     // A rejoin starts from a clean slate: any avatar left from before the drop is replaced by the server's roster.
-    for (const r of this.remotes.values()) { r.avatar.dispose(); r.pet?.dispose(); }
+    const roster = new Set(res.players.map((p) => p.id));
+    for (const [id, r] of this.remotes) { r.avatar.dispose(); r.pet?.dispose(); if (!roster.has(id)) this.sim?.removePlayer(id); }
     this.remotes.clear();
     for (const p of res.players) if (p.id !== this.selfId) this.addRemote(p);
     if (!this.realtime.isHost) {
@@ -2404,7 +2405,8 @@ export class WorldScene implements GameScene, RuntimeView {
 
   /** The link dropped unexpectedly: carry on solo and keep trying to get back to the same world. */
   private onCoopDisconnect() {
-    for (const r of this.remotes.values()) { r.avatar.dispose(); r.pet?.dispose(); }
+    // Their bodies leave the sim too (no player:leave ever arrives): left behind they stayed "alive" forever, holding areas open, scaling bosses and keeping their thralls up.
+    for (const [id, r] of this.remotes) { r.avatar.dispose(); r.pet?.dispose(); this.sim?.removePlayer(id); }
     this.remotes.clear();
     this.becomeAuthority(null);
     if (this.scope.isDisposed) return;
@@ -2419,8 +2421,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private retagSelf(old: string) {
     this.abilities.setSelf(this.selfId);
     if (!this.sim) return;
-    this.sim.removePlayer(old);
-    for (const t of this.sim.thralls.values()) if (t.owner === old) t.owner = this.selfId;
+    // Not removePlayer(): that crumbles every thrall the old id owns (the whole legion vanished on each rejoin).
+    this.sim.retagPlayer(old, this.selfId);
   }
 
   private becomeAuthority(snapshot: WorldSnapshot | null) {

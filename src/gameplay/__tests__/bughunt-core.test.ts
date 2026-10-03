@@ -69,3 +69,22 @@ describe('core bug hunt: Mire Mother under the water', () => {
     expect(b.hp).toBe(hp);
   });
 });
+
+describe('core bug hunt: socket id change (join / rejoin)', () => {
+  it('retagPlayer hands the legion, rites and credit to the new id instead of crumbling them', () => {
+    const { sim } = world();
+    sim.setPlayer({ id: 'old', x: 0, z: -16, alive: true, area: 'graves' });
+    sim.addCorpse(1, -16, 'normal', 'robber', false, 0, 1, 'graves');
+    const c = [...sim.corpses.values()][0];
+    sim.apply({ t: 'exhume', by: 'old', x: c.x, z: c.z, r: 1, kind: 'warrior', cap: 3, hp: 50, damage: 5, attackSpeedMult: 1 });
+    sim.apply({ t: 'miasma', by: 'old', x: 0, z: -16, r: 3, dps: 5, durationMs: 6000, witheredCap: 5, bloom: false });
+    expect(sim.thralls.size).toBe(1);
+    sim.retagPlayer('old', 'new');
+    sim.setPlayer({ id: 'new', x: 0, z: -16, alive: true, area: 'graves' });
+    sim.step(0.05);
+    expect(sim.thralls.size).toBe(1);
+    expect([...sim.thralls.values()][0].owner).toBe('new');
+    expect([...sim.zones.values()].every((z) => z.owner !== 'old')).toBe(true);
+    expect(sim.players.has('old')).toBe(false);
+  });
+});

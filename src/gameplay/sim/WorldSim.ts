@@ -294,6 +294,36 @@ export class WorldSim {
     this.anyPlague = [...this.legends.values()].some((v) => v.witheredBurstAt > 0);
   }
 
+  /**
+   * A player's id changed (the realtime socket id replaces the provisional one, or a rejoin hands out a new one): everything that
+   * remembers the old id moves to the new one. removePlayer() must NOT be used for this, it crumbles the owner's legion.
+   */
+  retagPlayer(oldId: string, newId: string) {
+    if (oldId === newId) return;
+    this.players.delete(oldId);
+    for (const t of this.thralls.values()) if (t.owner === oldId) t.owner = newId;
+    for (const z of this.zones.values()) if (z.owner === oldId) z.owner = newId;
+    for (const w of this.walls.values()) if (w.owner === oldId) w.owner = newId;
+    for (const b of this.brands.values()) if (b.owner === oldId) b.owner = newId;
+    for (const c of this.corpses.values()) {
+      if (c.seedOwner === oldId) c.seedOwner = newId;
+      if (c.echoOwner === oldId) c.echoOwner = newId;
+    }
+    for (const e of this.enemies.values()) {
+      if (e.lastHitBy === oldId) e.lastHitBy = newId;
+      if (e.witheredOwner === oldId) e.witheredOwner = newId;
+      if (e.bleedOwner === oldId) e.bleedOwner = newId;
+      if (e.markBy === oldId) e.markBy = newId;
+      if (e.knellOwner === oldId) e.knellOwner = newId;
+      if (e.hexOwner === oldId) e.hexOwner = newId;
+    }
+    for (const m of [this.legends, this.raised, this.lastMiasma] as Map<string, unknown>[]) {
+      if (!m.has(oldId)) continue;
+      m.set(newId, m.get(oldId));
+      m.delete(oldId);
+    }
+  }
+
   playersIn(area: AreaId) {
     return [...this.players.values()].filter((p) => p.alive && p.area === area);
   }
