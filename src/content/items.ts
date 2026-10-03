@@ -30,6 +30,8 @@ export interface ItemMeta {
   stack?: number;
 }
 
+// Stack 99 = the server's default max_stack_size; with no cap the client built 41+ potion stacks the server refused,
+// and every bag save after that failed (2026-10-03).
 const m = (name: string, rarity: Rarity, sell: number, lore?: string, icon?: string): ItemMeta => ({
   name,
   type: 'material',
@@ -37,6 +39,7 @@ const m = (name: string, rarity: Rarity, sell: number, lore?: string, icon?: str
   sell,
   lore,
   icon,
+  stack: 99,
 });
 
 /** A gathered material (migration 002-gathering.sql gives these max_stack_size 250). */

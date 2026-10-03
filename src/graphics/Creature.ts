@@ -116,6 +116,21 @@ const VARIANTS = new Set<CreatureAnim>(['attack', 'hurt', 'death']);
  * (AssetCache); each Creature clones it with its own skeleton, mixer and
  * materials (materials are per-instance so hit flashes don't leak).
  */
+/**
+ * three deletes a shader program when the last material using it is disposed, so when the last robber of a wave died its
+ * program went with it and the next wave recompiled it mid-fight (slow on Windows/ANGLE: the "lag when things spawn").
+ * The first body of each template + variant keeps its materials for the session, which keeps those programs alive.
+ */
+const pinned = new WeakSet<THREE.Material>();
+const pinnedSigs = new WeakMap<object, Set<string>>();
+function pinFirst(template: object, sig: string, mats: THREE.Material[]) {
+  let sigs = pinnedSigs.get(template);
+  if (!sigs) pinnedSigs.set(template, (sigs = new Set()));
+  if (sigs.has(sig)) return;
+  sigs.add(sig);
+  for (const m of mats) pinned.add(m);
+}
+
 export class Creature {
   readonly root = new THREE.Group();
   /** Resolves after the model has been cloned and attached (or its load failed). */
@@ -216,15 +231,17 @@ export class Creature {
       return model;
       });
       // First draw of a new body compiles shaders and uploads textures; do both off the frame, then attach.
-      await warmModel(model, this.mats, t, `${!!opts.spectral}${!!opts.wings && !usedFallback}${!!opts.gearTint}${!!opts.rim}`);
+      const sig = `${!!opts.spectral}${!!opts.wings && !usedFallback}${!!opts.gearTint}${!!opts.rim}`;
+      pinFirst(t, sig, this.mats);
+      await warmModel(model, this.mats, t, sig);
       if (this.disposed) {
-        this.mats.forEach((m) => m.dispose());
+        this.disposeMats();
         return;
       }
       // Mixer + one action per clip: a second budgeted chunk (visual only; logic never waits on `loaded`).
       await buildBudget.run(() => {
       if (this.disposed) {
-        this.mats.forEach((m) => m.dispose());
+        this.disposeMats();
         return;
       }
       this.model = model;
@@ -651,10 +668,15 @@ export class Creature {
     }
   }
 
+  /** Pinned materials (see pinFirst) are kept: disposing them would free their shader programs. */
+  private disposeMats() {
+    for (const m of this.mats) if (!pinned.has(m)) m.dispose();
+  }
+
   dispose() {
     this.disposed = true;
     this.mixer?.stopAllAction();
-    this.mats.forEach((m) => m.dispose());
+    this.disposeMats();
     this.root.removeFromParent();
     this.root.clear();
     this.mixer = null;
