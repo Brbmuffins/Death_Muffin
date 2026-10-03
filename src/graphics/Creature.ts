@@ -106,6 +106,10 @@ const S_DRIVEN = new THREE.Quaternion();
 const S_LOCKED = new THREE.Quaternion();
 const S_UP = new THREE.Vector3();
 const S_WANT = new THREE.Vector3();
+const S_POS = new THREE.Vector3();
+const S_SCALE = new THREE.Vector3();
+const S_SEEN = new Set<THREE.Object3D>();
+const S_CHAIN: THREE.Object3D[] = [];
 const FLASH_COLOR = new THREE.Color(0xfff0dc);
 /** Crossfade seconds: locomotion eases (idle / walk / run), a return from a swing a little quicker, a swing itself snaps. */
 const FADE_LOCOMOTION = 0.28;
@@ -619,13 +623,25 @@ export class Creature {
     const every = this.settledT > 0.6 && !this.oneShot ? Math.max(3, this.steadyEvery) : this.steadyEvery;
     if (every > 1 && ++this.steadyN < every) return;
     this.steadyN = 0;
-    // getWorldQuaternion refreshes just the bone chain it reads (the mixer already posed the local transforms), instead of
-    // walking the whole skeleton and every mesh with root.updateMatrixWorld(true) per body per frame.
-    this.root.getWorldQuaternion(S_ROOT_Q);
+    // Refresh only the bone chains the attachments hang from (the mixer already posed the local transforms), each ancestor
+    // once, instead of walking the whole skeleton and every mesh with root.updateMatrixWorld(true) per body per frame.
+    this.root.updateWorldMatrix(true, false);
+    this.root.matrixWorld.decompose(S_POS, S_ROOT_Q, S_SCALE);
+    S_SEEN.clear();
+    S_SEEN.add(this.root);
     for (const a of this.attached) {
       const parent = a.obj.parent;
       if (!a.baseQ || !parent) continue;
-      parent.getWorldQuaternion(S_PARENT_Q);
+      let n = 0;
+      for (let o: THREE.Object3D | null = parent; o && !S_SEEN.has(o); o = o.parent) S_CHAIN[n++] = o;
+      for (let i = n - 1; i >= 0; i--) {
+        const o = S_CHAIN[i];
+        if (o.matrixAutoUpdate) o.updateMatrix();
+        if (o.parent) o.matrixWorld.multiplyMatrices(o.parent.matrixWorld, o.matrix);
+        else o.matrixWorld.copy(o.matrix);
+        S_SEEN.add(o);
+      }
+      parent.matrixWorld.decompose(S_POS, S_PARENT_Q, S_SCALE);
       S_DRIVEN.copy(S_PARENT_Q).multiply(a.baseQ);
       S_UP.set(0, 1, 0).applyQuaternion(S_DRIVEN);
       S_WANT.copy(a.dir).applyQuaternion(S_ROOT_Q);
@@ -648,11 +664,13 @@ export class Creature {
   }
 
   private runCalibration() {
+    // Only calibrate against a settled idle pose (not bind pose, not a one-shot). A body that is fighting or walking has
+    // nothing to do here: bail out before touching any matrices (this used to walk the whole skeleton every frame).
+    const settled = this.settledT > 0.25;
+    if (!settled) return;
     this.root.updateMatrixWorld(true);
     const rootQ = new THREE.Quaternion();
     this.root.getWorldQuaternion(rootQ);
-    // Only calibrate against a settled idle pose (not bind pose, not a one-shot).
-    const settled = this.settledT > 0.25;
     for (let i = this.calibrate.length - 1; i >= 0; i--) {
       const c = this.calibrate[i];
       if (!settled || --c.frames > 0) continue;
