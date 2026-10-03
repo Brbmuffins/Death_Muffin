@@ -1,6 +1,6 @@
 # Death Muffin — Roadmap
 
-*Updated 2 October 2026. The player guide is [README.md](README.md); build status and history are in [HANDOFF.md](HANDOFF.md).*
+*Updated 3 October 2026. The player guide is [README.md](README.md); build status and history are in [HANDOFF.md](HANDOFF.md).*
 
 The roadmap below runs left to right. **Now** is the next build session, **Next** follows it, and **Later** is waiting for a decision or for the earlier work. Each box links to a section below.
 
@@ -37,14 +37,17 @@ flowchart LR
     S23[2 Oct: relic runes · Bone Colossus]:::done
     S25[2 Oct: Catacomb Depths]:::done
     S24[2 Oct: legendary armor sets]:::done
+    S26[2 Oct: performance round 1<br/>culling · slim assets · streaming]:::done
+    S27[3 Oct: performance pass<br/>warm-up · co-op net · effects · thralls]:::done
   end
 
   subgraph NOW["🔨 Now"]
     R3[Phones round 3<br/>Back to Menu · AFK survives menus · tap tooltips]:::now
-    R4[Performance phase 1b<br/>lighter downloads · prune GLBs · WebP art]:::now
+    R4[Performance: last items<br/>render budgets · static corpses]:::now
   end
 
   subgraph POLISH["✨ Next — polish"]
+    P0[✨ Polish pass<br/>finish and tune what exists<br/>before any new content]:::next
   end
 
   subgraph LATER["🌒 Later — new content"]
@@ -66,6 +69,18 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 3 Oct 2026 | **Missing icons fixed.** The Grand Healing Flask and Moonlight Elixir icons and the Prelate portrait no longer 404; the server now logs requests it refuses | Quick fix, `2021523`. |
+| 3 Oct 2026 | **No more first-fight hitches.** A warm-up render runs behind the login load screen, so creatures' first appearance no longer compiles shaders mid-fight. Root cause: shaders were compiled for the screen, but High quality draws through the bloom target, so every first draw recompiled | `14e12ef`. 16 of 16 probed spawns needed no new shaders or textures. |
+| 3 Oct 2026 | **Thralls and controls feel snappier.** 15 thralls cost about 20% less CPU, distant creatures animate less often, the HUD redraws at 20 Hz and corpses stop animating once they land. Feel: only struck enemies freeze on a hit (not you), your movement blends in 0.16 s, a new **Max** frame-rate option (desktop default until you choose), and resolution changes more calmly with an **Auto resolution** toggle in Settings | `0fccb70`. Matrix updates per frame 942 → 211 in the thrall-legion test. |
+| 3 Oct 2026 | **Spell effects cost far less.** Dead particles are no longer drawn, flashes, orbits and beams are batched, ground decals are round; a partner's spells use half the particles and Low uses 75% | `be8a674`. Overdraw in a busy fight 6.5 → 1.6 screens. Write-up: docs/VFX-BUDGET.md. |
+| 3 Oct 2026 | Hotfix: creature shaders stay alive between waves (spawn lag); stack limits now match the server, which ended a bag-save failure loop; potions stack to 99 | `2a25770`, migration 027. |
+| 3 Oct 2026 | Behind the scenes: a **perf beacon**: each player's game reports frame timing every 15 s to the co-op relay, so live lag can be diagnosed | `0427054`. No gameplay change. |
+| 3 Oct 2026 | **Lighter co-op network.** The relay compresses updates and sends each guest only what is within 64 m | `ecb125d`. Guest traffic −70% (335 → 99 KB/s in a big two-area fight); drop counters on the relay. |
+| 2 Oct 2026 | **Areas stream in.** Only areas within 45 m are drawn and they build on demand; one load screen at login and none on doors or teleports; prop shadows only within 32 m | `b27d9c6`. |
+| 2 Oct 2026 | **Smoother big waves.** Creature bodies for a wave are built over several frames, and loot icons, effect textures and Depths rosters load while idle; loot icons share materials | `31f6b5a`. |
+| 2 Oct 2026 | **Lighter download, phone layout only on phones.** Models 82 → 62 MB, art 22 → 7 MB (PNG → WebP), texture memory roughly halved; heroes, NPCs and gear untouched. The phone/tablet layout now applies only on touch devices, so a small desktop window keeps the desktop HUD | `1c6499a`. |
+| 2 Oct 2026 | **Belt slots always visible.** Q Heal, Z Elixir and X Tonic show at the left edge with how-to-fill hints; augments can now be equipped | `49f0edb`, migration 026. |
+| 2 Oct 2026 | **Co-op reconnects itself, new releases refresh themselves.** After a drop the game retries and returns you to the same world; when a release goes live it saves, waits for boss fights to end, then reloads. Creature shaders and textures are prepared before first draw, and each area's roster preloads | `bea8d35`. |
 | 2 Oct 2026 | **Less lag, less loot clutter, partner levels.** Performance: world props are culled in 12 m cells instead of whole-area batches (about half the triangles on screen and in the shadow pass), ground decals share one instanced draw per texture (a fight's ~140 rings/glows in 4 draws), a gold pile is one mesh instead of nine coins, and resolution now drops automatically while a machine can't hold its frame cap (and climbs back when it can). Loot: ordinary kills drop items half as often, but their gear rolls at elite quality and material stacks are doubled; gold keeps its total but lands as one pile every 4 kills (every elite still pays out). Elites, bosses, runes, reagents and legendaries unchanged. Co-op: partners' frames show their level, and it follows level-ups | Fixed fight (`fixed-fight-perf.cjs`), High/Low: nave 773k→438k / 388k→250k tris, calls 277→188 / 240→120; graves 717k→478k / 378k→227k; ossuary, pyre and fen ~330–340k High, ~165–180k Low. Production builds skip the synchronous shader-log checks. |
 | 2 Oct 2026 | Legendary sets powered up: every set's numbers raised and each got a lever where it was weakest (Legion: +25% thrall damage, bigger bursts, a Champion every 4th thrall, +100% rally, +10% thrall attack speed; Colossus: +35% thrall health and +15% thrall damage, 60% reflect, 30% guard; Requiem: +10% health, corpses heal 2%, 10 s wisps, 120% novas, +15% thrall attack speed; Plague Choir: +25% Miasma, +8% health, bursts at 8 stacks) | Harness: damage taken with a full set ×0.96 → ×0.86; clear speed ×1.4–1.5 at push/max for Gravecaller/Rotweaver (spawn-limited at the intended band). |
 | 2 Oct 2026 | The **Catacomb Depths**: an endless descent from a glowing stair in the Warren's west chamber. Slay each floor's quota and the stair down opens; enemies get one level deeper per floor, elites gain an extra affix every 5 floors, and a chest (sometimes holding a Relic rune) waits on every 5th. Your deepest floor goes to the Chronicle and the public leaderboard | Solo for now (the stair says so in a party). Floor pacing and rewards are a first guess and need a playtest. |
@@ -143,6 +158,9 @@ The 18 armor sets (90 pieces) are themed but have **no set bonus**. Add 2-, 4- a
 
 ## ✨ Next — polish what exists
 
+### P0 · Polish pass (next priority, before new content)
+*Owner, 3 Oct 2026: "I'm afraid we are adding more than what gets polished."* Finish the performance items still open (render budgets: resolution cap, shadow cadence and lights; static corpses), then walk the game as a new player and tune what exists: rough edges, readability, feel and balance. Hollow Court and other new content wait in Later until this is done.
+
 ### P1 · Necro spell feel
 Every necromancer rite should look and sound necromantic: bone, grave dirt, soul-light and rot rather than generic magic. Keep each spell's meaning colour (`SPELL_FX`) but add necro motifs (bone shards, spectral hands, skull wisps, ground sigils), keep effects readable in a crowd, and cap particle counts so a full legion never turns into noise.
 
@@ -204,7 +222,7 @@ Two or three bot players you can log in and play with. Recommended design:
 - **Decisions needed:** how strong bots should be, whether they loot or level, and the API budget.
 
 ### Performance (from the Blender audit)
-Measured in [docs/BLENDER-AUDIT.md](docs/BLENDER-AUDIT.md): props are ~65% of triangles and drawn ~5× (batch-level culling), ~160 draw calls are tiny decals, corpses are full skinned clones, ~490 MB decoded textures. **Phase 1** (no visible art change): spatially chunk PropBatch, pool decals into instanced layers, prune GLB accessors, trim `dig`/`cast` clips, PNG→WebP (~−26 MB). **Phase 2:** texture downscale by class, static corpse meshes, meshopt compression + simplify. **Phase 3:** 3D item icons, LODs, KTX2.
+Measured in [docs/BLENDER-AUDIT.md](docs/BLENDER-AUDIT.md). **Done (2–3 Oct):** prop culling, instanced decals, accessor pruning, trimmed clips, WebP art, texture downscale by class, area streaming, spawn budget, warm-up render, effect budget, thrall CPU, co-op relay filtering. **Open:** render budgets (resolution cap, shadow cadence, light count) and static corpse meshes are in progress. **Later:** meshopt compression and simplify, 3D item icons, LODs, KTX2.
 
 ### L2–L4
 - **New zones:** the Hollow Court (`docs/ALCHEMY-AND-WORLDS-PLAN.md`). The Catacomb Depths (W2) are live (2 Oct, release b4aab17, no migration): a Warren stair, seeded floors of small chambers, a quota-then-stair loop, elites with another affix and a chest every fifth floor, a Chronicle best depth. Open: co-op floors (solo for now), a depth leaderboard view beyond the public page's column, and a human playtest of the pacing.

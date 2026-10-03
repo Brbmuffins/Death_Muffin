@@ -5,7 +5,7 @@ difference between source, published releases and historical plans. Update the
 **Current state** and **In flight** sections when stopping work. What comes next
 is in **[ROADMAP.md](ROADMAP.md)**.
 
-**Live == GitHub `master` == `5cef60e`** (check: `curl https://muffindevelopment.com/death-muffin/play/release.txt`).
+**Live == GitHub `master` == `2021523` as of 3 Oct 2026** (the 1 Oct line below was `5cef60e`; check: `curl https://muffindevelopment.com/death-muffin/play/release.txt`).
 Every 2026-10-01 release is committed: brew engine, necromancer weapons and cast
 animations, reagents, Mourning Fen, five-slot Grimoire, Death Muffin branding,
 the owner-only Auto Combat gate, and the Offline Edition with complete save sync
@@ -24,11 +24,11 @@ Branch `codex/new-blood-release-20260928` tracks `origin/master` (push `HEAD:mas
 after a secret scan; the repo is public). The owner asked for commits, which overrides
 the older "stage, don't commit" note.
 
-## Effect budget (branch `dm/vfx-budget`, 3 Oct 2026, not deployed, no migration)
+## Effect budget (branch `dm/vfx-budget`, 3 Oct 2026, deployed in `be8a674`, no migration)
 
 Measured what spell effects cost and cut it without changing how they look (`docs/VFX-BUDGET.md`, `tools/qa/vfx-cost.cjs`). Biggest find: dead particles stayed in the two particle rings at their last size and were rasterised (alpha 0) until overwritten, 3-10 screens of wasted fill after a fight; the particle vertex shader now clips them. `flash` / `orbit` / `beam` draw through instanced layers (`graphics/fxLayers.ts`, one call per texture / one for all beams) instead of a Sprite or Mesh and a material each; round decals and the glow sprite draw on a 16-gon (rings on their annulus) instead of a square; another player's cast plays at half the particles (`Effects.particleScale`, `WorldScene.handleEvent`); Graphics: Low keeps 75 % of each burst. Busy fight (30 enemies, legion, 20-rite rotation): overdraw 6.6 to 1.6 screens, FX draw calls 36.6 (max 61) to 31 (max 37-45); CPU unchanged (it was never the cost). Parity renders (`tools/qa/vfx-parity.cjs`) show sprites and beams identical and decals within 0.12/255. Not done: Binbun cloud/mist quads are the costliest effects left (mask shader, not geometry). New files: `graphics/fxLayers.ts`, `graphics/fxProbe.ts` (dev), `graphics/__tests__/fx-budget.test.ts`, `tools/qa/vfx-cost*.cjs`, `tools/qa/vfx-parity.cjs`.
 
-## CPU / snappiness pass (branch `dm/cpu-snappy`, 3 Oct 2026, not deployed)
+## CPU / snappiness pass (branch `dm/cpu-snappy`, 3 Oct 2026, deployed in `0fccb70`)
 
 Owner: "performance is number 1", "it was smooth and snappy previously", "the thralls are laggy". What changed (numbers in the commit trail / report):
 
@@ -44,7 +44,7 @@ Owner: "performance is number 1", "it was smooth and snappy previously", "the th
   `touchNow()` is cached 500 ms, and the canvas rect for cursor picking is cached (no per-frame forced layout).
 - QA: `tools/qa/ab-profile.cjs` + `ab-summary.cjs` (A/B on two dev servers; thread CPU per window, allocation sampling, inclusive times), `thrall-legion-shot.cjs`.
 
-## Warm-up render (branch `dm/warm-render`, 3 Oct 2026, not deployed, NO migration)
+## Warm-up render (branch `dm/warm-render`, 3 Oct 2026, deployed in `14e12ef`, NO migration)
 
 Why: first appearance of a body (and the first fade of a cloaked corpse) still hitched on D3D11 because `compileAsync` only built the screen flavour of each program;
 real frames draw into the bloom composer's target (different key), plus shadow depth / skinned depth / DoubleSide transparent variants, geometry and bone textures.

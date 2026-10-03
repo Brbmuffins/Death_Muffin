@@ -8,11 +8,11 @@ The Ossuary Covenant stands in a diocese overrun by the dead. Choose one of nine
 
 **Play:** [muffindevelopment.com/death-muffin](https://muffindevelopment.com/death-muffin/). Create an account or sign in, then choose a discipline. You can change class later in **Settings** while keeping the same character's level, gold, items, and permanent progress.
 
-**Release status:** This guide matches the live game as of **2 October 2026**: the 48-slot bag, Ossuary Vault and salvage, readable gear with upgrade arrows and the Character sheet, new combat audio, plus everything from 1 October (armor sets, Cinder Pyre and Mourning Fen, necromancer weapons and brews, five swappable rite slots, the Offline Edition). See the **[visual roadmap](ROADMAP.md)** for what is coming next, and [the handoff](HANDOFF.md) for development status.
+**Release status:** This guide matches the live game as of **3 October 2026**: a performance pass (smoother fights and big waves, a lighter download, one load screen at login, co-op that reconnects by itself and a game that refreshes when a release goes live), the always-visible belt, the 48-slot bag, Ossuary Vault and salvage, readable gear with upgrade arrows and the Character sheet, new combat audio, plus everything from 1 October (armor sets, Cinder Pyre and Mourning Fen, necromancer weapons and brews, five swappable rite slots, the Offline Edition). See the **[visual roadmap](ROADMAP.md)** for what is coming next, and [the handoff](HANDOFF.md) for development status.
 
 ## ✨ Highlights
 
-Some of the most polished corners of the game right now (updated 2 October 2026):
+Some of the most polished corners of the game right now (updated 3 October 2026):
 
 <table><tr>
 <td width="50%"><img src="docs/screenshots/gear-set-tooltip.webp" alt="An item tooltip that says whether it is an upgrade for your discipline and which set bonus it completes" /><br /><sub><b>Gear you can read.</b> Green ▲ / red ▼ on every bag item, a verdict for <i>your</i> discipline, and armor set bonuses that light up as you complete them.</sub></td>
@@ -132,6 +132,14 @@ Nothing in Death Muffin is a quest, and nothing can be failed or missed. If you 
 | **Esc** | Close an open panel, then open Settings |
 
 You can also click hotbar icons. Click **swap** below any spell icon to open the Grimoire with that slot selected; right click a hotbar slot also works. In **Settings**, you can change class, difficulty, graphics, frame rate (**Max**, 60 or 30 fps), **Auto resolution**, volume (Master, plus separate **Combat**, **Ambience** and **Interface** sliders), reduced motion, damage numbers, gathering behavior, counsel tips, and the Next suggestion with its minimap marker.
+
+### Smooth play and loading
+
+- **One load screen.** The game loads and warms everything once at login; walking through doors and teleports never shows another load screen.
+- **Frame rate and resolution.** In **Settings**, **Frame rate** can be **Max** (no cap, the default on a computer until you choose), 60 or 30 fps. **Auto resolution** lowers the picture's resolution only when the machine keeps missing its frame rate; turn it off for a constant sharp picture.
+- **Belt.** Three slots at the left edge are always visible: **Q** Heal, **Z** Elixir, **X** Tonic. Empty ones say how to fill them.
+- **Co-op and updates.** If the connection drops, the game retries on its own and returns you to the same world. When a new release goes live it saves, waits for any boss fight to end, and reloads you in.
+- **Computer first.** The desktop HUD stays at any window size; the phone and tablet layout appears only on touch devices.
 
 ### On a phone or tablet
 
