@@ -131,7 +131,7 @@ describe('sync fixes: gathering', () => {
     const node = { id: 'acre_1', type: 'coffin_oak', x: 0, z: 0, area: 'acre', rot: 0 } as never;
     const player = { x: 1.35, z: 0, path: [] as unknown[], get hasPath() { return false; }, moving: false, moveAlong() {}, face() {}, stop() {} };
     const releases: Array<() => void> = [];
-    const post = vi.fn((type: string, actions: number) => new Promise((resolve) => {
+    const post = vi.fn((type: string, actions: number, _keepalive?: boolean) => new Promise((resolve) => {
       releases.push(() => resolve({ node: type, skill: NODES[type].skill, accepted: actions, successes: actions, xp: 0, gold: 0, items: [], rejected: [], leveledUp: false, skills: [] }));
     }));
     const loop = new GatherLoop({
