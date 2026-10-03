@@ -5,7 +5,7 @@
  * included (a kit would add them); this isolates the mechanics + the set's own multipliers.
  *
  * Also measures the 2-piece and 4-piece legendary tiers and the same discipline's first and ascended full sets (ordering check),
- * and prints a per-discipline summary. BALANCE_VERBOSE=1 prints every row.
+ * and prints a per-discipline summary. BALANCE_VERBOSE=1 prints every row, BALANCE_TIERS=leg5,asc limits the tiers and BALANCE_DISC=Mourner,Ossuary the disciplines (faster).
  *
  * Env: BALANCE_MINUTES (3), BALANCE_SEEDS (4), BALANCE_AREAS (nave,sanctum), BALANCE_BANDS (intended,push,max), BALANCE_KIT (none).
  */
@@ -32,22 +32,25 @@ function avg(run: BalanceRun): BalanceResult {
 
 const f = (n: number, d = 1) => n.toFixed(d);
 const VERBOSE = !!process.env.BALANCE_VERBOSE;
-const TIERS: [string, (set: (typeof FULL_SETS)[number]) => SetEffect][] = [
+const ALL_TIERS: [string, (set: (typeof FULL_SETS)[number]) => SetEffect][] = [
   ['first', (s) => fullSet(s.plain)],
   ['asc', (s) => fullSet(s.asc)],
   ['leg2', (s) => fullSet(s.id, 2)],
   ['leg4', (s) => fullSet(s.id, 4)],
   ['leg5', (s) => fullSet(s.id, 5)],
 ];
+const only = process.env.BALANCE_TIERS?.split(',');
+const TIERS = only ? ALL_TIERS.filter(([t]) => only.includes(t)) : ALL_TIERS;
 console.log(`legendary sets, ${SEEDS} seeds x ${MINUTES} sim-min, kit ${KIT}; ratio = with set / without`);
 if (VERBOSE) console.log(['area', 'band', 'disc', 'tier', 'kills/m', '->', 'x', 'hurt%/m', '->', 'x', 'deaths', '->', 'thr'].map((h) => h.padEnd(10)).join(''));
-type Acc = { k: number; h: number; n: number };
+type Acc = { k: number; h: number; n: number; hp: number; d: number };
 const acc: Record<string, Record<string, Acc>> = {};
 for (const area of areas) {
   const lvl = AREAS[area].level;
   for (const band of bands) {
     for (const [idx, set] of Object.entries(FULL_SETS)) {
       const name = set.name.split(' / ')[0];
+      if (process.env.BALANCE_DISC && !process.env.BALANCE_DISC.split(',').includes(name)) continue;
       const base = { ...(BANDS[band](lvl) as BalanceRun), area, classIndex: Number(idx), minutes: MINUTES, kit: KIT, soulHarvest: set.soul };
       // Requiem only means something with Soul Harvest modelled, so that discipline runs both sides with it on.
       const a = avg(base);
@@ -55,27 +58,28 @@ for (const area of areas) {
         const b = avg({ ...base, effect: eff(set) });
         const kx = b.killsPerMin / a.killsPerMin;
         const hx = b.dmgPctPerMin / Math.max(0.01, a.dmgPctPerMin);
-        const cell = ((acc[name] ??= {})[tier] ??= { k: 0, h: 0, n: 0 });
-        cell.k += kx; cell.h += hx; cell.n++;
+        const cell = ((acc[name] ??= {})[tier] ??= { k: 0, h: 0, n: 0, hp: 0, d: 0 });
+        cell.k += kx; cell.h += hx; cell.n++; cell.hp += b.avgHpPct - a.avgHpPct; cell.d += b.deaths - a.deaths;
         if (VERBOSE) console.log([area, band, name, tier, f(a.killsPerMin), f(b.killsPerMin), `${f(kx, 2)}x`, f(a.dmgPctPerMin, 0), f(b.dmgPctPerMin, 0), `${f(hx, 2)}x`, f(a.deaths), f(b.deaths), f(b.avgThralls)].map((c) => String(c).padEnd(10)).join(''));
       }
     }
   }
 }
 // Summary: mean clear-speed ratio / mean damage-taken ratio per discipline and tier; power = clear speed / damage taken.
-console.log('\nper discipline: clear-speed x / damage-taken x / power (clear / damage), mean over area x band rows');
-console.log(['disc', ...TIERS.map(([t]) => t)].map((h) => h.padEnd(24)).join(''));
+console.log('\nper discipline: clear-speed x / damage-taken x / power (clear / damage) (change in average HP% and deaths per run), mean over area x band rows');
+console.log(['disc', ...TIERS.map(([t]) => t)].map((h) => h.padEnd(h === 'disc' ? 24 : 40)).join(''));
 const powers: Record<string, number> = {};
 for (const [name, tiers] of Object.entries(acc)) {
   const cells = TIERS.map(([t]) => {
     const c = tiers[t];
     const k = c.k / c.n, h = c.h / c.n;
     if (t === 'leg5') powers[name] = k / h;
-    return `${f(k, 2)} / ${f(h, 2)} / ${f(k / h, 2)}`.padEnd(24);
+    return `${f(k, 2)} / ${f(h, 2)} / ${f(k / h, 2)} (${c.hp / c.n >= 0 ? '+' : ''}${f(c.hp / c.n, 0)}hp ${c.d / c.n >= 0 ? '+' : ''}${f(c.d / c.n, 1)}d)`.padEnd(40);
   });
   console.log(name.padEnd(24) + cells.join(''));
 }
 const pv = Object.values(powers);
+if (!pv.length) process.exit(0);
 console.log(`legendary full-set power spread: min ${f(Math.min(...pv), 2)} max ${f(Math.max(...pv), 2)} (max/min ${f(Math.max(...pv) / Math.min(...pv), 2)})`);
-const mean = (t: string, key: 'k' | 'h') => Object.values(acc).reduce((s, tiers) => s + tiers[t][key] / tiers[t].n, 0) / Object.keys(acc).length;
+const mean = (t: string, key: 'k' | 'h') => Object.values(acc).reduce((s, tiers) => s + tiers.leg5[key] / tiers.leg5.n, 0) / Object.keys(acc).length;
 console.log(`mean legendary full set: clear-speed ${f(mean('leg5', 'k'), 2)}x, damage-taken ${f(mean('leg5', 'h'), 2)}x`);

@@ -1038,3 +1038,4 @@ Necromancer rows are byte-identical. `BALANCE_SEEDS=4 BALANCE_AREAS=graves,nave 
 
 Graves (early levels): New Blood now level about as fast as a necromancer. Nave (past the catch-up): the gap closes from about 6x to about 2x
 XP/min; the rest is the legion (thralls) and survival, still worth a human playtest of the melee three (Warden, Monk, Knight die most).
+
