@@ -190,6 +190,8 @@ var NECRO_WEAPON_TUNING = {
     /** LMB becomes a close reaping arc: full cone angle (degrees), reach (metres), targets hit. */
     arcDeg: 100,
     reach: 3,
+    /** Reach against a boss (owner, 3 Oct 2026): the long blade lets a reaper fight from the edge of a boss's cones and rings instead of inside them. */
+    bossReach: 4,
     maxHits: 3,
     /** Per-target damage relative to a Needle hit, cooldown and lock (a heavier, slower swing), essence per target struck. */
     damageMult: 1.15,
@@ -280,7 +282,7 @@ var KINDS = {
       hell: "Its edge glows where it has drunk ash. Your left click becomes a reaping arc; kills in it yield a soul.",
       moon: "The last harvest is always by moonlight. Your left click becomes a reaping arc; kills in it yield a soul."
     },
-    effect: `Left click becomes a ${T.scythe.arcDeg}\xB0 reaping arc (${T.scythe.reach} m, hits up to ${T.scythe.maxHits}); kills in the arc give +${T.scythe.soulsPerKill} soul. Two-handed.`
+    effect: `Left click becomes a ${T.scythe.arcDeg}\xB0 reaping arc (${T.scythe.reach} m, ${T.scythe.bossReach} m against a boss, hits up to ${T.scythe.maxHits}); kills in the arc give +${T.scythe.soulsPerKill} soul. Two-handed.`
   },
   wand: {
     label: "Wand",
