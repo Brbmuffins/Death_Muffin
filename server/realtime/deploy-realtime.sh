@@ -166,8 +166,8 @@ function snapshotFor(snap, x, z, recipientId) {
   if (!Array.isArray(snap.enemies) || !Array.isArray(snap.thralls)) return snap;
   const r2 = SNAPSHOT_INTEREST_RADIUS * SNAPSHOT_INTEREST_RADIUS;
   const near = (rx, rz) => !((rx - x) * (rx - x) + (rz - z) * (rz - z) > r2);
-  const enemies = snap.enemies.filter((e) => near(e[2], e[3]));
-  const thralls = snap.thralls.filter((t) => t[1] === recipientId || near(t[3], t[4]));
+  const enemies = snap.enemies.filter((e) => Array.isArray(e) && near(e[2], e[3]));
+  const thralls = snap.thralls.filter((t) => Array.isArray(t) && (t[1] === recipientId || near(t[3], t[4])));
   if (enemies.length === snap.enemies.length && thralls.length === snap.thralls.length) return snap;
   return { ...snap, enemies, thralls };
 }

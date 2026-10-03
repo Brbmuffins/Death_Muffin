@@ -282,3 +282,11 @@ test('null payloads on world:join and player:move are ignored, not fatal', async
     b.close();
   }
 });
+
+test('snapshotFor tolerates malformed rows from a host instead of throwing', () => {
+  const snap = { enemies: [null, 'x', [1, 1, 500, 500], [2, 1, 1, 1]], thralls: [undefined, [1, 'me', 0, 1, 1]], corpses: [] };
+  let out;
+  assert.doesNotThrow(() => { out = snapshotFor(snap, 0, 0, 'me'); });
+  assert.deepEqual(out.enemies, [[2, 1, 1, 1]], 'only well-formed rows within range survive');
+  assert.deepEqual(out.thralls, [[1, 'me', 0, 1, 1]]);
+});
