@@ -24,6 +24,10 @@ Branch `codex/new-blood-release-20260928` tracks `origin/master` (push `HEAD:mas
 after a secret scan; the repo is public). The owner asked for commits, which overrides
 the older "stage, don't commit" note.
 
+## Effect budget (branch `dm/vfx-budget`, 3 Oct 2026, not deployed, no migration)
+
+Measured what spell effects cost and cut it without changing how they look (`docs/VFX-BUDGET.md`, `tools/qa/vfx-cost.cjs`). Biggest find: dead particles stayed in the two particle rings at their last size and were rasterised (alpha 0) until overwritten, 3-10 screens of wasted fill after a fight; the particle vertex shader now clips them. `flash` / `orbit` / `beam` draw through instanced layers (`graphics/fxLayers.ts`, one call per texture / one for all beams) instead of a Sprite or Mesh and a material each; round decals and the glow sprite draw on a 16-gon (rings on their annulus) instead of a square; another player's cast plays at half the particles (`Effects.particleScale`, `WorldScene.handleEvent`); Graphics: Low keeps 75 % of each burst. Busy fight (30 enemies, legion, 20-rite rotation): overdraw 6.6 to 1.6 screens, FX draw calls 36.6 (max 61) to 31 (max 37-45); CPU unchanged (it was never the cost). Parity renders (`tools/qa/vfx-parity.cjs`) show sprites and beams identical and decals within 0.12/255. Not done: Binbun cloud/mist quads are the costliest effects left (mask shader, not geometry). New files: `graphics/fxLayers.ts`, `graphics/fxProbe.ts` (dev), `graphics/__tests__/fx-budget.test.ts`, `tools/qa/vfx-cost*.cjs`, `tools/qa/vfx-parity.cjs`.
+
 ## Catacomb Depths (branch `dm/depths`, 2 Oct 2026, not deployed, NO migration)
 
 An endless descent reached by a stair in the Warren's west chamber (`DEPTHS_STAIR` in `content/areas.ts`). **Migration 026 was claimed for this and is not used**: the deepest floor rides the Chronicle's lifetime JSON (`peak.depth`, a `MAX_KEYS` best like `peak.level`; Ascension never resets it, the archived run keeps its own), so 026 is free for anyone else. 025 is the legendary-sets session's.
