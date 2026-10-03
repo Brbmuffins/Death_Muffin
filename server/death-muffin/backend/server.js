@@ -509,6 +509,9 @@ app.get('/items', async (req, res) => {
 app.use((err, req, res, next) => {
   if (err.type === 'entity.parse.failed')
     return res.status(400).json({ error: 'invalid JSON body' });
+  // The 512 KB body limit: say so in JSON (the client shows server error strings verbatim) instead of Express's HTML page.
+  if (err.type === 'entity.too.large')
+    return res.status(413).json({ error: 'That request is too large for the server to accept.' });
   next(err);
 });
 
@@ -2044,4 +2047,12 @@ require('./contracts.cjs')(app, pool, {
   },
 });
 require('./discipline.cjs')(app, pool, { verifyJWT, formatCharacter, getGearLoadout, invalidateLeaderboard, maxIndex: MAX_DISCIPLINE_INDEX });
+// Last resort for anything a route throws outside its own try (Express 5 forwards a rejected async handler here): JSON like every other
+// failure, one journal line instead of a stack dump, and nothing internal in the reply.
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  const status = Number(err && err.status) >= 400 && Number(err.status) < 500 ? Number(err.status) : 500;
+  if (status >= 500) console.error(`${req.method} ${String(req.originalUrl || req.url).split('?')[0]}: ${err && err.message}`);
+  res.status(status).json(status >= 500 ? { success: false, error: 'internal server error' } : { success: false, error: 'That request could not be read.' });
+});
 app.listen(PORT, '127.0.0.1', () => console.log(`Death Muffin account service listening on ${PORT}`));

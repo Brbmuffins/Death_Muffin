@@ -145,3 +145,18 @@ test('inventory/save: junk in the slot list is a readable 400, never a crash or 
   assert.equal(noBody.status, 400, 'a request without a JSON body is a 400 too');
   assert.equal(f.log.length, 0, 'nothing reached the database');
 });
+
+// ── errors that escape a route ──────────────────────────────────────────────────────────────────────────────────────────
+
+test('body-parser and unexpected errors answer readable JSON, not an HTML page', () => {
+  const srv = loadServer({ pool: fakePool().pool });
+  const big = srv.fail(Object.assign(new Error('request entity too large'), { type: 'entity.too.large', status: 413 }));
+  assert.equal(big.status, 413);
+  assert.match(big.json.error, /too large/i);
+  const bad = srv.fail(Object.assign(new SyntaxError('x'), { type: 'entity.parse.failed', status: 400 }));
+  assert.equal(bad.status, 400);
+  const boom = srv.fail(new TypeError('Cannot read properties of undefined'));
+  assert.equal(boom.status, 500);
+  assert.equal(boom.json.success, false);
+  assert.equal(boom.json.error, 'internal server error', 'no internals leak to the client');
+});

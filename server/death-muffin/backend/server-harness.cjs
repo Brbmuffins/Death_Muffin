@@ -15,6 +15,7 @@ const path = require('path');
 
 function loadServer({ pool, env = {} }) {
   const routes = new Map();
+  const uses = [];
   const noop = () => {};
   const stubs = {
     dotenv: { config: noop },
@@ -30,7 +31,7 @@ function loadServer({ pool, env = {} }) {
     express: Object.assign(
       () => {
         const add = (method) => (route, ...chain) => routes.set(`${method} ${route}`, chain);
-        return { use: noop, set: noop, listen: noop, get: add('GET'), post: add('POST'), patch: add('PATCH'), put: add('PUT'), delete: add('DELETE') };
+        return { use: (...fns) => uses.push(...fns), set: noop, listen: noop, get: add('GET'), post: add('POST'), patch: add('PATCH'), put: add('PUT'), delete: add('DELETE') };
       },
       { json: () => noop },
     ),
@@ -85,7 +86,21 @@ function loadServer({ pool, env = {} }) {
     return out;
   }
 
-  return { routes, call };
+  /** Run the error-handling middleware registered with app.use(err, req, res, next) for `err`; returns { status, json, passedOn }. */
+  function fail(err) {
+    const out = { status: 200, json: undefined, passedOn: false };
+    const res = { headersSent: false, status(code) { out.status = code; return this; }, json(j) { out.json = j; this.headersSent = true; return this; } };
+    const req = { method: 'POST', path: '/x', originalUrl: '/x', headers: {} };
+    for (const fn of uses.filter((f) => f.length === 4)) {
+      let next = false;
+      fn(err, req, res, () => { next = true; });
+      if (!next) return out;
+    }
+    out.passedOn = true;
+    return out;
+  }
+
+  return { routes, call, fail };
 }
 
 module.exports = { loadServer };
