@@ -13,7 +13,7 @@ import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
 import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS, bossIchor } from '../content/reagents';
 import type { BossId } from '../content/bosses';
 import { AREA_RUNE_POOL, BOSS_REPEAT_RUNE_CHANCE, BOSS_RUNE_POOL, ELITE_RUNE_CHANCE, SURGE_RUNE_CHANCE, pickRune } from '../content/runes';
-import { LEGENDARY_BOSS_AREAS, LEGENDARY_DROP, rollLegendary } from '../content/legendarySets';
+import { LEGENDARY_DROP, legendaryBossChance, rollLegendary } from '../content/legendarySets';
 
 /** One source of truth: gatheringRules.BAG_SLOTS (also bundled for the server). 8 columns × 6 rows = 48. */
 export const BAG_SIZE = BAG_SLOTS;
@@ -137,9 +137,9 @@ export function rollBoss(waveTier: number, rand = Math.random, difficulty: Diffi
   const diff = DIFFICULTIES[difficulty].rewardMult;
   const k = costShards / 5;
   const items = [rollItem(area, rand, 1, disciplineId), rollItem(area, rand, 1, disciplineId), rollItem(area, rand, 1, disciplineId)];
-  // Legendary armor: each area boss (past the Hollow Graves) has a chance, weighted to the player's discipline ("smart loot").
-  if (disciplineId && LEGENDARY_BOSS_AREAS.includes(area)) {
-    const id = rollLegendary(disciplineId, LEGENDARY_DROP.bossChance, rand, ownedIds);
+  // Legendary armor: every area boss has a chance (15%; the Gravedigger King 3%), weighted to the player's discipline ("smart loot").
+  if (disciplineId && legendaryBossChance(area) > 0) {
+    const id = rollLegendary(disciplineId, legendaryBossChance(area), rand, ownedIds);
     if (id) items.push({ item_id: id, quantity: 1 });
   }
   // Every boss leaves exactly one ichor: the top-tier Alchemy reagent (content/reagents.ts).

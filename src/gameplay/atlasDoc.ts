@@ -102,7 +102,7 @@ function bossSection(b: (typeof BOSS_IDS)[number]): string {
 
 function legendarySection(): string {
   const out: string[] = ['## Legendary armor sets', ''];
-  out.push(`Legendary pieces are not in any area table. Each **boss kill past the Hollow Graves** (${LEGENDARY_BOSS_AREAS.map((a) => AREAS[a].name).join(', ')}) rolls ${pct(LEGENDARY_DROP.bossChance)} for one, and each **elite kill in a level-scaled ground** (Plague Cloister, Cinder Pyre, Mourning Fen, and Depths floors that drop from them) rolls ${pct(LEGENDARY_DROP.eliteChance)}. When one drops it is a random piece (1 of 5) of a set chosen by "smart loot": ${pct(LEGENDARY_DROP.ownShare)} your own discipline's set when it has one, the rest split evenly over the others (an even split with no own set).`);
+  out.push(`Legendary pieces are not in any area table. Each **boss kill** rolls for one: ${pct(LEGENDARY_DROP.bossChance)} from the Abbess onward (${LEGENDARY_BOSS_AREAS.map((a) => AREAS[a].name).join(', ')}) and ${pct(LEGENDARY_DROP.starterBossChance)} for the Gravedigger King, and each **elite kill in a level-scaled ground** (Plague Cloister, Cinder Pyre, Mourning Fen, and Depths floors that drop from them) rolls ${pct(LEGENDARY_DROP.eliteChance)}. When one drops it is a random piece (1 of 5) of a set chosen by "smart loot": ${pct(LEGENDARY_DROP.ownShare)} your own discipline's set when it has one, the rest split evenly over the others (an even split with no own set).`);
   out.push('');
   out.push('Chance per boss kill (the Abbess onward) that you get a particular piece, by the discipline you play:');
   out.push('');

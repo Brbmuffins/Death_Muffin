@@ -51,6 +51,7 @@ Some of the most polished corners of the game right now (updated 3 October 2026)
 - [The Catacomb Depths](#the-catacomb-depths)
 - [Gold, gear, and difficulty](#gold-gear-and-difficulty)
 - [Gear, stats and the character sheet](#gear-stats-and-the-character-sheet)
+- [Getting better gear (upgrade guide)](#getting-better-gear-upgrade-guide)
 - [Loot tables and the Gear Atlas](#-loot-tables--gear-atlas)
 - [Gathering and crafting](#gathering-and-crafting)
 - [Ascension](#ascension)
@@ -436,6 +437,40 @@ Three thralls without the kit (left) and with it (right): the archer's baked bow
 **Reinforce** is the gold sink: twelve tiers, each +3% thrall health and damage and +1% attack speed, for 120 gold at the first tier and 1.65 times more each time (the last costs 29,615; all twelve about 75,000). Buying a Reinforce tier, or a Damage tier, **strengthens every thrall you already have standing, once, at the moment you buy** (their health keeps its fraction, so it is never a heal); thralls raised afterwards carry it from the start. Like Damage and Wave Speed the tiers reset when you Ascend; the kit pieces stay. On the overall power score (Gravecaller, level 20) a copper kit is worth about +1%, an iron kit +2.6%, an iron kit at tier 6 +7.5%, tier 12 alone +9% and the best kit at tier 12 about +20%; the other necromancers gain 5-16% at the top, since thralls are a smaller part of their power.
 
 **The character sheet (J, or the Sheet button beside the paper doll).** Lists your final Health, Spell power, Max essence, Essence per second, Move speed, Thrall health, Thrall damage and Damage upgrade, plus your STR, AGI, INT and VIT totals. Click any line to open its breakdown: the base, your level, each worn piece, your discipline, boons, Damage tiers and the weapon line. Brews and other timed effects are not included. The Codex (**K**, Stats tab) carries the same table. The Set bonuses block lists each worn set and its bonuses.
+
+## Getting better gear (upgrade guide)
+
+*The short version: kill bosses for legendaries, follow the green ▲ for everything else, and open the Gear Atlas (**.**) → **Best for me** when you are not sure what to chase next.*
+
+**1. Follow the arrows.** Every gear item in your bag shows a **green ▲** when it beats what you wear in that slot for *your* discipline, and a **red ▼** when it is worse. Hover it to see why (`+12% (more thrall damage)`). The Character sheet (**J**) lists your **weakest slots**, so you know which slot to fill first.
+
+**2. Hunt where your gear is.** Every ground drops gear of its own material: **Bone** in the Hollow Graves and Bone Warren, **Iron** in the Ossuary and Coliseum, **Gold** in the Nave and Sanctum, **Hell** in the Cloister and Pyre, and **Moon** (rarely) in the Pyre. Gear from a stronger ground has a higher **item level** and up to **three affixes**:
+- an elite adds +2 item levels, a boss +4, and a boss's first kill +5;
+- **Wave Speed** and the **Hard** difficulty raise loot chances and the number of elites;
+- the ground favours your own discipline, so about half the armour it drops is from your sets.
+
+**3. Finish your armour sets.** Each discipline has two five-piece sets: the **first collection** (Hollow Graves → Bell Sanctum) and the stronger **ascended collection** (Bell Sanctum → Cinder Pyre). Set bonuses switch on at 2, 4 and 5 pieces. An item that completes a set says so on its tooltip, and **Sell all junk** never sells it.
+
+**4. Craft the gaps.** The **Workbench** makes every necromancer weapon in all five materials from planks and ingots (Carpentry: staff, wand, grimoire; Smithing: scythe, sickle, skull focus, bell). Gathering skills (Woodcutting, Mining and the rest) feed it. The Gear Atlas shows the recipe for any craftable piece.
+
+**5. Chase legendaries (the end-game sets).** There is one legendary set per necromancer discipline, five pieces each: two pieces are a nudge, four change a mechanic, and five define the build. **How to get them:**
+
+| Source | Chance of a legendary piece |
+|---|---|
+| Any area boss from the **Bone Abbess** onward (Abbess, Drowned Congregation, Bell-Sworn Prelate, Plague Saint, Cinder Regent, Mire Mother) | **15% per kill** |
+| The **Gravedigger King** (Hollow Graves, the first boss) | **3% per kill** |
+| An **elite** in a level-scaled ground (Plague Cloister, Cinder Pyre, Mourning Fen) or a deep Catacomb Depths floor | 0.3% per elite |
+
+- **Your own set comes first:** 70% of the legendaries that drop for a necromancer are their own discipline's set. The five New Blood classes have no set of their own, so they get one of the four necromancer sets.
+- **Duplicates are rare:** a drop favours the pieces you don't hold yet, so a full set takes about 5 drops. That is about 33 boss kills from the Abbess onward for any set, or about 48 for your own discipline's full set.
+- **Bosses cost soul shards** to summon (elites drop them, and bosses hand some back). Boss loot, legendaries included, goes only to players who are **alive and within 38 m** when the boss dies, the same rule as ordinary kills.
+- Hover a legendary piece to read each tier of its bonus; the Codex has a Legendary sets section.
+
+**6. Socket runes.** Relic runes (from elites, surges and bosses) change how a rite behaves; socket them in the Grimoire (**L**). See [Relic runes](#relic-runes).
+
+**7. Spend gold on power that stays.** **Damage** tiers (+8% spell power each) and the Legion's **Reinforce** tiers (thrall health, damage and speed) both strengthen thralls already standing the moment you buy. They reset on Ascension.
+
+**8. Keep the bag clean.** Lock (padlock) anything you want to keep. **Salvage** spare gear at the Bone Grinder for reagents, park pieces in the **Ossuary Vault**, or give spares to your thralls in the **Legion** panel (**Y**).
 
 ## 📖 Loot tables & gear atlas
 

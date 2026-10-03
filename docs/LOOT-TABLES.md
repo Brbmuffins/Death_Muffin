@@ -11,7 +11,7 @@ Percentages are per event at default settings (Medium difficulty, Wave Speed tie
 - A fortune tonic multiplies the item chance of kills, reagent drops and the elite rune chance: Grave-Luck Tonic (+15%). It does not change boss spoils, Grave Surge offerings or legendary odds.
 - Difficulty changes gold and experience and how often elites appear (Easy +0 points, Medium +0 points, Hard +2 points on every area's elite chance), not what a kill drops.
 - Reagent drops are a separate roll per kill, 4x as likely from an elite. Rune and legendary rolls are separate again.
-- Bosses roll the area table three times and always leave their ichor; a legendary piece is a 7% roll per boss kill (past the Hollow Graves).
+- Bosses roll the area table three times and always leave their ichor; a legendary piece is a 15% roll per boss kill (3% for the Gravedigger King).
 
 ## Hunting grounds and bosses
 
@@ -152,7 +152,7 @@ Runes from this boss: Rune of Splinters 13.1%, Rune of Marrow-Tap 13.1%, Mass Gr
 | Hollow Choir Rune | Rare | 0.055% | 2.27% |
 
 #### The Bone Abbess (Keeper of the Marrow Ossuary)
-Costs 3 soul shards to summon. Spoils: three rolls of the Marrow Ossuary table, **Abbess Ichor always**, and a 7% legendary roll. First kill per character: a guaranteed rare-or-better item and a rune; repeats leave a rune 35% of the time.
+Costs 3 soul shards to summon. Spoils: three rolls of the Marrow Ossuary table, **Abbess Ichor always**, and a 15% legendary roll. First kill per character: a guaranteed rare-or-better item and a rune; repeats leave a rune 35% of the time.
 
 | Item | Rarity | At least one in the 3 rolls | First kill (the guaranteed item) |
 |---|---|---|---|
@@ -228,7 +228,7 @@ Runes from this boss: Rune of Impaling 13.1%, Rune of the Volley 8.75%, Ossuary 
 | Hollow Choir Rune | Rare | 0.055% | 2.27% |
 
 #### The Drowned Congregation (Choir of the Drowned Nave)
-Costs 4 soul shards to summon. Spoils: three rolls of the Drowned Nave table, **Congregation Ichor always**, and a 7% legendary roll. First kill per character: a guaranteed rare-or-better item and a rune; repeats leave a rune 35% of the time.
+Costs 4 soul shards to summon. Spoils: three rolls of the Drowned Nave table, **Congregation Ichor always**, and a 15% legendary roll. First kill per character: a guaranteed rare-or-better item and a rune; repeats leave a rune 35% of the time.
 
 | Item | Rarity | At least one in the 3 rolls | First kill (the guaranteed item) |
 |---|---|---|---|
@@ -322,7 +322,7 @@ Runes from this boss: Creeping Rot Rune 15%, Contagion Rune 10%, Hollow Choir Ru
 | Requiem Rune | Epic | 0.025% | 1.04% |
 
 #### The Bell-Sworn Prelate (The Sundered Bell)
-Costs 5 soul shards to summon. Spoils: three rolls of the Bell Sanctum table, **Prelate Ichor always**, and a 7% legendary roll. The Prelate always leaves a rune.
+Costs 5 soul shards to summon. Spoils: three rolls of the Bell Sanctum table, **Prelate Ichor always**, and a 15% legendary roll. The Prelate always leaves a rune.
 
 | Item | Rarity | At least one in the 3 rolls | First kill (the guaranteed item) |
 |---|---|---|---|
@@ -460,7 +460,7 @@ Runes from this boss: Rune of Splinters 12%, Rune of Marrow-Tap 12%, Rune of Imp
 **Legendary armor**: a 0.3% roll per elite kill here (any set; your discipline's own set is 70% of them). See [Legendary sets](#legendary-armor-sets).
 
 #### The Plague Saint (Mother of the Blight)
-Costs 5 soul shards to summon. Spoils: three rolls of the Plague Cloister table, **Plague Saint Ichor always**, and a 7% legendary roll. First kill per character: a guaranteed rare-or-better item and a rune; repeats leave a rune 35% of the time.
+Costs 5 soul shards to summon. Spoils: three rolls of the Plague Cloister table, **Plague Saint Ichor always**, and a 15% legendary roll. First kill per character: a guaranteed rare-or-better item and a rune; repeats leave a rune 35% of the time.
 
 | Item | Rarity | At least one in the 3 rolls | First kill (the guaranteed item) |
 |---|---|---|---|
@@ -637,7 +637,7 @@ Runes from this boss: Creeping Rot Rune 11.7%, Contagion Rune 7.78%, Hollow Choi
 **Legendary armor**: a 0.3% roll per elite kill here (any set; your discipline's own set is 70% of them). See [Legendary sets](#legendary-armor-sets).
 
 #### The Cinder Regent (Ember-Crowned Keeper of the Pyre)
-Costs 6 soul shards to summon. Spoils: three rolls of the Cinder Pyre table, **Regent Ichor always**, and a 7% legendary roll. First kill per character: a guaranteed rare-or-better item and a rune; repeats leave a rune 35% of the time.
+Costs 6 soul shards to summon. Spoils: three rolls of the Cinder Pyre table, **Regent Ichor always**, and a 15% legendary roll. First kill per character: a guaranteed rare-or-better item and a rune; repeats leave a rune 35% of the time.
 
 | Item | Rarity | At least one in the 3 rolls | First kill (the guaranteed item) |
 |---|---|---|---|
@@ -887,7 +887,7 @@ Runes from this boss: Rune of Splinters 4.38%, Rune of Marrow-Tap 4.38%, Rune of
 **Legendary armor**: a 0.3% roll per elite kill here (any set; your discipline's own set is 70% of them). See [Legendary sets](#legendary-armor-sets).
 
 #### The Mire Mother (Drowned Matriarch of the Mourning Fen)
-Costs 7 soul shards to summon. Spoils: three rolls of the Mourning Fen table, **Mire Ichor always**, and a 7% legendary roll. First kill per character: a guaranteed rare-or-better item and a rune; repeats leave a rune 35% of the time.
+Costs 7 soul shards to summon. Spoils: three rolls of the Mourning Fen table, **Mire Ichor always**, and a 15% legendary roll. First kill per character: a guaranteed rare-or-better item and a rune; repeats leave a rune 35% of the time.
 
 | Item | Rarity | At least one in the 3 rolls | First kill (the guaranteed item) |
 |---|---|---|---|
@@ -974,23 +974,23 @@ Example (the Gravecaller's pieces; every discipline has the same shape with its 
 
 ## Legendary armor sets
 
-Legendary pieces are not in any area table. Each **boss kill past the Hollow Graves** (The Marrow Ossuary, The Drowned Nave, The Bell Sanctum, The Plague Cloister, The Cinder Pyre, The Mourning Fen) rolls 7% for one, and each **elite kill in a level-scaled ground** (Plague Cloister, Cinder Pyre, Mourning Fen, and Depths floors that drop from them) rolls 0.3%. When one drops it is a random piece (1 of 5) of a set chosen by "smart loot": 70% your own discipline's set when it has one, the rest split evenly over the others (an even split with no own set).
+Legendary pieces are not in any area table. Each **boss kill** rolls for one: 15% from the Abbess onward (The Marrow Ossuary, The Drowned Nave, The Bell Sanctum, The Plague Cloister, The Cinder Pyre, The Mourning Fen) and 3% for the Gravedigger King, and each **elite kill in a level-scaled ground** (Plague Cloister, Cinder Pyre, Mourning Fen, and Depths floors that drop from them) rolls 0.3%. When one drops it is a random piece (1 of 5) of a set chosen by "smart loot": 70% your own discipline's set when it has one, the rest split evenly over the others (an even split with no own set).
 
 Chance per boss kill (the Abbess onward) that you get a particular piece, by the discipline you play:
 
 | You play | Own set | Each piece of your own set | Each piece of another set |
 |---|---|---|---|
-| Ossuary | Colossus Mantle | 0.98% (1 in 102) | 0.14% (1 in 714) |
-| Gravecaller | Legion of the Unburied | 0.98% (1 in 102) | 0.14% (1 in 714) |
-| Mourner | Requiem of Wraiths | 0.98% (1 in 102) | 0.14% (1 in 714) |
-| Rotweaver | Plague Choir | 0.98% (1 in 102) | 0.14% (1 in 714) |
-| Hollow Knight | (none yet) | - | 0.35% (1 in 286) |
-| Grave Warden | (none yet) | - | 0.35% (1 in 286) |
-| Bell Monk | (none yet) | - | 0.35% (1 in 286) |
-| Carrion Witch | (none yet) | - | 0.35% (1 in 286) |
-| Veilwalker | (none yet) | - | 0.35% (1 in 286) |
+| Ossuary | Colossus Mantle | 2.1% (1 in 48) | 0.3% (1 in 333) |
+| Gravecaller | Legion of the Unburied | 2.1% (1 in 48) | 0.3% (1 in 333) |
+| Mourner | Requiem of Wraiths | 2.1% (1 in 48) | 0.3% (1 in 333) |
+| Rotweaver | Plague Choir | 2.1% (1 in 48) | 0.3% (1 in 333) |
+| Hollow Knight | (none yet) | - | 0.75% (1 in 133) |
+| Grave Warden | (none yet) | - | 0.75% (1 in 133) |
+| Bell Monk | (none yet) | - | 0.75% (1 in 133) |
+| Carrion Witch | (none yet) | - | 0.75% (1 in 133) |
+| Veilwalker | (none yet) | - | 0.75% (1 in 133) |
 
-The same shares apply to the elite roll, scaled by 0.3% instead of 7%. A Gravecaller sees any given piece of their own set about once per 102 boss kills.
+The same shares apply to the elite roll, scaled by 0.3% instead of 15%. A Gravecaller sees any given piece of their own set about once per 48 boss kills.
 
 - **Legion of the Unburied** (Gravecaller): Warcrown of the Unburied, Cuirass of the Unburied, Gauntlets of the Unburied, Greaves of the Unburied, Marching Boots of the Unburied.
 - **Colossus Mantle** (Ossuary): Colossus Cowl, Colossus Mantle, Colossus Fists, Colossus Cuisses, Colossus Footings.

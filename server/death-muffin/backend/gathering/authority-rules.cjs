@@ -84,7 +84,9 @@ var LEGENDARY_SET_IDS = Object.keys(LEGENDARY_SETS);
 var legendaryItemId = (setId, part) => `leg_${setId}_${part}`;
 var LEGENDARY_DROP = {
   /** Per boss kill (every area boss except the starter Gravedigger King). */
-  bossChance: 0.07,
+  bossChance: 0.15,
+  /** Per Gravedigger King kill (the starter boss, Hollow Graves): lower, so the first legendary can be seen early (owner, 3 Oct 2026). */
+  starterBossChance: 0.03,
   /** Per elite kill in a level-scaled area (Plague Cloister, Cinder Pyre, Mourning Fen). */
   eliteChance: 3e-3,
   /** Smart loot: the share of legendary drops that is the player's own discipline's set (the rest splits evenly over the others). */

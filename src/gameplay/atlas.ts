@@ -7,7 +7,7 @@ import { ITEMS } from '../content/items';
 import { AREA_REAGENT_DROPS, BOSS_ICHOR, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS } from '../content/reagents';
 import { AREA_RUNE_POOL, BOSS_REPEAT_RUNE_CHANCE, BOSS_RUNE_POOL, ELITE_RUNE_CHANCE, RUNES, RUNE_WEIGHT, SURGE_RUNE_CHANCE, type RuneId } from '../content/runes';
 import { ARMOR_PIECES, ARMOR_BY_ID } from '../content/armorSets';
-import { LEGENDARY_BOSS_AREAS, LEGENDARY_DROP, LEGENDARY_SETS, LEGENDARY_SET_IDS, legendaryItemId, legendarySetFor, type LegendaryPart } from '../content/legendarySets';
+import { LEGENDARY_BOSS_AREAS, LEGENDARY_DROP, legendaryBossChance, LEGENDARY_SETS, LEGENDARY_SET_IDS, legendaryItemId, legendarySetFor, type LegendaryPart } from '../content/legendarySets';
 import { NECRO_TIER_INFO, NECRO_WEAPONS } from '../content/necroWeapons';
 import { SET_BONUSES, SET_NAMES, describeEffect } from '../content/setBonuses';
 import { SEEDS } from '../content/gardening';
@@ -172,7 +172,7 @@ export const SCALING_NOTES: string[] = (() => {
     `A fortune tonic multiplies the item chance of kills, reagent drops and the elite rune chance${fortune.length ? `: ${fortune.join(', ')}` : ''}. It does not change boss spoils, Grave Surge offerings or legendary odds.`,
     `Difficulty changes gold and experience and how often elites appear (${diffs.map((d) => `${d.name} ${d.eliteBonus >= 0 ? '+' : ''}${+(d.eliteBonus * 100).toFixed(1)} points`).join(', ')} on every area's elite chance), not what a kill drops.`,
     `Reagent drops are a separate roll per kill, ${ELITE_REAGENT_MULT}x as likely from an elite. Rune and legendary rolls are separate again.`,
-    `Bosses roll the area table three times and always leave their ichor; a legendary piece is a ${+(LEGENDARY_DROP.bossChance * 100).toFixed(2)}% roll per boss kill (past the Hollow Graves).`,
+    `Bosses roll the area table three times and always leave their ichor; a legendary piece is a ${+(LEGENDARY_DROP.bossChance * 100).toFixed(2)}% roll per boss kill (${+(LEGENDARY_DROP.starterBossChance * 100).toFixed(2)}% for the Gravedigger King).`,
   ];
 })();
 
@@ -446,8 +446,9 @@ export function sourcesFor(itemId: string, disciplineId: string): DropSource[] {
   const out: DropSource[] = [];
   for (const b of BOSS_IDS) {
     const def = BOSSES[b];
-    if (!LEGENDARY_BOSS_AREAS.includes(def.area)) continue;
-    out.push({ kind: 'boss', placeId: b, place: def.name, event: 'Boss kill', chance: LEGENDARY_DROP.bossChance * share, qty: [1, 1], area: def.area, ilvlSource: 'boss', note: `${fmtChance(LEGENDARY_DROP.bossChance)} legendary roll` });
+    const bossChance = legendaryBossChance(def.area);
+    if (!bossChance) continue;
+    out.push({ kind: 'boss', placeId: b, place: def.name, event: 'Boss kill', chance: bossChance * share, qty: [1, 1], area: def.area, ilvlSource: 'boss', note: `${fmtChance(bossChance)} legendary roll` });
   }
   for (const areaId of AREA_ORDER) {
     if (!AREAS[areaId].scaling || !AREAS[areaId].loot.length) continue;
