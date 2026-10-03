@@ -2323,7 +2323,8 @@ export class WorldSim {
     const T = AFFIX_TUNING.bellTolled;
     const dmg = this.blow(e) * T.damageMult;
     for (const p of this.players.values()) {
-      if (p.alive && Math.hypot(p.x - x, p.z - z) <= T.r + PLAYER_RADIUS) {
+      // Centre inside the drawn bronze ring, like every other ground telegraph (it used to reach a body's width past it).
+      if (p.alive && Math.hypot(p.x - x, p.z - z) <= T.r) {
         this.emit({ t: 'hurt', player: p.id, dmg, from: 'toll', x, z });
       }
     }

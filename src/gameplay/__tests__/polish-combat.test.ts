@@ -98,3 +98,27 @@ describe('thrall behaviour', () => {
     expect(th.target).not.toBe(far.id);
   });
 });
+
+describe('Bell-Tolled ring', () => {
+  it('stings only what stands inside the drawn ring', () => {
+    for (const [offset, hurt] of [[2.9, true], [3.3, false]] as const) {
+      const sim = world(9);
+      const p = sim.players.get('p1')!;
+      const e = sim.spawnEnemy('robber', 'graves', p.x + 20, p.z, true, false, 'bellTolled');
+      e.damage = 10;
+      e.speed = 0;
+      e.attackCd = 99;
+      sim.setPlayer({ ...p, x: e.x - offset, z: e.z });
+      let stung = false;
+      let telegraphed = false;
+      for (let i = 0; i < 400 && !stung; i++) {
+        const ev = sim.step(0.05);
+        if (of(ev, 'telegraph').some((t) => t.kind === 'toll')) telegraphed = true;
+        stung = of(ev, 'hurt').some((h) => h.from === 'toll');
+        if (telegraphed && !stung && of(ev, 'affix').some((a) => a.affix === 'bellTolled')) break;
+      }
+      expect(telegraphed).toBe(true);
+      expect(stung).toBe(hurt);
+    }
+  });
+});
