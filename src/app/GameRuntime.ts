@@ -3,6 +3,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { ShadowCadence } from '../graphics/shadowCadence';
 import { ResolutionGovernor, budgetFps, shouldProcessFrame } from './framePacing';
 import { perfFrame } from '../net/perfBeacon';
 import { onSettingsChange, settings } from './settings';
@@ -17,6 +18,8 @@ export interface RuntimeView {
   bloom?: { strength: number; radius: number; threshold: number };
 }
 
+/** Gravecrawl-style render budget: 1.25x is crisp enough for the 3D layer (the HUD is DOM) and saves ~30% of the pixels vs 1.5x. */
+export const HIGH_DPR_CAP = 1.25;
 const DEFAULT_BLOOM = { strength: 0.85, radius: 0.55, threshold: 0.82 };
 
 /**
@@ -36,6 +39,7 @@ export class GameRuntime {
   private backgroundBusy = false;
   private bloomEnabled = true;
   private lastFrameAt = 0;
+  private shadows = new ShadowCadence();
 
   /** Smoothed frame time, exposed for the debug overlay / perf checks. */
   frameMs = 16.7;
@@ -50,6 +54,8 @@ export class GameRuntime {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Shadows refresh at ~30 Hz (ShadowCadence) instead of every frame: the loop sets needsUpdate on the frames that are due.
+    renderer.shadowMap.autoUpdate = false;
     // Error checks read the shader logs synchronously, stalling on every compile; dev builds keep them.
     renderer.debug.checkShaderErrors = import.meta.env.DEV;
     this.renderer = renderer;
@@ -85,10 +91,11 @@ export class GameRuntime {
       this.resolution.reset();
       this.resolution.hold();
     }
-    const ratio = (high ? Math.min(window.devicePixelRatio, 1.5) : 1) * this.resolution.scale;
+    const ratio = (high ? Math.min(window.devicePixelRatio, HIGH_DPR_CAP) : 1) * this.resolution.scale;
     this.renderer.setPixelRatio(ratio);
     this.composer.setPixelRatio(ratio);
     this.renderer.shadowMap.enabled = high;
+    this.shadows.force();
     this.bloomEnabled = high;
     this.resize();
   }
@@ -104,6 +111,11 @@ export class GameRuntime {
     }
   };
 
+  /** The next frame re-renders the shadow map (teleport, area change: the old one is for somewhere else). */
+  refreshShadows() {
+    this.shadows.force();
+  }
+
   get shadowsEnabled() {
     return this.renderer.shadowMap.enabled;
   }
@@ -112,6 +124,7 @@ export class GameRuntime {
     this.view = view;
     // A scene swap is a load: slow frames around it are not a GPU problem.
     this.resolution.hold();
+    this.shadows.force();
     if (view) {
       this.renderPass.scene = view.scene;
       this.renderPass.camera = view.camera;
@@ -143,6 +156,7 @@ export class GameRuntime {
       // update() may have swapped the view (scene transition) — render the current one.
       const current = this.view;
       if (!current) return;
+      this.renderer.shadowMap.needsUpdate = this.shadows.due(t);
       this.renderer.info.reset(); // autoReset is off: calls/triangles below cover every pass of this frame (perf beacon)
       if (this.bloomEnabled) this.composer.render(dt);
       else this.renderer.render(current.scene, current.camera);
@@ -176,6 +190,7 @@ export class GameRuntime {
     }
     const v = this.view;
     if (v && render) {
+      this.renderer.shadowMap.needsUpdate = true; // QA stepping: every rendered frame is a shadow frame
       if (this.bloomEnabled) this.composer.render(step);
       else this.renderer.render(v.scene, v.camera);
     }
@@ -196,6 +211,7 @@ export class GameRuntime {
   warmRender(small: boolean): boolean {
     const v = this.view;
     if (!v) return false;
+    this.renderer.shadowMap.needsUpdate = true;
     if (!small) {
       if (this.bloomEnabled) this.composer.render(0);
       else this.renderer.render(v.scene, v.camera);
