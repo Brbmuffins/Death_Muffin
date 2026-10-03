@@ -317,6 +317,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private realtime = new RealtimeClient();
   private selfId = 'self';
   private remotes = new Map<string, Remote>();
+  /** When the 'Reliquary full' call-out last showed (loot is retried every frame under the player's feet). */
+  private bagFullAt = -1e9;
   private lastSnapshot = 0;
   /** World wave tier last frame (milestone banners) and the Nightfall light blend 0..1. */
   private seenWaveTier = -1;
@@ -4538,7 +4540,11 @@ export class WorldScene implements GameScene, RuntimeView {
     // Loot pickup.
     const got = this.loot.update(dt, p.x, p.z, (d) => {
       if (!this.inventory.add(d)) {
-        this.floating.spawn(p.x, 2.4, p.z, 'Reliquary full', 'info');
+        // Asked every frame while standing on the drop: say it once in a while, not 60 times a second.
+        if (now - this.bagFullAt > 2500) {
+          this.bagFullAt = now;
+          this.floating.spawn(p.x, 2.4, p.z, 'Reliquary full', 'info');
+        }
         return false;
       }
       return true;
