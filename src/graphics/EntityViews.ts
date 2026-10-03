@@ -706,6 +706,8 @@ export class EntityViews {
         this.fading.push(v);
         this.effects.emit({ x: ev.x, y: 0.8, z: ev.z, count: ev.reason === 'sacrificed' ? 30 : 14, color: 0xd8cfbd, spread: 0.5, speed: 2, up: 1.2, life: 0.8, size: 0.25, gravity: 3 });
         // A thrall that falls comes apart: bone chips and a pale soul-light that lets go (quiet; thralls die constantly).
+        // Killed ones also get a soft crack, so you hear the legion thin out (the mixer thins a rush of them to a few).
+        if (ev.reason === 'killed' && Math.hypot(ev.x - this.focusX, ev.z - this.focusZ) < 24) audio.play('boneHit', ev.x, ev.z, 0.6);
         if (ev.reason !== 'sacrificed') {
           nf.boneSplinters(this.effects, ev.x, 0.7, ev.z, { n: 4, origin: 'thrall' });
           nf.soulMotes(this.effects, ev.x, ev.z, 0xd8cfbd, { r: 0.3, n: 3, y: 0.6, up: 1.2, origin: 'thrall' });

@@ -713,3 +713,7 @@ entry band). Tuning that got here: leech 4 dmg / 22 hp / 4.2 speed / 5 XP, hag 1
 ## Owner decision (2026-10-02): gear should make you strong
 
 Base item stats stay as they are. The gear pass measured that an ordinary kit cuts deaths at push/max Wave Speed by ~89% and that an ascended set makes max nearly safe; that is intended. Do not scale item stats down, and do not raise boss HP or late Wave Speed pressure to cancel gear (the "+35% boss HP if base stats stay" note in Polish round 2 is declined). Future tuning should target the no-gear and progress-kit bands.
+
+## Combat polish pass (3 Oct 2026, `dm/polish-combat`)
+
+Sim changes (thrall targeting/pathing, hall-bound corpse rites) measured with 3 seeds, Graves and Nave, intended and push, four necromancers: kills/min 112.3 -> 113.5, damage taken 66.8% -> 65.3%/min, deaths 0.53 -> 0.47. Inside seed noise; nothing tuned. See docs/polish/combat.md.

@@ -1,4 +1,4 @@
-import { onSettingsChange, settings, updateSettings } from '../app/settings';
+import { gateAuto, onSettingsChange, settings, updateSettings } from '../app/settings';
 import { browserStorage, type StorageLike } from '../gameplay/codexJournal';
 import { ABILITIES } from '../content/abilities';
 import { touchNow } from './touchText';
@@ -156,7 +156,7 @@ interface Tip {
  */
 export function renderText(text: string, touch: boolean, keyFor?: (ability: string) => string | null): string {
   let menu = 0;
-  return text
+  return gateAuto(text)
     .replace(/\[\[([\s\S]*?)\|\|([\s\S]*?)\]\]/g, (_m, d: string, t: string) => (touch ? t : d))
     .replace(/\{p:(\w)\}/g, (_m, k: string) => (touch ? (menu++ ? '' : ' (in the Menu)') : ` (<kbd>${k}</kbd>)`))
     .replace(/\{key:(\w+)\}/g, (_m, ability: string) => {
@@ -289,7 +289,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   signature: {
     title: 'Your signature rite awakens',
-    body: 'Level 10: [[press <kbd>R</kbd> for your class\'s own rite. Hover the new slot||tap the new slot on your hotbar for your class\'s own rite. Press and hold it]] to read what it does. On Easy, Auto may also use it when the fight calls for it.',
+    body: 'Level 10: [[press <kbd>R</kbd> for your class\'s own rite. Hover the new slot||tap the new slot on your hotbar for your class\'s own rite. Press and hold it]] to read what it does.{auto} On Easy, Auto may also use it when the fight calls for it.{/auto}',
   },
   ascend: {
     title: 'The Altar of Ascension stirs',
@@ -313,7 +313,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   grimoire: {
     title: 'The Grimoire',
-    body: 'New rites have come to you. [[Click||Tap]] <b>swap</b> below a hotbar spell, use <b>Swap spells</b> at the end of the bar[[, or press <kbd>L</kbd> to open the Grimoire||, or open the Grimoire from the Menu]]. Choose any unlocked class rite for [[slots <kbd>1</kbd>–<kbd>5</kbd>; slot 5 also uses right-click.||slots 1–5.]] Necromancers learn extra alternatives, while other classes can rearrange their five rites. Your signature stays on [[<kbd>R</kbd>||the sixth slot]]. Each rite keeps its cooldown, and Easy auto uses equipped rites.',
+    body: 'New rites have come to you. [[Click||Tap]] <b>swap</b> below a hotbar spell[[ (or press <kbd>L</kbd>)||, or open the Grimoire from the Menu,]] to choose which unlocked rites sit on [[slots <kbd>1</kbd>–<kbd>5</kbd>; slot 5 also uses right-click||slots 1–5]]. Your signature stays on [[<kbd>R</kbd>||the sixth slot]]. Each rite keeps its cooldown.',
   },
   rite_skull: {
     title: 'Wailing Skull',

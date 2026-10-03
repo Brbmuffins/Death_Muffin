@@ -3,7 +3,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import type { GameScene } from './SceneManager';
 import { getRuntime, type RuntimeView } from '../app/GameRuntime';
 import { Scope } from '../app/Scope';
-import { ABILITIES, PRIMARIES, BULWARK, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
+import { ABILITIES, FRACTURE, PRIMARIES, BULWARK, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
 import { CAST_FLOW } from '../content/combatFlow';
 import { kitFor, type Kit } from '../content/kits';
 import { assignableRites, assignRite, LOADOUT_SLOTS, loadRites, loadSeen, saveRites, saveSeen, unseenRites } from '../gameplay/loadout';
@@ -41,6 +41,7 @@ import { changeDiscipline, getContracts, getCosmetics, getGarden, getLabor, type
 import { canUseAutoCombat, onSettingsChange, setActiveCharacter, settings, updateSettings } from '../app/settings';
 import { selectAutoCombatAction, selectAutoCombatMovement, type AutoMoveMemory } from '../gameplay/autoCombat';
 import { STATUS_FX } from '../content/statuses';
+import { damageTakenScale } from '../gameplay/hitNumber';
 import { AbilitySystem, veilTarget, type CastResult, type CastTarget } from '../gameplay/AbilitySystem';
 import { deriveStats, xpToNext } from '../gameplay/characterStats';
 import { BAG_SIZE, Inventory, KILL_LOOT, rollBoss, rollBossRune, rollFirstKillItem, rollKill, rollSurgeItem } from '../gameplay/loot';
@@ -51,10 +52,10 @@ import { Progression } from '../gameplay/progression';
 import { CHAIN, KillChain } from '../gameplay/killChain';
 import { newlyReached } from '../gameplay/milestones';
 import { omenFor, omenLeft, type Omen } from '../content/omens';
-import { BOSS_ARENA } from '../gameplay/sim/BossBrain';
+import { BOSS_ARENA, BOSS_RADIUS, BOSS_RING_PAD } from '../gameplay/sim/BossBrain';
 import { makeSnapshot, WorldMirror } from '../gameplay/sim/snapshot';
 import type { BossState, Corpse, Enemy, Intent, SimEvent, Thrall, Zone } from '../gameplay/sim/types';
-import { WorldSim, thrallWeight } from '../gameplay/sim/WorldSim';
+import { CONE_REACH_PAD, WorldSim, thrallWeight } from '../gameplay/sim/WorldSim';
 import { computeStats, STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
 import { BossView, NecromancerAvatar } from '../graphics/Avatars';
 import { prewarmCreature } from '../graphics/prewarmCreature';
@@ -555,7 +556,11 @@ export class WorldScene implements GameScene, RuntimeView {
         (window as unknown as { __dmWarmStage?: unknown }).__dmWarmStage = { ...res, keys: [...stageFresh] };
       })
       .catch((err) => console.warn('[world] area prime failed', err))
-      .then(() => veil.finish());
+      .then(() => {
+        veil.finish();
+        // Seals the saved kill counts already earn open for real on load (dev accounts never saved them before).
+        this.checkUnlocks();
+      });
     this.dressWaystones();
     for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d), true);
     this.views = new EntityViews(this.scene, this.effects, (owner) => {
@@ -650,7 +655,7 @@ export class WorldScene implements GameScene, RuntimeView {
       corpses: () => this.corpsesMap(),
       thrallCount: () => [...this.thrallsMap().values()].filter((t) => t.owner === this.selfId).length,
       send: (i) => this.sendIntent(i),
-      number: (x, z, amount, kind) => this.floating.spawn(x, 1.6, z, Math.round(amount).toString(), kind === 'crit' ? 'crit' : 'hit'),
+      number: (x, z, amount, kind) => this.floating.spawn(x, 1.6, z, Math.round(amount * this.hitNumberScale(x, z)).toString(), kind === 'crit' ? 'crit' : 'hit'),
       shake: (a) => this.rig.shake(a),
       note: (text, kind) => this.floating.spawn(this.player.x, 2.4, this.player.z, text, kind),
       now: () => this.now,
@@ -2177,6 +2182,36 @@ export class WorldScene implements GameScene, RuntimeView {
     return !this.realtime.connected || this.realtime.isHost;
   }
 
+  /**
+   * What the body at (x, z) really takes of a blow: Fractured bodies take more, Sanctified and Shrouded ones less (WorldSim.damageEnemy).
+   * The rites name their damage before the host applies those, so the number floating up scales by them: it is what the health bar loses.
+   */
+  private hitNumberScale(x: number, z: number): number {
+    const b = this.bossState();
+    if (b.active && Math.hypot(b.x - x, b.z - z) < BOSS_RADIUS + 0.3) return 1 + FRACTURE.perStack * (b.fracture ?? 0);
+    let best: Enemy | null = null;
+    let bestD = 0.75;
+    for (const e of this.enemiesMap().values()) {
+      if (e.state === 'dead') continue;
+      const d = Math.hypot(e.x - x, e.z - z);
+      if (d < bestD) {
+        bestD = d;
+        best = e;
+      }
+    }
+    if (!best) return 1;
+    return damageTakenScale(best, best.affix === 'shrouded' && this.inFriendlyRot(best));
+  }
+
+  /** Inside a player-owned Miasma circle or Corpse Explosion rot pool (what lifts a Shrouded elite's guard)? */
+  private inFriendlyRot(e: { x: number; z: number; radius: number }): boolean {
+    for (const zone of (this.sim?.zones ?? this.mirror?.zones ?? new Map<number, Zone>()).values()) {
+      if (zone.hostile || (zone.kind !== 'miasma' && zone.kind !== 'rot')) continue;
+      if (Math.hypot(e.x - zone.x, e.z - zone.z) <= zone.r + e.radius) return true;
+    }
+    return false;
+  }
+
   private enemiesMap(): Map<number, Enemy> {
     return this.mirror?.enemies ?? this.sim!.enemies;
   }
@@ -3222,8 +3257,10 @@ export class WorldScene implements GameScene, RuntimeView {
       const rot = Math.atan2(ev.tx - ev.x, ev.tz - ev.z);
       // Cone texture apex sits at the plane's bottom edge; shift so it starts at the caster.
       const E = SPELL_FX.enemy;
-      this.effects.decal({ tex: fx.cone(), color: E.toll, x: ev.x, z: ev.z, r: ENEMIES.penitent.attackRange / 2, sz: 1, anchor: 1, rot: rot + Math.PI, duration: ms, opacity: 0.5, fadeIn: ms * 0.6, fadeOut: 0.05 });
-      this.effects.decal({ tex: fx.coneEdge(), color: E.toll, x: ev.x, z: ev.z, r: ENEMIES.penitent.attackRange / 2, sz: 1, anchor: 1, rot: rot + Math.PI, duration: ms, opacity: 0.8, fadeIn: ms * 0.15, fadeOut: 0.05 });
+      // The sim's cone reaches attackRange + 0.4 (a body's width): draw all of it, so nobody is hit standing outside the red.
+      const reach = (ENEMIES.penitent.attackRange + CONE_REACH_PAD) / 2;
+      this.effects.decal({ tex: fx.cone(), color: E.toll, x: ev.x, z: ev.z, r: reach, sz: 1, anchor: 1, rot: rot + Math.PI, duration: ms, opacity: 0.5, fadeIn: ms * 0.6, fadeOut: 0.05 });
+      this.effects.decal({ tex: fx.coneEdge(), color: E.toll, x: ev.x, z: ev.z, r: reach, sz: 1, anchor: 1, rot: rot + Math.PI, duration: ms, opacity: 0.8, fadeIn: ms * 0.15, fadeOut: 0.05 });
       for (let k = 0; k < 3; k++) {
         this.effects.decal({ tex: fx.ring(), color: E.toll, x: ev.x, z: ev.z, r: ENEMIES.penitent.attackRange * (0.45 + k * 0.28), duration: 0.45, opacity: 0.8 - k * 0.2, growFrom: 0.2, delay: ms + k * 0.08 });
       }
@@ -3345,9 +3382,11 @@ export class WorldScene implements GameScene, RuntimeView {
       const dz = ev.tz - ev.z;
       const dir = Math.atan2(dx, dz);
       const len = ev.r ?? SEXTON_HOOK.range;
-      const hx = ev.x + Math.sin(dir) * len * 0.5;
-      const hz = ev.z + Math.cos(dir) * len * 0.5;
-      this.effects.decal({ tex: fx.disc(), color: 0xa8743a, x: hx, z: hz, r: len / 2, sz: 1, sx: (SEXTON_HOOK.halfWidth * 2) / len, rot: dir + Math.PI, duration: ms, opacity: 0.55, fadeIn: ms * 0.7, fadeOut: 0.05 });
+      // The chain catches 0.6m past its reach and 0.3m either side of the line (WorldSim strike 'hook'): draw all of it.
+      const lenDrawn = len + 0.6;
+      const hx = ev.x + Math.sin(dir) * lenDrawn * 0.5;
+      const hz = ev.z + Math.cos(dir) * lenDrawn * 0.5;
+      this.effects.decal({ tex: fx.disc(), color: 0xa8743a, x: hx, z: hz, r: lenDrawn / 2, sz: 1, sx: ((SEXTON_HOOK.halfWidth + 0.3) * 2) / lenDrawn, rot: dir + Math.PI, duration: ms, opacity: 0.55, fadeIn: ms * 0.7, fadeOut: 0.05 });
       this.effects.decal({ tex: fx.ring(), color: 0xe0a458, x: ev.x + Math.sin(dir) * len, z: ev.z + Math.cos(dir) * len, r: 0.9, duration: ms, opacity: 0.8, fadeOut: 0.05 });
       audio.play('boneHit', ev.x, ev.z);
     } else if (ev.kind === 'curse') {
@@ -3621,6 +3660,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (!this.worldView) return;
     this.nav.setUnlocked(this.openAreas());
     for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d));
+    this.checkUnlocks();
     if (this.sim && this.isAuthority()) {
       this.sim.ascension = this.progression.local.ascension;
       this.sim.waveTier = this.progression.local.waveTierActive;
@@ -3756,7 +3796,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private checkUnlocks() {
     for (const id of AREA_ORDER) {
       const u = AREAS[id].unlock;
-      if (!u || this.progression.isUnlocked(id)) continue;
+      // The saved truth, not the dev overlay: dev access must not stop an earned seal from being banked.
+      if (!u || this.progression.reallyUnlocked(id)) continue;
       if (this.progression.kills(u.area) >= this.progression.unlockKills(u.kills) && this.progression.unlock(id)) {
         this.nav.setUnlocked(this.openAreas());
         for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d));
@@ -3782,7 +3823,11 @@ export class WorldScene implements GameScene, RuntimeView {
     // Colossus Mantle: extra reduction while 3+ thralls stand (stacks multiplicatively; Player.takeDamage caps the whole at 75%).
     const guard = colossusActive(this.discipline.mods, myThralls) ? this.discipline.mods.colossusGuard : 0;
     // The blow's origin lets Bulwark decide whether it covered this one.
+    const barrierBefore = this.player.barrier;
     const taken = this.player.takeDamage(raw, ward, now, { x, z }, from, guard);
+    // A barrier that swallowed the blow used to be silent (no number at all): say what it took.
+    const absorbed = barrierBefore - this.player.barrier;
+    if (absorbed >= 1) this.floating.spawn(this.player.x, 2.3, this.player.z, `Warded -${Math.round(absorbed)}`, 'ward');
     // Legendary: Bone Ward reflects part of what it prevented; a Litany barrier broken by this blow shatters.
     if (this.discipline.mods.wardReflect > 0) this.abilities.reflectWard(raw, Math.min(LEGEND.wardCap, this.discipline.mods.wardPerThrall * myThralls), x, z);
     if (this.player.barrierBroke > 0) {
@@ -3989,7 +4034,8 @@ export class WorldScene implements GameScene, RuntimeView {
       return (ch(color >> 16) << 16) | (ch((color >> 8) & 255) << 8) | ch(color & 255);
     };
     const cone = (r: number, dir: number, halfDeg: number, color: number, dur: number, delay = 0) => {
-      const o = { x: ev.x, z: ev.z, r: r / 2, sz: 1, sx: Math.tan((halfDeg * Math.PI) / 180) / Math.tan(Math.PI / 6), anchor: 1, rot: dir + Math.PI, duration: dur, fadeOut: 0.05, delay, color: hot(color) };
+      // The melee cones strike 0.3m past their nominal reach (BossBrain), so the picture draws that too.
+      const o = { x: ev.x, z: ev.z, r: (r + 0.3) / 2, sz: 1, sx: Math.tan((halfDeg * Math.PI) / 180) / Math.tan(Math.PI / 6), anchor: 1, rot: dir + Math.PI, duration: dur, fadeOut: 0.05, delay, color: hot(color) };
       this.effects.decal({ ...o, tex: fx.cone(), opacity: 0.55, fadeIn: dur * 0.6 });
       return this.effects.decal({ ...o, tex: fx.coneEdge(), opacity: 0.95, fadeIn: dur * 0.15 });
     };
@@ -4055,7 +4101,7 @@ export class WorldScene implements GameScene, RuntimeView {
         }
         for (const [x, z] of ev.targets ?? []) {
           if (ms > 0) {
-            this.effects.decal({ tex: fx.disc(), color: tide, x, z, r: ev.r ?? 1.4, duration: ms, opacity: 0.5, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.3 });
+            this.effects.decal({ tex: fx.disc(), color: tide, x, z, r: (ev.r ?? 1.4) + 0.2, duration: ms, opacity: 0.5, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.3 });
             this.effects.decal({ tex: fxImage('drownedHand'), color: 0x8fb4c8, x, z, r: (ev.r ?? 1.4) * 0.9, duration: ms, opacity: 0.8, growFrom: 0.2, fadeOut: 0.05 });
           } else this.effects.emit({ x, y: 0.3, z, count: 16, color: 0x8fb4c8, spread: 0.6, speed: 1.2, up: 2.4, life: 0.7, size: 0.22 });
         }
@@ -4094,7 +4140,7 @@ export class WorldScene implements GameScene, RuntimeView {
           this.hud.toast('Rot Rain: leave the circles! The pools they leave behind heal her.', 'err');
         }
         for (const [x, z] of ev.targets ?? []) {
-          if (ms > 0) this.effects.decal({ tex: fx.disc(), color: SPELL_FX.enemy.toxic, x, z, r: ev.r ?? 2, duration: ms, opacity: 0.55, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.2 });
+          if (ms > 0) this.effects.decal({ tex: fx.disc(), color: SPELL_FX.enemy.toxic, x, z, r: (ev.r ?? 2) + BOSS_RING_PAD, duration: ms, opacity: 0.55, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.2 });
           else this.effects.emitSmoke({ x, y: 0.3, z, count: 3, color: 0x4a5a22, spread: 1, speed: 1.2, up: 1, life: 1, size: 1.1 });
         }
         if (ms > 0) this.hud.toast('Rot Rain: step out of the green, then keep her out of it.', 'err');
@@ -4136,8 +4182,8 @@ export class WorldScene implements GameScene, RuntimeView {
         const E = SPELL_FX.enemy;
         for (const [x, z] of ev.targets ?? []) {
           if (ms > 0) {
-            this.effects.decal({ tex: fx.disc(), color: E.ember, x, z, r: ev.r ?? 1.8, duration: ms, opacity: 0.55, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.2 });
-            this.effects.decal({ tex: fx.ring(), color: E.emberCore, x, z, r: ev.r ?? 1.8, duration: ms, opacity: 0.9, fadeOut: 0.05 });
+            this.effects.decal({ tex: fx.disc(), color: E.ember, x, z, r: (ev.r ?? 1.8) + BOSS_RING_PAD, duration: ms, opacity: 0.55, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.2 });
+            this.effects.decal({ tex: fx.ring(), color: E.emberCore, x, z, r: (ev.r ?? 1.8) + BOSS_RING_PAD, duration: ms, opacity: 0.9, fadeOut: 0.05 });
             this.effects.projectile({ from: { x: ev.x, y: 3.4, z: ev.z }, to: () => ({ x, y: 0.3, z }), kind: 'orb', color: E.ember, speed: Math.max(5, Math.hypot(x - ev.x, z - ev.z) / Math.max(0.3, ms)), arc: 45 });
           } else {
             this.bb('vengeful_burst', x, z, { scale: (ev.r ?? 1.8) / 1.4, colors: [E.ember, E.emberCore, E.emberDeep] });
@@ -4191,8 +4237,8 @@ export class WorldScene implements GameScene, RuntimeView {
         // Mire Mother: ripple rings converge on a hummock for the whole windup; when they meet, she bursts out under it.
         const T = 0x5fc4b4;
         if (ms > 0) {
-          this.effects.decal({ tex: fx.disc(), color: T, x: ev.x, z: ev.z, r: ev.r ?? 3.7, duration: ms, opacity: 0.4, fadeIn: ms * 0.9, fadeOut: 0.05, growFrom: 0.3 });
-          this.effects.decal({ tex: fx.ring(), color: 0xc8fff4, x: ev.x, z: ev.z, r: ev.r ?? 3.7, duration: ms, opacity: 0.95, pulse: 4, fadeOut: 0.05 });
+          this.effects.decal({ tex: fx.disc(), color: T, x: ev.x, z: ev.z, r: (ev.r ?? 3.7) + 0.3, duration: ms, opacity: 0.4, fadeIn: ms * 0.9, fadeOut: 0.05, growFrom: 0.3 });
+          this.effects.decal({ tex: fx.ring(), color: 0xc8fff4, x: ev.x, z: ev.z, r: (ev.r ?? 3.7) + 0.3, duration: ms, opacity: 0.95, pulse: 4, fadeOut: 0.05 });
           for (let k = 0; k < 3; k++) this.effects.decal({ tex: fx.ring(), color: T, x: ev.x, z: ev.z, r: (ev.r ?? 3.7) * 1.8, duration: Math.max(0.3, ms / 3), opacity: 0.8, growFrom: 1, delay: (ms / 3) * k });
           for (let k = 0; k < 6; k++) this.worldView.addRipple(ev.x, ev.z, 1.4);
           this.hud.toast('The Mire Mother sinks: leave the ringed hummock before she surfaces!', 'err');
@@ -4212,7 +4258,7 @@ export class WorldScene implements GameScene, RuntimeView {
         const T = 0x7fb4a8;
         for (const [x, z] of ev.targets ?? []) {
           if (ms > 0) {
-            this.effects.decal({ tex: fx.disc(), color: T, x, z, r: ev.r ?? 1.5, duration: ms, opacity: 0.5, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.3 });
+            this.effects.decal({ tex: fx.disc(), color: T, x, z, r: (ev.r ?? 1.5) + 0.2, duration: ms, opacity: 0.5, fadeIn: ms * 0.7, fadeOut: 0.05, growFrom: 0.3 });
             this.effects.decal({ tex: fxImage('drownedHand'), color: 0x8fb4c8, x, z, r: (ev.r ?? 1.5) * 0.9, duration: ms, opacity: 0.85, growFrom: 0.2, fadeOut: 0.05 });
           } else {
             this.effects.emit({ x, y: 0.3, z, count: 14, color: T, spread: 0.6, speed: 1.2, up: 2.4, life: 0.7, size: 0.22 });
@@ -4343,7 +4389,7 @@ export class WorldScene implements GameScene, RuntimeView {
         break;
       case 'toll':
         if (ms === 0) audio.play('bossToll', ev.x, ev.z);
-        if (ms > 0) this.effects.decal({ tex: fx.disc(), color: SPELL_FX.boss.bronze, x: ev.x, z: ev.z, r: ev.r ?? 6.5, duration: ms, opacity: 0.75, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.15 });
+        if (ms > 0) this.effects.decal({ tex: fx.disc(), color: SPELL_FX.boss.bronze, x: ev.x, z: ev.z, r: (ev.r ?? 6.5) + BOSS_RING_PAD, duration: ms, opacity: 0.75, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.15 });
         else {
           for (let k = 0; k < 3; k++) this.effects.decal({ tex: fx.ring(), color: SPELL_FX.boss.bronze, x: ev.x, z: ev.z, r: (ev.r ?? 6.5) * (0.8 + k * 0.25), duration: 0.6, opacity: 1 - k * 0.25, growFrom: 0.1, delay: k * 0.07 });
           this.effects.emit({ x: ev.x, y: 1, z: ev.z, count: 70, color: SPELL_FX.boss.bronze, spread: 2, speed: 7, up: 1, life: 0.7, size: 0.35 });
@@ -4356,7 +4402,7 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'rain': {
         const circles = ev.targets ?? [[ev.x, ev.z]];
         for (const [x, z] of circles) {
-          if (ms > 0) this.effects.decal({ tex: fx.disc(), color: SPELL_FX.boss.bronze, x, z, r: ev.r ?? 2.3, duration: ms, opacity: 0.8, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.3 });
+          if (ms > 0) this.effects.decal({ tex: fx.disc(), color: SPELL_FX.boss.bronze, x, z, r: (ev.r ?? 2.3) + BOSS_RING_PAD, duration: ms, opacity: 0.8, fadeIn: ms * 0.8, fadeOut: 0.05, growFrom: 0.3 });
           else {
             this.effects.emit({ x, y: 0.5, z, count: 24, color: SPELL_FX.boss.shard, spread: 0.6, speed: 3, up: 2, life: 0.6, size: 0.25, gravity: 6 });
             this.effects.flash({ x, y: 0.6, z, color: SPELL_FX.boss.bronze, size: 2.2, duration: 0.25 });
@@ -4873,7 +4919,7 @@ export class WorldScene implements GameScene, RuntimeView {
     // Every pending seal off this hall (the Graves hold two: the Warren and the Ossuary), nearest first.
     // The seal the Next line is already counting is not repeated here.
     const inNext = this.nextNow?.kind === 'seal' ? this.nextNow.id.slice('seal:'.length) : null;
-    const pending = AREA_ORDER.filter((id) => AREAS[id].unlock?.area === here && !this.progression.isUnlocked(id) && id !== inNext)
+    const pending = AREA_ORDER.filter((id) => AREAS[id].unlock?.area === here && !this.progression.reallyUnlocked(id) && id !== inNext)
       .map((id) => ({ id, need: this.progression.unlockKills(AREAS[id].unlock!.kills) }))
       .sort((a, b) => a.need - b.need);
     if (pending.length) {

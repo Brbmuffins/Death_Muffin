@@ -224,7 +224,7 @@ Necromancers also fill a **Soul Harvest** meter through kills by themselves or t
 - Keep using your basic attack between costly rites. For necromancers, Bone Needle restores the essence you spend.
 - Put Fracture on a tough target before a large burst. Pull a pack into Miasma or another area effect, then use corpses when the enemies are close.
 - Read an elite's tag in the target frame. Soul shards come from elites and pay for boss summons.
-- Step out of marked ground before it resolves. Use **Q** for a flask, **T** to recall, or reduce the Wave Speed dial when fights get too dense.
+- Step out of marked ground before it resolves. A warning ring, cone or line shows exactly where the blow will land (it fills in the time the blow takes, elites included): if your feet are outside the red when it fills, it misses you. Use **Q** for a flask, **T** to recall, or reduce the Wave Speed dial when fights get too dense.
 - Death returns you to the Chapterhouse without taking your level, gold, or gear.
 
 ## Relic runes

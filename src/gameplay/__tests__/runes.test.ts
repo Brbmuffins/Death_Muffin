@@ -584,6 +584,7 @@ describe('Hollow Choir and Requiem (host)', () => {
 
 function client(runes: Partial<Record<RuneRite, RuneId>> = {}, overrides: Partial<AbilityContext> = {}) {
   const p = new Player({ level: 12, maxHp: 100, spellPower: 20, maxEssence: 150, essenceRegen: 5, moveSpeed: 5.4, thrallHp: 45, thrallDamage: 8, damageBonusPct: 0 }, new Nav());
+  p.area = 'graves'; // the corpses these tests lay are in the Hollow Graves: the rites only reach the hall you stand in
   p.essence = 100;
   p.runes = runes;
   const effects = new Effects(new THREE.Scene());

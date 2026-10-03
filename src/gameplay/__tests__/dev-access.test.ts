@@ -3,6 +3,7 @@ import { DEV_ACCOUNTS, devAccess, devPreference, isDevAccount, riteLevel, setDev
 import { sanitizeLoadout } from '../loadout';
 import { GRIMOIRE, unlockLevel } from '../../content/abilities';
 import { Progression } from '../progression';
+import { AREAS, AREA_ORDER } from '../../content/areas';
 
 const b64url = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const jwt = (payload: object) => `${b64url({ alg: 'HS256' })}.${b64url(payload)}.sig`;
@@ -53,19 +54,63 @@ describe('dev access', () => {
     for (const id of normal) expect(unlockLevel(id)).toBeLessThanOrEqual(1);
   });
 
-  it('opens every area as an overlay without touching the save or banking kills there', () => {
+  it('opens every area as an overlay without touching the saved seals', () => {
     (globalThis as unknown as { window: unknown }).window ??= { setTimeout: () => 0, clearTimeout: () => undefined };
     const p = new Progression({ id: 99, class_index: 1, class_name: '', level: 1, experience: 0, gold: 0, stat_str: 5, stat_agi: 5, stat_int: 5, stat_vit: 5 });
     expect(p.isUnlocked('sanctum')).toBe(false);
     devAccess.active = true;
     expect(p.isUnlocked('sanctum')).toBe(true);
     expect(p.local.unlocked).not.toContain('sanctum');
-    p.recordKill('sanctum');
-    expect(p.kills('sanctum')).toBe(0);
     p.recordKill('graves');
     expect(p.kills('graves')).toBe(1);
     devAccess.active = false;
     expect(p.isUnlocked('sanctum')).toBe(false);
+    p.dispose();
+  });
+
+  const mk = () => {
+    (globalThis as unknown as { window: unknown }).window ??= { setTimeout: () => 0, clearTimeout: () => undefined };
+    return new Progression({ id: 98, class_index: 1, class_name: '', level: 1, experience: 0, gold: 0, stat_str: 5, stat_agi: 5, stat_int: 5, stat_vit: 5 });
+  };
+
+  it('banks dev-access kills in sealed halls (tally, totals, pending save); players without it still cannot', () => {
+    const p = mk();
+    devAccess.active = true;
+    p.recordKill('fen');
+    p.recordKill('fen');
+    expect(p.kills('fen')).toBe(2);
+    expect(p.local.totalKills).toBe(2);
+    expect((p as unknown as { pending: { areaKills: Record<string, number> } }).pending.areaKills.fen).toBe(2);
+    expect(p.local.unlocked).not.toContain('fen');
+    devAccess.active = false;
+    p.recordKill('fen');
+    expect(p.kills('fen')).toBe(2);
+    p.dispose();
+  });
+
+  it('an earned unlock is really saved even with dev access on', () => {
+    const p = mk();
+    devAccess.active = true;
+    expect(p.reallyUnlocked('sanctum')).toBe(false);
+    expect(p.unlock('sanctum')).toBe(true);
+    expect(p.local.unlocked).toContain('sanctum');
+    expect(p.unlock('sanctum')).toBe(false);
+    devAccess.active = false;
+    expect(p.isUnlocked('sanctum')).toBe(true);
+    p.dispose();
+  });
+
+  it('kills already banked meet an unlock threshold: the seal opens for real on the next check, with or without dev access', () => {
+    const p = mk();
+    devAccess.active = true;
+    const gated = AREA_ORDER.filter((id) => AREAS[id].unlock);
+    for (const id of gated) {
+      const u = AREAS[id].unlock!;
+      p.local.areaKills[u.area] = p.unlockKills(u.kills);
+      // The same predicate WorldScene.checkUnlocks runs on load.
+      if (!p.reallyUnlocked(id) && p.kills(u.area) >= p.unlockKills(u.kills)) expect(p.unlock(id)).toBe(true);
+      expect(p.local.unlocked).toContain(id);
+    }
     p.dispose();
   });
 });

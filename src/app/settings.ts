@@ -104,6 +104,14 @@ export function canUseAutoCombat(): boolean {
   return autoCombatAllowed;
 }
 
+/**
+ * Auto combat is owner-only for now. Player-facing text that explains it is wrapped in `{auto}...{/auto}` and dropped for everyone
+ * else, so no one is told about a key (G) or an Easy-mode feature they do not have.
+ */
+export function gateAuto(text: string): string {
+  return text.replace(/\{auto\}([\s\S]*?)\{\/auto\}/g, (_m, inner: string) => (autoCombatAllowed ? inner : ''));
+}
+
 /** Called after the authenticated character response, before the world mounts. */
 export function setActiveCharacter(id: number | null, allowed = false) {
   activeCharacter = id;

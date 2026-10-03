@@ -422,8 +422,9 @@ export class Progression {
   // --- Kills / unlocks / shards (local) ---
 
   recordKill(area: AreaId, waveTier = this.local.waveTierActive) {
-    // Dev access can walk into sealed halls; those kills are never banked.
-    if (!this.reallyUnlocked(area)) return;
+    // Dev access walks into sealed halls and its kills are banked like anyone's (the server accepts staff kills past every seal).
+    // Without dev access a sealed hall cannot be entered, so there is nothing to bank.
+    if (!devAccess.active && !this.reallyUnlocked(area)) return;
     this.local.areaKills[area] = (this.local.areaKills[area] ?? 0) + 1;
     this.local.totalKills++;
     this.local.run.kills++;
@@ -451,7 +452,8 @@ export class Progression {
   }
 
   unlock(area: AreaId) {
-    if (this.isUnlocked(area)) return false;
+    // Check the saved truth: with dev access on, isUnlocked is always true and an earned seal would never be saved.
+    if (this.reallyUnlocked(area)) return false;
     this.local.unlocked.push(area);
     this.saveLocal();
     return true;
