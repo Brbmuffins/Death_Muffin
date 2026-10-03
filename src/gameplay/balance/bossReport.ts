@@ -45,7 +45,7 @@ const bandNames = list(process.env.BALANCE_BANDS) ?? ['intended', 'geared'];
 
 const cols: [string, number][] = [
   ['boss', 13], ['band', 9], ['disc', 12], ['weapon', 8], ['dodge', 6], ['wins', 6], ['deaths', 7], ['time s', 7], ['P2 s', 6], ['P3 s', 6], ['boss%', 6],
-  ['dps', 6], ['hurt%/m', 8], ['boss dmg%', 10], ['adds%', 6], ['minHp', 6], ['flasks', 7], ['barrier%', 8],
+  ['dps', 6], ['hurt%/m', 8], ['boss dmg%', 10], ['adds%', 6], ['minHp', 6], ['flasks', 7], ['barrier%', 9], ['wade%', 7], ['rooted s', 8],
 ];
 const pad = (s: string | number, n: number) => String(s).padEnd(n);
 const avg = (rs: BossResult[], f: (r: BossResult) => number) => rs.reduce((s, r) => s + f(r), 0) / rs.length;
@@ -73,7 +73,7 @@ for (const boss of BOSS_LIST) {
             avg(rs, (r) => r.bossHpLeftPct).toFixed(0), avg(rs, (r) => r.dps).toFixed(0),
             avg(rs, (r) => r.dmgPctPerMin).toFixed(0), avg(rs, (r) => r.bySource.prelate ?? 0).toFixed(0),
             avg(rs, (r) => r.bySource.adds ?? 0).toFixed(0), Math.min(...rs.map((r) => r.minHpPct)).toFixed(0),
-            avg(rs, (r) => r.flasksUsed).toFixed(1), avg(rs, (r) => r.barrierAbsorbedPct).toFixed(0),
+            avg(rs, (r) => r.flasksUsed).toFixed(1), avg(rs, (r) => r.barrierAbsorbedPct).toFixed(0), avg(rs, (r) => r.wadingPct).toFixed(0), avg(rs, (r) => r.rootedS).toFixed(1),
           ];
           rows.push(cells.map((c, i) => pad(c, cols[i][1])).join(''));
         }
@@ -82,5 +82,5 @@ for (const boss of BOSS_LIST) {
   }
 }
 console.log(`\nBoss report: ${SEEDS} seed(s) per row, solo, difficulty ${DIFFICULTY}, ascension ${ASC}, kit ${KIT}; boss max HP: ${maxHps.join(', ')}`);
-console.log('time s = average kill time of winning runs · deaths = runs ending in a wipe (a solo death resets the boss) · boss% = HP left (avg) · boss dmg%/adds% = damage taken as % of max HP over the fight · barrier% = Litany barrier soaked, % of max HP (Reliquary sets)\n');
+console.log('time s = average kill time of winning runs · deaths = runs ending in a wipe (a solo death resets the boss) · boss% = HP left (avg) · boss dmg%/adds% = damage taken as % of max HP over the fight · barrier% = Litany barrier soaked, % of max HP (Reliquary sets) · wade% = share of the fight slowed by open water · rooted s = seconds rooted by hands / grasps / burial\n');
 console.log(rows.join('\n'));

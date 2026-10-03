@@ -5,7 +5,8 @@ import { deriveStats } from '../characterStats';
 import { Nav } from '../nav';
 import { mulberry32 } from '../rng';
 import { BOSS_RADIUS } from '../sim/BossBrain';
-import { BOSSES, type BossId } from '../../content/bosses';
+import { BOSSES, CONGREGATION, type BossId } from '../../content/bosses';
+import { FEN_HUMMOCKS, bogMult } from '../../content/fen';
 import type { Enemy, SimEvent } from '../sim/types';
 import { WorldSim } from '../sim/WorldSim';
 import { botCharacter } from './harness';
@@ -65,6 +66,9 @@ export interface BossResult {
   /** Litany barrier raised / soaked over the fight, as % of max HP (0 without a Reliquary set). */
   barrierMadePct: number;
   barrierAbsorbedPct: number;
+  /** Share of the fight spent slowed by open water (the Fen's bog, the nave's flood) and seconds spent rooted by hands / grasps / burial. */
+  wadingPct: number;
+  rootedS: number;
   /** Player-side damage per second into the boss (all sources). */
   dps: number;
 }
@@ -136,6 +140,8 @@ export function runBossFight(run: BossRun): BossResult {
   let minHp = 1;
   let barrierAbsorbed = 0;
   let barrierMade = 0;
+  let wadingSteps = 0;
+  let rootedSteps = 0;
   let flasks = run.flasks ?? 4;
   let flasksUsed = 0;
   let flaskCd = 0;
@@ -148,12 +154,46 @@ export function runBossFight(run: BossRun): BossResult {
   let t = 0;
   let steps = 0;
 
+  /** Rooted (Drowning Grasp, the Mire Mother's hands, Burial): the bot stands still and keeps casting (WorldScene.rootedUntil). */
+  let rootedUntil = 0;
+  /** Water slows the player the way WorldScene sets `moveMult`: the Fen's bog (hummocks are dry; the flood shrinks them) and the Congregation's rising nave water. */
+  const wade = () => {
+    const phase = b.active ? b.phase : 0;
+    if (bossId === 'mire') return bogMult(p.x, p.z, phase);
+    if (bossId === 'congregation' && phase >= 2) {
+      const d = Math.hypot(p.x - BOSS_ARENA.x, p.z - BOSS_ARENA.z);
+      if (d <= BOSS_ARENA.r && d > CONGREGATION.water.dais) return phase >= 3 ? CONGREGATION.water.slowP3 : CONGREGATION.water.slowP2;
+    }
+    return 1;
+  };
   const move = (tx: number, tz: number, away = false) => {
+    if (t < rootedUntil) return;
     const dx = tx - p.x;
     const dz = tz - p.z;
     const d = Math.hypot(dx, dz) || 1;
-    const k = ((away ? -1 : 1) * stats.moveSpeed * DT) / d;
+    const k = ((away ? -1 : 1) * stats.moveSpeed * wade() * DT) / d;
     [p.x, p.z] = nav.resolve(p.x + dx * k, p.z + dz * k, 0.45);
+  };
+  /**
+   * The Mourning Fen, played carefully: stand on a dry hummock at casting range (or at the scythe's reach) from the Mire Mother, off the
+   * hummock she is about to surface under, and hop to another when the ripple ring is drawn. The hummocks shrink as she floods the marsh.
+   */
+  let spot = -1;
+  let spotAt = -9;
+  const fenSpotCost = (i: number) => {
+    const h = FEN_HUMMOCKS[i];
+    const want = loadout.reap ? 3.5 : 7;
+    const unsafe = dangers.some((d) => t < d.at && Math.hypot(h.x - d.x, h.z - d.z) < d.r + 0.5);
+    return Math.abs(Math.hypot(h.x - b.x, h.z - b.z) - want) + 0.2 * Math.hypot(h.x - p.x, h.z - p.z) + (unsafe ? 50 : 0);
+  };
+  const fenSpot = () => {
+    if (t - spotAt >= 0.5) {
+      spotAt = t;
+      let best = 0;
+      for (let i = 1; i < FEN_HUMMOCKS.length; i++) if (fenSpotCost(i) < fenSpotCost(best)) best = i;
+      if (spot < 0 || fenSpotCost(best) < fenSpotCost(spot) - 1.5) spot = best;
+    }
+    return FEN_HUMMOCKS[spot];
   };
 
   for (; steps < maxSteps; steps++) {
@@ -171,6 +211,8 @@ export function runBossFight(run: BossRun): BossResult {
       flaskCd = t + 1.5;
     }
 
+    if (wade() < 1) wadingSteps++;
+    if (t < rootedUntil) rootedSteps++;
     // --- Movement: dodge first, otherwise hold a casting distance from the Prelate ---
     const bd = Math.hypot(b.x - p.x, b.z - p.z);
     const threat = run.dodge
@@ -185,6 +227,9 @@ export function runBossFight(run: BossRun): BossResult {
       // Step straight out of the circle (sideways if standing on its centre).
       if (Math.hypot(p.x - threat.x, p.z - threat.z) < 0.2) move(p.x + 1, p.z);
       else move(threat.x, threat.z, true);
+    } else if (bossId === 'mire' && run.dodge && b.active) {
+      const h = fenSpot();
+      if (Math.hypot(h.x - p.x, h.z - p.z) > 0.6) move(h.x, h.z);
     } else if (loadout.reap) {
       // A scythe is a 3 m arc: the reaper walks up to the boss and stays there (the rites reach from anywhere).
       if (bd > meleeReach) move(b.x, b.z);
@@ -268,6 +313,7 @@ export function runBossFight(run: BossRun): BossResult {
         if (ev.ms) {
           for (const [x, z] of ev.targets ?? [[ev.x, ev.z]]) dangers.push({ x, z, r: ev.r ?? 2, at: t + ev.ms / 1000, seenAt: t });
         }
+        if (ev.ms === 0 && ev.root && ev.players?.includes(p.id)) rootedUntil = Math.max(rootedUntil, t + ev.root);
         if (ev.kind === 'phase' && ev.phase === 2) phase2At = t;
         if (ev.kind === 'phase' && ev.phase === 3) phase3At = t;
         if (ev.kind === 'defeated' && ev.killer) outcome = 'win';
@@ -323,6 +369,8 @@ export function runBossFight(run: BossRun): BossResult {
     flasksUsed,
     barrierMadePct: (barrierMade / stats.maxHp) * 100,
     barrierAbsorbedPct: (barrierAbsorbed / stats.maxHp) * 100,
+    wadingPct: (wadingSteps / Math.max(1, steps)) * 100,
+    rootedS: rootedSteps * DT,
     dps: (bossMaxHp - bossHpLeft) / secs,
   };
 }
