@@ -79,6 +79,7 @@ import * as nf from '../graphics/necroFx';
 import { LootView } from '../graphics/LootView';
 import { WorldView } from '../graphics/WorldView';
 import { updateOcclusion } from '../graphics/occlusion';
+import { shadowHalfExtent } from '../graphics/viewFootprint';
 import { equippedBySlot, gearFromIds } from '../content/gear';
 import { applySetMods, outfitSignature, resolveSetBonuses, setSignature } from '../gameplay/setBonuses';
 import { loadRunesFound, recordRunesFound } from '../gameplay/runeJournal';
@@ -4607,6 +4608,7 @@ export class WorldScene implements GameScene, RuntimeView {
     updateOcclusion(this.rig.camera, this.occlusionFocus);
     this.moon.position.set(p.x - 14, 30, p.z + 12);
     this.moon.target.position.set(p.x, 0, p.z);
+    this.fitMoonShadow();
     this.tickMilestones(dt);
     const vh = window.innerHeight * getRuntime().renderer.getPixelRatio();
     this.worldView.update(dt, p.x, p.z, this.rig.camera, vh);
@@ -4615,6 +4617,16 @@ export class WorldScene implements GameScene, RuntimeView {
     this.floating.update(dt, this.rig.camera);
     this.tickOnboarding(now);
     this.updateHud(now);
+  }
+
+  /** The moon's shadow box covers the whole screen: a wide window or the widest zoom reaches past the fixed 30 m half-size, and shadows (pillars, walls) used to stop dead at the screen corners. Grows in 4 m steps (30 m at the default view, 48 m at most). */
+  private fitMoonShadow() {
+    const sc = this.moon.shadow.camera;
+    const half = shadowHalfExtent(this.rig.camera, sc.matrixWorldInverse, 30, 48);
+    if (half === sc.right) return;
+    sc.left = sc.bottom = -half;
+    sc.right = sc.top = half;
+    sc.updateProjectionMatrix();
   }
 
   /** Milestone banners when the world's Wave Speed crosses one, and Nightfall's darker moon. */
