@@ -91,8 +91,7 @@ export class NecromancerAvatar {
     } else {
       this.staff = skullStaff(accent);
       // Held upright: the grip sits in the hand, calibrated against the idle pose.
-      const socket = socketFor(this.c.rig, 'staff');
-      this.c.attach('R_Hand', this.staff, new THREE.Vector3(0, 1, 0.12), socket ? 1 : STAFF_FOLLOW, undefined, socket, socket ? socketClipFollow(this.c.rig, 'staff') : undefined);
+      this.c.attach('R_Hand', this.staff, new THREE.Vector3(0, 1, 0.12), STAFF_FOLLOW);
       this.defaultHand.set(this.staff, 'main_hand');
     }
     scene.add(this.c.root);

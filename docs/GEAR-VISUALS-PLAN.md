@@ -82,6 +82,7 @@ Top problems, in order:
 What shipped (necromancer heroes only; New Blood keeps the runtime calibration):
 - `tools/gen-grip-sockets.mjs` (+ `tools/lib/gripSocket.mjs`) computes, once per rig and prop kind, a **grip socket**: offset and orientation relative to `R_Hand` / `L_Hand`, from the bone frames at the settled idle pose. It writes `src/graphics/gripSockets.generated.ts`. `Creature.attach` places the prop from it on the first frame: no 4-frame calibration, no snap, no idle self-heal.
 - Props ride the wrist (follow 1) except in the clips where the clip itself would bury them. `npm run qa:grip-fit` searches each socket's lean and outward shift, then picks per hero, kind and clip the highest follow that keeps penetration within the committed baseline (`tools/grip-fit.json` holds the result; the generator turns it into `GRIP_CLIP_FOLLOW`). The follow eases between clips at 8/s. Cost: no new per-frame work for a prop that rides rigidly; the steady pass only runs for props with a lowered follow in the current clip.
+- The class-default skull staff keeps the old calibration path (the fit does not cover it).
 - Two-handers use the same idle aim as before (near vertical); the support hand is still Phase 2.
 
 Result against the Phase 0 baseline (`npm run qa:gear-clip`):
