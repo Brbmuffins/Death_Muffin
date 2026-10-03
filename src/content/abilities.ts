@@ -263,7 +263,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     slot: 0,
     unlockLevel: 2,
     name: 'Bone Fan',
-    description: 'Fling three slivers in a fan. Each homes on a different enemy near the one you clicked (the Prelate takes only one). +3 essence per sliver that lands.',
+    description: 'Fling three slivers in a fan. Each homes on a different enemy near the one you clicked (the Prelate takes only one). +3 essence per sliver that lands (up to 6 a cast).',
     icon: 'art/abilities/necro-bone-fan.webp',
     targeting: 'enemy',
     cooldownMs: 520,

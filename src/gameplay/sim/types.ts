@@ -172,6 +172,11 @@ export interface Thrall {
   allyHeal?: number;
   /** A Bog Hag's hex: seconds left dealing less damage (snapshot flag bit 2 of the empowered field, value 4). */
   cursedT?: number;
+  /** Host-only: how long it has pushed against a prop without getting anywhere, and the way round it found (see WorldSim.moveThrall). */
+  stallT?: number;
+  detour?: { x: number; z: number }[];
+  detourUntil?: number;
+  nextPathAt?: number;
 }
 
 export interface Corpse {

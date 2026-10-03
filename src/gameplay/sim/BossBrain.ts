@@ -11,6 +11,8 @@ import type { BossPhase, BossState, PlayerBody } from './types';
 /** The Prelate's arena (kept for older call sites; every boss's arena lives in content/bosses.ts). */
 export const BOSS_ARENA = BOSSES.prelate.arena;
 export const BOSS_RADIUS = 1.6;
+/** A boss ring strikes this far past its nominal radius (a body width); telegraphs draw it so the red is where the blow lands. */
+export const BOSS_RING_PAD = 0.4;
 
 export interface Pending {
   kind: string;
@@ -253,7 +255,7 @@ export abstract class BossBrain {
     const hurt = new Set<string>();
     for (const [cx, cz] of circles) {
       for (const pl of players) {
-        if (hurt.has(pl.id) || Math.hypot(pl.x - cx, pl.z - cz) > p.r + 0.4) continue;
+        if (hurt.has(pl.id) || Math.hypot(pl.x - cx, pl.z - cz) > p.r + BOSS_RING_PAD) continue;
         hurt.add(pl.id);
         this.sim.emit({ t: 'hurt', player: pl.id, dmg: this.dmg(this.circleDamage(p.kind)), from: 'boss', x: cx, z: cz });
       }

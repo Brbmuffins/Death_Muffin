@@ -89,6 +89,8 @@ const DEPTHS_AGGRO = 36;
 const CORPSE_LIFETIME = 26;
 const TOXIC_RUPTURE = 5;
 const MAX_CORPSES = 45;
+/** A cone blow reaches this far beyond the enemy's attackRange (a body's width); the telegraph draws it too. */
+export const CONE_REACH_PAD = 0.4;
 const THRALL_LEASH = 13;
 const THRALL_TELEPORT = 24;
 const PLAYER_RADIUS = 0.45;
@@ -519,8 +521,9 @@ export class WorldSim {
     // A lone corpse is raised at full strength: the penalty is for spreading the magic, not for having nothing to spread it over.
     const count = Math.max(1, Math.min(RUNE_TUNING.massGrave.count, Math.floor(Number.isFinite(x.count) ? x.count! : 1)));
     const r = count > 1 ? Math.max(x.r, RUNE_TUNING.massGrave.pickRadius) : x.r;
+    const hall = this.players.get(x.by)?.area ?? null;
     const picks = [...this.corpses.values()]
-      .filter((c) => !c.echoOwner && Math.hypot(c.x - x.x, c.z - x.z) <= r)
+      .filter((c) => !c.echoOwner && (!hall || c.area === hall) && Math.hypot(c.x - x.x, c.z - x.z) <= r)
       .sort((a, b) => Math.hypot(a.x - x.x, a.z - x.z) - Math.hypot(b.x - x.x, b.z - x.z))
       .slice(0, count);
     if (!picks.length) {
@@ -661,8 +664,9 @@ export class WorldSim {
     let corpses = 0;
     let resonant = 0;
     const tethers: [number, number][] = [];
+    const hall = this.players.get(l.by)?.area ?? null;
     for (const c of [...this.corpses.values()]) {
-      if (c.echoOwner) continue;
+      if (c.echoOwner || (hall && c.area !== hall)) continue;
       if (Math.hypot(c.x - l.x, c.z - l.z) > l.r) continue;
       if (c.kind === 'resonant') resonant++;
       else corpses++;
@@ -712,7 +716,8 @@ export class WorldSim {
    */
   private applyDetonate(d: Extract<Intent, { t: 'detonate' }>) {
     const c = this.corpses.get(d.corpseId);
-    if (!c || c.echoOwner) {
+    const hall = this.players.get(d.by)?.area ?? null;
+    if (!c || c.echoOwner || (hall && c.area !== hall)) {
       // Claimed by someone else first (the caster refunds on ok:false).
       this.emit({ t: 'detonated', by: d.by, ok: false, corpseId: d.corpseId, x: 0, z: 0, r: 0 });
       return;
@@ -923,7 +928,9 @@ export class WorldSim {
       }
       case 'rend': {
         const R = SIGNATURE.rend;
-        const [cx, cz] = clampAim(R.maxCastRange);
+        // The legion leaps within the hall the caster stands in: aimed across a wall into the next one it lands at the last point on this side.
+        const [ax, az] = clampAim(R.maxCastRange);
+        const [cx, cz] = caster?.area ? this.lastPointInArea(caster.area, caster.x, caster.z, ax, az) : [ax, az];
         const legion = this.ownedThralls(g.by).filter((t) => t.state !== 'rising');
         const leaps: [number, number, number, number][] = [];
         const hit = new Set<number>();
@@ -964,7 +971,7 @@ export class WorldSim {
         const [cx, cz] = clampAim(1);
         const r = ABILITIES.bone_mantle.radius;
         const near = [...this.corpses.values()]
-          .filter((c) => !c.echoOwner)
+          .filter((c) => !c.echoOwner && (!caster?.area || c.area === caster.area))
           .map((c) => ({ c, d: Math.hypot(c.x - cx, c.z - cz) }))
           .filter((o) => o.d <= r)
           .sort((a, b) => a.d - b.d)
@@ -1322,6 +1329,19 @@ export class WorldSim {
     if (!best) return;
     this.removeCorpse(best, 'consumed', z.owner);
     this.addZone({ kind: 'flower', owner: z.owner, x: best.x, z: best.z, r: z.r, durationS: B.childDurationS, dps: z.dps, witheredCap: z.witheredCap, gen: (z.gen ?? 0) + 1 });
+  }
+
+  /** Walk from (fx, fz) toward (tx, tz) and stop at the last point still inside `area` (a leap never crosses a wall or a sealed door). */
+  private lastPointInArea(area: AreaId, fx: number, fz: number, tx: number, tz: number): [number, number] {
+    const n = Math.max(1, Math.ceil(Math.hypot(tx - fx, tz - fz) / 0.5));
+    let best: [number, number] = [fx, fz];
+    for (let i = 1; i <= n; i++) {
+      const x = fx + ((tx - fx) * i) / n;
+      const z = fz + ((tz - fz) * i) / n;
+      if (this.nav.areaAt(x, z) !== area) break;
+      best = [x, z];
+    }
+    return best;
   }
 
   private updateWalls() {
@@ -2321,7 +2341,8 @@ export class WorldSim {
     const T = AFFIX_TUNING.bellTolled;
     const dmg = this.blow(e) * T.damageMult;
     for (const p of this.players.values()) {
-      if (p.alive && Math.hypot(p.x - x, p.z - z) <= T.r + PLAYER_RADIUS) {
+      // Centre inside the drawn bronze ring, like every other ground telegraph (it used to reach a body's width past it).
+      if (p.alive && Math.hypot(p.x - x, p.z - z) <= T.r) {
         this.emit({ t: 'hurt', player: p.id, dmg, from: 'toll', x, z });
       }
     }
@@ -2593,7 +2614,7 @@ export class WorldSim {
         const vx = x - e.x;
         const vz = z - e.z;
         const d = Math.hypot(vx, vz);
-        if (d > def.attackRange + 0.4) return false;
+        if (d > def.attackRange + CONE_REACH_PAD) return false;
         if (this.wallBetween(e.x, e.z, x, z)) return false; // the cone breaks on an Ossuary Wall
         return (vx * dirX + vz * dirZ) / (d * len || 1) > Math.cos((30 * Math.PI) / 180);
       };
@@ -2714,6 +2735,8 @@ export class WorldSim {
       if ((e.hookCd ?? 0) > 0) e.hookCd! -= dt;
       e.attackCd -= dt * ((e.chillT ?? 0) > 0 ? CHILL.attackRateMult : 1) * ((e.incenseT ?? 0) > 0 ? CENSER.attackRateMult : 1) * (this.frenzied(e) ? FRENZY.attackRateMult : 1);
       const def = ENEMIES[e.def];
+      // Elites wind up 15% faster (the windup branch below): a telegraph must fill in the time the blow really takes.
+      const wms = def.windupMs * (e.elite ? 0.85 : 1);
       if (def.aura) this.censerPulse(e, dt);
 
       if (e.state === 'windup' || e.state === 'channel') {
@@ -2764,7 +2787,7 @@ export class WorldSim {
           e.channelCorpse = corpse.id;
           e.aimX = corpse.x;
           e.aimZ = corpse.z;
-          this.emit({ t: 'telegraph', id: e.id, kind: 'raise', x: e.x, z: e.z, tx: corpse.x, tz: corpse.z, ms: 1500 });
+          this.emit({ t: 'telegraph', id: e.id, kind: 'raise', x: e.x, z: e.z, tx: corpse.x, tz: corpse.z, ms: 1500 * (e.elite ? 0.85 : 1) });
           continue;
         }
         // No corpse to steal: bless the nearest wounded ally instead (Sanctified).
@@ -2813,7 +2836,7 @@ export class WorldSim {
             e.aimX = target.x;
             e.aimZ = target.z;
             e.facing = Math.atan2(target.x - e.x, target.z - e.z);
-            this.emit({ t: 'telegraph', id: e.id, kind: 'hook', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs * (e.elite ? 0.85 : 1), r: SEXTON_HOOK.range });
+            this.emit({ t: 'telegraph', id: e.id, kind: 'hook', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms, r: SEXTON_HOOK.range });
             break;
           }
           if (def.dive && e.attackCd <= 0 && dist >= def.dive.minRange && dist <= def.dive.range && !this.wallBetween(e.x, e.z, target.x, target.z)) {
@@ -2825,7 +2848,7 @@ export class WorldSim {
             e.aimX = target.x;
             e.aimZ = target.z;
             e.facing = Math.atan2(target.x - e.x, target.z - e.z);
-            this.emit({ t: 'telegraph', id: e.id, kind: 'dive', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs * (e.elite ? 0.85 : 1), r: def.dive.radius });
+            this.emit({ t: 'telegraph', id: e.id, kind: 'dive', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms, r: def.dive.radius });
             break;
           }
           if (dist <= def.attackRange + 0.35 && e.attackCd <= 0) {
@@ -2835,7 +2858,7 @@ export class WorldSim {
             e.aimZ = target.z;
             e.facing = Math.atan2(target.x - e.x, target.z - e.z);
             if (def.behavior === 'hazard') {
-              this.emit({ t: 'telegraph', id: e.id, kind: 'slam', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, ...(def.slamRadius ? { r: def.slamRadius } : {}) });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'slam', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms, ...(def.slamRadius ? { r: def.slamRadius } : {}) });
             }
           } else if (dist > def.attackRange * 0.8) {
             let tx = target.x;
@@ -2865,20 +2888,20 @@ export class WorldSim {
               e.aimX = hx;
               e.aimZ = hz;
               e.facing = Math.atan2(hx - e.x, hz - e.z);
-              this.emit({ t: 'telegraph', id: e.id, kind: 'hex', x: e.x, z: e.z, tx: hx, tz: hz, ms: def.windupMs, r: HAG_HEX.radius });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'hex', x: e.x, z: e.z, tx: hx, tz: hz, ms: wms, r: HAG_HEX.radius });
             } else if (def.attack === 'pulse') {
-              this.emit({ t: 'telegraph', id: e.id, kind: 'pulse', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: WISP_PULSE.radius });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'pulse', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms, r: WISP_PULSE.radius });
             } else if (def.attack === 'scream') {
-              this.emit({ t: 'telegraph', id: e.id, kind: 'scream', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: SCREAM.radius });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'scream', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms, r: SCREAM.radius });
             } else if (def.attack === 'dust') {
-              this.emit({ t: 'telegraph', id: e.id, kind: 'dust', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: DUST.radius });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'dust', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms, r: DUST.radius });
             } else if (def.attack === 'flask') {
-              this.emit({ t: 'telegraph', id: e.id, kind: 'flask', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: PLAGUE_FLASK.radius });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'flask', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms, r: PLAGUE_FLASK.radius });
             } else if (def.attack === 'ember') {
-              this.emit({ t: 'telegraph', id: e.id, kind: 'ember', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs, r: EMBER_BOLT.radius });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'ember', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms, r: EMBER_BOLT.radius });
             } else if (def.attack === 'curse') {
-              this.emit({ t: 'telegraph', id: e.id, kind: 'curse', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
-            } else this.emit({ t: 'telegraph', id: e.id, kind: 'cone', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'curse', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms });
+            } else this.emit({ t: 'telegraph', id: e.id, kind: 'cone', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms });
           } else if (dist > def.attackRange - 1.5) this.moveEnemy(e, target.x, target.z, dt);
           else if (dist < 3.5) {
             let rx = e.x * 2 - target.x;
@@ -2906,7 +2929,7 @@ export class WorldSim {
               e.channelCorpse = corpse.id;
               e.aimX = corpse.x;
               e.aimZ = corpse.z;
-              this.emit({ t: 'telegraph', id: e.id, kind: 'raise', x: e.x, z: e.z, tx: corpse.x, tz: corpse.z, ms: 1500 });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'raise', x: e.x, z: e.z, tx: corpse.x, tz: corpse.z, ms: 1500 * (e.elite ? 0.85 : 1) });
               break;
             }
             if (dist <= def.attackRange) {
@@ -2914,7 +2937,7 @@ export class WorldSim {
               e.stateT = 0;
               e.aimX = target.x;
               e.aimZ = target.z;
-              this.emit({ t: 'telegraph', id: e.id, kind: 'curse', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: def.windupMs });
+              this.emit({ t: 'telegraph', id: e.id, kind: 'curse', x: e.x, z: e.z, tx: target.x, tz: target.z, ms: wms });
               break;
             }
           }
@@ -3051,12 +3074,14 @@ export class WorldSim {
 
       let target = t.target !== null ? this.enemies.get(t.target) : undefined;
       const bossTarget = this.boss.state.active && this.boss.state.state !== 'sunk' && Math.hypot(this.boss.state.x - owner.x, this.boss.state.z - owner.z) < 16;
-      if (!target || target.state === 'dead' || Math.hypot(target.x - owner.x, target.z - owner.z) > THRALL_LEASH) {
+      // A target that went underground (a digging ghoul), or stands in another hall, is not one to keep swinging at.
+      if (!target || target.state === 'dead' || target.state === 'burrow' || (target.erupting != null && target.state === 'windup') || (owner.area !== null && target.area !== owner.area)
+        || Math.hypot(target.x - owner.x, target.z - owner.z) > THRALL_LEASH) {
         target = undefined;
         t.target = null;
         let bestD = 10;
         for (const e of this.enemies.values()) {
-          if (e.state === 'dead' || (e.state === 'rising' || e.state === 'burrow')) continue;
+          if (e.state === 'dead' || (e.state === 'rising' || e.state === 'burrow') || (e.erupting != null && e.state === 'windup') || (owner.area !== null && e.area !== owner.area)) continue;
           if (Math.hypot(e.x - owner.x, e.z - owner.z) > THRALL_LEASH - 2) continue;
           const d = Math.hypot(e.x - t.x, e.z - t.z);
           if (d < bestD) {
@@ -3099,13 +3124,25 @@ export class WorldSim {
       } else if (bossTarget) {
         const b = this.boss.state;
         engage(b.x, b.z, BOSS_RADIUS, () => {
-          this.boss.damage(t.damage * ((t.rallyT ?? 0) > 0 ? RALLY.damageMult : 1) * this.cursedMult(t) * this.rallyMult(t, null), t.owner, 0);
-          this.emit({ t: 'thrallHit', id: t.id, target: -1, x: t.x, z: t.z, tx: b.x, tz: b.z, kind: t.kind, dmg: Math.round(t.damage * this.cursedMult(t)) });
+          const raw = t.damage * ((t.rallyT ?? 0) > 0 ? RALLY.damageMult : 1) * this.cursedMult(t) * this.rallyMult(t, null);
+          // The number is what the blow is worth against a Fractured boss, rally and all (it used to show the thrall's bare hit).
+          const worth = raw * (1 + FRACTURE.perStack * b.fracture);
+          this.boss.damage(raw, t.owner, 0);
+          this.emit({ t: 'thrallHit', id: t.id, target: -1, x: t.x, z: t.z, tx: b.x, tz: b.z, kind: t.kind, dmg: Math.round(worth) });
         });
       } else {
         // Formation ring around the owner.
-        const count = Math.max(3, this.ownedThralls(t.owner).length);
-        const ang = (t.slot / count) * Math.PI * 2 + Math.PI;
+        // Seats are dealt by rank among the living (slot numbers have gaps once thralls fall, and a gap folded two onto one spot).
+        // (a plain loop: no array is built per thrall per tick)
+        let living = 0;
+        let rank = 0;
+        for (const o of this.thralls.values()) {
+          if (o.owner !== t.owner || o.state === 'dead') continue;
+          living++;
+          if (o.slot < t.slot) rank++;
+        }
+        const count = Math.max(3, living);
+        const ang = (rank / count) * Math.PI * 2 + Math.PI;
         const fx = owner.x + Math.sin(ang) * 1.9;
         const fz = owner.z + Math.cos(ang) * 1.9;
         const d = Math.hypot(fx - t.x, fz - t.z);
@@ -3141,6 +3178,15 @@ export class WorldSim {
       tx = hop.x;
       tz = hop.z;
     }
+    // A way round a prop it was wedged on (found below), followed for a few seconds.
+    const way = t.detour;
+    if (way?.length && this.time < (t.detourUntil ?? 0)) {
+      while (way.length && Math.hypot(way[0].x - t.x, way[0].z - t.z) < 0.5) way.shift();
+      if (way.length) {
+        tx = way[0].x;
+        tz = way[0].z;
+      }
+    } else if (way) t.detour = undefined;
     const dx = tx - t.x;
     const dz = tz - t.z;
     const d = Math.hypot(dx, dz);
@@ -3149,9 +3195,22 @@ export class WorldSim {
     const px = t.x;
     const pz = t.z;
     [t.x, t.z] = this.nav.resolve(t.x + (dx / d) * step, t.z + (dz / d) * step, 0.4);
-    if (this.nav.depthsFloor && step > 1e-3 && ((t.x - px) * dx + (t.z - pz) * dz) / d < step * 0.3) {
+    const gained = ((t.x - px) * dx + (t.z - pz) * dz) / d;
+    // Lined up on a prop or a pillar the push-out sends a body straight back: swing a little to either side to get round it (Depths floors and the open grounds alike).
+    if (step > 1e-3 && gained < step * 0.3) {
       [t.x, t.z] = this.sidestep(px, pz, dx / d, dz / d, step, 0.4, (x, z) => this.nav.resolve(x, z, 0.4));
-    }
+      // Wedged between two props a body cannot squeeze through: ask the grid for a way round (rarely, and only after it has really stalled).
+      t.stallT = (t.stallT ?? 0) + dt;
+      if (t.stallT > 0.5 && this.time >= (t.nextPathAt ?? 0) && !this.nav.depthsFloor) {
+        t.nextPathAt = this.time + 1.5;
+        t.stallT = 0;
+        const path = this.nav.findPath(t.x, t.z, tx, tz, 0.4);
+        if (path.length > 1) {
+          t.detour = path.slice(0, -1);
+          t.detourUntil = this.time + 3;
+        }
+      }
+    } else if (t.stallT) t.stallT = 0;
     t.facing = Math.atan2(dx, dz);
     t.moving = true;
     t.gait += step * 2.4;
