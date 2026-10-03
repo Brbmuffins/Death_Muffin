@@ -130,3 +130,18 @@ test('loot/roll: a full bag stores no items (gold is still paid)', async () => {
     Math.random = realRandom;
   }
 });
+
+// ── POST /api/inventory/save ────────────────────────────────────────────────────────────────────────────────────────────
+
+test('inventory/save: junk in the slot list is a readable 400, never a crash or a write', async () => {
+  const f = fakePool();
+  const srv = loadServer({ pool: f.pool });
+  for (const slots of [[null], [{ slot_index: 3.5, item_id: 'log_oak', quantity: 1 }], [{ slot_index: '2abc', item_id: 'log_oak', quantity: 1 }]]) {
+    const r = await srv.call('POST /api/inventory/save', { body: { characterId: 1, slots, bagSize: 48 } });
+    assert.equal(r.status, 400, JSON.stringify(slots));
+    assert.match(r.json.error, /slot_index/);
+  }
+  const noBody = await srv.call('POST /api/inventory/save', {});
+  assert.equal(noBody.status, 400, 'a request without a JSON body is a 400 too');
+  assert.equal(f.log.length, 0, 'nothing reached the database');
+});

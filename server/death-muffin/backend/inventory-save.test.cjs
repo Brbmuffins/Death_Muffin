@@ -47,3 +47,12 @@ test('a current client (bagSize 48) replaces the whole bag and never touches equ
   assert.deepEqual(db.inv.map((r) => r.slot_index).sort((a, b) => a - b), [30, 105]);
   assert.equal(db.inv.find((r) => r.slot_index === 30).item_id, 'log_oak');
 });
+
+test('slot validation refuses entries that are not whole-numbered slot objects', () => {
+  // These used to throw (null) or slip through parseInt and be rounded or truncated by MySQL (5.5 -> slot 6, '5abc' -> an error).
+  for (const bad of [null, 7, 'x', [], row(5.5), row('5abc'), row(undefined), row(null), row(NaN), row(true)]) {
+    const problem = slotProblem([bad], 48);
+    assert.match(String(problem), /each slot_index/, `refused: ${JSON.stringify(bad)}`);
+  }
+  assert.equal(slotProblem([row('5')], 48), null, 'a whole number sent as a string is still fine');
+});

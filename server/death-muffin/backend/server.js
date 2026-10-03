@@ -873,14 +873,15 @@ app.post('/api/inventory/add-item', requireJWT, async (req, res) => {
 });
 
 app.post('/api/inventory/save', requireJWT, async (req, res) => {
-  const { characterId } = req.body;
-  if (!Array.isArray(req.body.slots))
+  const body = req.body || {};
+  const { characterId } = body;
+  if (!Array.isArray(body.slots))
     return res.status(400).json({ success: false, error: 'slots must be an array' });
   // Equipped gear lives in reserved slots 100-108 (managed by /equip), the tool belt in 110-113 (/belt), the Legion kit in 120-121 (/kit) and the rune sockets in 130-134 (/rune).
   // Older clients echo those rows back with the bag, which made every save fail; the save owns the bag only, so ignore them.
-  const slots = req.body.slots.filter(s => !(Number(s && s.slot_index) >= 100 && Number(s.slot_index) <= runeRules.RUNE_BASE + runeRules.RUNE_SLOT_COUNT - 1));
+  const slots = body.slots.filter(s => !(Number(s && s.slot_index) >= 100 && Number(s.slot_index) <= runeRules.RUNE_BASE + runeRules.RUNE_SLOT_COUNT - 1));
   // A stale 24-slot tab sends no bagSize; the save then only touches slots 0-23 (see inventory-save.cjs).
-  const bagSize = inventorySave.saveBagSize(req.body.bagSize);
+  const bagSize = inventorySave.saveBagSize(body.bagSize);
   if (bagSize === null)
     return res.status(400).json({ success: false, error: `bagSize must be a whole number from 1 to ${BAG_SLOTS}` });
   const slotError = inventorySave.slotProblem(slots, bagSize);
