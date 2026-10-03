@@ -716,6 +716,7 @@ export class WorldScene implements GameScene, RuntimeView {
       partySize: () => this.remotes.size,
       isAuthority: () => !this.mirror && this.isAuthority(),
       level: () => this.character.level,
+      disciplineId: () => this.discipline.id,
       rewardMult: () => ascensionRewardMult(this.worldAscension()) * this.omen.rewardMult,
       teleportTo: (x, z) => this.teleportTo(x, z),
       dropItems: (x, z, items, level, source) => this.dropItems(x, z, items, level, source),

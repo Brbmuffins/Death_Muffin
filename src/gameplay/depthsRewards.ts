@@ -11,16 +11,16 @@ import { rollItem, type LootDrop } from './loot';
  */
 
 /** A floor clear's gold and XP (average kills' worth) and, most of the time, an item from the depth's own ground. */
-export function rollFloorClear(depth: number, level: number, rand: () => number = Math.random): { gold: number; xp: number; drop: LootDrop | null } {
+export function rollFloorClear(depth: number, level: number, rand: () => number = Math.random, disciplineId?: string): { gold: number; xp: number; drop: LootDrop | null } {
   const bonus = floorBonus(depth, level);
-  return { ...bonus, drop: rand() < FLOOR_DROP_CHANCE ? rollItem(depthLootArea(depth), rand) : null };
+  return { ...bonus, drop: rand() < FLOOR_DROP_CHANCE ? rollItem(depthLootArea(depth), rand, 1, disciplineId) : null };
 }
 
 /** A piece of gear from the depth's ground (rolled until the table yields some; its gear is what a chest is for). */
-export function rollGearDrop(depth: number, rand: () => number = Math.random): LootDrop {
+export function rollGearDrop(depth: number, rand: () => number = Math.random, disciplineId?: string): LootDrop {
   const area = depthLootArea(depth);
   for (let i = 0; i < 60; i++) {
-    const d = rollItem(area, rand);
+    const d = rollItem(area, rand, 1, disciplineId);
     const meta = ITEMS[d.item_id];
     if (meta && isAffixGear(meta.type)) return d;
   }
@@ -34,11 +34,11 @@ export interface ChestLoot {
 }
 
 /** The chest of a fifth floor: a rolled piece of gear, more drops from the depth's ground as it deepens, and now and then a rune. */
-export function rollChest(depth: number, level: number, rand: () => number = Math.random): ChestLoot {
+export function rollChest(depth: number, level: number, rand: () => number = Math.random, disciplineId?: string): ChestLoot {
   const bonus = chestBonus(depth, level);
   const area = depthLootArea(depth);
-  const drops: LootDrop[] = [rollGearDrop(depth, rand)];
-  for (let i = 1; i < chestDrops(depth); i++) drops.push(rollItem(area, rand));
+  const drops: LootDrop[] = [rollGearDrop(depth, rand, disciplineId)];
+  for (let i = 1; i < chestDrops(depth); i++) drops.push(rollItem(area, rand, 1, disciplineId));
   if (rand() < chestRuneChance(depth)) {
     const id = pickRune(chestRunePool(depth), rand);
     if (id) drops.push({ item_id: id, quantity: 1 });

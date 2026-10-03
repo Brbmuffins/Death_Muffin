@@ -41,6 +41,8 @@ export interface DepthsHost {
   /** This client keeps the world (solo, or the host). A guest only mirrors it. */
   isAuthority: () => boolean;
   level: () => number;
+  /** The hero's discipline: the floor's and the chest's gear lean to its own armour set (loot.ts smart loot). */
+  disciplineId?: () => string | undefined;
   /** Ascension rank times the week's Omen: what every kill's gold and XP is multiplied by. */
   rewardMult: () => number;
   teleportTo: (x: number, z: number) => void;
@@ -275,7 +277,7 @@ export class DepthsController {
     this.lastStairOpen = true;
     const level = sim.areaLevel('depths');
     const mult = this.host.rewardMult();
-    const win = rollFloorClear(depth, level);
+    const win = rollFloorClear(depth, level, Math.random, this.host.disciplineId?.());
     const gold = Math.round(win.gold * mult);
     const xp = Math.round(win.xp * mult);
     this.host.giveGold(x, z + 1.2, gold);
@@ -298,7 +300,7 @@ export class DepthsController {
     this.chestOpened = true;
     this.view.setChestOpened(true);
     const level = sim.areaLevel('depths');
-    const loot = rollChest(run.depth, level);
+    const loot = rollChest(run.depth, level, Math.random, this.host.disciplineId?.());
     const mult = this.host.rewardMult();
     const gold = Math.round(loot.gold * mult);
     const x = f.chest.x;
