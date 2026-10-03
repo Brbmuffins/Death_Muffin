@@ -485,7 +485,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   legion: {
     title: 'Spare gear for your legion',
-    body: 'That weapon or armor can arm your thralls instead of being salvaged. Open the <b>Legion</b> (<kbd>Y</kbd>, or the button in the Reliquary): one <b>Weapon</b> and one <b>Armour</b> slot, kept outside your bag. Its stats become thrall damage, health and attack speed, and each spare piece shows <b>▲</b> or <b>▼</b> against what the legion wears. Spend gold there to <b>Reinforce</b> the bindings. Thralls you raise from then on carry it.',
+    body: 'That weapon or armor can arm your thralls instead of being salvaged. Open the <b>Legion</b> (<kbd>Y</kbd>, or the button in the Reliquary): one <b>Weapon</b> and one <b>Armour</b> slot, kept outside your bag. Its stats become thrall damage, health and attack speed, and each spare piece shows <b>▲</b> or <b>▼</b> against what the legion wears. Spend gold there to <b>Reinforce</b> the bindings: it strengthens the thralls you have standing at once. A swapped piece reaches the thralls you raise next.',
   },
   rune: {
     title: 'A Relic rune',

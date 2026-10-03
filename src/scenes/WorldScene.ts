@@ -87,7 +87,7 @@ import { loadRunesFound, recordRunesFound } from '../gameplay/runeJournal';
 import { ownedRunes, socketsOf, socketsSignature, type RuneSockets } from '../gameplay/runeRules';
 import { RUNES, type RuneId, type RuneRite } from '../content/runes';
 import { runeSocket } from '../net/api';
-import { applyLegionMods, kitCandidates, kitPieces, legionOf, legionSignature } from '../gameplay/legionKit';
+import { applyLegionMods, kitCandidates, kitPieces, legionOf, legionSignature, thrallRefresh, type ThrallNumbers } from '../gameplay/legionKit';
 import { LegionPanel } from '../ui/LegionPanel';
 import { LootRoller } from '../gameplay/lootRoll';
 import { canRoll } from '../gameplay/affixes';
@@ -915,6 +915,28 @@ export class WorldScene implements GameScene, RuntimeView {
     this.sheetPanel?.render();
   }
 
+  /** What a thrall raised now would carry (the numbers a purchase changes). Null until the player exists. */
+  private thrallNumbers(): ThrallNumbers | null {
+    return this.player ? { hp: this.player.stats.thrallHp, damage: this.player.stats.thrallDamage, speedMult: this.discipline.mods.thrallAttackSpeedMult } : null;
+  }
+
+  /**
+   * A Damage or Reinforce purchase bumps the thralls already standing, once (the sim keeps their health fraction: no heal). Returns how many
+   * of yours were standing, so the toast can say so; the sim does the arithmetic (or the host, in co-op) from the same before / after ratio.
+   */
+  private refreshStandingThralls(before: ThrallNumbers | null): number {
+    const after = this.thrallNumbers();
+    if (!before || !after) return 0;
+    const r = thrallRefresh(before, after);
+    if (!r) return 0;
+    const mine = [...this.thrallsMap().values()].filter((t) => t.owner === this.selfId && t.state !== 'dead');
+    if (!mine.length) return 0;
+    this.sendIntent({ t: 'refreshThralls', by: this.selfId, ...r });
+    // One soft pulse per thrall (a legion is capped at a handful): the purchase is felt where it lands.
+    for (const t of mine) this.effects.flash({ x: t.x, y: 1.1, z: t.z, color: 0xc6a4ff, size: 1.3, duration: 0.35 });
+    return mine.length;
+  }
+
   private legionBonus() {
     return legionOf(this.inventory?.all ?? [], this.progression?.local.legionTier ?? 0);
   }
@@ -939,9 +961,11 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hud = new HUD(this.root, {
       cast: (slot) => this.castSlot(slot),
       buyDamage: () => {
+        const before = this.thrallNumbers();
         if (this.progression.buyDamage()) {
           audio.play('buy');
-          this.hud.toast(`Damage empowered: +${damageBonusPct(this.progression.local.damageTier)}%`, 'good');
+          const n = this.refreshStandingThralls(before);
+          this.hud.toast(`Damage empowered: +${damageBonusPct(this.progression.local.damageTier)}%${n ? `. ${n === 1 ? 'Your thrall hits' : `Your ${n} thralls hit`} harder at once.` : ''}`, 'good');
           this.effects.emit({ x: this.player.x, y: 1, z: this.player.z, count: 40, color: 0xc6a4ff, spread: 0.6, speed: 2, up: 2.5, life: 1, size: 0.3 });
         }
       },
@@ -998,10 +1022,12 @@ export class WorldScene implements GameScene, RuntimeView {
       cost: () => this.progression.legionCost(),
       gold: () => this.character.gold ?? 0,
       reinforce: () => {
+        const before = this.thrallNumbers();
         if (!this.progression.buyLegion()) return false;
         audio.play('buy');
         this.applyBoons();
-        this.hud.toast(`The legion is bound tighter: tier ${this.progression.local.legionTier}`, 'good');
+        const n = this.refreshStandingThralls(before);
+        this.hud.toast(`The legion is bound tighter: tier ${this.progression.local.legionTier}${n ? `. ${n === 1 ? 'Your thrall is' : `Your ${n} thralls are`} stronger at once.` : ''}`, 'good');
         this.legionPanel.render();
         return true;
       },

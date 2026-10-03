@@ -49,7 +49,7 @@ import {
   RALLY,
   WITHERED,
 } from '../../content/abilities';
-import { NIGHTFALL_SHROUD_CHANCE, RESTLESS_SURGE_MULT, milestoneActive, waveModifiers } from '../../content/upgrades';
+import { NIGHTFALL_SHROUD_CHANCE, RESTLESS_SURGE_MULT, THRALL_REFRESH_MAX, milestoneActive, waveModifiers } from '../../content/upgrades';
 import { DIFFICULTIES, type Difficulty } from '../../content/difficulty';
 import { ascensionLevels } from '../../content/ascension';
 import type { Omen } from '../../content/omens';
@@ -332,6 +332,8 @@ export class WorldSim {
         this.anyPlague = [...this.legends.values()].some((v) => v.witheredBurstAt > 0);
         return;
       }
+      case 'refreshThralls':
+        return this.applyRefreshThralls(intent);
       case 'recallThralls':
         for (const t of this.thralls.values()) {
           if (t.owner !== intent.by) continue;
@@ -546,6 +548,22 @@ export class WorldSim {
       this.killThrall(o, 'crumbled');
     }
     return crumbled;
+  }
+
+  /** A purchase refreshes the owner's standing thralls (see the intent). Nothing is healed: current health keeps its fraction. */
+  private applyRefreshThralls(x: Extract<Intent, { t: 'refreshThralls' }>) {
+    const clamp = (v: number) => (Number.isFinite(v) ? Math.min(THRALL_REFRESH_MAX, Math.max(1, v)) : 1);
+    const hp = clamp(x.hpMult);
+    const dmg = clamp(x.damageMult);
+    const speed = clamp(x.speedMult);
+    if (hp === 1 && dmg === 1 && speed === 1) return;
+    for (const t of this.ownedThralls(x.by)) {
+      if (t.state === 'dead') continue;
+      t.hp *= hp;
+      t.maxHp *= hp;
+      t.damage *= dmg;
+      t.attackInterval /= speed;
+    }
   }
 
   /** One ordinary exhume: this corpse becomes a thrall for the intent's owner. */

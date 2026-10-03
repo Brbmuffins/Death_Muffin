@@ -27,6 +27,13 @@ export const LEGION_UPGRADE = {
   cost: (tier: number) => Math.round(120 * Math.pow(1.65, tier)),
 };
 
+/**
+ * Buying a Damage or Legion tier refreshes the thralls already standing (2026-10-03): one multiplier each for health, damage and attack speed,
+ * new / old of the owner's thrall stats. A single purchase is at most +8% (the first Damage tier), so the host clamps a refresh to this ceiling
+ * (and the realtime relay mirrors it) rather than trusting the caller.
+ */
+export const THRALL_REFRESH_MAX = 1.25;
+
 export interface WaveModifiers {
   intervalMult: number;
   capMult: number;
