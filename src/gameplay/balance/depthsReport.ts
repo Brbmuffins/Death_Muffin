@@ -30,7 +30,7 @@ const AUTO_KIT: Record<string, KitName> = { intended: 'progress', geared: 'typic
 function averaged(run: BalanceRun): BalanceResult {
   const results = Array.from({ length: SEEDS }, (_, i) => runBalance({ ...run, difficulty: DIFFICULTY, seed: 42 + i }));
   const avg = { ...results[0] } as unknown as Record<string, number>;
-  for (const key of Object.keys(avg)) if (key !== 'run') avg[key] = results.reduce((s, r) => s + (r as unknown as Record<string, number>)[key], 0) / SEEDS;
+  for (const key of Object.keys(avg)) if (key !== 'run' && key !== 'casts') avg[key] = results.reduce((s, r) => s + (r as unknown as Record<string, number>)[key], 0) / SEEDS;
   avg.minHpPct = Math.min(...results.map((r) => r.minHpPct));
   const first = results.map((r) => r.firstDeathSec).filter((x) => x >= 0);
   avg.firstDeathSec = first.length ? Math.min(...first) : -1;

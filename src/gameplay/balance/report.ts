@@ -45,7 +45,7 @@ function averaged(run: BalanceRun): BalanceResult {
   if (SEEDS === 1) return results[0];
   const avg = { ...results[0] } as unknown as Record<string, number>;
   for (const key of Object.keys(avg)) {
-    if (key === 'run') continue;
+    if (key === 'run' || key === 'casts') continue;
     avg[key] = results.reduce((s, r) => s + (r as unknown as Record<string, number>)[key], 0) / SEEDS;
   }
   avg.minHpPct = Math.min(...results.map((r) => r.minHpPct));

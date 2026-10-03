@@ -39,7 +39,7 @@ export const FULL_SETS: Record<number, { name: string; effect: SetEffect; soul: 
 function avg(run: BalanceRun): BalanceResult {
   const rs = Array.from({ length: SEEDS }, (_, i) => runBalance({ ...run, seed: 42 + i }));
   const out = { ...rs[0] } as unknown as Record<string, number>;
-  for (const k of Object.keys(out)) if (k !== 'run') out[k] = rs.reduce((s, r) => s + (r as unknown as Record<string, number>)[k], 0) / SEEDS;
+  for (const k of Object.keys(out)) if (k !== 'run' && k !== 'casts') out[k] = rs.reduce((s, r) => s + (r as unknown as Record<string, number>)[k], 0) / SEEDS;
   return out as unknown as BalanceResult;
 }
 

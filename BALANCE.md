@@ -17,6 +17,64 @@ Note on (c): kills/min dip slightly from tier 6 to tier 8 while gold and XP clim
 
 Checks: `npx tsc --noEmit` clean; `npm test` 1,153 tests green (`runes.test.ts` needs `npm ci --prefix server/realtime` first or it fails on a missing `dotenv`). No server-mirrored file changed, so no `build:server-rules` or `test:server` run was required.
 
+## New Blood leveling audit (2026-10-03, branch `claude/newblood-leveling-audit`, harness only, not deployed)
+
+Question: why do the New Blood classes (5 Grave Warden, 6 Bell Monk, 7 Carrion Witch, 8 Hollow Knight, 9 Veilwalker) level 4-8x slower than the four necromancers in `npm run balance`? **Answer: mostly a real gameplay gap (the necromancer's thralls), with a harness-bot part that is now fixed.** No class power, XP formula, zone or boss number was changed.
+
+### What was a harness bug (fixed, `src/gameplay/__tests__/balance-newblood.test.ts`)
+The New Blood bot under-measured its classes. XP itself is not a cause: `rollKill` takes no class input, the game awards it per kill whoever lands it, and the bot already counted every kill (the game's kill-chain multiplier is modelled for nobody).
+1. **Rites cast before they unlock.** Burn the Dead and Veil Tear (level 3) were cast at level 1 (over-credit); every gate read the starting level, not the level reached during the run. Now `character.level` against `unlockLevel(id)`.
+2. **Reach measured centre to centre.** The game counts the body's radius (`NewBloodSystem.target`, `hollowCut`). The Hollow Knight approached to 2.6 m but could cut only at 2.4 m, a dead zone that left it idle against any enemy that stopped there: 14.5 -> 26 kills/min at Graves by itself.
+3. **Half the kit never cast.** Added Cremate, Resonant Step, Knell, Choir of One, Sound the Corpse, Great Toll, Hex Charm, Murder of Crows, Lay to Rest, Between Worlds, Shield Bash and Grave Slam (all existed in the sim; none had a bug, every cast reports ok). Still skipped: Chain Pull, Hook Pull, Butcher, Echo, Crossing (control or positional).
+4. **Never stepped out of a telegraph.** Half of the damage a New Blood bot took came from telegraphed blows (caster cones, dust, eruptions, rings), which a player and the Easy auto brain sidestep. The bot now reads `telegraph` events and sidesteps after a 0.25 s reaction (`BalanceRun.dodge`, default on, New Blood only; the necromancer bot never dodged and its rows are byte-identical to before).
+`BalanceResult.casts` now reports casts per ability, so "does the bot use the kit" can be read off a run.
+
+### Numbers (medium, 3 sim-minutes, 8 seeds, kit none; XP/min, mean of the 4 necromancers vs the mean of the 5 New Blood)
+
+| Ground, band | Necromancers XP/min | New Blood before | New Blood after the harness fix | Gap before -> after | NB deaths / 3 min before -> after | Levels per 3 min, necro / NB after |
+|---|---|---|---|---|---|---|
+| Graves intended | 370 | 82 | 123 | 4.5x -> 3.0x | 6.0 -> 4.0 | 4.0 / 1.9 |
+| Ossuary intended | 897 | 141 | 228 | 6.4x -> 3.9x | 6.5 -> 4.8 | 3.6 / 0.8 |
+| Nave intended | 1,930 | 204 | 364 | 9.5x -> 5.3x | 7.7 -> 5.2 | 4.6 / 0.7 |
+| Sanctum intended | 2,875 | 323 | 576 | 8.9x -> 5.0x | 6.5 -> 4.3 | 5.1 / 0.9 |
+| Graves max | 919 | 127 | 179 | 7.2x -> 5.1x | 6.2 -> 4.7 | 6.5 / 2.3 |
+| Nave max | 3,256 | 316 | 592 | 10.3x -> 5.5x | 7.7 -> 5.5 | 7.3 / 1.4 |
+| Sanctum max | 4,880 | 486 | 859 | 10.0x -> 5.7x | 6.6 -> 4.4 | 8.2 / 1.4 |
+
+(Ossuary max: 1,816 vs 209 -> 330, 8.7x -> 5.5x.) The harness fixes buy +50% to +85% XP/min (Hollow Knight and Bell Monk gain most, Veilwalker least), so the true gap is **3-6x**, not 4-10x. Best fixed class per ground is the Bell Monk or Grave Warden, worst the Veilwalker or Carrion Witch at the deeper grounds.
+
+### What is left is real: where the necromancer's lead comes from
+Graves intended and Nave intended, 4 seeds (kills/min, XP/min, deaths per 3 min):
+
+| Row | Graves | Nave |
+|---|---|---|
+| Necromancers with thralls | 90 / 372 / 0.0 | 110 / 1,983 / 0.1 |
+| Necromancers, thrall cap forced to 0 (the needle and the AoE rites alone) | 72 / 300 / 0.1 | 71 / 1,234 / 2.2 |
+| New Blood, final bot | 34 / 122 / 4.0 | 28 / 363 / 5.3 |
+| New Blood, bot never dodges | 27 / 92 / 5.8 | 21 / 244 / 7.5 |
+| New Blood, cannot die (+500 VIT) | 50 / 208 / 0.0 | 49 / 796 / 0.1 |
+
+1. **Thralls are worth about 20-35% of a necromancer's kills and nearly all its survival.** Without them a necromancer still kills 72 a minute (it kites at 11 m, with Corpse Explosion every 0.6 s and Marrow Spear lines) but takes 87-150% HP a minute instead of 18-48%.
+2. **A New Blood hero cannot survive its own position.** It fights inside the pack at 1.8-3 m (Monk, Warden, Knight) or 8-11 m with no body in front (Witch, Veilwalker); it takes 190-230% of its HP a minute and dies 4-5 times in 3 minutes, which at 12 s a respawn is about 30% of the run, and each respawn walks back into the same pack (lives last 10-25 s). Immortal, the same bots reach 50 kills/min, so deaths cost about 35-45% of the output, the rest is raw damage.
+3. **Raw damage is lower for the same spell power.** All classes share `spellPower`. A necromancer chains AoE (Corpse Explosion 1.8x, Spear 2.1x, Litany 1.5x at level 1) fuelled by every kill's corpse; a level-1 New Blood has one 1.0x single-target or short-arc primary plus two or three rites, several corpse-gated.
+4. **XP/min amplifies kill rate**, since XP per kill is flat per enemy and level: kills/min differ 2.6-5.7x and XP/min 3-6x. Enemy XP also scales with the enemy's level, which in the level-scaled grounds follows the hero, so a faster leveller is paid more per kill (not separately measured here).
+5. Not modelled for any class, and so not an explanation: the kill-chain XP multiplier (rewards kill rate, which would widen the gap in the live game), healing flasks, the shared cast lock, gear.
+
+### Owner options (nothing applied; the owner asked for a human check before retuning class power)
+Measured on the fixed bot (4 seeds x 5 New Blood, XP/min versus necromancer 372 at Graves / 1,983 at Nave, 4.0 / 4.8 necromancer levels per 3 min):
+
+| Option | Graves XP/min (levels/3 min, deaths) | Nave XP/min (levels, deaths) | What it changes |
+|---|---|---|---|
+| Today | 122 (1.9, 4.0) | 363 (0.7, 5.3) | |
+| **A. Survivability:** New Blood +50% max HP (or an equal damage-taken cut), +100% as the upper bound | +50%: 144 (1.9, 2.8); +100%: 164 (2.2, 1.9) | +50%: 419 (0.9, 4.5); +100%: 525 (1.2, 3.5) | Removes deaths but not the slow kills; at Nave even +100% only reaches 27% of the necromancer. Cheapest, least effective alone. |
+| **B. Damage:** every New Blood primary and rite x1.5 (x2 as the upper bound) | x1.5: 187 (2.4, 2.6); x2: 244 (3.0, 1.7) | x1.5: 601 (1.3, 4.1); x2: 827 (2.1, 3.3) | The bigger lever: x2 puts Graves at 66% and Nave at 42% of the necromancer, and halves deaths. Touches boss and PvE balance for these classes, so re-run `npm run balance:boss`. |
+| **A+B:** +50% HP and x1.5 damage | 218 (2.6, 1.4) | 709 (1.6, 3.3) | Roughly the Option B x2 result with fewer deaths. |
+| **C. Pacing only, no combat change:** an XP catch-up multiplier for non-necromancer disciplines for the first ~15 levels (x2-x3, fading to x1) | x2.5 would roughly match the necromancer's XP/min at Graves (122 -> about 300), arithmetic only, not simulated | same | Leaves kit power alone, so a human playtest can judge class feel separately. Cheapest to reverse; does nothing for the 4-5 deaths per 3 minutes. |
+
+Recommendation for a human to confirm: **B at about x1.5 on the primary and the cheap rites, plus C for the early levels**, then a playtest of the Monk, Warden and Knight (the melee three die most). Do not judge the Veilwalker or Witch from this harness: both are ranged with no body in front, and their gap (3.4-5x after the fix) is the largest at depth. A human with flasks, dodge-rolling and gear will close more of it than the bot does, so expect the in-game gap to be smaller than 3-6x; the first thing to check by hand is whether a level-1 Warden, Monk or Knight can survive Graves without help.
+
+Reproduce: `BALANCE_SEEDS=8 BALANCE_AREAS=graves,ossuary,nave,sanctum BALANCE_BANDS=intended,max BALANCE_KIT=none npm run balance`; `dodge: false` in a `runBalance` call reproduces the old standing bot for the New Blood rows.
+
 ## Catacomb Depths (2026-10-02, `npm run balance:depths`; branch `dm/depths`, not deployed)
 
 The dead on depth *d* are level `max(12, hero level) + d` (content/depths.ts; the plan said `max(20, ...)`, but a level-20 floor is a wall for the level-8 to 12 heroes the Warren admits, so the floor is the Warren's own entry level). Enemy health grows +22% and damage +15% of a level-1 body per level, so +10 depths is about +20% of both at level 40. A floor spawns only what its quota still needs, at most 24 alive, from the chambers nearest the hero. `npm run balance:depths` holds one floor of a depth (a cleared floor re-rolls the same depth) and prints the four necromancers beside the Cinder Pyre and Mourning Fen at the same hero level (`DEPTH_LEVELS`, `DEPTH_DEPTHS`, `DEPTH_BANDS`, `DEPTH_DISCIPLINES`, `BALANCE_SEEDS`, `BALANCE_MINUTES`). Medium difficulty, 4 seeds x 3 sim-minutes, mean of Ossuary / Gravecaller / Mourner / Rotweaver; intended = progress kit, geared = typical kit:
