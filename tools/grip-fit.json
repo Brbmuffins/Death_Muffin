@@ -7,14 +7,9 @@
    "follow": 1,
    "clips": {
     "cast": 0.8,
-    "death2": 0.8,
+    "death2": 0.5,
     "death": 0.8,
-    "hurt": 0.8,
-    "run": 0.9,
-    "attack": 0.9,
-    "slam": 0.9,
-    "flick": 0.8,
-    "summon": 0.8
+    "hurt": 0.8
    }
   },
   "scythe": {
@@ -23,13 +18,9 @@
    "shift": 0.08,
    "follow": 1,
    "clips": {
-    "death2": 0.9,
+    "death2": 0.35,
     "death": 0.9,
     "hurt": 0.9,
-    "run": 0.9,
-    "attack": 0.9,
-    "slam": 0.9,
-    "flick": 0.9,
     "summon": 0.9
    }
   },
@@ -39,12 +30,12 @@
    "shift": 0.04,
    "follow": 1,
    "clips": {
+    "death2": 0.8,
+    "dig": 0,
     "death": 0.9,
-    "run": 0.9,
-    "attack": 0.9,
-    "slam": 0.9,
-    "flick": 0.9,
-    "summon": 0.9
+    "run": 0.8,
+    "flick": 0.8,
+    "summon": 0.8
    }
   },
   "sickle": {
@@ -53,15 +44,13 @@
    "shift": 0,
    "follow": 1,
    "clips": {
-    "death2": 0.8,
-    "dig": 0.9,
-    "death": 0.9,
-    "idle": 0.9,
+    "death2": 0.65,
+    "dig": 0.8,
+    "idle": 0.65,
     "run": 0.8,
-    "attack": 0.8,
-    "walk": 0.8,
-    "slam": 0.8,
-    "summon": 0.8
+    "walk": 0.35,
+    "flick": 0.2,
+    "summon": 0.65
    }
   },
   "skull_focus": {
@@ -70,11 +59,10 @@
    "shift": 0.04,
    "follow": 1,
    "clips": {
-    "cast": 0.9,
-    "hurt2": 0.9,
+    "cast": 0.8,
     "run": 0.9,
-    "sweep": 0.9,
-    "summon": 0.9
+    "sweep": 0.8,
+    "summon": 0.8
    }
   },
   "grimoire": {
@@ -82,7 +70,12 @@
    "fwd": 0,
    "shift": 0.02,
    "follow": 1,
-   "clips": {}
+   "clips": {
+    "cast": 0.9,
+    "hurt2": 0.35,
+    "sweep": 0.5,
+    "summon": 0.65
+   }
   },
   "mourning_bell": {
    "out": 0.1,
@@ -91,7 +84,8 @@
    "follow": 1,
    "clips": {
     "death2": 0.9,
-    "hurt": 0.8,
+    "hurt": 0.65,
+    "attack": 0,
     "slam": 0.8,
     "summon": 0.8
    }
@@ -103,7 +97,10 @@
    "fwd": 0,
    "shift": 0.08,
    "follow": 1,
-   "clips": {}
+   "clips": {
+    "death2": 0.5,
+    "death": 0.9
+   }
   },
   "scythe": {
    "out": 0.1,
@@ -111,16 +108,16 @@
    "shift": 0.02,
    "follow": 1,
    "clips": {
-    "cast": 0.9,
-    "death2": 0.9,
-    "death": 0.9,
+    "cast": 0.8,
+    "death2": 0.2,
+    "death": 0.8,
     "hurt": 0.9,
-    "idle": 0.9,
+    "idle": 0.35,
+    "run": 0.2,
     "attack": 0.9,
-    "walk": 0.9,
     "slam": 0.9,
-    "flick": 0.9,
-    "summon": 0.9
+    "flick": 0.35,
+    "summon": 0.8
    }
   },
   "wand": {
@@ -131,8 +128,6 @@
    "clips": {
     "death": 0.8,
     "run": 0.8,
-    "attack": 0.8,
-    "slam": 0.8,
     "summon": 0.8
    }
   },
@@ -142,10 +137,8 @@
    "shift": 0.04,
    "follow": 1,
    "clips": {
-    "attack": 0.9,
-    "slam": 0.9,
-    "flick": 0.9,
-    "summon": 0.9
+    "death": 0.35,
+    "summon": 0.8
    }
   },
   "skull_focus": {
@@ -154,11 +147,12 @@
    "shift": 0.04,
    "follow": 1,
    "clips": {
+    "cast": 0.9,
+    "dig": 0.2,
+    "death": 0.35,
     "hurt2": 0.8,
-    "run": 0.8,
-    "walk": 0.8,
     "sweep": 0.8,
-    "summon": 0.8
+    "summon": 0.5
    }
   },
   "grimoire": {
@@ -166,14 +160,22 @@
    "fwd": 0.1,
    "shift": 0.02,
    "follow": 1,
-   "clips": {}
+   "clips": {
+    "cast": 0.5,
+    "hurt": 0.65,
+    "hurt2": 0.9,
+    "sweep": 0.9
+   }
   },
   "mourning_bell": {
    "out": 0,
    "fwd": -0.1,
    "shift": 0,
    "follow": 1,
-   "clips": {}
+   "clips": {
+    "attack": 0.5,
+    "slam": 0.9
+   }
   }
  },
  "hero_mourner": {
@@ -183,13 +185,12 @@
    "shift": 0.04,
    "follow": 1,
    "clips": {
-    "cast": 0.9,
-    "death2": 0.9,
-    "death": 0.9,
+    "cast": 0.1,
+    "death2": 0.5,
+    "death": 0.8,
     "hurt": 0.9,
-    "attack": 0.9,
-    "flick": 0.9,
-    "summon": 0.9
+    "run": 0.35,
+    "flick": 0.9
    }
   },
   "scythe": {
@@ -198,15 +199,14 @@
    "shift": 0.06,
    "follow": 1,
    "clips": {
-    "cast": 0.8,
-    "death2": 0.8,
-    "death": 0.8,
+    "cast": 0.2,
+    "death2": 0.35,
+    "death": 0.9,
     "hurt": 0.8,
-    "run": 0.8,
-    "attack": 0.8,
-    "slam": 0.9,
-    "flick": 0.8,
-    "summon": 0.8
+    "run": 0.65,
+    "attack": 0.65,
+    "slam": 0.65,
+    "summon": 0.65
    }
   },
   "wand": {
@@ -215,11 +215,8 @@
    "shift": 0.02,
    "follow": 1,
    "clips": {
-    "death": 0.8,
-    "run": 0.8,
-    "attack": 0.9,
-    "slam": 0.9,
-    "flick": 0.9,
+    "death": 0.65,
+    "run": 0.65,
     "summon": 0.8
    }
   },
@@ -229,9 +226,6 @@
    "shift": 0.04,
    "follow": 1,
    "clips": {
-    "death": 0.9,
-    "slam": 0.9,
-    "flick": 0.9,
     "summon": 0.9
    }
   },
@@ -242,10 +236,7 @@
    "follow": 1,
    "clips": {
     "cast": 0.8,
-    "hurt2": 0.8,
-    "run": 0.9,
-    "sweep": 0.8,
-    "summon": 0.8
+    "sweep": 0.65
    }
   },
   "grimoire": {
@@ -256,12 +247,8 @@
    "clips": {
     "cast": 0.9,
     "dig": 0.9,
-    "hurt": 0.9,
-    "hurt2": 0.9,
-    "run": 0.9,
-    "attack": 0.9,
-    "sweep": 0.9,
-    "summon": 0.9
+    "sweep": 0.65,
+    "summon": 0.5
    }
   },
   "mourning_bell": {
@@ -269,7 +256,12 @@
    "fwd": 0,
    "shift": 0.02,
    "follow": 1,
-   "clips": {}
+   "clips": {
+    "death2": 0.65,
+    "attack": 0.35,
+    "slam": 0.5,
+    "flick": 0.9
+   }
   }
  },
  "hero_rotweaver": {
@@ -279,15 +271,13 @@
    "shift": 0.06,
    "follow": 1,
    "clips": {
-    "cast": 0.8,
-    "death2": 0.8,
+    "cast": 0.9,
+    "death2": 0.65,
+    "dig": 0.35,
     "death": 0.8,
     "hurt": 0.8,
     "run": 0.8,
-    "attack": 0.8,
-    "slam": 0.8,
-    "flick": 0.9,
-    "summon": 0.8
+    "slam": 0.8
    }
   },
   "scythe": {
@@ -295,7 +285,16 @@
    "fwd": 0,
    "shift": 0,
    "follow": 1,
-   "clips": {}
+   "clips": {
+    "cast": 0,
+    "death2": 0.2,
+    "death": 0,
+    "hurt": 0.65,
+    "walk": 0.9,
+    "slam": 0.35,
+    "channel": 0.35,
+    "summon": 0.5
+   }
   },
   "wand": {
    "out": 0,
@@ -303,11 +302,9 @@
    "shift": 0.04,
    "follow": 1,
    "clips": {
-    "death2": 0.9,
     "death": 0.9,
     "run": 0.9,
-    "attack": 0.9,
-    "slam": 0.9,
+    "flick": 0.5,
     "summon": 0.9
    }
   },
@@ -317,16 +314,15 @@
    "shift": 0.02,
    "follow": 1,
    "clips": {
-    "cast": 0.8,
-    "death2": 0.8,
-    "death": 0.8,
+    "cast": 0.65,
+    "death2": 0.5,
+    "death": 0.35,
     "hurt": 0.9,
-    "idle": 0.9,
     "run": 0.8,
     "attack": 0.8,
     "slam": 0.8,
-    "flick": 0.9,
-    "summon": 0.8
+    "flick": 0.5,
+    "summon": 0.9
    }
   },
   "skull_focus": {
@@ -336,10 +332,10 @@
    "follow": 1,
    "clips": {
     "cast": 0.9,
+    "death": 0.35,
     "hurt2": 0.9,
-    "run": 0.9,
-    "walk": 0.9,
-    "sweep": 0.9
+    "sweep": 0.65,
+    "summon": 0.65
    }
   },
   "grimoire": {
@@ -347,7 +343,12 @@
    "fwd": 0,
    "shift": 0.06,
    "follow": 1,
-   "clips": {}
+   "clips": {
+    "hurt2": 0.8,
+    "attack": 0.65,
+    "sweep": 0.8,
+    "summon": 0
+   }
   },
   "mourning_bell": {
    "out": 0,
@@ -355,11 +356,11 @@
    "shift": 0,
    "follow": 1,
    "clips": {
-    "hurt": 0.8,
+    "death2": 0.35,
+    "hurt": 0.5,
     "hurt2": 0.9,
-    "attack": 0.9,
-    "slam": 0.9,
-    "flick": 0.9
+    "attack": 0.35,
+    "flick": 0.5
    }
   }
  }
