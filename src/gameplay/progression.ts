@@ -547,9 +547,13 @@ export class Progression {
     this.dirtyServer = true;
     if (this.saveState === 'saved') this.saveState = 'dirty';
     this.emit();
-    if (urgent) this.flush();
-    else if (!this.timer) this.timer = window.setTimeout(() => this.flush(), 45000);
+    if (urgent) {
+      // An urgent save asked for while one is already in flight is not lost: flush() runs again the moment that one lands (it used to wait out the 45 s timer).
+      if (this.inFlight) this.urgentAgain = true;
+      else void this.flush();
+    } else if (!this.timer) this.timer = window.setTimeout(() => this.flush(), 45000);
   }
+  private urgentAgain = false;
 
   private payload() {
     const c = this.character;
@@ -587,7 +591,10 @@ export class Progression {
     } finally {
       this.inFlight = false;
       this.emit();
-      if (this.dirtyServer && this.saveState === 'dirty' && !this.timer) {
+      const again = this.urgentAgain;
+      this.urgentAgain = false;
+      if (again && this.dirtyServer && this.saveState === 'dirty') void this.flush();
+      else if (this.dirtyServer && this.saveState === 'dirty' && !this.timer) {
         this.timer = window.setTimeout(() => this.flush(), 45000);
       }
     }
