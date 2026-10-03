@@ -140,6 +140,8 @@ const GROUND_FX_PRELOAD = [
   'enemy_breach_rim', 'crypt_mist', 'bell_toll_ring', 'miasma_cloud',
   'grave_frost_mist', 'surge_eruption',
 ] as const;
+/** Share of a partner's cast particles that is drawn (see handleEvent). */
+const PARTNER_FX_SCALE = 0.5;
 const INTERACT_RANGE = 2.6;
 /** Only enemies with a distinct counter need a first-sight card; the Codex covers the rest. */
 const FIRST_SIGHT_TIPS: Partial<Record<EnemyId, TipId>> = {
@@ -2672,7 +2674,24 @@ export class WorldScene implements GameScene, RuntimeView {
     r.avatar.cast(id === 'exhume' || id === 'carrion_seed' ? 'dig' : 'cast', 2, r.facing, CAST_FLOW[id].gestureSeconds, id);
   }
 
+  /**
+   * Another player's cast plays the same effect with fewer particles (Effects.particleScale): in a party their casts pile
+   * on top of ours, and a mote nobody can tell apart is still a mote the GPU shades. Enemy zones and events with no owner
+   * are never thinned.
+   */
   private handleEvent(ev: SimEvent) {
+    const who = 'by' in ev ? ev.by : 'owner' in ev ? ev.owner : ev.t === 'zone' ? ev.zone.owner : undefined;
+    if (typeof who !== 'string' || who === this.selfId || !this.remotes.has(who)) return this.handleEventNow(ev);
+    const prev = this.effects.particleScale;
+    this.effects.particleScale = prev * PARTNER_FX_SCALE;
+    try {
+      this.handleEventNow(ev);
+    } finally {
+      this.effects.particleScale = prev;
+    }
+  }
+
+  private handleEventNow(ev: SimEvent) {
     this.views.onEvent(ev);
     this.depths?.onEvent(ev);
     this.remoteGesture(ev);

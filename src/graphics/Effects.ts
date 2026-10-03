@@ -2,9 +2,14 @@ import * as THREE from 'three';
 import { BinbunFX } from './binbun/BinbunFX';
 import { fx } from './fxTextures';
 import { assets } from './AssetCache';
+import { settings } from '../app/settings';
 import { hitstop } from './hitstop';
+import { BeamLayer, SpriteLayer, footprintGeometry, type BeamInstance, type SpriteInstance } from './fxLayers';
 
 type Vec3 = { x: number; y: number; z: number };
+
+/** Share of each particle burst drawn on Graphics: Low. */
+const LOW_PARTICLE_SCALE = 0.75;
 
 // ---------------------------------------------------------------------------
 // Particles — one Points draw call per blend mode, CPU-simulated ring buffer.
@@ -18,6 +23,13 @@ const PARTICLE_VS = /* glsl */ `
   varying vec3 vColor;
   uniform float uScale;
   void main() {
+    // A particle the fragment stage would discard (alpha < 0.004) is clipped here instead: it used to be rasterised at its last
+    // size and shaded for nothing, a few screens' worth of fill once a fight had filled the ring.
+    if (aAlpha < 0.004) {
+      gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+      gl_PointSize = 0.0;
+      return;
+    }
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
     gl_Position = projectionMatrix * mv;
     gl_PointSize = aSize * uScale / max(0.1, -mv.z);
@@ -148,7 +160,13 @@ class ParticleSystem {
         continue;
       }
       this.life[i] -= dt;
-      if (this.life[i] <= 0) this.active--;
+      if (this.life[i] <= 0) {
+        this.active--;
+        // Dead: zero size and alpha so the last upload leaves nothing for the vertex stage to keep (see PARTICLE_VS).
+        this.alpha[i] = 0;
+        this.size[i] = 0;
+        continue;
+      }
       const t = 1 - Math.max(0, this.life[i]) / this.maxLife[i];
       const k = Math.max(0, 1 - this.drag[i] * dt);
       this.vel[i * 3] *= k;
@@ -238,13 +256,16 @@ class DecalLayer {
   private readonly material: THREE.MeshBasicMaterial;
   private opacity!: THREE.InstancedBufferAttribute;
   private static readonly geometry = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+  private static discGeometry: THREE.BufferGeometry | null = null;
+  private static ringGeometry: THREE.BufferGeometry | null = null;
   private static readonly m = new THREE.Matrix4();
   private static readonly q = new THREE.Quaternion();
   private static readonly p = new THREE.Vector3();
   private static readonly s = new THREE.Vector3();
   private static readonly up = new THREE.Vector3(0, 1, 0);
 
-  constructor(private readonly parent: THREE.Group, map: THREE.Texture, blending: THREE.Blending, private capacity = 32) {
+  /** `shape`: radial textures (disc / glow / sigil / cracks) draw on a 16-gon, the ring texture on its annulus: same lit pixels, a fraction of the fill. */
+  constructor(private readonly parent: THREE.Group, map: THREE.Texture, blending: THREE.Blending, private readonly shape: 'quad' | 'disc' | 'ring' = 'quad', private capacity = 32) {
     this.material = new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending });
     // Per-instance opacity (instanceColor already carries the tint).
     this.material.onBeforeCompile = (shader) => {
@@ -260,7 +281,8 @@ class DecalLayer {
   }
 
   private make() {
-    const geo = DecalLayer.geometry.clone();
+    const base = this.shape === 'disc' ? (DecalLayer.discGeometry ??= footprintGeometry('disc', 'xz')) : this.shape === 'ring' ? (DecalLayer.ringGeometry ??= footprintGeometry('ring', 'xz')) : DecalLayer.geometry;
+    const geo = base.clone();
     this.opacity = new THREE.InstancedBufferAttribute(new Float32Array(this.capacity), 1);
     this.opacity.setUsage(THREE.DynamicDrawUsage);
     geo.setAttribute('aDecalOpacity', this.opacity);
@@ -401,8 +423,11 @@ export class Effects {
   private combatTransients = 0;
   /** Live decals, one instanced layer per texture + blend mode. */
   private decalLayers = new Map<string, DecalLayer>();
-  private spritePool: THREE.Object3D[] = [];
-  private beamPool: THREE.Object3D[] = [];
+  /** Live flash / orbit billboards, one instanced layer per texture; live tethers in one instanced layer. */
+  private spriteLayers = new Map<string, SpriteLayer>();
+  private beamLayer: BeamLayer | null = null;
+  /** The glow sprite layer is never idle-freed (see the constructor). */
+  private glowLayer: SpriteLayer | null = null;
   private projectiles: Projectile[] = [];
   private needlePool: THREE.Mesh[] = [];
   private orbPool: THREE.Mesh[] = [];
@@ -434,6 +459,11 @@ export class Effects {
     this.additive = new ParticleSystem(3500, fx.glow(), THREE.AdditiveBlending);
     this.smoke = new ParticleSystem(900, fx.smoke(), THREE.NormalBlending);
     this.group.add(this.additive.points, this.smoke.points);
+    // The instanced billboard / beam layers' shader programs compile with the first frame (an empty layer still goes
+    // through setProgram) instead of in the middle of the first fight. These two stay alive for the session: a program is
+    // destroyed when its last material is disposed, and flashes and tethers are in nearly every fight.
+    this.beamLayer = new BeamLayer(this.group);
+    this.glowLayer = this.spriteLayer(fx.glow());
     const spikeGeo = new THREE.ConeGeometry(0.2, 1, 4).translate(0, 0.5, 0);
     this.spikeMesh = new THREE.InstancedMesh(
       spikeGeo,
@@ -463,7 +493,21 @@ export class Effects {
   /** Particles requested from the two rings since start (QA: how much of the load a layer is responsible for). */
   emitted = 0;
 
+  /**
+   * Share of each burst's particles that is drawn (1 = all, never below one per burst). The scene lowers it while it plays
+   * another player's cast: the same effect, the same colours, fewer motes: we already draw our own casts on top of it.
+   */
+  particleScale = 1;
+
+  private scaled(o: EmitOptions): EmitOptions {
+    // Graphics: Low keeps three quarters of every burst (it has no Binbun layer or motifs, so these motes are its whole look).
+    const k = this.particleScale * (settings.quality === 'low' ? LOW_PARTICLE_SCALE : 1);
+    if (k >= 1 || o.count <= 0) return o;
+    return { ...o, count: Math.max(1, Math.round(o.count * k)) };
+  }
+
   emit(o: EmitOptions) {
+    o = this.scaled(o);
     this.emitted += o.count;
     this.additive.emit(o);
   }
@@ -479,15 +523,9 @@ export class Effects {
   }
 
   emitSmoke(o: EmitOptions) {
+    o = this.scaled(o);
     this.emitted += o.count;
     this.smoke.emit(o);
-  }
-
-  private take<T extends THREE.Object3D>(pool: THREE.Object3D[], make: () => T): T {
-    const m = (pool.pop() as T | undefined) ?? make();
-    m.visible = true;
-    this.group.add(m);
-    return m;
   }
 
   private add(tr: Transient): Handle {
@@ -523,12 +561,18 @@ export class Effects {
     tr.pool?.push(tr.mesh);
   }
 
+  /** The procedural radial sprites are zero outside their circle (ring: inside its hole too), so they need not rasterise a square. */
+  private footprintOf(tex: THREE.Texture): 'quad' | 'disc' | 'ring' {
+    if (tex === fx.ring()) return 'ring';
+    return tex === fx.disc() || tex === fx.glow() || tex === fx.sigil() || tex === fx.cracks() ? 'disc' : 'quad';
+  }
+
   decal(o: DecalOptions): Handle {
     const tex = o.tex ?? fx.disc();
     const blending = o.blending ?? THREE.AdditiveBlending;
     const key = `${tex.uuid}|${blending}`;
     let layer = this.decalLayers.get(key);
-    if (!layer) this.decalLayers.set(key, (layer = new DecalLayer(this.group, tex, blending)));
+    if (!layer) this.decalLayers.set(key, (layer = new DecalLayer(this.group, tex, blending, this.footprintOf(tex))));
     const d: DecalInstance = { x: 0, y: 0, z: 0, rotY: o.rot ?? 0, sx: 0, sz: 0, color: new THREE.Color(o.color), opacity: 0 };
     layer.add(d);
     const base = o.opacity ?? 1;
@@ -571,31 +615,25 @@ export class Effects {
     });
   }
 
+  private spriteLayer(tex: THREE.Texture) {
+    let layer = this.spriteLayers.get(tex.uuid);
+    if (!layer) this.spriteLayers.set(tex.uuid, (layer = new SpriteLayer(this.group, tex, 32, tex === fx.glow())));
+    return layer;
+  }
+
   /** A short-lived tinted billboard; `rise` lifts it that many units over its life (skull and spirit wisps). */
   flash(o: { x: number; y: number; z: number; color: THREE.ColorRepresentation; size: number; duration: number; tex?: THREE.Texture; rise?: number; opacity?: number }) {
-    const sprite = this.take(this.spritePool, () => {
-      const s = new THREE.Sprite(
-        new THREE.SpriteMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
-      );
-      s.renderOrder = 6;
-      return s;
-    }) as THREE.Sprite;
-    const mat = sprite.material;
-    mat.map = o.tex ?? fx.glow();
-    mat.color.set(o.color);
-    mat.rotation = 0;
-    mat.needsUpdate = true;
-    sprite.position.set(o.x, o.y, o.z);
+    const layer = this.spriteLayer(o.tex ?? fx.glow());
+    const s: SpriteInstance = { x: o.x, y: o.y, z: o.z, size: 0, rot: 0, color: new THREE.Color(o.color), opacity: 0 };
+    layer.add(s);
     return this.add({
-      mesh: sprite,
       t: 0,
       duration: o.duration,
-      pool: this.spritePool,
+      release: () => layer.remove(s),
       update: (_t, k) => {
-        const s = o.size * (0.35 + 0.65 * Math.sin(Math.min(1, k * 1.4) * Math.PI * 0.5));
-        sprite.scale.set(s, s, s);
-        if (o.rise) sprite.position.y = o.y + o.rise * k;
-        mat.opacity = (o.opacity ?? 1) * (k < 0.3 ? 1 : 1 - (k - 0.3) / 0.7);
+        s.size = o.size * (0.35 + 0.65 * Math.sin(Math.min(1, k * 1.4) * Math.PI * 0.5));
+        if (o.rise) s.y = o.y + o.rise * k;
+        s.opacity = (o.opacity ?? 1) * (k < 0.3 ? 1 : 1 - (k - 0.3) / 0.7);
       },
     });
   }
@@ -621,34 +659,26 @@ export class Effects {
     let cz = 0;
     const first = o.follow();
     if (first) [cx, cz] = [first.x, first.z];
+    const layer = this.spriteLayer(o.tex);
     for (let i = 0; i < o.count; i++) {
-      const sprite = this.take(this.spritePool, () => {
-        const s = new THREE.Sprite(
-          new THREE.SpriteMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
-        );
-        s.renderOrder = 6;
-        return s;
-      }) as THREE.Sprite;
-      const mat = sprite.material;
-      mat.map = o.tex;
-      mat.color.set(o.color);
-      mat.needsUpdate = true;
+      const s: SpriteInstance = { x: cx, y: o.y, z: cz, size: o.size, rot: 0, color: new THREE.Color(o.color), opacity: 0 };
+      layer.add(s);
       const phase = (i / o.count) * Math.PI * 2;
       const lift = (i % 3) * 0.28;
       handles.push(this.add({
-        mesh: sprite,
         t: 0,
         duration: o.duration,
-        pool: this.spritePool,
+        release: () => layer.remove(s),
         update: (t) => {
           const f = o.follow();
           if (f) [cx, cz] = [f.x, f.z];
           const a = phase + t * o.speed;
           const r = o.radius * Math.min(1, 0.25 + t * 3);
-          sprite.position.set(cx + Math.cos(a) * r, o.y + lift + Math.sin(t * 3.1 + phase) * 0.12, cz + Math.sin(a) * r);
-          mat.rotation = a * 1.7;
-          sprite.scale.set(o.size, o.size, o.size);
-          mat.opacity = Math.max(0, Math.min(1, t / 0.15, (o.duration - t) / 0.35));
+          s.x = cx + Math.cos(a) * r;
+          s.y = o.y + lift + Math.sin(t * 3.1 + phase) * 0.12;
+          s.z = cz + Math.sin(a) * r;
+          s.rot = a * 1.7;
+          s.opacity = Math.max(0, Math.min(1, t / 0.15, (o.duration - t) / 0.35));
         },
       }));
     }
@@ -846,39 +876,30 @@ export class Effects {
 
   /** Glowing tether from A to B (litany tethers, deacon raise beams). */
   /** `a` may also follow a moving anchor (Soul Siphon's caster end). */
-  beam(a: Vec3 | (() => Vec3 | null), b: () => Vec3 | null, color: THREE.ColorRepresentation, width: number, duration: number) {
-    const mesh = this.take(this.beamPool, () => {
-      const m = new THREE.Mesh(
-        new THREE.CylinderGeometry(1, 1, 1, 6, 1, true).rotateX(Math.PI / 2),
-        new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
-      );
-      m.renderOrder = 6;
-      return m;
-    }) as THREE.Mesh;
-    const mat = mesh.material as THREE.MeshBasicMaterial;
-    mat.color.set(color);
-    const pa = new THREE.Vector3();
-    const pb = new THREE.Vector3();
+  beam(a: Vec3 | (() => Vec3 | null), b2: () => Vec3 | null, color: THREE.ColorRepresentation, width: number, duration: number) {
+    const layer = (this.beamLayer ??= new BeamLayer(this.group));
+    const b: BeamInstance = { x: 0, y: 0, z: 0, tx: 0, ty: 0, tz: 1, width: width, length: 1, color: new THREE.Color(color), opacity: 0 };
+    layer.add(b);
     return this.add({
-      mesh,
       t: 0,
       duration,
-      pool: this.beamPool,
+      release: () => layer.remove(b),
       update: (t, k) => {
-        const end = b();
+        const end = b2();
         const start = typeof a === 'function' ? a() : a;
         if (!end || !start) {
-          mat.opacity = 0;
+          b.opacity = 0;
           return;
         }
-        pa.set(start.x, start.y, start.z);
-        pb.set(end.x, end.y, end.z);
-        const len = pa.distanceTo(pb);
-        mesh.position.copy(pa).lerp(pb, 0.5);
-        mesh.lookAt(pb);
-        const w = width * (0.7 + 0.3 * Math.sin(t * 30));
-        mesh.scale.set(w, w, len);
-        mat.opacity = Math.min(1, (1 - k) * 2);
+        b.x = (start.x + end.x) / 2;
+        b.y = (start.y + end.y) / 2;
+        b.z = (start.z + end.z) / 2;
+        b.tx = end.x;
+        b.ty = end.y;
+        b.tz = end.z;
+        b.length = Math.hypot(end.x - start.x, end.y - start.y, end.z - start.z);
+        b.width = width * (0.7 + 0.3 * Math.sin(t * 30));
+        b.opacity = Math.min(1, (1 - k) * 2);
       },
     });
   }
@@ -1010,6 +1031,15 @@ export class Effects {
         this.decalLayers.delete(key);
       }
     }
+    for (const [key, layer] of this.spriteLayers) {
+      layer.flush();
+      layer.idleS = layer.items.length ? 0 : layer.idleS + dtReal;
+      if (layer.idleS > 5 && layer !== this.glowLayer) {
+        layer.dispose();
+        this.spriteLayers.delete(key);
+      }
+    }
+    this.beamLayer?.flush();
 
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const p = this.projectiles[i];
@@ -1086,6 +1116,11 @@ export class Effects {
     this.binbun.dispose();
     for (const layer of this.decalLayers.values()) layer.dispose();
     this.decalLayers.clear();
+    for (const layer of this.spriteLayers.values()) layer.dispose();
+    this.spriteLayers.clear();
+    this.beamLayer?.dispose();
+    this.beamLayer = null;
+    this.glowLayer = null;
     const geometries = new Set<THREE.BufferGeometry>();
     const materials = new Set<THREE.Material>();
     const collect = (o: THREE.Object3D) => {
@@ -1098,7 +1133,7 @@ export class Effects {
     this.group.traverse(collect);
     // Expired pooled meshes are no longer children of the scene group, but
     // their GPU resources still belong to this Effects instance.
-    for (const pool of [this.spritePool, this.beamPool, this.needlePool, this.orbPool, this.spriteShotPool]) {
+    for (const pool of [this.needlePool, this.orbPool, this.spriteShotPool]) {
       for (const mesh of pool) collect(mesh);
       pool.length = 0;
     }
