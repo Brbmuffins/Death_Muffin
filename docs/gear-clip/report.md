@@ -20,46 +20,46 @@ Matrix: 4 heroes x 4 main-hand kinds (staff, scythe, wand, sickle) x 3 off-hand 
 
 | # | hero | item | clip | frame (s) | metric | worst | p95 | x budget |
 |---|---|---|---|---|---|---|---|---|
-| 1 | ossuary | cape | death2 | 2.47 | hem | 14.5 cm | 12.3 cm | 2.9 |
-| 2 | ossuary | cape | hurt2 | 0.20 | hem | 13.3 cm | 7.6 cm | 2.7 |
-| 3 | ossuary | helm | death2 | 3.13 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 4 | ossuary | helm | flick | 1.00 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 5 | ossuary | helm | channel | 0.13 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 6 | ossuary | helm | slam | 1.60 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 7 | ossuary | helm | summon | 0.60 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 8 | ossuary | helm | sweep | 1.40 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 9 | ossuary | helm | run | 0.80 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 10 | ossuary | helm | dig | 1.00 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 11 | ossuary | helm | cast | 0.93 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 12 | ossuary | helm | attack | 1.27 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 13 | ossuary | helm | death | 1.67 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 14 | ossuary | helm | idle | 12.60 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 15 | ossuary | helm | walk | 2.27 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 16 | ossuary | helm | hurt | 0.53 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 17 | ossuary | helm | hurt2 | 0.53 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 18 | ossuary | cape | cast | 1.00 | hem | 12.4 cm | 10.8 cm | 2.5 |
-| 19 | gravecaller | helm | death2 | 1.33 | sink | 4.5 cm | 4.0 cm | 2.3 |
-| 20 | rotweaver | staff | summon | 0.67 | drift | 224.7 cm | 205.8 cm | 2.2 |
-| 21 | gravecaller | staff | summon | 0.67 | drift | 223.8 cm | 204.9 cm | 2.2 |
-| 22 | ossuary | staff | summon | 0.67 | drift | 223.7 cm | 205.6 cm | 2.2 |
-| 23 | mourner | staff | summon | 0.67 | drift | 222.6 cm | 204.7 cm | 2.2 |
-| 24 | mourner | cape | death2 | 2.67 | hem | 10.9 cm | 10.0 cm | 2.2 |
-| 25 | gravecaller | staff | attack | 1.93 | drift | 215.1 cm | 163.9 cm | 2.2 |
-| 26 | gravecaller | staff | slam | 0.60 | drift | 214.7 cm | 208.0 cm | 2.1 |
-| 27 | rotweaver | staff | slam | 0.60 | drift | 214.0 cm | 207.1 cm | 2.1 |
-| 28 | mourner | staff | attack | 1.93 | drift | 214.0 cm | 162.9 cm | 2.1 |
-| 29 | mourner | scythe | summon | 0.67 | drift | 213.8 cm | 195.5 cm | 2.1 |
-| 30 | rotweaver | staff | attack | 1.93 | drift | 213.8 cm | 163.0 cm | 2.1 |
-| 31 | rotweaver | staff | flick | 0.47 | drift | 213.5 cm | 200.0 cm | 2.1 |
-| 32 | mourner | staff | slam | 0.60 | drift | 213.1 cm | 207.2 cm | 2.1 |
-| 33 | ossuary | staff | attack | 1.93 | drift | 213.0 cm | 162.3 cm | 2.1 |
-| 34 | mourner | staff | flick | 0.47 | drift | 212.9 cm | 201.9 cm | 2.1 |
-| 35 | ossuary | staff | slam | 0.60 | drift | 212.8 cm | 206.6 cm | 2.1 |
-| 36 | ossuary | scythe | summon | 0.67 | drift | 212.4 cm | 194.4 cm | 2.1 |
-| 37 | gravecaller | scythe | summon | 0.67 | drift | 212.3 cm | 195.3 cm | 2.1 |
-| 38 | gravecaller | staff | flick | 0.47 | drift | 212.0 cm | 199.4 cm | 2.1 |
-| 39 | ossuary | staff | flick | 0.47 | drift | 211.4 cm | 199.8 cm | 2.1 |
-| 40 | rotweaver | scythe | summon | 0.67 | drift | 211.1 cm | 194.1 cm | 2.1 |
+| 1 | ossuary | helm | death2 | 3.13 | sink | 5.3 cm | 5.3 cm | 2.7 |
+| 2 | ossuary | helm | flick | 1.00 | sink | 5.3 cm | 5.3 cm | 2.7 |
+| 3 | ossuary | helm | channel | 0.13 | sink | 5.3 cm | 5.3 cm | 2.7 |
+| 4 | ossuary | helm | slam | 1.60 | sink | 5.3 cm | 5.3 cm | 2.7 |
+| 5 | ossuary | helm | summon | 0.60 | sink | 5.3 cm | 5.3 cm | 2.7 |
+| 6 | ossuary | helm | sweep | 1.40 | sink | 5.3 cm | 5.3 cm | 2.7 |
+| 7 | ossuary | helm | run | 0.80 | sink | 5.3 cm | 5.3 cm | 2.7 |
+| 8 | ossuary | helm | dig | 1.00 | sink | 5.3 cm | 5.3 cm | 2.7 |
+| 9 | ossuary | helm | cast | 0.93 | sink | 5.3 cm | 5.3 cm | 2.7 |
+| 10 | ossuary | helm | attack | 1.27 | sink | 5.3 cm | 5.3 cm | 2.7 |
+| 11 | ossuary | helm | death | 1.67 | sink | 5.3 cm | 5.3 cm | 2.7 |
+| 12 | ossuary | helm | idle | 12.60 | sink | 5.3 cm | 5.3 cm | 2.7 |
+| 13 | ossuary | helm | walk | 2.27 | sink | 5.3 cm | 5.3 cm | 2.7 |
+| 14 | ossuary | helm | hurt | 0.53 | sink | 5.3 cm | 5.3 cm | 2.7 |
+| 15 | ossuary | helm | hurt2 | 0.53 | sink | 5.3 cm | 5.3 cm | 2.7 |
+| 16 | gravecaller | helm | death2 | 1.33 | sink | 4.5 cm | 4.0 cm | 2.3 |
+| 17 | rotweaver | staff | summon | 0.67 | drift | 224.7 cm | 205.8 cm | 2.2 |
+| 18 | gravecaller | staff | summon | 0.67 | drift | 223.8 cm | 204.9 cm | 2.2 |
+| 19 | ossuary | staff | summon | 0.67 | drift | 223.7 cm | 205.6 cm | 2.2 |
+| 20 | mourner | staff | summon | 0.67 | drift | 222.6 cm | 204.7 cm | 2.2 |
+| 21 | gravecaller | staff | attack | 1.93 | drift | 215.1 cm | 163.9 cm | 2.2 |
+| 22 | gravecaller | staff | slam | 0.60 | drift | 214.7 cm | 208.0 cm | 2.1 |
+| 23 | rotweaver | staff | slam | 0.60 | drift | 214.0 cm | 207.1 cm | 2.1 |
+| 24 | mourner | staff | attack | 1.93 | drift | 214.0 cm | 162.9 cm | 2.1 |
+| 25 | mourner | scythe | summon | 0.67 | drift | 213.8 cm | 195.5 cm | 2.1 |
+| 26 | rotweaver | staff | attack | 1.93 | drift | 213.8 cm | 163.0 cm | 2.1 |
+| 27 | rotweaver | staff | flick | 0.47 | drift | 213.5 cm | 200.0 cm | 2.1 |
+| 28 | mourner | staff | slam | 0.60 | drift | 213.1 cm | 207.2 cm | 2.1 |
+| 29 | ossuary | staff | attack | 1.93 | drift | 213.0 cm | 162.3 cm | 2.1 |
+| 30 | mourner | staff | flick | 0.47 | drift | 212.9 cm | 201.9 cm | 2.1 |
+| 31 | ossuary | staff | slam | 0.60 | drift | 212.8 cm | 206.6 cm | 2.1 |
+| 32 | ossuary | scythe | summon | 0.67 | drift | 212.4 cm | 194.4 cm | 2.1 |
+| 33 | gravecaller | scythe | summon | 0.67 | drift | 212.3 cm | 195.3 cm | 2.1 |
+| 34 | gravecaller | staff | flick | 0.47 | drift | 212.0 cm | 199.4 cm | 2.1 |
+| 35 | ossuary | staff | flick | 0.47 | drift | 211.4 cm | 199.8 cm | 2.1 |
+| 36 | rotweaver | scythe | summon | 0.67 | drift | 211.1 cm | 194.1 cm | 2.1 |
+| 37 | ossuary | scythe | attack | 1.93 | drift | 204.6 cm | 155.9 cm | 2.0 |
+| 38 | mourner | scythe | flick | 0.47 | drift | 204.6 cm | 190.7 cm | 2.0 |
+| 39 | ossuary | scythe | slam | 0.60 | drift | 204.1 cm | 197.8 cm | 2.0 |
+| 40 | mourner | scythe | slam | 0.60 | drift | 203.8 cm | 197.0 cm | 2.0 |
 
 ## Worst 10 by pen
 
@@ -140,16 +140,16 @@ Matrix: 4 heroes x 4 main-hand kinds (staff, scythe, wand, sickle) x 3 off-hand 
 
 | # | hero | item | clip | frame (s) | metric | worst | p95 | x budget |
 |---|---|---|---|---|---|---|---|---|
-| 1 | ossuary | cape | death2 | 2.47 | hem | 14.5 cm | 12.3 cm | 2.9 |
-| 2 | ossuary | cape | hurt2 | 0.20 | hem | 13.3 cm | 7.6 cm | 2.7 |
-| 3 | ossuary | cape | cast | 1.00 | hem | 12.4 cm | 10.8 cm | 2.5 |
-| 4 | mourner | cape | death2 | 2.67 | hem | 10.9 cm | 10.0 cm | 2.2 |
-| 5 | rotweaver | cape | death2 | 2.87 | hem | 9.9 cm | 7.6 cm | 2.0 |
-| 6 | rotweaver | cape | hurt2 | 0.20 | hem | 9.6 cm | 1.2 cm | 1.9 |
-| 7 | mourner | cape | hurt2 | 0.20 | hem | 9.6 cm | 7.6 cm | 1.9 |
-| 8 | gravecaller | cape | death2 | 2.60 | hem | 9.0 cm | 6.7 cm | 1.8 |
-| 9 | gravecaller | cape | hurt2 | 0.27 | hem | 7.7 cm | 5.3 cm | 1.5 |
-| 10 | rotweaver | cape | cast | 1.00 | hem | 7.2 cm | 6.4 cm | 1.4 |
+| 1 | mourner | cape | attack | 3.20 | hem | 0.7 cm | 0.0 cm | 0.1 |
+| 2 | ossuary | cape | cast | 0.00 | hem | 0.0 cm | 0.0 cm | 0.0 |
+| 3 | ossuary | cape | death2 | 0.00 | hem | 0.0 cm | 0.0 cm | 0.0 |
+| 4 | ossuary | cape | dig | 0.00 | hem | 0.0 cm | 0.0 cm | 0.0 |
+| 5 | ossuary | cape | death | 0.00 | hem | 0.0 cm | 0.0 cm | 0.0 |
+| 6 | ossuary | cape | hurt | 0.00 | hem | 0.0 cm | 0.0 cm | 0.0 |
+| 7 | ossuary | cape | hurt2 | 0.00 | hem | 0.0 cm | 0.0 cm | 0.0 |
+| 8 | ossuary | cape | idle | 0.00 | hem | 0.0 cm | 0.0 cm | 0.0 |
+| 9 | ossuary | cape | run | 0.00 | hem | 0.0 cm | 0.0 cm | 0.0 |
+| 10 | ossuary | cape | attack | 0.00 | hem | 0.0 cm | 0.0 cm | 0.0 |
 
 ## Worst per item (over every clip and hero)
 
@@ -162,18 +162,18 @@ Matrix: 4 heroes x 4 main-hand kinds (staff, scythe, wand, sickle) x 3 off-hand 
 | skull_focus | drift | 49.0 cm | gravecaller | attack | 1.67 |
 | mourning_bell | drift | 48.0 cm | gravecaller | slam | 0.53 |
 | grimoire | drift | 47.6 cm | mourner | death | 1.87 |
-| cape | hem | 14.5 cm | ossuary | death2 | 2.47 |
 | staff | pen | 13.6 cm | ossuary | hurt2 | 0.20 |
 | grimoire | pen | 12.5 cm | ossuary | hurt | 0.53 |
 | skull_focus | pen | 12.2 cm | rotweaver | hurt | 0.40 |
 | sickle | pen | 10.7 cm | rotweaver | dig | 0.67 |
 | wand | pen | 10.5 cm | rotweaver | dig | 1.00 |
 | scythe | pen | 10.2 cm | mourner | hurt2 | 0.20 |
-| cape | pen | 10.1 cm | rotweaver | death2 | 2.87 |
 | mourning_bell | pen | 7.0 cm | rotweaver | attack | 1.93 |
 | helm | sink | 5.3 cm | ossuary | death2 | 3.13 |
 | mourning_bell | gap | 4.4 cm | gravecaller | attack | 1.73 |
 | grimoire | gap | 4.2 cm | rotweaver | death | 1.87 |
+| cape | pen | 0.7 cm | mourner | attack | 3.20 |
+| cape | hem | 0.7 cm | mourner | attack | 3.20 |
 | scythe | gap | 0.0 cm | gravecaller | hurt2 | 0.40 |
 | staff | gap | 0.0 cm | gravecaller | run | 0.67 |
 | sickle | gap | 0.0 cm | gravecaller | run | 0.67 |
@@ -190,25 +190,25 @@ Matrix: 4 heroes x 4 main-hand kinds (staff, scythe, wand, sickle) x 3 off-hand 
 | ossuary | gap | grimoire | 4.0 cm | death |
 | ossuary | float | helm | 0.0 cm | cast |
 | ossuary | sink | helm | 5.3 cm | death2 |
-| ossuary | hem | cape | 14.5 cm | death2 |
+| ossuary | hem | cape | 0.0 cm | cast |
 | gravecaller | pen | skull_focus | 10.6 cm | hurt |
 | gravecaller | drift | staff | 223.8 cm | summon |
 | gravecaller | gap | mourning_bell | 4.4 cm | attack |
 | gravecaller | float | helm | 0.0 cm | cast |
 | gravecaller | sink | helm | 4.5 cm | death2 |
-| gravecaller | hem | cape | 9.0 cm | death2 |
+| gravecaller | hem | cape | 0.0 cm | cast |
 | mourner | pen | scythe | 10.2 cm | hurt2 |
 | mourner | drift | staff | 222.6 cm | summon |
 | mourner | gap | mourning_bell | 3.8 cm | slam |
 | mourner | float | helm | 0.0 cm | cast |
 | mourner | sink | helm | 3.9 cm | cast |
-| mourner | hem | cape | 10.9 cm | death2 |
+| mourner | hem | cape | 0.7 cm | attack |
 | rotweaver | pen | skull_focus | 12.2 cm | hurt |
 | rotweaver | drift | staff | 224.7 cm | summon |
 | rotweaver | gap | grimoire | 4.2 cm | death |
 | rotweaver | float | helm | 0.0 cm | cast |
 | rotweaver | sink | helm | 3.8 cm | death2 |
-| rotweaver | hem | cape | 9.9 cm | death2 |
+| rotweaver | hem | cape | 0.0 cm | cast |
 
 ## Clips with no weapon-appropriate pose (input for Phase 2)
 

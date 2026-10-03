@@ -10,7 +10,7 @@ and none of it costs frame time (perf-first rule).
 | Main hand / off hand | Code-built prop (`gearProps.ts`) attached to `R_Hand` / `L_Hand`; `Creature.attach` calibrates the aim over 4 frames and `follow` (0.3–0.6) pulls it back toward upright | The hero clips were authored empty-handed, so a staff or scythe swings through the body and head during casts; `follow < 1` makes the prop drift off the wrist, so swings look floaty; two-handers are held in one hand; the 4-frame calibration shows as a snap on equip |
 | Head | Generic dome (`buildHelm`, radius 0.15) on `Head` | One size for nine head shapes: it sinks into hoods or floats above them |
 | Chest / legs / hands / feet | Region tint by skin weights (`gearTint.ts`), no geometry | Nothing clips, but armour never changes the silhouette, so plate looks painted on |
-| Cape | Rigid open cylinder on `Spine02`, swung by a sine (`Avatars.ts`) | Moves as one board: the hem cuts through the legs on runs and attacks, and through the body on sharp turns |
+| Cape | Cloth on a 4-segment verlet chain, pushed out of body capsules (`capeCloth.ts`, Phase 5); beyond 20 m a rigid cylinder swung by a sine | Moves as one board: the hem cuts through the legs on runs and attacks, and through the body on sharp turns |
 | New Blood class gear | Authored GLB props per class | Same hand-attach problems as weapons |
 
 What already helps: `prop-clipping.test.ts` measures prop vertices buried in the robe, `tools/blender.mjs` retargets and cleans clips headlessly,
@@ -76,6 +76,27 @@ Top problems, in order:
 4. **Helm sinks 5.3 cm on the Ossuary** in every clip (its head is wider than the 0.15 m dome) and floats nowhere. Phase 4 per-rig fit.
 5. **Prop vertices buried in the body** peak at 12-14 cm during `hurt`/`hurt2` (staff, grimoire, skull focus), above the 7 cm budget; combat clips stay under it.
 6. Hand-to-prop gap is not a problem (at most 4.4 cm, bell): the prop origin rides the wrist; the visible fault is orientation (item 2).
+
+## Phase 5 results (measured 3 Oct 2026)
+
+Built as `src/graphics/capeCloth.ts`. No new material, shader or draw call: the cape's four cloth meshes (body, hem, collar, clasp) keep their
+geometries, and the step rewrites their vertices in place (`buildCape` now bakes each mesh's offset into its vertices).
+- **Chain.** 5 nodes (4 segments) hang from the shoulder. Each is pulled toward a target 30 % along the spine and 70 % straight down, keeps its segment length and drags behind the hero by inertia; a breath of sway rides on the targets. A teleport (more than 1.2 m in a step) or a cape shown again after gathering snaps the chain to its target.
+- **Cloth.** Every vertex sits on its ring: interpolated node plus its rest offset around the spine axis, carried by the spine's rotation, so at rest the cape has the old footprint (a vitest asserts it stays within 10 cm).
+- **Collision.** Nine capsules from the skeleton: torso, chest, both thighs, both calves, both upper arms and the head. Radii are the clip harness's own measure (20th percentile of the vertices each bone owns), taken once per skinned geometry in bind pose and cached as shares of the segment length. A vertex is pushed out of one capsule at a time; if it is still inside after two sweeps (hip/thigh crease) it moves by the sum of its penetrations, which made the result independent of clip order.
+- **Distance.** The local hero and partners within 20 m (`CAPE_SIM_RANGE` in `WorldScene.ts`, set per partner each frame) simulate; farther avatars restore the rest shape and use the old rigid sway. A cape hidden while gathering skips the step.
+- **Cost.** About 15-30 µs per cape per frame in Node (budget 50 µs); `capeCloth.test.ts` bounds it at 0.25 ms and checks that 20,000 steps grow the heap by under 2 MB.
+
+Cape clearance, worst over all clips and 12 weapon configurations (`docs/gear-clip/report.md`):
+
+| Hero | hem, before → after | cloth in body, before → after |
+|---|---|---|
+| Ossuary | 14.5 cm → 0 | 8.0 cm → 0 |
+| Gravecaller | 8.9 cm → 0 | 6.8 cm → 0 |
+| Mourner | 10.9 cm → 0.7 cm | 6.4 cm → 0.7 cm |
+| Rotweaver | 9.9 cm → 0 | 10.1 cm → 0 |
+
+All reductions are above 90 % (the target was 70 %), p95 is 0 on every hero, and no other item/clip number in the baseline moved. Remaining 0.7 cm: Mourner `attack`.
 
 ## Budgets (checked with `tools/qa/fixed-fight-perf.cjs` before every merge)
 - Armour overlay adds no more than 2 draw calls per hero; IK applies to the local hero and near partners only; capes cost no more than 0.05 ms each.

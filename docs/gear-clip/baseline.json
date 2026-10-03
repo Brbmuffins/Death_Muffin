@@ -11,12 +11,12 @@
    0
   ],
   "hero_gravecaller|cape|cast|hem": [
-   0.0351,
-   0.0314
+   0,
+   0
   ],
   "hero_gravecaller|cape|cast|pen": [
-   0.038,
-   0.0346
+   0,
+   0
   ],
   "hero_gravecaller|cape|channel|hem": [
    0,
@@ -27,12 +27,12 @@
    0
   ],
   "hero_gravecaller|cape|death2|hem": [
-   0.0895,
-   0.0666
+   0,
+   0
   ],
   "hero_gravecaller|cape|death2|pen": [
-   0.0515,
-   0.009
+   0,
+   0
   ],
   "hero_gravecaller|cape|death|hem": [
    0,
@@ -59,12 +59,12 @@
    0
   ],
   "hero_gravecaller|cape|hurt2|hem": [
-   0.0772,
-   0.0535
+   0,
+   0
   ],
   "hero_gravecaller|cape|hurt2|pen": [
-   0.0684,
-   0.0486
+   0,
+   0
   ],
   "hero_gravecaller|cape|hurt|hem": [
    0,
@@ -1503,20 +1503,20 @@
    0.003
   ],
   "hero_mourner|cape|attack|hem": [
-   0,
+   0.007,
    0
   ],
   "hero_mourner|cape|attack|pen": [
-   0.006,
+   0.007,
    0
   ],
   "hero_mourner|cape|cast|hem": [
-   0.0692,
-   0.0561
+   0,
+   0
   ],
   "hero_mourner|cape|cast|pen": [
-   0.0408,
-   0.0395
+   0,
+   0
   ],
   "hero_mourner|cape|channel|hem": [
    0,
@@ -1527,19 +1527,19 @@
    0
   ],
   "hero_mourner|cape|death2|hem": [
-   0.1091,
-   0.0995
+   0,
+   0
   ],
   "hero_mourner|cape|death2|pen": [
-   0.0637,
-   0.0282
+   0,
+   0
   ],
   "hero_mourner|cape|death|hem": [
    0,
    0
   ],
   "hero_mourner|cape|death|pen": [
-   0.0024,
+   0,
    0
   ],
   "hero_mourner|cape|dig|hem": [
@@ -1559,12 +1559,12 @@
    0
   ],
   "hero_mourner|cape|hurt2|hem": [
-   0.096,
-   0.0757
+   0,
+   0
   ],
   "hero_mourner|cape|hurt2|pen": [
-   0.0611,
-   0.0475
+   0,
+   0
   ],
   "hero_mourner|cape|hurt|hem": [
    0,
@@ -1587,28 +1587,28 @@
    0
   ],
   "hero_mourner|cape|run|pen": [
-   0.0269,
-   0.024
+   0,
+   0
   ],
   "hero_mourner|cape|slam|hem": [
    0,
    0
   ],
   "hero_mourner|cape|slam|pen": [
-   0.0116,
-   0.0031
+   0,
+   0
   ],
   "hero_mourner|cape|summon|hem": [
    0,
    0
   ],
   "hero_mourner|cape|summon|pen": [
-   0.0005,
+   0,
    0
   ],
   "hero_mourner|cape|sweep|hem": [
-   0.0067,
-   0.0062
+   0,
+   0
   ],
   "hero_mourner|cape|sweep|pen": [
    0,
@@ -3007,16 +3007,16 @@
    0
   ],
   "hero_ossuary|cape|attack|pen": [
-   0.0071,
+   0,
    0
   ],
   "hero_ossuary|cape|cast|hem": [
-   0.1245,
-   0.1075
+   0,
+   0
   ],
   "hero_ossuary|cape|cast|pen": [
-   0.0662,
-   0.0662
+   0,
+   0
   ],
   "hero_ossuary|cape|channel|hem": [
    0,
@@ -3027,20 +3027,20 @@
    0
   ],
   "hero_ossuary|cape|death2|hem": [
-   0.1449,
-   0.1231
+   0,
+   0
   ],
   "hero_ossuary|cape|death2|pen": [
-   0.0798,
-   0.0499
+   0,
+   0
   ],
   "hero_ossuary|cape|death|hem": [
    0,
    0
   ],
   "hero_ossuary|cape|death|pen": [
-   0.031,
-   0.0304
+   0,
+   0
   ],
   "hero_ossuary|cape|dig|hem": [
    0,
@@ -3059,12 +3059,12 @@
    0
   ],
   "hero_ossuary|cape|hurt2|hem": [
-   0.1331,
-   0.0765
+   0,
+   0
   ],
   "hero_ossuary|cape|hurt2|pen": [
-   0.0714,
-   0.0542
+   0,
+   0
   ],
   "hero_ossuary|cape|hurt|hem": [
    0,
@@ -3087,31 +3087,31 @@
    0
   ],
   "hero_ossuary|cape|run|pen": [
-   0.0132,
-   0.0007
+   0,
+   0
   ],
   "hero_ossuary|cape|slam|hem": [
    0,
    0
   ],
   "hero_ossuary|cape|slam|pen": [
-   0.0297,
-   0.0035
+   0,
+   0
   ],
   "hero_ossuary|cape|summon|hem": [
-   0.0141,
-   0.0008
+   0,
+   0
   ],
   "hero_ossuary|cape|summon|pen": [
    0,
    0
   ],
   "hero_ossuary|cape|sweep|hem": [
-   0.0626,
-   0.0585
+   0,
+   0
   ],
   "hero_ossuary|cape|sweep|pen": [
-   0.0059,
+   0,
    0
   ],
   "hero_ossuary|cape|walk|hem": [
@@ -4507,16 +4507,16 @@
    0
   ],
   "hero_rotweaver|cape|attack|pen": [
-   0.0105,
+   0,
    0
   ],
   "hero_rotweaver|cape|cast|hem": [
-   0.0717,
-   0.0644
+   0,
+   0
   ],
   "hero_rotweaver|cape|cast|pen": [
-   0.0738,
-   0.0668
+   0,
+   0
   ],
   "hero_rotweaver|cape|channel|hem": [
    0,
@@ -4527,20 +4527,20 @@
    0
   ],
   "hero_rotweaver|cape|death2|hem": [
-   0.0989,
-   0.0755
+   0,
+   0
   ],
   "hero_rotweaver|cape|death2|pen": [
-   0.1011,
-   0.0758
+   0,
+   0
   ],
   "hero_rotweaver|cape|death|hem": [
    0,
    0
   ],
   "hero_rotweaver|cape|death|pen": [
-   0.0274,
-   0.026
+   0,
+   0
   ],
   "hero_rotweaver|cape|dig|hem": [
    0,
@@ -4559,12 +4559,12 @@
    0
   ],
   "hero_rotweaver|cape|hurt2|hem": [
-   0.096,
-   0.0121
+   0,
+   0
   ],
   "hero_rotweaver|cape|hurt2|pen": [
-   0.096,
-   0.0857
+   0,
+   0
   ],
   "hero_rotweaver|cape|hurt|hem": [
    0,
@@ -4587,32 +4587,32 @@
    0
   ],
   "hero_rotweaver|cape|run|pen": [
-   0.0061,
-   0.0003
+   0,
+   0
   ],
   "hero_rotweaver|cape|slam|hem": [
    0,
    0
   ],
   "hero_rotweaver|cape|slam|pen": [
-   0.0216,
-   0.0057
+   0,
+   0
   ],
   "hero_rotweaver|cape|summon|hem": [
    0,
    0
   ],
   "hero_rotweaver|cape|summon|pen": [
-   0.0014,
+   0,
    0
   ],
   "hero_rotweaver|cape|sweep|hem": [
-   0.0401,
-   0.0365
+   0,
+   0
   ],
   "hero_rotweaver|cape|sweep|pen": [
-   0.0412,
-   0.0373
+   0,
+   0
   ],
   "hero_rotweaver|cape|walk|hem": [
    0,
