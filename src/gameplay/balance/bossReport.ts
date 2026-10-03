@@ -5,7 +5,7 @@
  * Env: BALANCE_SEEDS=3, BALANCE_BANDS=intended,geared, BALANCE_DISCIPLINES=1,3,
  *      BALANCE_BOSS=prelate|all|id,id (or `-- --boss abbess`), BALANCE_KIT=none|progress|typical|ascended|auto,
  *      BALANCE_WEAPONS=kit,staff,scythe,wand,sickle (main-hand worn instead of the discipline's own; `kit` = its own; needs a kit other than none),
- *      BALANCE_DODGE=yes,no.
+ *      BALANCE_DODGE=yes,no, BALANCE_LEGENDARY=1 (the discipline's full legendary set bonus folded on top of the kit).
  */
 import { AREAS } from '../../content/areas';
 import { runBossFight, type BossResult, type BossRun } from './boss';
@@ -13,6 +13,7 @@ import type { Difficulty } from '../../content/difficulty';
 import { ascensionLevels } from '../../content/ascension';
 import { KIT_NAMES, type KitName } from './kits';
 import { BOSSES, BOSS_IDS, isBossId, type BossId } from '../../content/bosses';
+import { FULL_SETS } from './legendaryFull';
 import { NECRO_MAIN_KINDS, type NecroMainKind } from '../../content/necroWeapons';
 
 /** `npm run balance:boss -- --boss abbess` (or BALANCE_BOSS=abbess, =all, =abbess,mire); default the Prelate. */
@@ -32,6 +33,7 @@ const DODGES = (list(process.env.BALANCE_DODGE) ?? ['yes', 'no']).map((d) => d =
 const DIFFICULTY = (process.env.BALANCE_DIFFICULTY ?? 'medium') as Difficulty;
 /** World Ascension rank; bands then anchor on the aged area level. */
 const ASC = Math.max(0, Number(process.env.BALANCE_ASCENSION ?? 0));
+const LEGENDARY = !!process.env.BALANCE_LEGENDARY;
 const SEEDS = Math.max(1, Number(process.env.BALANCE_SEEDS ?? 3));
 const disciplines = (list(process.env.BALANCE_DISCIPLINES) ?? ['1', '2', '3', '4']).map(Number);
 const names: Record<number, string> = { 1: 'Ossuary', 2: 'Gravecaller', 3: 'Mourner', 4: 'Rotweaver' };
@@ -63,7 +65,7 @@ for (const boss of BOSS_LIST) {
         for (const dodge of DODGES) {
           const kit = kitFor(band);
           const kitOverride = weapon === 'kit' ? undefined : { main: weapon as NecroMainKind };
-          const rs = Array.from({ length: SEEDS }, (_, i) => runBossFight({ ...bands[band], kit, kitOverride, classIndex, dodge, difficulty: DIFFICULTY, seed: 42 + i, ascension: ASC, boss }));
+          const rs = Array.from({ length: SEEDS }, (_, i) => runBossFight({ ...bands[band], kit, kitOverride, ...(LEGENDARY ? { effect: FULL_SETS[classIndex].effect } : {}), classIndex, dodge, difficulty: DIFFICULTY, seed: 42 + i, ascension: ASC, boss }));
           if (!maxHps.some((m) => m.startsWith(boss))) maxHps.push(`${boss} ${Math.round(rs[0].bossMaxHp)}`);
           const wins = rs.filter((r) => r.outcome === 'win');
           const cells = [
@@ -81,6 +83,6 @@ for (const boss of BOSS_LIST) {
     }
   }
 }
-console.log(`\nBoss report: ${SEEDS} seed(s) per row, solo, difficulty ${DIFFICULTY}, ascension ${ASC}, kit ${KIT}; boss max HP: ${maxHps.join(', ')}`);
+console.log(`\nBoss report: ${SEEDS} seed(s) per row, solo, difficulty ${DIFFICULTY}, ascension ${ASC}, kit ${KIT}${LEGENDARY ? ' + full legendary set' : ''}; boss max HP: ${maxHps.join(', ')}`);
 console.log('time s = average kill time of winning runs · deaths = runs ending in a wipe (a solo death resets the boss) · boss% = HP left (avg) · boss dmg%/adds% = damage taken as % of max HP over the fight · barrier% = Litany barrier soaked, % of max HP (Reliquary sets) · wade% = share of the fight slowed by open water · rooted s = seconds rooted by hands / grasps / burial\n');
 console.log(rows.join('\n'));

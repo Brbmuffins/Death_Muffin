@@ -14,7 +14,9 @@ import { EQUIP_SLOTS, equippedBySlot } from '../../content/gear';
 import { withSetBonuses } from '../setBonuses';
 import { NO_LOADOUT, abilityCooldownMs, abilityRange, pierceTargets, reapTargets, resolveWeaponLoadout } from '../weaponLine';
 import { NECRO_WEAPON_TUNING } from '../../content/necroWeapons';
-import { colossusActive, effectiveWitheredCap } from '../legendary';
+import { colossusActive, effectiveWitheredCap, simLegendActive, simLegendOf } from '../legendary';
+import { foldEffect } from '../setBonuses';
+import type { SetEffect } from '../../content/setBonuses';
 import { Player } from '../Player';
 import { resolveKit, type KitName, type KitRequest } from './kits';
 import type { Difficulty } from '../../content/difficulty';
@@ -45,6 +47,8 @@ export interface BossRun {
   kit?: KitName;
   /** Experiments: change the kit's weapon pair / tier (kits.ts KitRequest.override), e.g. `{ main: 'scythe' }`. Needs a kit other than none. */
   kitOverride?: KitRequest['override'];
+  /** Experiments: one extra set effect folded on top of what is worn (e.g. a full legendary set, `BALANCE_LEGENDARY=1` in bossReport). */
+  effect?: SetEffect;
   /** Which boss (default the Prelate). */
   boss?: BossId;
 }
@@ -97,7 +101,8 @@ export function runBossFight(run: BossRun): BossResult {
   const worn = resolveKit({ kit: run.kit ?? 'none', discipline: baseDisc.id, area: BOSSES[bossId].area, override: run.kitOverride, seed: run.seed });
   const loadout = baseDisc.family === 'necromancer' ? resolveWeaponLoadout(equippedBySlot(worn), baseDisc.id) : NO_LOADOUT;
   const withGear = withSetBonuses(baseDisc, worn);
-  const disc = loadout.thrallBonus ? { ...withGear, mods: { ...withGear.mods, thrallCap: withGear.mods.thrallCap + loadout.thrallBonus } } : withGear;
+  const geared = loadout.thrallBonus ? { ...withGear, mods: { ...withGear.mods, thrallCap: withGear.mods.thrallCap + loadout.thrallBonus } } : withGear;
+  const disc = run.effect ? { ...geared, mods: foldEffect(geared.mods, run.effect) } : geared;
   const covered = new Set(Object.keys(equippedBySlot(worn))).size;
   const standIn = run.gearStats * (1 - covered / EQUIP_SLOTS.length);
   const stats = deriveStats(botCharacter(run.classIndex, run.level, standIn), worn, disc, run.damageTier);
@@ -120,6 +125,8 @@ export function runBossFight(run: BossRun): BossResult {
   const meleeReach = abilityRange('bone_needle', ABILITIES.bone_needle.range, loadout, true) + BOSS_RADIUS - 0.4;
   const place = (alive = true) => sim.setPlayer({ id: p.id, x: p.x, z: p.z, alive, area: alive ? area : null, level: run.level });
 
+  const legendMods = simLegendOf(disc.mods);
+  if (simLegendActive(legendMods)) sim.apply({ t: 'legend', by: p.id, mods: legendMods });
   // Arrive with a full legion (raised during the Sanctum trash).
   place();
   for (let i = 0; i < disc.mods.thrallCap; i++) {
