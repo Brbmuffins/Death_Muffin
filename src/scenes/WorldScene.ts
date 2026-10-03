@@ -3777,7 +3777,11 @@ export class WorldScene implements GameScene, RuntimeView {
     // Colossus Mantle: extra reduction while 3+ thralls stand (stacks multiplicatively; Player.takeDamage caps the whole at 75%).
     const guard = colossusActive(this.discipline.mods, myThralls) ? this.discipline.mods.colossusGuard : 0;
     // The blow's origin lets Bulwark decide whether it covered this one.
+    const barrierBefore = this.player.barrier;
     const taken = this.player.takeDamage(raw, ward, now, { x, z }, from, guard);
+    // A barrier that swallowed the blow used to be silent (no number at all): say what it took.
+    const absorbed = barrierBefore - this.player.barrier;
+    if (absorbed >= 1) this.floating.spawn(this.player.x, 2.3, this.player.z, `Warded -${Math.round(absorbed)}`, 'ward');
     // Legendary: Bone Ward reflects part of what it prevented; a Litany barrier broken by this blow shatters.
     if (this.discipline.mods.wardReflect > 0) this.abilities.reflectWard(raw, Math.min(LEGEND.wardCap, this.discipline.mods.wardPerThrall * myThralls), x, z);
     if (this.player.barrierBroke > 0) {
