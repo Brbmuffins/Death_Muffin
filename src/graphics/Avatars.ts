@@ -9,7 +9,7 @@ import { fx } from './fxTextures';
 import type { EquipSlot } from '../content/gear';
 import type { AbilityId } from '../content/abilities';
 import { castClipFor, planGesture, type GestureKey } from '../content/castClips';
-import { buildCape, buildHelm, buildOffhand, buildWeapon, disposeProp, gripFor } from './gearProps';
+import { buildCape, buildHelm, buildOffhand, buildWeapon, disposeProp, gripFor, socketFor, SOCKET_FOLLOW } from './gearProps';
 import { capeDef } from '../content/cosmetics';
 import { gearTier, legendaryAura, weaponKind } from '../content/gear';
 import type { GearRegion } from './gearTint';
@@ -91,7 +91,8 @@ export class NecromancerAvatar {
     } else {
       this.staff = skullStaff(accent);
       // Held upright: the grip sits in the hand, calibrated against the idle pose.
-      this.c.attach('R_Hand', this.staff, new THREE.Vector3(0, 1, 0.12), STAFF_FOLLOW);
+      const socket = socketFor(this.c.rig, 'staff');
+      this.c.attach('R_Hand', this.staff, new THREE.Vector3(0, 1, 0.12), socket ? SOCKET_FOLLOW.staff ?? 1 : STAFF_FOLLOW, undefined, socket);
       this.defaultHand.set(this.staff, 'main_hand');
     }
     scene.add(this.c.root);
@@ -238,7 +239,8 @@ export class NecromancerAvatar {
       if (slot === 'head') this.c.attach(bone, obj, new THREE.Vector3(0, 1, 0));
       else {
         const grip = gripFor(slot, item.item_id, !!obj.userData.tip);
-        this.c.attach(bone, obj, grip.dir, grip.follow, grip.fit);
+        const socket = socketFor(this.c.rig, grip.kind);
+        this.c.attach(bone, obj, grip.dir, socket ? SOCKET_FOLLOW[grip.kind] ?? 1 : grip.follow, grip.fit, socket);
       }
       this.worn.set(slot, { obj, key: item.item_id });
     }

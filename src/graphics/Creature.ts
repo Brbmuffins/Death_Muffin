@@ -72,6 +72,9 @@ export interface GripFit {
   roll?: number;
 }
 
+/** A grip socket (graphics/gripSockets.generated.ts): [x, y, z, qx, qy, qz, qw], metres and orientation relative to the hand bone. */
+export type GripSocketData = readonly [number, number, number, number, number, number, number];
+
 export interface CreatureOptions {
   /** Heroes only: let equipped body gear recolour chest/legs/hands/feet (see gearTint.ts). */
   gearTint?: boolean;
@@ -164,15 +167,17 @@ export class Creature {
   private oneShot: THREE.AnimationAction | null = null;
   /** Shared uniform state for body-gear tints; only patched into materials when `gearTint` is set. */
   private readonly gearTint = makeGearTintState();
-  private pendingAttach: [string, THREE.Object3D, THREE.Vector3 | undefined, number | undefined, GripFit | undefined][] = [];
+  private pendingAttach: [string, THREE.Object3D, THREE.Vector3 | undefined, number | undefined, GripFit | undefined, GripSocketData | undefined][] = [];
   private calibrate: { obj: THREE.Object3D; dir: THREE.Vector3; frames: number }[] = [];
-  /** Calibrated attachments, re-checked while idle so a bad first pose self-heals. */
-  private attached: { obj: THREE.Object3D; dir: THREE.Vector3; follow?: number; baseQ?: THREE.Quaternion; fit?: GripFit }[] = [];
+  /** Calibrated attachments, re-checked while idle so a bad first pose self-heals. Socketed ones are placed exactly and only steady if `follow` < 1. */
+  private attached: { obj: THREE.Object3D; dir: THREE.Vector3; follow?: number; baseQ?: THREE.Quaternion; fit?: GripFit; socketed?: boolean }[] = [];
   private settledT = 0;
   private recheckT = 0;
   private disposed = false;
   /** Slug whose measured strides apply (the requested model, or its stand-in when that one failed to load). */
   private rigSlug: string;
+  /** The rig actually in use (the fallback's when the requested model is missing): grip sockets only fit their own rig. */
+  get rig(): string { return this.rigSlug; }
   /** World height of the loaded model (def height x scale option), before the owner's root scale. */
   private baseHeight: number;
   private locoRun = false;
@@ -274,7 +279,7 @@ export class Creature {
         }
       });
       this.loaded = true;
-      for (const [bone, obj, dir, follow, fit] of this.pendingAttach) this.attach(bone, obj, dir, follow, fit);
+      for (const [bone, obj, dir, follow, fit, socket] of this.pendingAttach) this.attach(bone, obj, dir, follow, fit, socket);
       this.pendingAttach = [];
       this.startLoop(false);
       });
@@ -506,16 +511,19 @@ export class Creature {
    * `follow` (0..1) keeps a held staff steady: every frame its +Y is pulled back
    * toward `dir` by (1 - follow), so it rides the hand without flailing when the
    * wrist swings through a run cycle. Omit it for weapons that should swing freely.
+   * With a `socket` the prop is placed exactly from the first frame (no calibration) and rides the wrist rigidly;
+   * `follow` < 1 still applies the same steadying, for the rare grip whose clips would bury it.
    */
-  attach(boneName: string, obj: THREE.Object3D, dir?: THREE.Vector3, follow?: number, fit?: GripFit) {
+  attach(boneName: string, obj: THREE.Object3D, dir?: THREE.Vector3, follow?: number, fit?: GripFit, socket?: GripSocketData) {
     if (!this.model) {
-      this.pendingAttach.push([boneName, obj, dir, follow, fit]);
+      this.pendingAttach.push([boneName, obj, dir, follow, fit, socket]);
       return;
     }
+    if (socket && this.rigSlug !== this.slug) socket = undefined; // sockets are measured on the hero's own rig
     if (dir) {
       const d = dir.clone().normalize();
-      this.calibrate.push({ obj, dir: d, frames: 4 });
-      this.attached.push({ obj, dir: d, follow, fit });
+      if (!socket) this.calibrate.push({ obj, dir: d, frames: 4 });
+      this.attached.push({ obj, dir: d, follow, fit, socketed: !!socket });
     }
     let bone: THREE.Object3D | undefined;
     this.model.traverse((o) => {
@@ -527,6 +535,12 @@ export class Creature {
     const rootScale = new THREE.Vector3();
     this.root.getWorldScale(rootScale);
     obj.scale.multiplyScalar(rootScale.x / (s.x || 1));
+    if (socket) {
+      obj.quaternion.set(socket[3], socket[4], socket[5], socket[6]);
+      obj.position.set(socket[0], socket[1], socket[2]).divideScalar(s.x || 1);
+      const rec = this.attached.find((a) => a.obj === obj);
+      if (rec) rec.baseQ = obj.quaternion.clone();
+    }
     (bone ?? this.root).add(obj);
   }
 
@@ -621,7 +635,7 @@ export class Creature {
     const settled = !this.oneShot && (!idle || (this.current === idle && idle.getEffectiveWeight() > 0.99));
     this.settledT = settled ? this.settledT + dt : 0;
     if (this.calibrate.length) this.runCalibration();
-    else if (this.attached.some((a) => a.baseQ)) this.steadyAttachments();
+    else if (this.attached.some((a) => a.baseQ && (a.follow ?? 1) < 1)) this.steadyAttachments();
     if (!this.calibrate.length && this.attached.length && this.settledT > 0.6 && (this.recheckT -= dt) <= 0) {
       this.recheckT = 2;
       this.recheckAttachments();
@@ -648,7 +662,7 @@ export class Creature {
     S_SEEN.add(this.root);
     for (const a of this.attached) {
       const parent = a.obj.parent;
-      if (!a.baseQ || !parent) continue;
+      if (!a.baseQ || !parent || (a.follow ?? 1) >= 1) continue;
       let n = 0;
       for (let o: THREE.Object3D | null = parent; o && !S_SEEN.has(o); o = o.parent) S_CHAIN[n++] = o;
       for (let i = n - 1; i >= 0; i--) {
@@ -672,6 +686,7 @@ export class Creature {
   private recheckAttachments() {
     this.root.getWorldQuaternion(S_ROOT_Q);
     for (const a of this.attached) {
+      if (a.socketed) continue;
       a.obj.getWorldQuaternion(S_PARENT_Q);
       S_UP.set(0, 1, 0).applyQuaternion(S_PARENT_Q);
       S_WANT.copy(a.dir).applyQuaternion(S_ROOT_Q);

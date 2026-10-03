@@ -6,6 +6,7 @@ import { assets } from './AssetCache';
 import { PROP_URL } from './modelPaths';
 import { NECRO_MODEL, NECRO_WEAPON_BY_ID, type NecroKind } from '../content/necroWeapons';
 import type { GripFit } from './Creature';
+import { GRIP_SOCKETS, type GripSocket } from './gripSockets.generated';
 
 /**
  * Code-built props for equipped gear (no art budget): every prop's +Y is its long axis with the
@@ -506,6 +507,8 @@ export const GRIPS: Record<string, GripSpec> = {
 };
 
 export interface Grip {
+  /** The weapon / off-hand kind (a GRIPS key). */
+  kind: string;
   dir: THREE.Vector3;
   follow: number;
   fit: GripFit;
@@ -517,8 +520,17 @@ export function gripFor(slot: 'main_hand' | 'off_hand', itemId: string, hasTip: 
   const kind = NECRO_WEAPON_BY_ID[itemId]?.kind ?? (slot === 'main_hand' ? weaponKind(itemId) : offhandKind(itemId));
   const spec = GRIPS[kind] ?? { ...BASE_GRIP, follow: slot === 'main_hand' && hasTip ? 0.3 : BASE_GRIP.follow };
   return {
+    kind,
     dir: new THREE.Vector3(side * spec.lean[0], 1, spec.lean[1]),
     follow: spec.follow,
     fit: { roll: spec.roll, offset: spec.offset ? new THREE.Vector3(side * spec.offset[0], spec.offset[1], spec.offset[2]) : undefined },
   };
+}
+
+/** How much a socketed prop rides the wrist: 1 = rigidly (the default); a lower value keeps the old stabiliser for that kind. */
+export const SOCKET_FOLLOW: Record<string, number> = {};
+
+/** The precomputed grip socket for a hero rig and prop kind (necromancer heroes only; others use the runtime calibration). */
+export function socketFor(rig: string, kind: string): GripSocket | undefined {
+  return GRIP_SOCKETS[rig]?.[kind];
 }
