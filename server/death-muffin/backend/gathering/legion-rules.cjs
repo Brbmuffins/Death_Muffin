@@ -68,7 +68,8 @@ var statDef = (stat, kind, word) => ({
   necro: false,
   weight: 9,
   unit: "stat",
-  range: (L) => around(0.8 + 0.07 * L, 14),
+  range: (L) => around(0.8 + 0.07 * Math.min(L, 25) + 0.045 * Math.max(0, L - 25), 14),
+  legacy: [(L) => around(0.8 + 0.07 * L, 14)],
   effect: (v) => ({ stats: { [stat]: v } }),
   text: (v) => `+${v} ${STAT_NAME[stat]}`
 });
@@ -89,7 +90,8 @@ var AFFIXES = [
     necro: true,
     weight: 13,
     unit: "pct",
-    range: (L) => around(10 * (5.5 + 0.2 * L), 300),
+    range: (L) => around(10 * (6.5 + 0.1 * L), 300),
+    legacy: [(L) => around(10 * (5.5 + 0.2 * L), 300)],
     effect: (v) => ({ mult: { thrallDamageMult: 1 + v / 1e3 } }),
     text: (v) => `Thralls hit +${tenths(v)} harder`
   },
@@ -101,7 +103,8 @@ var AFFIXES = [
     necro: true,
     weight: 13,
     unit: "pct",
-    range: (L) => around(10 * (10.6 + 0.38 * L), 500),
+    range: (L) => around(10 * (9.5 + 0.34 * L), 500),
+    legacy: [(L) => around(10 * (10.6 + 0.38 * L), 500)],
     effect: (v) => ({ mult: { thrallHpMult: 1 + v / 1e3 } }),
     text: (v) => `Thralls have +${tenths(v)} health`
   },
@@ -113,7 +116,8 @@ var AFFIXES = [
     necro: true,
     weight: 11,
     unit: "pct",
-    range: (L) => around(10 * (10 + 0.42 * L), 600),
+    range: (L) => around(10 * (10 + 0.5 * L), 600),
+    legacy: [(L) => around(10 * (10 + 0.42 * L), 600)],
     effect: (v) => ({ mult: { essenceRegenMult: 1 + v / 1e3 } }),
     text: (v) => `+${tenths(v)} essence regeneration`
   },
@@ -125,7 +129,8 @@ var AFFIXES = [
     necro: true,
     weight: 9,
     unit: "pct",
-    range: (L) => around(10 * (5.2 + 0.22 * L), 400),
+    range: (L) => around(10 * (5.2 + 0.12 * L), 400),
+    legacy: [(L) => around(10 * (5.2 + 0.22 * L), 400)],
     effect: (v) => ({ mult: { miasmaRadiusMult: 1 + v / 1e3 } }),
     text: (v) => `Miasma is +${tenths(v)} wider`
   },
@@ -137,7 +142,8 @@ var AFFIXES = [
     necro: true,
     weight: 8,
     unit: "count",
-    range: (L) => [1, clampInt(2 + Math.floor(L / 7), 2, 6)],
+    range: (L) => [1, clampInt(2 + Math.floor(L / 9), 2, 5)],
+    legacy: [(L) => [1, clampInt(2 + Math.floor(L / 7), 2, 6)]],
     effect: (v) => ({ add: { witheredMaxStacks: v } }),
     text: (v) => `+${v} max Withered stack${v === 1 ? "" : "s"}`
   },
@@ -149,7 +155,8 @@ var AFFIXES = [
     necro: true,
     weight: 9,
     unit: "wardPct",
-    range: (L) => around(9 + 0.7 * L, 60),
+    range: (L) => around(12 + 0.55 * L, 55),
+    legacy: [(L) => around(9 + 0.7 * L, 60)],
     effect: (v) => ({ add: { wardPerThrall: v / 1e3 } }),
     text: (v) => `${tenths(v)} less damage taken per thrall`
   }

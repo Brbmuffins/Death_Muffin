@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { DISCIPLINES } from '../../content/disciplines';
 import type { Character, InventorySlot } from '../../net/types';
 import {
-  AFFIXES, DROP_SOURCES, ILVL_MAX, ILVL_REACH, MAX_AFFIXES, addInstanceTotals, affixEffect, affixQuality, affixRange, affixText, affixedName, clampDropLevel,
+  AFFIXES, DROP_SOURCES, ILVL_MAX, ILVL_REACH, MAX_AFFIXES, addInstanceTotals, affixEffect, affixAcceptRange, affixQuality, affixRange, affixText, affixedName, clampDropLevel,
   cleanInstance, effectiveRarity, emptyAffixTotals, instancePower, instanceProblem, instanceSellValue, itemLevelFor, rollAffixCount, rollInstance, type AffixRoll, type DropSource,
 } from '../affixRules';
 import { affixLines, affixSignature, decorateSlot, rollOf, wornAffixTotals } from '../affixes';
@@ -125,7 +125,7 @@ describe('validation (what an offline-sync import may claim)', () => {
   const ok = { ilvl: 12, affixes: [A('p_thrall_dmg', mid('p_thrall_dmg', 12)), A('s_thrall_hp', mid('s_thrall_hp', 12))] };
   it('accepts a legal roll and rejects each way of cheating', () => {
     expect(instanceProblem(ok, 'weapon')).toBeNull();
-    const [lo, hi] = affixRange('p_thrall_dmg', 12)!;
+    const [lo, hi] = affixAcceptRange('p_thrall_dmg', 12)!;
     expect(instanceProblem({ ilvl: 12, affixes: [A('p_thrall_dmg', hi + 1)] }, 'ring')).not.toBeNull();
     expect(instanceProblem({ ilvl: 12, affixes: [A('p_thrall_dmg', lo - 1)] }, 'ring')).not.toBeNull();
     expect(instanceProblem({ ilvl: 12, affixes: [A('p_nonsense', 3)] }, 'ring')).not.toBeNull();
@@ -136,6 +136,36 @@ describe('validation (what an offline-sync import may claim)', () => {
     expect(instanceProblem({ ilvl: 12, affixes: [A('p_thrall_dmg', 40.5)] }, 'ring')).not.toBeNull();
     expect(instanceProblem(ok, 'material')).not.toBeNull();
     expect(instanceProblem(null, 'ring')).not.toBeNull();
+  });
+  it('a retune never strands a stored item: every roll the previous ranges allowed is still legal (affix tuning 2026-10-03)', () => {
+    // The ranges live builds rolled with before the 3 Oct tuning, written out here so a later edit of `legacy` cannot hide a regression.
+    const around = (c: number, cap: number): [number, number] => {
+      const lo = Math.max(1, Math.min(cap, Math.round(c * 0.7)));
+      return [lo, Math.max(lo, Math.min(cap, Math.round(Math.max(c * 1.3, lo))))];
+    };
+    const prev: Record<string, (L: number) => [number, number]> = {
+      p_thrall_dmg: (L) => around(10 * (5.5 + 0.2 * L), 300),
+      s_thrall_hp: (L) => around(10 * (10.6 + 0.38 * L), 500),
+      p_essence_regen: (L) => around(10 * (10 + 0.42 * L), 600),
+      s_miasma: (L) => around(10 * (5.2 + 0.22 * L), 400),
+      p_withered: (L) => [1, Math.max(2, Math.min(6, 2 + Math.floor(L / 7)))],
+      s_ward: (L) => around(9 + 0.7 * L, 60),
+    };
+    for (const a of AFFIXES) (prev[a.id] ??= (L) => around(0.8 + 0.07 * L, 14));
+    for (const id of Object.keys(prev)) {
+      for (let L = 1; L <= ILVL_MAX; L++) {
+        const [lo, hi] = prev[id](L);
+        for (const v of [lo, hi, Math.round((lo + hi) / 2)]) expect(instanceProblem({ ilvl: L, affixes: [A(id, v)] }, 'ring'), `${id} v${v} at ilvl ${L}`).toBeNull();
+      }
+    }
+  });
+  it('new rolls stay inside the new ranges, and the accepted envelope contains them', () => {
+    for (const a of AFFIXES) for (let L = 1; L <= ILVL_MAX; L++) {
+      const [lo, hi] = affixRange(a.id, L)!;
+      const [alo, ahi] = affixAcceptRange(a.id, L)!;
+      expect(alo).toBeLessThanOrEqual(lo);
+      expect(ahi).toBeGreaterThanOrEqual(hi);
+    }
   });
   it('a value that is legal at a higher item level is not legal at a lower one', () => {
     const [, hi] = affixRange('p_thrall_dmg', 40)!;
