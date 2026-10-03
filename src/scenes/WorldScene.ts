@@ -40,6 +40,7 @@ import { ClassPanel } from '../ui/ClassPanel';
 import { changeDiscipline, getContracts, getCosmetics, getGarden, getLabor, type LaborView, type ContractDelivery, type CosmeticsView, type GardenResult, type LaborResult } from '../net/api';
 import { canUseAutoCombat, onSettingsChange, setActiveCharacter, settings, updateSettings } from '../app/settings';
 import { selectAutoCombatAction, selectAutoCombatMovement, type AutoMoveMemory } from '../gameplay/autoCombat';
+import { BossTelegraphs, poolHazard, type Hazard } from '../gameplay/autoDodge';
 import { STATUS_FX } from '../content/statuses';
 import { damageTakenScale } from '../gameplay/hitNumber';
 import { AbilitySystem, veilTarget, type CastResult, type CastTarget } from '../gameplay/AbilitySystem';
@@ -55,7 +56,7 @@ import { omenFor, omenLeft, type Omen } from '../content/omens';
 import { BOSS_ARENA, BOSS_RADIUS, BOSS_RING_PAD } from '../gameplay/sim/BossBrain';
 import { makeSnapshot, WorldMirror } from '../gameplay/sim/snapshot';
 import type { BossState, Corpse, Enemy, Intent, SimEvent, Thrall, Zone } from '../gameplay/sim/types';
-import { CONE_REACH_PAD, WorldSim, thrallWeight } from '../gameplay/sim/WorldSim';
+import { CONE_REACH_PAD, PLAYER_RADIUS, WorldSim, thrallWeight } from '../gameplay/sim/WorldSim';
 import { computeStats, STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
 import { BossView, NecromancerAvatar } from '../graphics/Avatars';
 import { prewarmCreature } from '../graphics/prewarmCreature';
@@ -360,6 +361,9 @@ export class WorldScene implements GameScene, RuntimeView {
   private nextAutoCombatAt = 0;
   /** Easy auto movement memory: sticky target, closing hysteresis, committed dodges, smoothed turns. */
   private autoMoveMem: AutoMoveMemory = {};
+  /** Live boss telegraphs for Easy auto's dodge: fed by the same boss events that draw them. */
+  private readonly telegraphs = new BossTelegraphs();
+  private readonly dodgeHazards: Hazard[] = [];
   private autoTargetId: number | null = null;
   private autoAim: CastTarget | null = null;
   private queuedCast: { slot: HotbarSlot; target: CastTarget; until: number } | null = null;
@@ -913,6 +917,23 @@ export class WorldScene implements GameScene, RuntimeView {
     if (this.sim && (this.isAuthority())) this.sim.waveTier = this.progression.local.waveTierActive;
     this.inventoryPanel?.render();
     this.sheetPanel?.render();
+  }
+
+  /**
+   * Easy auto's dodge list: the live boss telegraphs plus hostile ground pools near the hero (the shapes the host will hit-test).
+   * Reuses one array; empty (and free) when no boss is awake and no pool is down.
+   */
+  private autoDodgeHazards(): readonly Hazard[] {
+    const out = this.dodgeHazards;
+    out.length = 0;
+    if (!this.bossState().active) this.telegraphs.clear();
+    out.push(...this.telegraphs.active(this.now));
+    const zones = this.sim?.zones ?? this.mirror?.zones;
+    if (zones) {
+      const p = this.player;
+      for (const z of zones.values()) if (z.hostile && z.dps > 0 && Math.hypot(z.x - p.x, z.z - p.z) < 40) out.push(poolHazard(z, PLAYER_RADIUS));
+    }
+    return out;
   }
 
   /** What a thrall raised now would carry (the numbers a purchase changes). Null until the player exists. */
@@ -4211,6 +4232,7 @@ export class WorldScene implements GameScene, RuntimeView {
   };
 
   private onBossEvent(ev: Extract<SimEvent, { t: 'boss' }>) {
+    this.telegraphs.onEvent(ev, this.now);
     if (ev.kind === 'awaken') perfNote(`boss ${ev.boss ?? ''}`);
     const ms = (ev.ms ?? 0) / 1000;
     const stop = WorldScene.BOSS_STOP[ev.kind];
@@ -4413,7 +4435,7 @@ export class WorldScene implements GameScene, RuntimeView {
       !this.attackTarget && !this.pendingInteract && !this.gathering.active && !this.keys.size
       ? selectAutoCombatMovement({ player: { x: p.x, z: p.z, area: p.area, essence: p.essence, maxEssence: p.resource.max,
           hp: p.hp, maxHp: p.stats.maxHp },
-        enemies: this.enemiesMap().values(), primary: this.primary, primaryRange: this.primaryRange(), family: this.discipline.family, nav: this.nav }, this.autoMoveMem, now, dt) : null;
+        enemies: this.enemiesMap().values(), primary: this.primary, primaryRange: this.primaryRange(), family: this.discipline.family, nav: this.nav, hazards: this.autoDodgeHazards() }, this.autoMoveMem, now, dt) : null;
     if (!autoMove) this.autoMoveMem.dir = null;
     // Drowned Congregation: the water rises each phase; wading outside her dais is slower.
     {

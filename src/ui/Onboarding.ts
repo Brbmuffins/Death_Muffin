@@ -185,7 +185,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   auto_combat: {
     title: 'Settle into the fight',
-    body: 'On Easy, auto combat engages enemies in the current area, uses equipped rites and may cast your signature when useful. It drinks healing flasks and mends you while under attack. The Hollow Knight also guards automatically. Click or use movement keys to take control. Toggle it with <kbd>G</kbd> or the Auto button.',
+    body: 'On Easy, auto combat engages enemies in the current area, uses equipped rites and may cast your signature when useful. It drinks healing flasks and mends you while under attack. It steps out of boss telegraphs (rings, cones, spokes, burning ground) and hostile pools on its own, then carries on attacking. The Hollow Knight also guards automatically. Click or use movement keys to take control. Toggle it with <kbd>G</kbd> or the Auto button.',
   },
   knight_rage: {
     title: 'Rage, not essence',
@@ -589,7 +589,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   rite_veil: {
     title: 'Veil Step',
-    body: 'Press {key:veil_step} to slip a few metres toward the cursor, no corpse needed. It stops at walls and sealed doors. Use it to leave a cone or a bell ring; auto combat never does.',
+    body: 'Press {key:veil_step} to slip a few metres toward the cursor, no corpse needed. It stops at walls and sealed doors. Use it to leave a cone or a bell ring; auto combat never casts it (it only walks out of boss telegraphs and pools).',
   },
   rite_rally: {
     title: 'Rally the Dead',

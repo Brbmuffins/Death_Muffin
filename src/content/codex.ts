@@ -199,7 +199,7 @@ export const CODEX_RITES: Record<AbilityId, RiteEntry> = {
   veil_step: {
     fx: 'veil',
     colour: 'Spirit jade / pale',
-    tip: `Grimoire rite (level ${ABILITIES.veil_step.unlockLevel}). A short slip toward the cursor with no corpse needed. It stops at walls and never crosses a sealed door or into another hall. Save it for a Penitent cone or a Bell-Tolled ring; auto combat never uses it.`,
+    tip: `Grimoire rite (level ${ABILITIES.veil_step.unlockLevel}). A short slip toward the cursor with no corpse needed. It stops at walls and never crosses a sealed door or into another hall. Save it for a Penitent cone or a Bell-Tolled ring; auto combat never casts it (it only walks out of boss telegraphs and pools).`,
   },
   rally_dead: {
     fx: 'rend',
