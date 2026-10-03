@@ -1092,7 +1092,8 @@ var m = (name, rarity, sell, lore, icon) => ({
   rarity,
   sell,
   lore,
-  icon
+  icon,
+  stack: 99
 });
 var g = (name, rarity, sell, lore) => ({ ...m(name, rarity, sell, lore), stack: 250 });
 var ITEMS = {
@@ -1170,7 +1171,7 @@ var ITEMS = {
 };
 for (const [id, g2] of Object.entries(GARDEN_ITEMS)) ITEMS[id] ??= { name: g2.name, type: "material", rarity: g2.rarity, sell: g2.sell, lore: g2.lore, stack: g2.stack };
 for (const [id, c] of Object.entries(CHARM_ITEMS)) ITEMS[id] ??= { name: c.name, type: "material", rarity: c.rarity, sell: c.sell, lore: c.lore, stack: 1 };
-for (const [id, a] of Object.entries(ALCHEMY_ITEMS)) ITEMS[id] ??= { name: a.name, type: "material", rarity: a.rarity, sell: a.sell, lore: a.lore, stack: a.stack };
+for (const [id, a] of Object.entries(ALCHEMY_ITEMS)) ITEMS[id] ??= { name: a.name, type: "material", rarity: a.rarity, sell: a.sell, lore: a.lore, stack: a.stack, icon: `art/items/${id}.svg` };
 for (const [id, r] of Object.entries(REAGENT_ITEMS)) ITEMS[id] ??= { name: r.name, type: "material", rarity: r.rarity, sell: r.sell, lore: r.lore, stack: r.stack, icon: reagentIcon(id) };
 for (const [id, r] of Object.entries(REAGENT_BREW_ITEMS)) ITEMS[id] ??= { name: r.name, type: "material", rarity: r.rarity, sell: r.sell, lore: r.lore, stack: r.stack, icon: reagentIcon(id) };
 for (const [id, f] of Object.entries(FEN_ITEMS)) ITEMS[id] ??= { name: f.name, type: "material", rarity: f.rarity, sell: f.sell, lore: f.lore, stack: f.stack };

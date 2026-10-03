@@ -145,7 +145,7 @@ export const BOSSES: Record<BossId, BossDef> = {
     shards: 5,
     baseHp: 26000,
     modelSlug: 'prelate',
-    portrait: 'art/portraits/prelate.webp',
+    portrait: '', // no painted portrait yet (the file never existed; it 404'd)
     color: 0xa26bff,
     phases: ['The bell is silent', 'The procession begins', 'The bell is breaking'],
     awaken: 'The Sundered Bell tolls for you',

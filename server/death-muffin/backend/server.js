@@ -67,6 +67,20 @@ function calcXpGained(enemyLevel, enemyCategory) {
 }
 
 app.use(express.json({ limit: '512kb' }));
+// Player-facing refusals (4xx) were invisible in the journal: a bag-save 400 loop once ran for minutes unseen.
+// Log one line per refusal: method, path (ids collapsed), status and the player-readable error.
+app.use((req, res, next) => {
+  const json = res.json.bind(res);
+  res.json = (body) => {
+    if (res.statusCode >= 400 && res.statusCode < 500 && res.statusCode !== 401 && res.statusCode !== 404) {
+      const path = String(req.originalUrl || req.url).split('?')[0].replace(/\/\d+(?=\/|$)/g, '/:id');
+      const err = body && typeof body.error === 'string' ? body.error.slice(0, 160) : '';
+      console.warn(`[refused] ${req.method} ${path} ${res.statusCode} ${err}`);
+    }
+    return json(body);
+  };
+  next();
+});
 app.set('trust proxy', 'loopback'); // nginx proxies from 127.0.0.1 — trust its X-Forwarded-For
 
 const registerLimiter = rateLimit({

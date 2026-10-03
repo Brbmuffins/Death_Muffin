@@ -122,7 +122,7 @@ for (const [id, g] of Object.entries(GARDEN_ITEMS)) ITEMS[id] ??= { name: g.name
 for (const [id, c] of Object.entries(CHARM_ITEMS)) ITEMS[id] ??= { name: c.name, type: 'material', rarity: c.rarity, sell: c.sell, lore: c.lore, stack: 1 };
 
 // Alchemy (content/alchemy.ts; server rows from migration 009-alchemy.sql).
-for (const [id, a] of Object.entries(ALCHEMY_ITEMS)) ITEMS[id] ??= { name: a.name, type: 'material', rarity: a.rarity, sell: a.sell, lore: a.lore, stack: a.stack };
+for (const [id, a] of Object.entries(ALCHEMY_ITEMS)) ITEMS[id] ??= { name: a.name, type: 'material', rarity: a.rarity, sell: a.sell, lore: a.lore, stack: a.stack, icon: `art/items/${id}.svg` };
 
 // Reagents, zone herbs, boss ichors and the brews made from them (content/reagents.ts; server rows from migration 014-alchemy-reagents.sql).
 for (const [id, r] of Object.entries(REAGENT_ITEMS)) ITEMS[id] ??= { name: r.name, type: 'material', rarity: r.rarity, sell: r.sell, lore: r.lore, stack: r.stack, icon: reagentIcon(id) };

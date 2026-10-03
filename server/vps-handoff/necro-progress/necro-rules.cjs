@@ -1191,7 +1191,8 @@ var BOSSES = {
     shards: 5,
     baseHp: 26e3,
     modelSlug: "prelate",
-    portrait: "art/portraits/prelate.webp",
+    portrait: "",
+    // no painted portrait yet (the file never existed; it 404'd)
     color: 10644479,
     phases: ["The bell is silent", "The procession begins", "The bell is breaking"],
     awaken: "The Sundered Bell tolls for you",
