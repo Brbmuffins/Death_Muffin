@@ -3486,7 +3486,7 @@ export class WorldScene implements GameScene, RuntimeView {
     // Personal reward: a guaranteed item from the area's table plus bonus gold.
     const level = AREAS[ev.area].level + ascensionLevels(this.worldAscension());
     const gold = Math.round((24 + 10 * level) * waveModifiers(this.bossWaveTier()).rewardMult * DIFFICULTIES[this.worldDifficulty()].rewardMult);
-    this.dropItems(ev.x, ev.z, [rollSurgeItem(ev.area)], level, 'surge');
+    this.dropItems(ev.x, ev.z, [rollSurgeItem(ev.area, Math.random, this.discipline.id)], level, 'surge');
     this.loot.gold(ev.x, ev.z, gold);
     this.effects.emit({ x: ev.x, y: 0.4, z: ev.z, count: 70, color: SPELL_FX.surge.glow, spread: 1, speed: 1.2, up: 4, life: 1.4, size: 0.34 });
     this.effects.lightFlash(ev.x, 2, ev.z, SPELL_FX.surge.glow, 70, 1.2);
@@ -4393,7 +4393,7 @@ export class WorldScene implements GameScene, RuntimeView {
           if (def.id !== 'prelate' && this.claimTrophy(def.id)) {
             firstTrophy = true;
             reward.shards += 2;
-            firstKill = rollFirstKillItem(def.area);
+            firstKill = rollFirstKillItem(def.area, Math.random, this.discipline.id);
             this.hud.toast(`First kill: ${def.name}. A trophy for the Codex, two more shards and a rare relic.`, 'good');
           }
           // Relic rune: the Prelate and every first kill always leave one, repeats 35% (content/runes.ts).

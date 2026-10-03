@@ -1424,6 +1424,212 @@ var REAGENT_RECIPES = REAGENT_BREW_LIST.map(([id, b]) => [b.recipe.id, b.recipe.
 var ALL_REAGENT_IDS = [...Object.keys(REAGENT_ITEMS), ...Object.keys(REAGENT_BREW_ITEMS)];
 var ICHORS = Object.values(BOSS_ICHOR);
 
+// src/content/disciplines.ts
+var BASE = {
+  thrallCap: 3,
+  thrallKind: "warrior",
+  thrallHpMult: 1,
+  thrallDamageMult: 1,
+  thrallAttackSpeedMult: 1,
+  maxHpMult: 1,
+  essenceRegenMult: 1,
+  miasmaRadiusMult: 1,
+  witheredMaxStacks: 5,
+  corpseHeal: 0,
+  wardPerThrall: 0,
+  litanyBarrier: 0,
+  sacrificeLeavesCorpse: false,
+  miasmaBurstsCorpses: false,
+  thrallDeathBurst: 0,
+  championEvery: 0,
+  spearRally: 0,
+  wardReflect: 0,
+  colossusGuard: 0,
+  litanyShatter: 0,
+  corpseWisp: 0,
+  soulHarvestRateMult: 1,
+  wraithNova: 0,
+  miasmaSpreadsWithered: 0,
+  witheredBurstAt: 0
+};
+var DISCIPLINES = {
+  ossuary: {
+    classIndex: 1,
+    id: "ossuary",
+    family: "necromancer",
+    name: "Ossuary",
+    epithet: "Keeper of the Bone Wall",
+    description: "Armours itself in the dead. Raises shield-bearing thralls that hold the line while you work.",
+    passive: {
+      name: "Bone Ward",
+      text: "Thralls rise as Shieldbearers (+100% health, draw aggression). You take 10% less damage per active thrall (up to 60%) and have 20% more health. Black Litany grants a bone barrier."
+    },
+    color: "#d8cfbd",
+    portrait: "art/portraits/ossuary.webp",
+    modelSlug: "hero_ossuary",
+    mods: { ...BASE, thrallKind: "shieldbearer", thrallHpMult: 2, maxHpMult: 1.2, wardPerThrall: 0.1, litanyBarrier: 0.04 }
+  },
+  gravecaller: {
+    classIndex: 2,
+    id: "gravecaller",
+    family: "necromancer",
+    name: "Gravecaller",
+    epithet: "Marshal of the Restless",
+    description: "Commands the largest legion. Spends thralls freely, because every sacrifice leaves another corpse.",
+    passive: {
+      name: "Grave Legion",
+      text: "Thrall cap 5. Thralls attack 20% faster and hit 15% harder. Thralls sacrificed by Black Litany leave corpses behind."
+    },
+    color: "#9b5cff",
+    portrait: "art/portraits/gravecaller.webp",
+    modelSlug: "hero_gravecaller",
+    mods: { ...BASE, thrallCap: 5, thrallAttackSpeedMult: 1.2, thrallHpMult: 1, thrallDamageMult: 1.15, sacrificeLeavesCorpse: true }
+  },
+  mourner: {
+    classIndex: 3,
+    id: "mourner",
+    family: "necromancer",
+    name: "Mourner",
+    epithet: "Singer of the Funeral Rite",
+    description: "Binds spirits instead of bones. Wraiths strike from range and every rite mends the living.",
+    passive: {
+      name: "Funeral Rites",
+      text: "Exhume binds Wraiths that attack from range. Consuming a corpse heals 10% max health. +25% Grave Essence regeneration."
+    },
+    color: "#8f9ed1",
+    portrait: "art/portraits/mourner.webp",
+    modelSlug: "hero_mourner",
+    mods: { ...BASE, thrallKind: "wraith", thrallHpMult: 1, corpseHeal: 0.1, essenceRegenMult: 1.25 }
+  },
+  rotweaver: {
+    classIndex: 4,
+    id: "rotweaver",
+    family: "necromancer",
+    name: "Rotweaver",
+    epithet: "Gardener of Decay",
+    description: "Poisons the ground itself. Miasma spreads further, rots deeper, and turns corpses into bombs.",
+    passive: {
+      name: "Carrion Bloom",
+      text: "Miasma Circle is 40% wider and Withered stacks to 8. You have 10% more health. Corpses inside your Miasma burst, damaging and withering nearby enemies."
+    },
+    color: "#b58cc7",
+    portrait: "art/portraits/rotweaver.webp",
+    modelSlug: "hero_rotweaver",
+    mods: { ...BASE, miasmaRadiusMult: 1.4, witheredMaxStacks: 8, maxHpMult: 1.1, miasmaBurstsCorpses: true }
+  },
+  /**
+   * Release 0.3. Not a necromancer: family 'knight' brings its own kit
+   * (content/kits.ts) and resource (Rage, gameplay/resources.ts). The
+   * necromancer-only `mods` stay at BASE — the Knight raises no thralls, and its
+   * kit never offers the rites that would read them.
+   */
+  hollow_knight: {
+    classIndex: 8,
+    id: "hollow_knight",
+    family: "knight",
+    name: "Hollow Knight",
+    epithet: "Oathbound of the Covenant",
+    description: "An undead knight still keeping its oath. Builds Rage by taking and dealing punishment, then spends it leaping into the dead.",
+    passive: {
+      name: "Oathbound",
+      text: "Rage instead of Grave Essence: built by damage taken, by every body Hollow Cut catches, and fastest of all by a perfect block. It drains once you leave the fight."
+    },
+    color: "#b8c0cc",
+    portrait: "art/portraits/hollow_knight.webp",
+    modelSlug: "hero_hollow_knight",
+    mods: { ...BASE }
+  },
+  grave_warden: {
+    classIndex: 5,
+    id: "grave_warden",
+    family: "warden",
+    name: "Grave Warden",
+    epithet: "Keeper of the Last Lantern",
+    description: "A watchful guardian who burns corpses for Oil, pins enemies with a chain and shelters allies in lantern light.",
+    passive: { name: "Lamplighter", text: "Oil refills steadily and rises when a corpse burns. Lantern wards protect everyone standing inside." },
+    color: "#f2b84b",
+    portrait: "art/portraits/grave_warden.webp",
+    modelSlug: "hero_grave_warden",
+    mods: { ...BASE }
+  },
+  bell_monk: {
+    classIndex: 6,
+    id: "bell_monk",
+    family: "monk",
+    name: "Bell Monk",
+    epithet: "Voice of the Last Toll",
+    description: "Strikes on a twelve-beat rhythm, builds Resonance and turns corpses into sounding bells.",
+    passive: { name: "The Beat", text: "Hits close to each toll deal more damage and build Resonance faster." },
+    color: "#e8d9a0",
+    portrait: "art/portraits/bell_monk.webp",
+    modelSlug: "hero_bell_monk",
+    mods: { ...BASE }
+  },
+  carrion_witch: {
+    classIndex: 7,
+    id: "carrion_witch",
+    family: "witch",
+    name: "Carrion Witch",
+    epithet: "Mistress of Hooks and Crows",
+    description: "Harvests corpses for Offal, sends crows into a pack and curses foes with a hooked charm.",
+    passive: { name: "Corpse Hunger", text: "Offal comes from bodies, never passive regeneration. Save a corpse before spending it." },
+    color: "#9a1b2a",
+    portrait: "art/portraits/carrion_witch.webp",
+    modelSlug: "hero_carrion_witch",
+    mods: { ...BASE }
+  },
+  veilwalker: {
+    classIndex: 9,
+    id: "veilwalker",
+    family: "veil",
+    name: "Veilwalker",
+    epithet: "One Foot Beyond",
+    description: "Walks between life and death, raising brief spectral allies from echoes of the fallen.",
+    passive: { name: "Thin Places", text: "Veil refills in Life form and drains in Veil form. Spectral echoes appear where corpses fall." },
+    color: "#bff3ff",
+    portrait: "art/portraits/veilwalker.webp",
+    modelSlug: "hero_veilwalker",
+    mods: { ...BASE }
+  }
+};
+var PLAYABLE_DISCIPLINES = [
+  DISCIPLINES.ossuary,
+  DISCIPLINES.gravecaller,
+  DISCIPLINES.mourner,
+  DISCIPLINES.rotweaver,
+  DISCIPLINES.grave_warden,
+  DISCIPLINES.bell_monk,
+  DISCIPLINES.carrion_witch,
+  DISCIPLINES.hollow_knight,
+  DISCIPLINES.veilwalker
+];
+
+// src/gameplay/smartLoot.ts
+var SMART_LOOT = { ownArmorShare: 0.5, foreignWeaponMult: 1 / 3 };
+var smartCache = /* @__PURE__ */ new Map();
+function smartTable(area, disciplineId) {
+  const key = `${area}|${disciplineId}`;
+  let t = smartCache.get(key);
+  if (t) return t;
+  const table = AREAS[area].loot;
+  const armor = table.filter((e) => ARMOR_BY_ID[e.item]);
+  const own = armor.filter((e) => ARMOR_BY_ID[e.item].disciplineId === disciplineId);
+  const total = armor.reduce((n, e) => n + e.weight, 0);
+  const ownTotal = own.reduce((n, e) => n + e.weight, 0);
+  const necro = DISCIPLINES[disciplineId]?.family === "necromancer";
+  t = table.map((e) => {
+    const piece = ARMOR_BY_ID[e.item];
+    if (piece && ownTotal > 0 && ownTotal < total) {
+      const mine = piece.disciplineId === disciplineId;
+      return { item: e.item, weight: mine ? e.weight / ownTotal * total * SMART_LOOT.ownArmorShare : e.weight / (total - ownTotal) * total * (1 - SMART_LOOT.ownArmorShare) };
+    }
+    if (!necro && NECRO_WEAPON_BY_ID[e.item]) return { item: e.item, weight: e.weight * SMART_LOOT.foreignWeaponMult };
+    return e;
+  });
+  smartCache.set(key, t);
+  return t;
+}
+
 // src/gameplay/authorityRules.ts
 var LEVEL_CAP = 255;
 function totalXp(level, xp) {
@@ -1532,9 +1738,11 @@ function buildGroundRates() {
   const addGround = (lootId, kills, roster, eliteChance, extraPerMin = 0) => {
     const area = AREAS[lootId];
     const elite = Math.min(1, eliteChance + 4e-3 * 8);
-    const total = area.loot.reduce((n, l) => n + l.weight, 0) || 1;
     const dropChance = Math.min(1, area.itemChance * ITEM_CHANCE_PEAK * FORTUNE_PEAK * (1 - elite + elite * ELITE_LOOT_MULT));
-    for (const l of area.loot) add(l.item, (kills * dropChance + extraPerMin) * l.weight / total * MATERIAL_QTY);
+    for (const table of [area.loot, ...Object.keys(DISCIPLINES).map((d) => smartTable(lootId, d))]) {
+      const total = table.reduce((n, l) => n + l.weight, 0) || 1;
+      for (const l of table) add(l.item, (kills * dropChance + extraPerMin) * l.weight / total * MATERIAL_QTY);
+    }
     const weights = roster.reduce((n, e) => n + e.weight, 0) || 1;
     const reagentPerKill = /* @__PURE__ */ new Map();
     const credit = (item2, chance, qty) => {
