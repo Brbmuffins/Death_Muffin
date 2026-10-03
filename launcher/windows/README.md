@@ -87,4 +87,5 @@ run, attaches it to a GitHub Release tagged `launcher-v<version>`. Bump `<Versio
   `release-notes.json` (`{ sha, date, items }`: commit subjects since the previous live release, at most 12) after
   `index.html`, next to `release.txt`.
 
-Launcher source is this folder only; the old prototype's source was lost, so this is a clean rebuild with the same look and behaviour.
+Launcher source is this folder only; the old prototype's source was lost, so this is a clean rebuild of its behaviour. Since 0.3.0 the
+window uses the game's key art (`Resources/keyart.jpg`, embedded) as a full-window backdrop, with the controls on its dark left half.
