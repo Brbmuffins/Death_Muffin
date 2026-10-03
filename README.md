@@ -163,6 +163,8 @@ Every class has a basic attack, five swappable rites on **1–5** (slot 5 also u
 | <img src="public/art/portraits/hollow_knight.webp" alt="" width="64" /> | **Hollow Knight** | Build Rage by fighting and taking hits, especially with a well-timed block; spend it on a leap and slam. |
 | <img src="public/art/portraits/veilwalker.webp" alt="" width="64" /> | **Veilwalker** | Veil refills in Life form and drains in Veil form. Move between forms and make temporary spectral allies from fallen enemies. |
 
+**Fighting without a legion.** The five classes above that raise no thralls (Grave Warden, Bell Monk, Carrion Witch, Hollow Knight, Veilwalker) hit 1.5x harder than their spell power alone would give, and they earn extra experience while young: 2x at level 1, easing down to normal at level 15.
+
 **New player picks:** the picker marks **Gravecaller** *Recommended for your first run* (the largest legion and the simplest loop; it appears only when you have no character yet, and every discipline is still one click away). Ossuary gives you a sturdy front line; Mourner has forgiving sustain; Hollow Knight suits players who want to stand close and time blocks. Any discipline can change later through Settings.
 
 At **level 10**, each discipline unlocks its own signature rite on **R**:

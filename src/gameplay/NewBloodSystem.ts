@@ -5,6 +5,7 @@ import { fx } from '../graphics/fxTextures';
 import { fxImage } from '../graphics/fxImages';
 import type { AbilityContext, CastResult, CastTarget } from './AbilitySystem';
 import type { Corpse, Enemy, Intent, SimEvent } from './sim/types';
+import { NEW_BLOOD_DAMAGE_MULT } from './newBloodTuning';
 
 const CAST_SFX: Record<NewBloodId, Sfx> = {
   flail_swing: 'flail', lantern_cone: 'lantern', chain_pull: 'chain',
@@ -38,7 +39,7 @@ export class NewBloodSystem {
 
   private get power() {
     const p = this.ctx.player;
-    return p.stats.spellPower * (p.veilForm && this.ctx.now() >= p.betweenUntil ? 0.7 : 1);
+    return p.stats.spellPower * NEW_BLOOD_DAMAGE_MULT * (p.veilForm && this.ctx.now() >= p.betweenUntil ? 0.7 : 1);
   }
 
   private gesture(id: AbilityId, t: CastTarget, attack = false) {

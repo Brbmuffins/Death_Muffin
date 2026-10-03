@@ -16,8 +16,8 @@ const sum = (rows: Record<string, number>[], id: string) => rows.reduce((s, c) =
 
 describe('New Blood bot fidelity', () => {
   it('casts only rites the hero has unlocked (level 1 has no Burn the Dead or Veil Tear)', () => {
-    const warden = runBalance(graves(5, { minutes: 0.4 }));
-    const veil = runBalance(graves(9, { minutes: 0.4 }));
+    const warden = runBalance(graves(5, { minutes: 0.15 }));
+    const veil = runBalance(graves(9, { minutes: 0.15 }));
     expect(warden.levelsGained).toBe(0);
     expect(veil.levelsGained).toBe(0);
     expect(warden.casts.burn_the_dead ?? 0).toBe(0);

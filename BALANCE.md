@@ -1004,3 +1004,21 @@ The scythe's arc reaches **4 m against a boss** (3 m against everything else), s
 | 4.5 m | 7 | 2,849 | 3,375 |
 
 Biggest moves: Prelate Mourner (intended) 7/8 -> 3/8 wipes; Mire Mother 5 wipes -> 0; Plague Saint damage taken roughly halved. The scythe is still about 1.4x slower than a staff on every boss: that is the style's trade (souls and essence from the arc), not changed here.
+
+## New Blood catch-up (3 Oct 2026, owner: "apply the 1.5x damage and early xp for new blood")
+`src/gameplay/newBloodTuning.ts`: every New Blood primary, rite and signature hits **x1.5** (`NewBloodSystem.power`), and experience is
+multiplied **x2 at level 1, fading linearly to x1 at level 15** (`WorldScene.gainXp`; the harness mirrors both). x2.5 was measured first and
+overshot: with the damage boost New Blood out-levelled the necromancers at Graves (412-562 XP/min vs ~375), so the start was lowered to x2.
+Necromancer rows are byte-identical. `BALANCE_SEEDS=4 BALANCE_AREAS=graves,nave BALANCE_BANDS=intended BALANCE_KIT=none npm run balance`:
+
+| Class (intended) | Graves kills/min | Graves XP/min | Graves deaths/3 min | Nave kills/min | Nave XP/min | Nave deaths/3 min |
+|---|---|---|---|---|---|---|
+| Necromancers (mean, unchanged) | 91 | 376 | 0.0 | 110 | 1,983 | 0.2 |
+| Grave Warden | 37.7 -> 56.6 | 138 -> 434 | 3.8 -> 2.3 | 28.2 -> 46.5 | 384 -> 975 | 5.8 -> 4.0 |
+| Bell Monk | 36.8 -> 56.7 | 130 -> 425 | 4.8 -> 3.3 | 31.8 -> 56.1 | 478 -> 1,161 | 6.3 -> 4.8 |
+| Carrion Witch | 29.3 -> 57.8 | 112 -> 410 | 3.3 -> 0.3 | 25.0 -> 37.0 | 319 -> 843 | 5.0 -> 3.0 |
+| Hollow Knight | 37.3 -> 51.2 | 124 -> 343 | 5.0 -> 3.0 | 28.4 -> 37.0 | 352 -> 711 | 5.3 -> 4.8 |
+| Veilwalker | 26.5 -> 45.3 | 100 -> 312 | 2.0 -> 1.5 | 23.9 -> 35.6 | 260 -> 776 | 4.3 -> 1.8 |
+
+Graves (early levels): New Blood now level about as fast as a necromancer. Nave (past the catch-up): the gap closes from about 6x to about 2x
+XP/min; the rest is the legion (thralls) and survival, still worth a human playtest of the melee three (Warden, Monk, Knight die most).

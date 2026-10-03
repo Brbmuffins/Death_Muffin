@@ -24,6 +24,7 @@ import { resolveKit, type KitName, type KitRequest } from './kits';
 import type { Difficulty } from '../../content/difficulty';
 import { RUNE_TUNING, type RuneId, type RuneRite } from '../../content/runes';
 import { corpsesWithin, impaleTarget, ringHits, splinterTarget, volleyTargets } from '../runeCast';
+import { newBloodDamageMult, newBloodXpMult } from '../newBloodTuning';
 
 /**
  * Headless balance harness: drives the real WorldSim with a scripted
@@ -297,7 +298,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
       const near = (r: number, x = p.x, z = p.z) => enemies.filter((e) => Math.hypot(e.x - x, e.z - z) <= r);
       const corpsesNear = [...sim.corpses.values()].filter((c) => !c.echoOwner && Math.hypot(c.x - p.x, c.z - p.z) <= 7);
       const myThralls = [...sim.thralls.values()].filter((th) => th.owner === p.id);
-      const sp = stats.spellPower;
+      const sp = stats.spellPower * newBloodDamageMult(disc.family);
       // The corpse in range whose blast would catch the most enemies (at least 3).
       let burst: Corpse | null = null;
       const bestBurst = (list: Enemy[]) => {
@@ -608,8 +609,9 @@ export function runBalance(run: BalanceRun): BalanceResult {
         const fb = floorBonus(ev.depth, lvl);
         const cb = hasChest(ev.depth) ? chestBonus(ev.depth, lvl) : { gold: 0, xp: 0 };
         gold += fb.gold + cb.gold;
-        xp += fb.xp + cb.xp;
-        character.experience += fb.xp + cb.xp;
+        const fxp = Math.round((fb.xp + cb.xp) * newBloodXpMult(disc.family, character.level));
+        xp += fxp;
+        character.experience += fxp;
         floorsCleared++;
         const next = sim.descendDepths();
         if (next) {
@@ -655,9 +657,10 @@ export function runBalance(run: BalanceRun): BalanceResult {
         }
         const r = rollKill(ev.def, ev.area === 'depths' ? depthLootArea(sim.depths?.depth ?? 1) : ev.area, ev.level, ev.elite, run.waveTier, rand, sim.difficulty);
         gold += r.gold;
-        xp += r.xp;
+        const kxp = Math.round(r.xp * newBloodXpMult(disc.family, character.level));
+        xp += kxp;
         shards += r.shards;
-        character.experience += r.xp;
+        character.experience += kxp;
         while (character.experience >= xpToNext(character.level)) {
           character.experience -= xpToNext(character.level);
           character.level++;

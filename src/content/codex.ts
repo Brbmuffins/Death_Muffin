@@ -315,12 +315,12 @@ export const CODEX_DISCIPLINES: Record<DisciplineId, DisciplineEntry> = {
     tip: 'Let the pack die inside your Miasma. Corpses in the rot burst on their own and spread Withered to whatever is still standing. At level 10, Plague Bloom (R) chains rot flowers through the corpse field.',
   },
   hollow_knight: {
-    tip: 'You have no thralls and no Grave Essence — you have Rage, and you earn it by being hit. Open with Hollow Cut across two or three bodies, hold Bulwark facing the blow for a perfect block, then spend the Rage leaping in with Grave Slam. Corpse Vigil is your only heal, so keep one body spare. At level 10, Oath Unbroken (R) makes you unkillable for six seconds.',
+    tip: 'You have no thralls and no Grave Essence — you have Rage, and you earn it by being hit. Open with Hollow Cut across two or three bodies, hold Bulwark facing the blow for a perfect block, then spend the Rage leaping in with Grave Slam. Corpse Vigil is your only heal, so keep one body spare. At level 10, Oath Unbroken (R) makes you unkillable for six seconds. You fight without a legion, so you hit 1.5x harder and gain extra experience while young (2x at level 1, back to normal by level 15).',
   },
-  grave_warden: { tip: 'Oil refills steadily. Burn bodies to fuel your lamp, pull a dangerous caster into your reach, and plant Watchman’s Ward where your party will hold. Last Light stuns the pack and mends allies.' },
-  bell_monk: { tip: 'Your global bell sounds every 1.2 seconds. Strike on the beat for stronger blows and faster Resonance. Sound a corpse where Toll can reach it; Great Toll spends all the Resonance you have saved.' },
-  carrion_witch: { tip: 'Offal comes only from corpses. Harvest a body before unleashing Crow Swarm, then hold the pack with Hook Pull and Hex Charm. Butcher makes healing charms for the party.' },
-  veilwalker: { tip: 'Veil Form drains Veil while shielding you from enemy blows and speeding your steps. Lay a corpse to rest to create echoes, raise one with Echo, or Cross to it. Return to Life form to refill.' },
+  grave_warden: { tip: 'Oil refills steadily. Burn bodies to fuel your lamp, pull a dangerous caster into your reach, and plant Watchman’s Ward where your party will hold. Last Light stuns the pack and mends allies. You fight without a legion, so you hit 1.5x harder and gain extra experience while young (2x at level 1, back to normal by level 15).' },
+  bell_monk: { tip: 'Your global bell sounds every 1.2 seconds. Strike on the beat for stronger blows and faster Resonance. Sound a corpse where Toll can reach it; Great Toll spends all the Resonance you have saved. You fight without a legion, so you hit 1.5x harder and gain extra experience while young (2x at level 1, back to normal by level 15).' },
+  carrion_witch: { tip: 'Offal comes only from corpses. Harvest a body before unleashing Crow Swarm, then hold the pack with Hook Pull and Hex Charm. Butcher makes healing charms for the party. You fight without a legion, so you hit 1.5x harder and gain extra experience while young (2x at level 1, back to normal by level 15).' },
+  veilwalker: { tip: 'Veil Form drains Veil while shielding you from enemy blows and speeding your steps. Lay a corpse to rest to create echoes, raise one with Echo, or Cross to it. Return to Life form to refill. You fight without a legion, so you hit 1.5x harder and gain extra experience while young (2x at level 1, back to normal by level 15).' },
 };
 
 // ---------------------------------------------------------------------------

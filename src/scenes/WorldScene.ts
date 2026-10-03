@@ -140,6 +140,7 @@ import { CURSOR } from '../ui/cursors';
 import { audio } from '../audio/Audio';
 import { lootSfx } from '../audio/mixer';
 import { snapShadowTarget } from '../graphics/shadowCadence';
+import { newBloodXpMult } from '../gameplay/newBloodTuning';
 
 /** Minimum gap between HUD readout redraws (~20 Hz). */
 /** The moon's offset from the hero, its shadow-map size and the world size of one shadow texel (60 m frustum). */
@@ -3693,6 +3694,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private gainXp(xp: number, x: number, z: number) {
+    xp = Math.round(xp * newBloodXpMult(this.discipline.family, this.character.level)); // New Blood early-level catch-up (newBloodTuning.ts)
     const gained = this.progression.addXp(xp);
     if (Math.random() < 0.35) this.floating.spawn(x, 2, z, `+${xp} xp`, 'xp');
     if (gained > 0) {
