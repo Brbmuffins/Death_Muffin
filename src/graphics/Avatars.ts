@@ -11,6 +11,7 @@ import type { AbilityId } from '../content/abilities';
 import { castClipFor, planGesture, type GestureKey } from '../content/castClips';
 import { buildCape, buildHelm, buildOffhand, buildWeapon, disposeProp, gripFor } from './gearProps';
 import { capeDef } from '../content/cosmetics';
+import { CapeCloth } from './capeCloth';
 import { gearTier, legendaryAura, weaponKind } from '../content/gear';
 import type { GearRegion } from './gearTint';
 import { smoothSpeed, stepSpeed, turnToward } from './locomotion';
@@ -63,7 +64,9 @@ export class NecromancerAvatar {
   /** Equipped-gear props currently on the model, with the item id each was built from. */
   private worn = new Map<'main_hand' | 'off_hand' | 'head', { obj: THREE.Object3D; key: string }>();
   /** The mastery cape on the back (a cosmetic: content/cosmetics.ts), and how far it has swung. */
-  private cape: { obj: THREE.Object3D; id: string } | null = null;
+  private cape: { obj: THREE.Object3D; id: string; cloth?: CapeCloth | null } | null = null;
+  /** Simulate the cape's cloth (the local hero and partners within 20 m); farther avatars use the baked sway. */
+  capeSim = true;
   private swayT = Math.random() * 6;
   private gatheringSkill: GatherSkill | null = null;
   private gatheringTools = new Map<GatherSkill, THREE.Object3D>();
@@ -210,7 +213,10 @@ export class NecromancerAvatar {
       obj.visible = idle && !(hand && this.worn.has(hand));
     }
     for (const w of this.worn.values()) w.obj.visible = idle;
-    if (this.cape) this.cape.obj.visible = idle;
+    if (this.cape) {
+      this.cape.obj.visible = idle;
+      if (!idle) this.cape.cloth?.reset();
+    }
   }
 
   /**
@@ -302,7 +308,17 @@ export class NecromancerAvatar {
     if (this.cape) {
       // The cloth trails a little behind a moving hero and breathes when still.
       this.swayT += dt * (moving ? 5 : 1.6);
-      this.cape.obj.rotation.x = (moving ? 0.17 : 0.05) + Math.sin(this.swayT) * (moving ? 0.05 : 0.02);
+      const cape = this.cape;
+      if (cape.cloth === undefined && this.c.loaded) cape.cloth = CapeCloth.create(cape.obj, this.c.root);
+      const cloth = cape.cloth;
+      if (cloth && this.capeSim) {
+        cape.obj.rotation.x = 0;
+        if (cape.obj.visible) cloth.step(dt, this.swayT, moving);
+      } else {
+        cloth?.rest();
+        cloth?.reset();
+        cape.obj.rotation.x = (moving ? 0.17 : 0.05) + Math.sin(this.swayT) * (moving ? 0.05 : 0.02);
+      }
     }
   }
 

@@ -149,6 +149,8 @@ import { bossRewardEligible } from '../gameplay/killCredit';
 const MOON_OFFSET = { x: -14, y: 30, z: 12 };
 const MOON_MAP = 1024;
 const HUD_INTERVAL_MS = 50;
+/** Partners within this many metres of the local hero simulate their cape cloth; farther ones use the baked sway. */
+const CAPE_SIM_RANGE = 20;
 const SNAPSHOT_MS = 100;
 const MOVE_SEND_MS = 100;
 const RESPAWN_MS = 4000;
@@ -4582,6 +4584,7 @@ export class WorldScene implements GameScene, RuntimeView {
       const k = Math.min(1, dt * 10);
       const x = r.avatar.c.root.position.x + (r.tx - r.avatar.c.root.position.x) * k;
       const z = r.avatar.c.root.position.z + (r.tz - r.avatar.c.root.position.z) * k;
+      r.avatar.capeSim = (x - p.x) ** 2 + (z - p.z) ** 2 < CAPE_SIM_RANGE ** 2;
       r.avatar.update(dt, x, z, r.facing, r.moving, 5.4);
       r.pet?.update(dt, x, z, r.facing);
     }
