@@ -555,7 +555,11 @@ export class WorldScene implements GameScene, RuntimeView {
         (window as unknown as { __dmWarmStage?: unknown }).__dmWarmStage = { ...res, keys: [...stageFresh] };
       })
       .catch((err) => console.warn('[world] area prime failed', err))
-      .then(() => veil.finish());
+      .then(() => {
+        veil.finish();
+        // Seals the saved kill counts already earn open for real on load (dev accounts never saved them before).
+        this.checkUnlocks();
+      });
     this.dressWaystones();
     for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d), true);
     this.views = new EntityViews(this.scene, this.effects, (owner) => {
@@ -3621,6 +3625,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (!this.worldView) return;
     this.nav.setUnlocked(this.openAreas());
     for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d));
+    this.checkUnlocks();
     if (this.sim && this.isAuthority()) {
       this.sim.ascension = this.progression.local.ascension;
       this.sim.waveTier = this.progression.local.waveTierActive;
@@ -3756,7 +3761,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private checkUnlocks() {
     for (const id of AREA_ORDER) {
       const u = AREAS[id].unlock;
-      if (!u || this.progression.isUnlocked(id)) continue;
+      // The saved truth, not the dev overlay: dev access must not stop an earned seal from being banked.
+      if (!u || this.progression.reallyUnlocked(id)) continue;
       if (this.progression.kills(u.area) >= this.progression.unlockKills(u.kills) && this.progression.unlock(id)) {
         this.nav.setUnlocked(this.openAreas());
         for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d));
@@ -4873,7 +4879,7 @@ export class WorldScene implements GameScene, RuntimeView {
     // Every pending seal off this hall (the Graves hold two: the Warren and the Ossuary), nearest first.
     // The seal the Next line is already counting is not repeated here.
     const inNext = this.nextNow?.kind === 'seal' ? this.nextNow.id.slice('seal:'.length) : null;
-    const pending = AREA_ORDER.filter((id) => AREAS[id].unlock?.area === here && !this.progression.isUnlocked(id) && id !== inNext)
+    const pending = AREA_ORDER.filter((id) => AREAS[id].unlock?.area === here && !this.progression.reallyUnlocked(id) && id !== inNext)
       .map((id) => ({ id, need: this.progression.unlockKills(AREAS[id].unlock!.kills) }))
       .sort((a, b) => a.need - b.need);
     if (pending.length) {
