@@ -43,10 +43,17 @@ change between Edge versions), so every flag here is harmless if a future runtim
 keeps the shader cache and HTTP cache between sessions, which is where most of the "second launch is faster" comes from.
 Nothing here changes the game itself: the launcher adds no code to the web bundle.
 
-### WebView2 Runtime
+### WebView2 Runtime (and the browser fallback)
 
-Windows 11 and current Windows 10 already include it. If the launcher says it is missing, install the **Evergreen
-Standalone/Bootstrapper** from <https://developer.microsoft.com/en-us/microsoft-edge/webview2/> and start the launcher again.
+Windows 11 and current Windows 10 already include it. The launcher only reports it missing when WebView2 itself says so *and*
+the registry (EdgeUpdate) has no runtime either; any other failure (usually the exe run from inside the zip, so its DLLs are
+not next to it) is reported as **launcher files missing - unzip the whole folder**.
+
+Without a working WebView2 the launcher still plays: **Play Online / Download / Open Offline open the game in Chrome, Edge or
+Brave as an app window (`--app`), or in the default browser (e.g. Firefox)** if none of those is installed. The same happens
+if the game window fails to start WebView2. In that mode there is no update pre-download and the performance flags below do
+not apply (the browser uses its own settings). To get the dedicated game window, install the **Evergreen
+Standalone/Bootstrapper** from <https://developer.microsoft.com/en-us/microsoft-edge/webview2/> and restart the launcher.
 
 ### Where things live
 

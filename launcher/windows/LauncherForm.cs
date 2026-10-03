@@ -11,30 +11,30 @@ namespace DeathMuffinLauncher
 {
     internal sealed class LauncherForm : Form
     {
-        static readonly Color Bg = Color.FromArgb(7, 6, 10);
-        static readonly Color Panel = Color.FromArgb(16, 12, 22);
-        static readonly Color Violet = Color.FromArgb(124, 58, 237);
-        static readonly Color VioletLight = Color.FromArgb(198, 164, 255);
-        static readonly Color Ink = Color.FromArgb(232, 226, 240);
-        static readonly Color Muted = Color.FromArgb(160, 152, 172);
-        static readonly Color Gold = Color.FromArgb(226, 190, 120);
+        static readonly Color Bg = Art.Bg;
+        static readonly Color Violet = Art.Violet;
+        static readonly Color VioletLight = Art.VioletLight;
+        static readonly Color Ink = Art.Ink;
+        static readonly Color Muted = Art.Muted;
+        static readonly Color Gold = Art.Gold;
 
         public static Icon AppIcon { get { return Icon.ExtractAssociatedIcon(Application.ExecutablePath); } }
 
         readonly Settings settings = Settings.Load();
-        readonly Image art;
         readonly Label status = new GlassLabel();
         readonly Label updateLabel = new GlassLabel();
         readonly ThinBar bar = new ThinBar();
         readonly Label newsTitle = new GlassLabel();
         readonly Label newsBody = new GlassLabel();
         readonly LinkLabel newsLink = new LinkLabel();
-        readonly Button playBtn, downloadBtn, openBtn;
+        readonly RuneButton playBtn, downloadBtn, openBtn;
         readonly CheckBox gpu = new CheckBox();
         readonly WebView2 precacheWeb = new WebView2 { Size = new Size(1, 1), Location = new Point(0, 0) };
         GameWindow online, offline;
         string precacheSha;
         bool precaching;
+        /// <summary>WebView2 unavailable: Play/Offline open the game in a browser instead (see BrowserFallback).</summary>
+        bool useBrowser;
 
         public LauncherForm()
         {
@@ -47,10 +47,9 @@ namespace DeathMuffinLauncher
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Bg;
             Font = new Font("Segoe UI", 9.5f);
-            using (var s = typeof(LauncherForm).Assembly.GetManifestResourceStream("keyart.jpg")) art = Image.FromStream(s);
 
             // The key art covers the whole window; the controls sit on its dark left half, the necromancer stays clear on the right.
-            var root = new Backdrop(art) { Dock = DockStyle.Fill };
+            var root = new Backdrop() { Dock = DockStyle.Fill };
             Controls.Add(root);
 
             int x = 40, w = 420;
@@ -129,20 +128,9 @@ namespace DeathMuffinLauncher
             return l;
         }
 
-        static Button Btn(string text, int x, int y, int w, int h, bool primary)
+        static RuneButton Btn(string text, int x, int y, int w, int h, bool primary)
         {
-            var b = new Button
-            {
-                Text = text,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 10f, FontStyle.Bold),
-                ForeColor = Color.White,
-                BackColor = primary ? Violet : Color.FromArgb(34, 26, 48),
-                Cursor = Cursors.Hand,
-                UseVisualStyleBackColor = false,
-            };
-            b.FlatAppearance.BorderColor = primary ? VioletLight : Color.FromArgb(70, 54, 100);
-            b.FlatAppearance.MouseOverBackColor = primary ? Color.FromArgb(147, 90, 245) : Color.FromArgb(52, 40, 74);
+            var b = new RuneButton(text, primary) { Font = new Font("Segoe UI", 10f, FontStyle.Bold) };
             b.SetBounds(x, y, w, h);
             return b;
         }
@@ -151,14 +139,17 @@ namespace DeathMuffinLauncher
 
         async System.Threading.Tasks.Task InitAsync()
         {
-            if (WebViewHost.RuntimeVersion() == null)
+            // Play stays enabled whatever the check says: without WebView2 the game opens in Chrome/Edge/Brave (or the default
+            // browser) instead, so a missing or broken runtime never locks the player out.
+            var rt = WebViewHost.CheckRuntime();
+            if (rt.Problem != null || rt.Missing)
             {
-                SetStatus("The game needs Microsoft Edge WebView2 Runtime. Download: " + Updates.WebView2Url);
-                updateLabel.Text = "WebView2 Runtime not found.";
-                status.ForeColor = Color.FromArgb(240, 160, 120);
-                status.Cursor = Cursors.Hand;
-                status.Click += (s, e) => System.Diagnostics.Process.Start(Updates.WebView2Url);
-                playBtn.Enabled = downloadBtn.Enabled = openBtn.Enabled = false;
+                useBrowser = true;
+                if (rt.Problem != null)
+                    Warn("Launcher files are missing (unzip the whole folder to fix). Play will open in your browser for now. (" + rt.Problem + ")", null);
+                else
+                    Warn("WebView2 not found, so Play opens the game in your browser. Click here to install WebView2 for the game window.", Updates.WebView2Url);
+                updateLabel.Text = "Playing in your browser (no update pre-download).";
                 await ShowNewsAsync();
                 return;
             }
@@ -179,6 +170,15 @@ namespace DeathMuffinLauncher
                 await StartPrecacheAsync(live);
             }
             await news;
+        }
+
+        void Warn(string text, string link)
+        {
+            SetStatus(text);
+            status.ForeColor = Color.FromArgb(244, 176, 128);
+            if (link == null) return;
+            status.Cursor = Cursors.Hand;
+            status.Click += (s, e) => System.Diagnostics.Process.Start(link);
         }
 
         static string Short(string sha) { return sha.Length > 7 ? sha.Substring(0, 7) : sha; }
@@ -258,13 +258,17 @@ namespace DeathMuffinLauncher
 
         void OpenGame(bool offlineEdition, bool install)
         {
+            string url = offlineEdition ? Updates.OfflineUrl : Updates.PlayUrl;
+            if (useBrowser) { OpenInBrowser(url); return; }
             GameWindow existing = offlineEdition ? offline : online;
             if (existing != null && !existing.IsDisposed)
             {
                 if (!install) { existing.Activate(); existing.WindowState = existing.WindowState == FormWindowState.Minimized ? FormWindowState.Normal : existing.WindowState; return; }
                 existing.Close();
             }
-            var w = new GameWindow(settings, offlineEdition ? Updates.OfflineUrl : Updates.PlayUrl, offlineEdition, install);
+            var w = new GameWindow(settings, url, offlineEdition, install);
+            // WebView2 would not start after all: switch to the browser for this and every later launch this session.
+            w.WebViewUnavailable += () => { useBrowser = true; OpenInBrowser(url); };
             w.OfflineStatus += t => SetStatus(t);
             w.Failed += t => SetStatus(t);
             w.FormClosed += (s, e) => { if (offlineEdition) offline = null; else online = null; };
@@ -272,6 +276,13 @@ namespace DeathMuffinLauncher
             SetStatus(install ? "Preparing offline download" : offlineEdition ? "Offline edition open. Download assets before disconnecting." : "Opening the Covenant");
             if (!offlineEdition) w.Shown += (s, e) => SetStatus("Online game ready.");
             w.Show();
+        }
+
+        void OpenInBrowser(string url)
+        {
+            string used = BrowserFallback.Open(url);
+            if (used == null) Warn("Could not open a browser. Visit " + url + " to play.", url);
+            else SetStatus("Opened the game in " + used + ".");
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -287,9 +298,8 @@ namespace DeathMuffinLauncher
         /// </summary>
         sealed class Backdrop : System.Windows.Forms.Panel
         {
-            readonly Image img;
             Bitmap frame;
-            public Backdrop(Image img) { this.img = img; DoubleBuffered = true; BackColor = Bg; }
+            public Backdrop() { DoubleBuffered = true; BackColor = Bg; }
 
             protected override void OnPaintBackground(PaintEventArgs e)
             {
@@ -310,15 +320,10 @@ namespace DeathMuffinLauncher
                 frame = new Bitmap(Width, Height);
                 using (var g = Graphics.FromImage(frame))
                 {
-                    g.SmoothingMode = SmoothingMode.AntiAlias;
-                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                    g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                    g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+                    Art.Quality(g);
                     g.Clear(Bg);
-                    // "cover" the window with the art, centred.
-                    float s = Math.Max((float)Width / img.Width, (float)Height / img.Height);
-                    float dw = img.Width * s, dh = img.Height * s;
-                    g.DrawImage(img, (Width - dw) / 2, (Height - dh) / 2, dw, dh);
+                    // Cover the window with the art; it is near-native 16:9 here, so almost nothing is cropped.
+                    Art.DrawCover(g, ClientSize);
 
                     // Left scrim: near-opaque behind the controls, gone by the necromancer.
                     var left = new Rectangle(0, 0, 640, Height);
@@ -339,15 +344,9 @@ namespace DeathMuffinLauncher
                     using (var kicker = new Font("Segoe UI", 8.5f, FontStyle.Bold))
                     using (var title = new Font("Georgia", 34f, FontStyle.Bold))
                     using (var gold = new SolidBrush(Gold))
-                    using (var ink = new SolidBrush(Color.FromArgb(244, 236, 252)))
-                    using (var glow = new SolidBrush(Color.FromArgb(46, 150, 80, 255)))
                     {
                         g.DrawString("ENTER THE OSSUARY COVENANT", kicker, gold, 42, 30);
-                        // Soft violet glow: the title offset a few px in each direction under the real one.
-                        for (int dx = -3; dx <= 3; dx += 2)
-                            for (int dy = -3; dy <= 3; dy += 2)
-                                g.DrawString("DEATH MUFFIN", title, glow, 34 + dx, 46 + dy);
-                        g.DrawString("DEATH MUFFIN", title, ink, 34, 46);
+                        Art.DrawTitle(g, title, 34, 46);
                     }
                     // Gold hairline that fades out to the right.
                     var line = new Rectangle(40, 104, 420, 1);
