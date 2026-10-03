@@ -116,10 +116,12 @@ export const ITEMS: Record<string, ItemMeta> = {
 };
 
 // Grave Gardening (content/gardening.ts; server rows from migration 007-gardening.sql).
-for (const [id, g] of Object.entries(GARDEN_ITEMS)) ITEMS[id] ??= { name: g.name, type: 'material', rarity: g.rarity, sell: g.sell, lore: g.lore, stack: g.stack };
+// The two tree saplings' art predates their ids (sapling_coffin_oak.webp is the Coffin-Oak sapling, sapling_oak the item).
+const GARDEN_ICON: Record<string, string> = { sapling_oak: 'art/items/sapling_coffin_oak.webp', sapling_yew: 'art/items/sapling_churchyard_yew.webp' };
+for (const [id, g] of Object.entries(GARDEN_ITEMS)) ITEMS[id] ??= { name: g.name, type: 'material', rarity: g.rarity, sell: g.sell, lore: g.lore, stack: g.stack, icon: GARDEN_ICON[id] };
 
 // Pet charms (content/cosmetics.ts; server rows from migration 010-cosmetics.sql).
-for (const [id, c] of Object.entries(CHARM_ITEMS)) ITEMS[id] ??= { name: c.name, type: 'material', rarity: c.rarity, sell: c.sell, lore: c.lore, stack: 1 };
+for (const [id, c] of Object.entries(CHARM_ITEMS)) ITEMS[id] ??= { name: c.name, type: 'material', rarity: c.rarity, sell: c.sell, lore: c.lore, stack: 1, icon: `art/items/${id}.svg` };
 
 // Alchemy (content/alchemy.ts; server rows from migration 009-alchemy.sql).
 for (const [id, a] of Object.entries(ALCHEMY_ITEMS)) ITEMS[id] ??= { name: a.name, type: 'material', rarity: a.rarity, sell: a.sell, lore: a.lore, stack: a.stack, icon: `art/items/${id}.svg` };
@@ -128,7 +130,7 @@ for (const [id, a] of Object.entries(ALCHEMY_ITEMS)) ITEMS[id] ??= { name: a.nam
 for (const [id, r] of Object.entries(REAGENT_ITEMS)) ITEMS[id] ??= { name: r.name, type: 'material', rarity: r.rarity, sell: r.sell, lore: r.lore, stack: r.stack, icon: reagentIcon(id) };
 for (const [id, r] of Object.entries(REAGENT_BREW_ITEMS)) ITEMS[id] ??= { name: r.name, type: 'material', rarity: r.rarity, sell: r.sell, lore: r.lore, stack: r.stack, icon: reagentIcon(id) };
 // The Mourning Fen's herbs and seeds (content/fenItems.ts; server rows from migration 015-fen.sql).
-for (const [id, f] of Object.entries(FEN_ITEMS)) ITEMS[id] ??= { name: f.name, type: 'material', rarity: f.rarity, sell: f.sell, lore: f.lore, stack: f.stack };
+for (const [id, f] of Object.entries(FEN_ITEMS)) ITEMS[id] ??= { name: f.name, type: 'material', rarity: f.rarity, sell: f.sell, lore: f.lore, stack: f.stack, ...(id.startsWith('ichor_') ? { icon: `art/items/${id}.svg` } : {}) };
 
 // Professions G6 (content/processing.ts; server rows from migration 004-processing.sql).
 for (const [id, p] of Object.entries(PROCESSING_ITEMS)) ITEMS[id] ??= { name: p.name, type: 'material', rarity: p.rarity, sell: p.sell, lore: p.lore, stack: p.stack };

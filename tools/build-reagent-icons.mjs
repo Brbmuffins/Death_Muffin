@@ -71,7 +71,17 @@ const MARK = {
 P.step = ['#f2a0a8', '#c23a48', '#3a1218'];
 P.souls = ['#c8fff0', '#6fe3c8', '#0f3a36'];
 
-const ICHOR_PALETTE = { ichor_earth: 'earth', ichor_bone: 'bone', ichor_water: 'water', ichor_bell: 'bell', ichor_rot: 'rot', ichor_fire: 'ember' };
+P.mire = ['#c8f0d8', '#4fae8a', '#0e2a24'];
+// Pet charms: a cord and a gem-set pendant, one gem colour per pet (cosmetics.ts PETS).
+P.charm_bat = ['#d9c4ff', '#8a5ad0', '#1e1236'];
+P.charm_rat = ['#e8d6c0', '#9a7a58', '#2a1e12'];
+P.charm_pup = ['#c4ecf4', '#58a8c0', '#10283a'];
+P.charm_thrall = ['#f1e9d6', '#cfc8b8', '#3a342a'];
+P.charm_moth = ['#e6f0c8', '#a8c46a', '#26301a'];
+DRAW.charm = (a) => `<path d="M40 22c0 22 10 30 24 30s24-8 24-30" fill="none" stroke="${a[0]}" stroke-width="3" stroke-linecap="round" opacity=".8"/><path d="M64 52l22 18-8 28H50l-8-28z" fill="url(#m)" ${stroke(a)}/><path d="M64 62l10 8-4 14H58l-4-14z" fill="${a[2]}" opacity=".55"/>${dot(a, 58, 68, 2.5)}<circle cx="64" cy="44" r="4" fill="none" stroke="${a[0]}" stroke-width="3"/>`;
+const EXTRA = { ichor_mire: 'ichor_mire', charm_tithe_bat: 'charm_bat', charm_grave_rat: 'charm_rat', charm_drowned_pup: 'charm_pup', charm_wee_thrall: 'charm_thrall', charm_shroud_moth: 'charm_moth' };
+
+const ICHOR_PALETTE = { ichor_earth: 'earth', ichor_bone: 'bone', ichor_water: 'water', ichor_bell: 'bell', ichor_rot: 'rot', ichor_fire: 'ember', ichor_mire: 'mire' };
 
 export function drawIcon(art, brewColor) {
   if (MARK[art]) {
@@ -80,13 +90,14 @@ export function drawIcon(art, brewColor) {
     const body = DRAW.flask(a, tall) + mark(a);
     return shell(a, tall ? `<g transform="translate(-25.6 -24.8) scale(1.4)">${body}</g>` : body);
   }
+  if (art.startsWith('charm_')) return shell(P[art], DRAW.charm(P[art]));
   if (ICHOR_PALETTE[art]) return shell(P[ICHOR_PALETTE[art]], DRAW.ichor(P[ICHOR_PALETTE[art]]));
   const fam = { dust: 'dust', ecto: 'ecto', bile: 'bile', ash: 'ash', rotcap: 'rot', seed_rotcap: 'rot', ashbloom: 'ember', seed_ashbloom: 'ember' }[art];
   return shell(P[fam], DRAW[art](P[fam]));
 }
 
 const { REAGENT_ITEMS, REAGENT_BREW_ITEMS } = await load();
-const all = [...Object.entries(REAGENT_ITEMS), ...Object.entries(REAGENT_BREW_ITEMS)];
+const all = [...Object.entries(REAGENT_ITEMS), ...Object.entries(REAGENT_BREW_ITEMS), ...Object.entries(EXTRA).map(([id, art]) => [id, { art }])];
 let bad = 0;
 for (const [id, it] of all) {
   const svg = drawIcon(it.art);
