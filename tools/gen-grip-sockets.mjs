@@ -3,91 +3,37 @@
  * Computes the per-rig grip sockets (src/graphics/gripSockets.generated.ts) for the four necromancer heroes.
  * A socket is a fixed offset + orientation of a held prop relative to its hand bone, derived once from the rig's bone frames
  * at the settled idle pose (the pose Creature's old 4-frame runtime calibration used), so the prop sits right from frame one.
- * Usage: node tools/gen-grip-sockets.mjs [--explore]   (rerun after changing GRIPS in gearProps.ts or a hero's rig)
+ * tools/grip-fit.json (written by `npm run qa:grip-fit`) holds the per hero + kind lean / shift / follow adjustments that
+ * keep the props out of the body; without an entry a socket reproduces the old calibrated grip.
+ * Usage: node tools/gen-grip-sockets.mjs   (rerun after changing GRIPS in gearProps.ts, grip-fit.json or a hero's rig)
  */
-import * as THREE from 'three';
-import { NodeIO } from '@gltf-transform/core';
-import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { writeFileSync, readFileSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { HEROES, KINDS, loadRig, readGrips, socket } from './lib/gripSocket.mjs';
 
-const HEROES = ['hero_ossuary', 'hero_gravecaller', 'hero_mourner', 'hero_rotweaver'];
-const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
-const BIPED_YAW = -Math.PI / 2;
-const IDLE_T = 0;
-
-// Grip specs: read from gearProps.ts so there is a single source of truth.
-const src = readFileSync('src/graphics/gearProps.ts', 'utf8');
-const block = src.slice(src.indexOf('export const GRIPS'), src.indexOf('export interface Grip {'));
-const GRIPS = {};
-for (const m of block.matchAll(/^\s+(\w+): \{ lean: \[([-\d.]+), ([-\d.]+)\](?:, offset: \[([-\d., ]+)\])?(?:, roll: ([-\d.]+))?, follow: ([\d.]+) \},/gm)) {
-  GRIPS[m[1]] = { lean: [+m[2], +m[3]], offset: m[4] ? m[4].split(',').map(Number) : undefined, roll: m[5] ? +m[5] : 0 };
-}
-const KINDS = { main_hand: ['staff', 'scythe', 'wand', 'sickle'], off_hand: ['skull_focus', 'grimoire', 'mourning_bell'] };
-
-async function loadRig(hero) {
-  const doc = await io.read(`public/models/${hero}/character.glb`);
-  const root = new THREE.Group();
-  const model = new THREE.Group();
-  model.rotation.y = BIPED_YAW;
-  root.add(model);
-  const nodes = new Map(doc.getRoot().listNodes().map((n) => {
-    const b = new THREE.Bone();
-    b.name = THREE.PropertyBinding.sanitizeNodeName(n.getName());
-    b.position.fromArray(n.getTranslation());
-    b.quaternion.fromArray(n.getRotation());
-    b.scale.fromArray(n.getScale());
-    return [n, b];
-  }));
-  for (const [n, b] of nodes) (nodes.get(n.getParentNode()) ?? model).add(b);
-  const idle = doc.getRoot().listAnimations().find((a) => a.getName() === 'idle');
-  const tracks = idle.listChannels().map((c) => {
-    const s = c.getSampler();
-    const prop = { translation: 'position', rotation: 'quaternion', scale: 'scale' }[c.getTargetPath()];
-    const name = `${THREE.PropertyBinding.sanitizeNodeName(c.getTargetNode().getName())}.${prop}`;
-    const T = prop === 'quaternion' ? THREE.QuaternionKeyframeTrack : THREE.VectorKeyframeTrack;
-    return new T(name, s.getInput().getArray(), s.getOutput().getArray());
-  });
-  const mixer = new THREE.AnimationMixer(model);
-  mixer.clipAction(new THREE.AnimationClip('idle', -1, tracks)).play();
-  mixer.setTime(IDLE_T);
-  root.updateMatrixWorld(true);
-  return { root, bone: (n) => root.getObjectByName(n) };
-}
-
-const Y = new THREE.Vector3(0, 1, 0);
-/** Bone-local socket for a grip spec: +Y along the lean direction (character frame), rolled, shifted by `offset`. */
-function socket(rig, boneName, side, spec) {
-  const bone = rig.bone(boneName);
-  const rootQ = rig.root.getWorldQuaternion(new THREE.Quaternion());
-  const boneQ = bone.getWorldQuaternion(new THREE.Quaternion());
-  const inv = boneQ.clone().invert();
-  // Same construction as the old runtime calibration: the shortest arc from the bone's +Y to the aim, in the bone's frame.
-  const dir = new THREE.Vector3(side * spec.lean[0], 1, spec.lean[1]).normalize().applyQuaternion(rootQ).applyQuaternion(inv);
-  const q = new THREE.Quaternion().setFromUnitVectors(Y, dir);
-  if (spec.roll) q.multiply(new THREE.Quaternion().setFromAxisAngle(Y, spec.roll));
-  const o = spec.offset ?? [0, 0, 0];
-  const pos = new THREE.Vector3(side * o[0], o[1], o[2]).applyQuaternion(rootQ).applyQuaternion(inv);
-  return { q, pos };
-}
-
+const GRIPS = readGrips();
+const FIT = existsSync('tools/grip-fit.json') ? JSON.parse(readFileSync('tools/grip-fit.json', 'utf8')) : {};
 const r5 = (v) => Math.round(v * 1e5) / 1e5;
 const out = {};
+const follows = {};
 for (const hero of HEROES) {
   const rig = await loadRig(hero);
   out[hero] = {};
+  follows[hero] = {};
   for (const [slot, bone, side] of [['main_hand', 'R_Hand', -1], ['off_hand', 'L_Hand', 1]]) {
     for (const kind of KINDS[slot]) {
-      const s = socket(rig, bone, side, GRIPS[kind]);
+      const fit = FIT[hero]?.[kind] ?? {};
+      const s = socket(rig, bone, side, GRIPS[kind], fit);
       out[hero][kind] = [...s.pos.toArray(), ...s.q.toArray()].map(r5);
+      follows[hero][kind] = fit.follow ?? 1;
     }
   }
 }
-if (process.argv.includes('--explore')) { console.log(JSON.stringify(out)); process.exit(0); }
 
 let ts = `/**
  * GENERATED by tools/gen-grip-sockets.mjs: do not edit. Per-rig grip sockets for the four necromancer heroes.
  * Each entry is [x, y, z, qx, qy, qz, qw]: the prop's offset (metres, in the hand bone's axes) and orientation relative to
  * the hand bone. Creature.attach places a held prop from it on the first frame (no runtime calibration).
+ * GRIP_SOCKET_FOLLOW is how much the prop rides the wrist (1 = rigidly; lower keeps a small stabiliser where a clip would bury it).
  */
 export type GripSocket = readonly [number, number, number, number, number, number, number];
 
@@ -98,6 +44,8 @@ for (const hero of HEROES) {
   for (const [k, v] of Object.entries(out[hero])) ts += `    ${k}: [${v.join(', ')}],\n`;
   ts += '  },\n';
 }
+ts += '};\n\nexport const GRIP_SOCKET_FOLLOW: Readonly<Record<string, Readonly<Record<string, number>>>> = {\n';
+for (const hero of HEROES) ts += `  ${hero}: { ${Object.entries(follows[hero]).map(([k, v]) => `${k}: ${v}`).join(', ')} },\n`;
 ts += '};\n';
 writeFileSync('src/graphics/gripSockets.generated.ts', ts);
 console.log('wrote src/graphics/gripSockets.generated.ts');
