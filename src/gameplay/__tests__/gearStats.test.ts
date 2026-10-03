@@ -293,3 +293,16 @@ describe('bulk sell and salvage spare what you would wear', () => {
     expect(junkSlots([helmet], noLock, keepsForYou(null)).map((s) => s.item_id)).toEqual(['helm_x']);
   });
 });
+
+describe('item type label in tooltips', () => {
+  it('names what the thing is instead of the raw item_type', async () => {
+    const { itemTypeLabel } = await import('../../ui/gearText');
+    expect(itemTypeLabel({ item_id: 'helm_iron', item_type: 'armor_head' })).toBe('head armor');
+    expect(itemTypeLabel({ item_id: 'flask_hp_minor', item_type: 'material' })).toBe('potion');
+    expect(itemTypeLabel({ item_id: 'ore_iron', item_type: 'material' })).toBe('material');
+    expect(itemTypeLabel({ item_id: 'staff_iron', item_type: 'weapon' })).toBe('two-handed weapon');
+    expect(itemTypeLabel({ item_id: 'sword_copper', item_type: 'weapon' })).toBe('weapon');
+    expect(itemTypeLabel({ item_id: 'rune_splinter', item_type: 'rune' })).toBe('relic rune');
+    expect(itemTypeLabel({ item_id: 'tool_pickaxe_iron', item_type: 'material' })).toBe('gathering tool');
+  });
+});

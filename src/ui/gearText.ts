@@ -4,6 +4,10 @@ import { formatDerived, type StatDeltaLine } from '../gameplay/characterStats';
 import { compareEquip, effectText, itemAffixEffects, itemStatEffects, itemVerdict, simulateEquip, type StatContext } from '../gameplay/gearStats';
 import { affixLines } from '../gameplay/affixes';
 import { ARMOR_BY_ID } from '../content/armorSets';
+import { BUFF_FLASKS, HEALING_FLASKS } from '../content/items';
+import { MEALS } from '../content/processing';
+import { isTwoHanded } from '../content/necroWeapons';
+import { toolKindOf } from '../gameplay/gatheringRules';
 import type { SetDiff } from '../gameplay/setBonuses';
 import { effectRelevant, setDiffText, setStatus, wornArmor } from '../gameplay/setBonuses';
 import './gear-stats.css';
@@ -141,4 +145,34 @@ export function keepsForYou(ctx: StatContext | null): ((slot: InventorySlot) => 
     const v = itemVerdict(ctx, slot);
     return !!v && (v.kind === 'upgrade' || v.sets.gained.length > 0);
   };
+}
+
+const TYPE_WORDS: Record<string, string> = {
+  weapon: 'weapon',
+  offhand: 'off-hand',
+  armor_head: 'head armor',
+  armor_chest: 'chest armor',
+  armor_legs: 'leg armor',
+  armor_feet: 'foot armor',
+  armor_hands: 'hand armor',
+  ring: 'ring',
+  trinket: 'trinket',
+  rune: 'relic rune',
+};
+
+/**
+ * The word after the rarity in a tooltip ("rare head armor", "uncommon potion"). The raw item_type read "armor head" and called every
+ * flask, meal, seed and tool a "material"; this names what the thing is, and says when a weapon takes both hands.
+ */
+export function itemTypeLabel(slot: Pick<InventorySlot, 'item_id' | 'item_type'>): string {
+  if (slot.item_type === 'material') {
+    if (slot.item_id in HEALING_FLASKS || slot.item_id in BUFF_FLASKS) return 'potion';
+    if (slot.item_id in MEALS) return 'meal';
+    if (toolKindOf(slot.item_id)) return 'gathering tool';
+    if (slot.item_id.startsWith('charm_')) return 'pet charm';
+    if (slot.item_id.startsWith('seed_') || slot.item_id.startsWith('sapling_')) return 'seed';
+    return 'material';
+  }
+  const base = TYPE_WORDS[slot.item_type] ?? slot.item_type.replace(/_/g, ' ');
+  return slot.item_type === 'weapon' && isTwoHanded(slot.item_id) ? `two-handed ${base}` : base;
 }

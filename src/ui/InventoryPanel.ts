@@ -20,7 +20,7 @@ import { BELT_LABEL, beltOffer, beltTools, dismissOffer, isOnBelt, moveTools, of
 
 /** A small padlock for locked cells and the Lock button (inline SVG: no font or emoji dependency). */
 export const LOCK_SVG = '<svg viewBox="0 0 12 14" width="11" height="13" aria-hidden="true"><path d="M3 6V4.2a3 3 0 0 1 6 0V6" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="6" width="9" height="7" rx="1" fill="currentColor"/></svg>';
-import { badgeHtml, compareChipsHtml, compareTableHtml, itemLevelHtml, itemStatsHtml, keepsForYou, setTooltipHtml, verdictHtml, type StatContextSource } from './gearText';
+import { badgeHtml, compareChipsHtml, compareTableHtml, itemLevelHtml, itemStatsHtml, itemTypeLabel, keepsForYou, setTooltipHtml, verdictHtml, type StatContextSource } from './gearText';
 import { resolveSetBonuses } from '../gameplay/setBonuses';
 
 const TYPE_GLYPH: Record<string, string> = {
@@ -444,7 +444,7 @@ export class InventoryPanel {
     const meta = itemMeta(slot.item_id);
     this.tooltip.innerHTML = `
       <div class="name" style="color:${RARITY_COLOR[slot.rarity]}">${slot.name}</div>
-      <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${slot.item_type.replace('_', ' ')}</div>
+      <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${itemTypeLabel(slot)}</div>
       ${itemLevelHtml(slot)}
       ${this.statLines(slot)}
       ${this.setLine(slot)}
@@ -490,7 +490,7 @@ export class InventoryPanel {
       <div class="info${compare ? ' gs-wide' : ''}">
         <div class="gs-head">
           <div class="name" style="color:${RARITY_COLOR[slot.rarity]}">${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''}</div>
-          <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${slot.item_type.replace('_', ' ')}${itemLevelHtml(slot, true)}</div>
+          <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${itemTypeLabel(slot)}${itemLevelHtml(slot, true)}</div>
           ${verdictHtml(this.statContext?.() ?? null, slot)}
           ${legion ? `<div class="lg-line ${legion.verdict}" title="What this piece would do on your thralls, against what the legion's ${KIT_LABEL[legion.kit]} slot holds now">Legion ${KIT_LABEL[legion.kit].toLowerCase()}: <span class="ar">${legion.verdict === 'up' ? '\u25B2' : legion.verdict === 'down' ? '\u25BC' : '='}</span> ${legion.verdict === 'same' ? 'no change' : legion.text}</div>` : ''}
         </div>
