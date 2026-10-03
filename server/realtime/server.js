@@ -146,7 +146,8 @@ function relaySnapshot(socket, world, snap) {
 }
 
 const num = (v, fallback = 0) => (Number.isFinite(Number(v)) ? Number(v) : fallback);
-const inWorld = (v) => Math.abs(num(v, 1e9)) <= WORLD_BOUND;
+// null is a missing coordinate, not 0 (Number(null) === 0 used to wave a null payload through to a property read).
+const inWorld = (v) => v != null && Math.abs(num(v, 1e9)) <= WORLD_BOUND;
 
 /** Token bucket per socket + channel. */
 // Visible equipment: item ids per slot, shown on the hero for everyone in the world (client-side cosmetics only).
@@ -380,7 +381,17 @@ function pickWorld(code) {
 }
 
 io.on('connection', (socket) => {
-  socket.on('world:join', (info, ack) => {
+  // An exception inside a socket.io listener is uncaught and ends the process (every world with it). Whatever a client sends, one bad
+  // message is dropped and logged; it never takes the service down.
+  const on = (event, handler) =>
+    socket.on(event, (...args) => {
+      try {
+        handler(...args);
+      } catch (err) {
+        console.error(`[realtime] ${event} from ${socket.data.username} threw:`, err && err.message);
+      }
+    });
+  on('world:join', (info, ack) => {
     if (typeof ack !== 'function') return;
     if (socket.data.worldId) return ack({ success: false, error: 'Already in a world' });
     const worldId = pickWorld(info && info.instance);
@@ -430,7 +441,7 @@ io.on('connection', (socket) => {
   const myWorld = () => (socket.data.worldId ? worlds.get(socket.data.worldId) : null);
   const isHost = () => hostOf(myWorld()) === socket.id;
 
-  socket.on('player:gear', (gear) => {
+  on('player:gear', (gear) => {
     const world = myWorld();
     if (!world || !allow(socket, 'gear', LIMITS.gearPerSec) || bytes(gear) > LIMITS.gearBytes) return;
     const player = world.players.get(socket.id);
@@ -439,14 +450,14 @@ io.on('connection', (socket) => {
     socket.to(socket.data.worldId).emit('player:gear', { id: socket.id, gear: player.gear });
   });
 
-  socket.on('perf:report', (raw) => {
+  on('perf:report', (raw) => {
     const r = acceptPerf((socket.data.perf ??= { at: 0 }), raw);
     if (!r) return;
     storePerf(socket.data.username, r);
     console.log(perfLine(socket.data.username, r));
   });
 
-  socket.on('player:move', (pos) => {
+  on('player:move', (pos) => {
     const world = myWorld();
     if (!world || !allow(socket, 'move', LIMITS.movesPerSec) || bytes(pos) > LIMITS.moveBytes) return;
     const player = world.players.get(socket.id);
@@ -472,7 +483,7 @@ io.on('connection', (socket) => {
   });
 
   // Host-only authoritative channels.
-  socket.on('world:snapshot', (snap) => {
+  on('world:snapshot', (snap) => {
     const world = myWorld();
     if (!world || !isHost()) return;
     if (!allow(socket, 'snap', LIMITS.snapshotsPerSec)) return noteDrop('snapshotRate', socket.data.username);
@@ -485,7 +496,7 @@ io.on('connection', (socket) => {
     relaySnapshot(socket, world, snap);
   });
 
-  socket.on('world:events', (batch) => {
+  on('world:events', (batch) => {
     const world = myWorld();
     if (!world || !isHost()) return;
     if (!allow(socket, 'events', LIMITS.eventsPerSec)) return noteDrop('eventsRate', socket.data.username);
@@ -494,7 +505,7 @@ io.on('connection', (socket) => {
   });
 
   // Non-host requests: validated, stamped, delivered to the host only.
-  socket.on('world:intent', (intent) => {
+  on('world:intent', (intent) => {
     const world = myWorld();
     if (!world || !allow(socket, 'intent', LIMITS.intentsPerSec)) return;
     const clean = validIntent(intent);
@@ -504,7 +515,7 @@ io.on('connection', (socket) => {
     if (host && host !== socket.id) io.to(host).emit('world:intent', { from: socket.id, intent: clean });
   });
 
-  socket.on('chat:send', (text) => {
+  on('chat:send', (text) => {
     const worldId = socket.data.worldId;
     if (!worldId || !allow(socket, 'chat', LIMITS.chatPerSec)) return;
     const clean = String(text || '').trim().slice(0, 240);
@@ -513,7 +524,7 @@ io.on('connection', (socket) => {
     io.to(worldId).emit('chat:message', { id: socket.id, name: socket.data.username, text: clean });
   });
 
-  socket.on('disconnect', () => {
+  on('disconnect', () => {
     const worldId = socket.data.worldId;
     const world = worldId && worlds.get(worldId);
     if (!world) return;
@@ -535,4 +546,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { validIntent, pickWorld, worlds, LIMITS, httpServer, cleanGear, acceptPerf, perfReports, storePerf, perfLine, snapshotBytes, snapshotFor, drops, SNAPSHOT_INTEREST_RADIUS };
+module.exports = { io, validIntent, pickWorld, worlds, LIMITS, httpServer, cleanGear, acceptPerf, perfReports, storePerf, perfLine, snapshotBytes, snapshotFor, drops, SNAPSHOT_INTEREST_RADIUS };
