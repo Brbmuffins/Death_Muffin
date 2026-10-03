@@ -12,7 +12,7 @@ import { botCharacter } from './harness';
 import { EQUIP_SLOTS, equippedBySlot } from '../../content/gear';
 import { withSetBonuses } from '../setBonuses';
 import { resolveWeaponLoadout } from '../weaponLine';
-import { resolveKit, type KitName } from './kits';
+import { resolveKit, type KitName, type KitRequest } from './kits';
 import type { Difficulty } from '../../content/difficulty';
 
 /**
@@ -39,6 +39,8 @@ export interface BossRun {
   ascension?: number;
   /** Gear kit worn (balance/kits.ts); replaces the share of the `gearStats` stand-in its slots cover, as in the farming harness. Default none. */
   kit?: KitName;
+  /** Experiments: change the kit's weapon pair / tier (kits.ts KitRequest.override), e.g. `{ main: 'scythe' }`. Needs a kit other than none. */
+  kitOverride?: KitRequest['override'];
   /** Which boss (default the Prelate). */
   boss?: BossId;
 }
@@ -82,7 +84,7 @@ export function runBossFight(run: BossRun): BossResult {
   sim.difficulty = run.difficulty ?? 'medium';
   sim.ascension = run.ascension ?? 0;
   const baseDisc = disciplineFor(run.classIndex);
-  const worn = resolveKit({ kit: run.kit ?? 'none', discipline: baseDisc.id, area: BOSSES[bossId].area, seed: run.seed });
+  const worn = resolveKit({ kit: run.kit ?? 'none', discipline: baseDisc.id, area: BOSSES[bossId].area, override: run.kitOverride, seed: run.seed });
   const loadout = baseDisc.family === 'necromancer' ? resolveWeaponLoadout(equippedBySlot(worn), baseDisc.id) : null;
   const withGear = withSetBonuses(baseDisc, worn);
   const disc = loadout?.thrallBonus ? { ...withGear, mods: { ...withGear.mods, thrallCap: withGear.mods.thrallCap + loadout.thrallBonus } } : withGear;
