@@ -780,9 +780,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.scope.add(this.progression.onSynced(() => this.onProgressSynced()));
     this.dataReady = Promise.all([inventoryReady, this.progression.connect()]);
     // The garden grows on the server's clock: say what is waiting on arrival, and as plots come ready.
-    void this.dataReady.then(() => window.setTimeout(() => void this.checkGarden(true), 4000));
+    void this.dataReady.then(() => this.scope.timeout(() => void this.checkGarden(true), 4000));
     this.scope.interval(() => void this.checkGarden(false), 60_000);
-    void this.dataReady.then(() => window.setTimeout(() => void this.checkLabor(true), 6000));
+    void this.dataReady.then(() => this.scope.timeout(() => void this.checkLabor(true), 6000));
     void this.dataReady.then(() => this.refreshContracts());
     this.scope.add(onSettingsChange(() => { this.guideDirty = true; }));
     void this.dataReady.then(() => getCosmetics(this.character.id)).then((v) => this.applyCosmetics(v.selected)).catch(() => {});
@@ -1352,6 +1352,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private async checkLabor(arrival: boolean) {
     try {
       const v = await getLabor(this.character.id);
+      if (this.scope.isDisposed) return; // the class changed while the request flew: this scene's views and HUD are gone
       this.laborers.apply(v);
       this.noteLabor(v);
       void this.refreshContracts();
@@ -1386,6 +1387,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private async checkGarden(arrival: boolean) {
     try {
       const v = await getGarden(this.character.id);
+      if (this.scope.isDisposed) return;
       const ready = v.plots.filter((p) => p.state === 'ready').length;
       const growing = v.plots.filter((p) => p.state === 'growing').length;
       if (ready > 0 && (arrival || ready > this.gardenReady)) {
@@ -2329,7 +2331,8 @@ export class WorldScene implements GameScene, RuntimeView {
     this.selfId = this.realtime.selfId ?? 'self';
     this.retagSelf(oldSelf);
     // A rejoin starts from a clean slate: any avatar left from before the drop is replaced by the server's roster.
-    for (const r of this.remotes.values()) { r.avatar.dispose(); r.pet?.dispose(); }
+    const roster = new Set(res.players.map((p) => p.id));
+    for (const [id, r] of this.remotes) { r.avatar.dispose(); r.pet?.dispose(); if (!roster.has(id)) this.sim?.removePlayer(id); }
     this.remotes.clear();
     for (const p of res.players) if (p.id !== this.selfId) this.addRemote(p);
     if (!this.realtime.isHost) {
@@ -2404,7 +2407,8 @@ export class WorldScene implements GameScene, RuntimeView {
 
   /** The link dropped unexpectedly: carry on solo and keep trying to get back to the same world. */
   private onCoopDisconnect() {
-    for (const r of this.remotes.values()) { r.avatar.dispose(); r.pet?.dispose(); }
+    // Their bodies leave the sim too (no player:leave ever arrives): left behind they stayed "alive" forever, holding areas open, scaling bosses and keeping their thralls up.
+    for (const [id, r] of this.remotes) { r.avatar.dispose(); r.pet?.dispose(); this.sim?.removePlayer(id); }
     this.remotes.clear();
     this.becomeAuthority(null);
     if (this.scope.isDisposed) return;
@@ -2419,8 +2423,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private retagSelf(old: string) {
     this.abilities.setSelf(this.selfId);
     if (!this.sim) return;
-    this.sim.removePlayer(old);
-    for (const t of this.sim.thralls.values()) if (t.owner === old) t.owner = this.selfId;
+    // Not removePlayer(): that crumbles every thrall the old id owns (the whole legion vanished on each rejoin).
+    this.sim.retagPlayer(old, this.selfId);
   }
 
   private becomeAuthority(snapshot: WorldSnapshot | null) {

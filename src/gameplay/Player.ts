@@ -303,6 +303,14 @@ export class Player {
 
   revive() {
     this.alive = true;
+    // Whatever the body was doing when it fell does not carry into the new life (Veil form survived death by toxic or burn; roots and guards could outlast the respawn).
+    this.veilForm = false;
+    this.betweenUntil = 0;
+    this.rootedUntil = 0;
+    this.castUntil = 0;
+    this.bulwarkUntil = 0;
+    this.bulwarkPerfectUntil = 0;
+    this.unbreakableUntil = 0;
     this.chilledUntil = 0;
     this.hp = this.stats.maxHp;
     this.resource.value = this.rules.onRevive(this.resource.max);
