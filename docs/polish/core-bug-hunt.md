@@ -63,3 +63,6 @@ snapshot rows (additive, older clients keep working). No DB change, no migration
     long QA tours need to call it again after a sync. Harness only, not a game bug.
 12. Renderer `info.memory.textures` climbs by roughly 10 per new enemy kind for the first few waves (`warmModel` / `prewarmCreature` uploads) and then
     plateaus (152 to 185 over four ring/raise/kill/expire cycles, flat after); geometries flat. Not a leak, recorded so nobody re-chases it.
+
+
+**Resolved 3 Oct 2026 (owner: "same rule as normal kills for boss rewards"):** boss loot, XP, shards, rune, trophy, Chronicle and Prelate/Ascension credit now need a living hero within 38 m (`gameplay/killCredit.ts`, shared with normal kills); the defeat banner and sound still play for everyone who sees it.

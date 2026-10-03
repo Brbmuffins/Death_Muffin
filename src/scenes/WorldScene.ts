@@ -141,6 +141,7 @@ import { audio } from '../audio/Audio';
 import { lootSfx } from '../audio/mixer';
 import { snapShadowTarget } from '../graphics/shadowCadence';
 import { newBloodXpMult } from '../gameplay/newBloodTuning';
+import { bossRewardEligible } from '../gameplay/killCredit';
 
 /** Minimum gap between HUD readout redraws (~20 Hz). */
 /** The moon's offset from the hero, its shadow-map size and the world size of one shadow texel (60 m frustum). */
@@ -3474,8 +3475,7 @@ export class WorldScene implements GameScene, RuntimeView {
     // Soul Harvest: kills credited to you (thralls and DoTs credit their owner).
     if (ev.killer === this.selfId && this.player.alive && this.player.addSouls(1 + this.abilities.reapedSouls(ev.id))) this.onSoulsCharged();
     // Personal rewards for kills in (or right next to) your area.
-    const near = Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 38;
-    if (!this.player.alive || !near) return;
+    if (!bossRewardEligible(this.player.alive, Math.hypot(ev.x - this.player.x, ev.z - this.player.z))) return;
     // The Depths drop from the hunting ground whose gear matches the floor's depth.
     const lootArea = this.depths.lootArea(ev.area) ?? ev.area;
     const reward = rollKill(ev.def, lootArea, ev.level, ev.elite, this.bossWaveTier(), Math.random, this.worldDifficulty(), 1 + this.player.brewValue('fortune', this.now), Math.random, Math.random, this.discipline.id, this.ownedItemIds);
@@ -4362,8 +4362,12 @@ export class WorldScene implements GameScene, RuntimeView {
         if (def.id === 'prelate') for (const g of ['west', 'east', 'north']) this.worldView.setCandleGroup(g, true);
         if (ev.killer) {
           audio.play('bossDefeat', ev.x, ev.z);
-          this.chronicle.add(`boss.${def.id}`);
           this.hud.banner(def.defeated[0], def.defeated[1], 4200);
+        }
+        // Rewards follow the normal-kill rule (owner, 3 Oct 2026): only a living hero within 38 m of the boss is paid
+        // (loot, XP, shards, rune, trophy, Chronicle and the Prelate's Ascension credit).
+        if (ev.killer && bossRewardEligible(this.player.alive, Math.hypot(ev.x - this.player.x, ev.z - this.player.z))) {
+          this.chronicle.add(`boss.${def.id}`);
           if (def.id === 'prelate') {
             this.progression.recordPrelateKill();
             if (this.progression.canAscend()) this.onboarding.show('ascend', 5000);
