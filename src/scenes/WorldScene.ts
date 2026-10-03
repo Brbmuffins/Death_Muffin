@@ -938,7 +938,7 @@ export class WorldScene implements GameScene, RuntimeView {
       buyDamage: () => {
         if (this.progression.buyDamage()) {
           audio.play('buy');
-          this.hud.toast(`Damage empowered: +${damageBonusPct(this.progression.local.damageTier)}%`, 'good');
+          this.hud.toast(`Damage empowered: +${damageBonusPct(this.progression.local.damageTier)}%${this.discipline.family === 'necromancer' ? '. Thralls you raise from now on carry it' : ''}`, 'good');
           this.effects.emit({ x: this.player.x, y: 1, z: this.player.z, count: 40, color: 0xc6a4ff, spread: 0.6, speed: 2, up: 2.5, life: 1, size: 0.3 });
         }
       },
@@ -992,7 +992,7 @@ export class WorldScene implements GameScene, RuntimeView {
         if (!this.progression.buyLegion()) return false;
         audio.play('buy');
         this.applyBoons();
-        this.hud.toast(`The legion is bound tighter: tier ${this.progression.local.legionTier}`, 'good');
+        this.hud.toast(`The legion is bound tighter: tier ${this.progression.local.legionTier}. Thralls you raise from now on carry it`, 'good');
         this.legionPanel.render();
         return true;
       },
@@ -1092,6 +1092,8 @@ export class WorldScene implements GameScene, RuntimeView {
     );
     this.onboarding = new Onboarding(this.root, this.character.id, undefined, () => this.now);
     this.onboarding.busy = () => this.counselBusy();
+    // A returning "first thrall" card is dropped when no thrall of yours stands (a respawn), not shown over an empty field.
+    this.onboarding.stale = (id) => id === 'thrall' && ![...this.thrallsMap().values()].some((t) => t.owner === this.selfId);
     this.onboarding.keyFor = (ability) => {
       const i = this.loadout.indexOf(ability as AbilityId);
       return i >= 0 ? String(i + 1) : null;
@@ -4486,7 +4488,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.hud.toast(`Legendary: ${itemMeta(item.item_id).name}`, 'good');
       this.floating.spawn(p.x, 2.6, p.z, 'LEGENDARY', 'big');
     }
-    for (const item of got.items) this.hud.toast(`${item.instance ? affixedName(itemMeta(item.item_id).name, item.instance.affixes) : itemMeta(item.item_id).name}${item.quantity > 1 ? ` ×${item.quantity}` : ''}`, 'good');
+    for (const item of got.items) this.hud.lootToast(item.instance ? affixedName(itemMeta(item.item_id).name, item.instance.affixes) : itemMeta(item.item_id).name, item.quantity, itemMeta(item.item_id).rarity);
 
     // Visuals. A hitstop (graphics/hitstop.ts) scales only the picture's clock from here on.
     hitstop.frame(dt);
@@ -4765,7 +4767,9 @@ export class WorldScene implements GameScene, RuntimeView {
   private wardReadout() {
     const perThrall = this.discipline.mods.wardPerThrall;
     const thralls = [...this.thrallsMap().values()].filter((t) => t.owner === this.selfId).length;
-    return { pct: Math.round(Math.min(0.6, perThrall * thralls) * 100), thralls, perThrall };
+    const pct = Math.round(Math.min(0.6, perThrall * thralls) * 100);
+    // "Bone Ward -0%" with an empty legion is noise: the readout appears with the first thrall.
+    return pct > 0 ? { pct, thralls, perThrall } : null;
   }
 
   private areaProgress(): string {
@@ -4943,6 +4947,7 @@ export class WorldScene implements GameScene, RuntimeView {
       areaName: AREAS[this.area].name,
       areaProgress: this.areaProgress(),
       ward: this.discipline.mods.wardPerThrall > 0 ? this.wardReadout() : null,
+      raisesThralls: this.discipline.family === 'necromancer',
       brews: this.brewTray(),
       save: saveText,
       target,

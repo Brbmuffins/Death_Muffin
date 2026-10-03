@@ -146,7 +146,8 @@ export class LegionPanel extends SimplePanel {
       <p>${tier ? `Bound: <b>+${pct(now.hp)}</b> health and damage, <b>+${pct(now.speed)}</b> attack speed.` : 'Spend gold to bind the dead tighter.'}</p>
       ${cost === null ? '<p class="lg-dim">Fully reinforced. The bindings reset when you Ascend.</p>'
         : `<div class="lg-buy"><button class="cw-button small" data-reinforce ${afford ? '' : 'disabled'} title="${afford ? `Costs gold, rises with each tier (you hold ${have.toLocaleString()}g)` : `You need ${(cost - have).toLocaleString()} more gold`}">Reinforce · ${cost.toLocaleString()}g</button>
-           <span class="lg-dim">Next: +${pct(next.hp)} health and damage, +${pct(next.speed)} attack speed</span></div>`}
+           <span class="lg-dim">Next: +${pct(next.hp)} health and damage, +${pct(next.speed)} attack speed</span></div>
+           <p class="lg-dim">Applies to thralls you raise from now on; those already standing keep their old strength.</p>`}
     </section>`;
   }
 

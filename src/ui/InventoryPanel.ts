@@ -27,7 +27,7 @@ const TYPE_GLYPH: Record<string, string> = {
   weapon: '⚔',
   armor_head: '⛨',
   armor_chest: '⛊',
-  armor_legs: '⛊',
+  armor_legs: '‖',
   armor_feet: '◭',
   armor_hands: '✋',
   offhand: '◐',
