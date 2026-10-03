@@ -24,6 +24,25 @@ Branch `codex/new-blood-release-20260928` tracks `origin/master` (push `HEAD:mas
 after a secret scan; the repo is public). The owner asked for commits, which overrides
 the older "stage, don't commit" note.
 
+## This is the `mobile` branch (phones/tablets), split from master on 2026-10-03
+
+The owner decided PC tuning comes first: master is PC-only (no touch layer, no `mobile.css`); this branch keeps the phone/tablet
+layer and is built and deployed on its own at **https://muffindevelopment.com/death-muffin/mobile/** (`npm run build:death-muffin-mobile`,
+`DEPLOY_BASE=/death-muffin/mobile/`). Same API, accounts and co-op server as the PC build: this branch ships **client code only**.
+
+- Deploy: `server/death-muffin/deploy-mobile.sh [rev]` (default rev `mobile`). It exports a committed rev, runs typecheck + client tests,
+  builds, backs up `/var/www/death-muffin/mobile/`, publishes assets then `index.html` then `release.txt`, and verifies. It never touches server
+  code, migrations or services (master's `deploy-release.sh` owns those). Mobile and the server must stay API-compatible: deploy a server
+  change from master first, then merge master here and redeploy mobile.
+- Bring in PC work: `git checkout mobile && git merge master`, resolve (conflicts are usually in `HUD.ts`, `ui.css`, `Onboarding.ts`,
+  `WorldScene.ts`, `settings.ts` where master deleted touch code and this branch kept it: keep both sides' new features, keep the touch paths),
+  then `npm run typecheck && npm test`, run `tools/qa/mobile-shots.cjs` and `tools/qa/mobile-nav-smoke.cjs` against a dev server, commit, run
+  `deploy-mobile.sh`. Any new hover-only info or keyboard-only action that arrived from master needs a touch path here.
+- Phones that open `/death-muffin/play/` are redirected here by master's play page (unless the URL has `?pc=1`). This build has a
+  "Play the PC version" link in Settings.
+- The offline edition (`build:offline`, `/death-muffin/offline/`) is currently built by master's `deploy-release.sh`; see master's HANDOFF
+  for the decision on where it is built going forward.
+
 ## Effect budget (branch `dm/vfx-budget`, 3 Oct 2026, deployed in `be8a674`, no migration)
 
 Measured what spell effects cost and cut it without changing how they look (`docs/VFX-BUDGET.md`, `tools/qa/vfx-cost.cjs`). Biggest find: dead particles stayed in the two particle rings at their last size and were rasterised (alpha 0) until overwritten, 3-10 screens of wasted fill after a fight; the particle vertex shader now clips them. `flash` / `orbit` / `beam` draw through instanced layers (`graphics/fxLayers.ts`, one call per texture / one for all beams) instead of a Sprite or Mesh and a material each; round decals and the glow sprite draw on a 16-gon (rings on their annulus) instead of a square; another player's cast plays at half the particles (`Effects.particleScale`, `WorldScene.handleEvent`); Graphics: Low keeps 75 % of each burst. Busy fight (30 enemies, legion, 20-rite rotation): overdraw 6.6 to 1.6 screens, FX draw calls 36.6 (max 61) to 31 (max 37-45); CPU unchanged (it was never the cost). Parity renders (`tools/qa/vfx-parity.cjs`) show sprites and beams identical and decals within 0.12/255. Not done: Binbun cloud/mist quads are the costliest effects left (mask shader, not geometry). New files: `graphics/fxLayers.ts`, `graphics/fxProbe.ts` (dev), `graphics/__tests__/fx-budget.test.ts`, `tools/qa/vfx-cost*.cjs`, `tools/qa/vfx-parity.cjs`.

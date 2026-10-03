@@ -65,6 +65,7 @@ export class SettingsPanel extends SimplePanel {
         <label class="row">Auto resolution<input type="checkbox" data-autores aria-label="Auto resolution: lower the render resolution if the frame rate can't hold" /></label>
         <p class="cw-settings-note">Auto resolution only steps in after several seconds of sustained slow frames. Turn it off to keep a constant sharp picture.</p>
         <p class="cw-settings-note">${isTouchFirst() && !settings.graphicsChosen ? 'Set for phones automatically — Low + 30 fps saves battery. Change it any time.' : 'On a phone: Graphics Low + 30 fps uses far less battery.'}</p>
+        ${import.meta.env.BASE_URL.includes('/death-muffin/mobile/') ? '<p class="cw-settings-note"><a href="/death-muffin/play/?pc=1">Play the PC version</a> (the full desktop build; same account and progress)</p>' : ''}
         <label class="row">Volume<input type="range" min="0" max="1" step="0.05" data-vol aria-label="Master volume" /></label>
         <label class="row">Combat<input type="range" min="0" max="1" step="0.05" data-vol-combat aria-label="Combat volume: spells, hits, thralls and enemies" /></label>
         <label class="row">Ambience<input type="range" min="0" max="1" step="0.05" data-vol-amb aria-label="Ambience volume: wind, drones, footsteps and gathering" /></label>

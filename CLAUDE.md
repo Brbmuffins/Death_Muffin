@@ -9,6 +9,8 @@ Crossworlds REST API is outside this repository: propose changes for it in
 `server/death-muffin/`; read `docs/DEATH-MUFFIN-HANDOFF.md` before touching its
 deployment or database.
 
+**This is the `mobile` branch** (phone/tablet build at `/death-muffin/mobile/`, deployed with `server/death-muffin/deploy-mobile.sh`; client only). See the top of `HANDOFF.md` for how to merge `master` in. The phone rules below apply here.
+
 ## Read before working
 
 **Start with `HANDOFF.md`** — current state, active work and dated history.
