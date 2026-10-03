@@ -313,7 +313,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   grimoire: {
     title: 'The Grimoire',
-    body: 'New rites have come to you. [[Click||Tap]] <b>swap</b> below a hotbar spell[[ (or press <kbd>L</kbd>)||, or open the Grimoire from the Menu,]] to choose which unlocked rites sit on [[slots <kbd>1</kbd>–<kbd>5</kbd>; slot 5 also uses right-click||slots 1–5]]. Your signature stays on [[<kbd>R</kbd>||the sixth slot]]. Each rite keeps its cooldown.',
+    body: 'New rites have come to you. [[Click||Tap]] the <b>swap arrows</b> below a hotbar spell[[ (or press <kbd>L</kbd>)||, or open the Grimoire from the Menu,]] to choose which unlocked rites sit on [[slots <kbd>1</kbd>–<kbd>5</kbd>; slot 5 also uses right-click||slots 1–5]]. Your signature stays on [[<kbd>R</kbd>||the sixth slot]]. Each rite keeps its cooldown.',
   },
   rite_skull: {
     title: 'Wailing Skull',

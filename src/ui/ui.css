@@ -344,6 +344,8 @@ button { font-family: inherit; }
 .cw-disc .passive { font-size: 13px; line-height: 1.35; color: var(--cw-bone-300); border-top: 1px solid var(--cw-border); padding-top: 8px; }
 .cw-disc .passive b { color: var(--disc-color); font-weight: 700; }
 .cw-disc .legacy { position: absolute; top: 8px; right: 8px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cw-text-faint); background: rgba(0,0,0,0.55); padding: 2px 6px; }
+.cw-disc .rec-badge { position: absolute; top: 8px; left: 8px; z-index: 1; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #1a1408; background: var(--cw-gold-400, #d9b45a); padding: 2px 7px; box-shadow: 0 0 10px rgba(226,201,143,0.35); }
+.cw-disc.recommended { border-color: var(--cw-border-active); }
 .cw-disc:disabled { opacity: 0.5; cursor: wait; }
 
 /* ------------------------------------------------------------------ */
@@ -453,7 +455,9 @@ button { font-family: inherit; }
 .spell-rune em { color: #e7b07a; font-style: normal; }
 /* The key cap is also a direct path to changing that socket. */
 .hud-slot .swap { width: 100%; height: 20px; min-width: 0; padding: 0 3px; overflow: visible; background: var(--cw-inset); border: 1px solid var(--cw-border); border-radius: 0; box-shadow: none; color: var(--cw-bone-200); font: 600 10px/18px var(--cw-font-numeric); white-space: nowrap; }
-.hud-slot .swap span { color: var(--cw-spell-300); text-transform: uppercase; letter-spacing: 0.02em; }
+.hud-slot .swap { display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+.hud-slot .swap .swap-ico { display: inline-flex; color: var(--cw-spell-300); opacity: 0.55; }
+.hud-slot .swap:hover .swap-ico, .hud-slot .swap:focus-visible .swap-ico { opacity: 1; }
 .hud-slot .swap:hover, .hud-slot .swap:focus-visible { border-color: var(--cw-border-active); background: var(--cw-accent-soft); box-shadow: none; outline: none; }
 /* Right-click action: set apart with an ember accent. */
 .hud-slot.alt { --marrow: #d0612e; padding-left: 12px; border-left: 1px solid var(--cw-border); }
