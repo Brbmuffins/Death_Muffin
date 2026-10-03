@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Nav } from '../nav';
+import { WorldMirror, makeSnapshot } from '../sim/snapshot';
 import { Player } from '../Player';
 import type { DerivedStats } from '../characterStats';
 import { WorldSim } from '../sim/WorldSim';
@@ -26,6 +27,19 @@ describe('core bug hunt: surge', () => {
     for (let i = 0; i < 200; i++) sim.step(0.05);
     expect(sim.surge).toBeNull();
     expect(sim.surgeIn).toBeGreaterThanOrEqual(SURGE.minIntervalS * 0.5);
+  });
+});
+
+describe('core bug hunt: surge cleared by Ascension', () => {
+  it('clearArea (Ascension wipes the grounds) ends an open surge properly and restarts its clock', () => {
+    const { sim } = world();
+    sim.step(0.05);
+    sim.startSurge('graves');
+    sim.surgeIn = -1;
+    sim.clearArea('graves');
+    expect(sim.surge).toBeNull();
+    expect(sim.surgeIn).toBeGreaterThanOrEqual(SURGE.minIntervalS * 0.5);
+    expect(sim.drain().some((e) => e.t === 'surgeFailed')).toBe(true);
   });
 });
 
@@ -135,5 +149,55 @@ describe('core bug hunt: bookkeeping leaks', () => {
     for (let i = 0; i < 400; i++) sim.step(0.05);
     expect(sim.enemies.has(e.id)).toBe(false);
     expect((sim as unknown as { dotAccum: Map<number, number> }).dotAccum.size).toBe(0);
+  });
+});
+
+describe('core bug hunt: host migration', () => {
+  /** What a guest's mirror hands a fresh sim when the host drops (WorldMirror.seed). */
+  const migrate = (sim: WorldSim) => {
+    const m = new WorldMirror();
+    m.applySnapshot(JSON.parse(JSON.stringify(makeSnapshot(sim, true))));
+    const next = new WorldSim(new Nav(), mulberry32(9));
+    m.seed(next);
+    return next;
+  };
+
+  it('the legion keeps its damage, swing speed, reach and formation seats', () => {
+    const { sim } = world();
+    sim.setPlayer({ id: 'p1', x: 0, z: -16, alive: true, area: 'graves', level: 30 });
+    const kinds: [string, number, number][] = [['robber', 1, -16], ['penitent', 2, -16], ['deacon', 3, -16], ['robber', 4, -16]];
+    for (const [enemy, x, z] of kinds) {
+      sim.addCorpse(x, z, 'normal', enemy as never, false, 0, 1, 'graves');
+      const c = [...sim.corpses.values()].find((o) => o.x === x && o.z === z)!;
+      sim.apply({ t: 'exhume', by: 'p1', x, z, r: 0.8, kind: 'warrior', cap: 8, hp: 90, damage: 37.5, attackSpeedMult: 1.4 });
+      expect(sim.corpses.has(c.id)).toBe(false);
+    }
+    for (let i = 0; i < 40; i++) sim.step(0.05);
+    expect(sim.thralls.size).toBe(4);
+    const before = [...sim.thralls.values()];
+    expect(before.map((t) => t.kind).sort()).toEqual(['archer', 'bonemage', 'warrior', 'warrior']);
+    const next = migrate(sim);
+    const after = [...next.thralls.values()];
+    expect(after).toHaveLength(4);
+    for (const b of before) {
+      const a = next.thralls.get(b.id)!;
+      expect(a.damage, `${b.kind} damage`).toBeCloseTo(b.damage, 1);
+      expect(a.attackInterval, `${b.kind} swing`).toBeCloseTo(b.attackInterval, 1);
+      expect(a.range, `${b.kind} reach`).toBe(b.range);
+    }
+    expect(new Set(after.map((t) => t.slot)).size).toBe(4);
+    expect(new Set(after.map((t) => t.bornAt)).size).toBe(4);
+  });
+
+  it('enemies keep their level, damage and size', () => {
+    const { sim } = world();
+    sim.setPlayer({ id: 'p1', x: 0, z: -16, alive: true, area: 'graves', level: 30 });
+    sim.ascension = 3;
+    const e = sim.spawnEnemy('robber', 'graves', 2, -16, true, false);
+    const next = migrate(sim);
+    const a = next.enemies.get(e.id)!;
+    expect(a.level).toBe(e.level);
+    expect(a.damage).toBeCloseTo(e.damage, 0);
+    expect(a.radius).toBeCloseTo(e.radius, 5);
   });
 });

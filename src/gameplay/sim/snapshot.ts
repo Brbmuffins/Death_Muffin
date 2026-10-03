@@ -3,7 +3,7 @@ import { isDifficulty, type Difficulty } from '../../content/difficulty';
 import { AFFIX_ORDER, type EliteAffix } from '../../content/enemies';
 import type { EnemyRow, ThrallRow, WorldSnapshot } from '../../net/contracts';
 import type { BossState, Corpse, Enemy, EnemyState, SimEvent, Thrall, ThrallState, Zone } from './types';
-import type { WorldSim } from './WorldSim';
+import { thrallReach, type WorldSim } from './WorldSim';
 
 // Append-only: older snapshots must keep decoding ('burrow' = Barrow Ghoul, 2026-09-28).
 const E_STATES: EnemyState[] = ['rising', 'move', 'windup', 'recover', 'channel', 'dead', 'burrow'];
@@ -17,12 +17,12 @@ export function makeSnapshot(sim: WorldSim, full: boolean): WorldSnapshot {
   for (const e of sim.enemies.values()) {
     // Bit 3 chill, 12 bleed, 13 sanctified, 14 bone hex, 15 silenced, 16 incensed, 17 stunned, 18 rooted, 19 diving (older clients ignore unknown bits).
     const flags = (e.elite ? 1 : 0) | (e.moving ? 2 : 0) | (e.slowT > 0 || (e.wardSlowT ?? 0) > 0 ? 4 : 0) | ((e.chillT ?? 0) > 0 ? 8 : 0) | ((e.bleedT ?? 0) > 0 ? 4096 : 0) | ((e.sanctT ?? 0) > 0 ? 8192 : 0) | ((e.hexT ?? 0) > 0 ? 16384 : 0) | ((e.silenceT ?? 0) > 0 ? 32768 : 0) | ((e.incenseT ?? 0) > 0 ? 65536 : 0) | ((e.stunT ?? 0) > 0 ? 131072 : 0) | ((e.rootT ?? 0) > 0 ? 262144 : 0) | (e.diving ? 524288 : 0);
-    enemies.push([e.id, e.def, r2(e.x), r2(e.z), r2(e.facing), Math.round(e.hp), Math.round(e.maxHp), E_STATES.indexOf(e.state), flags | (e.fracture << 4) | (e.withered << 8), r2(e.stateT), r2(e.speed), r2(e.scale), e.area, affixCode(e.affix)]);
+    enemies.push([e.id, e.def, r2(e.x), r2(e.z), r2(e.facing), Math.round(e.hp), Math.round(e.maxHp), E_STATES.indexOf(e.state), flags | (e.fracture << 4) | (e.withered << 8), r2(e.stateT), r2(e.speed), r2(e.scale), e.area, affixCode(e.affix), e.level]);
   }
   const thralls: ThrallRow[] = [];
   for (const t of sim.thralls.values()) {
         // Field 10: bit 0 empowered, bit 1 rallied, bit 2 hexed by a Bog Hag, bit 3 Legion Champion (older clients read it as a truthy flag only).
-    thralls.push([t.id, t.owner, t.kind, r2(t.x), r2(t.z), r2(t.facing), Math.round(t.hp), Math.round(t.maxHp), T_STATES.indexOf(t.state) | (t.moving ? 16 : 0), r2(t.stateT), (t.empowered ? 1 : 0) | ((t.rallyT ?? 0) > 0 ? 2 : 0) | ((t.cursedT ?? 0) > 0 ? 4 : 0) | (t.champion ? 8 : 0), t.speed]);
+    thralls.push([t.id, t.owner, t.kind, r2(t.x), r2(t.z), r2(t.facing), Math.round(t.hp), Math.round(t.maxHp), T_STATES.indexOf(t.state) | (t.moving ? 16 : 0), r2(t.stateT), (t.empowered ? 1 : 0) | ((t.rallyT ?? 0) > 0 ? 2 : 0) | ((t.cursedT ?? 0) > 0 ? 4 : 0) | (t.champion ? 8 : 0), t.speed, r2(t.damage), r2(t.attackInterval)]);
   }
   const zpos: [number, number, number][] = [];
   for (const z of sim.zones.values()) if (z.creep) zpos.push([z.id, r2(z.x), r2(z.z)]);
@@ -45,7 +45,7 @@ function blankEnemy(row: EnemyRow): Enemy {
     id: row[0],
     def: row[1],
     area: row[12] as AreaId,
-    level: 1,
+    level: row[14] ?? 1,
     elite: false,
     x: row[2],
     z: row[3],
@@ -165,8 +165,8 @@ export class WorldMirror {
           facing: row[5],
           hp: row[6],
           maxHp: row[7],
-          damage: 0,
-          attackInterval: 1,
+          damage: row[12] ?? 0,
+          attackInterval: row[13] ?? 1,
           range: 1,
           speed: row[11],
           state: 'rising',
@@ -184,6 +184,9 @@ export class WorldMirror {
         this.thralls.set(t.id, t);
       }
       if (row[6] < t.hp) t.flash = 1;
+      // Damage and swing speed move when the owner buys a tier (refreshThralls).
+      if (row[12] !== undefined) t.damage = row[12];
+      if (row[13] !== undefined) t.attackInterval = row[13];
       t.hp = row[6];
       t.maxHp = row[7];
       const st = T_STATES[row[8] & 15] ?? 'idle';
@@ -259,8 +262,27 @@ export class WorldMirror {
 
   /** Host migration: hand the replicated state to a fresh authoritative sim. */
   seed(sim: WorldSim) {
-    for (const e of this.enemies.values()) sim.enemies.set(e.id, { ...e, damage: e.damage || 8, radius: 0.5 });
-    for (const t of this.thralls.values()) sim.thralls.set(t.id, { ...t, damage: t.damage || 6, attackInterval: 1, range: t.kind === 'wraith' ? 5.5 : 1.3 });
+    // The world's dials first: an adopted enemy's damage follows from them.
+    sim.waveTier = this.waveTier;
+    sim.difficulty = this.difficulty;
+    sim.ascension = this.ascension;
+    for (const e of this.enemies.values()) sim.enemies.set(e.id, sim.adoptEnemy(e));
+    // Snapshots carry a thrall's hp, damage and swing speed but not its seat or birth order: deal them out again per owner, oldest first
+    // (every thrall at slot 0 / bornAt 0 stacked the whole legion on one formation spot and made the "oldest crumbles first" rule arbitrary).
+    const seats = new Map<string, number>();
+    const ordered = [...this.thralls.values()].sort((a, b) => a.id - b.id);
+    ordered.forEach((t, i) => {
+      const slot = seats.get(t.owner) ?? 0;
+      seats.set(t.owner, slot + 1);
+      sim.thralls.set(t.id, {
+        ...t,
+        damage: t.damage || 6,
+        attackInterval: t.attackInterval > 0 ? t.attackInterval : 1,
+        range: thrallReach(t.kind),
+        slot,
+        bornAt: sim.time - (ordered.length - i) * 1e-3,
+      });
+    });
     for (const c of this.corpses.values()) sim.corpses.set(c.id, { ...c, bornAt: sim.time, expiresAt: sim.time + 20, ruptureAt: c.kind === 'toxic' ? sim.time + 4 : Infinity });
     if (this.bossState?.active) sim.adoptBoss(this.bossState);
     for (const [id, back] of this.depleted) {
@@ -270,9 +292,6 @@ export class WorldMirror {
         n.respawnAt = sim.time + Math.max(0, back - this.time);
       }
     }
-    sim.waveTier = this.waveTier;
-    sim.difficulty = this.difficulty;
-    sim.ascension = this.ascension;
     const ids = [...this.enemies.keys(), ...this.thralls.keys(), ...this.corpses.keys(), ...this.zones.keys()];
     sim.reserveIds(ids.length ? Math.max(...ids) : 0);
   }

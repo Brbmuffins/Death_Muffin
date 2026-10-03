@@ -112,6 +112,9 @@ const THRALL_BASE = {
   colossus: { range: RUNE_TUNING.colossus.range, interval: RUNE_TUNING.colossus.interval, speed: RUNE_TUNING.colossus.speed },
 } as const;
 
+/** How far a thrall of this kind strikes from. */
+export const thrallReach = (kind: ThrallKind): number => THRALL_BASE[kind]?.range ?? 1.3;
+
 /** Legion places a thrall fills against the cap: the Bone Colossus takes more than one. */
 export const thrallWeight = (kind: ThrallKind): number => (kind === 'colossus' ? RUNE_TUNING.colossus.slots : 1);
 
@@ -277,6 +280,19 @@ export class WorldSim {
 
   get bossState(): BossState {
     return this.boss.state;
+  }
+
+  /**
+   * Host migration: an enemy known only from snapshots gets back what a snapshot does not carry. Its level rides along (older hosts
+   * send none: the area's level stands in), and damage and size follow from level, elite rank and the world's dials exactly as
+   * spawnEnemy computes them (the migrated world used to hit for a flat 8 and pay out as level 1).
+   */
+  adoptEnemy(e: Enemy): Enemy {
+    const d = ENEMIES[e.def];
+    const level = e.level > 1 ? e.level : this.areaLevel(e.area);
+    const wave = waveModifiers(this.waveTier);
+    const damage = d.damage * enemyDamageScale(level) * wave.enemyDamageMult * DIFFICULTIES[this.difficulty].enemyDamageMult * (e.elite ? ELITE.damageMult : 1);
+    return { ...e, level, damage, radius: d.radius * (e.elite ? 1.25 : 1) };
   }
 
   // --- Players ---
@@ -3322,7 +3338,10 @@ export class WorldSim {
   clearArea(area: AreaId) {
     for (const e of [...this.enemies.values()]) if (e.area === area) this.enemies.delete(e.id);
     this.waveTimers.delete(area);
-    if (this.surge?.area === area) this.surge = null;
+    if (this.surge?.area === area) {
+      this.emit({ t: 'surgeFailed', area, x: this.surge.x, z: this.surge.z });
+      this.endSurge();
+    }
   }
 
   arenaCenter() {
