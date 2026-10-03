@@ -1782,7 +1782,7 @@ function buildGroundRates() {
       if (peak && AREAS[id].scaling) elitePerMin = Math.max(elitePerMin, peak.kills * Math.min(1, AREAS[id].eliteChance + 4e-3 * 8) * LEGENDARY_DROP.eliteChance);
     }
     const perMin = (ICHOR_PER_MIN * LEGENDARY_DROP.bossChance + elitePerMin) * FORTUNE_PEAK;
-    for (const set of LEGENDARY_SET_IDS) for (const part of ["head", "chest", "hands", "legs", "feet"]) add(legendaryItemId(set, part), perMin * Math.max(LEGENDARY_DROP.ownShare, 1 / LEGENDARY_SET_IDS.length) / 5);
+    for (const set of LEGENDARY_SET_IDS) for (const part of ["head", "chest", "hands", "legs", "feet"]) add(legendaryItemId(set, part), perMin * Math.max(LEGENDARY_DROP.ownShare, 1 / LEGENDARY_SET_IDS.length));
   }
   return rates;
 }

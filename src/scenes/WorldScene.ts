@@ -317,6 +317,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private realtime = new RealtimeClient();
   private selfId = 'self';
   private remotes = new Map<string, Remote>();
+  /** Item ids worn or in the bag, read only when a legendary drops (legendary pieces you already hold do not repeat until the set is complete). */
+  private ownedItemIds = (): ReadonlySet<string> => new Set(this.inventory.all.map((s) => s.item_id));
   /** When the 'Reliquary full' call-out last showed (loot is retried every frame under the player's feet). */
   private bagFullAt = -1e9;
   private lastSnapshot = 0;
@@ -3506,7 +3508,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (!this.player.alive || !near) return;
     // The Depths drop from the hunting ground whose gear matches the floor's depth.
     const lootArea = this.depths.lootArea(ev.area) ?? ev.area;
-    const reward = rollKill(ev.def, lootArea, ev.level, ev.elite, this.bossWaveTier(), Math.random, this.worldDifficulty(), 1 + this.player.brewValue('fortune', this.now), Math.random, Math.random, this.discipline.id);
+    const reward = rollKill(ev.def, lootArea, ev.level, ev.elite, this.bossWaveTier(), Math.random, this.worldDifficulty(), 1 + this.player.brewValue('fortune', this.now), Math.random, Math.random, this.discipline.id, this.ownedItemIds);
     // The chain: your own kills (thralls and DoTs credit their owner) in unsafe ground, each within the window of the last.
     let chainMult = 1;
     if (ev.killer === this.selfId && !AREAS[ev.area].safe) {
@@ -4387,7 +4389,7 @@ export class WorldScene implements GameScene, RuntimeView {
             this.progression.recordPrelateKill();
             if (this.progression.canAscend()) this.onboarding.show('ascend', 5000);
           }
-          const reward = rollBoss(this.bossWaveTier(), Math.random, this.worldDifficulty(), def.area, def.shards, def.id, this.discipline.id);
+          const reward = rollBoss(this.bossWaveTier(), Math.random, this.worldDifficulty(), def.area, def.shards, def.id, this.discipline.id, this.ownedItemIds);
           // First kill per character: two more shards and a guaranteed rare-or-better (browser trophy record).
           let firstKill: LootDrop | null = null;
           let firstTrophy = false;

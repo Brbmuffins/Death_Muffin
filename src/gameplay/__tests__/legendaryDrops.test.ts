@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LEGENDARY_DROP, LEGENDARY_SETS, LEGENDARY_SET_IDS, legendaryItemId, legendarySetFor, pickLegendarySet, rollLegendary } from '../../content/legendarySets';
+import { LEGENDARY_DROP, LEGENDARY_SETS, LEGENDARY_SET_IDS, legendaryItemId, legendarySetFor, pickLegendaryItem, pickLegendarySet, rollLegendary } from '../../content/legendarySets';
 import { ARMOR_BY_ID } from '../../content/armorSets';
 import { ITEMS } from '../../content/items';
 import { itemCap, isGroundItem } from '../authorityRules';
@@ -65,4 +65,27 @@ describe('legendary drops', () => {
     expect(rollLegendary('rotweaver', LEGENDARY_DROP.eliteChance, () => 0.999)).toBeNull();
     expect(Object.keys(LEGENDARY_SETS)).toHaveLength(4);
   });
+
+  it('a legendary favours the pieces you do not hold: a set completes in about five drops, and repeats only follow a full set', () => {
+    const rand = seeded(21);
+    const set = 'legion_unburied';
+    const parts = ['head', 'chest', 'hands', 'legs', 'feet'] as const;
+    // Own set only: every drop of the Gravecaller's own set while collecting.
+    const own = new Set<string>();
+    let drops = 0;
+    while (own.size < 5 && drops < 200) {
+      const id = pickLegendaryItem('gravecaller', rand, own);
+      if (id.startsWith(`leg_${set}_`)) own.add(id);
+      else continue; // a piece of another set: not counted
+      drops++;
+    }
+    expect(own.size).toBe(5);
+    expect(drops).toBe(5);
+    // Holding all five of the set: a repeat is allowed (never an infinite loop, never undefined).
+    const all = new Set(parts.map((p) => legendaryItemId(set, p)));
+    expect(ITEMS[pickLegendaryItem('gravecaller', () => 0.1, all)]).toBeTruthy();
+    // Without the owned list the old uniform pick is unchanged.
+    expect(pickLegendaryItem('gravecaller', seeded(5))).toBe(pickLegendaryItem('gravecaller', seeded(5), undefined));
+  });
 });
+

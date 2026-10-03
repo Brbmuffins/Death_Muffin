@@ -71,13 +71,19 @@ export function pickLegendarySet(disciplineId: string, rand: () => number): stri
   return others[Math.floor(rand() * others.length) % others.length];
 }
 
-/** The item id of one legendary drop (a uniformly random piece of the chosen set). */
-export function pickLegendaryItem(disciplineId: string, rand: () => number): string {
+/**
+ * The item id of one legendary drop (a piece of the chosen set). With `owned` (item ids already worn or in the bag) the piece is picked
+ * among the ones you do NOT have, so a duplicate only comes once the whole set is in hand: finishing five pieces takes about five
+ * drops instead of eleven. The Vault is not asked, so a piece stored there can still come again.
+ */
+export function pickLegendaryItem(disciplineId: string, rand: () => number, owned?: ReadonlySet<string>): string {
   const set = pickLegendarySet(disciplineId, rand);
-  return legendaryItemId(set, PARTS[Math.floor(rand() * PARTS.length) % PARTS.length]);
+  const missing = owned ? PARTS.filter((part) => !owned.has(legendaryItemId(set, part))) : PARTS;
+  const parts = missing.length ? missing : PARTS;
+  return legendaryItemId(set, parts[Math.floor(rand() * parts.length) % parts.length]);
 }
 
-/** The roll itself: an item id, or null. `chance` is bossChance / eliteChance. */
-export function rollLegendary(disciplineId: string, chance: number, rand: () => number = Math.random): string | null {
-  return rand() < chance ? pickLegendaryItem(disciplineId, rand) : null;
+/** The roll itself: an item id, or null. `chance` is bossChance / eliteChance. `owned` is read only when something drops. */
+export function rollLegendary(disciplineId: string, chance: number, rand: () => number = Math.random, owned?: () => ReadonlySet<string>): string | null {
+  return rand() < chance ? pickLegendaryItem(disciplineId, rand, owned?.()) : null;
 }

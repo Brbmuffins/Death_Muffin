@@ -229,8 +229,9 @@ function buildGroundRates(): Record<string, number> {
       if (peak && AREAS[id].scaling) elitePerMin = Math.max(elitePerMin, peak.kills * Math.min(1, AREAS[id].eliteChance + 0.004 * 8) * LEGENDARY_DROP.eliteChance);
     }
     const perMin = (ICHOR_PER_MIN * LEGENDARY_DROP.bossChance + elitePerMin) * FORTUNE_PEAK;
-    // The most likely set gets ownShare of the drops, a piece is one in five of its set.
-    for (const set of LEGENDARY_SET_IDS) for (const part of ['head', 'chest', 'hands', 'legs', 'feet'] as const) add(legendaryItemId(set, part), (perMin * Math.max(LEGENDARY_DROP.ownShare, 1 / LEGENDARY_SET_IDS.length)) / 5);
+    // The most likely set gets ownShare of the drops. A drop favours pieces you do not hold (legendarySets.pickLegendaryItem), so the one piece
+    // still missing can take ALL of its set's drops: no one-in-five discount.
+    for (const set of LEGENDARY_SET_IDS) for (const part of ['head', 'chest', 'hands', 'legs', 'feet'] as const) add(legendaryItemId(set, part), perMin * Math.max(LEGENDARY_DROP.ownShare, 1 / LEGENDARY_SET_IDS.length));
   }
   return rates;
 }
