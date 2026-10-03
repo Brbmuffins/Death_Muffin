@@ -24,6 +24,22 @@ Branch `codex/new-blood-release-20260928` tracks `origin/master` (push `HEAD:mas
 after a secret scan; the repo is public). The owner asked for commits, which overrides
 the older "stage, don't commit" note.
 
+## CPU / snappiness pass (branch `dm/cpu-snappy`, 3 Oct 2026, not deployed)
+
+Owner: "performance is number 1", "it was smooth and snappy previously", "the thralls are laggy". What changed (numbers in the commit trail / report):
+
+- **Feel**: hitstop exempts the hero and thralls (only struck enemies/bosses freeze) and is capped near 5%; hero locomotion cross-fade 0.28 -> 0.16 s
+  (`Creature` option `locomotionFade`, set in `NecromancerAvatar`); FPS cap gained **Max** (`fps: 0`, no cap) and it is the desktop default until the player picks
+  (phones keep 30); the resolution governor is timid (3.5 s of sustained misses, one change per 20 s, step 0.9, `hold()` for 10 s after scene/area loads) and has a
+  Settings toggle **Auto resolution** (`settings.autoResolution`, default on).
+- **Thralls / view layer**: `Creature.steadyAttachments` no longer walks the whole skeleton with `updateMatrixWorld(true)` or allocates (scratch objects, bone-chain
+  `getWorldQuaternion`), and steadies at 1/3 rate for settled idle bodies and 1/2 for LOD bodies (`steadyEvery`); `setGroundSpeed` early-outs on a steady pace and reuses its plan;
+  crowd separation solves ~30 Hz (~20 Hz past 30 bodies) and eases every frame; animation LOD (`graphics/animLod.ts`): near full rate, mid 24 Hz, far 10 Hz, swings never throttled
+  (also guide NPCs); corpse mixers stop 0.35 s after the death clip lands; at most 6 additive flinches start per 380 ms.
+- **HUD**: readouts redraw at ~20 Hz (`HUD_INTERVAL_MS`; chain break and the monk bell stay per frame), the brew tray is cached on a signature (bag/belt revision + timers),
+  `touchNow()` is cached 500 ms, and the canvas rect for cursor picking is cached (no per-frame forced layout).
+- QA: `tools/qa/ab-profile.cjs` + `ab-summary.cjs` (A/B on two dev servers; thread CPU per window, allocation sampling, inclusive times), `thrall-legion-shot.cjs`.
+
 ## Catacomb Depths (branch `dm/depths`, 2 Oct 2026, not deployed, NO migration)
 
 An endless descent reached by a stair in the Warren's west chamber (`DEPTHS_STAIR` in `content/areas.ts`). **Migration 026 was claimed for this and is not used**: the deepest floor rides the Chronicle's lifetime JSON (`peak.depth`, a `MAX_KEYS` best like `peak.level`; Ascension never resets it, the archived run keeps its own), so 026 is free for anyone else. 025 is the legendary-sets session's.
@@ -136,7 +152,8 @@ Audit of a brand-new character's first stretch: `docs/FIRST-HOUR-AUDIT.md` (time
 - **Hitstop** (`graphics/hitstop.ts`): a 2-4 frame freeze of the picture clock only (`Creature.update` and `Effects.update` scale their dt by `hitstop.scale`;
   the sim never sees it). Triggers: a hit taking >=22% of an enemy's max hp (elites 12%) that leaves it standing (this is "big rites", whatever
   casts them), elite deaths within 16 u, boss impacts and boss defeat within 18 u (`WorldScene.BOSS_STOP`). Rationed: 0.3 s gap and a leaky budget,
-  so sustained crowd fights freeze about 12% of the time at most. Off under reduced motion.
+  so sustained crowd fights freeze about 5% of the time at most (cpu-snappy pass, 3 Oct: was 12%). Only struck enemies and bosses freeze (`Creature` option `hitstop`);
+  the hero, thralls and camera keep their own clock, and `Effects.update` still scales particles. Off under reduced motion.
 - **Knockback** (`graphics/knockback.ts`, `EntityViews.onHit`): a critically damped spring on the drawn root, away from the hero, sized by the share of hp
   lost and the body's mass (scale squared; 40% while winding up). Max 0.6 u, settles in about 0.45 s, frozen during hitstop. Sim positions untouched.
 - **Death settle** (`EntityViews.settle`): when the death clip reaches its landing moment (`landingTime`, from the Hip height track) the body eases 0.06 u into the
