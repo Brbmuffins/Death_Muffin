@@ -50,6 +50,14 @@ function pileGeometry(n: number) {
 }
 const shardGeo = new THREE.OctahedronGeometry(0.18).scale(0.6, 1.4, 0.6);
 const shardMat = new THREE.MeshStandardMaterial({ color: 0xb58cff, emissive: 0x7c3aed, emissiveIntensity: 2.2, roughness: 0.2, metalness: 0.1 });
+/**
+ * Ground clutter control (perf pass, 2026-10-03): drops never expired, so a long hunt left hundreds of sprites, light pillars, glow
+ * decals and soul markers lying in the area. Anything left alone drifts to the hero and is collected (loot is never lost; a full bag
+ * simply leaves the item where it is), and past ITEM_CAP items on the ground the oldest are called in at once.
+ */
+export const LOOT_VACUUM_S = { gold: 30, shard: 30, item: 75 } as const;
+export const LOOT_ITEM_CAP = 60;
+
 const beamGeo = new THREE.CylinderGeometry(0.22, 0.34, 6, 10, 1, true).translate(0, 3, 0);
 
 /**
@@ -180,17 +188,46 @@ export class LootView {
     let gold = 0;
     let shards = 0;
     const items: LootDrop[] = [];
+    // Oldest item drops first (the array is in drop order): when too many lie around, the surplus is called in now.
+    let surplus = -LOOT_ITEM_CAP;
+    for (const d of this.drops) if (d.kind === 'item') surplus++;
+    for (let i = 0; i < this.drops.length; i++) {
+      const d = this.drops[i];
+      if (surplus > 0 && d.kind === 'item') {
+        surplus--;
+        if (!d.flying && d.t > 0.35) this.callIn(d);
+      }
+    }
     for (let i = this.drops.length - 1; i >= 0; i--) {
       const d = this.drops[i];
       d.t += dt;
       const dist = Math.hypot(px - d.x, pz - d.z);
       if (d.kind === 'item') {
-        d.obj.position.y = 0.7 + Math.sin(d.t * 2.5) * 0.08;
-        if (d.beam) (d.beam.material as THREE.MeshBasicMaterial).opacity = 0.28 + Math.sin(d.t * 3) * 0.06;
-        if (dist < 1.3 && d.t > 0.35) {
+        if (!d.flying) {
+          d.obj.position.y = 0.7 + Math.sin(d.t * 2.5) * 0.08;
+          if (d.beam) (d.beam.material as THREE.MeshBasicMaterial).opacity = 0.28 + Math.sin(d.t * 3) * 0.06;
+          if (dist < 1.3 && d.t > 0.35) {
+            if (tryTakeItem(d.item!)) {
+              items.push(d.item!);
+              this.remove(i);
+            }
+            continue;
+          }
+          if (d.t > LOOT_VACUUM_S.item) this.callIn(d);
+          else continue;
+        }
+        // Called in: drifts to the hero; a full bag leaves it where it is (and it waits another round).
+        const k = Math.min(1, dt * (6 + d.t * 0.2));
+        d.x += (px - d.x) * k;
+        d.z += (pz - d.z) * k;
+        d.obj.position.set(d.x, d.obj.position.y + (1 - d.obj.position.y) * k, d.z);
+        if (dist < 0.6) {
           if (tryTakeItem(d.item!)) {
             items.push(d.item!);
             this.remove(i);
+          } else {
+            d.flying = false;
+            d.t = 0;
           }
         }
         continue;
@@ -199,7 +236,7 @@ export class LootView {
         d.obj.rotation.y += dt * 2;
         if (!d.flying) d.obj.position.y = 0.5 + Math.sin(d.t * 3) * 0.1;
       }
-      if (!d.flying && dist < 3.8 && d.t > 0.45) d.flying = true;
+      if (!d.flying && ((dist < 3.8 && d.t > 0.45) || d.t > LOOT_VACUUM_S[d.kind])) d.flying = true;
       if (d.flying) {
         const k = Math.min(1, dt * (8 + d.t * 4));
         d.x += (px - d.x) * k;
@@ -216,6 +253,20 @@ export class LootView {
       }
     }
     return { gold, shards, items };
+  }
+
+  /** Start an item drifting to the hero: its pillar, glow and marker go now (they cost a draw each and mean "lying here"). */
+  private callIn(d: Drop) {
+    d.flying = true;
+    d.t = Math.max(d.t, 1);
+    d.glow?.kill();
+    d.marker?.kill();
+    d.glow = d.marker = undefined;
+    if (d.beam) {
+      this.group.remove(d.beam);
+      (d.beam.material as THREE.Material).dispose();
+      d.beam = undefined;
+    }
   }
 
   private remove(i: number) {
