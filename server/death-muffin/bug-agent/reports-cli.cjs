@@ -11,7 +11,7 @@
 const path = require('path');
 const fs = require('fs');
 const RUNTIME = process.env.DM_RUNTIME || '/home/ubuntu/death-muffin';
-require(path.join(RUNTIME, 'backend/node_modules/dotenv')).config({ path: path.join(RUNTIME, 'backend/.env') });
+require(path.join(RUNTIME, 'backend/node_modules/dotenv')).config({ path: path.join(RUNTIME, 'backend/.env'), quiet: true });
 const mysql = require(path.join(RUNTIME, 'backend/node_modules/mysql2/promise'));
 
 const STATUSES = new Set(['triaged', 'fixing', 'fixed', 'needs_info', 'duplicate', 'wontfix']);
