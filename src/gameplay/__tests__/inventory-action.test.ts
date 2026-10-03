@@ -34,3 +34,24 @@ describe('Inventory.exclusiveAction', () => {
     inv.dispose();
   });
 });
+
+describe('replaying a local consume on a fresh server bag', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.stubGlobal('window', { setTimeout, clearTimeout });
+    vi.mocked(saveInventory).mockReset().mockResolvedValue([]);
+  });
+  afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+  const row = (slot_index: number, equipped: 0 | 1) => ({ id: slot_index, slot_index, quantity: 1, equipped, item_id: 'tool_pickaxe_copper', name: 'Pickaxe', rarity: 'common', item_type: 'tool', stat_bonus: null, icon_id: null, sell_value: 3, crafted: 0 }) as never;
+
+  it('a sale from bag slot 5 never eats the same tool now hanging on the belt (slot 110)', () => {
+    const inv = new Inventory(1);
+    inv.replace([row(5, 0)]);
+    expect(inv.consumeAt(5)).toBe(true);
+    // The belt reply arrives: the tool moved from slot 5 to the belt.
+    inv.replace([row(110, 1)]);
+    expect(inv.all.map((s) => s.slot_index)).toEqual([110]);
+    inv.dispose();
+  });
+});

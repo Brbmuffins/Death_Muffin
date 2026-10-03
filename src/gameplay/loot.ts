@@ -246,8 +246,10 @@ function itemCount(slots: InventorySlot[], itemId: string) {
 function applyInventoryMutation(slots: InventorySlot[], mutation: InventoryMutation): InventorySlot[] | null {
   if (mutation.kind === 'add') return addToSlots(slots, mutation.drop);
   // A slot-specific consume (selling one copy of several) replays on that same slot, so a locked twin is never taken instead.
-  const slot = (mutation.slot !== undefined ? slots.find((s) => s.slot_index === mutation.slot && s.item_id === mutation.itemId && s.quantity > 0) : undefined)
-    ?? slots.find((s) => s.item_id === mutation.itemId && s.quantity > 0);
+  // Only bag rows can be replayed on: worn gear, belt tools and sockets (slot 100+) are not part of a bag save.
+  const inBag = (s: InventorySlot) => s.slot_index >= 0 && s.slot_index < BAG_SIZE && !s.equipped;
+  const slot = (mutation.slot !== undefined ? slots.find((s) => s.slot_index === mutation.slot && s.item_id === mutation.itemId && s.quantity > 0 && inBag(s)) : undefined)
+    ?? slots.find((s) => s.item_id === mutation.itemId && s.quantity > 0 && inBag(s));
   // The server may already have removed it (for example as a crafting cost).
   if (!slot) return slots;
   return slots.map((s) => (s === slot ? { ...s, quantity: s.quantity - 1 } : s)).filter((s) => s.quantity > 0);
