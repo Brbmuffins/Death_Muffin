@@ -1,7 +1,7 @@
 // CPU-snappy A/B harness (copied from the ab-new regression investigation, extended with inclusive times).
 // Run the same fixture against two dev servers (before/after) and compare `nonGL JS ms/frame` with tools/qa/ab-summary.cjs.
 // NOTE: the dev server compiles shaders inside the window (getShaderInfoLog etc.), so summaries subtract GL compile time.
-// A/B real-fight CPU profile. Env: DM_QA_THRALLS (default the discipline cap), DM_QA_ENEMIES (keep at least N alive, default 12; 0 = idle zone), DM_QA_WARM (unprofiled warm seconds, default 6), DM_QA_URL, DM_QA_AREA, DM_QA_QUALITY, DM_QA_DISC (Gravecaller|Ossuary|Mourner|...), DM_QA_SECS, DM_QA_OUT
+// A/B real-fight CPU profile. Env: DM_QA_THRALLS (default the discipline cap), DM_QA_ENEMIES (keep at least N alive, default 12; 0 = idle zone), DM_QA_WARM (unprofiled warm seconds, default 6), DM_QA_STABLE=1 (deterministic fixture: thralls deal no damage, the roster is ringed once and frozen, no respawn churn), DM_QA_URL, DM_QA_AREA, DM_QA_QUALITY, DM_QA_DISC (Gravecaller|Ossuary|Mourner|...), DM_QA_SECS, DM_QA_OUT
 const fs = require('node:fs');
 const { chromium } = require(process.env.DM_PLAYWRIGHT_MODULE);
 const URL = process.env.DM_QA_URL, AREA = process.env.DM_QA_AREA || 'graves', Q = process.env.DM_QA_QUALITY || 'high';
@@ -28,16 +28,17 @@ const DISC = process.env.DM_QA_DISC || 'Gravecaller', SECS = +(process.env.DM_QA
   const loadBytes = bytes, loadReqs = reqs;
   await page.evaluate(() => { const d = window.__cwDebug; d.god(true); d.unlockAll(); });
   await page.evaluate((a) => { const d = window.__cwDebug; d.goto(a); d.advance(0.5); d.clear(); d.zoom(0.8); d.advance(1); }, AREA);
-  const setup = await page.evaluate(async ([process_thr, minEn]) => {
+  const setup = await page.evaluate(async ([process_thr, minEn, STABLE_]) => {
     const sc = (await import('/src/app/GameRuntime.ts')).getRuntime().view; const d = window.__cwDebug; const sim = d.sim();
     const m = sc.discipline.mods; const cap = process_thr >= 0 ? process_thr : m.thrallCap; const p = d.player;
-    for (let i = 0; i < cap; i++) { const x = p.x - 3 + (i % 5) * 1.5, z = p.z + 2 + Math.floor(i / 5) * 1.5; sim.addCorpse(x, z, 'normal', 'robber', false, 0, 1, p.area); sim.applyExhume({ t: 'exhume', by: d.self(), x, z, r: 2, cap, kind: m.thrallKind, hp: 1e6, damage: 20, attackSpeedMult: 1 }); }
+    for (let i = 0; i < cap; i++) { const x = p.x - 3 + (i % 5) * 1.5, z = p.z + 2 + Math.floor(i / 5) * 1.5; sim.addCorpse(x, z, 'normal', 'robber', false, 0, 1, p.area); sim.applyExhume({ t: 'exhume', by: d.self(), x, z, r: 2, cap, kind: m.thrallKind, hp: 1e6, damage: STABLE_ ? 0 : 20, attackSpeedMult: 1 }); }
     d.advance(1.5);
     const roster = (await import('/src/content/areas.ts')).AREAS[p.area].enemies.map((e) => e.id);
     window.__minEn = minEn; window.__roster = roster; window.__refill = () => { const c = d.counts(); if (window.__minEn > 0 && c.enemies < window.__minEn) roster.forEach((id, i) => d.ring(id, 3, 6 + i * 1.2, false)); };
     window.__refill(); d.advance(0.5);
+    if (STABLE_) { window.__minEn = 0; d.freeze(true); d.advance(0.3); d.freeze(true); }
     return { cap, kind: m.thrallKind, disc: sc.discipline.name, counts: d.counts() };
-  }, [process.env.DM_QA_THRALLS !== undefined ? +process.env.DM_QA_THRALLS : -1, process.env.DM_QA_ENEMIES !== undefined ? +process.env.DM_QA_ENEMIES : 12]);
+  }, [process.env.DM_QA_THRALLS !== undefined ? +process.env.DM_QA_THRALLS : -1, process.env.DM_QA_ENEMIES !== undefined ? +process.env.DM_QA_ENEMIES : 12, process.env.DM_QA_STABLE === '1']);
   await page.evaluate(() => { window.__iv = setInterval(() => window.__refill(), 1000); });
   await page.waitForTimeout(3000);
   await page.evaluate(() => { const d = window.__cwDebug; for (let i = 0; i < 6; i++) { d.advance(0.5, 1 / 60, true); window.__refill(); } });
