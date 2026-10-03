@@ -198,3 +198,18 @@ describe('thrall pathing', () => {
     expect(reached).toBe(true);
   });
 });
+
+describe('Command: Rend', () => {
+  it('never leaps the legion into the next hall', () => {
+    const sim = world(13);
+    const r = AREAS.graves.rect;
+    const p = sim.players.get('p1')!;
+    sim.setPlayer({ ...p, x: r.x1 - 3, z: (r.z0 + r.z1) / 2 });
+    const me = sim.players.get('p1')!;
+    for (let i = 0; i < 2; i++) sim.addCorpse(me.x - 2 - i, me.z, 'normal', 'robber', false, 0, 1, 'graves');
+    for (const c of [...sim.corpses.values()]) sim.apply({ t: 'exhume', by: 'p1', x: c.x, z: c.z, r: 1, kind: 'warrior', cap: 3, hp: 1e6, damage: 1, attackSpeedMult: 1 });
+    sim.step(1.2);
+    sim.apply({ t: 'signature', by: 'p1', sig: 'rend', x: r.x1 + 9, z: me.z, dx: 12, dz: 0, sp: 10 });
+    for (const t of sim.thralls.values()) expect(t.x).toBeLessThan(r.x1 + 1.5);
+  });
+});

@@ -925,7 +925,9 @@ export class WorldSim {
       }
       case 'rend': {
         const R = SIGNATURE.rend;
-        const [cx, cz] = clampAim(R.maxCastRange);
+        // The legion leaps within the hall the caster stands in: aimed across a wall into the next one it lands at the last point on this side.
+        const [ax, az] = clampAim(R.maxCastRange);
+        const [cx, cz] = caster?.area ? this.lastPointInArea(caster.area, caster.x, caster.z, ax, az) : [ax, az];
         const legion = this.ownedThralls(g.by).filter((t) => t.state !== 'rising');
         const leaps: [number, number, number, number][] = [];
         const hit = new Set<number>();
@@ -1324,6 +1326,19 @@ export class WorldSim {
     if (!best) return;
     this.removeCorpse(best, 'consumed', z.owner);
     this.addZone({ kind: 'flower', owner: z.owner, x: best.x, z: best.z, r: z.r, durationS: B.childDurationS, dps: z.dps, witheredCap: z.witheredCap, gen: (z.gen ?? 0) + 1 });
+  }
+
+  /** Walk from (fx, fz) toward (tx, tz) and stop at the last point still inside `area` (a leap never crosses a wall or a sealed door). */
+  private lastPointInArea(area: AreaId, fx: number, fz: number, tx: number, tz: number): [number, number] {
+    const n = Math.max(1, Math.ceil(Math.hypot(tx - fx, tz - fz) / 0.5));
+    let best: [number, number] = [fx, fz];
+    for (let i = 1; i <= n; i++) {
+      const x = fx + ((tx - fx) * i) / n;
+      const z = fz + ((tz - fz) * i) / n;
+      if (this.nav.areaAt(x, z) !== area) break;
+      best = [x, z];
+    }
+    return best;
   }
 
   private updateWalls() {
