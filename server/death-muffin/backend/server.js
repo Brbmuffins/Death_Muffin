@@ -414,7 +414,8 @@ app.patch('/character/position', verifyJWT, async (req, res) => {
   const x = parseFloat(req.body.x), y = parseFloat(req.body.y), z = parseFloat(req.body.z);
   const orientation = parseFloat(req.body.orientation);
   const isLogout = req.body.logout === true;
-  if ([x, y, z, orientation].some(v => isNaN(v)))
+  // Finite and bounded (the offline import uses the same 100000): Infinity and 1e30 are not NaN but the position columns cannot hold them.
+  if ([x, y, z, orientation].some(v => !Number.isFinite(v) || Math.abs(v) >= 100000))
     return res.status(400).json({ error: 'x, y, z, and orientation must be numbers' });
 
   let map;

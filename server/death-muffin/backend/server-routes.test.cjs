@@ -202,3 +202,21 @@ test('POST /character: the character token still gets an expiry when JWT_EXPIRES
     if (saved !== undefined) process.env.JWT_EXPIRES_IN = saved;
   }
 });
+
+// ── PATCH /character/position ───────────────────────────────────────────────────────────────────────────────────────────
+
+test('PATCH /character/position: Infinity and absurd coordinates are a 400, not a database error', async () => {
+  const f = fakePool();
+  const pool = { ...f.pool };
+  const inner = pool.execute;
+  pool.execute = async (sql, params) => (/FROM accounts WHERE id/.test(sql) ? [[{ username: 'tester', role: 'player', gm_enabled: 0 }]] : inner(sql, params));
+  const srv = loadServer({ pool });
+  const user = { accountId: 1, username: 'tester', characterId: 1 };
+  for (const x of ['Infinity', '1e999', 1e30]) {
+    const r = await srv.call('PATCH /character/position', { user, body: { x, y: 0, z: 0, orientation: 0 } });
+    assert.equal(r.status, 400, String(x));
+  }
+  assert.equal(f.log.filter((q) => /^UPDATE characters/.test(q.sql)).length, 0);
+  const ok = await srv.call('PATCH /character/position', { user, body: { x: 12.5, y: 0, z: -3, orientation: 1.2 } });
+  assert.equal(ok.status, 200);
+});
