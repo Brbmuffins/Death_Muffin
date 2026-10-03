@@ -44,6 +44,13 @@ Owner: "performance is number 1", "it was smooth and snappy previously", "the th
   `touchNow()` is cached 500 ms, and the canvas rect for cursor picking is cached (no per-frame forced layout).
 - QA: `tools/qa/ab-profile.cjs` + `ab-summary.cjs` (A/B on two dev servers; thread CPU per window, allocation sampling, inclusive times), `thrall-legion-shot.cjs`.
 
+## Warm-up render (branch `dm/warm-render`, 3 Oct 2026, not deployed, NO migration)
+
+Why: first appearance of a body (and the first fade of a cloaked corpse) still hitched on D3D11 because `compileAsync` only built the screen flavour of each program;
+real frames draw into the bloom composer's target (different key), plus shadow depth / skinned depth / DoubleSide transparent variants, geometry and bone textures.
+What: `src/graphics/warmRender.ts` stages one Creature per template + variant (`stageSpecs` in EntityViews: roster within two doors of the Acre, bosses, legion / thrall kinds with held props, NPCs) in the real scene, draws it through the real frame path (`GameRuntime.warmRender`) behind the LoadVeil, then removes it (Creature keeps the first body's materials pinned). Bodies the veil has no time for, and every later `enterArea` (area + door neighbours), are staged in 2-body idle slices into a 4x4 target (`stageLate` / `stageInSlices`, same program flavour). `WarmContext.target` / `WorldView.attachRenderer` / `prewarmCreature` now compile for that target too. `?nowarmrender` switches it all off (A/B). Probe: `DM_QA_REAL=1 node tools/qa/spawn-warm-probe.cjs`.
+Not covered: remote-player hero models, pets, laborers, a shrouded elite's first (already transparent) draw, Binbun effect shaders (coldWarm's), per-thrall prop geometry.
+
 ## Catacomb Depths (branch `dm/depths`, 2 Oct 2026, not deployed, NO migration)
 
 An endless descent reached by a stair in the Warren's west chamber (`DEPTHS_STAIR` in `content/areas.ts`). **Migration 026 was claimed for this and is not used**: the deepest floor rides the Chronicle's lifetime JSON (`peak.depth`, a `MAX_KEYS` best like `peak.level`; Ascension never resets it, the archived run keeps its own), so 026 is free for anyone else. 025 is the legendary-sets session's.

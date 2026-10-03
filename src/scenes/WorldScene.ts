@@ -68,9 +68,11 @@ import { isBinbunImpact, type BinbunId } from '../graphics/binbun/catalog';
 import type { Gallery } from '../graphics/binbun/gallery';
 import { playFx } from '../graphics/binbun/presets';
 import type { BinbunHandle } from '../graphics/binbun/BinbunFX';
-import { EntityViews, preloadAreaModels } from '../graphics/EntityViews';
+import { EntityViews, preloadAreaModels, stageSpecs } from '../graphics/EntityViews';
 import { warmColdPaths } from '../graphics/coldWarm';
 import { LoadVeil } from '../ui/LoadVeil';
+import { areasWithin, doorNeighbours } from '../graphics/areaStreaming';
+import { stageBodies, stageInSlices, stageLate, claimKeys, stagedKeys, type StageHost } from '../graphics/warmRender';
 import { setWarmContext } from '../graphics/warmModel';
 import { fx } from '../graphics/fxTextures';
 import * as nf from '../graphics/necroFx';
@@ -517,14 +519,36 @@ export class WorldScene implements GameScene, RuntimeView {
     const veil = new LoadVeil();
     this.scope.add(() => veil.dispose());
     this.worldView = new WorldView(this.scene, this.layout, this.nav, this.effects);
-    this.worldView.attachRenderer(getRuntime().renderer, this.rig.camera);
+    this.worldView.attachRenderer(getRuntime().renderer, this.rig.camera, () => getRuntime().frameTarget());
+    // Warm-up render (graphics/warmRender.ts): the bodies of the start area and its neighbours are drawn once behind the veil. Claimed now so
+    // enterArea's idle slices skip them. `?nowarmrender` turns it off (A/B in QA).
+    const warmOn = !/[?&]nowarmrender\b/.test(location.search);
+    const stageList = warmOn ? stageSpecs(areasWithin('acre', 2), this.discipline.id) : [];
+    const stageFresh = new Set(claimKeys(stagedKeys, stageList.map((s) => s.key)));
+    const veilT0 = performance.now();
+    // Bodies start loading now, alongside the world build (nothing is drawn until the stage render).
+    const stageNow = stageList.filter((s) => stageFresh.has(s.key)).map((s) => s.make());
+    const PRIME_SHARE = stageFresh.size ? 0.6 : 1;
     void this.worldView
-      .prime('acre', PLAYER_SPAWN, (f) => veil.progress(f))
+      .prime('acre', PLAYER_SPAWN, (f) => veil.progress(f * PRIME_SHARE))
       .then(() => new Promise<void>((resolve) => {
         const t0 = performance.now();
         const wait = () => (this.avatar?.c.loaded || performance.now() - t0 > 4000 ? resolve() : window.setTimeout(wait, 50));
         wait();
       }))
+      .then(async () => {
+        if (!stageFresh.size) return;
+        // Whole veil is capped near 10 s; never less than 3 s for the stage itself (its bodies have been loading since mount).
+        const deadline = performance.now() + Math.max(3000, 10_000 - (performance.now() - veilT0));
+        const res = await stageBodies(this.stageHost(), stageNow, {
+          small: false,
+          deadline,
+          onProgress: (f) => veil.progress(PRIME_SHARE + (1 - PRIME_SHARE) * f),
+        });
+        if (res.rest.length) this.scope.add(stageLate(this.stageHost(), res.rest));
+        perfNote(`warm-stage ${res.staged}/${res.staged + res.skipped} out-of-view ${res.outOfView} ${res.ms}ms`);
+        (window as unknown as { __dmWarmStage?: unknown }).__dmWarmStage = { ...res, keys: [...stageFresh] };
+      })
       .catch((err) => console.warn('[world] area prime failed', err))
       .then(() => veil.finish());
     this.dressWaystones();
@@ -545,7 +569,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.laborers = new LaborerViews(this.scene, this.effects, this.layout, { fetch: () => getLabor(this.character.id).then((v) => { this.noteLabor(v); return v; }), onSeen: () => this.onboarding.show('laborers_working', 1500) });
     const prelate = new BossView(this.scene, this.effects);
     this.bossViews.set('prelate', prelate);
-    this.scope.add(prewarmCreature(prelate.c, getRuntime().renderer, this.rig.camera, this.scene));
+    this.scope.add(prewarmCreature(prelate.c, getRuntime().renderer, this.rig.camera, this.scene, () => getRuntime().frameTarget()));
     this.loot = new LootView(this.scene, this.effects);
 
     const stats = deriveStats(this.character, [], this.discipline, this.progression.local.damageTier);
@@ -4735,15 +4759,33 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private cancelPreload: (() => void) | null = null;
 
+  /** What the warm-up stage needs from the live scene (graphics/warmRender.ts). */
+  private stageHost(): StageHost {
+    const rt = getRuntime();
+    return {
+      scene: this.scene,
+      camera: this.rig.camera,
+      focus: () => ({ x: this.player.x, z: this.player.z }),
+      compile: (obj, small) => rt.warmCompile(obj, small),
+      render: (small) => rt.warmRender(small),
+      programs: () => rt.renderer.info.programs?.length ?? 0,
+    };
+  }
+
   private enterArea(area: AreaId) {
     this.area = area;
     perfNote(`area ${area}`);
     // Loading frames are slow for reasons that pass: the resolution governor stands down for a few seconds.
     getRuntime().resolution.hold();
     // From here on new bodies compile their shaders and upload textures before they appear (graphics/warmModel.ts).
-    setWarmContext({ renderer: getRuntime().renderer, camera: this.rig.camera, scene: this.scene });
+    setWarmContext({ renderer: getRuntime().renderer, camera: this.rig.camera, scene: this.scene, target: () => getRuntime().frameTarget() });
     this.cancelPreload?.();
-    const cancelModels = preloadAreaModels(area, this.discipline.id);
+    // Bodies of this area and its door neighbours not yet staged at login are drawn once, a couple per idle turn, in a tiny target (warmRender.ts).
+    const warmOn = !/[?&]nowarmrender\b/.test(location.search);
+    const cancelStage = warmOn
+      ? stageInSlices(this.stageHost(), stageSpecs([area, ...doorNeighbours(area)], this.discipline.id).filter((s) => claimKeys(stagedKeys, [s.key]).length))
+      : null;
+    const cancelModels = warmOn ? () => cancelStage?.() : preloadAreaModels(area, this.discipline.id);
     // Cold paths (loot kit + icons, FX textures, Binbun effects) after the bodies: idle-time, one piece per turn.
     const cancelCold = warmColdPaths({ area, binbun: this.effects.binbun, loot: this.loot });
     this.cancelPreload = () => (cancelModels(), cancelCold());
