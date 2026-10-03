@@ -1285,12 +1285,14 @@ app.get('/api/professions/recipes/:characterId', requireJWT, async (req, res) =>
 // ── POST /api/craft ──────────────────────────────────────────────────────────
 
 app.post('/api/craft', requireJWT, async (req, res) => {
-  const { characterId, recipeId } = req.body;
-  if (!characterId || !recipeId)
+  const { characterId: claimedCharacterId, recipeId } = req.body;
+  if (!claimedCharacterId || !recipeId)
     return res.json({ success: false, error: 'Missing characterId or recipeId' });
 
-  const char = await ownedCharacter(req, res, characterId);
+  const char = await ownedCharacter(req, res, claimedCharacterId);
   if (!char) return;
+  // Ownership was proven for the parsed id: parseInt('1e1') is 1 but MySQL reads the string '1e1' as 10, so never query with the raw value.
+  const characterId = char.id;
 
   const conn = await pool.getConnection();
   try {
