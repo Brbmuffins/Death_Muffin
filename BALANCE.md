@@ -774,3 +774,15 @@ Reading: a good drop (two or three decent affixes on one slot) is still a 4-9% u
 
 ### Server and client
 `gathering/affix-rules.cjs` (and `legion-rules.cjs`, which bundles the same module) were regenerated with `npm run build:server-rules`; `loot.cjs` rolls with the bundle, the client mirrors it through `affixRules.ts`, and the offline mock shares the source. No mismatch found. The server bundle must ship with the client build (deploy copies `gathering/*.cjs`).
+
+### Harness check (`balance:gear`, kit `rolled` vs `none`, Pyre and Fen push, 4 necromancers, 8 seeds, same seeds; base 8bb1bd3 vs this branch)
+| | before | after |
+|---|---|---|
+| kills/min vs no kit (mean of 8 rows) | x1.30 | x1.32 |
+| damage taken vs no kit | x0.64 | x0.62 |
+| deaths per 3 min with the rolled kit | 0.61 | 0.58 |
+
+Unchanged inside seed noise, as expected: the rolls differ per range, and the bot cannot resolve a 1-3% change. This is a "no regression" check; the sizes above come from the power score. `balance:score` baseline (before): Spearman against kills/min 0.46 over all swaps (the single-affix swaps are below the noise floor, unchanged from the 2 Oct finding).
+
+### Legendary sets, re-measured (`legendaryReport.ts`, kit none, 4 seeds, Nave and Sanctum, intended/push/max, mechanics and set multipliers only, 24 rows)
+Mean clear speed **x1.15**, mean damage taken **x0.92** (LEGENDARY-SETS.md quoted x1.17 / x0.86 after the 2 Oct tuning, an earlier pass x1.13). Still true: the full legendary set is nowhere near the +40-80% target in the sim (the power score puts the same bonus lines at +24-47%, a judgment value for mechanics the bot does not use well). By band: intended x1.0-1.1 (survival gains on Mourner/Sanctum), push x1.07-1.41, max x0.86-1.62; the Ossuary reads about flat on clear speed (its mechanics are defensive; its damage taken is noisy). Not retuned here: the task is affix ranges, and raising a legendary is a content/owner call. If the owner wants legendaries to feel like a +40% jump, the lever is `setBonuses.ts` (the mechanic strengths), not affixes. Affix tuning does not touch this: affixes stay far below a legendary set either way.
