@@ -122,3 +122,33 @@ describe('Bell-Tolled ring', () => {
     }
   });
 });
+
+describe('thrall numbers on a boss', () => {
+  it('show the blow as it landed: rally and Fracture included', () => {
+    const sim = world(11);
+    const p = sim.players.get('p1')!;
+    sim.addCorpse(p.x + 2, p.z, 'normal', 'robber', false, 0, 1, 'graves');
+    const c = [...sim.corpses.values()][0];
+    sim.apply({ t: 'exhume', by: 'p1', x: c.x, z: c.z, r: 1, kind: 'warrior', cap: 3, hp: 5000, damage: 50, attackSpeedMult: 1 });
+    sim.step(1.2);
+    const th = [...sim.thralls.values()][0];
+    th.rallyT = 5;
+    sim.boss.awaken('p1');
+    const b = sim.boss.state;
+    b.x = p.x + 2.5;
+    b.z = p.z;
+    b.fracture = 2;
+    b.fractureT = 5;
+    for (const e of [...sim.enemies.values()]) sim.enemies.delete(e.id);
+    th.attackCd = 0;
+    let dmg = 0;
+    for (let i = 0; i < 40 && !dmg; i++) {
+      for (const e of [...sim.enemies.values()]) sim.enemies.delete(e.id);
+      const hit = of(sim.step(0.05), 'thrallHit').find((h) => h.target === -1);
+      if (hit) dmg = hit.dmg;
+    }
+    expect(dmg).toBeGreaterThan(0);
+    // 50 base x 1.4 rally x 1.3 (two Fracture stacks).
+    expect(dmg).toBe(Math.round(50 * 1.4 * 1.3));
+  });
+});

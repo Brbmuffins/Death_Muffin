@@ -3106,8 +3106,11 @@ export class WorldSim {
       } else if (bossTarget) {
         const b = this.boss.state;
         engage(b.x, b.z, BOSS_RADIUS, () => {
-          this.boss.damage(t.damage * ((t.rallyT ?? 0) > 0 ? RALLY.damageMult : 1) * this.cursedMult(t) * this.rallyMult(t, null), t.owner, 0);
-          this.emit({ t: 'thrallHit', id: t.id, target: -1, x: t.x, z: t.z, tx: b.x, tz: b.z, kind: t.kind, dmg: Math.round(t.damage * this.cursedMult(t)) });
+          const raw = t.damage * ((t.rallyT ?? 0) > 0 ? RALLY.damageMult : 1) * this.cursedMult(t) * this.rallyMult(t, null);
+          // The number is what the blow is worth against a Fractured boss, rally and all (it used to show the thrall's bare hit).
+          const worth = raw * (1 + FRACTURE.perStack * b.fracture);
+          this.boss.damage(raw, t.owner, 0);
+          this.emit({ t: 'thrallHit', id: t.id, target: -1, x: t.x, z: t.z, tx: b.x, tz: b.z, kind: t.kind, dmg: Math.round(worth) });
         });
       } else {
         // Formation ring around the owner.
