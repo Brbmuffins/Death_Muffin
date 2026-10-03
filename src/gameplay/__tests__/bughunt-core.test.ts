@@ -121,3 +121,19 @@ describe('core bug hunt: respawn state', () => {
     expect(p.castUntil).toBe(0);
   });
 });
+
+describe('core bug hunt: bookkeeping leaks', () => {
+  it('a hall that crumbles around its enemies does not keep their damage-over-time accumulators', () => {
+    const { sim } = world();
+    const e = sim.spawnEnemy('robber', 'graves', 2, -16, false, false);
+    e.bleedT = 5;
+    e.bleedDps = 3;
+    e.maxHp = e.hp = 1e6;
+    for (let i = 0; i < 20; i++) sim.step(0.05);
+    expect((sim as unknown as { dotAccum: Map<number, number> }).dotAccum.has(e.id)).toBe(true);
+    sim.setPlayer({ id: 'p1', x: 0, z: 20, alive: true, area: 'chapterhouse' });
+    for (let i = 0; i < 400; i++) sim.step(0.05);
+    expect(sim.enemies.has(e.id)).toBe(false);
+    expect((sim as unknown as { dotAccum: Map<number, number> }).dotAccum.size).toBe(0);
+  });
+});

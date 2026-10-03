@@ -2001,7 +2001,16 @@ export class WorldSim {
     this.updateCorpses();
     this.updateNodes();
     this.collectDead();
+    this.pruneDotAccum();
     return this.drain();
+  }
+
+  private dotPruneAt = 0;
+  /** Enemies that leave without dying (a vacated hall crumbles, a wiped Depths floor, boss adds) used to leave their damage-number accumulator behind for good. */
+  private pruneDotAccum() {
+    if (this.time < this.dotPruneAt) return;
+    this.dotPruneAt = this.time + 5;
+    for (const id of this.dotAccum.keys()) if (!this.enemies.has(id)) this.dotAccum.delete(id);
   }
 
   private updateZones(dt: number) {
