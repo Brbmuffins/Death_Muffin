@@ -1730,7 +1730,11 @@ export class WorldSim {
       this.vacantS.set(id, v);
       if (v < VACANT_CRUMBLE_S) continue;
       for (const e of [...this.enemies.values()]) if (e.area === id) this.enemies.delete(e.id);
-      if (this.surge?.area === id) this.surge = null;
+      if (this.surge?.area === id) {
+        // Abandoned, not forgotten: close it properly so the clients drop its crypt mark and the clock restarts (a bare `surge = null` left surgeIn expired, so the next fight anywhere opened a surge at once).
+        this.emit({ t: 'surgeFailed', area: id, x: this.surge.x, z: this.surge.z });
+        this.endSurge();
+      }
       // Coming back is a fresh arrival: the greeting wave opens the area again.
       this.waveTimers.delete(id);
     }
