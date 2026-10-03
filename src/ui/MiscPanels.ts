@@ -12,9 +12,11 @@ export abstract class SimplePanel {
     this.el = document.createElement('div');
     this.el.className = 'cw-plate cw-panel-float';
     this.el.setAttribute('role', 'dialog');
-    this.el.setAttribute('aria-label', title);
+    // 'Name|Menu name · key' puts the menu button's plain name beside the lore name, so the button and the panel read as one thing.
+    const [name, aka] = title.split('|');
+    this.el.setAttribute('aria-label', name);
     this.el.innerHTML = `
-      <div class="cw-panel-head"><h2 class="cw-title">${title}</h2><button class="cw-icon-btn" data-close aria-label="Close">✕</button></div>
+      <div class="cw-panel-head"><h2 class="cw-title">${name}${aka ? `<span class="aka">${aka}</span>` : ''}</h2><button class="cw-icon-btn" data-close aria-label="Close">✕</button></div>
       ${body}`;
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
     this.root.appendChild(this.el);
@@ -196,7 +198,7 @@ export class WaystonePanel extends SimplePanel {
     if (this.el) return;
     const areas = this.unlocked();
     this.mount(
-      'Waystones',
+      'Waystones|Map · M',
       `<div class="cw-waystones">${areas
         .map((a) => `<button class="cw-button small" data-go="${a}"><span>${AREAS[a].name}</span><span class="cw-hint-text">Lv ${AREAS[a].level}</span></button>`)
         .join('')}</div>

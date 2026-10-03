@@ -100,7 +100,7 @@ export class InventoryPanel {
     this.el.setAttribute('aria-label', 'Reliquary');
     this.el.innerHTML = `
       <div class="cw-panel-head">
-        <h2 class="cw-title">Reliquary</h2>
+        <h2 class="cw-title">Reliquary<span class="aka">Bag · I</span></h2>
         <button class="cw-icon-btn" data-close aria-label="Close reliquary">✕</button>
       </div>
       <div class="cw-stats-line" data-stats></div>

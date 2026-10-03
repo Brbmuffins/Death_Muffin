@@ -66,7 +66,7 @@ export class ForgePanel {
     this.el.setAttribute('aria-label', title);
     this.el.innerHTML = `
       <div class="cw-panel-head">
-        <h2 class="cw-title">${title}</h2>
+        <h2 class="cw-title">${title}${st ? '' : '<span class="aka">Craft · C</span>'}</h2>
         <button class="cw-icon-btn" data-close aria-label="Close ${title}">✕</button>
       </div>
       ${st ? `<p class="cw-hint-text">${st.blurb}</p>` : ''}

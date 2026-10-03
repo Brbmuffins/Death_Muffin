@@ -929,6 +929,7 @@ button { font-family: inherit; }
 .cw-class-panel .cw-disc[aria-current="true"] { border-color: var(--disc-color); }
 .cw-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--cw-border); }
 .cw-panel-head .cw-title { font-size: 24px; }
+.cw-title .aka { margin-left: 12px; font-family: var(--cw-font-body); font-size: 12px; font-weight: 400; letter-spacing: 0.08em; color: var(--cw-text-muted); white-space: nowrap; }
 .cw-afk-status { display: flex; gap: 16px; align-items: center; justify-content: space-between; padding: 12px 14px; border: 1px solid var(--cw-border); background: var(--cw-inset); color: var(--cw-bone-100); }
 .cw-afk-controls { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 .cw-afk-controls select { flex: 1; min-width: 140px; max-width: 100%; min-height: 40px; background: var(--cw-inset); color: var(--cw-bone-100); padding: 8px 10px; border: 1px solid var(--cw-border); }
