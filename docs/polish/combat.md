@@ -54,10 +54,20 @@ kills per minute 112.3 -> 113.5, damage taken per minute 66.8% -> 65.3% of max h
 
 ## Performance
 
-`DM_QA_AREAS=graves,nave node tools/qa/fixed-fight-perf.cjs` before (a3081d6) and after: see the table in the hand-off report
-(draw calls and triangles are unchanged by construction: every visual change here is a larger decal radius, one extra number
-sprite, or one sound call). The sim changes add one distance loop per damage number (a few hundred comparisons) and, only when a
-thrall has stalled, one grid search at most every 1.5 s per thrall.
+`DM_QA_AREAS=graves,nave node tools/qa/fixed-fight-perf.cjs` (software GL, loaded VPS: judge calls and tris; ms is noise, it swings both ways), a3081d6 -> this branch:
+
+| Quality / area | calls | tris | updateMs |
+|---|---|---|---|
+| high graves | 167 -> 140 | 315,516 -> 275,699 | 2.19 -> 1.91 |
+| high nave | 140 -> 140 | 263,946 -> 259,216 | 1.70 -> 2.87 |
+| low graves | 75 -> 76 | 114,740 -> 118,645 | 6.27 -> 1.95 |
+| low nave | 83 -> 79 | 93,062 -> 92,614 | 2.49 -> 2.78 |
+
+Scene content differs run to run (skinned counts moved), so the small calls/tris differences are the scene, not the code. By construction
+nothing here adds draw calls, materials or effect variants: telegraph changes are larger decal radii on existing decals, plus one
+floating-text call for absorbed blows and one `audio.play` for a killed thrall. Sim cost: a thrall's seat rank is a plain loop (no array),
+a damage number does one pass over the enemy map (only when a number is spawned, not per frame), and a stalled thrall may run one grid
+search at most every 1.5 s.
 
 ## Owner decisions
 
