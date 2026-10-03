@@ -98,3 +98,35 @@ test('save-progress: a null, blank or non-numeric field keeps the stored value i
   // level, experience, gold, str, agi, int, vit, id
   assert.deepEqual(update.params, [7, 42, 900, 6, 5, 5, 10, 1]);
 });
+
+// ── legacy loot routes: a full bag stays full ───────────────────────────────────────────────────────────────────────────
+
+/** Bag slots 0-47 full, plus a worn helmet in 100 and a belt tool in 110; the next "free" index past the bag must NOT be used. */
+const fullBag = () => [...Array.from({ length: 48 }, (_, i) => ({ slot_index: i })), { slot_index: 100 }, { slot_index: 110 }];
+
+test('loot/drop: a full bag drops nothing instead of writing past the bag into the reserved slots', async () => {
+  const f = fakePool({ onQuery: (sql) => {
+    if (/FROM loot_tables/.test(sql)) return [[{ new_item_id: 'copper_bar', weight: 1, min_quantity: 1, max_quantity: 1 }]];
+    if (/SELECT slot_index FROM inventory/.test(sql)) return [fullBag()];
+  } });
+  const r = await loadServer({ pool: f.pool }).call('POST /api/loot/drop', { body: { characterId: 1, sourceId: 'grunt' } });
+  assert.equal(r.json.success, true);
+  assert.equal(r.json.data.dropped, null);
+  assert.deepEqual(f.log.filter((q) => /INSERT INTO inventory/.test(q.sql)), [], 'nothing was inserted');
+});
+
+test('loot/roll: a full bag stores no items (gold is still paid)', async () => {
+  const realRandom = Math.random;
+  Math.random = () => 0.99; // the last grunt entry: one copper_bar
+  try {
+    const f = fakePool({ onQuery: (sql) => {
+      if (/SELECT slot_index FROM inventory/.test(sql)) return [fullBag()];
+    } });
+    const r = await loadServer({ pool: f.pool }).call('POST /api/loot/roll', { body: { characterId: 1, enemyType: 'grunt' } });
+    assert.equal(r.json.success, true);
+    assert.deepEqual(f.log.filter((q) => /INSERT INTO inventory/.test(q.sql)), [], 'nothing was inserted');
+    assert.ok(f.log.some((q) => /UPDATE characters SET gold = gold \+ \?/.test(q.sql)), 'gold still paid');
+  } finally {
+    Math.random = realRandom;
+  }
+});

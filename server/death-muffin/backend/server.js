@@ -1617,7 +1617,7 @@ app.post('/api/loot/roll', requireJWT, async (req, res) => {
 
       for (const drop of drops) {
         let slot = null;
-        for (let i = 0; i < 200; i++) { if (!usedSlots.has(i)) { slot = i; usedSlots.add(i); break; } }
+        for (let i = 0; i < BAG_SLOTS; i++) { if (!usedSlots.has(i)) { slot = i; usedSlots.add(i); break; } } // the bag only: 100+ are equipment, belt, kit and rune rows
         if (slot === null) break; // inventory full — skip remaining drops silently
         await conn.execute(
           'INSERT INTO inventory (character_id, slot_index, item_id, quantity) VALUES (?, ?, ?, ?)',
@@ -1668,7 +1668,7 @@ async function rollDbLoot(conn, charId, sourceId) {
   );
   const usedSlots = new Set(invRows.map(r => r.slot_index));
   let slot = null;
-  for (let i = 0; i < 200; i++) { if (!usedSlots.has(i)) { slot = i; break; } }
+  for (let i = 0; i < BAG_SLOTS; i++) { if (!usedSlots.has(i)) { slot = i; break; } } // the bag only: 100+ are equipment, belt, kit and rune rows
   if (slot === null) return null;
 
   const qty = picked.min_quantity + Math.floor(Math.random() * (picked.max_quantity - picked.min_quantity + 1));
