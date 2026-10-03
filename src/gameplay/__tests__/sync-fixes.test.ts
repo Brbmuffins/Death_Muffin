@@ -179,3 +179,11 @@ describe('sync fixes: inventory', () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe('sync fixes: relay', () => {
+  it('the relay accepts a hit naming as many ids as the world enemy cap', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { GLOBAL_ENEMY_CAP } = await import('../../content/areas');
+    expect(readFileSync('server/realtime/server.js', 'utf8')).toContain(`hitIds: ${GLOBAL_ENEMY_CAP},`);
+  });
+});
