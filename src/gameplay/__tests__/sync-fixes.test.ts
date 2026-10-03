@@ -122,3 +122,35 @@ describe('sync fixes: progression', () => {
     p.dispose();
   });
 });
+
+describe('sync fixes: gathering', () => {
+  it('a keepalive flush on page close sends cycles queued while a batch was in flight', async () => {
+    const { GatherLoop, Skills } = await import('../Gathering');
+    const { NODES, actionMs } = await import('../gatheringRules');
+    let now = 0;
+    const node = { id: 'acre_1', type: 'coffin_oak', x: 0, z: 0, area: 'acre', rot: 0 } as never;
+    const player = { x: 1.35, z: 0, path: [] as unknown[], get hasPath() { return false; }, moving: false, moveAlong() {}, face() {}, stop() {} };
+    const releases: Array<() => void> = [];
+    const post = vi.fn((type: string, actions: number) => new Promise((resolve) => {
+      releases.push(() => resolve({ node: type, skill: NODES[type].skill, accepted: actions, successes: actions, xp: 0, gold: 0, items: [], rejected: [], leveledUp: false, skills: [] }));
+    }));
+    const loop = new GatherLoop({
+      now: () => now, rand: () => 0, nav: { blocked: () => false, findPath: () => [] }, player,
+      nodes: () => [{ ...(node as object), remaining: 1 }] as never, live: () => true, bagFits: () => true, sendSuccess: vi.fn(),
+      post: post as never, onCycle: vi.fn(), onReply: vi.fn(), onStop: vi.fn(), onError: vi.fn(), autoEnabled: () => true,
+    }, new Skills([{ profession_id: 'woodcutting', skill_level: 1, skill_xp: 0 }]));
+    const tick = (ms: number) => { for (let t = 0; t < ms; t += 100) { now += 100; loop.update(0.1); } };
+    loop.start(node);
+    tick(actionMs(NODES.coffin_oak) * 2 + 50);
+    const first = loop.flush(); // two cycles out
+    await settle();
+    tick(actionMs(NODES.coffin_oak) * 3); // three more queue up behind it
+    const closing = loop.flush(true); // pagehide
+    await settle();
+    expect(post).toHaveBeenCalledTimes(2);
+    expect(post.mock.calls[1][1]).toBe(3);
+    expect(post.mock.calls[1][2]).toBe(true);
+    releases.forEach((r) => r());
+    await Promise.all([first, closing]);
+  });
+});
