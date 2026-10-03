@@ -212,7 +212,7 @@ export class AbilitySystem {
     const def = ABILITIES[id];
     if (def.targeting !== 'enemy') return 0;
     const pad = t.boss ? BOSS_RADIUS : 0.4;
-    return Math.max(0, Math.hypot(t.x - p.x, t.z - p.z) - (abilityRange(id, def.range, p.loadout) + pad));
+    return Math.max(0, Math.hypot(t.x - p.x, t.z - p.z) - (abilityRange(id, def.range, p.loadout, !!t.boss) + pad));
   }
 
   cast(id: AbilityId, target: CastTarget, now: number): CastResult {
@@ -510,7 +510,7 @@ export class AbilitySystem {
     for (const e of this.ctx.enemies().values()) if (!gone(e)) pool.push(e);
     const struck = reapTargets({ x: p.x, z: p.z }, { x: t.x, z: t.z }, pool);
     const b = this.ctx.boss();
-    const hitBoss = b.active && reapTargets({ x: p.x, z: p.z }, { x: t.x, z: t.z }, [{ x: b.x, z: b.z, radius: BOSS_RADIUS }]).length > 0;
+    const hitBoss = b.active && reapTargets({ x: p.x, z: p.z }, { x: t.x, z: t.z }, [{ x: b.x, z: b.z, radius: BOSS_RADIUS }], T.bossReach).length > 0;
     const now = this.ctx.now();
     if (this.reaped.size > 64) for (const [id, until] of this.reaped) if (until < now) this.reaped.delete(id);
     // The boss takes a slot of the three if it is nearer than the last enemy; keep the cap honest.
@@ -528,6 +528,12 @@ export class AbilitySystem {
     if (hitBoss) {
       this.ctx.number(b.x, b.z, dmg, 'hit');
       effects.flash({ x: b.x, y: 1.6, z: b.z, color: N.impact, size: 1.2, duration: 0.18 });
+      // Past the normal arc (the boss reach), the blade's crescent is drawn where it meets the boss's body, so the long reach reads.
+      const bd = Math.hypot(b.x - p.x, b.z - p.z);
+      if (bd - BOSS_RADIUS > T.reach * 0.6) {
+        const at = Math.max(1.3, bd - BOSS_RADIUS);
+        effects.decal({ tex: fxImage('crescent'), color: N.trail, x: p.x + dx * at, z: p.z + dz * at, r: 1.6, rot: Math.atan2(dx, dz), duration: 0.28, opacity: 0.85, growFrom: 0.6, fadeOut: 0.22 });
+      }
     }
     const landed = hits.length + (hitBoss ? 1 : 0);
     if (landed) p.essence = Math.min(p.stats.maxEssence, p.essence + T.essencePerHit * landed + (rune === 'rune_marrow_tap' ? RUNE_TUNING.marrowTap.essenceBonus : 0));

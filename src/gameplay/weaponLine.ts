@@ -90,9 +90,9 @@ export function resolveWeaponLoadout(
 }
 
 /** Reach of an ability for this loadout: a scythe's primary is a short arc, a staff's needle flies farther. */
-export function abilityRange(id: string, baseRange: number, l: WeaponLoadout): number {
+export function abilityRange(id: string, baseRange: number, l: WeaponLoadout, boss = false): number {
   if (id !== 'bone_needle') return baseRange;
-  if (l.reap) return T.scythe.reach;
+  if (l.reap) return boss ? T.scythe.bossReach : T.scythe.reach;
   return baseRange * l.needleRangeMult;
 }
 
@@ -116,6 +116,7 @@ export function reapTargets<E extends { x: number; z: number; radius: number }>(
   caster: { x: number; z: number },
   aim: { x: number; z: number },
   candidates: Iterable<E>,
+  reach: number = T.scythe.reach,
 ): E[] {
   let dx = aim.x - caster.x;
   let dz = aim.z - caster.z;
@@ -128,7 +129,7 @@ export function reapTargets<E extends { x: number; z: number; radius: number }>(
     const rx = e.x - caster.x;
     const rz = e.z - caster.z;
     const d = Math.hypot(rx, rz);
-    if (d > T.scythe.reach + e.radius) continue;
+    if (d > reach + e.radius) continue;
     if (d >= e.radius && (rx * dx + rz * dz) / d < cosMax) continue;
     hits.push({ e, d });
   }

@@ -993,3 +993,14 @@ Unchanged inside seed noise, as expected: the rolls differ per range, and the bo
 
 ### Legendary sets, re-measured (`legendaryReport.ts`, kit none, 4 seeds, Nave and Sanctum, intended/push/max, mechanics and set multipliers only, 24 rows)
 Mean clear speed **x1.15**, mean damage taken **x0.92** (LEGENDARY-SETS.md quoted x1.17 / x0.86 after the 2 Oct tuning, an earlier pass x1.13). Still true: the full legendary set is nowhere near the +40-80% target in the sim (the power score puts the same bonus lines at +24-47%, a judgment value for mechanics the bot does not use well). By band: intended x1.0-1.1 (survival gains on Mourner/Sanctum), push x1.07-1.41, max x0.86-1.62; the Ossuary reads about flat on clear speed (its mechanics are defensive; its damage taken is noisy). Not retuned here: the task is affix ranges, and raising a legendary is a content/owner call. If the owner wants legendaries to feel like a +40% jump, the lever is `setBonuses.ts` (the mechanic strengths), not affixes. Affix tuning does not touch this: affixes stay far below a legendary set either way.
+
+## Scythe boss reach (3 Oct 2026, owner decision)
+The scythe's arc reaches **4 m against a boss** (3 m against everything else), so a reaper can fight from the edge of boss rings and cones. The boss bot's Fen stand-off now follows that reach (it hard-coded 3.5 m). `BALANCE_SEEDS=8 BALANCE_BOSS=prelate,mire,saint,congregation BALANCE_KIT=auto BALANCE_WEAPONS=scythe BALANCE_DODGE=yes npm run balance:boss`, 32 rows (4 necromancers x 2 bands):
+
+| Boss reach | wipes (of 256 runs) | sum of boss damage taken (% max HP) | sum of kill times (s) |
+|---|---|---|---|
+| 3 m (before) | 12 | 3,858 | 3,589 |
+| **4 m (shipped)** | **5** | **2,942** | **3,425** |
+| 4.5 m | 7 | 2,849 | 3,375 |
+
+Biggest moves: Prelate Mourner (intended) 7/8 -> 3/8 wipes; Mire Mother 5 wipes -> 0; Plague Saint damage taken roughly halved. The scythe is still about 1.4x slower than a staff on every boss: that is the style's trade (souls and essence from the arc), not changed here.

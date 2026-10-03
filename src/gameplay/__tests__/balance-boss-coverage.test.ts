@@ -19,12 +19,12 @@ describe('weapon play-styles in a boss fight', () => {
     expect(new Set(Object.values(rows).map((v) => Math.round(v))).size).toBe(4);
   });
 
-  it('a scythe has to stand at the boss: it takes more damage than a staff at range', () => {
+  it('a scythe fights closer than a staff: slower, and never safer (with the 4 m boss reach it can match a staff that dodges)', () => {
     const staff = runBossFight(at('abbess', { kitOverride: { main: 'staff' } }));
     const scythe = runBossFight(at('abbess', { kitOverride: { main: 'scythe' } }));
     expect(scythe.outcome).toBe('win');
     expect(scythe.seconds).toBeGreaterThan(staff.seconds);
-    expect(scythe.dmgPctPerMin).toBeGreaterThan(staff.dmgPctPerMin);
+    expect(scythe.dmgPctPerMin).toBeGreaterThanOrEqual(staff.dmgPctPerMin);
   });
 
   it('the scythe reaps the boss (it deals real damage, not a no-op arc)', () => {

@@ -649,7 +649,7 @@ export const CODEX_WEAPONS: WeaponEntry[] = [
     change: `Bone Needle flies ${pc(WT.staff.needleRangeMult - 1)} farther and pierces ${WT.staff.pierce} extra enemy behind its target (${pc(WT.staff.pierceDamageMult)} damage). Passive: +${pc(WT.staff.spellDamageMult - 1)} spell damage.`,
     tip: 'Line enemies up: a needle down a corridor hits two. The spell damage bonus lifts every rite, and shows in your Spell stat.' },
   { kind: 'scythe', name: NECRO_KIND_LABEL.scythe, hands: 'Two-handed', suits: 'Gravecaller, fighting beside thralls',
-    change: `Your left click becomes a close reaping arc: ${WT.scythe.arcDeg} degrees, ${WT.scythe.reach} m, up to ${WT.scythe.maxHits} enemies, ${pc(WT.scythe.damageMult)} of a needle each. Each target gives back ${WT.scythe.essencePerHit} essence. Kills the arc delivers give +${WT.scythe.soulsPerKill} soul.`,
+    change: `Your left click becomes a close reaping arc: ${WT.scythe.arcDeg} degrees, ${WT.scythe.reach} m (${WT.scythe.bossReach} m against a boss, so you can reap from the edge of its rings and cones), up to ${WT.scythe.maxHits} enemies, ${pc(WT.scythe.damageMult)} of a needle each. Each target gives back ${WT.scythe.essencePerHit} essence. Kills the arc delivers give +${WT.scythe.soulsPerKill} soul.`,
     tip: 'Stand in the thick of it with your thralls. Filling the Soul Harvest meter sooner makes Marrow Spear, Miasma and Litany free and larger.' },
   { kind: 'wand', name: NECRO_KIND_LABEL.wand, hands: 'One-handed', suits: 'Any class, paired with an off-hand',
     change: `Bone Needle fires ${pc(WT.wand.cadenceMult - 1)} faster and strikes ${pc(1 - WT.wand.damageMult)} softer.`,

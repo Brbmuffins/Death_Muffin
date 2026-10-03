@@ -391,7 +391,7 @@ Each discipline has two five-piece armor sets with matching icons and visible co
 | Weapon | Hands | Left click becomes | Passive |
 |---|---|---|---|
 | **Staff** | Two | Needle reaches 25% farther and pierces one more enemy | +10% spell damage |
-| **Scythe** | Two | A close reaping arc (100 degrees, 3 m, up to 3 enemies) | Kills in the arc give +1 soul toward Soul Harvest |
+| **Scythe** | Two | A close reaping arc (100 degrees, 3 m, 4 m against a boss, up to 3 enemies) | Kills in the arc give +1 soul toward Soul Harvest |
 | **Wand** | One | Needle fires 30% faster and strikes 15% softer | none: pair it with an off-hand |
 | **Ritual Sickle** | One | Needle leaves one Withered stack | Exhume returns 20% of its essence |
 | **Skull Focus** | Off-hand | none | Gold tier and above: +1 thrall cap |
