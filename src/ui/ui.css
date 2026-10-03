@@ -1157,6 +1157,8 @@ button { font-family: inherit; }
 }
 /* The area / level banner is big and brief: a calm card on screen steps aside for those three seconds instead of sitting under it (a fight-time card stays: it matters more). */
 body:has(.hud-banner.show) .cw-tip:not(.dragging):not([data-kind='urgent']):not([data-kind='danger']) { opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
+/* Desktop: a big panel opens over the left of the screen at 1280 wide, where the card sits. A card the player did not ask for (calm / fight-time) steps aside the moment a panel opens, instead of hiding its title and tabs until the cadence sends it back (6 s). Hurt? and the panel's own counsel (asked) stay. */
+body:not(.touch):has(.cw-panel-float) .cw-tip:not(.dragging):not([data-kind='urgent']):not([data-kind='asked']) { opacity: 0; pointer-events: none; transition: opacity 0.15s ease; }
 .cw-tip.out { opacity: 0; transform: translateY(6px); transition: opacity 0.2s ease, transform 0.2s ease; pointer-events: none; }
 @keyframes tip-in { from { opacity: 0; } }
 .cw-tip .kicker { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cw-spell-300); }
