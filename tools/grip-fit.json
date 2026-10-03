@@ -1,0 +1,178 @@
+{
+ "hero_ossuary": {
+  "staff": {
+   "out": 0,
+   "fwd": 0,
+   "shift": 0.08,
+   "follow": 0.8
+  },
+  "scythe": {
+   "out": 0.1,
+   "fwd": 0.1,
+   "shift": 0.08,
+   "follow": 0.9
+  },
+  "wand": {
+   "out": 0.1,
+   "fwd": -0.2,
+   "shift": 0.04,
+   "follow": 0.9
+  },
+  "sickle": {
+   "out": 0.3,
+   "fwd": 0,
+   "shift": 0,
+   "follow": 0.8
+  },
+  "skull_focus": {
+   "out": 0.2,
+   "fwd": 0,
+   "shift": 0.04,
+   "follow": 0.9
+  },
+  "grimoire": {
+   "out": 0.1,
+   "fwd": 0,
+   "shift": 0.02,
+   "follow": 1
+  },
+  "mourning_bell": {
+   "out": 0.1,
+   "fwd": 0.1,
+   "shift": 0.04,
+   "follow": 0.8
+  }
+ },
+ "hero_gravecaller": {
+  "staff": {
+   "out": 0,
+   "fwd": 0,
+   "shift": 0.08,
+   "follow": 1
+  },
+  "scythe": {
+   "out": 0.1,
+   "fwd": 0,
+   "shift": 0.02,
+   "follow": 0.9
+  },
+  "wand": {
+   "out": 0,
+   "fwd": 0,
+   "shift": 0.04,
+   "follow": 0.8
+  },
+  "sickle": {
+   "out": 0.2,
+   "fwd": 0,
+   "shift": 0.04,
+   "follow": 0.9
+  },
+  "skull_focus": {
+   "out": 0.1,
+   "fwd": 0,
+   "shift": 0.04,
+   "follow": 0.8
+  },
+  "grimoire": {
+   "out": 0,
+   "fwd": 0.1,
+   "shift": 0.02,
+   "follow": 1
+  },
+  "mourning_bell": {
+   "out": 0,
+   "fwd": -0.1,
+   "shift": 0,
+   "follow": 1
+  }
+ },
+ "hero_mourner": {
+  "staff": {
+   "out": 0,
+   "fwd": 0,
+   "shift": 0.04,
+   "follow": 0.9
+  },
+  "scythe": {
+   "out": 0,
+   "fwd": 0,
+   "shift": 0.06,
+   "follow": 0.8
+  },
+  "wand": {
+   "out": 0.1,
+   "fwd": 0,
+   "shift": 0.02,
+   "follow": 0.8
+  },
+  "sickle": {
+   "out": 0.2,
+   "fwd": -0.2,
+   "shift": 0.04,
+   "follow": 0.9
+  },
+  "skull_focus": {
+   "out": 0.3,
+   "fwd": 0,
+   "shift": 0.04,
+   "follow": 0.8
+  },
+  "grimoire": {
+   "out": 0.2,
+   "fwd": 0,
+   "shift": 0.02,
+   "follow": 0.9
+  },
+  "mourning_bell": {
+   "out": -0.1,
+   "fwd": 0,
+   "shift": 0.02,
+   "follow": 1
+  }
+ },
+ "hero_rotweaver": {
+  "staff": {
+   "out": -0.1,
+   "fwd": 0,
+   "shift": 0.06,
+   "follow": 0.8
+  },
+  "scythe": {
+   "out": 0,
+   "fwd": 0,
+   "shift": 0,
+   "follow": 1
+  },
+  "wand": {
+   "out": 0,
+   "fwd": -0.1,
+   "shift": 0.04,
+   "follow": 0.9
+  },
+  "sickle": {
+   "out": 0.1,
+   "fwd": -0.1,
+   "shift": 0.02,
+   "follow": 0.8
+  },
+  "skull_focus": {
+   "out": 0.1,
+   "fwd": 0.2,
+   "shift": 0.04,
+   "follow": 0.9
+  },
+  "grimoire": {
+   "out": 0,
+   "fwd": 0,
+   "shift": 0.06,
+   "follow": 1
+  },
+  "mourning_bell": {
+   "out": 0,
+   "fwd": 0,
+   "shift": 0,
+   "follow": 0.8
+  }
+ }
+}
