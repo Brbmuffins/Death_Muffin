@@ -102,8 +102,8 @@ With a kit the gear-pass picture is unchanged: typical + max pushes deaths to 0.
 and those grounds are level 30 and 45 (same as table 2 of the gear pass). The remaining "gear trivialises max Wave Speed" gap is the owner decision in ROADMAP (base item stats); not touched.
 
 ### 2. Area bosses (`npm run balance:boss`, `BALANCE_BOSS=<id>`, `BALANCE_KIT=none|auto`; 6 seeds x 4 necromancers, intended = arrival level, geared = +3 levels)
-The boss harness now wears gear kits (`kit` on `BossRun`; `auto` = progress at intended, typical at geared; set bonuses and the skull-focus thrall bonus are folded as in the farming harness; staff / scythe / wand
-play-style is not modelled in the boss bot). It also had a hole: the Mire Mother's nav area (Fen) was not unlocked, so the bot never reached her (0 damage dealt or taken, every row a "timeout").
+The boss harness now wears gear kits (`kit` on `BossRun`; `auto` = progress at intended, typical at geared; set bonuses and the skull-focus thrall bonus are folded as in the farming harness; the staff / scythe / wand
+play-style was not modelled in the boss bot at the time; it is now, see "Boss bot coverage"). It also had a hole: the Mire Mother's nav area (Fen) was not unlocked, so the bot never reached her (0 damage dealt or taken, every row a "timeout").
 
 Kit `none`, dodging, intended band (kill time of winning runs, min HP across seeds); "no dodge" = never leaves a telegraph.
 
@@ -142,8 +142,109 @@ BALANCE_BOSS=mire BALANCE_SEEDS=6 BALANCE_KIT=auto npm run balance:boss      # e
 
 ### Unfinished
 - Bosses are not rebalanced for gear (waiting on the base-stat decision); see the +35% note above.
-- The boss bot does not use the staff / scythe / wand play-style, the Litany barrier or the open-water mechanics of the Fen; human playtest of the Mire Mother and the Abbess is still needed.
+- ~~The boss bot does not use the staff / scythe / wand play-style, the Litany barrier or the open-water mechanics of the Fen~~: done 2026-10-03 ("Boss bot coverage" below). Still open: a human playtest of the Mire Mother, the Abbess and a scythe Mourner; the Mire Mother's phase-3 rite is not modelled.
 - The Fen with a kit is the only ground that is still comfortably dangerous; that is the base-stat story, not a number to tune here.
+
+## Boss bot coverage (2026-10-03, 8 seeds, solo, Medium, no migration)
+
+Until now the boss bot ignored the necromancer weapon line, the Litany barrier and the Fen's open water, so boss numbers for those builds were unmeasured. The bot (`src/gameplay/balance/boss.ts`) now plays them through the
+real code paths (`weaponLine.ts` helpers, the real `Player.takeDamage`, `content/fen.ts` `bogMult`/`FEN_HUMMOCKS`), not copies of the rules:
+
+| What | How the bot does it |
+|---|---|
+| Staff | Needle reach x1.25, +10% spell power (`deriveStats`), pierces the add behind its target (`pierceTargets`, x0.8). A needle that hits the boss itself does not pierce, as in play. |
+| Scythe | The left click is the reaping arc (`reapTargets`, 3 m + body, up to 3 targets, the boss takes one slot, 520 ms swing, +4 essence per target). The scythe bot walks up to the boss and stays there; it dodges telegraphs like any dodger. |
+| Wand | Needle cadence x1.3, damage x0.85 (`abilityCooldownMs`). |
+| Sickle | Needle withers adds (not the boss, as in play); Exhume refunds essence. |
+| Grimoire | Rite cooldowns shortened (`abilityCooldownMs`); skull focus thrall bonus was already folded. |
+| Litany barrier | Damage goes through a real `Player` body: Bone Ward (capped), Colossus guard, then the barrier before health; the bot raises barrier per body consumed (as `AbilitySystem.onLitany`) and it melts at 4% max health/s. New `barrierMadePct` / `barrierAbsorbedPct` on `BossResult`, `barrier%` in the report. |
+| Open water | Wading slows the bot as in `WorldScene`: the Fen bog (hummocks dry, flood shrinks them and deepens the slow, `bogMult`) and the Congregation's nave water from phase 2. Roots (hands, grasps, burial) stop movement, casting continues. A careful (dodging) bot in the Fen stands on a dry hummock at casting range (or scythe reach) and hops off the one the ripple ring is drawn on; a careless bot wades. `wadingPct`, `rootedS`, `wade%`, `rooted s` report it. |
+
+Not modelled: the Mire Mother's phase-3 rite (the bot spends corpses as it always did, so the rite is usually starved and she staggers), hummock-hopping for a non-dodging bot, Colossus Litany Shatter, off-hand mourning bell heals, essence flasks/brews. The barrier is cast on the bot's old timing (boss within 7 m, 3+ bodies), not ahead of a known telegraph, so a dodger often lets it melt unused (0-11% of max health absorbed); a human who times it will get more.
+
+### Reproduce
+```bash
+BALANCE_BOSS=all BALANCE_SEEDS=8 BALANCE_KIT=typical BALANCE_WEAPONS=staff,scythe,wand,sickle npm run balance:boss     # every boss x band x discipline x weapon x dodge/no dodge, with a deaths column
+BALANCE_BOSS=mire,saint BALANCE_KIT=auto BALANCE_BANDS=intended BALANCE_WEAPONS=staff,scythe BALANCE_DODGE=yes npm run balance:boss   # auto = progress kit at intended, typical at geared
+```
+`BALANCE_WEAPONS` (`kit` = the discipline's own weapon), `BALANCE_BOSS` (`all`, a list, or `--boss id`) and `BALANCE_DODGE` are new; `deaths` = runs ending in a wipe (a solo death resets the boss). Weapons are worn through `BossRun.kitOverride`, so they need a kit other than `none`; with the
+`progress` kit the Graves has no earlier weapon tier, so the Gravedigger rows are identical for every weapon.
+
+### Results: kill time in seconds of winning runs, **after** (before), dodging bot; `(Nd)` = wipes out of 8, `x` = it mostly wipes
+Bold = the new bot moved it. "Before" is the same kit and weapon, played the old way (every weapon fought as the plain needle). `progress` kit at the intended band (the band future tuning should target):
+
+| Boss | Discipline | staff | scythe | wand | sickle |
+|---|---|---|---|---|---|
+| Gravedigger | Ossuary | 156 | 156 | 156 | 156 |
+| Gravedigger | Gravecaller | 121 | 121 | 121 | 121 |
+| Gravedigger | Mourner | 158 | 158 | 158 | 158 |
+| Gravedigger | Rotweaver | 142 | 142 | 142 | 142 |
+| Abbess | Ossuary | 122 | **193** (144) | **136** (151) | 151 |
+| Abbess | Gravecaller | 109 | **153** (129) | **119** (132) | **131** (132) |
+| Abbess | Mourner | 120 | **191** (142) | **130** (144) | 144 |
+| Abbess | Rotweaver | 97 | **150** (112) | **100** (110) | **107** (110) |
+| Congregation | Ossuary | **87** (94) | **130** (103) | **101** (109) | 110 |
+| Congregation | Gravecaller | **73** (77) | **92** (86) | **79** (83) | 85 |
+| Congregation | Mourner | **85** (91) | **123** (101) | **93** (99) | 100 |
+| Congregation | Rotweaver | **80** (84) | **113** (94) | **85** (91) | **90** (91) |
+| Prelate | Ossuary | 93 | **138** (105) | **102** (110) | 109 |
+| Prelate | Gravecaller | 77 | **103** (88) | **80** (86) | **86** (87) |
+| Prelate | Mourner | **88** (89) | **x (7d)** (101) | **92** (98) | 99 |
+| Prelate | Rotweaver | **81** (80) | **112** (91) | **80** (87) | **86** (87) |
+| Saint | Ossuary | 92 | **169** (104) | **96** (115) | 111 |
+| Saint | Gravecaller | 76 | **117** (85) | **69** (77) | 80 |
+| Saint | Mourner | **87** (88) | **165** (96) | **93** (98) | **102** (100) |
+| Saint | Rotweaver | 77 | **117** (85) | **73** (84) | **80** (83) |
+| Regent | Ossuary | 84 | **140** (94) | **91** (98) | 99 |
+| Regent | Gravecaller | 75 | **129** (84) | **73** (78) | 78 |
+| Regent | Mourner | 81 | **139** (92) | **84** (91) | 92 |
+| Regent | Rotweaver | 72 | **111** (80) | **72** (78) | **77** (79) |
+| Mire Mother | Ossuary | **123** (118) | **168** (138) | **124** (141) | 142 |
+| Mire Mother | Gravecaller | **72** (80) | **113** (88) | **74** (84) | **77** (84) |
+| Mire Mother | Mourner | **120** (118) | **164 (1d)** (134) | **119** (126) | **130 (1d)** (128) |
+| Mire Mother | Rotweaver | **93** (92) | **125** (109) | **93** (104) | **100** (106) |
+
+`typical` kit (completed first set + the area's weapon tier) at the geared band:
+
+| Boss | Discipline | staff | scythe | wand | sickle |
+|---|---|---|---|---|---|
+| Gravedigger | Ossuary | 46 | **62** (52) | **50** (52) | 52 |
+| Gravedigger | Gravecaller | 31 | **34** (33) | **31** (33) | 33 |
+| Gravedigger | Mourner | 45 | **63** (50) | **47** (50) | 50 |
+| Gravedigger | Rotweaver | 39 | **50** (44) | **39** (42) | 42 |
+| Abbess | Ossuary | 51 | **72** (57) | **55** (60) | **58** (60) |
+| Abbess | Gravecaller | 27 | **40** (30) | **28** (30) | **29** (30) |
+| Abbess | Mourner | 49 | **71** (55) | **50** (55) | **53** (55) |
+| Abbess | Rotweaver | 38 | **50** (43) | **39** (42) | **41** (42) |
+| Congregation | Ossuary | **51** (55) | **78** (63) | **61** (65) | 66 |
+| Congregation | Gravecaller | **39** (42) | **44** (47) | **41** (44) | 44 |
+| Congregation | Mourner | **48** (52) | **71** (59) | **53** (56) | **56** (57) |
+| Congregation | Rotweaver | **42** (44) | **58** (50) | **44** (47) | 47 |
+| Prelate | Ossuary | 68 | **95** (77) | **74** (80) | 80 |
+| Prelate | Gravecaller | **53** (54) | **54** (59) | **52** (56) | 56 |
+| Prelate | Mourner | **64** (65) | **87** (73) | **66** (71) | 72 |
+| Prelate | Rotweaver | 55 | **72** (61) | **55** (59) | **58** (59) |
+| Saint | Ossuary | 70 | **121** (79) | **75** (82) | 84 |
+| Saint | Gravecaller | 54 | **66** (62) | **53** (55) | 57 |
+| Saint | Mourner | 67 | **120** (79) | **70** (75) | 77 |
+| Saint | Rotweaver | 54 | **82** (61) | **54** (58) | **59** (62) |
+| Regent | Ossuary | 62 | **101** (71) | **69** (73) | 75 |
+| Regent | Gravecaller | 54 | **81** (60) | **51** (55) | 53 |
+| Regent | Mourner | 61 | **101** (68) | **62** (67) | 67 |
+| Regent | Rotweaver | 49 | **73** (56) | **49** (53) | **52** (54) |
+| Mire Mother | Ossuary | **122** (118) | **169** (136) | **121** (137) | 137 |
+| Mire Mother | Gravecaller | **78** (87) | **120** (91) | **90** (97) | **95** (97) |
+| Mire Mother | Mourner | **119** (116) | **163 (2d)** (131) | **122** (138) | **137** (138) |
+| Mire Mother | Rotweaver | 90 | **115 (3d)** (101) | **93** (103) | **98** (103) |
+
+### What changed and what it says
+1. **Staff and sickle are unchanged** (the old bot already got their stat effects; they only add pierce/wither on adds, which barely matter in a boss fight). **Wand gets 5-17% faster** (the cadence was never used) and the grimoire (Rotweaver's off-hand) gains 1-6% from shorter rites.
+2. **The scythe is the slowest style on every boss, 10-90% slower than the staff** (Saint Ossuary 92 -> 154 s with the typical kit, Prelate 98 -> 124 s). The scythe's cost is standing in melee (walking after a moving boss, leaving the telegraph and coming back, adds, maul/slam cones) and its needle dps being 16% lower than a staff's (1.15 / 0.52 s vs 1.0 / 0.38 s) with the cleave worth little on one boss. In exchange it takes 2-6x the damage: a careful scythe Mourner now **wipes 7 of 8 at the Prelate** with the progress kit, and 1-3 of 8 at the Mire Mother with the typical kit (geared band: Mourner 2/8, Rotweaver 3/8); the staff, wand and sickle never wipe there. A non-dodging scythe bot wipes at every boss with real mechanics (Gravedigger excepted); that row is a floor, not a player.
+3. **The Fen mattered more than the table said.** A dodger at the Mire Mother used to take 0-6% of max health a minute (min HP 62-97%); with wading, hands and hummock-hopping it still wins in about the same time (staff -1 to -8%) but dips to 33-90% (Ossuary 97 -> 50%, Mourner 64 -> 35%, `hurt%/m` 0-6 -> 2-11). The Mire Mother is still the longest fight (113-185 s with the typical kit at the intended band) and the only boss inside the 150-210 s target for the Ossuary and Mourner there; Gravecaller and Rotweaver (sickle line) kill her in 72-135 s.
+4. **Out of band (reported, not changed).** With the progress kit and a dodging bot the **Congregation, Prelate, Saint, Regent and the Gravecaller/Rotweaver Mire Mother die in 69-111 s against the 150-210 s target** with a staff, wand or sickle; the Abbess (97-151 s) and Gravedigger (121-158 s) sit at the low edge. This is the gear effect already recorded under "Polish round 2" and the owner's decision not to inflate boss HP against it (see the base-stats note at the end of this file), and it is the same for every weapon, so nothing here is weapon-specific. If the owner does want the progress-kit band at 150-210 s, the multipliers on `baseHp` would be about x1.4 (Abbess), x1.9 (Congregation), x1.9 (Prelate), x2.0 (Saint), x2.1 (Regent) and x1.6 (Mire Mother; Ossuary/Mourner x1.4, Gravecaller/Rotweaver x1.8-2.3) for staff/wand, which is a retune, not a number to nudge here. The scythe lands in or near the target (113-193 s) almost everywhere, because its melee cost is what the other styles lack.
+5. **Scythe at the Prelate and the Mire Mother is the one weapon-specific band problem**: lethal for a Mourner (no ward, no barrier, thin health) and for the Rotweaver at the Mire Mother. There is no obvious small number behind it (it is melee exposure to the maul/slam cones plus bog wading on the dodge), so it is an owner decision: let the scythe keep a boss-only advantage (a bigger boss share of the arc, or reach 3 -> 3.5 m, which the Codex text already calls "close"), or accept it as the high-risk style.
+
+Tests: `src/gameplay/__tests__/balance-boss-coverage.test.ts` (weapon styles differ, the scythe stands at the boss and pays for it, the barrier is raised and soaks damage, the Fen bot wades and is rooted when careless and hops when careful).
 
 ## Gear pass (2026-10-02, 8 seeds, 3 sim-minutes)
 
