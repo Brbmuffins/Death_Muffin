@@ -30,8 +30,10 @@ fs.mkdirSync(OUT, { recursive: true });
     const sc = (await import('/src/app/GameRuntime.ts')).getRuntime().view; const d = window.__cwDebug; const sim = d.sim();
     const m = sc.discipline.mods; const cap = m.thrallCap; const p = d.player;
     for (let i = 0; i < Math.min(cap, 15); i++) { const x = p.x - 2 + (i % 5) * 1.2, z = p.z + 1.6 + Math.floor(i / 5) * 1.2; sim.addCorpse(x, z, 'normal', 'robber', false, 0, 1, p.area); sim.applyExhume({ t: 'exhume', by: d.self(), x, z, r: 2, cap, kind: m.thrallKind, hp: 1e6, damage: 0, attackSpeedMult: 1 }); }
-    d.advance(2.5); d.freeze(true); d.zoom(0);
+    d.advance(2.5); d.freeze(true);
   });
+  // Bodies build a few per frame and compile shaders off-frame: give them real time to appear before the close-up.
+  for (let i = 0; i < 14; i++) { await page.evaluate(() => window.__cwDebug.advance(0.5, 1 / 60, true)); await page.waitForTimeout(700); }
   await page.evaluate((z) => { const d = window.__cwDebug; d.zoom(z); d.advance(3, 1 / 60, true); }, ZOOM);
   await page.waitForTimeout(500);
   const shot = async (name) => { await page.screenshot({ path: path.join(OUT, `legion-${TAG}-${name}.png`), timeout: 60000 }); };
