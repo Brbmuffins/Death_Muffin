@@ -780,9 +780,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.scope.add(this.progression.onSynced(() => this.onProgressSynced()));
     this.dataReady = Promise.all([inventoryReady, this.progression.connect()]);
     // The garden grows on the server's clock: say what is waiting on arrival, and as plots come ready.
-    void this.dataReady.then(() => window.setTimeout(() => void this.checkGarden(true), 4000));
+    void this.dataReady.then(() => this.scope.timeout(() => void this.checkGarden(true), 4000));
     this.scope.interval(() => void this.checkGarden(false), 60_000);
-    void this.dataReady.then(() => window.setTimeout(() => void this.checkLabor(true), 6000));
+    void this.dataReady.then(() => this.scope.timeout(() => void this.checkLabor(true), 6000));
     void this.dataReady.then(() => this.refreshContracts());
     this.scope.add(onSettingsChange(() => { this.guideDirty = true; }));
     void this.dataReady.then(() => getCosmetics(this.character.id)).then((v) => this.applyCosmetics(v.selected)).catch(() => {});
@@ -1352,6 +1352,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private async checkLabor(arrival: boolean) {
     try {
       const v = await getLabor(this.character.id);
+      if (this.scope.isDisposed) return; // the class changed while the request flew: this scene's views and HUD are gone
       this.laborers.apply(v);
       this.noteLabor(v);
       void this.refreshContracts();
@@ -1386,6 +1387,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private async checkGarden(arrival: boolean) {
     try {
       const v = await getGarden(this.character.id);
+      if (this.scope.isDisposed) return;
       const ready = v.plots.filter((p) => p.state === 'ready').length;
       const growing = v.plots.filter((p) => p.state === 'growing').length;
       if (ready > 0 && (arrival || ready > this.gardenReady)) {
