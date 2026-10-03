@@ -197,7 +197,8 @@ export abstract class BossBrain {
     if (s.fractureT > 0 && (s.fractureT -= dt) <= 0) s.fracture = 0;
     if (s.witheredT > 0 && s.withered > 0) {
       s.witheredT -= dt;
-      s.hp -= s.withered * s.witheredDps * dt;
+      // The Mire Mother is untouchable while sunk (damage() refuses her): rot ticks run out but do not bite.
+      if (s.state !== 'sunk') s.hp -= s.withered * s.witheredDps * dt;
       if (s.witheredT <= 0) s.withered = 0;
     }
 

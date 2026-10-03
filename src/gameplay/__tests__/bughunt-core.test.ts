@@ -3,6 +3,7 @@ import { Nav } from '../nav';
 import { WorldSim } from '../sim/WorldSim';
 import { mulberry32 } from '../rng';
 import { SURGE } from '../../content/enemies';
+import { BOSSES } from '../../content/bosses';
 
 function world(seed = 1) {
   const nav = new Nav();
@@ -40,5 +41,31 @@ describe('core bug hunt: burrowed ghoul', () => {
     for (let i = 0; i < 5; i++) sim.step(0.05);
     expect(g.state).toBe('burrow');
     expect(g.hp).toBe(hp);
+  });
+});
+
+describe('core bug hunt: Mire Mother under the water', () => {
+  it('Withered rot cannot hurt her while she is sunk', () => {
+    const { sim } = world(60);
+    const a = BOSSES.mire.arena;
+    const keep = () => sim.setPlayer({ id: 'p1', x: a.x + 8, z: a.z + 6, alive: true, area: 'fen', level: 60 });
+    keep();
+    sim.apply({ t: 'summonBoss', by: 'p1', boss: 'mire' });
+    let sunk = false;
+    for (let t = 0; t < 25 && !sunk; t += 0.05) {
+      keep();
+      sim.step(0.05);
+      sunk = sim.bossState.state === 'sunk';
+    }
+    expect(sunk).toBe(true);
+    const b = sim.bossState;
+    const hp = b.hp;
+    b.withered = 5;
+    b.witheredT = 5;
+    b.witheredDps = 1000;
+    keep();
+    sim.step(0.05);
+    expect(b.state).toBe('sunk');
+    expect(b.hp).toBe(hp);
   });
 });
