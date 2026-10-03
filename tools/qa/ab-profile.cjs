@@ -56,6 +56,18 @@ const DISC = process.env.DM_QA_DISC || 'Gravecaller', SECS = +(process.env.DM_QA
   const m0 = Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map((x) => [x.name, x.value]));
   await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
   await cdp.send('Profiler.start');
+  // DM_QA_CALLERS=1: count Object3D matrix updates per frame and sample who calls them (stack sampling, 1 in 32 calls).
+  let callers = null;
+  if (process.env.DM_QA_CALLERS === '1') callers = await page.evaluate(() => {
+    const d = window.__cwDebug; const O = Object.getPrototypeOf(Object.getPrototypeOf(d.scene)); const counts = {}; const who = {};
+    const names = ['updateMatrixWorld', 'updateWorldMatrix', 'getWorldQuaternion', 'getWorldPosition'];
+    const orig = {}; for (const n of names) { orig[n] = O[n]; counts[n] = 0; who[n] = {}; let k = 0; O[n] = function (...a) { counts[n]++; if ((k++ & 31) === 0) { const st = (new Error().stack || '').split('\n').slice(2, 5).map((l) => l.trim().replace(/\(?https?:\/\/[^/]+\//, '(').replace(/\?[^:]*:/, ':')).join(' < '); who[n][st] = (who[n][st] || 0) + 1; } return orig[n].apply(this, a); }; }
+    d.advance(2, 1 / 60, false);
+    for (const n of names) O[n] = orig[n];
+    const top = {}; for (const n of names) top[n] = { perFrame: counts[n] / 120, callers: Object.entries(who[n]).sort((x, y) => y[1] - x[1]).slice(0, 5).map(([k, v]) => [Math.round(v * 32 / 120 * 10) / 10, k]) };
+    return top;
+  });
+  if (callers) console.log('CALLERS', JSON.stringify(callers, null, 1));
   // N back-to-back windows of SECS seconds: per-window thread CPU time lets the summary take the median (the VPS is shared and noisy).
   const WINDOWS = +(process.env.DM_QA_WINDOWS || 5);
   const windows = []; const fr = { frames: 0, ms: 0, worst: 0 };
