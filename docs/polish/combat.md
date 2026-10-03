@@ -44,7 +44,7 @@ Severity: **H** you lose to it or it misleads every fight, **M** you notice it, 
 | Easy auto does not dodge boss telegraph rings or hymn cones | Needs a movement design; Easy auto only steps away from windups within 4 m |
 | Withered ticks and Miasma slow can still kill / affect a ghoul while it is burrowed | Intended per the code comments? unclear; leave until a playtest says it matters |
 | Command: Rend multiplies by legion size (five thralls on one clump cleave it five times at 2.5x) | Reads as the design ("your whole legion"); the harness shows no outlier |
-| Boss bots never use the staff / scythe / wand play-style, Litany barrier or Fen open-water mechanics | Unchanged from BALANCE.md "Unfinished" |
+| ~~Boss bots never use the staff / scythe / wand play-style, Litany barrier or Fen open-water mechanics~~ | Done 2026-10-03 on `claude/boss-bot-coverage` (BALANCE.md "Boss bot coverage"). New finding for the owner: the scythe is 10-90% slower than the staff on every boss and a careful scythe Mourner wipes 7 of 8 at the Prelate with the progress kit. Still not modelled: the Mire Mother's phase-3 rite |
 
 ## Balance
 
@@ -71,8 +71,10 @@ search at most every 1.5 s.
 
 ## Owner decisions
 
+
 1. Should Bone Needle runes work under a scythe? Marrow-Tap and Splinters could ride the arc (once per swing); the Volley has no
    scythe equivalent.
 2. Should buying Damage or a Legion tier refresh the thralls already standing (a one-time stat bump), or keep "applies to the next
    Exhume" and say so on the HUD?
 3. Should Easy auto learn to leave boss rings and cones (it would make Easy auto survivable at the Regent and the Congregation)?
+4. (3 Oct, boss bot) Scythe against bosses: it needs to stand in melee and takes 2-6x the damage of a staff for a slower kill; a Mourner with a scythe cannot beat the Prelate with the progress kit (7/8 wipes). Keep it as the high-risk style, or give it a boss-side advantage (reach 3 -> 3.5 m, or the arc hitting the boss twice)? Numbers in BALANCE.md "Boss bot coverage".
