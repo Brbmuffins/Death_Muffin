@@ -125,3 +125,10 @@ Screenshots that show the result: `docs/screenshots/first-hour-opening.webp`, `f
 - Narrow screens (< 1100 px) only got the existing sanity: the toast / card / panel rules above assume a desktop width.
 - A card that is cut short by a more urgent one (for example an Exhume card replaced by Hurt?) returns in full later; that can read as a repeat.
 
+
+## Owner decisions, 3 Oct 2026 (branch `claude/firsthour-owner-decisions`)
+
+- **Seals (polish item 11, resolved).** One formatter, `formatSealProgress(area, kills, need)` in `src/gameplay/guidance.ts`, writes "Ossuary seal: 0/300 kills" and "Warren seal: 0/150 kills" (the door is the last word of the hall's name). The Next line, the area text under the minimap and the Prior's "The seals" and advice answers all use it.
+- **SWAP (item 15, resolved).** No swap control under the hotbar until a Grimoire rite beyond the level-1 kit is learned (`swapReady`, `src/ui/firstHourRules.ts`; derived from level, so it needs no extra save). From then on a small swap icon sits where the text was, and the existing once-per-character "The Grimoire" tip (fixture updated) points at it. Slots under the bar show their key only before that.
+- **Class picker.** Gravecaller carries a "Recommended for your first run" badge. The picker is only shown to an account with no character, so the badge is always on in that screen; the in-world Class panel (changing class later) has none. All nine disciplines stay one click away.
+- Cost: no per-frame work (the hotbar rebuilds only when the rule flips), no new assets.

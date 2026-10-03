@@ -31,7 +31,7 @@ describe('suggested next step: the road', () => {
     const s = baseState({ area: 'graves', totalKills: 172, areaKills: { graves: 172 } });
     const n = nextSuggestion(s)!;
     expect(n.kind).toBe('seal');
-    expect(n.text).toBe('Hollow Graves: 172 / 300 to open the Marrow Ossuary');
+    expect(n.text).toBe('Ossuary seal: 172/300 kills');
   });
 
   it('honours the Swift Seals multiplier and caps the count at the need', () => {
@@ -302,7 +302,7 @@ describe('dialogue', () => {
     const a = adviceLines('prior', s).join(' ');
     expect(a).toMatch(/Marrow Ossuary|Drowned Nave|Gravedigger|Abbess/);
     const seals = topicLines('prior', 'seals', s).join(' ');
-    expect(seals).toContain('33 of 420');
+    expect(seals).toContain('Nave seal: 33/420 kills');
     const bosses = topicLines('prior', 'bosses', s).join(' ');
     expect(bosses).toContain('you hold 3');
   });

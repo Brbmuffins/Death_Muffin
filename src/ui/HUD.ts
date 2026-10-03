@@ -14,6 +14,9 @@ import type { RuneSockets } from '../gameplay/runeRules';
 /** Key caps under each hotbar slot (slot 5 is the right-click action). */
 const SLOT_KEYS = ['1', '2', '3', '4', 'RMB', 'R'];
 let nextTooltipId = 0;
+/** Two small opposed arrows: the hotbar's swap affordance (replaces the old SWAP text). */
+const SWAP_ICON = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h15m-4-4l4 4-4 4"/><path d="M20 16H5m4-4l-4 4 4 4"/></svg>';
+
 export type HudPanel = 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'sheet' | 'legion' | 'atlas';
 /** Menu row: icon + short label, tooltip with the key, aria name. */
 const MENU_ROW: Array<[HudPanel, keyof typeof ICON, string, string, string]> = [
@@ -358,6 +361,15 @@ export class HUD {
     b.classList.add('pulse');
   }
 
+  /** Swap controls stay hidden until the first alternative rite is learned (see firstHourRules.swapReady). */
+  private swapOn = false;
+
+  setSwapReady(on: boolean) {
+    if (this.swapOn === on) return;
+    this.swapOn = on;
+    this.setHotbar(this.hotbar);
+  }
+
   private slotsHtml() {
     return this.hotbar.map((id, i) => {
       const a = ABILITIES[id];
@@ -370,7 +382,7 @@ export class HUD {
             <span class="cdtext" data-cdt="${i + 1}"></span>
             ${a.essenceCost ? `<span class="cost">${a.essenceCost}</span>` : ''}
           </button>
-          ${i < 5 ? `<button class="key swap" data-swap="${i}" aria-label="Swap ${a.name} in ${alt ? 'right-click or slot 5' : `slot ${i + 1}`}">${SLOT_KEYS[i]} <span>swap</span></button>` : `<span class="key">${SLOT_KEYS[i] ?? i + 1}</span>`}
+          ${i < 5 && this.swapOn ? `<button class="key swap" data-swap="${i}" title="Swap this rite (L)" aria-label="Swap ${a.name} in ${alt ? 'right-click or slot 5' : `slot ${i + 1}`}">${SLOT_KEYS[i]}<span class="swap-ico" aria-hidden="true">${SWAP_ICON}</span></button>` : `<span class="key">${SLOT_KEYS[i] ?? i + 1}</span>`}
         </div>`;
     }).join('');
   }
@@ -456,7 +468,7 @@ export class HUD {
       <ul class="spell-details">${data.details.map((d) => `<li>${esc(d)}</li>`).join('')}</ul>
       ${runeCard(id, this.runes)}
       <div class="spell-tip"><b>Combat tip</b><p>${esc(data.tip)}</p></div>
-      <div class="spell-footer">${i < 5 ? 'Click swap below this slot or press L · ' : ''}Codex (K) · Esc closes this card</div>`;
+      <div class="spell-footer">${i < 5 ? 'Click the swap arrows below this slot or press L · ' : ''}Codex (K) · Esc closes this card</div>`;
     this.tooltip.scrollTop = scroll;
     this.positionTooltip();
   }

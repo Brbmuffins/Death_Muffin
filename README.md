@@ -98,7 +98,7 @@ Nothing in Death Muffin is a quest, and nothing can be failed or missed. If you 
 | **The Prior** | The Chapterhouse, near the Altar | Where to hunt next, how the seals and the kings of the dead work, and when the Altar of Ascension is ready. |
 | **The Sexton** | The Sexton's Acre, near the Covenant Lectern | Gathering, your Grave Laborers, the Bone Grinder and the Vault, and the day's Contracts. |
 | **The Apothecary** | The Alchemist's Wing, at her counter (through the Chapterhouse's east door) | What to brew, where each reagent falls, and how elixirs and tonics work. |
-| **The Next line** | Under the minimap | One short suggestion from the same advice, such as *Hollow Graves: 172 / 300 to open the Marrow Ossuary*, *Your laborers are ready in the Acre* or *The Gravedigger King waits at the King's Grave, 2 soul shards*. A gold marker or arrow on the minimap points the way. |
+| **The Next line** | Under the minimap | One short suggestion from the same advice, such as *Ossuary seal: 172/300 kills* (every seal count reads this way, naming the door it opens: *Warren seal: 0/150 kills*), *Your laborers are ready in the Acre* or *The Gravedigger King waits at the King's Grave, 2 soul shards*. A gold marker or arrow on the minimap points the way. |
 
 **Talking.** Click a person, or stand close and press **E**. They turn to face you, and a gold **!** over their head means they have something new to say (a seal you have broken, a king you have buried, a full bag, laborers waiting). Every conversation has three or four buttons: *Where should I go next?*, *Tell me about...* and *Goodbye*. Their answers use your real numbers: your level, your kill counts, your shards, your bag. The camera eases north while a conversation card is open, so you and the speaker stay in view below it. Press **Esc**, press **E** again, or walk away to end a conversation.
 
@@ -133,7 +133,7 @@ Nothing in Death Muffin is a quest, and nothing can be failed or missed. If you 
 | **Enter** | Chat |
 | **Esc** | Close an open panel, then open Settings |
 
-You can also click hotbar icons. Click **swap** below any spell icon to open the Grimoire with that slot selected; right click a hotbar slot also works. In **Settings**, you can change class, difficulty, graphics, frame rate (**Max**, 60 or 30 fps), **Auto resolution**, volume (Master, plus separate **Combat**, **Ambience** and **Interface** sliders), reduced motion, damage numbers, gathering behavior, counsel tips, and the Next suggestion with its minimap marker.
+You can also click hotbar icons. Once you have learned a second rite (a few levels in), small swap arrows appear under each spell icon: click them to open the Grimoire with that slot selected; right click a hotbar slot also works. In **Settings**, you can change class, difficulty, graphics, frame rate (**Max**, 60 or 30 fps), **Auto resolution**, volume (Master, plus separate **Combat**, **Ambience** and **Interface** sliders), reduced motion, damage numbers, gathering behavior, counsel tips, and the Next suggestion with its minimap marker.
 
 ### Smooth play and loading
 
@@ -163,7 +163,7 @@ Every class has a basic attack, five swappable rites on **1–5** (slot 5 also u
 | <img src="public/art/portraits/hollow_knight.webp" alt="" width="64" /> | **Hollow Knight** | Build Rage by fighting and taking hits, especially with a well-timed block; spend it on a leap and slam. |
 | <img src="public/art/portraits/veilwalker.webp" alt="" width="64" /> | **Veilwalker** | Veil refills in Life form and drains in Veil form. Move between forms and make temporary spectral allies from fallen enemies. |
 
-**New player picks:** Ossuary gives you a sturdy front line; Mourner has forgiving sustain; Hollow Knight suits players who want to stand close and time blocks. Any discipline can change later through Settings.
+**New player picks:** the picker marks **Gravecaller** *Recommended for your first run* (the largest legion and the simplest loop; it appears only when you have no character yet, and every discipline is still one click away). Ossuary gives you a sturdy front line; Mourner has forgiving sustain; Hollow Knight suits players who want to stand close and time blocks. Any discipline can change later through Settings.
 
 At **level 10**, each discipline unlocks its own signature rite on **R**:
 
@@ -192,7 +192,7 @@ The necromancers begin with this kit. The icons are the same ones used on the ho
 | <img src="public/art/abilities/necro-litany.png" alt="" width="42" /> | **4** | **Black Litany** | Sacrifices nearby corpses and thralls for a stronger burst. |
 | <img src="public/art/abilities/necro-corpse-explosion.png" alt="" width="42" /> | Right click / **5** | **Corpse Explosion** | Detonates a corpse near the cursor under a pack. |
 
-Your **Grimoire (L)** shows unlock levels, costs, cooldowns, and available alternatives. Click **swap** below a hotbar spell to jump to its socket, then choose an unlocked rite. Necromancers gain new primaries and rites while leveling; put any five unlocked class rites on **1–5**, including right click. Swapping slots does not clear a rite's cooldown. Your loadout is remembered for your character. Other classes can inspect and rearrange their five starting rites.
+Your **Grimoire (L)** shows unlock levels, costs, cooldowns, and available alternatives. Click the swap arrows below a hotbar spell (shown once you can swap anything) to jump to its socket, then choose an unlocked rite. Necromancers gain new primaries and rites while leveling; put any five unlocked class rites on **1–5**, including right click. Swapping slots does not clear a rite's cooldown. Your loadout is remembered for your character. Other classes can inspect and rearrange their five starting rites.
 
 A corpse is an opportunity, but it will not last forever. Necromancers can raise it, explode it, or save it for Black Litany. The kind of corpse affects the thrall: a Penitent becomes an archer, a Deacon a bone mage, and a Carrion Sac a plague bearer. The other classes have their own corpse rites. **Crypt Deacons** can steal unattended bodies and raise enemies from them, so deal with a Deacon before letting corpses pile up.
 

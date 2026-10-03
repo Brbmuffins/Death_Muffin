@@ -5,6 +5,7 @@ import { getRuntime, type RuntimeView } from '../app/GameRuntime';
 import { Scope } from '../app/Scope';
 import { ABILITIES, FRACTURE, PRIMARIES, BULWARK, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
 import { CAST_FLOW } from '../content/combatFlow';
+import { swapReady } from '../ui/firstHourRules';
 import { kitFor, type Kit } from '../content/kits';
 import { assignableRites, assignRite, LOADOUT_SLOTS, loadRites, loadSeen, saveRites, saveSeen, unseenRites } from '../gameplay/loadout';
 import { devAccess, devPreference, isDevAccount, riteLevel, setDevPreference, tokenUsername } from '../gameplay/devAccess';
@@ -30,7 +31,7 @@ import { LaborerViews } from '../graphics/LaborerViews';
 import { NpcViews } from '../graphics/NpcViews';
 import { DialoguePanel } from '../ui/DialoguePanel';
 import { NPCS, NPC_IDS, NPC_TALK_RANGE, npcFromInteractable, type NpcId } from '../content/npcs';
-import { Guidance, bossTrophyKey, nextSuggestion, readTrophies, suggestions as guidanceSuggestions, summarizeContracts, summarizeLabor, type ContractSummary, type GuidanceState, type LaborSummary, type Suggestion } from '../gameplay/guidance';
+import { Guidance, formatSealProgress, bossTrophyKey, nextSuggestion, readTrophies, suggestions as guidanceSuggestions, summarizeContracts, summarizeLabor, type ContractSummary, type GuidanceState, type LaborSummary, type Suggestion } from '../gameplay/guidance';
 import { addToSlots } from '../gameplay/loot';
 import { WAVE_MILESTONES, damageBonusPct, milestoneActive, waveModifiers } from '../content/upgrades';
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
@@ -459,7 +460,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   /** At least one level-gated Grimoire rite is learned (the Grimoire is worth opening). */
   private grimoireUnlocked() {
-    return this.kit.grimoire.some((id) => unlockLevel(id) > 1 && riteLevel(this.character.level) >= unlockLevel(id));
+    return swapReady(this.kit.grimoire, riteLevel(this.character.level));
   }
 
   /** Grimoire LMB socket: equip a primary (left-click attack; auto combat uses it too). */
@@ -479,6 +480,7 @@ export class WorldScene implements GameScene, RuntimeView {
     let changed = false;
     for (const id of ids) if (!this.seen.has(id)) (this.seen.add(id), (changed = true));
     if (changed) saveSeen(browserStorage(), this.character.id, this.seen);
+    this.hud?.setSwapReady(this.grimoireUnlocked());
     this.hud?.setGrimoireNew(unseenRites(this.seen, riteLevel(this.character.level), this.kit).length > 0);
   }
 
@@ -965,6 +967,7 @@ export class WorldScene implements GameScene, RuntimeView {
       openGrimoire: (select) => this.openGrimoire(select),
       dismissNext: () => { this.nextDismissed = this.nextNow?.id ?? null; this.guideDirty = true; },
     }, this.hotbar, this.discipline, this.primary);
+    this.hud.setSwapReady(this.grimoireUnlocked());
     this.hud.minimap.onNavigate = (x, z) => this.navigateFromMinimap(x, z);
     this.loadBelt();
     this.inventoryPanel = new InventoryPanel(this.root, this.character.id, this.inventory, this.statsLine, (id) => this.drinkFlask(id), (id) => this.setBelt(id), (gold, name, n) => {
@@ -1112,7 +1115,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.codexPanel.dispose();
       this.onboarding.dispose();
     });
-    const rmb = 'Right-click or 5 casts your fifth rite · swap it below its icon';
+    const rmb = 'Right-click or 5 casts your fifth rite';
     this.hud.hint(OFFLINE ? 'Offline edition: progress stays on this device · Right-click or 5: fifth rite' : rmb);
     this.scope.add(() => {
       this.closePanels();
@@ -4822,7 +4825,7 @@ export class WorldScene implements GameScene, RuntimeView {
       return pending.map(({ id, need }) => {
         // A seal may open a door in another hall (the Fen's is the Nave's west wall): say where.
         const door = DOORS.find((d) => d.b === id && d.a !== here);
-        return `Slay <b>${Math.min(need, kills)}/${need}</b> to unseal ${AREAS[id].name}${door ? ` (${doorDirection(door)})` : ''}`;
+        return `${formatSealProgress(id, kills, need)}${door ? ` (${doorDirection(door)})` : ''}`;
       }).join('<br>');
     }
     if (here === 'sanctum') {

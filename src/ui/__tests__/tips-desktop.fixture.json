@@ -145,7 +145,7 @@
  },
  "grimoire": {
   "title": "The Grimoire",
-  "body": "New rites have come to you. Click <b>swap</b> below a hotbar spell (or press <kbd>L</kbd>) to choose which unlocked rites sit on slots <kbd>1</kbd>–<kbd>5</kbd>; slot 5 also uses right-click. Your signature stays on <kbd>R</kbd>. Each rite keeps its cooldown."
+  "body": "New rites have come to you. Click the <b>swap arrows</b> below a hotbar spell (or press <kbd>L</kbd>) to choose which unlocked rites sit on slots <kbd>1</kbd>–<kbd>5</kbd>; slot 5 also uses right-click. Your signature stays on <kbd>R</kbd>. Each rite keeps its cooldown."
  },
  "rite_skull": {
   "title": "Wailing Skull",
