@@ -13,7 +13,7 @@ import type { RuneSockets } from '../gameplay/runeRules';
 /** Key caps under each hotbar slot (slot 5 is the right-click action). */
 const SLOT_KEYS = ['1', '2', '3', '4', 'RMB', 'R'];
 let nextTooltipId = 0;
-export type HudPanel = 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'sheet' | 'legion';
+export type HudPanel = 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'sheet' | 'legion' | 'atlas';
 /** Desktop row: icon + short label. Tiles of the phone menu sheet: icon + full name. */
 const MENU_ROW: Array<[HudPanel, keyof typeof ICON, string, string, string]> = [
   ['inventory', 'bag', 'Bag', 'Reliquary (I)', 'Reliquary'],
@@ -21,6 +21,7 @@ const MENU_ROW: Array<[HudPanel, keyof typeof ICON, string, string, string]> = [
   ['professions', 'skills', 'Skills', 'Skills (P)', 'Skills'],
   ['map', 'waymap', 'Map', 'Waystones (M)', 'Waystones'],
   ['grimoire', 'grimoire', 'Spells', 'Grimoire (L)', 'Grimoire'],
+  ['atlas', 'atlas', 'Atlas', 'Gear Atlas (.)', 'Gear Atlas'],
   ['codex', 'book', 'Codex', 'Codex (K)', 'Codex'],
   ['settings', 'gear', 'Settings', 'Settings (Esc)', 'Settings'],
 ];
@@ -28,7 +29,7 @@ const MENU_SHEET: Array<[HudPanel, keyof typeof ICON, string]> = [
   ['inventory', 'bag', 'Bag'], ['sheet', 'person', 'Character'], ['grimoire', 'grimoire', 'Spells'],
   ['forge', 'anvil', 'Craft'], ['professions', 'skills', 'Skills'], ['contracts', 'contract', 'Contracts'],
   ['garden', 'sprout', 'Garden'], ['labor', 'shovel', 'Laborers'], ['legion', 'legion', 'Legion'],
-  ['cosmetics', 'cape', 'Capes & Pets'], ['vault', 'chest', 'Vault'], ['map', 'waymap', 'Map'],
+  ['cosmetics', 'cape', 'Capes & Pets'], ['vault', 'chest', 'Vault'], ['map', 'waymap', 'Map'], ['atlas', 'atlas', 'Gear Atlas'],
   ['codex', 'book', 'Codex'], ['settings', 'gear', 'Settings'],
 ];
 export interface HudCallbacks {

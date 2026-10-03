@@ -22,7 +22,7 @@ export class DepthsView {
 
   constructor(
     private scene: THREE.Scene,
-    /** WorldView.lightSources: lights pushed here are picked up by its five dynamic point lights. */
+    /** WorldView.lightSources: lights pushed here are picked up by its pooled dynamic point lights. */
     private lightSources: LightSource[],
   ) {}
 

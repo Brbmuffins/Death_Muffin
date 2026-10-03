@@ -35,6 +35,7 @@ export const ICON = {
   menu: svg('<path d="M4 7h16M4 12h16M4 17h16"/>'),
   close: svg('<path d="M6 6l12 12M18 6L6 18"/>'),
   /** Closed book (the Codex): cover, page block, a bone cross on the boards. */
+  atlas: svg('<path d="M12 2.5l7 2.5v6c0 4.4-3 7.8-7 9.5-4-1.7-7-5.1-7-9.5V5z"/><circle cx="11" cy="10.5" r="3"/><path d="M13.3 12.8l2.6 2.6"/>'),
   book: svg('<path d="M5 5a2 2 0 012-2h12v14H7a2 2 0 00-2 2z"/><path d="M5 19a2 2 0 002 2h12v-4"/><path d="M10.6 8.3a1.6 1.6 0 113 .6c-.3.8-1.6 1-1.6 2.2"/><path d="M12 13.2v.1"/>'),
   /** Open grimoire (the rite loadout): two pages with a sigil ring. */
   grimoire: svg('<path d="M3 5.5c3-1 6-1 9 1 3-2 6-2 9-1V19c-3-1-6-1-9 1-3-2-6-2-9-1z"/><path d="M12 6.5V20"/><circle cx="7.5" cy="11.5" r="2"/><path d="M15 10h3.5M15 13h3.5"/>'),

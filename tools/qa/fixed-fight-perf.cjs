@@ -50,8 +50,8 @@ const median = (a) => [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)];
       // Fresh corpses for the ring marks.
       if (!STATIC) await page.evaluate(() => { const d = window.__cwDebug; const p = d.player; for (let i = 0; i < 10; i++) d.sim().addCorpse(p.x + 4 + (i % 5) * 1.2, p.z - 3 - Math.floor(i / 5) * 1.5, 'normal', 'robber', false, 0, 1, p.area); d.advance(0.3); });
       const reads = [];
-      for (let i = 0; i < READS; i++) reads.push(await page.evaluate(() => { const p = window.__cwDebug.perf(60); const c = window.__cwDebug.counts(); return { calls: p.calls, tris: p.triangles, ms: +p.updateMs.toFixed(2), points: p.points, casters: p.casters, skinned: p.skinned, enemies: c.enemies, thralls: c.thralls, corpses: c.corpses }; }));
-      const rec = { quality: q, area, calls: median(reads.map((r) => r.calls)), tris: median(reads.map((r) => r.tris)), ms: median(reads.map((r) => r.ms)), enemies: reads[0].enemies, thralls: reads[0].thralls, corpses: reads[0].corpses, casters: reads[0].casters, skinned: reads[0].skinned };
+      for (let i = 0; i < READS; i++) reads.push(await page.evaluate(() => { const p = window.__cwDebug.perf(60); const c = window.__cwDebug.counts(); return { calls: p.calls, tris: p.triangles, ms: +p.updateMs.toFixed(2), points: p.points, casters: p.casters, casterTris: p.casterTris, lights: p.lights, programs: p.programs, ratio: JSON.stringify(window.__cwDebug.ratio()), skinned: p.skinned, enemies: c.enemies, thralls: c.thralls, corpses: c.corpses }; }));
+      const rec = { quality: q, area, calls: median(reads.map((r) => r.calls)), tris: median(reads.map((r) => r.tris)), ms: median(reads.map((r) => r.ms)), enemies: reads[0].enemies, thralls: reads[0].thralls, corpses: reads[0].corpses, casters: reads[0].casters, casterTris: reads[0].casterTris, lights: reads[0].lights, programs: reads[0].programs, ratio: reads[0].ratio, skinned: reads[0].skinned };
       console.log(JSON.stringify(rec));
       out.push(rec);
       await page.waitForTimeout(400);

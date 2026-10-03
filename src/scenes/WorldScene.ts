@@ -80,6 +80,7 @@ import * as nf from '../graphics/necroFx';
 import { LootView } from '../graphics/LootView';
 import { WorldView } from '../graphics/WorldView';
 import { updateOcclusion } from '../graphics/occlusion';
+import { shadowHalfExtent } from '../graphics/viewFootprint';
 import { equippedBySlot, gearFromIds } from '../content/gear';
 import { applySetMods, outfitSignature, resolveSetBonuses, setSignature } from '../gameplay/setBonuses';
 import { loadRunesFound, recordRunesFound } from '../gameplay/runeJournal';
@@ -90,7 +91,7 @@ import { applyLegionMods, kitCandidates, kitPieces, legionOf, legionSignature } 
 import { LegionPanel } from '../ui/LegionPanel';
 import { LootRoller } from '../gameplay/lootRoll';
 import { canRoll } from '../gameplay/affixes';
-import { affixedName, type DropSource } from '../gameplay/affixRules';
+import { affixedName, isAffixGear, type DropSource } from '../gameplay/affixRules';
 import type { LootDrop } from '../gameplay/loot';
 import { abilityCooldownMs, abilityRange, resolveWeaponLoadout } from '../gameplay/weaponLine';
 import { Chronicle } from '../gameplay/chronicle';
@@ -126,6 +127,7 @@ import type { StatContext } from '../gameplay/gearStats';
 import { SettingsPanel, WaystonePanel } from '../ui/MiscPanels';
 import { ProfessionsPanel } from '../ui/ProfessionsPanel';
 import { CodexPanel } from '../ui/CodexPanel';
+import { AtlasLauncher } from '../ui/AtlasLauncher';
 import { Onboarding, type TipId } from '../ui/Onboarding';
 import { DepthsController } from './DepthsController';
 import { touchNow } from '../ui/touchText';
@@ -136,8 +138,12 @@ import { CodexJournal, browserStorage, type CodexIds, type CodexKind } from '../
 import { CURSOR } from '../ui/cursors';
 import { audio } from '../audio/Audio';
 import { lootSfx } from '../audio/mixer';
+import { snapShadowTarget } from '../graphics/shadowCadence';
 
 /** Minimum gap between HUD readout redraws (~20 Hz). */
+/** The moon's offset from the hero, its shadow-map size and the world size of one shadow texel (60 m frustum). */
+const MOON_OFFSET = { x: -14, y: 30, z: 12 };
+const MOON_MAP = 1024;
 const HUD_INTERVAL_MS = 50;
 const SNAPSHOT_MS = 100;
 const MOVE_SEND_MS = 100;
@@ -229,7 +235,7 @@ function doorDirection(d: DoorDef): string {
 }
 
 
-type PanelKey = 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'salvage' | 'sheet' | 'legion';
+type PanelKey = 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'salvage' | 'sheet' | 'legion' | 'atlas';
 export class WorldScene implements GameScene, RuntimeView {
   readonly scene = new THREE.Scene();
   readonly bloom = { strength: 0.75, radius: 0.55, threshold: 0.85 };
@@ -296,6 +302,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private cosmeticsPanel!: CosmeticsPanel;
   private sheetPanel!: CharacterSheetPanel;
   private legionPanel!: LegionPanel;
+  /** The Gear Atlas (. key): a doorway only; its panel, CSS and data load on first open (ui/AtlasLauncher.ts). */
+  private atlasPanel!: AtlasLauncher;
   private myCosmetics: { cape: string | null; pet: string | null } = { cape: null, pet: null };
   private petView: PetView | null = null;
   private laborCapNoted = new Set<number>();
@@ -311,6 +319,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private hud!: HUD;
   private floating!: FloatingText;
   private moon!: THREE.DirectionalLight;
+  private moonSnap = { x: 0, y: 0, z: 0 };
   private hemi!: THREE.HemisphereLight;
 
   private sim: WorldSim | null = null;
@@ -805,9 +814,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hemi = new THREE.HemisphereLight(0x4a3866, 0x0a0710, 0.95);
     s.add(this.hemi);
     const moon = new THREE.DirectionalLight(0x9aa6d4, 2.4);
-    moon.position.set(-14, 30, 12);
+    moon.position.set(MOON_OFFSET.x, MOON_OFFSET.y, MOON_OFFSET.z);
     moon.castShadow = true;
-    moon.shadow.mapSize.set(1024, 1024);
+    moon.shadow.mapSize.set(MOON_MAP, MOON_MAP);
     moon.shadow.camera.left = -30;
     moon.shadow.camera.right = 30;
     moon.shadow.camera.top = 30;
@@ -987,6 +996,12 @@ export class WorldScene implements GameScene, RuntimeView {
     };
     this.inventoryPanel.onToolBelted = () => this.onboarding.show('toolBelt', 0, true);
     this.sheetPanel = new CharacterSheetPanel(this.root, this.statContext, () => this.onboarding.show('statSheet'));
+    this.atlasPanel = new AtlasLauncher(this.root, {
+      statContext: this.statContext,
+      slots: () => this.inventory.all,
+      level: () => this.character.level,
+      area: () => this.area,
+    }, () => this.hud.toast('The Gear Atlas could not load. Check your connection and try again.', 'err'));
     // The Legion (Y): spare weapon and armour for the thralls, and the gold sink that reinforces them. Necromancers only.
     this.legionPanel = new LegionPanel(this.root, this.character.id, this.inventory, {
       tier: () => this.progression.local.legionTier ?? 0,
@@ -1071,6 +1086,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.gatherReportPanel = new GatherReportPanel(this.root, () => this.togglePanel('inventory'));
     this.codexPanel = new CodexPanel(this.root, this.codex, this.discipline.id, this.chronicle);
     this.codexPanel.metNpc = (id) => this.guidance.met(id);
+    this.codexPanel.onAtlas = () => this.togglePanel('atlas');
     this.codexPanel.runesFound = () => loadRunesFound(browserStorage(), this.character.id);
     this.grimoirePanel = new GrimoirePanel(
       this.root,
@@ -1134,6 +1150,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.cosmeticsPanel?.close();
     this.sheetPanel?.close();
     this.legionPanel?.close();
+    this.atlasPanel?.close();
     this.dialogue?.close();
   }
 
@@ -1368,7 +1385,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private panelMap() {
-    return { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel, cosmetics: this.cosmeticsPanel, vault: this.vaultPanel, salvage: this.salvagePanel, sheet: this.sheetPanel, legion: this.legionPanel } as Record<PanelKey, { isOpen: boolean } | undefined>;
+    return { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel, cosmetics: this.cosmeticsPanel, vault: this.vaultPanel, salvage: this.salvagePanel, sheet: this.sheetPanel, legion: this.legionPanel, atlas: this.atlasPanel } as Record<PanelKey, { isOpen: boolean } | undefined>;
   }
 
   private openPanelKey(): PanelKey | null {
@@ -1432,7 +1449,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private togglePanel(p: PanelKey) {
     const from = this.openPanelKey();
-    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel, cosmetics: this.cosmeticsPanel, vault: this.vaultPanel, salvage: this.salvagePanel, sheet: this.sheetPanel, legion: this.legionPanel }[p];
+    const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel, cosmetics: this.cosmeticsPanel, vault: this.vaultPanel, salvage: this.salvagePanel, sheet: this.sheetPanel, legion: this.legionPanel, atlas: this.atlasPanel }[p];
     const wasOpen = panel.isOpen;
     if (wasOpen || !from) this.panelStack = [];
     else if (from !== p) {
@@ -1463,6 +1480,7 @@ export class WorldScene implements GameScene, RuntimeView {
     else if (p === 'cosmetics') void this.cosmeticsPanel.open();
     else if (p === 'sheet') this.sheetPanel.open();
     else if (p === 'legion') this.legionPanel.open();
+    else if (p === 'atlas') this.atlasPanel.open();
     else if (p === 'ascension') this.ascensionPanel.open();
     else if (p === 'grimoire') {
       this.grimoirePanel.open();
@@ -1526,6 +1544,7 @@ export class WorldScene implements GameScene, RuntimeView {
       else if (k === 'v') this.togglePanel('vault');
       else if (k === 'm') this.togglePanel('map');
       else if (k === 'k') this.togglePanel('codex');
+      else if (k === '.') this.togglePanel('atlas');
       else if (k === 'l') this.togglePanel('grimoire');
       else if (k === 'g') this.toggleAutoCombat();
       else if (k === 'e') this.talkKey();
@@ -1682,7 +1701,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private panelOpen() {
-    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || !!this.shelfPanel?.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.vaultPanel?.isOpen || !!this.salvagePanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen || !!this.sheetPanel?.isOpen || !!this.legionPanel?.isOpen || !!this.dialogue?.isOpen;
+    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || !!this.shelfPanel?.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.vaultPanel?.isOpen || !!this.salvagePanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen || !!this.sheetPanel?.isOpen || !!this.legionPanel?.isOpen || !!this.atlasPanel?.isOpen || !!this.dialogue?.isOpen;
   }
 
   private interactablesNear(): Interactable[] {
@@ -4618,6 +4637,8 @@ export class WorldScene implements GameScene, RuntimeView {
     if (got.items.length) {
       audio.play(lootSfx(got.items.map((item) => itemMeta(item.item_id).rarity)));
       this.onboarding.show('relic');
+      // The first piece of gear: point at the Atlas (a calm tip; it waits for a quiet moment).
+      if (got.items.some((item) => isAffixGear(itemMeta(item.item_id).type))) this.onboarding.show('atlas', 2500);
     }
     const legendary = got.items.filter((item) => itemMeta(item.item_id).rarity === 'legendary');
     if (legendary.length) this.onboarding.show('legendary', 600);
@@ -4667,8 +4688,14 @@ export class WorldScene implements GameScene, RuntimeView {
     this.rig.camera.updateMatrixWorld();
     this.occlusionFocus.set(p.x, 1.1, p.z);
     updateOcclusion(this.rig.camera, this.occlusionFocus);
-    this.moon.position.set(p.x - 14, 30, p.z + 12);
-    this.moon.target.position.set(p.x, 0, p.z);
+    // The shadow box is sized to what the camera sees (wide windows / far zoom), then the shadow camera follows the hero in
+    // whole-texel steps of THAT box (no shimmer); a resize or a jump (teleport, area change) refreshes the map at once.
+    if (this.fitMoonShadow()) getRuntime().refreshShadows();
+    const sc = this.moon.shadow.camera;
+    const snap = snapShadowTarget(p.x, p.z, MOON_OFFSET, (sc.right - sc.left) / MOON_MAP, this.moonSnap);
+    if (Math.abs(snap.x - this.moon.target.position.x) + Math.abs(snap.z - this.moon.target.position.z) > 6) getRuntime().refreshShadows();
+    this.moon.position.set(snap.x + MOON_OFFSET.x, snap.y + MOON_OFFSET.y, snap.z + MOON_OFFSET.z);
+    this.moon.target.position.set(snap.x, snap.y, snap.z);
     this.tickMilestones(dt);
     const vh = window.innerHeight * getRuntime().renderer.getPixelRatio();
     this.worldView.update(dt, p.x, p.z, this.rig.camera, vh);
@@ -4677,6 +4704,18 @@ export class WorldScene implements GameScene, RuntimeView {
     this.floating.update(dt, this.rig.camera);
     this.tickOnboarding(now);
     this.updateHud(now);
+  }
+
+  /** The moon's shadow box covers the whole screen: a wide window or the widest zoom reaches past the fixed 30 m half-size, and shadows (pillars, walls) used to stop dead at the screen corners. Grows in 4 m steps (30 m at the default view, 48 m at most). */
+  /** Sizes the moon's shadow box to the camera's ground footprint; true when it changed. */
+  private fitMoonShadow(): boolean {
+    const sc = this.moon.shadow.camera;
+    const half = shadowHalfExtent(this.rig.camera, sc.matrixWorldInverse, 30, 48);
+    if (half === sc.right) return false;
+    sc.left = sc.bottom = -half;
+    sc.right = sc.top = half;
+    sc.updateProjectionMatrix();
+    return true;
   }
 
   /** Milestone banners when the world's Wave Speed crosses one, and Nightfall's darker moon. */
@@ -5182,11 +5221,14 @@ export class WorldScene implements GameScene, RuntimeView {
         return this.progression.ashesOnAscend();
       },
       altar: () => this.togglePanel('ascension'),
+      /** QA: renderer pixel ratio and the drawing-buffer size it implies. */
+      ratio: () => { const r = getRuntime().renderer; const v = r.getDrawingBufferSize(new THREE.Vector2()); return { dpr: r.getPixelRatio(), px: v.x * v.y }; },
       /** Perf snapshot: one direct render's draw calls/triangles, scene census, and CPU update cost. */
       perf: (benchFrames = 120) => {
         const r = getRuntime().renderer;
         r.info.autoReset = false;
         r.info.reset();
+        r.shadowMap.needsUpdate = true;
         r.render(this.scene, this.rig.camera);
         const render = { calls: r.info.render.calls, triangles: r.info.render.triangles, points: r.info.render.points };
         r.info.autoReset = true;

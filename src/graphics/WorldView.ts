@@ -13,6 +13,7 @@ import { applyOcclusion } from './occlusion';
 import { Water } from './Water';
 import { Atmosphere } from './Atmosphere';
 import { FEN_HUMMOCKS } from '../content/fen';
+import { footprintReach, footprintRect } from './viewFootprint';
 import { BuildQueue, buildOrder, loadProgress, rectDistance, requiredAreas, visibleAreas } from './areaStreaming';
 import { UploadQueue, materialTextures } from './warmModel';
 
@@ -231,6 +232,9 @@ function silhouetteGeometry(sil: Silhouette, rand: () => number): THREE.BufferGe
   return merged;
 }
 
+/** Pooled flame lights (nearest lit sources). Fixed at runtime: every lit material loops over all point lights; baked pool decals carry the rest of the glow. */
+const WORLD_POINT_LIGHTS = 3;
+
 /**
  * Instanced batch of one prop kind. Starts with the code-built stand-in and
  * swaps to the generated GLB (every mesh instanced with the same transforms)
@@ -337,6 +341,7 @@ export class PropBatch {
           inst.setMatrixAt(i, m);
         });
         inst.receiveShadow = true;
+        inst.userData.tallProp = this.tall; // QA (tools/qa/culling-diff.cjs) forces these to cast regardless of distance
         inst.computeBoundingSphere();
         const bs = inst.boundingSphere!;
         this.cells.push({ mesh: inst, x: bs.center.x, z: bs.center.z, r: bs.radius });
@@ -477,6 +482,7 @@ export class WorldView {
   private wantedKey = '';
   private prioArea: AreaId | null = null;
   private shadowAt: { x: number; z: number } | null = null;
+  private shadowRange = 0;
   private shadowDirty = true;
   private primeStats = { buildMs: 0, totalMs: 0 };
   private warmCtx: { renderer: THREE.WebGLRenderer; camera: THREE.Camera; target?: () => THREE.WebGLRenderTarget | null } | null = null;
@@ -502,7 +508,7 @@ export class WorldView {
     this.buildFixedFloors();
     this.registerWalls(nav);
     this.registerProps(nav);
-    // Reuse the five existing dynamic lights for a warm workshop beacon.
+    // Reuse the pooled dynamic lights for a warm workshop beacon.
     const sawpit = AREAS.acre.interactables.find(it => it.kind === 'sawpit')!;
     this.lightSources.push({ x: sawpit.x, y: 1.6, z: sawpit.z, color: 0xffd29a, intensity: 3, distance: 7, lit: true, brazier: false, area: 'acre' });
     this.effects.decal({ tex: fx.ring(), color: 0xeac58b, x: sawpit.x, z: sawpit.z, r: 1.4, duration: 1e9, persistent: true, opacity: 0.3, fadeIn: 0.01 });
@@ -514,7 +520,7 @@ export class WorldView {
     this.buildSilhouettes();
     this.water = new Water([...layout.water, ...layout.bog, ...layout.ponds], layout.puddles);
     this.fixed.add(this.water.mesh, this.atmosphere.points);
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < WORLD_POINT_LIGHTS; i++) {
       const l = new THREE.PointLight(0xffb46b, 0, 8, 1.8);
       this.group.add(l);
       this.pointLights.push(l);
@@ -687,9 +693,10 @@ export class WorldView {
   }
 
   /** Called every frame: draw the areas around the player, keep the rest hidden, and keep building in the background. */
-  private stream(area: AreaId | null, x: number, z: number) {
+  private stream(area: AreaId | null, x: number, z: number, camera: THREE.PerspectiveCamera) {
     if (area) this.focusPriority(area);
-    const v = visibleAreas(x, z, area);
+    // What the camera really sees (its ground footprint) decides, not only distance from the hero: a wide window or the widest zoom reaches past 45 m at the screen corners.
+    const v = visibleAreas(x, z, area, undefined, footprintRect(camera));
     const key = [...v].join();
     if (key !== this.wantedKey) {
       this.wantedKey = key;
@@ -700,10 +707,13 @@ export class WorldView {
       this.shadowDirty = true;
     }
     // Shadow casting follows the player (moves 2 m, or an area just came into view).
-    if (this.shadowDirty || !this.shadowAt || Math.hypot(x - this.shadowAt.x, z - this.shadowAt.z) > 2) {
+    // Props cast while their shadow can land on screen: at least SHADOW_RANGE, more when the footprint reaches further (the shadow pass frustum-culls what the moon camera cannot see anyway).
+    const range = Math.max(SHADOW_RANGE, footprintReach(camera, x, z) + 4);
+    if (this.shadowDirty || !this.shadowAt || Math.hypot(x - this.shadowAt.x, z - this.shadowAt.z) > 2 || Math.abs(range - this.shadowRange) > 3) {
       this.shadowDirty = false;
       this.shadowAt = { x, z };
-      for (const c of this.chunks.values()) if (c.group.visible) for (const b of c.batches) b.updateShadows(x, z, SHADOW_RANGE);
+      this.shadowRange = range;
+      for (const c of this.chunks.values()) if (c.group.visible) for (const b of c.batches) b.updateShadows(x, z, range);
     }
     if (this.queue.size) this.queue.runSlice(1.5);
   }
@@ -1288,7 +1298,7 @@ export class WorldView {
     (this.mist.material as THREE.ShaderMaterial).uniforms.uScale.value = scale;
 
     const area = this.areaAt(focusX, focusZ);
-    this.stream(area, focusX, focusZ);
+    this.stream(area, focusX, focusZ, camera);
     if (area && area !== this.focusArea) {
       this.focusArea = area;
       this.water.setMoon(AREAS[area].ambient.moon);

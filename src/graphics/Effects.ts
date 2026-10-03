@@ -10,6 +10,8 @@ type Vec3 = { x: number; y: number; z: number };
 
 /** Share of each particle burst drawn on Graphics: Low. */
 const LOW_PARTICLE_SCALE = 0.75;
+/** Shared transient point lights for big casts. Fixed at runtime: a change of light count recompiles every lit material. */
+const FLASH_LIGHTS = 1;
 
 // ---------------------------------------------------------------------------
 // Particles — one Points draw call per blend mode, CPU-simulated ring buffer.
@@ -476,7 +478,7 @@ export class Effects {
     this.group.add(this.spikeMesh);
     // Fixed light count: toggling visibility would change NUM_POINT_LIGHTS and
     // force every lit material to recompile (visible hitches).
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < FLASH_LIGHTS; i++) {
       const light = new THREE.PointLight(0xa26bff, 0, 9, 1.6);
       this.group.add(light);
       this.lights.push({ light, t: 0, life: 0, peak: 0 });
@@ -906,7 +908,9 @@ export class Effects {
 
   /** Transient coloured light for big casts. */
   lightFlash(x: number, y: number, z: number, color: THREE.ColorRepresentation, intensity: number, life = 0.35) {
-    const slot = this.lights.reduce((a, b) => (a.t / (a.life || 1) > b.t / (b.life || 1) ? a : b));
+    // One shared flash light (every lit material loops over all point lights): a new flash takes it over unless a clearly brighter one is still burning.
+    const slot = this.lights.reduce((a, b) => (a.life <= 0 ? a : b.life <= 0 ? b : a.t / a.life >= b.t / b.life ? a : b));
+    if (slot.life > 0 && slot.light.intensity > intensity * 1.25) return;
     slot.light.position.set(x, y, z);
     slot.light.color.set(color);
     slot.t = 0;

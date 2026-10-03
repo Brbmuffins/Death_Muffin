@@ -22,6 +22,7 @@ import {
   CODEX_WEAPONS,
   CODEX_WEAPONS_COUNSEL,
   CODEX_SETS_COUNSEL,
+  CODEX_ATLAS_COUNSEL,
   CODEX_LEGENDARY_COUNSEL,
   codexSetRows,
   type CodexSetRow,
@@ -59,6 +60,7 @@ const TABS = [
   { id: 'disciplines', label: 'Disciplines' },
   { id: 'weapons', label: 'Weapons' },
   { id: 'sets', label: 'Armor sets' },
+  { id: 'atlas', label: 'Gear Atlas' },
   { id: 'affixes', label: 'Item affixes' },
   { id: 'runes', label: 'Relic Runes' },
   { id: 'stats', label: 'Stats' },
@@ -82,6 +84,8 @@ export class CodexPanel {
   private el: HTMLDivElement | null = null;
   private tab: TabId = 'rites';
   private offJournal: () => void;
+  /** Open the Gear Atlas (the Atlas tab's button). */
+  onAtlas?: () => void;
 
   constructor(
     private root: HTMLElement,
@@ -156,6 +160,8 @@ export class CodexPanel {
             ? this.weapons()
           : this.tab === 'sets'
             ? this.sets()
+          : this.tab === 'atlas'
+            ? this.atlas()
           : this.tab === 'affixes'
             ? this.affixes()
           : this.tab === 'runes'
@@ -173,6 +179,7 @@ export class CodexPanel {
                 : this.tab === 'chronicle'
                   ? this.chronicleTab()
                   : this.lore();
+    body.querySelector<HTMLButtonElement>('[data-atlas]')?.addEventListener('click', () => this.onAtlas?.());
   }
 
   /** Lifetime totals, this run, and every finished run: what Ascension can't erase. */
@@ -300,6 +307,12 @@ export class CodexPanel {
     const rows = codexSetRows();
     return `<p class="tip">${CODEX_SETS_COUNSEL}</p>` + rows.filter((r) => r.collection !== 3).map(entry).join('') +
       `<h3 class="cw-codex-section" style="color:${RARITY_COLOR.legendary}">Legendary sets</h3><p class="tip">${CODEX_LEGENDARY_COUNSEL}</p>` + rows.filter((r) => r.collection === 3).map(entry).join('');
+  }
+
+  /** The Gear Atlas entry: what it is, how to read it, and a button that opens it. */
+  private atlas() {
+    return `<p class="tip">${CODEX_ATLAS_COUNSEL}</p>
+      <p><button class="cw-button" data-atlas>Open the Gear Atlas</button></p>`;
   }
 
   private disciplines() {
