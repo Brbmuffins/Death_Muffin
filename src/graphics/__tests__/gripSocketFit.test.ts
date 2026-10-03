@@ -118,7 +118,7 @@ describe.skipIf(SKIP)('grip socket fit', () => {
     const fit = JSON.parse(readFileSync('tools/grip-fit.json', 'utf8')) as Record<string, Record<string, Fit & { clips?: Record<string, number> }>>;
     const mutSockets = GRIP_SOCKETS as unknown as Record<string, Record<string, number[]>>;
     const mutFollow = GRIP_CLIP_FOLLOW as unknown as Record<string, Record<string, Record<string, number>>>;
-    const LEVELS = [1, 0.9, 0.8, 0.65, 0.5, 0.35, 0.2];
+    const LEVELS = [1, 0.9, 0.8, 0.65, 0.5, 0.35, 0.2, 0.1, 0];
     const only = process.env.GRIP_FIT_HERO;
     for (const hero of HEROES) {
       if (only && hero !== only) continue;
@@ -145,6 +145,28 @@ describe.skipIf(SKIP)('grip socket fit', () => {
           }
         }
         console.log(hero, 'level', level);
+      }
+      // Refine: the real table mixes levels (a clip starts at the follow the previous one left), so measure the combination and
+      // step any clip still over its budget one level down, a few times.
+      const lvl = (kind: string, clip: string) => LEVELS.indexOf(chosen[kind]?.[clip]?.level ?? 1);
+      for (let pass = 0; pass < 5; pass++) {
+        for (const [kind] of KINDS) mutFollow[hero][kind] = Object.fromEntries(clips.filter((c) => chosen[kind]?.[c]).map((c) => [c, chosen[kind][c].level]));
+        const cfg: Record<string, { worst: number; p95: number }>[] = [];
+        for (const [m, o] of CONFIGS) cfg.push((await measureConfig(NecromancerAvatar, hero, m, o, clips, store)).cells);
+        let over = 0;
+        for (const [kind] of KINDS) {
+          for (const clip of clips) {
+            const c = cfg[KIND_CONFIG[kind]][`${kind}|${clip}|pen`];
+            const b = base[`${hero}|${kind}|${clip}|pen`];
+            if (!c || !b || !chosen[kind]?.[clip]) continue;
+            const excess = Math.max(c.worst - (b[0] + Math.max(0.004, b[0] * 0.1) - 0.003), c.p95 - (b[1] + Math.max(0.004, b[1] * 0.1) - 0.003));
+            chosen[kind][clip].excess = excess;
+            const i = lvl(kind, clip);
+            if (excess > 0 && i < LEVELS.length - 1) { chosen[kind][clip].level = LEVELS[i + 1]; over++; }
+          }
+        }
+        console.log(hero, 'refine', pass, 'over', over);
+        if (!over) break;
       }
       for (const [kind] of KINDS) {
         const clipsOut: Record<string, number> = {};
