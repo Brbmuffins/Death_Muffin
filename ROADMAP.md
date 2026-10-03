@@ -69,6 +69,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 3 Oct 2026 | **New Blood kit polish** (branch `claude/newblood-kit-polish`, not deployed). Chain Pull, Hook Pull, Butcher, Echo and Crossing verified end to end and now cast by the balance bot; Knell text matches its three independent beats; small per-class cooldown/power/cost tuning puts the five within ~20% of each other at Graves and Nave. | No new content. See BALANCE.md "New Blood kit polish". |
 | 3 Oct 2026 | **Core bug hunt + boss reward rule.** 13 fixes: a reconnect no longer crumbles your legion, host migration keeps thrall/enemy stats, malformed co-op intents can no longer corrupt the host, surges end cleanly on area change/Ascension, DoTs no longer hit burrowed ghouls or the sunk Mire Mother, reconnect retries after a lost join. Boss rewards now follow the normal-kill rule (alive, within 38 m) | docs/polish/core-bug-hunt.md |
 | 3 Oct 2026 | **New Blood catch-up.** The five classes without a legion hit 1.5x harder and earn extra experience while young (2x at level 1, normal by level 15): at Graves they now level about as fast as a necromancer; at Nave the XP gap closes from ~6x to ~2x | BALANCE.md "New Blood catch-up" |
 | 3 Oct 2026 | **Scythe reaches bosses from farther.** The reaping arc reaches 4 m against a boss (3 m otherwise), so a reaper can stand at the edge of rings and cones; scythe boss wipes in the bot 12 -> 5, damage taken -24% | BALANCE.md "Scythe boss reach" |

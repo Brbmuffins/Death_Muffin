@@ -7,6 +7,7 @@ import { AbilitySystem, type AbilityContext } from '../AbilitySystem';
 import { Player } from '../Player';
 import { Effects } from '../../graphics/Effects';
 import { DISCIPLINES } from '../../content/disciplines';
+import { ABILITIES } from '../../content/abilities';
 import type { Intent, SimEvent } from '../sim/types';
 
 vi.mock('../../audio/Audio', () => ({ audio: { play: vi.fn() } }));
@@ -53,7 +54,7 @@ describe('New Blood rites that the bot never cast, driven through the real clien
     expect(Math.hypot(e.x - r.player.x, e.z - r.player.z)).toBeLessThan(2);
     expect(e.hp).toBeLessThan(hp);
     expect(e.rootT).toBeGreaterThan(0);
-    expect(r.player.resource.value).toBe(90);
+    expect(r.player.resource.value).toBe(100 - ABILITIES.chain_pull.essenceCost);
     expect(r.last('chain_pull')).toMatchObject({ ok: true, targetId: e.id });
     // beyond its 10 m reach: refused on the client, nothing moves
     const far = r.sim.spawnEnemy('robber', 'graves', 14, -16, false, false);
@@ -68,7 +69,7 @@ describe('New Blood rites that the bot never cast, driven through the real clien
     expect(r.cast('hook_pull', e.x, e.z, e.id)).toBe('ok');
     expect(Math.hypot(e.x - r.player.x, e.z - r.player.z)).toBeLessThan(2);
     expect(e.hp).toBeLessThan(hp);
-    expect(r.player.resource.value).toBe(90);
+    expect(r.player.resource.value).toBe(100 - ABILITIES.hook_pull.essenceCost);
   });
 
   it('Butcher consumes one real corpse into three charms, and a charm heals whoever touches it 5%', () => {
@@ -116,7 +117,7 @@ describe('New Blood rites that the bot never cast, driven through the real clien
     expect(r.cast('crossing', e.x, e.z)).toBe('ok');
     expect(Math.hypot(r.player.x - 10, r.player.z + 16)).toBeLessThan(1.2);
     expect(r.sim.corpses.has(e.id)).toBe(true);
-    expect(r.player.resource.value).toBe(85);
+    expect(r.player.resource.value).toBe(100 - ABILITIES.crossing.essenceCost);
   });
 
   it('Knell lands three independent beats, 1.2 s apart, each for the same damage', () => {

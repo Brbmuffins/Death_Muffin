@@ -24,6 +24,10 @@ Branch `codex/new-blood-release-20260928` tracks `origin/master` (push `HEAD:mas
 after a secret scan; the repo is public). The owner asked for commits, which overrides
 the older "stage, don't commit" note.
 
+## New Blood kit polish (branch `claude/newblood-kit-polish`, 3 Oct 2026, not deployed, no migration)
+
+Rites verified (no bug), bot casts Chain Pull / Hook Pull / Butcher / Echo / Crossing, Knell text fixed, per-class tuning in `src/content/abilities.ts`. Numbers and open questions: BALANCE.md "New Blood kit polish". Not pushed to master; needs owner review and `npm run balance:boss` before deploy (damage coefficients changed).
+
 ## Server bug hunt (branch `claude/server-bug-hunt`, 3 Oct 2026, not deployed, no migration)
 
 Read-through of the backend and the realtime service; 13 fixes, each with a failing test first (`docs/polish/server-bug-hunt.md` has the table and the suspected-but-unconfirmed list).
