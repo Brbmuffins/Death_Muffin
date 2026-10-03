@@ -119,17 +119,17 @@ export const SET_BONUSES: Record<string, SetBonusDef[]> = {
   legion_unburied: [
     { pieces: 2, effect: { mult: { thrallDamageMult: 1.3 } } },
     { pieces: 4, name: 'Bursting Dead', effect: { mult: { thrallAttackSpeedMult: 1.12 }, add: { thrallDeathBurst: 1 } } },
-    { pieces: 5, name: 'Legion Champion', effect: { add: { thrallCap: 2, championEvery: 4, spearRally: 1.5 } } },
+    { pieces: 5, name: 'Legion Champion', effect: { add: { thrallCap: 2, championEvery: 4, spearRally: 1 } } },
   ],
   colossus_mantle: [
     { pieces: 2, effect: { mult: { thrallHpMult: 1.5, thrallDamageMult: 1.25, maxHpMult: 1.1 } } },
     { pieces: 4, name: 'Reflecting Ward', effect: { mult: { thrallHpMult: 1.1 }, add: { wardReflect: 0.6, wardPerThrall: 0.05 } } },
-    { pieces: 5, name: 'Colossus', effect: { mult: { maxHpMult: 1.1 }, add: { colossusGuard: 0.28, litanyShatter: 4, litanyBarrier: 0.05 } } },
+    { pieces: 5, name: 'Colossus', effect: { mult: { maxHpMult: 1.06 }, add: { colossusGuard: 0.2, litanyShatter: 4, litanyBarrier: 0.05 } } },
   ],
   requiem_wraiths: [
     { pieces: 2, effect: { mult: { essenceRegenMult: 1.4, maxHpMult: 1.1 } } },
     { pieces: 4, name: 'Wisps', effect: { mult: { thrallHpMult: 1.4, maxHpMult: 1.1 }, add: { corpseWisp: 12, corpseHeal: 0.06 } } },
-    { pieces: 5, name: 'Requiem', effect: { mult: { soulHarvestRateMult: 2, thrallAttackSpeedMult: 1.15, thrallDamageMult: 1.25, maxHpMult: 1.08 }, add: { wraithNova: 2.5 } } },
+    { pieces: 5, name: 'Requiem', effect: { mult: { soulHarvestRateMult: 2, thrallAttackSpeedMult: 1.15, thrallDamageMult: 1.3, maxHpMult: 1.12 }, add: { wraithNova: 3 } } },
   ],
   plague_choir: [
     { pieces: 2, effect: { mult: { miasmaRadiusMult: 1.3, maxHpMult: 1.1 } } },
