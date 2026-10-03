@@ -74,6 +74,9 @@ export function veilTarget(nav: { blocked(x: number, z: number, r: number): bool
   return best;
 }
 
+/** Dead, or underground (a tunnelling or surfacing ghoul): the host refuses every blow, so no rite should draw a number on it. */
+const gone = (e: Enemy) => e.state === 'dead' || e.state === 'burrow' || (e.erupting != null && e.state === 'windup');
+
 export type CastResult = 'ok' | 'busy' | 'cooldown' | 'essence' | 'range' | 'no_target' | 'no_corpse' | 'dead' | 'locked' | 'no_thralls';
 
 export interface CastTarget {
@@ -374,7 +377,7 @@ export class AbilitySystem {
     // Volley: this needle and two more, at the enemies nearest the target (or all at the target when it stands alone).
     const aim: CastTarget[] = [t];
     if (!t.boss && t.enemyId !== undefined) {
-      const live = [...this.ctx.enemies().values()].filter((e) => e.state !== 'dead');
+      const live = [...this.ctx.enemies().values()].filter((e) => !gone(e));
       const first = live.find((e) => e.id === t.enemyId);
       if (first) for (const e of volleyTargets({ x: p.x, z: p.z }, first, live).slice(1)) aim.push({ x: e.x, z: e.z, enemyId: e.id });
     }
@@ -441,7 +444,7 @@ export class AbilitySystem {
   private splinter(firstId: number, at: { x: number; z: number }, dmg: number) {
     const { effects } = this.ctx;
     const first = this.ctx.enemies().get(firstId);
-    const pool = [...this.ctx.enemies().values()].filter((e) => e.state !== 'dead');
+    const pool = [...this.ctx.enemies().values()].filter((e) => !gone(e));
     const e = splinterTarget(first ?? { id: firstId, x: at.x, z: at.z }, pool);
     if (!e) return;
     const amount = dmg * RUNE_TUNING.splinter.damageFrac;
@@ -457,7 +460,7 @@ export class AbilitySystem {
   private pierceBeyond(firstId: number, at: { x: number; z: number }, dmg: number, count: number, extra: { withered?: number; witheredCap?: number }) {
     const { player: p, effects } = this.ctx;
     const pool = [];
-    for (const e of this.ctx.enemies().values()) if (e.state !== 'dead') pool.push(e);
+    for (const e of this.ctx.enemies().values()) if (!gone(e)) pool.push(e);
     const next = pierceTargets({ x: p.x, z: p.z }, { x: at.x, z: at.z, id: firstId }, pool, count);
     if (!next.length) return;
     this.ctx.send({ t: 'hit', by: this.ctx.selfId, ids: next.map((e) => e.id), dmg, ...extra });
@@ -501,7 +504,7 @@ export class AbilitySystem {
     avatar.cast('attack', 2.6, p.facing, T.gestureSeconds);
     const dmg = this.sp * ABILITIES.bone_needle.power * T.damageMult * (0.9 + Math.random() * 0.2);
     const pool = [];
-    for (const e of this.ctx.enemies().values()) if (e.state !== 'dead') pool.push(e);
+    for (const e of this.ctx.enemies().values()) if (!gone(e)) pool.push(e);
     const struck = reapTargets({ x: p.x, z: p.z }, { x: t.x, z: t.z }, pool);
     const b = this.ctx.boss();
     const hitBoss = b.active && reapTargets({ x: p.x, z: p.z }, { x: t.x, z: t.z }, [{ x: b.x, z: b.z, radius: BOSS_RADIUS }]).length > 0;
@@ -570,7 +573,7 @@ export class AbilitySystem {
         if (impale) return this.spearImpale(origin, dx, dz, range, halfW, dmg * RUNE_TUNING.impale.damageMult, end);
         const ids: number[] = [];
         for (const e of this.ctx.enemies().values()) {
-          if (e.state === 'dead') continue;
+          if (gone(e)) continue;
           const rx = e.x - origin.x;
           const rz = e.z - origin.z;
           const along = rx * dx + rz * dz;
@@ -613,7 +616,7 @@ export class AbilitySystem {
   /** Ossuary Ring rune: bone erupts in a ring around `c`, striking everything inside it (Fracture and Hemorrhage as for the line). */
   private spearRing(c: { x: number; z: number }, r: number, dmg: number) {
     const { effects } = this.ctx;
-    const foes = [...this.ctx.enemies().values()].filter((e) => e.state !== 'dead');
+    const foes = [...this.ctx.enemies().values()].filter((e) => !gone(e));
     const hit = ringHits(c, r, foes);
     for (const e of hit) {
       this.ctx.number(e.x, e.z, dmg, 'spear');
@@ -640,7 +643,7 @@ export class AbilitySystem {
   /** Impaling rune: the spear stops at the first enemy it meets, skewers it for more and roots it. */
   private spearImpale(origin: { x: number; z: number }, dx: number, dz: number, range: number, halfW: number, dmg: number, end: { x: number; z: number }) {
     const { effects } = this.ctx;
-    const foes = [...this.ctx.enemies().values()].filter((e) => e.state !== 'dead');
+    const foes = [...this.ctx.enemies().values()].filter((e) => !gone(e));
     const hit = impaleTarget(origin, dx, dz, range, halfW, foes);
     const b = this.ctx.boss();
     let bossAlong = Infinity;
@@ -959,7 +962,7 @@ export class AbilitySystem {
     const dmg = this.sp * def.power;
     const ids: number[] = [];
     for (const e of this.ctx.enemies().values()) {
-      if (e.state === 'dead' || Math.hypot(e.x - p.x, e.z - p.z) > r + e.radius) continue;
+      if (gone(e) || Math.hypot(e.x - p.x, e.z - p.z) > r + e.radius) continue;
       ids.push(e.id);
       if (ids.length <= 12) {
         this.ctx.number(e.x, e.z, dmg, 'hit');
@@ -1029,7 +1032,7 @@ export class AbilitySystem {
         const shattered: number[] = [];
         let shown = 0;
         for (const e of this.ctx.enemies().values()) {
-          if (e.state === 'dead') continue;
+          if (gone(e)) continue;
           const rx = e.x - origin.x;
           const rz = e.z - origin.z;
           const along = rx * dx + rz * dz;
@@ -1576,7 +1579,7 @@ export class AbilitySystem {
     const dmg = this.sp * ABILITIES.bone_mantle.power;
     const ids: number[] = [];
     for (const e of this.ctx.enemies().values()) {
-      if (e.state === 'dead' || Math.hypot(e.x - p.x, e.z - p.z) > reach + e.radius) continue;
+      if (gone(e) || Math.hypot(e.x - p.x, e.z - p.z) > reach + e.radius) continue;
       ids.push(e.id);
       if (ids.length <= 6) {
         effects.emit({ x: e.x, y: 0.9, z: e.z, count: 4, color: MN.bone, spread: 0.2, speed: 2.2, up: 1, life: 0.3, size: 0.12, gravity: 8 });
@@ -1699,7 +1702,7 @@ export class AbilitySystem {
         if (!p.alive) return;
         const lane: { along: number; id?: number; boss?: boolean; x: number; z: number }[] = [];
         for (const e of this.ctx.enemies().values()) {
-          if (e.state === 'dead') continue;
+          if (gone(e)) continue;
           const rx = e.x - origin.x;
           const rz = e.z - origin.z;
           const along = rx * dx + rz * dz;
@@ -1793,7 +1796,7 @@ export class AbilitySystem {
     };
     const ids: number[] = [];
     for (const e of this.ctx.enemies().values()) {
-      if (e.state === 'dead' || !inArc(e.x, e.z, e.radius)) continue;
+      if (gone(e) || !inArc(e.x, e.z, e.radius)) continue;
       ids.push(e.id);
       if (ids.length <= 10) {
         this.ctx.number(e.x, e.z, dmg, 'hit');
@@ -1959,7 +1962,7 @@ export class AbilitySystem {
     };
     const ids: number[] = [];
     for (const e of this.ctx.enemies().values()) {
-      if (e.state === 'dead' || !inArc(e.x, e.z, e.radius)) continue;
+      if (gone(e) || !inArc(e.x, e.z, e.radius)) continue;
       ids.push(e.id);
       if (ids.length <= 10) {
         this.ctx.number(e.x, e.z, dmg, 'hit');
@@ -2044,7 +2047,7 @@ export class AbilitySystem {
     const r = GRAVE_SLAM.slamR;
     const ids: number[] = [];
     for (const e of this.ctx.enemies().values()) {
-      if (e.state === 'dead') continue;
+      if (gone(e)) continue;
       if (Math.hypot(e.x - at.x, e.z - at.z) > r + e.radius) continue;
       ids.push(e.id);
       if (ids.length <= 10) this.ctx.number(e.x, e.z, dmg, 'hit');
