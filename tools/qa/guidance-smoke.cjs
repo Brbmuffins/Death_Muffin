@@ -140,9 +140,9 @@ async function main() {
     await page.evaluate(() => { window.__cwDebug.progression.addShards(2); });
     assert.match(await record('2 shards'), /Gravedigger King waits at the King's Grave — 2 soul shards/);
     await G('beatBoss', 'gravedigger');
-    assert.match(await record('King buried'), /Hollow Graves: 172 \/ 300/);
+    assert.equal(await record('King buried'), 'Ossuary seal: 172/300 kills');
     await page.evaluate(() => { const p = window.__cwDebug.progression; for (let i = 0; i < 128; i++) p.recordKill('graves'); p.unlock('ossuary'); for (let i = 0; i < 33; i++) p.recordKill('ossuary'); });
-    assert.equal(await record('Ossuary open, 33 kills'), 'Marrow Ossuary: 33 / 420 to open the Drowned Nave');
+    assert.equal(await record('Ossuary open, 33 kills'), 'Nave seal: 33/420 kills');
     // The Prior has news: a broken seal and a buried king.
     assert.equal((await G('npcs')).find((n) => n.id === 'prior').bang, true, 'the Prior has a new seal to speak of');
     await page.evaluate(() => { window.__cwDebug.player.teleport(-1.2, 17.5); });
