@@ -280,15 +280,19 @@ function characterXpToNext(level) {
   return Math.max(1, Number(level) || 1) * 100;
 }
 
+const MAX_CHARACTER_LEVEL = 255;
+
 async function normalizeCharacterProgress(char) {
   let level = Math.max(1, Number(char.level) || 1);
   let experience = Math.max(0, Number(char.experience) || 0);
   let xpToNext = characterXpToNext(level);
-  while (experience >= xpToNext) {
+  // 255 is the level every save path caps at (save-progress, offline sync); XP left over at the cap is trimmed, not turned into levels.
+  while (experience >= xpToNext && level < MAX_CHARACTER_LEVEL) {
     experience -= xpToNext;
     level++;
     xpToNext = characterXpToNext(level);
   }
+  if (experience >= xpToNext) experience = xpToNext - 1;
 
   if (level !== Number(char.level) || experience !== Number(char.experience)) {
     await pool.execute(

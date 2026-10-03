@@ -160,3 +160,23 @@ test('body-parser and unexpected errors answer readable JSON, not an HTML page',
   assert.equal(boom.json.success, false);
   assert.equal(boom.json.error, 'internal server error', 'no internals leak to the client');
 });
+
+// ── GET /character ──────────────────────────────────────────────────────────────────────────────────────────────────────
+
+test('GET /character: leftover XP past the last level cannot push the level over the 255 cap', async () => {
+  // save-progress accepts any XP up to 2^31, so a saved row can hold far more than level * 100; normalising used to level it to ~20,000.
+  const f = fakePool({ character: { level: 250, experience: 2_000_000_000 }, onQuery: (sql) => {
+    if (/FROM accounts WHERE id/.test(sql)) return [[{ username: 'tester', role: 'player', gm_enabled: 0, gm_level: 0, gm_permissions: '' }]];
+    if (/^UPDATE characters SET level = \?, experience = \? WHERE id = \?$/.test(sql)) return [{ affectedRows: 1 }];
+    if (/^UPDATE characters SET online/.test(sql)) return [{ affectedRows: 1 }];
+  } });
+  const pool = { ...f.pool };
+  const inner = pool.execute;
+  pool.execute = async (sql, params) => (/FROM accounts WHERE id/.test(sql) ? [[{ username: 'tester', role: 'player', gm_enabled: 0, gm_level: 0, gm_permissions: '' }]] : inner(sql, params));
+  const r = await loadServer({ pool }).call('GET /character', { user: { accountId: 1, username: 'tester', characterId: 1 } });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  const fix = f.log.find((q) => /^UPDATE characters SET level = \?, experience = \?/.test(q.sql));
+  assert.ok(fix, 'the row was normalised');
+  assert.equal(fix.params[0], 255, 'level stops at the cap');
+  assert.ok(fix.params[1] < 255 * 100, 'the leftover experience is below one level at the cap');
+});
