@@ -44,6 +44,9 @@ const DISC = process.env.DM_QA_DISC || 'Gravecaller', SECS = +(process.env.DM_QA
   await page.waitForTimeout(2500);
   await page.evaluate(() => { for (let i = 0; i < 4; i++) window.__cwDebug.advance(0.1, 1 / 60, true); });
   const census0 = await page.evaluate(() => { const p = window.__cwDebug.perf(1); return { calls: p.calls, tris: p.triangles, skinned: p.skinned, meshes: p.meshes, casters: p.casters, lights: p.lights, programs: p.programs, geo: p.geometries, tex: p.textures, ...window.__cwDebug.counts(), dom: document.getElementsByTagName('*').length, heap: performance.memory?.usedJSHeapSize }; });
+  // Drive time only through advance(): stop the real rAF loop (it would render with software GL between windows and let the resolution governor resize the canvas under the measurement).
+  await page.evaluate(async () => { (await import('/src/app/GameRuntime.ts')).getRuntime().stop(); });
+  await page.waitForTimeout(500);
   // Warm pass: a first unprofiled window absorbs shader compiles and first-touch costs so the measured window is steady state.
   await page.evaluate((secs) => { const d = window.__cwDebug; for (let i = 0; i < secs; i++) { d.advance(1, 1 / 60, true); window.__refill(); } }, +(process.env.DM_QA_WARM || 6));
   await cdp.send('Performance.enable');
