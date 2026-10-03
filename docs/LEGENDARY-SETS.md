@@ -16,6 +16,19 @@ with 0 = off (`soulHarvestRateMult` is a multiplier, 1 = normal), and `SetAddKey
 accept them, so a set bonus folds them in through the existing `applySetMods` / `withSetBonuses` path. Data/drops/UI and the
 sim mechanics are built separately against this contract. Migration number reserved: **025** (024 is relic runes).
 
+## Power pass (2026-10-03, `claude/legendary-power`)
+
+The first live values measured about x1.15 clear speed and x0.92 damage taken for a full set, far under the +40-80% target. Only existing numbers were changed (plus existing `DisciplineMods` keys such as `maxHpMult`, `wardPerThrall`, `thrallHpMult` and `witheredMaxStacks` added to lines that lacked them); no mechanic, item or migration is new. Measured with `legendaryReport.ts` (8 seeds, Nave and Sanctum, intended/push/max, kit none; power = clear-speed ratio / damage-taken ratio). Table and method: BALANCE.md "Legendary power pass".
+
+| Discipline | 2 pieces | 4 pieces | full set | ascended set (reference) |
+|---|---|---|---|---|
+| Ossuary | 1.33 | 1.67 | **2.15** | 1.82 |
+| Gravecaller | 1.09 | 1.24 | **1.99** | 1.15 |
+| Mourner | 1.35 | 1.12 | **1.81** | 1.49 |
+| Rotweaver | 1.19 | 1.43 | **2.10** | 1.09 |
+
+Mourner's 4-piece reads low because wisp and corpse healing lower no "damage taken" (average HP is +6 points and deaths -0.8 per run there).
+
 ## Drop rules (polish pass, 2026-10-03)
 
 Boss 7% per kill (Ossuary onward), elite 0.3% in the scaled areas, 70% of drops are your discipline's set. A drop now **favours pieces you do not hold**

@@ -1022,3 +1022,46 @@ Necromancer rows are byte-identical. `BALANCE_SEEDS=4 BALANCE_AREAS=graves,nave 
 
 Graves (early levels): New Blood now level about as fast as a necromancer. Nave (past the catch-up): the gap closes from about 6x to about 2x
 XP/min; the rest is the legion (thralls) and survival, still worth a human playtest of the melee three (Warden, Monk, Knight die most).
+
+## Legendary power pass (3 Oct 2026, branch `claude/legendary-power`)
+Owner direction: polish, no new content. A full legendary set measured only x1.15 clear speed / x0.92 damage taken against a +40-80% target. Tuned the existing set numbers in `setBonuses.ts` (no new mechanic, item or migration; the server rules bundle is unchanged, `npm run build:server-rules` produced no diff). Instrument: `legendaryReport.ts` now prints every tier (the discipline's first and ascended set, legendary 2 / 4 / full) with `BALANCE_TIERS` and `BALANCE_DISC` filters; `bossReport.ts` gained `BALANCE_LEGENDARY=1` (the full legendary set folded onto the kit; the boss harness also now sends the shared-sim legend mods). 8 seeds x 3 sim-min, Nave + Sanctum, intended/push/max, kit none, 24 rows per discipline. Cell = clear-speed x / damage-taken x / power (clear / damage); a Mourner or Ossuary survival gain also shows as average HP and deaths.
+
+### Before (14ad4db)
+| Discipline | first set | ascended | legendary 2 | legendary 4 | legendary full |
+|---|---|---|---|---|---|
+| Ossuary | 1.05 / 0.76 / 1.38 | 1.10 / 0.60 / 1.82 | 1.05 / 0.90 / 1.16 | 1.04 / 0.97 / 1.07 | 1.05 / 0.86 / 1.22 |
+| Gravecaller | 1.02 / 1.00 / 1.01 | 1.09 / 0.95 / 1.15 | 1.02 / 0.96 / 1.06 | 1.13 / 0.81 / 1.39 | 1.24 / 0.78 / 1.58 |
+| Mourner | 1.05 / 0.84 / 1.25 | 1.10 / 0.74 / 1.49 | 1.04 / 0.92 / 1.13 | 1.03 / 1.08 / 0.95 | 1.09 / 1.01 / 1.08 |
+| Rotweaver | 1.02 / 1.01 / 1.01 | 1.05 / 0.96 / 1.09 | 1.01 / 1.00 / 1.00 | 1.10 / 0.85 / 1.29 | 1.25 / 0.77 / 1.61 |
+Findings: the Ossuary and Mourner legendaries were *below* their own ascended set (the ascended carries ward-per-thrall and health the legendary lacked), the Mourner's 4-piece did nothing measurable, and the full sets spanned 1.08-1.61 (1.49x apart). No dead wiring found: every legendary mod is read by the harness and sim (wisps heal 2%/s each, novas, shatter, reflect, spread, burst, rally are all modelled); the Marrow Spear rally and Mourner healing are simply not visible in a clear-speed / damage-taken ratio.
+
+### What changed
+| Set | 2 pieces | 4 pieces | 5 pieces |
+|---|---|---|---|
+| Legion of the Unburied | thrall damage +25% -> **+10%** | attack speed +10% -> **+10%**, burst 80% -> **100%** | adds **+40% thrall health** (cap +2, Champion, rally unchanged) |
+| Colossus Mantle | thrall health +35% -> **+50%**, damage +15% -> **+30%**, adds **+8% max health** | reflect 60% -> **100%**, adds **8% less damage per thrall** | guard 30% -> **35%**, shatter 4x -> **6x**, adds **+10% max health** and **Litany barrier +4%/corpse** |
+| Requiem of Wraiths | regen +40% -> **+70%**, health +10% -> **+20%** | wisps 10 s -> **14 s**, corpse heal 2% -> **4%**, adds **+30% thrall health** | Soul Harvest 2x -> **3x**, thrall attack speed +15% -> **+30%**, adds **thrall damage +70%**, nova 120% -> **600%** |
+| Plague Choir | Miasma +25% -> **+40%**, health +8% -> **+12%** | adds **+3 max Withered stacks** | adds **Miasma +25%** and **+8% health** |
+Gravecaller was first raised to +33%/+20% thrall damage/speed and then pulled back after the boss check below (Abbess kills melted); its power now comes from burst, thrall health and the +2 cap. The Legion 2-piece is a cut (+25% -> +10%) on purpose: the full set now reaches the same power through its later tiers, which keeps the Abbess fight from melting.
+
+### After (same instrument, final numbers)
+| Discipline | first set | ascended | legendary 2 | legendary 4 | legendary full |
+|---|---|---|---|---|---|
+| Ossuary | 1.05 / 0.76 / 1.38 | 1.10 / 0.60 / 1.82 | 1.07 / 0.80 / 1.33 | 1.11 / 0.66 / 1.67 | **1.15 / 0.53 / 2.15** (+1 HP, -0.7 deaths) |
+| Gravecaller | 1.02 / 1.00 / 1.01 | 1.09 / 0.95 / 1.15 | 1.03 / 0.94 / 1.09 | 1.14 / 0.91 / 1.24 | **1.32 / 0.66 / 1.99** (+3 HP, -0.9) |
+| Mourner | 1.05 / 0.84 / 1.25 | 1.10 / 0.74 / 1.49 | 1.05 / 0.78 / 1.35 | 1.07 / 0.96 / 1.12 (+6 HP, -0.8) | **1.22 / 0.67 / 1.81** (+7 HP, -1.0) |
+| Rotweaver | 1.02 / 1.01 / 1.01 | 1.05 / 0.96 / 1.09 | 1.05 / 0.88 / 1.19 | 1.15 / 0.80 / 1.43 | **1.37 / 0.65 / 2.10** (+3 HP, -1.0) |
+Mean legendary full set: clear speed x1.15 -> **x1.26**, damage taken x0.92 -> **x0.63** (power spread 1.08-1.61 -> 1.81-2.15, 1.18x apart; slightly over the 15% aim because Mourner's healing and the Ossuary's barrier are worth more than the ratio shows). Ordering holds everywhere: first < ascended < legendary full, and 2 < 4 < full for power except the Mourner (2 piece 1.35 vs 4 piece 1.12: the 4-piece is a healing line, read in the HP/deaths columns). At the intended band clear speed is spawn-limited, so the gain mostly shows as survival.
+
+### Bosses (`balance:boss`, 8 seeds, dodge yes, six bosses x intended/geared x four necromancers, full legendary vs none, mean kill time; ratio = with set / without)
+| Ratio of kill time | Ossuary | Gravecaller | Mourner | Rotweaver |
+|---|---|---|---|---|
+| gear-free (kit none): mean / worst | 0.98 / 0.94 | **0.76 / 0.54** (Abbess geared) | 0.94 / 0.83 | 0.91 / 0.88 |
+| on the auto kit: mean / worst | 0.99 / 0.95 | **0.66 / 0.49** (Abbess intended) | 0.94 / 0.90 | 0.92 / 0.80 |
+Before the pass the Gravecaller was 0.60-0.79 on the auto kit (its first retune reached 0.46) with the same weakest case (Abbess); the other three were within 0.8-1.0 before and after. No boss melts: Gravecaller keeps >=0.57 of the no-set time on every boss except the Abbess (shortest fight, 17-20 s geared), which sits at 0.49-0.54, a little under the 60% aim. Not lowered further: the spear rally does not appear in this bot's numbers and the rest of the Gravecaller power is the thrall cap and burst. Honest caveat: the boss bot barely uses Ossuary/Mourner/Rotweaver legendary mechanics, so their boss gains are small; the sets pay off in clearing, not boss fights.
+
+### Affixes still below a set
+`gear-balance.test.ts` (three best max-rolled affixes under the ascended set bonus, home lever vs stat, rolled kit mean < 14% / p90 < 22%) passes unchanged; the legendary set only moved up, so the "affixes never outclass a completed set" margin grew.
+
+### Gates
+`npx tsc --noEmit`, `npm test` (see the PR notes for environment-only failures), `npm run test:server`.
