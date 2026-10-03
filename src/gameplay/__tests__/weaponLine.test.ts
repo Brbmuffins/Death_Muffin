@@ -275,3 +275,18 @@ describe('Mourning Bell on the host', () => {
     expect(all.filter((e) => (e as { t: string }).t === 'heal')).toHaveLength(0);
   });
 });
+
+describe('scythe boss reach (owner, 3 Oct 2026)', () => {
+  const scythe = { ...NO_LOADOUT, reap: true };
+  it('reaches a boss farther than an ordinary foe', () => {
+    expect(T.scythe.bossReach).toBeGreaterThan(T.scythe.reach);
+    expect(abilityRange('bone_needle', 10, scythe, true)).toBe(T.scythe.bossReach);
+    expect(abilityRange('bone_needle', 10, scythe)).toBe(T.scythe.reach);
+  });
+  it('an arc at boss reach strikes a boss body that the ordinary arc misses', () => {
+    const at = T.scythe.reach + 1.6 + 0.5; // past the normal arc, inside the boss reach
+    const boss = [{ x: 0, z: at, radius: 1.6 }];
+    expect(reapTargets({ x: 0, z: 0 }, { x: 0, z: 1 }, boss)).toHaveLength(0);
+    expect(reapTargets({ x: 0, z: 0 }, { x: 0, z: 1 }, boss, T.scythe.bossReach)).toHaveLength(1);
+  });
+});

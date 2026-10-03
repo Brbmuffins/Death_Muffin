@@ -79,4 +79,4 @@ Decided 3 Oct 2026 and **implemented** on branch `claude/combat-owner-decisions`
 
 Still open:
 
-4. (3 Oct, boss bot) Scythe against bosses: it needs to stand in melee and takes 2-6x the damage of a staff for a slower kill; a Mourner with a scythe cannot beat the Prelate with the progress kit (7/8 wipes). Keep it as the high-risk style, or give it a boss-side advantage (reach 3 -> 3.5 m, or the arc hitting the boss twice)? Numbers in BALANCE.md "Boss bot coverage".
+4. ~~(3 Oct, boss bot) Scythe against bosses~~ **Decided 3 Oct 2026 (owner: "give the scythe more reach at bosses"): done.** `NECRO_WEAPON_TUNING.scythe.bossReach` = 4 m (normal arc 3 m) for the range check and the boss hit (`abilityRange(..., boss)`, `reapTargets(..., reach)`); past the normal arc the crescent is drawn at the boss's body. Boss bot, 8 seeds, Prelate/Saint/Congregation/Mire x 4 necromancers x intended+geared, dodging: wipes 12 -> 5, damage taken -24%, kill time -5% (4.5 m measured: no further gain). Still true: a scythe Mourner at the Prelate (intended, progress kit) wipes 3/8 (was 7/8); the scythe stays the slower, riskier boss style by design.

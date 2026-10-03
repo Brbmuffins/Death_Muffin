@@ -117,7 +117,7 @@ export function runBossFight(run: BossRun): BossResult {
     return true;
   };
   /** How close a scythe bot stands to the boss's centre (arc reach + body, with a margin so a step back still lands). */
-  const meleeReach = abilityRange('bone_needle', ABILITIES.bone_needle.range, loadout) + BOSS_RADIUS - 0.4;
+  const meleeReach = abilityRange('bone_needle', ABILITIES.bone_needle.range, loadout, true) + BOSS_RADIUS - 0.4;
   const place = (alive = true) => sim.setPlayer({ id: p.id, x: p.x, z: p.z, alive, area: alive ? area : null, level: run.level });
 
   // Arrive with a full legion (raised during the Sanctum trash).
@@ -182,7 +182,7 @@ export function runBossFight(run: BossRun): BossResult {
   let spotAt = -9;
   const fenSpotCost = (i: number) => {
     const h = FEN_HUMMOCKS[i];
-    const want = loadout.reap ? 3.5 : 7;
+    const want = loadout.reap ? meleeReach - 0.7 : 7; // 3.5 m at the old 3 m arc; follows the scythe's boss reach
     const unsafe = dangers.some((d) => t < d.at && Math.hypot(h.x - d.x, h.z - d.z) < d.r + 0.5);
     return Math.abs(Math.hypot(h.x - b.x, h.z - b.z) - want) + 0.2 * Math.hypot(h.x - p.x, h.z - p.z) + (unsafe ? 50 : 0);
   };
@@ -274,7 +274,7 @@ export function runBossFight(run: BossRun): BossResult {
         const crit = rand() < 0.08 ? 1.8 : 1;
         const cd = abilityCooldownMs('bone_needle', needle.cooldownMs, loadout, true) / 1000;
         const addInReach = nearAdd && nad <= reach + 0.4 ? nearAdd : null;
-        const bossInReach = bd <= reach + BOSS_RADIUS;
+        const bossInReach = bd <= abilityRange('bone_needle', needle.range, loadout, true) + BOSS_RADIUS;
         if (loadout.reap) {
           if (addInReach || bossInReach) {
             cds.set('bone_needle', t + cd);
@@ -282,7 +282,7 @@ export function runBossFight(run: BossRun): BossResult {
             const T = NECRO_WEAPON_TUNING.scythe;
             const dmg = sp * needle.power * T.damageMult * crit;
             const struck = reapTargets(p, aim, adds);
-            const hitBoss = bossInReach && reapTargets(p, aim, [{ x: b.x, z: b.z, radius: BOSS_RADIUS }]).length > 0;
+            const hitBoss = bossInReach && reapTargets(p, aim, [{ x: b.x, z: b.z, radius: BOSS_RADIUS }], T.bossReach).length > 0;
             const ids = struck.slice(0, Math.max(0, T.maxHits - (hitBoss ? 1 : 0))).map((e) => e.id);
             if (ids.length) sim.apply({ t: 'hit', by: p.id, ids, dmg });
             if (hitBoss) sim.apply({ t: 'hit', by: p.id, ids: [], dmg, boss: true });
