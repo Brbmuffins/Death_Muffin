@@ -21,14 +21,6 @@ export function shouldProcessFrame(now: number, last: number, fps: number): bool
   return now - last >= 1000 / fps - SLACK_MS;
 }
 
-/** While a full-screen panel covers the 3D view we only redraw ~6 times a second. */
-export const COVERED_RENDER_MS = 1000 / 6;
-
-export function shouldRender(now: number, lastRender: number, covered: boolean): boolean {
-  if (!covered || !(lastRender > 0)) return true;
-  return now - lastRender >= COVERED_RENDER_MS;
-}
-
 /**
  * Dynamic resolution: when frames sustainedly miss the cap's budget (a GPU that can't keep up), render fewer pixels;
  * when there is headroom again, step back up. A step up that fails right away becomes the ceiling, so it doesn't ping-pong.

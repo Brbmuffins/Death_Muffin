@@ -18,19 +18,19 @@ export function healPick(count: (id: string) => number): string | null {
   return HEAL_ORDER.find((id) => count(id) > 0) ?? null;
 }
 
-/** One line for an empty slot: how to fill it. `touch` swaps key and click words for taps. */
-export function emptyHint(id: BeltSlotId, touch: boolean): string {
+/** One line for an empty slot: how to fill it. */
+export function emptyHint(id: BeltSlotId): string {
   if (id === 'heal') {
-    return `Healing: no potions yet. Brew Moss Tonic from Mourning Moss in the Alchemist's Wing (east door of the Chapterhouse), or loot them from the dead. ${touch ? 'Tap this slot to drink one.' : 'Press Q to drink one.'}`;
+    return `Healing: no potions yet. Brew Moss Tonic from Mourning Moss in the Alchemist's Wing (east door of the Chapterhouse), or loot them from the dead. Press Q to drink one.`;
   }
   const kind = id === 'elixir' ? 'elixir' : 'tonic';
-  const use = touch ? 'Tap this slot' : `Press ${BREW_KEY_LABEL[id]}`;
-  return `Empty ${kind} slot. Brew ${id === 'elixir' ? 'an' : 'a'} ${kind} in the Alchemist's Wing, then ${touch ? 'select' : 'right-click'} it in your bag to belt it. ${use} to drink it.`;
+  const use = `Press ${BREW_KEY_LABEL[id]}`;
+  return `Empty ${kind} slot. Brew ${id === 'elixir' ? 'an' : 'a'} ${kind} in the Alchemist's Wing, then right-click it in your bag to belt it. ${use} to drink it.`;
 }
 const BREW_KEY_LABEL: Record<BrewSlot, string> = { elixir: 'Z', tonic: 'X' };
 
-/** The short floating line when a player presses or taps an empty slot (the toast carries emptyHint). */
-export function emptyPressText(id: BeltSlotId, _touch: boolean): string {
+/** The short floating line when a player presses an empty slot (the toast carries emptyHint). */
+export function emptyPressText(id: BeltSlotId): string {
   return id === 'heal' ? 'No healing potions' : `Empty ${id} slot`;
 }
 

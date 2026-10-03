@@ -15,7 +15,7 @@ const sentences = (s: string) => plain(s).split(/(?<=[.!?])\s+/);
 function brewingLines(): { where: string; line: string }[] {
   const out: { where: string; line: string }[] = [];
   const add = (where: string, text: string) => sentences(text).forEach((line) => out.push({ where, line }));
-  for (const [id, t] of Object.entries(TIPS)) add(`tip ${id}`, renderText(t.body, false));
+  for (const [id, t] of Object.entries(TIPS)) add(`tip ${id}`, renderText(t.body));
   for (const id of NPC_IDS) add(`npc ${id}`, NPCS[id].blurb);
   const s = baseState({ dust: 6, level: 5, totalKills: 40 });
   for (const sg of suggestions(s)) add(`suggestion ${sg.kind}`, sg.text);

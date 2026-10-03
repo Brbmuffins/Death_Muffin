@@ -127,7 +127,6 @@ import { ProfessionsPanel } from '../ui/ProfessionsPanel';
 import { CodexPanel } from '../ui/CodexPanel';
 import { Onboarding, type TipId } from '../ui/Onboarding';
 import { DepthsController } from './DepthsController';
-import { touchNow } from '../ui/touchText';
 import { hudDue } from '../graphics/animLod';
 import { HEAL_COOLDOWN_S, HEAL_ORDER, beltState, emptyHint, emptyPressText, healPick } from '../gameplay/beltRules';
 import type { Busy } from '../ui/counselCadence';
@@ -355,12 +354,6 @@ export class WorldScene implements GameScene, RuntimeView {
   private autoAim: CastTarget | null = null;
   private queuedCast: { slot: HotbarSlot; target: CastTarget; until: number } | null = null;
   private mouse = { x: 0, y: 0, shift: false, aiming: false };
-  /** Touch play: active fingers on the canvas (for pinch zoom / drag to walk), and whether the last input was a finger. */
-  private touch = { on: false, pts: new Map<number, { x: number; y: number }>(), pinch: 0, lastDrag: 0 };
-  /** Panels opened from inside another panel, newest last; Back reopens the top one. */
-  private panelStack: PanelKey[] = [];
-  private histPushed = false;
-  private histIgnore = 0;
   /** A save is retrying or the browser reports no network (see watchConnection). */
   private netDown = false;
   private groundPoint = new THREE.Vector3();
@@ -950,9 +943,6 @@ export class WorldScene implements GameScene, RuntimeView {
         this.applyWaveTier();
       },
       open: (p) => this.togglePanel(p),
-      flask: () => this.drinkFlask(),
-      recall: () => this.startRecall(),
-      drinkBelt: (slot) => (slot === 'heal' ? this.drinkFlask() : this.drinkBelt(slot as BrewSlot)),
       toggleAutoCombat: () => this.toggleAutoCombat(),
       chat: (text) => {
         if (this.realtime.connected) this.realtime.sendChat(text);
@@ -1100,8 +1090,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.onboarding.dispose();
     });
     const rmb = 'Right-click or 5 casts your fifth rite · swap it below its icon';
-    const rmbTouch = 'Tap your fifth rite to cast it · swap it below its icon';
-    this.hud.hint(touchNow() ? (OFFLINE ? 'Offline edition: progress stays on this device' : rmbTouch) : OFFLINE ? 'Offline edition: progress stays on this device · Right-click or 5: fifth rite' : rmb);
+    this.hud.hint(OFFLINE ? 'Offline edition: progress stays on this device · Right-click or 5: fifth rite' : rmb);
     this.scope.add(() => {
       this.closePanels();
       this.hud.dispose();
@@ -1297,8 +1286,8 @@ export class WorldScene implements GameScene, RuntimeView {
       const full = v.slots.filter((s) => s.capped && !this.laborCapNoted.has(s.slot));
       for (const s of full) this.laborCapNoted.add(s.slot);
       for (const s of v.slots) if (!s.capped) this.laborCapNoted.delete(s.slot);
-      if (arrival && waiting.length) this.hud.toast(`Your laborers have gathered about ${items.toLocaleString()} finds${touchNow() ? '' : ' (H)'}`, 'good');
-      else if (full.length) this.hud.toast(`A laborer has filled up: collect what they gathered${touchNow() ? '' : ' (H)'}`, 'good');
+      if (arrival && waiting.length) this.hud.toast(`Your laborers have gathered about ${items.toLocaleString()} finds (H)`, 'good');
+      else if (full.length) this.hud.toast(`A laborer has filled up: collect what they gathered (H)`, 'good');
     } catch {
       /* a nicety: try again next time */
     }
@@ -1326,9 +1315,9 @@ export class WorldScene implements GameScene, RuntimeView {
       const ready = v.plots.filter((p) => p.state === 'ready').length;
       const growing = v.plots.filter((p) => p.state === 'growing').length;
       if (ready > 0 && (arrival || ready > this.gardenReady)) {
-        this.hud.toast(`${ready} plot${ready === 1 ? ' is' : 's are'} ready in your garden${touchNow() ? '' : ' (U)'}`, 'good');
+        this.hud.toast(`${ready} plot${ready === 1 ? ' is' : 's are'} ready in your garden (U)`, 'good');
       } else if (arrival && growing > 0) {
-        this.hud.toast(`${growing} plot${growing === 1 ? ' is' : 's are'} still growing in your garden${touchNow() ? '' : ' (U)'}`);
+        this.hud.toast(`${growing} plot${growing === 1 ? ' is' : 's are'} still growing in your garden (U)`);
       }
       this.gardenReady = ready;
     } catch {
@@ -1362,79 +1351,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hud.toast(d.paidBonus ? `Order filled, and the day’s bonus is yours: +${d.paidBonus.gold.toLocaleString()}g` : 'Order filled', 'good');
   }
 
-  private panelMap() {
-    return { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel, cosmetics: this.cosmeticsPanel, vault: this.vaultPanel, salvage: this.salvagePanel, sheet: this.sheetPanel, legion: this.legionPanel } as Record<PanelKey, { isOpen: boolean } | undefined>;
-  }
-
-  private openPanelKey(): PanelKey | null {
-    for (const [k, v] of Object.entries(this.panelMap())) if (v?.isOpen) return k as PanelKey;
-    return null;
-  }
-
-  /** Back from a panel opened inside another (Skills -> Contracts): reopen the one it came from. */
-  private panelBack() {
-    const parent = this.panelStack.pop();
-    if (!parent) {
-      if (this.panelOpen()) { audio.play('panelClose'); this.closePanels(); }
-      return;
-    }
-    const rest = [...this.panelStack];
-    this.closePanels();
-    this.togglePanel(parent);
-    this.panelStack = rest;
-  }
-
-  /**
-   * Per frame: keep the panel back-stack honest, show a Back button on a panel that has a parent, and hold one browser
-   * history entry while any panel is open so the phone's Back gesture closes/steps back instead of leaving the game.
-   */
-  private syncPanelNav() {
-    const open = this.panelOpen();
-    if (!open) this.panelStack = [];
-    document.body.classList.toggle('dm-panel-open', open);
-    // The Back button floats over the panel's top-left corner (not inside it: panels redraw their own markup).
-    const panelEl = this.panelStack.length ? [...this.root.querySelectorAll<HTMLElement>('.cw-panel-float')].find((e) => e.offsetParent) : undefined;
-    let back = this.root.querySelector<HTMLButtonElement>(':scope > .cw-panel-back');
-    this.root.querySelectorAll('.cw-panel-float.has-back').forEach((e) => { if (e !== panelEl) e.classList.remove('has-back'); });
-    if (panelEl) {
-      if (!back) {
-        back = document.createElement('button');
-        back.type = 'button';
-        back.className = 'cw-icon-btn cw-panel-back';
-        back.dataset.back = '';
-        back.setAttribute('aria-label', 'Back');
-        back.textContent = '‹ Back';
-        back.addEventListener('click', () => { audio.play('panelClose'); this.panelBack(); });
-        this.root.appendChild(back);
-      }
-      panelEl.classList.add('has-back');
-      const r = panelEl.getBoundingClientRect();
-      const head = panelEl.querySelector<HTMLElement>('.cw-panel-head');
-      const hr = head?.getBoundingClientRect();
-      back.style.left = `${Math.round(r.left + 10)}px`;
-      back.style.top = `${Math.round(hr && hr.height ? hr.top + (hr.height - 8 - 40) / 2 : r.top + 10)}px`;
-      back.hidden = false;
-    } else if (back) back.remove();
-    if (open && !this.histPushed) {
-      history.pushState({ dmPanel: true }, '');
-      this.histPushed = true;
-    } else if (!open && this.histPushed) {
-      this.histPushed = false;
-      this.histIgnore++;
-      history.back();
-    }
-  }
-
   private togglePanel(p: PanelKey) {
-    const from = this.openPanelKey();
     const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel, cosmetics: this.cosmeticsPanel, vault: this.vaultPanel, salvage: this.salvagePanel, sheet: this.sheetPanel, legion: this.legionPanel }[p];
     const wasOpen = panel.isOpen;
-    if (wasOpen || !from) this.panelStack = [];
-    else if (from !== p) {
-      const at = this.panelStack.indexOf(p);
-      if (at >= 0) this.panelStack.length = at;
-      else this.panelStack.push(from);
-    }
     const vault = p === 'vault';
     if (!(vault && !wasOpen && !AREAS[this.area].safe)) audio.play(wasOpen ? (vault ? 'vaultClose' : 'panelClose') : vault ? 'vaultOpen' : 'panelOpen');
     this.closePanels();
@@ -1478,10 +1397,9 @@ export class WorldScene implements GameScene, RuntimeView {
     updateSettings({ autoCombat: !settings.autoCombat });
     this.autoTargetId = null;
     this.autoAim = null;
-    const touch = touchNow();
     this.hud.toast(settings.autoCombat
-      ? (touch ? 'Auto combat on — your hero engages nearby enemies. Tap the ground or drag to take control; the Auto button in the Menu turns it off.' : 'Auto combat on — your hero engages nearby enemies. Click or use keys to take control; G turns it off.')
-      : (touch ? 'Auto combat off — tap enemies and use your rites manually.' : 'Auto combat off — click enemies and use your rites manually.'), 'good');
+      ? 'Auto combat on — your hero engages nearby enemies. Click or use keys to take control; G turns it off.'
+      : 'Auto combat off — click enemies and use your rites manually.', 'good');
   }
 
   // -------------------------------------------------------------------------
@@ -1538,49 +1456,11 @@ export class WorldScene implements GameScene, RuntimeView {
       this.keys.delete(e.key.toLowerCase());
       this.mouse.shift = e.shiftKey;
     });
-    // A finger anywhere switches to touch aiming (rites aim at your target / the nearest enemy); a mouse switches back.
-    this.scope.on<PointerEvent>(window, 'pointerdown', (e) => {
-      const on = e.pointerType === 'touch';
-      if (on !== this.touch.on) { this.touch.on = on; document.body.classList.toggle('touch', on); }
-    }, { capture: true });
-    // The phone's Back gesture: step back / close the open panel instead of leaving the game.
-    this.scope.on<PopStateEvent>(window, 'popstate', () => {
-      if (this.histIgnore > 0) { this.histIgnore--; return; }
-      this.histPushed = false;
-      if (this.panelOpen()) { audio.play('panelClose'); this.panelBack(); }
-    });
-    const endTouch = (e: PointerEvent) => {
-      this.touch.pts.delete(e.pointerId);
-      if (this.touch.pts.size < 2) this.touch.pinch = 0;
-    };
-    this.scope.on<PointerEvent>(this.canvas, 'pointerup', endTouch);
-    this.scope.on<PointerEvent>(this.canvas, 'pointercancel', endTouch);
     this.scope.on<PointerEvent>(this.canvas, 'pointermove', (e) => {
-      if (e.pointerType === 'touch' && this.touch.pts.has(e.pointerId)) {
-        this.touch.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-        if (this.touch.pts.size >= 2) {
-          // Pinch: spread to zoom in, squeeze to zoom out (one wheel notch per ~28px).
-          const [a, b] = [...this.touch.pts.values()];
-          const d = Math.hypot(a.x - b.x, a.y - b.y);
-          if (!this.touch.pinch) this.touch.pinch = d;
-          else if (Math.abs(d - this.touch.pinch) > 28) {
-            this.rig.onWheel({ deltaY: d > this.touch.pinch ? -1 : 1 } as WheelEvent);
-            this.touch.pinch = d;
-          }
-          return;
-        }
-      }
       this.mouse.aiming = true;
       this.mouse.x = e.clientX;
       this.mouse.y = e.clientY;
       this.mouse.shift = e.shiftKey;
-      // Drag a finger to keep walking toward it.
-      if (e.pointerType === 'touch' && this.touch.pts.size === 1 && this.ready && this.player.alive && !this.attackTarget && !this.pendingInteract
-        && !this.gathering.active && performance.now() - this.touch.lastDrag > 110) {
-        this.touch.lastDrag = performance.now();
-        this.updateCursor();
-        this.player.moveTo(this.groundPoint.x, this.groundPoint.z);
-      }
     });
     this.scope.on(this.canvas, 'pointerleave', () => { this.mouse.aiming = false; });
     // Right-click casts at the mouse; left-click movement stays independent.
@@ -1595,11 +1475,6 @@ export class WorldScene implements GameScene, RuntimeView {
     this.scope.on<PointerEvent>(this.canvas, 'pointerdown', (e) => {
       if (e.button !== 0) return;
       e.preventDefault();
-      if (e.pointerType === 'touch') {
-        this.touch.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-        this.touch.lastDrag = performance.now();
-        if (this.touch.pts.size > 1) return; // second finger = pinch, not a tap
-      }
       this.mouse.aiming = true;
       this.mouse.x = e.clientX;
       this.mouse.y = e.clientY;
@@ -1772,10 +1647,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const id = this.hotbar[slot - 1];
     if (!id) return;
     // Corpse Explosion and Grave Step pick from the exact ground point, not a hovered enemy's position.
-    const touchAim = this.touch.on ? this.touchAimTarget() : null;
-    const target = id === 'grave_step' ? { x: this.groundPoint.x, z: this.groundPoint.z }
-      : id === 'corpse_explosion' ? (touchAim ? { x: touchAim.x, z: touchAim.z } : { x: this.groundPoint.x, z: this.groundPoint.z })
-      : touchAim ?? this.cursorTarget();
+    const target = id === 'corpse_explosion' || id === 'grave_step' ? { x: this.groundPoint.x, z: this.groundPoint.z } : this.cursorTarget();
     const res = this.abilities.cast(id, target, this.now);
     if (res === 'busy' || (res === 'cooldown' && this.player.cooldownLeft(id, this.now) <= 220)) {
       this.queuedCast = { slot, target, until: this.now + 220 };
@@ -1783,24 +1655,6 @@ export class WorldScene implements GameScene, RuntimeView {
     }
     this.feedback(res, id);
     if (res === 'ok') this.hud.slotFlash(slot);
-  }
-
-  /** Touch play has no cursor to aim with: a rite button aims at the tapped/attacked target, else the nearest enemy in reach. */
-  private touchAimTarget(): CastTarget | null {
-    const h = this.hover;
-    if (h?.kind === 'enemy' || h?.kind === 'boss') return this.cursorTarget();
-    const t = this.attackTarget;
-    const tp = this.attackTargetPos();
-    if (t && tp) return t.kind === 'boss' ? { ...tp, boss: true } : { ...tp, enemyId: t.id };
-    const b = this.bossState();
-    let best: CastTarget | null = b.active && Math.hypot(b.x - this.player.x, b.z - this.player.z) < 18 ? { x: b.x, z: b.z, boss: true } : null;
-    let bestD = best ? Math.hypot(b.x - this.player.x, b.z - this.player.z) : 16;
-    for (const e of this.enemiesMap().values()) {
-      if (e.state === 'dead' || e.state === 'rising' || e.state === 'burrow') continue;
-      const d = Math.hypot(e.x - this.player.x, e.z - this.player.z);
-      if (d < bestD) { bestD = d; best = { x: e.x, z: e.z, enemyId: e.id }; }
-    }
-    return best;
   }
 
   private cursorTarget(): CastTarget {
@@ -1940,8 +1794,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private drinkBelt(slot: BrewSlot) {
     const id = this.beltBrew(slot);
     if (!id) {
-      if (this.player.alive) this.floating.spawn(this.player.x, 2.4, this.player.z, emptyPressText(slot, touchNow()), 'info');
-      if (this.player.alive) this.hud.toast(emptyHint(slot, touchNow()));
+      if (this.player.alive) this.floating.spawn(this.player.x, 2.4, this.player.z, emptyPressText(slot), 'info');
+      if (this.player.alive) this.hud.toast(emptyHint(slot));
       return;
     }
     this.drinkBuff(id);
@@ -1965,24 +1819,23 @@ export class WorldScene implements GameScene, RuntimeView {
     this.belt[b.slot] = id;
     this.brewRev++;
     try { localStorage.setItem(this.beltKey(), JSON.stringify(this.belt)); } catch { /* ignore */ }
-    this.hud.toast(`${b.label} is on your belt: ${touchNow() ? 'tap its slot on the left' : `press ${BREW_KEYS[b.slot].toUpperCase()}`} to drink it`, 'good');
+    this.hud.toast(`${b.label} is on your belt: press ${BREW_KEYS[b.slot].toUpperCase()} to drink it`, 'good');
   }
 
   /** HUD belt: always three slots (Q heal, Z elixir, X tonic); an empty one carries the line that says how to fill it. */
   private brewTray() {
     const now = this.now;
-    const touch = touchNow();
     // The tray's text only changes when the bag or belt changes, a brew starts or ends, or a timer ticks into a new
     // second / eighth: rebuild then, hand back the same objects otherwise (no per-frame Object.keys + tooltip strings).
     const cdLeft0 = Math.max(0, this.flaskCdUntil - now);
-    let sig = `${this.brewRev}|${touch}|${Math.ceil(cdLeft0 / 125)}`;
+    let sig = `${this.brewRev}|${Math.ceil(cdLeft0 / 125)}`;
     for (const slot of BREW_SLOTS) {
       const act = this.player.brews[slot];
       if (act && now < act.until) sig += `|${act.id}:${Math.ceil((act.until - now) / 1000)}:${Math.round(Math.min(1, (act.until - now) / ((BREWS[act.id]?.seconds ?? 1) * 1000)) * 8)}`;
       else sig += '|-';
     }
     if (this.brewTrayCache && this.brewTrayCache.sig === sig) return this.brewTrayCache.tray;
-    const tray = this.buildBrewTray(now, touch);
+    const tray = this.buildBrewTray(now);
     this.brewTrayCache = { sig, tray };
     return tray;
   }
@@ -1990,7 +1843,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private brewRev = 0;
   private brewTrayCache: { sig: string; tray: HudFrame['brews'] } | null = null;
 
-  private buildBrewTray(now: number, touch: boolean) {
+  private buildBrewTray(now: number) {
     const heal = (() => {
       const id = healPick((f) => this.inventory.count(f));
       const total = HEAL_ORDER.reduce((n, f) => n + this.inventory.count(f), 0);
@@ -2001,8 +1854,8 @@ export class WorldScene implements GameScene, RuntimeView {
         slot: 'heal', key: 'Q', label: 'Heal', glyph: '✚', color: 0xe0709c, active: false, left: 0,
         frac: state === 'cooling' ? cdLeft / (HEAL_COOLDOWN_S * 1000) : 0, count: total, empty: state === 'empty',
         tip: id
-          ? `Healing: ${itemMeta(id).name} restores ${pct}% of your health (${total} carried). ${touch ? 'Tap to drink' : 'Press Q to drink'}; sips are ${HEAL_COOLDOWN_S}s apart.`
-          : emptyHint('heal', touch),
+          ? `Healing: ${itemMeta(id).name} restores ${pct}% of your health (${total} carried). Press Q to drink; sips are ${HEAL_COOLDOWN_S}s apart.`
+          : emptyHint('heal'),
       };
     })();
     const brews = BREW_SLOTS.map((slot) => {
@@ -2012,11 +1865,11 @@ export class WorldScene implements GameScene, RuntimeView {
       const shown = live ? live.id : beltId;
       const key = BREW_KEYS[slot].toUpperCase();
       if (!shown) {
-        return { slot, key, label: slotName(slot), glyph: slot === 'elixir' ? '⚗' : '✧', color: 0x8a8aa0, active: false, left: 0, frac: 0, count: 0, empty: true, tip: emptyHint(slot, touch) };
+        return { slot, key, label: slotName(slot), glyph: slot === 'elixir' ? '⚗' : '✧', color: 0x8a8aa0, active: false, left: 0, frac: 0, count: 0, empty: true, tip: emptyHint(slot) };
       }
       const def = BREWS[shown];
       const left = live ? Math.ceil((live.until - now) / 1000) : 0;
-      const use = touch ? 'Tap' : `Press ${key}`;
+      const use = `Press ${key}`;
       return {
         slot, key, label: def.label, glyph: def.glyph, color: def.color, active: !!live, left, empty: false,
         frac: live ? Math.min(1, (live.until - now) / (def.seconds * 1000)) : 0,
@@ -2036,8 +1889,8 @@ export class WorldScene implements GameScene, RuntimeView {
     if (!this.player.alive || now < this.flaskCdUntil) return;
     const id = prefer && prefer in HEALING_FLASKS ? prefer : healPick((f) => this.inventory.count(f));
     if (!id || !this.inventory.consume(id)) {
-      this.floating.spawn(this.player.x, 2.4, this.player.z, emptyPressText('heal', touchNow()), 'info');
-      this.hud.toast(emptyHint('heal', touchNow()));
+      this.floating.spawn(this.player.x, 2.4, this.player.z, emptyPressText('heal'), 'info');
+      this.hud.toast(emptyHint('heal'));
       return;
     }
     this.flaskCdUntil = now + HEAL_COOLDOWN_S * 1000;
@@ -2072,7 +1925,7 @@ export class WorldScene implements GameScene, RuntimeView {
       AREAS[a].interactables.some((it) => it.kind === 'waystone' && Math.hypot(it.x - this.player.x, it.z - this.player.z) < 5),
     );
     if (!nearStone && this.area !== 'chapterhouse') {
-      this.hud.toast(touchNow() ? 'Stand beside a waystone to travel' : 'Stand beside a waystone to travel (or press T to return home)', 'err');
+      this.hud.toast('Stand beside a waystone to travel (or press T to return home)', 'err');
       return;
     }
     const stone = AREAS[area].interactables.find((it) => it.kind === 'waystone');
@@ -3738,7 +3591,7 @@ export class WorldScene implements GameScene, RuntimeView {
       if (learned.length) {
         const shown = learned.slice(0, 3).map((id) => ABILITIES[id].name);
         const names = learned.length > 3 ? `${shown.join(', ')} and ${learned.length - 3} more` : shown.join(', ');
-        this.hud.toast(`${names} ${learned.length > 1 ? 'join' : 'joins'} your Grimoire. ${touchNow() ? 'Tap here or use the Grimoire button to place it.' : 'Click here, press L or use the Grimoire button to place it.'}`, 'good', () => this.openGrimoire());
+        this.hud.toast(`${names} ${learned.length > 1 ? 'join' : 'joins'} your Grimoire. Click here, press L or use the Grimoire button to place it.`, 'good', () => this.openGrimoire());
         this.grimoirePanel.render();
         this.markSeen([]);
         this.hud.pulseGrimoire();
@@ -4436,7 +4289,6 @@ export class WorldScene implements GameScene, RuntimeView {
     if (!p.alive && this.deadUntil && now >= this.deadUntil) this.respawn();
 
     this.updateCursor();
-    this.syncPanelNav();
 
     // The mouse only aims here. Movement destinations are set by deliberate clicks.
 
@@ -4904,7 +4756,7 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'upgrades': return 'Open Ascension';
       case 'lectern': return 'Open the Codex';
       case 'npc': return `Talk to ${it.label}`;
-      case 'vault': return touchNow() ? 'Open the Ossuary Vault' : 'Open the Ossuary Vault (V)';
+      case 'vault': return 'Open the Ossuary Vault (V)';
       case 'grinder': return 'Salvage gear at the Bone Grinder';
       case 'cauldron': return 'Brew at the Great Cauldron';
       case 'alembic': return 'Brew at the Alembic';
@@ -4975,8 +4827,8 @@ export class WorldScene implements GameScene, RuntimeView {
     const nearNpc = this.nearestNpc();
     this.hud.prompt(
       hover?.kind === 'interact' && !this.dialogue.isOpen
-        ? `<kbd>${touchNow() ? 'Tap' : 'Click'}</kbd> ${this.interactPrompt(hover.it)}`
-        : nearNpc && !this.dialogue.isOpen && !this.panelOpen() ? `<kbd>${touchNow() ? 'Tap' : 'E'}</kbd> Talk to ${NPCS[nearNpc].name}` : null,
+        ? `<kbd>Click</kbd> ${this.interactPrompt(hover.it)}`
+        : nearNpc && !this.dialogue.isOpen && !this.panelOpen() ? `<kbd>E</kbd> Talk to ${NPCS[nearNpc].name}` : null,
     );
     const b = this.bossState();
     const myThralls = [...this.thrallsMap().values()].filter((t) => t.owner === this.selfId);

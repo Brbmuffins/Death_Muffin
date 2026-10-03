@@ -71,11 +71,11 @@ describe('difficulty and auto combat', () => {
 });
 
 describe('battery defaults', () => {
-  async function load(touch: boolean, stored?: object) {
+  async function load(stored?: object) {
     const saved = new Map<string, string>();
     if (stored) saved.set('dm_settings_v1', JSON.stringify(stored));
     vi.stubGlobal('window', {
-      matchMedia: (q: string) => ({ matches: q.includes('pointer: coarse') ? touch : q.includes('hover: hover') ? !touch : false }),
+      matchMedia: () => ({ matches: false }),
     });
     vi.stubGlobal('localStorage', {
       getItem: (key: string) => saved.get(key) ?? null,
@@ -84,39 +84,27 @@ describe('battery defaults', () => {
     return import('../settings');
   }
   it('desktop defaults to high / Max (no cap) with auto resolution on', async () => {
-    const { settings } = await load(false);
+    const { settings } = await load();
     expect([settings.quality, settings.fps, settings.graphicsChosen, settings.autoResolution]).toEqual(['high', 0, false, true]);
   });
   it('desktop that never chose and stored the old 60 default moves to Max', async () => {
-    const { settings } = await load(false, { quality: 'high', fps: 60 });
+    const { settings } = await load({ quality: 'high', fps: 60 });
     expect(settings.fps).toBe(0);
   });
   it('desktop that chose 60 keeps it', async () => {
-    const { settings } = await load(false, { quality: 'high', fps: 60, graphicsChosen: true });
+    const { settings } = await load({ quality: 'high', fps: 60, graphicsChosen: true });
     expect(settings.fps).toBe(60);
   });
   it('auto resolution can be turned off and is remembered', async () => {
-    const { settings } = await load(false, { autoResolution: false });
+    const { settings } = await load({ autoResolution: false });
     expect(settings.autoResolution).toBe(false);
   });
-  it('phone defaults to low / 30', async () => {
-    const { settings } = await load(true);
-    expect([settings.quality, settings.fps]).toEqual(['low', 30]);
-  });
-  it('phone with old stored high and no flag is optimised', async () => {
-    const { settings } = await load(true, { quality: 'high' });
-    expect([settings.quality, settings.fps]).toEqual(['low', 30]);
-  });
-  it('phone with graphicsChosen keeps its choice', async () => {
-    const { settings } = await load(true, { quality: 'high', fps: 60, graphicsChosen: true });
-    expect([settings.quality, settings.fps]).toEqual(['high', 60]);
-  });
   it('desktop keeps stored values and invalid fps falls back', async () => {
-    const { settings } = await load(false, { quality: 'low', fps: 45 });
+    const { settings } = await load({ quality: 'low', fps: 45 });
     expect([settings.quality, settings.fps]).toEqual(['low', 0]);
   });
   it('changing graphics or fps sets graphicsChosen', async () => {
-    const { settings, updateSettings } = await load(true);
+    const { settings, updateSettings } = await load();
     updateSettings({ volume: 0.5 });
     expect(settings.graphicsChosen).toBe(false);
     updateSettings({ fps: 60 });
