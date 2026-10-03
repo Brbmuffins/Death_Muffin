@@ -234,7 +234,7 @@ Runes are the build-depth layer for the four necromancer disciplines. A rune doe
 
 The Bone Colossus rising from five corpses, Mass Grave's three weaker thralls, and Requiem's warning sigil.
 
-A Bone Needle rune works with the needle, not with a scythe's arc. In co-op a rune changes your own casts: your friends see the effect (the creeping circle, the Colossus, the Requiem warning ring, the contagion arcs) but not your badges.
+Bone Needle runes also ride a scythe's reaping arc, once per swing (not once per enemy hit): **Marrow-Tap** softens the swing and returns its bonus essence once, **Splinters** throws one shard from the nearest enemy struck to the nearest one the arc missed; the **Volley** is needle-only. In co-op a rune changes your own casts: your friends see the effect (the creeping circle, the Colossus, the Requiem warning ring, the contagion arcs) but not your badges.
 
 ## The world and its bosses
 
