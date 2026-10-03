@@ -1535,6 +1535,8 @@ body:not(.touch):has(.cw-panel-float) .cw-tip:not(.dragging):not([data-kind='urg
 .cw-craft-qty .cw-button.small { min-height: 40px; min-width: 40px; justify-content: center; }
 .cw-qty-input { width: 56px; min-height: 40px; box-sizing: border-box; text-align: center; font: inherit; font-family: var(--cw-font-numeric); color: inherit; background: var(--cw-inset); border: 1px solid var(--cw-border); }
 .cw-craft-go { flex: 1 1 110px; }
+/* A recipe's name needs room to read: the controls drop under it when the panel is narrow (at 1280 wide the name wrapped to three lines and the ingredients to four). */
+.cw-recipe .info { flex: 1 1 220px; }
 @media (max-width: 640px) {
   .cw-recipe { flex-direction: column; align-items: stretch; gap: 10px; }
   .cw-craft-qty { width: 100%; }
