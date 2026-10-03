@@ -124,7 +124,7 @@ export const SET_BONUSES: Record<string, SetBonusDef[]> = {
   colossus_mantle: [
     { pieces: 2, effect: { mult: { thrallHpMult: 1.5, thrallDamageMult: 1.25, maxHpMult: 1.1 } } },
     { pieces: 4, name: 'Reflecting Ward', effect: { mult: { thrallHpMult: 1.1 }, add: { wardReflect: 0.6, wardPerThrall: 0.05 } } },
-    { pieces: 5, name: 'Colossus', effect: { mult: { maxHpMult: 1.06 }, add: { colossusGuard: 0.2, litanyShatter: 4, litanyBarrier: 0.05 } } },
+    { pieces: 5, name: 'Colossus', effect: { mult: { maxHpMult: 1.06 }, add: { colossusGuard: 0.22, litanyShatter: 4, litanyBarrier: 0.05 } } },
   ],
   requiem_wraiths: [
     { pieces: 2, effect: { mult: { essenceRegenMult: 1.4, maxHpMult: 1.1 } } },
