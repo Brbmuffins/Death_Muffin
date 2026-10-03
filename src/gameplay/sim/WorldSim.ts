@@ -2687,9 +2687,11 @@ export class WorldSim {
     if ((e.rootT ?? 0) > 0) e.rootT! -= dt;
     if ((e.incenseT ?? 0) > 0) e.incenseT! -= dt;
     if ((e.unbindCd ?? 0) > 0) e.unbindCd! -= dt;
+    // A ghoul underground (burrowed, or winding up its eruption) is untouchable: a Miasma it tunnels under still stacks Withered, but the rot must not kill it there.
+    const underground = e.state === 'burrow' || (e.erupting != null && e.state === 'windup');
     if ((e.bleedT ?? 0) > 0 && (e.bleedDps ?? 0) > 0) {
       e.bleedT! -= dt;
-      const dmg = e.bleedDps! * dt * this.damageTakenMult(e);
+      const dmg = underground ? 0 : e.bleedDps! * dt * this.damageTakenMult(e);
       e.hp -= dmg;
       e.lastHitBy = e.bleedOwner || e.lastHitBy;
       const acc = (this.dotAccum.get(e.id) ?? 0) + dmg;
@@ -2701,7 +2703,7 @@ export class WorldSim {
     }
     if (e.witheredT > 0 && e.withered > 0) {
       e.witheredT -= dt;
-      const dmg = e.withered * e.witheredDps * dt * this.damageTakenMult(e);
+      const dmg = underground ? 0 : e.withered * e.witheredDps * dt * this.damageTakenMult(e);
       e.hp -= dmg;
       e.lastHitBy = e.witheredOwner || e.lastHitBy;
       const acc = (this.dotAccum.get(e.id) ?? 0) + dmg;

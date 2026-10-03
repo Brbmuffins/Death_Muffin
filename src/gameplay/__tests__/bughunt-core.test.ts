@@ -25,3 +25,20 @@ describe('core bug hunt: surge', () => {
     expect(sim.surgeIn).toBeGreaterThanOrEqual(SURGE.minIntervalS * 0.5);
   });
 });
+
+describe('core bug hunt: burrowed ghoul', () => {
+  it('Withered and bleed damage over time cannot reach a ghoul that is underground', () => {
+    const { sim } = world();
+    const g = sim.spawnEnemy('ghoul', 'graves', 7, -16, false);
+    expect(g.state).toBe('burrow');
+    const hp = g.hp;
+    g.withered = 5;
+    g.witheredT = 5;
+    g.witheredDps = 1e6;
+    g.bleedT = 5;
+    g.bleedDps = 1e6;
+    for (let i = 0; i < 5; i++) sim.step(0.05);
+    expect(g.state).toBe('burrow');
+    expect(g.hp).toBe(hp);
+  });
+});
