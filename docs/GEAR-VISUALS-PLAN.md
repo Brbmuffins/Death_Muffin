@@ -64,6 +64,19 @@ This becomes the CI gate: a change may not raise any pair's worst penetration. *
 - Gear materials are compiled during the load screen (`warmRender`), so the first time a piece is equipped there is no shader hitch.
 - Remote players run the same path, without IK or cape physics beyond 20 m.
 
+## Phase 0 results (measured 3 Oct 2026)
+
+Harness: `npm run qa:gear-clip` (about 30 s) writes `docs/gear-clip/report.md` and `baseline.json`; `npm test` runs a 10-clip subset
+(`gear-clip.test.ts`, about 8 s) and fails if any hero/item/clip gets worse than the baseline by more than max(4 mm, 10 %). After a phase improves a number, rerun the script and commit the new baseline. Metrics and budgets are defined in the report.
+
+Top problems, in order:
+1. **Two-handers are held one-handed in every clip.** The left hand never comes within 15 cm of the staff or scythe shaft in any clip of any hero (only `channel`, and `summon` for the Rotweaver scythe, are even "mostly" one-handed rather than never). Phase 2 needs a two-handed pose for every clip in use: idle, walk, run, attack, cast, dig, slam, sweep (scythe), channel, summon.
+2. **The grip stabiliser overrides the wrist.** With `follow` 0.15-0.3 the staff tip sits up to about 2.2 m from where the wrist would put it (scythe 2.1 m, wand/sickle 0.65-0.76 m, off-hands 0.5 m). Largest in `summon`, `slam`, `flick`, `attack` and the death/hurt clips. This is the floaty look; Phase 1 (`follow` 1) removes it, so pen must be re-checked then.
+3. **Cape hem cuts through the legs** (up to 14.5 cm into the thigh/calf capsules, Ossuary `death2`/`hurt2`; 5-10 cm on idle/walk/run) and the cloth enters the torso (up to about 9 cm on run). Phase 5.
+4. **Helm sinks 5.3 cm on the Ossuary** in every clip (its head is wider than the 0.15 m dome) and floats nowhere. Phase 4 per-rig fit.
+5. **Prop vertices buried in the body** peak at 12-14 cm during `hurt`/`hurt2` (staff, grimoire, skull focus), above the 7 cm budget; combat clips stay under it.
+6. Hand-to-prop gap is not a problem (at most 4.4 cm, bell): the prop origin rides the wrist; the visible fault is orientation (item 2).
+
 ## Budgets (checked with `tools/qa/fixed-fight-perf.cjs` before every merge)
 - Armour overlay adds no more than 2 draw calls per hero; IK applies to the local hero and near partners only; capes cost no more than 0.05 ms each.
 - No new shader programs at equip time, and the main bundle grows no more than 5 kB gzip per phase.

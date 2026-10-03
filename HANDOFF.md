@@ -5,6 +5,8 @@ difference between source, published releases and historical plans. Update the
 **Current state** and **In flight** sections when stopping work. What comes next
 is in **[ROADMAP.md](ROADMAP.md)**.
 
+**Gear visuals Phase 0 (3 Oct 2026, branch `claude/gear-clip-harness`):** `npm run qa:gear-clip` measures every hero x weapon x off-hand x helm x cape x clip and writes `docs/gear-clip/report.md` + `baseline.json`; `gear-clip.test.ts` guards the baseline in `npm test`. Results are in `docs/GEAR-VISUALS-PLAN.md`. Measurement only, no render change.
+
 **Live == GitHub `master` == `2021523` as of 3 Oct 2026** (the 1 Oct line below was `5cef60e`; check: `curl https://muffindevelopment.com/death-muffin/play/release.txt`).
 Every 2026-10-01 release is committed: brew engine, necromancer weapons and cast
 animations, reagents, Mourning Fen, five-slot Grimoire, Death Muffin branding,
