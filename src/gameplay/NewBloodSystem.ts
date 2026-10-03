@@ -230,7 +230,11 @@ export class NewBloodSystem {
 
   update(now: number) {
     const p = this.ctx.player;
-    if (!p.alive) return;
+    if (!p.alive) {
+      // Timed rites end with their caster: the choir, the crows and the murder used to resume after the respawn for whatever was left of their window.
+      this.choirUntil = this.crowsUntil = this.murderUntil = 0;
+      return;
+    }
     if (now < this.choirUntil && now >= this.nextChoirBeat) {
       this.nextChoirBeat += 1200;
       this.sendSig('toll', p.x, p.z, this.power * 0.5);
