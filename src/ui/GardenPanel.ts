@@ -163,13 +163,13 @@ export class GardenPanel {
     this.render();
     try {
       const pick = this.choice.get(plot);
-      const result = await this.inventory.exclusive(async () => {
-        const r = kind === 'plant' ? await plantGarden(this.characterId, plot, pick?.seed ?? '', !!pick?.compost) : await harvestGarden(this.characterId, plot);
-        this.inventory.replace(await getInventory(this.characterId));
-        return r;
-      });
+      const { reply: result, bagStale } = await this.inventory.exclusiveAction(
+        () => (kind === 'plant' ? plantGarden(this.characterId, plot, pick?.seed ?? '', !!pick?.compost) : harvestGarden(this.characterId, plot)),
+        () => getInventory(this.characterId),
+      );
       this.set(result);
       this.onResult(kind, result);
+      if (bagStale) this.error = 'Done, but your bag could not be refreshed. Close and reopen your bag to see it.';
     } catch (err) {
       this.error = err instanceof Error ? err.message : 'The garden refuses.';
     } finally {

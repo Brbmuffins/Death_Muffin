@@ -401,6 +401,25 @@ export class Inventory {
     }
   }
 
+  /**
+   * A server action that moves items through the bag (deliver, harvest, collect, adopt): run it under exclusive(), then re-read the
+   * bag. The action has already happened on the server by the time the bag is re-read, so its reply is returned even when the
+   * re-read fails (`bagStale`): throwing there would drop the reply, and the panel would keep showing an order or plot the server
+   * has already filled. The next successful bag read puts the bag right.
+   */
+  async exclusiveAction<T>(act: () => Promise<T>, readBag: () => Promise<InventorySlot[]>): Promise<{ reply: T; bagStale: boolean }> {
+    return this.exclusive(async () => {
+      const reply = await act();
+      try {
+        this.replace(await readBag());
+        return { reply, bagStale: false };
+      } catch (err) {
+        console.warn('[inventory] bag re-read failed after a server action', err);
+        return { reply, bagStale: true };
+      }
+    });
+  }
+
   async flush(): Promise<void> {
     if (!this.dirty || this.inFlight || this.held) return;
     this.inFlight = true;

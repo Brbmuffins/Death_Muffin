@@ -119,13 +119,10 @@ export class ContractsPanel {
     this.render();
     try {
       // Unsaved pickups land first and no save flies while the server takes items from the bag (Inventory.exclusive).
-      const result = await this.inventory.exclusive(async () => {
-        const res = await deliverContract(this.characterId, slot);
-        this.inventory.replace(await getInventory(this.characterId));
-        return res;
-      });
+      const { reply: result, bagStale } = await this.inventory.exclusiveAction(() => deliverContract(this.characterId, slot), () => getInventory(this.characterId));
       this.board = result;
       this.onDelivered(result);
+      if (bagStale) this.error = 'Delivered, but your bag could not be refreshed. Close and reopen your bag to see it.';
     } catch (err) {
       this.error = err instanceof Error ? err.message : 'The Sexton refuses.';
     } finally {
