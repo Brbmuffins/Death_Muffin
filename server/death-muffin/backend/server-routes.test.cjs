@@ -260,3 +260,25 @@ test('report mode keeps the legacy reward routes exactly as they were', async ()
     assert.equal((await srv.call('POST /api/loot/drop', { body: { characterId: 1, sourceId: 'grunt' } })).status, 200);
   });
 });
+
+// ── the refusal log ─────────────────────────────────────────────────────────────────────────────────────────────────────
+
+test('player-facing refusals are logged whether the route answers 4xx or a 200 with success:false', () => {
+  const srv = loadServer({ pool: fakePool().pool });
+  const lines = [];
+  const warn = console.warn;
+  console.warn = (...a) => lines.push(a.join(' '));
+  try {
+    const four = srv.wrap({ originalUrl: '/api/inventory/save?x=1' });
+    four.res.status(400).json({ success: false, error: 'duplicate slot_index values are not allowed' });
+    const soft = srv.wrap({ originalUrl: '/api/vault/deposit' });
+    soft.res.json({ success: false, error: 'The Vault has no room for that.' });
+    const fine = srv.wrap({ originalUrl: '/api/vault/deposit' });
+    fine.res.json({ success: true, data: {} });
+  } finally {
+    console.warn = warn;
+  }
+  assert.equal(lines.length, 2, lines.join('\n'));
+  assert.match(lines[0], /\[refused\] POST \/api\/inventory\/save 400 duplicate slot_index/);
+  assert.match(lines[1], /\[refused\] POST \/api\/vault\/deposit 200 The Vault has no room/);
+});

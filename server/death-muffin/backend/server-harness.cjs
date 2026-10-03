@@ -104,7 +104,16 @@ function loadServer({ pool, env = {} }) {
     return out;
   }
 
-  return { routes, call, fail };
+  /** Run the app.use(req, res, next) middleware in front of every route on a fake response; returns the response so a test can call res.json(...). */
+  function wrap(reqInit = {}) {
+    const out = { status: 200, json: undefined };
+    const res = { statusCode: 200, status(code) { out.status = code; this.statusCode = code; return this; }, json(j) { out.json = j; return this; } };
+    const req = { method: 'POST', originalUrl: '/api/vault/deposit', url: '/api/vault/deposit', headers: {}, ...reqInit };
+    for (const fn of uses.filter((f) => f.length === 3)) fn(req, res, () => {});
+    return { res, out };
+  }
+
+  return { routes, call, fail, wrap };
 }
 
 module.exports = { loadServer };

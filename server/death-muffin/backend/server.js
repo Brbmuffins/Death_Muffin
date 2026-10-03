@@ -72,7 +72,9 @@ app.use(express.json({ limit: '512kb' }));
 app.use((req, res, next) => {
   const json = res.json.bind(res);
   res.json = (body) => {
-    if (res.statusCode >= 400 && res.statusCode < 500 && res.statusCode !== 401 && res.statusCode !== 404) {
+    // Most module routes refuse a player with a 200 { success: false, error } (the client reads the flag), which this log never saw.
+    const refusedBody = res.statusCode < 400 && body && body.success === false && typeof body.error === 'string';
+    if ((res.statusCode >= 400 && res.statusCode < 500 && res.statusCode !== 401 && res.statusCode !== 404) || refusedBody) {
       const path = String(req.originalUrl || req.url).split('?')[0].replace(/\/\d+(?=\/|$)/g, '/:id');
       const err = body && typeof body.error === 'string' ? body.error.slice(0, 160) : '';
       console.warn(`[refused] ${req.method} ${path} ${res.statusCode} ${err}`);
