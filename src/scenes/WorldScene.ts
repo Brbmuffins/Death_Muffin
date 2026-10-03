@@ -135,8 +135,13 @@ import { CodexJournal, browserStorage, type CodexIds, type CodexKind } from '../
 import { CURSOR } from '../ui/cursors';
 import { audio } from '../audio/Audio';
 import { lootSfx } from '../audio/mixer';
+import { snapShadowTarget } from '../graphics/shadowCadence';
 
 /** Minimum gap between HUD readout redraws (~20 Hz). */
+/** The moon's offset from the hero, its shadow-map size and the world size of one shadow texel (60 m frustum). */
+const MOON_OFFSET = { x: -14, y: 30, z: 12 };
+const MOON_MAP = 1024;
+const MOON_TEXEL = 60 / MOON_MAP;
 const HUD_INTERVAL_MS = 50;
 const SNAPSHOT_MS = 100;
 const MOVE_SEND_MS = 100;
@@ -310,6 +315,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private hud!: HUD;
   private floating!: FloatingText;
   private moon!: THREE.DirectionalLight;
+  private moonSnap = { x: 0, y: 0, z: 0 };
   private hemi!: THREE.HemisphereLight;
 
   private sim: WorldSim | null = null;
@@ -794,9 +800,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hemi = new THREE.HemisphereLight(0x4a3866, 0x0a0710, 0.95);
     s.add(this.hemi);
     const moon = new THREE.DirectionalLight(0x9aa6d4, 2.4);
-    moon.position.set(-14, 30, 12);
+    moon.position.set(MOON_OFFSET.x, MOON_OFFSET.y, MOON_OFFSET.z);
     moon.castShadow = true;
-    moon.shadow.mapSize.set(1024, 1024);
+    moon.shadow.mapSize.set(MOON_MAP, MOON_MAP);
     moon.shadow.camera.left = -30;
     moon.shadow.camera.right = 30;
     moon.shadow.camera.top = 30;
@@ -4605,8 +4611,11 @@ export class WorldScene implements GameScene, RuntimeView {
     this.rig.camera.updateMatrixWorld();
     this.occlusionFocus.set(p.x, 1.1, p.z);
     updateOcclusion(this.rig.camera, this.occlusionFocus);
-    this.moon.position.set(p.x - 14, 30, p.z + 12);
-    this.moon.target.position.set(p.x, 0, p.z);
+    // The shadow camera follows the hero in whole-texel steps (no shimmer); a jump (teleport, area change) refreshes the map at once.
+    const snap = snapShadowTarget(p.x, p.z, MOON_OFFSET, MOON_TEXEL, this.moonSnap);
+    if (Math.abs(snap.x - this.moon.target.position.x) + Math.abs(snap.z - this.moon.target.position.z) > 6) getRuntime().refreshShadows();
+    this.moon.position.set(snap.x + MOON_OFFSET.x, snap.y + MOON_OFFSET.y, snap.z + MOON_OFFSET.z);
+    this.moon.target.position.set(snap.x, snap.y, snap.z);
     this.tickMilestones(dt);
     const vh = window.innerHeight * getRuntime().renderer.getPixelRatio();
     this.worldView.update(dt, p.x, p.z, this.rig.camera, vh);
@@ -5120,11 +5129,14 @@ export class WorldScene implements GameScene, RuntimeView {
         return this.progression.ashesOnAscend();
       },
       altar: () => this.togglePanel('ascension'),
+      /** QA: renderer pixel ratio and the drawing-buffer size it implies. */
+      ratio: () => { const r = getRuntime().renderer; const v = r.getDrawingBufferSize(new THREE.Vector2()); return { dpr: r.getPixelRatio(), px: v.x * v.y }; },
       /** Perf snapshot: one direct render's draw calls/triangles, scene census, and CPU update cost. */
       perf: (benchFrames = 120) => {
         const r = getRuntime().renderer;
         r.info.autoReset = false;
         r.info.reset();
+        r.shadowMap.needsUpdate = true;
         r.render(this.scene, this.rig.camera);
         const render = { calls: r.info.render.calls, triangles: r.info.render.triangles, points: r.info.render.points };
         r.info.autoReset = true;
