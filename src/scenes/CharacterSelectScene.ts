@@ -4,6 +4,7 @@ import { classByIndex } from '../gameplay/classes';
 import { loadOrCreateCharacter } from '../net/api';
 import type { Character } from '../net/types';
 import type { NecroBackdrop } from '../graphics/NecroBackdrop';
+import { dismissSplash } from '../ui/splash';
 
 /** Choose a playable discipline. New families retain a legacy character slot. */
 export class CharacterSelectScene implements GameScene {
@@ -55,6 +56,7 @@ export class CharacterSelectScene implements GameScene {
       });
       grid.appendChild(btn);
     }
+    dismissSplash();
   }
 
   unmount() {
