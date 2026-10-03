@@ -24,6 +24,27 @@ Branch `codex/new-blood-release-20260928` tracks `origin/master` (push `HEAD:mas
 after a secret scan; the repo is public). The owner asked for commits, which overrides
 the older "stage, don't commit" note.
 
+## PC-only master + separate mobile build (branch `dm/pc-only`, 3 Oct 2026, not deployed)
+
+Owner: "tuning the PC version is priority over mobile, mobile should be its own branch." This branch strips the whole phone/tablet layer
+(`src/ui/mobile.css`, `touchText.ts`, the HUD Menu sheet / flask orb button / full-screen button / Upgrades toggle / tappable brews / press-and-hold rite
+cards, panel Back button and phone Back gesture, pinch + drag-to-walk + touch aiming, `[[desktop||touch]]` tip wording, phone Low/30 fps defaults, the
+covered-panel battery-saver render throttle, the iOS page-zoom guards, `mobile-shots`/`mobile-nav-smoke`/`afk-move-smoke`) and redirects touch-only devices
+to `/death-muffin/mobile/`. Kept as general features: the connection-lost/back-online toasts, `skillsTick`, the 20 Hz HUD cache, the labelled desktop menu row.
+`renderText` still tolerates a stray `[[d||t]]` pair (resolves to the desktop half) so tips merged from the mobile branch do not print markup.
+
+- **Phones** play `/death-muffin/mobile/`, built from branch `mobile` by `server/death-muffin/deploy-mobile.sh` (client only: no server code, no migrations, no
+  restarts). The play page `index.html` has a tiny inline script: `(pointer: coarse)` and not `(hover: hover)` and no `?pc=1` and path under `/death-muffin/play/`
+  -> `location.replace('/death-muffin/mobile/' + search + hash)`. A touchscreen laptop (hover available) stays on PC.
+- **Offline edition** (`/death-muffin/offline/`, the PWA phones use) is now built and published by `deploy-mobile.sh` from the `mobile` branch, so it keeps
+  the touch layer. `deploy-release.sh` on master no longer builds, backs up or publishes `/offline/` (`npm run build:offline` still works for local checks).
+  Cost: the offline edition's game code only moves when `mobile` is redeployed, so after a master deploy that changes offline-sync/server contracts, merge master into
+  `mobile` and run `deploy-mobile.sh`.
+- **Deploy order the first time:** deploy `mobile` FIRST (it publishes `/mobile/` and `/offline/` so the redirect has a target), then master.
+- **Merging master into `mobile`:** conflicts will be in `HUD.ts`, `WorldScene.ts`, `Onboarding.ts`, `beltRules.ts`, `settings.ts`, `GameRuntime.ts`, `ui.css`, `index.html`
+  (master deleted what mobile keeps): keep mobile's touch code plus master's new features; keep mobile's `index.html` (the redirect only fires under `/death-muffin/play/`, so a
+  merged-in copy is harmless there).
+
 ## Effect budget (branch `dm/vfx-budget`, 3 Oct 2026, deployed in `be8a674`, no migration)
 
 Measured what spell effects cost and cut it without changing how they look (`docs/VFX-BUDGET.md`, `tools/qa/vfx-cost.cjs`). Biggest find: dead particles stayed in the two particle rings at their last size and were rasterised (alpha 0) until overwritten, 3-10 screens of wasted fill after a fight; the particle vertex shader now clips them. `flash` / `orbit` / `beam` draw through instanced layers (`graphics/fxLayers.ts`, one call per texture / one for all beams) instead of a Sprite or Mesh and a material each; round decals and the glow sprite draw on a 16-gon (rings on their annulus) instead of a square; another player's cast plays at half the particles (`Effects.particleScale`, `WorldScene.handleEvent`); Graphics: Low keeps 75 % of each burst. Busy fight (30 enemies, legion, 20-rite rotation): overdraw 6.6 to 1.6 screens, FX draw calls 36.6 (max 61) to 31 (max 37-45); CPU unchanged (it was never the cost). Parity renders (`tools/qa/vfx-parity.cjs`) show sprites and beams identical and decals within 0.12/255. Not done: Binbun cloud/mist quads are the costliest effects left (mask shader, not geometry). New files: `graphics/fxLayers.ts`, `graphics/fxProbe.ts` (dev), `graphics/__tests__/fx-budget.test.ts`, `tools/qa/vfx-cost*.cjs`, `tools/qa/vfx-parity.cjs`.
