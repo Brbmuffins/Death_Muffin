@@ -17,6 +17,8 @@ export interface RuntimeView {
   bloom?: { strength: number; radius: number; threshold: number };
 }
 
+/** Gravecrawl-style render budget: 1.25x is crisp enough for the 3D layer (the HUD is DOM) and saves ~30% of the pixels vs 1.5x. */
+export const HIGH_DPR_CAP = 1.25;
 const DEFAULT_BLOOM = { strength: 0.85, radius: 0.55, threshold: 0.82 };
 
 /**
@@ -93,7 +95,7 @@ export class GameRuntime {
       this.resolution.reset();
       this.resolution.hold();
     }
-    const ratio = (high ? Math.min(window.devicePixelRatio, 1.5) : 1) * this.resolution.scale;
+    const ratio = (high ? Math.min(window.devicePixelRatio, HIGH_DPR_CAP) : 1) * this.resolution.scale;
     this.renderer.setPixelRatio(ratio);
     this.composer.setPixelRatio(ratio);
     this.renderer.shadowMap.enabled = high;
