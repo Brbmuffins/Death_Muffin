@@ -450,5 +450,9 @@
  "belt": {
   "title": "Your belt",
   "body": "Three slots wait at the left edge: <b>Heal</b>, <b>Elixir</b> and <b>Tonic</b>. Press <kbd>Q</kbd>, <kbd>Z</kbd> or <kbd>X</kbd> to drink what is in it. They stay empty until you brew: <b>Moss Tonic</b> (level 1) makes healing potions, and the Alchemist's Wing in the Chapterhouse's east door brews elixirs and tonics. Hover an empty slot to read how to fill it."
+ },
+ "atlas": {
+  "title": "The Gear Atlas",
+  "body": "What is worth wearing, and where does it drop? The <b>Gear Atlas</b> (<kbd>.</kbd> key) lists every piece with its drop chances, how to craft it and a <b>green ▲</b> or <b>red ▼</b> against what you wear. <b>Best for me</b> shows your top upgrades."
  }
 }

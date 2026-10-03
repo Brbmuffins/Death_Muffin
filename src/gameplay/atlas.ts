@@ -167,8 +167,8 @@ export const SCALING_NOTES: string[] = (() => {
   for (let t = 1; t <= 60 && !nightfall; t++) if (milestoneActive('nightfall', t)) nightfall = t;
   return [
     `Ordinary kills roll an area item at ${KILL_LOOT.itemChanceMult}x the area's item chance (stacks of materials are x${KILL_LOOT.materialQtyMult}); elites roll at 6x, capped at 100%.`,
-    `Wave Speed tier raises the item chance of kills by +${+(w1 * 100).toFixed(0)}% per tier${nightfall ? ` (and +${Math.round((waveModifiers(nightfall).itemChanceMult - (1 + w1 * nightfall)) * 100)}% more from tier ${nightfall}, the Nightfall milestone)` : ''}.`,
-    `A fortune tonic multiplies the item chance of kills${fortune.length ? `: ${fortune.join(', ')}` : ''}. It does not change boss spoils, legendary or rune odds.`,
+    `Wave Speed tier raises the item chance of kills and the elite rune chance by +${+(w1 * 100).toFixed(0)}% per tier${nightfall ? ` (and +${Math.round((waveModifiers(nightfall).itemChanceMult - (1 + w1 * nightfall)) * 100)}% more from tier ${nightfall}, the Nightfall milestone)` : ''}.`,
+    `A fortune tonic multiplies the item chance of kills, reagent drops and the elite rune chance${fortune.length ? `: ${fortune.join(', ')}` : ''}. It does not change boss spoils, Grave Surge offerings or legendary odds.`,
     `Difficulty changes gold and experience and how often elites appear (${diffs.map((d) => `${d.name} ${d.eliteBonus >= 0 ? '+' : ''}${+(d.eliteBonus * 100).toFixed(1)} points`).join(', ')} on every area's elite chance), not what a kill drops.`,
     `Reagent drops are a separate roll per kill, ${ELITE_REAGENT_MULT}x as likely from an elite. Rune and legendary rolls are separate again.`,
     `Bosses roll the area table three times and always leave their ichor; a legendary piece is a ${+(LEGENDARY_DROP.bossChance * 100).toFixed(2)}% roll per boss kill (past the Hollow Graves).`,

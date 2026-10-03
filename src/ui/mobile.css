@@ -363,3 +363,26 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
 @media (max-width: 760px), (max-height: 520px) {
   .dm-splash-copy { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
 }
+
+/* --- Gear Atlas (.): one pane at a time on a phone. The list, then a tapped item's detail with a Back to the list. -------------- */
+@media (pointer: coarse) and (max-width: 760px), (pointer: coarse) and (max-height: 520px) {
+  .cw-atlas { display: flex !important; flex-direction: column; overflow: hidden !important; height: calc(100vh - var(--dock, 136px) - 14px); height: calc(100dvh - var(--dock, 136px) - 14px); }
+  .cw-atlas .at-top { flex-direction: column; align-items: stretch; gap: 6px; }
+  .cw-atlas .at-search input { width: 100%; min-height: 44px; font-size: 16px; }
+  .cw-atlas .at-tabs { display: flex; overflow-x: auto; gap: 6px; grid-template-columns: none; scrollbar-width: none; }
+  .cw-atlas .at-tabs button { flex: none; min-height: 44px; padding: 6px 12px; font-size: 13px; }
+  .cw-atlas .at-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+  .cw-atlas .at-chips button { flex: none; min-height: 44px; }
+  .cw-atlas .at-select select, .cw-atlas .at-check input { min-height: 44px; font-size: 16px; }
+  .cw-atlas .at-cols { grid-template-columns: minmax(0, 1fr); }
+  .cw-atlas:not(.detail-open) .at-detail, .cw-atlas.detail-open .at-list { display: none; }
+  .cw-atlas .at-back { display: block; min-height: 44px; }
+  .cw-atlas .at-row { min-height: 56px; padding: 8px; }
+  .cw-atlas .at-name { font-size: 16px; }
+  .cw-atlas .at-links button, .cw-atlas .at-recipe li button, .cw-atlas .at-more { min-height: 44px; }
+  .cw-atlas .at-bar { grid-template-columns: 96px 1fr 50px; }
+  .cw-atlas .at-detail { padding: 10px; }
+}
+@media (pointer: coarse) and (max-height: 520px) {
+  .cw-atlas { height: calc(100vh - 12px); height: calc(100dvh - 12px); }
+}

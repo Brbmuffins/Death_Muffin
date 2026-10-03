@@ -51,6 +51,7 @@ Some of the most polished corners of the game right now (updated 3 October 2026)
 - [The Catacomb Depths](#the-catacomb-depths)
 - [Gold, gear, and difficulty](#gold-gear-and-difficulty)
 - [Gear, stats and the character sheet](#gear-stats-and-the-character-sheet)
+- [Loot tables and the Gear Atlas](#-loot-tables--gear-atlas)
 - [Gathering and crafting](#gathering-and-crafting)
 - [Ascension](#ascension)
 - [Playing together and getting help](#playing-together-and-getting-help)
@@ -125,6 +126,7 @@ Nothing in Death Muffin is a quest, and nothing can be failed or missed. If you 
 | **J** | Character sheet: your numbers and where each comes from |
 | **Y** | Legion (necromancers): spare weapon and armour for your thralls, and Reinforce |
 | **M** / **K** | Waystone map / Codex |
+| **.** (period) | Gear Atlas: where every piece drops and how often, how to craft it, and what suits your discipline (also **Atlas** in the Menu) |
 | **E** | Talk to the Prior, the Sexton or the Apothecary when you stand beside them |
 | **V** | Ossuary Vault, the shared stash (in the Chapterhouse or the Acre) |
 | **G** | Toggle auto combat on Easy (Brbmuffins developer account) |
@@ -159,7 +161,7 @@ The HUD rearranges itself for phones (portrait and landscape) and tablets, and e
 | **Upgrades** button | Open Damage / Wave Speed (it glows when you can afford one) |
 | **‹ Back** on a panel | Return to the panel you came from (Skills → Contracts → Back) |
 | Phone Back gesture | Steps back through panels, then closes them; it never leaves the game while a panel is open |
-| **☰ Menu** | Big labelled tiles for every panel: Bag, Character, Spells, Craft, Skills, Contracts, Garden, Laborers, Legion, Capes & Pets, Vault, Map, Codex, Settings, plus **Recall home** and Auto combat |
+| **☰ Menu** | Big labelled tiles for every panel: Bag, Character, Spells, Craft, Skills, Contracts, Garden, Laborers, Legion, Capes & Pets, Vault, Map, Gear Atlas, Codex, Settings, plus **Recall home** and Auto combat |
 | ⛶ next to the Menu | Full screen (Android; iPhone Safari has no full screen) |
 
 Panels keep their scroll position while AFK gathering updates them.
@@ -456,6 +458,12 @@ Three thralls without the kit (left) and with it (right): the archer's baked bow
 **Reinforce** is the gold sink: twelve tiers, each +3% thrall health and damage and +1% attack speed, for 120 gold at the first tier and 1.65 times more each time (the last costs 29,615; all twelve about 75,000). Like Damage and Wave Speed the tiers reset when you Ascend; the kit pieces stay. On the overall power score (Gravecaller, level 20) a copper kit is worth about +1%, an iron kit +2.6%, an iron kit at tier 6 +7.5%, tier 12 alone +9% and the best kit at tier 12 about +20%; the other necromancers gain 5-16% at the top, since thralls are a smaller part of their power.
 
 **The character sheet (J, or the Sheet button beside the paper doll).** Lists your final Health, Spell power, Max essence, Essence per second, Move speed, Thrall health, Thrall damage and Damage upgrade, plus your STR, AGI, INT and VIT totals. Click any line to open its breakdown: the base, your level, each worn piece, your discipline, boons, Damage tiers and the weapon line. Brews and other timed effects are not included. The Codex (**K**, Stats tab) carries the same table. The Set bonuses block lists each worn set and its bonuses.
+
+## 📖 Loot tables & gear atlas
+
+*What can drop, how often, where, and what is worth wearing.* The full tables are in **[docs/LOOT-TABLES.md](docs/LOOT-TABLES.md)**, generated from the same tables the game rolls (`npm run gen:loot`; a test fails if the file goes stale): every hunting ground's drop table with ordinary-kill, elite and Grave Surge chances, each boss's spoils and first-kill trophy, runes, reagents, legendary armor by discipline, the Catacomb Depths, gathering finds, every recipe, salvage yields and how affixes and item level work.
+
+In game, the **Gear Atlas** (press **.**, or **Atlas** in the Menu on a phone) is the same data as an AtlasLoot-and-Pawn-style browser: browse by slot, by area or boss, by set, or by materials and brews; every row shows where it drops with its chance, how to craft it, a fit badge for *your* discipline and a green ▲ / red ▼ against what you wear in that slot. **Best for me** lists the top upgrades you do not own yet. Tap or hover a row for the full source list, the recipe tree one level deep, what the item is used in, its set bonuses and the odds of rolled affixes. Percentages are per kill at default settings (Medium difficulty, Wave Speed 0, no fortune tonic); the page says what moves them.
 
 ## Gathering and crafting
 

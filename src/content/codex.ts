@@ -831,6 +831,9 @@ export function riteSwatch(id: AbilityId): string[] {
 /** Armor sets tab: every set's bonuses, generated from content/setBonuses.ts so the words follow the numbers. */
 export const CODEX_SETS_COUNSEL =
   'Wear 2, 4 or 5 pieces of the same armor set for its bonuses; they stack, so five pieces gives all three lines. Pieces from different sets or collections count separately, so two sets at two pieces each give both first bonuses. Any class can wear any set, but thrall and rite lines only help the four necromancer disciplines. Hover a piece in the Reliquary (I) to see the set, press J for what each set still needs. The ascended sets (second collection) are one step stronger than the first. The four Legendary sets, one per necromancer discipline, are rarer still and change how that discipline plays.';
+/** The Gear Atlas tab: what the Atlas is and how to read it (the numbers live in the Atlas itself, from the live tables). */
+export const CODEX_ATLAS_COUNSEL =
+  'The Gear Atlas (the . key, or Atlas in the Menu) shows where every piece of gear, material and brew drops and how often, how to make it, and what suits your discipline. A green arrow beats what you wear; a red one does not. Best for me lists your top upgrades.';
 /** Legendary section of the Armor sets tab. */
 export const CODEX_LEGENDARY_COUNSEL = `Legendary sets are the chase gear: one per necromancer discipline, five pieces each. Two pieces are a nudge, four change a mechanic and five define the build. They drop from area bosses (about ${+(LEGENDARY_DROP.bossChance * 100).toFixed(1)}% per kill, from the Marrow Ossuary onward) and very rarely (${+(LEGENDARY_DROP.eliteChance * 100).toFixed(1)}%) from elites in the Plague Cloister, Cinder Pyre and Mourning Fen. About ${Math.round(LEGENDARY_DROP.ownShare * 100)}% of the legendaries that drop for you are your own discipline's set. Hover a piece in the Reliquary to read what each tier does.`;
 export interface CodexSetRow {
