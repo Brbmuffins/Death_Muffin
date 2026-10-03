@@ -1,5 +1,22 @@
 # Crossworlds — Balance targets & current numbers
 
+## Necro pressure pass (3 Oct 2026, `claude/necro-pressure-balance`): re-measure, no tuning needed
+
+Brief: re-check the three ROADMAP P3 findings on current master (8bb1bd3) before touching numbers. Four necromancers x nine grounds x `intended,push,max`, kit `none`, medium, **8 seeds, 3 sim-minutes** (`BALANCE_AREAS=graves,warren,ossuary,coliseum,nave,sanctum,cloister,pyre,fen BALANCE_DISCIPLINES=1,2,3,4 BALANCE_SEEDS=8 BALANCE_BANDS=intended,push,max npm run balance`).
+Result: **all three findings are already closed by the 2 Oct "Necro pass" above (the ROADMAP bullets list them as findings "as measured" before that fix). Nothing is still true, so no number was changed** and there is no "after" column: the table is master as it stands.
+
+| Finding | Re-measured on master | Verdict |
+|---|---|---|
+| (a) Ossuary dies most at max Wave Speed | deaths / 3 min at max: Ossuary **2.10**, Gravecaller 2.11, Rotweaver 2.04, Mourner 1.66 (the old numbers were 8-11.5). Ossuary still earns most (148 kills/min vs 93-105). Worst single Ossuary rows: Coliseum 3.3, Nave 2.6, Sanctum 2.6 (target 2-4) | closed |
+| (b) Coliseum / Sanctum spike at arrival level, Mourner dies at the intended band | intended deaths: Coliseum Mourner **0.3** (was 1.8-2.5), Sanctum Mourner 0.4; Coliseum mean 0.53, Sanctum 0.38 against an all-ground mean of 0.28. Highest intended rows: Pyre Gravecaller 1.1, Cloister Gravecaller 1.0 (not Coliseum/Sanctum), Coliseum Ossuary 0.8 | closed |
+| (c) Tiers 6-8 should pay more, not less | max vs intended, mean of 36 rows: kills 1.17x, gold 2.31x, XP 1.71x; push (tier 6): 1.24x / 1.92x / 1.55x. Max beats push on gold (+20%) and XP (+10%); kills/min are 6% under push (112 vs 119) because deaths rise 1.5 -> 2.0 | closed (see note) |
+
+Band means (kills / gold / XP per minute, deaths per 3 min): intended 96 / 1,740 / 4,177 / 0.28; push 119 / 3,349 / 6,471 / 1.49; max 112 / 4,012 / 7,139 / 1.98. Max deaths by ground: Graves 0.3, Warren 1.0, Ossuary 2.3, Coliseum 2.5, Nave 2.4, Sanctum 2.3, Cloister 2.4, Pyre 2.4, Fen 2.2. Intended deaths by ground: 0.0 / 0.0 / 0.2 / 0.5 / 0.2 / 0.4 / 0.4 / 0.7 / 0.3. These match the 2 Oct figures within seed noise (max 1.15x / 2.29x / 1.69x / 1.99 deaths then).
+
+Note on (c): kills/min dip slightly from tier 6 to tier 8 while gold and XP climb. That is by design from the necro pass (density levels off past tier 3, rewards keep rising); I did not retune because the pay still rises where it counts and the bot (no dodging, no flasks) over-dies there. A human playtest of tiers 6-8 remains the open question, as before.
+
+Checks: `npx tsc --noEmit` clean; `npm test` 1,153 tests green (`runes.test.ts` needs `npm ci --prefix server/realtime` first or it fails on a missing `dotenv`). No server-mirrored file changed, so no `build:server-rules` or `test:server` run was required.
+
 ## Catacomb Depths (2026-10-02, `npm run balance:depths`; branch `dm/depths`, not deployed)
 
 The dead on depth *d* are level `max(12, hero level) + d` (content/depths.ts; the plan said `max(20, ...)`, but a level-20 floor is a wall for the level-8 to 12 heroes the Warren admits, so the floor is the Warren's own entry level). Enemy health grows +22% and damage +15% of a level-1 body per level, so +10 depths is about +20% of both at level 40. A floor spawns only what its quota still needs, at most 24 alive, from the chambers nearest the hero. `npm run balance:depths` holds one floor of a depth (a cleared floor re-rolls the same depth) and prints the four necromancers beside the Cinder Pyre and Mourning Fen at the same hero level (`DEPTH_LEVELS`, `DEPTH_DEPTHS`, `DEPTH_BANDS`, `DEPTH_DISCIPLINES`, `BALANCE_SEEDS`, `BALANCE_MINUTES`). Medium difficulty, 4 seeds x 3 sim-minutes, mean of Ossuary / Gravecaller / Mourner / Rotweaver; intended = progress kit, geared = typical kit:

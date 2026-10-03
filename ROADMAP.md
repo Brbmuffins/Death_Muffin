@@ -69,6 +69,7 @@ Newest first. Each entry is a live release (`release.txt` on the site shows the 
 
 | Date | Shipped | Notes |
 |---|---|---|
+| 3 Oct 2026 | Necro pressure pass: re-measured the three P3 balance findings (Ossuary at max Wave Speed, Coliseum/Sanctum arrival spike, tier 6-8 pay) on master with 8 seeds; all three were already closed by the 2 Oct necro pass, so no numbers changed. Not deployed. | Branch `claude/necro-pressure-balance`; table in `BALANCE.md` "Necro pressure pass". Human playtest of tiers 6-8 still open. |
 | 3 Oct 2026 | PC first: the phone and tablet layer moves to its own `mobile` branch and build at `/death-muffin/mobile/` (touch-only devices are redirected there; `?pc=1` opts out); this build carries no touch code. Not deployed yet. | Branch `dm/pc-only`; deploy `mobile` first. |
 | 3 Oct 2026 | **Missing icons fixed.** The Grand Healing Flask and Moonlight Elixir icons and the Prelate portrait no longer 404; the server now logs requests it refuses | Quick fix, `2021523`. |
 | 3 Oct 2026 | **No more first-fight hitches.** A warm-up render runs behind the login load screen, so creatures' first appearance no longer compiles shaders mid-fight. Root cause: shaders were compiled for the screen, but High quality draws through the bloom target, so every first draw recompiled | `14e12ef`. 16 of 16 probed spawns needed no new shaders or textures. |
