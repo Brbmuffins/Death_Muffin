@@ -86,6 +86,13 @@ export const isOpen = (s: GuidanceState, a: AreaId) => !AREAS[a].unlock || s.unl
 export const killsIn = (s: GuidanceState, a: AreaId) => s.areaKills[a] ?? 0;
 export const sealNeed = (s: GuidanceState, a: AreaId) => Math.max(1, Math.round((AREAS[a].unlock?.kills ?? 0) * s.unlockMult));
 
+/** The door a seal opens, by its last word: "Ossuary", "Warren", "Nave"... (Marrow Ossuary, Catacomb Warren, Drowned Nave). */
+export const sealDoorName = (a: AreaId) => AREAS[a].name.split(' ').pop()!;
+
+/** The one format every seal count is written in: "Ossuary seal: 0/300 kills". `area` is the sealed hall the kills open. */
+export const formatSealProgress = (area: AreaId, kills: number, need: number) =>
+  `${sealDoorName(area)} seal: ${Math.min(kills, need)}/${need} kills`;
+
 export interface SealStatus {
   /** The sealed hall. */
   area: AreaId;
@@ -181,7 +188,7 @@ export function suggestions(s: GuidanceState): Suggestion[] {
   const seals = pendingSeals(s);
   const main = seals.find((x) => !x.side);
   if (main) {
-    add({ id: `seal:${main.area}`, kind: 'seal', topic: 'route', priority: 60, text: `${AREAS[main.from].name.replace(/^The /, '')}: ${main.kills} / ${main.need} to open ${lowerThe(AREAS[main.area].name)}`, place: main.from, target: areaCentre(main.from), data: { from: lowerThe(AREAS[main.from].name), to: lowerThe(AREAS[main.area].name), kills: main.kills, need: main.need, level: AREAS[main.area].level } });
+    add({ id: `seal:${main.area}`, kind: 'seal', topic: 'route', priority: 60, text: formatSealProgress(main.area, main.kills, main.need), place: main.from, target: areaCentre(main.from), data: { seal: formatSealProgress(main.area, main.kills, main.need), from: lowerThe(AREAS[main.from].name), to: lowerThe(AREAS[main.area].name), kills: main.kills, need: main.need, level: AREAS[main.area].level } });
   }
   const short = waiting.find((id) => s.shards < BOSSES[id].shards);
   if (short) {

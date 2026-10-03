@@ -134,7 +134,7 @@ async function main() {
     const record = async (label) => { const t = await nextText(); seen.push([label, t]); return t; };
     await page.evaluate(() => { window.__cwDebug.inventory.all.forEach((s) => window.__cwDebug.inventory.consume(s.item_id)); });
     await page.evaluate(() => { const p = window.__cwDebug.progression; for (let i = 0; i < 160; i++) p.recordKill('graves'); });
-    assert.equal(await record('172 kills in the Graves'), 'Hollow Graves: 172 / 300 to open the Marrow Ossuary');
+    assert.equal(await record('172 kills in the Graves'), 'Ossuary seal: 172/300 kills');
     await adv(0.6);
     await page.screenshot({ path: `${out}/08-chapterhouse-next-seal.png` });
     await page.evaluate(() => { window.__cwDebug.progression.addShards(2); });
