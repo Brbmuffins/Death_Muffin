@@ -18,7 +18,10 @@ function startServer(cfg, runner, secret) {
       if (req.method === 'GET' && url.pathname === '/config') return send(200, { channelId: cfg.channelId, guildId: cfg.guildId });
       if (req.method === 'GET' && url.pathname === '/poll') return send(200, { ops: await runner.poll(Math.min(30000, Number(url.searchParams.get('wait')) * 1000 || 0)) });
       if (req.method !== 'POST') return send(404, { error: 'not found' });
-      let body = ''; for await (const c of req) { body += c; if (body.length > 1e6) return send(413, { error: 'too big' }); }
+      // 1 MB everywhere, except /event which may carry up to 4 images of 8 MB as base64 (4 x 8 MB x 4/3 ~ 43 MB, so 48 MB).
+      const limit = url.pathname === '/event' ? 48e6 : 1e6; const chunks = []; let n = 0;
+      for await (const c of req) { n += c.length; if (n > limit) return send(413, { error: 'too big' }); chunks.push(c); }
+      const body = Buffer.concat(chunks).toString('utf8');
       const j = body ? JSON.parse(body) : {};
       if (url.pathname === '/event') return send(200, await runner.handleEvent(j));
       if (url.pathname === '/bind') return send(200, await runner.bind(j));

@@ -10,6 +10,9 @@ const NO_PINGS = { parse: [], repliedUser: false };
 const TEXT_FILE = /\.(txt|log|md|json|csv|tsv|js|cjs|mjs|ts|css|html|ya?ml|diff|patch|ini|cfg|sql)$/i;
 const FILE_MAX_BYTES = 100 * 1024;
 const FILES_MAX_CHARS = 60000;
+const IMAGE = /\.(png|jpe?g|webp|gif)$/i;
+const IMAGE_MAX_BYTES = 8 * 1024 * 1024;
+const IMAGES_PER_MESSAGE = 4;
 const CDN = /^https:\/\/(cdn\.discordapp\.com|media\.discordapp\.net)\//;
 
 function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile = fetch, channelIdOverride = '', log = console.log, pollWaitSec = 25 }) {
@@ -27,10 +30,23 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
   }
   const botId = () => client.user && client.user.id;
   const stripMention = (t) => String(t || '').replace(new RegExp(`<@!?${botId()}>`, 'g'), '').trim();
-  async function attachmentText(msg) {
+  // Returns the text to append; image attachments (Discord CDN only, <= 8 MB, <= 4 per message) are pushed onto `images` as { name, b64 }.
+  async function attachmentText(msg, images = []) {
     const out = []; const skipped = []; let budget = FILES_MAX_CHARS;
     for (const a of msg.attachments ? msg.attachments.values() : []) {
       const name = String(a.name || 'file');
+      if (IMAGE.test(name) || /^image\/(png|jpe?g|webp|gif)\b/i.test(String(a.contentType || ''))) {
+        if (!CDN.test(String(a.url || ''))) { skipped.push(`${name} (not hosted on Discord)`); continue; }
+        if (a.size > IMAGE_MAX_BYTES) { skipped.push(`${name} (image over 8 MB)`); continue; }
+        if (images.length >= IMAGES_PER_MESSAGE) { skipped.push(`${name} (only ${IMAGES_PER_MESSAGE} images per message)`); continue; }
+        try {
+          const res = await fetchFile(a.url); if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const buf = Buffer.from(await res.arrayBuffer());
+          if (buf.length > IMAGE_MAX_BYTES) { skipped.push(`${name} (image over 8 MB)`); continue; }
+          images.push({ name, b64: buf.toString('base64') });
+        } catch (e) { log('[dm-agent] image read failed', e.message); skipped.push(`${name} (could not be downloaded)`); }
+        continue;
+      }
       const isText = TEXT_FILE.test(name) || /^text\//.test(String(a.contentType || ''));
       if (!isText || !CDN.test(String(a.url || ''))) { skipped.push(name); continue; }
       if (a.size > FILE_MAX_BYTES || budget <= 0) { skipped.push(`${name} (too large to read)`); continue; }
@@ -52,9 +68,10 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
       if (!chan || (isThread ? parentId : ch.id) !== chan) return;
       const mentioned = !!(msg.mentions && msg.mentions.users && msg.mentions.users.has(botId()));   // explicit @bot only, never @everyone
       if (!isThread && !mentioned) return;
-      const text = stripMention(msg.content) + await attachmentText(msg);
+      const images = [];
+      const text = stripMention(msg.content) + await attachmentText(msg, images);
       const r = await call('/event', { type: 'message', messageId: msg.id, channelId: isThread ? parentId : ch.id, threadId: isThread ? ch.id : null, parentId,
-        userId: msg.author.id, username: msg.member && msg.member.displayName || msg.author.username, text, mentioned });
+        userId: msg.author.id, username: msg.member && msg.member.displayName || msg.author.username, text, mentioned, ...(images.length ? { images } : {}) });
       if (r.action === 'reply') return void safeReply(msg, r.text);
       // The runner shows "typing…" while it works; a reaction only marks a message that has to wait its turn.
       if (r.action === 'accepted') return void (r.queued && msg.react && msg.react('⏳').catch(() => {}));

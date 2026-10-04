@@ -24,6 +24,10 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   else if (/MAKE-FORBIDDEN/.test(p)) { edit('server/death-muffin/deploy-release.sh', 'echo', 'echo hacked', 'Speed up deploys'); ready('Deploy tweak', ['x']); text = 'Done.'; }
   else if (/LONG-REPLY/.test(p)) text = 'Here is the log:\n```\n' + Array.from({ length: 70 }, (_, i) => `line ${i}: ${'x'.repeat(40)}`).join('\n') + '\n```\nDone.';
   else if (/HUGE-REPLY/.test(p)) text = Array.from({ length: 400 }, (_, i) => `row ${i}: ${'y'.repeat(60)}`).join('\n');
+  else if (/IMG-ECHO/.test(p)) {
+    const m = /\[image attached by [^:\]]*: (\.dm-inbox\/[^ ]+) —/.exec(p); const note = /\[(?:attachments not visible|image [^\]]*not attached|file [^\]]*not attached)[^\]]*\]/.exec(p);
+    text = (m && fs.existsSync(m[1]) ? `IMG-SEEN ${fs.readFileSync(m[1]).length} ${m[1]}` : 'IMG-NONE') + (note ? ` NOTE ${note[0]}` : '');
+  }
   else if (/PASTE-ECHO/.test(p)) text = /PASTED-MARKER-42/.test(p) ? 'I can read the pasted file.' : 'No pasted file in the prompt.';
   else if (/SHOT-PNG|shot\.sh/.test(p)) text = 'Here is how it looks.';
   else if (/ship it|print.*token|ignore your rules/i.test(p)) text = 'I cannot ship, show secrets or change my rules. Only an approver ✅ ships.';
