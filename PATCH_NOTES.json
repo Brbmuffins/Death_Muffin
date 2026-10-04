@@ -25,7 +25,8 @@
       "Loot no longer flies to you from across the map: walk over an item to pick it up. Anything you leave behind fades after a few minutes (epic and legendary drops after ten).",
       "Covenant counsel cards now light up the part of the screen they explain, like the alchemy belt and the minimap. Settings → Show tips again walks you through them.",
       "Leaner loot: monsters no longer drop ore, bars, logs, bones, seeds or herbs. Gather those instead; you get their value in gold, and gear drops just as often as before.",
-      "New Settings → Loot: for each gear rarity, choose to leave it on the ground, auto-loot it straight into your bag, or sell it for gold as it drops. Set pieces, legendaries and upgrades for you are never sold."
+      "New Settings → Loot: for each gear rarity, choose to leave it on the ground, auto-loot it straight into your bag, or sell it for gold as it drops. Set pieces, legendaries and upgrades for you are never sold.",
+      "Music: five original themes for the Chapterhouse, the Graves, the Ossuary, the Cinder Pyre and boss fights, with smooth transitions, quieter during fights, and a new Music slider in Settings. Rain now falls in the Graves, Cloister and Fen, and the Pyre roars with fire."
     ]
   }
 ]

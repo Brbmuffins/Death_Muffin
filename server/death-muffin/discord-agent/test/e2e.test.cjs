@@ -546,3 +546,97 @@ test('runner HTTP: /event takes a body far over 1 MB, other routes stay capped',
   assert.equal((await post('/bind', { pad: 'a'.repeat(3e6) })).status, 413);
   srv.close();
 });
+
+// ---- rounds: the thread stays open after a ship ----
+const proposals = (thread) => thread.sent.filter((s) => s.payload.embeds);
+const waitNthProposal = (d, thread, n) => until(() => { const p = proposals(thread); return p.length >= n && p[n - 1].reactions.length === 2 && p[n - 1]; }, d.ad);
+
+test('rounds: after a ship the same thread starts a fresh branch from the new master, proposes and ships again', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS make the accent blue');
+  const p1 = await waitProposal(d, thread); const job = Object.values(w.runner.jobs())[0]; const id = job.id;
+  await d.react(p1, IDS.HELIX, '✅');
+  const live = await until(() => texts(thread).find((t) => /Live\. Release/.test(t)), d.ad);
+  assert.match(live, /Keep going here for the next change\.$/);
+  await until(() => job.status === 'shipped' && !fs.existsSync(path.join(w.cfg.worktreeRoot, `discord-${id}`)), d.ad);
+  const master1 = remoteMaster(w);
+  await d.say(thread, IDS.HELIX, 'MAKE-CSS2 ROUND-ECHO now make it green');
+  const p2 = await waitNthProposal(d, thread, 2);
+  assert.equal(job.round, 2); assert.equal(job.branch, `discord/${id}-2`); assert.equal(job.base, master1, 'cut from the master that was just shipped');
+  assert.equal(sh(job.worktree, 'rev-parse', 'HEAD~1'), master1);
+  assert.ok(texts(thread).some((t) => /ROUND-NOTE-SEEN/.test(t)), 'the agent is told its earlier change is live');
+  assert.equal(job.history.length, 1); assert.equal(job.history[0].round, 1); assert.ok(job.history[0].shipSha);
+  assert.equal(job.turns <= 2, true, 'turn counter restarted for the round');
+  await d.react(p2, IDS.HELIX, '✅');
+  await until(() => texts(thread).filter((t) => /Live\. Release/.test(t)).length === 2, d.ad);
+  assert.equal(sh(w.repo, 'show', 'origin/master:src/ui/ui.css').trim(), 'a{color:green}');
+  assert.equal(job.history.length, 2);
+  assert.ok(w.runner.audit && true);
+});
+
+test('rounds: a message sent while the ship is running is kept and starts the next round when the ship finishes', async () => {
+  const w = makeWorld(); w.cfg.deployCmd = 'sleep 3; ' + w.cfg.deployCmd; const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS make the accent blue');
+  const p1 = await waitProposal(d, thread); const job = Object.values(w.runner.jobs())[0];
+  await d.react(p1, IDS.HELIX, '✅');
+  await until(() => job.status === 'shipping', d.ad);
+  const m = await d.say(thread, IDS.HELIX, 'MAKE-CSS2 and then green please');
+  assert.ok(m.reactions.includes('⏳'), 'shown as waiting');
+  await until(() => texts(thread).some((t) => /Live\. Release/.test(t)), d.ad);
+  const p2 = await waitNthProposal(d, thread, 2);
+  assert.equal(job.round, 2); assert.ok(p2);
+  assert.equal(sh(w.repo, 'show', `origin/discord/${job.id}-2:src/ui/ui.css`).trim(), 'a{color:green}');
+});
+
+test('rounds: a discarded thread starts a new round on the next message', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS make the accent blue');
+  const p1 = await waitProposal(d, thread); const job = Object.values(w.runner.jobs())[0]; const first = job.worktree;
+  await d.react(p1, IDS.HELIX, '❌');
+  await until(() => job.status === 'discarded', d.ad);
+  assert.deepEqual(await d.react(p1, IDS.HELIX, '❌'), [], 'a stale ❌ on the old proposal is ignored');
+  assert.equal(job.status, 'discarded');
+  const bang = await d.say(thread, IDS.HELIX, '!discard'); await until(() => bang.replies.length, d.ad); assert.match(bang.replies[0].content, /Nothing is open/);
+  await d.say(thread, IDS.HELIX, 'MAKE-CSS try again');
+  await waitNthProposal(d, thread, 2);
+  assert.equal(job.round, 2); assert.notEqual(job.worktree, first); assert.equal(job.history[0].discarded, true);
+});
+
+test('rounds: turns are counted per round, with a hard cap per thread', async () => {
+  const w = makeWorld({ maxTurnsPerThread: 2 }); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'where is player speed defined?');
+  await until(() => Object.values(w.runner.jobs())[0].status === 'idle' && texts(thread).some((t) => /answer is in/.test(t)), d.ad);
+  await d.say(thread, IDS.HELIX, 'and the jump height?');
+  const job = Object.values(w.runner.jobs())[0];
+  await until(() => job.totalTurns === 2 && job.status === 'idle' && !job.running, d.ad);
+  const m = await d.say(thread, IDS.HELIX, 'one more question');
+  await until(() => m.replies.length, d.ad); assert.match(m.replies[0].content, /total turn limit/);
+});
+
+test('rounds: ❌ while a turn is running discards once the step stops, then the next message starts a fresh round', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS make the accent blue');
+  const p1 = await waitProposal(d, thread); const job = Object.values(w.runner.jobs())[0];
+  await d.say(thread, IDS.HELIX, 'SLOW-TURN what else could change?');
+  await until(() => job.running, d.ad);
+  await d.react(p1, IDS.HELIX, '❌');
+  await until(() => job.status === 'discarded' && !job.running, d.ad);
+  const said = texts(thread).join('\n');
+  assert.match(said, /Discarding as soon as the current step stops/);
+  assert.doesNotMatch(said, /Checks found a problem|Cancelled\.|Something broke/);
+  await d.say(thread, IDS.HELIX, 'MAKE-CSS try again');
+  await waitNthProposal(d, thread, 2);
+  assert.equal(job.round, 2);
+});
+
+test('a thread whose workspace vanished starts a fresh round and never runs the agent without one', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'where is player speed defined?');
+  const job = Object.values(w.runner.jobs())[0];
+  await until(() => job.status === 'idle' && !job.running && texts(thread).some((t) => /answer is in/.test(t)), d.ad);
+  sh(w.repo, 'worktree', 'remove', '--force', job.worktree); // state as it was after the bad discard: idle, no workspace
+  await d.say(thread, IDS.HELIX, 'MAKE-CSS make the accent blue');
+  await waitProposal(d, thread);
+  assert.equal(job.round, 2); assert.ok(fs.existsSync(job.worktree));
+  assert.doesNotMatch(texts(thread).join('\n'), /Something broke|no workspace/);
+});

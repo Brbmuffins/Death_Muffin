@@ -32,6 +32,8 @@ function parseClaudeJson(out) {
 }
 // One turn. cfg.claudeCmd lets tests substitute a fake CLI. Returns { text, sessionId, costUsd, error, timedOut, cancelled }.
 async function runTurn(cfg, job, prompt, { onSpawn } = {}) {
+  // Never run without the job's own worktree: with no cwd the session would start wherever the runner lives (its tools, config, secret).
+  if (!job.worktree || !fs.existsSync(path.join(job.worktree, '.git'))) return { text: '', sessionId: job.sessionId, error: 'This thread has no workspace right now; send your message again and I will start a fresh one.', timedOut: false };
   const cmd = cfg.claudeCmd || 'claude';
   const env = { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', TERM: 'dumb', NO_COLOR: '1' };
   const r = await run(cmd, claudeArgs(cfg, job), { cwd: job.worktree, env, input: prompt, timeoutMs: cfg.turnTimeoutMin * 60000, onSpawn });

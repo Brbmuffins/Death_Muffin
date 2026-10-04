@@ -19,7 +19,7 @@ const trim = async (p) => (await p).out.trim();
 
 async function createWorktree(cfg, job) {
   await git(cfg.repo, ['fetch', '-q', 'origin']);
-  const wt = path.join(cfg.worktreeRoot, `discord-${job.id}`);
+  const wt = path.join(cfg.worktreeRoot, `discord-${job.id}${job.round > 1 ? '-' + job.round : ''}`);
   await git(cfg.repo, ['worktree', 'add', '-q', '-b', job.branch, wt, 'origin/master']);
   for (const rel of ['node_modules', 'server/realtime/node_modules']) {
     const src = path.join(cfg.repo, rel);

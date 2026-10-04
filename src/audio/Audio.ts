@@ -5,6 +5,7 @@ import {
   distanceGain, culled, masterGain, panFor, partnerAudible, partnerGain, profileOf, repeatDropped, repeatGain, type BusId, type Duck,
 } from './mixer';
 import { LOOP_TRIM, ZONE_BEDS, accentGap, bedReady, pickAccent } from './ambience';
+import { MusicDirector } from './music';
 import { SampleBank, defOf, isKept, isPartial, type LegacySpec } from './samples';
 import { GLOBAL_PACKS, areaPacks, capSeconds, type Pack } from './packs';
 import { AUDIO_MAP, type SoundDef, type SoundId } from '../content/audioMap';
@@ -201,6 +202,8 @@ class AudioEngine {
   private wantArea: AreaId | null = null;
   private bedKind: 'loops' | 'synth' | 'none' = 'none';
   private bossBed: GainNode | null = null;
+  private music: MusicDirector | null = null;
+  private wantBossMusic = false;
   private ambienceAccentTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
@@ -243,6 +246,7 @@ class AudioEngine {
     comp.attack.value = 0.006;
     comp.release.value = 0.25;
     comp.connect(this.master);
+    this.music = new MusicDirector(c, comp);
     for (const id of BUS_IDS) {
       const mk = (to: AudioNode) => {
         const g = c.createGain();
@@ -330,6 +334,7 @@ class AudioEngine {
       this.buses[id].dry.gain.setTargetAtTime(g, t, 0.02);
       this.buses[id].wet.gain.setTargetAtTime(g, t, 0.02);
     }
+    this.music?.setVolume(settings.musicVolume);
   }
 
   /** Load packs one after another (each pack's clips decode in parallel, off the main thread). */
@@ -511,6 +516,7 @@ class AudioEngine {
     apply('thralls', d.depth);
     apply('enemies', d.voice ?? d.depth);
     if (d.ambience) apply('ambience', d.ambience);
+    this.music?.duckForCue(Math.min(0.65, d.ambience ?? d.depth), d.hold, d.release);
   }
 
   /** Pull the zone bed down while a fight is on, and let it back up when it ends. */
@@ -518,6 +524,7 @@ class AudioEngine {
     if (!this.ctx || !this.bedDuck) return;
     const t = this.ctx.currentTime;
     this.bedDuck.gain.setTargetAtTime(bedDuckGain(this.activity.level(t)), t, 0.35);
+    this.music?.setCombatLevel(this.activity.level(t));
   }
 
   private drop(reason: keyof AudioEngine['dropReasons']) {
@@ -552,6 +559,8 @@ class AudioEngine {
       bedDuck: this.bedDuck?.gain.value ?? 1,
       area: this.ambience.area,
       bedKind: this.bedKind,
+      musicCue: this.music?.cue ?? null,
+      musicStatus: this.music?.status ?? null,
     };
   }
 
@@ -1275,6 +1284,7 @@ class AudioEngine {
    */
   setArea(area: AreaId, force = false) {
     this.wantArea = area;
+    this.music?.setArea(area);
     if (this.ctx && !force) this.syncAreaPacks(area);
     if (!this.ctx || (this.ambience.area === area && !force)) return;
     if (this.ambienceAccentTimer) clearTimeout(this.ambienceAccentTimer);
@@ -1379,6 +1389,8 @@ class AudioEngine {
 
   stopArea() {
     this.wantArea = null;
+    this.wantBossMusic = false;
+    this.music?.setArea(null);
     if (this.ambienceAccentTimer) clearTimeout(this.ambienceAccentTimer);
     this.ambienceAccentTimer = null;
     if (this.ctx && this.ambience.gain) {
@@ -1389,6 +1401,12 @@ class AudioEngine {
     this.ambience = { area: null, nodes: [], gain: null };
     this.bedKind = 'none';
     this.setBossBed(false);
+  }
+
+  /** Boss score follows the local area's active boss, including rejoin snapshots. */
+  setBossMusic(active: boolean) {
+    this.wantBossMusic = active;
+    this.music?.setBoss(active);
   }
 
   /** A slow war-drum pulse under boss fights. */
