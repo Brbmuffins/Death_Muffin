@@ -156,6 +156,7 @@ Nothing in Death Muffin is a quest, and nothing can be failed or missed. If you 
 | **G** | Toggle auto combat on Easy (Brbmuffins developer account) |
 | **Enter** | Chat |
 | **Esc** | Close an open panel, then open Settings |
+| **F3** | Performance overlay: fps, worst frame, logic / draw / GPU time, draw calls, and a log of recent stutters with what caused them (new shaders, textures, meshes, or game logic). Remembered per browser; `?fps` in the address bar also turns it on |
 
 You can also click hotbar icons. Once you have learned a second rite (a few levels in), small swap arrows appear under each spell icon: click them to open the Grimoire with that slot selected; right click a hotbar slot also works. In **Settings**, you can change class, difficulty, graphics, frame rate (**Max**, 60 or 30 fps), **Auto resolution**, volume (Master, plus separate **Combat**, **Ambience** and **Interface** sliders), reduced motion, damage numbers, **Hide helms** (draw heroes without their helm look), gathering behavior, counsel tips, and the Next suggestion with its minimap marker. **Music**: five original instrumental themes follow you through the world (the Chapterhouse; the Graves and the open grounds; the Ossuary and the deep halls; the Cinder Pyre; and a boss cue while an area boss is active in your area). They crossfade when you move, sit lower during fights, and have their own **Music** slider in Settings. Rain falls (audio only) in the Graves, Cloister and Fen, and fire roars at the Pyre and in the Alchemist's Wing.
 
