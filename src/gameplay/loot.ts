@@ -260,20 +260,55 @@ const sortRank = (list: string[], v: string) => {
   return i < 0 ? list.length : i;
 };
 
-/** Reorder the bag (slots 0..BAG_SIZE-1 only): by type, rarity (best first), name, then item level. Packed from slot 0; nothing is merged or lost. */
-export function sortBagSlots(slots: InventorySlot[]): InventorySlot[] {
+/**
+ * Sort the bag (slots 0..BAG_SIZE-1 only): merge stackable materials and runes up to their stack size, then order by type, rarity
+ * (best first), item level (highest first) and name, packed from slot 0. Worn gear and belt slots are untouched.
+ * `moves` receives old slot -> new slot for every bag slot, so slot-keyed state (item locks) can follow.
+ */
+export function sortBagSlots(slots: InventorySlot[], moves?: Map<number, number>): InventorySlot[] {
   const inBag = (s: InventorySlot) => s.slot_index >= 0 && s.slot_index < BAG_SIZE && !s.equipped;
-  const bag = slots.filter(inBag).sort(
+  const stackable = (s: InventorySlot) => (s.item_type === 'material' || s.item_type === 'rune') && !s.instance_id;
+  const rows: { slot: InventorySlot; from: number[] }[] = [];
+  const openRow = new Map<string, number>();
+  for (const s of slots.filter(inBag).sort((a, b) => a.slot_index - b.slot_index)) {
+    if (!stackable(s)) {
+      rows.push({ slot: s, from: [s.slot_index] });
+      continue;
+    }
+    const cap = ITEMS[s.item_id]?.stack ?? Infinity;
+    let left = s.quantity;
+    let first = true;
+    // Top up this item's open stack, then start new ones.
+    while (left > 0) {
+      let at = openRow.get(s.item_id);
+      if (at === undefined || rows[at].slot.quantity >= cap) {
+        at = rows.length;
+        rows.push({ slot: { ...s, quantity: 0 }, from: [] });
+        openRow.set(s.item_id, at);
+      }
+      const row = rows[at];
+      const add = Math.min(left, cap - row.slot.quantity);
+      row.slot = { ...row.slot, quantity: row.slot.quantity + add };
+      if (first || !row.from.length) row.from.push(s.slot_index);
+      first = false;
+      left -= add;
+    }
+  }
+  rows.sort(
     (a, b) =>
-      sortRank(SORT_TYPES, a.item_type) - sortRank(SORT_TYPES, b.item_type) ||
-      sortRank(SORT_RARITY, a.rarity) - sortRank(SORT_RARITY, b.rarity) ||
-      (a.name < b.name ? -1 : a.name > b.name ? 1 : 0) ||
-      (b.ilvl ?? 0) - (a.ilvl ?? 0) ||
-      b.quantity - a.quantity ||
-      a.slot_index - b.slot_index,
+      sortRank(SORT_TYPES, a.slot.item_type) - sortRank(SORT_TYPES, b.slot.item_type) ||
+      sortRank(SORT_RARITY, a.slot.rarity) - sortRank(SORT_RARITY, b.slot.rarity) ||
+      (b.slot.ilvl ?? 0) - (a.slot.ilvl ?? 0) ||
+      (a.slot.name < b.slot.name ? -1 : a.slot.name > b.slot.name ? 1 : 0) ||
+      b.slot.quantity - a.slot.quantity ||
+      a.from[0] - b.from[0],
   );
-  const placed = new Map(bag.map((s, i) => [s, { ...s, slot_index: i }] as const));
-  return slots.map((s) => placed.get(s) ?? s);
+  moves?.clear();
+  const packed = rows.map((r, i) => {
+    for (const f of r.from) moves?.set(f, i);
+    return { ...r.slot, slot_index: i };
+  });
+  return [...slots.filter((s) => !inBag(s)), ...packed];
 }
 
 /** Payload shape for POST /api/inventory/save. */
@@ -427,8 +462,10 @@ export class Inventory {
   }
 
   /** Tidy the bag order (the Reliquary's Sort button); saved like any other bag change. */
-  sortBag() {
-    this.slots = sortBagSlots(this.slots);
+  sortBag(onMoves?: (moves: Map<number, number>) => void) {
+    const moves = new Map<number, number>();
+    this.slots = sortBagSlots(this.slots, moves);
+    onMoves?.(moves); // before emit, so slot-keyed state (item locks) follows before anything prunes it
     this.dirty = true;
     this.emit();
     this.scheduleFlush(600);

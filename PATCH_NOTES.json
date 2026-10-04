@@ -3,7 +3,7 @@
     "date": "2026-10-04",
     "title": "Smoother, Clearer, Deeper",
     "items": [
-      "Reliquary: a new Sort button tidies your bag by type, rarity and name.",
+      "Reliquary: a new Sort button merges stacks and orders your bag by type, rarity, item level and name.",
       "Vault: new Take materials and Take all buttons move things back into your bag in one click, as far as it fits.",
       "Performance: fixed a graphics memory leak that grew with every kill, thralls no longer stutter while following you, and walking under the arches no longer hitches.",
       "Audio: every sound is new, from a full fantasy sound library: spells match their element, enemies have voices, bosses warn you, loot sounds by rarity, footsteps change with the floor. Co-op partners are quieter and danger cuts through the mix.",

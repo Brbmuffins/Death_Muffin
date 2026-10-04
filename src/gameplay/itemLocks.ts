@@ -46,6 +46,17 @@ export class ItemLocks {
     return now;
   }
 
+  /** Follow items that changed slot (old index -> new index); a merged stack stays locked if any part was. */
+  remap(moves: Map<number, number>) {
+    const next = new Map<number, string>();
+    for (const [index, id] of this.locked) {
+      const to = moves.get(index);
+      if (to !== undefined) next.set(to, id);
+    }
+    this.locked = next;
+    this.save();
+  }
+
   /** Drop locks whose slot no longer holds that item (call on every bag change). */
   prune(slots: InventorySlot[]) {
     let changed = false;
