@@ -18,6 +18,10 @@ signal junk_sell_confirmed
 signal legion_pressed
 signal sheet_pressed
 signal salvage_requested(item: Dictionary)
+## Wiring additions (game-ui): the web's other detail buttons and gestures. `extra_actions` = Callable(item) -> Array of {id, label, primary?, disabled?, hint?};
+## action_requested(id, item) fires when one is pressed. slot_right_clicked(item) is the cell's context click (tool belt / brew belt).
+signal action_requested(id: String, item: Dictionary)
+signal slot_right_clicked(item: Dictionary)
 
 const BAG_SIZE := 48
 const COLS := 8
@@ -36,6 +40,11 @@ var at_grinder := false
 var legion_flag := false   # a spare piece would arm the thralls better (green ▲ on the button)
 var junk_count := 0        # computed by the integrator (rules track); the panel only shows + confirms
 var junk_gold := 0
+var extra_actions: Callable = Callable()
+var drag_brews := false            # bag cells holding a brew can be dragged onto the HUD belt (web: draggable + BELT_DRAG_TYPE)
+var footer_extra: Control = null   # shown before the slot count (the one-time tool-belt offer)
+var set_summary: Array = []        # [{name, accent: Color, pips: [bool x5], on: [String], next: String}] (the .cw-setsum block)
+var _setsum: VBoxContainer
 
 var bag: Array = []
 var worn: Dictionary = {}
@@ -123,6 +132,10 @@ func _build_ui() -> void:
 			s.double_clicked.connect(func(sl: DmItemSlot) -> void: equip_toggled.emit(sl.data))
 			_doll.add_child(s)
 			_doll_slots[id] = s
+	_setsum = VBoxContainer.new()
+	_setsum.add_theme_constant_override("separation", 4)
+	_setsum.visible = false
+	col.add_child(_setsum)
 	# .cw-toolbelt: 4 small slots with a top border
 	var tb := VBoxContainer.new()
 	tb.add_theme_constant_override("separation", 6)
@@ -136,6 +149,8 @@ func _build_ui() -> void:
 		s2.custom_minimum_size = Vector2(39, 39)
 		s2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		s2.pressed.connect(_on_slot_pressed)
+		s2.double_clicked.connect(func(sl: DmItemSlot) -> void: equip_toggled.emit(sl.data))
+		s2.right_clicked.connect(func(sl: DmItemSlot) -> void: slot_right_clicked.emit(sl.data))
 		_belt_row.add_child(s2)
 		_belt_slots[b[0]] = s2
 	tb.add_child(_belt_row)
@@ -153,6 +168,7 @@ func _build_ui() -> void:
 		s3.custom_minimum_size = Vector2(45.5, 45.5)
 		s3.pressed.connect(_on_slot_pressed)
 		s3.double_clicked.connect(func(sl: DmItemSlot) -> void: equip_toggled.emit(sl.data))
+		s3.right_clicked.connect(func(sl: DmItemSlot) -> void: slot_right_clicked.emit(sl.data))
 		_grid.add_child(s3)
 		_slots.append(s3)
 
@@ -231,6 +247,7 @@ func refresh() -> void:
 	for i in BAG_SIZE:
 		var d: Dictionary = bag[i] if i < bag.size() else {}
 		_slots[i].set_item(d)
+		_slots[i].drag_data = {"type": DmHudBrewChip.DRAG_TYPE, "item_id": d.get("item_id", "")} if drag_brews and d.get("is_brew", false) else null
 		_slots[i].selected = not d.is_empty() and d.get("id", -1) == sel_item.get("id", -2)
 	for id in _doll_slots:
 		var s: DmItemSlot = _doll_slots[id]
@@ -244,8 +261,39 @@ func refresh() -> void:
 		var d3: Dictionary = belt.get(k, {})
 		s2.set_item(d3)
 		s2.selected = not d3.is_empty() and d3.get("id", -1) == sel_item.get("id", -2)
+	_render_setsum()
 	_render_tools()
 	_render_detail()
+
+
+func _render_setsum() -> void:
+	if _setsum == null:
+		return
+	for c in _setsum.get_children():
+		c.queue_free()
+	_setsum.visible = not set_summary.is_empty()
+	for st in set_summary:
+		var accent: Color = st.get("accent", DmUi.GOLD)
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 1)
+		var hd := HBoxContainer.new()
+		var nm := DmUi.label(String(st.get("name", "")), "DmNumeric")
+		nm.add_theme_color_override("font_color", accent)
+		hd.add_child(nm)
+		var pips := String(" ").join((st.get("pips", []) as Array).map(func(on: bool) -> String: return "●" if on else "○"))
+		var pl := DmUi.label(pips, "DmNumeric")
+		pl.add_theme_color_override("font_color", accent)
+		hd.add_child(pl)
+		box.add_child(hd)
+		for l in st.get("on", []):
+			var ol := DmUi.label(String(l), "DmHint", true)
+			ol.add_theme_font_size_override("font_size", 11)
+			ol.add_theme_color_override("font_color", DmUi.BONE_100)
+			box.add_child(ol)
+		var nx := DmUi.label(String(st.get("next", "")), "DmHint", true)
+		nx.add_theme_font_size_override("font_size", 11)
+		box.add_child(nx)
+		_setsum.add_child(box)
 
 
 func _on_slot_pressed(sl: DmItemSlot) -> void:
@@ -270,12 +318,18 @@ func _small(text: String, on_press: Callable, disabled: bool = false, primary: b
 
 
 func _render_tools() -> void:
+	if footer_extra != null and footer_extra.get_parent() == _tools:
+		_tools.remove_child(footer_extra)
 	for c in _tools.get_children():
 		c.queue_free()
 	var used := 0
 	for d in bag:
 		if not d.is_empty():
 			used += 1
+	if footer_extra != null and not confirm_junk:
+		if footer_extra.get_parent() != null:
+			footer_extra.get_parent().remove_child(footer_extra)
+		_tools.add_child(footer_extra)
 	if confirm_junk and junk_count > 0:
 		var rt := RichTextLabel.new()
 		rt.bbcode_enabled = true
@@ -343,6 +397,12 @@ func _render_detail() -> void:
 	var locked: bool = it.get("locked", false)
 	if it.get("equippable", true):
 		acts.add_child(_full(_small("Unequip" if equipped else "Equip", func() -> void: equip_toggled.emit(it))))
+	if extra_actions.is_valid():
+		for a in extra_actions.call(it):
+			var aid: String = a["id"]
+			var ab := _small(String(a["label"]), func() -> void: action_requested.emit(aid, it), bool(a.get("disabled", false)), bool(a.get("primary", false)))
+			ab.tooltip_text = String(a.get("hint", ""))
+			acts.add_child(_full(ab))
 	if not equipped:
 		var lk := _small(("Unlock" if locked else "Lock"), func() -> void: lock_toggled.emit(it))
 		if locked:

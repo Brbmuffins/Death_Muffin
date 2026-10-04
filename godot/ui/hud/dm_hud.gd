@@ -18,6 +18,7 @@ signal report_bug
 signal belt_clicked(slot: String)
 signal navigate(x: float, z: float)
 signal cue_used(id: String)
+signal brew_dropped(slot: String, item_id: String)   ## a brew dragged from the Reliquary onto a belt chip
 
 const MENU_ROW := [
 	["inventory", "bag", "Bag", "Reliquary (I)", ""],
@@ -1259,6 +1260,7 @@ func _apply_left_readouts(v: Dictionary) -> void:
 		if chip == null:
 			chip = DmHudBrewChip.new()
 			chip.clicked.connect(func(s: String) -> void: belt_clicked.emit(s))
+			chip.dropped.connect(func(s: String, id: String) -> void: brew_dropped.emit(s, id))
 			brew_row.add_child(chip)
 			_brew_chips[slot] = chip
 		chip.apply(b)

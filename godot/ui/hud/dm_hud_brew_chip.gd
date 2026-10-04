@@ -4,6 +4,9 @@ extends Control
 ## bottom timer bar. States: on (active effect), empty (dashed + faint), cd (dimmed while its cooldown runs).
 
 signal clicked(slot: String)
+signal dropped(slot: String, item_id: String)   ## a brew dragged from the Reliquary (BELT_DRAG_TYPE)
+
+const DRAG_TYPE := "dm_belt_item"
 
 const W := 54.0
 const H := 58.0
@@ -128,3 +131,11 @@ func _gui_input(e: InputEvent) -> void:
 	if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 		clicked.emit(slot)
 		accept_event()
+
+
+func _can_drop_data(_at: Vector2, data: Variant) -> bool:
+	return slot != "heal" and data is Dictionary and data.get("type", "") == DRAG_TYPE
+
+
+func _drop_data(_at: Vector2, data: Variant) -> void:
+	dropped.emit(slot, String(data["item_id"]))
