@@ -1,4 +1,4 @@
-class_name DmHud
+class_name DmSliceHud
 extends CanvasLayer
 ## Minimal HUD (PLACEHOLDER for the full UI track): hp / essence bars, thralls, kills, area title, key hints, recent events.
 

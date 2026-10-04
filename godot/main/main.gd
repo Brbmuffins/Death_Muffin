@@ -10,7 +10,7 @@ var hero_data: Dictionary
 var builder: DmWorldBuilder
 var hero: DmHero
 var cam: DmCameraRig
-var hud: DmHud
+var hud: DmSliceHud
 var perf: DmPerfOverlay
 var area_id := "chapterhouse"
 var spawn_timer := 2.0
@@ -38,7 +38,7 @@ func _ready() -> void:
 	var sp: Dictionary = world.spawn.chapterhouseReturn
 	hero.global_position = Vector3(sp.x, 0, sp.z)
 	cam.snap(hero.global_position)
-	hud = DmHud.new()
+	hud = DmSliceHud.new()
 	add_child(hud)
 	hud.setup(self)
 	perf = DmPerfOverlay.new()

@@ -26,8 +26,8 @@ static func minimap(px: float = 0.0, pz: float = 20.0) -> Dictionary:
 	var areas: Array = []
 	for id in w["areas"]:
 		var a: Dictionary = w["areas"][id]
-		areas.append({"id": id, "rect": a["rect"], "safe": a.get("safe", false), "unlocked": true})
-	areas.append({"id": "future", "rect": {"x0": 14.0, "z0": -30.0, "x1": 45.0, "z1": 0.0}, "safe": false, "unlocked": false})
+		# A new character's seals: only these four are open; the rest (e.g. the Ossuary) stay sealed.
+		areas.append({"id": id, "rect": a["rect"], "safe": a.get("safe", false), "unlocked": id in ["chapterhouse", "acre", "alchemist_wing", "graves"]})
 	var doors: Array = []
 	for d in w.get("doors", []):
 		doors.append({"rect": d["rect"], "open": bool(d.get("open", false))})
