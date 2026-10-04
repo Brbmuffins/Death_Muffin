@@ -29,7 +29,7 @@ async function main() {
     await page.locator('#cw-login-btn').click();
     await page.locator('.cw-disc').filter({ hasText: 'Gravecaller' }).first().click();
     await page.locator('.hud').waitFor({ timeout: 45000 });
-    await page.locator('[data-open="settings"]').click();
+    await page.locator('.hud-mi[data-open="settings"]').click();
     assert.equal(await page.locator('[data-diff]').inputValue(), 'medium');
     assert.equal(await page.locator('[data-auto]:visible').count(), 0, 'local profiles cannot impersonate Brbmuffins');
     assert.equal(await page.locator('[data-autogather]').count(), 1);
