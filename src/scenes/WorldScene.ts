@@ -3193,7 +3193,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private bagFullNotice() {
     if (this.bagFullNoticed) return;
     this.bagFullNoticed = true;
-    this.hud.toast('Your Reliquary is full. Sell spare gear (Sell all junk) or, back in the Chapterhouse or the Acre, store materials in the Vault (V). What you cannot carry stays on the ground for a few minutes.', 'err');
+    this.hud.toast('Your Reliquary is full. Sell spare gear (Sell all junk) or, back in the Chapterhouse or the Acre, store materials in the Vault (V). What you cannot carry stays on the ground for a minute.', 'err');
   }
 
   private onGatherReply(r: GatherReply) {

@@ -25,6 +25,8 @@ interface Drop {
   marker?: Handle;
   /** Seconds this drop lies on the ground before it expires (LOOT_EXPIRE_S). */
   ttl: number;
+  /** Epic or legendary: past the ground cap, ordinary drops go first. */
+  prize?: boolean;
 }
 
 const coinGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.025, 10);
@@ -59,7 +61,8 @@ const shardMat = new THREE.MeshStandardMaterial({ color: 0xb58cff, emissive: 0x7
  * from a few steps away, and anything left alone EXPIRES: commons after a few minutes, epic/legendary items after ten. Past ITEM_CAP
  * items on the ground the oldest expire early, ordinary ones before epic/legendary.
  */
-export const LOOT_EXPIRE_S = { gold: 120, shard: 180, item: 180, prizeItem: 600 } as const;
+// Owner, 2026-10-04: "persistent loot is lots of bloat. if you don't grab it within 1 minute, it goes away" (was 2-3 min, 10 for epic/legendary).
+export const LOOT_EXPIRE_S = { gold: 60, shard: 60, item: 60, prizeItem: 60 } as const;
 export const LOOT_ITEM_CAP = 60;
 const isPrize = (rarity: string) => rarity === 'epic' || rarity === 'legendary';
 
@@ -156,7 +159,7 @@ export class LootView {
 
   /** QA: where every drop lies, so a script can walk the hero over it and use the real pickup path. */
   debugDrops() {
-    return this.drops.map((d) => ({ kind: d.kind, id: d.item?.item_id ?? null, x: d.x, z: d.z, ttl: d.ttl }));
+    return this.drops.map((d) => ({ kind: d.kind, id: d.item?.item_id ?? null, x: d.x, z: d.z, ttl: d.ttl, prize: !!d.prize }));
   }
 
   /** Set by the scene: a rarity-keyed clatter when a gear piece lands (kept out of here so the view stays free of the audio engine). */
@@ -186,7 +189,7 @@ export class LootView {
     const glow = this.effects.decal({ tex: fx.glow(), color, x: px, z: pz, r: 0.9, duration: 1e9, opacity: 0.7 });
     // Rarity marker from the Binbun loot pack, in the game's rarity colour (the light pillar and glow stay).
     const marker = rarity === 'common' || rarity === 'uncommon' ? undefined : playFx(this.effects.binbun, rarity === 'legendary' ? 'loot_epic' : `loot_${rarity}`, { x: px, z: pz, colors: [RARITY_COLOR[rarity], RARITY_COLOR[rarity], '#1a1620'], scale: rarity === 'legendary' ? 0.8 : 0.55, alpha: 0.85 });
-    this.drops.push({ kind: 'item', obj: icon, x: px, z: pz, amount: drop.quantity, item: drop, t: 0, flying: false, beam, glow, marker, ttl: isPrize(rarity) ? LOOT_EXPIRE_S.prizeItem : LOOT_EXPIRE_S.item });
+    this.drops.push({ kind: 'item', obj: icon, x: px, z: pz, amount: drop.quantity, item: drop, t: 0, flying: false, beam, glow, marker, ttl: isPrize(rarity) ? LOOT_EXPIRE_S.prizeItem : LOOT_EXPIRE_S.item, prize: isPrize(rarity) });
   }
 
   /**
@@ -203,7 +206,7 @@ export class LootView {
     for (const prizeToo of [false, true]) {
       for (let i = 0; i < this.drops.length && surplus > 0; ) {
         const d = this.drops[i];
-        if (d.kind === 'item' && (prizeToo || d.ttl !== LOOT_EXPIRE_S.prizeItem)) { this.remove(i); surplus--; } else i++;
+        if (d.kind === 'item' && (prizeToo || !d.prize)) { this.remove(i); surplus--; } else i++;
       }
     }
     for (let i = this.drops.length - 1; i >= 0; i--) {
