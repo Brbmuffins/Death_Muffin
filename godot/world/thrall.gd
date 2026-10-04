@@ -12,6 +12,7 @@ var alive := true
 var slot := 0
 var born := 0.0
 var _anim: AnimationPlayer
+var _animator: DmAnimator
 var _model_root: Node3D
 var _atk_cd := 0.4
 var _path: PackedVector3Array = PackedVector3Array()
@@ -27,13 +28,14 @@ func setup(t: Dictionary, m: Node, h: Node3D, model: Dictionary, slot_i: int) ->
 	slot = slot_i
 	max_hp = float(t.hp)
 	hp = max_hp
-	var c := DmModels.creature(model.url, float(model.height), float(model.yaw))
+	var c := DmModels.creature_from(model)
 	_model_root = c.root
 	_anim = c.anim
+	_animator = c.animator
 	add_child(_model_root)
 	_model_root.scale = Vector3.ONE * 0.3
 	add_to_group("thralls")
-	DmModels.play(_anim, "idle", 1.0, 0.0)
+	_animator.loco(0.0)
 
 func take_hit(amount: float, _from: Node) -> void:
 	if not alive:
@@ -72,6 +74,7 @@ func _process(dt: float) -> void:
 		return
 	if not alive:
 		return
+	_animator.tick(dt)
 	_atk_cd -= dt
 	var foe := _nearest_enemy(11.0)
 	# Leash: stay near the hero; fight what comes within reach of the pair.
@@ -86,10 +89,9 @@ func _process(dt: float) -> void:
 			if _atk_cd <= 0.0:
 				_atk_cd = float(data.interval)
 				foe.take_damage(float(data.damage))
-				if _anim != null and _anim.has_animation("attack"):
-					_anim.play("attack", 0.05, 1.6)
-			elif _anim != null and not _anim.is_playing():
-				DmModels.play(_anim, "idle")
+				_animator.strike("attack", 0.2)
+			else:
+				_animator.loco(0.0)
 		else:
 			_go(foe.global_position, speed, dt)
 	else:
@@ -98,7 +100,7 @@ func _process(dt: float) -> void:
 		if home.distance_to(global_position) > 1.0:
 			_go(home, speed * (1.35 if home.distance_to(global_position) > 6.0 else 1.0), dt)
 		else:
-			DmModels.play(_anim, "idle")
+			_animator.loco(0.0)
 
 func _go(goal: Vector3, speed: float, dt: float) -> void:
 	_repath -= dt
@@ -119,7 +121,7 @@ func _go(goal: Vector3, speed: float, dt: float) -> void:
 		global_position += dir * speed * dt
 		global_position.y = 0.0
 		_face(dir, dt)
-	DmModels.play(_anim, "run" if speed > 5.0 else "walk", 1.0)
+	_animator.loco(speed)
 
 func _face(dir: Vector3, dt: float) -> void:
 	if dir.length() < 0.01:

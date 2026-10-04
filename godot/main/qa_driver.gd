@@ -10,11 +10,21 @@ var step := 0
 var main: DmMain
 var step_t := 0.0
 var _spawned := false
+var tour := false
+var tour_i := 0
+var tour_ids: Array = []
+var tour_placed := false
+var gate := ""
 
 func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a == "--qa":
 			active = true
+		elif a == "--tour":
+			tour = true
+		elif a.begins_with("--gate="):
+			gate = a.substr(7)
+			tour = true
 		elif a.begins_with("--shots="):
 			shots = a.substr(8)
 	set_process(active)
@@ -28,6 +38,55 @@ func _shot(name: String) -> void:
 	img.save_png(p)
 	print("[qa] shot ", p, " ", img.get_size())
 
+## --tour: break every seal, visit each area (at its centre, or a spot the web uses), screenshot it, quit.
+func _tour(dt: float) -> void:
+	var w := main.world
+	if gate != "":
+		# One shot of a sealed gate: stand 6 m in front of it on the room side, seals left as they are by default.
+		if step_t > 2.5:
+			_shot("gate_%s" % gate)
+			get_tree().quit()
+		elif not tour_placed:
+			tour_placed = true
+			for d in w.doors:
+				if d.id == gate:
+					var ra: Dictionary = w.areas[d.a].rect
+					var dc := Vector3(d.cx, 0, d.cz)
+					var toward := Vector3((ra.x0 + ra.x1) / 2.0 - d.cx, 0, (ra.z0 + ra.z1) / 2.0 - d.cz)
+					toward = Vector3(0, 0, signf(toward.z)) if d.axis == "z" else Vector3(signf(toward.x), 0, 0)
+					var p := dc + toward * 5.0
+					main.hero.teleport(p)
+					main.cam.snap(p)
+					main.builder.update_streaming(p.x, p.z)
+		return
+	if tour_ids.is_empty():
+		tour_ids = w.order.duplicate()
+		main.builder.open_all()
+		step_t = 0.0
+	if tour_i >= tour_ids.size():
+		print("[qa] tour done")
+		get_tree().quit()
+		return
+	var id: String = tour_ids[tour_i]
+	var a: Dictionary = w.areas[id]
+	if not tour_placed:
+		tour_placed = true
+		var r: Dictionary = a.rect
+		var p := Vector3((r.x0 + r.x1) / 2.0, 0, (r.z0 + r.z1) / 2.0)
+		if id == "chapterhouse":
+			p = Vector3(0, 0, 24)
+		elif id == "depths":
+			p = Vector3(w.depths.start.x, 0, w.depths.start.z)
+		p = main.builder.nav_closest(p)
+		main.hero.teleport(p)
+		main.cam.snap(p)
+		main.builder.update_streaming(p.x, p.z)
+	if step_t > 2.0:
+		_shot("area_%02d_%s" % [tour_i, id])
+		tour_i += 1
+		tour_placed = false
+		step_t = 0.0
+
 func _process(dt: float) -> void:
 	t += dt
 	step_t += dt
@@ -40,6 +99,9 @@ func _process(dt: float) -> void:
 		step_t = 0.0
 		return
 	var hero := main.hero
+	if tour:
+		_tour(dt)
+		return
 	match step:
 		0:  # settle, then the Chapterhouse at spawn
 			if step_t > 2.0:

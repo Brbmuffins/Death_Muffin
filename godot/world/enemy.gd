@@ -17,6 +17,7 @@ var _path: PackedVector3Array = PackedVector3Array()
 var _path_i := 0
 var _repath := 0.0
 var _anim: AnimationPlayer
+var _animator: DmAnimator
 var _model_root: Node3D
 var corpse_kind := "normal"
 var radius := 0.45
@@ -31,15 +32,17 @@ func setup(d: Dictionary, m: Node, model: Dictionary) -> void:
 	radius = float(d.radius) * float(d.scale)
 	speed = float(d.speed)
 	corpse_kind = d.corpse
-	var mi: Dictionary = model
-	var c := DmModels.creature(mi.url, float(mi.height) * float(d.scale), float(mi.yaw))
+	var c := DmModels.creature_from(model, float(d.scale))
 	_model_root = c.root
 	_anim = c.anim
+	_animator = c.animator
 	add_child(_model_root)
 	_model_root.scale = Vector3.ONE * 0.2
 	_repath = randf() * 0.4
 	add_to_group("enemies")
-	DmModels.play(_anim, "idle", 1.0, 0.0)
+	_animator.loco(0.0)
+	if float(d.get("hover", 0.0)) > 0.0:
+		_model_root.position.y = float(d.hover)
 
 func take_damage(amount: float, from_dir: Vector3 = Vector3.ZERO) -> void:
 	if not alive:
@@ -48,14 +51,16 @@ func take_damage(amount: float, from_dir: Vector3 = Vector3.ZERO) -> void:
 	DmFx.float_text(main, global_position + Vector3(0, 2.0, 0), str(int(round(amount))), Color(1.0, 0.92, 0.6), 34)
 	if hp <= 0.0:
 		_die()
+	else:
+		_animator.hurt()
 
 func _die() -> void:
 	alive = false
 	state = "dead"
 	remove_from_group("enemies")
 	add_to_group("corpses")
-	if _anim != null and _anim.has_animation("death"):
-		DmModels.play(_anim, "death", 1.0, 0.05)
+	if _animator.death():
+		pass
 	else:
 		# Models without a death clip tip over (as in the web).
 		var tw := create_tween()
@@ -75,9 +80,10 @@ func _process(dt: float) -> void:
 			return
 	if not alive:
 		return
+	_animator.tick(dt)
 	var t := _target()
 	if t == null:
-		DmModels.play(_anim, "idle")
+		_animator.loco(0.0)
 		return
 	var to := t.global_position - global_position
 	to.y = 0.0
@@ -109,18 +115,12 @@ func _process(dt: float) -> void:
 			elif state_t <= 0.0:
 				state = "chase"
 			else:
-				if _anim != null and not _anim.is_playing():
-					DmModels.play(_anim, "idle")
+				_animator.loco(0.0)
 	_separate(dt)
 
 func _play_attack() -> void:
-	if _anim == null:
-		return
-	var nm := "cast" if def.behavior == "caster" and _anim.has_animation("cast") else "attack"
-	if _anim.has_animation(nm):
-		_anim.play(nm, 0.1, 1.0)
-	else:
-		DmModels.play(_anim, "idle")
+	var nm := "cast" if def.get("caster", false) and _anim != null and _anim.has_animation("cast") else "attack"
+	_animator.strike(nm, float(def.windupMs) / 1000.0)
 
 func _strike(t: Node3D, dist: float) -> void:
 	var reach: float = float(def.attackRange)
@@ -157,8 +157,7 @@ func _move_toward(goal: Vector3, dt: float) -> void:
 		global_position += dir * speed * dt
 		global_position.y = 0.0
 		_face(dir, dt)
-	var run := speed >= 3.5 and _anim != null and _anim.has_animation("run")
-	DmModels.play(_anim, "run" if run else "walk", 1.0)
+	_animator.loco(speed)
 
 func _separate(dt: float) -> void:
 	for o in get_tree().get_nodes_in_group("enemies"):
