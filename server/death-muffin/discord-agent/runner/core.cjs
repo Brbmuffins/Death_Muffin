@@ -275,8 +275,9 @@ function createRunner(cfgIn, opts = {}) {
     for (const s of fresh.slice(SHOTS_PER_POST)) job.shotsSeen[s.name] = `${s.mtime}:${s.size}`;   // beyond the cap: not posted, not retried
     save();
   }
-  function proposalShots(job) {
-    return listShots(job).filter((s) => s.size <= SHOT_MAX_BYTES).slice(0, SHOTS_PER_POST).map(readShot).filter(Boolean);
+  // Only images taken after the branch's last commit show the change being approved; an older one could show a previous version.
+  function proposalShots(job, sinceMs) {
+    return listShots(job).filter((s) => s.size <= SHOT_MAX_BYTES && s.mtime >= sinceMs).slice(0, SHOTS_PER_POST).map(readShot).filter(Boolean);
   }
 
   async function runJob(job, real, extra) {
@@ -365,7 +366,8 @@ function createRunner(cfgIn, opts = {}) {
     job.proposal = { messageId: null, head, base: job.base, tier, title, files: v.files.map((f) => f.path), migrations: v.migrations, testsOk: true, createdAt: new Date(now()).toISOString() };
     job.status = 'proposed'; save();
     audit.log('proposal', { job: job.id, tier, head, files: v.files.length, migrations: v.migrations.join(',') });
-    const shots = proposalShots(job);
+    const committedAt = Number((await G.git(job.worktree, ['log', '-1', '--format=%ct'], { allowFail: true })).out.trim()) * 1000 || 0;
+    const shots = proposalShots(job, committedAt);
     if (shots.length) embed.image = { url: `attachment://${shots[0].name}` };
     post({ threadId: job.threadId }, { embed, ...(shots.length ? { files: shots } : {}), reactions: ['✅', '❌'] }, (res) => { if (res.messageId && job.proposal && job.proposal.head === head) { job.proposal.messageId = String(res.messageId); save(); } });
   }

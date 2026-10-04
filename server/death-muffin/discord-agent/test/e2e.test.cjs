@@ -70,8 +70,8 @@ test('limited approver: casual ok, gameplay refused; Helix ships gameplay; ship 
   assert.equal(sh(w.repo, 'show', 'origin/master:src/gameplay/a.ts').trim(), 'speed=9'.trim());
   const ships = shipsLog(w); assert.equal(ships.length, 1); assert.equal(ships[0].approverId, IDS.HELIX); assert.equal(ships[0].tier, 'gameplay');
   const ping = await until(() => thread.sent.find((s) => (s.payload.allowedMentions && s.payload.allowedMentions.users)), d.ad); assert.ok(ping.payload.content.includes(`<@${IDS.OWNER}>`)); assert.match(ping.payload.content, /compare\/master\.\.\./);
-  assert.equal(fs.readdirSync(w.cfg.worktreeRoot).length, 0, 'worktrees cleaned');
-  assert.equal(sh(w.repo, 'ls-remote', 'origin', 'refs/heads/discord/*'), '', 'remote branch deleted after ship');
+  // Cleanup runs after the "Live" message: wait for it rather than racing it.
+  await until(() => fs.readdirSync(w.cfg.worktreeRoot).length === 0 && sh(w.repo, 'ls-remote', 'origin', 'refs/heads/discord/*') === '', d.ad);
   assert.equal(sh(w.repo, 'branch', '--list', 'discord/*'), '');
   // audit trail
   const audit = fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8');
@@ -310,6 +310,17 @@ test('a proposal after a shot carries the image as attachment and as the embed i
   const p = await waitProposal(d, thread);
   assert.equal(p.payload.embeds[0].image.url, 'attachment://a.png');
   assert.equal(p.payload.files.length, 1); assert.equal(p.payload.files[0].name, 'a.png'); assert.equal(p.payload.files[0].attachment.toString(), 'PNG-one');
+});
+
+test('a screenshot older than the latest commit is not attached to the next proposal', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS SHOT-PNG make the accent blue and show it');
+  await waitProposal(d, thread);
+  await new Promise((r) => setTimeout(r, 1100)); // commit times have one-second resolution
+  await d.say(thread, IDS.HELIX, 'MAKE-CSS2 actually make it green');
+  const second = await until(() => { const ps = thread.sent.filter((s) => s.payload.embeds && s.reactions.length === 2); return ps.length === 2 && ps[1]; }, d.ad);
+  assert.equal(second.payload.embeds[0].image, undefined, 'no stale preview');
+  assert.equal(second.payload.files, undefined);
 });
 
 test('!shot queues a turn that asks for a screenshot, for any requester; shot files never dirty the tree', async () => {

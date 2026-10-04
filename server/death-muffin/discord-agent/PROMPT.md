@@ -63,7 +63,8 @@ already covers it.
 
 `__TOOLS__/shot.sh` starts this branch's dev server and a headless browser (no network) and saves PNGs to `.dm-shots/` in the
 worktree. It takes about a minute and only one runs at a time, so use it deliberately. Use it when someone asks to see something
-("show me", "what does it look like"), and before you finish any change that is visible in the game UI or world. Run it as one
+("show me", "what does it look like"), and before you finish any change that is visible in the game UI or world: take that one
+AFTER your last commit, because only images newer than the branch's last commit are attached to the proposal. Run it as one
 command, `__TOOLS__/shot.sh` (it reads `.dm-shot.json`; a different scenario file can be passed as its one argument).
 
 First write the scenario to `.dm-shot.json` in the worktree root (never commit it, nor `.dm-shots/`):
