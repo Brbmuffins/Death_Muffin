@@ -25,13 +25,19 @@ describe('VaultPanel take buttons', () => {
     return panel as unknown as { state: unknown; withdrawAll(k: 'materials' | 'all'): Promise<void> };
   };
 
-  it('Take materials withdraws only material-like stacks, from every tab', async () => {
+  it('Take materials withdraws only material-like stacks, from the open tab only', async () => {
     api.vaultWithdraw.mockReset();
     api.vaultWithdraw.mockResolvedValue({ bag: [], vault: [] });
     const p = make();
-    p.state = { bag: [], vault: [row(3, 'material'), row(5, 'weapon'), row(45, 'consumable'), row(90, 'rune')] };
+    const state = { bag: [], vault: [row(3, 'material'), row(5, 'weapon'), row(45, 'consumable'), row(90, 'rune')] };
+    p.state = state;
     await p.withdrawAll('materials');
-    expect(api.vaultWithdraw.mock.calls.map((c) => c[1])).toEqual([3, 45, 90]);
+    expect(api.vaultWithdraw.mock.calls.map((c) => c[1])).toEqual([3]);
+    api.vaultWithdraw.mockClear();
+    p.state = state;
+    (p as unknown as { tab: number }).tab = 1;
+    await p.withdrawAll('materials');
+    expect(api.vaultWithdraw.mock.calls.map((c) => c[1])).toEqual([45]);
   });
 
   it('Take all stops at the first stack that does not fit and keeps what moved', async () => {

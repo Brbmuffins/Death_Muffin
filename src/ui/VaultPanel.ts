@@ -136,11 +136,11 @@ export class VaultPanel {
       <div class="cw-vault-actions">
         <div class="cw-vault-actcol">
           <button class="cw-button small" data-all="materials" ${this.busy || !st ? 'disabled' : ''} title="Stores every unlocked material and consumable in the Vault">Deposit materials</button>
-          <button class="cw-button small" data-take="materials" ${this.busy || !st ? 'disabled' : ''} title="Takes every material and consumable from all Vault tabs into your bag, as far as it fits">Take materials</button>
+          <button class="cw-button small" data-take="materials" ${this.busy || !st ? 'disabled' : ''} title="Takes every material and consumable from the open Vault tab into your bag, as far as it fits">Take materials</button>
         </div>
         <div class="cw-vault-actcol">
           <button class="cw-button small" data-all="all" ${this.busy || !st ? 'disabled' : ''} title="Stores everything unlocked and not worn">Deposit all</button>
-          <button class="cw-button small" data-take="all" ${this.busy || !st ? 'disabled' : ''} title="Takes everything from all Vault tabs into your bag, as far as it fits">Take all</button>
+          <button class="cw-button small" data-take="all" ${this.busy || !st ? 'disabled' : ''} title="Takes everything from the open Vault tab into your bag, as far as it fits">Take all</button>
         </div>
         <button class="cw-button small" data-sort ${this.busy || !st ? 'disabled' : ''} title="Merges stacks, then orders by type, rarity and name">Sort</button>
         <span class="cw-hint-text small">${lockedSlots.length ? `${lockedSlots.length} locked item${lockedSlots.length === 1 ? '' : 's'} stay${lockedSlots.length === 1 ? 's' : ''} put` : 'Lock items in the Reliquary (I) to keep them out of the bulk buttons'}</span>
@@ -206,15 +206,16 @@ export class VaultPanel {
     return this.run(kind === 'materials' ? 'Materials stored.' : 'Everything unlocked is stored.', () => vaultDepositAll(this.characterId, kind, this.locks.slotsOf(this.bagSlots())));
   }
 
-  /** Take every vault stack of `kind` (all tabs) into the bag, one server move each. Stops at the first stack that will not fit and keeps what already moved. */
+  /** Take every vault stack of `kind` on the open tab into the bag, one server move each. Stops at the first stack that will not fit and keeps what already moved. */
   private async withdrawAll(kind: 'materials' | 'all') {
     if (!this.state) return;
     const label = kind === 'materials' ? 'Materials' : 'Everything';
     let stoppedBy = '';
     await this.run(`${label} taken.`, async () => {
       let st = this.state!;
-      const slots = st.vault.filter((s) => kind === 'all' || ['material', 'consumable', 'rune'].includes(s.item_type)).map((s) => s.slot_index);
-      if (!slots.length) throw new Error(kind === 'materials' ? 'The Vault holds no materials to take.' : 'The Vault is empty.');
+      const lo = this.tab * VAULT_TAB_SIZE;
+      const slots = st.vault.filter((s) => s.slot_index >= lo && s.slot_index < lo + VAULT_TAB_SIZE && (kind === 'all' || ['material', 'consumable', 'rune'].includes(s.item_type))).map((s) => s.slot_index);
+      if (!slots.length) throw new Error(kind === 'materials' ? 'This tab holds no materials to take.' : 'This tab is empty.');
       for (const slot of slots) {
         try {
           st = await vaultWithdraw(this.characterId, slot);
