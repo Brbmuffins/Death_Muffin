@@ -48,7 +48,7 @@ import { AscensionPanel } from '../ui/AscensionPanel';
 import { ClassPanel } from '../ui/ClassPanel';
 import { changeDiscipline, getContracts, getCosmetics, getGarden, getLabor, type LaborView, type ContractDelivery, type CosmeticsView, type GardenResult, type LaborResult } from '../net/api';
 import { canUseAutoCombat, onSettingsChange, setActiveCharacter, settings, updateSettings } from '../app/settings';
-import { filteredOut } from '../gameplay/lootFilter';
+import { lootAction } from '../gameplay/lootFilter';
 import { keepsForYou } from '../ui/gearText';
 import { selectAutoCombatAction, selectAutoCombatMovement, type AutoMoveMemory } from '../gameplay/autoCombat';
 import { BossTelegraphs, poolHazard, type Hazard } from '../gameplay/autoDodge';
@@ -4147,6 +4147,27 @@ export class WorldScene implements GameScene, RuntimeView {
     this.checkMilestones();
   }
 
+  /** Items just went into the bag (walked over, or auto-looted by the Settings loot rules): sound, toasts and first-time counsel. */
+  private collected(items: LootDrop[]) {
+    audio.play(lootSfx(items.map((item) => itemMeta(item.item_id).rarity)));
+    this.onboarding.show('relic');
+    // The first piece of gear: point at the Atlas (a calm tip; it waits for a quiet moment).
+    if (items.some((item) => isAffixGear(itemMeta(item.item_id).type))) {
+      this.onboarding.show('atlas', 2500);
+      this.revealHud('menu.atlas');
+    }
+    const legendary = items.filter((item) => itemMeta(item.item_id).rarity === 'legendary');
+    if (legendary.length) this.onboarding.show('legendary', 600);
+    else if (items.some((item) => ARMOR_BY_ID[item.item_id])) this.onboarding.show('armor');
+    if (items.some((item) => item.item_id in REAGENT_ITEMS)) this.onboarding.show('reagent', 0, true);
+    if (items.some((item) => item.instance?.affixes.length)) this.onboarding.show('affix', 1800);
+    for (const item of legendary) {
+      this.hud.toast(`Legendary: ${itemMeta(item.item_id).name}`, 'good');
+      this.floating.spawn(this.player.x, 2.6, this.player.z, 'LEGENDARY', 'big');
+    }
+    for (const item of items) this.hud.lootToast(item.instance ? affixedName(itemMeta(item.item_id).name, item.instance.affixes) : itemMeta(item.item_id).name, item.quantity, itemMeta(item.item_id).rarity);
+  }
+
   /**
    * Put drops on the ground. Gear first gets its item level and affixes from the server (LootRoller): the piece appears a moment
    * later, rolled. Anything the server cannot roll lands as plain gear. Materials never wait.
@@ -4157,17 +4178,22 @@ export class WorldScene implements GameScene, RuntimeView {
     if (!gear.length) return;
     void this.lootRoller.attach(gear, level, source).then(() => {
       if (!this.lootAlive) return;
-      // Settings -> Loot filter: gear below the chosen rarity is paid out as its sell value instead of landing (gameplay/lootFilter.ts).
-      const keep = settings.lootFilter === 'any' ? undefined : keepsForYou(this.statContext());
-      let filteredGold = 0;
+      // Settings -> Loot, per rarity (gameplay/lootFilter.ts): leave it on the ground, auto-loot it into the bag, or take its gold.
+      const rules = settings.lootRules;
+      const keep = Object.values(rules).includes('gold') ? keepsForYou(this.statContext()) : undefined;
+      let gold = 0;
+      const auto: LootDrop[] = [];
       for (const item of gear) {
-        const slot = settings.lootFilter === 'any' ? null : addToSlots([], item)?.[0];
-        if (slot && filteredOut(slot, settings.lootFilter, keep)) filteredGold += slot.sell_value * item.quantity;
-        else this.loot.item(x, z, item);
+        const slot = addToSlots([], item)?.[0];
+        const action = slot ? lootAction(slot, rules, keep) : 'ground';
+        if (action === 'gold') gold += slot!.sell_value * item.quantity;
+        else if (action === 'auto' && this.inventory.add(item)) auto.push(item);
+        else this.loot.item(x, z, item); // 'ground', or the bag is full
       }
-      if (filteredGold > 0) {
-        this.progression.addGold(filteredGold);
-        this.floating.spawn(x, 2.1, z, `+${filteredGold}g`, 'gold');
+      if (auto.length) this.collected(auto);
+      if (gold > 0) {
+        this.progression.addGold(gold);
+        this.floating.spawn(x, 2.1, z, `+${gold}g`, 'gold');
       }
     });
   }
@@ -5241,25 +5267,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.progression.addShards(got.shards);
       this.floating.spawn(p.x, 2.3, p.z, `+${got.shards} soul shard${got.shards > 1 ? 's' : ''}`, 'shard');
     }
-    if (got.items.length) {
-      audio.play(lootSfx(got.items.map((item) => itemMeta(item.item_id).rarity)));
-      this.onboarding.show('relic');
-      // The first piece of gear: point at the Atlas (a calm tip; it waits for a quiet moment).
-      if (got.items.some((item) => isAffixGear(itemMeta(item.item_id).type))) {
-        this.onboarding.show('atlas', 2500);
-        this.revealHud('menu.atlas');
-      }
-    }
-    const legendary = got.items.filter((item) => itemMeta(item.item_id).rarity === 'legendary');
-    if (legendary.length) this.onboarding.show('legendary', 600);
-    else if (got.items.some((item) => ARMOR_BY_ID[item.item_id])) this.onboarding.show('armor');
-    if (got.items.some((item) => item.item_id in REAGENT_ITEMS)) this.onboarding.show('reagent', 0, true);
-    if (got.items.some((item) => item.instance?.affixes.length)) this.onboarding.show('affix', 1800);
-    for (const item of legendary) {
-      this.hud.toast(`Legendary: ${itemMeta(item.item_id).name}`, 'good');
-      this.floating.spawn(p.x, 2.6, p.z, 'LEGENDARY', 'big');
-    }
-    for (const item of got.items) this.hud.lootToast(item.instance ? affixedName(itemMeta(item.item_id).name, item.instance.affixes) : itemMeta(item.item_id).name, item.quantity, itemMeta(item.item_id).rarity);
+    if (got.items.length) this.collected(got.items);
 
     // Visuals. A hitstop (graphics/hitstop.ts) scales only the picture's clock from here on.
     hitstop.frame(dt);

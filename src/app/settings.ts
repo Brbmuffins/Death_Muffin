@@ -4,7 +4,7 @@
  * storage can be unavailable (private windows, blocked site data).
  */
 import { isFpsCap, type FpsCap } from './framePacing';
-import { LOOT_FILTERS, type LootFilter } from '../gameplay/lootFilter';
+import { DEFAULT_LOOT_RULES, readLootRules, type LootRules } from '../gameplay/lootFilter';
 import { isDifficulty, type Difficulty } from '../content/difficulty';
 
 export type Quality = 'high' | 'low';
@@ -37,8 +37,8 @@ export interface Settings {
   autoCombat: boolean;
   /** When a gathering node depletes, walk on to the nearest one of the same kind. */
   autoGather: boolean;
-  /** Gear below this rarity is paid out as gold instead of dropping (gameplay/lootFilter.ts). Default: everything drops. */
-  lootFilter: LootFilter;
+  /** Per gear rarity: on the ground, auto-loot or sell for gold (gameplay/lootFilter.ts). Default: everything on the ground. */
+  lootRules: LootRules;
 }
 
 const OFFLINE_PREFIX = import.meta.env.VITE_OFFLINE_BUILD === '1' ? 'dm_offline_' : '';
@@ -54,7 +54,7 @@ function defaults(): Settings {
   } catch {
     /* no matchMedia */
   }
-  return { quality: 'high', fps: 0, graphicsChosen: false, autoResolution: true, reducedMotion: reduced, damageNumbers: true, hideHelm: false, volume: 0.6, combatVolume: 1, ambienceVolume: 1, interfaceVolume: 1, tips: true, guidance: true, guidancePing: true, difficulty: 'medium', autoCombat: false, autoGather: true, lootFilter: 'any' };
+  return { quality: 'high', fps: 0, graphicsChosen: false, autoResolution: true, reducedMotion: reduced, damageNumbers: true, hideHelm: false, volume: 0.6, combatVolume: 1, ambienceVolume: 1, interfaceVolume: 1, tips: true, guidance: true, guidancePing: true, difficulty: 'medium', autoCombat: false, autoGather: true, lootRules: { ...DEFAULT_LOOT_RULES } };
 }
 
 function load(): Settings {
@@ -74,7 +74,9 @@ function load(): Settings {
       // Desktop players who never picked a rate get Max: the old 60 default was a cap that throttled 120/144 Hz screens.
       if (!s.graphicsChosen) s.fps = 0;
       if (!isDifficulty(s.difficulty)) s.difficulty = base.difficulty;
-      if (!LOOT_FILTERS.some((f) => f.id === s.lootFilter)) s.lootFilter = base.lootFilter;
+      // The first release had a single Loot filter (tiers below it became gold): carried over into the per-tier rules.
+      s.lootRules = readLootRules(s.lootRules, (stored as { lootFilter?: unknown }).lootFilter);
+      delete (s as { lootFilter?: unknown }).lootFilter;
       // Old browser-wide play settings cannot be attributed to an account.
       // Each character starts on Medium until its own preference is loaded.
       s.difficulty = base.difficulty;

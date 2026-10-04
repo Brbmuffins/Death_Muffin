@@ -1,5 +1,5 @@
 import { canUseAutoCombat, settings, updateSettings, type Quality } from '../app/settings';
-import { LOOT_FILTERS, type LootFilter } from '../gameplay/lootFilter';
+import { LOOT_TIERS, actionsFor, type LootAction } from '../gameplay/lootFilter';
 import { AREAS, type AreaId } from '../content/areas';
 import { DIFFICULTIES, DIFFICULTY_ORDER, isDifficulty } from '../content/difficulty';
 import { ACTION_LABEL, LOADOUT_ACTIONS, checkBind, label as keyLabel, type ActionId, type Binds } from '../gameplay/keybinds';
@@ -66,9 +66,9 @@ export class SettingsPanel extends SimplePanel {
         <p class="cw-settings-note" data-diffnote></p>
         ${canUseAutoCombat() ? '<label class="row">Auto combat (Easy only, G)<input type="checkbox" data-auto aria-label="Auto combat" /></label>' : ''}
         <label class="row">Auto gathering<input type="checkbox" data-autogather aria-label="Auto gathering: move on to the next node of the same kind" /></label>
-        <label class="row">Loot filter
-          <select data-lootfilter>${LOOT_FILTERS.map((f) => `<option value="${f.id}">${f.label}</option>`).join('')}</select></label>
-        <p class="cw-settings-note">Gear below your choice is paid out as gold instead of dropping. Set pieces, legendaries, necromancer affixes and upgrades for you always drop.</p>
+        <h4 class="cw-settings-sub">Loot</h4>
+        ${LOOT_TIERS.map((t) => `<label class="row">${t.label} gear<select data-lootrule="${t.id}">${actionsFor(t.id).map((o) => `<option value="${o.id}">${o.label}</option>`).join('')}</select></label>`).join('')}
+        <p class="cw-settings-note">On the ground: walk over it. Auto-loot: straight into your bag as it drops (if the bag is full it lands instead). Sell for gold: you get its sell value and it never drops. Set pieces, legendaries, necromancer affixes and upgrades for you are never sold.</p>
         ${canUseAutoCombat() ? '<p class="cw-settings-note">On Easy, Auto engages enemies in your current area, uses equipped rites and may cast your signature when a fight calls for it. Click or use WASD to take control; hold 1–5 to repeat a rite.</p>' : ''}
         </section>
         <section class="cw-settings-section"><h3>Display and sound</h3>
@@ -205,9 +205,11 @@ export class SettingsPanel extends SimplePanel {
     const autoGather = this.el!.querySelector<HTMLInputElement>('[data-autogather]')!;
     autoGather.checked = settings.autoGather;
     autoGather.addEventListener('change', () => updateSettings({ autoGather: autoGather.checked }));
-    const lootFilter = this.el!.querySelector<HTMLSelectElement>('[data-lootfilter]')!;
-    lootFilter.value = settings.lootFilter;
-    lootFilter.addEventListener('change', () => updateSettings({ lootFilter: lootFilter.value as LootFilter }));
+    this.el!.querySelectorAll<HTMLSelectElement>('[data-lootrule]').forEach((sel) => {
+      const tier = sel.dataset.lootrule as keyof typeof settings.lootRules;
+      sel.value = settings.lootRules[tier];
+      sel.addEventListener('change', () => updateSettings({ lootRules: { ...settings.lootRules, [tier]: sel.value as LootAction } }));
+    });
     this.el!.querySelector<HTMLButtonElement>('[data-resettips]')?.addEventListener('click', () => {
       updateSettings({ tips: true });
       tips.checked = false;

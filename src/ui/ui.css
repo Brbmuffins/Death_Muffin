@@ -1086,6 +1086,7 @@ input[type='checkbox'], input[type='radio'], .cw-settings select, .cw-settings i
 .cw-settings-section { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--cw-border); background: var(--cw-inset); }
 .cw-settings-section:first-child { margin-top: 0; }
 .cw-settings-section h3 { margin: 0 0 6px; font-family: var(--cw-font-display); font-size: 17px; letter-spacing: .1em; text-transform: uppercase; color: var(--cw-bone-100); }
+.cw-settings-section .cw-settings-sub { margin: 10px 0 4px; font-family: var(--cw-font-display); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--cw-bone-300); }
 .cw-settings-section .row:last-child { border-bottom: 0; }
 .cw-settings-section .row .cw-button { width: auto; min-height: 38px; }
 /* Settings → Report a bug */
