@@ -38,6 +38,19 @@ func _initialize() -> void:
 		if not _only.is_empty() and not (n in _only):
 			continue
 		run_file(n)
+	if _only.is_empty() or "combat_cast" in _only:
+		var cc = load("res://tests/sim/combat_cast.gd").new()
+		var cdir := "res://tests/rules-combat/fixtures/"
+		if FileAccess.file_exists(cdir + "ability_damage.json"):
+			cc.run_damage(cdir + "ability_damage.json")
+			cc.run_cast(cdir + "ability_cast.json")
+			passed += cc.passed
+			failed += cc.failed
+			per_file["combat_cast (1300 rules-combat cases)"] = "%d checks, %d skipped" % [cc.passed + cc.failed, cc.skipped]
+			for m in cc.messages:
+				print(m)
+		else:
+			print("rules-combat fixtures missing: run tools/godot/gen-fixtures.sh (combat_cast skipped)")
 	var total := passed + failed
 	print("--- sim: %d / %d passed, %d failed ---" % [passed, total, failed])
 	for k in per_file:
@@ -85,6 +98,20 @@ func diff(a: Variant, b: Variant, path: String = "", tol: float = 1e-9, rel: flo
 func run_file(name: String) -> void:
 	var text := FileAccess.get_file_as_string(DIR + name + ".json")
 	var fx: Dictionary = DmSimExact.decode(JSON.parse_string(text))
+	if fx.has("cast"):
+		var cr = load("res://tests/sim/cast_runner.gd").new()
+		cr.dump_dir = _dump
+		cr.tol = _tol
+		cr.rel = _rel
+		cr._snap.rel = _rel
+		cr._snap.tol = _tol
+		var r2: Dictionary = cr.run(fx)
+		passed += int(r2["passed"])
+		failed += int(r2["failed"])
+		per_file[name] = r2["summary"]
+		for m in r2["messages"]:
+			print(m)
+		return
 	if fx.has("scenario"):
 		var runner = load("res://tests/sim/scenario_runner.gd").new()
 		runner.dump_dir = _dump
