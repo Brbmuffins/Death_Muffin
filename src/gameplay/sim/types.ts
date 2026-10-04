@@ -177,6 +177,9 @@ export interface Thrall {
   detour?: { x: number; z: number }[];
   detourUntil?: number;
   nextPathAt?: number;
+  /** Host-only: where its formation seat was last tick, to know how fast the seat moves. */
+  seatX?: number;
+  seatZ?: number;
 }
 
 export interface Corpse {

@@ -146,6 +146,16 @@ function pinFirst(template: object, sig: string, mats: THREE.Material[]) {
   for (const m of mats) pinned.add(m);
 }
 
+/**
+ * Free the per-instance bone texture of every skinned mesh under `root`. A SkinnedMesh clone owns its own Skeleton, and
+ * the bone texture (a DataTexture) is created on first draw and only released by skeleton.dispose(); material and
+ * geometry disposal never reach it, so every dead body leaked one GPU texture (measured ~4 per kill in a fight).
+ * Geometry and materials are handled elsewhere (geometry is shared with the template).
+ */
+export function disposeSkeletons(root: THREE.Object3D) {
+  root.traverse((o) => (o as THREE.SkinnedMesh).skeleton?.dispose());
+}
+
 export class Creature {
   readonly root = new THREE.Group();
   /** Resolves after the model has been cloned and attached (or its load failed). */
@@ -251,12 +261,14 @@ export class Creature {
       await warmModel(model, this.mats, t, sig);
       if (this.disposed) {
         this.disposeMats();
+        disposeSkeletons(model);
         return;
       }
       // Mixer + one action per clip: a second budgeted chunk (visual only; logic never waits on `loaded`).
       await buildBudget.run(() => {
       if (this.disposed) {
         this.disposeMats();
+        disposeSkeletons(model);
         return;
       }
       this.model = model;
@@ -719,6 +731,7 @@ export class Creature {
     this.disposed = true;
     this.mixer?.stopAllAction();
     this.disposeMats();
+    if (this.model) disposeSkeletons(this.model);
     this.root.removeFromParent();
     this.root.clear();
     this.mixer = null;

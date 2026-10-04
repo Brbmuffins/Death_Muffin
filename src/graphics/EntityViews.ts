@@ -134,8 +134,12 @@ const KIT_BODIES = new Set<ThrallKind>(['warrior', 'shieldbearer', 'archer', 'bo
 /** How much of the kit armour's colour washes over the chest and hands: enough to read as plate or leather, far short of a recolour. */
 const KIT_ARMOR_STRENGTH = 0.32;
 
+const THRALL_MOVE_HOLD_S = 0.18;
+
 interface View {
   c: Creature;
+  /** Thralls: seconds left to keep walking after the sim says it stopped (see sync). */
+  moveHoldT?: number;
   x: number;
   z: number;
   facing: number;
@@ -1083,7 +1087,9 @@ export class EntityViews {
       v.c.root.position.set(t.x, -1.8 * (1 - rise) * (1 - rise) + hover, t.z);
       v.c.root.rotation.y = v.facing;
       v.c.flash = t.flash;
-      const key = t.state === 'attack' && t.stateT < 0.1 ? 'attack' : t.moving ? 'move' : 'idle';
+      // A snapshot-mirrored legion (co-op guest) can still blink `moving` for a tick; walk -> idle needs it to stay off for a moment.
+      v.moveHoldT = t.moving ? THRALL_MOVE_HOLD_S : Math.max(0, (v.moveHoldT ?? 0) - dt);
+      const key = t.state === 'attack' && t.stateT < 0.1 ? 'attack' : t.moving || (v.moveHoldT > 0 && v.lastState === 'move') ? 'move' : 'idle';
       // A thrall's hit applies the instant its attack starts: open the swing just before its impact frame.
       if (key === 'attack' && v.lastState !== 'attack') v.c.playStrike('attack', 0.12);
       else if (key === 'move' && v.lastState !== 'move') {
@@ -1251,7 +1257,12 @@ export function stageSpecs(areas: readonly AreaId[], legion?: DisciplineId | nul
     seen.add(key);
     out.push({ key, make });
   };
-  const enemy = (id: EnemyId) => add(`enemy:${id}`, () => new Creature(ENEMY_SLUG[id], { spectral: id === 'wraith', fallback: ENEMY_FALLBACK[id], wings: WINGS[id], tint: id === 'risen' ? 0x8a8078 : 0xffffff }));
+  const enemy = (id: EnemyId) => add(`enemy:${id}`, () => {
+    const c = new Creature(ENEMY_SLUG[id], { spectral: id === 'wraith', fallback: ENEMY_FALLBACK[id], wings: WINGS[id], tint: id === 'risen' ? 0x8a8078 : 0xffffff });
+    // A burrowing ghoul draws a dirt mound, a material of its own: its first burrow compiled that shader in the middle of a fight. Stage one with the body.
+    if (ENEMIES[id].burrow) c.root.add(makeMound());
+    return c;
+  });
   for (const a of areas) {
     for (const { id } of AREAS[a].enemies) enemy(id);
     if (a === 'depths') for (const { id } of [...depthRoster(1), ...depthRoster(5)]) enemy(id);

@@ -151,6 +151,12 @@ const THRALL_SCALE: Partial<Record<ThrallKind, { hp: number; dmg: number }>> = {
  * isn't a player body lives here: enemies, thralls, corpses, zones, waves and
  * the Prelate. Clients talk to it through Intents; it answers with Events.
  */
+/** A following thrall stands still only once it is this close to its seat and the seat has stopped moving (see updateThralls). */
+const FOLLOW_ARRIVE = 0.12;
+const FOLLOW_SEAT_MOVING = 0.3;
+/** Catch-up gain (1/s) while settling onto a moving seat. */
+const FOLLOW_CATCHUP = 5;
+
 export class WorldSim {
   readonly enemies = new Map<number, Enemy>();
   readonly thralls = new Map<number, Thrall>();
@@ -3228,8 +3234,20 @@ export class WorldSim {
         const fx = owner.x + Math.sin(ang) * 1.9;
         const fz = owner.z + Math.cos(ang) * 1.9;
         const d = Math.hypot(fx - t.x, fz - t.z);
-        if (d > 0.5) {
-          this.moveThrall(t, fx, fz, dt, d > 6 ? 1.35 : 1);
+        // How fast the seat itself is travelling (the owner walking): a follower that is on its seat while the seat moves keeps
+        // walking in step with it. Without this a thrall faster than its owner closed the gap, stood for a frame, fell 0.5 behind
+        // and set off again, flipping walk/idle every other frame (the "stutter" of a legion trailing a walking hero).
+        let seatV = 0;
+        if (t.seatX !== undefined && dt > 1e-5) seatV = Math.min(12, Math.hypot(fx - t.seatX, fz - t.seatZ!) / dt);
+        t.seatX = fx;
+        t.seatZ = fz;
+        const following = t.state === 'move' && (d > FOLLOW_ARRIVE || seatV > FOLLOW_SEAT_MOVING);
+        if (d > 0.5 || following) {
+          // Close the gap quickly but settle to the seat's own pace, so arriving is a glide and not stop-and-go.
+          const mult = d > 6 ? 1.35 : 1;
+          const pace = Math.min(t.speed * mult, seatV + d * FOLLOW_CATCHUP);
+          this.moveThrall(t, fx, fz, dt, d > 0.5 ? mult : Math.max(0.05, pace / t.speed));
+          t.moving = true;
           t.state = 'move';
         } else if (t.state === 'move') t.state = 'idle';
       }
