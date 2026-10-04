@@ -9,6 +9,7 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 [autoload]
 Qa="*res://main/qa_driver.gd"
 AudioDirector="*res://audio/audio_director.gd"
+Vfx="*res://fx/dm_fx.gd"
 
 [display]
 window/size/viewport_width=1280

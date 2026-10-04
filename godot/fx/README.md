@@ -136,3 +136,6 @@ at a fixed 30 fps. Web counterpart: `tools/godot/fx-web-gallery.cjs` (the web DE
 8. Dynamic spell-colour lights: a small pool of 2-3 flash lights with energy budget (the web has 1) once Godot light cost is measured.
 9. Authored VFX for the enemies the web only covers with sprites (choir, tide hand, drowned) built on the same shader library.
 10. Pool warm-up at area load (`preload_ids` + one pooled instance per id) to remove first-play hitches.
+
+## Integrator notes
+- Registered as the autoload **`Vfx`** (`Vfx="*res://fx/dm_fx.gd"`), not `DmFx`: the slice's `world/dm_fx.gd` already owns `class_name DmFx` until the game integration replaces it. Read `DmFx.x` in this README as `Vfx.x`.
