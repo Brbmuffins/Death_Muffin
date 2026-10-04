@@ -3,6 +3,7 @@ import { LOOT_TIERS, actionsFor, type LootAction } from '../gameplay/lootFilter'
 import { AREAS, type AreaId } from '../content/areas';
 import { DIFFICULTIES, DIFFICULTY_ORDER, isDifficulty } from '../content/difficulty';
 import { ACTION_LABEL, LOADOUT_ACTIONS, checkBind, label as keyLabel, type ActionId, type Binds } from '../gameplay/keybinds';
+import { saveLootRuleToAccount } from '../net/accountPrefs';
 import { BugReportView, type BugReportContext } from './BugReportView';
 import { wrapPanelBody } from './panelBody';
 
@@ -213,7 +214,10 @@ export class SettingsPanel extends SimplePanel {
     this.el!.querySelectorAll<HTMLSelectElement>('[data-lootrule]').forEach((sel) => {
       const tier = sel.dataset.lootrule as keyof typeof settings.lootRules;
       sel.value = settings.lootRules[tier];
-      sel.addEventListener('change', () => updateSettings({ lootRules: { ...settings.lootRules, [tier]: sel.value as LootAction } }));
+      sel.addEventListener('change', () => {
+        updateSettings({ lootRules: { ...settings.lootRules, [tier]: sel.value as LootAction } });
+        void saveLootRuleToAccount(tier, sel.value as LootAction);
+      });
     });
     this.el!.querySelector<HTMLButtonElement>('[data-resettips]')?.addEventListener('click', () => {
       updateSettings({ tips: true });

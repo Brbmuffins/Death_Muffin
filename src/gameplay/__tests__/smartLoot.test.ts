@@ -34,7 +34,9 @@ describe('smart loot for class gear', () => {
     const rand = () => 0.5;
     expect(rollItem('graves', rand).item_id).toBe(rollItem('graves', rand, 1, undefined).item_id);
     // The Depths and the harness pass no discipline: the sequence of a seeded roll is unchanged.
-    expect(rollKill(AREAS.graves.enemies[0].id as never, 'graves', 5, false, 0, mulberry32(3)).items).toEqual(rollKill(AREAS.graves.enemies[0].id as never, 'graves', 5, false, 0, mulberry32(3)).items);
+    // Reagent and rune rolls take their own streams (Math.random by default): seed them too, or the test flakes when one side drops Grave Dust.
+    const kill = () => rollKill(AREAS.graves.enemies[0].id as never, 'graves', 5, false, 0, mulberry32(3), 'medium', 1, mulberry32(7), mulberry32(9));
+    expect(kill().items).toEqual(kill().items);
   });
 
   it('about 70% of the armour a Knight finds in the Ossuary is Hollow Oath, against 1 in 9 before', () => {

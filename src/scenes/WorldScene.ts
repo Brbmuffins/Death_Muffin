@@ -134,6 +134,7 @@ import { FloatingText } from '../ui/FloatingText';
 import { ForgePanel } from '../ui/ForgePanel';
 import { BossKeyPrompt } from '../ui/BossKeyPrompt';
 import { bossKeyClaim, bossKeyRefund, bossKeyStatus, bossKeySummon } from '../net/api';
+import { syncLootRulesWithAccount } from '../net/accountPrefs';
 import { COVENANT_SEAL, canEmpower } from '../gameplay/goldSinkRules';
 import { ReagentShelfPanel } from '../ui/ReagentShelfPanel';
 import { recordFound } from '../content/wing';
@@ -617,6 +618,8 @@ export class WorldScene implements GameScene, RuntimeView {
 
   mount() {
     setActiveCharacter(this.character.id, this.character.auto_combat_allowed === true);
+    // Loot rules follow the account: its copy replaces this browser's once it arrives (no-op offline).
+    void syncLootRulesWithAccount();
     this.buildScene();
     this.nav.setUnlocked(this.openAreas());
     // The one load screen: up while the starting area and its neighbours are built and warmed; the rest of the world builds in the background.

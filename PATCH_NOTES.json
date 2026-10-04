@@ -6,6 +6,7 @@
       "Windows: the title and close button are now a fixed header; only the contents scroll beneath it.",
       "Windows: a Back to top button appears as you scroll down, so the tabs at the top are one click away, and tucks away 2 seconds after you stop.",
       "Grave Laborers: collecting no longer swaps the window for a loot report. What each laborer brought home is listed under the laborers, so you can collect from all of them in one go.",
+      "Settings: your Loot rules (on the ground, auto-loot or sell for gold, per rarity) now follow your account to any browser or device.",
       "Workbench: a new Only show craftable checkbox hides every recipe you lack the skill or materials for. It applies to every crafting page and follows your account to any browser or device.",
       "Reliquary: a new Sort button merges stacks and orders your bag by type, rarity, item level and name.",
       "Vault: new Take materials and Take all buttons move things back into your bag in one click, as far as it fits.",
