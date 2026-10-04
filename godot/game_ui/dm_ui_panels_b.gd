@@ -212,6 +212,8 @@ func _reforge(f: DmForgePanel, slot: int, affix: int, cost: int) -> void:
 	await game.refresh_inventory()
 	game.refresh_character()
 	f.reforge.set_pieces(_bag_rows())
+	if not (r.data is Dictionary and r.data.has("to") and r.data.has("from")):
+		return
 	f.reforge.show_result(r.data, "", "")
 	ui.play("craft")
 	ui.toast("Reforged: %s became %s (%s gold)" % [r.data.get("from"), r.data.get("to"), DmJsFmt.locale(float(r.data.get("cost", 0)))], "good" if int(r.data.get("to", 0)) >= int(r.data.get("from", 0)) else "")

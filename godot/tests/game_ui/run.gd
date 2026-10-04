@@ -135,5 +135,264 @@ func _run() -> void:
 	await _frames(3)
 	_check(not game.calls_to("/api/inventory/save").is_empty(), "sort saves the bag")
 
+	await _more(game, ui)
+	await _panels(game, ui)
 	print("%d passed, %d failed" % [_pass, _fail])
 	quit(1 if _fail > 0 else 0)
+
+
+func _more(game: DmMockGame, ui: DmGameUi) -> void:
+	ui.close_panels()
+	# --- Settings -> game.apply_settings, tips wiring ---
+	ui.toggle_panel("settings")
+	await _frames(3)
+	var sp: DmSettingsPanel = ui.set_ui.panel
+	sp.changed.emit("graphics", "low")
+	_check(game.applied_settings.size() >= 1 and game.settings["graphics"] == "low", "settings change -> apply_settings")
+	sp.changed.emit("no_tips", true)
+	_check(not ui.counsel.tips_enabled and game.settings["no_tips"] == true, "no_tips turns the counsel off")
+	sp.changed.emit("no_tips", false)
+	_check(ui.counsel.tips_enabled, "no_tips off re-enables the counsel")
+	sp.action.emit("reset_tips")
+	_check(true, "reset_tips runs")
+	ui.counsel.tips_disabled.emit()
+	_check(game.settings["no_tips"] == true, "counsel 'Don't show tips' stores no_tips")
+	ui.update_setting({"no_tips": false})
+	sp.action.emit("bug_report")
+	await _frames(3)
+	_check(ui.is_open("report") and not ui.is_open("settings"), "bug report opens in its own window")
+	ui.windows["report"].message.text = "the thralls stopped following me after travel"
+	ui.windows["report"]._sync()
+	game.clear_calls()
+	await ui.windows["report"].send()
+	var br := game.calls_to("/api/bug-reports")
+	_check(br.size() == 1 and br[0]["body"]["category"] == "bug" and br[0]["body"]["characterId"] == 7, "bug report sent via DmApi")
+	ui.close_panels()
+	# difficulty rule
+	game.character["auto_combat_allowed"] = true
+	ui.update_setting({"difficulty": "easy"})
+	_check(game.settings["auto_combat"] == true, "easy turns auto combat on for the allowed")
+	ui.update_setting({"difficulty": "hard"})
+	_check(game.settings["auto_combat"] == false, "hard turns it off")
+	game.character["auto_combat_allowed"] = false
+
+	# --- game events: toast / banner / loot / chat / tips ---
+	game.game_event.emit("toast", {"text": "Level 31 reached", "kind": "good"})
+	game.game_event.emit("banner", {"title": "The Graves", "sub": "", "ms": 1000})
+	game.game_event.emit("loot", {"name": "Bone Dust", "qty": 3, "rarity": "common"})
+	game.game_event.emit("chat", {"text": "hello"})
+	await _frames(2)
+	_check(ui.hud.toasts.get_child_count() >= 1, "toast event shows a toast")
+	_check(ui.hud.banner_active(), "banner event shows a banner")
+	var shown: Array = []
+	ui.counsel.card_shown.connect(func(id: String, _k: String, _t: String, _b: String, _ms: int) -> void: shown.append(id))
+	ui.close_panels()
+	game.game_event.emit("world_entered", {"family": "necromancer", "level": 12, "grimoire_unlocked": true})
+	for i in 40:
+		ui.counsel.tick(0.25, DmCounselCadence.not_busy())
+	_check(shown.size() > 0, "game_event counsel id shows a card (%s)" % str(shown))
+
+	# --- Next box ---
+	ui._guide_t = 0.0
+	await _frames(2)
+	_check(ui.guidance_hud.current != null and ui.hud.vm.get("next") != null, "Next box fed by guidance")
+	var before := String(ui.hud.vm.get("next"))
+	var top_id := String(ui.guidance_hud.current["id"])
+	ui.hud.dismiss_next.emit()
+	await _frames(2)
+	_check(ui.guidance_hud.dismissed == top_id and (ui.guidance_hud.current == null or String(ui.guidance_hud.current["id"]) != top_id), "dismiss_next drops that suggestion")
+	_check(before != "", "next text was shown")
+
+	# --- dialogue ---
+	game.npc_interact.emit("prior")
+	await _frames(2)
+	_check(ui.dialogue.visible and ui.dialogue.lines.size() > 0, "npc_interact opens the dialogue")
+	ui.dialogue.close()
+
+	# --- HUD intents ---
+	ui.hud.cast.emit(2)
+	ui.hud.buy_damage.emit()
+	ui.hud.buy_wave.emit()
+	_check(game.casts == [2, "buy:damage", "buy:wave"], "hud cast/buy -> game")
+	ui.hud.open_panel.emit("codex")
+	await _frames(3)
+	_check(ui.is_open("codex"), "menu button opens codex")
+	ui.close_panels()
+	ui.hud.swap_slot.emit(2)
+	await _frames(3)
+	_check(ui.is_open("grimoire"), "swap key cap opens the grimoire")
+	ui.close_panels()
+
+	# --- belt picker + drag drop ---
+	ui.belt_picker.open("elixir")
+	_check(ui.belt_picker.rows.size() == 1 and ui.belt_picker.rows[0]["id"] == "elixir_moonlight", "belt picker lists the bag's elixirs")
+	ui.belt_picker.close()
+	ui.hud.brew_dropped.emit("elixir", "elixir_moonlight")
+	_check(DmUiConfig.parse(ui.store.get_item(ui.belt_key())).get("elixir") == "elixir_moonlight", "brew drop sets the belt")
+	var chip := DmHudBrewChip.new()
+	chip.slot = "tonic"
+	_check(chip._can_drop_data(Vector2.ZERO, {"type": DmHudBrewChip.DRAG_TYPE, "item_id": "x"}) and not chip._can_drop_data(Vector2.ZERO, {"type": "other"}), "brew chip accepts only belt drags")
+	chip.slot = "heal"
+	_check(not chip._can_drop_data(Vector2.ZERO, {"type": DmHudBrewChip.DRAG_TYPE, "item_id": "x"}), "heal slot refuses drops")
+	var slot := DmItemSlot.new()
+	slot.set_item({"item_id": "elixir_moonlight", "name": "E"})
+	slot.drag_data = {"type": DmHudBrewChip.DRAG_TYPE, "item_id": "elixir_moonlight"}
+	_check(slot.drag_data is Dictionary and slot.is_filled(), "reliquary brew cell is a drag source")
+	slot.free()
+	chip.free()
+
+
+
+func _last(game: DmMockGame, path: String) -> Dictionary:
+	var c := game.calls_to(path)
+	return c.back()["body"] if not c.is_empty() else {}
+
+
+func _panels(game: DmMockGame, ui: DmGameUi) -> void:
+	ui.close_panels()
+	var pa: DmUiPanelsA = ui.pa
+	var pb: DmUiPanelsB = ui.pb
+	# Grimoire: rites, rune, loadouts
+	ui.toggle_panel("grimoire")
+	await _frames(3)
+	var gv: DmGrimoireView = pa.grim_win.grimoire
+	gv.assign_requested.emit(0, "corpse_explosion")
+	_check(game.set_rites_calls.size() >= 1 and ui.rites.keys[0] == "corpse_explosion", "grimoire assign -> rites + game.set_rites")
+	var rune_id: String = String(DmRunes.rites()[0])
+	game.clear_calls()
+	gv.rune_socket_requested.emit("bone_needle", "rune_splinter")
+	await _frames(3)
+	var rs := _last(game, "/api/inventory/rune")
+	_check(rs.get("rite") == "bone_needle" and rs.get("itemId") == "rune_splinter", "rune socket -> rune_socket")
+	game.replies["/api/loadouts/7"] = [{"slot": 0, "preset": {"name": "Main", "rites": {"primary": "bone_needle", "keys": ui.rites.keys}, "runes": {}, "weapon": null, "offhand": null}}]
+	await pa.loadouts.load_rows()
+	_check(pa.loadouts.rows.size() == 1, "loadouts listed")
+	game.replies["/api/loadouts/apply"] = {"slots": game.slots, "report": {"skipped": [], "applied": [], "unchanged": false}, "preset": {}}
+	game.clear_calls()
+	await pa.loadouts._do_apply(0, pa.loadouts.rows[0]["preset"])
+	_check(not game.calls_to("/api/loadouts/apply").is_empty(), "loadout apply via DmApi")
+	game.clear_calls()
+	pa.loadouts.naming = {"slot": 1, "rename": false}
+	pa.loadouts.draw()
+	pa.loadouts.name_edit.text = "Alt"
+	await pa.loadouts.submit_name()
+	var sv := _last(game, "/api/loadouts/save")
+	_check(sv.get("slot") == 1 and sv["preset"]["name"] == "Alt", "loadout save via DmApi")
+	ui.close_panels()
+	# Legion
+	ui.toggle_panel("legion")
+	await _frames(3)
+	game.clear_calls()
+	pa.grim_win.legion.give_requested.emit(6)
+	await _frames(3)
+	var kg := _last(game, "/api/inventory/kit")
+	_check(kg.get("slot_index") == 6 and kg.get("equipped") == 1, "legion give -> kit_move")
+	pa.grim_win.legion.take_off_requested.emit("weapon")
+	await _frames(3)
+	_check(_last(game, "/api/inventory/kit").get("slot_index") == 120, "legion take off -> kit_move 120")
+	pa.grim_win.legion.reinforce_requested.emit()
+	await _frames(3)
+	_check(not game.calls_to("/api/necro-progress/purchase").is_empty(), "reinforce -> necro_purchase")
+	ui.close_panels()
+	# Cosmetics
+	ui.toggle_panel("cosmetics")
+	await _frames(3)
+	game.clear_calls()
+	pa.char_win.cosmetics.cape_toggled.emit("cape_apprentice")
+	await _frames(3)
+	_check(_last(game, "/api/cosmetics/select").get("cape") == "cape_apprentice", "cape -> select_cosmetics")
+	pa.char_win.cosmetics.adopt_requested.emit("pet_tithe_bat")
+	await _frames(3)
+	_check(_last(game, "/api/cosmetics/adopt").get("petId") == "pet_tithe_bat", "adopt -> adopt_pet")
+	ui.close_panels()
+	# Ascension
+	ui.toggle_panel("ascension")
+	await _frames(3)
+	game.clear_calls()
+	pa.ascension.ascend_confirmed.emit()
+	pa.ascension.boon_buy_requested.emit("b")
+	pa.ascension.unlock_requested.emit("vow:x")
+	pa.ascension.vows_swear_requested.emit({})
+	await _frames(4)
+	for path in ["/api/necro-progress/ascend", "/api/necro-progress/boon", "/api/necro-progress/unlock", "/api/necro-progress/vows"]:
+		_check(not game.calls_to(path).is_empty(), "ascension -> " + path)
+	_check(game.refreshes["progress"] >= 4, "progress refreshed")
+	ui.close_panels()
+	# Class
+	ui.toggle_panel("settings")
+	await _frames(2)
+	ui.set_ui.panel.action.emit("change_class")
+	await _frames(3)
+	_check(ui.is_open("class"), "change class opens the class panel")
+	game.clear_calls()
+	pa.class_panel.class_chosen.emit(6)
+	await _frames(3)
+	_check(_last(game, "/character/discipline").get("class_index") == 6, "class chosen -> change_discipline")
+	ui.close_panels()
+	# Waystone travel
+	ui.toggle_panel("map")
+	await _frames(2)
+	pa.waystone.travel_requested.emit("graves")
+	# Acre tabs
+	ui.toggle_panel("garden")
+	await _frames(3)
+	game.clear_calls()
+	pb.garden.plant_requested.emit("bed_1", "seed_x", false)
+	pb.garden.harvest_requested.emit("bed_1")
+	await _frames(4)
+	_check(not game.calls_to("/api/garden/plant").is_empty() and not game.calls_to("/api/garden/harvest").is_empty(), "garden plant/harvest -> DmApi")
+	pb.labor.assign_requested.emit(0, "oak")
+	pb.labor.collect_requested.emit(0)
+	await _frames(4)
+	_check(not game.calls_to("/api/labor/assign").is_empty() and not game.calls_to("/api/labor/collect").is_empty(), "labor assign/collect -> DmApi")
+	pb.contracts.deliver_requested.emit(1)
+	await _frames(3)
+	_check(_last(game, "/api/contracts/deliver").get("slot") == 1, "contract deliver -> DmApi")
+	ui.close_panels()
+	# Forge, vault, salvage
+	ui.toggle_panel("forge")
+	await _frames(3)
+	var f: DmForgePanel = pb.forges[""]
+	game.clear_calls()
+	f.craft_requested.emit("recipe_x", 2)
+	await _frames(5)
+	_check(game.calls_to("/api/craft").size() == 2, "craft x2 -> two craft calls")
+	f.reforge_requested.emit(6, 0, 50)
+	await _frames(3)
+	_check(_last(game, "/api/reforge").get("slot_index") == 6, "reforge -> reforge_affix")
+	ui.close_panels()
+	game.area_id = "chapterhouse"
+	ui.toggle_panel("vault")
+	await _frames(3)
+	game.clear_calls()
+	pb.vault.deposit_requested.emit(4)
+	await _frames(3)
+	_check(not game.calls_to("/api/vault/deposit").is_empty(), "vault deposit -> DmApi")
+	pb.vault.sort_requested.emit()
+	await _frames(3)
+	_check(not game.calls_to("/api/vault/sort").is_empty(), "vault sort -> DmApi")
+	ui.close_panels()
+	ui.toggle_panel("salvage")
+	await _frames(3)
+	game.clear_calls()
+	pb.salvage.salvage_requested.emit([3])
+	await _frames(3)
+	_check(_last(game, "/api/salvage").get("slots") == [3], "salvage -> salvage_gear")
+	ui.close_panels()
+	# reliquary: legion give from detail, tool belt offer, brew action
+	ui.toggle_panel("inventory")
+	await _frames(3)
+	game.clear_calls()
+	ui.inv.panel.action_requested.emit("belt", _card(ui, "elixir_moonlight"))
+	_check(DmUiConfig.parse(ui.store.get_item(ui.belt_key())).get("elixir") == "elixir_moonlight", "detail 'Put on belt' sets the belt")
+	ui.inv.panel.sel_item = _card(ui, "tool_pickaxe_iron")
+	ui.inv.panel.refresh()
+	_check(not ui.inv._extra_actions(_card(ui, "tool_pickaxe_iron")).is_empty(), "tool detail offers 'Put on belt'")
+	ui.inv.panel.action_requested.emit("toolbelt", _card(ui, "tool_pickaxe_iron"))
+	await _frames(3)
+	_check(not game.calls_to("/api/inventory/belt").is_empty(), "detail tool belt -> belt_tool")
+	game.clear_calls()
+	ui.inv.panel.action_requested.emit("adopt", {"row": {"item_id": "charm_tithe_bat", "slot_index": 9}})
+	await _frames(3)
+	_check(_last(game, "/api/cosmetics/adopt").get("petId") == "pet_tithe_bat", "charm adopt from the bag")
+	ui.close_panels()

@@ -367,6 +367,7 @@ func _change_class(index: int) -> void:
 		class_panel.fail(r.error if r.error != "" else "The class would not change.")
 		return
 	class_panel.finish()
-	game.character = r.data
-	ui.call_game_sync("class_changed", [r.data])
+	if r.data is Dictionary and r.data.has("id"):
+		game.character = r.data
+	ui.call_game_sync("class_changed", [game.character])
 	game.refresh_character()
