@@ -265,6 +265,11 @@ export async function applyLoadoutPreset(characterId: number, slot: number) {
   return { slots: decorateSlots(body.data as InventorySlot[]), report: body.report as ApplyReport, preset: body.preset as LoadoutPreset };
 }
 
+/** Account preferences (small UI settings that follow the account; see net/accountPrefs.ts). */
+export const getAccountPrefs = () => unwrap<Record<string, unknown>>(request('/api/prefs', {}, true));
+export const setAccountPrefs = (prefs: Record<string, boolean | number | string>) =>
+  unwrap<Record<string, unknown>>(request('/api/prefs', { method: 'POST', body: JSON.stringify({ prefs }) }, true));
+
 // --- Professions & crafting ---
 export function getProfessions(characterId: number) {
   return unwrap<Profession[]>(request(`/api/professions/${characterId}`, {}, true));

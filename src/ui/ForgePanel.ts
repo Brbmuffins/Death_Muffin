@@ -5,7 +5,8 @@ import { browserStorage } from '../gameplay/codexJournal';
 import { bonusAvailable, brewOfTheDay, claimBonus } from '../content/wing';
 import { itemMeta } from '../content/items';
 import { BAG_SIZE } from '../gameplay/loot';
-import { clampCraftQty, maxCraftable } from '../gameplay/craftQuantity';
+import { clampCraftQty, hasSkillAndMaterials, loadOnlyCraftable, maxCraftable, saveOnlyCraftable } from '../gameplay/craftQuantity';
+import { PREF_ONLY_CRAFTABLE, fetchAccountPrefs, reconcileBoolPref, saveAccountPref } from '../net/accountPrefs';
 import { ReforgeView, type ReforgeHost } from './ReforgeView';
 import { wrapPanelBody } from './panelBody';
 
@@ -36,6 +37,8 @@ export class ForgePanel {
   private professions: Profession[] = [];
   private tab: Tab = 'mining';
   private busy = false;
+  /** The "Only show craftable" checkbox: one account setting shared by every tab and station (browser copy first, then the account's). */
+  private onlyCraftable = false;
   /** The quantity picked per recipe (session only). */
   private qty = new Map<string, number>();
   /** Progress / result line of the last batch. */
@@ -80,6 +83,7 @@ export class ForgePanel {
       </div>
       ${st ? `<p class="cw-hint-text">${st.blurb}</p>` : ''}
       ${tabs.length > 1 ? `<div class="cw-tabs">${tabs.map((p) => `<button data-tab="${p}">${LABEL[p]}</button>`).join('')}</div>` : ''}
+      <div class="cw-craftable-row"><label title="Hide every recipe you lack the skill or materials for. Applies to every crafting page."><input type="checkbox" data-only-craftable> Only show craftable</label></div>
       <p class="cw-hint-text" data-wing-hint></p>
       <div class="cw-recipes"><span class="cw-hint-text">Loading recipes…</span></div>
       <div class="cw-error" data-error></div>
@@ -92,12 +96,38 @@ export class ForgePanel {
         void this.load();
       }),
     );
+    this.onlyCraftable = loadOnlyCraftable(browserStorage());
+    const only = this.el.querySelector<HTMLInputElement>('[data-only-craftable]')!;
+    only.checked = this.onlyCraftable;
+    const panel = this.el;
+    let touched = false;
+    only.addEventListener('change', () => {
+      touched = true;
+      this.onlyCraftable = only.checked;
+      saveOnlyCraftable(browserStorage(), this.onlyCraftable);
+      void saveAccountPref(PREF_ONLY_CRAFTABLE, this.onlyCraftable);
+      this.render();
+    });
+    // The account's copy follows the player to any browser: it wins once it arrives (unless they already clicked), the browser copy
+    // above shows meanwhile, and stays when the account cannot be reached (offline, offline edition).
+    void fetchAccountPrefs().then((remote) => {
+      if (touched || this.el !== panel) return;
+      const settled = reconcileBoolPref(this.onlyCraftable, remote, PREF_ONLY_CRAFTABLE);
+      if (settled.pushUp) void saveAccountPref(PREF_ONLY_CRAFTABLE, settled.value);
+      if (settled.value === this.onlyCraftable) return;
+      this.onlyCraftable = settled.value;
+      only.checked = settled.value;
+      saveOnlyCraftable(browserStorage(), settled.value);
+      if (this.tab !== 'reforge' && this.recipes.length) this.render();
+    });
     this.root.appendChild(this.el);
     await this.load();
   }
 
   private async load() {
     this.setError('');
+    const only = this.el?.querySelector<HTMLElement>('.cw-craftable-row');
+    if (only) only.hidden = this.tab === 'reforge';
     this.el?.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === this.tab));
     this.reforgeView?.unmount();
     if (this.tab === 'reforge') {
@@ -145,7 +175,12 @@ export class ForgePanel {
       list.innerHTML = '<span class="cw-hint-text">No recipes known for this rite.</span>';
       return;
     }
-    list.innerHTML = this.recipes
+    const shown = this.onlyCraftable ? this.recipes.filter((r) => this.canCraft(r)) : this.recipes;
+    if (!shown.length) {
+      list.innerHTML = '<span class="cw-hint-text">Nothing here is craftable right now. Untick "Only show craftable" to see every recipe.</span>';
+      return;
+    }
+    list.innerHTML = shown
       .map((r) => {
         const skill = this.skill(r.profession_id);
         const skillOk = skill >= r.skill_level_required;
@@ -212,6 +247,11 @@ export class ForgePanel {
   }
 
   private busyRecipe = '';
+
+  /** You have the skill and every ingredient (bag room is not counted: such a recipe stays listed, its button explains). */
+  private canCraft(r: Recipe): boolean {
+    return hasSkillAndMaterials(r, this.skill(r.profession_id), (id) => this.inventory.count(id));
+  }
 
   /** Most this recipe can be made right now (materials and bag room). */
   private maxFor(r: Recipe): number {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clampCraftQty, maxCraftable, MAX_CRAFT_BATCH } from '../craftQuantity';
+import { clampCraftQty, hasSkillAndMaterials, loadOnlyCraftable, maxCraftable, saveOnlyCraftable, MAX_CRAFT_BATCH } from '../craftQuantity';
 import type { InventorySlot } from '../../net/types';
 
 const slot = (i: number, id: string, q: number, equipped = 0) => ({ slot_index: i, item_id: id, quantity: q, equipped }) as InventorySlot;
@@ -16,6 +16,44 @@ describe('clampCraftQty', () => {
     expect(clampCraftQty(NaN)).toBe(1);
     expect(clampCraftQty('abc')).toBe(1);
     expect(clampCraftQty(9999)).toBe(MAX_CRAFT_BATCH);
+  });
+});
+
+describe('hasSkillAndMaterials (the Only craftable filter)', () => {
+  const r = { ...recipe, skill_level_required: 5 };
+  const count = (have: Record<string, number>) => (id: string) => have[id] ?? 0;
+  it('needs the skill level and every ingredient', () => {
+    expect(hasSkillAndMaterials(r, 5, count({ ore: 2 }))).toBe(true);
+    expect(hasSkillAndMaterials(r, 4, count({ ore: 2 }))).toBe(false);
+    expect(hasSkillAndMaterials(r, 5, count({ ore: 1 }))).toBe(false);
+    expect(hasSkillAndMaterials(r, 5, count({}))).toBe(false);
+  });
+  it('one missing ingredient hides the recipe', () => {
+    const two = { ...r, ingredients: [...r.ingredients, { item_id: 'coal', quantity: 1, name: 'Coal' }] };
+    expect(hasSkillAndMaterials(two, 5, count({ ore: 9 }))).toBe(false);
+    expect(hasSkillAndMaterials(two, 5, count({ ore: 9, coal: 1 }))).toBe(true);
+  });
+});
+
+describe('the Only craftable setting', () => {
+  const mem = () => {
+    const m = new Map<string, string>();
+    return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
+  };
+  it('defaults off, persists, and is one setting for every page', () => {
+    const s = mem();
+    expect(loadOnlyCraftable(s)).toBe(false);
+    saveOnlyCraftable(s, true);
+    expect(loadOnlyCraftable(s)).toBe(true);
+    saveOnlyCraftable(s, false);
+    expect(loadOnlyCraftable(s)).toBe(false);
+  });
+  it('survives missing or throwing storage', () => {
+    expect(loadOnlyCraftable(null)).toBe(false);
+    expect(() => saveOnlyCraftable(null, true)).not.toThrow();
+    const bad = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('full'); } };
+    expect(loadOnlyCraftable(bad)).toBe(false);
+    expect(() => saveOnlyCraftable(bad, true)).not.toThrow();
   });
 });
 
