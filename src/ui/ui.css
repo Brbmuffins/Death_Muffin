@@ -728,14 +728,33 @@ button { font-family: inherit; }
 .hud-ward { position: absolute; left: 22px; top: 60%; display: flex; align-items: baseline; gap: 10px; padding: 4px 12px; background: rgba(7, 6, 10, 0.55); border-left: 3px solid var(--cw-border-strong); pointer-events: auto; cursor: help; opacity: 0.6; }
 .hud-ward.on { border-left-color: #d8cfbd; opacity: 1; }
 .hud-ward .lbl { font-family: var(--cw-font-display); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cw-bone-100); text-shadow: 0 1px 4px #000; }
-.hud-brews { position: absolute; left: 22px; top: 66%; display: flex; flex-direction: row; gap: 6px; pointer-events: auto; }
+.hud-brews { position: absolute; left: 22px; top: 66%; display: flex; flex-direction: column; gap: 3px; pointer-events: auto; }
+.hud-brews .belt-head { align-self: flex-start; padding: 1px 8px 1px 6px; font-family: var(--cw-font-display); font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--cw-bone-300); background: rgba(7, 6, 10, 0.55); border-left: 2px solid var(--cw-border-strong); text-shadow: 0 1px 4px #000; pointer-events: none; }
+.hud-brews .belt-row { display: flex; flex-direction: row; gap: 6px; }
+.brew-chip[data-brew="heal"] { cursor: help; }
+.brew-chip.drop { outline: 2px dashed var(--cw-focus, #c6a4ff); outline-offset: 1px; opacity: 1; }
+.brew-chip.empty .sub { font-size: 10px; letter-spacing: 0.04em; color: var(--cw-text-muted, #a79fb8); }
+.belt-picker { position: absolute; left: calc(100% + 10px); bottom: 0; width: 260px; padding: 8px; display: flex; flex-direction: column; gap: 4px; z-index: 5; }
+.belt-picker .bp-head { font-family: var(--cw-font-display); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cw-bone-100); padding: 0 2px 4px; border-bottom: 1px solid var(--cw-border); }
+.belt-picker .bp-row { display: flex; align-items: center; gap: 8px; padding: 5px 6px; text-align: left; background: rgba(7, 6, 10, 0.55); border: 1px solid var(--cw-border); border-left: 3px solid var(--brew); border-radius: 3px; color: var(--cw-bone-100); cursor: pointer; font: inherit; }
+.belt-picker .bp-row:hover, .belt-picker .bp-row:focus-visible { background: rgba(48, 36, 70, 0.8); outline: none; border-color: var(--cw-border-strong); border-left-color: var(--brew); }
+.belt-picker .bp-row.cur { background: rgba(40, 30, 58, 0.7); }
+.belt-picker .g { font-size: 20px; color: var(--brew); text-shadow: 0 0 8px var(--brew); width: 22px; text-align: center; }
+.belt-picker .t { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.belt-picker .t b { font-size: 13px; }
+.belt-picker .t i { font-style: normal; font-size: 11px; color: var(--cw-text-muted, #a79fb8); }
+.belt-picker .n { font-family: var(--cw-font-numeric); font-size: 12px; color: #efe6d0; white-space: nowrap; }
+.belt-picker .bp-empty { margin: 2px; font-size: 12px; line-height: 1.35; color: var(--cw-bone-300); }
+.belt-picker .bp-foot { font-size: 10px; color: var(--cw-text-faint, #7d768c); padding-top: 2px; }
+.hud-bugbtn { align-self: flex-start; pointer-events: auto; padding: 2px 9px; font: 600 11px/1.4 var(--cw-font-body, inherit); letter-spacing: 0.04em; color: var(--cw-bone-300); background: rgba(7, 6, 10, 0.5); border: 1px solid var(--cw-border); border-radius: 3px; cursor: pointer; opacity: 0.7; text-shadow: 0 1px 3px #000; }
+.hud-bugbtn:hover, .hud-bugbtn:focus-visible { opacity: 1; color: var(--cw-bone-100); border-color: var(--cw-border-strong); outline: none; }
 .hud-brews[hidden] { display: none; }
 /* Belt slot: a small square (key cap, glyph, count or timer). Empty = faint placeholder that explains itself on hover / tap. */
 .brew-chip { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: 54px; height: 58px; padding: 3px 2px 5px; background: rgba(7, 6, 10, 0.66); border: 1px solid var(--cw-border-strong); border-bottom: 3px solid var(--cw-border-strong); border-radius: 4px; cursor: pointer; overflow: hidden; }
 .brew-chip.on { border-bottom-color: var(--brew); }
 .brew-chip:not(.empty):not(.on) { border-bottom-color: color-mix(in srgb, var(--brew) 60%, var(--cw-border-strong)); }
-.brew-chip.empty { opacity: 0.5; border-style: dashed; cursor: help; }
-.brew-chip.empty:hover { opacity: 0.85; }
+.brew-chip.empty { opacity: 0.72; border-style: dashed; cursor: pointer; }
+.brew-chip.empty:hover { opacity: 1; }
 .brew-chip.cd { opacity: 0.6; }
 .brew-chip:not(.empty):hover { background: rgba(30, 24, 40, 0.8); }
 .brew-chip kbd { position: absolute; top: 2px; left: 3px; font-family: var(--cw-font-numeric); font-size: 11px; font-weight: 700; min-width: 14px; text-align: center; padding: 0 3px; border: 1px solid var(--cw-border-strong); border-radius: 3px; color: var(--cw-bone-100); background: rgba(0, 0, 0, 0.5); line-height: 14px; }
@@ -1578,3 +1597,39 @@ body:not(.touch):has(.cw-panel-float) .cw-tip:not(.dragging):not([data-kind='urg
 .dm-loadveil { z-index: 9000; pointer-events: all; }
 .dm-loadveil .dm-splash-bar { transform: scaleX(0); }
 @media (prefers-reduced-motion: reduce) { .dm-loadveil-bar { transition: none; } }
+
+/* ------------------------------------------------------------------ */
+/* Progressive HUD + NEW cues (ui/progressiveHud.ts)                   */
+/* ------------------------------------------------------------------ */
+/* Held back until it matters: removed from layout, not just faded. */
+.hud [data-reveal].dm-gone, .hud .dm-gone { display: none !important; }
+/* The small NEW pip: on a HUD element, a menu button or a tab. Pulse is finite; the pip stays until the player uses the thing. */
+.dm-pip { position: absolute; top: -7px; right: -7px; z-index: 2; padding: 0 5px; font: 700 9px/1.6 var(--cw-font-numeric); font-style: normal; letter-spacing: .06em; color: #1a1206; background: #e2c98f; box-shadow: 0 0 10px rgba(226, 201, 143, 0.8); pointer-events: none; animation: cw-pip 1.4s ease-in-out 8; }
+.dm-pip[hidden] { display: none; }
+.dm-glow { position: relative; animation: dm-glow 1.6s ease-in-out 4; border-color: #e2c98f !important; }
+.hud-upgrades.dm-glow, .hud-omen.dm-glow { position: relative; }
+@keyframes dm-glow { 50% { box-shadow: 0 0 0 1px #e2c98f, 0 0 20px rgba(226, 201, 143, 0.55); } }
+.hud-toast.new-cue { border-color: #e2c98f; }
+.hud-toast.new-cue::before { content: 'NEW'; margin-right: 10px; padding: 0 6px; font: 700 10px/1.7 var(--cw-font-numeric); letter-spacing: .08em; color: #1a1206; background: #e2c98f; }
+.hud-upgrades { position: relative; }
+.hud-menu .hud-mi { position: relative; }
+@media (prefers-reduced-motion: reduce) { .dm-pip, .dm-glow { animation: none; } }
+
+/* Tabbed windows: Acre ledger, Character, Grimoire. The hosted panels keep their own plate; here it is flattened into the tab body. */
+.cw-panel-float.cw-tabwin { width: 860px; padding-top: 16px; }
+.cw-panel-float.cw-tabwin.cw-tabwin-sheet { width: 640px; }
+.cw-panel-float.cw-tabwin.cw-tabwin-grim { width: 780px; }
+.cw-tabwin > .cw-panel-head { margin-bottom: 10px; padding-bottom: 8px; }
+.cw-tabwin-strip { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.cw-tabwin-tab { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 14px; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-text-muted); cursor: pointer; font-family: var(--cw-font-display); font-weight: 600; font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; }
+.cw-tabwin-tab[hidden] { display: none; }
+.cw-tabwin-tab kbd { font: 600 10px var(--cw-font-numeric); letter-spacing: 0; color: var(--cw-text-muted); border: 1px solid var(--cw-border); padding: 0 4px; background: transparent; }
+.cw-tabwin-tab:hover { color: var(--cw-bone-100); border-color: var(--cw-border-active); }
+.cw-tabwin-tab.on { color: var(--cw-bone-100); border-color: var(--cw-border-active); background: var(--cw-accent-soft); }
+.cw-tabwin-slot[hidden] { display: none; }
+.cw-tabwin .cw-tabwin-slot .cw-panel-float.cw-panel-float { position: static; transform: none; width: auto; max-width: none; max-height: none; overflow: visible; padding: 0; margin: 0; background: none; border: 0; box-shadow: none; z-index: auto; }
+.cw-tabwin .cw-tabwin-slot .cw-panel-float::before, .cw-tabwin .cw-tabwin-slot .cw-panel-float::after { display: none; }
+.cw-tabwin .cw-tabwin-slot .cw-panel-head .cw-title, .cw-tabwin .cw-tabwin-slot .cw-panel-head [data-close] { display: none; }
+.cw-tabwin .cw-tabwin-slot .cw-panel-head { margin-bottom: 8px; padding-bottom: 6px; justify-content: flex-end; border-bottom: 0; }
+.cw-tabwin .cw-tabwin-slot .cw-panel-head:not(:has(.cw-skill-total)) { display: none; }
+.cw-tabwin .cw-panel-actions:empty { display: none; }

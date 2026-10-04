@@ -25,7 +25,7 @@ describe('belt rules', () => {
     expect(beltState({ hasItem: false, active: true })).toBe('active');
   });
   it('empty hints say how to fill the slot', () => {
-    expect(emptyHint('tonic')).toMatch(/Alchemist's Wing.*right-click.*Press X/);
+    expect(emptyHint('tonic')).toMatch(/Click it.*Alchemist's Wing.*Press X/);
     expect(emptyHint('heal')).toMatch(/Moss Tonic.*Press Q/);
     expect(emptyPressText('elixir')).toBe('Empty elixir slot');
     expect(emptyPressText('heal').length).toBeLessThan(24);

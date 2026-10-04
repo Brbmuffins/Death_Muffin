@@ -94,17 +94,18 @@ export class SettingsPanel extends SimplePanel {
           <kbd>Hover / focus</kbd><span>Spell icon: cost, targeting, effects and combat counsel</span>
           <kbd>Shift+Click</kbd><span>Cast ${this.kitHelp.primary} without moving</span>
           <kbd>1–5 (hold)</kbd><span>Cast your equipped rites at the cursor</span>
-          <kbd>L</kbd><span>Grimoire · click the swap arrows below a hotbar spell (they appear once you learn a second rite) to choose any unlocked class rite</span>
+          <kbd>L</kbd><span>Grimoire (with the Legion beside it for necromancers) · click the swap arrows below a hotbar spell (they appear once you learn a second rite) to choose any unlocked class rite</span>
           <kbd>RMB · 5</kbd><span>Cast your fifth equipped rite (starts as ${this.kitHelp.corpseAction})</span>
           <kbd>R · 6</kbd><span>Signature rite (unlocks at level 10)</span>
           <kbd>Q</kbd><span>Drink a healing flask</span>
           <kbd>Z · X</kbd><span>Drink the elixir · tonic on your belt (right-click a brew in the Reliquary to belt it)</span>
           <kbd>T</kbd><span>Return to the Chapterhouse</span>
           <kbd>Click a node</kbd><span>Gather: chop a tree, mine a seam, fish a pool, dig a grave (it keeps working until the node is spent)</span>
-          <kbd>I C P M</kbd><span>Reliquary · Workbench · Skills · Waystones</span>
-          <kbd>O U H N</kbd><span>Contracts · Garden · Laborers · Capes and Pets (also reached from Skills and the Menu)</span>
-          <kbd>J</kbd><span>Character sheet: your stats, and where each number comes from</span>
-          ${this.kitHelp.legion ? '<kbd>Y</kbd><span>Legion: spare weapon and armour for your thralls, and Reinforce (necromancers)</span>' : ''}
+          <kbd>I C M</kbd><span>Reliquary · Workbench · Waystones</span>
+          <kbd>P</kbd><span>Acre ledger: Skills, then tabs for Garden, Laborers and Contracts (the Acre button appears once you start gathering)</span>
+          <kbd>U H O</kbd><span>The Acre ledger's Garden · Laborers · Contracts tabs (old keys, they open the right tab)</span>
+          <kbd>J N</kbd><span>Character window: your stats and where each number comes from, and a Capes &amp; Pets tab (N opens it)</span>
+          ${this.kitHelp.legion ? '<kbd>Y</kbd><span>Legion tab beside the Grimoire: spare weapon and armour for your thralls, and Reinforce (necromancers)</span>' : ''}
           <kbd>.</kbd><span>Gear Atlas: where every piece drops and how often, how to craft it, and what suits your discipline</span>
           <kbd>K</kbd><span>Codex</span>
           <kbd>E</kbd><span>Talk to the Prior, the Sexton or the Apothecary when you stand close (or click them)</span>

@@ -1228,7 +1228,7 @@ Level is the skill level needed. Stations: the Workbench in the Chapterhouse doe
 - Capes and pets are purely cosmetic: they give no stats, no drops and no combat effect, and capes are not items (they never take a bag slot or drop). A pet's charm is an item.
 - Capes are earned by skill levels alone (no drops, shops or crafting). A mastery cape needs level 99 in its skill; the three mantles need a total level. All of them are one tier: there are no rarer or legendary capes.
 - Pets come from charms, a rare find while you work (about 1 in 3,500 successful actions on the matching skill's nodes, a little likelier on higher tiers). Adopt a charm in Capes & Pets and the companion is yours for good (the charm is spent); until then it can be sold (250 gold) or kept in the Vault.
-- To use them: open Capes & Pets (the N key, or Capes & Pets in the Menu), press Wear on an unlocked cape (Take off to remove it), Adopt on a charm in your bag, then Call on an adopted pet (Send away to dismiss it). Other players see what you wear.
+- To use them: open the Capes & Pets tab of the Character window (the N key, or J then Capes & Pets), press Wear on an unlocked cape (Take off to remove it), Adopt on a charm in your bag, then Call on an adopted pet (Send away to dismiss it). Other players see what you wear.
 
 ### Capes
 

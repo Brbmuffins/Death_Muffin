@@ -122,10 +122,11 @@ Nothing in Death Muffin is a quest, and nothing can be failed or missed. If you 
 | **Q** | Drink a healing flask |
 | **Z** / **X** | Drink the elixir / tonic on your belt (**F** is reserved for throwables) |
 | **T** | Recall to the Chapterhouse |
-| **L** | Open the Grimoire to inspect rites and set all five slots |
-| **I** or **B** / **C** / **P** / **O** / **U** / **H** / **N** | Reliquary / Workbench / Skills and AFK gathering / Sexton’s Contracts / Grave Gardening / Grave Laborers / Capes & Pets |
-| **J** | Character sheet: your numbers and where each comes from |
-| **Y** | Legion (necromancers): spare weapon and armour for your thralls, and Reinforce |
+| **L** | Open the Grimoire to inspect rites and set all five slots (necromancers get a **Legion** tab beside it) |
+| **I** or **B** / **C** | Reliquary / Workbench |
+| **P** (also **U** / **H** / **O**) | **Acre ledger**: one window with tabs for Skills and AFK gathering, Grave Gardening, Grave Laborers and Sexton’s Contracts. The old keys U, H and O open the matching tab. |
+| **J** (also **N**) | Character window: your numbers and where each comes from, plus a **Capes & Pets** tab (N opens it) |
+| **Y** | Legion tab beside the Grimoire (necromancers): spare weapon and armour for your thralls, and Reinforce |
 | **M** / **K** | Waystone map / Codex |
 | **.** (period) | Gear Atlas: where every piece drops and how often, how to craft it, and what suits your discipline (also **Atlas** in the Menu) |
 | **E** | Talk to the Prior, the Sexton or the Apothecary when you stand beside them |
@@ -136,11 +137,17 @@ Nothing in Death Muffin is a quest, and nothing can be failed or missed. If you 
 
 You can also click hotbar icons. Once you have learned a second rite (a few levels in), small swap arrows appear under each spell icon: click them to open the Grimoire with that slot selected; right click a hotbar slot also works. In **Settings**, you can change class, difficulty, graphics, frame rate (**Max**, 60 or 30 fps), **Auto resolution**, volume (Master, plus separate **Combat**, **Ambience** and **Interface** sliders), reduced motion, damage numbers, gathering behavior, counsel tips, and the Next suggestion with its minimap marker.
 
+### A HUD that grows with you
+
+The screen starts small and shows things as they start to matter. A fresh character sees no Upgrades box (Empower / Quicken / the wave dial) until the first gold drops in a hunting ground, no Omen chip in the safe rooms (the Chapterhouse, the Acre, the Alchemist's Wing), no Soul Shards counter until a shard drops, and no Spells, Acre or Atlas button in the Menu until you learn a second rite, start gathering or find your first gear piece. The first time something appears it glows with a small gold **NEW** tag and a single line in the toast area says what it is and which key opens it; the tag clears when you hover or open it, and once revealed it stays. Characters that already have the progress simply keep their HUD. The keys always work, even before the button shows.
+
+Panels are merged to keep the key list short: **P** opens the **Acre ledger** (tabs: Skills, Garden **U**, Laborers **H**, Contracts **O**), **J** opens the **Character** window (tabs: Stats, Capes & Pets **N**) and **L** opens the **Grimoire** (necromancers get a **Legion** tab, **Y**). The old keys U, H, O, N and Y still open the right tab.
+
 ### Smooth play and loading
 
 - **One load screen.** The game loads and warms everything once at login; walking through doors and teleports never shows another load screen.
 - **Frame rate and resolution.** In **Settings**, **Frame rate** can be **Max** (no cap, the default on a computer until you choose), 60 or 30 fps. **Auto resolution** lowers the picture's resolution only when the machine keeps missing its frame rate; turn it off for a constant sharp picture.
-- **Belt.** Three slots at the left edge are always visible: **Q** Heal, **Z** Elixir, **X** Tonic. Empty ones say how to fill them.
+- **Belt.** A labelled **Belt** at the left edge always shows three slots: **Q** Heal, **Z** Elixir, **X** Tonic. Healing flasks fill Heal by themselves. **Click an empty Elixir or Tonic slot** to pick a brew from your bag, or drag a brew from the Reliquary onto it (the **Put on belt** button on a brew works too). Hover any slot for the item, its effect and its key.
 - **Co-op and updates.** If the connection drops, the game retries on its own and returns you to the same world. When a new release goes live it saves, waits for any boss fight to end, and reloads you in.
 - **Computer first.** This is the PC build; phones and tablets are redirected to their own build (see below).
 
@@ -480,7 +487,7 @@ In game, the **Gear Atlas** (press **.**, or **Atlas** in the Menu on a phone) i
 
 <p><img src="docs/screenshots/atlas/atlas-slot-detail.webp" alt="The Gear Atlas by slot: Colossus Mantle with an Ideal fit badge, an upgrade arrow and its drop sources" /><br /><sub>The Gear Atlas: every chest piece for your discipline with a fit badge and an upgrade arrow; the detail pane lists each source with its chance.</sub></p>
 
-**Capes & pets.** There are no legendary (or any rarer) capes: all ten capes are one tier, earned purely by skill levels, with no drop, shop or crafting route. The seven **mastery capes** need level 99 in their skill (Woodcutting, Mining, Fishing, Gravedigging, Grave Gardening, Alchemy, Salvaging); the **Apprentice's Mantle** needs a total level of 100, the **Journeyman's Mantle** 300 and **The Sexton's Mantle** 693 (99 in all seven). Five **pets** (Tithe Bat, Grave Rat, Drowned Pup rare; Wee Thrall, Shroud Moth epic) come from a charm, a rare find while you work its skill (about 1 in 3,500 successful actions, a little likelier on higher-tier nodes; the Shroud Moth's charm also drops about once per 35 Mourning Bed harvests). Capes and pets are **purely cosmetic**: no stats, no combat effect. Open **Capes & Pets** (**N**, or the Menu), press **Wear** on an unlocked cape, **Adopt** on a charm in your bag, then **Call** on a pet. [docs/LOOT-TABLES.md](docs/LOOT-TABLES.md#capes-and-pets) has the full list, and the Atlas has a Capes & pets view under Materials & brews.
+**Capes & pets.** There are no legendary (or any rarer) capes: all ten capes are one tier, earned purely by skill levels, with no drop, shop or crafting route. The seven **mastery capes** need level 99 in their skill (Woodcutting, Mining, Fishing, Gravedigging, Grave Gardening, Alchemy, Salvaging); the **Apprentice's Mantle** needs a total level of 100, the **Journeyman's Mantle** 300 and **The Sexton's Mantle** 693 (99 in all seven). Five **pets** (Tithe Bat, Grave Rat, Drowned Pup rare; Wee Thrall, Shroud Moth epic) come from a charm, a rare find while you work its skill (about 1 in 3,500 successful actions, a little likelier on higher-tier nodes; the Shroud Moth's charm also drops about once per 35 Mourning Bed harvests). Capes and pets are **purely cosmetic**: no stats, no combat effect. Open the **Capes & Pets** tab of the Character window (**J**, or **N** to jump straight to it), press **Wear** on an unlocked cape, **Adopt** on a charm in your bag, then **Call** on a pet. [docs/LOOT-TABLES.md](docs/LOOT-TABLES.md#capes-and-pets) has the full list, and the Atlas has a Capes & pets view under Materials & brews.
 
 ## Gathering and crafting
 
@@ -544,7 +551,7 @@ When co-op is available, joining places you in a world with room for up to **10 
 
 ![A Covenant counsel tip in game](docs/screenshots/covenant-counsel.webp)
 
-**Found a bug?** Open **Settings → Report a bug**, pick what kind of problem it is and describe what happened. Your area, level, discipline and game version are attached for you. Reports are read every day; the same screen lists your recent reports and what became of each one (for example *Fixed in an upcoming update*, or *Need more detail* with a note). How the daily triage works: [server/death-muffin/bug-agent/README.md](server/death-muffin/bug-agent/README.md).
+**Found a bug?** Click **Report a bug** just above the chat (bottom left), or open **Settings → Report a bug**, pick what kind of problem it is and describe what happened. Your area, level, discipline and game version are attached for you. Reports are read every day; the same screen lists your recent reports and what became of each one (for example *Fixed in an upcoming update*, or *Need more detail* with a note). How the daily triage works: [server/death-muffin/bug-agent/README.md](server/death-muffin/bug-agent/README.md).
 
 For technical setup and deployment, see [docs/README.md](docs/README.md) and the [VPS handoff](docs/DEATH-MUFFIN-HANDOFF.md).
 

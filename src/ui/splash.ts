@@ -17,5 +17,5 @@ export function dismissSplash(): void {
 /** Same art as the splash, sized from the deploy base (works under /death-muffin/play/ and /death-muffin/offline/). */
 export function splashArtAttrs(): { src: string; srcset: string } {
   const b = import.meta.env.BASE_URL;
-  return { src: `${b}art/loading/covenant-1600.webp`, srcset: `${b}art/loading/covenant-960.webp 960w, ${b}art/loading/covenant-1600.webp 1600w` };
+  return { src: `${b}art/loading/keyart-1600.webp`, srcset: `${b}art/loading/keyart-960.webp 960w, ${b}art/loading/keyart-1600.webp 1600w` };
 }

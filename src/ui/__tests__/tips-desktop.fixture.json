@@ -297,7 +297,7 @@
  },
  "brew": {
   "title": "Elixirs and tonics",
-  "body": "You can hold <b>one elixir</b> (combat: damage, wards) and <b>one tonic</b> (utility: speed) at once. A new elixir <b>replaces</b> the old one; the same brew again extends it. Right-click a brew in the Reliquary to <b>put it on your belt</b>, then press <kbd>Z</kbd> for your elixir and <kbd>X</kbd> for your tonic. The belt at the left edge shows both slots and their timers."
+  "body": "You can hold <b>one elixir</b> (combat: damage, wards) and <b>one tonic</b> (utility: speed) at once. A new elixir <b>replaces</b> the old one; the same brew again extends it. Click a belt slot (or use <b>Put on belt</b> in the Reliquary) to <b>choose which brew it holds</b>, then press <kbd>Z</kbd> for your elixir and <kbd>X</kbd> for your tonic. The belt at the left edge shows both slots and their timers."
  },
  "reagent": {
   "title": "Reagents",
@@ -313,7 +313,7 @@
  },
  "legion": {
   "title": "Spare gear for your legion",
-  "body": "That weapon or armor can arm your thralls instead of being salvaged. Open the <b>Legion</b> (<kbd>Y</kbd>, or the button in the Reliquary): one <b>Weapon</b> and one <b>Armour</b> slot, kept outside your bag. Its stats become thrall damage, health and attack speed, and each spare piece shows <b>▲</b> or <b>▼</b> against what the legion wears. Spend gold there to <b>Reinforce</b> the bindings: it strengthens the thralls you have standing at once. A swapped piece reaches the thralls you raise next."
+  "body": "That weapon or armor can arm your thralls instead of being salvaged. Open the <b>Legion</b> tab beside the Grimoire (<kbd>Y</kbd>, or the button in the Reliquary): one <b>Weapon</b> and one <b>Armour</b> slot, kept outside your bag. Its stats become thrall damage, health and attack speed, and each spare piece shows <b>▲</b> or <b>▼</b> against what the legion wears. Spend gold there to <b>Reinforce</b> the bindings: it strengthens the thralls you have standing at once. A swapped piece reaches the thralls you raise next."
  },
  "ghoul": {
   "title": "Barrow Ghoul",
@@ -449,7 +449,7 @@
  },
  "belt": {
   "title": "Your belt",
-  "body": "Three slots wait at the left edge: <b>Heal</b>, <b>Elixir</b> and <b>Tonic</b>. Press <kbd>Q</kbd>, <kbd>Z</kbd> or <kbd>X</kbd> to drink what is in it. They stay empty until you brew: <b>Moss Tonic</b> (level 1) makes healing potions, and the Alchemist's Wing in the Chapterhouse's east door brews elixirs and tonics. Hover an empty slot to read how to fill it."
+  "body": "The <b>Belt</b> at the left edge holds <b>Heal</b> (<kbd>Q</kbd>), <b>Elixir</b> (<kbd>Z</kbd>) and <b>Tonic</b> (<kbd>X</kbd>). Healing flasks fill Heal by themselves. For the other two, <b>click an empty slot</b> to pick a brew from your bag, or <b>drag one onto it</b> from the Reliquary (<kbd>I</kbd>); the <b>Put on belt</b> button on a brew does the same. Hover any slot to read what it does."
  },
  "atlas": {
   "title": "The Gear Atlas",

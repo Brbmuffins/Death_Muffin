@@ -12,6 +12,7 @@ import { isSalvageable } from '../gameplay/salvageRules';
 import { ABILITIES } from '../content/abilities';
 import { RUNES, isRuneId, runeSources, type RuneId, type RuneRite } from '../content/runes';
 import './runes.css';
+import { BELT_DRAG_TYPE } from './BeltPicker';
 import { BELT_KINDS, toolKindOf } from '../gameplay/gatheringRules';
 import { kitCandidate } from '../gameplay/legionKit';
 import { KIT_LABEL } from '../gameplay/legionRules';
@@ -183,6 +184,15 @@ export class InventoryPanel {
           this.render();
         });
         cell.addEventListener('dblclick', () => this.primaryAction(slot));
+        if (this.onBelt && slot.item_id in BREWS) {
+          // Drag a brew onto its slot on the HUD belt (the HUD listens for this type).
+          cell.draggable = true;
+          cell.addEventListener('dragstart', (e) => {
+            e.dataTransfer?.setData(BELT_DRAG_TYPE, slot.item_id);
+            if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copy';
+            this.hideTooltip();
+          });
+        }
         cell.addEventListener('contextmenu', (e) => {
           if (toolKindOf(slot.item_id)) {
             e.preventDefault();
@@ -450,6 +460,7 @@ export class InventoryPanel {
       ${this.setLine(slot)}
       ${compareChipsHtml(this.statContext?.() ?? null, slot)}
       ${brewSummary(slot.item_id) ? `<div class="brew-line">${brewSummary(slot.item_id)}</div>` : ''}
+      ${this.onBelt && slot.item_id in BREWS ? `<div class="brew-line">Belt key ${BREW_KEYS[BREWS[slot.item_id].slot].toUpperCase()}: right-click or drag it onto the Belt at the left edge.</div>` : ''}
       ${meta.lore ? `<div class="lore">${meta.lore}</div>` : ''}
       <div class="sell">Worth ${slot.sell_value}g</div>
     `;
@@ -507,7 +518,7 @@ export class InventoryPanel {
       ${legion ? `<button class="cw-button small" data-legiongive title="Move it to the legion's ${KIT_LABEL[legion.kit]} slot; a piece already there returns to your bag">Give to legion</button>` : ''}
       ${toolKindOf(slot.item_id) ? `<button class="cw-button small" data-toolbelt>${isOnBelt(slot) ? 'Take off belt' : 'Put on belt'}</button>` : ''}
       ${drinkable ? `<button class="cw-button small" data-act>Drink</button>` : ''}
-      ${this.onBelt && slot.item_id in BREWS ? `<button class="cw-button small" data-belt>Put on belt (${BREW_KEYS[BREWS[slot.item_id].slot].toUpperCase()})</button>` : ''}
+      ${this.onBelt && slot.item_id in BREWS ? `<button class="cw-button small primary" data-belt title="Puts it in the ${BREW_KEYS[BREWS[slot.item_id].slot] === 'z' ? 'Elixir' : 'Tonic'} slot of the Belt at the left edge">Put on belt (key ${BREW_KEYS[BREWS[slot.item_id].slot].toUpperCase()})</button>` : ''}
       ${edible ? `<button class="cw-button small" data-act>Eat</button>` : ''}
       ${!slot.equipped ? `<button class="cw-button small ${locked ? 'on' : ''}" data-lock title="${locked ? 'Unlock: bulk actions may take it again' : 'Lock: Sell all junk, Deposit and Salvage all will skip it'}">${LOCK_SVG} ${locked ? 'Unlock' : 'Lock'}</button>` : ''}
       ${slot.item_type === 'rune' && isRuneId(slot.item_id) && this.onRune ? `<button class="cw-button small" data-runesocket title="Move one into the ${ABILITIES[RUNES[slot.item_id].rite].name} socket">Socket into ${ABILITIES[RUNES[slot.item_id].rite].name}</button>` : ''}

@@ -24,8 +24,7 @@ export function emptyHint(id: BeltSlotId): string {
     return `Healing: no potions yet. Brew Moss Tonic from Mourning Moss in the Alchemist's Wing (east door of the Chapterhouse), or loot them from the dead. Press Q to drink one.`;
   }
   const kind = id === 'elixir' ? 'elixir' : 'tonic';
-  const use = `Press ${BREW_KEY_LABEL[id]}`;
-  return `Empty ${kind} slot. Brew ${id === 'elixir' ? 'an' : 'a'} ${kind} in the Alchemist's Wing, then right-click it in your bag to belt it. ${use} to drink it.`;
+  return `Empty ${kind} slot. Click it to pick ${id === 'elixir' ? 'an' : 'a'} ${kind} from your bag, or drag one here from the Reliquary. Brew them in the Alchemist's Wing. Press ${BREW_KEY_LABEL[id]} to drink it.`;
 }
 const BREW_KEY_LABEL: Record<BrewSlot, string> = { elixir: 'Z', tonic: 'X' };
 

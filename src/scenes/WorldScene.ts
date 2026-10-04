@@ -6,6 +6,8 @@ import { Scope } from '../app/Scope';
 import { ABILITIES, FRACTURE, PRIMARIES, BULWARK, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
 import { CAST_FLOW } from '../content/combatFlow';
 import { swapReady } from '../ui/firstHourRules';
+import { TabbedWindow } from '../ui/TabbedWindow';
+import { CueQueue, HudReveal, isVeteran, veteranReveals, type RevealId } from '../ui/progressiveHud';
 import { kitFor, type Kit } from '../content/kits';
 import { assignableRites, assignRite, LOADOUT_SLOTS, loadRites, loadSeen, saveRites, saveSeen, unseenRites } from '../gameplay/loadout';
 import { devAccess, devPreference, isDevAccount, riteLevel, setDevPreference, tokenUsername } from '../gameplay/devAccess';
@@ -23,7 +25,7 @@ import { BREWS, BREW_KEYS, BREW_SLOTS, applyBrew, brewEffectsText, brewWard, lif
 import { MEALS } from '../content/processing';
 import { generateLayout, PROPS, type NodePlacement } from '../content/layout';
 import { GatherLoop, Skills } from '../gameplay/Gathering';
-import { NODES, SKILLS, isBeltSlot, nodesForSkill, toolTierFor, type SkillId } from '../gameplay/gatheringRules';
+import { ALL_SKILLS, NODES, SKILLS, isBeltSlot, nodesForSkill, toolTierFor, type SkillId } from '../gameplay/gatheringRules';
 import type { LiveNode } from '../gameplay/gatherPlan';
 import { STOP_TEXT } from '../gameplay/gatherPlan';
 import { NodeViews } from '../graphics/NodeViews';
@@ -128,6 +130,7 @@ import { InventoryPanel } from '../ui/InventoryPanel';
 import { CharacterSheetPanel } from '../ui/CharacterSheet';
 import type { StatContext } from '../gameplay/gearStats';
 import { SettingsPanel, WaystonePanel } from '../ui/MiscPanels';
+import type { BeltChoice } from '../ui/BeltPicker';
 import { ProfessionsPanel } from '../ui/ProfessionsPanel';
 import { CodexPanel } from '../ui/CodexPanel';
 import { AtlasLauncher } from '../ui/AtlasLauncher';
@@ -238,6 +241,24 @@ function doorDirection(d: DoorDef): string {
   return `the ${side} door of ${AREAS[d.a].name}`;
 }
 
+
+/** The line a NEW cue puts in its one-at-a-time toast, and the panel the toast opens when clicked. */
+const CUE_TEXT: Partial<Record<RevealId, string>> = {
+  'hud.upgrades': 'Upgrades unlocked: spend gold on Empower (damage) and Quicken (wave speed), bottom right.',
+  'hud.dial': 'The wave dial appeared in the Upgrades box: choose how fast the waves you face run.',
+  'hud.shards': 'Soul Shards counter: kept from bosses, spent on boons at the Altar of Ascension.',
+  'menu.spells': 'You can swap rites now: open the Grimoire (L).',
+  'menu.atlas': 'Gear Atlas (.): every item, set and recipe in the game, with where to find it.',
+  'menu.skills': 'The Acre ledger (P): your skills, garden, laborers and contracts in one place.',
+  'tab.acre.garden': 'Garden, Laborers and Contracts are tabs of the Acre ledger now (P). U, H and O still open them.',
+  'tab.sheet.pets': 'Capes & Pets moved into the Character sheet (J). N still opens them.',
+  'tab.grimoire.legion': 'The Legion now sits beside the Grimoire (L). Y still opens it.',
+};
+const CUE_OPENS: Partial<Record<RevealId, 'professions' | 'grimoire' | 'atlas' | 'garden' | 'cosmetics' | 'legion'>> = {
+  'menu.skills': 'professions', 'menu.spells': 'grimoire', 'hud.spells': 'grimoire', 'menu.atlas': 'atlas',
+  'tab.acre.garden': 'garden', 'tab.sheet.pets': 'cosmetics', 'tab.grimoire.legion': 'legion',
+};
+const TAB_CUES: ReadonlySet<string> = new Set(['tab.acre.garden', 'tab.acre.labor', 'tab.acre.contracts', 'tab.sheet.pets', 'tab.grimoire.legion']);
 
 type PanelKey = 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'salvage' | 'sheet' | 'legion' | 'atlas';
 export class WorldScene implements GameScene, RuntimeView {
@@ -423,6 +444,14 @@ export class WorldScene implements GameScene, RuntimeView {
   private forgePanel!: ForgePanel;
   private shelfPanel!: ReagentShelfPanel;
   private professionsPanel!: ProfessionsPanel;
+  /** Progressive HUD (ui/progressiveHud.ts): what has been revealed and what still wears a NEW cue, per character. */
+  private hudReveal!: HudReveal;
+  private cues!: CueQueue;
+  private acreWin!: TabbedWindow;
+  private charWin!: TabbedWindow;
+  private grimWin!: TabbedWindow;
+  private grimSelect: number | 'primary' | undefined;
+  private lastGold = 0;
   private settingsPanel!: SettingsPanel;
   private classPanel!: ClassPanel;
   private waystonePanel!: WaystonePanel;
@@ -453,6 +482,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.progression = new Progression(character);
     this.applyBoons();
     this.inventory = new Inventory(character.id);
+    this.hudReveal = new HudReveal(character.id);
     this.lootRoller = new LootRoller(character.id);
     this.locks = new ItemLocks(character.id);
     this.chronicle = new Chronicle(character.id);
@@ -498,7 +528,10 @@ export class WorldScene implements GameScene, RuntimeView {
     audio.play('click');
     this.closePanels();
     this.gathering?.stop('panel');
-    this.grimoirePanel.open(select);
+    this.clearCuesFor('grimoire');
+    this.grimSelect = select;
+    this.grimWin.open('grimoire');
+    this.grimSelect = undefined;
     this.onboarding.show('grimoire', 0, { kind: 'asked' });
   }
 
@@ -799,7 +832,6 @@ export class WorldScene implements GameScene, RuntimeView {
     void this.dataReady.then(() => getCosmetics(this.character.id)).then((v) => this.applyCosmetics(v.selected)).catch(() => {});
     this.scope.interval(() => void this.checkLabor(false), 5 * 60_000);
     this.onboarding.show('welcome', 900);
-    this.onboarding.show('belt', 90_000);
     // First time in the world as a Knight: Rage works nothing like essence.
     if (this.discipline.family === 'knight') this.onboarding.show('knight_rage', 2600);
     if (this.discipline.family === 'warden') this.onboarding.show('warden_oil', 2600);
@@ -1015,17 +1047,37 @@ export class WorldScene implements GameScene, RuntimeView {
         this.applyWaveTier();
       },
       open: (p) => this.togglePanel(p),
+      reportBug: () => { this.closePanels(); this.gathering?.stop('panel'); this.settingsPanel.openBugReport(); },
+      beltChoices: (slot) => this.beltChoices(slot),
+      beltPick: (id) => this.setBelt(id),
       toggleAutoCombat: () => this.toggleAutoCombat(),
       chat: (text) => {
         if (this.realtime.connected) this.realtime.sendChat(text);
         else this.hud.chatLine('(solo) Nobody hears you in the dark.');
       },
       openGrimoire: (select) => this.openGrimoire(select),
+      cueUsed: (id) => this.useCue(id),
       dismissNext: () => { this.nextDismissed = this.nextNow?.id ?? null; this.guideDirty = true; },
     }, this.hotbar, this.discipline, this.primary);
     this.hud.setSwapReady(this.grimoireUnlocked());
     this.hud.minimap.onNavigate = (x, z) => this.navigateFromMinimap(x, z);
     this.loadBelt();
+    // Merged windows (owner, 3 Oct 2026): each hosts existing panels as tabs; the old keys open the right tab.
+    this.acreWin = new TabbedWindow(this.root, {
+      title: 'Acre ledger', aria: 'Acre ledger', className: 'cw-tabwin-acre',
+      tabs: [{ id: 'skills', label: 'Skills', key: 'P' }, { id: 'garden', label: 'Garden', key: 'U', newId: 'tab.acre.garden' }, { id: 'labor', label: 'Laborers', key: 'H', newId: 'tab.acre.labor' }, { id: 'contracts', label: 'Contracts', key: 'O', newId: 'tab.acre.contracts' }],
+      onTab: (id) => this.useTabCue('acre', id),
+    });
+    this.charWin = new TabbedWindow(this.root, {
+      title: 'Character', aria: 'Character', className: 'cw-tabwin-sheet',
+      tabs: [{ id: 'stats', label: 'Stats', key: 'J' }, { id: 'pets', label: 'Capes & Pets', key: 'N', newId: 'tab.sheet.pets' }],
+      onTab: (id) => this.useTabCue('sheet', id),
+    });
+    this.grimWin = new TabbedWindow(this.root, {
+      title: 'Grimoire', aria: 'Grimoire', className: 'cw-tabwin-grim',
+      tabs: [{ id: 'grimoire', label: 'Grimoire', key: 'L' }, { id: 'legion', label: 'Legion', key: 'Y', newId: 'tab.grimoire.legion', hidden: this.discipline.family !== 'necromancer' }],
+      onTab: (id) => this.useTabCue('grimoire', id),
+    });
     this.inventoryPanel = new InventoryPanel(this.root, this.character.id, this.inventory, this.statsLine, (id) => this.drinkFlask(id), (id) => this.setBelt(id), (gold, name, n) => {
       this.progression.addGold(gold);
       audio.play('coin');
@@ -1044,7 +1096,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.onboarding.show('gearEquip');
     };
     this.inventoryPanel.onToolBelted = () => this.onboarding.show('toolBelt', 0, true);
-    this.sheetPanel = new CharacterSheetPanel(this.root, this.statContext, () => this.onboarding.show('statSheet'));
+    this.sheetPanel = new CharacterSheetPanel(this.charWin.slot('stats'), this.statContext, () => this.onboarding.show('statSheet'));
     this.atlasPanel = new AtlasLauncher(this.root, {
       statContext: this.statContext,
       slots: () => this.inventory.all,
@@ -1052,7 +1104,7 @@ export class WorldScene implements GameScene, RuntimeView {
       area: () => this.area,
     }, () => this.hud.toast('The Gear Atlas could not load. Check your connection and try again.', 'err'));
     // The Legion (Y): spare weapon and armour for the thralls, and the gold sink that reinforces them. Necromancers only.
-    this.legionPanel = new LegionPanel(this.root, this.character.id, this.inventory, {
+    this.legionPanel = new LegionPanel(this.grimWin.slot('legion'), this.character.id, this.inventory, {
       tier: () => this.progression.local.legionTier ?? 0,
       cost: () => this.progression.legionCost(),
       gold: () => this.character.gold ?? 0,
@@ -1088,17 +1140,17 @@ export class WorldScene implements GameScene, RuntimeView {
       recordFound(browserStorage(), this.character.id, slots.map((s) => s.item_id));
       if (recordRunesFound(browserStorage(), this.character.id, slots.map((s) => s.item_id)).grew) this.codexPanel?.refresh?.();
     });
-    this.professionsPanel = new ProfessionsPanel(this.root, {
+    this.professionsPanel = new ProfessionsPanel(this.acreWin.slot('skills'), {
       start: type => this.startAfkGathering(type),
       pause: () => this.gathering.stop('moved'),
       status: () => ({ active: this.gathering.afk, text: this.gathering.status, allowed: this.player.area === 'acre' }),
-    }, () => this.inventory.all.map((s) => s.item_id), () => this.togglePanel('contracts'), () => this.togglePanel('garden'), () => this.togglePanel('labor'), () => this.togglePanel('cosmetics'));
+    }, () => this.inventory.all.map((s) => s.item_id));
     this.professionsPanel.beltItems = () => this.inventory.all.filter((s) => isBeltSlot(s.slot_index)).map((s) => s.item_id);
-    this.cosmeticsPanel = new CosmeticsPanel(this.root, this.character.id, this.inventory, (v) => this.applyCosmetics(v.selected));
-    this.laborPanel = new LaborPanel(this.root, this.character.id, this.inventory, (skill) => this.skills.level(skill), (r) => this.onLaborCollected(r));
+    this.cosmeticsPanel = new CosmeticsPanel(this.charWin.slot('pets'), this.character.id, this.inventory, (v) => this.applyCosmetics(v.selected));
+    this.laborPanel = new LaborPanel(this.acreWin.slot('labor'), this.character.id, this.inventory, (skill) => this.skills.level(skill), (r) => this.onLaborCollected(r));
     this.laborPanel.onView = (v) => { this.laborers.apply(v); this.noteLabor(v); };
-    this.gardenPanel = new GardenPanel(this.root, this.character.id, this.inventory, (kind, r) => this.onGardenResult(kind, r));
-    this.contractsPanel = new ContractsPanel(this.root, this.character.id, this.inventory, (d) => this.onContractDelivered(d));
+    this.gardenPanel = new GardenPanel(this.acreWin.slot('garden'), this.character.id, this.inventory, (kind, r) => this.onGardenResult(kind, r));
+    this.contractsPanel = new ContractsPanel(this.acreWin.slot('contracts'), this.character.id, this.inventory, (d) => this.onContractDelivered(d));
     this.dialogue = new DialoguePanel(this.root, this.guidance, () => this.guidanceState(), { onChange: (npc) => { this.npcViews.setTalking(npc); this.guideDirty = true; }, sound: () => audio.play('click') });
     this.vaultPanel = new VaultPanel(this.root, this.character.id, this.inventory, this.locks, () => this.onboarding.show('vault'));
     this.salvagePanel = new SalvagePanel(this.root, this.character.id, this.inventory, this.locks, this.skills, (r) => this.onSalvaged(r), () => this.onboarding.show('salvage'));
@@ -1148,7 +1200,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.codexPanel.onAtlas = () => this.togglePanel('atlas');
     this.codexPanel.runesFound = () => loadRunesFound(browserStorage(), this.character.id);
     this.grimoirePanel = new GrimoirePanel(
-      this.root,
+      this.grimWin.slot('grimoire'),
       () => ({ rites: { primary: this.primary, keys: this.loadout }, level: riteLevel(this.character.level), unseen: unseenRites(this.seen, riteLevel(this.character.level), this.kit), kit: this.kit }),
       (slot, id) => this.setRite(slot, id),
       (id) => this.setPrimary(id),
@@ -1169,6 +1221,16 @@ export class WorldScene implements GameScene, RuntimeView {
         this.hud.toast(`${BOONS[id].name} — ${BOONS[id].blurb}`, 'good');
       },
     );
+    const host = (open: () => void | Promise<void>, panel: { close(): void; readonly isOpen: boolean }) => ({ open, close: () => panel.close(), get isOpen() { return panel.isOpen; } });
+    this.acreWin.attach('skills', host(() => this.professionsPanel.open(this.skills), this.professionsPanel));
+    this.acreWin.attach('garden', host(() => this.gardenPanel.open(), this.gardenPanel));
+    this.acreWin.attach('labor', host(() => this.laborPanel.open(), this.laborPanel));
+    this.acreWin.attach('contracts', host(() => this.contractsPanel.open(), this.contractsPanel));
+    this.charWin.attach('stats', host(() => this.sheetPanel.open(), this.sheetPanel));
+    this.charWin.attach('pets', host(() => this.cosmeticsPanel.open(), this.cosmeticsPanel));
+    this.grimWin.attach('grimoire', host(() => this.grimoirePanel.open(this.grimSelect), this.grimoirePanel));
+    this.grimWin.attach('legion', host(() => this.legionPanel.open(), this.legionPanel));
+    this.initProgressive();
     this.onboarding = new Onboarding(this.root, this.character.id, undefined, () => this.now);
     this.onboarding.busy = () => this.counselBusy();
     // A returning "first thrall" card is dropped when no thrall of yours stands (a respawn), not shown over an empty field.
@@ -1180,6 +1242,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.scope.add(() => {
       this.codexPanel.dispose();
       this.onboarding.dispose();
+      this.acreWin.dispose();
+      this.charWin.dispose();
+      this.grimWin.dispose();
     });
     const rmb = 'Right-click or 5 casts your fifth rite';
     this.hud.hint(OFFLINE ? 'Offline edition: progress stays on this device · Right-click or 5: fifth rite' : rmb);
@@ -1197,6 +1262,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.forgePanel.close();
     this.shelfPanel?.close();
     this.professionsPanel.close();
+    this.acreWin?.close();
+    this.charWin?.close();
+    this.grimWin?.close();
     this.settingsPanel.close();
     this.waystonePanel.close();
     this.codexPanel.close();
@@ -1446,20 +1514,136 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hud.toast(d.paidBonus ? `Order filled, and the day’s bonus is yours: +${d.paidBonus.gold.toLocaleString()}g` : 'Order filled', 'good');
   }
 
+  /** The merged window and tab a panel key lives in (the old keys O U H N Y still work). */
+  private hostOf(p: PanelKey): { win: TabbedWindow; tab: string } | null {
+    switch (p) {
+      case 'professions': return { win: this.acreWin, tab: 'skills' };
+      case 'garden': return { win: this.acreWin, tab: 'garden' };
+      case 'labor': return { win: this.acreWin, tab: 'labor' };
+      case 'contracts': return { win: this.acreWin, tab: 'contracts' };
+      case 'sheet': return { win: this.charWin, tab: 'stats' };
+      case 'cosmetics': return { win: this.charWin, tab: 'pets' };
+      case 'grimoire': return { win: this.grimWin, tab: 'grimoire' };
+      case 'legion': return { win: this.grimWin, tab: 'legion' };
+      default: return null;
+    }
+  }
+
+
+  // -------------------------------------------------------------------------
+  // Progressive HUD + NEW cues (ui/progressiveHud.ts)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Called once the panels exist. Applies what this character has already revealed; a character with no stored state is seeded
+   * silently with whatever obviously already matters (a veteran keeps their HUD) and, if it is an existing player, told once where
+   * the merged panels went.
+   */
+  private initProgressive() {
+    const r = this.hudReveal;
+    this.cues = new CueQueue(
+      (text, key) => {
+        const open = CUE_OPENS[key as RevealId];
+        this.hud.toast(text, 'new', open ? () => this.togglePanel(open) : undefined);
+      },
+      (fn, ms) => window.setTimeout(fn, ms),
+      7500,
+      () => !this.ready || this.hud.bannerActive || !!this.dialogue?.isOpen,
+    );
+    const level = this.character.level ?? 1;
+    const loc = this.progression.local;
+    if (r.fresh) {
+      for (const id of veteranReveals({
+        level, gold: Math.floor(this.character.gold ?? 0), damageTier: loc.damageTier, waveOwned: loc.waveTierOwned, shards: loc.shards,
+        knowsAcre: false, swapReady: this.grimoireUnlocked(), hasGear: level >= 3, hasHunted: this.codex.has('area', 'graves'),
+      })) r.reveal(id, false);
+      if (isVeteran(level)) {
+        // They knew the old layout: point at where Skills, Garden, Laborers, Contracts, Capes & Pets and the Legion went.
+        r.flag('menu.skills');
+        r.flag('tab.acre.labor');
+        r.flag('tab.acre.contracts');
+        for (const id of ['tab.acre.garden', 'tab.sheet.pets', ...(this.discipline.family === 'necromancer' ? ['tab.grimoire.legion' as const] : [])] as RevealId[]) {
+          if (r.flag(id)) this.cues.push(id, CUE_TEXT[id]!);
+        }
+      }
+    }
+    for (const id of ['hud.upgrades', 'hud.dial', 'hud.shards', 'hud.spells', 'menu.spells', 'menu.atlas', 'menu.skills'] as RevealId[]) this.hud.setReveal(id, r.has(id));
+    this.hud.setOmenVisible(!AREAS[this.area].safe);
+    for (const id of r.newIds()) this.showCue(id as RevealId, true);
+    this.lastGold = Math.floor(this.character.gold ?? 0);
+  }
+
+  private showCue(id: RevealId, on: boolean) {
+    this.hud.setNew(id, on);
+    for (const w of [this.acreWin, this.charWin, this.grimWin]) w?.setNew(id, on);
+  }
+
+  /** Reveal a held-back element for good, flag it NEW and queue its one toast. No-op after the first time. */
+  private revealHud(id: RevealId, toast = true) {
+    if (!this.hudReveal.reveal(id, true)) return;
+    this.hud.setReveal(id, true);
+    this.showCue(id, true);
+    const text = CUE_TEXT[id];
+    if (toast && text) this.cues.push(id, text);
+  }
+
+  /** The player used a NEW thing (hovered, clicked, opened): the pip, glow and any queued toast for it go. */
+  private useCue(id: RevealId) {
+    this.hudReveal.clear(id);
+    this.showCue(id, false);
+    this.cues?.drop(id);
+  }
+
+  private useTabCue(win: string, tab: string) {
+    const id = `tab.${win}.${tab}`;
+    if (TAB_CUES.has(id)) this.useCue(id as RevealId);
+  }
+
+  /** Opening a panel counts as using what flagged it. */
+  private clearCuesFor(p: PanelKey) {
+    if (p === 'professions') this.useCue('menu.skills');
+    else if (p === 'grimoire') { this.useCue('menu.spells'); this.useCue('hud.spells'); }
+    else if (p === 'atlas') this.useCue('menu.atlas');
+  }
+
+  /** Low-rate reveal checks (the 20 Hz HUD tick). Each is a cheap comparison and stops once its element is revealed. */
+  private progressiveTick(gold: number, loc: { shards: number; waveTierOwned: number }) {
+    const r = this.hudReveal;
+    // First gold in a hunting ground (a kill or a drop; selling in the Chapterhouse does not count).
+    if (!r.has('hud.upgrades') && gold > this.lastGold && !AREAS[this.area].safe) this.revealHud('hud.upgrades');
+    this.lastGold = gold;
+    if (!r.has('hud.dial') && loc.waveTierOwned > 0) this.revealHud('hud.dial');
+    if (!r.has('hud.shards') && loc.shards > 0) this.revealHud('hud.shards');
+    if (!r.has('menu.spells') && this.grimoireUnlocked()) {
+      this.revealHud('hud.spells', false);
+      this.revealHud('menu.spells');
+    }
+    if (!r.has('menu.skills') && ALL_SKILLS.some((id) => this.skills.shown(id).xp > 0 || this.skills.level(id) > 1)) this.revealHud('menu.skills');
+  }
+
   private togglePanel(p: PanelKey) {
     const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel, cosmetics: this.cosmeticsPanel, vault: this.vaultPanel, salvage: this.salvagePanel, sheet: this.sheetPanel, legion: this.legionPanel, atlas: this.atlasPanel }[p];
-    const wasOpen = panel.isOpen;
+    const host = this.hostOf(p);
+    // Another tab of the open merged window: switch, do not close and reopen.
+    const switching = !!host && host.win.isOpen && host.win.activeTab !== host.tab;
+    const wasOpen = host ? host.win.isOpen && host.win.activeTab === host.tab : panel.isOpen;
     const vault = p === 'vault';
-    if (!(vault && !wasOpen && !AREAS[this.area].safe)) audio.play(wasOpen ? (vault ? 'vaultClose' : 'panelClose') : vault ? 'vaultOpen' : 'panelOpen');
-    this.closePanels();
+    if (!switching && !(vault && !wasOpen && !AREAS[this.area].safe)) audio.play(wasOpen ? (vault ? 'vaultClose' : 'panelClose') : vault ? 'vaultOpen' : 'panelOpen');
+    if (!switching) this.closePanels();
     if (wasOpen) return;
+    this.clearCuesFor(p);
+    if (host) {
+      if (!(p === 'professions' && this.gathering?.afk)) this.gathering?.stop('panel');
+      this.grimSelect = undefined;
+      host.win.open(host.tab);
+      if (p === 'grimoire') this.onboarding.show('grimoire', 0, { kind: 'asked' });
+      return;
+    }
     if (!(p === 'professions' && this.gathering?.afk)) this.gathering?.stop('panel');
-    if (p === 'professions') this.professionsPanel.open(this.skills);
-    else if (p === 'inventory') this.inventoryPanel.open();
+    if (p === 'inventory') this.inventoryPanel.open();
     else if (p === 'forge') void this.forgePanel.open();
     else if (p === 'settings') this.settingsPanel.open();
     else if (p === 'codex') this.codexPanel.open();
-    else if (p === 'contracts') void this.contractsPanel.open();
     else if (p === 'vault') {
       if (!AREAS[this.area].safe) {
         this.hud.toast('The Vault is in the Chapterhouse', 'err');
@@ -1467,17 +1651,9 @@ export class WorldScene implements GameScene, RuntimeView {
       }
       void this.vaultPanel.open();
     } else if (p === 'salvage') this.salvagePanel.open();
-    else if (p === 'garden') void this.gardenPanel.open();
-    else if (p === 'labor') void this.laborPanel.open();
-    else if (p === 'cosmetics') void this.cosmeticsPanel.open();
-    else if (p === 'sheet') this.sheetPanel.open();
-    else if (p === 'legion') this.legionPanel.open();
     else if (p === 'atlas') this.atlasPanel.open();
     else if (p === 'ascension') this.ascensionPanel.open();
-    else if (p === 'grimoire') {
-      this.grimoirePanel.open();
-      this.onboarding.show('grimoire', 0, { kind: 'asked' });
-    } else this.waystonePanel.open();
+    else this.waystonePanel.open();
   }
 
   private applyWaveTier() {
@@ -1908,6 +2084,14 @@ export class WorldScene implements GameScene, RuntimeView {
       for (const slot of BREW_SLOTS) this.belt[slot] = raw[slot] && BREWS[raw[slot]!]?.slot === slot ? raw[slot]! : null;
       this.brewRev++;
     } catch { /* storage unavailable: the belt auto-fills */ }
+  }
+
+  /** What the HUD belt picker lists for a slot: every brew of that kind in the bag, the one on the belt flagged. */
+  private beltChoices(slot: BrewSlot): BeltChoice[] {
+    const on = this.beltBrew(slot);
+    return Object.keys(BREWS)
+      .filter((id) => BREWS[id].slot === slot && this.inventory.count(id) > 0)
+      .map((id) => ({ id, label: BREWS[id].label, glyph: BREWS[id].glyph, color: BREWS[id].color, effect: `${brewEffectsText(BREWS[id])} · ${BREWS[id].seconds}s`, count: this.inventory.count(id), current: id === on }));
   }
 
   private setBelt(id: string) {
@@ -2503,7 +2687,7 @@ export class WorldScene implements GameScene, RuntimeView {
     for (const g of items) {
       const pet = petForCharm(g.itemId);
       if (!pet) continue;
-      this.hud.banner('A rare find!', `${itemMeta(g.itemId).name}: adopt it in Capes & Pets (N)`, 4200);
+      this.hud.banner('A rare find!', `${itemMeta(g.itemId).name}: adopt it in Character → Capes & Pets (N)`, 4200);
       audio.play('skillUp');
     }
   }
@@ -3182,6 +3366,8 @@ export class WorldScene implements GameScene, RuntimeView {
     if (this.discipline.family === 'necromancer' && packOnCorpse && this.progression.local.totalKills >= 15) this.onboarding.show('burst');
     if (this.progression.local.totalKills >= 40) this.onboarding.show('codex');
     if (this.inventory.all.some((s) => s.item_id.startsWith('tool_'))) this.onboarding.show('tool');
+    // The belt tip waits for the first belt-eligible item (a healing flask or a brew), so it explains something the player can use.
+    if (this.inventory.all.some((s) => s.item_id in BREWS || s.item_id in HEALING_FLASKS)) this.onboarding.show('belt');
     if (this.progression.local.shards >= BOSS_SUMMON_SHARDS) this.onboarding.show('prelate');
     // Area bosses: counsel the first time a summon object is within 12 m.
     for (const id of ['gravedigger', 'abbess', 'congregation', 'saint', 'regent', 'mire'] as BossId[]) {
@@ -4580,7 +4766,10 @@ export class WorldScene implements GameScene, RuntimeView {
       audio.play(lootSfx(got.items.map((item) => itemMeta(item.item_id).rarity)));
       this.onboarding.show('relic');
       // The first piece of gear: point at the Atlas (a calm tip; it waits for a quiet moment).
-      if (got.items.some((item) => isAffixGear(itemMeta(item.item_id).type))) this.onboarding.show('atlas', 2500);
+      if (got.items.some((item) => isAffixGear(itemMeta(item.item_id).type))) {
+        this.onboarding.show('atlas', 2500);
+        this.revealHud('menu.atlas');
+      }
     }
     const legendary = got.items.filter((item) => itemMeta(item.item_id).rarity === 'legendary');
     if (legendary.length) this.onboarding.show('legendary', 600);
@@ -4854,6 +5043,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.moon.color.set(def.ambient.moon).lerp(new THREE.Color(this.omen.sky.moon), 0.5);
     const fog = this.scene.fog as THREE.FogExp2;
     fog.density = 0.014 * (def.safe ? 1 : this.omen.sky.fogMult) * (def.ambient.fogMult ?? 1);
+    // The Omen only means something in hunting grounds: hidden in the Chapterhouse, Acre and Alchemist's Wing.
+    this.hud.setOmenVisible(!def.safe);
+    if (!def.safe) this.revealHud('hud.omen', false);
     if (!this.omenTold) {
       this.omenTold = true;
       this.hud.setOmen({ name: this.omen.name, icon: this.omen.icon, blurb: `${this.omen.blurb} Changes in ${omenLeft()}.` });
@@ -5024,6 +5216,7 @@ export class WorldScene implements GameScene, RuntimeView {
       : null);
 
     this.hud.setDepths(this.depths.hudState());
+    this.progressiveTick(Math.floor(this.character.gold ?? 0), loc);
     this.hud.update({
       autoCombat: settings.autoCombat,
       autoCombatAvailable: canUseAutoCombat() && settings.difficulty === 'easy',
