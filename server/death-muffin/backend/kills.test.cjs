@@ -733,3 +733,21 @@ test('a boss kill report that names a summon stamps it in audit and enforce, and
   await send(mk(), rep(T0), T0, ENFORCE);
   assert.deepEqual(seen.pop(), [42, 1, 'abbess']);
 });
+
+test('Depths: a run resumed at the deepest floor is accepted at that depth, and no deeper than one past it', () => {
+  // The ledger proved depth 17 (the character cleared 16): max_cleared 16, deepest 17.
+  const RESUMED = ctx({ unlocked: NAVE.unlockedAreas, heroLevel: 40, deepest: 17, maxCleared: 16 });
+  const clear = (depth) => ({ depth, level: 40 + depth, clear: true, chest: false, mult: 1 });
+  const ok = evaluate(report(1, [], { floors: [clear(17), clear(18)] }), RESUMED);
+  assert.equal(ok.floorsAccepted, 2, 'floor 17 (the resume point) and the next are both honest');
+  assert.equal(ok.depthProved, 19);
+  const leap = evaluate(report(1, [], { floors: [clear(19)] }), RESUMED);
+  assert.equal(leap.floorsAccepted, 0, 'resuming never lets a run skip past the deepest floor');
+  // The dead of depth 17 (level hero + 17, the roster that depth fields) are believable kills for that character.
+  const honest = ['robber', 'penitent', 'deacon', 'hound', 'rat'].map((def) => group({ area: 'depths', def, level: 40 + 17, n: 4 }));
+  const kill = evaluate(report(2, honest), RESUMED);
+  assert.equal(kill.killsAccepted, 20, 'kills at the resumed depth are plausible');
+  // The same kills from a character with no record of depth 17 are not.
+  const forged = evaluate(report(2, honest), ctx({ unlocked: NAVE.unlockedAreas, heroLevel: 40, deepest: 1 }));
+  assert.ok(forged.killsAccepted < 20, 'a character with no record of depth 17 does not get its level-57 dead');
+});

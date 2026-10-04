@@ -43,6 +43,16 @@ export function depthsEntryBlock(o: { alive: boolean }): string | null {
   return null;
 }
 
+/**
+ * The floor the stair can resume at: the deepest floor the character's Chronicle holds (`peak.depth`), or 0 when there is nothing to
+ * resume (never been below depth 1). Only a depth the character has already reached is ever offered, so a resumed run cannot start
+ * past what the server's ledger proved (killRules: a floor may be cleared at most one past the deepest proven).
+ */
+export const resumeDepth = (peak: number): number => {
+  const d = Math.floor(Number(peak) || 0);
+  return d >= 2 ? d : 0;
+};
+
 /** Kills a floor asks for before the stair down opens: 10 on depth 1, rising to 30 from depth 21. */
 export const floorKills = (depth: number): number => Math.min(30, 9 + Math.max(1, Math.floor(depth)));
 

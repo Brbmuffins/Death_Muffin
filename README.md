@@ -359,7 +359,7 @@ The **Mire Mother** wakes at the Mire Altar on the marsh's heart. She sinks and 
 
 ## The Catacomb Depths
 
-An endless descent. Behind the **Catacomb Warren's west chamber** a glowing stair leads down (the Warren opens after 150 Hollow Graves kills). Click it and you go down into a floor of small chambers; slay its quota and the stair to the next one opens. How deep can you get?
+An endless descent. Behind the **Catacomb Warren's west chamber** a glowing stair leads down (the Warren opens after 150 Hollow Graves kills). Click it and you go down into a floor of small chambers (once you have been below depth 1 the stair asks whether to **descend from depth 1** or **resume at your deepest floor**, the deepest on your Chronicle; only a depth you have already reached is offered, and the dead there are your level plus that depth); slay its quota and the stair to the next one opens. How deep can you get?
 
 ![The stair in the Catacomb Warren, with its hover label](docs/screenshots/depths/warren-stair.webp)
 

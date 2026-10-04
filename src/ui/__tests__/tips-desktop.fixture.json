@@ -441,7 +441,7 @@
  },
  "depths": {
   "title": "A stair in the dark",
-  "body": "The Warren's west chamber hides a <b>stair down to the Catacomb Depths</b>: floor after floor of small chambers, each a level older than the last. <kbd>Click</kbd> the glowing stair to go down. Slay a floor's quota and the stair beyond it opens; leaving or falling ends the run, and whatever you looted is yours. Your legion comes with you. Solo for now."
+  "body": "The Warren's west chamber hides a <b>stair down to the Catacomb Depths</b>: floor after floor of small chambers, each a level older than the last. <kbd>Click</kbd> the glowing stair to go down; once you have been deeper than the first floor it asks whether to <b>start at depth 1</b> or <b>resume at your deepest floor</b>. Slay a floor's quota and the stair beyond it opens; leaving or falling ends the run, and whatever you looted is yours. Your legion comes with you. Solo for now."
  },
  "depths_floor": {
   "title": "Slay, then descend",

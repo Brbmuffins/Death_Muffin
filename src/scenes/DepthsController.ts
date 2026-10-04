@@ -1,6 +1,6 @@
 import type * as THREE from 'three';
 import { DEPTHS_STAIR, type Interactable } from '../content/areas';
-import { DEPTHS, depthEnemyLevel, depthLootArea, depthsEntryBlock, extraAffixes, hasChest } from '../content/depths';
+import { DEPTHS, depthEnemyLevel, depthLootArea, depthsEntryBlock, extraAffixes, hasChest, resumeDepth } from '../content/depths';
 import { ITEMS } from '../content/items';
 import type { DepthsFloor } from '../gameplay/depthsFloor';
 import { rollChest, rollFloorClear } from '../gameplay/depthsRewards';
@@ -126,6 +126,11 @@ export class DepthsController {
     return depthsEntryBlock({ alive: this.host.player.alive });
   }
 
+  /** The deepest floor this character has reached (0 = never below depth 1): what the stair offers to resume at. */
+  resumeAt(): number {
+    return resumeDepth(this.host.chronicle.view().life['peak.depth'] ?? 0);
+  }
+
   /** The hover line for each stair, chest and exit. */
   prompt(it: Interactable): string {
     const run = this.run;
@@ -133,7 +138,9 @@ export class DepthsController {
       case 'stair': {
         const why = this.canEnter();
         if (why) return why;
-        return this.host.inParty() ? 'Descend into the Catacomb Depths (you step out of your party until the run ends)' : 'Descend into the Catacomb Depths';
+        const resume = this.resumeAt();
+        const choose = resume ? ` (start at depth 1 or resume at depth ${resume})` : '';
+        return this.host.inParty() ? `Descend into the Catacomb Depths${choose} (you step out of your party until the run ends)` : `Descend into the Catacomb Depths${choose}`;
       }
       case 'depths_down':
         if (!run) return '';
@@ -190,8 +197,20 @@ export class DepthsController {
 
   // --- Entering, descending, leaving ----------------------------------------------------------------------------------------------
 
-  /** Click the Warren's stair: start a run on depth 1. */
+  /**
+   * Click the Warren's stair: with a deeper floor on record, offer the choice (the scene shows the card and calls `enter` with the pick);
+   * otherwise start a run on depth 1. Returns the depth to offer a resume at, or 0 when the run simply began (or could not).
+   */
+  stairClicked(): number {
+    const resume = this.canEnter() ? 0 : this.resumeAt();
+    if (resume && !this.run) return resume;
+    this.enter();
+    return 0;
+  }
+
+  /** Start a run on `depth` (1 or, from the stair's choice, the deepest floor on record). */
   enter(seed = (Math.random() * 0x100000000) >>> 0, depth = 1): boolean {
+    depth = Math.max(1, Math.floor(depth) || 1);
     const why = this.canEnter();
     if (why) {
       this.host.hud.toast(why, 'err');
