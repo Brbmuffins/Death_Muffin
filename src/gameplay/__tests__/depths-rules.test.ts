@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { AREAS } from '../../content/areas';
 import {
   CHEST_PER_MIN_CEILING, DEPTHS, DEPTH_LOOT_AREAS, FLOOR_BONUS_KILLS, averageKill, chestBonus, chestDrops, chestRuneChance, chestRunePool, depthEliteBonus, depthsEntryBlock,
-  depthEnemyLevel, depthLootArea, depthRoster, depthWaveGapS, depthWaveSize, extraAffixes, floorBonus, floorKills, hasChest, pickExtraAffixes,
+  depthEnemyLevel, resumeDepth, depthLootArea, depthRoster, depthWaveGapS, depthWaveSize, extraAffixes, floorBonus, floorKills, hasChest, pickExtraAffixes,
 } from '../../content/depths';
 import { AFFIX_ORDER, ENEMIES } from '../../content/enemies';
 import { ITEMS } from '../../content/items';
@@ -222,5 +222,22 @@ describe('Depths and the server authority rules', () => {
     // The Depths' kill rate on a table at least matches that table's own ground rate where the peaks say so; either way no item loses its allowance.
     const sample = ['bones_ancient', 'flask_hp_grand', 'gem_void_sapphire', 'ore_moon', 'reagent_grave_dust'];
     for (const id of sample) if (GROUND_RATES[id] !== undefined) expect(GROUND_RATES[id]).toBeGreaterThan(0);
+  });
+});
+
+describe('Depths: resuming at the deepest floor', () => {
+  it('is offered only past depth 1 and never invents a floor', () => {
+    expect(resumeDepth(0)).toBe(0);
+    expect(resumeDepth(1)).toBe(0);
+    expect(resumeDepth(2)).toBe(2);
+    expect(resumeDepth(17.9)).toBe(17);
+    expect(resumeDepth(NaN)).toBe(0);
+    expect(resumeDepth(-5)).toBe(0);
+  });
+
+  it('a resumed floor scales like any floor of that depth', () => {
+    expect(depthEnemyLevel(17, 40)).toBe(57);
+    expect(floorKills(17)).toBe(26);
+    expect(depthLootArea(17)).toBe(depthLootArea(17));
   });
 });

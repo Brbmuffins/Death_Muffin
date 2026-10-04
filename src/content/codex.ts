@@ -754,7 +754,7 @@ export const CODEX_AREAS: Record<AreaId, AreaEntry> = {
     dangers: "Through the Hollow Graves' west door, once 150 of the Graves' dead have fallen. Nine chambers divided by tall half-walls: the walls stop cones (a Penitent cannot hit you round a corner) and rats swarm through the gaps. Barrow Ghouls dig up inside the chambers, so keep moving.",
   },
   depths: {
-    dangers: 'An endless descent, reached by the stair in the Warren\'s west chamber. Each floor is a small maze of chambers built from the Warren\'s kit; slay its quota and the stair down opens. Every floor is one level older than the last, every fifth floor gives elites another affix and a chest, and leaving or dying ends the run (what you looted is yours). Solo for now.',
+    dangers: 'An endless descent, reached by the stair in the Warren\'s west chamber. Each floor is a small maze of chambers built from the Warren\'s kit; slay its quota and the stair down opens. Once you have been deeper than depth 1 the stair offers a run from depth 1 or one that resumes at your deepest floor. Every floor is one level older than the last, every fifth floor gives elites another affix and a chest, and leaving or dying ends the run (what you looted is yours). Solo for now.',
   },
   coliseum: {
     dangers: "East of the Ossuary, once enough of its dead have fallen. Four gates feed a wide sand pit with fast surges, twice the usual elites and every newer kind of dead. Pillar islands and low walls are the only cover. The best drops before the Sanctum.",

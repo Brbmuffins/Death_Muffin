@@ -3,6 +3,7 @@
     "date": "2026-10-04",
     "title": "Smoother, Clearer, Deeper",
     "items": [
+      "Catacomb Depths: once you have been deeper than depth 1, the stair asks whether to descend from depth 1 or resume at your deepest floor. One click either way.",
       "Windows: the title and close button are now a fixed header; only the contents scroll beneath it.",
       "Windows: a Back to top button appears as you scroll down, so the tabs at the top are one click away, and tucks away 2 seconds after you stop.",
       "Grave Laborers: collecting no longer swaps the window for a loot report. What each laborer brought home is listed under the laborers, so you can collect from all of them in one go.",
