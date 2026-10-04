@@ -1,0 +1,65 @@
+{
+ "LABEL": {
+  "advice": {
+   "prior": "Where should I go next?",
+   "sexton": "What needs doing?",
+   "apothecary": "What should I brew?"
+  },
+  "about": "Tell me about…",
+  "back": "Back",
+  "bye": "Goodbye"
+ },
+ "BOSS_HINT": {
+  "gravedigger": "Leave the marked burial ground before it roots you, and watch for pits later in the fight.",
+  "abbess": "Break the skull niches that heal her, and spend your corpses before she draws them in.",
+  "congregation": "Use the pews to block the Flood Hymn, and step out of the grasping rings.",
+  "prelate": "Keep out of the Toll ring, the frontal Slam and the marked Bell Rain circles.",
+  "saint": "Move her off the rot pools where she heals, and kill the Plague Doctors that feed her.",
+  "regent": "When Conflagration starts, run to a grey ash circle and stay on it.",
+  "mire": "Fight from the dry hummocks, and spend your corpses before her third phase."
+ },
+ "TOPICS": {
+  "prior": [
+   {
+    "id": "seals",
+    "label": "The seals"
+   },
+   {
+    "id": "bosses",
+    "label": "The kings of the dead"
+   },
+   {
+    "id": "ascension",
+    "label": "The Altar of Ascension"
+   }
+  ],
+  "sexton": [
+   {
+    "id": "gather",
+    "label": "Gathering and laborers"
+   },
+   {
+    "id": "grinder",
+    "label": "The Bone Grinder and the Vault"
+   },
+   {
+    "id": "contracts",
+    "label": "The daily Contracts"
+   }
+  ],
+  "apothecary": [
+   {
+    "id": "brewing",
+    "label": "Brewing"
+   },
+   {
+    "id": "reagents",
+    "label": "Where reagents fall"
+   },
+   {
+    "id": "belt",
+    "label": "Elixirs and tonics"
+   }
+  ]
+ }
+}

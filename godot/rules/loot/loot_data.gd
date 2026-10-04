@@ -1,0 +1,49 @@
+class_name DmLootData
+extends RefCounted
+## Content the loot rules read (areas' loot tables, enemy gold/xp, item meta, armour sets, rune pools, reagent drops, ...).
+## Exported from the real TS modules by tools/godot/fixtures-loot.ts (a subset of src/content/*), never retyped.
+## Until rules-core's DmContent lands, it is read from the test fixture; the integrator points CONTENT_PATH at the shared export
+## (or calls set_content() with the same shape).
+
+const CONTENT_PATH := "res://tests/rules-loot/fixtures/content.json"
+
+static var _c: Dictionary = {}
+
+static func set_content(c: Dictionary) -> void:
+	_c = c
+
+static func content() -> Dictionary:
+	if _c.is_empty():
+		var f := FileAccess.open(CONTENT_PATH, FileAccess.READ)
+		assert(f != null, "loot content missing: " + CONTENT_PATH)
+		_c = JSON.parse_string(f.get_as_text())
+	return _c
+
+static func bag_size() -> int:
+	return int(content()["bagSlots"])
+
+## Dictionary or {} when the id is unknown.
+static func area(id: String) -> Dictionary:
+	return content()["areas"].get(id, {})
+
+static func enemy(id: String) -> Dictionary:
+	return content()["enemies"][id]
+
+## Item meta {name,type,rarity,sell,stack(null),offlineStats(null)} or {} when unknown (TS: ITEMS[id] undefined).
+static func item(id: String) -> Dictionary:
+	return content()["items"].get(id, {})
+
+static func armor_discipline(id: String) -> Variant:
+	return content()["armor"].get(id, null)
+
+static func is_armor(id: String) -> bool:
+	return content()["armor"].has(id)
+
+static func is_necro_weapon(id: String) -> bool:
+	return content()["necroWeapons"].has(id)
+
+static func discipline_family(id: String) -> String:
+	return str(content()["disciplineFamily"].get(id, ""))
+
+static func difficulty_reward_mult(d: String) -> float:
+	return float(content()["difficulty"][d])

@@ -1,0 +1,50 @@
+{
+ "KIT_BASE": 120,
+ "KIT_IDS": [
+  "weapon",
+  "armor"
+ ],
+ "KIT_SLOT_COUNT": 2,
+ "KIT_LABEL": {
+  "weapon": "Weapon",
+  "armor": "Armour"
+ },
+ "KIT_WEAPON_TYPES": [
+  "weapon",
+  "offhand"
+ ],
+ "KIT_ARMOR_TYPES": [
+  "armor_head",
+  "armor_chest",
+  "armor_legs",
+  "armor_feet",
+  "armor_hands"
+ ],
+ "KIT_RATES": {
+  "weaponDamagePerPoint": 0.01,
+  "weaponDamageCap": 0.35,
+  "weaponSpeedPerPoint": 0.003,
+  "weaponSpeedCap": 0.1,
+  "armorHpPerPoint": 0.012,
+  "armorHpCap": 0.45,
+  "affixShare": 0.6
+ },
+ "NO_LEGION": {
+  "hpMult": 1,
+  "damageMult": 1,
+  "speedMult": 1,
+  "wardAdd": 0,
+  "kit": {
+   "hp": 0,
+   "damage": 0,
+   "speed": 0,
+   "ward": 0
+  },
+  "reinforce": {
+   "tier": 0,
+   "hp": 0,
+   "damage": 0,
+   "speed": 0
+  }
+ }
+}

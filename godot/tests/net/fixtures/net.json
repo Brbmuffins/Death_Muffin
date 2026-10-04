@@ -1,0 +1,1863 @@
+{
+ "generatedBy": "tools/godot/fixtures-net.ts",
+ "requests": {
+  "login": [
+   {
+    "method": "POST",
+    "path": "/login",
+    "headers": {
+     "Content-Type": "application/json"
+    },
+    "body": {
+     "username": "qa_user",
+     "password": "pw"
+    }
+   }
+  ],
+  "register": [
+   {
+    "method": "POST",
+    "path": "/register",
+    "headers": {
+     "Content-Type": "application/json"
+    },
+    "body": {
+     "username": "qa_user",
+     "email": "a@b.co",
+     "password": "pw12345678"
+    }
+   }
+  ],
+  "health": [
+   {
+    "method": "GET",
+    "path": "/api/health",
+    "headers": {
+     "Content-Type": "application/json"
+    }
+   }
+  ],
+  "loadOrCreateCharacter_undefined": [
+   {
+    "method": "POST",
+    "path": "/character",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {}
+   }
+  ],
+  "loadOrCreateCharacter_3": [
+   {
+    "method": "POST",
+    "path": "/character",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "class_index": 3
+    }
+   }
+  ],
+  "loadOrCreateCharacter_7": [
+   {
+    "method": "POST",
+    "path": "/character",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "class_index": 5
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/character/discipline",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "class_index": 7
+    }
+   }
+  ],
+  "getCharacter": [
+   {
+    "method": "GET",
+    "path": "/character",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    }
+   }
+  ],
+  "changeDiscipline": [
+   {
+    "method": "POST",
+    "path": "/character/discipline",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "class_index": 6
+    }
+   }
+  ],
+  "getInventory": [
+   {
+    "method": "GET",
+    "path": "/api/inventory/12",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    }
+   }
+  ],
+  "saveInventory": [
+   {
+    "method": "POST",
+    "path": "/api/inventory/save",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "slots": [
+      {
+       "slot_index": 0,
+       "item_id": "x",
+       "quantity": 1,
+       "equipped": 0
+      }
+     ],
+     "bagSize": 48
+    }
+   }
+  ],
+  "saveInventory_nobag": [
+   {
+    "method": "POST",
+    "path": "/api/inventory/save",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "slots": []
+    }
+   }
+  ],
+  "equipItem": [
+   {
+    "method": "POST",
+    "path": "/api/inventory/equip",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "slot_index": 3,
+     "equipped": 1
+    }
+   }
+  ],
+  "rollLoot": [
+   {
+    "method": "POST",
+    "path": "/api/loot/roll-gear",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "drops": [
+      {
+       "item_id": "sword",
+       "level": 5,
+       "source": "enemy"
+      }
+     ]
+    }
+   }
+  ],
+  "beltTool": [
+   {
+    "method": "POST",
+    "path": "/api/inventory/belt",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "slot_index": 4,
+     "equipped": 0
+    }
+   }
+  ],
+  "kitMove": [
+   {
+    "method": "POST",
+    "path": "/api/inventory/kit",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "slot_index": 4,
+     "equipped": 1
+    }
+   }
+  ],
+  "runeSocket": [
+   {
+    "method": "POST",
+    "path": "/api/inventory/rune",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "rite": "bone_spear",
+     "itemId": "rune_x"
+    }
+   }
+  ],
+  "runeSocket_null": [
+   {
+    "method": "POST",
+    "path": "/api/inventory/rune",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "rite": "bone_spear",
+     "itemId": null
+    }
+   }
+  ],
+  "listLoadouts": [
+   {
+    "method": "GET",
+    "path": "/api/loadouts/12",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    }
+   }
+  ],
+  "saveLoadout": [
+   {
+    "method": "POST",
+    "path": "/api/loadouts/save",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "slot": 2,
+     "preset": {
+      "name": "p"
+     }
+    }
+   }
+  ],
+  "deleteLoadout": [
+   {
+    "method": "POST",
+    "path": "/api/loadouts/delete",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "slot": 2
+    }
+   }
+  ],
+  "applyLoadoutPreset": [
+   {
+    "method": "POST",
+    "path": "/api/loadouts/apply",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "slot": 2
+    }
+   }
+  ],
+  "getAccountPrefs": [
+   {
+    "method": "GET",
+    "path": "/api/prefs",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    }
+   }
+  ],
+  "setAccountPrefs": [
+   {
+    "method": "POST",
+    "path": "/api/prefs",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "prefs": {
+      "only_craftable": true,
+      "loot_common": "auto"
+     }
+    }
+   }
+  ],
+  "getProfessions": [
+   {
+    "method": "GET",
+    "path": "/api/professions/12",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    }
+   }
+  ],
+  "getRecipes": [
+   {
+    "method": "GET",
+    "path": "/api/recipes?profession=black%20smith%2Fx",
+    "headers": {
+     "Content-Type": "application/json"
+    }
+   }
+  ],
+  "craft": [
+   {
+    "method": "POST",
+    "path": "/api/craft",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "recipeId": "recipe_copper_bar"
+    }
+   }
+  ],
+  "gather": [
+   {
+    "method": "POST",
+    "path": "/api/gather",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "nodeType": "copper_vein",
+     "actions": 5,
+     "afk": false
+    }
+   }
+  ],
+  "gather_afk": [
+   {
+    "method": "POST",
+    "path": "/api/gather",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "nodeType": "copper_vein",
+     "actions": 5,
+     "afk": true
+    }
+   }
+  ],
+  "beginAfkGather": [
+   {
+    "method": "POST",
+    "path": "/api/gather/afk-start",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "nodeType": "copper_vein"
+    }
+   }
+  ],
+  "saveProgress": [
+   {
+    "method": "POST",
+    "path": "/api/character/save-progress",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "level": 5,
+     "xp": 10,
+     "gold": 3,
+     "stat_str": 5,
+     "stat_agi": 5,
+     "stat_int": 5,
+     "stat_vit": 5
+    }
+   }
+  ],
+  "saveProgress_kills": [
+   {
+    "method": "POST",
+    "path": "/api/character/save-progress",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "level": 5,
+     "xp": 10,
+     "gold": 3,
+     "stat_str": 5,
+     "stat_agi": 5,
+     "stat_int": 5,
+     "stat_vit": 5,
+     "killReports": [
+      {
+       "seq": 1,
+       "groups": [],
+       "bosses": [],
+       "floors": []
+      }
+     ]
+    }
+   }
+  ],
+  "reportKills": [
+   {
+    "method": "POST",
+    "path": "/api/kills/report",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "reports": [
+      {
+       "seq": 1,
+       "groups": [],
+       "bosses": [],
+       "floors": []
+      }
+     ]
+    }
+   }
+  ],
+  "necro_get": [
+   {
+    "method": "GET",
+    "path": "/api/necro-progress/12",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    }
+   }
+  ],
+  "necro_save": [
+   {
+    "method": "POST",
+    "path": "/api/necro-progress/save",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "kills": 3
+    }
+   }
+  ],
+  "necro_purchase": [
+   {
+    "method": "POST",
+    "path": "/api/necro-progress/purchase",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "upgrade": "damage"
+    }
+   }
+  ],
+  "necro_summonPrelate": [
+   {
+    "method": "POST",
+    "path": "/api/necro-progress/summon-prelate",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12
+    }
+   }
+  ],
+  "necro_summonBoss": [
+   {
+    "method": "POST",
+    "path": "/api/necro-progress/summon-boss",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "boss": "warden"
+    }
+   }
+  ],
+  "necro_ascend": [
+   {
+    "method": "POST",
+    "path": "/api/necro-progress/ascend",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12
+    }
+   }
+  ],
+  "necro_vows": [
+   {
+    "method": "POST",
+    "path": "/api/necro-progress/vows",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "vows": {
+      "a": 1
+     }
+    }
+   }
+  ],
+  "necro_unlock": [
+   {
+    "method": "POST",
+    "path": "/api/necro-progress/unlock",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "key": "k"
+    }
+   }
+  ],
+  "necro_boon": [
+   {
+    "method": "POST",
+    "path": "/api/necro-progress/boon",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "boonId": "b"
+    }
+   }
+  ],
+  "necro_importLocal": [
+   {
+    "method": "POST",
+    "path": "/api/necro-progress/import",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "record": {
+      "r": 1
+     }
+    }
+   }
+  ],
+  "getChronicle": [
+   {
+    "method": "GET",
+    "path": "/api/chronicle/12",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    }
+   }
+  ],
+  "addChronicle": [
+   {
+    "method": "POST",
+    "path": "/api/chronicle/add",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "deltas": {
+      "kills": 3
+     },
+     "maxes": {
+      "peak.depth": 4
+     }
+    }
+   }
+  ],
+  "ascendChronicle": [
+   {
+    "method": "POST",
+    "path": "/api/chronicle/ascend",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "ascension": 2
+    }
+   }
+  ],
+  "getContracts": [
+   {
+    "method": "GET",
+    "path": "/api/contracts/12",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    }
+   }
+  ],
+  "deliverContract": [
+   {
+    "method": "POST",
+    "path": "/api/contracts/deliver",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "slot": 1
+    }
+   }
+  ],
+  "getGarden": [
+   {
+    "method": "GET",
+    "path": "/api/garden/12",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    }
+   }
+  ],
+  "plantGarden": [
+   {
+    "method": "POST",
+    "path": "/api/garden/plant",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "plot": "herb1",
+     "seedId": "seed_x",
+     "compost": true
+    }
+   }
+  ],
+  "harvestGarden": [
+   {
+    "method": "POST",
+    "path": "/api/garden/harvest",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "plot": "herb1"
+    }
+   }
+  ],
+  "getLabor": [
+   {
+    "method": "GET",
+    "path": "/api/labor/12",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    }
+   }
+  ],
+  "assignLabor": [
+   {
+    "method": "POST",
+    "path": "/api/labor/assign",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "slot": 0,
+     "nodeType": "copper_vein"
+    }
+   }
+  ],
+  "assignLabor_null": [
+   {
+    "method": "POST",
+    "path": "/api/labor/assign",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "slot": 0,
+     "nodeType": null
+    }
+   }
+  ],
+  "collectLabor": [
+   {
+    "method": "POST",
+    "path": "/api/labor/collect",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "slot": 0
+    }
+   }
+  ],
+  "getCosmetics": [
+   {
+    "method": "GET",
+    "path": "/api/cosmetics/12",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    }
+   }
+  ],
+  "selectCosmetics": [
+   {
+    "method": "POST",
+    "path": "/api/cosmetics/select",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "cape": null
+    }
+   }
+  ],
+  "adoptPet": [
+   {
+    "method": "POST",
+    "path": "/api/cosmetics/adopt",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "petId": "raven"
+    }
+   }
+  ],
+  "getVault": [
+   {
+    "method": "GET",
+    "path": "/api/vault/12",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    }
+   }
+  ],
+  "vaultDeposit": [
+   {
+    "method": "POST",
+    "path": "/api/vault/deposit",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "bagSlot": 3,
+     "quantity": 2
+    }
+   }
+  ],
+  "vaultDeposit_noqty": [
+   {
+    "method": "POST",
+    "path": "/api/vault/deposit",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "bagSlot": 3
+    }
+   }
+  ],
+  "vaultWithdraw": [
+   {
+    "method": "POST",
+    "path": "/api/vault/withdraw",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "vaultSlot": 3,
+     "quantity": 2
+    }
+   }
+  ],
+  "vaultDepositAll": [
+   {
+    "method": "POST",
+    "path": "/api/vault/deposit-all",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "kind": "materials",
+     "exceptSlots": [
+      0,
+      1
+     ]
+    }
+   }
+  ],
+  "vaultSort": [
+   {
+    "method": "POST",
+    "path": "/api/vault/sort",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12
+    }
+   }
+  ],
+  "salvageGear": [
+   {
+    "method": "POST",
+    "path": "/api/salvage",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "slots": [
+      1,
+      2
+     ]
+    }
+   }
+  ],
+  "reforgeQuote": [
+   {
+    "method": "POST",
+    "path": "/api/reforge/quote",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12
+    }
+   }
+  ],
+  "reforgeAffix": [
+   {
+    "method": "POST",
+    "path": "/api/reforge",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "slot_index": 3,
+     "affix_index": 1,
+     "expect_cost": 500
+    }
+   }
+  ],
+  "bossKeyStatus": [
+   {
+    "method": "POST",
+    "path": "/api/boss-key/status",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12
+    }
+   }
+  ],
+  "bossKeySummon": [
+   {
+    "method": "POST",
+    "path": "/api/boss-key/summon",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "boss": "warden"
+    }
+   }
+  ],
+  "bossKeyRefund": [
+   {
+    "method": "POST",
+    "path": "/api/boss-key/refund",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "boss": "warden"
+    }
+   }
+  ],
+  "bossKeyClaim": [
+   {
+    "method": "POST",
+    "path": "/api/boss-key/claim",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "characterId": 12,
+     "boss": "warden",
+     "discipline": "gravecaller",
+     "level": 30
+    }
+   }
+  ],
+  "sendBugReport": [
+   {
+    "method": "POST",
+    "path": "/api/bug-reports",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    },
+    "body": {
+     "category": "bug",
+     "message": "it broke badly",
+     "characterId": 12,
+     "context": {
+      "a": 1
+     }
+    }
+   }
+  ],
+  "getMyBugReports": [
+   {
+    "method": "GET",
+    "path": "/api/bug-reports/mine",
+    "headers": {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer TESTJWT"
+    }
+   }
+  ]
+ },
+ "scenarios": [
+  {
+   "id": "login_ok",
+   "call": "login",
+   "reply": {
+    "status": 200,
+    "body": {
+     "token": "abc"
+    }
+   },
+   "token": false,
+   "outcome": {
+    "ok": true,
+    "value": {
+     "token": "abc"
+    }
+   },
+   "notices": []
+  },
+  {
+   "id": "login_401",
+   "call": "login",
+   "reply": {
+    "status": 401,
+    "body": {
+     "error": "Invalid username or password."
+    }
+   },
+   "token": false,
+   "outcome": {
+    "ok": false,
+    "name": "ApiError",
+    "message": "Invalid username or password.",
+    "status": 401
+   },
+   "notices": []
+  },
+  {
+   "id": "login_429",
+   "call": "login",
+   "reply": {
+    "status": 429
+   },
+   "token": false,
+   "outcome": {
+    "ok": false,
+    "name": "ApiError",
+    "message": "Request failed: 429",
+    "status": 429
+   },
+   "notices": []
+  },
+  {
+   "id": "login_500_nojson",
+   "call": "login",
+   "reply": {
+    "status": 500
+   },
+   "token": false,
+   "outcome": {
+    "ok": false,
+    "name": "ApiError",
+    "message": "Request failed: 500",
+    "status": 500
+   },
+   "notices": []
+  },
+  {
+   "id": "login_network",
+   "call": "login",
+   "reply": {
+    "status": 0,
+    "throws": true
+   },
+   "token": false,
+   "outcome": {
+    "ok": false,
+    "name": "ApiError",
+    "message": "Cannot reach server — check your connection",
+    "status": 0
+   },
+   "notices": []
+  },
+  {
+   "id": "inv_unauth",
+   "call": "getCharacter",
+   "reply": {
+    "status": 200,
+    "body": {
+     "id": 1
+    }
+   },
+   "token": false,
+   "outcome": {
+    "ok": false,
+    "name": "ApiError",
+    "message": "Not authenticated",
+    "status": 401
+   },
+   "notices": []
+  },
+  {
+   "id": "inv_success_false",
+   "call": "getProfessions",
+   "reply": {
+    "status": 200,
+    "body": {
+     "success": false,
+     "error": "no way"
+    }
+   },
+   "token": true,
+   "outcome": {
+    "ok": false,
+    "name": "ApiError",
+    "message": "no way",
+    "status": 200
+   },
+   "notices": []
+  },
+  {
+   "id": "inv_success_false_noerr",
+   "call": "getProfessions",
+   "reply": {
+    "status": 200,
+    "body": {
+     "success": false
+    }
+   },
+   "token": true,
+   "outcome": {
+    "ok": false,
+    "name": "ApiError",
+    "message": "Unknown server error",
+    "status": 200
+   },
+   "notices": []
+  },
+  {
+   "id": "inv_403",
+   "call": "getProfessions",
+   "reply": {
+    "status": 403,
+    "body": {
+     "success": false,
+     "error": "character not found or not owned by this account"
+    }
+   },
+   "token": true,
+   "outcome": {
+    "ok": false,
+    "name": "ApiError",
+    "message": "character not found or not owned by this account",
+    "status": 403
+   },
+   "notices": []
+  },
+  {
+   "id": "save_authority",
+   "call": "saveProgress",
+   "reply": {
+    "status": 200,
+    "body": {
+     "success": true,
+     "data": {
+      "saved": true
+     },
+     "authority": {
+      "message": "The server held some XP back."
+     }
+    }
+   },
+   "token": true,
+   "outcome": {
+    "ok": true,
+    "value": {
+     "saved": true
+    }
+   },
+   "notices": [
+    "The server held some XP back."
+   ]
+  },
+  {
+   "id": "gather_reply",
+   "call": "gather",
+   "reply": {
+    "status": 200,
+    "body": {
+     "success": true,
+     "data": {
+      "node": "copper_vein",
+      "accepted": 3,
+      "items": [
+       {
+        "itemId": "copper_ore",
+        "qty": 3
+       }
+      ]
+     }
+    }
+   },
+   "token": true,
+   "outcome": {
+    "ok": true,
+    "value": {
+     "node": "copper_vein",
+     "accepted": 3,
+     "items": [
+      {
+       "itemId": "copper_ore",
+       "qty": 3
+      }
+     ]
+    }
+   },
+   "notices": []
+  },
+  {
+   "id": "applyLoadout_fail",
+   "call": "applyLoadoutPreset",
+   "reply": {
+    "status": 200,
+    "body": {
+     "success": false,
+     "error": "That loadout is empty."
+    }
+   },
+   "token": true,
+   "outcome": {
+    "ok": false,
+    "name": "ApiError",
+    "message": "That loadout is empty.",
+    "status": 200
+   },
+   "notices": []
+  },
+  {
+   "id": "applyLoadout_ok",
+   "call": "applyLoadoutPreset",
+   "reply": {
+    "status": 200,
+    "body": {
+     "success": true,
+     "data": [],
+     "report": {
+      "skipped": []
+     },
+     "preset": {
+      "name": "x"
+     }
+    }
+   },
+   "token": true,
+   "outcome": {
+    "ok": true,
+    "value": {
+     "slots": [],
+     "report": {
+      "skipped": []
+     },
+     "preset": {
+      "name": "x"
+     }
+    }
+   },
+   "notices": []
+  },
+  {
+   "id": "necro_ok",
+   "call": "necro_get",
+   "reply": {
+    "status": 200,
+    "body": {
+     "success": true,
+     "data": {
+      "progress": {
+       "kills": 4
+      },
+      "gold": 9
+     }
+    }
+   },
+   "token": true,
+   "outcome": {
+    "ok": true,
+    "value": {
+     "progress": {
+      "kills": 4
+     },
+     "gold": 9
+    }
+   },
+   "notices": []
+  },
+  {
+   "id": "necro_404",
+   "call": "necro_get",
+   "reply": {
+    "status": 404,
+    "body": {
+     "error": "Not found"
+    }
+   },
+   "token": true,
+   "outcome": {
+    "ok": false,
+    "name": "ApiError",
+    "message": "Not found",
+    "status": 404
+   },
+   "notices": []
+  },
+  {
+   "id": "save_409_replaced",
+   "call": "saveProgress",
+   "reply": {
+    "status": 409,
+    "body": {
+     "success": false,
+     "error": "This account was opened somewhere else.",
+     "code": "session_replaced"
+    }
+   },
+   "token": true,
+   "outcome": {
+    "ok": false,
+    "name": "ApiError",
+    "message": "This account was opened somewhere else.",
+    "status": 409
+   },
+   "notices": []
+  },
+  {
+   "id": "after_replaced_write_blocked",
+   "call": "saveProgress",
+   "reply": {
+    "status": 200,
+    "body": {
+     "success": true,
+     "data": {}
+    }
+   },
+   "token": true,
+   "outcome": {
+    "ok": false,
+    "name": "ApiError",
+    "message": "This account was opened somewhere else. This window stopped saving.",
+    "status": 409
+   },
+   "notices": []
+  },
+  {
+   "id": "after_replaced_read_allowed",
+   "call": "getProfessions",
+   "reply": {
+    "status": 200,
+    "body": {
+     "success": true,
+     "data": [
+      {
+       "profession_id": "mining",
+       "skill_level": 2,
+       "skill_xp": 5
+      }
+     ]
+    }
+   },
+   "token": true,
+   "outcome": {
+    "ok": true,
+    "value": [
+     {
+      "profession_id": "mining",
+      "skill_level": 2,
+      "skill_xp": 5
+     }
+    ]
+   },
+   "notices": []
+  }
+ ],
+ "releaseCases": [
+  {
+   "text": "abc1234 2026-10-04T10:00:00Z",
+   "out": "abc1234"
+  },
+  {
+   "text": "ABCDEF0123456789\n",
+   "out": "abcdef0123456789"
+  },
+  {
+   "text": "",
+   "out": null
+  },
+  {
+   "text": "zzz",
+   "out": null
+  },
+  {
+   "text": "abc12 x",
+   "out": null
+  },
+  {
+   "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa t",
+   "out": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+   "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "out": null
+  }
+ ],
+ "boolPref": [
+  {
+   "local": true,
+   "remote": null,
+   "key": "k",
+   "out": {
+    "value": true,
+    "pushUp": false
+   }
+  },
+  {
+   "local": false,
+   "remote": null,
+   "key": "k",
+   "out": {
+    "value": false,
+    "pushUp": false
+   }
+  },
+  {
+   "local": true,
+   "remote": {
+    "k": false
+   },
+   "key": "k",
+   "out": {
+    "value": false,
+    "pushUp": false
+   }
+  },
+  {
+   "local": false,
+   "remote": {
+    "k": true
+   },
+   "key": "k",
+   "out": {
+    "value": true,
+    "pushUp": false
+   }
+  },
+  {
+   "local": true,
+   "remote": {},
+   "key": "k",
+   "out": {
+    "value": true,
+    "pushUp": true
+   }
+  },
+  {
+   "local": false,
+   "remote": {},
+   "key": "k",
+   "out": {
+    "value": false,
+    "pushUp": false
+   }
+  },
+  {
+   "local": true,
+   "remote": {
+    "k": "yes"
+   },
+   "key": "k",
+   "out": {
+    "value": true,
+    "pushUp": true
+   }
+  }
+ ],
+ "replacedCases": [
+  {
+   "status": 409,
+   "body": {
+    "code": "session_replaced"
+   },
+   "out": true
+  },
+  {
+   "status": 409,
+   "body": {
+    "code": "x"
+   },
+   "out": false
+  },
+  {
+   "status": 409,
+   "body": null,
+   "out": false
+  },
+  {
+   "status": 500,
+   "body": {
+    "code": "session_replaced"
+   },
+   "out": false
+  },
+  {
+   "status": 409,
+   "body": "str",
+   "out": false
+  }
+ ],
+ "claim": {
+  "ok": "NEW",
+  "req": [
+   {
+    "method": "POST",
+    "path": "/api/session/claim",
+    "headers": {
+     "Authorization": "Bearer OLDJWT"
+    }
+   }
+  ],
+  "fail": null
+ },
+ "probeReq": [
+  {
+   "method": "GET",
+   "path": "/api/session",
+   "headers": {
+    "Authorization": "Bearer TOK"
+   }
+  }
+ ],
+ "killReporter": [
+  {
+   "label": "start",
+   "hasPending": false
+  },
+  {
+   "label": "open",
+   "hasPending": true
+  },
+  {
+   "label": "seal1",
+   "hasPending": true,
+   "crowded": false,
+   "batches": [
+    {
+     "seq": 1000000,
+     "groups": [
+      {
+       "area": "hollow",
+       "def": "ghoul",
+       "level": 3,
+       "elite": false,
+       "tier": 1,
+       "diff": "medium",
+       "rank": 0,
+       "xpMult": 1.23,
+       "goldMult": 1,
+       "shardMult": 1,
+       "n": 2
+      },
+      {
+       "area": "hollow",
+       "def": "ghoul",
+       "level": 3,
+       "elite": true,
+       "tier": 1,
+       "diff": "medium",
+       "rank": 0,
+       "xpMult": 1.23,
+       "goldMult": 1,
+       "shardMult": 1,
+       "n": 1
+      },
+      {
+       "area": "hollow",
+       "def": "ghoul",
+       "level": 3,
+       "elite": false,
+       "tier": 1,
+       "diff": "medium",
+       "rank": 0,
+       "xpMult": 1.24,
+       "goldMult": 1,
+       "shardMult": 1,
+       "n": 1
+      }
+     ],
+     "bosses": [
+      {
+       "boss": "warden",
+       "tier": 1,
+       "diff": "medium",
+       "first": true,
+       "summon": 4,
+       "n": 2
+      }
+     ],
+     "floors": [
+      {
+       "depth": 2,
+       "mult": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "seal2_clock_back",
+   "hasPending": true,
+   "crowded": false,
+   "batches": [
+    {
+     "seq": 1000000,
+     "groups": [
+      {
+       "area": "hollow",
+       "def": "ghoul",
+       "level": 3,
+       "elite": false,
+       "tier": 1,
+       "diff": "medium",
+       "rank": 0,
+       "xpMult": 1.23,
+       "goldMult": 1,
+       "shardMult": 1,
+       "n": 2
+      },
+      {
+       "area": "hollow",
+       "def": "ghoul",
+       "level": 3,
+       "elite": true,
+       "tier": 1,
+       "diff": "medium",
+       "rank": 0,
+       "xpMult": 1.23,
+       "goldMult": 1,
+       "shardMult": 1,
+       "n": 1
+      },
+      {
+       "area": "hollow",
+       "def": "ghoul",
+       "level": 3,
+       "elite": false,
+       "tier": 1,
+       "diff": "medium",
+       "rank": 0,
+       "xpMult": 1.24,
+       "goldMult": 1,
+       "shardMult": 1,
+       "n": 1
+      }
+     ],
+     "bosses": [
+      {
+       "boss": "warden",
+       "tier": 1,
+       "diff": "medium",
+       "first": true,
+       "summon": 4,
+       "n": 2
+      }
+     ],
+     "floors": [
+      {
+       "depth": 2,
+       "mult": 1
+      }
+     ]
+    },
+    {
+     "seq": 1000001,
+     "groups": [
+      {
+       "area": "hollow",
+       "def": "ghoul",
+       "level": 9,
+       "elite": false,
+       "tier": 1,
+       "diff": "medium",
+       "rank": 0,
+       "xpMult": 1.23,
+       "goldMult": 1,
+       "shardMult": 1,
+       "n": 1
+      }
+     ],
+     "bosses": [],
+     "floors": []
+    }
+   ]
+  },
+  {
+   "label": "after_ack",
+   "hasPending": true,
+   "crowded": false,
+   "batches": [
+    {
+     "seq": 1000001,
+     "groups": [
+      {
+       "area": "hollow",
+       "def": "ghoul",
+       "level": 9,
+       "elite": false,
+       "tier": 1,
+       "diff": "medium",
+       "rank": 0,
+       "xpMult": 1.23,
+       "goldMult": 1,
+       "shardMult": 1,
+       "n": 1
+      }
+     ],
+     "bosses": [],
+     "floors": []
+    }
+   ]
+  },
+  {
+   "label": "overflow_drop_oldest",
+   "hasPending": true,
+   "crowded": false,
+   "batches": [
+    {
+     "seq": 1000004,
+     "groups": [
+      {
+       "area": "hollow",
+       "def": "ghoul",
+       "level": 22,
+       "elite": false,
+       "tier": 1,
+       "diff": "medium",
+       "rank": 0,
+       "xpMult": 1.23,
+       "goldMult": 1,
+       "shardMult": 1,
+       "n": 1
+      }
+     ],
+     "bosses": [],
+     "floors": []
+    },
+    {
+     "seq": 1000005,
+     "groups": [
+      {
+       "area": "hollow",
+       "def": "ghoul",
+       "level": 23,
+       "elite": false,
+       "tier": 1,
+       "diff": "medium",
+       "rank": 0,
+       "xpMult": 1.23,
+       "goldMult": 1,
+       "shardMult": 1,
+       "n": 1
+      }
+     ],
+     "bosses": [],
+     "floors": []
+    },
+    {
+     "seq": 1000006,
+     "groups": [
+      {
+       "area": "hollow",
+       "def": "ghoul",
+       "level": 24,
+       "elite": false,
+       "tier": 1,
+       "diff": "medium",
+       "rank": 0,
+       "xpMult": 1.23,
+       "goldMult": 1,
+       "shardMult": 1,
+       "n": 1
+      }
+     ],
+     "bosses": [],
+     "floors": []
+    },
+    {
+     "seq": 1000007,
+     "groups": [
+      {
+       "area": "hollow",
+       "def": "ghoul",
+       "level": 25,
+       "elite": false,
+       "tier": 1,
+       "diff": "medium",
+       "rank": 0,
+       "xpMult": 1.23,
+       "goldMult": 1,
+       "shardMult": 1,
+       "n": 1
+      }
+     ],
+     "bosses": [],
+     "floors": []
+    }
+   ]
+  },
+  {
+   "label": "discarded",
+   "hasPending": false
+  },
+  {
+   "label": "crowded",
+   "before": false,
+   "after": true
+  }
+ ],
+ "sessionReplacedMessage": "This account was opened somewhere else. This window stopped saving."
+}

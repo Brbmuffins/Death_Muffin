@@ -1,0 +1,36 @@
+{
+ "DIFFICULTY_ORDER": [
+  "easy",
+  "medium",
+  "hard"
+ ],
+ "DIFFICULTIES": {
+  "easy": {
+   "id": "easy",
+   "name": "Easy",
+   "blurb": "The dead hit softer and fall faster. Less gold and experience.",
+   "enemyHpMult": 0.75,
+   "enemyDamageMult": 0.3,
+   "rewardMult": 0.75,
+   "eliteBonus": 0
+  },
+  "medium": {
+   "id": "medium",
+   "name": "Medium",
+   "blurb": "The intended balance.",
+   "enemyHpMult": 1,
+   "enemyDamageMult": 1,
+   "rewardMult": 1,
+   "eliteBonus": 0
+  },
+  "hard": {
+   "id": "hard",
+   "name": "Hard",
+   "blurb": "Tougher, deadlier dead and more elites. More gold and experience.",
+   "enemyHpMult": 1.2,
+   "enemyDamageMult": 1.3,
+   "rewardMult": 1.3,
+   "eliteBonus": 0.02
+  }
+ }
+}

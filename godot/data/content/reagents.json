@@ -1,0 +1,1265 @@
+{
+ "REAGENT_ITEMS": {
+  "reagent_grave_dust": {
+   "name": "Grave Dust",
+   "rarity": "common",
+   "sell": 2,
+   "lore": "Sifted from what the dead leave behind. Take it to the Great Cauldron in the Alchemist's Wing: four dust brew a Grave-Dust Tonic, no garden needed.",
+   "stack": 250,
+   "art": "dust"
+  },
+  "reagent_wraith_ectoplasm": {
+   "name": "Wraith Ectoplasm",
+   "rarity": "uncommon",
+   "sell": 8,
+   "lore": "Cold, weightless and faintly singing. Choir Wraiths and Weeping Seraphs shed it when they unravel. Brews into haste and insight.",
+   "stack": 250,
+   "art": "ecto"
+  },
+  "reagent_plague_bile": {
+   "name": "Plague Bile",
+   "rarity": "rare",
+   "sell": 16,
+   "lore": "Bottled from the Cloister dead, still green and still spoiling. The base of the lifesteal and rot-proof brews.",
+   "stack": 250,
+   "art": "bile"
+  },
+  "reagent_cinder_ash": {
+   "name": "Cinder Ash",
+   "rarity": "rare",
+   "sell": 16,
+   "lore": "Grey ash with a red heart that never cools. Falls from the Pyre; brews into fire-proofing.",
+   "stack": 250,
+   "art": "ash"
+  },
+  "herb_rot_cap": {
+   "name": "Rot-cap",
+   "rarity": "rare",
+   "sell": 24,
+   "lore": "A pale mushroom that grows out of the Cloister flagstones. Forage it there, or plant its seed in the Acre (Gardening 35).",
+   "stack": 250,
+   "art": "rotcap"
+  },
+  "seed_rot_cap": {
+   "name": "Rot-cap Seed",
+   "rarity": "rare",
+   "sell": 10,
+   "lore": "Plant it in a Mourning Bed (Grave Gardening 35). Foraged in the Plague Cloister.",
+   "stack": 250,
+   "art": "seed_rotcap"
+  },
+  "herb_ash_bloom": {
+   "name": "Ash-bloom",
+   "rarity": "rare",
+   "sell": 40,
+   "lore": "A black flower that only opens in cinders. Forage it in the Pyre, or plant its seed in the Acre (Gardening 50).",
+   "stack": 250,
+   "art": "ashbloom"
+  },
+  "seed_ash_bloom": {
+   "name": "Ash-bloom Seed",
+   "rarity": "rare",
+   "sell": 14,
+   "lore": "Plant it in a Mourning Bed (Grave Gardening 50). Foraged in the Cinder Pyre.",
+   "stack": 250,
+   "art": "seed_ashbloom"
+  },
+  "ichor_gravedigger": {
+   "name": "Gravedigger Ichor",
+   "rarity": "epic",
+   "sell": 60,
+   "lore": "The Gravedigger King's blood, black as churned earth. Guaranteed from his spoils; top-tier elixirs need it.",
+   "stack": 250,
+   "art": "ichor_earth"
+  },
+  "ichor_abbess": {
+   "name": "Abbess Ichor",
+   "rarity": "epic",
+   "sell": 60,
+   "lore": "Marrow-pale and never quite still. Guaranteed from the Bone Abbess; top-tier elixirs need it.",
+   "stack": 250,
+   "art": "ichor_bone"
+  },
+  "ichor_congregation": {
+   "name": "Congregation Ichor",
+   "rarity": "epic",
+   "sell": 60,
+   "lore": "Drowned-blue, and it hums a hymn. Guaranteed from the Drowned Congregation; top-tier elixirs need it.",
+   "stack": 250,
+   "art": "ichor_water"
+  },
+  "ichor_prelate": {
+   "name": "Prelate Ichor",
+   "rarity": "epic",
+   "sell": 60,
+   "lore": "Bell-bronze and heavy. Guaranteed from the Bell-Sworn Prelate; top-tier elixirs need it.",
+   "stack": 250,
+   "art": "ichor_bell"
+  },
+  "ichor_plague_saint": {
+   "name": "Plague Saint Ichor",
+   "rarity": "epic",
+   "sell": 60,
+   "lore": "The Saint's own blight, sweet and green. Guaranteed from the Plague Saint; top-tier elixirs need it.",
+   "stack": 250,
+   "art": "ichor_rot"
+  },
+  "ichor_regent": {
+   "name": "Regent Ichor",
+   "rarity": "epic",
+   "sell": 60,
+   "lore": "Liquid ember that does not burn the glass. Guaranteed from the Cinder Regent; top-tier elixirs need it.",
+   "stack": 250,
+   "art": "ichor_fire"
+  }
+ },
+ "BOSS_ICHOR": {
+  "gravedigger": "ichor_gravedigger",
+  "abbess": "ichor_abbess",
+  "congregation": "ichor_congregation",
+  "prelate": "ichor_prelate",
+  "saint": "ichor_plague_saint",
+  "regent": "ichor_regent",
+  "mire": "ichor_mire"
+ },
+ "ELITE_REAGENT_MULT": 4,
+ "AREA_REAGENT_DROPS": {
+  "graves": [
+   {
+    "item": "reagent_grave_dust",
+    "chance": 0.01,
+    "qty": [
+     1,
+     2
+    ]
+   }
+  ],
+  "warren": [
+   {
+    "item": "reagent_grave_dust",
+    "chance": 0.012,
+    "qty": [
+     1,
+     2
+    ]
+   }
+  ],
+  "cloister": [
+   {
+    "item": "reagent_plague_bile",
+    "chance": 0.01,
+    "qty": [
+     1,
+     1
+    ]
+   }
+  ],
+  "pyre": [
+   {
+    "item": "reagent_cinder_ash",
+    "chance": 0.012,
+    "qty": [
+     1,
+     1
+    ]
+   }
+  ]
+ },
+ "ENEMY_REAGENT_DROPS": {
+  "wraith": [
+   {
+    "item": "reagent_wraith_ectoplasm",
+    "chance": 0.1,
+    "qty": [
+     1,
+     1
+    ]
+   }
+  ],
+  "seraph": [
+   {
+    "item": "reagent_wraith_ectoplasm",
+    "chance": 0.08,
+    "qty": [
+     1,
+     1
+    ]
+   }
+  ]
+ },
+ "REAGENT_BREW_LIST": [
+  [
+   "tonic_grave_dust",
+   {
+    "name": "Grave-Dust Tonic",
+    "rarity": "common",
+    "sell": 6,
+    "lore": "Tonic. +20% essence regeneration for 60 seconds. Four pinches of grave dust in black water: the first brew anyone can make from what the dead drop.",
+    "def": {
+     "slot": "tonic",
+     "effects": [
+      {
+       "kind": "essence",
+       "value": 0.2
+      }
+     ],
+     "seconds": 60,
+     "label": "Dust-breathed",
+     "color": 14208957,
+     "glyph": "∴"
+    },
+    "recipe": {
+     "id": "brew_grave_dust_tonic",
+     "name": "Brew Grave-Dust Tonic",
+     "level": 1,
+     "qty": 2,
+     "ings": [
+      [
+       "reagent_grave_dust",
+       4
+      ]
+     ]
+    },
+    "art": "flask_tonic_dust"
+   }
+  ],
+  [
+   "elixir_wraithquick",
+   {
+    "name": "Wraithquick Elixir",
+    "rarity": "uncommon",
+    "sell": 28,
+    "lore": "Elixir. +15% cooldown recovery for 45 seconds. Ectoplasm sings in the glass, and your rites come back quicker for it.",
+    "def": {
+     "slot": "elixir",
+     "effects": [
+      {
+       "kind": "haste",
+       "value": 0.15
+      }
+     ],
+     "seconds": 45,
+     "label": "Wraithquick",
+     "color": 9417983,
+     "glyph": "⇶"
+    },
+    "recipe": {
+     "id": "brew_wraithquick",
+     "name": "Brew Wraithquick Elixir",
+     "level": 10,
+     "qty": 1,
+     "ings": [
+      [
+       "reagent_wraith_ectoplasm",
+       2
+      ],
+      [
+       "reagent_grave_dust",
+       2
+      ]
+     ]
+    },
+    "art": "flask_haste"
+   }
+  ],
+  [
+   "tonic_graveluck",
+   {
+    "name": "Grave-Luck Tonic",
+    "rarity": "uncommon",
+    "sell": 36,
+    "lore": "Tonic. +15% item drop chance for 60 seconds. Nightshade and a fistful of grave dust: the dead hold on to their things a little less tightly.",
+    "def": {
+     "slot": "tonic",
+     "effects": [
+      {
+       "kind": "fortune",
+       "value": 0.15
+      }
+     ],
+     "seconds": 60,
+     "label": "Grave-lucky",
+     "color": 15254362,
+     "glyph": "◆"
+    },
+    "recipe": {
+     "id": "brew_graveluck",
+     "name": "Brew Grave-Luck Tonic",
+     "level": 22,
+     "qty": 1,
+     "ings": [
+      [
+       "reagent_grave_dust",
+       6
+      ],
+      [
+       "herb_nightshade",
+       2
+      ]
+     ]
+    },
+    "art": "flask_fortune"
+   }
+  ],
+  [
+   "tonic_insight",
+   {
+    "name": "Sexton's Insight",
+    "rarity": "uncommon",
+    "sell": 40,
+    "lore": "Tonic. +15% experience from kills for 60 seconds. Ectoplasm and mourning moss steeped together; every death teaches a little more.",
+    "def": {
+     "slot": "tonic",
+     "effects": [
+      {
+       "kind": "wisdom",
+       "value": 0.15
+      }
+     ],
+     "seconds": 60,
+     "label": "Insightful",
+     "color": 15128319,
+     "glyph": "✧"
+    },
+    "recipe": {
+     "id": "brew_insight",
+     "name": "Brew Sexton's Insight",
+     "level": 28,
+     "qty": 1,
+     "ings": [
+      [
+       "reagent_wraith_ectoplasm",
+       3
+      ],
+      [
+       "herb_mourning_moss",
+       3
+      ]
+     ]
+    },
+    "art": "flask_wisdom"
+   }
+  ],
+  [
+   "elixir_leechblood",
+   {
+    "name": "Leechblood Elixir",
+    "rarity": "rare",
+    "sell": 52,
+    "lore": "Elixir. Heal 4% of the damage you deal for 45 seconds (up to three targets per hit, at most 1.5% of your health per hit). Plague bile that remembers being alive.",
+    "def": {
+     "slot": "elixir",
+     "effects": [
+      {
+       "kind": "lifesteal",
+       "value": 0.04
+      }
+     ],
+     "seconds": 45,
+     "label": "Leechblood",
+     "color": 12728904,
+     "glyph": "❖"
+    },
+    "recipe": {
+     "id": "brew_leechblood",
+     "name": "Brew Leechblood Elixir",
+     "level": 38,
+     "qty": 1,
+     "ings": [
+      [
+       "reagent_plague_bile",
+       2
+      ],
+      [
+       "reagent_grave_dust",
+       3
+      ]
+     ]
+    },
+    "art": "flask_lifesteal"
+   }
+  ],
+  [
+   "elixir_rotproof",
+   {
+    "name": "Rot-Proof Elixir",
+    "rarity": "rare",
+    "sell": 48,
+    "lore": "Elixir. 40% less rot and plague damage for 75 seconds (adds to other wards; the total caps at 60%). Bile and rot-cap, taken before the Plague Saint.",
+    "def": {
+     "slot": "elixir",
+     "effects": [
+      {
+       "kind": "resist_rot",
+       "value": 0.4
+      }
+     ],
+     "seconds": 75,
+     "label": "Rot-proof",
+     "color": 13099082,
+     "glyph": "✥"
+    },
+    "recipe": {
+     "id": "brew_rotproof",
+     "name": "Brew Rot-Proof Elixir",
+     "level": 42,
+     "qty": 1,
+     "ings": [
+      [
+       "reagent_plague_bile",
+       1
+      ],
+      [
+       "herb_rot_cap",
+       3
+      ]
+     ]
+    },
+    "art": "flask_rotproof"
+   }
+  ],
+  [
+   "elixir_cinderskin",
+   {
+    "name": "Cinderskin Elixir",
+    "rarity": "rare",
+    "sell": 60,
+    "lore": "Elixir. 40% less fire damage for 75 seconds (adds to other wards; the total caps at 60%). Cinder ash and ash-bloom: walk the Pyre as if it were a hearth.",
+    "def": {
+     "slot": "elixir",
+     "effects": [
+      {
+       "kind": "resist_fire",
+       "value": 0.4
+      }
+     ],
+     "seconds": 75,
+     "label": "Cinderskin",
+     "color": 16742954,
+     "glyph": "▲"
+    },
+    "recipe": {
+     "id": "brew_cinderskin",
+     "name": "Brew Cinderskin Elixir",
+     "level": 52,
+     "qty": 1,
+     "ings": [
+      [
+       "reagent_cinder_ash",
+       1
+      ],
+      [
+       "herb_ash_bloom",
+       3
+      ]
+     ]
+    },
+    "art": "flask_cinderskin"
+   }
+  ],
+  [
+   "tonic_ghostwalk",
+   {
+    "name": "Ghostwalk Tonic",
+    "rarity": "rare",
+    "sell": 90,
+    "lore": "Tonic. +30% essence regeneration and +10% move speed for 75 seconds. Ectoplasm and wolfsbane: you drift more than you walk.",
+    "def": {
+     "slot": "tonic",
+     "effects": [
+      {
+       "kind": "essence",
+       "value": 0.3
+      },
+      {
+       "kind": "speed",
+       "value": 0.1
+      }
+     ],
+     "seconds": 75,
+     "label": "Ghostwalking",
+     "color": 7332808,
+     "glyph": "≈"
+    },
+    "recipe": {
+     "id": "brew_ghostwalk",
+     "name": "Brew Ghostwalk Tonic",
+     "level": 62,
+     "qty": 1,
+     "ings": [
+      [
+       "reagent_wraith_ectoplasm",
+       4
+      ],
+      [
+       "herb_wolfsbane",
+       2
+      ]
+     ]
+    },
+    "art": "flask_ghostwalk"
+   }
+  ],
+  [
+   "elixir_bloodmoon",
+   {
+    "name": "Bloodmoon Elixir",
+    "rarity": "epic",
+    "sell": 200,
+    "lore": "Elixir. +20% spell damage and heal 6% of the damage you deal for 60 seconds. Two kings' ichor and plague bile, drunk under a red moon.",
+    "def": {
+     "slot": "elixir",
+     "effects": [
+      {
+       "kind": "damage",
+       "value": 0.2
+      },
+      {
+       "kind": "lifesteal",
+       "value": 0.06
+      }
+     ],
+     "seconds": 60,
+     "label": "Bloodmoon",
+     "color": 13652072,
+     "glyph": "◐"
+    },
+    "recipe": {
+     "id": "brew_bloodmoon",
+     "name": "Brew Bloodmoon Elixir",
+     "level": 70,
+     "qty": 1,
+     "ings": [
+      [
+       "ichor_gravedigger",
+       1
+      ],
+      [
+       "ichor_abbess",
+       1
+      ],
+      [
+       "reagent_plague_bile",
+       2
+      ]
+     ]
+    },
+    "art": "flask_bloodmoon"
+   }
+  ],
+  [
+   "elixir_hymnal",
+   {
+    "name": "Hymnal Elixir",
+    "rarity": "epic",
+    "sell": 170,
+    "lore": "Elixir. 15% less damage taken, 20% less rot and plague damage, and heal 3% of the damage you deal, for 75 seconds. The drowned hymn and the Saint's blight, made to cancel each other out.",
+    "def": {
+     "slot": "elixir",
+     "effects": [
+      {
+       "kind": "ward",
+       "value": 0.15
+      },
+      {
+       "kind": "resist_rot",
+       "value": 0.2
+      },
+      {
+       "kind": "lifesteal",
+       "value": 0.03
+      }
+     ],
+     "seconds": 75,
+     "label": "Hymnal",
+     "color": 12175615,
+     "glyph": "♱"
+    },
+    "recipe": {
+     "id": "brew_hymnal",
+     "name": "Brew Hymnal Elixir",
+     "level": 78,
+     "qty": 1,
+     "ings": [
+      [
+       "ichor_congregation",
+       1
+      ],
+      [
+       "ichor_plague_saint",
+       1
+      ],
+      [
+       "reagent_wraith_ectoplasm",
+       4
+      ]
+     ]
+    },
+    "art": "flask_hymnal"
+   }
+  ],
+  [
+   "elixir_regent",
+   {
+    "name": "Regent's Vigil Elixir",
+    "rarity": "epic",
+    "sell": 300,
+    "lore": "Elixir. +12% spell damage, 15% less damage taken and +10% cooldown recovery for 60 seconds. The Regent's ichor and the Prelate's, bound with cinder ash: the last word in elixirs.",
+    "def": {
+     "slot": "elixir",
+     "effects": [
+      {
+       "kind": "damage",
+       "value": 0.12
+      },
+      {
+       "kind": "ward",
+       "value": 0.15
+      },
+      {
+       "kind": "haste",
+       "value": 0.1
+      }
+     ],
+     "seconds": 60,
+     "label": "Regent's Vigil",
+     "color": 16761946,
+     "glyph": "♛"
+    },
+    "recipe": {
+     "id": "brew_regent_vigil",
+     "name": "Brew Regent's Vigil Elixir",
+     "level": 85,
+     "qty": 1,
+     "ings": [
+      [
+       "ichor_regent",
+       1
+      ],
+      [
+       "ichor_prelate",
+       1
+      ],
+      [
+       "reagent_cinder_ash",
+       3
+      ]
+     ]
+    },
+    "art": "flask_regent"
+   }
+  ]
+ ],
+ "REAGENT_BREWS": {
+  "tonic_grave_dust": {
+   "slot": "tonic",
+   "effects": [
+    {
+     "kind": "essence",
+     "value": 0.2
+    }
+   ],
+   "seconds": 60,
+   "label": "Dust-breathed",
+   "color": 14208957,
+   "glyph": "∴"
+  },
+  "elixir_wraithquick": {
+   "slot": "elixir",
+   "effects": [
+    {
+     "kind": "haste",
+     "value": 0.15
+    }
+   ],
+   "seconds": 45,
+   "label": "Wraithquick",
+   "color": 9417983,
+   "glyph": "⇶"
+  },
+  "tonic_graveluck": {
+   "slot": "tonic",
+   "effects": [
+    {
+     "kind": "fortune",
+     "value": 0.15
+    }
+   ],
+   "seconds": 60,
+   "label": "Grave-lucky",
+   "color": 15254362,
+   "glyph": "◆"
+  },
+  "tonic_insight": {
+   "slot": "tonic",
+   "effects": [
+    {
+     "kind": "wisdom",
+     "value": 0.15
+    }
+   ],
+   "seconds": 60,
+   "label": "Insightful",
+   "color": 15128319,
+   "glyph": "✧"
+  },
+  "elixir_leechblood": {
+   "slot": "elixir",
+   "effects": [
+    {
+     "kind": "lifesteal",
+     "value": 0.04
+    }
+   ],
+   "seconds": 45,
+   "label": "Leechblood",
+   "color": 12728904,
+   "glyph": "❖"
+  },
+  "elixir_rotproof": {
+   "slot": "elixir",
+   "effects": [
+    {
+     "kind": "resist_rot",
+     "value": 0.4
+    }
+   ],
+   "seconds": 75,
+   "label": "Rot-proof",
+   "color": 13099082,
+   "glyph": "✥"
+  },
+  "elixir_cinderskin": {
+   "slot": "elixir",
+   "effects": [
+    {
+     "kind": "resist_fire",
+     "value": 0.4
+    }
+   ],
+   "seconds": 75,
+   "label": "Cinderskin",
+   "color": 16742954,
+   "glyph": "▲"
+  },
+  "tonic_ghostwalk": {
+   "slot": "tonic",
+   "effects": [
+    {
+     "kind": "essence",
+     "value": 0.3
+    },
+    {
+     "kind": "speed",
+     "value": 0.1
+    }
+   ],
+   "seconds": 75,
+   "label": "Ghostwalking",
+   "color": 7332808,
+   "glyph": "≈"
+  },
+  "elixir_bloodmoon": {
+   "slot": "elixir",
+   "effects": [
+    {
+     "kind": "damage",
+     "value": 0.2
+    },
+    {
+     "kind": "lifesteal",
+     "value": 0.06
+    }
+   ],
+   "seconds": 60,
+   "label": "Bloodmoon",
+   "color": 13652072,
+   "glyph": "◐"
+  },
+  "elixir_hymnal": {
+   "slot": "elixir",
+   "effects": [
+    {
+     "kind": "ward",
+     "value": 0.15
+    },
+    {
+     "kind": "resist_rot",
+     "value": 0.2
+    },
+    {
+     "kind": "lifesteal",
+     "value": 0.03
+    }
+   ],
+   "seconds": 75,
+   "label": "Hymnal",
+   "color": 12175615,
+   "glyph": "♱"
+  },
+  "elixir_regent": {
+   "slot": "elixir",
+   "effects": [
+    {
+     "kind": "damage",
+     "value": 0.12
+    },
+    {
+     "kind": "ward",
+     "value": 0.15
+    },
+    {
+     "kind": "haste",
+     "value": 0.1
+    }
+   ],
+   "seconds": 60,
+   "label": "Regent's Vigil",
+   "color": 16761946,
+   "glyph": "♛"
+  }
+ },
+ "REAGENT_BREW_ITEMS": {
+  "tonic_grave_dust": {
+   "name": "Grave-Dust Tonic",
+   "rarity": "common",
+   "sell": 6,
+   "lore": "Tonic. +20% essence regeneration for 60 seconds. Four pinches of grave dust in black water: the first brew anyone can make from what the dead drop.",
+   "stack": 99,
+   "stat": {
+    "value": 0.2,
+    "effect": "essence_regen",
+    "duration": 60
+   },
+   "art": "flask_tonic_dust"
+  },
+  "elixir_wraithquick": {
+   "name": "Wraithquick Elixir",
+   "rarity": "uncommon",
+   "sell": 28,
+   "lore": "Elixir. +15% cooldown recovery for 45 seconds. Ectoplasm sings in the glass, and your rites come back quicker for it.",
+   "stack": 99,
+   "stat": {
+    "value": 0.15,
+    "effect": "cooldown_rate",
+    "duration": 45
+   },
+   "art": "flask_haste"
+  },
+  "tonic_graveluck": {
+   "name": "Grave-Luck Tonic",
+   "rarity": "uncommon",
+   "sell": 36,
+   "lore": "Tonic. +15% item drop chance for 60 seconds. Nightshade and a fistful of grave dust: the dead hold on to their things a little less tightly.",
+   "stack": 99,
+   "stat": {
+    "value": 0.15,
+    "effect": "drop_amp",
+    "duration": 60
+   },
+   "art": "flask_fortune"
+  },
+  "tonic_insight": {
+   "name": "Sexton's Insight",
+   "rarity": "uncommon",
+   "sell": 40,
+   "lore": "Tonic. +15% experience from kills for 60 seconds. Ectoplasm and mourning moss steeped together; every death teaches a little more.",
+   "stack": 99,
+   "stat": {
+    "value": 0.15,
+    "effect": "xp_amp",
+    "duration": 60
+   },
+   "art": "flask_wisdom"
+  },
+  "elixir_leechblood": {
+   "name": "Leechblood Elixir",
+   "rarity": "rare",
+   "sell": 52,
+   "lore": "Elixir. Heal 4% of the damage you deal for 45 seconds (up to three targets per hit, at most 1.5% of your health per hit). Plague bile that remembers being alive.",
+   "stack": 99,
+   "stat": {
+    "value": 0.04,
+    "effect": "lifesteal",
+    "duration": 45
+   },
+   "art": "flask_lifesteal"
+  },
+  "elixir_rotproof": {
+   "name": "Rot-Proof Elixir",
+   "rarity": "rare",
+   "sell": 48,
+   "lore": "Elixir. 40% less rot and plague damage for 75 seconds (adds to other wards; the total caps at 60%). Bile and rot-cap, taken before the Plague Saint.",
+   "stack": 99,
+   "stat": {
+    "value": 0.4,
+    "effect": "resist_rot",
+    "duration": 75
+   },
+   "art": "flask_rotproof"
+  },
+  "elixir_cinderskin": {
+   "name": "Cinderskin Elixir",
+   "rarity": "rare",
+   "sell": 60,
+   "lore": "Elixir. 40% less fire damage for 75 seconds (adds to other wards; the total caps at 60%). Cinder ash and ash-bloom: walk the Pyre as if it were a hearth.",
+   "stack": 99,
+   "stat": {
+    "value": 0.4,
+    "effect": "resist_fire",
+    "duration": 75
+   },
+   "art": "flask_cinderskin"
+  },
+  "tonic_ghostwalk": {
+   "name": "Ghostwalk Tonic",
+   "rarity": "rare",
+   "sell": 90,
+   "lore": "Tonic. +30% essence regeneration and +10% move speed for 75 seconds. Ectoplasm and wolfsbane: you drift more than you walk.",
+   "stack": 99,
+   "stat": {
+    "value": 0.3,
+    "effect": "essence_regen",
+    "duration": 75,
+    "effects": [
+     {
+      "effect": "essence_regen",
+      "value": 0.3
+     },
+     {
+      "effect": "move_speed",
+      "value": 0.1
+     }
+    ]
+   },
+   "art": "flask_ghostwalk"
+  },
+  "elixir_bloodmoon": {
+   "name": "Bloodmoon Elixir",
+   "rarity": "epic",
+   "sell": 200,
+   "lore": "Elixir. +20% spell damage and heal 6% of the damage you deal for 60 seconds. Two kings' ichor and plague bile, drunk under a red moon.",
+   "stack": 99,
+   "stat": {
+    "value": 0.2,
+    "effect": "damage_amp",
+    "duration": 60,
+    "effects": [
+     {
+      "effect": "damage_amp",
+      "value": 0.2
+     },
+     {
+      "effect": "lifesteal",
+      "value": 0.06
+     }
+    ]
+   },
+   "art": "flask_bloodmoon"
+  },
+  "elixir_hymnal": {
+   "name": "Hymnal Elixir",
+   "rarity": "epic",
+   "sell": 170,
+   "lore": "Elixir. 15% less damage taken, 20% less rot and plague damage, and heal 3% of the damage you deal, for 75 seconds. The drowned hymn and the Saint's blight, made to cancel each other out.",
+   "stack": 99,
+   "stat": {
+    "value": 0.15,
+    "effect": "resist_void",
+    "duration": 75,
+    "effects": [
+     {
+      "effect": "resist_void",
+      "value": 0.15
+     },
+     {
+      "effect": "resist_rot",
+      "value": 0.2
+     },
+     {
+      "effect": "lifesteal",
+      "value": 0.03
+     }
+    ]
+   },
+   "art": "flask_hymnal"
+  },
+  "elixir_regent": {
+   "name": "Regent's Vigil Elixir",
+   "rarity": "epic",
+   "sell": 300,
+   "lore": "Elixir. +12% spell damage, 15% less damage taken and +10% cooldown recovery for 60 seconds. The Regent's ichor and the Prelate's, bound with cinder ash: the last word in elixirs.",
+   "stack": 99,
+   "stat": {
+    "value": 0.12,
+    "effect": "damage_amp",
+    "duration": 60,
+    "effects": [
+     {
+      "effect": "damage_amp",
+      "value": 0.12
+     },
+     {
+      "effect": "resist_void",
+      "value": 0.15
+     },
+     {
+      "effect": "cooldown_rate",
+      "value": 0.1
+     }
+    ]
+   },
+   "art": "flask_regent"
+  }
+ },
+ "REAGENT_RECIPES": [
+  [
+   "brew_grave_dust_tonic",
+   "Brew Grave-Dust Tonic",
+   "alchemy",
+   1,
+   "tonic_grave_dust",
+   2,
+   [
+    [
+     "reagent_grave_dust",
+     4
+    ]
+   ]
+  ],
+  [
+   "brew_wraithquick",
+   "Brew Wraithquick Elixir",
+   "alchemy",
+   10,
+   "elixir_wraithquick",
+   1,
+   [
+    [
+     "reagent_wraith_ectoplasm",
+     2
+    ],
+    [
+     "reagent_grave_dust",
+     2
+    ]
+   ]
+  ],
+  [
+   "brew_graveluck",
+   "Brew Grave-Luck Tonic",
+   "alchemy",
+   22,
+   "tonic_graveluck",
+   1,
+   [
+    [
+     "reagent_grave_dust",
+     6
+    ],
+    [
+     "herb_nightshade",
+     2
+    ]
+   ]
+  ],
+  [
+   "brew_insight",
+   "Brew Sexton's Insight",
+   "alchemy",
+   28,
+   "tonic_insight",
+   1,
+   [
+    [
+     "reagent_wraith_ectoplasm",
+     3
+    ],
+    [
+     "herb_mourning_moss",
+     3
+    ]
+   ]
+  ],
+  [
+   "brew_leechblood",
+   "Brew Leechblood Elixir",
+   "alchemy",
+   38,
+   "elixir_leechblood",
+   1,
+   [
+    [
+     "reagent_plague_bile",
+     2
+    ],
+    [
+     "reagent_grave_dust",
+     3
+    ]
+   ]
+  ],
+  [
+   "brew_rotproof",
+   "Brew Rot-Proof Elixir",
+   "alchemy",
+   42,
+   "elixir_rotproof",
+   1,
+   [
+    [
+     "reagent_plague_bile",
+     1
+    ],
+    [
+     "herb_rot_cap",
+     3
+    ]
+   ]
+  ],
+  [
+   "brew_cinderskin",
+   "Brew Cinderskin Elixir",
+   "alchemy",
+   52,
+   "elixir_cinderskin",
+   1,
+   [
+    [
+     "reagent_cinder_ash",
+     1
+    ],
+    [
+     "herb_ash_bloom",
+     3
+    ]
+   ]
+  ],
+  [
+   "brew_ghostwalk",
+   "Brew Ghostwalk Tonic",
+   "alchemy",
+   62,
+   "tonic_ghostwalk",
+   1,
+   [
+    [
+     "reagent_wraith_ectoplasm",
+     4
+    ],
+    [
+     "herb_wolfsbane",
+     2
+    ]
+   ]
+  ],
+  [
+   "brew_bloodmoon",
+   "Brew Bloodmoon Elixir",
+   "alchemy",
+   70,
+   "elixir_bloodmoon",
+   1,
+   [
+    [
+     "ichor_gravedigger",
+     1
+    ],
+    [
+     "ichor_abbess",
+     1
+    ],
+    [
+     "reagent_plague_bile",
+     2
+    ]
+   ]
+  ],
+  [
+   "brew_hymnal",
+   "Brew Hymnal Elixir",
+   "alchemy",
+   78,
+   "elixir_hymnal",
+   1,
+   [
+    [
+     "ichor_congregation",
+     1
+    ],
+    [
+     "ichor_plague_saint",
+     1
+    ],
+    [
+     "reagent_wraith_ectoplasm",
+     4
+    ]
+   ]
+  ],
+  [
+   "brew_regent_vigil",
+   "Brew Regent's Vigil Elixir",
+   "alchemy",
+   85,
+   "elixir_regent",
+   1,
+   [
+    [
+     "ichor_regent",
+     1
+    ],
+    [
+     "ichor_prelate",
+     1
+    ],
+    [
+     "reagent_cinder_ash",
+     3
+    ]
+   ]
+  ]
+ ],
+ "ALL_REAGENT_IDS": [
+  "reagent_grave_dust",
+  "reagent_wraith_ectoplasm",
+  "reagent_plague_bile",
+  "reagent_cinder_ash",
+  "herb_rot_cap",
+  "seed_rot_cap",
+  "herb_ash_bloom",
+  "seed_ash_bloom",
+  "ichor_gravedigger",
+  "ichor_abbess",
+  "ichor_congregation",
+  "ichor_prelate",
+  "ichor_plague_saint",
+  "ichor_regent",
+  "tonic_grave_dust",
+  "elixir_wraithquick",
+  "tonic_graveluck",
+  "tonic_insight",
+  "elixir_leechblood",
+  "elixir_rotproof",
+  "elixir_cinderskin",
+  "tonic_ghostwalk",
+  "elixir_bloodmoon",
+  "elixir_hymnal",
+  "elixir_regent"
+ ],
+ "MOB_REAGENTS": [
+  "reagent_grave_dust",
+  "reagent_wraith_ectoplasm",
+  "reagent_plague_bile",
+  "reagent_cinder_ash"
+ ],
+ "ICHORS": [
+  "ichor_gravedigger",
+  "ichor_abbess",
+  "ichor_congregation",
+  "ichor_prelate",
+  "ichor_plague_saint",
+  "ichor_regent",
+  "ichor_mire"
+ ]
+}

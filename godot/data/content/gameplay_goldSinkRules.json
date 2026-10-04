@@ -1,0 +1,36 @@
+{
+ "REFORGE": {
+  "goldPerIlvl": 40,
+  "growth": 1.25,
+  "maxSteps": 20,
+  "cap": 2000000,
+  "rarityMult": {
+   "common": 1,
+   "uncommon": 1,
+   "rare": 1.5,
+   "epic": 2.5,
+   "legendary": 4,
+   "relic": 4
+  }
+ },
+ "COVENANT_SEAL": "covenant_seal",
+ "EMPOWER": {
+  "goldPerShardSq": 7500,
+  "levelsFlat": 6,
+  "levelsShare": 0.15,
+  "hpMult": 1.4,
+  "legendaryMult": 2.5,
+  "legendaryCap": 0.6,
+  "claimWindowMs": 10800000,
+  "refundWindowMs": 120000,
+  "prizeAffixes": 3
+ },
+ "EMPOWERABLE": [
+  "gravedigger",
+  "abbess",
+  "congregation",
+  "saint",
+  "regent",
+  "mire"
+ ]
+}

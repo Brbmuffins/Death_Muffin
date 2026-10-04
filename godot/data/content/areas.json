@@ -1,0 +1,2929 @@
+{
+ "DEPTHS_RECT": {
+  "x0": 150,
+  "z0": -60,
+  "x1": 190,
+  "z1": -24
+ },
+ "DEPTHS_STAIR": {
+  "x": -67.2,
+  "z": -30
+ },
+ "AREAS": {
+  "chapterhouse": {
+   "id": "chapterhouse",
+   "name": "The Chapterhouse",
+   "subtitle": "Sanctuary of the Ossuary Covenant",
+   "theme": "chapter",
+   "rect": {
+    "x0": -13,
+    "z0": 8,
+    "x1": 13,
+    "z1": 32
+   },
+   "safe": true,
+   "level": 1,
+   "enemies": [],
+   "cap": 0,
+   "waveSize": 0,
+   "waveIntervalMs": 0,
+   "eliteChance": 0,
+   "loot": [],
+   "itemChance": 0,
+   "breaches": [],
+   "interactables": [
+    {
+     "id": "reliquary",
+     "kind": "inventory",
+     "label": "Reliquary",
+     "x": -8.5,
+     "z": 14
+    },
+    {
+     "id": "workbench",
+     "kind": "forge",
+     "label": "Ossuary Workbench",
+     "x": 8.5,
+     "z": 14
+    },
+    {
+     "id": "niches",
+     "kind": "professions",
+     "label": "Rite Niches",
+     "x": -10.8,
+     "z": 26.5
+    },
+    {
+     "id": "altar",
+     "kind": "upgrades",
+     "label": "Altar of Ascension",
+     "x": 0,
+     "z": 21
+    },
+    {
+     "id": "waystone_chapterhouse",
+     "kind": "waystone",
+     "label": "Waystone",
+     "x": 9,
+     "z": 26.5
+    },
+    {
+     "id": "ossuary_vault",
+     "kind": "vault",
+     "label": "Ossuary Vault",
+     "x": 0,
+     "z": 27
+    },
+    {
+     "id": "npc_prior",
+     "kind": "npc",
+     "label": "The Prior",
+     "x": -3.4,
+     "z": 15.8
+    }
+   ],
+   "ambient": {
+    "fog": 722960,
+    "hemiSky": 3877458,
+    "hemiGround": 657168,
+    "moon": 9412305
+   }
+  },
+  "acre": {
+   "id": "acre",
+   "name": "The Sexton's Acre",
+   "subtitle": "Where the Covenant's dead are tended",
+   "theme": "acre",
+   "rect": {
+    "x0": -62,
+    "z0": 6,
+    "x1": -20,
+    "z1": 38
+   },
+   "safe": true,
+   "level": 1,
+   "enemies": [],
+   "cap": 0,
+   "waveSize": 0,
+   "waveIntervalMs": 0,
+   "eliteChance": 0,
+   "loot": [],
+   "itemChance": 0,
+   "breaches": [],
+   "interactables": [
+    {
+     "id": "waystone_acre",
+     "kind": "waystone",
+     "label": "Waystone",
+     "x": -23,
+     "z": 25.5
+    },
+    {
+     "id": "sawpit",
+     "kind": "sawpit",
+     "label": "Sawpit",
+     "x": -23.5,
+     "z": 12.5
+    },
+    {
+     "id": "bone_kiln",
+     "kind": "kiln",
+     "label": "Bone Kiln",
+     "x": -23.5,
+     "z": 31.6
+    },
+    {
+     "id": "bone_grinder",
+     "kind": "grinder",
+     "label": "Bone Grinder",
+     "x": -27,
+     "z": 33.2
+    },
+    {
+     "id": "cooking_fire",
+     "kind": "fire",
+     "label": "Cooking Fire",
+     "x": -26.5,
+     "z": 28.5
+    },
+    {
+     "id": "lectern",
+     "kind": "lectern",
+     "label": "Covenant Lectern",
+     "x": -24.2,
+     "z": 17.8
+    },
+    {
+     "id": "npc_sexton",
+     "kind": "npc",
+     "label": "The Sexton",
+     "x": -26,
+     "z": 23
+    }
+   ],
+   "ambient": {
+    "fog": 790288,
+    "hemiSky": 6978706,
+    "hemiGround": 3820088,
+    "moon": 12307416
+   }
+  },
+  "graves": {
+   "id": "graves",
+   "name": "The Hollow Graves",
+   "subtitle": "Where the Covenant buries what it cannot keep",
+   "theme": "graveyard",
+   "rect": {
+    "x0": -26,
+    "z0": -36,
+    "x1": 26,
+    "z1": 4
+   },
+   "safe": false,
+   "level": 1,
+   "enemies": [
+    {
+     "id": "robber",
+     "weight": 52
+    },
+    {
+     "id": "hound",
+     "weight": 24
+    },
+    {
+     "id": "penitent",
+     "weight": 11
+    },
+    {
+     "id": "sac",
+     "weight": 7
+    },
+    {
+     "id": "moth",
+     "weight": 6
+    },
+    {
+     "id": "bat",
+     "weight": 5
+    },
+    {
+     "id": "ghoul",
+     "weight": 6
+    }
+   ],
+   "cap": 28,
+   "waveSize": 9,
+   "waveIntervalMs": 6500,
+   "eliteChance": 0.035,
+   "loot": [
+    {
+     "item": "set_gravecaller_head",
+     "weight": 1.4
+    },
+    {
+     "item": "set_gravecaller_hands",
+     "weight": 1.4
+    },
+    {
+     "item": "set_warden_head",
+     "weight": 1.4
+    },
+    {
+     "item": "set_warden_hands",
+     "weight": 1.4
+    },
+    {
+     "item": "set_monk_head",
+     "weight": 1.4
+    },
+    {
+     "item": "set_monk_hands",
+     "weight": 1.4
+    },
+    {
+     "item": "set_ossuary_head",
+     "weight": 1.4
+    },
+    {
+     "item": "set_ossuary_hands",
+     "weight": 1.4
+    },
+    {
+     "item": "set_mourner_head",
+     "weight": 1.4
+    },
+    {
+     "item": "set_mourner_hands",
+     "weight": 1.4
+    },
+    {
+     "item": "set_witch_head",
+     "weight": 1.4
+    },
+    {
+     "item": "set_witch_hands",
+     "weight": 1.4
+    },
+    {
+     "item": "set_rotweaver_head",
+     "weight": 1.4
+    },
+    {
+     "item": "set_rotweaver_hands",
+     "weight": 1.4
+    },
+    {
+     "item": "set_knight_head",
+     "weight": 1.4
+    },
+    {
+     "item": "set_knight_hands",
+     "weight": 1.4
+    },
+    {
+     "item": "set_veil_head",
+     "weight": 1.4
+    },
+    {
+     "item": "set_veil_hands",
+     "weight": 1.4
+    },
+    {
+     "item": "staff_bone",
+     "weight": 1.4
+    },
+    {
+     "item": "scythe_bone",
+     "weight": 1.4
+    },
+    {
+     "item": "wand_bone",
+     "weight": 1.4
+    },
+    {
+     "item": "sickle_bone",
+     "weight": 1.4
+    },
+    {
+     "item": "skull_focus_bone",
+     "weight": 1.4
+    },
+    {
+     "item": "grimoire_bone",
+     "weight": 1.4
+    },
+    {
+     "item": "mourning_bell_bone",
+     "weight": 1.4
+    },
+    {
+     "item": "ore_copper",
+     "weight": 24
+    },
+    {
+     "item": "ore_tin",
+     "weight": 14
+    },
+    {
+     "item": "flask_hp_minor",
+     "weight": 12
+    },
+    {
+     "item": "log_oak",
+     "weight": 8
+    },
+    {
+     "item": "ring_copper",
+     "weight": 4
+    },
+    {
+     "item": "helm_copper",
+     "weight": 4
+    },
+    {
+     "item": "staff_oak",
+     "weight": 3
+    }
+   ],
+   "itemChance": 0.062089552238805974,
+   "breaches": [
+    [
+     -18,
+     -29
+    ],
+    [
+     0,
+     -31
+    ],
+    [
+     18,
+     -29
+    ],
+    [
+     -21,
+     -13
+    ],
+    [
+     21,
+     -11
+    ],
+    [
+     9,
+     -19
+    ],
+    [
+     -9,
+     -21
+    ],
+    [
+     20,
+     -24
+    ],
+    [
+     -14,
+     -3
+    ],
+    [
+     14,
+     -4
+    ]
+   ],
+   "interactables": [
+    {
+     "id": "waystone_graves",
+     "kind": "waystone",
+     "label": "Waystone",
+     "x": -5.5,
+     "z": 1
+    },
+    {
+     "id": "kings_grave",
+     "kind": "boss",
+     "label": "The King's Grave",
+     "x": -14,
+     "z": -30.5
+    }
+   ],
+   "ambient": {
+    "fog": 854548,
+    "hemiSky": 4601962,
+    "hemiGround": 722960,
+    "moon": 10135252
+   }
+  },
+  "ossuary": {
+   "id": "ossuary",
+   "name": "The Marrow Ossuary",
+   "subtitle": "Ten thousand skulls, and all of them listening",
+   "theme": "ossuary",
+   "rect": {
+    "x0": 32,
+    "z0": -38,
+    "x1": 64,
+    "z1": -2
+   },
+   "safe": false,
+   "level": 5,
+   "enemies": [
+    {
+     "id": "robber",
+     "weight": 30
+    },
+    {
+     "id": "hound",
+     "weight": 30
+    },
+    {
+     "id": "sac",
+     "weight": 18
+    },
+    {
+     "id": "deacon",
+     "weight": 12
+    },
+    {
+     "id": "penitent",
+     "weight": 10
+    },
+    {
+     "id": "rat",
+     "weight": 10
+    },
+    {
+     "id": "golem",
+     "weight": 2
+    },
+    {
+     "id": "moth",
+     "weight": 5
+    },
+    {
+     "id": "bat",
+     "weight": 4
+    },
+    {
+     "id": "ghoul",
+     "weight": 4
+    }
+   ],
+   "cap": 32,
+   "waveSize": 10,
+   "waveIntervalMs": 6200,
+   "eliteChance": 0.045,
+   "unlock": {
+    "area": "graves",
+    "kills": 300
+   },
+   "loot": [
+    {
+     "item": "set_gravecaller_chest",
+     "weight": 1.875
+    },
+    {
+     "item": "set_warden_chest",
+     "weight": 1.875
+    },
+    {
+     "item": "set_monk_chest",
+     "weight": 1.875
+    },
+    {
+     "item": "set_ossuary_chest",
+     "weight": 1.875
+    },
+    {
+     "item": "set_mourner_chest",
+     "weight": 1.875
+    },
+    {
+     "item": "set_witch_chest",
+     "weight": 1.875
+    },
+    {
+     "item": "set_rotweaver_chest",
+     "weight": 1.875
+    },
+    {
+     "item": "set_knight_chest",
+     "weight": 1.875
+    },
+    {
+     "item": "set_veil_chest",
+     "weight": 1.875
+    },
+    {
+     "item": "staff_iron",
+     "weight": 1.5
+    },
+    {
+     "item": "scythe_iron",
+     "weight": 1.5
+    },
+    {
+     "item": "wand_iron",
+     "weight": 1.5
+    },
+    {
+     "item": "sickle_iron",
+     "weight": 1.5
+    },
+    {
+     "item": "skull_focus_iron",
+     "weight": 1.5
+    },
+    {
+     "item": "grimoire_iron",
+     "weight": 1.5
+    },
+    {
+     "item": "mourning_bell_iron",
+     "weight": 1.5
+    },
+    {
+     "item": "ore_iron",
+     "weight": 24
+    },
+    {
+     "item": "ore_copper",
+     "weight": 14
+    },
+    {
+     "item": "material_copper_bar",
+     "weight": 14
+    },
+    {
+     "item": "ore_bronze",
+     "weight": 10
+    },
+    {
+     "item": "flask_hp_minor",
+     "weight": 10
+    },
+    {
+     "item": "augment_copper",
+     "weight": 5
+    },
+    {
+     "item": "sword_copper",
+     "weight": 4
+    },
+    {
+     "item": "plate_copper",
+     "weight": 4
+    },
+    {
+     "item": "helm_iron",
+     "weight": 3
+    }
+   ],
+   "itemChance": 0.09,
+   "breaches": [
+    [
+     38,
+     -33
+    ],
+    [
+     50,
+     -35
+    ],
+    [
+     60,
+     -27
+    ],
+    [
+     60,
+     -9
+    ],
+    [
+     46,
+     -6
+    ],
+    [
+     39,
+     -18
+    ],
+    [
+     54,
+     -19
+    ],
+    [
+     44,
+     -27
+    ]
+   ],
+   "interactables": [
+    {
+     "id": "waystone_ossuary",
+     "kind": "waystone",
+     "label": "Waystone",
+     "x": 35.5,
+     "z": -6
+    },
+    {
+     "id": "abbess_reliquary",
+     "kind": "boss",
+     "label": "The Abbess's Reliquary",
+     "x": 48,
+     "z": -32.5
+    }
+   ],
+   "ambient": {
+    "fog": 920332,
+    "hemiSky": 4207434,
+    "hemiGround": 854281,
+    "moon": 12036494
+   }
+  },
+  "nave": {
+   "id": "nave",
+   "name": "The Drowned Nave",
+   "subtitle": "The congregation never stopped kneeling",
+   "theme": "nave",
+   "rect": {
+    "x0": -15,
+    "z0": -96,
+    "x1": 15,
+    "z1": -44
+   },
+   "safe": false,
+   "level": 9,
+   "enemies": [
+    {
+     "id": "penitent",
+     "weight": 23
+    },
+    {
+     "id": "robber",
+     "weight": 27
+    },
+    {
+     "id": "deacon",
+     "weight": 15
+    },
+    {
+     "id": "sac",
+     "weight": 16
+    },
+    {
+     "id": "hound",
+     "weight": 19
+    },
+    {
+     "id": "wraith",
+     "weight": 12
+    },
+    {
+     "id": "censer",
+     "weight": 6
+    },
+    {
+     "id": "gargoyle",
+     "weight": 8
+    },
+    {
+     "id": "bat",
+     "weight": 7
+    },
+    {
+     "id": "acolyte",
+     "weight": 8
+    },
+    {
+     "id": "templar",
+     "weight": 3
+    }
+   ],
+   "cap": 34,
+   "waveSize": 11,
+   "waveIntervalMs": 6000,
+   "eliteChance": 0.055,
+   "unlock": {
+    "area": "ossuary",
+    "kills": 420
+   },
+   "loot": [
+    {
+     "item": "set_gravecaller_legs",
+     "weight": 1.9374999999999998
+    },
+    {
+     "item": "set_warden_legs",
+     "weight": 1.9374999999999998
+    },
+    {
+     "item": "set_monk_legs",
+     "weight": 1.9374999999999998
+    },
+    {
+     "item": "set_ossuary_legs",
+     "weight": 1.9374999999999998
+    },
+    {
+     "item": "set_mourner_legs",
+     "weight": 1.9374999999999998
+    },
+    {
+     "item": "set_witch_legs",
+     "weight": 1.9374999999999998
+    },
+    {
+     "item": "set_rotweaver_legs",
+     "weight": 1.9374999999999998
+    },
+    {
+     "item": "set_knight_legs",
+     "weight": 1.9374999999999998
+    },
+    {
+     "item": "set_veil_legs",
+     "weight": 1.9374999999999998
+    },
+    {
+     "item": "staff_gold",
+     "weight": 1.9374999999999998
+    },
+    {
+     "item": "scythe_gold",
+     "weight": 1.9374999999999998
+    },
+    {
+     "item": "wand_gold",
+     "weight": 1.9374999999999998
+    },
+    {
+     "item": "sickle_gold",
+     "weight": 1.9374999999999998
+    },
+    {
+     "item": "skull_focus_gold",
+     "weight": 1.9374999999999998
+    },
+    {
+     "item": "grimoire_gold",
+     "weight": 1.9374999999999998
+    },
+    {
+     "item": "mourning_bell_gold",
+     "weight": 1.9374999999999998
+    },
+    {
+     "item": "ore_silver",
+     "weight": 20
+    },
+    {
+     "item": "ore_iron",
+     "weight": 20
+    },
+    {
+     "item": "ore_gold",
+     "weight": 8
+    },
+    {
+     "item": "flask_hp_major",
+     "weight": 10
+    },
+    {
+     "item": "augment_iron",
+     "weight": 5
+    },
+    {
+     "item": "helm_iron",
+     "weight": 6
+    },
+    {
+     "item": "chest_iron",
+     "weight": 7.749999999999999
+    }
+   ],
+   "itemChance": 0.1,
+   "breaches": [
+    [
+     -11,
+     -91
+    ],
+    [
+     11,
+     -91
+    ],
+    [
+     -11,
+     -72
+    ],
+    [
+     11,
+     -72
+    ],
+    [
+     -11,
+     -53
+    ],
+    [
+     11,
+     -53
+    ],
+    [
+     0,
+     -82
+    ],
+    [
+     0,
+     -62
+    ]
+   ],
+   "interactables": [
+    {
+     "id": "waystone_nave",
+     "kind": "waystone",
+     "label": "Waystone",
+     "x": 6,
+     "z": -47.5
+    },
+    {
+     "id": "drowned_font",
+     "kind": "boss",
+     "label": "The Drowned Font",
+     "x": 0,
+     "z": -70.35
+    }
+   ],
+   "ambient": {
+    "fog": 723220,
+    "hemiSky": 3352666,
+    "hemiGround": 525839,
+    "moon": 9406168
+   }
+  },
+  "sanctum": {
+   "id": "sanctum",
+   "name": "The Bell Sanctum",
+   "subtitle": "Seat of the Bell-Sworn Prelate",
+   "theme": "sanctum",
+   "rect": {
+    "x0": -18,
+    "z0": -130,
+    "x1": 18,
+    "z1": -102
+   },
+   "safe": false,
+   "level": 13,
+   "enemies": [
+    {
+     "id": "penitent",
+     "weight": 30
+    },
+    {
+     "id": "deacon",
+     "weight": 20
+    },
+    {
+     "id": "robber",
+     "weight": 20
+    },
+    {
+     "id": "hound",
+     "weight": 20
+    },
+    {
+     "id": "sac",
+     "weight": 10
+    },
+    {
+     "id": "censer",
+     "weight": 10
+    },
+    {
+     "id": "wraith",
+     "weight": 10
+    },
+    {
+     "id": "golem",
+     "weight": 4
+    },
+    {
+     "id": "gargoyle",
+     "weight": 8
+    },
+    {
+     "id": "seraph",
+     "weight": 7
+    },
+    {
+     "id": "acolyte",
+     "weight": 8
+    },
+    {
+     "id": "templar",
+     "weight": 6
+    }
+   ],
+   "cap": 26,
+   "waveSize": 8,
+   "waveIntervalMs": 6500,
+   "eliteChance": 0.07,
+   "unlock": {
+    "area": "nave",
+    "kills": 520
+   },
+   "loot": [
+    {
+     "item": "set_gravecaller_feet",
+     "weight": 2.4749999999999996
+    },
+    {
+     "item": "set_warden_feet",
+     "weight": 2.4749999999999996
+    },
+    {
+     "item": "set_monk_feet",
+     "weight": 2.4749999999999996
+    },
+    {
+     "item": "set_ossuary_feet",
+     "weight": 2.4749999999999996
+    },
+    {
+     "item": "set_mourner_feet",
+     "weight": 2.4749999999999996
+    },
+    {
+     "item": "set_witch_feet",
+     "weight": 2.4749999999999996
+    },
+    {
+     "item": "set_rotweaver_feet",
+     "weight": 2.4749999999999996
+    },
+    {
+     "item": "set_knight_feet",
+     "weight": 2.4749999999999996
+    },
+    {
+     "item": "set_veil_feet",
+     "weight": 2.4749999999999996
+    },
+    {
+     "item": "set_gravecaller_ascended_head",
+     "weight": 2.0625
+    },
+    {
+     "item": "set_gravecaller_ascended_hands",
+     "weight": 2.0625
+    },
+    {
+     "item": "set_warden_ascended_head",
+     "weight": 2.0625
+    },
+    {
+     "item": "set_warden_ascended_hands",
+     "weight": 2.0625
+    },
+    {
+     "item": "set_monk_ascended_head",
+     "weight": 2.0625
+    },
+    {
+     "item": "set_monk_ascended_hands",
+     "weight": 2.0625
+    },
+    {
+     "item": "set_ossuary_ascended_head",
+     "weight": 2.0625
+    },
+    {
+     "item": "set_ossuary_ascended_hands",
+     "weight": 2.0625
+    },
+    {
+     "item": "set_mourner_ascended_head",
+     "weight": 2.0625
+    },
+    {
+     "item": "set_mourner_ascended_hands",
+     "weight": 2.0625
+    },
+    {
+     "item": "set_witch_ascended_head",
+     "weight": 2.0625
+    },
+    {
+     "item": "set_witch_ascended_hands",
+     "weight": 2.0625
+    },
+    {
+     "item": "set_rotweaver_ascended_head",
+     "weight": 2.0625
+    },
+    {
+     "item": "set_rotweaver_ascended_hands",
+     "weight": 2.0625
+    },
+    {
+     "item": "set_knight_ascended_head",
+     "weight": 2.0625
+    },
+    {
+     "item": "set_knight_ascended_hands",
+     "weight": 2.0625
+    },
+    {
+     "item": "set_veil_ascended_head",
+     "weight": 2.0625
+    },
+    {
+     "item": "set_veil_ascended_hands",
+     "weight": 2.0625
+    },
+    {
+     "item": "staff_gold",
+     "weight": 2.0625
+    },
+    {
+     "item": "scythe_gold",
+     "weight": 2.0625
+    },
+    {
+     "item": "wand_gold",
+     "weight": 2.0625
+    },
+    {
+     "item": "sickle_gold",
+     "weight": 2.0625
+    },
+    {
+     "item": "skull_focus_gold",
+     "weight": 2.0625
+    },
+    {
+     "item": "grimoire_gold",
+     "weight": 2.0625
+    },
+    {
+     "item": "mourning_bell_gold",
+     "weight": 2.0625
+    },
+    {
+     "item": "ore_gold",
+     "weight": 18
+    },
+    {
+     "item": "ore_steel",
+     "weight": 14
+    },
+    {
+     "item": "ingot_gold",
+     "weight": 8
+    },
+    {
+     "item": "flask_hp_major",
+     "weight": 10
+    },
+    {
+     "item": "chest_iron",
+     "weight": 14.437499999999998
+    },
+    {
+     "item": "helm_gold",
+     "weight": 10.3125
+    },
+    {
+     "item": "kit_iron_warden",
+     "weight": 10.3125
+    }
+   ],
+   "itemChance": 0.12,
+   "breaches": [
+    [
+     -14,
+     -126
+    ],
+    [
+     14,
+     -126
+    ],
+    [
+     -15,
+     -109
+    ],
+    [
+     15,
+     -109
+    ]
+   ],
+   "interactables": [
+    {
+     "id": "waystone_sanctum",
+     "kind": "waystone",
+     "label": "Waystone",
+     "x": 6,
+     "z": -105
+    },
+    {
+     "id": "sundered_bell",
+     "kind": "boss",
+     "label": "The Sundered Bell",
+     "x": 0,
+     "z": -123.4
+    }
+   ],
+   "ambient": {
+    "fog": 1050644,
+    "hemiSky": 4006738,
+    "hemiGround": 787980,
+    "moon": 10848984
+   }
+  },
+  "cloister": {
+   "id": "cloister",
+   "name": "The Plague Cloister",
+   "subtitle": "Where the blight grows with you",
+   "theme": "cloister",
+   "rect": {
+    "x0": 24,
+    "z0": -134,
+    "x1": 64,
+    "z1": -98
+   },
+   "safe": false,
+   "level": 20,
+   "scaling": {
+    "minLevel": 20
+   },
+   "enemies": [
+    {
+     "id": "plague_doctor",
+     "weight": 22
+    },
+    {
+     "id": "flagellant",
+     "weight": 24
+    },
+    {
+     "id": "sac",
+     "weight": 14
+    },
+    {
+     "id": "rat",
+     "weight": 10
+    },
+    {
+     "id": "acolyte",
+     "weight": 8
+    },
+    {
+     "id": "censer",
+     "weight": 8
+    },
+    {
+     "id": "moth",
+     "weight": 6
+    },
+    {
+     "id": "templar",
+     "weight": 5
+    },
+    {
+     "id": "golem",
+     "weight": 3
+    }
+   ],
+   "cap": 28,
+   "waveSize": 9,
+   "waveIntervalMs": 6000,
+   "eliteChance": 0.08,
+   "unlock": {
+    "area": "sanctum",
+    "kills": 600
+   },
+   "loot": [
+    {
+     "item": "set_gravecaller_chest",
+     "weight": 2.125
+    },
+    {
+     "item": "set_gravecaller_legs",
+     "weight": 2.125
+    },
+    {
+     "item": "set_gravecaller_feet",
+     "weight": 2.55
+    },
+    {
+     "item": "set_warden_chest",
+     "weight": 2.125
+    },
+    {
+     "item": "set_warden_legs",
+     "weight": 2.125
+    },
+    {
+     "item": "set_warden_feet",
+     "weight": 2.55
+    },
+    {
+     "item": "set_monk_chest",
+     "weight": 2.125
+    },
+    {
+     "item": "set_monk_legs",
+     "weight": 2.125
+    },
+    {
+     "item": "set_monk_feet",
+     "weight": 2.55
+    },
+    {
+     "item": "set_ossuary_chest",
+     "weight": 2.125
+    },
+    {
+     "item": "set_ossuary_legs",
+     "weight": 2.125
+    },
+    {
+     "item": "set_ossuary_feet",
+     "weight": 2.55
+    },
+    {
+     "item": "set_mourner_chest",
+     "weight": 2.125
+    },
+    {
+     "item": "set_mourner_legs",
+     "weight": 2.125
+    },
+    {
+     "item": "set_mourner_feet",
+     "weight": 2.55
+    },
+    {
+     "item": "set_witch_chest",
+     "weight": 2.125
+    },
+    {
+     "item": "set_witch_legs",
+     "weight": 2.125
+    },
+    {
+     "item": "set_witch_feet",
+     "weight": 2.55
+    },
+    {
+     "item": "set_rotweaver_chest",
+     "weight": 2.125
+    },
+    {
+     "item": "set_rotweaver_legs",
+     "weight": 2.125
+    },
+    {
+     "item": "set_rotweaver_feet",
+     "weight": 2.55
+    },
+    {
+     "item": "set_knight_chest",
+     "weight": 2.125
+    },
+    {
+     "item": "set_knight_legs",
+     "weight": 2.125
+    },
+    {
+     "item": "set_knight_feet",
+     "weight": 2.55
+    },
+    {
+     "item": "set_veil_chest",
+     "weight": 2.125
+    },
+    {
+     "item": "set_veil_legs",
+     "weight": 2.125
+    },
+    {
+     "item": "set_veil_feet",
+     "weight": 2.55
+    },
+    {
+     "item": "set_gravecaller_ascended_chest",
+     "weight": 2.55
+    },
+    {
+     "item": "set_gravecaller_ascended_legs",
+     "weight": 2.55
+    },
+    {
+     "item": "set_warden_ascended_chest",
+     "weight": 2.55
+    },
+    {
+     "item": "set_warden_ascended_legs",
+     "weight": 2.55
+    },
+    {
+     "item": "set_monk_ascended_chest",
+     "weight": 2.55
+    },
+    {
+     "item": "set_monk_ascended_legs",
+     "weight": 2.55
+    },
+    {
+     "item": "set_ossuary_ascended_chest",
+     "weight": 2.55
+    },
+    {
+     "item": "set_ossuary_ascended_legs",
+     "weight": 2.55
+    },
+    {
+     "item": "set_mourner_ascended_chest",
+     "weight": 2.55
+    },
+    {
+     "item": "set_mourner_ascended_legs",
+     "weight": 2.55
+    },
+    {
+     "item": "set_witch_ascended_chest",
+     "weight": 2.55
+    },
+    {
+     "item": "set_witch_ascended_legs",
+     "weight": 2.55
+    },
+    {
+     "item": "set_rotweaver_ascended_chest",
+     "weight": 2.55
+    },
+    {
+     "item": "set_rotweaver_ascended_legs",
+     "weight": 2.55
+    },
+    {
+     "item": "set_knight_ascended_chest",
+     "weight": 2.55
+    },
+    {
+     "item": "set_knight_ascended_legs",
+     "weight": 2.55
+    },
+    {
+     "item": "set_veil_ascended_chest",
+     "weight": 2.55
+    },
+    {
+     "item": "set_veil_ascended_legs",
+     "weight": 2.55
+    },
+    {
+     "item": "staff_hell",
+     "weight": 2.55
+    },
+    {
+     "item": "scythe_hell",
+     "weight": 2.55
+    },
+    {
+     "item": "wand_hell",
+     "weight": 2.55
+    },
+    {
+     "item": "sickle_hell",
+     "weight": 2.55
+    },
+    {
+     "item": "skull_focus_hell",
+     "weight": 2.55
+    },
+    {
+     "item": "grimoire_hell",
+     "weight": 2.55
+    },
+    {
+     "item": "mourning_bell_hell",
+     "weight": 2.55
+    },
+    {
+     "item": "ore_steel",
+     "weight": 14
+    },
+    {
+     "item": "ore_hell",
+     "weight": 12
+    },
+    {
+     "item": "ore_moon",
+     "weight": 6
+    },
+    {
+     "item": "ingot_steel",
+     "weight": 6
+    },
+    {
+     "item": "gem_grave_garnet",
+     "weight": 6
+    },
+    {
+     "item": "gem_bone_opal",
+     "weight": 3
+    },
+    {
+     "item": "flask_hp_major",
+     "weight": 10
+    },
+    {
+     "item": "flask_damage",
+     "weight": 6
+    },
+    {
+     "item": "flask_void_resist",
+     "weight": 5
+    },
+    {
+     "item": "helm_gold",
+     "weight": 10.625
+    },
+    {
+     "item": "chest_iron",
+     "weight": 10.625
+    }
+   ],
+   "itemChance": 0.14,
+   "breaches": [
+    [
+     27,
+     -101
+    ],
+    [
+     61,
+     -101
+    ],
+    [
+     27,
+     -131
+    ],
+    [
+     61,
+     -131
+    ],
+    [
+     44,
+     -100.5
+    ],
+    [
+     62,
+     -116
+    ]
+   ],
+   "interactables": [
+    {
+     "id": "waystone_cloister",
+     "kind": "waystone",
+     "label": "Waystone",
+     "x": 27.5,
+     "z": -111
+    },
+    {
+     "id": "saints_litter",
+     "kind": "boss",
+     "label": "The Saint's Litter",
+     "x": 44,
+     "z": -129.5
+    }
+   ],
+   "ambient": {
+    "fog": 659464,
+    "hemiSky": 2898468,
+    "hemiGround": 461317,
+    "moon": 10273930
+   }
+  },
+  "pyre": {
+   "id": "pyre",
+   "name": "The Cinder Pyre",
+   "subtitle": "Where the Covenant burns what it cannot bury",
+   "theme": "pyre",
+   "rect": {
+    "x0": 70,
+    "z0": -134,
+    "x1": 110,
+    "z1": -98
+   },
+   "safe": false,
+   "level": 30,
+   "scaling": {
+    "minLevel": 30
+   },
+   "enemies": [
+    {
+     "id": "cinder_husk",
+     "weight": 30
+    },
+    {
+     "id": "pyre_priest",
+     "weight": 20
+    },
+    {
+     "id": "cinderhound",
+     "weight": 22
+    },
+    {
+     "id": "slag_brute",
+     "weight": 8
+    }
+   ],
+   "cap": 28,
+   "waveSize": 9,
+   "waveIntervalMs": 6000,
+   "eliteChance": 0.09,
+   "unlock": {
+    "area": "cloister",
+    "kills": 700
+   },
+   "loot": [
+    {
+     "item": "set_gravecaller_chest",
+     "weight": 2.1875
+    },
+    {
+     "item": "set_gravecaller_legs",
+     "weight": 2.1875
+    },
+    {
+     "item": "set_gravecaller_feet",
+     "weight": 2.625
+    },
+    {
+     "item": "set_warden_chest",
+     "weight": 2.1875
+    },
+    {
+     "item": "set_warden_legs",
+     "weight": 2.1875
+    },
+    {
+     "item": "set_warden_feet",
+     "weight": 2.625
+    },
+    {
+     "item": "set_monk_chest",
+     "weight": 2.1875
+    },
+    {
+     "item": "set_monk_legs",
+     "weight": 2.1875
+    },
+    {
+     "item": "set_monk_feet",
+     "weight": 2.625
+    },
+    {
+     "item": "set_ossuary_chest",
+     "weight": 2.1875
+    },
+    {
+     "item": "set_ossuary_legs",
+     "weight": 2.1875
+    },
+    {
+     "item": "set_ossuary_feet",
+     "weight": 2.625
+    },
+    {
+     "item": "set_mourner_chest",
+     "weight": 2.1875
+    },
+    {
+     "item": "set_mourner_legs",
+     "weight": 2.1875
+    },
+    {
+     "item": "set_mourner_feet",
+     "weight": 2.625
+    },
+    {
+     "item": "set_witch_chest",
+     "weight": 2.1875
+    },
+    {
+     "item": "set_witch_legs",
+     "weight": 2.1875
+    },
+    {
+     "item": "set_witch_feet",
+     "weight": 2.625
+    },
+    {
+     "item": "set_rotweaver_chest",
+     "weight": 2.1875
+    },
+    {
+     "item": "set_rotweaver_legs",
+     "weight": 2.1875
+    },
+    {
+     "item": "set_rotweaver_feet",
+     "weight": 2.625
+    },
+    {
+     "item": "set_knight_chest",
+     "weight": 2.1875
+    },
+    {
+     "item": "set_knight_legs",
+     "weight": 2.1875
+    },
+    {
+     "item": "set_knight_feet",
+     "weight": 2.625
+    },
+    {
+     "item": "set_veil_chest",
+     "weight": 2.1875
+    },
+    {
+     "item": "set_veil_legs",
+     "weight": 2.1875
+    },
+    {
+     "item": "set_veil_feet",
+     "weight": 2.625
+    },
+    {
+     "item": "set_gravecaller_ascended_chest",
+     "weight": 2.625
+    },
+    {
+     "item": "set_gravecaller_ascended_legs",
+     "weight": 2.625
+    },
+    {
+     "item": "set_gravecaller_ascended_feet",
+     "weight": 2.625
+    },
+    {
+     "item": "set_warden_ascended_chest",
+     "weight": 2.625
+    },
+    {
+     "item": "set_warden_ascended_legs",
+     "weight": 2.625
+    },
+    {
+     "item": "set_warden_ascended_feet",
+     "weight": 2.625
+    },
+    {
+     "item": "set_monk_ascended_chest",
+     "weight": 2.625
+    },
+    {
+     "item": "set_monk_ascended_legs",
+     "weight": 2.625
+    },
+    {
+     "item": "set_monk_ascended_feet",
+     "weight": 2.625
+    },
+    {
+     "item": "set_ossuary_ascended_chest",
+     "weight": 2.625
+    },
+    {
+     "item": "set_ossuary_ascended_legs",
+     "weight": 2.625
+    },
+    {
+     "item": "set_ossuary_ascended_feet",
+     "weight": 2.625
+    },
+    {
+     "item": "set_mourner_ascended_chest",
+     "weight": 2.625
+    },
+    {
+     "item": "set_mourner_ascended_legs",
+     "weight": 2.625
+    },
+    {
+     "item": "set_mourner_ascended_feet",
+     "weight": 2.625
+    },
+    {
+     "item": "set_witch_ascended_chest",
+     "weight": 2.625
+    },
+    {
+     "item": "set_witch_ascended_legs",
+     "weight": 2.625
+    },
+    {
+     "item": "set_witch_ascended_feet",
+     "weight": 2.625
+    },
+    {
+     "item": "set_rotweaver_ascended_chest",
+     "weight": 2.625
+    },
+    {
+     "item": "set_rotweaver_ascended_legs",
+     "weight": 2.625
+    },
+    {
+     "item": "set_rotweaver_ascended_feet",
+     "weight": 2.625
+    },
+    {
+     "item": "set_knight_ascended_chest",
+     "weight": 2.625
+    },
+    {
+     "item": "set_knight_ascended_legs",
+     "weight": 2.625
+    },
+    {
+     "item": "set_knight_ascended_feet",
+     "weight": 2.625
+    },
+    {
+     "item": "set_veil_ascended_chest",
+     "weight": 2.625
+    },
+    {
+     "item": "set_veil_ascended_legs",
+     "weight": 2.625
+    },
+    {
+     "item": "set_veil_ascended_feet",
+     "weight": 2.625
+    },
+    {
+     "item": "staff_hell",
+     "weight": 2.625
+    },
+    {
+     "item": "staff_moon",
+     "weight": 1.3125
+    },
+    {
+     "item": "scythe_hell",
+     "weight": 2.625
+    },
+    {
+     "item": "scythe_moon",
+     "weight": 1.3125
+    },
+    {
+     "item": "wand_hell",
+     "weight": 2.625
+    },
+    {
+     "item": "wand_moon",
+     "weight": 1.3125
+    },
+    {
+     "item": "sickle_hell",
+     "weight": 2.625
+    },
+    {
+     "item": "sickle_moon",
+     "weight": 1.3125
+    },
+    {
+     "item": "skull_focus_hell",
+     "weight": 2.625
+    },
+    {
+     "item": "skull_focus_moon",
+     "weight": 1.3125
+    },
+    {
+     "item": "grimoire_hell",
+     "weight": 2.625
+    },
+    {
+     "item": "grimoire_moon",
+     "weight": 1.3125
+    },
+    {
+     "item": "mourning_bell_hell",
+     "weight": 2.625
+    },
+    {
+     "item": "mourning_bell_moon",
+     "weight": 1.3125
+    },
+    {
+     "item": "ore_hell",
+     "weight": 22
+    },
+    {
+     "item": "ingot_hell",
+     "weight": 6
+    },
+    {
+     "item": "ore_steel",
+     "weight": 12
+    },
+    {
+     "item": "ingot_steel",
+     "weight": 6
+    },
+    {
+     "item": "ore_moon",
+     "weight": 5
+    },
+    {
+     "item": "gem_grave_garnet",
+     "weight": 8
+    },
+    {
+     "item": "gem_bone_opal",
+     "weight": 4
+    },
+    {
+     "item": "flask_hp_major",
+     "weight": 10
+    },
+    {
+     "item": "flask_damage",
+     "weight": 7
+    },
+    {
+     "item": "flask_void_resist",
+     "weight": 5
+    },
+    {
+     "item": "helm_gold",
+     "weight": 10.9375
+    },
+    {
+     "item": "chest_iron",
+     "weight": 10.9375
+    }
+   ],
+   "itemChance": 0.15,
+   "breaches": [
+    [
+     73,
+     -101
+    ],
+    [
+     107,
+     -101
+    ],
+    [
+     73,
+     -131
+    ],
+    [
+     107,
+     -131
+    ],
+    [
+     90,
+     -100.5
+    ],
+    [
+     108,
+     -116
+    ],
+    [
+     86.5,
+     -131.5
+    ]
+   ],
+   "interactables": [
+    {
+     "id": "waystone_pyre",
+     "kind": "waystone",
+     "label": "Waystone",
+     "x": 73.5,
+     "z": -108
+    },
+    {
+     "id": "ember_altar",
+     "kind": "boss",
+     "label": "The Ember Altar",
+     "x": 90,
+     "z": -126.35
+    }
+   ],
+   "ambient": {
+    "fog": 1312774,
+    "hemiSky": 4858898,
+    "hemiGround": 787459,
+    "moon": 14191178
+   }
+  },
+  "alchemist_wing": {
+   "id": "alchemist_wing",
+   "name": "The Alchemist's Wing",
+   "subtitle": "Where the dead are distilled",
+   "theme": "wing",
+   "rect": {
+    "x0": 20,
+    "z0": 8,
+    "x1": 46,
+    "z1": 32
+   },
+   "safe": true,
+   "level": 1,
+   "enemies": [],
+   "cap": 0,
+   "waveSize": 0,
+   "waveIntervalMs": 0,
+   "eliteChance": 0,
+   "loot": [],
+   "itemChance": 0,
+   "breaches": [],
+   "interactables": [
+    {
+     "id": "npc_apothecary",
+     "kind": "npc",
+     "label": "The Apothecary",
+     "x": 42.6,
+     "z": 20
+    },
+    {
+     "id": "wing_cauldron",
+     "kind": "cauldron",
+     "label": "The Great Cauldron",
+     "x": 33,
+     "z": 19.5
+    },
+    {
+     "id": "wing_alembic",
+     "kind": "alembic",
+     "label": "Alembic",
+     "x": 24.5,
+     "z": 10.5
+    },
+    {
+     "id": "wing_reagent_shelf",
+     "kind": "reagents",
+     "label": "Reagent Shelf",
+     "x": 38.5,
+     "z": 10.5
+    }
+   ],
+   "ambient": {
+    "fog": 659469,
+    "hemiSky": 11048044,
+    "hemiGround": 2761752,
+    "moon": 13156512
+   }
+  },
+  "warren": {
+   "id": "warren",
+   "name": "The Catacomb Warren",
+   "subtitle": "Nine chambers, and something is digging in each",
+   "theme": "warren",
+   "rect": {
+    "x0": -72,
+    "z0": -52,
+    "x1": -32,
+    "z1": -8
+   },
+   "safe": false,
+   "level": 4,
+   "enemies": [
+    {
+     "id": "rat",
+     "weight": 30
+    },
+    {
+     "id": "robber",
+     "weight": 22
+    },
+    {
+     "id": "ghoul",
+     "weight": 14
+    },
+    {
+     "id": "bat",
+     "weight": 12
+    },
+    {
+     "id": "sac",
+     "weight": 10
+    },
+    {
+     "id": "hound",
+     "weight": 8
+    },
+    {
+     "id": "penitent",
+     "weight": 4
+    }
+   ],
+   "cap": 26,
+   "waveSize": 8,
+   "waveIntervalMs": 6400,
+   "eliteChance": 0.045,
+   "unlock": {
+    "area": "graves",
+    "kills": 150
+   },
+   "loot": [
+    {
+     "item": "staff_bone",
+     "weight": 1.45
+    },
+    {
+     "item": "scythe_bone",
+     "weight": 1.45
+    },
+    {
+     "item": "wand_bone",
+     "weight": 1.45
+    },
+    {
+     "item": "sickle_bone",
+     "weight": 1.45
+    },
+    {
+     "item": "skull_focus_bone",
+     "weight": 1.45
+    },
+    {
+     "item": "grimoire_bone",
+     "weight": 1.45
+    },
+    {
+     "item": "mourning_bell_bone",
+     "weight": 1.45
+    },
+    {
+     "item": "bones_old",
+     "weight": 20
+    },
+    {
+     "item": "bones_barrow",
+     "weight": 12
+    },
+    {
+     "item": "ore_tin",
+     "weight": 18
+    },
+    {
+     "item": "ore_iron",
+     "weight": 14
+    },
+    {
+     "item": "material_copper_bar",
+     "weight": 10
+    },
+    {
+     "item": "seed_mourning_moss",
+     "weight": 8
+    },
+    {
+     "item": "flask_hp_minor",
+     "weight": 12
+    },
+    {
+     "item": "augment_copper",
+     "weight": 5
+    },
+    {
+     "item": "plate_copper",
+     "weight": 4
+    },
+    {
+     "item": "helm_iron",
+     "weight": 3
+    }
+   ],
+   "itemChance": 0.1,
+   "breaches": [
+    [
+     -65,
+     -45
+    ],
+    [
+     -52,
+     -45
+    ],
+    [
+     -39,
+     -45
+    ],
+    [
+     -65,
+     -30
+    ],
+    [
+     -55.5,
+     -30
+    ],
+    [
+     -65,
+     -15
+    ],
+    [
+     -52,
+     -15
+    ],
+    [
+     -39,
+     -15
+    ]
+   ],
+   "interactables": [
+    {
+     "id": "waystone_warren",
+     "kind": "waystone",
+     "label": "Waystone",
+     "x": -35.5,
+     "z": -27
+    },
+    {
+     "id": "depths_stair",
+     "kind": "stair",
+     "label": "The Stair Down",
+     "x": -67.2,
+     "z": -30
+    }
+   ],
+   "ambient": {
+    "fog": 789000,
+    "hemiSky": 3813926,
+    "hemiGround": 657414,
+    "moon": 11049594
+   }
+  },
+  "coliseum": {
+   "id": "coliseum",
+   "name": "The Bone Coliseum",
+   "subtitle": "The dead cheer for whoever is still standing",
+   "theme": "coliseum",
+   "rect": {
+    "x0": 70,
+    "z0": -46,
+    "x1": 112,
+    "z1": -10
+   },
+   "safe": false,
+   "level": 11,
+   "enemies": [
+    {
+     "id": "rat",
+     "weight": 18
+    },
+    {
+     "id": "hound",
+     "weight": 16
+    },
+    {
+     "id": "robber",
+     "weight": 14
+    },
+    {
+     "id": "deacon",
+     "weight": 10
+    },
+    {
+     "id": "bat",
+     "weight": 8
+    },
+    {
+     "id": "acolyte",
+     "weight": 9
+    },
+    {
+     "id": "wraith",
+     "weight": 8
+    },
+    {
+     "id": "gargoyle",
+     "weight": 8
+    },
+    {
+     "id": "templar",
+     "weight": 6
+    },
+    {
+     "id": "censer",
+     "weight": 5
+    },
+    {
+     "id": "seraph",
+     "weight": 5
+    },
+    {
+     "id": "golem",
+     "weight": 3
+    }
+   ],
+   "cap": 36,
+   "waveSize": 14,
+   "waveIntervalMs": 4200,
+   "eliteChance": 0.13,
+   "unlock": {
+    "area": "ossuary",
+    "kills": 350
+   },
+   "loot": [
+    {
+     "item": "staff_iron",
+     "weight": 1.5999999999999999
+    },
+    {
+     "item": "scythe_iron",
+     "weight": 1.5999999999999999
+    },
+    {
+     "item": "wand_iron",
+     "weight": 1.5999999999999999
+    },
+    {
+     "item": "sickle_iron",
+     "weight": 1.5999999999999999
+    },
+    {
+     "item": "skull_focus_iron",
+     "weight": 1.5999999999999999
+    },
+    {
+     "item": "grimoire_iron",
+     "weight": 1.5999999999999999
+    },
+    {
+     "item": "mourning_bell_iron",
+     "weight": 1.5999999999999999
+    },
+    {
+     "item": "ore_silver",
+     "weight": 18
+    },
+    {
+     "item": "ore_gold",
+     "weight": 12
+    },
+    {
+     "item": "ingot_silver",
+     "weight": 6
+    },
+    {
+     "item": "flask_hp_major",
+     "weight": 12
+    },
+    {
+     "item": "flask_damage",
+     "weight": 6
+    },
+    {
+     "item": "gem_grave_garnet",
+     "weight": 6
+    },
+    {
+     "item": "gem_bone_opal",
+     "weight": 3
+    },
+    {
+     "item": "augment_iron",
+     "weight": 6
+    },
+    {
+     "item": "helm_iron",
+     "weight": 6
+    },
+    {
+     "item": "chest_iron",
+     "weight": 9.999999999999998
+    },
+    {
+     "item": "kit_iron_warden",
+     "weight": 7.999999999999999
+    }
+   ],
+   "itemChance": 0.17,
+   "breaches": [
+    [
+     91,
+     -44
+    ],
+    [
+     91,
+     -12
+    ],
+    [
+     110,
+     -28
+    ],
+    [
+     78,
+     -43
+    ],
+    [
+     78,
+     -13
+    ],
+    [
+     104,
+     -42
+    ],
+    [
+     104,
+     -14
+    ],
+    [
+     100,
+     -28
+    ]
+   ],
+   "interactables": [
+    {
+     "id": "waystone_coliseum",
+     "kind": "waystone",
+     "label": "Waystone",
+     "x": 73.5,
+     "z": -20
+    }
+   ],
+   "ambient": {
+    "fog": 1051658,
+    "hemiSky": 4864560,
+    "hemiGround": 788486,
+    "moon": 13678736
+   }
+  },
+  "fen": {
+   "id": "fen",
+   "name": "The Mourning Fen",
+   "subtitle": "Where the marsh keeps the names it swallows",
+   "theme": "fen",
+   "rect": {
+    "x0": -60,
+    "z0": -100,
+    "x1": -22,
+    "z1": -60
+   },
+   "safe": false,
+   "level": 45,
+   "scaling": {
+    "minLevel": 45
+   },
+   "enemies": [
+    {
+     "id": "bog_hag",
+     "weight": 18
+    },
+    {
+     "id": "mire_leech",
+     "weight": 16
+    },
+    {
+     "id": "fen_wisp",
+     "weight": 20
+    },
+    {
+     "id": "drowned_sexton",
+     "weight": 8
+    },
+    {
+     "id": "wraith",
+     "weight": 12
+    }
+   ],
+   "cap": 24,
+   "waveSize": 9,
+   "waveIntervalMs": 6200,
+   "eliteChance": 0.09,
+   "unlock": {
+    "area": "pyre",
+    "kills": 800
+   },
+   "loot": [
+    {
+     "item": "set_gravecaller_ascended_head",
+     "weight": 2.25
+    },
+    {
+     "item": "set_gravecaller_ascended_chest",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_gravecaller_ascended_hands",
+     "weight": 2.25
+    },
+    {
+     "item": "set_gravecaller_ascended_legs",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_gravecaller_ascended_feet",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_warden_ascended_head",
+     "weight": 2.25
+    },
+    {
+     "item": "set_warden_ascended_chest",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_warden_ascended_hands",
+     "weight": 2.25
+    },
+    {
+     "item": "set_warden_ascended_legs",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_warden_ascended_feet",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_monk_ascended_head",
+     "weight": 2.25
+    },
+    {
+     "item": "set_monk_ascended_chest",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_monk_ascended_hands",
+     "weight": 2.25
+    },
+    {
+     "item": "set_monk_ascended_legs",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_monk_ascended_feet",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_ossuary_ascended_head",
+     "weight": 2.25
+    },
+    {
+     "item": "set_ossuary_ascended_chest",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_ossuary_ascended_hands",
+     "weight": 2.25
+    },
+    {
+     "item": "set_ossuary_ascended_legs",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_ossuary_ascended_feet",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_mourner_ascended_head",
+     "weight": 2.25
+    },
+    {
+     "item": "set_mourner_ascended_chest",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_mourner_ascended_hands",
+     "weight": 2.25
+    },
+    {
+     "item": "set_mourner_ascended_legs",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_mourner_ascended_feet",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_witch_ascended_head",
+     "weight": 2.25
+    },
+    {
+     "item": "set_witch_ascended_chest",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_witch_ascended_hands",
+     "weight": 2.25
+    },
+    {
+     "item": "set_witch_ascended_legs",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_witch_ascended_feet",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_rotweaver_ascended_head",
+     "weight": 2.25
+    },
+    {
+     "item": "set_rotweaver_ascended_chest",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_rotweaver_ascended_hands",
+     "weight": 2.25
+    },
+    {
+     "item": "set_rotweaver_ascended_legs",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_rotweaver_ascended_feet",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_knight_ascended_head",
+     "weight": 2.25
+    },
+    {
+     "item": "set_knight_ascended_chest",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_knight_ascended_hands",
+     "weight": 2.25
+    },
+    {
+     "item": "set_knight_ascended_legs",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_knight_ascended_feet",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_veil_ascended_head",
+     "weight": 2.25
+    },
+    {
+     "item": "set_veil_ascended_chest",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_veil_ascended_hands",
+     "weight": 2.25
+    },
+    {
+     "item": "set_veil_ascended_legs",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "set_veil_ascended_feet",
+     "weight": 2.6999999999999997
+    },
+    {
+     "item": "gem_void_sapphire",
+     "weight": 9
+    },
+    {
+     "item": "gem_bone_opal",
+     "weight": 8
+    },
+    {
+     "item": "gem_grave_garnet",
+     "weight": 6
+    },
+    {
+     "item": "herb_bog_myrtle",
+     "weight": 14
+    },
+    {
+     "item": "herb_drowned_lotus",
+     "weight": 8
+    },
+    {
+     "item": "seed_bog_myrtle",
+     "weight": 4
+    },
+    {
+     "item": "seed_drowned_lotus",
+     "weight": 3
+    },
+    {
+     "item": "ore_moon",
+     "weight": 7
+    },
+    {
+     "item": "ingot_hell",
+     "weight": 4
+    },
+    {
+     "item": "flask_hp_grand",
+     "weight": 8
+    },
+    {
+     "item": "flask_void_resist",
+     "weight": 7
+    },
+    {
+     "item": "flask_damage",
+     "weight": 6
+    },
+    {
+     "item": "elixir_moonlight",
+     "weight": 2
+    },
+    {
+     "item": "helm_gold",
+     "weight": 9
+    }
+   ],
+   "itemChance": 0.16,
+   "breaches": [
+    [
+     -58.5,
+     -98.5
+    ],
+    [
+     -25.5,
+     -97
+    ],
+    [
+     -57,
+     -63
+    ],
+    [
+     -28,
+     -63
+    ],
+    [
+     -41,
+     -98.5
+    ],
+    [
+     -58,
+     -80
+    ],
+    [
+     -41,
+     -62
+    ]
+   ],
+   "interactables": [
+    {
+     "id": "waystone_fen",
+     "kind": "waystone",
+     "label": "Waystone",
+     "x": -24.8,
+     "z": -85.6
+    },
+    {
+     "id": "mire_altar",
+     "kind": "boss",
+     "label": "The Mire Altar",
+     "x": -42,
+     "z": -90.2
+    }
+   ],
+   "ambient": {
+    "fog": 661016,
+    "hemiSky": 2771538,
+    "hemiGround": 396302,
+    "moon": 8307908,
+    "fogMult": 1.7
+   }
+  },
+  "depths": {
+   "id": "depths",
+   "name": "The Catacomb Depths",
+   "subtitle": "Down, and further down",
+   "theme": "depths",
+   "rect": {
+    "x0": 150,
+    "z0": -60,
+    "x1": 190,
+    "z1": -24
+   },
+   "safe": false,
+   "level": 12,
+   "scaling": {
+    "minLevel": 12
+   },
+   "instance": true,
+   "enemies": [
+    {
+     "id": "rat",
+     "weight": 30
+    },
+    {
+     "id": "robber",
+     "weight": 22
+    },
+    {
+     "id": "ghoul",
+     "weight": 14
+    },
+    {
+     "id": "bat",
+     "weight": 12
+    },
+    {
+     "id": "sac",
+     "weight": 10
+    },
+    {
+     "id": "hound",
+     "weight": 8
+    }
+   ],
+   "cap": 24,
+   "waveSize": 6,
+   "waveIntervalMs": 3800,
+   "eliteChance": 0.06,
+   "loot": [],
+   "itemChance": 0.12,
+   "breaches": [],
+   "interactables": [],
+   "ambient": {
+    "fog": 657415,
+    "hemiSky": 3156516,
+    "hemiGround": 525829,
+    "moon": 10128496
+   }
+  }
+ },
+ "AREA_ORDER": [
+  "chapterhouse",
+  "acre",
+  "alchemist_wing",
+  "graves",
+  "warren",
+  "ossuary",
+  "nave",
+  "coliseum",
+  "depths",
+  "sanctum",
+  "cloister",
+  "pyre",
+  "fen"
+ ],
+ "HUNT_ORDER": [
+  "graves",
+  "warren",
+  "ossuary",
+  "nave",
+  "coliseum",
+  "sanctum",
+  "cloister",
+  "pyre",
+  "fen"
+ ],
+ "CHASE_WEIGHT": {
+  "base": 1.4,
+  "perRung": 0.05
+ },
+ "DOORS": [
+  {
+   "id": "chapter_graves",
+   "a": "chapterhouse",
+   "b": "graves",
+   "rect": {
+    "x0": -3.5,
+    "z0": 3,
+    "x1": 3.5,
+    "z1": 9
+   },
+   "axis": "z"
+  },
+  {
+   "id": "chapter_acre",
+   "a": "chapterhouse",
+   "b": "acre",
+   "rect": {
+    "x0": -21,
+    "z0": 17,
+    "x1": -12,
+    "z1": 23
+   },
+   "axis": "x"
+  },
+  {
+   "id": "chapter_wing",
+   "a": "chapterhouse",
+   "b": "alchemist_wing",
+   "rect": {
+    "x0": 12,
+    "z0": 17,
+    "x1": 21,
+    "z1": 23
+   },
+   "axis": "x"
+  },
+  {
+   "id": "graves_ossuary",
+   "a": "graves",
+   "b": "ossuary",
+   "rect": {
+    "x0": 25,
+    "z0": -22,
+    "x1": 33,
+    "z1": -14
+   },
+   "axis": "x"
+  },
+  {
+   "id": "graves_nave",
+   "a": "graves",
+   "b": "nave",
+   "rect": {
+    "x0": -4,
+    "z0": -45,
+    "x1": 4,
+    "z1": -35
+   },
+   "axis": "z"
+  },
+  {
+   "id": "nave_sanctum",
+   "a": "nave",
+   "b": "sanctum",
+   "rect": {
+    "x0": -4,
+    "z0": -103,
+    "x1": 4,
+    "z1": -95
+   },
+   "axis": "z"
+  },
+  {
+   "id": "sanctum_cloister",
+   "a": "sanctum",
+   "b": "cloister",
+   "rect": {
+    "x0": 17,
+    "z0": -112,
+    "x1": 25,
+    "z1": -104
+   },
+   "axis": "x"
+  },
+  {
+   "id": "graves_warren",
+   "a": "graves",
+   "b": "warren",
+   "rect": {
+    "x0": -33,
+    "z0": -32,
+    "x1": -25,
+    "z1": -24
+   },
+   "axis": "x"
+  },
+  {
+   "id": "ossuary_coliseum",
+   "a": "ossuary",
+   "b": "coliseum",
+   "rect": {
+    "x0": 63,
+    "z0": -30,
+    "x1": 71,
+    "z1": -22
+   },
+   "axis": "x"
+  },
+  {
+   "id": "cloister_pyre",
+   "a": "cloister",
+   "b": "pyre",
+   "rect": {
+    "x0": 63,
+    "z0": -120,
+    "x1": 71,
+    "z1": -112
+   },
+   "axis": "x"
+  },
+  {
+   "id": "nave_fen",
+   "a": "nave",
+   "b": "fen",
+   "rect": {
+    "x0": -23,
+    "z0": -81,
+    "x1": -14,
+    "z1": -73
+   },
+   "axis": "x"
+  }
+ ],
+ "PLAYER_SPAWN": {
+  "x": -26,
+  "z": 20
+ },
+ "WING_APOTHECARY_SPOT": {
+  "x": 45.1,
+  "z": 20,
+  "facing": -1.5707963267948966
+ },
+ "CHAPTERHOUSE_RETURN": {
+  "x": 0,
+  "z": 24
+ },
+ "BOSS_SUMMON_SHARDS": 5,
+ "GLOBAL_ENEMY_CAP": 72
+}

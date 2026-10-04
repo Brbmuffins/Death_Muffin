@@ -8,6 +8,7 @@ const FX := "res://tests/rules-core/fixtures/"
 # preload so the test runs even before the global class cache exists (fresh checkout, no editor import)
 const Rng := preload("res://rules/core/rng.gd")
 const M := preload("res://rules/core/math.gd")
+const C := preload("res://rules/core/content.gd")
 
 
 func _init() -> void:
@@ -74,4 +75,44 @@ func _test_math() -> void:
 
 
 func _test_content() -> void:
-	pass
+	C.reset()
+	var man: Dictionary = C.manifest()
+	ok(man.has("sourceSha") and String(man["sourceSha"]).length() == 40, "manifest sha")
+	var n_files := 0
+	for name in C.file_names():
+		var d: Dictionary = C.file(name)
+		var entry: Dictionary = man["files"][name]
+		ok(d.size() == int(entry["keys"]), "%s key count" % name)
+		for k in d:
+			var v: Variant = d[k]
+			var cnt := 1
+			if typeof(v) == TYPE_ARRAY or typeof(v) == TYPE_DICTIONARY:
+				cnt = v.size()
+			if cnt != int(entry["counts"][k]):
+				ok(false, "%s.%s count %d != manifest %d" % [name, k, cnt, int(entry["counts"][k])])
+			else:
+				pass_n += 1
+		n_files += 1
+	ok(n_files >= 70, "file count %d" % n_files)
+	var sm: Dictionary = man["summary"]
+	ok(C.items().size() == int(sm["items"]), "items count")
+	ok(C.enemies().size() == int(sm["enemies"]), "enemies count")
+	ok(C.areas().size() == int(sm["areas"]), "areas count")
+	ok(C.abilities().size() == int(sm["abilities"]), "abilities count")
+	ok(C.disciplines().size() == int(sm["disciplines"]), "disciplines count")
+	# typed accessors
+	ok(C.item("material_copper_shard")["name"] == "Copper Shard", "item lookup")
+	ok(C.item("nope_x")["name"] == "nope x" and int(C.item("nope_x")["sell"]) == 0, "item fallback")
+	ok(C.enemy("robber")["name"] == "Grave Robber" and int(C.enemy("robber")["hp"]) == 68, "enemy lookup")
+	ok(C.area("graves").has("rect") and C.area("graves")["loot"].size() > 0, "area lookup")
+	ok(C.area_order().size() > 5, "area_order")
+	ok(C.upgrade_cost("damage", 0) == 40 and C.upgrade_cost("damage", 1) == 60, "upgrade_cost")
+	ok(C.recipes().size() == C.get_export("recipes", "ALL_RECIPE_ROWS").size(), "recipes parsed")
+	ok(C.recipe("smelt_copper_ingot")["inputs"][0]["item"] == "ore_copper", "recipe lookup")
+	ok(C.affix_range(str(C.affixes()[0]["id"]), 1).size() == 2, "affix_range")
+	ok(C.smart_loot_table("graves", "gravecaller").size() == C.area("graves")["loot"].size(), "smart table")
+	ok(C.tips().size() > 20, "tips")
+	# every item reference in area loot tables exists
+	for aid in C.areas():
+		for e in C.area(aid)["loot"]:
+			ok(C.has_item(e["item"]), "area %s loot item %s exists" % [aid, e["item"]])

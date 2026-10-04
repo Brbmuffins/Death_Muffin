@@ -1,0 +1,744 @@
+{
+ "SET_TIERS": [
+  2,
+  4,
+  5
+ ],
+ "SET_BONUSES": {
+  "ossuary": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "thrallHpMult": 1.2,
+      "maxHpMult": 1.02
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "thrallHpMult": 1.1
+     },
+     "add": {
+      "wardPerThrall": 0.05
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Reliquary Bulwark",
+    "effect": {
+     "mult": {
+      "maxHpMult": 1.1
+     },
+     "add": {
+      "litanyBarrier": 0.04
+     }
+    }
+   }
+  ],
+  "ossuary_ascended": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "thrallHpMult": 1.3,
+      "maxHpMult": 1.03
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "thrallHpMult": 1.12
+     },
+     "add": {
+      "wardPerThrall": 0.065
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Regent’s Ossuary",
+    "effect": {
+     "mult": {
+      "maxHpMult": 1.14
+     },
+     "add": {
+      "litanyBarrier": 0.06
+     }
+    }
+   }
+  ],
+  "gravecaller": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "thrallDamageMult": 1.08
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "thrallAttackSpeedMult": 1.1
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Legion Call",
+    "effect": {
+     "mult": {
+      "thrallDamageMult": 1.14
+     },
+     "add": {
+      "thrallCap": 1
+     }
+    }
+   }
+  ],
+  "gravecaller_ascended": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "thrallDamageMult": 1.14
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "thrallAttackSpeedMult": 1.14,
+      "thrallDamageMult": 1.04
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Sovereign Legion",
+    "effect": {
+     "mult": {
+      "thrallDamageMult": 1.14,
+      "thrallAttackSpeedMult": 1.06
+     },
+     "add": {
+      "thrallCap": 1
+     }
+    }
+   }
+  ],
+  "mourner": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "essenceRegenMult": 1.3,
+      "maxHpMult": 1.06
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "thrallHpMult": 1.2,
+      "maxHpMult": 1.05
+     },
+     "add": {
+      "corpseHeal": 0.03
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Widow’s Chorus",
+    "effect": {
+     "mult": {
+      "essenceRegenMult": 1.2,
+      "thrallDamageMult": 1.2,
+      "maxHpMult": 1.04
+     }
+    }
+   }
+  ],
+  "mourner_ascended": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "essenceRegenMult": 1.45,
+      "maxHpMult": 1.12
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "thrallHpMult": 1.3,
+      "maxHpMult": 1.08
+     },
+     "add": {
+      "corpseHeal": 0.05
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Requiem Hush",
+    "effect": {
+     "mult": {
+      "essenceRegenMult": 1.3,
+      "thrallDamageMult": 1.2,
+      "maxHpMult": 1.07
+     },
+     "add": {
+      "corpseHeal": 0.02
+     }
+    }
+   }
+  ],
+  "rotweaver": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "miasmaRadiusMult": 1.12
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "miasmaRadiusMult": 1.08
+     },
+     "add": {
+      "witheredMaxStacks": 2
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Blight Bloom",
+    "effect": {
+     "mult": {
+      "miasmaRadiusMult": 1.12,
+      "maxHpMult": 1.03
+     },
+     "add": {
+      "witheredMaxStacks": 1
+     }
+    }
+   }
+  ],
+  "rotweaver_ascended": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "miasmaRadiusMult": 1.16
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "miasmaRadiusMult": 1.1
+     },
+     "add": {
+      "witheredMaxStacks": 3
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Plague Song",
+    "effect": {
+     "mult": {
+      "miasmaRadiusMult": 1.16,
+      "maxHpMult": 1.05
+     },
+     "add": {
+      "witheredMaxStacks": 1
+     }
+    }
+   }
+  ],
+  "legion_unburied": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "thrallDamageMult": 1.25
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "name": "Bursting Dead",
+    "effect": {
+     "mult": {
+      "thrallAttackSpeedMult": 1.1
+     },
+     "add": {
+      "thrallDeathBurst": 0.8
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Legion Champion",
+    "effect": {
+     "add": {
+      "thrallCap": 2,
+      "championEvery": 4,
+      "spearRally": 1
+     }
+    }
+   }
+  ],
+  "colossus_mantle": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "thrallHpMult": 1.35,
+      "thrallDamageMult": 1.15
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "name": "Reflecting Ward",
+    "effect": {
+     "add": {
+      "wardReflect": 0.6
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Colossus",
+    "effect": {
+     "add": {
+      "colossusGuard": 0.3,
+      "litanyShatter": 4
+     }
+    }
+   }
+  ],
+  "requiem_wraiths": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "essenceRegenMult": 1.4,
+      "maxHpMult": 1.1
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "name": "Wisps",
+    "effect": {
+     "add": {
+      "corpseWisp": 10,
+      "corpseHeal": 0.02
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Requiem",
+    "effect": {
+     "mult": {
+      "soulHarvestRateMult": 2,
+      "thrallAttackSpeedMult": 1.15
+     },
+     "add": {
+      "wraithNova": 1.2
+     }
+    }
+   }
+  ],
+  "plague_choir": [
+   {
+    "pieces": 2,
+    "effect": {
+     "mult": {
+      "miasmaRadiusMult": 1.25,
+      "maxHpMult": 1.08
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "name": "Contagion",
+    "effect": {
+     "add": {
+      "miasmaSpreadsWithered": 1
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Chain Plague",
+    "effect": {
+     "add": {
+      "witheredBurstAt": 8
+     }
+    }
+   }
+  ],
+  "warden": [
+   {
+    "pieces": 2,
+    "effect": {
+     "stats": {
+      "stat_vit": 3
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "maxHpMult": 1.05
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Lamplight Vigil",
+    "effect": {
+     "stats": {
+      "stat_str": 3
+     },
+     "mult": {
+      "maxHpMult": 1.04
+     }
+    }
+   }
+  ],
+  "warden_ascended": [
+   {
+    "pieces": 2,
+    "effect": {
+     "stats": {
+      "stat_vit": 4
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "maxHpMult": 1.07
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Last Watch",
+    "effect": {
+     "stats": {
+      "stat_str": 4
+     },
+     "mult": {
+      "maxHpMult": 1.05
+     }
+    }
+   }
+  ],
+  "monk": [
+   {
+    "pieces": 2,
+    "effect": {
+     "stats": {
+      "stat_agi": 3
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "stats": {
+      "stat_str": 3
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Measured Toll",
+    "effect": {
+     "stats": {
+      "stat_agi": 3,
+      "stat_str": 3
+     }
+    }
+   }
+  ],
+  "monk_ascended": [
+   {
+    "pieces": 2,
+    "effect": {
+     "stats": {
+      "stat_agi": 4
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "stats": {
+      "stat_str": 4
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Final Note",
+    "effect": {
+     "stats": {
+      "stat_agi": 4,
+      "stat_str": 4
+     }
+    }
+   }
+  ],
+  "witch": [
+   {
+    "pieces": 2,
+    "effect": {
+     "stats": {
+      "stat_int": 2
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "essenceRegenMult": 1.06
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Thorn Bloom",
+    "effect": {
+     "stats": {
+      "stat_int": 2
+     },
+     "mult": {
+      "maxHpMult": 1.04
+     }
+    }
+   }
+  ],
+  "witch_ascended": [
+   {
+    "pieces": 2,
+    "effect": {
+     "stats": {
+      "stat_int": 3
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "essenceRegenMult": 1.08
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Rootbound Covenant",
+    "effect": {
+     "stats": {
+      "stat_int": 3
+     },
+     "mult": {
+      "maxHpMult": 1.06
+     }
+    }
+   }
+  ],
+  "knight": [
+   {
+    "pieces": 2,
+    "effect": {
+     "stats": {
+      "stat_str": 3
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "maxHpMult": 1.05
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Broken Vow",
+    "effect": {
+     "stats": {
+      "stat_vit": 3,
+      "stat_str": 3
+     }
+    }
+   }
+  ],
+  "knight_ascended": [
+   {
+    "pieces": 2,
+    "effect": {
+     "stats": {
+      "stat_str": 4
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "mult": {
+      "maxHpMult": 1.07
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Shield Remains",
+    "effect": {
+     "stats": {
+      "stat_vit": 4,
+      "stat_str": 4
+     }
+    }
+   }
+  ],
+  "veil": [
+   {
+    "pieces": 2,
+    "effect": {
+     "stats": {
+      "stat_agi": 3
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "stats": {
+      "stat_int": 2
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Edge of Worlds",
+    "effect": {
+     "stats": {
+      "stat_agi": 3
+     },
+     "mult": {
+      "essenceRegenMult": 1.06
+     }
+    }
+   }
+  ],
+  "veil_ascended": [
+   {
+    "pieces": 2,
+    "effect": {
+     "stats": {
+      "stat_agi": 4
+     }
+    }
+   },
+   {
+    "pieces": 4,
+    "effect": {
+     "stats": {
+      "stat_int": 3
+     }
+    }
+   },
+   {
+    "pieces": 5,
+    "name": "Shadowless",
+    "effect": {
+     "stats": {
+      "stat_agi": 4
+     },
+     "mult": {
+      "essenceRegenMult": 1.08
+     }
+    }
+   }
+  ]
+ },
+ "SET_NAMES": {
+  "gravecaller": "Gravecall",
+  "warden": "Lamplight",
+  "monk": "Bellwake",
+  "ossuary": "Ivory Reliquary",
+  "mourner": "Widowveil",
+  "witch": "Carrionbloom",
+  "rotweaver": "Blightweave",
+  "knight": "Hollow Oath",
+  "veil": "Threshold",
+  "gravecaller_ascended": "Epitaph Sovereign",
+  "warden_ascended": "Nightwatch Beacon",
+  "monk_ascended": "Last Toll",
+  "ossuary_ascended": "Marrow Regent",
+  "mourner_ascended": "Pale Requiem",
+  "witch_ascended": "Thorn Covenant",
+  "rotweaver_ascended": "Virulent Choir",
+  "knight_ascended": "Oathbreaker",
+  "veil_ascended": "Umbral Crossing",
+  "legion_unburied": "Legion of the Unburied",
+  "colossus_mantle": "Colossus Mantle",
+  "requiem_wraiths": "Requiem of Wraiths",
+  "plague_choir": "Plague Choir"
+ },
+ "SET_IDS": [
+  "gravecaller",
+  "warden",
+  "monk",
+  "ossuary",
+  "mourner",
+  "witch",
+  "rotweaver",
+  "knight",
+  "veil",
+  "gravecaller_ascended",
+  "warden_ascended",
+  "monk_ascended",
+  "ossuary_ascended",
+  "mourner_ascended",
+  "witch_ascended",
+  "rotweaver_ascended",
+  "knight_ascended",
+  "veil_ascended",
+  "legion_unburied",
+  "colossus_mantle",
+  "requiem_wraiths",
+  "plague_choir"
+ ]
+}

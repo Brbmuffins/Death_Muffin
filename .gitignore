@@ -20,3 +20,6 @@ launcher/windows/obj/
 godot/.godot/
 godot/build/
 godot/shots/
+
+# Golden fixtures are generated from the TypeScript (tools/godot/gen-fixtures.sh); large sets stay out of git.
+godot/tests/rules-loot/fixtures/

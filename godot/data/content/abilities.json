@@ -1,0 +1,1841 @@
+{
+ "NEW_BLOOD_ABILITIES": {
+  "flail_swing": {
+   "id": "flail_swing",
+   "slot": 0,
+   "name": "Flail Swing",
+   "description": "Sweep the flail through a wide arc in front of you.",
+   "icon": "art/abilities/warden-flail-swing.webp",
+   "targeting": "direction",
+   "cooldownMs": 700,
+   "essenceCost": 0,
+   "range": 3,
+   "radius": 3,
+   "power": 1
+  },
+  "lantern_cone": {
+   "id": "lantern_cone",
+   "slot": 1,
+   "name": "Lantern Cone",
+   "description": "Burn a cone of enemies, strip Shrouded and stun wraiths.",
+   "icon": "art/abilities/warden-lantern-cone.webp",
+   "targeting": "direction",
+   "cooldownMs": 4000,
+   "essenceCost": 20,
+   "range": 7,
+   "radius": 7,
+   "power": 1.3
+  },
+  "chain_pull": {
+   "id": "chain_pull",
+   "slot": 2,
+   "name": "Chain Pull",
+   "description": "Pull an enemy to your feet. Bosses cannot be pulled.",
+   "icon": "art/abilities/warden-chain-pull.webp",
+   "targeting": "enemy",
+   "cooldownMs": 6000,
+   "essenceCost": 10,
+   "range": 10,
+   "radius": 0,
+   "power": 0.6
+  },
+  "burn_the_dead": {
+   "id": "burn_the_dead",
+   "slot": 3,
+   "name": "Burn the Dead",
+   "description": "Burn up to three corpses into fire pools for five seconds. Gain 20 Oil for each.",
+   "icon": "art/abilities/warden-burn-the-dead.webp",
+   "targeting": "ground",
+   "cooldownMs": 9000,
+   "essenceCost": 0,
+   "range": 10,
+   "radius": 4,
+   "power": 0.5,
+   "unlockLevel": 3
+  },
+  "watchmans_ward": {
+   "id": "watchmans_ward",
+   "slot": 4,
+   "name": "Watchman's Ward",
+   "description": "Plant a lantern for eight seconds. Allies inside take less damage and enemies slow.",
+   "icon": "art/abilities/warden-watchmans-ward.webp",
+   "targeting": "ground",
+   "cooldownMs": 18000,
+   "essenceCost": 25,
+   "range": 10,
+   "radius": 5,
+   "power": 0,
+   "unlockLevel": 5
+  },
+  "cremate": {
+   "id": "cremate",
+   "slot": 5,
+   "name": "Cremate",
+   "description": "Spend one corpse to kindle a three-second fire pillar.",
+   "icon": "art/abilities/warden-cremate.webp",
+   "targeting": "corpse",
+   "cooldownMs": 5000,
+   "essenceCost": 0,
+   "range": 12,
+   "radius": 1.2,
+   "power": 0.7
+  },
+  "last_light": {
+   "id": "last_light",
+   "slot": 6,
+   "name": "Last Light",
+   "description": "Stun nearby enemies, strip Shrouded and heal nearby allies by 10%.",
+   "icon": "art/abilities/warden-last-light.webp",
+   "targeting": "self",
+   "cooldownMs": 50000,
+   "essenceCost": 0,
+   "range": 0,
+   "radius": 12,
+   "power": 1.2,
+   "unlockLevel": 10
+  },
+  "palm_strike": {
+   "id": "palm_strike",
+   "slot": 0,
+   "name": "Palm Strike",
+   "description": "A quick palm strike. Hits on the bell beat deal extra damage and Resonance.",
+   "icon": "art/abilities/monk-palm-strike.webp",
+   "targeting": "enemy",
+   "cooldownMs": 430,
+   "essenceCost": 0,
+   "range": 1.8,
+   "radius": 0,
+   "power": 0.9
+  },
+  "toll": {
+   "id": "toll",
+   "slot": 1,
+   "name": "Toll",
+   "description": "Ring around you and interrupt casters. Spend 25 Resonance to stun.",
+   "icon": "art/abilities/monk-toll.webp",
+   "targeting": "self",
+   "cooldownMs": 4500,
+   "essenceCost": 0,
+   "range": 0,
+   "radius": 4,
+   "power": 1
+  },
+  "resonant_step": {
+   "id": "resonant_step",
+   "slot": 2,
+   "name": "Resonant Step",
+   "description": "Dash through enemies, striking every body along the path.",
+   "icon": "art/abilities/monk-resonant-step.webp",
+   "targeting": "direction",
+   "cooldownMs": 6000,
+   "essenceCost": 0,
+   "range": 5,
+   "radius": 0.8,
+   "power": 1
+  },
+  "knell": {
+   "id": "knell",
+   "slot": 3,
+   "name": "Knell",
+   "description": "Mark a target. Three bell beats, 1.2 s apart, each strike it for damage of their own.",
+   "icon": "art/abilities/monk-knell.webp",
+   "targeting": "enemy",
+   "cooldownMs": 9000,
+   "essenceCost": 15,
+   "range": 9,
+   "radius": 0,
+   "power": 0.6,
+   "unlockLevel": 3
+  },
+  "choir_of_one": {
+   "id": "choir_of_one",
+   "slot": 4,
+   "name": "Choir of One",
+   "description": "For six seconds every beat emits a small toll ring.",
+   "icon": "art/abilities/monk-choir-of-one.webp",
+   "targeting": "self",
+   "cooldownMs": 20000,
+   "essenceCost": 30,
+   "range": 0,
+   "radius": 2.5,
+   "power": 0.5,
+   "unlockLevel": 5
+  },
+  "sound_the_corpse": {
+   "id": "sound_the_corpse",
+   "slot": 5,
+   "name": "Sound the Corpse",
+   "description": "Sound a corpse as a resonant bell. Tolls near it strike harder.",
+   "icon": "art/abilities/monk-sound-the-corpse.webp",
+   "targeting": "corpse",
+   "cooldownMs": 7000,
+   "essenceCost": 0,
+   "range": 10,
+   "radius": 1.2,
+   "power": 0.8
+  },
+  "great_toll": {
+   "id": "great_toll",
+   "slot": 6,
+   "name": "Great Toll",
+   "description": "Spend all Resonance on a great toll that damages and silences foes.",
+   "icon": "art/abilities/monk-great-toll.webp",
+   "targeting": "self",
+   "cooldownMs": 50000,
+   "essenceCost": 0,
+   "range": 0,
+   "radius": 9,
+   "power": 2,
+   "unlockLevel": 10
+  },
+  "hook_throw": {
+   "id": "hook_throw",
+   "slot": 0,
+   "name": "Hook Throw",
+   "description": "Hurl a hook that bleeds its target.",
+   "icon": "art/abilities/witch-hook-throw.webp",
+   "targeting": "enemy",
+   "cooldownMs": 550,
+   "essenceCost": 0,
+   "range": 8,
+   "radius": 0,
+   "power": 1.05
+  },
+  "harvest": {
+   "id": "harvest",
+   "slot": 1,
+   "name": "Harvest",
+   "description": "Consume a corpse for 30 Offal and summon three crows for six seconds.",
+   "icon": "art/abilities/witch-harvest.webp",
+   "targeting": "corpse",
+   "cooldownMs": 6000,
+   "essenceCost": 0,
+   "range": 10,
+   "radius": 1.2,
+   "power": 0
+  },
+  "crow_swarm": {
+   "id": "crow_swarm",
+   "slot": 2,
+   "name": "Crow Swarm",
+   "description": "Send crows into a three-metre circle for five seconds.",
+   "icon": "art/abilities/witch-crow-swarm.webp",
+   "targeting": "ground",
+   "cooldownMs": 8000,
+   "essenceCost": 30,
+   "range": 10,
+   "radius": 3,
+   "power": 0.1
+  },
+  "hook_pull": {
+   "id": "hook_pull",
+   "slot": 3,
+   "name": "Hook Pull",
+   "description": "Drag an enemy to you. Bosses cannot be pulled.",
+   "icon": "art/abilities/witch-hook-pull.webp",
+   "targeting": "enemy",
+   "cooldownMs": 7000,
+   "essenceCost": 5,
+   "range": 8,
+   "radius": 0,
+   "power": 0.6,
+   "unlockLevel": 3
+  },
+  "hex_charm": {
+   "id": "hex_charm",
+   "slot": 4,
+   "name": "Hex Charm",
+   "description": "Curse a target to deal 25% less damage. On death it jumps to two neighbours.",
+   "icon": "art/abilities/witch-hex-charm.webp",
+   "targeting": "enemy",
+   "cooldownMs": 12000,
+   "essenceCost": 10,
+   "range": 9,
+   "radius": 0,
+   "power": 0.3,
+   "unlockLevel": 5
+  },
+  "butcher": {
+   "id": "butcher",
+   "slot": 5,
+   "name": "Butcher",
+   "description": "Carve a corpse into three charms. Allies who collect them heal 5%.",
+   "icon": "art/abilities/witch-butcher.webp",
+   "targeting": "corpse",
+   "cooldownMs": 7000,
+   "essenceCost": 0,
+   "range": 10,
+   "radius": 1.2,
+   "power": 0
+  },
+  "murder_of_crows": {
+   "id": "murder_of_crows",
+   "slot": 6,
+   "name": "Murder of Crows",
+   "description": "An eight-second swarm follows your aim and rends nearby enemies.",
+   "icon": "art/abilities/witch-murder-of-crows.webp",
+   "targeting": "ground",
+   "cooldownMs": 50000,
+   "essenceCost": 35,
+   "range": 12,
+   "radius": 4,
+   "power": 0.7,
+   "unlockLevel": 10
+  },
+  "spirit_bolt": {
+   "id": "spirit_bolt",
+   "slot": 0,
+   "name": "Spirit Bolt",
+   "description": "Loose a spectral bolt from your palm.",
+   "icon": "art/abilities/veil-spirit-bolt.webp",
+   "targeting": "enemy",
+   "cooldownMs": 450,
+   "essenceCost": 0,
+   "range": 11,
+   "radius": 0,
+   "power": 0.72
+  },
+  "veil_form": {
+   "id": "veil_form",
+   "slot": 1,
+   "name": "Veil Form",
+   "description": "Toggle Veil form. Avoid enemy blows, move faster and deal less damage while Veil drains.",
+   "icon": "art/abilities/veil-veil-form.webp",
+   "targeting": "self",
+   "cooldownMs": 500,
+   "essenceCost": 0,
+   "range": 0,
+   "radius": 0,
+   "power": 0
+  },
+  "echo": {
+   "id": "echo",
+   "slot": 2,
+   "name": "Echo",
+   "description": "Raise an echo corpse as a spectral ally for ten seconds.",
+   "icon": "art/abilities/veil-echo.webp",
+   "targeting": "corpse",
+   "cooldownMs": 7000,
+   "essenceCost": 25,
+   "range": 12,
+   "radius": 1.2,
+   "power": 0
+  },
+  "veil_tear": {
+   "id": "veil_tear",
+   "slot": 3,
+   "name": "Veil Tear",
+   "description": "Open a two-second rift that draws enemies inward.",
+   "icon": "art/abilities/veil-veil-tear.webp",
+   "targeting": "ground",
+   "cooldownMs": 8000,
+   "essenceCost": 20,
+   "range": 10,
+   "radius": 3,
+   "power": 0.75,
+   "unlockLevel": 3
+  },
+  "crossing": {
+   "id": "crossing",
+   "slot": 4,
+   "name": "Crossing",
+   "description": "Blink to an echo corpse.",
+   "icon": "art/abilities/veil-crossing.webp",
+   "targeting": "corpse",
+   "cooldownMs": 10000,
+   "essenceCost": 15,
+   "range": 12,
+   "radius": 1.2,
+   "power": 0,
+   "unlockLevel": 5
+  },
+  "lay_to_rest": {
+   "id": "lay_to_rest",
+   "slot": 5,
+   "name": "Lay to Rest",
+   "description": "Consume a corpse, heal 6% and leave two echo corpses.",
+   "icon": "art/abilities/veil-lay-to-rest.webp",
+   "targeting": "corpse",
+   "cooldownMs": 5000,
+   "essenceCost": 0,
+   "range": 10,
+   "radius": 1.2,
+   "power": 0
+  },
+  "between_worlds": {
+   "id": "between_worlds",
+   "slot": 6,
+   "name": "Between Worlds",
+   "description": "For five seconds gain Veil protection with full Life-form damage.",
+   "icon": "art/abilities/veil-between-worlds.webp",
+   "targeting": "self",
+   "cooldownMs": 45000,
+   "essenceCost": 0,
+   "range": 0,
+   "radius": 0,
+   "power": 0,
+   "unlockLevel": 10
+  }
+ },
+ "ABILITIES": {
+  "flail_swing": {
+   "id": "flail_swing",
+   "slot": 0,
+   "name": "Flail Swing",
+   "description": "Sweep the flail through a wide arc in front of you.",
+   "icon": "art/abilities/warden-flail-swing.webp",
+   "targeting": "direction",
+   "cooldownMs": 700,
+   "essenceCost": 0,
+   "range": 3,
+   "radius": 3,
+   "power": 1
+  },
+  "lantern_cone": {
+   "id": "lantern_cone",
+   "slot": 1,
+   "name": "Lantern Cone",
+   "description": "Burn a cone of enemies, strip Shrouded and stun wraiths.",
+   "icon": "art/abilities/warden-lantern-cone.webp",
+   "targeting": "direction",
+   "cooldownMs": 4000,
+   "essenceCost": 20,
+   "range": 7,
+   "radius": 7,
+   "power": 1.3
+  },
+  "chain_pull": {
+   "id": "chain_pull",
+   "slot": 2,
+   "name": "Chain Pull",
+   "description": "Pull an enemy to your feet. Bosses cannot be pulled.",
+   "icon": "art/abilities/warden-chain-pull.webp",
+   "targeting": "enemy",
+   "cooldownMs": 6000,
+   "essenceCost": 10,
+   "range": 10,
+   "radius": 0,
+   "power": 0.6
+  },
+  "burn_the_dead": {
+   "id": "burn_the_dead",
+   "slot": 3,
+   "name": "Burn the Dead",
+   "description": "Burn up to three corpses into fire pools for five seconds. Gain 20 Oil for each.",
+   "icon": "art/abilities/warden-burn-the-dead.webp",
+   "targeting": "ground",
+   "cooldownMs": 9000,
+   "essenceCost": 0,
+   "range": 10,
+   "radius": 4,
+   "power": 0.5,
+   "unlockLevel": 3
+  },
+  "watchmans_ward": {
+   "id": "watchmans_ward",
+   "slot": 4,
+   "name": "Watchman's Ward",
+   "description": "Plant a lantern for eight seconds. Allies inside take less damage and enemies slow.",
+   "icon": "art/abilities/warden-watchmans-ward.webp",
+   "targeting": "ground",
+   "cooldownMs": 18000,
+   "essenceCost": 25,
+   "range": 10,
+   "radius": 5,
+   "power": 0,
+   "unlockLevel": 5
+  },
+  "cremate": {
+   "id": "cremate",
+   "slot": 5,
+   "name": "Cremate",
+   "description": "Spend one corpse to kindle a three-second fire pillar.",
+   "icon": "art/abilities/warden-cremate.webp",
+   "targeting": "corpse",
+   "cooldownMs": 5000,
+   "essenceCost": 0,
+   "range": 12,
+   "radius": 1.2,
+   "power": 0.7
+  },
+  "last_light": {
+   "id": "last_light",
+   "slot": 6,
+   "name": "Last Light",
+   "description": "Stun nearby enemies, strip Shrouded and heal nearby allies by 10%.",
+   "icon": "art/abilities/warden-last-light.webp",
+   "targeting": "self",
+   "cooldownMs": 50000,
+   "essenceCost": 0,
+   "range": 0,
+   "radius": 12,
+   "power": 1.2,
+   "unlockLevel": 10
+  },
+  "palm_strike": {
+   "id": "palm_strike",
+   "slot": 0,
+   "name": "Palm Strike",
+   "description": "A quick palm strike. Hits on the bell beat deal extra damage and Resonance.",
+   "icon": "art/abilities/monk-palm-strike.webp",
+   "targeting": "enemy",
+   "cooldownMs": 430,
+   "essenceCost": 0,
+   "range": 1.8,
+   "radius": 0,
+   "power": 0.9
+  },
+  "toll": {
+   "id": "toll",
+   "slot": 1,
+   "name": "Toll",
+   "description": "Ring around you and interrupt casters. Spend 25 Resonance to stun.",
+   "icon": "art/abilities/monk-toll.webp",
+   "targeting": "self",
+   "cooldownMs": 4500,
+   "essenceCost": 0,
+   "range": 0,
+   "radius": 4,
+   "power": 1
+  },
+  "resonant_step": {
+   "id": "resonant_step",
+   "slot": 2,
+   "name": "Resonant Step",
+   "description": "Dash through enemies, striking every body along the path.",
+   "icon": "art/abilities/monk-resonant-step.webp",
+   "targeting": "direction",
+   "cooldownMs": 6000,
+   "essenceCost": 0,
+   "range": 5,
+   "radius": 0.8,
+   "power": 1
+  },
+  "knell": {
+   "id": "knell",
+   "slot": 3,
+   "name": "Knell",
+   "description": "Mark a target. Three bell beats, 1.2 s apart, each strike it for damage of their own.",
+   "icon": "art/abilities/monk-knell.webp",
+   "targeting": "enemy",
+   "cooldownMs": 9000,
+   "essenceCost": 15,
+   "range": 9,
+   "radius": 0,
+   "power": 0.6,
+   "unlockLevel": 3
+  },
+  "choir_of_one": {
+   "id": "choir_of_one",
+   "slot": 4,
+   "name": "Choir of One",
+   "description": "For six seconds every beat emits a small toll ring.",
+   "icon": "art/abilities/monk-choir-of-one.webp",
+   "targeting": "self",
+   "cooldownMs": 20000,
+   "essenceCost": 30,
+   "range": 0,
+   "radius": 2.5,
+   "power": 0.5,
+   "unlockLevel": 5
+  },
+  "sound_the_corpse": {
+   "id": "sound_the_corpse",
+   "slot": 5,
+   "name": "Sound the Corpse",
+   "description": "Sound a corpse as a resonant bell. Tolls near it strike harder.",
+   "icon": "art/abilities/monk-sound-the-corpse.webp",
+   "targeting": "corpse",
+   "cooldownMs": 7000,
+   "essenceCost": 0,
+   "range": 10,
+   "radius": 1.2,
+   "power": 0.8
+  },
+  "great_toll": {
+   "id": "great_toll",
+   "slot": 6,
+   "name": "Great Toll",
+   "description": "Spend all Resonance on a great toll that damages and silences foes.",
+   "icon": "art/abilities/monk-great-toll.webp",
+   "targeting": "self",
+   "cooldownMs": 50000,
+   "essenceCost": 0,
+   "range": 0,
+   "radius": 9,
+   "power": 2,
+   "unlockLevel": 10
+  },
+  "hook_throw": {
+   "id": "hook_throw",
+   "slot": 0,
+   "name": "Hook Throw",
+   "description": "Hurl a hook that bleeds its target.",
+   "icon": "art/abilities/witch-hook-throw.webp",
+   "targeting": "enemy",
+   "cooldownMs": 550,
+   "essenceCost": 0,
+   "range": 8,
+   "radius": 0,
+   "power": 1.05
+  },
+  "harvest": {
+   "id": "harvest",
+   "slot": 1,
+   "name": "Harvest",
+   "description": "Consume a corpse for 30 Offal and summon three crows for six seconds.",
+   "icon": "art/abilities/witch-harvest.webp",
+   "targeting": "corpse",
+   "cooldownMs": 6000,
+   "essenceCost": 0,
+   "range": 10,
+   "radius": 1.2,
+   "power": 0
+  },
+  "crow_swarm": {
+   "id": "crow_swarm",
+   "slot": 2,
+   "name": "Crow Swarm",
+   "description": "Send crows into a three-metre circle for five seconds.",
+   "icon": "art/abilities/witch-crow-swarm.webp",
+   "targeting": "ground",
+   "cooldownMs": 8000,
+   "essenceCost": 30,
+   "range": 10,
+   "radius": 3,
+   "power": 0.1
+  },
+  "hook_pull": {
+   "id": "hook_pull",
+   "slot": 3,
+   "name": "Hook Pull",
+   "description": "Drag an enemy to you. Bosses cannot be pulled.",
+   "icon": "art/abilities/witch-hook-pull.webp",
+   "targeting": "enemy",
+   "cooldownMs": 7000,
+   "essenceCost": 5,
+   "range": 8,
+   "radius": 0,
+   "power": 0.6,
+   "unlockLevel": 3
+  },
+  "hex_charm": {
+   "id": "hex_charm",
+   "slot": 4,
+   "name": "Hex Charm",
+   "description": "Curse a target to deal 25% less damage. On death it jumps to two neighbours.",
+   "icon": "art/abilities/witch-hex-charm.webp",
+   "targeting": "enemy",
+   "cooldownMs": 12000,
+   "essenceCost": 10,
+   "range": 9,
+   "radius": 0,
+   "power": 0.3,
+   "unlockLevel": 5
+  },
+  "butcher": {
+   "id": "butcher",
+   "slot": 5,
+   "name": "Butcher",
+   "description": "Carve a corpse into three charms. Allies who collect them heal 5%.",
+   "icon": "art/abilities/witch-butcher.webp",
+   "targeting": "corpse",
+   "cooldownMs": 7000,
+   "essenceCost": 0,
+   "range": 10,
+   "radius": 1.2,
+   "power": 0
+  },
+  "murder_of_crows": {
+   "id": "murder_of_crows",
+   "slot": 6,
+   "name": "Murder of Crows",
+   "description": "An eight-second swarm follows your aim and rends nearby enemies.",
+   "icon": "art/abilities/witch-murder-of-crows.webp",
+   "targeting": "ground",
+   "cooldownMs": 50000,
+   "essenceCost": 35,
+   "range": 12,
+   "radius": 4,
+   "power": 0.7,
+   "unlockLevel": 10
+  },
+  "spirit_bolt": {
+   "id": "spirit_bolt",
+   "slot": 0,
+   "name": "Spirit Bolt",
+   "description": "Loose a spectral bolt from your palm.",
+   "icon": "art/abilities/veil-spirit-bolt.webp",
+   "targeting": "enemy",
+   "cooldownMs": 450,
+   "essenceCost": 0,
+   "range": 11,
+   "radius": 0,
+   "power": 0.72
+  },
+  "veil_form": {
+   "id": "veil_form",
+   "slot": 1,
+   "name": "Veil Form",
+   "description": "Toggle Veil form. Avoid enemy blows, move faster and deal less damage while Veil drains.",
+   "icon": "art/abilities/veil-veil-form.webp",
+   "targeting": "self",
+   "cooldownMs": 500,
+   "essenceCost": 0,
+   "range": 0,
+   "radius": 0,
+   "power": 0
+  },
+  "echo": {
+   "id": "echo",
+   "slot": 2,
+   "name": "Echo",
+   "description": "Raise an echo corpse as a spectral ally for ten seconds.",
+   "icon": "art/abilities/veil-echo.webp",
+   "targeting": "corpse",
+   "cooldownMs": 7000,
+   "essenceCost": 25,
+   "range": 12,
+   "radius": 1.2,
+   "power": 0
+  },
+  "veil_tear": {
+   "id": "veil_tear",
+   "slot": 3,
+   "name": "Veil Tear",
+   "description": "Open a two-second rift that draws enemies inward.",
+   "icon": "art/abilities/veil-veil-tear.webp",
+   "targeting": "ground",
+   "cooldownMs": 8000,
+   "essenceCost": 20,
+   "range": 10,
+   "radius": 3,
+   "power": 0.75,
+   "unlockLevel": 3
+  },
+  "crossing": {
+   "id": "crossing",
+   "slot": 4,
+   "name": "Crossing",
+   "description": "Blink to an echo corpse.",
+   "icon": "art/abilities/veil-crossing.webp",
+   "targeting": "corpse",
+   "cooldownMs": 10000,
+   "essenceCost": 15,
+   "range": 12,
+   "radius": 1.2,
+   "power": 0,
+   "unlockLevel": 5
+  },
+  "lay_to_rest": {
+   "id": "lay_to_rest",
+   "slot": 5,
+   "name": "Lay to Rest",
+   "description": "Consume a corpse, heal 6% and leave two echo corpses.",
+   "icon": "art/abilities/veil-lay-to-rest.webp",
+   "targeting": "corpse",
+   "cooldownMs": 5000,
+   "essenceCost": 0,
+   "range": 10,
+   "radius": 1.2,
+   "power": 0
+  },
+  "between_worlds": {
+   "id": "between_worlds",
+   "slot": 6,
+   "name": "Between Worlds",
+   "description": "For five seconds gain Veil protection with full Life-form damage.",
+   "icon": "art/abilities/veil-between-worlds.webp",
+   "targeting": "self",
+   "cooldownMs": 45000,
+   "essenceCost": 0,
+   "range": 0,
+   "radius": 0,
+   "power": 0,
+   "unlockLevel": 10
+  },
+  "bone_needle": {
+   "id": "bone_needle",
+   "slot": 0,
+   "name": "Bone Needle",
+   "description": "Fling a sliver of marrow. Each hit returns 6 Grave Essence.",
+   "icon": "art/abilities/necro-needle.webp",
+   "targeting": "enemy",
+   "cooldownMs": 380,
+   "essenceCost": 0,
+   "range": 11,
+   "radius": 0.35,
+   "power": 1
+  },
+  "marrow_spear": {
+   "id": "marrow_spear",
+   "slot": 1,
+   "name": "Marrow Spear",
+   "description": "A line of bone erupts toward the cursor, piercing everything and applying Fracture (+15% damage taken, 3 stacks).",
+   "icon": "art/abilities/necro-spear.webp",
+   "targeting": "direction",
+   "cooldownMs": 2200,
+   "essenceCost": 18,
+   "range": 12,
+   "radius": 0.9,
+   "power": 2.1
+  },
+  "exhume": {
+   "id": "exhume",
+   "slot": 2,
+   "name": "Exhume",
+   "description": "Consume the corpse nearest the cursor and raise it as your thrall. At the cap, your oldest thrall crumbles.",
+   "icon": "art/abilities/necro-exhume.webp",
+   "targeting": "corpse",
+   "cooldownMs": 500,
+   "essenceCost": 12,
+   "range": 13,
+   "radius": 3.2,
+   "power": 0
+  },
+  "miasma": {
+   "id": "miasma",
+   "slot": 3,
+   "name": "Miasma Circle",
+   "description": "Seed rot at the cursor for 6s. Enemies inside are slowed 40% and gain a Withered stack each second.",
+   "icon": "art/abilities/necro-miasma.webp",
+   "targeting": "ground",
+   "cooldownMs": 7000,
+   "essenceCost": 25,
+   "range": 14,
+   "radius": 3.8,
+   "power": 0.22
+  },
+  "black_litany": {
+   "id": "black_litany",
+   "slot": 4,
+   "name": "Black Litany",
+   "description": "Consume every corpse and sacrifice every thrall within 7m in one ritual burst. Power grows with what you give.",
+   "icon": "art/abilities/necro-litany.webp",
+   "targeting": "self",
+   "cooldownMs": 14000,
+   "essenceCost": 40,
+   "range": 0,
+   "radius": 7,
+   "power": 1.5
+  },
+  "corpse_explosion": {
+   "id": "corpse_explosion",
+   "slot": 5,
+   "name": "Corpse Explosion",
+   "description": "Right-click a corpse to burst it in a 3m blast of marrow and bone. Resonant corpses blast wider, toxic corpses leave a rot pool, elite corpses hit twice as hard.",
+   "icon": "art/abilities/necro-corpse-explosion.webp",
+   "targeting": "corpse",
+   "cooldownMs": 600,
+   "essenceCost": 15,
+   "range": 13,
+   "radius": 3,
+   "power": 1.8
+  },
+  "wailing_skull": {
+   "id": "wailing_skull",
+   "slot": 1,
+   "unlockLevel": 3,
+   "name": "Wailing Skull",
+   "description": "Loose a shrieking skull at the enemy nearest the cursor. It leaps to 2 more, each leap 20% weaker, and a leap that kills earns another (up to 5).",
+   "icon": "art/abilities/necro-wailing-skull.webp",
+   "targeting": "enemy",
+   "cooldownMs": 3000,
+   "essenceCost": 16,
+   "range": 13,
+   "radius": 4,
+   "power": 2.4
+  },
+  "grave_step": {
+   "id": "grave_step",
+   "slot": 2,
+   "unlockLevel": 5,
+   "name": "Grave Step",
+   "description": "Dissolve into blood mist and re-form on the corpse nearest the cursor, up to 12m away. Enemies around it take a marrow burst and bleed. The corpse stays for your next rite.",
+   "icon": "art/abilities/necro-grave-step.webp",
+   "targeting": "corpse",
+   "cooldownMs": 5000,
+   "essenceCost": 10,
+   "range": 12,
+   "radius": 2.6,
+   "power": 1.3
+  },
+  "grave_frost": {
+   "id": "grave_frost",
+   "slot": 3,
+   "unlockLevel": 7,
+   "name": "Grave Frost",
+   "description": "Exhale the barrow's chill in a 7m cone toward the cursor. Every enemy it touches is Chilled (−30% move, −25% attack speed); enemies already Chilled shatter for +50% damage.",
+   "icon": "art/abilities/necro-grave-frost.webp",
+   "targeting": "direction",
+   "cooldownMs": 4500,
+   "essenceCost": 20,
+   "range": 7,
+   "radius": 7,
+   "power": 1.4
+  },
+  "bone_mantle": {
+   "id": "bone_mantle",
+   "slot": 4,
+   "unlockLevel": 12,
+   "name": "Bone Mantle",
+   "description": "Draw up to 5 corpses within 6m into a whirling mantle: a barrier of 10% max health +7% per corpse holds for 6s, while bone shards shred enemies beside you.",
+   "icon": "art/abilities/necro-bone-mantle.webp",
+   "targeting": "self",
+   "cooldownMs": 15000,
+   "essenceCost": 25,
+   "range": 0,
+   "radius": 6,
+   "power": 0.3
+  },
+  "bone_fan": {
+   "id": "bone_fan",
+   "slot": 0,
+   "unlockLevel": 2,
+   "name": "Bone Fan",
+   "description": "Fling three slivers in a fan. Each homes on a different enemy near the one you clicked (the Prelate takes only one). +3 essence per sliver that lands (up to 6 a cast).",
+   "icon": "art/abilities/necro-bone-fan.webp",
+   "targeting": "enemy",
+   "cooldownMs": 520,
+   "essenceCost": 0,
+   "range": 8,
+   "radius": 0.35,
+   "power": 0.55
+  },
+  "rot_lance": {
+   "id": "rot_lance",
+   "slot": 0,
+   "unlockLevel": 6,
+   "name": "Rot Lance",
+   "description": "A lance of rot pierces the first two enemies in a line toward your target, adding a stack of Withered to each. +4 essence on the first hit.",
+   "icon": "art/abilities/necro-rot-lance.webp",
+   "targeting": "enemy",
+   "cooldownMs": 700,
+   "essenceCost": 0,
+   "range": 14,
+   "radius": 0.5,
+   "power": 0.8
+  },
+  "grave_offering": {
+   "id": "grave_offering",
+   "slot": 2,
+   "unlockLevel": 2,
+   "name": "Grave Offering",
+   "description": "Burn the corpse nearest the cursor into your own reserves: +16 Grave Essence (more from resonant and elite bodies) and 4% of your health.",
+   "icon": "art/abilities/necro-grave-offering.webp",
+   "targeting": "corpse",
+   "cooldownMs": 2000,
+   "essenceCost": 0,
+   "range": 13,
+   "radius": 2.5,
+   "power": 0
+  },
+  "ivory_cleave": {
+   "id": "ivory_cleave",
+   "slot": 1,
+   "unlockLevel": 4,
+   "name": "Ivory Cleave",
+   "description": "Sweep a crescent of bone through everything in a wide arc in front of you (3.6m), Fracturing what it cuts.",
+   "icon": "art/abilities/necro-ivory-cleave.webp",
+   "targeting": "direction",
+   "cooldownMs": 1600,
+   "essenceCost": 14,
+   "range": 3.6,
+   "radius": 3.6,
+   "power": 1.7
+  },
+  "veil_step": {
+   "id": "veil_step",
+   "slot": 2,
+   "unlockLevel": 4,
+   "name": "Veil Step",
+   "description": "Slip through the veil toward the cursor, up to 5.5m. No corpse needed; it never passes a sealed door or leaves the hall you stand in.",
+   "icon": "art/abilities/necro-veil-step.webp",
+   "targeting": "ground",
+   "cooldownMs": 7000,
+   "essenceCost": 0,
+   "range": 5.5,
+   "radius": 0,
+   "power": 0
+  },
+  "rally_dead": {
+   "id": "rally_dead",
+   "slot": 4,
+   "unlockLevel": 6,
+   "name": "Rally the Dead",
+   "description": "Rally every thrall you command for 6s: +40% damage, +30% attack speed, 20% health restored, and they turn on the enemy nearest the cursor.",
+   "icon": "art/abilities/necro-rally-the-dead.webp",
+   "targeting": "self",
+   "cooldownMs": 12000,
+   "essenceCost": 20,
+   "range": 14,
+   "radius": 8,
+   "power": 0
+  },
+  "carrion_seed": {
+   "id": "carrion_seed",
+   "slot": 3,
+   "unlockLevel": 8,
+   "name": "Carrion Seed",
+   "description": "Plant a seed of rot in a corpse. When an enemy comes close it bursts, hurting everything within 3m and leaving 2 stacks of Withered. One seed at a time.",
+   "icon": "art/abilities/necro-carrion-seed.webp",
+   "targeting": "corpse",
+   "cooldownMs": 6000,
+   "essenceCost": 18,
+   "range": 13,
+   "radius": 3,
+   "power": 1.6
+  },
+  "soul_siphon": {
+   "id": "soul_siphon",
+   "slot": 2,
+   "unlockLevel": 6,
+   "name": "Soul Siphon",
+   "description": "Latch a soul-tether onto an enemy for 3s. It follows them while you move, drains damage every half second, and heals you for 35% of it plus 2 essence a tick. Breaks if they get too far away.",
+   "icon": "art/abilities/necro-soul-siphon.webp",
+   "targeting": "enemy",
+   "cooldownMs": 7000,
+   "essenceCost": 14,
+   "range": 9,
+   "radius": 0,
+   "power": 0.55
+  },
+  "bone_prison": {
+   "id": "bone_prison",
+   "slot": 3,
+   "unlockLevel": 9,
+   "name": "Bone Prison",
+   "description": "A ring of bone spikes bursts out of the ground at the cursor, caging everything inside for 1.8s (rooted: they can still swing) and Fracturing it.",
+   "icon": "art/abilities/necro-bone-prison.webp",
+   "targeting": "ground",
+   "cooldownMs": 9000,
+   "essenceCost": 24,
+   "range": 11,
+   "radius": 2.4,
+   "power": 1.1
+  },
+  "grave_hands": {
+   "id": "grave_hands",
+   "slot": 3,
+   "unlockLevel": 11,
+   "name": "Grave Hands",
+   "description": "The buried dead claw up through a 3.5m field for 3s, slowing and raking everything in it. Every corpse in the field adds more hands (+15% damage each, up to +60%).",
+   "icon": "art/abilities/necro-grave-hands.webp",
+   "targeting": "ground",
+   "cooldownMs": 11000,
+   "essenceCost": 26,
+   "range": 10,
+   "radius": 3.5,
+   "power": 0.4
+  },
+  "bone_storm": {
+   "id": "bone_storm",
+   "slot": 4,
+   "unlockLevel": 14,
+   "name": "Bone Storm",
+   "description": "Whip a tornado of bone fragments up at the cursor. It creeps toward the nearest enemy for 4s, shredding everything within 2m; each corpse it starts on adds 0.6s (up to +3s).",
+   "icon": "art/abilities/necro-bone-storm.webp",
+   "targeting": "ground",
+   "cooldownMs": 12000,
+   "essenceCost": 32,
+   "range": 10,
+   "radius": 2,
+   "power": 0.5
+  },
+  "hollow_cut": {
+   "id": "hollow_cut",
+   "slot": 0,
+   "name": "Hollow Cut",
+   "description": "A short sword arc in front of you. Every enemy it cuts returns 4 Rage.",
+   "icon": "art/abilities/knight-hollow-cut.webp",
+   "targeting": "direction",
+   "cooldownMs": 550,
+   "essenceCost": 0,
+   "range": 2.4,
+   "radius": 2.4,
+   "power": 1.1
+  },
+  "shield_bash": {
+   "id": "shield_bash",
+   "slot": 1,
+   "name": "Shield Bash",
+   "description": "Dash 3m behind your shield. The first enemy you strike is stunned for 0.8s (0.2s against a boss).",
+   "icon": "art/abilities/knight-shield-bash.webp",
+   "targeting": "direction",
+   "cooldownMs": 6000,
+   "essenceCost": 0,
+   "range": 3,
+   "radius": 1,
+   "power": 0.9
+  },
+  "grave_slam": {
+   "id": "grave_slam",
+   "slot": 2,
+   "name": "Grave Slam",
+   "description": "Leap up to 8m to the cursor and slam down, striking everything within 3m.",
+   "icon": "art/abilities/knight-grave-slam.webp",
+   "targeting": "ground",
+   "cooldownMs": 8000,
+   "essenceCost": 30,
+   "range": 8,
+   "radius": 3,
+   "power": 2.2
+  },
+  "bulwark": {
+   "id": "bulwark",
+   "slot": 3,
+   "unlockLevel": 3,
+   "name": "Bulwark",
+   "description": "Raise the shield for 2s: 60% less damage from the front. A blow in the first 0.25s is a perfect block — half of it is reflected and you gain 15 Rage.",
+   "icon": "art/abilities/knight-bulwark.webp",
+   "targeting": "self",
+   "cooldownMs": 9000,
+   "essenceCost": 0,
+   "range": 0,
+   "radius": 0,
+   "power": 0
+  },
+  "corpse_vigil": {
+   "id": "corpse_vigil",
+   "slot": 4,
+   "unlockLevel": 5,
+   "name": "Corpse Vigil",
+   "description": "Stand over a corpse and keep vigil: it is consumed and you regain 3% of your health each second for 4s.",
+   "icon": "art/abilities/knight-corpse-vigil.webp",
+   "targeting": "corpse",
+   "cooldownMs": 12000,
+   "essenceCost": 0,
+   "range": 1.6,
+   "radius": 1.2,
+   "power": 0
+  },
+  "grave_brand": {
+   "id": "grave_brand",
+   "slot": 5,
+   "name": "Grave Brand",
+   "description": "Brand a corpse. The next enemy to come within 1.5m of it is rooted for 1.5s and the corpse is spent.",
+   "icon": "art/abilities/knight-grave-brand.webp",
+   "targeting": "corpse",
+   "cooldownMs": 8000,
+   "essenceCost": 0,
+   "range": 6,
+   "radius": 1.2,
+   "power": 0
+  },
+  "oath_unbroken": {
+   "id": "oath_unbroken",
+   "slot": 6,
+   "unlockLevel": 10,
+   "name": "Oath Unbroken",
+   "description": "For 6s you cannot fall below 1 health, you deal 30% more damage, and your Rage refills.",
+   "icon": "art/abilities/knight-oath-unbroken.webp",
+   "targeting": "self",
+   "cooldownMs": 45000,
+   "essenceCost": 0,
+   "range": 0,
+   "radius": 0,
+   "power": 0
+  },
+  "ossuary_wall": {
+   "id": "ossuary_wall",
+   "slot": 6,
+   "unlockLevel": 10,
+   "name": "Ossuary Wall",
+   "description": "Raise a 7m wall of fused bone across the cursor line for 6s. The dead cannot pass it and Penitent cones break on it.",
+   "icon": "art/abilities/necro-ossuary-wall.webp",
+   "targeting": "direction",
+   "cooldownMs": 16000,
+   "essenceCost": 30,
+   "range": 10,
+   "radius": 3.5,
+   "power": 0
+  },
+  "command_rend": {
+   "id": "command_rend",
+   "slot": 6,
+   "unlockLevel": 10,
+   "name": "Command: Rend",
+   "description": "Your whole legion leaps to the cursor and cleaves everything around it. Costs each thrall 15% of its health instead of essence.",
+   "icon": "art/abilities/necro-command-rend.webp",
+   "targeting": "ground",
+   "cooldownMs": 9000,
+   "essenceCost": 0,
+   "range": 13,
+   "radius": 2.2,
+   "power": 0
+  },
+  "dirge": {
+   "id": "dirge",
+   "slot": 6,
+   "unlockLevel": 10,
+   "name": "Dirge",
+   "description": "Toll a 4s funeral bell-song around you: you and your thralls mend each second, and enemy casters inside are Silenced.",
+   "icon": "art/abilities/necro-dirge.webp",
+   "targeting": "self",
+   "cooldownMs": 18000,
+   "essenceCost": 35,
+   "range": 0,
+   "radius": 6,
+   "power": 0.6
+  },
+  "plague_bloom": {
+   "id": "plague_bloom",
+   "slot": 6,
+   "unlockLevel": 10,
+   "name": "Plague Bloom",
+   "description": "Plant a rot flower at the cursor. It pulses Withered and every 2s seeds a new bloom on the nearest corpse, chaining through the corpse field.",
+   "icon": "art/abilities/necro-plague-bloom.webp",
+   "targeting": "ground",
+   "cooldownMs": 12000,
+   "essenceCost": 28,
+   "range": 14,
+   "radius": 2.4,
+   "power": 0.3
+  }
+ },
+ "SIGNATURE_LEVEL": 10,
+ "SIGNATURE_BY_DISCIPLINE": {
+  "ossuary": "ossuary_wall",
+  "gravecaller": "command_rend",
+  "mourner": "dirge",
+  "rotweaver": "plague_bloom"
+ },
+ "SIGNATURE_KIND": {
+  "ossuary_wall": "wall",
+  "command_rend": "rend",
+  "dirge": "dirge",
+  "plague_bloom": "bloom"
+ },
+ "SIGNATURE": {
+  "wall": {
+   "length": 7,
+   "thickness": 0.8,
+   "durationS": 6,
+   "maxCastRange": 11
+  },
+  "rend": {
+   "cleaveRadius": 2.2,
+   "damageMult": 2.5,
+   "hpCost": 0.15,
+   "maxCastRange": 14
+  },
+  "dirge": {
+   "radius": 6,
+   "durationS": 4,
+   "thrallHealFrac": 0.08,
+   "silenceS": 1.2
+  },
+  "bloom": {
+   "radius": 2.4,
+   "durationS": 8,
+   "spreadEveryS": 2,
+   "spreadReach": 6,
+   "maxGenerations": 3,
+   "childDurationS": 6,
+   "witheredCap": 8,
+   "maxCastRange": 15
+  }
+ },
+ "HOTBAR": [
+  "marrow_spear",
+  "exhume",
+  "miasma",
+  "black_litany",
+  "corpse_explosion"
+ ],
+ "GRIMOIRE": [
+  "marrow_spear",
+  "exhume",
+  "miasma",
+  "black_litany",
+  "wailing_skull",
+  "grave_step",
+  "grave_frost",
+  "bone_mantle",
+  "grave_offering",
+  "ivory_cleave",
+  "veil_step",
+  "rally_dead",
+  "carrion_seed",
+  "soul_siphon",
+  "bone_prison",
+  "grave_hands",
+  "bone_storm"
+ ],
+ "DEFAULT_LOADOUT": [
+  "marrow_spear",
+  "exhume",
+  "miasma",
+  "black_litany"
+ ],
+ "PRIMARIES": [
+  "bone_needle",
+  "bone_fan",
+  "rot_lance"
+ ],
+ "DEFAULT_PRIMARY": "bone_needle",
+ "ROLE_LABEL": {
+  "damage": "Damage",
+  "corpse": "Corpse",
+  "control": "Control",
+  "survival": "Survival",
+  "legion": "Legion"
+ },
+ "RITE_ROLES": {
+  "bone_needle": [
+   "damage"
+  ],
+  "marrow_spear": [
+   "damage"
+  ],
+  "exhume": [
+   "corpse",
+   "legion"
+  ],
+  "miasma": [
+   "control",
+   "damage"
+  ],
+  "black_litany": [
+   "corpse",
+   "damage"
+  ],
+  "wailing_skull": [
+   "damage"
+  ],
+  "grave_step": [
+   "survival",
+   "corpse"
+  ],
+  "grave_frost": [
+   "control"
+  ],
+  "bone_mantle": [
+   "survival",
+   "corpse"
+  ],
+  "bone_fan": [
+   "damage"
+  ],
+  "rot_lance": [
+   "damage",
+   "control"
+  ],
+  "grave_offering": [
+   "corpse",
+   "survival"
+  ],
+  "ivory_cleave": [
+   "damage"
+  ],
+  "veil_step": [
+   "survival"
+  ],
+  "rally_dead": [
+   "legion"
+  ],
+  "carrion_seed": [
+   "control",
+   "corpse"
+  ],
+  "soul_siphon": [
+   "survival",
+   "damage"
+  ],
+  "bone_prison": [
+   "control"
+  ],
+  "grave_hands": [
+   "control",
+   "corpse"
+  ],
+  "bone_storm": [
+   "damage",
+   "corpse"
+  ],
+  "hollow_cut": [
+   "damage"
+  ],
+  "shield_bash": [
+   "control",
+   "damage"
+  ],
+  "grave_slam": [
+   "damage",
+   "control"
+  ],
+  "bulwark": [
+   "survival"
+  ],
+  "corpse_vigil": [
+   "survival",
+   "corpse"
+  ],
+  "grave_brand": [
+   "control",
+   "corpse"
+  ],
+  "oath_unbroken": [
+   "survival",
+   "damage"
+  ],
+  "flail_swing": [
+   "damage"
+  ],
+  "lantern_cone": [
+   "damage",
+   "control"
+  ],
+  "chain_pull": [
+   "control"
+  ],
+  "burn_the_dead": [
+   "corpse",
+   "damage"
+  ],
+  "watchmans_ward": [
+   "survival"
+  ],
+  "cremate": [
+   "corpse",
+   "damage"
+  ],
+  "last_light": [
+   "survival",
+   "control"
+  ],
+  "palm_strike": [
+   "damage"
+  ],
+  "toll": [
+   "damage",
+   "control"
+  ],
+  "resonant_step": [
+   "damage"
+  ],
+  "knell": [
+   "control"
+  ],
+  "choir_of_one": [
+   "damage"
+  ],
+  "sound_the_corpse": [
+   "corpse",
+   "damage"
+  ],
+  "great_toll": [
+   "damage",
+   "control"
+  ],
+  "hook_throw": [
+   "damage"
+  ],
+  "harvest": [
+   "corpse",
+   "legion"
+  ],
+  "crow_swarm": [
+   "damage"
+  ],
+  "hook_pull": [
+   "control"
+  ],
+  "hex_charm": [
+   "control"
+  ],
+  "butcher": [
+   "corpse",
+   "survival"
+  ],
+  "murder_of_crows": [
+   "damage"
+  ],
+  "spirit_bolt": [
+   "damage"
+  ],
+  "veil_form": [
+   "survival"
+  ],
+  "echo": [
+   "corpse",
+   "legion"
+  ],
+  "veil_tear": [
+   "control"
+  ],
+  "crossing": [
+   "survival",
+   "corpse"
+  ],
+  "lay_to_rest": [
+   "corpse",
+   "survival"
+  ],
+  "between_worlds": [
+   "survival"
+  ]
+ },
+ "SLOT_KEYS": [
+  "1",
+  "2",
+  "3",
+  "4",
+  "RMB",
+  "R"
+ ],
+ "BONE_FAN": {
+  "slivers": 3,
+  "spreadDeg": 12,
+  "coneHalfDeg": 15,
+  "essencePerHit": 3,
+  "essenceCap": 6,
+  "speed": 24
+ },
+ "ROT_LANCE": {
+  "pierce": 2,
+  "halfWidth": 0.25,
+  "essence": 4,
+  "withered": 1,
+  "speed": 32
+ },
+ "GRAVE_OFFERING": {
+  "essence": 16,
+  "resonantBonus": 8,
+  "eliteMult": 2,
+  "healFrac": 0.04,
+  "pickRadius": 0.9
+ },
+ "IVORY_CLEAVE": {
+  "halfAngleDeg": 60,
+  "reach": 3.6,
+  "fracture": 1
+ },
+ "VEIL_STEP": {
+  "stepM": 0.25,
+  "durationS": 0.16
+ },
+ "RALLY": {
+  "durationS": 6,
+  "gravecallerBonusS": 2,
+  "damageMult": 1.4,
+  "attackSpeedMult": 1.3,
+  "healFrac": 0.2
+ },
+ "CARRION_SEED": {
+  "armS": 0.6,
+  "lifeS": 20,
+  "triggerR": 2.2,
+  "burstR": 3,
+  "withered": 2,
+  "witheredCap": 6,
+  "pickRadius": 0.9
+ },
+ "SOUL_SIPHON": {
+  "durationS": 3,
+  "tickS": 0.5,
+  "healFrac": 0.35,
+  "essencePerTick": 2,
+  "breakMult": 1.4
+ },
+ "BONE_PRISON": {
+  "rootS": 1.8,
+  "spikes": 16,
+  "fracture": 1
+ },
+ "GRAVE_HANDS": {
+  "durationS": 3,
+  "tickS": 0.5,
+  "hands": 9,
+  "handsPerCorpse": 3,
+  "maxHands": 24,
+  "perCorpse": 0.15,
+  "maxCorpses": 4
+ },
+ "BONE_STORM": {
+  "durationS": 4,
+  "perCorpseS": 0.6,
+  "maxExtraS": 3,
+  "tickS": 0.4,
+  "drift": 2.2,
+  "seekR": 9,
+  "shards": 27
+ },
+ "WAILING_SKULL": {
+  "hops": 3,
+  "maxHops": 5,
+  "falloff": 0.8,
+  "leapRange": 6.5,
+  "speed": 15
+ },
+ "GRAVE_STEP": {
+  "burstRadius": 2.6
+ },
+ "GRAVE_FROST": {
+  "halfAngleDeg": 35,
+  "chillS": 3,
+  "shatterMult": 1.5,
+  "speed": 40
+ },
+ "BONE_MANTLE": {
+  "maxCorpses": 5,
+  "barrierBase": 0.1,
+  "barrierPerCorpse": 0.07,
+  "barrierCap": 0.45,
+  "durationS": 6,
+  "orbitRadius": 1.7,
+  "tickS": 0.5
+ },
+ "DETONATE": {
+  "radius": 3,
+  "resonantRadiusMult": 1.6,
+  "eliteDamageMult": 2,
+  "maxDamage": 100000,
+  "rotRadius": 2.6,
+  "rotDurationMs": 4000,
+  "rotDpsShare": 0.12,
+  "rotWitheredCap": 5
+ },
+ "SOUL_HARVEST": {
+  "souls": 50,
+  "areaMult": 1.5,
+  "spells": [
+   "marrow_spear",
+   "miasma",
+   "black_litany"
+  ]
+ },
+ "LITANY_PER_CORPSE": 0.6,
+ "LITANY_PER_RESONANT": 1.2,
+ "LITANY_PER_THRALL": 1.4,
+ "LITANY_MAX_MULT": 14,
+ "FRACTURE": {
+  "perStack": 0.15,
+  "maxStacks": 3,
+  "durationMs": 5000
+ },
+ "WITHERED": {
+  "dpsPerStack": 0.18,
+  "durationMs": 5000
+ },
+ "MIASMA_SLOW": 0.6,
+ "WATCHMANS_WARD_SLOW": 0.75,
+ "NEEDLE_ESSENCE": 6,
+ "KNIGHT_RAGE": {
+  "max": 100,
+  "perHpPercentLost": 1,
+  "perCutHit": 4,
+  "perPerfectBlock": 15,
+  "decayPerS": 4,
+  "decayAfterS": 4
+ },
+ "HOLLOW_CUT": {
+  "halfAngleDeg": 55,
+  "reach": 2.4,
+  "rage": 4
+ },
+ "SHIELD_BASH": {
+  "dashM": 3,
+  "durationS": 0.14,
+  "stunS": 0.8,
+  "bossStunS": 0.2
+ },
+ "GRAVE_SLAM": {
+  "leapM": 8,
+  "durationS": 0.28,
+  "slamR": 3
+ },
+ "BULWARK": {
+  "holdS": 2,
+  "frontHalfDeg": 60,
+  "damageCut": 0.6,
+  "perfectWindowS": 0.25,
+  "reflect": 0.5
+ },
+ "CORPSE_VIGIL": {
+  "regenFracPerS": 0.03,
+  "durationS": 4
+ },
+ "GRAVE_BRAND": {
+  "triggerR": 1.5,
+  "rootS": 1.5,
+  "lifeS": 30
+ },
+ "OATH_UNBROKEN": {
+  "durationS": 6,
+  "damageMult": 1.3
+ },
+ "SPELL_FX": {
+  "warden": {
+   "gold": 15906891,
+   "fire": 16742954,
+   "ash": 7027492
+  },
+  "monk": {
+   "gold": 15260064,
+   "sound": 16183779,
+   "bronze": 13216362
+  },
+  "witch": {
+   "blood": 10099498,
+   "hex": 10924106,
+   "crow": 1709080
+  },
+  "veilwalker": {
+   "cyan": 12579839,
+   "mist": 14674414,
+   "deep": 6721194
+  },
+  "needle": {
+   "core": 15984850,
+   "trail": 15321487,
+   "impact": 16773590,
+   "dust": 14208957
+  },
+  "spear": {
+   "bone": 14735042,
+   "crack": 11817006,
+   "dust": 4864560,
+   "marrow": 9055292
+  },
+  "exhume": {
+   "spirit": 7332808,
+   "deep": 2068358,
+   "beam": 10483168
+  },
+  "miasma": {
+   "rot": 11059770,
+   "deep": 5204767,
+   "spore": 2831127
+  },
+  "litany": {
+   "core": 10181887,
+   "hot": 15128319,
+   "void": 1444388
+  },
+  "detonate": {
+   "ember": 16738858,
+   "hot": 16762250,
+   "crimson": 9055292,
+   "bone": 14735042,
+   "smoke": 2758164
+  },
+  "souls": {
+   "jade": 7332808,
+   "deep": 2068358,
+   "pale": 10483168
+  },
+  "thrall": {
+   "spark": 15261644,
+   "wraith": 9417983
+  },
+  "enemy": {
+   "toll": 14263361,
+   "rot": 8364122,
+   "curse": 9058890,
+   "slam": 10119738,
+   "toxic": 7311162,
+   "dust": 12098138,
+   "dustDeep": 4865316,
+   "dive": 13144634,
+   "dirt": 6965808,
+   "ember": 16742954,
+   "emberDeep": 4855304,
+   "emberCore": 16761946,
+   "hex": 12730522
+  },
+  "affix": {
+   "bell": 14263361,
+   "drool": 9080618,
+   "shroud": 3814472,
+   "vengeful": 14701866
+  },
+  "surge": {
+   "crack": 13144634,
+   "glow": 14263361
+  },
+  "boss": {
+   "bronze": 14263361,
+   "shard": 13148266,
+   "spirit": 12175615
+  },
+  "knight": {
+   "steel": 12107980,
+   "oath": 9051948,
+   "pale": 15133682,
+   "dust": 4867904
+  },
+  "wall": {
+   "bone": 15260864,
+   "amber": 14263915,
+   "dust": 6969928
+  },
+  "rend": {
+   "jade": 7332808,
+   "pale": 13172720,
+   "bone": 14735042
+  },
+  "dirge": {
+   "frost": 10470655,
+   "deep": 5996502,
+   "pale": 14543103
+  },
+  "bloom": {
+   "petal": 13099082,
+   "rot": 7311138,
+   "spore": 2831127
+  },
+  "skull": {
+   "jade": 7332808,
+   "pale": 13172720,
+   "deep": 2068358
+  },
+  "step": {
+   "blood": 12728904,
+   "crimson": 9055292,
+   "mist": 3805720,
+   "hot": 16762250
+  },
+  "frost": {
+   "frost": 10470655,
+   "deep": 5996502,
+   "pale": 14543103
+  },
+  "mantle": {
+   "bone": 13617336,
+   "gold": 12103060,
+   "amber": 9207140,
+   "dust": 5918790
+  },
+  "lance": {
+   "rot": 13099082,
+   "deep": 7311138,
+   "spore": 2831127
+  },
+  "siphon": {
+   "jade": 7332808,
+   "pale": 10483168,
+   "deep": 2068358
+  },
+  "prison": {
+   "bone": 13617336,
+   "dust": 5918790,
+   "amber": 9207140
+  },
+  "hands": {
+   "earth": 3812898,
+   "bone": 13617336,
+   "seep": 7332808
+  },
+  "storm": {
+   "bone": 13617336,
+   "ash": 9077624,
+   "dust": 5918790
+  },
+  "veil": {
+   "jade": 7332808,
+   "pale": 14543103,
+   "deep": 2068358
+  }
+ }
+}

@@ -1,0 +1,1036 @@
+{
+ "sourceSha": "99f2bd2645e018bd1a178cc447dfdb7a77140f08",
+ "sourceSrcTree": "50fa82d037472f2c1e52a3216e8c8afa9b697822",
+ "files": {
+  "abilities": {
+   "keys": 49,
+   "counts": {
+    "NEW_BLOOD_ABILITIES": 28,
+    "ABILITIES": 60,
+    "SIGNATURE_LEVEL": 1,
+    "SIGNATURE_BY_DISCIPLINE": 4,
+    "SIGNATURE_KIND": 4,
+    "SIGNATURE": 4,
+    "HOTBAR": 5,
+    "GRIMOIRE": 17,
+    "DEFAULT_LOADOUT": 4,
+    "PRIMARIES": 3,
+    "DEFAULT_PRIMARY": 1,
+    "ROLE_LABEL": 5,
+    "RITE_ROLES": 55,
+    "SLOT_KEYS": 6,
+    "BONE_FAN": 6,
+    "ROT_LANCE": 5,
+    "GRAVE_OFFERING": 5,
+    "IVORY_CLEAVE": 3,
+    "VEIL_STEP": 2,
+    "RALLY": 5,
+    "CARRION_SEED": 7,
+    "SOUL_SIPHON": 5,
+    "BONE_PRISON": 3,
+    "GRAVE_HANDS": 7,
+    "BONE_STORM": 7,
+    "WAILING_SKULL": 5,
+    "GRAVE_STEP": 1,
+    "GRAVE_FROST": 4,
+    "BONE_MANTLE": 7,
+    "DETONATE": 8,
+    "SOUL_HARVEST": 3,
+    "LITANY_PER_CORPSE": 1,
+    "LITANY_PER_RESONANT": 1,
+    "LITANY_PER_THRALL": 1,
+    "LITANY_MAX_MULT": 1,
+    "FRACTURE": 3,
+    "WITHERED": 2,
+    "MIASMA_SLOW": 1,
+    "WATCHMANS_WARD_SLOW": 1,
+    "NEEDLE_ESSENCE": 1,
+    "KNIGHT_RAGE": 6,
+    "HOLLOW_CUT": 3,
+    "SHIELD_BASH": 4,
+    "GRAVE_SLAM": 3,
+    "BULWARK": 5,
+    "CORPSE_VIGIL": 2,
+    "GRAVE_BRAND": 3,
+    "OATH_UNBROKEN": 2,
+    "SPELL_FX": 31
+   }
+  },
+  "alchemy": {
+   "keys": 4,
+   "counts": {
+    "ALCHEMY_ITEMS": 2,
+    "ALCHEMY_HEALING": 1,
+    "ALCHEMY_BUFFS": 1,
+    "ALCHEMY_RECIPES": 7
+   }
+  },
+  "areas": {
+   "keys": 12,
+   "counts": {
+    "DEPTHS_RECT": 4,
+    "DEPTHS_STAIR": 2,
+    "AREAS": 13,
+    "AREA_ORDER": 13,
+    "HUNT_ORDER": 9,
+    "CHASE_WEIGHT": 2,
+    "DOORS": 11,
+    "PLAYER_SPAWN": 2,
+    "WING_APOTHECARY_SPOT": 3,
+    "CHAPTERHOUSE_RETURN": 2,
+    "BOSS_SUMMON_SHARDS": 1,
+    "GLOBAL_ENEMY_CAP": 1
+   }
+  },
+  "armorSets": {
+   "keys": 5,
+   "counts": {
+    "ARMOR_PARTS": 5,
+    "ARMOR_SETS": 9,
+    "ASCENDED_ARMOR_SETS": 9,
+    "ARMOR_PIECES": 110,
+    "ARMOR_BY_ID": 110
+   }
+  },
+  "ascension": {
+   "keys": 5,
+   "counts": {
+    "ASCENSION": 6,
+    "VOWS": 11,
+    "VOW_ORDER": 11,
+    "BOONS": 15,
+    "BOON_ORDER": 15
+   }
+  },
+  "audioMap": {
+   "keys": 11,
+   "counts": {
+    "EXISTING_SOUND_IDS": 90,
+    "NEW_SOUND_IDS": 91,
+    "AUDIO_MAP": 181,
+    "STEP_SOUND": 4,
+    "AREA_SURFACE": 13,
+    "AREA_STEP_GAIN": 4,
+    "ENEMY_VOICE": 28,
+    "VOICE_ATTACK": 4,
+    "VOICE_DEATH": 4,
+    "BOSS_TELL": 7,
+    "MIX_RULES": 8
+   }
+  },
+  "bosses": {
+   "keys": 10,
+   "counts": {
+    "BOSS_IDS": 7,
+    "BOSSES": 7,
+    "ABBESS_NICHE_SPOTS": 4,
+    "GRAVEDIGGER_PITS": 4,
+    "GRAVEDIGGER": 4,
+    "ABBESS": 8,
+    "SAINT": 4,
+    "REGENT": 4,
+    "MIRE": 5,
+    "CONGREGATION": 4
+   }
+  },
+  "brews": {
+   "keys": 8,
+   "counts": {
+    "BREWS": 15,
+    "BREW_SLOTS": 2,
+    "BREW_KEYS": 2,
+    "BREW_EXTEND_CAP": 1,
+    "LIFESTEAL_TARGET_CAP": 1,
+    "LIFESTEAL_HIT_CAP": 1,
+    "FIRE_SOURCES": 2,
+    "ROT_SOURCES": 2
+   }
+  },
+  "castClips": {
+   "keys": 4,
+   "counts": {
+    "CLIP_RELEASE": 5,
+    "ABILITY_ROLE": 25,
+    "WEAPON_CLIPS": 5,
+    "RELEASE_LEAD_S": 1
+   }
+  },
+  "codex": {
+   "keys": 33,
+   "counts": {
+    "RITE_ORDER": 60,
+    "CODEX_RITES": 60,
+    "CLASS_CHANGE_COUNSEL": 1,
+    "CODEX_DISCIPLINES": 9,
+    "DEAD_ORDER": 35,
+    "PRELATE_NAME": 1,
+    "BEHAVIOUR_LABEL": 6,
+    "CODEX_DEAD": 35,
+    "CODEX_PROFESSIONS_COUNSEL": 1,
+    "CODEX_BREWS_COUNSEL": 1,
+    "CODEX_STATS_COUNSEL": 1,
+    "CODEX_STATS": 6,
+    "CODEX_WEAPONS_COUNSEL": 1,
+    "CODEX_WEAPONS": 7,
+    "CODEX_WEAPON_TIERS": 5,
+    "CODEX_REAGENTS_COUNSEL": 1,
+    "CODEX_SALVAGE_COUNSEL": 1,
+    "CODEX_REFORGE_COUNSEL": 1,
+    "CODEX_EMPOWER_COUNSEL": 1,
+    "CODEX_VAULT_COUNSEL": 1,
+    "CODEX_TRAVEL_COUNSEL": 1,
+    "CODEX_AREAS": 13,
+    "CODEX_SEALED": 2,
+    "COVENANT_LORE": 2,
+    "CODEX_PEOPLE_COUNSEL": 1,
+    "CODEX_SETS_COUNSEL": 1,
+    "CODEX_ATLAS_COUNSEL": 1,
+    "CODEX_LEGENDARY_COUNSEL": 1,
+    "CODEX_AFFIX_COUNSEL": 1,
+    "CODEX_LEGION_COUNSEL": 1,
+    "CODEX_RUNES_COUNSEL": 1,
+    "CODEX_LOADOUTS_COUNSEL": 1,
+    "CODEX_ALTAR_COUNSEL": 1
+   }
+  },
+  "combatFlow": {
+   "keys": 1,
+   "counts": {
+    "CAST_FLOW": 60
+   }
+  },
+  "computed": {
+   "keys": 16,
+   "counts": {
+    "smartTables": 13,
+    "kits": 6,
+    "abilityUnlockLevels": 60,
+    "depthRosters": 60,
+    "depthLootAreas": 60,
+    "depthChestRunePools": 60,
+    "armorLootByArea": 13,
+    "necroWeaponLootByArea": 13,
+    "brewSummaries": 15,
+    "upgradeCosts": 3,
+    "affixRanges": 14,
+    "allClipNames": 318,
+    "areaOrder": 13,
+    "itemIds": 304,
+    "itemMetaSample": 4,
+    "worldLayout1337": 12
+   }
+  },
+  "cosmetics": {
+   "keys": 5,
+   "counts": {
+    "CAPES": 10,
+    "PETS": 5,
+    "PET_CHANCE": 1,
+    "GARDEN_PET_CHANCE": 1,
+    "CHARM_ITEMS": 5
+   }
+  },
+  "counselCadence": {
+   "keys": 12,
+   "counts": {
+    "NOT_BUSY": 8,
+    "GAP_MS": 4,
+    "GROUP_GAP_MS": 1,
+    "ENEMY_GAP_MS": 1,
+    "MAX_AGE_MS": 4,
+    "LESSON_AGE_MS": 1,
+    "MAX_CALM_QUEUED": 1,
+    "STARVED_MS": 1,
+    "YIELD_AFTER_MS": 1,
+    "PREEMPT_AFTER_MS": 1,
+    "HERE": 19,
+    "tipMeta": 120
+   }
+  },
+  "depths": {
+   "keys": 7,
+   "counts": {
+    "DEPTHS": 8,
+    "DEPTH_LOOT_AREAS": 6,
+    "FLOOR_DROP_CHANCE": 1,
+    "FLOOR_BONUS_KILLS": 1,
+    "CHEST_KILLS": 1,
+    "CHEST_PER_MIN_CEILING": 1,
+    "FLOORS_PER_MIN_CEILING": 1
+   }
+  },
+  "dialogue": {
+   "keys": 3,
+   "counts": {
+    "LABEL": 4,
+    "BOSS_HINT": 7,
+    "TOPICS": 3
+   }
+  },
+  "difficulty": {
+   "keys": 2,
+   "counts": {
+    "DIFFICULTY_ORDER": 3,
+    "DIFFICULTIES": 3
+   }
+  },
+  "disciplines": {
+   "keys": 2,
+   "counts": {
+    "DISCIPLINES": 9,
+    "PLAYABLE_DISCIPLINES": 9
+   }
+  },
+  "enemies": {
+   "keys": 20,
+   "counts": {
+    "ENEMIES": 28,
+    "CENSER": 4,
+    "SCREAM": 1,
+    "DUST": 3,
+    "BURROW": 11,
+    "UNBIND": 4,
+    "TEMPLAR_SHIELD": 2,
+    "PLAGUE_FLASK": 3,
+    "EMBER_BOLT": 3,
+    "EMBER_DEATH": 3,
+    "SLAG_POOL": 2,
+    "FRENZY": 3,
+    "WARD": 2,
+    "PROCESSION": 2,
+    "WAVE_THEMES": 5,
+    "ELITE": 6,
+    "AFFIX_ORDER": 4,
+    "ELITE_AFFIXES": 4,
+    "AFFIX_TUNING": 4,
+    "SURGE": 7
+   }
+  },
+  "fen": {
+   "keys": 10,
+   "counts": {
+    "FEN_ARENA": 3,
+    "FEN_BOG": 3,
+    "FEN_HUMMOCKS": 14,
+    "FEN_SURFACE_SPOTS": 6,
+    "FEN_FLOOD_SCALE": 3,
+    "BOG": 3,
+    "FEN_LURE": 2,
+    "HAG_HEX": 5,
+    "WISP_PULSE": 2,
+    "SEXTON_HOOK": 8
+   }
+  },
+  "fenItems": {
+   "keys": 2,
+   "counts": {
+    "FEN_ITEMS": 5,
+    "FEN_RECIPES": 2
+   }
+  },
+  "gameplay_affixRules": {
+   "keys": 6,
+   "counts": {
+    "MAX_AFFIXES": 1,
+    "ILVL_MAX": 1,
+    "DROP_SOURCES": 5,
+    "AFFIX_GEAR_TYPES": 9,
+    "AFFIXES": 14,
+    "ILVL_REACH": 1
+   }
+  },
+  "gameplay_atlas": {
+   "keys": 11,
+   "counts": {
+    "SCALING_NOTES": 7,
+    "ILVL_MAX": 1,
+    "MAX_AFFIXES": 1,
+    "ILVL_OFFSETS": 5,
+    "SOURCE_LABEL": 5,
+    "FIT_LABEL": 4,
+    "SLOT_ORDER": 9,
+    "RETIRED_ITEMS": 1,
+    "ARMOR_BY_ID": 110,
+    "LEGENDARY_SETS": 4,
+    "CHEST_KILLS": 1
+   }
+  },
+  "gameplay_authorityRules": {
+   "keys": 5,
+   "counts": {
+    "LEVEL_CAP": 1,
+    "AREA_PEAK": 10,
+    "DEPTHS_AUTHORITY": 4,
+    "AUTHORITY": 16,
+    "GROUND_RATES": 209
+   }
+  },
+  "gameplay_beltRules": {
+   "keys": 4,
+   "counts": {
+    "BELT_SLOT_IDS": 3,
+    "BELT_KEY": 3,
+    "HEAL_ORDER": 3,
+    "HEAL_COOLDOWN_S": 1
+   }
+  },
+  "gameplay_characterStats": {
+   "keys": 2,
+   "counts": {
+    "STAT_EFFECTS": 6,
+    "DERIVED_LABELS": 7
+   }
+  },
+  "gameplay_classes": {
+   "keys": 1,
+   "counts": {
+    "CLASSES": 10
+   }
+  },
+  "gameplay_contractRules": {
+   "keys": 4,
+   "counts": {
+    "CONTRACT_SLOTS": 1,
+    "RELIC_PREMIUM": 1,
+    "RELIC_CHANCE": 1,
+    "RELIC_ORDERS": 5
+   }
+  },
+  "gameplay_craftQuantity": {
+   "keys": 2,
+   "counts": {
+    "MAX_CRAFT_BATCH": 1,
+    "ONLY_CRAFTABLE_KEY": 1
+   }
+  },
+  "gameplay_depthsFloor": {
+   "keys": 5,
+   "counts": {
+    "FLOOR_COLS": 1,
+    "FLOOR_ROWS": 1,
+    "FLOOR_WALL_H": 1,
+    "STAIR_R": 1,
+    "CHEST_R": 1
+   }
+  },
+  "gameplay_gatherPlan": {
+   "keys": 1,
+   "counts": {
+    "STOP_TEXT": 6
+   }
+  },
+  "gameplay_gatherReport": {
+   "keys": 2,
+   "counts": {
+    "MILESTONES": 10,
+    "MIN_REPORT_SECONDS": 1
+   }
+  },
+  "gameplay_gatheringRules": {
+   "keys": 22,
+   "counts": {
+    "GATHER_SKILLS": 4,
+    "ALL_SKILLS": 7,
+    "SKILLS": 7,
+    "TICK_MS": 1,
+    "LEVEL_CAP": 1,
+    "GATHER_BURST": 1,
+    "GATHER_MAX_WINDOW_MS": 1,
+    "GATHER_MAX_ACTIONS_PER_HOUR": 1,
+    "GATHER_FLUSH_MS": 1,
+    "GATHER_MAX_BATCH": 1,
+    "RICH_YIELD": 1,
+    "RICH_RESPAWN": 1,
+    "NODES": 30,
+    "NODE_IDS": 30,
+    "XP_CURVE": 1,
+    "TOOL_KIND": 4,
+    "TOOL_METALS": 6,
+    "BELT_BASE": 1,
+    "BELT_KINDS": 4,
+    "BELT_SLOT_COUNT": 1,
+    "BAG_SLOTS": 1,
+    "MATERIAL_STACK": 1
+   }
+  },
+  "gameplay_gearStats": {
+   "keys": 12,
+   "counts": {
+    "STAT_PRIMER": 1,
+    "THRALL_TOUGH_SHARE": 1,
+    "THRALL_DAMAGE_SHARE": 1,
+    "THRALL_UPTIME": 1,
+    "EXTRA_THRALL_VALUE": 1,
+    "REGEN_HORIZON_S": 1,
+    "REFERENCE": 2,
+    "ROLE_WEIGHTS": 9,
+    "LOADOUT_VALUE": 7,
+    "SET_VALUE": 8,
+    "STAT_PRIORITY": 9,
+    "RECOMMENDED_WEAPONS": 4
+   }
+  },
+  "gameplay_goldSinkRules": {
+   "keys": 4,
+   "counts": {
+    "REFORGE": 5,
+    "COVENANT_SEAL": 1,
+    "EMPOWER": 9,
+    "EMPOWERABLE": 6
+   }
+  },
+  "gameplay_guidance": {
+   "keys": 5,
+   "counts": {
+    "LABOR_READY_MS": 1,
+    "BAG_FULL_FRACTION": 1,
+    "GRAVE_DUST_FOR_TONIC": 1,
+    "SIDE_AREAS": 3,
+    "TOPIC_OF": 3
+   }
+  },
+  "gameplay_keybinds": {
+   "keys": 4,
+   "counts": {
+    "KEYBIND_STORAGE_KEY": 1,
+    "LOADOUT_ACTIONS": 7,
+    "ACTION_LABEL": 7,
+    "RESERVED_KEYS": 39
+   }
+  },
+  "gameplay_killChain": {
+   "keys": 1,
+   "counts": {
+    "CHAIN": 3
+   }
+  },
+  "gameplay_killCredit": {
+   "keys": 1,
+   "counts": {
+    "KILL_REWARD_RANGE": 1
+   }
+  },
+  "gameplay_killRules": {
+   "keys": 4,
+   "counts": {
+    "KILLS": 28,
+    "ELITE_SHARDS_MAX": 1,
+    "CHAIN_MAX": 1,
+    "FLOOR_RULES": 3
+   }
+  },
+  "gameplay_laborRules": {
+   "keys": 1,
+   "counts": {
+    "LABOR": 5
+   }
+  },
+  "gameplay_legendary": {
+   "keys": 2,
+   "counts": {
+    "LEGEND": 17,
+    "NO_SIM_LEGEND": 5
+   }
+  },
+  "gameplay_legionRules": {
+   "keys": 8,
+   "counts": {
+    "KIT_BASE": 1,
+    "KIT_IDS": 2,
+    "KIT_SLOT_COUNT": 1,
+    "KIT_LABEL": 2,
+    "KIT_WEAPON_TYPES": 2,
+    "KIT_ARMOR_TYPES": 5,
+    "KIT_RATES": 7,
+    "NO_LEGION": 6
+   }
+  },
+  "gameplay_loadout": {
+   "keys": 1,
+   "counts": {
+    "LOADOUT_SLOTS": 1
+   }
+  },
+  "gameplay_loadoutRules": {
+   "keys": 5,
+   "counts": {
+    "MAX_PRESETS": 1,
+    "NAME_MAX": 1,
+    "BAG_SLOTS": 1,
+    "MAIN_HAND_SLOT": 1,
+    "OFF_HAND_SLOT": 1
+   }
+  },
+  "gameplay_loot": {
+   "keys": 5,
+   "counts": {
+    "BAG_SIZE": 1,
+    "BAG_COLS": 1,
+    "BAG_ROWS": 1,
+    "KILL_LOOT": 3,
+    "SMART_LOOT": 2
+   }
+  },
+  "gameplay_lootFilter": {
+   "keys": 3,
+   "counts": {
+    "LOOT_TIERS": 5,
+    "LOOT_ACTIONS": 3,
+    "DEFAULT_LOOT_RULES": 5
+   }
+  },
+  "gameplay_milestones": {
+   "keys": 1,
+   "counts": {
+    "MILESTONES": 51
+   }
+  },
+  "gameplay_necroRules": {
+   "keys": 1,
+   "counts": {
+    "NECRO_LIMITS": 7
+   }
+  },
+  "gameplay_newBloodTuning": {
+   "keys": 2,
+   "counts": {
+    "NEW_BLOOD_DAMAGE_MULT": 1,
+    "NEW_BLOOD_XP_CATCHUP": 2
+   }
+  },
+  "gameplay_resources": {
+   "keys": 1,
+   "counts": {
+    "RESOURCE_RULES": 6
+   }
+  },
+  "gameplay_runeRules": {
+   "keys": 3,
+   "counts": {
+    "RUNE_BASE": 1,
+    "RUNE_SLOT_COUNT": 1,
+    "RUNE_IDS": 11
+   }
+  },
+  "gameplay_salvageRules": {
+   "keys": 7,
+   "counts": {
+    "SALVAGE_SKILL": 1,
+    "SALVAGE_GEAR_TYPES": 9,
+    "SALVAGE_RARITIES": 6,
+    "SALVAGE_BONUS_PER_LEVEL": 1,
+    "SALVAGE_AFFIX_BONUS": 1,
+    "SALVAGE_ILVL_BONUS": 1,
+    "SALVAGE_AFFIX_XP": 1
+   }
+  },
+  "gameplay_sim": {
+   "keys": 5,
+   "counts": {
+    "BOSS_ARENA": 3,
+    "BOSS_RADIUS": 1,
+    "BOSS_RING_PAD": 1,
+    "CONE_REACH_PAD": 1,
+    "PLAYER_RADIUS": 1
+   }
+  },
+  "gameplay_smartLoot": {
+   "keys": 1,
+   "counts": {
+    "SMART_LOOT": 2
+   }
+  },
+  "gameplay_stats": {
+   "keys": 2,
+   "counts": {
+    "STAT_KEYS": 4,
+    "STAT_LABELS": 4
+   }
+  },
+  "gameplay_vaultRules": {
+   "keys": 2,
+   "counts": {
+    "VAULT_SLOTS": 1,
+    "VAULT_TAB_SIZE": 1
+   }
+  },
+  "gardening": {
+   "keys": 6,
+   "counts": {
+    "PLOTS": 6,
+    "SEEDS": 12,
+    "SEED_IDS": 12,
+    "COMPOST_ITEM": 1,
+    "COMPOST_SPEED": 1,
+    "GARDEN_ITEMS": 13
+   }
+  },
+  "gear": {
+   "keys": 2,
+   "counts": {
+    "EQUIP_SLOTS": 9,
+    "LEGENDARY_AURA_PIECES": 1
+   }
+  },
+  "items": {
+   "keys": 5,
+   "counts": {
+    "ITEMS": 304,
+    "RARITY_COLOR": 5,
+    "RARITY_MARK": 5,
+    "BUFF_FLASKS": 15,
+    "HEALING_FLASKS": 3
+   }
+  },
+  "kits": {
+   "keys": 0,
+   "counts": {}
+  },
+  "layout": {
+   "keys": 6,
+   "counts": {
+    "WING_PROPS": 62,
+    "WING_FLOOR": 7,
+    "PROPS": 57,
+    "NODE_COLLIDER": 6,
+    "NODE_REACH": 6,
+    "DRESSING": 27
+   }
+  },
+  "legendarySets": {
+   "keys": 7,
+   "counts": {
+    "LEGENDARY_SETS": 4,
+    "LEGENDARY_SET_IDS": 4,
+    "LEGENDARY_DROP": 4,
+    "LEGENDARY_BOSS_AREAS": 6,
+    "LEGENDARY_STARTER_AREA": 1,
+    "LEGENDARY_BOSS_CHANCE": 6,
+    "LEGENDARY_ELITE_CHANCE": 3
+   }
+  },
+  "necroWeapons": {
+   "keys": 11,
+   "counts": {
+    "NECRO_TIERS": 5,
+    "NECRO_MAIN_KINDS": 4,
+    "NECRO_OFF_KINDS": 3,
+    "NECRO_DISCIPLINES": 4,
+    "NECRO_WEAPON_TUNING": 7,
+    "NECRO_TIER_INFO": 5,
+    "NECRO_KIND_LABEL": 7,
+    "NECRO_WEAPONS": 35,
+    "NECRO_WEAPON_BY_ID": 35,
+    "NECRO_MODEL": 7,
+    "NECRO_RECIPES": 35
+   }
+  },
+  "npcSpots": {
+   "keys": 2,
+   "counts": {
+    "NPC_IDS": 3,
+    "NPC_SPOTS": 3
+   }
+  },
+  "npcs": {
+   "keys": 5,
+   "counts": {
+    "NPC_IDS": 3,
+    "NPCS": 3,
+    "NPC_LOOKS": 3,
+    "NPC_LOOK_RANGE": 1,
+    "NPC_TALK_RANGE": 1
+   }
+  },
+  "omens": {
+   "keys": 2,
+   "counts": {
+    "OMENS": 3,
+    "OMEN_ORDER": 3
+   }
+  },
+  "onboarding": {
+   "keys": 2,
+   "counts": {
+    "TIPS": 120,
+    "TIP_ANCHOR": 15
+   }
+  },
+  "processing": {
+   "keys": 3,
+   "counts": {
+    "MEALS": 5,
+    "PROCESSING_ITEMS": 36,
+    "PROCESSING_RECIPES": 40
+   }
+  },
+  "reagents": {
+   "keys": 12,
+   "counts": {
+    "REAGENT_ITEMS": 14,
+    "BOSS_ICHOR": 7,
+    "ELITE_REAGENT_MULT": 1,
+    "AREA_REAGENT_DROPS": 4,
+    "ENEMY_REAGENT_DROPS": 2,
+    "REAGENT_BREW_LIST": 11,
+    "REAGENT_BREWS": 11,
+    "REAGENT_BREW_ITEMS": 11,
+    "REAGENT_RECIPES": 11,
+    "ALL_REAGENT_IDS": 25,
+    "MOB_REAGENTS": 4,
+    "ICHORS": 7
+   }
+  },
+  "recipes": {
+   "keys": 2,
+   "counts": {
+    "BASE_RECIPE_ROWS": 29,
+    "ALL_RECIPE_ROWS": 128
+   }
+  },
+  "runes": {
+   "keys": 12,
+   "counts": {
+    "RUNE_RITES": 5,
+    "RUNE_IDS": 11,
+    "RUNE_TUNING": 11,
+    "RUNES": 11,
+    "RUNE_ORDER": 11,
+    "AREA_RUNE_POOL": 9,
+    "RUNE_WEIGHT": 3,
+    "ELITE_RUNE_CHANCE_BY_AREA": 9,
+    "ELITE_RUNE_CHANCE": 1,
+    "SURGE_RUNE_CHANCE": 1,
+    "BOSS_REPEAT_RUNE_CHANCE": 1,
+    "BOSS_RUNE_POOL": 7
+   }
+  },
+  "setBonuses": {
+   "keys": 4,
+   "counts": {
+    "SET_TIERS": 3,
+    "SET_BONUSES": 22,
+    "SET_NAMES": 22,
+    "SET_IDS": 22
+   }
+  },
+  "statuses": {
+   "keys": 6,
+   "counts": {
+    "HEMORRHAGE": 3,
+    "CHILL": 3,
+    "SANCTIFIED": 4,
+    "BONE_HEX": 2,
+    "PLAGUE_BURST": 5,
+    "STATUS_FX": 5
+   }
+  },
+  "tradeGoods": {
+   "keys": 1,
+   "counts": {
+    "TRADE_GOODS_RECIPES": 4
+   }
+  },
+  "upgrades": {
+   "keys": 7,
+   "counts": {
+    "DAMAGE_UPGRADE": 2,
+    "WAVE_UPGRADE": 1,
+    "LEGION_UPGRADE": 3,
+    "THRALL_REFRESH_MAX": 1,
+    "WAVE_MILESTONES": 3,
+    "NIGHTFALL_SHROUD_CHANCE": 1,
+    "RESTLESS_SURGE_MULT": 1
+   }
+  },
+  "wing": {
+   "keys": 3,
+   "counts": {
+    "SHELF_HERBS": 7,
+    "SHELF_GROUPS": 4,
+    "SHELF_IDS": 19
+   }
+  }
+ },
+ "summary": {
+  "items": 304,
+  "enemies": 28,
+  "areas": 13,
+  "abilities": 60,
+  "disciplines": 9
+ },
+ "droppedFunctions": 633,
+ "droppedPaths": [
+  "dialogue.TOPICS.prior[0].lines",
+  "dialogue.TOPICS.prior[1].lines",
+  "dialogue.TOPICS.prior[2].lines",
+  "dialogue.TOPICS.sexton[0].lines",
+  "dialogue.TOPICS.sexton[1].lines",
+  "dialogue.TOPICS.sexton[2].lines",
+  "dialogue.TOPICS.apothecary[0].lines",
+  "dialogue.TOPICS.apothecary[1].lines",
+  "dialogue.TOPICS.apothecary[2].lines",
+  "upgrades.DAMAGE_UPGRADE.cost",
+  "upgrades.WAVE_UPGRADE.cost",
+  "upgrades.LEGION_UPGRADE.cost",
+  "gameplay/affixRules.AFFIXES[0].range",
+  "gameplay/affixRules.AFFIXES[0].legacy[0]",
+  "gameplay/affixRules.AFFIXES[0].legacy[1]",
+  "gameplay/affixRules.AFFIXES[0].effect",
+  "gameplay/affixRules.AFFIXES[0].text",
+  "gameplay/affixRules.AFFIXES[1].range",
+  "gameplay/affixRules.AFFIXES[1].legacy[0]",
+  "gameplay/affixRules.AFFIXES[1].legacy[1]",
+  "gameplay/affixRules.AFFIXES[1].effect",
+  "gameplay/affixRules.AFFIXES[1].text",
+  "gameplay/affixRules.AFFIXES[2].range",
+  "gameplay/affixRules.AFFIXES[2].legacy[0]",
+  "gameplay/affixRules.AFFIXES[2].legacy[1]",
+  "gameplay/affixRules.AFFIXES[2].effect",
+  "gameplay/affixRules.AFFIXES[2].text",
+  "gameplay/affixRules.AFFIXES[3].range",
+  "gameplay/affixRules.AFFIXES[3].legacy[0]",
+  "gameplay/affixRules.AFFIXES[3].legacy[1]",
+  "gameplay/affixRules.AFFIXES[3].effect",
+  "gameplay/affixRules.AFFIXES[3].text",
+  "gameplay/affixRules.AFFIXES[4].range",
+  "gameplay/affixRules.AFFIXES[4].legacy[0]",
+  "gameplay/affixRules.AFFIXES[4].legacy[1]",
+  "gameplay/affixRules.AFFIXES[4].effect",
+  "gameplay/affixRules.AFFIXES[4].text",
+  "gameplay/affixRules.AFFIXES[5].range",
+  "gameplay/affixRules.AFFIXES[5].legacy[0]",
+  "gameplay/affixRules.AFFIXES[5].legacy[1]",
+  "gameplay/affixRules.AFFIXES[5].effect",
+  "gameplay/affixRules.AFFIXES[5].text",
+  "gameplay/affixRules.AFFIXES[6].range",
+  "gameplay/affixRules.AFFIXES[6].legacy[0]",
+  "gameplay/affixRules.AFFIXES[6].legacy[1]",
+  "gameplay/affixRules.AFFIXES[6].effect",
+  "gameplay/affixRules.AFFIXES[6].text",
+  "gameplay/affixRules.AFFIXES[7].range",
+  "gameplay/affixRules.AFFIXES[7].legacy[0]",
+  "gameplay/affixRules.AFFIXES[7].legacy[1]",
+  "gameplay/affixRules.AFFIXES[7].effect",
+  "gameplay/affixRules.AFFIXES[7].text",
+  "gameplay/affixRules.AFFIXES[8].range",
+  "gameplay/affixRules.AFFIXES[8].legacy[0]",
+  "gameplay/affixRules.AFFIXES[8].legacy[1]",
+  "gameplay/affixRules.AFFIXES[8].effect",
+  "gameplay/affixRules.AFFIXES[8].text",
+  "gameplay/affixRules.AFFIXES[9].range",
+  "gameplay/affixRules.AFFIXES[9].legacy[0]",
+  "gameplay/affixRules.AFFIXES[9].legacy[1]",
+  "gameplay/affixRules.AFFIXES[9].effect",
+  "gameplay/affixRules.AFFIXES[9].text",
+  "gameplay/affixRules.AFFIXES[10].range",
+  "gameplay/affixRules.AFFIXES[10].legacy[0]",
+  "gameplay/affixRules.AFFIXES[10].legacy[1]",
+  "gameplay/affixRules.AFFIXES[10].effect",
+  "gameplay/affixRules.AFFIXES[10].text",
+  "gameplay/affixRules.AFFIXES[11].range",
+  "gameplay/affixRules.AFFIXES[11].legacy[0]",
+  "gameplay/affixRules.AFFIXES[11].legacy[1]",
+  "gameplay/affixRules.AFFIXES[11].effect",
+  "gameplay/affixRules.AFFIXES[11].text",
+  "gameplay/affixRules.AFFIXES[12].range",
+  "gameplay/affixRules.AFFIXES[12].legacy[0]",
+  "gameplay/affixRules.AFFIXES[12].legacy[1]",
+  "gameplay/affixRules.AFFIXES[12].effect",
+  "gameplay/affixRules.AFFIXES[12].text",
+  "gameplay/affixRules.AFFIXES[13].range",
+  "gameplay/affixRules.AFFIXES[13].legacy[0]",
+  "gameplay/affixRules.AFFIXES[13].legacy[1]",
+  "gameplay/affixRules.AFFIXES[13].effect",
+  "gameplay/affixRules.AFFIXES[13].text",
+  "gameplay/gatherReport.GatherSession",
+  "gameplay/guidance.Guidance",
+  "gameplay/killChain.KillChain",
+  "gameplay/loot.Inventory",
+  "gameplay/milestones.MILESTONES[0].reached",
+  "gameplay/milestones.MILESTONES[1].reached",
+  "gameplay/milestones.MILESTONES[2].reached",
+  "gameplay/milestones.MILESTONES[3].reached",
+  "gameplay/milestones.MILESTONES[4].reached",
+  "gameplay/milestones.MILESTONES[5].reached",
+  "gameplay/milestones.MILESTONES[6].reached",
+  "gameplay/milestones.MILESTONES[7].reached",
+  "gameplay/milestones.MILESTONES[8].reached",
+  "gameplay/milestones.MILESTONES[9].reached",
+  "gameplay/milestones.MILESTONES[10].reached",
+  "gameplay/milestones.MILESTONES[11].reached",
+  "gameplay/milestones.MILESTONES[12].reached",
+  "gameplay/milestones.MILESTONES[13].reached",
+  "gameplay/milestones.MILESTONES[14].reached",
+  "gameplay/milestones.MILESTONES[15].reached",
+  "gameplay/milestones.MILESTONES[16].reached",
+  "gameplay/milestones.MILESTONES[17].reached",
+  "gameplay/milestones.MILESTONES[18].reached",
+  "gameplay/milestones.MILESTONES[19].reached",
+  "gameplay/milestones.MILESTONES[20].reached",
+  "gameplay/milestones.MILESTONES[21].reached",
+  "gameplay/milestones.MILESTONES[22].reached",
+  "gameplay/milestones.MILESTONES[23].reached",
+  "gameplay/milestones.MILESTONES[24].reached",
+  "gameplay/milestones.MILESTONES[25].reached",
+  "gameplay/milestones.MILESTONES[26].reached",
+  "gameplay/milestones.MILESTONES[27].reached",
+  "gameplay/milestones.MILESTONES[28].reached",
+  "gameplay/milestones.MILESTONES[29].reached",
+  "gameplay/milestones.MILESTONES[30].reached",
+  "gameplay/milestones.MILESTONES[31].reached",
+  "gameplay/milestones.MILESTONES[32].reached",
+  "gameplay/milestones.MILESTONES[33].reached",
+  "gameplay/milestones.MILESTONES[34].reached",
+  "gameplay/milestones.MILESTONES[35].reached",
+  "gameplay/milestones.MILESTONES[36].reached",
+  "gameplay/milestones.MILESTONES[37].reached",
+  "gameplay/milestones.MILESTONES[38].reached",
+  "gameplay/milestones.MILESTONES[39].reached",
+  "gameplay/milestones.MILESTONES[40].reached",
+  "gameplay/milestones.MILESTONES[41].reached",
+  "gameplay/milestones.MILESTONES[42].reached",
+  "gameplay/milestones.MILESTONES[43].reached",
+  "gameplay/milestones.MILESTONES[44].reached",
+  "gameplay/milestones.MILESTONES[45].reached",
+  "gameplay/milestones.MILESTONES[46].reached",
+  "gameplay/milestones.MILESTONES[47].reached",
+  "gameplay/milestones.MILESTONES[48].reached",
+  "gameplay/milestones.MILESTONES[49].reached",
+  "gameplay/milestones.MILESTONES[50].reached",
+  "gameplay/resources.RESOURCE_RULES.necromancer.max",
+  "gameplay/resources.RESOURCE_RULES.necromancer.initial",
+  "gameplay/resources.RESOURCE_RULES.necromancer.onRevive",
+  "gameplay/resources.RESOURCE_RULES.necromancer.passive",
+  "gameplay/resources.RESOURCE_RULES.knight.max",
+  "gameplay/resources.RESOURCE_RULES.knight.initial",
+  "gameplay/resources.RESOURCE_RULES.knight.onRevive",
+  "gameplay/resources.RESOURCE_RULES.knight.passive",
+  "gameplay/resources.RESOURCE_RULES.warden.max",
+  "gameplay/resources.RESOURCE_RULES.warden.initial",
+  "gameplay/resources.RESOURCE_RULES.warden.onRevive",
+  "gameplay/resources.RESOURCE_RULES.warden.passive",
+  "gameplay/resources.RESOURCE_RULES.monk.max",
+  "gameplay/resources.RESOURCE_RULES.monk.initial",
+  "gameplay/resources.RESOURCE_RULES.monk.onRevive",
+  "gameplay/resources.RESOURCE_RULES.monk.passive",
+  "gameplay/resources.RESOURCE_RULES.witch.max",
+  "gameplay/resources.RESOURCE_RULES.witch.initial",
+  "gameplay/resources.RESOURCE_RULES.witch.onRevive",
+  "gameplay/resources.RESOURCE_RULES.witch.passive",
+  "gameplay/resources.RESOURCE_RULES.veil.max",
+  "gameplay/resources.RESOURCE_RULES.veil.initial",
+  "gameplay/resources.RESOURCE_RULES.veil.onRevive",
+  "gameplay/resources.RESOURCE_RULES.veil.passive",
+  "sim/BossBrain.BossBrain",
+  "sim/BossBrain.PrelateBrain",
+  "sim/BossBrain.GravediggerBrain",
+  "sim/BossBrain.AbbessBrain",
+  "sim/BossBrain.CongregationBrain",
+  "sim/BossBrain.SaintBrain",
+  "sim/BossBrain.RegentBrain",
+  "sim/BossBrain.MireMotherBrain",
+  "sim/WorldSim.WorldSim"
+ ],
+ "warnings": []
+}

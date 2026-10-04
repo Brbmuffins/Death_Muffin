@@ -32,6 +32,9 @@ tools/godot/                 Node/TS tools: data export, golden fixtures, asset 
 - Randomness: port `src/gameplay/rng.ts` mulberry32 bit-exactly to `godot/rules/core/rng.gd` (`DmRng`; the rules-core owner
   writes it; others depend on it) so seeded rolls match TS. Use 32-bit masking (`& 0xFFFFFFFF`) — GDScript ints are 64-bit.
 - Data comes from godot/data JSON exported from the real TS modules (`src/content/*`), never retyped.
+- Fixture size: fixture sets are regenerated deterministically by `tools/godot/gen-fixtures.sh` (runs every
+  tools/godot/fixtures-*.ts). If your fixtures folder is over ~1 MB, add it to .gitignore instead of committing it, and make your
+  run.gd print `fixtures missing: run tools/godot/gen-fixtures.sh` (and exit non-zero) when they are absent.
 
 ## Git
 - Each track works in its own worktree on its own branch cut from `godot-port` (e.g. `godot/rules-loot`), commits with explicit

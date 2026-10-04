@@ -1,0 +1,1132 @@
+{
+ "ENEMIES": {
+  "robber": {
+   "id": "robber",
+   "name": "Grave Robber",
+   "behavior": "melee",
+   "rig": "humanoid",
+   "hp": 68,
+   "speed": 2.6,
+   "radius": 0.45,
+   "damage": 11,
+   "attackRange": 1.3,
+   "windupMs": 420,
+   "cooldownMs": 1300,
+   "xp": 4,
+   "gold": [
+    2,
+    5
+   ],
+   "corpse": "normal",
+   "scale": 1,
+   "modelSlug": "grave_robber",
+   "blurb": "Diggers who never left the graves they looted."
+  },
+  "hound": {
+   "id": "hound",
+   "name": "Bone Hound",
+   "behavior": "flank",
+   "rig": "quadruped",
+   "hp": 42,
+   "speed": 4.4,
+   "radius": 0.45,
+   "damage": 8,
+   "attackRange": 1.2,
+   "windupMs": 250,
+   "cooldownMs": 800,
+   "xp": 3,
+   "gold": [
+    1,
+    4
+   ],
+   "corpse": "swift",
+   "scale": 1,
+   "modelSlug": "bone_hound",
+   "blurb": "Fast flankers. Their corpses rise as hounds of your own."
+  },
+  "penitent": {
+   "id": "penitent",
+   "name": "Bellbound Penitent",
+   "behavior": "caster",
+   "rig": "robed",
+   "hp": 78,
+   "speed": 1.9,
+   "radius": 0.5,
+   "damage": 18,
+   "attackRange": 7.5,
+   "windupMs": 1100,
+   "cooldownMs": 3200,
+   "xp": 6,
+   "gold": [
+    3,
+    7
+   ],
+   "corpse": "resonant",
+   "scale": 1.05,
+   "blurb": "Tolls a cone of grave-sound. Its corpse resonates: Black Litany counts it twice."
+  },
+  "sac": {
+   "id": "sac",
+   "name": "Carrion Sac",
+   "behavior": "hazard",
+   "rig": "bloat",
+   "hp": 140,
+   "speed": 1.3,
+   "radius": 0.8,
+   "damage": 15,
+   "attackRange": 1.6,
+   "windupMs": 700,
+   "cooldownMs": 1800,
+   "xp": 8,
+   "gold": [
+    4,
+    9
+   ],
+   "corpse": "toxic",
+   "scale": 1.2,
+   "blurb": "Slow and swollen. Its corpse ruptures into a toxic pool unless consumed quickly."
+  },
+  "deacon": {
+   "id": "deacon",
+   "name": "Crypt Deacon",
+   "behavior": "support",
+   "rig": "robed",
+   "hp": 112,
+   "speed": 2,
+   "radius": 0.5,
+   "damage": 9,
+   "attackRange": 6,
+   "windupMs": 1500,
+   "cooldownMs": 5500,
+   "xp": 9,
+   "gold": [
+    5,
+    10
+   ],
+   "corpse": "normal",
+   "scale": 1.15,
+   "blurb": "Kill it first — it steals your corpses and raises them against you."
+  },
+  "risen": {
+   "id": "risen",
+   "name": "Risen",
+   "behavior": "melee",
+   "rig": "humanoid",
+   "hp": 36,
+   "speed": 2.9,
+   "radius": 0.42,
+   "damage": 8,
+   "attackRange": 1.2,
+   "windupMs": 380,
+   "cooldownMs": 1200,
+   "xp": 2,
+   "gold": [
+    0,
+    1
+   ],
+   "corpse": "none",
+   "scale": 0.95,
+   "modelSlug": "skeleton_thrall",
+   "blurb": "A corpse a deacon claimed before you did."
+  },
+  "censer": {
+   "id": "censer",
+   "name": "Censer Bearer",
+   "behavior": "melee",
+   "rig": "robed",
+   "hp": 96,
+   "speed": 2.1,
+   "radius": 0.5,
+   "damage": 7,
+   "attackRange": 1.5,
+   "windupMs": 520,
+   "cooldownMs": 1700,
+   "xp": 8,
+   "gold": [
+    4,
+    8
+   ],
+   "corpse": "normal",
+   "scale": 1.05,
+   "modelSlug": "censer_bearer",
+   "aura": true,
+   "blurb": "Swings bronze incense over the pack: the dead around it move and strike faster. Kill it first."
+  },
+  "wraith": {
+   "id": "wraith",
+   "name": "Choir Wraith",
+   "behavior": "caster",
+   "rig": "robed",
+   "hp": 58,
+   "speed": 2.5,
+   "radius": 0.45,
+   "damage": 17,
+   "attackRange": 9,
+   "windupMs": 1250,
+   "cooldownMs": 3600,
+   "xp": 7,
+   "gold": [
+    3,
+    7
+   ],
+   "corpse": "none",
+   "scale": 1.1,
+   "modelSlug": "choir_wraith",
+   "attack": "scream",
+   "blurb": "Sings a ring of grave-song onto where you stand. Step out before the hymn breaks. Leaves no corpse."
+  },
+  "rat": {
+   "id": "rat",
+   "name": "Ossuary Skull-Rat",
+   "behavior": "flank",
+   "rig": "quadruped",
+   "hp": 18,
+   "speed": 4.8,
+   "radius": 0.3,
+   "damage": 4,
+   "attackRange": 0.9,
+   "windupMs": 200,
+   "cooldownMs": 700,
+   "xp": 1,
+   "gold": [
+    0,
+    1
+   ],
+   "corpse": "none",
+   "scale": 1,
+   "modelSlug": "skull_rat",
+   "pack": [
+    4,
+    6
+   ],
+   "blurb": "Pours out of the walls in skittering packs. Too small to leave a corpse: burn them with rot and frost."
+  },
+  "golem": {
+   "id": "golem",
+   "name": "Bone Golem",
+   "behavior": "hazard",
+   "rig": "humanoid",
+   "hp": 430,
+   "speed": 1.5,
+   "radius": 1,
+   "damage": 26,
+   "attackRange": 2.1,
+   "windupMs": 950,
+   "cooldownMs": 2700,
+   "xp": 30,
+   "gold": [
+    15,
+    30
+   ],
+   "corpse": "normal",
+   "scale": 1,
+   "modelSlug": "bone_golem",
+   "slamRadius": 2.8,
+   "deathCorpses": 3,
+   "blurb": "Dozens of the dead fused into one. Its slam cracks a wide ring; it falls apart into three corpses."
+  },
+  "gargoyle": {
+   "id": "gargoyle",
+   "name": "Belfry Gargoyle",
+   "behavior": "flank",
+   "rig": "humanoid",
+   "hp": 150,
+   "speed": 3.2,
+   "radius": 0.55,
+   "damage": 14,
+   "attackRange": 1.4,
+   "windupMs": 900,
+   "cooldownMs": 3400,
+   "xp": 12,
+   "gold": [
+    6,
+    12
+   ],
+   "corpse": "normal",
+   "scale": 1,
+   "modelSlug": "belfry_gargoyle",
+   "flying": 1.1,
+   "dive": {
+    "minRange": 3.5,
+    "range": 9,
+    "radius": 2,
+    "groundedS": 1.4
+   },
+   "blurb": "Tore itself off a bell tower. It marks a spot, dives onto it, then sits stunned in the rubble for a breath. Punish it there."
+  },
+  "moth": {
+   "id": "moth",
+   "name": "Shroud Moth",
+   "behavior": "caster",
+   "rig": "bloat",
+   "hp": 52,
+   "speed": 2.6,
+   "radius": 0.5,
+   "damage": 10,
+   "attackRange": 7,
+   "windupMs": 950,
+   "cooldownMs": 3800,
+   "xp": 6,
+   "gold": [
+    2,
+    6
+   ],
+   "corpse": "swift",
+   "scale": 1,
+   "modelSlug": "shroud_moth",
+   "attack": "dust",
+   "flying": 1.3,
+   "blurb": "Fat on grave dust. It shakes a choking cloud onto where you stand that lingers a few seconds. Walk out of the ochre."
+  },
+  "bat": {
+   "id": "bat",
+   "name": "Tithe Bat",
+   "behavior": "flank",
+   "rig": "quadruped",
+   "hp": 16,
+   "speed": 5.2,
+   "radius": 0.3,
+   "damage": 4,
+   "attackRange": 0.9,
+   "windupMs": 180,
+   "cooldownMs": 900,
+   "xp": 1,
+   "gold": [
+    0,
+    2
+   ],
+   "corpse": "none",
+   "scale": 1,
+   "modelSlug": "tithe_bat",
+   "pack": [
+    4,
+    6
+   ],
+   "flying": 1.5,
+   "hitRun": 0.8,
+   "blurb": "Crypt bats with a coin through the ear. They bite and flit off, over and over. No corpse: sweep them with area rites."
+  },
+  "seraph": {
+   "id": "seraph",
+   "name": "Weeping Seraph",
+   "behavior": "support",
+   "rig": "robed",
+   "hp": 120,
+   "speed": 1.9,
+   "radius": 0.55,
+   "damage": 8,
+   "attackRange": 6.5,
+   "windupMs": 1300,
+   "cooldownMs": 8500,
+   "xp": 11,
+   "gold": [
+    5,
+    11
+   ],
+   "corpse": "resonant",
+   "scale": 1.05,
+   "modelSlug": "weeping_seraph",
+   "flying": 0.7,
+   "ward": true,
+   "blurb": "A cathedral angel come loose. It weeps a blessing over every ally near it at once. Kill it before it wards the pack."
+  },
+  "ghoul": {
+   "id": "ghoul",
+   "name": "Barrow Ghoul",
+   "behavior": "melee",
+   "rig": "humanoid",
+   "hp": 60,
+   "speed": 2.4,
+   "radius": 0.45,
+   "damage": 12,
+   "attackRange": 1.3,
+   "windupMs": 420,
+   "cooldownMs": 1400,
+   "xp": 5,
+   "gold": [
+    2,
+    6
+   ],
+   "corpse": "normal",
+   "scale": 1.05,
+   "modelSlug": "barrow_ghoul",
+   "burrow": true,
+   "blurb": "Tunnels under the churchyard toward the living. When the ground splits in a ring, step out, then finish it before it digs back down."
+  },
+  "acolyte": {
+   "id": "acolyte",
+   "name": "Lich Acolyte",
+   "behavior": "caster",
+   "rig": "robed",
+   "hp": 92,
+   "speed": 2,
+   "radius": 0.5,
+   "damage": 14,
+   "attackRange": 8,
+   "windupMs": 900,
+   "cooldownMs": 3000,
+   "xp": 9,
+   "gold": [
+    5,
+    10
+   ],
+   "corpse": "normal",
+   "scale": 1.05,
+   "modelSlug": "lich_acolyte",
+   "attack": "curse",
+   "unbind": true,
+   "blurb": "A necromancer of the Bell. Any thrall of yours that dies near it rises again, on its side. Kill it before you spend your legion."
+  },
+  "templar": {
+   "id": "templar",
+   "name": "Bell-Sworn Templar",
+   "behavior": "melee",
+   "rig": "humanoid",
+   "hp": 180,
+   "speed": 1.9,
+   "radius": 0.55,
+   "damage": 17,
+   "attackRange": 1.6,
+   "windupMs": 650,
+   "cooldownMs": 1600,
+   "xp": 14,
+   "gold": [
+    8,
+    16
+   ],
+   "corpse": "resonant",
+   "scale": 1.1,
+   "modelSlug": "bell_templar",
+   "shield": true,
+   "blurb": "A knight of the Bell behind a bronze shield. Blows from the front glance off: come at it from the side, Fracture it, or let your thralls hold its attention."
+  },
+  "niche": {
+   "id": "niche",
+   "name": "Skull Niche",
+   "behavior": "support",
+   "rig": "robed",
+   "hp": 500,
+   "speed": 0.0001,
+   "radius": 0.9,
+   "damage": 0,
+   "attackRange": 0,
+   "windupMs": 1000,
+   "cooldownMs": 1000000000,
+   "xp": 0,
+   "gold": [
+    0,
+    0
+   ],
+   "corpse": "none",
+   "scale": 1,
+   "modelSlug": "skull_niche",
+   "inert": true,
+   "blurb": "A singing shrine of skulls. While any stands, the Bone Abbess heals and its lances fly; each one broken tears at her."
+  },
+  "plague_doctor": {
+   "id": "plague_doctor",
+   "name": "Plague Doctor",
+   "behavior": "caster",
+   "rig": "robed",
+   "hp": 90,
+   "speed": 2.1,
+   "radius": 0.5,
+   "damage": 13,
+   "attackRange": 8.5,
+   "windupMs": 1000,
+   "cooldownMs": 3600,
+   "xp": 10,
+   "gold": [
+    5,
+    11
+   ],
+   "corpse": "toxic",
+   "scale": 1.05,
+   "modelSlug": "plague_doctor",
+   "attack": "flask",
+   "blurb": "Lobs flasks of plague that shatter into rot pools where you stand. Keep moving, and keep off the green."
+  },
+  "flagellant": {
+   "id": "flagellant",
+   "name": "Flagellant",
+   "behavior": "melee",
+   "rig": "humanoid",
+   "hp": 120,
+   "speed": 2.7,
+   "radius": 0.45,
+   "damage": 12,
+   "attackRange": 1.3,
+   "windupMs": 380,
+   "cooldownMs": 1100,
+   "xp": 11,
+   "gold": [
+    4,
+    10
+   ],
+   "corpse": "normal",
+   "scale": 1,
+   "modelSlug": "flagellant",
+   "frenzy": true,
+   "blurb": "A penitent flayed by his own scourge. Wounded below half, he frenzies: faster feet, faster blows. Finish him quickly."
+  },
+  "cinder_husk": {
+   "id": "cinder_husk",
+   "name": "Cinder Husk",
+   "behavior": "melee",
+   "rig": "humanoid",
+   "hp": 110,
+   "speed": 2.5,
+   "radius": 0.45,
+   "damage": 14,
+   "attackRange": 1.3,
+   "windupMs": 400,
+   "cooldownMs": 1200,
+   "xp": 12,
+   "gold": [
+    5,
+    11
+   ],
+   "corpse": "normal",
+   "scale": 1,
+   "modelSlug": "cinder_husk",
+   "emberDeath": true,
+   "blurb": "A pyre-burnt corpse that never stopped walking. When it falls it bursts into embers; do not stand in them."
+  },
+  "pyre_priest": {
+   "id": "pyre_priest",
+   "name": "Pyre Priest",
+   "behavior": "caster",
+   "rig": "robed",
+   "hp": 90,
+   "speed": 2.1,
+   "radius": 0.5,
+   "damage": 15,
+   "attackRange": 8.5,
+   "windupMs": 950,
+   "cooldownMs": 3400,
+   "xp": 13,
+   "gold": [
+    6,
+    13
+   ],
+   "corpse": "normal",
+   "scale": 1.05,
+   "modelSlug": "pyre_priest",
+   "attack": "ember",
+   "blurb": "Hurls coals from his censer that burst into burning ground where you stand. Keep moving, and keep off the embers."
+  },
+  "cinderhound": {
+   "id": "cinderhound",
+   "name": "Cinderhound",
+   "behavior": "flank",
+   "rig": "quadruped",
+   "hp": 62,
+   "speed": 4.7,
+   "radius": 0.45,
+   "damage": 11,
+   "attackRange": 1.2,
+   "windupMs": 240,
+   "cooldownMs": 780,
+   "xp": 5,
+   "gold": [
+    2,
+    6
+   ],
+   "corpse": "swift",
+   "scale": 1,
+   "modelSlug": "cinderhound",
+   "pack": [
+    2,
+    3
+   ],
+   "blurb": "Burning hounds that hunt in packs and flank hard. Their corpses rise as hounds of your own."
+  },
+  "slag_brute": {
+   "id": "slag_brute",
+   "name": "Slag Brute",
+   "behavior": "hazard",
+   "rig": "humanoid",
+   "hp": 520,
+   "speed": 1.5,
+   "radius": 1,
+   "damage": 28,
+   "attackRange": 2.2,
+   "windupMs": 1000,
+   "cooldownMs": 2900,
+   "xp": 34,
+   "gold": [
+    18,
+    34
+   ],
+   "corpse": "resonant",
+   "scale": 1,
+   "modelSlug": "slag_brute",
+   "slamRadius": 2.7,
+   "slamPool": true,
+   "blurb": "Slag and iron, still molten at the seams. Its slam cracks a wide ring and leaves it burning."
+  },
+  "bog_hag": {
+   "id": "bog_hag",
+   "name": "Bog Hag",
+   "behavior": "caster",
+   "rig": "robed",
+   "hp": 100,
+   "speed": 2,
+   "radius": 0.5,
+   "damage": 12,
+   "attackRange": 9.5,
+   "windupMs": 1300,
+   "cooldownMs": 4400,
+   "xp": 24,
+   "gold": [
+    6,
+    13
+   ],
+   "corpse": "normal",
+   "scale": 1.05,
+   "modelSlug": "bog_hag",
+   "attack": "hex",
+   "blurb": "Hexes your thralls: inside the magenta ring they hit 30% softer for six seconds. Kill her first, or pull your legion out of the ring."
+  },
+  "mire_leech": {
+   "id": "mire_leech",
+   "name": "Mire Leech",
+   "behavior": "flank",
+   "rig": "quadruped",
+   "hp": 22,
+   "speed": 4.2,
+   "radius": 0.32,
+   "damage": 4,
+   "attackRange": 0.9,
+   "windupMs": 210,
+   "cooldownMs": 720,
+   "xp": 5,
+   "gold": [
+    0,
+    1
+   ],
+   "corpse": "none",
+   "scale": 1,
+   "modelSlug": "mire_leech",
+   "rotBite": true,
+   "pack": [
+    4,
+    6
+   ],
+   "blurb": "Pours out of the black water in swarms of four to six. Too small to leave a corpse: sweep them with area rites and Miasma."
+  },
+  "fen_wisp": {
+   "id": "fen_wisp",
+   "name": "Fen Wisp",
+   "behavior": "caster",
+   "rig": "bloat",
+   "hp": 60,
+   "speed": 3,
+   "radius": 0.4,
+   "damage": 9,
+   "attackRange": 8.5,
+   "windupMs": 1000,
+   "cooldownMs": 3300,
+   "xp": 19,
+   "gold": [
+    3,
+    8
+   ],
+   "corpse": "none",
+   "scale": 0.85,
+   "modelSlug": "fen_wisp",
+   "attack": "pulse",
+   "flying": 1.5,
+   "lure": true,
+   "blurb": "A drowned lantern-flame. It pulses a ring of cold onto where you stand, and backs away toward the open water: do not follow it in."
+  },
+  "drowned_sexton": {
+   "id": "drowned_sexton",
+   "name": "Drowned Sexton",
+   "behavior": "hazard",
+   "rig": "humanoid",
+   "hp": 560,
+   "speed": 1.6,
+   "radius": 0.95,
+   "damage": 25,
+   "attackRange": 2.2,
+   "windupMs": 1000,
+   "cooldownMs": 2900,
+   "xp": 54,
+   "gold": [
+    20,
+    36
+   ],
+   "corpse": "normal",
+   "scale": 1,
+   "modelSlug": "drowned_sexton",
+   "slamRadius": 2.5,
+   "deathCorpses": 2,
+   "hook": true,
+   "blurb": "A bloated gravedigger with a chain and a grave-hook. When the chain flies it drags you toward him, then the spade comes down. Leave the line."
+  }
+ },
+ "CENSER": {
+  "radius": 5,
+  "hasteS": 1.5,
+  "moveMult": 1.3,
+  "attackRateMult": 1.25
+ },
+ "SCREAM": {
+  "radius": 2.2
+ },
+ "DUST": {
+  "radius": 2,
+  "cloudS": 3.5,
+  "cloudDpsMult": 0.35
+ },
+ "BURROW": {
+  "speed": 4.2,
+  "surfaceR": 2.5,
+  "eruptR": 1.8,
+  "eruptMult": 1.25,
+  "eruptMultGraves": 1,
+  "eruptMsGraves": 1000,
+  "eruptMs": 800,
+  "digS": 0.8,
+  "digAtFrac": 0.5,
+  "travelM": 8,
+  "maxPerTarget": 3
+ },
+ "UNBIND": {
+  "range": 7,
+  "delayS": 1,
+  "cooldownS": 4,
+  "maxAlive": 4
+ },
+ "TEMPLAR_SHIELD": {
+  "halfArcDeg": 60,
+  "passThrough": 0.3
+ },
+ "PLAGUE_FLASK": {
+  "radius": 1.8,
+  "poolS": 5,
+  "poolDpsMult": 0.35
+ },
+ "EMBER_BOLT": {
+  "radius": 1.7,
+  "poolS": 4,
+  "poolDpsMult": 0.4
+ },
+ "EMBER_DEATH": {
+  "radius": 1.6,
+  "poolS": 3,
+  "poolDpsMult": 0.3
+ },
+ "SLAG_POOL": {
+  "poolS": 4,
+  "poolDpsMult": 0.3
+ },
+ "FRENZY": {
+  "atFrac": 0.5,
+  "moveMult": 1.45,
+  "attackRateMult": 1.6
+ },
+ "WARD": {
+  "range": 5.5,
+  "maxTargets": 4
+ },
+ "PROCESSION": {
+  "chance": 0.3,
+  "minWave": 2
+ },
+ "WAVE_THEMES": {
+  "graves": [
+   {
+    "id": "kennel",
+    "name": "The Kennel Loosed",
+    "blurb": "Hounds and rats, all teeth",
+    "roster": [
+     {
+      "id": "hound",
+      "weight": 75
+     },
+     {
+      "id": "rat",
+      "weight": 25
+     }
+    ],
+    "sizeMult": 1.15
+   },
+   {
+    "id": "dusk",
+    "name": "Moth-Dusk",
+    "blurb": "Moths and bats come off the yews",
+    "roster": [
+     {
+      "id": "moth",
+      "weight": 45
+     },
+     {
+      "id": "bat",
+      "weight": 30
+     },
+     {
+      "id": "robber",
+      "weight": 25
+     }
+    ],
+    "sizeMult": 0.85
+   },
+   {
+    "id": "bellringers",
+    "name": "The Bellringers' Round",
+    "blurb": "Penitents under a censer",
+    "roster": [
+     {
+      "id": "penitent",
+      "weight": 50
+     },
+     {
+      "id": "robber",
+      "weight": 35
+     },
+     {
+      "id": "censer",
+      "weight": 15
+     }
+    ],
+    "sizeMult": 0.9,
+    "lead": "censer"
+   }
+  ],
+  "ossuary": [
+   {
+    "id": "burrows",
+    "name": "The Barrow Opens",
+    "blurb": "Ghouls tunnel in from every side",
+    "roster": [
+     {
+      "id": "ghoul",
+      "weight": 40
+     },
+     {
+      "id": "robber",
+      "weight": 40
+     },
+     {
+      "id": "hound",
+      "weight": 20
+     }
+    ],
+    "sizeMult": 0.85
+   },
+   {
+    "id": "skittering",
+    "name": "The Skittering",
+    "blurb": "The walls empty of rats",
+    "roster": [
+     {
+      "id": "rat",
+      "weight": 100
+     }
+    ],
+    "sizeMult": 1.4
+   },
+   {
+    "id": "golem",
+    "name": "The Ossuary Wakes",
+    "blurb": "A golem climbs out of the bone-piles",
+    "roster": [
+     {
+      "id": "robber",
+      "weight": 45
+     },
+     {
+      "id": "rat",
+      "weight": 35
+     },
+     {
+      "id": "hound",
+      "weight": 20
+     }
+    ],
+    "sizeMult": 0.8,
+    "lead": "golem"
+   }
+  ],
+  "nave": [
+   {
+    "id": "choir",
+    "name": "The Drowned Choir",
+    "blurb": "Wraiths sing over the flood",
+    "roster": [
+     {
+      "id": "wraith",
+      "weight": 55
+     },
+     {
+      "id": "penitent",
+      "weight": 25
+     },
+     {
+      "id": "censer",
+      "weight": 20
+     }
+    ],
+    "sizeMult": 0.85
+   },
+   {
+    "id": "belfry",
+    "name": "The Belfry Stirs",
+    "blurb": "Gargoyles drop from the roof",
+    "roster": [
+     {
+      "id": "bat",
+      "weight": 45
+     },
+     {
+      "id": "gargoyle",
+      "weight": 30
+     },
+     {
+      "id": "penitent",
+      "weight": 25
+     }
+    ],
+    "sizeMult": 0.8,
+    "lead": "gargoyle"
+   },
+   {
+    "id": "unbound",
+    "name": "The Unbound",
+    "blurb": "Acolytes lead the risen",
+    "roster": [
+     {
+      "id": "acolyte",
+      "weight": 35
+     },
+     {
+      "id": "robber",
+      "weight": 40
+     },
+     {
+      "id": "hound",
+      "weight": 25
+     }
+    ],
+    "sizeMult": 0.85,
+    "lead": "acolyte"
+   },
+   {
+    "id": "carrion",
+    "name": "The Carrion Tide",
+    "blurb": "Sacs and rats wash in",
+    "roster": [
+     {
+      "id": "sac",
+      "weight": 60
+     },
+     {
+      "id": "rat",
+      "weight": 40
+     }
+    ],
+    "sizeMult": 0.9
+   }
+  ],
+  "sanctum": [
+   {
+    "id": "vespers",
+    "name": "Vespers",
+    "blurb": "Seraphs weep over the faithful",
+    "roster": [
+     {
+      "id": "seraph",
+      "weight": 25
+     },
+     {
+      "id": "penitent",
+      "weight": 30
+     },
+     {
+      "id": "gargoyle",
+      "weight": 20
+     },
+     {
+      "id": "censer",
+      "weight": 25
+     }
+    ],
+    "sizeMult": 0.85,
+    "lead": "seraph"
+   },
+   {
+    "id": "procession",
+    "name": "The Procession",
+    "blurb": "Censers, bells and deacons march",
+    "roster": [
+     {
+      "id": "censer",
+      "weight": 25
+     },
+     {
+      "id": "penitent",
+      "weight": 30
+     },
+     {
+      "id": "deacon",
+      "weight": 15
+     },
+     {
+      "id": "wraith",
+      "weight": 15
+     },
+     {
+      "id": "acolyte",
+      "weight": 15
+     }
+    ],
+    "sizeMult": 0.9,
+    "lead": "golem"
+   },
+   {
+    "id": "templars",
+    "name": "The Bell-Sworn March",
+    "blurb": "Templars shield the procession",
+    "roster": [
+     {
+      "id": "templar",
+      "weight": 30
+     },
+     {
+      "id": "penitent",
+      "weight": 30
+     },
+     {
+      "id": "censer",
+      "weight": 20
+     },
+     {
+      "id": "acolyte",
+      "weight": 20
+     }
+    ],
+    "sizeMult": 0.85,
+    "lead": "templar"
+   }
+  ],
+  "fen": [
+   {
+    "id": "leech_tide",
+    "name": "The Leech Tide",
+    "blurb": "The black water boils with leeches",
+    "roster": [
+     {
+      "id": "mire_leech",
+      "weight": 100
+     }
+    ],
+    "sizeMult": 1.25
+   },
+   {
+    "id": "corpse_candles",
+    "name": "Corpse-Candles",
+    "blurb": "Wisps drift in over the water, a hag behind them",
+    "roster": [
+     {
+      "id": "fen_wisp",
+      "weight": 70
+     },
+     {
+      "id": "wraith",
+      "weight": 30
+     }
+    ],
+    "sizeMult": 0.85,
+    "lead": "bog_hag"
+   },
+   {
+    "id": "sexton_round",
+    "name": "The Sexton's Round",
+    "blurb": "A gravedigger and his drowned congregation",
+    "roster": [
+     {
+      "id": "mire_leech",
+      "weight": 35
+     },
+     {
+      "id": "bog_hag",
+      "weight": 35
+     },
+     {
+      "id": "wraith",
+      "weight": 30
+     }
+    ],
+    "sizeMult": 0.8,
+    "lead": "drowned_sexton"
+   }
+  ]
+ },
+ "ELITE": {
+  "hpMult": 3.6,
+  "damageMult": 1.5,
+  "scale": 1.35,
+  "xpMult": 4,
+  "goldMult": 5,
+  "shardChance": 1
+ },
+ "AFFIX_ORDER": [
+  "bellTolled",
+  "hungering",
+  "shrouded",
+  "vengeful"
+ ],
+ "ELITE_AFFIXES": {
+  "bellTolled": {
+   "name": "Bell-Tolled",
+   "blurb": "Every few seconds it tolls a stunning ring — step out of the bronze circle."
+  },
+  "hungering": {
+   "name": "Hungering",
+   "blurb": "Devours nearby corpses to heal. Spend or burst them first."
+  },
+  "shrouded": {
+   "name": "Shrouded",
+   "blurb": "Takes half damage unless it stands in your Miasma or a rot pool."
+  },
+  "vengeful": {
+   "name": "Vengeful",
+   "blurb": "Bursts into three Risen when it dies."
+  }
+ },
+ "AFFIX_TUNING": {
+  "bellTolled": {
+   "intervalS": 6,
+   "windupS": 0.9,
+   "r": 3,
+   "damageMult": 0.6,
+   "stunMs": 500
+  },
+  "hungering": {
+   "intervalS": 4,
+   "reach": 5,
+   "healFrac": 0.15
+  },
+  "shrouded": {
+   "damageTakenMult": 0.5
+  },
+  "vengeful": {
+   "risen": 3
+  }
+ },
+ "SURGE": {
+  "firstDelayS": 100,
+  "minIntervalS": 90,
+  "maxIntervalS": 150,
+  "durationS": 20,
+  "waveAtS": [
+   1.5,
+   7.5,
+   13.5
+  ],
+  "waveSizeMult": 1.2,
+  "clearFrac": 0.8
+ }
+}
