@@ -1,0 +1,17 @@
+{
+ "RUNE_BASE": 130,
+ "RUNE_SLOT_COUNT": 5,
+ "RUNE_IDS": [
+  "rune_splinter",
+  "rune_marrow_tap",
+  "rune_volley",
+  "rune_ossuary_ring",
+  "rune_impale",
+  "rune_mass_grave",
+  "rune_bone_colossus",
+  "rune_creeping_rot",
+  "rune_contagion",
+  "rune_hollow_choir",
+  "rune_requiem"
+ ]
+}

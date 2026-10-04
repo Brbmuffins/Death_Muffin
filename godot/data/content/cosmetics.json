@@ -1,0 +1,184 @@
+{
+ "CAPES": [
+  {
+   "id": "cape_apprentice",
+   "name": "Apprentice’s Mantle",
+   "lore": "A plain grey mantle, sewn by someone who believed in you.",
+   "color": 7170659,
+   "trim": 12169892,
+   "total": 100
+  },
+  {
+   "id": "cape_journeyman",
+   "name": "Journeyman’s Mantle",
+   "lore": "Stitched with the small marks of every trade you have tried.",
+   "color": 4151915,
+   "trim": 14208936,
+   "total": 300
+  },
+  {
+   "id": "cape_woodcutting",
+   "name": "Cape of Coffin-Oak",
+   "lore": "Mastery of the axe. It smells faintly of sawdust and old promises.",
+   "color": 5979942,
+   "trim": 14266991,
+   "skill": "woodcutting"
+  },
+  {
+   "id": "cape_mining",
+   "name": "Cape of Grave-Iron",
+   "lore": "Mastery of the pick. Heavy, and cold to the touch.",
+   "color": 4869976,
+   "trim": 14146790,
+   "skill": "mining"
+  },
+  {
+   "id": "cape_fishing",
+   "name": "Cape of the Black Water",
+   "lore": "Mastery of the line. It is always a little damp.",
+   "color": 2050647,
+   "trim": 8376550,
+   "skill": "fishing"
+  },
+  {
+   "id": "cape_gravedigging",
+   "name": "Cape of the Sexton",
+   "lore": "Mastery of the spade. The dead are quiet around it.",
+   "color": 4866096,
+   "trim": 14735016,
+   "skill": "gravedigging"
+  },
+  {
+   "id": "cape_gardening",
+   "name": "Cape of the Mourning Bed",
+   "lore": "Mastery of the garden. Something is always growing on it.",
+   "color": 3429679,
+   "trim": 11919498,
+   "skill": "gardening"
+  },
+  {
+   "id": "cape_alchemy",
+   "name": "Cape of the Alembic",
+   "lore": "Mastery of the brew. It shifts colour when you are not looking.",
+   "color": 4861803,
+   "trim": 14268159,
+   "skill": "alchemy"
+  },
+  {
+   "id": "cape_salvaging",
+   "name": "Cape of the Bone Grinder",
+   "lore": "Mastery of the grinder. Nothing is wasted, and nothing stays whole.",
+   "color": 5062960,
+   "trim": 14928026,
+   "skill": "salvaging"
+  },
+  {
+   "id": "cape_sexton",
+   "name": "The Sexton’s Mantle",
+   "lore": "Ninety-nine in every rite. The Covenant has no higher thanks to give.",
+   "color": 1709088,
+   "trim": 14862735,
+   "total": 693
+  }
+ ],
+ "PETS": [
+  {
+   "id": "pet_tithe_bat",
+   "name": "Tithe Bat",
+   "charm": "charm_tithe_bat",
+   "skill": "woodcutting",
+   "model": "tithe_bat",
+   "scale": 0.7,
+   "fly": {
+    "height": 1.5,
+    "speed": 17,
+    "amp": 0.75,
+    "body": 0.22
+   },
+   "rarity": "rare",
+   "lore": "It roosts in the coffin-oaks and follows the sound of the axe."
+  },
+  {
+   "id": "pet_grave_rat",
+   "name": "Grave Rat",
+   "charm": "charm_grave_rat",
+   "skill": "mining",
+   "model": "skull_rat",
+   "scale": 1.05,
+   "rarity": "rare",
+   "lore": "It found a better seam than you did, and it will not tell you where."
+  },
+  {
+   "id": "pet_drowned_pup",
+   "name": "Drowned Pup",
+   "charm": "charm_drowned_pup",
+   "skill": "fishing",
+   "model": "bone_hound",
+   "scale": 0.55,
+   "tint": 10470612,
+   "rarity": "rare",
+   "lore": "Pulled from black water, still wet, still hopeful."
+  },
+  {
+   "id": "pet_wee_thrall",
+   "name": "Wee Thrall",
+   "charm": "charm_wee_thrall",
+   "skill": "gravedigging",
+   "model": "skeleton_thrall",
+   "scale": 0.32,
+   "rarity": "epic",
+   "lore": "A very small skeleton with a very large sense of duty."
+  },
+  {
+   "id": "pet_shroud_moth",
+   "name": "Shroud Moth",
+   "charm": "charm_shroud_moth",
+   "skill": "gardening",
+   "model": "shroud_moth",
+   "scale": 0.6,
+   "fly": {
+    "height": 1.7,
+    "speed": 8,
+    "amp": 0.55,
+    "body": 0.16
+   },
+   "tint": 14215360,
+   "rarity": "epic",
+   "lore": "It drinks the light from the beds and gives a little back."
+  }
+ ],
+ "PET_CHANCE": 0.00028571428571428574,
+ "GARDEN_PET_CHANCE": 0.02857142857142857,
+ "CHARM_ITEMS": {
+  "charm_tithe_bat": {
+   "name": "Tithe Bat Charm",
+   "rarity": "rare",
+   "sell": 250,
+   "lore": "Adopt it (Capes & Pets, N) and the Tithe Bat is yours for good. It roosts in the coffin-oaks and follows the sound of the axe."
+  },
+  "charm_grave_rat": {
+   "name": "Grave Rat Charm",
+   "rarity": "rare",
+   "sell": 250,
+   "lore": "Adopt it (Capes & Pets, N) and the Grave Rat is yours for good. It found a better seam than you did, and it will not tell you where."
+  },
+  "charm_drowned_pup": {
+   "name": "Drowned Pup Charm",
+   "rarity": "rare",
+   "sell": 250,
+   "lore": "Adopt it (Capes & Pets, N) and the Drowned Pup is yours for good. Pulled from black water, still wet, still hopeful."
+  },
+  "charm_wee_thrall": {
+   "name": "Wee Thrall Charm",
+   "rarity": "epic",
+   "sell": 250,
+   "lore": "Adopt it (Capes & Pets, N) and the Wee Thrall is yours for good. A very small skeleton with a very large sense of duty."
+  },
+  "charm_shroud_moth": {
+   "name": "Shroud Moth Charm",
+   "rarity": "epic",
+   "sell": 250,
+   "lore": "Adopt it (Capes & Pets, N) and the Shroud Moth is yours for good. It drinks the light from the beds and gives a little back."
+  }
+ }
+}

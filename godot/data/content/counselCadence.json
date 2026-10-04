@@ -1,0 +1,692 @@
+{
+ "NOT_BUSY": {
+  "combat": false,
+  "hurt": false,
+  "talking": false,
+  "banner": false,
+  "dead": false,
+  "panel": false,
+  "area": "",
+  "safe": false
+ },
+ "GAP_MS": {
+  "urgent": 0,
+  "danger": 12000,
+  "asked": 3000,
+  "calm": 20000
+ },
+ "GROUP_GAP_MS": 150000,
+ "ENEMY_GAP_MS": 40000,
+ "MAX_AGE_MS": {
+  "urgent": 15000,
+  "danger": 20000,
+  "asked": 120000,
+  "calm": 360000
+ },
+ "LESSON_AGE_MS": 120000,
+ "MAX_CALM_QUEUED": 4,
+ "STARVED_MS": 90000,
+ "YIELD_AFTER_MS": 6000,
+ "PREEMPT_AFTER_MS": 5000,
+ "HERE": {
+  "welcome": [
+   "acre"
+  ],
+  "acre": [
+   "acre"
+  ],
+  "laborers_working": [
+   "acre"
+  ],
+  "wing": [
+   "alchemist_wing"
+  ],
+  "cloister": [
+   "cloister"
+  ],
+  "pyre": [
+   "pyre"
+  ],
+  "fen": [
+   "fen"
+  ],
+  "warren": [
+   "warren"
+  ],
+  "coliseum": [
+   "coliseum"
+  ],
+  "boss_gravedigger": [
+   "graves"
+  ],
+  "boss_abbess": [
+   "ossuary"
+  ],
+  "boss_congregation": [
+   "nave"
+  ],
+  "boss_saint": [
+   "cloister"
+  ],
+  "boss_regent": [
+   "pyre"
+  ],
+  "boss_mire": [
+   "fen"
+  ],
+  "boons": [
+   "chapterhouse"
+  ],
+  "altar_unlocks": [
+   "chapterhouse"
+  ],
+  "vows": [
+   "chapterhouse"
+  ],
+  "depths": [
+   "warren"
+  ]
+ },
+ "tipMeta": {
+  "warden_oil": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "monk_beat": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "witch_offal": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "veil_forms": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "minimap": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "auto_combat": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "knight_rage": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "change_class": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "welcome": {
+   "kind": "calm",
+   "group": null,
+   "priority": 100
+  },
+  "move": {
+   "kind": "danger",
+   "group": "lesson",
+   "priority": 90
+  },
+  "exhume": {
+   "kind": "danger",
+   "group": "lesson",
+   "priority": 85
+  },
+  "wave": {
+   "kind": "calm",
+   "group": "road",
+   "priority": 60
+  },
+  "deacon": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "gate": {
+   "kind": "calm",
+   "group": "road",
+   "priority": 58
+  },
+  "essence": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "thrall": {
+   "kind": "calm",
+   "group": null,
+   "priority": 70
+  },
+  "litany": {
+   "kind": "danger",
+   "group": "lesson",
+   "priority": 70
+  },
+  "burst": {
+   "kind": "danger",
+   "group": "lesson",
+   "priority": 65
+  },
+  "hurt": {
+   "kind": "urgent",
+   "group": null,
+   "priority": 50
+  },
+  "elite": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "surge": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "relic": {
+   "kind": "calm",
+   "group": "gear",
+   "priority": 66
+  },
+  "armor": {
+   "kind": "calm",
+   "group": "gear",
+   "priority": 50
+  },
+  "setBonus": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "legendary": {
+   "kind": "asked",
+   "group": "gear",
+   "priority": 50
+  },
+  "affix": {
+   "kind": "calm",
+   "group": "gear",
+   "priority": 50
+  },
+  "gearEquip": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "atlas": {
+   "kind": "calm",
+   "group": "gear",
+   "priority": 50
+  },
+  "statSheet": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "necroWeapon": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "codex": {
+   "kind": "calm",
+   "group": "road",
+   "priority": 30
+  },
+  "signature": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "ascend": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "souls": {
+   "kind": "danger",
+   "group": "lesson",
+   "priority": 60
+  },
+  "sanctify": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "altar_unlocks": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "vows": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "boons": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "prelate": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "grimoire": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "rite_skull": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "rite_step": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "rite_frost": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "procession": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "censer": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "wraith": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "swarm": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "golem": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "gargoyle": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "moth": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "bats": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "seraph": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "boss_gravedigger": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "boss_abbess": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "boss_congregation": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "boss_saint": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "boss_regent": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "plague_doctor": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "flagellant": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "cloister": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "omen": {
+   "kind": "calm",
+   "group": null,
+   "priority": 30
+  },
+  "chain": {
+   "kind": "calm",
+   "group": null,
+   "priority": 35
+  },
+  "pyre": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "warren": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "wing": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "coliseum": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "cinder_husk": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "pyre_priest": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "cinderhound": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "fen": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "bog_hag": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "mire_leech": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "fen_wisp": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "drowned_sexton": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "boss_mire": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "slag_brute": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "meal": {
+   "kind": "calm",
+   "group": "brew",
+   "priority": 50
+  },
+  "belt": {
+   "kind": "calm",
+   "group": "brew",
+   "priority": 50
+  },
+  "brew": {
+   "kind": "calm",
+   "group": "brew",
+   "priority": 50
+  },
+  "reagent": {
+   "kind": "calm",
+   "group": "brew",
+   "priority": 50
+  },
+  "tool": {
+   "kind": "calm",
+   "group": "gear",
+   "priority": 50
+  },
+  "toolBelt": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "legion": {
+   "kind": "calm",
+   "group": "gear",
+   "priority": 50
+  },
+  "rune": {
+   "kind": "calm",
+   "group": "gear",
+   "priority": 50
+  },
+  "runeHunt": {
+   "kind": "asked",
+   "group": "gear",
+   "priority": 50
+  },
+  "runeSocketed": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "loadouts": {
+   "kind": "calm",
+   "group": "gear",
+   "priority": 50
+  },
+  "depths": {
+   "kind": "calm",
+   "group": null,
+   "priority": 50
+  },
+  "depths_floor": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "depths_affix": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "depths_chest": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "depths_solo": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "ghoul": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "acolyte": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "templar": {
+   "kind": "danger",
+   "group": "enemy",
+   "priority": 50
+  },
+  "acre": {
+   "kind": "calm",
+   "group": "acre",
+   "priority": 80
+  },
+  "laborers_working": {
+   "kind": "calm",
+   "group": "acre",
+   "priority": 50
+  },
+  "gather": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "bag_full": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "skill_up": {
+   "kind": "calm",
+   "group": "acre",
+   "priority": 50
+  },
+  "rich_node": {
+   "kind": "calm",
+   "group": "acre",
+   "priority": 50
+  },
+  "bag_filling": {
+   "kind": "calm",
+   "group": "bag",
+   "priority": 50
+  },
+  "vault": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "salvage": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "reforge": {
+   "kind": "asked",
+   "group": "gear",
+   "priority": 50
+  },
+  "boss_seal": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "people": {
+   "kind": "calm",
+   "group": null,
+   "priority": 45
+  },
+  "station": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "rite_fan": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "rite_lance": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "rite_offering": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "rite_cleave": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "rite_veil": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "rite_rally": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "rite_seed": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "rite_siphon": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "rite_prison": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "rite_hands": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "rite_storm": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  },
+  "rite_mantle": {
+   "kind": "asked",
+   "group": null,
+   "priority": 50
+  }
+ }
+}

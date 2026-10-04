@@ -1,0 +1,2185 @@
+{
+ "NECRO_TIERS": [
+  "bone",
+  "iron",
+  "gold",
+  "hell",
+  "moon"
+ ],
+ "NECRO_MAIN_KINDS": [
+  "staff",
+  "scythe",
+  "wand",
+  "sickle"
+ ],
+ "NECRO_OFF_KINDS": [
+  "skull_focus",
+  "grimoire",
+  "mourning_bell"
+ ],
+ "NECRO_DISCIPLINES": [
+  "ossuary",
+  "gravecaller",
+  "mourner",
+  "rotweaver"
+ ],
+ "NECRO_WEAPON_TUNING": {
+  "staff": {
+   "needleRangeMult": 1.25,
+   "pierce": 1,
+   "pierceDamageMult": 0.8,
+   "pierceLane": 1.1,
+   "pierceReach": 4.5,
+   "spellDamageMult": 1.1
+  },
+  "scythe": {
+   "arcDeg": 100,
+   "reach": 3,
+   "bossReach": 4,
+   "maxHits": 3,
+   "damageMult": 1.15,
+   "cooldownMs": 520,
+   "lockMs": 110,
+   "gestureSeconds": 0.3,
+   "essencePerHit": 4,
+   "soulsPerKill": 1,
+   "reapWindowMs": 1200
+  },
+  "wand": {
+   "cadenceMult": 1.3,
+   "damageMult": 0.85
+  },
+  "sickle": {
+   "witheredStacks": 1,
+   "exhumeRefund": 0.2
+  },
+  "skull_focus": {
+   "thrallCap": 1,
+   "minTier": "gold"
+  },
+  "grimoire": {
+   "riteCooldownMult": 0.9
+  },
+  "mourning_bell": {
+   "allyHealFrac": 0.02,
+   "allyHealRange": 14
+  }
+ },
+ "NECRO_TIER_INFO": {
+  "bone": {
+   "label": "Bone",
+   "level": 1,
+   "rarity": "common",
+   "sellMult": 1,
+   "area": [
+    "graves",
+    "warren"
+   ]
+  },
+  "iron": {
+   "label": "Iron",
+   "level": 15,
+   "rarity": "uncommon",
+   "sellMult": 2.4,
+   "area": [
+    "ossuary",
+    "coliseum"
+   ]
+  },
+  "gold": {
+   "label": "Gold",
+   "level": 30,
+   "rarity": "rare",
+   "sellMult": 5.5,
+   "area": [
+    "nave",
+    "sanctum"
+   ]
+  },
+  "hell": {
+   "label": "Hell",
+   "level": 45,
+   "rarity": "epic",
+   "sellMult": 11,
+   "area": [
+    "cloister",
+    "pyre"
+   ]
+  },
+  "moon": {
+   "label": "Moon",
+   "level": 60,
+   "rarity": "epic",
+   "sellMult": 22,
+   "area": [
+    "pyre"
+   ]
+  }
+ },
+ "NECRO_KIND_LABEL": {
+  "staff": "Staff",
+  "scythe": "Scythe",
+  "wand": "Wand",
+  "sickle": "Ritual Sickle",
+  "skull_focus": "Skull Focus",
+  "grimoire": "Grimoire",
+  "mourning_bell": "Mourning Bell"
+ },
+ "NECRO_WEAPONS": [
+  {
+   "id": "staff_bone",
+   "kind": "staff",
+   "tier": "bone",
+   "name": "Vertebral Staff",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": true,
+   "rarity": "common",
+   "level": 1,
+   "stats": {
+    "stat_int": 5
+   },
+   "sell": 16,
+   "lore": "Fused vertebrae, still warm from the hand that carried it. Bone Needles fly farther and pierce a second body.",
+   "effect": "Bone Needle: +25% range, pierces 1 extra target. Passive: +10% spell damage. Two-handed.",
+   "color": 14208957,
+   "accent": 15985881
+  },
+  {
+   "id": "staff_iron",
+   "kind": "staff",
+   "tier": "iron",
+   "name": "Crypt-Iron Crozier",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": true,
+   "rarity": "uncommon",
+   "level": 15,
+   "stats": {
+    "stat_int": 9,
+    "stat_vit": 1
+   },
+   "sell": 38,
+   "lore": "A grave-watch crozier with a bell-metal cap. Bone Needles fly farther and pierce a second body.",
+   "effect": "Bone Needle: +25% range, pierces 1 extra target. Passive: +10% spell damage. Two-handed.",
+   "color": 8027526,
+   "accent": 12830674
+  },
+  {
+   "id": "staff_gold",
+   "kind": "staff",
+   "tier": "gold",
+   "name": "Reliquary Staff",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": true,
+   "rarity": "rare",
+   "level": 30,
+   "stats": {
+    "stat_int": 15,
+    "stat_vit": 2
+   },
+   "sell": 88,
+   "lore": "Tithe-gold wound round a reliquary shaft. Bone Needles fly farther and pierce a second body.",
+   "effect": "Bone Needle: +25% range, pierces 1 extra target. Passive: +10% spell damage. Two-handed.",
+   "color": 14263361,
+   "accent": 16769946
+  },
+  {
+   "id": "staff_hell",
+   "kind": "staff",
+   "tier": "hell",
+   "name": "Hellcoal Crozier",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": true,
+   "rarity": "epic",
+   "level": 45,
+   "stats": {
+    "stat_int": 22,
+    "stat_vit": 4
+   },
+   "sell": 176,
+   "lore": "Quenched in pyre-coal; the skull at its head never stops smoking. Bone Needles fly farther and pierce a second body.",
+   "effect": "Bone Needle: +25% range, pierces 1 extra target. Passive: +10% spell damage. Two-handed.",
+   "color": 9054746,
+   "accent": 16742973
+  },
+  {
+   "id": "staff_moon",
+   "kind": "staff",
+   "tier": "moon",
+   "name": "Staff of the Pale Moon",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": true,
+   "rarity": "epic",
+   "level": 60,
+   "stats": {
+    "stat_int": 30,
+    "stat_vit": 6
+   },
+   "sell": 352,
+   "lore": "Cut from a bone that never touched the ground. Bone Needles fly farther and pierce a second body.",
+   "effect": "Bone Needle: +25% range, pierces 1 extra target. Passive: +10% spell damage. Two-handed.",
+   "color": 11188456,
+   "accent": 15002623
+  },
+  {
+   "id": "scythe_bone",
+   "kind": "scythe",
+   "tier": "bone",
+   "name": "Gleaner's Scythe",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": true,
+   "rarity": "common",
+   "level": 1,
+   "stats": {
+    "stat_int": 4,
+    "stat_vit": 2
+   },
+   "sell": 18,
+   "lore": "A gleaner cuts what the living left standing. Your left click becomes a reaping arc; kills in it yield a soul.",
+   "effect": "Left click becomes a 100° reaping arc (3 m, 4 m against a boss, hits up to 3); kills in the arc give +1 soul. Two-handed.",
+   "color": 14208957,
+   "accent": 15985881
+  },
+  {
+   "id": "scythe_iron",
+   "kind": "scythe",
+   "tier": "iron",
+   "name": "Sexton's Scythe",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": true,
+   "rarity": "uncommon",
+   "level": 15,
+   "stats": {
+    "stat_int": 8,
+    "stat_vit": 3
+   },
+   "sell": 43,
+   "lore": "The sexton swings it at dusk, in rows. Your left click becomes a reaping arc; kills in it yield a soul.",
+   "effect": "Left click becomes a 100° reaping arc (3 m, 4 m against a boss, hits up to 3); kills in the arc give +1 soul. Two-handed.",
+   "color": 8027526,
+   "accent": 12830674
+  },
+  {
+   "id": "scythe_gold",
+   "kind": "scythe",
+   "tier": "gold",
+   "name": "Tithe-Reaper",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": true,
+   "rarity": "rare",
+   "level": 30,
+   "stats": {
+    "stat_int": 13,
+    "stat_vit": 5
+   },
+   "sell": 99,
+   "lore": "Every swing tolls a coin against the dead. Your left click becomes a reaping arc; kills in it yield a soul.",
+   "effect": "Left click becomes a 100° reaping arc (3 m, 4 m against a boss, hits up to 3); kills in the arc give +1 soul. Two-handed.",
+   "color": 14263361,
+   "accent": 16769946
+  },
+  {
+   "id": "scythe_hell",
+   "kind": "scythe",
+   "tier": "hell",
+   "name": "Pyre Reaper",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": true,
+   "rarity": "epic",
+   "level": 45,
+   "stats": {
+    "stat_int": 19,
+    "stat_vit": 8
+   },
+   "sell": 198,
+   "lore": "Its edge glows where it has drunk ash. Your left click becomes a reaping arc; kills in it yield a soul.",
+   "effect": "Left click becomes a 100° reaping arc (3 m, 4 m against a boss, hits up to 3); kills in the arc give +1 soul. Two-handed.",
+   "color": 9054746,
+   "accent": 16742973
+  },
+  {
+   "id": "scythe_moon",
+   "kind": "scythe",
+   "tier": "moon",
+   "name": "Moonreaper",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": true,
+   "rarity": "epic",
+   "level": 60,
+   "stats": {
+    "stat_int": 26,
+    "stat_vit": 11
+   },
+   "sell": 396,
+   "lore": "The last harvest is always by moonlight. Your left click becomes a reaping arc; kills in it yield a soul.",
+   "effect": "Left click becomes a 100° reaping arc (3 m, 4 m against a boss, hits up to 3); kills in the arc give +1 soul. Two-handed.",
+   "color": 11188456,
+   "accent": 15002623
+  },
+  {
+   "id": "wand_bone",
+   "kind": "wand",
+   "tier": "bone",
+   "name": "Knucklebone Wand",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": false,
+   "rarity": "common",
+   "level": 1,
+   "stats": {
+    "stat_int": 3
+   },
+   "sell": 12,
+   "lore": "Finger bones, bound in a hurry. Bone Needles come faster and strike softer.",
+   "effect": "Bone Needle: +30% cadence, -15% damage. One-handed: pair it with an off-hand.",
+   "color": 14208957,
+   "accent": 15985881
+  },
+  {
+   "id": "wand_iron",
+   "kind": "wand",
+   "tier": "iron",
+   "name": "Iron Mourning Wand",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": false,
+   "rarity": "uncommon",
+   "level": 15,
+   "stats": {
+    "stat_int": 6,
+    "stat_agi": 1
+   },
+   "sell": 29,
+   "lore": "A mourner flicks it like a hand-bell. Bone Needles come faster and strike softer.",
+   "effect": "Bone Needle: +30% cadence, -15% damage. One-handed: pair it with an off-hand.",
+   "color": 8027526,
+   "accent": 12830674
+  },
+  {
+   "id": "wand_gold",
+   "kind": "wand",
+   "tier": "gold",
+   "name": "Gilded Censer Wand",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": false,
+   "rarity": "rare",
+   "level": 30,
+   "stats": {
+    "stat_int": 10,
+    "stat_agi": 2
+   },
+   "sell": 66,
+   "lore": "A censer chain wound round the grip. Bone Needles come faster and strike softer.",
+   "effect": "Bone Needle: +30% cadence, -15% damage. One-handed: pair it with an off-hand.",
+   "color": 14263361,
+   "accent": 16769946
+  },
+  {
+   "id": "wand_hell",
+   "kind": "wand",
+   "tier": "hell",
+   "name": "Emberthorn Wand",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": false,
+   "rarity": "epic",
+   "level": 45,
+   "stats": {
+    "stat_int": 15,
+    "stat_agi": 3
+   },
+   "sell": 132,
+   "lore": "Thorned, and warm to the touch. Bone Needles come faster and strike softer.",
+   "effect": "Bone Needle: +30% cadence, -15% damage. One-handed: pair it with an off-hand.",
+   "color": 9054746,
+   "accent": 16742973
+  },
+  {
+   "id": "wand_moon",
+   "kind": "wand",
+   "tier": "moon",
+   "name": "Wand of Quiet Stars",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": false,
+   "rarity": "epic",
+   "level": 60,
+   "stats": {
+    "stat_int": 21,
+    "stat_agi": 5
+   },
+   "sell": 264,
+   "lore": "It weighs nothing, and is never quite still. Bone Needles come faster and strike softer.",
+   "effect": "Bone Needle: +30% cadence, -15% damage. One-handed: pair it with an off-hand.",
+   "color": 11188456,
+   "accent": 15002623
+  },
+  {
+   "id": "sickle_bone",
+   "kind": "sickle",
+   "tier": "bone",
+   "name": "Barrow Sickle",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": false,
+   "rarity": "common",
+   "level": 1,
+   "stats": {
+    "stat_int": 3,
+    "stat_vit": 1
+   },
+   "sell": 13,
+   "lore": "A curved rib, sharpened on a headstone. Bone Needles leave the target Withered; Exhume returns essence.",
+   "effect": "Bone Needle applies 1 Withered stack. Passive: Exhume refunds 20% of its essence. One-handed.",
+   "color": 14208957,
+   "accent": 15985881
+  },
+  {
+   "id": "sickle_iron",
+   "kind": "sickle",
+   "tier": "iron",
+   "name": "Plague Sickle",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": false,
+   "rarity": "uncommon",
+   "level": 15,
+   "stats": {
+    "stat_int": 6,
+    "stat_vit": 2
+   },
+   "sell": 31,
+   "lore": "The plague priests cut herbs and throats with it. Bone Needles leave the target Withered; Exhume returns essence.",
+   "effect": "Bone Needle applies 1 Withered stack. Passive: Exhume refunds 20% of its essence. One-handed.",
+   "color": 8027526,
+   "accent": 12830674
+  },
+  {
+   "id": "sickle_gold",
+   "kind": "sickle",
+   "tier": "gold",
+   "name": "Sexton's Gilded Sickle",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": false,
+   "rarity": "rare",
+   "level": 30,
+   "stats": {
+    "stat_int": 10,
+    "stat_vit": 3
+   },
+   "sell": 72,
+   "lore": "Gilded for rites nobody admits to. Bone Needles leave the target Withered; Exhume returns essence.",
+   "effect": "Bone Needle applies 1 Withered stack. Passive: Exhume refunds 20% of its essence. One-handed.",
+   "color": 14263361,
+   "accent": 16769946
+  },
+  {
+   "id": "sickle_hell",
+   "kind": "sickle",
+   "tier": "hell",
+   "name": "Blightfire Sickle",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": false,
+   "rarity": "epic",
+   "level": 45,
+   "stats": {
+    "stat_int": 14,
+    "stat_vit": 5
+   },
+   "sell": 143,
+   "lore": "The rot burns instead of festering. Bone Needles leave the target Withered; Exhume returns essence.",
+   "effect": "Bone Needle applies 1 Withered stack. Passive: Exhume refunds 20% of its essence. One-handed.",
+   "color": 9054746,
+   "accent": 16742973
+  },
+  {
+   "id": "sickle_moon",
+   "kind": "sickle",
+   "tier": "moon",
+   "name": "Moonrot Sickle",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": false,
+   "rarity": "epic",
+   "level": 60,
+   "stats": {
+    "stat_int": 20,
+    "stat_vit": 7
+   },
+   "sell": 286,
+   "lore": "Its blade is etched with a blight the moon forgave. Bone Needles leave the target Withered; Exhume returns essence.",
+   "effect": "Bone Needle applies 1 Withered stack. Passive: Exhume refunds 20% of its essence. One-handed.",
+   "color": 11188456,
+   "accent": 15002623
+  },
+  {
+   "id": "skull_focus_bone",
+   "kind": "skull_focus",
+   "tier": "bone",
+   "name": "Pauper's Skull Focus",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "common",
+   "level": 1,
+   "stats": {
+    "stat_int": 1,
+    "stat_vit": 2
+   },
+   "sell": 10,
+   "lore": "A nameless skull that still listens. (Gold and better skulls hold one more thrall.)",
+   "effect": "Off-hand. Gold tier and above: +1 thrall cap.",
+   "color": 14208957,
+   "accent": 15985881
+  },
+  {
+   "id": "skull_focus_iron",
+   "kind": "skull_focus",
+   "tier": "iron",
+   "name": "Iron-Jawed Skull Focus",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "uncommon",
+   "level": 15,
+   "stats": {
+    "stat_int": 3,
+    "stat_vit": 3
+   },
+   "sell": 24,
+   "lore": "Its jaw is wired shut so it cannot argue. (Gold and better skulls hold one more thrall.)",
+   "effect": "Off-hand. Gold tier and above: +1 thrall cap.",
+   "color": 8027526,
+   "accent": 12830674
+  },
+  {
+   "id": "skull_focus_gold",
+   "kind": "skull_focus",
+   "tier": "gold",
+   "name": "Gilded Skull Focus",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "rare",
+   "level": 30,
+   "stats": {
+    "stat_int": 5,
+    "stat_vit": 5
+   },
+   "sell": 55,
+   "lore": "It remembers a legion. Hold it and command one more thrall.",
+   "effect": "Off-hand. Gold tier and above: +1 thrall cap.",
+   "color": 14263361,
+   "accent": 16769946
+  },
+  {
+   "id": "skull_focus_hell",
+   "kind": "skull_focus",
+   "tier": "hell",
+   "name": "Cinder Skull Focus",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "epic",
+   "level": 45,
+   "stats": {
+    "stat_int": 8,
+    "stat_vit": 8
+   },
+   "sell": 110,
+   "lore": "The eyes glow like coals in a cold hearth. Hold it and command one more thrall.",
+   "effect": "Off-hand. Gold tier and above: +1 thrall cap.",
+   "color": 9054746,
+   "accent": 16742973
+  },
+  {
+   "id": "skull_focus_moon",
+   "kind": "skull_focus",
+   "tier": "moon",
+   "name": "Moon Skull Focus",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "epic",
+   "level": 60,
+   "stats": {
+    "stat_int": 11,
+    "stat_vit": 11
+   },
+   "sell": 220,
+   "lore": "It was a king, once; it still expects to be obeyed. Hold it and command one more thrall.",
+   "effect": "Off-hand. Gold tier and above: +1 thrall cap.",
+   "color": 11188456,
+   "accent": 15002623
+  },
+  {
+   "id": "grimoire_bone",
+   "kind": "grimoire",
+   "tier": "bone",
+   "name": "Gravedigger's Grimoire",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "common",
+   "level": 1,
+   "stats": {
+    "stat_int": 2
+   },
+   "sell": 11,
+   "lore": "A gravedigger's ledger of names and their uses. Rites recover sooner.",
+   "effect": "Off-hand. Rites (your other spells, not the left click) recover 10% faster.",
+   "color": 14208957,
+   "accent": 15985881
+  },
+  {
+   "id": "grimoire_iron",
+   "kind": "grimoire",
+   "tier": "iron",
+   "name": "Iron-Clasped Grimoire",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "uncommon",
+   "level": 15,
+   "stats": {
+    "stat_int": 4
+   },
+   "sell": 26,
+   "lore": "Chained shut, and opened only from the inside. Rites recover sooner.",
+   "effect": "Off-hand. Rites (your other spells, not the left click) recover 10% faster.",
+   "color": 8027526,
+   "accent": 12830674
+  },
+  {
+   "id": "grimoire_gold",
+   "kind": "grimoire",
+   "tier": "gold",
+   "name": "Gilt Reliquary Grimoire",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "rare",
+   "level": 30,
+   "stats": {
+    "stat_int": 7
+   },
+   "sell": 61,
+   "lore": "Every page is gilt, every margin a warning. Rites recover sooner.",
+   "effect": "Off-hand. Rites (your other spells, not the left click) recover 10% faster.",
+   "color": 14263361,
+   "accent": 16769946
+  },
+  {
+   "id": "grimoire_hell",
+   "kind": "grimoire",
+   "tier": "hell",
+   "name": "Hellbound Grimoire",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "epic",
+   "level": 45,
+   "stats": {
+    "stat_int": 10
+   },
+   "sell": 121,
+   "lore": "Its binding is singed along the spine. Rites recover sooner.",
+   "effect": "Off-hand. Rites (your other spells, not the left click) recover 10% faster.",
+   "color": 9054746,
+   "accent": 16742973
+  },
+  {
+   "id": "grimoire_moon",
+   "kind": "grimoire",
+   "tier": "moon",
+   "name": "Moonlit Grimoire",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "epic",
+   "level": 60,
+   "stats": {
+    "stat_int": 14
+   },
+   "sell": 242,
+   "lore": "The pages turn themselves to the rite you need. Rites recover sooner.",
+   "effect": "Off-hand. Rites (your other spells, not the left click) recover 10% faster.",
+   "color": 11188456,
+   "accent": 15002623
+  },
+  {
+   "id": "mourning_bell_bone",
+   "kind": "mourning_bell",
+   "tier": "bone",
+   "name": "Pauper's Mourning Bell",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "common",
+   "level": 1,
+   "stats": {
+    "stat_int": 1,
+    "stat_agi": 1
+   },
+   "sell": 10,
+   "lore": "Rung once for each name you could not save. A Mourner's wraith hits mend allies.",
+   "effect": "Off-hand. Mourner: each wraith hit heals allies in 14 m for 2% of their max health.",
+   "color": 14208957,
+   "accent": 15985881
+  },
+  {
+   "id": "mourning_bell_iron",
+   "kind": "mourning_bell",
+   "tier": "iron",
+   "name": "Iron Mourning Bell",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "uncommon",
+   "level": 15,
+   "stats": {
+    "stat_int": 3,
+    "stat_agi": 2
+   },
+   "sell": 24,
+   "lore": "Its note is flat on purpose. A Mourner's wraith hits mend allies.",
+   "effect": "Off-hand. Mourner: each wraith hit heals allies in 14 m for 2% of their max health.",
+   "color": 8027526,
+   "accent": 12830674
+  },
+  {
+   "id": "mourning_bell_gold",
+   "kind": "mourning_bell",
+   "tier": "gold",
+   "name": "Gilded Mourning Bell",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "rare",
+   "level": 30,
+   "stats": {
+    "stat_int": 5,
+    "stat_agi": 3
+   },
+   "sell": 55,
+   "lore": "The clapper is wrapped in widow's silk. A Mourner's wraith hits mend allies.",
+   "effect": "Off-hand. Mourner: each wraith hit heals allies in 14 m for 2% of their max health.",
+   "color": 14263361,
+   "accent": 16769946
+  },
+  {
+   "id": "mourning_bell_hell",
+   "kind": "mourning_bell",
+   "tier": "hell",
+   "name": "Cinder Mourning Bell",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "epic",
+   "level": 45,
+   "stats": {
+    "stat_int": 8,
+    "stat_agi": 5
+   },
+   "sell": 110,
+   "lore": "It tolls for the ones who should have stayed buried. A Mourner's wraith hits mend allies.",
+   "effect": "Off-hand. Mourner: each wraith hit heals allies in 14 m for 2% of their max health.",
+   "color": 9054746,
+   "accent": 16742973
+  },
+  {
+   "id": "mourning_bell_moon",
+   "kind": "mourning_bell",
+   "tier": "moon",
+   "name": "Moon Mourning Bell",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "epic",
+   "level": 60,
+   "stats": {
+    "stat_int": 11,
+    "stat_agi": 7
+   },
+   "sell": 220,
+   "lore": "You hear it a moment before it rings. A Mourner's wraith hits mend allies.",
+   "effect": "Off-hand. Mourner: each wraith hit heals allies in 14 m for 2% of their max health.",
+   "color": 11188456,
+   "accent": 15002623
+  }
+ ],
+ "NECRO_WEAPON_BY_ID": {
+  "staff_bone": {
+   "id": "staff_bone",
+   "kind": "staff",
+   "tier": "bone",
+   "name": "Vertebral Staff",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": true,
+   "rarity": "common",
+   "level": 1,
+   "stats": {
+    "stat_int": 5
+   },
+   "sell": 16,
+   "lore": "Fused vertebrae, still warm from the hand that carried it. Bone Needles fly farther and pierce a second body.",
+   "effect": "Bone Needle: +25% range, pierces 1 extra target. Passive: +10% spell damage. Two-handed.",
+   "color": 14208957,
+   "accent": 15985881
+  },
+  "staff_iron": {
+   "id": "staff_iron",
+   "kind": "staff",
+   "tier": "iron",
+   "name": "Crypt-Iron Crozier",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": true,
+   "rarity": "uncommon",
+   "level": 15,
+   "stats": {
+    "stat_int": 9,
+    "stat_vit": 1
+   },
+   "sell": 38,
+   "lore": "A grave-watch crozier with a bell-metal cap. Bone Needles fly farther and pierce a second body.",
+   "effect": "Bone Needle: +25% range, pierces 1 extra target. Passive: +10% spell damage. Two-handed.",
+   "color": 8027526,
+   "accent": 12830674
+  },
+  "staff_gold": {
+   "id": "staff_gold",
+   "kind": "staff",
+   "tier": "gold",
+   "name": "Reliquary Staff",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": true,
+   "rarity": "rare",
+   "level": 30,
+   "stats": {
+    "stat_int": 15,
+    "stat_vit": 2
+   },
+   "sell": 88,
+   "lore": "Tithe-gold wound round a reliquary shaft. Bone Needles fly farther and pierce a second body.",
+   "effect": "Bone Needle: +25% range, pierces 1 extra target. Passive: +10% spell damage. Two-handed.",
+   "color": 14263361,
+   "accent": 16769946
+  },
+  "staff_hell": {
+   "id": "staff_hell",
+   "kind": "staff",
+   "tier": "hell",
+   "name": "Hellcoal Crozier",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": true,
+   "rarity": "epic",
+   "level": 45,
+   "stats": {
+    "stat_int": 22,
+    "stat_vit": 4
+   },
+   "sell": 176,
+   "lore": "Quenched in pyre-coal; the skull at its head never stops smoking. Bone Needles fly farther and pierce a second body.",
+   "effect": "Bone Needle: +25% range, pierces 1 extra target. Passive: +10% spell damage. Two-handed.",
+   "color": 9054746,
+   "accent": 16742973
+  },
+  "staff_moon": {
+   "id": "staff_moon",
+   "kind": "staff",
+   "tier": "moon",
+   "name": "Staff of the Pale Moon",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": true,
+   "rarity": "epic",
+   "level": 60,
+   "stats": {
+    "stat_int": 30,
+    "stat_vit": 6
+   },
+   "sell": 352,
+   "lore": "Cut from a bone that never touched the ground. Bone Needles fly farther and pierce a second body.",
+   "effect": "Bone Needle: +25% range, pierces 1 extra target. Passive: +10% spell damage. Two-handed.",
+   "color": 11188456,
+   "accent": 15002623
+  },
+  "scythe_bone": {
+   "id": "scythe_bone",
+   "kind": "scythe",
+   "tier": "bone",
+   "name": "Gleaner's Scythe",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": true,
+   "rarity": "common",
+   "level": 1,
+   "stats": {
+    "stat_int": 4,
+    "stat_vit": 2
+   },
+   "sell": 18,
+   "lore": "A gleaner cuts what the living left standing. Your left click becomes a reaping arc; kills in it yield a soul.",
+   "effect": "Left click becomes a 100° reaping arc (3 m, 4 m against a boss, hits up to 3); kills in the arc give +1 soul. Two-handed.",
+   "color": 14208957,
+   "accent": 15985881
+  },
+  "scythe_iron": {
+   "id": "scythe_iron",
+   "kind": "scythe",
+   "tier": "iron",
+   "name": "Sexton's Scythe",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": true,
+   "rarity": "uncommon",
+   "level": 15,
+   "stats": {
+    "stat_int": 8,
+    "stat_vit": 3
+   },
+   "sell": 43,
+   "lore": "The sexton swings it at dusk, in rows. Your left click becomes a reaping arc; kills in it yield a soul.",
+   "effect": "Left click becomes a 100° reaping arc (3 m, 4 m against a boss, hits up to 3); kills in the arc give +1 soul. Two-handed.",
+   "color": 8027526,
+   "accent": 12830674
+  },
+  "scythe_gold": {
+   "id": "scythe_gold",
+   "kind": "scythe",
+   "tier": "gold",
+   "name": "Tithe-Reaper",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": true,
+   "rarity": "rare",
+   "level": 30,
+   "stats": {
+    "stat_int": 13,
+    "stat_vit": 5
+   },
+   "sell": 99,
+   "lore": "Every swing tolls a coin against the dead. Your left click becomes a reaping arc; kills in it yield a soul.",
+   "effect": "Left click becomes a 100° reaping arc (3 m, 4 m against a boss, hits up to 3); kills in the arc give +1 soul. Two-handed.",
+   "color": 14263361,
+   "accent": 16769946
+  },
+  "scythe_hell": {
+   "id": "scythe_hell",
+   "kind": "scythe",
+   "tier": "hell",
+   "name": "Pyre Reaper",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": true,
+   "rarity": "epic",
+   "level": 45,
+   "stats": {
+    "stat_int": 19,
+    "stat_vit": 8
+   },
+   "sell": 198,
+   "lore": "Its edge glows where it has drunk ash. Your left click becomes a reaping arc; kills in it yield a soul.",
+   "effect": "Left click becomes a 100° reaping arc (3 m, 4 m against a boss, hits up to 3); kills in the arc give +1 soul. Two-handed.",
+   "color": 9054746,
+   "accent": 16742973
+  },
+  "scythe_moon": {
+   "id": "scythe_moon",
+   "kind": "scythe",
+   "tier": "moon",
+   "name": "Moonreaper",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": true,
+   "rarity": "epic",
+   "level": 60,
+   "stats": {
+    "stat_int": 26,
+    "stat_vit": 11
+   },
+   "sell": 396,
+   "lore": "The last harvest is always by moonlight. Your left click becomes a reaping arc; kills in it yield a soul.",
+   "effect": "Left click becomes a 100° reaping arc (3 m, 4 m against a boss, hits up to 3); kills in the arc give +1 soul. Two-handed.",
+   "color": 11188456,
+   "accent": 15002623
+  },
+  "wand_bone": {
+   "id": "wand_bone",
+   "kind": "wand",
+   "tier": "bone",
+   "name": "Knucklebone Wand",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": false,
+   "rarity": "common",
+   "level": 1,
+   "stats": {
+    "stat_int": 3
+   },
+   "sell": 12,
+   "lore": "Finger bones, bound in a hurry. Bone Needles come faster and strike softer.",
+   "effect": "Bone Needle: +30% cadence, -15% damage. One-handed: pair it with an off-hand.",
+   "color": 14208957,
+   "accent": 15985881
+  },
+  "wand_iron": {
+   "id": "wand_iron",
+   "kind": "wand",
+   "tier": "iron",
+   "name": "Iron Mourning Wand",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": false,
+   "rarity": "uncommon",
+   "level": 15,
+   "stats": {
+    "stat_int": 6,
+    "stat_agi": 1
+   },
+   "sell": 29,
+   "lore": "A mourner flicks it like a hand-bell. Bone Needles come faster and strike softer.",
+   "effect": "Bone Needle: +30% cadence, -15% damage. One-handed: pair it with an off-hand.",
+   "color": 8027526,
+   "accent": 12830674
+  },
+  "wand_gold": {
+   "id": "wand_gold",
+   "kind": "wand",
+   "tier": "gold",
+   "name": "Gilded Censer Wand",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": false,
+   "rarity": "rare",
+   "level": 30,
+   "stats": {
+    "stat_int": 10,
+    "stat_agi": 2
+   },
+   "sell": 66,
+   "lore": "A censer chain wound round the grip. Bone Needles come faster and strike softer.",
+   "effect": "Bone Needle: +30% cadence, -15% damage. One-handed: pair it with an off-hand.",
+   "color": 14263361,
+   "accent": 16769946
+  },
+  "wand_hell": {
+   "id": "wand_hell",
+   "kind": "wand",
+   "tier": "hell",
+   "name": "Emberthorn Wand",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": false,
+   "rarity": "epic",
+   "level": 45,
+   "stats": {
+    "stat_int": 15,
+    "stat_agi": 3
+   },
+   "sell": 132,
+   "lore": "Thorned, and warm to the touch. Bone Needles come faster and strike softer.",
+   "effect": "Bone Needle: +30% cadence, -15% damage. One-handed: pair it with an off-hand.",
+   "color": 9054746,
+   "accent": 16742973
+  },
+  "wand_moon": {
+   "id": "wand_moon",
+   "kind": "wand",
+   "tier": "moon",
+   "name": "Wand of Quiet Stars",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": false,
+   "rarity": "epic",
+   "level": 60,
+   "stats": {
+    "stat_int": 21,
+    "stat_agi": 5
+   },
+   "sell": 264,
+   "lore": "It weighs nothing, and is never quite still. Bone Needles come faster and strike softer.",
+   "effect": "Bone Needle: +30% cadence, -15% damage. One-handed: pair it with an off-hand.",
+   "color": 11188456,
+   "accent": 15002623
+  },
+  "sickle_bone": {
+   "id": "sickle_bone",
+   "kind": "sickle",
+   "tier": "bone",
+   "name": "Barrow Sickle",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": false,
+   "rarity": "common",
+   "level": 1,
+   "stats": {
+    "stat_int": 3,
+    "stat_vit": 1
+   },
+   "sell": 13,
+   "lore": "A curved rib, sharpened on a headstone. Bone Needles leave the target Withered; Exhume returns essence.",
+   "effect": "Bone Needle applies 1 Withered stack. Passive: Exhume refunds 20% of its essence. One-handed.",
+   "color": 14208957,
+   "accent": 15985881
+  },
+  "sickle_iron": {
+   "id": "sickle_iron",
+   "kind": "sickle",
+   "tier": "iron",
+   "name": "Plague Sickle",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": false,
+   "rarity": "uncommon",
+   "level": 15,
+   "stats": {
+    "stat_int": 6,
+    "stat_vit": 2
+   },
+   "sell": 31,
+   "lore": "The plague priests cut herbs and throats with it. Bone Needles leave the target Withered; Exhume returns essence.",
+   "effect": "Bone Needle applies 1 Withered stack. Passive: Exhume refunds 20% of its essence. One-handed.",
+   "color": 8027526,
+   "accent": 12830674
+  },
+  "sickle_gold": {
+   "id": "sickle_gold",
+   "kind": "sickle",
+   "tier": "gold",
+   "name": "Sexton's Gilded Sickle",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": false,
+   "rarity": "rare",
+   "level": 30,
+   "stats": {
+    "stat_int": 10,
+    "stat_vit": 3
+   },
+   "sell": 72,
+   "lore": "Gilded for rites nobody admits to. Bone Needles leave the target Withered; Exhume returns essence.",
+   "effect": "Bone Needle applies 1 Withered stack. Passive: Exhume refunds 20% of its essence. One-handed.",
+   "color": 14263361,
+   "accent": 16769946
+  },
+  "sickle_hell": {
+   "id": "sickle_hell",
+   "kind": "sickle",
+   "tier": "hell",
+   "name": "Blightfire Sickle",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": false,
+   "rarity": "epic",
+   "level": 45,
+   "stats": {
+    "stat_int": 14,
+    "stat_vit": 5
+   },
+   "sell": 143,
+   "lore": "The rot burns instead of festering. Bone Needles leave the target Withered; Exhume returns essence.",
+   "effect": "Bone Needle applies 1 Withered stack. Passive: Exhume refunds 20% of its essence. One-handed.",
+   "color": 9054746,
+   "accent": 16742973
+  },
+  "sickle_moon": {
+   "id": "sickle_moon",
+   "kind": "sickle",
+   "tier": "moon",
+   "name": "Moonrot Sickle",
+   "type": "weapon",
+   "slot": "main_hand",
+   "twoHanded": false,
+   "rarity": "epic",
+   "level": 60,
+   "stats": {
+    "stat_int": 20,
+    "stat_vit": 7
+   },
+   "sell": 286,
+   "lore": "Its blade is etched with a blight the moon forgave. Bone Needles leave the target Withered; Exhume returns essence.",
+   "effect": "Bone Needle applies 1 Withered stack. Passive: Exhume refunds 20% of its essence. One-handed.",
+   "color": 11188456,
+   "accent": 15002623
+  },
+  "skull_focus_bone": {
+   "id": "skull_focus_bone",
+   "kind": "skull_focus",
+   "tier": "bone",
+   "name": "Pauper's Skull Focus",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "common",
+   "level": 1,
+   "stats": {
+    "stat_int": 1,
+    "stat_vit": 2
+   },
+   "sell": 10,
+   "lore": "A nameless skull that still listens. (Gold and better skulls hold one more thrall.)",
+   "effect": "Off-hand. Gold tier and above: +1 thrall cap.",
+   "color": 14208957,
+   "accent": 15985881
+  },
+  "skull_focus_iron": {
+   "id": "skull_focus_iron",
+   "kind": "skull_focus",
+   "tier": "iron",
+   "name": "Iron-Jawed Skull Focus",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "uncommon",
+   "level": 15,
+   "stats": {
+    "stat_int": 3,
+    "stat_vit": 3
+   },
+   "sell": 24,
+   "lore": "Its jaw is wired shut so it cannot argue. (Gold and better skulls hold one more thrall.)",
+   "effect": "Off-hand. Gold tier and above: +1 thrall cap.",
+   "color": 8027526,
+   "accent": 12830674
+  },
+  "skull_focus_gold": {
+   "id": "skull_focus_gold",
+   "kind": "skull_focus",
+   "tier": "gold",
+   "name": "Gilded Skull Focus",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "rare",
+   "level": 30,
+   "stats": {
+    "stat_int": 5,
+    "stat_vit": 5
+   },
+   "sell": 55,
+   "lore": "It remembers a legion. Hold it and command one more thrall.",
+   "effect": "Off-hand. Gold tier and above: +1 thrall cap.",
+   "color": 14263361,
+   "accent": 16769946
+  },
+  "skull_focus_hell": {
+   "id": "skull_focus_hell",
+   "kind": "skull_focus",
+   "tier": "hell",
+   "name": "Cinder Skull Focus",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "epic",
+   "level": 45,
+   "stats": {
+    "stat_int": 8,
+    "stat_vit": 8
+   },
+   "sell": 110,
+   "lore": "The eyes glow like coals in a cold hearth. Hold it and command one more thrall.",
+   "effect": "Off-hand. Gold tier and above: +1 thrall cap.",
+   "color": 9054746,
+   "accent": 16742973
+  },
+  "skull_focus_moon": {
+   "id": "skull_focus_moon",
+   "kind": "skull_focus",
+   "tier": "moon",
+   "name": "Moon Skull Focus",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "epic",
+   "level": 60,
+   "stats": {
+    "stat_int": 11,
+    "stat_vit": 11
+   },
+   "sell": 220,
+   "lore": "It was a king, once; it still expects to be obeyed. Hold it and command one more thrall.",
+   "effect": "Off-hand. Gold tier and above: +1 thrall cap.",
+   "color": 11188456,
+   "accent": 15002623
+  },
+  "grimoire_bone": {
+   "id": "grimoire_bone",
+   "kind": "grimoire",
+   "tier": "bone",
+   "name": "Gravedigger's Grimoire",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "common",
+   "level": 1,
+   "stats": {
+    "stat_int": 2
+   },
+   "sell": 11,
+   "lore": "A gravedigger's ledger of names and their uses. Rites recover sooner.",
+   "effect": "Off-hand. Rites (your other spells, not the left click) recover 10% faster.",
+   "color": 14208957,
+   "accent": 15985881
+  },
+  "grimoire_iron": {
+   "id": "grimoire_iron",
+   "kind": "grimoire",
+   "tier": "iron",
+   "name": "Iron-Clasped Grimoire",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "uncommon",
+   "level": 15,
+   "stats": {
+    "stat_int": 4
+   },
+   "sell": 26,
+   "lore": "Chained shut, and opened only from the inside. Rites recover sooner.",
+   "effect": "Off-hand. Rites (your other spells, not the left click) recover 10% faster.",
+   "color": 8027526,
+   "accent": 12830674
+  },
+  "grimoire_gold": {
+   "id": "grimoire_gold",
+   "kind": "grimoire",
+   "tier": "gold",
+   "name": "Gilt Reliquary Grimoire",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "rare",
+   "level": 30,
+   "stats": {
+    "stat_int": 7
+   },
+   "sell": 61,
+   "lore": "Every page is gilt, every margin a warning. Rites recover sooner.",
+   "effect": "Off-hand. Rites (your other spells, not the left click) recover 10% faster.",
+   "color": 14263361,
+   "accent": 16769946
+  },
+  "grimoire_hell": {
+   "id": "grimoire_hell",
+   "kind": "grimoire",
+   "tier": "hell",
+   "name": "Hellbound Grimoire",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "epic",
+   "level": 45,
+   "stats": {
+    "stat_int": 10
+   },
+   "sell": 121,
+   "lore": "Its binding is singed along the spine. Rites recover sooner.",
+   "effect": "Off-hand. Rites (your other spells, not the left click) recover 10% faster.",
+   "color": 9054746,
+   "accent": 16742973
+  },
+  "grimoire_moon": {
+   "id": "grimoire_moon",
+   "kind": "grimoire",
+   "tier": "moon",
+   "name": "Moonlit Grimoire",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "epic",
+   "level": 60,
+   "stats": {
+    "stat_int": 14
+   },
+   "sell": 242,
+   "lore": "The pages turn themselves to the rite you need. Rites recover sooner.",
+   "effect": "Off-hand. Rites (your other spells, not the left click) recover 10% faster.",
+   "color": 11188456,
+   "accent": 15002623
+  },
+  "mourning_bell_bone": {
+   "id": "mourning_bell_bone",
+   "kind": "mourning_bell",
+   "tier": "bone",
+   "name": "Pauper's Mourning Bell",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "common",
+   "level": 1,
+   "stats": {
+    "stat_int": 1,
+    "stat_agi": 1
+   },
+   "sell": 10,
+   "lore": "Rung once for each name you could not save. A Mourner's wraith hits mend allies.",
+   "effect": "Off-hand. Mourner: each wraith hit heals allies in 14 m for 2% of their max health.",
+   "color": 14208957,
+   "accent": 15985881
+  },
+  "mourning_bell_iron": {
+   "id": "mourning_bell_iron",
+   "kind": "mourning_bell",
+   "tier": "iron",
+   "name": "Iron Mourning Bell",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "uncommon",
+   "level": 15,
+   "stats": {
+    "stat_int": 3,
+    "stat_agi": 2
+   },
+   "sell": 24,
+   "lore": "Its note is flat on purpose. A Mourner's wraith hits mend allies.",
+   "effect": "Off-hand. Mourner: each wraith hit heals allies in 14 m for 2% of their max health.",
+   "color": 8027526,
+   "accent": 12830674
+  },
+  "mourning_bell_gold": {
+   "id": "mourning_bell_gold",
+   "kind": "mourning_bell",
+   "tier": "gold",
+   "name": "Gilded Mourning Bell",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "rare",
+   "level": 30,
+   "stats": {
+    "stat_int": 5,
+    "stat_agi": 3
+   },
+   "sell": 55,
+   "lore": "The clapper is wrapped in widow's silk. A Mourner's wraith hits mend allies.",
+   "effect": "Off-hand. Mourner: each wraith hit heals allies in 14 m for 2% of their max health.",
+   "color": 14263361,
+   "accent": 16769946
+  },
+  "mourning_bell_hell": {
+   "id": "mourning_bell_hell",
+   "kind": "mourning_bell",
+   "tier": "hell",
+   "name": "Cinder Mourning Bell",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "epic",
+   "level": 45,
+   "stats": {
+    "stat_int": 8,
+    "stat_agi": 5
+   },
+   "sell": 110,
+   "lore": "It tolls for the ones who should have stayed buried. A Mourner's wraith hits mend allies.",
+   "effect": "Off-hand. Mourner: each wraith hit heals allies in 14 m for 2% of their max health.",
+   "color": 9054746,
+   "accent": 16742973
+  },
+  "mourning_bell_moon": {
+   "id": "mourning_bell_moon",
+   "kind": "mourning_bell",
+   "tier": "moon",
+   "name": "Moon Mourning Bell",
+   "type": "offhand",
+   "slot": "off_hand",
+   "twoHanded": false,
+   "rarity": "epic",
+   "level": 60,
+   "stats": {
+    "stat_int": 11,
+    "stat_agi": 7
+   },
+   "sell": 220,
+   "lore": "You hear it a moment before it rings. A Mourner's wraith hits mend allies.",
+   "effect": "Off-hand. Mourner: each wraith hit heals allies in 14 m for 2% of their max health.",
+   "color": 11188456,
+   "accent": 15002623
+  }
+ },
+ "NECRO_MODEL": {
+  "staff": {
+   "length": 1.85,
+   "grip": 0.3,
+   "tip": 0.94,
+   "yaw": 0,
+   "anchor": "bottom"
+  },
+  "scythe": {
+   "length": 1.95,
+   "grip": 0.36,
+   "tip": 0.93,
+   "yaw": 180,
+   "anchor": "bottom"
+  },
+  "wand": {
+   "length": 0.52,
+   "grip": 0.24,
+   "tip": 1,
+   "yaw": 0,
+   "anchor": "bottom"
+  },
+  "sickle": {
+   "length": 0.6,
+   "grip": 0.24,
+   "tip": 0.92,
+   "yaw": 180,
+   "anchor": "bottom"
+  },
+  "skull_focus": {
+   "length": 0.44,
+   "grip": 0.14,
+   "tip": 0.66,
+   "yaw": 0,
+   "anchor": "bottom"
+  },
+  "grimoire": {
+   "length": 0.36,
+   "grip": 0.12,
+   "tip": 1,
+   "yaw": 0,
+   "anchor": "center"
+  },
+  "mourning_bell": {
+   "length": 0.42,
+   "grip": 0.86,
+   "tip": 0.3,
+   "yaw": 0,
+   "anchor": "center"
+  }
+ },
+ "NECRO_RECIPES": [
+  [
+   "craft_staff_bone",
+   "Vertebral Staff",
+   "woodcutting",
+   3,
+   "staff_bone",
+   1,
+   [
+    [
+     "plank_oak",
+     3
+    ],
+    [
+     "bones_old",
+     2
+    ]
+   ]
+  ],
+  [
+   "craft_staff_iron",
+   "Crypt-Iron Crozier",
+   "woodcutting",
+   8,
+   "staff_iron",
+   1,
+   [
+    [
+     "plank_elm",
+     3
+    ],
+    [
+     "ingot_iron",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_staff_gold",
+   "Reliquary Staff",
+   "woodcutting",
+   18,
+   "staff_gold",
+   1,
+   [
+    [
+     "plank_willow",
+     3
+    ],
+    [
+     "ingot_gold",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_staff_hell",
+   "Hellcoal Crozier",
+   "woodcutting",
+   42,
+   "staff_hell",
+   1,
+   [
+    [
+     "plank_yew",
+     3
+    ],
+    [
+     "ingot_hell",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_staff_moon",
+   "Staff of the Pale Moon",
+   "woodcutting",
+   57,
+   "staff_moon",
+   1,
+   [
+    [
+     "plank_blackthorn",
+     3
+    ],
+    [
+     "ingot_moon",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_scythe_bone",
+   "Gleaner's Scythe",
+   "mining",
+   2,
+   "scythe_bone",
+   1,
+   [
+    [
+     "ingot_copper",
+     2
+    ],
+    [
+     "bones_old",
+     3
+    ]
+   ]
+  ],
+  [
+   "craft_scythe_iron",
+   "Sexton's Scythe",
+   "mining",
+   10,
+   "scythe_iron",
+   1,
+   [
+    [
+     "ingot_iron",
+     3
+    ]
+   ]
+  ],
+  [
+   "craft_scythe_gold",
+   "Tithe-Reaper",
+   "mining",
+   20,
+   "scythe_gold",
+   1,
+   [
+    [
+     "ingot_gold",
+     3
+    ],
+    [
+     "ingot_iron",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_scythe_hell",
+   "Pyre Reaper",
+   "mining",
+   40,
+   "scythe_hell",
+   1,
+   [
+    [
+     "ingot_hell",
+     3
+    ],
+    [
+     "ingot_gold",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_scythe_moon",
+   "Moonreaper",
+   "mining",
+   55,
+   "scythe_moon",
+   1,
+   [
+    [
+     "ingot_moon",
+     3
+    ],
+    [
+     "ingot_hell",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_wand_bone",
+   "Knucklebone Wand",
+   "woodcutting",
+   3,
+   "wand_bone",
+   1,
+   [
+    [
+     "plank_oak",
+     3
+    ],
+    [
+     "bones_old",
+     2
+    ]
+   ]
+  ],
+  [
+   "craft_wand_iron",
+   "Iron Mourning Wand",
+   "woodcutting",
+   8,
+   "wand_iron",
+   1,
+   [
+    [
+     "plank_elm",
+     3
+    ],
+    [
+     "ingot_iron",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_wand_gold",
+   "Gilded Censer Wand",
+   "woodcutting",
+   18,
+   "wand_gold",
+   1,
+   [
+    [
+     "plank_willow",
+     3
+    ],
+    [
+     "ingot_gold",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_wand_hell",
+   "Emberthorn Wand",
+   "woodcutting",
+   42,
+   "wand_hell",
+   1,
+   [
+    [
+     "plank_yew",
+     3
+    ],
+    [
+     "ingot_hell",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_wand_moon",
+   "Wand of Quiet Stars",
+   "woodcutting",
+   57,
+   "wand_moon",
+   1,
+   [
+    [
+     "plank_blackthorn",
+     3
+    ],
+    [
+     "ingot_moon",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_sickle_bone",
+   "Barrow Sickle",
+   "mining",
+   2,
+   "sickle_bone",
+   1,
+   [
+    [
+     "ingot_copper",
+     2
+    ],
+    [
+     "bones_old",
+     3
+    ]
+   ]
+  ],
+  [
+   "craft_sickle_iron",
+   "Plague Sickle",
+   "mining",
+   10,
+   "sickle_iron",
+   1,
+   [
+    [
+     "ingot_iron",
+     3
+    ]
+   ]
+  ],
+  [
+   "craft_sickle_gold",
+   "Sexton's Gilded Sickle",
+   "mining",
+   20,
+   "sickle_gold",
+   1,
+   [
+    [
+     "ingot_gold",
+     3
+    ],
+    [
+     "ingot_iron",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_sickle_hell",
+   "Blightfire Sickle",
+   "mining",
+   40,
+   "sickle_hell",
+   1,
+   [
+    [
+     "ingot_hell",
+     3
+    ],
+    [
+     "ingot_gold",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_sickle_moon",
+   "Moonrot Sickle",
+   "mining",
+   55,
+   "sickle_moon",
+   1,
+   [
+    [
+     "ingot_moon",
+     3
+    ],
+    [
+     "ingot_hell",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_skull_focus_bone",
+   "Pauper's Skull Focus",
+   "mining",
+   2,
+   "skull_focus_bone",
+   1,
+   [
+    [
+     "ingot_copper",
+     2
+    ],
+    [
+     "bones_old",
+     3
+    ]
+   ]
+  ],
+  [
+   "craft_skull_focus_iron",
+   "Iron-Jawed Skull Focus",
+   "mining",
+   10,
+   "skull_focus_iron",
+   1,
+   [
+    [
+     "ingot_iron",
+     3
+    ]
+   ]
+  ],
+  [
+   "craft_skull_focus_gold",
+   "Gilded Skull Focus",
+   "mining",
+   20,
+   "skull_focus_gold",
+   1,
+   [
+    [
+     "ingot_gold",
+     3
+    ],
+    [
+     "ingot_iron",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_skull_focus_hell",
+   "Cinder Skull Focus",
+   "mining",
+   40,
+   "skull_focus_hell",
+   1,
+   [
+    [
+     "ingot_hell",
+     3
+    ],
+    [
+     "ingot_gold",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_skull_focus_moon",
+   "Moon Skull Focus",
+   "mining",
+   55,
+   "skull_focus_moon",
+   1,
+   [
+    [
+     "ingot_moon",
+     3
+    ],
+    [
+     "ingot_hell",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_grimoire_bone",
+   "Gravedigger's Grimoire",
+   "woodcutting",
+   3,
+   "grimoire_bone",
+   1,
+   [
+    [
+     "plank_oak",
+     3
+    ],
+    [
+     "bones_old",
+     2
+    ]
+   ]
+  ],
+  [
+   "craft_grimoire_iron",
+   "Iron-Clasped Grimoire",
+   "woodcutting",
+   8,
+   "grimoire_iron",
+   1,
+   [
+    [
+     "plank_elm",
+     3
+    ],
+    [
+     "ingot_iron",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_grimoire_gold",
+   "Gilt Reliquary Grimoire",
+   "woodcutting",
+   18,
+   "grimoire_gold",
+   1,
+   [
+    [
+     "plank_willow",
+     3
+    ],
+    [
+     "ingot_gold",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_grimoire_hell",
+   "Hellbound Grimoire",
+   "woodcutting",
+   42,
+   "grimoire_hell",
+   1,
+   [
+    [
+     "plank_yew",
+     3
+    ],
+    [
+     "ingot_hell",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_grimoire_moon",
+   "Moonlit Grimoire",
+   "woodcutting",
+   57,
+   "grimoire_moon",
+   1,
+   [
+    [
+     "plank_blackthorn",
+     3
+    ],
+    [
+     "ingot_moon",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_mourning_bell_bone",
+   "Pauper's Mourning Bell",
+   "mining",
+   2,
+   "mourning_bell_bone",
+   1,
+   [
+    [
+     "ingot_copper",
+     2
+    ],
+    [
+     "bones_old",
+     3
+    ]
+   ]
+  ],
+  [
+   "craft_mourning_bell_iron",
+   "Iron Mourning Bell",
+   "mining",
+   10,
+   "mourning_bell_iron",
+   1,
+   [
+    [
+     "ingot_iron",
+     3
+    ]
+   ]
+  ],
+  [
+   "craft_mourning_bell_gold",
+   "Gilded Mourning Bell",
+   "mining",
+   20,
+   "mourning_bell_gold",
+   1,
+   [
+    [
+     "ingot_gold",
+     3
+    ],
+    [
+     "ingot_iron",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_mourning_bell_hell",
+   "Cinder Mourning Bell",
+   "mining",
+   40,
+   "mourning_bell_hell",
+   1,
+   [
+    [
+     "ingot_hell",
+     3
+    ],
+    [
+     "ingot_gold",
+     1
+    ]
+   ]
+  ],
+  [
+   "craft_mourning_bell_moon",
+   "Moon Mourning Bell",
+   "mining",
+   55,
+   "mourning_bell_moon",
+   1,
+   [
+    [
+     "ingot_moon",
+     3
+    ],
+    [
+     "ingot_hell",
+     1
+    ]
+   ]
+  ]
+ ]
+}
