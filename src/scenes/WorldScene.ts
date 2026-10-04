@@ -267,6 +267,18 @@ const CUE_OPENS: Partial<Record<RevealId, 'professions' | 'grimoire' | 'atlas' |
 const TAB_CUES: ReadonlySet<string> = new Set(['tab.acre.garden', 'tab.acre.labor', 'tab.acre.contracts', 'tab.sheet.pets', 'tab.grimoire.legion']);
 
 type PanelKey = 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'salvage' | 'sheet' | 'legion' | 'atlas';
+/**
+ * Keys a focused form control needs for itself: a <select> uses the arrows/Enter/Space/Home/End, and a button or link the
+ * player reached with Tab (`tabbed`; never one they just clicked, or Enter after 'click Empower' would buy another tier) is activated by Enter/Space. Without
+ * this the hotkey handler swallowed them (preventDefault on arrows and Space, Enter sent focus to the chat box), so
+ * Settings could not be driven from the keyboard. Esc and the letter hotkeys still pass through.
+ */
+export function focusOwnsKey(el: Element | null, k: string, tabbed: boolean): boolean {
+  if (!(el instanceof HTMLElement)) return false;
+  if (el instanceof HTMLSelectElement) return ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'enter', ' ', 'home', 'end', 'pageup', 'pagedown'].includes(k);
+  return tabbed && (k === 'enter' || k === ' ') && el.matches('button, a[href], summary, [role="button"]');
+}
+
 export class WorldScene implements GameScene, RuntimeView {
   readonly scene = new THREE.Scene();
   readonly bloom = { strength: 0.75, radius: 0.55, threshold: 0.85 };
@@ -1831,10 +1843,14 @@ export class WorldScene implements GameScene, RuntimeView {
     this.mouse.x = window.innerWidth / 2;
     this.mouse.y = window.innerHeight / 2;
     this.scope.on(window, 'blur', () => { this.keys.clear(); this.mouse.shift = false; this.mouse.aiming = false; if (!this.gathering.afk) this.player.stop(); });
+    // Focus that arrived by Tab (not by a click) may be activated with Enter/Space; see focusOwnsKey.
+    this.scope.on(window, 'pointerdown', () => { this.tabbed = false; }, { capture: true });
     this.scope.on<KeyboardEvent>(window, 'keydown', (e) => {
       if (!this.ready) return;
       if (document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement) return;
       const k = e.key.toLowerCase();
+      if (k === 'tab') this.tabbed = true;
+      if (focusOwnsKey(document.activeElement, k, this.tabbed)) return;
       if (/^[1-4]$/.test(k)) this.keys.add(k);
       if (k === 'enter') {
         this.hud.focusChat();
@@ -1919,6 +1935,7 @@ export class WorldScene implements GameScene, RuntimeView {
     });
   }
 
+  private tabbed = false;
   private canvasRect: DOMRect | null = null;
   private canvasRectAt = 0;
 

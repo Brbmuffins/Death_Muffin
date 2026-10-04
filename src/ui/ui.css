@@ -346,6 +346,7 @@ button { font-family: inherit; }
 .cw-disc .legacy { position: absolute; top: 8px; right: 8px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cw-text-faint); background: rgba(0,0,0,0.55); padding: 2px 6px; }
 .cw-disc .rec-badge { position: absolute; top: 8px; left: 8px; z-index: 1; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #1a1408; background: var(--cw-gold-400, #d9b45a); padding: 2px 7px; box-shadow: 0 0 10px rgba(226,201,143,0.35); }
 .cw-disc.recommended { border-color: var(--cw-border-active); }
+.cw-disc.recommended .legacy { top: 34px; } /* the badge is almost as wide as a card at 1280 and covered the NECROMANCER tag */
 .cw-disc:disabled { opacity: 0.5; cursor: wait; }
 
 /* ------------------------------------------------------------------ */
@@ -598,7 +599,8 @@ button { font-family: inherit; }
 .hud-xpbar { flex: 1; }
 .hud-xpbar .track { height: 6px; background: var(--cw-inset); border: 1px solid var(--cw-border); position: relative; }
 .hud-xpbar .fill { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg, #7d6b4f, var(--cw-bone-300)); box-shadow: 0 0 10px rgba(216, 207, 189, 0.35); transition: width 0.25s ease; }
-.hud-xpbar .txt { font-family: var(--cw-font-numeric); font-size: 12px; color: var(--cw-text-muted); margin-top: 4px; display: flex; justify-content: space-between; }
+.hud-xpbar .txt { font-family: var(--cw-font-numeric); font-size: 12px; color: var(--cw-text-muted); margin-top: 4px; display: flex; justify-content: space-between; flex-wrap: wrap; column-gap: 6px; }
+.hud-xpbar .txt span { white-space: nowrap; } /* at level 100+ the two halves no longer fit one line: wrap between them, not inside a number (it printed 'Experience1,486 /' over '11,000') */
 
 /* Upgrades + currencies (bottom-right) */
 .hud-right { position: absolute; right: 18px; bottom: 18px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
@@ -770,7 +772,7 @@ button { font-family: inherit; }
 
 /* Kill Chain: a quiet count on the left edge that warms up as the tier climbs. */
 /* The Catacomb Depths readout: under the minimap, quiet. Brightens (gold, a slow pulse) when the stair opens. */
-.hud-depth { width: 176px; padding: 4px 8px 5px; background: rgba(7, 6, 10, 0.5); border-bottom: 2px solid var(--cw-border-strong); text-align: center; text-shadow: 0 1px 4px #000; --depth: var(--cw-bone-300); }
+.hud-depth { width: 200px; padding: 4px 8px 5px; background: rgba(7, 6, 10, 0.5); border-bottom: 2px solid var(--cw-border-strong); text-align: center; text-shadow: 0 1px 4px #000; --depth: var(--cw-bone-300); }
 .hud-depth[hidden] { display: none; }
 .hud-depth .row { display: flex; align-items: baseline; justify-content: center; gap: 10px; font-family: var(--cw-font-display); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cw-bone-100); }
 .hud-depth .row b { font-family: var(--cw-font-numeric); font-size: 16px; color: var(--depth); }
@@ -1073,7 +1075,7 @@ button { font-family: inherit; }
 .cw-prof .rite { font-size: 12px; color: var(--cw-text-muted); font-style: italic; }
 
 .cw-settings label.row { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 12px 0; border-bottom: 1px solid var(--cw-border); font-size: 15px; }
-.cw-settings select, .cw-settings input[type='range'] { accent-color: var(--cw-spell-400); }
+input[type='checkbox'], input[type='radio'], .cw-settings select, .cw-settings input[type='range'] { accent-color: var(--cw-spell-400); } /* the browser's default blue checkbox clashed with the violet theme (Settings, Salvage, Garden) */
 .cw-settings select { min-height: 38px; max-width: 55%; background: var(--cw-inset); color: var(--cw-text); border: 1px solid var(--cw-border); padding: 7px 10px; }
 .cw-settings input[type='checkbox'] { width: 18px; height: 18px; flex: none; }
 .cw-settings-note { margin: 8px 0 2px; font-size: 13px; color: var(--cw-text-muted); line-height: 1.5; }
@@ -1242,6 +1244,11 @@ body:not(.touch):has(.cw-panel-float) .cw-tip:not(.dragging):not([data-kind='urg
 }
 /* Up to about 1500px wide the Damage / Wave Speed panel would sit on the Grave Essence orb: lift it into the free band between the
    minimap column and the orbs, and keep only the currencies at the very bottom. */
+/* Short windows (1280x720): the map column plus the Depths widget and a two-line zone name ran 12px into the Damage / Wave Speed plate and hid the menu's second row. */
+@media (max-height: 760px) {
+  .hud-map { gap: 4px; }
+  .hud-map .area { letter-spacing: 0.06em; }
+}
 @media (max-width: 1500px) {
   .hud-upgrades { position: fixed; right: 18px; bottom: 176px; width: 264px; padding: 8px 12px 8px; }
   .hud-up + .hud-up { margin-top: 8px; }
@@ -1478,6 +1485,7 @@ body:not(.touch):has(.cw-panel-float) .cw-tip:not(.dragging):not([data-kind='urg
 .cw-panel-float.wide.cw-vault { width: 880px; }
 .cw-vault-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
 .cw-vault-cols .cw-panel-section-title { display: flex; justify-content: space-between; align-items: baseline; margin-top: 0; }
+.cw-vault-grid > .cw-hint-text { grid-column: 1 / -1; } /* the loading line sat in one 8-column cell and wrapped a word per line */
 .cw-vault-count { font-family: var(--cw-font-numeric); font-size: 12px; color: var(--cw-text-faint); letter-spacing: .04em; }
 .cw-vault-grid { margin-bottom: 8px; }
 .cw-vault-grid .cw-slot { min-height: 0; }
