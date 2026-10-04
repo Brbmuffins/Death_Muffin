@@ -23,7 +23,7 @@ func setup(m: Node, director: Node = null) -> void:
 	main = m
 	ad = director if director != null else get_node_or_null("/root/AudioDirector")
 	inst = self
-	var w: Dictionary = m.world
+	var w: Dictionary = DmData.world()
 	for k in ["water", "bog", "ponds"]:
 		_water.append_array(w.get(k, []))
 	_puddles = w.get("puddles", [])
@@ -37,9 +37,9 @@ func _exit_tree() -> void:
 		ad.stop_area()
 
 func _process(dt: float) -> void:
-	if ad == null or main == null or main.hero == null:
+	if ad == null or main == null or main.player == null or not main.ready_:
 		return
-	var p: Vector3 = main.hero.global_position
+	var p := Vector3(main.player.x, 0.0, main.player.z)
 	ad.set_listener(p.x, p.z)
 	if main.area_id != _area:
 		_area = main.area_id
@@ -71,17 +71,13 @@ func _footsteps(p: Vector3, dt: float) -> void:
 	if _still_t > 0.15:
 		ad.hero_stopped()
 		return
-	var h = main.hero
 	var phase := -1.0
 	var running := false
-	var ap: AnimationPlayer = h._anim
-	# The idle clip may stand in with the walk animation: only a real walk/run loop gives a phase (else the distance fallback steps).
-	var loop_clip: String = h._animator.loop
-	if ap != null and ap.is_playing() and (loop_clip == "walk" or loop_clip == "run") and ap.current_animation == loop_clip:
-		var len := ap.get_animation(ap.current_animation).length
-		if len > 0.0:
-			phase = fposmod(ap.current_animation_position / len, 1.0)
-		running = ap.current_animation == "run"
+	# The avatar's walk loop gives the stride phase (else the distance fallback steps).
+	var av = main.avatar
+	if av != null and av.has_method("loop_phase"):
+		phase = float(av.loop_phase())
+		running = av.has_method("is_running") and bool(av.is_running())
 	ad.hero_footfall(phase, p.x, p.z, _area, is_wet(p.x, p.z), running)
 
 # ----------------------------------------------------------------- seals / gates
@@ -116,9 +112,9 @@ static func _play(id: String, pos: Variant = null, intensity: float = 1.0) -> vo
 		inst.ad.play_sfx(id, pos, intensity)
 
 static func _near(pos: Vector3, range_: float) -> bool:
-	if inst == null or inst.main == null or inst.main.hero == null:
+	if inst == null or inst.main == null or inst.main.player == null:
 		return false
-	var h: Vector3 = inst.main.hero.global_position
+	var h := Vector3(inst.main.player.x, 0.0, inst.main.player.z)
 	return Vector2(pos.x - h.x, pos.z - h.z).length() <= range_
 
 static func click() -> void:
