@@ -43,6 +43,8 @@ export class SettingsPanel extends SimplePanel {
     },
     /** Settings → Report a bug: what the report attaches on its own. */
     private bugContext?: () => BugReportContext,
+    /** Settings -> Play together: make, join or leave a party. Absent = no co-op section. */
+    private party?: { create(): void; join(code: string): void; leave(): void },
   ) {
     super(root);
   }
@@ -84,8 +86,16 @@ export class SettingsPanel extends SimplePanel {
         ${this.bugContext ? '<label class="row">Found a bug or something odd?<button type="button" class="cw-button" data-bugreport>Report a bug</button></label>' : ''}
         ${this.onResetTips ? '<label class="row">New to the Covenant?<button type="button" class="cw-button" data-resettips>Show tips again</button></label>' : ''}
         ${this.onChangeClass ? '<label class="row">Class<button type="button" class="cw-button" aria-label="Change class" data-changeclass>Change class</button></label>' : ''}
-        ${code ? `<label class="row">Party world code<b style="font-family:var(--cw-font-numeric)">${code}</b></label>` : ''}
         </section>
+        ${this.party ? `<section class="cw-settings-section"><h3>Play together</h3>
+        ${code
+          ? `<label class="row">Your party code<b data-partycode style="font-family:var(--cw-font-numeric)">${code}</b></label>
+             <p class="cw-settings-note">Friends enter this code under Play together (or type /party ${code}) to join you. You choose who plays with you: being online at the same time never makes a party.</p>
+             <label class="row">Done playing together?<button type="button" class="cw-button" data-partyleave>Leave party (play solo)</button></label>`
+          : `<p class="cw-settings-note">You are playing solo. Make a party and share its code, or enter a friend's code. In a party you share one world and its enemies; the Catacomb Depths stay a solo descent (you step out, then rejoin).</p>
+             <label class="row">Start a party<button type="button" class="cw-button" data-partymake>Make a party</button></label>
+             <label class="row">Join a friend<span><input type="text" maxlength="12" size="10" data-partycode-in placeholder="code" aria-label="Party code" autocomplete="off" /> <button type="button" class="cw-button" data-partyjoin>Join</button></span></label>`}
+        </section>` : ''}
         <section class="cw-settings-section"><h3>Controls</h3>
         <div class="cw-keys">
           <kbd>WASD</kbd><span>Walk freely; holding a direction takes over from click-to-move</span>
@@ -185,6 +195,13 @@ export class SettingsPanel extends SimplePanel {
       tips.checked = false;
       this.onResetTips?.();
     });
+    const partyDo = (fn: () => void) => () => { fn(); this.close(); };
+    this.el!.querySelector('[data-partymake]')?.addEventListener('click', partyDo(() => this.party?.create()));
+    this.el!.querySelector('[data-partyleave]')?.addEventListener('click', partyDo(() => this.party?.leave()));
+    const codeIn = this.el!.querySelector<HTMLInputElement>('[data-partycode-in]');
+    const doJoin = () => { if (codeIn?.value.trim()) { this.party?.join(codeIn.value); this.close(); } };
+    this.el!.querySelector('[data-partyjoin]')?.addEventListener('click', doJoin);
+    codeIn?.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') doJoin(); });
     this.el!.querySelector('[data-leave]')!.addEventListener('click', () => this.onLeave());
     this.el!.querySelector('[data-changeclass]')?.addEventListener('click', () => this.onChangeClass?.());
     this.el!.querySelector('[data-bugreport]')?.addEventListener('click', () => this.openBugReport());

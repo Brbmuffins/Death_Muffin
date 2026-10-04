@@ -772,7 +772,9 @@ export class WorldScene implements GameScene, RuntimeView {
       sim: () => this.sim,
       selfId: () => this.selfId,
       partySize: () => this.remotes.size,
-      isAuthority: () => !this.mirror && this.isAuthority(),
+      inParty: () => this.partyCode !== null,
+      stepOutOfParty: () => this.pauseCoop(),
+      stepBackIntoParty: () => this.resumeCoop(),
       level: () => this.character.level,
       disciplineId: () => this.discipline.id,
       rewardMult: () => ascensionRewardMult(this.worldAscension()) * this.omen.rewardMult,
@@ -803,7 +805,7 @@ export class WorldScene implements GameScene, RuntimeView {
       void this.progression.flush(true);
       void this.inventory.flush(true);
       void this.gathering.flush(true);
-      if (this.worldCode) saveRejoin(this.worldCode); // refreshes the 10-minute window for a reload rejoin
+      if (this.partyCode) saveRejoin(this.partyCode); // refreshes the 10-minute window for a reload rejoin
     });
     // Co-op: the network came back or the tab woke up — don't wait out the backoff.
     this.scope.on(window, 'online', () => this.reconnector?.kick());
@@ -1058,6 +1060,7 @@ export class WorldScene implements GameScene, RuntimeView {
       beltPick: (id) => this.setBelt(id),
       toggleAutoCombat: () => this.toggleAutoCombat(),
       chat: (text) => {
+        if (this.chatCommand(text)) return;
         if (this.realtime.connected) this.realtime.sendChat(text);
         else this.hud.chatLine('(solo) Nobody hears you in the dark.');
       },
@@ -1164,7 +1167,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.settingsPanel = new SettingsPanel(
       this.root,
       () => this.onLeave(),
-      () => this.realtime.instance,
+      () => this.partyCode,
       () => {
         this.onboarding.reset();
         this.hud.toast('Covenant counsel will guide you again', 'good');
@@ -1188,8 +1191,9 @@ export class WorldScene implements GameScene, RuntimeView {
         level: this.character.level,
         discipline: this.discipline.name,
         release: releaseWatch()?.known ?? null,
-        coop: !!this.realtime.instance,
+        coop: !!this.partyCode,
       }),
+      { create: () => this.createParty(), join: (code) => void this.joinParty(code), leave: () => void this.leaveParty() },
     );
     this.classPanel = new ClassPanel(this.root, () => this.character.class_index, (index) => this.changeClass(index));
     this.scope.add(() => this.classPanel.dispose());
@@ -2430,8 +2434,13 @@ export class WorldScene implements GameScene, RuntimeView {
     };
   }
 
-  /** The world code we are in (or were last in): what a rejoin or a reload asks the server for. */
-  private worldCode: string | null = null;
+  /**
+   * The party we belong to (its invite code), or null when playing in our own solo world. Parties are explicit: made or joined with
+   * Settings -> Play together or /party. It is what a rejoin or a reload asks the server for. It survives a descent into the Depths
+   * (`coopPaused`), which is a solo run: the hero steps out for it and the party is rejoined when the run ends.
+   */
+  private partyCode: string | null = null;
+  private coopPaused = false;
   private reconnector: Reconnector | null = null;
   private reconnectToasted = false;
 
@@ -2475,14 +2484,15 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private async connectRealtime() {
-    // A reload (e.g. after a deploy) keeps the world code for 10 minutes so partners regroup instead of matchmaking apart.
+    // A reload (e.g. after a deploy) keeps the party code for 10 minutes so partners regroup. No saved party = your own solo world:
+    // being online at the same time as someone else never puts you in their party.
     const saved = loadRejoin();
     try {
       await this.joinWorld(saved ?? undefined, 'first');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Co-op unavailable — playing solo';
       if (saved && !isRetryableError(err, 'first') && !/not configured/i.test(msg)) {
-        // The saved world is gone or full: forget it and matchmake like a fresh start.
+        // The saved party is gone or full: forget it and carry on in a solo world.
         clearRejoin();
         try {
           await this.joinWorld(undefined, 'first');
@@ -2510,7 +2520,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.reconnector?.stop();
     const r = new Reconnector({
       mode,
-      attempt: () => this.joinWorld(mode === 'rejoin' ? this.worldCode ?? undefined : loadRejoin() ?? undefined, mode).then(() => undefined),
+      attempt: () => this.joinWorld(mode === 'rejoin' ? this.partyCode ?? undefined : loadRejoin() ?? undefined, mode).then(() => undefined),
       onGiveUp: (err) => {
         this.hud.chatLine(err.message);
         if (mode === 'rejoin') this.hud.toast(`${err.message} — the world continues solo`, 'err');
@@ -2553,18 +2563,22 @@ export class WorldScene implements GameScene, RuntimeView {
       if (res.snapshot) this.mirror.applySnapshot(res.snapshot);
       this.sim = null;
     }
-    this.worldCode = res.instance;
-    saveRejoin(res.instance);
+    // A solo world has no code worth keeping; a party's code is what a rejoin or a reload asks for.
+    this.partyCode = res.solo ? null : res.instance;
+    if (this.partyCode) saveRejoin(this.partyCode);
+    else clearRejoin();
     this.reconnector = null;
     if (mode === 'rejoin') {
       this.reconnectToasted = false;
-      const msg = `Back in world ${res.instance} (${this.remotes.size + 1} player${this.remotes.size ? 's' : ''})`;
-      this.hud.chatLine(msg + (this.realtime.isHost ? ' — you keep the world' : ''));
-      this.hud.toast(msg, 'good');
+      if (this.partyCode) {
+        const msg = `Back in party ${this.partyCode} (${this.remotes.size + 1} player${this.remotes.size ? 's' : ''})`;
+        this.hud.chatLine(msg + (this.realtime.isHost ? ' — you keep the world' : ''));
+        this.hud.toast(msg, 'good');
+      } else this.hud.toast('Back online (playing solo)', 'good');
       this.broadcastGear(equippedBySlot(this.inventory.all), true);
       void this.checkRelease(); // a deploy is the usual reason the link dropped
-    } else {
-      this.hud.chatLine(`Joined world ${res.instance}${this.realtime.isHost ? ' (you keep the world)' : ''}`);
+    } else if (this.partyCode) {
+      this.hud.chatLine(`Joined party ${this.partyCode} (${this.remotes.size + 1} player${this.remotes.size ? 's' : ''})${this.realtime.isHost ? ' — you keep the world' : ''}`);
     }
   }
 
@@ -2613,16 +2627,107 @@ export class WorldScene implements GameScene, RuntimeView {
         new Promise((r) => window.setTimeout(r, 4000)),
       ]);
     } catch { /* pagehide flushes once more with keepalive */ }
-    if (this.worldCode) saveRejoin(this.worldCode);
+    if (this.partyCode) saveRejoin(this.partyCode);
     location.reload();
+  }
+
+  /** Everyone else leaves our world (their bodies too: nobody left in the sim holds areas open) and we keep it ourselves. */
+  private dropCoopState() {
+    for (const [id, r] of this.remotes) { r.avatar.dispose(); r.pet?.dispose(); this.sim?.removePlayer(id); }
+    this.remotes.clear();
+    this.becomeAuthority(null);
+  }
+
+  /** Step out of the party for a solo-only activity (the Depths): leave its world, keep the code, become keeper of our own. */
+  private pauseCoop() {
+    if (!this.partyCode || this.coopPaused) return;
+    this.coopPaused = true;
+    this.reconnector?.stop();
+    this.reconnector = null;
+    this.realtime.disconnect();
+    this.dropCoopState();
+    this.hud.chatLine(`You step out of party ${this.partyCode} for the descent; you rejoin when it ends.`);
+  }
+
+  /** The solo activity is over: go back to the party we stepped out of. */
+  private resumeCoop() {
+    if (!this.coopPaused) return;
+    this.coopPaused = false;
+    if (this.scope.isDisposed || !this.partyCode) return;
+    this.reconnectToasted = true; // the rejoin says so itself ("Back in party ...")
+    this.startReconnector('rejoin');
+  }
+
+  /** Make a new party: a short code friends type in (Settings -> Play together, or /party <code>). */
+  private createParty() {
+    const abc = 'abcdefghjkmnpqrstuvwxyz23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) code += abc[Math.floor(Math.random() * abc.length)];
+    void this.joinParty(code, true);
+  }
+
+  /** Join (or make) the party with this invite code. Leaves the current world first; on failure carries on where we were. */
+  private async joinParty(raw: string, created = false) {
+    const code = raw.trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 12);
+    if (!code) return void this.hud.toast('Enter a party code (letters and numbers).', 'err');
+    if (this.depths.active) return void this.hud.toast('Finish your descent first: the Depths are a solo run.', 'err');
+    if (code === this.partyCode && this.realtime.connected) return void this.hud.toast(`You are already in party ${code}.`, 'err');
+    const before = this.partyCode;
+    this.reconnector?.stop();
+    this.reconnector = null;
+    this.realtime.disconnect();
+    this.dropCoopState();
+    this.partyCode = null;
+    try {
+      await this.joinWorld(code, 'first');
+      this.hud.toast(created ? `Party ${code} made: tell your friends to join with this code` : `Joined party ${code}`, 'good');
+      if (created) this.hud.chatLine(`Your party code is ${code}. Friends join it in Settings -> Play together, or by typing /party ${code}.`);
+    } catch (err) {
+      this.hud.toast(err instanceof Error ? err.message : 'Could not join that party', 'err');
+      // Back to where we were: the old party (if any), else a solo world.
+      try {
+        await this.joinWorld(before ?? undefined, 'first');
+      } catch (err2) {
+        this.partyCode = before;
+        this.coopFirstFailed(err2);
+      }
+    }
+  }
+
+  /** Leave the party and play in our own world again. */
+  private async leaveParty() {
+    if (!this.partyCode) return void this.hud.toast('You are not in a party.', 'err');
+    if (this.depths.active) return void this.hud.toast('Finish your descent first.', 'err');
+    this.reconnector?.stop();
+    this.reconnector = null;
+    this.realtime.disconnect();
+    this.dropCoopState();
+    this.partyCode = null;
+    clearRejoin();
+    this.hud.chatLine('You left the party and play solo.');
+    try {
+      await this.joinWorld(undefined, 'first');
+    } catch (err) {
+      this.coopFirstFailed(err);
+    }
+  }
+
+  /** `/party [code]`, `/solo`: the chat-line way to the same three actions. True when the line was a command. */
+  private chatCommand(text: string): boolean {
+    const m = /^\/(party|solo|leave)(?:\s+(\S+))?\s*$/i.exec(text.trim());
+    if (!m) return false;
+    const cmd = m[1].toLowerCase();
+    if (cmd !== 'party') void this.leaveParty();
+    else if (m[2]) void this.joinParty(m[2]);
+    else if (this.partyCode) this.hud.chatLine(`Your party code is ${this.partyCode}. Friends join with /party ${this.partyCode}. /solo leaves it.`);
+    else this.createParty();
+    return true;
   }
 
   /** The link dropped unexpectedly: carry on solo and keep trying to get back to the same world. */
   private onCoopDisconnect() {
     // Their bodies leave the sim too (no player:leave ever arrives): left behind they stayed "alive" forever, holding areas open, scaling bosses and keeping their thralls up.
-    for (const [id, r] of this.remotes) { r.avatar.dispose(); r.pet?.dispose(); this.sim?.removePlayer(id); }
-    this.remotes.clear();
-    this.becomeAuthority(null);
+    this.dropCoopState();
     if (this.scope.isDisposed) return;
     if (!this.reconnectToasted) {
       this.reconnectToasted = true;
@@ -5338,6 +5443,8 @@ export class WorldScene implements GameScene, RuntimeView {
         return ids;
       },
       advance: (seconds: number, render = true) => getRuntime().advance(seconds, 1 / 60, render),
+      /** Co-op QA: parties are explicit (Settings -> Play together), so the smokes make and join them here. */
+      party: { create: () => this.createParty(), join: (c: string) => this.joinParty(c), leave: () => this.leaveParty(), code: () => this.partyCode, paused: () => this.coopPaused },
       net: () => ({ id: this.realtime.selfId, ...this.realtime.stats, connected: this.realtime.connected, host: this.realtime.isHost, instance: this.realtime.instance, mirror: this.mirror ? { enemies: this.mirror.enemies.size, corpses: this.mirror.corpses.size } : null }),
       zoom: (z: number) => this.rig.setZoom(z),
       clear: () => {

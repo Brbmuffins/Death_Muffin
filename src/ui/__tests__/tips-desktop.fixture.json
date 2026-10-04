@@ -444,8 +444,8 @@
   "body": "Every fifth floor holds a <b>chest</b> in a side chamber, marked on the minimap. It gives gear with at least one affix, finds from the depth's own ground, gold and experience, and now and then a Relic rune. The deeper the chest, the more it holds."
  },
  "depths_solo": {
-  "title": "Solo, for now",
-  "body": "The Depths are a descent for one. Leave your party, or wait until your friends have gone, and the stair will open. Co-op floors need the realtime relay to carry the layout; they are on the list."
+  "title": "A descent for one",
+  "body": "Friends can share a world, but a descent is a solo run. When you take the stair from a party you step out of it automatically, go down alone, and rejoin your party when the run ends. Shared floors are on the list."
  },
  "belt": {
   "title": "Your belt",

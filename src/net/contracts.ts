@@ -27,7 +27,7 @@ export interface RemotePlayer {
 }
 
 export interface JoinRequest {
-  /** Invite code; omit to be matched into any public world with space. */
+  /** Party invite code: joins (or creates) that party's world. Omit for a private solo world. */
   instance?: string;
   characterId: number;
   classIndex: number;
@@ -43,6 +43,8 @@ export interface JoinResult {
   players: RemotePlayer[];
   hostId: string;
   instance: string;
+  /** True when the world is your private solo world (older servers omit it and matchmake: treat absent as unknown). */
+  solo?: boolean;
   snapshot: WorldSnapshot | null;
 }
 

@@ -46,8 +46,10 @@ cat > "$DIR/server.js" <<'CWEOF_SERVER'
  * production sets REALTIME_PORT=5191.
  *
  * World model (audit Phase 0): players join instanced worlds of ≤10. Without an
- * invite code you are matched into any public world with space (or a new one);
- * with a code you join/create that world. The oldest member is the host: it
+ * invite code you get a PRIVATE SOLO world of your own (being logged in at the
+ * same time as someone else never puts you in their party); with a code you
+ * join/create that party world. Public matchmaking exists only on request
+ * (`match: true`), which no shipped client sends. The oldest member is the host: it
  * simulates enemies and is the ONLY socket allowed to publish snapshots and
  * events. Everyone else sends bounded intents, which are validated, stamped
  * with the real sender id, and delivered to the host only. The latest
@@ -425,10 +427,17 @@ io.use((socket, next) => {
   }
 });
 
-function pickWorld(code) {
+/** `code`: a party invite code. No code: a private solo world, unless `match` asks for the public matchmaking pool. */
+function pickWorld(code, match) {
   if (code) {
     const id = `w:${String(code).replace(/[^a-z0-9-]/gi, '').slice(0, 12).toLowerCase()}`;
     if (!worlds.has(id)) worlds.set(id, { players: new Map(), public: false, snapshot: null });
+    return id;
+  }
+  if (!match) {
+    // Solo: its own world, unreachable by any code ('s:' never collides with a party's 'w:').
+    const id = `s:${(worldCounter++).toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+    worlds.set(id, { players: new Map(), public: false, solo: true, snapshot: null });
     return id;
   }
   for (const [id, w] of worlds) if (w.public && w.players.size < MAX_PARTY_SIZE) return id;
@@ -451,7 +460,7 @@ io.on('connection', (socket) => {
   on('world:join', (info, ack) => {
     if (typeof ack !== 'function') return;
     if (socket.data.worldId) return ack({ success: false, error: 'Already in a world' });
-    const worldId = pickWorld(info && info.instance);
+    const worldId = pickWorld(info && info.instance, !!(info && info.match));
     const world = worlds.get(worldId);
     if (world.players.size >= MAX_PARTY_SIZE) {
       console.log(`[realtime] ${socket.data.username} rejected from ${worldId} (full)`);
@@ -490,6 +499,7 @@ io.on('connection', (socket) => {
         players: [...world.players.values()].map(({ accountId: _a, ...p }) => p),
         hostId: hostOf(world),
         instance: worldId.slice(2),
+        solo: !!world.solo,
         snapshot: world.snapshot,
       },
     });

@@ -34,13 +34,11 @@ export const DEPTHS = {
 } as const;
 
 /**
- * Why the stair will not take a hero down right now, in the words the stair says (null = it will). The Depths are solo for now: the
- * floors live in the keeper's sim and the realtime relay does not carry a layout, so a party (or a guest, who only mirrors the world)
- * is told so instead of being taken down alone.
+ * Why the stair will not take a hero down right now, in the words the stair says (null = it will). Being in a party never blocks it:
+ * the floors live in one keeper's sim and the relay carries no layout, so a party member steps out of the party for the descent (the
+ * scene disconnects them, they keep their own world, and they rejoin the party when the run ends). Only a fallen hero is refused.
  */
-export function depthsEntryBlock(o: { partySize: number; keeper: boolean; alive: boolean }): string | null {
-  if (o.partySize > 0) return 'The Depths are solo for now: leave your party to go down.';
-  if (!o.keeper) return 'The Depths are solo for now: only the keeper of the world can go down.';
+export function depthsEntryBlock(o: { alive: boolean }): string | null {
   if (!o.alive) return 'You are in no state to descend.';
   return null;
 }

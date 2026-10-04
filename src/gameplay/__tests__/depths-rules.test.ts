@@ -82,13 +82,10 @@ describe('Depths scaling', () => {
   });
 });
 
-describe('Depths co-op: solo for now, and the stair says so', () => {
-  it('lets a lone keeper down and tells a party, a guest or a fallen hero why not', () => {
-    expect(depthsEntryBlock({ partySize: 0, keeper: true, alive: true })).toBeNull();
-    expect(depthsEntryBlock({ partySize: 1, keeper: true, alive: true })).toMatch(/solo for now: leave your party/);
-    expect(depthsEntryBlock({ partySize: 3, keeper: false, alive: true })).toMatch(/solo for now/);
-    expect(depthsEntryBlock({ partySize: 0, keeper: false, alive: true })).toMatch(/only the keeper of the world/);
-    expect(depthsEntryBlock({ partySize: 0, keeper: true, alive: false })).toMatch(/no state to descend/);
+describe('Depths and parties: a party never blocks the stair', () => {
+  it('only refuses a fallen hero (party members step out for the descent instead)', () => {
+    expect(depthsEntryBlock({ alive: true })).toBeNull();
+    expect(depthsEntryBlock({ alive: false })).toMatch(/no state to descend/);
   });
 });
 

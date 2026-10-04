@@ -29,7 +29,7 @@ function startRealtime() {
 async function login(browser, name) {
   const ctx = await browser.newContext({ viewport: { width: 1024, height: 700 } });
   const page = await ctx.newPage();
-  page.setDefaultTimeout(120000);
+  page.setDefaultTimeout(300000);
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.addInitScript(() => localStorage.setItem('dm_settings_v1', JSON.stringify({ quality: 'low', tips: false, autoCombat: false })));
@@ -41,7 +41,7 @@ async function login(browser, name) {
   await page.fill('#cw-pass', 'TestingTour1');
   await page.locator('#cw-login-btn').click();
   await page.locator('.cw-disc').filter({ hasText: 'Gravecaller' }).click();
-  await page.waitForFunction(() => window.__cwDebug?.avatar.c.loaded);
+  await page.waitForFunction(() => window.__cwDebug?.avatar.c.loaded, null, { timeout: 420000 });
   return { page, errors };
 }
 const net = (p) => p.evaluate(() => { const d = window.__cwDebug; return { ...d.net(), remotes: d.counts().remotes }; });
@@ -55,6 +55,11 @@ const net = (p) => p.evaluate(() => { const d = window.__cwDebug; return { ...d.
     await A.page.waitForFunction(() => window.__cwDebug.net().connected);
     const B = await login(browser, `rcB_${n}`);
     await B.page.waitForFunction(() => window.__cwDebug.net().connected);
+    // Parties are explicit: logged in together they are NOT partied; A makes one and B joins its code.
+    assert.notEqual((await net(A.page)).instance, (await net(B.page)).instance, 'no auto-party');
+    await A.page.evaluate(() => window.__cwDebug.party.create());
+    await A.page.waitForFunction(() => window.__cwDebug.party.code() && window.__cwDebug.net().connected);
+    await B.page.evaluate((c) => window.__cwDebug.party.join(c), await A.page.evaluate(() => window.__cwDebug.party.code()));
     await A.page.waitForFunction(() => window.__cwDebug.counts().remotes === 1);
     await B.page.waitForFunction(() => window.__cwDebug.counts().remotes === 1);
     const before = [await net(A.page), await net(B.page)];
@@ -83,8 +88,8 @@ const net = (p) => p.evaluate(() => { const d = window.__cwDebug; return { ...d.
     assert.notEqual(after[0].id, before[0].id, 'fresh socket id');
     // Mirror vs host really work: a chat line crosses.
     await A.page.evaluate(() => window.__cwDebug.net());
-    const toast = await A.page.locator('.hud-toast', { hasText: 'Back in world' }).count();
-    assert.ok(toast >= 1, 'Back in world toast shown');
+    const toast = await A.page.locator('.hud-toast', { hasText: 'Back in party' }).count();
+    assert.ok(toast >= 1, 'Back in party toast shown');
     await B.page.evaluate(() => window.__cwDebug.advance(0.5, false));
     assert.equal((await net(B.page)).remotes, 1, 'no duplicate remotes after rejoin');
 

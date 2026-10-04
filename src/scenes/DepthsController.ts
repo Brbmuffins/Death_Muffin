@@ -36,10 +36,14 @@ export interface DepthsHost {
   chronicle: Chronicle;
   sim: () => WorldSim | null;
   selfId: () => string;
-  /** Other players in the world (the Depths are solo for now). */
+  /** Other players in the world right now (a run is solo: a friend appearing mid-run closes the stair). */
   partySize: () => number;
-  /** This client keeps the world (solo, or the host). A guest only mirrors it. */
-  isAuthority: () => boolean;
+  /** The hero belongs to a party world (not their own solo one). */
+  inParty: () => boolean;
+  /** Leave the party's world for the descent: this client becomes the keeper of its own, so the run can start. Synchronous. */
+  stepOutOfParty: () => void;
+  /** The run is over: rejoin the party stepped out of (a no-op if none). */
+  stepBackIntoParty: () => void;
   level: () => number;
   /** The hero's discipline: the floor's and the chest's gear lean to its own armour set (loot.ts smart loot). */
   disciplineId?: () => string | undefined;
@@ -116,7 +120,7 @@ export class DepthsController {
 
   /** Why the stair will not take you down right now, or null if it will. */
   canEnter(): string | null {
-    return depthsEntryBlock({ partySize: this.host.partySize(), keeper: !!this.host.sim() && this.host.isAuthority(), alive: this.host.player.alive });
+    return depthsEntryBlock({ alive: this.host.player.alive });
   }
 
   /** The hover line for each stair, chest and exit. */
@@ -125,7 +129,8 @@ export class DepthsController {
     switch (it.kind) {
       case 'stair': {
         const why = this.canEnter();
-        return why ? why : 'Descend into the Catacomb Depths';
+        if (why) return why;
+        return this.host.inParty() ? 'Descend into the Catacomb Depths (you step out of your party until the run ends)' : 'Descend into the Catacomb Depths';
       }
       case 'depths_down':
         if (!run) return '';
@@ -185,14 +190,26 @@ export class DepthsController {
   /** Click the Warren's stair: start a run on depth 1. */
   enter(seed = (Math.random() * 0x100000000) >>> 0, depth = 1): boolean {
     const why = this.canEnter();
-    const sim = this.host.sim();
-    if (why || !sim) {
-      this.host.hud.toast(why ?? 'The stair is dark.', 'err');
+    if (why) {
+      this.host.hud.toast(why, 'err');
       audio.play('error');
-      if (this.host.partySize() > 0) this.host.tip('depths_solo', 0, { kind: 'asked' });
       return false;
     }
-    if (sim.depths) return false;
+    // A party member goes down alone: step out of the party first (this makes us the keeper of our own world).
+    const party = this.host.inParty();
+    if (party) {
+      this.host.stepOutOfParty();
+      this.host.tip('depths_solo', 600, { kind: 'asked' });
+    }
+    const sim = this.host.sim();
+    if (!sim || sim.depths) {
+      if (party) this.host.stepBackIntoParty();
+      if (!sim) {
+        this.host.hud.toast('The stair is dark.', 'err');
+        audio.play('error');
+      }
+      return false;
+    }
     this.chestOpened = false;
     this.over = false;
     this.endNote = null;
@@ -361,7 +378,7 @@ export class DepthsController {
     if (run && !this.over) {
       if (!inDepths) this.end('recalled');
       else if (this.host.partySize() > 0) {
-        this.host.hud.toast('A friend has joined: the Depths are solo for now, so the stair closes behind you.', 'err');
+        this.host.hud.toast('A friend appeared on the descent: a run is solo, so the stair closes behind you.', 'err');
         this.end('party');
         this.host.teleportTo(DEPTHS_STAIR.x, DEPTHS_STAIR.z + 2.3);
       } else if (run.stairOpen !== this.lastStairOpen) {
@@ -396,6 +413,7 @@ export class DepthsController {
 
   /** Tear the run down (sim, nav and picture). */
   private close() {
+    const hadRun = this.run !== null;
     this.host.sim()?.endDepths();
     this.view.clear();
     this.over = false;
@@ -403,9 +421,13 @@ export class DepthsController {
     this.chestOpened = false;
     this.leaveArmedUntil = 0;
     this.lastStairOpen = false;
+    if (hadRun && !this.disposed) this.host.stepBackIntoParty();
   }
 
+  private disposed = false;
+
   dispose() {
+    this.disposed = true;
     this.close();
     this.view.dispose();
     this.warrenStair.dispose();
