@@ -5,7 +5,7 @@ import { BREWS, BREW_KEYS, brewSummary } from '../content/brews';
 import { BUFF_FLASKS, HEALING_FLASKS, RARITY_COLOR, RARITY_MARK, itemMeta } from '../content/items';
 import { MEALS } from '../content/processing';
 import { EQUIP_SLOTS, equipSlotOf, equippedBySlot, type EquipSlot } from '../content/gear';
-import { ARMOR_BY_ID } from '../content/armorSets';
+import { ARMOR_BY_ID, ARMOR_PARTS } from '../content/armorSets';
 import { necroWeaponTooltip } from '../content/necroWeapons';
 import { ItemLocks, junkSlots } from '../gameplay/itemLocks';
 import { isSalvageable } from '../gameplay/salvageRules';
@@ -22,7 +22,8 @@ import { BELT_LABEL, beltOffer, beltTools, dismissOffer, isOnBelt, moveTools, of
 /** A small padlock for locked cells and the Lock button (inline SVG: no font or emoji dependency). */
 export const LOCK_SVG = '<svg viewBox="0 0 12 14" width="11" height="13" aria-hidden="true"><path d="M3 6V4.2a3 3 0 0 1 6 0V6" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="6" width="9" height="7" rx="1" fill="currentColor"/></svg>';
 import { badgeHtml, compareChipsHtml, compareTableHtml, itemLevelHtml, itemStatsHtml, itemTypeLabel, keepsForYou, setTooltipHtml, verdictHtml, type StatContextSource } from './gearText';
-import { resolveSetBonuses } from '../gameplay/setBonuses';
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+import { effectRelevant, resolveSetBonuses } from '../gameplay/setBonuses';
 
 const TYPE_GLYPH: Record<string, string> = {
   weapon: '⚔',
@@ -108,6 +109,7 @@ export class InventoryPanel {
       <div class="cw-inv-body">
         <div class="cw-equip-col">
           <div class="cw-equip" role="group" aria-label="Equipment"></div>
+          <div class="cw-setsum" role="group" aria-label="Set bonuses" hidden></div>
           <div class="cw-toolbelt" role="group" aria-label="Tool belt"></div>
           <button type="button" class="cw-button small cw-legion-btn" data-legion hidden aria-label="Open the Legion: gear for your thralls (Y)" title="Spare weapons and armour for your thralls (Y)">Legion · Y</button>
         </div>
@@ -208,6 +210,7 @@ export class InventoryPanel {
       grid.appendChild(cell);
     }
     this.renderEquipment();
+    this.renderSetSummary();
     this.renderLegionButton();
     this.renderToolBelt();
     this.renderTools();
@@ -319,6 +322,28 @@ export class InventoryPanel {
       }
       doll.appendChild(cell);
     }
+  }
+
+  /** Under the paper doll: for each set you wear (best two), five pips for its pieces, the tiers that are on, and what the next tier needs. */
+  private renderSetSummary() {
+    const box = this.el!.querySelector<HTMLDivElement>('.cw-setsum')!;
+    const sets = resolveSetBonuses(this.inventory.all).sets.slice(0, 2);
+    box.hidden = sets.length === 0;
+    box.innerHTML = sets.map((s) => {
+      const color = `#${s.accent.toString(16).padStart(6, '0')}`;
+      const family = this.statContext?.()?.discipline ?? { family: 'necromancer' as const };
+      const pips = ARMOR_PARTS.map((part) => `<i class="${s.wornParts.includes(part) ? 'on' : ''}" title="${part}${s.wornParts.includes(part) ? ' (worn)' : ''}"></i>`).join('');
+      const on = s.bonuses.filter((b) => b.active).map((b) => `<div class="on"><span class="n">${b.pieces}</span>${esc(b.name ? `${b.name}: ` : '')}${esc(b.lines.join(' \u00B7 '))}${effectRelevant(b.effect, family) ? '' : ' <i>(no effect for your class)</i>'}</div>`).join('');
+      const nextB = s.bonuses.find((b) => !b.active);
+      let next = '<div class="done">Set complete</div>';
+      if (nextB) {
+        const need = nextB.pieces - s.worn;
+        const miss = s.missing.map((m) => m.part).join(' or ');
+        const where = s.missing.length === 1 || need === s.missing.length ? s.missing.map((m) => m.where).filter((w, i, a) => a.indexOf(w) === i).join(', ') : '';
+        next = `<div class="nx"><span class="n">${nextB.pieces}</span>${esc(nextB.name ? `${nextB.name}: ` : '')}${esc(nextB.lines.join(' \u00B7 '))}<em>Need ${need} more: ${esc(need === s.missing.length ? miss.replace(/ or /g, ', ') : miss)}${where ? ` \u00B7 ${esc(where)}` : ''}</em></div>`;
+      }
+      return `<div class="ss" style="--set:${color}"><div class="hd"><b>${esc(s.setName)}</b><span class="pips">${pips}</span></div>${on}${next}</div>`;
+    }).join('');
   }
 
   /** The Legion button under the tool belt: a dot when a spare piece would beat what the legion wears. */

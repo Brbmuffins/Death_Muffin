@@ -80,6 +80,7 @@ export class SettingsPanel extends SimplePanel {
         <label class="row">Interface<input type="range" min="0" max="1" step="0.05" data-vol-ui aria-label="Interface volume: clicks, coins and level-up chimes" /></label>
         <label class="row">Reduce motion (no camera shake)<input type="checkbox" data-rm /></label>
         <label class="row">Damage numbers<input type="checkbox" data-dn /></label>
+        <label class="row">Hide helms<input type="checkbox" data-hidehelm /></label>
         <label class="row">Don't show tips<input type="checkbox" data-tips /></label>
         <label class="row">Show the “Next” suggestion under the minimap<input type="checkbox" data-guidance aria-label="Show the Next suggestion under the minimap" /></label>
         <label class="row">Point to it on the minimap<input type="checkbox" data-guideping aria-label="Point the Next suggestion out on the minimap" /></label>
@@ -175,6 +176,9 @@ export class SettingsPanel extends SimplePanel {
     const rm = this.el!.querySelector<HTMLInputElement>('[data-rm]')!;
     rm.checked = settings.reducedMotion;
     rm.addEventListener('change', () => updateSettings({ reducedMotion: rm.checked }));
+    const hh = this.el!.querySelector<HTMLInputElement>('[data-hidehelm]')!;
+    hh.checked = settings.hideHelm;
+    hh.addEventListener('change', () => updateSettings({ hideHelm: hh.checked }));
     const dn = this.el!.querySelector<HTMLInputElement>('[data-dn]')!;
     dn.checked = settings.damageNumbers;
     dn.addEventListener('change', () => updateSettings({ damageNumbers: dn.checked }));

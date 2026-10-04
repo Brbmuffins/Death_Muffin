@@ -6,7 +6,7 @@
  *   pen    deepest prop vertex inside the body capsules (torso, chest, head, upper arms, thighs), metres
  *   drift  how far a held prop's tip sits from where a fully hand-driven grip (follow = 1) would put it, metres
  *   gap    how much farther the nearest prop vertex is from the hand bone than at the settled idle pose, metres
- *   float / sink   helm apex above the skull crown past a 5 cm seat, or skull pushing through the helm, metres
+ *   float / sink   helm apex above the skull crown past a 9 cm allowance (the fitted dome sits on the hood top; its crest or crown ornaments add up to ~9 cm), or skull pushing through the helm, metres
  *   hem    cape hem vertices inside the thigh / calf capsules, metres
  *
  * Capsule radii come from the skinned mesh itself (a low percentile of the vertices each bone owns, in bind pose), so a
@@ -227,6 +227,8 @@ export async function measureConfig(
   (avatar as unknown as { swayT: number }).swayT = 0; // the cape's sway phase is random per avatar
   const rig = buildRig(avatar);
   avatar.setEquipment({ main_hand: { item_id: `${main}_gold` }, off_hand: { item_id: `${off}_gold` }, head: { item_id: HELM_ID } });
+  // The four necromancer rigs are hooded, so a worn helm is tint only; the dome is mounted anyway to keep its fit measured.
+  avatar.mountDome({ item_id: HELM_ID });
   avatar.setCape(CAPE_ID);
   const acc = avatar as unknown as Access;
   await vi.waitFor(() => { for (const [slot, w] of acc.worn) if (slot !== 'head') expect(w.obj.userData.model === true).toBe(true); });
@@ -330,7 +332,7 @@ export async function measureConfig(
     const helmR = percentile(hpts.map(horiz), 0.95);
     const headR = Math.max(0, ...hv.filter((v) => v.clone().sub(hp).dot(up) >= low).map(horiz));
     const clear = top - crown;
-    record(`helm|${clip}|float`, Math.max(0, clear - 0.05), t);
+    record(`helm|${clip}|float`, Math.max(0, clear - 0.09), t);
     record(`helm|${clip}|sink`, Math.max(0, -clear, headR - helmR), t);
     // Cape: cloth against the body core, hem against the legs.
     const cpts = propPoints(capeObj, 260);

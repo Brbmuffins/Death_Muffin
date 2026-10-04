@@ -8,7 +8,7 @@ const METRIC_NOTE: Record<string, string> = {
   pen: 'prop (or cape cloth) vertex inside the body capsules',
   drift: 'held prop tip off where the wrist alone would put it: the grip stabiliser (follow < 1) overriding the hand, which reads as a floaty or detached weapon. Bigger is worse; 0 means follow = 1',
   gap: 'nearest prop vertex to the hand bone, beyond its distance at the settled idle pose (the prop origin rides the wrist, so this stays small unless the grip offset moves)',
-  float: 'helm apex above the crown past a 5 cm seat',
+  float: 'helm apex above the crown past a 9 cm allowance (hood-top fit plus ornaments)',
   sink: 'skull through the helm',
   hem: 'cape hem inside thigh / calf capsules',
 };

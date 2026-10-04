@@ -365,10 +365,11 @@ export function buildOffhand(itemId: string, rarity?: string): THREE.Group {
 }
 
 /** A helm that sits on the Head bone: dome, brim and (for the noble tiers) a crest. */
-export function buildHelm(itemId: string, rarity?: string): THREE.Group {
+export function buildHelm(itemId: string, rarity?: string, scale = 1): THREE.Group {
   const t = gearTier(itemId, rarity);
   const set = ARMOR_BY_ID[itemId];
   const g = new THREE.Group();
+  g.scale.setScalar(scale);
   const metal = metalMat(t);
   const dome = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), metal);
   const brim = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.015, 6, 20), metal);
@@ -455,11 +456,11 @@ export function buildCape(color: number, trim: number): THREE.Group {
   g.add(back);
   const cloth = new THREE.MeshStandardMaterial({ color, roughness: 0.92, metalness: 0.02, side: THREE.DoubleSide });
   const edge = new THREE.MeshStandardMaterial({ color: trim, roughness: 0.5, metalness: 0.35, emissive: trim, emissiveIntensity: 0.18, side: THREE.DoubleSide });
-  const arc = 1.7;
+  const arc = 1.45;
   const start = -arc / 2;
-  const height = 0.92;
-  const top = 0.27;
-  const bottom = 0.42;
+  const height = 0.78;
+  const top = 0.25;
+  const bottom = 0.37;
   const body = new THREE.Mesh(new THREE.CylinderGeometry(top, bottom, height, 16, 4, true, start, arc), cloth);
   body.position.set(0, -height / 2, 0);
   const hem = new THREE.Mesh(new THREE.CylinderGeometry(bottom - 0.002, bottom + 0.004, 0.045, 16, 1, true, start, arc), edge);
@@ -491,18 +492,18 @@ export interface GripSpec {
   follow: number;
 }
 
-const BASE_GRIP: GripSpec = { lean: [0, 0.1], follow: 0.5 };
+const BASE_GRIP: GripSpec = { lean: [0, 0.1], follow: 0.8 };
 
 export const GRIPS: Record<string, GripSpec> = {
   // main hand
-  staff: { lean: [0.06, 0.1], follow: 0.3 },
-  scythe: { lean: [0.06, 0.1], follow: 0.3 },
-  wand: { lean: [0.35, 0.3], follow: 0.3 },
-  sickle: { lean: [0.35, 0.3], follow: 0.3 },
+  staff: { lean: [0.06, 0.1], follow: 0.8 },
+  scythe: { lean: [0.06, 0.1], follow: 0.8 },
+  wand: { lean: [0.35, 0.3], follow: 0.8 },
+  sickle: { lean: [0.35, 0.3], follow: 0.8 },
   // off hand
-  skull_focus: { lean: [0.25, 0.1], follow: 0.5 },
-  grimoire: { lean: [0.45, 0.15], offset: [0.04, 0.02, 0.06], follow: 0.5 },
-  mourning_bell: { lean: [-0.5, 0.2], offset: [0.05, 0, 0.06], follow: 0.5 },
+  skull_focus: { lean: [0.25, 0.1], follow: 0.8 },
+  grimoire: { lean: [0.45, 0.15], offset: [0.04, 0.02, 0.06], follow: 0.8 },
+  mourning_bell: { lean: [-0.5, 0.2], offset: [0.05, 0, 0.06], follow: 0.8 },
 };
 
 export interface Grip {

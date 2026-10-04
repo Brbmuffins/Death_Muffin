@@ -9,7 +9,7 @@ Matrix: 4 heroes x 4 main-hand kinds (staff, scythe, wand, sickle) x 3 off-hand 
 - **pen** (budget 7.0 cm): prop (or cape cloth) vertex inside the body capsules.
 - **drift** (budget 100.0 cm): held prop tip off where the wrist alone would put it: the grip stabiliser (follow < 1) overriding the hand, which reads as a floaty or detached weapon. Bigger is worse; 0 means follow = 1.
 - **gap** (budget 3.0 cm): nearest prop vertex to the hand bone, beyond its distance at the settled idle pose (the prop origin rides the wrist, so this stays small unless the grip offset moves).
-- **float** (budget 3.0 cm): helm apex above the crown past a 5 cm seat.
+- **float** (budget 3.0 cm): helm apex above the crown past a 9 cm allowance (hood-top fit plus ornaments).
 - **sink** (budget 2.0 cm): skull through the helm.
 - **hem** (budget 5.0 cm): cape hem inside thigh / calf capsules.
 - Per clip, *worst* is the largest value on any sampled frame and *p95* the 95th percentile over frames. A frame's value is its worst prop vertex.
@@ -20,91 +20,91 @@ Matrix: 4 heroes x 4 main-hand kinds (staff, scythe, wand, sickle) x 3 off-hand 
 
 | # | hero | item | clip | frame (s) | metric | worst | p95 | x budget |
 |---|---|---|---|---|---|---|---|---|
-| 1 | ossuary | cape | death2 | 2.47 | hem | 14.5 cm | 12.3 cm | 2.9 |
-| 2 | ossuary | cape | hurt2 | 0.20 | hem | 13.3 cm | 7.6 cm | 2.7 |
-| 3 | ossuary | helm | death2 | 3.13 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 4 | ossuary | helm | flick | 1.00 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 5 | ossuary | helm | channel | 0.13 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 6 | ossuary | helm | slam | 1.60 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 7 | ossuary | helm | summon | 0.60 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 8 | ossuary | helm | sweep | 1.40 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 9 | ossuary | helm | run | 0.80 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 10 | ossuary | helm | dig | 1.00 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 11 | ossuary | helm | cast | 0.93 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 12 | ossuary | helm | attack | 1.27 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 13 | ossuary | helm | death | 1.67 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 14 | ossuary | helm | idle | 12.60 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 15 | ossuary | helm | walk | 2.27 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 16 | ossuary | helm | hurt | 0.53 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 17 | ossuary | helm | hurt2 | 0.53 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 18 | ossuary | cape | cast | 1.00 | hem | 12.4 cm | 10.8 cm | 2.5 |
-| 19 | gravecaller | helm | death2 | 1.33 | sink | 4.5 cm | 4.0 cm | 2.3 |
-| 20 | rotweaver | staff | summon | 0.67 | drift | 224.7 cm | 205.8 cm | 2.2 |
-| 21 | gravecaller | staff | summon | 0.67 | drift | 223.8 cm | 204.9 cm | 2.2 |
-| 22 | ossuary | staff | summon | 0.67 | drift | 223.7 cm | 205.6 cm | 2.2 |
-| 23 | mourner | staff | summon | 0.67 | drift | 222.6 cm | 204.7 cm | 2.2 |
-| 24 | mourner | cape | death2 | 2.67 | hem | 10.9 cm | 10.0 cm | 2.2 |
-| 25 | gravecaller | staff | attack | 1.93 | drift | 215.1 cm | 163.9 cm | 2.2 |
-| 26 | gravecaller | staff | slam | 0.60 | drift | 214.7 cm | 208.0 cm | 2.1 |
-| 27 | rotweaver | staff | slam | 0.60 | drift | 214.0 cm | 207.1 cm | 2.1 |
-| 28 | mourner | staff | attack | 1.93 | drift | 214.0 cm | 162.9 cm | 2.1 |
-| 29 | mourner | scythe | summon | 0.67 | drift | 213.8 cm | 195.5 cm | 2.1 |
-| 30 | rotweaver | staff | attack | 1.93 | drift | 213.8 cm | 163.0 cm | 2.1 |
-| 31 | rotweaver | staff | flick | 0.47 | drift | 213.5 cm | 200.0 cm | 2.1 |
-| 32 | mourner | staff | slam | 0.60 | drift | 213.1 cm | 207.2 cm | 2.1 |
-| 33 | ossuary | staff | attack | 1.93 | drift | 213.0 cm | 162.3 cm | 2.1 |
-| 34 | mourner | staff | flick | 0.47 | drift | 212.9 cm | 201.9 cm | 2.1 |
-| 35 | ossuary | staff | slam | 0.60 | drift | 212.8 cm | 206.6 cm | 2.1 |
-| 36 | ossuary | scythe | summon | 0.67 | drift | 212.4 cm | 194.4 cm | 2.1 |
-| 37 | gravecaller | scythe | summon | 0.67 | drift | 212.3 cm | 195.3 cm | 2.1 |
-| 38 | gravecaller | staff | flick | 0.47 | drift | 212.0 cm | 199.4 cm | 2.1 |
-| 39 | ossuary | staff | flick | 0.47 | drift | 211.4 cm | 199.8 cm | 2.1 |
-| 40 | rotweaver | scythe | summon | 0.67 | drift | 211.1 cm | 194.1 cm | 2.1 |
+| 1 | rotweaver | cape | hurt2 | 0.27 | hem | 9.8 cm | 7.2 cm | 2.0 |
+| 2 | ossuary | staff | death | 3.00 | pen | 13.0 cm | 12.0 cm | 1.9 |
+| 3 | ossuary | scythe | death | 3.00 | pen | 12.5 cm | 11.5 cm | 1.8 |
+| 4 | ossuary | grimoire | hurt | 0.67 | pen | 12.5 cm | 11.6 cm | 1.8 |
+| 5 | rotweaver | grimoire | hurt | 0.53 | pen | 12.1 cm | 11.9 cm | 1.7 |
+| 6 | rotweaver | skull_focus | hurt | 0.40 | pen | 12.1 cm | 8.2 cm | 1.7 |
+| 7 | ossuary | skull_focus | hurt | 0.40 | pen | 11.4 cm | 6.9 cm | 1.6 |
+| 8 | ossuary | sickle | attack | 1.53 | pen | 10.7 cm | 6.0 cm | 1.5 |
+| 9 | rotweaver | wand | dig | 0.87 | pen | 10.6 cm | 10.5 cm | 1.5 |
+| 10 | rotweaver | sickle | dig | 1.07 | pen | 10.5 cm | 10.4 cm | 1.5 |
+| 11 | rotweaver | staff | attack | 0.20 | pen | 10.4 cm | 10.1 cm | 1.5 |
+| 12 | ossuary | helm | death2 | 3.33 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 13 | ossuary | helm | dig | 1.00 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 14 | ossuary | helm | death | 1.60 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 15 | ossuary | helm | sweep | 0.60 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 16 | ossuary | helm | flick | 0.20 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 17 | ossuary | helm | summon | 0.60 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 18 | ossuary | helm | slam | 0.87 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 19 | ossuary | helm | channel | 1.13 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 20 | ossuary | helm | attack | 2.40 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 21 | ossuary | helm | run | 0.93 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 22 | ossuary | helm | idle | 4.33 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 23 | ossuary | helm | walk | 2.13 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 24 | ossuary | helm | cast | 1.00 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 25 | ossuary | helm | hurt | 0.00 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 26 | ossuary | helm | hurt2 | 1.73 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 27 | mourner | cape | hurt2 | 0.33 | hem | 7.3 cm | 5.5 cm | 1.5 |
+| 28 | ossuary | sickle | slam | 0.13 | pen | 10.1 cm | 9.6 cm | 1.4 |
+| 29 | rotweaver | staff | death2 | 0.47 | pen | 10.1 cm | 8.1 cm | 1.4 |
+| 30 | mourner | mourning_bell | attack | 1.27 | pen | 10.1 cm | 0.1 cm | 1.4 |
+| 31 | gravecaller | skull_focus | hurt | 0.40 | pen | 10.1 cm | 6.1 cm | 1.4 |
+| 32 | rotweaver | cape | death2 | 2.93 | hem | 7.1 cm | 3.2 cm | 1.4 |
+| 33 | ossuary | cape | hurt2 | 0.27 | hem | 7.1 cm | 5.4 cm | 1.4 |
+| 34 | rotweaver | scythe | death2 | 0.53 | pen | 9.9 cm | 6.9 cm | 1.4 |
+| 35 | rotweaver | cape | hurt2 | 0.27 | pen | 9.8 cm | 8.0 cm | 1.4 |
+| 36 | mourner | scythe | slam | 0.60 | pen | 9.6 cm | 5.3 cm | 1.4 |
+| 37 | rotweaver | staff | cast | 0.93 | pen | 9.6 cm | 4.4 cm | 1.4 |
+| 38 | mourner | skull_focus | death | 2.27 | pen | 9.5 cm | 9.4 cm | 1.4 |
+| 39 | gravecaller | cape | hurt2 | 0.40 | hem | 6.8 cm | 4.9 cm | 1.4 |
+| 40 | mourner | skull_focus | hurt2 | 1.13 | pen | 9.4 cm | 9.2 cm | 1.3 |
 
 ## Worst 10 by pen
 
 | # | hero | item | clip | frame (s) | metric | worst | p95 | x budget |
 |---|---|---|---|---|---|---|---|---|
-| 1 | ossuary | staff | hurt2 | 0.20 | pen | 13.6 cm | 5.2 cm | 1.9 |
-| 2 | ossuary | grimoire | hurt | 0.53 | pen | 12.5 cm | 12.5 cm | 1.8 |
-| 3 | rotweaver | skull_focus | hurt | 0.40 | pen | 12.2 cm | 11.1 cm | 1.7 |
-| 4 | rotweaver | grimoire | hurt | 0.53 | pen | 12.0 cm | 11.9 cm | 1.7 |
-| 5 | ossuary | skull_focus | hurt | 0.40 | pen | 11.8 cm | 9.2 cm | 1.7 |
-| 6 | ossuary | staff | summon | 0.60 | pen | 11.2 cm | 9.4 cm | 1.6 |
-| 7 | rotweaver | staff | summon | 0.60 | pen | 11.2 cm | 10.1 cm | 1.6 |
-| 8 | rotweaver | sickle | dig | 0.67 | pen | 10.7 cm | 10.6 cm | 1.5 |
-| 9 | rotweaver | staff | cast | 0.93 | pen | 10.6 cm | 3.0 cm | 1.5 |
-| 10 | gravecaller | skull_focus | hurt | 0.40 | pen | 10.6 cm | 10.0 cm | 1.5 |
+| 1 | ossuary | staff | death | 3.00 | pen | 13.0 cm | 12.0 cm | 1.9 |
+| 2 | ossuary | scythe | death | 3.00 | pen | 12.5 cm | 11.5 cm | 1.8 |
+| 3 | ossuary | grimoire | hurt | 0.67 | pen | 12.5 cm | 11.6 cm | 1.8 |
+| 4 | rotweaver | grimoire | hurt | 0.53 | pen | 12.1 cm | 11.9 cm | 1.7 |
+| 5 | rotweaver | skull_focus | hurt | 0.40 | pen | 12.1 cm | 8.2 cm | 1.7 |
+| 6 | ossuary | skull_focus | hurt | 0.40 | pen | 11.4 cm | 6.9 cm | 1.6 |
+| 7 | ossuary | sickle | attack | 1.53 | pen | 10.7 cm | 6.0 cm | 1.5 |
+| 8 | rotweaver | wand | dig | 0.87 | pen | 10.6 cm | 10.5 cm | 1.5 |
+| 9 | rotweaver | sickle | dig | 1.07 | pen | 10.5 cm | 10.4 cm | 1.5 |
+| 10 | rotweaver | staff | attack | 0.20 | pen | 10.4 cm | 10.1 cm | 1.5 |
 
 ## Worst 10 by drift
 
 | # | hero | item | clip | frame (s) | metric | worst | p95 | x budget |
 |---|---|---|---|---|---|---|---|---|
-| 1 | rotweaver | staff | summon | 0.67 | drift | 224.7 cm | 205.8 cm | 2.2 |
-| 2 | gravecaller | staff | summon | 0.67 | drift | 223.8 cm | 204.9 cm | 2.2 |
-| 3 | ossuary | staff | summon | 0.67 | drift | 223.7 cm | 205.6 cm | 2.2 |
-| 4 | mourner | staff | summon | 0.67 | drift | 222.6 cm | 204.7 cm | 2.2 |
-| 5 | gravecaller | staff | attack | 1.93 | drift | 215.1 cm | 163.9 cm | 2.2 |
-| 6 | gravecaller | staff | slam | 0.60 | drift | 214.7 cm | 208.0 cm | 2.1 |
-| 7 | rotweaver | staff | slam | 0.60 | drift | 214.0 cm | 207.1 cm | 2.1 |
-| 8 | mourner | staff | attack | 1.93 | drift | 214.0 cm | 162.9 cm | 2.1 |
-| 9 | mourner | scythe | summon | 0.67 | drift | 213.8 cm | 195.5 cm | 2.1 |
-| 10 | rotweaver | staff | attack | 1.93 | drift | 213.8 cm | 163.0 cm | 2.1 |
+| 1 | rotweaver | staff | summon | 0.67 | drift | 76.4 cm | 67.1 cm | 0.8 |
+| 2 | gravecaller | staff | summon | 0.67 | drift | 76.1 cm | 66.8 cm | 0.8 |
+| 3 | ossuary | staff | summon | 0.67 | drift | 76.0 cm | 67.0 cm | 0.8 |
+| 4 | mourner | staff | summon | 0.67 | drift | 75.7 cm | 66.8 cm | 0.8 |
+| 5 | mourner | scythe | summon | 0.67 | drift | 72.7 cm | 63.8 cm | 0.7 |
+| 6 | ossuary | scythe | summon | 0.67 | drift | 72.2 cm | 63.4 cm | 0.7 |
+| 7 | gravecaller | scythe | summon | 0.67 | drift | 72.2 cm | 63.7 cm | 0.7 |
+| 8 | rotweaver | scythe | summon | 0.67 | drift | 71.8 cm | 63.3 cm | 0.7 |
+| 9 | gravecaller | staff | attack | 1.93 | drift | 71.4 cm | 50.4 cm | 0.7 |
+| 10 | gravecaller | staff | slam | 0.60 | drift | 71.2 cm | 68.1 cm | 0.7 |
 
 ## Worst 10 by gap
 
 | # | hero | item | clip | frame (s) | metric | worst | p95 | x budget |
 |---|---|---|---|---|---|---|---|---|
-| 1 | gravecaller | mourning_bell | attack | 1.73 | gap | 4.4 cm | 1.4 cm | 1.5 |
-| 2 | gravecaller | mourning_bell | slam | 0.40 | gap | 4.3 cm | 2.9 cm | 1.4 |
-| 3 | rotweaver | grimoire | death | 1.87 | gap | 4.2 cm | 1.2 cm | 1.4 |
-| 4 | ossuary | grimoire | death | 1.87 | gap | 4.0 cm | 1.3 cm | 1.3 |
-| 5 | mourner | mourning_bell | slam | 0.40 | gap | 3.8 cm | 2.0 cm | 1.3 |
-| 6 | gravecaller | mourning_bell | summon | 0.67 | gap | 3.7 cm | 3.4 cm | 1.2 |
-| 7 | ossuary | mourning_bell | slam | 0.33 | gap | 3.3 cm | 3.0 cm | 1.1 |
-| 8 | ossuary | mourning_bell | attack | 1.67 | gap | 3.3 cm | 2.3 cm | 1.1 |
-| 9 | gravecaller | grimoire | death2 | 1.87 | gap | 3.2 cm | 2.9 cm | 1.1 |
-| 10 | ossuary | mourning_bell | summon | 0.53 | gap | 3.1 cm | 3.0 cm | 1.0 |
+| 1 | gravecaller | grimoire | death | 1.67 | gap | 2.8 cm | 2.2 cm | 0.9 |
+| 2 | gravecaller | grimoire | slam | 0.33 | gap | 2.6 cm | 1.9 cm | 0.9 |
+| 3 | gravecaller | grimoire | channel | 0.93 | gap | 2.2 cm | 2.0 cm | 0.7 |
+| 4 | gravecaller | grimoire | run | 0.33 | gap | 2.1 cm | 1.9 cm | 0.7 |
+| 5 | gravecaller | grimoire | flick | 1.00 | gap | 2.0 cm | 2.0 cm | 0.7 |
+| 6 | gravecaller | grimoire | hurt | 0.33 | gap | 2.0 cm | 1.8 cm | 0.7 |
+| 7 | mourner | grimoire | hurt | 0.33 | gap | 2.0 cm | 1.8 cm | 0.7 |
+| 8 | mourner | grimoire | slam | 0.73 | gap | 2.0 cm | 1.5 cm | 0.7 |
+| 9 | mourner | grimoire | flick | 1.00 | gap | 2.0 cm | 1.9 cm | 0.7 |
+| 10 | mourner | grimoire | channel | 1.00 | gap | 2.0 cm | 1.5 cm | 0.7 |
 
 ## Worst 10 by float
 
@@ -125,59 +125,59 @@ Matrix: 4 heroes x 4 main-hand kinds (staff, scythe, wand, sickle) x 3 off-hand 
 
 | # | hero | item | clip | frame (s) | metric | worst | p95 | x budget |
 |---|---|---|---|---|---|---|---|---|
-| 1 | ossuary | helm | death2 | 3.13 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 2 | ossuary | helm | flick | 1.00 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 3 | ossuary | helm | channel | 0.13 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 4 | ossuary | helm | slam | 1.60 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 5 | ossuary | helm | summon | 0.60 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 6 | ossuary | helm | sweep | 1.40 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 7 | ossuary | helm | run | 0.80 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 8 | ossuary | helm | dig | 1.00 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 9 | ossuary | helm | cast | 0.93 | sink | 5.3 cm | 5.3 cm | 2.7 |
-| 10 | ossuary | helm | attack | 1.27 | sink | 5.3 cm | 5.3 cm | 2.7 |
+| 1 | ossuary | helm | death2 | 3.33 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 2 | ossuary | helm | dig | 1.00 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 3 | ossuary | helm | death | 1.60 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 4 | ossuary | helm | sweep | 0.60 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 5 | ossuary | helm | flick | 0.20 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 6 | ossuary | helm | summon | 0.60 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 7 | ossuary | helm | slam | 0.87 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 8 | ossuary | helm | channel | 1.13 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 9 | ossuary | helm | attack | 2.40 | sink | 3.0 cm | 3.0 cm | 1.5 |
+| 10 | ossuary | helm | run | 0.93 | sink | 3.0 cm | 3.0 cm | 1.5 |
 
 ## Worst 10 by hem
 
 | # | hero | item | clip | frame (s) | metric | worst | p95 | x budget |
 |---|---|---|---|---|---|---|---|---|
-| 1 | ossuary | cape | death2 | 2.47 | hem | 14.5 cm | 12.3 cm | 2.9 |
-| 2 | ossuary | cape | hurt2 | 0.20 | hem | 13.3 cm | 7.6 cm | 2.7 |
-| 3 | ossuary | cape | cast | 1.00 | hem | 12.4 cm | 10.8 cm | 2.5 |
-| 4 | mourner | cape | death2 | 2.67 | hem | 10.9 cm | 10.0 cm | 2.2 |
-| 5 | rotweaver | cape | death2 | 2.87 | hem | 9.9 cm | 7.6 cm | 2.0 |
-| 6 | rotweaver | cape | hurt2 | 0.20 | hem | 9.6 cm | 1.2 cm | 1.9 |
-| 7 | mourner | cape | hurt2 | 0.20 | hem | 9.6 cm | 7.6 cm | 1.9 |
-| 8 | gravecaller | cape | death2 | 2.60 | hem | 9.0 cm | 6.7 cm | 1.8 |
-| 9 | gravecaller | cape | hurt2 | 0.27 | hem | 7.7 cm | 5.3 cm | 1.5 |
-| 10 | rotweaver | cape | cast | 1.00 | hem | 7.2 cm | 6.4 cm | 1.4 |
+| 1 | rotweaver | cape | hurt2 | 0.27 | hem | 9.8 cm | 7.2 cm | 2.0 |
+| 2 | mourner | cape | hurt2 | 0.33 | hem | 7.3 cm | 5.5 cm | 1.5 |
+| 3 | rotweaver | cape | death2 | 2.93 | hem | 7.1 cm | 3.2 cm | 1.4 |
+| 4 | ossuary | cape | hurt2 | 0.27 | hem | 7.1 cm | 5.4 cm | 1.4 |
+| 5 | gravecaller | cape | hurt2 | 0.40 | hem | 6.8 cm | 4.9 cm | 1.4 |
+| 6 | ossuary | cape | death2 | 2.47 | hem | 4.8 cm | 1.0 cm | 1.0 |
+| 7 | rotweaver | cape | cast | 1.00 | hem | 2.8 cm | 1.2 cm | 0.6 |
+| 8 | mourner | cape | death2 | 2.47 | hem | 2.0 cm | 0.0 cm | 0.4 |
+| 9 | ossuary | cape | cast | 1.00 | hem | 1.4 cm | 1.0 cm | 0.3 |
+| 10 | ossuary | cape | dig | 0.00 | hem | 0.0 cm | 0.0 cm | 0.0 |
 
 ## Worst per item (over every clip and hero)
 
 | item | metric | worst | hero | clip | frame (s) |
 |---|---|---|---|---|---|
-| staff | drift | 224.7 cm | rotweaver | summon | 0.67 |
-| scythe | drift | 213.8 cm | mourner | summon | 0.67 |
-| sickle | drift | 76.1 cm | mourner | flick | 0.47 |
-| wand | drift | 65.8 cm | mourner | flick | 0.47 |
-| skull_focus | drift | 49.0 cm | gravecaller | attack | 1.67 |
-| mourning_bell | drift | 48.0 cm | gravecaller | slam | 0.53 |
-| grimoire | drift | 47.6 cm | mourner | death | 1.87 |
-| cape | hem | 14.5 cm | ossuary | death2 | 2.47 |
-| staff | pen | 13.6 cm | ossuary | hurt2 | 0.20 |
-| grimoire | pen | 12.5 cm | ossuary | hurt | 0.53 |
-| skull_focus | pen | 12.2 cm | rotweaver | hurt | 0.40 |
-| sickle | pen | 10.7 cm | rotweaver | dig | 0.67 |
-| wand | pen | 10.5 cm | rotweaver | dig | 1.00 |
-| scythe | pen | 10.2 cm | mourner | hurt2 | 0.20 |
-| cape | pen | 10.1 cm | rotweaver | death2 | 2.87 |
-| mourning_bell | pen | 7.0 cm | rotweaver | attack | 1.93 |
-| helm | sink | 5.3 cm | ossuary | death2 | 3.13 |
-| mourning_bell | gap | 4.4 cm | gravecaller | attack | 1.73 |
-| grimoire | gap | 4.2 cm | rotweaver | death | 1.87 |
-| scythe | gap | 0.0 cm | gravecaller | hurt2 | 0.40 |
+| staff | drift | 76.4 cm | rotweaver | summon | 0.67 |
+| scythe | drift | 72.7 cm | mourner | summon | 0.67 |
+| sickle | drift | 25.4 cm | mourner | flick | 0.47 |
+| wand | drift | 21.9 cm | mourner | flick | 0.47 |
+| skull_focus | drift | 21.0 cm | gravecaller | attack | 1.67 |
+| mourning_bell | drift | 20.7 cm | gravecaller | slam | 0.53 |
+| grimoire | drift | 20.5 cm | mourner | death | 1.87 |
+| staff | pen | 13.0 cm | ossuary | death | 3.00 |
+| scythe | pen | 12.5 cm | ossuary | death | 3.00 |
+| grimoire | pen | 12.5 cm | ossuary | hurt | 0.67 |
+| skull_focus | pen | 12.1 cm | rotweaver | hurt | 0.40 |
+| sickle | pen | 10.7 cm | ossuary | attack | 1.53 |
+| wand | pen | 10.6 cm | rotweaver | dig | 0.87 |
+| mourning_bell | pen | 10.1 cm | mourner | attack | 1.27 |
+| cape | pen | 9.8 cm | rotweaver | hurt2 | 0.27 |
+| cape | hem | 9.8 cm | rotweaver | hurt2 | 0.27 |
+| helm | sink | 3.0 cm | ossuary | death2 | 3.33 |
+| grimoire | gap | 2.8 cm | gravecaller | death | 1.67 |
+| mourning_bell | gap | 1.8 cm | rotweaver | attack | 1.67 |
+| scythe | gap | 0.0 cm | gravecaller | run | 0.67 |
 | staff | gap | 0.0 cm | gravecaller | run | 0.67 |
 | sickle | gap | 0.0 cm | gravecaller | run | 0.67 |
-| wand | gap | 0.0 cm | gravecaller | hurt2 | 0.93 |
+| wand | gap | 0.0 cm | gravecaller | hurt2 | 0.20 |
 | skull_focus | gap | 0.0 cm | gravecaller | death | 1.20 |
 | helm | float | 0.0 cm | ossuary | cast | 0.00 |
 
@@ -185,30 +185,30 @@ Matrix: 4 heroes x 4 main-hand kinds (staff, scythe, wand, sickle) x 3 off-hand 
 
 | hero | metric | item | worst | clip |
 |---|---|---|---|---|
-| ossuary | pen | staff | 13.6 cm | hurt2 |
-| ossuary | drift | staff | 223.7 cm | summon |
-| ossuary | gap | grimoire | 4.0 cm | death |
+| ossuary | pen | staff | 13.0 cm | death |
+| ossuary | drift | staff | 76.0 cm | summon |
+| ossuary | gap | grimoire | 1.8 cm | summon |
 | ossuary | float | helm | 0.0 cm | cast |
-| ossuary | sink | helm | 5.3 cm | death2 |
-| ossuary | hem | cape | 14.5 cm | death2 |
-| gravecaller | pen | skull_focus | 10.6 cm | hurt |
-| gravecaller | drift | staff | 223.8 cm | summon |
-| gravecaller | gap | mourning_bell | 4.4 cm | attack |
+| ossuary | sink | helm | 3.0 cm | death2 |
+| ossuary | hem | cape | 7.1 cm | hurt2 |
+| gravecaller | pen | skull_focus | 10.1 cm | hurt |
+| gravecaller | drift | staff | 76.1 cm | summon |
+| gravecaller | gap | grimoire | 2.8 cm | death |
 | gravecaller | float | helm | 0.0 cm | cast |
-| gravecaller | sink | helm | 4.5 cm | death2 |
-| gravecaller | hem | cape | 9.0 cm | death2 |
-| mourner | pen | scythe | 10.2 cm | hurt2 |
-| mourner | drift | staff | 222.6 cm | summon |
-| mourner | gap | mourning_bell | 3.8 cm | slam |
+| gravecaller | sink | helm | 0.0 cm | cast |
+| gravecaller | hem | cape | 6.8 cm | hurt2 |
+| mourner | pen | mourning_bell | 10.1 cm | attack |
+| mourner | drift | staff | 75.7 cm | summon |
+| mourner | gap | grimoire | 2.0 cm | hurt |
 | mourner | float | helm | 0.0 cm | cast |
-| mourner | sink | helm | 3.9 cm | cast |
-| mourner | hem | cape | 10.9 cm | death2 |
-| rotweaver | pen | skull_focus | 12.2 cm | hurt |
-| rotweaver | drift | staff | 224.7 cm | summon |
-| rotweaver | gap | grimoire | 4.2 cm | death |
+| mourner | sink | helm | 1.1 cm | cast |
+| mourner | hem | cape | 7.3 cm | hurt2 |
+| rotweaver | pen | grimoire | 12.1 cm | hurt |
+| rotweaver | drift | staff | 76.4 cm | summon |
+| rotweaver | gap | mourning_bell | 1.8 cm | attack |
 | rotweaver | float | helm | 0.0 cm | cast |
-| rotweaver | sink | helm | 3.8 cm | death2 |
-| rotweaver | hem | cape | 9.9 cm | death2 |
+| rotweaver | sink | helm | 1.8 cm | death2 |
+| rotweaver | hem | cape | 9.8 cm | hurt2 |
 
 ## Clips with no weapon-appropriate pose (input for Phase 2)
 
@@ -218,142 +218,142 @@ Two-handers (staff, scythe) should have the left hand on the shaft. For each her
 
 | hero | clip | min | median | verdict |
 |---|---|---|---|---|
-| ossuary | cast * | 29.7 cm | 83.3 cm | never two-handed |
-| ossuary | death2 | 49.6 cm | 72.6 cm | never two-handed |
-| ossuary | dig * | 57.5 cm | 59.4 cm | never two-handed |
-| ossuary | death | 39.3 cm | 47.0 cm | never two-handed |
-| ossuary | hurt | 22.5 cm | 28.1 cm | never two-handed |
-| ossuary | hurt2 | 25.8 cm | 31.8 cm | never two-handed |
-| ossuary | idle * | 47.3 cm | 49.2 cm | never two-handed |
-| ossuary | run * | 49.6 cm | 62.0 cm | never two-handed |
-| ossuary | attack * | 20.5 cm | 46.5 cm | never two-handed |
-| ossuary | walk * | 48.8 cm | 53.7 cm | never two-handed |
-| ossuary | slam * | 17.8 cm | 30.4 cm | never two-handed |
-| ossuary | sweep | 30.2 cm | 37.5 cm | never two-handed |
-| ossuary | flick | 19.3 cm | 42.6 cm | never two-handed |
-| ossuary | channel * | 0.5 cm | 32.7 cm | one-handed |
-| ossuary | summon * | 18.9 cm | 32.1 cm | never two-handed |
-| gravecaller | cast * | 28.0 cm | 87.3 cm | never two-handed |
-| gravecaller | death2 | 48.6 cm | 70.5 cm | never two-handed |
-| gravecaller | dig * | 50.2 cm | 51.7 cm | never two-handed |
-| gravecaller | death | 37.3 cm | 46.8 cm | never two-handed |
-| gravecaller | hurt | 16.8 cm | 23.3 cm | never two-handed |
-| gravecaller | hurt2 | 20.8 cm | 30.0 cm | never two-handed |
-| gravecaller | idle * | 46.7 cm | 48.3 cm | never two-handed |
-| gravecaller | run * | 48.6 cm | 66.9 cm | never two-handed |
-| gravecaller | attack * | 21.6 cm | 43.4 cm | never two-handed |
-| gravecaller | walk * | 47.6 cm | 53.5 cm | never two-handed |
-| gravecaller | slam * | 18.4 cm | 28.1 cm | never two-handed |
-| gravecaller | sweep | 23.5 cm | 33.1 cm | never two-handed |
-| gravecaller | flick | 19.5 cm | 41.4 cm | never two-handed |
-| gravecaller | channel * | 8.6 cm | 27.5 cm | one-handed |
-| gravecaller | summon * | 18.8 cm | 28.7 cm | never two-handed |
-| mourner | cast * | 27.5 cm | 88.2 cm | never two-handed |
-| mourner | death2 | 47.3 cm | 74.2 cm | never two-handed |
-| mourner | dig * | 59.4 cm | 60.7 cm | never two-handed |
-| mourner | death | 38.5 cm | 49.8 cm | never two-handed |
-| mourner | hurt | 23.2 cm | 26.8 cm | never two-handed |
-| mourner | hurt2 | 22.8 cm | 30.4 cm | never two-handed |
-| mourner | idle * | 45.0 cm | 47.0 cm | never two-handed |
-| mourner | run * | 47.8 cm | 64.5 cm | never two-handed |
-| mourner | attack * | 20.2 cm | 44.6 cm | never two-handed |
-| mourner | walk * | 46.7 cm | 52.6 cm | never two-handed |
-| mourner | slam * | 17.3 cm | 29.5 cm | never two-handed |
-| mourner | sweep | 29.8 cm | 37.2 cm | never two-handed |
-| mourner | flick | 17.0 cm | 43.0 cm | never two-handed |
-| mourner | channel * | 5.5 cm | 29.6 cm | one-handed |
-| mourner | summon * | 19.1 cm | 28.9 cm | never two-handed |
-| rotweaver | cast * | 27.3 cm | 85.8 cm | never two-handed |
-| rotweaver | death2 | 44.1 cm | 71.0 cm | never two-handed |
-| rotweaver | dig * | 46.3 cm | 48.1 cm | never two-handed |
-| rotweaver | death | 34.4 cm | 46.8 cm | never two-handed |
-| rotweaver | hurt | 20.9 cm | 25.2 cm | never two-handed |
-| rotweaver | hurt2 | 22.7 cm | 28.3 cm | never two-handed |
-| rotweaver | idle * | 42.1 cm | 43.9 cm | never two-handed |
-| rotweaver | run * | 44.0 cm | 62.5 cm | never two-handed |
-| rotweaver | attack * | 22.4 cm | 41.6 cm | never two-handed |
-| rotweaver | walk * | 43.4 cm | 51.1 cm | never two-handed |
-| rotweaver | slam * | 20.2 cm | 26.3 cm | never two-handed |
-| rotweaver | sweep | 26.4 cm | 33.9 cm | never two-handed |
-| rotweaver | flick | 24.4 cm | 38.7 cm | never two-handed |
-| rotweaver | channel * | 9.3 cm | 27.8 cm | one-handed |
-| rotweaver | summon * | 18.1 cm | 28.0 cm | never two-handed |
+| ossuary | cast * | 34.1 cm | 70.6 cm | never two-handed |
+| ossuary | death2 | 49.5 cm | 71.7 cm | never two-handed |
+| ossuary | dig * | 58.8 cm | 61.6 cm | never two-handed |
+| ossuary | death | 34.1 cm | 44.6 cm | never two-handed |
+| ossuary | hurt | 18.6 cm | 24.9 cm | never two-handed |
+| ossuary | hurt2 | 12.4 cm | 20.4 cm | one-handed |
+| ossuary | idle * | 47.3 cm | 49.1 cm | never two-handed |
+| ossuary | run * | 49.6 cm | 53.7 cm | never two-handed |
+| ossuary | attack * | 26.0 cm | 46.5 cm | never two-handed |
+| ossuary | walk * | 48.8 cm | 53.4 cm | never two-handed |
+| ossuary | slam * | 26.1 cm | 29.9 cm | never two-handed |
+| ossuary | sweep | 13.4 cm | 27.8 cm | one-handed |
+| ossuary | flick | 25.3 cm | 45.2 cm | never two-handed |
+| ossuary | channel * | 6.0 cm | 23.7 cm | one-handed |
+| ossuary | summon * | 17.3 cm | 30.9 cm | never two-handed |
+| gravecaller | cast * | 33.3 cm | 81.7 cm | never two-handed |
+| gravecaller | death2 | 48.3 cm | 67.2 cm | never two-handed |
+| gravecaller | dig * | 52.0 cm | 54.2 cm | never two-handed |
+| gravecaller | death | 28.7 cm | 46.0 cm | never two-handed |
+| gravecaller | hurt | 12.0 cm | 20.0 cm | one-handed |
+| gravecaller | hurt2 | 5.0 cm | 13.7 cm | ok |
+| gravecaller | idle * | 46.7 cm | 48.2 cm | never two-handed |
+| gravecaller | run * | 48.9 cm | 58.7 cm | never two-handed |
+| gravecaller | attack * | 22.1 cm | 43.3 cm | never two-handed |
+| gravecaller | walk * | 47.5 cm | 54.6 cm | never two-handed |
+| gravecaller | slam * | 22.1 cm | 26.8 cm | never two-handed |
+| gravecaller | sweep | 5.2 cm | 21.2 cm | one-handed |
+| gravecaller | flick | 25.1 cm | 44.8 cm | never two-handed |
+| gravecaller | channel * | 4.4 cm | 21.9 cm | one-handed |
+| gravecaller | summon * | 10.1 cm | 25.5 cm | one-handed |
+| mourner | cast * | 32.6 cm | 77.2 cm | never two-handed |
+| mourner | death2 | 47.2 cm | 71.8 cm | never two-handed |
+| mourner | dig * | 60.1 cm | 63.8 cm | never two-handed |
+| mourner | death | 38.1 cm | 47.6 cm | never two-handed |
+| mourner | hurt | 18.1 cm | 24.5 cm | never two-handed |
+| mourner | hurt2 | 11.9 cm | 19.6 cm | one-handed |
+| mourner | idle * | 45.0 cm | 46.9 cm | never two-handed |
+| mourner | run * | 48.0 cm | 55.9 cm | never two-handed |
+| mourner | attack * | 24.4 cm | 44.6 cm | never two-handed |
+| mourner | walk * | 46.6 cm | 52.6 cm | never two-handed |
+| mourner | slam * | 24.4 cm | 29.2 cm | never two-handed |
+| mourner | sweep | 15.2 cm | 28.0 cm | never two-handed |
+| mourner | flick | 23.5 cm | 46.2 cm | never two-handed |
+| mourner | channel * | 7.6 cm | 22.8 cm | one-handed |
+| mourner | summon * | 11.6 cm | 27.7 cm | one-handed |
+| rotweaver | cast * | 33.2 cm | 82.2 cm | never two-handed |
+| rotweaver | death2 | 44.0 cm | 67.8 cm | never two-handed |
+| rotweaver | dig * | 49.4 cm | 51.4 cm | never two-handed |
+| rotweaver | death | 26.4 cm | 46.2 cm | never two-handed |
+| rotweaver | hurt | 10.4 cm | 23.3 cm | one-handed |
+| rotweaver | hurt2 | 6.2 cm | 11.4 cm | ok |
+| rotweaver | idle * | 42.1 cm | 43.8 cm | never two-handed |
+| rotweaver | run * | 44.2 cm | 58.1 cm | never two-handed |
+| rotweaver | attack * | 20.6 cm | 41.4 cm | never two-handed |
+| rotweaver | walk * | 43.4 cm | 51.7 cm | never two-handed |
+| rotweaver | slam * | 20.3 cm | 25.3 cm | never two-handed |
+| rotweaver | sweep | 7.9 cm | 20.0 cm | one-handed |
+| rotweaver | flick | 24.6 cm | 41.0 cm | never two-handed |
+| rotweaver | channel * | 4.1 cm | 21.3 cm | one-handed |
+| rotweaver | summon * | 11.3 cm | 25.3 cm | one-handed |
 
 ### scythe
 
 | hero | clip | min | median | verdict |
 |---|---|---|---|---|
-| ossuary | cast * | 31.3 cm | 86.4 cm | never two-handed |
-| ossuary | death2 | 48.0 cm | 71.5 cm | never two-handed |
-| ossuary | dig * | 52.2 cm | 53.7 cm | never two-handed |
-| ossuary | death | 39.8 cm | 48.2 cm | never two-handed |
-| ossuary | hurt | 20.1 cm | 26.8 cm | never two-handed |
-| ossuary | hurt2 | 25.0 cm | 31.5 cm | never two-handed |
-| ossuary | idle * | 46.2 cm | 47.7 cm | never two-handed |
-| ossuary | run * | 48.4 cm | 63.0 cm | never two-handed |
-| ossuary | attack * | 24.2 cm | 45.0 cm | never two-handed |
-| ossuary | walk * | 47.5 cm | 53.7 cm | never two-handed |
-| ossuary | slam * | 21.3 cm | 29.8 cm | never two-handed |
-| ossuary | sweep * | 29.5 cm | 36.8 cm | never two-handed |
-| ossuary | flick | 24.2 cm | 40.0 cm | never two-handed |
-| ossuary | channel * | 5.9 cm | 30.7 cm | one-handed |
-| ossuary | summon * | 21.8 cm | 30.8 cm | never two-handed |
-| gravecaller | cast * | 23.5 cm | 87.2 cm | never two-handed |
-| gravecaller | death2 | 49.4 cm | 71.5 cm | never two-handed |
-| gravecaller | dig * | 43.9 cm | 45.5 cm | never two-handed |
-| gravecaller | death | 28.2 cm | 44.8 cm | never two-handed |
-| gravecaller | hurt | 17.8 cm | 22.6 cm | never two-handed |
-| gravecaller | hurt2 | 18.2 cm | 27.6 cm | never two-handed |
-| gravecaller | idle * | 47.2 cm | 49.2 cm | never two-handed |
-| gravecaller | run * | 49.2 cm | 66.0 cm | never two-handed |
-| gravecaller | attack * | 23.0 cm | 43.1 cm | never two-handed |
-| gravecaller | walk * | 48.5 cm | 54.6 cm | never two-handed |
-| gravecaller | slam * | 20.4 cm | 27.4 cm | never two-handed |
-| gravecaller | sweep * | 20.1 cm | 31.4 cm | never two-handed |
-| gravecaller | flick | 22.1 cm | 37.2 cm | never two-handed |
-| gravecaller | channel * | 12.1 cm | 27.2 cm | one-handed |
-| gravecaller | summon * | 17.6 cm | 28.8 cm | never two-handed |
-| mourner | cast * | 26.0 cm | 89.7 cm | never two-handed |
-| mourner | death2 | 46.5 cm | 73.6 cm | never two-handed |
-| mourner | dig * | 50.7 cm | 52.8 cm | never two-handed |
-| mourner | death | 37.3 cm | 50.2 cm | never two-handed |
-| mourner | hurt | 22.7 cm | 26.2 cm | never two-handed |
-| mourner | hurt2 | 20.4 cm | 29.1 cm | never two-handed |
-| mourner | idle * | 44.1 cm | 46.2 cm | never two-handed |
-| mourner | run * | 47.0 cm | 65.6 cm | never two-handed |
-| mourner | attack * | 24.7 cm | 43.0 cm | never two-handed |
-| mourner | walk * | 45.7 cm | 52.4 cm | never two-handed |
-| mourner | slam * | 21.8 cm | 29.1 cm | never two-handed |
-| mourner | sweep * | 27.9 cm | 35.4 cm | never two-handed |
-| mourner | flick | 23.0 cm | 38.3 cm | never two-handed |
-| mourner | channel * | 10.5 cm | 30.2 cm | one-handed |
-| mourner | summon * | 20.2 cm | 27.5 cm | never two-handed |
-| rotweaver | cast * | 22.4 cm | 84.2 cm | never two-handed |
-| rotweaver | death2 | 45.0 cm | 72.2 cm | never two-handed |
-| rotweaver | dig * | 48.3 cm | 49.6 cm | never two-handed |
-| rotweaver | death | 28.3 cm | 44.6 cm | never two-handed |
-| rotweaver | hurt | 22.7 cm | 25.4 cm | never two-handed |
-| rotweaver | hurt2 | 21.8 cm | 26.7 cm | never two-handed |
+| ossuary | cast * | 35.3 cm | 79.9 cm | never two-handed |
+| ossuary | death2 | 47.8 cm | 68.4 cm | never two-handed |
+| ossuary | dig * | 54.2 cm | 55.9 cm | never two-handed |
+| ossuary | death | 30.0 cm | 47.8 cm | never two-handed |
+| ossuary | hurt | 13.5 cm | 24.0 cm | one-handed |
+| ossuary | hurt2 | 7.9 cm | 15.1 cm | one-handed |
+| ossuary | idle * | 46.2 cm | 47.6 cm | never two-handed |
+| ossuary | run * | 48.7 cm | 58.1 cm | never two-handed |
+| ossuary | attack * | 23.9 cm | 44.9 cm | never two-handed |
+| ossuary | walk * | 47.4 cm | 53.9 cm | never two-handed |
+| ossuary | slam * | 23.9 cm | 28.2 cm | never two-handed |
+| ossuary | sweep * | 9.1 cm | 23.1 cm | one-handed |
+| ossuary | flick | 27.4 cm | 44.0 cm | never two-handed |
+| ossuary | channel * | 5.3 cm | 20.3 cm | one-handed |
+| ossuary | summon * | 11.7 cm | 28.5 cm | one-handed |
+| gravecaller | cast * | 31.0 cm | 82.3 cm | never two-handed |
+| gravecaller | death2 | 49.3 cm | 69.7 cm | never two-handed |
+| gravecaller | dig * | 46.9 cm | 49.7 cm | never two-handed |
+| gravecaller | death | 23.1 cm | 43.0 cm | never two-handed |
+| gravecaller | hurt | 8.5 cm | 20.0 cm | one-handed |
+| gravecaller | hurt2 | 3.0 cm | 10.4 cm | ok |
+| gravecaller | idle * | 47.2 cm | 49.1 cm | never two-handed |
+| gravecaller | run * | 49.4 cm | 60.8 cm | never two-handed |
+| gravecaller | attack * | 20.4 cm | 43.0 cm | never two-handed |
+| gravecaller | walk * | 48.4 cm | 54.6 cm | never two-handed |
+| gravecaller | slam * | 20.3 cm | 25.1 cm | never two-handed |
+| gravecaller | sweep * | 1.4 cm | 17.5 cm | one-handed |
+| gravecaller | flick | 25.2 cm | 43.6 cm | never two-handed |
+| gravecaller | channel * | 3.7 cm | 25.6 cm | one-handed |
+| gravecaller | summon * | 9.6 cm | 26.6 cm | one-handed |
+| mourner | cast * | 32.4 cm | 84.3 cm | never two-handed |
+| mourner | death2 | 46.3 cm | 70.2 cm | never two-handed |
+| mourner | dig * | 54.3 cm | 56.5 cm | never two-handed |
+| mourner | death | 30.9 cm | 47.0 cm | never two-handed |
+| mourner | hurt | 12.5 cm | 24.4 cm | one-handed |
+| mourner | hurt2 | 6.8 cm | 13.8 cm | ok |
+| mourner | idle * | 44.1 cm | 46.1 cm | never two-handed |
+| mourner | run * | 47.3 cm | 60.9 cm | never two-handed |
+| mourner | attack * | 22.4 cm | 43.1 cm | never two-handed |
+| mourner | walk * | 45.7 cm | 52.5 cm | never two-handed |
+| mourner | slam * | 22.4 cm | 27.7 cm | never two-handed |
+| mourner | sweep * | 9.2 cm | 22.8 cm | one-handed |
+| mourner | flick | 27.3 cm | 44.7 cm | never two-handed |
+| mourner | channel * | 5.3 cm | 21.6 cm | one-handed |
+| mourner | summon * | 6.3 cm | 26.7 cm | one-handed |
+| rotweaver | cast * | 30.3 cm | 77.4 cm | never two-handed |
+| rotweaver | death2 | 45.0 cm | 71.5 cm | never two-handed |
+| rotweaver | dig * | 52.1 cm | 54.1 cm | never two-handed |
+| rotweaver | death | 27.6 cm | 44.2 cm | never two-handed |
+| rotweaver | hurt | 13.4 cm | 22.9 cm | one-handed |
+| rotweaver | hurt2 | 7.0 cm | 14.3 cm | ok |
 | rotweaver | idle * | 42.8 cm | 44.7 cm | never two-handed |
-| rotweaver | run * | 44.7 cm | 59.7 cm | never two-handed |
-| rotweaver | attack * | 22.8 cm | 43.2 cm | never two-handed |
-| rotweaver | walk * | 44.2 cm | 51.5 cm | never two-handed |
-| rotweaver | slam * | 18.8 cm | 26.7 cm | never two-handed |
-| rotweaver | sweep * | 25.6 cm | 33.4 cm | never two-handed |
-| rotweaver | flick | 22.6 cm | 38.9 cm | never two-handed |
-| rotweaver | channel * | 8.5 cm | 28.5 cm | one-handed |
-| rotweaver | summon * | 14.8 cm | 29.0 cm | one-handed |
+| rotweaver | run * | 44.7 cm | 55.1 cm | never two-handed |
+| rotweaver | attack * | 21.4 cm | 43.1 cm | never two-handed |
+| rotweaver | walk * | 44.2 cm | 51.2 cm | never two-handed |
+| rotweaver | slam * | 21.2 cm | 25.7 cm | never two-handed |
+| rotweaver | sweep * | 9.9 cm | 22.3 cm | one-handed |
+| rotweaver | flick | 26.4 cm | 42.2 cm | never two-handed |
+| rotweaver | channel * | 2.9 cm | 24.4 cm | one-handed |
+| rotweaver | summon * | 15.6 cm | 27.7 cm | never two-handed |
 
 ### Summary: two-hander clips that need a two-handed pose
 
-- **staff**, ossuary: cast* (never), death2 (never), dig* (never), death (never), hurt (never), hurt2 (never), idle* (never), run* (never), attack* (never), walk* (never), slam* (never), sweep (never), flick (never), channel* (mostly 1H), summon* (never)
-- **staff**, gravecaller: cast* (never), death2 (never), dig* (never), death (never), hurt (never), hurt2 (never), idle* (never), run* (never), attack* (never), walk* (never), slam* (never), sweep (never), flick (never), channel* (mostly 1H), summon* (never)
-- **staff**, mourner: cast* (never), death2 (never), dig* (never), death (never), hurt (never), hurt2 (never), idle* (never), run* (never), attack* (never), walk* (never), slam* (never), sweep (never), flick (never), channel* (mostly 1H), summon* (never)
-- **staff**, rotweaver: cast* (never), death2 (never), dig* (never), death (never), hurt (never), hurt2 (never), idle* (never), run* (never), attack* (never), walk* (never), slam* (never), sweep (never), flick (never), channel* (mostly 1H), summon* (never)
-- **scythe**, ossuary: cast* (never), death2 (never), dig* (never), death (never), hurt (never), hurt2 (never), idle* (never), run* (never), attack* (never), walk* (never), slam* (never), sweep* (never), flick (never), channel* (mostly 1H), summon* (never)
-- **scythe**, gravecaller: cast* (never), death2 (never), dig* (never), death (never), hurt (never), hurt2 (never), idle* (never), run* (never), attack* (never), walk* (never), slam* (never), sweep* (never), flick (never), channel* (mostly 1H), summon* (never)
-- **scythe**, mourner: cast* (never), death2 (never), dig* (never), death (never), hurt (never), hurt2 (never), idle* (never), run* (never), attack* (never), walk* (never), slam* (never), sweep* (never), flick (never), channel* (mostly 1H), summon* (never)
-- **scythe**, rotweaver: cast* (never), death2 (never), dig* (never), death (never), hurt (never), hurt2 (never), idle* (never), run* (never), attack* (never), walk* (never), slam* (never), sweep* (never), flick (never), channel* (mostly 1H), summon* (mostly 1H)
+- **staff**, ossuary: cast* (never), death2 (never), dig* (never), death (never), hurt (never), hurt2 (mostly 1H), idle* (never), run* (never), attack* (never), walk* (never), slam* (never), sweep (mostly 1H), flick (never), channel* (mostly 1H), summon* (never)
+- **staff**, gravecaller: cast* (never), death2 (never), dig* (never), death (never), hurt (mostly 1H), idle* (never), run* (never), attack* (never), walk* (never), slam* (never), sweep (mostly 1H), flick (never), channel* (mostly 1H), summon* (mostly 1H)
+- **staff**, mourner: cast* (never), death2 (never), dig* (never), death (never), hurt (never), hurt2 (mostly 1H), idle* (never), run* (never), attack* (never), walk* (never), slam* (never), sweep (never), flick (never), channel* (mostly 1H), summon* (mostly 1H)
+- **staff**, rotweaver: cast* (never), death2 (never), dig* (never), death (never), hurt (mostly 1H), idle* (never), run* (never), attack* (never), walk* (never), slam* (never), sweep (mostly 1H), flick (never), channel* (mostly 1H), summon* (mostly 1H)
+- **scythe**, ossuary: cast* (never), death2 (never), dig* (never), death (never), hurt (mostly 1H), hurt2 (mostly 1H), idle* (never), run* (never), attack* (never), walk* (never), slam* (never), sweep* (mostly 1H), flick (never), channel* (mostly 1H), summon* (mostly 1H)
+- **scythe**, gravecaller: cast* (never), death2 (never), dig* (never), death (never), hurt (mostly 1H), idle* (never), run* (never), attack* (never), walk* (never), slam* (never), sweep* (mostly 1H), flick (never), channel* (mostly 1H), summon* (mostly 1H)
+- **scythe**, mourner: cast* (never), death2 (never), dig* (never), death (never), hurt (mostly 1H), idle* (never), run* (never), attack* (never), walk* (never), slam* (never), sweep* (mostly 1H), flick (never), channel* (mostly 1H), summon* (mostly 1H)
+- **scythe**, rotweaver: cast* (never), death2 (never), dig* (never), death (never), hurt (mostly 1H), idle* (never), run* (never), attack* (never), walk* (never), slam* (never), sweep* (mostly 1H), flick (never), channel* (mostly 1H), summon* (never)
 
 One-handed weapons (wand, sickle) have no support-hand requirement; their problem is arm and body clearance, in the tables above.
 

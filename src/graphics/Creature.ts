@@ -156,6 +156,9 @@ export function disposeSkeletons(root: THREE.Object3D) {
   root.traverse((o) => (o as THREE.SkinnedMesh).skeleton?.dispose());
 }
 
+export interface HeadFit { cx: number; cz: number; top: number; radius: number }
+const HEAD_FIT = new Map<string, HeadFit>();
+
 export class Creature {
   readonly root = new THREE.Group();
   /** Resolves after the model has been cloned and attached (or its load failed). */
@@ -286,11 +289,61 @@ export class Creature {
         }
       });
       this.loaded = true;
+      for (const cb of this.loadedCbs.splice(0)) cb();
       for (const [bone, obj, dir, follow, fit] of this.pendingAttach) this.attach(bone, obj, dir, follow, fit);
       this.pendingAttach = [];
       this.startLoop(false);
       });
     });
+  }
+
+  private loadedCbs: (() => void)[] = [];
+
+  /** Run `cb` once the model is built (now, if it already is). */
+  afterLoad(cb: () => void) {
+    if (this.loaded) cb();
+    else this.loadedCbs.push(cb);
+  }
+
+  /**
+   * The skull and hood of a hero, measured once per rig in the rest pose (vertices owned by the Head bone), in the
+   * character frame (root-local metres): `off` = from the Head bone to where a helm's origin should sit so its dome tops
+   * the head, `radius` = horizontal reach of skull plus hood. Null until loaded or when the rig has no Head bone.
+   */
+  headFit(): HeadFit | null {
+    if (!this.model) return null;
+    const cached = HEAD_FIT.get(this.rigSlug);
+    if (cached) return cached;
+    this.root.updateMatrixWorld(true);
+    let bone: THREE.Object3D | undefined;
+    this.model.traverse((o) => { if (!bone && o.name === 'Head') bone = o; });
+    if (!bone) return null;
+    const boneP = this.root.worldToLocal(bone.getWorldPosition(new THREE.Vector3()));
+    const xs: number[] = [], zs: number[] = [], ys: number[] = [];
+    const v = new THREE.Vector3();
+    this.model.traverse((o) => {
+      const m = o as THREE.SkinnedMesh;
+      if (!m.isSkinnedMesh) return;
+      const bi = m.skeleton.bones.findIndex((b) => b.name === 'Head');
+      if (bi < 0) return;
+      const idx = m.geometry.getAttribute('skinIndex'), wgt = m.geometry.getAttribute('skinWeight');
+      m.skeleton.update();
+      for (let i = 0; i < idx.count; i++) {
+        let w = 0;
+        for (let k = 0; k < 4; k++) if (idx.getComponent(i, k) === bi) w += wgt.getComponent(i, k);
+        if (w < 0.6) continue;
+        m.getVertexPosition(i, v).applyMatrix4(m.matrixWorld);
+        this.root.worldToLocal(v);
+        xs.push(v.x); ys.push(v.y); zs.push(v.z);
+      }
+    });
+    if (xs.length < 30) return null;
+    const q = (a: number[], f: number) => { const b = [...a].sort((x, y) => x - y); return b[Math.min(b.length - 1, Math.max(0, Math.round(f * (b.length - 1))))]; };
+    const cx = (q(xs, 0.02) + q(xs, 0.98)) / 2, cz = (q(zs, 0.02) + q(zs, 0.98)) / 2;
+    const rxz = Math.max(q(xs, 0.98) - q(xs, 0.02), q(zs, 0.98) - q(zs, 0.02)) / 2;
+    const fit: HeadFit = { cx: cx - boneP.x, cz: cz - boneP.z, top: q(ys, 0.995) - boneP.y, radius: rxz };
+    HEAD_FIT.set(this.rigSlug, fit);
+    return fit;
   }
 
   has(anim: CreatureAnim) {
@@ -558,6 +611,26 @@ export class Creature {
       const gc = new THREE.Color(tint.glow);
       g.set(gc.r, gc.g, gc.b).multiplyScalar(0.6);
     } else g.set(0, 0, 0);
+  }
+
+  /** Tint the head's skin region (the hood, cowl or built-in helmet) as worn-helm trim; null clears it. */
+  setHeadTint(tint: { color: number; glow?: number; strength?: number } | null) {
+    const t = this.gearTint.head;
+    const g = this.gearTint.headGlow;
+    if (!tint) {
+      t.set(1, 1, 1, 0);
+      g.set(0, 0, 0);
+      return;
+    }
+    const c = new THREE.Color(tint.color);
+    t.set(c.r, c.g, c.b, tint.strength ?? 0.55);
+    if (tint.glow) g.set(...new THREE.Color(tint.glow).toArray() as [number, number, number]).multiplyScalar(0.6);
+    else g.set(0, 0, 0);
+  }
+
+  /** Name of the one-shot clip now playing ('death', 'hurt2', ...), or null while a loop plays. */
+  get oneShotName(): string | null {
+    return this.oneShot?.getClip().name ?? null;
   }
 
   /** Remove an attached prop (equipment swaps). Does not dispose it. */

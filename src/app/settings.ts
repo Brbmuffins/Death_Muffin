@@ -18,6 +18,8 @@ export interface Settings {
   autoResolution: boolean;
   reducedMotion: boolean;
   damageNumbers: boolean;
+  /** Draw heroes without their helms (yours and other players'): the hood or hair shows instead. */
+  hideHelm: boolean;
   volume: number; // 0..1 (master)
   /** Mixer sliders, 0..1, applied under the master volume. */
   combatVolume: number;
@@ -49,7 +51,7 @@ function defaults(): Settings {
   } catch {
     /* no matchMedia */
   }
-  return { quality: 'high', fps: 0, graphicsChosen: false, autoResolution: true, reducedMotion: reduced, damageNumbers: true, volume: 0.6, combatVolume: 1, ambienceVolume: 1, interfaceVolume: 1, tips: true, guidance: true, guidancePing: true, difficulty: 'medium', autoCombat: false, autoGather: true };
+  return { quality: 'high', fps: 0, graphicsChosen: false, autoResolution: true, reducedMotion: reduced, damageNumbers: true, hideHelm: false, volume: 0.6, combatVolume: 1, ambienceVolume: 1, interfaceVolume: 1, tips: true, guidance: true, guidancePing: true, difficulty: 'medium', autoCombat: false, autoGather: true };
 }
 
 function load(): Settings {
