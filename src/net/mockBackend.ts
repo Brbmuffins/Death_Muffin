@@ -116,10 +116,15 @@ interface MockAccount {
   /** POST /api/gather time budget (mirrors gather_ledger). */
   gatherLedger?: gather.GatherLedger;
   username: string;
+  /** Set when this local copy is the device's copy of a real Death Muffin account (see src/offline/accountSync.ts). */
+  linked?: LinkedInfo;
   character: Record<string, any> | null;
   slots: StoredSlot[];
   professions: Profession[];
 }
+
+/** `fingerprint` is the online save's fingerprint at the last sync; `digest` is this device's save at the same moment. */
+export interface LinkedInfo { account: string; fingerprint: string; digest: string; syncedAt: number }
 
 interface MockDb {
   nextCharacterId: number;
@@ -161,10 +166,164 @@ export function exportLocalSave(token: string): MockAccount {
   delete copy.instances;
   delete copy.nextInstance;
   delete copy.vault;
+  delete copy.linked;
   return copy;
 }
 
-/** Keep the current local player; import an online save as another local player. */
+/** Cheap stable string hash (cyrb53): change detection only, never security. */
+function hashText(text: string): string {
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
+}
+
+/** Digest of everything stored for a local player (vault and all), ignoring the sync bookkeeping. */
+function digestOf(acc: MockAccount): string {
+  const { linked: _linked, ...rest } = acc;
+  void _linked;
+  return hashText(JSON.stringify(rest));
+}
+
+export interface LocalPlayerInfo {
+  key: string;
+  linkedAccount: string | null;
+  hasCharacter: boolean;
+  level: number | null;
+  syncedAt: number | null;
+  /** The save changed on this device since it last matched the online one. */
+  changedSinceSync: boolean;
+}
+
+/** Players stored in this browser, in creation order. Backups made by a sync are ordinary entries here. */
+export function listLocalPlayers(): LocalPlayerInfo[] {
+  return Object.entries(loadDb().accounts).map(([key, acc]) => ({
+    key,
+    linkedAccount: acc.linked?.account ?? null,
+    hasCharacter: !!acc.character,
+    level: acc.character ? Number(acc.character.level) : null,
+    syncedAt: acc.linked?.syncedAt ?? null,
+    changedSinceSync: !!acc.linked && digestOf(acc) !== acc.linked.digest,
+  }));
+}
+
+export function localPlayer(key: string): { account: MockAccount; info: LocalPlayerInfo } | null {
+  const db = loadDb();
+  const acc = db.accounts[key];
+  if (!acc) return null;
+  return { account: acc, info: listLocalPlayers().find((p) => p.key === key)! };
+}
+
+/** The local copy of a real account (matched ignoring case), if this device has one. */
+export function findLinkedPlayer(account: string): LocalPlayerInfo | null {
+  const lower = account.toLowerCase();
+  return listLocalPlayers().find((p) => p.linkedAccount?.toLowerCase() === lower) ?? null;
+}
+
+function freeKey(db: MockDb, stem: string): string {
+  const clean = stem.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 24) || 'player';
+  let key = clean;
+  for (let n = 2; db.accounts[key]; n++) key = `${clean.slice(0, 20)}_${n}`;
+  return key;
+}
+
+/** Copy a local player into a new local-only entry ("<name>_backup_<time>"), so replacing it never loses anything. */
+function backupInto(db: MockDb, key: string): string {
+  const copy = JSON.parse(JSON.stringify(db.accounts[key])) as MockAccount;
+  delete copy.linked;
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
+  const backupKey = freeKey(db, `${key}_backup_${stamp}`);
+  copy.username = backupKey;
+  if (copy.character) copy.character = { ...copy.character, id: db.nextCharacterId++ };
+  db.accounts[backupKey] = copy;
+  return backupKey;
+}
+
+/** Turn an online snapshot into the device's copy of that account. Returns the local key and the backup made, if any. */
+export function adoptOnlineSave(accountName: string, snapshot: MockAccount, fingerprint: string, opts: { key?: string; backup?: boolean } = {}): { key: string; backupKey: string | null } {
+  if (!snapshot?.character || !Array.isArray(snapshot.slots) || !Array.isArray(snapshot.professions))
+    throw new MockError('Invalid online save.', 400);
+  const db = loadDb();
+  const existing = opts.key && db.accounts[opts.key] ? opts.key : findLinkedPlayer(accountName)?.key ?? null;
+  const prev = existing ? db.accounts[existing] : undefined;
+  let backupKey: string | null = null;
+  if (existing && prev?.character && opts.backup) backupKey = backupInto(db, existing);
+  const key = existing ?? freeKey(db, accountName);
+  const copy = JSON.parse(JSON.stringify(snapshot)) as MockAccount;
+  copy.username = key;
+  // The Vault is not part of the online save: keep it, with the rolls its pieces carry.
+  copy.instances = {};
+  copy.nextInstance = prev?.nextInstance ?? 1;
+  if (prev?.vault?.length) {
+    copy.vault = prev.vault;
+    for (const v of prev.vault) {
+      const inst = v.instance_id ? prev.instances?.[v.instance_id] : undefined;
+      if (v.instance_id && inst) copy.instances[v.instance_id] = inst;
+    }
+  }
+  for (const slot of copy.slots) {
+    const inst = slot.inst;
+    delete slot.inst;
+    if (inst && affixRules.instanceProblem(inst, MOCK_ITEMS[slot.item_id]?.item_type ?? 'material') === null) {
+      while (copy.instances[copy.nextInstance!]) copy.nextInstance!++;
+      copy.instances[copy.nextInstance!] = { item_id: slot.item_id, ilvl: inst.ilvl, affixes: affixRules.cleanInstance(inst).affixes };
+      slot.instance_id = copy.nextInstance!++;
+    }
+  }
+  const taken = Object.entries(db.accounts).some(([k, a]) => k !== key && a.character?.id === copy.character!.id);
+  if (taken) copy.character!.id = db.nextCharacterId++;
+  db.nextCharacterId = Math.max(db.nextCharacterId, Number(copy.character!.id) + 1);
+  copy.linked = { account: accountName, fingerprint, digest: '', syncedAt: Date.now() };
+  copy.linked.digest = digestOf(copy);
+  db.accounts[key] = copy;
+  saveDb(db);
+  return { key, backupKey };
+}
+
+/** An online account that has no character yet: an empty local copy to create one in (play now, sync later). */
+export function createLinkedPlayer(accountName: string): string {
+  const db = loadDb();
+  const key = freeKey(db, accountName);
+  const acc: MockAccount = {
+    username: key, character: null, slots: [],
+    professions: [
+      { profession_id: 'mining', skill_level: 1, skill_xp: 0 },
+      { profession_id: 'fishing', skill_level: 1, skill_xp: 0 },
+      { profession_id: 'woodcutting', skill_level: 1, skill_xp: 0 },
+    ],
+  };
+  acc.linked = { account: accountName, fingerprint: '', digest: '', syncedAt: Date.now() };
+  acc.linked.digest = digestOf(acc);
+  db.accounts[key] = acc;
+  saveDb(db);
+  return key;
+}
+
+/** Record that this device's save and the online save now match (after a successful push). Any other copy of the account is unlinked, never deleted. */
+export function markSynced(key: string, accountName: string, fingerprint: string, digest?: string) {
+  const db = loadDb();
+  const acc = db.accounts[key];
+  if (!acc) throw new MockError('Local player not found.', 404);
+  for (const [k, other] of Object.entries(db.accounts)) {
+    if (k !== key && other.linked?.account.toLowerCase() === accountName.toLowerCase()) delete other.linked;
+  }
+  acc.linked = { account: accountName, fingerprint, digest: digest ?? '', syncedAt: Date.now() };
+  if (digest === undefined) acc.linked.digest = digestOf(acc);
+  saveDb(db);
+}
+
+/** Digest of a local player's whole stored save right now (take it BEFORE a push, so play during the push still counts as a change). */
+export function localDigest(key: string): string | null {
+  const acc = loadDb().accounts[key];
+  return acc ? digestOf(acc) : null;
+}
+
+/** Older flow: import an online save as another, unlinked local player. */
 export function importOnlineSave(snapshot: MockAccount): string {
   if (!snapshot?.character || !Array.isArray(snapshot.slots) || !Array.isArray(snapshot.professions))
     throw new MockError('Invalid online save.', 400);

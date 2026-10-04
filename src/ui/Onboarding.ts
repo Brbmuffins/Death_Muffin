@@ -134,6 +134,7 @@ export type TipId =
   | 'laborers_working'
   | 'gather'
   | 'bag_full'
+  | 'offline_account'
   | 'skill_up'
   | 'rich_node'
   | 'station'
@@ -570,6 +571,10 @@ export const TIPS: Record<TipId, Tip> = {
   bag_full: {
     title: 'Your bag is full',
     body: 'Nothing more fits: gathering stops and loot stays on the ground until you free a slot. Sell junk in the Reliquary{p:I}, move materials to the Vault[[ (<kbd>V</kbd>)||]], or grind spare gear at the Bone Grinder in the Acre.',
+  },
+  offline_account: {
+    title: 'One character, online or off',
+    body: 'This is your Death Muffin account\'s character, kept on this device. When you are connected, open <b>Account and sync</b> in the Offline panel and choose <b>Sync now</b> to send your progress online. If both sides changed, you choose which save to keep, and the other is never lost.',
   },
   skill_up: {
     title: 'A skill rises',

@@ -26,6 +26,7 @@
       "HUD: Report a bug button above chat, a clearer elixir belt (click a slot to fill it), new key-art loading screen, fewer panels (Acre Ledger, Character tabs, Grimoire + Legion) and NEW markers when something unlocks.",
       "Gear: helms tint your own hood or helmet instead of floating on top, capes no longer clip on death, and a set summary sits under the paper doll.",
       "Levels now count past 255 (up to 999), and logging in somewhere new stops the old window from saving over you.",
+      "Offline Edition: sign in with your real Death Muffin account and play the same character online or offline. Connect once, then sign in offline with the same password or press Continue as. Progress syncs back when you are online, and if both sides changed you choose which save to keep (nothing is lost). The launcher's Download Offline starts the download for you.",
       "Patch notes now show in the launcher, on the website's new Patch notes page, and on the home page.",
       "Fixes: loot icons could draw blank on some graphics cards, tooltips no longer block clicks, and the worn-helm look stays when you change other gear.",
       "Loot no longer flies to you from across the map: walk over an item to pick it up. Anything you leave behind fades after a minute.",

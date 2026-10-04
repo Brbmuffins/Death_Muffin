@@ -896,6 +896,12 @@ export class WorldScene implements GameScene, RuntimeView {
     void this.dataReady.then(() => getCosmetics(this.character.id)).then((v) => this.applyCosmetics(v.selected)).catch(() => {});
     this.scope.interval(() => void this.checkLabor(false), 5 * 60_000);
     this.onboarding.show('welcome', 900);
+    if (import.meta.env.VITE_OFFLINE_BUILD === '1') {
+      void import('../net/mockBackend').then(({ listLocalPlayers }) => {
+        const key = getToken()?.slice('offline:'.length);
+        if (listLocalPlayers().some((p) => p.key === key && p.linkedAccount)) this.onboarding.show('offline_account', 30_000);
+      });
+    }
     // First time in the world as a Knight: Rage works nothing like essence.
     if (this.discipline.family === 'knight') this.onboarding.show('knight_rage', 2600);
     if (this.discipline.family === 'warden') this.onboarding.show('warden_oil', 2600);

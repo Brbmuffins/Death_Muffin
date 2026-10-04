@@ -1745,3 +1745,15 @@ body:not(.touch):has(.cw-panel-float) .cw-tip:not(.dragging):not([data-kind='urg
 .cw-depthsstair { width: 400px; max-width: calc(100vw - 32px); display: flex; flex-direction: column; gap: 8px; }
 .cw-depthsstair-go { text-align: left; }
 .cw-depthsstair-go small { display: block; font-size: 11px; opacity: .8; }
+
+/* Offline edition login: chooser card and the local players list. */
+.cw-login-help { margin-top: 8px; display: grid; gap: 8px; }
+.cw-login-sync-hint { margin: 0; font-size: 12px; line-height: 1.45; color: var(--cw-spell-300); opacity: 0.9; }
+.cw-login-players { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+.cw-login-players-label { font-size: 12px; opacity: 0.75; width: 100%; }
+.cw-login-player { font-size: 14px; min-height: 32px; padding: 2px 8px; text-decoration: underline; }
+.cw-login-help p { margin: 0; font-size: 13px; line-height: 1.45; }
+.cw-login-help[hidden] { display: none; }
+.cw-login-player-row { width: 100%; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.cw-login-player-name { font-size: 14px; flex: 1 1 100%; }
+#cw-continue-as + .cw-login-sync-hint { margin: 6px 0 14px; }
