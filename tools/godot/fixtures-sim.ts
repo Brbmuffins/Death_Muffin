@@ -1,41 +1,11 @@
 /**
  * Golden fixtures for godot/sim (run: npx vite-node tools/godot/fixtures-sim.ts; also run by gen-fixtures.sh).
- * Everything is produced by the REAL TS modules (Nav, depthsFloor, WorldSim, BossBrain via WorldSim). Part A: nav + Depths floors.
- * Part B (further down): whole-sim scenario replays. Format per file: { fn, cases: [{ in, out }] }; tests/sim/run.gd maps fn -> handler.
+ * Everything is produced by the REAL TS modules (Nav, depthsFloor). Part A: nav + Depths floors. Whole-sim scenario replays: fixtures-sim-run.ts.
+ * Format per file: { fn, cases: [{ in, out }] }; tests/sim/run.gd maps fn -> handler.
  */
-import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
-import { mulberry32 } from '../../src/gameplay/rng';
-import { Nav } from '../../src/gameplay/nav';
-import { AREAS, AREA_ORDER, type AreaId } from '../../src/content/areas';
+import { AREAS, AREA_ORDER } from '../../src/content/areas';
 import { floorHop, floorHops, floorPath, floorProblems, floorSeed, generateFloor, roomAt, floorObstacles, floorSightBoxes } from '../../src/gameplay/depthsFloor';
-
-export const OUT = 'godot/tests/sim/fixtures';
-mkdirSync(OUT, { recursive: true });
-export const counts: Record<string, number> = {};
-export const w = (fn: string, cases: { in: unknown; out: unknown }[]) => {
-  writeFileSync(`${OUT}/${fn}.json`, JSON.stringify({ fn, cases }) + '\n');
-  counts[fn] = cases.length;
-};
-export const J = <T>(x: T): T => JSON.parse(JSON.stringify(x));
-
-export const rand = mulberry32(20261005);
-export const R = (n: number) => Math.floor(rand() * n);
-export const pick = <T>(a: readonly T[]): T => a[R(a.length)];
-export const chance = (p: number) => rand() < p;
-export const range = (lo: number, hi: number) => lo + R(hi - lo + 1);
-
-/** The world's nav, built from the exported layout exactly like WorldView/WorldScene do (godot/data/sim/world.json). */
-export const WORLD = JSON.parse(readFileSync('godot/data/sim/world.json', 'utf8')) as {
-  obstacles: any[]; sightBlockers: any[]; crypts: { area: AreaId; x: number; z: number }[]; nodes: any[]; cover: any[];
-};
-export function worldNav(unlocked?: AreaId[]): Nav {
-  const nav = new Nav();
-  for (const o of WORLD.obstacles) nav.addObstacle(o);
-  for (const s of WORLD.sightBlockers) nav.addSightBlocker(s);
-  if (unlocked) nav.setUnlocked(unlocked);
-  return nav;
-}
-export const ALL_OPEN = AREA_ORDER.filter((a) => a !== 'depths');
+import { w, J, rand, R, pick, chance, worldNav, ALL_OPEN, counts } from './sim-fixture-lib';
 
 // ---------------------------------------------------------------------------------------------------------------------
 // A. Nav
@@ -100,3 +70,5 @@ export const ALL_OPEN = AREA_ORDER.filter((a) => a !== 'depths');
   }
   w('depths_floor', cases);
 }
+
+console.log('sim fixtures written', counts);

@@ -9,12 +9,18 @@ var failed := 0
 var per_file: Dictionary = {}
 var _shown := 0
 var _only: PackedStringArray = PackedStringArray()
+var _dump: String = ""
+var _tol: float = 1e-6
 
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("only="):
 			_only = a.substr(5).split(",")
+		elif a.begins_with("tol="):
+			_tol = float(a.substr(4))
+		elif a.begins_with("dump="):
+			_dump = a.substr(5)
 	var dir := DirAccess.open(DIR)
 	if dir == null or not FileAccess.file_exists(DIR + "nav_basic.json"):
 		print("fixtures missing: run tools/godot/gen-fixtures.sh")
@@ -77,7 +83,10 @@ func run_file(name: String) -> void:
 	var text := FileAccess.get_file_as_string(DIR + name + ".json")
 	var fx: Dictionary = JSON.parse_string(text)
 	if fx.has("scenario"):
-		var r: Dictionary = load("res://tests/sim/scenario_runner.gd").new().run(fx)
+		var runner = load("res://tests/sim/scenario_runner.gd").new()
+		runner.dump_dir = _dump
+		runner.tol = _tol
+		var r: Dictionary = runner.run(fx)
 		passed += int(r["passed"])
 		failed += int(r["failed"])
 		per_file[name] = r["summary"]
