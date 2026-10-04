@@ -1,0 +1,3880 @@
+{
+ "seed": 1337,
+ "slice": [
+  "chapterhouse",
+  "graves"
+ ],
+ "areas": {
+  "chapterhouse": {
+   "id": "chapterhouse",
+   "name": "The Chapterhouse",
+   "subtitle": "Sanctuary of the Ossuary Covenant",
+   "theme": "chapter",
+   "rect": {
+    "x0": -13,
+    "z0": 8,
+    "x1": 13,
+    "z1": 32
+   },
+   "safe": true,
+   "level": 1,
+   "ambient": {
+    "fog": "#0b0810",
+    "hemiSky": "#3b2a52",
+    "hemiGround": "#0a0710",
+    "moon": "#8f9ed1",
+    "fogMult": 1
+   },
+   "breaches": [],
+   "interactables": [
+    {
+     "id": "reliquary",
+     "kind": "inventory",
+     "label": "Reliquary",
+     "x": -8.5,
+     "z": 14
+    },
+    {
+     "id": "workbench",
+     "kind": "forge",
+     "label": "Ossuary Workbench",
+     "x": 8.5,
+     "z": 14
+    },
+    {
+     "id": "niches",
+     "kind": "professions",
+     "label": "Rite Niches",
+     "x": -10.8,
+     "z": 26.5
+    },
+    {
+     "id": "altar",
+     "kind": "upgrades",
+     "label": "Altar of Ascension",
+     "x": 0,
+     "z": 21
+    },
+    {
+     "id": "waystone_chapterhouse",
+     "kind": "waystone",
+     "label": "Waystone",
+     "x": 9,
+     "z": 26.5
+    },
+    {
+     "id": "ossuary_vault",
+     "kind": "vault",
+     "label": "Ossuary Vault",
+     "x": 0,
+     "z": 27
+    }
+   ],
+   "cap": 0,
+   "waveSize": 0,
+   "waveIntervalMs": 0,
+   "eliteChance": 0,
+   "enemies": []
+  },
+  "graves": {
+   "id": "graves",
+   "name": "The Hollow Graves",
+   "subtitle": "Where the Covenant buries what it cannot keep",
+   "theme": "graveyard",
+   "rect": {
+    "x0": -26,
+    "z0": -36,
+    "x1": 26,
+    "z1": 4
+   },
+   "safe": false,
+   "level": 1,
+   "ambient": {
+    "fog": "#0d0a14",
+    "hemiSky": "#46386a",
+    "hemiGround": "#0b0810",
+    "moon": "#9aa6d4",
+    "fogMult": 1
+   },
+   "breaches": [
+    [
+     -18,
+     -29
+    ],
+    [
+     0,
+     -31
+    ],
+    [
+     18,
+     -29
+    ],
+    [
+     -21,
+     -13
+    ],
+    [
+     21,
+     -11
+    ],
+    [
+     9,
+     -19
+    ],
+    [
+     -9,
+     -21
+    ],
+    [
+     20,
+     -24
+    ],
+    [
+     -14,
+     -3
+    ],
+    [
+     14,
+     -4
+    ]
+   ],
+   "interactables": [
+    {
+     "id": "waystone_graves",
+     "kind": "waystone",
+     "label": "Waystone",
+     "x": -5.5,
+     "z": 1
+    },
+    {
+     "id": "kings_grave",
+     "kind": "boss",
+     "label": "The King's Grave",
+     "x": -14,
+     "z": -30.5
+    }
+   ],
+   "cap": 28,
+   "waveSize": 9,
+   "waveIntervalMs": 6500,
+   "eliteChance": 0.035,
+   "enemies": [
+    {
+     "id": "robber",
+     "weight": 52
+    },
+    {
+     "id": "hound",
+     "weight": 24
+    },
+    {
+     "id": "penitent",
+     "weight": 11
+    },
+    {
+     "id": "sac",
+     "weight": 7
+    },
+    {
+     "id": "moth",
+     "weight": 6
+    },
+    {
+     "id": "bat",
+     "weight": 5
+    },
+    {
+     "id": "ghoul",
+     "weight": 6
+    }
+   ]
+  }
+ },
+ "doors": [
+  {
+   "id": "chapter_graves",
+   "a": "chapterhouse",
+   "b": "graves",
+   "rect": {
+    "x0": -3.5,
+    "z0": 3,
+    "x1": 3.5,
+    "z1": 9
+   },
+   "axis": "z",
+   "open": true
+  },
+  {
+   "id": "chapter_acre",
+   "a": "chapterhouse",
+   "b": "acre",
+   "rect": {
+    "x0": -21,
+    "z0": 17,
+    "x1": -12,
+    "z1": 23
+   },
+   "axis": "x",
+   "open": false
+  },
+  {
+   "id": "chapter_wing",
+   "a": "chapterhouse",
+   "b": "alchemist_wing",
+   "rect": {
+    "x0": 12,
+    "z0": 17,
+    "x1": 21,
+    "z1": 23
+   },
+   "axis": "x",
+   "open": false
+  },
+  {
+   "id": "graves_ossuary",
+   "a": "graves",
+   "b": "ossuary",
+   "rect": {
+    "x0": 25,
+    "z0": -22,
+    "x1": 33,
+    "z1": -14
+   },
+   "axis": "x",
+   "open": false
+  },
+  {
+   "id": "graves_nave",
+   "a": "graves",
+   "b": "nave",
+   "rect": {
+    "x0": -4,
+    "z0": -45,
+    "x1": 4,
+    "z1": -35
+   },
+   "axis": "z",
+   "open": false
+  },
+  {
+   "id": "graves_warren",
+   "a": "graves",
+   "b": "warren",
+   "rect": {
+    "x0": -33,
+    "z0": -32,
+    "x1": -25,
+    "z1": -24
+   },
+   "axis": "x",
+   "open": false
+  }
+ ],
+ "spawn": {
+  "playerSpawnWeb": {
+   "x": -26,
+   "z": 20
+  },
+  "chapterhouseReturn": {
+   "x": 0,
+   "z": 24
+  }
+ },
+ "floors": {
+  "chapter": {
+   "tex": "flagstone",
+   "tile": 7,
+   "color": 10130088,
+   "rough": 0.62
+  },
+  "graveyard": {
+   "tex": "grave_soil",
+   "tile": 6,
+   "color": 12102328,
+   "rough": 0.95
+  },
+  "nave": {
+   "tex": "flagstone",
+   "tile": 8,
+   "color": 9209512,
+   "rough": 0.45
+  }
+ },
+ "lighting": {
+  "background": "#07060a",
+  "fogDensity": 0.014,
+  "hemiIntensity": 0.95,
+  "moonIntensity": 2.4,
+  "moonOffset": {
+   "x": -14,
+   "y": 30,
+   "z": 12
+  },
+  "rimColor": "#7a5cd6",
+  "rimIntensity": 1.6,
+  "rimOffset": {
+   "x": 6,
+   "y": 10,
+   "z": -24
+  },
+  "exposure": 1.2
+ },
+ "camera": {
+  "fov": 40,
+  "near": 0.5,
+  "far": 260,
+  "dist": 22,
+  "heightFactor": 0.82,
+  "backFactor": 0.6,
+  "lookAtY": 0.6,
+  "lookAheadZ": -1.5,
+  "zoomMin": 0.7,
+  "zoomMax": 1.45,
+  "followRate": 7
+ },
+ "walls": [
+  {
+   "x0": -13,
+   "z0": 7.6,
+   "x1": -3.5,
+   "z1": 7.6,
+   "height": 5.5,
+   "thickness": 0.8,
+   "texture": "stone_wall",
+   "area": "chapterhouse",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": -13,
+    "z0": 7.199999999999999,
+    "x1": -3.5,
+    "z1": 8
+   }
+  },
+  {
+   "x0": 3.5,
+   "z0": 7.6,
+   "x1": 13,
+   "z1": 7.6,
+   "height": 5.5,
+   "thickness": 0.8,
+   "texture": "stone_wall",
+   "area": "chapterhouse",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": 3.5,
+    "z0": 7.199999999999999,
+    "x1": 13,
+    "z1": 8
+   }
+  },
+  {
+   "x0": -13,
+   "z0": 32.4,
+   "x1": 13,
+   "z1": 32.4,
+   "height": 1.1,
+   "thickness": 0.8,
+   "texture": "stone_wall",
+   "area": "chapterhouse",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": -13,
+    "z0": 32,
+    "x1": 13,
+    "z1": 32.8
+   }
+  },
+  {
+   "x0": 13.4,
+   "z0": 8,
+   "x1": 13.4,
+   "z1": 17,
+   "height": 5.5,
+   "thickness": 0.8,
+   "texture": "stone_wall",
+   "area": "chapterhouse",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": 13,
+    "z0": 8,
+    "x1": 13.8,
+    "z1": 17
+   }
+  },
+  {
+   "x0": 13.4,
+   "z0": 23,
+   "x1": 13.4,
+   "z1": 32,
+   "height": 5.5,
+   "thickness": 0.8,
+   "texture": "stone_wall",
+   "area": "chapterhouse",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": 13,
+    "z0": 23,
+    "x1": 13.8,
+    "z1": 32
+   }
+  },
+  {
+   "x0": -13.4,
+   "z0": 8,
+   "x1": -13.4,
+   "z1": 17,
+   "height": 5.5,
+   "thickness": 0.8,
+   "texture": "stone_wall",
+   "area": "chapterhouse",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": -13.8,
+    "z0": 8,
+    "x1": -13,
+    "z1": 17
+   }
+  },
+  {
+   "x0": -13.4,
+   "z0": 23,
+   "x1": -13.4,
+   "z1": 32,
+   "height": 5.5,
+   "thickness": 0.8,
+   "texture": "stone_wall",
+   "area": "chapterhouse",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": -13.8,
+    "z0": 23,
+    "x1": -13,
+    "z1": 32
+   }
+  },
+  {
+   "x0": -26,
+   "z0": -36.4,
+   "x1": -4,
+   "z1": -36.4,
+   "height": 1.3,
+   "thickness": 0.8,
+   "texture": "stone_wall",
+   "area": "graves",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": -26,
+    "z0": -36.8,
+    "x1": -4,
+    "z1": -36
+   }
+  },
+  {
+   "x0": 4,
+   "z0": -36.4,
+   "x1": 26,
+   "z1": -36.4,
+   "height": 1.3,
+   "thickness": 0.8,
+   "texture": "stone_wall",
+   "area": "graves",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": 4,
+    "z0": -36.8,
+    "x1": 26,
+    "z1": -36
+   }
+  },
+  {
+   "x0": -26,
+   "z0": 4.4,
+   "x1": -3.5,
+   "z1": 4.4,
+   "height": 1.1,
+   "thickness": 0.8,
+   "texture": "stone_wall",
+   "area": "graves",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": -26,
+    "z0": 4,
+    "x1": -3.5,
+    "z1": 4.800000000000001
+   }
+  },
+  {
+   "x0": 3.5,
+   "z0": 4.4,
+   "x1": 26,
+   "z1": 4.4,
+   "height": 1.1,
+   "thickness": 0.8,
+   "texture": "stone_wall",
+   "area": "graves",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": 3.5,
+    "z0": 4,
+    "x1": 26,
+    "z1": 4.800000000000001
+   }
+  },
+  {
+   "x0": 26.4,
+   "z0": -36,
+   "x1": 26.4,
+   "z1": -22,
+   "height": 1.3,
+   "thickness": 0.8,
+   "texture": "stone_wall",
+   "area": "graves",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": 26,
+    "z0": -36,
+    "x1": 26.799999999999997,
+    "z1": -22
+   }
+  },
+  {
+   "x0": 26.4,
+   "z0": -14,
+   "x1": 26.4,
+   "z1": 4,
+   "height": 1.3,
+   "thickness": 0.8,
+   "texture": "stone_wall",
+   "area": "graves",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": 26,
+    "z0": -14,
+    "x1": 26.799999999999997,
+    "z1": 4
+   }
+  },
+  {
+   "x0": -26.4,
+   "z0": -36,
+   "x1": -26.4,
+   "z1": -32,
+   "height": 1.3,
+   "thickness": 0.8,
+   "texture": "stone_wall",
+   "area": "graves",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": -26.799999999999997,
+    "z0": -36,
+    "x1": -26,
+    "z1": -32
+   }
+  },
+  {
+   "x0": -26.4,
+   "z0": -24,
+   "x1": -26.4,
+   "z1": 4,
+   "height": 1.3,
+   "thickness": 0.8,
+   "texture": "stone_wall",
+   "area": "graves",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": -26.799999999999997,
+    "z0": -24,
+    "x1": -26,
+    "z1": 4
+   }
+  },
+  {
+   "x0": -13.4,
+   "z0": 18,
+   "x1": -13.4,
+   "z1": 22,
+   "height": 2.6,
+   "thickness": 0.8,
+   "texture": "stone_wall",
+   "area": "chapterhouse",
+   "kind": "gate",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": -13.8,
+    "z0": 18,
+    "x1": -13,
+    "z1": 22
+   }
+  },
+  {
+   "x0": 13.4,
+   "z0": 18,
+   "x1": 13.4,
+   "z1": 22,
+   "height": 2.6,
+   "thickness": 0.8,
+   "texture": "stone_wall",
+   "area": "chapterhouse",
+   "kind": "gate",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": 13,
+    "z0": 18,
+    "x1": 13.8,
+    "z1": 22
+   }
+  },
+  {
+   "x0": 26.4,
+   "z0": -21,
+   "x1": 26.4,
+   "z1": -15,
+   "height": 2.6,
+   "thickness": 0.8,
+   "texture": "stone_wall",
+   "area": "graves",
+   "kind": "gate",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": 26,
+    "z0": -21,
+    "x1": 26.799999999999997,
+    "z1": -15
+   }
+  },
+  {
+   "x0": -3,
+   "z0": -36.4,
+   "x1": 3,
+   "z1": -36.4,
+   "height": 2.6,
+   "thickness": 0.8,
+   "texture": "stone_wall",
+   "area": "graves",
+   "kind": "gate",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": -3,
+    "z0": -36.8,
+    "x1": 3,
+    "z1": -36
+   }
+  },
+  {
+   "x0": -26.4,
+   "z0": -31,
+   "x1": -26.4,
+   "z1": -25,
+   "height": 2.6,
+   "thickness": 0.8,
+   "texture": "stone_wall",
+   "area": "graves",
+   "kind": "gate",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": -26.799999999999997,
+    "z0": -31,
+    "x1": -26,
+    "z1": -25
+   }
+  },
+  {
+   "x0": -3.5,
+   "z0": 4,
+   "x1": -3.5,
+   "z1": 8,
+   "height": 1.3,
+   "thickness": 0.3,
+   "texture": "stone_wall",
+   "area": "graves",
+   "kind": "doorside",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": -3.65,
+    "z0": 4,
+    "x1": -3.35,
+    "z1": 8
+   }
+  },
+  {
+   "x0": 3.5,
+   "z0": 4,
+   "x1": 3.5,
+   "z1": 8,
+   "height": 1.3,
+   "thickness": 0.3,
+   "texture": "stone_wall",
+   "area": "graves",
+   "kind": "doorside",
+   "color": 10130084,
+   "box": {
+    "kind": "box",
+    "x0": 3.35,
+    "z0": 4,
+    "x1": 3.65,
+    "z1": 8
+   }
+  }
+ ],
+ "props": [
+  {
+   "prop": "pillar",
+   "x": -6,
+   "z": 12,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -6,
+    "z": 12,
+    "r": 0.85
+   }
+  },
+  {
+   "prop": "pillar",
+   "x": -6,
+   "z": 17.5,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -6,
+    "z": 17.5,
+    "r": 0.85
+   }
+  },
+  {
+   "prop": "pillar",
+   "x": -6,
+   "z": 23,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -6,
+    "z": 23,
+    "r": 0.85
+   }
+  },
+  {
+   "prop": "pillar",
+   "x": -6,
+   "z": 28.5,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -6,
+    "z": 28.5,
+    "r": 0.85
+   }
+  },
+  {
+   "prop": "pillar",
+   "x": 6,
+   "z": 12,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 6,
+    "z": 12,
+    "r": 0.85
+   }
+  },
+  {
+   "prop": "pillar",
+   "x": 6,
+   "z": 17.5,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 6,
+    "z": 17.5,
+    "r": 0.85
+   }
+  },
+  {
+   "prop": "pillar",
+   "x": 6,
+   "z": 23,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 6,
+    "z": 23,
+    "r": 0.85
+   }
+  },
+  {
+   "prop": "pillar",
+   "x": 6,
+   "z": 28.5,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 6,
+    "z": 28.5,
+    "r": 0.85
+   }
+  },
+  {
+   "prop": "reliquary",
+   "x": -8.5,
+   "z": 14,
+   "rot": 1.5707963267948966,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": {
+    "kind": "box",
+    "x0": -9.1,
+    "z0": 13.1,
+    "x1": -7.9,
+    "z1": 14.9
+   }
+  },
+  {
+   "prop": "workbench",
+   "x": 8.5,
+   "z": 14,
+   "rot": -1.5707963267948966,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": {
+    "kind": "box",
+    "x0": 7.7,
+    "z0": 12.6,
+    "x1": 9.3,
+    "z1": 15.4
+   }
+  },
+  {
+   "prop": "altar_ascension",
+   "x": 0,
+   "z": 20.1,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": {
+    "kind": "box",
+    "x0": -1.6,
+    "z0": 18.900000000000002,
+    "x1": 1.6,
+    "z1": 21.3
+   }
+  },
+  {
+   "prop": "rite_niches",
+   "x": -12.2,
+   "z": 26.5,
+   "rot": 1.5707963267948966,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": {
+    "kind": "box",
+    "x0": -12.6,
+    "z0": 25.1,
+    "x1": -11.799999999999999,
+    "z1": 27.9
+   }
+  },
+  {
+   "prop": "waystone",
+   "x": 9,
+   "z": 26.5,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 9,
+    "z": 26.5,
+    "r": 0.6
+   }
+  },
+  {
+   "prop": "sarcophagus",
+   "x": 0,
+   "z": 27,
+   "rot": 0,
+   "scale": 1.2,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": {
+    "kind": "box",
+    "x0": -0.78,
+    "z0": 25.44,
+    "x1": 0.78,
+    "z1": 28.56
+   }
+  },
+  {
+   "prop": "brazier",
+   "x": -3,
+   "z": 10.5,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -3,
+    "z": 10.5,
+    "r": 0.5
+   }
+  },
+  {
+   "prop": "brazier",
+   "x": 3,
+   "z": 10.5,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 3,
+    "z": 10.5,
+    "r": 0.5
+   }
+  },
+  {
+   "prop": "brazier",
+   "x": -3,
+   "z": 30.5,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -3,
+    "z": 30.5,
+    "r": 0.5
+   }
+  },
+  {
+   "prop": "brazier",
+   "x": 3,
+   "z": 30.5,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 3,
+    "z": 30.5,
+    "r": 0.5
+   }
+  },
+  {
+   "prop": "candles",
+   "x": -10.5,
+   "z": 11,
+   "rot": 1.1586937170442022,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "candles",
+   "x": 10.5,
+   "z": 11,
+   "rot": 1.1937376723998916,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "candles",
+   "x": -11,
+   "z": 15.8,
+   "rot": 5.092345713530593,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "candles",
+   "x": 10.5,
+   "z": 20,
+   "rot": 4.044793140886879,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "candles",
+   "x": -2,
+   "z": 21.5,
+   "rot": 2.706636735518505,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "candles",
+   "x": 2,
+   "z": 21.5,
+   "rot": 2.3941819815524097,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "candles",
+   "x": -7.2,
+   "z": 26.8,
+   "rot": 3.308490698408987,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "candles",
+   "x": -10.8,
+   "z": 25.5,
+   "rot": 3.4468698326039386,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "candles",
+   "x": 1.8,
+   "z": 28.6,
+   "rot": 3.41808402281656,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "candles",
+   "x": -1.8,
+   "z": 28.6,
+   "rot": 3.4156873870327744,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "bone_pile",
+   "x": -11.2,
+   "z": 30.6,
+   "rot": 4.150318830352559,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -11.2,
+    "z": 30.6,
+    "r": 0.55
+   }
+  },
+  {
+   "prop": "bone_pile",
+   "x": 11.2,
+   "z": 30.3,
+   "rot": 1.198164224052107,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "chapterhouse",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 11.2,
+    "z": 30.3,
+    "r": 0.55
+   }
+  },
+  {
+   "prop": "mausoleum",
+   "x": -19.5,
+   "z": -30.5,
+   "rot": 0.15,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "box",
+    "x0": -21.964958408097047,
+    "z0": -33.38462488082827,
+    "x1": -17.035041591902953,
+    "z1": -27.61537511917173
+   }
+  },
+  {
+   "prop": "mausoleum",
+   "x": 19,
+   "z": -2.5,
+   "rot": 3.241592653589793,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "box",
+    "x0": 16.650924369634392,
+    "z0": -5.296661004681206,
+    "x1": 21.349075630365608,
+    "z1": 0.29666100468120593
+   }
+  },
+  {
+   "prop": "statue",
+   "x": -5,
+   "z": -12,
+   "rot": 2.2455372690184494,
+   "scale": 0.85,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -5,
+    "z": -12,
+    "r": 0.68
+   }
+  },
+  {
+   "prop": "statue",
+   "x": 5,
+   "z": -12,
+   "rot": -2.2455372690184494,
+   "scale": 0.85,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 5,
+    "z": -12,
+    "r": 0.68
+   }
+  },
+  {
+   "prop": "statue",
+   "x": -5,
+   "z": -20,
+   "rot": 0.8960553845713439,
+   "scale": 0.85,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -5,
+    "z": -20,
+    "r": 0.68
+   }
+  },
+  {
+   "prop": "statue",
+   "x": 5,
+   "z": -20,
+   "rot": -0.8960553845713439,
+   "scale": 0.85,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 5,
+    "z": -20,
+    "r": 0.68
+   }
+  },
+  {
+   "prop": "brazier",
+   "x": -4.6,
+   "z": 2.4,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -4.6,
+    "z": 2.4,
+    "r": 0.5
+   }
+  },
+  {
+   "prop": "brazier",
+   "x": 4.6,
+   "z": 2.4,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 4.6,
+    "z": 2.4,
+    "r": 0.5
+   }
+  },
+  {
+   "prop": "waystone",
+   "x": -5.5,
+   "z": 1,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -5.5,
+    "z": 1,
+    "r": 0.6
+   }
+  },
+  {
+   "prop": "sarcophagus",
+   "x": -13.24734501214698,
+   "z": -21.46311562694609,
+   "rot": 0.16016716975718737,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "box",
+    "x0": -14.096353636416392,
+    "z0": -22.850140559566356,
+    "x1": -12.398336387877567,
+    "z1": -20.076090694325828
+   }
+  },
+  {
+   "prop": "sarcophagus",
+   "x": 0.17702905321493745,
+   "z": -21.542565731331706,
+   "rot": -0.12573717599734663,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "box",
+    "x0": -0.630867476432085,
+    "z0": -22.913816849317172,
+    "x1": 0.9849255828619599,
+    "z1": -20.17131461334624
+   }
+  },
+  {
+   "prop": "sarcophagus",
+   "x": 13.364625063259155,
+   "z": -22.034985556267202,
+   "rot": 0.12787385350093244,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "box",
+    "x0": 12.55414879651831,
+    "z0": -23.407263081309114,
+    "x1": 14.175101329999999,
+    "z1": -20.66270803122529
+   }
+  },
+  {
+   "prop": "dead_tree",
+   "x": -23.5,
+   "z": -33.5,
+   "rot": 5.775112295853593,
+   "scale": 0.8709116501384414,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -23.5,
+    "z": -33.5,
+    "r": 0.4790014075761428
+   }
+  },
+  {
+   "prop": "dead_tree",
+   "x": 23,
+   "z": -33,
+   "rot": 0.19491104179867405,
+   "scale": 1.019999915547669,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 23,
+    "z": -33,
+    "r": 0.5609999535512179
+   }
+  },
+  {
+   "prop": "dead_tree",
+   "x": -23,
+   "z": 1.5,
+   "rot": 4.156133085613914,
+   "scale": 1.041204999119509,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -23,
+    "z": 1.5,
+    "r": 0.5726627495157299
+   }
+  },
+  {
+   "prop": "dead_tree",
+   "x": 23.5,
+   "z": -26,
+   "rot": 4.305008951074141,
+   "scale": 0.9789498027763329,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 23.5,
+    "z": -26,
+    "r": 0.5384223915269831
+   }
+  },
+  {
+   "prop": "dead_tree",
+   "x": -23.6,
+   "z": -18,
+   "rot": 4.406213160052812,
+   "scale": 1.0124420423409901,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -23.6,
+    "z": -18,
+    "r": 0.5568431232875446
+   }
+  },
+  {
+   "prop": "dead_tree",
+   "x": 12,
+   "z": -34,
+   "rot": 2.5754172218819162,
+   "scale": 1.0866553038358688,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 12,
+    "z": -34,
+    "r": 0.597660417109728
+   }
+  },
+  {
+   "prop": "dead_tree",
+   "x": -12,
+   "z": -34.4,
+   "rot": 0.6662665326525589,
+   "scale": 1.1044424926512875,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -12,
+    "z": -34.4,
+    "r": 0.6074433709582081
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": -23.6679863355821,
+   "z": -30.238594141742215,
+   "rot": 0.09622091776691377,
+   "scale": 0.9899774627760052,
+   "y": 0,
+   "tilt": 0.060001922128722074,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -23.6679863355821,
+    "z": -30.238594141742215,
+    "r": 0.44548985824920234
+   }
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": -24.071249533514493,
+   "z": -23.870462965685874,
+   "rot": 0.19659576751291752,
+   "scale": 0.9686129501322284,
+   "y": 0,
+   "tilt": 0.07688470582477748,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -24.071249533514493,
+    "z": -23.870462965685874,
+    "r": 0.4068174390555359
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": -23.80495596341789,
+   "z": -7.446497707441446,
+   "rot": -0.236759671010077,
+   "scale": 1.0924469087505713,
+   "y": 0,
+   "tilt": -0.09286236918065698,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -23.80495596341789,
+    "z": -7.446497707441446,
+    "r": 0.4916011089377571
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": -23.944946853537115,
+   "z": -3.691506610158828,
+   "rot": -0.13785124593414366,
+   "scale": 1.0414276148192585,
+   "y": 0,
+   "tilt": -0.03277372372336686,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -23.944946853537115,
+    "z": -3.691506610158828,
+    "r": 0.46864242666866635
+   }
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": -21.096983083128,
+   "z": -26.90227471003309,
+   "rot": 0.20992350985761732,
+   "scale": 0.8990977184614166,
+   "y": 0,
+   "tilt": -0.042265011253766714,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -21.096983083128,
+    "z": -26.90227471003309,
+    "r": 0.37762104175379496
+   }
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": -20.84284719126299,
+   "z": -7.36512621324509,
+   "rot": -0.10978205874562263,
+   "scale": 1.00705336201936,
+   "y": 0,
+   "tilt": 0.008173495731316507,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -20.84284719126299,
+    "z": -7.36512621324509,
+    "r": 0.4229624120481312
+   }
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": -18.17403499518987,
+   "z": -33.7584099452477,
+   "rot": -0.005525299115106463,
+   "scale": 0.9537511518457904,
+   "y": 0,
+   "tilt": 0.09729018149431795,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -18.17403499518987,
+    "z": -33.7584099452477,
+    "r": 0.40057548377523194
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": -18.067291998933072,
+   "z": -10.702001434145492,
+   "rot": -0.01126085699070245,
+   "scale": 1.0136105531593784,
+   "y": 0,
+   "tilt": -0.015931900395080446,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -18.067291998933072,
+    "z": -10.702001434145492,
+    "r": 0.4561247489217203
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": -18.55701170829125,
+   "z": -3.983699123142284,
+   "rot": -0.24022679729387164,
+   "scale": 1.0179557579569518,
+   "y": 0,
+   "tilt": 0.024834121121093632,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -18.55701170829125,
+    "z": -3.983699123142284,
+    "r": 0.4580800910806283
+   }
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": -18.544912326079796,
+   "z": -0.7312889402266561,
+   "rot": -0.17216578545048833,
+   "scale": 1.0948699539294466,
+   "y": 0,
+   "tilt": 0.03342772098723799,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -18.544912326079796,
+    "z": -0.7312889402266561,
+    "r": 0.45984538065036756
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": -15.953174959914762,
+   "z": -10.764918056689199,
+   "rot": 0.15088252280838788,
+   "scale": 0.8619981781346723,
+   "y": 0,
+   "tilt": -0.014203539164736868,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -15.953174959914762,
+    "z": -10.764918056689199,
+    "r": 0.38789918016060254
+   }
+  },
+  {
+   "prop": "candles",
+   "x": -15.253174959914762,
+   "z": -10.264918056689199,
+   "rot": 2.6464580185711384,
+   "scale": 0.8,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "tombstone_round",
+   "x": -15.705754497880118,
+   "z": -0.6766629743389755,
+   "rot": -0.16653535387013108,
+   "scale": 1.1011681821895762,
+   "y": 0,
+   "tilt": -0.019389767479151488,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -15.705754497880118,
+    "z": -0.6766629743389755,
+    "r": 0.49552568198530933
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": -13.252175052254465,
+   "z": -7.2916929725557535,
+   "rot": -0.07295408402569592,
+   "scale": 0.8701361334184184,
+   "y": 0,
+   "tilt": -0.05793945534154773,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -13.252175052254465,
+    "z": -7.2916929725557535,
+    "r": 0.3915612600382883
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": -10.481559600005863,
+   "z": -30.247073677182197,
+   "rot": -0.0268754493445158,
+   "scale": 1.108980867662467,
+   "y": 0,
+   "tilt": -0.10799734232015908,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -10.481559600005863,
+    "z": -30.247073677182197,
+    "r": 0.4990413904481102
+   }
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": -10.592656752630141,
+   "z": -7.1391047453507746,
+   "rot": 0.14948873373214155,
+   "scale": 0.940175925125368,
+   "y": 0,
+   "tilt": -0.050473642507568,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -10.592656752630141,
+    "z": -7.1391047453507746,
+    "r": 0.39487388855265454
+   }
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": -10.201740600587804,
+   "z": -0.3391136344056546,
+   "rot": 0.04477738169953227,
+   "scale": 0.8538601966574788,
+   "y": 0,
+   "tilt": -0.009791345074772835,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -10.201740600587804,
+    "z": -0.3391136344056546,
+    "r": 0.35862128259614107
+   }
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": -7.489714531507347,
+   "z": -27.215527256811036,
+   "rot": -0.23899079766124487,
+   "scale": 0.9205011164303869,
+   "y": 0,
+   "tilt": -0.10064201299566776,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -7.489714531507347,
+    "z": -27.215527256811036,
+    "r": 0.3866104689007625
+   }
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": -7.848825724446219,
+   "z": -6.995214147772637,
+   "rot": -0.058211483992636204,
+   "scale": 0.9696646192809566,
+   "y": 0,
+   "tilt": 0.1043396868230775,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -7.848825724446219,
+    "z": -6.995214147772637,
+    "r": 0.40725914009800174
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": -5.154082966572609,
+   "z": -33.317965848511086,
+   "rot": -0.1924979081377387,
+   "scale": 1.0585287570720538,
+   "y": 0,
+   "tilt": -0.024453299194574358,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -5.154082966572609,
+    "z": -33.317965848511086,
+    "r": 0.47633794068242424
+   }
+  },
+  {
+   "prop": "candles",
+   "x": -4.454082966572609,
+   "z": -32.817965848511086,
+   "rot": 0.28915272653102875,
+   "scale": 0.8,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "tombstone_round",
+   "x": -5.069905575690795,
+   "z": -10.442079191096123,
+   "rot": 0.0941444996278733,
+   "scale": 1.1287576782517135,
+   "y": 0,
+   "tilt": -0.09035681820008903,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -5.069905575690795,
+    "z": -10.442079191096123,
+    "r": 0.5079409552132711
+   }
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": -4.774108696286571,
+   "z": -7.092338423710313,
+   "rot": -0.07654649298638105,
+   "scale": 0.9806809430243447,
+   "y": 0,
+   "tilt": 0.04589852849487215,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -4.774108696286571,
+    "z": -7.092338423710313,
+    "r": 0.41188599607022475
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": -4.605729865306061,
+   "z": -0.47939630965701935,
+   "rot": -0.04107728635426611,
+   "scale": 0.992306407331489,
+   "y": 0,
+   "tilt": 0.05165360333397984,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -4.605729865306061,
+    "z": -0.47939630965701935,
+    "r": 0.44653788329917005
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 3.4811532304389368,
+   "z": -33.71600733837113,
+   "rot": 0.1874238948803395,
+   "scale": 1.132157122530043,
+   "y": 0,
+   "tilt": -0.07021792693529279,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 3.4811532304389368,
+    "z": -33.71600733837113,
+    "r": 0.5094707051385194
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 3.3157483081333305,
+   "z": -20.502609165245666,
+   "rot": -0.17947915371041745,
+   "scale": 0.9538233050843701,
+   "y": 0,
+   "tilt": -0.014869084390811622,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 3.3157483081333305,
+    "z": -20.502609165245666,
+    "r": 0.4292204872879665
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 3.2000526213319938,
+   "z": -6.996594885131341,
+   "rot": -0.03425216628238559,
+   "scale": 0.9976399979088455,
+   "y": 0,
+   "tilt": 0.035282729268074034,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 3.2000526213319938,
+    "z": -6.996594885131341,
+    "r": 0.44893799905898046
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 3.490809311275367,
+   "z": -4.184447798877951,
+   "rot": 0.16270696534775198,
+   "scale": 1.1266260910546406,
+   "y": 0,
+   "tilt": 0.09423855367582291,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 3.490809311275367,
+    "z": -4.184447798877951,
+    "r": 0.5069817409745883
+   }
+  },
+  {
+   "prop": "candles",
+   "x": 4.190809311275367,
+   "z": -3.684447798877951,
+   "rot": 3.040847827680409,
+   "scale": 0.8,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": 5.630099517409686,
+   "z": -33.54841467859224,
+   "rot": 0.22944965050555766,
+   "scale": 1.0561542147537692,
+   "y": 0,
+   "tilt": -0.07382714882027358,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 5.630099517409686,
+    "z": -33.54841467859224,
+    "r": 0.44358477019658304
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 5.569953881413673,
+   "z": -30.490673599904405,
+   "rot": -0.09025508759077638,
+   "scale": 0.957084852666594,
+   "y": 0,
+   "tilt": -0.0017651979625225068,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 5.569953881413673,
+    "z": -30.490673599904405,
+    "r": 0.4306881836999673
+   }
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": 5.686183227179569,
+   "z": -26.89099191930145,
+   "rot": 0.013356679701246321,
+   "scale": 1.0505430441815407,
+   "y": 0,
+   "tilt": -0.06696406789124013,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 5.686183227179569,
+    "z": -26.89099191930145,
+    "r": 0.44122807855624707
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 5.694001232390288,
+   "z": -23.998358346149324,
+   "rot": 0.07678216649219394,
+   "scale": 0.872585902060382,
+   "y": 0,
+   "tilt": -0.10464039981365204,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 5.694001232390288,
+    "z": -23.998358346149324,
+    "r": 0.3926636559271719
+   }
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": 5.581637739157301,
+   "z": -10.412172585446385,
+   "rot": 0.21775499533396214,
+   "scale": 0.9654141249600797,
+   "y": 0,
+   "tilt": 0.08313435759395361,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 5.581637739157301,
+    "z": -10.412172585446385,
+    "r": 0.4054739324832335
+   }
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": 6.09104004371911,
+   "z": -7.058658246276897,
+   "rot": 0.14368389581795782,
+   "scale": 1.1101382550317793,
+   "y": 0,
+   "tilt": 0.06027718023397029,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 6.09104004371911,
+    "z": -7.058658246276897,
+    "r": 0.4662580671133473
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 6.1486184927169205,
+   "z": -0.3483096487820118,
+   "rot": 0.10363127116579562,
+   "scale": 0.9410736220655963,
+   "y": 0,
+   "tilt": 0.08082451754249632,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 6.1486184927169205,
+    "z": -0.3483096487820118,
+    "r": 0.42348312992951836
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 8.817859079176557,
+   "z": -30.401848466461526,
+   "rot": 0.12863664340693504,
+   "scale": 0.9920897701987996,
+   "y": 0,
+   "tilt": 0.006383520611561835,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 8.817859079176557,
+    "z": -30.401848466461526,
+    "r": 0.44644039658945983
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 8.598227658378889,
+   "z": -26.884972989186643,
+   "rot": 0.05309726542327553,
+   "scale": 0.898093877849169,
+   "y": 0,
+   "tilt": -0.002654144670814276,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 8.598227658378889,
+    "z": -26.884972989186643,
+    "r": 0.4041422450321261
+   }
+  },
+  {
+   "prop": "candles",
+   "x": 9.298227658378888,
+   "z": -26.384972989186643,
+   "rot": 4.3879084889777005,
+   "scale": 0.8,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 8.2787241600221,
+   "z": -13.580928042344746,
+   "rot": -0.06693515472579747,
+   "scale": 1.1064882012782618,
+   "y": 0,
+   "tilt": -0.10015406449325383,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 8.2787241600221,
+    "z": -13.580928042344746,
+    "r": 0.4979196905752178
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 8.662829126394351,
+   "z": -10.475044260872524,
+   "rot": 0.22512316762004048,
+   "scale": 0.9138514508260414,
+   "y": 0,
+   "tilt": 0.019646293479017914,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 8.662829126394351,
+    "z": -10.475044260872524,
+    "r": 0.41123315287171863
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 8.338156160875222,
+   "z": -6.924284810945388,
+   "rot": 0.14497579401358962,
+   "scale": 0.9119869809830561,
+   "y": 0,
+   "tilt": 0.05774676916655153,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 8.338156160875222,
+    "z": -6.924284810945388,
+    "r": 0.41039414144237524
+   }
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": 11.382745768502351,
+   "z": -26.971661259513347,
+   "rot": -0.1787845214130357,
+   "scale": 1.1107496941927821,
+   "y": 0,
+   "tilt": -0.08259948465507477,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 11.382745768502351,
+    "z": -26.971661259513347,
+    "r": 0.4665148715609685
+   }
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": 11.558576302579601,
+   "z": -20.600960716512052,
+   "rot": -0.10420807416085154,
+   "scale": 1.084438600973226,
+   "y": 0,
+   "tilt": 0.01185339157935232,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 11.558576302579601,
+    "z": -20.600960716512052,
+    "r": 0.45546421240875495
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 11.649257195414972,
+   "z": -7.049095610249784,
+   "rot": -0.08245953498408198,
+   "scale": 0.9833669520448893,
+   "y": 0,
+   "tilt": -0.008739350489340722,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 11.649257195414972,
+    "z": -7.049095610249784,
+    "r": 0.4425151284202002
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 11.009375057579016,
+   "z": -0.3082260066177666,
+   "rot": 0.025974077521823347,
+   "scale": 0.9094363406766206,
+   "y": 0,
+   "tilt": -0.07402729538269341,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 11.009375057579016,
+    "z": -0.3082260066177666,
+    "r": 0.4092463533044793
+   }
+  },
+  {
+   "prop": "candles",
+   "x": 11.709375057579015,
+   "z": 0.1917739933822334,
+   "rot": 1.414371189661324,
+   "scale": 0.8,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 14.274559463490728,
+   "z": -33.32540654595942,
+   "rot": 0.14756972366012633,
+   "scale": 0.9039290255168453,
+   "y": 0,
+   "tilt": 0.0002265878953039646,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 14.274559463490728,
+    "z": -33.32540654595942,
+    "r": 0.4067680614825804
+   }
+  },
+  {
+   "prop": "candles",
+   "x": 14.974559463490728,
+   "z": -32.82540654595942,
+   "rot": 2.7539634802378714,
+   "scale": 0.8,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 14.00482158749364,
+   "z": -30.17889019022696,
+   "rot": 0.06136733409948647,
+   "scale": 0.8985361477127298,
+   "y": 0,
+   "tilt": 0.09295463076326996,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 14.00482158749364,
+    "z": -30.17889019022696,
+    "r": 0.40434126647072843
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 14.294205140788105,
+   "z": -27.079433793202043,
+   "rot": 0.00705651834141463,
+   "scale": 0.930750822648406,
+   "y": 0,
+   "tilt": -0.010091758822090924,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 14.294205140788105,
+    "z": -27.079433793202043,
+    "r": 0.4188378701917827
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 14.122329820995215,
+   "z": -23.810950413811952,
+   "rot": -0.09358989167958498,
+   "scale": 1.124793018074706,
+   "y": 0,
+   "tilt": 0.019330828287638723,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 14.122329820995215,
+    "z": -23.810950413811952,
+    "r": 0.5061568581336178
+   }
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": 13.988879837724376,
+   "z": -7.406129428278652,
+   "rot": 0.21425873902626336,
+   "scale": 0.9581102619413286,
+   "y": 0,
+   "tilt": 0.07589719488285482,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 13.988879837724376,
+    "z": -7.406129428278652,
+    "r": 0.40240631001535804
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 14.079084870358926,
+   "z": -0.7716950430069088,
+   "rot": 0.036071359645575285,
+   "scale": 0.8926844412460923,
+   "y": 0,
+   "tilt": 0.01174132441636175,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 14.079084870358926,
+    "z": -0.7716950430069088,
+    "r": 0.4017079985607415
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 16.78193079133052,
+   "z": -23.745192526560277,
+   "rot": 0.2207482981029898,
+   "scale": 0.9962265539448708,
+   "y": 0,
+   "tilt": -0.07838634203653783,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 16.78193079133052,
+    "z": -23.745192526560277,
+    "r": 0.44830194927519185
+   }
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": 16.56381537704728,
+   "z": -10.684030057908963,
+   "rot": 0.1712581634055823,
+   "scale": 0.923749670595862,
+   "y": 0,
+   "tilt": 0.10033361644018442,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 16.56381537704728,
+    "z": -10.684030057908963,
+    "r": 0.387974861650262
+   }
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": 16.686712112068193,
+   "z": -6.956324567086991,
+   "rot": 0.00460454635322094,
+   "scale": 1.1159224261995404,
+   "y": 0,
+   "tilt": -0.039707968560978774,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 16.686712112068193,
+    "z": -6.956324567086991,
+    "r": 0.46868741900380695
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 16.595181554229924,
+   "z": -0.4048858629539579,
+   "rot": 0.18465382023714483,
+   "scale": 0.8612150407163426,
+   "y": 0,
+   "tilt": -0.012048911550082267,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 16.595181554229924,
+    "z": -0.4048858629539579,
+    "r": 0.3875467683223542
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 19.173119264841073,
+   "z": -7.378545020939779,
+   "rot": 0.0973850479349494,
+   "scale": 1.1295156605308876,
+   "y": 0,
+   "tilt": -0.10308777996804565,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 19.173119264841073,
+    "z": -7.378545020939779,
+    "r": 0.5082820472388995
+   }
+  },
+  {
+   "prop": "candles",
+   "x": 19.873119264841073,
+   "z": -6.878545020939779,
+   "rot": 3.2329402305185795,
+   "scale": 0.8,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": 22.242954388190988,
+   "z": -30.278666447801516,
+   "rot": -0.22029610816389322,
+   "scale": 1.0952120145782829,
+   "y": 0,
+   "tilt": 0.09944038735702634,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 22.242954388190988,
+    "z": -30.278666447801516,
+    "r": 0.4599890461228788
+   }
+  },
+  {
+   "prop": "tombstone_cross",
+   "x": 21.80033912539947,
+   "z": -7.400595452869307,
+   "rot": -0.2431006955448538,
+   "scale": 1.0493780489079654,
+   "y": 0,
+   "tilt": 0.05001875352114439,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 21.80033912539947,
+    "z": -7.400595452869307,
+    "r": 0.44073878054134547
+   }
+  },
+  {
+   "prop": "tombstone_round",
+   "x": 21.786636838060797,
+   "z": -3.6290059353690562,
+   "rot": -0.15616871684323996,
+   "scale": 0.8627053593751043,
+   "y": 0,
+   "tilt": -0.06109098948072642,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 21.786636838060797,
+    "z": -3.6290059353690562,
+    "r": 0.3882174117187969
+   }
+  },
+  {
+   "prop": "bone_pile",
+   "x": -21.61310704704374,
+   "z": -30.73769101127982,
+   "rot": 0.08915077488190236,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -21.61310704704374,
+    "z": -30.73769101127982,
+    "r": 0.55
+   }
+  },
+  {
+   "prop": "bone_pile",
+   "x": 5.611484612803906,
+   "z": -21.464110265485942,
+   "rot": 0.7044485248229345,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 5.611484612803906,
+    "z": -21.464110265485942,
+    "r": 0.55
+   }
+  },
+  {
+   "prop": "bone_pile",
+   "x": 6.479854452423751,
+   "z": -28.4110849048011,
+   "rot": 2.316819046527067,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 6.479854452423751,
+    "z": -28.4110849048011,
+    "r": 0.55
+   }
+  },
+  {
+   "prop": "candles",
+   "x": -6,
+   "z": -10.5,
+   "rot": 5.501344047690035,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "candles",
+   "x": 6,
+   "z": -10.5,
+   "rot": 0.40085643871967264,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "candles",
+   "x": -6,
+   "z": -21.5,
+   "rot": 2.8998508216035903,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "candles",
+   "x": 6,
+   "z": -21.5,
+   "rot": 1.7794167732910189,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "candles",
+   "x": -1.2,
+   "z": -33.8,
+   "rot": 5.644306973824033,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "candles",
+   "x": 1.2,
+   "z": -33.8,
+   "rot": 2.1630803097087283,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -25.4,
+   "z": -34.5,
+   "rot": 1.5707963267948966,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -25.4,
+   "z": -32.1,
+   "rot": 1.5707963267948966,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -25.4,
+   "z": -29.700000000000003,
+   "rot": 1.5707963267948966,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -25.4,
+   "z": -27.300000000000004,
+   "rot": 1.5707963267948966,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -25.4,
+   "z": -24.900000000000006,
+   "rot": 1.5707963267948966,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -25.4,
+   "z": -22.500000000000007,
+   "rot": 1.5707963267948966,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -25.4,
+   "z": -20.10000000000001,
+   "rot": 1.5707963267948966,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -25.4,
+   "z": -17.70000000000001,
+   "rot": 1.5707963267948966,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -25.4,
+   "z": -15.30000000000001,
+   "rot": 1.5707963267948966,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -25.4,
+   "z": -12.90000000000001,
+   "rot": 1.5707963267948966,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -25.4,
+   "z": -10.500000000000009,
+   "rot": 1.5707963267948966,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -25.4,
+   "z": -8.100000000000009,
+   "rot": 1.5707963267948966,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -25.4,
+   "z": -5.700000000000008,
+   "rot": 1.5707963267948966,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -25.4,
+   "z": -3.3000000000000083,
+   "rot": 1.5707963267948966,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -25.4,
+   "z": -0.9000000000000083,
+   "rot": 1.5707963267948966,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -25.4,
+   "z": 1.4999999999999916,
+   "rot": 1.5707963267948966,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -24.5,
+   "z": -35.4,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -22.1,
+   "z": -35.4,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -19.700000000000003,
+   "z": -35.4,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -17.300000000000004,
+   "z": -35.4,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -14.900000000000004,
+   "z": -35.4,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -12.500000000000004,
+   "z": -35.4,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -10.100000000000003,
+   "z": -35.4,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -7.700000000000003,
+   "z": -35.4,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": -5.3000000000000025,
+   "z": -35.4,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": 6.6999999999999975,
+   "z": -35.4,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": 9.099999999999998,
+   "z": -35.4,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": 11.499999999999998,
+   "z": -35.4,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": 13.899999999999999,
+   "z": -35.4,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": 16.299999999999997,
+   "z": -35.4,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": 18.699999999999996,
+   "z": -35.4,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": 21.099999999999994,
+   "z": -35.4,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "fence",
+   "x": 23.499999999999993,
+   "z": -35.4,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": null
+  },
+  {
+   "prop": "coffin_stack",
+   "x": 22.8,
+   "z": -6.2,
+   "rot": 2.8,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "box",
+    "x0": 21.6567847692378,
+    "z0": -7.1003215545571,
+    "x1": 23.943215230762203,
+    "z1": -5.2996784454429005
+   }
+  },
+  {
+   "prop": "gibbet_cage",
+   "x": 12.5,
+   "z": -11.2,
+   "rot": 4.3,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 12.5,
+    "z": -11.2,
+    "r": 0.4
+   }
+  },
+  {
+   "prop": "grave_lantern",
+   "x": 3.6,
+   "z": -2.6,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": 3.6,
+    "z": -2.6,
+    "r": 0.25
+   }
+  },
+  {
+   "prop": "grave_lantern",
+   "x": -3.6,
+   "z": -31.5,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -3.6,
+    "z": -31.5,
+    "r": 0.25
+   }
+  },
+  {
+   "prop": "grave_lantern",
+   "x": -7.2,
+   "z": -13.2,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "circle",
+    "x": -7.2,
+    "z": -13.2,
+    "r": 0.25
+   }
+  },
+  {
+   "prop": "kings_grave",
+   "x": -13.999999999999998,
+   "z": -30.5,
+   "rot": 0,
+   "scale": 1,
+   "y": 0,
+   "tilt": 0,
+   "area": "graves",
+   "group": null,
+   "obstacle": {
+    "kind": "box",
+    "x0": -15.499999999999998,
+    "z0": -31.6,
+    "x1": -12.499999999999998,
+    "z1": -29.4
+   }
+  }
+ ],
+ "propSpecs": {
+  "altar_ascension": {
+   "height": 2.8,
+   "collider": {
+    "kind": "box",
+    "hw": 1.6,
+    "hd": 1.2
+   },
+   "url": "models/props/altar_ascension.glb"
+  },
+  "bone_pile": {
+   "height": 0.8,
+   "collider": {
+    "kind": "circle",
+    "r": 0.55
+   },
+   "url": "models/props/bone_pile.glb"
+  },
+  "brazier": {
+   "height": 1.3,
+   "collider": {
+    "kind": "circle",
+    "r": 0.5
+   },
+   "light": {
+    "color": 10906623,
+    "intensity": 14,
+    "distance": 11,
+    "y": 1.6,
+    "flames": 0,
+    "spread": 0.3
+   },
+   "url": "models/props/brazier.glb"
+  },
+  "candles": {
+   "height": 0.7,
+   "light": {
+    "color": 16757867,
+    "intensity": 5,
+    "distance": 7,
+    "y": 0.9,
+    "flames": 5,
+    "spread": 0.28
+   },
+   "url": "models/props/candles.glb"
+  },
+  "coffin_stack": {
+   "height": 1.6,
+   "collider": {
+    "kind": "box",
+    "hw": 1,
+    "hd": 0.6
+   },
+   "url": "models/props/coffin_stack.glb"
+  },
+  "dead_tree": {
+   "height": 5.5,
+   "collider": {
+    "kind": "circle",
+    "r": 0.55
+   },
+   "url": "models/props/dead_tree.glb"
+  },
+  "fence": {
+   "height": 1.6,
+   "url": "models/props/fence.glb"
+  },
+  "gibbet_cage": {
+   "height": 3.4,
+   "collider": {
+    "kind": "circle",
+    "r": 0.4
+   },
+   "url": "models/props/gibbet_cage.glb"
+  },
+  "grave_lantern": {
+   "height": 2.4,
+   "collider": {
+    "kind": "circle",
+    "r": 0.25
+   },
+   "light": {
+    "color": 16757867,
+    "intensity": 4,
+    "distance": 6,
+    "y": 2.1,
+    "flames": 0,
+    "spread": 0.2
+   },
+   "url": "models/props/grave_lantern.glb"
+  },
+  "kings_grave": {
+   "height": 1.6,
+   "collider": {
+    "kind": "box",
+    "hw": 1.5,
+    "hd": 1.1
+   },
+   "url": "models/props/kings_grave.glb"
+  },
+  "mausoleum": {
+   "height": 5.2,
+   "collider": {
+    "kind": "box",
+    "hw": 2.1,
+    "hd": 2.6
+   },
+   "url": "models/props/mausoleum.glb"
+  },
+  "pillar": {
+   "height": 6.5,
+   "collider": {
+    "kind": "circle",
+    "r": 0.85
+   },
+   "url": "models/props/pillar.glb"
+  },
+  "reliquary": {
+   "height": 1.2,
+   "collider": {
+    "kind": "box",
+    "hw": 0.9,
+    "hd": 0.6
+   },
+   "url": "models/props/reliquary.glb"
+  },
+  "rite_niches": {
+   "height": 2.6,
+   "collider": {
+    "kind": "box",
+    "hw": 1.4,
+    "hd": 0.4
+   },
+   "url": "models/props/rite_niches.glb"
+  },
+  "sarcophagus": {
+   "height": 1.1,
+   "collider": {
+    "kind": "box",
+    "hw": 0.65,
+    "hd": 1.3
+   },
+   "url": "models/props/sarcophagus.glb"
+  },
+  "statue": {
+   "height": 3.2,
+   "collider": {
+    "kind": "circle",
+    "r": 0.8
+   },
+   "url": "models/props/statue.glb"
+  },
+  "tombstone_cross": {
+   "height": 1.7,
+   "collider": {
+    "kind": "circle",
+    "r": 0.42
+   },
+   "url": "models/props/tombstone_cross.glb"
+  },
+  "tombstone_round": {
+   "height": 1.25,
+   "collider": {
+    "kind": "circle",
+    "r": 0.45
+   },
+   "url": "models/props/tombstone_round.glb"
+  },
+  "waystone": {
+   "height": 3,
+   "collider": {
+    "kind": "circle",
+    "r": 0.6
+   },
+   "url": "models/props/waystone.glb"
+  },
+  "workbench": {
+   "height": 1.4,
+   "collider": {
+    "kind": "box",
+    "hw": 1.4,
+    "hd": 0.8
+   },
+   "url": "models/props/workbench.glb"
+  }
+ },
+ "nodes": [
+  {
+   "id": "graves_0",
+   "type": "coffin_oak",
+   "x": -23.4,
+   "z": -9.5,
+   "area": "graves",
+   "rich": true,
+   "rot": -5.491255477432809,
+   "kind": "tree",
+   "collider": 0.6,
+   "name": "Coffin-Oak",
+   "model": "models/props/prop_node_coffin_oak.glb",
+   "modelHeight": 4.4
+  },
+  {
+   "id": "graves_1",
+   "type": "grave_pauper",
+   "x": -16,
+   "z": 1.6,
+   "area": "graves",
+   "rich": true,
+   "rot": -5.0258497779470375,
+   "kind": "grave",
+   "collider": 0.7,
+   "name": "Pauper's Grave",
+   "model": "models/props/prop_node_burial_mound.glb",
+   "modelHeight": 0.6
+  }
+ ],
+ "paths": [
+  {
+   "x0": -2.6,
+   "z0": -35.5,
+   "x1": 2.6,
+   "z1": 4
+  },
+  {
+   "x0": -22,
+   "z0": -18.2,
+   "x1": 25,
+   "z1": -13.8
+  },
+  {
+   "x0": -5.5,
+   "z0": -21.5,
+   "x1": 5.5,
+   "z1": -10.5
+  }
+ ],
+ "decals": [
+  {
+   "kind": "sigil",
+   "x": 0,
+   "z": 21,
+   "r": 2.6,
+   "color": "#9b5cff",
+   "opacity": 0.7,
+   "rot": 0,
+   "area": "chapterhouse"
+  },
+  {
+   "kind": "cracks",
+   "x": -18,
+   "z": -29,
+   "r": 1.9,
+   "color": "#7c3aed",
+   "opacity": 0.3,
+   "rot": 1.743529960513115,
+   "area": "graves"
+  },
+  {
+   "kind": "cracks",
+   "x": 0,
+   "z": -31,
+   "r": 1.9,
+   "color": "#7c3aed",
+   "opacity": 0.3,
+   "rot": 3.4859228529967368,
+   "area": "graves"
+  },
+  {
+   "kind": "cracks",
+   "x": 18,
+   "z": -29,
+   "r": 1.9,
+   "color": "#7c3aed",
+   "opacity": 0.3,
+   "rot": 1.7303486284799874,
+   "area": "graves"
+  },
+  {
+   "kind": "cracks",
+   "x": -21,
+   "z": -13,
+   "r": 1.9,
+   "color": "#7c3aed",
+   "opacity": 0.3,
+   "rot": 5.93734081601724,
+   "area": "graves"
+  },
+  {
+   "kind": "cracks",
+   "x": 21,
+   "z": -11,
+   "r": 1.9,
+   "color": "#7c3aed",
+   "opacity": 0.3,
+   "rot": 2.566170039586723,
+   "area": "graves"
+  },
+  {
+   "kind": "cracks",
+   "x": 9,
+   "z": -19,
+   "r": 1.9,
+   "color": "#7c3aed",
+   "opacity": 0.3,
+   "rot": 4.837010416667908,
+   "area": "graves"
+  },
+  {
+   "kind": "cracks",
+   "x": -9,
+   "z": -21,
+   "r": 1.9,
+   "color": "#7c3aed",
+   "opacity": 0.3,
+   "rot": 2.919627778697759,
+   "area": "graves"
+  },
+  {
+   "kind": "cracks",
+   "x": 20,
+   "z": -24,
+   "r": 1.9,
+   "color": "#7c3aed",
+   "opacity": 0.3,
+   "rot": 2.762918410822749,
+   "area": "graves"
+  },
+  {
+   "kind": "cracks",
+   "x": -14,
+   "z": -3,
+   "r": 1.9,
+   "color": "#7c3aed",
+   "opacity": 0.3,
+   "rot": 1.8029801943339407,
+   "area": "graves"
+  },
+  {
+   "kind": "cracks",
+   "x": 14,
+   "z": -4,
+   "r": 1.9,
+   "color": "#7c3aed",
+   "opacity": 0.3,
+   "rot": 1.5552446222864091,
+   "area": "graves"
+  },
+  {
+   "kind": "sigil",
+   "x": 0,
+   "z": -16,
+   "r": 3.6,
+   "color": "#7c3aed",
+   "opacity": 0.25,
+   "rot": 0,
+   "area": "graves"
+  }
+ ],
+ "puddles": [
+  {
+   "x": 19.30341274291277,
+   "z": -19.05729888845235,
+   "r": 1.5580190761480481,
+   "sx": 1.7964404044672846,
+   "rot": 0.007076351992750023,
+   "area": "graves"
+  },
+  {
+   "x": -17.351194068789482,
+   "z": -15.8632404319942,
+   "r": 0.7177642094204202,
+   "sx": 1.5539847968146205,
+   "rot": 2.462853508877164,
+   "area": "graves"
+  },
+  {
+   "x": 13.851567260921001,
+   "z": -12.954776466824114,
+   "r": 1.645968167227693,
+   "sx": 1.0925145667046308,
+   "rot": 1.724792554750203,
+   "area": "graves"
+  },
+  {
+   "x": -1.3692874498665333,
+   "z": -17.064631152898073,
+   "r": 1.64950010383036,
+   "sx": 1.5754293316975236,
+   "rot": 1.3711035609725093,
+   "area": "graves"
+  },
+  {
+   "x": -7.247662268579006,
+   "z": -3.634588117711246,
+   "r": 0.9759385527577251,
+   "sx": 1.5131942842155697,
+   "rot": 0.03162893109479279,
+   "area": "graves"
+  },
+  {
+   "x": -3.8995879255235195,
+   "z": -29.52435367833823,
+   "r": 0.8276641515316441,
+   "sx": 1.780588916502893,
+   "rot": 2.8933013790558766,
+   "area": "graves"
+  },
+  {
+   "x": 12.78308092430234,
+   "z": -18.695423495955765,
+   "r": 0.8284023900749161,
+   "sx": 1.1081206126138567,
+   "rot": 2.1051772631172776,
+   "area": "graves"
+  },
+  {
+   "x": -10.684404730796814,
+   "z": -10.752402189187706,
+   "r": 1.2614334678510204,
+   "sx": 1.0405471846461296,
+   "rot": 2.0607106845972263,
+   "area": "graves"
+  },
+  {
+   "x": -0.22498958185315132,
+   "z": 0.27092036232352257,
+   "r": 1.7650401220889762,
+   "sx": 1.6147728675976396,
+   "rot": 2.4156041829473702,
+   "area": "graves"
+  },
+  {
+   "x": -13.976063936948776,
+   "z": -17.478631262667477,
+   "r": 0.9343356861034408,
+   "sx": 1.091405857540667,
+   "rot": 0.6558070560590897,
+   "area": "graves"
+  },
+  {
+   "x": 13.289279479533434,
+   "z": -4.25868144351989,
+   "r": 1.362467842386104,
+   "sx": 1.0147070297971368,
+   "rot": 0.43040097633968205,
+   "area": "graves"
+  },
+  {
+   "x": 1.7004238218069077,
+   "z": -11.497879914939404,
+   "r": 1.3109747212845833,
+   "sx": 1.6199171716347336,
+   "rot": 1.9695865817125775,
+   "area": "graves"
+  }
+ ],
+ "crypts": [
+  {
+   "x": -16.450643104404694,
+   "z": -28.23252948789067,
+   "area": "graves",
+   "prop": "mausoleum"
+  },
+  {
+   "x": 15.90231444858816,
+   "z": -4.700987102318939,
+   "area": "graves",
+   "prop": "mausoleum"
+  },
+  {
+   "x": -10.936161544186662,
+   "z": -20.509999171612893,
+   "area": "graves",
+   "prop": "sarcophagus"
+  },
+  {
+   "x": 0.09721997560065102,
+   "z": -19.043839953834233,
+   "area": "graves",
+   "prop": "sarcophagus"
+  },
+  {
+   "x": 11.08615689794562,
+   "z": -21.006111015979233,
+   "area": "graves",
+   "prop": "sarcophagus"
+  }
+ ],
+ "loot": [
+  {
+   "item": "set_gravecaller_head",
+   "weight": 1.4,
+   "name": "Gravecall Crown",
+   "rarity": "uncommon"
+  },
+  {
+   "item": "set_gravecaller_hands",
+   "weight": 1.4,
+   "name": "Gravecall Grips",
+   "rarity": "uncommon"
+  },
+  {
+   "item": "set_warden_head",
+   "weight": 1.4,
+   "name": "Lamplight Crown",
+   "rarity": "uncommon"
+  },
+  {
+   "item": "set_warden_hands",
+   "weight": 1.4,
+   "name": "Lamplight Grips",
+   "rarity": "uncommon"
+  },
+  {
+   "item": "set_monk_head",
+   "weight": 1.4,
+   "name": "Bellwake Crown",
+   "rarity": "uncommon"
+  },
+  {
+   "item": "set_monk_hands",
+   "weight": 1.4,
+   "name": "Bellwake Grips",
+   "rarity": "uncommon"
+  },
+  {
+   "item": "set_ossuary_head",
+   "weight": 1.4,
+   "name": "Ivory Reliquary Crown",
+   "rarity": "uncommon"
+  },
+  {
+   "item": "set_ossuary_hands",
+   "weight": 1.4,
+   "name": "Ivory Reliquary Grips",
+   "rarity": "uncommon"
+  },
+  {
+   "item": "set_mourner_head",
+   "weight": 1.4,
+   "name": "Widowveil Crown",
+   "rarity": "uncommon"
+  },
+  {
+   "item": "set_mourner_hands",
+   "weight": 1.4,
+   "name": "Widowveil Grips",
+   "rarity": "uncommon"
+  },
+  {
+   "item": "set_witch_head",
+   "weight": 1.4,
+   "name": "Carrionbloom Crown",
+   "rarity": "uncommon"
+  },
+  {
+   "item": "set_witch_hands",
+   "weight": 1.4,
+   "name": "Carrionbloom Grips",
+   "rarity": "uncommon"
+  },
+  {
+   "item": "set_rotweaver_head",
+   "weight": 1.4,
+   "name": "Blightweave Crown",
+   "rarity": "uncommon"
+  },
+  {
+   "item": "set_rotweaver_hands",
+   "weight": 1.4,
+   "name": "Blightweave Grips",
+   "rarity": "uncommon"
+  },
+  {
+   "item": "set_knight_head",
+   "weight": 1.4,
+   "name": "Hollow Oath Crown",
+   "rarity": "uncommon"
+  },
+  {
+   "item": "set_knight_hands",
+   "weight": 1.4,
+   "name": "Hollow Oath Grips",
+   "rarity": "uncommon"
+  },
+  {
+   "item": "set_veil_head",
+   "weight": 1.4,
+   "name": "Threshold Crown",
+   "rarity": "uncommon"
+  },
+  {
+   "item": "set_veil_hands",
+   "weight": 1.4,
+   "name": "Threshold Grips",
+   "rarity": "uncommon"
+  },
+  {
+   "item": "staff_bone",
+   "weight": 1.4,
+   "name": "Vertebral Staff",
+   "rarity": "common"
+  },
+  {
+   "item": "scythe_bone",
+   "weight": 1.4,
+   "name": "Gleaner's Scythe",
+   "rarity": "common"
+  },
+  {
+   "item": "wand_bone",
+   "weight": 1.4,
+   "name": "Knucklebone Wand",
+   "rarity": "common"
+  },
+  {
+   "item": "sickle_bone",
+   "weight": 1.4,
+   "name": "Barrow Sickle",
+   "rarity": "common"
+  },
+  {
+   "item": "skull_focus_bone",
+   "weight": 1.4,
+   "name": "Pauper's Skull Focus",
+   "rarity": "common"
+  },
+  {
+   "item": "grimoire_bone",
+   "weight": 1.4,
+   "name": "Gravedigger's Grimoire",
+   "rarity": "common"
+  },
+  {
+   "item": "mourning_bell_bone",
+   "weight": 1.4,
+   "name": "Pauper's Mourning Bell",
+   "rarity": "common"
+  },
+  {
+   "item": "ore_copper",
+   "weight": 24,
+   "name": "Copper Ore",
+   "rarity": "common"
+  },
+  {
+   "item": "ore_tin",
+   "weight": 14,
+   "name": "Tin Ore",
+   "rarity": "common"
+  },
+  {
+   "item": "flask_hp_minor",
+   "weight": 12,
+   "name": "Minor Healing Potion",
+   "rarity": "common"
+  },
+  {
+   "item": "log_oak",
+   "weight": 8,
+   "name": "Oak Log",
+   "rarity": "common"
+  },
+  {
+   "item": "ring_copper",
+   "weight": 4,
+   "name": "Copper Ring",
+   "rarity": "uncommon"
+  },
+  {
+   "item": "helm_copper",
+   "weight": 4,
+   "name": "Copper Helm",
+   "rarity": "common"
+  },
+  {
+   "item": "staff_oak",
+   "weight": 3,
+   "name": "Oak Staff",
+   "rarity": "uncommon"
+  }
+ ],
+ "skippedEnemyIds": [
+  "moth",
+  "bat"
+ ]
+}

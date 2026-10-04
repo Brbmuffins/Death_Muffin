@@ -15,3 +15,8 @@ __pycache__/
 # launcher build output
 launcher/windows/bin/
 launcher/windows/obj/
+
+# Godot port
+godot/.godot/
+godot/build/
+godot/shots/

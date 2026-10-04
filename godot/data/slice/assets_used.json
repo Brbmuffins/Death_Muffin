@@ -1,0 +1,38 @@
+{
+ "models": [
+  "models/barrow_ghoul/character.glb",
+  "models/bone_hound/character.glb",
+  "models/carrion_sac/character.glb",
+  "models/grave_robber/character.glb",
+  "models/hero_ossuary/character.glb",
+  "models/penitent/character.glb",
+  "models/props/altar_ascension.glb",
+  "models/props/bone_pile.glb",
+  "models/props/brazier.glb",
+  "models/props/candles.glb",
+  "models/props/coffin_stack.glb",
+  "models/props/dead_tree.glb",
+  "models/props/fence.glb",
+  "models/props/gibbet_cage.glb",
+  "models/props/grave_lantern.glb",
+  "models/props/kings_grave.glb",
+  "models/props/mausoleum.glb",
+  "models/props/pillar.glb",
+  "models/props/prop_node_burial_mound.glb",
+  "models/props/prop_node_coffin_oak.glb",
+  "models/props/reliquary.glb",
+  "models/props/rite_niches.glb",
+  "models/props/sarcophagus.glb",
+  "models/props/statue.glb",
+  "models/props/tombstone_cross.glb",
+  "models/props/tombstone_round.glb",
+  "models/props/waystone.glb",
+  "models/props/workbench.glb",
+  "models/thrall_sentinel/character.glb"
+ ],
+ "textures": [
+  "art/textures/flagstone.webp",
+  "art/textures/grave_soil.webp",
+  "art/textures/stone_wall.webp"
+ ]
+}
