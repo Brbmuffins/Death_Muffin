@@ -51,11 +51,18 @@ module.exports = function mountReforge(app, pool, { requireAuth, ownsCharacter, 
   });
 
   app.post('/api/reforge', requireAuth, async (req, res) => {
+    const body = req.body || {};
+    const id = parseInt(body.characterId, 10);
+    // Ownership is checked BEFORE a connection is taken: ownsCharacter queries the same pool, so ten requests each holding a connection and
+    // waiting for an eleventh would starve it for good.
+    try {
+      if (!id || !(await ownsCharacter(req, id))) return res.status(403).json({ success: false, error: 'character not found or not owned by this account' });
+    } catch (err) {
+      console.error(`${req.method} ${req.path}:`, err.code || err.message);
+      return res.status(500).json({ success: false, error: 'internal server error' });
+    }
     const conn = await pool.getConnection();
     try {
-      const body = req.body || {};
-      const id = parseInt(body.characterId, 10);
-      if (!id || !(await ownsCharacter(req, id))) return res.status(403).json({ success: false, error: 'character not found or not owned by this account' });
       const slot = Number(body.slot_index);
       const index = Number(body.affix_index);
       if (!Number.isInteger(slot) || !Number.isInteger(index)) throw playerError('Choose a piece and one of its affixes.');

@@ -44,11 +44,18 @@ module.exports = function mountBossKey(app, pool, { requireAuth, ownsCharacter, 
   };
   const route = (name, handler) =>
     app.post(`/api/boss-key/${name}`, requireAuth, async (req, res) => {
+      const body = req.body || {};
+      const id = parseInt(body.characterId, 10);
+      // Ownership is checked BEFORE a connection is taken (ownsCharacter queries the same pool: ten requests each holding a connection and
+      // waiting for an eleventh would starve it for good).
+      try {
+        if (!id || !(await ownsCharacter(req, id))) return res.status(403).json({ success: false, error: 'character not found or not owned by this account' });
+      } catch (err) {
+        console.error(`${req.method} ${req.path}:`, err.code || err.message);
+        return res.status(500).json({ success: false, error: 'internal server error' });
+      }
       const conn = await pool.getConnection();
       try {
-        const body = req.body || {};
-        const id = parseInt(body.characterId, 10);
-        if (!id || !(await ownsCharacter(req, id))) return res.status(403).json({ success: false, error: 'character not found or not owned by this account' });
         await conn.beginTransaction();
         const data = await handler(conn, id, body, req);
         await conn.commit();
