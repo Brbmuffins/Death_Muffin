@@ -1,6 +1,7 @@
 import { io, type Socket } from 'socket.io-client';
 import { WS_BASE, WS_PATH } from './config';
 import { getToken } from './api';
+import { notifySessionReplaced } from './session';
 import type {
   ChatMessage,
   EventBatch,
@@ -120,6 +121,7 @@ export class RealtimeClient {
             this.hostId = hostId;
             h.onHostChange(hostId, snapshot);
           });
+          socket.on('session:replaced', () => notifySessionReplaced());
           socket.on('disconnect', () => h.onDisconnect());
           this.hostId = res.data.hostId;
           this.instance = res.data.instance;

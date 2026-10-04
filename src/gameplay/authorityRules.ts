@@ -19,7 +19,8 @@ import { AREA_RUNE_POOL, BOSS_RUNE_POOL, RUNE_WEIGHT, eliteRuneChance, RUNES, SU
 // ── Experience arithmetic ─────────────────────────────────────────────────────────────────────────────────────────────
 
 /** The game's curve: advancing from `level` costs level x 100 (characterStats.xpToNext, server characterXpToNext). */
-export const LEVEL_CAP = 255;
+/** The one character-level cap: the server's save paths (save-progress, offline sync, normalise) and the client read it from here. Was 255; 999 since 2026-10-03. */
+export const LEVEL_CAP = 999;
 
 /** Lifetime experience of a (level, xp-into-level) pair: 100 x (1 + 2 + ... + level-1) + xp. */
 export function totalXp(level: number, xp: number): number {

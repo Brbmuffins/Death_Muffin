@@ -406,6 +406,12 @@ const io = new Server(httpServer, {
   ...(process.env.REALTIME_PATH ? { path: process.env.REALTIME_PATH } : {}),
 });
 
+/** Mint time (ms) encoded at the front of a session id, or 0 when there is none (older tokens: never evicted, never evicting). */
+function sidStamp(sid) {
+  const n = Number(String(sid).split('-')[0]);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
 // JWT handshake — same tokens the auth server issues on /login.
 io.use((socket, next) => {
   const token = socket.handshake.auth && socket.handshake.auth.token;
@@ -421,6 +427,23 @@ io.use((socket, next) => {
     if (!payload || !payload.accountId) return next(new Error('Not authenticated'));
     socket.data.accountId = payload.accountId;
     socket.data.username = payload.username || `player${payload.accountId}`;
+    // One active session per account (auth server session.cjs): a sid starts with its mint time in ms, so the relay needs no database to
+    // tell which of two sockets belongs to the newer login. The older one is told and dropped; a reconnect of the same session is untouched.
+    const sid = typeof payload.sid === 'string' ? payload.sid : '';
+    const stamp = sidStamp(sid);
+    if (stamp) {
+      for (const other of io.sockets.sockets.values()) {
+        if (other.data.accountId !== payload.accountId || !other.data.sidStamp) continue;
+        if (other.data.sidStamp > stamp) return next(new Error('Not authenticated: this account was opened somewhere else'));
+      }
+      for (const other of [...io.sockets.sockets.values()]) {
+        if (other.data.accountId === payload.accountId && other.data.sidStamp && other.data.sidStamp < stamp) {
+          other.emit('session:replaced', { message: 'This account was opened somewhere else.' });
+          other.disconnect(true);
+        }
+      }
+      socket.data.sidStamp = stamp;
+    }
     next();
   } catch {
     next(new Error('Not authenticated'));
@@ -613,7 +636,7 @@ if (require.main === module) {
   });
 }
 
-module.exports = { io, validIntent, pickWorld, worlds, LIMITS, httpServer, cleanGear, acceptPerf, perfReports, storePerf, perfLine, snapshotBytes, snapshotFor, drops, SNAPSHOT_INTEREST_RADIUS };
+module.exports = { sidStamp, io, validIntent, pickWorld, worlds, LIMITS, httpServer, cleanGear, acceptPerf, perfReports, storePerf, perfLine, snapshotBytes, snapshotFor, drops, SNAPSHOT_INTEREST_RADIUS };
 CWEOF_SERVER
 
 cat > "$DIR/package.json" <<'CWEOF_PKG'

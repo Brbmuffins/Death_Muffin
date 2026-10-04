@@ -1735,7 +1735,7 @@ function smartTable(area, disciplineId) {
 }
 
 // src/gameplay/authorityRules.ts
-var LEVEL_CAP = 255;
+var LEVEL_CAP = 999;
 function totalXp(level, xp) {
   const l = Math.max(1, Math.trunc(Number(level) || 1));
   return 50 * l * (l - 1) + Math.max(0, Math.trunc(Number(xp) || 0));

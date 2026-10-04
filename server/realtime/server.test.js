@@ -368,3 +368,29 @@ test('exhume names a known thrall kind (an unknown one made the host sim throw)'
   assert.equal(validIntent({ t: 'exhume', x: 0, z: 0, kind: { a: 1 } }).kind, 'warrior');
   assert.equal(validIntent({ t: 'exhume', x: 0, z: 0 }).kind, 'warrior');
 });
+
+test('a newer login of the same account drops the older socket; the older session cannot reconnect over it', async () => {
+  const jwt = require('jsonwebtoken');
+  const url = await listen();
+  const tok = (sid) => jwt.sign({ accountId: 777, username: 'twice', sid }, 'x');
+  const connectWith = (sid) => new Promise((resolve, reject) => {
+    const c = connectClient(url, { auth: { token: tok(sid) }, transports: ['websocket'], forceNew: true });
+    c.on('connect', () => resolve(c));
+    c.on('connect_error', reject);
+  });
+  const oldSid = `${Date.now() - 5000}-aaaa`;
+  const newSid = `${Date.now()}-bbbb`;
+  const oldSock = await connectWith(oldSid);
+  let replaced = false, closed = false;
+  oldSock.on('session:replaced', () => { replaced = true; });
+  oldSock.on('disconnect', () => { closed = true; });
+  const again = await connectWith(oldSid); // same session reconnecting: allowed, nobody is evicted
+  await settle();
+  assert.equal(replaced, false, 'same session never evicts');
+  const fresh = await connectWith(newSid);
+  await settle();
+  assert.equal(replaced, true, 'the older session is told');
+  assert.equal(closed, true, 'and dropped');
+  await assert.rejects(connectWith(oldSid), /opened somewhere else/, 'the stale session cannot take the socket back');
+  again.close(); fresh.close(); oldSock.close();
+});

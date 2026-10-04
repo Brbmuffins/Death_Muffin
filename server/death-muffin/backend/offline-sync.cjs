@@ -1,8 +1,10 @@
+const { LEVEL_CAP } = require('./gathering/authority-rules.cjs');
+
 /** Compare two normalized character XP positions without changing other stats. */
 function mergeOfflineStats(online, offline) {
   const level = offline?.level;
   const experience = offline?.experience;
-  if (!Number.isInteger(level) || level < 1 || level > 255 ||
+  if (!Number.isInteger(level) || level < 1 || level > LEVEL_CAP ||
       // Offline Progression.addXp uses level * 100 as its per-level XP range.
       !Number.isInteger(experience) || experience < 0 || experience >= level * 100) {
     throw new RangeError('Invalid offline level or XP');

@@ -6,6 +6,8 @@ import { CharacterSelectScene } from './scenes/CharacterSelectScene';
 import { WorldScene } from './scenes/WorldScene';
 import { NecroBackdrop } from './graphics/NecroBackdrop';
 import { ApiError, getCharacter, getToken, OFFLINE, setToken } from './net/api';
+import { claimSession, consumeAutoReload, probeSessionNow, startSessionProbe } from './net/session';
+import { installSessionOverlay } from './ui/SessionOverlay';
 import type { Character } from './net/types';
 import { startReleaseBaseline } from './net/releaseWatch';
 import { installErrorRing } from './net/errorRing';
@@ -70,5 +72,33 @@ async function resume() {
   }
 }
 
-if (getToken()) void resume();
+// One active session per account, newest wins (net/session.ts). "Play here" trades the token for one on a new session, then reloads so this
+// window starts from what the other one saved.
+if (!OFFLINE) {
+  installSessionOverlay(async () => {
+    const token = getToken();
+    const fresh = token ? await claimSession(token) : null;
+    if (!fresh) return false;
+    setToken(fresh);
+    window.location.reload();
+    return true;
+  });
+  startSessionProbe(getToken);
+}
+
+// Opening or refreshing the game is "opening the account": it claims the session, so a reload takes it back from any other window.
+async function boot() {
+  const token = getToken();
+  if (token && !OFFLINE) {
+    // A programmatic reload (update notice / release watch) is not "opening the account": it must not take the session back from a newer window.
+    if (consumeAutoReload()) void probeSessionNow(token);
+    else {
+      const fresh = await claimSession(token);
+      if (fresh) setToken(fresh);
+    }
+  }
+  void resume();
+}
+
+if (getToken()) void boot();
 else goLogin();

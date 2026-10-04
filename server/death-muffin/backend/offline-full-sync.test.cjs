@@ -20,8 +20,16 @@ test('the saves must share a discipline', () => {
   assert.throws(() => sync.validate(save(), 3), RangeError);
 });
 
+test('levels past the old 255 cap validate, up to 999', () => {
+  for (const level of [256, 300, 999]) {
+    const s = save();
+    Object.assign(s.character, { level, experience: level * 100 - 1 });
+    assert.doesNotThrow(() => sync.validate(s, 2), `level ${level}`);
+  }
+});
+
 test('character stats are bounded', () => {
-  for (const bad of [{ level: 0 }, { level: 256 }, { experience: -1 }, { gold: -5 }, { gold: 1.5 }, { stat_vit: 70000 }]) {
+  for (const bad of [{ level: 0 }, { level: 1000 }, { experience: -1 }, { gold: -5 }, { gold: 1.5 }, { stat_vit: 70000 }]) {
     const s = save();
     Object.assign(s.character, bad);
     assert.throws(() => sync.validate(s, 2), RangeError, JSON.stringify(bad));

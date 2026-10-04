@@ -1,4 +1,5 @@
 import { API_BASE } from './config';
+import { isReplacedReply, isSessionReplaced, notifySessionReplaced, SESSION_REPLACED_MESSAGE } from './session';
 import type { Character, InventorySlot, Profession, Recipe } from './types';
 import type { NecroState, SaveInput } from '../gameplay/necroRules';
 import type { KillReport } from '../gameplay/killRules';
@@ -79,6 +80,8 @@ async function request<T>(
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> | undefined),
   };
+  // A replaced window stops writing: nothing it sends would be accepted, and a save loop would only hammer the server.
+  if (auth && isSessionReplaced() && String(options.method ?? 'GET').toUpperCase() !== 'GET') throw new ApiError(SESSION_REPLACED_MESSAGE, 409);
   if (auth) {
     const token = getToken();
     if (!token) throw new ApiError('Not authenticated', 401);
@@ -102,6 +105,7 @@ async function request<T>(
   }
   const body = await res.json().catch(() => null);
   if (!res.ok) {
+    if (isReplacedReply(res.status, body)) notifySessionReplaced();
     throw new ApiError(body?.error ?? `Request failed: ${res.status}`, res.status);
   }
   return body;

@@ -16,6 +16,8 @@ const BAG_SLOTS = gatheringRules.BAG_SLOTS;
 const inventorySave = require('./inventory-save.cjs');
 const authority = require('./authority.cjs');
 const kills = require('./kills.cjs');
+const session = require('./session.cjs');
+const { LEVEL_CAP: MAX_CHARACTER_LEVEL } = require('./gathering/authority-rules.cjs');
 
 const app  = express();
 const PORT = process.env.PORT || 5190;
@@ -114,7 +116,9 @@ app.post('/login', loginLimiter, async (req, res) => {
     const account = rows[0];
     if (!account || !account.active || !(await bcrypt.compare(password, account.password_hash)))
       return res.status(401).json({ error: 'Invalid username or password.' });
-    res.json({ token: jwt.sign({ accountId: account.id, username: account.username }, process.env.JWT_SECRET, { expiresIn: '24h' }) });
+    // Newest login wins: this token's session becomes the account's active one (session.cjs); older windows stop saving.
+    const sid = await session.claimSession(pool, account.id);
+    res.json({ token: jwt.sign({ accountId: account.id, username: account.username, ...(sid ? { sid } : {}) }, process.env.JWT_SECRET, { expiresIn: '24h' }) });
   } catch (err) {
     console.error('Login error:', err.code || err.message);
     res.status(500).json({ error: 'Account service is unavailable.' });
@@ -133,7 +137,8 @@ app.post('/register', registerLimiter, async (req, res) => {
   try {
     const hash = await bcrypt.hash(password, SALT_ROUNDS);
     const [result] = await pool.execute('INSERT INTO accounts (username, email, password_hash, active, alpha_access) VALUES (?, ?, ?, 1, 1)', [username, wantsEmail ? trimmedEmail : null, hash]);
-    res.status(201).json({ token: jwt.sign({ accountId: result.insertId, username }, process.env.JWT_SECRET, { expiresIn: '24h' }) });
+    const sid = await session.claimSession(pool, result.insertId);
+    res.status(201).json({ token: jwt.sign({ accountId: result.insertId, username, ...(sid ? { sid } : {}) }, process.env.JWT_SECRET, { expiresIn: '24h' }) });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Username or email is already registered.' });
     console.error('Registration error:', err.code || err.message);
@@ -141,6 +146,24 @@ app.post('/register', registerLimiter, async (req, res) => {
   }
 });
 app.get('/health', (_, res) => res.json({ status: 'ok' }));
+// "Play here": a window that was replaced by a newer login takes the account back. The (replaced) token is still signed and unexpired, so it
+// proves who is asking; the reply is a fresh token on a new session, and the other window is the stale one from now on.
+app.post('/api/session/claim', async (req, res) => {
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'missing or invalid Authorization header' });
+  let payload;
+  try { payload = jwt.verify(auth.slice(7), process.env.JWT_SECRET); } catch { return res.status(401).json({ error: 'invalid or expired token' }); }
+  try {
+    const [[acct]] = await pool.execute('SELECT active FROM accounts WHERE id = ? LIMIT 1', [payload.accountId]);
+    if (!acct || !acct.active) return res.status(401).json({ error: 'invalid or expired token' });
+    const sid = await session.claimSession(pool, payload.accountId);
+    const { iat, exp, sid: _old, ...claims } = payload;
+    res.json({ token: jwt.sign({ ...claims, ...(sid ? { sid } : {}) }, process.env.JWT_SECRET, { expiresIn: '24h' }) });
+  } catch (err) {
+    console.error('Session claim error:', err.code || err.message);
+    res.status(500).json({ error: 'Account service is unavailable.' });
+  }
+});
 // ─── Character system ─────────────────────────────────────────────────────────
 
 const CLASS_NAMES = ['Engineer', 'Guardian', 'Shadowblade', 'Cleric', 'Arcanist', 'Necromancer'];
@@ -172,6 +195,7 @@ async function verifyJWT(req, res, next) {
   }
 
   req.user = payload;
+  if (!(await session.checkWrite(pool, req, res))) return;
 
   try {
     // Character-bound tokens are authoritative. Account-only tokens remain valid
@@ -283,13 +307,13 @@ function characterXpToNext(level) {
   return Math.max(1, Number(level) || 1) * 100;
 }
 
-const MAX_CHARACTER_LEVEL = 255;
+// MAX_CHARACTER_LEVEL (999) comes from src/gameplay/authorityRules.ts LEVEL_CAP via gathering/authority-rules.cjs, the same constant the client rules use.
 
 async function normalizeCharacterProgress(char) {
   let level = Math.max(1, Number(char.level) || 1);
   let experience = Math.max(0, Number(char.experience) || 0);
   let xpToNext = characterXpToNext(level);
-  // 255 is the level every save path caps at (save-progress, offline sync); XP left over at the cap is trimmed, not turned into levels.
+  // The cap is the level every save path caps at (save-progress, offline sync); XP left over at the cap is trimmed, not turned into levels.
   while (experience >= xpToNext && level < MAX_CHARACTER_LEVEL) {
     experience -= xpToNext;
     level++;
@@ -369,7 +393,7 @@ app.post('/character', verifyJWT, async (req, res) => {
     await conn.commit();
 
     const characterToken = jwt.sign(
-      { accountId: req.user.accountId, username: req.user.username, characterId },
+      { accountId: req.user.accountId, username: req.user.username, characterId, ...(req.user.sid ? { sid: req.user.sid } : {}) },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
@@ -525,7 +549,7 @@ app.use((err, req, res, next) => {
 
 // ─── Lightweight JWT middleware (no character prefetch) ───────────────────────
 
-function requireJWT(req, res, next) {
+async function requireJWT(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Bearer '))
     return res.status(401).json({ success: false, error: 'missing or invalid Authorization header' });
@@ -534,8 +558,14 @@ function requireJWT(req, res, next) {
   } catch {
     return res.status(401).json({ success: false, error: 'invalid or expired token' });
   }
+  if (!(await session.checkWrite(pool, req, res))) return;
   next();
 }
+
+// Cheap "am I still the active window?" probe for the client (reads are never refused, so a quiet stale window would not otherwise learn it).
+app.get('/api/session', requireJWT, async (req, res) => {
+  res.json({ success: true, active: !(await session.isReplaced(pool, req.user)) });
+});
 
 function requireGameServerToken(req, res, next) {
   const provided = req.get('X-Game-Server-Token') || '';
@@ -765,7 +795,7 @@ app.post('/api/character/save-progress', requireJWT, async (req, res) => {
       return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.trunc(n))) : fallback;
     };
     const next = {
-      level: bounded(req.body.level, char.level, 1, 255), xp: bounded(req.body.xp, char.experience, 0, 2147483647), gold: bounded(req.body.gold, char.gold, 0, 2147483647),
+      level: bounded(req.body.level, char.level, 1, MAX_CHARACTER_LEVEL), xp: bounded(req.body.xp, char.experience, 0, 2147483647), gold: bounded(req.body.gold, char.gold, 0, 2147483647),
       stat_str: bounded(req.body.stat_str, char.stat_str, 0, 65535), stat_agi: bounded(req.body.stat_agi, char.stat_agi, 0, 65535),
       stat_int: bounded(req.body.stat_int, char.stat_int, 0, 65535), stat_vit: bounded(req.body.stat_vit, char.stat_vit, 0, 65535),
     };

@@ -123,6 +123,7 @@ import { isRetryableError, Reconnector, type ReconnectMode } from '../net/reconn
 import { clearRejoin, loadRejoin, saveRejoin } from '../net/rejoinStore';
 import { releaseWatch } from '../net/releaseWatch';
 import { UpdateNotice } from '../ui/UpdateNotice';
+import { markAutoReload } from '../net/session';
 import type { Character, Profession } from '../net/types';
 import { FloatingText } from '../ui/FloatingText';
 import { ForgePanel } from '../ui/ForgePanel';
@@ -2861,6 +2862,7 @@ export class WorldScene implements GameScene, RuntimeView {
       ]);
     } catch { /* pagehide flushes once more with keepalive */ }
     if (this.partyCode) saveRejoin(this.partyCode);
+    markAutoReload(); // a programmatic reload must not claim the session (net/session.ts)
     location.reload();
   }
 
