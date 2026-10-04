@@ -85,8 +85,8 @@ static func update_thralls(sim: DmWorldSim, dt: float) -> void:
 					rank += 1
 			var count := maxi(3, living)
 			var ang := (float(rank) / float(count)) * PI * 2.0 + PI
-			var fx := owner.x + sin(ang) * 1.9
-			var fz := owner.z + cos(ang) * 1.9
+			var fx := owner.x + DmFdlibm.sin_(ang) * 1.9
+			var fz := owner.z + DmFdlibm.cos_(ang) * 1.9
 			var d := _h(fx - t.x, fz - t.z)
 			var seat_v := 0.0
 			if not is_nan(t.seatX) and dt > 1e-5:
@@ -111,7 +111,7 @@ static func _engage(sim: DmWorldSim, t: DmSimThrall, tx: float, tz: float, radiu
 		move_thrall(sim, t, tx, tz, dt, 1.0)
 		t.state = "move"
 		return false
-	t.facing = atan2(tx - t.x, tz - t.z)
+	t.facing = DmFdlibm.atan2_(tx - t.x, tz - t.z)
 	if t.attackCd <= 0.0:
 		t.attackCd = t.attackInterval
 		t.state = "attack"
@@ -182,7 +182,7 @@ static func move_thrall(sim: DmWorldSim, t: DmSimThrall, tx: float, tz: float, d
 				t.detourUntil = sim.time + 3.0
 	elif t.stallT != 0.0:
 		t.stallT = 0.0
-	t.facing = atan2(dx, dz)
+	t.facing = DmFdlibm.atan2_(dx, dz)
 	t.moving = true
 	t.gait += step * 2.4
 

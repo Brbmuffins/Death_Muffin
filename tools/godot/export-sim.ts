@@ -9,6 +9,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generateLayout, PROPS, wallObstacle, placementObstacle, NODE_COLLIDER } from '../../src/content/layout';
 import { NODES } from '../../src/gameplay/gatheringRules';
+import { exactStringify } from './exact-json';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = resolve(ROOT, 'godot/data/sim');
@@ -42,5 +43,5 @@ const cover = layout.props
     return { x0: p.x - hw, z0: p.z - hd, x1: p.x + hw, z1: p.z + hd };
   });
 const out = { obstacles, sightBlockers: sight, crypts: layout.crypts.map(({ area, x, z }) => ({ area, x, z })), nodes: layout.nodes.map(({ id, type, area, x, z, rich }) => ({ id, type, area, x, z, rich: !!rich })), cover };
-writeFileSync(resolve(OUT, 'world.json'), JSON.stringify(out) + '\n');
+writeFileSync(resolve(OUT, 'world.json'), exactStringify(out) + '\n');
 console.log('sim world data:', obstacles.length, 'obstacles,', sight.length, 'sight blockers,', out.crypts.length, 'crypts,', out.nodes.length, 'nodes,', cover.length, 'cover boxes');

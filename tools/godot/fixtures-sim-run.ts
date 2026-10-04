@@ -12,6 +12,7 @@ import { AREAS, type AreaId } from '../../src/content/areas';
 import { ENEMIES, AFFIX_ORDER, type EnemyId } from '../../src/content/enemies';
 import { OMENS } from '../../src/content/omens';
 import { WORLD, worldNav, ALL_OPEN, OUT } from './sim-fixture-lib';
+import { exactStringify } from './exact-json';
 
 mkdirSync(OUT, { recursive: true });
 
@@ -269,7 +270,7 @@ function runScenario(cfg: Cfg) {
     }
   }
   const fx = { scenario: cfg.name, setup, script: [initStep, ...script.filter((s) => s !== initStep)], checkpoints };
-  writeFileSync(`${OUT}/scn_${cfg.name}.json`, JSON.stringify(fx) + '\n');
+  writeFileSync(`${OUT}/scn_${cfg.name}.json`, exactStringify(fx) + '\n');
   const last_ = checkpoints[checkpoints.length - 1].snap;
   console.log(`scn_${cfg.name}: ${cfg.ticks} ticks, ${checkpoints.length} checkpoints, ${last_.enemies.length} enemies, ${last_.thralls.length} thralls, ${last_.corpses.length} corpses, rngCalls ${rngCalls}`);
 }

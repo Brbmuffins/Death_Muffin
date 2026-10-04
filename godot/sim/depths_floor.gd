@@ -143,8 +143,8 @@ static func placement_obstacle(p: Dictionary) -> DmNavObstacle:
 		return DmNavObstacle.circle(float(p["x"]), float(p["z"]), float(c["r"]) * sc)
 	if c["kind"] == "box":
 		var rot := float(p["rot"])
-		var cs := absf(cos(rot))
-		var sn := absf(sin(rot))
+		var cs := absf(DmFdlibm.cos_(rot))
+		var sn := absf(DmFdlibm.sin_(rot))
 		var hw := (float(c["hw"]) * cs + float(c["hd"]) * sn) * sc
 		var hd := (float(c["hw"]) * sn + float(c["hd"]) * cs) * sc
 		return DmNavObstacle.box(float(p["x"]) - hw, float(p["z"]) - hd, float(p["x"]) + hw, float(p["z"]) + hd)

@@ -345,7 +345,7 @@ func damage_enemy(e: DmSimEnemy, amount: float, by: String, from: Variant = null
 	var def: Dictionary = DmSimData.ENEMIES[e.def]
 	var shield := 1.0
 	if DmCombatData.truthy(def.get("shield")) and from != null and e.fracture == 0.0:
-		var d := fmod(absf(atan2(float(from[0]) - e.x, float(from[1]) - e.z) - e.facing), PI * 2.0)
+		var d := fmod(absf(DmFdlibm.atan2_(float(from[0]) - e.x, float(from[1]) - e.z) - e.facing), PI * 2.0)
 		if d > PI:
 			d = PI * 2.0 - d
 		if d <= (float(DmSimData.TEMPLAR_SHIELD["halfArcDeg"]) * PI) / 180.0:

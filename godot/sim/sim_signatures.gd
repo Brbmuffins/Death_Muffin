@@ -82,7 +82,7 @@ static func apply_signature(sim: DmWorldSim, g: Dictionary) -> void:
 			for t: DmSimThrall in legion:
 				var ang := (float(i) / float(maxi(1, legion.size()))) * PI * 2.0
 				i += 1
-				var p := sim.nav.resolve(c[0] + cos(ang) * 1.2, c[1] + sin(ang) * 1.2, 0.4)
+				var p := sim.nav.resolve(c[0] + DmFdlibm.cos_(ang) * 1.2, c[1] + DmFdlibm.sin_(ang) * 1.2, 0.4)
 				leaps.append([t.x, t.z, p[0], p[1]])
 				t.x = p[0]
 				t.z = p[1]
@@ -307,7 +307,7 @@ static func _new_blood(sim: DmWorldSim, g: Dictionary, caster: DmSimPlayer, sp: 
 					continue
 				var vx := e.x - caster.x
 				var vz := e.z - caster.z
-				if (vx * dx + vz * dz) / (maxf(0.01, _h(vx, vz)) * ln) < cos(PI / 5.0):
+				if (vx * dx + vz * dz) / (maxf(0.01, _h(vx, vz)) * ln) < DmFdlibm.cos_(PI / 5.0):
 					continue
 				strip_shroud(e)
 				if e.def == "wraith":
@@ -426,7 +426,7 @@ static func _new_blood(sim: DmWorldSim, g: Dictionary, caster: DmSimPlayer, sp: 
 			if g["sig"] == "butcher":
 				for i in 3:
 					var angle := float(i) * PI * 2.0 / 3.0
-					sim.add_zone({"kind": "witch_charm", "owner": g["by"], "x": c.x + cos(angle), "z": c.z + sin(angle), "r": 0.65, "durationS": 20.0, "dps": 0.0, "witheredCap": 0.0})
+					sim.add_zone({"kind": "witch_charm", "owner": g["by"], "x": c.x + DmFdlibm.cos_(angle), "z": c.z + DmFdlibm.sin_(angle), "r": 0.65, "durationS": 20.0, "dps": 0.0, "witheredCap": 0.0})
 			if g["sig"] == "lay_to_rest":
 				for offset in [-0.8, 0.8]:
 					var p := sim.nav.resolve_in_area(c.area, c.x + offset, c.z + 0.5, 0.4)

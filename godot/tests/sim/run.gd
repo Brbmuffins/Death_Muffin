@@ -10,7 +10,8 @@ var per_file: Dictionary = {}
 var _shown := 0
 var _only: PackedStringArray = PackedStringArray()
 var _dump: String = ""
-var _tol: float = 1e-6
+var _tol: float = 1e-9
+var _rel: float = 1e-12
 
 
 func _initialize() -> void:
@@ -19,6 +20,8 @@ func _initialize() -> void:
 			_only = a.substr(5).split(",")
 		elif a.begins_with("tol="):
 			_tol = float(a.substr(4))
+		elif a.begins_with("rel="):
+			_rel = float(a.substr(4))
 		elif a.begins_with("dump="):
 			_dump = a.substr(5)
 	var dir := DirAccess.open(DIR)
@@ -47,19 +50,19 @@ func eq(a: Variant, b: Variant, tol: float = 1e-9) -> bool:
 	return diff(a, b, "", tol) == ""
 
 
-func diff(a: Variant, b: Variant, path: String = "", tol: float = 1e-9) -> String:
+func diff(a: Variant, b: Variant, path: String = "", tol: float = 1e-9, rel: float = 1e-12) -> String:
 	if (a is int or a is float) and (b is int or b is float):
 		var x := float(a)
 		var y := float(b)
 		if is_nan(x) and is_nan(y):
 			return ""
 		var d := absf(x - y)
-		return "" if (d <= tol or d <= 1e-12 * maxf(absf(x), absf(y))) else "%s: got %s want %s" % [path, a, b]
+		return "" if (d <= tol or d <= rel * maxf(absf(x), absf(y)) or x == y) else "%s: got %s want %s" % [path, String.num(x, 17), String.num(y, 17)]
 	if a is Array and b is Array:
 		if a.size() != b.size():
 			return "%s: array size got %d want %d" % [path, a.size(), b.size()]
 		for i in a.size():
-			var d := diff(a[i], b[i], "%s[%d]" % [path, i], tol)
+			var d := diff(a[i], b[i], "%s[%d]" % [path, i], tol, rel)
 			if d != "":
 				return d
 		return ""
@@ -67,7 +70,7 @@ func diff(a: Variant, b: Variant, path: String = "", tol: float = 1e-9) -> Strin
 		for k in b:
 			if not a.has(k):
 				return "%s.%s: missing in got" % [path, k]
-			var d := diff(a[k], b[k], "%s.%s" % [path, k], tol)
+			var d := diff(a[k], b[k], "%s.%s" % [path, k], tol, rel)
 			if d != "":
 				return d
 		for k in a:
@@ -81,11 +84,12 @@ func diff(a: Variant, b: Variant, path: String = "", tol: float = 1e-9) -> Strin
 
 func run_file(name: String) -> void:
 	var text := FileAccess.get_file_as_string(DIR + name + ".json")
-	var fx: Dictionary = JSON.parse_string(text)
+	var fx: Dictionary = DmSimExact.decode(JSON.parse_string(text))
 	if fx.has("scenario"):
 		var runner = load("res://tests/sim/scenario_runner.gd").new()
 		runner.dump_dir = _dump
 		runner.tol = _tol
+		runner.rel = _rel
 		var r: Dictionary = runner.run(fx)
 		passed += int(r["passed"])
 		failed += int(r["failed"])
@@ -101,9 +105,10 @@ func run_file(name: String) -> void:
 		return
 	var ok := 0
 	var cases: Array = fx["cases"]
+	var exact: bool = fn.begins_with("trig_")
 	for i in cases.size():
 		var got: Variant = call("h_" + fn, cases[i]["in"])
-		var d := diff(got, cases[i]["out"])
+		var d := diff(got, cases[i]["out"], "", 0.0, 0.0) if exact else diff(got, cases[i]["out"])
 		if d == "":
 			ok += 1
 			passed += 1
@@ -121,7 +126,7 @@ var _navs: Array = []
 
 func _world_nav(unlocked: Variant) -> DmNav:
 	var nav := DmNav.new()
-	var w: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/sim/world.json"))
+	var w: Dictionary = DmSimExact.load_json("res://data/sim/world.json")
 	for o in w["obstacles"]:
 		nav.add_obstacle(DmNavObstacle.from_dict(o))
 	for s in w["sightBlockers"]:
@@ -187,3 +192,14 @@ func h_depths_floor(i: Dictionary) -> Variant:
 			"path": v2s(DmDepthsFloor.floor_path(f, a["x"], a["z"], b["x"], b["z"]))})
 	return {"floorSeed": fs, "floor": f, "problems": DmDepthsFloor.floor_problems(f), "obstacles": DmDepthsFloor.floor_obstacles(f).size(),
 		"sight": DmDepthsFloor.floor_sight_boxes(f).size(), "probes": probes}
+
+
+func h_trig_sincos(i: Dictionary) -> Variant:
+	var x: float = i["x"]
+	return {"sin": DmFdlibm.sin_(x), "cos": DmFdlibm.cos_(x)}
+
+
+func h_trig_atan2(i: Dictionary) -> Variant:
+	var y: float = i["y"]
+	var x: float = i["x"]
+	return {"r": DmFdlibm.atan2_(y, x), "t": DmFdlibm.atan_(y)}

@@ -174,7 +174,7 @@ static func spawn_at_breach(sim: DmWorldSim, area: String, bx: float, bz: float,
 static func _at(sim: DmWorldSim, area: String, bx: float, bz: float) -> Array:
 	var ang := sim.rand() * PI * 2.0
 	var rr := 0.5 + sim.rand() * 2.4
-	return sim.nav.resolve_in_area(area, bx + cos(ang) * rr, bz + sin(ang) * rr, 0.5)
+	return sim.nav.resolve_in_area(area, bx + DmFdlibm.cos_(ang) * rr, bz + DmFdlibm.sin_(ang) * rr, 0.5)
 
 
 # --- Grave Surges ---

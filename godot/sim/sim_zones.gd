@@ -292,7 +292,7 @@ static func collect_dead(sim: DmWorldSim) -> void:
 		var dc := int(def["deathCorpses"]) if def.has("deathCorpses") else 1
 		for k in range(1, dc):
 			var a := e.facing + (float(k) / float(dc - 1)) * PI * 2.0
-			var p := sim.nav.resolve_in_area(e.area, e.x + sin(a) * 1.6, e.z + cos(a) * 1.6, 0.4)
+			var p := sim.nav.resolve_in_area(e.area, e.x + DmFdlibm.sin_(a) * 1.6, e.z + DmFdlibm.cos_(a) * 1.6, 0.4)
 			sim.add_corpse(p[0], p[1], def["corpse"], "risen", false, a, 1.0, e.area)
 		if sim.has_affix(e, "vengeful"):
 			DmSimEnemyAI.vengeance(sim, e)

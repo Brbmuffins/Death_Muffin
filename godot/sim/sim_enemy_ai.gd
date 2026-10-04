@@ -57,7 +57,7 @@ static func frenzied(e: DmSimEnemy) -> bool:
 static func move_enemy(sim: DmWorldSim, e: DmSimEnemy, tx: float, tz: float, dt: float, speed_mult: float = 1.0) -> void:
 	# Grave Brand roots the feet only: a rooted body still turns and swings.
 	if e.rootT > 0.0:
-		e.facing = atan2(tx - e.x, tz - e.z)
+		e.facing = DmFdlibm.atan2_(tx - e.x, tz - e.z)
 		return
 	if e.area == "depths":
 		var hop: Variant = sim.nav.depths_hop(e.x, e.z, tx, tz)
@@ -87,7 +87,7 @@ static func move_enemy(sim: DmWorldSim, e: DmSimEnemy, tx: float, tz: float, dt:
 		var s := sidestep(px, pz, dx / d, dz / d, step, func(x: float, z: float) -> Array: return sim.nav.resolve_in_area(area, x, z, rad))
 		e.x = s[0]
 		e.z = s[1]
-	e.facing = atan2(dx, dz)
+	e.facing = DmFdlibm.atan2_(dx, dz)
 	e.moving = true
 	e.gait += step * 2.4
 
@@ -97,8 +97,8 @@ static func sidestep(px: float, pz: float, ux: float, uz: float, step: float, re
 	var best: Array = [px, pz]
 	var best_gain := 0.0
 	for a in [0.87, -0.87]:
-		var c := cos(a)
-		var s := sin(a)
+		var c := DmFdlibm.cos_(a)
+		var s := DmFdlibm.sin_(a)
 		var n: Array = resolve.call(px + (ux * c - uz * s) * step, pz + (ux * s + uz * c) * step)
 		var gain: float = (n[0] - px) * ux + (n[1] - pz) * uz + _h(n[0] - px, n[1] - pz) * 0.5
 		if gain > best_gain:
@@ -257,7 +257,7 @@ static func strike(sim: DmWorldSim, e: DmSimEnemy, kind: String, slam_r: float =
 			var den := d * ln
 			if den == 0.0:
 				den = 1.0
-			return (vx * dir_x + vz * dir_z) / den > cos((30.0 * PI) / 180.0)
+			return (vx * dir_x + vz * dir_z) / den > DmFdlibm.cos_((30.0 * PI) / 180.0)
 		for p: DmSimPlayer in sim.players.values():
 			if p.alive and hits.call(p.x, p.z):
 				sim.emit({"t": "hurt", "player": p.id, "dmg": sim.blow(e), "from": "cone", "x": e.x, "z": e.z})
@@ -480,7 +480,7 @@ static func _update_one(sim: DmWorldSim, e: DmSimEnemy, dt: float, active_areas:
 	if target == null:
 		if sim.rand() < dt * 0.3:
 			e.facing += (sim.rand() - 0.5) * 2.0
-		move_enemy(sim, e, e.x + sin(e.facing), e.z + cos(e.facing), dt, 0.3)
+		move_enemy(sim, e, e.x + DmFdlibm.sin_(e.facing), e.z + DmFdlibm.cos_(e.facing), dt, 0.3)
 		return
 	var tgx: float = target["x"]
 	var tgz: float = target["z"]
@@ -505,7 +505,7 @@ static func _update_one(sim: DmWorldSim, e: DmSimEnemy, dt: float, active_areas:
 				e.hookCd = float(SH["cooldownS"])
 				e.aimX = tgx
 				e.aimZ = tgz
-				e.facing = atan2(tgx - e.x, tgz - e.z)
+				e.facing = DmFdlibm.atan2_(tgx - e.x, tgz - e.z)
 				sim.emit({"t": "telegraph", "id": e.id, "kind": "hook", "x": e.x, "z": e.z, "tx": tgx, "tz": tgz, "ms": wms, "r": SH["range"]})
 				return
 			if _tr(def, "dive") and e.attackCd <= 0.0 and dist >= float(def["dive"]["minRange"]) and dist <= float(def["dive"]["range"]) and not sim.wall_between(e.x, e.z, tgx, tgz):
@@ -516,7 +516,7 @@ static func _update_one(sim: DmWorldSim, e: DmSimEnemy, dt: float, active_areas:
 				e.diveZ = e.z
 				e.aimX = tgx
 				e.aimZ = tgz
-				e.facing = atan2(tgx - e.x, tgz - e.z)
+				e.facing = DmFdlibm.atan2_(tgx - e.x, tgz - e.z)
 				sim.emit({"t": "telegraph", "id": e.id, "kind": "dive", "x": e.x, "z": e.z, "tx": tgx, "tz": tgz, "ms": wms, "r": def["dive"]["radius"]})
 				return
 			if dist <= float(def["attackRange"]) + 0.35 and e.attackCd <= 0.0:
@@ -524,7 +524,7 @@ static func _update_one(sim: DmWorldSim, e: DmSimEnemy, dt: float, active_areas:
 				e.stateT = 0.0
 				e.aimX = tgx
 				e.aimZ = tgz
-				e.facing = atan2(tgx - e.x, tgz - e.z)
+				e.facing = DmFdlibm.atan2_(tgx - e.x, tgz - e.z)
 				if def["behavior"] == "hazard":
 					var ev := {"t": "telegraph", "id": e.id, "kind": "slam", "x": e.x, "z": e.z, "tx": tgx, "tz": tgz, "ms": wms}
 					if _tr(def, "slamRadius"):
@@ -547,12 +547,12 @@ static func _update_one(sim: DmWorldSim, e: DmSimEnemy, dt: float, active_areas:
 				e.stateT = 0.0
 				e.aimX = tgx
 				e.aimZ = tgz
-				e.facing = atan2(tgx - e.x, tgz - e.z)
+				e.facing = DmFdlibm.atan2_(tgx - e.x, tgz - e.z)
 				if atk == "hex":
 					var ha := hex_aim(sim, e, target)
 					e.aimX = ha[0]
 					e.aimZ = ha[1]
-					e.facing = atan2(ha[0] - e.x, ha[1] - e.z)
+					e.facing = DmFdlibm.atan2_(ha[0] - e.x, ha[1] - e.z)
 					sim.emit({"t": "telegraph", "id": e.id, "kind": "hex", "x": e.x, "z": e.z, "tx": ha[0], "tz": ha[1], "ms": wms, "r": DmSimData.HAG_HEX["radius"]})
 				elif atk == "pulse":
 					sim.emit({"t": "telegraph", "id": e.id, "kind": "pulse", "x": e.x, "z": e.z, "tx": tgx, "tz": tgz, "ms": wms, "r": DmSimData.WISP_PULSE["radius"]})
@@ -586,7 +586,7 @@ static func _update_one(sim: DmWorldSim, e: DmSimEnemy, dt: float, active_areas:
 					rz = e.z + (az * 0.55 + (lz / ll) * 0.45) * 3.0
 				move_enemy(sim, e, rx, rz, dt, 0.8)
 			else:
-				e.facing = atan2(tgx - e.x, tgz - e.z)
+				e.facing = DmFdlibm.atan2_(tgx - e.x, tgz - e.z)
 		"support":
 			if e.attackCd <= 0.0 and not silenced:
 				var corpse: DmSimCorpse = null if _tr(def, "ward") else sim.nearest_corpse(e.x, e.z, 8.0)
@@ -720,7 +720,7 @@ static func tick_burrow(sim: DmWorldSim, e: DmSimEnemy, dt: float) -> void:
 		e.erupting = key
 		e.aimX = tx
 		e.aimZ = tz
-		e.facing = atan2(tx - e.x, tz - e.z)
+		e.facing = DmFdlibm.atan2_(tx - e.x, tz - e.z)
 		sim.emit({"t": "telegraph", "id": e.id, "kind": "erupt", "x": e.x, "z": e.z, "tx": tx, "tz": tz, "ms": erupt_ms(e), "r": B["eruptR"]})
 		return
 	var px := e.x
@@ -823,5 +823,5 @@ static func vengeance(sim: DmWorldSim, e: DmSimEnemy) -> void:
 	var spin := sim.rand() * PI * 2.0
 	for i in n:
 		var ang := spin + (float(i) / float(n)) * PI * 2.0
-		var p := sim.nav.resolve_in_area(e.area, e.x + cos(ang) * 1.4, e.z + sin(ang) * 1.4, 0.45)
+		var p := sim.nav.resolve_in_area(e.area, e.x + DmFdlibm.cos_(ang) * 1.4, e.z + DmFdlibm.sin_(ang) * 1.4, 0.45)
 		sim.spawn_enemy("risen", e.area, p[0], p[1], false)

@@ -8,7 +8,8 @@ const THRALL_F := [["id", "n"], ["owner", "s"], ["kind", "s"], ["x", "n"], ["z",
 const CORPSE_F := [["id", "n"], ["x", "n"], ["z", "n"], ["kind", "s"], ["enemy", "s"], ["elite", "b"], ["facing", "n"], ["scale", "n"], ["area", "s"], ["bornAt", "n"], ["expiresAt", "n"], ["ruptureAt", "m"], ["seedOwner", "s"], ["seedDmg", "n"], ["seedCap", "n"], ["seedArmedAt", "m"], ["seedExpires", "n"], ["echoOwner", "s"]]
 const ZONE_F := [["id", "n"], ["kind", "s"], ["owner", "s"], ["x", "n"], ["z", "n"], ["r", "n"], ["until", "n"], ["bornAt", "n"], ["tick", "n"], ["dps", "n"], ["slow", "n"], ["witheredCap", "n"], ["bloom", "b"], ["hostile", "b"], ["creep", "n"], ["contagion", "b"], ["gen", "m"], ["spreadT", "m"]]
 
-var tol: float = 1e-6
+var tol: float = 1e-9
+var rel: float = 1e-12
 ## Set by the caller (env/args) to dump the Godot snapshot of the first failing checkpoint.
 var dump_dir: String = ""
 
@@ -128,7 +129,7 @@ func _sorted_by_id_d(a: Array) -> Array:
 
 
 func _world() -> Dictionary:
-	return JSON.parse_string(FileAccess.get_file_as_string("res://data/sim/world.json"))
+	return DmSimExact.load_json("res://data/sim/world.json")
 
 
 func _body(b: Dictionary) -> DmSimPlayer:
@@ -245,7 +246,7 @@ func _diff(a: Variant, b: Variant, path: String, t: float) -> String:
 		if is_nan(x) and is_nan(y):
 			return ""
 		var d := absf(x - y)
-		return "" if (d <= t or d <= 1e-9 * maxf(absf(x), absf(y))) else "%s: got %s want %s" % [path, a, b]
+		return "" if (d <= t or d <= rel * maxf(absf(x), absf(y)) or x == y) else "%s: got %s want %s" % [path, a, b]
 	if a is Array and b is Array:
 		if a.size() != b.size():
 			# events: show the first differing entry rather than the size
