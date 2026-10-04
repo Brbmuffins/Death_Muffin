@@ -158,12 +158,16 @@ export class LootView {
     return this.drops.map((d) => ({ kind: d.kind, id: d.item?.item_id ?? null, x: d.x, z: d.z }));
   }
 
+  /** Set by the scene: a rarity-keyed clatter when a gear piece lands (kept out of here so the view stays free of the audio engine). */
+  dropSound: ((id: 'lootDrop' | 'lootDropRare' | 'lootDropEpic' | 'lootDropLegendary', x: number, z: number) => void) | null = null;
+
   item(x: number, z: number, drop: LootDrop) {
     const [px, pz] = this.scatter(x, z, 0.7);
     const meta = itemMeta(drop.item_id);
     // A rolled piece glows in the colour of its affix count (green, blue, purple), so a three-affix drop reads from across the room.
     const rarity = (drop.instance ? effectiveRarity(meta.rarity, drop.instance.affixes.length) : meta.rarity) as typeof meta.rarity;
     const color = new THREE.Color(RARITY_COLOR[rarity]);
+    this.dropSound?.(rarity === 'legendary' ? 'lootDropLegendary' : rarity === 'epic' ? 'lootDropEpic' : rarity === 'rare' ? 'lootDropRare' : 'lootDrop', px, pz);
     const url = meta.icon ?? `art/items/${drop.item_id}.webp`;
     const icon = new THREE.Sprite(this.materialFor(url));
     icon.scale.setScalar(0.62);

@@ -28,7 +28,10 @@ import { BREWS, BREW_KEYS, BREW_SLOTS, applyBrew, brewEffectsText, brewWard, lif
 import { MEALS } from '../content/processing';
 import { generateLayout, PROPS, type NodePlacement } from '../content/layout';
 import { GatherLoop, Skills } from '../gameplay/Gathering';
+import { gatherSfx } from '../audio/gatherSfx';
 import { ALL_SKILLS, NODES, SKILLS, isBeltSlot, nodesForSkill, toolTierFor, type SkillId } from '../gameplay/gatheringRules';
+import { AREA_SURFACE, AREA_STEP_GAIN, BOSS_TELL, ENEMY_VOICE, STEP_SOUND, VOICE_ATTACK, VOICE_DEATH, type SoundId, type VoiceFamily } from '../content/audioMap';
+import { FootstepTracker } from '../audio/footsteps';
 import type { LiveNode } from '../gameplay/gatherPlan';
 import { STOP_TEXT } from '../gameplay/gatherPlan';
 import { NodeViews } from '../graphics/NodeViews';
@@ -398,7 +401,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private lineupTicks: ((dt: number) => void)[] = [];
   /** DEV: the BinbunVFX review grid, if open. */
   private vfxGallery: Gallery | null = null;
-  private stepT = 0;
+  private foot = new FootstepTracker();
   private rippleT = 0;
   private rippleCursor = 0;
   private zoneFx = new Map<number, Handle[]>();
@@ -662,6 +665,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.bossViews.set('prelate', prelate);
     this.scope.add(prewarmCreature(prelate.c, getRuntime().renderer, this.rig.camera, this.scene, () => getRuntime().frameTarget()));
     this.loot = new LootView(this.scene, this.effects);
+    this.loot.dropSound = (id, x, z) => audio.play(id, x, z);
 
     const stats = deriveStats(this.character, [], this.discipline, this.progression.local.damageTier);
     this.player = new Player(stats, this.nav, this.discipline.family);
@@ -1031,7 +1035,7 @@ export class WorldScene implements GameScene, RuntimeView {
     try {
       await this.inventory.exclusive(async () => this.inventory.replace(await runeSocket(this.character.id, rite, itemId)));
       if (itemId) {
-        audio.play('shard');
+        audio.play('runeSocket');
         this.hud.toast(`${RUNES[itemId].name}: ${RUNES[itemId].short}`, 'good');
         // Calm on purpose: it waits for the Grimoire to close instead of covering its first socket.
         this.onboarding.show('runeSocketed', 1200);
@@ -1261,7 +1265,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.skills.adopt(profs);
       this.chronicle.add('crafted');
       const station = this.forgePanel.station;
-      audio.play(station === 'sawpit' ? 'sawpit' : station === 'kiln' ? 'kiln' : station === 'fire' ? 'cook' : 'craft');
+      audio.play(station === 'sawpit' ? 'sawpit' : station === 'kiln' ? 'kiln' : station === 'fire' ? 'cook' : station === 'cauldron' || station === 'alembic' ? 'brewCraft' : 'craft');
       this.hud.toast('Crafted', 'good');
     }, {
       characterId: this.character.id,
@@ -1291,9 +1295,11 @@ export class WorldScene implements GameScene, RuntimeView {
     this.laborPanel.onView = (v) => { this.laborers.apply(v); this.noteLabor(v); };
     this.gardenPanel = new GardenPanel(this.acreWin.slot('garden'), this.character.id, this.inventory, (kind, r) => this.onGardenResult(kind, r));
     this.contractsPanel = new ContractsPanel(this.acreWin.slot('contracts'), this.character.id, this.inventory, (d) => this.onContractDelivered(d));
-    this.dialogue = new DialoguePanel(this.root, this.guidance, () => this.guidanceState(), { onChange: (npc) => { this.npcViews.setTalking(npc); this.guideDirty = true; }, sound: () => audio.play('click') });
+    this.dialogue = new DialoguePanel(this.root, this.guidance, () => this.guidanceState(), { onChange: (npc) => { this.npcViews.setTalking(npc); this.guideDirty = true; if (npc) audio.play('dialogueOpen'); }, sound: () => audio.play('uiSelect') });
     this.vaultPanel = new VaultPanel(this.root, this.character.id, this.inventory, this.locks, () => this.onboarding.show('vault'));
     this.salvagePanel = new SalvagePanel(this.root, this.character.id, this.inventory, this.locks, this.skills, (r) => this.onSalvaged(r), () => this.onboarding.show('salvage'));
+    // Tab buttons in any panel share one soft tick.
+    this.root.addEventListener('click', (e) => { if ((e.target as Element | null)?.closest?.('[data-tab]')) audio.play('uiTab'); });
     this.salvagePanel.statContext = this.statContext;
     this.settingsPanel = new SettingsPanel(
       this.root,
@@ -1621,7 +1627,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   /** Plant / harvest finished: credit the skill, count the crop, and tell the player. */
   private onGardenResult(kind: 'plant' | 'harvest', r: GardenResult) {
-    audio.play(kind === 'harvest' ? 'coin' : 'click');
+    audio.play(kind === 'harvest' ? 'gardenHarvest' : 'gardenPlant');
     void getProfessions(this.character.id).then((rows) => this.skills.adopt(rows)).catch(() => {});
     if (kind === 'harvest' && r.items?.length) {
       this.celebrateCharms(r.items);
@@ -1675,6 +1681,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.chronicle.add('contracts');
     this.contractSummary = summarizeContracts(d);
     this.guideDirty = true;
+    audio.play('orderFilled');
     this.hud.toast(d.paidBonus ? `Order filled, and the day’s bonus is yours: +${d.paidBonus.gold.toLocaleString()}g` : 'Order filled', 'good');
   }
 
@@ -1792,7 +1799,10 @@ export class WorldScene implements GameScene, RuntimeView {
     const switching = !!host && host.win.isOpen && host.win.activeTab !== host.tab;
     const wasOpen = host ? host.win.isOpen && host.win.activeTab === host.tab : panel.isOpen;
     const vault = p === 'vault';
-    if (!switching && !(vault && !wasOpen && !AREAS[this.area].safe)) audio.play(wasOpen ? (vault ? 'vaultClose' : 'panelClose') : vault ? 'vaultOpen' : 'panelOpen');
+    if (!switching && !(vault && !wasOpen && !AREAS[this.area].safe)) {
+      const open = p === 'inventory' ? 'panelOpenInventory' : p === 'forge' || p === 'salvage' ? 'panelOpenForge' : p === 'codex' || p === 'grimoire' || p === 'ascension' || p === 'atlas' || p === 'contracts' ? 'panelOpenBook' : 'panelOpen';
+      audio.play(wasOpen ? (vault ? 'vaultClose' : 'panelClose') : vault ? 'vaultOpen' : open);
+    }
     if (!switching) this.closePanels();
     if (wasOpen) return;
     this.clearCuesFor(p);
@@ -2212,6 +2222,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const meal = MEALS[id];
     const now = this.now;
     if (!meal || !this.player.alive) return;
+    if (now >= this.mealUntil && this.inventory.count(id)) audio.play('eatMeal');
     if (now < this.mealUntil) {
       this.floating.spawn(this.player.x, 2.4, this.player.z, 'Still eating', 'info');
       return;
@@ -2234,7 +2245,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const text = r.replaced && prev ? `${b.label} replaces ${prev.label}` : r.extended ? `${b.label} extended · ${Math.round((r.until - this.now) / 1000)}s` : `${b.label} · ${b.seconds}s`;
     this.floating.spawn(this.player.x, 2.2, this.player.z, text, 'gold');
     this.effects.emit({ x: this.player.x, y: 0.8, z: this.player.z, count: 18, color: b.color, spread: 0.4, speed: 0.6, up: 1.8, life: 0.8, size: 0.24 });
-    audio.play('shard');
+    audio.play('drinkElixir');
     this.onboarding.show('brew');
   }
 
@@ -2366,6 +2377,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const amount = this.player.stats.maxHp * HEALING_FLASKS[id];
     this.player.heal(amount);
     this.floating.spawn(this.player.x, 2.2, this.player.z, `+${Math.round(amount)}`, 'heal');
+    audio.play('drinkFlask');
     this.effects.emit({ x: this.player.x, y: 0.5, z: this.player.z, count: 26, color: 0xc85a8a, spread: 0.5, speed: 0.6, up: 2.2, life: 0.9, size: 0.3 });
   }
 
@@ -2378,12 +2390,14 @@ export class WorldScene implements GameScene, RuntimeView {
     }
     this.player.stop();
     this.recallAt = this.now + RECALL_MS;
+    audio.play('recallStart');
     this.recallFx = this.effects.decal({ tex: fx.sigil(), color: 0x8f9ed1, x: this.player.x, z: this.player.z, r: 1.4, duration: RECALL_MS / 1000, opacity: 0.9, growFrom: 0.2, spin: 3 });
     this.avatar.cast('cast', 1);
   }
 
   private cancelRecall() {
     if (!this.recallAt) return;
+    audio.play('recallCancel');
     this.recallAt = 0;
     this.recallFx?.kill();
     this.recallFx = null;
@@ -2403,6 +2417,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private teleportTo(x: number, z: number) {
+    audio.play('waystoneTravel');
     this.gathering?.stop('left');
     this.effects.emit({ x: this.player.x, y: 1, z: this.player.z, count: 50, color: 0x8f9ed1, spread: 0.6, speed: 1.5, up: 2.5, life: 1, size: 0.35 });
     this.player.teleport(x, z);
@@ -3098,7 +3113,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private onGatherCycle(def: (typeof NODES)[string], success: boolean, node: NodePlacement) {
     const p = this.player;
-    audio.play(success && def.skill === 'fishing' ? 'reel' : SKILLS[def.skill].sfx, node.x, node.z);
+    audio.play(success && def.skill === 'fishing' ? 'reel' : gatherSfx(def.skill, def.kind), node.x, node.z);
     if (!success) return;
     const color = SKILLS[def.skill].color;
     this.floating.spawn(p.x, 2.3, p.z, `+${def.xp} ${SKILLS[def.skill].name} XP`, 'skill', color);
@@ -3339,11 +3354,13 @@ export class WorldScene implements GameScene, RuntimeView {
     this.effects.particleScale = prev * PARTNER_FX_SCALE;
     // Their ground circles draw faint and outline-only (Effects.role); danger telegraphs inside still draw on top, in full.
     this.effects.role = 'other';
+    audio.partner = true;
     try {
       this.handleEventNow(ev);
     } finally {
       this.effects.particleScale = prev;
       this.effects.role = prevRole;
+      audio.partner = false;
     }
   }
 
@@ -3357,6 +3374,7 @@ export class WorldScene implements GameScene, RuntimeView {
         this.auraFx.get(`e${ev.id}`)?.kill();
         this.auraFx.delete(`e${ev.id}`);
         audio.play(ev.elite ? 'eliteDeath' : 'enemyDeath', ev.x, ev.z);
+        this.foeVoice(VOICE_DEATH, ev.def, ev.x, ev.z, 26);
         if (ev.elite && Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 16) hitstop.request(0.8);
         this.worldView.addRipple(ev.x, ev.z, ev.elite ? 2 : 1.4);
         this.fireDeath(ev);
@@ -3376,6 +3394,7 @@ export class WorldScene implements GameScene, RuntimeView {
         this.effects.danger(() => this.telegraph(ev));
         break;
       case 'melee': {
+        this.foeVoice(VOICE_ATTACK, this.enemiesMap().get(ev.id)?.def, ev.x, ev.z, 18);
         this.effects.emitSmoke({ x: ev.tx, y: 0.3, z: ev.tz, count: 2, color: 0x3a3340, spread: 0.3, speed: 0.8, up: 0.3, life: 0.5, size: 0.6 });
         // The Pyre's dead strike in a shower of sparks.
         const def = this.enemiesMap().get(ev.id)?.def;
@@ -3583,17 +3602,21 @@ export class WorldScene implements GameScene, RuntimeView {
         break;
       }
       case 'affix':
+        audio.play('affixTell', ev.x, ev.z);
         if (ev.affix === 'hungering' && ev.amount) this.floating.spawn(ev.x, 2.4, ev.z, `+${ev.amount}`, 'dot');
         else if (ev.affix === 'bellTolled') this.bb('bell_toll_ring', ev.x, ev.z, { scale: (ev.r ?? 3) / 3 });
         else if (ev.affix === 'vengeful') this.bb('vengeful_burst', ev.x, ev.z);
         break;
       case 'surge':
+        audio.play('surgeStart');
         this.onSurge(ev);
         break;
       case 'surgeCleared':
+        audio.play('surgeCleared');
         this.onSurgeCleared(ev);
         break;
       case 'surgeFailed':
+        audio.play('surgeFailed');
         this.surgeFx?.kill();
         this.surgeFx = null;
         if (ev.area === this.area) this.hud.banner('The Surge Recedes', 'The crypt seals itself — its offering lost', 2600);
@@ -3622,6 +3645,7 @@ export class WorldScene implements GameScene, RuntimeView {
         this.effects.danger(() => this.onBossEvent(ev));
         break;
       case 'spawn':
+        if (ev.elite && Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 40) audio.play('eliteAggro', ev.x, ev.z);
         // Codex + onboarding: only what this player actually encounters.
         if (ev.def === 'censer') {
           const id = ev.id;
@@ -3763,9 +3787,16 @@ export class WorldScene implements GameScene, RuntimeView {
     }
   }
 
+  /** An enemy's own voice (attack grunt, death cry): only the ones near the hero, by the map's family table. */
+  private foeVoice(table: Record<VoiceFamily, SoundId>, def: EnemyId | undefined, x: number, z: number, range: number) {
+    const fam = def ? ENEMY_VOICE[def] : null;
+    if (!fam || Math.hypot(x - this.player.x, z - this.player.z) > range) return;
+    audio.play(table[fam], x, z);
+  }
+
   private telegraph(ev: Extract<SimEvent, { t: 'telegraph' }>) {
     const ms = ev.ms / 1000;
-    audio.play(ev.kind === 'cone' || ev.kind === 'toll' ? 'tollSmall' : ev.kind === 'raise' ? 'raise' : ev.kind === 'curse' ? 'curse' : 'boneHit', ev.x, ev.z);
+    audio.play(ev.kind === 'cone' || ev.kind === 'toll' ? 'tollSmall' : ev.kind === 'raise' ? 'raise' : ev.kind === 'curse' ? 'curse' : 'tellStrike', ev.x, ev.z);
     if (ev.kind === 'toll') {
       // Bell-Tolled elite: a bronze ring fills in; step out before it sounds.
       const r = ev.r ?? AFFIX_TUNING.bellTolled.r;
@@ -4412,6 +4443,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.lastCombatAt = this.lastHurtAt = this.now;
     this.hud.hitFlash();
     audio.play('hurt');
+    if (this.player.alive && this.player.hp < this.player.stats.maxHp * 0.3) audio.play('lowHealth');
     this.rig.shake(from === 'boss' ? 0.35 : 0.12);
     if (Math.random() < 0.35) this.avatar.c.playOnce('hurt', 1.6);
     if (from === 'cone' || from === 'boss') {
@@ -4586,6 +4618,8 @@ export class WorldScene implements GameScene, RuntimeView {
   /** Area-boss telegraphs (ms > 0) and impacts (ms = 0). Enemy colour language only. */
   private areaBossEvent(ev: Extract<SimEvent, { t: 'boss' }>, ms: number) {
     const def = BOSSES[ev.boss ?? 'prelate'];
+    // The danger channel: the element's tell sounds once at the START of a telegraph, while it can still be dodged.
+    if (ms > 0 && ev.boss && ev.boss !== 'prelate') audio.play(BOSS_TELL[ev.boss] ?? 'bossTell', ev.x, ev.z);
     const dirt = SPELL_FX.enemy.dirt;
     const curse = SPELL_FX.enemy.curse;
     const tide = 0x5f8f8a;
@@ -4866,7 +4900,7 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'nicheBreak':
         this.effects.emit({ x: ev.x, y: 1.6, z: ev.z, count: 40, color: 0xe0d6c2, spread: 1, speed: 3.5, up: 2.5, life: 0.9, size: 0.25, gravity: 8 });
         this.effects.lightFlash(ev.x, 2, ev.z, SPELL_FX.boss.shard, 40, 0.5);
-        audio.play('bossSlam', ev.x, ev.z);
+        audio.play('nicheBreak', ev.x, ev.z);
         break;
     }
   }
@@ -4902,6 +4936,7 @@ export class WorldScene implements GameScene, RuntimeView {
         break;
       }
       case 'phase':
+        audio.play('bossPhase', ev.x, ev.z);
         if ((ev.boss ?? 'prelate') === 'prelate') {
           this.hud.banner(ev.phase === 2 ? 'The Procession' : 'The Bell Breaks', ev.phase === 2 ? 'Penitents file in from the aisles' : 'The Prelate is enraged', 2600);
           this.worldView.setCandleGroup(ev.phase === 2 ? 'west' : 'east', false);
@@ -5235,12 +5270,13 @@ export class WorldScene implements GameScene, RuntimeView {
     this.rig.update(dt, talkFocus ? talkFocus.x : p.x, talkFocus ? talkFocus.z : p.z);
     audio.setListener(p.x, p.z);
     if (p.moving) {
-      this.stepT -= dt * p.stats.moveSpeed;
-      if (this.stepT <= 0) {
-        this.stepT = 1.6;
-        audio.play('step', p.x, p.z, this.area === 'graves' ? 0.8 : 1.2);
+      // Footfalls come from the walk loop's own phase, on the surface of the area (water where the hero wades).
+      const c = this.avatar.c;
+      if (this.foot.step(c.loopPhase(), p.x, p.z)) {
+        const surface = this.worldView.isWet(p.x, p.z) ? 'water' : AREA_SURFACE[this.area];
+        audio.footstep(STEP_SOUND[surface], p.x, p.z, (AREA_STEP_GAIN[this.area] ?? 1) * (c.lastPlan?.clip === 'run' ? 1.25 : 1));
       }
-    }
+    } else this.foot.reset();
     this.rig.camera.updateMatrixWorld();
     this.occlusionFocus.set(p.x, 1.1, p.z);
     updateOcclusion(this.rig.camera, this.occlusionFocus);

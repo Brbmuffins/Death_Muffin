@@ -10,7 +10,7 @@ import { mulberry32 } from '../rng';
 import type { Corpse, Enemy, SimEvent, Thrall } from '../sim/types';
 import { LEGEND, type SimLegend, clampSimLegend, colossusActive, damageTakenMult, effectiveWitheredCap, simLegendActive, simLegendOf, wardReflectDamage } from '../legendary';
 
-vi.mock('../../audio/Audio', () => ({ audio: { play: vi.fn() } }));
+vi.mock('../../audio/Audio', () => ({ audio: { play: vi.fn(), loop: vi.fn(() => () => undefined) } }));
 vi.mock('../../graphics/fxTextures', () => ({
   fx: Object.fromEntries(['glow', 'smoke', 'disc', 'ring', 'cracks', 'sigil'].map((name) => [name, () => new THREE.Texture()])),
 }));

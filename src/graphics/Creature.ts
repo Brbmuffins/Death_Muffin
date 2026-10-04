@@ -467,6 +467,19 @@ export class Creature {
     return this.oneShot !== null;
   }
 
+  /**
+   * Phase (0..1) of the walk / run loop, or null while another clip plays. The footstep sounds read it so they land
+   * with the feet (audio/footsteps.ts), at whatever playback speed the stride matching set.
+   */
+  loopPhase(): number | null {
+    const a = this.current;
+    if (!a || (this.loop !== 'walk' && this.loop !== 'run') || this.oneShot) return null;
+    const d = a.getClip().duration;
+    if (!(d > 0)) return null;
+    const ph = (a.time % d) / d;
+    return ph < 0 ? ph + 1 : ph;
+  }
+
   /** The last locomotion plan (QA and tests read it; null until setGroundSpeed has run). */
   lastPlan: LocomotionPlan | null = null;
   private lastGround = -1;

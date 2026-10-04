@@ -7,7 +7,7 @@ import { Effects } from '../../graphics/Effects';
 import { DISCIPLINES } from '../../content/disciplines';
 import type { Intent } from '../sim/types';
 
-vi.mock('../../audio/Audio', () => ({ audio: { play: vi.fn() } }));
+vi.mock('../../audio/Audio', () => ({ audio: { play: vi.fn(), loop: vi.fn(() => () => undefined) } }));
 vi.mock('../../graphics/fxTextures', () => ({
   fx: Object.fromEntries(['glow', 'smoke', 'disc', 'ring', 'cracks', 'sigil'].map((name) => [name, () => new THREE.Texture()])),
 }));

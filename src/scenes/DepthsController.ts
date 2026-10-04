@@ -319,6 +319,7 @@ export class DepthsController {
     const sim = this.host.sim();
     if (!run || !f || !f.chest || !sim || this.over || this.chestOpened) return false;
     this.chestOpened = true;
+    audio.play('chestOpen');
     this.view.setChestOpened(true);
     const level = sim.areaLevel('depths');
     const loot = rollChest(run.depth, level, Math.random, this.host.disciplineId?.());

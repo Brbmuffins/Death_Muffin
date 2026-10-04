@@ -201,6 +201,7 @@ export class NewBloodSystem {
       case 'murder_of_crows':
         if (Math.hypot(t.x - p.x, t.z - p.z) > def.range) return 'range';
         this.murderUntil = now + 8000; this.nextMurderTick = now;
+        audio.loop('crowSwarmLoop', 8000, p.x, p.z, () => this.ctx.player);
         this.ctx.effects.orbit({ tex: fxImage('crow'), color: SPELL_FX.witch.blood,
           count: 6, radius: 2.5, y: 1.5, size: 0.75, duration: 8, speed: 3.8,
           follow: () => this.ctx.aim?.() ?? { x: t.x, z: t.z } });
@@ -267,6 +268,7 @@ export class NewBloodSystem {
     if (ev.kind === 'harvest') {
       this.crowsUntil = this.ctx.now() + 6000;
       this.nextCrowPeck = this.ctx.now();
+      audio.loop('crowSwarmLoop', 6000, p.x, p.z, () => this.ctx.player);
       this.ctx.effects.orbit({ tex: fxImage('crow'), color: SPELL_FX.witch.blood,
         count: 3, radius: 1.1, y: 1.8, size: 0.55, duration: 6, speed: 2.7,
         follow: () => p.alive ? { x: p.x, z: p.z } : null });

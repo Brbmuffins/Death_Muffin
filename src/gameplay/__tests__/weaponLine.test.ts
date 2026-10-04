@@ -16,7 +16,7 @@ import { abilityCooldownMs, abilityLockMs, abilityRange, pierceTargets, reapTarg
 import type { InventorySlot } from '../../net/types';
 import { selectAutoCombatAction } from '../autoCombat';
 
-vi.mock('../../audio/Audio', () => ({ audio: { play: vi.fn() } }));
+vi.mock('../../audio/Audio', () => ({ audio: { play: vi.fn(), loop: vi.fn(() => () => undefined) } }));
 vi.mock('../../graphics/fxTextures', () => ({
   fx: Object.fromEntries(['glow', 'smoke', 'disc', 'ring', 'cracks', 'sigil'].map((name) => [name, () => new THREE.Texture()])),
 }));

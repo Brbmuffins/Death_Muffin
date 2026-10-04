@@ -4,6 +4,8 @@
  * many voices a bus may hold. No WebAudio in here, so it is unit-tested.
  */
 import type { Sfx } from './Audio';
+import { AUDIO_MAP, MIX_RULES, type SoundId } from '../content/audioMap';
+import { capSeconds, mixBusOf } from './packs';
 
 export type BusId = 'combat' | 'enemies' | 'thralls' | 'ui' | 'ambience';
 export const BUS_IDS: readonly BusId[] = ['combat', 'enemies', 'thralls', 'ui', 'ambience'];
@@ -21,6 +23,10 @@ export type Priority = number; // 0 (background) .. 10 (player hurt)
 export interface Duck {
   /** Fraction removed from thralls + enemies (0.4 = -40%). */
   depth: number;
+  /** Fraction removed from the enemy-voice bus when it differs from `depth` (the map's voice share). */
+  voice?: number;
+  /** Fraction removed from the ambience accent bus (the zone bed is ducked separately by combat activity). */
+  ambience?: number;
   hold: number; // seconds at full depth
   release: number; // seconds time constant back to 1
 }
@@ -40,7 +46,7 @@ const P = (bus: BusId, priority: Priority, dur: number, extra: Partial<Profile> 
 const PLAYER = 9;
 const BOSS = 8;
 
-export const PROFILES: Record<Sfx, Profile> = {
+export const PROFILES: Partial<Record<Sfx, Profile>> = {
   // The necromancer's own casts: always heard.
   needleCast: P('combat', PLAYER, 0.3),
   needleHit: P('combat', 6, 0.3),
@@ -142,8 +148,34 @@ export const PROFILES: Record<Sfx, Profile> = {
   emberCrackle: P('ambience', 0, 0.3),
 };
 export const DEFAULT_PROFILE: Profile = P('combat', 4, 0.6);
+
+/** Duck rule of an id from the map's MIX_RULES (the four bossTell* ids share the bossTell rule). */
+function mapDuck(name: string): Duck | undefined {
+  const rule = (MIX_RULES.duck as Record<string, { sfx: number; voice: number; ambience: number; holdMs: number; releaseMs: number }>)[name.startsWith('bossTell') ? 'bossTell' : name];
+  return rule ? { depth: rule.sfx, voice: rule.voice, ambience: rule.ambience, hold: rule.holdMs / 1000, release: rule.releaseMs / 1000 } : undefined;
+}
+
+const derived = new Map<string, Profile>();
+/**
+ * Bus, priority and duck of a sound. The tuned PROFILES entry wins for the ids that existed before; the recorded map
+ * supplies everything else (bus by id kind, priority x2, duck from MIX_RULES, thrall thinning).
+ */
 export function profileOf(name: Sfx): Profile {
-  return PROFILES[name] ?? DEFAULT_PROFILE;
+  const fixed = PROFILES[name];
+  if (fixed) return fixed.duck ? fixed : { ...fixed, duck: mapDuck(name) ?? fixed.duck };
+  let p = derived.get(name);
+  if (!p && name in AUDIO_MAP) {
+    const id = name as SoundId;
+    const def = AUDIO_MAP[id];
+    const bus = mixBusOf(id);
+    p = P(bus, def.priority * 2, Math.min(capSeconds(id), 4), {
+      // A horde does not roar in unison: thralls thin to 3 per 100 ms, enemy attack / death voices to 2 per 500 ms.
+      thin: bus === 'thralls' ? { window: 0.1, max: 3 } : /^enemy(Attack|Death)(Beast|Humanoid|Brute|Spirit)$/.test(name) ? { window: 0.5, max: 2 } : undefined,
+      duck: mapDuck(name),
+    });
+    derived.set(name, p);
+  }
+  return p ?? DEFAULT_PROFILE;
 }
 
 // --- bus gain math ----------------------------------------------------------
@@ -337,7 +369,49 @@ export function accentsAllowed(level: number): boolean {
 
 /** Highest rarity picked up this frame decides the loot sound; common and uncommon share the plain one. */
 export function lootSfx(rarities: readonly string[]): Sfx {
-  if (rarities.includes('epic') || rarities.includes('legendary')) return 'lootEpic';
+  if (rarities.includes('legendary')) return 'lootLegendary';
+  if (rarities.includes('epic')) return 'lootEpic';
   if (rarities.includes('rare')) return 'lootRare';
   return 'item';
+}
+
+// --- per-id caps: maxVoices and cooldown from the map -------------------------
+
+/** Concurrent starts of one id (`maxVoices`) and the gap between two starts (`cooldown`). Pure; the engine owns the clock. */
+export class IdLimiter {
+  private ends = new Map<string, number[]>();
+  private lastStart = new Map<string, number>();
+  dropped = 0;
+
+  /** Admit a start of `id` at `now` lasting `dur`, or refuse it (cooldown not over, or `maxVoices` already sounding). */
+  request(id: string, now: number, dur: number, maxVoices: number, cooldown: number): boolean {
+    const last = this.lastStart.get(id);
+    if (cooldown > 0 && last !== undefined && now - last < cooldown) {
+      this.dropped++;
+      return false;
+    }
+    let list = this.ends.get(id);
+    if (!list) this.ends.set(id, (list = []));
+    for (let i = list.length - 1; i >= 0; i--) if (list[i] <= now) list.splice(i, 1);
+    if (list.length >= maxVoices) {
+      this.dropped++;
+      return false;
+    }
+    list.push(now + dur);
+    this.lastStart.set(id, now);
+    return true;
+  }
+  reset() {
+    this.ends.clear();
+    this.lastStart.clear();
+    this.dropped = 0;
+  }
+}
+
+/** Partner (co-op) sounds: quieter, only nearby, and at most a few at once so a full party is one extra voice, not ten. */
+export function partnerGain(kind: 'spell' | 'step'): number {
+  return kind === 'step' ? MIX_RULES.partnerFootstepGain : MIX_RULES.partnerSpellGain;
+}
+export function partnerAudible(distance: number): boolean {
+  return distance <= MIX_RULES.partnerRadius;
 }

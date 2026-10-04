@@ -36,10 +36,24 @@ async function main() {
     // One click unlocks the AudioContext (browsers require a gesture).
     await page.mouse.click(640, 400);
     await page.waitForFunction(() => window.__cwAudio?.stats().state === 'running', null, { timeout: 15000 });
-    await page.waitForFunction(() => window.__cwAudio.stats().samplesLoaded > 0 && window.__cwAudio.stats().samplesLoaded + window.__cwAudio.stats().samplesFailed >= window.__cwAudio.stats().samplesExpected, null, { timeout: 30000 });
+    const GLOBAL = ['core', 'ui', 'rites', 'world', 'amb'];
+    await page.waitForFunction((g) => { const st = window.__cwAudio.stats(); return g.every((p) => st.packs.includes(p)) && st.samplesLoaded + st.samplesFailed >= st.samplesExpected && st.samplesLoaded > 0; }, GLOBAL, { timeout: 60000 });
     const loaded = await page.evaluate(() => window.__cwAudio.stats());
     assert.equal(loaded.samplesLoaded, loaded.samplesExpected, `sample buffers loaded: ${loaded.samplesLoaded}/${loaded.samplesExpected}`);
     assert.equal(loaded.samplesFailed, 0, 'no sample failed to load');
+
+    // --- lazy loading: the area adds and releases its own packs --------------------------------------------------
+    const lazy = {};
+    for (const [area, want, notWant] of [['graves', ['foot_dirt', 'foot_water', 'fam_humanoid', 'boss'], []], ['fen', ['foot_grass', 'fam_spirit', 'fam_beast'], []], ['chapterhouse', ['foot_stone'], ['fam_brute']]]) {
+      await page.evaluate((a) => { window.__cwDebug.unlockAll(); window.__cwDebug.goto(a); window.__cwDebug.advance(1); }, area);
+      await page.waitForFunction((a) => window.__cwAudio.stats().area === a, area, { timeout: 20000 });
+      await page.waitForFunction((w) => { const st = window.__cwAudio.stats(); return w.every((p) => st.packs.includes(p)) && st.samplesLoaded + st.samplesFailed >= st.samplesExpected; }, want, { timeout: 20000 }).catch(async (e) => { console.error(area, JSON.stringify(await page.evaluate(() => { const st = window.__cwAudio.stats(); return { packs: st.packs, area: st.area, loaded: st.samplesLoaded, failed: st.samplesFailed, req: st.samplesExpected }; }))); throw e; });
+      lazy[area] = await page.evaluate(() => window.__cwAudio.stats().packs.filter((p) => /^(foot_|fam_|boss)/.test(p)));
+      for (const n of notWant) assert.ok(!lazy[area].includes(n), `${area} must not load ${n}`);
+    }
+    // Two areas on, the first area's floor (graves: dirt) is released again; the previous area's stays for a quick return.
+    assert.ok(!lazy.chapterhouse.includes('foot_dirt'), 'the graves floor pack is released two areas later');
+    assert.ok(lazy.chapterhouse.includes('foot_grass'), 'the previous area (fen) keeps its packs');
 
     // --- the recorded zone beds replace the synthesised ones once loaded -----------
     await page.evaluate(() => { window.__cwDebug.goto('graves'); window.__cwDebug.advance(1); });
@@ -62,6 +76,44 @@ async function main() {
     assert.ok(newPlay.samplePlays >= NEW_SOUNDS.length - 2, `new sounds used their samples ${newPlay.samplePlays}/${newPlay.total}`);
     assert.ok(newPlay.peakOut < 0.7, `one-at-a-time sounds peak ${newPlay.peakOut}`);
 
+    // --- every id in the map plays (with the area packs for its family loaded) and the first cast does not hitch -------
+    const ids = [...require('node:fs').readFileSync('src/content/audioMap.ts', 'utf8').matchAll(/^  (\w+): \{$/gm)].map((m) => m[1]).filter((n) => n !== 'files');
+    await page.evaluate(() => { window.__cwDebug.goto('graves'); window.__cwDebug.advance(1); });
+    await page.waitForFunction(() => { const st = window.__cwAudio.stats(); return st.packs.includes('boss') && st.samplesLoaded + st.samplesFailed >= st.samplesExpected; }, null, { timeout: 20000 });
+    const every = await page.evaluate(async (names) => {
+      const a = window.__cwAudio;
+      a.resetStats();
+      const slow = [];
+      let started = 0;
+      for (const n of names) {
+        const t0 = performance.now();
+        a.play(n, undefined, undefined, 1);
+        const dt = performance.now() - t0;
+        if (dt > 4) slow.push(`${n} ${dt.toFixed(1)}ms`);
+        started++;
+        await new Promise((r) => setTimeout(r, 90));
+      }
+      const st = a.stats();
+      return { started, played: st.played, samplePlays: st.samplePlays, slow, dropped: st.droppedByReason, failed: st.samplesFailed };
+    }, ids);
+    assert.ok(every.samplePlays >= ids.length * 0.7, `map ids that played a recorded clip ${every.samplePlays}/${ids.length}`);
+    assert.ok(every.slow.filter((x) => parseFloat(x.split(' ')[1]) > 50).length === 0, `play() stalled: ${every.slow}`);
+
+    // --- partner sounds are faint and near-only ------------------------------------------------------------------
+    const partner = await page.evaluate(() => {
+      const a = window.__cwAudio;
+      const p = window.__cwDebug.player;
+      a.resetStats();
+      a.partner = true;
+      a.play('needleCast', p.x + 60, p.z); // far away: dropped
+      const far = a.stats().droppedByReason.partner;
+      for (let i = 0; i < 8; i++) a.play('hands', p.x + 3, p.z);
+      a.partner = false;
+      return { far, played: a.stats().played };
+    });
+    assert.equal(partner.far, 1, 'a partner 60 m away is not heard');
+    assert.ok(partner.played <= 4, `at most 4 partner sounds at once, played ${partner.played}`);
+
     // --- Settings sliders ------------------------------------------------------
     await page.keyboard.press('Escape');
     for (const sel of ['[data-vol]', '[data-vol-combat]', '[data-vol-amb]', '[data-vol-ui]']) assert.equal(await page.locator(sel).count(), 1, `${sel} slider present`);
@@ -76,6 +128,7 @@ async function main() {
 
     // --- hurt ducks, thrall hits are thinned (synthetic burst at one instant) ----
     await page.evaluate(() => { window.__cwDebug.god(); window.__cwDebug.goto('graves'); window.__cwDebug.advance(1); });
+    await page.waitForTimeout(3500); // the every-id pass above left a long duck (player death) running
     const burst = await page.evaluate(() => {
       const a = window.__cwAudio;
       a.resetStats();
@@ -87,8 +140,10 @@ async function main() {
       return { afterThralls, after: a.stats() };
     });
     assert.ok(burst.afterThralls.played <= 3, `thrall hits thinned to <=3 per 100ms, played ${burst.afterThralls.played}`);
-    assert.ok(burst.afterThralls.droppedByReason.thin >= 30, 'thinning counted');
+    const shed = burst.afterThralls.droppedByReason; // the map's per-id cooldown / maxVoices now shed most of a burst before the thinner sees it
+    assert.ok(shed.thin + shed.gap + shed.id >= 30, 'thinning counted');
     assert.ok(burst.after.peakVoices.enemies <= CAP.enemies, `enemy bus cap held: ${burst.after.peakVoices.enemies}`);
+    if (burst.after.ducks < 1) console.error(JSON.stringify(burst.after));
     assert.ok(burst.after.ducks >= 1, 'player hurt ducked thralls/enemies');
 
     // --- busy fight: 40 enemies, thralls, every necromancer rite -----------------
@@ -165,7 +220,7 @@ async function main() {
     const worstAmbient = Object.entries(ambient).reduce((m, [k, v]) => (v.postPeak > m.v ? { k, v: v.postPeak } : m), { k: '', v: 0 });
     assert.deepEqual(errors, []);
     // Failed requests must not be audio files (other 4xx, e.g. optional art, are reported but not fatal).
-    assert.deepEqual([...badResponses].filter((u) => /\.(ogg|mp3|wav)\b/.test(u)), [], 'audio files all served');
+    assert.deepEqual([...badResponses].filter((u) => /\.(ogg|opus|mp3|wav)\b/.test(u)), [], 'audio files all served');
     console.log(JSON.stringify({
       samplesLoaded: loaded.samplesLoaded, peakVoices, played: end.played, samplePlays: end.samplePlays, dropped: end.dropped,
       droppedByReason: end.droppedByReason, droppedByBus: end.droppedByBus, ducks: end.ducks, peakPreLimiter: +end.peakPre.toFixed(3), peakPostLimiter: +end.peakOut.toFixed(3),
@@ -173,8 +228,10 @@ async function main() {
         busyFight: { busPeak: Object.fromEntries(Object.entries(end.busPeak).map(([k, v]) => [k, +v.toFixed(3)])), busRms: Object.fromEntries(Object.entries(end.busRms).map(([k, v]) => [k, +v.toFixed(4)])), minBedDuck: +minBedDuck.toFixed(2) },
         ambientOnly: ambient, worstAmbient,
         newSounds: newPlay,
+        lazyPacks: lazy,
+        everyId: { ids: ids.length, ...every },
       },
-      sceneCounts: counts, thrallThinning: { played: burst.afterThralls.played, thinned: burst.afterThralls.droppedByReason.thin }, errors, otherFailedRequests: [...badResponses].slice(0, 5),
+      sceneCounts: counts, thrallThinning: { played: burst.afterThralls.played, thinned: burst.afterThralls.droppedByReason.thin + burst.afterThralls.droppedByReason.gap + burst.afterThralls.droppedByReason.id }, errors, otherFailedRequests: [...badResponses].slice(0, 5),
     }, null, 1));
   } finally {
     await browser.close();

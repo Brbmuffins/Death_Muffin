@@ -1,0 +1,6505 @@
+{
+ "format": "ogg-opus",
+ "rate": 48000,
+ "bitrate": "48k",
+ "totalBytes": 2356932,
+ "decodedSeconds": 386.4,
+ "packs": {
+  "world": {
+   "clips": 82,
+   "bytes": 527819.3333333334
+  },
+  "ui": {
+   "clips": 53,
+   "bytes": 319641.5
+  },
+  "amb": {
+   "clips": 17,
+   "bytes": 73802.16666666666
+  },
+  "rites": {
+   "clips": 111,
+   "bytes": 787725.5
+  },
+  "core": {
+   "clips": 21,
+   "bytes": 91546.16666666666
+  },
+  "boss": {
+   "clips": 39,
+   "bytes": 391784.1666666666
+  },
+  "fam_beast": {
+   "clips": 5,
+   "bytes": 41065
+  },
+  "fam_humanoid": {
+   "clips": 4,
+   "bytes": 34829
+  },
+  "fam_brute": {
+   "clips": 4,
+   "bytes": 30266.666666666668
+  },
+  "fam_spirit": {
+   "clips": 3,
+   "bytes": 19005.5
+  },
+  "foot_dirt": {
+   "clips": 4,
+   "bytes": 7359
+  },
+  "foot_grass": {
+   "clips": 4,
+   "bytes": 11050
+  },
+  "foot_stone": {
+   "clips": 5,
+   "bytes": 9297
+  },
+  "foot_water": {
+   "clips": 4,
+   "bytes": 11741
+  }
+ },
+ "clips": [
+  {
+   "clip": "Actions/Action_Chop_Wood_A_Pick_Axe_Impact_Material_Crafting_Accent_Medieval",
+   "file": "Actions__Action_Chop_Wood_A_Pick_Axe_Impact_Material_Crafting_Accent_Medieval.opus",
+   "pack": "world",
+   "users": [
+    "chop"
+   ],
+   "bytes": 10168,
+   "dur": 1.3,
+   "srcDur": 1.45,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": 0.5,
+   "srcLead": 0.003,
+   "clipRun": 22,
+   "gainDb": -4.3,
+   "impact": 0.02,
+   "lufs": -25.1,
+   "tpDb": -3.3
+  },
+  {
+   "clip": "Actions/Action_Chop_Wood_C_Pick_Axe_Impact_Material_Crafting_Accent_Medieval",
+   "file": "Actions__Action_Chop_Wood_C_Pick_Axe_Impact_Material_Crafting_Accent_Medieval.opus",
+   "pack": "world",
+   "users": [
+    "chop"
+   ],
+   "bytes": 10062,
+   "dur": 1.3,
+   "srcDur": 1.45,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": 1.2,
+   "srcLead": 0.002,
+   "clipRun": 22,
+   "gainDb": -5,
+   "impact": 0.02,
+   "lufs": -24.2,
+   "tpDb": -3.6
+  },
+  {
+   "clip": "Actions/Action_Collect_Ore_A__Pick_Axe_Impact_Material_Crafting_Accent_Medieval",
+   "file": "Actions__Action_Collect_Ore_A__Pick_Axe_Impact_Material_Crafting_Accent_Medieval.opus",
+   "pack": "world",
+   "users": [
+    "pickOre"
+   ],
+   "bytes": 4023,
+   "dur": 0.85,
+   "srcDur": 0.88,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.2,
+   "srcLead": 0.029,
+   "clipRun": 0,
+   "gainDb": -0.9,
+   "impact": 0.01,
+   "lufs": -23.6,
+   "tpDb": -2.3
+  },
+  {
+   "clip": "Actions/Action_Collect_Ore_B_Pick_Axe_Impact_Material_Crafting_Accent_Medieval",
+   "file": "Actions__Action_Collect_Ore_B_Pick_Axe_Impact_Material_Crafting_Accent_Medieval.opus",
+   "pack": "world",
+   "users": [
+    "pickOre"
+   ],
+   "bytes": 3908,
+   "dur": 0.844,
+   "srcDur": 0.88,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.4,
+   "srcLead": 0.035,
+   "clipRun": 0,
+   "gainDb": -3,
+   "impact": 0.01,
+   "lufs": -23.9,
+   "tpDb": -3.4
+  },
+  {
+   "clip": "Actions/Action_Collect_Ore_C_Pick_Axe_Impact_Material_Crafting_Accent_Medieval",
+   "file": "Actions__Action_Collect_Ore_C_Pick_Axe_Impact_Material_Crafting_Accent_Medieval.opus",
+   "pack": "world",
+   "users": [
+    "pickOre"
+   ],
+   "bytes": 3873,
+   "dur": 0.852,
+   "srcDur": 0.88,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.6,
+   "srcLead": 0.027,
+   "clipRun": 0,
+   "gainDb": -0.6,
+   "impact": 0.01,
+   "lufs": -23.4,
+   "tpDb": -2.6
+  },
+  {
+   "clip": "Actions/Action_Collect_Stone_A_Pick_Axe_Impact_Material_Crafting_Accent_Medieval",
+   "file": "Actions__Action_Collect_Stone_A_Pick_Axe_Impact_Material_Crafting_Accent_Medieval.opus",
+   "pack": "world",
+   "users": [
+    "pick"
+   ],
+   "bytes": 3329,
+   "dur": 0.534,
+   "srcDur": 0.53,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -3,
+   "srcLead": 0.001,
+   "clipRun": 0,
+   "gainDb": -0.2,
+   "impact": 0.03,
+   "lufs": -20.9,
+   "tpDb": -3.7
+  },
+  {
+   "clip": "Actions/Action_Collect_Wood_A_Pick_Axe_Impact_Material_Crafting_Accent_Medieval",
+   "file": "Actions__Action_Collect_Wood_A_Pick_Axe_Impact_Material_Crafting_Accent_Medieval.opus",
+   "pack": "world",
+   "users": [
+    "chop"
+   ],
+   "bytes": 5067,
+   "dur": 1.029,
+   "srcDur": 1.06,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.5,
+   "srcLead": 0.038,
+   "clipRun": 0,
+   "gainDb": 0.6,
+   "impact": 0.07,
+   "lufs": -24.3,
+   "tpDb": -2.4
+  },
+  {
+   "clip": "Actions/Action_Collect_Wood_B_Pick_Axe_Impact_Material_Crafting_Accent_Medieval",
+   "file": "Actions__Action_Collect_Wood_B_Pick_Axe_Impact_Material_Crafting_Accent_Medieval.opus",
+   "pack": "world",
+   "users": [
+    "chop"
+   ],
+   "bytes": 5158,
+   "dur": 1.038,
+   "srcDur": 1.04,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.5,
+   "srcLead": 0.008,
+   "clipRun": 0,
+   "gainDb": -0.8,
+   "impact": 0.03,
+   "lufs": -24.6,
+   "tpDb": -2.2
+  },
+  {
+   "clip": "Actions/Action_Mining_Rock_A_Pick_Axe_Impact_Material_Crafting_Accent_Medieval",
+   "file": "Actions__Action_Mining_Rock_A_Pick_Axe_Impact_Material_Crafting_Accent_Medieval.opus",
+   "pack": "world",
+   "users": [
+    "pick"
+   ],
+   "bytes": 2576,
+   "dur": 0.455,
+   "srcDur": 0.46,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": 0.2,
+   "srcLead": 0.01,
+   "clipRun": 1,
+   "gainDb": -0.1,
+   "impact": 0,
+   "lufs": -22.2,
+   "tpDb": -1.4
+  },
+  {
+   "clip": "Actions/Action_Mining_Rock_B_Pick_Axe_Impact_Material_Crafting_Accent_Medieval",
+   "file": "Actions__Action_Mining_Rock_B_Pick_Axe_Impact_Material_Crafting_Accent_Medieval.opus",
+   "pack": "world",
+   "users": [
+    "pick"
+   ],
+   "bytes": 2875,
+   "dur": 0.455,
+   "srcDur": 0.46,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": 0.1,
+   "srcLead": 0,
+   "clipRun": 1,
+   "gainDb": 0.6,
+   "impact": 0.01,
+   "lufs": -21.1,
+   "tpDb": -1.8
+  },
+  {
+   "clip": "Actions/Action_Mining_Rock_C_Pick_Axe_Impact_Material_Crafting_Accent_Medieval",
+   "file": "Actions__Action_Mining_Rock_C_Pick_Axe_Impact_Material_Crafting_Accent_Medieval.opus",
+   "pack": "world",
+   "users": [
+    "pick"
+   ],
+   "bytes": 2784,
+   "dur": 0.495,
+   "srcDur": 0.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.7,
+   "srcLead": 0.009,
+   "clipRun": 0,
+   "gainDb": 1.5,
+   "impact": 0.02,
+   "lufs": -22.5,
+   "tpDb": -2.4
+  },
+  {
+   "clip": "Actions/Backpack_Open_Close_Inventory_User_Interface_UI",
+   "file": "Actions__Backpack_Open_Close_Inventory_User_Interface_UI.opus",
+   "pack": "ui",
+   "users": [
+    "panelOpenInventory"
+   ],
+   "bytes": 3929,
+   "dur": 0.731,
+   "srcDur": 0.75,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -0.9,
+   "srcLead": 0.023,
+   "clipRun": 0,
+   "gainDb": -4.6,
+   "impact": 0.11,
+   "lufs": -23.1,
+   "tpDb": -5.9
+  },
+  {
+   "clip": "Actions/Book_Page_Turn_1_Paper_Library_Magic_Ancient_Medieval",
+   "file": "Actions__Book_Page_Turn_1_Paper_Library_Magic_Ancient_Medieval.opus",
+   "pack": "ui",
+   "users": [
+    "panelOpenBook"
+   ],
+   "bytes": 5744,
+   "dur": 0.742,
+   "srcDur": 0.81,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -5.8,
+   "srcLead": 0.074,
+   "clipRun": 0,
+   "gainDb": 5.5,
+   "impact": 0.16,
+   "lufs": -22.7,
+   "tpDb": -3.6
+  },
+  {
+   "clip": "Actions/Book_Page_Turn_2_Paper_Library_Magic_Ancient_Medieval",
+   "file": "Actions__Book_Page_Turn_2_Paper_Library_Magic_Ancient_Medieval.opus",
+   "pack": "ui",
+   "users": [
+    "panelOpenBook"
+   ],
+   "bytes": 4764,
+   "dur": 0.733,
+   "srcDur": 0.79,
+   "skip": 0.02,
+   "cls": "ui",
+   "srcPeakDb": -4.1,
+   "srcLead": 0.042,
+   "clipRun": 0,
+   "gainDb": 3.9,
+   "impact": 0.16,
+   "lufs": -22.8,
+   "tpDb": -3.9
+  },
+  {
+   "clip": "Actions/Chest_Unlock_Small_2_Switch_User_Interface_Open_Close_Accent_Medieval",
+   "file": "Actions__Chest_Unlock_Small_2_Switch_User_Interface_Open_Close_Accent_Medieval.opus",
+   "pack": "world",
+   "users": [
+    "chestOpen"
+   ],
+   "bytes": 3697,
+   "dur": 0.6,
+   "srcDur": 0.6,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": 0.9,
+   "srcLead": 0.001,
+   "clipRun": 1,
+   "gainDb": 0.7,
+   "impact": 0.02,
+   "lufs": -20.4,
+   "tpDb": -3.1
+  },
+  {
+   "clip": "Actions/Chest_Unlock_Small_Switch_User_Interface_Open_Close_Accent_Medieval",
+   "file": "Actions__Chest_Unlock_Small_Switch_User_Interface_Open_Close_Accent_Medieval.opus",
+   "pack": "world",
+   "users": [
+    "chestOpen"
+   ],
+   "bytes": 8128,
+   "dur": 1.282,
+   "srcDur": 1.32,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.2,
+   "srcLead": 0.044,
+   "clipRun": 0,
+   "gainDb": 3.2,
+   "impact": 0.39,
+   "lufs": -22,
+   "tpDb": -1.5
+  },
+  {
+   "clip": "Actions/Item_Wooden_Chest_Open_or_Close_2_Medium_Small_Designed_Accent_Medieval",
+   "file": "Actions__Item_Wooden_Chest_Open_or_Close_2_Medium_Small_Designed_Accent_Medieval.opus",
+   "pack": "world",
+   "users": [
+    "vaultOpen"
+   ],
+   "bytes": 5377,
+   "dur": 0.9,
+   "srcDur": 2.13,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1.1,
+   "srcLead": 0.034,
+   "clipRun": 0,
+   "gainDb": 1.3,
+   "impact": 0.68,
+   "lufs": -23.7,
+   "tpDb": -2.6
+  },
+  {
+   "clip": "Actions/Item_Wooden_Chest_Open_or_Close_3_Medium_Small_Designed_Accent_Medieval",
+   "file": "Actions__Item_Wooden_Chest_Open_or_Close_3_Medium_Small_Designed_Accent_Medieval.opus",
+   "pack": "world",
+   "users": [
+    "vaultOpen"
+   ],
+   "bytes": 5399,
+   "dur": 0.9,
+   "srcDur": 1.58,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1.8,
+   "srcLead": 0.024,
+   "clipRun": 0,
+   "gainDb": 2.3,
+   "impact": 0.67,
+   "lufs": -24.7,
+   "tpDb": -2.1
+  },
+  {
+   "clip": "Actions/Item_Wooden_Chest_Open_or_Close_4v_Medium_Small_Designed_Accent_Medieval",
+   "file": "Actions__Item_Wooden_Chest_Open_or_Close_4v_Medium_Small_Designed_Accent_Medieval.opus",
+   "pack": "world",
+   "users": [
+    "vaultClose"
+   ],
+   "bytes": 5343,
+   "dur": 0.9,
+   "srcDur": 1.75,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -2.2,
+   "srcLead": 0.041,
+   "clipRun": 0,
+   "gainDb": 1.7,
+   "impact": 0.65,
+   "lufs": -22.9,
+   "tpDb": -2.3
+  },
+  {
+   "clip": "Actions/Item_Wooden_Chest_Open_or_Close_5v_Medium_Small_Designed_Accent_Medieval",
+   "file": "Actions__Item_Wooden_Chest_Open_or_Close_5v_Medium_Small_Designed_Accent_Medieval.opus",
+   "pack": "world",
+   "users": [
+    "vaultClose"
+   ],
+   "bytes": 5302,
+   "dur": 0.9,
+   "srcDur": 1.75,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -2.2,
+   "srcLead": 0.041,
+   "clipRun": 0,
+   "gainDb": 1.7,
+   "impact": 0.65,
+   "lufs": -22.9,
+   "tpDb": -2.4
+  },
+  {
+   "clip": "Actions/Item_Wooden_Chest_Open_or_Close_Medium_Small_Designed_Accent_Medieval",
+   "file": "Actions__Item_Wooden_Chest_Open_or_Close_Medium_Small_Designed_Accent_Medieval.opus",
+   "pack": "world",
+   "users": [
+    "chestOpen"
+   ],
+   "bytes": 4496,
+   "dur": 0.94,
+   "srcDur": 0.98,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.9,
+   "srcLead": 0.043,
+   "clipRun": 0,
+   "gainDb": -1.7,
+   "impact": 0.07,
+   "lufs": -23.6,
+   "tpDb": -2.9
+  },
+  {
+   "clip": "Actions/Lock_Gate_Medium_Small_Designed_Accent_Medieval",
+   "file": "Actions__Lock_Gate_Medium_Small_Designed_Accent_Medieval.opus",
+   "pack": "ui",
+   "users": [
+    "error"
+   ],
+   "bytes": 5538,
+   "dur": 0.9,
+   "srcDur": 3.5,
+   "skip": 0.25,
+   "cls": "ui",
+   "srcPeakDb": -2.4,
+   "srcLead": 0.032,
+   "clipRun": 0,
+   "gainDb": -1.4,
+   "impact": 0.16,
+   "lufs": -21.3,
+   "tpDb": -4
+  },
+  {
+   "clip": "Actions/Material_Wood_Lever_4_Switch_User_Interface_Open_Close_Accent_Medieval",
+   "file": "Actions__Material_Wood_Lever_4_Switch_User_Interface_Open_Close_Accent_Medieval.opus",
+   "pack": "amb",
+   "users": [
+    "graveCreak"
+   ],
+   "bytes": 4556,
+   "dur": 0.9,
+   "srcDur": 1,
+   "skip": 0,
+   "cls": "amb",
+   "srcPeakDb": -0.9,
+   "srcLead": 0.01,
+   "clipRun": 0,
+   "gainDb": -7,
+   "impact": 0.12,
+   "lufs": -28.4,
+   "tpDb": -8.1
+  },
+  {
+   "clip": "Actions/Material_Wood_Lever_5_Switch_User_Interface_Open_Close_Accent_Medieval",
+   "file": "Actions__Material_Wood_Lever_5_Switch_User_Interface_Open_Close_Accent_Medieval.opus",
+   "pack": "amb",
+   "users": [
+    "graveCreak"
+   ],
+   "bytes": 4806,
+   "dur": 0.9,
+   "srcDur": 1,
+   "skip": 0,
+   "cls": "amb",
+   "srcPeakDb": -0.9,
+   "srcLead": 0.013,
+   "clipRun": 0,
+   "gainDb": -8.5,
+   "impact": 0.15,
+   "lufs": -27.5,
+   "tpDb": -9.5
+  },
+  {
+   "clip": "Actions/Metal_Latch_Door_Hit_1_Switch_User_Interface_Open_Close_Accent_Medieval",
+   "file": "Actions__Metal_Latch_Door_Hit_1_Switch_User_Interface_Open_Close_Accent_Medieval.opus",
+   "pack": "ui+rites",
+   "users": [
+    "error",
+    "shieldBash",
+    "bulwarkBlock"
+   ],
+   "bytes": 6519,
+   "dur": 0.842,
+   "srcDur": 1,
+   "skip": 0.03,
+   "cls": "sfx",
+   "srcPeakDb": -0.8,
+   "srcLead": 0.132,
+   "clipRun": 0,
+   "gainDb": -3,
+   "impact": 0.16,
+   "lufs": -23.2,
+   "tpDb": -3.8
+  },
+  {
+   "clip": "Actions/Open_Gate_Switch_User_Interface_Open_Close_Accent_Medieval",
+   "file": "Actions__Open_Gate_Switch_User_Interface_Open_Close_Accent_Medieval.opus",
+   "pack": "world",
+   "users": [
+    "gate"
+   ],
+   "bytes": 8654,
+   "dur": 1.3,
+   "srcDur": 4,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -4.8,
+   "srcLead": 0.002,
+   "clipRun": 0,
+   "gainDb": 2.9,
+   "impact": 0.05,
+   "lufs": -18.5,
+   "tpDb": -2.7
+  },
+  {
+   "clip": "Actions/Smash_Pot_A_Break_Shatter_Drop_Bash_Impact_Hit_Medieval",
+   "file": "Actions__Smash_Pot_A_Break_Shatter_Drop_Bash_Impact_Hit_Medieval.opus",
+   "pack": "core+boss",
+   "users": [
+    "thrallDeath",
+    "nicheBreak"
+   ],
+   "bytes": 4427,
+   "dur": 0.744,
+   "srcDur": 0.76,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.5,
+   "srcLead": 0.016,
+   "clipRun": 0,
+   "gainDb": 1.6,
+   "impact": 0,
+   "lufs": -22.4,
+   "tpDb": -1.9
+  },
+  {
+   "clip": "Actions/Smash_Pot_B_Break_Shatter_Drop_Bash_Impact_Hit_Medieval",
+   "file": "Actions__Smash_Pot_B_Break_Shatter_Drop_Bash_Impact_Hit_Medieval.opus",
+   "pack": "boss",
+   "users": [
+    "nicheBreak"
+   ],
+   "bytes": 4468,
+   "dur": 0.755,
+   "srcDur": 0.79,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -3.2,
+   "srcLead": 0.041,
+   "clipRun": 0,
+   "gainDb": 5.1,
+   "impact": 0.01,
+   "lufs": -23.5,
+   "tpDb": -3.2
+  },
+  {
+   "clip": "Actions/Stone_Door_Close_Drag_Rock_Rumble_Deep_Medieval",
+   "file": "Actions__Stone_Door_Close_Drag_Rock_Rumble_Deep_Medieval.opus",
+   "pack": "rites",
+   "users": [
+    "sigWall"
+   ],
+   "bytes": 10112,
+   "dur": 1.5,
+   "srcDur": 2.63,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.6,
+   "srcLead": 0.019,
+   "clipRun": 0,
+   "gainDb": -1.6,
+   "impact": 0.14,
+   "lufs": -21.8,
+   "tpDb": -3.2
+  },
+  {
+   "clip": "Actions/Stone_Door_Open_Drag_Rock_Rumble_Deep_Medieval",
+   "file": "Actions__Stone_Door_Open_Drag_Rock_Rumble_Deep_Medieval.opus",
+   "pack": "world",
+   "users": [
+    "gate"
+   ],
+   "bytes": 8835,
+   "dur": 1.3,
+   "srcDur": 2.75,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.9,
+   "srcLead": 0.011,
+   "clipRun": 0,
+   "gainDb": -2.6,
+   "impact": 0.14,
+   "lufs": -21.2,
+   "tpDb": -3.8
+  },
+  {
+   "clip": "Attacks_and_Creatures/Attack_Bow_A_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Attack_Bow_A_Weapon_Medieval.opus",
+   "pack": "core",
+   "users": [
+    "thrallShot"
+   ],
+   "bytes": 2147,
+   "dur": 0.387,
+   "srcDur": 0.39,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.1,
+   "srcLead": 0.008,
+   "clipRun": 0,
+   "gainDb": -2.6,
+   "impact": 0.01,
+   "lufs": -70,
+   "tpDb": -5
+  },
+  {
+   "clip": "Attacks_and_Creatures/Attack_Bow_B_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Attack_Bow_B_Weapon_Medieval.opus",
+   "pack": "core",
+   "users": [
+    "thrallShot"
+   ],
+   "bytes": 1917,
+   "dur": 0.321,
+   "srcDur": 0.33,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.5,
+   "srcLead": 0.01,
+   "clipRun": 0,
+   "gainDb": -4.2,
+   "impact": 0.02,
+   "lufs": -70,
+   "tpDb": -6.3
+  },
+  {
+   "clip": "Attacks_and_Creatures/Attack_Bow_C_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Attack_Bow_C_Weapon_Medieval.opus",
+   "pack": "core",
+   "users": [
+    "thrallShot"
+   ],
+   "bytes": 1933,
+   "dur": 0.323,
+   "srcDur": 0.33,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.3,
+   "srcLead": 0.008,
+   "clipRun": 0,
+   "gainDb": -1.8,
+   "impact": 0.02,
+   "lufs": -70,
+   "tpDb": -4.3
+  },
+  {
+   "clip": "Attacks_and_Creatures/Attack_Crossbow_A_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Attack_Crossbow_A_Weapon_Medieval.opus",
+   "pack": "rites",
+   "users": [
+    "boneFan"
+   ],
+   "bytes": 2177,
+   "dur": 0.354,
+   "srcDur": 0.35,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.4,
+   "srcLead": 0.003,
+   "clipRun": 0,
+   "gainDb": -2.4,
+   "impact": 0.02,
+   "lufs": -70,
+   "tpDb": -4.6
+  },
+  {
+   "clip": "Attacks_and_Creatures/Attack_Crossbow_B_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Attack_Crossbow_B_Weapon_Medieval.opus",
+   "pack": "rites",
+   "users": [
+    "boneFan"
+   ],
+   "bytes": 2569,
+   "dur": 0.443,
+   "srcDur": 0.44,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.4,
+   "srcLead": 0.004,
+   "clipRun": 0,
+   "gainDb": -1.8,
+   "impact": 0.02,
+   "lufs": -21.6,
+   "tpDb": -3.6
+  },
+  {
+   "clip": "Attacks_and_Creatures/Attack_Crossbow_C_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Attack_Crossbow_C_Weapon_Medieval.opus",
+   "pack": "rites",
+   "users": [
+    "boneFan"
+   ],
+   "bytes": 2717,
+   "dur": 0.467,
+   "srcDur": 0.47,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.5,
+   "srcLead": 0.003,
+   "clipRun": 0,
+   "gainDb": -1.4,
+   "impact": 0.03,
+   "lufs": -21.5,
+   "tpDb": -4.3
+  },
+  {
+   "clip": "Attacks_and_Creatures/Attack_Fire_Arrow_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Attack_Fire_Arrow_Weapon_Medieval.opus",
+   "pack": "boss",
+   "users": [
+    "emberThrow"
+   ],
+   "bytes": 7040,
+   "dur": 1.2,
+   "srcDur": 1.36,
+   "skip": 0.15,
+   "cls": "sfx",
+   "srcPeakDb": -2.6,
+   "srcLead": 0.009,
+   "clipRun": 0,
+   "gainDb": 1.2,
+   "impact": 0.16,
+   "lufs": -23.1,
+   "tpDb": -0.9
+  },
+  {
+   "clip": "Attacks_and_Creatures/Attack_Magic_Arrow_A_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Attack_Magic_Arrow_A_Weapon_Medieval.opus",
+   "pack": "core",
+   "users": [
+    "thrallMagic"
+   ],
+   "bytes": 6872,
+   "dur": 1.3,
+   "srcDur": 2,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.9,
+   "srcLead": 0.003,
+   "clipRun": 0,
+   "gainDb": -0.2,
+   "impact": 0.02,
+   "lufs": -22.8,
+   "tpDb": -1.7
+  },
+  {
+   "clip": "Attacks_and_Creatures/Attack_Magic_Arrow_B_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Attack_Magic_Arrow_B_Weapon_Medieval.opus",
+   "pack": "core",
+   "users": [
+    "thrallMagic"
+   ],
+   "bytes": 6979,
+   "dur": 1.3,
+   "srcDur": 2,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.7,
+   "srcLead": 0.047,
+   "clipRun": 0,
+   "gainDb": 0.2,
+   "impact": 0.02,
+   "lufs": -24.5,
+   "tpDb": -2.5
+  },
+  {
+   "clip": "Attacks_and_Creatures/Attack_Magic_Arrow_C_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Attack_Magic_Arrow_C_Weapon_Medieval.opus",
+   "pack": "core",
+   "users": [
+    "thrallMagic"
+   ],
+   "bytes": 6635,
+   "dur": 1.3,
+   "srcDur": 2,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.4,
+   "srcLead": 0.102,
+   "clipRun": 0,
+   "gainDb": -0.2,
+   "impact": 0.03,
+   "lufs": -22.1,
+   "tpDb": -3
+  },
+  {
+   "clip": "Attacks_and_Creatures/Attack_Shadow_Arrow_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Attack_Shadow_Arrow_Weapon_Medieval.opus",
+   "pack": "core",
+   "users": [
+    "needleCast"
+   ],
+   "bytes": 7441,
+   "dur": 1.3,
+   "srcDur": 1.42,
+   "skip": 0.11,
+   "cls": "sfx",
+   "srcPeakDb": -2.3,
+   "srcLead": 0.009,
+   "clipRun": 0,
+   "gainDb": 0.5,
+   "impact": 0.16,
+   "lufs": -21.5,
+   "tpDb": -2
+  },
+  {
+   "clip": "Attacks_and_Creatures/Blade_Draw_1_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Blade_Draw_1_Weapon_Medieval.opus",
+   "pack": "rites",
+   "users": [
+    "hollowCut"
+   ],
+   "bytes": 4431,
+   "dur": 0.683,
+   "srcDur": 0.98,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.1,
+   "srcLead": 0.306,
+   "clipRun": 0,
+   "gainDb": -2.9,
+   "impact": 0.08,
+   "lufs": -19.9,
+   "tpDb": -2.8
+  },
+  {
+   "clip": "Attacks_and_Creatures/Cloth_Armor_Hit_A_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Cloth_Armor_Hit_A_Weapon_Medieval.opus",
+   "pack": "core",
+   "users": [
+    "needleHit",
+    "thrallMelee",
+    "hurt"
+   ],
+   "bytes": 2881,
+   "dur": 0.625,
+   "srcDur": 0.63,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -2.2,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": -2.3,
+   "impact": 0.01,
+   "lufs": -25.8,
+   "tpDb": -4.5
+  },
+  {
+   "clip": "Attacks_and_Creatures/Cloth_Armor_Hit_B_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Cloth_Armor_Hit_B_Weapon_Medieval.opus",
+   "pack": "core",
+   "users": [
+    "needleHit",
+    "thrallMelee",
+    "hurt"
+   ],
+   "bytes": 2988,
+   "dur": 0.625,
+   "srcDur": 0.63,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": 0.1,
+   "srcLead": 0.001,
+   "clipRun": 1,
+   "gainDb": -5.7,
+   "impact": 0.02,
+   "lufs": -28.4,
+   "tpDb": -5.4
+  },
+  {
+   "clip": "Attacks_and_Creatures/Creature_Crow_Distant_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+   "file": "Attacks_and_Creatures__Creature_Crow_Distant_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle.opus",
+   "pack": "rites+amb",
+   "users": [
+    "crow",
+    "crowCaw"
+   ],
+   "bytes": 4490,
+   "dur": 0.79,
+   "srcDur": 0.79,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.4,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": -5,
+   "impact": 0.04,
+   "lufs": -20.3,
+   "tpDb": -5.8
+  },
+  {
+   "clip": "Attacks_and_Creatures/Creature_Growl_2_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+   "file": "Attacks_and_Creatures__Creature_Growl_2_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle.opus",
+   "pack": "fam_beast",
+   "users": [
+    "enemyAttackBeast"
+   ],
+   "bytes": 10394,
+   "dur": 1.5,
+   "srcDur": 2,
+   "skip": 0.06,
+   "cls": "sfx",
+   "srcPeakDb": -0.9,
+   "srcLead": 0.002,
+   "clipRun": 0,
+   "gainDb": -4,
+   "impact": 0.16,
+   "lufs": -20.9,
+   "tpDb": -6.2
+  },
+  {
+   "clip": "Attacks_and_Creatures/Creature_Growl_3_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+   "file": "Attacks_and_Creatures__Creature_Growl_3_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle.opus",
+   "pack": "fam_beast",
+   "users": [
+    "enemyAttackBeast"
+   ],
+   "bytes": 5175,
+   "dur": 0.828,
+   "srcDur": 0.92,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.5,
+   "srcLead": 0.099,
+   "clipRun": 0,
+   "gainDb": -5.1,
+   "impact": 0.01,
+   "lufs": -20.7,
+   "tpDb": -5.4
+  },
+  {
+   "clip": "Attacks_and_Creatures/Creature_Growl_4_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+   "file": "Attacks_and_Creatures__Creature_Growl_4_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle.opus",
+   "pack": "fam_humanoid",
+   "users": [
+    "enemyAttackHumanoid",
+    "enemyDeathHumanoid"
+   ],
+   "bytes": 8773,
+   "dur": 1.5,
+   "srcDur": 3.21,
+   "skip": 0.03,
+   "cls": "sfx",
+   "srcPeakDb": -1.9,
+   "srcLead": 0.001,
+   "clipRun": 0,
+   "gainDb": -4.2,
+   "impact": 0.16,
+   "lufs": -21.3,
+   "tpDb": -6.8
+  },
+  {
+   "clip": "Attacks_and_Creatures/Creature_Growl_5_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+   "file": "Attacks_and_Creatures__Creature_Growl_5_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle.opus",
+   "pack": "fam_brute",
+   "users": [
+    "enemyAttackBrute"
+   ],
+   "bytes": 10722,
+   "dur": 1.5,
+   "srcDur": 3.29,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -2.4,
+   "srcLead": 0.036,
+   "clipRun": 0,
+   "gainDb": -3.7,
+   "impact": 0.08,
+   "lufs": -21.4,
+   "tpDb": -6.1
+  },
+  {
+   "clip": "Attacks_and_Creatures/Creature_Growl_6_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+   "file": "Attacks_and_Creatures__Creature_Growl_6_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle.opus",
+   "pack": "fam_brute",
+   "users": [
+    "enemyAttackBrute"
+   ],
+   "bytes": 9086,
+   "dur": 1.5,
+   "srcDur": 3.29,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.8,
+   "srcLead": 0.029,
+   "clipRun": 0,
+   "gainDb": -3.7,
+   "impact": 0.12,
+   "lufs": -21.8,
+   "tpDb": -6
+  },
+  {
+   "clip": "Attacks_and_Creatures/Creature_Growl_D_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+   "file": "Attacks_and_Creatures__Creature_Growl_D_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle.opus",
+   "pack": "fam_humanoid",
+   "users": [
+    "enemyAttackHumanoid"
+   ],
+   "bytes": 8775,
+   "dur": 1.5,
+   "srcDur": 3.57,
+   "skip": 0.03,
+   "cls": "sfx",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.001,
+   "clipRun": 0,
+   "gainDb": -5.4,
+   "impact": 0.16,
+   "lufs": -21.4,
+   "tpDb": -6.7
+  },
+  {
+   "clip": "Attacks_and_Creatures/Creature_Growl_Long_High_B_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+   "file": "Attacks_and_Creatures__Creature_Growl_Long_High_B_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle.opus",
+   "pack": "fam_beast",
+   "users": [
+    "enemyDeathBeast"
+   ],
+   "bytes": 8773,
+   "dur": 1.5,
+   "srcDur": 5.41,
+   "skip": 0.58,
+   "cls": "sfx",
+   "srcPeakDb": -2.6,
+   "srcLead": 0.135,
+   "clipRun": 0,
+   "gainDb": -1.5,
+   "impact": 0.16,
+   "lufs": -20,
+   "tpDb": -4.3
+  },
+  {
+   "clip": "Attacks_and_Creatures/Creature_Growl_Long_High_D_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+   "file": "Attacks_and_Creatures__Creature_Growl_Long_High_D_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle.opus",
+   "pack": "fam_beast",
+   "users": [
+    "enemyDeathBeast"
+   ],
+   "bytes": 8878,
+   "dur": 1.5,
+   "srcDur": 2.88,
+   "skip": 0.13,
+   "cls": "sfx",
+   "srcPeakDb": -1.7,
+   "srcLead": 0.049,
+   "clipRun": 0,
+   "gainDb": -4.6,
+   "impact": 0.16,
+   "lufs": -20.5,
+   "tpDb": -6.4
+  },
+  {
+   "clip": "Attacks_and_Creatures/Creature_Growl_Long_High_E_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+   "file": "Attacks_and_Creatures__Creature_Growl_Long_High_E_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle.opus",
+   "pack": "fam_humanoid",
+   "users": [
+    "enemyDeathHumanoid"
+   ],
+   "bytes": 8401,
+   "dur": 1.5,
+   "srcDur": 2.02,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -3.5,
+   "srcLead": 0.032,
+   "clipRun": 0,
+   "gainDb": -1.3,
+   "impact": 0.16,
+   "lufs": -19.5,
+   "tpDb": -4.7
+  },
+  {
+   "clip": "Attacks_and_Creatures/Creature_Growl_Loud_2_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+   "file": "Attacks_and_Creatures__Creature_Growl_Loud_2_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle.opus",
+   "pack": "fam_brute+boss",
+   "users": [
+    "enemyAttackBrute",
+    "enemyDeathBrute",
+    "eliteAggro"
+   ],
+   "bytes": 15680,
+   "dur": 2.6,
+   "srcDur": 2.65,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -2.6,
+   "srcLead": 0.008,
+   "clipRun": 0,
+   "gainDb": -7.7,
+   "impact": 0.31,
+   "lufs": -19.7,
+   "tpDb": -9.8
+  },
+  {
+   "clip": "Attacks_and_Creatures/Creature_Growl_Loud_Gritty_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+   "file": "Attacks_and_Creatures__Creature_Growl_Loud_Gritty_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle.opus",
+   "pack": "boss",
+   "users": [
+    "eliteDeath",
+    "eliteAggro",
+    "bossPhase"
+   ],
+   "bytes": 17593,
+   "dur": 2.914,
+   "srcDur": 2.94,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.9,
+   "srcLead": 0.027,
+   "clipRun": 0,
+   "gainDb": -7.7,
+   "impact": 0.12,
+   "lufs": -19.7,
+   "tpDb": -8.1
+  },
+  {
+   "clip": "Attacks_and_Creatures/Creature_Growl_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+   "file": "Attacks_and_Creatures__Creature_Growl_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle.opus",
+   "pack": "fam_humanoid",
+   "users": [
+    "enemyAttackHumanoid"
+   ],
+   "bytes": 8880,
+   "dur": 1.5,
+   "srcDur": 2.58,
+   "skip": 0.28,
+   "cls": "sfx",
+   "srcPeakDb": -0.8,
+   "srcLead": 0.051,
+   "clipRun": 0,
+   "gainDb": -4,
+   "impact": 0.16,
+   "lufs": -21.7,
+   "tpDb": -5.7
+  },
+  {
+   "clip": "Attacks_and_Creatures/Creature_Growl_Short_High_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+   "file": "Attacks_and_Creatures__Creature_Growl_Short_High_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle.opus",
+   "pack": "fam_beast",
+   "users": [
+    "enemyAttackBeast"
+   ],
+   "bytes": 7845,
+   "dur": 1.496,
+   "srcDur": 1.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -4.1,
+   "srcLead": 0.008,
+   "clipRun": 0,
+   "gainDb": -2,
+   "impact": 0.11,
+   "lufs": -19.6,
+   "tpDb": -6.1
+  },
+  {
+   "clip": "Attacks_and_Creatures/Creature_High_A_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+   "file": "Attacks_and_Creatures__Creature_High_A_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle.opus",
+   "pack": "rites+fam_spirit",
+   "users": [
+    "crowSwarmLoop",
+    "enemyAttackSpirit",
+    "enemyDeathSpirit"
+   ],
+   "bytes": 9047,
+   "dur": 1.5,
+   "srcDur": 1.77,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -4.6,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": 0.9,
+   "impact": 0.08,
+   "lufs": -17.8,
+   "tpDb": -4.5
+  },
+  {
+   "clip": "Attacks_and_Creatures/Creature_High_B_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+   "file": "Attacks_and_Creatures__Creature_High_B_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle.opus",
+   "pack": "rites",
+   "users": [
+    "crow"
+   ],
+   "bytes": 7870,
+   "dur": 1.3,
+   "srcDur": 2.98,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -5.5,
+   "srcLead": 0.002,
+   "clipRun": 0,
+   "gainDb": 1.7,
+   "impact": 0.13,
+   "lufs": -17.9,
+   "tpDb": -5.1
+  },
+  {
+   "clip": "Attacks_and_Creatures/Creature_High_C_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+   "file": "Attacks_and_Creatures__Creature_High_C_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle.opus",
+   "pack": "rites+fam_spirit",
+   "users": [
+    "crowSwarmLoop",
+    "enemyAttackSpirit"
+   ],
+   "bytes": 8888,
+   "dur": 1.5,
+   "srcDur": 1.91,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -6.2,
+   "srcLead": 0.001,
+   "clipRun": 0,
+   "gainDb": 3.5,
+   "impact": 0.15,
+   "lufs": -18,
+   "tpDb": -4.6
+  },
+  {
+   "clip": "Attacks_and_Creatures/Creature_High_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+   "file": "Attacks_and_Creatures__Creature_High_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle.opus",
+   "pack": "fam_spirit",
+   "users": [
+    "enemyAttackSpirit",
+    "enemyDeathSpirit"
+   ],
+   "bytes": 10038,
+   "dur": 1.5,
+   "srcDur": 4.62,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -2.4,
+   "srcLead": 0.038,
+   "clipRun": 0,
+   "gainDb": -3.2,
+   "impact": 0.12,
+   "lufs": -16.3,
+   "tpDb": -5.9
+  },
+  {
+   "clip": "Attacks_and_Creatures/Creature_Longer_Low_Growl_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle",
+   "file": "Attacks_and_Creatures__Creature_Longer_Low_Growl_Monster_Voice_Vocal_Hiss_Bass_Rumble_Gurgle.opus",
+   "pack": "boss+amb+fam_brute",
+   "users": [
+    "bossAwaken",
+    "crowdMoan",
+    "enemyDeathBrute"
+   ],
+   "bytes": 7856,
+   "dur": 1.344,
+   "srcDur": 1.34,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.6,
+   "srcLead": 0.001,
+   "clipRun": 0,
+   "gainDb": -5,
+   "impact": 0.22,
+   "lufs": -21.2,
+   "tpDb": -6.6
+  },
+  {
+   "clip": "Attacks_and_Creatures/Draw_Heavy_Weapon_1_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Draw_Heavy_Weapon_1_Weapon_Medieval.opus",
+   "pack": "rites",
+   "users": [
+    "flail",
+    "graveSlam"
+   ],
+   "bytes": 4078,
+   "dur": 0.633,
+   "srcDur": 0.68,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.7,
+   "srcLead": 0.056,
+   "clipRun": 0,
+   "gainDb": -2.4,
+   "impact": 0.05,
+   "lufs": -21.3,
+   "tpDb": -5
+  },
+  {
+   "clip": "Attacks_and_Creatures/Draw_Heavy_Weapon_2_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Draw_Heavy_Weapon_2_Weapon_Medieval.opus",
+   "pack": "rites",
+   "users": [
+    "flail",
+    "ivoryCleave"
+   ],
+   "bytes": 4391,
+   "dur": 0.627,
+   "srcDur": 0.64,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -2.1,
+   "srcLead": 0.02,
+   "clipRun": 0,
+   "gainDb": 0.5,
+   "impact": 0.05,
+   "lufs": -20.9,
+   "tpDb": -3.3
+  },
+  {
+   "clip": "Attacks_and_Creatures/Item_Magic_Trap_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Item_Magic_Trap_Weapon_Medieval.opus",
+   "pack": "rites",
+   "users": [
+    "graveBrand"
+   ],
+   "bytes": 6504,
+   "dur": 1.146,
+   "srcDur": 1.15,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -2.8,
+   "srcLead": 0.006,
+   "clipRun": 0,
+   "gainDb": -3.1,
+   "impact": 0.07,
+   "lufs": -24.4,
+   "tpDb": -6.2
+  },
+  {
+   "clip": "Attacks_and_Creatures/Item_Wooden_Trap_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Item_Wooden_Trap_Weapon_Medieval.opus",
+   "pack": "rites",
+   "users": [
+    "chain"
+   ],
+   "bytes": 3320,
+   "dur": 0.523,
+   "srcDur": 0.53,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -3,
+   "srcLead": 0.007,
+   "clipRun": 0,
+   "gainDb": -0.4,
+   "impact": 0.1,
+   "lufs": -21.3,
+   "tpDb": -3.5
+  },
+  {
+   "clip": "Attacks_and_Creatures/Skill_Axethrow_A_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Skill_Axethrow_A_Weapon_Medieval.opus",
+   "pack": "rites",
+   "users": [
+    "ivoryCleave"
+   ],
+   "bytes": 6019,
+   "dur": 1.055,
+   "srcDur": 1.06,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.4,
+   "srcLead": 0.005,
+   "clipRun": 0,
+   "gainDb": -3.2,
+   "impact": 0.13,
+   "lufs": -27.7,
+   "tpDb": -5
+  },
+  {
+   "clip": "Attacks_and_Creatures/Skill_Axethrow_B_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Skill_Axethrow_B_Weapon_Medieval.opus",
+   "pack": "rites",
+   "users": [
+    "hollowCut"
+   ],
+   "bytes": 5695,
+   "dur": 1,
+   "srcDur": 1,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.2,
+   "srcLead": 0.006,
+   "clipRun": 0,
+   "gainDb": -3.2,
+   "impact": 0.14,
+   "lufs": -28.7,
+   "tpDb": -4.6
+  },
+  {
+   "clip": "Attacks_and_Creatures/Skill_Knife_Throw_A_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Skill_Knife_Throw_A_Weapon_Medieval.opus",
+   "pack": "core",
+   "users": [
+    "needleCast"
+   ],
+   "bytes": 1793,
+   "dur": 0.283,
+   "srcDur": 0.29,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.4,
+   "srcLead": 0.009,
+   "clipRun": 0,
+   "gainDb": -6.2,
+   "impact": 0.13,
+   "lufs": -70,
+   "tpDb": -7.7
+  },
+  {
+   "clip": "Attacks_and_Creatures/Skill_Knife_Throw_B_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Skill_Knife_Throw_B_Weapon_Medieval.opus",
+   "pack": "core",
+   "users": [
+    "needleCast"
+   ],
+   "bytes": 1835,
+   "dur": 0.278,
+   "srcDur": 0.28,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.4,
+   "srcLead": 0.005,
+   "clipRun": 0,
+   "gainDb": -6.2,
+   "impact": 0.13,
+   "lufs": -70,
+   "tpDb": -7.9
+  },
+  {
+   "clip": "Attacks_and_Creatures/Skill_Rain_Of_Arrows_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Skill_Rain_Of_Arrows_Weapon_Medieval.opus",
+   "pack": "rites",
+   "users": [
+    "storm"
+   ],
+   "bytes": 9088,
+   "dur": 1.597,
+   "srcDur": 1.79,
+   "skip": 0.14,
+   "cls": "sfx",
+   "srcPeakDb": -2.4,
+   "srcLead": 0.056,
+   "clipRun": 0,
+   "gainDb": 2.3,
+   "impact": 0.16,
+   "lufs": -25.1,
+   "tpDb": -2.3
+  },
+  {
+   "clip": "Attacks_and_Creatures/Skill_Rain_Of_Bolts_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Skill_Rain_Of_Bolts_Weapon_Medieval.opus",
+   "pack": "rites",
+   "users": [
+    "storm"
+   ],
+   "bytes": 969,
+   "dur": 0.131,
+   "srcDur": 0.78,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -5.9,
+   "srcLead": 0.652,
+   "clipRun": 0,
+   "gainDb": 2,
+   "impact": 0.02,
+   "lufs": -70,
+   "tpDb": -5.4
+  },
+  {
+   "clip": "Attacks_and_Creatures/Skill_Target_Weakness_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Skill_Target_Weakness_Weapon_Medieval.opus",
+   "pack": "rites",
+   "users": [
+    "palm"
+   ],
+   "bytes": 8502,
+   "dur": 1.3,
+   "srcDur": 3.17,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -2.7,
+   "srcLead": 0.034,
+   "clipRun": 0,
+   "gainDb": 0.9,
+   "impact": 0.15,
+   "lufs": -20.4,
+   "tpDb": -2.5
+  },
+  {
+   "clip": "Attacks_and_Creatures/Skill_Upgrade_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Skill_Upgrade_Weapon_Medieval.opus",
+   "pack": "ui",
+   "users": [
+    "levelUp",
+    "skillUp"
+   ],
+   "bytes": 6227,
+   "dur": 0.971,
+   "srcDur": 0.98,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -0.7,
+   "srcLead": 0.014,
+   "clipRun": 0,
+   "gainDb": -4.3,
+   "impact": 0.08,
+   "lufs": -28.9,
+   "tpDb": -5.2
+  },
+  {
+   "clip": "Attacks_and_Creatures/Weapon_Impact_Blood_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Weapon_Impact_Blood_Weapon_Medieval.opus",
+   "pack": "rites+core+boss",
+   "users": [
+    "bloodRite",
+    "enemyDeath",
+    "eliteDeath",
+    "hurt"
+   ],
+   "bytes": 18446,
+   "dur": 2.6,
+   "srcDur": 2.74,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.9,
+   "srcLead": 0.006,
+   "clipRun": 0,
+   "gainDb": 0.5,
+   "impact": 0.37,
+   "lufs": -17.8,
+   "tpDb": -1.2
+  },
+  {
+   "clip": "Attacks_and_Creatures/Weapon_Impact_Weapon_Medieval",
+   "file": "Attacks_and_Creatures__Weapon_Impact_Weapon_Medieval.opus",
+   "pack": "core+rites",
+   "users": [
+    "needleHit",
+    "boneHit",
+    "thrallMelee",
+    "sigRend",
+    "palm",
+    "shieldBash"
+   ],
+   "bytes": 4719,
+   "dur": 0.858,
+   "srcDur": 0.86,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.9,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": -2.8,
+   "impact": 0.01,
+   "lufs": -26.3,
+   "tpDb": -5.8
+  },
+  {
+   "clip": "Crafting/Craft_Air_Bubble_Suction_Pop_Cork_1_User_Interface",
+   "file": "Crafting__Craft_Air_Bubble_Suction_Pop_Cork_1_User_Interface.opus",
+   "pack": "world",
+   "users": [
+    "brewTick"
+   ],
+   "bytes": 6971,
+   "dur": 1.3,
+   "srcDur": 1.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.6,
+   "srcLead": 0.032,
+   "clipRun": 0,
+   "gainDb": 2.6,
+   "impact": 0.78,
+   "lufs": -22.5,
+   "tpDb": -2.1
+  },
+  {
+   "clip": "Crafting/Craft_Drop_Reagent_A_Gas_Burn_Sizzle_Fuse_Medieval_Element_Accent",
+   "file": "Crafting__Craft_Drop_Reagent_A_Gas_Burn_Sizzle_Fuse_Medieval_Element_Accent.opus",
+   "pack": "rites",
+   "users": [
+    "carrionSeed"
+   ],
+   "bytes": 9229,
+   "dur": 1.3,
+   "srcDur": 6.17,
+   "skip": 0.48,
+   "cls": "sfx",
+   "srcPeakDb": -5.8,
+   "srcLead": 0.073,
+   "clipRun": 0,
+   "gainDb": 6.1,
+   "impact": 0.16,
+   "lufs": -19.2,
+   "tpDb": -3.1
+  },
+  {
+   "clip": "Crafting/Craft_Drop_Reagent_B_Gas_Burn_Sizzle_Fuse_Medieval_Element_Accent",
+   "file": "Crafting__Craft_Drop_Reagent_B_Gas_Burn_Sizzle_Fuse_Medieval_Element_Accent.opus",
+   "pack": "rites",
+   "users": [
+    "carrionSeed"
+   ],
+   "bytes": 7980,
+   "dur": 1.3,
+   "srcDur": 6.77,
+   "skip": 0.16,
+   "cls": "sfx",
+   "srcPeakDb": -7,
+   "srcLead": 0.025,
+   "clipRun": 0,
+   "gainDb": 5.3,
+   "impact": 0.16,
+   "lufs": -19.6,
+   "tpDb": -0.9
+  },
+  {
+   "clip": "Crafting/Craft_Drop_Reagent_C_Gas_Burn_Sizzle_Fuse_Medieval_Element_Accent",
+   "file": "Crafting__Craft_Drop_Reagent_C_Gas_Burn_Sizzle_Fuse_Medieval_Element_Accent.opus",
+   "pack": "rites",
+   "users": [
+    "seedBurst"
+   ],
+   "bytes": 7982,
+   "dur": 1.3,
+   "srcDur": 6.57,
+   "skip": 0.1,
+   "cls": "sfx",
+   "srcPeakDb": -9.9,
+   "srcLead": 0.054,
+   "clipRun": 0,
+   "gainDb": 8.1,
+   "impact": 0.16,
+   "lufs": -19.7,
+   "tpDb": -5.8
+  },
+  {
+   "clip": "Crafting/Craft_Fire_Forge_Burn_1_Gas_Burn_Sizzle_Fuse_Medieval_Element_Accent",
+   "file": "Crafting__Craft_Fire_Forge_Burn_1_Gas_Burn_Sizzle_Fuse_Medieval_Element_Accent.opus",
+   "pack": "amb+world",
+   "users": [
+    "emberCrackle",
+    "cook"
+   ],
+   "bytes": 9500,
+   "dur": 1.6,
+   "srcDur": 4.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.7,
+   "srcLead": 0.015,
+   "clipRun": 0,
+   "gainDb": -1.4,
+   "impact": 0.3,
+   "lufs": -20.2,
+   "tpDb": -3.2
+  },
+  {
+   "clip": "Crafting/Craft_Fire_Forge_Burn_2_Gas_Burn_Sizzle_Fuse_Medieval_Element_Accent",
+   "file": "Crafting__Craft_Fire_Forge_Burn_2_Gas_Burn_Sizzle_Fuse_Medieval_Element_Accent.opus",
+   "pack": "amb+world",
+   "users": [
+    "emberCrackle",
+    "forgeFire"
+   ],
+   "bytes": 7314,
+   "dur": 1.2,
+   "srcDur": 6,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.9,
+   "srcLead": 0.037,
+   "clipRun": 0,
+   "gainDb": 0.4,
+   "impact": 0.26,
+   "lufs": -20.3,
+   "tpDb": -2
+  },
+  {
+   "clip": "Crafting/Craft_Fire_Forge_Burn_3_Gas_Burn_Sizzle_Fuse_Medieval_Element_Accent",
+   "file": "Crafting__Craft_Fire_Forge_Burn_3_Gas_Burn_Sizzle_Fuse_Medieval_Element_Accent.opus",
+   "pack": "amb+world",
+   "users": [
+    "emberCrackle",
+    "forgeFire"
+   ],
+   "bytes": 9121,
+   "dur": 1.2,
+   "srcDur": 5.63,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.1,
+   "srcLead": 0.002,
+   "clipRun": 0,
+   "gainDb": 1.9,
+   "impact": 0.22,
+   "lufs": -19.9,
+   "tpDb": -3.6
+  },
+  {
+   "clip": "Crafting/Craft_Fire_Forge_Burn_4_Gas_Burn_Sizzle_Fuse_Medieval_Element_Accent",
+   "file": "Crafting__Craft_Fire_Forge_Burn_4_Gas_Burn_Sizzle_Fuse_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "cook"
+   ],
+   "bytes": 9769,
+   "dur": 1.6,
+   "srcDur": 5.75,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.2,
+   "srcLead": 0.002,
+   "clipRun": 0,
+   "gainDb": -0.1,
+   "impact": 0.37,
+   "lufs": -20.2,
+   "tpDb": -2.4
+  },
+  {
+   "clip": "Crafting/Craft_Gather_Herb_A_Organic_Grass_Brush_Wood_Texture_Medieval_Element_Accent",
+   "file": "Crafting__Craft_Gather_Herb_A_Organic_Grass_Brush_Wood_Texture_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "gatherHerb"
+   ],
+   "bytes": 8078,
+   "dur": 1.3,
+   "srcDur": 1.75,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -6.2,
+   "srcLead": 0.022,
+   "clipRun": 0,
+   "gainDb": 7.6,
+   "impact": 0.18,
+   "lufs": -16.7,
+   "tpDb": -0.9
+  },
+  {
+   "clip": "Crafting/Craft_Gather_Herb_B_Organic_Grass_Brush_Wood_Texture_Medieval_Element_Accent",
+   "file": "Crafting__Craft_Gather_Herb_B_Organic_Grass_Brush_Wood_Texture_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "gatherHerb"
+   ],
+   "bytes": 8166,
+   "dur": 1.3,
+   "srcDur": 3,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -7.7,
+   "srcLead": 0.074,
+   "clipRun": 0,
+   "gainDb": 7.2,
+   "impact": 0.15,
+   "lufs": -16.6,
+   "tpDb": -3.4
+  },
+  {
+   "clip": "Crafting/Craft_Gather_Herb_C_Organic_Grass_Brush_Wood_Texture_Medieval_Element_Accent",
+   "file": "Crafting__Craft_Gather_Herb_C_Organic_Grass_Brush_Wood_Texture_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "gatherHerb",
+    "gardenPlant"
+   ],
+   "bytes": 8084,
+   "dur": 1.3,
+   "srcDur": 2.25,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -5.4,
+   "srcLead": 0.09,
+   "clipRun": 0,
+   "gainDb": 6.9,
+   "impact": 0.16,
+   "lufs": -17.1,
+   "tpDb": -1.8
+  },
+  {
+   "clip": "Crafting/Craft_Magic_Buff_1_Ancient_Airy_Gas_Reverb_One_Shot_Hit_Impact",
+   "file": "Crafting__Craft_Magic_Buff_1_Ancient_Airy_Gas_Reverb_One_Shot_Hit_Impact.opus",
+   "pack": "rites",
+   "users": [
+    "rallyDead"
+   ],
+   "bytes": 7524,
+   "dur": 1.3,
+   "srcDur": 2.42,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.8,
+   "srcLead": 0.03,
+   "clipRun": 0,
+   "gainDb": -0.8,
+   "impact": 0.13,
+   "lufs": -20.8,
+   "tpDb": -4
+  },
+  {
+   "clip": "Crafting/Crafting_Arrows_A_Carving_Wood_Drop_Create_Weapon_Bow_Crossbow_Shot_Sword",
+   "file": "Crafting__Crafting_Arrows_A_Carving_Wood_Drop_Create_Weapon_Bow_Crossbow_Shot_Sword.opus",
+   "pack": "world",
+   "users": [
+    "sawpit"
+   ],
+   "bytes": 9346,
+   "dur": 1.6,
+   "srcDur": 1.69,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.2,
+   "srcLead": 0.039,
+   "clipRun": 0,
+   "gainDb": 7.2,
+   "impact": 1.4,
+   "lufs": -29.7,
+   "tpDb": -2
+  },
+  {
+   "clip": "Crafting/Crafting_Arrows_B_Carving_Wood_Drop_Create_Weapon_Bow_Crossbow_Shot_Sword",
+   "file": "Crafting__Crafting_Arrows_B_Carving_Wood_Drop_Create_Weapon_Bow_Crossbow_Shot_Sword.opus",
+   "pack": "world",
+   "users": [
+    "sawpit"
+   ],
+   "bytes": 10867,
+   "dur": 1.6,
+   "srcDur": 2.26,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.5,
+   "srcLead": 0.037,
+   "clipRun": 0,
+   "gainDb": 3,
+   "impact": 1.31,
+   "lufs": -29.4,
+   "tpDb": -0.8
+  },
+  {
+   "clip": "Crafting/Crafting_Potion_Bubble_Bubbling_Pop_Water_Fish_Tank",
+   "file": "Crafting__Crafting_Potion_Bubble_Bubbling_Pop_Water_Fish_Tank.opus",
+   "pack": "world",
+   "users": [
+    "cook",
+    "brewCraft"
+   ],
+   "bytes": 11185,
+   "dur": 1.8,
+   "srcDur": 12.4,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.1,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": -0.2,
+   "impact": 1.01,
+   "lufs": -19.9,
+   "tpDb": -4.4
+  },
+  {
+   "clip": "Crafting/Crafting_Select_Gem_Metal_Metallic_Ring_Magic_Hit",
+   "file": "Crafting__Crafting_Select_Gem_Metal_Metallic_Ring_Magic_Hit.opus",
+   "pack": "boss+rites+world",
+   "users": [
+    "tollSmall",
+    "bulwarkBlock",
+    "craftMagic"
+   ],
+   "bytes": 5140,
+   "dur": 0.603,
+   "srcDur": 0.6,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.3,
+   "srcLead": 0.003,
+   "clipRun": 0,
+   "gainDb": 3.3,
+   "impact": 0.01,
+   "lufs": -25.5,
+   "tpDb": -2.5
+  },
+  {
+   "clip": "Crafting/Crafting_Select_Stone_Rock_Pebble_Hit_Drop",
+   "file": "Crafting__Crafting_Select_Stone_Rock_Pebble_Hit_Drop.opus",
+   "pack": "core",
+   "users": [
+    "boneHit"
+   ],
+   "bytes": 2013,
+   "dur": 0.33,
+   "srcDur": 0.33,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.1,
+   "srcLead": 0.001,
+   "clipRun": 0,
+   "gainDb": 0.6,
+   "impact": 0.01,
+   "lufs": -70,
+   "tpDb": -2.1
+  },
+  {
+   "clip": "Crafting/Crafting_Skinning_A_Organic_Stone_Drag_Light_Gritty_Texture_Medieval_Element_Accent",
+   "file": "Crafting__Crafting_Skinning_A_Organic_Stone_Drag_Light_Gritty_Texture_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "shovel"
+   ],
+   "bytes": 2459,
+   "dur": 0.403,
+   "srcDur": 0.44,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -2.7,
+   "srcLead": 0.043,
+   "clipRun": 0,
+   "gainDb": 1.2,
+   "impact": 0.12,
+   "lufs": -20,
+   "tpDb": -3
+  },
+  {
+   "clip": "Crafting/Crafting_Skinning_B_Organic_Stone_Drag_Light_Gritty_Texture_Medieval_Element_Accent",
+   "file": "Crafting__Crafting_Skinning_B_Organic_Stone_Drag_Light_Gritty_Texture_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "shovel"
+   ],
+   "bytes": 2332,
+   "dur": 0.372,
+   "srcDur": 0.41,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -3.9,
+   "srcLead": 0.038,
+   "clipRun": 0,
+   "gainDb": 1,
+   "impact": 0.12,
+   "lufs": -70,
+   "tpDb": -4.6
+  },
+  {
+   "clip": "Crafting/Crafting_Smelting_A_Gas_Lave_Furnace_Fire_Burn_Boiling_Cooking",
+   "file": "Crafting__Crafting_Smelting_A_Gas_Lave_Furnace_Fire_Burn_Boiling_Cooking.opus",
+   "pack": "world",
+   "users": [
+    "kiln"
+   ],
+   "bytes": 11814,
+   "dur": 2,
+   "srcDur": 2.27,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -2.1,
+   "srcLead": 0.006,
+   "clipRun": 0,
+   "gainDb": -1.1,
+   "impact": 0.36,
+   "lufs": -19.8,
+   "tpDb": -3.7
+  },
+  {
+   "clip": "Crafting/Crafting_Smelting_B_Fire_Sizzle_Burn_Gas_Lava_Molten",
+   "file": "Crafting__Crafting_Smelting_B_Fire_Sizzle_Burn_Gas_Lava_Molten.opus",
+   "pack": "world",
+   "users": [
+    "kiln"
+   ],
+   "bytes": 11944,
+   "dur": 2,
+   "srcDur": 2.42,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -3,
+   "srcLead": 0.024,
+   "clipRun": 0,
+   "gainDb": 1.2,
+   "impact": 0.47,
+   "lufs": -20.6,
+   "tpDb": -1.5
+  },
+  {
+   "clip": "Crafting/Inventory_Material_Pick_Up_2_Stone_Rock_Break_Shatter_Particle_Magic_Metallic",
+   "file": "Crafting__Inventory_Material_Pick_Up_2_Stone_Rock_Break_Shatter_Particle_Magic_Metallic.opus",
+   "pack": "world",
+   "users": [
+    "nodeDepleted"
+   ],
+   "bytes": 8145,
+   "dur": 1.3,
+   "srcDur": 1.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.1,
+   "srcLead": 0.003,
+   "clipRun": 0,
+   "gainDb": 3.1,
+   "impact": 0.03,
+   "lufs": -26.6,
+   "tpDb": -3.2
+  },
+  {
+   "clip": "Crafting/Inventory_Material_Pick_Up_Stone_Rock_Break_Shatter_Particle",
+   "file": "Crafting__Inventory_Material_Pick_Up_Stone_Rock_Break_Shatter_Particle.opus",
+   "pack": "world",
+   "users": [
+    "nodeDepleted"
+   ],
+   "bytes": 5768,
+   "dur": 1.25,
+   "srcDur": 1.25,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.003,
+   "clipRun": 0,
+   "gainDb": 1.5,
+   "impact": 0.01,
+   "lufs": -31.2,
+   "tpDb": -2.7
+  },
+  {
+   "clip": "Crafting/Inventory_Material_Stone_Touch_2_Rock_Pebble_Impact_Shatter_Drop_Fall_Medieval_Element_Accent",
+   "file": "Crafting__Inventory_Material_Stone_Touch_2_Rock_Pebble_Impact_Shatter_Drop_Fall_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "lootDrop"
+   ],
+   "bytes": 2519,
+   "dur": 0.494,
+   "srcDur": 0.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1,
+   "srcLead": 0.01,
+   "clipRun": 0,
+   "gainDb": 1.9,
+   "impact": 0,
+   "lufs": -30.2,
+   "tpDb": -2.8
+  },
+  {
+   "clip": "Crafting/Inventory_Material_Stone_Touch_3_Rock_Pebble_Impact_Shatter_Drop_Fall_Medieval_Element_Accent",
+   "file": "Crafting__Inventory_Material_Stone_Touch_3_Rock_Pebble_Impact_Shatter_Drop_Fall_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "lootDrop"
+   ],
+   "bytes": 5238,
+   "dur": 1,
+   "srcDur": 1,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.2,
+   "srcLead": 0.003,
+   "clipRun": 0,
+   "gainDb": 2.2,
+   "impact": 0.01,
+   "lufs": -28.2,
+   "tpDb": -1.9
+  },
+  {
+   "clip": "Crafting/Inventory_Material_Stone_Touch_4_Magic_Rock_Pebble_Impact_Shatter_Drop_Fall_Medieval_Element_Accent",
+   "file": "Crafting__Inventory_Material_Stone_Touch_4_Magic_Rock_Pebble_Impact_Shatter_Drop_Fall_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "lootDropRare"
+   ],
+   "bytes": 7098,
+   "dur": 1.3,
+   "srcDur": 1.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.1,
+   "srcLead": 0.003,
+   "clipRun": 0,
+   "gainDb": 2.1,
+   "impact": 0.01,
+   "lufs": -26.7,
+   "tpDb": -2.1
+  },
+  {
+   "clip": "Crafting/Inventory_Material_Stone_Touch_7_Magic_Break_Rock_Pebble_Impact_Shatter_Drop_Fall_Medieval_Element_Accent",
+   "file": "Crafting__Inventory_Material_Stone_Touch_7_Magic_Break_Rock_Pebble_Impact_Shatter_Drop_Fall_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "lootDropEpic"
+   ],
+   "bytes": 7714,
+   "dur": 1.3,
+   "srcDur": 2.13,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.5,
+   "srcLead": 0.007,
+   "clipRun": 0,
+   "gainDb": 2.5,
+   "impact": 0.09,
+   "lufs": -23.7,
+   "tpDb": -1.6
+  },
+  {
+   "clip": "Crafting/Inventory_Material_Stone_Touch_Rock_Pebble_Impact_Shatter_Drop_Fall_Medieval_Element_Accent",
+   "file": "Crafting__Inventory_Material_Stone_Touch_Rock_Pebble_Impact_Shatter_Drop_Fall_Medieval_Element_Accent.opus",
+   "pack": "core",
+   "users": [
+    "boneHit"
+   ],
+   "bytes": 4733,
+   "dur": 0.995,
+   "srcDur": 1,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1,
+   "srcLead": 0.009,
+   "clipRun": 0,
+   "gainDb": 2.6,
+   "impact": 0,
+   "lufs": -35,
+   "tpDb": -2.4
+  },
+  {
+   "clip": "Crafting/Item_Collect_Herbs_Organic_Grass_Vegitation_Brush",
+   "file": "Crafting__Item_Collect_Herbs_Organic_Grass_Vegitation_Brush.opus",
+   "pack": "world",
+   "users": [
+    "gatherHerb"
+   ],
+   "bytes": 6148,
+   "dur": 1.113,
+   "srcDur": 1.18,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.2,
+   "srcLead": 0.069,
+   "clipRun": 0,
+   "gainDb": 3.2,
+   "impact": 0.26,
+   "lufs": -26.5,
+   "tpDb": -1.1
+  },
+  {
+   "clip": "Crafting/Item_Crafting_Axe_A_Build_Work_Shop_Repair_Weapon_Inventory_Ancient_Medieval_Element_Accent",
+   "file": "Crafting__Item_Crafting_Axe_A_Build_Work_Shop_Repair_Weapon_Inventory_Ancient_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "craft",
+    "craftWeapon"
+   ],
+   "bytes": 4149,
+   "dur": 0.654,
+   "srcDur": 0.65,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -3.4,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": 1.8,
+   "impact": 0.1,
+   "lufs": -19.9,
+   "tpDb": -1.5
+  },
+  {
+   "clip": "Crafting/Item_Crafting_Bow_A_Build_Work_Shop_Repair_Weapon_Inventory_Ancient_Medieval_Element_Accent",
+   "file": "Crafting__Item_Crafting_Bow_A_Build_Work_Shop_Repair_Weapon_Inventory_Ancient_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "craftWeapon"
+   ],
+   "bytes": 5009,
+   "dur": 0.965,
+   "srcDur": 1.03,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.7,
+   "srcLead": 0.07,
+   "clipRun": 0,
+   "gainDb": 0.7,
+   "impact": 0.17,
+   "lufs": -24.6,
+   "tpDb": -2.2
+  },
+  {
+   "clip": "Crafting/Item_Crafting_C_Build_Work_Shop_Repair_Weapon_Inventory_Ancient_Medieval_Element_Accent",
+   "file": "Crafting__Item_Crafting_C_Build_Work_Shop_Repair_Weapon_Inventory_Ancient_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "craft"
+   ],
+   "bytes": 8740,
+   "dur": 1.3,
+   "srcDur": 1.97,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.5,
+   "srcLead": 0.028,
+   "clipRun": 0,
+   "gainDb": 0.8,
+   "impact": 0.39,
+   "lufs": -17.6,
+   "tpDb": -1.4
+  },
+  {
+   "clip": "Crafting/Item_Crafting_Cloth_A_Build_Work_Shop_Repair_Weapon_Inventory_Ancient_Medieval_Element_Accent",
+   "file": "Crafting__Item_Crafting_Cloth_A_Build_Work_Shop_Repair_Weapon_Inventory_Ancient_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "craft",
+    "craftArmor"
+   ],
+   "bytes": 10325,
+   "dur": 1.6,
+   "srcDur": 2.75,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -5.5,
+   "srcLead": 0.109,
+   "clipRun": 0,
+   "gainDb": 3.2,
+   "impact": 0.13,
+   "lufs": -19.4,
+   "tpDb": -1.4
+  },
+  {
+   "clip": "Crafting/Item_Crafting_Leather_Armor_A_Build_Work_Shop_Repair_Weapon_Inventory_Ancient_Medieval_Element_Accent",
+   "file": "Crafting__Item_Crafting_Leather_Armor_A_Build_Work_Shop_Repair_Weapon_Inventory_Ancient_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "craftArmor"
+   ],
+   "bytes": 10839,
+   "dur": 1.6,
+   "srcDur": 3.78,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.4,
+   "srcLead": 0.059,
+   "clipRun": 0,
+   "gainDb": 16,
+   "impact": 0.46,
+   "lufs": -23,
+   "tpDb": -2
+  },
+  {
+   "clip": "Crafting/Item_Crafting_Magic_Armor_Build_Work_Shop_Repair_Weapon_Inventory_Ancient_Medieval_Element_Accent",
+   "file": "Crafting__Item_Crafting_Magic_Armor_Build_Work_Shop_Repair_Weapon_Inventory_Ancient_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "craftMagic"
+   ],
+   "bytes": 10349,
+   "dur": 1.6,
+   "srcDur": 2.39,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -5.6,
+   "srcLead": 0.003,
+   "clipRun": 0,
+   "gainDb": 5.3,
+   "impact": 0.09,
+   "lufs": -19.2,
+   "tpDb": -2.6
+  },
+  {
+   "clip": "Crafting/Item_Crafting_Maul_A_Build_Work_Shop_Repair_Weapon_Inventory_Ancient_Medieval_Element_Accent",
+   "file": "Crafting__Item_Crafting_Maul_A_Build_Work_Shop_Repair_Weapon_Inventory_Ancient_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "craftWeapon"
+   ],
+   "bytes": 4280,
+   "dur": 0.617,
+   "srcDur": 0.64,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.2,
+   "srcLead": 0.029,
+   "clipRun": 0,
+   "gainDb": -1.6,
+   "impact": 0.09,
+   "lufs": -22,
+   "tpDb": -3.2
+  },
+  {
+   "clip": "Crafting/Item_Crafting_Metal_Armor_A_Build_Work_Shop_Repair_Weapon_Inventory_Ancient_Medieval_Element_Accent",
+   "file": "Crafting__Item_Crafting_Metal_Armor_A_Build_Work_Shop_Repair_Weapon_Inventory_Ancient_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "craftArmor"
+   ],
+   "bytes": 6667,
+   "dur": 1.094,
+   "srcDur": 1.09,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.9,
+   "srcLead": 0.002,
+   "clipRun": 0,
+   "gainDb": -0.3,
+   "impact": 0.13,
+   "lufs": -18.3,
+   "tpDb": -2.1
+  },
+  {
+   "clip": "Crafting/Item_Crafting_Sword_A_Build_Work_Shop_Repair_Weapon_Inventory_Ancient_Medieval_Element_Accent",
+   "file": "Crafting__Item_Crafting_Sword_A_Build_Work_Shop_Repair_Weapon_Inventory_Ancient_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "craftWeapon"
+   ],
+   "bytes": 5896,
+   "dur": 0.988,
+   "srcDur": 1.01,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1,
+   "srcLead": 0.026,
+   "clipRun": 0,
+   "gainDb": -1.3,
+   "impact": 0.03,
+   "lufs": -18.3,
+   "tpDb": -4.2
+  },
+  {
+   "clip": "Crafting/Item_Crafting_Wood_Armor_A_Build_Work_Shop_Repair_Weapon_Inventory_Ancient_Medieval_Element_Accent",
+   "file": "Crafting__Item_Crafting_Wood_Armor_A_Build_Work_Shop_Repair_Weapon_Inventory_Ancient_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "craftArmor"
+   ],
+   "bytes": 9510,
+   "dur": 1.6,
+   "srcDur": 3.24,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.8,
+   "srcLead": 0.046,
+   "clipRun": 0,
+   "gainDb": 5.2,
+   "impact": 0.14,
+   "lufs": -22.9,
+   "tpDb": -1.2
+  },
+  {
+   "clip": "Crafting/Long_Poison_1_Gas_Exhaust_Burn_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Long_Poison_1_Gas_Exhaust_Burn_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "rites",
+   "users": [
+    "miasma"
+   ],
+   "bytes": 10126,
+   "dur": 1.6,
+   "srcDur": 4.42,
+   "skip": 0.06,
+   "cls": "sfx",
+   "srcPeakDb": -3.3,
+   "srcLead": 0.004,
+   "clipRun": 0,
+   "gainDb": -1.1,
+   "impact": 0.16,
+   "lufs": -16.4,
+   "tpDb": -5.2
+  },
+  {
+   "clip": "Crafting/Long_Poison_2_Gas_Exhaust_Burn_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Long_Poison_2_Gas_Exhaust_Burn_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "rites+boss",
+   "users": [
+    "miasma",
+    "bossTellRot"
+   ],
+   "bytes": 10390,
+   "dur": 1.6,
+   "srcDur": 3.78,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -2.9,
+   "srcLead": 0.005,
+   "clipRun": 0,
+   "gainDb": 0.3,
+   "impact": 0.3,
+   "lufs": -16.3,
+   "tpDb": -1
+  },
+  {
+   "clip": "Crafting/Material_Harvest_1_Wet_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Harvest_1_Wet_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "world",
+   "users": [
+    "gardenHarvest"
+   ],
+   "bytes": 6794,
+   "dur": 0.9,
+   "srcDur": 1.13,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1.3,
+   "srcLead": 0.01,
+   "clipRun": 0,
+   "gainDb": 3.3,
+   "impact": 0.15,
+   "lufs": -24.8,
+   "tpDb": -2.3
+  },
+  {
+   "clip": "Crafting/Material_Harvest_2_Wet_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Harvest_2_Wet_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "world",
+   "users": [
+    "gardenHarvest"
+   ],
+   "bytes": 7135,
+   "dur": 0.9,
+   "srcDur": 1.5,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1.9,
+   "srcLead": 0.006,
+   "clipRun": 0,
+   "gainDb": 2.3,
+   "impact": 0.03,
+   "lufs": -22.4,
+   "tpDb": -1.1
+  },
+  {
+   "clip": "Crafting/Material_Liquid_Bubble_Pick_Up_1_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Liquid_Bubble_Pick_Up_1_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "world",
+   "users": [
+    "brewCraft"
+   ],
+   "bytes": 10017,
+   "dur": 1.8,
+   "srcDur": 2.25,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.3,
+   "srcLead": 0.006,
+   "clipRun": 0,
+   "gainDb": 0.6,
+   "impact": 0.08,
+   "lufs": -23,
+   "tpDb": -1.9
+  },
+  {
+   "clip": "Crafting/Material_Liquid_Bubble_Pick_Up_2_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Liquid_Bubble_Pick_Up_2_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "world",
+   "users": [
+    "brewCraft"
+   ],
+   "bytes": 10339,
+   "dur": 1.8,
+   "srcDur": 2.25,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.6,
+   "srcLead": 0.006,
+   "clipRun": 0,
+   "gainDb": 2.6,
+   "impact": 0.01,
+   "lufs": -25,
+   "tpDb": -1.7
+  },
+  {
+   "clip": "Crafting/Material_Liquid_Deep_Hit_1_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Liquid_Deep_Hit_1_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "world+amb",
+   "users": [
+    "splash",
+    "waterDrip"
+   ],
+   "bytes": 7458,
+   "dur": 0.999,
+   "srcDur": 1,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.4,
+   "srcLead": 0.005,
+   "clipRun": 0,
+   "gainDb": -5,
+   "impact": 0.08,
+   "lufs": -26.9,
+   "tpDb": -6.4
+  },
+  {
+   "clip": "Crafting/Material_Liquid_Deep_Hit_2_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Liquid_Deep_Hit_2_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "world",
+   "users": [
+    "splash"
+   ],
+   "bytes": 4844,
+   "dur": 1,
+   "srcDur": 1,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.9,
+   "srcLead": 0.003,
+   "clipRun": 0,
+   "gainDb": -5.4,
+   "impact": 0.06,
+   "lufs": -27.4,
+   "tpDb": -6.8
+  },
+  {
+   "clip": "Crafting/Material_Liquid_Pick_Up_1_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Liquid_Pick_Up_1_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "world",
+   "users": [
+    "brewTick"
+   ],
+   "bytes": 7363,
+   "dur": 1.277,
+   "srcDur": 1.28,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1,
+   "srcLead": 0.002,
+   "clipRun": 0,
+   "gainDb": 3,
+   "impact": 0.01,
+   "lufs": -26.8,
+   "tpDb": -2.4
+  },
+  {
+   "clip": "Crafting/Material_Liquid_Pick_Up_3_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Liquid_Pick_Up_3_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "world",
+   "users": [
+    "brewTick"
+   ],
+   "bytes": 7804,
+   "dur": 1.3,
+   "srcDur": 1.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.4,
+   "srcLead": 0.005,
+   "clipRun": 0,
+   "gainDb": 3.4,
+   "impact": 0.11,
+   "lufs": -22.5,
+   "tpDb": -2.6
+  },
+  {
+   "clip": "Crafting/Material_Stone_Heavy_Slide_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Stone_Heavy_Slide_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "rites+world",
+   "users": [
+    "hands",
+    "sigWall",
+    "grind"
+   ],
+   "bytes": 10160,
+   "dur": 1.5,
+   "srcDur": 2.13,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.5,
+   "srcLead": 0.049,
+   "clipRun": 0,
+   "gainDb": -3.9,
+   "impact": 0.2,
+   "lufs": -20,
+   "tpDb": -4.4
+  },
+  {
+   "clip": "Crafting/Material_Stone_Light_Slide_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Stone_Light_Slide_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "world+amb",
+   "users": [
+    "shovel",
+    "dustFall"
+   ],
+   "bytes": 8028,
+   "dur": 1.3,
+   "srcDur": 1.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.8,
+   "srcLead": 0.004,
+   "clipRun": 0,
+   "gainDb": -0.9,
+   "impact": 0.37,
+   "lufs": -20.5,
+   "tpDb": -2.3
+  },
+  {
+   "clip": "Crafting/Material_Stone_Magic_Debris_Hit_1_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Stone_Magic_Debris_Hit_1_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "rites",
+   "users": [
+    "hands"
+   ],
+   "bytes": 7781,
+   "dur": 1.4,
+   "srcDur": 2.13,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.9,
+   "srcLead": 0.006,
+   "clipRun": 0,
+   "gainDb": -0.6,
+   "impact": 0.03,
+   "lufs": -23.5,
+   "tpDb": -3.3
+  },
+  {
+   "clip": "Crafting/Material_Stone_Magic_Debris_Hit_2_Dry_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Stone_Magic_Debris_Hit_2_Dry_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "amb+rites",
+   "users": [
+    "dustFall",
+    "boneStormLoop"
+   ],
+   "bytes": 4002,
+   "dur": 0.7,
+   "srcDur": 2,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -2,
+   "srcLead": 0.006,
+   "clipRun": 0,
+   "gainDb": 3.4,
+   "impact": 0,
+   "lufs": -25.9,
+   "tpDb": -2.2
+  },
+  {
+   "clip": "Crafting/Material_Stone_Magic_Debris_Hit_3_Dry_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Stone_Magic_Debris_Hit_3_Dry_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "amb+rites",
+   "users": [
+    "dustFall",
+    "boneStormLoop"
+   ],
+   "bytes": 4064,
+   "dur": 0.7,
+   "srcDur": 2.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1,
+   "srcLead": 0.004,
+   "clipRun": 0,
+   "gainDb": 3,
+   "impact": 0.01,
+   "lufs": -23.2,
+   "tpDb": -2.3
+  },
+  {
+   "clip": "Crafting/Material_Stone_Magic_Debris_Hit_4_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Stone_Magic_Debris_Hit_4_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "rites",
+   "users": [
+    "hands"
+   ],
+   "bytes": 8152,
+   "dur": 1.4,
+   "srcDur": 2.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.8,
+   "srcLead": 0.004,
+   "clipRun": 0,
+   "gainDb": -1.7,
+   "impact": 0.13,
+   "lufs": -22.4,
+   "tpDb": -2.5
+  },
+  {
+   "clip": "Crafting/Material_Stone_Medium_Slide_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Stone_Medium_Slide_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "world+rites",
+   "users": [
+    "grind",
+    "handsLoop"
+   ],
+   "bytes": 10249,
+   "dur": 1.5,
+   "srcDur": 2,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.7,
+   "srcLead": 0.01,
+   "clipRun": 0,
+   "gainDb": -1.4,
+   "impact": 0.22,
+   "lufs": -20.7,
+   "tpDb": -2.8
+  },
+  {
+   "clip": "Crafting/Material_Water_Bubble_Potion_3_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Water_Bubble_Potion_3_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "amb",
+   "users": [
+    "bogBubble"
+   ],
+   "bytes": 7124,
+   "dur": 1.2,
+   "srcDur": 2.75,
+   "skip": 0,
+   "cls": "amb",
+   "srcPeakDb": -1.5,
+   "srcLead": 0.005,
+   "clipRun": 0,
+   "gainDb": -5.7,
+   "impact": 0.04,
+   "lufs": -30.5,
+   "tpDb": -7.3
+  },
+  {
+   "clip": "Crafting/Material_Water_Bubble_Potion_5_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Water_Bubble_Potion_5_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "amb",
+   "users": [
+    "bogBubble"
+   ],
+   "bytes": 7148,
+   "dur": 1.2,
+   "srcDur": 2.75,
+   "skip": 0,
+   "cls": "amb",
+   "srcPeakDb": -0.9,
+   "srcLead": 0.005,
+   "clipRun": 0,
+   "gainDb": -6.9,
+   "impact": 0.02,
+   "lufs": -31.5,
+   "tpDb": -7.7
+  },
+  {
+   "clip": "Crafting/Material_Water_Bubble_Potion_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Water_Bubble_Potion_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "amb",
+   "users": [
+    "bogBubble"
+   ],
+   "bytes": 4680,
+   "dur": 0.995,
+   "srcDur": 1,
+   "skip": 0,
+   "cls": "amb",
+   "srcPeakDb": -0.9,
+   "srcLead": 0.009,
+   "clipRun": 0,
+   "gainDb": -9.4,
+   "impact": 0.03,
+   "lufs": -30.9,
+   "tpDb": -10.2
+  },
+  {
+   "clip": "Crafting/Material_Wood_Crate_Break_2_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Wood_Crate_Break_2_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "core",
+   "users": [
+    "enemyDeath"
+   ],
+   "bytes": 5592,
+   "dur": 0.736,
+   "srcDur": 0.75,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.5,
+   "srcLead": 0.018,
+   "clipRun": 0,
+   "gainDb": 3.3,
+   "impact": 0.09,
+   "lufs": -23.2,
+   "tpDb": -2.8
+  },
+  {
+   "clip": "Crafting/Material_Wood_Crate_Break_3_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Wood_Crate_Break_3_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "core",
+   "users": [
+    "enemyDeath"
+   ],
+   "bytes": 4996,
+   "dur": 1.122,
+   "srcDur": 1.13,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.3,
+   "srcLead": 0.007,
+   "clipRun": 0,
+   "gainDb": 2.5,
+   "impact": 0.1,
+   "lufs": -23.1,
+   "tpDb": -3.2
+  },
+  {
+   "clip": "Crafting/Material_Wood_Crate_Break_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Material_Wood_Crate_Break_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "core",
+   "users": [
+    "thrallDeath"
+   ],
+   "bytes": 7387,
+   "dur": 0.875,
+   "srcDur": 0.88,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.9,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": 2.9,
+   "impact": 0.05,
+   "lufs": -23.4,
+   "tpDb": -3.1
+  },
+  {
+   "clip": "Crafting/Organic_Item_Slide_1_Drag_Friction_Switch_Transition_Ancient_Medieval_Element_Accent",
+   "file": "Crafting__Organic_Item_Slide_1_Drag_Friction_Switch_Transition_Ancient_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "gardenTend",
+    "gardenPlant"
+   ],
+   "bytes": 6132,
+   "dur": 1.3,
+   "srcDur": 1.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.1,
+   "srcLead": 0.006,
+   "clipRun": 0,
+   "gainDb": -5.6,
+   "impact": 0.06,
+   "lufs": -23,
+   "tpDb": -6.1
+  },
+  {
+   "clip": "Crafting/Organic_Item_Slide_2_Drag_Friction_Switch_Transition_Ancient_Medieval_Element_Accent",
+   "file": "Crafting__Organic_Item_Slide_2_Drag_Friction_Switch_Transition_Ancient_Medieval_Element_Accent.opus",
+   "pack": "world",
+   "users": [
+    "gardenTend"
+   ],
+   "bytes": 8427,
+   "dur": 1.3,
+   "srcDur": 2.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.8,
+   "srcLead": 0.012,
+   "clipRun": 0,
+   "gainDb": -4.2,
+   "impact": 0.09,
+   "lufs": -21.5,
+   "tpDb": -5.7
+  },
+  {
+   "clip": "Crafting/Poison_1_Gas_Exhaust_Burn_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Poison_1_Gas_Exhaust_Burn_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "rites",
+   "users": [
+    "rotLance",
+    "seedBurst",
+    "miasmaLoop"
+   ],
+   "bytes": 8721,
+   "dur": 1.5,
+   "srcDur": 1.71,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.4,
+   "srcLead": 0.012,
+   "clipRun": 0,
+   "gainDb": 2.4,
+   "impact": 0.16,
+   "lufs": -19.7,
+   "tpDb": -5.8
+  },
+  {
+   "clip": "Crafting/Poison_2_Gas_Exhaust_Burn_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact",
+   "file": "Crafting__Poison_2_Gas_Exhaust_Burn_Magic_RPG_Apothecary_Ancient_Medieval_Element_Accent_Impact.opus",
+   "pack": "rites",
+   "users": [
+    "sigBloom",
+    "miasmaLoop"
+   ],
+   "bytes": 9068,
+   "dur": 1.5,
+   "srcDur": 1.63,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.6,
+   "srcLead": 0.009,
+   "clipRun": 0,
+   "gainDb": 2.2,
+   "impact": 0.05,
+   "lufs": -19.4,
+   "tpDb": -1.9
+  },
+  {
+   "clip": "Elemental_Magic/Action_Rune_A_Accent_Medieval_Magic_Spell_Cast",
+   "file": "Elemental_Magic__Action_Rune_A_Accent_Medieval_Magic_Spell_Cast.opus",
+   "pack": "world",
+   "users": [
+    "recallStart"
+   ],
+   "bytes": 9826,
+   "dur": 1.3,
+   "srcDur": 2.62,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.7,
+   "srcLead": 0.215,
+   "clipRun": 0,
+   "gainDb": 1.1,
+   "impact": 0.46,
+   "lufs": -18.9,
+   "tpDb": -2.1
+  },
+  {
+   "clip": "Elemental_Magic/Action_Rune_B_Accent_Medieval_Magic_Spell_Cast",
+   "file": "Elemental_Magic__Action_Rune_B_Accent_Medieval_Magic_Spell_Cast.opus",
+   "pack": "world",
+   "users": [
+    "runeSocket"
+   ],
+   "bytes": 9114,
+   "dur": 1.4,
+   "srcDur": 3.22,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -0.6,
+   "srcLead": 0.199,
+   "clipRun": 0,
+   "gainDb": -0.2,
+   "impact": 0.29,
+   "lufs": -21.3,
+   "tpDb": -3
+  },
+  {
+   "clip": "Elemental_Magic/Arcane_Missile_1_Accent_Medieval_Magic_Spell_Cast",
+   "file": "Elemental_Magic__Arcane_Missile_1_Accent_Medieval_Magic_Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "spiritBolt"
+   ],
+   "bytes": 7357,
+   "dur": 1.3,
+   "srcDur": 2.25,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -4.6,
+   "srcLead": 0.038,
+   "clipRun": 0,
+   "gainDb": 0.4,
+   "impact": 0.13,
+   "lufs": -19.8,
+   "tpDb": -4.4
+  },
+  {
+   "clip": "Elemental_Magic/Arcane_Missile_2_Accent_Medieval_Magic_Spell_Cast",
+   "file": "Elemental_Magic__Arcane_Missile_2_Accent_Medieval_Magic_Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "spiritBolt"
+   ],
+   "bytes": 7551,
+   "dur": 1.3,
+   "srcDur": 2.25,
+   "skip": 0.02,
+   "cls": "sfx",
+   "srcPeakDb": -4,
+   "srcLead": 0.079,
+   "clipRun": 0,
+   "gainDb": 1.1,
+   "impact": 0.16,
+   "lufs": -18.1,
+   "tpDb": -3.3
+  },
+  {
+   "clip": "Elemental_Magic/Arcane_Missile_3_Accent_Medieval_Magic_Spell_Cast",
+   "file": "Elemental_Magic__Arcane_Missile_3_Accent_Medieval_Magic_Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "spiritBolt"
+   ],
+   "bytes": 7708,
+   "dur": 1.3,
+   "srcDur": 2.75,
+   "skip": 0.05,
+   "cls": "sfx",
+   "srcPeakDb": -4,
+   "srcLead": 0.041,
+   "clipRun": 0,
+   "gainDb": -0.9,
+   "impact": 0.16,
+   "lufs": -18.4,
+   "tpDb": -4.9
+  },
+  {
+   "clip": "Elemental_Magic/Dark_Conjure_1_Accent_Medieval_Magic_Spell_Cast",
+   "file": "Elemental_Magic__Dark_Conjure_1_Accent_Medieval_Magic_Spell_Cast.opus",
+   "pack": "boss",
+   "users": [
+    "bossToll"
+   ],
+   "bytes": 15875,
+   "dur": 2.6,
+   "srcDur": 9.25,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.7,
+   "srcLead": 0.49,
+   "clipRun": 0,
+   "gainDb": 4.1,
+   "impact": 1.81,
+   "lufs": -22.2,
+   "tpDb": -4.3
+  },
+  {
+   "clip": "Elemental_Magic/Dark_Conjure_2_Accent_Medieval_Magic_Spell_Cast",
+   "file": "Elemental_Magic__Dark_Conjure_2_Accent_Medieval_Magic_Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "raise"
+   ],
+   "bytes": 8613,
+   "dur": 1.3,
+   "srcDur": 5.25,
+   "skip": 0.4,
+   "cls": "sfx",
+   "srcPeakDb": -3.4,
+   "srcLead": 0.412,
+   "clipRun": 0,
+   "gainDb": 5.7,
+   "impact": 0.23,
+   "lufs": -21.4,
+   "tpDb": -7.3
+  },
+  {
+   "clip": "Elemental_Magic/Dark_Conjure_3_Accent_Medieval_Magic_Spell_Cast",
+   "file": "Elemental_Magic__Dark_Conjure_3_Accent_Medieval_Magic_Spell_Cast.opus",
+   "pack": "rites+boss",
+   "users": [
+    "oathUnbroken",
+    "bossTell"
+   ],
+   "bytes": 9379,
+   "dur": 1.5,
+   "srcDur": 7.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -2.3,
+   "srcLead": 0.269,
+   "clipRun": 0,
+   "gainDb": 11,
+   "impact": 0.86,
+   "lufs": -23.1,
+   "tpDb": -5.3
+  },
+  {
+   "clip": "Elemental_Magic/Dark_Transition_2_Lightning_Accent_Medieval_Magic_Spell_Cast",
+   "file": "Elemental_Magic__Dark_Transition_2_Lightning_Accent_Medieval_Magic_Spell_Cast.opus",
+   "pack": "rites+boss",
+   "users": [
+    "litany",
+    "bossAwaken"
+   ],
+   "bytes": 14391,
+   "dur": 2.6,
+   "srcDur": 3.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.006,
+   "clipRun": 0,
+   "gainDb": -2.5,
+   "impact": 0.02,
+   "lufs": -17.6,
+   "tpDb": -4.7
+  },
+  {
+   "clip": "Elemental_Magic/Dark_Transition_3_Airy_Accent_Medieval_Magic_Spell_Cast",
+   "file": "Elemental_Magic__Dark_Transition_3_Airy_Accent_Medieval_Magic_Spell_Cast.opus",
+   "pack": "rites+core+boss",
+   "users": [
+    "bloodStep",
+    "playerDeath",
+    "bossDefeat"
+   ],
+   "bytes": 15843,
+   "dur": 2.6,
+   "srcDur": 4.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.023,
+   "clipRun": 0,
+   "gainDb": -4.3,
+   "impact": 0.3,
+   "lufs": -18.5,
+   "tpDb": -4.5
+  },
+  {
+   "clip": "Elemental_Magic/Fairy_Dust_A_Accent_Medieval_Magic_Spell_Cast",
+   "file": "Elemental_Magic__Fairy_Dust_A_Accent_Medieval_Magic_Spell_Cast.opus",
+   "pack": "ui",
+   "users": [
+    "uiNew"
+   ],
+   "bytes": 6858,
+   "dur": 0.9,
+   "srcDur": 3.34,
+   "skip": 0.29,
+   "cls": "ui",
+   "srcPeakDb": -3.6,
+   "srcLead": 0.06,
+   "clipRun": 0,
+   "gainDb": -4.7,
+   "impact": 0.16,
+   "lufs": -20.1,
+   "tpDb": -9.5
+  },
+  {
+   "clip": "Elemental_Magic/Fairy_Dust_B_Accent_Medieval_Magic_Spell_Cast",
+   "file": "Elemental_Magic__Fairy_Dust_B_Accent_Medieval_Magic_Spell_Cast.opus",
+   "pack": "world+ui",
+   "users": [
+    "gardenReady",
+    "uiNew"
+   ],
+   "bytes": 10159,
+   "dur": 1.2,
+   "srcDur": 3.34,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -3.7,
+   "srcLead": 0.061,
+   "clipRun": 0,
+   "gainDb": 1,
+   "impact": 0.44,
+   "lufs": -18.2,
+   "tpDb": -6.3
+  },
+  {
+   "clip": "Elemental_Magic/Fairy_Dust_C_Accent_Medieval_Magic_Spell_Cast",
+   "file": "Elemental_Magic__Fairy_Dust_C_Accent_Medieval_Magic_Spell_Cast.opus",
+   "pack": "ui",
+   "users": [
+    "uiNew"
+   ],
+   "bytes": 7317,
+   "dur": 0.9,
+   "srcDur": 3.34,
+   "skip": 0.14,
+   "cls": "ui",
+   "srcPeakDb": -3.7,
+   "srcLead": 0.059,
+   "clipRun": 0,
+   "gainDb": -3.8,
+   "impact": 0.16,
+   "lufs": -20,
+   "tpDb": -9.1
+  },
+  {
+   "clip": "Elemental_Magic/Felflame_1_Fire_Flame_Accent_Medieval_Magic_Spell_Cast",
+   "file": "Elemental_Magic__Felflame_1_Fire_Flame_Accent_Medieval_Magic_Spell_Cast.opus",
+   "pack": "boss",
+   "users": [
+    "emberBurst"
+   ],
+   "bytes": 11082,
+   "dur": 2.039,
+   "srcDur": 2.21,
+   "skip": 0.17,
+   "cls": "sfx",
+   "srcPeakDb": -2,
+   "srcLead": 0.007,
+   "clipRun": 0,
+   "gainDb": -3.7,
+   "impact": 0.16,
+   "lufs": -23.1,
+   "tpDb": -6
+  },
+  {
+   "clip": "Elemental_Magic/Felflame_2_Fire_Flame_Accent_Medieval_Magic_Spell_Cast",
+   "file": "Elemental_Magic__Felflame_2_Fire_Flame_Accent_Medieval_Magic_Spell_Cast.opus",
+   "pack": "boss",
+   "users": [
+    "emberBurst"
+   ],
+   "bytes": 11403,
+   "dur": 2.176,
+   "srcDur": 2.25,
+   "skip": 0.07,
+   "cls": "sfx",
+   "srcPeakDb": -0.6,
+   "srcLead": 0.008,
+   "clipRun": 0,
+   "gainDb": -5.5,
+   "impact": 0.16,
+   "lufs": -23,
+   "tpDb": -6.5
+  },
+  {
+   "clip": "Elemental_Magic/Felflame_3_Fire_Flame_Accent_Medieval_Magic_Spell_Cast",
+   "file": "Elemental_Magic__Felflame_3_Fire_Flame_Accent_Medieval_Magic_Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "corpseExplode"
+   ],
+   "bytes": 7600,
+   "dur": 1.3,
+   "srcDur": 2.49,
+   "skip": 0.13,
+   "cls": "sfx",
+   "srcPeakDb": -1.4,
+   "srcLead": 0.004,
+   "clipRun": 0,
+   "gainDb": -4.4,
+   "impact": 0.16,
+   "lufs": -22.6,
+   "tpDb": -5.8
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Airy_Sting_2_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Magic_Airy_Sting_2_Accent_Medieval__Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "veilRite"
+   ],
+   "bytes": 8151,
+   "dur": 1.3,
+   "srcDur": 4.5,
+   "skip": 0.04,
+   "cls": "sfx",
+   "srcPeakDb": -3.1,
+   "srcLead": 0.015,
+   "clipRun": 0,
+   "gainDb": -3.1,
+   "impact": 0.16,
+   "lufs": -20.3,
+   "tpDb": -6.5
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Airy_Sting_3_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Magic_Airy_Sting_3_Accent_Medieval__Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "veilRite",
+    "veilStep"
+   ],
+   "bytes": 8646,
+   "dur": 1.3,
+   "srcDur": 4,
+   "skip": 0.02,
+   "cls": "sfx",
+   "srcPeakDb": -3.9,
+   "srcLead": 0.055,
+   "clipRun": 0,
+   "gainDb": -2.4,
+   "impact": 0.16,
+   "lufs": -20.6,
+   "tpDb": -6
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Airy_Sting_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Magic_Airy_Sting_Accent_Medieval__Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "veilRite"
+   ],
+   "bytes": 8988,
+   "dur": 1.3,
+   "srcDur": 5.5,
+   "skip": 0.49,
+   "cls": "sfx",
+   "srcPeakDb": -1.8,
+   "srcLead": 0.103,
+   "clipRun": 0,
+   "gainDb": -4.8,
+   "impact": 0.16,
+   "lufs": -19.2,
+   "tpDb": -6.6
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Ancient_Metallic_Sting_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Ancient_Metallic_Sting_Accent_Medieval_.opus",
+   "pack": "boss+rites",
+   "users": [
+    "toll",
+    "bossToll",
+    "bulwarkRaise"
+   ],
+   "bytes": 14649,
+   "dur": 1.888,
+   "srcDur": 1.89,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -3.6,
+   "srcLead": 0.001,
+   "clipRun": 0,
+   "gainDb": -2.5,
+   "impact": 0.05,
+   "lufs": -17.8,
+   "tpDb": -6.5
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Arcane_Long_Cast_Spell_A_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Arcane_Long_Cast_Spell_A_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "litany"
+   ],
+   "bytes": 8445,
+   "dur": 1.3,
+   "srcDur": 4.53,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.6,
+   "srcLead": 0.291,
+   "clipRun": 0,
+   "gainDb": 13.2,
+   "impact": 0.75,
+   "lufs": -20.3,
+   "tpDb": -4.2
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Arcane_Long_Cast_Spell_B_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Arcane_Long_Cast_Spell_B_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "litany"
+   ],
+   "bytes": 8394,
+   "dur": 1.3,
+   "srcDur": 4.53,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -2.3,
+   "srcLead": 0.279,
+   "clipRun": 0,
+   "gainDb": 14,
+   "impact": 0.74,
+   "lufs": -20.3,
+   "tpDb": -4.4
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Arcane_Spell_A_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Arcane_Spell_A_Accent_Medieval_.opus",
+   "pack": "world",
+   "users": [
+    "waystoneTravel"
+   ],
+   "bytes": 8260,
+   "dur": 1.3,
+   "srcDur": 3.25,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -3.2,
+   "srcLead": 0.149,
+   "clipRun": 0,
+   "gainDb": -2.8,
+   "impact": 0.68,
+   "lufs": -19.8,
+   "tpDb": -5.6
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Arcane_Spell_B_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Arcane_Spell_B_Accent_Medieval_.opus",
+   "pack": "world",
+   "users": [
+    "waystoneTravel"
+   ],
+   "bytes": 7969,
+   "dur": 1.3,
+   "srcDur": 3.3,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -3.1,
+   "srcLead": 0.052,
+   "clipRun": 0,
+   "gainDb": -2.3,
+   "impact": 0.6,
+   "lufs": -19.9,
+   "tpDb": -5.2
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Debuff_Spell_A_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Debuff_Spell_A_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "curse"
+   ],
+   "bytes": 8354,
+   "dur": 1.3,
+   "srcDur": 1.57,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -2.7,
+   "srcLead": 0.017,
+   "clipRun": 0,
+   "gainDb": -2.7,
+   "impact": 0.03,
+   "lufs": -17.6,
+   "tpDb": -5.4
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Debuff_Spell_B_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Debuff_Spell_B_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "curse"
+   ],
+   "bytes": 8620,
+   "dur": 1.3,
+   "srcDur": 2.25,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -3.7,
+   "srcLead": 0.013,
+   "clipRun": 0,
+   "gainDb": 0,
+   "impact": 0.07,
+   "lufs": -17.6,
+   "tpDb": -4.3
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Debuff_Spell_C_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Debuff_Spell_C_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "curse"
+   ],
+   "bytes": 8175,
+   "dur": 1.3,
+   "srcDur": 4.12,
+   "skip": 0.25,
+   "cls": "sfx",
+   "srcPeakDb": -1.6,
+   "srcLead": 0.008,
+   "clipRun": 0,
+   "gainDb": -2.8,
+   "impact": 0.16,
+   "lufs": -16.7,
+   "tpDb": -3
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Debuff_Spell_D_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Debuff_Spell_D_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "curse"
+   ],
+   "bytes": 8209,
+   "dur": 1.3,
+   "srcDur": 4.26,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -4.7,
+   "srcLead": 0.034,
+   "clipRun": 0,
+   "gainDb": 0.5,
+   "impact": 0.16,
+   "lufs": -19.6,
+   "tpDb": -4.4
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Earth_Instant_Cast_Spell_A_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Earth_Instant_Cast_Spell_A_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "spear"
+   ],
+   "bytes": 7561,
+   "dur": 1.3,
+   "srcDur": 1.36,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -2.1,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": -4,
+   "impact": 0.03,
+   "lufs": -22.1,
+   "tpDb": -6.5
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Earth_Instant_Cast_Spell_B_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Earth_Instant_Cast_Spell_B_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "spear"
+   ],
+   "bytes": 7518,
+   "dur": 1.3,
+   "srcDur": 1.51,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.4,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": -4.3,
+   "impact": 0.06,
+   "lufs": -23.2,
+   "tpDb": -4.6
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Earth_Instant_Cast_Spell_C_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Earth_Instant_Cast_Spell_C_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "prison"
+   ],
+   "bytes": 7498,
+   "dur": 1.3,
+   "srcDur": 1.33,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.7,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": -4.9,
+   "impact": 0.01,
+   "lufs": -22.1,
+   "tpDb": -6.6
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Earth_Long_Cast_Spell_A_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Earth_Long_Cast_Spell_A_Accent_Medieval_.opus",
+   "pack": "rites+boss",
+   "users": [
+    "mantle",
+    "bossTellEarth"
+   ],
+   "bytes": 8645,
+   "dur": 1.5,
+   "srcDur": 6.61,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.638,
+   "clipRun": 0,
+   "gainDb": 14.4,
+   "impact": 0.78,
+   "lufs": -22.7,
+   "tpDb": -4.1
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Earth_Long_Cast_Spell_B_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Earth_Long_Cast_Spell_B_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "prison"
+   ],
+   "bytes": 7473,
+   "dur": 1.3,
+   "srcDur": 5.48,
+   "skip": 0.74,
+   "cls": "sfx",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.549,
+   "clipRun": 0,
+   "gainDb": 7.9,
+   "impact": 0.48,
+   "lufs": -22.2,
+   "tpDb": -6.6
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Earth_Spell_A_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Earth_Spell_A_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "exhume"
+   ],
+   "bytes": 7401,
+   "dur": 1.3,
+   "srcDur": 5.25,
+   "skip": 1,
+   "cls": "sfx",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.759,
+   "clipRun": 0,
+   "gainDb": -9.8,
+   "impact": 0.16,
+   "lufs": -22.2,
+   "tpDb": -9.4
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Earth_Spell_B_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Earth_Spell_B_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "exhume"
+   ],
+   "bytes": 7596,
+   "dur": 1.3,
+   "srcDur": 5.25,
+   "skip": 0.2,
+   "cls": "sfx",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.015,
+   "clipRun": 0,
+   "gainDb": -4.5,
+   "impact": 0.16,
+   "lufs": -23.4,
+   "tpDb": -8.3
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Essence_A_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Magic_Essence_A_Accent_Medieval__Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "siphon"
+   ],
+   "bytes": 7813,
+   "dur": 1.3,
+   "srcDur": 4.5,
+   "skip": 0.24,
+   "cls": "sfx",
+   "srcPeakDb": -2.7,
+   "srcLead": 0.022,
+   "clipRun": 0,
+   "gainDb": -3.3,
+   "impact": 0.16,
+   "lufs": -20.4,
+   "tpDb": -7
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Essence_B_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Magic_Essence_B_Accent_Medieval__Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "siphon"
+   ],
+   "bytes": 7825,
+   "dur": 1.3,
+   "srcDur": 3.79,
+   "skip": 0.18,
+   "cls": "sfx",
+   "srcPeakDb": -3.5,
+   "srcLead": 0.108,
+   "clipRun": 0,
+   "gainDb": -3.5,
+   "impact": 0.16,
+   "lufs": -20.2,
+   "tpDb": -7.9
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Essence_C_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Magic_Essence_C_Accent_Medieval__Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "siphon"
+   ],
+   "bytes": 7666,
+   "dur": 1.3,
+   "srcDur": 3.64,
+   "skip": 0.4,
+   "cls": "sfx",
+   "srcPeakDb": -3.3,
+   "srcLead": 0.235,
+   "clipRun": 0,
+   "gainDb": -2.3,
+   "impact": 0.16,
+   "lufs": -19.7,
+   "tpDb": -7.1
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Essence_D_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Magic_Essence_D_Accent_Medieval__Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "siphonLoop"
+   ],
+   "bytes": 6409,
+   "dur": 0.9,
+   "srcDur": 3.64,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -4.9,
+   "srcLead": 0.232,
+   "clipRun": 0,
+   "gainDb": 0.9,
+   "impact": 0.39,
+   "lufs": -18.6,
+   "tpDb": -6.1
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Fire_Instant_Cast_Spell_A_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Fire_Instant_Cast_Spell_A_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "corpseExplode"
+   ],
+   "bytes": 7526,
+   "dur": 1.3,
+   "srcDur": 2.26,
+   "skip": 0.01,
+   "cls": "sfx",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.045,
+   "clipRun": 0,
+   "gainDb": -6.6,
+   "impact": 0.16,
+   "lufs": -22.6,
+   "tpDb": -7
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Fire_Instant_Cast_Spell_B_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Fire_Instant_Cast_Spell_B_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "corpseExplode"
+   ],
+   "bytes": 7364,
+   "dur": 1.3,
+   "srcDur": 1.96,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.004,
+   "clipRun": 0,
+   "gainDb": -8.1,
+   "impact": 0.09,
+   "lufs": -22.9,
+   "tpDb": -7.7
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Fire_Instant_Cast_Spell_D_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Fire_Instant_Cast_Spell_D_Accent_Medieval_.opus",
+   "pack": "boss",
+   "users": [
+    "emberThrow"
+   ],
+   "bytes": 9610,
+   "dur": 2.047,
+   "srcDur": 2.08,
+   "skip": 0.03,
+   "cls": "sfx",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.01,
+   "clipRun": 0,
+   "gainDb": -7.8,
+   "impact": 0.16,
+   "lufs": -22.7,
+   "tpDb": -7.5
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Fire_Long_Cast_Spell_A_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Fire_Long_Cast_Spell_A_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "pyre"
+   ],
+   "bytes": 8522,
+   "dur": 1.5,
+   "srcDur": 9.25,
+   "skip": 0.52,
+   "cls": "sfx",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.247,
+   "clipRun": 0,
+   "gainDb": 9.6,
+   "impact": 0.46,
+   "lufs": -22.9,
+   "tpDb": -7.3
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Fire_Long_Cast_Spell_B_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Fire_Long_Cast_Spell_B_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "pyre"
+   ],
+   "bytes": 8729,
+   "dur": 1.5,
+   "srcDur": 9.64,
+   "skip": 0.51,
+   "cls": "sfx",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.066,
+   "clipRun": 0,
+   "gainDb": 9.1,
+   "impact": 0.55,
+   "lufs": -22.9,
+   "tpDb": -6.6
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Fire_Long_Spell_A_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Fire_Long_Spell_A_Accent_Medieval_.opus",
+   "pack": "boss",
+   "users": [
+    "bossTellFire"
+   ],
+   "bytes": 8570,
+   "dur": 1.5,
+   "srcDur": 5.87,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.3,
+   "srcLead": 0.081,
+   "clipRun": 0,
+   "gainDb": 1.3,
+   "impact": 0.8,
+   "lufs": -20.7,
+   "tpDb": -3.9
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Fire_Long_Spell_B_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Fire_Long_Spell_B_Accent_Medieval_.opus",
+   "pack": "boss",
+   "users": [
+    "bossTellFire"
+   ],
+   "bytes": 8595,
+   "dur": 1.5,
+   "srcDur": 5.99,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -3.4,
+   "srcLead": 0.107,
+   "clipRun": 0,
+   "gainDb": 3.7,
+   "impact": 0.79,
+   "lufs": -20.9,
+   "tpDb": -2.8
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Fire_Spell_A_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Fire_Spell_A_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "pyre"
+   ],
+   "bytes": 8721,
+   "dur": 1.5,
+   "srcDur": 4.82,
+   "skip": 0.9,
+   "cls": "sfx",
+   "srcPeakDb": -0.6,
+   "srcLead": 0.042,
+   "clipRun": 0,
+   "gainDb": -7.7,
+   "impact": 0.43,
+   "lufs": -21.3,
+   "tpDb": -8.3
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Fuse_Fizzle_Gas_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Magic_Fuse_Fizzle_Gas_Accent_Medieval__Spell_Cast.opus",
+   "pack": "ui+world",
+   "users": [
+    "chainBreak",
+    "recallCancel"
+   ],
+   "bytes": 5496,
+   "dur": 0.9,
+   "srcDur": 1.25,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": 0,
+   "srcLead": 0.056,
+   "clipRun": 1,
+   "gainDb": -6.1,
+   "impact": 0.01,
+   "lufs": -21.5,
+   "tpDb": -4.5
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Holy_Spell_Cast_A_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Holy_Spell_Cast_A_Accent_Medieval_.opus",
+   "pack": "rites+boss",
+   "users": [
+    "lantern",
+    "bossDefeat"
+   ],
+   "bytes": 18265,
+   "dur": 2.6,
+   "srcDur": 5.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.3,
+   "srcLead": 0.008,
+   "clipRun": 0,
+   "gainDb": -6.9,
+   "impact": 0.45,
+   "lufs": -22,
+   "tpDb": -8.2
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Holy_Spell_Cast_B_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Holy_Spell_Cast_B_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "choir"
+   ],
+   "bytes": 9905,
+   "dur": 1.3,
+   "srcDur": 5.5,
+   "skip": 0.63,
+   "cls": "sfx",
+   "srcPeakDb": -1.5,
+   "srcLead": 0.051,
+   "clipRun": 0,
+   "gainDb": -6.1,
+   "impact": 0.31,
+   "lufs": -20.7,
+   "tpDb": -7.7
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Holy_Spell_Cast_C_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Holy_Spell_Cast_C_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "ward"
+   ],
+   "bytes": 9881,
+   "dur": 1.3,
+   "srcDur": 5.5,
+   "skip": 0.34,
+   "cls": "sfx",
+   "srcPeakDb": -3.3,
+   "srcLead": 0.075,
+   "clipRun": 0,
+   "gainDb": -5.1,
+   "impact": 0.16,
+   "lufs": -17.2,
+   "tpDb": -8.3
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Holy_Spell_Cast_D_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Holy_Spell_Cast_D_Accent_Medieval_.opus",
+   "pack": "rites+ui",
+   "users": [
+    "ward",
+    "levelUp"
+   ],
+   "bytes": 10004,
+   "dur": 1.4,
+   "srcDur": 8,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -11.4,
+   "srcLead": 0.029,
+   "clipRun": 0,
+   "gainDb": 5.5,
+   "impact": 0.5,
+   "lufs": -24,
+   "tpDb": -8.1
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Ice_Instant_Cast_Spell_A_Snow_Winter_Cold_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Ice_Instant_Cast_Spell_A_Snow_Winter_Cold_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "frost"
+   ],
+   "bytes": 6574,
+   "dur": 0.963,
+   "srcDur": 0.96,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.001,
+   "clipRun": 0,
+   "gainDb": -0.8,
+   "impact": 0.04,
+   "lufs": -21.7,
+   "tpDb": -1.8
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Ice_Instant_Cast_Spell_B_Snow_Winter_Cold_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Ice_Instant_Cast_Spell_B_Snow_Winter_Cold_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "frost"
+   ],
+   "bytes": 6888,
+   "dur": 1.063,
+   "srcDur": 1.07,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.008,
+   "clipRun": 0,
+   "gainDb": 1.1,
+   "impact": 0.15,
+   "lufs": -19.2,
+   "tpDb": -0.8
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Ice_Instant_Cast_Spell_C_Snow_Winter_Cold_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Ice_Instant_Cast_Spell_C_Snow_Winter_Cold_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "frost"
+   ],
+   "bytes": 7776,
+   "dur": 1.158,
+   "srcDur": 1.17,
+   "skip": 0.01,
+   "cls": "sfx",
+   "srcPeakDb": -1.7,
+   "srcLead": 0.006,
+   "clipRun": 0,
+   "gainDb": -1.3,
+   "impact": 0.16,
+   "lufs": -20.1,
+   "tpDb": -1.3
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Ice_Long_Cast_Spell_A_Snow_Winter_Cold_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Ice_Long_Cast_Spell_A_Snow_Winter_Cold_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "dirgeLoop"
+   ],
+   "bytes": 11348,
+   "dur": 1.8,
+   "srcDur": 6.25,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -2.5,
+   "srcLead": 0.548,
+   "clipRun": 0,
+   "gainDb": 20,
+   "impact": 1.2,
+   "lufs": -17.7,
+   "tpDb": -1.1
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Ice_Long_Cast_Spell_B_Snow_Winter_Cold_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Ice_Long_Cast_Spell_B_Snow_Winter_Cold_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "dirgeLoop"
+   ],
+   "bytes": 11929,
+   "dur": 1.8,
+   "srcDur": 6.21,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -6.3,
+   "srcLead": 0.115,
+   "clipRun": 0,
+   "gainDb": 16.3,
+   "impact": 0.47,
+   "lufs": -15.7,
+   "tpDb": -3.5
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Ice_Long_Spell_A_Snow_Winter_Cold_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Ice_Long_Spell_A_Snow_Winter_Cold_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "sigDirge"
+   ],
+   "bytes": 13662,
+   "dur": 2.4,
+   "srcDur": 4,
+   "skip": 1.29,
+   "cls": "sfx",
+   "srcPeakDb": -4.4,
+   "srcLead": 0.233,
+   "clipRun": 0,
+   "gainDb": 0.9,
+   "impact": 0.16,
+   "lufs": -19.7,
+   "tpDb": -3.4
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Ice_Long_Spell_B_Snow_Winter_Cold_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Ice_Long_Spell_B_Snow_Winter_Cold_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "sigDirge"
+   ],
+   "bytes": 13110,
+   "dur": 2.4,
+   "srcDur": 4,
+   "skip": 1.16,
+   "cls": "sfx",
+   "srcPeakDb": -3.9,
+   "srcLead": 0.244,
+   "clipRun": 0,
+   "gainDb": 1.6,
+   "impact": 0.16,
+   "lufs": -19.8,
+   "tpDb": -3.1
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Insanity_Spell_A_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Insanity_Spell_A_Accent_Medieval_.opus",
+   "pack": "amb+boss",
+   "users": [
+    "crowdMoan",
+    "surgeFailed"
+   ],
+   "bytes": 17950,
+   "dur": 3,
+   "srcDur": 8.87,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -3.3,
+   "srcLead": 0.13,
+   "clipRun": 0,
+   "gainDb": 9.8,
+   "impact": 2.2,
+   "lufs": -20.8,
+   "tpDb": -3.5
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Meditation_Spell_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Meditation_Spell_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "choir",
+    "corpseVigil"
+   ],
+   "bytes": 12443,
+   "dur": 1.8,
+   "srcDur": 7.37,
+   "skip": 0.76,
+   "cls": "sfx",
+   "srcPeakDb": -5.1,
+   "srcLead": 0.106,
+   "clipRun": 0,
+   "gainDb": 5.3,
+   "impact": 0.55,
+   "lufs": -20.4,
+   "tpDb": -6.5
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Meteor_Spell_Hit_A_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Meteor_Spell_Hit_A_Accent_Medieval_.opus",
+   "pack": "boss",
+   "users": [
+    "eliteDeath",
+    "bossSlam"
+   ],
+   "bytes": 15031,
+   "dur": 2.6,
+   "srcDur": 5.4,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.9,
+   "srcLead": 0.483,
+   "clipRun": 0,
+   "gainDb": 2.6,
+   "impact": 1.5,
+   "lufs": -21.6,
+   "tpDb": -3.4
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Meteor_Spell_Hit_B_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Meteor_Spell_Hit_B_Accent_Medieval_.opus",
+   "pack": "boss+rites",
+   "users": [
+    "bossSlam",
+    "graveSlamLand"
+   ],
+   "bytes": 14363,
+   "dur": 2.6,
+   "srcDur": 5.79,
+   "skip": 1.68,
+   "cls": "sfx",
+   "srcPeakDb": -2.2,
+   "srcLead": 0.947,
+   "clipRun": 0,
+   "gainDb": -2.3,
+   "impact": 0.16,
+   "lufs": -21.8,
+   "tpDb": -5.5
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Minor_Debuff_1_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Magic_Minor_Debuff_1_Accent_Medieval__Spell_Cast.opus",
+   "pack": "boss",
+   "users": [
+    "tellStrike"
+   ],
+   "bytes": 19414,
+   "dur": 2.6,
+   "srcDur": 4.75,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.1,
+   "srcLead": 0.025,
+   "clipRun": 0,
+   "gainDb": -1,
+   "impact": 0.03,
+   "lufs": -21.8,
+   "tpDb": -2.1
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Minor_Debuff_2_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Magic_Minor_Debuff_2_Accent_Medieval__Spell_Cast.opus",
+   "pack": "boss",
+   "users": [
+    "tellStrike"
+   ],
+   "bytes": 18314,
+   "dur": 2.6,
+   "srcDur": 4,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -2,
+   "srcLead": 0.025,
+   "clipRun": 0,
+   "gainDb": -1.7,
+   "impact": 0.03,
+   "lufs": -20.4,
+   "tpDb": -3.8
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Molten_Lave_Hit_2_Fire_Gas_Burn_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Magic_Molten_Lave_Hit_2_Fire_Gas_Burn_Accent_Medieval__Spell_Cast.opus",
+   "pack": "boss",
+   "users": [
+    "slagSlam"
+   ],
+   "bytes": 12728,
+   "dur": 2.317,
+   "srcDur": 2.35,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.3,
+   "srcLead": 0.034,
+   "clipRun": 0,
+   "gainDb": -7,
+   "impact": 0.15,
+   "lufs": -23.6,
+   "tpDb": -8.4
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Molten_Lave_Hit_3_Fire_Gas_Burn_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Magic_Molten_Lave_Hit_3_Fire_Gas_Burn_Accent_Medieval__Spell_Cast.opus",
+   "pack": "boss",
+   "users": [
+    "slagSlam"
+   ],
+   "bytes": 14837,
+   "dur": 2.6,
+   "srcDur": 3.41,
+   "skip": 0.15,
+   "cls": "sfx",
+   "srcPeakDb": -1.9,
+   "srcLead": 0.004,
+   "clipRun": 0,
+   "gainDb": -4.9,
+   "impact": 0.16,
+   "lufs": -23.1,
+   "tpDb": -6.7
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Molten_Lave_Hit_Fire_Gas_Burn_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Magic_Molten_Lave_Hit_Fire_Gas_Burn_Accent_Medieval__Spell_Cast.opus",
+   "pack": "boss",
+   "users": [
+    "slagSlam"
+   ],
+   "bytes": 15353,
+   "dur": 2.6,
+   "srcDur": 3.44,
+   "skip": 0.28,
+   "cls": "sfx",
+   "srcPeakDb": -0.8,
+   "srcLead": 0.047,
+   "clipRun": 0,
+   "gainDb": -3.2,
+   "impact": 0.16,
+   "lufs": -23.5,
+   "tpDb": -4
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Possession_Spell_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Possession_Spell_Accent_Medieval_.opus",
+   "pack": "rites+core",
+   "users": [
+    "raise",
+    "playerDeath"
+   ],
+   "bytes": 14803,
+   "dur": 2.6,
+   "srcDur": 7.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -3.5,
+   "srcLead": 0.096,
+   "clipRun": 0,
+   "gainDb": 3.3,
+   "impact": 1.02,
+   "lufs": -20.6,
+   "tpDb": -5.8
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Shadow_Instant_Cast_Spell_B_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Shadow_Instant_Cast_Spell_B_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "rotLance"
+   ],
+   "bytes": 7506,
+   "dur": 1.3,
+   "srcDur": 2.21,
+   "skip": 0.08,
+   "cls": "sfx",
+   "srcPeakDb": -3.9,
+   "srcLead": 0.068,
+   "clipRun": 0,
+   "gainDb": -1.8,
+   "impact": 0.16,
+   "lufs": -22.2,
+   "tpDb": -5.6
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Shadow_Instant_Cast_Spell_C_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Shadow_Instant_Cast_Spell_C_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "bloodStep"
+   ],
+   "bytes": 7695,
+   "dur": 1.3,
+   "srcDur": 2.7,
+   "skip": 0.07,
+   "cls": "sfx",
+   "srcPeakDb": -3.2,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": -1.3,
+   "impact": 0.16,
+   "lufs": -21.4,
+   "tpDb": -4.8
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Shadow_Instant_Cast_Spell_D_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Shadow_Instant_Cast_Spell_D_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "veilStep"
+   ],
+   "bytes": 7566,
+   "dur": 1.3,
+   "srcDur": 3.4,
+   "skip": 0.1,
+   "cls": "sfx",
+   "srcPeakDb": -7.7,
+   "srcLead": 0.241,
+   "clipRun": 0,
+   "gainDb": 1.2,
+   "impact": 0.16,
+   "lufs": -21.8,
+   "tpDb": -6.7
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Shadow_Instant_Cast_Spell_E_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Shadow_Instant_Cast_Spell_E_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "sigRend"
+   ],
+   "bytes": 7618,
+   "dur": 1.3,
+   "srcDur": 2.66,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -5.2,
+   "srcLead": 0.054,
+   "clipRun": 0,
+   "gainDb": -1.7,
+   "impact": 0.08,
+   "lufs": -22.1,
+   "tpDb": -6.7
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Shadow_Spell_A_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Shadow_Spell_A_Accent_Medieval_.opus",
+   "pack": "rites",
+   "users": [
+    "exhume"
+   ],
+   "bytes": 7531,
+   "dur": 1.3,
+   "srcDur": 6.62,
+   "skip": 0.54,
+   "cls": "sfx",
+   "srcPeakDb": -5.2,
+   "srcLead": 0.117,
+   "clipRun": 0,
+   "gainDb": 4.9,
+   "impact": 0.16,
+   "lufs": -22.6,
+   "tpDb": -7.4
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Shadow_Spell_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Shadow_Spell_Accent_Medieval_.opus",
+   "pack": "boss",
+   "users": [
+    "affixTell"
+   ],
+   "bytes": 16316,
+   "dur": 2.6,
+   "srcDur": 4.6,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -4.5,
+   "srcLead": 0.004,
+   "clipRun": 0,
+   "gainDb": -2.1,
+   "impact": 0.3,
+   "lufs": -20.3,
+   "tpDb": -6.2
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Shadow_Spell_B_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Shadow_Spell_B_Accent_Medieval_.opus",
+   "pack": "boss",
+   "users": [
+    "affixTell"
+   ],
+   "bytes": 14519,
+   "dur": 2.6,
+   "srcDur": 6.64,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -4.2,
+   "srcLead": 0.289,
+   "clipRun": 0,
+   "gainDb": 1.4,
+   "impact": 1.33,
+   "lufs": -20.3,
+   "tpDb": -2.7
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Thunderstorm_Cast_Spell_A_Lightning_Rain_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Thunderstorm_Cast_Spell_A_Lightning_Rain_Accent_Medieval_.opus",
+   "pack": "boss",
+   "users": [
+    "surgeStart"
+   ],
+   "bytes": 17436,
+   "dur": 3,
+   "srcDur": 15.09,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -3.3,
+   "srcLead": 0.451,
+   "clipRun": 0,
+   "gainDb": 3.3,
+   "impact": 0.7,
+   "lufs": -19.8,
+   "tpDb": -4.4
+  },
+  {
+   "clip": "Elemental_Magic/Magic_Thunderstorm_Cast_Spell_B_Lightning_Rain_Accent_Medieval_",
+   "file": "Elemental_Magic__Magic_Thunderstorm_Cast_Spell_B_Lightning_Rain_Accent_Medieval_.opus",
+   "pack": "boss",
+   "users": [
+    "bossPhase"
+   ],
+   "bytes": 16716,
+   "dur": 3,
+   "srcDur": 13.49,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -4.5,
+   "srcLead": 0.034,
+   "clipRun": 0,
+   "gainDb": 3.4,
+   "impact": 1.16,
+   "lufs": -20.6,
+   "tpDb": -4.8
+  },
+  {
+   "clip": "Elemental_Magic/Organic_Magic_Conjure_Upgrade__Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Organic_Magic_Conjure_Upgrade__Accent_Medieval__Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "rallyDead"
+   ],
+   "bytes": 7471,
+   "dur": 1.3,
+   "srcDur": 2.63,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.7,
+   "srcLead": 0.002,
+   "clipRun": 0,
+   "gainDb": -5.6,
+   "impact": 0.05,
+   "lufs": -21.5,
+   "tpDb": -6.3
+  },
+  {
+   "clip": "Elemental_Magic/Organic_Magic_Poof_Buff_Hit_2_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Organic_Magic_Poof_Buff_Hit_2_Accent_Medieval__Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "thrallRise"
+   ],
+   "bytes": 9357,
+   "dur": 1.3,
+   "srcDur": 2.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.5,
+   "srcLead": 0.057,
+   "clipRun": 0,
+   "gainDb": -3.5,
+   "impact": 0.07,
+   "lufs": -20.8,
+   "tpDb": -4
+  },
+  {
+   "clip": "Elemental_Magic/Organic_Magic_Poof_Buff_Hit_3_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Organic_Magic_Poof_Buff_Hit_3_Accent_Medieval__Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "thrallRise"
+   ],
+   "bytes": 7525,
+   "dur": 1.3,
+   "srcDur": 3.25,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.7,
+   "srcLead": 0.009,
+   "clipRun": 0,
+   "gainDb": -6.8,
+   "impact": 0.04,
+   "lufs": -20.7,
+   "tpDb": -7.4
+  },
+  {
+   "clip": "Elemental_Magic/Organic_Magic_Poof_Buff_Hit_4_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Organic_Magic_Poof_Buff_Hit_4_Accent_Medieval__Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "thrallRise"
+   ],
+   "bytes": 9752,
+   "dur": 1.3,
+   "srcDur": 3.13,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.9,
+   "srcLead": 0.002,
+   "clipRun": 0,
+   "gainDb": -7.2,
+   "impact": 0.04,
+   "lufs": -21.7,
+   "tpDb": -8
+  },
+  {
+   "clip": "Elemental_Magic/Organic_Magic_Poof_Buff_Hit_5_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Organic_Magic_Poof_Buff_Hit_5_Accent_Medieval__Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "sigBloom"
+   ],
+   "bytes": 7782,
+   "dur": 1.3,
+   "srcDur": 4,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.4,
+   "srcLead": 0.003,
+   "clipRun": 0,
+   "gainDb": -7.1,
+   "impact": 0.03,
+   "lufs": -21.7,
+   "tpDb": -8.4
+  },
+  {
+   "clip": "Elemental_Magic/Organic_Magic_Poof_Buff_Hit_6_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Organic_Magic_Poof_Buff_Hit_6_Accent_Medieval__Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "sigBloom"
+   ],
+   "bytes": 7221,
+   "dur": 1.3,
+   "srcDur": 2.25,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.4,
+   "srcLead": 0.009,
+   "clipRun": 0,
+   "gainDb": -7.3,
+   "impact": 0.07,
+   "lufs": -24.4,
+   "tpDb": -8.2
+  },
+  {
+   "clip": "Elemental_Magic/Organic_Magic_Poof_Buff_Hit_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Organic_Magic_Poof_Buff_Hit_Accent_Medieval__Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "thrallBind",
+    "bloomPulse"
+   ],
+   "bytes": 7596,
+   "dur": 1.3,
+   "srcDur": 2.75,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -8.1,
+   "srcLead": 0.01,
+   "clipRun": 0,
+   "gainDb": 1.3,
+   "impact": 0.03,
+   "lufs": -21.9,
+   "tpDb": -6.8
+  },
+  {
+   "clip": "Elemental_Magic/Organic_Magic_Rain_Area_Effect_1_Goo_Squeeze_Gore_Squirt_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Organic_Magic_Rain_Area_Effect_1_Goo_Squeeze_Gore_Squirt_Accent_Medieval__Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "burst",
+    "corpseExplode"
+   ],
+   "bytes": 9028,
+   "dur": 1.5,
+   "srcDur": 8,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.5,
+   "srcLead": 0.011,
+   "clipRun": 0,
+   "gainDb": -0.8,
+   "impact": 0.12,
+   "lufs": -20,
+   "tpDb": -2.4
+  },
+  {
+   "clip": "Elemental_Magic/Organic_Magic_Rain_Area_Effect_2v_Goo_Squeeze_Gore_Squirt_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Organic_Magic_Rain_Area_Effect_2v_Goo_Squeeze_Gore_Squirt_Accent_Medieval__Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "burst"
+   ],
+   "bytes": 7909,
+   "dur": 1.3,
+   "srcDur": 3.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.011,
+   "clipRun": 0,
+   "gainDb": -1.4,
+   "impact": 0.12,
+   "lufs": -19.9,
+   "tpDb": -2.1
+  },
+  {
+   "clip": "Elemental_Magic/Organic_Magic_Rain_Area_Effect_3_Goo_Squeeze_Gore_Squirt_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Organic_Magic_Rain_Area_Effect_3_Goo_Squeeze_Gore_Squirt_Accent_Medieval__Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "burst",
+    "bloodRite"
+   ],
+   "bytes": 7793,
+   "dur": 1.3,
+   "srcDur": 7,
+   "skip": 0.03,
+   "cls": "sfx",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.009,
+   "clipRun": 0,
+   "gainDb": -3,
+   "impact": 0.16,
+   "lufs": -19.7,
+   "tpDb": -3.4
+  },
+  {
+   "clip": "Elemental_Magic/Organic_Magic_Rain_Area_Effect_4_Goo_Squeeze_Gore_Squirt_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Organic_Magic_Rain_Area_Effect_4_Goo_Squeeze_Gore_Squirt_Accent_Medieval__Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "burst"
+   ],
+   "bytes": 7908,
+   "dur": 1.3,
+   "srcDur": 9,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.4,
+   "srcLead": 0.01,
+   "clipRun": 0,
+   "gainDb": -1.1,
+   "impact": 0.12,
+   "lufs": -19.4,
+   "tpDb": -2.2
+  },
+  {
+   "clip": "Elemental_Magic/Potion_Bottle_Cork_Pop_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Potion_Bottle_Cork_Pop_Accent_Medieval__Spell_Cast.opus",
+   "pack": "world",
+   "users": [
+    "drinkFlask"
+   ],
+   "bytes": 6327,
+   "dur": 1.4,
+   "srcDur": 1.88,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -0.4,
+   "srcLead": 0.003,
+   "clipRun": 0,
+   "gainDb": -2.7,
+   "impact": 0.04,
+   "lufs": -28.3,
+   "tpDb": -3.5
+  },
+  {
+   "clip": "Elemental_Magic/Potion_Bottle_Cork_Pop_Magic_2_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Potion_Bottle_Cork_Pop_Magic_2_Accent_Medieval__Spell_Cast.opus",
+   "pack": "world",
+   "users": [
+    "drinkElixir"
+   ],
+   "bytes": 8477,
+   "dur": 1.4,
+   "srcDur": 2.75,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -0.4,
+   "srcLead": 0.003,
+   "clipRun": 0,
+   "gainDb": 0,
+   "impact": 0.08,
+   "lufs": -26.5,
+   "tpDb": -2.2
+  },
+  {
+   "clip": "Elemental_Magic/Potion_Bottle_Cork_Pop_Magic_Accent_Medieval__Spell_Cast",
+   "file": "Elemental_Magic__Potion_Bottle_Cork_Pop_Magic_Accent_Medieval__Spell_Cast.opus",
+   "pack": "world",
+   "users": [
+    "drinkFlask"
+   ],
+   "bytes": 9657,
+   "dur": 1.4,
+   "srcDur": 2.75,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -0.4,
+   "srcLead": 0.008,
+   "clipRun": 0,
+   "gainDb": 2.4,
+   "impact": 0.07,
+   "lufs": -27,
+   "tpDb": -1.2
+  },
+  {
+   "clip": "Elemental_Magic/Water_Bolt_1_Liquid_Hollow_Creepy_Transition_Accent_Medieval_Magic_Spell_Cast",
+   "file": "Elemental_Magic__Water_Bolt_1_Liquid_Hollow_Creepy_Transition_Accent_Medieval_Magic_Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "wail"
+   ],
+   "bytes": 8002,
+   "dur": 1.3,
+   "srcDur": 1.4,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -5.1,
+   "srcLead": 0.009,
+   "clipRun": 0,
+   "gainDb": -0.1,
+   "impact": 0.14,
+   "lufs": -18.6,
+   "tpDb": -5.3
+  },
+  {
+   "clip": "Elemental_Magic/Water_Bolt_2_Liquid_Hollow_Creepy_Transition_Accent_Medieval_Magic_Spell_Cast",
+   "file": "Elemental_Magic__Water_Bolt_2_Liquid_Hollow_Creepy_Transition_Accent_Medieval_Magic_Spell_Cast.opus",
+   "pack": "rites+boss",
+   "users": [
+    "wail",
+    "bossTellWater"
+   ],
+   "bytes": 7914,
+   "dur": 1.346,
+   "srcDur": 1.35,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -2.5,
+   "srcLead": 0.005,
+   "clipRun": 0,
+   "gainDb": 1.2,
+   "impact": 0.21,
+   "lufs": -19.1,
+   "tpDb": -2.1
+  },
+  {
+   "clip": "Elemental_Magic/Water_Bolt_3_Liquid_Hollow_Creepy_Transition_Accent_Medieval_Magic_Spell_Cast",
+   "file": "Elemental_Magic__Water_Bolt_3_Liquid_Hollow_Creepy_Transition_Accent_Medieval_Magic_Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "wail"
+   ],
+   "bytes": 7723,
+   "dur": 1.3,
+   "srcDur": 1.35,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -3.4,
+   "srcLead": 0.004,
+   "clipRun": 0,
+   "gainDb": 0.5,
+   "impact": 0.14,
+   "lufs": -19.1,
+   "tpDb": -3
+  },
+  {
+   "clip": "Elemental_Magic/Water_Bolt_4_Liquid_Hollow_Creepy_Transition_Accent_Medieval_Magic_Spell_Cast",
+   "file": "Elemental_Magic__Water_Bolt_4_Liquid_Hollow_Creepy_Transition_Accent_Medieval_Magic_Spell_Cast.opus",
+   "pack": "rites",
+   "users": [
+    "soulRelease"
+   ],
+   "bytes": 7713,
+   "dur": 1.3,
+   "srcDur": 1.39,
+   "skip": 0.01,
+   "cls": "sfx",
+   "srcPeakDb": -6.2,
+   "srcLead": 0.006,
+   "clipRun": 0,
+   "gainDb": 4.4,
+   "impact": 0.16,
+   "lufs": -18.9,
+   "tpDb": -2.2
+  },
+  {
+   "clip": "Footsteps/Footstep_Dirt_Medium_A",
+   "file": "Footsteps__Footstep_Dirt_Medium_A.opus",
+   "pack": "foot_dirt",
+   "users": [
+    "stepDirt"
+   ],
+   "bytes": 1912,
+   "dur": 0.251,
+   "srcDur": 0.26,
+   "skip": 0,
+   "cls": "foot",
+   "srcPeakDb": -11.2,
+   "srcLead": 0.01,
+   "clipRun": 0,
+   "gainDb": 6.1,
+   "impact": 0.08,
+   "lufs": -70,
+   "tpDb": -5.3
+  },
+  {
+   "clip": "Footsteps/Footstep_Dirt_Medium_C",
+   "file": "Footsteps__Footstep_Dirt_Medium_C.opus",
+   "pack": "foot_dirt",
+   "users": [
+    "stepDirt"
+   ],
+   "bytes": 2059,
+   "dur": 0.303,
+   "srcDur": 0.3,
+   "skip": 0,
+   "cls": "foot",
+   "srcPeakDb": -17.4,
+   "srcLead": 0.002,
+   "clipRun": 0,
+   "gainDb": 13.7,
+   "impact": 0.01,
+   "lufs": -70,
+   "tpDb": -3.6
+  },
+  {
+   "clip": "Footsteps/Footstep_Dirt_Medium_E",
+   "file": "Footsteps__Footstep_Dirt_Medium_E.opus",
+   "pack": "foot_dirt",
+   "users": [
+    "stepDirt"
+   ],
+   "bytes": 1554,
+   "dur": 0.25,
+   "srcDur": 0.25,
+   "skip": 0,
+   "cls": "foot",
+   "srcPeakDb": -15.4,
+   "srcLead": 0.001,
+   "clipRun": 0,
+   "gainDb": 6.7,
+   "impact": 0.01,
+   "lufs": -70,
+   "tpDb": -9.3
+  },
+  {
+   "clip": "Footsteps/Footstep_Dirt_Medium_G",
+   "file": "Footsteps__Footstep_Dirt_Medium_G.opus",
+   "pack": "foot_dirt",
+   "users": [
+    "stepDirt"
+   ],
+   "bytes": 1834,
+   "dur": 0.293,
+   "srcDur": 0.3,
+   "skip": 0,
+   "cls": "foot",
+   "srcPeakDb": -11.2,
+   "srcLead": 0.01,
+   "clipRun": 0,
+   "gainDb": 6.6,
+   "impact": 0.09,
+   "lufs": -70,
+   "tpDb": -5.4
+  },
+  {
+   "clip": "Footsteps/Footstep_Grass_Medium_B",
+   "file": "Footsteps__Footstep_Grass_Medium_B.opus",
+   "pack": "foot_grass",
+   "users": [
+    "stepGrass"
+   ],
+   "bytes": 2924,
+   "dur": 0.45,
+   "srcDur": 0.84,
+   "skip": 0,
+   "cls": "foot",
+   "srcPeakDb": -12.1,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": 9.5,
+   "impact": 0.12,
+   "lufs": -26.8,
+   "tpDb": -4.4
+  },
+  {
+   "clip": "Footsteps/Footstep_Grass_Medium_D",
+   "file": "Footsteps__Footstep_Grass_Medium_D.opus",
+   "pack": "foot_grass",
+   "users": [
+    "stepGrass"
+   ],
+   "bytes": 2691,
+   "dur": 0.45,
+   "srcDur": 0.55,
+   "skip": 0,
+   "cls": "foot",
+   "srcPeakDb": -11.6,
+   "srcLead": 0.001,
+   "clipRun": 0,
+   "gainDb": 6.5,
+   "impact": 0.1,
+   "lufs": -26.7,
+   "tpDb": -3.8
+  },
+  {
+   "clip": "Footsteps/Footstep_Grass_Medium_F",
+   "file": "Footsteps__Footstep_Grass_Medium_F.opus",
+   "pack": "foot_grass",
+   "users": [
+    "stepGrass"
+   ],
+   "bytes": 2733,
+   "dur": 0.45,
+   "srcDur": 0.62,
+   "skip": 0,
+   "cls": "foot",
+   "srcPeakDb": -8.1,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": 4.7,
+   "impact": 0.18,
+   "lufs": -27.9,
+   "tpDb": -4.7
+  },
+  {
+   "clip": "Footsteps/Footstep_Grass_Medium_H",
+   "file": "Footsteps__Footstep_Grass_Medium_H.opus",
+   "pack": "foot_grass",
+   "users": [
+    "stepGrass"
+   ],
+   "bytes": 2702,
+   "dur": 0.45,
+   "srcDur": 0.65,
+   "skip": 0,
+   "cls": "foot",
+   "srcPeakDb": -19.4,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": 11.7,
+   "impact": 0.08,
+   "lufs": -27.3,
+   "tpDb": -8.9
+  },
+  {
+   "clip": "Footsteps/Footstep_Stone_Medium_A",
+   "file": "Footsteps__Footstep_Stone_Medium_A.opus",
+   "pack": "foot_stone",
+   "users": [
+    "step",
+    "stepStone"
+   ],
+   "bytes": 1815,
+   "dur": 0.252,
+   "srcDur": 0.26,
+   "skip": 0,
+   "cls": "foot",
+   "srcPeakDb": -11.9,
+   "srcLead": 0.009,
+   "clipRun": 0,
+   "gainDb": 4.7,
+   "impact": 0.08,
+   "lufs": -70,
+   "tpDb": -7.1
+  },
+  {
+   "clip": "Footsteps/Footstep_Stone_Medium_B",
+   "file": "Footsteps__Footstep_Stone_Medium_B.opus",
+   "pack": "foot_stone",
+   "users": [
+    "step",
+    "stepStone"
+   ],
+   "bytes": 2045,
+   "dur": 0.321,
+   "srcDur": 0.32,
+   "skip": 0,
+   "cls": "foot",
+   "srcPeakDb": -9.3,
+   "srcLead": 0.006,
+   "clipRun": 0,
+   "gainDb": 4.8,
+   "impact": 0.08,
+   "lufs": -70,
+   "tpDb": -4.3
+  },
+  {
+   "clip": "Footsteps/Footstep_Stone_Medium_C",
+   "file": "Footsteps__Footstep_Stone_Medium_C.opus",
+   "pack": "foot_stone",
+   "users": [
+    "step"
+   ],
+   "bytes": 1943,
+   "dur": 0.303,
+   "srcDur": 0.3,
+   "skip": 0,
+   "cls": "foot",
+   "srcPeakDb": -18.3,
+   "srcLead": 0.004,
+   "clipRun": 0,
+   "gainDb": 12.8,
+   "impact": 0.01,
+   "lufs": -70,
+   "tpDb": -5.6
+  },
+  {
+   "clip": "Footsteps/Footstep_Stone_Medium_D",
+   "file": "Footsteps__Footstep_Stone_Medium_D.opus",
+   "pack": "foot_stone",
+   "users": [
+    "step",
+    "stepStone"
+   ],
+   "bytes": 1569,
+   "dur": 0.244,
+   "srcDur": 0.25,
+   "skip": 0,
+   "cls": "foot",
+   "srcPeakDb": -18,
+   "srcLead": 0.01,
+   "clipRun": 0,
+   "gainDb": 10.9,
+   "impact": 0.03,
+   "lufs": -70,
+   "tpDb": -7
+  },
+  {
+   "clip": "Footsteps/Footstep_Stone_Medium_F",
+   "file": "Footsteps__Footstep_Stone_Medium_F.opus",
+   "pack": "foot_stone",
+   "users": [
+    "stepStone"
+   ],
+   "bytes": 1925,
+   "dur": 0.311,
+   "srcDur": 0.31,
+   "skip": 0,
+   "cls": "foot",
+   "srcPeakDb": -18,
+   "srcLead": 0.002,
+   "clipRun": 0,
+   "gainDb": 9.9,
+   "impact": 0.01,
+   "lufs": -70,
+   "tpDb": -8.3
+  },
+  {
+   "clip": "Footsteps/Footsteps_Water_1",
+   "file": "Footsteps__Footsteps_Water_1.opus",
+   "pack": "foot_water",
+   "users": [
+    "stepWater"
+   ],
+   "bytes": 2858,
+   "dur": 0.45,
+   "srcDur": 0.55,
+   "skip": 0,
+   "cls": "foot",
+   "srcPeakDb": -10.1,
+   "srcLead": 0.003,
+   "clipRun": 0,
+   "gainDb": 5.7,
+   "impact": 0.04,
+   "lufs": -25.3,
+   "tpDb": -5.8
+  },
+  {
+   "clip": "Footsteps/Footsteps_Water_2",
+   "file": "Footsteps__Footsteps_Water_2.opus",
+   "pack": "foot_water",
+   "users": [
+    "stepWater"
+   ],
+   "bytes": 2867,
+   "dur": 0.45,
+   "srcDur": 0.6,
+   "skip": 0,
+   "cls": "foot",
+   "srcPeakDb": -11,
+   "srcLead": 0.005,
+   "clipRun": 0,
+   "gainDb": 4.5,
+   "impact": 0.03,
+   "lufs": -25.3,
+   "tpDb": -7.5
+  },
+  {
+   "clip": "Footsteps/Footsteps_Water_3",
+   "file": "Footsteps__Footsteps_Water_3.opus",
+   "pack": "foot_water",
+   "users": [
+    "stepWater"
+   ],
+   "bytes": 3183,
+   "dur": 0.45,
+   "srcDur": 0.51,
+   "skip": 0,
+   "cls": "foot",
+   "srcPeakDb": -7.7,
+   "srcLead": 0.004,
+   "clipRun": 0,
+   "gainDb": 0.7,
+   "impact": 0.02,
+   "lufs": -25.5,
+   "tpDb": -6.9
+  },
+  {
+   "clip": "Footsteps/Footsteps_Water_4",
+   "file": "Footsteps__Footsteps_Water_4.opus",
+   "pack": "foot_water",
+   "users": [
+    "stepWater"
+   ],
+   "bytes": 2833,
+   "dur": 0.45,
+   "srcDur": 0.6,
+   "skip": 0,
+   "cls": "foot",
+   "srcPeakDb": -8.5,
+   "srcLead": 0.014,
+   "clipRun": 0,
+   "gainDb": 2.6,
+   "impact": 0.09,
+   "lufs": -25.8,
+   "tpDb": -7.8
+  },
+  {
+   "clip": "Items/Item_Collect_Dark_Magic_A_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Collect_Dark_Magic_A_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "ui",
+   "users": [
+    "shard"
+   ],
+   "bytes": 8445,
+   "dur": 1.4,
+   "srcDur": 2.42,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -2.2,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": -5.1,
+   "impact": 0.08,
+   "lufs": -26.8,
+   "tpDb": -7.4
+  },
+  {
+   "clip": "Items/Item_Collect_Dark_Magic_B_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Collect_Dark_Magic_B_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "rites",
+   "users": [
+    "graveOffering"
+   ],
+   "bytes": 7762,
+   "dur": 1.3,
+   "srcDur": 2.91,
+   "skip": 0.09,
+   "cls": "sfx",
+   "srcPeakDb": -4.1,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": -1.5,
+   "impact": 0.16,
+   "lufs": -23.1,
+   "tpDb": -5.8
+  },
+  {
+   "clip": "Items/Item_Collect_Dark_Magic_C_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Collect_Dark_Magic_C_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "ui",
+   "users": [
+    "shard"
+   ],
+   "bytes": 8318,
+   "dur": 1.4,
+   "srcDur": 2.27,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -3.5,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": -1.2,
+   "impact": 0.16,
+   "lufs": -22.5,
+   "tpDb": -4.7
+  },
+  {
+   "clip": "Items/Item_Collect_Dark_Magic_D_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Collect_Dark_Magic_D_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "rites",
+   "users": [
+    "graveOffering"
+   ],
+   "bytes": 7718,
+   "dur": 1.3,
+   "srcDur": 4.09,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -4.9,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": -0.6,
+   "impact": 0.12,
+   "lufs": -22.1,
+   "tpDb": -6
+  },
+  {
+   "clip": "Items/Item_Collect_Dark_Magic_E_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Collect_Dark_Magic_E_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "ui",
+   "users": [
+    "shard"
+   ],
+   "bytes": 8739,
+   "dur": 1.4,
+   "srcDur": 3.49,
+   "skip": 0.09,
+   "cls": "ui",
+   "srcPeakDb": -4.1,
+   "srcLead": 0.001,
+   "clipRun": 0,
+   "gainDb": 1.1,
+   "impact": 0.16,
+   "lufs": -21.3,
+   "tpDb": -3.2
+  },
+  {
+   "clip": "Items/Item_Collect_Dark_Magic_G_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Collect_Dark_Magic_G_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "ui",
+   "users": [
+    "shard"
+   ],
+   "bytes": 8378,
+   "dur": 1.4,
+   "srcDur": 3.45,
+   "skip": 0.04,
+   "cls": "ui",
+   "srcPeakDb": -5.4,
+   "srcLead": 0.001,
+   "clipRun": 0,
+   "gainDb": -2.5,
+   "impact": 0.16,
+   "lufs": -23.4,
+   "tpDb": -7.9
+  },
+  {
+   "clip": "Items/Item_Collect_Dark_Magic_H_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Collect_Dark_Magic_H_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "rites",
+   "users": [
+    "graveOffering"
+   ],
+   "bytes": 8803,
+   "dur": 1.3,
+   "srcDur": 3.61,
+   "skip": 0.04,
+   "cls": "sfx",
+   "srcPeakDb": -5.7,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": 3.8,
+   "impact": 0.16,
+   "lufs": -19.4,
+   "tpDb": -2.3
+  },
+  {
+   "clip": "Items/Item_Collect_Magic_A_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Collect_Magic_A_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "ui",
+   "users": [
+    "item"
+   ],
+   "bytes": 5354,
+   "dur": 0.9,
+   "srcDur": 2.16,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1.3,
+   "srcLead": 0.012,
+   "clipRun": 0,
+   "gainDb": -6.2,
+   "impact": 0.12,
+   "lufs": -25.9,
+   "tpDb": -7.6
+  },
+  {
+   "clip": "Items/Item_Collect_Magic_B_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Collect_Magic_B_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "ui",
+   "users": [
+    "item"
+   ],
+   "bytes": 6409,
+   "dur": 0.9,
+   "srcDur": 1.9,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -2.3,
+   "srcLead": 0.008,
+   "clipRun": 0,
+   "gainDb": -0.5,
+   "impact": 0.06,
+   "lufs": -22.4,
+   "tpDb": -3
+  },
+  {
+   "clip": "Items/Item_Collect_Magic_C_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Collect_Magic_C_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "ui",
+   "users": [
+    "item"
+   ],
+   "bytes": 5462,
+   "dur": 0.9,
+   "srcDur": 2.82,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -2.7,
+   "srcLead": 0.012,
+   "clipRun": 0,
+   "gainDb": -5.5,
+   "impact": 0.07,
+   "lufs": -25.1,
+   "tpDb": -8
+  },
+  {
+   "clip": "Items/Item_Key_A_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Key_A_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "world",
+   "users": [
+    "lootDropLegendary"
+   ],
+   "bytes": 2788,
+   "dur": 0.344,
+   "srcDur": 0.34,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.4,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": -2.8,
+   "impact": 0.08,
+   "lufs": -70,
+   "tpDb": -3.6
+  },
+  {
+   "clip": "Items/Item_Key_B_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Key_B_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "world",
+   "users": [
+    "lootDropLegendary"
+   ],
+   "bytes": 2461,
+   "dur": 0.344,
+   "srcDur": 0.34,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.9,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": -2.1,
+   "impact": 0.08,
+   "lufs": -70,
+   "tpDb": -2.4
+  },
+  {
+   "clip": "Items/Item_Magic_Pickup_2_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Magic_Pickup_2_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "ui",
+   "users": [
+    "lootRare"
+   ],
+   "bytes": 8459,
+   "dur": 1.4,
+   "srcDur": 4,
+   "skip": 0.04,
+   "cls": "ui",
+   "srcPeakDb": -2.6,
+   "srcLead": 0.005,
+   "clipRun": 0,
+   "gainDb": -1.5,
+   "impact": 0.16,
+   "lufs": -21.6,
+   "tpDb": -4.8
+  },
+  {
+   "clip": "Items/Item_Magic_Pickup_3_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Magic_Pickup_3_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "ui",
+   "users": [
+    "lootRare"
+   ],
+   "bytes": 8535,
+   "dur": 1.4,
+   "srcDur": 3.5,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -3,
+   "srcLead": 0.004,
+   "clipRun": 0,
+   "gainDb": 0,
+   "impact": 0.15,
+   "lufs": -22,
+   "tpDb": -3.5
+  },
+  {
+   "clip": "Items/Item_Magic_Pickup_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Magic_Pickup_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "ui",
+   "users": [
+    "lootRare"
+   ],
+   "bytes": 8140,
+   "dur": 1.4,
+   "srcDur": 3,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -2.7,
+   "srcLead": 0.009,
+   "clipRun": 0,
+   "gainDb": 2.2,
+   "impact": 0.11,
+   "lufs": -21.2,
+   "tpDb": -3.7
+  },
+  {
+   "clip": "Items/Item_Metal_Trap_A_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Metal_Trap_A_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "rites",
+   "users": [
+    "chain"
+   ],
+   "bytes": 3730,
+   "dur": 0.526,
+   "srcDur": 0.53,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -1.4,
+   "srcLead": 0.002,
+   "clipRun": 0,
+   "gainDb": -4.7,
+   "impact": 0.07,
+   "lufs": -18.8,
+   "tpDb": -5.7
+  },
+  {
+   "clip": "Items/Item_Metal_Trap_B_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Metal_Trap_B_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "rites",
+   "users": [
+    "chain"
+   ],
+   "bytes": 3340,
+   "dur": 0.526,
+   "srcDur": 0.53,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.9,
+   "srcLead": 0.002,
+   "clipRun": 0,
+   "gainDb": -4.7,
+   "impact": 0.07,
+   "lufs": -19.8,
+   "tpDb": -6.9
+  },
+  {
+   "clip": "Items/Item_Organic_Collect_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Organic_Collect_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "world",
+   "users": [
+    "eatMeal"
+   ],
+   "bytes": 3356,
+   "dur": 0.625,
+   "srcDur": 0.63,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1,
+   "srcLead": 0.003,
+   "clipRun": 0,
+   "gainDb": -2.7,
+   "impact": 0.08,
+   "lufs": -24.5,
+   "tpDb": -4.3
+  },
+  {
+   "clip": "Items/Item_Paper_Scroll_A_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Paper_Scroll_A_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "ui",
+   "users": [
+    "dialogueOpen"
+   ],
+   "bytes": 5030,
+   "dur": 0.862,
+   "srcDur": 1.23,
+   "skip": 0.34,
+   "cls": "ui",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.031,
+   "clipRun": 0,
+   "gainDb": 2.3,
+   "impact": 0.16,
+   "lufs": -27.8,
+   "tpDb": -2.6
+  },
+  {
+   "clip": "Items/Item_Paper_Scroll_B_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Paper_Scroll_B_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "ui",
+   "users": [
+    "dialogueOpen"
+   ],
+   "bytes": 5135,
+   "dur": 0.849,
+   "srcDur": 0.87,
+   "skip": 0.02,
+   "cls": "ui",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.01,
+   "clipRun": 0,
+   "gainDb": 1.6,
+   "impact": 0.16,
+   "lufs": -22.2,
+   "tpDb": -1.4
+  },
+  {
+   "clip": "Items/Item_Potion_Bottles_A_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Potion_Bottles_A_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "world",
+   "users": [
+    "drinkElixir"
+   ],
+   "bytes": 4230,
+   "dur": 0.559,
+   "srcDur": 0.56,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -0.3,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": -0.4,
+   "impact": 0.02,
+   "lufs": -21,
+   "tpDb": -2.6
+  },
+  {
+   "clip": "Items/Item_Totem_Scroll_C_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Totem_Scroll_C_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "boss",
+   "users": [
+    "bossSummon"
+   ],
+   "bytes": 7665,
+   "dur": 1.4,
+   "srcDur": 2.44,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.016,
+   "clipRun": 0,
+   "gainDb": -2.5,
+   "impact": 0.01,
+   "lufs": -26,
+   "tpDb": -2.7
+  },
+  {
+   "clip": "Items/Item_Totem_Scroll_D_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Item_Totem_Scroll_D_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "boss",
+   "users": [
+    "bossSummon"
+   ],
+   "bytes": 8052,
+   "dur": 1.4,
+   "srcDur": 2.26,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.006,
+   "clipRun": 0,
+   "gainDb": -0.7,
+   "impact": 0.04,
+   "lufs": -25.7,
+   "tpDb": -1.7
+  },
+  {
+   "clip": "Items/Loading_Gear_Crafting_Table_or_Wagon_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Loading_Gear_Crafting_Table_or_Wagon_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "ui",
+   "users": [
+    "panelOpenForge"
+   ],
+   "bytes": 5243,
+   "dur": 0.9,
+   "srcDur": 1.42,
+   "skip": 0.21,
+   "cls": "ui",
+   "srcPeakDb": -2.5,
+   "srcLead": 0.004,
+   "clipRun": 0,
+   "gainDb": 3.1,
+   "impact": 0.16,
+   "lufs": -24.8,
+   "tpDb": -3.2
+  },
+  {
+   "clip": "Items/Magic_Key_Pick_Up_1_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Magic_Key_Pick_Up_1_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "ui",
+   "users": [
+    "lootLegendary"
+   ],
+   "bytes": 8283,
+   "dur": 1.4,
+   "srcDur": 3,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -0.4,
+   "srcLead": 0.008,
+   "clipRun": 0,
+   "gainDb": -4.2,
+   "impact": 0.02,
+   "lufs": -24.4,
+   "tpDb": -4.5
+  },
+  {
+   "clip": "Items/Magic_Key_Pick_Up_2_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Magic_Key_Pick_Up_2_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "ui",
+   "users": [
+    "lootLegendary"
+   ],
+   "bytes": 8672,
+   "dur": 1.4,
+   "srcDur": 3,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -0.6,
+   "srcLead": 0.013,
+   "clipRun": 0,
+   "gainDb": -5.3,
+   "impact": 0.04,
+   "lufs": -23.7,
+   "tpDb": -5.8
+  },
+  {
+   "clip": "Items/Magic_Key_Pick_Up_3_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Magic_Key_Pick_Up_3_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "ui",
+   "users": [
+    "lootLegendary"
+   ],
+   "bytes": 7695,
+   "dur": 1.4,
+   "srcDur": 2.5,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -3.1,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": -5.9,
+   "impact": 0.09,
+   "lufs": -27,
+   "tpDb": -4.7
+  },
+  {
+   "clip": "Items/Magic_Ring_Pickup_A_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Magic_Ring_Pickup_A_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "ui",
+   "users": [
+    "lootEpic"
+   ],
+   "bytes": 9624,
+   "dur": 1.4,
+   "srcDur": 2.55,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -4.3,
+   "srcLead": 0.006,
+   "clipRun": 0,
+   "gainDb": 4.3,
+   "impact": 0,
+   "lufs": -23,
+   "tpDb": -1.5
+  },
+  {
+   "clip": "Items/Magic_Ring_Pickup_B_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Magic_Ring_Pickup_B_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "ui",
+   "users": [
+    "lootEpic"
+   ],
+   "bytes": 9055,
+   "dur": 1.4,
+   "srcDur": 1.95,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -5.4,
+   "srcLead": 0.006,
+   "clipRun": 0,
+   "gainDb": 4.6,
+   "impact": 0.02,
+   "lufs": -18.5,
+   "tpDb": -0.9
+  },
+  {
+   "clip": "Items/Organic_Coin_Collect_A_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Organic_Coin_Collect_A_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "ui+world",
+   "users": [
+    "coin",
+    "goldPileDrop"
+   ],
+   "bytes": 5205,
+   "dur": 0.661,
+   "srcDur": 0.66,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.3,
+   "srcLead": 0.004,
+   "clipRun": 0,
+   "gainDb": 1.6,
+   "impact": 0.15,
+   "lufs": -16.1,
+   "tpDb": 1.3
+  },
+  {
+   "clip": "Items/Organic_Coin_Collect_B_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Organic_Coin_Collect_B_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "ui",
+   "users": [
+    "coin",
+    "buy"
+   ],
+   "bytes": 5128,
+   "dur": 0.774,
+   "srcDur": 0.98,
+   "skip": 0.21,
+   "cls": "ui",
+   "srcPeakDb": -0.3,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": -3.1,
+   "impact": 0.16,
+   "lufs": -17.5,
+   "tpDb": -2.2
+  },
+  {
+   "clip": "Items/Organic_Item_Wet_Water_Pick_Up_2_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Organic_Item_Wet_Water_Pick_Up_2_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "world",
+   "users": [
+    "reel"
+   ],
+   "bytes": 7764,
+   "dur": 1.3,
+   "srcDur": 1.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.4,
+   "srcLead": 0.002,
+   "clipRun": 0,
+   "gainDb": 0.6,
+   "impact": 0.05,
+   "lufs": -21.6,
+   "tpDb": -2.4
+  },
+  {
+   "clip": "Items/Organic_Item_Wet_Water_Pick_Up_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Organic_Item_Wet_Water_Pick_Up_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "world",
+   "users": [
+    "reel"
+   ],
+   "bytes": 7214,
+   "dur": 1.3,
+   "srcDur": 1.75,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.8,
+   "srcLead": 0.002,
+   "clipRun": 0,
+   "gainDb": -0.4,
+   "impact": 0.07,
+   "lufs": -20.9,
+   "tpDb": -1.9
+  },
+  {
+   "clip": "Items/Pick_Up_Orb_Touch_1_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Pick_Up_Orb_Touch_1_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "rites",
+   "users": [
+    "soulRelease"
+   ],
+   "bytes": 5673,
+   "dur": 1.25,
+   "srcDur": 1.25,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -0.6,
+   "srcLead": 0.004,
+   "clipRun": 0,
+   "gainDb": -4.8,
+   "impact": 0.01,
+   "lufs": -23.1,
+   "tpDb": -5.5
+  },
+  {
+   "clip": "Items/Pick_Up_Orb_Touch_2_Spell_Cast_Instant_Hit_Wizard",
+   "file": "Items__Pick_Up_Orb_Touch_2_Spell_Cast_Instant_Hit_Wizard.opus",
+   "pack": "rites",
+   "users": [
+    "soulRelease"
+   ],
+   "bytes": 5436,
+   "dur": 0.917,
+   "srcDur": 0.92,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -2.3,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": 2.5,
+   "impact": 0.01,
+   "lufs": -23,
+   "tpDb": -1.1
+  },
+  {
+   "clip": "UI/Crafting_UI_Tab_Button_1_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__Crafting_UI_Tab_Button_1_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "click"
+   ],
+   "bytes": 2326,
+   "dur": 0.468,
+   "srcDur": 0.48,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -4.6,
+   "srcLead": 0.015,
+   "clipRun": 0,
+   "gainDb": 3.6,
+   "impact": 0.06,
+   "lufs": -29.8,
+   "tpDb": -3.6
+  },
+  {
+   "clip": "UI/Crafting_UI_Tab_Button_2_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__Crafting_UI_Tab_Button_2_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "click"
+   ],
+   "bytes": 4970,
+   "dur": 0.625,
+   "srcDur": 0.63,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1,
+   "srcLead": 0.002,
+   "clipRun": 0,
+   "gainDb": 2.1,
+   "impact": 0.07,
+   "lufs": -24.2,
+   "tpDb": -1.9
+  },
+  {
+   "clip": "UI/Crafting_UI_Tab_Button_3_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__Crafting_UI_Tab_Button_3_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "click"
+   ],
+   "bytes": 4986,
+   "dur": 0.785,
+   "srcDur": 0.79,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -3.9,
+   "srcLead": 0.011,
+   "clipRun": 0,
+   "gainDb": 0.9,
+   "impact": 0.08,
+   "lufs": -22.4,
+   "tpDb": -3.4
+  },
+  {
+   "clip": "UI/Crafting_UI_Tab_Button_4_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__Crafting_UI_Tab_Button_4_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "panelClose"
+   ],
+   "bytes": 5388,
+   "dur": 0.75,
+   "srcDur": 0.75,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1.1,
+   "srcLead": 0.001,
+   "clipRun": 0,
+   "gainDb": 1.9,
+   "impact": 0.06,
+   "lufs": -22.5,
+   "tpDb": -2
+  },
+  {
+   "clip": "UI/Crafting_UI_Tab_Button_5_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__Crafting_UI_Tab_Button_5_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "panelClose"
+   ],
+   "bytes": 4370,
+   "dur": 0.625,
+   "srcDur": 0.63,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1.6,
+   "srcLead": 0.002,
+   "clipRun": 0,
+   "gainDb": 0.7,
+   "impact": 0.02,
+   "lufs": -27.3,
+   "tpDb": -1.6
+  },
+  {
+   "clip": "UI/Crafting_UI_Tab_Button_6_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__Crafting_UI_Tab_Button_6_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "uiTab"
+   ],
+   "bytes": 5445,
+   "dur": 0.9,
+   "srcDur": 1,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": 3,
+   "impact": 0.09,
+   "lufs": -26.2,
+   "tpDb": -1.7
+  },
+  {
+   "clip": "UI/Crafting_UI_Tab_Button_7_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__Crafting_UI_Tab_Button_7_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "uiTab"
+   ],
+   "bytes": 3019,
+   "dur": 0.619,
+   "srcDur": 0.63,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1,
+   "srcLead": 0.011,
+   "clipRun": 0,
+   "gainDb": -0.4,
+   "impact": 0,
+   "lufs": -27.8,
+   "tpDb": -2.4
+  },
+  {
+   "clip": "UI/Crafting_UI_Tab_Button_8_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__Crafting_UI_Tab_Button_8_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "uiTab"
+   ],
+   "bytes": 4756,
+   "dur": 0.809,
+   "srcDur": 0.83,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1,
+   "srcLead": 0.029,
+   "clipRun": 0,
+   "gainDb": 0.1,
+   "impact": 0,
+   "lufs": -27.9,
+   "tpDb": -1.9
+  },
+  {
+   "clip": "UI/Distant_Soft_Rumble_1_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__Distant_Soft_Rumble_1_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "boss",
+   "users": [
+    "wave"
+   ],
+   "bytes": 14881,
+   "dur": 2.6,
+   "srcDur": 5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -2.1,
+   "srcLead": 0.038,
+   "clipRun": 0,
+   "gainDb": -4.1,
+   "impact": 0.37,
+   "lufs": -21.9,
+   "tpDb": -6.2
+  },
+  {
+   "clip": "UI/Distant_Soft_Rumble_2_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__Distant_Soft_Rumble_2_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "boss",
+   "users": [
+    "wave"
+   ],
+   "bytes": 14709,
+   "dur": 2.6,
+   "srcDur": 4.5,
+   "skip": 0,
+   "cls": "sfx",
+   "srcPeakDb": -4.3,
+   "srcLead": 0.028,
+   "clipRun": 0,
+   "gainDb": -2.6,
+   "impact": 0.25,
+   "lufs": -22.1,
+   "tpDb": -6.9
+  },
+  {
+   "clip": "UI/Gear_Inventory_UI_1_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__Gear_Inventory_UI_1_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "equip"
+   ],
+   "bytes": 5860,
+   "dur": 0.9,
+   "srcDur": 1,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1,
+   "srcLead": 0.002,
+   "clipRun": 0,
+   "gainDb": -0.9,
+   "impact": 0.06,
+   "lufs": -23.6,
+   "tpDb": -2.4
+  },
+  {
+   "clip": "UI/Gear_Inventory_UI_3_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__Gear_Inventory_UI_3_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "equip"
+   ],
+   "bytes": 4167,
+   "dur": 0.9,
+   "srcDur": 1,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1.2,
+   "srcLead": 0.011,
+   "clipRun": 0,
+   "gainDb": 3.2,
+   "impact": 0.08,
+   "lufs": -26.9,
+   "tpDb": -2.1
+  },
+  {
+   "clip": "UI/Material_Liquid_Bubble_Pop_UI_1_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__Material_Liquid_Bubble_Pop_UI_1_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "amb",
+   "users": [
+    "waterDrip"
+   ],
+   "bytes": 2843,
+   "dur": 0.5,
+   "srcDur": 0.88,
+   "skip": 0,
+   "cls": "amb",
+   "srcPeakDb": -0.9,
+   "srcLead": 0.011,
+   "clipRun": 0,
+   "gainDb": -10.2,
+   "impact": 0.03,
+   "lufs": -33.5,
+   "tpDb": -10.7
+  },
+  {
+   "clip": "UI/Material_Liquid_Bubble_Pop_UI_2_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__Material_Liquid_Bubble_Pop_UI_2_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "amb",
+   "users": [
+    "waterDrip"
+   ],
+   "bytes": 4063,
+   "dur": 0.5,
+   "srcDur": 1.25,
+   "skip": 0,
+   "cls": "amb",
+   "srcPeakDb": -1,
+   "srcLead": 0.011,
+   "clipRun": 0,
+   "gainDb": -8.3,
+   "impact": 0.03,
+   "lufs": -30.7,
+   "tpDb": -9.6
+  },
+  {
+   "clip": "UI/Organic_Magic_Accept_Quest_Drum_Impact_1_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__Organic_Magic_Accept_Quest_Drum_Impact_1_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "questAccept"
+   ],
+   "bytes": 7927,
+   "dur": 1.4,
+   "srcDur": 2.63,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1,
+   "srcLead": 0.055,
+   "clipRun": 0,
+   "gainDb": -5.4,
+   "impact": 0.06,
+   "lufs": -27,
+   "tpDb": -6.2
+  },
+  {
+   "clip": "UI/Organic_Magic_Accept_Quest_Drum_Impact_2_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__Organic_Magic_Accept_Quest_Drum_Impact_2_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "boss",
+   "users": [
+    "surgeCleared"
+   ],
+   "bytes": 7789,
+   "dur": 1.4,
+   "srcDur": 3.5,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1.1,
+   "srcLead": 0.056,
+   "clipRun": 0,
+   "gainDb": -7.5,
+   "impact": 0.21,
+   "lufs": -31.5,
+   "tpDb": -8.2
+  },
+  {
+   "clip": "UI/UI_Arcane_Confirm_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__UI_Arcane_Confirm_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "uiConfirm"
+   ],
+   "bytes": 6161,
+   "dur": 0.9,
+   "srcDur": 2.65,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -2.4,
+   "srcLead": 0.006,
+   "clipRun": 0,
+   "gainDb": -6.5,
+   "impact": 0.16,
+   "lufs": -24.5,
+   "tpDb": -8.7
+  },
+  {
+   "clip": "UI/UI_Arcane_Select_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__UI_Arcane_Select_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "uiSelect"
+   ],
+   "bytes": 5642,
+   "dur": 0.9,
+   "srcDur": 0.92,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1.8,
+   "srcLead": 0,
+   "clipRun": 0,
+   "gainDb": 3.8,
+   "impact": 0.07,
+   "lufs": -28.2,
+   "tpDb": -2.9
+  },
+  {
+   "clip": "UI/UI_Earth_Confirm_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__UI_Earth_Confirm_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "buy"
+   ],
+   "bytes": 5738,
+   "dur": 0.9,
+   "srcDur": 2.65,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1.3,
+   "srcLead": 0.002,
+   "clipRun": 0,
+   "gainDb": -3.7,
+   "impact": 0.03,
+   "lufs": -23,
+   "tpDb": -5.4
+  },
+  {
+   "clip": "UI/UI_Fire_Confirm_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__UI_Fire_Confirm_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "orderFilled"
+   ],
+   "bytes": 8599,
+   "dur": 1.4,
+   "srcDur": 2.93,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -2.4,
+   "srcLead": 0.012,
+   "clipRun": 0,
+   "gainDb": -3.7,
+   "impact": 0.14,
+   "lufs": -23,
+   "tpDb": -6.9
+  },
+  {
+   "clip": "UI/UI_Lightning_Confirm_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__UI_Lightning_Confirm_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "orderFilled"
+   ],
+   "bytes": 8593,
+   "dur": 1.4,
+   "srcDur": 3.16,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -2,
+   "srcLead": 0.02,
+   "clipRun": 0,
+   "gainDb": -2.1,
+   "impact": 0.1,
+   "lufs": -20.1,
+   "tpDb": -3.3
+  },
+  {
+   "clip": "UI/UI_Magic_Confirm_A_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__UI_Magic_Confirm_A_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "chainTier",
+    "skillUp"
+   ],
+   "bytes": 6654,
+   "dur": 1.024,
+   "srcDur": 1.02,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1,
+   "srcLead": 0.002,
+   "clipRun": 0,
+   "gainDb": -4,
+   "impact": 0,
+   "lufs": -23,
+   "tpDb": -5.2
+  },
+  {
+   "clip": "UI/UI_Magic_Confirm_D_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__UI_Magic_Confirm_D_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "chainTier"
+   ],
+   "bytes": 5951,
+   "dur": 0.9,
+   "srcDur": 1.02,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1,
+   "srcLead": 0.006,
+   "clipRun": 0,
+   "gainDb": -5.4,
+   "impact": 0.03,
+   "lufs": -22.8,
+   "tpDb": -5.8
+  },
+  {
+   "clip": "UI/UI_Metal_Armory_Tab_1_Dry_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__UI_Metal_Armory_Tab_1_Dry_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "panelOpen"
+   ],
+   "bytes": 4358,
+   "dur": 0.9,
+   "srcDur": 1,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -0.9,
+   "srcLead": 0.001,
+   "clipRun": 0,
+   "gainDb": 1.3,
+   "impact": 0,
+   "lufs": -27.3,
+   "tpDb": -2.5
+  },
+  {
+   "clip": "UI/UI_Metal_Armory_Tab_2_Dry_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__UI_Metal_Armory_Tab_2_Dry_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "panelOpen"
+   ],
+   "bytes": 4450,
+   "dur": 0.9,
+   "srcDur": 1,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1,
+   "srcLead": 0.001,
+   "clipRun": 0,
+   "gainDb": 1.3,
+   "impact": 0,
+   "lufs": -27.7,
+   "tpDb": -2.4
+  },
+  {
+   "clip": "UI/UI_Shadow_Confirm_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__UI_Shadow_Confirm_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "uiConfirm"
+   ],
+   "bytes": 5529,
+   "dur": 0.9,
+   "srcDur": 2.77,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1,
+   "srcLead": 0.003,
+   "clipRun": 0,
+   "gainDb": -5.7,
+   "impact": 0.16,
+   "lufs": -23.5,
+   "tpDb": -6.6
+  },
+  {
+   "clip": "UI/UI_Shadow_Select_Spell_Cast_Click_Switch_Lever_Latch",
+   "file": "UI__UI_Shadow_Select_Spell_Cast_Click_Switch_Lever_Latch.opus",
+   "pack": "ui",
+   "users": [
+    "uiSelect"
+   ],
+   "bytes": 5580,
+   "dur": 0.9,
+   "srcDur": 1.66,
+   "skip": 0,
+   "cls": "ui",
+   "srcPeakDb": -1.8,
+   "srcLead": 0.01,
+   "clipRun": 0,
+   "gainDb": -0.4,
+   "impact": 0.04,
+   "lufs": -24.1,
+   "tpDb": -2.6
+  }
+ ]
+}

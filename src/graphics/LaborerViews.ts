@@ -5,6 +5,7 @@ import { AREAS } from '../content/areas';
 import type { NodePlacement, WorldLayout } from '../content/layout';
 import { laborActions } from '../gameplay/laborRules';
 import { NODES, SKILLS, type GatherSkill } from '../gameplay/gatheringRules';
+import { gatherSfx } from '../audio/gatherSfx';
 import type { LaborSlot, LaborView } from '../net/api';
 import { assets } from './AssetCache';
 import { Creature } from './Creature';
@@ -348,7 +349,7 @@ export class LaborerViews {
     // The one laborer sound call site: the skill's own gather sound, quiet, one at a time.
     if (dist < SOUND_RANGE && this.soundT <= 0 && l.skill !== 'fishing') {
       this.soundT = SOUND_GAP;
-      audio.play(SKILLS[l.skill].sfx, l.node.x, l.node.z, SOUND_LEVEL);
+      audio.play(gatherSfx(l.skill, NODES[l.node.id]?.kind), l.node.x, l.node.z, SOUND_LEVEL);
     }
   }
 
