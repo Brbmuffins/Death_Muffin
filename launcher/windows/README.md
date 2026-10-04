@@ -15,17 +15,16 @@ installer, no separate Java or .NET download.
 
 ### What the launcher does
 
-- **Play Online** opens the live game at `https://muffindevelopment.com/death-muffin/play/` in its own window. Log in
+- **Play Online** in the command bar opens the live game at `https://muffindevelopment.com/death-muffin/play/` in its own window. Log in
   normally; the launcher never sees your password.
 - **Update check (Jagex-launcher style).** On start it reads `play/release.txt` (the live build). If that build is newer than
   the one it last prepared, it shows **Update available** with a progress bar while a hidden page
   (`play/precache.html`) downloads the game's files into the launcher's cache. **Play is usable the whole time**; this only
   makes the first load after an update faster. If it fails or you are offline, nothing is lost.
-- **Latest news** shows the newest release's patch notes (`play/release-notes.json`, written by the deploy script from the hand-written `PATCH_NOTES.json` at the repo root) in a scrollable box, with an **All patch notes** link to the site's patch-notes page. Releases without notes fall back to the commit subjects.
-  the commit list on GitHub.
-- **Download Offline / Open Offline** use the existing offline edition (`/death-muffin/offline/`). Download Offline starts
+- **World Dispatch** shows the newest release's patch notes (`play/release-notes.json`, written by the deploy script from the hand-written `PATCH_NOTES.json` at the repo root) in a scrollable box, with an **All patch notes** link to the site's patch-notes page. Releases without notes fall back to the commit subjects.
+- **Download / Play Offline** use the existing offline edition (`/death-muffin/offline/`). Download starts
   its asset download (about 105 MB); wait for "Ready to play without a network" before disconnecting.
-- **Use high-performance GPU** (default on) - see flags below. Changing it takes effect the next time the launcher starts.
+- **Use high-performance GPU** (default on) is in Client Settings - see flags below. Changing it takes effect the next time the launcher starts.
 
 ### Performance flags
 
@@ -95,5 +94,6 @@ run, attaches it to a GitHub Release tagged `launcher-v<version>`. Bump `<Versio
 - **Every release: add an entry at the top of `PATCH_NOTES.json`** (`date`, `title`, short player-facing `items`) before running `deploy-release.sh`.
   `index.html`, next to `release.txt`.
 
-Launcher source is this folder only; the old prototype's source was lost, so this is a clean rebuild of its behaviour. Since 0.3.0 the
-window uses the game's key art (`Resources/keyart.jpg`, embedded) as a full-window backdrop, with the controls on its dark left half.
+Launcher source is this folder only; the old prototype's source was lost, so this is a clean rebuild of its behaviour. The
+window uses the game's key art (`Resources/keyart.jpg`, embedded) inside a painted indigo frame. Version 0.5.0 introduces a
+command bar with a prominent Play Online action, separate offline actions, and a scrollable World Dispatch panel.

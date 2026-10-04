@@ -34,6 +34,7 @@ namespace DeathMuffinLauncher
         GameWindow online, offline;
         string precacheSha;
         bool precaching;
+        string statusLink;
         /// <summary>WebView2 unavailable: Play/Offline open the game in a browser instead (see BrowserFallback).</summary>
         bool useBrowser;
 
@@ -41,56 +42,56 @@ namespace DeathMuffinLauncher
         {
             Text = "Death Muffin Launcher";
             Icon = AppIcon;
-            // 16:9-ish so the key art fills the window with almost no crop.
-            ClientSize = new Size(1100, 620);
+            // The art remains the centrepiece, with a permanent command deck below it.
+            ClientSize = new Size(1180, 680);
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Bg;
             Font = new Font("Segoe UI", 9.5f);
 
-            // The key art covers the whole window; the controls sit on its dark left half, the necromancer stays clear on the right.
+            // Native controls sit over a single painted frame, keeping the launch actions usable while art and news load.
             var root = new Backdrop() { Dock = DockStyle.Fill };
             Controls.Add(root);
 
-            int x = 40, w = 420;
-            root.Controls.Add(Lbl("ONLINE WORLD", new Font("Segoe UI", 9f, FontStyle.Bold), Gold, x, 124, w, 18));
-            root.Controls.Add(Lbl("Play the current live game with your online account.", Font, Muted, x, 144, w, 20));
-            playBtn = Btn("PLAY ONLINE", x, 170, w, 50, true);
-            playBtn.Font = new Font("Segoe UI", 12f, FontStyle.Bold);
+            int x = 48, w = 350;
+            root.Controls.Add(Lbl("THE LIVE REALM", new Font("Segoe UI", 9f, FontStyle.Bold), Gold, x, 145, w, 20));
+            root.Controls.Add(Lbl("Your journey continues in the Ossuary Covenant.", new Font("Segoe UI", 10f), Ink, x, 170, w, 44));
+            playBtn = Btn("PLAY ONLINE   ›", 866, 563, 268, 74, true);
+            playBtn.Font = new Font("Georgia", 16f, FontStyle.Bold);
             playBtn.Click += (s, e) => OpenGame(false, false);
             root.Controls.Add(playBtn);
 
-            updateLabel.SetBounds(x, 228, w, 18);
+            updateLabel.SetBounds(x, 226, w, 38);
             updateLabel.ForeColor = Muted;
             updateLabel.Text = "Checking for updates...";
-            bar.SetBounds(x, 250, w, 4);
+            bar.SetBounds(x, 267, w, 5);
             bar.Visible = false;
             root.Controls.Add(updateLabel);
             root.Controls.Add(bar);
 
-            root.Controls.Add(Lbl("OFFLINE EDITION", new Font("Segoe UI", 9f, FontStyle.Bold), Gold, x, 274, w, 18));
-            root.Controls.Add(Lbl("Download the game once, then play without a network.", Font, Muted, x, 294, w, 20));
-            downloadBtn = Btn("DOWNLOAD OFFLINE", x, 320, 200, 38, false);
-            openBtn = Btn("OPEN OFFLINE", x + 220, 320, 200, 38, false);
+            root.Controls.Add(Lbl("OFFLINE EDITION", new Font("Segoe UI", 8.5f, FontStyle.Bold), Gold, x, 550, w, 18));
+            downloadBtn = Btn("DOWNLOAD OFFLINE", x, 582, 160, 42, false);
+            openBtn = Btn("PLAY OFFLINE", x + 173, 582, 160, 42, false);
             downloadBtn.Click += (s, e) => OpenGame(true, true);
             openBtn.Click += (s, e) => OpenGame(true, false);
             root.Controls.Add(downloadBtn);
             root.Controls.Add(openBtn);
+            root.Controls.Add(Lbl("Download once to play without a connection.", new Font("Segoe UI", 8.5f), Muted, x, 635, w, 24));
 
-            root.Controls.Add(Lbl("LATEST NEWS", new Font("Segoe UI", 9f, FontStyle.Bold), Gold, x, 378, w, 18));
-            newsTitle.SetBounds(x, 398, w, 20);
+            root.Controls.Add(Lbl("WORLD DISPATCH", new Font("Segoe UI", 9f, FontStyle.Bold), Gold, x, 303, w, 20));
+            newsTitle.SetBounds(x, 329, w, 38);
             newsTitle.ForeColor = Ink;
-            newsTitle.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+            newsTitle.Font = new Font("Georgia", 13f, FontStyle.Bold);
             newsTitle.Text = "Loading...";
-            newsBody.SetBounds(x, 420, w, 110);
+            newsBody.SetBounds(x, 370, w, 117);
             newsBody.ForeColor = Muted;
-            newsBody.BackColor = Color.FromArgb(14, 11, 20);
-            newsBody.Font = new Font("Segoe UI", 9f);
-            newsLink.SetBounds(x, 538, 200, 18);
+            newsBody.BackColor = Color.FromArgb(14, 17, 31);
+            newsBody.Font = new Font("Segoe UI", 9.5f);
+            newsLink.SetBounds(x, 495, 200, 20);
             newsLink.Text = "All patch notes";
             newsLink.BackColor = Color.Transparent;
-            newsLink.LinkColor = VioletLight;
+            newsLink.LinkColor = Gold;
             newsLink.ActiveLinkColor = Ink;
             newsLink.LinkBehavior = LinkBehavior.HoverUnderline;
             newsLink.Visible = false;
@@ -99,7 +100,7 @@ namespace DeathMuffinLauncher
             root.Controls.Add(newsBody);
             root.Controls.Add(newsLink);
 
-            gpu.SetBounds(x + 220, 536, 200, 22);
+            gpu.SetBounds(465, 590, 200, 22);
             gpu.Text = "Use high-performance GPU";
             gpu.ForeColor = Muted;
             gpu.BackColor = Color.Transparent;
@@ -112,11 +113,14 @@ namespace DeathMuffinLauncher
             };
             root.Controls.Add(gpu);
 
-            status.SetBounds(x, 588, 760, 20);
+            status.SetBounds(465, 624, 377, 38);
             status.ForeColor = Muted;
             root.Controls.Add(status);
-            root.Controls.Add(Lbl("LAUNCHER " + Program.Version, new Font("Segoe UI", 8f, FontStyle.Bold), Muted, 900, 590, 170, 18, ContentAlignment.TopRight));
+            root.Controls.Add(Lbl("LAUNCHER " + Program.Version, new Font("Segoe UI", 8f, FontStyle.Bold), Muted, 995, 650, 139, 18, ContentAlignment.TopRight));
             foreach (var l in new Label[] { updateLabel, newsTitle, status }) { l.AutoEllipsis = true; l.BackColor = Color.Transparent; }
+            var statusTip = new ToolTip();
+            status.TextChanged += (s, e) => statusTip.SetToolTip(status, status.Text);
+            status.Click += (s, e) => { if (statusLink != null) System.Diagnostics.Process.Start(statusLink); };
             // 1x1 control that hosts the hidden precache page (WebView2 needs a window to initialise in).
             Controls.Add(precacheWeb);
 
@@ -138,7 +142,13 @@ namespace DeathMuffinLauncher
             return b;
         }
 
-        void SetStatus(string text) { status.Text = text; }
+        void SetStatus(string text)
+        {
+            statusLink = null;
+            status.Cursor = Cursors.Default;
+            status.ForeColor = Muted;
+            status.Text = text;
+        }
 
         async System.Threading.Tasks.Task InitAsync()
         {
@@ -179,9 +189,8 @@ namespace DeathMuffinLauncher
         {
             SetStatus(text);
             status.ForeColor = Color.FromArgb(244, 176, 128);
-            if (link == null) return;
-            status.Cursor = Cursors.Hand;
-            status.Click += (s, e) => System.Diagnostics.Process.Start(link);
+            statusLink = link;
+            if (link != null) status.Cursor = Cursors.Hand;
         }
 
         static string Short(string sha) { return sha.Length > 7 ? sha.Substring(0, 7) : sha; }
@@ -299,8 +308,8 @@ namespace DeathMuffinLauncher
         }
 
         /// <summary>
-        /// Full-window key art with a dark scrim over the left half (where the controls sit) and the title painted on top.
-        /// The composite is rendered once per size, so transparent labels repainting over it stay cheap.
+        /// Key art inside a painted indigo frame. The composite is rendered once per size, so transparent
+        /// labels and progress updates repaint cheaply.
         /// </summary>
         sealed class Backdrop : System.Windows.Forms.Panel
         {
@@ -328,36 +337,61 @@ namespace DeathMuffinLauncher
                 {
                     Art.Quality(g);
                     g.Clear(Bg);
-                    // Cover the window with the art; it is near-native 16:9 here, so almost nothing is cropped.
+                    // Keep the figure and cathedral unobstructed; only the naturally dark side carries reading content.
                     Art.DrawCover(g, ClientSize);
 
-                    // Left scrim: near-opaque behind the controls, gone by the necromancer.
-                    var left = new Rectangle(0, 0, 640, Height);
+                    var left = new Rectangle(0, 0, 650, Height);
                     using (var br = new LinearGradientBrush(left, Color.Black, Color.Black, 0f))
                     {
                         br.InterpolationColors = new ColorBlend
                         {
-                            Colors = new[] { Color.FromArgb(232, Bg), Color.FromArgb(215, Bg), Color.FromArgb(120, Bg), Color.FromArgb(0, Bg) },
-                            Positions = new[] { 0f, 0.62f, 0.82f, 1f },
+                            Colors = new[] { Color.FromArgb(229, 7, 11, 24), Color.FromArgb(207, 8, 11, 25), Color.FromArgb(94, 8, 11, 25), Color.FromArgb(0, 8, 11, 25) },
+                            Positions = new[] { 0f, 0.58f, 0.82f, 1f },
                         };
                         g.FillRectangle(br, left);
                     }
-                    // Bottom band for the status line and version.
-                    var foot = new Rectangle(0, Height - 70, Width, 70);
-                    using (var br = new LinearGradientBrush(new Rectangle(foot.X, foot.Y - 1, foot.Width, foot.Height + 1), Color.FromArgb(0, Bg), Color.FromArgb(220, Bg), 90f))
-                        g.FillRectangle(br, foot);
-
-                    using (var kicker = new Font("Segoe UI", 8.5f, FontStyle.Bold))
-                    using (var title = new Font("Georgia", 34f, FontStyle.Bold))
-                    using (var gold = new SolidBrush(Gold))
+                    using (var shade = new SolidBrush(Color.FromArgb(164, 5, 9, 21)))
+                        g.FillRectangle(shade, 20, 116, 410, 412);
+                    using (var shade = new SolidBrush(Color.FromArgb(231, 7, 12, 27)))
+                        g.FillRectangle(shade, 15, 536, Width - 30, 130);
+                    using (var blue = new Pen(Color.FromArgb(126, 94, 119, 173)))
+                    using (var dim = new Pen(Color.FromArgb(80, 95, 115, 163)))
+                    using (var goldLine = new Pen(Color.FromArgb(175, Gold)))
                     {
-                        g.DrawString("ENTER THE OSSUARY COVENANT", kicker, gold, 42, 30);
-                        Art.DrawTitle(g, title, 34, 46);
+                        g.DrawRectangle(blue, 15, 15, Width - 31, Height - 31);
+                        g.DrawRectangle(dim, 19, 19, Width - 39, Height - 39);
+                        g.DrawRectangle(dim, 20, 116, 410, 412);
+                        g.DrawLine(goldLine, 46, 288, 398, 288);
+                        g.DrawLine(blue, 15, 536, Width - 16, 536);
+                        g.DrawLine(dim, 441, 551, 441, 651);
+                        g.DrawLine(dim, 851, 551, 851, 651);
+                        g.DrawLine(goldLine, 866, 647, 1134, 647);
+                        // Corner strokes give the edge the feel of a game client, without covering the art.
+                        g.DrawLine(goldLine, 15, 15, 74, 15);
+                        g.DrawLine(goldLine, 15, 15, 15, 64);
+                        g.DrawLine(goldLine, Width - 16, 15, Width - 75, 15);
+                        g.DrawLine(goldLine, Width - 16, 15, Width - 16, 64);
+                        g.DrawLine(goldLine, 15, Height - 16, 74, Height - 16);
+                        g.DrawLine(goldLine, Width - 16, Height - 16, Width - 75, Height - 16);
                     }
-                    // Gold hairline that fades out to the right.
-                    var line = new Rectangle(40, 104, 420, 1);
-                    using (var br = new LinearGradientBrush(new Rectangle(line.X - 1, line.Y, line.Width + 2, 1), Color.FromArgb(200, Gold), Color.FromArgb(0, Gold), 0f))
-                        g.FillRectangle(br, line);
+                    using (var title = new Font("Georgia", 37f, FontStyle.Bold))
+                    using (var kicker = new Font("Segoe UI", 8.5f, FontStyle.Bold))
+                    using (var gold = new SolidBrush(Gold))
+                    using (var pale = new SolidBrush(Ink))
+                    {
+                        g.DrawString("THE OSSUARY COVENANT", kicker, gold, 48, 38);
+                        Art.DrawTitle(g, title, 40, 56);
+                        g.DrawString("A WORLD OF DARK MAGIC", kicker, pale, 932, 41);
+                        g.DrawString("01  /  WORLD NEWS", kicker, gold, 48, 120);
+                        g.DrawString("CLIENT SETTINGS", kicker, gold, 465, 556);
+                        g.DrawString("ENTER THE REALM", kicker, gold, 866, 542);
+                    }
+                    using (var glow = new SolidBrush(Color.FromArgb(80, 149, 116, 255)))
+                    using (var bright = new SolidBrush(Color.FromArgb(221, 193, 170, 255)))
+                    {
+                        g.FillEllipse(glow, 918, 37, 11, 11);
+                        g.FillEllipse(bright, 921, 40, 5, 5);
+                    }
                 }
             }
         }

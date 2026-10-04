@@ -3,26 +3,59 @@ import { affixIsNecro, effectiveRarity, isAffixGear } from './affixRules';
 import type { InventorySlot } from '../net/types';
 
 /**
- * Settings -> Loot filter (owner, 2026-10-04: "looting feels really bloated"). Gear below the chosen rarity never lands on the
- * ground: it is paid out at once as its sell value, so nothing is lost and nothing needs walking to. Only plain gear is filtered.
- * Set pieces, legendaries, a rolled necromancer affix and anything worth wearing for you (an upgrade or a set bonus gained, the same
- * rule "Sell all junk" keeps) always drop. Flasks, brews, reagents and runes are not gear and always drop. New characters see everything.
+ * Settings -> Loot, one rule per gear rarity (owner, 2026-10-04: "the user should be able to pick if they want to auto loot ... and/or
+ * the gold for each. best of both worlds"):
+ * - `ground`: the drop lands and is yours when you walk over it (the default for every tier; loot never comes looking for you).
+ * - `auto`: it goes straight into your bag as it drops (onto the ground instead when the bag is full).
+ * - `gold`: it never lands; its sell value is paid at once.
+ * Only gear follows these rules. Set pieces, legendaries, a rolled necromancer affix and anything worth wearing for you (an upgrade or a
+ * set bonus gained, the rule "Sell all junk" keeps) are never turned into gold: a `gold` rule leaves them on the ground. Flasks, brews,
+ * reagents and runes are not gear and always land.
  */
-export type LootFilter = 'any' | 'uncommon' | 'rare' | 'epic';
-export const LOOT_FILTERS: { id: LootFilter; label: string }[] = [
-  { id: 'any', label: 'Everything' },
-  { id: 'uncommon', label: 'Uncommon and better' },
-  { id: 'rare', label: 'Rare and better' },
-  { id: 'epic', label: 'Epic and better' },
-];
-const RANK = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'relic'];
+export type LootTier = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+export type LootAction = 'ground' | 'auto' | 'gold';
+export type LootRules = Record<LootTier, LootAction>;
 
-/** True when the filter turns this freshly rolled gear drop into gold instead of a ground drop. */
-export function filteredOut(slot: InventorySlot, filter: LootFilter, keep?: (s: InventorySlot) => boolean): boolean {
-  if (filter === 'any' || !isAffixGear(slot.item_type) || ARMOR_BY_ID[slot.item_id]) return false;
+export const LOOT_TIERS: { id: LootTier; label: string }[] = [
+  { id: 'common', label: 'Common' },
+  { id: 'uncommon', label: 'Uncommon' },
+  { id: 'rare', label: 'Rare' },
+  { id: 'epic', label: 'Epic' },
+  { id: 'legendary', label: 'Legendary' },
+];
+export const LOOT_ACTIONS: { id: LootAction; label: string }[] = [
+  { id: 'ground', label: 'On the ground' },
+  { id: 'auto', label: 'Auto-loot' },
+  { id: 'gold', label: 'Sell for gold' },
+];
+/** Legendaries are always worth keeping, so they cannot be sold off by a rule. */
+export const actionsFor = (tier: LootTier) => (tier === 'legendary' ? LOOT_ACTIONS.filter((a) => a.id !== 'gold') : LOOT_ACTIONS);
+
+export const DEFAULT_LOOT_RULES: LootRules = { common: 'ground', uncommon: 'ground', rare: 'ground', epic: 'ground', legendary: 'ground' };
+
+/** Saved rules, cleaned; `legacyFilter` is the single "Loot filter" of the first release (tiers below it became gold). */
+export function readLootRules(saved: unknown, legacyFilter?: unknown): LootRules {
+  const out: LootRules = { ...DEFAULT_LOOT_RULES };
+  const order: LootTier[] = ['common', 'uncommon', 'rare', 'epic'];
+  const cut = order.indexOf(legacyFilter as LootTier);
+  if (cut > 0) for (const t of order.slice(0, cut)) out[t] = 'gold';
+  if (saved && typeof saved === 'object') {
+    for (const { id } of LOOT_TIERS) {
+      const a = (saved as Record<string, unknown>)[id];
+      if (actionsFor(id).some((x) => x.id === a)) out[id] = a as LootAction;
+    }
+  }
+  return out;
+}
+
+/** What happens to this freshly rolled drop under the player's rules. */
+export function lootAction(slot: InventorySlot, rules: LootRules, keep?: (s: InventorySlot) => boolean): LootAction {
+  if (!isAffixGear(slot.item_type)) return 'ground';
   const affixes = slot.inst?.affixes ?? [];
-  if (affixes.some(affixIsNecro)) return false;
-  const rarity = effectiveRarity(slot.rarity, affixes.length);
-  if (RANK.indexOf(rarity) >= RANK.indexOf(filter) || rarity === 'legendary') return false;
-  return !keep?.(slot);
+  const r = effectiveRarity(slot.rarity, affixes.length);
+  const tier: LootTier = r === 'relic' ? 'legendary' : (LOOT_TIERS.some((t) => t.id === r) ? r : 'common') as LootTier;
+  const action = rules[tier];
+  if (action !== 'gold') return action;
+  const protectedPiece = tier === 'legendary' || !!ARMOR_BY_ID[slot.item_id] || affixes.some(affixIsNecro) || !!keep?.(slot);
+  return protectedPiece ? 'ground' : 'gold';
 }
