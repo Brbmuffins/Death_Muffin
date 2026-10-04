@@ -7,7 +7,13 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   const ready = (title, summary) => fs.writeFileSync('.dm-result.json', JSON.stringify({ status: 'ready', title, summary, testing: 'check.sh', risk: 'none' }));
   let text = 'The answer is in src/gameplay/a.ts.';
   const edit = (file, from, to, msg, extraMsg = '') => { fs.mkdirSync(require('path').dirname(file), { recursive: true }); fs.writeFileSync(file, (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '').replace(from, to) || to); git('add', '--', file); git('commit', '-q', '-m', msg + extraMsg); };
-  if (/secret scan flagged/.test(p)) { git('rm', '-q', '-f', 'src/gameplay/key.ts'); git('commit', '-q', '-m', 'Remove the key file'); text = 'Removed.'; }
+  const rules = 'server/vps-handoff/necro-progress/necro-rules.cjs';
+  const wr = (f, c) => { fs.mkdirSync(require('path').dirname(f), { recursive: true }); fs.writeFileSync(f, c); };
+  if (/not what the generators produce/.test(p)) { wr(rules, 'SPEED=9\n'); git('add', '--', rules); try { git('commit', '-q', '-m', 'Regenerate the server rules'); } catch { /* nothing to commit */ } text = 'Regenerated.'; }
+  else if (/MAKE-DATA-HAND/.test(p)) { wr('src/gameplay/a.ts', 'speed=9\n'); wr(rules, 'SPEED=9 // hand edit\n'); git('add', '--', 'src/gameplay/a.ts', rules); git('commit', '-q', '-m', 'Faster movement'); ready('Faster', ['speed 9']); text = 'Done.'; }
+  else if (/MAKE-DATA-FORBIDDEN/.test(p)) { wr('src/gameplay/a.ts', 'speed=9\n'); wr('server/realtime/deploy-realtime.sh', 'echo evil\n'); git('add', '--', 'src/gameplay/a.ts', 'server/realtime/deploy-realtime.sh'); git('commit', '-q', '-m', 'Faster movement'); ready('Faster', ['speed 9']); text = 'Done.'; }
+  else if (/MAKE-DATA/.test(p)) { wr('src/gameplay/a.ts', 'speed=9\n'); wr(rules, 'SPEED=9\n'); git('add', '--', 'src/gameplay/a.ts', rules); git('commit', '-q', '-m', 'Faster movement'); ready('Faster movement', ['speed 9']); text = 'Done.'; }
+  else if (/secret scan flagged/.test(p)) { git('rm', '-q', '-f', 'src/gameplay/key.ts'); git('commit', '-q', '-m', 'Remove the key file'); text = 'Removed.'; }
   else if (/MAKE-CSS2/.test(p)) { edit('src/ui/ui.css', 'color:blue', 'color:green', 'Make the HUD accent green again'); ready('Green accent', ['green']); text = 'Done.'; }
   else if (/MAKE-CSS/.test(p)) { edit('src/ui/ui.css', 'color:red', 'color:blue', 'Make the HUD accent blue'); ready('HUD accent blue', ['Accent colour is now blue']); text = 'Done, ready for review.'; }
   else if (/MAKE-SERVER/.test(p)) { edit('server/x.js', 'a=1', 'a=2', 'Tweak the server constant'); ready('Server tweak', ['a is 2']); text = 'Done.'; }

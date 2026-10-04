@@ -11,9 +11,9 @@ Discord #death-muffin ── Muffin Core bot (user `muffin`, /opt/muffin/discord
 Runner (user `ubuntu`, ~/death-muffin/discord-agent/runner/server.cjs, port 4321)
    allow-list · approver gate · rate limits · audit.jsonl · job queue · tier classifier · proposal builder
    ├─ per request: git worktree + branch discord/<id> from origin/master, `claude -p` (sandboxed, --resume per thread)
-   ├─ verify (runner code, not the AI): commits clean · no Co-Authored-By · forbidden paths · secret scan · check.sh · tier
+   ├─ verify (runner code, not the AI): commits clean · no Co-Authored-By · forbidden paths · secret scan · generated files re-derived · check.sh · tier
    ├─ propose: push branch, embed with tier / files / tests / migrations / compare link, ✅ ❌
-   └─ ship.sh (only after an approver's ✅): deploy lock · merge onto master · re-gate · re-test · push master · deploy-release.sh
+   └─ ship.sh (only after an approver's ✅): deploy lock · merge onto master · re-gate · re-test · push master · deploy-release.sh · (best effort) merge master into `mobile`, test, push, deploy-mobile.sh
 ```
 
 ## Who can do what (`config.json`, owner-edited, never by the AI)
@@ -39,9 +39,18 @@ the deploy lock, so an approver can never ship above their tier.
 backup's ROLLBACK.sh under the lock. Owner/full approvers any time, limited approvers only if their ship is the latest.
 Rollback undoes the live release only; revert the commit on master afterwards.
 
+## Generated files and phones
+- `regen.sh` (agent-runnable, sandboxed like check.sh) rebuilds the generated server bundles, `docs/LOOT-TABLES.md` and the embedded
+  realtime deploy script. Those paths are tier-neutral (and not "forbidden") ONLY when the runner (`runner/lib/generated.cjs`, in verify
+  and again in `ship-gate.cjs`) re-runs regen.sh in a scratch worktree and finds them byte-identical. Any difference = refused.
+- After the PC deploy is live, ship.sh (still holding the lock) merges the new master into `mobile` in a scratch worktree, runs check.sh,
+  pushes `mobile`, runs `deploy-mobile.sh` and prints `MOBILE: live <sha12>`; on a conflict / failing tests it leaves `mobile` untouched and
+  prints `MOBILE: pending <reason>` (the PC release stays live; the owner is pinged). `mobileBranch: ""` turns it off; a missing
+  `origin/mobile` prints `MOBILE: skipped`. Test hook: `mobileDeployCmd` (replaces deploy-mobile.sh).
+
 ## Safety summary
 - AI box: `claude -p --restricted --permission-mode dontAsk`, tools = Read/Edit/Write/Glob/Grep + `agit` (filtered git) +
-  `check.sh` (unshare -rnm: no network, home read-only except the worktree). No push, no deploy, no secrets in its env.
+  `check.sh` and `regen.sh` (unshare -rnm: no network, home read-only except the worktree). No push, no deploy, no secrets in its env.
 - Discord's 2000-character limit: agent replies are split across messages (code blocks kept balanced) and anything over ~4 messages is a preview plus `reply.md` (`runner/lib/discordText.cjs`). A long paste arrives as Discord's `message.txt`; the adapter reads text attachments from Discord's CDN only (≤100 KB each, ≤60,000 characters in all) into the person's message.
 - Person text is wrapped as data (`<request from=… role=…>`, role from config); rules cannot be changed by messages.
 - Runner redacts every outgoing string and audit field; mentions are disabled except the owner ping.

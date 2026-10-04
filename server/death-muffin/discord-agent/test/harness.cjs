@@ -15,19 +15,29 @@ function makeWorld(over = {}) {
   execFileSync('git', ['clone', '-q', origin, repo], { stdio: 'pipe' });
   sh(repo, 'config', 'user.name', 'T'); sh(repo, 'config', 'user.email', 't@t');
   const w = (f, c) => { fs.mkdirSync(path.dirname(path.join(repo, f)), { recursive: true }); fs.writeFileSync(path.join(repo, f), c); };
-  w('package.json', '{"name":"x"}'); w('README.md', 'hi'); w('src/ui/ui.css', 'a{color:red}'); w('src/gameplay/a.ts', 'speed=1'); w('server/x.js', 'a=1'); w('server/death-muffin/deploy-release.sh', 'echo ok');
+  w('package.json', '{"name":"x"}'); w('README.md', 'hi'); w('src/ui/ui.css', 'a{color:red}'); w('src/gameplay/a.ts', 'speed=1'); w('server/x.js', 'a=1'); w('server/death-muffin/deploy-release.sh', 'echo ok'); w('server/vps-handoff/necro-progress/necro-rules.cjs', 'SPEED=1');
   sh(repo, 'checkout', '-q', '-b', 'master'); sh(repo, 'add', '-A'); sh(repo, 'commit', '-q', '-m', 'init'); sh(repo, 'push', '-q', 'origin', 'master');
+  // optional `mobile` branch on origin (phones). over.mobile = 'clean' | 'conflict' | 'failtests'
+  if (over.mobile) {
+    sh(repo, 'checkout', '-q', '-b', 'mobile');
+    if (over.mobile === 'conflict') w('src/gameplay/a.ts', 'speed=5'); else w('mobile-only.txt', 'touch'); 
+    if (over.mobile === 'failtests') w('FAILTESTS', 'x');
+    sh(repo, 'add', '-A'); sh(repo, 'commit', '-q', '-m', 'mobile work'); sh(repo, 'push', '-q', 'origin', 'mobile'); sh(repo, 'checkout', '-q', 'master');
+    delete over.mobile;
+  }
   fs.mkdirSync(path.join(tools, 'state'), { recursive: true });
   for (const f of ['ship.sh', 'rollback.sh', 'agit', 'PROMPT.md']) fs.copyFileSync(path.join(SRC, f), path.join(tools, f));
   fs.symlinkSync(path.join(SRC, 'runner'), path.join(tools, 'runner'));
   fs.writeFileSync(path.join(tools, 'check.sh'), '#!/usr/bin/env bash\n[ -e FAILTESTS ] && { echo "boom"; exit 1; }\necho "# tests 3"; echo "# pass 3"; echo "# fail 0"\n', { mode: 0o755 });
+  // regen stub: the real generators need the whole game repo; this one derives necro-rules.cjs from src/gameplay/a.ts (upper-cased) and prints the status like the real one
+  fs.writeFileSync(path.join(tools, 'regen.sh'), '#!/usr/bin/env bash\nmkdir -p server/vps-handoff/necro-progress\ntr a-z A-Z < src/gameplay/a.ts > server/vps-handoff/necro-progress/necro-rules.cjs\necho "== regenerated"\ngit status --porcelain\n', { mode: 0o755 });
   const backup = path.join(deploy, 'backup-pre-release-abc123456789-20261004T000000Z'); fs.mkdirSync(backup);
   fs.writeFileSync(path.join(backup, 'ROLLBACK.sh'), 'echo rolled-back-ok\n');
   const cfgFile = path.join(tools, 'config.json');
   const raw = { channelId: IDS.CHAN, guildId: '1', ownerIds: [IDS.OWNER], names: { [IDS.HELIX]: 'Helix', [IDS.LIMITED]: 'Limited' },
     projects: { deathmuffin: { requesters: [IDS.HELIX, IDS.LIMITED], approvers: { casual: [IDS.HELIX, IDS.LIMITED], gameplay: [IDS.HELIX], sensitive: [IDS.HELIX] } } },
     repo, worktreeRoot: wtRoot, stateDir: path.join(tools, 'state'), toolsDir: tools, deployDir: deploy,
-    claudeCmd: path.join(__dirname, 'fake-claude.cjs'), deployCmd: `n=$(ls ${deploy} | grep -c backup); b=${deploy}/backup-pre-release-aaaaaaaaaa$(printf %02d $n)-$(printf '20261004T%02d0000Z' $n); mkdir -p $b; echo 'echo rolled-back-ok' > $b/ROLLBACK.sh; echo "Rollback: $b/ROLLBACK.sh"; echo deployed "$1"`, turnTimeoutMin: 1, ...over };
+    claudeCmd: path.join(__dirname, 'fake-claude.cjs'), deployCmd: `n=$(ls ${deploy} | grep -c backup); b=${deploy}/backup-pre-release-aaaaaaaaaa$(printf %02d $n)-$(printf '20261004T%02d0000Z' $n); mkdir -p $b; echo 'echo rolled-back-ok' > $b/ROLLBACK.sh; echo "Rollback: $b/ROLLBACK.sh"; echo deployed "$1"`, turnTimeoutMin: 1, mobileDeployCmd: `echo "$1" >> ${deploy}/mobile-deploys.log`, ...over };
   fs.writeFileSync(cfgFile, JSON.stringify(raw));
   const cfg = loadConfig(cfgFile); cfg.__file = cfgFile;
   const runner = createRunner(cfg);

@@ -46,13 +46,17 @@ function classifyFile(file, cfg) {
 }
 
 // -> { tier, perFile: [{path, tier}], forbidden: [paths] }. The diff's tier is its strictest file's.
-function classifyDiff(diffText, cfg) {
+// `derived` = paths already PROVEN (by lib/generated.cjs) to be exactly what the generators produce from the committed sources: they are
+// tier-neutral (listed as 'derived', never escalate, never forbidden); the tier comes from the remaining files. A diff of only derived
+// files has nothing real to judge -> sensitive.
+function classifyDiff(diffText, cfg, derived = []) {
   const files = Array.isArray(diffText) ? diffText : parseDiff(diffText);
-  const perFile = files.map((f) => ({ path: f.path, tier: classifyFile(f, cfg) }));
+  const skip = new Set(derived);
+  const perFile = files.map((f) => ({ path: f.path, tier: skip.has(f.path) ? 'derived' : classifyFile(f, cfg) }));
   let tier = 'casual';
-  for (const f of perFile) if (RANK[f.tier] > RANK[tier]) tier = f.tier;
-  if (!files.length) tier = 'sensitive';             // nothing to judge -> never casual
-  const forbidden = files.filter((f) => matchesAny(cfg.forbiddenPaths || [], f.path)).map((f) => f.path);
+  for (const f of perFile) if (f.tier !== 'derived' && RANK[f.tier] > RANK[tier]) tier = f.tier;
+  if (!perFile.some((f) => f.tier !== 'derived')) tier = 'sensitive';   // nothing to judge -> never casual
+  const forbidden = files.filter((f) => !skip.has(f.path) && matchesAny(cfg.forbiddenPaths || [], f.path)).map((f) => f.path);
   return { tier, perFile, forbidden };
 }
 
