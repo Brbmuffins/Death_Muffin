@@ -1465,6 +1465,15 @@ body:not(.touch):has(.cw-panel-float) .cw-tip:not(.dragging):not([data-kind='urg
 .cw-lab .rw b { color: var(--cw-bone-100); }
 .cw-lab select { flex: 1; min-width: 130px; background: var(--cw-inset); color: var(--cw-bone-100); padding: 4px; border: 1px solid var(--cw-border); }
 @media (max-width: 560px) { .cw-labs { grid-template-columns: 1fr; } }
+/* "Brought home": each collection listed under the laborers (LaborPanel), so the window never has to be reopened. */
+.cw-lab-loot { margin: 4px 0 8px; display: flex; flex-direction: column; gap: 8px; }
+.cw-lab-loot-head { display: flex; justify-content: space-between; align-items: center; }
+.cw-lab-loot-head .cw-panel-section-title { margin: 0; }
+.cw-lab-loot .cw-chron-grp h4 { text-transform: none; letter-spacing: .04em; font-size: 13px; color: var(--cw-bone-100); }
+.cw-lab-loot .cw-chron-grp h4 i { font-style: normal; color: var(--cw-ok); }
+.cw-lab-loot .cw-chron-grp img { width: 18px; height: 18px; vertical-align: -4px; }
+.cw-lab-loot .win { font-size: 13px; color: var(--cw-bone-100); }
+.cw-lab-loot .cw-chron-grp .row i { font-style: normal; color: var(--cw-ok); }
 
 /* Capes & pets. */
 .cw-cos-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }

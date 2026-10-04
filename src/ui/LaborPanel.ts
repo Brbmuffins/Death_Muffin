@@ -1,5 +1,6 @@
 import { assignLabor, collectLabor, getInventory, getLabor, type LaborResult, type LaborView } from '../net/api';
-import { itemMeta } from '../content/items';
+import { RARITY_COLOR, itemMeta } from '../content/items';
+import type { GatherReport } from '../gameplay/gatherReport';
 import { NODES, SKILLS, type SkillId } from '../gameplay/gatheringRules';
 import { LABOR, assignBlocker, estimate, postsFor } from '../gameplay/laborRules';
 import { durationText } from '../gameplay/gatherReport';
@@ -7,6 +8,9 @@ import type { Inventory } from '../gameplay/loot';
 import { preserveScroll } from './preserveScroll';
 import { wrapPanelBody } from './panelBody';
 
+/** Collections kept in the "Brought home" list (each is one laborer's trip). */
+const MAX_LOOT = 12;
+const iconOf = (itemId: string) => itemMeta(itemId).icon ?? `art/items/${itemId}.webp`;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
 /**
@@ -23,6 +27,8 @@ export class LaborPanel {
   private tick = 0;
   private off: (() => void) | null = null;
   private pick = new Map<number, string>();
+  /** What each collection brought home, newest first. Shown under the laborers so nothing needs a second window; cleared with the window. */
+  private loot: { slot: number; report: GatherReport }[] = [];
   /** Told whenever the panel learns a fresh labor view, so the laborers standing in the Acre can follow it. */
   onView: ((v: LaborView) => void) | null = null;
 
@@ -31,8 +37,15 @@ export class LaborPanel {
     private characterId: number,
     private inventory: Inventory,
     private levelOf: (skill: SkillId) => number,
-    private onCollected: (r: LaborResult) => void,
+    private onCollected: (r: LaborResult, slot: number) => void,
   ) {}
+
+  /** A laborer's collection, as the Ledger would have shown it: listed under the laborers, so the window stays put for the next one. */
+  addLoot(slot: number, report: GatherReport) {
+    this.loot.unshift({ slot, report });
+    this.loot.length = Math.min(this.loot.length, MAX_LOOT);
+    this.render();
+  }
 
   get isOpen() {
     return this.el !== null;
@@ -71,6 +84,7 @@ export class LaborPanel {
     this.off?.();
     this.off = null;
     window.clearInterval(this.tick);
+    this.loot = [];
     this.el?.remove();
     this.el = null;
   }
@@ -141,8 +155,13 @@ export class LaborPanel {
       </div>
       <p class="cw-codex-note">Send the dead to work a post and they keep at it, slowly, for up to eight hours, even while you are away. They gather a fraction of what you would and earn a quarter of the XP. Collect when you like.</p>
       <div class="cw-labs">${cards}</div>
+      ${this.lootHtml()}
       <div class="cw-error" data-error>${this.error && v ? esc(this.error) : ''}</div>`; wrapPanelBody(panel); });
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
+    this.el.querySelector('[data-clear-loot]')?.addEventListener('click', () => {
+      this.loot = [];
+      this.render();
+    });
     this.el.querySelectorAll<HTMLSelectElement>('[data-post]').forEach((sel) => sel.addEventListener('change', () => {
       this.pick.set(Number(sel.dataset.post), sel.value);
       this.render();
@@ -150,6 +169,26 @@ export class LaborPanel {
     this.el.querySelectorAll<HTMLButtonElement>('[data-send]').forEach((b) => b.addEventListener('click', () => void this.act('assign', Number(b.dataset.send))));
     this.el.querySelectorAll<HTMLButtonElement>('[data-recall]').forEach((b) => b.addEventListener('click', () => void this.act('recall', Number(b.dataset.recall))));
     this.el.querySelectorAll<HTMLButtonElement>('[data-collect]').forEach((b) => b.addEventListener('click', () => void this.act('collect', Number(b.dataset.collect))));
+  }
+
+  /** The "Brought home" section under the laborers: one card per collection, newest first. */
+  private lootHtml(): string {
+    if (!this.loot.length) return '';
+    const cards = this.loot
+      .map(({ slot, report: r }) => {
+        const sk = r.skills[0];
+        const wins = [...r.milestones, ...r.records].map((w) => `<div class="win">★ ${esc(w)}</div>`).join('');
+        const rows = r.items
+          .map((i) => `<div class="row"><span style="color:${RARITY_COLOR[i.rarity]}"><img src="${iconOf(i.itemId)}" alt="" onerror="this.style.display='none'" /> ${esc(i.name)}</span><b>×${i.qty.toLocaleString()}</b></div>`)
+          .join('');
+        const xp = sk ? ` · +${sk.xp.toLocaleString()} ${esc(sk.name)} xp${sk.toLevel > sk.fromLevel ? ` <i>(Lv ${sk.fromLevel} → ${sk.toLevel})</i>` : ''}` : '';
+        const gold = r.gold > 0 ? ` · +${r.gold.toLocaleString()}g` : '';
+        return `<div class="cw-chron-grp"><h4>Laborer ${slot + 1} · ${r.totalItems.toLocaleString()} finds${xp}${gold}</h4>${wins}${rows}</div>`;
+      })
+      .join('');
+    return `<section class="cw-lab-loot" aria-label="Brought home">
+      <div class="cw-lab-loot-head"><h3 class="cw-panel-section-title">Brought home</h3><button class="cw-button small" data-clear-loot>Clear</button></div>
+      ${cards}</section>`;
   }
 
   private async act(kind: 'assign' | 'recall' | 'collect', slot: number) {
@@ -171,7 +210,7 @@ export class LaborPanel {
         result = await assignLabor(this.characterId, slot, post);
       }
       this.set(result);
-      if (result.collected) this.onCollected(result);
+      if (result.collected) this.onCollected(result, slot);
       if (staleBag) this.error = 'Collected, but your bag could not be refreshed. Close and reopen your bag to see it.';
     } catch (err) {
       this.error = err instanceof Error ? err.message : 'The dead do not answer.';
