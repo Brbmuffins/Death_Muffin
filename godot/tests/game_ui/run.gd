@@ -137,6 +137,7 @@ func _run() -> void:
 
 	await _more(game, ui)
 	await _panels(game, ui)
+	await _extras(game, ui)
 	print("%d passed, %d failed" % [_pass, _fail])
 	quit(1 if _fail > 0 else 0)
 
@@ -396,3 +397,48 @@ func _panels(game: DmMockGame, ui: DmGameUi) -> void:
 	await _frames(3)
 	_check(_last(game, "/api/cosmetics/adopt").get("petId") == "pet_tithe_bat", "charm adopt from the bag")
 	ui.close_panels()
+
+
+func _extras(game: DmMockGame, ui: DmGameUi) -> void:
+	ui.close_panels()
+	game.game_event.emit("depths_stair_offer", {"deepest": 4})
+	await _frames(3)
+	_check(ui.is_open("depths_stair"), "depths stair offer opens the prompt")
+	ui.stair_prompt.resume_button.pressed.emit()
+	ui.close_panels()
+	game.game_event.emit("boss_key_offer", {"boss": "gravedigger", "seals": 1, "gold": 999999, "shards": 0, "bound": false})
+	await _frames(3)
+	_check(ui.is_open("boss_key") and not ui.boss_key.emp_button.disabled and ui.boss_key.normal_button.disabled, "boss key: empowered affordable, normal needs shards")
+	ui.close_panels()
+	# tool belt offer: empty belt + bag tool
+	var offer := ui.inv.belt_offer()
+	_check(offer.size() == 1 and offer[0]["item_id"] == "tool_pickaxe_iron", "belt offer picks the best bag tool")
+	# reveal logic
+	_check(DmHudReveal.veteran_reveals({"level": 5, "gold": 0, "swap_ready": true, "has_gear": true}).has("menu.skills"), "veteran reveals")
+	var r := DmHudReveal.new(9, DmCounselStore.new())
+	_check(r.reveal("hud.shards", true) and r.is_new("hud.shards") and not r.reveal("hud.shards"), "reveal flags NEW once")
+	r.clear("hud.shards")
+	_check(not r.is_new("hud.shards"), "clear removes the NEW cue")
+	var q := DmHudReveal.CueQueue.new()
+	var got: Array = []
+	q.show_cb = func(t: String, _k: String) -> void: got.append(t)
+	q.push("a", "A")
+	q.push("b", "B")
+	_check(got == ["A"], "cue queue shows one at a time")
+	q.tick(7.0)
+	q.tick(1.0)
+	_check(got == ["A", "B"], "cue queue advances after the hold")
+	# rites sanitising
+	var kit := DmAbilities.kit_for("necromancer")
+	var rt := DmRites.new(3, kit, 1)
+	_check(rt.keys.size() == 5 and rt.primary == String(kit["defaultPrimary"]), "rites default for a fresh character")
+	# bind rules
+	_check(not DmUiBinds.check_bind({}, "loadout_1", "i")["ok"] and DmUiBinds.check_bind({}, "loadout_1", "f7")["ok"], "keybind: reserved refused, F7 ok")
+	_check(DmUiBinds.next_slot([0, 2, 5], 2, -1) == 5 and DmUiBinds.next_slot([0, 2, 5], 5, -1) == 0, "next loadout wraps")
+	# clean name
+	_check(DmLoadoutPresets.clean_name("  A<b>  c \u0001") == "Ab c", "loadout name cleaned")
+	# legion text numbers
+	var lines := DmLegionText.bonus_lines({"hp": 0.05, "damage": 0.096, "speed": 0.0, "ward": 0.0})
+	_check(lines == ["Thralls hit +9.6% harder", "Thralls have +5% health"], "legion bonus lines")
+	# necro weapon + brew text
+	_check(DmUiBrews.necro_weapon_tooltip("staff_bone").get("level") == 1 and DmUiBrews.summary("elixir_moonlight").begins_with("Elixir"), "weapon tooltip + brew summary")

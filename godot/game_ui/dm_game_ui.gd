@@ -51,6 +51,8 @@ var pa: DmUiPanelsA
 var pb: DmUiPanelsB
 var set_ui: DmUiSettings
 var belt_picker: DmBeltPicker
+var boss_key: DmBossKeyPrompt
+var stair_prompt: DmDepthsStairPrompt
 var binds: Dictionary = {}
 var skills: Dictionary = {}                ## profession_id -> level (for the guidance state)
 var labor_summary: Variant = null
@@ -98,6 +100,13 @@ func setup(game_: Node) -> void:
 	pa = DmUiPanelsA.new(self)
 	pb = DmUiPanelsB.new(self)
 	belt_picker = DmBeltPicker.new(self)
+	boss_key = DmBossKeyPrompt.new()
+	_add_window("boss_key", boss_key)
+	boss_key.normal_chosen.connect(func(b: String) -> void: call_game_sync("summon_boss", [b]))
+	boss_key.empowered_chosen.connect(func(b: String) -> void: call_game_sync("summon_boss_empowered", [b]))
+	stair_prompt = DmDepthsStairPrompt.new()
+	_add_window("depths_stair", stair_prompt)
+	stair_prompt.depth_picked.connect(func(d: int) -> void: call_game_sync("enter_depths", [d]))
 	_connect_hud()
 	_connect_game()
 	_init_progressive()
@@ -466,6 +475,15 @@ func _on_game_event(event_id: String, ctx: Dictionary) -> void:
 			hud.float_text(pos, String(ctx.get("text", "")), String(ctx.get("kind", "hit")), ctx.get("color", Color(0, 0, 0, 0)))
 		"chat":
 			hud.chat_line(String(ctx.get("text", "")))
+		"gather_report":
+			pb.report.show_report(ctx.get("report", ctx))
+			pb.report.window.open()
+		"boss_key_offer":
+			close_panels()
+			boss_key.open_offer(ctx)
+		"depths_stair_offer":
+			close_panels()
+			stair_prompt.open_deepest(int(ctx.get("deepest", 1)))
 		"codex":
 			record_codex(String(ctx.get("kind", "")), String(ctx.get("id", "")))
 		"hit_flash":

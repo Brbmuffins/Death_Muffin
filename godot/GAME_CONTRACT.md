@@ -29,3 +29,15 @@ Signals (listened to by the UI):
 - `setup(game: DmGame)`; builds DmHud, every panel, DmCounsel + view, guidance Next box, dialogue, settings, chat.
 - Each frame: `hud.apply(merge(game.hud_state(), ui-owned parts))`.
 - Panel actions call `game.api` exactly as the web panels call the REST client, then `game.refresh_*()`.
+
+## Additions by game-ui (2026-10-04) — all OPTIONAL: DmGameUi calls them through `has_method` guards, so a DmGame without them still works
+Properties: `release: String`, `party_code: String`, `dev_account: bool`.
+Methods the UI calls (game-core implements; the web equivalents in parentheses):
+- `use_item(item_id)` (drinkFlask/eatMeal/drinkBuff: Reliquary double-click / Drink / Eat), `set_belt(slot, item_id)` (UI owns the pick in its store and tells the game), `set_rites(primary: String, keys: Array)` (Grimoire changes; the UI persists `dm_loadout_v2_<id>`; HUD `slots` must follow).
+- `near_grinder() -> bool` (Bone Grinder range), `counsel_busy() -> {combat, hurt, dead}` (lastCombatAt/lastHurtAt bookkeeping), `counsel_tick_ctx() -> Dictionary` (every 400 ms, DmCounselEvents.tick_calls ctx).
+- `stop_gathering(reason)`, `afk_active() -> bool`, `afk_status() -> {active, text, allowed}`, `start_afk(node_id)`, `stop_player()`, `talk_key()` (E key), `travel(area_id)` (Waystones), `dial_wave(delta)`, `send_chat(text)`.
+- `leave_world()` (Settings), `class_changed(character)`, `party_create()`, `party_join(code)`, `party_leave()`, `summon_boss(id)`, `summon_boss_empowered(id)`, `enter_depths(depth)`.
+`game_event` payloads drawn by the UI: `toast {text, kind}`, `banner {title, sub, ms}`, `loot {name, qty, rarity}`, `float {text, kind, color?, world: Vector3 | screen: Vector2}`, `chat {text}`, `hit_flash`, `slot_flash {slot}`, `codex {kind: dead|area, id}`, `gather_report {report}` (opens the Sexton's Ledger), `boss_key_offer {boss, seals, gold, shards, bound}`, `depths_stair_offer {deepest}`; every other id is a counsel event id (`ui/onboarding/README.md`).
+`progress` is the LocalProgress shape (`DmProgression.blank()` keys: damageTier, waveTierOwned, legionTier, shards, areaKills, unlocked, totalKills, ascension, ashes, boons, vows, unlocks, run).
+`hud_state()` should include `brews` (the Q/Z/X tray), `slots` (primary + hotbar), `minimap`, etc. per `ui/hud/README.md`; the UI adds `reveal`, `new`, `grimoire_new`, `next`, `dev`, slot `swap` flags.
+Keys: DmGameUi handles I B J Y C P O U H N V M K . L G Enter E Esc and the loadout hotkeys itself (physical keys, no input actions); keys 1-6 R Q Z X T and WASD stay with game-core.
