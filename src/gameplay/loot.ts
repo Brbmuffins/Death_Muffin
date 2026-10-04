@@ -253,6 +253,29 @@ export function addToSlots(slots: InventorySlot[], drop: LootDrop): InventorySlo
   ];
 }
 
+const SORT_TYPES = ['weapon', 'offhand', 'armor_head', 'armor_chest', 'armor_legs', 'armor_feet', 'armor_hands', 'ring', 'trinket', 'rune', 'consumable', 'material'];
+const SORT_RARITY = ['relic', 'legendary', 'epic', 'rare', 'uncommon', 'common'];
+const sortRank = (list: string[], v: string) => {
+  const i = list.indexOf(v);
+  return i < 0 ? list.length : i;
+};
+
+/** Reorder the bag (slots 0..BAG_SIZE-1 only): by type, rarity (best first), name, then item level. Packed from slot 0; nothing is merged or lost. */
+export function sortBagSlots(slots: InventorySlot[]): InventorySlot[] {
+  const inBag = (s: InventorySlot) => s.slot_index >= 0 && s.slot_index < BAG_SIZE && !s.equipped;
+  const bag = slots.filter(inBag).sort(
+    (a, b) =>
+      sortRank(SORT_TYPES, a.item_type) - sortRank(SORT_TYPES, b.item_type) ||
+      sortRank(SORT_RARITY, a.rarity) - sortRank(SORT_RARITY, b.rarity) ||
+      (a.name < b.name ? -1 : a.name > b.name ? 1 : 0) ||
+      (b.ilvl ?? 0) - (a.ilvl ?? 0) ||
+      b.quantity - a.quantity ||
+      a.slot_index - b.slot_index,
+  );
+  const placed = new Map(bag.map((s, i) => [s, { ...s, slot_index: i }] as const));
+  return slots.map((s) => placed.get(s) ?? s);
+}
+
 /** Payload shape for POST /api/inventory/save. */
 /**
  * The save endpoint owns the bag only (slot_index 0..BAG_SIZE-1). Equipped gear lives in reserved
@@ -401,6 +424,14 @@ export class Inventory {
     this.emit();
     this.scheduleFlush(1500);
     return true;
+  }
+
+  /** Tidy the bag order (the Reliquary's Sort button); saved like any other bag change. */
+  sortBag() {
+    this.slots = sortBagSlots(this.slots);
+    this.dirty = true;
+    this.emit();
+    this.scheduleFlush(600);
   }
 
   private scheduleFlush(ms: number) {
