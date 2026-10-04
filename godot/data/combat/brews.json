@@ -1,0 +1,265 @@
+{
+ "brews": {
+  "flask_damage": {
+   "slot": "elixir",
+   "effects": [
+    {
+     "kind": "damage",
+     "value": 0.15
+    }
+   ],
+   "seconds": 45,
+   "label": "Forge-tempered",
+   "color": 16752736,
+   "glyph": "✦"
+  },
+  "elixir_moonlight": {
+   "slot": "elixir",
+   "effects": [
+    {
+     "kind": "damage",
+     "value": 0.25
+    }
+   ],
+   "seconds": 60,
+   "label": "Moonlit",
+   "color": 12374271,
+   "glyph": "☾"
+  },
+  "flask_void_resist": {
+   "slot": "elixir",
+   "effects": [
+    {
+     "kind": "ward",
+     "value": 0.25
+    }
+   ],
+   "seconds": 90,
+   "label": "Warded",
+   "color": 12175615,
+   "glyph": "◈"
+  },
+  "flask_speed": {
+   "slot": "tonic",
+   "effects": [
+    {
+     "kind": "speed",
+     "value": 0.2
+    }
+   ],
+   "seconds": 30,
+   "label": "Swift",
+   "color": 10483168,
+   "glyph": "≫"
+  },
+  "tonic_grave_dust": {
+   "slot": "tonic",
+   "effects": [
+    {
+     "kind": "essence",
+     "value": 0.2
+    }
+   ],
+   "seconds": 60,
+   "label": "Dust-breathed",
+   "color": 14208957,
+   "glyph": "∴"
+  },
+  "elixir_wraithquick": {
+   "slot": "elixir",
+   "effects": [
+    {
+     "kind": "haste",
+     "value": 0.15
+    }
+   ],
+   "seconds": 45,
+   "label": "Wraithquick",
+   "color": 9417983,
+   "glyph": "⇶"
+  },
+  "tonic_graveluck": {
+   "slot": "tonic",
+   "effects": [
+    {
+     "kind": "fortune",
+     "value": 0.15
+    }
+   ],
+   "seconds": 60,
+   "label": "Grave-lucky",
+   "color": 15254362,
+   "glyph": "◆"
+  },
+  "tonic_insight": {
+   "slot": "tonic",
+   "effects": [
+    {
+     "kind": "wisdom",
+     "value": 0.15
+    }
+   ],
+   "seconds": 60,
+   "label": "Insightful",
+   "color": 15128319,
+   "glyph": "✧"
+  },
+  "elixir_leechblood": {
+   "slot": "elixir",
+   "effects": [
+    {
+     "kind": "lifesteal",
+     "value": 0.04
+    }
+   ],
+   "seconds": 45,
+   "label": "Leechblood",
+   "color": 12728904,
+   "glyph": "❖"
+  },
+  "elixir_rotproof": {
+   "slot": "elixir",
+   "effects": [
+    {
+     "kind": "resist_rot",
+     "value": 0.4
+    }
+   ],
+   "seconds": 75,
+   "label": "Rot-proof",
+   "color": 13099082,
+   "glyph": "✥"
+  },
+  "elixir_cinderskin": {
+   "slot": "elixir",
+   "effects": [
+    {
+     "kind": "resist_fire",
+     "value": 0.4
+    }
+   ],
+   "seconds": 75,
+   "label": "Cinderskin",
+   "color": 16742954,
+   "glyph": "▲"
+  },
+  "tonic_ghostwalk": {
+   "slot": "tonic",
+   "effects": [
+    {
+     "kind": "essence",
+     "value": 0.3
+    },
+    {
+     "kind": "speed",
+     "value": 0.1
+    }
+   ],
+   "seconds": 75,
+   "label": "Ghostwalking",
+   "color": 7332808,
+   "glyph": "≈"
+  },
+  "elixir_bloodmoon": {
+   "slot": "elixir",
+   "effects": [
+    {
+     "kind": "damage",
+     "value": 0.2
+    },
+    {
+     "kind": "lifesteal",
+     "value": 0.06
+    }
+   ],
+   "seconds": 60,
+   "label": "Bloodmoon",
+   "color": 13652072,
+   "glyph": "◐"
+  },
+  "elixir_hymnal": {
+   "slot": "elixir",
+   "effects": [
+    {
+     "kind": "ward",
+     "value": 0.15
+    },
+    {
+     "kind": "resist_rot",
+     "value": 0.2
+    },
+    {
+     "kind": "lifesteal",
+     "value": 0.03
+    }
+   ],
+   "seconds": 75,
+   "label": "Hymnal",
+   "color": 12175615,
+   "glyph": "♱"
+  },
+  "elixir_regent": {
+   "slot": "elixir",
+   "effects": [
+    {
+     "kind": "damage",
+     "value": 0.12
+    },
+    {
+     "kind": "ward",
+     "value": 0.15
+    },
+    {
+     "kind": "haste",
+     "value": 0.1
+    }
+   ],
+   "seconds": 60,
+   "label": "Regent's Vigil",
+   "color": 16761946,
+   "glyph": "♛"
+  }
+ },
+ "extend_cap": 2,
+ "lifesteal_target_cap": 3,
+ "lifesteal_hit_cap": 0.015,
+ "fire_sources": [
+  "ember",
+  "burn"
+ ],
+ "rot_sources": [
+  "toxic",
+  "dust"
+ ],
+ "healing_flasks": {
+  "flask_hp_major": 0.7,
+  "flask_hp_minor": 0.35,
+  "flask_hp_grand": 0.9
+ },
+ "alchemy_healing": {
+  "flask_hp_grand": 0.9
+ },
+ "meals": {
+  "meal_crypt_eel": {
+   "healFrac": 0.3,
+   "seconds": 10
+  },
+  "meal_bell_carp": {
+   "healFrac": 0.4,
+   "seconds": 10
+  },
+  "meal_drowned_pike": {
+   "healFrac": 0.5,
+   "seconds": 10
+  },
+  "meal_lanternfish": {
+   "healFrac": 0.6,
+   "seconds": 10
+  },
+  "meal_coelacanth": {
+   "healFrac": 0.75,
+   "seconds": 10
+  }
+ },
+ "heal_cooldown_s": 1.5
+}
