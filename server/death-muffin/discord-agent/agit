@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# The bug-report agent's git: a few subcommands, no hooks, and no flags that read or write files outside the worktree
+# (--output, -F/--file, --template) or bypass staging rules (-A, --all, `.`).
+set -euo pipefail
+deny() { echo "agit: not allowed: $*" >&2; exit 2; }
+sub="${1:-}"; shift || true
+case "$sub" in status|diff|log|show|add|commit|revert) ;; *) deny "git $sub";; esac
+for a in "$@"; do
+  case "$a" in
+    --output*|-o|-F*|--file*|-t|--template*|--exec*|--git-dir*|--work-tree*|--ext-diff|--no-verify|-c|--config*|--pathspec-from-file*) deny "$a";;
+  esac
+  if [ "$sub" = add ]; then case "$a" in -A|--all|.|./|:/|-u|--update|*'*'*) deny "git add $a (stage explicit paths)";; esac; fi
+done
+exec git -c core.hooksPath=/dev/null -c diff.external= -c core.pager=cat "$sub" "$@"

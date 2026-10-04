@@ -15,6 +15,12 @@ set -euo pipefail
 
 REPO=/home/ubuntu/vps-handoffs/DeathMuffin/game
 RUNTIME=/home/ubuntu/death-muffin
+# One deploy at a time, shared with the Discord dev agent's ship helper (which sets DEPLOY_LOCK_HELD=1 because it already holds the lock).
+if [ -z "${DEPLOY_LOCK_HELD:-}" ]; then
+  mkdir -p "$RUNTIME/deploy"
+  exec 9>"$RUNTIME/deploy/.deploy.lock"
+  flock -w 1800 9 || { echo "another deploy holds $RUNTIME/deploy/.deploy.lock" >&2; exit 1; }
+fi
 PUBLIC=/var/www/death-muffin
 REV="${1:-HEAD}"
 shift || true
