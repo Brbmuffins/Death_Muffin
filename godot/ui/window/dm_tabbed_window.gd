@@ -47,6 +47,8 @@ func select_tab(id: String) -> void:
 		return
 	if active != "" and _tabs.has(active):
 		_tabs[active]["content"].visible = false
+		# set_pressed_no_signal bypasses the ButtonGroup, so release the old tab by hand.
+		(_tabs[active]["btn"] as Button).set_pressed_no_signal(false)
 	active = id
 	_tabs[id]["content"].visible = true
 	(_tabs[id]["btn"] as Button).set_pressed_no_signal(true)
