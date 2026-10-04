@@ -62,3 +62,15 @@ describe('ground loot: walk over it to take it, otherwise it expires', () => {
     expect(v.debugDrops().filter((d) => d.ttl === LOOT_EXPIRE_S.prizeItem)).toHaveLength(1); // the oldest drop, but epic: kept
   });
 });
+
+describe('Depths floors leave their loot behind (owner, 2026-10-04)', () => {
+  it('clearWithin removes only the drops inside the rect, without paying them out', () => {
+    const v = view();
+    v.item(5, 5, { item_id: 'bone_meal', quantity: 1 });
+    v.gold(6, 6, 30);
+    v.item(100, 100, { item_id: 'bone_meal', quantity: 1 }); // elsewhere in the world: untouched
+    expect(v.clearWithin({ x0: 0, z0: 0, x1: 20, z1: 20 })).toBe(2);
+    expect(v.count).toBe(1);
+    expect(step(v, 5, () => true, [5, 5])).toMatchObject({ gold: 0, items: 0 });
+  });
+});

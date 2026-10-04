@@ -255,6 +255,19 @@ export class LootView {
     this.drops.splice(i, 1);
   }
 
+  /**
+   * Drop what lies inside a rect, without paying out (owner, 2026-10-04: loot left on a Depths floor must not "follow" you down; every
+   * floor is built in the same space, so leftovers would appear on the next one). Returns how many drops were removed.
+   */
+  clearWithin(r: { x0: number; z0: number; x1: number; z1: number }) {
+    let n = 0;
+    for (let i = this.drops.length - 1; i >= 0; i--) {
+      const d = this.drops[i];
+      if (d.x >= r.x0 && d.x <= r.x1 && d.z >= r.z0 && d.z <= r.z1) { this.remove(i); n++; }
+    }
+    return n;
+  }
+
   get count() {
     return this.drops.length;
   }

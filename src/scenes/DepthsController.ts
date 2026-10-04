@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import { DEPTHS_STAIR, type Interactable } from '../content/areas';
+import { AREAS, DEPTHS_STAIR, type Interactable } from '../content/areas';
 import { DEPTHS, depthEnemyLevel, depthLootArea, depthsEntryBlock, extraAffixes, hasChest } from '../content/depths';
 import { ITEMS } from '../content/items';
 import type { DepthsFloor } from '../gameplay/depthsFloor';
@@ -257,6 +257,7 @@ export class DepthsController {
       return false;
     }
     this.end('left');
+    this.host.loot.clearWithin(AREAS.depths.rect);   // what was left down there stays down there
     this.host.teleportTo(DEPTHS_STAIR.x, DEPTHS_STAIR.z + 2.3);
     return true;
   }
@@ -265,6 +266,8 @@ export class DepthsController {
   private arrive(floor: DepthsFloor, verb: string) {
     const run = this.run!;
     const sim = this.host.sim()!;
+    // Every floor is built in the same space: anything left on the last one is gone, not waiting on the new one.
+    this.host.loot.clearWithin(AREAS.depths.rect);
     this.host.teleportTo(floor.start.x, floor.start.z);
     this.host.player.facing = Math.PI;
     this.host.rig.snap(floor.start.x, floor.start.z);
