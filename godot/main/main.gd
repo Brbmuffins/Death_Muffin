@@ -16,6 +16,7 @@ var settings_menu: DmSettingsMenu
 
 
 func _ready() -> void:
+	get_tree().auto_accept_quit = false
 	var args := OS.get_cmdline_user_args()
 	mode = "online" if "--online" in args else "offline"
 	if mode == "offline":
@@ -30,6 +31,16 @@ func _ready() -> void:
 		await _demo()
 		return
 	_start_flow()
+
+
+## Window close: save everything first (the web's pagehide flush), then quit.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		if game != null and game.ready_:
+			var g := game
+			game = null
+			await g.flush_all()
+		get_tree().quit()
 
 
 func _start_flow() -> void:
@@ -59,6 +70,8 @@ func _enter_world(character: Dictionary, session) -> void:
 	game.name = "Game"
 	add_child(game)
 	var ui_script: Variant = load("res://game_ui/dm_game_ui.gd") if ResourceLoader.exists("res://game_ui/dm_game_ui.gd") else null
+	game.left_world.connect(_on_left_world)
+	game.class_changed.connect(func(ch: Dictionary): _on_class_changed(ch))
 	await game.start(character, api, {"local_progress": mode == "offline", "name": String(character.get("username", character.get("name", "You")))})
 	if ui_script != null:
 		ui = ui_script.new()
@@ -76,7 +89,25 @@ func _enter_world(character: Dictionary, session) -> void:
 				settings_menu.toggle())
 
 
-func _on_logged_out() -> void:
+func _teardown_game() -> void:
 	if game != null:
 		game.queue_free()
 		game = null
+	if settings_menu != null:
+		settings_menu.queue_free()
+		settings_menu = null
+	ui = null
+
+
+func _on_left_world() -> void:
+	_teardown_game()
+	_start_flow()
+
+
+func _on_class_changed(character: Dictionary) -> void:
+	_teardown_game()
+	await _enter_world(character, api)
+
+
+func _on_logged_out() -> void:
+	_teardown_game()

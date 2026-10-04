@@ -13,6 +13,8 @@ signal area_changed(id: String)
 signal hero_died
 signal hero_respawned
 signal game_event(event_id: String, ctx: Dictionary)
+signal left_world                       ## the UI asked to leave (log out): main returns to the login screen
+signal class_changed(character: Dictionary)   ## a new discipline was saved: main rebuilds the world with this character
 signal npc_interact(npc_id: String)
 signal station_interact(station_id: String)
 
@@ -65,7 +67,8 @@ var views: Variant = null              # DmEntityViews
 var event_fx: Variant = null           # DmEventFx
 var avatar: Variant = null             # DmAvatar
 var boss_views: Dictionary = {}        # boss id -> DmBossView
-var gather: Variant = null             # DmGatherLoop
+var gather: Variant = null             # DmGatherLoop (g.gatherer.loop)
+var gatherer: DmGameGather
 var depths: Variant = null             # DmDepthsController
 var input: DmGameInput
 var rewards: DmGameRewards
@@ -190,6 +193,9 @@ func start(character_: Dictionary, api_: DmApi, opts_: Dictionary = {}) -> void:
 	actions = DmGameActions.new(self)
 	_make_abilities()
 	_make_visual_components()
+	depths = DmDepthsController.new(self)
+	gatherer = DmGameGather.new(self)
+	gather = gatherer.loop
 	actions.load_belt()
 	for d in DmContent.doors():
 		if builder != null:
@@ -249,9 +255,55 @@ func _make_abilities() -> void:
 	abilities.dev = dev_access
 
 
+## The hero stays findable: contact shadow + pale ring (buildScene), discipline glow + bone ring + reticle + soul halo + target ring (mount).
+func _dress_hero() -> void:
+	var at := func() -> Variant: return Vector3(player.x, 0, player.z)
+	vfx.decal({"hero": true, "persistent": true, "tex": "glow", "blending": "mix", "color": 0x07040d, "x": 0.0, "z": 0.0, "r": 1.25, "y": 0.045, "duration": 1e9, "opacity": 0.5, "fadeIn": 0.5, "follow": at})
+	vfx.decal({"hero": true, "persistent": true, "tex": "ring", "color": 0xf0e8ff, "x": 0.0, "z": 0.0, "r": 0.8, "y": 0.05, "duration": 1e9, "opacity": 0.6, "fadeIn": 0.5, "follow": at})
+	var col: int = int(Color.html(String(DmContent.discipline(String(discipline["id"]))["color"])).to_rgba32() >> 8)
+	vfx.decal({"tex": "glow", "color": col, "x": 0.0, "z": 0.0, "r": 2.2, "duration": 1e9, "opacity": 0.13, "fadeIn": 0.01, "follow": at})
+	vfx.decal({"tex": "ring", "color": 0xc8bea8, "x": 0.0, "z": 0.0, "r": 0.85, "duration": 1e9, "opacity": 0.46, "fadeIn": 0.01, "follow": at})
+	vfx.decal({"tex": "ring", "color": 0xb6a9c8, "x": 0.0, "z": 0.0, "r": 0.35, "duration": 1e9, "opacity": 0.36, "fadeIn": 0.01, "follow": func() -> Variant: return Vector3(input.ground["x"], 0, input.ground["z"])})
+	vfx.decal({"tex": "ring", "color": int(DmContent.spell_fx()["souls"]["jade"]), "x": 0.0, "z": 0.0, "r": 1.25, "duration": 1e9, "opacity": 0.75, "fadeIn": 0.01, "pulse": 5.0,
+		"follow": func() -> Variant: return Vector3(player.x, 0, player.z) if (DmPlayerRules.souls_charged(p) and player.alive) else null})
+	vfx.decal({"tex": "ring", "color": 0xf0e9dc, "x": 0.0, "z": 0.0, "r": 1.0, "duration": 1e9, "opacity": 0.85, "fadeIn": 0.01, "pulse": 6.0,
+		"follow": func() -> Variant:
+			var h: Variant = input.hover
+			var id := -1
+			if h != null and h["kind"] == "enemy":
+				id = int(h["id"])
+			elif input.attack_target != null and input.attack_target["kind"] == "enemy":
+				id = int(input.attack_target["id"])
+			elif input.auto_target_id >= 0:
+				id = input.auto_target_id
+			var e: DmSimEnemy = sim.enemies.get(id) if id >= 0 else null
+			return Vector3(e.x, 0, e.z) if (e != null and e.state != "rising" and e.state != "burrow") else null})
+
+
+## Waystones must read as "click me" from across the room: a pulsing teal ring, a glow, and the Binbun portal.
+func _dress_waystones() -> void:
+	for w in _waystones:
+		vfx.decal({"tex": "ring", "color": 0x6fe3c8, "x": w["x"], "z": w["z"], "r": 1.7, "duration": 1e9, "opacity": 0.85, "pulse": 1.2, "persistent": true})
+		vfx.decal({"tex": "glow", "color": 0x1f8f86, "x": w["x"], "z": w["z"], "r": 2.2, "duration": 1e9, "opacity": 0.5, "persistent": true})
+		vfx.play("waystone_portal", Vector3(float(w["x"]), 0, float(w["z"])), {})
+
+
+func _waystone_motes(dt: float) -> void:
+	for w in _waystones:
+		if absf(float(w["x"]) - player.x) > 22.0 or absf(float(w["z"]) - player.z) > 22.0 or randf() > dt * 6.0:
+			continue
+		var a := randf() * TAU
+		vfx.emit({"x": float(w["x"]) + sin(a) * 0.9, "y": 0.2, "z": float(w["z"]) + cos(a) * 0.9, "count": 1, "color": 0x9ff5e0, "spread": 0.1, "speed": 0.1, "up": 1.6, "life": 1.6, "size": 0.22})
+
+
 func _make_visual_components() -> void:
 	if not visual:
 		return
+	vfx.binbun.enabled = String(settings["quality"]) == "high"
+	_dress_hero()
+	_dress_waystones()
+	lootview.dropped_sound.connect(func(id: String, pos: Vector3): play_sfx(id, pos.x, pos.z))
+	lootview.pickup_fx.connect(func(pos: Vector3, color: Color): vfx.emit({"x": pos.x, "y": pos.y, "z": pos.z, "count": 8, "color": color.to_rgba32() >> 8, "spread": 0.3, "speed": 1.2, "up": 1.0, "life": 0.4, "size": 0.14}))
 	audio_hooks = DmAudioHooks.new()
 	audio_hooks.name = "AudioHooks"
 	add_child(audio_hooks)
@@ -270,6 +322,8 @@ func _make_visual_components() -> void:
 			"on_boss_bussy": func(ev): combat.on_boss_busy(ev),
 			"on_boss_busy": func(ev): combat.on_boss_busy(ev),
 			"on_surge_cleared": func(ev): rewards.on_surge_cleared(ev),
+			"on_node_gone": func(id): gatherer.on_node_gone(String(id)),
+			"on_node_back": func(id): gatherer.on_node_back(String(id)),
 			"on_boss_defeated": func(ev): rewards.on_boss_defeated(ev),
 		}
 	c = _make("res://game/dm_avatar.gd")
@@ -296,6 +350,7 @@ func _load_server_data() -> void:
 	var ch := await api.get_chronicle(hero_id)
 	if ch.ok and ch.data is Dictionary:
 		chronicle.set_data(ch.data)
+	await gatherer.load_professions()
 	character_changed.emit()
 	inventory_changed.emit()
 	progress_changed.emit()
@@ -474,8 +529,9 @@ func tick(dt: float) -> void:
 		player.heal(player.max_hp() * 0.02 * dt)
 	if now < actions.meal_until and player.alive:
 		player.heal(actions.meal_rate * dt)
-	if gather != null:
-		gather.update(dt)
+	gather.update(dt)
+	if visual:
+		gatherer.tick_visuals(dt)
 	if moved:
 		actions.cancel_recall()
 	input.tick_combat(now)
@@ -554,11 +610,17 @@ func handle_event(ev: Dictionary) -> void:
 
 ## Without the visual router (headless) the gameplay consequences still run.
 func _handle_event_core(ev: Dictionary) -> void:
+	if depths != null:
+		depths.on_event(ev)
 	match ev["t"]:
 		"death":
 			rewards.on_kill(ev)
 		"hurt":
 			combat.on_hurt_event(ev)
+		"nodeGone":
+			gatherer.on_node_gone(String(ev["id"]))
+		"nodeBack":
+			gatherer.on_node_back(String(ev["id"]))
 		"bossBusy":
 			combat.on_boss_busy(ev)
 		"surgeCleared":
@@ -668,6 +730,10 @@ func respawn() -> void:
 
 
 ## AbilitySystem.cast: the caster is headless; the TS stops the hero on these rites.
+func node_hover(h: Variant) -> void:
+	gatherer.node_hover(h)
+
+
 func do_cast(id: String, target: Dictionary, now: float) -> String:
 	var res: String = abilities.cast(id, target, now)
 	if res == "ok" and (id == "veil_step" or id == "shield_bash" or id == "grave_slam"):
@@ -778,6 +844,136 @@ func _on_difficulty(d: String) -> void:
 		return
 	sim.difficulty = d
 	toast("Difficulty: %s — the next dead to rise feel it" % String(DmContent.difficulty(d)["name"]), "good")
+
+
+# ---- extras the UI calls (not in GAME_CONTRACT.md; see game/README.md) -----------------------------------------------------------
+
+func travel(area: String) -> void:
+	actions.travel(area)
+
+
+func start_recall() -> void:
+	actions.start_recall()
+
+
+func use_item(id: String) -> void:
+	actions.drink_flask(id)
+
+
+func set_belt(id: String) -> void:
+	actions.set_belt(id)
+
+
+func belt_choices(slot: String) -> Array:
+	var out: Array = []
+	var on: String = actions.belt_brew(slot)
+	for id in DmContent.brews():
+		var b: Dictionary = DmContent.brews()[id]
+		if b["slot"] == slot and inventory.count(id) > 0:
+			out.append({"id": id, "label": b["label"], "glyph": b["glyph"], "color": b["color"], "count": inventory.count(id), "current": id == on})
+	return out
+
+
+func summon_boss(id: String) -> void:
+	actions.summon_boss_normal(id)
+
+
+func call_empowered(id: String) -> void:
+	actions.call_empowered(id)
+
+
+func talk_to(npc_id: String) -> void:
+	actions.talk_to(npc_id)
+
+
+func do_ascend() -> void:
+	var heat: int = prog.heat()
+	var earned: int = prog.ascend()
+	if earned == 0:
+		return
+	sim.waveTier = 0.0
+	refresh_stats()
+	if visual:
+		var altar: Dictionary = {}
+		for it in DmContent.area("chapterhouse")["interactables"]:
+			if it["kind"] == "upgrades":
+				altar = it
+		if not altar.is_empty():
+			vfx.emit({"x": altar["x"], "y": 0.4, "z": altar["z"], "count": 120, "color": 0xd9a441, "spread": 1.2, "speed": 1.4, "up": 5.0, "life": 1.8, "size": 0.34})
+			vfx.decal({"tex": "sigil", "color": 0xd9a441, "x": altar["x"], "z": altar["z"], "r": 4.0, "duration": 2.4, "opacity": 1.0, "growFrom": 0.2, "spin": 1.4})
+	if camera != null:
+		camera.shake(0.4)
+	play_sfx("levelUp")
+	banner("Ascended at heat %d" % heat, "+%d Ashes%s · swear your vows for the next run" % [earned, " · a new best rank" if (heat > 0 and heat >= int(prog.local["ascension"])) else ""], 4200)
+	psync.flush()
+
+
+func do_swear(next: Dictionary) -> void:
+	var before := JSON.stringify(DmAscension.world_vows(prog.vows()))
+	var restarted: bool = prog.vows_restart_run(next)
+	if not prog.swear_vows(next):
+		toast(prog.vows_problem(next) if prog.vows_problem(next) != "" else "The Altar refuses.", "err")
+		return
+	sync_world_vows()
+	refresh_stats()
+	if before != JSON.stringify(DmAscension.world_vows(prog.vows())):
+		for a in DmContent.area_order():
+			if not DmContent.area(a)["safe"]:
+				sim.clear_area(a)
+	play_sfx("shard")
+	toast("Vows sworn: heat %d%s" % [prog.heat(), " · this run's tally restarts" if restarted else ""], "good")
+
+
+func do_open(key: String) -> void:
+	if not prog.unlock_at_altar(key):
+		toast(prog.unlock_problem(key) if prog.unlock_problem(key) != "" else "The Altar refuses.", "err")
+		return
+	play_sfx("levelUp")
+	toast("%s unlocked" % key.substr(key.find(":") + 1), "good")
+
+
+## Settings -> Leave: save, then log out (web: setToken(null); goLogin()).
+func leave_world() -> void:
+	await flush_all()
+	api.set_token("")
+	left_world.emit()
+
+
+## Settings / Class panel: switch discipline (changeClass). Returns "" on success or the player-readable error.
+func change_class(index: int) -> String:
+	if index == int(character["class_index"]):
+		return ""
+	ready_ = false
+	player.stop()
+	input.attack_target = null
+	input.pending_interact = null
+	actions.cancel_recall()
+	var err: String = await psync.save_before_class_change()
+	if err == "":
+		err = await inventory.save_before_class_change()
+	if err != "":
+		ready_ = true
+		return err
+	var r: DmResult = await api.change_discipline(hero_id, index)
+	if not r.ok:
+		ready_ = true
+		return r.error
+	class_changed.emit(r.data)
+	return ""
+
+
+## Save everything now (leaving the world, class change, window close).
+func flush_all() -> void:
+	psync.save_local_now()
+	await psync.flush()
+	await inventory.flush()
+	await gatherer.loop.flush()
+	await flush_chronicle()
+
+
+func _exit_tree() -> void:
+	if ready_ and psync != null:
+		psync.save_local_now()
 
 
 # ---- helpers the components use ------------------------------------------------------------------------------------------------

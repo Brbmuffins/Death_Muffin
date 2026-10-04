@@ -97,6 +97,21 @@ func _input(game: DmGame) -> void:
 	_check(game.recall_at > 0.0, "T starts Recall")
 	_tick(game, 2.0)
 	_check(game.area_id == "chapterhouse", "Recall returned home: %s" % game.area_id)
+	# gathering: click a node in the acre, the hero walks to it and starts working
+	game.player.teleport(-26.0, 20.0)
+	game._enter_area("acre")
+	var node: Dictionary = {}
+	for n in game._sim_world["nodes"]:
+		if n["area"] == "acre" and DmGathering.node_def(String(n["type"]))["level"] == 1:
+			node = n
+			break
+	_check(not node.is_empty(), "an acre node exists")
+	game.input.hover = {"kind": "node", "node": node}
+	game.input.on_primary_click()
+	_check(game.gather.active, "gathering started on %s" % str(node.get("type")))
+	_tick(game, 6.0)
+	_check(game.gather.phase == "work" or game.gather.phase == "walk", "gather loop running: %s" % game.gather.phase)
+	game.input.hover = null
 	# right click casts slot 5, R casts the signature
 	var rc := InputEventMouseButton.new()
 	rc.button_index = MOUSE_BUTTON_RIGHT

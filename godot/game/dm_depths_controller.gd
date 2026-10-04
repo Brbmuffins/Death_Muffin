@@ -161,7 +161,7 @@ func progress_line() -> String:
 	var r: Variant = run()
 	if r == null:
 		return ""
-	var lvl := g.sim.area_level("depths")
+	var lvl: float = g.sim.area_level("depths")
 	var extras := DmSimDepthsRules.extra_affixes(float(r["depth"]))
 	return "Level <b>%d</b> dead%s" % [int(lvl), " · elites bear <b>%d</b> affixes" % (extras + 1) if extras > 0 else ""]
 
@@ -258,7 +258,7 @@ func _arrive(floor_dict: Dictionary, verb: String) -> void:
 	g.player.facing = PI
 	if g.camera != null:
 		g.camera.snap(Vector3(float(floor_dict["start"]["x"]), 0, float(floor_dict["start"]["z"])))
-	var lvl := g.sim.area_level("depths")
+	var lvl: float = g.sim.area_level("depths")
 	var extras := DmSimDepthsRules.extra_affixes(float(r["depth"]))
 	g.banner("Depth %d" % int(r["depth"]),
 		"%s · slay %d · level %d dead%s%s" % [verb, int(r["need"]), int(lvl), " · elites bear %d affixes" % (extras + 1) if extras > 0 else "", " · a chest waits" if floor_dict["chest"] != null else ""],
@@ -284,7 +284,7 @@ func _cleared(depth: int, x: float, z: float) -> void:
 		return
 	_set_stair_open(true)
 	_last_stair_open = true
-	var level := g.sim.area_level("depths")
+	var level: float = g.sim.area_level("depths")
 	var mult := _reward_mult()
 	var win: Dictionary = DmDepthsRewards.roll_floor_clear(float(depth), level, Callable(), String(g.discipline["id"]))
 	var gold := DmMath.js_round(float(win["gold"]) * mult) + int(win["materialGold"])
@@ -313,7 +313,7 @@ func open_chest() -> bool:
 	_chest_opened = true
 	g.play_sfx("chestOpen")
 	_set_chest_opened(true)
-	var level := g.sim.area_level("depths")
+	var level: float = g.sim.area_level("depths")
 	var loot: Dictionary = DmDepthsRewards.roll_chest(float(r["depth"]), level, Callable(), String(g.discipline["id"]))
 	var mult := _reward_mult()
 	var gold := DmMath.js_round(float(loot["gold"]) * mult) + int(loot["materialGold"])
