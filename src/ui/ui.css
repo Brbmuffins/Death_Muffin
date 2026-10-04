@@ -956,7 +956,7 @@ button { font-family: inherit; }
 .cw-class-panel .cw-disc[aria-current="true"] { border-color: var(--disc-color); }
 .cw-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--cw-border); }
 /* Windows scroll under a pinned header so the close button is always reachable. */
-.cw-panel-float > .cw-panel-head { position: sticky; top: 0; z-index: 3; margin-top: -20px; padding-top: 20px; background: var(--cw-panel); }
+.cw-panel-float > .cw-panel-head { position: sticky; top: 0; z-index: 3; margin: -20px -22px 18px; padding: 20px 22px 12px; background: var(--cw-panel); box-shadow: 0 10px 12px -8px rgba(0, 0, 0, 0.7); }
 .cw-panel-float.cw-tabwin > .cw-panel-head { margin-top: -16px; padding-top: 16px; }
 .cw-panel-head .cw-title { font-size: 24px; }
 .cw-title .aka { margin-left: 12px; font-family: var(--cw-font-body); font-size: 12px; font-weight: 400; letter-spacing: 0.08em; color: var(--cw-text-muted); white-space: nowrap; }
@@ -1277,7 +1277,7 @@ body:not(.touch):has(.cw-panel-float) .cw-tip:not(.dragging):not([data-kind='urg
 @media (max-width: 560px) {
   .cw-disc-grid { grid-template-columns: 1fr; }
   .cw-panel-float { padding: 16px; }
-  .cw-panel-float > .cw-panel-head { margin-top: -16px; padding-top: 16px; }
+  .cw-panel-float > .cw-panel-head { margin: -16px -16px 18px; padding: 16px 16px 12px; }
   .cw-panel-head { flex-wrap: wrap; }
   .cw-inv-body { flex-direction: column; }
   .cw-inv-body .cw-bag-grid { width: 100%; }
@@ -1674,7 +1674,7 @@ body:not(.touch):has(.cw-panel-float) .cw-tip:not(.dragging):not([data-kind='urg
 .cw-tabwin .cw-tabwin-slot .cw-panel-float.cw-panel-float { position: static; transform: none; width: auto; max-width: none; max-height: none; overflow: visible; padding: 0; margin: 0; background: none; border: 0; box-shadow: none; z-index: auto; }
 .cw-tabwin .cw-tabwin-slot .cw-panel-float::before, .cw-tabwin .cw-tabwin-slot .cw-panel-float::after { display: none; }
 .cw-tabwin .cw-tabwin-slot .cw-panel-head .cw-title, .cw-tabwin .cw-tabwin-slot .cw-panel-head [data-close] { display: none; }
-.cw-tabwin .cw-tabwin-slot .cw-panel-head { position: static; margin-top: 0; padding-top: 0; background: none; margin-bottom: 8px; padding-bottom: 6px; justify-content: flex-end; border-bottom: 0; }
+.cw-tabwin .cw-tabwin-slot .cw-panel-head { position: static; margin: 0 0 8px; padding: 0 0 6px; background: none; box-shadow: none; justify-content: flex-end; border-bottom: 0; }
 .cw-tabwin .cw-tabwin-slot .cw-panel-head:not(:has(.cw-skill-total)) { display: none; }
 .cw-tabwin .cw-panel-actions:empty { display: none; }
 
