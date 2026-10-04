@@ -1940,3 +1940,7 @@ button {
 .account__patch b { color: var(--ember); font-weight: 600; }
 .account__patch li { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .account__patch-more { margin: 0.2rem 0 0; font-size: 0.8rem; }
+
+/* Known issue line at the top of the Latest patch box (replaces the separate .site-alert banner). */
+.account__known { margin: 0 0 0.6rem; padding: 0 0 0.55rem; border-bottom: 1px solid rgba(232, 166, 109, 0.24); text-align: left; color: var(--bone-bright); font-size: 0.8rem; line-height: 1.45; }
+.account__known b { color: var(--ember); }

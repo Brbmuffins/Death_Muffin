@@ -23,7 +23,7 @@
     <link rel="preload" href="assets/covenant-pyre.webp" as="image" />
     <!-- ?v= is a cache buster: Cloudflare overrides nginx's no-cache on .css/.js with a 4h
          browser TTL, so a deploy is invisible until the URL changes. Bump on every site edit. -->
-    <link rel="stylesheet" href="styles.css?v=6" />
+    <link rel="stylesheet" href="styles.css?v=7" />
     <script src="app.js?v=3" defer></script>
   </head>
   <body>
@@ -39,13 +39,6 @@
       <div class="mist mist--two" aria-hidden="true"></div>
 
       <section class="account" aria-label="Death Muffin account access">
-        <!-- Site alert: edit or delete this block (and bump styles.css?v) when the notice is no longer needed. -->
-        <aside class="site-alert" role="status">
-          <strong class="site-alert__title">Known issue: lag in the web version</strong>
-          <p>Online web players have been experiencing lag. The dev team is working on it. Until it's fixed, try the
-            <a href="https://github.com/Brbmuffins/Death_Muffin/releases/latest/download/DeathMuffinLauncher-win-x64.zip" rel="noopener">Windows launcher</a>
-            as an alternative.</p>
-        </aside>
         <header class="brand">
           <span class="brand__sigil" aria-hidden="true">
             <i></i>
@@ -56,6 +49,9 @@
 
         <!-- Latest patch: filled from play/patch-notes.json (the same notes as the launcher); the static line stays if it cannot load. -->
         <div class="account__dispatch" data-latest-patch>
+          <!-- Known issue line: remove this <p> (and bump styles.css?v) once the owner confirms the web lag is gone. -->
+          <p class="account__known" role="status"><b>Known issue:</b> some web players have seen lag. Performance fixes are in this patch; if the web version still lags for you, try the
+            <a class="footer-link" href="https://github.com/Brbmuffins/Death_Muffin/releases/latest/download/DeathMuffinLauncher-win-x64.zip" rel="noopener">Windows launcher</a>.</p>
           <span data-patch-head>LATEST PATCH</span>
           <p data-patch-fallback>Raise the fallen, read the omens, and descend. <a class="footer-link" href="patch-notes.html">See what changed</a>.</p>
         </div>
