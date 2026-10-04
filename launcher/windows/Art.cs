@@ -79,36 +79,66 @@ namespace DeathMuffinLauncher
             this.primary = primary;
             Text = text;
             Cursor = Cursors.Hand;
-            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
+            TabStop = true;
+            AccessibleRole = AccessibleRole.PushButton;
+            AccessibleName = text;
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw | ControlStyles.Selectable, true);
         }
 
         protected override void OnMouseEnter(EventArgs e) { hover = true; Invalidate(); base.OnMouseEnter(e); }
         protected override void OnMouseLeave(EventArgs e) { hover = down = false; Invalidate(); base.OnMouseLeave(e); }
-        protected override void OnMouseDown(MouseEventArgs e) { if (e.Button == MouseButtons.Left) { down = true; Invalidate(); } base.OnMouseDown(e); }
+        protected override void OnMouseDown(MouseEventArgs e) { if (e.Button == MouseButtons.Left) { Focus(); down = true; Invalidate(); } base.OnMouseDown(e); }
         protected override void OnMouseUp(MouseEventArgs e) { down = false; Invalidate(); base.OnMouseUp(e); }
         protected override void OnEnabledChanged(EventArgs e) { Cursor = Enabled ? Cursors.Hand : Cursors.Default; Invalidate(); base.OnEnabledChanged(e); }
-        protected override void OnTextChanged(EventArgs e) { Invalidate(); base.OnTextChanged(e); }
+        protected override void OnTextChanged(EventArgs e) { AccessibleName = Text; Invalidate(); base.OnTextChanged(e); }
+        protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
+        protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
+        protected override bool IsInputKey(Keys keyData)
+        {
+            if ((keyData & Keys.KeyCode) == Keys.Enter || (keyData & Keys.KeyCode) == Keys.Space) return true;
+            return base.IsInputKey(keyData);
+        }
+        protected override void OnKeyUp(KeyEventArgs e)
+        {
+            if (Enabled && (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Space)) { OnClick(EventArgs.Empty); e.Handled = true; }
+            base.OnKeyUp(e);
+        }
 
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
-            Color fill, border, text;
+            if (Width < 2 || Height < 2) return;
+            Color top, bottom, border, text;
             if (!Enabled)
             {
-                fill = Color.FromArgb(30, 26, 38); border = Color.FromArgb(58, 52, 70); text = Color.FromArgb(150, 144, 160);
+                top = Color.FromArgb(30, 34, 49); bottom = Color.FromArgb(20, 24, 38);
+                border = Color.FromArgb(58, 70, 94); text = Color.FromArgb(150, 155, 174);
             }
             else if (primary)
             {
-                fill = down ? Color.FromArgb(104, 44, 210) : hover ? Color.FromArgb(147, 90, 245) : Art.Violet;
-                border = Art.VioletLight; text = Color.White;
+                top = down ? Color.FromArgb(73, 65, 143) : hover ? Color.FromArgb(119, 109, 211) : Color.FromArgb(94, 84, 181);
+                bottom = down ? Color.FromArgb(39, 29, 91) : hover ? Color.FromArgb(72, 54, 159) : Color.FromArgb(51, 39, 125);
+                border = hover ? Color.FromArgb(255, 226, 171) : Art.Gold; text = Color.White;
             }
             else
             {
-                fill = down ? Color.FromArgb(28, 22, 40) : hover ? Color.FromArgb(56, 44, 80) : Color.FromArgb(36, 28, 52);
-                border = hover ? Art.VioletLight : Color.FromArgb(96, 76, 136); text = Art.Ink;
+                top = down ? Color.FromArgb(25, 31, 54) : hover ? Color.FromArgb(51, 62, 101) : Color.FromArgb(32, 43, 74);
+                bottom = down ? Color.FromArgb(16, 21, 39) : hover ? Color.FromArgb(31, 39, 72) : Color.FromArgb(20, 28, 52);
+                border = hover ? Art.VioletLight : Color.FromArgb(103, 124, 172); text = Art.Ink;
             }
-            using (var b = new SolidBrush(fill)) g.FillRectangle(b, ClientRectangle);
-            using (var p = new Pen(border)) g.DrawRectangle(p, 0, 0, Width - 1, Height - 1);
+            using (var b = new LinearGradientBrush(ClientRectangle, top, bottom, 90f)) g.FillRectangle(b, ClientRectangle);
+            using (var p = new Pen(border))
+            using (var inset = new Pen(Color.FromArgb(primary ? 85 : 42, 225, 224, 255)))
+            {
+                g.DrawRectangle(p, 0, 0, Width - 1, Height - 1);
+                g.DrawRectangle(inset, 3, 3, Width - 7, Height - 7);
+                if (primary)
+                {
+                    g.DrawLine(p, 10, 8, 39, 8);
+                    g.DrawLine(p, Width - 40, Height - 9, Width - 11, Height - 9);
+                }
+            }
+            if (Focused) ControlPaint.DrawFocusRectangle(g, new Rectangle(5, 5, Width - 10, Height - 10), text, bottom);
             TextRenderer.DrawText(g, Text, Font, ClientRectangle, text, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine);
         }
     }
