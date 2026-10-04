@@ -135,7 +135,7 @@ async function main() {
     await page.locator('.cw-lo-card', { hasText: 'Tank' }).locator('[data-act="delete"]').click();
     await page.locator('.cw-lo-card', { hasText: 'Tank' }).locator('[data-act="delete-yes"]').click();
     await page.waitForFunction(() => document.querySelectorAll('.cw-lo-card[data-slot]').length === 1);
-    const box = await page.locator('.cw-grimoire').boundingBox();
+    const box = await page.locator('.cw-panel-float').first().boundingBox();
     assert.ok(box.x >= 0 && box.y >= 0 && box.x + box.width <= 1280 && box.y + box.height <= 800, `Grimoire fits 1280x800 (${JSON.stringify(box)})`);
     assert.deepEqual(errors, [], 'no page errors');
     console.log('OK');

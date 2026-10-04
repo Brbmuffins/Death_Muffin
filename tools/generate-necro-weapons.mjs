@@ -42,7 +42,7 @@ function icon(w) {
     ? `<rect x="7" y="7" width="114" height="114" rx="14" fill="none" stroke="${a}" stroke-width="2" opacity=".9"/><path d="m64 8 8 10-8 10-8-10z" fill="${a}"/>`
     : '';
   const slotBadge = w.twoHanded ? `<path d="M14 110h10M14 104h10" stroke="${a}" stroke-width="3" opacity=".8"/>` : '';
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><defs><radialGradient id="bg"><stop stop-color="${c}" stop-opacity=".34"/><stop offset="1" stop-color="${dark}"/></radialGradient><linearGradient id="metal" x2="1" y2="1"><stop stop-color="${a}"/><stop offset=".48" stop-color="${c}"/><stop offset="1" stop-color="${dark}"/></linearGradient></defs><rect width="128" height="128" rx="17" fill="url(#bg)"/><path d="M12 19h21M95 19h21M12 109h21M95 109h21" stroke="${a}" stroke-width="3" opacity=".8"/>${frame}${slotBadge}<g fill="url(#metal)" stroke="${a}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">${shapes[w.kind]}</g></svg>\n`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><defs><radialGradient id="bg"><stop stop-color="${c}" stop-opacity=".34"/><stop offset="1" stop-color="${dark}"/></radialGradient><linearGradient id="metal" x2="1" y2="1"><stop stop-color="${a}"/><stop offset=".48" stop-color="${c}"/><stop offset="1" stop-color="${dark}"/></linearGradient></defs><rect width="128" height="128" rx="17" fill="url(#bg)"/><path d="M12 19h21M95 19h21M12 109h21M95 109h21" stroke="${a}" stroke-width="3" opacity=".8"/>${frame}${slotBadge}<g fill="url(#metal)" stroke="${a}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">${shapes[w.kind]}</g></svg>\n`;
 }
 
 export async function render() {

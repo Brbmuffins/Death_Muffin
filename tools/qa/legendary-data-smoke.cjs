@@ -78,7 +78,7 @@ async function run1(browser, label, ctxOptions, phone, setPage) {
   await look(SET.prefix + 'chest');
   let t = await detailText();
   assert.match(t, /Cuirass of the Unburied/);
-  assert.match(t, /legendary armor chest/i);
+  assert.match(t, /legendary chest armor/i);
   assert.match(t, /Legion of the Unburied/);
   assert.match(t, /0 \/ 5 worn/);
   const color = await page.evaluate(() => getComputedStyle(document.querySelector('[data-detail] .name, .cw-tooltip .name')).color);

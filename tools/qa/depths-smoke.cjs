@@ -76,17 +76,13 @@ async function main() {
     await shot('2-warren-stair-hover');
     result.hoverLabel = prompt;
 
-    console.log('STEP 2'); // 2. The stair says so when the hero is grouped (solo for now) and does nothing.
-    await scene((s) => { s.depths.host.__realParty = s.depths.host.partySize; s.depths.host.partySize = () => 1; });
+    console.log('STEP 2'); // 2. A party member is not blocked: the stair says they step out of the party until the run ends (party-depths-smoke walks the full out-and-back).
+    await scene((s) => { s.depths.host.__realInParty = s.depths.host.inParty; s.depths.host.inParty = () => true; });
     await advance(0.3);
     const grouped = await page.locator('.hud-prompt').innerText();
-    assert.match(grouped, /solo for now: leave your party/i, `the stair tells a party why not (${grouped})`);
-    await page.mouse.click(at.x, at.y);
-    await advance(2.5);
-    assert.equal((await state()).run, null, 'a grouped click starts no run');
-    assert.match(await page.locator('.hud-toasts').innerText(), /solo for now/i, 'and a toast says so');
+    assert.match(grouped, /step out of your party/i, `the stair tells a party member what descending does (${grouped})`);
     await shot('3-stair-grouped');
-    await scene((s) => { s.depths.host.partySize = s.depths.host.__realParty; });
+    await scene((s) => { s.depths.host.inParty = s.depths.host.__realInParty; });
 
     console.log('STEP 3'); // 3. A real click on the stair walks the hero to it and goes down: depth 1, the readout, the arrival banner, the minimap floor.
     await dbg((s) => window.__cwDebug.teleport(s.x, s.z + 3.6), stair);

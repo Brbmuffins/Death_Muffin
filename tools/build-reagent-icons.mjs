@@ -33,7 +33,7 @@ const P = {
 };
 
 const shell = (accent, inner) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><defs><radialGradient id="bg"><stop stop-color="${accent[1]}" stop-opacity=".30"/><stop offset="1" stop-color="#17151f"/></radialGradient><linearGradient id="m" x2="1" y2="1"><stop stop-color="${accent[0]}"/><stop offset=".5" stop-color="${accent[1]}"/><stop offset="1" stop-color="${accent[2]}"/></linearGradient></defs><rect width="128" height="128" rx="17" fill="url(#bg)"/><path d="M12 19h21M95 19h21M12 109h21M95 109h21" stroke="${accent[0]}" stroke-width="3" opacity=".7"/>${inner}</svg>\n`;
+  `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><defs><radialGradient id="bg"><stop stop-color="${accent[1]}" stop-opacity=".30"/><stop offset="1" stop-color="#17151f"/></radialGradient><linearGradient id="m" x2="1" y2="1"><stop stop-color="${accent[0]}"/><stop offset=".5" stop-color="${accent[1]}"/><stop offset="1" stop-color="${accent[2]}"/></linearGradient></defs><rect width="128" height="128" rx="17" fill="url(#bg)"/><path d="M12 19h21M95 19h21M12 109h21M95 109h21" stroke="${accent[0]}" stroke-width="3" opacity=".7"/>${inner}</svg>\n`;
 
 const stroke = (a) => `stroke="${a[0]}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"`;
 

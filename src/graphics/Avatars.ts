@@ -246,8 +246,9 @@ export class NecromancerAvatar {
     ];
     for (const [slot, bone, item] of want) {
       const cur = this.worn.get(slot);
-      if (slot === 'head') { this.headTint = null; if (!item) this.helmWant = null; }
+      if (slot === 'head' && !item) this.helmWant = null;
       if (cur?.key === item?.item_id) continue;
+      if (slot === 'head') this.headTint = null; // only when the helm changes: any later inventory change calls this again and must keep the worn helm's tint
       if (cur) {
         this.c.detach(cur.obj);
         disposeProp(cur.obj);
