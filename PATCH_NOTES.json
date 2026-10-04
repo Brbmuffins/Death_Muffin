@@ -4,6 +4,7 @@
     "title": "Smoother, Clearer, Deeper",
     "items": [
       "Performance: fixed a graphics memory leak that grew with every kill, thralls no longer stutter while following you, and walking under the arches no longer hitches.",
+      "Audio: every sound is new, from a full fantasy sound library: spells match their element, enemies have voices, bosses warn you, loot sounds by rarity, footsteps change with the floor. Co-op partners are quieter and danger cuts through the mix.",
       "Full bag: loot no longer chases you around, and the bag-full alert shows once instead of every swing.",
       "Alerts stay at the top of the screen and no longer cover level-up banners.",
       "Loot: stronger affix rolls, far more drops from your own set, better drops the deeper you go, more runes and legendaries. The Atlas shows your real odds.",
@@ -15,7 +16,9 @@
       "Cleaner fights: other players' spell areas are drawn faintly, lingering areas fade to outlines, and danger warnings always draw on top.",
       "HUD: Report a bug button above chat, a clearer elixir belt (click a slot to fill it), new key-art loading screen, fewer panels (Acre Ledger, Character tabs, Grimoire + Legion) and NEW markers when something unlocks.",
       "Gear: helms tint your own hood or helmet instead of floating on top, capes no longer clip on death, and a set summary sits under the paper doll.",
-      "Levels now count past 255 (up to 999), and logging in somewhere new stops the old window from saving over you."
+      "Levels now count past 255 (up to 999), and logging in somewhere new stops the old window from saving over you.",
+      "Patch notes now show in the launcher, on the website's new Patch notes page, and on the home page.",
+      "Fixes: loot icons could draw blank on some graphics cards, tooltips no longer block clicks, and the worn-helm look stays when you change other gear."
     ]
   }
 ]
