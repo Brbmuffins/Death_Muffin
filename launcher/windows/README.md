@@ -21,7 +21,7 @@ installer, no separate Java or .NET download.
   the one it last prepared, it shows **Update available** with a progress bar while a hidden page
   (`play/precache.html`) downloads the game's files into the launcher's cache. **Play is usable the whole time**; this only
   makes the first load after an update faster. If it fails or you are offline, nothing is lost.
-- **Latest news** shows the newest release notes (`play/release-notes.json`, written by the deploy script) with a link to
+- **Latest news** shows the newest release's patch notes (`play/release-notes.json`, written by the deploy script from the hand-written `PATCH_NOTES.json` at the repo root) in a scrollable box, with an **All patch notes** link to the site's patch-notes page. Releases without notes fall back to the commit subjects.
   the commit list on GitHub.
 - **Download Offline / Open Offline** use the existing offline edition (`/death-muffin/offline/`). Download Offline starts
   its asset download (about 105 MB); wait for "Ready to play without a network" before disconnecting.
@@ -91,7 +91,8 @@ run, attaches it to a GitHub Release tagged `launcher-v<version>`. Bump `<Versio
   mode, so unchanged files are revalidated (the server sends `no-cache` + ETag) and answer 304 instead of re-downloading.
   It does not touch the game's own release auto-refresh.
 - `server/death-muffin/deploy-release.sh` publishes `precache.html` and `asset-manifest.json` with the assets, and
-  `release-notes.json` (`{ sha, date, items }`: commit subjects since the previous live release, at most 12) after
+  `release-notes.json` (`{ sha, date, title, items, commits }`: the newest `PATCH_NOTES.json` entry, or the commit subjects since the previous live release) and `patch-notes.json` (the notes history, for `site/patch-notes.html`) after `index.html`, next to `release.txt`.
+- **Every release: add an entry at the top of `PATCH_NOTES.json`** (`date`, `title`, short player-facing `items`) before running `deploy-release.sh`.
   `index.html`, next to `release.txt`.
 
 Launcher source is this folder only; the old prototype's source was lost, so this is a clean rebuild of its behaviour. Since 0.3.0 the

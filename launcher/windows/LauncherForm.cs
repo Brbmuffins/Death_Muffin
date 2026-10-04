@@ -25,7 +25,8 @@ namespace DeathMuffinLauncher
         readonly Label updateLabel = new GlassLabel();
         readonly ThinBar bar = new ThinBar();
         readonly Label newsTitle = new GlassLabel();
-        readonly Label newsBody = new GlassLabel();
+        // Scrollable so a whole release's notes fit (the old label showed six lines and cut the rest).
+        readonly TextBox newsBody = new TextBox { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, BorderStyle = BorderStyle.None, TabStop = false, WordWrap = true };
         readonly LinkLabel newsLink = new LinkLabel();
         readonly RuneButton playBtn, downloadBtn, openBtn;
         readonly CheckBox gpu = new CheckBox();
@@ -84,14 +85,16 @@ namespace DeathMuffinLauncher
             newsTitle.Text = "Loading...";
             newsBody.SetBounds(x, 420, w, 110);
             newsBody.ForeColor = Muted;
+            newsBody.BackColor = Color.FromArgb(14, 11, 20);
+            newsBody.Font = new Font("Segoe UI", 9f);
             newsLink.SetBounds(x, 538, 200, 18);
-            newsLink.Text = "View all on GitHub";
+            newsLink.Text = "All patch notes";
             newsLink.BackColor = Color.Transparent;
             newsLink.LinkColor = VioletLight;
             newsLink.ActiveLinkColor = Ink;
             newsLink.LinkBehavior = LinkBehavior.HoverUnderline;
             newsLink.Visible = false;
-            newsLink.LinkClicked += (s, e) => System.Diagnostics.Process.Start(Updates.CommitsUrl);
+            newsLink.LinkClicked += (s, e) => System.Diagnostics.Process.Start(Updates.PatchNotesUrl);
             root.Controls.Add(newsTitle);
             root.Controls.Add(newsBody);
             root.Controls.Add(newsLink);
@@ -113,7 +116,7 @@ namespace DeathMuffinLauncher
             status.ForeColor = Muted;
             root.Controls.Add(status);
             root.Controls.Add(Lbl("LAUNCHER " + Program.Version, new Font("Segoe UI", 8f, FontStyle.Bold), Muted, 900, 590, 170, 18, ContentAlignment.TopRight));
-            foreach (var l in new Label[] { updateLabel, newsTitle, newsBody, status }) { l.AutoEllipsis = true; l.BackColor = Color.Transparent; }
+            foreach (var l in new Label[] { updateLabel, newsTitle, status }) { l.AutoEllipsis = true; l.BackColor = Color.Transparent; }
             // 1x1 control that hosts the hidden precache page (WebView2 needs a window to initialise in).
             Controls.Add(precacheWeb);
 
@@ -192,8 +195,11 @@ namespace DeathMuffinLauncher
                 return;
             }
             string d = Updates.FriendlyDate(n.Date);
-            newsTitle.Text = "Release " + Short(n.Sha) + (d.Length > 0 ? "  -  " + d : "");
-            newsBody.Text = "• " + string.Join("\n• ", n.Items.GetRange(0, Math.Min(n.Items.Count, 6)));
+            string name = n.Title.Length > 0 ? n.Title : "Release " + Short(n.Sha);
+            newsTitle.Text = name + (d.Length > 0 ? "  -  " + d : "");
+            // TextBox lines need CRLF; a blank line between items keeps long notes readable.
+            newsBody.Text = "• " + string.Join("\r\n\r\n• ", n.Items);
+            newsBody.SelectionStart = 0;
             newsLink.Visible = true;
         }
 

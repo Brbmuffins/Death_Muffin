@@ -92,13 +92,28 @@ for d in assets art models fx audio; do [ -d "$SRC/dist/$d" ] && sudo cp -a "$SR
 # Launcher "update before play" helpers: static, no game code; the manifest lists the files just published above.
 sudo cp -a "$SRC/dist/precache.html" "$SRC/dist/asset-manifest.json" "$PUBLIC/play/"
 sudo cp -a "$SRC/dist/index.html" "$PUBLIC/play/index.html"
-# release-notes.json (news panel of the Windows launcher): same commit range as the Discord notice, published after index.html.
+# release-notes.json (news panel of the Windows launcher), published after index.html. Player-facing notes come from PATCH_NOTES.json
+# (newest entry first, written by hand for each release); without it the commit subjects since the previous live release are used.
+# patch-notes.json (the whole PATCH_NOTES.json history) feeds the site's patch-notes page and the launcher's "All patch notes".
 RANGE="$SHA"; [ -n "$PREV" ] && git -C "$REPO" cat-file -e "$PREV^{commit}" 2>/dev/null && RANGE="$PREV..$SHA"
 git -C "$REPO" log --no-merges --format='%s' -n 12 $RANGE | python3 -c '
-import json, sys, datetime
-items = [l.strip()[:150] for l in sys.stdin if l.strip()]
-print(json.dumps({"sha": sys.argv[1], "date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "items": items}))
-' "$SHA" > "$CAND/release-notes.json" || echo '{"sha":"'"$SHA"'","date":"","items":[]}' > "$CAND/release-notes.json"
+import json, os, sys, datetime
+sha, notes_path, out_dir = sys.argv[1], sys.argv[2], sys.argv[3]
+now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+commits = [l.strip()[:150] for l in sys.stdin if l.strip()]
+history = []
+if os.path.exists(notes_path):
+    try:
+        history = [e for e in json.load(open(notes_path)) if e.get("items")]
+    except Exception as e:
+        print("PATCH_NOTES.json unreadable, using commit subjects:", e, file=sys.stderr)
+top = history[0] if history else None
+notes = {"sha": sha, "date": now, "title": top["title"] if top else "", "items": top["items"] if top else commits, "commits": commits}
+json.dump(notes, open(os.path.join(out_dir, "release-notes.json"), "w"))
+json.dump({"sha": sha, "date": now, "releases": history[:30]}, open(os.path.join(out_dir, "patch-notes.json"), "w"))
+' "$SHA" "$SRC/PATCH_NOTES.json" "$CAND" || echo '{"sha":"'"$SHA"'","date":"","items":[]}' > "$CAND/release-notes.json"
+[ -f "$CAND/patch-notes.json" ] || echo '{"releases":[]}' > "$CAND/patch-notes.json"
+sudo cp "$CAND/patch-notes.json" "$PUBLIC/play/patch-notes.json"
 sudo cp "$CAND/release-notes.json" "$PUBLIC/play/release-notes.json"
 # release.txt goes after index.html: open tabs auto-reload when it changes, and must then fetch the new page.
 echo "$SHA $(date -u +%FT%TZ)" > "$CAND/release.txt"

@@ -11,6 +11,8 @@ namespace DeathMuffinLauncher
     {
         public string Sha = "";
         public string Date = "";
+        /// <summary>The release's name from PATCH_NOTES.json ("" when the deploy fell back to commit subjects).</summary>
+        public string Title = "";
         public List<string> Items = new List<string>();
     }
 
@@ -21,6 +23,8 @@ namespace DeathMuffinLauncher
         public const string OfflineUrl = "https://muffindevelopment.com/death-muffin/offline/";
         public const string PrecacheUrl = PlayUrl + "precache.html";
         public const string CommitsUrl = "https://github.com/Brbmuffins/Death_Muffin/commits/master";
+        /// <summary>Every release's player notes (site page fed by play/patch-notes.json).</summary>
+        public const string PatchNotesUrl = "https://muffindevelopment.com/death-muffin/patch-notes.html";
         public const string WebView2Url = "https://developer.microsoft.com/en-us/microsoft-edge/webview2/";
 
         static readonly HttpClient Http = Create();
@@ -57,6 +61,7 @@ namespace DeathMuffinLauncher
                 object v;
                 if (d.TryGetValue("sha", out v) && v != null) n.Sha = v.ToString();
                 if (d.TryGetValue("date", out v) && v != null) n.Date = v.ToString();
+                if (d.TryGetValue("title", out v) && v != null) n.Title = v.ToString();
                 if (d.TryGetValue("items", out v) && v is System.Collections.IEnumerable list && !(v is string))
                     foreach (object o in list) if (o != null) n.Items.Add(o.ToString());
                 return n;
