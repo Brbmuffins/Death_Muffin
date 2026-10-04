@@ -21,7 +21,7 @@
       rel="stylesheet"
     />
     <link rel="preload" href="assets/about-covenant.png" as="image" />
-    <link rel="stylesheet" href="styles.css?v=5" />
+    <link rel="stylesheet" href="styles.css?v=8" />
   </head>
   <body class="about-page classes-page">
     <a class="skip-link" href="#classes-main">Skip to classes</a>
@@ -46,16 +46,17 @@
           <p class="eyebrow">The Ossuary Covenant</p>
           <h1 id="classes-title">Choose your discipline.</h1>
           <p>
-            Every necromancer raises the dead. Your discipline decides whether those bodies become
-            a shield wall, a restless legion, a choir of wraiths, or a garden of rot.
+            Nine disciplines walk the Covenant's halls. Four are necromancers who raise the dead as
+            a shield wall, a restless legion, a choir of wraiths, or a garden of rot. Five are the
+            New Blood, who fight the dead with oil, bells, hooks, oaths and the veil.
           </p>
-          <a class="about-button about-button--primary" href="#disciplines">Read the four rites</a>
+          <a class="about-button about-button--primary" href="#disciplines">Read the nine disciplines</a>
         </div>
       </section>
 
       <section class="disciplines-section" id="disciplines" aria-labelledby="disciplines-title">
         <div class="section-heading section-heading--center">
-          <p class="eyebrow">Four ways to spend the dead</p>
+          <p class="eyebrow">Nine ways to meet the dead</p>
           <h2 id="disciplines-title">The Covenant’s disciplines</h2>
         </div>
 
@@ -151,16 +152,123 @@
               </p>
             </div>
           </article>
+
+          <article class="discipline-card discipline-card--grave-warden" aria-labelledby="grave-warden-title">
+            <span class="discipline-card__number" aria-hidden="true">V</span>
+            <div class="discipline-card__sigil" aria-hidden="true">
+              <svg viewBox="0 0 64 64">
+                <path d="M32 6v8M24 14h16M22 22h20l3 24H19ZM25 46l-3 10h20l-3-10" /><path d="M32 28c-4 4-3 9 0 12 3-3 4-8 0-12Z" />
+              </svg>
+            </div>
+            <p class="discipline-card__role">Support · Oil</p>
+            <h3 id="grave-warden-title">Grave Warden</h3>
+            <p class="discipline-card__title">Keeper of the Last Lantern</p>
+            <p class="discipline-card__play">
+              Burn corpses for Oil, pin enemies with a chain and shelter allies in lantern light.
+            </p>
+            <div class="discipline-card__passive">
+              <span>Passive · Lamplighter</span>
+              <p>
+                Oil refills steadily and rises when a corpse burns. Lantern wards protect everyone standing inside.
+              </p>
+            </div>
+          </article>
+
+          <article class="discipline-card discipline-card--bell-monk" aria-labelledby="bell-monk-title">
+            <span class="discipline-card__number" aria-hidden="true">VI</span>
+            <div class="discipline-card__sigil" aria-hidden="true">
+              <svg viewBox="0 0 64 64">
+                <path d="M32 8v6M18 46c2-4 4-8 4-16 0-8 4-14 10-14s10 6 10 14c0 8 2 12 4 16ZM14 46h36M28 52a4 4 0 0 0 8 0" />
+              </svg>
+            </div>
+            <p class="discipline-card__role">Rhythm · Resonance</p>
+            <h3 id="bell-monk-title">Bell Monk</h3>
+            <p class="discipline-card__title">Voice of the Last Toll</p>
+            <p class="discipline-card__play">
+              Strike on a twelve-beat rhythm, build Resonance and turn corpses into sounding bells.
+            </p>
+            <div class="discipline-card__passive">
+              <span>Passive · The Beat</span>
+              <p>
+                Hits close to each toll deal more damage and build Resonance faster.
+              </p>
+            </div>
+          </article>
+
+          <article class="discipline-card discipline-card--carrion-witch" aria-labelledby="carrion-witch-title">
+            <span class="discipline-card__number" aria-hidden="true">VII</span>
+            <div class="discipline-card__sigil" aria-hidden="true">
+              <svg viewBox="0 0 64 64">
+                <path d="M12 40c6-14 20-22 36-18l6-6-2 10c-2 12-12 20-26 18l-6 6Z" /><path d="M44 24l5 1" />
+              </svg>
+            </div>
+            <p class="discipline-card__role">Hexes · Offal</p>
+            <h3 id="carrion-witch-title">Carrion Witch</h3>
+            <p class="discipline-card__title">Mistress of Hooks and Crows</p>
+            <p class="discipline-card__play">
+              Harvest corpses for Offal, send crows into a pack and curse foes with a hooked charm.
+            </p>
+            <div class="discipline-card__passive">
+              <span>Passive · Corpse Hunger</span>
+              <p>
+                Offal comes from bodies, never passive regeneration. Save a corpse before spending it.
+              </p>
+            </div>
+          </article>
+
+          <article class="discipline-card discipline-card--hollow-knight" aria-labelledby="hollow-knight-title">
+            <span class="discipline-card__number" aria-hidden="true">VIII</span>
+            <div class="discipline-card__sigil" aria-hidden="true">
+              <svg viewBox="0 0 64 64">
+                <path d="M18 30c0-12 6-20 14-20s14 8 14 20v14c0 6-6 10-14 10s-14-4-14-10ZM20 32h24M32 32v20" />
+              </svg>
+            </div>
+            <p class="discipline-card__role">Bruiser · Rage</p>
+            <h3 id="hollow-knight-title">Hollow Knight</h3>
+            <p class="discipline-card__title">Oathbound of the Covenant</p>
+            <p class="discipline-card__play">
+              Build Rage by taking and dealing punishment, then spend it leaping into the dead.
+            </p>
+            <div class="discipline-card__passive">
+              <span>Passive · Oathbound</span>
+              <p>
+                Rage instead of Grave Essence: built by damage taken, by every body Hollow Cut catches, and fastest of all by a perfect block. It drains once you leave the fight.
+              </p>
+            </div>
+          </article>
+
+          <article class="discipline-card discipline-card--veilwalker" aria-labelledby="veilwalker-title">
+            <span class="discipline-card__number" aria-hidden="true">IX</span>
+            <div class="discipline-card__sigil" aria-hidden="true">
+              <svg viewBox="0 0 64 64">
+                <path d="M32 8c-10 0-16 8-16 18v26l6-5 5 5 5-5 5 5 5-5 6 5V26C48 16 42 8 32 8Z" /><path d="M26 28v3m12-3v3" />
+              </svg>
+            </div>
+            <p class="discipline-card__role">Mobility · Veil</p>
+            <h3 id="veilwalker-title">Veilwalker</h3>
+            <p class="discipline-card__title">One Foot Beyond</p>
+            <p class="discipline-card__play">
+              Walk between life and death and raise brief spectral allies from echoes of the fallen.
+            </p>
+            <div class="discipline-card__passive">
+              <span>Passive · Thin Places</span>
+              <p>
+                Veil refills in Life form and drains in Veil form. Spectral echoes appear where corpses fall.
+              </p>
+            </div>
+          </article>
         </div>
       </section>
 
       <section class="shared-rites" aria-labelledby="rites-title">
         <div class="shared-rites__intro">
           <p class="eyebrow">Shared by every discipline</p>
-          <h2 id="rites-title">One necromancer’s kit.</h2>
+          <h2 id="rites-title">The necromancer’s kit.</h2>
           <p>
-            Your discipline changes the economy around the spells—not the spells themselves. Every
-            build still needs to create, claim, and spend corpses under pressure.
+            The four necromancers share one pool of rites, and your discipline changes the economy
+            around them—not the spells themselves. You choose five unlocked rites for keys 1 to 5,
+            socket relic runes into them, and can save whole loadouts. The New Blood each bring a
+            kit of their own, built on a different resource.
           </p>
         </div>
         <ol class="rites-strip">

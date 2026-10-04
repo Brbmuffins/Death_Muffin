@@ -8,11 +8,26 @@ The Ossuary Covenant stands in a diocese overrun by the dead. Choose one of nine
 
 **Play:** [muffindevelopment.com/death-muffin](https://muffindevelopment.com/death-muffin/). Create an account or sign in, then choose a discipline. You can change class later in **Settings** while keeping the same character's level, gold, items, and permanent progress.
 
-**Release status:** This guide matches the live game as of **3 October 2026**: a performance pass (smoother fights and big waves, a lighter download, one load screen at login, co-op that reconnects by itself and a game that refreshes when a release goes live), the always-visible belt, the 48-slot bag, Ossuary Vault and salvage, readable gear with upgrade arrows and the Character sheet, new combat audio, plus everything from 1 October (armor sets, Cinder Pyre and Mourning Fen, necromancer weapons and brews, five swappable rite slots, the Offline Edition). See the **[visual roadmap](ROADMAP.md)** for what is coming next, and [the handoff](HANDOFF.md) for development status.
+**Release status:** This guide matches the live game as of **4 October 2026** (the *Smoother, Clearer, Deeper* release, see **What's new** below). See the **[visual roadmap](ROADMAP.md)** for what is coming next, and [the handoff](HANDOFF.md) for development status.
 
 ## ✨ Highlights
 
-Some of the most polished corners of the game right now (updated 3 October 2026):
+### What's new (4 October 2026: Smoother, Clearer, Deeper)
+
+- **Smoother.** A graphics memory leak that grew with every kill is fixed, thralls no longer stutter while following you, and walking under the arches no longer hitches. See [Smooth play and loading](#smooth-play-and-loading).
+- **Better loot.** Stronger affix rolls, far more drops from your own set, better drops the deeper you go, and more runes and legendaries. The **Atlas** shows your real odds, and every list of areas now runs in descent order. See [Getting better gear](#getting-better-gear-upgrade-guide) and [Loot tables and the Gear Atlas](#-loot-tables--gear-atlas).
+- **Vows replace the old Ascension grind.** Choose your own curses at the Altar; your rank is the heat you swear, soul shards unlock vows and playstyle boons, and **seals never reset**. See [Ascension](#ascension).
+- **Gold sinks.** Reforge an affix at the Workbench, or spend a Covenant Seal to wake an **Empowered boss**. See [Gold sinks](#gold-sinks-reforge-and-empowered-bosses).
+- **Loadouts.** Save rites, runes and weapons together and swap with one click, with optional hotkeys. See [Loadouts](#loadouts).
+- **Co-op is solo by default.** You only share a world after making or joining a **party code** (Settings → Play together, or `/party`). Partied players can still go down the Depths. See [Playing together](#playing-together-and-getting-help).
+- **Cleaner fights.** Other players' spell areas are faint and tinted, lingering areas fade to outlines, and danger warnings always draw on top. See [Combat and corpses](#combat-and-corpses).
+- **A tidier HUD.** A Report a bug button above chat, a clearer elixir belt, a key-art loading screen, fewer panels (Acre ledger, Character, Grimoire) and **NEW** markers when something unlocks. See [A HUD that grows with you](#a-hud-that-grows-with-you).
+- **Gear that fits.** Helms tint your own hood or helmet, capes no longer clip on death, there is a set summary under the paper doll and a **Hide helms** setting. See [Gear, stats and the character sheet](#gear-stats-and-the-character-sheet).
+- **Levels go to 999,** and signing in somewhere new stops the old window saving over you. See [One login at a time](#one-login-at-a-time).
+
+### Gallery
+
+Some of the most polished corners of the game right now (updated 4 October 2026):
 
 <table><tr>
 <td width="50%"><img src="docs/screenshots/gear-set-tooltip.webp" alt="An item tooltip that says whether it is an upgrade for your discipline and which set bonus it completes" /><br /><sub><b>Gear you can read.</b> Green ▲ / red ▼ on every bag item, a verdict for <i>your</i> discipline, and armor set bonuses that light up as you complete them.</sub></td>
@@ -39,11 +54,14 @@ Some of the most polished corners of the game right now (updated 3 October 2026)
 
 ## Contents
 
-- [Highlights](#-highlights)
+- [Highlights and what's new](#-highlights)
 - [Your first hour](#your-first-hour)
 - [What to explore next](#what-to-explore-next)
 - [Finding your way](#finding-your-way)
-- [Controls](#controls) (and [on a phone or tablet](#on-a-phone-or-tablet))
+- [Controls](#controls)
+  - [A HUD that grows with you](#a-hud-that-grows-with-you)
+  - [Smooth play and loading](#smooth-play-and-loading)
+  - [Phones and tablets](#phones-and-tablets)
 - [Choose a discipline](#choose-a-discipline)
 - [Combat and corpses](#combat-and-corpses)
 - [Relic runes](#relic-runes)
@@ -51,12 +69,14 @@ Some of the most polished corners of the game right now (updated 3 October 2026)
 - [The world and its bosses](#the-world-and-its-bosses)
 - [The Catacomb Depths](#the-catacomb-depths)
 - [Gold, gear, and difficulty](#gold-gear-and-difficulty)
+  - [Gold sinks: Reforge and Empowered bosses](#gold-sinks-reforge-and-empowered-bosses)
 - [Gear, stats and the character sheet](#gear-stats-and-the-character-sheet)
 - [Getting better gear (upgrade guide)](#getting-better-gear-upgrade-guide)
 - [Loot tables and the Gear Atlas](#-loot-tables--gear-atlas)
 - [Gathering and crafting](#gathering-and-crafting)
 - [Ascension](#ascension)
 - [Playing together and getting help](#playing-together-and-getting-help)
+  - [One login at a time](#one-login-at-a-time)
 - [Offline play status](#offline-play-status)
 
 ## Your first hour
@@ -121,8 +141,9 @@ Nothing in Death Muffin is a quest, and nothing can be failed or missed. If you 
 | Right click | Also uses your fifth equipped rite, which you can change in the Grimoire |
 | **R** or **6** | Use your class's signature rite after level 10 |
 | **Q** | Drink a healing flask |
-| **Z** / **X** | Drink the elixir / tonic on your belt (**F** is reserved for throwables) |
+| **Z** / **X** | Drink the elixir / tonic on your belt (**F** is reserved for throwables); these are your elixir belt, not the tool belt |
 | **T** | Recall to the Chapterhouse |
+| **Loadout keys** | Unbound by default: **Settings → Controls** lists **Next loadout** and **Loadout 1** to **6** (see [Loadouts](#loadouts)) |
 | **L** | Open the Grimoire to inspect rites and set all five slots (necromancers get a **Legion** tab beside it) |
 | **I** or **B** / **C** | Reliquary / Workbench |
 | **P** (also **U** / **H** / **O**) | **Acre ledger**: one window with tabs for Skills and AFK gathering, Grave Gardening, Grave Laborers and Sexton’s Contracts. The old keys U, H and O open the matching tab. |
@@ -150,11 +171,11 @@ Panels are merged to keep the key list short: **P** opens the **Acre ledger** (t
 - **Frame rate and resolution.** In **Settings**, **Frame rate** can be **Max** (no cap, the default on a computer until you choose), 60 or 30 fps. **Auto resolution** lowers the picture's resolution only when the machine keeps missing its frame rate; turn it off for a constant sharp picture.
 - **Belt.** A labelled **Belt** at the left edge always shows three slots: **Q** Heal, **Z** Elixir, **X** Tonic. Healing flasks fill Heal by themselves. **Click an empty Elixir or Tonic slot** to pick a brew from your bag, or drag a brew from the Reliquary onto it (the **Put on belt** button on a brew works too). Hover any slot for the item, its effect and its key.
 - **Co-op and updates.** If the connection drops, the game retries on its own and returns you to the same world. When a new release goes live it saves, waits for any boss fight to end, and reloads you in.
-- **Computer first.** This is the PC build; phones and tablets are redirected to their own build (see below).
+- **Computer first.** This is the PC build; phones and tablets go to [their own build](#phones-and-tablets).
 
-### On a phone or tablet
+### Phones and tablets
 
-Phones and tablets play a separate build at **[muffindevelopment.com/death-muffin/mobile/](https://muffindevelopment.com/death-muffin/mobile/)**: the same game, accounts and co-op worlds, with a phone HUD, touch controls and a battery-saver default. Opening the PC address on a touch-only device sends you there automatically. To play the PC version on such a device anyway, add `?pc=1` to the address (`/death-muffin/play/?pc=1`). The mobile build is kept on its own `mobile` branch and catches up with PC changes from time to time, so it can lag the PC version by a release. A laptop with a touchscreen and a mouse or trackpad stays on the PC build.
+This is the PC build. Phones and tablets play at **[muffindevelopment.com/death-muffin/mobile/](https://muffindevelopment.com/death-muffin/mobile/)** (same accounts and characters), and opening the PC address on a touch-only device sends you there.
 
 ## Choose a discipline
 
@@ -356,7 +377,7 @@ An endless descent. Behind the **Catacomb Warren's west chamber** a glowing stai
 
 **Ending a run.** Dying ends it, and so does the way up (the stair at your feet when you arrive; it asks twice, so a stray click cannot end a run) or leaving by any other road (recall, a class change). Everything you looted is already yours. The deepest floor you reach is written to the **Chronicle** (Codex **K**, Chronicle tab, "Deepest descent") and shown on the public leaderboard; Ascension never resets it.
 
-**Solo for now.** The floors live in the world keeper's simulation and the realtime relay does not carry a layout, so the Depths are a descent for one. If you are in a party, the stair says so and stays shut; if a friend joins while you are down, the stair closes behind you. Playing together on a floor is on the list.
+**A descent for one.** The floors live in one player's world, so a run is solo. If you are in a party, the stair says so when you hover it: you **step out of the party** for the run and rejoin it automatically when the run ends. If a friend appears while you are down, the stair closes behind you. Playing together on a floor is on the list.
 
 
 ## Gold, gear, and difficulty
@@ -432,7 +453,7 @@ Gear carries four stats. Each one feeds a few numbers you can feel, and the game
 | **INT** (Intellect) | +1.3 spell power, +2 max essence, +0.1 essence per second |
 | **STR** (Strength) | +0.4 spell power |
 | **AGI** (Agility) | +0.3% move speed, +0.2 spell power |
-| **Each level** | +14 health, +1.6 spell power, +2 max essence |
+| **Each level** (up to 999) | +14 health, +1.6 spell power, +2 max essence |
 
 Your discipline then scales the result (an Ossuary necromancer has extra health, a Mourner regains essence faster), Covenant boons add their own share, **Damage upgrades** raise spell power by 8% per tier, and a necromancer's **staff** adds 10% spell power. A thrall hits for 40% of your spell power, before the staff's boost.
 
@@ -498,7 +519,7 @@ Three thralls without the kit (left) and with it (right): the archer's baked bow
 
 *What can drop, how often, where, and what is worth wearing.* The full tables are in **[docs/LOOT-TABLES.md](docs/LOOT-TABLES.md)**, generated from the same tables the game rolls (`npm run gen:loot`; a test fails if the file goes stale): every hunting ground's drop table with ordinary-kill, elite and Grave Surge chances, each boss's spoils and first-kill trophy, runes, reagents, legendary armor by discipline, the Catacomb Depths, gathering finds, every recipe, salvage yields and how affixes and item level work.
 
-In game, the **Gear Atlas** (press **.**, or **Atlas** in the Menu) is the same data as an AtlasLoot-and-Pawn-style browser: browse by slot, by area or boss, by set, or by materials and brews; every row shows where it drops with its chance, how to craft it, a fit badge for *your* discipline and a green ▲ / red ▼ against what you wear in that slot. **Best for me** lists the top upgrades you do not own yet. The percentages are *your* odds (your own armour set drops far more often than the other eight), and under **By area & boss** each hunting ground shows a **drop quality** rung from 1 to 9: the deeper the ground, the likelier the pieces worth wearing, runes and legendaries, and the higher their item level. Areas, the map, waystones and the Codex all list the world in descent order: Chapterhouse, Hollow Graves, Bone Warren, Marrow Ossuary, Drowned Nave, Bone Coliseum, Catacomb Depths, Bell Sanctum, Plague Cloister, Cinder Pyre, Mourning Fen. Tap or hover a row for the full source list, the recipe tree one level deep, what the item is used in, its set bonuses and the odds of rolled affixes. Percentages are per kill at default settings (Medium difficulty, Wave Speed 0, no fortune tonic); the page says what moves them.
+In game, the **Gear Atlas** (press **.**, or **Atlas** in the Menu) is the same data as an AtlasLoot-and-Pawn-style browser: browse by slot, by area or boss, by set, or by materials and brews; every row shows where it drops with its chance, how to craft it, a fit badge for *your* discipline and a green ▲ / red ▼ against what you wear in that slot. **Best for me** lists the top upgrades you do not own yet. The percentages are *your* odds (your own armour set drops far more often than the other eight), and under **By area & boss** each hunting ground shows a **drop quality** rung from 1 to 9: the deeper the ground, the likelier the pieces worth wearing, runes and legendaries, and the higher their item level. Areas, the map, waystones and the Codex all list the world in descent order: Chapterhouse, Sexton's Acre, Alchemist's Wing, Hollow Graves, Bone Warren, Marrow Ossuary, Drowned Nave, Bone Coliseum, Catacomb Depths, Bell Sanctum, Plague Cloister, Cinder Pyre, Mourning Fen. Hover or click a row for the full source list, the recipe tree one level deep, what the item is used in, its set bonuses and the odds of rolled affixes. Percentages are per kill at default settings (Medium difficulty, Wave Speed 0, no fortune tonic); the page says what moves them.
 
 <p><img src="docs/screenshots/atlas/atlas-slot-detail.webp" alt="The Gear Atlas by slot: Colossus Mantle with an Ideal fit badge, an upgrade arrow and its drop sources" /><br /><sub>The Gear Atlas: every chest piece for your discipline with a fit badge and an upgrade arrow; the detail pane lists each source with its chance.</sub></p>
 
@@ -587,13 +608,17 @@ Soul shards come from elites (about 7 per 100 kills), so unlocks take hours rath
 
 ## Playing together and getting help
 
-When co-op is available, joining places you in a world with room for up to **10 players**. Players in the same world share chat, combat, gathering node depletion, and boss activity; each character receives their own finds and progression. Press **Enter** to chat. If the realtime service is unavailable, the game continues as a solo world. If the link drops (a deploy, a bad connection) you keep playing solo while the game retries on its own and puts you back in the same world; when a new release goes live the game saves, shows a short countdown with a **Reload now** button (waiting for a boss fight to end) and reloads straight back into your world. The one exception is the [Catacomb Depths](#the-catacomb-depths), which are solo for now: the stair tells a party so.
+You play **solo by default**: being online at the same time as someone else never puts you in their world. To play together, open **Settings → Play together** and **Make a party**, then share its short **party code**; friends type it under **Join a friend** (or use `/party CODE` in chat). Leave with **Leave party (play solo)** or `/solo`. A party is one shared world for up to **10 players**: you share chat, combat, gathering node depletion and boss activity, and each character receives their own finds and progression. Press **Enter** to chat. If the realtime service is unavailable, the game continues as a solo world. If the link drops (a deploy, a bad connection) you keep playing while the game retries on its own and puts you back in the same party; when a new release goes live the game saves, shows a short countdown with a **Reload now** button (waiting for a boss fight to end) and reloads straight back in. A reload remembers your party for ten minutes. The [Catacomb Depths](#the-catacomb-depths) are a solo run: partied players step out for the descent and rejoin after.
 
 **Covenant counsel** cards appear when you first encounter important systems, one at a time and at a calm moment (see *Your first hour*). You can move them, turn them off in Settings, or choose **Show tips again** there. Hover or focus an ability icon for its cost, target, effects, and combat tip. The **Codex (K)** records rites, enemies, bosses, and professions you have encountered.
 
 ![A Covenant counsel tip in game](docs/screenshots/covenant-counsel.webp)
 
 **Found a bug?** Click **Report a bug** just above the chat (bottom left), or open **Settings → Report a bug**, pick what kind of problem it is and describe what happened. Your area, level, discipline and game version are attached for you. Reports are read every day; the same screen lists your recent reports and what became of each one (for example *Fixed in an upcoming update*, or *Need more detail* with a note). How the daily triage works: [server/death-muffin/bug-agent/README.md](server/death-muffin/bug-agent/README.md).
+
+### One login at a time
+
+Only one window can play a character at a time, and the newest login wins. If you sign in somewhere else, the older window stops saving and shows **Logged in elsewhere**; your progress is safe in the newer one. Press **Play here** in the old window to take the session back. When the game reloads itself after a release, it never steals the session. Levels now go up to **999**.
 
 For technical setup and deployment, see [docs/README.md](docs/README.md) and the [VPS handoff](docs/DEATH-MUFFIN-HANDOFF.md).
 
