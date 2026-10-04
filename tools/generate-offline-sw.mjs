@@ -45,6 +45,27 @@ const ASSETS = ${JSON.stringify(assets)};
 const READY = BASE + 'offline-ready.txt';
 let downloading = false;
 
+async function cachedResponse(hit, request) {
+  if (request.method === 'HEAD') return new Response(null, { status: 200, headers: hit.headers });
+  const range = request.headers.get('range');
+  if (!range) return hit;
+  const match = /^bytes=(\\d*)-(\\d*)$/.exec(range);
+  if (!match) return new Response(null, { status: 416 });
+  const data = await hit.arrayBuffer();
+  const size = data.byteLength;
+  let start = match[1] ? Number(match[1]) : Math.max(0, size - Number(match[2]));
+  let end = match[2] && match[1] ? Number(match[2]) : size - 1;
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start >= size || end < start) {
+    return new Response(null, { status: 416, headers: { 'Content-Range': 'bytes */' + size } });
+  }
+  end = Math.min(end, size - 1);
+  const headers = new Headers(hit.headers);
+  headers.set('Accept-Ranges', 'bytes');
+  headers.set('Content-Range', 'bytes ' + start + '-' + end + '/' + size);
+  headers.set('Content-Length', String(end - start + 1));
+  return new Response(data.slice(start, end + 1), { status: 206, headers });
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll([BASE, BASE + 'index.html', BASE + 'offline-manifest.json', BASE + 'offline-icon.svg'])));
   self.skipWaiting();
@@ -59,11 +80,11 @@ self.addEventListener('fetch', (event) => {
     const cache = await caches.open(CACHE);
     const target = event.request.mode === 'navigate' ? BASE + 'index.html' : event.request.url;
     const hit = await cache.match(target) || await caches.match(target);
-    if (hit) return event.request.method === 'HEAD' ? new Response(null, { status: 200, headers: hit.headers }) : hit;
+    if (hit) return cachedResponse(hit, event.request);
     if (event.request.method === 'HEAD') return fetch(event.request);
     try {
       const response = await fetch(event.request);
-      if (response.ok) await cache.put(target, response.clone());
+      if (response.ok && response.status === 200) await cache.put(target, response.clone());
       return response;
     } catch {
       if (event.request.mode === 'navigate') return cache.match(BASE + 'index.html') || Response.error();

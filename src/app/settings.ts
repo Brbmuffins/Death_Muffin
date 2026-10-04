@@ -25,6 +25,7 @@ export interface Settings {
   /** Mixer sliders, 0..1, applied under the master volume. */
   combatVolume: number;
   ambienceVolume: number;
+  musicVolume: number;
   interfaceVolume: number;
   /** First-time onboarding tips (ui/Onboarding). */
   tips: boolean;
@@ -54,7 +55,7 @@ function defaults(): Settings {
   } catch {
     /* no matchMedia */
   }
-  return { quality: 'high', fps: 0, graphicsChosen: false, autoResolution: true, reducedMotion: reduced, damageNumbers: true, hideHelm: false, volume: 0.6, combatVolume: 1, ambienceVolume: 1, interfaceVolume: 1, tips: true, guidance: true, guidancePing: true, difficulty: 'medium', autoCombat: false, autoGather: true, lootRules: { ...DEFAULT_LOOT_RULES } };
+  return { quality: 'high', fps: 0, graphicsChosen: false, autoResolution: true, reducedMotion: reduced, damageNumbers: true, hideHelm: false, volume: 0.6, combatVolume: 1, ambienceVolume: 1, musicVolume: 0.85, interfaceVolume: 1, tips: true, guidance: true, guidancePing: true, difficulty: 'medium', autoCombat: false, autoGather: true, lootRules: { ...DEFAULT_LOOT_RULES } };
 }
 
 function load(): Settings {
@@ -64,7 +65,7 @@ function load(): Settings {
     if (raw) {
       const stored = JSON.parse(raw) as Partial<Settings>;
       const s = { ...base, ...stored } as Settings;
-      for (const k of ['volume', 'combatVolume', 'ambienceVolume', 'interfaceVolume'] as const) {
+      for (const k of ['volume', 'combatVolume', 'ambienceVolume', 'musicVolume', 'interfaceVolume'] as const) {
         if (typeof s[k] !== 'number' || !Number.isFinite(s[k])) s[k] = base[k];
         s[k] = Math.min(1, Math.max(0, s[k]));
       }

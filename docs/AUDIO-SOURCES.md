@@ -48,9 +48,10 @@ The Kenney clips are CC0 1.0 (credit not required; "Kenney (kenney.nl)" given an
 
 ## `public/audio/ambience/` (zone bed loops)
 
-Generated in ffmpeg (no source recording): filtered noise, equal-power crossfaded tail-to-head
-into a seamless 12 s loop, a periodic swell on top, mono 24 kHz Ogg Vorbis. The engine varies one
-loop per zone through playback rate, low-pass and gain (`src/audio/ambience.ts`).
+The original five beds were generated in ffmpeg (no source recording): filtered noise,
+equal-power crossfaded tail-to-head into a seamless 12 s loop, a periodic swell on top,
+mono 24 kHz Ogg Vorbis. The engine varies loops per zone through playback rate, low-pass
+and gain (`src/audio/ambience.ts`).
 
 | File | Recipe |
 |---|---|
@@ -59,6 +60,22 @@ loop per zone through playback rate, low-pass and gain (`src/audio/ambience.ts`)
 | `bed_water.ogg` | Pink noise, high-passed, rippling swell (trickle) |
 | `bed_fire.ogg` | Brown/white noise with random crackle impulses |
 | `bed_murmur.ogg` | Pink noise through a vocal-range band-pass, swell (crowd) |
+
+`bed_rain.ogg` and `bed_flame.ogg` were generated for Death Muffin with ElevenLabs Sound Effects v2 on 2026-10-04 using the owner's paid Creator account. Their source MP3s and request metadata are kept privately under `/home/ubuntu/death-muffin/private/ambience-drafts/`; prompts are in `tools/audio/generate-eleven-ambience.mjs`. `tools/audio/prepare-eleven-ambience.mjs` makes compact 24 kHz mono Vorbis loops and limits peaks. Rain plays in the Graves, Cloister, and Fen; flames play at the Pyre and in the Alchemist's Wing. See the [Sound Effects API](https://elevenlabs.io/docs/api-reference/text-to-sound-effects/convert) and [ElevenLabs terms](https://elevenlabs.io/terms-of-use).
+
+## `public/audio/music/` (original game score)
+
+Five original instrumental cues were generated for Death Muffin with Eleven Music v2.5 on 2026-10-04 using the owner's paid Creator account. The prompts are in `tools/audio/generate-eleven-music.mjs`; original MP3s and request metadata are private in `/home/ubuntu/death-muffin/private/music-drafts/`. `tools/audio/prepare-eleven-music.mjs` makes 160 kbps MP3 game loops with a 5 s overlap and a consistent loudness target. The game streams one cue at a time, crossfades on area or boss changes, and has a separate Music slider.
+
+| Shipped file | ElevenLabs song ID | Intended areas |
+|---|---|---|
+| `chapterhouse.mp3` | `qNwz58dJ7F2BFoJXBUqi` | Chapterhouse, Alchemist's Wing |
+| `graves.mp3` | `1bmgTc7bU1CSuymXPfpb` | Acre, Graves, Cloister, Fen, Coliseum |
+| `ossuary.mp3` | `o7s6Pc2kwtsYqxzlZl9L` | Ossuary, Nave, Sanctum, Warren, Depths |
+| `pyre.mp3` | `fqwplzeT2L60Ue3QymUx` | Cinder Pyre |
+| `boss.mp3` | `EZ1tTGBF07v09eT3ApQP` | Active area boss |
+
+The owner confirmed on 2026-10-04 that Death Muffin is not currently monetized. ElevenLabs' [Music Model-Specific Terms](https://elevenlabs.io/eleven-music-model-specific-terms) exclude monetized games offered on more than one platform from Creator media rights, and list Creator as an individual-use plan. Recheck the distribution plan and rights before monetizing the game or transferring its music to an entity.
 
 ## Removed: `public/audio/crossworlds/`
 
