@@ -654,3 +654,65 @@ test('a question after a proposal re-posts it with the same title, not the oldes
   assert.doesNotMatch(p3.payload.embeds[0].title, /blue/i);
   void p1;
 });
+
+// ---- a thread deleted in Discord: the job is cleaned up right away, nothing more is posted ----
+const noArtifacts = (w, job) => { assert.equal(sh(w.repo, 'ls-remote', 'origin', 'refs/heads/discord/*'), '', 'remote branch gone'); assert.equal(sh(w.repo, 'branch', '--list', 'discord/*'), '', 'local branch gone'); assert.equal(fs.readdirSync(w.cfg.worktreeRoot).length, 0, 'worktree gone'); assert.ok(!fs.existsSync(path.join(w.cfg.previewRoot, job.id)), 'preview gone'); };
+
+test('thread deleted while idle (with an open proposal): artifacts removed at once, status deleted, nothing posted, later events ignored', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS make the accent blue');
+  await waitProposal(d, thread); const job = Object.values(w.runner.jobs())[0];
+  await until(() => job.status === 'proposed' && !job.running, d.ad);
+  assert.ok(fs.existsSync(path.join(w.cfg.previewRoot, job.id)));
+  const sentBefore = thread.sent.length;
+  await d.ad.onThreadDelete(thread);
+  assert.equal(job.status, 'deleted'); noArtifacts(w, job);
+  assert.equal(job.history[job.history.length - 1].deleted, true);
+  const m = await d.say(thread, IDS.HELIX, 'hello?'); assert.equal(m.replies.length, 0); assert.equal(job.queue.length, 0); assert.equal(job.round, 1);
+  await w.runner.sweep(0); assert.equal(job.status, 'deleted');
+  assert.equal(thread.sent.length, sentBefore, 'nothing posted to the deleted thread');
+});
+
+test('thread deleted during a running turn: stopped, cleaned up after the step unwinds, no Cancelled/Discarded posts', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'SLOW-TURN MAKE-CSS blue');
+  const job = Object.values(w.runner.jobs())[0];
+  await until(() => job.running && job.proc, d.ad);
+  const sentBefore = thread.sent.length;
+  await d.ad.onThreadDelete(thread);
+  await until(() => job.status === 'deleted' && !job.running, d.ad);
+  noArtifacts(w, job);
+  await new Promise((r) => setTimeout(r, 300)); await d.ad.pollOnce();
+  assert.ok(!texts(thread).slice(sentBefore).some((t) => /Cancelled|Discard/.test(t)));
+  assert.equal(thread.sent.length, sentBefore); assert.equal(proposals(thread).length, 0);
+});
+
+test('thread deleted during a ship: the deploy still completes live, then cleanup; the queued message does not start a round', async () => {
+  const w = makeWorld(); w.cfg.deployCmd = 'sleep 3; ' + w.cfg.deployCmd; const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS make the accent blue');
+  const p = await waitProposal(d, thread); const job = Object.values(w.runner.jobs())[0];
+  const before = remoteMaster(w);
+  await d.react(p, IDS.HELIX, '✅');
+  await until(() => job.status === 'shipping', d.ad);
+  await d.say(thread, IDS.HELIX, 'MAKE-CSS2 and then green please');
+  const sentBefore = thread.sent.length;
+  await d.ad.onThreadDelete(thread);
+  await until(() => job.status === 'deleted', d.ad);
+  assert.notEqual(remoteMaster(w), before, 'the ship went live'); assert.equal(shipsLog(w).length, 1);
+  assert.equal(job.round, 1, 'no new round'); assert.equal(job.queue.length, 0); noArtifacts(w, job);
+  assert.equal(thread.sent.length, sentBefore, 'nothing posted after the delete');
+});
+
+test('thread deleted: queued outbox ops for it are dropped and nothing new is queued', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'where is player speed defined?');
+  await until(() => texts(thread).some((t) => /answer is in/.test(t)) && Object.values(w.runner.jobs())[0].status === 'idle', d.ad);
+  const job = Object.values(w.runner.jobs())[0];
+  await w.runner.poll(0); w.runner._post({ threadId: thread.id }, { content: 'pending one' });
+  await d.ad.onThreadDelete(thread);
+  assert.equal(w.runner._post({ threadId: thread.id }, { content: 'late' }), null);
+  const ops = await w.runner.poll(0); assert.ok(!ops.some((o) => o.target && o.target.threadId === thread.id));
+  assert.equal(job.status, 'deleted');
+  const other = new (d.main.constructor)(d.world, 'T-OTHER', { thread: true, parentId: 'SOMEWHERE-ELSE' });
+  await d.ad.onThreadDelete(other);   // a thread in another channel is not ours: no event, no effect
+});

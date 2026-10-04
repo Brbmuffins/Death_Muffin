@@ -98,6 +98,14 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
     } catch (e) { log('[dm-agent] reaction handler error', e.message); }
   }
 
+  // A thread deleted in Discord: tell the runner so it can drop the job's workspace/branch/preview right away.
+  async function onThreadDelete(thread) {
+    try {
+      const chan = await channelId(); if (!thread || !chan || String(thread.parentId) !== String(chan)) return;
+      await call('/event', { type: 'thread-deleted', threadId: thread.id, parentId: thread.parentId, channelId: thread.parentId });
+    } catch (e) { log('[dm-agent] thread delete handler error', e.message); }
+  }
+
   async function exec(op) {
     const t = op.target || {};
     const ch = await client.channels.fetch(t.threadId || t.channelId);
@@ -129,7 +137,7 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
   async function loop() {
     while (!stopped) { try { await pollOnce(); } catch (e) { log('[dm-agent] poll error', e.message); await new Promise((r) => setTimeout(r, 5000)); } }
   }
-  return { onMessage, onReaction, pollOnce, loop, stop: () => { stopped = true; }, channelId };
+  return { onMessage, onReaction, onThreadDelete, pollOnce, loop, stop: () => { stopped = true; }, channelId };
 }
 
 function attach(client, env = process.env) {
@@ -137,6 +145,7 @@ function attach(client, env = process.env) {
   const ad = createAdapter({ client, runnerUrl: env.DM_AGENT_URL || 'http://127.0.0.1:4321', secret: env.DM_AGENT_SECRET, channelIdOverride: env.DM_AGENT_CHANNEL_ID || '' });
   client.on('messageCreate', (m) => ad.onMessage(m));
   client.on('messageReactionAdd', (r, u) => ad.onReaction(r, u));
+  client.on('threadDelete', (t) => ad.onThreadDelete(t));
   client.once('clientReady', () => { ad.loop(); console.log('[dm-agent] adapter running'); });
   return ad;
 }

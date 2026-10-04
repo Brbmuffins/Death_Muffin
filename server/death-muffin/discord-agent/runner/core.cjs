@@ -68,7 +68,9 @@ function createRunner(cfgIn, opts = {}) {
 
   // ---------- outbox (runner -> bot, long-polled) ----------
   const outbox = []; const callbacks = new Map(); let waiters = [];
+  const goneThread = (tid) => { const j = tid && jobs[String(tid)]; return !!j && (j.status === 'deleted' || !!j.deleteRequested); };   // thread deleted in Discord: nothing more is posted
   function post(target, payload, cb) {
+    if (target && goneThread(target.threadId)) return null;
     const p = { ...payload };
     if (p.content) p.content = redactText(p.content);
     if (p.file) p.file = { name: p.file.name, text: redactText(p.file.text) };
@@ -139,6 +141,7 @@ function createRunner(cfgIn, opts = {}) {
 
   async function handleEvent(ev) {
     if (!cfg.channelId || !inScope(ev)) return { action: 'ignore' };
+    if (ev.type === 'thread-deleted') return handleThreadDeleted(ev);
     if (ev.type === 'reaction') return handleReaction(ev);
     const role = auth.roleOf(ev.userId);
     if (!role) { audit.log('ignored-unlisted', { userId: String(ev.userId), mentioned: !!ev.mentioned }); return { action: 'ignore' }; }
@@ -168,7 +171,7 @@ function createRunner(cfgIn, opts = {}) {
     }
 
     const job = jobs[ev.threadId];
-    if (!job) return { action: 'ignore' };
+    if (!job || goneThread(job.threadId)) return { action: 'ignore' };
     if (!ev.mentioned && cfg.threadReplyRequiresMention) return { action: 'ignore' };
     if (starting.has(job.threadId)) await starting.get(job.threadId).catch(() => {});
     audit.log('request', { userId: msg.userId, role, kind: 'thread', job: job.id, text });
@@ -250,7 +253,7 @@ function createRunner(cfgIn, opts = {}) {
         job.previewBusy = true;
         say(job, 'Rebuilding the playable preview (about a minute)…');
         buildPreview(job, job.proposal.title).then((pv) => {
-          if (['discarded', 'shipped', 'shipping'].includes(job.status)) { G.removePreview(cfg, job); return; }
+          if (['discarded', 'shipped', 'shipping', 'deleted'].includes(job.status) || job.deleteRequested) { G.removePreview(cfg, job); return; }
           say(job, pv.ok ? `Playable preview: ${pv.url}\nOffline sandbox copy of this change; nothing saves to your real character.` : `Preview build failed: ${pv.why}`);
         }).finally(() => { job.previewBusy = false; });
         return { action: 'accepted' };
@@ -261,9 +264,28 @@ function createRunner(cfgIn, opts = {}) {
     }
   }
 
+  // The thread was deleted in Discord: clean the job up now (never interrupting a deploy), post nothing, never start another round.
+  async function handleThreadDeleted(ev) {
+    const job = jobs[String(ev.threadId)];
+    if (!job || job.status === 'deleted' || job.deleteRequested) return { action: 'ignore' };
+    job.queue = []; job.proposal = job.status === 'shipping' ? job.proposal : null;
+    for (let i = outbox.length - 1; i >= 0; i--) if (outbox[i].target && String(outbox[i].target.threadId) === String(job.threadId)) { callbacks.delete(outbox[i].id); outbox.splice(i, 1); }
+    if (job.status === 'shipping') { job.deleteRequested = true; save(); return { action: 'accepted' }; }
+    if (job.running) { job.deleteRequested = true; job.cancelRequested = true; if (job.proc) { try { process.kill(-job.proc.pid, 'SIGKILL'); } catch { /* gone */ } } save(); return { action: 'accepted' }; }
+    await cleanupDeleted(job);
+    return { action: 'accepted' };
+  }
+  async function cleanupDeleted(job) {
+    job.deleteRequested = true;   // from here on nothing is posted for this thread
+    audit.log('thread-deleted', { job: job.id, round: job.round || 1, branch: job.branch });
+    await G.removeJobArtifacts(cfg, job).catch(() => {});
+    (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, deleted: true, at: new Date(now()).toISOString() });
+    job.status = 'deleted'; job.deleteRequested = false; job.queue = []; job.proposal = null; job.worktree = null; job.running = false; save();
+  }
+
   async function handleReaction(ev) {
     const job = jobs[ev.threadId];
-    if (!job || !job.proposal || job.proposal.messageId !== ev.messageId) return { action: 'ignore' };
+    if (!job || goneThread(job.threadId) || !job.proposal || job.proposal.messageId !== ev.messageId) return { action: 'ignore' };
     const uid = String(ev.userId); const p = job.proposal;
     if (ev.emoji === '✅') {
       audit.log('approve-attempt', { userId: uid, job: job.id, tier: p.tier });
@@ -282,7 +304,8 @@ function createRunner(cfgIn, opts = {}) {
       const curHead = await G.head(job.worktree).catch(() => null);
       if (curHead !== p.head) { audit.log('approve-refused', { userId: uid, job: job.id, why: 'head changed' }); say(job, 'The branch changed after this proposal; wait for the new one.'); return { action: 'remove_reaction' }; }
       audit.log('approved', { userId: uid, job: job.id, tier: p.tier, head: p.head });
-      ship(job, uid).catch((e) => { shipBusy = false; say(job, `Ship crashed: ${e.message}`); audit.log('ship-error', { job: job.id, error: e.message }); if (job.status === 'shipping') { job.status = job.proposal ? 'proposed' : 'idle'; save(); pump(); } });
+      ship(job, uid).catch((e) => { shipBusy = false; say(job, `Ship crashed: ${e.message}`); audit.log('ship-error', { job: job.id, error: e.message }); if (job.status === 'shipping') { job.status = job.proposal ? 'proposed' : 'idle'; save(); pump(); } })
+        .finally(() => { if (job.deleteRequested) cleanupDeleted(job).then(() => pump()); });
       return { action: 'accepted' };
     }
     if (ev.emoji === '❌') {
@@ -314,13 +337,14 @@ function createRunner(cfgIn, opts = {}) {
   const running = () => Object.values(jobs).filter((j) => j.running);
   function pump() {
     while (running().length < cfg.maxConcurrentJobs) {
-      const next = Object.values(jobs).filter((j) => !j.running && j.queue.length && ['idle', 'proposed'].includes(j.status)).sort((a, b) => a.queue[0].ts - b.queue[0].ts)[0];
+      const next = Object.values(jobs).filter((j) => !j.running && j.queue.length && ['idle', 'proposed'].includes(j.status) && !j.deleteRequested).sort((a, b) => a.queue[0].ts - b.queue[0].ts)[0];
       if (!next) break;
       next.running = true; next.status = 'running';
       processJob(next).catch((e) => { console.error('job crashed', e); say(next, `Something broke on my side: ${clip(e.message, 300)}`); next.running = false; next.status = 'idle'; save(); })
         .finally(async () => {
           next.running = false; save();
-          if (next.discardRequested) await discard(next, next.discardRequested).catch((e) => say(next, `Discard failed: ${e.message}`));
+          if (next.deleteRequested) await cleanupDeleted(next).catch(() => {});
+          else if (next.discardRequested) await discard(next, next.discardRequested).catch((e) => say(next, `Discard failed: ${e.message}`));
           pump();
         });
     }
@@ -541,7 +565,7 @@ function createRunner(cfgIn, opts = {}) {
       if (mkind === 'pending') ownerPing({ threadId: job.threadId }, `Mobile/offline did NOT update for \`${job.id}\` (PC is live as \`${sha}\`): ${mwhy}`);
       if (!ownerShips) ownerPing({ threadId: job.threadId }, `${nameOf(approverId)} shipped **${clip(p.title, 100)}** (${p.tier}) as \`${sha}\`. Diff: ${G.compareUrl(cfg, job.branch)} — to undo: say \`rollback\`.`);
       // A message that arrived during the ship starts the next round right away (its worktree is cut from the master we just shipped).
-      if (job.queue.length) await beginRound(job);
+      if (job.queue.length && !job.deleteRequested) await beginRound(job);
       else { await G.removeJobArtifacts(cfg, job); job.worktree = null; save(); }
       pump();
       return;
@@ -595,12 +619,13 @@ function createRunner(cfgIn, opts = {}) {
   // sweep: abandoned idle threads release their worktree
   async function sweep(staleDays = 7) {
     for (const j of Object.values(jobs)) {
-      if (j.running || ['shipped', 'discarded', 'shipping'].includes(j.status)) continue;
+      if (j.running || ['shipped', 'discarded', 'shipping', 'deleted'].includes(j.status) || j.deleteRequested) continue;
       if (now() - j.lastActive > staleDays * 86400e3) { await G.removeJobArtifacts(cfg, j).catch(() => {}); (j.history = j.history || []).push({ round: j.round || 1, branch: j.branch, discarded: 'swept', at: new Date(now()).toISOString() }); j.status = 'discarded'; j.worktree = null; j.proposal = null; say(j, `Closed after ${staleDays} days without activity; the branch and workspace were removed. Message me here to start a fresh round.`); audit.log('swept', { job: j.id }); }
     }
     save();
   }
 
+  for (const j of Object.values(jobs)) if (j.deleteRequested && !j.running) cleanupDeleted(j).catch(() => {});   // a delete that was waiting when the runner stopped
   pump();
   return { cfg, auth, audit, jobs: () => jobs, handleEvent, bind, poll, ack, pump, sweep, outboxSize: () => outbox.length, readShips, newestBackup, _post: post };
 }
