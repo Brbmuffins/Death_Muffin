@@ -107,10 +107,18 @@ module.exports = function mountChronicle(app, pool, { requireAuth, ownsCharacter
   });
 
   app.post('/api/chronicle/add', requireAuth, async (req, res) => {
+    // Ownership before taking a connection (ownsCharacter uses the same pool; see salvage.cjs).
+    let id;
+    try {
+      id = await ownedId(req, res, req.body && req.body.characterId);
+    } catch (err) {
+      console.error('POST /api/chronicle/add:', err.code || err.message);
+      if (!res.headersSent) res.status(500).json({ success: false, error: 'internal server error' });
+      return;
+    }
+    if (!id) return;
     const conn = await pool.getConnection();
     try {
-      const id = await ownedId(req, res, req.body && req.body.characterId);
-      if (!id) return;
       let deltas = sanitize(req.body.deltas, SUM_KEYS);
       let maxes = sanitize(req.body.maxes, MAX_KEYS);
       await conn.beginTransaction();
@@ -136,10 +144,18 @@ module.exports = function mountChronicle(app, pool, { requireAuth, ownsCharacter
   });
 
   app.post('/api/chronicle/ascend', requireAuth, async (req, res) => {
+    // Ownership before taking a connection (ownsCharacter uses the same pool; see salvage.cjs).
+    let id;
+    try {
+      id = await ownedId(req, res, req.body && req.body.characterId);
+    } catch (err) {
+      console.error('POST /api/chronicle/ascend:', err.code || err.message);
+      if (!res.headersSent) res.status(500).json({ success: false, error: 'internal server error' });
+      return;
+    }
+    if (!id) return;
     const conn = await pool.getConnection();
     try {
-      const id = await ownedId(req, res, req.body && req.body.characterId);
-      if (!id) return;
       const ascension = Math.min(255, Math.max(0, Math.trunc(Number(req.body.ascension)) || 0));
       await conn.beginTransaction();
       const archived = await withRow(conn, id, async (row) => {

@@ -18,10 +18,17 @@ const playerError = (message) => Object.assign(new Error(message), { player: tru
 
 module.exports = function mountSalvage(app, pool, { requireAuth, ownsCharacter, random = Math.random }) {
   app.post('/api/salvage', requireAuth, async (req, res) => {
+    // Ownership first, THEN a connection: ownsCharacter queries the same pool, so ten requests each holding a connection while
+    // waiting for an eleventh would starve the pool for good (found by the release-0404 DB probe).
+    const id = parseInt(req.body && req.body.characterId, 10);
+    try {
+      if (!id || !(await ownsCharacter(req, id))) return res.status(403).json({ success: false, error: 'character not found or not owned by this account' });
+    } catch (err) {
+      console.error('POST /api/salvage:', err.code || err.message);
+      return res.status(500).json({ success: false, error: 'internal server error' });
+    }
     const conn = await pool.getConnection();
     try {
-      const id = parseInt(req.body && req.body.characterId, 10);
-      if (!id || !(await ownsCharacter(req, id))) return res.status(403).json({ success: false, error: 'character not found or not owned by this account' });
       const raw = req.body.slots;
       if (!Array.isArray(raw) || !raw.length) throw playerError('Choose some gear to salvage.');
       const slots = raw.map((n) => (Number.isInteger(Number(n)) && n !== null && n !== '' ? Number(n) : NaN));
