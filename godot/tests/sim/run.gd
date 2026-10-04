@@ -15,6 +15,7 @@ var _rel: float = 1e-12
 
 
 func _initialize() -> void:
+	DmWorldSim.force_boss_stub = true  # the sim fixtures were recorded against the stub BossBrain
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("only="):
 			_only = a.substr(5).split(",")

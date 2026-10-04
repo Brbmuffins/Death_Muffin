@@ -64,6 +64,9 @@ var pendingLitanies: Array = []
 var dotPruneAt: float = 0.0
 
 
+## Tests whose TS fixtures used the stub BossBrain set this, so the real brains don't change their numbers.
+static var force_boss_stub: bool = false
+
 ## `p_rng`: a DmRng (seeded mulberry32), or null for a fresh one seeded from the clock (non-deterministic).
 func _init(p_nav: DmNav, p_rng: DmRng = null) -> void:
 	DmSimData.ensure()
@@ -72,7 +75,7 @@ func _init(p_nav: DmNav, p_rng: DmRng = null) -> void:
 	vowFx = DmVowsBoons.vow_effects(_vows)
 	surgeIn = float(DmSimData.SURGE["firstDelayS"])
 	var factory: Variant = null
-	if ResourceLoader.exists("res://sim/bosses/boss_factory.gd"):
+	if not force_boss_stub and ResourceLoader.exists("res://sim/bosses/boss_factory.gd"):
 		factory = load("res://sim/bosses/boss_factory.gd")
 	if factory != null:
 		bosses = factory.make_all(self)
