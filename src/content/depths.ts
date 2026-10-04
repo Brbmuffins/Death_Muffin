@@ -151,8 +151,8 @@ export function chestBonus(depth: number, level: number): { gold: number; xp: nu
 /** A chest holds this many drops (the first is always a piece of gear): 3 at depth 5, one more every 10 floors. */
 export const chestDrops = (depth: number): number => 3 + Math.floor(Math.max(0, depth - 5) / 10);
 
-/** Runes: a chest may hold one (10% at depth 5, +2% per chest, 35% at most); the uncommon and rare kinds, and from depth 10 the epic ones too. */
-export const chestRuneChance = (depth: number): number => Math.min(0.35, 0.1 + 0.02 * (Math.floor(depth / DEPTHS.chestEvery) - 1));
+/** Runes: a chest may hold one (25% at depth 5, +4% per chest, 70% at most; was 10%, +2%, 35%); the uncommon and rare kinds, and from depth 10 the epic ones too. */
+export const chestRuneChance = (depth: number): number => Math.min(0.7, 0.25 + 0.04 * (Math.floor(depth / DEPTHS.chestEvery) - 1));
 export function chestRunePool(depth: number): RuneId[] {
   return RUNE_ORDER.filter((id) => RUNES[id].rarity !== 'epic' || depth >= 10);
 }

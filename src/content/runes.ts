@@ -240,12 +240,21 @@ export const AREA_RUNE_POOL: Partial<Record<AreaId, RuneId[]>> = {
 /** Epic runes count a third as often as the others in an area pool. */
 export const RUNE_WEIGHT: Record<RuneRarity, number> = { uncommon: 3, rare: 2, epic: 1 };
 
-/** The chance an elite kill sheds a rune, before Wave Speed and fortune. */
-export const ELITE_RUNE_CHANCE = 0.006;
+/**
+ * The chance an elite kill sheds a rune, before Wave Speed and fortune, by hunting ground (owner, 3 Oct 2026: "where do you get them?").
+ * It was a flat 0.6%: about one rune in 2,000-4,700 kills, which nobody ever saw. Now 5% in the Hollow Graves, one point more per rung
+ * of the descent, 12% in the Mourning Fen (about one rune per 15-60 minutes of ordinary hunting, sooner in the deep grounds).
+ */
+export const ELITE_RUNE_CHANCE_BY_AREA: Partial<Record<AreaId, number>> = {
+  graves: 0.05, warren: 0.055, ossuary: 0.06, nave: 0.07, coliseum: 0.08, sanctum: 0.09, cloister: 0.1, pyre: 0.11, fen: 0.12,
+};
+/** The first ground's chance: the floor every other ground builds on. */
+export const ELITE_RUNE_CHANCE = ELITE_RUNE_CHANCE_BY_AREA.graves!;
+export const eliteRuneChance = (area: AreaId): number => ELITE_RUNE_CHANCE_BY_AREA[area] ?? ELITE_RUNE_CHANCE;
 /** The chance a Grave Surge offering is a rune instead of the area's item. */
-export const SURGE_RUNE_CHANCE = 0.25;
+export const SURGE_RUNE_CHANCE = 0.35;
 /** The chance a repeat boss kill leaves a rune (the first kill, and the Prelate, always do). */
-export const BOSS_REPEAT_RUNE_CHANCE = 0.35;
+export const BOSS_REPEAT_RUNE_CHANCE = 0.5;
 
 /** What each boss may leave (docs/agent-briefs/build-depth-aspects-runes.md §3.4); later bosses draw from everything their predecessors do. */
 export const BOSS_RUNE_POOL: Record<string, RuneId[]> = {

@@ -2,11 +2,11 @@ import { AREAS, AREA_ORDER, type AreaId } from '../content/areas';
 import { BOSSES, BOSS_IDS } from '../content/bosses';
 import { DISCIPLINES, type DisciplineId } from '../content/disciplines';
 import { ITEMS } from '../content/items';
-import { LEGENDARY_BOSS_AREAS, LEGENDARY_DROP, LEGENDARY_SETS, LEGENDARY_SET_IDS, legendarySetFor } from '../content/legendarySets';
+import { LEGENDARY_BOSS_AREAS, LEGENDARY_DROP, legendaryBossChance, legendaryEliteChance, LEGENDARY_SETS, LEGENDARY_SET_IDS, legendarySetFor } from '../content/legendarySets';
 import { SEEDS } from '../content/gardening';
 import { CHEST_KILLS, DEPTHS, FLOOR_DROP_CHANCE, chestDrops, chestRuneChance, floorKills } from '../content/depths';
 import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT } from '../content/reagents';
-import { ELITE_RUNE_CHANCE, SURGE_RUNE_CHANCE, BOSS_REPEAT_RUNE_CHANCE } from '../content/runes';
+import { eliteRuneChance, SURGE_RUNE_CHANCE, BOSS_REPEAT_RUNE_CHANCE } from '../content/runes';
 import { ALL_RECIPE_ROWS } from '../content/recipes';
 import { ARMOR_PIECES } from '../content/armorSets';
 import { AFFIXES, affixRange, affixText } from './affixRules';
@@ -65,11 +65,11 @@ function areaSection(areaId: AreaId): string {
   if (runes.length) {
     const tot = runes.reduce((n, [, list]) => n + find(list, (s) => s.placeId === areaId && s.kind === 'elite')!.chance, 0);
     out.push('');
-    out.push(`**Relic runes**: an elite sheds one ${pct(ELITE_RUNE_CHANCE)} of the time, a Grave Surge ${pct(SURGE_RUNE_CHANCE)} of the time (instead of the item). Pool of ${runes.length} (${pct(tot)} per elite in all):`);
+    out.push(`**Relic runes**: an elite sheds one ${pct(eliteRuneChance(areaId))} of the time, a Grave Surge ${pct(SURGE_RUNE_CHANCE)} of the time (instead of the item). Pool of ${runes.length} (${pct(tot)} per elite in all):`);
     out.push('');
     out.push(table(['Rune', 'Rarity', 'Per elite kill', 'Per Grave Surge'], runes.map(([id, list]) => [name(id), rarityMark(ITEMS[id].rarity), pct(find(list, (s) => s.placeId === areaId && s.kind === 'elite')!.chance), pct(find(list, (s) => s.placeId === areaId && s.kind === 'surge')!.chance)])));
   }
-  if (a.scaling && a.loot.length) out.push(`\n**Legendary armor**: a ${pct(LEGENDARY_DROP.eliteChance)} roll per elite kill here (any set; your discipline's own set is ${pct(LEGENDARY_DROP.ownShare)} of them). See [Legendary sets](#legendary-armor-sets).`);
+  if (a.scaling && a.loot.length) out.push(`\n**Legendary armor**: a ${pct(legendaryEliteChance(areaId))} roll per elite kill here (any set; your discipline's own set is ${pct(LEGENDARY_DROP.ownShare)} of them). See [Legendary sets](#legendary-armor-sets).`);
   const bosses = BOSS_IDS.filter((b) => BOSSES[b].area === areaId);
   for (const b of bosses) out.push('', bossSection(b));
   return out.join('\n');
@@ -102,19 +102,19 @@ function bossSection(b: (typeof BOSS_IDS)[number]): string {
 
 function legendarySection(): string {
   const out: string[] = ['## Legendary armor sets', ''];
-  out.push(`Legendary pieces are not in any area table. Each **boss kill** rolls for one: ${pct(LEGENDARY_DROP.bossChance)} from the Abbess onward (${LEGENDARY_BOSS_AREAS.map((a) => AREAS[a].name).join(', ')}) and ${pct(LEGENDARY_DROP.starterBossChance)} for the Gravedigger King, and each **elite kill in a level-scaled ground** (Plague Cloister, Cinder Pyre, Mourning Fen, and Depths floors that drop from them) rolls ${pct(LEGENDARY_DROP.eliteChance)}. When one drops it is a random piece (1 of 5) of a set chosen by "smart loot": ${pct(LEGENDARY_DROP.ownShare)} your own discipline's set when it has one, the rest split evenly over the others (an even split with no own set).`);
+  out.push(`Legendary pieces are not in any area table. Each **boss kill** rolls for one: ${LEGENDARY_BOSS_AREAS.map((a) => `${AREAS[a].name} ${pct(legendaryBossChance(a))}`).join(', ')} (deeper bosses leave more) and ${pct(LEGENDARY_DROP.starterBossChance)} for the Gravedigger King, and each **elite kill in a level-scaled ground** (${(['cloister', 'pyre', 'fen'] as const).map((a) => `${AREAS[a].name} ${pct(legendaryEliteChance(a))}`).join(', ')}, and Depths floors that drop from them) rolls too. When one drops it is a random piece (1 of 5) of a set chosen by "smart loot": ${pct(LEGENDARY_DROP.ownShare)} your own discipline's set when it has one, the rest split evenly over the others (an even split with no own set).`);
   out.push('');
-  out.push('Chance per boss kill (the Abbess onward) that you get a particular piece, by the discipline you play:');
+  out.push('Chance per Abbess kill that you get a particular piece, by the discipline you play:');
   out.push('');
   const discs = Object.keys(DISCIPLINES) as DisciplineId[];
   const rows = discs.map((d) => {
     const own = legendarySetFor(d);
-    const per = (setId: string) => legendaryShare(setId, d) * LEGENDARY_DROP.bossChance / 5;
+    const per = (setId: string) => legendaryShare(setId, d) * LEGENDARY_DROP.bossChance / 5; // at the Abbess; deeper bosses are likelier
     return [DISCIPLINES[d].name, own ? LEGENDARY_SETS[own].name : '(none yet)', own ? `${pct(per(own))} (${oneIn(per(own))})` : '-', `${pct(per(LEGENDARY_SET_IDS.find((s) => s !== own)!))} (${oneIn(per(LEGENDARY_SET_IDS.find((s) => s !== own)!))})`];
   });
   out.push(table(['You play', 'Own set', 'Each piece of your own set', 'Each piece of another set'], rows));
   out.push('');
-  out.push(`The same shares apply to the elite roll, scaled by ${pct(LEGENDARY_DROP.eliteChance)} instead of ${pct(LEGENDARY_DROP.bossChance)}. A Gravecaller sees any given piece of their own set about once per ${Math.round(1 / (LEGENDARY_DROP.bossChance * LEGENDARY_DROP.ownShare / 5))} boss kills.`);
+  out.push(`The same shares apply to the elite roll, scaled by the ground's elite chance instead of the boss's. A Gravecaller sees any given piece of their own set about once per ${Math.round(1 / (LEGENDARY_DROP.bossChance * LEGENDARY_DROP.ownShare / 5))} boss kills.`);
   out.push('');
   for (const id of LEGENDARY_SET_IDS) {
     const s = LEGENDARY_SETS[id];
@@ -136,7 +136,7 @@ function depthsSection(): string {
   });
   out.push(table(['Floors', 'Drops from the table of', 'Ordinary kill', 'Elite kill', 'First chest in the band'], rows));
   out.push('');
-  out.push(`Runes in chests: ${pct(chestRuneChance(5))} at floor 5, +2 points per chest, ${pct(chestRuneChance(999))} at most; epic runes join from floor 10. Elites on floors that drop from a level-scaled ground (floor 15 onward) can also drop legendary armor.`);
+  out.push(`Runes in chests: ${pct(chestRuneChance(5))} at floor 5, +4 points per chest, ${pct(chestRuneChance(999))} at most; epic runes join from floor 10. Elites on floors that drop from a level-scaled ground (floor 15 onward) can also drop legendary armor.`);
   return out.join('\n');
 }
 

@@ -454,5 +454,9 @@
  "atlas": {
   "title": "The Gear Atlas",
   "body": "What is worth wearing, and where does it drop? The <b>Gear Atlas</b> (<kbd>.</kbd> key) lists every piece with its drop chances, how to craft it and a <b>green ▲</b> or <b>red ▼</b> against what you wear. <b>Best for me</b> shows your top upgrades."
+ },
+ "runeHunt": {
+  "title": "Where runes come from",
+  "body": "Every necromancer rite already has a <b>socket</b> in the Grimoire (<kbd>L</kbd>): what you hunt for is the <b>Relic runes</b> to fill them. <b>Elites</b> shed one about once in ten to twenty (more often in the deeper grounds), a <b>Grave Surge</b> offering is a rune about a third of the time, <b>every boss</b> leaves one on its first kill, and chests in the <b>Catacomb Depths</b> often hold one. The Gear Atlas (<kbd>.</kbd>) and the Codex (<kbd>K</kbd>) list each rune and where it drops."
  }
 }

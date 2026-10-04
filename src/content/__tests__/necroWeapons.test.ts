@@ -86,7 +86,7 @@ describe('necro weapon drops and recipes', () => {
       const total = a.loot.reduce((n, d) => n + d.weight, 0);
       if (!total) continue;
       const line = a.loot.filter((d) => NECRO_WEAPON_BY_ID[d.item]).reduce((n, d) => n + d.weight, 0);
-      expect(line / total, a.id).toBeLessThan(0.12);
+      expect(line / total, a.id).toBeLessThan(0.14); // x1.4-1.8 chase weight since the 3 Oct 2026 achievable pass
     }
   });
 

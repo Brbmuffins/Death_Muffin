@@ -135,11 +135,11 @@ describe('Depths rewards', () => {
         if (depth < 10) expect(RUNES[rune.item_id as keyof typeof RUNES].rarity).not.toBe('epic');
       }
     }
-    // About 10-35% of chests hold a rune.
-    expect(runes / N).toBeGreaterThan(0.08);
-    expect(runes / N).toBeLessThan(0.4);
-    expect(chestRuneChance(5)).toBeCloseTo(0.1);
-    expect(chestRuneChance(500)).toBe(0.35);
+    // About 25-70% of chests hold a rune.
+    expect(runes / N).toBeGreaterThan(0.2);
+    expect(runes / N).toBeLessThan(0.6);
+    expect(chestRuneChance(5)).toBeCloseTo(0.25);
+    expect(chestRuneChance(500)).toBe(0.7);
     expect(chestRunePool(5).every((id) => RUNES[id].rarity !== 'epic')).toBe(true);
     expect(chestRunePool(10).some((id) => RUNES[id].rarity === 'epic')).toBe(true);
   });

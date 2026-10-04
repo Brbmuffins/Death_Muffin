@@ -45,6 +45,17 @@ leaks, and the backlog that fixes it, ordered by payoff for effort.
 | 9 | ~~**Milestone toasts**~~ | Frequent small wins | S | **Shipped 2026-09-30** (`gameplay/milestones.ts`): kill-count, per-area and best-chain purses, paid once per character in this browser. Permanent bonuses were left out: they need server-side storage |
 | 10 | Gold sinks: ~~thrall gear upgrades~~, cosmetic Chapterhouse decorations | Keeps gold meaningful | M | **Thrall gear built 2026-10-02 (branch `dm/thrall-gear`, no migration)**: the Legion kit (two slots, spare weapon and armour become thrall bonuses) and **Reinforce**, 12 gold tiers (120 gold, x1.65 each, about 75k in all) that reset on Ascension. The thrall bow and bone staff models are now used. Chapterhouse decorations remain |
 
+## 3b. Achievable drops (3 Oct 2026, branch `dm/loot-achievable`)
+
+Owner: "less grinding", "drop rates are like 3% or low, make it more achievable", "drops get better as you descend", "where do you get rune sockets?". No item-count increase (item chance per kill is unchanged); the same drops are likelier to be the ones worth wearing:
+
+- **Chase weight by depth** (`CHASE_WEIGHT` in `content/areas.ts`): set armour, necromancer weapons and rare+ generic gear are weighted x1.4 in the Hollow Graves, +0.05 per rung, x1.8 in the Mourning Fen (rarer pieces a little more); the area tables carry it, so Atlas, smart loot, authority ceilings and LOOT-TABLES.md agree.
+- **Own-set share 50% -> 70%** of armour weight (`SMART_LOOT.ownArmorShare`). Kills per piece of your own set: Graves 497 -> 274 (any piece 137), Ossuary 344 -> 145, Nave 246 -> 110.
+- **Runes** (`ELITE_RUNE_CHANCE_BY_AREA`): elites shed one 5% (Graves) to 12% (Fen) instead of a flat 0.6%; Grave Surge 25% -> 35%; repeat boss kills 35% -> 50%; Depths chests 10% (+2% per chest, 35% cap) -> 25% (+4%, 70% cap).
+- **Legendaries**: see LEGENDARY-SETS.md (boss 20-33%, Gravedigger 6%, elites 0.5-0.9%).
+- **Affix rolls** about 1.45x with a +-35% window (BALANCE.md "Achievable pass").
+- The Gear Atlas shows YOUR odds (smart loot applied), a drop-quality rung per hunting ground and what an ideal roll adds.
+
 ## 4. Rules of thumb for new features
 
 - Every new item must be **usable, sellable or salvageable** on day one; add a test like `processing.test.ts`'s

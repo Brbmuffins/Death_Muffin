@@ -988,7 +988,24 @@ var AREAS = {
     ambient: { fog: 657415, hemiSky: 3156516, hemiGround: 525829, moon: 10128496 }
   }
 };
-var AREA_ORDER = ["chapterhouse", "acre", "graves", "ossuary", "nave", "sanctum", "cloister", "pyre", "warren", "coliseum", "fen", "alchemist_wing", "depths"];
+var AREA_ORDER = ["chapterhouse", "acre", "alchemist_wing", "graves", "warren", "ossuary", "nave", "coliseum", "depths", "sanctum", "cloister", "pyre", "fen"];
+var HUNT_ORDER = AREA_ORDER.filter((id) => !AREAS[id].safe && !AREAS[id].instance);
+var huntRank = (id) => HUNT_ORDER.indexOf(id);
+var CHASE_WEIGHT = { base: 1.4, perRung: 0.05 };
+var chaseMult = (id) => CHASE_WEIGHT.base + CHASE_WEIGHT.perRung * Math.max(0, huntRank(id));
+var GENERIC_CHASE = /^(chest_iron|helm_gold|kit_iron_warden)$/;
+var isChaseItem = (item) => !!ARMOR_BY_ID[item] || !!NECRO_WEAPON_BY_ID[item] || GENERIC_CHASE.test(item);
+var RARITY_CHASE = { common: 1, uncommon: 1, rare: 1.25, epic: 1.5, legendary: 1.5 };
+for (const id of AREA_ORDER) {
+  const area = AREAS[id];
+  if (!area.loot.length) continue;
+  const m = chaseMult(id);
+  area.loot = area.loot.map((e) => {
+    if (!isChaseItem(e.item)) return e;
+    const rarity = ARMOR_BY_ID[e.item]?.rarity ?? NECRO_WEAPON_BY_ID[e.item]?.rarity ?? "rare";
+    return { item: e.item, weight: e.weight * m * (RARITY_CHASE[rarity] ?? 1) };
+  });
+}
 var WING_APOTHECARY_SPOT = { x: 45.1, z: 20, facing: -Math.PI / 2 };
 var BOSS_SUMMON_SHARDS = 5;
 

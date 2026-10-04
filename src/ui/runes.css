@@ -24,6 +24,8 @@
 .cw-rune-opt.sealed { opacity: 0.55; cursor: default; }
 .cw-rune-opt.sealed .go { color: var(--cw-bone-300); letter-spacing: 0; text-transform: none; max-width: 150px; text-align: right; }
 .cw-rune-err { color: #ff9d8a; font-size: 12px; min-height: 0; margin-top: 6px; }
+.cw-rune-where { font-size: 12px; opacity: .8; margin: 8px 0 0; line-height: 1.35; }
+.cw-rune-opt .sh.src { opacity: .65; font-style: italic; }
 .cw-rune-none { font-size: 12px; color: var(--cw-bone-300); margin: 0; }
 .cw-rune-line { font-size: 12px; line-height: 1.4; margin: 4px 0 0; color: var(--cw-bone-200); }
 .cw-rune-line b { color: #9ff5e0; }

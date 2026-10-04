@@ -3,6 +3,8 @@ import { DISCIPLINES, type DisciplineId } from '../content/disciplines';
 import { EQUIP_SLOTS, type EquipSlot } from '../content/gear';
 import { ITEMS, RARITY_COLOR, RARITY_MARK } from '../content/items';
 import { legendarySetFor } from '../content/legendarySets';
+import { RUNES, isRuneId } from '../content/runes';
+import { ABILITIES } from '../content/abilities';
 import { BREWS } from '../content/brews';
 import { NECRO_WEAPONS } from '../content/necroWeapons';
 import { STAT_LABELS } from '../gameplay/stats';
@@ -10,7 +12,7 @@ import { itemVerdict, STAT_PRIORITY, type StatContext } from '../gameplay/gearSt
 import { salvagePreview } from '../gameplay/salvageRules';
 import { orderInfo, RELIC_PREMIUM } from '../gameplay/contractRules';
 import {
-  FIT_LABEL, SOURCE_LABEL, affixCountOdds, cosmeticsInfo, atlasSlot, fitBand, fitTable, fmtChance, fmtQty, getAtlas, gearForSlot, isRecommendedKind, itemLevelAt, oneIn,
+  FIT_LABEL, SOURCE_LABEL, affixCountOdds, areaQuality, cosmeticsInfo, rollPotential, atlasSlot, fitBand, fitTable, fmtChance, fmtQty, getAtlas, gearForSlot, isRecommendedKind, itemLevelAt, oneIn,
   placesFor, skillName, sourcesFor, type AtlasItem, type DropSource, type FitBand, type RecipeInfo,
 } from '../gameplay/atlas';
 import type { InventorySlot } from '../net/types';
@@ -175,7 +177,7 @@ export class AtlasPanel extends SimplePanel {
     } else if (memory.view === 'where') {
       const places = placesFor(this.disc);
       const group = (label: string, kind: string) => `<optgroup label="${label}">${places.filter((p) => p.kind === kind).map((p) => `<option value="${p.id}" ${p.id === memory.where ? 'selected' : ''}>${esc(stripThe(p.name))}${p.kind === 'area' || p.kind === 'boss' ? ` (Lv ${p.level})` : ''}</option>`).join('')}</optgroup>`;
-      html = `<label class="at-select">Where <select data-where aria-label="Area or boss">${group('Hunting grounds', 'area')}${group('Bosses', 'boss')}${group('Catacomb Depths', 'depths')}${group('Gathering', 'gather')}</select></label>`;
+      html = `<label class="at-select">Where <select data-where aria-label="Area or boss">${group('Hunting grounds', 'area')}${group('Bosses', 'boss')}${group('Catacomb Depths', 'depths')}${group('Gathering', 'gather')}</select></label>${this.qualityHtml(memory.where)}`;
     } else if (memory.view === 'set') {
       const opt = (c: number, label: string) => `<optgroup label="${label}">${atlas.sets.filter((s) => s.collection === c).map((s) => `<option value="${s.id}" ${s.id === memory.set ? 'selected' : ''}>${esc(s.name)} (${DISCIPLINES[s.disciplineId as DisciplineId]?.name ?? s.disciplineId})</option>`).join('')}</optgroup>`;
       html = `<label class="at-select">Set <select data-set aria-label="Armor set">${opt(3, 'Legendary')}${opt(2, 'Ascended')}${opt(1, 'First collection')}</select></label>`;
@@ -186,6 +188,23 @@ export class AtlasPanel extends SimplePanel {
       html = `<label class="at-check"><input type="checkbox" data-reach ${memory.reach ? 'checked' : ''}/> Only what is in reach of level ${this.deps.level()}</label><span class="at-note">Top upgrades per slot for your ${esc(DISCIPLINES[this.disc].name)} that you do not own yet, then the legendary chase.</span>`;
     }
     sub.innerHTML = this.q ? `<span class="at-note">Searching every item. Clear the box to go back.</span>` : html;
+  }
+
+  /** How good this ground's drops are and how it compares with the ones above it (areaQuality: a rung of the descent). */
+  private qualityHtml(placeId: string): string {
+    const q = AREAS[placeId as keyof typeof AREAS] ? areaQuality(placeId as keyof typeof AREAS, this.disc) : null;
+    if (!q) return '';
+    const bar = Array.from({ length: q.rungs }, (_, i) => `<i class="${i < q.rung ? 'on' : ''}"></i>`).join('');
+    const per = (n: number) => (n >= 10 ? n.toFixed(0) : n >= 1 ? n.toFixed(1) : n.toFixed(2));
+    const bits = [
+      `of every 100 kills about <b>${per(q.dropsPer100)}</b> leave an item, <b>${per(q.gearPer100)}</b> of them gear${q.rarePer100 >= 0.05 ? `, <b>${per(q.rarePer100)}</b> rare or better` : ''}`,
+      q.killsPerOwn ? `a piece of your own armour set about every <b>${Math.round(q.killsPerOwn)}</b> kills` : '',
+      `gear drops at item level about <b>${q.ilvlKill}</b> (bosses <b>${q.ilvlBoss}</b>)`,
+      q.runePerElite ? `an elite sheds a rune <b>${fmtChance(q.runePerElite)}</b> of the time` : '',
+      q.bossLegendary ? `its boss leaves a legendary <b>${fmtChance(q.bossLegendary)}</b> of the time` : '',
+      q.eliteLegendary ? `an elite, <b>${fmtChance(q.eliteLegendary)}</b>` : '',
+    ].filter(Boolean);
+    return `<div class="at-quality" title="Deeper grounds weight the pieces worth wearing higher, drop higher item levels and shed runes and legendaries more often."><span class="at-rungs" aria-label="Depth ${q.rung} of ${q.rungs}">${bar}</span><span class="at-qtext"><b>Drop quality ${q.rung} of ${q.rungs}</b> (Lv ${q.level}): ${bits.join('; ')}.</span></div>`;
   }
 
   /** The rows of the current view: [item id, optional place to read the drop chance at]. */
@@ -210,7 +229,7 @@ export class AtlasPanel extends SimplePanel {
       for (const [label, pred] of groups) {
         const ids = place.items.filter((id) => atlas.items.get(id) && pred(atlas.items.get(id)!));
         if (!ids.length) continue;
-        out.push({ head: `${label} (${ids.length})` });
+        out.push({ head: `${label} (${ids.length})${label === 'Runes' ? ' · every necromancer rite already has a socket in the Grimoire (L)' : ''}` });
         for (const id of ids) out.push({ id, place: place.id });
       }
       return out;
@@ -392,7 +411,8 @@ export class AtlasPanel extends SimplePanel {
     if (!d) return;
     if (!this.sel) {
       d.innerHTML = `<div class="at-hint"><h3>How to read this</h3>
-        <p><span class="at-fit ideal">Ideal</span> <span class="at-fit good">Good</span> <span class="at-fit okay">Okay</span> <span class="at-fit poor">Poor</span> says how well a piece suits your discipline against the other pieces of its slot and rarity, by the same gear score the Character sheet uses.</p>
+        <p><span class="at-fit ideal">Ideal</span> <span class="at-fit good">Good</span> <span class="at-fit okay">Okay</span> <span class="at-fit poor">Poor</span> says how well a piece suits your discipline against the other pieces of its slot and rarity, by the same gear score the Character sheet uses. The number under it is the base piece; an <b>ideal affix roll</b> adds a good deal more (see "For you" on any piece).</p>
+        <p>Under <b>By area &amp; boss</b>, each hunting ground shows a <b>drop quality</b> rung: the deeper you go, the likelier the pieces worth wearing, runes and legendaries, and the higher their item level. Chances shown are for your own discipline (your set drops more often than the others).</p>
         <p><span class="at-arrow up">▲ +12%</span> <span class="at-arrow down">▼ 5%</span> compares it with what you wear in that slot (percent of your power).</p>
         <p>Percentages are per kill, at default settings (Medium, Wave Speed 0, no fortune tonic). Hover a row, or tap it, for every source. Tap a name in a recipe to follow it.</p></div>`;
       return;
@@ -414,7 +434,10 @@ export class AtlasPanel extends SimplePanel {
     if (it.gear) {
       const band = fitBand(id, this.disc);
       const v = this.verdict(id);
-      parts.push(`<section><h4>For you</h4>${band ? `<p><span class="at-fit ${band}">${FIT_LABEL[band]}</span> ${esc(this.fitTitle(id, band))}</p>` : ''}${v ? `<p>${this.arrow(v)} ${esc(v.text)}</p>` : own?.worn ? '<p>You are wearing this.</p>' : ''}${this.fitBars(id)}</section>`);
+      const dropAt = all.find((s) => s.area && s.ilvlSource);
+      const pot = rollPotential(id, this.disc, dropAt?.area && dropAt.ilvlSource ? itemLevelAt(AREAS[dropAt.area].level, dropAt.ilvlSource) : 20);
+      const roll = pot ? `<p class="at-roll">The roll matters more than the label: this piece alone adds about <b>+${pot.plain}%</b>; with two <b>ideal</b> affix rolls at item level ${pot.ilvl} (${pot.picks.map((p) => esc(p.text)).join(', ')}) it adds about <b>+${pot.ideal}%</b>. Affixes roll between the low and high end of their range (${pot.picks.map((p) => esc(p.range)).join(' and ')} here).</p>` : '';
+      parts.push(`<section><h4>For you</h4>${band ? `<p><span class="at-fit ${band}">${FIT_LABEL[band]}</span> ${esc(this.fitTitle(id, band))}</p>` : ''}${v ? `<p>${this.arrow(v)} ${esc(v.text)}</p>` : own?.worn ? '<p>You are wearing this.</p>' : ''}${roll}${this.fitBars(id)}</section>`);
     }
 
     // Where it comes from.
@@ -426,6 +449,11 @@ export class AtlasPanel extends SimplePanel {
       parts.push(`<section><h4>Where it drops</h4>${head}${shown.map(srcRow).join('')}</tbody></table>${drops.length > 8 ? `<button class="at-more" data-more>${this.allSources ? 'Show fewer' : `Show all ${drops.length} sources`}</button>` : ''}${it.rarity === 'legendary' && it.setId ? `<p class="at-faint">Smart loot: your own discipline's set is ${this.disc && legendarySetFor(this.disc) ? 'the most likely to drop' : 'not made yet, so all four sets share the drops evenly'}.</p>` : ''}</section>`);
     } else if (!(atlas.madeBy.get(id)?.length)) {
       parts.push('<section><h4>Where it drops</h4><p class="at-faint">Not a drop. See salvage or crafting below.</p></section>');
+    }
+
+    if (isRuneId(id)) {
+      const r = RUNES[id];
+      parts.push(`<section><h4>Using it</h4><p>Open the Grimoire (<kbd>L</kbd>), pick <b>${esc(ABILITIES[r.rite].name)}</b> and socket it. Every necromancer rite already has its socket from the start: runes are what you hunt for, from elites, Grave Surges, bosses and Catacomb Depths chests. ${esc(r.short)}.</p></section>`);
     }
 
     // How to make it (one level deep).

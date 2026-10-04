@@ -114,6 +114,7 @@ export type TipId =
   | 'legion'
   | 'rune'
   | 'runeSocketed'
+  | 'runeHunt'
   // The Catacomb Depths.
   | 'depths'
   | 'depths_floor'
@@ -490,6 +491,10 @@ export const TIPS: Record<TipId, Tip> = {
   rune: {
     title: 'A Relic rune',
     body: 'Runes change <b>how</b> a rite behaves, not how hard it hits: one turns five corpses into a single giant, another delays Black Litany and doubles it. Open the <b>Grimoire</b>{p:L}, choose a rite and socket the rune under the bar. One rune per rite, and it fits only its own. Take it out whenever you like; it is never lost. Runes stack in the Reliquary, can rest in the Vault and can be ground at the Bone Grinder. The Codex{p:K} lists them all.',
+  },
+  runeHunt: {
+    title: 'Where runes come from',
+    body: 'Every necromancer rite already has a <b>socket</b> in the Grimoire{p:L}: what you hunt for is the <b>Relic runes</b> to fill them. <b>Elites</b> shed one about once in ten to twenty (more often in the deeper grounds), a <b>Grave Surge</b> offering is a rune about a third of the time, <b>every boss</b> leaves one on its first kill, and chests in the <b>Catacomb Depths</b> often hold one. The Gear Atlas (<kbd>.</kbd>) and the Codex{p:K} list each rune and where it drops.',
   },
   runeSocketed: {
     title: 'The rune is set',

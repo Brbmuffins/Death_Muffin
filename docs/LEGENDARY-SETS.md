@@ -25,5 +25,7 @@ needs, and a repeat only follows a full set. The server's ground-rate ceiling fo
 
 ## Drop rates (owner, 3 Oct 2026)
 Raised after live players went ~20 qualifying boss kills without one (7% each, Gravedigger excluded): **15% per boss kill from the Bone Abbess onward,
-3% per Gravedigger King kill**, elites unchanged at 0.3% (level-scaled grounds and deep Depths floors). `legendaryBossChance(area)` in
+3% per Gravedigger King kill**, elites unchanged at 0.3% (level-scaled grounds and deep Depths floors).
+
+**Achievable pass (owner, 3 Oct 2026: "drop rates are like 3% or low"):** the Atlas showed about 2% per piece. Boss chance is now per ground and climbs with depth: **Abbess 20%, Nave 22%, Sanctum 25%, Cloister 28%, Pyre 30%, Fen 33%; Gravedigger King 6%**; elites in the level-scaled grounds **0.5% / 0.7% / 0.9%** (Cloister / Pyre / Fen; Depths floors follow the ground they drop from). `LEGENDARY_BOSS_CHANCE` and `LEGENDARY_ELITE_CHANCE` in `content/legendarySets.ts`; `legendaryBossChance(area)` / `legendaryEliteChance(area)` are the readers. A full own set is about 36 Abbess kills, about 22 in the Fen. `legendaryBossChance(area)` in
 `content/legendarySets.ts` is the one source for loot, the Gear Atlas, the generated LOOT-TABLES and the server authority ceilings.

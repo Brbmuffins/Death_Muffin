@@ -533,6 +533,12 @@ export class WorldScene implements GameScene, RuntimeView {
     this.grimWin.open('grimoire');
     this.grimSelect = undefined;
     this.onboarding.show('grimoire', 0, { kind: 'asked' });
+    this.runeHuntTip();
+  }
+
+  /** A necromancer who opens the Grimoire holding no rune learns where runes come from (the sockets are theirs from the start). */
+  private runeHuntTip() {
+    if (this.discipline.family === 'necromancer' && Object.keys(ownedRunes(this.inventory.all)).length === 0 && Object.keys(this.player?.runes ?? {}).length === 0) this.onboarding.show('runeHunt', 2500, { kind: 'asked' });
   }
 
   /** Areas the nav may walk: the saved seals, or everything under dev access. */
@@ -1636,7 +1642,10 @@ export class WorldScene implements GameScene, RuntimeView {
       if (!(p === 'professions' && this.gathering?.afk)) this.gathering?.stop('panel');
       this.grimSelect = undefined;
       host.win.open(host.tab);
-      if (p === 'grimoire') this.onboarding.show('grimoire', 0, { kind: 'asked' });
+      if (p === 'grimoire') {
+        this.onboarding.show('grimoire', 0, { kind: 'asked' });
+        this.runeHuntTip();
+      }
       return;
     }
     if (!(p === 'professions' && this.gathering?.afk)) this.gathering?.stop('panel');

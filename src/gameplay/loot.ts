@@ -12,8 +12,8 @@ import { ARMOR_BY_ID } from '../content/armorSets';
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
 import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS, bossIchor } from '../content/reagents';
 import type { BossId } from '../content/bosses';
-import { AREA_RUNE_POOL, BOSS_REPEAT_RUNE_CHANCE, BOSS_RUNE_POOL, ELITE_RUNE_CHANCE, SURGE_RUNE_CHANCE, pickRune } from '../content/runes';
-import { LEGENDARY_DROP, legendaryBossChance, rollLegendary } from '../content/legendarySets';
+import { AREA_RUNE_POOL, BOSS_REPEAT_RUNE_CHANCE, BOSS_RUNE_POOL, SURGE_RUNE_CHANCE, eliteRuneChance, pickRune } from '../content/runes';
+import { legendaryBossChance, legendaryEliteChance, rollLegendary } from '../content/legendarySets';
 
 /** One source of truth: gatheringRules.BAG_SLOTS (also bundled for the server). 8 columns × 6 rows = 48. */
 export const BAG_SIZE = BAG_SLOTS;
@@ -61,7 +61,7 @@ export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boole
   // Legendary armor (content/legendarySets.ts): a very rare elite drop in the level-scaled areas, weighted to the player's discipline.
   // Rolled only when a discipline is passed, so seeded runs (balance harness, tests) keep their sequence.
   if (disciplineId && elite && a.scaling) {
-    const id = rollLegendary(disciplineId, LEGENDARY_DROP.eliteChance, rand, ownedIds);
+    const id = rollLegendary(disciplineId, legendaryEliteChance(area), rand, ownedIds);
     if (id) items.push({ item_id: id, quantity: 1 });
   }
   // Reagents use their own stream: a seeded `rand` (balance harness, tests) keeps the same sequence it always had.
@@ -89,10 +89,10 @@ export function rollReagents(def: EnemyId, area: AreaId, elite: boolean, itemCha
   return out;
 }
 
-/** An elite's rune: ELITE_RUNE_CHANCE (times the item-chance multipliers), from the area's pool; null where the ground sheds none. */
+/** An elite's rune: eliteRuneChance(area) (times the item-chance multipliers), from the area's pool; null where the ground sheds none. */
 export function rollEliteRune(area: AreaId, itemChanceMult = 1, rand: () => number = Math.random): LootDrop | null {
   const pool = AREA_RUNE_POOL[area];
-  if (!pool?.length || rand() >= Math.min(1, ELITE_RUNE_CHANCE * itemChanceMult)) return null;
+  if (!pool?.length || rand() >= Math.min(1, eliteRuneChance(area) * itemChanceMult)) return null;
   const id = pickRune(pool, rand);
   return id ? { item_id: id, quantity: 1 } : null;
 }

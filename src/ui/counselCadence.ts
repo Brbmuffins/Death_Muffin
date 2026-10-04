@@ -107,7 +107,7 @@ const ASKED = [
   'rite_fan', 'rite_lance', 'rite_offering', 'rite_cleave', 'rite_veil', 'rite_rally', 'rite_seed',
   'gearEquip', 'statSheet', 'setBonus', 'legendary', 'necroWeapon', 'toolBelt', 'vault', 'salvage', 'bag_full', 'essence',
   'minimap', 'auto_combat', 'change_class', 'station', 'gather', 'wing',
-  'depths_floor', 'depths_affix', 'depths_chest', 'depths_solo',
+  'depths_floor', 'depths_affix', 'depths_chest', 'depths_solo', 'runeHunt',
 ];
 
 /** Fight-time tips that teach the kit itself (not one enemy's telegraph): they wait their turn instead of going stale. */
@@ -118,7 +118,7 @@ const GROUPS: Record<string, string[]> = {
   lesson: LESSONS,
   enemy: ['deacon', 'elite', 'surge', 'sanctify', 'procession', 'censer', 'wraith', 'swarm', 'golem', 'gargoyle', 'moth', 'bats', 'seraph', 'ghoul', 'acolyte', 'templar',
     'plague_doctor', 'flagellant', 'cinder_husk', 'pyre_priest', 'cinderhound', 'slag_brute', 'bog_hag', 'mire_leech', 'fen_wisp', 'drowned_sexton'],
-  gear: ['relic', 'armor', 'legendary', 'affix', 'atlas', 'tool', 'legion', 'rune'],
+  gear: ['relic', 'armor', 'legendary', 'affix', 'atlas', 'tool', 'legion', 'rune', 'runeHunt'],
   bag: ['bag_filling'],
   brew: ['reagent', 'brew', 'meal', 'belt'],
   acre: ['acre', 'rich_node', 'skill_up', 'laborers_working'],

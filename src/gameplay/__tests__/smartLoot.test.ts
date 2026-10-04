@@ -37,7 +37,7 @@ describe('smart loot for class gear', () => {
     expect(rollKill(AREAS.graves.enemies[0].id as never, 'graves', 5, false, 0, mulberry32(3)).items).toEqual(rollKill(AREAS.graves.enemies[0].id as never, 'graves', 5, false, 0, mulberry32(3)).items);
   });
 
-  it('about half of the armour a Knight finds in the Ossuary is Hollow Oath, against 1 in 9 before', () => {
+  it('about 70% of the armour a Knight finds in the Ossuary is Hollow Oath, against 1 in 9 before', () => {
     const rand = mulberry32(5);
     let armor = 0;
     let own = 0;
@@ -47,8 +47,8 @@ describe('smart loot for class gear', () => {
       armor++;
       if (p.disciplineId === 'knight') own++;
     }
-    expect(own / armor).toBeGreaterThan(0.46);
-    expect(own / armor).toBeLessThan(0.54);
+    expect(own / armor).toBeGreaterThan(0.66);
+    expect(own / armor).toBeLessThan(0.74);
   });
 
   it('a first-kill trophy is mostly your own class armour when the area drops rare-or-better pieces of it', () => {

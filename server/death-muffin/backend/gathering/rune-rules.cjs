@@ -229,6 +229,18 @@ var AREA_RUNE_POOL = {
   warren: byRarity("uncommon", "rare"),
   coliseum: byRarity("uncommon", "rare", "epic")
 };
+var ELITE_RUNE_CHANCE_BY_AREA = {
+  graves: 0.05,
+  warren: 0.055,
+  ossuary: 0.06,
+  nave: 0.07,
+  coliseum: 0.08,
+  sanctum: 0.09,
+  cloister: 0.1,
+  pyre: 0.11,
+  fen: 0.12
+};
+var ELITE_RUNE_CHANCE = ELITE_RUNE_CHANCE_BY_AREA.graves;
 var BOSS_RUNE_POOL = {
   gravedigger: ["rune_splinter", "rune_marrow_tap", "rune_mass_grave"],
   abbess: ["rune_ossuary_ring", "rune_impale", "rune_bone_colossus", "rune_volley"],

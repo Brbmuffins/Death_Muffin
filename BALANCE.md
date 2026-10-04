@@ -1054,3 +1054,27 @@ Necromancer rows are byte-identical. `BALANCE_SEEDS=4 BALANCE_AREAS=graves,nave 
 
 Graves (early levels): New Blood now level about as fast as a necromancer. Nave (past the catch-up): the gap closes from about 6x to about 2x
 XP/min; the rest is the legion (thralls) and survival, still worth a human playtest of the melee three (Warden, Monk, Knight die most).
+
+## Achievable drops pass (3 Oct 2026, branch `dm/loot-achievable`)
+
+Owner: "less grinding", "within the atlas it looks like ideal is only +2%", "drop rates are like 3% or low", "drops get better as you descend". Instruments: `npm run balance:affix`, `npm run balance` (typical kit), `gear-balance.test.ts`, and a rate script over `smartTable` (kills per own piece).
+
+### Affix rolls (`affixRules.ts`, ranges only; old ranges kept as `legacy`, so stored items stay legal)
+Roll range (tenths of a percent for the lever affixes), previous build -> now:
+| Affix | ilvl 12 | ilvl 47 |
+|---|---|---|
+| stat affixes (INT etc.) | 1-2 -> 2-3 | 2-5 -> 3-7 |
+| Gravebound (thrall damage) | 5.4-10% -> 6.8-14% | 7.8-14.6% -> 9-18.8% |
+| of the Legion (thrall health) | 9.5-17.7% -> 10.5-21.7% | 17.8-33.1% -> 17.3-35.9% |
+| Whispering (essence regen) | 11-21% -> 13-27% | 23-44% -> 25-52% |
+| of the Rotting Mist (Miasma) | 4.6-8.6% -> 6.3-13% | 7.6-14.1% -> 10-21% |
+| Blighted (Withered stacks) | 1-3 -> 1-4 | 1-4 -> 1-4 |
+| of the Ossuary Wall | 1.3-2.4% -> 1.7-3.6% | 2.6-4.9% -> 2.4-4.6% |
+The window around the middle is +-35% (was +-30%). Ossuary Wall and Legion barely move at ilvl 47 on purpose: the "three maxed affixes stay within 10% of an ascended set" rule binds them there.
+
+Power score (mean over the four necromancers, one affix on a chest): best stat median 2.1 / 3.0% -> 3.2 / 3.8%; a top roll is about 1.35x a median one. Good drop (two affixes at 75% on one piece): 2.9-4.9% / 3.6-7.6% -> 4.2-6.8% / 4.5-9.9% (ilvl 12 / 47). Rolled 7-piece kit: 7.0-9.1% -> 9.1-12.1% mean at the Nave, 9.1-12.4% -> 11.7-16.6% at the Pyre (p90 up to 25%). Test bounds raised to match (`gear-balance.test.ts`: best stat median under 7%, no max roll over 12%, good drop 3-14%, rolled kit 5-19% mean and 30% p90, three maxed affixes within 10% of an ascended set's bonus lines: the weakest set, Mourner at ilvl 70, is the binding case). Legendary full-set lines are unchanged (24-47% of power), so a set still outclasses any roll. In the Atlas, `rollPotential` shows a piece's bare value and its value with two ideal rolls (Gravecaller Hollow Graves helm at ilvl 3: +3.3% -> +7.7%; Vestment at ilvl 9: +13.5% -> +19.6%).
+
+Harness check (`BALANCE_SEEDS=3 BALANCE_AREAS=nave,sanctum BALANCE_BANDS=intended,push BALANCE_KIT=typical`, four necromancers, old vs new ranges): kills/min and damage taken move within the noise floor on every row (Nave push Rotweaver 188 -> 172 and Mourner 170 -> 173 kills/min, hurt 30 -> 17 and 48 -> 37; Sanctum intended and push within 2-5%). The bot cannot resolve a single affix, as in the earlier passes.
+
+### Drops (`areas.ts` CHASE_WEIGHT, `smartLoot.ts`, `runes.ts`, `legendarySets.ts`, `depths.ts`)
+Kills per piece of your own set (Gravecaller, blended ordinary and elite kills), before -> after: Graves 497 -> 274, Ossuary 344 -> 145, Nave 246 -> 110, Sanctum 211 -> 108, Cloister 220 -> 109, Pyre 237 -> 115, Fen 188 -> 82 (per ANY own piece: Graves 137, Nave 55, Sanctum 36, Cloister 22, Pyre 19, Fen 16). Items per kill are unchanged (5.5-16 per 100 kills); gear share of the drops: Graves 29 -> 34%, Nave 35 -> 46%, Sanctum 50 -> 69%, Fen 36 -> 59%. Runes: one per 2,000-4,700 kills before; now 5-12% of elites (Graves one per ~570 kills, Fen one per ~90). Legendary per boss kill: 15 flat (Gravedigger 3) -> 20/22/25/28/30/33 (Gravedigger 6); elites 0.3% -> 0.5/0.7/0.9% (Cloister/Pyre/Fen). Not changed: item chance per kill, gold, XP, shards.

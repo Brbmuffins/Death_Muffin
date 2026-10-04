@@ -150,11 +150,12 @@ export class GrimoirePanel extends SimplePanel {
       if (n > 0) {
         return `<button type="button" class="cw-rune-opt" data-rune="${r.id}" ${this.runeBusy ? 'disabled' : ''} aria-label="Socket ${esc(r.name)} into ${esc(name)}"><img src="art/items/${r.id}.webp" alt="" /><span><span class="nm">${esc(r.name)}<i>${r.rarity} · you have ${n}</i></span><span class="sh">${esc(r.short)}</span></span><span class="go">${cur ? 'Swap in' : 'Socket'}</span></button>`;
       }
-      return `<div class="cw-rune-opt sealed" title="${esc(runeSources(r.id))}"><img src="art/items/${r.id}.webp" alt="" style="filter:grayscale(1) brightness(0.6)" /><span><span class="nm">${esc(r.name)}<i>${r.rarity}</i></span><span class="sh">${esc(r.short)}</span></span><span class="go">Not found yet</span></div>`;
+      return `<div class="cw-rune-opt sealed" title="${esc(runeSources(r.id))}"><img src="art/items/${r.id}.webp" alt="" style="filter:grayscale(1) brightness(0.6)" /><span><span class="nm">${esc(r.name)}<i>${r.rarity}</i></span><span class="sh">${esc(r.short)}</span><span class="sh src">Drops from ${esc(runeSources(r.id))}</span></span><span class="go">Not found yet</span></div>`;
     });
     return `<div class="cw-rune-box" data-runebox><h3>Rune socket <small>${esc(name)}</small></h3>
       <div class="cw-rune-now">${now}</div>
       <div class="cw-rune-list">${list.join('')}</div>
+      <p class="cw-rune-where">This socket is already yours. <b>Runes</b> drop from elites (more often the deeper the ground), Grave Surge offerings, bosses (the first kill of each always leaves one) and Catacomb Depths chests. The Gear Atlas (<kbd>.</kbd>) lists the chances.</p>
       <div class="cw-rune-err" role="status" data-rune-err>${esc(this.runeError)}</div></div>`;
   }
 

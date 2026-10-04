@@ -1,13 +1,13 @@
-import { AREAS, AREA_ORDER, type AreaId } from '../content/areas';
+import { AREAS, AREA_ORDER, HUNT_ORDER, huntRank, chaseMult, type AreaId } from '../content/areas';
 import { BOSSES, BOSS_IDS, type BossId } from '../content/bosses';
 import { DISCIPLINES, type DisciplineId } from '../content/disciplines';
 import { ENEMIES, type EnemyId } from '../content/enemies';
 import { EQUIP_SLOTS, equipSlotOf, type EquipSlot } from '../content/gear';
 import { ITEMS } from '../content/items';
 import { AREA_REAGENT_DROPS, BOSS_ICHOR, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS } from '../content/reagents';
-import { AREA_RUNE_POOL, BOSS_REPEAT_RUNE_CHANCE, BOSS_RUNE_POOL, ELITE_RUNE_CHANCE, RUNES, RUNE_WEIGHT, SURGE_RUNE_CHANCE, type RuneId } from '../content/runes';
+import { AREA_RUNE_POOL, BOSS_REPEAT_RUNE_CHANCE, BOSS_RUNE_POOL, eliteRuneChance, RUNES, RUNE_WEIGHT, SURGE_RUNE_CHANCE, type RuneId } from '../content/runes';
 import { ARMOR_PIECES, ARMOR_BY_ID } from '../content/armorSets';
-import { LEGENDARY_BOSS_AREAS, LEGENDARY_DROP, legendaryBossChance, LEGENDARY_SETS, LEGENDARY_SET_IDS, legendaryItemId, legendarySetFor, type LegendaryPart } from '../content/legendarySets';
+import { LEGENDARY_BOSS_AREAS, LEGENDARY_DROP, legendaryBossChance, legendaryEliteChance, LEGENDARY_SETS, LEGENDARY_SET_IDS, legendaryItemId, legendarySetFor, type LegendaryPart } from '../content/legendarySets';
 import { NECRO_TIER_INFO, NECRO_WEAPONS } from '../content/necroWeapons';
 import { SET_BONUSES, SET_NAMES, describeEffect } from '../content/setBonuses';
 import { SEEDS } from '../content/gardening';
@@ -19,7 +19,8 @@ import { milestoneActive, waveModifiers } from '../content/upgrades';
 import { DIFFICULTIES } from '../content/difficulty';
 import { NODES, SKILLS, type SkillId } from './gatheringRules';
 import { KILL_LOOT } from './loot';
-import { AFFIX_GEAR_TYPES, ILVL_MAX, MAX_AFFIXES, itemLevelFor, rollAffixCount, type DropSource as AffixSource } from './affixRules';
+import { smartTable } from './smartLoot';
+import { AFFIXES, AFFIX_GEAR_TYPES, affixRange, affixText, ILVL_MAX, MAX_AFFIXES, itemLevelFor, rollAffixCount, type DropSource as AffixSource } from './affixRules';
 import { salvagePreview } from './salvageRules';
 import { gearPower, simulateEquip, RECOMMENDED_WEAPONS, type StatContext } from './gearStats';
 import type { Character, InventorySlot, ItemType, Rarity } from '../net/types';
@@ -93,6 +94,8 @@ export interface Place {
   name: string;
   kind: 'area' | 'boss' | 'depths' | 'gather';
   level: number;
+  /** Position in the descent (AREA_ORDER) of the ground this place belongs to; 99 for gathering. Places sort by it. */
+  rank: number;
   /** Every item with a source here, best chance first. */
   items: string[];
 }
@@ -172,7 +175,7 @@ export const SCALING_NOTES: string[] = (() => {
     `A fortune tonic multiplies the item chance of kills, reagent drops and the elite rune chance${fortune.length ? `: ${fortune.join(', ')}` : ''}. It does not change boss spoils, Grave Surge offerings or legendary odds.`,
     `Difficulty changes gold and experience and how often elites appear (${diffs.map((d) => `${d.name} ${d.eliteBonus >= 0 ? '+' : ''}${+(d.eliteBonus * 100).toFixed(1)} points`).join(', ')} on every area's elite chance), not what a kill drops.`,
     `Reagent drops are a separate roll per kill, ${ELITE_REAGENT_MULT}x as likely from an elite. Rune and legendary rolls are separate again.`,
-    `Bosses roll the area table three times and always leave their ichor; a legendary piece is a ${+(LEGENDARY_DROP.bossChance * 100).toFixed(2)}% roll per boss kill (${+(LEGENDARY_DROP.starterBossChance * 100).toFixed(2)}% for the Gravedigger King).`,
+    `Bosses roll the area table three times and always leave their ichor; a legendary piece is a ${+(LEGENDARY_DROP.bossChance * 100).toFixed(0)}-${+(legendaryBossChance('fen') * 100).toFixed(0)}% roll per boss kill, rising with depth (${+(LEGENDARY_DROP.starterBossChance * 100).toFixed(0)}% for the Gravedigger King).`,
   ];
 })();
 
@@ -262,7 +265,7 @@ function buildSources(): Map<string, DropSource[]> {
     // Runes: elites and surges, from the area's pool.
     if (pool?.length) {
       for (const [id, share] of runeShares(pool)) {
-        add(id, { kind: 'elite', placeId: areaId, place: a.name, event: 'Elite kill', chance: ELITE_RUNE_CHANCE * share, qty: [1, 1], area: areaId });
+        add(id, { kind: 'elite', placeId: areaId, place: a.name, event: 'Elite kill', chance: eliteRuneChance(areaId) * share, qty: [1, 1], area: areaId });
         add(id, { kind: 'surge', placeId: areaId, place: a.name, event: 'Grave Surge offering', chance: SURGE_RUNE_CHANCE * share, qty: [1, 1], area: areaId });
       }
     }
@@ -328,9 +331,9 @@ function buildSources(): Map<string, DropSource[]> {
       add(d.item, { kind: 'depths', placeId, place, event: 'Elite kill', chance: Math.min(1, d.chance * ELITE_REAGENT_MULT), qty: d.qty, area });
     }
     const pool = AREA_RUNE_POOL[area];
-    if (pool?.length) for (const [id, share] of runeShares(pool)) add(id, { kind: 'depths', placeId, place, event: 'Elite kill', chance: ELITE_RUNE_CHANCE * share, qty: [1, 1], area });
+    if (pool?.length) for (const [id, share] of runeShares(pool)) add(id, { kind: 'depths', placeId, place, event: 'Elite kill', chance: eliteRuneChance(area) * share, qty: [1, 1], area });
     if (chestHere) {
-      for (const [id, share] of runeShares(chestRunePool(firstChest))) add(id, { kind: 'depths', placeId, place, event: `Chest (floor ${firstChest})`, chance: chestRuneChance(firstChest) * share, qty: [1, 1], area, note: `${fmtChance(chestRuneChance(firstChest))} to hold a rune; rises +2% per chest` });
+      for (const [id, share] of runeShares(chestRunePool(firstChest))) add(id, { kind: 'depths', placeId, place, event: `Chest (floor ${firstChest})`, chance: chestRuneChance(firstChest) * share, qty: [1, 1], area, note: `${fmtChance(chestRuneChance(firstChest))} to hold a rune; rises +4% per chest` });
     }
   }
 
@@ -404,9 +407,9 @@ export function getAtlas(): Atlas {
   }
 
   // Places for the Area tab: grounds, bosses, Depths bands, gathering nodes.
-  const byPlace = new Map<string, { name: string; kind: Place['kind']; level: number; items: Map<string, number> }>();
-  const put = (placeId: string, name: string, kind: Place['kind'], level: number, item: string, chance: number) => {
-    const p = byPlace.get(placeId) ?? byPlace.set(placeId, { name, kind, level, items: new Map() }).get(placeId)!;
+  const byPlace = new Map<string, { name: string; kind: Place['kind']; level: number; rank: number; items: Map<string, number> }>();
+  const put = (placeId: string, name: string, kind: Place['kind'], level: number, rank: number, item: string, chance: number) => {
+    const p = byPlace.get(placeId) ?? byPlace.set(placeId, { name, kind, level, rank, items: new Map() }).get(placeId)!;
     p.items.set(item, Math.max(p.items.get(item) ?? 0, chance));
   };
   for (const [item, list] of sources) {
@@ -415,12 +418,13 @@ export function getAtlas(): Atlas {
       if (s.placeId.startsWith('enemy:')) continue;
       const kind: Place['kind'] = s.kind === 'depths' ? 'depths' : s.kind === 'gather' ? 'gather' : s.kind === 'boss' || s.kind === 'first_kill' ? 'boss' : 'area';
       const level = s.area ? levelOf(s.area) : 1;
-      put(s.placeId, s.place, kind, level, item, s.chance);
+      put(s.placeId, s.place, kind, level, s.area ? AREA_ORDER.indexOf(s.area) : 99, item, s.chance);
     }
   }
   const order = (p: Place) => (p.kind === 'area' ? 0 : p.kind === 'boss' ? 1 : p.kind === 'depths' ? 2 : 3);
-  const places: Place[] = [...byPlace].map(([id, p]) => ({ id, name: p.name, kind: p.kind, level: p.level, items: [...p.items].sort((a, b) => b[1] - a[1]).map(([i]) => i) }));
-  places.sort((a, b) => order(a) - order(b) || a.level - b.level || a.name.localeCompare(b.name));
+  const places: Place[] = [...byPlace].map(([id, p]) => ({ id, name: p.name, kind: p.kind, level: p.level, rank: p.rank, items: [...p.items].sort((a, b) => b[1] - a[1]).map(([i]) => i) }));
+  // One order everywhere: the descent (AREA_ORDER), shallowest first; the level only breaks ties (the Depths' floors, gathering nodes).
+  places.sort((a, b) => order(a) - order(b) || a.rank - b.rank || a.level - b.level || a.name.localeCompare(b.name));
 
   cache = { items, sources, madeBy, usedIn, places, sets };
   return cache;
@@ -436,10 +440,30 @@ export function legendaryShare(setId: string, disciplineId: string): number {
 
 const LEGENDARY_PARTS = 5;
 
+/**
+ * What the table says for YOU: smart loot (smartLoot.ts) tilts a ground's table toward your discipline's armour and necromancer weapons, so
+ * your own set drops far more often than the neutral share the generated LOOT-TABLES.md lists. The Atlas used to show the neutral number
+ * ("0.03%, 1 in 3,100") for your own helm; this scales every table-rolled source by the same ratio the real roll applies.
+ */
+function forDiscipline(list: DropSource[], itemId: string, disciplineId: string): DropSource[] {
+  const out = list.map((s) => {
+    if (!s.area || !(s.kind === 'kill' || s.kind === 'elite' || s.kind === 'surge' || s.kind === 'boss' || s.kind === 'depths')) return s;
+    const raw = tableShares(s.area).get(itemId);
+    if (!raw) return s;
+    const table = smartTable(s.area, disciplineId);
+    const total = table.reduce((n, e) => n + e.weight, 0) || 1;
+    const mine = table.filter((e) => e.item === itemId).reduce((n, e) => n + e.weight, 0) / total;
+    const ratio = mine / raw;
+    if (Math.abs(ratio - 1) < 1e-9) return s;
+    return { ...s, chance: s.kind === 'boss' ? 1 - Math.pow(1 - Math.min(1, mine), 3) : Math.min(1, s.chance * ratio) };
+  });
+  return out.some((s, i) => s !== list[i]) ? out.sort((a, b) => b.chance - a.chance) : list;
+}
+
 /** Drop sources of an item. Legendary armor depends on your discipline (smart loot), so the discipline is a parameter. */
 export function sourcesFor(itemId: string, disciplineId: string): DropSource[] {
   const atlas = getAtlas();
-  const base = atlas.sources.get(itemId) ?? [];
+  const base = forDiscipline(atlas.sources.get(itemId) ?? [], itemId, disciplineId);
   const piece = ARMOR_BY_ID[itemId];
   if (!piece || piece.collection !== 3) return base;
   const share = legendaryShare(piece.setId, disciplineId) / LEGENDARY_PARTS;
@@ -452,11 +476,11 @@ export function sourcesFor(itemId: string, disciplineId: string): DropSource[] {
   }
   for (const areaId of AREA_ORDER) {
     if (!AREAS[areaId].scaling || !AREAS[areaId].loot.length) continue;
-    out.push({ kind: 'elite', placeId: areaId, place: AREAS[areaId].name, event: 'Elite kill', chance: LEGENDARY_DROP.eliteChance * share, qty: [1, 1], area: areaId, ilvlSource: 'elite', note: 'level-scaled grounds only' });
+    out.push({ kind: 'elite', placeId: areaId, place: AREAS[areaId].name, event: 'Elite kill', chance: legendaryEliteChance(areaId) * share, qty: [1, 1], area: areaId, ilvlSource: 'elite', note: 'level-scaled grounds only' });
   }
   for (const band of depthBands()) {
     if (!AREAS[band.area].scaling) continue;
-    out.push({ kind: 'depths', placeId: `depths:${band.from}`, place: `Catacomb Depths, ${bandLabel(band)}`, event: 'Elite kill', chance: LEGENDARY_DROP.eliteChance * share, qty: [1, 1], area: band.area, ilvlSource: 'elite' });
+    out.push({ kind: 'depths', placeId: `depths:${band.from}`, place: `Catacomb Depths, ${bandLabel(band)}`, event: 'Elite kill', chance: legendaryEliteChance(band.area) * share, qty: [1, 1], area: band.area, ilvlSource: 'elite' });
   }
   return [...out, ...base].sort((a, b) => b.chance - a.chance);
 }
@@ -626,3 +650,106 @@ export function unobtainable(): string[] {
 }
 
 export { ARMOR_BY_ID, LEGENDARY_SETS, CHEST_KILLS };
+
+
+// --- Drop quality by depth ------------------------------------------------------------------------------------------------------------
+
+export interface AreaQuality {
+  /** 1-based rung of the descent among the hunting grounds (Hollow Graves = 1) and how many there are. */
+  rung: number;
+  rungs: number;
+  level: number;
+  /** Item level of a gear drop from an ordinary kill (they roll at elite quality) and from a boss. */
+  ilvlKill: number;
+  ilvlBoss: number;
+  /** Per 100 kills (elites included): items that drop at all, of them gear, and gear of rare quality or better. */
+  dropsPer100: number;
+  gearPer100: number;
+  rarePer100: number;
+  /** Per 100 kills: pieces of your own discipline's armour set. */
+  ownPer100: number;
+  /** Kills per piece of your own set on average (0 when this ground drops none). */
+  killsPerOwn: number;
+  runePerElite: number;
+  /** A legendary roll per boss kill here (0 when its boss rolls none) and per elite kill (level-scaled grounds only). */
+  bossLegendary: number;
+  eliteLegendary: number;
+  /** The weight multiplier this ground gives build gear (areas.ts CHASE_WEIGHT). */
+  chase: number;
+}
+
+/** What a hunting ground drops, as numbers a player can compare from one ground to the next (null for halls, instances, the Depths). */
+export function areaQuality(areaId: AreaId, disciplineId: string): AreaQuality | null {
+  const a = AREAS[areaId];
+  const rank = huntRank(areaId);
+  if (!a || rank < 0 || !a.loot.length) return null;
+  const table = smartTable(areaId, disciplineId);
+  const total = table.reduce((n, e) => n + e.weight, 0) || 1;
+  const share = (pred: (id: string) => boolean) => table.filter((e) => pred(e.item)).reduce((n, e) => n + e.weight, 0) / total;
+  const isGear = (id: string) => GEAR_TYPES.includes(ITEMS[id]?.type ?? '');
+  const gear = share(isGear);
+  const rare = share((id) => isGear(id) && ['rare', 'epic', 'legendary'].includes(ITEMS[id].rarity));
+  const own = share((id) => ARMOR_BY_ID[id]?.disciplineId === disciplineId);
+  const elite = a.eliteChance;
+  const perKill = Math.min(1, a.itemChance * KILL_LOOT.itemChanceMult) * (1 - elite) + Math.min(1, a.itemChance * 6) * elite;
+  const boss = BOSS_IDS.find((b) => BOSSES[b].area === areaId);
+  return {
+    rung: rank + 1, rungs: HUNT_ORDER.length, level: a.level,
+    ilvlKill: itemLevelFor(a.level, 'elite'), ilvlBoss: itemLevelFor(a.level, 'boss'),
+    dropsPer100: perKill * 100, gearPer100: perKill * gear * 100, rarePer100: perKill * rare * 100, ownPer100: perKill * own * 100,
+    killsPerOwn: perKill * own > 0 ? 1 / (perKill * own) : 0,
+    runePerElite: AREA_RUNE_POOL[areaId]?.length ? eliteRuneChance(areaId) : 0,
+    bossLegendary: boss ? legendaryBossChance(areaId) : 0,
+    eliteLegendary: legendaryEliteChance(areaId),
+    chase: chaseMult(areaId),
+  };
+}
+
+// --- What a top roll is worth --------------------------------------------------------------------------------------------------------
+
+export interface RollPotential {
+  ilvl: number;
+  /** Percent of power the bare item adds to an empty slot, and with the two best affixes rolled at the top of their range (the "ideal" roll). */
+  plain: number;
+  ideal: number;
+  /** The two affixes that makes up, as the item would show them. */
+  picks: { id: string; text: string; range: string }[];
+}
+
+/** The lever affix each necromancer discipline builds around (the same four gear-balance.test.ts calls a home lever). */
+const HOME_LEVER: Record<string, string> = { ossuary: 's_thrall_hp', gravecaller: 'p_thrall_dmg', mourner: 'p_essence_regen', rotweaver: 's_miasma' };
+
+const potentialCache = new Map<string, RollPotential | null>();
+/**
+ * "Ideal" in the Atlas's fit badge is how well the BASE piece suits you; the roll on top is where an upgrade is made. This is what the best
+ * two affixes (your stat of choice and, for a necromancer, the discipline's own lever) add when both roll at the top of their range at item level `ilvl`.
+ */
+export function rollPotential(itemId: string, disciplineId: string, ilvl: number): RollPotential | null {
+  const key = `${itemId}|${disciplineId}|${ilvl}`;
+  if (potentialCache.has(key)) return potentialCache.get(key)!;
+  const base = atlasSlot(itemId);
+  let out: RollPotential | null = null;
+  if (base) {
+    const ctx = referenceContext(disciplineId as DisciplineId);
+    const power = (affixes: { id: string; v: number }[]) => {
+      const s: InventorySlot = { ...base, inst: { id: 0, ilvl, affixes } };
+      const sim = simulateEquip([...ctx.slots, s], s.slot_index);
+      return gearPower(ctx, sim.slots).total;
+    };
+    const none = power([]);
+    const top = (id: string) => ({ id, v: affixRange(id, ilvl)![1] });
+    const scored = AFFIXES.filter((d) => !d.necro || d.id === HOME_LEVER[disciplineId]).map((d) => ({ d, gain: power([top(d.id)]) - none })).sort((x, y) => y.gain - x.gain);
+    const first = scored[0];
+    const second = scored.find((x) => x.d.group !== first.d.group);
+    const picks = [first, second].filter((x): x is NonNullable<typeof x> => !!x);
+    const roll = picks.map((p) => top(p.d.id));
+    const plainGain = (gearPower(ctx, simulateEquip([...ctx.slots, base], base.slot_index).slots).total / (gearPower(ctx).total || 1) - 1) * 100;
+    out = {
+      ilvl, plain: Math.round(plainGain * 10) / 10,
+      ideal: Math.round(((power(roll) / (gearPower(ctx).total || 1)) - 1) * 1000) / 10,
+      picks: roll.map((r) => { const [lo, hi] = affixRange(r.id, ilvl)!; return { id: r.id, text: affixText(r), range: `${lo}-${hi}` }; }),
+    };
+  }
+  potentialCache.set(key, out);
+  return out;
+}

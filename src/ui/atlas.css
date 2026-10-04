@@ -18,6 +18,11 @@
 .at-select { display: flex; align-items: center; gap: 8px; color: var(--cw-text-muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; }
 .at-select select { min-height: 34px; max-width: 100%; background: var(--cw-inset); color: var(--cw-bone-100); padding: 4px 8px; border: 1px solid var(--cw-border); font: inherit; font-size: 14px; text-transform: none; letter-spacing: 0; }
 .at-check { display: flex; align-items: center; gap: 6px; color: var(--cw-bone-100); font-size: 14px; cursor: pointer; }
+.at-quality { display: flex; gap: 10px; align-items: center; margin-top: 6px; font-size: 13px; color: var(--cw-text-faint); line-height: 1.35; }
+.at-rungs { display: inline-flex; gap: 2px; flex: none; }
+.at-rungs i { width: 7px; height: 14px; border-radius: 1px; background: color-mix(in srgb, var(--cw-text-faint) 30%, transparent); }
+.at-rungs i.on { background: var(--cw-gold, #d4a24a); }
+.at-roll { margin: 6px 0; }
 .at-note { color: var(--cw-text-faint); font-size: 13px; }
 .at-faint { color: var(--cw-text-faint); font-size: 12px; }
 
