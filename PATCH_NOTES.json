@@ -18,7 +18,9 @@
       "Gear: helms tint your own hood or helmet instead of floating on top, capes no longer clip on death, and a set summary sits under the paper doll.",
       "Levels now count past 255 (up to 999), and logging in somewhere new stops the old window from saving over you.",
       "Patch notes now show in the launcher, on the website's new Patch notes page, and on the home page.",
-      "Fixes: loot icons could draw blank on some graphics cards, tooltips no longer block clicks, and the worn-helm look stays when you change other gear."
+      "Fixes: loot icons could draw blank on some graphics cards, tooltips no longer block clicks, and the worn-helm look stays when you change other gear.",
+      "Loot no longer flies to you from across the map: walk over an item to pick it up. Anything you leave behind fades after a few minutes (epic and legendary drops after ten).",
+      "Covenant counsel cards now light up the part of the screen they explain, like the alchemy belt and the minimap. Settings → Show tips again walks you through them."
     ]
   }
 ]

@@ -652,6 +652,28 @@ export const TIPS: Record<TipId, Tip> = {
   },
 };
 
+/**
+ * The part of the screen a tip is about: it glows while the card is up, the first time and when Settings -> Show tips again
+ * replays it (owner, 2026-10-04: "show tips again ... that illuminates those"). Selectors inside the game root; hidden ones are skipped.
+ */
+export const TIP_ANCHOR: Partial<Record<TipId, string>> = {
+  minimap: '[data-mapframe]',
+  belt: '[data-brews]',
+  brew: '[data-brews]',
+  wave: '.hud-upgrades',
+  chain: '[data-chain]',
+  omen: '.hud-omen',
+  prelate: '[data-reveal="hud.shards"]',
+  grimoire: '[data-grimbtn], [data-open="grimoire"]',
+  atlas: '[data-open="atlas"]',
+  codex: '[data-open="codex"]',
+  relic: '[data-open="inventory"]',
+  bag_full: '[data-open="inventory"]',
+  bag_filling: '[data-open="inventory"]',
+  gather: '[data-open="professions"]',
+  skill_up: '[data-open="professions"]',
+};
+
 /** How often a waiting tip re-checks whether the moment is right. */
 const PUMP_MS = 1000;
 /** Default card position: top-left under the hero frame. The left-edge readouts (Kill Chain, Bone Ward, brews) start below it. */
@@ -686,6 +708,8 @@ export class Onboarding {
    */
   stale: (id: TipId) => boolean = () => false;
   private el: HTMLDivElement | null = null;
+  /** Elements lit by TIP_ANCHOR for the card on screen. */
+  private lit: HTMLElement[] = [];
   private timers = new Set<number>();
   private hideTimer = 0;
   private offSettings: () => void;
@@ -821,6 +845,7 @@ export class Onboarding {
     this.root.appendChild(el);
     this.el = el;
     this.place(el);
+    this.light(id);
     const handle = el.querySelector<HTMLElement>('[data-move]')!;
     let drag: { pointer: number; x: number; y: number; left: number; top: number } | null = null;
     handle.addEventListener('pointerdown', e => {
@@ -910,6 +935,7 @@ export class Onboarding {
     const el = this.el;
     if (!el) return;
     this.el = null;
+    this.light(null);
     this.cancel(this.hideTimer);
     el.classList.add('out');
     this.later(() => el.remove(), 220);
@@ -938,6 +964,20 @@ export class Onboarding {
     this.timers.clear();
     this.el?.remove();
     this.el = null;
+    this.light(null);
+  }
+
+  /** Glow the element the card is about (TIP_ANCHOR), or put the glow out. */
+  private light(id: TipId | null) {
+    for (const n of this.lit) n.classList.remove('dm-tip-glow');
+    this.lit = [];
+    const sel = id ? TIP_ANCHOR[id] : undefined;
+    if (!sel) return;
+    this.root.querySelectorAll<HTMLElement>(sel).forEach((n) => {
+      if (!n.getClientRects().length) return; // hidden or not revealed yet
+      n.classList.add('dm-tip-glow');
+      this.lit.push(n);
+    });
   }
 
   private persist() {

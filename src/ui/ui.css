@@ -1648,7 +1648,10 @@ body:not(.touch):has(.cw-panel-float) .cw-tip:not(.dragging):not([data-kind='urg
 .hud-toast.new-cue::before { content: 'NEW'; margin-right: 10px; padding: 0 6px; font: 700 10px/1.7 var(--cw-font-numeric); letter-spacing: .08em; color: #1a1206; background: #e2c98f; }
 .hud-upgrades { position: relative; }
 .hud-menu .hud-mi { position: relative; }
-@media (prefers-reduced-motion: reduce) { .dm-pip, .dm-glow { animation: none; } }
+/* A counsel card's subject (ui/Onboarding.ts TIP_ANCHOR): outline + halo only, so absolutely placed HUD parts never move. */
+.dm-tip-glow { outline: 2px solid #e2c98f; outline-offset: 3px; border-radius: 4px; animation: dm-tip-glow 1.4s ease-in-out infinite; }
+@keyframes dm-tip-glow { 50% { outline-color: rgba(226, 201, 143, 0.35); box-shadow: 0 0 18px rgba(226, 201, 143, 0.55); } }
+@media (prefers-reduced-motion: reduce) { .dm-pip, .dm-glow, .dm-tip-glow { animation: none; } }
 
 /* Tabbed windows: Acre ledger, Character, Grimoire. The hosted panels keep their own plate; here it is flattened into the tab body. */
 .cw-panel-float.cw-tabwin { width: 860px; padding-top: 16px; }

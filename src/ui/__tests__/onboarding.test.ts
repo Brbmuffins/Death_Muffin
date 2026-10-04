@@ -49,3 +49,22 @@ describe('onboarding tips text', () => {
     expect(renderText('Press {key:nope} now')).toContain('<kbd>L</kbd>');
   });
 });
+
+describe('tip anchors (the HUD part a card lights up)', () => {
+  it('every anchor names something the HUD actually renders', async () => {
+    const { TIP_ANCHOR } = await import('../Onboarding');
+    const fs = await import('node:fs');
+    const hud = fs.readFileSync(new URL('../HUD.ts', import.meta.url), 'utf8');
+    const menuKeys = [...hud.matchAll(/\['([a-z]+)', '/g)].map((m) => m[1]);
+    for (const [id, sel] of Object.entries(TIP_ANCHOR)) {
+      expect(id in TIPS, id).toBe(true);
+      for (const part of sel!.split(',').map((x) => x.trim())) {
+        const open = /^\[data-open="(\w+)"\]$/.exec(part);
+        if (open) { expect(menuKeys, `${id}: ${part}`).toContain(open[1]); continue; }
+        const token = /^\[(data-[\w-]+)(?:="([^"]+)")?\]$/.exec(part) ?? /^\.([\w-]+)$/.exec(part);
+        expect(token, `${id}: ${part}`).not.toBeNull();
+        expect(hud.includes(token![2] ?? token![1]), `${id}: ${part}`).toBe(true);
+      }
+    }
+  });
+});
