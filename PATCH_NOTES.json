@@ -8,6 +8,7 @@
       "Workbench: a new Only show craftable checkbox hides every recipe you lack the skill or materials for. It applies to every crafting page and follows your account to any browser or device.",
       "Reliquary: a new Sort button merges stacks and orders your bag by type, rarity, item level and name.",
       "Vault: new Take materials and Take all buttons move things back into your bag in one click, as far as it fits.",
+      "Pets: a pet charm in your bag now has an Adopt button next to Sell and Lock, so you can adopt it without opening Capes & Pets.",
       "Performance: fixed a graphics memory leak that grew with every kill, thralls no longer stutter while following you, and walking under the arches no longer hitches.",
       "Audio: every sound is new, from a full fantasy sound library: spells match their element, enemies have voices, bosses warn you, loot sounds by rarity, footsteps change with the floor. Co-op partners are quieter and danger cuts through the mix.",
       "Full bag: loot no longer chases you around, and the bag-full alert shows once instead of every swing.",
