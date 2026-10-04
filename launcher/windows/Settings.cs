@@ -4,25 +4,16 @@ using System.Web.Script.Serialization;
 
 namespace DeathMuffinLauncher
 {
-    /// <summary>Small JSON settings file next to the WebView2 profile: %LOCALAPPDATA%\DeathMuffin\launcher-settings.json.</summary>
+    /// <summary>Small JSON settings file next to the installed client: %LOCALAPPDATA%\DeathMuffin\launcher-settings.json.</summary>
     internal sealed class Settings
     {
         public bool HighPerformanceGpu { get; set; } = true;
-        /// <summary>Release sha whose files were last fully warmed into the profile's HTTP cache.</summary>
-        public string LastPrecachedSha { get; set; } = "";
-
-        /// <summary>True once the offline edition reported "Ready to play without a network" (cleared if it later reports the assets missing).</summary>
-        public bool OfflineDownloaded { get; set; } = false;
-        /// <summary>Offline build id (the service worker's dm-offline-&lt;hash&gt;) that finished downloading, "" if unknown.</summary>
-        public string OfflineVersion { get; set; } = "";
-        /// <summary>ISO date the offline copy last finished downloading, "" if unknown.</summary>
-        public string OfflineDownloadedAt { get; set; } = "";
-
         public static string Root
         {
             get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeathMuffin"); }
         }
-        public static string ProfileDir { get { return Path.Combine(Root, "LauncherProfile"); } }
+        /// <summary>Installed Godot client versions (see ClientStore).</summary>
+        public static string ClientDir { get { return Path.Combine(Root, "client"); } }
         static string FilePath { get { return Path.Combine(Root, "launcher-settings.json"); } }
 
         public static Settings Load()

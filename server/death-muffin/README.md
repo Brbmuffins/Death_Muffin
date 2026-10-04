@@ -19,6 +19,7 @@ that release, check [HANDOFF](../../HANDOFF.md) and `git status --short`.
 
 - `backend/`: account/character/inventory/profession API, adapted from the existing VPS API. Listens only on 127.0.0.1:5190; uses a separate `death_muffin` MySQL database and JWT secret. Copy `server/vps-handoff/necro-progress/` into its `necro-progress/` folder when installing.
 - `server/realtime/`: the included co-op service runs separately on 127.0.0.1:5191 with `ENV_FILE` pointing to Death Muffin's private backend `.env`.
+- `publish-godot-client.sh <git-rev>` / `set-online.sh on|off [message]`: publish the Godot Windows client and its `manifest.json` (SHA-256 list plus the launcher's online lock) to `/var/www/death-muffin/client/`; see `launcher/windows/README.md`.
 - `systemd/`: unit files for the current VPS installation.
 - `nginx-locations.conf`: additive HTTPS locations under the existing muffindevelopment.com certificate. HTTP requests under `/death-muffin/` redirect to HTTPS.
 - `nginx-crossworlds-redirects.conf`: old game URLs redirect to Muffin Development with path and query preserved.

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Logic tests for the launcher's pure code (manifest, versions, hashes, button state machines, installer). Runs on Linux and Windows:
+       dotnet run --project launcher/tests    (or ./run-local.sh when only a runtime + Roslyn csc.dll are available) -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <RootNamespace>DeathMuffinLauncher.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\windows\ClientLogic.cs" />
+    <Compile Include="..\windows\ClientInstaller.cs" />
+  </ItemGroup>
+</Project>
