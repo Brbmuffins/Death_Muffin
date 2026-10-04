@@ -612,3 +612,31 @@ test('rounds: turns are counted per round, with a hard cap per thread', async ()
   const m = await d.say(thread, IDS.HELIX, 'one more question');
   await until(() => m.replies.length, d.ad); assert.match(m.replies[0].content, /total turn limit/);
 });
+
+test('rounds: ❌ while a turn is running discards once the step stops, then the next message starts a fresh round', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS make the accent blue');
+  const p1 = await waitProposal(d, thread); const job = Object.values(w.runner.jobs())[0];
+  await d.say(thread, IDS.HELIX, 'SLOW-TURN what else could change?');
+  await until(() => job.running, d.ad);
+  await d.react(p1, IDS.HELIX, '❌');
+  await until(() => job.status === 'discarded' && !job.running, d.ad);
+  const said = texts(thread).join('\n');
+  assert.match(said, /Discarding as soon as the current step stops/);
+  assert.doesNotMatch(said, /Checks found a problem|Cancelled\.|Something broke/);
+  await d.say(thread, IDS.HELIX, 'MAKE-CSS try again');
+  await waitNthProposal(d, thread, 2);
+  assert.equal(job.round, 2);
+});
+
+test('a thread whose workspace vanished starts a fresh round and never runs the agent without one', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'where is player speed defined?');
+  const job = Object.values(w.runner.jobs())[0];
+  await until(() => job.status === 'idle' && !job.running && texts(thread).some((t) => /answer is in/.test(t)), d.ad);
+  sh(w.repo, 'worktree', 'remove', '--force', job.worktree); // state as it was after the bad discard: idle, no workspace
+  await d.say(thread, IDS.HELIX, 'MAKE-CSS make the accent blue');
+  await waitProposal(d, thread);
+  assert.equal(job.round, 2); assert.ok(fs.existsSync(job.worktree));
+  assert.doesNotMatch(texts(thread).join('\n'), /Something broke|no workspace/);
+});

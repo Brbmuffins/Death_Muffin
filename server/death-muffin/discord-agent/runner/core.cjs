@@ -147,7 +147,8 @@ function createRunner(cfgIn, opts = {}) {
     if (starting.has(job.threadId)) await starting.get(job.threadId).catch(() => {});
     audit.log('request', { userId: msg.userId, role, kind: 'thread', job: job.id, text });
     // After a ship (or a discard / sweep) the thread stays open: the next message starts a new round on a fresh branch from current master.
-    if (['shipped', 'discarded'].includes(job.status)) {
+    const noWorkspace = !job.running && job.status !== 'shipping' && (!job.worktree || !fs.existsSync(job.worktree));
+    if (['shipped', 'discarded'].includes(job.status) || noWorkspace) {
       if (text.startsWith('!')) return /^!status\b/i.test(text) ? handleCommand(job, msg, text) : { action: 'reply', text: 'Nothing is open right now. Tell me what to change next and I will start a fresh branch from the latest master.' };
       if ((job.totalTurns || 0) >= cfg.maxTurnsPerThread) return { action: 'reply', text: 'This thread has used up its total turn limit. Start a new request in the channel.' };
       const ok = await beginRound(job);
@@ -268,7 +269,14 @@ function createRunner(cfgIn, opts = {}) {
   }
 
   async function discard(job, byId) {
-    if (job.running) { job.cancelRequested = true; if (job.proc) { try { process.kill(-job.proc.pid, 'SIGKILL'); } catch { /* gone */ } } }
+    // Mid-step (a turn, checks, a proposal): stop it and finish the discard once the step has unwound, so nothing runs in a deleted
+    // workspace and the cancel path cannot flip the job back to idle (2026-10-04: a ❌ during a turn left the thread stuck).
+    if (job.running) {
+      job.cancelRequested = true; job.discardRequested = String(byId);
+      if (job.proc) { try { process.kill(-job.proc.pid, 'SIGKILL'); } catch { /* gone */ } }
+      say(job, 'Discarding as soon as the current step stops.'); save(); return;
+    }
+    job.discardRequested = null;
     audit.log('discarded', { job: job.id, userId: String(byId) });
     await G.removeJobArtifacts(cfg, job);
     (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, discarded: true, at: new Date(now()).toISOString() });
@@ -283,7 +291,12 @@ function createRunner(cfgIn, opts = {}) {
       const next = Object.values(jobs).filter((j) => !j.running && j.queue.length && ['idle', 'proposed'].includes(j.status)).sort((a, b) => a.queue[0].ts - b.queue[0].ts)[0];
       if (!next) break;
       next.running = true; next.status = 'running';
-      processJob(next).catch((e) => { console.error('job crashed', e); say(next, `Something broke on my side: ${clip(e.message, 300)}`); next.running = false; next.status = 'idle'; save(); }).finally(() => { next.running = false; save(); pump(); });
+      processJob(next).catch((e) => { console.error('job crashed', e); say(next, `Something broke on my side: ${clip(e.message, 300)}`); next.running = false; next.status = 'idle'; save(); })
+        .finally(async () => {
+          next.running = false; save();
+          if (next.discardRequested) await discard(next, next.discardRequested).catch((e) => say(next, `Discard failed: ${e.message}`));
+          pump();
+        });
     }
     for (const j of Object.values(jobs)) if (!j.running && j.queue.length && ['idle', 'proposed'].includes(j.status) && !j.queuedNotice) { j.queuedNotice = true; if (j.turns === 0) say(j, 'Queued; I am busy with another request and will start as soon as I can.'); }
   }
@@ -373,7 +386,7 @@ function createRunner(cfgIn, opts = {}) {
   async function runJob(job, real, extra) {
     let r = null;
     if (real.length || extra) r = await agentTurn(job, buildPrompt(real, extra));
-    if (job.cancelRequested) { job.cancelRequested = false; say(job, 'Cancelled.'); job.status = 'idle'; return; }
+    if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return; }
     if (r && r.error) {
       audit.log('turn-error', { job: job.id, error: r.error });
       say(job, r.timedOut ? `That took longer than ${cfg.turnTimeoutMin} minutes, so I stopped it. Try a smaller step.` : `The agent hit an error: ${clip(redactText(r.error), 300)}`);
@@ -417,14 +430,16 @@ function createRunner(cfgIn, opts = {}) {
 
   async function afterTurn(job, result) {
     for (let attempt = 0; ; attempt++) {
+      if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return; }
       const v = await verify(job);
+      if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return; }
       if (v.ok && v.empty) { job.status = 'idle'; job.proposal = null; return; }
       if (v.ok) return propose(job, v, result);
       audit.log('verify-failed', { job: job.id, why: v.why });
       if (!v.fixable || attempt >= 2) { say(job, `I could not get this into a shippable state: ${clip(v.why, 900)}\nNothing was proposed. Tell me how to proceed or react ❌ / say !discard.`); job.status = 'idle'; return; }
       say(job, `Checks found a problem (${clip(v.why.split('\n')[0], 200)}); asking the agent to fix it.`);
       const r = await agentTurn(job, `The automatic review failed. Fix this, make sure check.sh passes, and commit:\n${v.why}`);
-      if (job.cancelRequested) { job.cancelRequested = false; say(job, 'Cancelled.'); job.status = 'idle'; return; }
+      if (job.cancelRequested) { job.cancelRequested = false; if (!job.discardRequested) say(job, 'Cancelled.'); job.status = 'idle'; return; }
       if (r.error) { say(job, `The agent hit an error: ${clip(redactText(r.error), 300)}`); job.status = 'idle'; return; }
       postNewShots(job);
       result = readResult(job.worktree) || result;

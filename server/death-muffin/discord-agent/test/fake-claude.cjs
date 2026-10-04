@@ -6,6 +6,7 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
   const git = (...a) => execFileSync('git', a, { stdio: 'pipe' });
   const ready = (title, summary) => fs.writeFileSync('.dm-result.json', JSON.stringify({ status: 'ready', title, summary, testing: 'check.sh', risk: 'none' }));
   let text = 'The answer is in src/gameplay/a.ts.';
+  if (/SLOW-TURN/.test(p)) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000); // a turn still running when someone reacts ❌
   const edit = (file, from, to, msg, extraMsg = '') => { fs.mkdirSync(require('path').dirname(file), { recursive: true }); fs.writeFileSync(file, (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '').replace(from, to) || to); git('add', '--', file); git('commit', '-q', '-m', msg + extraMsg); };
   // SHOT-PNG / SHOT-PNG2: pretend shot.sh ran (a scenario file + a PNG; PNG2 = different bytes). The !shot prompt mentions shot.sh.
   const rules = 'server/vps-handoff/necro-progress/necro-rules.cjs';
