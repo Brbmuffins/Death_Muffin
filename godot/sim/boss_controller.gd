@@ -14,6 +14,11 @@ func setup(p_sim, p_id: String) -> void:
 	sim = p_sim
 	id = p_id
 	state.id = p_id
+	# What the TS BossBrain constructor sets: parked in its arena, at its area's level.
+	var def: Dictionary = DmContent.boss(p_id)
+	state.x = float(def["arena"]["x"])
+	state.z = float(def["arena"]["z"])
+	state.level = float(DmContent.area(String(def["area"]))["level"])
 
 
 ## A summonBoss intent was accepted (no other boss awake). `empowered` = Covenant Seal summon.

@@ -24,7 +24,7 @@ static func make_all(sim) -> Dictionary:
 
 | member | when the sim calls it |
 |---|---|
-| `setup(sim, id)` | once, right after construction (sets `sim`, `id`, `state.id`) |
+| `setup(sim, id)` | once, right after construction (sets `sim`, `id`, `state.id`, parks `state.x/z` in the arena and sets `state.level` to the area level like the TS constructor; a subclass overrides it with `super.setup(sim, id)` first) |
 | `state: DmBossState` | read every tick by the sim, thralls, snapshots; the brain mutates it (fields = TS `BossState`, TS names) |
 | `awaken(by: String, empowered: bool)` | a `summonBoss` intent was accepted (no other boss awake) |
 | `damage(amount, by, fracture)` | any hit on the boss (hit intent with `boss: true`, thrall blows, litany, detonate, signatures, plague/death bursts) |

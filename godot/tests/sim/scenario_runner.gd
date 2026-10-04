@@ -6,6 +6,9 @@ extends RefCounted
 const ENEMY_F := [["id", "n"], ["def", "s"], ["area", "s"], ["level", "n"], ["elite", "b"], ["x", "n"], ["z", "n"], ["facing", "n"], ["hp", "n"], ["maxHp", "n"], ["damage", "n"], ["speed", "n"], ["radius", "n"], ["scale", "n"], ["state", "s"], ["stateT", "n"], ["attackCd", "n"], ["targetPlayer", "s"], ["targetThrall", "id"], ["aimX", "n"], ["aimZ", "n"], ["channelCorpse", "id"], ["flankSide", "n"], ["fracture", "n"], ["fractureT", "n"], ["withered", "n"], ["witheredT", "n"], ["witheredDps", "n"], ["witheredOwner", "s"], ["contagious", "b"], ["slowT", "n"], ["wardSlowT", "n"], ["lastHitBy", "s"], ["flash", "n"], ["gait", "n"], ["moving", "b"], ["bleedT", "n"], ["bleedDps", "n"], ["bleedOwner", "s"], ["chillT", "n"], ["sanctT", "n"], ["hexT", "n"], ["silenceT", "n"], ["stunT", "n"], ["rootT", "n"], ["incenseT", "n"], ["knellBeats", "n"], ["knellNext", "n"], ["knellOwner", "s"], ["knellDamage", "n"], ["hexOwner", "s"], ["diving", "b"], ["diveX", "n"], ["diveZ", "n"], ["groundT", "n"], ["hooking", "b"], ["hookCd", "n"], ["fleeT", "n"], ["erupting", "v"], ["dugIn", "b"], ["digPending", "b"], ["burrowLeft", "v"], ["unbindCd", "n"], ["unboundBy", "id"], ["blockFxAt", "n"], ["auraCd", "n"], ["affix", "s"], ["affixCd", "v"], ["tollAt", "v"], ["markT", "n"], ["markBonus", "n"], ["markBy", "s"], ["plagueAt", "n"], ["extra", "v"]]
 const THRALL_F := [["id", "n"], ["owner", "s"], ["kind", "s"], ["x", "n"], ["z", "n"], ["facing", "n"], ["hp", "n"], ["maxHp", "n"], ["damage", "n"], ["attackInterval", "n"], ["range", "n"], ["speed", "n"], ["state", "s"], ["stateT", "n"], ["attackCd", "n"], ["target", "id"], ["slot", "n"], ["bornAt", "n"], ["empowered", "b"], ["flash", "n"], ["gait", "n"], ["moving", "b"], ["rallyT", "n"], ["champion", "b"], ["echoUntil", "e"], ["allyHeal", "n"], ["cursedT", "n"], ["stallT", "n"], ["nextPathAt", "n"], ["detourUntil", "n"], ["seatX", "v"], ["seatZ", "v"]]
 const CORPSE_F := [["id", "n"], ["x", "n"], ["z", "n"], ["kind", "s"], ["enemy", "s"], ["elite", "b"], ["facing", "n"], ["scale", "n"], ["area", "s"], ["bornAt", "n"], ["expiresAt", "n"], ["ruptureAt", "m"], ["seedOwner", "s"], ["seedDmg", "n"], ["seedCap", "n"], ["seedArmedAt", "m"], ["seedExpires", "n"], ["echoOwner", "s"]]
+const MENEMY_F := [["id", "n"], ["def", "s"], ["area", "s"], ["level", "n"], ["elite", "b"], ["x", "n"], ["z", "n"], ["facing", "n"], ["hp", "n"], ["maxHp", "n"], ["speed", "n"], ["scale", "n"], ["state", "s"], ["stateT", "n"], ["flash", "n"], ["moving", "b"], ["slowT", "n"], ["chillT", "n"], ["bleedT", "n"], ["sanctT", "n"], ["hexT", "n"], ["silenceT", "n"], ["incenseT", "n"], ["stunT", "n"], ["rootT", "n"], ["diving", "b"], ["fracture", "n"], ["withered", "n"], ["affix", "s"]]
+const MTHRALL_F := [["id", "n"], ["owner", "s"], ["kind", "s"], ["x", "n"], ["z", "n"], ["facing", "n"], ["hp", "n"], ["maxHp", "n"], ["damage", "n"], ["attackInterval", "n"], ["speed", "n"], ["state", "s"], ["stateT", "n"], ["empowered", "b"], ["champion", "b"], ["flash", "n"], ["moving", "b"], ["rallyT", "n"], ["cursedT", "n"]]
+const BOSS_F := [["id", "s"], ["active", "b"], ["x", "n"], ["z", "n"], ["facing", "n"], ["hp", "n"], ["maxHp", "n"], ["phase", "n"], ["state", "s"], ["stateT", "n"], ["flash", "n"], ["fracture", "n"], ["fractureT", "n"], ["withered", "n"], ["witheredT", "n"], ["witheredDps", "n"], ["level", "n"], ["empowered", "b"]]
 const ZONE_F := [["id", "n"], ["kind", "s"], ["owner", "s"], ["x", "n"], ["z", "n"], ["r", "n"], ["until", "n"], ["bornAt", "n"], ["tick", "n"], ["dps", "n"], ["slow", "n"], ["witheredCap", "n"], ["bloom", "b"], ["hostile", "b"], ["creep", "n"], ["contagion", "b"], ["gen", "m"], ["spreadT", "m"]]
 
 var tol: float = 1e-9
@@ -110,9 +113,27 @@ func snapshot(sim: DmWorldSim, evs: Array) -> Dictionary:
 		"depths": ({"depth": run["depth"], "need": run["need"], "kills": run["kills"], "stairOpen": run["stairOpen"], "floorT": run["floorT"], "waveT": run["waveT"], "waved": run["waved"], "peak": run["peak"], "floors": run["floors"], "totalKills": run["totalKills"]} if run != null else null),
 		"raised": _sorted_pairs(sim.raised),
 		"players": _players(sim),
-		"bossActive": sim.boss.state.active,
+		"bossId": sim.bossId, "boss": _fields(sim.boss.state, BOSS_F),
 		"events": evs,
 	}
+
+
+func _mirror_state(time: float, wave_tier: float, difficulty: String, vows: Dictionary, enemies: Dictionary, thralls: Dictionary, corpses: Dictionary, zones: Dictionary, depleted: Dictionary, boss: Variant) -> Dictionary:
+	var en: Array = []
+	for e in _sorted_by_id(enemies.values()):
+		en.append(_fields(e, MENEMY_F))
+	var th: Array = []
+	for t in _sorted_by_id(thralls.values()):
+		th.append(_fields(t, MTHRALL_F))
+	var co: Array = []
+	for c in _sorted_by_id(corpses.values()):
+		co.append(_fields(c, CORPSE_F))
+	var zo: Array = []
+	for z in _sorted_by_id(zones.values()):
+		zo.append(_fields(z, ZONE_F))
+	var dep := _sorted_pairs(depleted)
+	return {"time": time, "waveTier": wave_tier, "difficulty": difficulty, "vows": vows, "enemies": en, "thralls": th, "corpses": co, "zones": zo,
+		"depleted": dep, "boss": (_fields(boss, BOSS_F) if boss != null else null)}
 
 
 func _players(sim: DmWorldSim) -> Array:
@@ -197,6 +218,7 @@ func run(fx: Dictionary) -> Dictionary:
 	var cps: Array = fx["checkpoints"]
 	var ci := 0
 	var window: Array = []
+	var mirror := DmSimMirror.new()
 	var ok_cps := 0
 	var msg := ""
 	var fail_tick := -1
@@ -211,14 +233,28 @@ func run(fx: Dictionary) -> Dictionary:
 			for i in st.get("intents", []):
 				sim.apply(i)
 		var evs := sim.step(dt)
+		var wired: Array = []
 		for ev in evs:
 			window.append(_ev_key(ev))
+			wired.append(DmSimSnapshot.wire_event(ev))
+		mirror.apply_events(wired)
+		if (tick + 1) % 2 == 0:
+			mirror.apply_snapshot(DmSimSnapshot.make(sim, (tick + 1) % 20 == 0))
+		mirror.update(dt)
 		if ci < cps.size() and int(cps[ci]["tick"]) == tick + 1:
-			var want: Dictionary = cps[ci]["snap"]
+			var cp: Dictionary = cps[ci]
+			var want: Dictionary = cp["snap"]
 			ci += 1
 			var got := snapshot(sim, window)
 			window = []
 			var d := _diff(got, want, "", tol)
+			if d == "":
+				d = _diff(DmSimSnapshot.make(sim, false), cp["wire"], ".wire", tol)
+			if d == "" and cp.has("wireFull"):
+				d = _diff(DmSimSnapshot.make(sim, true), cp["wireFull"], ".wireFull", tol)
+			if d == "":
+				var ms := _mirror_state(mirror.time, mirror.waveTier, mirror.difficulty, mirror.vows, mirror.enemies, mirror.thralls, mirror.corpses, mirror.zones, mirror.depleted, mirror.bossState)
+				d = _diff(ms, cp["mirror"], ".mirror", tol)
 			if d == "":
 				ok_cps += 1
 			elif msg == "":
@@ -232,7 +268,12 @@ func run(fx: Dictionary) -> Dictionary:
 		elif ci >= cps.size():
 			break
 	var total := cps.size()
-	var summary := "%d / %d checkpoints" % [ok_cps, total]
+	var mig := ""
+	if msg == "" and fx.has("migrated"):
+		mig = _migration(fx, S, world, mirror, sim, dt)
+		if mig != "":
+			msg = "migration: " + mig
+	var summary := "%d / %d checkpoints%s" % [ok_cps, total, (" + migration" if (fx.has("migrated") and mig == "" and msg == "") else "")]
 	var messages: Array = []
 	if msg != "":
 		messages.append("FAIL scn_%s  %s" % [fx["scenario"], msg.substr(0, 400)])
@@ -274,3 +315,39 @@ func _diff(a: Variant, b: Variant, path: String, t: float) -> String:
 	if a == null and b == null:
 		return ""
 	return "" if (typeof(a) == typeof(b) and a == b) else "%s: got %s want %s" % [path, a, b]
+
+
+## Host migration: seed a fresh sim from the mirror, step it 40 ticks with the players present, compare with the TS.
+func _migration(fx: Dictionary, S: Dictionary, world: Dictionary, mirror: DmSimMirror, main_sim: DmWorldSim, dt: float) -> String:
+	var want: Dictionary = fx["migrated"]
+	var nav := DmNav.new()
+	if S["nav"] == "world":
+		for o in world["obstacles"]:
+			nav.add_obstacle(DmNavObstacle.from_dict(o))
+		for sb in world["sightBlockers"]:
+			nav.add_sight_blocker(DmNavObstacle.from_dict(sb))
+	if S["unlocked"] != null:
+		nav.set_unlocked(S["unlocked"])
+	var sim := DmWorldSim.new(nav, DmRng.new((int(S["seed"]) ^ 0xabcdef) & 0xFFFFFFFF))
+	if S["nodes"]:
+		sim.set_nodes(world["nodes"])
+	if S["crypts"]:
+		sim.set_crypts(world["crypts"])
+	mirror.seed(sim)
+	for p: DmSimPlayer in main_sim.players.values():
+		sim.set_player(DmSimPlayer.make(p.id, p.x, p.z, p.area, p.alive, p.level, p.family))
+	var seeded := _mirror_state(sim.time, sim.waveTier, sim.difficulty, sim.vows, sim.enemies, sim.thralls, sim.corpses, sim.zones, {}, null)
+	seeded["nextId"] = sim._next_id
+	var d := _diff(seeded, want["seeded"], ".seeded", tol)
+	if d != "":
+		return d
+	var keys: Array = []
+	for i in 40:
+		for ev in sim.step(dt):
+			keys.append(_ev_key(ev))
+	d = _diff(keys, want["events"], ".events", tol)
+	if d != "":
+		return d
+	var after := snapshot(sim, [])
+	after["rngCalls"] = 0
+	return _diff(after, want["after"], ".after", tol)

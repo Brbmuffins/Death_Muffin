@@ -8,6 +8,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { mulberry32 } from '../../src/gameplay/rng';
 import { Nav } from '../../src/gameplay/nav';
 import { WorldSim } from '../../src/gameplay/sim/WorldSim';
+import { BossBrain } from '../../src/gameplay/sim/BossBrain';
+import { makeSnapshot, WorldMirror } from '../../src/gameplay/sim/snapshot';
 import { AREAS, type AreaId } from '../../src/content/areas';
 import { ENEMIES, AFFIX_ORDER, type EnemyId } from '../../src/content/enemies';
 import { OMENS } from '../../src/content/omens';
@@ -20,6 +22,13 @@ type Body = { id: string; x: number; z: number; alive: boolean; area: AreaId | n
 type Call = { m: string; a: unknown[] };
 type Step = { tick: number; players?: Body[]; calls?: Call[]; intents?: any[] };
 type Any = any; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+/** The shared BossBrain machinery with none of the attacks: what godot/sim/boss_stub.gd implements (the real brains are the bosses track's). */
+class StubBrain extends BossBrain {
+  protected onAwaken() {}
+  protected onPhase() {}
+  protected think() {}
+}
 
 interface Cfg {
   name: string;
@@ -41,8 +50,10 @@ interface Cfg {
   initCalls?: Call[];
   /** Extra per-tick scripted behaviour (depths descend, zoo spawns). */
   hook?: (ctx: Ctx) => void;
+  /** Replace every boss brain with the attack-less stub (boss scenarios compare the shared machinery only). */
+  stubBosses?: boolean;
 }
-interface Profile { hit: number; exhume: number; miasma: number; litany: number; detonate: number; sig: number; legend?: Record<string, number>; sigs?: string[]; move: boolean; families?: boolean }
+interface Profile { hunt?: boolean; hit: number; exhume: number; miasma: number; litany: number; detonate: number; sig: number; legend?: Record<string, number>; sigs?: string[]; move: boolean; families?: boolean }
 interface Ctx { sim: Any; tick: number; step: Step; players: Body[]; bot: () => number; call: (m: string, ...a: unknown[]) => void }
 
 // --- Canonical snapshot (the same field lists live in tests/sim/scenario_runner.gd) -------------------------------------------------------
@@ -50,6 +61,9 @@ type K = 'n' | 's' | 'b' | 'id' | 'v' | 'm' | 'e';
 const ENEMY_F: [string, K][] = [['id', 'n'], ['def', 's'], ['area', 's'], ['level', 'n'], ['elite', 'b'], ['x', 'n'], ['z', 'n'], ['facing', 'n'], ['hp', 'n'], ['maxHp', 'n'], ['damage', 'n'], ['speed', 'n'], ['radius', 'n'], ['scale', 'n'], ['state', 's'], ['stateT', 'n'], ['attackCd', 'n'], ['targetPlayer', 's'], ['targetThrall', 'id'], ['aimX', 'n'], ['aimZ', 'n'], ['channelCorpse', 'id'], ['flankSide', 'n'], ['fracture', 'n'], ['fractureT', 'n'], ['withered', 'n'], ['witheredT', 'n'], ['witheredDps', 'n'], ['witheredOwner', 's'], ['contagious', 'b'], ['slowT', 'n'], ['wardSlowT', 'n'], ['lastHitBy', 's'], ['flash', 'n'], ['gait', 'n'], ['moving', 'b'], ['bleedT', 'n'], ['bleedDps', 'n'], ['bleedOwner', 's'], ['chillT', 'n'], ['sanctT', 'n'], ['hexT', 'n'], ['silenceT', 'n'], ['stunT', 'n'], ['rootT', 'n'], ['incenseT', 'n'], ['knellBeats', 'n'], ['knellNext', 'n'], ['knellOwner', 's'], ['knellDamage', 'n'], ['hexOwner', 's'], ['diving', 'b'], ['diveX', 'n'], ['diveZ', 'n'], ['groundT', 'n'], ['hooking', 'b'], ['hookCd', 'n'], ['fleeT', 'n'], ['erupting', 'v'], ['dugIn', 'b'], ['digPending', 'b'], ['burrowLeft', 'v'], ['unbindCd', 'n'], ['unboundBy', 'id'], ['blockFxAt', 'n'], ['auraCd', 'n'], ['affix', 's'], ['affixCd', 'v'], ['tollAt', 'v'], ['markT', 'n'], ['markBonus', 'n'], ['markBy', 's'], ['plagueAt', 'n'], ['extra', 'v']];
 const THRALL_F: [string, K][] = [['id', 'n'], ['owner', 's'], ['kind', 's'], ['x', 'n'], ['z', 'n'], ['facing', 'n'], ['hp', 'n'], ['maxHp', 'n'], ['damage', 'n'], ['attackInterval', 'n'], ['range', 'n'], ['speed', 'n'], ['state', 's'], ['stateT', 'n'], ['attackCd', 'n'], ['target', 'id'], ['slot', 'n'], ['bornAt', 'n'], ['empowered', 'b'], ['flash', 'n'], ['gait', 'n'], ['moving', 'b'], ['rallyT', 'n'], ['champion', 'b'], ['echoUntil', 'e'], ['allyHeal', 'n'], ['cursedT', 'n'], ['stallT', 'n'], ['nextPathAt', 'n'], ['detourUntil', 'n'], ['seatX', 'v'], ['seatZ', 'v']];
 const CORPSE_F: [string, K][] = [['id', 'n'], ['x', 'n'], ['z', 'n'], ['kind', 's'], ['enemy', 's'], ['elite', 'b'], ['facing', 'n'], ['scale', 'n'], ['area', 's'], ['bornAt', 'n'], ['expiresAt', 'n'], ['ruptureAt', 'm'], ['seedOwner', 's'], ['seedDmg', 'n'], ['seedCap', 'n'], ['seedArmedAt', 'm'], ['seedExpires', 'n'], ['echoOwner', 's']];
+const MENEMY_F: [string, K][] = [['id', 'n'], ['def', 's'], ['area', 's'], ['level', 'n'], ['elite', 'b'], ['x', 'n'], ['z', 'n'], ['facing', 'n'], ['hp', 'n'], ['maxHp', 'n'], ['speed', 'n'], ['scale', 'n'], ['state', 's'], ['stateT', 'n'], ['flash', 'n'], ['moving', 'b'], ['slowT', 'n'], ['chillT', 'n'], ['bleedT', 'n'], ['sanctT', 'n'], ['hexT', 'n'], ['silenceT', 'n'], ['incenseT', 'n'], ['stunT', 'n'], ['rootT', 'n'], ['diving', 'b'], ['fracture', 'n'], ['withered', 'n'], ['affix', 's']];
+const MTHRALL_F: [string, K][] = [['id', 'n'], ['owner', 's'], ['kind', 's'], ['x', 'n'], ['z', 'n'], ['facing', 'n'], ['hp', 'n'], ['maxHp', 'n'], ['damage', 'n'], ['attackInterval', 'n'], ['speed', 'n'], ['state', 's'], ['stateT', 'n'], ['empowered', 'b'], ['champion', 'b'], ['flash', 'n'], ['moving', 'b'], ['rallyT', 'n'], ['cursedT', 'n']];
+const BOSS_F: [string, K][] = [['id', 's'], ['active', 'b'], ['x', 'n'], ['z', 'n'], ['facing', 'n'], ['hp', 'n'], ['maxHp', 'n'], ['phase', 'n'], ['state', 's'], ['stateT', 'n'], ['flash', 'n'], ['fracture', 'n'], ['fractureT', 'n'], ['withered', 'n'], ['witheredT', 'n'], ['witheredDps', 'n'], ['level', 'n'], ['empowered', 'b']];
 const ZONE_F: [string, K][] = [['id', 'n'], ['kind', 's'], ['owner', 's'], ['x', 'n'], ['z', 'n'], ['r', 'n'], ['until', 'n'], ['bornAt', 'n'], ['tick', 'n'], ['dps', 'n'], ['slow', 'n'], ['witheredCap', 'n'], ['bloom', 'b'], ['hostile', 'b'], ['creep', 'n'], ['contagion', 'b'], ['gen', 'm'], ['spreadT', 'm']];
 
 function norm(v: Any, k: K): Any {
@@ -75,6 +89,22 @@ function pickFields(o: Any, fields: [string, K][]) {
 }
 const evKey = (ev: Any) => `${ev.t}|${ev.kind ?? ''}|${ev.reason ?? ''}|${ev.from ?? ''}|${ev.id ?? ev.corpse?.id ?? ev.zone?.id ?? ev.corpseId ?? ''}|${ev.player ?? ''}`;
 
+const byId = (a: Any[]) => [...a].sort((x, y) => x.id - y.id);
+const mirrorState = (m: Any) => ({
+  time: m.time, waveTier: m.waveTier, difficulty: m.difficulty, vows: m.vows,
+  enemies: byId([...m.enemies.values()]).map((e) => pickFields(e, MENEMY_F)),
+  thralls: byId([...m.thralls.values()]).map((t) => pickFields(t, MTHRALL_F)),
+  corpses: byId([...m.corpses.values()]).map((c) => pickFields(c, CORPSE_F)),
+  zones: byId([...m.zones.values()]).map((z) => pickFields(z, ZONE_F)),
+  depleted: [...m.depleted.entries()].sort(([a]: Any, [b]: Any) => (a < b ? -1 : 1)),
+  boss: m.bossState ? pickFields(m.bossState, BOSS_F) : null,
+});
+const wireOf = (sim: Any, full: boolean) => {
+  const w = JSON.parse(JSON.stringify(makeSnapshot(sim, full)));
+  if (w.boss && w.boss.empowered === false) delete w.boss.empowered; // absent = false on the wire
+  return w;
+};
+
 function snapshot(sim: Any, rngCalls: number, evs: string[]) {
   const sorted = <T extends { id: number }>(a: T[]) => [...a].sort((x, y) => x.id - y.id);
   const run = sim.depths;
@@ -95,7 +125,7 @@ function snapshot(sim: Any, rngCalls: number, evs: string[]) {
     depths: run ? { depth: run.depth, need: run.need, kills: run.kills, stairOpen: run.stairOpen, floorT: run.floorT, waveT: run.waveT, waved: run.waved, peak: run.peak, floors: run.floors, totalKills: run.totalKills } : null,
     raised: [...sim.raised.entries()].sort(([a]: Any, [b]: Any) => (a < b ? -1 : 1)),
     players: [...sim.players.values()].map((p: Any) => [p.id, p.x, p.z, p.alive, p.area ?? '']),
-    bossActive: sim.boss.state.active,
+    bossId: sim.bossId, boss: pickFields(sim.boss.state, BOSS_F),
     events: evs,
   };
 }
@@ -120,6 +150,7 @@ function runScenario(cfg: Cfg) {
   const simRand = mulberry32(cfg.seed);
   let rngCalls = 0;
   const sim: Any = new WorldSim(nav, () => { rngCalls++; return simRand(); });
+  if (cfg.stubBosses) for (const id of Object.keys(sim.bosses)) sim.bosses[id] = new StubBrain(sim, id as Any);
   const dt = 0.05;
   const script: Step[] = [];
   const checkpoints: Any[] = [];
@@ -136,6 +167,8 @@ function runScenario(cfg: Cfg) {
   const last = new Map<string, string>();
   const waypoint = new Map<string, { x: number; z: number; pause: number }>();
   let windowEvents: string[] = [];
+  const mirror = new WorldMirror();
+  let cpCount = 0;
 
   const callSim = (m: string, args: unknown[]) => {
     if (m === 'startDepths') return sim.startDepths(...(args as [string, number, number, boolean]));
@@ -176,6 +209,11 @@ function runScenario(cfg: Cfg) {
       if (prof.move && p.area) {
         const rect = AREAS[p.area].rect;
         let wp = waypoint.get(p.id);
+        if (prof.hunt && tick % 10 === 0) {
+          const foes0 = [...sim.enemies.values()].filter((e: Any) => e.area === p.area && e.state !== 'dead');
+          const n0 = nearest(foes0 as Any[], p.x, p.z) as Any;
+          if (n0 && Math.hypot(n0.x - p.x, n0.z - p.z) > 5) { wp = { x: n0.x, z: n0.z, pause: 0 }; waypoint.set(p.id, wp); }
+        }
         if (!wp || Math.hypot(wp.x - p.x, wp.z - p.z) < 0.8) {
           if (wp && wp.pause > 0) wp.pause--;
           else {
@@ -189,10 +227,13 @@ function runScenario(cfg: Cfg) {
           wp = waypoint.get(p.id);
         }
         if (wp) {
-          const d = Math.hypot(wp.x - p.x, wp.z - p.z);
+          // On a Depths floor the walker steers by the doorways (nav.depthsHop), like the click-to-move does.
+          const hop = p.area === 'depths' ? nav.depthsHop(p.x, p.z, wp.x, wp.z) : null;
+          const gx = hop ? hop.x : wp.x, gz = hop ? hop.z : wp.z;
+          const d = Math.hypot(gx - p.x, gz - p.z);
           if (d > 0.01) {
             const s = Math.min(d, 4.6 * dt);
-            let nx = p.x + ((wp.x - p.x) / d) * s, nz = p.z + ((wp.z - p.z) / d) * s;
+            let nx = p.x + ((gx - p.x) / d) * s, nz = p.z + ((gz - p.z) / d) * s;
             // keep walking inside the walkable space like a real client would (nav.resolve)
             [nx, nz] = nav.resolve(nx, nz, 0.45);
             p.x = nx; p.z = nz;
@@ -263,13 +304,30 @@ function runScenario(cfg: Cfg) {
     for (const i of intents) sim.apply(i);
     emitStep(tick, step);
     const evs = sim.step(dt);
+    // The relay: every event reaches the mirror as JSON; a snapshot every 2nd tick (full lists every 20th).
+    mirror.applyEvents(JSON.parse(JSON.stringify(evs)));
+    if ((tick + 1) % 2 === 0) mirror.applySnapshot(JSON.parse(JSON.stringify(makeSnapshot(sim, (tick + 1) % 20 === 0))));
+    mirror.update(dt);
     for (const ev of evs) { windowEvents.push(evKey(ev)); if (process.env.PRINTEV && ev.t === process.env.PRINTEV && tick + 1 >= FROM && tick + 1 <= TO) console.log('EV', tick + 1, JSON.stringify(ev)); }
     if ((tick + 1) % cfg.every === 0 && tick + 1 >= FROM && tick + 1 <= TO) {
-      checkpoints.push({ tick: tick + 1, snap: snapshot(sim, rngCalls, windowEvents) });
+      cpCount++;
+      checkpoints.push({ tick: tick + 1, snap: snapshot(sim, rngCalls, windowEvents), wire: wireOf(sim, false), ...(cpCount % 10 === 0 ? { wireFull: wireOf(sim, true) } : {}), mirror: mirrorState(mirror) });
       windowEvents = [];
     }
   }
-  const fx = { scenario: cfg.name, setup, script: [initStep, ...script.filter((s) => s !== initStep)], checkpoints };
+  // Host migration: seed a fresh authoritative sim from the mirror, then step it a little with the players present.
+  const nav2 = cfg.nav === 'world' ? worldNav(cfg.unlocked) : new Nav();
+  if (cfg.nav === 'empty' && cfg.unlocked) nav2.setUnlocked(cfg.unlocked);
+  const sim2: Any = new WorldSim(nav2, mulberry32(cfg.seed ^ 0xabcdef));
+  if (cfg.nodes) sim2.setNodes(WORLD.nodes);
+  if (cfg.crypts) sim2.setCrypts(WORLD.crypts);
+  mirror.seed(sim2);
+  for (const p of players) sim2.setPlayer({ ...p });
+  const seeded = { nextId: sim2.nextId, ...mirrorState({ ...sim2, bossState: null, depleted: new Map(), enemies: sim2.enemies, thralls: sim2.thralls, corpses: sim2.corpses, zones: sim2.zones, time: sim2.time, waveTier: sim2.waveTier, difficulty: sim2.difficulty, vows: sim2.vows }) };
+  const migEvents: string[] = [];
+  for (let i = 0; i < 40; i++) for (const ev of sim2.step(dt)) migEvents.push(evKey(ev));
+  const migrated = { seeded, events: migEvents, after: snapshot(sim2, 0, []) };
+  const fx = { scenario: cfg.name, setup, migrated, script: [initStep, ...script.filter((s) => s !== initStep)], checkpoints };
   writeFileSync(`${OUT}/scn_${cfg.name}.json`, exactStringify(fx) + '\n');
   const last_ = checkpoints[checkpoints.length - 1].snap;
   console.log(`scn_${cfg.name}: ${cfg.ticks} ticks, ${checkpoints.length} checkpoints, ${last_.enemies.length} enemies, ${last_.thralls.length} thralls, ${last_.corpses.length} corpses, rngCalls ${rngCalls}`);
@@ -307,7 +365,7 @@ for (const area of ['warren', 'ossuary', 'nave', 'coliseum', 'sanctum', 'cloiste
   runScenario({ name: 'zoo', seed: 301, nav: 'world', unlocked: ALL_OPEN, players, ticks: 1500, every: 50, profile: { ...FIGHT, exhume: 19, hit: 4, move: false }, initCalls: calls, crypts: true });
 }
 // Catacomb Depths: a run of two floors, descending when the stair opens.
-runScenario({ name: 'depths', seed: 401, nav: 'world', unlocked: ALL_OPEN, waveTier: 2, players: [P('p1', 170, -30, 'depths', 20)], ticks: 2600, every: 50, profile: { ...FIGHT, hit: 4, exhume: 29, sig: 37, sigs: ['wall', 'rend', 'dirge', 'bloom', 'seed', 'mantle', 'rally'] },
+runScenario({ name: 'depths', seed: 401, nav: 'world', unlocked: ALL_OPEN, waveTier: 2, difficulty: 'hard', players: [P('p1', 170, -30, 'depths', 20)], ticks: 2600, every: 50, profile: { ...FIGHT, hunt: true, hit: 4, exhume: 29, sig: 37, sigs: ['wall', 'rend', 'dirge', 'bloom', 'seed', 'mantle', 'rally'] },
   initCalls: [{ m: 'startDepths', a: ['p1', 987654, 4, false] }],
   hook: (ctx) => {
     const run = ctx.sim.depths;
@@ -329,4 +387,24 @@ runScenario({ name: 'misc_calls', seed: 501, nav: 'world', unlocked: ALL_OPEN, p
     if (ctx.tick === 1100) { ctx.call('retagPlayer', 'p3', 'p3b'); ctx.players[2].id = 'p3b'; }
     if (ctx.tick === 1400) { ctx.call('removePlayer', 'p1'); ctx.players.splice(0, 1); }
     if (ctx.tick === 1500) ctx.call('startSurge', 'ossuary');
+  } });
+
+// Bosses (shared machinery only): summon, a refused second summon, hits, thrall blows, Bash stagger, defeat, then an Empowered summon elsewhere.
+runScenario({ name: 'boss_stub', seed: 601, nav: 'world', unlocked: ALL_OPEN, stubBosses: true, waveTier: 1, vows: { elder_dead: 1 },
+  players: [P('p1', 0, -108, 'sanctum', 30), P('p2', 44, -112, 'cloister', 40)], ticks: 1500, every: 25,
+  profile: { ...FIGHT, hit: 7, exhume: 13, sig: 31, sigs: ['bash', 'rally', 'rend', 'seed', 'wall', 'dirge', 'bloom', 'offering', 'mantle'] },
+  hook: (ctx) => {
+    const I = ctx.step.intents!;
+    const t = ctx.tick;
+    if (t === 20) I.push({ t: 'summonBoss', by: 'p1', boss: 'prelate' });
+    if (t === 30) I.push({ t: 'summonBoss', by: 'p1', boss: 'gravedigger' }); // refused: bossBusy
+    if (t === 40) I.push({ t: 'summonBoss', by: 'p1', boss: 'prelate', empowered: true }); // refused too
+    const b = ctx.sim.boss.state;
+    if (b.active && t % 4 === 0) I.push({ t: 'hit', by: t % 8 === 0 ? 'p1' : 'p2', ids: [], dmg: 900 + (t % 7) * 150, boss: true, fracture: t % 12 === 0 ? 1 : 0, ...(t % 20 === 0 ? { spear: true } : {}) });
+    if (b.active && t % 33 === 0) I.push({ t: 'detonate', by: 'p1', corpseId: [...ctx.sim.corpses.keys()][0] ?? 1, dmg: 400 });
+    if (b.active && t % 47 === 0) I.push({ t: 'litany', by: 'p1', x: b.x, z: b.z, r: 8, spellPower: 80, leaveCorpses: true });
+    if (t === 500) I.push({ t: 'summonBoss', by: 'p2', boss: 'saint', empowered: true });
+    if (t === 520) I.push({ t: 'legend', by: 'p2', mods: { spearRally: 1, thrallDeathBurst: 0.5 } });
+    if (t === 900) I.push({ t: 'summonBoss', by: 'p2' });
+    if (t === 1100) ctx.players[1].alive = false; // everyone leaves: the awake boss resets
   } });

@@ -23,12 +23,16 @@ var level: float = 1.0
 var empowered: bool = false
 
 
+## Wire form: `empowered` is only present when true (absent = false, like an older snapshot).
 func to_dict() -> Dictionary:
-	return {
+	var d := {
 		"id": id, "active": active, "x": x, "z": z, "facing": facing, "hp": hp, "maxHp": maxHp, "phase": phase, "state": state,
 		"stateT": stateT, "flash": flash, "fracture": fracture, "fractureT": fractureT, "withered": withered, "witheredT": witheredT,
-		"witheredDps": witheredDps, "level": level, "empowered": empowered,
+		"witheredDps": witheredDps, "level": level,
 	}
+	if empowered:
+		d["empowered"] = true
+	return d
 
 
 func from_dict(d: Dictionary) -> void:
