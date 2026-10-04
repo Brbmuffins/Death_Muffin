@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clampCraftQty, maxCraftable, MAX_CRAFT_BATCH } from '../craftQuantity';
+import { clampCraftQty, hasSkillAndMaterials, maxCraftable, MAX_CRAFT_BATCH } from '../craftQuantity';
 import type { InventorySlot } from '../../net/types';
 
 const slot = (i: number, id: string, q: number, equipped = 0) => ({ slot_index: i, item_id: id, quantity: q, equipped }) as InventorySlot;
@@ -16,6 +16,22 @@ describe('clampCraftQty', () => {
     expect(clampCraftQty(NaN)).toBe(1);
     expect(clampCraftQty('abc')).toBe(1);
     expect(clampCraftQty(9999)).toBe(MAX_CRAFT_BATCH);
+  });
+});
+
+describe('hasSkillAndMaterials (the Only craftable filter)', () => {
+  const r = { ...recipe, skill_level_required: 5 };
+  const count = (have: Record<string, number>) => (id: string) => have[id] ?? 0;
+  it('needs the skill level and every ingredient', () => {
+    expect(hasSkillAndMaterials(r, 5, count({ ore: 2 }))).toBe(true);
+    expect(hasSkillAndMaterials(r, 4, count({ ore: 2 }))).toBe(false);
+    expect(hasSkillAndMaterials(r, 5, count({ ore: 1 }))).toBe(false);
+    expect(hasSkillAndMaterials(r, 5, count({}))).toBe(false);
+  });
+  it('one missing ingredient hides the recipe', () => {
+    const two = { ...r, ingredients: [...r.ingredients, { item_id: 'coal', quantity: 1, name: 'Coal' }] };
+    expect(hasSkillAndMaterials(two, 5, count({ ore: 9 }))).toBe(false);
+    expect(hasSkillAndMaterials(two, 5, count({ ore: 9, coal: 1 }))).toBe(true);
   });
 });
 

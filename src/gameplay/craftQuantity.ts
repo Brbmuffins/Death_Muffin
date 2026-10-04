@@ -10,6 +10,11 @@ export function clampCraftQty(raw: unknown, max = MAX_CRAFT_BATCH): number {
   return Math.min(n, Math.max(1, max));
 }
 
+/** The Workbench's "Only craftable" filter: the rite's skill level is met and every ingredient is in the bag (bag room is not counted). */
+export function hasSkillAndMaterials(recipe: Pick<Recipe, 'ingredients' | 'skill_level_required'>, skill: number, count: (itemId: string) => number): boolean {
+  return skill >= recipe.skill_level_required && recipe.ingredients.every((ing) => count(ing.item_id) >= ing.quantity);
+}
+
 export interface CraftSpace {
   /** Bag size in slots (the bag grid is slot 0..bagSize-1). */
   bagSize: number;
