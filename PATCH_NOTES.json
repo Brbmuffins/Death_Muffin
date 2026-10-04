@@ -4,6 +4,7 @@
     "title": "Smoother, Clearer, Deeper",
     "items": [
       "Windows: the title and close button are now a fixed header; only the contents scroll beneath it.",
+      "Windows: a Back to top button appears once you scroll down, so the tabs at the top are one click away.",
       "Reliquary: a new Sort button merges stacks and orders your bag by type, rarity, item level and name.",
       "Vault: new Take materials and Take all buttons move things back into your bag in one click, as far as it fits.",
       "Performance: fixed a graphics memory leak that grew with every kill, thralls no longer stutter while following you, and walking under the arches no longer hitches.",

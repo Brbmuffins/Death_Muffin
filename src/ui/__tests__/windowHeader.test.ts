@@ -16,4 +16,13 @@ describe('window header', () => {
     }
     expect(missing).toEqual([]);
   });
+
+  // Helix, 2026-10-04: scrolling windows get a Back to top button; it lives in wrapPanelBody so every window has it.
+  it('wrapPanelBody adds a Back to top button that shows only after scrolling', () => {
+    const src = readFileSync(join(UI_DIR, 'panelBody.ts'), 'utf8');
+    expect(src).toContain('Back to top');
+    expect(src).toContain('BACK_TO_TOP_AFTER');
+    const css = readFileSync(join(UI_DIR, 'ui.css'), 'utf8');
+    expect(css).toContain('.cw-back-top.show button');
+  });
 });

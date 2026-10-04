@@ -959,6 +959,12 @@ button { font-family: inherit; }
 .cw-panel-float:has(> .cw-panel-body), .cw-panel-float.cw-tabwin { display: flex; flex-direction: column; overflow: visible; }
 .cw-panel-float > .cw-panel-head { flex: none; margin-bottom: 0; }
 .cw-panel-body, .cw-tabwin-body { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; margin: 0 -22px; padding: 14px 22px 0; }
+/* Back to top: a zero-height dock pinned to the bottom of the scrolling body; the button shows once the body is scrolled down. */
+.cw-back-top { position: sticky; bottom: 0; height: 0; overflow: visible; pointer-events: none; z-index: 2; }
+.cw-back-top button { position: absolute; right: 22px; bottom: 12px; display: none; min-height: 32px; padding: 4px 12px; background: var(--cw-inset); border: 1px solid var(--cw-border-active); color: var(--cw-bone-100); cursor: pointer; font-family: var(--cw-font-display); font-weight: 600; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; box-shadow: 0 2px 8px #000a; }
+.cw-back-top.show button { display: block; pointer-events: auto; }
+.cw-back-top button:hover, .cw-back-top button:focus-visible { background: var(--cw-accent-soft); }
+.cw-tabwin .cw-tabwin-slot .cw-back-top { display: none; } /* the tab window's own body scrolls, with its tabs pinned above it */
 .cw-panel-head .cw-title { font-size: 24px; }
 .cw-title .aka { margin-left: 12px; font-family: var(--cw-font-body); font-size: 12px; font-weight: 400; letter-spacing: 0.08em; color: var(--cw-text-muted); white-space: nowrap; }
 .cw-afk-status { display: flex; gap: 16px; align-items: center; justify-content: space-between; padding: 12px 14px; border: 1px solid var(--cw-border); background: var(--cw-inset); color: var(--cw-bone-100); }
