@@ -9,31 +9,19 @@ namespace DeathMuffinLauncher
     /// <summary>A separate window hosting the game (online or offline edition) in the shared WebView2 profile.</summary>
     internal sealed class GameWindow : Form
     {
-        // Finds the offline edition's download panel, relays its status text to the launcher, and (when INSTALL) clicks Download.
+        // Relays the offline edition's download-panel status text to the launcher. Read-only: the download itself is started
+        // by the page via ?download=1, so nothing here clicks buttons or depends on the wording.
         const string OfflinePanelScript = @"(function () {
-    const INSTALL = __INSTALL__;
     let attempts = 0;
     function findPanel() {
         const status = document.querySelector('[data-offline-status]');
-        const button = document.querySelector('[data-offline-download]');
-        if (!status || !button) {
+        if (!status) {
             if (++attempts < 120) setTimeout(findPanel, 500);
             return;
         }
         const report = () => window.chrome.webview.postMessage('dm-status:' + status.textContent);
         new MutationObserver(report).observe(status, { childList: true, subtree: true, characterData: true });
         report();
-        if (!INSTALL) return;
-        let waits = 0;
-        function start() {
-            if (button.hidden) return;
-            if (!status.textContent.includes('Download the game assets') || button.disabled) {
-                if (++waits < 120) setTimeout(start, 500);
-                return;
-            }
-            button.click();
-        }
-        start();
     }
     findPanel();
 })();";
@@ -43,7 +31,7 @@ namespace DeathMuffinLauncher
         readonly Settings settings;
         readonly string url;
         readonly bool offline;
-        readonly bool install;
+        string target;
 
         /// <summary>Raised with text from the offline edition's download panel ("dm-status:...").</summary>
         public event Action<string> OfflineStatus;
@@ -52,12 +40,12 @@ namespace DeathMuffinLauncher
         /// <summary>Raised (instead of Failed) when WebView2 itself could not start; the launcher then uses a browser. The window closes.</summary>
         public event Action WebViewUnavailable;
 
-        public GameWindow(Settings settings, string url, bool offline, bool install)
+        public GameWindow(Settings settings, string url, bool offline)
         {
             this.settings = settings;
             this.url = url;
             this.offline = offline;
-            this.install = install;
+            target = url;
             Text = "Death Muffin " + (offline ? "Offline" : "Online");
             BackColor = Color.FromArgb(7, 6, 10);
             ClientSize = new Size(1280, 760);
@@ -102,19 +90,18 @@ namespace DeathMuffinLauncher
                     if (!e.IsSuccess)
                     {
                         if (Failed != null) Failed(offline
-                            ? "Offline game unavailable. Connect once and download the offline edition."
+                            ? "Offline game unavailable. If it is not downloaded yet, connect once and press Download for offline."
                             : "Online game unavailable. Check your connection.");
                         loading.Text = "Online game unavailable. Check your connection.";
-                        if (offline) loading.Text = "Offline game unavailable. Connect once and download the offline edition.";
+                        if (offline) loading.Text = "Offline game unavailable. Connect once and download it first.";
                         loading.Failed = true;
                         loading.Visible = true;
                         return;
                     }
                     loading.Visible = false;
-                    if (offline)
-                        core.ExecuteScriptAsync(OfflinePanelScript.Replace("__INSTALL__", install ? "true" : "false"));
+                    if (offline) core.ExecuteScriptAsync(OfflinePanelScript);
                 };
-                core.Navigate(url);
+                core.Navigate(target);
             }
             catch (Exception ex)
             {
@@ -131,8 +118,15 @@ namespace DeathMuffinLauncher
                 System.Diagnostics.Process.Start(u.ToString());
         }
 
-        /// <summary>Navigate again (used when Download/Open Offline is pressed while the window is already open).</summary>
-        public void Reload() { if (web.CoreWebView2 != null) web.CoreWebView2.Reload(); }
+        /// <summary>Navigate the open window (Download pressed while the offline window is already open). Safe before WebView2 has started.</summary>
+        public void NavigateTo(string newUrl)
+        {
+            target = newUrl;
+            if (web.CoreWebView2 == null) return; // StartAsync will use the new target
+            loading.Failed = false;
+            loading.Visible = true;
+            web.CoreWebView2.Navigate(newUrl);
+        }
     }
 
     /// <summary>

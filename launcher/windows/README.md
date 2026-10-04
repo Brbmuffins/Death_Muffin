@@ -22,8 +22,17 @@ installer, no separate Java or .NET download.
   (`play/precache.html`) downloads the game's files into the launcher's cache. **Play is usable the whole time**; this only
   makes the first load after an update faster. If it fails or you are offline, nothing is lost.
 - **World Dispatch** shows the newest release's patch notes (`play/release-notes.json`, written by the deploy script from the hand-written `PATCH_NOTES.json` at the repo root) in a scrollable box, with an **All patch notes** link to the site's patch-notes page. Releases without notes fall back to the commit subjects.
-- **Download / Play Offline** use the existing offline edition (`/death-muffin/offline/`). Download starts
-  its asset download (about 105 MB); wait for "Ready to play without a network" before disconnecting.
+- **Three always-visible buttons.** **PLAY ONLINE** (the live game, needs internet), **DOWNLOAD OFFLINE** (saves the offline edition, about
+  105 MB, with progress; afterwards it shows "Downloaded" with the date/build and reads **UPDATE OFFLINE COPY** when a newer offline
+  build is live, otherwise **DOWNLOAD AGAIN**, which re-checks the copy) and **PLAY OFFLINE** (disabled until downloaded). The offline
+  edition uses the same Death Muffin account and character; progress syncs when you are next online.
+- **One session at a time.** Online and offline both sign in to your account and would sign each other out, so opening one while the
+  other is open asks "Close the ... game first?" and closes the other. The status panel says which mode is running.
+- **No internet:** PLAY ONLINE is disabled with "No internet connection", PLAY OFFLINE is highlighted if downloaded (otherwise one
+  download while online is needed first). The launcher re-checks every 20 s and when Windows reports a network change.
+- **Everything inside the launcher.** Games open in the launcher's own windows; **All patch notes** opens an in-launcher window; the
+  launcher checks GitHub for a newer launcher and shows a link (the only browser launch, since an exe cannot replace itself). The
+  browser is used only when WebView2 is missing or will not start, and the status line says so.
 - **Use high-performance GPU** (default on) is in Client Settings - see flags below. Changing it takes effect the next time the launcher starts.
 
 ### Performance flags
@@ -48,7 +57,7 @@ Windows 11 and current Windows 10 already include it. The launcher only reports 
 the registry (EdgeUpdate) has no runtime either; any other failure (usually the exe run from inside the zip, so its DLLs are
 not next to it) is reported as **launcher files missing - unzip the whole folder**.
 
-Without a working WebView2 the launcher still plays: **Play Online / Download / Open Offline open the game in Chrome, Edge or
+Without a working WebView2 the launcher still plays: **Play Online / Download Offline / Play Offline open the game in Chrome, Edge or
 Brave as an app window (`--app`), or in the default browser (e.g. Firefox)** if none of those is installed. The same happens
 if the game window fails to start WebView2. In that mode there is no update pre-download and the performance flags below do
 not apply (the browser uses its own settings). To get the dedicated game window, install the **Evergreen
@@ -59,7 +68,7 @@ Standalone/Bootstrapper** from <https://developer.microsoft.com/en-us/microsoft-
 | What | Where |
 |---|---|
 | WebView2 profile (offline edition save + local player, HTTP/shader cache, cookies) | `%LOCALAPPDATA%\DeathMuffin\LauncherProfile` |
-| Launcher settings (GPU toggle, last prepared build) | `%LOCALAPPDATA%\DeathMuffin\launcher-settings.json` |
+| Launcher settings (GPU toggle, last prepared build, offline downloaded flag/build/date) | `%LOCALAPPDATA%\DeathMuffin\launcher-settings.json` |
 
 Back up `LauncherProfile` before clearing app data or replacing your Windows profile: the offline edition's local save lives
 there. Online accounts are stored on the server. Online and offline saves stay separate unless you use the game's
@@ -97,3 +106,8 @@ run, attaches it to a GitHub Release tagged `launcher-v<version>`. Bump `<Versio
 Launcher source is this folder only; the old prototype's source was lost, so this is a clean rebuild of its behaviour. The
 window uses the game's key art (`Resources/keyart.jpg`, embedded) inside a painted indigo frame. Version 0.5.0 introduces a
 command bar with a prominent Play Online action, separate offline actions, and a scrollable World Dispatch panel.
+
+### Changelog
+
+- **0.5.1** - Online and offline made explicit: three always-visible buttons (Play online, Download offline, Play offline), saved offline download state and build, one-session rule with a confirm, no-internet state, in-launcher patch notes, launcher self-update check; the download is started by the offline page's `?download=1` instead of clicking its button.
+- **0.5.0** - MMO-style frame, command bar, World Dispatch panel.

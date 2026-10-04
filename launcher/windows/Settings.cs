@@ -11,6 +11,13 @@ namespace DeathMuffinLauncher
         /// <summary>Release sha whose files were last fully warmed into the profile's HTTP cache.</summary>
         public string LastPrecachedSha { get; set; } = "";
 
+        /// <summary>True once the offline edition reported "Ready to play without a network" (cleared if it later reports the assets missing).</summary>
+        public bool OfflineDownloaded { get; set; } = false;
+        /// <summary>Offline build id (the service worker's dm-offline-&lt;hash&gt;) that finished downloading, "" if unknown.</summary>
+        public string OfflineVersion { get; set; } = "";
+        /// <summary>ISO date the offline copy last finished downloading, "" if unknown.</summary>
+        public string OfflineDownloadedAt { get; set; } = "";
+
         public static string Root
         {
             get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DeathMuffin"); }
