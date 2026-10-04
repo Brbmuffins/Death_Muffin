@@ -19,7 +19,7 @@ function claudeArgs(cfg, job) {
   const a = ['-p', '--restricted', '--strict-mcp-config', '--permission-mode', 'dontAsk', '--output-format', 'json',
     '--model', job.model, '--append-system-prompt', systemPrompt(cfg, job),
     '--tools', 'Read,Edit,Write,Glob,Grep,Bash',
-    '--allowedTools', 'Read', 'Edit', 'Write', 'Glob', 'Grep', `Bash(${cfg.toolsDir}/agit *)`, `Bash(${cfg.toolsDir}/check.sh)`, `Bash(${cfg.toolsDir}/shot.sh)`, `Bash(${cfg.toolsDir}/shot.sh *)`,
+    '--allowedTools', 'Read', 'Edit', 'Write', 'Glob', 'Grep', `Bash(${cfg.toolsDir}/agit *)`, `Bash(${cfg.toolsDir}/check.sh)`, `Bash(${cfg.toolsDir}/regen.sh)`, `Bash(${cfg.toolsDir}/shot.sh)`, `Bash(${cfg.toolsDir}/shot.sh *)`,
     '--disallowedTools', 'WebFetch', 'WebSearch'];
   if (job.sessionId) a.push('--resume', job.sessionId);
   return a;

@@ -9,6 +9,7 @@ const { redactText, redactDeep } = require('./lib/redact.cjs');
 const G = require('./lib/gitops.cjs');
 const { runTurn, buildPrompt, readResult } = require('./lib/agent.cjs');
 const { parseDiff, classifyDiff, tierLabel, approversFor } = require('./lib/tiers.cjs');
+const { verifyGenerated, describeMismatch } = require('./lib/generated.cjs');
 const { planReply } = require('./lib/discordText.cjs');
 
 const TIER_COLOR = { casual: 0x16a34a, gameplay: 0xb45309, sensitive: 0xdc2626 };
@@ -333,7 +334,10 @@ function createRunner(cfgIn, opts = {}) {
     const diff = await G.diffText(wt, job.base);
     if (!diff.trim()) return { ok: true, empty: true };
     const files = parseDiff(diff);
-    const cls = classifyDiff(files, cfg);
+    // Generated files are tier-neutral only when a sandboxed regeneration reproduces them exactly (deterministic, not the model's say-so).
+    const gen = await verifyGenerated({ toolsDir: cfg.toolsDir, repo: cfg.repo, scratchRoot: cfg.worktreeRoot, base: job.base, head: await G.head(wt), changedPaths: files.map((f) => f.path) });
+    if (gen.mismatched.length) return { ok: false, fixable: true, why: describeMismatch(gen) };
+    const cls = classifyDiff(files, cfg, gen.derived);
     if (cls.forbidden.length) return { ok: false, fixable: true, why: `These paths may not be changed by this agent: ${cls.forbidden.join(', ')}. Undo those changes (restore them to the original content) and commit.` };
     const secrets = G.scanDiffForSecrets(diff);
     if (secrets.length) return { ok: false, fixable: true, why: `The secret scan flagged ${secrets.map((s) => s.file).join(', ')}. Remove anything secret-like from the change.` };
@@ -411,7 +415,8 @@ function createRunner(cfgIn, opts = {}) {
     const p = job.proposal; const ownerShips = auth.isOwner(approverId);
     say(job, `Approved by ${nameOf(approverId)}. Shipping: taking the deploy lock, merging onto master, re-testing, deploying. This takes a few minutes.`);
     const env = { REPO: cfg.repo, WT_ROOT: cfg.worktreeRoot, BRANCH: job.branch, JOBID: job.id, EXPECT_HEAD: p.head, LOCK: lockFile, TOOLS: cfg.toolsDir, CONFIG: cfg.__file || path.join(cfg.toolsDir, 'config.json'),
-      MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: p.migrations.join(' '), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}) };
+      MAX_TIER: auth.maxTier(approverId) || 'casual', MIGRATIONS: p.migrations.join(' '), DEPLOY_SCRIPT: cfg.deployScript, ...(cfg.deployCmd ? { DEPLOY_CMD: cfg.deployCmd } : {}),
+      MOBILE_BRANCH: cfg.mobileBranch === undefined ? 'mobile' : String(cfg.mobileBranch), ...(cfg.mobileDeployScript ? { MOBILE_DEPLOY_SCRIPT: cfg.mobileDeployScript } : {}), ...(cfg.mobileDeployCmd ? { MOBILE_DEPLOY_CMD: cfg.mobileDeployCmd } : {}) };
     let r;
     try { r = await G.run('bash', [path.join(cfg.toolsDir, 'ship.sh')], { env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env }, timeoutMs: 75 * 60000 }); }
     finally { shipBusy = false; }
@@ -422,7 +427,11 @@ function createRunner(cfgIn, opts = {}) {
       const [sha, rb] = detail.split(' ');
       logShip({ type: 'live', jobId: job.id, sha, approverId: String(approverId), approverName: nameOf(approverId), tier: p.tier, title: p.title, rollback: rb && rb !== 'none' ? rb : null });
       job.status = 'shipped'; job.proposal = { ...p, shipSha: sha }; save();
-      say(job, `🚀 Live. Release \`${sha}\` is on master and deployed. Thanks, ${nameOf(job.creatorId)}.`);
+      // Phones + offline edition are best effort (ship.sh prints one MOBILE: line); the PC release is live either way.
+      const mm = /^MOBILE: (\S+)\s*(.*)$/m.exec(out); const mkind = mm ? mm[1] : ''; const mwhy = mm ? clip(mm[2], 300) : '';
+      audit.log('mobile-result', { job: job.id, kind: mkind || 'none', detail: mwhy });
+      say(job, `🚀 Live. Release \`${sha}\` is on master and deployed${mkind === 'live' ? ' (phones and offline updated too)' : ''}. Thanks, ${nameOf(job.creatorId)}.` + (mkind === 'pending' ? `\nPhones and offline will follow once the mobile branch is sorted out (${mwhy}).` : ''));
+      if (mkind === 'pending') ownerPing({ threadId: job.threadId }, `Mobile/offline did NOT update for \`${job.id}\` (PC is live as \`${sha}\`): ${mwhy}`);
       if (!ownerShips) ownerPing({ threadId: job.threadId }, `${nameOf(approverId)} shipped **${clip(p.title, 100)}** (${p.tier}) as \`${sha}\`. Diff: ${G.compareUrl(cfg, job.branch)} — to undo: say \`rollback\`.`);
       await G.removeJobArtifacts(cfg, job);
       return;

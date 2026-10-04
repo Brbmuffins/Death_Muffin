@@ -395,3 +395,93 @@ test('preview.sh refuses bad job ids and a missing preview root, without buildin
   const none = spawnSync('bash', [script, 'abc123'], { encoding: 'utf8', env: { ...process.env, DM_PREVIEW_ROOT: '/nonexistent/preview' } }); assert.equal(none.status, 2); assert.match(none.stdout, /missing/);
 });
 function os_tmp() { return fs.mkdtempSync(path.join(require('os').tmpdir(), 'dm-prev-')); }
+
+// ---------- generated files + phones ----------
+const gate = (w, wt, base) => { try { return { code: 0, out: require('child_process').execFileSync('node', [path.join(w.tools, 'runner/ship-gate.cjs'), w.cfg.__file, wt, base, 'sensitive'], { stdio: 'pipe' }).toString() }; } catch (e) { return { code: e.status, out: String(e.stdout) }; } };
+const rules = 'server/vps-handoff/necro-progress/necro-rules.cjs';
+
+test('generated files that match a fresh regeneration are derived: a gameplay change with its regenerated bundle stays gameplay tier and can be shipped by Helix', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-DATA faster');
+  const p = await waitProposal(d, thread);
+  assert.match(field(p, 'Review tier'), /^Gameplay/); assert.ok(!/touches/.test(field(p, 'Review tier')));
+  assert.match(field(p, 'Files'), /necro-rules\.cjs/);
+  assert.deepEqual(await d.react(p, IDS.LIMITED, '✅'), [IDS.LIMITED], 'limited approver still cannot ship a gameplay-tier change');
+  assert.deepEqual(await d.react(p, IDS.HELIX, '✅'), []);
+  await until(() => texts(thread).some((t) => /Live\. Release/.test(t)), d.ad);
+  assert.equal(sh(w.repo, 'show', `origin/master:${rules}`).trim(), 'SPEED=9');
+  assert.equal(fs.readdirSync(w.cfg.worktreeRoot).length, 0, 'scratch worktrees cleaned up');
+});
+
+test('a hand-edited generated file is rejected by the runner (not the model), the agent is told to regen, and the fixed commit is proposed', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-DATA-HAND faster');
+  const p = await waitProposal(d, thread);
+  assert.match(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'), /not what the generators produce/);
+  assert.match(field(p, 'Review tier'), /^Gameplay/);
+  const br = sh(w.repo, 'branch', '-r', '--list', 'origin/discord/*').trim();
+  assert.equal(sh(w.repo, 'show', `${br}:${rules}`).trim(), 'SPEED=9');
+});
+
+test('a deploy script rewritten by hand is still forbidden (only a verified regeneration is exempt)', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-DATA-FORBIDDEN faster');
+  await until(() => texts(thread).some((t) => /could not get this into a shippable state/.test(t)), d.ad);
+  assert.equal(proposalOf(thread), undefined);
+  assert.match(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'), /deploy-realtime\.sh/);
+});
+
+test('ship-gate re-derives generated files on the merged tree: stale/tampered rejected, exact accepted', () => {
+  const w = makeWorld(); const base = sh(w.repo, 'rev-parse', 'HEAD'); const wt = path.join(w.T, 'gate-wt');
+  sh(w.repo, 'worktree', 'add', '-q', '--detach', wt, base);
+  const put = (f, c) => { fs.mkdirSync(path.dirname(path.join(wt, f)), { recursive: true }); fs.writeFileSync(path.join(wt, f), c); };
+  put('src/gameplay/a.ts', 'speed=9\n'); put(rules, 'SPEED=9\n'); sh(wt, 'add', '--', 'src/gameplay/a.ts', rules); sh(wt, 'commit', '-q', '-m', 'ok');
+  let r = gate(w, wt, base); assert.equal(r.code, 0, r.out); assert.match(r.out, /GATE: ok \(gameplay\)/);
+  put(rules, 'SPEED=9 // tampered\n'); sh(wt, 'add', '--', rules); sh(wt, 'commit', '-q', '-m', 'tamper');
+  r = gate(w, wt, base); assert.equal(r.code, 13); assert.match(r.out, /do not match a fresh regeneration: server\/vps-handoff/);
+  sh(w.repo, 'worktree', 'remove', '--force', wt);
+});
+
+const mobileDeploys = (w) => { try { return fs.readFileSync(path.join(w.deploy, 'mobile-deploys.log'), 'utf8').trim().split('\n').filter(Boolean); } catch { return []; } };
+const remoteRef = (w, ref) => sh(w.repo, 'ls-remote', 'origin', ref).split(/\s/)[0];
+async function shipGameplay(w, d) {
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-GAMEPLAY faster');
+  const p = await waitProposal(d, thread);
+  await d.react(p, IDS.HELIX, '✅');
+  await until(() => texts(thread).some((t) => /Live\. Release/.test(t)), d.ad);
+  return thread;
+}
+
+test('after the PC deploy, master is merged into mobile, tested, pushed and published; the message says phones and offline updated too', async () => {
+  const w = makeWorld({ mobile: 'clean' }); const d = makeDiscord(w.runner);
+  const oldMobile = remoteRef(w, 'refs/heads/mobile');
+  const thread = await shipGameplay(w, d);
+  assert.match(texts(thread).find((t) => /Live\. Release/.test(t)), /phones and offline updated too/);
+  const m = remoteRef(w, 'refs/heads/mobile'); assert.notEqual(m, oldMobile);
+  const master = remoteMaster(w);
+  assert.equal(sh(w.repo, 'rev-list', '--parents', '-n', '1', m).split(' ').slice(1).join(' '), `${oldMobile} ${master}`, 'no-ff merge of master into old mobile');
+  const msg = sh(w.repo, 'log', '-1', '--format=%B', m).trim(); assert.match(msg, /^Merge master [0-9a-f]{12} into mobile$/); assert.ok(!/:/.test(msg));
+  assert.equal(sh(w.repo, 'show', 'origin/mobile:src/gameplay/a.ts').trim(), 'speed=9'); assert.equal(sh(w.repo, 'show', 'origin/mobile:mobile-only.txt').trim(), 'touch');
+  assert.deepEqual(mobileDeploys(w), [m], 'deploy-mobile ran once with the merged revision');
+  assert.equal(shipsLog(w).length, 1);
+  assert.equal(fs.readdirSync(w.cfg.worktreeRoot).length, 0, 'mobile scratch worktree cleaned up');
+  assert.match(fs.readFileSync(path.join(w.cfg.stateDir, 'audit.jsonl'), 'utf8'), /"event":"mobile-result"[^\n]*"kind":"live"/);
+});
+
+for (const [kind, why] of [['conflict', /merge conflict in src\/gameplay\/a\.ts/], ['failtests', /tests failed on mobile/]]) {
+  test(`mobile ${kind}: PC stays live, mobile is untouched, owner is pinged with the reason`, async () => {
+    const w = makeWorld({ mobile: kind }); const d = makeDiscord(w.runner);
+    const oldMobile = remoteRef(w, 'refs/heads/mobile'); const before = remoteMaster(w);
+    const thread = await shipGameplay(w, d);
+    assert.notEqual(remoteMaster(w), before, 'master was shipped');
+    assert.equal(shipsLog(w)[0].type, 'live');
+    const live = texts(thread).find((t) => /Live\. Release/.test(t));
+    assert.ok(!/updated too/.test(live)); assert.match(live, /Phones and offline will follow/);
+    const ping = await until(() => thread.sent.find((s) => s.payload.content && /Mobile\/offline did NOT update/.test(s.payload.content)), d.ad);
+    assert.ok(ping.payload.content.includes(`<@${IDS.OWNER}>`)); assert.match(ping.payload.content, why);
+    assert.equal(remoteRef(w, 'refs/heads/mobile'), oldMobile, 'mobile branch untouched');
+    assert.deepEqual(mobileDeploys(w), []);
+    assert.equal(fs.readdirSync(w.cfg.worktreeRoot).length, 0);
+    assert.equal(sh(w.repo, 'status', '--porcelain'), '');
+  });
+}
