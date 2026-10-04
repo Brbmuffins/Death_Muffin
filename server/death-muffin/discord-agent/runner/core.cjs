@@ -224,7 +224,7 @@ function createRunner(cfgIn, opts = {}) {
         say(job, 'Merging the latest master hit conflicts; asking the agent to resolve them.');
       } else say(job, 'Merged the latest master into this branch cleanly. Re-running checks.');
       job.proposal = null;
-    } else if (job.turns === 0) say(job, `On it (${job.model}). Working in branch \`${job.branch}\`; I will say when there is something to see.`);
+    } else if (job.turns === 0) say(job, `On it (${job.model[0].toUpperCase()}${job.model.slice(1)}).`);
     const t0 = now();
     const ticker = setInterval(() => say(job, `Still working… (${Math.round((now() - t0) / 60000)} min)`), 5 * 60000); ticker.unref();
     let r = null;
