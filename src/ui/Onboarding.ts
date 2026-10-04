@@ -580,7 +580,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   vault: {
     title: 'The Ossuary Vault',
-    body: 'One stash of 120 slots, shared by all your characters. <kbd>Click</kbd> an item to move its whole stack across; <b>Deposit materials</b>, <b>Deposit all</b> and <b>Sort</b> do it in bulk, and locked items always stay in your bag. It opens with <kbd>V</kbd> in the Chapterhouse or the Acre, and a move that will not fit changes nothing.',
+    body: 'One stash of 120 slots, shared by all your characters. <kbd>Click</kbd> an item to move its whole stack across; <b>Deposit materials</b>, <b>Deposit all</b>, <b>Take materials</b>, <b>Take all</b> and <b>Sort</b> do it in bulk, and locked items always stay in your bag. It opens with <kbd>V</kbd> in the Chapterhouse or the Acre, and a move that will not fit changes nothing.',
   },
   salvage: {
     title: 'Salvaging',
