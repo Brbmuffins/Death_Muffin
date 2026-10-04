@@ -354,6 +354,7 @@ export class EntityViews {
     const v: View = { c, x: e.x, z: e.z, facing: e.facing, lastState: '', def: e.def, animSkip: 0, animDt: 0 };
     if (e.elite) {
       v.eliteAura = this.effects.decal({
+        danger: true,
         tex: fx.ring(),
         color: 0x9b5cff,
         x: e.x,
@@ -378,20 +379,20 @@ export class EntityViews {
     for (const affix of affixesOf(e)) switch (affix) {
       case 'bellTolled':
         // Bronze bell-ring pulse around the feet.
-        fxs.push(this.effects.decal({ tex: fx.ring(), color: A.bell, x: e.x, z: e.z, r: 1.55 * e.scale, duration: 1e9, opacity: 0.6, pulse: 2.5, follow }));
+        fxs.push(this.effects.decal({ danger: true, tex: fx.ring(), color: A.bell, x: e.x, z: e.z, r: 1.55 * e.scale, duration: 1e9, opacity: 0.6, pulse: 2.5, follow }));
         break;
       case 'hungering':
         // Olive slick where it slavers.
-        fxs.push(this.effects.decal({ tex: fx.glow(), color: A.drool, x: e.x, z: e.z, r: 1.2 * e.scale, duration: 1e9, opacity: 0.45, follow }));
+        fxs.push(this.effects.decal({ danger: true, tex: fx.glow(), color: A.drool, x: e.x, z: e.z, r: 1.2 * e.scale, duration: 1e9, opacity: 0.45, follow }));
         break;
       case 'shrouded':
         // Grave-dusk pall; the body itself is dimmed in sync().
-        fxs.push(this.effects.decal({ tex: fx.glow(), color: A.shroud, x: e.x, z: e.z, r: 1.5 * e.scale, duration: 1e9, opacity: 0.7, blending: THREE.NormalBlending, follow }));
+        fxs.push(this.effects.decal({ danger: true, tex: fx.glow(), color: A.shroud, x: e.x, z: e.z, r: 1.5 * e.scale, duration: 1e9, opacity: 0.7, blending: THREE.NormalBlending, follow }));
         v.shroud = 1;
         break;
       case 'vengeful':
         // Ember cracks spreading under it.
-        fxs.push(this.effects.decal({ tex: fx.cracks(), color: A.vengeful, x: e.x, z: e.z, r: 1.3 * e.scale, duration: 1e9, opacity: 0.75, pulse: 3, spin: 0.2, follow }));
+        fxs.push(this.effects.decal({ danger: true, tex: fx.cracks(), color: A.vengeful, x: e.x, z: e.z, r: 1.3 * e.scale, duration: 1e9, opacity: 0.75, pulse: 3, spin: 0.2, follow }));
         break;
     }
     v.affixFx = fxs;
@@ -472,6 +473,7 @@ export class EntityViews {
     this.group.add(c.root);
     const v: View = { c, x: t.x, z: t.z, facing: t.facing, lastState: '', kind: t.kind, animSkip: 0, animDt: 0, float: wraith };
     v.ring = this.effects.decal({
+      other: this.isOwn?.(t.owner) === false,
       tex: fx.ring(),
       color: t.champion ? 0xd9a441 : wraith ? 0x8fb4ff : SPELL_FX.exhume.spirit,
       x: t.x,
@@ -1024,7 +1026,7 @@ export class EntityViews {
       }
       // The Censer Bearer itself trails incense smoke and wears its aura on the ground.
       if (ENEMIES[e.def].aura) {
-        if (!v.auraFx) v.auraFx = this.effects.decal({ tex: fx.ring(), color: STATUS_FX.incensed.bronze, x: e.x, z: e.z, r: CENSER.radius, duration: 1e9, opacity: 0.22, pulse: 2.5, follow: () => ({ x: v!.x + (v!.ox ?? 0), z: v!.z + (v!.oz ?? 0) }) });
+        if (!v.auraFx) v.auraFx = this.effects.decal({ danger: true, tex: fx.ring(), color: STATUS_FX.incensed.bronze, x: e.x, z: e.z, r: CENSER.radius, duration: 1e9, opacity: 0.22, pulse: 2.5, follow: () => ({ x: v!.x + (v!.ox ?? 0), z: v!.z + (v!.oz ?? 0) }) });
         if (nearFx && Math.random() < dt * 2) this.effects.emitSmoke({ x: e.x, y: 1.1, z: e.z, count: 1, color: STATUS_FX.incensed.smoke, spread: 0.3, speed: 0.3, up: 0.5, life: 1.4, size: 0.9, shrink: -0.5 });
       }
       if (nearFx && hover && Math.random() < dt * 4) {
@@ -1050,7 +1052,7 @@ export class EntityViews {
       if (ENEMIES[e.def].unbind) {
         let near = false;
         for (const t of thralls.values()) if (Math.abs(t.x - e.x) < UNBIND.range && Math.hypot(t.x - e.x, t.z - e.z) <= UNBIND.range) { near = true; break; }
-        if (near && !v.auraFx) v.auraFx = this.effects.decal({ tex: fx.ring(), color: SPELL_FX.enemy.curse, x: e.x, z: e.z, r: UNBIND.range, duration: 1e9, opacity: 0.15, pulse: 1.5, follow: () => ({ x: v!.x + (v!.ox ?? 0), z: v!.z + (v!.oz ?? 0) }) });
+        if (near && !v.auraFx) v.auraFx = this.effects.decal({ danger: true, tex: fx.ring(), color: SPELL_FX.enemy.curse, x: e.x, z: e.z, r: UNBIND.range, duration: 1e9, opacity: 0.15, pulse: 1.5, follow: () => ({ x: v!.x + (v!.ox ?? 0), z: v!.z + (v!.oz ?? 0) }) });
         else if (!near && v.auraFx) (v.auraFx.kill(), (v.auraFx = undefined));
       }
       if (nearFx && e.state === 'rising' && Math.random() < dt * 8) {
@@ -1101,7 +1103,7 @@ export class EntityViews {
       v.lastState = key;
       // A Bog Hag's hex: a magenta sigil ring follows the thrall and sickly motes drip off it while it lasts.
       if ((t.cursedT ?? 0) > 0) {
-        if (!v.hexFx?.alive) v.hexFx = this.effects.decal({ tex: fx.sigil(), color: SPELL_FX.enemy.hex, x: t.x, z: t.z, r: 0.95, duration: 1e9, opacity: 0.9, spin: 2, follow: () => ({ x: v!.x + (v!.ox ?? 0), z: v!.z + (v!.oz ?? 0) }) });
+        if (!v.hexFx?.alive) v.hexFx = this.effects.decal({ danger: true, tex: fx.sigil(), color: SPELL_FX.enemy.hex, x: t.x, z: t.z, r: 0.95, duration: 1e9, opacity: 0.9, spin: 2, follow: () => ({ x: v!.x + (v!.ox ?? 0), z: v!.z + (v!.oz ?? 0) }) });
         if (Math.abs(t.x - focusX) < 24 && Math.abs(t.z - focusZ) < 20 && Math.random() < dt * 5) this.effects.emit({ x: t.x, y: 0.9 + Math.random() * 0.8, z: t.z, count: 1, color: SPELL_FX.enemy.hex, spread: 0.25, speed: 0.15, up: -0.5, life: 0.7, size: 0.12, gravity: 4 });
       } else if (v.hexFx) {
         v.hexFx.kill();

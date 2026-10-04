@@ -910,6 +910,11 @@ export class WorldScene implements GameScene, RuntimeView {
     rim.position.set(6, 10, -24);
     s.add(rim);
     this.effects = new Effects(s);
+    // The hero stays findable under a crowd of circles: a soft dark contact shadow (above friendly ground effects, below telegraphs)
+    // and a crisp pale ring (additive, so it shares the danger ring layer: no extra draw call).
+    const heroAt = () => (this.player ? { x: this.player.x, z: this.player.z } : null);
+    this.effects.decal({ hero: true, persistent: true, tex: fx.glow(), blending: THREE.NormalBlending, color: 0x07040d, x: 0, z: 0, r: 1.25, y: 0.045, duration: 1e9, opacity: 0.5, fadeIn: 0.5, follow: heroAt });
+    this.effects.decal({ hero: true, persistent: true, tex: fx.ring(), color: 0xf0e8ff, x: 0, z: 0, r: 0.8, y: 0.05, duration: 1e9, opacity: 0.6, fadeIn: 0.5, follow: heroAt });
   }
 
   private async loadData() {
@@ -3291,7 +3296,8 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private bb(id: BinbunId, x: number, z: number, o: Omit<BinbunSpawn, 'x' | 'z'> = {}) {
-    return playFx(this.effects.binbun, id, { x, z, ...o });
+    // A partner's effects (Effects.role) keep their hue but are dimmed and smaller, so ten players' rings do not bury ours.
+    return playFx(this.effects.binbun, id, this.effects.partnerBinbun({ x, z, ...o }));
   }
 
   /** Effects that must land after a telegraph (processed in update, so QA stepping stays deterministic). */
@@ -3329,11 +3335,15 @@ export class WorldScene implements GameScene, RuntimeView {
     const who = 'by' in ev ? ev.by : 'owner' in ev ? ev.owner : ev.t === 'zone' ? ev.zone.owner : undefined;
     if (typeof who !== 'string' || who === this.selfId || !this.remotes.has(who)) return this.handleEventNow(ev);
     const prev = this.effects.particleScale;
+    const prevRole = this.effects.role;
     this.effects.particleScale = prev * PARTNER_FX_SCALE;
+    // Their ground circles draw faint and outline-only (Effects.role); danger telegraphs inside still draw on top, in full.
+    this.effects.role = 'other';
     try {
       this.handleEventNow(ev);
     } finally {
       this.effects.particleScale = prev;
+      this.effects.role = prevRole;
     }
   }
 
@@ -3363,7 +3373,7 @@ export class WorldScene implements GameScene, RuntimeView {
         this.nodeViews.setLive(ev.id, true);
         break;
       case 'telegraph':
-        this.telegraph(ev);
+        this.effects.danger(() => this.telegraph(ev));
         break;
       case 'melee': {
         this.effects.emitSmoke({ x: ev.tx, y: 0.3, z: ev.tz, count: 2, color: 0x3a3340, spread: 0.3, speed: 0.8, up: 0.3, life: 0.5, size: 0.6 });
@@ -3387,7 +3397,7 @@ export class WorldScene implements GameScene, RuntimeView {
         break;
       }
       case 'zone':
-        this.zoneVisual(ev.zone);
+        this.effects.danger(() => this.zoneVisual(ev.zone), ev.zone.hostile);
         break;
       case 'zoneGone':
         this.zoneFx.get(ev.id)?.forEach((h) => h.kill());
@@ -3609,7 +3619,7 @@ export class WorldScene implements GameScene, RuntimeView {
         else if (ev.kind === 'litany' && ev.by === me) this.floating.spawn(ev.x, 2.6, ev.z, `${ev.amount.toLocaleString()}`, 'big');
         break;
       case 'boss':
-        this.onBossEvent(ev);
+        this.effects.danger(() => this.onBossEvent(ev));
         break;
       case 'spawn':
         // Codex + onboarding: only what this player actually encounters.

@@ -179,7 +179,8 @@ export class AbilitySystem {
   /** Layer a Binbun effect (presets.ts). A no-op without the runtime (unit tests stub Effects). */
   private bb(id: BinbunId, x: number, z: number, o: Omit<BinbunSpawn, 'x' | 'z'> = {}): BinbunHandle | null {
     const b = this.ctx.effects.binbun;
-    return b ? playFx(b, id, { x, z, ...o }) : null;
+    // A partner's cast (Effects.role = 'other', set by WorldScene.handleEvent) plays dimmed and smaller; ours is untouched.
+    return b ? playFx(b, id, this.ctx.effects.partnerBinbun?.({ x, z, ...o }) ?? { x, z, ...o }) : null;
   }
 
   private get sp() {

@@ -108,3 +108,54 @@ A partner's five-rite rotation replayed as two remote players: draw calls 53 to 
 - Ambient scenery (braziers, waystone portals, persistent glows) is about 0.25 screens and 10 draw calls in the Graves.
 
 Raw reports: `docs/vfx-budget/before.json`, `docs/vfx-budget/after.json`.
+
+## Ground-effect clarity (branch `dm/fx-clarity`, 3 Oct 2026)
+
+Owner audit of `docs/screenshots/graves-battle.webp`: two pentagram sigils and half a dozen coloured rings cover the ground,
+the hero is hard to find, and ten players make it worse. Ground decals now have a role (all in `Effects.decal`, no extra pass):
+
+- **Ours vs. other players'.** `Effects.role` is `'self'` by default; `WorldScene.handleEvent` sets `'other'` around an event whose
+  `by` / `owner` / zone owner is a connected remote player (the same test as `particleScale`). Another player's decals keep their
+  hue but draw at `OTHER_DECAL_ALPHA` (0.35) and, for the fill textures (disc, sigil, cracks, glow), outline only.
+- **Long-lasting areas settle to an outline.** Our own decal on a fill texture with `duration > LONG_DECAL_S` (1.5 s) keeps its full
+  look for `OUTLINE_AFTER_S` (1 s: the moment of the cast), then eases over `OUTLINE_FADE_S` (0.8 s) to outline only, with a slow
+  edge pulse. Outline-only is a per-instance `aDecalRim` read by the decal fragment shader: texels inside the texture's edge radius
+  (`outlineOf`: disc 0.86, sigil 0.80) are dropped, glow and cracks (no edge) dim to 12 % / 25 %. Rings and cones are already
+  edges and are untouched, as is scenery (`persistent`). No new draw calls, less fill.
+- **Danger telegraphs on top, never faded.** Decal layers are keyed by texture + blend + order. `DECAL_ORDER`: friendly 2, hero
+  marker 3, danger 4 (particles 5, billboards 6). `Effects.danger(fn)` (or `danger: true` on a decal) puts everything made inside
+  on the danger layers: `WorldScene` wraps `telegraph` events, all `boss` events and hostile `zone` visuals; `EntityViews` marks
+  elite affix tells, Censer / Lich auras and the Hag's hex. Danger wins over `role`, so a partner's event that spawns a hostile
+  marker still draws it in full.
+- **Hero marker.** One faint pale ring (`hero: true`, order 3, opacity 0.3, r 0.7) follows the hero: above friendly circles, below telegraphs.
+
+Measure: `tools/qa/fx-clarity.cjs` (busy Graves fight, solo and with two partners replayed as remote players, three moments).
+Tests: `src/graphics/__tests__/fx-clarity.test.ts`. Screenshots: `docs/screenshots/fx-clarity/`.
+
+### Second pass (hero readability, partners, stacking, draw calls)
+
+- **Partner Binbun effects** (`WorldScene.bb`, only while `Effects.role` is `'other'` and not inside `danger()`): alpha 0.35, scale 0.75,
+  same hue. Partner decals are now 0.28 (`OTHER_DECAL_ALPHA`). A partner's thrall rings use `DecalOptions.other`
+  (`EntityViews`: owner is not us). Corpse rings have no owner, so they stay as they were. Elite auras stay on the danger layer.
+- **Own-cast stacking:** a new own long-lasting decal sends older ones of the same texture within `max(r_old, r_new)` of it to outline
+  at once (0.4 s ease); full-strength window shortened from 1 s to 0.6 s (`OUTLINE_AFTER_S`), ease 0.7 s.
+- **Hero marker:** a pale ring (0.6, r 0.8) plus a soft dark contact shadow (normal blending, r 1.25, 0.5, `hero` order 3: above
+  friendly ground FX, below telegraphs). The ring is additive, so it shares the friendly ring layer.
+- **Draw calls:** the annulus-only outline layers are gone. A disc's outline is the ring texture drawn 1.32x larger in the existing ring
+  layer (crossfaded from the disc over the ease), a sigil fades its interior in the shader (runes kept) and discards alpha < 0.004.
+  So the only new layer when nothing hostile is up is the hero shadow (+1); danger layers add up to +2..3 during telegraphs.
+
+Numbers (High, 1280x720, seeded, `tools/qa/fx-clarity.cjs`; master -> now). Decal draw calls are exact; fill swings with the sim:
+
+| moment | decal draw calls | total calls | decal-only fill (screens) |
+|---|---|---|---|
+| solo, cast | 6 -> 7 | 30 -> 32 | 1.03..1.17 -> 1.06 |
+| solo, settled | 6 -> 8 | 29..33 -> 39 | 0.76..1.10 -> 0.84 |
+| solo, telegraph | 8 -> 10 | 31..35 -> 37 | 1.22..1.64 -> 1.32 |
+| coop, cast | 6 -> 7 | 56 -> 65 | 1.13 -> 1.50 |
+| coop, settled | 6 -> 8 | 21..25 -> 46 | 0.61..0.66 -> 0.87 |
+| coop, telegraph | 8 -> 11 | 29 -> 39 | 1.14..1.19 -> 1.42 |
+
+Honest read: fill is not lower in this staged fight (the hero shadow and ring add a little, the outlined discs save a little), and
+total calls vary 20+ between identical runs, so the win here is legibility, not cost. Co-op rows are higher partly because partner
+Binbun effects now run at 0.75 scale but the same count.
