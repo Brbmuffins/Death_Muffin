@@ -18,6 +18,7 @@ import {
   SCALING_NOTES, affixCountOdds, cosmeticsInfo, isRecommendedKind, peersOf, atlasSlot, depthBands, fitBand, fitTable, fmtChance, getAtlas, legendaryShare, oneIn, placesFor, powerGainPct, referenceContext,
   sourcesFor, unobtainable,
 } from '../atlas';
+import { isProfessionMaterial } from '../loot';
 
 const atlas = getAtlas();
 const src = (id: string, pred: (s: ReturnType<typeof sourcesFor>[number]) => boolean, disc = 'gravecaller') => sourcesFor(id, disc).find(pred);
@@ -31,25 +32,32 @@ describe('atlas: the tables are all there', () => {
       if (!a.loot.length) continue;
       let kill = 0;
       let elite = 0;
+      // The dead drop no profession materials (loot.ts settleCombatDrop): those rolls pay gold, so they are not listed.
       for (const e of a.loot) {
+        if (isProfessionMaterial(e.item)) continue;
         expect(atlas.sources.get(e.item), `${id}:${e.item}`).toBeTruthy();
       }
-      const seen = new Set(a.loot.map((e) => e.item));
+      const kept = a.loot.filter((e) => !isProfessionMaterial(e.item));
+      const keptShare = kept.reduce((n, e) => n + e.weight, 0) / a.loot.reduce((n, e) => n + e.weight, 0);
+      const seen = new Set(kept.map((e) => e.item));
       for (const item of seen) {
         const list = atlas.sources.get(item)!.filter((s) => s.placeId === id);
         kill += list.find((s) => s.kind === 'kill' && s.event === 'Ordinary kill')!.chance;
         elite += list.find((s) => s.kind === 'elite' && s.event === 'Elite kill')!.chance;
         expect(list.find((s) => s.kind === 'surge'), `${id}:${item} surge`).toBeTruthy();
       }
-      expect(kill).toBeCloseTo(Math.min(1, a.itemChance * KILL_LOOT.itemChanceMult), 9);
-      expect(elite).toBeCloseTo(Math.min(1, a.itemChance * 6), 9);
+      expect(kill).toBeCloseTo(Math.min(1, a.itemChance * KILL_LOOT.itemChanceMult) * keptShare, 9);
+      expect(elite).toBeCloseTo(Math.min(1, a.itemChance * 6) * keptShare, 9);
     }
   });
 
   it('every boss lists its table, its ichor (always) and a first-kill item (except the Prelate)', () => {
     for (const b of BOSS_IDS) {
       const def = BOSSES[b];
-      for (const e of AREAS[def.area].loot) expect(atlas.sources.get(e.item)!.some((s) => s.placeId === b && s.kind === 'boss'), `${b}:${e.item}`).toBe(true);
+      for (const e of AREAS[def.area].loot) {
+        if (isProfessionMaterial(e.item) && !e.item.startsWith('gem_')) continue; // paid as gold
+        expect(atlas.sources.get(e.item)!.some((s) => s.placeId === b && s.kind === 'boss'), `${b}:${e.item}`).toBe(true);
+      }
       expect(atlas.sources.get(BOSS_ICHOR[b])?.some((s) => s.placeId === b && s.chance === 1), `${b} ichor`).toBe(true);
       const firsts = [...atlas.sources].flatMap(([id, l]) => l.filter((s) => s.placeId === b && s.kind === 'first_kill' && ITEMS[id].type !== 'rune').map((s) => s.chance));
       if (b === 'prelate') expect(firsts).toEqual([]);
@@ -96,7 +104,7 @@ describe('atlas: the tables are all there', () => {
     for (const b of BOSS_IDS) expect(ids.has(b), b).toBe(true);
     for (const band of depthBands()) expect(ids.has(`depths:${band.from}`)).toBe(true);
     const placed = new Set(atlas.places.flatMap((p) => p.items));
-    for (const id of AREA_ORDER) for (const e of AREAS[id].loot) expect(placed.has(e.item), e.item).toBe(true);
+    for (const id of AREA_ORDER) for (const e of AREAS[id].loot) if (!isProfessionMaterial(e.item)) expect(placed.has(e.item), e.item).toBe(true);
     expect(placesFor('gravecaller').find((p) => p.id === 'abbess')!.items).toContain(legendaryItemId('legion_unburied', 'head'));
   });
 
@@ -122,7 +130,8 @@ describe('atlas: the percentages match the real rolls', () => {
         const r = rollKill('robber', 'graves', 1, elite, 0, rand, 'medium', 1, rr, ru);
         for (const it of r.items) counts.set(it.item_id, (counts.get(it.item_id) ?? 0) + 1);
       }
-      for (const id of ['material_copper_shard', 'ore_tin', 'ring_copper', 'reagent_grave_dust', ...(elite ? ['rune_splinter'] : [])]) {
+      expect(counts.get('ore_tin') ?? 0, 'the dead drop no ore').toBe(0);
+      for (const id of ['helm_copper', 'ring_copper', 'reagent_grave_dust', ...(elite ? ['rune_splinter'] : [])]) {
         const s = src(id, (x) => x.placeId === 'graves' && x.event === (elite ? 'Elite kill' : 'Ordinary kill'))!;
         expect(near((counts.get(id) ?? 0) / N, s.chance, N), `${id} ${elite ? 'elite' : 'ordinary'}: ${(counts.get(id) ?? 0) / N} vs ${s.chance}`).toBe(true);
       }

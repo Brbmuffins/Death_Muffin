@@ -18,7 +18,7 @@ import { BREWS } from '../content/brews';
 import { milestoneActive, waveModifiers } from '../content/upgrades';
 import { DIFFICULTIES } from '../content/difficulty';
 import { NODES, SKILLS, type SkillId } from './gatheringRules';
-import { KILL_LOOT } from './loot';
+import { KILL_LOOT, isProfessionMaterial } from './loot';
 import { smartTable } from './smartLoot';
 import { AFFIXES, AFFIX_GEAR_TYPES, affixRange, affixText, ILVL_MAX, MAX_AFFIXES, itemLevelFor, rollAffixCount, type DropSource as AffixSource } from './affixRules';
 import { salvagePreview } from './salvageRules';
@@ -171,7 +171,8 @@ export const SCALING_NOTES: string[] = (() => {
   let nightfall = 0;
   for (let t = 1; t <= 60 && !nightfall; t++) if (milestoneActive('nightfall', t)) nightfall = t;
   return [
-    `Ordinary kills roll an area item at ${KILL_LOOT.itemChanceMult}x the area's item chance (stacks of materials are x${KILL_LOOT.materialQtyMult}); elites roll at 6x, capped at 100%.`,
+    `Ordinary kills roll an area item at ${KILL_LOOT.itemChanceMult}x the area's item chance; elites roll at 6x, capped at 100%.`,
+    'The dead drop no profession materials (ore, bars, logs, bones, seeds, herbs): a roll that lands on one pays its sell value in gold, so gear keeps its odds. Gather them instead. Bosses and the Depths can still leave gems.',
     `Wave Speed tier raises the item chance of kills and the elite rune chance by +${+(w1 * 100).toFixed(0)}% per tier${nightfall ? ` (and +${Math.round((waveModifiers(nightfall).itemChanceMult - (1 + w1 * nightfall)) * 100)}% more from tier ${nightfall}, the Nightfall milestone)` : ''}.`,
     `A fortune tonic multiplies the item chance of kills, reagent drops and the elite rune chance${fortune.length ? `: ${fortune.join(', ')}` : ''}. It does not change boss spoils, Grave Surge offerings or legendary odds.`,
     `Difficulty changes gold and experience and how often elites appear (${diffs.map((d) => `${d.name} ${d.eliteBonus >= 0 ? '+' : ''}${+(d.eliteBonus * 100).toFixed(1)} points`).join(', ')} on every area's elite chance), not what a kill drops.`,
@@ -253,10 +254,14 @@ function buildSources(): Map<string, DropSource[]> {
     const pOrdinary = Math.min(1, a.itemChance * KILL_LOOT.itemChanceMult);
     const pElite = Math.min(1, a.itemChance * 6);
     const pool = AREA_RUNE_POOL[areaId];
-    for (const [id, share] of tableShares(areaId)) {
+    // The dead drop no profession materials (loot.ts settleCombatDrop: such a roll pays gold); a surge offering rerolls them away.
+    const shares = tableShares(areaId);
+    const keptTotal = [...shares].reduce((n, [id, sh]) => n + (isProfessionMaterial(id) ? 0 : sh), 0) || 1;
+    for (const [id, share] of shares) {
+      if (isProfessionMaterial(id)) continue;
       add(id, { kind: 'kill', placeId: areaId, place: a.name, event: 'Ordinary kill', chance: pOrdinary * share, qty: mq(id, KILL_LOOT.materialQtyMult), area: areaId, ilvlSource: 'elite', note: 'gear rolls at elite quality' });
       add(id, { kind: 'elite', placeId: areaId, place: a.name, event: 'Elite kill', chance: pElite * share, qty: mq(id), area: areaId, ilvlSource: 'elite' });
-      add(id, { kind: 'surge', placeId: areaId, place: a.name, event: 'Grave Surge offering', chance: (pool?.length ? 1 - SURGE_RUNE_CHANCE : 1) * share, qty: mq(id), area: areaId, ilvlSource: 'surge' });
+      add(id, { kind: 'surge', placeId: areaId, place: a.name, event: 'Grave Surge offering', chance: (pool?.length ? 1 - SURGE_RUNE_CHANCE : 1) * (share / keptTotal), qty: mq(id), area: areaId, ilvlSource: 'surge' });
     }
     // Reagents of the ground.
     for (const d of AREA_REAGENT_DROPS[areaId] ?? []) {
@@ -286,6 +291,7 @@ function buildSources(): Map<string, DropSource[]> {
     const def = BOSSES[b];
     const area = def.area;
     for (const [id, share] of tableShares(area)) {
+      if (isProfessionMaterial(id) && !id.startsWith('gem_')) continue; // paid as gold; gems stay a boss's treasure
       add(id, { kind: 'boss', placeId: b, place: def.name, event: 'Boss kill', chance: 1 - Math.pow(1 - share, 3), qty: mq(id), area, ilvlSource: 'boss', note: '3 rolls of the area table' });
     }
     if (b !== 'prelate') {
@@ -317,8 +323,9 @@ function buildSources(): Map<string, DropSource[]> {
     const rolls = chestDrops(firstChest) - 1;
     for (const [id, share] of shares) {
       const dq = mq(id);
-      add(id, { kind: 'depths', placeId, place, event: 'Ordinary kill', chance: pOrdinary * share, qty: mq(id, KILL_LOOT.materialQtyMult), area, ilvlSource: 'elite' });
-      add(id, { kind: 'depths', placeId, place, event: 'Elite kill', chance: pElite * share, qty: dq, area, ilvlSource: 'elite' });
+      if (isProfessionMaterial(id) && !id.startsWith('gem_')) continue; // paid as gold everywhere in the Depths
+      if (!isProfessionMaterial(id)) add(id, { kind: 'depths', placeId, place, event: 'Ordinary kill', chance: pOrdinary * share, qty: mq(id, KILL_LOOT.materialQtyMult), area, ilvlSource: 'elite' });
+      if (!isProfessionMaterial(id)) add(id, { kind: 'depths', placeId, place, event: 'Elite kill', chance: pElite * share, qty: dq, area, ilvlSource: 'elite' });
       add(id, { kind: 'depths', placeId, place, event: 'Floor cleared (stair)', chance: FLOOR_DROP_CHANCE * share, qty: dq, area, ilvlSource: 'elite', note: `${Math.round(FLOOR_DROP_CHANCE * 100)}% chance of one item` });
       if (chestHere) {
         // The first drop of a chest is gear (rolled until the table yields some); the rest are plain rolls of the table.
@@ -702,10 +709,14 @@ export function gearForSlot(slot: EquipSlot): AtlasItem[] {
 }
 
 /** Gear with no way to get it (no drop, no recipe, no gathering find): the data findings list reads this. */
+/** Items no longer found anywhere; bags may still hold them (Copper Shards still smelt into bars). */
+export const RETIRED_ITEMS: ReadonlySet<string> = new Set(['material_copper_shard']);
+
 export function unobtainable(): string[] {
   const a = getAtlas();
   return [...a.items.keys()].filter((id) => {
     const it = a.items.get(id)!;
+    if (RETIRED_ITEMS.has(id)) return false;
     if (it.rarity === 'legendary' && ARMOR_BY_ID[id]?.collection === 3) return false;
     return !(a.sources.get(id)?.length) && !(a.madeBy.get(id)?.length);
   });

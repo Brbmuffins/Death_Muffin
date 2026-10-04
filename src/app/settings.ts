@@ -4,6 +4,7 @@
  * storage can be unavailable (private windows, blocked site data).
  */
 import { isFpsCap, type FpsCap } from './framePacing';
+import { LOOT_FILTERS, type LootFilter } from '../gameplay/lootFilter';
 import { isDifficulty, type Difficulty } from '../content/difficulty';
 
 export type Quality = 'high' | 'low';
@@ -36,6 +37,8 @@ export interface Settings {
   autoCombat: boolean;
   /** When a gathering node depletes, walk on to the nearest one of the same kind. */
   autoGather: boolean;
+  /** Gear below this rarity is paid out as gold instead of dropping (gameplay/lootFilter.ts). Default: everything drops. */
+  lootFilter: LootFilter;
 }
 
 const OFFLINE_PREFIX = import.meta.env.VITE_OFFLINE_BUILD === '1' ? 'dm_offline_' : '';
@@ -61,7 +64,7 @@ function defaults(): Settings {
     /* no matchMedia */
   }
   const touchFirst = isTouchFirst();
-  return { quality: touchFirst ? 'low' : 'high', fps: touchFirst ? 30 : 0, graphicsChosen: false, autoResolution: true, reducedMotion: reduced, damageNumbers: true, hideHelm: false, volume: 0.6, combatVolume: 1, ambienceVolume: 1, interfaceVolume: 1, tips: true, guidance: true, guidancePing: true, difficulty: 'medium', autoCombat: false, autoGather: true };
+  return { quality: touchFirst ? 'low' : 'high', fps: touchFirst ? 30 : 0, graphicsChosen: false, autoResolution: true, reducedMotion: reduced, damageNumbers: true, hideHelm: false, volume: 0.6, combatVolume: 1, ambienceVolume: 1, interfaceVolume: 1, tips: true, guidance: true, guidancePing: true, difficulty: 'medium', autoCombat: false, autoGather: true, lootFilter: 'any' };
 }
 
 function load(): Settings {
@@ -86,6 +89,7 @@ function load(): Settings {
       // Desktop players who never picked a rate get Max: the old 60 default was a cap that throttled 120/144 Hz screens.
       if (!s.graphicsChosen && !isTouchFirst()) s.fps = 0;
       if (!isDifficulty(s.difficulty)) s.difficulty = base.difficulty;
+      if (!LOOT_FILTERS.some((f) => f.id === s.lootFilter)) s.lootFilter = base.lootFilter;
       // Old browser-wide play settings cannot be attributed to an account.
       // Each character starts on Medium until its own preference is loaded.
       s.difficulty = base.difficulty;

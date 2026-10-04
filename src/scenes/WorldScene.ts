@@ -48,6 +48,8 @@ import { AscensionPanel } from '../ui/AscensionPanel';
 import { ClassPanel } from '../ui/ClassPanel';
 import { changeDiscipline, getContracts, getCosmetics, getGarden, getLabor, type LaborView, type ContractDelivery, type CosmeticsView, type GardenResult, type LaborResult } from '../net/api';
 import { canUseAutoCombat, onSettingsChange, setActiveCharacter, settings, updateSettings } from '../app/settings';
+import { filteredOut } from '../gameplay/lootFilter';
+import { keepsForYou } from '../ui/gearText';
 import { selectAutoCombatAction, selectAutoCombatMovement, type AutoMoveMemory } from '../gameplay/autoCombat';
 import { BossTelegraphs, poolHazard, type Hazard } from '../gameplay/autoDodge';
 import { STATUS_FX } from '../content/statuses';
@@ -4333,7 +4335,7 @@ export class WorldScene implements GameScene, RuntimeView {
     // Tonic of wisdom: a share more experience from every kill.
     reward.xp = Math.round(reward.xp * asc * (1 + this.player.brewValue('wisdom', this.now)));
     // Gold pools over a few kills into one bigger pile (same total, a fraction of the clutter); elites always pay out.
-    this.goldPool.amount += reward.gold;
+    this.goldPool.amount += reward.gold + reward.materialGold;
     if (ev.elite || ++this.goldPool.kills >= KILL_LOOT.goldEveryKills) {
       this.loot.gold(ev.x, ev.z, this.goldPool.amount);
       this.goldPool.amount = this.goldPool.kills = 0;
@@ -4367,7 +4369,18 @@ export class WorldScene implements GameScene, RuntimeView {
     if (!gear.length) return;
     void this.lootRoller.attach(gear, level, source).then(() => {
       if (!this.lootAlive) return;
-      for (const item of gear) this.loot.item(x, z, item);
+      // Settings -> Loot filter: gear below the chosen rarity is paid out as its sell value instead of landing (gameplay/lootFilter.ts).
+      const keep = settings.lootFilter === 'any' ? undefined : keepsForYou(this.statContext());
+      let filteredGold = 0;
+      for (const item of gear) {
+        const slot = settings.lootFilter === 'any' ? null : addToSlots([], item)?.[0];
+        if (slot && filteredOut(slot, settings.lootFilter, keep)) filteredGold += slot.sell_value * item.quantity;
+        else this.loot.item(x, z, item);
+      }
+      if (filteredGold > 0) {
+        this.progression.addGold(filteredGold);
+        this.floating.spawn(x, 2.1, z, `+${filteredGold}g`, 'gold');
+      }
     });
   }
 
@@ -5275,7 +5288,7 @@ export class WorldScene implements GameScene, RuntimeView {
           const bossRune = rollBossRune(def.id, firstTrophy);
           if (bossRune) reward.items.push(bossRune);
           if (def.id !== 'prelate') this.progression.reportBoss({ boss: def.id, tier: this.bossWaveTier(), diff: this.worldDifficulty(), first: firstTrophy, ...(ev.empowered && this.empowerPending === def.id && this.empowerSummonId ? { summon: this.empowerSummonId } : {}) });
-          this.loot.gold(ev.x, ev.z, reward.gold);
+          this.loot.gold(ev.x, ev.z, reward.gold + reward.materialGold);
           this.loot.shard(ev.x, ev.z, reward.shards);
           const bossLevel = AREAS[def.area].level + this.worldLevels();
           this.dropItems(ev.x, ev.z, reward.items, bossLevel, 'boss');

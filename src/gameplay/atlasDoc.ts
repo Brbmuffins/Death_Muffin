@@ -11,7 +11,7 @@ import { ALL_RECIPE_ROWS } from '../content/recipes';
 import { ARMOR_PIECES } from '../content/armorSets';
 import { AFFIXES, affixRange, affixText } from './affixRules';
 import { NODES, SKILLS } from './gatheringRules';
-import { KILL_LOOT } from './loot';
+import { KILL_LOOT, isProfessionMaterial } from './loot';
 import { STAT_PRIORITY, RECOMMENDED_WEAPONS } from './gearStats';
 import { NECRO_KIND_LABEL } from '../content/necroWeapons';
 import { RELIC_ORDERS, RELIC_PREMIUM, RELIC_CHANCE } from './contractRules';
@@ -47,7 +47,11 @@ function areaSection(areaId: AreaId): string {
   out.push(`### ${a.name}`);
   out.push(`*Level ${a.level}${a.scaling ? ` (scaled: its dead match the highest-level player, never below ${a.scaling.minLevel})` : ''}${a.unlock ? `, opens after ${a.unlock.kills} kills in ${AREAS[a.unlock.area].name}` : ''}. Area item chance ${ordinal(a.itemChance)}: an ordinary kill rolls ${ordinal(pO)}, an elite kill ${ordinal(pE)}, then picks from the table by weight. ${ordinal(a.eliteChance)} of spawns are elites.*`);
   out.push('');
-  const shares = [...tableShares(areaId)].sort((x, y) => y[1] - x[1]);
+  // The dead drop no profession materials: those table entries pay their sell value in gold (loot.ts settleCombatDrop).
+  const all = [...tableShares(areaId)].sort((x, y) => y[1] - x[1]);
+  const shares = all.filter(([id]) => !isProfessionMaterial(id));
+  const paid = all.filter(([id]) => isProfessionMaterial(id));
+  if (paid.length) out.push(`*Paid as gold instead of dropping (${pct(paid.reduce((n, [, sh]) => n + sh, 0))} of the table): ${paid.map(([id]) => name(id)).join(', ')}. Gather these.*`, '');
   const rows = shares.map(([id, share]) => {
     const list = atlas.sources.get(id);
     const k = find(list, (s) => s.placeId === areaId && s.kind === 'kill' && s.event === 'Ordinary kill');
