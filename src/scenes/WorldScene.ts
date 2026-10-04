@@ -335,7 +335,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private ownedItemIds = (): ReadonlySet<string> => new Set(this.inventory.all.map((s) => s.item_id));
   /** When the 'Reliquary full' call-out last showed (loot is retried every frame under the player's feet). */
   private bagFullAt = -1e9;
-  private bagFullToastAt = -1e9;
+  /** The "bag is full" toast was shown and the bag has not had room since: it is said once per filling, not per pickup/swing. */
+  private bagFullNoticed = false;
   private lastSnapshot = 0;
   /** World wave tier last frame (milestone banners) and the Nightfall light blend 0..1. */
   private seenWaveTier = -1;
@@ -753,6 +754,11 @@ export class WorldScene implements GameScene, RuntimeView {
       if (this.effects.binbun.enabled) preloadBinbun(GROUND_FX_PRELOAD);
     }));
     this.scope.add(this.inventory.onChange(() => this.refreshStats()));
+    this.scope.add(this.inventory.onChange((slots) => {
+      this.loot.unpark();
+      // Room again (a free bag slot): the next time something does not fit, say so once more.
+      if (slots.filter((x) => x.slot_index < BAG_SIZE).length < BAG_SIZE) this.bagFullNoticed = false;
+    }));
     this.scope.add(this.inventory.onChange(() => { this.brewRev++; }));
     this.scope.on(window, 'pagehide', () => {
       void this.progression.flush(true);
@@ -2616,6 +2622,16 @@ export class WorldScene implements GameScene, RuntimeView {
     await this.gathering.flush();
   }
 
+  /**
+   * Owner, 2026-10-03: the full-bag toasts felt spammy (one per gathering swing, listing different items each time, plus one a minute
+   * from loot). Now it is one toast per filling: shown the first time something does not fit, then quiet until the bag has room again.
+   */
+  private bagFullNotice() {
+    if (this.bagFullNoticed) return;
+    this.bagFullNoticed = true;
+    this.hud.toast('Your Reliquary is full. Sell spare gear (Sell all junk) or, back in the Chapterhouse or the Acre, store materials in the Vault (V). What you cannot carry waits on the ground.', 'err');
+  }
+
   private onGatherReply(r: GatherReply) {
     this.gatherSession?.record(r);
     this.celebrateCharms(r.items);
@@ -2626,7 +2642,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.floating.spawn(this.player.x, 2.1, this.player.z, `+${r.gold}g`, 'gold');
     }
     if (r.rejected.length) {
-      this.hud.toast(`Your bag is full: ${r.rejected.map((g) => `${g.qty}× ${itemMeta(g.itemId).name}`).join(', ')} left behind.`, 'err');
+      this.bagFullNotice();
       if (this.gathering.afk) this.gathering.stop('bagFull');
     }
     const rare = r.items.filter((g) => g.itemId !== NODES[r.node]?.item);
@@ -4540,19 +4556,16 @@ export class WorldScene implements GameScene, RuntimeView {
     const got = this.loot.update(dt, p.x, p.z, (d) => {
       if (!this.inventory.add(d)) {
         // Asked every frame while standing on the drop: say it once in a while, not 60 times a second.
-        if (now - this.bagFullAt > 2500) {
+        // The call-out over the hero is the quiet reminder; the toast that says what to do comes once per filling.
+        if (now - this.bagFullAt > 8000) {
           this.bagFullAt = now;
           this.floating.spawn(p.x, 2.4, p.z, 'Reliquary full', 'info');
-          // Say what to do about it, but only now and then (the call-out above is the reminder).
-          if (now - this.bagFullToastAt > 60000) {
-            this.bagFullToastAt = now;
-            this.hud.toast('Your Reliquary is full. Sell spare gear (Sell all junk) or, back in the Chapterhouse or the Acre, store materials in the Vault (V). What you cannot carry waits on the ground.', 'err');
-          }
         }
+        this.bagFullNotice();
         return false;
       }
       return true;
-    });
+    }, (d) => addToSlots(this.inventory.all, d) !== null);
     if (got.gold) {
       audio.play('coin');
       this.progression.addGold(got.gold);

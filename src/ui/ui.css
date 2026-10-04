@@ -790,7 +790,8 @@ button { font-family: inherit; }
 /* Banners, toasts, prompts */
 .hud-banner {
   position: absolute;
-  top: 22%;
+  /* Below the toast stack (top 64px, up to three lines); never higher than 210px so they cannot meet on short screens. */
+  top: max(24%, 210px);
   left: 50%;
   transform: translate(-50%, -8px);
   text-align: center;
@@ -803,9 +804,13 @@ button { font-family: inherit; }
 .hud-banner .s { font-family: var(--cw-font-display); font-style: italic; font-size: 20px; color: var(--cw-bone-300); text-shadow: 0 2px 8px #000; }
 .hud-banner .rule { width: 260px; height: 1px; margin: 8px auto; background: linear-gradient(90deg, transparent, var(--cw-spell-300), transparent); }
 
-.hud-toasts { position: absolute; top: 140px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; transition: transform 0.25s ease; }
-/* While a banner (level up, new area) is on screen the toasts step down beneath it instead of printing over it. */
-.hud:has(.hud-banner.show) .hud-toasts { transform: translateX(-50%) translateY(150px); }
+/* Owner, 2026-10-03: alerts stay at the top of the screen. They used to step down 150px under a level-up / new-area banner, which
+   put them right on top of it; now they keep their place and the banner sits lower (see .hud-banner). During a boss fight they sit
+   just under the boss bar. */
+.hud-toasts { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; transition: top 0.25s ease; }
+.hud:has([data-boss]:not([hidden])) .hud-toasts { top: 112px; }
+/* Under the boss bar there is room for two lines above the banner: show the newest two. */
+.hud:has([data-boss]:not([hidden])) .hud-toasts .hud-toast:nth-last-child(n+3) { display: none; }
 @media (min-width: 1100px) {
   .hud-toasts .hud-toast { max-width: 480px; }
 }
