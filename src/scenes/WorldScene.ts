@@ -1312,7 +1312,7 @@ export class WorldScene implements GameScene, RuntimeView {
     }, () => this.inventory.all.map((s) => s.item_id));
     this.professionsPanel.beltItems = () => this.inventory.all.filter((s) => isBeltSlot(s.slot_index)).map((s) => s.item_id);
     this.cosmeticsPanel = new CosmeticsPanel(this.charWin.slot('pets'), this.character.id, this.inventory, (v) => this.applyCosmetics(v.selected));
-    this.laborPanel = new LaborPanel(this.acreWin.slot('labor'), this.character.id, this.inventory, (skill) => this.skills.level(skill), (r) => this.onLaborCollected(r));
+    this.laborPanel = new LaborPanel(this.acreWin.slot('labor'), this.character.id, this.inventory, (skill) => this.skills.level(skill), (r, slot) => this.onLaborCollected(r, slot));
     this.laborPanel.onView = (v) => { this.laborers.apply(v); this.noteLabor(v); };
     this.gardenPanel = new GardenPanel(this.acreWin.slot('garden'), this.character.id, this.inventory, (kind, r) => this.onGardenResult(kind, r));
     this.contractsPanel = new ContractsPanel(this.acreWin.slot('contracts'), this.character.id, this.inventory, (d) => this.onContractDelivered(d));
@@ -1499,8 +1499,8 @@ export class WorldScene implements GameScene, RuntimeView {
     }
   }
 
-  /** A laborer came home: credit gold and the skill, count the finds, and show what they brought in the Ledger. */
-  private onLaborCollected(r: LaborResult) {
+  /** A laborer came home: credit gold and the skill, count the finds, and list what they brought under the laborers (the window stays open). */
+  private onLaborCollected(r: LaborResult, slot: number) {
     const c = r.collected;
     if (!c) return;
     this.celebrateCharms(c.items);
@@ -1522,8 +1522,7 @@ export class WorldScene implements GameScene, RuntimeView {
       const after = this.skills.level(skill);
       const milestones = crossedMilestones(lifeBefore, lifeBefore + total).map((m) => `${m.toLocaleString()} ${SKILLS[skill].name} finds`);
       if (after > before) milestones.push(`${SKILLS[skill].name} level ${after}`);
-      this.closePanels();
-      this.gatherReportPanel.show({
+      this.laborPanel.addLoot(slot, {
         seconds: Math.round(c.hours * 3600), reason: 'labor', items, totalItems: total, goldValue: items.reduce((n, i) => n + i.value, 0), gold: c.gold,
         skills: [{ skill, name: SKILLS[skill].name, xp: c.xp, fromLevel: before, toLevel: after, items: total }],
         best: best && rank[best.rarity] > 0 ? best : null, milestones, records: [],

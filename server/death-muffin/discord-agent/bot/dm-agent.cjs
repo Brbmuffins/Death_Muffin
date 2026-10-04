@@ -15,11 +15,18 @@ const IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 const IMAGES_PER_MESSAGE = 4;
 const CDN = /^https:\/\/(cdn\.discordapp\.com|media\.discordapp\.net)\//;
 
-function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile = fetch, channelIdOverride = '', log = console.log, pollWaitSec = 25 }) {
+function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile = fetch, channelIdOverride = '', log = console.log, pollWaitSec = 25, retryDelays = [1000, 2000, 4000, 8000, 15000] }) {
   let cachedChannel = channelIdOverride || ''; let cachedAt = 0; let stopped = false;
   const headers = { 'content-type': 'application/json', 'x-dm-secret': secret };
+  // Messages, reactions and thread events are retried for ~30 s when the runner is unreachable (it restarts in a couple of seconds after an
+  // update), so nothing someone types during a restart is lost. Only connection failures retry; an HTTP error answer is final.
   async function call(path, body) {
-    const res = await fetchImpl(`${runnerUrl}${path}`, { method: body === undefined ? 'GET' : 'POST', headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    const once = () => fetchImpl(`${runnerUrl}${path}`, { method: body === undefined ? 'GET' : 'POST', headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    let res;
+    for (let i = 0; ; i++) {
+      try { res = await once(); break; }
+      catch (e) { if (!(path === '/event' || path === '/bind') || i >= retryDelays.length) throw e; await new Promise((r) => setTimeout(r, retryDelays[i])); }
+    }
     if (!res.ok) throw new Error(`runner ${path} -> ${res.status}`);
     return res.json();
   }
@@ -98,6 +105,14 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
     } catch (e) { log('[dm-agent] reaction handler error', e.message); }
   }
 
+  // A thread deleted in Discord: tell the runner so it can drop the job's workspace/branch/preview right away.
+  async function onThreadDelete(thread) {
+    try {
+      const chan = await channelId(); if (!thread || !chan || String(thread.parentId) !== String(chan)) return;
+      await call('/event', { type: 'thread-deleted', threadId: thread.id, parentId: thread.parentId, channelId: thread.parentId });
+    } catch (e) { log('[dm-agent] thread delete handler error', e.message); }
+  }
+
   async function exec(op) {
     const t = op.target || {};
     const ch = await client.channels.fetch(t.threadId || t.channelId);
@@ -129,7 +144,7 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
   async function loop() {
     while (!stopped) { try { await pollOnce(); } catch (e) { log('[dm-agent] poll error', e.message); await new Promise((r) => setTimeout(r, 5000)); } }
   }
-  return { onMessage, onReaction, pollOnce, loop, stop: () => { stopped = true; }, channelId };
+  return { onMessage, onReaction, onThreadDelete, pollOnce, loop, stop: () => { stopped = true; }, channelId };
 }
 
 function attach(client, env = process.env) {
@@ -137,6 +152,7 @@ function attach(client, env = process.env) {
   const ad = createAdapter({ client, runnerUrl: env.DM_AGENT_URL || 'http://127.0.0.1:4321', secret: env.DM_AGENT_SECRET, channelIdOverride: env.DM_AGENT_CHANNEL_ID || '' });
   client.on('messageCreate', (m) => ad.onMessage(m));
   client.on('messageReactionAdd', (r, u) => ad.onReaction(r, u));
+  client.on('threadDelete', (t) => ad.onThreadDelete(t));
   client.once('clientReady', () => { ad.loop(); console.log('[dm-agent] adapter running'); });
   return ad;
 }
