@@ -5,7 +5,7 @@
     "items": [
       "Windows: the title and close button are now a fixed header; only the contents scroll beneath it.",
       "Windows: a Back to top button appears as you scroll down, so the tabs at the top are one click away, and tucks away 2 seconds after you stop.",
-      "Workbench: a new Only show craftable checkbox hides every recipe you lack the skill or materials for. It applies to every crafting page and is remembered.",
+      "Workbench: a new Only show craftable checkbox hides every recipe you lack the skill or materials for. It applies to every crafting page and follows your account to any browser or device.",
       "Reliquary: a new Sort button merges stacks and orders your bag by type, rarity, item level and name.",
       "Vault: new Take materials and Take all buttons move things back into your bag in one click, as far as it fits.",
       "Performance: fixed a graphics memory leak that grew with every kill, thralls no longer stutter while following you, and walking under the arches no longer hitches.",

@@ -15,7 +15,7 @@ export function hasSkillAndMaterials(recipe: Pick<Recipe, 'ingredients' | 'skill
   return skill >= recipe.skill_level_required && recipe.ingredients.every((ing) => count(ing.item_id) >= ing.quantity);
 }
 
-/** The filter is one browser-local setting for every crafting page (the Workbench and each Acre station), not per character. */
+/** The browser copy of the filter: one setting for every crafting page (the Workbench and each Acre station), not per character. The account's copy (net/accountPrefs.ts) wins when it can be reached. */
 export const ONLY_CRAFTABLE_KEY = 'dm_only_craftable';
 
 export function loadOnlyCraftable(storage: Pick<Storage, 'getItem'> | null): boolean {

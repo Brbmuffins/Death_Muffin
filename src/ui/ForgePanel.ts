@@ -6,6 +6,7 @@ import { bonusAvailable, brewOfTheDay, claimBonus } from '../content/wing';
 import { itemMeta } from '../content/items';
 import { BAG_SIZE } from '../gameplay/loot';
 import { clampCraftQty, hasSkillAndMaterials, loadOnlyCraftable, maxCraftable, saveOnlyCraftable } from '../gameplay/craftQuantity';
+import { PREF_ONLY_CRAFTABLE, fetchAccountPrefs, reconcileBoolPref, saveAccountPref } from '../net/accountPrefs';
 import { ReforgeView, type ReforgeHost } from './ReforgeView';
 import { wrapPanelBody } from './panelBody';
 
@@ -36,7 +37,7 @@ export class ForgePanel {
   private professions: Profession[] = [];
   private tab: Tab = 'mining';
   private busy = false;
-  /** The "Only show craftable" checkbox: one persistent setting shared by every tab and station (read on open). */
+  /** The "Only show craftable" checkbox: one account setting shared by every tab and station (browser copy first, then the account's). */
   private onlyCraftable = false;
   /** The quantity picked per recipe (session only). */
   private qty = new Map<string, number>();
@@ -98,10 +99,26 @@ export class ForgePanel {
     this.onlyCraftable = loadOnlyCraftable(browserStorage());
     const only = this.el.querySelector<HTMLInputElement>('[data-only-craftable]')!;
     only.checked = this.onlyCraftable;
+    const panel = this.el;
+    let touched = false;
     only.addEventListener('change', () => {
+      touched = true;
       this.onlyCraftable = only.checked;
       saveOnlyCraftable(browserStorage(), this.onlyCraftable);
+      void saveAccountPref(PREF_ONLY_CRAFTABLE, this.onlyCraftable);
       this.render();
+    });
+    // The account's copy follows the player to any browser: it wins once it arrives (unless they already clicked), the browser copy
+    // above shows meanwhile, and stays when the account cannot be reached (offline, offline edition).
+    void fetchAccountPrefs().then((remote) => {
+      if (touched || this.el !== panel) return;
+      const settled = reconcileBoolPref(this.onlyCraftable, remote, PREF_ONLY_CRAFTABLE);
+      if (settled.pushUp) void saveAccountPref(PREF_ONLY_CRAFTABLE, settled.value);
+      if (settled.value === this.onlyCraftable) return;
+      this.onlyCraftable = settled.value;
+      only.checked = settled.value;
+      saveOnlyCraftable(browserStorage(), settled.value);
+      if (this.tab !== 'reforge' && this.recipes.length) this.render();
     });
     this.root.appendChild(this.el);
     await this.load();
