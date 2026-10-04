@@ -1,0 +1,43 @@
+[gd_scene format=3]
+
+[ext_resource type="Shader" path="res://assets/fx/binbun/shaders/7737143f2bfba0b1.gdshader" id="1_lbckg"]
+[ext_resource type="Script" path="res://fx/dm_fx_rect.gd" id="2_d0t4k"]
+
+[sub_resource type="Gradient" id="Gradient_ycdy4"]
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_w48qg"]
+gradient = SubResource("Gradient_ycdy4")
+
+[sub_resource type="Gradient" id="Gradient_w48qg"]
+colors = PackedColorArray(0, 0, 0, 1, 0.9, 0.9, 0.9, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_vivmo"]
+gradient = SubResource("Gradient_w48qg")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_kek77"]
+shader = ExtResource("1_lbckg")
+shader_parameter/base_color = Color(0, 0, 0, 1)
+shader_parameter/node_resolution = Vector2(1152, 648)
+shader_parameter/factor = 0.5
+shader_parameter/width = 0.3
+shader_parameter/gradient_texture = SubResource("GradientTexture2D_w48qg")
+shader_parameter/gradient_fixed = false
+shader_parameter/shape_texture = SubResource("GradientTexture2D_vivmo")
+shader_parameter/shape_tiling = 32.0
+shader_parameter/shape_rotation = 0.0
+shader_parameter/shape_scroll = Vector2(0, 0.1)
+shader_parameter/shape_feathering = 0.0
+shader_parameter/shape_treshold = 1.005
+
+[node name="TBlades" type="ColorRect"]
+material = SubResource("ShaderMaterial_kek77")
+anchors_preset = 15
+anchor_right = 1
+anchor_bottom = 1
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_d0t4k")
+gradient_texture = SubResource("GradientTexture2D_w48qg")
+shape_texture = SubResource("GradientTexture2D_vivmo")
+shape_scroll = Vector2(0, 0.1)
+shape_treshold = 1.005

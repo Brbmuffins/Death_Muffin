@@ -1,0 +1,8 @@
+[gd_resource type="NoiseTexture2D" format=3]
+
+[ext_resource type="FastNoiseLite" path="res://assets/fx/binbun/lib/Water/assets/BinbunWater/src/texture/wave/wave_02/wave_noise_02.tres" id="1_pnvef"]
+
+[resource]
+noise = ExtResource("1_pnvef")
+seamless = true
+seamless_blend_skirt = 0.4

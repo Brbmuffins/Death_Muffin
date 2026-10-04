@@ -1,0 +1,2561 @@
+{
+ "spell_fx": {
+  "warden": {
+   "gold": 15906891,
+   "fire": 16742954,
+   "ash": 7027492
+  },
+  "monk": {
+   "gold": 15260064,
+   "sound": 16183779,
+   "bronze": 13216362
+  },
+  "witch": {
+   "blood": 10099498,
+   "hex": 10924106,
+   "crow": 1709080
+  },
+  "veilwalker": {
+   "cyan": 12579839,
+   "mist": 14674414,
+   "deep": 6721194
+  },
+  "needle": {
+   "core": 15984850,
+   "trail": 15321487,
+   "impact": 16773590,
+   "dust": 14208957
+  },
+  "spear": {
+   "bone": 14735042,
+   "crack": 11817006,
+   "dust": 4864560,
+   "marrow": 9055292
+  },
+  "exhume": {
+   "spirit": 7332808,
+   "deep": 2068358,
+   "beam": 10483168
+  },
+  "miasma": {
+   "rot": 11059770,
+   "deep": 5204767,
+   "spore": 2831127
+  },
+  "litany": {
+   "core": 10181887,
+   "hot": 15128319,
+   "void": 1444388
+  },
+  "detonate": {
+   "ember": 16738858,
+   "hot": 16762250,
+   "crimson": 9055292,
+   "bone": 14735042,
+   "smoke": 2758164
+  },
+  "souls": {
+   "jade": 7332808,
+   "deep": 2068358,
+   "pale": 10483168
+  },
+  "thrall": {
+   "spark": 15261644,
+   "wraith": 9417983
+  },
+  "enemy": {
+   "toll": 14263361,
+   "rot": 8364122,
+   "curse": 9058890,
+   "slam": 10119738,
+   "toxic": 7311162,
+   "dust": 12098138,
+   "dustDeep": 4865316,
+   "dive": 13144634,
+   "dirt": 6965808,
+   "ember": 16742954,
+   "emberDeep": 4855304,
+   "emberCore": 16761946,
+   "hex": 12730522
+  },
+  "affix": {
+   "bell": 14263361,
+   "drool": 9080618,
+   "shroud": 3814472,
+   "vengeful": 14701866
+  },
+  "surge": {
+   "crack": 13144634,
+   "glow": 14263361
+  },
+  "boss": {
+   "bronze": 14263361,
+   "shard": 13148266,
+   "spirit": 12175615
+  },
+  "knight": {
+   "steel": 12107980,
+   "oath": 9051948,
+   "pale": 15133682,
+   "dust": 4867904
+  },
+  "wall": {
+   "bone": 15260864,
+   "amber": 14263915,
+   "dust": 6969928
+  },
+  "rend": {
+   "jade": 7332808,
+   "pale": 13172720,
+   "bone": 14735042
+  },
+  "dirge": {
+   "frost": 10470655,
+   "deep": 5996502,
+   "pale": 14543103
+  },
+  "bloom": {
+   "petal": 13099082,
+   "rot": 7311138,
+   "spore": 2831127
+  },
+  "skull": {
+   "jade": 7332808,
+   "pale": 13172720,
+   "deep": 2068358
+  },
+  "step": {
+   "blood": 12728904,
+   "crimson": 9055292,
+   "mist": 3805720,
+   "hot": 16762250
+  },
+  "frost": {
+   "frost": 10470655,
+   "deep": 5996502,
+   "pale": 14543103
+  },
+  "mantle": {
+   "bone": 13617336,
+   "gold": 12103060,
+   "amber": 9207140,
+   "dust": 5918790
+  },
+  "lance": {
+   "rot": 13099082,
+   "deep": 7311138,
+   "spore": 2831127
+  },
+  "siphon": {
+   "jade": 7332808,
+   "pale": 10483168,
+   "deep": 2068358
+  },
+  "prison": {
+   "bone": 13617336,
+   "dust": 5918790,
+   "amber": 9207140
+  },
+  "hands": {
+   "earth": 3812898,
+   "bone": 13617336,
+   "seep": 7332808
+  },
+  "storm": {
+   "bone": 13617336,
+   "ash": 9077624,
+   "dust": 5918790
+  },
+  "veil": {
+   "jade": 7332808,
+   "pale": 14543103,
+   "deep": 2068358
+  }
+ },
+ "necro_matter": {
+  "bone": 14735042,
+  "boneDeep": 12103060,
+  "dirt": 7231553,
+  "dirtDeep": 3812898,
+  "dust": 10127986
+ },
+ "presets": {
+  "needle_hit": {
+   "colors": [
+    16773590,
+    15321487,
+    14208957
+   ],
+   "scale": 0.4,
+   "y": 1
+  },
+  "crit_hit": {
+   "colors": [
+    16773590,
+    15321487,
+    14208957
+   ],
+   "scale": 0.6,
+   "y": 1
+  },
+  "bone_fan_hit": {
+   "colors": [
+    16773590,
+    15321487,
+    14208957
+   ],
+   "scale": 0.35,
+   "y": 1
+  },
+  "ivory_cleave_hit": {
+   "colors": [
+    14735042,
+    11817006,
+    9055292
+   ],
+   "scale": 0.45,
+   "y": 0.9
+  },
+  "rot_lance_projectile": {
+   "colors": [
+    13099082,
+    7311138,
+    2831127
+   ],
+   "scale": 0.55
+  },
+  "toxic_stink": {
+   "colors": [
+    11059770,
+    5204767,
+    2831127
+   ],
+   "scale": 0.45,
+   "alpha": 0.8
+  },
+  "miasma_cloud": {
+   "colors": [
+    11059770,
+    5204767,
+    2831127
+   ],
+   "scale": 1,
+   "alpha": 0.85
+  },
+  "plague_bloom_area": {
+   "colors": [
+    13099082,
+    7311138,
+    2831127
+   ],
+   "scale": 0.9,
+   "alpha": 0.85
+  },
+  "corpse_explosion": {
+   "colors": [
+    16738858,
+    16762250,
+    9055292
+   ],
+   "scale": 0.8
+  },
+  "grave_frost_mist": {
+   "colors": [
+    14543103,
+    10470655,
+    5996502
+   ],
+   "scale": 0.9,
+   "alpha": 0.8
+  },
+  "frost_shard_hit": {
+   "colors": [
+    14543103,
+    10470655,
+    5996502
+   ],
+   "scale": 0.45,
+   "y": 0.6
+  },
+  "dirge_area": {
+   "colors": [
+    10470655,
+    5996502,
+    14543103
+   ],
+   "scale": 0.85,
+   "alpha": 0.55
+  },
+  "litany_pulse": {
+   "colors": [
+    10181887,
+    15128319,
+    1444388
+   ],
+   "scale": 1,
+   "alpha": 0.9
+  },
+  "soul_harvest_pillar": {
+   "colors": [
+    7332808,
+    2068358,
+    10483168
+   ],
+   "scale": 0.6,
+   "alpha": 0.8
+  },
+  "exhume_lift": {
+   "colors": [
+    7332808,
+    2068358,
+    10483168
+   ],
+   "scale": 0.5,
+   "alpha": 0.75
+  },
+  "thrall_rise": {
+   "colors": [
+    7332808,
+    2068358,
+    10483168
+   ],
+   "scale": 0.45,
+   "alpha": 0.7
+  },
+  "grave_step_smoke": {
+   "colors": [
+    3805720,
+    9055292,
+    12728904
+   ],
+   "scale": 0.7
+  },
+  "wailing_skull_projectile": {
+   "colors": [
+    7332808,
+    13172720,
+    2068358
+   ],
+   "scale": 0.45
+  },
+  "grave_offering_orb": {
+   "colors": [
+    7332808,
+    10483168,
+    2068358
+   ],
+   "scale": 0.45,
+   "y": 1.2
+  },
+  "grave_offering_ripple": {
+   "colors": [
+    7332808,
+    2068358,
+    10483168
+   ],
+   "scale": 0.55,
+   "alpha": 0.85
+  },
+  "rally_area": {
+   "colors": [
+    7332808,
+    13172720,
+    14735042
+   ],
+   "scale": 0.7,
+   "alpha": 0.8
+  },
+  "rally_thrall_rim": {
+   "colors": [
+    7332808,
+    13172720,
+    14735042
+   ],
+   "scale": 0.35,
+   "alpha": 0.7
+  },
+  "carrion_seed_armed": {
+   "colors": [
+    13099082,
+    7311138,
+    2831127
+   ],
+   "scale": 0.35
+  },
+  "carrion_seed_burst": {
+   "colors": [
+    13099082,
+    7311138,
+    2831127
+   ],
+   "scale": 0.9
+  },
+  "toxic_puddle": {
+   "colors": [
+    11059770,
+    5204767,
+    2831127
+   ],
+   "scale": 0.7,
+   "alpha": 0.7
+  },
+  "veil_step_trail": {
+   "colors": [
+    14543103,
+    7332808,
+    2068358
+   ],
+   "scale": 0.5,
+   "y": 0.6,
+   "alpha": 0.8
+  },
+  "wall_raise": {
+   "colors": [
+    15260864,
+    14263915,
+    6969928
+   ],
+   "scale": 0.7
+  },
+  "rend_impact": {
+   "colors": [
+    7332808,
+    13172720,
+    14735042
+   ],
+   "scale": 0.5
+  },
+  "levelup_pillar": {
+   "colors": [
+    15321487,
+    14263361,
+    15984850
+   ],
+   "scale": 0.6,
+   "alpha": 0.8
+  },
+  "soul_orb": {
+   "colors": [
+    7332808,
+    10483168,
+    2068358
+   ],
+   "scale": 0.35,
+   "y": 0.6
+  },
+  "bone_prison_burst": {
+   "colors": [
+    13617336,
+    9207140,
+    5918790
+   ],
+   "scale": 0.55,
+   "y": 0.2
+  },
+  "soul_siphon_beam": {
+   "colors": [
+    7332808,
+    10483168,
+    2068358
+   ],
+   "scale": 0.3,
+   "y": 1.2,
+   "alpha": 0.7
+  },
+  "bone_storm_dust": {
+   "colors": [
+    13617336,
+    9077624,
+    5918790
+   ],
+   "scale": 0.8,
+   "alpha": 0.8
+  },
+  "grave_hands_pulse": {
+   "colors": [
+    7332808,
+    13617336,
+    3812898
+   ],
+   "scale": 0.8,
+   "alpha": 0.75
+  },
+  "censer_incense": {
+   "colors": [
+    14263361,
+    6971992,
+    2762274
+   ],
+   "scale": 0.55,
+   "alpha": 0.6
+  },
+  "vengeful_burst": {
+   "colors": [
+    14701866,
+    16756858,
+    3807760
+   ],
+   "scale": 0.7
+  },
+  "surge_eruption": {
+   "colors": [
+    14263361,
+    13144634,
+    2759184
+   ],
+   "scale": 0.9
+  },
+  "crypt_mist": {
+   "colors": [
+    6971504,
+    3814464,
+    1709598
+   ],
+   "scale": 0.8,
+   "alpha": 0.5
+  },
+  "bell_toll_ring": {
+   "colors": [
+    14263361,
+    15914378,
+    3811856
+   ],
+   "scale": 0.8,
+   "alpha": 0.85
+  },
+  "choir_scream": {
+   "colors": [
+    12175615,
+    8359888,
+    2764880
+   ],
+   "scale": 0.6,
+   "alpha": 0.85
+  },
+  "boss_rain_orb": {
+   "colors": [
+    12175615,
+    14263361,
+    1710634
+   ],
+   "scale": 0.5
+  },
+  "prelate_impact": {
+   "colors": [
+    14263361,
+    13148266,
+    2759184
+   ],
+   "scale": 0.9
+  },
+  "enemy_breach_rim": {
+   "colors": [
+    10181887,
+    8141549,
+    1444388
+   ],
+   "scale": 0.6,
+   "alpha": 0.7
+  },
+  "archer_flash": {
+   "colors": [
+    16773590,
+    15321487,
+    14208957
+   ],
+   "scale": 0.3,
+   "y": 1.2
+  },
+  "interact_rim": {
+   "scale": 0.45,
+   "alpha": 0.55
+  },
+  "altar_beacon": {
+   "colors": [
+    14263361,
+    15914378,
+    3811856
+   ],
+   "scale": 0.55,
+   "alpha": 0.6
+  },
+  "waystone_portal": {
+   "colors": [
+    7332808,
+    2068358,
+    666150
+   ],
+   "scale": 0.4,
+   "y": 1.2,
+   "alpha": 0.7
+  },
+  "brazier_fire": {
+   "colors": [
+    16752704,
+    16734746,
+    4198408
+   ],
+   "scale": 0.4,
+   "y": 1.05,
+   "alpha": 0.9
+  },
+  "chapterhouse_candle": {
+   "scale": 0.35,
+   "y": 0.95,
+   "alpha": 0.9
+  },
+  "bonfire": {
+   "colors": [
+    16752704,
+    16734746,
+    4198408
+   ],
+   "scale": 0.5,
+   "alpha": 0.9
+  },
+  "kiln_fire": {
+   "colors": [
+    16752704,
+    16734746,
+    4198408
+   ],
+   "scale": 0.4,
+   "y": 0.4,
+   "alpha": 0.9
+  },
+  "nave_fog": {
+   "colors": [
+    6978164,
+    3820102,
+    1712672
+   ],
+   "scale": 1.2,
+   "alpha": 0.45
+  },
+  "area_gate": {
+   "colors": [
+    10181887,
+    5980078,
+    1444388
+   ],
+   "scale": 0.5,
+   "alpha": 0.5
+  }
+ },
+ "catalog": {
+  "effects": [
+   "miasma_cloud",
+   "plague_bloom_area",
+   "corpse_explosion",
+   "grave_frost_mist",
+   "frost_shard_hit",
+   "dirge_area",
+   "litany_pulse",
+   "soul_harvest_pillar",
+   "exhume_lift",
+   "thrall_rise",
+   "grave_step_smoke",
+   "enemy_breach_rim",
+   "prelate_impact",
+   "grave_offering_orb",
+   "grave_offering_ripple",
+   "rally_area",
+   "carrion_seed_burst",
+   "levelup_pillar",
+   "bell_toll_ring",
+   "choir_scream",
+   "boss_rain_orb",
+   "grave_hands_pulse",
+   "needle_hit",
+   "crit_hit",
+   "rend_impact",
+   "wall_raise",
+   "vengeful_burst",
+   "surge_eruption",
+   "archer_flash",
+   "bone_fan_hit",
+   "ivory_cleave_hit",
+   "bone_prison_burst",
+   "interact_rim",
+   "altar_beacon",
+   "waystone_portal",
+   "recall_portal",
+   "brazier_fire",
+   "bonfire",
+   "kiln_fire",
+   "crypt_mist",
+   "nave_fog",
+   "toxic_puddle",
+   "toxic_stink",
+   "soul_orb",
+   "censer_incense",
+   "rally_thrall_rim",
+   "carrion_seed_armed",
+   "curse_bolt",
+   "rot_lance_projectile",
+   "wailing_skull_projectile",
+   "sanctify_beam",
+   "exhume_beam",
+   "veil_step_trail",
+   "chapterhouse_candle",
+   "area_gate",
+   "loot_common",
+   "loot_uncommon",
+   "loot_rare",
+   "loot_epic",
+   "loot_legendary",
+   "loot_mythic",
+   "loot_divine",
+   "soul_siphon_beam",
+   "bone_storm_dust"
+  ],
+  "impacts": [
+   "needle_hit",
+   "crit_hit",
+   "rend_impact",
+   "wall_raise",
+   "vengeful_burst",
+   "surge_eruption",
+   "archer_flash",
+   "bone_fan_hit",
+   "ivory_cleave_hit",
+   "bone_prison_burst"
+  ],
+  "loopers": [
+   "interact_rim",
+   "altar_beacon",
+   "waystone_portal",
+   "recall_portal",
+   "brazier_fire",
+   "bonfire",
+   "kiln_fire",
+   "crypt_mist",
+   "nave_fog",
+   "toxic_puddle",
+   "toxic_stink",
+   "soul_orb",
+   "censer_incense",
+   "rally_thrall_rim",
+   "carrion_seed_armed",
+   "curse_bolt",
+   "rot_lance_projectile",
+   "wailing_skull_projectile",
+   "sanctify_beam",
+   "exhume_beam",
+   "veil_step_trail",
+   "chapterhouse_candle",
+   "area_gate",
+   "loot_common",
+   "loot_uncommon",
+   "loot_rare",
+   "loot_epic",
+   "loot_legendary",
+   "loot_mythic",
+   "loot_divine",
+   "soul_siphon_beam",
+   "bone_storm_dust"
+  ],
+  "oneshots": [
+   "miasma_cloud",
+   "plague_bloom_area",
+   "corpse_explosion",
+   "grave_frost_mist",
+   "frost_shard_hit",
+   "dirge_area",
+   "litany_pulse",
+   "soul_harvest_pillar",
+   "exhume_lift",
+   "thrall_rise",
+   "grave_step_smoke",
+   "enemy_breach_rim",
+   "prelate_impact",
+   "grave_offering_orb",
+   "grave_offering_ripple",
+   "rally_area",
+   "carrion_seed_burst",
+   "levelup_pillar",
+   "bell_toll_ring",
+   "choir_scream",
+   "boss_rain_orb",
+   "grave_hands_pulse"
+  ],
+  "world_kits": [
+   "world_water_dirty",
+   "world_water_basic",
+   "world_grass",
+   "world_grass_ground",
+   "world_transition_ridge",
+   "world_transition_blades",
+   "world_sky_dark"
+  ]
+ },
+ "effects": {
+  "miasma_cloud": {
+   "animation": "oneshot",
+   "duration": 1,
+   "defaultColors": [
+    [
+     0.631373,
+     0.905882,
+     0,
+     1
+    ],
+    [
+     0.368627,
+     0.541176,
+     0,
+     1
+    ],
+    [
+     0,
+     0.360784,
+     0.109804,
+     1
+    ]
+   ],
+   "note": "Miasma landing cloud",
+   "particles": 2,
+   "meshes": 1,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "plague_bloom_area": {
+   "animation": "oneshot",
+   "duration": 2,
+   "defaultColors": [
+    [
+     1,
+     0.221697,
+     0.774739,
+     1
+    ],
+    [
+     0.437492,
+     0.000212112,
+     0.465908,
+     1
+    ],
+    [
+     0.38708,
+     0.0517413,
+     0.64499,
+     1
+    ]
+   ],
+   "note": "Plague Bloom signature",
+   "particles": 1,
+   "meshes": 3,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "corpse_explosion": {
+   "animation": "oneshot",
+   "duration": 1,
+   "defaultColors": [
+    [
+     1,
+     0.529412,
+     0,
+     1
+    ],
+    [
+     1,
+     0.337255,
+     0,
+     1
+    ],
+    [
+     0.227451,
+     0.223529,
+     0.180392,
+     1
+    ]
+   ],
+   "note": "Corpse Explosion impact",
+   "particles": 3,
+   "meshes": 0,
+   "decals": 1,
+   "lights": 1,
+   "unsupported": []
+  },
+  "grave_frost_mist": {
+   "animation": "oneshot",
+   "duration": 2,
+   "defaultColors": [
+    [
+     0.607843,
+     1,
+     1,
+     1
+    ],
+    [
+     0.47451,
+     0.580392,
+     0.580392,
+     1
+    ],
+    [
+     0.33,
+     0.33,
+     0.33,
+     1
+    ]
+   ],
+   "note": "Grave Frost cone mist",
+   "particles": 2,
+   "meshes": 0,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "dirge_area": {
+   "animation": "oneshot",
+   "duration": 1,
+   "defaultColors": [
+    [
+     1,
+     1,
+     1,
+     1
+    ],
+    [
+     0.443137,
+     1,
+     0.917647,
+     1
+    ],
+    [
+     0.5056,
+     0.58624,
+     0.64,
+     1
+    ]
+   ],
+   "note": "Mourner Dirge",
+   "particles": 0,
+   "meshes": 2,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "litany_pulse": {
+   "animation": "oneshot",
+   "duration": 1,
+   "defaultColors": [
+    [
+     1,
+     0.882353,
+     0.87451,
+     1
+    ],
+    [
+     0.466667,
+     0.513726,
+     1,
+     1
+    ]
+   ],
+   "note": "Black Litany shockwave",
+   "particles": 0,
+   "meshes": 2,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "soul_harvest_pillar": {
+   "animation": "oneshot",
+   "duration": 1,
+   "defaultColors": [
+    [
+     1,
+     0.882353,
+     0.87451,
+     1
+    ],
+    [
+     0.466667,
+     0.513726,
+     1,
+     1
+    ]
+   ],
+   "note": "Soul Harvest release",
+   "particles": 0,
+   "meshes": 5,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "exhume_lift": {
+   "animation": "oneshot",
+   "duration": 1,
+   "defaultColors": [
+    [
+     0.8,
+     0.878431,
+     1,
+     1
+    ],
+    [
+     0.411765,
+     0.752941,
+     1,
+     1
+    ]
+   ],
+   "note": "Exhume corpse lift",
+   "particles": 0,
+   "meshes": 4,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "grave_step_smoke": {
+   "animation": "oneshot",
+   "duration": 1,
+   "defaultColors": [
+    [
+     0.29586637,
+     0.29586664,
+     0.2958662,
+     1
+    ],
+    [
+     0.29411766,
+     0.29411766,
+     0.29411766,
+     1
+    ],
+    [
+     0.1,
+     0.09285,
+     0.087000005,
+     1
+    ]
+   ],
+   "note": "Grave Step departure and arrival",
+   "particles": 2,
+   "meshes": 0,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "enemy_breach_rim": {
+   "animation": "oneshot",
+   "duration": 1,
+   "defaultColors": [
+    [
+     1,
+     0.882353,
+     0.87451,
+     1
+    ],
+    [
+     0.466667,
+     0.513726,
+     1,
+     1
+    ]
+   ],
+   "note": "Grave Surge and enemy breach",
+   "particles": 0,
+   "meshes": 5,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "prelate_impact": {
+   "animation": "oneshot",
+   "duration": 1,
+   "defaultColors": [
+    [
+     0.917647,
+     0.439216,
+     0,
+     1
+    ],
+    [
+     1,
+     0.627451,
+     0.294118,
+     1
+    ],
+    [
+     0.317647,
+     0.317647,
+     0.219608,
+     1
+    ]
+   ],
+   "note": "Prelate and boss slam",
+   "particles": 3,
+   "meshes": 3,
+   "decals": 1,
+   "lights": 1,
+   "unsupported": []
+  },
+  "chapterhouse_candle": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [],
+   "note": "Candle and brazier flame",
+   "particles": 2,
+   "meshes": 1,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "area_gate": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     0.885,
+     0.53999996,
+     1,
+     1
+    ],
+    [
+     0.2881666,
+     0,
+     0.91,
+     1
+    ]
+   ],
+   "note": "Area gate and exit",
+   "particles": 1,
+   "meshes": 3,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "wailing_skull_projectile": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     1,
+     0.882353,
+     0.87451,
+     1
+    ],
+    [
+     0.466667,
+     0.513726,
+     1,
+     1
+    ],
+    [
+     0.25098,
+     0.133333,
+     0.890196,
+     1
+    ]
+   ],
+   "note": "Wailing Skull projectile core",
+   "particles": 0,
+   "meshes": 3,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "exhume_beam": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     1,
+     0.8840733,
+     0.6070642,
+     1
+    ],
+    [
+     0.95935947,
+     0.9053218,
+     0,
+     1
+    ],
+    [
+     0.94231606,
+     0.4915412,
+     3.85046e-7,
+     1
+    ]
+   ],
+   "note": "Exhume and Litany tether upgrade",
+   "particles": 2,
+   "meshes": 6,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "loot_common": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     0.85169774,
+     0.9698095,
+     0.983141,
+     1
+    ],
+    [
+     0.42899996,
+     0.6057999,
+     0.65,
+     1
+    ]
+   ],
+   "note": "Common loot ground marker",
+   "particles": 1,
+   "meshes": 4,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "loot_uncommon": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     0.76245296,
+     1,
+     0.68941706,
+     1
+    ],
+    [
+     0.21762183,
+     0.4214703,
+     0,
+     1
+    ]
+   ],
+   "note": "Uncommon loot ground marker",
+   "particles": 1,
+   "meshes": 5,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "loot_rare": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     0.6378207,
+     0.9999998,
+     0.96352357,
+     1
+    ],
+    [
+     4.813075e-8,
+     0.39941895,
+     0.5042284,
+     1
+    ]
+   ],
+   "note": "Rare loot ground marker",
+   "particles": 1,
+   "meshes": 7,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "loot_epic": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     0.9909324,
+     0.60214394,
+     0.73696923,
+     1
+    ],
+    [
+     0.6514427,
+     0.014719442,
+     0.3675382,
+     1
+    ]
+   ],
+   "note": "Epic loot ground marker",
+   "particles": 2,
+   "meshes": 7,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "loot_legendary": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     0.9764706,
+     0.92156863,
+     0.7176471,
+     1
+    ],
+    [
+     0.9137255,
+     0.58431375,
+     0,
+     1
+    ]
+   ],
+   "note": "Legendary loot ground marker",
+   "particles": 2,
+   "meshes": 7,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "loot_mythic": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     1,
+     0.69253343,
+     0.609252,
+     1
+    ],
+    [
+     0.84090835,
+     0,
+     0.09098882,
+     1
+    ]
+   ],
+   "note": "Mythic loot ground marker",
+   "particles": 2,
+   "meshes": 7,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "loot_divine": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     1,
+     0.78139937,
+     0.7193486,
+     1
+    ],
+    [
+     6.738305e-7,
+     0.5557172,
+     0.68451506,
+     1
+    ]
+   ],
+   "note": "Divine loot ground marker",
+   "particles": 2,
+   "meshes": 7,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "bone_fan_hit": {
+   "animation": "main",
+   "duration": 0.8,
+   "defaultColors": [
+    [
+     1,
+     1,
+     0.686275,
+     1
+    ],
+    [
+     1,
+     0.580392,
+     0,
+     1
+    ]
+   ],
+   "note": "Bone Fan sliver impact (small, ivory)",
+   "particles": 3,
+   "meshes": 1,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "rot_lance_projectile": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     0.8,
+     0.878431,
+     1,
+     1
+    ],
+    [
+     0.411765,
+     0.752941,
+     1,
+     1
+    ],
+    [
+     0.176471,
+     0.431373,
+     1,
+     1
+    ]
+   ],
+   "note": "Rot Lance javelin body (chartreuse)",
+   "particles": 0,
+   "meshes": 3,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "ivory_cleave_hit": {
+   "animation": "main",
+   "duration": 0.8,
+   "defaultColors": [
+    [
+     0.815686,
+     0.321569,
+     0.00392157,
+     1
+    ],
+    [
+     1,
+     0.541455,
+     0.101383,
+     1
+    ]
+   ],
+   "note": "Ivory Cleave impact streaks on each struck enemy",
+   "particles": 3,
+   "meshes": 1,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "grave_offering_orb": {
+   "animation": "oneshot",
+   "duration": 1,
+   "defaultColors": [
+    [
+     0.8,
+     0.878431,
+     1,
+     1
+    ],
+    [
+     0.411765,
+     0.752941,
+     1,
+     1
+    ],
+    [
+     0.176471,
+     0.431373,
+     1,
+     1
+    ]
+   ],
+   "note": "Grave Offering wisp arriving at the caster (jade)",
+   "particles": 0,
+   "meshes": 3,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "grave_offering_ripple": {
+   "animation": "oneshot",
+   "duration": 1,
+   "defaultColors": [
+    [
+     0.8,
+     0.878431,
+     1,
+     1
+    ],
+    [
+     0.411765,
+     0.752941,
+     1,
+     1
+    ]
+   ],
+   "note": "Grave Offering consumed-corpse ripple (jade)",
+   "particles": 0,
+   "meshes": 3,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "rally_area": {
+   "animation": "oneshot",
+   "duration": 1.2,
+   "defaultColors": [
+    [
+     0.8,
+     0.876667,
+     1,
+     1
+    ],
+    [
+     0.410258,
+     0.752815,
+     1,
+     1
+    ]
+   ],
+   "note": "Rally the Dead war-cry ring at the caster",
+   "particles": 2,
+   "meshes": 4,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "rally_thrall_rim": {
+   "animation": "main",
+   "duration": 1.2,
+   "defaultColors": [
+    [
+     0.8,
+     0.878431,
+     1,
+     1
+    ],
+    [
+     0.411765,
+     0.752941,
+     1,
+     1
+    ]
+   ],
+   "note": "Rally the Dead aura under each rallied thrall (looping, follow)",
+   "particles": 0,
+   "meshes": 5,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "carrion_seed_armed": {
+   "animation": "main",
+   "duration": 0.8,
+   "defaultColors": [
+    [
+     0.631373,
+     0.905882,
+     0,
+     1
+    ],
+    [
+     0.368627,
+     0.541176,
+     0,
+     1
+    ],
+    [
+     0,
+     0.360784,
+     0.109804,
+     1
+    ]
+   ],
+   "note": "Carrion Seed planted on a corpse (looping until it bursts)",
+   "particles": 1,
+   "meshes": 2,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "carrion_seed_burst": {
+   "animation": "oneshot",
+   "duration": 1,
+   "defaultColors": [
+    [
+     0.631373,
+     0.905882,
+     0,
+     1
+    ],
+    [
+     0.368627,
+     0.541176,
+     0,
+     1
+    ],
+    [
+     0,
+     0.360784,
+     0.109804,
+     1
+    ]
+   ],
+   "note": "Carrion Seed rot burst",
+   "particles": 2,
+   "meshes": 0,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "veil_step_trail": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     0.35,
+     0.35,
+     0.35,
+     1
+    ],
+    [
+     0.29411766,
+     0.29411766,
+     0.29411766,
+     1
+    ],
+    [
+     0.2,
+     0.2,
+     0.2,
+     1
+    ]
+   ],
+   "note": "Veil Step departure veil (cold blue, short-lived)",
+   "particles": 2,
+   "meshes": 0,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "frost_shard_hit": {
+   "animation": "oneshot",
+   "duration": 1,
+   "defaultColors": [
+    [
+     1,
+     1,
+     1,
+     1
+    ],
+    [
+     0.443137,
+     1,
+     0.917647,
+     1
+    ],
+    [
+     0.5056,
+     0.58624,
+     0.64,
+     1
+    ]
+   ],
+   "note": "Grave Frost shatter on Chilled enemies",
+   "particles": 2,
+   "meshes": 1,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "interact_rim": {
+   "animation": "main",
+   "duration": 1.2,
+   "defaultColors": [
+    [
+     1,
+     0.917647,
+     0.8,
+     1
+    ],
+    [
+     1,
+     0.905882,
+     0,
+     1
+    ]
+   ],
+   "note": "Interactable ground ring: idle beacon under every usable object, tinted by function",
+   "particles": 0,
+   "meshes": 5,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "altar_beacon": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     0.992157,
+     0.905882,
+     0.698039,
+     1
+    ],
+    [
+     0.945098,
+     0.356863,
+     0,
+     1
+    ]
+   ],
+   "note": "Altar of Ascension beacon when something can be bought or burned",
+   "particles": 0,
+   "meshes": 5,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "waystone_portal": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     1,
+     0.88421226,
+     0.4066537,
+     1
+    ],
+    [
+     0.9098039,
+     0,
+     0.47058824,
+     1
+    ]
+   ],
+   "note": "Waystone swirl (attuned stones)",
+   "particles": 1,
+   "meshes": 3,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "recall_portal": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     0.885,
+     0.53999996,
+     1,
+     1
+    ],
+    [
+     0.2881666,
+     0,
+     0.91,
+     1
+    ]
+   ],
+   "note": "Recall / area exit portal",
+   "particles": 1,
+   "meshes": 3,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "brazier_fire": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [],
+   "note": "Braziers in the Chapterhouse and Bell Sanctum",
+   "particles": 2,
+   "meshes": 1,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "bonfire": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [],
+   "note": "Cooking Fire station and large fires",
+   "particles": 2,
+   "meshes": 1,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "kiln_fire": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [],
+   "note": "Bone Kiln mouth",
+   "particles": 3,
+   "meshes": 1,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "crypt_mist": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     0.29586637,
+     0.29586664,
+     0.2958662,
+     1
+    ],
+    [
+     0.29411766,
+     0.29411766,
+     0.29411766,
+     1
+    ],
+    [
+     0.1,
+     0.09285,
+     0.087000005,
+     1
+    ]
+   ],
+   "note": "Mausoleum and sarcophagus mist; Grave Surge build-up",
+   "particles": 2,
+   "meshes": 0,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "nave_fog": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     1,
+     1,
+     1,
+     1
+    ],
+    [
+     0.4092,
+     0.66,
+     0.62238,
+     1
+    ],
+    [
+     0.264,
+     0.3696,
+     0.44,
+     1
+    ]
+   ],
+   "note": "Drowned Nave low fog (recolour grey-green)",
+   "particles": 2,
+   "meshes": 0,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "toxic_puddle": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     0.631373,
+     0.905882,
+     0,
+     1
+    ],
+    [
+     0.368627,
+     0.541176,
+     0,
+     1
+    ],
+    [
+     0,
+     0.360784,
+     0.109804,
+     1
+    ]
+   ],
+   "note": "Toxic zones and rot pools",
+   "particles": 1,
+   "meshes": 2,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "toxic_stink": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     0.631373,
+     0.905882,
+     0,
+     1
+    ],
+    [
+     0.368627,
+     0.541176,
+     0,
+     1
+    ],
+    [
+     0,
+     0.360784,
+     0.109804,
+     1
+    ]
+   ],
+   "note": "Toxic corpse about to rupture",
+   "particles": 2,
+   "meshes": 0,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "soul_orb": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     0.8,
+     0.878431,
+     1,
+     1
+    ],
+    [
+     0.411765,
+     0.752941,
+     1,
+     1
+    ],
+    [
+     0.176471,
+     0.431373,
+     1,
+     1
+    ]
+   ],
+   "note": "Soul shard / relic pickup glow; Soul Harvest full aura",
+   "particles": 0,
+   "meshes": 2,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "levelup_pillar": {
+   "animation": "oneshot",
+   "duration": 1,
+   "defaultColors": [
+    [
+     1,
+     0.917647,
+     0.8,
+     1
+    ],
+    [
+     1,
+     0.905882,
+     0,
+     1
+    ]
+   ],
+   "note": "Level-up and new rite learned",
+   "particles": 0,
+   "meshes": 5,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "thrall_rise": {
+   "animation": "oneshot",
+   "duration": 1,
+   "defaultColors": [
+    [
+     0.992157,
+     0.905882,
+     0.698039,
+     1
+    ],
+    [
+     0.945098,
+     0.356863,
+     0,
+     1
+    ]
+   ],
+   "note": "Thrall rising from a corpse",
+   "particles": 0,
+   "meshes": 4,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "censer_incense": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     0.35,
+     0.35,
+     0.35,
+     1
+    ],
+    [
+     0.29411766,
+     0.29411766,
+     0.29411766,
+     1
+    ],
+    [
+     0.2,
+     0.2,
+     0.2,
+     1
+    ]
+   ],
+   "note": "Censer Bearer Incensed aura",
+   "particles": 2,
+   "meshes": 0,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "vengeful_burst": {
+   "animation": "main",
+   "duration": 1.2,
+   "defaultColors": [
+    [
+     1,
+     0.294118,
+     0.0666667,
+     1
+    ],
+    [
+     0.713726,
+     0.192157,
+     0,
+     1
+    ],
+    [
+     0.227451,
+     0.223529,
+     0.180392,
+     1
+    ]
+   ],
+   "note": "Vengeful elite death burst",
+   "particles": 5,
+   "meshes": 0,
+   "decals": 1,
+   "lights": 1,
+   "unsupported": []
+  },
+  "surge_eruption": {
+   "animation": "main",
+   "duration": 1.2,
+   "defaultColors": [
+    [
+     1,
+     1,
+     0,
+     1
+    ],
+    [
+     1,
+     0,
+     0,
+     1
+    ]
+   ],
+   "note": "Grave Surge crack eruption",
+   "particles": 3,
+   "meshes": 0,
+   "decals": 1,
+   "lights": 1,
+   "unsupported": []
+  },
+  "bell_toll_ring": {
+   "animation": "oneshot",
+   "duration": 1,
+   "defaultColors": [
+    [
+     1,
+     0.917647,
+     0.8,
+     1
+    ],
+    [
+     1,
+     0.905882,
+     0,
+     1
+    ]
+   ],
+   "note": "Bell-Tolled elite ring and Prelate toll",
+   "particles": 0,
+   "meshes": 2,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "choir_scream": {
+   "animation": "oneshot",
+   "duration": 1,
+   "defaultColors": [
+    [
+     0.992157,
+     0.905882,
+     0.698039,
+     1
+    ],
+    [
+     0.945098,
+     0.356863,
+     0,
+     1
+    ]
+   ],
+   "note": "Choir Wraith scream ring",
+   "particles": 0,
+   "meshes": 3,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "curse_bolt": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     1,
+     0.917647,
+     0.8,
+     1
+    ],
+    [
+     1,
+     0.905882,
+     0,
+     1
+    ],
+    [
+     0.996078,
+     0.756863,
+     0.27451,
+     1
+    ]
+   ],
+   "note": "Enemy caster curse bolt",
+   "particles": 0,
+   "meshes": 3,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "boss_rain_orb": {
+   "animation": "oneshot",
+   "duration": 1,
+   "defaultColors": [
+    [
+     1,
+     0.882353,
+     0.87451,
+     1
+    ],
+    [
+     0.466667,
+     0.513726,
+     1,
+     1
+    ],
+    [
+     0.25098,
+     0.133333,
+     0.890196,
+     1
+    ]
+   ],
+   "note": "Prelate rain impacts",
+   "particles": 0,
+   "meshes": 3,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "sanctify_beam": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     0.9999997,
+     0.86998755,
+     0.89857554,
+     1
+    ],
+    [
+     1,
+     0.51638055,
+     0.6375785,
+     1
+    ],
+    [
+     0.7283664,
+     0.25901744,
+     0.99999994,
+     1
+    ]
+   ],
+   "note": "Crypt Deacon Sanctify tether",
+   "particles": 2,
+   "meshes": 6,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "archer_flash": {
+   "animation": "main",
+   "duration": 0.2,
+   "defaultColors": [
+    [
+     1,
+     1,
+     0.545098,
+     1
+    ],
+    [
+     1,
+     0.533333,
+     0.352941,
+     1
+    ]
+   ],
+   "note": "Archer thrall shot",
+   "particles": 2,
+   "meshes": 1,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "needle_hit": {
+   "animation": "main",
+   "duration": 0.8,
+   "defaultColors": [
+    [
+     1,
+     0.847059,
+     0,
+     1
+    ],
+    [
+     1,
+     0.290196,
+     0,
+     1
+    ]
+   ],
+   "note": "Bone Needle impact",
+   "particles": 3,
+   "meshes": 1,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "crit_hit": {
+   "animation": "main",
+   "duration": 0.8,
+   "defaultColors": [
+    [
+     1,
+     1,
+     0.686275,
+     1
+    ],
+    [
+     1,
+     0.580392,
+     0,
+     1
+    ]
+   ],
+   "note": "Critical hit accent",
+   "particles": 2,
+   "meshes": 0,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  },
+  "rend_impact": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     1,
+     0.462745,
+     0,
+     1
+    ],
+    [
+     1,
+     0.0627451,
+     0,
+     1
+    ],
+    [
+     0.303233,
+     0.303233,
+     0.303233,
+     1
+    ]
+   ],
+   "note": "Command: Rend leap landing",
+   "particles": 2,
+   "meshes": 3,
+   "decals": 1,
+   "lights": 1,
+   "unsupported": []
+  },
+  "wall_raise": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     1,
+     0.560784,
+     0.462745,
+     1
+    ],
+    [
+     1,
+     0.337255,
+     0,
+     1
+    ],
+    [
+     0.57,
+     0.312645,
+     0.2109,
+     1
+    ]
+   ],
+   "note": "Ossuary Wall raise",
+   "particles": 3,
+   "meshes": 3,
+   "decals": 1,
+   "lights": 1,
+   "unsupported": []
+  },
+  "world_water_dirty": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [],
+   "note": "World shader kit (material root, no nodes): Drowned Nave water — port water.gdshader into graphics/Water.ts as a layer",
+   "particles": 0,
+   "meshes": 0,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "world_water_basic": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [],
+   "note": "World shader kit: Sexton's Acre pond water",
+   "particles": 0,
+   "meshes": 0,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "world_grass": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [],
+   "note": "World shader kit: instanced grass blades for the Hollow Graves / Acre (atlas textures included)",
+   "particles": 0,
+   "meshes": 0,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "world_grass_ground": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [],
+   "note": "World shader kit: ground blend under the grass",
+   "particles": 0,
+   "meshes": 0,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "world_transition_ridge": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [],
+   "note": "World shader kit: full-screen area-change / death transition (2D scene; transition.gdshader)",
+   "particles": 0,
+   "meshes": 0,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "world_transition_blades": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [],
+   "note": "World shader kit: alternate transition for recall / waystone travel",
+   "particles": 0,
+   "meshes": 0,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "world_sky_dark": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [],
+   "note": "World shader kit: dark procedural sky (login backdrop / distant horizon only; the game camera is top-down)",
+   "particles": 0,
+   "meshes": 0,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "bone_prison_burst": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     1,
+     0.780392,
+     0.231373,
+     1
+    ],
+    [
+     0.960784,
+     0.388235,
+     0.176471,
+     1
+    ]
+   ],
+   "note": "Bone Prison: the ring of spikes erupting",
+   "particles": 3,
+   "meshes": 3,
+   "decals": 1,
+   "lights": 1,
+   "unsupported": []
+  },
+  "soul_siphon_beam": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     0.8713122,
+     1,
+     0.57567304,
+     1
+    ],
+    [
+     0.5435129,
+     0.7948129,
+     0,
+     1
+    ],
+    [
+     0,
+     0.57732946,
+     0.24774086,
+     1
+    ]
+   ],
+   "note": "Soul Siphon: the drain tether (jade)",
+   "particles": 2,
+   "meshes": 6,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "bone_storm_dust": {
+   "animation": "main",
+   "duration": 0,
+   "defaultColors": [
+    [
+     0.29586637,
+     0.29586664,
+     0.2958662,
+     1
+    ],
+    [
+     0.29411766,
+     0.29411766,
+     0.29411766,
+     1
+    ],
+    [
+     0.1,
+     0.09285,
+     0.087000005,
+     1
+    ]
+   ],
+   "note": "Bone Storm: bone-dust vortex under the tumbling fragments",
+   "particles": 2,
+   "meshes": 0,
+   "decals": 0,
+   "lights": 0,
+   "unsupported": []
+  },
+  "grave_hands_pulse": {
+   "animation": "oneshot",
+   "duration": 1,
+   "defaultColors": [
+    [
+     1,
+     0.882353,
+     0.87451,
+     1
+    ],
+    [
+     0.466667,
+     0.513726,
+     1,
+     1
+    ]
+   ],
+   "note": "Grave Hands: the field opening",
+   "particles": 0,
+   "meshes": 2,
+   "decals": 0,
+   "lights": 1,
+   "unsupported": []
+  }
+ },
+ "caps": {
+  "max_oneshots": 24,
+  "max_loopers": 32,
+  "cull_distance": 40,
+  "fade_out": 0.3,
+  "combat_transients": 160,
+  "low_particle_scale": 0.75,
+  "flash_lights": 1,
+  "additive_particles": 3500,
+  "smoke_particles": 900,
+  "other_decal_alpha": 0.28,
+  "other_binbun_alpha": 0.35,
+  "other_binbun_scale": 0.75,
+  "outline_after_s": 0.6,
+  "outline_fade_s": 0.7,
+  "long_decal_s": 1.5,
+  "ring_for_disc": 1.32,
+  "bone_shard_cap": 96,
+  "grave_hand_cap": 64,
+  "motif_particle_burst": 240,
+  "motif_particle_per_s": 260,
+  "motif_sprite_burst": 14,
+  "motif_sprite_per_s": 9,
+  "motif_transient_ceiling": 100,
+  "motif_thrall_scale": 0.4,
+  "motif_reduced_scale": 0.4
+ },
+ "decal_order": {
+  "friendly": 2,
+  "hero": 3,
+  "danger": 4
+ }
+}

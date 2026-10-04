@@ -1,0 +1,54 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://assets/fx/binbun/shaders/6902d22b9b357bb8.gdshader" id="1_n4sda"]
+
+[sub_resource type="Gradient" id="Gradient_n4sda"]
+interpolation_color_space = 2
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_5lokw"]
+gradient = SubResource("Gradient_n4sda")
+fill_from = Vector2(1, 0)
+fill_to = Vector2(0, 0)
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_n4sda")
+shader_parameter/mask1_texture = SubResource("GradientTexture2D_5lokw")
+shader_parameter/mask1_scroll = Vector2(0, 0)
+shader_parameter/mask1_scale = Vector2(1, 1)
+shader_parameter/mask1_radial = false
+shader_parameter/mask1_rotation = 0.0
+shader_parameter/use_mask2 = false
+shader_parameter/mask2_scroll = Vector2(0, 0)
+shader_parameter/mask2_scale = Vector2(1, 1)
+shader_parameter/mask2_strength = 0.0
+shader_parameter/mask2_blend_mode = 0
+shader_parameter/mask2_radial = false
+shader_parameter/mask2_rotation = 0.0
+shader_parameter/use_mask3 = false
+shader_parameter/mask3_scroll = Vector2(0, 0)
+shader_parameter/mask3_scale = Vector2(1, 1)
+shader_parameter/mask3_strength = 0.0
+shader_parameter/mask3_blend_mode = 0
+shader_parameter/mask3_radial = false
+shader_parameter/mask3_rotation = 0.0
+shader_parameter/primary_color = Color(0.631373, 0.905882, 0, 1)
+shader_parameter/secondary_color = Color(0.368627, 0.541176, 0, 1)
+shader_parameter/tertiary_color = Color(0.38708, 0.0517413, 0.64499, 1)
+shader_parameter/use_tertiary = false
+shader_parameter/color_smoothness = 1.0
+shader_parameter/billboard = false
+shader_parameter/displacement_scale = 0.0
+shader_parameter/displacement_offset = 0.5
+shader_parameter/time_scale = 1.0
+shader_parameter/texture_scale = Vector2(1, 1)
+shader_parameter/uv_alignment = 0
+shader_parameter/emission_strength = 4.0
+shader_parameter/proximity_fade = false
+shader_parameter/proximity_fade_distance = 1.0
+shader_parameter/edge_cutoff = Vector4(0, 0, 0, 0)
+shader_parameter/alpha_smoothness = 1.0
+shader_parameter/alpha_multiplier = 1.0
+shader_parameter/alpha_mode = 0
+shader_parameter/alpha_cutoff = 0.02
+shader_parameter/dither_cutoff = 0.8

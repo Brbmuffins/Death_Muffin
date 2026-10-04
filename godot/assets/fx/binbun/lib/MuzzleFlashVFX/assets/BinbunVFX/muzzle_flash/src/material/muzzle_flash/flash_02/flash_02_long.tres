@@ -1,0 +1,44 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://assets/fx/binbun/shaders/55c1998ed0a93ae3.gdshader" id="1_uvoms"]
+[ext_resource type="Texture2D" path="res://assets/fx/binbun/tex/e8cd19c890ce9237.png" id="2_okyye"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_cqpxa"]
+noise_type = 2
+fractal_octaves = 3
+cellular_distance_function = 1
+domain_warp_enabled = true
+domain_warp_type = 1
+domain_warp_frequency = 0.005
+domain_warp_fractal_octaves = 2
+domain_warp_fractal_lacunarity = 4.145
+domain_warp_fractal_gain = 1.69
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_fjtqu"]
+noise = SubResource("FastNoiseLite_cqpxa")
+seamless = true
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_uvoms")
+shader_parameter/main_texture = ExtResource("2_okyye")
+shader_parameter/texture_scale = Vector2(1, 1)
+shader_parameter/alignment = 3
+shader_parameter/noise_texture = SubResource("NoiseTexture2D_fjtqu")
+shader_parameter/noise_scrolling = Vector2(0, 1)
+shader_parameter/noise_strength = 0.5
+shader_parameter/primary_color = Color(1, 1, 0.545098, 1)
+shader_parameter/secondary_color = Color(1, 0.533333, 0.352941, 1)
+shader_parameter/tertiary_color = Color(0, 0, 0, 1)
+shader_parameter/offset_distance = 0.0
+shader_parameter/offset_exponent = 1.0
+shader_parameter/emission_strength = 2.0
+shader_parameter/color_smoothness = 0.6
+shader_parameter/edge_smoothness = 0.4
+shader_parameter/fade_basic_amount = 0.121
+shader_parameter/fade_direction_amount = 1.0
+shader_parameter/use_particle_alpha = true
+shader_parameter/proximity_fade = false
+shader_parameter/proximity_fade_distance = 1.0
+shader_parameter/edge_cutoff_distance = 0.02
+shader_parameter/alpha_mode = 0

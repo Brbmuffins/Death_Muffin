@@ -1,0 +1,15 @@
+[gd_resource type="NoiseTexture2D" format=3]
+
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_jyyww"]
+noise_type = 2
+seed = 2
+frequency = 0.02
+fractal_octaves = 2
+
+[resource]
+generate_mipmaps = false
+noise = SubResource("FastNoiseLite_jyyww")
+seamless = true
+invert = true
+seamless_blend_skirt = 0.2

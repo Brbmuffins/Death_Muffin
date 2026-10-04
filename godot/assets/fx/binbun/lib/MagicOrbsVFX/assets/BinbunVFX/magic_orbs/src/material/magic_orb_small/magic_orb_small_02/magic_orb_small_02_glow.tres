@@ -1,0 +1,32 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://assets/fx/binbun/shaders/e9976ef81008eeb2.gdshader" id="1_1hqkp"]
+
+[sub_resource type="Gradient" id="Gradient_66qs4"]
+offsets = PackedFloat32Array(0, 0.0943396, 0.551887, 1)
+colors = PackedColorArray(0, 0, 0, 1, 1, 1, 1, 1, 0.0515464, 0.0515464, 0.0515464, 1, 0, 0, 0, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_58mke"]
+gradient = SubResource("Gradient_66qs4")
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_1hqkp")
+shader_parameter/fresnel_amount = 1.0
+shader_parameter/fresnel_exponent = 4.0
+shader_parameter/fresnel_gradient = SubResource("GradientTexture1D_58mke")
+shader_parameter/enable_mask = false
+shader_parameter/mask_scroll = Vector2(0, 0)
+shader_parameter/mask_scale = Vector2(1, 1)
+shader_parameter/mask_blend_mode = 0
+shader_parameter/mask_blend = 0.0
+shader_parameter/emission_strength = 1.0
+shader_parameter/primary_color = Color(0.8, 0.878431, 1, 1)
+shader_parameter/secondary_color = Color(0.411765, 0.752941, 1, 1)
+shader_parameter/tertiary_color = Color(0.176471, 0.431373, 1, 1)
+shader_parameter/proximity_fade = true
+shader_parameter/proximity_fade_distance = 1.0
+shader_parameter/alpha_multiplier = 1.0
+shader_parameter/alpha_mode = 0
+shader_parameter/alpha_cutoff = 0.02
+shader_parameter/dither_cutoff = 0.8

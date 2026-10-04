@@ -1,0 +1,142 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://fx/dm_fx_controller.gd" id="1_1y7pm"]
+[ext_resource type="Material" path="res://assets/fx/binbun/lib/MagicAreaVFX/assets/BinbunVFX/magic_areas/src/material/rim_area/rim_area_03/rim_area_03_ground.tres" id="1_livu8"]
+[ext_resource type="Material" path="res://assets/fx/binbun/lib/MagicAreaVFX/assets/BinbunVFX/magic_areas/src/material/rim_area/rim_area_03/rim_area_03_glow.tres" id="2_livu8"]
+[ext_resource type="Material" path="res://assets/fx/binbun/lib/MagicAreaVFX/assets/BinbunVFX/magic_areas/src/material/rim_area/rim_area_03/rim_area_03_extraglow.tres" id="3_livu8"]
+[ext_resource type="Material" path="res://assets/fx/binbun/lib/MagicAreaVFX/assets/BinbunVFX/magic_areas/src/material/rim_area/rim_area_03/rim_area_03_upward.tres" id="4_1y7pm"]
+[ext_resource type="Script" path="res://fx/dm_fx_light.gd" id="5_sf8rv"]
+
+[sub_resource type="QuadMesh" id="QuadMesh_rbnu8"]
+size = Vector2(3.4, 3.4)
+center_offset = Vector3(0, 0.01, 0)
+orientation = 1
+
+[sub_resource type="QuadMesh" id="QuadMesh_1y7pm"]
+size = Vector2(6, 6)
+center_offset = Vector3(0, 0.01, 0)
+orientation = 1
+
+[sub_resource type="QuadMesh" id="QuadMesh_pak7c"]
+size = Vector2(5, 5)
+center_offset = Vector3(0, 0.01, 0)
+orientation = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_pak7c"]
+top_radius = 1.6
+bottom_radius = 1.25
+height = 1.4
+cap_top = false
+cap_bottom = false
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_livu8"]
+flip_faces = true
+top_radius = 1.4
+bottom_radius = 1.2
+height = 1.8
+cap_top = false
+cap_bottom = false
+
+[sub_resource type="Animation" id="Animation_1y7pm"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Light:light_multiplier")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ExtraGlow:material_override:shader_parameter/alpha_multiplier")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+
+[sub_resource type="Animation" id="Animation_livu8"]
+resource_name = "main"
+length = 1.2
+step = 0.05
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Light:light_multiplier")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.8, 1.2),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [1.0, 0.6, 1.0]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ExtraGlow:material_override:shader_parameter/alpha_multiplier")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.4, 1.2),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [1.0, 0.6, 1.0]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_1y7pm"]
+_data = {
+"RESET": SubResource("Animation_1y7pm"),
+"main": SubResource("Animation_livu8")
+}
+
+[node name="RimAreaVFX_03" type="Node3D"]
+script = ExtResource("1_1y7pm")
+primary_color = Color(1, 0.882353, 0.87451, 1)
+secondary_color = Color(0.466667, 0.513726, 1, 1)
+light_color = Color(0.466667, 0.513726, 1, 1)
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+material_override = ExtResource("1_livu8")
+mesh = SubResource("QuadMesh_rbnu8")
+
+[node name="Glow" type="MeshInstance3D" parent="."]
+material_override = ExtResource("2_livu8")
+mesh = SubResource("QuadMesh_1y7pm")
+
+[node name="ExtraGlow" type="MeshInstance3D" parent="."]
+material_override = ExtResource("3_livu8")
+mesh = SubResource("QuadMesh_pak7c")
+
+[node name="Upward_01" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
+material_override = ExtResource("4_1y7pm")
+mesh = SubResource("CylinderMesh_pak7c")
+
+[node name="Upward_02" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+material_override = ExtResource("4_1y7pm")
+mesh = SubResource("CylinderMesh_livu8")
+
+[node name="Light" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+light_color = Color(0.466667, 0.513726, 1, 1)
+light_energy = 4
+omni_range = 10
+omni_attenuation = 0.5
+script = ExtResource("5_sf8rv")
+base_energy = 4
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+"": SubResource("AnimationLibrary_1y7pm")
+}

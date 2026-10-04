@@ -1,0 +1,11 @@
+[gd_resource type="GradientTexture2D" format=3]
+
+
+[sub_resource type="Gradient" id="Gradient_cgj3l"]
+
+[resource]
+gradient = SubResource("Gradient_cgj3l")
+fill_from = Vector2(1, 0)
+fill_to = Vector2(0.25, 0)
+metadata/_snap_enabled = true
+metadata/_snap_count = 8

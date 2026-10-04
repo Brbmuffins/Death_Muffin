@@ -1,0 +1,31 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://assets/fx/binbun/shaders/b4afe353de690ca0.gdshader" id="1_fhnki"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_1bvp3"]
+noise_type = 2
+fractal_type = 3
+fractal_octaves = 2
+fractal_ping_pong_strength = 6.235
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_lquwl"]
+noise = SubResource("FastNoiseLite_1bvp3")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_lquwl"]
+noise_type = 2
+fractal_octaves = 1
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_7mycd"]
+invert = true
+seamless = true
+seamless_blend_skirt = 0.355
+noise = SubResource("FastNoiseLite_lquwl")
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_fhnki")
+shader_parameter/noise_texture_1 = SubResource("NoiseTexture2D_lquwl")
+shader_parameter/noise_texture_2 = SubResource("NoiseTexture2D_7mycd")
+shader_parameter/mask_from = Vector2(0.5, 0.5)
+shader_parameter/mask_scale = 0.4
+shader_parameter/edge_softness = 0.5

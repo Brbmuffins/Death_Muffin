@@ -1,0 +1,359 @@
+{
+ "effects": [
+  {
+   "id": "miasma_cloud",
+   "scene": "res://assets/fx/binbun/miasma_cloud.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "plague_bloom_area",
+   "scene": "res://assets/fx/binbun/plague_bloom_area.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "corpse_explosion",
+   "scene": "res://assets/fx/binbun/corpse_explosion.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "grave_frost_mist",
+   "scene": "res://assets/fx/binbun/grave_frost_mist.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "dirge_area",
+   "scene": "res://assets/fx/binbun/dirge_area.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "litany_pulse",
+   "scene": "res://assets/fx/binbun/litany_pulse.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "soul_harvest_pillar",
+   "scene": "res://assets/fx/binbun/soul_harvest_pillar.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "exhume_lift",
+   "scene": "res://assets/fx/binbun/exhume_lift.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "grave_step_smoke",
+   "scene": "res://assets/fx/binbun/grave_step_smoke.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "enemy_breach_rim",
+   "scene": "res://assets/fx/binbun/enemy_breach_rim.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "prelate_impact",
+   "scene": "res://assets/fx/binbun/prelate_impact.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "chapterhouse_candle",
+   "scene": "res://assets/fx/binbun/chapterhouse_candle.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "area_gate",
+   "scene": "res://assets/fx/binbun/area_gate.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "wailing_skull_projectile",
+   "scene": "res://assets/fx/binbun/wailing_skull_projectile.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "exhume_beam",
+   "scene": "res://assets/fx/binbun/exhume_beam.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "loot_common",
+   "scene": "res://assets/fx/binbun/loot_common.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "loot_uncommon",
+   "scene": "res://assets/fx/binbun/loot_uncommon.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "loot_rare",
+   "scene": "res://assets/fx/binbun/loot_rare.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "loot_epic",
+   "scene": "res://assets/fx/binbun/loot_epic.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "loot_legendary",
+   "scene": "res://assets/fx/binbun/loot_legendary.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "loot_mythic",
+   "scene": "res://assets/fx/binbun/loot_mythic.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "loot_divine",
+   "scene": "res://assets/fx/binbun/loot_divine.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "bone_fan_hit",
+   "scene": "res://assets/fx/binbun/bone_fan_hit.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "rot_lance_projectile",
+   "scene": "res://assets/fx/binbun/rot_lance_projectile.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "ivory_cleave_hit",
+   "scene": "res://assets/fx/binbun/ivory_cleave_hit.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "grave_offering_orb",
+   "scene": "res://assets/fx/binbun/grave_offering_orb.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "grave_offering_ripple",
+   "scene": "res://assets/fx/binbun/grave_offering_ripple.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "rally_area",
+   "scene": "res://assets/fx/binbun/rally_area.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "rally_thrall_rim",
+   "scene": "res://assets/fx/binbun/rally_thrall_rim.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "carrion_seed_armed",
+   "scene": "res://assets/fx/binbun/carrion_seed_armed.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "carrion_seed_burst",
+   "scene": "res://assets/fx/binbun/carrion_seed_burst.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "veil_step_trail",
+   "scene": "res://assets/fx/binbun/veil_step_trail.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "frost_shard_hit",
+   "scene": "res://assets/fx/binbun/frost_shard_hit.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "interact_rim",
+   "scene": "res://assets/fx/binbun/interact_rim.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "altar_beacon",
+   "scene": "res://assets/fx/binbun/altar_beacon.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "waystone_portal",
+   "scene": "res://assets/fx/binbun/waystone_portal.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "recall_portal",
+   "scene": "res://assets/fx/binbun/recall_portal.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "brazier_fire",
+   "scene": "res://assets/fx/binbun/brazier_fire.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "bonfire",
+   "scene": "res://assets/fx/binbun/bonfire.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "kiln_fire",
+   "scene": "res://assets/fx/binbun/kiln_fire.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "crypt_mist",
+   "scene": "res://assets/fx/binbun/crypt_mist.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "nave_fog",
+   "scene": "res://assets/fx/binbun/nave_fog.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "toxic_puddle",
+   "scene": "res://assets/fx/binbun/toxic_puddle.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "toxic_stink",
+   "scene": "res://assets/fx/binbun/toxic_stink.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "soul_orb",
+   "scene": "res://assets/fx/binbun/soul_orb.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "levelup_pillar",
+   "scene": "res://assets/fx/binbun/levelup_pillar.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "thrall_rise",
+   "scene": "res://assets/fx/binbun/thrall_rise.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "censer_incense",
+   "scene": "res://assets/fx/binbun/censer_incense.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "vengeful_burst",
+   "scene": "res://assets/fx/binbun/vengeful_burst.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "surge_eruption",
+   "scene": "res://assets/fx/binbun/surge_eruption.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "bell_toll_ring",
+   "scene": "res://assets/fx/binbun/bell_toll_ring.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "choir_scream",
+   "scene": "res://assets/fx/binbun/choir_scream.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "curse_bolt",
+   "scene": "res://assets/fx/binbun/curse_bolt.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "boss_rain_orb",
+   "scene": "res://assets/fx/binbun/boss_rain_orb.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "sanctify_beam",
+   "scene": "res://assets/fx/binbun/sanctify_beam.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "archer_flash",
+   "scene": "res://assets/fx/binbun/archer_flash.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "needle_hit",
+   "scene": "res://assets/fx/binbun/needle_hit.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "crit_hit",
+   "scene": "res://assets/fx/binbun/crit_hit.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "rend_impact",
+   "scene": "res://assets/fx/binbun/rend_impact.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "wall_raise",
+   "scene": "res://assets/fx/binbun/wall_raise.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "world_water_dirty",
+   "scene": "res://assets/fx/binbun/world_water_dirty.tres",
+   "kind": "tres"
+  },
+  {
+   "id": "world_water_basic",
+   "scene": "res://assets/fx/binbun/world_water_basic.tres",
+   "kind": "tres"
+  },
+  {
+   "id": "world_grass",
+   "scene": "res://assets/fx/binbun/world_grass.tres",
+   "kind": "tres"
+  },
+  {
+   "id": "world_grass_ground",
+   "scene": "res://assets/fx/binbun/world_grass_ground.tres",
+   "kind": "tres"
+  },
+  {
+   "id": "world_transition_ridge",
+   "scene": "res://assets/fx/binbun/world_transition_ridge.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "world_transition_blades",
+   "scene": "res://assets/fx/binbun/world_transition_blades.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "world_sky_dark",
+   "scene": "res://assets/fx/binbun/world_sky_dark.tres",
+   "kind": "tres"
+  },
+  {
+   "id": "bone_prison_burst",
+   "scene": "res://assets/fx/binbun/bone_prison_burst.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "soul_siphon_beam",
+   "scene": "res://assets/fx/binbun/soul_siphon_beam.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "bone_storm_dust",
+   "scene": "res://assets/fx/binbun/bone_storm_dust.tscn",
+   "kind": "tscn"
+  },
+  {
+   "id": "grave_hands_pulse",
+   "scene": "res://assets/fx/binbun/grave_hands_pulse.tscn",
+   "kind": "tscn"
+  }
+ ]
+}

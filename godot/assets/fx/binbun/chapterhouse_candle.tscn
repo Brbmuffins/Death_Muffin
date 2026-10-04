@@ -1,0 +1,139 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://fx/dm_fx_controller.gd" id="1_804qn"]
+[ext_resource type="Shader" path="res://assets/fx/binbun/shaders/b4afe353de690ca0.gdshader" id="1_d5g78"]
+[ext_resource type="Material" path="res://assets/fx/binbun/lib/FireVFX/assets/BinbunVFX/fire_effects/src/materials/fire/fire_candle.tres" id="2_kiv7l"]
+
+[sub_resource type="Curve" id="Curve_aqxln"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), -2.61603, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_lquwl"]
+curve = SubResource("Curve_aqxln")
+
+[sub_resource type="Gradient" id="Gradient_wqorv"]
+colors = PackedColorArray(1, 0, 0, 1, 0, 0, 0, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_lquwl"]
+gradient = SubResource("Gradient_wqorv")
+
+[sub_resource type="Curve" id="Curve_tqek6"]
+_data = [Vector2(0, 0), 0.0, 1.8533, 0, 0, Vector2(0.731801, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.435691), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="CurveTexture" id="CurveTexture_7mycd"]
+curve = SubResource("Curve_tqek6")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_4875x"]
+direction = Vector3(1, 1, 0)
+gravity = Vector3(0, 2, 0)
+scale_curve = SubResource("CurveTexture_7mycd")
+color_initial_ramp = SubResource("GradientTexture1D_lquwl")
+alpha_curve = SubResource("CurveTexture_lquwl")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_1bvp3"]
+noise_type = 2
+fractal_type = 3
+fractal_octaves = 2
+fractal_ping_pong_strength = 6.235
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_lquwl"]
+noise = SubResource("FastNoiseLite_1bvp3")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_lquwl"]
+noise_type = 2
+fractal_octaves = 1
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_7mycd"]
+invert = true
+seamless = true
+seamless_blend_skirt = 0.355
+noise = SubResource("FastNoiseLite_lquwl")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ma0kq"]
+render_priority = 0
+shader = ExtResource("1_d5g78")
+shader_parameter/noise_texture_1 = SubResource("NoiseTexture2D_lquwl")
+shader_parameter/noise_texture_2 = SubResource("NoiseTexture2D_7mycd")
+shader_parameter/mask_from = Vector2(0.5, 0.5)
+shader_parameter/mask_scale = 0.2
+shader_parameter/edge_softness = 0.5
+
+[sub_resource type="QuadMesh" id="QuadMesh_0rjja"]
+material = SubResource("ShaderMaterial_ma0kq")
+
+[sub_resource type="Curve" id="Curve_r6h00"]
+_data = [Vector2(0, 1), 0.0, -0.045458, 0, 0, Vector2(0.505747, 1), 0.0, 0.0, 0, 0, Vector2(0.992337, 0.477492), -3.93971, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="CurveTexture" id="CurveTexture_0xm2m"]
+curve = SubResource("Curve_r6h00")
+
+[sub_resource type="Gradient" id="Gradient_n8vg8"]
+offsets = PackedFloat32Array(0.00212766, 1)
+colors = PackedColorArray(1, 0, 0, 1, 0, 0, 0, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_0xm2m"]
+gradient = SubResource("Gradient_n8vg8")
+
+[sub_resource type="Curve" id="Curve_b7q67"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), -1.17946, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_h2yge"]
+curve = SubResource("Curve_b7q67")
+
+[sub_resource type="Curve" id="Curve_e35uk"]
+_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(1, 1), 2.33237, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_272bh"]
+curve = SubResource("Curve_e35uk")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_d5g78"]
+direction = Vector3(0, 1, 0)
+spread = 5
+initial_velocity_min = 0.1
+initial_velocity_max = 0.2
+gravity = Vector3(0, 0, 0)
+scale_curve = SubResource("CurveTexture_h2yge")
+color_initial_ramp = SubResource("GradientTexture1D_0xm2m")
+alpha_curve = SubResource("CurveTexture_0xm2m")
+turbulence_noise_speed = Vector3(0, 12.49, 0)
+turbulence_noise_speed_random = 0
+turbulence_influence_max = 1
+turbulence_influence_over_life = SubResource("CurveTexture_272bh")
+sub_emitter_mode = 4
+sub_emitter_amount_at_start = 1
+sub_emitter_keep_velocity = true
+
+[sub_resource type="QuadMesh" id="QuadMesh_ma0kq"]
+material = ExtResource("2_kiv7l")
+size = Vector2(0.15, 0.2)
+
+[sub_resource type="QuadMesh" id="QuadMesh_kiv7l"]
+material = ExtResource("2_kiv7l")
+size = Vector2(0.15, 0.2)
+
+[node name="Fire_Candle" type="Node3D"]
+script = ExtResource("1_804qn")
+
+[node name="Smoke" type="GPUParticles3D" parent="."]
+emitting = false
+amount = 2
+lifetime = 0.5
+process_material = SubResource("ParticleProcessMaterial_4875x")
+draw_pass_1 = SubResource("QuadMesh_0rjja")
+
+[node name="Flame" type="GPUParticles3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.000316582, -0.00331225, 0.00392483)
+sorting_offset = 0.01
+sorting_use_aabb_center = false
+amount = 16
+sub_emitter = NodePath("../Smoke")
+draw_order = 1
+process_material = SubResource("ParticleProcessMaterial_d5g78")
+draw_pass_1 = SubResource("QuadMesh_ma0kq")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("QuadMesh_kiv7l")
