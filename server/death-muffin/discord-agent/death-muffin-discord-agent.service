@@ -18,3 +18,6 @@ Restart=on-failure
 RestartSec=10
 PrivateTmp=yes
 Nice=10
+
+[Install]
+WantedBy=multi-user.target
