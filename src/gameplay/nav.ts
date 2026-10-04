@@ -17,6 +17,9 @@ export interface BoxObstacle {
 export type Obstacle = CircleObstacle | BoxObstacle;
 
 const CELL = 4;
+/** Integer key of a grid cell (world coordinates stay far inside ±32k cells). */
+const gk = (cx: number, cz: number) => (cx + 32768) * 65536 + (cz + 32768);
+const NONE: readonly Obstacle[] = [];
 
 function inRect(r: Rect, x: number, z: number, pad = 0) {
   return x >= r.x0 + pad && x <= r.x1 - pad && z >= r.z0 + pad && z <= r.z1 - pad;
@@ -41,13 +44,15 @@ export function rectCenter(r: Rect) {
  */
 export class Nav {
   private obstacles: Obstacle[] = [];
-  private grid = new Map<string, Obstacle[]>();
+  /** Obstacles by 4 m cell; numeric keys (gk) because blocked() looks cells up per A* cell and per 0.25 m of a line check. */
+  private grid = new Map<number, Obstacle[]>();
   private unlocked = new Set<AreaId>(AREA_ORDER.filter(isAlwaysOpen));
   /** Instance areas (the Depths) that a run has opened. Kept apart from `unlocked` so setUnlocked (called on every seal) never closes one. */
   private instances = new Set<AreaId>();
 
   setUnlocked(areas: Iterable<AreaId>) {
     // An instance is opened by its run, never by a seal or by dev access.
+    this.dropFree();
     this.unlocked = new Set([...areas].filter((id) => !AREAS[id].instance));
     for (const id of AREA_ORDER) if (isAlwaysOpen(id)) this.unlocked.add(id);
   }
@@ -72,10 +77,12 @@ export class Nav {
   /** Open an instance area to walkers (a run began). */
   openInstance(id: AreaId) {
     this.instances.add(id);
+    this.dropFree();
   }
 
   closeInstance(id: AreaId) {
     this.instances.delete(id);
+    this.dropFree();
   }
 
   /** Replace the Depths' floor: the old floor's colliders go, the new one's come in. */
@@ -107,12 +114,13 @@ export class Nav {
   }
 
   private removeObstacle(o: Obstacle) {
+    this.dropFree();
     const i = this.obstacles.indexOf(o);
     if (i >= 0) this.obstacles.splice(i, 1);
     const [x0, z0, x1, z1] = o.kind === 'circle' ? [o.x - o.r, o.z - o.r, o.x + o.r, o.z + o.r] : [o.x0, o.z0, o.x1, o.z1];
     for (let cx = Math.floor(x0 / CELL); cx <= Math.floor(x1 / CELL); cx++) {
       for (let cz = Math.floor(z0 / CELL); cz <= Math.floor(z1 / CELL); cz++) {
-        const k = `${cx},${cz}`;
+        const k = gk(cx, cz);
         const list = this.grid.get(k);
         if (!list) continue;
         const at = list.indexOf(o);
@@ -145,12 +153,13 @@ export class Nav {
   }
 
   addObstacle(o: Obstacle) {
+    this.dropFree();
     this.obstacles.push(o);
     const [x0, z0, x1, z1] =
       o.kind === 'circle' ? [o.x - o.r, o.z - o.r, o.x + o.r, o.z + o.r] : [o.x0, o.z0, o.x1, o.z1];
     for (let cx = Math.floor(x0 / CELL); cx <= Math.floor(x1 / CELL); cx++) {
       for (let cz = Math.floor(z0 / CELL); cz <= Math.floor(z1 / CELL); cz++) {
-        const k = `${cx},${cz}`;
+        const k = gk(cx, cz);
         let list = this.grid.get(k);
         if (!list) this.grid.set(k, (list = []));
         list.push(o);
@@ -162,11 +171,17 @@ export class Nav {
     return this.obstacles.length;
   }
 
+  /** Walkable rects, cached: blocked() runs per A* cell and per 0.25 m of every line check, and the set only changes on unlock / instance. */
+  private walkCache: Rect[] | null = null;
+  /** Free/blocked flags of an area's 0.5 m path grid per body radius, filled lazily and kept: rooms do not move, so only the first long route in a room pays for the cells it explores. Cleared when obstacles or walkable space change. */
+  private freeCache = new Map<string, Int8Array>();
+  private dropFree() { this.walkCache = null; if (this.freeCache.size) this.freeCache.clear(); }
   private walkables(): Rect[] {
+    if (this.walkCache) return this.walkCache;
     const list: Rect[] = [];
     for (const id of AREA_ORDER) if (this.isUnlocked(id)) list.push(AREAS[id].rect);
     for (const d of DOORS) if (this.isDoorOpen(d)) list.push(d.rect);
-    return list;
+    return (this.walkCache = list);
   }
 
   areaAt(x: number, z: number): AreaId | null {
@@ -177,7 +192,7 @@ export class Nav {
   /** Push a body of radius r out of obstacles. */
   pushOut(x: number, z: number, r: number): [number, number] {
     for (let pass = 0; pass < 2; pass++) {
-      const list = this.grid.get(`${Math.floor(x / CELL)},${Math.floor(z / CELL)}`);
+      const list = this.grid.get(gk(Math.floor(x / CELL), Math.floor(z / CELL)));
       if (!list) break;
       let moved = false;
       for (const o of list) {
@@ -300,10 +315,13 @@ export class Nav {
 
   /** True when a body of radius r at (x, z) overlaps an obstacle or leaves walkable space. */
   blocked(x: number, z: number, r: number): boolean {
-    if (!this.walkables().some((rect) => inRect(rect, x, z, r))) return true;
+    const rects = this.walkables();
+    let inside = false;
+    for (let i = 0; i < rects.length && !inside; i++) inside = inRect(rects[i], x, z, r);
+    if (!inside) return true;
     for (let cx = Math.floor((x - r) / CELL); cx <= Math.floor((x + r) / CELL); cx++) {
       for (let cz = Math.floor((z - r) / CELL); cz <= Math.floor((z + r) / CELL); cz++) {
-        for (const o of this.grid.get(`${cx},${cz}`) ?? []) {
+        for (const o of this.grid.get(gk(cx, cz)) ?? NONE) {
           if (o.kind === 'circle') {
             if (Math.hypot(x - o.x, z - o.z) < o.r + r) return true;
           } else {
@@ -351,7 +369,9 @@ export class Nav {
     const h = Math.ceil((rect.z1 - rect.z0) / S);
     const cx = (i: number) => rect.x0 + (i % w) * S + S / 2;
     const cz = (i: number) => rect.z0 + Math.floor(i / w) * S + S / 2;
-    const free = new Int8Array(w * h).fill(-1); // -1 unknown, 0 blocked, 1 free
+    const ck = `${rect.x0},${rect.z0},${rect.x1},${rect.z1},${r}`;
+    let free = this.freeCache.get(ck);
+    if (!free) this.freeCache.set(ck, (free = new Int8Array(w * h).fill(-1))); // -1 unknown, 0 blocked, 1 free
     const isFree = (i: number) => {
       if (free[i] < 0) free[i] = this.blocked(cx(i), cz(i), r) ? 0 : 1;
       return free[i] === 1;
@@ -393,6 +413,9 @@ export class Nav {
     const heur = (k: number) => Math.hypot((k % w) - gx, Math.floor(k / w) - gy);
     const cost = new Float32Array(w * h).fill(Infinity);
     const prev = new Int32Array(w * h).fill(-1);
+    // Cells already expanded: the heap keeps stale duplicates (no decrease-key), and without this they were expanded again,
+    // up to 4x the room's cell count on long routes (2026-10-04: a 40 m click took ~25 ms).
+    const closed = new Uint8Array(w * h);
     // Binary heap of [f, cell].
     const heap: [number, number][] = [];
     const push = (f: number, k: number) => {
@@ -427,6 +450,8 @@ export class Nav {
     let found = false;
     for (let guard = 0; heap.length && guard < w * h * 4; guard++) {
       const [, k] = pop();
+      if (closed[k]) continue;
+      closed[k] = 1;
       if (k === g) {
         found = true;
         break;
@@ -460,13 +485,9 @@ export class Nav {
     let at = { x: from.x, z: from.z };
     let i = 0;
     while (i < cells.length) {
+      // Walk forward while the corner is still in sight (linear, where scanning back from the end was quadratic on long routes).
       let far = i;
-      for (let k = cells.length - 1; k > i; k--) {
-        if (this.clearLine(at.x, at.z, cells[k].x, cells[k].z, r * 0.9)) {
-          far = k;
-          break;
-        }
-      }
+      while (far + 1 < cells.length && this.clearLine(at.x, at.z, cells[far + 1].x, cells[far + 1].z, r * 0.9)) far++;
       out.push(cells[far]);
       at = cells[far];
       i = far + 1;

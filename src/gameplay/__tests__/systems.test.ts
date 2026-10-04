@@ -160,7 +160,7 @@ describe('click-to-move continuity', () => {
   it('keeps the current door waypoints when the held destination is unchanged', () => {
     let routes = 0;
     const nav = {
-      route: () => { routes++; return [{ x: 0.1, z: 0 }, { x: 2, z: 0 }]; },
+      findPath: () => { routes++; return [{ x: 0.1, z: 0 }, { x: 2, z: 0 }]; },
       resolve: (x: number, z: number) => [x, z],
       areaAt: () => 'chapterhouse',
     } as unknown as Nav;
@@ -174,7 +174,7 @@ describe('click-to-move continuity', () => {
 
   it('uses the same frame to advance beyond an already reached waypoint', () => {
     const nav = {
-      route: () => [{ x: 0.1, z: 0 }, { x: 2, z: 0 }],
+      findPath: () => [{ x: 0.1, z: 0 }, { x: 2, z: 0 }],
       resolve: (x: number, z: number) => [x, z],
       areaAt: () => 'chapterhouse',
     } as unknown as Nav;
