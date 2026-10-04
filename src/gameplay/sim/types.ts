@@ -358,6 +358,8 @@ export type Intent =
       count?: number;
       /** Bone Colossus rune: consume up to five corpses within the radius (at least three) and raise one giant thrall. */
       colossus?: boolean;
+      /** Bonded Dead boon: raise one thrall from nothing at (x, z), but only if the owner has none standing. */
+      bond?: boolean;
     }
   | {
       t: 'litany';

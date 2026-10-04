@@ -73,6 +73,8 @@ export interface WorldSnapshot {
   difficulty?: Difficulty;
   /** Host's Ascension rank (absent from older hosts → 0). */
   ascension?: number;
+  /** Host's sworn Vows (absent when none, and from older hosts: `ascension` then means that many steps of Elder Dead). */
+  vows?: Partial<Record<string, number>>;
   enemies: EnemyRow[];
   thralls: ThrallRow[];
   /** Full corpse + zone lists ride along every Nth snapshot for resync. */

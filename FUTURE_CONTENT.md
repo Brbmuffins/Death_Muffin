@@ -136,6 +136,10 @@ nothing left to chase. Ranked by replay value per effort; ★ = buildable client
      This is Diablo's Torment idea. It stacks with Easy/Medium/Hard and gives the balance harness a
      new band.
    - Server later: add `ascension_rank`, `ashes` and `boons` columns to the necro-progress proposal.
+   - **Reworked 2026-10-03 (branch `dm/ascension-vows`): Vows.** The seal grind no longer repeats: seals never reset, the +3-levels-per-rank aging became the
+     **Elder Dead** vow (step 1 of 20), and the player swears 11 chosen curses before a run (Iron Dead, Swollen Waves, Deacon Host, Bloodied Elites,
+     Prelate Echoes, Thin Graves, Frail Vessel, Famished Rites, Brittle Dead, Dry Cellar). Heat sums to the run's rank and multiplies Ashes. Six
+     play-changing boons (Lingering Dead, Grave Feast, Bonded Dead, Hollow Sacrifice, Bone Ward, Carrion Bloom) are unlocked with soul shards. See README "Ascension".
 2. **★ Daily rites (bounties).** Three objectives a day, seeded from the date so every player gets the
    same ones, e.g. "Slay 60 in the Nave at Wave Speed ≥ 3", "Win a Grave Surge without a thrall
    dying", "Kill the Prelate on Hard". They pay shards and Ashes, and give a reason to revisit
@@ -150,8 +154,8 @@ nothing left to chase. Ranked by replay value per effort; ★ = buildable client
 5. **Catacomb Depths (endless descent) — BUILT 2 Oct 2026 (`dm/depths`, see README "The Catacomb Depths" and HANDOFF).** A procedural endless area below the Nave: each depth
    is +1 enemy level and a new affix, with a depth leaderboard. The leaderboard needs server
    storage; the descent itself doesn't.
-6. **Prelate Echoes.** Each Ascension rank gives the Prelate one extra mechanic from a pool (a second
-   bell, procession elites, rain that chases). The boss fight changes as you prestige.
+6. ✅ *built 2026-10-03 as the **Prelate Echoes** vow (`dm/ascension-vows`)* — three steps: a second bell, a procession with elites, rain that chases.
+   Still open: a pool of more echoes, and the same idea for the area bosses.
 7. **Collection goals.** Codex completion and per-discipline mastery unlock cosmetic thrall tints
    and portrait frames. This is low effort and rewards long-term players.
 

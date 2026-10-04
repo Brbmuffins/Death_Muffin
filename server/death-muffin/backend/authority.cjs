@@ -65,7 +65,7 @@ async function necroSummary(db, characterId) {
   try {
     const [[row]] = await db.execute('SELECT state FROM character_necro_progress WHERE character_id = ?', [characterId]);
     const s = parseJson(row && row.state, null) || {};
-    out = { unlocked: Array.isArray(s.unlockedAreas) && s.unlockedAreas.length ? s.unlockedAreas : ['chapterhouse', 'graves'], ascension: num(s.ascension) };
+    out = { unlocked: Array.isArray(s.unlockedAreas) && s.unlockedAreas.length ? s.unlockedAreas : ['chapterhouse', 'graves'], ascension: s.vows && typeof s.vows === 'object' ? s.vows : num(s.ascension) };
   } catch {
     out = { unlocked: ['chapterhouse', 'graves'], ascension: 0 };
   }
@@ -348,7 +348,7 @@ function evaluateOffline({ online, offline }) {
   const playMin = (snap) => num(snap.chronicle && snap.chronicle.life && snap.chronicle.life.playSeconds) / 60;
   const minutes = Math.min(A.OFFLINE_MAX_MINUTES, Math.max(A.OFFLINE_MIN_MINUTES, playMin(offline) - playMin(online)));
   const necro = offline.necro || {};
-  const ceil = rules.ceilingsFor(Array.isArray(necro.unlockedAreas) ? necro.unlockedAreas : ['chapterhouse', 'graves'], num(necro.ascension), num(fc.level, 1),
+  const ceil = rules.ceilingsFor(Array.isArray(necro.unlockedAreas) ? necro.unlockedAreas : ['chapterhouse', 'graves'], necro.vows && typeof necro.vows === 'object' ? necro.vows : num(necro.ascension), num(fc.level, 1),
     num(offline.chronicle && offline.chronicle.life && offline.chronicle.life['peak.depth']));
   const findings = [];
   const xpGain = rules.totalXp(fc.level, fc.experience) - rules.totalXp(oc.level, oc.experience);

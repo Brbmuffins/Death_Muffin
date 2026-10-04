@@ -150,14 +150,63 @@ test('Ascend and boons are server rules', async () => {
   assert.equal(a.status, 200);
   assert.ok(a.json.data.earned > 0);
   const p = a.json.data.progress;
-  assert.equal(p.ascension, 1);
+  assert.equal(p.ascension, 0, 'no vows sworn: heat 0, best rank stays 0');
   assert.equal(p.damageTier, 0);
-  assert.deepEqual(p.unlockedAreas, ['chapterhouse', 'graves']);
+  assert.ok(p.unlockedAreas.includes('sanctum'), 'seals do not reset on Ascension');
+  assert.deepEqual(p.vows, {});
   const b = await call('boon', { boonId: 'vigil' });
   assert.equal(b.status, 200);
   assert.equal(b.json.data.progress.boons.vigil, 1);
   assert.equal((await call('boon', { boonId: 'legion_pact' })).status, 400, 'rank gate');
   assert.equal((await call('boon', { boonId: 'nope' })).status, 400);
+});
+
+test('vows: sworn server-side, validated, and the run restarts only when the vows change mid-run', async () => {
+  const { call } = harness();
+  await call('importLocal', { record: { areaKills: { graves: 300, ossuary: 420, nave: 520 }, shards: 5 } });
+  assert.equal((await call('vows', { vows: { bogus: 1 } })).status, 400);
+  assert.equal((await call('vows', { vows: { elder_dead: 999 } })).status, 400);
+  assert.equal((await call('vows', { vows: { prelate_echo: 1 } })).status, 400, 'locked');
+  assert.equal((await call('vows', {})).status, 400, 'a vow set is required');
+  const r = await call('vows', { vows: { elder_dead: 3, iron_dead: 2 }, heat: -5, ashes: 99 });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.json.data.progress.vows, { elder_dead: 3, iron_dead: 2 });
+  assert.equal(r.json.data.progress.ashes, 0, 'client extras are ignored');
+  await call('summonPrelate');
+  await call('save', { prelateKills: 1 });
+  const same = await call('vows', { vows: { iron_dead: 2, elder_dead: 3 } });
+  assert.equal(same.json.data.progress.run.prelateKills, 1, 'same vows: the tally stands');
+  const changed = await call('vows', { vows: { elder_dead: 4 } });
+  assert.equal(changed.json.data.progress.run.prelateKills, 0, 'changed mid-run: the tally restarts');
+});
+
+test('soul shards unlock vows and boons, priced by the server', async () => {
+  const { call } = harness();
+  assert.equal((await call('unlock', { key: 'vow:prelate_echo' })).status, 400, 'no shards');
+  await call('importLocal', { record: { areaKills: { graves: 50 }, shards: 40 } });
+  for (let i = 0; i < 25; i++) await call('save', { shards: 30 });
+  assert.equal((await call('unlock', { key: 'vow:elder_dead' })).status, 400, 'free vows need no unlock');
+  assert.equal((await call('unlock', { key: 'vow:nope' })).status, 400);
+  assert.equal((await call('boon', { boonId: 'bonded_dead' })).status, 400, 'locked boon');
+  const r = await call('unlock', { key: 'vow:prelate_echo', cost: 1 });
+  assert.equal(r.status, 200);
+  assert.equal(r.json.data.cost, 600, 'client-sent cost is ignored');
+  assert.equal(r.json.data.progress.soulShards, 40 + 750 - 600);
+  assert.deepEqual(r.json.data.progress.unlocks, ['vow:prelate_echo']);
+  assert.equal((await call('unlock', { key: 'vow:prelate_echo' })).status, 400, 'once only');
+  assert.equal((await call('vows', { vows: { prelate_echo: 3 } })).status, 200);
+});
+
+test('an existing row without vows loads as N steps of Elder Dead, keeping rank, Ashes and boons', async () => {
+  const { call, store } = harness();
+  await store.withLock(7, (state) => ({ state: { ...state, ascension: 2, ashes: 9, boons: { vigil: 2 }, vows: undefined, unlocks: undefined } }));
+  const r = await call('get');
+  const p = r.json.data.progress;
+  assert.equal(p.ascension, 2);
+  assert.equal(p.ashes, 9);
+  assert.deepEqual(p.boons, { vigil: 2 });
+  assert.deepEqual(p.vows, { elder_dead: 2 });
+  assert.deepEqual(p.unlocks, []);
 });
 
 test('the browser import runs once and is clamped', async () => {

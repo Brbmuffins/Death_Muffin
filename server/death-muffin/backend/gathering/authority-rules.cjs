@@ -1293,12 +1293,74 @@ var FLOORS_PER_MIN_CEILING = 3;
 var ASCENSION = {
   /** Prelate kills this run needed before the Altar will take the run. */
   prelateKillsRequired: 1,
-  /** Every enemy (and the Prelate) is this many levels older per rank. */
+  /** Every enemy (and the Prelate) is this many levels older per step of the Elder Dead vow. */
   levelsPerRank: 3,
-  /** Gold and XP bonus per rank, on top of what the older enemies already pay. */
+  /** Gold and XP bonus per point of heat, on top of what the older enemies already pay. */
   rewardPerRank: 0.05,
-  maxRank: 20
+  /** Heat past this earns no further gold / XP bonus (Ashes keep rising). */
+  rewardHeatCap: 30,
+  /** Largest heat a character can swear (the sum of every vow at its top step). Informational; vows enforce their own caps. */
+  maxRank: 50,
+  /** Ashes: +20% per point of heat on the run's base payout. */
+  ashesPerHeat: 0.2
 };
+var VOWS = {
+  elder_dead: { id: "elder_dead", name: "Elder Dead", blurb: "The dead rise 3 levels older per step.", maxRank: 20, heat: 1, unlockShards: 0, scope: "world" },
+  iron_dead: { id: "iron_dead", name: "Iron Dead", blurb: "Enemies have 25% more health per step.", maxRank: 3, heat: 1, unlockShards: 0, scope: "world" },
+  frail_vessel: { id: "frail_vessel", name: "Frail Vessel", blurb: "You have 12% less maximum health per step.", maxRank: 3, heat: 1, unlockShards: 0, scope: "self" },
+  famished: { id: "famished", name: "Famished Rites", blurb: "Grave Essence returns 20% slower per step.", maxRank: 2, heat: 1, unlockShards: 100, scope: "self" },
+  thin_graves: { id: "thin_graves", name: "Thin Graves", blurb: "Corpses rot 25% sooner per step.", maxRank: 2, heat: 1, unlockShards: 120, scope: "world" },
+  brittle_thralls: { id: "brittle_thralls", name: "Brittle Dead", blurb: "Your thralls have 20% less health per step.", maxRank: 2, heat: 1, unlockShards: 150, scope: "self" },
+  swollen_waves: { id: "swollen_waves", name: "Swollen Waves", blurb: "Every wave brings 25% more of the dead per step.", maxRank: 3, heat: 1, unlockShards: 200, scope: "world" },
+  dry_cellar: { id: "dry_cellar", name: "Dry Cellar", blurb: "Healing flasks no longer work for you (brews and meals still do).", maxRank: 1, heat: 2, unlockShards: 250, scope: "self" },
+  elite_surge: { id: "elite_surge", name: "Bloodied Elites", blurb: "Elites are 8% more common per step.", maxRank: 3, heat: 1, unlockShards: 300, scope: "world" },
+  deacon_host: { id: "deacon_host", name: "Deacon Host", blurb: "Crypt Deacons are twice as common (step 2: three times).", maxRank: 2, heat: 2, unlockShards: 400, scope: "world" },
+  prelate_echo: { id: "prelate_echo", name: "Prelate Echoes", blurb: "The Prelate learns a new trick per step: a second bell, an elite procession, chasing rain.", maxRank: 3, heat: 2, unlockShards: 600, scope: "world" }
+};
+var VOW_ORDER = [
+  "elder_dead",
+  "iron_dead",
+  "swollen_waves",
+  "deacon_host",
+  "elite_surge",
+  "prelate_echo",
+  "thin_graves",
+  "frail_vessel",
+  "famished",
+  "brittle_thralls",
+  "dry_cellar"
+];
+function vowSteps(vows, id) {
+  return Math.max(0, Math.min(VOWS[id].maxRank, Math.floor(Number(vows?.[id])) || 0));
+}
+function vowHeat(vows) {
+  let h = 0;
+  for (const id of VOW_ORDER) h += vowSteps(vows, id) * VOWS[id].heat;
+  return h;
+}
+function vowEffects(vows) {
+  const s = (id) => vowSteps(vows, id);
+  return {
+    levels: ASCENSION.levelsPerRank * s("elder_dead"),
+    enemyHpMult: 1 + 0.25 * s("iron_dead"),
+    waveSizeMult: 1 + 0.25 * s("swollen_waves"),
+    deaconMult: 1 + s("deacon_host"),
+    eliteBonus: 0.08 * s("elite_surge"),
+    echoes: s("prelate_echo"),
+    corpseLifeMult: 1 - 0.25 * s("thin_graves"),
+    maxHpMult: 1 - 0.12 * s("frail_vessel"),
+    essenceRegenMult: 1 - 0.2 * s("famished"),
+    thrallHpMult: 1 - 0.2 * s("brittle_thralls"),
+    noFlasks: s("dry_cellar") > 0
+  };
+}
+function ascensionRewardMult(heat) {
+  return 1 + ASCENSION.rewardPerRank * Math.max(0, Math.min(ASCENSION.rewardHeatCap, Math.floor(heat) || 0));
+}
+function legacyVows(rank) {
+  const n = Math.max(0, Math.min(VOWS.elder_dead.maxRank, Math.floor(Number(rank)) || 0));
+  return n ? { elder_dead: n } : {};
+}
 
 // src/content/reagents.ts
 var item = (name, rarity, sell, lore, art) => ({ name, rarity, sell, lore, stack: 250, art });
@@ -1735,14 +1797,15 @@ var AUTHORITY = {
 };
 var XP_LEVEL_STEP = 0.25;
 var GOLD_LEVEL_STEP = 0.15;
-function enemyLevel(area, characterLevel, rank) {
+function enemyLevel(area, characterLevel, levels) {
   const a = AREAS[area];
   const base = a.scaling ? Math.max(a.scaling.minLevel, characterLevel) : a.level;
-  return base + rank * ASCENSION.levelsPerRank;
+  return base + levels;
 }
 function ceilingsFor(unlocked, ascension, characterLevel, deepest = 0) {
-  const rank = Math.min(ASCENSION.maxRank, Math.max(0, Math.trunc(ascension) || 0) + AUTHORITY.COOP_RANK_ALLOWANCE);
-  const rankMult = 1 + ASCENSION.rewardPerRank * rank;
+  const vows = typeof ascension === "number" ? legacyVows(Math.max(0, Math.trunc(ascension) || 0)) : ascension ?? {};
+  const levels = vowEffects(vows).levels + AUTHORITY.COOP_RANK_ALLOWANCE * ASCENSION.levelsPerRank;
+  const rankMult = ascensionRewardMult(vowHeat(vows) + AUTHORITY.COOP_RANK_ALLOWANCE);
   let xp = 0;
   let gold = 0;
   let best = null;
@@ -1751,7 +1814,7 @@ function ceilingsFor(unlocked, ascension, characterLevel, deepest = 0) {
     if (!peak || !unlocked.includes(id === "depths" ? DEPTHS_GATE : id)) continue;
     const depths = id === "depths";
     const baseLevel = depths ? depthEnemyLevel(DEPTHS_AUTHORITY.refDepth, DEPTHS_AUTHORITY.refHero) : AREAS[id].scaling ? AREAS[id].scaling.minLevel : AREAS[id].level;
-    const lvl = depths ? depthEnemyLevel(depthBound(deepest), characterLevel) + rank * ASCENSION.levelsPerRank : enemyLevel(id, characterLevel, rank);
+    const lvl = depths ? depthEnemyLevel(depthBound(deepest), characterLevel) + levels : enemyLevel(id, characterLevel, levels);
     const x = peak.xp * (1 + XP_LEVEL_STEP * (lvl - 1)) / (1 + XP_LEVEL_STEP * (baseLevel - 1)) * rankMult * AUTHORITY.CHAIN * AUTHORITY.OMEN * AUTHORITY.WISDOM;
     const g = peak.gold * (1 + GOLD_LEVEL_STEP * (lvl - 1)) / (1 + GOLD_LEVEL_STEP * (baseLevel - 1)) * rankMult * AUTHORITY.CHAIN * AUTHORITY.OMEN;
     if (x > xp) {

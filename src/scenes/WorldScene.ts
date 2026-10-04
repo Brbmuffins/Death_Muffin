@@ -37,7 +37,7 @@ import { Guidance, formatSealProgress, bossTrophyKey, nextSuggestion, readTrophi
 import { addToSlots } from '../gameplay/loot';
 import { WAVE_MILESTONES, damageBonusPct, milestoneActive, waveModifiers } from '../content/upgrades';
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
-import { BOONS, ascensionLevels, ascensionRewardMult, roman } from '../content/ascension';
+import { BOONS, BOON_ORDER, VOWS, VOW_ORDER, ascensionRewardMult, boonKey, isUnlocked, roman, unlockCost, vowEffects, vowKey, worldVows } from '../content/ascension';
 import { AscensionPanel } from '../ui/AscensionPanel';
 import { ClassPanel } from '../ui/ClassPanel';
 import { changeDiscipline, getContracts, getCosmetics, getGarden, getLabor, type LaborView, type ContractDelivery, type CosmeticsView, type GardenResult, type LaborResult } from '../net/api';
@@ -693,7 +693,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.sim.setNodes(this.layout.nodes);
     this.sim.waveTier = this.progression.local.waveTierActive;
     this.sim.difficulty = settings.difficulty;
-    this.sim.ascension = this.progression.local.ascension;
+    this.syncWorldVows();
 
     const scene = this;
     this.abilities = new AbilitySystem({
@@ -1228,8 +1228,11 @@ export class WorldScene implements GameScene, RuntimeView {
         if (!this.progression.buyBoon(id)) return;
         audio.play('shard');
         this.applyBoons();
+        this.syncWorldVows();
         this.hud.toast(`${BOONS[id].name} — ${BOONS[id].blurb}`, 'good');
       },
+      (next) => this.doSwear(next),
+      (key) => this.doOpen(key),
     );
     const host = (open: () => void | Promise<void>, panel: { close(): void; readonly isOpen: boolean }) => ({ open, close: () => panel.close(), get isOpen() { return panel.isOpen; } });
     this.acreWin.attach('skills', host(() => this.professionsPanel.open(this.skills), this.professionsPanel));
@@ -1991,7 +1994,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (now < this.nextAutoCombatAt) return;
     this.nextAutoCombatAt = now + 180;
     const thralls = this.legionPlaces();
-    if (p.hp < p.stats.maxHp * 0.42 && now >= this.flaskCdUntil &&
+    if (p.hp < p.stats.maxHp * 0.42 && now >= this.flaskCdUntil && !this.progression.vowFx.noFlasks &&
         (this.inventory.count('flask_hp_grand') || this.inventory.count('flask_hp_major') || this.inventory.count('flask_hp_minor'))) this.drinkFlask();
     const action = selectAutoCombatAction({ player: { x: p.x, z: p.z, area: p.area, essence: p.essence, maxEssence: p.resource.max,
       hp: p.hp, maxHp: p.stats.maxHp, veilForm: p.veilForm, bulwarkUntil: p.bulwarkUntil,
@@ -2147,7 +2150,9 @@ export class WorldScene implements GameScene, RuntimeView {
       return {
         slot: 'heal', key: 'Q', label: 'Heal', glyph: '✚', color: 0xe0709c, active: false, left: 0,
         frac: state === 'cooling' ? cdLeft / (HEAL_COOLDOWN_S * 1000) : 0, count: total, empty: state === 'empty',
-        tip: id
+        tip: this.progression.vowFx.noFlasks
+          ? 'Dry Cellar: your vow forbids healing flasks. Break it at the Altar of Ascension.'
+          : id
           ? `Healing: ${itemMeta(id).name} restores ${pct}% of your health (${total} carried). Press Q to drink; sips are ${HEAL_COOLDOWN_S}s apart.`
           : emptyHint('heal'),
       };
@@ -2181,6 +2186,11 @@ export class WorldScene implements GameScene, RuntimeView {
     if (prefer && prefer in BREWS) return this.drinkBuff(prefer);
     const now = this.now;
     if (!this.player.alive || now < this.flaskCdUntil) return;
+    if (this.progression.vowFx.noFlasks) {
+      this.floating.spawn(this.player.x, 2.4, this.player.z, 'Dry Cellar', 'info');
+      this.hud.toast('Your Dry Cellar vow forbids healing flasks. Brews and meals still work.');
+      return;
+    }
     const id = prefer && prefer in HEALING_FLASKS ? prefer : healPick((f) => this.inventory.count(f));
     if (!id || !this.inventory.consume(id)) {
       this.floating.spawn(this.player.x, 2.4, this.player.z, emptyPressText('heal'), 'info');
@@ -2760,7 +2770,8 @@ export class WorldScene implements GameScene, RuntimeView {
     for (const e of sim.enemies.values()) sim.markVisited(e.area);
     // The new keeper's difficulty runs the world from here on (new spawns).
     sim.difficulty = settings.difficulty;
-    sim.ascension = this.progression.local.ascension;
+    sim.vows = worldVows(this.progression.vows);
+    sim.corpseLifeMult = this.progression.boons.corpseLifeMult;
     this.sim = sim;
     this.mirror = null;
     this.hud.chatLine(`You now keep the world (${DIFFICULTIES[sim.difficulty].name})`);
@@ -3488,6 +3499,12 @@ export class WorldScene implements GameScene, RuntimeView {
       const it = AREAS[BOSSES[id].area].interactables.find((i) => i.id === BOSSES[id].summonId);
       if (it && this.player.area === BOSSES[id].area && Math.hypot(it.x - this.player.x, it.z - this.player.z) < 12) this.onboarding.show(`boss_${id}` as TipId);
     }
+    if (this.area === 'chapterhouse') {
+      const loc = this.progression.local;
+      const cheapest = Math.min(...[...VOW_ORDER.map(vowKey), ...BOON_ORDER.map(boonKey)].filter((k) => !isUnlocked(loc.unlocks, k)).map((k) => unlockCost(k) ?? Infinity));
+      if (cheapest !== Infinity && loc.shards >= cheapest + BOSS_SUMMON_SHARDS && loc.totalKills >= 200) this.onboarding.show('altar_unlocks');
+      if (loc.bossKills >= 1 || loc.totalKills >= 400) this.onboarding.show('vows');
+    }
     if (this.progression.local.ascension > 0 && this.progression.local.ashes > 0 && this.area === 'chapterhouse') this.onboarding.show('boons');
     const { x, z } = this.player;
     for (const d of DOORS) {
@@ -3785,7 +3802,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hud.banner('Surge Quelled', 'The crypt yields its offering', 3200);
     audio.play('levelUp');
     // Personal reward: a guaranteed item from the area's table plus bonus gold.
-    const level = AREAS[ev.area].level + ascensionLevels(this.worldAscension());
+    const level = AREAS[ev.area].level + this.worldLevels();
     const gold = Math.round((24 + 10 * level) * waveModifiers(this.bossWaveTier()).rewardMult * DIFFICULTIES[this.worldDifficulty()].rewardMult);
     this.dropItems(ev.x, ev.z, [rollSurgeItem(ev.area, Math.random, this.discipline.id)], level, 'surge');
     this.loot.gold(ev.x, ev.z, gold);
@@ -3918,25 +3935,25 @@ export class WorldScene implements GameScene, RuntimeView {
     for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d));
     this.checkUnlocks();
     if (this.sim && this.isAuthority()) {
-      this.sim.ascension = this.progression.local.ascension;
+      this.syncWorldVows();
       this.sim.waveTier = this.progression.local.waveTierActive;
     }
     this.applyBoons();
   }
 
-  /** Burn the run at the Altar: reset the local layer, raise the rank, age the world. */
+  /** The room's Vows and the corpse boon follow the world keeper's record (solo: yours). Only vows that reshape the world run in the sim; the heat of the rest pays Ashes. */
+  private syncWorldVows() {
+    if (!this.sim || !this.isAuthority()) return;
+    this.sim.vows = worldVows(this.progression.vows);
+    this.sim.corpseLifeMult = this.progression.boons.corpseLifeMult;
+  }
+
+  /** Burn the run at the Altar: tiers reset, Ashes are paid for the heat sworn. Seals, shards and vows stay. */
   private doAscend() {
+    const heat = this.progression.heat;
     const earned = this.progression.ascend();
     if (!earned) return;
-    const rank = this.progression.local.ascension;
-    this.nav.setUnlocked(this.openAreas());
-    for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d));
-    if (this.sim && this.isAuthority()) {
-      this.sim.ascension = rank;
-      this.sim.waveTier = 0;
-      // The younger dead crumble; older ones climb out on the next visit.
-      for (const a of AREA_ORDER) if (!AREAS[a].safe) this.sim.clearArea(a);
-    }
+    if (this.sim && this.isAuthority()) this.sim.waveTier = 0;
     this.applyBoons();
     const altar = AREAS.chapterhouse.interactables.find((i) => i.kind === 'upgrades')!;
     this.effects.emit({ x: altar.x, y: 0.4, z: altar.z, count: 120, color: 0xd9a441, spread: 1.2, speed: 1.4, up: 5, life: 1.8, size: 0.34 });
@@ -3944,13 +3961,40 @@ export class WorldScene implements GameScene, RuntimeView {
     this.effects.lightFlash(altar.x, 3, altar.z, 0xd9a441, 90, 1.6);
     this.rig.shake(0.4);
     audio.play('levelUp');
-    this.hud.banner(`Ascension ${roman(rank)}`, `The dead rise ${ascensionLevels(rank)} levels older · +${earned} Ashes`, 4200);
+    this.hud.banner(`Ascended at heat ${heat}`, `+${earned} Ashes${heat > 0 && heat >= this.progression.local.ascension ? ' · a new best rank' : ''} · swear your vows for the next run`, 4200);
     void this.progression.flush();
+  }
+
+  /** The Altar's vow screen: swear the whole set, then let the world follow. */
+  private doSwear(next: import('../content/ascension').VowRanks) {
+    const before = JSON.stringify(worldVows(this.progression.vows));
+    const restarted = this.progression.vowsRestartRun(next);
+    if (!this.progression.swearVows(next)) return this.hud.toast(this.progression.vowsProblem(next) ?? 'The Altar refuses.', 'err');
+    this.syncWorldVows();
+    this.applyBoons();
+    this.brewRev++;
+    // Older / tougher dead only show on the next rise: clear what stands so the new world is the one you meet.
+    if (this.sim && this.isAuthority() && before !== JSON.stringify(worldVows(this.progression.vows))) for (const a of AREA_ORDER) if (!AREAS[a].safe) this.sim.clearArea(a);
+    audio.play('shard');
+    this.hud.toast(`Vows sworn: heat ${this.progression.heat}${restarted ? ' · this run\'s tally restarts' : ''}`, 'good');
+  }
+
+  /** Spend soul shards at the Altar to open a vow or boon. */
+  private doOpen(key: string) {
+    if (!this.progression.unlockAtAltar(key)) return this.hud.toast(this.progression.unlockProblem(key) ?? 'The Altar refuses.', 'err');
+    audio.play('levelUp');
+    const name = key.startsWith('vow:') ? VOWS[key.slice(4) as keyof typeof VOWS].name : BOONS[key.slice(5) as keyof typeof BOONS].name;
+    this.hud.toast(`${name} unlocked`, 'good');
   }
 
   /** The Ascension rank the world runs at: yours solo/as host, the host's as a guest. */
   private worldAscension(): number {
-    return this.sim?.ascension ?? this.mirror?.ascension ?? this.progression.local.ascension;
+    return this.sim?.ascension ?? this.mirror?.ascension ?? this.progression.heat;
+  }
+
+  /** How many levels older the world's dead run: the keeper's Elder Dead vow. */
+  private worldLevels(): number {
+    return (this.sim?.vowFx ?? this.mirror?.vowFx ?? vowEffects(worldVows(this.progression.vows))).levels;
   }
 
   /**
@@ -3960,13 +4004,21 @@ export class WorldScene implements GameScene, RuntimeView {
   private applyBoons() {
     const base = disciplineFor(this.character.class_index);
     const fx = this.progression.boons;
+    // Vows that curse the one who swore them (Frail Vessel, Famished Rites, Brittle Dead) fold in beside the boons, beneath the sets.
+    const vow = this.progression.vowFx;
     this.discipline = {
       ...base,
       mods: {
         ...base.mods,
         thrallCap: base.mods.thrallCap + fx.extraThralls + this.weaponThrallBonus,
-        maxHpMult: base.mods.maxHpMult * fx.maxHpMult,
-        essenceRegenMult: base.mods.essenceRegenMult * fx.essenceRegenMult,
+        maxHpMult: base.mods.maxHpMult * fx.maxHpMult * vow.maxHpMult,
+        essenceRegenMult: base.mods.essenceRegenMult * fx.essenceRegenMult * vow.essenceRegenMult,
+        thrallHpMult: base.mods.thrallHpMult * vow.thrallHpMult,
+        // The boons that change how you play.
+        corpseHeal: base.mods.corpseHeal + fx.corpseHeal,
+        wardPerThrall: base.mods.wardPerThrall + fx.wardPerThrall,
+        sacrificeLeavesCorpse: base.mods.sacrificeLeavesCorpse || fx.sacrificeLeavesCorpse,
+        miasmaBurstsCorpses: base.mods.miasmaBurstsCorpses || fx.miasmaBurstsCorpses,
       },
     };
     // The Legion kit and its reinforcement fold in before the armor sets (withSetBonuses peels the sets off again, so the legion must sit beneath them).
@@ -4714,7 +4766,7 @@ export class WorldScene implements GameScene, RuntimeView {
           if (bossRune) reward.items.push(bossRune);
           this.loot.gold(ev.x, ev.z, reward.gold);
           this.loot.shard(ev.x, ev.z, reward.shards);
-          const bossLevel = AREAS[def.area].level + ascensionLevels(this.worldAscension());
+          const bossLevel = AREAS[def.area].level + this.worldLevels();
           this.dropItems(ev.x, ev.z, reward.items, bossLevel, 'boss');
           if (firstKill) this.dropItems(ev.x, ev.z, [firstKill], bossLevel, 'first_kill');
           this.gainXp(reward.xp, ev.x, ev.z);
@@ -4948,6 +5000,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.effects.update(dt, this.rig.camera, vh);
     this.floating.update(dt, this.rig.camera);
     this.tickOnboarding(now);
+    this.tickBond(now);
     this.updateHud(now);
   }
 
@@ -5118,8 +5171,25 @@ export class WorldScene implements GameScene, RuntimeView {
     };
   }
 
+  /** Bonded Dead: set on entering a hunting ground; the check below raises the thrall a moment after arrival if none stands. */
+  private bondAt = 0;
+
+  /** The Bonded Dead boon: a thrall rises beside you whenever you enter a hunting ground with none. */
+  private tickBond(now: number) {
+    if (!this.bondAt || now < this.bondAt || !this.player.alive || this.area === 'depths') return;
+    this.bondAt = 0;
+    if (!this.progression.boons.bondedDead || AREAS[this.area].safe || this.discipline.family !== 'necromancer') return;
+    if ([...this.thrallsMap().values()].some((t) => t.owner === this.selfId)) return;
+    const m = this.discipline.mods;
+    const x = this.player.x + Math.sin(this.player.facing) * 1.4;
+    const z = this.player.z + Math.cos(this.player.facing) * 1.4;
+    this.sendIntent({ t: 'exhume', by: this.selfId, x, z, r: 0.8, kind: m.thrallKind, cap: m.thrallCap, hp: this.player.stats.thrallHp, damage: this.player.stats.thrallDamage, attackSpeedMult: m.thrallAttackSpeedMult, bond: true });
+    this.hud.toast('Your bonded dead rises beside you', 'good');
+  }
+
   private enterArea(area: AreaId) {
     this.area = area;
+    this.bondAt = this.now + 1500;
     perfNote(`area ${area}`);
     // Loading frames are slow for reasons that pass: the resolution governor stands down for a few seconds.
     getRuntime().resolution.hold();
@@ -5224,7 +5294,7 @@ export class WorldScene implements GameScene, RuntimeView {
         ? 'The Prelate walks.'
         : `Offer <b>${this.progression.local.shards}/${BOSS_SUMMON_SHARDS}</b> soul shards at the Sundered Bell`;
     }
-    return `<b>${this.progression.kills(here)}</b> slain here · Level ${AREAS[here].level + ascensionLevels(this.worldAscension())} dead`;
+    return `<b>${this.progression.kills(here)}</b> slain here · Level ${AREAS[here].level + this.worldLevels()} dead`;
   }
 
   private interactPrompt(it: Interactable): string {
@@ -5565,6 +5635,8 @@ export class WorldScene implements GameScene, RuntimeView {
         this.sendIntent({ t: 'exhume', by: this.selfId, x, z, r: 0.8, kind: m.thrallKind, cap: 12, hp: this.player.stats.thrallHp, damage: this.player.stats.thrallDamage, attackSpeedMult: m.thrallAttackSpeedMult });
       },
       shards: (n: number) => this.progression.addShards(n),
+      /** QA: send the pending progress to the server now (the server clamps shards to 30 per save, so a big grant is `shards(30)` + `flushProgress()` repeated). */
+      flushProgress: () => this.progression.flush(),
       xp: (n: number) => this.gainXp(n, this.player.x, this.player.z),
       spawn: (def: keyof typeof ENEMIES, elite = false, affix?: EliteAffix) => {
         const a = this.player.area ?? 'graves';

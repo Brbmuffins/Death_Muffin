@@ -533,13 +533,40 @@ With **Auto gathering** enabled in Settings, clicking a node can continue to ano
 
 ## Ascension
 
-After defeating the **Bell-Sworn Prelate** during a run, visit the **Altar of Ascension** in the Chapterhouse. Ascending trades your current run for **Ashes** and one Ascension rank. The Altar shows the reward and asks you to confirm the reset.
+Ascension is chosen difficulty. At the **Altar of Ascension** in the Chapterhouse you swear **Vows** before a run: curses that make it harder, like Hades' Pact of Punishment. Every vow carries **heat**, and **the heat of the vows you swear is the run's Ascension rank**. When the **Bell-Sworn Prelate** falls, burn the run at the Altar for **Ashes**: each point of heat adds 20% to the payout, and the older, tougher dead also pay more gold and XP (+5% per point of world heat, up to 30). Your **best rank** (the hottest run you ever burned) is kept for the leaderboard.
 
-| Reset on Ascension | Kept on Ascension |
-|---|---|
-| Damage and Wave Speed tiers, soul shards, area kill counts, and opened seals | Character level and XP, gold, items, profession progress, Ashes, purchased Covenant Boons, and Ascension rank |
+**Seals never reset.** Opened seals, kill counts and soul shards all stay when you Ascend. Only your Damage, Wave Speed and Legion tiers and the run's tally reset. The difficulty comes from the vows you choose, so no run has to repeat the same seal grind.
 
-Ashes buy permanent **Covenant Boons** at the Altar, including more health, cheaper upgrades, a stronger start, faster seals, and an extra thrall. More Prelate kills, a higher peak Wave Speed, and more kills during a run increase its Ashes reward. Each Ascension rank makes enemies and bosses three levels older and raises gold and XP rewards. The rank cap is **20**.
+| Vow | Heat | What it does | Unlock |
+|---|---|---|---|
+| **Elder Dead** | 1 per step, up to 20 | The dead rise 3 levels older per step | known |
+| **Iron Dead** | 1 per step, up to 3 | Enemies have 25% more health per step | known |
+| **Frail Vessel** | 1 per step, up to 3 | You have 12% less maximum health per step (only you) | known |
+| **Famished Rites** | 1 per step, up to 2 | Grave Essence returns 20% slower per step (only you) | 100 shards |
+| **Thin Graves** | 1 per step, up to 2 | Corpses rot 25% sooner per step | 120 shards |
+| **Brittle Dead** | 1 per step, up to 2 | Your thralls have 20% less health per step (only you) | 150 shards |
+| **Swollen Waves** | 1 per step, up to 3 | Every wave brings 25% more of the dead per step | 200 shards |
+| **Dry Cellar** | 2 | Healing flasks no longer work for you (brews and meals still do) | 250 shards |
+| **Bloodied Elites** | 1 per step, up to 3 | Elites are 8% more common per step | 300 shards |
+| **Deacon Host** | 2 per step, up to 2 | Crypt Deacons are twice as common (step 2: three times) | 400 shards |
+| **Prelate Echoes** | 2 per step, up to 3 | The Prelate learns a trick per step: a second bell that tolls on whoever stands farthest, an elite procession, and rain that chases where you run | 600 shards |
+
+The Altar's vow screen shows the heat total, the Ashes multiplier and the gold and XP bonus as you choose, and nothing changes until you press **Swear these vows**. Vows stay sworn from run to run until you change them. **Changing vows while a run has kills on its tally restarts that tally** (kills, and any Prelate kill), so a run's Ashes always match the heat it was fought at. Tiers, seals and shards are never touched.
+
+Ashes buy permanent **Covenant Boons**. Nine are small baselines (more health, cheaper upgrades, a stronger start, faster seals, an extra thrall). Six change how you play, and **soul shards unlock them** at the Altar first:
+
+| Boon | Ranks and Ashes | What it does | Unlock |
+|---|---|---|---|
+| **Lingering Dead** | 2 (8, 18) | Corpses last 50% longer per rank (the room keeper's boon) | 150 shards |
+| **Grave Feast** | 2 (8, 16) | Each corpse you consume heals 3% of your health per rank | 200 shards |
+| **Bonded Dead** | 1 (10) | A thrall rises beside you whenever you enter a hunting ground with none | 300 shards |
+| **Hollow Sacrifice** | 1 (14) | A thrall you sacrifice leaves a fresh corpse | 350 shards |
+| **Bone Ward** | 2 (10, 20) | Each standing thrall turns away 2% more damage per rank | 400 shards |
+| **Carrion Bloom** | 1 (16) | Corpses caught inside your Miasma burst | 500 shards |
+
+Soul shards come from elites (about 7 per 100 kills), so unlocks take hours rather than minutes; everything together is about 3,700 shards. Keep 5 back for the Sundered Bell. Counsel cards in the Chapterhouse tell you about the vows and the first time you can afford an unlock, and the Codex tab **Altar & Vows** lists everything.
+
+**Existing characters** keep their rank (now their best rank), Ashes, boons and shards. Their old Ascension rank N is swapped for **N steps of Elder Dead**, the same older world they were playing in, which they can lower at any time at the Altar.
 
 ![The Altar of Ascension and its Covenant Boons](docs/screenshots/altar-of-ascension.webp)
 

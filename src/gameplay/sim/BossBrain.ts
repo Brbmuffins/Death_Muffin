@@ -355,9 +355,18 @@ export class PrelateBrain extends BossBrain {
   private tollCd = 4;
   private slamCd = 2;
   private rainCd = 6;
+  /** Prelate Echoes III: when the chasing volley is aimed (0 = none pending). */
+  private chaseAt = 0;
 
   constructor(sim: WorldSim) {
     super(sim, 'prelate');
+  }
+
+  protected tick(_dt: number, players: PlayerBody[]) {
+    if (this.chaseAt && this.sim.time >= this.chaseAt) {
+      this.chaseAt = 0;
+      if (players.length) this.telegraph('rain', this.state.x, this.state.z, 2.3, 1100, { targets: players.map((p) => [p.x, p.z] as [number, number]), side: true });
+    }
   }
 
   protected onAwaken() {
@@ -365,6 +374,7 @@ export class PrelateBrain extends BossBrain {
     this.tollCd = 3.5;
     this.slamCd = 2;
     this.rainCd = 7;
+    this.chaseAt = 0;
   }
 
   protected circleDamage(kind: string) {
@@ -380,10 +390,12 @@ export class PrelateBrain extends BossBrain {
       [-11, -123],
       [11, -123],
     ];
-    const count = p === 2 ? 4 : 6;
+    // Prelate Echoes II: the procession is longer and its first two walkers are elite.
+    const echoes = this.sim.vowFx.echoes;
+    const count = (p === 2 ? 4 : 6) + (echoes >= 2 ? 2 : 0);
     for (let i = 0; i < count; i++) {
       const [x, z] = spawns[i % spawns.length];
-      this.spawnAdd(i % 2 ? 'penitent' : 'risen', x + (i > 3 ? 1.5 : 0), z);
+      this.spawnAdd(i % 2 ? 'penitent' : 'risen', x + (i > 3 ? 1.5 : 0), z, echoes >= 2 && i < 2);
     }
     this.sim.emit({ t: 'boss', kind: 'summon', x: s.x, z: s.z, phase: p, targets: spawns, boss: this.id });
   }
@@ -401,6 +413,11 @@ export class PrelateBrain extends BossBrain {
         this.tollCd = 9 * fast;
         const ms = 1500 * (s.phase === 3 ? 0.8 : 1);
         this.telegraph('toll', s.x, s.z, 6.5, ms);
+        // Prelate Echoes I, the second bell: a smaller toll answers on whoever stands farthest from the first, a moment later.
+        if (this.sim.vowFx.echoes >= 1 && players.length) {
+          const far = players.reduce((a, b) => (Math.hypot(b.x - s.x, b.z - s.z) > Math.hypot(a.x - s.x, a.z - s.z) ? b : a));
+          this.telegraph('toll', far.x, far.z, 3.6, 1300, { side: true }, ms + 600);
+        }
       } else if (this.rainCd <= 0 && s.phase >= 2) {
         this.rainCd = 8 * fast;
         const targets: [number, number][] = players.map((p) => [p.x, p.z]);
@@ -411,6 +428,8 @@ export class PrelateBrain extends BossBrain {
           targets.push([BOSS_ARENA.x + Math.cos(a) * r, BOSS_ARENA.z + Math.sin(a) * r]);
         }
         this.telegraph('rain', s.x, s.z, 2.3, 1400, { targets });
+        // Prelate Echoes III, chasing rain: a second volley is aimed at wherever each player has run to a moment later (see tick).
+        if (this.sim.vowFx.echoes >= 3) this.chaseAt = this.sim.time + 1.6;
       } else if (this.slamCd <= 0 && nd < 4.5) {
         this.slamCd = 3.2 * fast;
         const dirX = (nearest.x - s.x) / (nd || 1);

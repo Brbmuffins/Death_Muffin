@@ -12,7 +12,7 @@ leaks, and the backlog that fixes it, ordered by payoff for effort.
 | Seconds | Hit numbers and crits, kill bursts, corpses to spend, loot beams, soul-harvest charge, thralls rising, enemy flinches (hit-react clips) |
 | Minutes | Character levels, rare drops, shards from elites, procession banners, Grave Surge chests, skill levels, tool upgrades, cooked meals |
 | Hours | Area unlocks, Grimoire rites (levels 2–14), area bosses (first-kill trophy + rare), the Prelate, Damage / Wave Speed tiers |
-| Long-term | Ascension ranks and boons, 99 in the skills, gear tiers |
+| Long-term | Ascension vows (chosen heat, best rank) and boons, soul-shard unlocks, 99 in the skills, gear tiers |
 
 ## 2. Where it leaks (fix these first)
 
@@ -28,7 +28,7 @@ leaks, and the backlog that fixes it, ordered by payoff for effort.
 3. **Crafted duds.** Swiftness, Forge-Tempered and Void Resist flasks did nothing. They are **fixed** (timed buffs).
    `kit_iron_warden` (`resist_blast`) is still inert.
 4. **Gold has few sinks** (Damage / Wave Speed tiers only), so it piles up once those are bought.
-5. **No "one more run" hook between bosses**: nothing pulls you back tomorrow.
+5. **No "one more run" hook between bosses**: nothing pulls you back tomorrow. *(Partly answered 2026-10-03: Ascension no longer repeats the same seal grind; a run is a chosen-heat Prelate fight, and shards unlock new vows and boons. Soul shards now have a purpose beyond the Bell, which fixes the hoards of 400-9,800 that nothing spent.)*
 
 ## 3. Backlog, in order
 
@@ -65,3 +65,10 @@ Owner: "less grinding", "drop rates are like 3% or low, make it more achievable"
 - Gear is now rolled by the server (item level and affixes, `loot.cjs`); *which* item drops, gold and XP are still client-rolled and the
   server only validates ids and stacks (a friends-game trust model). Don't build anything competitive on top of that without moving
   drops server-side first.
+
+### Known loophole (owner, 2026-10-03: noted, not fixed for now)
+
+Co-op Vows: world vows come from the world keeper, but the heat that pays Ashes is per character. A guest can swear high world
+vows for the bigger Ashes payout while playing in a host's cooler world. Fits the friends-game trust model for now. Fix when needed:
+pay Ashes only for the heat actually in effect where the character played (`min(own world vows, keeper's)`, plus own self vows).
+Rewards (+20% Ashes per heat, unlock prices 100-600 shards) approved as shipped; tune after real play.

@@ -30,6 +30,8 @@ import {
   CODEX_STATS_COUNSEL,
   CODEX_AFFIX_COUNSEL,
   CODEX_LEGION_COUNSEL,
+  CODEX_ALTAR_COUNSEL,
+  codexAltarRows,
   codexLegionExamples,
   codexLegionTiers,
   codexAffixRows,
@@ -63,6 +65,7 @@ const TABS = [
   { id: 'atlas', label: 'Gear Atlas' },
   { id: 'affixes', label: 'Item affixes' },
   { id: 'runes', label: 'Relic Runes' },
+  { id: 'altar', label: 'Altar & Vows' },
   { id: 'stats', label: 'Stats' },
   { id: 'dead', label: 'The Dead' },
   { id: 'diocese', label: 'The Diocese' },
@@ -166,6 +169,8 @@ export class CodexPanel {
             ? this.affixes()
           : this.tab === 'runes'
             ? this.runes()
+          : this.tab === 'altar'
+            ? this.altar()
           : this.tab === 'stats'
             ? this.stats()
           : this.tab === 'dead'
@@ -264,6 +269,11 @@ export class CodexPanel {
 
   /** Runes you have not held yet show their name and where they drop, not what they do (the sealed-page rule of the bestiary). */
   runesFound: () => ReadonlySet<string> = () => new Set();
+
+  private altar() {
+    const rows = codexAltarRows().map((r) => `<tr><td>${r.name}</td><td>${r.kind}</td><td>${r.effect}</td><td>${r.cost}</td><td>${r.unlock}</td></tr>`).join('');
+    return `<p class="tip">${CODEX_ALTAR_COUNSEL}</p><table class="cw-codex-table"><thead><tr><th>Name</th><th>Kind</th><th>Effect</th><th>Heat / cost</th><th>Unlock</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
 
   private runes() {
     const found = this.runesFound();

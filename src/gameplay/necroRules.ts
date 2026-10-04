@@ -1,5 +1,5 @@
 import { AREAS, AREA_ORDER, BOSS_SUMMON_SHARDS, type AreaId } from '../content/areas';
-import { ASCENSION, BOONS, ashesForRun, boonBlocked, boonCost, boonEffects, type BoonId, type BoonRanks } from '../content/ascension';
+import { BOONS, VOWS, VOW_ORDER, ashesForRun, boonBlocked, boonCost, boonEffects, isUnlocked, legacyVows, unlockCost, vowHeat, vowKey, vowSteps, type BoonId, type BoonRanks, type VowId, type VowRanks } from '../content/ascension';
 import { DAMAGE_UPGRADE, LEGION_UPGRADE, WAVE_UPGRADE } from '../content/upgrades';
 import { BOSSES, isBossId } from '../content/bosses';
 
@@ -26,9 +26,14 @@ export interface NecroState {
   unlockedAreas: AreaId[];
   bossKills: number;
   totalKills: number;
+  /** BEST Ascension rank completed (the heat of the richest run burned at the Altar): leaderboard and titles. The rank a run plays at is vowHeat(vows). */
   ascension: number;
   ashes: number;
   boons: BoonRanks;
+  /** Vows sworn for the run in progress (they stay sworn across Ascensions until the player changes them). */
+  vows: VowRanks;
+  /** Vows and boons opened with soul shards ("vow:<id>" / "boon:<id>"); free ones need no entry. */
+  unlocks: string[];
   run: { prelateKills: number; peakWaveTier: number; kills: number };
   /** Prelate summons paid for but not yet reported as kills (a kill must follow a summon). */
   summonsPending: number;
@@ -69,6 +74,8 @@ export function blankState(): NecroState {
     ascension: 0,
     ashes: 0,
     boons: {},
+    vows: {},
+    unlocks: [],
     run: { prelateKills: 0, peakWaveTier: 0, kills: 0 },
     summonsPending: 0,
     migrated: false,
@@ -80,6 +87,8 @@ const copy = (s: NecroState): NecroState => ({
   areaKills: { ...s.areaKills },
   unlockedAreas: [...s.unlockedAreas],
   boons: { ...s.boons },
+  vows: { ...s.vows },
+  unlocks: [...s.unlocks],
   run: { ...s.run },
 });
 
@@ -206,34 +215,85 @@ export function summonAreaBoss(state: NecroState, boss: unknown, opts?: RuleOpts
   return { ok: true, state: s };
 }
 
-export function ashesOnAscend(state: NecroState): number {
-  return state.ascension >= ASCENSION.maxRank ? 0 : ashesForRun(state.run, state.ascension);
+/** The heat the character's sworn vows carry: the rank the current run plays at. */
+export function runHeat(state: NecroState): number {
+  return vowHeat(state.vows);
 }
 
-/** Burn the run: the local layer resets, rank and Ashes rise, starting boons apply. */
-export function ascend(state: NecroState): RuleResult<{ earned: number }> {
+export function ashesOnAscend(state: NecroState): number {
+  return ashesForRun(state.run, runHeat(state));
+}
+
+/**
+ * Burn the run: damage / Wave Speed / Legion tiers and the run's tally reset, Ashes are paid for the heat the run carried and
+ * the best rank rises if this run beat it. Seals, area kills and soul shards stay (2026-10-03): difficulty comes from the vows,
+ * which also stay sworn until the player changes them.
+ */
+export function ascend(state: NecroState): RuleResult<{ earned: number; heat: number }> {
   const earned = ashesOnAscend(state);
   if (!earned) return { ok: false, error: 'Slay the Prelate this run before you Ascend.' };
   const s = copy(state);
   const fx = boonEffects(s.boons);
-  s.ascension += 1;
+  const heat = runHeat(s);
+  s.ascension = Math.max(s.ascension, heat);
   s.ashes += earned;
   s.damageTier = fx.startDamageTier;
   s.waveTierOwned = 0;
   s.waveTierActive = 0;
   s.legionTier = 0;
-  s.soulShards = fx.startShards;
-  s.areaKills = {};
-  s.unlockedAreas = ['chapterhouse', 'graves'];
+  // Unspent shards are kept (they unlock vows and boons); Shard Keeper only sets a floor.
+  s.soulShards = Math.max(s.soulShards, fx.startShards);
   s.run = { prelateKills: 0, peakWaveTier: 0, kills: 0 };
   s.summonsPending = 0;
-  return { ok: true, state: s, earned };
+  return { ok: true, state: s, earned, heat };
+}
+
+const sameVows = (a: VowRanks, b: VowRanks) => VOW_ORDER.every((id) => vowSteps(a, id) === vowSteps(b, id));
+
+/**
+ * Swear the vows for the next run (the whole set, replacing the old one). Each vow must be unlocked and within its steps. Changing
+ * the vows while this run has a tally (kills, a Prelate kill) restarts the tally, so the Ashes of a run always match the heat it
+ * was fought at: nobody can fight cold and swear hot at the end.
+ */
+export function swearVows(state: NecroState, input: unknown): RuleResult<{ heat: number; restarted: boolean }> {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return { ok: false, error: 'Unknown vows.' };
+  const raw = input as Record<string, unknown>;
+  const next: VowRanks = {};
+  for (const key of Object.keys(raw)) {
+    if (!Object.prototype.hasOwnProperty.call(VOWS, key)) return { ok: false, error: 'Unknown vow.' };
+    const id = key as VowId;
+    const n = Number(raw[id]);
+    if (!Number.isInteger(n) || n < 0 || n > VOWS[id].maxRank) return { ok: false, error: `${VOWS[id].name} can be sworn 0 to ${VOWS[id].maxRank} times.` };
+    if (!n) continue;
+    if (!isUnlocked(state.unlocks, vowKey(id))) return { ok: false, error: `${VOWS[id].name} is not unlocked yet (${VOWS[id].unlockShards} soul shards at the Altar).` };
+    next[id] = n;
+  }
+  const s = copy(state);
+  const changed = !sameVows(state.vows, next);
+  s.vows = next;
+  const t = s.run;
+  const restarted = changed && (t.kills > 0 || t.prelateKills > 0 || t.peakWaveTier > 0);
+  if (restarted) s.run = { prelateKills: 0, peakWaveTier: 0, kills: 0 };
+  return { ok: true, state: s, heat: vowHeat(next), restarted };
+}
+
+/** Open a vow or a boon at the Altar for soul shards. Priced here, never by the client. */
+export function unlockEntry(state: NecroState, key: unknown): RuleResult<{ cost: number }> {
+  if (typeof key !== 'string') return { ok: false, error: 'Unknown unlock.' };
+  const cost = unlockCost(key);
+  if (cost === null || cost === 0) return { ok: false, error: 'Nothing to unlock.' };
+  if (state.unlocks.includes(key)) return { ok: false, error: 'Already unlocked.' };
+  if (state.soulShards < cost) return { ok: false, error: `The Altar asks ${cost} soul shards for that (you have ${state.soulShards}).` };
+  const s = copy(state);
+  s.soulShards -= cost;
+  s.unlocks.push(key);
+  return { ok: true, state: s, cost };
 }
 
 export function buyBoon(state: NecroState, id: BoonId): RuleResult<{ cost: number }> {
-  if (!(id in BOONS)) return { ok: false, error: 'Unknown boon' };
-  const blocked = boonBlocked(id, state.boons, state.ascension);
-  if (blocked) return { ok: false, error: blocked === 'Mastered' ? 'That boon is already mastered.' : `Requires ${blocked}.` };
+  if (typeof id !== 'string' || !Object.prototype.hasOwnProperty.call(BOONS, id)) return { ok: false, error: 'Unknown boon' };
+  const blocked = boonBlocked(id, state.boons, state.ascension, state.unlocks);
+  if (blocked) return { ok: false, error: blocked === 'Mastered' ? 'That boon is already mastered.' : blocked.startsWith('Unlock') ? `${BOONS[id].name} is not unlocked yet. ${blocked}.` : `Requires ${blocked}.` };
   const cost = boonCost(id, state.boons)!;
   if (state.ashes < cost) return { ok: false, error: `Not enough Ashes (need ${cost})` };
   const s = copy(state);
@@ -257,12 +317,15 @@ export function importLocal(state: NecroState, raw: unknown): RuleResult {
   const s = blankState();
   s.migrated = true;
   s.ascension = clampInt(r.ascension, 0, L.importMaxAscension);
+  // A browser save from before Vows ran at rank N: that is N steps of Elder Dead, the same world.
+  s.vows = legacyVows(s.ascension);
   s.ashes = clampInt(r.ashes, 0, L.importMaxAshes);
   // Boons: valid ids, within max rank and rank gates.
   const boons = (r.boons && typeof r.boons === 'object' ? r.boons : {}) as Record<string, unknown>;
   for (const id of Object.keys(BOONS) as BoonId[]) {
     const want = clampInt(boons[id], 0, BOONS[id].maxRank);
-    for (let i = 0; i < want && !boonBlocked(id, s.boons, s.ascension); i++) s.boons[id] = (s.boons[id] ?? 0) + 1;
+    // Only the boons that existed before the Vows (always open) come across; shard-unlocked ones are earned at the Altar.
+    for (let i = 0; i < want && !boonBlocked(id, s.boons, s.ascension, s.unlocks); i++) s.boons[id] = (s.boons[id] ?? 0) + 1;
   }
   s.damageTier = clampInt(r.damageTier, 0, DAMAGE_UPGRADE.maxTier);
   s.waveTierOwned = clampInt(r.waveTierOwned, 0, WAVE_UPGRADE.maxTier);
@@ -293,13 +356,23 @@ export function importLocal(state: NecroState, raw: unknown): RuleResult {
 export function normalise(raw: unknown): NecroState {
   const b = blankState();
   const r = (raw && typeof raw === 'object' ? raw : {}) as Partial<NecroState>;
+  // Rows from before Vows have no `vows`: their rank N becomes N steps of Elder Dead, which is exactly the world they were playing in
+  // (+3 levels and +5% rewards per step), and N stays as their best rank. They keep their Ashes and every boon bought.
+  const hasVows = !!r.vows && typeof r.vows === 'object' && !Array.isArray(r.vows);
+  const best = clampInt(r.ascension, 0, 255);
+  const vows: VowRanks = {};
+  if (hasVows) for (const id of VOW_ORDER) if (vowSteps(r.vows, id)) vows[id] = vowSteps(r.vows, id);
+  const unlocks = Array.isArray(r.unlocks) ? [...new Set(r.unlocks.filter((k): k is string => typeof k === 'string' && unlockCost(k) !== null && unlockCost(k)! > 0))] : [];
   return {
     ...b,
     ...r,
+    ascension: best,
     legionTier: clampInt(r.legionTier, 0, LEGION_UPGRADE.maxTier),
     areaKills: { ...(r.areaKills ?? {}) },
     unlockedAreas: Array.isArray(r.unlockedAreas) && r.unlockedAreas.length ? [...r.unlockedAreas] : b.unlockedAreas,
     boons: { ...(r.boons ?? {}) },
+    vows: hasVows ? vows : legacyVows(best),
+    unlocks,
     run: { ...b.run, ...(r.run ?? {}) },
   };
 }

@@ -33,6 +33,8 @@ function publicState(s) {
     ascension: s.ascension,
     ashes: s.ashes,
     boons: s.boons,
+    vows: s.vows,
+    unlocks: s.unlocks,
     run: s.run,
     summonsPending: s.summonsPending,
     migrated: s.migrated,
@@ -122,6 +124,8 @@ function createNecroProgressHandlers({ store, ownsCharacter, isStaff, logger = c
     summonPrelate: (req, res) => mutate(req, res, (s, _g, _b, o) => rules.summonPrelate(s, o)),
     summonBoss: (req, res) => mutate(req, res, (s, _g, b, o) => rules.summonAreaBoss(s, b.boss, o)),
     ascend: (req, res) => mutate(req, res, (s) => rules.ascend(s)),
+    vows: (req, res) => mutate(req, res, (s, _g, b) => rules.swearVows(s, b.vows)),
+    unlock: (req, res) => mutate(req, res, (s, _g, b) => rules.unlockEntry(s, b.key)),
     boon: (req, res) => mutate(req, res, (s, _g, b) => rules.buyBoon(s, String(b.boonId || ''))),
     importLocal: (req, res) => mutate(req, res, (s, _g, b) => rules.importLocal(s, b.record)),
   };
@@ -137,6 +141,8 @@ function mountNecroProgress(app, opts) {
   app.post('/api/necro-progress/summon-prelate', auth, h.summonPrelate);
   app.post('/api/necro-progress/summon-boss', auth, h.summonBoss);
   app.post('/api/necro-progress/ascend', auth, h.ascend);
+  app.post('/api/necro-progress/vows', auth, h.vows);
+  app.post('/api/necro-progress/unlock', auth, h.unlock);
   app.post('/api/necro-progress/boon', auth, h.boon);
   app.post('/api/necro-progress/import', auth, h.importLocal);
   return h;

@@ -1,4 +1,5 @@
 import type { AreaId } from '../../content/areas';
+import { legacyVows, sanitizeVows, vowEffects, vowHeat, type VowEffects, type VowRanks } from '../../content/ascension';
 import { isDifficulty, type Difficulty } from '../../content/difficulty';
 import { AFFIX_ORDER, type EliteAffix } from '../../content/enemies';
 import type { EnemyRow, ThrallRow, WorldSnapshot } from '../../net/contracts';
@@ -31,6 +32,7 @@ export function makeSnapshot(sim: WorldSim, full: boolean): WorldSnapshot {
     waveTier: sim.waveTier,
     difficulty: sim.difficulty,
     ascension: sim.ascension,
+    ...(sim.ascension ? { vows: sim.vows } : {}),
     enemies,
     thralls,
     boss: { ...sim.bossState },
@@ -102,7 +104,14 @@ export class WorldMirror {
   bossState: BossState | null = null;
   waveTier = 0;
   difficulty: Difficulty = 'medium';
-  ascension = 0;
+  /** The host's vows (their heat is the world's rank). */
+  vows: VowRanks = {};
+  get ascension(): number {
+    return vowHeat(this.vows);
+  }
+  get vowFx(): VowEffects {
+    return vowEffects(this.vows);
+  }
   time = 0;
   // Latest snapshot position per entity, keyed by numeric id (string keys would allocate per entity per frame in update()).
   private enemyTargets = new Map<number, Target>();
@@ -112,7 +121,7 @@ export class WorldMirror {
     this.time = s.t;
     this.waveTier = s.waveTier;
     this.difficulty = isDifficulty(s.difficulty) ? s.difficulty : 'medium';
-    this.ascension = Number.isInteger(s.ascension) && s.ascension! >= 0 ? Math.min(20, s.ascension!) : 0;
+    this.vows = s.vows && typeof s.vows === 'object' ? sanitizeVows(s.vows) : legacyVows(Number.isInteger(s.ascension) && s.ascension! >= 0 ? s.ascension! : 0);
     const seenE = new Set<number>();
     for (const row of s.enemies) {
       seenE.add(row[0]);
@@ -265,7 +274,7 @@ export class WorldMirror {
     // The world's dials first: an adopted enemy's damage follows from them.
     sim.waveTier = this.waveTier;
     sim.difficulty = this.difficulty;
-    sim.ascension = this.ascension;
+    sim.vows = this.vows;
     for (const e of this.enemies.values()) sim.enemies.set(e.id, sim.adoptEnemy(e));
     // Snapshots carry a thrall's hp, damage and swing speed but not its seat or birth order: deal them out again per owner, oldest first
     // (every thrall at slot 0 / bornAt 0 stacked the whole legion on one formation spot and made the "oldest crumbles first" rule arbitrary).

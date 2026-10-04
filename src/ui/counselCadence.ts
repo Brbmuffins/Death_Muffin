@@ -80,7 +80,7 @@ export const HERE: Record<string, string[]> = {
   welcome: ['acre'], acre: ['acre'], laborers_working: ['acre'], wing: ['alchemist_wing'],
   cloister: ['cloister'], pyre: ['pyre'], fen: ['fen'], warren: ['warren'], coliseum: ['coliseum'],
   boss_gravedigger: ['graves'], boss_abbess: ['ossuary'], boss_congregation: ['nave'], boss_saint: ['cloister'], boss_regent: ['pyre'], boss_mire: ['fen'],
-  boons: ['chapterhouse'],
+  boons: ['chapterhouse'], altar_unlocks: ['chapterhouse'], vows: ['chapterhouse'],
   // The stair is in the Warren; the floors' own cards are shown by what the player just did.
   depths: ['warren'],
 };

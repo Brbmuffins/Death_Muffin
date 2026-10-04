@@ -55,7 +55,7 @@ const PRIOR_GREETINGS: Greeting[] = [
     when: (_s, news) => !!has(news, 'ascend:ready'),
     lines: (s) => [
       'The Bell-Sworn Prelate lies silent, and the Altar of Ascension stands ready.',
-      `It will take this run and give back ${n(s.ashesOnAscend)} Ashes, if you choose. No one is hurrying you.`,
+      `It will take this run's tally and give back ${n(s.ashesOnAscend)} Ashes, if you choose. The vows you swore set the sum. No one is hurrying you.`,
     ],
   },
   {
@@ -74,7 +74,7 @@ const PRIOR_GREETINGS: Greeting[] = [
   },
   {
     when: (s, news) => !!has(news, 'rank:') && s.ascension > 0,
-    lines: (s) => [`You have risen to rank ${s.ascension}. The seals have closed behind you, but you remember the way.`, 'The dead are older now. Ask, and I will tell you what lies open.'],
+    lines: (s) => [`Your hardest run was rank ${s.ascension}. The seals stay open behind you; the vows are what you chose to carry.`, 'Ask, and I will tell you what lies open.'],
   },
   {
     when: (s) => s.totalKills < 10 && s.ascension === 0,
@@ -105,7 +105,7 @@ function priorAdvice(sg: Suggestion | null, s: GuidanceState): string[] {
     case 'boss-short':
       return [`${d.boss} will answer ${d.at} in ${d.area} once you bring ${d.shards} soul shards. You hold ${d.have}; elites carry them.`, BOSS_HINT[BOSS_IDS.find((id) => BOSSES[id].name === d.boss)!]];
     case 'ascend':
-      return [`The Altar of Ascension is ready. It trades this run (seals, upgrades, shards) for ${n(Number(d.ashes))} Ashes and a higher rank, and keeps your level, gold and gear.`, 'It is a choice, never a duty.'];
+      return [`The Altar of Ascension is ready. It trades this run's tiers for ${n(Number(d.ashes))} Ashes, and keeps your seals, shards, level, gold and gear.`, 'It is a choice, never a duty.'];
     case 'hunt':
       return d.clear
         ? [`Every seal I know of is broken and every king buried. Hunt in ${d.area}, where the dead are level ${d.level}+ and the spoils richest.`, 'Or ascend, or hunt for a set of armor. The diocese is yours.']
@@ -154,10 +154,10 @@ const PRIOR_TOPICS: TopicDef[] = [
     id: 'ascension',
     label: 'The Altar of Ascension',
     lines: (s) => {
-      if (s.canAscend) return [`It is ready. Ascending resets seals, upgrades and shards; it keeps your level, gold, gear and skills, and pays ${n(s.ashesOnAscend)} Ashes.`, 'Ashes buy Covenant Boons at the Altar. Each rank makes the dead three levels older, and the spoils richer.'];
+      if (s.canAscend) return [`It is ready. Ascending resets your Damage and Wave Speed tiers; it keeps your seals, shards, level, gold, gear and skills, and pays ${n(s.ashesOnAscend)} Ashes.`, 'Swear Vows at the Altar before a run: the hotter they are, the more Ashes. Ashes buy Covenant Boons; shards unlock new vows and boons.'];
       if (!bossBeaten(s, 'prelate'))
         return ['Defeat the Bell-Sworn Prelate at the Sundered Bell, in the Bell Sanctum (5 soul shards), and the Altar will open to you.', s.ascension > 0 ? `You hold rank ${s.ascension} already.` : 'It is far ahead of you yet, and entirely optional.'];
-      return [`You hold rank ${s.ascension}. Another Prelate kill this run will make the Altar ready again.`, 'Ashes buy Covenant Boons; each rank makes the dead three levels older.'];
+      return [`Your hardest run was rank ${s.ascension}. Another Prelate kill this run will make the Altar ready again.`, 'Swear Vows to raise the heat of a run and the Ashes it pays; Ashes buy Covenant Boons.'];
     },
   },
 ];

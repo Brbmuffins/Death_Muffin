@@ -1,7 +1,7 @@
 import { isAlwaysOpen, type AreaId } from '../content/areas';
 import { devAccess } from './devAccess';
 import type { Chronicle } from './chronicle';
-import { ashesForRun, boonBlocked, boonCost, boonEffects, ASCENSION, type BoonId, type BoonEffects, type BoonRanks, type RunRecord } from '../content/ascension';
+import { ashesForRun, boonBlocked, boonCost, boonEffects, isUnlocked, unlockCost, vowEffects, vowHeat, vowKey, legacyVows, VOWS, type BoonId, type BoonEffects, type BoonRanks, type RunRecord, type VowEffects, type VowId, type VowRanks } from '../content/ascension';
 import { DAMAGE_UPGRADE, LEGION_UPGRADE, WAVE_UPGRADE } from '../content/upgrades';
 import { ApiError, necroApi, saveProgress, type NecroReply } from '../net/api';
 import { applySave, normalise, type NecroState, type SaveInput } from './necroRules';
@@ -36,6 +36,9 @@ export interface LocalProgress {
   ascension: number;
   ashes: number;
   boons: BoonRanks;
+  /** Vows sworn for the run in progress, and the vows / boons opened with soul shards. A save without `vows` is a pre-Vows save (rank N = N steps of Elder Dead). */
+  vows?: VowRanks;
+  unlocks?: string[];
   run: RunRecord;
   /** Server mode: paid Prelate summons not yet reported as kills. */
   summonsPending?: number;
@@ -58,6 +61,8 @@ export function toNecro(l: LocalProgress): NecroState {
     ascension: l.ascension,
     ashes: l.ashes,
     boons: l.boons,
+    vows: l.vows ?? legacyVows(l.ascension),
+    unlocks: l.unlocks ?? [],
     run: l.run,
     summonsPending: l.summonsPending ?? 0,
     migrated: !!l.serverBacked,
@@ -77,6 +82,8 @@ function copyInto(l: LocalProgress, s: NecroState) {
   l.ascension = s.ascension;
   l.ashes = s.ashes;
   l.boons = { ...s.boons };
+  l.vows = { ...s.vows };
+  l.unlocks = [...s.unlocks];
   l.run = { ...s.run };
   l.summonsPending = s.summonsPending;
   l.serverBacked = true;
@@ -103,6 +110,8 @@ const blank = (): LocalProgress => ({
   ascension: 0,
   ashes: 0,
   boons: {},
+  vows: {},
+  unlocks: [],
   run: { prelateKills: 0, peakWaveTier: 0, kills: 0 },
 });
 
@@ -115,6 +124,7 @@ export function loadLocalProgress(characterId: number): LocalProgress {
       const saved = JSON.parse(raw) as Partial<LocalProgress>;
       const p = { ...blank(), ...saved };
       // Saves from before Ascension: everything so far counts as the current run.
+      if (!saved.vows) p.vows = legacyVows(p.ascension);
       if (!saved.run) p.run = { prelateKills: p.bossKills, peakWaveTier: p.waveTierOwned, kills: p.totalKills };
       return p;
     }
@@ -303,9 +313,24 @@ export class Progression {
     return boonEffects(this.local.boons);
   }
 
+  /** The vows sworn for this run. */
+  get vows(): VowRanks {
+    return this.local.vows ?? (this.local.vows = legacyVows(this.local.ascension));
+  }
+
+  /** What the sworn vows change. */
+  get vowFx(): VowEffects {
+    return vowEffects(this.vows);
+  }
+
+  /** The rank this run plays at: the heat of the vows sworn. */
+  get heat(): number {
+    return vowHeat(this.vows);
+  }
+
   /** Ashes the Altar would pay for this run right now (0 = not yet ready). */
   ashesOnAscend() {
-    return this.local.ascension >= ASCENSION.maxRank ? 0 : ashesForRun(this.local.run, this.local.ascension);
+    return ashesForRun(this.local.run, this.heat);
   }
 
   canAscend() {
@@ -313,25 +338,24 @@ export class Progression {
   }
 
   /**
-   * Burn the run: tiers, shards, kills and seals reset; Ashes and rank rise;
-   * starting boons apply. Level, XP, gold and items are untouched.
+   * Burn the run: tiers and the run tally reset; Ashes rise and the best rank with them if this run was hotter. Seals, kill
+   * counts and soul shards stay, and so do the sworn vows. Level, XP, gold and items are untouched.
    */
   ascend(): number {
     const earned = this.ashesOnAscend();
     if (!earned) return 0;
     const l = this.local;
     const fx = this.boons;
-    l.ascension += 1;
+    const heat = this.heat;
+    l.ascension = Math.max(l.ascension, heat);
     l.ashes += earned;
     l.damageTier = fx.startDamageTier;
     l.waveTierOwned = 0;
     l.waveTierActive = 0;
     l.legionTier = 0;
-    l.shards = fx.startShards;
-    l.areaKills = {};
-    l.unlocked = ['chapterhouse', 'graves'];
+    l.shards = Math.max(l.shards, fx.startShards);
     l.run = { prelateKills: 0, peakWaveTier: 0, kills: 0 };
-    void this.chronicle?.ascend(l.ascension);
+    void this.chronicle?.ascend(heat);
     l.summonsPending = 0;
     this.pending = emptyPending();
     this.saveLocal();
@@ -340,9 +364,72 @@ export class Progression {
     return earned;
   }
 
+  /** Why these vows can't be sworn (null = they can). Mirrors the server rule. */
+  vowsProblem(next: VowRanks): string | null {
+    for (const id of Object.keys(next) as VowId[]) {
+      const n = next[id] ?? 0;
+      if (!VOWS[id] || n < 0 || n > VOWS[id].maxRank) return 'Unknown vow.';
+      if (n && !isUnlocked(this.local.unlocks, vowKey(id))) return `${VOWS[id].name} is not unlocked yet.`;
+    }
+    return null;
+  }
+
+  /** Would swearing `next` restart this run's tally (it has kills or a Prelate kill, and the vows differ)? */
+  vowsRestartRun(next: VowRanks): boolean {
+    const r = this.local.run;
+    const differs = (Object.keys(VOWS) as VowId[]).some((id) => (next[id] ?? 0) !== (this.vows[id] ?? 0));
+    return differs && (r.kills > 0 || r.prelateKills > 0 || r.peakWaveTier > 0);
+  }
+
+  /** Swear the whole set of vows for the next run. Returns false if refused. */
+  swearVows(next: VowRanks): boolean {
+    if (this.vowsProblem(next)) return false;
+    const clean: VowRanks = {};
+    for (const id of Object.keys(next) as VowId[]) if (next[id]) clean[id] = next[id];
+    const restart = this.vowsRestartRun(clean);
+    this.local.vows = clean;
+    if (restart) {
+      this.local.run = { prelateKills: 0, peakWaveTier: 0, kills: 0 };
+    }
+    this.saveLocal();
+    if (this.mode === 'server') {
+      // Kills gathered since the last save must reach the server before it decides whether the run restarts.
+      this.remote(async () => {
+        await this.sendNecro();
+        return necroApi.vows(this.character.id, clean);
+      });
+    } else this.markServerDirty(true);
+    this.emit();
+    return true;
+  }
+
+  /** Why a vow or boon can't be unlocked with shards (null = it can). */
+  unlockProblem(key: string): string | null {
+    const cost = unlockCost(key);
+    if (!cost) return 'Nothing to unlock.';
+    if (this.local.unlocks?.includes(key)) return 'Already unlocked.';
+    return this.local.shards < cost ? `Needs ${cost} soul shards` : null;
+  }
+
+  /** Spend soul shards at the Altar to open a vow or a boon. */
+  unlockAtAltar(key: string): boolean {
+    if (this.unlockProblem(key)) return false;
+    this.local.shards -= unlockCost(key)!;
+    (this.local.unlocks ??= []).push(key);
+    this.saveLocal();
+    if (this.mode === 'server') {
+      this.remote(async () => {
+        await this.sendNecro();
+        return necroApi.unlock(this.character.id, key);
+      });
+    } else this.markServerDirty(true);
+    this.emit();
+    return true;
+  }
+
   /** Why a boon can't be bought (null = it can). */
   boonProblem(id: BoonId): string | null {
-    const blocked = boonBlocked(id, this.local.boons, this.local.ascension);
+    const blocked = boonBlocked(id, this.local.boons, this.local.ascension, this.local.unlocks ?? []);
     if (blocked) return blocked;
     const cost = boonCost(id, this.local.boons)!;
     return this.local.ashes < cost ? `Needs ${cost} Ashes` : null;

@@ -52,6 +52,8 @@ export type TipId =
   | 'souls'
   | 'sanctify'
   | 'boons'
+  | 'altar_unlocks'
+  | 'vows'
   // The Grimoire and its level-gated rites (shown the first time each is placed on a key).
   | 'grimoire'
   | 'rite_skull'
@@ -294,7 +296,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   ascend: {
     title: 'The Altar of Ascension stirs',
-    body: 'The Prelate has fallen. At the Altar in the Chapterhouse you may <b>Ascend</b>: your tiers, shards and opened seals reset, but you keep your level, gold and relics, earn Ashes for permanent boons, and the dead grow older and richer.',
+    body: 'The Prelate has fallen. At the Altar in the Chapterhouse you may <b>Ascend</b>: your Damage and Wave Speed tiers reset, but your seals, soul shards, level, gold and relics stay, and you earn Ashes for permanent boons. The hotter the vows you swore, the more Ashes.',
   },
   souls: {
     title: 'Soul Harvest',
@@ -304,9 +306,17 @@ export const TIPS: Record<TipId, Tip> = {
     title: 'Sanctified',
     body: 'That pale gold halo is a Deacon\'s blessing: the enemy takes 30% less damage while it lasts. Kill the Deacon, or turn your rites on something else until it fades.',
   },
+  altar_unlocks: {
+    title: 'Shards open new vows and boons',
+    body: 'You carry enough soul shards to open something new at the Altar of Ascension in the Chapterhouse: a harder <b>vow</b> or a Covenant <b>boon</b> that changes how you play. Keep 5 shards back for the Sundered Bell.',
+  },
+  vows: {
+    title: 'Swear a vow',
+    body: 'At the Altar of Ascension you may swear <b>Vows</b>: curses you choose, like older dead, no healing flasks or a tougher Prelate. Each carries <b>heat</b>, and the hotter your run, the more <b>Ashes</b> it pays when the Prelate falls. Seals never close again: the vows are your difficulty. Changing them mid-run restarts the run\'s tally.',
+  },
   boons: {
     title: 'Ashes to spend',
-    body: 'Your Ashes buy permanent <b>Covenant Boons</b> at the Altar of Ascension: more health, cheaper upgrades, a head start on every run, even another thrall at higher ranks.',
+    body: 'Your Ashes buy permanent <b>Covenant Boons</b> at the Altar of Ascension: more health, cheaper upgrades, and boons that change how you play, like a thrall at your side on arrival or corpses that last longer. Soul shards unlock the stranger ones.',
   },
   prelate: {
     title: 'Five soul shards',

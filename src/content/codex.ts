@@ -49,6 +49,7 @@ import { itemMeta } from './items';
 import { SALVAGE_RARITIES, salvagePreview } from '../gameplay/salvageRules';
 import { AREA_REAGENT_DROPS, BOSS_ICHOR, ENEMY_REAGENT_DROPS, REAGENT_ITEMS, REAGENT_RECIPES } from './reagents';
 import { AREAS, BOSS_SUMMON_SHARDS, type AreaId } from './areas';
+import { ASCENSION, BOONS, BOON_ORDER, VOWS, VOW_ORDER } from './ascension';
 import { NPCS, NPC_IDS, type NpcId } from './npcs';
 import type { DisciplineId } from './disciplines';
 import { ABBESS, BOSSES, CONGREGATION, GRAVEDIGGER, MIRE, REGENT, SAINT, type BossId } from './bosses';
@@ -597,7 +598,7 @@ export const CODEX_DEAD: Record<DeadId, DeadEntry> = {
     role: 'boss',
     behaviour: 'A cathedral corpse fused to a cracked processional bell. It tolls a ring around itself and slams the bell ahead; from its second phase it rains bell shards on marked circles. At 60% and 30% health a procession of Penitents and Risen files in from the aisles.',
     corpse: 'None. It sinks back beneath the Sundered Bell and waits for the next offering.',
-    counter: `Offer ${BOSS_SUMMON_SHARDS} soul shards at the Sundered Bell to wake it; elites carry them. Step out of the bronze ring before the toll, and save the Litany for when the procession falls. It is a long fight: carry flasks. Its first fall each run readies the Altar of Ascension.`,
+    counter: `Offer ${BOSS_SUMMON_SHARDS} soul shards at the Sundered Bell to wake it; elites carry them. Step out of the bronze ring before the toll, and save the Litany for when the procession falls. It is a long fight: carry flasks. Its first fall each run readies the Altar of Ascension. Swear Vows at the Altar before a run to make it hotter and pay more Ashes; the Prelate's Echoes vow teaches it a second bell, an elite procession and chasing rain.`,
   },
 };
 
@@ -721,7 +722,7 @@ export const CODEX_TRAVEL_COUNSEL = 'Click a walkable spot on the minimap to cho
 
 export const CODEX_AREAS: Record<AreaId, AreaEntry> = {
   chapterhouse: {
-    dangers: 'None. The dead cannot follow you here. The Reliquary, the Ossuary Workbench, the Rite Niches, the Altar of Ascension and a waystone wait for you.',
+    dangers: 'None. The dead cannot follow you here. The Reliquary, the Ossuary Workbench, the Rite Niches, the Altar of Ascension (swear vows, unlock new vows and boons with soul shards) and a waystone wait for you.',
   },
   alchemist_wing: {
     dangers: "None. No waves ever reach the Wing. Through the Chapterhouse's east door: the Great Cauldron and the Alembic brew every flask, tonic and elixir (the Workbench's Alchemy tab still works too), and the Reagent Shelf shows which reagents you have found and how many you hold. The Apothecary keeps the counter.",
@@ -910,3 +911,18 @@ export const codexRuneRows = (): { rite: string; runes: CodexRuneRow[] }[] =>
     rite: ABILITIES[rite].name,
     runes: runesFor(rite).map((r) => ({ id: r.id, name: r.name, rarity: r.rarity, rite: ABILITIES[rite].name, short: r.short, lines: r.lines, cost: r.cost, lore: r.lore, sources: runeSources(r.id) })),
   }));
+
+/** Codex: the Altar of Ascension. Every number is read from the content, so the page cannot drift from the rules. */
+export const CODEX_ALTAR_COUNSEL =
+  `Before a run, swear Vows at the Altar of Ascension in the Chapterhouse: curses you choose. Each carries heat, and the heat of the vows you swear is your rank for that run. When the Prelate falls, burn the run at the Altar for Ashes: more heat pays +${Math.round(ASCENSION.ashesPerHeat * 100)}% Ashes per point, and the dead you meet pay more gold and experience too (+${Math.round(ASCENSION.rewardPerRank * 100)}% per point of world heat, up to ${ASCENSION.rewardHeatCap}). Your best rank ever is kept for the leaderboard. Opened seals never close again: the vows are the difficulty. Changing vows while a run has kills restarts that run's tally, so a run's Ashes always match the heat it was fought at. Soul shards unlock the harder vows and the Boons that change how you play; Ashes buy Boons.`;
+export interface CodexAltarRow { name: string; kind: 'Vow' | 'Boon'; effect: string; cost: string; unlock: string }
+export const codexAltarRows = (): CodexAltarRow[] => [
+  ...VOW_ORDER.map((id) => {
+    const v = VOWS[id];
+    return { name: v.name, kind: 'Vow' as const, effect: `${v.blurb}${v.scope === 'self' ? ' Only you.' : ''}`, cost: `${v.heat} heat${v.maxRank > 1 ? ` per step, up to ${v.maxRank}` : ''}`, unlock: v.unlockShards ? `${v.unlockShards} soul shards` : 'Known' };
+  }),
+  ...BOON_ORDER.map((id) => {
+    const b = BOONS[id];
+    return { name: b.name, kind: 'Boon' as const, effect: b.blurb, cost: `${b.cost.join(' / ')} Ashes${b.requires ? `, best rank ${b.requires}` : ''}`, unlock: b.unlockShards ? `${b.unlockShards} soul shards` : 'Known' };
+  }),
+];

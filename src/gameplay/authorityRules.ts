@@ -9,7 +9,7 @@
 
 import { AREAS, AREA_ORDER, type AreaId } from '../content/areas';
 import { CHEST_PER_MIN_CEILING, DEPTH_LOOT_AREAS, FLOORS_PER_MIN_CEILING, FLOOR_DROP_CHANCE, chestDrops, depthEliteBonus, depthEnemyLevel, depthRoster, chestRunePool } from '../content/depths';
-import { ASCENSION } from '../content/ascension';
+import { ASCENSION, ascensionRewardMult, legacyVows, vowEffects, vowHeat, type VowRanks } from '../content/ascension';
 import { LEGENDARY_BOSS_AREAS, LEGENDARY_DROP, LEGENDARY_SET_IDS, legendaryBossChance, legendaryEliteChance, legendaryItemId } from '../content/legendarySets';
 import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS, BOSS_ICHOR } from '../content/reagents';
 import { smartTable } from './smartLoot';
@@ -114,19 +114,22 @@ export interface Ceilings {
 }
 
 /** The enemy level an area serves a character: level-scaled grounds follow the character; Ascension ages every enemy. */
-function enemyLevel(area: AreaId, characterLevel: number, rank: number): number {
+function enemyLevel(area: AreaId, characterLevel: number, levels: number): number {
   const a = AREAS[area];
   const base = a.scaling ? Math.max(a.scaling.minLevel, characterLevel) : a.level;
-  return base + rank * ASCENSION.levelsPerRank;
+  return base + levels;
 }
 
 /**
  * Per-minute ceilings for a character: the best ground it has unlocked, at its Ascension rank (plus the co-op allowance), scaled by
  * the harness' own formulas for enemy level and rank. `unlocked` and `ascension` come from the character's necromancer record.
  */
-export function ceilingsFor(unlocked: readonly string[], ascension: number, characterLevel: number, deepest = 0): Ceilings {
-  const rank = Math.min(ASCENSION.maxRank, Math.max(0, Math.trunc(ascension) || 0) + AUTHORITY.COOP_RANK_ALLOWANCE);
-  const rankMult = 1 + ASCENSION.rewardPerRank * rank;
+export function ceilingsFor(unlocked: readonly string[], ascension: number | VowRanks, characterLevel: number, deepest = 0): Ceilings {
+  // The world's rank is the heat of the vows sworn (older records: the plain rank, which was N steps of Elder Dead). A co-op guest earns at
+  // the host's vows, so the allowance adds a couple of Elder Dead steps and the heat that goes with them.
+  const vows = typeof ascension === 'number' ? legacyVows(Math.max(0, Math.trunc(ascension) || 0)) : ascension ?? {};
+  const levels = vowEffects(vows).levels + AUTHORITY.COOP_RANK_ALLOWANCE * ASCENSION.levelsPerRank;
+  const rankMult = ascensionRewardMult(vowHeat(vows) + AUTHORITY.COOP_RANK_ALLOWANCE);
   let xp = 0;
   let gold = 0;
   let best: AreaId | null = null;
@@ -136,7 +139,7 @@ export function ceilingsFor(unlocked: readonly string[], ascension: number, char
     // The harness measured a rank-0 bot at the area's base level (a level-scaled ground at its floor; the Depths at their reference floor).
     const depths = id === 'depths';
     const baseLevel = depths ? depthEnemyLevel(DEPTHS_AUTHORITY.refDepth, DEPTHS_AUTHORITY.refHero) : AREAS[id].scaling ? AREAS[id].scaling!.minLevel : AREAS[id].level;
-    const lvl = depths ? depthEnemyLevel(depthBound(deepest), characterLevel) + rank * ASCENSION.levelsPerRank : enemyLevel(id, characterLevel, rank);
+    const lvl = depths ? depthEnemyLevel(depthBound(deepest), characterLevel) + levels : enemyLevel(id, characterLevel, levels);
     const x = (peak.xp * (1 + XP_LEVEL_STEP * (lvl - 1))) / (1 + XP_LEVEL_STEP * (baseLevel - 1)) * rankMult * AUTHORITY.CHAIN * AUTHORITY.OMEN * AUTHORITY.WISDOM;
     const g = (peak.gold * (1 + GOLD_LEVEL_STEP * (lvl - 1))) / (1 + GOLD_LEVEL_STEP * (baseLevel - 1)) * rankMult * AUTHORITY.CHAIN * AUTHORITY.OMEN;
     if (x > xp) {

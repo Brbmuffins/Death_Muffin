@@ -51,7 +51,7 @@ import {
 } from '../../content/abilities';
 import { NIGHTFALL_SHROUD_CHANCE, RESTLESS_SURGE_MULT, THRALL_REFRESH_MAX, milestoneActive, waveModifiers } from '../../content/upgrades';
 import { DIFFICULTIES, type Difficulty } from '../../content/difficulty';
-import { ascensionLevels } from '../../content/ascension';
+import { legacyVows, vowEffects, vowHeat, type VowEffects, type VowRanks } from '../../content/ascension';
 import type { Omen } from '../../content/omens';
 import type { ThrallKind } from '../../content/disciplines';
 import { BONE_HEX, CHILL, HEMORRHAGE, PLAGUE_BURST, SANCTIFIED } from '../../content/statuses';
@@ -189,14 +189,14 @@ export class WorldSim {
       // The Catacomb Depths: the highest living hero on the floor sets the level, depth raises it (content/depths.ts).
       let top = 0;
       for (const p of this.players.values()) if (p.alive && p.area === area && (p.level ?? 0) > top) top = Math.min(999, p.level!);
-      return depthEnemyLevel(this.depths?.depth ?? 1, top) + ascensionLevels(this.ascension);
+      return depthEnemyLevel(this.depths?.depth ?? 1, top) + this.vowFx.levels;
     }
     let level = def.level;
     if (def.scaling) {
       level = def.scaling.minLevel;
       for (const p of this.players.values()) if (p.alive && p.area === area && (p.level ?? 0) > level) level = Math.min(999, p.level!);
     }
-    return level + ascensionLevels(this.ascension);
+    return level + this.vowFx.levels;
   }
 
   /** A boss's rot pool: a hostile toxic zone (the Plague Saint heals while she stands in one). */
@@ -220,8 +220,26 @@ export class WorldSim {
   omen: Omen | null = null;
   /** Host's session difficulty: scales enemy/boss HP and damage for new spawns. */
   difficulty: Difficulty = 'medium';
-  /** World keeper's Ascension rank: every enemy and the Prelate run this many ranks older. */
-  ascension = 0;
+  /** The world keeper's Vows (Altar of Ascension): older dead, tougher dead, Deacon hosts, Prelate Echoes... They run the sim; the keeper's rank is their heat. */
+  private _vows: VowRanks = {};
+  /** What the vows change, derived once per swearing (the spawn paths read it every wave). */
+  vowFx: VowEffects = vowEffects({});
+  get vows(): VowRanks {
+    return this._vows;
+  }
+  set vows(v: VowRanks) {
+    this._vows = { ...v };
+    this.vowFx = vowEffects(this._vows);
+  }
+  /** The world's rank: the heat of its vows. Assigning a plain number is the older shorthand for that many steps of Elder Dead (tests, older hosts). */
+  get ascension(): number {
+    return vowHeat(this._vows);
+  }
+  set ascension(n: number) {
+    this.vows = legacyVows(n);
+  }
+  /** Boons that outlast the room: how many times longer than normal corpses lie (the world keeper's Lingering Dead). */
+  corpseLifeMult = 1;
   time = 0;
   /** The running Grave Surge, if any. */
   surge: SurgeState | null = null;
@@ -572,6 +590,7 @@ export class WorldSim {
   }
 
   private applyExhume(x: Extract<Intent, { t: 'exhume' }>) {
+    if (x.bond) return this.bondThrall(x);
     if (x.colossus) return this.raiseColossus(x);
     // Mass Grave rune: up to three corpses near the point, each at the rune's share of a thrall's health and damage (the host owns both).
     // A lone corpse is raised at full strength: the penalty is for spreading the magic, not for having nothing to spread it over.
@@ -588,6 +607,14 @@ export class WorldSim {
     }
     const statMult = picks.length > 1 ? RUNE_TUNING.massGrave.statMult : 1;
     for (const c of picks) this.raiseFrom(x, c, statMult);
+  }
+
+  /** Bonded Dead boon: a thrall rises from the ground at the owner's feet when the legion is empty (no corpse is needed or spent). */
+  private bondThrall(x: Extract<Intent, { t: 'exhume' }>) {
+    const body = this.players.get(x.by);
+    if (!body || !body.alive || this.ownedThralls(x.by).length) return;
+    const c: Corpse = { id: 0, x: x.x, z: x.z, kind: 'normal', enemy: 'risen', elite: false, facing: 0, scale: 1, area: body.area ?? 'graves', bornAt: this.time, expiresAt: this.time, ruptureAt: Infinity };
+    this.raiseFrom(x, c, 1);
   }
 
   /** Make room for `weight` more legion places: the oldest ordinary thrall crumbles first, a Colossus last. Returns the first crumbled id. */
@@ -866,7 +893,7 @@ export class WorldSim {
       scale,
       area,
       bornAt: this.time,
-      expiresAt: this.time + CORPSE_LIFETIME,
+      expiresAt: this.time + CORPSE_LIFETIME * this.corpseLifeMult * this.vowFx.corpseLifeMult,
       ruptureAt: kind === 'toxic' ? this.time + TOXIC_RUPTURE : Infinity,
     };
     this.corpses.set(c.id, c);
@@ -1522,7 +1549,7 @@ export class WorldSim {
     const level = this.areaLevel(area);
     const wave = waveModifiers(this.rampTier(area));
     const diff = DIFFICULTIES[this.difficulty];
-    const hp = d.hp * enemyHpScale(level) * wave.enemyHpMult * diff.enemyHpMult * (elite ? ELITE.hpMult : 1) * this.partyHpScale();
+    const hp = d.hp * enemyHpScale(level) * wave.enemyHpMult * diff.enemyHpMult * this.vowFx.enemyHpMult * (elite ? ELITE.hpMult : 1) * this.partyHpScale();
     const e: Enemy = {
       id: this.id(),
       def,
@@ -1590,7 +1617,7 @@ export class WorldSim {
     const room = Math.min(cap - this.aliveIn(area), GLOBAL_ENEMY_CAP - this.enemies.size);
     if (room <= 0) return;
     // The arrival wave is a fixed greeting; the Wave Speed dial only shapes what follows.
-    let count = Math.round(first ? def.waveSize * 1.3 : def.waveSize * mods.sizeMult * (this.omen?.waveSizeMult ?? 1));
+    let count = Math.round(first ? def.waveSize * 1.3 : def.waveSize * mods.sizeMult * (this.omen?.waveSizeMult ?? 1) * this.vowFx.waveSizeMult);
     count = Math.min(count, room);
     const pool = this.fairBreaches(area);
     // Bigger waves split across breaches so they arrive from more than one side.
@@ -1656,10 +1683,12 @@ export class WorldSim {
       const rr = 0.5 + this.rand() * 2.4;
       return this.nav.resolveInArea(area, bx + Math.cos(ang) * rr, bz + Math.sin(ang) * rr, 0.5);
     };
-    const id = lead ?? pickWeighted(roster, this.rand())?.id;
+    // Deacon Host: the Crypt Deacons weigh more in the roster, so more of each wave is them.
+    const dm = this.vowFx.deaconMult;
+    const id = lead ?? pickWeighted(dm > 1 ? roster.map((r) => (r.id === 'deacon' ? { ...r, weight: r.weight * dm } : r)) : roster, this.rand())?.id;
     if (!id || room <= 0) return [];
     const pack = ENEMIES[id].pack;
-    const roll = this.rand() < def.eliteChance + mods.eliteBonus + DIFFICULTIES[this.difficulty].eliteBonus + (this.omen?.eliteBonus ?? 0) + (area === 'depths' && this.depths ? depthEliteBonus(this.depths.depth) : 0);
+    const roll = this.rand() < def.eliteChance + mods.eliteBonus + DIFFICULTIES[this.difficulty].eliteBonus + (this.omen?.eliteBonus ?? 0) + this.vowFx.eliteBonus + (area === 'depths' && this.depths ? depthEliteBonus(this.depths.depth) : 0);
     // Pack animals never come elite (a whole elite swarm would be a wall of health).
     const elite = id !== 'risen' && !pack && (forceElite || roll);
     // Nightfall: the common dead climb out Shrouded.

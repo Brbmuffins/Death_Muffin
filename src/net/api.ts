@@ -340,6 +340,8 @@ export const necroApi = {
   summonPrelate: (characterId: number) => necroPost('summon-prelate', { characterId }),
   summonBoss: (characterId: number, boss: string) => necroPost('summon-boss', { characterId, boss }),
   ascend: (characterId: number) => necroPost('ascend', { characterId }),
+  vows: (characterId: number, vows: object) => necroPost('vows', { characterId, vows }),
+  unlock: (characterId: number, key: string) => necroPost('unlock', { characterId, key }),
   boon: (characterId: number, boonId: string) => necroPost('boon', { characterId, boonId }),
   importLocal: (characterId: number, record: object) => necroPost('import', { characterId, record }),
 };
