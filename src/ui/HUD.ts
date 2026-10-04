@@ -47,7 +47,8 @@ export interface HudCallbacks {
   buyDamage(): void;
   buyWave(): void;
   dialWave(delta: number): void;
-  open(panel: HudPanel): void;
+  /** `fromMenu`: opened from the phone Menu sheet, so Back should return there. */
+  open(panel: HudPanel, fromMenu?: boolean): void;
   chat(text: string): void;
   toggleAutoCombat(): void;
   /** Open the Grimoire with a socket preselected (a rite index 0–4 or the LMB primary). */
@@ -639,6 +640,10 @@ export class HUD {
   }
 
   private menuSheet!: HTMLElement;
+  private setMenuOpen: (open: boolean) => void = () => {};
+  get menuOpen() { return !!this.menuSheet && !this.menuSheet.hidden; }
+  openMenu() { this.setMenuOpen(true); }
+  closeMenu() { this.setMenuOpen(false); }
 
   /** Phone/tablet: the "Menu" button opens a grid of big labelled tiles for every panel. */
   private buildMenuSheet() {
@@ -653,16 +658,20 @@ export class HUD {
     sheet.innerHTML = `<div class="card"><div class="head"><h2>Menu</h2><button type="button" class="x" data-menuclose aria-label="Close menu">${ICON.close}</button></div><div class="grid">${tiles}<button type="button" class="tile" data-menurecall>${ICON.home}<span>Recall home</span></button><button type="button" class="tile auto" data-menuauto hidden></button></div></div>`;
     this.menuSheet = sheet;
     this.el.appendChild(sheet);
+    const card = sheet.querySelector<HTMLElement>('.card')!;
+    let scroll = 0;
     const setOpen = (open: boolean) => {
+      if (!open && !sheet.hidden) scroll = card.scrollTop; // display:none forgets it; Back from a panel restores it
       sheet.hidden = !open;
       this.$('[data-menu]').setAttribute('aria-expanded', String(open));
-      if (open) this.hideTooltip();
+      if (open) { this.hideTooltip(); card.scrollTop = scroll; }
     };
+    this.setMenuOpen = setOpen;
     this.$('[data-menu]').addEventListener('click', () => setOpen(sheet.hidden));
     sheet.addEventListener('click', (e) => {
       const t = e.target as HTMLElement;
       const tile = t.closest<HTMLButtonElement>('[data-open]');
-      if (tile) { setOpen(false); this.cb.open(tile.dataset.open as HudPanel); return; }
+      if (tile) { setOpen(false); this.cb.open(tile.dataset.open as HudPanel, true); return; }
       if (t.closest('[data-menuauto]')) { this.cb.toggleAutoCombat(); return; }
       if (t.closest('[data-menurecall]')) { setOpen(false); this.cb.recall?.(); return; }
       if (t === sheet || t.closest('[data-menuclose]')) setOpen(false);

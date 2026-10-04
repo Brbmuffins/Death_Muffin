@@ -28,30 +28,33 @@ const { VIRTUAL_TIMERS, newCharacter, step } = require('./lib/first-hour-lib.cjs
   };
   const url0 = page.url();
 
+  // Skills now lives in the tabbed Acre ledger window (switching tabs is not a navigation step; other panels stack on top of it).
   await tap('.hud-menusheet [data-open="professions"]');
-  assert.equal(await title(), 'Skills');
-  assert.equal(await page.locator('[data-back]').count(), 0, 'a top-level panel has no Back');
-  await tap('[data-contracts]');
-  assert.match(await title(), /Contracts/);
+  const acre = await title();
+  assert.match(acre, /Acre ledger/);
+  assert.equal(await page.locator('[data-back]').count(), 1, 'a panel opened from the Menu shows Back (to the Menu)');
+  await tap('.cw-tabwin-tab:not([hidden]):not(.on)'); // another tab of the same window
+  assert.equal(await title(), acre, 'another tab, same window');
   await frame();
-  assert.equal(await page.locator('[data-back]').count(), 1, 'Contracts opened from Skills shows Back');
-  await step(page, 0.5);
-  await tap('[data-back]');
-  assert.equal(await title(), 'Skills', 'Back returns to Skills');
-  await frame();
-  assert.equal(await page.locator('[data-back]').count(), 0);
+  assert.equal(await page.locator('[data-back]').count(), 1, 'the tab switch kept Back (to the Menu)');
 
-  // Two levels deep, unwound with the phone's Back gesture.
-  await tap('[data-garden]');
-  assert.match(await title(), /Garden/);
-  await page.keyboard.press('o'); // Contracts from inside the Garden
-  assert.match(await title(), /Contracts/);
+  // Two levels deep on top of the window, unwound with the phone's Back gesture.
+  await page.keyboard.press('k'); // Codex from inside the Acre ledger
+  const codex = await title();
+  assert.ok(codex && codex !== acre, `Codex opens (${codex})`);
+  await page.keyboard.press('i'); // Reliquary from the Codex
+  await frame();
+  const bag = await title();
+  assert.ok(bag && bag !== codex, `Reliquary opens (${bag})`);
   await page.goBack(); await frame();
-  assert.match(await title(), /Garden/, 'phone Back: Contracts -> Garden');
+  assert.equal(await title(), codex, 'phone Back: Reliquary -> Codex');
   await page.goBack(); await frame();
-  assert.equal(await title(), 'Skills', 'phone Back: Garden -> Skills');
+  assert.equal(await title(), acre, 'phone Back: Codex -> Acre ledger');
   await page.goBack(); await frame();
-  assert.equal(await title(), null, 'phone Back: Skills -> closed');
+  assert.equal(await title(), null, 'phone Back: Acre ledger -> Menu');
+  assert.ok(await page.locator('.hud-menusheet').isVisible(), 'phone Back: Acre ledger -> Menu sheet');
+  await page.goBack(); await frame();
+  assert.ok(!(await page.locator('.hud-menusheet').isVisible()), 'phone Back: Menu -> closed');
   assert.equal(page.url(), url0, 'still in the game');
   // Closing with the X leaves no stray history entry behind.
   await tap('.hud-menusheet [data-open="inventory"]');
@@ -68,6 +71,7 @@ const { VIRTUAL_TIMERS, newCharacter, step } = require('./lib/first-hour-lib.cjs
   if (p0 && p1 && p0.x !== undefined) assert.ok(Math.hypot(p1.x - p0.x, p1.z - p0.z) > 0.5, `tap walks the hero ${JSON.stringify([p0, p1])}`);
 
   assert.ok(await page.locator('[data-flask]').isVisible(), 'flask button on touch');
+  await page.evaluate(async () => { const { getRuntime } = await import('/src/app/GameRuntime.ts'); getRuntime().view.revealHud('hud.upgrades', false); }); await frame(); // the progressive HUD holds Upgrades back on a fresh hero
   await tap('[data-uptoggle]');
   assert.ok(await page.locator('.hud-upgrades').isVisible(), 'upgrades toggle opens the plate');
   await tap('[data-uptoggle]');
@@ -95,7 +99,7 @@ const { VIRTUAL_TIMERS, newCharacter, step } = require('./lib/first-hour-lib.cjs
   await page.evaluate(() => window.__cwDebug.advance(0));
   await tap('.hud-menusheet [data-open="professions"]');
   const scrolled = await page.evaluate(() => { const p = [...document.querySelectorAll('.cw-panel-float')].find((e) => e.offsetParent); p.scrollTop = 400; return p.scrollTop; });
-  assert.ok(scrolled > 50, `Skills panel scrolls on a phone (${scrolled})`);
+  assert.ok(scrolled > 50, `Skills tab scrolls on a phone (${scrolled})`);
   await page.evaluate(() => { window.__cwDebug.skillsTick(); window.__cwDebug.skillsTick(); });
   const after = await page.evaluate(() => [...document.querySelectorAll('.cw-panel-float')].find((e) => e.offsetParent).scrollTop);
   assert.equal(after, scrolled, 'Skills keeps its scroll through AFK redraws');

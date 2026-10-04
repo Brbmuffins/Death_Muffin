@@ -12,7 +12,7 @@ import { itemVerdict, STAT_PRIORITY, type StatContext } from '../gameplay/gearSt
 import { salvagePreview } from '../gameplay/salvageRules';
 import { orderInfo, RELIC_PREMIUM } from '../gameplay/contractRules';
 import {
-  FIT_LABEL, SOURCE_LABEL, affixCountOdds, areaQuality, cosmeticsInfo, rollPotential, atlasSlot, fitBand, fitTable, fmtChance, fmtQty, getAtlas, gearForSlot, isRecommendedKind, itemLevelAt, oneIn,
+  FIT_LABEL, SOURCE_LABEL, affixCountOdds, areaQuality, cosmeticsInfo, rollPotential, atlasSlot, setOutlook, type SetOutlook, fitBand, fitTable, fmtChance, fmtQty, getAtlas, gearForSlot, isRecommendedKind, itemLevelAt, oneIn,
   placesFor, skillName, sourcesFor, type AtlasItem, type DropSource, type FitBand, type RecipeInfo,
 } from '../gameplay/atlas';
 import type { InventorySlot } from '../net/types';
@@ -67,8 +67,8 @@ const isReagentLike = (id: string) => /^(reagent_|herb_|seed_|sapling_|ichor_)/.
 const matsKindOf = (id: string): MatsKind => (id.startsWith('charm_') ? 'cosmetics' : isBrewLike(id) ? 'brews' : isReagentLike(id) ? 'reagents' : 'materials');
 
 /** Remembered while the game runs, so reopening lands where you left off. */
-const memory: { view: View; slot: EquipSlot; where: string; set: string; mats: MatsKind; reach: boolean; sel: string | null } = {
-  view: 'best', slot: 'head', where: '', set: '', mats: 'materials', reach: true, sel: null,
+const memory: { view: View; slot: EquipSlot; where: string; set: string; mats: MatsKind; reach: boolean; build: boolean; sel: string | null } = {
+  view: 'best', slot: 'head', where: '', set: '', mats: 'materials', reach: true, build: false, sel: null,
 };
 
 export class AtlasPanel extends SimplePanel {
@@ -77,6 +77,7 @@ export class AtlasPanel extends SimplePanel {
   private owned = new Map<string, { n: number; worn: boolean }>();
   private trail: string[] = [];
   private verdicts = new Map<string, ReturnType<typeof itemVerdict>>();
+  private outlooks = new Map<string, SetOutlook | null>();
   private allSources = false;
 
   constructor(root: HTMLElement, private deps: AtlasDeps) {
@@ -88,6 +89,7 @@ export class AtlasPanel extends SimplePanel {
     const ctx = this.deps.statContext();
     this.disc = (ctx?.discipline.id ?? 'gravecaller') as DisciplineId;
     this.verdicts.clear();
+    this.outlooks.clear();
     this.owned.clear();
     for (const s of this.deps.slots()) {
       const o = this.owned.get(s.item_id) ?? { n: 0, worn: false };
@@ -173,7 +175,7 @@ export class AtlasPanel extends SimplePanel {
     const atlas = getAtlas();
     let html = '';
     if (memory.view === 'slot') {
-      html = `<div class="at-chips" role="group" aria-label="Slot">${EQUIP_SLOTS.map((s) => `<button data-slot="${s.id}" class="${s.id === memory.slot ? 'on' : ''}">${SLOT_SHORT[s.id]}</button>`).join('')}</div>`;
+      html = `<div class="at-chips" role="group" aria-label="Slot">${EQUIP_SLOTS.map((s) => `<button data-slot="${s.id}" class="${s.id === memory.slot ? 'on' : ''}">${SLOT_SHORT[s.id]}</button>`).join('')}</div><label class="at-check" title="Off: pieces are ranked by what they add now, counting the set bonuses they switch on with what you wear. On: a set piece is ranked by what the whole set would add."><input type="checkbox" data-build ${memory.build ? 'checked' : ''}/> Build towards sets</label>`;
     } else if (memory.view === 'where') {
       const places = placesFor(this.disc);
       const group = (label: string, kind: string) => `<optgroup label="${label}">${places.filter((p) => p.kind === kind).map((p) => `<option value="${p.id}" ${p.id === memory.where ? 'selected' : ''}>${esc(stripThe(p.name))}${p.kind === 'area' || p.kind === 'boss' ? ` (Lv ${p.level})` : ''}</option>`).join('')}</optgroup>`;
@@ -185,7 +187,7 @@ export class AtlasPanel extends SimplePanel {
       const k: [MatsKind, string][] = [['materials', 'Materials'], ['brews', 'Brews & food'], ['reagents', 'Reagents, runes & seeds'], ['cosmetics', 'Capes & pets']];
       html = `<div class="at-chips" role="group" aria-label="Kind">${k.map(([id, l]) => `<button data-mats="${id}" class="${id === memory.mats ? 'on' : ''}">${l}</button>`).join('')}</div>`;
     } else {
-      html = `<label class="at-check"><input type="checkbox" data-reach ${memory.reach ? 'checked' : ''}/> Only what is in reach of level ${this.deps.level()}</label><span class="at-note">Top upgrades per slot for your ${esc(DISCIPLINES[this.disc].name)} that you do not own yet, then the legendary chase.</span>`;
+      html = `<label class="at-check"><input type="checkbox" data-reach ${memory.reach ? 'checked' : ''}/> Only what is in reach of level ${this.deps.level()}</label><label class="at-check" title="Off: pieces are ranked by what they add now, counting the set bonuses they switch on with what you wear. On: a set piece is ranked by what the whole set would add."><input type="checkbox" data-build ${memory.build ? 'checked' : ''}/> Build towards sets</label><span class="at-note">Top upgrades per slot for your ${esc(DISCIPLINES[this.disc].name)} that you do not own yet, then the legendary chase.</span>`;
     }
     sub.innerHTML = this.q ? `<span class="at-note">Searching every item. Clear the box to go back.</span>` : html;
   }
@@ -250,14 +252,14 @@ export class AtlasPanel extends SimplePanel {
     for (const { id: slot } of EQUIP_SLOTS) {
       for (const i of gearForSlot(slot)) {
         if (i.rarity !== 'legendary' || this.owned.has(i.id) || (ownSet && i.setId !== ownSet)) continue;
-        const v = this.verdict(i.id);
-        if (v && v.kind === 'upgrade') chase.push({ id: i.id, pct: v.pct });
+        const pct = this.rank(i.id, true);
+        if (pct !== null && pct >= 1) chase.push({ id: i.id, pct });
       }
       const picks = gearForSlot(slot)
         .filter((i) => i.rarity !== 'legendary' && !this.owned.has(i.id) && (!memory.reach || i.level <= level + 10))
-        .map((i) => ({ i, v: this.verdict(i.id) }))
-        .filter((x) => x.v && x.v.kind === 'upgrade' && (x.v.pct > 0 || x.v.empty))
-        .sort((a, b) => (b.v!.pct - a.v!.pct) || a.i.level - b.i.level)
+        .map((i) => ({ i, v: this.verdict(i.id), pct: this.rank(i.id) ?? -999 }))
+        .filter((x) => x.v && ((x.v.kind === 'upgrade' && (x.v.pct > 0 || x.v.empty)) || (memory.build && x.pct >= 1)))
+        .sort((a, b) => (b.pct - a.pct) || a.i.level - b.i.level)
         .slice(0, 3);
       if (!picks.length) continue;
       out.push({ head: SLOT_SHORT[slot] });
@@ -275,9 +277,27 @@ export class AtlasPanel extends SimplePanel {
   private sortGear(items: AtlasItem[]): AtlasItem[] {
     const score = (i: AtlasItem) => {
       const v = this.verdict(i.id);
-      return this.owned.get(i.id)?.worn ? 1000 : v ? v.pct : -999;
+      return this.owned.get(i.id)?.worn ? 1000 : v ? (this.rank(i.id) ?? v.pct) : -999;
     };
     return items.sort((a, b) => score(b) - score(a) || a.level - b.level || a.name.localeCompare(b.name));
+  }
+
+  /** What the piece adds as part of its set (null for gear of no set, or when the Atlas has no character). */
+  private outlook(id: string): SetOutlook | null {
+    if (this.outlooks.has(id)) return this.outlooks.get(id)!;
+    const ctx = this.deps.statContext();
+    const o = ctx && !this.owned.get(id)?.worn ? setOutlook(ctx, id) : null;
+    this.outlooks.set(id, o);
+    return o;
+  }
+
+  /** The number a piece is ranked by: what it adds now; with "Build towards sets" (and always in the legendary chase), what its whole set adds if that is more. */
+  private rank(id: string, always = false): number | null {
+    const v = this.verdict(id);
+    const o = this.outlook(id);
+    const now = v ? (v.empty ? Math.max(v.pct, 0) : v.pct) : null;
+    if (o && (memory.build || always)) return Math.max(now ?? -999, o.withSetPct);
+    return now;
   }
 
   private verdict(id: string) {
@@ -318,7 +338,7 @@ export class AtlasPanel extends SimplePanel {
     if (own?.worn) badges.push('<span class="at-tag worn" title="You are wearing this">Worn</span>');
     else if (own && it.gear) badges.push('<span class="at-tag" title="In your bag or vault">Owned</span>');
     if (band) badges.push(`<span class="at-fit ${band}" title="${esc(this.fitTitle(id, band))}">${FIT_LABEL[band]}</span>`);
-    if (v) badges.push(this.arrow(v));
+    if (v) badges.push(this.arrow(v, this.outlook(id)));
     const rec = it.gear && isRecommendedKind(id, this.disc) ? '<span class="at-rec" title="The Character sheet recommends this weapon kind for you">★</span>' : '';
     const stats = it.gear ? statText(it.stats) : '';
     const craft = (getAtlas().madeBy.get(id) ?? []).length ? ' · craftable' : '';
@@ -345,7 +365,17 @@ export class AtlasPanel extends SimplePanel {
     return `<img src="${src}" alt="" width="${px}" height="${px}" loading="lazy" decoding="async" data-glyph="${TYPE_GLYPH[m?.type ?? 'material'] ?? '◆'}" />`;
   }
 
-  private arrow(v: NonNullable<ReturnType<typeof itemVerdict>>): string {
+  private arrow(v: NonNullable<ReturnType<typeof itemVerdict>>, o: SetOutlook | null = null): string {
+    // A set piece also says what its whole set adds, so a legendary is never a bare red arrow just because one piece alone switches no bonus on.
+    const setUp = o && o.withSetPct >= 1;
+    if (o && setUp && v.kind !== 'upgrade') {
+      const t = esc(`${v.text}. As part of ${o.setName} (${o.total} pieces): +${Math.round(o.withSetPct)}% power. ${o.hint}.`);
+      return `<span class="at-arrow ${v.kind === 'downgrade' ? 'down' : 'same'}" title="${t}">${v.kind === 'downgrade' ? '▼' : '≈'} alone</span><span class="at-arrow up" title="${t}">▲ +${Math.round(o.withSetPct)}% with set</span>`;
+    }
+    if (o && setUp && v.kind === 'upgrade' && o.withSetPct > v.pct + 1) {
+      const t = esc(`${v.text}. As part of ${o.setName} (${o.total} pieces): +${Math.round(o.withSetPct)}% power. ${o.hint}.`);
+      return `<span class="at-arrow up" title="${t}">▲ ${v.empty && v.pct < 1 ? 'new' : `+${Math.round(v.pct)}%`}</span><span class="at-arrow up" title="${t}">+${Math.round(o.withSetPct)}% with set</span>`;
+    }
     const t = esc(v.text);
     if (v.kind === 'upgrade') return `<span class="at-arrow up" title="${t}">▲ ${v.empty && v.pct < 1 ? 'new' : `+${Math.round(v.pct)}%`}</span>`;
     if (v.kind === 'downgrade') return `<span class="at-arrow down" title="${t}">▼ ${Math.round(v.pct)}%</span>`;
@@ -413,7 +443,7 @@ export class AtlasPanel extends SimplePanel {
       d.innerHTML = `<div class="at-hint"><h3>How to read this</h3>
         <p><span class="at-fit ideal">Ideal</span> <span class="at-fit good">Good</span> <span class="at-fit okay">Okay</span> <span class="at-fit poor">Poor</span> says how well a piece suits your discipline against the other pieces of its slot and rarity, by the same gear score the Character sheet uses. The number under it is the base piece; an <b>ideal affix roll</b> adds a good deal more (see "For you" on any piece).</p>
         <p>Under <b>By area &amp; boss</b>, each hunting ground shows a <b>drop quality</b> rung: the deeper you go, the likelier the pieces worth wearing, runes and legendaries, and the higher their item level. Chances shown are for your own discipline (your set drops more often than the others).</p>
-        <p><span class="at-arrow up">▲ +12%</span> <span class="at-arrow down">▼ 5%</span> compares it with what you wear in that slot (percent of your power).</p>
+        <p><span class="at-arrow up">▲ +12%</span> <span class="at-arrow down">▼ 5%</span> compares it with what you wear in that slot (percent of your power), counting any set bonus the piece switches on with what you wear. A piece of an armour or legendary set shows a second figure, <span class="at-arrow up">▲ +40% with set</span>: what its whole set would add, bonuses included. <span class="at-arrow down">▼ alone</span> <span class="at-arrow up">▲ with set</span> means one piece by itself is worse than what you wear but the set is better. Lists rank by what a piece adds now; tick <b>Build towards sets</b> to rank set pieces by their whole set (the legendary chase always does). The Ideal / Good / Okay / Poor label includes each piece's share of its set bonuses.</p>
         <p>Percentages are per kill, at default settings (Medium, Wave Speed 0, no fortune tonic). Hover a row, or click it, for every source. Click a name in a recipe to follow it.</p></div>`;
       return;
     }
@@ -434,10 +464,11 @@ export class AtlasPanel extends SimplePanel {
     if (it.gear) {
       const band = fitBand(id, this.disc);
       const v = this.verdict(id);
+      const so = this.outlook(id);
       const dropAt = all.find((s) => s.area && s.ilvlSource);
       const pot = rollPotential(id, this.disc, dropAt?.area && dropAt.ilvlSource ? itemLevelAt(AREAS[dropAt.area].level, dropAt.ilvlSource) : 20);
       const roll = pot ? `<p class="at-roll">The roll matters more than the label: this piece alone adds about <b>+${pot.plain}%</b>; with two <b>ideal</b> affix rolls at item level ${pot.ilvl} (${pot.picks.map((p) => esc(p.text)).join(', ')}) it adds about <b>+${pot.ideal}%</b>. Affixes roll between the low and high end of their range (${pot.picks.map((p) => esc(p.range)).join(' and ')} here).</p>` : '';
-      parts.push(`<section><h4>For you</h4>${band ? `<p><span class="at-fit ${band}">${FIT_LABEL[band]}</span> ${esc(this.fitTitle(id, band))}</p>` : ''}${v ? `<p>${this.arrow(v)} ${esc(v.text)}</p>` : own?.worn ? '<p>You are wearing this.</p>' : ''}${roll}${this.fitBars(id)}</section>`);
+      parts.push(`<section><h4>For you</h4>${band ? `<p><span class="at-fit ${band}">${FIT_LABEL[band]}</span> ${esc(this.fitTitle(id, band))}</p>` : ''}${v ? `<p>${this.arrow(v, so)} ${esc(v.text)}</p>` : own?.worn ? '<p>You are wearing this.</p>' : ''}${so ? `<p class="at-roll"><b>${esc(so.setName)}:</b> ${esc(so.hint)}. Worn alone this piece switches on no bonus until the set reaches 2 pieces; the whole ${so.total}-piece set would add about <b>+${Math.round(so.withSetPct)}%</b> to your power over what you wear now, of which <b>+${Math.round(so.bonusPct)}%</b> is its set bonuses (counted here like the Character sheet counts them).</p>` : ''}${roll}${this.fitBars(id)}</section>`);
     }
 
     // Where it comes from.
@@ -549,5 +580,6 @@ export class AtlasPanel extends SimplePanel {
     if (t instanceof HTMLSelectElement && t.dataset.where !== undefined) { memory.where = t.value; this.renderList(); }
     else if (t instanceof HTMLSelectElement && t.dataset.set !== undefined) { memory.set = t.value; this.renderList(); }
     else if (t instanceof HTMLInputElement && t.dataset.reach !== undefined) { memory.reach = t.checked; this.renderList(); }
+    else if (t instanceof HTMLInputElement && t.dataset.build !== undefined) { memory.build = t.checked; this.renderSub(); this.renderList(); }
   }
 }

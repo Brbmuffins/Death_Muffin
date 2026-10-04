@@ -127,6 +127,9 @@ type Phase = 'walk' | 'work' | 'wait';
 export class GatherLoop {
   node: NodePlacement | null = null;
   afk = false;
+  /** Why work last stopped, and the recent history (QA/diagnostics: nothing may end AFK on a resume). */
+  lastStopReason: string | null = null;
+  readonly stopLog: { reason: string; at: number }[] = [];
   private lastStop = 'Paused';
   private phase: Phase = 'walk';
   private cycleT = 0;
@@ -136,6 +139,7 @@ export class GatherLoop {
   private inFlight = false;
   private pending: Promise<void> | null = null;
   private retryAt = 0;
+  private walkRetries = 0;
 
   constructor(
     private hooks: GatherHooks,
@@ -179,6 +183,7 @@ export class GatherLoop {
     this.node = node;
     this.spot = spot;
     this.cycleT = 0;
+    this.walkRetries = 0;
     if (Math.hypot(spot.x - h.player.x, spot.z - h.player.z) < 0.35) this.beginWork();
     else {
       this.phase = 'walk';
@@ -205,6 +210,9 @@ export class GatherLoop {
 
   stop(reason: GatherStop | 'unreachable' | 'blocked', message?: string) {
     if (!this.node) return;
+    this.lastStopReason = reason;
+    this.stopLog.push({ reason, at: Date.now() });
+    if (this.stopLog.length > 20) this.stopLog.shift();
     this.node = null;
     this.spot = null;
     this.lastStop = reason === 'bagFull' ? 'Bag full — make room, then Start AFK again.' : message ?? 'Paused';
@@ -224,7 +232,17 @@ export class GatherLoop {
     if (this.phase === 'walk' || this.phase === 'wait') {
       if (h.player.hasPath) return;
       const d = this.spot ? Math.hypot(this.spot.x - h.player.x, this.spot.z - h.player.z) : Infinity;
-      if (d > 0.6) return this.stop('unreachable', 'You cannot reach that.');
+      if (d > 0.6) {
+        // AFK work is unattended: a walk that ended short (a path cut by a push or an unlucky hop between nodes) gets a few
+        // fresh routes before the hero gives up. Hands-on work still stops at once.
+        if (this.afk && this.spot && this.walkRetries < 3) {
+          this.walkRetries++;
+          h.player.moveAlong(h.nav.findPath(h.player.x, h.player.z, this.spot.x, this.spot.z));
+          return;
+        }
+        return this.stop('unreachable', 'You cannot reach that.');
+      }
+      this.walkRetries = 0;
       if (this.phase === 'wait') {
         h.player.face(n.x, n.z);
         if (h.live(n.id)) this.beginWork();
@@ -280,6 +298,17 @@ export class GatherLoop {
     }
     this.pending = this.flushBatch(keepalive).finally(() => { this.pending = null; });
     return this.pending;
+  }
+
+  /**
+   * Send everything queued, including cycles a long catch-up queued while a request was already in flight.
+   * Stops early after an offline/server hiccup (those cycles stay queued for the normal retry).
+   */
+  async drain(): Promise<void> {
+    for (let i = 0; i < 8; i++) {
+      await this.flush();
+      if (!this.queue.size || this.hooks.now() < this.retryAt) return;
+    }
   }
 
   private async flushBatch(keepalive: boolean, alongside = false): Promise<void> {

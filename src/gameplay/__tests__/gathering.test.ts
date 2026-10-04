@@ -110,3 +110,26 @@ describe('gathering rules', () => {
     expect(lf(readFileSync(GATHER_OUT, 'utf8')), 'run `npm run build:server-rules`').toBe(lf(await bundleGatheringRules()));
   });
 });
+
+describe('AFK budget for a resume catch-up burst', () => {
+  it('honours a long absence honestly: at most one 90 s window, claimed in consistent batches, no cheating headroom', async () => {
+    const { checkBudget, NODES: N, actionMs: ms } = await import('../gatheringRules');
+    const def = N.coffin_oak;
+    const per = ms(def);
+    const T = 10_000_000;
+    // Ten minutes since the last accepted claim, then the client claims the capped 90 s in two batches.
+    let ledger = { lastAt: T - 600_000, hourStart: T - 600_000, hourActions: 0 };
+    const total = Math.floor(90_000 / per);
+    const first = Math.min(3, total);
+    const a = checkBudget(def, ledger, first, T, true);
+    expect(a.ok && a.accepted).toBe(first);
+    if (!a.ok) return;
+    ledger = a.ledger;
+    const b = checkBudget(def, ledger, total - first, T, true);
+    expect(b.ok && b.accepted).toBe(total - first);
+    if (!b.ok) return;
+    // Claiming more than the window allows is still clamped (anti-cheat unchanged).
+    const c = checkBudget(def, b.ledger, 40, T, true);
+    expect(c.ok).toBe(false);
+  });
+});

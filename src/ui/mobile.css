@@ -55,17 +55,17 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
 .cw-panel-back {
   position: fixed;
   z-index: 7;
-  height: 40px;
-  min-width: 0;
-  padding: 0 12px;
-  font: 600 13px var(--cw-font-body);
+  height: 44px;
+  min-width: 44px;
+  padding: 0 14px;
+  font: 600 14px var(--cw-font-body);
   letter-spacing: 0.06em;
   color: var(--cw-bone-100);
   background: var(--cw-inset);
   white-space: nowrap;
   touch-action: manipulation;
 }
-.cw-panel-float.has-back .cw-panel-head { padding-left: 92px; }
+.cw-panel-float.has-back .cw-panel-head { padding-left: 100px; }
 
 /* --- Tablet: everything fits along the bottom ------------------------------------------------ */
 @media (pointer: coarse) and (max-width: 1024px) and (min-height: 521px) and (min-width: 761px) {
@@ -80,6 +80,31 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
   /* Upgrades + currencies stack above the Essence orb instead of beside it. */
   .hud-right { bottom: 168px; right: 12px; }
   .hud-upgrades { position: static; }
+}
+
+/* --- Menu sheet: phones AND tablets. A tablet has no keyboard either: Contracts, Garden, Laborers, Legion, Capes and Vault have no icon in its
+   menu row, so the Menu button (next to the icons) opens the same grid of big tiles. -------------------------------------------- */
+@media (pointer: coarse) {
+  .hud-menusheet:not([hidden]) { position: fixed; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); background: rgba(4, 3, 7, 0.72); }
+  .hud-menusheet .card { width: min(100%, 460px); max-height: 100%; overflow-y: auto; overscroll-behavior: contain; background: var(--cw-panel, #100c16); border: 1px solid var(--cw-border-strong); padding: 10px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8); }
+  .hud-menusheet .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .hud-menusheet h2 { margin: 0; font-family: var(--cw-font-display); font-size: 16px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cw-bone-100); }
+  .hud-menusheet .x { width: 44px; height: 44px; display: grid; place-items: center; padding: 0; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-bone-200); }
+  .hud-menusheet .x svg { width: 20px; height: 20px; }
+  .hud-menusheet .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .hud-menusheet .tile { min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 6px 4px; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-bone-200); font-family: var(--cw-font-body); font-size: 13px; line-height: 1.1; text-align: center; touch-action: manipulation; }
+  .hud-menusheet .tile svg { width: 26px; height: 26px; }
+  .hud-menusheet .tile:active { border-color: var(--cw-border-active); color: var(--cw-bone-100); background: color-mix(in srgb, var(--cw-inset) 70%, var(--cw-border-active)); }
+  .hud-menusheet .tile.auto { grid-column: 1 / -1; min-height: 56px; font-size: 14px; }
+  .hud-menusheet .tile.auto[hidden] { display: none; }
+}
+@media (pointer: coarse) and (min-height: 521px) and (min-width: 761px) {
+  .hud-menu .hud-menubtn { display: flex; flex: 1 0 100%; order: -1; align-items: center; justify-content: center; gap: 6px; height: 40px; padding: 0 10px; font-family: var(--cw-font-display); font-weight: 700; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cw-bone-100); border-color: var(--cw-border-active); }
+  .hud-menu .hud-menubtn svg { width: 20px; height: 20px; }
+  .hud-menu .hud-mi { height: 40px; min-width: 46px; }
+  .hud-menu .hud-fullscreen:not([hidden]) { width: 40px; height: 40px; }
+  .hud-menusheet .grid { grid-template-columns: repeat(4, 1fr); }
+  .hud-menusheet .card { width: min(100%, 560px); }
 }
 
 /* --- Compact (phones): shared ---------------------------------------------------------------- */
@@ -139,7 +164,7 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
   .hud-map .area { font-size: 12px; letter-spacing: 0.06em; line-height: 1.15; }
   .hud-map .prog { font-size: 11px; max-width: 128px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .hud-next { max-width: 128px; font-size: 11.5px; padding: 3px 2px 3px 7px; }
-  .hud-next [data-nexttxt] { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .hud-next [data-nexttxt] { display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
   .hud-menu { gap: 4px; width: 128px; flex-wrap: nowrap; }
   .hud-menu .hud-mi { display: none; }
   .hud-menu .hud-menubtn { display: flex; flex: 1; align-items: center; justify-content: center; gap: 6px; height: 36px; font-family: var(--cw-font-display); font-weight: 700; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cw-bone-100); border-color: var(--cw-border-active); }
@@ -149,18 +174,6 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
   .hud-menu .hud-menubtn svg { width: 20px; height: 20px; }
   .hud-menu .hud-auto { flex-basis: 100%; }
   .hud-menu { flex-wrap: wrap; }
-  .hud-menusheet:not([hidden]) { position: fixed; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); background: rgba(4, 3, 7, 0.72); }
-  .hud-menusheet .card { width: min(100%, 460px); max-height: 100%; overflow-y: auto; overscroll-behavior: contain; background: var(--cw-panel, #100c16); border: 1px solid var(--cw-border-strong); padding: 10px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8); }
-  .hud-menusheet .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-  .hud-menusheet h2 { margin: 0; font-family: var(--cw-font-display); font-size: 16px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cw-bone-100); }
-  .hud-menusheet .x { width: 44px; height: 44px; display: grid; place-items: center; padding: 0; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-bone-200); }
-  .hud-menusheet .x svg { width: 20px; height: 20px; }
-  .hud-menusheet .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-  .hud-menusheet .tile { min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 6px 4px; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-bone-200); font-family: var(--cw-font-body); font-size: 13px; line-height: 1.1; text-align: center; touch-action: manipulation; }
-  .hud-menusheet .tile svg { width: 26px; height: 26px; }
-  .hud-menusheet .tile:active { border-color: var(--cw-border-active); color: var(--cw-bone-100); background: color-mix(in srgb, var(--cw-inset) 70%, var(--cw-border-active)); }
-  .hud-menusheet .tile.auto { grid-column: 1 / -1; min-height: 56px; font-size: 14px; }
-  .hud-menusheet .tile.auto[hidden] { display: none; }
   .hud-menu .hud-auto { width: 100%; height: 28px; }
 
   /* Left column */
@@ -242,6 +255,23 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
   .cw-reliquary .cw-inv-body .cw-bag-grid, .cw-bag-grid { flex: 1 1 auto; min-width: 0; width: 100%; grid-template-columns: repeat(8, minmax(0, 1fr)); }
   .cw-bag-grid .cw-slot img { max-width: 100%; }
   .cw-bag-detail { grid-template-columns: minmax(0, 1fr); }
+  /* Bag item "tooltip" on touch: there is no hover, so the selected relic's card (stats, upgrade verdict, set bonus, lore)
+     and its action buttons ride together as a bottom sheet pinned to the foot of the panel, always on screen. It never
+     floats over the buttons because the buttons are part of it; the card scrolls, the buttons stay put. */
+  .cw-reliquary .cw-bag-detail:has(.info) {
+    position: sticky; bottom: -14px; z-index: 5;
+    grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; max-height: min(56vh, 420px);
+    margin: 0 -12px -14px; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)) !important;
+    background: var(--cw-panel, #100c16); border-top: 1px solid var(--cw-border-strong); box-shadow: 0 -8px 22px rgba(0, 0, 0, 0.7);
+  }
+  .cw-reliquary { scroll-padding-bottom: min(56vh, 420px); }
+  .cw-reliquary .cw-bag-detail .gs-stat .fx { white-space: normal; overflow: visible; }
+  .cw-reliquary .cw-bag-detail .lg-line { white-space: normal; }
+  .cw-reliquary .cw-bag-detail .info { overflow-y: auto; overscroll-behavior: contain; padding-right: 36px; position: relative; }
+  .cw-reliquary .cw-bag-detail .info .gs-head .name, .cw-reliquary .cw-bag-detail .info .gs-head .type { display: block; margin-left: 0; }
+  .cw-reliquary .cw-detail-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cw-reliquary .cw-detail-actions .cw-button { min-height: 44px; }
+  .cw-reliquary .cw-bag-detail [data-detailclose] { display: grid; }
   .cw-panel-float .cw-button.small { max-width: 100%; white-space: normal; }
   .cw-panel-float .cw-panel-actions, .cw-panel-float .cw-bag-detail .actions, .cw-bag-tools { flex-wrap: wrap; }
   .cw-bag-tools .cw-button { flex: 0 1 auto; }
@@ -307,7 +337,7 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
   .hud-depth { width: 116px; }
   .hud-depth .cue { display: none; }
   .hud-next { max-width: 116px; }
-  .hud-next [data-nexttxt] { -webkit-line-clamp: 3; }
+  .hud-next [data-nexttxt] { -webkit-line-clamp: 5; }
   .hud-menu { width: 116px; }
   .hud-menu .hud-menubtn { height: 30px; }
   .hud-menu .hud-fullscreen { width: 30px; height: 30px; }
@@ -362,4 +392,93 @@ body.touch .hud-slot .key, body.touch .brew-chip kbd, body.touch .hud-hint { dis
 /* Load screen on phones: keep it clear of notches and the on-screen keyboard area. */
 @media (max-width: 760px), (max-height: 520px) {
   .dm-splash-copy { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+}
+
+/* --- Gear Atlas (.): one pane at a time on a phone. The list, then a tapped item's detail with a Back to the list. -------------- */
+@media (pointer: coarse) and (max-width: 760px), (pointer: coarse) and (max-height: 520px) {
+  /* .cw-panel-float.cw-atlas: atlas.css loads lazily, after this file, and would win a same-specificity height. */
+  .cw-panel-float.cw-atlas { display: flex !important; flex-direction: column; overflow: hidden !important; height: calc(100vh - var(--dock, 136px) - 14px); height: calc(100dvh - var(--dock, 136px) - 14px); }
+  .cw-atlas .at-top { flex-direction: column; align-items: stretch; gap: 6px; }
+  .cw-atlas .at-search input { width: 100%; min-height: 44px; font-size: 16px; }
+  .cw-atlas .at-tabs { display: flex; overflow-x: auto; gap: 6px; grid-template-columns: none; scrollbar-width: none; }
+  .cw-atlas .at-tabs button { flex: none; min-height: 44px; padding: 6px 12px; font-size: 13px; }
+  .cw-atlas .at-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+  .cw-atlas .at-chips button { flex: none; min-height: 44px; }
+  .cw-atlas .at-select select, .cw-atlas .at-check input { min-height: 44px; font-size: 16px; }
+  .cw-atlas .at-cols { grid-template-columns: minmax(0, 1fr); }
+  .cw-atlas:not(.detail-open) .at-detail, .cw-atlas.detail-open .at-list { display: none; }
+  .cw-atlas .at-back { display: block; min-height: 44px; }
+  .cw-atlas .at-row { min-height: 56px; padding: 8px; }
+  .cw-atlas .at-name { font-size: 16px; }
+  .cw-atlas .at-links button, .cw-atlas .at-recipe li button, .cw-atlas .at-more { min-height: 44px; }
+  .cw-atlas .at-bar { grid-template-columns: 96px 1fr 50px; }
+  .cw-atlas .at-detail { padding: 10px; }
+}
+@media (pointer: coarse) and (max-height: 520px) {
+  .cw-panel-float.cw-atlas { height: calc(100vh - 12px); height: calc(100dvh - 12px); }
+  /* Landscape is ~380 px tall: drop the two explanatory lines so a few rows of the list fit under the tabs. */
+  .cw-atlas .at-who, .cw-atlas .at-note { display: none; }
+  .cw-atlas .at-sub { min-height: 0; margin-bottom: 4px; }
+  .cw-atlas .at-top { margin-bottom: 4px; }
+  .cw-atlas .at-tabs { margin-bottom: 4px; }
+}
+
+/* --- Touch targets (owner rule: >= 40 px) and the Settings header at 360 px -------------------------------------------------------- */
+@media (pointer: coarse) {
+  .cw-panel-float .cw-button, .cw-panel-float .cw-chip, .cw-panel-float .cw-tabs button, .cw-vault-tabs button, .cw-panel-float select,
+  .gs-line > button:not([tabindex="-1"]) { min-height: 40px; }
+  .cw-grim-key { width: 40px; height: 40px; }
+  /* Five 40 px keys plus the colour chips no longer fit one line on a phone card: the keys wrap under the chips. */
+  .cw-grim-row { flex-wrap: wrap; }
+  .cw-grim-keys { flex: 1 0 auto; justify-content: flex-end; }
+  .cw-chip { padding: 3px 12px; }
+  /* "Done for now? [Leave the world]" is wider than a 360 px panel: let it wrap instead of running past the edge. */
+  .cw-settings-top { flex-wrap: wrap; }
+  .cw-settings-top span { white-space: normal; }
+  .cw-settings-top .cw-button { letter-spacing: 0.08em; min-height: 44px; }
+}
+
+/* HUD buttons: 40 px hit areas (the Menu, full-screen, flask and upgrade buttons were 28-36 px; the Next line's X was 22x17). */
+@media (pointer: coarse) {
+  .hud-menu .hud-menubtn, .hud-menu .hud-fullscreen:not([hidden]) { height: 40px; }
+  .hud-menu .hud-fullscreen:not([hidden]) { width: 40px; }
+  .hud-flask { width: 40px; height: 40px; }
+  .hud-up-toggle { min-height: 40px; min-width: 40px; }
+  .hud-up .buy { min-height: 40px; }
+  .hud-wave-dial [data-dial] { min-width: 40px; min-height: 40px; }
+  .hud-grimoire-btn { min-width: 40px; min-height: 40px; }
+  [data-nextx] { position: relative; }
+  [data-nextx]::after { content: ''; position: absolute; inset: -12px -10px; }
+}
+@media (pointer: coarse) and (max-width: 760px) and (min-height: 521px), (pointer: coarse) and (max-height: 520px) {
+  .hud-grimoire-btn { min-width: 0; min-height: 0; }
+}
+
+/* The portrait strip above the dock spans the whole width (currencies left, Upgrades right): only its buttons take taps, the empty middle
+   passes them to the game so a tap there walks or targets. */
+@media (pointer: coarse) {
+  .hud-right { pointer-events: none; }
+  .hud-right > * { pointer-events: auto; }
+  .hud-right .hud-currency { pointer-events: none; }
+}
+
+/* Discipline picker: the "Recommended for your first run" badge is as wide as a phone-sized card and covered the NECROMANCER tag (it read
+   "ROMANCER"); the family tag drops to a second line under the badge instead. */
+@media (pointer: coarse) {
+  .cw-disc.recommended .legacy { top: 46px; }
+  .cw-disc .rec-badge { max-width: calc(100% - 16px); }
+}
+
+/* Sexton's Contracts on a phone: the DELIVER button ran past the order card and the skill tag sat on top of the item name. The button drops
+   under the order, full width, and the skill tag goes on its own line. */
+@media (pointer: coarse) and (max-width: 760px) {
+  .cw-ctr { grid-template-columns: 44px minmax(0, 1fr); }
+  .cw-ctr > button { grid-column: 1 / -1; min-height: 44px; width: 100%; }
+  .cw-ctr .hd { flex-direction: column; gap: 2px; }
+  .cw-ctr .hd .meta { white-space: normal; }
+}
+
+/* Phones: panels cover the world, so its floating numbers (AFK "+1 Oak Log", hits) must not draw over panel text. */
+@media (max-width: 760px), (max-height: 520px) {
+  body.dm-panel-open .cw-num { display: none; }
 }

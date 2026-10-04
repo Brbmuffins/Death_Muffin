@@ -431,7 +431,12 @@ export class WorldScene implements GameScene, RuntimeView {
   /** Touch play: active fingers on the canvas (for pinch zoom / drag to walk), and whether the last input was a finger. */
   private touch = { on: false, pts: new Map<number, { x: number; y: number }>(), pinch: 0, lastDrag: 0 };
   /** Panels opened from inside another panel, newest last; Back reopens the top one. */
-  private panelStack: PanelKey[] = [];
+  /** Where Back goes: parent panels, with 'menu' (the phone Menu sheet) at the bottom when the chain began there. */
+  private panelStack: Array<PanelKey | 'menu'> = [];
+  /** Canvas taps before this time (performance.now) are the return-to-app touch, not the player. */
+  private resumeGuardUntil = 0;
+  private awaySession: GatherSession | null = null;
+  private awaySeconds = 0;
   private histPushed = false;
   private histIgnore = 0;
   /** A save is retrying or the browser reports no network (see watchConnection). */
@@ -565,7 +570,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private openGrimoire(select?: number | 'primary') {
     audio.play('click');
     this.closePanels();
-    this.gathering?.stop('panel');
+    this.stopManualGather();
     this.clearCuesFor('grimoire');
     this.grimSelect = select;
     this.grimWin.open('grimoire');
@@ -841,6 +846,11 @@ export class WorldScene implements GameScene, RuntimeView {
       if (slots.filter((x) => x.slot_index < BAG_SIZE).length < BAG_SIZE) this.bagFullNoticed = false;
     }));
     this.scope.add(this.inventory.onChange(() => { this.brewRev++; }));
+    // Returning to the app: the first touch is the return tap, not the player taking over (whichever order the events arrive in).
+    const onBack = () => { if (!document.hidden) this.holdReturnTap(); };
+    this.scope.on(document, 'visibilitychange', onBack);
+    this.scope.on(window, 'pageshow', onBack);
+    this.scope.on(window, 'focus', onBack);
     this.scope.on(window, 'pagehide', () => {
       void this.progression.flush(true);
       void this.inventory.flush(true);
@@ -1185,7 +1195,7 @@ export class WorldScene implements GameScene, RuntimeView {
         this.progression.setActiveWaveTier(this.progression.local.waveTierActive + d);
         this.applyWaveTier();
       },
-      open: (p) => this.togglePanel(p),
+      open: (p, fromMenu) => this.togglePanel(p, !!fromMenu),
       flask: () => this.drinkFlask(),
       recall: () => this.startRecall(),
       drinkBelt: (slot) => (slot === 'heal' ? this.drinkFlask() : this.drinkBelt(slot as BrewSlot)),
@@ -1579,7 +1589,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private talkTo(id: NpcId) {
     if (!this.player.alive) return;
-    this.gathering.stop('panel');
+    this.stopManualGather();
     this.closePanels();
     this.player.stop();
     this.attackTarget = null;
@@ -1710,10 +1720,12 @@ export class WorldScene implements GameScene, RuntimeView {
     const parent = this.panelStack.pop();
     if (!parent) {
       if (this.panelOpen()) { audio.play('panelClose'); this.closePanels(); }
+      else if (this.hud.menuOpen) this.hud.closeMenu();
       return;
     }
     const rest = [...this.panelStack];
     this.closePanels();
+    if (parent === 'menu') { this.panelStack = []; this.hud.openMenu(); return; }
     this.togglePanel(parent);
     this.panelStack = rest;
   }
@@ -1723,9 +1735,10 @@ export class WorldScene implements GameScene, RuntimeView {
    * history entry while any panel is open so the phone's Back gesture closes/steps back instead of leaving the game.
    */
   private syncPanelNav() {
-    const open = this.panelOpen();
-    if (!open) this.panelStack = [];
-    document.body.classList.toggle('dm-panel-open', open);
+    const panelsOpen = this.panelOpen();
+    const open = panelsOpen || this.hud.menuOpen;
+    if (!panelsOpen) this.panelStack = [];
+    document.body.classList.toggle('dm-panel-open', panelsOpen);
     // The Back button floats over the panel's top-left corner (not inside it: panels redraw their own markup).
     const panelEl = this.panelStack.length ? [...this.root.querySelectorAll<HTMLElement>('.cw-panel-float')].find((e) => e.offsetParent) : undefined;
     let back = this.root.querySelector<HTMLButtonElement>(':scope > .cw-panel-back');
@@ -1746,10 +1759,11 @@ export class WorldScene implements GameScene, RuntimeView {
       const head = panelEl.querySelector<HTMLElement>('.cw-panel-head');
       const hr = head?.getBoundingClientRect();
       back.style.left = `${Math.round(r.left + 10)}px`;
-      back.style.top = `${Math.round(hr && hr.height ? hr.top + (hr.height - 8 - 40) / 2 : r.top + 10)}px`;
+      back.style.top = `${Math.round(hr && hr.height ? hr.top + (hr.height - 8 - 44) / 2 : r.top + 10)}px`;
       back.hidden = false;
     } else if (back) back.remove();
-    if (open && !this.histPushed) {
+    // Wait out a pending history.back() before pushing again, or that late traversal would pop the new entry.
+    if (open && !this.histPushed && this.histIgnore === 0) {
       history.pushState({ dmPanel: true }, '');
       this.histPushed = true;
     } else if (!open && this.histPushed) {
@@ -1866,14 +1880,22 @@ export class WorldScene implements GameScene, RuntimeView {
     if (!r.has('menu.skills') && ALL_SKILLS.some((id) => this.skills.shown(id).xp > 0 || this.skills.level(id) > 1)) this.revealHud('menu.skills');
   }
 
-  private togglePanel(p: PanelKey) {
+  /**
+   * Opening a panel must not end AFK gathering (menus, bags and skills are things you do while it runs); only a
+   * deliberate move/cast/recall, the Stop button or a hurt/bag-full does. Hands-on (non-AFK) gathering still pauses.
+   */
+  private stopManualGather() {
+    if (!this.gathering?.afk) this.gathering?.stop('panel');
+  }
+
+  private togglePanel(p: PanelKey, fromMenu = false) {
     const from = this.openPanelKey();
     const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel, cosmetics: this.cosmeticsPanel, vault: this.vaultPanel, salvage: this.salvagePanel, sheet: this.sheetPanel, legion: this.legionPanel, atlas: this.atlasPanel }[p];
     const host = this.hostOf(p);
     // Another tab of the open merged window: switch, do not close and reopen.
     const switching = !!host && host.win.isOpen && host.win.activeTab !== host.tab;
     const wasOpen = host ? host.win.isOpen && host.win.activeTab === host.tab : panel.isOpen;
-    if (wasOpen || !from) this.panelStack = [];
+    if (wasOpen || !from) this.panelStack = fromMenu && !wasOpen ? ['menu'] : [];
     else if (from !== p && !switching) {
       const at = this.panelStack.indexOf(p);
       if (at >= 0) this.panelStack.length = at;
@@ -1888,7 +1910,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (wasOpen) return;
     this.clearCuesFor(p);
     if (host) {
-      if (!(p === 'professions' && this.gathering?.afk)) this.gathering?.stop('panel');
+      this.stopManualGather();
       this.grimSelect = undefined;
       host.win.open(host.tab);
       if (p === 'grimoire') {
@@ -1897,7 +1919,7 @@ export class WorldScene implements GameScene, RuntimeView {
       }
       return;
     }
-    if (!(p === 'professions' && this.gathering?.afk)) this.gathering?.stop('panel');
+    this.stopManualGather();
     if (p === 'inventory') this.inventoryPanel.open();
     else if (p === 'forge') void this.forgePanel.open();
     else if (p === 'settings') this.settingsPanel.open();
@@ -2010,7 +2032,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.scope.on<PopStateEvent>(window, 'popstate', () => {
       if (this.histIgnore > 0) { this.histIgnore--; return; }
       this.histPushed = false;
-      if (this.panelOpen()) { audio.play('panelClose'); this.panelBack(); }
+      if (this.panelOpen() || this.hud.menuOpen) { audio.play('panelClose'); this.panelBack(); }
     });
     const endTouch = (e: PointerEvent) => {
       this.touch.pts.delete(e.pointerId);
@@ -2058,6 +2080,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.scope.on<PointerEvent>(this.canvas, 'pointerdown', (e) => {
       if (e.button !== 0) return;
       e.preventDefault();
+      if (this.gathering.afk && performance.now() < this.resumeGuardUntil) return;
       if (e.pointerType === 'touch') {
         this.touch.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
         this.touch.lastDrag = performance.now();
@@ -2598,20 +2621,20 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'kiln':
       case 'sawpit':
       case 'fire':
-        this.gathering.stop('panel');
+        this.stopManualGather();
         this.closePanels();
         audio.play('click');
         this.onboarding.show('station');
         return void this.forgePanel.open(it.kind);
       case 'cauldron':
       case 'alembic':
-        this.gathering.stop('panel');
+        this.stopManualGather();
         this.closePanels();
         audio.play('click');
         this.onboarding.show('wing');
         return void this.forgePanel.open('cauldron');
       case 'reagents':
-        this.gathering.stop('panel');
+        this.stopManualGather();
         this.closePanels();
         audio.play('click');
         this.onboarding.show('wing');
@@ -3286,8 +3309,12 @@ export class WorldScene implements GameScene, RuntimeView {
     const refusal = this.gathering.startAfk(node);
     if (refusal) throw new Error(refusal);
     this.hud.toast('AFK gathering started — keep the game open. It pauses when your bag fills.', 'good');
-    this.gatherSession = new GatherSession(
-      performance.now(),
+    this.gatherSession = this.newGatherSession(performance.now());
+  }
+
+  private newGatherSession(startedAt: number) {
+    return new GatherSession(
+      startedAt,
       (id) => { const m = itemMeta(id); return { name: m.name, rarity: m.rarity, sell: m.sell }; },
       (skill) => this.skills.level(skill),
       (skill) => this.chronicle.view().life[`gathered.${skill}`] ?? 0,
@@ -3313,7 +3340,44 @@ export class WorldScene implements GameScene, RuntimeView {
       });
   }
 
+  /**
+   * The page came back (phone app switch, frozen tab). Phones freeze the page the moment you leave, so no timer ran and the
+   * time away would be lost: catch AFK gathering up through the same batched path as the hidden-tab interval, then show
+   * what the away stretch brought. AFK never stops because of this; only a deliberate action (or a full bag) ends it.
+   */
+  async resumed(awaySeconds: number) {
+    if (import.meta.env.DEV && new URLSearchParams(location.search).has('afkdebug')) console.info('[afk] resumed', awaySeconds, this.awaySeconds, this.gathering.afk);
+    this.holdReturnTap();
+    // The hidden-tab interval may already have been counting this absence; this adds whatever the frozen stretch lost.
+    const wasAway = this.awaySession !== null;
+    if (awaySeconds > 0 && this.ready && !this.scope.isDisposed && this.gathering.afk && this.player.area === 'acre') {
+      await this.backgroundUpdate(awaySeconds);
+      await this.gathering.drain();
+    } else if (wasAway) await this.gathering.drain();
+    const away = this.awaySession;
+    const total = this.awaySeconds;
+    this.awaySession = null;
+    this.awaySeconds = 0;
+    // If work ended meanwhile (bag full) the normal ledger already tells that story.
+    if (!away || this.scope.isDisposed || !this.gathering.afk) return;
+    const out = away.finish(total * 1000, 'away');
+    if (!out) return;
+    this.closePanels();
+    this.gatherReportPanel.show(out.report);
+    audio.play(out.report.milestones.length ? 'skillUp' : 'coin');
+  }
+
+  /** A stray touch can ride in with the return to the app; it must not be read as "the player took over". */
+  private holdReturnTap() {
+    this.resumeGuardUntil = performance.now() + 450;
+  }
+
   async backgroundUpdate(seconds: number) {
+    // Everything gathered while away is folded into one session, shown as a ledger when the player returns.
+    if (this.gathering.afk && seconds > 0) {
+      this.awaySession ??= this.newGatherSession(0);
+      this.awaySeconds += seconds;
+    }
     // The same authoritative sim and gathering loop, with no hidden-tab render.
     // Timers can wake once a minute; preserve earned time in capped batches.
     for (let left = seconds; left > 0 && this.ready && !this.scope.isDisposed && this.gathering.afk && this.player.area === 'acre'; left -= .1) {
@@ -3335,6 +3399,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private onGatherReply(r: GatherReply) {
     this.gatherSession?.record(r);
+    this.awaySession?.record(r);
     this.celebrateCharms(r.items);
     for (const g of r.items) this.inventory.add({ item_id: g.itemId, quantity: g.qty });
     this.chronicle.add(`gathered.${r.skill}`, r.items.reduce((n, g) => n + g.qty, 0));
@@ -6228,7 +6293,7 @@ export class WorldScene implements GameScene, RuntimeView {
         return this.gathering.start(n) ?? n.id;
       },
       /** State of the gathering loop. */
-      gathering: () => ({ node: this.gathering.node?.id ?? null, afk: this.gathering.afk, status: this.gathering.status, working: this.gathering.working, progress: this.gathering.progress, skills: this.skills.rows() }),
+      gathering: () => ({ node: this.gathering.node?.id ?? null, afk: this.gathering.afk, lastStopReason: this.gathering.lastStopReason, stopLog: this.gathering.stopLog, status: this.gathering.status, working: this.gathering.working, progress: this.gathering.progress, skills: this.skills.rows() }),
       /** Set a skill level locally (and in the offline mock's db, so its server agrees). */
       skill: (id: SkillId, level: number) => {
         this.skills.adopt([{ profession_id: id, skill_level: level, skill_xp: 0 }]);

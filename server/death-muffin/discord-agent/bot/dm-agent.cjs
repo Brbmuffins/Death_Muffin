@@ -5,8 +5,14 @@
 // Installed to /opt/muffin/discord/dm-agent.js. Env (from /opt/muffin/dm-agent.env): DM_AGENT_SECRET, DM_AGENT_URL, DM_AGENT_CHANNEL_ID (optional override).
 
 const NO_PINGS = { parse: [], repliedUser: false };
+// Discord turns a paste over 2000 characters into a message.txt attachment. Text attachments are read (Discord's CDN only, size-capped)
+// and handed to the runner as part of the message, which wraps all of it as the person's (untrusted) text.
+const TEXT_FILE = /\.(txt|log|md|json|csv|tsv|js|cjs|mjs|ts|css|html|ya?ml|diff|patch|ini|cfg|sql)$/i;
+const FILE_MAX_BYTES = 100 * 1024;
+const FILES_MAX_CHARS = 60000;
+const CDN = /^https:\/\/(cdn\.discordapp\.com|media\.discordapp\.net)\//;
 
-function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, channelIdOverride = '', log = console.log, pollWaitSec = 25 }) {
+function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile = fetch, channelIdOverride = '', log = console.log, pollWaitSec = 25 }) {
   let cachedChannel = channelIdOverride || ''; let cachedAt = 0; let stopped = false;
   const headers = { 'content-type': 'application/json', 'x-dm-secret': secret };
   async function call(path, body) {
@@ -21,6 +27,21 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, channelId
   }
   const botId = () => client.user && client.user.id;
   const stripMention = (t) => String(t || '').replace(new RegExp(`<@!?${botId()}>`, 'g'), '').trim();
+  async function attachmentText(msg) {
+    const out = []; const skipped = []; let budget = FILES_MAX_CHARS;
+    for (const a of msg.attachments ? msg.attachments.values() : []) {
+      const name = String(a.name || 'file');
+      const isText = TEXT_FILE.test(name) || /^text\//.test(String(a.contentType || ''));
+      if (!isText || !CDN.test(String(a.url || ''))) { skipped.push(name); continue; }
+      if (a.size > FILE_MAX_BYTES || budget <= 0) { skipped.push(`${name} (too large to read)`); continue; }
+      try {
+        const res = await fetchFile(a.url); if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        let t = await res.text(); const cut = t.length > budget; t = t.slice(0, budget); budget -= t.length;
+        out.push(`[attached file ${name}${cut ? ', cut short' : ''}]\n${t}\n[end of ${name}]`);
+      } catch (e) { log('[dm-agent] attachment read failed', e.message); skipped.push(`${name} (could not be read)`); }
+    }
+    return (out.length ? `\n\n${out.join('\n\n')}` : '') + (skipped.length ? `\n[attachments not visible to the agent: ${skipped.join(', ')}]` : '');
+  }
   const safeReply = (msg, content) => msg.reply({ content: String(content).slice(0, 1900), allowedMentions: NO_PINGS }).catch((e) => log('[dm-agent] reply failed', e.message));
 
   async function onMessage(msg) {
@@ -31,12 +52,12 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, channelId
       if (!chan || (isThread ? parentId : ch.id) !== chan) return;
       const mentioned = !!(msg.mentions && msg.mentions.users && msg.mentions.users.has(botId()));   // explicit @bot only, never @everyone
       if (!isThread && !mentioned) return;
-      const attachments = [...(msg.attachments ? msg.attachments.values() : [])].map((a) => a.name).filter(Boolean);
-      let text = stripMention(msg.content); if (attachments.length) text += `\n[attachments not visible to the agent: ${attachments.join(', ')}]`;
+      const text = stripMention(msg.content) + await attachmentText(msg);
       const r = await call('/event', { type: 'message', messageId: msg.id, channelId: isThread ? parentId : ch.id, threadId: isThread ? ch.id : null, parentId,
         userId: msg.author.id, username: msg.member && msg.member.displayName || msg.author.username, text, mentioned });
       if (r.action === 'reply') return void safeReply(msg, r.text);
-      if (r.action === 'accepted') return void (msg.react && msg.react('👀').catch(() => {}));
+      // The runner shows "typing…" while it works; a reaction only marks a message that has to wait its turn.
+      if (r.action === 'accepted') return void (r.queued && msg.react && msg.react('⏳').catch(() => {}));
       if (r.action === 'create_thread') {
         let thread;
         try { thread = await msg.startThread({ name: r.threadName || 'Death Muffin request', autoArchiveDuration: 1440 }); }
@@ -66,6 +87,7 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, channelId
     const payload = { allowedMentions: op.mentionUsers && op.mentionUsers.length ? { parse: [], users: op.mentionUsers.slice(0, 5) } : NO_PINGS };
     if (op.content) payload.content = String(op.content).slice(0, 1990);
     if (op.embed) payload.embeds = [op.embed];
+    if (op.file && op.file.text) payload.files = [{ attachment: Buffer.from(String(op.file.text), 'utf8'), name: String(op.file.name || 'reply.md').replace(/[^\w.-]/g, '_') }];
     if (t.replyTo) payload.reply = { messageReference: t.replyTo, failIfNotExists: false };
     const sent = await ch.send(payload);
     return sent;
@@ -73,6 +95,10 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, channelId
   async function pollOnce() {
     const { ops } = await call(`/poll?wait=${pollWaitSec}`);
     for (const op of ops || []) {
+      if (op.typing) {   // fire-and-forget; the runner never waits for an ack on these
+        const t = op.target || {}; await client.channels.fetch(t.threadId || t.channelId).then((ch) => ch.sendTyping()).catch(() => {});
+        continue;
+      }
       let result; let failed = false; let sent;
       try { sent = await exec(op); result = { messageId: sent.id }; } catch (e) { failed = true; result = { error: e.message }; log('[dm-agent] send failed', e.message); }
       await call('/ack', { id: op.id, result, ok: !failed });       // ack BEFORE reacting so the runner knows the proposal message id first

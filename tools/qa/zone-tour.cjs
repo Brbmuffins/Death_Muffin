@@ -5,11 +5,15 @@
 //   DM_PLAYWRIGHT_MODULE=... DM_QA_URL='http://127.0.0.1:5350/?offline' DM_QA_ARTIFACT_DIR=/tmp/tour/before node tools/qa/zone-tour.cjs
 // Env: DM_QA_QUALITY=high,low   DM_QA_AREAS=graves,pyre   DM_QA_BOSSES=0 to skip bosses   DM_QA_VISIT=0 to skip the zone shots (bosses only)   DM_QA_BOSS_SHOTS=8   DM_QA_DISC=Gravecaller
 // For before/after perf numbers use tools/qa/fixed-fight-perf.cjs instead (the tour's random wave content swings calls +-30%).
+// Pixel metrics (tools/qa/lib/pixel-metrics.cjs) of every arrival and fight shot are compared with the per-zone baselines in
+// tools/qa/baselines/pixel-metrics.json and printed + written to <dir>/pixels.json (report only). DM_QA_PIXELS=0 skips,
+// DM_QA_PIXELS_UPDATE=1 rewrites the baselines (do that only after an intended look change; boss shots are not baselined).
 // Writes <dir>/<quality>-<area>-{arrival,fight}.png, <quality>-boss-<id>-<n>.png and <dir>/tour.json.
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { chromium } = require(process.env.DM_PLAYWRIGHT_MODULE || 'playwright');
+const pixels = require('./lib/pixel-metrics.cjs');
 
 const URL = process.env.DM_QA_URL || 'http://127.0.0.1:5350/?offline';
 const OUT = process.env.DM_QA_ARTIFACT_DIR || path.join(os.tmpdir(), 'zone-tour');
@@ -43,10 +47,11 @@ async function boot(browser, quality) {
   return page;
 }
 
+const pixelShots = [];
 async function shot(page, name) {
   await page.waitForTimeout(400);
   for (let i = 0; i < 4; i++) {
-    try { await page.screenshot({ path: path.join(OUT, `${name}.png`), timeout: 30000 }); return; }
+    try { await page.screenshot({ path: path.join(OUT, `${name}.png`), timeout: 30000 }); if (/-(arrival|fight)$/.test(name)) pixelShots.push({ key: name, file: path.join(OUT, `${name}.png`) }); return; }
     catch (e) { if (i === 3) throw e; await page.waitForTimeout(1500); }
   }
 }
@@ -135,8 +140,16 @@ async function bossRun(browser, quality, area) {
     await page?.close().catch(() => {});
     if (process.env.DM_QA_BOSSES !== '0') for (const a of AREAS) if (BOSS_OF[a]) { console.log(q, 'boss', BOSS_OF[a]); await bossRun(browser, q, a); }
   }
+  let pixelRows = [];
+  if (process.env.DM_QA_PIXELS !== '0' && pixelShots.length) {
+    try {
+      pixelRows = await pixels.checkShots(browser, 'zone-tour', pixelShots, { meta: { viewport: '1280x800', note: 'zone-tour arrival + fight shots, offline mock, Gravecaller' } });
+      console.log('pixel metrics vs baselines:'); pixels.printRows(pixelRows);
+    } catch (e) { console.log('pixel check failed (ignored):', String(e.message).slice(0, 200)); }
+  }
   await browser.close();
   fs.writeFileSync(path.join(OUT, 'tour.json'), JSON.stringify(results, null, 1));
+  if (pixelRows.length) fs.writeFileSync(path.join(OUT, 'pixels.json'), JSON.stringify(pixelRows, null, 1));
   const bad = errors.filter((e) => !/favicon|WebSocket|socket\.io|ERR_CONNECTION_REFUSED|Failed to load resource/.test(e));
   console.log(bad.length ? 'page errors:\n' + bad.slice(0, 10).join('\n') : 'no page errors', '\nwrote', OUT);
 })().catch((e) => { console.error(e); process.exit(1); });

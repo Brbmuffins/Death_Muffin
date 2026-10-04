@@ -907,6 +907,9 @@ button { font-family: inherit; }
   white-space: nowrap;
   will-change: transform, opacity;
 }
+/* Direct children of #ui-root get pointer-events: auto from `#ui-root > *` (id specificity), which beat .cw-num above: every floating number
+   swallowed the tap meant for the enemy or ground under it. */
+#ui-root > .cw-num { pointer-events: none; }
 .cw-num.crit { font-size: 23px; color: #e7d6ff; }
 .cw-num.heal { font-size: 19px; color: #8df0b0; text-shadow: 0 1px 3px #000, 0 0 10px rgba(80, 230, 140, 0.55); }
 .cw-num.ward { font-size: 16px; color: #a9d0ff; text-shadow: 0 1px 3px #000, 0 0 10px rgba(110, 170, 255, 0.5); }
@@ -1704,3 +1707,5 @@ body:not(.touch):has(.cw-panel-float) .cw-tip:not(.dragging):not([data-kind='urg
 .cw-bosskey-go { text-align: left; }
 .cw-bosskey-go small { display: block; font-size: 11px; opacity: .8; }
 .cw-bosskey-go.emp:not(:disabled) { border-color: #ff6a2a; box-shadow: 0 0 10px rgba(255, 106, 42, .35); }
+/* Bag detail dismiss (X): touch only, shown by mobile.css. */
+.cw-bag-detail [data-detailclose] { display: none; position: absolute; top: 0; right: 0; width: 44px; height: 44px; place-items: center; padding: 0; z-index: 2; }

@@ -1,0 +1,78 @@
+{
+  "purpose": "A/B: animate_in_place on vs off, hero_gravecaller rig",
+  "budget": 40,
+  "tasks": [
+    {
+      "taskId": "62303e7a-dca4-4b94-a9db-8a74e5b13581",
+      "rigTask": "efac8a46-932e-4a08-9b05-9b38d0f3e4b1",
+      "params": {
+        "input": "efac8a46-932e-4a08-9b05-9b38d0f3e4b1",
+        "out_format": "glb",
+        "animation": "preset:biped:walk",
+        "export_with_geometry": true,
+        "animate_in_place": false,
+        "bake_animation": true
+      },
+      "out": "walk_B_noinplace.glb",
+      "createdAt": "2026-10-02T16:22:18.622Z",
+      "credits": 10,
+      "status": "success",
+      "outputKeys": [
+        "model_url"
+      ],
+      "balanceBefore": 3940,
+      "balanceAfter": 3930,
+      "balanceDelta": 10
+    },
+    {
+      "taskId": "89da2688-7a46-4fcd-a988-f0f901abb015",
+      "rigTask": "efac8a46-932e-4a08-9b05-9b38d0f3e4b1",
+      "params": {
+        "input": "efac8a46-932e-4a08-9b05-9b38d0f3e4b1",
+        "out_format": "glb",
+        "animation": "preset:biped:cast_a_spell",
+        "export_with_geometry": true,
+        "animate_in_place": false,
+        "bake_animation": true
+      },
+      "out": "cast_B_noinplace.glb",
+      "createdAt": "2026-10-02T16:22:30.930Z",
+      "credits": 10,
+      "status": "success",
+      "outputKeys": [
+        "model_url"
+      ],
+      "balanceBefore": 3930,
+      "balanceAfter": 3920,
+      "balanceDelta": 10
+    },
+    {
+      "taskId": "fd51659f-940b-4e09-babb-8cf1ef1cebc2",
+      "rigTask": "efac8a46-932e-4a08-9b05-9b38d0f3e4b1",
+      "params": {
+        "input": "efac8a46-932e-4a08-9b05-9b38d0f3e4b1",
+        "out_format": "fbx",
+        "animation": "preset:biped:walk",
+        "export_with_geometry": true,
+        "animate_in_place": false
+      },
+      "out": "walk_C_noinplace.fbx",
+      "createdAt": "2026-10-02T16:22:39.796Z",
+      "credits": 10,
+      "status": "success",
+      "outputKeys": [
+        "model_url"
+      ],
+      "balanceBefore": 3920,
+      "balanceAfter": 3910,
+      "balanceDelta": 10
+    }
+  ],
+  "totalCredits": 30,
+  "baseline": {
+    "note": "A = existing hero_gravecaller retargets on the same rig task, animate_in_place:true, glb (paid 2026-09-26/30, not re-spent)",
+    "walkTask": "99471bdb-392e-4162-93b5-7c237118a292",
+    "castTask": "e9873cb0-fb75-4d77-bef6-3409364e6855"
+  },
+  "result": "A and B GLBs are byte-identical (sha256 022b2f08... for walk); FBX no-in-place matches GLB within 0.0037 body heights per joint. See docs/TRIPO-ANIMATE-IN-PLACE.md"
+}

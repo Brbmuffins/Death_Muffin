@@ -250,4 +250,47 @@ describe('the gathering loop', () => {
     resolve({node:'coffin_oak',skill:'woodcutting',accepted:1,successes:0,xp:0,gold:0,items:[],rejected:[],leveledUp:false,skills:[]});
     await next;
   });
+
+  describe('resuming after the app was away', () => {
+    it('a catch-up burst keeps AFK on, stops nothing, and every cycle reaches the server', async () => {
+      const { loop, tick, hooks, replies } = setup();
+      loop.startAfk(oakA);
+      tick(500);
+      // 90 s of simulated catch-up in the same 0.1 s steps backgroundUpdate uses.
+      tick(90_000);
+      await loop.drain();
+      expect(loop.afk).toBe(true);
+      expect(loop.node?.id).toBe('acre_1');
+      expect(loop.lastStopReason).toBeNull();
+      expect(loop.stopLog).toEqual([]);
+      expect(hooks.onStop).not.toHaveBeenCalled();
+      const cycles = Math.floor(90_500 / actionMs(NODES.coffin_oak));
+      expect(replies.reduce((n, r) => n + r.accepted, 0)).toBe(cycles);
+      expect(replies.every((r) => r.accepted <= 40)).toBe(true);
+    });
+
+    it('AFK re-routes a walk that ended short instead of giving up; hands-on work still stops', () => {
+      const a = setup({ autoEnabled: () => false });
+      a.loop.startAfk(oakA);
+      a.live.delete('acre_1'); a.tick(200);
+      expect(a.loop.node?.id).toBe('acre_2');
+      a.player.stop(); // the walk was cut short, far from the spot
+      a.tick(200);
+      expect(a.loop.afk).toBe(true);
+      expect(a.player.hasPath).toBe(true);
+      const b = setup();
+      b.loop.start(oakB);
+      b.player.stop();
+      b.tick(200);
+      expect(b.loop.lastStopReason).toBe('unreachable');
+    });
+
+    it('records why work stopped, so a resume that ends AFK can be diagnosed', () => {
+      const { loop } = setup();
+      loop.startAfk(oakA);
+      loop.stop('moved');
+      expect(loop.lastStopReason).toBe('moved');
+      expect(loop.stopLog.map((e) => e.reason)).toEqual(['moved']);
+    });
+  });
 });

@@ -23,6 +23,7 @@ import { smartTable } from './smartLoot';
 import { AFFIXES, AFFIX_GEAR_TYPES, affixRange, affixText, ILVL_MAX, MAX_AFFIXES, itemLevelFor, rollAffixCount, type DropSource as AffixSource } from './affixRules';
 import { salvagePreview } from './salvageRules';
 import { gearPower, simulateEquip, RECOMMENDED_WEAPONS, type StatContext } from './gearStats';
+import { setStatus } from './setBonuses';
 import type { Character, InventorySlot, ItemType, Rarity } from '../net/types';
 
 /**
@@ -577,13 +578,70 @@ export function powerGainPct(ctx: StatContext, itemId: string): number {
   return a > 0 ? ((gearPower(ctx, sim.slots).total - a) / a) * 100 : 0;
 }
 
+// --- Set pieces: what the set adds on top of the bare piece ------------------------------------------------------------------------
+
+/** The pieces of an armour or legendary set as bag rows (base stats, indexes out of the way). */
+function setRows(setId: string, base = 9000): InventorySlot[] {
+  return ARMOR_PIECES.filter((p) => p.setId === setId).map((p, i) => atlasSlot(p.id, base + i)).filter((s): s is InventorySlot => !!s);
+}
+
+/** Wear every row (each into its own slot) on top of `slots`. */
+function wearAll(slots: readonly InventorySlot[], rows: readonly InventorySlot[]): InventorySlot[] {
+  let cur: InventorySlot[] = [...slots, ...rows];
+  for (const r of rows) cur = simulateEquip(cur, r.slot_index).slots;
+  return cur;
+}
+
+/** The same rows with the set identity stripped (a renamed item_id), so the gear score counts their bare stats and no set bonus. */
+const stripSet = (rows: readonly InventorySlot[]): InventorySlot[] => rows.map((r) => ({ ...r, item_id: `bare_${r.item_id}` }));
+
+export interface SetOutlook {
+  setId: string;
+  setName: string;
+  total: number;
+  /** Distinct parts of the set worn once this piece is worn (counting what you already wear). */
+  have: number;
+  /** Percent of power the WHOLE set adds over what you wear now, with its bonuses (the "as part of the set" value). */
+  withSetPct: number;
+  /** Percent of power the set bonuses alone are worth when the whole set is worn (the part a bare-stats comparison misses). */
+  bonusPct: number;
+  /** "Completes 2/5: switches on the 2-piece bonus" when wearing the piece reaches a new tier; else "Set piece 1/5 (next bonus at 2)". */
+  hint: string;
+}
+
+/**
+ * What a piece of an armour or legendary set is worth as part of its set, for the character in `ctx` (null for gear of no set).
+ * The up/down verdict counts only the bonuses this piece switches on together with what is worn now; this is the other half: the
+ * whole set worn over your current outfit, valued by the same gear score (set bonuses folded the way the Character sheet does).
+ */
+export function setOutlook(ctx: StatContext, itemId: string): SetOutlook | null {
+  const piece = ARMOR_BY_ID[itemId];
+  if (!piece) return null;
+  const rows = setRows(piece.setId);
+  if (rows.length < 2) return null;
+  const now = gearPower(ctx).total || 1;
+  const full = gearPower(ctx, wearAll(ctx.slots, rows)).total;
+  const bare = gearPower(ctx, wearAll(ctx.slots, stripSet(rows))).total;
+  const worn = new Set<string>(ctx.slots.filter((s) => s.equipped).map((s) => ARMOR_BY_ID[s.item_id]).filter((p) => p?.setId === piece.setId).map((p) => p!.part));
+  const before = setStatus(piece.setId, [...worn] as never);
+  worn.add(piece.part);
+  const st = setStatus(piece.setId, [...worn] as never);
+  const gained = st.bonuses.filter((b) => b.active && !before.bonuses.find((x) => x.pieces === b.pieces)?.active).pop();
+  return {
+    setId: piece.setId, setName: piece.setName, total: rows.length, have: worn.size,
+    withSetPct: Math.round(((full - now) / now) * 1000) / 10,
+    bonusPct: Math.round(((full - bare) / now) * 1000) / 10,
+    hint: gained ? `Completes ${worn.size}/${rows.length}: switches on the ${gained.pieces}-piece bonus` : `Set piece ${worn.size}/${rows.length}${st.next ? ` (next bonus at ${st.next})` : ''}`,
+  };
+}
+
 const fitCache = new Map<string, Record<DisciplineId, number>>();
 /** Percent of power the item adds for a reference hero of each discipline (empty gear): how well it suits each. */
 export function fitTable(itemId: string): Record<DisciplineId, number> {
   let t = fitCache.get(itemId);
   if (!t) {
     t = {} as Record<DisciplineId, number>;
-    for (const id of Object.keys(DISCIPLINES) as DisciplineId[]) t[id] = Math.round(powerGainPct(referenceContext(id), itemId) * 10) / 10;
+    for (const id of Object.keys(DISCIPLINES) as DisciplineId[]) t[id] = Math.round(gainFor(id, itemId) * 10) / 10;
     fitCache.set(itemId, t);
   }
   return t;
@@ -597,7 +655,11 @@ const gainFor = (disciplineId: string, itemId: string): number => {
   const key = `${disciplineId}:${itemId}`;
   let g = gainCache.get(key);
   if (g === undefined) {
-    g = powerGainPct(referenceContext(disciplineId as DisciplineId), itemId);
+    const ctx = referenceContext(disciplineId as DisciplineId);
+    g = powerGainPct(ctx, itemId);
+    // A set piece is judged with its share of the set bonuses (one piece alone switches none on, which made every legendary look weak).
+    const o = setOutlook(ctx, itemId);
+    if (o) g += o.bonusPct / o.total;
     gainCache.set(key, g);
   }
   return g;

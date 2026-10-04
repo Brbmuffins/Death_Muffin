@@ -9,6 +9,7 @@ const { redactText, redactDeep } = require('./lib/redact.cjs');
 const G = require('./lib/gitops.cjs');
 const { runTurn, buildPrompt, readResult } = require('./lib/agent.cjs');
 const { parseDiff, classifyDiff, tierLabel, approversFor } = require('./lib/tiers.cjs');
+const { planReply } = require('./lib/discordText.cjs');
 
 const TIER_COLOR = { casual: 0x16a34a, gameplay: 0xb45309, sensitive: 0xdc2626 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -38,18 +39,28 @@ function createRunner(cfgIn, opts = {}) {
   function post(target, payload, cb) {
     const p = { ...payload };
     if (p.content) p.content = redactText(p.content);
+    if (p.file) p.file = { name: p.file.name, text: redactText(p.file.text) };
     if (p.embed) p.embed = redactDeep(p.embed);
-    const op = { id: crypto.randomBytes(6).toString('hex'), target: typeof target === 'string' ? { threadId: target } : target, ...p, sentAt: 0 };
+    const op = { id: crypto.randomBytes(6).toString('hex'), target: typeof target === 'string' ? { threadId: target } : target, ...p, sentAt: 0, createdAt: now() };
     outbox.push(op); if (cb) callbacks.set(op.id, cb);
     const w = waiters; waiters = []; w.forEach((f) => f());
     return op.id;
   }
   const say = (job, text, extra) => post({ threadId: job.threadId }, { content: clip(text, 1900), ...extra });
-  function dueOps() { const t = now(); return outbox.filter((o) => t - o.sentAt > 60000); }
+  // The agent's own replies can be long: several messages, or a preview plus the full text as reply.md (discordText.cjs).
+  const sayLong = (job, text) => { const { chunks, file } = planReply(text); chunks.forEach((c, i) => post({ threadId: job.threadId }, { content: c, ...(file && i === chunks.length - 1 ? { file } : {}) })); };
+  // "Muffin Core is typing…" is the normal acknowledgement while a job works. Typing ops are fire-and-forget: handed out once,
+  // never retried, and dropped if the bot did not pick them up within a few seconds (Discord shows typing for ~10 s).
+  const typing = (job) => post({ threadId: job.threadId }, { typing: true });
+  function dueOps() {
+    const t = now();
+    for (let i = outbox.length - 1; i >= 0; i--) if (outbox[i].typing && (outbox[i].sentAt || t - outbox[i].createdAt > 8000)) outbox.splice(i, 1);
+    return outbox.filter((o) => t - o.sentAt > 60000);
+  }
   async function poll(waitMs) {
     if (!dueOps().length && waitMs > 0) await new Promise((res) => { const t = setTimeout(res, waitMs); waiters.push(() => { clearTimeout(t); res(); }); });
     const ops = dueOps(); ops.forEach((o) => { o.sentAt = now(); });
-    return ops.map(({ sentAt, ...o }) => o);
+    return ops.map(({ sentAt, createdAt, ...o }) => o);
   }
   function ack(id, res) {
     const i = outbox.findIndex((o) => o.id === id); if (i >= 0) outbox.splice(i, 1);
@@ -84,7 +95,8 @@ function createRunner(cfgIn, opts = {}) {
       doRollback(msg, target).catch((e) => post(target, { content: `Rollback failed to start: ${e.message}` }));
       return { action: 'accepted' };
     }
-    if (!auth.rate(`msg:${msg.userId}`, cfg.rateLimit.perUserPerHour, 3600e3)) {
+    const full = auth.isFull(msg.userId);
+    if (!auth.rate(`msg:${msg.userId}`, full ? cfg.rateLimit.fullApproverPerHour : cfg.rateLimit.perUserPerHour, 3600e3)) {
       audit.log('rate-limited', { userId: msg.userId });
       return { action: 'reply', text: 'Slow down a little, you have used up this hour\'s requests. Try again later.' };
     }
@@ -92,7 +104,7 @@ function createRunner(cfgIn, opts = {}) {
     if (!ev.threadId) {
       if (!ev.mentioned) return { action: 'ignore' };
       if (!text) return { action: 'reply', text: 'Tell me what you want to look at or change in Death Muffin.' };
-      if (!auth.rate(`newjob:${msg.userId}`, cfg.rateLimit.perUserNewJobsPerDay, 86400e3)) { audit.log('rate-limited', { userId: msg.userId, kind: 'newjob' }); return { action: 'reply', text: 'That is the daily limit of new requests for you. Continue in an existing thread or try tomorrow.' }; }
+      if (!auth.rate(`newjob:${msg.userId}`, full ? cfg.rateLimit.fullApproverNewJobsPerDay : cfg.rateLimit.perUserNewJobsPerDay, 86400e3)) { audit.log('rate-limited', { userId: msg.userId, kind: 'newjob' }); return { action: 'reply', text: 'That is the daily limit of new requests for you. Continue in an existing thread or try tomorrow.' }; }
       const eventId = crypto.randomBytes(5).toString('hex');
       pendingNew.set(eventId, { ev, msg }); setTimeout(() => pendingNew.delete(eventId), 120000).unref();
       audit.log('request', { userId: msg.userId, role, kind: 'new', text });
@@ -196,7 +208,7 @@ function createRunner(cfgIn, opts = {}) {
       next.running = true; next.status = 'running';
       processJob(next).catch((e) => { console.error('job crashed', e); say(next, `Something broke on my side: ${clip(e.message, 300)}`); next.running = false; next.status = 'idle'; save(); }).finally(() => { next.running = false; save(); pump(); });
     }
-    for (const j of Object.values(jobs)) if (!j.running && j.queue.length && ['idle', 'proposed'].includes(j.status) && !j.queuedNotice) { j.queuedNotice = true; say(j, 'Queued; I am busy with another request and will start as soon as I can.'); }
+    for (const j of Object.values(jobs)) if (!j.running && j.queue.length && ['idle', 'proposed'].includes(j.status) && !j.queuedNotice) { j.queuedNotice = true; if (j.turns === 0) say(j, 'Queued; I am busy with another request and will start as soon as I can.'); }
   }
 
   async function agentTurn(job, prompt) {
@@ -225,19 +237,24 @@ function createRunner(cfgIn, opts = {}) {
       } else say(job, 'Merged the latest master into this branch cleanly. Re-running checks.');
       job.proposal = null;
     } else if (job.turns === 0) say(job, `On it (${job.model[0].toUpperCase()}${job.model.slice(1)}).`);
-    const t0 = now();
-    const ticker = setInterval(() => say(job, `Still working… (${Math.round((now() - t0) / 60000)} min)`), 5 * 60000); ticker.unref();
+    const t0 = now(); let nextUpdate = t0 + 60000;
+    typing(job);
+    const ticker = setInterval(() => {
+      typing(job);
+      if (now() >= nextUpdate) { nextUpdate = now() + 5 * 60000; say(job, `Still working… (${Math.max(1, Math.round((now() - t0) / 60000))} min)`); }
+    }, 8000); ticker.unref();
+    try { await runJob(job, real, extra); } finally { clearInterval(ticker); }
+  }
+  async function runJob(job, real, extra) {
     let r = null;
-    try {
-      if (real.length || extra) r = await agentTurn(job, buildPrompt(real, extra));
-    } finally { clearInterval(ticker); }
+    if (real.length || extra) r = await agentTurn(job, buildPrompt(real, extra));
     if (job.cancelRequested) { job.cancelRequested = false; say(job, 'Cancelled.'); job.status = 'idle'; return; }
     if (r && r.error) {
       audit.log('turn-error', { job: job.id, error: r.error });
       say(job, r.timedOut ? `That took longer than ${cfg.turnTimeoutMin} minutes, so I stopped it. Try a smaller step.` : `The agent hit an error: ${clip(redactText(r.error), 300)}`);
       job.status = 'idle'; return;
     }
-    if (r && r.text.trim()) say(job, r.text.trim());
+    if (r && r.text.trim()) sayLong(job, r.text.trim());
     await afterTurn(job, readResult(job.worktree));
   }
 
@@ -291,8 +308,8 @@ function createRunner(cfgIn, opts = {}) {
     const subjects = v.commits.map((c) => c.subject).reverse();
     const title = clip((result && result.title) || subjects[0] || 'Change', 120);
     const bullets = (Array.isArray(result && result.summary) && result.summary.length ? result.summary : subjects).slice(0, 6).map((b) => `• ${clip(b, 220)}`);
-    const warn = G.suspiciousFindings(v.diff);
-    const fileLines = v.files.map((f) => `${f.status === 'add' ? '+' : f.status === 'delete' ? '−' : '~'} ${f.path}`);
+    const warn = G.suspiciousFindings(v.diff).map((w) => clip(w, 150));
+    const fileLines = v.files.map((f) => `${f.status === 'add' ? '+' : f.status === 'delete' ? '−' : '~'} ${clip(f.path, 90)}`);
     const url = G.compareUrl(cfg, job.branch);
     const owner = approversFor(tier, cfg).map(nameOf);
     const embed = {
@@ -308,6 +325,7 @@ function createRunner(cfgIn, opts = {}) {
       ],
       footer: { text: `✅ ship (${owner.join(' / ')}) · ❌ discard · reply to keep iterating · ${job.id}` },
     };
+    for (const f of embed.fields) f.value = clip(f.value, 1024);   // Discord: field value <= 1024 chars (whole embed <= 6000; the caps above keep it well under)
     job.proposal = { messageId: null, head, base: job.base, tier, title, files: v.files.map((f) => f.path), migrations: v.migrations, testsOk: true, createdAt: new Date(now()).toISOString() };
     job.status = 'proposed'; save();
     audit.log('proposal', { job: job.id, tier, head, files: v.files.length, migrations: v.migrations.join(',') });

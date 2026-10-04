@@ -7,6 +7,7 @@ import { ShadowCadence } from '../graphics/shadowCadence';
 import { ResolutionGovernor, budgetFps, shouldProcessFrame, shouldRender } from './framePacing';
 import { perfFrame } from '../net/perfBeacon';
 import { onSettingsChange, settings } from './settings';
+import { AFK_AWAY_CAP_S, AwayClock, catchUpSeconds } from './awayClock';
 
 /** What a scene hands the runtime: something to draw and a per-frame tick. */
 export interface RuntimeView {
@@ -15,6 +16,11 @@ export interface RuntimeView {
   update(dt: number, now: number): void;
   /** AFK-only simulation while hidden, without rendering or adding combat ticks. */
   backgroundUpdate?(seconds: number): Promise<void>;
+  /**
+   * The page is back after being away (phone app switch, frozen tab). `awaySeconds` is the capped time to catch up
+   * (0 for a plain resume). Catch up AFK progress only; never stop AFK because of the absence.
+   */
+  resumed?(awaySeconds: number): Promise<void>;
   bloom?: { strength: number; radius: number; threshold: number };
 }
 
@@ -37,6 +43,10 @@ export class GameRuntime {
   private raf = 0;
   private backgroundTimer = 0;
   private backgroundBusy = false;
+  private away = new AwayClock(Date.now());
+  private resumeQueued = false;
+  /** The page was really hidden/frozen since the last resume. A long main-thread stall while visible is not an absence. */
+  private wentAway = false;
   private bloomEnabled = true;
   private lastFrameAt = 0;
   private lastRenderAt = 0;
@@ -148,6 +158,8 @@ export class GameRuntime {
     const loop = () => {
       this.raf = requestAnimationFrame(loop);
       if (document.hidden) return;
+      // A frame after a long stall (a frozen phone tab thawing before any event reached us) is an absence too.
+      this.resumeNow(false);
       const t = performance.now();
       // Frame cap: skip before touching the clock so the next dt covers the whole gap.
       if (!shouldProcessFrame(t, this.lastFrameAt, settings.fps)) return;
@@ -177,16 +189,67 @@ export class GameRuntime {
     loop();
     this.backgroundTimer = window.setInterval(() => {
       if (!document.hidden || this.backgroundBusy) return;
-      const elapsed = this.clock.getDelta();
-      if (!this.view?.backgroundUpdate) return;
+      this.wentAway = true;
+      // Wall clock, not the frame clock: a throttled or briefly thawed tab must count every second it was away.
+      const elapsed = this.away.lap(Date.now());
+      this.clock.getDelta();
+      if (!this.view?.backgroundUpdate || elapsed <= 0) return;
       this.backgroundBusy = true;
-      void this.view.backgroundUpdate(Math.min(elapsed, 90)).catch(console.error).finally(() => { this.backgroundBusy = false; });
+      void this.view.backgroundUpdate(Math.min(elapsed, AFK_AWAY_CAP_S)).catch(console.error).finally(() => {
+        this.backgroundBusy = false;
+        if (this.resumeQueued) this.resumeNow(true);
+      });
     }, 1000);
+    document.addEventListener('visibilitychange', this.onVisibility);
+    window.addEventListener('pageshow', this.onResumeEvent);
+    document.addEventListener('resume', this.onResumeEvent);
+    window.addEventListener('pagehide', this.onHideEvent);
+    document.addEventListener('freeze', this.onHideEvent);
+  }
+
+  private onVisibility = () => {
+    if (document.hidden) this.onHideEvent();
+    else this.resumeNow(true);
+  };
+  private onResumeEvent = () => this.resumeNow(true);
+  /** Hidden / frozen / leaving: bank the visible time so the wall-clock mark is exactly when we went away. */
+  private onHideEvent = () => {
+    this.wentAway = true;
+    if (!this.backgroundBusy) this.away.lap(Date.now());
+  };
+
+  /**
+   * Back in front of the player. Takes the unsimulated wall-clock gap (shared with the hidden-tab interval, so nothing
+   * is counted twice), caps it, and hands it to the view's AFK catch-up. `force` also notifies the view of a resume
+   * that had no gap, so it can guard against the return tap.
+   */
+  private resumeNow(force: boolean) {
+    if (document.hidden) return;
+    // A tick or catch-up is mid-flight: come back to this the moment it lands, so the return is never skipped.
+    if (this.backgroundBusy) { if (force) this.resumeQueued = true; return; }
+    this.resumeQueued = false;
+    const gap = this.away.lap(Date.now());
+    // Only a real hide/freeze counts: a visible stall (slow device, long task) must not pop a ledger or close the player's panels.
+    const seconds = this.wentAway ? catchUpSeconds(gap) : 0;
+    this.wentAway = false;
+    if (!seconds && !force) return;
+    const view = this.view;
+    if (!view?.resumed) return;
+    this.backgroundBusy = true;
+    void view.resumed(seconds).catch(console.error).finally(() => {
+      this.backgroundBusy = false;
+      if (this.resumeQueued) this.resumeNow(true);
+    });
   }
 
   stop() {
     cancelAnimationFrame(this.raf);
     window.clearInterval(this.backgroundTimer);
+    document.removeEventListener('visibilitychange', this.onVisibility);
+    window.removeEventListener('pageshow', this.onResumeEvent);
+    document.removeEventListener('resume', this.onResumeEvent);
+    window.removeEventListener('pagehide', this.onHideEvent);
+    document.removeEventListener('freeze', this.onHideEvent);
   }
 
   /**

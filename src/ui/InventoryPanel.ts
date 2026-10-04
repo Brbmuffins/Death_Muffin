@@ -47,6 +47,8 @@ export function itemIcon(slot: Pick<InventorySlot, 'item_id'>) {
   return meta.icon ?? `art/items/${slot.item_id}.webp`;
 }
 
+const COMPACT_QUERY = '(max-width: 760px), (max-height: 520px)';
+
 /**
  * The Reliquary: 8×6 bag, hover tooltips, equip/unequip. Equip goes straight
  * to POST /api/inventory/equip and the server's slot array becomes truth.
@@ -122,6 +124,13 @@ export class InventoryPanel {
     `;
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
     this.root.appendChild(this.el);
+    // Phones: a tap on empty panel space puts the item card away (a second tap on the item does too).
+    this.el.addEventListener('click', (e) => {
+      if (this.selected === null || !window.matchMedia(COMPACT_QUERY).matches) return;
+      if ((e.target as HTMLElement).closest('.cw-slot, .cw-bag-detail, button, a, input, [data-tools]')) return;
+      this.selected = null;
+      this.render();
+    });
     this.tooltip = document.createElement('div');
     this.tooltip.className = 'cw-tooltip';
     this.tooltip.style.display = 'none';
@@ -155,6 +164,7 @@ export class InventoryPanel {
     const grid = this.el.querySelector<HTMLDivElement>('.cw-bag-grid')!;
     grid.innerHTML = '';
     const sctx = this.statContext?.() ?? null;
+    let selectedCell: HTMLElement | null = null;
     for (let i = 0; i < BAG_SIZE; i++) {
       const slot = this.slotAt(i);
       const cell = document.createElement('button');
@@ -207,7 +217,7 @@ export class InventoryPanel {
           this.onBelt(slot.item_id);
         });
       } else cell.disabled = true;
-      if (this.selected === i) cell.classList.add('selected');
+      if (this.selected === i) { cell.classList.add('selected'); selectedCell = cell; }
       grid.appendChild(cell);
     }
     this.renderEquipment();
@@ -217,6 +227,8 @@ export class InventoryPanel {
     this.renderTools();
     this.renderBeltOffer();
     this.renderDetail();
+    // Phones: the item card is pinned over the foot of the panel; keep the tapped cell above it.
+    if (selectedCell && window.matchMedia(COMPACT_QUERY).matches) (selectedCell as HTMLElement).scrollIntoView({ block: 'nearest' });
   }
 
   /** Sell all junk: the count and gold are shown, then confirmed in place. Locked items are never included. */
@@ -526,6 +538,7 @@ export class InventoryPanel {
     const legion = this.onLegion ? kitCandidate(this.inventory.all, slot) : null;
     detail.innerHTML = `
       <div class="info${compare ? ' gs-wide' : ''}">
+        <button type="button" class="cw-icon-btn" data-detailclose aria-label="Close item card">✕</button>
         <div class="gs-head">
           <div class="name" style="color:${RARITY_COLOR[slot.rarity]}">${slot.name}${slot.quantity > 1 ? ` ×${slot.quantity}` : ''}</div>
           <div class="type">${RARITY_MARK[slot.rarity]} ${slot.rarity} ${itemTypeLabel(slot)}${itemLevelHtml(slot, true)}</div>
@@ -557,6 +570,7 @@ export class InventoryPanel {
         : `<button class="cw-button small" data-sellall ${locked ? 'disabled title="Unlock it to sell"' : ''}>Sell all (${slot.quantity} · ${(slot.sell_value * slot.quantity).toLocaleString()}g)</button>`) : ''}
       </div>
     `;
+    detail.querySelector('[data-detailclose]')?.addEventListener('click', () => { this.selected = null; this.render(); });
     detail.querySelector('[data-runesocket]')?.addEventListener('click', () => void this.socketRune(slot));
     detail.querySelector('[data-adopt]')?.addEventListener('click', () => pet && void this.adoptCharm(pet.id));
     detail.querySelector('[data-lock]')?.addEventListener('click', () => this.locks.toggle(slot));
