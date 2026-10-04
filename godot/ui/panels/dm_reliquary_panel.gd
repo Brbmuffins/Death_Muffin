@@ -57,7 +57,7 @@ var _stats_row: HFlowContainer
 var _doll: GridContainer
 var _belt_row: HBoxContainer
 var _grid: GridContainer
-var _tools: HBoxContainer
+var _tools: HFlowContainer
 var _detail_panel: PanelContainer
 var _detail: HBoxContainer
 var _error: Label
@@ -172,8 +172,8 @@ func _build_ui() -> void:
 		_grid.add_child(s3)
 		_slots.append(s3)
 
-	_tools = HBoxContainer.new()
-	_tools.add_theme_constant_override("separation", 8)
+	_tools = HFlowContainer.new()
+	_tools.add_theme_constant_override("h_separation", 8)
 	body.add_child(_tools)
 
 	_detail_panel = PanelContainer.new()
