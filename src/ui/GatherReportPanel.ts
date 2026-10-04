@@ -1,5 +1,6 @@
 import { RARITY_COLOR, RARITY_MARK, itemMeta } from '../content/items';
 import { durationText, type GatherReport } from '../gameplay/gatherReport';
+import { wrapPanelBody } from './panelBody';
 
 const WHY: Record<string, string> = {
   bagFull: 'Your bag filled up. Make room, then start AFK again.',
@@ -75,6 +76,7 @@ export class GatherReportPanel {
         <button class="cw-button small" data-bag>Open Reliquary</button>
         <button class="cw-button small" data-close>Close</button>
       </div>`;
+    wrapPanelBody(el);
     el.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => this.close()));
     el.querySelector('[data-bag]')!.addEventListener('click', () => {
       this.close();

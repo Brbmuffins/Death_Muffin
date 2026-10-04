@@ -7,6 +7,7 @@ import { itemMeta } from '../content/items';
 import { BAG_SIZE } from '../gameplay/loot';
 import { clampCraftQty, maxCraftable } from '../gameplay/craftQuantity';
 import { ReforgeView, type ReforgeHost } from './ReforgeView';
+import { wrapPanelBody } from './panelBody';
 
 /** Tabs: a profession's recipes; 'tools' is the smithing recipes for gathering tools (mining, `smith_*`). */
 const PROFESSIONS = ['mining', 'tools', 'fishing', 'woodcutting', 'gravedigging', 'alchemy'] as const;
@@ -83,6 +84,7 @@ export class ForgePanel {
       <div class="cw-recipes"><span class="cw-hint-text">Loading recipes…</span></div>
       <div class="cw-error" data-error></div>
     `;
+    wrapPanelBody(this.el);
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
     this.el.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) =>
       b.addEventListener('click', () => {

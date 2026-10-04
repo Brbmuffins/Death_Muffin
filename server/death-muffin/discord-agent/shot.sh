@@ -9,7 +9,8 @@ TOOLS=$(cd "$(dirname "$0")" && pwd)
 FILE=${1:-.dm-shot.json}
 [ -f "$TOP/$FILE" ] || { echo "no scenario file $FILE in the worktree (see the prompt for the format)"; exit 2; }
 NM=$(readlink -f "$TOP/node_modules")
-export TOP TOOLS FILE NM
+DM_SHOT_BRANCH=$(git -C "$TOP" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+export TOP TOOLS FILE NM DM_SHOT_BRANCH
 export DM_PLAYWRIGHT_MODULE=${DM_PLAYWRIGHT_MODULE:-/home/ubuntu/.npm/_npx/e41f203b7505f1fb/node_modules/playwright}
 export DM_CHROMIUM_PATH=${DM_CHROMIUM_PATH:-/home/ubuntu/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome}
 LOCK=${DM_BROWSER_LOCK:-/home/ubuntu/death-muffin/qa-browser.lock}

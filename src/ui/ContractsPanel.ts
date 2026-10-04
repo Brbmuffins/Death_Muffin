@@ -3,6 +3,7 @@ import { RARITY_COLOR, itemMeta } from '../content/items';
 import { SKILLS, type SkillId } from '../gameplay/gatheringRules';
 import type { Inventory } from '../gameplay/loot';
 import { preserveScroll } from './preserveScroll';
+import { wrapPanelBody } from './panelBody';
 import { boardExpired } from './contractsView';
 
 const iconOf = (itemId: string) => itemMeta(itemId).icon ?? `art/items/${itemId}.webp`;
@@ -119,7 +120,7 @@ export class ContractsPanel {
         <button class="cw-icon-btn" data-close aria-label="Close contracts">✕</button>
       </div>
       ${body}
-      <div class="cw-error" data-error>${this.error && b ? esc(this.error) : ''}</div>`; });
+      <div class="cw-error" data-error>${this.error && b ? esc(this.error) : ''}</div>`; wrapPanelBody(panel); });
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
     this.el.querySelectorAll<HTMLButtonElement>('[data-deliver]').forEach((btn) => btn.addEventListener('click', () => void this.deliver(Number(btn.dataset.deliver))));
   }

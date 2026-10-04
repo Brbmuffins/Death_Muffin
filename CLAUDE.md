@@ -58,6 +58,11 @@ player behavior, deployment and plans. Update the handoff when you stop.
   Give the tip a kind in `src/ui/counselCadence.ts` (default: calm, waits for a quiet moment; `ASKED` for
   "the player just did it", `DANGER` for fight-time, `HERE` for a place, `GROUPS` for a subject that must not repeat),
   and never point brewing at the Workbench: it lives in the Alchemist's Wing.
+- **Windows have a fixed header (owner, Helix, 2026-10-04: the design must be consistent across every window).** The title and close
+  button sit in a `.cw-panel-head` that never scrolls; only the body beneath it scrolls. Every window built on `.cw-panel-float` must
+  draw a `.cw-panel-head` first, then call `wrapPanelBody(el)` (`src/ui/panelBody.ts`) right after each `innerHTML` redraw (inside
+  `preserveScroll` if it uses it). Tabbed windows use `TabbedWindow`, which scrolls `.cw-tabwin-body`. No sticky headers, no
+  per-window variants. `src/ui/__tests__/windowHeader.test.ts` fails if a window skips it.
 - Commits go through the user's GitHub Desktop flow — stage, don't commit.
 
 ## Layout

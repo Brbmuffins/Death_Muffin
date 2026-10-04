@@ -3,6 +3,7 @@ import { RARITY_COLOR, itemMeta } from '../content/items';
 import { SKILLS, type SkillId } from '../gameplay/gatheringRules';
 import { petDef } from '../content/cosmetics';
 import type { Inventory } from '../gameplay/loot';
+import { wrapPanelBody } from './panelBody';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
@@ -107,6 +108,7 @@ export class CosmeticsPanel {
         <h3 class="cw-chron-h">Capes</h3><div class="cw-cos-list">${capes}</div>
         <h3 class="cw-chron-h">Companions</h3><div class="cw-cos-list">${pets}</div>`}
       <div class="cw-error" data-error>${this.error && v ? esc(this.error) : ''}</div>`;
+    wrapPanelBody(this.el);
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
     this.el.querySelectorAll<HTMLButtonElement>('[data-cape]').forEach((b) => b.addEventListener('click', () => {
       const id = b.dataset.cape!;

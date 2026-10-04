@@ -259,7 +259,7 @@ test('a long paste (Discord message.txt) is read and given to the agent; other f
   const fetched = [];
   const d = makeDiscord(w.runner, { fetchFile: async (url) => { fetched.push(url); return { ok: true, status: 200, text: async () => 'PASTED-MARKER-42 ' + 'z'.repeat(3000) }; } });
   const paste = { name: 'message.txt', contentType: 'text/plain; charset=utf-8', size: 3017, url: 'https://cdn.discordapp.com/attachments/1/2/message.txt' };
-  const img = { name: 'shot.png', contentType: 'image/png', size: 5000, url: 'https://cdn.discordapp.com/attachments/1/3/shot.png' };
+  const img = { name: 'data.bin', contentType: 'application/octet-stream', size: 5000, url: 'https://cdn.discordapp.com/attachments/1/3/data.bin' };
   const evil = { name: 'notes.txt', contentType: 'text/plain', size: 10, url: 'http://127.0.0.1:4321/config' };
   const m = await d.say(d.main, IDS.OWNER, `${BOT} PASTE-ECHO`, [paste, img, evil]);
   const thread = await until(() => d.world.threads[d.world.threads.length - 1], d.ad);
@@ -485,3 +485,64 @@ for (const [kind, why] of [['conflict', /merge conflict in src\/gameplay\/a\.ts/
     assert.equal(sh(w.repo, 'status', '--porcelain'), '');
   });
 }
+
+// ---- images from people ----
+const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(300, 7)]);
+const imgAtt = (name, url, size = PNG.length) => ({ name, contentType: 'image/png', size, url: url || `https://cdn.discordapp.com/attachments/1/2/${name}` });
+const fetchPng = (log = []) => async (url) => { log.push(url); return { ok: true, status: 200, arrayBuffer: async () => PNG.buffer.slice(PNG.byteOffset, PNG.byteOffset + PNG.length), text: async () => '' }; };
+
+test('an image in a thread message lands in .dm-inbox, the agent is told where, and it can read it', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner, { fetchFile: fetchPng() });
+  const { thread } = await request(d, IDS.HELIX, 'where is player speed defined?');
+  await until(() => Object.values(w.runner.jobs())[0].status === 'idle' && texts(thread).some((t) => /answer is in/.test(t)), d.ad);
+  const job = Object.values(w.runner.jobs())[0];
+  await d.say(thread, IDS.HELIX, 'IMG-ECHO this looks wrong', [imgAtt('bug one.png')]);
+  const reply = await until(() => texts(thread).find((t) => /IMG-SEEN/.test(t)), d.ad);
+  assert.match(reply, new RegExp(`IMG-SEEN ${PNG.length} \\.dm-inbox/\\d+-bug_one\\.png`));
+  assert.equal(fs.readdirSync(path.join(job.worktree, '.dm-inbox')).length, 1);
+  await until(() => job.status === 'idle' && !job.running, d.ad);
+  assert.equal(sh(job.worktree, 'status', '--porcelain'), '', '.dm-inbox is git-excluded');
+});
+
+test('an image on the opening @mention is written once the workspace exists (after bind)', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner, { fetchFile: fetchPng() });
+  await d.say(d.main, IDS.HELIX, `${BOT} IMG-ECHO what is this`, [imgAtt('mock.png')]);
+  const thread = await until(() => d.world.threads[d.world.threads.length - 1], d.ad);
+  const reply = await until(() => texts(thread).find((t) => /IMG-SEEN/.test(t)), d.ad);
+  assert.match(reply, new RegExp(`IMG-SEEN ${PNG.length} \\.dm-inbox/\\d+-mock\\.png`));
+});
+
+test('non-CDN images and oversized images are refused with a note; nothing is fetched or stored for them', async () => {
+  const w = makeWorld(); const log = []; const d = makeDiscord(w.runner, { fetchFile: fetchPng(log) });
+  const { thread } = await request(d, IDS.HELIX, 'where is player speed defined?');
+  await until(() => Object.values(w.runner.jobs())[0].status === 'idle' && texts(thread).some((t) => /answer is in/.test(t)), d.ad);
+  const job = Object.values(w.runner.jobs())[0];
+  await d.say(thread, IDS.HELIX, 'IMG-ECHO', [imgAtt('evil.png', 'http://127.0.0.1:4321/config'), imgAtt('huge.png', null, 9 * 1024 * 1024)]);
+  const reply = await until(() => texts(thread).find((t) => /IMG-NONE/.test(t)), d.ad);
+  assert.match(reply, /evil\.png \(not hosted on Discord\)/); assert.match(reply, /huge\.png \(image over 8 MB\)/);
+  assert.deepEqual(log, []); assert.ok(!fs.existsSync(path.join(job.worktree, '.dm-inbox')));
+});
+
+test('runner rejects non-images, and a thread is capped at 40 MB of images', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'where is player speed defined?');
+  await until(() => Object.values(w.runner.jobs())[0].status === 'idle' && texts(thread).some((t) => /answer is in/.test(t)), d.ad);
+  const job = Object.values(w.runner.jobs())[0];
+  const ev = (images) => ({ type: 'message', messageId: String(Date.now()), channelId: IDS.CHAN, threadId: thread.id, parentId: IDS.CHAN, userId: IDS.HELIX, username: 'h', text: 'IMG-ECHO', mentioned: true, images });
+  await w.runner.handleEvent(ev([{ name: 'a.png', b64: Buffer.from('not an image at all').toString('base64') }]));
+  await until(() => texts(thread).find((t) => /IMG-NONE.*not a recognised image/.test(t)), d.ad);
+  await until(() => job.status === 'idle' && !job.running, d.ad);
+  const big = Buffer.concat([PNG.subarray(0, 8), Buffer.alloc(7 * 1024 * 1024)]).toString('base64');
+  for (let i = 0; i < 7; i++) await w.runner.handleEvent(ev([{ name: `b${i}.png`, b64: big }]));
+  await until(() => texts(thread).some((t) => /reached its image limit/.test(t)), d.ad);
+  assert.ok(job.inboxBytes <= 40 * 1024 * 1024);
+});
+
+test('runner HTTP: /event takes a body far over 1 MB, other routes stay capped', async () => {
+  const w = makeWorld(); const { startServer } = require('../runner/server.cjs');
+  const srv = startServer(w.cfg, w.runner, 's3'); await new Promise((r) => srv.listen(0, '127.0.0.1', r)); const port = srv.address().port;
+  const post = (p, body) => fetch(`http://127.0.0.1:${port}${p}`, { method: 'POST', headers: { 'x-dm-secret': 's3' }, body: JSON.stringify(body) });
+  assert.equal((await post('/event', { type: 'x', pad: 'a'.repeat(3e6) })).status, 200);
+  assert.equal((await post('/bind', { pad: 'a'.repeat(3e6) })).status, 413);
+  srv.close();
+});

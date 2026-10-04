@@ -4,6 +4,7 @@ import { AREAS, type AreaId } from '../content/areas';
 import { DIFFICULTIES, DIFFICULTY_ORDER, isDifficulty } from '../content/difficulty';
 import { ACTION_LABEL, LOADOUT_ACTIONS, checkBind, label as keyLabel, type ActionId, type Binds } from '../gameplay/keybinds';
 import { BugReportView, type BugReportContext } from './BugReportView';
+import { wrapPanelBody } from './panelBody';
 
 export abstract class SimplePanel {
   protected el: HTMLDivElement | null = null;
@@ -21,6 +22,7 @@ export abstract class SimplePanel {
     this.el.innerHTML = `
       <div class="cw-panel-head"><h2 class="cw-title">${name}${aka ? `<span class="aka">${aka}</span>` : ''}</h2><button class="cw-icon-btn" data-close aria-label="Close">✕</button></div>
       ${body}`;
+    wrapPanelBody(this.el);
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
     this.root.appendChild(this.el);
   }

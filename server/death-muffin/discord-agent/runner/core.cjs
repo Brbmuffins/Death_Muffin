@@ -16,6 +16,8 @@ const TIER_COLOR = { casual: 0x16a34a, gameplay: 0xb45309, sensitive: 0xdc2626 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const clip = (s, n) => (String(s).length > n ? String(s).slice(0, n - 1) + '…' : String(s));
 const safeName = (n) => String(n || 'file').replace(/[^\w.-]/g, '_');
+const INBOX_IMAGE_MAX = 8 * 1024 * 1024, INBOX_JOB_MAX = 40 * 1024 * 1024, INBOX_PER_MESSAGE = 4;
+const IMG_MAGIC = [[0x89, 0x50, 0x4e, 0x47], [0xff, 0xd8, 0xff], [0x47, 0x49, 0x46, 0x38], [0x52, 0x49, 0x46, 0x46]];   // png, jpeg, gif, webp(RIFF)
 const SHOT_MAX_BYTES = 8 * 1024 * 1024, SHOTS_PER_POST = 4;
 const fmtList = (a, n) => (a.length > n ? a.slice(0, n).join('\n') + `\n… +${a.length - n} more` : a.join('\n'));
 
@@ -77,6 +79,29 @@ function createRunner(cfgIn, opts = {}) {
   const nameOf = (id) => cfg.names[id] || (auth.isOwner(id) ? 'the owner' : `user ${String(id).slice(-4)}`);
   const ownerPing = (target, text) => post(target, { content: `${cfg.ownerIds.map((i) => `<@${i}>`).join(' ')} ${text}`, mentionUsers: cfg.ownerIds });
 
+  // ---------- images people attach (written into the worktree for the agent to Read; never redacted, never committed) ----------
+  // Returns the lines to append to the message text (one per image, or a short note for a refused one).
+  function saveInboxImages(job, msg, images) {
+    if (!Array.isArray(images) || !images.length || !job.worktree) return '';
+    const dir = path.join(job.worktree, '.dm-inbox'); const lines = [];
+    job.inboxBytes = job.inboxBytes || 0;
+    for (const im of images.slice(0, INBOX_PER_MESSAGE)) {
+      const name = safeName(im && im.name).slice(-60) || 'image';
+      let buf; try { buf = Buffer.from(String(im && im.b64 || ''), 'base64'); } catch { buf = Buffer.alloc(0); }
+      if (!buf.length || buf.length > INBOX_IMAGE_MAX) { lines.push(`[image ${name} not attached: over 8 MB or empty]`); continue; }
+      if (!IMG_MAGIC.some((m) => m.every((b, i) => buf[i] === b))) { lines.push(`[file ${name} not attached: not a recognised image]`); continue; }
+      if (job.inboxBytes + buf.length > INBOX_JOB_MAX) { lines.push(`[image ${name} not attached: this thread already holds the maximum of ${INBOX_JOB_MAX / 1048576} MB of images]`); say(job, `I could not keep ${name}: this thread has reached its image limit.`); continue; }
+      try {
+        fs.mkdirSync(dir, { recursive: true });
+        const file = `${String(msg.messageId || Date.now()).replace(/\D/g, '').slice(-20) || 'm'}-${name}`;
+        fs.writeFileSync(path.join(dir, file), buf); job.inboxBytes += buf.length;
+        lines.push(`[image attached by ${msg.name}: .dm-inbox/${file} — Read it to see it]`);
+      } catch (e) { lines.push(`[image ${name} not attached: could not be stored]`); }
+    }
+    if (images.length > INBOX_PER_MESSAGE) lines.push(`[${images.length - INBOX_PER_MESSAGE} more image(s) not attached: 4 per message]`);
+    return lines.length ? '\n' + lines.join('\n') : '';
+  }
+
   // ---------- events from Discord ----------
   function newJob(ev) {
     const id = crypto.randomBytes(3).toString('hex');
@@ -124,6 +149,7 @@ function createRunner(cfgIn, opts = {}) {
     if (job.turns >= cfg.maxTurnsPerJob) return { action: 'reply', text: 'This thread has hit its turn limit. Start a new request in the channel.' };
     const mm = /\buse\s+(opus|sonnet|haiku)\b/i.exec(text);
     if (mm && auth.canSwitchModel(msg.userId) && cfg.allowedModels.includes(mm[1].toLowerCase())) { job.model = mm[1].toLowerCase(); audit.log('model', { job: job.id, model: job.model, by: msg.userId }); }
+    msg.text += saveInboxImages(job, msg, ev.images);
     job.queue.push(msg); job.lastActive = now(); save();
     const ahead = running().length;
     pump();
@@ -137,6 +163,7 @@ function createRunner(cfgIn, opts = {}) {
     const job = newJob(p.ev); job.threadId = String(threadId); jobs[job.threadId] = job;
     try { const w = await G.createWorktree(cfg, job); job.worktree = w.worktree; job.base = w.base; }
     catch (e) { say(job, `I could not set up a workspace: ${e.message}`); job.status = 'discarded'; save(); return { ok: false }; }
+    p.msg.text += saveInboxImages(job, p.msg, p.ev.images);
     job.queue.push(p.msg); save(); pump();
     return { ok: true, jobId: job.id };
   }
@@ -282,7 +309,7 @@ function createRunner(cfgIn, opts = {}) {
     fresh.slice(0, SHOTS_PER_POST).reverse().forEach((s) => {
       job.shotsSeen[s.name] = `${s.mtime}:${s.size}`;
       if (s.size > SHOT_MAX_BYTES) { say(job, `Screenshot ${s.name} is too big to post (${Math.round(s.size / 1048576)} MB).`); return; }
-      const f = readShot(s); if (f) post({ threadId: job.threadId }, { content: `📸 ${s.name.replace(/\.png$/i, '')}`, files: [f] });
+      const f = readShot(s); if (f) post({ threadId: job.threadId }, { content: `📸 ${s.name.replace(/\.png$/i, '')} · branch preview, not live`, files: [f] });
     });
     for (const s of fresh.slice(SHOTS_PER_POST)) job.shotsSeen[s.name] = `${s.mtime}:${s.size}`;   // beyond the cap: not posted, not retried
     save();

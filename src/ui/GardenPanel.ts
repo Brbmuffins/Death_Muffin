@@ -4,6 +4,7 @@ import { COMPOST_ITEM, seedDef } from '../content/gardening';
 import { remainingText } from '../gameplay/gardeningRules';
 import type { Inventory } from '../gameplay/loot';
 import { preserveScroll } from './preserveScroll';
+import { wrapPanelBody } from './panelBody';
 import { plotStateAt, useCompost } from './gardenView';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -143,7 +144,7 @@ export class GardenPanel {
       </div>
       <p class="cw-codex-note">Plant a seed and come back: it keeps growing while you are away. Bone meal from the Bone Kiln grows a plot a quarter faster.</p>
       <div class="cw-plots">${cards}</div>
-      <div class="cw-error" data-error>${this.error && v ? esc(this.error) : ''}</div>`; });
+      <div class="cw-error" data-error>${this.error && v ? esc(this.error) : ''}</div>`; wrapPanelBody(panel); });
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
     this.el.querySelectorAll<HTMLSelectElement>('[data-seed]').forEach((sel) => sel.addEventListener('change', () => {
       const cur = this.choice.get(sel.dataset.seed!)!;
