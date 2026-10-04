@@ -19,6 +19,32 @@ const safeName = (n) => String(n || 'file').replace(/[^\w.-]/g, '_');
 const INBOX_IMAGE_MAX = 8 * 1024 * 1024, INBOX_JOB_MAX = 40 * 1024 * 1024, INBOX_PER_MESSAGE = 4;
 const IMG_MAGIC = [[0x89, 0x50, 0x4e, 0x47], [0xff, 0xd8, 0xff], [0x47, 0x49, 0x46, 0x38], [0x52, 0x49, 0x46, 0x46]];   // png, jpeg, gif, webp(RIFF)
 const SHOT_MAX_BYTES = 8 * 1024 * 1024, SHOTS_PER_POST = 4;
+// The progress note while a step runs long (owner, 2026-10-04: fun variations instead of "Still working", "a good variety so it's not
+// repeating"). A shuffled deck shared by every thread: each line is used once before any repeats, and a fresh shuffle never opens with
+// the line that just played.
+const BUSY_LINES = [
+  'Tokin up', 'Cheating off my classmate', 'Forging documents', 'Bribing the compiler', 'Arguing with a semicolon',
+  'Reading the manual out loud to the dead', 'Sharpening the tests', 'Laundering pixels', 'Consulting a skull', 'Asking the Prelate for an extension',
+  'Rewiring the motherboard with a spoon', 'Pretending to be busy (I am actually busy)', 'Negotiating with CSS', 'Raising the build from the grave',
+  'Shaking the git tree for loose commits', 'Counting bones twice', 'Microwaving a fish in the break room', 'Copying homework from Stack Overflow',
+  'Blaming the intern', 'Feeding the thralls after midnight', 'Rolling for initiative', 'Reticulating splines', 'Holding a séance for a lost variable',
+  'Googling how to necromance', 'Putting the code in rice', 'Taking a smoke break with the Gravedigger King', 'Explaining TypeScript to a ghoul',
+  'Faking my own death (temporarily)', 'Waiting for the bones to set', 'Whispering to the server rack', 'Sweeping up spare pixels',
+  'Polishing a turd into a gem', 'Asking ChatGPT, do not tell anyone', 'Picking the lock on node_modules', 'Bargaining with the build gods',
+  'Stealing a bell from the Sanctum', 'Filing a complaint with the Covenant', 'Teaching a skeleton to use git', 'Pouring one out for the old code',
+  'Doing push-ups between commits', 'Tuning the organ in the Nave', 'Licking the battery to check it', 'Checking under the bed for bugs',
+  'Herding cats, but dead', 'Renaming things until they feel right', 'Rubbing two sticks together', 'Drinking a suspicious tonic',
+  'Hiding from the Bone Abbess', 'Untangling the headphone cables', 'Loading the dishwasher wrong on purpose',
+];
+let busyDeck = []; let lastBusy = '';
+const busyLine = () => {
+  if (!busyDeck.length) {
+    busyDeck = BUSY_LINES.slice();
+    for (let i = busyDeck.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [busyDeck[i], busyDeck[k]] = [busyDeck[k], busyDeck[i]]; }
+    if (busyDeck[busyDeck.length - 1] === lastBusy) busyDeck.unshift(busyDeck.pop());
+  }
+  lastBusy = busyDeck.pop(); return lastBusy;
+};
 const fmtList = (a, n) => (a.length > n ? a.slice(0, n).join('\n') + `\n… +${a.length - n} more` : a.join('\n'));
 
 function createRunner(cfgIn, opts = {}) {
@@ -335,7 +361,7 @@ function createRunner(cfgIn, opts = {}) {
     typing(job);
     const ticker = setInterval(() => {
       typing(job);
-      if (now() >= nextUpdate) { nextUpdate = now() + 5 * 60000; say(job, `Still working… (${Math.max(1, Math.round((now() - t0) / 60000))} min)`); }
+      if (now() >= nextUpdate) { nextUpdate = now() + 5 * 60000; say(job, `${busyLine()}… (${Math.max(1, Math.round((now() - t0) / 60000))} min)`); }
     }, 8000); ticker.unref();
     try { await runJob(job, real, extra); } finally { clearInterval(ticker); }
   }
