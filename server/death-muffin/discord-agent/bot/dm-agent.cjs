@@ -88,6 +88,10 @@ function createAdapter({ client, runnerUrl, secret, fetchImpl = fetch, fetchFile
     if (op.content) payload.content = String(op.content).slice(0, 1990);
     if (op.embed) payload.embeds = [op.embed];
     if (op.file && op.file.text) payload.files = [{ attachment: Buffer.from(String(op.file.text), 'utf8'), name: String(op.file.name || 'reply.md').replace(/[^\w.-]/g, '_') }];
+    if (Array.isArray(op.files)) {   // images from the runner (base64): up to 4, names sanitized
+      const imgs = op.files.slice(0, 4).filter((f) => f && f.b64).map((f) => ({ attachment: Buffer.from(String(f.b64), 'base64'), name: String(f.name || 'image.png').replace(/[^\w.-]/g, '_') }));
+      payload.files = (payload.files || []).concat(imgs);
+    }
     if (t.replyTo) payload.reply = { messageReference: t.replyTo, failIfNotExists: false };
     const sent = await ch.send(payload);
     return sent;

@@ -278,3 +278,52 @@ test('runner HTTP: loopback + shared secret required', async () => {
   const ok = await fetch(`http://127.0.0.1:${port}/config`, { headers: { 'x-dm-secret': 'topsecret' } }); assert.equal((await ok.json()).channelId, IDS.CHAN);
   srv.close();
 });
+
+const imagesOf = (thread) => thread.sent.filter((s) => s.payload.files && s.payload.files.some((f) => /\.png$/.test(f.name)) && !s.payload.embeds);
+
+test('a PNG written by a turn is posted once; unchanged files are not reposted, changed ones are', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.OWNER, 'SHOT-PNG show me the HUD');
+  const img = await until(() => imagesOf(thread)[0], d.ad);
+  assert.equal(img.payload.files[0].name, 'a.png'); assert.equal(img.payload.files[0].attachment.toString(), 'PNG-one');
+  await until(() => Object.values(w.runner.jobs())[0].status === 'idle', d.ad);
+  assert.equal(imagesOf(thread).length, 1);
+  await d.say(thread, IDS.OWNER, 'where is player speed defined?');   // next turn leaves the file untouched
+  await until(() => texts(thread).some((t) => /answer is in/.test(t)), d.ad);
+  await until(() => Object.values(w.runner.jobs())[0].status === 'idle', d.ad);
+  assert.equal(imagesOf(thread).length, 1, 'unchanged image is not reposted');
+  await d.say(thread, IDS.OWNER, 'SHOT-PNG2 different now');
+  await until(() => imagesOf(thread).some((m) => m.payload.files[0].attachment.toString() === 'PNG-two-bytes'), d.ad);
+});
+
+test('oversized screenshots are skipped with a note, not posted', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.OWNER, 'SHOT-PNG BIG one');
+  await until(() => texts(thread).some((t) => /too big to post/.test(t)), d.ad);
+  await until(() => Object.values(w.runner.jobs())[0].status === 'idle', d.ad);
+  assert.ok(!imagesOf(thread).some((m) => m.payload.files[0].name === 'big.png'));
+});
+
+test('a proposal after a shot carries the image as attachment and as the embed image', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS SHOT-PNG make the accent blue and show it');
+  const p = await waitProposal(d, thread);
+  assert.equal(p.payload.embeds[0].image.url, 'attachment://a.png');
+  assert.equal(p.payload.files.length, 1); assert.equal(p.payload.files[0].name, 'a.png'); assert.equal(p.payload.files[0].attachment.toString(), 'PNG-one');
+});
+
+test('!shot queues a turn that asks for a screenshot, for any requester; shot files never dirty the tree', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'where is player speed defined?');
+  await until(() => Object.values(w.runner.jobs())[0].status === 'idle' && texts(thread).some((t) => /answer is in/.test(t)), d.ad);
+  const job = Object.values(w.runner.jobs())[0]; const turns = job.turns;
+  await d.say(thread, IDS.LIMITED, '!shot');
+  await until(() => imagesOf(thread).length === 1, d.ad);
+  await until(() => job.status === 'idle' && !job.running, d.ad);
+  assert.equal(job.turns, turns + 1);
+  assert.ok(fs.existsSync(path.join(job.worktree, '.dm-shots', 'a.png')) && fs.existsSync(path.join(job.worktree, '.dm-shot.json')));
+  assert.equal(sh(job.worktree, 'status', '--porcelain'), '', '.dm-shots/ and .dm-shot.json are excluded from git status');
+  assert.equal(proposalOf(thread), undefined, 'a shot with no change does not propose');
+  const help = await d.say(thread, IDS.HELIX, '!help'); assert.ok(help);
+  await until(() => help.replies.length, d.ad); assert.match(help.replies[0].content, /!shot/);
+});

@@ -14,6 +14,8 @@ const { planReply } = require('./lib/discordText.cjs');
 const TIER_COLOR = { casual: 0x16a34a, gameplay: 0xb45309, sensitive: 0xdc2626 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const clip = (s, n) => (String(s).length > n ? String(s).slice(0, n - 1) + '…' : String(s));
+const safeName = (n) => String(n || 'file').replace(/[^\w.-]/g, '_');
+const SHOT_MAX_BYTES = 8 * 1024 * 1024, SHOTS_PER_POST = 4;
 const fmtList = (a, n) => (a.length > n ? a.slice(0, n).join('\n') + `\n… +${a.length - n} more` : a.join('\n'));
 
 function createRunner(cfgIn, opts = {}) {
@@ -40,6 +42,7 @@ function createRunner(cfgIn, opts = {}) {
     const p = { ...payload };
     if (p.content) p.content = redactText(p.content);
     if (p.file) p.file = { name: p.file.name, text: redactText(p.file.text) };
+    if (p.files) p.files = p.files.map((f) => ({ name: safeName(f.name), b64: f.b64 }));   // binary images: never run through redactText
     if (p.embed) p.embed = redactDeep(p.embed);
     const op = { id: crypto.randomBytes(6).toString('hex'), target: typeof target === 'string' ? { threadId: target } : target, ...p, sentAt: 0, createdAt: now() };
     outbox.push(op); if (cb) callbacks.set(op.id, cb);
@@ -152,9 +155,13 @@ function createRunner(cfgIn, opts = {}) {
       case 'discard':
         if (!auth.canDiscard(msg.userId, job, job.proposal && job.proposal.tier)) return { action: 'reply', text: 'Only the person who started this, or the owner, can discard.' };
         discard(job, msg.userId).catch((e) => say(job, `Discard failed: ${e.message}`)); return { action: 'accepted' };
+      case 'shot':
+        if (job.turns >= cfg.maxTurnsPerJob) return { action: 'reply', text: 'This thread has hit its turn limit. Start a new request in the channel.' };
+        job.queue.push({ ...msg, text: 'Show me what your current change looks like: write a scenario to .dm-shot.json and run shot.sh, check the images yourself, and keep your reply to one or two lines. If you have not changed anything yet, capture the game as it is now for the thing we have been talking about.' });
+        job.lastActive = now(); save(); pump(); return { action: 'accepted' };
       case 'sync':
         job.queue.push({ ...msg, text: '(sync request)', sync: true }); save(); pump(); return { action: 'accepted' };
-      default: return { action: 'reply', text: 'Commands: !status, !model <name> (owner), !cancel, !discard, !sync, rollback (approvers).' };
+      default: return { action: 'reply', text: 'Commands: !status, !model <name> (owner), !cancel, !discard, !shot (screenshot of the change), !sync, rollback (approvers).' };
     }
   }
 
@@ -245,6 +252,33 @@ function createRunner(cfgIn, opts = {}) {
     }, 8000); ticker.unref();
     try { await runJob(job, real, extra); } finally { clearInterval(ticker); }
   }
+  // ---------- screenshots (<worktree>/.dm-shots/*.png, written by the agent via shot.sh) ----------
+  function listShots(job) {
+    const dir = path.join(job.worktree || '', '.dm-shots'); let out = [];
+    try {
+      out = fs.readdirSync(dir).filter((n) => /\.png$/i.test(n)).map((n) => { const st = fs.statSync(path.join(dir, n)); return { name: n, file: path.join(dir, n), size: st.size, mtime: st.mtimeMs }; });
+    } catch { return []; }
+    return out.sort((a, b) => b.mtime - a.mtime || (a.name < b.name ? -1 : 1));
+  }
+  const readShot = (s) => { try { return { name: safeName(s.name), b64: fs.readFileSync(s.file).toString('base64') }; } catch { return null; } };
+  // New or changed images since the last post go to the thread (once each).
+  function postNewShots(job) {
+    if (!job.worktree) return;
+    job.shotsSeen = job.shotsSeen || {};
+    const fresh = listShots(job).filter((s) => job.shotsSeen[s.name] !== `${s.mtime}:${s.size}`);
+    if (!fresh.length) return;
+    fresh.slice(0, SHOTS_PER_POST).reverse().forEach((s) => {
+      job.shotsSeen[s.name] = `${s.mtime}:${s.size}`;
+      if (s.size > SHOT_MAX_BYTES) { say(job, `Screenshot ${s.name} is too big to post (${Math.round(s.size / 1048576)} MB).`); return; }
+      const f = readShot(s); if (f) post({ threadId: job.threadId }, { content: `📸 ${s.name.replace(/\.png$/i, '')}`, files: [f] });
+    });
+    for (const s of fresh.slice(SHOTS_PER_POST)) job.shotsSeen[s.name] = `${s.mtime}:${s.size}`;   // beyond the cap: not posted, not retried
+    save();
+  }
+  function proposalShots(job) {
+    return listShots(job).filter((s) => s.size <= SHOT_MAX_BYTES).slice(0, SHOTS_PER_POST).map(readShot).filter(Boolean);
+  }
+
   async function runJob(job, real, extra) {
     let r = null;
     if (real.length || extra) r = await agentTurn(job, buildPrompt(real, extra));
@@ -255,6 +289,7 @@ function createRunner(cfgIn, opts = {}) {
       job.status = 'idle'; return;
     }
     if (r && r.text.trim()) sayLong(job, r.text.trim());
+    postNewShots(job);
     await afterTurn(job, readResult(job.worktree));
   }
 
@@ -297,6 +332,7 @@ function createRunner(cfgIn, opts = {}) {
       const r = await agentTurn(job, `The automatic review failed. Fix this, make sure check.sh passes, and commit:\n${v.why}`);
       if (job.cancelRequested) { job.cancelRequested = false; say(job, 'Cancelled.'); job.status = 'idle'; return; }
       if (r.error) { say(job, `The agent hit an error: ${clip(redactText(r.error), 300)}`); job.status = 'idle'; return; }
+      postNewShots(job);
       result = readResult(job.worktree) || result;
     }
   }
@@ -329,7 +365,9 @@ function createRunner(cfgIn, opts = {}) {
     job.proposal = { messageId: null, head, base: job.base, tier, title, files: v.files.map((f) => f.path), migrations: v.migrations, testsOk: true, createdAt: new Date(now()).toISOString() };
     job.status = 'proposed'; save();
     audit.log('proposal', { job: job.id, tier, head, files: v.files.length, migrations: v.migrations.join(',') });
-    post({ threadId: job.threadId }, { embed, reactions: ['✅', '❌'] }, (res) => { if (res.messageId && job.proposal && job.proposal.head === head) { job.proposal.messageId = String(res.messageId); save(); } });
+    const shots = proposalShots(job);
+    if (shots.length) embed.image = { url: `attachment://${shots[0].name}` };
+    post({ threadId: job.threadId }, { embed, ...(shots.length ? { files: shots } : {}), reactions: ['✅', '❌'] }, (res) => { if (res.messageId && job.proposal && job.proposal.head === head) { job.proposal.messageId = String(res.messageId); save(); } });
   }
 
   // ---------- ship / rollback ----------
