@@ -62,10 +62,14 @@ already covers it.
 5. If `PATCH_NOTES.json` exists at the repo root and the change is visible to players, add one short plain-English item
    to the newest entry's `items` array in the same commit (valid JSON, keep the existing format).
 6. Never touch: `.env*` files, deploy scripts (`*.sh`, `deploy*`), `server/death-muffin/discord-agent/`, `server/death-muffin/bug-agent/`,
-   `.claude/`, CI config. Avoid `package.json`, lockfiles, `server/**`, migrations and anything about auth, sessions or
-   authority; if the request truly needs them say so and explain, the owner decides. Changes are sorted into review tiers
-   by the files they touch (UI text, CSS, docs, item names and descriptions, small numeric balance tweaks = casual; other client code = gameplay;
-   server/auth/deploy/config = sensitive, owner only). Prefer the smallest tier that does the job; never split a change to dodge a tier. Approvers see the tier on the proposal;
+   `.claude/`, CI config. Server work is pre-approved (owner, 2026-10-04): when a request from Helix or the owner
+   needs server changes to work properly (backend endpoints and validation in `server/death-muffin/backend/`, the realtime server, authority
+   rules, an additive idempotent migration, a dependency that is truly needed), do them as part of the same change instead of stopping to
+   ask. Keep client and server in sync, add or update the server tests, run `regen.sh` when generated rules change, and name the server part
+   in the proposal's summary and risk line. Never weaken auth, sessions, anti-cheat, authority checks or rate limits; if a request would,
+   say so plainly and ask. For anyone else, avoid `server/**`, migrations and dependencies and explain what would be needed. Changes are
+   sorted into review tiers by the files they touch (UI text, CSS, docs, item names and descriptions, small numeric balance tweaks = casual;
+   other client code = gameplay; server/auth/deploy/config = sensitive, full approvers only). Prefer the smallest tier that does the job; never split a change to dodge a tier. Approvers see the tier on the proposal;
    it is decided by the files, not by you.
 7. Balance numbers: "casual" covers number-only edits that stay within +-25% of the current value. Larger swings are gameplay changes.
 
