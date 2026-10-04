@@ -4,6 +4,7 @@ import type { NecroState, SaveInput } from '../gameplay/necroRules';
 import type { KillReport } from '../gameplay/killRules';
 import { decorateSlots, type DropInstance } from '../gameplay/affixes';
 import type { DropSource } from '../gameplay/affixRules';
+import type { ApplyReport, LoadoutPreset } from '../gameplay/loadoutRules';
 
 /**
  * REST client for the existing Node/Express auth server.
@@ -241,6 +242,23 @@ export async function runeSocket(characterId: number, rite: string, itemId: stri
       ),
     ),
   );
+}
+
+/** Loadout presets (rites + runes + weapon/off-hand under one name, up to six per character). */
+export interface LoadoutSlotRow {
+  slot: number;
+  preset: LoadoutPreset;
+}
+export const listLoadouts = (characterId: number) => unwrap<LoadoutSlotRow[]>(request(`/api/loadouts/${characterId}`, {}, true));
+export const saveLoadout = (characterId: number, slot: number, preset: LoadoutPreset) =>
+  unwrap<LoadoutSlotRow[]>(request('/api/loadouts/save', { method: 'POST', body: JSON.stringify({ characterId, slot, preset }) }, true));
+export const deleteLoadout = (characterId: number, slot: number) =>
+  unwrap<LoadoutSlotRow[]>(request('/api/loadouts/delete', { method: 'POST', body: JSON.stringify({ characterId, slot }) }, true));
+/** Put a saved loadout's weapon, off-hand and runes on (the server does it in one transaction). The bag comes back with what was skipped. */
+export async function applyLoadoutPreset(characterId: number, slot: number) {
+  const body = await request<ApiResponse<InventorySlot[]> & { report?: ApplyReport; preset?: LoadoutPreset }>('/api/loadouts/apply', { method: 'POST', body: JSON.stringify({ characterId, slot }) }, true);
+  if (!body.success) throw new ApiError(body.error ?? 'Unknown server error', 200);
+  return { slots: decorateSlots(body.data as InventorySlot[]), report: body.report as ApplyReport, preset: body.preset as LoadoutPreset };
 }
 
 // --- Professions & crafting ---

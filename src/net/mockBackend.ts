@@ -29,6 +29,7 @@ import * as vaultRules from '../gameplay/vaultRules';
 import * as salvageRules from '../gameplay/salvageRules';
 import * as affixRules from '../gameplay/affixRules';
 import * as sinks from '../gameplay/goldSinkRules';
+import * as loadoutRules from '../gameplay/loadoutRules';
 
 const BAG = gather.BAG_SLOTS;
 /** Mirrors inventory-save.cjs CANT_VERIFY. */
@@ -102,6 +103,8 @@ interface MockAccount {
   /** The Chronicle (mirrors character_chronicle + character_runs). */
   bugReports?: { id: number; category: string; message: string; createdAt: string }[];
   chronicle?: { life: Record<string, number>; run: Record<string, number>; runNo: number; runStartedAt: string; runs: { runNo: number; startedAt: string; endedAt: string; ascensionAfter: number; stats: Record<string, number> }[] };
+  /** Loadout presets (mirrors character_loadouts): slot -> preset. */
+  loadouts?: Record<string, loadoutRules.LoadoutPreset>;
   /** The Ossuary Vault (mirrors account_vault; the mock has one account per character). */
   vault?: { slot_index: number; item_id: string; quantity: number; instance_id?: number }[];
   /** Rolled loot (mirrors loot_instances) and the next id. Only POST /api/loot/roll-gear writes it. */
@@ -516,6 +519,47 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     }
     acc.slots.push({ slot_index: socketSlot, item_id: itemId, quantity: 1, equipped: 1 });
     return ok(acc.slots.map(join));
+  }
+
+  // Loadout presets: the same routes and rules as server/death-muffin/backend/loadouts.cjs.
+  if (p.startsWith('/api/loadouts')) {
+    const list = () => Object.entries(acc.loadouts ?? {}).map(([slot, preset]) => ({ slot: Number(slot), preset })).sort((a, b) => a.slot - b.slot);
+    if ((m = p.match(/^\/api\/loadouts\/(\d+)$/)) && method === 'GET') {
+      ownCharacter(acc, m[1]);
+      return ok(list());
+    }
+    if (method === 'POST' && ['/api/loadouts/save', '/api/loadouts/delete', '/api/loadouts/apply'].includes(p)) {
+      ownCharacter(acc, body.characterId);
+      const slot = body.slot;
+      if (!Number.isInteger(slot) || slot < 0 || slot >= loadoutRules.MAX_PRESETS) throw new MockError(`slot must be 0 to ${loadoutRules.MAX_PRESETS - 1}`, 400);
+      const store = (acc.loadouts ??= {});
+      if (p === '/api/loadouts/save') {
+        const v = loadoutRules.normalizePreset(body.preset);
+        if (!v.ok) return fail(v.error);
+        store[slot] = v.preset;
+        return ok(list());
+      }
+      if (p === '/api/loadouts/delete') {
+        delete store[slot];
+        return ok(list());
+      }
+      const preset = store[slot];
+      if (!preset) return fail('That loadout is empty.');
+      const rows = acc.slots.map((x, i) => ({ ...x, i }));
+      const info = (id: string): loadoutRules.ItemInfo => {
+        const def = MOCK_ITEMS[id];
+        const equipSlot = def ? (equipSlotOf({ item_type: def.item_type, equipped_slot: null, item_equipment_slot: null }) ?? null) : null;
+        return { maxStack: mockStackCap(id), equipSlot, twoHanded: isTwoHanded(id) };
+      };
+      const { rows: after, report } = loadoutRules.applyLoadout(rows, info, preset);
+      acc.slots = after.map((x) => {
+        const { i: _i, equipped_slot: _e, ...rest } = x as typeof x & { i?: number };
+        const out: StoredSlot = { slot_index: x.slot_index, item_id: x.item_id, quantity: x.quantity, equipped: x.equipped ? 1 : 0 };
+        if (rest.instance_id !== undefined && rest.instance_id !== null) out.instance_id = rest.instance_id as number;
+        return out;
+      });
+      return { success: true, data: acc.slots.map(join), report, preset } as unknown as { success: true; data: InventorySlot[] };
+    }
   }
 
   // --- The Ossuary Vault and Salvaging: the same pure rules the Death Muffin backend uses (vault-rules, salvage-rules). ---

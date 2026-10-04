@@ -1069,3 +1069,12 @@ Owner feedback: the report form was buried in Settings; the elixir belt was hard
 - **Merged:** Acre ledger = Skills + Garden + Laborers + Contracts; Character = Stats + Capes & Pets; Grimoire = Grimoire + Legion. Panels are hosted unchanged in `TabbedWindow` slots (CSS flattens their plate); only the visible tab's panel is open.
 - **NEW cue:** `HudReveal` (store), `CueQueue` (one toast at a time), `setNew` on the HUD / windows. Pip + glow stay until hover (HUD readouts) or open (menu buttons, tabs); a used cue never returns.
 - **Tests:** `progressiveHud.test.ts`; browser: `tools/qa/hud-progressive-smoke.cjs`. Screenshots: `docs/screenshots/hud-progressive/`.
+
+## Loadout presets (2026-10-03, branch `dm/loadouts`, not deployed, migration 037)
+
+Necromancers save rites + runes + weapon/off-hand under a name and apply them in one click (Grimoire, under the rite bar).
+- **Data:** table `character_loadouts (character_id, slot 0-5, name VARCHAR(24), data JSON)`; `data` = `{ rites: { primary, keys[5] }, runes: { <rite>: <rune> }, weapon, offhand }`, weapon/off-hand = `{ itemId, instanceId|null }` (a rolled piece is matched by its roll, never by item id alone); `null` hand = left as it is on apply.
+- **Rules:** `src/gameplay/loadoutRules.ts` (validation, `captureGear`, pure `applyLoadout` over inventory rows); bundled for the backend as `gathering/loadout-rules.cjs`. The server applies from the stored preset (the client sends only the slot), inside one transaction over every locked row, and writes the row difference. Each step is all-or-nothing: missing piece -> `missing`, no free bag slot for what leaves a hand/socket -> `no_room` (nothing moves), the rest still applies. The rites half is applied by the client (rites live in browser storage); unlearned rites fall back like any saved bar.
+- **Offline mock:** `/api/loadouts/*` in `mockBackend.ts` use the same rules module.
+- **Help:** counsel tip `loadouts` (calm, in the `gear` group; at >= 6 rites learned or >= 2 runes), Codex entry under Relic Runes, README "Loadouts". Hotkeys: `keybinds.ts`, unbound by default, bound in Settings → Controls (click, press a key, Esc clears; refuses game keys and duplicates), shown on the cards; `keybinds.test.ts`.
+- **Tests:** `loadout-rules.test.ts`, `mockLoadouts.test.ts`, `loadoutPresets.test.ts`, server `loadouts.test.cjs` (save/validate/ownership, apply, missing pieces, full bag). QA: `tools/qa/loadouts-smoke.cjs`.

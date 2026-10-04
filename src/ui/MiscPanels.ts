@@ -1,6 +1,7 @@
 import { canUseAutoCombat, settings, updateSettings, type Quality } from '../app/settings';
 import { AREAS, type AreaId } from '../content/areas';
 import { DIFFICULTIES, DIFFICULTY_ORDER, isDifficulty } from '../content/difficulty';
+import { ACTION_LABEL, LOADOUT_ACTIONS, checkBind, label as keyLabel, type ActionId, type Binds } from '../gameplay/keybinds';
 import { BugReportView, type BugReportContext } from './BugReportView';
 
 export abstract class SimplePanel {
@@ -45,6 +46,8 @@ export class SettingsPanel extends SimplePanel {
     private bugContext?: () => BugReportContext,
     /** Settings -> Play together: make, join or leave a party. Absent = no co-op section. */
     private party?: { create(): void; join(code: string): void; leave(): void },
+    /** Rebindable hotkeys (loadouts, necromancers): the current keys, and a setter that answers a readable refusal or null. */
+    private keybinds?: { get(): Binds; set(action: ActionId, key: string | null): string | null },
   ) {
     super(root);
   }
@@ -97,7 +100,11 @@ export class SettingsPanel extends SimplePanel {
              <label class="row">Join a friend<span><input type="text" maxlength="12" size="10" data-partycode-in placeholder="code" aria-label="Party code" autocomplete="off" /> <button type="button" class="cw-button" data-partyjoin>Join</button></span></label>`}
         </section>` : ''}
         <section class="cw-settings-section"><h3>Controls</h3>
+        ${this.keybinds ? `<h4 class="cw-keys-h">Loadout hotkeys <small>unbound until you pick a key</small></h4>
+        <div class="cw-keybinds" data-keybinds>${LOADOUT_ACTIONS.map((a) => `<span>${ACTION_LABEL[a]}</span><button type="button" class="cw-button small" data-bind="${a}"></button>`).join('')}</div>
+        <p class="cw-settings-note" data-bindnote role="status" aria-live="polite">Click an action, then press a key. Esc clears it. Keys the game already uses are refused.</p>` : ''}
         <div class="cw-keys">
+          ${this.keybinds ? '<kbd>Loadout keys</kbd><span>Next loadout and Loadout 1-6: unbound until you assign them above (necromancers). They apply a saved Grimoire loadout</span>' : ''}
           <kbd>WASD</kbd><span>Walk freely; holding a direction takes over from click-to-move</span>
           <kbd>Click</kbd><span>Move · attack target (${this.kitHelp.primary}) · use</span>
           <kbd>Minimap</kbd><span>Click a walkable spot to travel there</span>
@@ -202,9 +209,63 @@ export class SettingsPanel extends SimplePanel {
     const doJoin = () => { if (codeIn?.value.trim()) { this.party?.join(codeIn.value); this.close(); } };
     this.el!.querySelector('[data-partyjoin]')?.addEventListener('click', doJoin);
     codeIn?.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') doJoin(); });
+    if (this.keybinds) this.bindKeybinds(this.keybinds);
     this.el!.querySelector('[data-leave]')!.addEventListener('click', () => this.onLeave());
     this.el!.querySelector('[data-changeclass]')?.addEventListener('click', () => this.onChangeClass?.());
     this.el!.querySelector('[data-bugreport]')?.addEventListener('click', () => this.openBugReport());
+  }
+
+  /** Settings → Controls: click an action, press a key (Esc clears). Capture phase, so the press never reaches the game's own key handler. */
+  private bindKeybinds(kb: { get(): Binds; set(action: ActionId, key: string | null): string | null }) {
+    const root = this.el!;
+    const note = root.querySelector<HTMLElement>('[data-bindnote]')!;
+    const buttons = [...root.querySelectorAll<HTMLButtonElement>('[data-bind]')];
+    let listening: { action: ActionId; off: () => void } | null = null;
+    const paint = () => {
+      const binds = kb.get();
+      for (const b of buttons) {
+        const a = b.dataset.bind as ActionId;
+        const on = listening?.action === a;
+        b.textContent = on ? 'Press a key…' : binds[a] ? keyLabel(binds[a]!) : 'Unbound';
+        b.setAttribute('aria-pressed', String(on));
+        b.setAttribute('aria-label', `${ACTION_LABEL[a]}: ${binds[a] ? keyLabel(binds[a]!) : 'unbound'}. Click, then press a key.`);
+      }
+    };
+    const stop = () => { listening?.off(); listening = null; paint(); };
+    for (const b of buttons) {
+      b.addEventListener('click', () => {
+        const action = b.dataset.bind as ActionId;
+        const was = listening?.action;
+        stop();
+        if (was === action) return;
+        note.textContent = `Press a key for ${ACTION_LABEL[action]} (Esc clears it).`;
+        const onKey = (e: KeyboardEvent) => {
+          if (['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return;
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          if (e.key === 'Escape') {
+            kb.set(action, null);
+            note.textContent = `${ACTION_LABEL[action]} is unbound.`;
+            return stop();
+          }
+          const err = checkBind(kb.get(), action, e.key) as { ok: boolean; error?: string };
+          const refused = err.ok ? kb.set(action, e.key.toLowerCase()) : err.error!;
+          note.textContent = refused ?? `${ACTION_LABEL[action]} is now ${keyLabel(e.key.toLowerCase())}.`;
+          stop();
+        };
+        window.addEventListener('keydown', onKey, true);
+        listening = { action, off: () => window.removeEventListener('keydown', onKey, true) };
+        paint();
+      });
+    }
+    this.stopBindCapture = stop;
+    paint();
+  }
+  private stopBindCapture: (() => void) | null = null;
+  close() {
+    this.stopBindCapture?.();
+    this.stopBindCapture = null;
+    super.close();
   }
 
   /** Swap the Settings body for the report form; Back restores Settings. The panel stays open, so hotkeys stay blocked. */

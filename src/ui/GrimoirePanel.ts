@@ -5,6 +5,7 @@ import { assignableRites, LOADOUT_SLOTS, type Rites } from '../gameplay/loadout'
 import { SimplePanel } from './MiscPanels';
 import { RUNES, isRuneRite, runeSources, runesFor, type RuneId, type RuneRite } from '../content/runes';
 import type { RuneSockets } from '../gameplay/runeRules';
+import type { LoadoutPresets } from './LoadoutPresets';
 import './runes.css';
 
 const esc = (x: string) => x.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -36,6 +37,8 @@ export class GrimoirePanel extends SimplePanel {
       state: () => { sockets: RuneSockets; owned: Partial<Record<RuneId, number>> };
       socket: (rite: RuneRite, itemId: RuneId | null) => Promise<string | null>;
     },
+    /** Loadout presets (necromancers): a self-contained strip, mounted under the bar on every redraw. */
+    private loadouts?: LoadoutPresets,
   ) {
     super(root);
   }
@@ -78,11 +81,14 @@ export class GrimoirePanel extends SimplePanel {
         ${socket(rites.primary, 'primary', 'LMB')}
         ${rites.keys.map((id, i) => socket(id, i, i === 4 ? 'RMB · 5' : String(i + 1))).join('')}
       </div>
+      ${this.loadouts ? '<div data-loadouts></div>' : ''}
       ${this.runeSection(primaryMode ? rites.primary : rites.keys[this.selected as number])}
       ${primaryMode ? '<p class="cw-settings-note">Primaries cost nothing and fire on left-click.</p>' : `<div class="cw-grim-roles" role="group" aria-label="Filter by role">${['all', ...ROLES]
         .map((r) => `<button type="button" class="cw-chip${this.role === r ? ' on' : ''}" data-role="${r}" aria-pressed="${this.role === r}">${r === 'all' ? 'All' : ROLE_LABEL[r as RiteRole]}</button>`)
         .join('')}</div>`}
       <div class="cw-codex-body">${list.map((id) => this.entry(id, rites, level, primaryMode)).join('')}</div>`;
+    const loadoutEl = body.querySelector<HTMLElement>('[data-loadouts]');
+    if (loadoutEl) this.loadouts?.mount(loadoutEl);
     body.querySelectorAll<HTMLButtonElement>('[data-socket]').forEach((b) =>
       b.addEventListener('click', () => {
         this.selected = b.dataset.socket === 'primary' ? 'primary' : Number(b.dataset.socket);

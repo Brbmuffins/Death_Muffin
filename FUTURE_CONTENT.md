@@ -39,6 +39,9 @@ dead, **chartreuse/olive** = rot & poison, **violet** = signature ritual magic,
 - Black Litany: *Hollow Choir* (no thrall sacrifice; smaller burst), *Requiem* (delayed 2 s, wider).
 Not built: rune upgrades, a second socket per rite, runes for the other families' rites, rune crafting, a socket UI drag-and-drop, co-op friends seeing your rune badges. `server/proposals/relic-runes.md` is superseded (no socket table: sockets are reserved inventory rows).
 
+### Loadout presets for the other families
+Necromancer loadouts (rites + runes + weapon/off-hand, six per character, optional hotkeys) shipped on `dm/loadouts`. Next: the New Blood disciplines get the same strip: skills plus gear sets (weapon, off-hand, armor), see ROADMAP L6.
+
 ### Thrall variety
 - ✅ *shipped 2026-09-26* — Skeleton archer (from Bellbound corpses), bone mage (from Deacon corpses — its Bone Hex makes enemy blows 25% softer), plague bearer (from Carrion Sacs — bursts into a friendly rot pool when killed or sacrificed). The Mourner's wraiths still override. Bow/staff are code-built stand-ins.
 - ✅ *built 2026-10-02 (branch `dm/thrall-gear`, not deployed)* — **Thrall gear: the Legion kit.** Two slots for the whole legion (Weapon, Armour; reserved inventory slots 120-121) take the spare gear you'd otherwise salvage; stat points become thrall damage, health and attack speed through the existing mods, **Reinforce** (12 tiers of gold) is the sink. Archers and bone mages carry the baked `gear_thrall_bow` / `gear_bone_staff`. Press **Y**. See HANDOFF and README ("Thrall gear").

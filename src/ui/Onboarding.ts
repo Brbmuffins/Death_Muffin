@@ -117,6 +117,7 @@ export type TipId =
   | 'rune'
   | 'runeSocketed'
   | 'runeHunt'
+  | 'loadouts'
   // The Catacomb Depths.
   | 'depths'
   | 'depths_floor'
@@ -512,6 +513,10 @@ export const TIPS: Record<TipId, Tip> = {
   runeSocketed: {
     title: 'The rune is set',
     body: 'The rite now wears the rune: a <b>jade badge</b> sits on its slot, and hovering the slot shows exactly what changed and what it costs. Swap runes in the Grimoire{p:L} to try another style; your cooldowns are not reset.',
+  },
+  loadouts: {
+    title: 'Save a loadout',
+    body: 'Tired of re-placing rites, runes and your weapon by hand? Set the build you like, open the <b>Grimoire</b>{p:L} and press <b>Save what I have now</b> under the bar. A loadout keeps your <b>five rites</b>, the <b>rune in each rite</b> and your <b>weapon and off-hand</b> together; <b>Apply</b> puts them all back at once. You can keep six, and in <b>Settings</b> (<kbd>Esc</kbd>) you can give <b>Next loadout</b> and <b>Loadout 1-6</b> a key of your choice (they start unbound). A piece you have since sold or stored in the Vault is skipped and named, and nothing is ever lost from a full bag.',
   },
   depths: {
     title: 'A stair in the dark',

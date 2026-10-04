@@ -47,6 +47,7 @@ Some of the most polished corners of the game right now (updated 3 October 2026)
 - [Choose a discipline](#choose-a-discipline)
 - [Combat and corpses](#combat-and-corpses)
 - [Relic runes](#relic-runes)
+- [Loadouts](#loadouts)
 - [The world and its bosses](#the-world-and-its-bosses)
 - [The Catacomb Depths](#the-catacomb-depths)
 - [Gold, gear, and difficulty](#gold-gear-and-difficulty)
@@ -245,6 +246,12 @@ Runes are the build-depth layer for the four necromancer disciplines. A rune doe
 The Bone Colossus rising from five corpses, Mass Grave's three weaker thralls, and Requiem's warning sigil.
 
 Bone Needle runes also ride a scythe's reaping arc, once per swing (not once per enemy hit): **Marrow-Tap** softens the swing and returns its bonus essence once, **Splinters** throws one shard from the nearest enemy struck to the nearest one the arc missed; the **Volley** is needle-only. In co-op a rune changes your own casts: your friends see the effect (the creeping circle, the Colossus, the Requiem warning ring, the contagion arcs) but not your badges.
+
+## Loadouts
+
+Twenty-odd rites, eleven runes and four weapon lines make swapping builds by hand a chore, so the necromancer disciplines can **save a loadout**: the primary and the five rites on keys 1-5, the **rune socketed in each rite**, and the **weapon and off-hand** you wear, under one name. Open the **Grimoire (L)**, set things up and press **Save what I have now** under the bar. You can keep **six per character**, stored on the server so they follow the character to any device.
+
+**Apply** puts one on in a click: the weapon and off-hand are swapped in from your bag, each rune moves into its rite (the old one goes back to your bag), and the rites are placed. The loadout you are wearing is marked **on now**; **Update** overwrites one with what you have on, **Rename** and **Delete** do what they say. Nothing is lost: a weapon or rune you no longer have (sold, ground, resting in the Vault) is left out and named, a rite you have not learned yet is replaced by another, and a swap that needs a free bag slot you do not have is refused while the rest still applies. A hand the loadout was saved with nothing in is left as it is (the card says "keep current"). **Hotkeys:** Settings → Controls lists **Next loadout** and **Loadout 1** to **6**, all unbound until you pick a key (click the action, press a key; Esc clears it). Keys the game already uses are refused, and a bound key shows on its loadout card.
 
 ## The world and its bosses
 

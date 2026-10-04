@@ -85,6 +85,11 @@ const TARGETS = {
     out: join(root, 'server/death-muffin/backend/gathering/rune-rules.cjs'),
     about: 'Relic rune sockets (slots, which rune fits which rite) shared by the web client, the offline mock and the Death Muffin backend.',
   },
+  loadouts: {
+    entry: 'src/gameplay/loadoutRules.ts',
+    out: join(root, 'server/death-muffin/backend/gathering/loadout-rules.cjs'),
+    about: 'Loadout presets (validation, capture and apply over inventory rows) shared by the web client, the offline mock and the Death Muffin backend.',
+  },
 };
 
 export const OUT = TARGETS.necro.out;

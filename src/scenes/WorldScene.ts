@@ -9,7 +9,10 @@ import { swapReady } from '../ui/firstHourRules';
 import { TabbedWindow } from '../ui/TabbedWindow';
 import { CueQueue, HudReveal, isVeteran, veteranReveals, type RevealId } from '../ui/progressiveHud';
 import { kitFor, type Kit } from '../content/kits';
-import { assignableRites, assignRite, LOADOUT_SLOTS, loadRites, loadSeen, saveRites, saveSeen, unseenRites } from '../gameplay/loadout';
+import { assignableRites, assignRite, LOADOUT_SLOTS, loadRites, loadSeen, sanitizeLoadout, sanitizePrimary, saveRites, saveSeen, unseenRites } from '../gameplay/loadout';
+import { LoadoutPresets, reportLines, sameLoadout, type LoadoutBody } from '../ui/LoadoutPresets';
+import { captureGear, type LoadoutPreset } from '../gameplay/loadoutRules';
+import { actionForKey, label as keyLabel, loadBinds, nextSlot, saveBinds, checkBind, LOADOUT_ACTIONS, type ActionId, type Binds } from '../gameplay/keybinds';
 import { devAccess, devPreference, isDevAccount, riteLevel, setDevPreference, tokenUsername } from '../gameplay/devAccess';
 import { GrimoirePanel } from '../ui/GrimoirePanel';
 import { hitstop } from '../graphics/hitstop';
@@ -90,7 +93,7 @@ import { applySetMods, outfitSignature, resolveSetBonuses, setSignature } from '
 import { loadRunesFound, recordRunesFound } from '../gameplay/runeJournal';
 import { ownedRunes, socketsOf, socketsSignature, type RuneSockets } from '../gameplay/runeRules';
 import { RUNES, type RuneId, type RuneRite } from '../content/runes';
-import { runeSocket } from '../net/api';
+import { applyLoadoutPreset, deleteLoadout, listLoadouts, runeSocket, saveLoadout } from '../net/api';
 import { applyLegionMods, kitCandidates, kitPieces, legionOf, legionSignature, thrallRefresh, type ThrallNumbers } from '../gameplay/legionKit';
 import { LegionPanel } from '../ui/LegionPanel';
 import { LootRoller } from '../gameplay/lootRoll';
@@ -294,6 +297,10 @@ export class WorldScene implements GameScene, RuntimeView {
   private hotbar: AbilityId[] = kitFor('necromancer').hotbar;
   /** The five rites on keys 1–5 (Grimoire, L); remembered per character in browser storage. */
   private loadout: AbilityId[];
+  /** Rebindable loadout hotkeys (gameplay/keybinds.ts), per browser; all unbound by default. */
+  private binds: Binds = loadBinds(browserStorage());
+  private loadoutBusy = false;
+  private lastLoadoutSlot: number | null = null;
   /** The left-click primary (Grimoire LMB socket). */
   private primary: AbilityId = 'bone_needle';
   /** Rites seen in the Grimoire (a learned rite outside this set wears NEW). */
@@ -905,6 +912,7 @@ export class WorldScene implements GameScene, RuntimeView {
         if (this.discipline.family === 'necromancer' && kitCandidates(bag).length > 0) this.onboarding.show('legion');
         // The first Relic rune in the bag (picked up, or already there): how to socket it.
         if (this.discipline.family === 'necromancer' && Object.keys(ownedRunes(bag)).length > 0) this.onboarding.show('rune');
+        this.maybeLoadoutTip(bag);
       });
       this.professions = professions;
       for (const r of professions) this.skillLevels.set(r.profession_id as SkillId, r.skill_level);
@@ -913,6 +921,91 @@ export class WorldScene implements GameScene, RuntimeView {
     } catch (err) {
       this.hud.toast(err instanceof Error ? err.message : 'Failed to load your reliquary', 'err');
     }
+  }
+
+  /**
+   * Loadout presets (Grimoire): what the section needs from the scene. Saving reads the rites, the sockets and the worn weapon/off-hand as they
+   * stand; applying has the server put the gear on (one transaction, ownership checked there), then sets the rites here.
+   */
+  private loadoutHost() {
+    return {
+      list: () => listLoadouts(this.character.id),
+      save: (slot: number, preset: LoadoutPreset) => saveLoadout(this.character.id, slot, preset),
+      remove: (slot: number) => deleteLoadout(this.character.id, slot),
+      current: (): LoadoutBody => {
+        const gear = captureGear(this.inventory.all);
+        return { rites: { primary: this.primary, keys: [...this.loadout] }, runes: gear.runes, weapon: gear.weapon, offhand: gear.offhand };
+      },
+      itemName: (id: string) => itemMeta(id).name,
+      keyFor: (slot: number) => (this.binds[`loadout_${slot + 1}` as ActionId] ? keyLabel(this.binds[`loadout_${slot + 1}` as ActionId]!) : null),
+      nextKey: () => (this.binds.loadout_next ? keyLabel(this.binds.loadout_next) : null),
+      apply: async (slot: number, preset: LoadoutPreset): Promise<string[]> => {
+        let lines: string[] = [];
+        await this.inventory.exclusive(async () => {
+          const r = await applyLoadoutPreset(this.character.id, slot);
+          this.inventory.replace(r.slots);
+          lines = reportLines(r.report, (id) => itemMeta(id).name);
+        });
+        lines.push(...this.applyRitesPreset(preset.rites));
+        this.hud.toast(lines.length ? `${preset.name} is on, with ${lines.length} thing${lines.length > 1 ? 's' : ''} left out` : `${preset.name} is on`, lines.length ? '' : 'good');
+        audio.play('shard');
+        return lines;
+      },
+    };
+  }
+
+  /** A loadout hotkey: "Loadout N" applies slot N, "Next loadout" cycles the saved ones (after the one on now, or the last one used). */
+  private async loadoutHotkey(action: ActionId) {
+    if (this.loadoutBusy || !LOADOUT_ACTIONS.includes(action)) return;
+    this.loadoutBusy = true;
+    try {
+      const rows = await listLoadouts(this.character.id);
+      let slot: number | null;
+      if (action === 'loadout_next') {
+        const host = this.loadoutHost();
+        const now = host.current();
+        const active = rows.find((r) => sameLoadout(r.preset, now))?.slot ?? null;
+        slot = nextSlot(rows.map((r) => r.slot), active, this.lastLoadoutSlot);
+        if (slot === null) return void this.hud.toast('No saved loadouts yet: save one in the Grimoire (L)', '');
+        if (active === slot) return void this.hud.toast(`${rows.find((r) => r.slot === slot)!.preset.name} is your only loadout`, '');
+      } else slot = Number(action.slice(-1)) - 1;
+      const row = rows.find((r) => r.slot === slot);
+      if (!row) return void this.hud.toast(`Loadout ${slot! + 1} is empty: save one in the Grimoire (L)`, '');
+      await this.loadoutHost().apply(row.slot, row.preset);
+      this.lastLoadoutSlot = row.slot;
+    } catch (e) {
+      this.hud.toast(e instanceof Error ? e.message : 'The loadout would not go on', 'err');
+    } finally {
+      this.loadoutBusy = false;
+    }
+  }
+
+  /** Set the primary and the five keys from a preset; a rite not learned yet is replaced like any saved bar would be. Returns lines about what was swapped out. */
+  private applyRitesPreset(rites: { primary: string; keys: string[] }): string[] {
+    const level = riteLevel(this.character.level);
+    const keys = sanitizeLoadout(rites.keys, level, this.kit);
+    const primary = sanitizePrimary(rites.primary, level, this.kit);
+    const lines: string[] = [];
+    const lost = [rites.primary, ...rites.keys].filter((id) => !(keys.includes(id as AbilityId) || id === primary) && ABILITIES[id as AbilityId]);
+    if (lost.length) lines.push(`${lost.map((id) => ABILITIES[id as AbilityId].name).join(', ')} ${lost.length > 1 ? 'are' : 'is'} not learned yet, so other rites fill ${lost.length > 1 ? 'those keys' : 'that key'}.`);
+    this.primary = primary;
+    this.loadout = keys;
+    saveRites(browserStorage(), this.character.id, { primary, keys });
+    this.markSeen([primary, ...keys]);
+    this.hud.setPrimary(primary);
+    this.hotbar = this.buildHotbar();
+    this.hud.setHotbar(this.hotbar);
+    this.queuedCast = null;
+    this.grimoirePanel.render();
+    return lines;
+  }
+
+  /** Counsel: the first time a necromancer has six rites to juggle or two runes to set, loadouts save the shuffling. */
+  private maybeLoadoutTip(bag: readonly { slot_index: number; item_id: string; quantity: number; equipped?: number }[] = this.inventory.all) {
+    if (this.discipline.family !== 'necromancer') return;
+    const learned = assignableRites(this.kit).filter((id) => unlockLevel(id) <= riteLevel(this.character.level)).length;
+    const runes = Object.values(ownedRunes(bag)).reduce((a, b) => a + (b ?? 0), 0) + Object.keys(socketsOf(bag as never)).length;
+    if (learned >= 6 || runes >= 2) this.onboarding.show('loadouts');
   }
 
   /** Socket a rune into a rite (or take it out): the server moves it and answers with the whole bag. Returns a player-readable error, or null. */
@@ -1214,6 +1307,24 @@ export class WorldScene implements GameScene, RuntimeView {
         coop: !!this.partyCode,
       }),
       { create: () => this.createParty(), join: (code) => void this.joinParty(code), leave: () => void this.leaveParty() },
+      this.discipline.family === 'necromancer'
+        ? {
+          get: () => this.binds,
+          set: (action: ActionId, key: string | null) => {
+            if (key !== null) {
+              const c = checkBind(this.binds, action, key);
+              if (!c.ok) return c.error;
+            }
+            const next = { ...this.binds };
+            if (key === null) delete next[action];
+            else next[action] = key;
+            this.binds = next;
+            saveBinds(browserStorage(), next);
+            this.grimoirePanel?.render();
+            return null;
+          },
+        }
+        : undefined,
     );
     this.classPanel = new ClassPanel(this.root, () => this.character.class_index, (index) => this.changeClass(index));
     this.scope.add(() => this.classPanel.dispose());
@@ -1239,6 +1350,7 @@ export class WorldScene implements GameScene, RuntimeView {
         state: () => ({ sockets: this.player?.runes ?? socketsOf(this.inventory.all), owned: ownedRunes(this.inventory.all) }),
         socket: (rite, itemId) => this.socketRune(rite, itemId),
       },
+      this.discipline.family === 'necromancer' ? new LoadoutPresets(this.loadoutHost()) : undefined,
     );
     this.ascensionPanel = new AscensionPanel(
       this.root,
@@ -1727,6 +1839,15 @@ export class WorldScene implements GameScene, RuntimeView {
       if (k === 'enter') {
         this.hud.focusChat();
         return;
+      }
+      // Loadout hotkeys: unbound until the player assigns them in Settings, and never a key the game already uses.
+      if (this.discipline.family === 'necromancer' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const action = actionForKey(this.binds, e.key);
+        if (action) {
+          e.preventDefault();
+          if (!e.repeat) void this.loadoutHotkey(action);
+          return;
+        }
       }
       if (/^[1-6]$/.test(k) || ['r', 'q', 't', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
       if (e.repeat && !['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) return;
@@ -4197,6 +4318,7 @@ export class WorldScene implements GameScene, RuntimeView {
         this.hud.pulseGrimoire();
       }
       if (this.grimoireUnlocked()) this.onboarding.show('grimoire', 3200);
+      this.maybeLoadoutTip();
       audio.play('levelUp');
       perfNote(`level ${this.character.level}`);
       this.effects.emit({ x: this.player.x, y: 0.2, z: this.player.z, count: 90, color: 0xf1d9a8, spread: 0.8, speed: 0.8, up: 5, life: 1.5, size: 0.35 });

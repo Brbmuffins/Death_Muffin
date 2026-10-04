@@ -39,6 +39,7 @@ flowchart LR
     S24[2 Oct: legendary armor sets]:::done
     S26[2 Oct: performance round 1<br/>culling · slim assets · streaming]:::done
     S27[3 Oct: performance pass<br/>warm-up · co-op net · effects · thralls]:::done
+    S28[3 Oct: necro loadout presets<br/>rites · runes · weapons · hotkeys]:::done
   end
 
   subgraph NOW["🔨 Now"]
@@ -53,6 +54,7 @@ flowchart LR
   subgraph LATER["🌒 Later — new content"]
     L2[New zones<br/>Hollow Court]:::later
     L5[Server authority step 2<br/>enforce + server-side rewards]:::later
+    L6[Loadout presets for all classes<br/>New Blood skills + gear sets]:::later
     L4[AI companions — parked]:::later
   end
 
@@ -235,6 +237,9 @@ Two or three bot players you can log in and play with. Recommended design:
 - **Mind:** an LLM (Claude Haiku) decides every 10–30 seconds: follow you, hold a chokepoint, gather, return to town, and talks in chat with a persona. It never controls frame-by-frame input.
 - **Accounts:** each bot is a real account and character with its own progress, flagged as a bot. Bots only join worlds you invite them to.
 - **Decisions needed:** how strong bots should be, whether they loot or level, and the API budget.
+
+### L6 · Loadout presets for all classes (New Blood disciplines)
+Necromancer loadout presets are built (`dm/loadouts`, 3 Oct 2026, migration 037): rites + runes + worn weapon/off-hand saved under a name, six per character, optional unbound-by-default hotkeys. Later: the same for the New Blood disciplines (Grave Warden, Bell Monk, Carrion Witch, Hollow Knight, Veilwalker): their skills (rites) plus gear sets (weapon, off-hand, armor pieces). Needs a per-family preset shape (no runes outside the necromancer; armor slots become part of a set), the gear half of `applyLoadout` generalised beyond the two hands, and the section shown for every family. Not started.
 
 ### Performance (from the Blender audit)
 Measured in [docs/BLENDER-AUDIT.md](docs/BLENDER-AUDIT.md). **Done (2–3 Oct):** prop culling, instanced decals, accessor pruning, trimmed clips, WebP art, texture downscale by class, area streaming, spawn budget, warm-up render, effect budget, thrall CPU, co-op relay filtering. **Open:** render budgets (resolution cap, shadow cadence, light count) and static corpse meshes are in progress. **Later:** meshopt compression and simplify, 3D item icons, LODs, KTX2.

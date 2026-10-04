@@ -40,6 +40,7 @@ import {
   codexAffixRows,
   codexRuneRows,
   CODEX_RUNES_COUNSEL,
+  CODEX_LOADOUTS_COUNSEL,
   CODEX_WEAPON_TIERS,
   COVENANT_LORE,
   DEAD_ORDER,
@@ -289,7 +290,7 @@ export class CodexPanel {
             : `<div class="cw-rune-opt sealed" style="grid-template-columns:44px 1fr;margin-top:8px"><img src="art/items/${r.id}.webp" alt="" style="width:44px;height:44px;filter:grayscale(1) brightness(0.55)" /><span><span class="nm">${r.name}<i>${r.rarity}</i></span><span class="sh">Not found yet. Drops from ${r.sources}.</span></span></div>`).join('')}
         </div>
       </article>`).join('');
-    return `<p class="tip">${CODEX_RUNES_COUNSEL}</p>${rows}`;
+    return `<p class="tip">${CODEX_RUNES_COUNSEL}</p><article class="cw-codex-entry"><div class="txt"><div class="hd"><h3>Loadouts</h3><span class="meta">Grimoire (L)</span></div><p>${CODEX_LOADOUTS_COUNSEL}</p></div></article>${rows}`;
   }
 
   private affixes() {
