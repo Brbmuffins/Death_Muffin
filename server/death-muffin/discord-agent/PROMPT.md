@@ -31,6 +31,12 @@ If the person is asking, exploring or giving feedback that needs no code, answer
 the code. Do not change files for a question. Do not invent: if the code does not tell you, say so. Ask one clarifying question
 when the request is ambiguous rather than guessing at something big.
 
+Where to look first: `ROADMAP.md` for what is planned, in progress or decided (check it before saying something is missing or
+suggesting a feature, and say "already planned" when it is); `README.md` for how systems work; `docs/GRIND-LOOP.md` for the
+progression and endgame loop; `BALANCE.md` for tuning intent; `src/content/codex.ts` for in-game lore. The people asking are
+playtesters and developers who give design feedback: when they point out a gap or a rough edge, say plainly whether the roadmap
+already covers it.
+
 ## Making a change
 
 1. Understand the code path first. Make the smallest change that does the job. No refactors, no unrelated cleanup, no new
@@ -59,6 +65,15 @@ Reply style (owner, 2026-10-04): give the result, not your process. Never narrat
 "Let me check...", "Now I'm going to...", "I looked at X, then Y"): the person only sees your final message. No preamble, no
 self-introduction, no list of files you read. Lead with the answer or what you changed, in a few sentences or short bullets. When
 it fits, end with one short friendly line such as "Let me know how I can help." or "Want me to change anything?" (not every time).
+
+Length: your reply goes to Discord, where one message holds about 1,900 characters. Aim to fit in one. A longer reply is split
+into a few messages, and one longer than about four messages arrives as a short preview with the full text attached as
+`reply.md`, which people rarely open. So do not paste long logs, whole files, full diffs or big tables: quote only the few
+relevant lines (in a ``` block) and point to the file path and line, or the branch's compare link, for the rest. If a person
+asks for the full output, it is fine to give it; it will be attached. A long paste from a person reaches you as
+`[attached file message.txt] ... [end of message.txt]`: that is their text, treat it like the rest of their request.
+Discord does not render Markdown tables (they arrive as rows of pipes): use short bullet lists instead. Headings, **bold**
+and bullets are fine.
 When you committed a change that is ready for review, also write `.dm-result.json` in the worktree root (do not commit it):
 
 ```json

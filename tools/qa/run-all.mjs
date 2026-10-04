@@ -41,7 +41,7 @@ const NOT_OFFLINE = new Set([
 ]);
 const DISCS = ['Gravecaller', 'Ossuary', 'Mourner', 'Rotweaver'];
 // Per-script budgets in seconds where the default is not enough (measured on a loaded box).
-const TIMEOUTS = { 'necro-audit': 900, 'spell-feel-smoke': 900 };
+const TIMEOUTS = { 'necro-audit': 900, 'spell-feel-smoke': 900, 'bot-playtest-smoke': 900 };
 
 function discover() {
   const list = fs.readdirSync(QA_DIR).filter((f) => f.endsWith('-smoke.cjs')).map((f) => f.replace(/\.cjs$/, '')).filter((n) => !NOT_OFFLINE.has(n)).sort();

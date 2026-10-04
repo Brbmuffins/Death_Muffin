@@ -13,7 +13,7 @@
  *
  * Spec: { id, input: "art-src/concepts/<id>.png", generation: { model, face_limit, texture_quality },
  *         rig?: { model, rig_type, spec }, animations?: ["preset:biped:idle", ...],
- *         animationMode?: "batch"|"single" }
+ *         animationMode?: "batch"|"single", animateInPlace?: boolean (default true) }
  */
 import { createWriteStream, existsSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
@@ -190,7 +190,11 @@ class Run {
     if (until === 'rig' || !s.animations?.length) return;
 
     // 4. retarget — one batch GLB, or one GLB per clip
-    const common = { input: rig.taskId, out_format: 'glb', bake_animation: true, export_with_geometry: true, animate_in_place: true };
+    const common = { input: rig.taskId, out_format: 'glb', bake_animation: true, export_with_geometry: true,
+      // 2026-10-02 A/B (docs/TRIPO-ANIMATE-IN-PLACE.md): on v1.0 biped GLB retargets this flag changes nothing (byte-identical
+      // output) and does not corrupt the bake. Kept true for continuity; spec.animateInPlace:false sends false. The game strips
+      // root travel at runtime either way (graphics/inPlaceAnimation.ts).
+      animate_in_place: s.animateInPlace ?? true };
     if ((s.animationMode ?? 'single') === 'batch') {
       // The API caps a batch at 5 presets ("animations size must be <= 5").
       for (let i = 0, n = 1; i < s.animations.length; i += 5, n++) {

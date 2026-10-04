@@ -216,11 +216,57 @@ test('model switch: full approvers only', async () => {
   await until(() => Object.values(w.runner.jobs())[0].model === 'opus', d.ad);
 });
 
-test('rate limit: polite one-liner after the hourly cap', async () => {
-  const w = makeWorld({ rateLimit: { perUserPerHour: 2, perUserNewJobsPerDay: 8 } }); const d = makeDiscord(w.runner);
+test('rate limit: polite one-liner after the hourly cap; full approvers get the roomier cap', async () => {
+  const w = makeWorld({ rateLimit: { perUserPerHour: 1, perUserNewJobsPerDay: 8, fullApproverPerHour: 2, fullApproverNewJobsPerDay: 8 } }); const d = makeDiscord(w.runner);
   const { thread } = await request(d, IDS.OWNER, 'q1');
-  await d.say(thread, IDS.OWNER, 'q2'); const m3 = await d.say(thread, IDS.OWNER, 'q3');
+  const m2 = await d.say(thread, IDS.OWNER, 'q2'); assert.equal(m2.replies.length, 0, 'full approver still under the cap');
+  const m3 = await d.say(thread, IDS.OWNER, 'q3');
   assert.match(m3.replies[0].content, /Slow down/);
+  const { thread: t2 } = await request(d, IDS.LIMITED, 'q1');
+  const l2 = await d.say(t2, IDS.LIMITED, 'q2');
+  assert.match(l2.replies[0].content, /Slow down/);
+});
+
+test('working shows "typing…" instead of reacting to every message', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread, m: msg } = await request(d, IDS.HELIX, 'what does the ascension altar do?');
+  await until(() => texts(thread).length >= 2, d.ad);
+  assert.ok(thread.typing > 0, 'typing indicator sent while working');
+  assert.deepEqual(msg.reactions, [], 'no reaction on the opening message');
+  const m2 = await d.say(thread, IDS.HELIX, 'and the vows?');
+  assert.ok(!m2.reactions.includes('👀'), 'no eyes');
+  assert.ok(m2.reactions.every((r) => r === '⏳'), 'only an hourglass, and only when it has to wait');
+});
+
+test('long replies are split into several messages with code blocks kept closed; huge ones become a preview plus reply.md', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.OWNER, 'LONG-REPLY please');
+  await until(() => texts(thread).some((t) => /Done\.$/.test(t)), d.ad);
+  const parts = texts(thread).filter((t) => /line \d+:|Here is the log/.test(t));
+  assert.ok(parts.length >= 2, 'split across messages');
+  for (const t of parts) { assert.ok(t.length <= 2000); assert.equal((t.match(/^```/gm) || []).length % 2, 0, 'fences balanced'); }
+  assert.ok(parts.join('\n').includes('line 69:'), 'nothing cut off');
+  const { thread: t2 } = await request(d, IDS.OWNER, 'HUGE-REPLY please');
+  const withFile = await until(() => t2.sent.find((m) => m.payload.files), d.ad);
+  assert.match(withFile.payload.content, /attached as reply\.md/);
+  assert.ok(withFile.payload.content.length <= 2000);
+  const body = withFile.payload.files[0].attachment.toString('utf8');
+  assert.equal(withFile.payload.files[0].name, 'reply.md'); assert.ok(body.includes('row 399:'));
+});
+
+test('a long paste (Discord message.txt) is read and given to the agent; other files and non-CDN urls are not', async () => {
+  const w = makeWorld();
+  const fetched = [];
+  const d = makeDiscord(w.runner, { fetchFile: async (url) => { fetched.push(url); return { ok: true, status: 200, text: async () => 'PASTED-MARKER-42 ' + 'z'.repeat(3000) }; } });
+  const paste = { name: 'message.txt', contentType: 'text/plain; charset=utf-8', size: 3017, url: 'https://cdn.discordapp.com/attachments/1/2/message.txt' };
+  const img = { name: 'shot.png', contentType: 'image/png', size: 5000, url: 'https://cdn.discordapp.com/attachments/1/3/shot.png' };
+  const evil = { name: 'notes.txt', contentType: 'text/plain', size: 10, url: 'http://127.0.0.1:4321/config' };
+  const m = await d.say(d.main, IDS.OWNER, `${BOT} PASTE-ECHO`, [paste, img, evil]);
+  const thread = await until(() => d.world.threads[d.world.threads.length - 1], d.ad);
+  await until(() => texts(thread).some((t) => /pasted file/.test(t)), d.ad);
+  assert.ok(texts(thread).some((t) => /I can read the pasted file/.test(t)));
+  assert.deepEqual(fetched, [paste.url], 'only the Discord-CDN text file is fetched');
+  assert.ok(m);
 });
 
 test('runner HTTP: loopback + shared secret required', async () => {

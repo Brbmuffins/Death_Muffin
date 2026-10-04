@@ -42,6 +42,7 @@ Rollback undoes the live release only; revert the commit on master afterwards.
 ## Safety summary
 - AI box: `claude -p --restricted --permission-mode dontAsk`, tools = Read/Edit/Write/Glob/Grep + `agit` (filtered git) +
   `check.sh` (unshare -rnm: no network, home read-only except the worktree). No push, no deploy, no secrets in its env.
+- Discord's 2000-character limit: agent replies are split across messages (code blocks kept balanced) and anything over ~4 messages is a preview plus `reply.md` (`runner/lib/discordText.cjs`). A long paste arrives as Discord's `message.txt`; the adapter reads text attachments from Discord's CDN only (≤100 KB each, ≤60,000 characters in all) into the person's message.
 - Person text is wrapped as data (`<request from=… role=…>`, role from config); rules cannot be changed by messages.
 - Runner redacts every outgoing string and audit field; mentions are disabled except the owner ping.
 - Audit log: `state/audit.jsonl` (every request, proposal, approve/refuse, ship result, rollback); ships: `state/ships.jsonl`.

@@ -17,6 +17,7 @@ on the public site.
 | How readable are the zones and boss telegraphs, and what was polished? | [Zone polish audit](ZONE-POLISH-AUDIT.md) | Per-zone readability, clutter, lighting, prop clipping and perf; before/after of the cone, corpse and prop fixes |
 | What stops a modified browser from minting level, gold and items? | [Server authority](SERVER-AUTHORITY.md) | Built on `dm/server-authority` (not deployed): report-first plausibility guards, ceilings, switch to enforce, what is still trusted |
 | What is proposed? | [Future content](../FUTURE_CONTENT.md), [agent briefs](agent-briefs/README.md), [profession roadmap](PROFESSIONS-ROADMAP.md) | Designs; confirm implementation in source and HANDOFF |
+| What are the performance targets, and how far are we? | [Performance budget](PERF-BUDGET.md) | Per-tier targets (Desktop High / Low, Phone) vs measured, how each is measured, Phase 1 finish line |
 | How are assets and browser checks made? | [Asset pipeline](../ASSET_PIPELINE.md), [QA guide](../tools/qa/README.md) | Procedures and test entry points |
 | How do I make or fix an animation without paying Tripo? | [Blender pipeline](BLENDER-PIPELINE.md), [animation sources](ANIMATION-SOURCES.md) | Built on `dm/blender`: scripts, bone map, measurements, limits, CC0 sources |
 | How is the separate hosted service operated? | [VPS handoff](DEATH-MUFFIN-HANDOFF.md), [server operations](../SERVER_OPERATIONS.md) | Deployment and service boundaries |

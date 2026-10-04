@@ -16,7 +16,8 @@ const DEFAULTS = {
   maxConcurrentJobs: 1,
   turnTimeoutMin: 45,
   maxTurnsPerJob: 40,
-  rateLimit: { perUserPerHour: 12, perUserNewJobsPerDay: 8 },
+  // Full approvers (owner, Helix) playtest and ask in bursts, so they get roomier limits than everyone else.
+  rateLimit: { perUserPerHour: 12, perUserNewJobsPerDay: 8, fullApproverPerHour: 60, fullApproverNewJobsPerDay: 30 },
   casualShipsPerDay: 5,         // per LIMITED approver (may approve casual but not sensitive); full approvers and the owner are exempt
   allowMigrations: true,
   numericTolerancePct: 25,

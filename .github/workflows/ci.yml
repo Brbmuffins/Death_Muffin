@@ -34,12 +34,13 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
-      - name: Unit tests (game logic + content)
-        run: npx vitest run
-
+      # Before the unit tests: src/net/realtime-join, runes and sim-fuzz import socket.io/dotenv from server/realtime/node_modules.
       - name: Install realtime server dependencies
         working-directory: server/realtime
         run: npm ci
+
+      - name: Unit tests (game logic + content)
+        run: npx vitest run
 
       - name: Realtime server tests
         run: node --test server/realtime/server.test.js server/vps-handoff/necro-progress/necro-progress.test.cjs server/death-muffin/backend/gathering/gathering.test.cjs

@@ -38,6 +38,7 @@ function makeWorld(over = {}) {
 class Chan extends EventEmitter {
   constructor(world, id, opts = {}) { super(); this.world = world; this.id = id; this.sent = []; this.thread = !!opts.thread; this.parentId = opts.parentId || null; world.chans.set(id, this); }
   isThread() { return this.thread; }
+  async sendTyping() { this.typing = (this.typing || 0) + 1; }
   async send(p) { const m = new Msg(this.world, this, IDS.BOT, p.content || '', true); m.payload = p; this.sent.push(m); return m; }
 }
 class Msg {
@@ -65,7 +66,7 @@ function makeDiscord(runner, over = {}) {
     return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(out)) };
   };
   const ad = createAdapter({ client, runnerUrl: 'http://x', secret: 's', fetchImpl, pollWaitSec: 0, log: () => {}, ...over });
-  const say = (chan, userId, content) => { const m = new Msg(world, chan, userId, content); return ad.onMessage(m).then(() => m); };
+  const say = (chan, userId, content, attachments = []) => { const m = new Msg(world, chan, userId, content); attachments.forEach((a, i) => m.attachments.set(String(i), a)); return ad.onMessage(m).then(() => m); };
   const react = async (msg, userId, emoji) => { const removed = []; const reaction = { emoji: { name: emoji }, message: msg, partial: false, users: { remove: async (id) => { removed.push(id); } } }; await ad.onReaction(reaction, { id: userId, bot: false }); return removed; };
   return { world, client, main, ad, say, react };
 }
