@@ -69,8 +69,8 @@ Five original instrumental cues were generated for Death Muffin with Eleven Musi
 
 | Shipped file | ElevenLabs song ID | Intended areas |
 |---|---|---|
-| `chapterhouse.mp3` | `qNwz58dJ7F2BFoJXBUqi` | Chapterhouse, Alchemist's Wing |
-| `graves.mp3` | `1bmgTc7bU1CSuymXPfpb` | Acre, Graves, Cloister, Fen, Coliseum |
+| `chapterhouse.mp3` | `qNwz58dJ7F2BFoJXBUqi` | Chapterhouse, Alchemist's Wing, Sexton's Acre |
+| `graves.mp3` | `1bmgTc7bU1CSuymXPfpb` | Graves, Cloister, Fen, Coliseum |
 | `ossuary.mp3` | `o7s6Pc2kwtsYqxzlZl9L` | Ossuary, Nave, Sanctum, Warren, Depths |
 | `pyre.mp3` | `fqwplzeT2L60Ue3QymUx` | Cinder Pyre |
 | `boss.mp3` | `EZ1tTGBF07v09eT3ApQP` | Active area boss |
