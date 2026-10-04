@@ -58,6 +58,16 @@ const name = (s, i) => String(s || `shot-${i + 1}`).toLowerCase().replace(/[^a-z
       }
       const clip = s.clip ? await page.locator(String(s.clip)).first().boundingBox().catch(() => null) : null;
       const pad = 12;
+      // Burn a label into the image itself, so a forwarded or cropped screenshot still says it is not the live game.
+      const at = clip ? { x: Math.max(0, clip.x - pad), y: Math.max(0, clip.y - pad) } : { x: 0, y: 0 };
+      await page.evaluate(({ at, branch }) => {
+        document.getElementById('dm-shot-label')?.remove();
+        const d = document.createElement('div');
+        d.id = 'dm-shot-label';
+        d.textContent = `BRANCH PREVIEW · not live${branch ? ` · ${branch}` : ''}`;
+        d.style.cssText = `position:fixed;left:${at.x + 8}px;top:${at.y + 8}px;z-index:2147483647;background:#4c1d95;color:#fff;font:bold 12px/1.5 system-ui,sans-serif;padding:3px 10px;border-radius:10px;letter-spacing:.04em;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.6)`;
+        document.body.appendChild(d);
+      }, { at, branch: process.env.DM_SHOT_BRANCH || '' });
       await page.screenshot({ path: file, timeout: 60000, ...(clip ? { clip: { x: Math.max(0, clip.x - pad), y: Math.max(0, clip.y - pad), width: Math.min(1280, clip.width + 2 * pad), height: Math.min(800, clip.height + 2 * pad) } } : {}) });
       console.log(`shot ${path.relative(WT, file)}${s.clip && !clip ? ' (clip selector not found: full screen)' : ''}`);
     } catch (e) {

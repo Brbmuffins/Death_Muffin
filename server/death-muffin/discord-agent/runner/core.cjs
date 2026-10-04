@@ -282,7 +282,7 @@ function createRunner(cfgIn, opts = {}) {
     fresh.slice(0, SHOTS_PER_POST).reverse().forEach((s) => {
       job.shotsSeen[s.name] = `${s.mtime}:${s.size}`;
       if (s.size > SHOT_MAX_BYTES) { say(job, `Screenshot ${s.name} is too big to post (${Math.round(s.size / 1048576)} MB).`); return; }
-      const f = readShot(s); if (f) post({ threadId: job.threadId }, { content: `📸 ${s.name.replace(/\.png$/i, '')}`, files: [f] });
+      const f = readShot(s); if (f) post({ threadId: job.threadId }, { content: `📸 ${s.name.replace(/\.png$/i, '')} · branch preview, not live`, files: [f] });
     });
     for (const s of fresh.slice(SHOTS_PER_POST)) job.shotsSeen[s.name] = `${s.mtime}:${s.size}`;   // beyond the cap: not posted, not retried
     save();
