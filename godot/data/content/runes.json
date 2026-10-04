@@ -1,0 +1,433 @@
+{
+ "RUNE_RITES": [
+  "bone_needle",
+  "marrow_spear",
+  "exhume",
+  "miasma",
+  "black_litany"
+ ],
+ "RUNE_IDS": [
+  "rune_splinter",
+  "rune_marrow_tap",
+  "rune_volley",
+  "rune_ossuary_ring",
+  "rune_impale",
+  "rune_mass_grave",
+  "rune_bone_colossus",
+  "rune_creeping_rot",
+  "rune_contagion",
+  "rune_hollow_choir",
+  "rune_requiem"
+ ],
+ "RUNE_TUNING": {
+  "splinter": {
+   "reach": 6,
+   "damageFrac": 0.3
+  },
+  "marrowTap": {
+   "essenceBonus": 4,
+   "damageMult": 0.7
+  },
+  "volley": {
+   "every": 4,
+   "needles": 3,
+   "damageFrac": 0.4,
+   "reach": 9
+  },
+  "ring": {
+   "radius": 3,
+   "maxCastRange": 12,
+   "damageMult": 0.8
+  },
+  "impale": {
+   "rootS": 1.5,
+   "damageMult": 1.5
+  },
+  "massGrave": {
+   "count": 3,
+   "statMult": 0.75,
+   "pickRadius": 4
+  },
+  "colossus": {
+   "corpses": 5,
+   "minCorpses": 3,
+   "slots": 2,
+   "pickRadius": 6,
+   "hpPerCorpse": 0.8,
+   "damagePerCorpse": 0.7,
+   "cleaveRadius": 2.4,
+   "cleaveFrac": 0.6,
+   "range": 2.4,
+   "interval": 1.2,
+   "speed": 4.8,
+   "cooldownMult": 8
+  },
+  "creepingRot": {
+   "speed": 1.5,
+   "radiusMult": 0.85,
+   "seekReach": 12
+  },
+  "contagion": {
+   "neighbours": 2,
+   "reach": 4.5,
+   "minStacks": 2
+  },
+  "hollowChoir": {
+   "powerMult": 0.6
+  },
+  "requiem": {
+   "delayMs": 2000,
+   "radiusMult": 1.7
+  }
+ },
+ "RUNES": {
+  "rune_splinter": {
+   "id": "rune_splinter",
+   "name": "Rune of Splinters",
+   "rite": "bone_needle",
+   "rarity": "uncommon",
+   "sell": 25,
+   "lore": "The needle shatters on bone and the shards keep looking.",
+   "short": "Hits splinter to a second foe",
+   "lines": [
+    "When a needle hits, a splinter flies to the nearest other enemy within 6 m for 30% of the damage. Under a scythe, each reaping swing throws one splinter, from the nearest enemy it struck to the nearest one it missed."
+   ],
+   "cost": null
+  },
+  "rune_marrow_tap": {
+   "id": "rune_marrow_tap",
+   "name": "Rune of Marrow-Tap",
+   "rite": "bone_needle",
+   "rarity": "uncommon",
+   "sell": 25,
+   "lore": "Every wound is a spigot.",
+   "short": "More essence, softer needle",
+   "lines": [
+    "Each needle hit returns 4 more Grave Essence. Under a scythe, each swing that lands returns 4 more once, however many enemies it strikes."
+   ],
+   "cost": "Needles and scythe swings hit for 30% less."
+  },
+  "rune_volley": {
+   "id": "rune_volley",
+   "name": "Rune of the Volley",
+   "rite": "bone_needle",
+   "rarity": "rare",
+   "sell": 60,
+   "lore": "Four breaths, then a flock.",
+   "short": "Every 4th needle is a volley",
+   "lines": [
+    "Every 4th needle you throw becomes a volley of 3, aimed at 3 different enemies within 9 m (or all at one target if it stands alone). The volley returns the essence of one needle between them. Needle only: a scythe's swing is not a volley."
+   ],
+   "cost": "Each volley needle hits for 40%."
+  },
+  "rune_ossuary_ring": {
+   "id": "rune_ossuary_ring",
+   "name": "Ossuary Ring Rune",
+   "rite": "marrow_spear",
+   "rarity": "rare",
+   "sell": 60,
+   "lore": "The dead rise in a circle, like a congregation.",
+   "short": "Spikes erupt in a ring",
+   "lines": [
+    "Instead of a line, bone erupts in a 3 m ring at the cursor, striking everything inside and applying Fracture and Hemorrhage as usual."
+   ],
+   "cost": "It no longer reaches down a long line, and strikes for 80%."
+  },
+  "rune_impale": {
+   "id": "rune_impale",
+   "name": "Rune of Impaling",
+   "rite": "marrow_spear",
+   "rarity": "uncommon",
+   "sell": 25,
+   "lore": "One thorn, driven deep.",
+   "short": "Skewers and roots the first foe",
+   "lines": [
+    "The spear stops at the first enemy it meets, hits it for 50% more and roots it for 1.5 s (a boss shrugs the root off but takes the hit)."
+   ],
+   "cost": "It no longer pierces the line behind."
+  },
+  "rune_mass_grave": {
+   "id": "rune_mass_grave",
+   "name": "Mass Grave Rune",
+   "rite": "exhume",
+   "rarity": "rare",
+   "sell": 60,
+   "lore": "Why dig one grave when the field is full?",
+   "short": "Raise up to 3 corpses at once",
+   "lines": [
+    "Exhume raises up to 3 corpses near the cursor at once, each with 75% of the usual thrall health and damage."
+   ],
+   "cost": "Each thrall is weaker, and it spends more corpses."
+  },
+  "rune_bone_colossus": {
+   "id": "rune_bone_colossus",
+   "name": "Bone Colossus Rune",
+   "rite": "exhume",
+   "rarity": "epic",
+   "sell": 150,
+   "lore": "Five dead, bound as one, and it remembers being a wall.",
+   "short": "Five corpses become one giant thrall",
+   "lines": [
+    "When 3 or more corpses lie within 6 m of the one you name, Exhume consumes up to 5 of them and raises one Bone Colossus instead. With fewer, or while a Colossus stands, it raises an ordinary thrall.",
+    "Its health is 4.0x and its damage 3.5x a thrall's with five corpses (less with fewer), and every blow cleaves 2.4 m.",
+    "It fills 2 legion places and you can only keep one: raising another replaces it."
+   ],
+   "cost": "Exhume takes 4 s to ready again after raising a Colossus."
+  },
+  "rune_creeping_rot": {
+   "id": "rune_creeping_rot",
+   "name": "Creeping Rot Rune",
+   "rite": "miasma",
+   "rarity": "uncommon",
+   "sell": 25,
+   "lore": "Rot that has learned to walk.",
+   "short": "The circle crawls toward foes",
+   "lines": [
+    "The circle drifts 1.5 m/s toward the nearest enemy within 12 m of it."
+   ],
+   "cost": "The circle is 15% narrower."
+  },
+  "rune_contagion": {
+   "id": "rune_contagion",
+   "name": "Contagion Rune",
+   "rite": "miasma",
+   "rarity": "rare",
+   "sell": 60,
+   "lore": "It does not stop at the grave.",
+   "short": "Dying Withered foes infect others",
+   "lines": [
+    "A Withered enemy that dies spreads its Withered stacks (minus one) to the 2 nearest enemies within 4.5 m, and those spread it again when they die (it needs 2 stacks to jump)."
+   ],
+   "cost": null
+  },
+  "rune_hollow_choir": {
+   "id": "rune_hollow_choir",
+   "name": "Hollow Choir Rune",
+   "rite": "black_litany",
+   "rarity": "rare",
+   "sell": 60,
+   "lore": "The dead sing, and are not spent.",
+   "short": "Your thralls sing instead of dying",
+   "lines": [
+    "Black Litany no longer sacrifices your thralls. They still lend their voices to its power."
+   ],
+   "cost": "The burst hits for 40% less."
+  },
+  "rune_requiem": {
+   "id": "rune_requiem",
+   "name": "Requiem Rune",
+   "rite": "black_litany",
+   "rarity": "epic",
+   "sell": 150,
+   "lore": "A hymn is only terrible once it is finished.",
+   "short": "The burst lands 2 s later, twice as wide",
+   "lines": [
+    "Black Litany marks the ground, then bursts 2 s later over 1.7x the radius. Corpses and thralls are consumed when it bursts."
+   ],
+   "cost": "Enemies can walk out of it, and it can take more of your thralls."
+  }
+ },
+ "RUNE_ORDER": [
+  "rune_splinter",
+  "rune_marrow_tap",
+  "rune_volley",
+  "rune_ossuary_ring",
+  "rune_impale",
+  "rune_mass_grave",
+  "rune_bone_colossus",
+  "rune_creeping_rot",
+  "rune_contagion",
+  "rune_hollow_choir",
+  "rune_requiem"
+ ],
+ "AREA_RUNE_POOL": {
+  "graves": [
+   "rune_splinter",
+   "rune_marrow_tap",
+   "rune_impale",
+   "rune_creeping_rot"
+  ],
+  "ossuary": [
+   "rune_splinter",
+   "rune_marrow_tap",
+   "rune_volley",
+   "rune_ossuary_ring",
+   "rune_impale",
+   "rune_mass_grave",
+   "rune_creeping_rot",
+   "rune_contagion",
+   "rune_hollow_choir"
+  ],
+  "nave": [
+   "rune_splinter",
+   "rune_marrow_tap",
+   "rune_volley",
+   "rune_ossuary_ring",
+   "rune_impale",
+   "rune_mass_grave",
+   "rune_creeping_rot",
+   "rune_contagion",
+   "rune_hollow_choir"
+  ],
+  "sanctum": [
+   "rune_splinter",
+   "rune_marrow_tap",
+   "rune_volley",
+   "rune_ossuary_ring",
+   "rune_impale",
+   "rune_mass_grave",
+   "rune_bone_colossus",
+   "rune_creeping_rot",
+   "rune_contagion",
+   "rune_hollow_choir",
+   "rune_requiem"
+  ],
+  "cloister": [
+   "rune_splinter",
+   "rune_marrow_tap",
+   "rune_volley",
+   "rune_ossuary_ring",
+   "rune_impale",
+   "rune_mass_grave",
+   "rune_bone_colossus",
+   "rune_creeping_rot",
+   "rune_contagion",
+   "rune_hollow_choir",
+   "rune_requiem"
+  ],
+  "pyre": [
+   "rune_splinter",
+   "rune_marrow_tap",
+   "rune_volley",
+   "rune_ossuary_ring",
+   "rune_impale",
+   "rune_mass_grave",
+   "rune_bone_colossus",
+   "rune_creeping_rot",
+   "rune_contagion",
+   "rune_hollow_choir",
+   "rune_requiem"
+  ],
+  "fen": [
+   "rune_splinter",
+   "rune_marrow_tap",
+   "rune_volley",
+   "rune_ossuary_ring",
+   "rune_impale",
+   "rune_mass_grave",
+   "rune_bone_colossus",
+   "rune_creeping_rot",
+   "rune_contagion",
+   "rune_hollow_choir",
+   "rune_requiem"
+  ],
+  "warren": [
+   "rune_splinter",
+   "rune_marrow_tap",
+   "rune_volley",
+   "rune_ossuary_ring",
+   "rune_impale",
+   "rune_mass_grave",
+   "rune_creeping_rot",
+   "rune_contagion",
+   "rune_hollow_choir"
+  ],
+  "coliseum": [
+   "rune_splinter",
+   "rune_marrow_tap",
+   "rune_volley",
+   "rune_ossuary_ring",
+   "rune_impale",
+   "rune_mass_grave",
+   "rune_bone_colossus",
+   "rune_creeping_rot",
+   "rune_contagion",
+   "rune_hollow_choir",
+   "rune_requiem"
+  ]
+ },
+ "RUNE_WEIGHT": {
+  "uncommon": 3,
+  "rare": 2,
+  "epic": 1
+ },
+ "ELITE_RUNE_CHANCE_BY_AREA": {
+  "graves": 0.05,
+  "warren": 0.055,
+  "ossuary": 0.06,
+  "nave": 0.07,
+  "coliseum": 0.08,
+  "sanctum": 0.09,
+  "cloister": 0.1,
+  "pyre": 0.11,
+  "fen": 0.12
+ },
+ "ELITE_RUNE_CHANCE": 0.05,
+ "SURGE_RUNE_CHANCE": 0.35,
+ "BOSS_REPEAT_RUNE_CHANCE": 0.5,
+ "BOSS_RUNE_POOL": {
+  "gravedigger": [
+   "rune_splinter",
+   "rune_marrow_tap",
+   "rune_mass_grave"
+  ],
+  "abbess": [
+   "rune_ossuary_ring",
+   "rune_impale",
+   "rune_bone_colossus",
+   "rune_volley"
+  ],
+  "congregation": [
+   "rune_creeping_rot",
+   "rune_contagion",
+   "rune_hollow_choir"
+  ],
+  "prelate": [
+   "rune_requiem",
+   "rune_splinter",
+   "rune_marrow_tap",
+   "rune_volley",
+   "rune_ossuary_ring",
+   "rune_impale",
+   "rune_mass_grave",
+   "rune_bone_colossus",
+   "rune_creeping_rot",
+   "rune_contagion",
+   "rune_hollow_choir",
+   "rune_requiem"
+  ],
+  "saint": [
+   "rune_creeping_rot",
+   "rune_contagion",
+   "rune_hollow_choir",
+   "rune_requiem",
+   "rune_bone_colossus"
+  ],
+  "regent": [
+   "rune_splinter",
+   "rune_marrow_tap",
+   "rune_volley",
+   "rune_ossuary_ring",
+   "rune_impale",
+   "rune_mass_grave",
+   "rune_bone_colossus",
+   "rune_creeping_rot",
+   "rune_contagion",
+   "rune_hollow_choir",
+   "rune_requiem"
+  ],
+  "mire": [
+   "rune_splinter",
+   "rune_marrow_tap",
+   "rune_volley",
+   "rune_ossuary_ring",
+   "rune_impale",
+   "rune_mass_grave",
+   "rune_bone_colossus",
+   "rune_creeping_rot",
+   "rune_contagion",
+   "rune_hollow_choir",
+   "rune_requiem"
+  ]
+ }
+}

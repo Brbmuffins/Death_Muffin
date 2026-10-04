@@ -1,0 +1,74 @@
+{
+ "CLIP_RELEASE": {
+  "slam": 0.4,
+  "sweep": 0.286,
+  "flick": 0.619,
+  "channel": 0.687,
+  "summon": 0.5
+ },
+ "ABILITY_ROLE": {
+  "bone_needle": "primary",
+  "marrow_spear": "bolt",
+  "rot_lance": "bolt",
+  "wailing_skull": "bolt",
+  "grave_frost": "bolt",
+  "bone_fan": "bolt",
+  "soul_siphon": "bolt",
+  "ivory_cleave": "bolt",
+  "grave_step": "bolt",
+  "veil_step": "bolt",
+  "miasma": "bolt",
+  "corpse_explosion": "big",
+  "bone_storm": "big",
+  "command_rend": "big",
+  "ossuary_wall": "big",
+  "plague_bloom": "big",
+  "bone_prison": "big",
+  "black_litany": "channel",
+  "dirge": "channel",
+  "bone_mantle": "channel",
+  "grave_offering": "channel",
+  "exhume": "summon",
+  "grave_hands": "summon",
+  "rally_dead": "summon",
+  "carrion_seed": "summon"
+ },
+ "WEAPON_CLIPS": {
+  "none": {
+   "primary": null,
+   "bolt": null,
+   "big": "slam",
+   "channel": "channel",
+   "summon": "summon"
+  },
+  "staff": {
+   "primary": null,
+   "bolt": null,
+   "big": "slam",
+   "channel": "channel",
+   "summon": "summon"
+  },
+  "scythe": {
+   "primary": "sweep",
+   "bolt": null,
+   "big": "slam",
+   "channel": "channel",
+   "summon": "summon"
+  },
+  "wand": {
+   "primary": "flick",
+   "bolt": "flick",
+   "big": null,
+   "channel": "channel",
+   "summon": "summon"
+  },
+  "sickle": {
+   "primary": "flick",
+   "bolt": "flick",
+   "big": null,
+   "channel": "channel",
+   "summon": "summon"
+  }
+ },
+ "RELEASE_LEAD_S": 0.08
+}

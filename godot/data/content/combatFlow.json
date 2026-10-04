@@ -1,0 +1,244 @@
+{
+ "CAST_FLOW": {
+  "bone_needle": {
+   "lockMs": 60,
+   "gestureSeconds": 0.22
+  },
+  "marrow_spear": {
+   "lockMs": 100,
+   "gestureSeconds": 0.3
+  },
+  "exhume": {
+   "lockMs": 110,
+   "gestureSeconds": 0.34
+  },
+  "miasma": {
+   "lockMs": 90,
+   "gestureSeconds": 0.3
+  },
+  "black_litany": {
+   "lockMs": 160,
+   "gestureSeconds": 0.48
+  },
+  "corpse_explosion": {
+   "lockMs": 70,
+   "gestureSeconds": 0.24
+  },
+  "wailing_skull": {
+   "lockMs": 80,
+   "gestureSeconds": 0.26
+  },
+  "grave_step": {
+   "lockMs": 60,
+   "gestureSeconds": 0.22
+  },
+  "grave_frost": {
+   "lockMs": 100,
+   "gestureSeconds": 0.3
+  },
+  "bone_mantle": {
+   "lockMs": 140,
+   "gestureSeconds": 0.4
+  },
+  "bone_fan": {
+   "lockMs": 60,
+   "gestureSeconds": 0.22
+  },
+  "rot_lance": {
+   "lockMs": 80,
+   "gestureSeconds": 0.26
+  },
+  "grave_offering": {
+   "lockMs": 90,
+   "gestureSeconds": 0.3
+  },
+  "ivory_cleave": {
+   "lockMs": 110,
+   "gestureSeconds": 0.3
+  },
+  "veil_step": {
+   "lockMs": 60,
+   "gestureSeconds": 0.2
+  },
+  "rally_dead": {
+   "lockMs": 120,
+   "gestureSeconds": 0.36
+  },
+  "carrion_seed": {
+   "lockMs": 90,
+   "gestureSeconds": 0.3
+  },
+  "soul_siphon": {
+   "lockMs": 90,
+   "gestureSeconds": 0.3
+  },
+  "bone_prison": {
+   "lockMs": 110,
+   "gestureSeconds": 0.32
+  },
+  "grave_hands": {
+   "lockMs": 120,
+   "gestureSeconds": 0.36
+  },
+  "bone_storm": {
+   "lockMs": 130,
+   "gestureSeconds": 0.4
+  },
+  "hollow_cut": {
+   "lockMs": 150,
+   "gestureSeconds": 0.55
+  },
+  "shield_bash": {
+   "lockMs": 140,
+   "gestureSeconds": 0.4
+  },
+  "grave_slam": {
+   "lockMs": 200,
+   "gestureSeconds": 0.5
+  },
+  "bulwark": {
+   "lockMs": 120,
+   "gestureSeconds": 0.35
+  },
+  "corpse_vigil": {
+   "lockMs": 160,
+   "gestureSeconds": 0.45
+  },
+  "grave_brand": {
+   "lockMs": 110,
+   "gestureSeconds": 0.32
+  },
+  "oath_unbroken": {
+   "lockMs": 180,
+   "gestureSeconds": 0.55
+  },
+  "flail_swing": {
+   "lockMs": 130,
+   "gestureSeconds": 0.45
+  },
+  "lantern_cone": {
+   "lockMs": 120,
+   "gestureSeconds": 0.35
+  },
+  "chain_pull": {
+   "lockMs": 130,
+   "gestureSeconds": 0.4
+  },
+  "burn_the_dead": {
+   "lockMs": 150,
+   "gestureSeconds": 0.45
+  },
+  "watchmans_ward": {
+   "lockMs": 140,
+   "gestureSeconds": 0.4
+  },
+  "cremate": {
+   "lockMs": 120,
+   "gestureSeconds": 0.38
+  },
+  "last_light": {
+   "lockMs": 180,
+   "gestureSeconds": 0.55
+  },
+  "palm_strike": {
+   "lockMs": 90,
+   "gestureSeconds": 0.32
+  },
+  "toll": {
+   "lockMs": 120,
+   "gestureSeconds": 0.38
+  },
+  "resonant_step": {
+   "lockMs": 110,
+   "gestureSeconds": 0.35
+  },
+  "knell": {
+   "lockMs": 120,
+   "gestureSeconds": 0.36
+  },
+  "choir_of_one": {
+   "lockMs": 150,
+   "gestureSeconds": 0.45
+  },
+  "sound_the_corpse": {
+   "lockMs": 130,
+   "gestureSeconds": 0.4
+  },
+  "great_toll": {
+   "lockMs": 190,
+   "gestureSeconds": 0.55
+  },
+  "hook_throw": {
+   "lockMs": 110,
+   "gestureSeconds": 0.35
+  },
+  "harvest": {
+   "lockMs": 140,
+   "gestureSeconds": 0.42
+  },
+  "crow_swarm": {
+   "lockMs": 130,
+   "gestureSeconds": 0.4
+  },
+  "hook_pull": {
+   "lockMs": 120,
+   "gestureSeconds": 0.38
+  },
+  "hex_charm": {
+   "lockMs": 130,
+   "gestureSeconds": 0.4
+  },
+  "butcher": {
+   "lockMs": 140,
+   "gestureSeconds": 0.42
+  },
+  "murder_of_crows": {
+   "lockMs": 190,
+   "gestureSeconds": 0.55
+  },
+  "spirit_bolt": {
+   "lockMs": 80,
+   "gestureSeconds": 0.26
+  },
+  "veil_form": {
+   "lockMs": 60,
+   "gestureSeconds": 0.2
+  },
+  "echo": {
+   "lockMs": 130,
+   "gestureSeconds": 0.4
+  },
+  "veil_tear": {
+   "lockMs": 140,
+   "gestureSeconds": 0.42
+  },
+  "crossing": {
+   "lockMs": 100,
+   "gestureSeconds": 0.32
+  },
+  "lay_to_rest": {
+   "lockMs": 130,
+   "gestureSeconds": 0.4
+  },
+  "between_worlds": {
+   "lockMs": 180,
+   "gestureSeconds": 0.52
+  },
+  "ossuary_wall": {
+   "lockMs": 130,
+   "gestureSeconds": 0.36
+  },
+  "command_rend": {
+   "lockMs": 130,
+   "gestureSeconds": 0.36
+  },
+  "dirge": {
+   "lockMs": 130,
+   "gestureSeconds": 0.36
+  },
+  "plague_bloom": {
+   "lockMs": 130,
+   "gestureSeconds": 0.36
+  }
+ }
+}

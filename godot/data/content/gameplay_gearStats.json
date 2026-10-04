@@ -1,0 +1,257 @@
+{
+ "STAT_PRIMER": "VIT: health. INT: spell power and essence. STR: a little spell power. AGI: move speed and a little spell power.",
+ "THRALL_TOUGH_SHARE": 0.25,
+ "THRALL_DAMAGE_SHARE": 0.15,
+ "THRALL_UPTIME": 0.7,
+ "EXTRA_THRALL_VALUE": 1,
+ "REGEN_HORIZON_S": 25,
+ "REFERENCE": {
+  "level": 20,
+  "stat": 10
+ },
+ "ROLE_WEIGHTS": {
+  "ossuary": {
+   "damage": 0.35,
+   "toughness": 0.5,
+   "sustain": 0.1,
+   "move": 0.05
+  },
+  "gravecaller": {
+   "damage": 0.5,
+   "toughness": 0.3,
+   "sustain": 0.15,
+   "move": 0.05
+  },
+  "mourner": {
+   "damage": 0.45,
+   "toughness": 0.3,
+   "sustain": 0.2,
+   "move": 0.05
+  },
+  "rotweaver": {
+   "damage": 0.55,
+   "toughness": 0.25,
+   "sustain": 0.15,
+   "move": 0.05
+  },
+  "grave_warden": {
+   "damage": 0.4,
+   "toughness": 0.4,
+   "sustain": 0.1,
+   "move": 0.1
+  },
+  "bell_monk": {
+   "damage": 0.4,
+   "toughness": 0.3,
+   "sustain": 0.15,
+   "move": 0.15
+  },
+  "carrion_witch": {
+   "damage": 0.5,
+   "toughness": 0.25,
+   "sustain": 0.15,
+   "move": 0.1
+  },
+  "hollow_knight": {
+   "damage": 0.4,
+   "toughness": 0.45,
+   "sustain": 0.05,
+   "move": 0.1
+  },
+  "veilwalker": {
+   "damage": 0.45,
+   "toughness": 0.2,
+   "sustain": 0.15,
+   "move": 0.2
+  }
+ },
+ "LOADOUT_VALUE": {
+  "reap": 2,
+  "pierce": 2,
+  "primaryShare": 0.8,
+  "withered": 3,
+  "exhume": 2,
+  "riteShare": 0.2,
+  "bell": 1
+ },
+ "SET_VALUE": {
+  "wardCap": 0.6,
+  "wardScale": 0.4,
+  "litanyPer1pct": 0.1,
+  "corpseHealPer1pct": 0.25,
+  "witheredPerStack": 0.65,
+  "miasmaPer1pct": 0.09,
+  "rotweaverMiasmaMult": 2.5,
+  "legendary": {
+   "thrallDeathBurst": 12,
+   "championEvery": 8,
+   "spearRally": 6,
+   "wardReflect": 10,
+   "colossusGuard": 40,
+   "litanyShatter": 1.5,
+   "corpseWisp": 0.6,
+   "soulHarvestRate": 6,
+   "wraithNova": 6,
+   "miasmaSpreadsWithered": 8,
+   "witheredBurstAt": 10
+  }
+ },
+ "STAT_PRIORITY": {
+  "ossuary": {
+   "order": [
+    "stat_vit",
+    "stat_int",
+    "stat_str",
+    "stat_agi"
+   ],
+   "weights": {
+    "stat_str": 0.25270758122742937,
+    "stat_agi": 0.1409168974098596,
+    "stat_int": 0.9664609293117523,
+    "stat_vit": 1.026919589929565
+   }
+  },
+  "gravecaller": {
+   "order": [
+    "stat_int",
+    "stat_vit",
+    "stat_str",
+    "stat_agi"
+   ],
+   "weights": {
+    "stat_str": 0.3610108303249149,
+    "stat_agi": 0.1950685219585635,
+    "stat_int": 1.391027134039824,
+    "stat_vit": 0.5630381982777655
+   }
+  },
+  "mourner": {
+   "order": [
+    "stat_int",
+    "stat_vit",
+    "stat_str",
+    "stat_agi"
+   ],
+   "weights": {
+    "stat_str": 0.3249097472924012,
+    "stat_agi": 0.17701798044231776,
+    "stat_int": 1.3509207074773322,
+    "stat_vit": 0.5721256784344986
+   }
+  },
+  "rotweaver": {
+   "order": [
+    "stat_int",
+    "stat_vit",
+    "stat_str",
+    "stat_agi"
+   ],
+   "weights": {
+    "stat_str": 0.39711191335738416,
+    "stat_agi": 0.21311906347480924,
+    "stat_int": 1.5083556538954213,
+    "stat_vit": 0.45699289624905326
+   }
+  },
+  "hollow_knight": {
+   "order": [
+    "stat_int",
+    "stat_vit",
+    "stat_str",
+    "stat_agi"
+   ],
+   "weights": {
+    "stat_str": 0.2888086642599319,
+    "stat_agi": 0.17353054572220028,
+    "stat_int": 1.0112088040060696,
+    "stat_vit": 0.8866995073891548
+   }
+  },
+  "grave_warden": {
+   "order": [
+    "stat_int",
+    "stat_vit",
+    "stat_str",
+    "stat_agi"
+   ],
+   "weights": {
+    "stat_str": 0.2888086642599319,
+    "stat_agi": 0.17353054572220028,
+    "stat_int": 1.0837894491673605,
+    "stat_vit": 0.7881773399014858
+   }
+  },
+  "bell_monk": {
+   "order": [
+    "stat_int",
+    "stat_vit",
+    "stat_str",
+    "stat_agi"
+   ],
+   "weights": {
+    "stat_str": 0.28880866425992086,
+    "stat_agi": 0.18809365251831747,
+    "stat_int": 1.1563700943286406,
+    "stat_vit": 0.5911330049261144
+   }
+  },
+  "carrion_witch": {
+   "order": [
+    "stat_int",
+    "stat_vit",
+    "stat_str",
+    "stat_agi"
+   ],
+   "weights": {
+    "stat_str": 0.36101083032492604,
+    "stat_agi": 0.20963162875468072,
+    "stat_int": 1.3910271340398352,
+    "stat_vit": 0.49261083743844536
+   }
+  },
+  "veilwalker": {
+   "order": [
+    "stat_int",
+    "stat_vit",
+    "stat_str",
+    "stat_agi"
+   ],
+   "weights": {
+    "stat_str": 0.3249097472924012,
+    "stat_agi": 0.22070730083065815,
+    "stat_int": 1.2736986141842266,
+    "stat_vit": 0.3940886699507429
+   }
+  }
+ },
+ "RECOMMENDED_WEAPONS": {
+  "ossuary": {
+   "kinds": [
+    "staff",
+    "grimoire"
+   ],
+   "why": "the staff adds spell damage, the grimoire speeds your rites"
+  },
+  "gravecaller": {
+   "kinds": [
+    "scythe",
+    "skull_focus"
+   ],
+   "why": "fight beside your legion; a gold or better skull adds a thrall"
+  },
+  "mourner": {
+   "kinds": [
+    "staff",
+    "mourning_bell"
+   ],
+   "why": "the bell heals the party each time your wraiths hit"
+  },
+  "rotweaver": {
+   "kinds": [
+    "sickle",
+    "grimoire"
+   ],
+   "why": "Withered ticks on its own, and the grimoire speeds Miasma"
+  }
+ }
+}

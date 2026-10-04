@@ -1,0 +1,50 @@
+{
+ "EQUIP_SLOTS": [
+  {
+   "id": "head",
+   "label": "Head",
+   "glyph": "⛨"
+  },
+  {
+   "id": "chest",
+   "label": "Chest",
+   "glyph": "⛊"
+  },
+  {
+   "id": "legs",
+   "label": "Legs",
+   "glyph": "‖"
+  },
+  {
+   "id": "feet",
+   "label": "Feet",
+   "glyph": "◭"
+  },
+  {
+   "id": "hands",
+   "label": "Hands",
+   "glyph": "✋"
+  },
+  {
+   "id": "main_hand",
+   "label": "Main hand",
+   "glyph": "⚔"
+  },
+  {
+   "id": "off_hand",
+   "label": "Off hand",
+   "glyph": "◐"
+  },
+  {
+   "id": "ring",
+   "label": "Ring",
+   "glyph": "◎"
+  },
+  {
+   "id": "trinket",
+   "label": "Trinket",
+   "glyph": "✦"
+  }
+ ],
+ "LEGENDARY_AURA_PIECES": 4
+}

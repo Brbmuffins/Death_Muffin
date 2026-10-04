@@ -1,0 +1,1437 @@
+{
+ "WING_PROPS": [
+  {
+   "prop": "alch_cauldron",
+   "x": 33,
+   "z": 19.5,
+   "rot": 0
+  },
+  {
+   "prop": "alch_bone_candles",
+   "x": 30.4,
+   "z": 22.4,
+   "rot": 0
+  },
+  {
+   "prop": "alch_bone_candles",
+   "x": 35.8,
+   "z": 16.8,
+   "rot": 0
+  },
+  {
+   "prop": "alch_canopic_jars",
+   "x": 31.2,
+   "z": 16.9,
+   "rot": 0.4,
+   "s": 0.9
+  },
+  {
+   "prop": "bone_pile",
+   "x": 35.4,
+   "z": 22.3,
+   "rot": 1.2,
+   "s": 0.55
+  },
+  {
+   "prop": "candles",
+   "x": 34.9,
+   "z": 21.1,
+   "rot": 0,
+   "s": 0.8
+  },
+  {
+   "prop": "alch_alembic",
+   "x": 24.5,
+   "z": 8.9,
+   "rot": 0
+  },
+  {
+   "prop": "workbench",
+   "x": 29.2,
+   "z": 9.4,
+   "rot": 0
+  },
+  {
+   "prop": "candles",
+   "x": 27.8,
+   "z": 9.4,
+   "rot": 0,
+   "y": 1.05,
+   "s": 0.7
+  },
+  {
+   "prop": "alch_canopic_jars",
+   "x": 30.6,
+   "z": 9.4,
+   "rot": 3.141592653589793,
+   "y": 1.05,
+   "s": 0.8
+  },
+  {
+   "prop": "alch_herb_bundle",
+   "x": 27.6,
+   "z": 8.4,
+   "rot": 0,
+   "y": 2.3,
+   "s": 1.5
+  },
+  {
+   "prop": "alch_herb_bundle",
+   "x": 29.1,
+   "z": 8.4,
+   "rot": 0.3,
+   "y": 2,
+   "s": 1.3
+  },
+  {
+   "prop": "alch_herb_bundle",
+   "x": 30.6,
+   "z": 8.4,
+   "rot": -0.2,
+   "y": 2.3,
+   "s": 1.5
+  },
+  {
+   "prop": "alch_herb_bundle",
+   "x": 32.1,
+   "z": 8.4,
+   "rot": 0.5,
+   "y": 2.1,
+   "s": 1.3
+  },
+  {
+   "prop": "alch_bone_candles",
+   "x": 32.7,
+   "z": 9.2,
+   "rot": 0.7
+  },
+  {
+   "prop": "alch_reagent_shelf",
+   "x": 35.5,
+   "z": 8.45,
+   "rot": -1.5707963267948966
+  },
+  {
+   "prop": "alch_reagent_shelf",
+   "x": 37.4,
+   "z": 8.45,
+   "rot": -1.5707963267948966
+  },
+  {
+   "prop": "alch_reagent_shelf",
+   "x": 39.3,
+   "z": 8.45,
+   "rot": -1.5707963267948966
+  },
+  {
+   "prop": "alch_reagent_shelf",
+   "x": 41.2,
+   "z": 8.45,
+   "rot": -1.5707963267948966
+  },
+  {
+   "prop": "alch_reagent_shelf",
+   "x": 43.1,
+   "z": 8.45,
+   "rot": -1.5707963267948966
+  },
+  {
+   "prop": "alch_herb_bundle",
+   "x": 44.9,
+   "z": 8.5,
+   "rot": 0.2,
+   "y": 1.7,
+   "s": 1.4
+  },
+  {
+   "prop": "alch_herb_bundle",
+   "x": 20.65,
+   "z": 13.8,
+   "rot": 0,
+   "y": 1.7,
+   "s": 1.4
+  },
+  {
+   "prop": "alch_herb_bundle",
+   "x": 20.65,
+   "z": 15,
+   "rot": 0.6,
+   "y": 1.9,
+   "s": 1.2
+  },
+  {
+   "prop": "alch_herb_bundle",
+   "x": 20.65,
+   "z": 25.2,
+   "rot": 0.2,
+   "y": 1.8,
+   "s": 1.3
+  },
+  {
+   "prop": "alch_herb_bundle",
+   "x": 20.65,
+   "z": 26.4,
+   "rot": 1,
+   "y": 1.6,
+   "s": 1.4
+  },
+  {
+   "prop": "workbench",
+   "x": 33.8,
+   "z": 13.6,
+   "rot": 0
+  },
+  {
+   "prop": "candles",
+   "x": 32.6,
+   "z": 13.6,
+   "rot": 0,
+   "y": 1.05,
+   "s": 0.7
+  },
+  {
+   "prop": "alch_canopic_jars",
+   "x": 34.9,
+   "z": 13.6,
+   "rot": 0.3,
+   "y": 1.05,
+   "s": 0.8
+  },
+  {
+   "prop": "covenant_lectern",
+   "x": 36.4,
+   "z": 18.4,
+   "rot": 2.3
+  },
+  {
+   "prop": "grave_lantern",
+   "x": 29.6,
+   "z": 13.2,
+   "rot": 0
+  },
+  {
+   "prop": "grave_lantern",
+   "x": 38.4,
+   "z": 24.8,
+   "rot": 0
+  },
+  {
+   "prop": "alch_mortar_table",
+   "x": 41.3,
+   "z": 15.2,
+   "rot": -0.5
+  },
+  {
+   "prop": "alch_bone_candles",
+   "x": 40.2,
+   "z": 13.6,
+   "rot": 0.2
+  },
+  {
+   "prop": "alch_mortar_table",
+   "x": 31.4,
+   "z": 27,
+   "rot": 0.7
+  },
+  {
+   "prop": "alch_bone_candles",
+   "x": 35.6,
+   "z": 26.4,
+   "rot": 0.9
+  },
+  {
+   "prop": "alch_bone_candles",
+   "x": 43.2,
+   "z": 24.2,
+   "rot": 0.3
+  },
+  {
+   "prop": "workbench",
+   "x": 33.4,
+   "z": 30.6,
+   "rot": 0
+  },
+  {
+   "prop": "candles",
+   "x": 32.2,
+   "z": 30.6,
+   "rot": 0,
+   "y": 1.05,
+   "s": 0.7
+  },
+  {
+   "prop": "bone_pile",
+   "x": 35.2,
+   "z": 30.4,
+   "rot": 0.4,
+   "s": 0.5
+  },
+  {
+   "prop": "coffin_stack",
+   "x": 28.8,
+   "z": 30.9,
+   "rot": 0.05
+  },
+  {
+   "prop": "alch_counter",
+   "x": 45.1,
+   "z": 20,
+   "rot": 3.141592653589793
+  },
+  {
+   "prop": "alch_canopic_jars",
+   "x": 45.1,
+   "z": 18.4,
+   "rot": 3.141592653589793,
+   "y": 1.2
+  },
+  {
+   "prop": "candles",
+   "x": 44.9,
+   "z": 21.4,
+   "rot": 0,
+   "y": 1.2,
+   "s": 0.6
+  },
+  {
+   "prop": "alch_reagent_shelf",
+   "x": 45.4,
+   "z": 13.2,
+   "rot": 3.141592653589793
+  },
+  {
+   "prop": "alch_reagent_shelf",
+   "x": 45.4,
+   "z": 15.1,
+   "rot": 3.141592653589793
+  },
+  {
+   "prop": "alch_reagent_shelf",
+   "x": 45.4,
+   "z": 24.6,
+   "rot": 3.141592653589793
+  },
+  {
+   "prop": "alch_reagent_shelf",
+   "x": 45.4,
+   "z": 26.5,
+   "rot": 3.141592653589793
+  },
+  {
+   "prop": "alch_bubbling_vat",
+   "x": 41.5,
+   "z": 27.6,
+   "rot": 0
+  },
+  {
+   "prop": "alch_bubbling_vat",
+   "x": 37.3,
+   "z": 29,
+   "rot": 0.6,
+   "s": 0.8
+  },
+  {
+   "prop": "coffin_stack",
+   "x": 44.6,
+   "z": 30.5,
+   "rot": 0
+  },
+  {
+   "prop": "alch_station_sign",
+   "x": 27.5,
+   "z": 15.8,
+   "rot": 3.141592653589793
+  },
+  {
+   "prop": "alch_totem_stirrer",
+   "x": 23.2,
+   "z": 14.2,
+   "rot": 3.141592653589793
+  },
+  {
+   "prop": "alch_bone_candles",
+   "x": 22.6,
+   "z": 16.3,
+   "rot": 0
+  },
+  {
+   "prop": "alch_bone_candles",
+   "x": 22.6,
+   "z": 23.7,
+   "rot": 0
+  },
+  {
+   "prop": "alch_mortar_table",
+   "x": 28.5,
+   "z": 24,
+   "rot": 0
+  },
+  {
+   "prop": "workbench",
+   "x": 25.6,
+   "z": 26.6,
+   "rot": 1.5707963267948966
+  },
+  {
+   "prop": "candles",
+   "x": 25.6,
+   "z": 25.8,
+   "rot": 0,
+   "y": 1.05,
+   "s": 0.7
+  },
+  {
+   "prop": "alch_canopic_jars",
+   "x": 23.4,
+   "z": 28.4,
+   "rot": 3.141592653589793
+  },
+  {
+   "prop": "alch_drying_rack",
+   "x": 21.7,
+   "z": 11.4,
+   "rot": 0
+  },
+  {
+   "prop": "alch_drying_rack",
+   "x": 21.7,
+   "z": 30.4,
+   "rot": 0
+  },
+  {
+   "prop": "alch_herb_bundle",
+   "x": 23.4,
+   "z": 30.8,
+   "rot": 0.9,
+   "tilt": 0.25
+  },
+  {
+   "prop": "alch_herb_bundle",
+   "x": 24.4,
+   "z": 31,
+   "rot": 2.1,
+   "tilt": -0.2,
+   "s": 0.9
+  }
+ ],
+ "WING_FLOOR": [
+  {
+   "kind": "rug",
+   "x": 25.4,
+   "z": 20,
+   "w": 8.4,
+   "d": 2.5,
+   "rot": 0,
+   "color": 8007204,
+   "alt": 13214298
+  },
+  {
+   "kind": "rug",
+   "x": 41.6,
+   "z": 20,
+   "w": 4.6,
+   "d": 3.6,
+   "rot": 0,
+   "color": 4020794,
+   "alt": 13214298
+  },
+  {
+   "kind": "rug",
+   "x": 26.6,
+   "z": 26.6,
+   "w": 3.4,
+   "d": 4.2,
+   "rot": 0.08,
+   "color": 5913130,
+   "alt": 12095578
+  },
+  {
+   "kind": "stain",
+   "x": 39.6,
+   "z": 28.4,
+   "w": 3.4,
+   "d": 2.4,
+   "rot": 0.5,
+   "color": 2902562
+  },
+  {
+   "kind": "stain",
+   "x": 35.2,
+   "z": 22.2,
+   "w": 2.2,
+   "d": 1.8,
+   "rot": 1.1,
+   "color": 1708556
+  },
+  {
+   "kind": "stain",
+   "x": 29.6,
+   "z": 11.2,
+   "w": 2.6,
+   "d": 1.6,
+   "rot": -0.3,
+   "color": 1708556
+  },
+  {
+   "kind": "stain",
+   "x": 33.6,
+   "z": 24.2,
+   "w": 1.5,
+   "d": 1.2,
+   "rot": 2.2,
+   "color": 2902562
+  }
+ ],
+ "PROPS": {
+  "tombstone_round": {
+   "height": 1.25,
+   "collider": {
+    "kind": "circle",
+    "r": 0.45
+   }
+  },
+  "tombstone_cross": {
+   "height": 1.7,
+   "collider": {
+    "kind": "circle",
+    "r": 0.42
+   }
+  },
+  "mausoleum": {
+   "height": 5.2,
+   "collider": {
+    "kind": "box",
+    "hw": 2.1,
+    "hd": 2.6
+   }
+  },
+  "pillar": {
+   "height": 6.5,
+   "collider": {
+    "kind": "circle",
+    "r": 0.85
+   }
+  },
+  "arch": {
+   "height": 5,
+   "collider": {
+    "kind": "box",
+    "hw": 0.5,
+    "hd": 0.5
+   }
+  },
+  "sarcophagus": {
+   "height": 1.1,
+   "collider": {
+    "kind": "box",
+    "hw": 0.65,
+    "hd": 1.3
+   }
+  },
+  "statue": {
+   "height": 3.2,
+   "collider": {
+    "kind": "circle",
+    "r": 0.8
+   }
+  },
+  "candles": {
+   "height": 0.7,
+   "light": {
+    "color": 16757867,
+    "intensity": 5,
+    "distance": 7,
+    "y": 0.9,
+    "flames": 5,
+    "spread": 0.28
+   }
+  },
+  "bone_pile": {
+   "height": 0.8,
+   "collider": {
+    "kind": "circle",
+    "r": 0.55
+   }
+  },
+  "fence": {
+   "height": 1.6
+  },
+  "dead_tree": {
+   "height": 5.5,
+   "collider": {
+    "kind": "circle",
+    "r": 0.55
+   }
+  },
+  "brazier": {
+   "height": 1.3,
+   "collider": {
+    "kind": "circle",
+    "r": 0.5
+   },
+   "light": {
+    "color": 10906623,
+    "intensity": 14,
+    "distance": 11,
+    "y": 1.6,
+    "flames": 0,
+    "spread": 0.3
+   }
+  },
+  "bell_altar": {
+   "height": 3.6,
+   "collider": {
+    "kind": "box",
+    "hw": 2.1,
+    "hd": 1.6
+   }
+  },
+  "reliquary": {
+   "height": 1.2,
+   "collider": {
+    "kind": "box",
+    "hw": 0.9,
+    "hd": 0.6
+   }
+  },
+  "workbench": {
+   "height": 1.4,
+   "collider": {
+    "kind": "box",
+    "hw": 1.4,
+    "hd": 0.8
+   }
+  },
+  "waystone": {
+   "height": 3,
+   "collider": {
+    "kind": "circle",
+    "r": 0.6
+   }
+  },
+  "prop_node_bone_kiln": {
+   "height": 2.2,
+   "collider": {
+    "kind": "box",
+    "hw": 0.9,
+    "hd": 0.8
+   },
+   "light": {
+    "color": 16747069,
+    "intensity": 10,
+    "distance": 9,
+    "y": 0.9,
+    "flames": 0,
+    "spread": 0.3
+   }
+  },
+  "altar_ascension": {
+   "height": 2.8,
+   "collider": {
+    "kind": "box",
+    "hw": 1.6,
+    "hd": 1.2
+   }
+  },
+  "rite_niches": {
+   "height": 2.6,
+   "collider": {
+    "kind": "box",
+    "hw": 1.4,
+    "hd": 0.4
+   }
+  },
+  "covenant_lectern": {
+   "height": 1.6,
+   "collider": {
+    "kind": "circle",
+    "r": 0.45
+   }
+  },
+  "coffin_stack": {
+   "height": 1.6,
+   "collider": {
+    "kind": "box",
+    "hw": 1,
+    "hd": 0.6
+   }
+  },
+  "gibbet_cage": {
+   "height": 3.4,
+   "collider": {
+    "kind": "circle",
+    "r": 0.4
+   }
+  },
+  "grave_lantern": {
+   "height": 2.4,
+   "collider": {
+    "kind": "circle",
+    "r": 0.25
+   },
+   "light": {
+    "color": 16757867,
+    "intensity": 4,
+    "distance": 6,
+    "y": 2.1,
+    "flames": 0,
+    "spread": 0.2
+   }
+  },
+  "bone_candelabrum": {
+   "height": 2.2,
+   "collider": {
+    "kind": "circle",
+    "r": 0.4
+   },
+   "light": {
+    "color": 16757867,
+    "intensity": 4,
+    "distance": 6,
+    "y": 2,
+    "flames": 0,
+    "spread": 0.3
+   }
+  },
+  "skull_wall": {
+   "height": 1.1,
+   "collider": {
+    "kind": "box",
+    "hw": 1.6,
+    "hd": 0.35
+   }
+  },
+  "drowned_statue": {
+   "height": 2.6,
+   "collider": {
+    "kind": "circle",
+    "r": 0.6
+   }
+  },
+  "stained_glass": {
+   "height": 3.6,
+   "collider": {
+    "kind": "box",
+    "hw": 1.1,
+    "hd": 0.3
+   }
+  },
+  "sunken_bell": {
+   "height": 1.8,
+   "collider": {
+    "kind": "circle",
+    "r": 1.3
+   }
+  },
+  "bell_frame": {
+   "height": 3,
+   "collider": {
+    "kind": "box",
+    "hw": 1.4,
+    "hd": 0.5
+   }
+  },
+  "organ_pipes": {
+   "height": 4.2,
+   "collider": {
+    "kind": "box",
+    "hw": 1.8,
+    "hd": 0.6
+   }
+  },
+  "church_pew": {
+   "height": 1.3,
+   "collider": {
+    "kind": "box",
+    "hw": 1.4,
+    "hd": 0.35
+   }
+  },
+  "kings_grave": {
+   "height": 1.6,
+   "collider": {
+    "kind": "box",
+    "hw": 1.5,
+    "hd": 1.1
+   }
+  },
+  "abbess_reliquary": {
+   "height": 1.6,
+   "collider": {
+    "kind": "box",
+    "hw": 0.9,
+    "hd": 0.7
+   }
+  },
+  "drowned_font": {
+   "height": 1.7,
+   "collider": {
+    "kind": "circle",
+    "r": 0.9
+   }
+  },
+  "skull_niche": {
+   "height": 3.4,
+   "collider": {
+    "kind": "circle",
+    "r": 0.7
+   }
+  },
+  "plague_well": {
+   "height": 2.4,
+   "collider": {
+    "kind": "circle",
+    "r": 1.3
+   }
+  },
+  "rot_garden": {
+   "height": 1,
+   "collider": {
+    "kind": "box",
+    "hw": 1.6,
+    "hd": 0.9
+   }
+  },
+  "plague_cart": {
+   "height": 2,
+   "collider": {
+    "kind": "box",
+    "hw": 1.4,
+    "hd": 0.8
+   }
+  },
+  "saints_litter": {
+   "height": 2.4,
+   "collider": {
+    "kind": "box",
+    "hw": 1.2,
+    "hd": 1.8
+   }
+  },
+  "pyre_stack": {
+   "height": 2.6,
+   "collider": {
+    "kind": "circle",
+    "r": 1.3
+   },
+   "light": {
+    "color": 16742954,
+    "intensity": 12,
+    "distance": 12,
+    "y": 3.2,
+    "flames": 0,
+    "spread": 0.4
+   }
+  },
+  "slag_font": {
+   "height": 2,
+   "collider": {
+    "kind": "circle",
+    "r": 1.6
+   },
+   "light": {
+    "color": 16738848,
+    "intensity": 11,
+    "distance": 14,
+    "y": 3.4,
+    "flames": 0,
+    "spread": 0.3
+   }
+  },
+  "ember_altar": {
+   "height": 1.8,
+   "collider": {
+    "kind": "box",
+    "hw": 1,
+    "hd": 0.8
+   },
+   "light": {
+    "color": 16742954,
+    "intensity": 8,
+    "distance": 10,
+    "y": 2.6,
+    "flames": 0,
+    "spread": 0.3
+   }
+  },
+  "fen_hummock": {
+   "height": 1.1
+  },
+  "mire_altar": {
+   "height": 1.3,
+   "collider": {
+    "kind": "circle",
+    "r": 1.1
+   },
+   "light": {
+    "color": 6276276,
+    "intensity": 9,
+    "distance": 11,
+    "y": 1.8,
+    "flames": 0,
+    "spread": 0.3
+   }
+  },
+  "alch_cauldron": {
+   "height": 1.3,
+   "collider": {
+    "kind": "circle",
+    "r": 0.72
+   },
+   "light": {
+    "color": 8118394,
+    "intensity": 10,
+    "distance": 9,
+    "y": 1.7,
+    "flames": 0,
+    "spread": 0.3,
+    "pool": 5220442
+   }
+  },
+  "alch_alembic": {
+   "height": 1.8,
+   "collider": {
+    "kind": "box",
+    "hw": 0.65,
+    "hd": 0.55
+   },
+   "light": {
+    "color": 16754784,
+    "intensity": 3.5,
+    "distance": 6,
+    "y": 1,
+    "flames": 0,
+    "spread": 0.2
+   }
+  },
+  "alch_reagent_shelf": {
+   "height": 2,
+   "collider": {
+    "kind": "box",
+    "hw": 0.4,
+    "hd": 0.9
+   }
+  },
+  "alch_drying_rack": {
+   "height": 2,
+   "collider": {
+    "kind": "box",
+    "hw": 0.5,
+    "hd": 0.9
+   }
+  },
+  "alch_mortar_table": {
+   "height": 1,
+   "collider": {
+    "kind": "box",
+    "hw": 0.36,
+    "hd": 0.45
+   }
+  },
+  "alch_bubbling_vat": {
+   "height": 1.1,
+   "collider": {
+    "kind": "circle",
+    "r": 0.65
+   },
+   "light": {
+    "color": 10217578,
+    "intensity": 7,
+    "distance": 8,
+    "y": 1.5,
+    "flames": 0,
+    "spread": 0.3,
+    "pool": 6271050
+   }
+  },
+  "alch_counter": {
+   "height": 1.2,
+   "collider": {
+    "kind": "box",
+    "hw": 0.82,
+    "hd": 1.2
+   }
+  },
+  "alch_bone_candles": {
+   "height": 1,
+   "collider": {
+    "kind": "circle",
+    "r": 0.28
+   },
+   "light": {
+    "color": 16757867,
+    "intensity": 3.5,
+    "distance": 6,
+    "y": 1.2,
+    "flames": 4,
+    "spread": 0.18
+   }
+  },
+  "alch_canopic_jars": {
+   "height": 0.8,
+   "collider": {
+    "kind": "box",
+    "hw": 0.22,
+    "hd": 0.5
+   }
+  },
+  "alch_herb_bundle": {
+   "height": 0.9
+  },
+  "alch_station_sign": {
+   "height": 2.4,
+   "collider": {
+    "kind": "box",
+    "hw": 0.32,
+    "hd": 0.7
+   },
+   "light": {
+    "color": 9169050,
+    "intensity": 3,
+    "distance": 6,
+    "y": 1.9,
+    "flames": 0,
+    "spread": 0.2,
+    "pool": 5220442
+   }
+  },
+  "alch_totem_stirrer": {
+   "height": 1.2,
+   "collider": {
+    "kind": "box",
+    "hw": 0.5,
+    "hd": 0.67
+   }
+  },
+  "cinder_obelisk": {
+   "height": 4.2,
+   "collider": {
+    "kind": "circle",
+    "r": 0.75
+   },
+   "light": {
+    "color": 16742954,
+    "intensity": 7,
+    "distance": 8,
+    "y": 3.4,
+    "flames": 0,
+    "spread": 0.2
+   }
+  }
+ },
+ "NODE_COLLIDER": {
+  "tree": 0.6,
+  "seam": 0.75,
+  "geode": 0.9,
+  "pool": 0,
+  "grave": 0.7,
+  "herb": 0.4
+ },
+ "NODE_REACH": {
+  "tree": 1.35,
+  "seam": 1.45,
+  "geode": 1.6,
+  "pool": 1.5,
+  "grave": 1.4,
+  "herb": 1.3
+ },
+ "DRESSING": [
+  [
+   "coffin_stack",
+   "graves",
+   0.3,
+   [
+    [
+     -15.4,
+     -32.8
+    ],
+    [
+     -15.6,
+     -28.4
+    ],
+    [
+     -22.6,
+     -26.2
+    ]
+   ]
+  ],
+  [
+   "coffin_stack",
+   "graves",
+   2.8,
+   [
+    [
+     14.8,
+     -0.4
+    ],
+    [
+     22.8,
+     -6.2
+    ],
+    [
+     15,
+     -4.8
+    ]
+   ]
+  ],
+  [
+   "gibbet_cage",
+   "graves",
+   1.2,
+   [
+    [
+     -12,
+     -20.8
+    ],
+    [
+     -17,
+     -20.8
+    ],
+    [
+     -9.5,
+     -11.2
+    ]
+   ]
+  ],
+  [
+   "gibbet_cage",
+   "graves",
+   4.3,
+   [
+    [
+     12.5,
+     -11.2
+    ],
+    [
+     17.5,
+     -11.2
+    ],
+    [
+     9.5,
+     -21
+    ]
+   ]
+  ],
+  [
+   "grave_lantern",
+   "graves",
+   0,
+   [
+    [
+     3.6,
+     -2.6
+    ],
+    [
+     3.6,
+     -5.4
+    ]
+   ]
+  ],
+  [
+   "grave_lantern",
+   "graves",
+   0,
+   [
+    [
+     -3.6,
+     -31.5
+    ],
+    [
+     -3.6,
+     -29
+    ]
+   ]
+  ],
+  [
+   "grave_lantern",
+   "graves",
+   0,
+   [
+    [
+     23.2,
+     -12.6
+    ],
+    [
+     23.2,
+     -11
+    ]
+   ]
+  ],
+  [
+   "grave_lantern",
+   "graves",
+   0,
+   [
+    [
+     -7.2,
+     -13.2
+    ],
+    [
+     -7.4,
+     -18.8
+    ]
+   ]
+  ],
+  [
+   "bone_candelabrum",
+   "ossuary",
+   0,
+   [
+    [
+     36.2,
+     -21.6
+    ],
+    [
+     36.2,
+     -14.4
+    ]
+   ]
+  ],
+  [
+   "bone_candelabrum",
+   "ossuary",
+   0,
+   [
+    [
+     44.6,
+     -14.2
+    ],
+    [
+     44.6,
+     -22
+    ]
+   ]
+  ],
+  [
+   "bone_candelabrum",
+   "ossuary",
+   0,
+   [
+    [
+     60.2,
+     -21.8
+    ],
+    [
+     60.2,
+     -14.2
+    ]
+   ]
+  ],
+  [
+   "skull_wall",
+   "ossuary",
+   0,
+   [
+    [
+     38.5,
+     -9
+    ],
+    [
+     40,
+     -8.4
+    ]
+   ]
+  ],
+  [
+   "skull_wall",
+   "ossuary",
+   1.5707963267948966,
+   [
+    [
+     46.2,
+     -29.5
+    ],
+    [
+     47.4,
+     -30.5
+    ]
+   ]
+  ],
+  [
+   "skull_wall",
+   "ossuary",
+   0,
+   [
+    [
+     58,
+     -28.5
+    ],
+    [
+     57.4,
+     -30
+    ]
+   ]
+  ],
+  [
+   "drowned_statue",
+   "nave",
+   3.141592653589793,
+   [
+    [
+     -3.4,
+     -60.5
+    ],
+    [
+     -3.4,
+     -58
+    ]
+   ]
+  ],
+  [
+   "drowned_statue",
+   "nave",
+   3.141592653589793,
+   [
+    [
+     3.4,
+     -73.5
+    ],
+    [
+     3.4,
+     -76
+    ]
+   ]
+  ],
+  [
+   "stained_glass",
+   "nave",
+   1.5707963267948966,
+   [
+    [
+     -13.9,
+     -57
+    ],
+    [
+     -13.9,
+     -67
+    ]
+   ]
+  ],
+  [
+   "stained_glass",
+   "nave",
+   -1.5707963267948966,
+   [
+    [
+     13.9,
+     -86.5
+    ],
+    [
+     13.9,
+     -77
+    ]
+   ]
+  ],
+  [
+   "sunken_bell",
+   "nave",
+   0.6,
+   [
+    [
+     -2.8,
+     -83.2
+    ],
+    [
+     2.8,
+     -83.2
+    ]
+   ]
+  ],
+  [
+   "church_pew",
+   "nave",
+   0,
+   [
+    [
+     -3.1,
+     -55.6
+    ]
+   ]
+  ],
+  [
+   "church_pew",
+   "nave",
+   0,
+   [
+    [
+     3.1,
+     -55.6
+    ]
+   ]
+  ],
+  [
+   "church_pew",
+   "nave",
+   0,
+   [
+    [
+     -3.1,
+     -63.4
+    ]
+   ]
+  ],
+  [
+   "church_pew",
+   "nave",
+   0,
+   [
+    [
+     3.1,
+     -63.4
+    ]
+   ]
+  ],
+  [
+   "organ_pipes",
+   "sanctum",
+   0,
+   [
+    [
+     -6.6,
+     -128.8
+    ]
+   ]
+  ],
+  [
+   "organ_pipes",
+   "sanctum",
+   0,
+   [
+    [
+     6.6,
+     -128.8
+    ]
+   ]
+  ],
+  [
+   "bell_frame",
+   "sanctum",
+   0,
+   [
+    [
+     -13.6,
+     -108.2
+    ],
+    [
+     -12.6,
+     -107
+    ]
+   ]
+  ],
+  [
+   "bell_frame",
+   "sanctum",
+   0,
+   [
+    [
+     13.6,
+     -108.2
+    ],
+    [
+     12.6,
+     -107
+    ]
+   ]
+  ]
+ ]
+}

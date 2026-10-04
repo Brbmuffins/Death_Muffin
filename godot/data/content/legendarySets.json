@@ -1,0 +1,114 @@
+{
+ "LEGENDARY_SETS": {
+  "legion_unburied": {
+   "disciplineId": "gravecaller",
+   "name": "Legion of the Unburied",
+   "wearer": "Gravecaller",
+   "color": 3809067,
+   "accent": 16742973,
+   "stats": [
+    "stat_int",
+    "stat_vit"
+   ],
+   "lore": "Forged for the one who never lets the dead lie. The legion marches in its wearer’s footsteps, and does not stop.",
+   "pieces": {
+    "head": "Warcrown of the Unburied",
+    "chest": "Cuirass of the Unburied",
+    "hands": "Gauntlets of the Unburied",
+    "legs": "Greaves of the Unburied",
+    "feet": "Marching Boots of the Unburied"
+   }
+  },
+  "colossus_mantle": {
+   "disciplineId": "ossuary",
+   "name": "Colossus Mantle",
+   "wearer": "Ossuary",
+   "color": 8221269,
+   "accent": 15915402,
+   "stats": [
+    "stat_int",
+    "stat_vit"
+   ],
+   "lore": "A giant’s ribs, hung with every vow the Covenant ever broke. What strikes the wearer is struck back.",
+   "pieces": {
+    "head": "Colossus Cowl",
+    "chest": "Colossus Mantle",
+    "hands": "Colossus Fists",
+    "legs": "Colossus Cuisses",
+    "feet": "Colossus Footings"
+   }
+  },
+  "requiem_wraiths": {
+   "disciplineId": "mourner",
+   "name": "Requiem of Wraiths",
+   "wearer": "Mourner",
+   "color": 2902622,
+   "accent": 8381439,
+   "stats": [
+    "stat_int",
+    "stat_agi"
+   ],
+   "lore": "Woven from the last breath of the mourned. The wraiths still sing in it, and some of them stay to help.",
+   "pieces": {
+    "head": "Wraithveil Hood",
+    "chest": "Requiem Shroud",
+    "hands": "Wraithgrasp Gloves",
+    "legs": "Wraithwoven Leggings",
+    "feet": "Requiem Slippers"
+   }
+  },
+  "plague_choir": {
+   "disciplineId": "rotweaver",
+   "name": "Plague Choir",
+   "wearer": "Rotweaver",
+   "color": 4016668,
+   "accent": 11992909,
+   "stats": [
+    "stat_int",
+    "stat_vit"
+   ],
+   "lore": "Sung into being by a congregation that died of its own hymn. Every note it carries is catching.",
+   "pieces": {
+    "head": "Choirmaster’s Mask",
+    "chest": "Plague Choir Surplice",
+    "hands": "Blightmonger’s Gloves",
+    "legs": "Choir Rotleggings",
+    "feet": "Plague Choir Treads"
+   }
+  }
+ },
+ "LEGENDARY_SET_IDS": [
+  "legion_unburied",
+  "colossus_mantle",
+  "requiem_wraiths",
+  "plague_choir"
+ ],
+ "LEGENDARY_DROP": {
+  "bossChance": 0.2,
+  "starterBossChance": 0.06,
+  "eliteChance": 0.005,
+  "ownShare": 0.7
+ },
+ "LEGENDARY_BOSS_AREAS": [
+  "ossuary",
+  "nave",
+  "sanctum",
+  "cloister",
+  "pyre",
+  "fen"
+ ],
+ "LEGENDARY_STARTER_AREA": "graves",
+ "LEGENDARY_BOSS_CHANCE": {
+  "ossuary": 0.2,
+  "nave": 0.22,
+  "sanctum": 0.25,
+  "cloister": 0.28,
+  "pyre": 0.3,
+  "fen": 0.33
+ },
+ "LEGENDARY_ELITE_CHANCE": {
+  "cloister": 0.005,
+  "pyre": 0.007,
+  "fen": 0.009
+ }
+}

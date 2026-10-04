@@ -1,0 +1,10 @@
+{
+ "STOP_TEXT": {
+  "moved": null,
+  "panel": null,
+  "bagFull": "Your bag is full. Visit the Reliquary or drop something to keep gathering.",
+  "hurt": "Something struck you. Gathering stopped.",
+  "dead": null,
+  "left": null
+ }
+}

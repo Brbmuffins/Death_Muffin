@@ -1,0 +1,313 @@
+{
+ "PLOTS": [
+  {
+   "id": "h0",
+   "kind": "herb",
+   "label": "Mourning Bed I"
+  },
+  {
+   "id": "h1",
+   "kind": "herb",
+   "label": "Mourning Bed II"
+  },
+  {
+   "id": "h2",
+   "kind": "herb",
+   "label": "Mourning Bed III"
+  },
+  {
+   "id": "h3",
+   "kind": "herb",
+   "label": "Mourning Bed IV"
+  },
+  {
+   "id": "t0",
+   "kind": "tree",
+   "label": "Coffin Patch I"
+  },
+  {
+   "id": "t1",
+   "kind": "tree",
+   "label": "Coffin Patch II"
+  }
+ ],
+ "SEEDS": [
+  {
+   "id": "seed_mourning_moss",
+   "kind": "herb",
+   "level": 1,
+   "growMin": 20,
+   "harvest": "herb_mourning_moss",
+   "yields": [
+    3,
+    6
+   ],
+   "plantXp": 6,
+   "harvestXp": 40,
+   "seedBack": 0.4
+  },
+  {
+   "id": "seed_nightshade",
+   "kind": "herb",
+   "level": 15,
+   "growMin": 40,
+   "harvest": "herb_nightshade",
+   "yields": [
+    3,
+    6
+   ],
+   "plantXp": 12,
+   "harvestXp": 105,
+   "seedBack": 0.4
+  },
+  {
+   "id": "seed_corpse_lily",
+   "kind": "herb",
+   "level": 30,
+   "growMin": 60,
+   "harvest": "herb_corpse_lily",
+   "yields": [
+    3,
+    6
+   ],
+   "plantXp": 20,
+   "harvestXp": 195,
+   "seedBack": 0.4
+  },
+  {
+   "id": "seed_wolfsbane",
+   "kind": "herb",
+   "level": 45,
+   "growMin": 80,
+   "harvest": "herb_wolfsbane",
+   "yields": [
+    4,
+    7
+   ],
+   "plantXp": 30,
+   "harvestXp": 315,
+   "seedBack": 0.4
+  },
+  {
+   "id": "seed_bloodroot",
+   "kind": "herb",
+   "level": 60,
+   "growMin": 100,
+   "harvest": "herb_bloodroot",
+   "yields": [
+    4,
+    8
+   ],
+   "plantXp": 42,
+   "harvestXp": 480,
+   "seedBack": 0.4
+  },
+  {
+   "id": "seed_moonpetal",
+   "kind": "herb",
+   "level": 75,
+   "growMin": 120,
+   "harvest": "herb_moonpetal",
+   "yields": [
+    5,
+    9
+   ],
+   "plantXp": 60,
+   "harvestXp": 690,
+   "seedBack": 0.4
+  },
+  {
+   "id": "seed_rot_cap",
+   "kind": "herb",
+   "level": 35,
+   "growMin": 75,
+   "harvest": "herb_rot_cap",
+   "yields": [
+    3,
+    6
+   ],
+   "plantXp": 26,
+   "harvestXp": 360,
+   "seedBack": 0.4
+  },
+  {
+   "id": "seed_ash_bloom",
+   "kind": "herb",
+   "level": 50,
+   "growMin": 90,
+   "harvest": "herb_ash_bloom",
+   "yields": [
+    3,
+    6
+   ],
+   "plantXp": 34,
+   "harvestXp": 450,
+   "seedBack": 0.4
+  },
+  {
+   "id": "seed_bog_myrtle",
+   "kind": "herb",
+   "level": 55,
+   "growMin": 90,
+   "harvest": "herb_bog_myrtle",
+   "yields": [
+    4,
+    7
+   ],
+   "plantXp": 36,
+   "harvestXp": 420,
+   "seedBack": 0.4
+  },
+  {
+   "id": "seed_drowned_lotus",
+   "kind": "herb",
+   "level": 70,
+   "growMin": 110,
+   "harvest": "herb_drowned_lotus",
+   "yields": [
+    4,
+    8
+   ],
+   "plantXp": 52,
+   "harvestXp": 600,
+   "seedBack": 0.4
+  },
+  {
+   "id": "sapling_oak",
+   "kind": "tree",
+   "level": 10,
+   "growMin": 120,
+   "harvest": "log_oak",
+   "yields": [
+    14,
+    24
+   ],
+   "plantXp": 25,
+   "harvestXp": 225,
+   "seedBack": 0.15
+  },
+  {
+   "id": "sapling_yew",
+   "kind": "tree",
+   "level": 40,
+   "growMin": 360,
+   "harvest": "log_yew",
+   "yields": [
+    10,
+    18
+   ],
+   "plantXp": 60,
+   "harvestXp": 630,
+   "seedBack": 0.15
+  }
+ ],
+ "SEED_IDS": [
+  "seed_mourning_moss",
+  "seed_nightshade",
+  "seed_corpse_lily",
+  "seed_wolfsbane",
+  "seed_bloodroot",
+  "seed_moonpetal",
+  "seed_rot_cap",
+  "seed_ash_bloom",
+  "seed_bog_myrtle",
+  "seed_drowned_lotus",
+  "sapling_oak",
+  "sapling_yew"
+ ],
+ "COMPOST_ITEM": "bone_meal",
+ "COMPOST_SPEED": 0.75,
+ "GARDEN_ITEMS": {
+  "herb_mourning_moss": {
+   "name": "Mourning Moss",
+   "rarity": "common",
+   "sell": 4,
+   "lore": "Grows where the grieving sit.",
+   "stack": 250
+  },
+  "herb_nightshade": {
+   "name": "Nightshade",
+   "rarity": "uncommon",
+   "sell": 9,
+   "lore": "Bitter, dark and quietly useful.",
+   "stack": 250
+  },
+  "seed_nightshade": {
+   "name": "Nightshade Seed",
+   "rarity": "uncommon",
+   "sell": 4,
+   "lore": "Plant it in a Mourning Bed.",
+   "stack": 250
+  },
+  "herb_corpse_lily": {
+   "name": "Corpse-lily",
+   "rarity": "uncommon",
+   "sell": 18,
+   "lore": "It flowers only on fresh graves.",
+   "stack": 250
+  },
+  "seed_corpse_lily": {
+   "name": "Corpse-lily Seed",
+   "rarity": "uncommon",
+   "sell": 8,
+   "lore": "Plant it in a Mourning Bed.",
+   "stack": 250
+  },
+  "herb_wolfsbane": {
+   "name": "Wolfsbane",
+   "rarity": "rare",
+   "sell": 30,
+   "lore": "Older than the wolves that fear it.",
+   "stack": 250
+  },
+  "seed_wolfsbane": {
+   "name": "Wolfsbane Seed",
+   "rarity": "rare",
+   "sell": 14,
+   "lore": "Plant it in a Mourning Bed.",
+   "stack": 250
+  },
+  "herb_bloodroot": {
+   "name": "Bloodroot",
+   "rarity": "rare",
+   "sell": 48,
+   "lore": "The soil around it is always warm.",
+   "stack": 250
+  },
+  "seed_bloodroot": {
+   "name": "Bloodroot Seed",
+   "rarity": "rare",
+   "sell": 22,
+   "lore": "Plant it in a Mourning Bed.",
+   "stack": 250
+  },
+  "herb_moonpetal": {
+   "name": "Moonpetal",
+   "rarity": "epic",
+   "sell": 80,
+   "lore": "It opens for the dead alone.",
+   "stack": 250
+  },
+  "seed_moonpetal": {
+   "name": "Moonpetal Seed",
+   "rarity": "rare",
+   "sell": 36,
+   "lore": "Plant it in a Mourning Bed.",
+   "stack": 250
+  },
+  "sapling_oak": {
+   "name": "Coffin-Oak Sapling",
+   "rarity": "common",
+   "sell": 6,
+   "lore": "Plant it in a Coffin Patch and come back in a couple of hours.",
+   "stack": 250
+  },
+  "sapling_yew": {
+   "name": "Churchyard Yew Sapling",
+   "rarity": "uncommon",
+   "sell": 20,
+   "lore": "Slow, patient and worth the wait.",
+   "stack": 250
+  }
+ }
+}

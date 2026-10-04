@@ -1,0 +1,1107 @@
+{
+ "GATHER_SKILLS": [
+  "woodcutting",
+  "mining",
+  "fishing",
+  "gravedigging"
+ ],
+ "ALL_SKILLS": [
+  "woodcutting",
+  "mining",
+  "fishing",
+  "gravedigging",
+  "gardening",
+  "alchemy",
+  "salvaging"
+ ],
+ "SKILLS": {
+  "woodcutting": {
+   "name": "Woodcutting",
+   "rite": "Rite of Coffin-Oak",
+   "color": "#c9a36b",
+   "gesture": "dig",
+   "sfx": "chop",
+   "verb": "Chop"
+  },
+  "mining": {
+   "name": "Mining",
+   "rite": "Rite of Grave-Iron",
+   "color": "#b7bcc4",
+   "gesture": "dig",
+   "sfx": "pick",
+   "verb": "Mine"
+  },
+  "fishing": {
+   "name": "Fishing",
+   "rite": "Rite of the Black Water",
+   "color": "#6fb3c8",
+   "gesture": "cast",
+   "sfx": "splash",
+   "verb": "Fish"
+  },
+  "gravedigging": {
+   "name": "Gravedigging",
+   "rite": "Rite of the Sexton",
+   "color": "#d8cfa8",
+   "gesture": "dig",
+   "sfx": "shovel",
+   "verb": "Dig"
+  },
+  "gardening": {
+   "name": "Grave Gardening",
+   "rite": "Rite of the Mourning Bed",
+   "color": "#9fc27a",
+   "gesture": "cast",
+   "sfx": "shovel",
+   "verb": "Tend"
+  },
+  "alchemy": {
+   "name": "Alchemy",
+   "rite": "Rite of the Alembic",
+   "color": "#b48be0",
+   "gesture": "cast",
+   "sfx": "splash",
+   "verb": "Brew"
+  },
+  "salvaging": {
+   "name": "Salvaging",
+   "rite": "Rite of the Bone Grinder",
+   "color": "#c9b087",
+   "gesture": "cast",
+   "sfx": "shovel",
+   "verb": "Grind"
+  }
+ },
+ "TICK_MS": 600,
+ "LEVEL_CAP": 99,
+ "GATHER_BURST": 3,
+ "GATHER_MAX_WINDOW_MS": 30000,
+ "GATHER_MAX_ACTIONS_PER_HOUR": 1800,
+ "GATHER_FLUSH_MS": 8000,
+ "GATHER_MAX_BATCH": 40,
+ "RICH_YIELD": 1.5,
+ "RICH_RESPAWN": 0.5,
+ "NODES": {
+  "coffin_oak": {
+   "id": "coffin_oak",
+   "skill": "woodcutting",
+   "name": "Coffin-Oak",
+   "kind": "tree",
+   "level": 1,
+   "xp": 6,
+   "ticks": 4,
+   "item": "log_oak",
+   "yields": [
+    1,
+    4
+   ],
+   "respawnS": 8,
+   "extras": [
+    {
+     "item": "seed_mourning_moss",
+     "chance": 0.0033333333333333335
+    },
+    {
+     "item": "ring_copper",
+     "chance": 0.0016666666666666668
+    },
+    {
+     "item": "sapling_oak",
+     "chance": 0.025
+    },
+    {
+     "item": "charm_tithe_bat",
+     "chance": 0.0002885714285714286
+    }
+   ],
+   "tint": 7033398
+  },
+  "hangman_elm": {
+   "id": "hangman_elm",
+   "skill": "woodcutting",
+   "name": "Hangman's Elm",
+   "kind": "tree",
+   "level": 5,
+   "xp": 14,
+   "ticks": 5,
+   "item": "log_elm",
+   "yields": [
+    3,
+    6
+   ],
+   "respawnS": 12,
+   "extras": [
+    {
+     "item": "seed_mourning_moss",
+     "chance": 0.0033333333333333335
+    },
+    {
+     "item": "ring_copper",
+     "chance": 0.0016666666666666668
+    },
+    {
+     "item": "charm_tithe_bat",
+     "chance": 0.00030000000000000003
+    }
+   ],
+   "tint": 6117948
+  },
+  "bleeding_willow": {
+   "id": "bleeding_willow",
+   "skill": "woodcutting",
+   "name": "Bleeding Willow",
+   "kind": "tree",
+   "level": 15,
+   "xp": 24,
+   "ticks": 5,
+   "item": "log_willow",
+   "yields": [
+    4,
+    8
+   ],
+   "respawnS": 15,
+   "extras": [
+    {
+     "item": "seed_mourning_moss",
+     "chance": 0.0033333333333333335
+    },
+    {
+     "item": "ring_copper",
+     "chance": 0.0016666666666666668
+    },
+    {
+     "item": "charm_tithe_bat",
+     "chance": 0.00032857142857142856
+    }
+   ],
+   "tint": 8010292
+  },
+  "churchyard_yew": {
+   "id": "churchyard_yew",
+   "skill": "woodcutting",
+   "name": "Churchyard Yew",
+   "kind": "tree",
+   "level": 45,
+   "xp": 38,
+   "ticks": 6,
+   "item": "log_yew",
+   "yields": [
+    5,
+    10
+   ],
+   "respawnS": 30,
+   "extras": [
+    {
+     "item": "seed_mourning_moss",
+     "chance": 0.0033333333333333335
+    },
+    {
+     "item": "ring_copper",
+     "chance": 0.0016666666666666668
+    },
+    {
+     "item": "sapling_yew",
+     "chance": 0.02
+    },
+    {
+     "item": "charm_tithe_bat",
+     "chance": 0.0004142857142857143
+    }
+   ],
+   "tint": 3099187
+  },
+  "blackthorn": {
+   "id": "blackthorn",
+   "skill": "woodcutting",
+   "name": "Blackthorn",
+   "kind": "tree",
+   "level": 60,
+   "xp": 55,
+   "ticks": 7,
+   "item": "log_blackthorn",
+   "yields": [
+    6,
+    12
+   ],
+   "respawnS": 45,
+   "extras": [
+    {
+     "item": "seed_mourning_moss",
+     "chance": 0.0033333333333333335
+    },
+    {
+     "item": "ring_copper",
+     "chance": 0.0016666666666666668
+    },
+    {
+     "item": "charm_tithe_bat",
+     "chance": 0.0004571428571428572
+    }
+   ],
+   "tint": 2762032
+  },
+  "ghostwood": {
+   "id": "ghostwood",
+   "skill": "woodcutting",
+   "name": "Ghostwood",
+   "kind": "tree",
+   "level": 75,
+   "xp": 80,
+   "ticks": 8,
+   "item": "log_ghostwood",
+   "yields": [
+    6,
+    12
+   ],
+   "respawnS": 60,
+   "extras": [
+    {
+     "item": "seed_mourning_moss",
+     "chance": 0.0033333333333333335
+    },
+    {
+     "item": "ring_copper",
+     "chance": 0.0016666666666666668
+    },
+    {
+     "item": "charm_tithe_bat",
+     "chance": 0.0005
+    }
+   ],
+   "tint": 10467504
+  },
+  "bone_elder": {
+   "id": "bone_elder",
+   "skill": "woodcutting",
+   "name": "Bone Elder",
+   "kind": "tree",
+   "level": 90,
+   "xp": 115,
+   "ticks": 8,
+   "item": "log_bone_elder",
+   "yields": [
+    8,
+    14
+   ],
+   "respawnS": 120,
+   "extras": [
+    {
+     "item": "seed_mourning_moss",
+     "chance": 0.0033333333333333335
+    },
+    {
+     "item": "ring_copper",
+     "chance": 0.0016666666666666668
+    },
+    {
+     "item": "charm_tithe_bat",
+     "chance": 0.0005428571428571429
+    }
+   ],
+   "tint": 15129796
+  },
+  "seam_copper": {
+   "id": "seam_copper",
+   "skill": "mining",
+   "name": "Copper Seam",
+   "kind": "seam",
+   "level": 1,
+   "xp": 6,
+   "ticks": 4,
+   "item": "ore_copper",
+   "yields": [
+    1,
+    3
+   ],
+   "respawnS": 5,
+   "extras": [
+    {
+     "item": "gem_grave_garnet",
+     "chance": 0.0024
+    },
+    {
+     "item": "gem_bone_opal",
+     "chance": 0.0012
+    },
+    {
+     "item": "gem_void_sapphire",
+     "chance": 0.0004
+    },
+    {
+     "item": "charm_grave_rat",
+     "chance": 0.0002885714285714286
+    }
+   ],
+   "tint": 4170618
+  },
+  "seam_tin": {
+   "id": "seam_tin",
+   "skill": "mining",
+   "name": "Tin Seam",
+   "kind": "seam",
+   "level": 1,
+   "xp": 6,
+   "ticks": 4,
+   "item": "ore_tin",
+   "yields": [
+    1,
+    3
+   ],
+   "respawnS": 5,
+   "extras": [
+    {
+     "item": "gem_grave_garnet",
+     "chance": 0.0024
+    },
+    {
+     "item": "gem_bone_opal",
+     "chance": 0.0012
+    },
+    {
+     "item": "gem_void_sapphire",
+     "chance": 0.0004
+    },
+    {
+     "item": "charm_grave_rat",
+     "chance": 0.0002885714285714286
+    }
+   ],
+   "tint": 10134440
+  },
+  "seam_iron": {
+   "id": "seam_iron",
+   "skill": "mining",
+   "name": "Iron Seam",
+   "kind": "seam",
+   "level": 10,
+   "xp": 12,
+   "ticks": 5,
+   "item": "ore_iron",
+   "yields": [
+    2,
+    4
+   ],
+   "respawnS": 9,
+   "extras": [
+    {
+     "item": "gem_grave_garnet",
+     "chance": 0.0024
+    },
+    {
+     "item": "gem_bone_opal",
+     "chance": 0.0012
+    },
+    {
+     "item": "gem_void_sapphire",
+     "chance": 0.0004
+    },
+    {
+     "item": "charm_grave_rat",
+     "chance": 0.0003142857142857143
+    }
+   ],
+   "tint": 10115644
+  },
+  "seam_bronze": {
+   "id": "seam_bronze",
+   "skill": "mining",
+   "name": "Bronze Seam",
+   "kind": "seam",
+   "level": 20,
+   "xp": 18,
+   "ticks": 5,
+   "item": "ore_bronze",
+   "yields": [
+    2,
+    5
+   ],
+   "respawnS": 12,
+   "extras": [
+    {
+     "item": "gem_grave_garnet",
+     "chance": 0.0024
+    },
+    {
+     "item": "gem_bone_opal",
+     "chance": 0.0012
+    },
+    {
+     "item": "gem_void_sapphire",
+     "chance": 0.0004
+    },
+    {
+     "item": "charm_grave_rat",
+     "chance": 0.00034285714285714285
+    }
+   ],
+   "tint": 12618314
+  },
+  "seam_silver": {
+   "id": "seam_silver",
+   "skill": "mining",
+   "name": "Silver Seam",
+   "kind": "seam",
+   "level": 30,
+   "xp": 24,
+   "ticks": 5,
+   "item": "ore_silver",
+   "yields": [
+    3,
+    6
+   ],
+   "respawnS": 18,
+   "extras": [
+    {
+     "item": "gem_grave_garnet",
+     "chance": 0.0028799999999999997
+    },
+    {
+     "item": "gem_bone_opal",
+     "chance": 0.0014399999999999999
+    },
+    {
+     "item": "gem_void_sapphire",
+     "chance": 0.00048
+    },
+    {
+     "item": "charm_grave_rat",
+     "chance": 0.0003714285714285715
+    }
+   ],
+   "tint": 14212582
+  },
+  "seam_gold": {
+   "id": "seam_gold",
+   "skill": "mining",
+   "name": "Gold Seam",
+   "kind": "seam",
+   "level": 40,
+   "xp": 32,
+   "ticks": 6,
+   "item": "ore_gold",
+   "yields": [
+    3,
+    6
+   ],
+   "respawnS": 25,
+   "extras": [
+    {
+     "item": "gem_grave_garnet",
+     "chance": 0.0033599999999999997
+    },
+    {
+     "item": "gem_bone_opal",
+     "chance": 0.0016799999999999999
+    },
+    {
+     "item": "gem_void_sapphire",
+     "chance": 0.00056
+    },
+    {
+     "item": "charm_grave_rat",
+     "chance": 0.0004
+    }
+   ],
+   "tint": 15251530
+  },
+  "seam_steel": {
+   "id": "seam_steel",
+   "skill": "mining",
+   "name": "Steel Seam",
+   "kind": "seam",
+   "level": 50,
+   "xp": 42,
+   "ticks": 6,
+   "item": "ore_steel",
+   "yields": [
+    4,
+    7
+   ],
+   "respawnS": 32,
+   "extras": [
+    {
+     "item": "gem_grave_garnet",
+     "chance": 0.0038399999999999997
+    },
+    {
+     "item": "gem_bone_opal",
+     "chance": 0.0019199999999999998
+    },
+    {
+     "item": "gem_void_sapphire",
+     "chance": 0.00064
+    },
+    {
+     "item": "charm_grave_rat",
+     "chance": 0.0004285714285714286
+    }
+   ],
+   "tint": 8228774
+  },
+  "geode_hell": {
+   "id": "geode_hell",
+   "skill": "mining",
+   "name": "Hell Geode",
+   "kind": "geode",
+   "level": 65,
+   "xp": 60,
+   "ticks": 7,
+   "item": "ore_hell",
+   "yields": [
+    4,
+    8
+   ],
+   "respawnS": 45,
+   "extras": [
+    {
+     "item": "gem_grave_garnet",
+     "chance": 0.0048
+    },
+    {
+     "item": "gem_bone_opal",
+     "chance": 0.0024
+    },
+    {
+     "item": "gem_void_sapphire",
+     "chance": 0.0008
+    },
+    {
+     "item": "charm_grave_rat",
+     "chance": 0.0004714285714285714
+    }
+   ],
+   "tint": 14701098
+  },
+  "geode_moon": {
+   "id": "geode_moon",
+   "skill": "mining",
+   "name": "Moon Geode",
+   "kind": "geode",
+   "level": 80,
+   "xp": 90,
+   "ticks": 8,
+   "item": "ore_moon",
+   "yields": [
+    5,
+    9
+   ],
+   "respawnS": 60,
+   "extras": [
+    {
+     "item": "gem_grave_garnet",
+     "chance": 0.005999999999999999
+    },
+    {
+     "item": "gem_bone_opal",
+     "chance": 0.0029999999999999996
+    },
+    {
+     "item": "gem_void_sapphire",
+     "chance": 0.001
+    },
+    {
+     "item": "charm_grave_rat",
+     "chance": 0.0005142857142857143
+    }
+   ],
+   "tint": 10405119
+  },
+  "pool_still": {
+   "id": "pool_still",
+   "skill": "fishing",
+   "name": "Still Pool",
+   "kind": "pool",
+   "level": 1,
+   "xp": 6,
+   "ticks": 4,
+   "item": "fish_river",
+   "yields": [
+    8,
+    16
+   ],
+   "respawnS": 6,
+   "extras": [
+    {
+     "item": "ring_copper",
+     "chance": 0.0025
+    },
+    {
+     "item": "charm_drowned_pup",
+     "chance": 0.0002885714285714286
+    }
+   ],
+   "tint": 2902610
+  },
+  "pool_eels": {
+   "id": "pool_eels",
+   "skill": "fishing",
+   "name": "Crypt Eels",
+   "kind": "pool",
+   "level": 15,
+   "xp": 14,
+   "ticks": 5,
+   "item": "fish_crypt_eel",
+   "yields": [
+    8,
+    16
+   ],
+   "respawnS": 8,
+   "extras": [
+    {
+     "item": "ring_copper",
+     "chance": 0.0025
+    },
+    {
+     "item": "charm_drowned_pup",
+     "chance": 0.00032857142857142856
+    }
+   ],
+   "tint": 3231807
+  },
+  "pool_carp": {
+   "id": "pool_carp",
+   "skill": "fishing",
+   "name": "Bell Carp",
+   "kind": "pool",
+   "level": 30,
+   "xp": 24,
+   "ticks": 5,
+   "item": "fish_bell_carp",
+   "yields": [
+    10,
+    18
+   ],
+   "respawnS": 10,
+   "extras": [
+    {
+     "item": "reliquary_fragment",
+     "chance": 0.0033333333333333335
+    },
+    {
+     "item": "charm_drowned_pup",
+     "chance": 0.0003714285714285715
+    }
+   ],
+   "tint": 5921336
+  },
+  "pool_pike": {
+   "id": "pool_pike",
+   "skill": "fishing",
+   "name": "Drowned Pike",
+   "kind": "pool",
+   "level": 45,
+   "xp": 38,
+   "ticks": 6,
+   "item": "fish_drowned_pike",
+   "yields": [
+    10,
+    18
+   ],
+   "respawnS": 12,
+   "extras": [
+    {
+     "item": "reliquary_fragment",
+     "chance": 0.004
+    },
+    {
+     "item": "charm_drowned_pup",
+     "chance": 0.0004142857142857143
+    }
+   ],
+   "tint": 2375754
+  },
+  "pool_lantern": {
+   "id": "pool_lantern",
+   "skill": "fishing",
+   "name": "Lanternfish",
+   "kind": "pool",
+   "level": 62,
+   "xp": 58,
+   "ticks": 7,
+   "item": "fish_lanternfish",
+   "yields": [
+    12,
+    20
+   ],
+   "respawnS": 14,
+   "extras": [
+    {
+     "item": "reliquary_fragment",
+     "chance": 0.005
+    },
+    {
+     "item": "charm_drowned_pup",
+     "chance": 0.00046285714285714295
+    }
+   ],
+   "tint": 3828314
+  },
+  "pool_coelacanth": {
+   "id": "pool_coelacanth",
+   "skill": "fishing",
+   "name": "Abyssal Coelacanth",
+   "kind": "pool",
+   "level": 80,
+   "xp": 95,
+   "ticks": 8,
+   "item": "fish_coelacanth",
+   "yields": [
+    12,
+    20
+   ],
+   "respawnS": 16,
+   "extras": [
+    {
+     "item": "covenant_seal",
+     "chance": 0.0033333333333333335
+    },
+    {
+     "item": "charm_drowned_pup",
+     "chance": 0.0005142857142857143
+    }
+   ],
+   "tint": 1715268
+  },
+  "grave_pauper": {
+   "id": "grave_pauper",
+   "skill": "gravedigging",
+   "name": "Pauper's Grave",
+   "kind": "grave",
+   "level": 1,
+   "xp": 7,
+   "ticks": 4,
+   "item": "bones_old",
+   "yields": [
+    2,
+    4
+   ],
+   "respawnS": 10,
+   "gold": [
+    0,
+    2
+   ],
+   "tint": 4865068,
+   "extras": [
+    {
+     "item": "seed_mourning_moss",
+     "chance": 0.08333333333333333
+    },
+    {
+     "item": "charm_wee_thrall",
+     "chance": 0.0002885714285714286
+    }
+   ]
+  },
+  "grave_mound": {
+   "id": "grave_mound",
+   "skill": "gravedigging",
+   "name": "Burial Mound",
+   "kind": "grave",
+   "level": 20,
+   "xp": 18,
+   "ticks": 5,
+   "item": "bones_barrow",
+   "yields": [
+    3,
+    5
+   ],
+   "respawnS": 18,
+   "gold": [
+    1,
+    4
+   ],
+   "tint": 5064242,
+   "extras": [
+    {
+     "item": "ring_copper",
+     "chance": 0.008333333333333333
+    },
+    {
+     "item": "seed_mourning_moss",
+     "chance": 0.05
+    },
+    {
+     "item": "seed_nightshade",
+     "chance": 0.04
+    },
+    {
+     "item": "charm_wee_thrall",
+     "chance": 0.00034285714285714285
+    }
+   ]
+  },
+  "bog_myrtle": {
+   "id": "bog_myrtle",
+   "skill": "gravedigging",
+   "name": "Bog Myrtle Thicket",
+   "kind": "grave",
+   "level": 25,
+   "xp": 26,
+   "ticks": 5,
+   "item": "herb_bog_myrtle",
+   "yields": [
+    3,
+    6
+   ],
+   "respawnS": 40,
+   "tint": 6982258,
+   "extras": [
+    {
+     "item": "seed_bog_myrtle",
+     "chance": 0.0625
+    },
+    {
+     "item": "gem_grave_garnet",
+     "chance": 0.008333333333333333
+    },
+    {
+     "item": "charm_wee_thrall",
+     "chance": 0.0003571428571428572
+    }
+   ]
+  },
+  "grave_crypt": {
+   "id": "grave_crypt",
+   "skill": "gravedigging",
+   "name": "Crypt Collapse",
+   "kind": "grave",
+   "level": 40,
+   "xp": 34,
+   "ticks": 6,
+   "item": "bones_crypt",
+   "yields": [
+    3,
+    6
+   ],
+   "respawnS": 30,
+   "gold": [
+    2,
+    6
+   ],
+   "tint": 5920336,
+   "extras": [
+    {
+     "item": "ore_silver",
+     "chance": 0.125
+    },
+    {
+     "item": "reliquary_fragment",
+     "chance": 0.016666666666666666
+    },
+    {
+     "item": "covenant_seal",
+     "chance": 0.005
+    },
+    {
+     "item": "seed_corpse_lily",
+     "chance": 0.04
+    },
+    {
+     "item": "seed_wolfsbane",
+     "chance": 0.025
+    },
+    {
+     "item": "charm_wee_thrall",
+     "chance": 0.0004
+    }
+   ]
+  },
+  "drowned_lotus": {
+   "id": "drowned_lotus",
+   "skill": "gravedigging",
+   "name": "Drowned Lotus Bed",
+   "kind": "grave",
+   "level": 45,
+   "xp": 44,
+   "ticks": 6,
+   "item": "herb_drowned_lotus",
+   "yields": [
+    3,
+    5
+   ],
+   "respawnS": 55,
+   "tint": 10405080,
+   "extras": [
+    {
+     "item": "seed_drowned_lotus",
+     "chance": 0.05
+    },
+    {
+     "item": "gem_bone_opal",
+     "chance": 0.007142857142857143
+    },
+    {
+     "item": "gem_void_sapphire",
+     "chance": 0.0025
+    },
+    {
+     "item": "charm_wee_thrall",
+     "chance": 0.0004142857142857143
+    }
+   ]
+  },
+  "grave_barrow_king": {
+   "id": "grave_barrow_king",
+   "skill": "gravedigging",
+   "name": "Barrow-King's Tomb",
+   "kind": "grave",
+   "level": 70,
+   "xp": 70,
+   "ticks": 8,
+   "item": "bones_ancient",
+   "yields": [
+    4,
+    8
+   ],
+   "respawnS": 60,
+   "gold": [
+    4,
+    12
+   ],
+   "tint": 6969914,
+   "extras": [
+    {
+     "item": "covenant_seal",
+     "chance": 0.0125
+    },
+    {
+     "item": "reliquary_fragment",
+     "chance": 0.04
+    },
+    {
+     "item": "seed_bloodroot",
+     "chance": 0.05
+    },
+    {
+     "item": "seed_moonpetal",
+     "chance": 0.03333333333333333
+    },
+    {
+     "item": "helm_gold",
+     "chance": 0.0011111111111111111
+    },
+    {
+     "item": "chest_iron",
+     "chance": 0.0014285714285714286
+    },
+    {
+     "item": "kit_iron_warden",
+     "chance": 0.00125
+    },
+    {
+     "item": "charm_wee_thrall",
+     "chance": 0.0004857142857142857
+    }
+   ]
+  },
+  "rot_cap_patch": {
+   "id": "rot_cap_patch",
+   "skill": "gardening",
+   "name": "Rot-cap Patch",
+   "kind": "herb",
+   "level": 1,
+   "xp": 16,
+   "ticks": 5,
+   "item": "herb_rot_cap",
+   "yields": [
+    3,
+    6
+   ],
+   "respawnS": 40,
+   "extras": [
+    {
+     "item": "seed_rot_cap",
+     "chance": 0.1
+    },
+    {
+     "item": "charm_shroud_moth",
+     "chance": 0.0002885714285714286
+    }
+   ],
+   "tint": 9416250
+  },
+  "ash_bloom_patch": {
+   "id": "ash_bloom_patch",
+   "skill": "gardening",
+   "name": "Ash-bloom Patch",
+   "kind": "herb",
+   "level": 1,
+   "xp": 22,
+   "ticks": 5,
+   "item": "herb_ash_bloom",
+   "yields": [
+    3,
+    6
+   ],
+   "respawnS": 40,
+   "extras": [
+    {
+     "item": "seed_ash_bloom",
+     "chance": 0.1
+    },
+    {
+     "item": "charm_shroud_moth",
+     "chance": 0.0002885714285714286
+    }
+   ],
+   "tint": 14708794
+  }
+ },
+ "NODE_IDS": [
+  "coffin_oak",
+  "hangman_elm",
+  "bleeding_willow",
+  "churchyard_yew",
+  "blackthorn",
+  "ghostwood",
+  "bone_elder",
+  "seam_copper",
+  "seam_tin",
+  "seam_iron",
+  "seam_bronze",
+  "seam_silver",
+  "seam_gold",
+  "seam_steel",
+  "geode_hell",
+  "geode_moon",
+  "pool_still",
+  "pool_eels",
+  "pool_carp",
+  "pool_pike",
+  "pool_lantern",
+  "pool_coelacanth",
+  "grave_pauper",
+  "grave_mound",
+  "bog_myrtle",
+  "grave_crypt",
+  "drowned_lotus",
+  "grave_barrow_king",
+  "rot_cap_patch",
+  "ash_bloom_patch"
+ ],
+ "XP_CURVE": "live",
+ "TOOL_KIND": {
+  "woodcutting": "hatchet",
+  "mining": "pickaxe",
+  "fishing": "rod",
+  "gravedigging": "spade"
+ },
+ "TOOL_METALS": [
+  "copper",
+  "iron",
+  "silver",
+  "steel",
+  "hell",
+  "moon"
+ ],
+ "BELT_BASE": 110,
+ "BELT_KINDS": [
+  "hatchet",
+  "pickaxe",
+  "rod",
+  "spade"
+ ],
+ "BELT_SLOT_COUNT": 4,
+ "BAG_SLOTS": 48,
+ "MATERIAL_STACK": 250
+}
