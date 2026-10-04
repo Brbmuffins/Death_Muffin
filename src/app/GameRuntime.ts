@@ -7,6 +7,7 @@ import { ShadowCadence } from '../graphics/shadowCadence';
 import { ResolutionGovernor, budgetFps, shouldProcessFrame } from './framePacing';
 import { perfFrame } from '../net/perfBeacon';
 import { onSettingsChange, settings } from './settings';
+import { FpsOverlay } from '../ui/FpsOverlay';
 
 /** What a scene hands the runtime: something to draw and a per-frame tick. */
 export interface RuntimeView {
@@ -43,6 +44,8 @@ export class GameRuntime {
 
   /** Smoothed frame time, exposed for the debug overlay / perf checks. */
   frameMs = 16.7;
+  /** F3 / ?fps performance overlay. */
+  private overlay: FpsOverlay | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     const renderer = new THREE.WebGLRenderer({
@@ -76,6 +79,7 @@ export class GameRuntime {
     window.addEventListener('resize', this.resize);
     onSettingsChange(() => this.applyQuality());
     this.applyQuality();
+    this.overlay = new FpsOverlay({ renderer, resolutionScale: () => this.resolution.scale });
   }
 
   /** Lowers the render resolution while the GPU can't hold the frame cap (see ResolutionGovernor). */
@@ -143,6 +147,7 @@ export class GameRuntime {
       const t = performance.now();
       // Frame cap: skip before touching the clock so the next dt covers the whole gap.
       if (!shouldProcessFrame(t, this.lastFrameAt, settings.fps)) return;
+      const gapMs = this.lastFrameAt > 0 ? t - this.lastFrameAt : 0; // unclamped, unlike dt: the overlay's worst frame must show a 300 ms hitch as 300
       this.lastFrameAt = t;
       perfFrame(t);
       const dt = Math.min(this.clock.getDelta(), 0.1);
@@ -153,13 +158,20 @@ export class GameRuntime {
         return;
       }
       view.update(dt, this.now());
+      const tUpdated = performance.now();
       // update() may have swapped the view (scene transition) — render the current one.
       const current = this.view;
       if (!current) return;
       this.renderer.shadowMap.needsUpdate = this.shadows.due(t);
       this.renderer.info.reset(); // autoReset is off: calls/triangles below cover every pass of this frame (perf beacon)
+      this.overlay?.beginGpu();
       if (this.bloomEnabled) this.composer.render(dt);
       else this.renderer.render(current.scene, current.camera);
+      this.overlay?.endGpu();
+      if (this.overlay?.visible) {
+        const tDrawn = performance.now();
+        this.overlay.frame({ frameMs: gapMs, updateMs: tUpdated - t, renderMs: tDrawn - tUpdated }, tDrawn);
+      }
       if (settings.autoResolution && this.resolution.frame(dt, this.frameMs, budgetFps(settings.fps))) this.applyQuality();
     };
     loop();

@@ -133,6 +133,7 @@ export class SettingsPanel extends SimplePanel {
           <kbd>J N</kbd><span>Character window: your stats and where each number comes from, and a Capes &amp; Pets tab (N opens it)</span>
           ${this.kitHelp.legion ? '<kbd>Y</kbd><span>Legion tab beside the Grimoire: spare weapon and armour for your thralls, and Reinforce (necromancers)</span>' : ''}
           <kbd>.</kbd><span>Gear Atlas: where every piece drops and how often, how to craft it, and what suits your discipline</span>
+          <kbd>F3</kbd><span>Performance overlay: frame rate, where frame time goes, and a log of recent stutters (also <code>?fps</code> in the address bar)</span>
           <kbd>K</kbd><span>Codex</span>
           <kbd>E</kbd><span>Talk to the Prior, the Sexton or the Apothecary when you stand close (or click them)</span>
           <kbd>V</kbd><span>Ossuary Vault: a shared stash (in the Chapterhouse or the Acre)</span>
