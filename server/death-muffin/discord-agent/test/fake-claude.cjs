@@ -37,5 +37,6 @@ let p = ''; process.stdin.on('data', (d) => { p += d; }).on('end', () => {
     fs.writeFileSync('.dm-shots/a.png', Buffer.from(/SHOT-PNG2/.test(p) ? 'PNG-two-bytes' : 'PNG-one'));
     if (/SHOT-PNG/.test(p) && /BIG/.test(p)) fs.writeFileSync('.dm-shots/big.png', Buffer.alloc(9 * 1024 * 1024, 1));
   }
+  if (/previous change shipped/.test(p)) text += ' ROUND-NOTE-SEEN';
   process.stdout.write(JSON.stringify({ type: 'result', result: text, session_id: 'sess-1', is_error: false, total_cost_usd: 0 }));
 });

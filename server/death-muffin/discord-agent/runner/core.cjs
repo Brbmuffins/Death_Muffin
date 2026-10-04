@@ -36,6 +36,7 @@ function createRunner(cfgIn, opts = {}) {
   try { jobs = JSON.parse(fs.readFileSync(jobsFile, 'utf8')); } catch { /* fresh */ }
   for (const j of Object.values(jobs)) { if (j.status === 'running' || j.status === 'shipping') { j.status = 'idle'; } j.running = false; j.previewBusy = false; }
   const save = () => { const t = jobsFile + '.tmp'; fs.writeFileSync(t, JSON.stringify(jobs, null, 1), { mode: 0o600 }); fs.renameSync(t, jobsFile); };
+  const starting = new Map();      // threadId -> promise while a new round's workspace is being created
   const pendingNew = new Map();   // eventId -> event awaiting a thread id from the bot
   let shipBusy = false;
 
@@ -106,7 +107,7 @@ function createRunner(cfgIn, opts = {}) {
   function newJob(ev) {
     const id = crypto.randomBytes(3).toString('hex');
     return { id, threadId: null, channelId: ev.channelId, creatorId: String(ev.userId), branch: `discord/${id}`, worktree: null, base: null, sessionId: null,
-      model: cfg.defaultModel, status: 'idle', turns: 0, createdAt: new Date(now()).toISOString(), lastActive: now(), queue: [], proposal: null, running: false };
+      model: cfg.defaultModel, status: 'idle', turns: 0, createdAt: new Date(now()).toISOString(), lastActive: now(), queue: [], proposal: null, running: false, round: 1, history: [], totalTurns: 0 };
   }
   const inScope = (ev) => (ev.threadId ? String(ev.parentId) === String(cfg.channelId) : String(ev.channelId) === String(cfg.channelId));
 
@@ -143,17 +144,46 @@ function createRunner(cfgIn, opts = {}) {
     const job = jobs[ev.threadId];
     if (!job) return { action: 'ignore' };
     if (!ev.mentioned && cfg.threadReplyRequiresMention) return { action: 'ignore' };
-    if (['shipped', 'discarded'].includes(job.status)) return { action: 'reply', text: `This request is closed (${job.status}). Mention me in the channel to start a new one.` };
+    if (starting.has(job.threadId)) await starting.get(job.threadId).catch(() => {});
     audit.log('request', { userId: msg.userId, role, kind: 'thread', job: job.id, text });
+    // After a ship (or a discard / sweep) the thread stays open: the next message starts a new round on a fresh branch from current master.
+    if (['shipped', 'discarded'].includes(job.status)) {
+      if (text.startsWith('!')) return /^!status\b/i.test(text) ? handleCommand(job, msg, text) : { action: 'reply', text: 'Nothing is open right now. Tell me what to change next and I will start a fresh branch from the latest master.' };
+      if ((job.totalTurns || 0) >= cfg.maxTurnsPerThread) return { action: 'reply', text: 'This thread has used up its total turn limit. Start a new request in the channel.' };
+      const ok = await beginRound(job);
+      if (!ok) return { action: 'reply', text: 'I could not set up a fresh workspace for the next change. Try again in a minute.' };
+    }
     if (text.startsWith('!')) return handleCommand(job, msg, text);
-    if (job.turns >= cfg.maxTurnsPerJob) return { action: 'reply', text: 'This thread has hit its turn limit. Start a new request in the channel.' };
+    if ((job.totalTurns || 0) >= cfg.maxTurnsPerThread) return { action: 'reply', text: 'This thread has used up its total turn limit. Start a new request in the channel.' };
+    if (job.turns >= cfg.maxTurnsPerJob) return { action: 'reply', text: 'This round has hit its turn limit. Ship or discard the current change and I will start a fresh round, or start a new request in the channel.' };
     const mm = /\buse\s+(opus|sonnet|haiku)\b/i.exec(text);
     if (mm && auth.canSwitchModel(msg.userId) && cfg.allowedModels.includes(mm[1].toLowerCase())) { job.model = mm[1].toLowerCase(); audit.log('model', { job: job.id, model: job.model, by: msg.userId }); }
     msg.text += saveInboxImages(job, msg, ev.images);
     job.queue.push(msg); job.lastActive = now(); save();
     const ahead = running().length;
     pump();
-    return { action: 'accepted', queued: job.running || ahead >= cfg.maxConcurrentJobs };
+    return { action: 'accepted', queued: job.running || job.status === 'shipping' || ahead >= cfg.maxConcurrentJobs };
+  }
+
+  // ---------- rounds ----------
+  const projDir = (wt) => path.join(cfg.claudeProjectsDir || path.join(process.env.HOME || '', '.claude', 'projects'), String(wt).replace(/[^a-zA-Z0-9]/g, '-'));
+  const beginRound = (job) => { const p = startRound(job).catch((e) => { console.error('round failed', e); return false; }); starting.set(job.threadId, p); return p.finally(() => starting.delete(job.threadId)); };
+  // Fresh branch + worktree from the current origin/master in the same thread / job record; the claude session carries on.
+  async function startRound(job) {
+    const prev = { worktree: job.worktree, branch: job.branch };
+    const round = (job.round || 1) + 1;
+    let w;
+    try { w = await G.createWorktree(cfg, { ...job, round, branch: `discord/${job.id}-${round}` }); }
+    catch (e) { say(job, `I could not set up a workspace for the next change: ${clip(e.message, 300)}`); job.status = 'discarded'; job.queue = []; save(); return false; }
+    // images already attached to messages that are waiting come along; the claude conversation file moves to the new project dir
+    if (prev.worktree) { try { const inbox = path.join(prev.worktree, '.dm-inbox'); if (fs.existsSync(inbox)) fs.cpSync(inbox, path.join(w.worktree, '.dm-inbox'), { recursive: true }); else job.inboxBytes = 0; } catch { /* best effort */ } }
+    else job.inboxBytes = 0;
+    if (job.sessionId && prev.worktree) { try { const f = `${job.sessionId}.jsonl`; const dst = projDir(w.worktree); fs.mkdirSync(dst, { recursive: true }); fs.copyFileSync(path.join(projDir(prev.worktree), f), path.join(dst, f)); } catch { /* resume falls back to a fresh session */ } }
+    if (prev.worktree) await G.removeJobArtifacts(cfg, { ...job, ...prev }).catch(() => {});
+    Object.assign(job, { round, branch: `discord/${job.id}-${round}`, worktree: w.worktree, base: w.base, proposal: null, shotsSeen: {}, turns: 0, status: 'idle', queuedNotice: false, cancelRequested: false, previewBusy: false,
+      roundNote: 'Your previous change shipped and is live (or was discarded). You are on a fresh branch from the latest master; read the code again before relying on what you remember.', lastActive: now() });
+    audit.log('round', { job: job.id, round, branch: job.branch, base: w.base });
+    save(); return true;
   }
 
   async function bind({ eventId, threadId, error }) {
@@ -225,12 +255,12 @@ function createRunner(cfgIn, opts = {}) {
       const curHead = await G.head(job.worktree).catch(() => null);
       if (curHead !== p.head) { audit.log('approve-refused', { userId: uid, job: job.id, why: 'head changed' }); say(job, 'The branch changed after this proposal; wait for the new one.'); return { action: 'remove_reaction' }; }
       audit.log('approved', { userId: uid, job: job.id, tier: p.tier, head: p.head });
-      ship(job, uid).catch((e) => { shipBusy = false; say(job, `Ship crashed: ${e.message}`); audit.log('ship-error', { job: job.id, error: e.message }); });
+      ship(job, uid).catch((e) => { shipBusy = false; say(job, `Ship crashed: ${e.message}`); audit.log('ship-error', { job: job.id, error: e.message }); if (job.status === 'shipping') { job.status = job.proposal ? 'proposed' : 'idle'; save(); pump(); } });
       return { action: 'accepted' };
     }
     if (ev.emoji === '❌') {
       if (!auth.canDiscard(uid, job, p.tier)) return { action: 'remove_reaction' };
-      if (job.status === 'shipping') return { action: 'ignore' };
+      if (['shipping', 'shipped', 'discarded'].includes(job.status)) return { action: 'ignore' };
       discard(job, uid).catch((e) => say(job, `Discard failed: ${e.message}`));
       return { action: 'accepted' };
     }
@@ -241,8 +271,9 @@ function createRunner(cfgIn, opts = {}) {
     if (job.running) { job.cancelRequested = true; if (job.proc) { try { process.kill(-job.proc.pid, 'SIGKILL'); } catch { /* gone */ } } }
     audit.log('discarded', { job: job.id, userId: String(byId) });
     await G.removeJobArtifacts(cfg, job);
-    job.status = 'discarded'; job.queue = []; job.proposal = null; save();
-    say(job, `Discarded. Branch \`${job.branch}\` and its workspace are deleted. Nothing went live.`);
+    (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, discarded: true, at: new Date(now()).toISOString() });
+    job.status = 'discarded'; job.queue = []; job.proposal = null; job.worktree = null; save();
+    say(job, `Discarded. Branch \`${job.branch}\` and its workspace are deleted. Nothing went live. Message me here whenever you want to start the next change.`);
   }
 
   // ---------- scheduler ----------
@@ -258,8 +289,11 @@ function createRunner(cfgIn, opts = {}) {
   }
 
   async function agentTurn(job, prompt) {
-    job.turns++;
-    const r = await runTurn(cfg, job, prompt, { onSpawn: (p) => { job.proc = p; } });
+    job.turns++; job.totalTurns = (job.totalTurns || 0) + 1;
+    let r = await runTurn(cfg, job, prompt, { onSpawn: (p) => { job.proc = p; } });
+    if (r.error && job.sessionId && /no conversation found/i.test(r.error)) {   // the earlier conversation could not be resumed from the new workspace: start a fresh one
+      job.sessionId = null; r = await runTurn(cfg, job, `(The earlier conversation in this thread is not available; work from the request and the code.)\n\n${prompt}`, { onSpawn: (p) => { job.proc = p; } });
+    }
     job.proc = null;
     if (r.sessionId) job.sessionId = r.sessionId;
     fs.mkdirSync(path.join(cfg.stateDir, 'runs'), { recursive: true });
@@ -273,12 +307,13 @@ function createRunner(cfgIn, opts = {}) {
     const sync = msgs.some((m) => m.sync);
     const real = msgs.filter((m) => !m.sync);
     let extra = '';
+    if (job.roundNote) { extra = job.roundNote; job.roundNote = null; }
     if (sync) {
       await G.git(cfg.repo, ['fetch', '-q', 'origin']);
       const m = await G.git(job.worktree, ['merge', '--no-edit', 'origin/master'], { allowFail: true });
       if (m.code !== 0) {
         const conflicted = (await G.git(job.worktree, ['diff', '--name-only', '--diff-filter=U'])).out.trim();
-        extra = `Master moved and merging it into your branch left conflicts in:\n${conflicted}\nResolve the conflict markers in those files keeping both sides' intent, stage them with agit add <paths>, then finish with agit commit --no-edit. Then run check.sh.`;
+        extra = (extra ? extra + '\n\n' : '') + `Master moved and merging it into your branch left conflicts in:\n${conflicted}\nResolve the conflict markers in those files keeping both sides' intent, stage them with agit add <paths>, then finish with agit commit --no-edit. Then run check.sh.`;
         say(job, 'Merging the latest master hit conflicts; asking the agent to resolve them.');
       } else say(job, 'Merged the latest master into this branch cleanly. Re-running checks.');
       job.proposal = null;
@@ -453,14 +488,17 @@ function createRunner(cfgIn, opts = {}) {
     if (kind === 'live') {
       const [sha, rb] = detail.split(' ');
       logShip({ type: 'live', jobId: job.id, sha, approverId: String(approverId), approverName: nameOf(approverId), tier: p.tier, title: p.title, rollback: rb && rb !== 'none' ? rb : null });
-      job.status = 'shipped'; job.proposal = { ...p, shipSha: sha }; save();
+      job.status = 'shipped'; job.proposal = { ...p, shipSha: sha }; (job.history = job.history || []).push({ round: job.round || 1, branch: job.branch, shipSha: sha, at: new Date(now()).toISOString() }); save();
       // Phones + offline edition are best effort (ship.sh prints one MOBILE: line); the PC release is live either way.
       const mm = /^MOBILE: (\S+)\s*(.*)$/m.exec(out); const mkind = mm ? mm[1] : ''; const mwhy = mm ? clip(mm[2], 300) : '';
       audit.log('mobile-result', { job: job.id, kind: mkind || 'none', detail: mwhy });
-      say(job, `🚀 Live. Release \`${sha}\` is on master and deployed${mkind === 'live' ? ' (phones and offline updated too)' : ''}. Thanks, ${nameOf(job.creatorId)}.` + (mkind === 'pending' ? `\nPhones and offline will follow once the mobile branch is sorted out (${mwhy}).` : ''));
+      say(job, `🚀 Live. Release \`${sha}\` is on master and deployed${mkind === 'live' ? ' (phones and offline updated too)' : ''}. Thanks, ${nameOf(job.creatorId)}.` + (mkind === 'pending' ? `\nPhones and offline will follow once the mobile branch is sorted out (${mwhy}).` : '') + '\nKeep going here for the next change.');
       if (mkind === 'pending') ownerPing({ threadId: job.threadId }, `Mobile/offline did NOT update for \`${job.id}\` (PC is live as \`${sha}\`): ${mwhy}`);
       if (!ownerShips) ownerPing({ threadId: job.threadId }, `${nameOf(approverId)} shipped **${clip(p.title, 100)}** (${p.tier}) as \`${sha}\`. Diff: ${G.compareUrl(cfg, job.branch)} — to undo: say \`rollback\`.`);
-      await G.removeJobArtifacts(cfg, job);
+      // A message that arrived during the ship starts the next round right away (its worktree is cut from the master we just shipped).
+      if (job.queue.length) await beginRound(job);
+      else { await G.removeJobArtifacts(cfg, job); job.worktree = null; save(); }
+      pump();
       return;
     }
     const why = {
@@ -476,7 +514,7 @@ function createRunner(cfgIn, opts = {}) {
     if (kind === 'deploy-failed' || kind === 'crashed') ownerPing({ threadId: job.threadId }, `Deploy problem for \`${job.id}\`: ${kind}. Check ${cfg.toolsDir}/state/ship-${job.id}.deploy.log`);
     job.status = ['master-moved', 'lock-timeout'].includes(kind) ? 'proposed' : 'idle';
     if (job.status === 'idle') job.proposal = null;
-    save();
+    save(); pump();   // a message that arrived during the ship is handled on this same branch
   }
 
   function newestBackup() {
@@ -513,7 +551,7 @@ function createRunner(cfgIn, opts = {}) {
   async function sweep(staleDays = 7) {
     for (const j of Object.values(jobs)) {
       if (j.running || ['shipped', 'discarded', 'shipping'].includes(j.status)) continue;
-      if (now() - j.lastActive > staleDays * 86400e3) { await G.removeJobArtifacts(cfg, j).catch(() => {}); j.status = 'discarded'; say(j, `Closed after ${staleDays} days without activity; the branch and workspace were removed.`); audit.log('swept', { job: j.id }); }
+      if (now() - j.lastActive > staleDays * 86400e3) { await G.removeJobArtifacts(cfg, j).catch(() => {}); (j.history = j.history || []).push({ round: j.round || 1, branch: j.branch, discarded: 'swept', at: new Date(now()).toISOString() }); j.status = 'discarded'; j.worktree = null; j.proposal = null; say(j, `Closed after ${staleDays} days without activity; the branch and workspace were removed. Message me here to start a fresh round.`); audit.log('swept', { job: j.id }); }
     }
     save();
   }
