@@ -640,3 +640,17 @@ test('a thread whose workspace vanished starts a fresh round and never runs the 
   assert.equal(job.round, 2); assert.ok(fs.existsSync(job.worktree));
   assert.doesNotMatch(texts(thread).join('\n'), /Something broke|no workspace/);
 });
+
+test('a question after a proposal re-posts it with the same title, not the oldest commit subject', async () => {
+  const w = makeWorld(); const d = makeDiscord(w.runner);
+  const { thread } = await request(d, IDS.HELIX, 'MAKE-CSS make the accent blue');
+  const p1 = await waitProposal(d, thread);
+  await d.say(thread, IDS.HELIX, 'MAKE-CSS2 actually green');
+  const p2 = await waitNthProposal(d, thread, 2);
+  assert.match(p2.payload.embeds[0].title, /Green accent/);
+  await d.say(thread, IDS.HELIX, 'what else could change?');
+  const p3 = await waitNthProposal(d, thread, 3);
+  assert.equal(p3.payload.embeds[0].title, p2.payload.embeds[0].title, 'kept the latest title');
+  assert.doesNotMatch(p3.payload.embeds[0].title, /blue/i);
+  void p1;
+});

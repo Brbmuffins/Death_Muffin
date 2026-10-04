@@ -476,8 +476,12 @@ function createRunner(cfgIn, opts = {}) {
     const head = await G.head(job.worktree);
     try { await (opts.pushBranch || G.pushBranch)(cfg, job); } catch (e) { say(job, `I could not push the branch to GitHub: ${clip(e.message, 300)}`); job.status = 'idle'; return; }
     const tier = v.cls.tier;
-    const subjects = v.commits.map((c) => c.subject).reverse();
-    const title = clip((result && result.title) || subjects[0] || 'Change', 120);
+    const subjects = v.commits.map((c) => c.subject).reverse();   // oldest first
+    // A turn that changed nothing (a question, a "what if") writes no result: keep the title of the proposal it re-posts, and otherwise fall
+    // back to the NEWEST commit, which describes the change as it is now (2026-10-04: a re-post said "button" after it became a checkbox).
+    const same = job.proposal && job.proposal.head === head ? job.proposal : null;
+    const title = clip((result && result.title) || (same && same.title) || subjects[subjects.length - 1] || 'Change', 120);
+    if (!(result && Array.isArray(result.summary) && result.summary.length) && same && same.summary) result = { ...(result || {}), summary: same.summary, risk: (result && result.risk) || same.risk };
     const bullets = (Array.isArray(result && result.summary) && result.summary.length ? result.summary : subjects).slice(0, 6).map((b) => `• ${clip(b, 220)}`);
     const warn = G.suspiciousFindings(v.diff).map((w) => clip(w, 150));
     const fileLines = v.files.map((f) => `${f.status === 'add' ? '+' : f.status === 'delete' ? '−' : '~'} ${clip(f.path, 90)}`);
@@ -500,7 +504,7 @@ function createRunner(cfgIn, opts = {}) {
     if (job.status === 'discarded' || job.cancelRequested) { G.removePreview(cfg, job); return; }
     embed.fields.splice(embed.fields.length - 1, 0, pv.ok ? { name: 'Try it (playable preview)', value: `${pv.url}\nOffline sandbox copy of this change: nothing saves to your real character.`, inline: false } : { name: 'Preview build failed', value: `${pv.why}\nThe proposal is still valid; review the diff, or say !preview to retry.`, inline: false });
     for (const f of embed.fields) f.value = clip(f.value, 1024);   // Discord: field value <= 1024 chars (whole embed <= 6000; the caps above keep it well under)
-    job.proposal = { messageId: null, head, base: job.base, tier, title, files: v.files.map((f) => f.path), migrations: v.migrations, testsOk: true, createdAt: new Date(now()).toISOString() };
+    job.proposal = { messageId: null, head, base: job.base, tier, title, summary: Array.isArray(result && result.summary) ? result.summary : null, risk: (result && result.risk) || null, files: v.files.map((f) => f.path), migrations: v.migrations, testsOk: true, createdAt: new Date(now()).toISOString() };
     job.status = 'proposed'; save();
     audit.log('proposal', { job: job.id, tier, head, files: v.files.length, migrations: v.migrations.join(',') });
     const committedAt = Number((await G.git(job.worktree, ['log', '-1', '--format=%ct'], { allowFail: true })).out.trim()) * 1000 || 0;

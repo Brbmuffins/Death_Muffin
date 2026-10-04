@@ -59,7 +59,7 @@ already covers it.
 4. Commit with `__TOOLS__/agit add <explicit paths>` then `__TOOLS__/agit commit -m "<message>"`. Commit message rules: ONE plain
    sentence written for players and teammates (it becomes the release note, about 100 characters; no ticket numbers, no
    file names, no "feat:" prefixes) and NO `Co-Authored-By` line or any other trailer. Several small commits are fine.
-5. If `PATCH_NOTES.json` exists at the repo root and the change is visible to players, add one short plain-English item
+5. Required for every change players can see (owner, 2026-10-04: several shipped without one): add one short plain-English item to `PATCH_NOTES.json` at the repo root,
    to the newest entry's `items` array in the same commit (valid JSON, keep the existing format).
 6. Never touch: `.env*` files, deploy scripts (`*.sh`, `deploy*`), `server/death-muffin/discord-agent/`, `server/death-muffin/bug-agent/`,
    `.claude/`, CI config. Server work is pre-approved (owner, 2026-10-04): when a request from Helix or the owner
