@@ -5,7 +5,7 @@ import { browserStorage } from '../gameplay/codexJournal';
 import { bonusAvailable, brewOfTheDay, claimBonus } from '../content/wing';
 import { itemMeta } from '../content/items';
 import { BAG_SIZE } from '../gameplay/loot';
-import { clampCraftQty, hasSkillAndMaterials, maxCraftable } from '../gameplay/craftQuantity';
+import { clampCraftQty, hasSkillAndMaterials, loadOnlyCraftable, maxCraftable, saveOnlyCraftable } from '../gameplay/craftQuantity';
 import { ReforgeView, type ReforgeHost } from './ReforgeView';
 import { wrapPanelBody } from './panelBody';
 
@@ -36,7 +36,7 @@ export class ForgePanel {
   private professions: Profession[] = [];
   private tab: Tab = 'mining';
   private busy = false;
-  /** The "Only craftable" filter (session only, shared by every tab and station). */
+  /** The "Only show craftable" checkbox: one persistent setting shared by every tab and station (read on open). */
   private onlyCraftable = false;
   /** The quantity picked per recipe (session only). */
   private qty = new Map<string, number>();
@@ -82,7 +82,7 @@ export class ForgePanel {
       </div>
       ${st ? `<p class="cw-hint-text">${st.blurb}</p>` : ''}
       ${tabs.length > 1 ? `<div class="cw-tabs">${tabs.map((p) => `<button data-tab="${p}">${LABEL[p]}</button>`).join('')}</div>` : ''}
-      <div class="cw-craftable-row"><button class="cw-button small" data-only-craftable aria-pressed="false" title="Hide every recipe you lack the skill or materials for">Only craftable</button></div>
+      <div class="cw-craftable-row"><label title="Hide every recipe you lack the skill or materials for. Applies to every crafting page."><input type="checkbox" data-only-craftable> Only show craftable</label></div>
       <p class="cw-hint-text" data-wing-hint></p>
       <div class="cw-recipes"><span class="cw-hint-text">Loading recipes…</span></div>
       <div class="cw-error" data-error></div>
@@ -95,8 +95,12 @@ export class ForgePanel {
         void this.load();
       }),
     );
-    this.el.querySelector('[data-only-craftable]')!.addEventListener('click', () => {
-      this.onlyCraftable = !this.onlyCraftable;
+    this.onlyCraftable = loadOnlyCraftable(browserStorage());
+    const only = this.el.querySelector<HTMLInputElement>('[data-only-craftable]')!;
+    only.checked = this.onlyCraftable;
+    only.addEventListener('change', () => {
+      this.onlyCraftable = only.checked;
+      saveOnlyCraftable(browserStorage(), this.onlyCraftable);
       this.render();
     });
     this.root.appendChild(this.el);
@@ -150,18 +154,13 @@ export class ForgePanel {
         hint.innerHTML = `Brew of the day: <b>${itemMeta(day.brewId).name}</b> ${claimed ? '(bonus claimed today)' : '(one extra on your first brew today)'}`;
       } else hint.textContent = this.station === null && this.tab === 'alchemy' ? 'Brewing is easier in the Alchemist\'s Wing, east of the Chapterhouse: the Great Cauldron and the Reagent Shelf are there.' : '';
     }
-    const toggle = this.el?.querySelector<HTMLButtonElement>('[data-only-craftable]');
-    if (toggle) {
-      toggle.setAttribute('aria-pressed', String(this.onlyCraftable));
-      toggle.classList.toggle('on', this.onlyCraftable);
-    }
     if (!this.recipes.length) {
       list.innerHTML = '<span class="cw-hint-text">No recipes known for this rite.</span>';
       return;
     }
     const shown = this.onlyCraftable ? this.recipes.filter((r) => this.canCraft(r)) : this.recipes;
     if (!shown.length) {
-      list.innerHTML = '<span class="cw-hint-text">Nothing here is craftable right now. Turn off "Only craftable" to see every recipe.</span>';
+      list.innerHTML = '<span class="cw-hint-text">Nothing here is craftable right now. Untick "Only show craftable" to see every recipe.</span>';
       return;
     }
     list.innerHTML = shown
