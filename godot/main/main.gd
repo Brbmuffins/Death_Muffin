@@ -43,36 +43,46 @@ func _ready() -> void:
 	hud.setup(self)
 	perf = DmPerfOverlay.new()
 	add_child(perf)
+	if "--open-all" in OS.get_cmdline_user_args():
+		builder.open_all()
 	_update_area()
+
+func _unhandled_key_input(ev: InputEvent) -> void:
+	# Dev: F9 breaks every seal (the web's __cwDebug.unlockAll). Real seal state comes from the progression/sim track via builder.set_unlocked().
+	if ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_F9:
+		builder.open_all()
+		hud.note("all seals broken (dev)")
 
 func _process(dt: float) -> void:
 	cam.update_rig(dt, hero.global_position)
 	_update_area()
-	builder.update_light_lod(hero.global_position.x, hero.global_position.z)
-	if spawning_enabled and area_id == "graves":
+	builder.update_streaming(cam.focus.x, cam.focus.z)
+	builder.update_light_lod(cam.focus.x, cam.focus.z)
+	var a: Dictionary = world.areas[area_id]
+	if spawning_enabled and not a.safe and not a.instance and float(a.waveSize) > 0.0:
 		spawn_timer -= dt
 		if spawn_timer <= 0.0:
-			var g: Dictionary = world.areas.graves
-			spawn_timer = float(g.waveIntervalMs) / 1000.0
+			spawn_timer = float(a.waveIntervalMs) / 1000.0
 			var alive := get_tree().get_nodes_in_group("enemies").size()
-			var n := mini(int(g.waveSize), int(g.cap) - alive)
+			var n := mini(int(a.waveSize), int(a.cap) - alive)
 			if n > 0:
 				spawn_wave(n)
 
 func _update_area() -> void:
-	var id := "graves" if hero.global_position.z < 6.0 else "chapterhouse"
+	var id := builder.area_at(hero.global_position.x, hero.global_position.z)
+	if id == "":
+		id = area_id  # in a door corridor: keep the room you came from
 	if id != area_id:
 		area_id = id
 		builder.set_area(id)
 		hud.on_area(world.areas[id])
-		if id == "graves":
-			spawn_timer = 1.0
+		spawn_timer = 1.0
 	elif hud != null and hud.area_label.text == "":
 		hud.on_area(world.areas[id])
 
 # --------------------------------------------------------------- spawning
 func _pick_enemy_id() -> String:
-	var roster: Array = enemies_data.roster
+	var roster: Array = world.areas[area_id].enemies
 	var total := 0.0
 	for r in roster:
 		total += float(r.weight)
@@ -84,7 +94,7 @@ func _pick_enemy_id() -> String:
 	return roster[0].id
 
 func spawn_wave(n: int) -> void:
-	var g: Dictionary = world.areas.graves
+	var g: Dictionary = world.areas[area_id]
 	var rect: Dictionary = g.rect
 	var spots: Array = []
 	for b in g.breaches:
@@ -165,14 +175,14 @@ func corpse_near(at: Vector3, radius: float, from: Vector3, reach: float) -> Nod
 func on_enemy_killed(e: DmEnemy) -> void:
 	kills += 1
 	hero.kills = kills
-	var g: Dictionary = world.areas.graves
+	var g: Dictionary = world.areas[area_id]
 	hud.note("+%d xp   %s" % [int(e.def.xp), e.def.name])
-	if randf() < float(0.08 * 104.0 / 134.0):
+	if not g.loot.is_empty() and randf() < float(g.itemChance) * 104.0 / 134.0:
 		var total := 0.0
-		for l in world.loot:
+		for l in g.loot:
 			total += float(l.weight)
 		var x := randf() * total
-		for l in world.loot:
+		for l in g.loot:
 			x -= float(l.weight)
 			if x <= 0.0:
 				DmFx.float_text(self, e.global_position + Vector3(0, 1.4, 0), "[%s]" % l.name, Color(1.0, 0.8, 0.3), 36, 1.0, 2.0)

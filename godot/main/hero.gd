@@ -16,6 +16,7 @@ var spell_power: float
 var needle: Dictionary
 var exhume: Dictionary
 var _anim: AnimationPlayer
+var _animator: DmAnimator
 var _model_root: Node3D
 var _path: PackedVector3Array = PackedVector3Array()
 var _path_i := 0
@@ -44,9 +45,10 @@ func setup(h: Dictionary, m: Node, c: DmCameraRig) -> void:
 	needle = h.abilities.bone_needle
 	exhume = h.abilities.exhume
 	var mi: Dictionary = h.model
-	var cr := DmModels.creature(mi.url, float(mi.height), float(mi.yaw))
+	var cr := DmModels.creature_from(mi)
 	_model_root = cr.root
 	_anim = cr.anim
+	_animator = cr.animator
 	add_child(_model_root)
 	var col := CollisionShape3D.new()
 	var cs := CylinderShape3D.new()
@@ -57,7 +59,7 @@ func setup(h: Dictionary, m: Node, c: DmCameraRig) -> void:
 	add_child(col)
 	motion_mode = CharacterBody3D.MOTION_MODE_FLOATING
 	_ring()
-	DmModels.play(_anim, "idle", 1.0, 0.0)
+	_animator.loco(0.0)
 
 func _ring() -> void:
 	# The web draws a pale ring + soft dark contact shadow under the hero so it stays findable.
@@ -143,8 +145,7 @@ func fire_at(p: Vector3) -> bool:
 	_needle_cd = float(needle.cooldownMs) / 1000.0
 	rotation.y = atan2(dir.x, dir.z)
 	_action_t = 0.28
-	if _anim != null and _anim.has_animation("attack"):
-		_anim.play("attack", 0.04, 2.2)
+	_animator.strike("attack", 0.15)
 	var b := DmBolt.new()
 	b.dir = dir
 	b.damage = spell_power * float(needle.power)
@@ -171,8 +172,7 @@ func do_exhume(at: Vector3) -> bool:
 	_action_t = 0.6
 	var dir: Vector3 = corpse.global_position - global_position
 	rotation.y = atan2(dir.x, dir.z)
-	if _anim != null and _anim.has_animation("cast"):
-		_anim.play("cast", 0.05, 1.8)
+	_animator.strike("cast", 0.25)
 	main.raise_thrall(corpse)
 	return true
 
@@ -237,8 +237,8 @@ func _physics_process(dt: float) -> void:
 			_stuck = 0.0
 		if _action_t <= 0.0:
 			rotation.y = lerp_angle(rotation.y, atan2(vel.x, vel.z), clampf(dt * 14.0, 0.0, 1.0))
-	if _action_t <= 0.0:
-		DmModels.play(_anim, "run" if moving else "idle", 1.0, 0.15)
+	_animator.tick(dt)
+	_animator.loco(vel.length() if moving else 0.0)
 
 func _follow_path() -> Vector3:
 	while _path_i < _path.size():

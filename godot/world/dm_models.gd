@@ -61,6 +61,13 @@ static func prop_parts(url: String, height: float) -> Array:
 		out.append({"mesh": p.mesh, "local": norm * p.xf})
 	return out
 
+## A creature from a model entry of enemies.json/npcs.json/hero.json (url, height, yaw, stride, timings): {root, anim, animator}.
+static func creature_from(entry: Dictionary, scale: float = 1.0) -> Dictionary:
+	var h: float = float(entry.height) * scale
+	var c := creature(entry.url, h, float(entry.yaw))
+	c["animator"] = DmAnimator.new(c.anim, entry, h)
+	return c
+
 ## A walking/animated model: returns {root: Node3D (feet at y=0, +Z forward), anim: AnimationPlayer or null}.
 static func creature(url: String, height: float, yaw: float) -> Dictionary:
 	var inf := analyze(url, height)
