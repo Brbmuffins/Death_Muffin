@@ -1933,3 +1933,10 @@ button {
 .site-alert p { margin: 0; }
 .site-alert a { color: var(--lilac); font-weight: 600; }
 .site-alert a:hover, .site-alert a:focus-visible { color: var(--bone-bright); }
+
+/* Landing page: Latest patch inside the dispatch box (index.html, filled from play/patch-notes.json). */
+.account__patch { margin: 0.45rem 0 0; padding: 0 0 0 1.05rem; text-align: left; color: var(--bone-bright); font-size: 0.82rem; line-height: 1.45; }
+.account__patch li { margin: 0 0 0.3rem; }
+.account__patch b { color: var(--ember); font-weight: 600; }
+.account__patch li { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.account__patch-more { margin: 0.2rem 0 0; font-size: 0.8rem; }
