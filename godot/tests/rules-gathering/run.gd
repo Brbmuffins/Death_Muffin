@@ -24,6 +24,10 @@ var section := ""
 
 
 func _init() -> void:
+	if not FileAccess.file_exists(FX + "consts.json"):
+		printerr("fixtures missing: run tools/godot/gen-fixtures.sh")
+		quit(1)
+		return
 	for t in ["consts", "xp", "chance", "rolls", "budget", "tools", "place_items", "plan", "labor", "garden", "contracts", "salvage", "gold_sink", "recipes", "bag", "locks", "vault", "potion_belt", "stable_sort"]:
 		section = t
 		call("_test_" + t)
