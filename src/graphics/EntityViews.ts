@@ -9,7 +9,6 @@ import { fx } from './fxTextures';
 import * as nf from './necroFx';
 import { SPELL_FX } from '../content/abilities';
 import { audio } from '../audio/Audio';
-import type { CreatureSlug } from './modelPaths';
 import { AREAS, type AreaId } from '../content/areas';
 import { BOSSES } from '../content/bosses';
 import { runIdleSequence } from './warmModel';
@@ -23,6 +22,8 @@ import { allowBurst, animInterval } from './animLod';
 import { disposeProp, upgradeThrallProp } from './gearProps';
 import { gearTier } from '../content/gear';
 import { depthRoster } from '../content/depths';
+import { assets } from './AssetCache';
+import { CREATURE_MODELS, type CreatureSlug } from './modelPaths';
 import { knockActive, knockImpulse, settleDepth, stepKnock, type Knock } from './knockback';
 
 const ENEMY_SLUG: Record<EnemyId, CreatureSlug> = {
@@ -1234,6 +1235,31 @@ export function preloadAreaModels(area: AreaId, legion?: DisciplineId | null): (
   const legionSlug = legion ? LEGION[legion]?.slug : undefined;
   if (legionSlug) add(`thrall:${legionSlug}`, legionSlug, { rim });
   add('thrall:skeleton_thrall', 'skeleton_thrall', { rim });
+  return runIdleSequence(tasks);
+}
+
+/**
+ * GLB urls of every body kind `areas` can show (rosters, bosses, legion, thralls, guide NPCs), nearest first by listing order.
+ * Parsing a model is the first-use cost of a creature type; doing it here, one per idle turn, keeps it out of the frame that needs it.
+ */
+export function areaModelUrls(areas: readonly AreaId[], legion?: DisciplineId | null): string[] {
+  const slugs: CreatureSlug[] = [];
+  const add = (s: CreatureSlug | undefined) => s && !slugs.includes(s) && slugs.push(s);
+  const enemy = (id: EnemyId) => add(ENEMY_SLUG[id]);
+  for (const a of areas) {
+    for (const { id } of AREAS[a].enemies) enemy(id);
+    if (a === 'depths') for (const { id } of [...depthRoster(1), ...depthRoster(5)]) enemy(id);
+    for (const b of Object.values(BOSSES)) if (b.area === a) add(b.modelSlug);
+    for (const id of NPC_IDS) if (NPCS[id].area === a) add(NPC_LOOKS[id].slug);
+  }
+  if (legion && LEGION[legion]) add(LEGION[legion].slug);
+  add('skeleton_thrall');
+  return slugs.map((s) => CREATURE_MODELS[s].url).filter((u, i, a) => a.indexOf(u) === i);
+}
+
+/** Parses the models of `areas` ahead of need, one per idle turn, skipping what is already loaded. Returns a cancel function. */
+export function preloadAreaGlbs(areas: readonly AreaId[], legion?: DisciplineId | null): () => void {
+  const tasks = areaModelUrls(areas, legion).filter((u) => !assets.hasModel(u)).map((u) => () => assets.preload(u));
   return runIdleSequence(tasks);
 }
 

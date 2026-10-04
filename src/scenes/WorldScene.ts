@@ -76,7 +76,7 @@ import { isBinbunImpact, type BinbunId } from '../graphics/binbun/catalog';
 import type { Gallery } from '../graphics/binbun/gallery';
 import { playFx } from '../graphics/binbun/presets';
 import type { BinbunHandle } from '../graphics/binbun/BinbunFX';
-import { EntityViews, preloadAreaModels, stageSpecs } from '../graphics/EntityViews';
+import { EntityViews, preloadAreaGlbs, preloadAreaModels, stageSpecs } from '../graphics/EntityViews';
 import { warmColdPaths } from '../graphics/coldWarm';
 import { LoadVeil } from '../ui/LoadVeil';
 import { areasWithin, doorNeighbours } from '../graphics/areaStreaming';
@@ -5446,9 +5446,16 @@ export class WorldScene implements GameScene, RuntimeView {
     // Bodies of this area and its door neighbours not yet staged at login are drawn once, a couple per idle turn, in a tiny target (warmRender.ts).
     const warmOn = !/[?&]nowarmrender\b/.test(location.search);
     const cancelStage = warmOn
-      ? stageInSlices(this.stageHost(), stageSpecs([area, ...doorNeighbours(area)], this.discipline.id).filter((s) => claimKeys(stagedKeys, [s.key]).length))
+      ? stageInSlices(
+          this.stageHost(),
+          // This room and its doors first; then the rooms one door further (a player who walks through the Graves in fifteen seconds
+          // arrives at the Ossuary with its bodies already drawn once, instead of compiling them in its first wave).
+          [...stageSpecs([area, ...doorNeighbours(area)], this.discipline.id), ...stageSpecs(areasWithin(area, 2), this.discipline.id)].filter((s) => claimKeys(stagedKeys, [s.key]).length),
+        )
       : null;
-    const cancelModels = warmOn ? () => cancelStage?.() : preloadAreaModels(area, this.discipline.id);
+    // Parse the GLBs of this area and the next hop ahead of need (one per idle turn), so entering a room never parses a model in its first frames.
+    const cancelGlbs = preloadAreaGlbs(areasWithin(area, 2), this.discipline.id);
+    const cancelModels = warmOn ? () => (cancelStage?.(), cancelGlbs()) : () => (preloadAreaModels(area, this.discipline.id)(), cancelGlbs());
     // Cold paths (loot kit + icons, FX textures, Binbun effects) after the bodies: idle-time, one piece per turn.
     const cancelCold = warmColdPaths({ area, binbun: this.effects.binbun, loot: this.loot });
     this.cancelPreload = () => (cancelModels(), cancelCold());

@@ -36,6 +36,7 @@ import { hipAnchor, inPlaceHeroClip, landingTime, stripRootTravel } from './inPl
 import { planLocomotion, STRIDES, type LocomotionPlan } from './locomotion';
 import { applyWingFlap, type WingOpts } from './wingFlap';
 import { applyFriendRim, type FriendRim } from './friendRim';
+import { MaterialVariant, variantFor, applyFlash, FLASH_LEVELS } from './creatureMaterials';
 import { applyGearTint, GEAR_REGIONS, makeGearTintState, type GearRegion } from './gearTint';
 
 export type CreatureAnim = 'idle' | 'walk' | 'run' | 'attack' | 'cast' | 'hurt' | 'death' | 'dig' | 'chop' | 'dive' | 'talk' | 'talk2' | CombatAnim;
@@ -169,6 +170,12 @@ export class Creature {
   private mixer: THREE.AnimationMixer | null = null;
   private actions = new Map<string, THREE.AnimationAction>();
   private mats: THREE.MeshStandardMaterial[] = [];
+  /** Shared-material mode (see creatureMaterials.ts): this body's meshes draw with its look's shared materials; null when it owns its own. */
+  private variant: MaterialVariant | null = null;
+  private meshSrc: { mesh: THREE.Mesh; src: THREE.Material }[] = [];
+  /** Shared mode: the pooled transparent materials this body fades with (null while it is drawn with the shared ones). */
+  private fadeMats: THREE.MeshStandardMaterial[] | null = null;
+  private flashLevel = 0;
   private baseEmissive = new THREE.Color(0);
   private baseEmissiveIntensity = 0;
   private loop: CreatureAnim = 'idle';
@@ -226,12 +233,11 @@ export class Creature {
       // same one, so enemies, thralls and bosses face (and swing their legs) along their heading instead of sideways.
       model.rotation.y += opts.modelYaw ?? RIG_YAW[this.rigSlug] ?? (model.getObjectByName('Hip') ? BIPED_YAW : 0);
       const wingPhase = Math.random() * Math.PI * 2;
-      model.traverse((o) => {
-        const mesh = o as THREE.Mesh;
-        if (!mesh.isMesh) return;
-        mesh.castShadow = this.shadowOn;
-        const src = mesh.material as THREE.MeshStandardMaterial;
-        const mat = src.clone();
+      const wings = !!opts.wings && !usedFallback;
+      // Bodies of the same template and look draw with the same materials, unless the material carries state of its own (gear tint, wing phase).
+      const share = !opts.gearTint && !wings;
+      const style = (src: THREE.Material) => {
+        const mat = (src as THREE.MeshStandardMaterial).clone();
         if (opts.tint) mat.color.multiply(new THREE.Color(opts.tint));
         if (opts.emissive) {
           mat.emissive = new THREE.Color(opts.emissive);
@@ -243,15 +249,41 @@ export class Creature {
           mat.depthWrite = false;
           mat.emissive = new THREE.Color(opts.emissive ?? 0x8f9ed1);
           mat.emissiveIntensity = opts.emissiveIntensity ?? 0.9;
-          mesh.castShadow = false;
         }
+        return mat;
+      };
+      const hex = (c: THREE.ColorRepresentation | undefined) => (c === undefined ? '-' : new THREE.Color(c).getHexString());
+      const look = `${hex(opts.tint)}|${hex(opts.emissive)}|${opts.emissiveIntensity ?? '-'}|${!!opts.spectral}|${opts.rim ? `${hex(opts.rim.color)}:${opts.rim.strength}` : '-'}`;
+      const variant = share
+        ? variantFor(t.base ?? t, look, (src) => {
+            const mat = style(src);
+            if (opts.rim) applyFriendRim(mat, opts.rim);
+            return mat;
+          })
+        : null;
+      model.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        mesh.castShadow = this.shadowOn;
+        const src = mesh.material as THREE.MeshStandardMaterial;
+        if (variant) {
+          const mat = variant.get(src);
+          if (opts.spectral) mesh.castShadow = false;
+          mesh.material = mat;
+          this.meshSrc.push({ mesh, src });
+          if (!this.mats.includes(mat)) this.mats.push(mat);
+          return;
+        }
+        const mat = style(src);
+        if (opts.spectral) mesh.castShadow = false;
         // Only the requested model flaps; a fallback stand-in (older deploy) keeps still.
-        if (opts.wings && !usedFallback) applyWingFlap(mesh, mat, opts.wings, wingPhase);
+        if (wings) applyWingFlap(mesh, mat, opts.wings!, wingPhase);
         if (opts.gearTint) applyGearTint(mesh, mat, this.gearTint);
         if (opts.rim) applyFriendRim(mat, opts.rim);
         mesh.material = mat;
         this.mats.push(mat);
       });
+      this.variant = variant;
       if (this.mats[0]) {
         this.baseEmissive.copy(this.mats[0].emissive);
         this.baseEmissiveIntensity = this.mats[0].emissiveIntensity;
@@ -260,8 +292,8 @@ export class Creature {
       });
       // First draw of a new body compiles shaders and uploads textures; do both off the frame, then attach.
       const sig = `${!!opts.spectral}${!!opts.wings && !usedFallback}${!!opts.gearTint}${!!opts.rim}`;
-      pinFirst(t, sig, this.mats);
-      await warmModel(model, this.mats, t, sig);
+      if (!this.variant) pinFirst(t.base ?? t, sig, this.mats);
+      await warmModel(model, this.mats, t.base ?? t, sig);
       if (this.disposed) {
         this.disposeMats();
         disposeSkeletons(model);
@@ -644,16 +676,23 @@ export class Creature {
   set flash(v: number) {
     if (Math.abs(v - this.flashV) < 0.02) return;
     this.flashV = v;
-    for (const m of this.mats) {
-      if (v > 0.01) {
-        m.emissive.copy(this.baseEmissive).lerp(FLASH_COLOR, Math.min(1, v));
-        // PBR Tripo materials are largely metallic: keep the pulse faint or it whites out.
-        m.emissiveIntensity = this.baseEmissiveIntensity + v * 0.16;
-      } else {
-        m.emissive.copy(this.baseEmissive);
-        m.emissiveIntensity = this.baseEmissiveIntensity;
+    if (this.variant && !this.fadeMats) {
+      // Shared materials: swap to the look's flashed copy for this strength (same program, only the emissive differs).
+      const level = Math.round(Math.min(1, Math.max(0, v)) * FLASH_LEVELS);
+      if (level !== this.flashLevel) {
+        this.flashLevel = level;
+        this.showShared();
       }
+      return;
     }
+    for (const m of this.fadeMats ?? this.mats) applyFlash(m, this.baseEmissive, this.baseEmissiveIntensity, v, FLASH_COLOR);
+  }
+
+  /** Shared mode: put the look's plain (or flashed) materials on every mesh. */
+  private showShared() {
+    const vr = this.variant;
+    if (!vr) return;
+    for (const { mesh, src } of this.meshSrc) mesh.material = this.flashLevel ? vr.flash(src, this.flashLevel, FLASH_COLOR) : vr.get(src);
   }
 
   /** Toggle moon shadows for every mesh (shadow LOD); remembered until the model loads. */
@@ -666,6 +705,32 @@ export class Creature {
   }
 
   setOpacity(o: number) {
+    const vr = this.variant;
+    if (vr) {
+      // Shared materials stay opaque and shared; a fade borrows pooled transparent copies until it ends.
+      if (o >= 1) {
+        if (this.fadeMats) {
+          this.meshSrc.forEach(({ src }, i) => vr.giveFade(src, this.fadeMats![i]));
+          this.fadeMats = null;
+          this.showShared();
+        }
+        return;
+      }
+      if (!this.fadeMats) {
+        this.fadeMats = this.meshSrc.map(({ mesh, src }) => {
+          const m = vr.takeFade(src);
+          applyFlash(m, this.baseEmissive, this.baseEmissiveIntensity, this.flashV, FLASH_COLOR);
+          mesh.material = m;
+          return m;
+        });
+      }
+      for (const m of this.fadeMats) {
+        m.transparent = true;
+        m.opacity = (this.opts.spectral ? 0.55 : 1) * o;
+        m.depthWrite = false;
+      }
+      return;
+    }
     for (const m of this.mats) {
       m.transparent = o < 1 || !!this.opts.spectral;
       m.opacity = (this.opts.spectral ? 0.55 : 1) * o;
@@ -797,6 +862,13 @@ export class Creature {
 
   /** Pinned materials (see pinFirst) are kept: disposing them would free their shader programs. */
   private disposeMats() {
+    const vr = this.variant;
+    if (vr) {
+      // Shared materials are never disposed; a fade's pooled copies go back for the next one.
+      if (this.fadeMats) this.meshSrc.forEach(({ src }, i) => vr.giveFade(src, this.fadeMats![i]));
+      this.fadeMats = null;
+      return;
+    }
     for (const m of this.mats) if (!pinned.has(m)) m.dispose();
   }
 

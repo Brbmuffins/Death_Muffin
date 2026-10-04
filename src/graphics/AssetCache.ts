@@ -10,6 +10,49 @@ export interface ModelTemplate {
   /** Y offset (after scaling) that puts the lowest point on the ground. */
   groundOffset: number;
   skinned: boolean;
+  /** The parsed GLB this template scales: identical for every height asked of the same url (use it as the key for per-model caches). */
+  base?: object;
+}
+
+/** What one parse of a url yields, before any height is applied. */
+interface ParsedModel {
+  scene: THREE.Group;
+  clips: Map<string, THREE.AnimationClip>;
+  height: number;
+  minY: number;
+  skinned: boolean;
+}
+
+const nextTurn = () => new Promise<void>((r) => setTimeout(r, 0));
+const SLICE_MS = 4;
+
+/**
+ * SkinnedMesh.computeBoundingBox + computeBoundingSphere in one pass over the vertices (the same points in the same order, so the
+ * results are identical), yielding to the event loop every few milliseconds so a big model never holds a frame. The sphere keeps
+ * the 1.6x padding the animated limbs need.
+ */
+export async function skinBounds(sm: THREE.SkinnedMesh) {
+  const position = sm.geometry.getAttribute('position');
+  const box = new THREE.Box3();
+  const sphere = new THREE.Sphere();
+  box.makeEmpty();
+  sphere.makeEmpty();
+  const v = new THREE.Vector3();
+  const slice = typeof document === 'undefined' || !document.hidden;
+  let t0 = performance.now();
+  for (let i = 0; i < position.count; i++) {
+    sm.getVertexPosition(i, v);
+    box.expandByPoint(v);
+    sphere.expandByPoint(v);
+    // Check the clock only every 256 vertices.
+    if (slice && (i & 255) === 255 && performance.now() - t0 > SLICE_MS) {
+      await nextTurn();
+      t0 = performance.now();
+    }
+  }
+  sm.boundingBox = box;
+  sphere.radius *= 1.6;
+  sm.boundingSphere = sphere;
 }
 
 /**
@@ -18,24 +61,25 @@ export interface ModelTemplate {
  */
 class AssetCache {
   private loader = new GLTFLoader();
+  /** One parse per url (the file is fetched, decoded and bounded once); heights only choose a scale. */
+  private parsed = new Map<string, Promise<ParsedModel | null>>();
+  /** Memoised per url + height so callers asking twice get the same template object (warm caches key on it). */
   private models = new Map<string, Promise<ModelTemplate | null>>();
   private textures = new Map<string, THREE.Texture>();
   private texLoader = new THREE.TextureLoader();
 
-  model(url: string, targetHeight: number): Promise<ModelTemplate | null> {
-    const key = `${url}@${targetHeight}`;
-    let p = this.models.get(key);
+  /** Fetch and parse `url` once, whatever size is asked for later. */
+  private parse(url: string): Promise<ParsedModel | null> {
+    let p = this.parsed.get(url);
     if (!p) {
-      perfNote(`model ${url.split('/').pop()}`);
+      perfNote(`model ${url.split('/').slice(-2).join('/')}`);
       p = this.loader
         .loadAsync(url)
-        .then((gltf) => {
+        .then(async (gltf) => {
           const scene = gltf.scene;
           scene.updateMatrixWorld(true);
-          const bounds = new THREE.Box3().setFromObject(scene);
-          const height = Math.max(1e-3, bounds.max.y - bounds.min.y);
-          const scale = targetHeight / height;
           let skinned = false;
+          const skins: THREE.SkinnedMesh[] = [];
           scene.traverse((o) => {
             const m = o as THREE.Mesh;
             if (m.isMesh) {
@@ -43,21 +87,47 @@ class AssetCache {
               m.receiveShadow = true;
               if ((o as THREE.SkinnedMesh).isSkinnedMesh) {
                 skinned = true;
-                // Bind-pose bounds padded for animated limbs; clones copy the sphere,
-                // so off-screen enemies and corpses are culled from colour + shadow passes.
-                const sm = o as THREE.SkinnedMesh;
-                sm.computeBoundingSphere();
-                sm.boundingSphere!.radius *= 1.6;
+                skins.push(o as THREE.SkinnedMesh);
               }
             }
           });
+          // Bind-pose bounds (padded for animated limbs; clones copy them, so off-screen enemies and corpses are culled from
+          // colour + shadow passes). three computes these with a skinning transform per vertex, twice, in one go: ~400 ms of
+          // one task for a hero-sized model on a mid PC (the Ossuary entry long task). One pass, sliced across frames.
+          for (const sm of skins) await skinBounds(sm);
+          const bounds = new THREE.Box3().setFromObject(scene);
+          const height = Math.max(1e-3, bounds.max.y - bounds.min.y);
           const clips = new Map(gltf.animations.map((c) => [c.name, c]));
-          return { scene, clips, scale, groundOffset: -bounds.min.y * scale, skinned };
+          return { scene, clips, height, minY: bounds.min.y, skinned };
         })
         .catch((err) => {
           console.warn('[assets] model failed', url, err);
           return null;
         });
+      this.parsed.set(url, p);
+    }
+    return p;
+  }
+
+  /** Is `url` already parsed (or being parsed)? Lets idle preloading skip what a fight already pulled in. */
+  hasModel(url: string): boolean {
+    return this.parsed.has(url);
+  }
+
+  /** Parse `url` without caring about a size (idle preloading). Resolves true when the model is usable. */
+  preload(url: string): Promise<boolean> {
+    return this.parse(url).then((m) => !!m);
+  }
+
+  model(url: string, targetHeight: number): Promise<ModelTemplate | null> {
+    const key = `${url}@${targetHeight}`;
+    let p = this.models.get(key);
+    if (!p) {
+      p = this.parse(url).then((m) => {
+        if (!m) return null;
+        const scale = targetHeight / m.height;
+        return { scene: m.scene, clips: m.clips, scale, groundOffset: -m.minY * scale, skinned: m.skinned, base: m };
+      });
       this.models.set(key, p);
     }
     return p;
