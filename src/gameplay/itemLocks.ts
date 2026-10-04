@@ -46,7 +46,7 @@ export class ItemLocks {
     return now;
   }
 
-  /** Follow items that changed slot (old index -> new index); a merged stack stays locked if any part was. */
+  /** Follow items that changed slot (old index -> new index). */
   remap(moves: Map<number, number>) {
     const next = new Map<number, string>();
     for (const [index, id] of this.locked) {

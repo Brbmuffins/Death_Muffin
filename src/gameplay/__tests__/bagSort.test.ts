@@ -33,6 +33,17 @@ describe('sortBagSlots', () => {
     expect(moves.get(2)).toBe(1);
   });
 
+  it('does not merge a locked stack with anything', () => {
+    const out = inOrder(
+      sortBagSlots(
+        [slot(1, 'ore_copper', 'material', 'common', { quantity: 10 }), slot(2, 'ore_copper', 'material', 'common', { quantity: 20 }), slot(3, 'ore_copper', 'material', 'common', { quantity: 30 })],
+        undefined,
+        (s) => s.slot_index === 2,
+      ),
+    );
+    expect(out.map((s) => s.quantity).sort((a, b) => a - b)).toEqual([20, 40]);
+  });
+
   it('never merges gear, and leaves worn gear and belt slots alone', () => {
     const input = [slot(5, 'ring', 'ring', 'rare'), slot(6, 'ring', 'ring', 'rare'), slot(100, 'helm', 'armor_head', 'rare', { equipped: 1 })];
     const out = sortBagSlots(input);

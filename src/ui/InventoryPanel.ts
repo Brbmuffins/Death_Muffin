@@ -245,9 +245,9 @@ export class InventoryPanel {
     }
     this.confirmJunk = false;
     tools.innerHTML = `<span class="cw-tools-count" data-bagcount>${used} / ${BAG_SIZE} slots</span>
-      <button class="cw-button small" data-sort ${used > 1 ? '' : 'disabled'} title="Merges stacks, then orders the bag by type, rarity, item level and name">Sort</button>
+      <button class="cw-button small" data-sort ${used > 1 ? '' : 'disabled'} title="Merges stacks (locked ones stay apart), then orders the bag by type, rarity, item level and name">Sort</button>
       <button class="cw-button small" data-junk ${junk.length ? '' : 'disabled'} title="Sells unlocked common and uncommon gear, except pieces that would upgrade you (the green arrow). Lock an item to keep it out.">Sell all junk${junk.length ? ` (${junk.length} · ${gold.toLocaleString()}g)` : ''}</button>`;
-    tools.querySelector('[data-sort]')?.addEventListener('click', () => { this.selected = null; this.inventory.sortBag((moves) => this.locks.remap(moves)); });
+    tools.querySelector('[data-sort]')?.addEventListener('click', () => { this.selected = null; this.inventory.sortBag((moves) => this.locks.remap(moves), (s) => this.locks.isLocked(s)); });
     tools.querySelector('[data-junk]')?.addEventListener('click', () => { this.confirmJunk = true; this.render(); });
     placeLegion();
   }

@@ -265,9 +265,10 @@ const sortRank = (list: string[], v: string) => {
  * (best first), item level (highest first) and name, packed from slot 0. Worn gear and belt slots are untouched.
  * `moves` receives old slot -> new slot for every bag slot, so slot-keyed state (item locks) can follow.
  */
-export function sortBagSlots(slots: InventorySlot[], moves?: Map<number, number>): InventorySlot[] {
+export function sortBagSlots(slots: InventorySlot[], moves?: Map<number, number>, isLocked?: (s: InventorySlot) => boolean): InventorySlot[] {
   const inBag = (s: InventorySlot) => s.slot_index >= 0 && s.slot_index < BAG_SIZE && !s.equipped;
-  const stackable = (s: InventorySlot) => (s.item_type === 'material' || s.item_type === 'rune') && !s.instance_id;
+  // A locked stack is left as it is: it neither absorbs nor is absorbed.
+  const stackable = (s: InventorySlot) => (s.item_type === 'material' || s.item_type === 'rune') && !s.instance_id && !isLocked?.(s);
   const rows: { slot: InventorySlot; from: number[] }[] = [];
   const openRow = new Map<string, number>();
   for (const s of slots.filter(inBag).sort((a, b) => a.slot_index - b.slot_index)) {
@@ -462,9 +463,9 @@ export class Inventory {
   }
 
   /** Tidy the bag order (the Reliquary's Sort button); saved like any other bag change. */
-  sortBag(onMoves?: (moves: Map<number, number>) => void) {
+  sortBag(onMoves?: (moves: Map<number, number>) => void, isLocked?: (s: InventorySlot) => boolean) {
     const moves = new Map<number, number>();
-    this.slots = sortBagSlots(this.slots, moves);
+    this.slots = sortBagSlots(this.slots, moves, isLocked);
     onMoves?.(moves); // before emit, so slot-keyed state (item locks) follows before anything prunes it
     this.dirty = true;
     this.emit();
