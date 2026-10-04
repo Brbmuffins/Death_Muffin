@@ -3,6 +3,7 @@
     "date": "2026-10-04",
     "title": "Smoother, Clearer, Deeper",
     "items": [
+      "Windows: the title and close button now stay pinned at the top while you scroll a long window.",
       "Reliquary: a new Sort button merges stacks and orders your bag by type, rarity, item level and name.",
       "Vault: new Take materials and Take all buttons move things back into your bag in one click, as far as it fits.",
       "Performance: fixed a graphics memory leak that grew with every kill, thralls no longer stutter while following you, and walking under the arches no longer hitches.",
