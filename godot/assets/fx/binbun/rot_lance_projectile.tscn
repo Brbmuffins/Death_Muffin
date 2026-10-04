@@ -1,0 +1,216 @@
+[gd_scene format=3]
+
+[ext_resource type="Material" path="res://assets/fx/binbun/lib/MagicProjectilesVFX/assets/BinbunVFX/magic_projectiles/src/materials/mprojectile_javelin/mrpojectile_javelin_02/mprojectile_javelin_02_head.tres" id="1_kr41v"]
+[ext_resource type="Script" path="res://fx/dm_fx_controller.gd" id="1_sto1d"]
+[ext_resource type="Material" path="res://assets/fx/binbun/lib/MagicProjectilesVFX/assets/BinbunVFX/magic_projectiles/src/materials/mprojectile_javelin/mrpojectile_javelin_02/mprojectile_javelin_02_trail.tres" id="2_kr41v"]
+[ext_resource type="Material" path="res://assets/fx/binbun/lib/MagicProjectilesVFX/assets/BinbunVFX/magic_projectiles/src/materials/mprojectile_javelin/mrpojectile_javelin_02/mprojectile_javelin_02_core.tres" id="3_kr41v"]
+[ext_resource type="Script" path="res://fx/dm_fx_light.gd" id="4_5sm00"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_cf1jj"]
+radius = 0.2
+height = 2
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_sto1d"]
+top_radius = 0.15
+bottom_radius = 0.05
+height = 2.6
+cap_top = false
+cap_bottom = false
+
+[sub_resource type="SphereMesh" id="SphereMesh_sto1d"]
+radius = 0.1
+height = 1.2
+
+[sub_resource type="Animation" id="Animation_8xrmt"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Head:material_override:shader_parameter/alpha_multiplier")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Trail:material_override:shader_parameter/alpha_multiplier")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("Core:material_override:shader_parameter/alpha_multiplier")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("Light:light_multiplier")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+
+[sub_resource type="Animation" id="Animation_u8ypt"]
+resource_name = "main"
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Head:material_override:shader_parameter/alpha_multiplier")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Trail:material_override:shader_parameter/alpha_multiplier")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("Core:material_override:shader_parameter/alpha_multiplier")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("Light:light_multiplier")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+
+[sub_resource type="Animation" id="Animation_0wdjh"]
+resource_name = "oneshot"
+step = 0.05
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Head:material_override:shader_parameter/alpha_multiplier")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.2, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [0.0, 1.0, 1.0, 0.0]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Trail:material_override:shader_parameter/alpha_multiplier")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.2, 1),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [0.0, 1.0, 0.0]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("Core:material_override:shader_parameter/alpha_multiplier")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.3, 1),
+"transitions": PackedFloat32Array(1, 0.366022, 1),
+"update": 0,
+"values": [0.0, 1.0, 0.0]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("Light:light_multiplier")
+tracks/3/interp = 2
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [0.0, 1.0, 0.0]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_0wdjh"]
+_data = {
+"RESET": SubResource("Animation_8xrmt"),
+"main": SubResource("Animation_u8ypt"),
+"oneshot": SubResource("Animation_0wdjh")
+}
+
+[node name="MProjectileJavelinVFX_02" type="Node3D"]
+script = ExtResource("1_sto1d")
+primary_color = Color(0.8, 0.878431, 1, 1)
+secondary_color = Color(0.411765, 0.752941, 1, 1)
+tertiary_color = Color(0.176471, 0.431373, 1, 1)
+light_color = Color(0.411765, 0.752941, 1, 1)
+
+[node name="Head" type="MeshInstance3D" parent="."]
+transform = Transform3D(-4.37114e-8, 1, 0, -1, -4.37114e-8, 0, 0, 0, 1, -0.77, 0, 0)
+material_override = ExtResource("1_kr41v")
+mesh = SubResource("SphereMesh_cf1jj")
+
+[node name="Trail" type="MeshInstance3D" parent="."]
+transform = Transform3D(-4.37114e-8, 1, 0, -1, -4.37114e-8, 0, 0, 0, 1, -1.2, 0, 0)
+material_override = ExtResource("2_kr41v")
+mesh = SubResource("CylinderMesh_sto1d")
+
+[node name="Core" type="MeshInstance3D" parent="."]
+transform = Transform3D(-4.37114e-8, 1, 0, -1, -4.37114e-8, 0, 0, 0, 1, -0.366978, 0, 0)
+material_override = ExtResource("3_kr41v")
+mesh = SubResource("SphereMesh_sto1d")
+
+[node name="Light" type="OmniLight3D" parent="."]
+light_color = Color(0.411765, 0.752941, 1, 1)
+light_energy = 4
+script = ExtResource("4_5sm00")
+base_energy = 4
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+"": SubResource("AnimationLibrary_0wdjh")
+}

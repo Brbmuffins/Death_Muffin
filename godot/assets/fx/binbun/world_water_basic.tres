@@ -1,0 +1,36 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://assets/fx/binbun/shaders/8c1165d192ff15f4.gdshader" id="1_00cpc"]
+[ext_resource type="Texture2D" path="res://assets/fx/binbun/lib/Water/assets/BinbunWater/src/texture/caustics/caustics_texture_02.tres" id="2_gqqmy"]
+[ext_resource type="Texture2D" path="res://assets/fx/binbun/lib/Water/assets/BinbunWater/src/texture/foam/foam_texture_03.tres" id="3_tlmv5"]
+[ext_resource type="Texture2D" path="res://assets/fx/binbun/lib/Water/assets/BinbunWater/src/texture/wave/wave_03/wave_normal_03.tres" id="4_flra8"]
+[ext_resource type="Texture2D" path="res://assets/fx/binbun/lib/Water/assets/BinbunWater/src/texture/wave/wave_03/wave_texture_03.tres" id="5_di5ye"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_00cpc")
+shader_parameter/surface_color = Color(0.1727219, 0.98243684, 0.96108586, 1)
+shader_parameter/depth_color = Color(0.00071654655, 0.23556206, 0.29673657, 1)
+shader_parameter/foam_color = Color(1, 1, 1, 1)
+shader_parameter/depth_size = 12.0
+shader_parameter/surface_roughness = 0.999999977648
+shader_parameter/foam_roughness = 0.999999977648
+shader_parameter/caustics_texture = ExtResource("2_gqqmy")
+shader_parameter/caustics_strength = 1.5
+shader_parameter/caustics_scale = Vector2(0.7, 0.7)
+shader_parameter/wave_texture = ExtResource("5_di5ye")
+shader_parameter/wave_normal_texture = ExtResource("4_flra8")
+shader_parameter/wave_softness = 3.0000000447036
+shader_parameter/wave_scale = Vector2(0.15, 0.15)
+shader_parameter/wave_layer_scale = Vector2(1.1, 1.1)
+shader_parameter/wave_highlight = 0.20000000298024
+shader_parameter/wave_velocity = Vector2(0.02, 0.02)
+shader_parameter/foam_texture = ExtResource("3_tlmv5")
+shader_parameter/edge_foam_depth_size = 0.5
+shader_parameter/wave_foam_amount = 0.20999999530608
+shader_parameter/foam_start = 0.0
+shader_parameter/foam_end = 1.0
+shader_parameter/foam_exponent = 1.0
+shader_parameter/refraction_amount = 0.5
+shader_parameter/refraction_exponent = 0.5
+shader_parameter/displacement_amount = 0.2

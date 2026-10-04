@@ -1,0 +1,55 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://assets/fx/binbun/shaders/6902d22b9b357bb8.gdshader" id="1_s0igb"]
+[ext_resource type="Texture2D" path="res://assets/fx/binbun/lib/MagicProjectilesVFX/assets/BinbunVFX/shared/texture/noise/web/web_01.tres" id="2_s0igb"]
+
+[sub_resource type="Gradient" id="Gradient_yoxos"]
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_lte8t"]
+gradient = SubResource("Gradient_yoxos")
+fill_from = Vector2(0.4, 0)
+fill_to = Vector2(0.94086, 0)
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_s0igb")
+shader_parameter/mask1_texture = SubResource("GradientTexture2D_lte8t")
+shader_parameter/mask1_scroll = Vector2(0, 0)
+shader_parameter/mask1_scale = Vector2(1, 0.9)
+shader_parameter/mask1_radial = false
+shader_parameter/mask1_rotation = 0.0
+shader_parameter/use_mask2 = true
+shader_parameter/mask2_texture = ExtResource("2_s0igb")
+shader_parameter/mask2_scroll = Vector2(0, -1.5)
+shader_parameter/mask2_scale = Vector2(1, 3)
+shader_parameter/mask2_strength = 1.0
+shader_parameter/mask2_blend_mode = 6
+shader_parameter/mask2_radial = false
+shader_parameter/mask2_rotation = 0.0
+shader_parameter/use_mask3 = false
+shader_parameter/mask3_scroll = Vector2(0, 0)
+shader_parameter/mask3_scale = Vector2(1, 1)
+shader_parameter/mask3_strength = 1.0
+shader_parameter/mask3_blend_mode = 2
+shader_parameter/mask3_radial = false
+shader_parameter/mask3_rotation = 0.0
+shader_parameter/primary_color = Color(0.8, 0.878431, 1, 1)
+shader_parameter/secondary_color = Color(0.411765, 0.752941, 1, 1)
+shader_parameter/tertiary_color = Color(0.176471, 0.431373, 1, 1)
+shader_parameter/use_tertiary = false
+shader_parameter/color_smoothness = 0.5
+shader_parameter/billboard = false
+shader_parameter/displacement_scale = 0.05
+shader_parameter/displacement_offset = 0.5
+shader_parameter/time_scale = 1.0
+shader_parameter/texture_scale = Vector2(1, 1)
+shader_parameter/uv_alignment = 0
+shader_parameter/emission_strength = 2.0
+shader_parameter/proximity_fade = false
+shader_parameter/proximity_fade_distance = 1.0
+shader_parameter/edge_cutoff = Vector4(0, 0, 0, 0)
+shader_parameter/alpha_smoothness = 1.0
+shader_parameter/alpha_multiplier = 1.0
+shader_parameter/alpha_mode = 0
+shader_parameter/alpha_cutoff = 0.02
+shader_parameter/dither_cutoff = 0.8

@@ -1,0 +1,285 @@
+[gd_scene format=3]
+
+[ext_resource type="Material" path="res://assets/fx/binbun/lib/PoisonVFX/assets/BinbunVFX/poison_effects/src/material/poison_area/poison_area_03/poison_area_01_glow.tres" id="1_45uex"]
+[ext_resource type="Script" path="res://fx/dm_fx_controller.gd" id="1_v8xxt"]
+[ext_resource type="Material" path="res://assets/fx/binbun/lib/PoisonVFX/assets/BinbunVFX/poison_effects/src/material/poison_area/poison_area_03/poison_area_01_ground_01.tres" id="2_pqcmx"]
+[ext_resource type="Material" path="res://assets/fx/binbun/lib/PoisonVFX/assets/BinbunVFX/poison_effects/src/material/poison_area/poison_area_03/poison_area_01_ground_02.tres" id="3_lnydv"]
+[ext_resource type="Script" path="res://fx/dm_fx_light.gd" id="4_45uex"]
+[ext_resource type="Material" path="res://assets/fx/binbun/lib/PoisonVFX/assets/BinbunVFX/poison_effects/src/material/poison_area/poison_area_03/poison_area_01_bubbles.tres" id="5_lnydv"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_v8xxt"]
+size = Vector2(3.5, 3.5)
+center_offset = Vector3(0, 0.01, 0)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_pqcmx"]
+size = Vector2(4, 4)
+center_offset = Vector3(0, 0.01, 0)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_45uex"]
+size = Vector2(4, 4)
+center_offset = Vector3(0, 0.015, 0)
+
+[sub_resource type="Curve" id="Curve_so4ap"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(0.7, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), -9.47418, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="CurveTexture" id="CurveTexture_v8xxt"]
+curve = SubResource("Curve_so4ap")
+
+[sub_resource type="Curve" id="Curve_lq7of"]
+_data = [Vector2(0, 0), 0.0, 2.49022, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_pqcmx"]
+curve = SubResource("Curve_lq7of")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_pqcmx"]
+emission_shape_scale = Vector3(1, 0, 1)
+emission_shape = 1
+emission_sphere_radius = 1.2
+gravity = Vector3(0, 0, 0)
+scale_curve = SubResource("CurveTexture_pqcmx")
+alpha_curve = SubResource("CurveTexture_v8xxt")
+
+[sub_resource type="SphereMesh" id="SphereMesh_45uex"]
+radius = 0.2
+height = 0.3
+radial_segments = 16
+rings = 8
+
+[sub_resource type="Animation" id="Animation_ml5gv"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Glow:material_override:shader_parameter/alpha_multiplier")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Ground_01:material_override:shader_parameter/alpha_multiplier")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("Ground_02:material_override:shader_parameter/alpha_multiplier")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("Bubbles:emitting")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [true]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("Light:light_multiplier")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+
+[sub_resource type="Animation" id="Animation_gsf0b"]
+resource_name = "main"
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Glow:material_override:shader_parameter/alpha_multiplier")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Ground_01:material_override:shader_parameter/alpha_multiplier")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("Ground_02:material_override:shader_parameter/alpha_multiplier")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("Bubbles:emitting")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [true]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("Light:light_multiplier")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+
+[sub_resource type="Animation" id="Animation_kjwb3"]
+resource_name = "oneshot"
+length = 2
+step = 0.05
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Glow:material_override:shader_parameter/alpha_multiplier")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.5, 2),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [0.0, 1.0, 0.0]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Ground_01:material_override:shader_parameter/alpha_multiplier")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.5, 2),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [0.0, 1.0, 0.0]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("Ground_02:material_override:shader_parameter/alpha_multiplier")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.5, 2),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [0.0, 1.0, 0.0]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("Bubbles:emitting")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0, 0.5),
+"transitions": PackedFloat32Array(1, 1),
+"update": 1,
+"values": [true, false]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("Light:light_multiplier")
+tracks/4/interp = 2
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0, 0.5, 2),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [0.0, 1.0, 0.0]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_kjwb3"]
+_data = {
+"RESET": SubResource("Animation_ml5gv"),
+"main": SubResource("Animation_gsf0b"),
+"oneshot": SubResource("Animation_kjwb3")
+}
+
+[node name="PoisonAreaVFX_03" type="Node3D"]
+script = ExtResource("1_v8xxt")
+reset_particles = false
+primary_color = Color(1, 0.221697, 0.774739, 1)
+secondary_color = Color(0.437492, 0.000212112, 0.465908, 1)
+tertiary_color = Color(0.38708, 0.0517413, 0.64499, 1)
+light_color = Color(1, 0.223529, 0.776471, 1)
+
+[node name="Glow" type="MeshInstance3D" parent="."]
+material_override = ExtResource("1_45uex")
+mesh = SubResource("PlaneMesh_v8xxt")
+
+[node name="Ground_01" type="MeshInstance3D" parent="."]
+material_override = ExtResource("2_pqcmx")
+mesh = SubResource("PlaneMesh_pqcmx")
+
+[node name="Ground_02" type="MeshInstance3D" parent="."]
+material_override = ExtResource("3_lnydv")
+mesh = SubResource("PlaneMesh_45uex")
+
+[node name="Light" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
+light_color = Color(1, 0.223529, 0.776471, 1)
+light_energy = 2
+script = ExtResource("4_45uex")
+
+[node name="Bubbles" type="GPUParticles3D" parent="."]
+sorting_offset = 0.5
+material_override = ExtResource("5_lnydv")
+amount = 16
+lifetime = 2
+process_material = SubResource("ParticleProcessMaterial_pqcmx")
+draw_pass_1 = SubResource("SphereMesh_45uex")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+"": SubResource("AnimationLibrary_kjwb3")
+}
