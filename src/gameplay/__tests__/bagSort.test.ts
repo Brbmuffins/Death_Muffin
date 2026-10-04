@@ -33,6 +33,17 @@ describe('sortBagSlots', () => {
     expect(moves.get(2)).toBe(1);
   });
 
+  it('puts the biggest stack of the same item first, locked ones included', () => {
+    const out = inOrder(
+      sortBagSlots(
+        [slot(0, 'ore_copper', 'material', 'common', { quantity: 5 }), slot(1, 'ore_copper', 'material', 'common', { quantity: 40 }), slot(2, 'ore_copper', 'material', 'common', { quantity: 12 })],
+        undefined,
+        () => true,
+      ),
+    );
+    expect(out.map((s) => s.quantity)).toEqual([40, 12, 5]);
+  });
+
   it('does not merge a locked stack with anything', () => {
     const out = inOrder(
       sortBagSlots(
