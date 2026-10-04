@@ -23,6 +23,15 @@ PUBLIC=/var/www/death-muffin
 REV="${1:-HEAD}"
 shift || true
 SHA=$(git -C "$REPO" rev-parse --short=12 "$REV^{commit}")
+# Never publish a revision that is missing commits master already has (2026-10-04: a manual deploy that queued for the lock behind a Discord
+# ship published afterwards and rolled the ship back). Checked while holding the lock. ALLOW_BEHIND_MASTER=1 only for a deliberate rollback.
+if [ -z "${ALLOW_BEHIND_MASTER:-}" ]; then
+  git -C "$REPO" fetch -q origin 2>/dev/null || true
+  if ! git -C "$REPO" merge-base --is-ancestor origin/master "$SHA"; then
+    echo "Refusing to deploy $SHA: it does not contain origin/master ($(git -C "$REPO" rev-parse --short=12 origin/master)). Rebase onto master first (or ALLOW_BEHIND_MASTER=1 for a deliberate rollback)." >&2
+    exit 1
+  fi
+fi
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 CAND="$RUNTIME/deploy/candidate-$SHA"
 BK="$RUNTIME/deploy/backup-pre-release-$SHA-$STAMP"

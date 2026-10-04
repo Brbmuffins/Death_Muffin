@@ -2165,6 +2165,7 @@ require('./bug-reports.cjs')(app, pool, {
     return rows.length === 1;
   },
 });
+require('./prefs.cjs')(app, pool, { requireAuth: requireJWT });
 require('./discipline.cjs')(app, pool, { verifyJWT, formatCharacter, getGearLoadout, invalidateLeaderboard, maxIndex: MAX_DISCIPLINE_INDEX });
 // Last resort for anything a route throws outside its own try (Express 5 forwards a rejected async handler here): JSON like every other
 // failure, one journal line instead of a stack dump, and nothing internal in the reply.

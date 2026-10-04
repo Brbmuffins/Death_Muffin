@@ -984,6 +984,11 @@ button { font-family: inherit; }
 .cw-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; margin-bottom: 18px; }
 .cw-tabs button { min-height: 42px; padding: 9px 10px; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-text-muted); cursor: pointer; font-family: var(--cw-font-display); font-weight: 600; font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; }
 .cw-tabs button.on { color: var(--cw-bone-100); border-color: var(--cw-border-active); background: var(--cw-accent-soft); }
+.cw-craftable-row { display: flex; justify-content: flex-end; margin: -6px 0 10px; }
+.cw-craftable-row[hidden] { display: none; }
+.cw-craftable-row label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: var(--cw-text-muted); }
+.cw-craftable-row label:hover { color: var(--cw-bone-100); }
+.cw-craftable-row input { width: 16px; height: 16px; margin: 0; cursor: pointer; accent-color: var(--cw-border-active, #b99cff); }
 
 .cw-bag-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-bottom: 14px; }
 .cw-slot {
