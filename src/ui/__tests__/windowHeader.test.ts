@@ -22,6 +22,7 @@ describe('window header', () => {
     const src = readFileSync(join(UI_DIR, 'panelBody.ts'), 'utf8');
     expect(src).toContain('Back to top');
     expect(src).toContain('BACK_TO_TOP_AFTER');
+    expect(src).toContain('BACK_TO_TOP_HIDE_MS = 2000');
     const css = readFileSync(join(UI_DIR, 'ui.css'), 'utf8');
     expect(css).toContain('.cw-back-top.show button');
   });
