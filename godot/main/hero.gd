@@ -94,6 +94,7 @@ func take_hit(amount: float, _from: Node) -> void:
 	var ward := minf(0.6, float(data.discipline.wardPerThrall) * thralls)  # Bone Ward: 10% less damage per active thrall
 	var dmg := amount * (1.0 - ward)
 	hp -= dmg
+	DmAudioHooks.hero_hurt(hp, max_hp)
 	DmFx.float_text(main, global_position + Vector3(0, 2.3, 0), "-%d" % int(round(dmg)), Color(1.0, 0.35, 0.3), 38)
 	if hp <= 0.0:
 		# PLACEHOLDER: no death/respawn flow yet; the slice just refills so the comparison run is not interrupted.
@@ -146,6 +147,7 @@ func fire_at(p: Vector3) -> bool:
 	rotation.y = atan2(dir.x, dir.z)
 	_action_t = 0.28
 	_animator.strike("attack", 0.15)
+	DmAudioHooks.needle_cast(global_position)
 	var b := DmBolt.new()
 	b.dir = dir
 	b.damage = spell_power * float(needle.power)
@@ -162,10 +164,12 @@ func do_exhume(at: Vector3) -> bool:
 	var cost := float(exhume.essenceCost)
 	if essence < cost:
 		DmFx.float_text(main, global_position + Vector3(0, 2.4, 0), "not enough essence", Color(0.7, 0.6, 1.0), 28)
+		DmAudioHooks.error()
 		return false
 	var corpse: Node3D = main.corpse_near(at, float(exhume.radius), global_position, float(exhume.range))
 	if corpse == null:
 		DmFx.float_text(main, global_position + Vector3(0, 2.4, 0), "no corpse in reach", Color(0.7, 0.7, 0.7), 28)
+		DmAudioHooks.error()
 		return false
 	essence -= cost
 	_exhume_cd = float(exhume.cooldownMs) / 1000.0

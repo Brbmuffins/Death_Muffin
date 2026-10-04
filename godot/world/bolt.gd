@@ -35,6 +35,7 @@ func _process(dt: float) -> void:
 		var d := Vector2(e.global_position.x - global_position.x, e.global_position.z - global_position.z).length()
 		if d < radius + e.radius:
 			e.take_damage(damage)
+			DmAudioHooks.needle_hit(e.global_position)
 			if on_hit.is_valid():
 				on_hit.call(e)
 			queue_free()

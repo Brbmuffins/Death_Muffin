@@ -12,6 +12,8 @@ var hero: DmHero
 var cam: DmCameraRig
 var hud: DmSliceHud
 var perf: DmPerfOverlay
+var audio_hooks: DmAudioHooks
+var settings_menu: DmSettingsMenu
 var area_id := "chapterhouse"
 var spawn_timer := 2.0
 var spawning_enabled := true
@@ -43,6 +45,12 @@ func _ready() -> void:
 	hud.setup(self)
 	perf = DmPerfOverlay.new()
 	add_child(perf)
+	audio_hooks = DmAudioHooks.new()
+	add_child(audio_hooks)
+	audio_hooks.setup(self)
+	settings_menu = DmSettingsMenu.new()
+	add_child(settings_menu)
+	settings_menu.setup()
 	if "--open-all" in OS.get_cmdline_user_args():
 		builder.open_all()
 	_update_area()
@@ -185,6 +193,7 @@ func on_enemy_killed(e: DmEnemy) -> void:
 		for l in g.loot:
 			x -= float(l.weight)
 			if x <= 0.0:
+				DmAudioHooks.loot_drop(str(l.get("rarity", "common")), e.global_position)
 				DmFx.float_text(self, e.global_position + Vector3(0, 1.4, 0), "[%s]" % l.name, Color(1.0, 0.8, 0.3), 36, 1.0, 2.0)
 				hud.note("Loot: %s" % l.name)
 				break
@@ -204,6 +213,7 @@ func raise_thrall(corpse: Node3D) -> void:
 	add_child(t)
 	t.global_position = p
 	t.setup(hero_data.thrall, self, hero, hero_data.thrall_model, thrall_serial % cap)
+	DmAudioHooks.thrall_raised(p)
 	thrall_serial += 1
 	DmFx.float_text(self, p + Vector3(0, 2.0, 0), "Thrall", Color(0.7, 0.9, 1.0), 34)
 

@@ -66,6 +66,7 @@ func _die() -> void:
 		var tw := create_tween()
 		tw.tween_property(_model_root, "rotation:z", PI / 2.0, 0.4)
 		_model_root.position.y = 0.0
+	DmAudioHooks.enemy_died(str(def.id), global_position)
 	main.on_enemy_killed(self)
 
 func _target() -> Node3D:
@@ -121,8 +122,10 @@ func _process(dt: float) -> void:
 func _play_attack() -> void:
 	var nm := "cast" if def.get("caster", false) and _anim != null and _anim.has_animation("cast") else "attack"
 	_animator.strike(nm, float(def.windupMs) / 1000.0)
+	DmAudioHooks.enemy_windup(global_position)
 
 func _strike(t: Node3D, dist: float) -> void:
+	DmAudioHooks.enemy_strike(str(def.id), global_position)
 	var reach: float = float(def.attackRange)
 	if dist <= reach + 0.8 + (radius if def.behavior != "caster" else 0.0):
 		if t.has_method("take_hit"):

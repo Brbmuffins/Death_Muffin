@@ -43,6 +43,7 @@ func take_hit(amount: float, _from: Node) -> void:
 	hp -= amount
 	DmFx.float_text(main, global_position + Vector3(0, 2.0, 0), str(int(round(amount))), Color(0.6, 0.8, 1.0), 30)
 	if hp <= 0.0:
+		DmAudioHooks.thrall_died(global_position)
 		crumble()
 
 func crumble() -> void:
@@ -89,6 +90,7 @@ func _process(dt: float) -> void:
 			if _atk_cd <= 0.0:
 				_atk_cd = float(data.interval)
 				foe.take_damage(float(data.damage))
+				DmAudioHooks.thrall_hit(str(data.get("kind", "shieldbearer")), foe.global_position)
 				_animator.strike("attack", 0.2)
 			else:
 				_animator.loco(0.0)
