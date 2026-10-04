@@ -5,7 +5,7 @@ vi.mock('../fxTextures', async () => {
   const T = await import('three');
   return { fx: { glow: () => new T.Texture(), ring: () => new T.Texture() } };
 });
-import { LOOT_ITEM_CAP, LOOT_VACUUM_S, LootView } from '../LootView';
+import { LOOT_EXPIRE_S, LOOT_ITEM_CAP, LootView } from '../LootView';
 
 const effects = { decal: () => ({ kill() {} }), emit() {}, lightFlash() {}, binbun: { spawn: () => ({ kill() {} }) } } as never;
 
@@ -14,10 +14,10 @@ function view() {
   (v as unknown as { loader: { load: () => THREE.Texture } }).loader = { load: () => new THREE.Texture() };
   return v;
 }
-const step = (v: LootView, seconds: number, take: (d: unknown) => boolean = () => true, at: [number, number] = [0, 0], fit: (d: unknown) => boolean = take) => {
+const step = (v: LootView, seconds: number, take: (d: unknown) => boolean = () => true, at: [number, number] = [0, 0]) => {
   const got = { gold: 0, shards: 0, items: 0 };
   for (let t = 0; t < seconds; t += 0.1) {
-    const r = v.update(0.1, at[0], at[1], take as never, fit as never);
+    const r = v.update(0.1, at[0], at[1], take as never);
     got.gold += r.gold;
     got.shards += r.shards;
     got.items += r.items.length;
@@ -25,47 +25,40 @@ const step = (v: LootView, seconds: number, take: (d: unknown) => boolean = () =
   return got;
 };
 
-describe('ground loot does not pile up', () => {
-  it('gold and shards left behind drift to the hero and pay out', () => {
+describe('ground loot: walk over it to take it, otherwise it expires', () => {
+  it('loot far away never comes to the hero; it expires instead', () => {
     const v = view();
     v.gold(30, 30, 40);
     v.shard(-30, 30, 2);
-    expect(step(v, LOOT_VACUUM_S.gold - 5)).toMatchObject({ gold: 0, shards: 0 });
-    expect(v.count).toBe(3);
-    expect(step(v, 15)).toMatchObject({ gold: 40, shards: 2 });
-    expect(v.count).toBe(0);
-  });
-
-  it('an item left alone is collected after its time, unless the bag is full', () => {
-    const v = view();
     v.item(30, 0, { item_id: 'bone_meal', quantity: 1 });
-    expect(step(v, LOOT_VACUUM_S.item - 5).items).toBe(0);
-    let full = true;
-    expect(step(v, 15, () => !full).items).toBe(0);
-    expect(v.count).toBe(1); // a full bag keeps it on the ground
-    full = false;
-    v.unpark(); // the bag changed
-    expect(step(v, LOOT_VACUUM_S.item + 5, () => !full).items).toBe(1);
+    expect(step(v, LOOT_EXPIRE_S.gold - 5)).toMatchObject({ gold: 0, shards: 0, items: 0 });
+    for (const d of v.debugDrops()) expect(Math.hypot(d.x, d.z)).toBeGreaterThan(25); // nothing drifted toward the hero
+    expect(step(v, LOOT_EXPIRE_S.item)).toMatchObject({ gold: 0, shards: 0, items: 0 });
     expect(v.count).toBe(0);
   });
 
-  it('past the cap the oldest items are called in at once, nothing is deleted', () => {
+  it('walking over an item takes it; gold pulls in from a few steps away', () => {
     const v = view();
-    for (let i = 0; i < LOOT_ITEM_CAP + 10; i++) v.item(40, 0, { item_id: 'bone_meal', quantity: 1 });
-    const got = step(v, 10);
-    expect(got.items).toBeGreaterThanOrEqual(10);
-    expect(v.count).toBeLessThanOrEqual(LOOT_ITEM_CAP);
+    v.item(10, 0, { item_id: 'bone_meal', quantity: 1 });
+    v.gold(-10, 0, 7);
+    expect(step(v, 2, () => true, [10, 0]).items).toBe(1);
+    expect(step(v, 2, () => true, [-12, 0]).gold).toBe(7);
   });
 
-  it('a full bag never makes drops trail the hero, even past the cap', () => {
+  it('a full bag leaves the item where it lies until it expires', () => {
     const v = view();
+    v.item(0, 0, { item_id: 'bone_meal', quantity: 1 });
+    expect(step(v, 10, () => false).items).toBe(0);
+    expect(v.count).toBe(1);
+    expect(step(v, 5, () => true).items).toBe(1); // room again while still standing on it
+  });
+
+  it('past the cap the oldest ordinary items expire first; epic and legendary stay', () => {
+    const v = view();
+    v.item(40, 0, { item_id: 'bone_meal', quantity: 1, instance: { affixes: [{}, {}, {}, {}] } } as never); // rolled piece
     for (let i = 0; i < LOOT_ITEM_CAP + 10; i++) v.item(40, 0, { item_id: 'bone_meal', quantity: 1 });
-    // The hero walks around far from the pile with a full bag for longer than the vacuum time.
-    for (let t = 0; t < LOOT_VACUUM_S.item + 20; t += 0.1) v.update(0.1, -40 + (t % 20), 10, () => false, () => false);
-    expect(v.count).toBe(LOOT_ITEM_CAP + 10);
-    for (const d of v.debugDrops()) expect(Math.hypot(d.x - 40, d.z)).toBeLessThan(2);
-    // Room again: the next bag change lets them come in.
-    v.unpark();
-    expect(step(v, LOOT_VACUUM_S.item + 5).items).toBe(LOOT_ITEM_CAP + 10);
+    step(v, 1);
+    expect(v.count).toBe(LOOT_ITEM_CAP);
+    expect(v.debugDrops().filter((d) => d.ttl === LOOT_EXPIRE_S.prizeItem)).toHaveLength(1); // the oldest drop, but epic: kept
   });
 });

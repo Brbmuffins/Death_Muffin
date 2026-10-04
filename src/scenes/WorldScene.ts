@@ -841,7 +841,6 @@ export class WorldScene implements GameScene, RuntimeView {
     }));
     this.scope.add(this.inventory.onChange(() => this.refreshStats()));
     this.scope.add(this.inventory.onChange((slots) => {
-      this.loot.unpark();
       // Room again (a free bag slot): the next time something does not fit, say so once more.
       if (slots.filter((x) => x.slot_index < BAG_SIZE).length < BAG_SIZE) this.bagFullNoticed = false;
     }));
@@ -1328,6 +1327,13 @@ export class WorldScene implements GameScene, RuntimeView {
       () => {
         this.onboarding.reset();
         this.hud.toast('Covenant counsel will guide you again', 'good');
+        // Walk through the parts of the screen the player already has, one calm card at a time, each lighting up what it explains.
+        // The rest come back as their moments arrive. Closing Settings is the calm moment the first one waits for.
+        this.onboarding.show('minimap', 0, { kind: 'calm' });
+        this.onboarding.show('belt', 0, { kind: 'calm' });
+        if (this.hudReveal.has('menu.atlas')) this.onboarding.show('atlas', 0, { kind: 'calm' });
+        if (this.hudReveal.has('hud.spells')) this.onboarding.show('grimoire', 0, { kind: 'calm' });
+        this.onboarding.show('codex', 0, { kind: 'calm' });
       },
       () => {
         this.closePanels();
@@ -3394,7 +3400,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private bagFullNotice() {
     if (this.bagFullNoticed) return;
     this.bagFullNoticed = true;
-    this.hud.toast('Your Reliquary is full. Sell spare gear (Sell all junk) or, back in the Chapterhouse or the Acre, store materials in the Vault (V). What you cannot carry waits on the ground.', 'err');
+    this.hud.toast('Your Reliquary is full. Sell spare gear (Sell all junk) or, back in the Chapterhouse or the Acre, store materials in the Vault (V). What you cannot carry stays on the ground for a few minutes.', 'err');
   }
 
   private onGatherReply(r: GatherReply) {
@@ -5424,7 +5430,7 @@ export class WorldScene implements GameScene, RuntimeView {
         return false;
       }
       return true;
-    }, (d) => addToSlots(this.inventory.all, d) !== null);
+    });
     if (got.gold) {
       audio.play('coin');
       this.progression.addGold(got.gold);
