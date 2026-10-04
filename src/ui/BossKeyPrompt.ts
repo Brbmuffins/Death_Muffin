@@ -1,5 +1,6 @@
 import { BOSSES, type BossId } from '../content/bosses';
 import { EMPOWER, empowerGold, empoweredLegendaryChance } from '../gameplay/goldSinkRules';
+import { wrapPanelBody } from './panelBody';
 
 export interface BossKeyOffer {
   boss: BossId;
@@ -46,6 +47,7 @@ export class BossKeyPrompt {
       <button class="cw-button primary cw-bosskey-go" data-normal ${canNormal ? '' : 'disabled'}>Wake it · ${def.shards} soul shards <small>(you have ${o.shards})</small></button>
       <button class="cw-button primary cw-bosskey-go emp" data-emp ${why ? 'disabled' : ''}>Call it Empowered · ${o.bound ? 'your summon is bound: free' : `1 Covenant Seal + ${cost.toLocaleString()} gold`}${why ? ` <small>${why}</small>` : ''}</button>
       <p class="cw-hint-text">Empowered: ${EMPOWER.levelsFlat}+ levels stronger, ${Math.round((EMPOWER.hpMult - 1) * 100)}% more health and a red-gold glow. Its kill pays one guaranteed epic-or-better piece, a legendary ${Math.round(empoweredLegendaryChance(o.boss) * 1000) / 10}% of the time. The Seal and gold are taken now; a fight you lose can be tried again free.</p>`;
+    wrapPanelBody(el);
     this.root.appendChild(el);
     el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
     el.querySelector('[data-normal]')!.addEventListener('click', () => { this.close(); this.onNormal(o.boss); });
