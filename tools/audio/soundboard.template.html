@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Death Muffin Sound Board</title>
+<link rel="icon" href="data:,">
+<style>
+:root{--bg:#07060a;--panel:#100d16;--panel2:#171320;--line:#2a2236;--bone:#e8dfcc;--dim:#9a8fa8;--violet:#9b6bff;--gold:#d9b15a;--amber:#e0a030;--red:#ff5a5a;--green:#7fd08a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--bone);font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;background:rgba(7,6,10,.95);border-bottom:1px solid var(--line);padding:10px 20px;backdrop-filter:blur(6px)}
+h1{margin:0 0 6px;font:600 20px Georgia,serif;color:var(--gold);letter-spacing:.04em}
+h1 small{color:var(--dim);font:13px system-ui;letter-spacing:0;margin-left:8px}
+.bar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.bar label{display:flex;gap:6px;align-items:center;color:var(--dim);cursor:pointer}
+input[type=search]{background:var(--panel2);border:1px solid var(--line);color:var(--bone);padding:6px 10px;border-radius:6px;width:240px}
+input[type=range]{accent-color:var(--violet)}
+button{font:inherit;cursor:pointer;color:var(--bone);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:4px 10px}
+button:hover{border-color:var(--violet)}
+button.stop{border-color:#6a3040}
+button.copy{border-color:var(--gold);color:var(--gold)}
+.hint{color:var(--dim);font-size:12px;word-break:break-all}
+h2{scroll-margin-top:130px}
+main{padding:10px 20px 60px;max-width:1500px;margin:0 auto}
+nav{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+nav a{color:var(--violet);text-decoration:none;border:1px solid var(--line);padding:2px 9px;border-radius:12px;font-size:12px}
+h2{font:600 17px Georgia,serif;color:var(--gold);margin:26px 0 4px;border-bottom:1px solid var(--line);padding-bottom:4px}
+h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--violet);margin:14px 0 2px}
+.sub{color:var(--dim);font-size:12px;margin:0 0 4px}
+.row{display:grid;grid-template-columns:minmax(260px,1.2fr) minmax(300px,1.6fr) minmax(220px,1fr);gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:6px 0}
+.row.flag{border-left:3px solid var(--red)}
+.row.partial{border-left:3px solid var(--amber)}
+.row.flag.partial{border-left:3px solid var(--red);border-right:3px solid var(--amber)}
+.id{font:600 15px ui-monospace,Consolas,monospace;color:var(--bone)}
+.badge{display:inline-block;font-size:11px;padding:0 7px;border-radius:9px;border:1px solid var(--line);color:var(--dim);margin-left:5px;vertical-align:middle}
+.badge.partial{background:#3a2a08;color:var(--amber);border-color:var(--amber)}
+.badge.keep{background:#2a1f33;color:var(--violet);border-color:var(--violet)}
+.badge.flag{background:#3a1010;color:var(--red);border-color:var(--red)}
+.notes{color:var(--bone);margin:2px 0}
+.where{color:var(--dim);font-size:12px;word-break:break-word}
+.meta{color:var(--dim);font-size:12px;margin-top:3px;font-family:ui-monospace,Consolas,monospace}
+.vars{display:flex;flex-direction:column;gap:4px}
+.var{display:flex;gap:8px;align-items:flex-start}
+.var button{flex:none;min-width:58px;border-color:#4a3a78}
+.var.bad button{border-color:var(--red)}
+.var.playing button{background:var(--violet);color:#fff}
+.cn{font-size:12px;color:var(--dim);word-break:break-all}
+.var.bad .cn{color:#e8b0b0}
+.why{color:var(--red);font-size:12px;margin-left:0}
+.rand{align-self:flex-start;margin-top:4px;border-color:var(--gold);color:var(--gold)}
+textarea{width:100%;height:70px;resize:vertical;background:var(--panel2);color:var(--bone);border:1px solid var(--line);border-radius:6px;padding:6px;font:13px system-ui}
+textarea:focus{outline:1px solid var(--violet)}
+.noclip{color:var(--violet);font-style:italic}
+footer{border-top:1px solid var(--line);padding:18px 20px;color:var(--dim);font-size:12px;text-align:center}
+.toast{position:fixed;right:20px;bottom:20px;background:var(--panel2);border:1px solid var(--gold);padding:8px 14px;border-radius:8px;display:none}
+.empty{color:var(--dim);padding:30px;text-align:center;display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>Death Muffin Sound Board<small id="counts"></small></h1>
+  <div class="bar">
+    <input type="search" id="q" placeholder="Search id, clip, notes, where it plays" autocomplete="off">
+    <label><input type="checkbox" id="fFlag"> Flagged only</label>
+    <label><input type="checkbox" id="fPartial"> Partial only</label>
+    <label>Volume <input type="range" id="vol" min="0" max="1" step="0.01" value="0.8"> <span id="volv">80%</span></label>
+    <button class="stop" id="stop">Stop all (Space)</button>
+    <button class="copy" id="copy">Copy my notes</button>
+    <span class="hint" id="shown"></span>
+  </div>
+  <nav id="nav"></nav>
+</header>
+<main id="main"></main>
+<div class="empty" id="empty">No sounds match.</div>
+<footer>Clips &copy; Epic Stock Media (Fantasy Game), licensed to Muffin Development for use in Death Muffin. Not for redistribution.</footer>
+<div class="toast" id="toast"></div>
+<script>
+"use strict";
+const DATA = /*__DATA__*/null;
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const short = (n) => n.split('/').pop();
+
+// ---- notes (localStorage, best effort)
+let notes = {};
+try { notes = JSON.parse(localStorage.getItem('dm-soundboard-notes') || '{}') || {}; } catch (e) { notes = {}; }
+const saveNotes = () => { try { localStorage.setItem('dm-soundboard-notes', JSON.stringify(notes)); } catch (e) {} };
+const lastClip = {}; // id -> clip name last played
+
+// ---- audio
+let ctx = null, master = null;
+const buffers = new Map(); // file -> Promise<AudioBuffer>
+const live = new Set();
+function ensure() {
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createGain();
+    master.gain.value = +$('#vol').value;
+    master.connect(ctx.destination);
+  }
+  if (ctx.state === 'suspended') ctx.resume();
+}
+function load(file) {
+  if (!buffers.has(file)) {
+    buffers.set(file, fetch(file).then((r) => { if (!r.ok) throw new Error(file + ' HTTP ' + r.status); return r.arrayBuffer(); })
+      .then((b) => ctx.decodeAudioData(b)).catch((e) => { buffers.delete(file); throw e; }));
+  }
+  return buffers.get(file);
+}
+async function playClip(s, clip, opts) {
+  ensure();
+  const buf = await load(clip.file);
+  const jitter = opts.jitter ? (Math.random() * 2 - 1) * s.jitter : 0;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.playbackRate.value = (s.rate || 1) * (1 + jitter);
+  const g = ctx.createGain();
+  g.gain.value = opts.volume;
+  src.connect(g); g.connect(master);
+  if (s.trim && s.trim.maxMs) { // the game fades the clip out at its cap
+    const end = ctx.currentTime + s.trim.maxMs / 1000 / src.playbackRate.value;
+    g.gain.setValueAtTime(opts.volume, Math.max(ctx.currentTime, end - 0.06));
+    g.gain.linearRampToValueAtTime(0, end);
+  }
+  const entry = { src, el: opts.el };
+  live.add(entry);
+  if (opts.el) opts.el.classList.add('playing');
+  src.onended = () => { live.delete(entry); if (opts.el && ![...live].some((e) => e.el === opts.el)) opts.el.classList.remove('playing'); };
+  src.start(ctx.currentTime + (opts.delay || 0));
+}
+function stopAll() {
+  for (const e of live) { try { e.src.stop(); } catch (x) {} if (e.el) e.el.classList.remove('playing'); }
+  live.clear();
+}
+function report(err) { console.error(err); toast('Could not play: ' + err.message); }
+function playVariant(s, i, el) {
+  lastClip[s.id] = 'v' + (i + 1) + ' ' + s.clips[i].name;
+  updateLast(s.id);
+  playClip(s, s.clips[i], { volume: s.volume, jitter: false, el }).catch(report);
+}
+function playRandom(s, el) {
+  if (!s.clips.length) return;
+  const i = Math.floor(Math.random() * s.clips.length);
+  lastClip[s.id] = 'v' + (i + 1) + ' ' + s.clips[i].name;
+  updateLast(s.id);
+  playClip(s, s.clips[i], { volume: s.volume, jitter: true, el }).catch(report);
+  if (s.layer && s.layer.clips.length) {
+    const lc = s.layer.clips[Math.floor(Math.random() * s.layer.clips.length)];
+    playClip(s, lc, { volume: s.volume * s.layer.volume, jitter: true, delay: s.layer.delayMs / 1000, el }).catch(report);
+  }
+}
+function updateLast(id) { const e = document.querySelector('[data-last="' + id + '"]'); if (e) e.textContent = lastClip[id] ? 'last played: ' + short(lastClip[id]) : ''; }
+
+let toastT;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => (t.style.display = 'none'), 2500); }
+
+// ---- render
+function rowHtml(s) {
+  const flagged = s.clips.concat(s.layer ? s.layer.clips : []).filter((c) => c.flags.length);
+  const badges = (s.status === 'partial' ? '<span class="badge partial">partial</span>' : '') + (s.status === 'keep' ? '<span class="badge keep">keep old sound</span>' : '') +
+    (flagged.length ? '<span class="badge flag">' + flagged.length + ' flagged</span>' : '');
+  const variant = (c, i, kind) => '<div class="var' + (c.flags.length ? ' bad' : '') + '"><button data-play="' + s.id + '" data-i="' + i + '" data-kind="' + kind + '" title="Play at the map volume (' + s.volume + ')">&#9654; ' + (kind === 'layer' ? 'L' + (i + 1) : (i + 1)) + '</button>' +
+    '<div><div class="cn">' + esc(c.name) + (c.dur ? ' <span>(' + c.dur + 's)</span>' : '') + '</div>' +
+    c.flags.map((f) => '<div class="why">&#9873; ' + esc(f) + '</div>').join('') + '</div></div>';
+  const meta = ['bus ' + s.bus, 'vol ' + s.volume, 'pitch &plusmn;' + Math.round(s.jitter * 100) + '%', s.rate !== 1 ? 'rate ' + s.rate : '', 'voices ' + s.voices, 'cooldown ' + s.cooldown + 'ms', s.loopMs ? 'loops every ' + s.loopMs + 'ms' : '', 'priority ' + s.priority].filter(Boolean).join(' &middot; ');
+  const vars = s.clips.length ? s.clips.map((c, i) => variant(c, i, 'main')).join('') +
+    (s.layer ? '<div class="sub">Layer (' + s.layer.volume + ' vol, +' + s.layer.delayMs + 'ms)</div>' + s.layer.clips.map((c, i) => variant(c, i, 'layer')).join('') : '') +
+    '<button class="rand" data-rand="' + s.id + '" title="Random variant + pitch jitter' + (s.layer ? ' + layer' : '') + ', as the game plays it">&#127922; As in game</button>'
+    : '<div class="noclip">No clip: the game keeps its old synthesized sound for this id.</div>';
+  return '<div class="row' + (flagged.length ? ' flag' : '') + (s.status === 'partial' ? ' partial' : '') + '" data-id="' + s.id + '">' +
+    '<div><div><span class="id">' + esc(s.id) + '</span>' + badges + '</div>' +
+    (s.notes ? '<div class="notes">' + esc(s.notes) + '</div>' : '') +
+    (s.ctx ? '<div class="where">' + esc(s.ctx) + '</div>' : '') +
+    (s.site ? '<div class="where">' + esc(s.site) + '</div>' : '') +
+    '<div class="meta">' + meta + '</div></div>' +
+    '<div class="vars">' + vars + '</div>' +
+    '<div><textarea data-note="' + s.id + '" placeholder="Your note on ' + esc(s.id) + '...">' + esc(notes[s.id] || '') + '</textarea><div class="hint" data-last="' + s.id + '"></div></div></div>';
+}
+const SUBTITLE = { 'Enemies': 'attack and death voices per family, then elite cues', 'Footsteps by surface': 'one set per floor type', 'Bosses & danger tells': 'wind-ups and danger cues: these duck the rest of the mix' };
+function render() {
+  const q = $('#q').value.trim().toLowerCase();
+  const fFlag = $('#fFlag').checked, fPartial = $('#fPartial').checked;
+  let shown = 0, html = '', nav = '';
+  for (const g of DATA.groups) {
+    const items = DATA.sounds.filter((s) => s.group === g).filter((s) => {
+      if (fFlag && !s.clips.concat(s.layer ? s.layer.clips : []).some((c) => c.flags.length)) return false;
+      if (fPartial && s.status !== 'partial') return false;
+      if (!q) return true;
+      return (s.id + ' ' + s.notes + ' ' + s.site + ' ' + s.ctx + ' ' + s.clips.concat(s.layer ? s.layer.clips : []).map((c) => c.name).join(' ')).toLowerCase().includes(q);
+    });
+    if (!items.length) continue;
+    shown += items.length;
+    nav += '<a href="#g-' + g.replace(/\W+/g, '') + '">' + esc(g) + ' (' + items.length + ')</a>';
+    html += '<h2 id="g-' + g.replace(/\W+/g, '') + '">' + esc(g) + '</h2>' + (SUBTITLE[g] ? '<div class="sub">' + SUBTITLE[g] + '</div>' : '');
+    let lastSub = null;
+    for (const s of items) {
+      if (s.sub && s.sub !== lastSub) html += '<h3>' + esc(s.sub) + '</h3>';
+      lastSub = s.sub;
+      html += rowHtml(s);
+    }
+  }
+  $('#main').innerHTML = html;
+  $('#nav').innerHTML = nav;
+  $('#shown').textContent = shown + ' of ' + DATA.counts.ids + ' sounds shown';
+  $('#empty').style.display = shown ? 'none' : 'block';
+  for (const id in lastClip) updateLast(id);
+}
+
+// ---- events
+$('#main').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.rand) return playRandom(DATA.sounds.find((s) => s.id === b.dataset.rand), b.closest('.row'));
+  if (b.dataset.play) {
+    const s = DATA.sounds.find((x) => x.id === b.dataset.play), i = +b.dataset.i;
+    if (b.dataset.kind === 'layer') { ensure(); lastClip[s.id] = 'layer ' + s.layer.clips[i].name; updateLast(s.id); return void playClip(s, s.layer.clips[i], { volume: s.volume * s.layer.volume, jitter: false, el: b.closest('.var') }).catch(report); }
+    playVariant(s, i, b.closest('.var'));
+  }
+});
+$('#main').addEventListener('input', (e) => {
+  const id = e.target.dataset && e.target.dataset.note; if (!id) return;
+  if (e.target.value.trim()) notes[id] = e.target.value; else delete notes[id];
+  saveNotes();
+});
+for (const id of ['#q', '#fFlag', '#fPartial']) $(id).addEventListener('input', render);
+$('#vol').addEventListener('input', (e) => { $('#volv').textContent = Math.round(e.target.value * 100) + '%'; if (master) master.gain.value = +e.target.value; });
+$('#stop').addEventListener('click', stopAll);
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && !/^(TEXTAREA|INPUT)$/.test(document.activeElement.tagName)) { e.preventDefault(); stopAll(); }
+});
+$('#copy').addEventListener('click', async () => {
+  const lines = [];
+  for (const s of DATA.sounds) {
+    const n = (notes[s.id] || '').trim(); if (!n) continue;
+    lines.push(s.id + ': ' + (lastClip[s.id] || (s.clips[0] ? 'any/' + s.clips.length + ' variants' : 'no clip')) + ' → ' + n.replace(/\s*\n\s*/g, ' / '));
+  }
+  if (!lines.length) return toast('No notes typed yet.');
+  const text = lines.join('\n');
+  try { await navigator.clipboard.writeText(text); toast('Copied ' + lines.length + ' note' + (lines.length > 1 ? 's' : '') + '.'); }
+  catch (e) { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); toast('Copied ' + lines.length + ' notes.'); } catch (x) { prompt('Copy your notes:', text); } t.remove(); }
+});
+const c = DATA.counts;
+$('#counts').textContent = c.ids + ' sounds · ' + c.clips + ' clips · ' + c.flagged + ' flagged · ' + c.partial + ' partial';
+render();
+</script>
+</body>
+</html>
