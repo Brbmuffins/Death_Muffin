@@ -9,6 +9,9 @@ import {
   CODEX_BREWS_COUNSEL,
   CODEX_REAGENTS_COUNSEL,
   CODEX_SALVAGE_COUNSEL,
+  CODEX_REFORGE_COUNSEL,
+  CODEX_EMPOWER_COUNSEL,
+  codexEmpowerRows,
   CODEX_VAULT_COUNSEL,
   codexSalvageRows,
   codexReagentRecipes,
@@ -472,7 +475,19 @@ export class CodexPanel {
           <p>${CODEX_VAULT_COUNSEL}</p>
         </div>
       </article>`;
-    return `<p class="tip">${CODEX_PROFESSIONS_COUNSEL}</p>${sections}${stations}${vault}${salvage}${brews}${reagents}`;
+    const sinks = `
+      <article class="cw-codex-entry">
+        <div class="txt">
+          <div class="hd"><h3>Reforge and Empowered bosses</h3><span class="meta">Gold sinks · Workbench (C) · boss altars</span></div>
+          <p>${CODEX_REFORGE_COUNSEL}</p>
+          <p>${CODEX_EMPOWER_COUNSEL}</p>
+          <table class="cw-codex-table">
+            <thead><tr><th>Boss</th><th>Seal and gold</th><th>Legendary in the prize</th></tr></thead>
+            <tbody>${codexEmpowerRows().map((r) => `<tr><td>${r.boss}</td><td>1 Seal + ${r.gold.toLocaleString()}</td><td>${r.legendary}%</td></tr>`).join('')}</tbody>
+          </table>
+        </div>
+      </article>`;
+    return `<p class="tip">${CODEX_PROFESSIONS_COUNSEL}</p>${sections}${stations}${vault}${salvage}${sinks}${brews}${reagents}`;
   }
 
   /** Who has been spoken to (set by the scene from the guidance memory). */

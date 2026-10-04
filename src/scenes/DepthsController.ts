@@ -5,6 +5,7 @@ import { ITEMS } from '../content/items';
 import type { DepthsFloor } from '../gameplay/depthsFloor';
 import { rollChest, rollFloorClear } from '../gameplay/depthsRewards';
 import type { LootDrop } from '../gameplay/loot';
+import type { FloorClear } from '../gameplay/killRules';
 import type { Nav } from '../gameplay/nav';
 import type { DepthsRun, SimEvent } from '../gameplay/sim/types';
 import type { WorldSim } from '../gameplay/sim/WorldSim';
@@ -53,6 +54,8 @@ export interface DepthsHost {
   dropItems: (x: number, z: number, items: LootDrop[], level: number, source: DropSource) => void;
   gainXp: (xp: number, x: number, z: number) => void;
   giveGold: (x: number, z: number, amount: number) => void;
+  /** Server authority step 2: tell the server a floor was cleared and/or its chest opened (it pays the bonus out of the ledger and proves the depth). */
+  reportFloor: (f: FloorClear) => void;
   tip: (id: TipId, delayMs?: number, opts?: boolean | { kind?: 'urgent' | 'danger' | 'asked' | 'calm'; bump?: boolean }) => void;
 }
 
@@ -297,6 +300,7 @@ export class DepthsController {
     const win = rollFloorClear(depth, level, Math.random, this.host.disciplineId?.());
     const gold = Math.round(win.gold * mult);
     const xp = Math.round(win.xp * mult);
+    this.host.reportFloor({ depth, level, clear: true, chest: false, mult });
     this.host.giveGold(x, z + 1.2, gold);
     this.host.gainXp(xp, x, z);
     if (win.drop) this.host.dropItems(x, z + 1.8, [win.drop], level, 'surge');
@@ -322,6 +326,7 @@ export class DepthsController {
     const gold = Math.round(loot.gold * mult);
     const x = f.chest.x;
     const z = f.chest.z;
+    this.host.reportFloor({ depth: run.depth, level, clear: false, chest: true, mult });
     this.host.giveGold(x, z + 1.2, gold);
     this.host.gainXp(Math.round(loot.xp * mult), x, z);
     // Fan the drops out in front of the chest, the gear first.

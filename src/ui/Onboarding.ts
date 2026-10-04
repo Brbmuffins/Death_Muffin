@@ -137,6 +137,9 @@ export type TipId =
   | 'bag_filling'
   | 'vault'
   | 'salvage'
+  // Gold sinks: the Workbench's Reforge tab and Covenant Seals at a boss altar.
+  | 'reforge'
+  | 'boss_seal'
   // People of the Covenant (first sight of an NPC).
   | 'people';
 
@@ -577,6 +580,14 @@ export const TIPS: Record<TipId, Tip> = {
   salvage: {
     title: 'Salvaging',
     body: 'The Bone Grinder breaks unwanted gear into <b>ingots</b> (or <b>planks</b> from staffs, wands and grimoires) by rarity, plus <b>Grave Dust</b> and other reagents, and trains Salvaging. If the yield will not fit your bag, nothing is ground. Worn and locked gear is never touched.',
+  },
+  reforge: {
+    title: 'Reforge a roll',
+    body: 'At the Workbench{p:C}, the <b>Reforge</b> tab re-rolls one affix of a piece you carry or wear. The affix stays; its number is drawn again, anywhere in the range its item level allows, for gold. The price is shown before you confirm and rises about 25% with every reforge of the same piece. It can come out lower, and a roll already at the top of its range cannot be reforged, so spend on the weak lines.',
+  },
+  boss_seal: {
+    title: 'A Covenant Seal at the altar',
+    body: "Click a boss altar with a <b>Covenant Seal</b> in your bag to call an <b>Empowered</b> boss: more health and harder hits, with a red-gold glow, for a Seal and gold. Its kill pays one guaranteed epic-or-better piece with much better odds of a legendary. A fight you lose can be tried again free. Seals turn up when you dig Crypt Collapses and the Barrow-King's Tomb or fish the Abyssal Coelacanth.",
   },
   people: {
     title: 'People of the Covenant',

@@ -6,11 +6,13 @@ import { bonusAvailable, brewOfTheDay, claimBonus } from '../content/wing';
 import { itemMeta } from '../content/items';
 import { BAG_SIZE } from '../gameplay/loot';
 import { clampCraftQty, maxCraftable } from '../gameplay/craftQuantity';
+import { ReforgeView, type ReforgeHost } from './ReforgeView';
 
 /** Tabs: a profession's recipes; 'tools' is the smithing recipes for gathering tools (mining, `smith_*`). */
 const PROFESSIONS = ['mining', 'tools', 'fishing', 'woodcutting', 'gravedigging', 'alchemy'] as const;
-type Tab = (typeof PROFESSIONS)[number];
-const LABEL: Record<Tab, string> = { mining: 'Smelting', tools: 'Tools', fishing: 'Cooking', woodcutting: 'Coffin-wood', gravedigging: 'Bonework', alchemy: 'Alchemy' };
+/** 'reforge' is the Workbench-only gold sink (ReforgeView), not a recipe list. */
+type Tab = (typeof PROFESSIONS)[number] | 'reforge';
+const LABEL: Record<Tab, string> = { mining: 'Smelting', tools: 'Tools', fishing: 'Cooking', woodcutting: 'Coffin-wood', gravedigging: 'Bonework', alchemy: 'Alchemy', reforge: 'Reforge' };
 const isTool = (id: string) => id.startsWith('smith_');
 
 /** The Sexton's Acre stations: each is the Workbench locked to its rites' recipes. */
@@ -43,7 +45,13 @@ export class ForgePanel {
     private characterId: number,
     private inventory: Inventory,
     private onCrafted: (inventory: InventorySlot[], professions: Profession[]) => void,
-  ) {}
+    /** The Workbench's Reforge tab (absent: the tab is not offered). */
+    reforge?: ReforgeHost,
+  ) {
+    this.reforgeView = reforge ? new ReforgeView(reforge) : null;
+  }
+
+  private reforgeView: ReforgeView | null;
 
   get isOpen() {
     return this.el !== null;
@@ -58,7 +66,7 @@ export class ForgePanel {
     this.station = station ?? null;
     const st = station ? STATIONS[station] : null;
     if (st && !st.tabs.includes(this.tab)) this.tab = st.tabs[0];
-    const tabs = st?.tabs ?? PROFESSIONS;
+    const tabs: readonly Tab[] = st?.tabs ?? (this.reforgeView ? [...PROFESSIONS, 'reforge' as const] : PROFESSIONS);
     const title = st?.title ?? 'Ossuary Workbench';
     this.el = document.createElement('div');
     this.el.className = 'cw-plate cw-panel-float cw-forge';
@@ -89,6 +97,14 @@ export class ForgePanel {
   private async load() {
     this.setError('');
     this.el?.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === this.tab));
+    this.reforgeView?.unmount();
+    if (this.tab === 'reforge') {
+      const box = this.el?.querySelector<HTMLDivElement>('.cw-recipes');
+      const hint = this.el?.querySelector<HTMLElement>('[data-wing-hint]');
+      if (hint) hint.textContent = '';
+      if (box && this.reforgeView) await this.reforgeView.mount(box);
+      return;
+    }
     try {
       const prof = this.tab === 'tools' ? 'mining' : this.tab;
       const [recipes, professions] = await Promise.all([getRecipes(prof), getProfessions(this.characterId)]);
@@ -101,6 +117,7 @@ export class ForgePanel {
   }
 
   close() {
+    this.reforgeView?.unmount();
     this.station = null;
     this.el?.remove();
     this.el = null;

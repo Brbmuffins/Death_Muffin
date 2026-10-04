@@ -1,6 +1,7 @@
 import { API_BASE } from './config';
 import type { Character, InventorySlot, Profession, Recipe } from './types';
 import type { NecroState, SaveInput } from '../gameplay/necroRules';
+import type { KillReport } from '../gameplay/killRules';
 import { decorateSlots, type DropInstance } from '../gameplay/affixes';
 import type { DropSource } from '../gameplay/affixRules';
 
@@ -301,6 +302,8 @@ export interface ProgressPayload {
   stat_agi: number;
   stat_int: number;
   stat_vit: number;
+  /** Server authority step 2: sealed kill batches that ride along with the save (see net/killReporter.ts). Servers that do not know the field ignore it. */
+  killReports?: KillReport[];
 }
 
 /**
@@ -313,6 +316,11 @@ export function saveProgress(payload: ProgressPayload, keepalive = false) {
     { method: 'POST', body: JSON.stringify(payload), keepalive },
     true,
   ));
+}
+
+/** Post kill batches on their own (a floor was cleared, a necromancer save is about to claim kills). Resolves with the server's mode. */
+export function reportKills(characterId: number, reports: KillReport[], keepalive = false) {
+  return unwrap<{ mode: string }>(request('/api/kills/report', { method: 'POST', body: JSON.stringify({ characterId, reports }), keepalive }, true));
 }
 
 // --- Necromancer progression (server storage; see server/VPS_HANDOFF.md) ---
@@ -584,6 +592,59 @@ export interface SalvageReply {
 export async function salvageGear(characterId: number, slots: number[]) {
   const r = await unwrap<SalvageReply>(request('/api/salvage', { method: 'POST', body: JSON.stringify({ characterId, slots }) }, true));
   return { ...r, bag: decorateSlots(r.bag) };
+}
+
+// --- Gold sinks (reforge.cjs, boss-key.cjs; rules in gameplay/goldSinkRules.ts) ---
+export interface ReforgeQuote {
+  gold: number;
+  pieces: { slot_index: number; instance_id: number; rerolls: number }[];
+}
+export interface ReforgeReply {
+  /** The character's gold after paying: the server's number, adopt it. */
+  gold: number;
+  cost: number;
+  from: number;
+  to: number;
+  rerolls: number;
+  bag: InventorySlot[];
+}
+export function reforgeQuote(characterId: number) {
+  return unwrap<ReforgeQuote>(request('/api/reforge/quote', { method: 'POST', body: JSON.stringify({ characterId }) }, true));
+}
+/** Re-roll the value of one affix. `expectCost` is the price the player saw; the server prices again and refuses a stale one. */
+export async function reforgeAffix(characterId: number, slotIndex: number, affixIndex: number, expectCost: number) {
+  const r = await unwrap<ReforgeReply>(request('/api/reforge', { method: 'POST', body: JSON.stringify({ characterId, slot_index: slotIndex, affix_index: affixIndex, expect_cost: expectCost }) }, true));
+  return { ...r, bag: decorateSlots(r.bag) };
+}
+
+export interface BossKeyReply {
+  gold: number;
+  /** Gold taken (0 when a bound summon was reused or the call was a refund). */
+  cost?: number;
+  reused?: boolean;
+  /** The bound summon's id (empowered_summons): the boss's kill report names it so the prize claim has a reported kill behind it. */
+  summon_id?: number;
+  bag: InventorySlot[];
+}
+async function bossKey(name: 'summon' | 'refund', characterId: number, boss: string) {
+  const r = await unwrap<BossKeyReply>(request(`/api/boss-key/${name}`, { method: 'POST', body: JSON.stringify({ characterId, boss }) }, true));
+  return { ...r, bag: decorateSlots(r.bag) };
+}
+/** Bosses this character holds a paid, unclaimed Empowered summon for (survives a reload: it is the server's row). */
+export function bossKeyStatus(characterId: number) {
+  return unwrap<{ bound: string[]; summons: { id: number; boss: string }[] }>(request('/api/boss-key/status', { method: 'POST', body: JSON.stringify({ characterId }) }, true));
+}
+export const bossKeySummon = (characterId: number, boss: string) => bossKey('summon', characterId, boss);
+export const bossKeyRefund = (characterId: number, boss: string) => bossKey('refund', characterId, boss);
+export interface BossKeyPrize {
+  item_id: string;
+  instance_id: number;
+  ilvl: number;
+  affixes: { id: string; v: number }[];
+  legendary: boolean;
+}
+export function bossKeyClaim(characterId: number, boss: string, discipline: string, level: number) {
+  return unwrap<BossKeyPrize>(request('/api/boss-key/claim', { method: 'POST', body: JSON.stringify({ characterId, boss, discipline, level }) }, true));
 }
 
 // --- Bug reports (Settings → Report a bug; read daily by server/death-muffin/bug-agent) ---

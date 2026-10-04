@@ -399,7 +399,12 @@ export class BossView {
     this.c.flash = b.active ? b.flash : 0;
     // The Regent's pale cape and molten plate white out under a close 16-24 light: a warm, low glow instead.
     const glow = this.regent || this.mire ? 4 + b.phase * 2 : 16 + b.phase * 8;
-    this.light.intensity = b.active ? glow + Math.sin(performance.now() / 200) * (this.regent || this.mire ? 1 : 4) : Math.max(0, this.light.intensity - dt * 30);
+    // An Empowered boss (Covenant Seal summon) is bigger and burns red-gold: the tell that this fight pays more and hits harder.
+    const emp = b.active && !!b.empowered;
+    this.light.color.setHex(emp ? 0xff6a2a : this.color);
+    this.light.intensity = b.active ? (glow + Math.sin(performance.now() / 200) * (this.regent || this.mire ? 1 : 4)) * (emp ? 1.35 : 1) : Math.max(0, this.light.intensity - dt * 30);
+    const grow = emp ? 1.12 : 1;
+    this.c.root.scale.setScalar(grow);
     if (b.state !== this.lastState) {
       this.lastState = b.state;
       if (b.state === 'toll' || b.state === 'rain' || b.state === 'summon') this.c.playOnce('cast', 1.1);
@@ -412,7 +417,7 @@ export class BossView {
       // Her clip set is small (idle/walk/attack/cast), so the blight itself is the tell: she swells and
       // sheds more rot each phase.
       const ph = b.phase;
-      this.c.root.scale.setScalar(1 + Math.sin(performance.now() / 1000 * (1.6 + ph * 0.9)) * 0.012 * ph);
+      this.c.root.scale.setScalar(grow * (1 + Math.sin(performance.now() / 1000 * (1.6 + ph * 0.9)) * 0.012 * ph));
       if (Math.random() < dt * (2 + ph * 3)) {
         this.effects.emitSmoke({ x: b.x + (Math.random() - 0.5) * 2, y: 0.3, z: b.z + (Math.random() - 0.5) * 2, count: 1, color: 0x4a5a22, spread: 0.8, speed: 0.3, up: 0.5, life: 1.4, size: 1.2 });
       }
@@ -420,11 +425,14 @@ export class BossView {
     if (this.regent && b.active) {
       // The Regent burns hotter each phase: embers stream off the crown and pauldrons, soot rolls off the cape.
       const ph = b.phase;
-      this.c.root.scale.setScalar(1 + Math.sin(performance.now() / 1000 * (1.4 + ph * 0.8)) * 0.01 * ph);
+      this.c.root.scale.setScalar(grow * (1 + Math.sin(performance.now() / 1000 * (1.4 + ph * 0.8)) * 0.01 * ph));
       if (Math.random() < dt * (10 + ph * 10)) {
         this.effects.emit({ x: b.x + (Math.random() - 0.5) * 1.6, y: 2 + Math.random() * 2.4, z: b.z + (Math.random() - 0.5) * 1.6, count: 1, color: Math.random() < 0.5 ? 0xff7a2a : 0xffc45a, spread: 0.5, speed: 0.4, up: 1.2 + ph * 0.3, life: 1.1, size: 0.14, drag: 0.4 });
       }
       if (Math.random() < dt * (2 + ph * 2)) this.effects.emitSmoke({ x: b.x + (Math.random() - 0.5) * 2, y: 1.2, z: b.z + (Math.random() - 0.5) * 2, count: 1, color: 0x2a1408, spread: 0.7, speed: 0.3, up: 0.7, life: 1.6, size: 1.3, shrink: -0.5 });
+    }
+    if (emp && Math.random() < dt * 14) {
+      this.effects.emit({ x: b.x + (Math.random() - 0.5) * 2.2, y: 0.4 + Math.random() * 3.2, z: b.z + (Math.random() - 0.5) * 2.2, count: 1, color: Math.random() < 0.5 ? 0xff7a2a : 0xffc45a, spread: 0.4, speed: 0.4, up: 1.4, life: 1.1, size: 0.16, drag: 0.4 });
     }
     if (b.active && Math.random() < dt * (this.saint ? 8 + b.phase * 8 : 10)) {
       this.effects.emit({ x: b.x, y: 2.5, z: b.z, count: 1, color: this.color === 0xa26bff ? 0x9d6bff : this.color, spread: 1, speed: 0.4, up: 0.8, life: 1.2, size: 0.4 });

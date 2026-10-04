@@ -15,6 +15,7 @@ const runeRules = require('./gathering/rune-rules.cjs');
 const BAG_SLOTS = gatheringRules.BAG_SLOTS;
 const inventorySave = require('./inventory-save.cjs');
 const authority = require('./authority.cjs');
+const kills = require('./kills.cjs');
 
 const app  = express();
 const PORT = process.env.PORT || 5190;
@@ -687,6 +688,8 @@ async function loadOfflineVersion(req, res, source, account, expectedFingerprint
     await offlineFull.pruneVersions(conn, locked.id);
     const after = await offlineFull.capture(conn, locked.id, req.user.username);
     await conn.commit();
+    // The load rewrote level, XP, necromancer kills and the Chronicle: the kill ledger starts again from them (step 2).
+    if (kills.killsMode() !== 'off') await kills.rebase(pool, locked.id);
     res.json({ summary: offlineFull.summary(after), fingerprint: offlineFull.fingerprint(after) });
   } catch (err) {
     await conn.rollback().catch(() => {});
@@ -766,8 +769,15 @@ app.post('/api/character/save-progress', requireJWT, async (req, res) => {
       stat_str: bounded(req.body.stat_str, char.stat_str, 0, 65535), stat_agi: bounded(req.body.stat_agi, char.stat_agi, 0, 65535),
       stat_int: bounded(req.body.stat_int, char.stat_int, 0, 65535), stat_vit: bounded(req.body.stat_vit, char.stat_vit, 0, 65535),
     };
+    // Step 2: kill reports ride along with the save (one request, so the credits are there before the gain is judged); AUTHORITY_KILLS=off ignores them.
+    const staff = await isStaffAccount(req).catch(() => false);
+    let reportNotice = '';
+    if (Array.isArray(req.body.killReports) && req.body.killReports.length && kills.killsMode() !== 'off') {
+      reportNotice = (await kills.handleReports(pool, { char, accountId: req.user.accountId, reports: req.body.killReports, account: { staff } })).message;
+    }
     // Plausibility guard (authority.cjs): AUTHORITY_MODE=report logs and changes nothing; enforce holds back what play cannot explain.
-    const verdict = await authority.guardProgress(pool, { char, next, account: { staff: await isStaffAccount(req).catch(() => false) } });
+    const verdict = await authority.guardProgress(pool, { char, next, account: { staff } });
+    if (reportNotice) verdict.message = [reportNotice, verdict.message].filter(Boolean).join(' ');
     const w = verdict.write;
     await pool.execute(
       'UPDATE characters SET level=?, experience=?, gold=?, stat_str=?, stat_agi=?, stat_int=?, stat_vit=? WHERE id=?',
@@ -1960,6 +1970,32 @@ const isStaffAccount = async (req) => {
   const [[acct]] = await pool.execute('SELECT role, gm_enabled FROM accounts WHERE id = ? LIMIT 1', [req.user.accountId]);
   return !!acct && (acct.role === 'admin' || acct.role === 'gm' || !!acct.gm_enabled);
 };
+// Server authority, step 2 (kills.cjs, AUTHORITY_KILLS=off|audit|enforce, default off): the browser reports its kills in batches; the ledger turns the
+// believable part into credits that the save routes pay out of. 'off' acknowledges and ignores a report, so this is safe to ship before it is switched on.
+const killReportLimiter = rateLimit({ windowMs: 60 * 1000, max: 40, standardHeaders: true, legacyHeaders: false });
+app.post('/api/kills/report', killReportLimiter, requireJWT, async (req, res) => {
+  try {
+    const char = await ownedCharacter(req, res, req.body && req.body.characterId);
+    if (!char) return;
+    const reports = Array.isArray(req.body.reports) ? req.body.reports : [req.body];
+    const out = await kills.handleReports(pool, { char, accountId: req.user.accountId, reports, account: { staff: await isStaffAccount(req).catch(() => false) } });
+    res.status(out.status).json(out.body);
+  } catch (err) {
+    console.error(`POST /api/kills/report: ${err.message}`);
+    res.status(500).json({ success: false, error: 'internal server error' });
+  }
+});
+const ownsCharacterRow = async (req, characterId) => {
+  const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
+  return rows.length === 1;
+};
+// Necromancer saves claim kills and shards: in enforce mode only what the ledger backs is accepted (registered before the routes it guards).
+app.post('/api/necro-progress/save', requireJWT, kills.necroGuard({ pool, ownsCharacter: ownsCharacterRow, isStaff: isStaffAccount }));
+// A one-time browser-save import rewrites the necromancer record outside the ledger: take the imported kills as the new base.
+app.post('/api/necro-progress/import', requireJWT, (req, res, next) => {
+  res.on('finish', () => { if (res.statusCode < 400 && Number(req.body && req.body.characterId) > 0 && kills.killsMode() !== 'off') kills.rebase(pool, Number(req.body.characterId)); });
+  next();
+});
 const { mountNecroProgress } = require('./necro-progress/necro-progress-routes.cjs');
 const { createMysqlStore } = require('./necro-progress/mysql-store.cjs');
 mountNecroProgress(app, {
@@ -1983,7 +2019,7 @@ mountGathering(app, {
     return rows.length === 1;
   },
 });
-const invalidateLeaderboard = require('./leaderboard.cjs')(app, pool);
+const invalidateLeaderboard = require('./leaderboard.cjs')(app, pool, { killsMode: () => kills.killsMode() });
 require('./chronicle.cjs')(app, pool, {
   requireAuth: requireJWT,
   ownsCharacter: async (req, characterId) => {
@@ -1991,6 +2027,9 @@ require('./chronicle.cjs')(app, pool, {
     return rows.length === 1;
   },
   invalidateLeaderboard,
+  // Step 2: play time, deepest floor and run count may only rise as far as real time, the kill ledger and the Ascension record allow.
+  guardAdd: async (req, conn, args) => kills.guardChronicleAdd(conn, { ...args, accountId: req.user.accountId, account: { staff: await isStaffAccount(req).catch(() => false) } }),
+  guardAscend: async (req, conn, args) => kills.mayArchiveRun(conn, { ...args, accountId: req.user.accountId, account: { staff: await isStaffAccount(req).catch(() => false) } }),
 });
 require('./cosmetics.cjs')(app, pool, {
   requireAuth: requireJWT,
@@ -2053,6 +2092,23 @@ require('./runes.cjs')(app, pool, {
 });
 require('./salvage.cjs')(app, pool, {
   requireAuth: requireJWT,
+  ownsCharacter: async (req, characterId) => {
+    const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
+    return rows.length === 1;
+  },
+});
+require('./reforge.cjs')(app, pool, {
+  requireAuth: requireJWT,
+  ownsCharacter: async (req, characterId) => {
+    const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
+    return rows.length === 1;
+  },
+});
+const mountBossKey = require('./boss-key.cjs');
+mountBossKey(app, pool, {
+  requireAuth: requireJWT,
+  isStaff: isStaffAccount,
+  areaOpen: mountBossKey.areaOpenFromRecord,
   ownsCharacter: async (req, characterId) => {
     const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
     return rows.length === 1;

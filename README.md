@@ -270,7 +270,7 @@ The diocese is one connected world. Kill enough enemies in the preceding area to
 <td><img src="docs/screenshots/drowned-nave.webp" alt="The Drowned Nave" /><br /><sub>The Drowned Nave</sub></td>
 </tr></table>
 
-Every hunting ground has a boss summon object. Bosses cost **soul shards**, and only one can be active in a shared world at a time. Waves in that boss's area pause during the fight. Their first defeat per character awards extra shards, a rare or better relic, and a Codex trophy.
+Every hunting ground has a boss summon object. Bosses cost **soul shards**, and only one can be active in a shared world at a time. Carry a **Covenant Seal** and the altar also offers an **Empowered** summon (a Seal and gold instead of shards): see *Gold sinks* under Gold, gear, and difficulty. Waves in that boss's area pause during the fight. Their first defeat per character awards extra shards, a rare or better relic, and a Codex trophy.
 
 | Boss | Where and cost | Fight clue |
 |---|---|---|
@@ -404,6 +404,14 @@ The HUD has two gold upgrades:
 ![Nightfall at Wave Speed tier 8](docs/screenshots/nightfall.webp)
 
 Choose difficulty in **Settings (Esc)**. **Medium** is the starting balance for each character. **Easy** reduces enemy health and damage and pays less gold and XP; the Brbmuffins developer account can also use auto combat on Easy. **Hard** raises enemy health and damage, adds elites, and pays more gold and XP. In a shared world, the world keeper's difficulty and Ascension rank govern the enemies.
+
+### Gold sinks: Reforge and Empowered bosses
+
+Once the Damage tiers are bought, gold has two more places to go.
+
+**Reforge (Workbench, C, Reforge tab).** Pick a piece you carry or wear, pick one of its affixes, and pay gold to draw that affix's number again. The affix stays; only its value changes, anywhere in the range the piece's item level allows, and it can come out lower. The price is shown before you confirm: 40 gold per item level (x1.5 for a piece that shows rare, x2.5 epic, x4 legendary), and every reforge of the same piece costs 25% more than the last (it stops rising after 20; an ilvl-99 epic costs 9,900 for the first and about 860,000 for the twenty-first). A roll already at the top of its range cannot be reforged. The server takes the gold and rolls the number.
+
+**Empowered bosses (boss altars).** Click an area boss's altar with a **Covenant Seal** in your bag and choose *Call it Empowered*: the Seal and gold are taken (7,500 x shards squared: 30,000 for the Gravedigger King, 67,500 Abbess, 120,000 Drowned Congregation, 187,500 Plague Saint, 270,000 Cinder Regent, 367,500 Mire Mother). The boss wakes bigger and red-gold, six levels (plus 15%) stronger with 40% more health, and its kill pays one extra prize the server rolls: an epic-or-better piece (three affixes) or, at 2.5 times the usual odds (37.5% from the Abbess on, 7.5% for the King), a legendary set piece. The prize drops at the boss's feet. A summon you lose to a wipe is not wasted: call it again within three hours for free (the server remembers it, so a reload does not lose it); if another boss was already awake the Seal and gold come back. Seals come from digging **Crypt Collapses** (Gravedigging 40, 1 in 200), the **Barrow-King's Tomb** (70, 1 in 80) and the **Abyssal Coelacanth** pools (Fishing 80), and the Sexton sometimes orders them. The Prelate cannot be Empowered. The **Codex (K, Professions)** lists the prices.
 
 ## Gear, stats and the character sheet
 

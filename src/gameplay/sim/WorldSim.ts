@@ -60,6 +60,7 @@ import { LEGEND, clampSimLegend, simLegendActive, type SimLegend } from '../lege
 import { pickWeighted } from '../rng';
 import { BOSS_RADIUS, makeBossBrains, type BossBrain, type CoverBox } from './BossBrain';
 import { BOSSES, isBossId, type BossId } from '../../content/bosses';
+import { canEmpower } from '../goldSinkRules';
 import { FEN_LURE, HAG_HEX, SEXTON_HOOK, WISP_PULSE } from '../../content/fen';
 import { NODES, RICH_RESPAWN, RICH_YIELD, type NodeDef } from '../gatheringRules';
 import { NODE_REACH } from '../../content/layout';
@@ -387,7 +388,7 @@ export class WorldSim {
           return;
         }
         this.bossId = isBossId(intent.boss) ? intent.boss : 'prelate';
-        return this.boss.awaken(intent.by);
+        return this.boss.awaken(intent.by, intent.empowered === true && canEmpower(this.bossId));
       }
       case 'detonate':
         return this.applyDetonate(intent);

@@ -74,6 +74,8 @@ export interface BalanceRun {
    * (its baselines predate this), so a necromancer row is not affected by this flag.
    */
   dodge?: boolean;
+  /** Called for every kill the bot is paid for (simulated seconds since the start, the dead's kind, ground, level and elite flag). Used by the server-authority tests to feed real play to the kill ledger. */
+  onKill?: (k: { t: number; def: string; area: AreaId; level: number; elite: boolean }) => void;
 }
 
 export interface BalanceResult {
@@ -669,6 +671,7 @@ export function runBalance(run: BalanceRun): BalanceResult {
         born.delete(ev.id);
         if (!p.alive) continue;
         kills++;
+        run.onKill?.({ t, def: ev.def, area: ev.area, level: ev.level, elite: ev.elite });
         if (run.soulHarvest && souls < SOUL_HARVEST.souls) {
           soulAcc += M.soulHarvestRateMult;
           const whole = Math.floor(soulAcc);

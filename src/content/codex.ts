@@ -47,6 +47,7 @@ import {
 import { BREWS, brewEffectsText, slotName } from './brews';
 import { itemMeta } from './items';
 import { SALVAGE_RARITIES, salvagePreview } from '../gameplay/salvageRules';
+import { EMPOWER, EMPOWERABLE, REFORGE, empowerGold, empoweredLegendaryChance } from '../gameplay/goldSinkRules';
 import { AREA_REAGENT_DROPS, BOSS_ICHOR, ENEMY_REAGENT_DROPS, REAGENT_ITEMS, REAGENT_RECIPES } from './reagents';
 import { AREAS, BOSS_SUMMON_SHARDS, type AreaId } from './areas';
 import { ASCENSION, BOONS, BOON_ORDER, VOWS, VOW_ORDER } from './ascension';
@@ -715,6 +716,13 @@ export const codexSalvageRows = () => {
     return { rarity, qty, ingots: nameList(ingot.materials), planks: nameList(plank.materials), reagents: `Grave Dust 1-2${extras.length ? `, ${extras.join(', ')}` : ''}`, xp: ingot.xp };
   });
 };
+/** Codex: the two gold sinks (Reforge at the Workbench, Empowered bosses). Numbers come from goldSinkRules so they never drift. */
+export const CODEX_REFORGE_COUNSEL =
+  `The Workbench's Reforge tab (C) re-rolls ONE affix of a piece you carry or wear: the affix stays and its number is drawn again, anywhere between the lowest and highest roll its item level allows. It costs ${REFORGE.goldPerIlvl} gold per item level (x1.5 for a piece that shows rare, x2.5 epic, x4 legendary), and every reforge of the same piece costs ${Math.round((REFORGE.growth - 1) * 100)}% more than the last (it stops rising after ${REFORGE.maxSteps}; nothing costs more than ${REFORGE.cap.toLocaleString()}). The price is shown before you confirm, the server takes the gold and rolls the number, and the new value can be lower than the old one. A roll already at the top of its range cannot be reforged. The count of reforges stays with the piece, in your bag, worn or in the Vault.`;
+export const CODEX_EMPOWER_COUNSEL =
+  `Click a boss's altar with a Covenant Seal in your bag to call it Empowered instead of paying shards: the Seal and gold are taken at once, the boss wakes ${EMPOWER.levelsFlat} levels (and ${Math.round(EMPOWER.levelsShare * 100)}% of its level) stronger with ${Math.round((EMPOWER.hpMult - 1) * 100)}% more health and a red-gold glow, and its kill pays one extra prize rolled by the server: an epic-or-better piece (three affixes) or, at about ${EMPOWER.legendaryMult} times the usual odds, a legendary set piece. The prize drops at the boss's feet like any loot. A summon you lose is not wasted: call it again within three hours and it is free. Seals come from digging Crypt Collapses (Gravedigging 40), the Barrow-King's Tomb (70) and the Abyssal Coelacanth pools (Fishing 80), and the Sexton sometimes orders them. The Prelate cannot be Empowered.`;
+export const codexEmpowerRows = () =>
+  EMPOWERABLE.map((id) => ({ boss: BOSSES[id].name, gold: empowerGold(id), legendary: Math.round(empoweredLegendaryChance(id) * 1000) / 10 }));
 export const CODEX_VAULT_COUNSEL =
   "The Ossuary Vault is a sarcophagus in the Chapterhouse that holds 120 slots, shared by every character on your account. Press V in the Chapterhouse or the Acre (anywhere else the dead are too close). Click an item to move its whole stack across; Deposit materials stores every unlocked material and consumable, Deposit all stores everything unlocked that you are not wearing, and Sort merges stacks and orders the Vault by type, rarity and name. A move stacks first, then fills free slots, and one that will not fit is refused with nothing changed. The padlock in the Reliquary (I) locks an item out of every bulk button: Sell all junk, the Vault's bulk buttons and Salvage all below rare.";
 

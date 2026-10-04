@@ -123,6 +123,9 @@ import { UpdateNotice } from '../ui/UpdateNotice';
 import type { Character, Profession } from '../net/types';
 import { FloatingText } from '../ui/FloatingText';
 import { ForgePanel } from '../ui/ForgePanel';
+import { BossKeyPrompt } from '../ui/BossKeyPrompt';
+import { bossKeyClaim, bossKeyRefund, bossKeyStatus, bossKeySummon } from '../net/api';
+import { COVENANT_SEAL, canEmpower } from '../gameplay/goldSinkRules';
 import { ReagentShelfPanel } from '../ui/ReagentShelfPanel';
 import { recordFound } from '../content/wing';
 import { HUD, type HudFrame } from '../ui/HUD';
@@ -319,6 +322,11 @@ export class WorldScene implements GameScene, RuntimeView {
   private gatherSession: GatherSession | null = null;
   private gatherReportPanel!: GatherReportPanel;
   private contractsPanel!: ContractsPanel;
+  private bossKeyPrompt!: BossKeyPrompt;
+  /** The boss this hero called Empowered and has not been paid for yet (its prize is claimed from the server on the kill). */
+  private empowerPending: BossId | null = null;
+  /** The bound summon's id for the Empowered boss being fought (empowered_summons): the kill report names it. */
+  private empowerSummonId = 0;
   private vaultPanel!: VaultPanel;
   private salvagePanel!: SalvagePanel;
   private locks!: ItemLocks;
@@ -782,6 +790,7 @@ export class WorldScene implements GameScene, RuntimeView {
       dropItems: (x, z, items, level, source) => this.dropItems(x, z, items, level, source),
       gainXp: (xp, x, z) => this.gainXp(xp, x, z),
       giveGold: (x, z, amount) => this.loot.gold(x, z, amount),
+      reportFloor: (f) => this.progression.reportFloor(f),
       tip: (id, delayMs, opts) => this.onboarding.show(id, delayMs, opts),
     });
     this.scope.add(() => this.depths.dispose());
@@ -1143,7 +1152,18 @@ export class WorldScene implements GameScene, RuntimeView {
       const station = this.forgePanel.station;
       audio.play(station === 'sawpit' ? 'sawpit' : station === 'kiln' ? 'kiln' : station === 'fire' ? 'cook' : 'craft');
       this.hud.toast('Crafted', 'good');
+    }, {
+      characterId: this.character.id,
+      inventory: this.inventory,
+      gold: () => this.character.gold ?? 0,
+      spend: (call) => this.progression.spendOnServer(call),
+      onDone: (r) => {
+        audio.play('craft');
+        this.hud.toast(`Reforged: ${r.from} became ${r.to} (${r.cost.toLocaleString()} gold)`, r.to >= r.from ? 'good' : '');
+        this.onboarding.show('reforge', 0, { kind: 'asked' });
+      },
     });
+    this.bossKeyPrompt = new BossKeyPrompt(this.root, (id) => this.summonBossNormal(id), (id) => void this.callEmpowered(id));
     this.shelfPanel = new ReagentShelfPanel(this.root, this.character.id, this.inventory);
     this.inventory.onChange((slots) => {
       recordFound(browserStorage(), this.character.id, slots.map((s) => s.item_id));
@@ -1284,6 +1304,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.grimoirePanel.close();
     this.gatherReportPanel?.close();
     this.contractsPanel?.close();
+    this.bossKeyPrompt?.close();
     this.vaultPanel?.close();
     this.salvagePanel?.close();
     this.gardenPanel?.close();
@@ -1841,7 +1862,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private panelOpen() {
-    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || !!this.shelfPanel?.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.vaultPanel?.isOpen || !!this.salvagePanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen || !!this.sheetPanel?.isOpen || !!this.legionPanel?.isOpen || !!this.atlasPanel?.isOpen || !!this.dialogue?.isOpen;
+    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || !!this.shelfPanel?.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.bossKeyPrompt?.isOpen || !!this.vaultPanel?.isOpen || !!this.salvagePanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen || !!this.sheetPanel?.isOpen || !!this.legionPanel?.isOpen || !!this.atlasPanel?.isOpen || !!this.dialogue?.isOpen;
   }
 
   private interactablesNear(): Interactable[] {
@@ -2317,12 +2338,76 @@ export class WorldScene implements GameScene, RuntimeView {
           if (awake.id !== id) this.hud.toast(`${awake.name} already stirs in ${AREAS[awake.area].name}.`, 'err');
           return;
         }
-        if (!(id === 'prelate' ? this.progression.spendShards(def.shards) : this.progression.spendBossShards(id))) {
-          this.hud.toast(`${def.summonLabel} demands ${def.shards} soul shards (you have ${this.progression.local.shards}). Elites carry them.`, 'err');
+        // A Covenant Seal (or a summon already paid for) offers the Empowered choice; everyone else wakes it the old way.
+        if (canEmpower(id)) {
+          void this.openAltar(id);
           return;
         }
-        this.sendIntent({ t: 'summonBoss', by: this.selfId, boss: id });
+        this.summonBossNormal(id);
       }
+    }
+  }
+
+  /** An area boss's altar: ask the server whether a paid summon is still bound (it survives a reload), then offer the Empowered choice if a Seal or a bound summon is at hand. */
+  private async openAltar(id: BossId) {
+    let bound = false;
+    try {
+      bound = (await bossKeyStatus(this.character.id)).bound.includes(id);
+    } catch { /* an older server or no network: the Seal in the bag decides */ }
+    if (this.bossState().active) return;
+    if (this.inventory.count(COVENANT_SEAL) > 0 || bound) {
+      this.bossKeyPrompt.open({ boss: id, seals: this.inventory.count(COVENANT_SEAL), gold: this.character.gold ?? 0, shards: this.progression.local.shards, bound });
+    } else this.summonBossNormal(id);
+  }
+
+  /** Wake a boss with soul shards (the original way). */
+  private summonBossNormal(id: BossId) {
+    const def = BOSSES[id];
+    if (this.bossState().active) return;
+    if (!(id === 'prelate' ? this.progression.spendShards(def.shards) : this.progression.spendBossShards(id))) {
+      this.hud.toast(`${def.summonLabel} demands ${def.shards} soul shards (you have ${this.progression.local.shards}). Elites carry them.`, 'err');
+      return;
+    }
+    this.sendIntent({ t: 'summonBoss', by: this.selfId, boss: id });
+  }
+
+  /**
+   * Call an area boss Empowered: the server takes the Covenant Seal and the gold (or reuses a summon already paid for), then the host wakes
+   * the boss with the flag. The prize is claimed from the server when it dies (see the 'defeated' event).
+   */
+  private async callEmpowered(id: BossId) {
+    if (this.bossState().active) {
+      const awake = BOSSES[this.bossState().id ?? 'prelate'];
+      this.hud.toast(`${awake.name} already stirs in ${AREAS[awake.area].name}.`, 'err');
+      return;
+    }
+    try {
+      const reply = await this.inventory.exclusive(async () => {
+        const r = await this.progression.spendOnServer(() => bossKeySummon(this.character.id, id));
+        this.inventory.replace(r.bag);
+        return r;
+      });
+      this.empowerPending = id;
+      this.empowerSummonId = reply.summon_id ?? 0;
+      this.hud.toast(reply.reused ? 'Your bound summon answers, free.' : `The Seal is spent (${(reply.cost ?? 0).toLocaleString()} gold).`, 'good');
+      this.sendIntent({ t: 'summonBoss', by: this.selfId, boss: id, empowered: true });
+    } catch (err) {
+      this.hud.toast(err instanceof Error ? err.message : 'The Seal would not take.', 'err');
+    }
+  }
+
+  /** The kill of an Empowered boss this hero called: one server-rolled prize, dropped at the corpse like any loot. */
+  private async claimEmpowered(id: BossId, x: number, z: number, level: number) {
+    this.empowerPending = null;
+    try {
+      // The server wants a reported kill behind the prize (AUTHORITY_KILLS): send the report now rather than with the next save.
+      await this.progression.flushReports();
+      const prize = await bossKeyClaim(this.character.id, id, this.discipline.id, level);
+      if (!this.lootAlive) return;
+      this.loot.item(x, z, { item_id: prize.item_id, quantity: 1, instance: { id: prize.instance_id, ilvl: prize.ilvl, affixes: prize.affixes } });
+      this.hud.toast(prize.legendary ? `The Seal's prize: ${itemMeta(prize.item_id).name}, a legendary` : `The Seal's prize: ${itemMeta(prize.item_id).name}`, 'good');
+    } catch (err) {
+      this.hud.toast(err instanceof Error ? err.message : 'The Seal\'s prize could not be rolled.', 'err');
     }
   }
 
@@ -3324,11 +3409,18 @@ export class WorldScene implements GameScene, RuntimeView {
         }
         break;
       case 'bossBusy':
-        // The host refused our summon (another boss woke first): refund the shards we spent.
+        // The host refused our summon (another boss woke first): refund the shards, or the Seal and gold, we spent.
         if (ev.by === this.selfId) {
+          const empowered = ev.boss !== 'prelate' && this.empowerPending === ev.boss;
           if (ev.boss === 'prelate') this.progression.addShards(BOSSES.prelate.shards);
-          else this.progression.refundBossShards(ev.boss);
-          this.hud.toast(`${BOSSES[ev.awake].name} already stirs in ${AREAS[BOSSES[ev.awake].area].name}. Your shards are returned.`, 'err');
+          else if (empowered) {
+            this.empowerPending = null;
+            void this.inventory.exclusive(async () => {
+              const r = await this.progression.spendOnServer(() => bossKeyRefund(this.character.id, ev.boss));
+              this.inventory.replace(r.bag);
+            }).catch(() => undefined);
+          } else this.progression.refundBossShards(ev.boss);
+          this.hud.toast(`${BOSSES[ev.awake].name} already stirs in ${AREAS[BOSSES[ev.awake].area].name}. ${empowered ? 'Your Seal and gold are returned.' : 'Your shards are returned.'}`, 'err');
         }
         break;
       case 'sanctify': {
@@ -3497,7 +3589,10 @@ export class WorldScene implements GameScene, RuntimeView {
     // Area bosses: counsel the first time a summon object is within 12 m.
     for (const id of ['gravedigger', 'abbess', 'congregation', 'saint', 'regent', 'mire'] as BossId[]) {
       const it = AREAS[BOSSES[id].area].interactables.find((i) => i.id === BOSSES[id].summonId);
-      if (it && this.player.area === BOSSES[id].area && Math.hypot(it.x - this.player.x, it.z - this.player.z) < 12) this.onboarding.show(`boss_${id}` as TipId);
+      if (it && this.player.area === BOSSES[id].area && Math.hypot(it.x - this.player.x, it.z - this.player.z) < 12) {
+        this.onboarding.show(`boss_${id}` as TipId);
+        if (this.inventory.count(COVENANT_SEAL) > 0) this.onboarding.show('boss_seal');
+      }
     }
     if (this.area === 'chapterhouse') {
       const loc = this.progression.local;
@@ -3847,6 +3942,15 @@ export class WorldScene implements GameScene, RuntimeView {
     if (reward.shards) this.loot.shard(ev.x, ev.z, reward.shards);
     // Ordinary kills drop half as often (KILL_LOOT), so their gear rolls at elite quality.
     this.dropItems(ev.x, ev.z, reward.items, ev.level, 'elite');
+    // Server authority step 2: report the kill (before the XP is added: a level-up saves at once and the server must already hold the kill).
+    // The multipliers are the ones this reward used on top of rollKill; the server caps each at what play could honestly reach.
+    if (combatArea) {
+      this.progression.reportKill({
+        area: ev.area, def: ev.def, level: ev.level, elite: ev.elite, tier: this.bossWaveTier(), diff: this.worldDifficulty(), rank: this.worldAscension(),
+        xpMult: asc * (1 + this.player.brewValue('wisdom', this.now)) * newBloodXpMult(this.discipline.family, this.character.level), goldMult: asc,
+        shardMult: this.omen.shardMult,
+      });
+    }
     this.gainXp(reward.xp, ev.x, ev.z);
     if (ev.area === 'depths') this.depths.recordKill();
     else this.progression.recordKill(ev.area, this.bossWaveTier());
@@ -4639,8 +4743,8 @@ export class WorldScene implements GameScene, RuntimeView {
           this.saintRainTold = false;
           this.saintLinkTold = false;
         }
-        this.hud.banner(def.name, def.awaken, 3500);
-        this.effects.lightFlash(ev.x, 3, ev.z, def.color, 90, 1.6);
+        this.hud.banner(ev.empowered ? `Empowered ${def.name}` : def.name, ev.empowered ? 'Bound by a Covenant Seal: stronger, and it pays better' : def.awaken, 3500);
+        this.effects.lightFlash(ev.x, 3, ev.z, ev.empowered ? 0xff6a2a : def.color, 90, 1.6);
         this.effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 160, color: def.id === 'prelate' ? 0xb58cff : def.color, spread: 3, speed: 4, up: 4, life: 1.6, size: 0.5 });
         this.rig.shake(0.6);
         if (def.id === 'prelate') for (const g of ['west', 'east', 'north']) this.worldView.setCandleGroup(g, true);
@@ -4748,6 +4852,8 @@ export class WorldScene implements GameScene, RuntimeView {
         if (ev.killer && bossRewardEligible(this.player.alive, Math.hypot(ev.x - this.player.x, ev.z - this.player.z))) {
           this.chronicle.add(`boss.${def.id}`);
           if (def.id === 'prelate') {
+            // Report it before the claim: the necromancer save that carries this kill is only paid out of a reported Prelate (server authority step 2).
+            this.progression.reportBoss({ boss: def.id, tier: this.bossWaveTier(), diff: this.worldDifficulty(), first: false });
             this.progression.recordPrelateKill();
             if (this.progression.canAscend()) this.onboarding.show('ascend', 5000);
           }
@@ -4764,11 +4870,13 @@ export class WorldScene implements GameScene, RuntimeView {
           // Relic rune: the Prelate and every first kill always leave one, repeats 35% (content/runes.ts).
           const bossRune = rollBossRune(def.id, firstTrophy);
           if (bossRune) reward.items.push(bossRune);
+          if (def.id !== 'prelate') this.progression.reportBoss({ boss: def.id, tier: this.bossWaveTier(), diff: this.worldDifficulty(), first: firstTrophy, ...(ev.empowered && this.empowerPending === def.id && this.empowerSummonId ? { summon: this.empowerSummonId } : {}) });
           this.loot.gold(ev.x, ev.z, reward.gold);
           this.loot.shard(ev.x, ev.z, reward.shards);
           const bossLevel = AREAS[def.area].level + this.worldLevels();
           this.dropItems(ev.x, ev.z, reward.items, bossLevel, 'boss');
           if (firstKill) this.dropItems(ev.x, ev.z, [firstKill], bossLevel, 'first_kill');
+          if (ev.empowered && this.empowerPending === def.id) void this.claimEmpowered(def.id, ev.x, ev.z, bossLevel);
           this.gainXp(reward.xp, ev.x, ev.z);
           this.effects.lightFlash(ev.x, 3, ev.z, 0xc6a4ff, 100, 2);
           this.rig.shake(0.7);
@@ -5446,7 +5554,7 @@ export class WorldScene implements GameScene, RuntimeView {
       brews: this.brewTray(),
       save: saveText,
       target,
-      boss: b.active ? { name: BOSSES[b.id ?? 'prelate'].name, phase: b.phase, hp: b.hp, maxHp: b.maxHp, phases: BOSSES[b.id ?? 'prelate'].phases } : null,
+      boss: b.active ? { name: (b.empowered ? 'Empowered ' : '') + BOSSES[b.id ?? 'prelate'].name, phase: b.phase, hp: b.hp, maxHp: b.maxHp, phases: BOSSES[b.id ?? 'prelate'].phases } : null,
     });
 
     if (now - this.lastMapDraw > 100) {
@@ -5624,6 +5732,9 @@ export class WorldScene implements GameScene, RuntimeView {
         for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d));
       },
       gold: (n: number) => this.progression.addGold(n),
+      /** QA: call an area boss Empowered (a Seal and gold, as the altar's prompt would), and what the scene remembers of it. */
+      empowered: (id: BossId) => this.callEmpowered(id),
+      empowerState: () => ({ pending: this.empowerPending, summon: this.empowerSummonId }),
       /** Legion QA: the legion's bonus as the scene folded it into the discipline, and the mods the thralls are raised with. */
       legion: () => ({ bonus: this.legionBonus(), mods: this.discipline.mods, tier: this.progression.local.legionTier ?? 0 }),
       /** Legion QA: lay a corpse of `enemy` beside the hero and raise it exactly as the Exhume rite would (same stats, same intent). */
@@ -5664,11 +5775,11 @@ export class WorldScene implements GameScene, RuntimeView {
         this.sim?.addCorpse(this.groundPoint.x, this.groundPoint.z, kind, enemy, elite, 0, 1, a);
       },
       /** Summon a boss (default the Prelate) and stand at the edge of its arena. */
-      boss: (id: BossId = 'prelate') => {
+      boss: (id: BossId = 'prelate', empowered = false) => {
         const a = BOSSES[id].arena;
         if (id === 'prelate') this.teleportTo(BOSS_ARENA.x, BOSS_ARENA.z + 8);
         else this.teleportTo(a.x, a.z + a.r * 0.7);
-        this.sendIntent(id === 'prelate' ? { t: 'summonBoss', by: this.selfId } : { t: 'summonBoss', by: this.selfId, boss: id });
+        this.sendIntent(id === 'prelate' ? { t: 'summonBoss', by: this.selfId } : { t: 'summonBoss', by: this.selfId, boss: id, ...(empowered ? { empowered: true } : {}) });
       },
       god: (on = true) => (this.player.god = on),
       /** Legendary-set QA: merge mods over the discipline's (e.g. forceMods({ thrallDeathBurst: 0.6 })); forceMods({}) keeps them, forceMods(null) clears. */

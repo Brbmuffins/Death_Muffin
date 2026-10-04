@@ -5,6 +5,7 @@ import { DIFFICULTIES } from '../../content/difficulty';
 import { ABBESS, ABBESS_NICHE_SPOTS, BOSSES, CONGREGATION, GRAVEDIGGER, GRAVEDIGGER_PITS, MIRE, REGENT, SAINT, type BossId } from '../../content/bosses';
 import { FEN_FLOOD_SCALE, FEN_HUMMOCKS, FEN_SURFACE_SPOTS, inBog, hummockAt } from '../../content/fen';
 import type { EnemyId } from '../../content/enemies';
+import { EMPOWER, empoweredLevel } from '../goldSinkRules';
 import type { WorldSim } from './WorldSim';
 import type { BossPhase, BossState, PlayerBody } from './types';
 
@@ -111,13 +112,16 @@ export abstract class BossBrain {
     return this.def.arena;
   }
 
-  awaken(by: string) {
+  /** `empowered`: a Covenant Seal summon (goldSinkRules): the level knob goes up and so does the health. */
+  awaken(by: string, empowered = false) {
     if (this.state.active) return;
     const s = this.state;
     const party = Math.max(1, this.sim.players.size);
     s.active = true;
+    s.empowered = empowered;
     s.level = this.sim.areaLevel(this.def.area);
-    s.maxHp = this.def.baseHp * enemyHpScale(s.level) * (1 + 0.8 * (party - 1)) * DIFFICULTIES[this.sim.difficulty].enemyHpMult;
+    if (empowered) s.level = empoweredLevel(s.level);
+    s.maxHp = this.def.baseHp * enemyHpScale(s.level) * (empowered ? EMPOWER.hpMult : 1) * (1 + 0.8 * (party - 1)) * DIFFICULTIES[this.sim.difficulty].enemyHpMult;
     s.hp = s.maxHp;
     s.phase = 1;
     s.state = 'idle';
@@ -136,7 +140,7 @@ export abstract class BossBrain {
     this.adds.clear();
     this.lastHitBy = by;
     this.onAwaken();
-    this.sim.emit({ t: 'boss', kind: 'awaken', x: s.x, z: s.z, phase: 1, boss: this.id });
+    this.sim.emit({ t: 'boss', kind: 'awaken', x: s.x, z: s.z, phase: 1, boss: this.id, ...(empowered ? { empowered: true } : {}) });
   }
 
   protected abstract onAwaken(): void;
@@ -208,7 +212,7 @@ export abstract class BossBrain {
       this.pending = [];
       this.onDefeat();
       this.clearAdds();
-      this.sim.emit({ t: 'boss', kind: 'defeated', x: s.x, z: s.z, phase: s.phase, killer: this.lastHitBy, boss: this.id });
+      this.sim.emit({ t: 'boss', kind: 'defeated', x: s.x, z: s.z, phase: s.phase, killer: this.lastHitBy, boss: this.id, ...(s.empowered ? { empowered: true } : {}) });
       return;
     }
     const ratio = s.hp / s.maxHp;

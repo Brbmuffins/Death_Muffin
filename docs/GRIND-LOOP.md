@@ -30,6 +30,9 @@ leaks, and the backlog that fixes it, ordered by payoff for effort.
 4. **Gold has few sinks** (Damage / Wave Speed tiers only), so it piles up once those are bought.
 5. **No "one more run" hook between bosses**: nothing pulls you back tomorrow. *(Partly answered 2026-10-03: Ascension no longer repeats the same seal grind; a run is a chosen-heat Prelate fight, and shards unlock new vows and boons. Soul shards now have a purpose beyond the Bell, which fixes the hoards of 400-9,800 that nothing spent.)*
 
+4. **Gold has few sinks** (Damage / Wave Speed tiers only), so it piles up once those are bought. → **Built 2026-10-03** (branch `dm/gold-sinks`): affix Reforge at the Workbench and Empowered bosses (below, #7); the Legion (#10) was the first extra sink.
+5. **No "one more run" hook between bosses**: nothing pulls you back tomorrow.
+
 ## 3. Backlog, in order
 
 | # | Feature | Why it hooks | Effort | Notes |
@@ -40,7 +43,7 @@ leaks, and the backlog that fixes it, ordered by payoff for effort.
 | 4 | **Daily Sexton's Contracts** ("kill 200 in the Nave", "cook 20 meals") → shards and seals | A reason to log in daily | M | Icon `sexton_contract.png` exists (unused) |
 | 5 | ~~**Omens**~~ | Novelty, and a reason to replay old zones | M | **Shipped 2026-09-30** (`content/omens.ts`): Blood Moon, Drowned Week and The Tolling rotate each UTC week; effects on elites, wave size, rewards and the sky. The `daily_rite` icon is still unused |
 | 6 | **Grave Gardening (G5)**: seeds → herbs → alchemy flasks; tree patches | Offline progress to come back to | M | Roadmap §5; herb and seed icons exist |
-| 7 | **Covenant Seals / Reliquary Fragments** as boss keys: summon an *empowered* boss (+HP, guaranteed epic) | Turns rare mats into a chase | S | Reuse the BossBrain level knob |
+| 7 | ~~**Covenant Seals** as boss keys~~ (Reliquary Fragments are not used) | Turns rare mats into a chase | S | **Built 2026-10-03 (branch `dm/gold-sinks`, migration 035)**: a Seal + 7,500 x shards^2 gold calls an **Empowered** area boss from its altar (BossBrain level knob +6 levels and +15%, +40% HP, red-gold glow, "Empowered" on the bar). Its kill pays one server-rolled prize: epic-or-better (three affixes) or a legendary at 2.5x the ordinary odds. The server takes the Seal and gold, binds the summon (a wipe is retried free) and rolls the prize (`/api/boss-key/*`). Seals also drop from Crypt Collapses (1/200) now; the Barrow-King's Tomb is 1/80 (owner, 3 Oct). The free retry is the server's `empowered_summons` row (survives a reload) and, with `AUTHORITY_KILLS` audit/enforce, the claim needs a kill the ledger received. **Later follow-ups (not built):** a Reliquary-Fragment key (cheaper, smaller prize); see also loot.md #17 |
 | 8 | ~~**Kill streak / combo meter**~~ | Moment-to-moment juice | S | **Shipped 2026-09-30** as the Kill Chain (`gameplay/killChain.ts`): 4 s window, five tiers, +5–25% XP and gold, HUD readout, rising chime |
 | 9 | ~~**Milestone toasts**~~ | Frequent small wins | S | **Shipped 2026-09-30** (`gameplay/milestones.ts`): kill-count, per-area and best-chain purses, paid once per character in this browser. Permanent bonuses were left out: they need server-side storage |
 | 10 | Gold sinks: ~~thrall gear upgrades~~, cosmetic Chapterhouse decorations | Keeps gold meaningful | M | **Thrall gear built 2026-10-02 (branch `dm/thrall-gear`, no migration)**: the Legion kit (two slots, spare weapon and armour become thrall bonuses) and **Reinforce**, 12 gold tiers (120 gold, x1.65 each, about 75k in all) that reset on Ascension. The thrall bow and bone staff models are now used. Chapterhouse decorations remain |

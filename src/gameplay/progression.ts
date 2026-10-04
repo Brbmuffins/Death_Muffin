@@ -3,7 +3,9 @@ import { devAccess } from './devAccess';
 import type { Chronicle } from './chronicle';
 import { ashesForRun, boonBlocked, boonCost, boonEffects, isUnlocked, unlockCost, vowEffects, vowHeat, vowKey, legacyVows, VOWS, type BoonId, type BoonEffects, type BoonRanks, type RunRecord, type VowEffects, type VowId, type VowRanks } from '../content/ascension';
 import { DAMAGE_UPGRADE, LEGION_UPGRADE, WAVE_UPGRADE } from '../content/upgrades';
-import { ApiError, necroApi, saveProgress, type NecroReply } from '../net/api';
+import { ApiError, necroApi, reportKills, saveProgress, type NecroReply } from '../net/api';
+import { KillReporter, type KillInput } from '../net/killReporter';
+import type { BossKill, FloorClear } from './killRules';
 import { applySave, normalise, type NecroState, type SaveInput } from './necroRules';
 import type { Character } from '../net/types';
 import { xpToNext } from './characterStats';
@@ -157,6 +159,8 @@ export class Progression {
   chronicle: Chronicle | null = null;
   /** 'server' once the necro-progress routes answered; 'local' otherwise. */
   mode: 'local' | 'server' = 'local';
+  /** Server authority step 2: what was killed, sent with the saves (net/killReporter.ts). */
+  readonly reporter = new KillReporter();
   /** Deltas gathered since the last necro save (server mode). */
   private pending = emptyPending();
   private pendingWaveActive = false;
@@ -482,7 +486,9 @@ export class Progression {
     if (this.mode !== 'server') return this.markServerDirty(true);
     const goldBefore = (this.character.gold ?? 0) + cost;
     this.remote(async () => {
-      await saveProgress({ ...this.payload(), gold: Math.max(0, Math.round(goldBefore)) });
+      const sent = { ...this.payload(), gold: Math.max(0, Math.round(goldBefore)) };
+      await saveProgress(sent);
+      this.ackReports(sent);
       const r = await necroApi.purchase(this.character.id, upgrade);
       this.markServerDirty(false);
       return r;
@@ -499,6 +505,25 @@ export class Progression {
     this.saveLocal();
     this.serverPurchase('wave', cost);
     return true;
+  }
+
+  /**
+   * A gold spend the server prices and takes (Workbench reforge, Empowered summons). Gold is client-saved, so first bring the server's
+   * copy up to ours (as a Damage tier does), then make the call, then adopt the gold in its reply, keeping anything picked up meanwhile.
+   * Runs in the same queue as the other server mutations, one at a time. Throws the server's readable error unchanged.
+   */
+  spendOnServer<T extends { gold: number; cost?: number }>(call: () => Promise<T>): Promise<T> {
+    return this.serial(async () => {
+      await saveProgress(this.payload());
+      const before = this.character.gold ?? 0;
+      const reply = await call();
+      const gained = (this.character.gold ?? 0) - before;
+      this.character.gold = Math.max(0, Math.round(reply.gold + gained));
+      if (reply.cost) this.chronicle?.add('gold.spent', reply.cost);
+      if (gained !== 0) this.markServerDirty(false);
+      this.emit();
+      return reply;
+    });
   }
 
   /** Reinforce the Legion one tier for gold (the thrall kit's gold sink). */
@@ -521,6 +546,35 @@ export class Progression {
   }
 
   // --- Kills / unlocks / shards (local) ---
+
+  /** Report a paid kill to the server (what died, where, how old, and the multipliers the reward used). Call it BEFORE the XP is added: a level-up saves at once. */
+  reportKill(k: KillInput) {
+    this.reporter.kill(k);
+    if (this.reporter.crowded) void this.flushReports();
+  }
+
+  reportBoss(b: Omit<BossKill, 'n'>) {
+    this.reporter.boss(b);
+  }
+
+  /** A Depths floor was cleared: the stair proves the next depth, so this goes out at once (the Chronicle's deepest-floor flush follows within seconds). */
+  reportFloor(f: FloorClear) {
+    this.reporter.floor(f);
+    void this.flushReports();
+  }
+
+  /** Post whatever the reporter holds on its own. Never rejects: a failure keeps the batches for the next save. */
+  async flushReports(keepalive = false): Promise<void> {
+    const reports = this.reporter.batches();
+    if (!reports.length) return;
+    try {
+      await reportKills(this.character.id, reports, keepalive);
+      this.reporter.ack(reports[reports.length - 1].seq);
+    } catch (err) {
+      // An older server has no route (or the account cannot report): stop holding batches. Anything else is retried with the next save.
+      if (err instanceof ApiError && (err.status === 404 || err.status === 400)) this.reporter.discard();
+    }
+  }
 
   recordKill(area: AreaId, waveTier = this.local.waveTierActive) {
     // Dev access walks into sealed halls and its kills are banked like anyone's (the server accepts staff kills past every seal).
@@ -611,6 +665,8 @@ export class Progression {
   /** The save itself, outside the queue (for callers already inside it). Failures put the unsent deltas back for the next try. */
   private async sendNecro(keepalive = false) {
     if (this.mode !== 'server' || !this.hasPending) return;
+    // The kills this save claims must already be on the server's ledger (a keepalive flush is preceded by the progress save that carries them).
+    if (!keepalive && this.reporter.hasPending) await this.flushReports();
     const sent = this.pending;
     const wave = this.pendingWaveActive;
     this.pending = emptyPending();
@@ -663,7 +719,9 @@ export class Progression {
 
   private payload() {
     const c = this.character;
+    const killReports = this.reporter.batches();
     return {
+      ...(killReports.length ? { killReports } : {}),
       characterId: c.id,
       level: c.level,
       xp: c.experience ?? 0,
@@ -675,6 +733,12 @@ export class Progression {
     };
   }
 
+  /** The server has the kill batches a save carried: forget them (a failed save keeps them, and the retry repeats them with the same numbers). */
+  private ackReports(sent: { killReports?: { seq: number }[] }) {
+    const reports = sent.killReports;
+    if (reports && reports.length) this.reporter.ack(reports[reports.length - 1].seq);
+  }
+
   async flush(keepalive = false): Promise<void> {
     window.clearTimeout(this.timer);
     this.timer = 0;
@@ -684,7 +748,9 @@ export class Progression {
       if (!keepalive) return;
       this.dirtyServer = false;
       try {
-        await saveProgress(this.payload(), true);
+        const sent = this.payload();
+        await saveProgress(sent, true);
+        this.ackReports(sent);
         await this.flushNecro(true);
       } catch {
         this.dirtyServer = true;
@@ -696,7 +762,9 @@ export class Progression {
     this.saveState = 'saving';
     this.emit();
     try {
-      await saveProgress(this.payload(), keepalive);
+      const sent = this.payload();
+      await saveProgress(sent, keepalive);
+      this.ackReports(sent);
       await this.flushNecro(keepalive);
       this.retryDelay = 4000;
       this.saveState = this.dirtyServer ? 'dirty' : 'saved';

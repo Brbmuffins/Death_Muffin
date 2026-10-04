@@ -1,5 +1,36 @@
 # Crossworlds — Balance targets & current numbers
 
+## Gold sinks (3 Oct 2026, branch `dm/gold-sinks`, migration 035, not deployed)
+
+Live balances read-only on 3 Oct 2026: the owner's level-255 hero holds **7.58M** gold, the next richest **174k** (level 119), the rest under 300. Damage tiers total 2.0M, Wave Speed 14k, Legion 75k, so only the owner has run out of places to spend. Both sinks are priced against those two wallets. Numbers come from `src/gameplay/goldSinkRules.ts`; `gold-sinks.test.ts` pins them.
+
+**Reforge** (`reforgeCost`): `40 x item level x rarity x 1.25^reforges`, rarity as the tooltip shows it (affix count included): common/uncommon x1, rare x1.5, epic x2.5, legendary x4; the exponent stops at 20; hard cap 2M (never reached: the dearest reforge is about 1.4M). The new value is uniform over today's `affixRange` for that item level (read from `affixRules`, so the parallel 1.45x range retune flows through).
+
+| piece | 1st | 2nd | 3rd | 5th | 10th | 15th | 20th | first 10 | first 20 |
+|---|---|---|---|---|---|---|---|---|---|
+| ilvl 20 uncommon, 1 affix | 800 | 1,000 | 1,250 | 1,953 | 5,960 | 18,190 | 55,511 | 26.6k | 274k |
+| ilvl 45 rare, 2 affixes | 2,700 | 3,375 | 4,219 | 6,592 | 20,117 | 61,391 | 187,350 | 89.8k | 926k |
+| ilvl 45 epic, 3 affixes | 4,500 | 5,625 | 7,031 | 10,986 | 33,528 | 102,318 | 312,250 | 149.6k | 1.54M |
+| ilvl 99 epic, 3 affixes | 9,900 | 12,375 | 15,469 | 24,170 | 73,761 | 225,100 | 686,950 | 329k | 3.40M |
+| ilvl 99 legendary, 3 affixes | 15,840 | 19,800 | 24,750 | 38,672 | 118,017 | 360,160 | 1,099,121 | 527k | 5.43M |
+
+Against the wallets: the level-119 hero (174k) can reforge one mid piece about ten times, or touch up many pieces a few times; the owner's 7.58M buys roughly two ilvl-99 epics reforged 20 times each, or far more pieces a few times. One reforge's value is a redraw, so the expected gain per reforge is positive only while the roll is below the middle of its range: the price rise is what stops a perfect-roll grind from being free. A roll at the top cannot be reforged (refused, no charge).
+
+**Empowered bosses** (`empowerGold`, `empoweredLevel`, `EMPOWER`): gold `7,500 x shards^2` plus one Covenant Seal; the boss's level becomes `level + 6 + 15% of level` (the BossBrain level knob: +22% health and +15% damage per level) and its health is x1.4 on top.
+
+| boss | shards | gold | boss level -> Empowered | health | damage | legendary in the prize |
+|---|---|---|---|---|---|---|
+| Gravedigger King | 2 | 30,000 | 1 -> 7 | x3.25 | x1.90 | 7.5% (3% x2.5) |
+| Bone Abbess | 3 | 67,500 | 5 -> 12 | x2.55 | x1.66 | 37.5% (15% x2.5) |
+| Drowned Congregation | 4 | 120,000 | 9 -> 16 | x2.18 | x1.48 | 37.5% |
+| Plague Saint (level 50 shown) | 5 | 187,500 | 50 -> 64 | x1.77 | x1.25 | 37.5% |
+| Cinder Regent (level 50 shown) | 6 | 270,000 | 50 -> 64 | x1.77 | x1.25 | 37.5% |
+| Mire Mother (level 50 shown) | 7 | 367,500 | 50 -> 64 | x1.77 | x1.25 | 37.5% |
+
+The level-scaled grounds (Saint, Regent, Mire) follow the hero's level, so their relative bump shrinks as the hero grows (x1.6 health at level 255): the flat x1.4 keeps them meaningfully tougher. The prize is one gear piece from the boss's own area table (smart loot, rare-or-better bases x4 weight) with three affixes (it shows epic), or a legendary set piece (favouring pieces the hero lacks); the ordinary kill rolls still happen, so an Empowered kill is the normal spoils plus the prize. The wallets: the 174k hero can afford the first three bosses (30k, 67.5k, 120k); the owner can afford all of them about 20 times over, so for the owner the Seal supply (below) is the limiter.
+
+**Seal supply** (Gravedigging/fishing extras, server-rolled by `/api/gather`): Barrow-King's Tomb (Gravedigging 70) 1 in 80 per action (halved from 1 in 40 by owner decision, 3 Oct; 8 ticks of 0.6 s, about one Seal per 6 minutes of continuous digging), Abyssal Coelacanth pools (Fishing 80) 1 in 300, and new: **Crypt Collapse (Gravedigging 40) 1 in 200** (6 ticks, about one Seal per 12 minutes), so mid-level hands can reach the sink. The Sexton's relic orders also ask for 2 Seals on about one day in five (and pay 2x sell). With the 7,500 x shards^2 price the gold, not the Seal, is the gate below the Nave; at the top the Seal rate (about 10 an hour at level 70, if you do nothing else) is the cap and an Empowered fight is a 2-4 minute activity, so a Seal is spent about as fast as it is dug. Owner decision 3 Oct: Tomb 1 in 80, Crypt Collapse and Coelacanth unchanged.
+
 ## Necro pressure pass (3 Oct 2026, `claude/necro-pressure-balance`): re-measure, no tuning needed
 
 Brief: re-check the three ROADMAP P3 findings on current master (8bb1bd3) before touching numbers. Four necromancers x nine grounds x `intended,push,max`, kit `none`, medium, **8 seeds, 3 sim-minutes** (`BALANCE_AREAS=graves,warren,ossuary,coliseum,nave,sanctum,cloister,pyre,fen BALANCE_DISCIPLINES=1,2,3,4 BALANCE_SEEDS=8 BALANCE_BANDS=intended,push,max npm run balance`).

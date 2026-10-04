@@ -1043,9 +1043,9 @@ Chance is per successful action; each node yields its main item every success, p
 | Pauper's Grave | Gravedigging 1 | Old Bones | 2-4 | Mourning Moss Seed 8.33% |
 | Burial Mound | Gravedigging 20 | Barrow Bones | 3-5 | Copper Ring 0.83% (1 in 120), Mourning Moss Seed 5%, Nightshade Seed 4% (1 in 25) |
 | Bog Myrtle Thicket | Gravedigging 25 | Bog Myrtle | 3-6 | Bog Myrtle Seed 6.25%, Grave Garnet 0.83% (1 in 120) |
-| Crypt Collapse | Gravedigging 40 | Crypt Bones | 3-6 | Silver Ore 12.5%, Reliquary Fragment 1.67% (1 in 60), Corpse-lily Seed 4% (1 in 25), Wolfsbane Seed 2.5% (1 in 40) |
+| Crypt Collapse | Gravedigging 40 | Crypt Bones | 3-6 | Silver Ore 12.5%, Reliquary Fragment 1.67% (1 in 60), Covenant Seal 0.5% (1 in 200), Corpse-lily Seed 4% (1 in 25), Wolfsbane Seed 2.5% (1 in 40) |
 | Drowned Lotus Bed | Gravedigging 45 | Drowned Lotus | 3-5 | Drowned Lotus Seed 5%, Bone Opal 0.71% (1 in 140), Void Sapphire 0.25% (1 in 400) |
-| Barrow-King's Tomb | Gravedigging 70 | Ancient Bones | 4-8 | Covenant Seal 2.5% (1 in 40), Reliquary Fragment 4% (1 in 25), Bloodroot Seed 5%, Moonpetal Seed 3.33% (1 in 30), Gold-Tempered Helm 0.11% (1 in 900), Iron Chestplate 0.14% (1 in 700), Iron Warden Kit 0.13% (1 in 800) |
+| Barrow-King's Tomb | Gravedigging 70 | Ancient Bones | 4-8 | Covenant Seal 1.25% (1 in 80), Reliquary Fragment 4% (1 in 25), Bloodroot Seed 5%, Moonpetal Seed 3.33% (1 in 30), Gold-Tempered Helm 0.11% (1 in 900), Iron Chestplate 0.14% (1 in 700), Iron Warden Kit 0.13% (1 in 800) |
 | Rot-cap Patch | Grave Gardening 1 | Rot-cap | 3-6 | Rot-cap Seed 10% |
 | Ash-bloom Patch | Grave Gardening 1 | Ash-bloom | 3-6 | Ash-bloom Seed 10% |
 
