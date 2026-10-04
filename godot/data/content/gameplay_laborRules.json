@@ -1,0 +1,9 @@
+{
+ "LABOR": {
+  "factor": 0.12,
+  "capMs": 28800000,
+  "xpFrac": 0.25,
+  "maxSlots": 4,
+  "levelsPerSlot": 50
+ }
+}

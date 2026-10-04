@@ -1,0 +1,64 @@
+{
+ "CLASSES": [
+  {
+   "index": 0,
+   "name": "Engineer",
+   "role": "—",
+   "color": "#9ca3af"
+  },
+  {
+   "index": 1,
+   "name": "Guardian",
+   "role": "Tank / frontline",
+   "color": "#f59e0b"
+  },
+  {
+   "index": 2,
+   "name": "Shadowblade",
+   "role": "Burst / rogue",
+   "color": "#a78bfa"
+  },
+  {
+   "index": 3,
+   "name": "Cleric",
+   "role": "Healer / support",
+   "color": "#fde68a"
+  },
+  {
+   "index": 4,
+   "name": "Arcanist",
+   "role": "Ranged magic DPS",
+   "color": "#60a5fa"
+  },
+  {
+   "index": 5,
+   "name": "Grave Warden",
+   "role": "Lantern and flail",
+   "color": "#f2b84b"
+  },
+  {
+   "index": 6,
+   "name": "Bell Monk",
+   "role": "Rhythm melee",
+   "color": "#e8d9a0"
+  },
+  {
+   "index": 7,
+   "name": "Carrion Witch",
+   "role": "Crows and hooks",
+   "color": "#9a1b2a"
+  },
+  {
+   "index": 8,
+   "name": "Hollow Knight",
+   "role": "Tank / frontline",
+   "color": "#b8c0cc"
+  },
+  {
+   "index": 9,
+   "name": "Veilwalker",
+   "role": "Spirit medium",
+   "color": "#bff3ff"
+  }
+ ]
+}

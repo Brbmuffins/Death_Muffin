@@ -1,0 +1,3164 @@
+{
+ "ITEMS": {
+  "material_copper_shard": {
+   "name": "Copper Shard",
+   "type": "material",
+   "rarity": "common",
+   "sell": 1,
+   "lore": "Pried from coffin fittings.",
+   "icon": "art/items/material_copper_shard.webp",
+   "stack": 99
+  },
+  "material_copper_bar": {
+   "name": "Copper Bar",
+   "type": "material",
+   "rarity": "common",
+   "sell": 4,
+   "lore": "Smelted from grave-nails.",
+   "icon": "art/items/material_copper_bar.webp",
+   "stack": 99
+  },
+  "ore_copper": {
+   "name": "Copper Ore",
+   "type": "material",
+   "rarity": "common",
+   "sell": 1,
+   "lore": "Green-veined stone from the grave soil.",
+   "stack": 250
+  },
+  "ingot_copper": {
+   "name": "Copper Ingot",
+   "type": "material",
+   "rarity": "common",
+   "sell": 4,
+   "stack": 99
+  },
+  "ore_tin": {
+   "name": "Tin Ore",
+   "type": "material",
+   "rarity": "common",
+   "sell": 1,
+   "lore": "Dull ore, cold as a burial ring.",
+   "stack": 250
+  },
+  "ingot_tin": {
+   "name": "Tin Ingot",
+   "type": "material",
+   "rarity": "common",
+   "sell": 4,
+   "stack": 99
+  },
+  "ore_iron": {
+   "name": "Iron Ore",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 3,
+   "lore": "Rusted from ossuary damp.",
+   "stack": 250
+  },
+  "ingot_iron": {
+   "name": "Iron Ingot",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 9,
+   "stack": 99
+  },
+  "ore_bronze": {
+   "name": "Bronze Ore",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 3,
+   "stack": 250
+  },
+  "ingot_bronze": {
+   "name": "Bronze Ingot",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 9,
+   "stack": 99
+  },
+  "ore_silver": {
+   "name": "Silver Ore",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 6,
+   "lore": "Corpse-silver; it tarnishes near the living.",
+   "stack": 250
+  },
+  "ingot_silver": {
+   "name": "Silver Ingot",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 18,
+   "stack": 99
+  },
+  "ore_gold": {
+   "name": "Gold Ore",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 12,
+   "lore": "Tithe-gold from the drowned nave.",
+   "stack": 250
+  },
+  "ingot_gold": {
+   "name": "Gold Ingot",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 36,
+   "stack": 99
+  },
+  "ore_steel": {
+   "name": "Steel Ore",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 14,
+   "stack": 250
+  },
+  "ingot_steel": {
+   "name": "Steel Ingot",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 40,
+   "stack": 99
+  },
+  "ore_hell": {
+   "name": "Hell Ore",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 30,
+   "stack": 250
+  },
+  "ingot_hell": {
+   "name": "Hell Ingot",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 90,
+   "stack": 99
+  },
+  "ore_moon": {
+   "name": "Moon Ore",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 40,
+   "stack": 250
+  },
+  "ingot_moon": {
+   "name": "Moon Ingot",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 120,
+   "stack": 99
+  },
+  "fish_river": {
+   "name": "River Fish",
+   "type": "material",
+   "rarity": "common",
+   "sell": 1,
+   "stack": 250
+  },
+  "fish_fillet": {
+   "name": "River Fillet",
+   "type": "material",
+   "rarity": "common",
+   "sell": 2,
+   "stack": 99
+  },
+  "log_oak": {
+   "name": "Oak Log",
+   "type": "material",
+   "rarity": "common",
+   "sell": 1,
+   "lore": "Coffin-wood, still sound.",
+   "stack": 250
+  },
+  "plank_oak": {
+   "name": "Oak Plank",
+   "type": "material",
+   "rarity": "common",
+   "sell": 3,
+   "stack": 99
+  },
+  "log_elm": {
+   "name": "Elm Log",
+   "type": "material",
+   "rarity": "common",
+   "sell": 3,
+   "lore": "Cut from a hangman's elm. The rope scars run deep.",
+   "stack": 250
+  },
+  "log_willow": {
+   "name": "Willow Log",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 6,
+   "lore": "The sap runs red and never quite dries.",
+   "stack": 250
+  },
+  "log_yew": {
+   "name": "Yew Log",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 10,
+   "lore": "Churchyard yew: the roots drink from the graves.",
+   "stack": 250
+  },
+  "log_blackthorn": {
+   "name": "Blackthorn Log",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 16,
+   "lore": "Thorned even after the axe.",
+   "stack": 250
+  },
+  "log_ghostwood": {
+   "name": "Ghostwood Log",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 24,
+   "lore": "Pale, cold and lighter than it should be.",
+   "stack": 250
+  },
+  "log_bone_elder": {
+   "name": "Bone Elder Log",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 36,
+   "lore": "It knocks like bone when you stack it.",
+   "stack": 250
+  },
+  "fish_crypt_eel": {
+   "name": "Crypt Eel",
+   "type": "material",
+   "rarity": "common",
+   "sell": 3,
+   "lore": "Slid out of a flooded vault.",
+   "stack": 250
+  },
+  "fish_bell_carp": {
+   "name": "Bell Carp",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 6,
+   "lore": "Its scales ring faintly when tapped.",
+   "stack": 250
+  },
+  "fish_drowned_pike": {
+   "name": "Drowned Pike",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 10,
+   "lore": "All teeth and black water.",
+   "stack": 250
+  },
+  "fish_lanternfish": {
+   "name": "Lanternfish",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 16,
+   "lore": "Still glowing, even out of the water.",
+   "stack": 250
+  },
+  "fish_coelacanth": {
+   "name": "Abyssal Coelacanth",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 30,
+   "lore": "Older than the Covenant, and it looks it.",
+   "stack": 250
+  },
+  "bones_old": {
+   "name": "Old Bones",
+   "type": "material",
+   "rarity": "common",
+   "sell": 1,
+   "lore": "A pauper's remains. Grind them for the garden.",
+   "stack": 250
+  },
+  "bones_barrow": {
+   "name": "Barrow Bones",
+   "type": "material",
+   "rarity": "common",
+   "sell": 4,
+   "lore": "Heavy bones from a burial mound.",
+   "stack": 250
+  },
+  "bones_crypt": {
+   "name": "Crypt Bones",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 8,
+   "lore": "Crypt-dust still clings to them.",
+   "stack": 250
+  },
+  "bones_ancient": {
+   "name": "Ancient Bones",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 18,
+   "lore": "A barrow-king's bones, crowned with lichen.",
+   "stack": 250
+  },
+  "seed_mourning_moss": {
+   "name": "Mourning Moss Seed",
+   "type": "material",
+   "rarity": "common",
+   "sell": 2,
+   "lore": "Plant it in a mourning bed.",
+   "stack": 250
+  },
+  "reliquary_fragment": {
+   "name": "Reliquary Fragment",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 25,
+   "lore": "Gilded shards from a broken reliquary.",
+   "stack": 250
+  },
+  "covenant_seal": {
+   "name": "Covenant Seal",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 60,
+   "lore": "The wax still bears the Ossuary mark.",
+   "stack": 250
+  },
+  "gem_grave_garnet": {
+   "name": "Grave Garnet",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 20,
+   "lore": "Blood-dark and cold.",
+   "stack": 250
+  },
+  "gem_bone_opal": {
+   "name": "Bone Opal",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 45,
+   "lore": "Milky fire trapped in bone.",
+   "stack": 250
+  },
+  "gem_void_sapphire": {
+   "name": "Void Sapphire",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 90,
+   "lore": "Its colour has no bottom.",
+   "stack": 250
+  },
+  "flask_hp_minor": {
+   "name": "Minor Healing Potion",
+   "type": "material",
+   "rarity": "common",
+   "sell": 5,
+   "lore": "Restores 35% health. Press Q.",
+   "stack": 99
+  },
+  "flask_hp_major": {
+   "name": "Major Healing Flask",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 15,
+   "lore": "Restores 70% health. Press Q.",
+   "stack": 99
+  },
+  "flask_speed": {
+   "name": "Swiftness Flask",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 10,
+   "lore": "+20% movement speed for 30 seconds.",
+   "stack": 99
+  },
+  "flask_damage": {
+   "name": "Forge-Tempered Flask",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 20,
+   "lore": "+15% spell damage for 45 seconds.",
+   "stack": 99
+  },
+  "flask_void_resist": {
+   "name": "Void Resist Flask",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 12,
+   "lore": "Wards off 25% of all damage for 90 seconds.",
+   "stack": 99
+  },
+  "ring_copper": {
+   "name": "Copper Ring",
+   "type": "ring",
+   "rarity": "uncommon",
+   "sell": 12,
+   "lore": "A mourning band. The name inside is scratched out.",
+   "icon": "art/items/ring_copper.webp",
+   "offlineStats": {
+    "stat_int": 2,
+    "stat_vit": 1
+   }
+  },
+  "helm_copper": {
+   "name": "Copper Helm",
+   "type": "armor_head",
+   "rarity": "common",
+   "sell": 10,
+   "lore": "Dented by a grave-robber's spade.",
+   "offlineStats": {
+    "stat_vit": 3
+   }
+  },
+  "plate_copper": {
+   "name": "Copper Plate",
+   "type": "armor_chest",
+   "rarity": "uncommon",
+   "sell": 20,
+   "offlineStats": {
+    "stat_vit": 6
+   }
+  },
+  "sword_copper": {
+   "name": "Copper Sword",
+   "type": "weapon",
+   "rarity": "uncommon",
+   "sell": 18,
+   "offlineStats": {
+    "stat_str": 4
+   }
+  },
+  "staff_oak": {
+   "name": "Oak Staff",
+   "type": "weapon",
+   "rarity": "uncommon",
+   "sell": 16,
+   "lore": "A coffin-oak focus. Bone Needles fly truer.",
+   "offlineStats": {
+    "stat_int": 5
+   }
+  },
+  "bow_oak": {
+   "name": "Oak Shortbow",
+   "type": "weapon",
+   "rarity": "common",
+   "sell": 14,
+   "offlineStats": {
+    "stat_agi": 4
+   }
+  },
+  "augment_copper": {
+   "name": "Copper Augment",
+   "type": "trinket",
+   "rarity": "common",
+   "sell": 8,
+   "offlineStats": {
+    "stat_int": 2
+   }
+  },
+  "augment_iron": {
+   "name": "Iron Augment",
+   "type": "trinket",
+   "rarity": "uncommon",
+   "sell": 22,
+   "offlineStats": {
+    "stat_int": 4
+   }
+  },
+  "helm_iron": {
+   "name": "Iron Helm",
+   "type": "armor_head",
+   "rarity": "uncommon",
+   "sell": 24,
+   "offlineStats": {
+    "stat_vit": 5,
+    "stat_str": 1
+   }
+  },
+  "chest_iron": {
+   "name": "Iron Chestplate",
+   "type": "armor_chest",
+   "rarity": "rare",
+   "sell": 45,
+   "lore": "Salt-bloomed plate from a crypt knight.",
+   "offlineStats": {
+    "stat_vit": 9,
+    "stat_str": 2
+   }
+  },
+  "helm_gold": {
+   "name": "Gold-Tempered Helm",
+   "type": "armor_head",
+   "rarity": "rare",
+   "sell": 60,
+   "lore": "Prelate's regalia, bell-dented.",
+   "offlineStats": {
+    "stat_vit": 6,
+    "stat_int": 4
+   }
+  },
+  "kit_iron_warden": {
+   "name": "Iron Warden Kit",
+   "type": "trinket",
+   "rarity": "rare",
+   "sell": 55,
+   "offlineStats": {
+    "stat_vit": 4,
+    "stat_int": 4
+   }
+  },
+  "herb_mourning_moss": {
+   "name": "Mourning Moss",
+   "type": "material",
+   "rarity": "common",
+   "sell": 4,
+   "lore": "Grows where the grieving sit.",
+   "stack": 250
+  },
+  "herb_nightshade": {
+   "name": "Nightshade",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 9,
+   "lore": "Bitter, dark and quietly useful.",
+   "stack": 250
+  },
+  "seed_nightshade": {
+   "name": "Nightshade Seed",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 4,
+   "lore": "Plant it in a Mourning Bed.",
+   "stack": 250
+  },
+  "herb_corpse_lily": {
+   "name": "Corpse-lily",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 18,
+   "lore": "It flowers only on fresh graves.",
+   "stack": 250
+  },
+  "seed_corpse_lily": {
+   "name": "Corpse-lily Seed",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 8,
+   "lore": "Plant it in a Mourning Bed.",
+   "stack": 250
+  },
+  "herb_wolfsbane": {
+   "name": "Wolfsbane",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 30,
+   "lore": "Older than the wolves that fear it.",
+   "stack": 250
+  },
+  "seed_wolfsbane": {
+   "name": "Wolfsbane Seed",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 14,
+   "lore": "Plant it in a Mourning Bed.",
+   "stack": 250
+  },
+  "herb_bloodroot": {
+   "name": "Bloodroot",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 48,
+   "lore": "The soil around it is always warm.",
+   "stack": 250
+  },
+  "seed_bloodroot": {
+   "name": "Bloodroot Seed",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 22,
+   "lore": "Plant it in a Mourning Bed.",
+   "stack": 250
+  },
+  "herb_moonpetal": {
+   "name": "Moonpetal",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 80,
+   "lore": "It opens for the dead alone.",
+   "stack": 250
+  },
+  "seed_moonpetal": {
+   "name": "Moonpetal Seed",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 36,
+   "lore": "Plant it in a Mourning Bed.",
+   "stack": 250
+  },
+  "sapling_oak": {
+   "name": "Coffin-Oak Sapling",
+   "type": "material",
+   "rarity": "common",
+   "sell": 6,
+   "lore": "Plant it in a Coffin Patch and come back in a couple of hours.",
+   "stack": 250,
+   "icon": "art/items/sapling_coffin_oak.webp"
+  },
+  "sapling_yew": {
+   "name": "Churchyard Yew Sapling",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 20,
+   "lore": "Slow, patient and worth the wait.",
+   "stack": 250,
+   "icon": "art/items/sapling_churchyard_yew.webp"
+  },
+  "charm_tithe_bat": {
+   "name": "Tithe Bat Charm",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 250,
+   "lore": "Adopt it (Capes & Pets, N) and the Tithe Bat is yours for good. It roosts in the coffin-oaks and follows the sound of the axe.",
+   "stack": 1,
+   "icon": "art/items/charm_tithe_bat.svg"
+  },
+  "charm_grave_rat": {
+   "name": "Grave Rat Charm",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 250,
+   "lore": "Adopt it (Capes & Pets, N) and the Grave Rat is yours for good. It found a better seam than you did, and it will not tell you where.",
+   "stack": 1,
+   "icon": "art/items/charm_grave_rat.svg"
+  },
+  "charm_drowned_pup": {
+   "name": "Drowned Pup Charm",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 250,
+   "lore": "Adopt it (Capes & Pets, N) and the Drowned Pup is yours for good. Pulled from black water, still wet, still hopeful.",
+   "stack": 1,
+   "icon": "art/items/charm_drowned_pup.svg"
+  },
+  "charm_wee_thrall": {
+   "name": "Wee Thrall Charm",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 250,
+   "lore": "Adopt it (Capes & Pets, N) and the Wee Thrall is yours for good. A very small skeleton with a very large sense of duty.",
+   "stack": 1,
+   "icon": "art/items/charm_wee_thrall.svg"
+  },
+  "charm_shroud_moth": {
+   "name": "Shroud Moth Charm",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 250,
+   "lore": "Adopt it (Capes & Pets, N) and the Shroud Moth is yours for good. It drinks the light from the beds and gives a little back.",
+   "stack": 1,
+   "icon": "art/items/charm_shroud_moth.svg"
+  },
+  "flask_hp_grand": {
+   "name": "Grand Healing Flask",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 45,
+   "lore": "Bloodroot and corpse-lily, brewed until the glass runs warm. Restores 90% health. Press Q.",
+   "stack": 99,
+   "icon": "art/items/flask_hp_grand.svg"
+  },
+  "elixir_moonlight": {
+   "name": "Moonlight Elixir",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 120,
+   "lore": "+25% spell damage for 60 seconds. It glows faintly, and the dead lean toward it.",
+   "stack": 99,
+   "icon": "art/items/elixir_moonlight.svg"
+  },
+  "reagent_grave_dust": {
+   "name": "Grave Dust",
+   "type": "material",
+   "rarity": "common",
+   "sell": 2,
+   "lore": "Sifted from what the dead leave behind. Take it to the Great Cauldron in the Alchemist's Wing: four dust brew a Grave-Dust Tonic, no garden needed.",
+   "stack": 250,
+   "icon": "art/items/reagent_grave_dust.svg"
+  },
+  "reagent_wraith_ectoplasm": {
+   "name": "Wraith Ectoplasm",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 8,
+   "lore": "Cold, weightless and faintly singing. Choir Wraiths and Weeping Seraphs shed it when they unravel. Brews into haste and insight.",
+   "stack": 250,
+   "icon": "art/items/reagent_wraith_ectoplasm.svg"
+  },
+  "reagent_plague_bile": {
+   "name": "Plague Bile",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 16,
+   "lore": "Bottled from the Cloister dead, still green and still spoiling. The base of the lifesteal and rot-proof brews.",
+   "stack": 250,
+   "icon": "art/items/reagent_plague_bile.svg"
+  },
+  "reagent_cinder_ash": {
+   "name": "Cinder Ash",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 16,
+   "lore": "Grey ash with a red heart that never cools. Falls from the Pyre; brews into fire-proofing.",
+   "stack": 250,
+   "icon": "art/items/reagent_cinder_ash.svg"
+  },
+  "herb_rot_cap": {
+   "name": "Rot-cap",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 24,
+   "lore": "A pale mushroom that grows out of the Cloister flagstones. Forage it there, or plant its seed in the Acre (Gardening 35).",
+   "stack": 250,
+   "icon": "art/items/herb_rot_cap.svg"
+  },
+  "seed_rot_cap": {
+   "name": "Rot-cap Seed",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 10,
+   "lore": "Plant it in a Mourning Bed (Grave Gardening 35). Foraged in the Plague Cloister.",
+   "stack": 250,
+   "icon": "art/items/seed_rot_cap.svg"
+  },
+  "herb_ash_bloom": {
+   "name": "Ash-bloom",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 40,
+   "lore": "A black flower that only opens in cinders. Forage it in the Pyre, or plant its seed in the Acre (Gardening 50).",
+   "stack": 250,
+   "icon": "art/items/herb_ash_bloom.svg"
+  },
+  "seed_ash_bloom": {
+   "name": "Ash-bloom Seed",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 14,
+   "lore": "Plant it in a Mourning Bed (Grave Gardening 50). Foraged in the Cinder Pyre.",
+   "stack": 250,
+   "icon": "art/items/seed_ash_bloom.svg"
+  },
+  "ichor_gravedigger": {
+   "name": "Gravedigger Ichor",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 60,
+   "lore": "The Gravedigger King's blood, black as churned earth. Guaranteed from his spoils; top-tier elixirs need it.",
+   "stack": 250,
+   "icon": "art/items/ichor_gravedigger.svg"
+  },
+  "ichor_abbess": {
+   "name": "Abbess Ichor",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 60,
+   "lore": "Marrow-pale and never quite still. Guaranteed from the Bone Abbess; top-tier elixirs need it.",
+   "stack": 250,
+   "icon": "art/items/ichor_abbess.svg"
+  },
+  "ichor_congregation": {
+   "name": "Congregation Ichor",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 60,
+   "lore": "Drowned-blue, and it hums a hymn. Guaranteed from the Drowned Congregation; top-tier elixirs need it.",
+   "stack": 250,
+   "icon": "art/items/ichor_congregation.svg"
+  },
+  "ichor_prelate": {
+   "name": "Prelate Ichor",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 60,
+   "lore": "Bell-bronze and heavy. Guaranteed from the Bell-Sworn Prelate; top-tier elixirs need it.",
+   "stack": 250,
+   "icon": "art/items/ichor_prelate.svg"
+  },
+  "ichor_plague_saint": {
+   "name": "Plague Saint Ichor",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 60,
+   "lore": "The Saint's own blight, sweet and green. Guaranteed from the Plague Saint; top-tier elixirs need it.",
+   "stack": 250,
+   "icon": "art/items/ichor_plague_saint.svg"
+  },
+  "ichor_regent": {
+   "name": "Regent Ichor",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 60,
+   "lore": "Liquid ember that does not burn the glass. Guaranteed from the Cinder Regent; top-tier elixirs need it.",
+   "stack": 250,
+   "icon": "art/items/ichor_regent.svg"
+  },
+  "tonic_grave_dust": {
+   "name": "Grave-Dust Tonic",
+   "type": "material",
+   "rarity": "common",
+   "sell": 6,
+   "lore": "Tonic. +20% essence regeneration for 60 seconds. Four pinches of grave dust in black water: the first brew anyone can make from what the dead drop.",
+   "stack": 99,
+   "icon": "art/items/tonic_grave_dust.svg"
+  },
+  "elixir_wraithquick": {
+   "name": "Wraithquick Elixir",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 28,
+   "lore": "Elixir. +15% cooldown recovery for 45 seconds. Ectoplasm sings in the glass, and your rites come back quicker for it.",
+   "stack": 99,
+   "icon": "art/items/elixir_wraithquick.svg"
+  },
+  "tonic_graveluck": {
+   "name": "Grave-Luck Tonic",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 36,
+   "lore": "Tonic. +15% item drop chance for 60 seconds. Nightshade and a fistful of grave dust: the dead hold on to their things a little less tightly.",
+   "stack": 99,
+   "icon": "art/items/tonic_graveluck.svg"
+  },
+  "tonic_insight": {
+   "name": "Sexton's Insight",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 40,
+   "lore": "Tonic. +15% experience from kills for 60 seconds. Ectoplasm and mourning moss steeped together; every death teaches a little more.",
+   "stack": 99,
+   "icon": "art/items/tonic_insight.svg"
+  },
+  "elixir_leechblood": {
+   "name": "Leechblood Elixir",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 52,
+   "lore": "Elixir. Heal 4% of the damage you deal for 45 seconds (up to three targets per hit, at most 1.5% of your health per hit). Plague bile that remembers being alive.",
+   "stack": 99,
+   "icon": "art/items/elixir_leechblood.svg"
+  },
+  "elixir_rotproof": {
+   "name": "Rot-Proof Elixir",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 48,
+   "lore": "Elixir. 40% less rot and plague damage for 75 seconds (adds to other wards; the total caps at 60%). Bile and rot-cap, taken before the Plague Saint.",
+   "stack": 99,
+   "icon": "art/items/elixir_rotproof.svg"
+  },
+  "elixir_cinderskin": {
+   "name": "Cinderskin Elixir",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 60,
+   "lore": "Elixir. 40% less fire damage for 75 seconds (adds to other wards; the total caps at 60%). Cinder ash and ash-bloom: walk the Pyre as if it were a hearth.",
+   "stack": 99,
+   "icon": "art/items/elixir_cinderskin.svg"
+  },
+  "tonic_ghostwalk": {
+   "name": "Ghostwalk Tonic",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 90,
+   "lore": "Tonic. +30% essence regeneration and +10% move speed for 75 seconds. Ectoplasm and wolfsbane: you drift more than you walk.",
+   "stack": 99,
+   "icon": "art/items/tonic_ghostwalk.svg"
+  },
+  "elixir_bloodmoon": {
+   "name": "Bloodmoon Elixir",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 200,
+   "lore": "Elixir. +20% spell damage and heal 6% of the damage you deal for 60 seconds. Two kings' ichor and plague bile, drunk under a red moon.",
+   "stack": 99,
+   "icon": "art/items/elixir_bloodmoon.svg"
+  },
+  "elixir_hymnal": {
+   "name": "Hymnal Elixir",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 170,
+   "lore": "Elixir. 15% less damage taken, 20% less rot and plague damage, and heal 3% of the damage you deal, for 75 seconds. The drowned hymn and the Saint's blight, made to cancel each other out.",
+   "stack": 99,
+   "icon": "art/items/elixir_hymnal.svg"
+  },
+  "elixir_regent": {
+   "name": "Regent's Vigil Elixir",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 300,
+   "lore": "Elixir. +12% spell damage, 15% less damage taken and +10% cooldown recovery for 60 seconds. The Regent's ichor and the Prelate's, bound with cinder ash: the last word in elixirs.",
+   "stack": 99,
+   "icon": "art/items/elixir_regent.svg"
+  },
+  "herb_bog_myrtle": {
+   "name": "Bog Myrtle",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 34,
+   "lore": "Waxy grey leaves dug from the peat. Its smoke keeps the marsh-fever off the living.",
+   "stack": 250
+  },
+  "herb_drowned_lotus": {
+   "name": "Drowned Lotus",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 72,
+   "lore": "It blooms under black water and glows faintly, as if lit from below.",
+   "stack": 250
+  },
+  "seed_bog_myrtle": {
+   "name": "Bog Myrtle Seed",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 16,
+   "lore": "Plant it in a Mourning Bed. It grows best in damp, dark ground.",
+   "stack": 250
+  },
+  "seed_drowned_lotus": {
+   "name": "Drowned Lotus Seed",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 28,
+   "lore": "Plant it in a Mourning Bed and keep it patient.",
+   "stack": 250
+  },
+  "ichor_mire": {
+   "name": "Mire Ichor",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 60,
+   "lore": "The Mire Mother leaves this dark, silver-flecked ichor. Brew it with drowned lotus for Moonlight Elixir.",
+   "stack": 250,
+   "icon": "art/items/ichor_mire.svg"
+  },
+  "plank_elm": {
+   "name": "Elm Plank",
+   "type": "material",
+   "rarity": "common",
+   "sell": 8,
+   "lore": "Hangman-elm, straight-grained and grim.",
+   "stack": 250
+  },
+  "plank_willow": {
+   "name": "Willow Plank",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 16,
+   "lore": "Red-streaked where the sap bled.",
+   "stack": 250
+  },
+  "plank_yew": {
+   "name": "Yew Plank",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 26,
+   "lore": "Churchyard yew: springy, and it remembers.",
+   "stack": 250
+  },
+  "plank_blackthorn": {
+   "name": "Blackthorn Plank",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 42,
+   "lore": "Still thorny at the knots.",
+   "stack": 250
+  },
+  "plank_ghostwood": {
+   "name": "Ghostwood Plank",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 60,
+   "lore": "Pale, cold, and lighter than air should allow.",
+   "stack": 250
+  },
+  "plank_bone_elder": {
+   "name": "Bone Elder Plank",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 90,
+   "lore": "It clacks like bone when you stack it.",
+   "stack": 250
+  },
+  "meal_crypt_eel": {
+   "name": "Smoked Crypt Eel",
+   "type": "material",
+   "rarity": "common",
+   "sell": 10,
+   "lore": "Smoked over coffin-wood. Heals over time.",
+   "stack": 99
+  },
+  "meal_bell_carp": {
+   "name": "Bell Carp Stew",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 20,
+   "lore": "It still rings faintly in the bowl. Heals over time.",
+   "stack": 99
+  },
+  "meal_drowned_pike": {
+   "name": "Drowned Pike Fillet",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 30,
+   "lore": "All teeth removed. Most of them. Heals over time.",
+   "stack": 99
+  },
+  "meal_lanternfish": {
+   "name": "Lanternfish Supper",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 48,
+   "lore": "It glows on the plate. Heals over time.",
+   "stack": 99
+  },
+  "meal_coelacanth": {
+   "name": "Coelacanth Feast",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 80,
+   "lore": "Older than the Covenant, and filling. Heals over time.",
+   "stack": 99
+  },
+  "bone_meal": {
+   "name": "Bone Meal",
+   "type": "material",
+   "rarity": "common",
+   "sell": 4,
+   "lore": "Ground at the Bone Kiln. Mourning beds love it.",
+   "stack": 250
+  },
+  "tool_hatchet_copper": {
+   "name": "Copper Hatchet",
+   "type": "material",
+   "rarity": "common",
+   "sell": 10,
+   "lore": "Carry it in your bag or on the tool belt: +5% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_hatchet_iron": {
+   "name": "Iron Hatchet",
+   "type": "material",
+   "rarity": "common",
+   "sell": 40,
+   "lore": "Carry it in your bag or on the tool belt: +10% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_hatchet_silver": {
+   "name": "Silver Hatchet",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 90,
+   "lore": "Carry it in your bag or on the tool belt: +15% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_hatchet_steel": {
+   "name": "Steel Hatchet",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 160,
+   "lore": "Carry it in your bag or on the tool belt: +20% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_hatchet_hell": {
+   "name": "Hell Hatchet",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 250,
+   "lore": "Carry it in your bag or on the tool belt: +25% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_hatchet_moon": {
+   "name": "Moon Hatchet",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 360,
+   "lore": "Carry it in your bag or on the tool belt: +30% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_pickaxe_copper": {
+   "name": "Copper Pickaxe",
+   "type": "material",
+   "rarity": "common",
+   "sell": 10,
+   "lore": "Carry it in your bag or on the tool belt: +5% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_pickaxe_iron": {
+   "name": "Iron Pickaxe",
+   "type": "material",
+   "rarity": "common",
+   "sell": 40,
+   "lore": "Carry it in your bag or on the tool belt: +10% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_pickaxe_silver": {
+   "name": "Silver Pickaxe",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 90,
+   "lore": "Carry it in your bag or on the tool belt: +15% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_pickaxe_steel": {
+   "name": "Steel Pickaxe",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 160,
+   "lore": "Carry it in your bag or on the tool belt: +20% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_pickaxe_hell": {
+   "name": "Hell Pickaxe",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 250,
+   "lore": "Carry it in your bag or on the tool belt: +25% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_pickaxe_moon": {
+   "name": "Moon Pickaxe",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 360,
+   "lore": "Carry it in your bag or on the tool belt: +30% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_rod_copper": {
+   "name": "Copper Fishing Rod",
+   "type": "material",
+   "rarity": "common",
+   "sell": 10,
+   "lore": "Carry it in your bag or on the tool belt: +5% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_rod_iron": {
+   "name": "Iron Fishing Rod",
+   "type": "material",
+   "rarity": "common",
+   "sell": 40,
+   "lore": "Carry it in your bag or on the tool belt: +10% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_rod_silver": {
+   "name": "Silver Fishing Rod",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 90,
+   "lore": "Carry it in your bag or on the tool belt: +15% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_rod_steel": {
+   "name": "Steel Fishing Rod",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 160,
+   "lore": "Carry it in your bag or on the tool belt: +20% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_rod_hell": {
+   "name": "Hell Fishing Rod",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 250,
+   "lore": "Carry it in your bag or on the tool belt: +25% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_rod_moon": {
+   "name": "Moon Fishing Rod",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 360,
+   "lore": "Carry it in your bag or on the tool belt: +30% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_spade_copper": {
+   "name": "Copper Grave Spade",
+   "type": "material",
+   "rarity": "common",
+   "sell": 10,
+   "lore": "Carry it in your bag or on the tool belt: +5% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_spade_iron": {
+   "name": "Iron Grave Spade",
+   "type": "material",
+   "rarity": "common",
+   "sell": 40,
+   "lore": "Carry it in your bag or on the tool belt: +10% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_spade_silver": {
+   "name": "Silver Grave Spade",
+   "type": "material",
+   "rarity": "uncommon",
+   "sell": 90,
+   "lore": "Carry it in your bag or on the tool belt: +15% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_spade_steel": {
+   "name": "Steel Grave Spade",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 160,
+   "lore": "Carry it in your bag or on the tool belt: +20% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_spade_hell": {
+   "name": "Hell Grave Spade",
+   "type": "material",
+   "rarity": "rare",
+   "sell": 250,
+   "lore": "Carry it in your bag or on the tool belt: +25% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "tool_spade_moon": {
+   "name": "Moon Grave Spade",
+   "type": "material",
+   "rarity": "epic",
+   "sell": 360,
+   "lore": "Carry it in your bag or on the tool belt: +30% gathering success (the best tool you carry counts).",
+   "stack": 1
+  },
+  "set_gravecaller_head": {
+   "name": "Gravecall Crown",
+   "type": "armor_head",
+   "rarity": "uncommon",
+   "sell": 14,
+   "lore": "Stitched for those who command the newly buried.",
+   "icon": "art/items/set_gravecaller_head.svg",
+   "offlineStats": {
+    "stat_int": 2,
+    "stat_vit": 1
+   }
+  },
+  "set_gravecaller_chest": {
+   "name": "Gravecall Vestment",
+   "type": "armor_chest",
+   "rarity": "rare",
+   "sell": 52,
+   "lore": "Stitched for those who command the newly buried.",
+   "icon": "art/items/set_gravecaller_chest.svg",
+   "offlineStats": {
+    "stat_int": 8,
+    "stat_vit": 4
+   }
+  },
+  "set_gravecaller_hands": {
+   "name": "Gravecall Grips",
+   "type": "armor_hands",
+   "rarity": "uncommon",
+   "sell": 14,
+   "lore": "Stitched for those who command the newly buried.",
+   "icon": "art/items/set_gravecaller_hands.svg",
+   "offlineStats": {
+    "stat_int": 2,
+    "stat_vit": 1
+   }
+  },
+  "set_gravecaller_legs": {
+   "name": "Gravecall Legguards",
+   "type": "armor_legs",
+   "rarity": "rare",
+   "sell": 39,
+   "lore": "Stitched for those who command the newly buried.",
+   "icon": "art/items/set_gravecaller_legs.svg",
+   "offlineStats": {
+    "stat_int": 6,
+    "stat_vit": 3
+   }
+  },
+  "set_gravecaller_feet": {
+   "name": "Gravecall Treads",
+   "type": "armor_feet",
+   "rarity": "epic",
+   "sell": 44,
+   "lore": "Stitched for those who command the newly buried.",
+   "icon": "art/items/set_gravecaller_feet.svg",
+   "offlineStats": {
+    "stat_int": 6,
+    "stat_vit": 3
+   }
+  },
+  "set_warden_head": {
+   "name": "Lamplight Crown",
+   "type": "armor_head",
+   "rarity": "uncommon",
+   "sell": 14,
+   "lore": "Brass and soot from the grave watch.",
+   "icon": "art/items/set_warden_head.svg",
+   "offlineStats": {
+    "stat_vit": 2,
+    "stat_str": 1
+   }
+  },
+  "set_warden_chest": {
+   "name": "Lamplight Vestment",
+   "type": "armor_chest",
+   "rarity": "rare",
+   "sell": 52,
+   "lore": "Brass and soot from the grave watch.",
+   "icon": "art/items/set_warden_chest.svg",
+   "offlineStats": {
+    "stat_vit": 8,
+    "stat_str": 4
+   }
+  },
+  "set_warden_hands": {
+   "name": "Lamplight Grips",
+   "type": "armor_hands",
+   "rarity": "uncommon",
+   "sell": 14,
+   "lore": "Brass and soot from the grave watch.",
+   "icon": "art/items/set_warden_hands.svg",
+   "offlineStats": {
+    "stat_vit": 2,
+    "stat_str": 1
+   }
+  },
+  "set_warden_legs": {
+   "name": "Lamplight Legguards",
+   "type": "armor_legs",
+   "rarity": "rare",
+   "sell": 39,
+   "lore": "Brass and soot from the grave watch.",
+   "icon": "art/items/set_warden_legs.svg",
+   "offlineStats": {
+    "stat_vit": 6,
+    "stat_str": 3
+   }
+  },
+  "set_warden_feet": {
+   "name": "Lamplight Treads",
+   "type": "armor_feet",
+   "rarity": "epic",
+   "sell": 44,
+   "lore": "Brass and soot from the grave watch.",
+   "icon": "art/items/set_warden_feet.svg",
+   "offlineStats": {
+    "stat_vit": 6,
+    "stat_str": 3
+   }
+  },
+  "set_monk_head": {
+   "name": "Bellwake Crown",
+   "type": "armor_head",
+   "rarity": "uncommon",
+   "sell": 14,
+   "lore": "Worn thin by a thousand measured tolls.",
+   "icon": "art/items/set_monk_head.svg",
+   "offlineStats": {
+    "stat_str": 2,
+    "stat_agi": 1
+   }
+  },
+  "set_monk_chest": {
+   "name": "Bellwake Vestment",
+   "type": "armor_chest",
+   "rarity": "rare",
+   "sell": 52,
+   "lore": "Worn thin by a thousand measured tolls.",
+   "icon": "art/items/set_monk_chest.svg",
+   "offlineStats": {
+    "stat_str": 8,
+    "stat_agi": 4
+   }
+  },
+  "set_monk_hands": {
+   "name": "Bellwake Grips",
+   "type": "armor_hands",
+   "rarity": "uncommon",
+   "sell": 14,
+   "lore": "Worn thin by a thousand measured tolls.",
+   "icon": "art/items/set_monk_hands.svg",
+   "offlineStats": {
+    "stat_str": 2,
+    "stat_agi": 1
+   }
+  },
+  "set_monk_legs": {
+   "name": "Bellwake Legguards",
+   "type": "armor_legs",
+   "rarity": "rare",
+   "sell": 39,
+   "lore": "Worn thin by a thousand measured tolls.",
+   "icon": "art/items/set_monk_legs.svg",
+   "offlineStats": {
+    "stat_str": 6,
+    "stat_agi": 3
+   }
+  },
+  "set_monk_feet": {
+   "name": "Bellwake Treads",
+   "type": "armor_feet",
+   "rarity": "epic",
+   "sell": 44,
+   "lore": "Worn thin by a thousand measured tolls.",
+   "icon": "art/items/set_monk_feet.svg",
+   "offlineStats": {
+    "stat_str": 6,
+    "stat_agi": 3
+   }
+  },
+  "set_ossuary_head": {
+   "name": "Ivory Reliquary Crown",
+   "type": "armor_head",
+   "rarity": "uncommon",
+   "sell": 14,
+   "lore": "Bone plates engraved with the Covenant dead.",
+   "icon": "art/items/set_ossuary_head.svg",
+   "offlineStats": {
+    "stat_int": 2,
+    "stat_vit": 1
+   }
+  },
+  "set_ossuary_chest": {
+   "name": "Ivory Reliquary Vestment",
+   "type": "armor_chest",
+   "rarity": "rare",
+   "sell": 52,
+   "lore": "Bone plates engraved with the Covenant dead.",
+   "icon": "art/items/set_ossuary_chest.svg",
+   "offlineStats": {
+    "stat_int": 8,
+    "stat_vit": 4
+   }
+  },
+  "set_ossuary_hands": {
+   "name": "Ivory Reliquary Grips",
+   "type": "armor_hands",
+   "rarity": "uncommon",
+   "sell": 14,
+   "lore": "Bone plates engraved with the Covenant dead.",
+   "icon": "art/items/set_ossuary_hands.svg",
+   "offlineStats": {
+    "stat_int": 2,
+    "stat_vit": 1
+   }
+  },
+  "set_ossuary_legs": {
+   "name": "Ivory Reliquary Legguards",
+   "type": "armor_legs",
+   "rarity": "rare",
+   "sell": 39,
+   "lore": "Bone plates engraved with the Covenant dead.",
+   "icon": "art/items/set_ossuary_legs.svg",
+   "offlineStats": {
+    "stat_int": 6,
+    "stat_vit": 3
+   }
+  },
+  "set_ossuary_feet": {
+   "name": "Ivory Reliquary Treads",
+   "type": "armor_feet",
+   "rarity": "epic",
+   "sell": 44,
+   "lore": "Bone plates engraved with the Covenant dead.",
+   "icon": "art/items/set_ossuary_feet.svg",
+   "offlineStats": {
+    "stat_int": 6,
+    "stat_vit": 3
+   }
+  },
+  "set_mourner_head": {
+   "name": "Widowveil Crown",
+   "type": "armor_head",
+   "rarity": "uncommon",
+   "sell": 14,
+   "lore": "Funeral cloth that remembers every name.",
+   "icon": "art/items/set_mourner_head.svg",
+   "offlineStats": {
+    "stat_int": 2,
+    "stat_agi": 1
+   }
+  },
+  "set_mourner_chest": {
+   "name": "Widowveil Vestment",
+   "type": "armor_chest",
+   "rarity": "rare",
+   "sell": 52,
+   "lore": "Funeral cloth that remembers every name.",
+   "icon": "art/items/set_mourner_chest.svg",
+   "offlineStats": {
+    "stat_int": 8,
+    "stat_agi": 4
+   }
+  },
+  "set_mourner_hands": {
+   "name": "Widowveil Grips",
+   "type": "armor_hands",
+   "rarity": "uncommon",
+   "sell": 14,
+   "lore": "Funeral cloth that remembers every name.",
+   "icon": "art/items/set_mourner_hands.svg",
+   "offlineStats": {
+    "stat_int": 2,
+    "stat_agi": 1
+   }
+  },
+  "set_mourner_legs": {
+   "name": "Widowveil Legguards",
+   "type": "armor_legs",
+   "rarity": "rare",
+   "sell": 39,
+   "lore": "Funeral cloth that remembers every name.",
+   "icon": "art/items/set_mourner_legs.svg",
+   "offlineStats": {
+    "stat_int": 6,
+    "stat_agi": 3
+   }
+  },
+  "set_mourner_feet": {
+   "name": "Widowveil Treads",
+   "type": "armor_feet",
+   "rarity": "epic",
+   "sell": 44,
+   "lore": "Funeral cloth that remembers every name.",
+   "icon": "art/items/set_mourner_feet.svg",
+   "offlineStats": {
+    "stat_int": 6,
+    "stat_agi": 3
+   }
+  },
+  "set_witch_head": {
+   "name": "Carrionbloom Crown",
+   "type": "armor_head",
+   "rarity": "uncommon",
+   "sell": 14,
+   "lore": "Living thorns bind the seams shut.",
+   "icon": "art/items/set_witch_head.svg",
+   "offlineStats": {
+    "stat_int": 2,
+    "stat_vit": 1
+   }
+  },
+  "set_witch_chest": {
+   "name": "Carrionbloom Vestment",
+   "type": "armor_chest",
+   "rarity": "rare",
+   "sell": 52,
+   "lore": "Living thorns bind the seams shut.",
+   "icon": "art/items/set_witch_chest.svg",
+   "offlineStats": {
+    "stat_int": 8,
+    "stat_vit": 4
+   }
+  },
+  "set_witch_hands": {
+   "name": "Carrionbloom Grips",
+   "type": "armor_hands",
+   "rarity": "uncommon",
+   "sell": 14,
+   "lore": "Living thorns bind the seams shut.",
+   "icon": "art/items/set_witch_hands.svg",
+   "offlineStats": {
+    "stat_int": 2,
+    "stat_vit": 1
+   }
+  },
+  "set_witch_legs": {
+   "name": "Carrionbloom Legguards",
+   "type": "armor_legs",
+   "rarity": "rare",
+   "sell": 39,
+   "lore": "Living thorns bind the seams shut.",
+   "icon": "art/items/set_witch_legs.svg",
+   "offlineStats": {
+    "stat_int": 6,
+    "stat_vit": 3
+   }
+  },
+  "set_witch_feet": {
+   "name": "Carrionbloom Treads",
+   "type": "armor_feet",
+   "rarity": "epic",
+   "sell": 44,
+   "lore": "Living thorns bind the seams shut.",
+   "icon": "art/items/set_witch_feet.svg",
+   "offlineStats": {
+    "stat_int": 6,
+    "stat_vit": 3
+   }
+  },
+  "set_rotweaver_head": {
+   "name": "Blightweave Crown",
+   "type": "armor_head",
+   "rarity": "uncommon",
+   "sell": 14,
+   "lore": "A sickly mantle spun where the plague took root.",
+   "icon": "art/items/set_rotweaver_head.svg",
+   "offlineStats": {
+    "stat_int": 2,
+    "stat_vit": 1
+   }
+  },
+  "set_rotweaver_chest": {
+   "name": "Blightweave Vestment",
+   "type": "armor_chest",
+   "rarity": "rare",
+   "sell": 52,
+   "lore": "A sickly mantle spun where the plague took root.",
+   "icon": "art/items/set_rotweaver_chest.svg",
+   "offlineStats": {
+    "stat_int": 8,
+    "stat_vit": 4
+   }
+  },
+  "set_rotweaver_hands": {
+   "name": "Blightweave Grips",
+   "type": "armor_hands",
+   "rarity": "uncommon",
+   "sell": 14,
+   "lore": "A sickly mantle spun where the plague took root.",
+   "icon": "art/items/set_rotweaver_hands.svg",
+   "offlineStats": {
+    "stat_int": 2,
+    "stat_vit": 1
+   }
+  },
+  "set_rotweaver_legs": {
+   "name": "Blightweave Legguards",
+   "type": "armor_legs",
+   "rarity": "rare",
+   "sell": 39,
+   "lore": "A sickly mantle spun where the plague took root.",
+   "icon": "art/items/set_rotweaver_legs.svg",
+   "offlineStats": {
+    "stat_int": 6,
+    "stat_vit": 3
+   }
+  },
+  "set_rotweaver_feet": {
+   "name": "Blightweave Treads",
+   "type": "armor_feet",
+   "rarity": "epic",
+   "sell": 44,
+   "lore": "A sickly mantle spun where the plague took root.",
+   "icon": "art/items/set_rotweaver_feet.svg",
+   "offlineStats": {
+    "stat_int": 6,
+    "stat_vit": 3
+   }
+  },
+  "set_knight_head": {
+   "name": "Hollow Oath Crown",
+   "type": "armor_head",
+   "rarity": "uncommon",
+   "sell": 14,
+   "lore": "Blackened plate still bearing its broken vow.",
+   "icon": "art/items/set_knight_head.svg",
+   "offlineStats": {
+    "stat_str": 2,
+    "stat_vit": 1
+   }
+  },
+  "set_knight_chest": {
+   "name": "Hollow Oath Vestment",
+   "type": "armor_chest",
+   "rarity": "rare",
+   "sell": 52,
+   "lore": "Blackened plate still bearing its broken vow.",
+   "icon": "art/items/set_knight_chest.svg",
+   "offlineStats": {
+    "stat_str": 8,
+    "stat_vit": 4
+   }
+  },
+  "set_knight_hands": {
+   "name": "Hollow Oath Grips",
+   "type": "armor_hands",
+   "rarity": "uncommon",
+   "sell": 14,
+   "lore": "Blackened plate still bearing its broken vow.",
+   "icon": "art/items/set_knight_hands.svg",
+   "offlineStats": {
+    "stat_str": 2,
+    "stat_vit": 1
+   }
+  },
+  "set_knight_legs": {
+   "name": "Hollow Oath Legguards",
+   "type": "armor_legs",
+   "rarity": "rare",
+   "sell": 39,
+   "lore": "Blackened plate still bearing its broken vow.",
+   "icon": "art/items/set_knight_legs.svg",
+   "offlineStats": {
+    "stat_str": 6,
+    "stat_vit": 3
+   }
+  },
+  "set_knight_feet": {
+   "name": "Hollow Oath Treads",
+   "type": "armor_feet",
+   "rarity": "epic",
+   "sell": 44,
+   "lore": "Blackened plate still bearing its broken vow.",
+   "icon": "art/items/set_knight_feet.svg",
+   "offlineStats": {
+    "stat_str": 6,
+    "stat_vit": 3
+   }
+  },
+  "set_veil_head": {
+   "name": "Threshold Crown",
+   "type": "armor_head",
+   "rarity": "uncommon",
+   "sell": 14,
+   "lore": "A border of silver marks the edge between worlds.",
+   "icon": "art/items/set_veil_head.svg",
+   "offlineStats": {
+    "stat_agi": 2,
+    "stat_int": 1
+   }
+  },
+  "set_veil_chest": {
+   "name": "Threshold Vestment",
+   "type": "armor_chest",
+   "rarity": "rare",
+   "sell": 52,
+   "lore": "A border of silver marks the edge between worlds.",
+   "icon": "art/items/set_veil_chest.svg",
+   "offlineStats": {
+    "stat_agi": 8,
+    "stat_int": 4
+   }
+  },
+  "set_veil_hands": {
+   "name": "Threshold Grips",
+   "type": "armor_hands",
+   "rarity": "uncommon",
+   "sell": 14,
+   "lore": "A border of silver marks the edge between worlds.",
+   "icon": "art/items/set_veil_hands.svg",
+   "offlineStats": {
+    "stat_agi": 2,
+    "stat_int": 1
+   }
+  },
+  "set_veil_legs": {
+   "name": "Threshold Legguards",
+   "type": "armor_legs",
+   "rarity": "rare",
+   "sell": 39,
+   "lore": "A border of silver marks the edge between worlds.",
+   "icon": "art/items/set_veil_legs.svg",
+   "offlineStats": {
+    "stat_agi": 6,
+    "stat_int": 3
+   }
+  },
+  "set_veil_feet": {
+   "name": "Threshold Treads",
+   "type": "armor_feet",
+   "rarity": "epic",
+   "sell": 44,
+   "lore": "A border of silver marks the edge between worlds.",
+   "icon": "art/items/set_veil_feet.svg",
+   "offlineStats": {
+    "stat_agi": 6,
+    "stat_int": 3
+   }
+  },
+  "set_gravecaller_ascended_head": {
+   "name": "Epitaph Sovereign Crown",
+   "type": "armor_head",
+   "rarity": "rare",
+   "sell": 46,
+   "lore": "A sovereign name is written on every bone clasp.",
+   "icon": "art/items/set_gravecaller_ascended_head.svg",
+   "offlineStats": {
+    "stat_int": 5,
+    "stat_vit": 2
+   }
+  },
+  "set_gravecaller_ascended_chest": {
+   "name": "Epitaph Sovereign Vestment",
+   "type": "armor_chest",
+   "rarity": "epic",
+   "sell": 108,
+   "lore": "A sovereign name is written on every bone clasp.",
+   "icon": "art/items/set_gravecaller_ascended_chest.svg",
+   "offlineStats": {
+    "stat_int": 13,
+    "stat_vit": 6
+   }
+  },
+  "set_gravecaller_ascended_hands": {
+   "name": "Epitaph Sovereign Grips",
+   "type": "armor_hands",
+   "rarity": "rare",
+   "sell": 46,
+   "lore": "A sovereign name is written on every bone clasp.",
+   "icon": "art/items/set_gravecaller_ascended_hands.svg",
+   "offlineStats": {
+    "stat_int": 5,
+    "stat_vit": 2
+   }
+  },
+  "set_gravecaller_ascended_legs": {
+   "name": "Epitaph Sovereign Legguards",
+   "type": "armor_legs",
+   "rarity": "epic",
+   "sell": 86,
+   "lore": "A sovereign name is written on every bone clasp.",
+   "icon": "art/items/set_gravecaller_ascended_legs.svg",
+   "offlineStats": {
+    "stat_int": 10,
+    "stat_vit": 4
+   }
+  },
+  "set_gravecaller_ascended_feet": {
+   "name": "Epitaph Sovereign Treads",
+   "type": "armor_feet",
+   "rarity": "epic",
+   "sell": 64,
+   "lore": "A sovereign name is written on every bone clasp.",
+   "icon": "art/items/set_gravecaller_ascended_feet.svg",
+   "offlineStats": {
+    "stat_int": 7,
+    "stat_vit": 3
+   }
+  },
+  "set_warden_ascended_head": {
+   "name": "Nightwatch Beacon Crown",
+   "type": "armor_head",
+   "rarity": "rare",
+   "sell": 46,
+   "lore": "Its caged flame answers the last watch bell.",
+   "icon": "art/items/set_warden_ascended_head.svg",
+   "offlineStats": {
+    "stat_vit": 5,
+    "stat_str": 2
+   }
+  },
+  "set_warden_ascended_chest": {
+   "name": "Nightwatch Beacon Vestment",
+   "type": "armor_chest",
+   "rarity": "epic",
+   "sell": 108,
+   "lore": "Its caged flame answers the last watch bell.",
+   "icon": "art/items/set_warden_ascended_chest.svg",
+   "offlineStats": {
+    "stat_vit": 13,
+    "stat_str": 6
+   }
+  },
+  "set_warden_ascended_hands": {
+   "name": "Nightwatch Beacon Grips",
+   "type": "armor_hands",
+   "rarity": "rare",
+   "sell": 46,
+   "lore": "Its caged flame answers the last watch bell.",
+   "icon": "art/items/set_warden_ascended_hands.svg",
+   "offlineStats": {
+    "stat_vit": 5,
+    "stat_str": 2
+   }
+  },
+  "set_warden_ascended_legs": {
+   "name": "Nightwatch Beacon Legguards",
+   "type": "armor_legs",
+   "rarity": "epic",
+   "sell": 86,
+   "lore": "Its caged flame answers the last watch bell.",
+   "icon": "art/items/set_warden_ascended_legs.svg",
+   "offlineStats": {
+    "stat_vit": 10,
+    "stat_str": 4
+   }
+  },
+  "set_warden_ascended_feet": {
+   "name": "Nightwatch Beacon Treads",
+   "type": "armor_feet",
+   "rarity": "epic",
+   "sell": 64,
+   "lore": "Its caged flame answers the last watch bell.",
+   "icon": "art/items/set_warden_ascended_feet.svg",
+   "offlineStats": {
+    "stat_vit": 7,
+    "stat_str": 3
+   }
+  },
+  "set_monk_ascended_head": {
+   "name": "Last Toll Crown",
+   "type": "armor_head",
+   "rarity": "rare",
+   "sell": 46,
+   "lore": "Bronze thread hums with the final note.",
+   "icon": "art/items/set_monk_ascended_head.svg",
+   "offlineStats": {
+    "stat_str": 5,
+    "stat_agi": 2
+   }
+  },
+  "set_monk_ascended_chest": {
+   "name": "Last Toll Vestment",
+   "type": "armor_chest",
+   "rarity": "epic",
+   "sell": 108,
+   "lore": "Bronze thread hums with the final note.",
+   "icon": "art/items/set_monk_ascended_chest.svg",
+   "offlineStats": {
+    "stat_str": 13,
+    "stat_agi": 6
+   }
+  },
+  "set_monk_ascended_hands": {
+   "name": "Last Toll Grips",
+   "type": "armor_hands",
+   "rarity": "rare",
+   "sell": 46,
+   "lore": "Bronze thread hums with the final note.",
+   "icon": "art/items/set_monk_ascended_hands.svg",
+   "offlineStats": {
+    "stat_str": 5,
+    "stat_agi": 2
+   }
+  },
+  "set_monk_ascended_legs": {
+   "name": "Last Toll Legguards",
+   "type": "armor_legs",
+   "rarity": "epic",
+   "sell": 86,
+   "lore": "Bronze thread hums with the final note.",
+   "icon": "art/items/set_monk_ascended_legs.svg",
+   "offlineStats": {
+    "stat_str": 10,
+    "stat_agi": 4
+   }
+  },
+  "set_monk_ascended_feet": {
+   "name": "Last Toll Treads",
+   "type": "armor_feet",
+   "rarity": "epic",
+   "sell": 64,
+   "lore": "Bronze thread hums with the final note.",
+   "icon": "art/items/set_monk_ascended_feet.svg",
+   "offlineStats": {
+    "stat_str": 7,
+    "stat_agi": 3
+   }
+  },
+  "set_ossuary_ascended_head": {
+   "name": "Marrow Regent Crown",
+   "type": "armor_head",
+   "rarity": "rare",
+   "sell": 46,
+   "lore": "The reliquary opens only for its bearer.",
+   "icon": "art/items/set_ossuary_ascended_head.svg",
+   "offlineStats": {
+    "stat_int": 5,
+    "stat_vit": 2
+   }
+  },
+  "set_ossuary_ascended_chest": {
+   "name": "Marrow Regent Vestment",
+   "type": "armor_chest",
+   "rarity": "epic",
+   "sell": 108,
+   "lore": "The reliquary opens only for its bearer.",
+   "icon": "art/items/set_ossuary_ascended_chest.svg",
+   "offlineStats": {
+    "stat_int": 13,
+    "stat_vit": 6
+   }
+  },
+  "set_ossuary_ascended_hands": {
+   "name": "Marrow Regent Grips",
+   "type": "armor_hands",
+   "rarity": "rare",
+   "sell": 46,
+   "lore": "The reliquary opens only for its bearer.",
+   "icon": "art/items/set_ossuary_ascended_hands.svg",
+   "offlineStats": {
+    "stat_int": 5,
+    "stat_vit": 2
+   }
+  },
+  "set_ossuary_ascended_legs": {
+   "name": "Marrow Regent Legguards",
+   "type": "armor_legs",
+   "rarity": "epic",
+   "sell": 86,
+   "lore": "The reliquary opens only for its bearer.",
+   "icon": "art/items/set_ossuary_ascended_legs.svg",
+   "offlineStats": {
+    "stat_int": 10,
+    "stat_vit": 4
+   }
+  },
+  "set_ossuary_ascended_feet": {
+   "name": "Marrow Regent Treads",
+   "type": "armor_feet",
+   "rarity": "epic",
+   "sell": 64,
+   "lore": "The reliquary opens only for its bearer.",
+   "icon": "art/items/set_ossuary_ascended_feet.svg",
+   "offlineStats": {
+    "stat_int": 7,
+    "stat_vit": 3
+   }
+  },
+  "set_mourner_ascended_head": {
+   "name": "Pale Requiem Crown",
+   "type": "armor_head",
+   "rarity": "rare",
+   "sell": 46,
+   "lore": "A hush follows wherever the silver hem falls.",
+   "icon": "art/items/set_mourner_ascended_head.svg",
+   "offlineStats": {
+    "stat_int": 5,
+    "stat_agi": 2
+   }
+  },
+  "set_mourner_ascended_chest": {
+   "name": "Pale Requiem Vestment",
+   "type": "armor_chest",
+   "rarity": "epic",
+   "sell": 108,
+   "lore": "A hush follows wherever the silver hem falls.",
+   "icon": "art/items/set_mourner_ascended_chest.svg",
+   "offlineStats": {
+    "stat_int": 13,
+    "stat_agi": 6
+   }
+  },
+  "set_mourner_ascended_hands": {
+   "name": "Pale Requiem Grips",
+   "type": "armor_hands",
+   "rarity": "rare",
+   "sell": 46,
+   "lore": "A hush follows wherever the silver hem falls.",
+   "icon": "art/items/set_mourner_ascended_hands.svg",
+   "offlineStats": {
+    "stat_int": 5,
+    "stat_agi": 2
+   }
+  },
+  "set_mourner_ascended_legs": {
+   "name": "Pale Requiem Legguards",
+   "type": "armor_legs",
+   "rarity": "epic",
+   "sell": 86,
+   "lore": "A hush follows wherever the silver hem falls.",
+   "icon": "art/items/set_mourner_ascended_legs.svg",
+   "offlineStats": {
+    "stat_int": 10,
+    "stat_agi": 4
+   }
+  },
+  "set_mourner_ascended_feet": {
+   "name": "Pale Requiem Treads",
+   "type": "armor_feet",
+   "rarity": "epic",
+   "sell": 64,
+   "lore": "A hush follows wherever the silver hem falls.",
+   "icon": "art/items/set_mourner_ascended_feet.svg",
+   "offlineStats": {
+    "stat_int": 7,
+    "stat_agi": 3
+   }
+  },
+  "set_witch_ascended_head": {
+   "name": "Thorn Covenant Crown",
+   "type": "armor_head",
+   "rarity": "rare",
+   "sell": 46,
+   "lore": "The roots draw strength from what lies beneath.",
+   "icon": "art/items/set_witch_ascended_head.svg",
+   "offlineStats": {
+    "stat_int": 5,
+    "stat_vit": 2
+   }
+  },
+  "set_witch_ascended_chest": {
+   "name": "Thorn Covenant Vestment",
+   "type": "armor_chest",
+   "rarity": "epic",
+   "sell": 108,
+   "lore": "The roots draw strength from what lies beneath.",
+   "icon": "art/items/set_witch_ascended_chest.svg",
+   "offlineStats": {
+    "stat_int": 13,
+    "stat_vit": 6
+   }
+  },
+  "set_witch_ascended_hands": {
+   "name": "Thorn Covenant Grips",
+   "type": "armor_hands",
+   "rarity": "rare",
+   "sell": 46,
+   "lore": "The roots draw strength from what lies beneath.",
+   "icon": "art/items/set_witch_ascended_hands.svg",
+   "offlineStats": {
+    "stat_int": 5,
+    "stat_vit": 2
+   }
+  },
+  "set_witch_ascended_legs": {
+   "name": "Thorn Covenant Legguards",
+   "type": "armor_legs",
+   "rarity": "epic",
+   "sell": 86,
+   "lore": "The roots draw strength from what lies beneath.",
+   "icon": "art/items/set_witch_ascended_legs.svg",
+   "offlineStats": {
+    "stat_int": 10,
+    "stat_vit": 4
+   }
+  },
+  "set_witch_ascended_feet": {
+   "name": "Thorn Covenant Treads",
+   "type": "armor_feet",
+   "rarity": "epic",
+   "sell": 64,
+   "lore": "The roots draw strength from what lies beneath.",
+   "icon": "art/items/set_witch_ascended_feet.svg",
+   "offlineStats": {
+    "stat_int": 7,
+    "stat_vit": 3
+   }
+  },
+  "set_rotweaver_ascended_head": {
+   "name": "Virulent Choir Crown",
+   "type": "armor_head",
+   "rarity": "rare",
+   "sell": 46,
+   "lore": "A bright plague song runs through its seams.",
+   "icon": "art/items/set_rotweaver_ascended_head.svg",
+   "offlineStats": {
+    "stat_int": 5,
+    "stat_vit": 2
+   }
+  },
+  "set_rotweaver_ascended_chest": {
+   "name": "Virulent Choir Vestment",
+   "type": "armor_chest",
+   "rarity": "epic",
+   "sell": 108,
+   "lore": "A bright plague song runs through its seams.",
+   "icon": "art/items/set_rotweaver_ascended_chest.svg",
+   "offlineStats": {
+    "stat_int": 13,
+    "stat_vit": 6
+   }
+  },
+  "set_rotweaver_ascended_hands": {
+   "name": "Virulent Choir Grips",
+   "type": "armor_hands",
+   "rarity": "rare",
+   "sell": 46,
+   "lore": "A bright plague song runs through its seams.",
+   "icon": "art/items/set_rotweaver_ascended_hands.svg",
+   "offlineStats": {
+    "stat_int": 5,
+    "stat_vit": 2
+   }
+  },
+  "set_rotweaver_ascended_legs": {
+   "name": "Virulent Choir Legguards",
+   "type": "armor_legs",
+   "rarity": "epic",
+   "sell": 86,
+   "lore": "A bright plague song runs through its seams.",
+   "icon": "art/items/set_rotweaver_ascended_legs.svg",
+   "offlineStats": {
+    "stat_int": 10,
+    "stat_vit": 4
+   }
+  },
+  "set_rotweaver_ascended_feet": {
+   "name": "Virulent Choir Treads",
+   "type": "armor_feet",
+   "rarity": "epic",
+   "sell": 64,
+   "lore": "A bright plague song runs through its seams.",
+   "icon": "art/items/set_rotweaver_ascended_feet.svg",
+   "offlineStats": {
+    "stat_int": 7,
+    "stat_vit": 3
+   }
+  },
+  "set_knight_ascended_head": {
+   "name": "Oathbreaker Crown",
+   "type": "armor_head",
+   "rarity": "rare",
+   "sell": 46,
+   "lore": "The oath is broken; the shield remains.",
+   "icon": "art/items/set_knight_ascended_head.svg",
+   "offlineStats": {
+    "stat_str": 5,
+    "stat_vit": 2
+   }
+  },
+  "set_knight_ascended_chest": {
+   "name": "Oathbreaker Vestment",
+   "type": "armor_chest",
+   "rarity": "epic",
+   "sell": 108,
+   "lore": "The oath is broken; the shield remains.",
+   "icon": "art/items/set_knight_ascended_chest.svg",
+   "offlineStats": {
+    "stat_str": 13,
+    "stat_vit": 6
+   }
+  },
+  "set_knight_ascended_hands": {
+   "name": "Oathbreaker Grips",
+   "type": "armor_hands",
+   "rarity": "rare",
+   "sell": 46,
+   "lore": "The oath is broken; the shield remains.",
+   "icon": "art/items/set_knight_ascended_hands.svg",
+   "offlineStats": {
+    "stat_str": 5,
+    "stat_vit": 2
+   }
+  },
+  "set_knight_ascended_legs": {
+   "name": "Oathbreaker Legguards",
+   "type": "armor_legs",
+   "rarity": "epic",
+   "sell": 86,
+   "lore": "The oath is broken; the shield remains.",
+   "icon": "art/items/set_knight_ascended_legs.svg",
+   "offlineStats": {
+    "stat_str": 10,
+    "stat_vit": 4
+   }
+  },
+  "set_knight_ascended_feet": {
+   "name": "Oathbreaker Treads",
+   "type": "armor_feet",
+   "rarity": "epic",
+   "sell": 64,
+   "lore": "The oath is broken; the shield remains.",
+   "icon": "art/items/set_knight_ascended_feet.svg",
+   "offlineStats": {
+    "stat_str": 7,
+    "stat_vit": 3
+   }
+  },
+  "set_veil_ascended_head": {
+   "name": "Umbral Crossing Crown",
+   "type": "armor_head",
+   "rarity": "rare",
+   "sell": 46,
+   "lore": "The wearer leaves no shadow on either side.",
+   "icon": "art/items/set_veil_ascended_head.svg",
+   "offlineStats": {
+    "stat_agi": 5,
+    "stat_int": 2
+   }
+  },
+  "set_veil_ascended_chest": {
+   "name": "Umbral Crossing Vestment",
+   "type": "armor_chest",
+   "rarity": "epic",
+   "sell": 108,
+   "lore": "The wearer leaves no shadow on either side.",
+   "icon": "art/items/set_veil_ascended_chest.svg",
+   "offlineStats": {
+    "stat_agi": 13,
+    "stat_int": 6
+   }
+  },
+  "set_veil_ascended_hands": {
+   "name": "Umbral Crossing Grips",
+   "type": "armor_hands",
+   "rarity": "rare",
+   "sell": 46,
+   "lore": "The wearer leaves no shadow on either side.",
+   "icon": "art/items/set_veil_ascended_hands.svg",
+   "offlineStats": {
+    "stat_agi": 5,
+    "stat_int": 2
+   }
+  },
+  "set_veil_ascended_legs": {
+   "name": "Umbral Crossing Legguards",
+   "type": "armor_legs",
+   "rarity": "epic",
+   "sell": 86,
+   "lore": "The wearer leaves no shadow on either side.",
+   "icon": "art/items/set_veil_ascended_legs.svg",
+   "offlineStats": {
+    "stat_agi": 10,
+    "stat_int": 4
+   }
+  },
+  "set_veil_ascended_feet": {
+   "name": "Umbral Crossing Treads",
+   "type": "armor_feet",
+   "rarity": "epic",
+   "sell": 64,
+   "lore": "The wearer leaves no shadow on either side.",
+   "icon": "art/items/set_veil_ascended_feet.svg",
+   "offlineStats": {
+    "stat_agi": 7,
+    "stat_int": 3
+   }
+  },
+  "leg_legion_unburied_head": {
+   "name": "Warcrown of the Unburied",
+   "type": "armor_head",
+   "rarity": "legendary",
+   "sell": 120,
+   "lore": "Forged for the one who never lets the dead lie. The legion marches in its wearer’s footsteps, and does not stop.",
+   "icon": "art/items/leg_legion_unburied_head.svg",
+   "offlineStats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   }
+  },
+  "leg_legion_unburied_chest": {
+   "name": "Cuirass of the Unburied",
+   "type": "armor_chest",
+   "rarity": "legendary",
+   "sell": 180,
+   "lore": "Forged for the one who never lets the dead lie. The legion marches in its wearer’s footsteps, and does not stop.",
+   "icon": "art/items/leg_legion_unburied_chest.svg",
+   "offlineStats": {
+    "stat_int": 15,
+    "stat_vit": 7
+   }
+  },
+  "leg_legion_unburied_hands": {
+   "name": "Gauntlets of the Unburied",
+   "type": "armor_hands",
+   "rarity": "legendary",
+   "sell": 120,
+   "lore": "Forged for the one who never lets the dead lie. The legion marches in its wearer’s footsteps, and does not stop.",
+   "icon": "art/items/leg_legion_unburied_hands.svg",
+   "offlineStats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   }
+  },
+  "leg_legion_unburied_legs": {
+   "name": "Greaves of the Unburied",
+   "type": "armor_legs",
+   "rarity": "legendary",
+   "sell": 150,
+   "lore": "Forged for the one who never lets the dead lie. The legion marches in its wearer’s footsteps, and does not stop.",
+   "icon": "art/items/leg_legion_unburied_legs.svg",
+   "offlineStats": {
+    "stat_int": 12,
+    "stat_vit": 5
+   }
+  },
+  "leg_legion_unburied_feet": {
+   "name": "Marching Boots of the Unburied",
+   "type": "armor_feet",
+   "rarity": "legendary",
+   "sell": 120,
+   "lore": "Forged for the one who never lets the dead lie. The legion marches in its wearer’s footsteps, and does not stop.",
+   "icon": "art/items/leg_legion_unburied_feet.svg",
+   "offlineStats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   }
+  },
+  "leg_colossus_mantle_head": {
+   "name": "Colossus Cowl",
+   "type": "armor_head",
+   "rarity": "legendary",
+   "sell": 120,
+   "lore": "A giant’s ribs, hung with every vow the Covenant ever broke. What strikes the wearer is struck back.",
+   "icon": "art/items/leg_colossus_mantle_head.svg",
+   "offlineStats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   }
+  },
+  "leg_colossus_mantle_chest": {
+   "name": "Colossus Mantle",
+   "type": "armor_chest",
+   "rarity": "legendary",
+   "sell": 180,
+   "lore": "A giant’s ribs, hung with every vow the Covenant ever broke. What strikes the wearer is struck back.",
+   "icon": "art/items/leg_colossus_mantle_chest.svg",
+   "offlineStats": {
+    "stat_int": 15,
+    "stat_vit": 7
+   }
+  },
+  "leg_colossus_mantle_hands": {
+   "name": "Colossus Fists",
+   "type": "armor_hands",
+   "rarity": "legendary",
+   "sell": 120,
+   "lore": "A giant’s ribs, hung with every vow the Covenant ever broke. What strikes the wearer is struck back.",
+   "icon": "art/items/leg_colossus_mantle_hands.svg",
+   "offlineStats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   }
+  },
+  "leg_colossus_mantle_legs": {
+   "name": "Colossus Cuisses",
+   "type": "armor_legs",
+   "rarity": "legendary",
+   "sell": 150,
+   "lore": "A giant’s ribs, hung with every vow the Covenant ever broke. What strikes the wearer is struck back.",
+   "icon": "art/items/leg_colossus_mantle_legs.svg",
+   "offlineStats": {
+    "stat_int": 12,
+    "stat_vit": 5
+   }
+  },
+  "leg_colossus_mantle_feet": {
+   "name": "Colossus Footings",
+   "type": "armor_feet",
+   "rarity": "legendary",
+   "sell": 120,
+   "lore": "A giant’s ribs, hung with every vow the Covenant ever broke. What strikes the wearer is struck back.",
+   "icon": "art/items/leg_colossus_mantle_feet.svg",
+   "offlineStats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   }
+  },
+  "leg_requiem_wraiths_head": {
+   "name": "Wraithveil Hood",
+   "type": "armor_head",
+   "rarity": "legendary",
+   "sell": 120,
+   "lore": "Woven from the last breath of the mourned. The wraiths still sing in it, and some of them stay to help.",
+   "icon": "art/items/leg_requiem_wraiths_head.svg",
+   "offlineStats": {
+    "stat_int": 9,
+    "stat_agi": 4
+   }
+  },
+  "leg_requiem_wraiths_chest": {
+   "name": "Requiem Shroud",
+   "type": "armor_chest",
+   "rarity": "legendary",
+   "sell": 180,
+   "lore": "Woven from the last breath of the mourned. The wraiths still sing in it, and some of them stay to help.",
+   "icon": "art/items/leg_requiem_wraiths_chest.svg",
+   "offlineStats": {
+    "stat_int": 15,
+    "stat_agi": 7
+   }
+  },
+  "leg_requiem_wraiths_hands": {
+   "name": "Wraithgrasp Gloves",
+   "type": "armor_hands",
+   "rarity": "legendary",
+   "sell": 120,
+   "lore": "Woven from the last breath of the mourned. The wraiths still sing in it, and some of them stay to help.",
+   "icon": "art/items/leg_requiem_wraiths_hands.svg",
+   "offlineStats": {
+    "stat_int": 9,
+    "stat_agi": 4
+   }
+  },
+  "leg_requiem_wraiths_legs": {
+   "name": "Wraithwoven Leggings",
+   "type": "armor_legs",
+   "rarity": "legendary",
+   "sell": 150,
+   "lore": "Woven from the last breath of the mourned. The wraiths still sing in it, and some of them stay to help.",
+   "icon": "art/items/leg_requiem_wraiths_legs.svg",
+   "offlineStats": {
+    "stat_int": 12,
+    "stat_agi": 5
+   }
+  },
+  "leg_requiem_wraiths_feet": {
+   "name": "Requiem Slippers",
+   "type": "armor_feet",
+   "rarity": "legendary",
+   "sell": 120,
+   "lore": "Woven from the last breath of the mourned. The wraiths still sing in it, and some of them stay to help.",
+   "icon": "art/items/leg_requiem_wraiths_feet.svg",
+   "offlineStats": {
+    "stat_int": 9,
+    "stat_agi": 4
+   }
+  },
+  "leg_plague_choir_head": {
+   "name": "Choirmaster’s Mask",
+   "type": "armor_head",
+   "rarity": "legendary",
+   "sell": 120,
+   "lore": "Sung into being by a congregation that died of its own hymn. Every note it carries is catching.",
+   "icon": "art/items/leg_plague_choir_head.svg",
+   "offlineStats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   }
+  },
+  "leg_plague_choir_chest": {
+   "name": "Plague Choir Surplice",
+   "type": "armor_chest",
+   "rarity": "legendary",
+   "sell": 180,
+   "lore": "Sung into being by a congregation that died of its own hymn. Every note it carries is catching.",
+   "icon": "art/items/leg_plague_choir_chest.svg",
+   "offlineStats": {
+    "stat_int": 15,
+    "stat_vit": 7
+   }
+  },
+  "leg_plague_choir_hands": {
+   "name": "Blightmonger’s Gloves",
+   "type": "armor_hands",
+   "rarity": "legendary",
+   "sell": 120,
+   "lore": "Sung into being by a congregation that died of its own hymn. Every note it carries is catching.",
+   "icon": "art/items/leg_plague_choir_hands.svg",
+   "offlineStats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   }
+  },
+  "leg_plague_choir_legs": {
+   "name": "Choir Rotleggings",
+   "type": "armor_legs",
+   "rarity": "legendary",
+   "sell": 150,
+   "lore": "Sung into being by a congregation that died of its own hymn. Every note it carries is catching.",
+   "icon": "art/items/leg_plague_choir_legs.svg",
+   "offlineStats": {
+    "stat_int": 12,
+    "stat_vit": 5
+   }
+  },
+  "leg_plague_choir_feet": {
+   "name": "Plague Choir Treads",
+   "type": "armor_feet",
+   "rarity": "legendary",
+   "sell": 120,
+   "lore": "Sung into being by a congregation that died of its own hymn. Every note it carries is catching.",
+   "icon": "art/items/leg_plague_choir_feet.svg",
+   "offlineStats": {
+    "stat_int": 9,
+    "stat_vit": 4
+   }
+  },
+  "staff_bone": {
+   "name": "Vertebral Staff",
+   "type": "weapon",
+   "rarity": "common",
+   "sell": 16,
+   "lore": "Fused vertebrae, still warm from the hand that carried it. Bone Needles fly farther and pierce a second body.",
+   "icon": "art/items/staff_bone.svg",
+   "offlineStats": {
+    "stat_int": 5
+   }
+  },
+  "staff_iron": {
+   "name": "Crypt-Iron Crozier",
+   "type": "weapon",
+   "rarity": "uncommon",
+   "sell": 38,
+   "lore": "A grave-watch crozier with a bell-metal cap. Bone Needles fly farther and pierce a second body.",
+   "icon": "art/items/staff_iron.svg",
+   "offlineStats": {
+    "stat_int": 9,
+    "stat_vit": 1
+   }
+  },
+  "staff_gold": {
+   "name": "Reliquary Staff",
+   "type": "weapon",
+   "rarity": "rare",
+   "sell": 88,
+   "lore": "Tithe-gold wound round a reliquary shaft. Bone Needles fly farther and pierce a second body.",
+   "icon": "art/items/staff_gold.svg",
+   "offlineStats": {
+    "stat_int": 15,
+    "stat_vit": 2
+   }
+  },
+  "staff_hell": {
+   "name": "Hellcoal Crozier",
+   "type": "weapon",
+   "rarity": "epic",
+   "sell": 176,
+   "lore": "Quenched in pyre-coal; the skull at its head never stops smoking. Bone Needles fly farther and pierce a second body.",
+   "icon": "art/items/staff_hell.svg",
+   "offlineStats": {
+    "stat_int": 22,
+    "stat_vit": 4
+   }
+  },
+  "staff_moon": {
+   "name": "Staff of the Pale Moon",
+   "type": "weapon",
+   "rarity": "epic",
+   "sell": 352,
+   "lore": "Cut from a bone that never touched the ground. Bone Needles fly farther and pierce a second body.",
+   "icon": "art/items/staff_moon.svg",
+   "offlineStats": {
+    "stat_int": 30,
+    "stat_vit": 6
+   }
+  },
+  "scythe_bone": {
+   "name": "Gleaner's Scythe",
+   "type": "weapon",
+   "rarity": "common",
+   "sell": 18,
+   "lore": "A gleaner cuts what the living left standing. Your left click becomes a reaping arc; kills in it yield a soul.",
+   "icon": "art/items/scythe_bone.svg",
+   "offlineStats": {
+    "stat_int": 4,
+    "stat_vit": 2
+   }
+  },
+  "scythe_iron": {
+   "name": "Sexton's Scythe",
+   "type": "weapon",
+   "rarity": "uncommon",
+   "sell": 43,
+   "lore": "The sexton swings it at dusk, in rows. Your left click becomes a reaping arc; kills in it yield a soul.",
+   "icon": "art/items/scythe_iron.svg",
+   "offlineStats": {
+    "stat_int": 8,
+    "stat_vit": 3
+   }
+  },
+  "scythe_gold": {
+   "name": "Tithe-Reaper",
+   "type": "weapon",
+   "rarity": "rare",
+   "sell": 99,
+   "lore": "Every swing tolls a coin against the dead. Your left click becomes a reaping arc; kills in it yield a soul.",
+   "icon": "art/items/scythe_gold.svg",
+   "offlineStats": {
+    "stat_int": 13,
+    "stat_vit": 5
+   }
+  },
+  "scythe_hell": {
+   "name": "Pyre Reaper",
+   "type": "weapon",
+   "rarity": "epic",
+   "sell": 198,
+   "lore": "Its edge glows where it has drunk ash. Your left click becomes a reaping arc; kills in it yield a soul.",
+   "icon": "art/items/scythe_hell.svg",
+   "offlineStats": {
+    "stat_int": 19,
+    "stat_vit": 8
+   }
+  },
+  "scythe_moon": {
+   "name": "Moonreaper",
+   "type": "weapon",
+   "rarity": "epic",
+   "sell": 396,
+   "lore": "The last harvest is always by moonlight. Your left click becomes a reaping arc; kills in it yield a soul.",
+   "icon": "art/items/scythe_moon.svg",
+   "offlineStats": {
+    "stat_int": 26,
+    "stat_vit": 11
+   }
+  },
+  "wand_bone": {
+   "name": "Knucklebone Wand",
+   "type": "weapon",
+   "rarity": "common",
+   "sell": 12,
+   "lore": "Finger bones, bound in a hurry. Bone Needles come faster and strike softer.",
+   "icon": "art/items/wand_bone.svg",
+   "offlineStats": {
+    "stat_int": 3
+   }
+  },
+  "wand_iron": {
+   "name": "Iron Mourning Wand",
+   "type": "weapon",
+   "rarity": "uncommon",
+   "sell": 29,
+   "lore": "A mourner flicks it like a hand-bell. Bone Needles come faster and strike softer.",
+   "icon": "art/items/wand_iron.svg",
+   "offlineStats": {
+    "stat_int": 6,
+    "stat_agi": 1
+   }
+  },
+  "wand_gold": {
+   "name": "Gilded Censer Wand",
+   "type": "weapon",
+   "rarity": "rare",
+   "sell": 66,
+   "lore": "A censer chain wound round the grip. Bone Needles come faster and strike softer.",
+   "icon": "art/items/wand_gold.svg",
+   "offlineStats": {
+    "stat_int": 10,
+    "stat_agi": 2
+   }
+  },
+  "wand_hell": {
+   "name": "Emberthorn Wand",
+   "type": "weapon",
+   "rarity": "epic",
+   "sell": 132,
+   "lore": "Thorned, and warm to the touch. Bone Needles come faster and strike softer.",
+   "icon": "art/items/wand_hell.svg",
+   "offlineStats": {
+    "stat_int": 15,
+    "stat_agi": 3
+   }
+  },
+  "wand_moon": {
+   "name": "Wand of Quiet Stars",
+   "type": "weapon",
+   "rarity": "epic",
+   "sell": 264,
+   "lore": "It weighs nothing, and is never quite still. Bone Needles come faster and strike softer.",
+   "icon": "art/items/wand_moon.svg",
+   "offlineStats": {
+    "stat_int": 21,
+    "stat_agi": 5
+   }
+  },
+  "sickle_bone": {
+   "name": "Barrow Sickle",
+   "type": "weapon",
+   "rarity": "common",
+   "sell": 13,
+   "lore": "A curved rib, sharpened on a headstone. Bone Needles leave the target Withered; Exhume returns essence.",
+   "icon": "art/items/sickle_bone.svg",
+   "offlineStats": {
+    "stat_int": 3,
+    "stat_vit": 1
+   }
+  },
+  "sickle_iron": {
+   "name": "Plague Sickle",
+   "type": "weapon",
+   "rarity": "uncommon",
+   "sell": 31,
+   "lore": "The plague priests cut herbs and throats with it. Bone Needles leave the target Withered; Exhume returns essence.",
+   "icon": "art/items/sickle_iron.svg",
+   "offlineStats": {
+    "stat_int": 6,
+    "stat_vit": 2
+   }
+  },
+  "sickle_gold": {
+   "name": "Sexton's Gilded Sickle",
+   "type": "weapon",
+   "rarity": "rare",
+   "sell": 72,
+   "lore": "Gilded for rites nobody admits to. Bone Needles leave the target Withered; Exhume returns essence.",
+   "icon": "art/items/sickle_gold.svg",
+   "offlineStats": {
+    "stat_int": 10,
+    "stat_vit": 3
+   }
+  },
+  "sickle_hell": {
+   "name": "Blightfire Sickle",
+   "type": "weapon",
+   "rarity": "epic",
+   "sell": 143,
+   "lore": "The rot burns instead of festering. Bone Needles leave the target Withered; Exhume returns essence.",
+   "icon": "art/items/sickle_hell.svg",
+   "offlineStats": {
+    "stat_int": 14,
+    "stat_vit": 5
+   }
+  },
+  "sickle_moon": {
+   "name": "Moonrot Sickle",
+   "type": "weapon",
+   "rarity": "epic",
+   "sell": 286,
+   "lore": "Its blade is etched with a blight the moon forgave. Bone Needles leave the target Withered; Exhume returns essence.",
+   "icon": "art/items/sickle_moon.svg",
+   "offlineStats": {
+    "stat_int": 20,
+    "stat_vit": 7
+   }
+  },
+  "skull_focus_bone": {
+   "name": "Pauper's Skull Focus",
+   "type": "offhand",
+   "rarity": "common",
+   "sell": 10,
+   "lore": "A nameless skull that still listens. (Gold and better skulls hold one more thrall.)",
+   "icon": "art/items/skull_focus_bone.svg",
+   "offlineStats": {
+    "stat_int": 1,
+    "stat_vit": 2
+   }
+  },
+  "skull_focus_iron": {
+   "name": "Iron-Jawed Skull Focus",
+   "type": "offhand",
+   "rarity": "uncommon",
+   "sell": 24,
+   "lore": "Its jaw is wired shut so it cannot argue. (Gold and better skulls hold one more thrall.)",
+   "icon": "art/items/skull_focus_iron.svg",
+   "offlineStats": {
+    "stat_int": 3,
+    "stat_vit": 3
+   }
+  },
+  "skull_focus_gold": {
+   "name": "Gilded Skull Focus",
+   "type": "offhand",
+   "rarity": "rare",
+   "sell": 55,
+   "lore": "It remembers a legion. Hold it and command one more thrall.",
+   "icon": "art/items/skull_focus_gold.svg",
+   "offlineStats": {
+    "stat_int": 5,
+    "stat_vit": 5
+   }
+  },
+  "skull_focus_hell": {
+   "name": "Cinder Skull Focus",
+   "type": "offhand",
+   "rarity": "epic",
+   "sell": 110,
+   "lore": "The eyes glow like coals in a cold hearth. Hold it and command one more thrall.",
+   "icon": "art/items/skull_focus_hell.svg",
+   "offlineStats": {
+    "stat_int": 8,
+    "stat_vit": 8
+   }
+  },
+  "skull_focus_moon": {
+   "name": "Moon Skull Focus",
+   "type": "offhand",
+   "rarity": "epic",
+   "sell": 220,
+   "lore": "It was a king, once; it still expects to be obeyed. Hold it and command one more thrall.",
+   "icon": "art/items/skull_focus_moon.svg",
+   "offlineStats": {
+    "stat_int": 11,
+    "stat_vit": 11
+   }
+  },
+  "grimoire_bone": {
+   "name": "Gravedigger's Grimoire",
+   "type": "offhand",
+   "rarity": "common",
+   "sell": 11,
+   "lore": "A gravedigger's ledger of names and their uses. Rites recover sooner.",
+   "icon": "art/items/grimoire_bone.svg",
+   "offlineStats": {
+    "stat_int": 2
+   }
+  },
+  "grimoire_iron": {
+   "name": "Iron-Clasped Grimoire",
+   "type": "offhand",
+   "rarity": "uncommon",
+   "sell": 26,
+   "lore": "Chained shut, and opened only from the inside. Rites recover sooner.",
+   "icon": "art/items/grimoire_iron.svg",
+   "offlineStats": {
+    "stat_int": 4
+   }
+  },
+  "grimoire_gold": {
+   "name": "Gilt Reliquary Grimoire",
+   "type": "offhand",
+   "rarity": "rare",
+   "sell": 61,
+   "lore": "Every page is gilt, every margin a warning. Rites recover sooner.",
+   "icon": "art/items/grimoire_gold.svg",
+   "offlineStats": {
+    "stat_int": 7
+   }
+  },
+  "grimoire_hell": {
+   "name": "Hellbound Grimoire",
+   "type": "offhand",
+   "rarity": "epic",
+   "sell": 121,
+   "lore": "Its binding is singed along the spine. Rites recover sooner.",
+   "icon": "art/items/grimoire_hell.svg",
+   "offlineStats": {
+    "stat_int": 10
+   }
+  },
+  "grimoire_moon": {
+   "name": "Moonlit Grimoire",
+   "type": "offhand",
+   "rarity": "epic",
+   "sell": 242,
+   "lore": "The pages turn themselves to the rite you need. Rites recover sooner.",
+   "icon": "art/items/grimoire_moon.svg",
+   "offlineStats": {
+    "stat_int": 14
+   }
+  },
+  "mourning_bell_bone": {
+   "name": "Pauper's Mourning Bell",
+   "type": "offhand",
+   "rarity": "common",
+   "sell": 10,
+   "lore": "Rung once for each name you could not save. A Mourner's wraith hits mend allies.",
+   "icon": "art/items/mourning_bell_bone.svg",
+   "offlineStats": {
+    "stat_int": 1,
+    "stat_agi": 1
+   }
+  },
+  "mourning_bell_iron": {
+   "name": "Iron Mourning Bell",
+   "type": "offhand",
+   "rarity": "uncommon",
+   "sell": 24,
+   "lore": "Its note is flat on purpose. A Mourner's wraith hits mend allies.",
+   "icon": "art/items/mourning_bell_iron.svg",
+   "offlineStats": {
+    "stat_int": 3,
+    "stat_agi": 2
+   }
+  },
+  "mourning_bell_gold": {
+   "name": "Gilded Mourning Bell",
+   "type": "offhand",
+   "rarity": "rare",
+   "sell": 55,
+   "lore": "The clapper is wrapped in widow's silk. A Mourner's wraith hits mend allies.",
+   "icon": "art/items/mourning_bell_gold.svg",
+   "offlineStats": {
+    "stat_int": 5,
+    "stat_agi": 3
+   }
+  },
+  "mourning_bell_hell": {
+   "name": "Cinder Mourning Bell",
+   "type": "offhand",
+   "rarity": "epic",
+   "sell": 110,
+   "lore": "It tolls for the ones who should have stayed buried. A Mourner's wraith hits mend allies.",
+   "icon": "art/items/mourning_bell_hell.svg",
+   "offlineStats": {
+    "stat_int": 8,
+    "stat_agi": 5
+   }
+  },
+  "mourning_bell_moon": {
+   "name": "Moon Mourning Bell",
+   "type": "offhand",
+   "rarity": "epic",
+   "sell": 220,
+   "lore": "You hear it a moment before it rings. A Mourner's wraith hits mend allies.",
+   "icon": "art/items/mourning_bell_moon.svg",
+   "offlineStats": {
+    "stat_int": 11,
+    "stat_agi": 7
+   }
+  },
+  "rune_splinter": {
+   "name": "Rune of Splinters",
+   "type": "rune",
+   "rarity": "uncommon",
+   "sell": 25,
+   "lore": "The needle shatters on bone and the shards keep looking.",
+   "stack": 99
+  },
+  "rune_marrow_tap": {
+   "name": "Rune of Marrow-Tap",
+   "type": "rune",
+   "rarity": "uncommon",
+   "sell": 25,
+   "lore": "Every wound is a spigot.",
+   "stack": 99
+  },
+  "rune_volley": {
+   "name": "Rune of the Volley",
+   "type": "rune",
+   "rarity": "rare",
+   "sell": 60,
+   "lore": "Four breaths, then a flock.",
+   "stack": 99
+  },
+  "rune_ossuary_ring": {
+   "name": "Ossuary Ring Rune",
+   "type": "rune",
+   "rarity": "rare",
+   "sell": 60,
+   "lore": "The dead rise in a circle, like a congregation.",
+   "stack": 99
+  },
+  "rune_impale": {
+   "name": "Rune of Impaling",
+   "type": "rune",
+   "rarity": "uncommon",
+   "sell": 25,
+   "lore": "One thorn, driven deep.",
+   "stack": 99
+  },
+  "rune_mass_grave": {
+   "name": "Mass Grave Rune",
+   "type": "rune",
+   "rarity": "rare",
+   "sell": 60,
+   "lore": "Why dig one grave when the field is full?",
+   "stack": 99
+  },
+  "rune_bone_colossus": {
+   "name": "Bone Colossus Rune",
+   "type": "rune",
+   "rarity": "epic",
+   "sell": 150,
+   "lore": "Five dead, bound as one, and it remembers being a wall.",
+   "stack": 99
+  },
+  "rune_creeping_rot": {
+   "name": "Creeping Rot Rune",
+   "type": "rune",
+   "rarity": "uncommon",
+   "sell": 25,
+   "lore": "Rot that has learned to walk.",
+   "stack": 99
+  },
+  "rune_contagion": {
+   "name": "Contagion Rune",
+   "type": "rune",
+   "rarity": "rare",
+   "sell": 60,
+   "lore": "It does not stop at the grave.",
+   "stack": 99
+  },
+  "rune_hollow_choir": {
+   "name": "Hollow Choir Rune",
+   "type": "rune",
+   "rarity": "rare",
+   "sell": 60,
+   "lore": "The dead sing, and are not spent.",
+   "stack": 99
+  },
+  "rune_requiem": {
+   "name": "Requiem Rune",
+   "type": "rune",
+   "rarity": "epic",
+   "sell": 150,
+   "lore": "A hymn is only terrible once it is finished.",
+   "stack": 99
+  }
+ },
+ "RARITY_COLOR": {
+  "common": "#b9b2a4",
+  "uncommon": "#8fb98a",
+  "rare": "#8fa6e8",
+  "epic": "#c6a4ff",
+  "legendary": "#ff9a2e"
+ },
+ "RARITY_MARK": {
+  "common": "·",
+  "uncommon": "◆",
+  "rare": "◆◆",
+  "epic": "◆◆◆",
+  "legendary": "★"
+ },
+ "BUFF_FLASKS": {
+  "flask_damage": {
+   "kind": "damage",
+   "value": 0.15,
+   "seconds": 45,
+   "label": "Forge-tempered"
+  },
+  "elixir_moonlight": {
+   "kind": "damage",
+   "value": 0.25,
+   "seconds": 60,
+   "label": "Moonlit"
+  },
+  "flask_void_resist": {
+   "kind": "ward",
+   "value": 0.25,
+   "seconds": 90,
+   "label": "Warded"
+  },
+  "flask_speed": {
+   "kind": "speed",
+   "value": 0.2,
+   "seconds": 30,
+   "label": "Swift"
+  },
+  "tonic_grave_dust": {
+   "kind": "essence",
+   "value": 0.2,
+   "seconds": 60,
+   "label": "Dust-breathed"
+  },
+  "elixir_wraithquick": {
+   "kind": "haste",
+   "value": 0.15,
+   "seconds": 45,
+   "label": "Wraithquick"
+  },
+  "tonic_graveluck": {
+   "kind": "fortune",
+   "value": 0.15,
+   "seconds": 60,
+   "label": "Grave-lucky"
+  },
+  "tonic_insight": {
+   "kind": "wisdom",
+   "value": 0.15,
+   "seconds": 60,
+   "label": "Insightful"
+  },
+  "elixir_leechblood": {
+   "kind": "lifesteal",
+   "value": 0.04,
+   "seconds": 45,
+   "label": "Leechblood"
+  },
+  "elixir_rotproof": {
+   "kind": "resist_rot",
+   "value": 0.4,
+   "seconds": 75,
+   "label": "Rot-proof"
+  },
+  "elixir_cinderskin": {
+   "kind": "resist_fire",
+   "value": 0.4,
+   "seconds": 75,
+   "label": "Cinderskin"
+  },
+  "tonic_ghostwalk": {
+   "kind": "essence",
+   "value": 0.3,
+   "seconds": 75,
+   "label": "Ghostwalking"
+  },
+  "elixir_bloodmoon": {
+   "kind": "damage",
+   "value": 0.2,
+   "seconds": 60,
+   "label": "Bloodmoon"
+  },
+  "elixir_hymnal": {
+   "kind": "ward",
+   "value": 0.15,
+   "seconds": 75,
+   "label": "Hymnal"
+  },
+  "elixir_regent": {
+   "kind": "damage",
+   "value": 0.12,
+   "seconds": 60,
+   "label": "Regent's Vigil"
+  }
+ },
+ "HEALING_FLASKS": {
+  "flask_hp_major": 0.7,
+  "flask_hp_minor": 0.35,
+  "flask_hp_grand": 0.9
+ }
+}

@@ -1,0 +1,7 @@
+{
+ "NEW_BLOOD_DAMAGE_MULT": 1.5,
+ "NEW_BLOOD_XP_CATCHUP": {
+  "startMult": 2,
+  "fadeLevel": 15
+ }
+}

@@ -1,0 +1,45 @@
+{
+ "LOOT_TIERS": [
+  {
+   "id": "common",
+   "label": "Common"
+  },
+  {
+   "id": "uncommon",
+   "label": "Uncommon"
+  },
+  {
+   "id": "rare",
+   "label": "Rare"
+  },
+  {
+   "id": "epic",
+   "label": "Epic"
+  },
+  {
+   "id": "legendary",
+   "label": "Legendary"
+  }
+ ],
+ "LOOT_ACTIONS": [
+  {
+   "id": "ground",
+   "label": "On the ground"
+  },
+  {
+   "id": "auto",
+   "label": "Auto-loot"
+  },
+  {
+   "id": "gold",
+   "label": "Sell for gold"
+  }
+ ],
+ "DEFAULT_LOOT_RULES": {
+  "common": "ground",
+  "uncommon": "ground",
+  "rare": "ground",
+  "epic": "ground",
+  "legendary": "ground"
+ }
+}

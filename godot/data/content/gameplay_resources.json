@@ -1,0 +1,34 @@
+{
+ "RESOURCE_RULES": {
+  "necromancer": {
+   "kind": "essence",
+   "label": "Grave Essence",
+   "color": "#7bd3c8"
+  },
+  "knight": {
+   "kind": "rage",
+   "label": "Rage",
+   "color": "#8a1f2c"
+  },
+  "warden": {
+   "kind": "oil",
+   "label": "Oil",
+   "color": "#f2b84b"
+  },
+  "monk": {
+   "kind": "resonance",
+   "label": "Resonance",
+   "color": "#e8d9a0"
+  },
+  "witch": {
+   "kind": "offal",
+   "label": "Offal",
+   "color": "#9a1b2a"
+  },
+  "veil": {
+   "kind": "veil",
+   "label": "Veil",
+   "color": "#bff3ff"
+  }
+ }
+}
