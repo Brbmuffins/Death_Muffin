@@ -1,4 +1,5 @@
-import { equipItem } from '../net/api';
+import { adoptPet, equipItem, getInventory } from '../net/api';
+import { petForCharm } from '../content/cosmetics';
 import type { InventorySlot } from '../net/types';
 import { BAG_SIZE, type Inventory } from '../gameplay/loot';
 import { BREWS, BREW_KEYS, brewSummary } from '../content/brews';
@@ -521,6 +522,7 @@ export class InventoryPanel {
     const locked = this.locks.isLocked(slot);
     const atGrinder = this.grinder?.near() ?? false;
     const compare = this.compareLines(slot);
+    const pet = petForCharm(slot.item_id);
     const legion = this.onLegion ? kitCandidate(this.inventory.all, slot) : null;
     detail.innerHTML = `
       <div class="info${compare ? ' gs-wide' : ''}">
@@ -545,6 +547,7 @@ export class InventoryPanel {
       ${drinkable ? `<button class="cw-button small" data-act>Drink</button>` : ''}
       ${this.onBelt && slot.item_id in BREWS ? `<button class="cw-button small primary" data-belt title="Puts it in the ${BREW_KEYS[BREWS[slot.item_id].slot] === 'z' ? 'Elixir' : 'Tonic'} slot of the Belt at the left edge">Put on belt (key ${BREW_KEYS[BREWS[slot.item_id].slot].toUpperCase()})</button>` : ''}
       ${edible ? `<button class="cw-button small" data-act>Eat</button>` : ''}
+      ${pet ? `<button class="cw-button small" data-adopt title="The ${pet.name} joins you for good and the charm is spent. Call it from Capes &amp; Pets (N)">Adopt ${pet.name}</button>` : ''}
       ${!slot.equipped ? `<button class="cw-button small ${locked ? 'on' : ''}" data-lock title="${locked ? 'Unlock: bulk actions may take it again' : 'Lock: Sell all junk, Deposit and Salvage all will skip it'}">${LOCK_SVG} ${locked ? 'Unlock' : 'Lock'}</button>` : ''}
       ${slot.item_type === 'rune' && isRuneId(slot.item_id) && this.onRune ? `<button class="cw-button small" data-runesocket title="Move one into the ${ABILITIES[RUNES[slot.item_id].rite].name} socket">Socket into ${ABILITIES[RUNES[slot.item_id].rite].name}</button>` : ''}
       ${this.grinder && !slot.equipped && isSalvageable(slot.item_type) ? `<button class="cw-button small" data-salvage ${atGrinder ? '' : 'disabled'} title="${atGrinder ? 'Break it down for materials and reagents' : 'Stand at the Bone Grinder in the Sexton’s Acre to salvage'}">Salvage</button>${atGrinder ? '' : '<span class="cw-hint-text small">Needs the Bone Grinder (Acre)</span>'}` : ''}
@@ -555,6 +558,7 @@ export class InventoryPanel {
       </div>
     `;
     detail.querySelector('[data-runesocket]')?.addEventListener('click', () => void this.socketRune(slot));
+    detail.querySelector('[data-adopt]')?.addEventListener('click', () => pet && void this.adoptCharm(pet.id));
     detail.querySelector('[data-lock]')?.addEventListener('click', () => this.locks.toggle(slot));
     detail.querySelector('[data-salvage]')?.addEventListener('click', () => void this.salvageOne(slot));
     detail.querySelector('[data-act]')?.addEventListener('click', () => this.primaryAction(slot));
@@ -566,6 +570,22 @@ export class InventoryPanel {
     // On a phone the bag detail sits at the bottom of a scrolled panel: keep the confirm buttons in view.
     detail.querySelector('[data-sellall-no]')?.scrollIntoView({ block: 'nearest' });
     detail.querySelectorAll<HTMLButtonElement>('[data-sell]').forEach((b) => b.addEventListener('click', () => this.sell(slot, Number(b.dataset.sell))));
+  }
+
+  /** Adopt a pet from its charm in the bag: the same server call as Capes & Pets, run under exclusiveAction so saves stay race-safe. */
+  private async adoptCharm(petId: string) {
+    if (this.busy) return;
+    this.busy = true;
+    this.setError('');
+    try {
+      await this.inventory.exclusiveAction(() => adoptPet(this.characterId, petId), () => getInventory(this.characterId));
+      if (this.selected !== null && !this.slotAt(this.selected)) this.selected = null;
+    } catch (err) {
+      this.setError(err instanceof Error ? err.message : 'The Sexton refuses.');
+    } finally {
+      this.busy = false;
+      this.render();
+    }
   }
 
   private async socketRune(slot: InventorySlot) {
