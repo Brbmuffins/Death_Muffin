@@ -1,0 +1,1 @@
+[{"r":[],"s":"item"},{"r":["common"],"s":"item"},{"r":["uncommon","rare"],"s":"lootRare"},{"r":["epic","rare"],"s":"lootEpic"},{"r":["legendary","epic"],"s":"lootLegendary"},{"r":["common","legendary"],"s":"lootLegendary"}]
