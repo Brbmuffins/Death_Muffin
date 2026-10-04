@@ -38,7 +38,9 @@ const fs = require('fs'); const f = process.env.DM_OUT;
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const t = esc((process.env.DM_PREVIEW_TITLE || 'this change').slice(0, 120));
 const bar = `<div style="position:fixed;left:50%;bottom:6px;transform:translateX(-50%);z-index:2147483647;background:#4c1d95;color:#fff;font:12px/1.4 system-ui,sans-serif;padding:4px 12px;border-radius:12px;opacity:.92;pointer-events:none;max-width:90vw;text-align:center">PREVIEW of ${t} · offline sandbox, nothing here saves to your real character</div>`;
-let h = fs.readFileSync(f, 'utf8'); h = h.includes('</body>') ? h.replace('</body>', () => bar + '</body>') : h + bar; fs.writeFileSync(f, h);
+// Previews have no service worker on purpose, so the offline edition's "Download for offline play" panel would only show an error.
+const hide = '<style>.dm-offline-install{display:none!important}</style>';
+let h = fs.readFileSync(f, 'utf8'); h = h.replace('</head>', () => hide + '</head>'); h = h.includes('</body>') ? h.replace('</body>', () => bar + '</body>') : h + bar; fs.writeFileSync(f, h);
 JS
 DEST="$ROOT/$JOB"
 [ ! -L "$DEST" ] || { echo "refusing symlinked destination"; exit 2; }
