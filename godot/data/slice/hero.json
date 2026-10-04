@@ -158,5 +158,34 @@
     0.6
    ]
   }
+ },
+ "thrall_model": {
+  "slug": "thrall_sentinel",
+  "url": "models/thrall_sentinel/character.glb",
+  "height": 1.85,
+  "yaw": -1.5707963267948966,
+  "clips": [
+   "attack2",
+   "chop",
+   "death2",
+   "dig",
+   "death",
+   "hurt",
+   "hurt2",
+   "idle",
+   "run",
+   "attack",
+   "walk"
+  ],
+  "timings": {
+   "attack2": [
+    2.23,
+    0.5
+   ],
+   "attack": [
+    6.6,
+    2.1
+   ]
+  }
  }
 }

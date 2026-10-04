@@ -6,6 +6,16 @@ config/name="Death Muffin (Godot slice)"
 run/main_scene="res://main/main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
+[autoload]
+Qa="*res://main/qa_driver.gd"
+
+[display]
+window/size/viewport_width=1280
+window/size/viewport_height=800
+
 [rendering]
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+lights_and_shadows/directional_shadow/size=2048
+anti_aliasing/quality/msaa_3d=0
+textures/vram_compression/import_etc2_astc=false

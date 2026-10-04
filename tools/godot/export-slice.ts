@@ -121,6 +121,7 @@ const hero = {
   abilities: { bone_needle: ABILITIES.bone_needle, exhume: ABILITIES.exhume, marrow_spear: ABILITIES.marrow_spear },
   thrall: { model: 'thrall_sentinel', ...THRALL_BASE_SHIELDBEARER, hp: stats.thrallHp, damage: stats.thrallDamage, scaleHeight: CREATURE_MODELS.thrall_sentinel.height },
   model: modelEntry(heroModel, true),
+  thrall_model: modelEntry('thrall_sentinel'),
 };
 
 // --- Loot ids (display only in this slice; the drops are shown as floating text) ---
@@ -153,7 +154,8 @@ const world = {
   skippedEnemyIds: skipped,
 };
 write('world.json', world);
-write('enemies.json', { roster: graves.enemies.filter((e) => GODOT_ENEMIES.includes(e.id)), defs: enemyDefs });
+const enemyModels = Object.fromEntries([...new Set(Object.values(enemyDefs).map((d) => d.model))].map((m) => [m, modelEntry(m as keyof typeof CREATURE_MODELS)]));
+write('enemies.json', { roster: graves.enemies.filter((e) => GODOT_ENEMIES.includes(e.id)), defs: enemyDefs, models: enemyModels });
 write('hero.json', hero);
 
 // --- Asset record: which GLBs/textures the slice uses (consumed by tools/godot/sync-assets.sh) ---

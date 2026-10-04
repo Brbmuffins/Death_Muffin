@@ -136,5 +136,117 @@
    "blurb": "Tunnels under the churchyard toward the living. When the ground splits in a ring, step out, then finish it before it digs back down.",
    "model": "barrow_ghoul"
   }
+ },
+ "models": {
+  "grave_robber": {
+   "slug": "grave_robber",
+   "url": "models/grave_robber/character.glb",
+   "height": 1.7,
+   "yaw": -1.5707963267948966,
+   "clips": [
+    "attack2",
+    "death2",
+    "death",
+    "hurt",
+    "hurt2",
+    "hurt3",
+    "idle",
+    "run",
+    "attack",
+    "walk"
+   ],
+   "timings": {
+    "attack2": [
+     2.23,
+     0.53
+    ],
+    "attack": [
+     6.6,
+     2.1
+    ]
+   }
+  },
+  "bone_hound": {
+   "slug": "bone_hound",
+   "url": "models/bone_hound/character.glb",
+   "height": 1.05,
+   "yaw": 3.141592653589793,
+   "clips": [
+    "idle",
+    "run",
+    "walk"
+   ],
+   "timings": {}
+  },
+  "penitent": {
+   "slug": "penitent",
+   "url": "models/penitent/character.glb",
+   "height": 1.85,
+   "yaw": -1.5707963267948966,
+   "clips": [
+    "cast",
+    "death2",
+    "death",
+    "hurt",
+    "hurt2",
+    "idle",
+    "walk"
+   ],
+   "timings": {
+    "cast": [
+     5.4,
+     1.2
+    ]
+   }
+  },
+  "carrion_sac": {
+   "slug": "carrion_sac",
+   "url": "models/carrion_sac/character.glb",
+   "height": 1.75,
+   "yaw": -1.5707963267948966,
+   "clips": [
+    "death2",
+    "death",
+    "hurt",
+    "hurt2",
+    "idle",
+    "attack",
+    "walk"
+   ],
+   "timings": {
+    "attack": [
+     6.6,
+     2.1
+    ]
+   }
+  },
+  "barrow_ghoul": {
+   "slug": "barrow_ghoul",
+   "url": "models/barrow_ghoul/character.glb",
+   "height": 1.9,
+   "yaw": -1.5707963267948966,
+   "clips": [
+    "attack2",
+    "death2",
+    "dig",
+    "death",
+    "hurt",
+    "hurt2",
+    "idle",
+    "run",
+    "attack",
+    "walk"
+   ],
+   "timings": {
+    "attack2": [
+     2.23,
+     0.53
+    ],
+    "attack": [
+     6.6,
+     2.1
+    ]
+   }
+  }
  }
 }
