@@ -28,6 +28,9 @@ const DEFAULTS = {
   toolsDir: '/home/ubuntu/death-muffin/discord-agent',
   deployDir: '/home/ubuntu/death-muffin/deploy',
   deployScript: 'server/death-muffin/deploy-release.sh',
+  // Playable preview of each proposal (offline edition build, see preview.sh). previewCmd (tests) replaces preview.sh.
+  previewRoot: '/var/www/death-muffin/preview',
+  previewUrl: 'https://muffindevelopment.com/death-muffin/preview/',
   githubRepo: 'Brbmuffins/Death_Muffin',
   secretFile: '/home/ubuntu/death-muffin/discord-agent/secret',
   // Tier rules are deterministic path rules, never the model's opinion. First match wins inside a tier; a diff is as strict as its strictest file.

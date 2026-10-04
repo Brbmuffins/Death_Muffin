@@ -10,7 +10,7 @@ function sh(cwd, ...a) { return execFileSync('git', ['-c', 'user.name=T', '-c', 
 function makeWorld(over = {}) {
   const T = fs.mkdtempSync(path.join(os.tmpdir(), 'dm-e2e-'));
   const origin = path.join(T, 'origin.git'), repo = path.join(T, 'repo'), tools = path.join(T, 'tools'), deploy = path.join(T, 'deploy'), wtRoot = path.join(T, 'wt');
-  fs.mkdirSync(wtRoot); fs.mkdirSync(deploy);
+  fs.mkdirSync(wtRoot); fs.mkdirSync(deploy); fs.mkdirSync(path.join(T, 'preview'));
   execFileSync('git', ['init', '-q', '--bare', '-b', 'master', origin]);
   execFileSync('git', ['clone', '-q', origin, repo], { stdio: 'pipe' });
   sh(repo, 'config', 'user.name', 'T'); sh(repo, 'config', 'user.email', 't@t');
@@ -27,7 +27,9 @@ function makeWorld(over = {}) {
   const raw = { channelId: IDS.CHAN, guildId: '1', ownerIds: [IDS.OWNER], names: { [IDS.HELIX]: 'Helix', [IDS.LIMITED]: 'Limited' },
     projects: { deathmuffin: { requesters: [IDS.HELIX, IDS.LIMITED], approvers: { casual: [IDS.HELIX, IDS.LIMITED], gameplay: [IDS.HELIX], sensitive: [IDS.HELIX] } } },
     repo, worktreeRoot: wtRoot, stateDir: path.join(tools, 'state'), toolsDir: tools, deployDir: deploy,
-    claudeCmd: path.join(__dirname, 'fake-claude.cjs'), deployCmd: `n=$(ls ${deploy} | grep -c backup); b=${deploy}/backup-pre-release-aaaaaaaaaa$(printf %02d $n)-$(printf '20261004T%02d0000Z' $n); mkdir -p $b; echo 'echo rolled-back-ok' > $b/ROLLBACK.sh; echo "Rollback: $b/ROLLBACK.sh"; echo deployed "$1"`, turnTimeoutMin: 1, ...over };
+    claudeCmd: path.join(__dirname, 'fake-claude.cjs'), deployCmd: `n=$(ls ${deploy} | grep -c backup); b=${deploy}/backup-pre-release-aaaaaaaaaa$(printf %02d $n)-$(printf '20261004T%02d0000Z' $n); mkdir -p $b; echo 'echo rolled-back-ok' > $b/ROLLBACK.sh; echo "Rollback: $b/ROLLBACK.sh"; echo deployed "$1"`, turnTimeoutMin: 1,
+    previewRoot: path.join(T, 'preview'), previewUrl: 'https://example.test/death-muffin/preview/',
+    previewCmd: 'if [ -e "$DM_PREVIEW_ROOT/../FAIL" ]; then echo "vite exploded"; exit 1; fi; mkdir -p "$DM_PREVIEW_ROOT/$1" && echo "$DM_PREVIEW_TITLE|$DM_PREVIEW_BASE" > "$DM_PREVIEW_ROOT/$1/index.html"', ...over };
   fs.writeFileSync(cfgFile, JSON.stringify(raw));
   const cfg = loadConfig(cfgFile); cfg.__file = cfgFile;
   const runner = createRunner(cfg);

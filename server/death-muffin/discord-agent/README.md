@@ -34,7 +34,7 @@ deploy scripts or `.env*` are refused outright (`forbiddenPaths`). `ship.sh` re-
 the deploy lock, so an approver can never ship above their tier.
 
 ## Chat commands (in the thread, handled by the runner, not the AI)
-`!status` · `!cancel` · `!discard` (or ❌) · `!sync` (merge latest master, agent resolves conflicts) · `!model opus|sonnet|haiku`
+`!status` · `!shot` (screenshot of the change) · `!cancel` · `!discard` (or ❌) · `!sync` (merge latest master, agent resolves conflicts) · `!model opus|sonnet|haiku`
 (full approvers; "use opus" in a message works too) · `rollback` (mention in channel or thread): runs the newest deploy
 backup's ROLLBACK.sh under the lock. Owner/full approvers any time, limited approvers only if their ship is the latest.
 Rollback undoes the live release only; revert the commit on master afterwards.
@@ -57,3 +57,17 @@ Rollback undoes the live release only; revert the commit on master afterwards.
 3. `sudo systemctl enable --now death-muffin-discord-agent`, then `sudo systemctl restart muffin-discord`.
 
 Tests (not wired into test:server; ~1 min, needs git): `node --test server/death-muffin/discord-agent/test/*.test.cjs`.
+
+## Screenshots
+The agent can look at its own change: it writes a scenario (`.dm-shot.json`) and runs `shot.sh` (`shoot.cjs` documents the format; dev server + headless Chromium in a no-network sandbox, ~1 min, one at a time). PNGs land in `<worktree>/.dm-shots/`, which together with `.dm-shot.json` is git-excluded (`createWorktree`), so they never dirty the tree or get committed.
+- On demand: ask in the thread ("show me what it looks like") or use `!shot` (any requester; queues a turn that takes one).
+- After every turn the runner posts new or changed PNGs to the thread (max 4, skips files over 8 MB with a note, each unchanged file once).
+- A proposal attaches the current PNGs (newest first, max 4) and shows the first one as the embed image, next to ✅/❌.
+- Transport: outbox ops carry `files: [{name, b64}]` (never redacted, names sanitized); the adapter sends them as Discord attachments. Existing job worktrees keep their old `info/exclude` until the next job is created (it is a shared file).
+
+## Playable preview
+Each proposal gets a "Try it" link: `https://muffindevelopment.com/death-muffin/preview/<jobid>/`, the branch's OFFLINE EDITION build (its own in-browser store and token key, so it cannot touch the live server or a real character).
+- `preview.sh <jobid>` is run by the runner (never the AI, not in its allowedTools) from the job's worktree. Build: same sandbox as `check.sh` (no network, home read-only, scratch tmpfs over `node_modules/.vite`), `VITE_OFFLINE_BUILD=1`, base `<previewUrl path>/<jobid>/`, output `.dm-preview/` (git-excluded). The service-worker/PWA step is skipped on purpose, so a preview cannot interfere with `/play/` or `/offline/`.
+- Publish (outside the sandbox): a "PREVIEW of <title>" banner is inserted into `index.html`, then rsync `--delete --link-dest=<live offline dir>` to `<previewRoot>/<jobid>/`. Job ids must match `^[0-9a-f]{6}$`; nothing outside that directory is written. `previewRoot` (default `/var/www/death-muffin/preview`, must exist and be writable by the runner user) and `previewUrl` are in config; `previewCmd` replaces the script (tests).
+- Built in `propose()` before the embed is posted (typing indicator keeps running; 15 min cap). Success adds a "Try it" field; failure adds "Preview build failed" with a short reason and the proposal is posted anyway. `!preview` rebuilds it on an open proposal.
+- The preview directory is deleted when the job ships, is discarded or is swept (`removeJobArtifacts`).
