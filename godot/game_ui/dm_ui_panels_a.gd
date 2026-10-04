@@ -175,7 +175,10 @@ func process(_delta: float) -> void:
 # --- sheet / cosmetics -------------------------------------------------------------------------------------------------
 
 func render_sheet() -> void:
-	char_win.sheet.set_data(DmGearStats.sheet_data(ui.stat_ctx()))
+	var d := DmGearStats.sheet_data(ui.stat_ctx())
+	if d.get("looking") is Dictionary and d["looking"].get("weapons") == null:
+		d["looking"]["weapons"] = ""   # the panel prints String(weapons): JSON null would crash it
+	char_win.sheet.set_data(d)
 
 
 func _charms() -> Dictionary:
@@ -188,9 +191,8 @@ func _charms() -> Dictionary:
 
 func _load_cosmetics() -> void:
 	char_win.cosmetics.set_charm_counts(_charms())
-	char_win.cosmetics.set_loading()
 	var r: DmResult = await game.api.get_cosmetics(cid())
-	if r.ok:
+	if r.ok and r.data is Dictionary and r.data.has("capes"):
 		char_win.cosmetics.set_view(r.data)
 	else:
 		char_win.cosmetics.set_error(r.error if r.error != "" else "Could not reach the Sexton.")

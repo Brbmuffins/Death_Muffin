@@ -15,7 +15,7 @@ signal npc_interact(npc_id: String)
 signal station_interact(station_id: String)
 
 var api: DmApi
-var character: Dictionary = {"id": 7, "class_index": 5, "class_name": "Necromancer", "level": 12, "experience": 4200, "gold": 1500, "shards": 3,
+var character: Dictionary = {"id": 7, "class_index": 1, "class_name": "Gravecaller", "level": 12, "experience": 4200, "gold": 1500, "shards": 3,
 	"stat_str": 5, "stat_agi": 5, "stat_int": 9, "stat_vit": 6, "auto_combat_allowed": false}
 var slots: Array = []
 var progress: Dictionary = {}
@@ -68,10 +68,12 @@ static func sample_slots() -> Array:
 		rows.append(r)
 	add.call(0, "staff_oak", "Oak Staff", "common", "weapon", 1, 0, 12, {"stat_bonus": {"stat_int": 2}})
 	add.call(1, "flask_hp_minor", "Minor Mending Flask", "common", "consumable", 3, 0, 4, {})
-	add.call(2, "pickaxe_iron", "Iron Pickaxe", "common", "weapon", 1, 0, 20, {})
-	add.call(3, "ring_bone", "Bone Ring", "uncommon", "ring", 1, 0, 30, {"stat_bonus": {"stat_vit": 1}})
-	add.call(4, "bone_dust", "Bone Dust", "common", "material", 14, 0, 2, {})
-	add.call(105, "staff_yew", "Yew Staff", "rare", "weapon", 1, 1, 90, {"stat_bonus": {"stat_int": 5}})
+	add.call(2, "tool_pickaxe_iron", "Iron Pickaxe", "uncommon", "weapon", 1, 0, 20, {})
+	add.call(3, "ring_copper", "Copper Ring", "uncommon", "ring", 1, 0, 30, {"stat_bonus": {"stat_vit": 1}})
+	add.call(4, "material_copper_shard", "Copper Shard", "common", "material", 14, 0, 2, {})
+	add.call(5, "elixir_moonlight", "Moonlight Elixir", "rare", "consumable", 2, 0, 40, {})
+	add.call(6, "helm_copper", "Copper Helm", "common", "armor_head", 1, 0, 8, {"stat_bonus": {"stat_vit": 2}})
+	add.call(105, "staff_bone", "Bone Staff", "common", "weapon", 1, 1, 90, {"stat_bonus": {"stat_int": 5}})
 	return rows
 
 
@@ -84,7 +86,15 @@ func _transport(req: Dictionary) -> Dictionary:
 	calls.append({"method": String(req["method"]), "path": path, "body": body if body is Dictionary else {}})
 	if fail.has(path):
 		return {"status": 400, "text": JSON.stringify({"success": false, "error": fail[path]}), "network_error": false}
-	var data: Variant = []
+	var data: Variant = {}
+	if path.begins_with("/api/professions/") or path.begins_with("/api/recipes") or path.begins_with("/api/loadouts/") and not path.ends_with("/save"):
+		data = []
+	if path.begins_with("/api/labor/"):
+		data = {"now": 0, "capMs": 28800000, "totalLevel": 10, "levelsPerSlot": 30, "slots": []}
+	elif path.begins_with("/api/contracts/"):
+		data = {"day": "2026-10-04", "resetsAt": "2026-10-05T00:00:00Z", "contracts": [], "bonus": {"gold": 0, "claimed": false}, "streak": 0}
+	elif path.begins_with("/api/cosmetics/"):
+		data = {"totalLevel": 10, "selected": {"cape": null, "pet": null}, "capes": [], "pets": []}
 	if replies.has(path):
 		var r: Variant = replies[path]
 		data = r.call(body) if r is Callable else r

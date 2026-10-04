@@ -284,12 +284,12 @@ func on_acre_open(p: String) -> void:
 		"garden":
 			garden.set_bag(_bag_rows())
 			var r: DmResult = await game.api.get_garden(cid())
-			if r.ok:
+			if r.ok and r.data is Dictionary and not r.data.is_empty():
 				garden.set_view(r.data)
 		"labor":
 			labor.set_levels(ui.skills)
 			var r2: DmResult = await game.api.get_labor(cid())
-			if r2.ok:
+			if r2.ok and r2.data is Dictionary and r2.data.has("slots"):
 				labor.set_view(r2.data)
 				ui.labor_summary = DmGuidance.summarize_labor(r2.data)
 		"contracts":
@@ -323,7 +323,7 @@ func _professions_data() -> void:
 func _load_contracts() -> void:
 	contracts.set_counts(bag_counts())
 	var r: DmResult = await game.api.get_contracts(cid())
-	if r.ok:
+	if r.ok and r.data is Dictionary and r.data.has("contracts"):
 		contracts.set_board(r.data)
 		ui.contract_summary = DmGuidance.summarize_contracts(r.data)
 

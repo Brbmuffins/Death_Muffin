@@ -366,10 +366,10 @@ func _load_side_data() -> void:
 		for p in r.data:
 			skills[String(p["profession_id"])] = int(p["skill_level"])
 	var lr: DmResult = await game.api.get_labor(cid)
-	if lr.ok and lr.data is Dictionary:
+	if lr.ok and lr.data is Dictionary and lr.data.has("slots"):
 		labor_summary = DmGuidance.summarize_labor(lr.data)
 	var cr: DmResult = await game.api.get_contracts(cid)
-	if cr.ok and cr.data is Dictionary:
+	if cr.ok and cr.data is Dictionary and cr.data.has("contracts"):
 		contract_summary = DmGuidance.summarize_contracts(cr.data)
 
 
@@ -592,7 +592,7 @@ func close_panels() -> void:
 func toggle_panel(p: String) -> void:
 	var h := host_of(p)
 	var win := window_for(p)
-	if win == null:
+	if win == null and p != "forge":
 		return
 	var switching: bool = not h.is_empty() and win.visible and win.active != h[1]
 	var was_open := is_open(p)
@@ -611,7 +611,7 @@ func toggle_panel(p: String) -> void:
 	if was_open:
 		return
 	_clear_cues_for(p)
-	if not (p == "professions" and bool(call_game_sync("afk_active"))):
+	if not (p == "professions" and _truthy(call_game_sync("afk_active"))):
 		call_game_sync("stop_gathering", ["panel"])
 	if not h.is_empty():
 		win.select_tab(h[1])
@@ -880,3 +880,7 @@ func runes_found() -> Array:
 	if grew:
 		store.set_item(key, JSON.stringify(found))
 	return found
+
+
+static func _truthy(v: Variant) -> bool:
+	return v != null and bool(v)
