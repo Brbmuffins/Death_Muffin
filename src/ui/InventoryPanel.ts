@@ -14,6 +14,7 @@ import { ABILITIES } from '../content/abilities';
 import { RUNES, isRuneId, runeSources, type RuneId, type RuneRite } from '../content/runes';
 import './runes.css';
 import { BELT_DRAG_TYPE } from './BeltPicker';
+import { wrapPanelBody } from './panelBody';
 import { BELT_KINDS, toolKindOf } from '../gameplay/gatheringRules';
 import { kitCandidate } from '../gameplay/legionKit';
 import { KIT_LABEL } from '../gameplay/legionRules';
@@ -120,6 +121,7 @@ export class InventoryPanel {
       <div class="cw-bag-detail" data-detail></div>
       <div class="cw-error" data-error></div>
     `;
+    wrapPanelBody(this.el);
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
     this.root.appendChild(this.el);
     this.tooltip = document.createElement('div');

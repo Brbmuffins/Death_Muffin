@@ -8,6 +8,7 @@ import { SALVAGE_RARITIES, isSalvageable, salvagePreview } from '../gameplay/sal
 import type { Skills } from '../gameplay/Gathering';
 import { rollOf } from '../gameplay/affixes';
 import { keepsForYou, type StatContextSource } from './gearText';
+import { wrapPanelBody } from './panelBody';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -129,6 +130,7 @@ export class SalvagePanel {
       </div>
       ${r ? `<div class="cw-salvage-result" data-result><b>Ground ${r.salvaged.length} piece${r.salvaged.length === 1 ? '' : 's'}</b> for ${r.gained.map((g) => `${g.quantity}× ${esc(itemMeta(g.item_id).name)}`).join(', ')} · +${r.xp} Salvaging XP${r.leveledUp ? ` · <b>Salvaging level ${r.level}</b>` : ''}</div>` : ''}
       <div class="cw-error" data-error>${esc(this.error)}</div>`;
+    wrapPanelBody(this.el);
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
     this.el.querySelectorAll<HTMLInputElement>('[data-pick]').forEach((box) => box.addEventListener('change', () => {
       const i = Number(box.dataset.pick);

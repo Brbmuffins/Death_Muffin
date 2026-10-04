@@ -955,9 +955,10 @@ button { font-family: inherit; }
 .cw-class-panel .cw-disc:disabled { cursor: default; }
 .cw-class-panel .cw-disc[aria-current="true"] { border-color: var(--disc-color); }
 .cw-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--cw-border); }
-/* Windows scroll under a pinned header so the close button is always reachable. */
-.cw-panel-float > .cw-panel-head { position: sticky; top: 0; z-index: 3; margin-top: -20px; padding-top: 20px; background: var(--cw-panel); }
-.cw-panel-float.cw-tabwin > .cw-panel-head { margin-top: -16px; padding-top: 16px; }
+/* Windows keep a fixed header (title and close button) and scroll only the body under it (see wrapPanelBody). */
+.cw-panel-float:has(> .cw-panel-body), .cw-panel-float.cw-tabwin { display: flex; flex-direction: column; overflow: visible; }
+.cw-panel-float > .cw-panel-head { flex: none; margin-bottom: 0; }
+.cw-panel-body, .cw-tabwin-body { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; margin: 0 -22px; padding: 14px 22px 0; }
 .cw-panel-head .cw-title { font-size: 24px; }
 .cw-title .aka { margin-left: 12px; font-family: var(--cw-font-body); font-size: 12px; font-weight: 400; letter-spacing: 0.08em; color: var(--cw-text-muted); white-space: nowrap; }
 .cw-afk-status { display: flex; gap: 16px; align-items: center; justify-content: space-between; padding: 12px 14px; border: 1px solid var(--cw-border); background: var(--cw-inset); color: var(--cw-bone-100); }
@@ -1277,7 +1278,7 @@ body:not(.touch):has(.cw-panel-float) .cw-tip:not(.dragging):not([data-kind='urg
 @media (max-width: 560px) {
   .cw-disc-grid { grid-template-columns: 1fr; }
   .cw-panel-float { padding: 16px; }
-  .cw-panel-float > .cw-panel-head { margin-top: -16px; padding-top: 16px; }
+  .cw-panel-body, .cw-tabwin-body { margin: 0 -16px; padding: 14px 16px 0; }
   .cw-panel-head { flex-wrap: wrap; }
   .cw-inv-body { flex-direction: column; }
   .cw-inv-body .cw-bag-grid { width: 100%; }
@@ -1663,19 +1664,20 @@ body:not(.touch):has(.cw-panel-float) .cw-tip:not(.dragging):not([data-kind='urg
 .cw-panel-float.cw-tabwin { width: 860px; padding-top: 16px; }
 .cw-panel-float.cw-tabwin.cw-tabwin-sheet { width: 640px; }
 .cw-panel-float.cw-tabwin.cw-tabwin-grim { width: 780px; }
-.cw-tabwin > .cw-panel-head { margin-bottom: 10px; padding-bottom: 8px; }
-.cw-tabwin-strip { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.cw-tabwin > .cw-panel-head { padding-bottom: 8px; }
+.cw-tabwin-strip { flex: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
 .cw-tabwin-tab { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 14px; background: var(--cw-inset); border: 1px solid var(--cw-border); color: var(--cw-text-muted); cursor: pointer; font-family: var(--cw-font-display); font-weight: 600; font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; }
 .cw-tabwin-tab[hidden] { display: none; }
 .cw-tabwin-tab kbd { font: 600 10px var(--cw-font-numeric); letter-spacing: 0; color: var(--cw-text-muted); border: 1px solid var(--cw-border); padding: 0 4px; background: transparent; }
 .cw-tabwin-tab:hover { color: var(--cw-bone-100); border-color: var(--cw-border-active); }
 .cw-tabwin-tab.on { color: var(--cw-bone-100); border-color: var(--cw-border-active); background: var(--cw-accent-soft); }
 .cw-tabwin-slot[hidden] { display: none; }
-.cw-tabwin .cw-tabwin-slot .cw-panel-float.cw-panel-float { position: static; transform: none; width: auto; max-width: none; max-height: none; overflow: visible; padding: 0; margin: 0; background: none; border: 0; box-shadow: none; z-index: auto; }
+.cw-tabwin .cw-tabwin-slot .cw-panel-float.cw-panel-float { display: block; position: static; transform: none; width: auto; max-width: none; max-height: none; overflow: visible; padding: 0; margin: 0; background: none; border: 0; box-shadow: none; z-index: auto; }
 .cw-tabwin .cw-tabwin-slot .cw-panel-float::before, .cw-tabwin .cw-tabwin-slot .cw-panel-float::after { display: none; }
 .cw-tabwin .cw-tabwin-slot .cw-panel-head .cw-title, .cw-tabwin .cw-tabwin-slot .cw-panel-head [data-close] { display: none; }
-.cw-tabwin .cw-tabwin-slot .cw-panel-head { position: static; margin-top: 0; padding-top: 0; background: none; margin-bottom: 8px; padding-bottom: 6px; justify-content: flex-end; border-bottom: 0; }
+.cw-tabwin .cw-tabwin-slot .cw-panel-head { position: static; margin: 0 0 8px; padding: 0 0 6px; background: none; box-shadow: none; justify-content: flex-end; border-bottom: 0; }
 .cw-tabwin .cw-tabwin-slot .cw-panel-head:not(:has(.cw-skill-total)) { display: none; }
+.cw-tabwin .cw-tabwin-slot .cw-panel-body { overflow: visible; margin: 0; padding: 0; }
 .cw-tabwin .cw-panel-actions:empty { display: none; }
 
 /* Workbench → Reforge tab (ReforgeView) */

@@ -58,6 +58,7 @@ import type { NpcId } from '../content/npcs';
 import { generateLayout } from '../content/layout';
 import { itemMeta, RARITY_COLOR } from '../content/items';
 import { ICON } from './icons';
+import { wrapPanelBody } from './panelBody';
 import './runes.css';
 import type { Chronicle } from '../gameplay/chronicle';
 
@@ -121,6 +122,7 @@ export class CodexPanel {
       <div class="cw-tabs">${TABS.map((t) => `<button data-tab="${t.id}">${t.label}</button>`).join('')}</div>
       <div class="cw-codex-body" data-body></div>
     `;
+    wrapPanelBody(this.el);
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
     this.el.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) =>
       b.addEventListener('click', () => {
@@ -128,7 +130,8 @@ export class CodexPanel {
         // The Chronicle reads the server's record, so refresh it when the tab opens.
         if (this.tab === 'chronicle') void this.chronicle?.load().then(() => this.render());
         this.render();
-        if (this.el) this.el.scrollTop = 0;
+        const body = this.el?.querySelector('.cw-panel-body');
+        if (body) body.scrollTop = 0;
       }),
     );
     this.root.appendChild(this.el);

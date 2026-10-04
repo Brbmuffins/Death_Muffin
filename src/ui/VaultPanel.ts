@@ -8,6 +8,7 @@ import { VAULT_SLOTS, VAULT_TAB_SIZE } from '../gameplay/vaultRules';
 import type { ItemLocks } from '../gameplay/itemLocks';
 import { LOCK_SVG, itemIcon } from './InventoryPanel';
 import { itemTypeLabel } from './gearText';
+import { wrapPanelBody } from './panelBody';
 import { STAT_KEYS, STAT_LABELS } from '../gameplay/stats';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -147,6 +148,7 @@ export class VaultPanel {
       </div>
       <div class="cw-vault-note" data-note>${esc(this.note)}</div>
       <div class="cw-error" data-error>${esc(this.error)}</div>`;
+    wrapPanelBody(this.el);
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
     const bagGrid = this.el.querySelector<HTMLDivElement>('[data-bag]')!;
     for (let i = 0; i < BAG_SIZE; i++) {

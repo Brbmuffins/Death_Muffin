@@ -3,6 +3,7 @@ import { browserStorage } from '../gameplay/codexJournal';
 import { RARITY_COLOR, itemMeta } from '../content/items';
 import { SHELF_GROUPS, SHELF_IDS, loadFound, recordFound } from '../content/wing';
 import { itemIcon } from './InventoryPanel';
+import { wrapPanelBody } from './panelBody';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -65,6 +66,7 @@ export class ReagentShelfPanel {
       </div>
       <p class="cw-hint-text">Found <b>${have}/${SHELF_IDS.length}</b> reagents. Brew them at the Great Cauldron or the Alembic.</p>
       ${groups}`;
+    wrapPanelBody(this.el);
     this.el.querySelector('[data-close]')!.addEventListener('click', () => this.close());
   }
 }
