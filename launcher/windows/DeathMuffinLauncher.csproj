@@ -9,7 +9,7 @@
     <AssemblyName>DeathMuffinLauncher</AssemblyName>
     <RootNamespace>DeathMuffinLauncher</RootNamespace>
     <!-- The CI workflow reads <Version> from this file to name the release tag (launcher-v<version>). -->
-    <Version>0.2.0</Version>
+    <Version>0.4.0</Version>
     <ApplicationIcon>Resources\DeathMuffin.ico</ApplicationIcon>
     <AssemblyTitle>Death Muffin Launcher</AssemblyTitle>
     <Product>Death Muffin Launcher</Product>
@@ -32,7 +32,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Resources\covenant.jpg" LogicalName="covenant.jpg" />
+    <EmbeddedResource Include="Resources\keyart.jpg" LogicalName="keyart.jpg" />
   </ItemGroup>
 
 </Project>

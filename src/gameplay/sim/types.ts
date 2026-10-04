@@ -177,6 +177,9 @@ export interface Thrall {
   detour?: { x: number; z: number }[];
   detourUntil?: number;
   nextPathAt?: number;
+  /** Host-only: where its formation seat was last tick, to know how fast the seat moves. */
+  seatX?: number;
+  seatZ?: number;
 }
 
 export interface Corpse {
@@ -293,6 +296,8 @@ export interface BossState {
   witheredT: number;
   witheredDps: number;
   level: number;
+  /** Called with a Covenant Seal (goldSinkRules EMPOWER): higher level and more health. Older snapshots have none. */
+  empowered?: boolean;
 }
 
 // --- Intents: client → host requests (the host validates and applies) ---
@@ -355,6 +360,8 @@ export type Intent =
       count?: number;
       /** Bone Colossus rune: consume up to five corpses within the radius (at least three) and raise one giant thrall. */
       colossus?: boolean;
+      /** Bonded Dead boon: raise one thrall from nothing at (x, z), but only if the owner has none standing. */
+      bond?: boolean;
     }
   | {
       t: 'litany';
@@ -370,7 +377,7 @@ export type Intent =
       delayMs?: number;
     }
   /** `boss` (area bosses, 2026-09-28); missing = the Prelate, for older clients. */
-  | { t: 'summonBoss'; by: string; boss?: BossId }
+  | { t: 'summonBoss'; by: string; boss?: BossId; empowered?: boolean }
   | { t: 'recallThralls'; by: string; x: number; z: number }
   /**
    * Buying a Damage tier or a Legion tier: a one-time bump for every thrall the owner has standing. The multipliers are new / old of the
@@ -532,6 +539,8 @@ export type SimEvent =
       r?: number;
       killer?: string;
       boss?: BossId;
+      /** On 'awaken' and 'defeated': this was an Empowered (Covenant Seal) fight. */
+      empowered?: boolean;
       /** Facing for cones, lines and spokes. */
       dir?: number;
       /** Players caught (Burial / Drowning Grasp root them for `root` seconds on their own client). */

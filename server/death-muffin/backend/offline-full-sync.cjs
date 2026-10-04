@@ -5,6 +5,7 @@ const runtimeNecro = path.join(__dirname, 'necro-progress/necro-rules.cjs');
 const necroRules = require(fs.existsSync(runtimeNecro) ? runtimeNecro : '../../vps-handoff/necro-progress/necro-rules.cjs');
 const contractRules = require('./gathering/contract-rules.cjs');
 const gather = require('./gathering/gathering-rules.cjs');
+const { LEVEL_CAP } = require('./gathering/authority-rules.cjs');
 const legion = require('./gathering/legion-rules.cjs');
 const rune = require('./gathering/rune-rules.cjs');
 const lootInstances = require('./loot-instances.cjs');
@@ -81,7 +82,7 @@ function validate(account, onlineClass) {
   if (!account || typeof account !== 'object' || !account.character) throw new RangeError('Invalid offline save');
   const c = account.character;
   if (c.class_index !== onlineClass) throw new RangeError('The saves must use the same discipline');
-  if (!bounded(c.level, 1, 255) || !bounded(c.experience, 0, c.level * 100 - 1) ||
+  if (!bounded(c.level, 1, LEVEL_CAP) || !bounded(c.experience, 0, c.level * 100 - 1) ||
       !bounded(c.gold, 0, 2147483647) || ['stat_str', 'stat_agi', 'stat_int', 'stat_vit'].some((key) => !bounded(c[key], 0, 65535)))
     throw new RangeError('Invalid character stats');
   if (!Array.isArray(account.slots) || account.slots.length > gather.BAG_SLOTS + 9 + gather.BELT_SLOT_COUNT + legion.KIT_SLOT_COUNT + rune.RUNE_SLOT_COUNT) throw new RangeError('Invalid inventory');

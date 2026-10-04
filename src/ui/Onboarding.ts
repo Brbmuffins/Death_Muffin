@@ -55,6 +55,8 @@ export type TipId =
   | 'souls'
   | 'sanctify'
   | 'boons'
+  | 'altar_unlocks'
+  | 'vows'
   // The Grimoire and its level-gated rites (shown the first time each is placed on a key).
   | 'grimoire'
   | 'rite_skull'
@@ -117,6 +119,8 @@ export type TipId =
   | 'legion'
   | 'rune'
   | 'runeSocketed'
+  | 'runeHunt'
+  | 'loadouts'
   // The Catacomb Depths.
   | 'depths'
   | 'depths_floor'
@@ -137,6 +141,9 @@ export type TipId =
   | 'bag_filling'
   | 'vault'
   | 'salvage'
+  // Gold sinks: the Workbench's Reforge tab and Covenant Seals at a boss altar.
+  | 'reforge'
+  | 'boss_seal'
   // People of the Covenant (first sight of an NPC).
   | 'people';
 
@@ -298,7 +305,7 @@ export const TIPS: Record<TipId, Tip> = {
   },
   ascend: {
     title: 'The Altar of Ascension stirs',
-    body: 'The Prelate has fallen. At the Altar in the Chapterhouse you may <b>Ascend</b>: your tiers, shards and opened seals reset, but you keep your level, gold and relics, earn Ashes for permanent boons, and the dead grow older and richer.',
+    body: 'The Prelate has fallen. At the Altar in the Chapterhouse you may <b>Ascend</b>: your Damage and Wave Speed tiers reset, but your seals, soul shards, level, gold and relics stay, and you earn Ashes for permanent boons. The hotter the vows you swore, the more Ashes.',
   },
   souls: {
     title: 'Soul Harvest',
@@ -308,9 +315,17 @@ export const TIPS: Record<TipId, Tip> = {
     title: 'Sanctified',
     body: 'That pale gold halo is a Deacon\'s blessing: the enemy takes 30% less damage while it lasts. Kill the Deacon, or turn your rites on something else until it fades.',
   },
+  altar_unlocks: {
+    title: 'Shards open new vows and boons',
+    body: 'You carry enough soul shards to open something new at the Altar of Ascension in the Chapterhouse: a harder <b>vow</b> or a Covenant <b>boon</b> that changes how you play. Keep 5 shards back for the Sundered Bell.',
+  },
+  vows: {
+    title: 'Swear a vow',
+    body: 'At the Altar of Ascension you may swear <b>Vows</b>: curses you choose, like older dead, no healing flasks or a tougher Prelate. Each carries <b>heat</b>, and the hotter your run, the more <b>Ashes</b> it pays when the Prelate falls. Seals never close again: the vows are your difficulty. Changing them mid-run restarts the run\'s tally.',
+  },
   boons: {
     title: 'Ashes to spend',
-    body: 'Your Ashes buy permanent <b>Covenant Boons</b> at the Altar of Ascension: more health, cheaper upgrades, a head start on every run, even another thrall at higher ranks.',
+    body: 'Your Ashes buy permanent <b>Covenant Boons</b> at the Altar of Ascension: more health, cheaper upgrades, and boons that change how you play, like a thrall at your side on arrival or corpses that last longer. Soul shards unlock the stranger ones.',
   },
   prelate: {
     title: 'Five soul shards',
@@ -470,11 +485,11 @@ export const TIPS: Record<TipId, Tip> = {
   },
   belt: {
     title: 'Your belt',
-    body: 'Three slots wait at the left edge: <b>Heal</b>, <b>Elixir</b> and <b>Tonic</b>. [[Press <kbd>Q</kbd>, <kbd>Z</kbd> or <kbd>X</kbd>||Tap a slot]] to drink what is in it. They stay empty until you brew: <b>Moss Tonic</b> (level 1) makes healing potions, and the Alchemist\'s Wing in the Chapterhouse\'s east door brews elixirs and tonics. [[Hover||Press and hold]] an empty slot to read how to fill it.',
+    body: '[[The <b>Belt</b> at the left edge holds <b>Heal</b> (<kbd>Q</kbd>), <b>Elixir</b> (<kbd>Z</kbd>) and <b>Tonic</b> (<kbd>X</kbd>). Healing flasks fill Heal by themselves. For the other two, <b>click an empty slot</b> to pick a brew from your bag, or <b>drag one onto it</b> from the Reliquary (<kbd>I</kbd>); the <b>Put on belt</b> button on a brew does the same. Hover any slot to read what it does.||Three slots wait at the left edge: <b>Heal</b>, <b>Elixir</b> and <b>Tonic</b>. Tap a slot to drink what is in it. Healing flasks fill Heal by themselves; select a brew in the Reliquary to put it on your belt. Press and hold an empty slot to read how to fill it.]]',
   },
   brew: {
     title: 'Elixirs and tonics',
-    body: 'You can hold <b>one elixir</b> (combat: damage, wards) and <b>one tonic</b> (utility: speed) at once. A new elixir <b>replaces</b> the old one; the same brew again extends it. [[Right-click||Select]] a brew in the Reliquary to <b>put it on your belt</b>, then [[press <kbd>Z</kbd> for your elixir and <kbd>X</kbd> for your tonic||tap its chip on the left to drink it]]. The belt at the left edge shows both slots and their timers.',
+    body: '[[You can hold <b>one elixir</b> (combat: damage, wards) and <b>one tonic</b> (utility: speed) at once. A new elixir <b>replaces</b> the old one; the same brew again extends it. Click a belt slot (or use <b>Put on belt</b> in the Reliquary) to <b>choose which brew it holds</b>, then press <kbd>Z</kbd> for your elixir and <kbd>X</kbd> for your tonic. The belt at the left edge shows both slots and their timers.||You can hold <b>one elixir</b> (combat: damage, wards) and <b>one tonic</b> (utility: speed) at once. A new elixir <b>replaces</b> the old one; the same brew again extends it. Select a brew in the Reliquary to <b>put it on your belt</b>, then tap its chip on the left to drink it. The belt at the left edge shows both slots and their timers.]]',
   },
   reagent: {
     title: 'Reagents',
@@ -490,15 +505,23 @@ export const TIPS: Record<TipId, Tip> = {
   },
   legion: {
     title: 'Spare gear for your legion',
-    body: 'That weapon or armor can arm your thralls instead of being salvaged. Open the <b>Legion</b> [[(<kbd>Y</kbd>, or the button in the Reliquary)||(the button in the Reliquary)]]: one <b>Weapon</b> and one <b>Armour</b> slot, kept outside your bag. Its stats become thrall damage, health and attack speed, and each spare piece shows <b>▲</b> or <b>▼</b> against what the legion wears. Spend gold there to <b>Reinforce</b> the bindings: it strengthens the thralls you have standing at once. A swapped piece reaches the thralls you raise next.',
+    body: 'That weapon or armor can arm your thralls instead of being salvaged. Open the <b>Legion</b> tab beside the Grimoire [[(<kbd>Y</kbd>, or the button in the Reliquary)||(the button in the Reliquary)]]: one <b>Weapon</b> and one <b>Armour</b> slot, kept outside your bag. Its stats become thrall damage, health and attack speed, and each spare piece shows <b>▲</b> or <b>▼</b> against what the legion wears. Spend gold there to <b>Reinforce</b> the bindings: it strengthens the thralls you have standing at once. A swapped piece reaches the thralls you raise next.',
   },
   rune: {
     title: 'A Relic rune',
     body: 'Runes change <b>how</b> a rite behaves, not how hard it hits: one turns five corpses into a single giant, another delays Black Litany and doubles it. Open the <b>Grimoire</b>{p:L}, choose a rite and socket the rune under the bar. One rune per rite, and it fits only its own. Take it out whenever you like; it is never lost. Runes stack in the Reliquary, can rest in the Vault and can be ground at the Bone Grinder. The Codex{p:K} lists them all.',
   },
+  runeHunt: {
+    title: 'Where runes come from',
+    body: 'Every necromancer rite already has a <b>socket</b> in the Grimoire{p:L}: what you hunt for is the <b>Relic runes</b> to fill them. <b>Elites</b> shed one about once in ten to twenty (more often in the deeper grounds), a <b>Grave Surge</b> offering is a rune about a third of the time, <b>every boss</b> leaves one on its first kill, and chests in the <b>Catacomb Depths</b> often hold one. The Gear Atlas[[ (<kbd>.</kbd>)||]] and the Codex{p:K} list each rune and where it drops.',
+  },
   runeSocketed: {
     title: 'The rune is set',
     body: 'The rite now wears the rune: a <b>jade badge</b> sits on its slot, and [[hovering||pressing and holding]] the slot shows exactly what changed and what it costs. Swap runes in the Grimoire{p:L} to try another style; your cooldowns are not reset.',
+  },
+  loadouts: {
+    title: 'Save a loadout',
+    body: 'Tired of re-placing rites, runes and your weapon by hand? Set the build you like, open the <b>Grimoire</b>{p:L} and press <b>Save what I have now</b> under the bar. A loadout keeps your <b>five rites</b>, the <b>rune in each rite</b> and your <b>weapon and off-hand</b> together; <b>Apply</b> puts them all back at once. You can keep six, and [[in <b>Settings</b> (<kbd>Esc</kbd>) you can give <b>Next loadout</b> and <b>Loadout 1-6</b> a key of your choice (they start unbound)||on a keyboard you can bind them to keys in <b>Settings</b>]]. A piece you have since sold or stored in the Vault is skipped and named, and nothing is ever lost from a full bag.',
   },
   depths: {
     title: 'A stair in the dark',
@@ -517,8 +540,8 @@ export const TIPS: Record<TipId, Tip> = {
     body: 'Every fifth floor holds a <b>chest</b> in a side chamber, marked on the minimap. It gives gear with at least one affix, finds from the depth\'s own ground, gold and experience, and now and then a Relic rune. The deeper the chest, the more it holds.',
   },
   depths_solo: {
-    title: 'Solo, for now',
-    body: 'The Depths are a descent for one. Leave your party, or wait until your friends have gone, and the stair will open. Co-op floors need the realtime relay to carry the layout; they are on the list.',
+    title: 'A descent for one',
+    body: 'Friends can share a world, but a descent is a solo run. When you take the stair from a party you step out of it automatically, go down alone, and rejoin your party when the run ends. Shared floors are on the list.',
   },
   ghoul: {
     title: 'Barrow Ghoul',
@@ -567,6 +590,14 @@ export const TIPS: Record<TipId, Tip> = {
   salvage: {
     title: 'Salvaging',
     body: 'The Bone Grinder breaks unwanted gear into <b>ingots</b> (or <b>planks</b> from staffs, wands and grimoires) by rarity, plus <b>Grave Dust</b> and other reagents, and trains Salvaging. If the yield will not fit your bag, nothing is ground. Worn and locked gear is never touched.',
+  },
+  reforge: {
+    title: 'Reforge a roll',
+    body: 'At the Workbench{p:C}, the <b>Reforge</b> tab re-rolls one affix of a piece you carry or wear. The affix stays; its number is drawn again, anywhere in the range its item level allows, for gold. The price is shown before you confirm and rises about 25% with every reforge of the same piece. It can come out lower, and a roll already at the top of its range cannot be reforged, so spend on the weak lines.',
+  },
+  boss_seal: {
+    title: 'A Covenant Seal at the altar',
+    body: "[[Click||Tap]] a boss altar with a <b>Covenant Seal</b> in your bag to call an <b>Empowered</b> boss: more health and harder hits, with a red-gold glow, for a Seal and gold. Its kill pays one guaranteed epic-or-better piece with much better odds of a legendary. A fight you lose can be tried again free. Seals turn up when you dig Crypt Collapses and the Barrow-King's Tomb or fish the Abyssal Coelacanth.",
   },
   people: {
     title: 'People of the Covenant',

@@ -21,7 +21,7 @@ import {
   SHIELD_BASH,
 } from '../../content/abilities';
 
-vi.mock('../../audio/Audio', () => ({ audio: { play: vi.fn() } }));
+vi.mock('../../audio/Audio', () => ({ audio: { play: vi.fn(), loop: vi.fn(() => () => undefined) } }));
 vi.mock('../../graphics/fxTextures', () => ({
   fx: Object.fromEntries(['glow', 'smoke', 'disc', 'ring', 'cracks', 'sigil'].map((name) => [name, () => new THREE.Texture()])),
 }));

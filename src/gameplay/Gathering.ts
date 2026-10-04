@@ -273,14 +273,19 @@ export class GatherLoop {
 
   /** Send queued cycles (one request per node type). `keepalive` for tab close. */
   flush(keepalive = false): Promise<void> {
-    if (this.pending) return this.pending;
+    if (this.pending) {
+      // Tab closing with a batch already out (it may be cut off): send what queued since instead of skipping it.
+      if (!keepalive || !this.queue.size) return this.pending;
+      return Promise.all([this.pending, this.flushBatch(true, true)]).then(() => undefined);
+    }
     this.pending = this.flushBatch(keepalive).finally(() => { this.pending = null; });
     return this.pending;
   }
 
-  private async flushBatch(keepalive: boolean): Promise<void> {
-    if (this.inFlight || !this.queue.size) return;
-    this.inFlight = true;
+  private async flushBatch(keepalive: boolean, alongside = false): Promise<void> {
+    if ((this.inFlight && !alongside) || !this.queue.size) return;
+    const owned = !alongside;
+    if (owned) this.inFlight = true;
     this.lastFlush = this.hooks.now();
     const batch = [...this.queue];
     const afk = this.afk;
@@ -310,7 +315,7 @@ export class GatherLoop {
         }
       }
     } finally {
-      this.inFlight = false;
+      if (owned) this.inFlight = false;
     }
   }
 }

@@ -1,5 +1,36 @@
 # Crossworlds — Balance targets & current numbers
 
+## Gold sinks (3 Oct 2026, branch `dm/gold-sinks`, migration 035, not deployed)
+
+Live balances read-only on 3 Oct 2026: the owner's level-255 hero holds **7.58M** gold, the next richest **174k** (level 119), the rest under 300. Damage tiers total 2.0M, Wave Speed 14k, Legion 75k, so only the owner has run out of places to spend. Both sinks are priced against those two wallets. Numbers come from `src/gameplay/goldSinkRules.ts`; `gold-sinks.test.ts` pins them.
+
+**Reforge** (`reforgeCost`): `40 x item level x rarity x 1.25^reforges`, rarity as the tooltip shows it (affix count included): common/uncommon x1, rare x1.5, epic x2.5, legendary x4; the exponent stops at 20; hard cap 2M (never reached: the dearest reforge is about 1.4M). The new value is uniform over today's `affixRange` for that item level (read from `affixRules`, so the parallel 1.45x range retune flows through).
+
+| piece | 1st | 2nd | 3rd | 5th | 10th | 15th | 20th | first 10 | first 20 |
+|---|---|---|---|---|---|---|---|---|---|
+| ilvl 20 uncommon, 1 affix | 800 | 1,000 | 1,250 | 1,953 | 5,960 | 18,190 | 55,511 | 26.6k | 274k |
+| ilvl 45 rare, 2 affixes | 2,700 | 3,375 | 4,219 | 6,592 | 20,117 | 61,391 | 187,350 | 89.8k | 926k |
+| ilvl 45 epic, 3 affixes | 4,500 | 5,625 | 7,031 | 10,986 | 33,528 | 102,318 | 312,250 | 149.6k | 1.54M |
+| ilvl 99 epic, 3 affixes | 9,900 | 12,375 | 15,469 | 24,170 | 73,761 | 225,100 | 686,950 | 329k | 3.40M |
+| ilvl 99 legendary, 3 affixes | 15,840 | 19,800 | 24,750 | 38,672 | 118,017 | 360,160 | 1,099,121 | 527k | 5.43M |
+
+Against the wallets: the level-119 hero (174k) can reforge one mid piece about ten times, or touch up many pieces a few times; the owner's 7.58M buys roughly two ilvl-99 epics reforged 20 times each, or far more pieces a few times. One reforge's value is a redraw, so the expected gain per reforge is positive only while the roll is below the middle of its range: the price rise is what stops a perfect-roll grind from being free. A roll at the top cannot be reforged (refused, no charge).
+
+**Empowered bosses** (`empowerGold`, `empoweredLevel`, `EMPOWER`): gold `7,500 x shards^2` plus one Covenant Seal; the boss's level becomes `level + 6 + 15% of level` (the BossBrain level knob: +22% health and +15% damage per level) and its health is x1.4 on top.
+
+| boss | shards | gold | boss level -> Empowered | health | damage | legendary in the prize |
+|---|---|---|---|---|---|---|
+| Gravedigger King | 2 | 30,000 | 1 -> 7 | x3.25 | x1.90 | 15% (6% x2.5) |
+| Bone Abbess | 3 | 67,500 | 5 -> 12 | x2.55 | x1.66 | 50% (20% x2.5) |
+| Drowned Congregation | 4 | 120,000 | 9 -> 16 | x2.18 | x1.48 | 55% (22% x2.5) |
+| Plague Saint (level 50 shown) | 5 | 187,500 | 50 -> 64 | x1.77 | x1.25 | 60% (cap) |
+| Cinder Regent (level 50 shown) | 6 | 270,000 | 50 -> 64 | x1.77 | x1.25 | 60% (cap) |
+| Mire Mother (level 50 shown) | 7 | 367,500 | 50 -> 64 | x1.77 | x1.25 | 60% (cap) |
+
+The level-scaled grounds (Saint, Regent, Mire) follow the hero's level, so their relative bump shrinks as the hero grows (x1.6 health at level 255): the flat x1.4 keeps them meaningfully tougher. The prize is one gear piece from the boss's own area table (smart loot, rare-or-better bases x4 weight) with three affixes (it shows epic), or a legendary set piece (favouring pieces the hero lacks); the ordinary kill rolls still happen, so an Empowered kill is the normal spoils plus the prize. The wallets: the 174k hero can afford the first three bosses (30k, 67.5k, 120k); the owner can afford all of them about 20 times over, so for the owner the Seal supply (below) is the limiter.
+
+**Seal supply** (Gravedigging/fishing extras, server-rolled by `/api/gather`): Barrow-King's Tomb (Gravedigging 70) 1 in 80 per action (halved from 1 in 40 by owner decision, 3 Oct; 8 ticks of 0.6 s, about one Seal per 6 minutes of continuous digging), Abyssal Coelacanth pools (Fishing 80) 1 in 300, and new: **Crypt Collapse (Gravedigging 40) 1 in 200** (6 ticks, about one Seal per 12 minutes), so mid-level hands can reach the sink. The Sexton's relic orders also ask for 2 Seals on about one day in five (and pay 2x sell). With the 7,500 x shards^2 price the gold, not the Seal, is the gate below the Nave; at the top the Seal rate (about 10 an hour at level 70, if you do nothing else) is the cap and an Empowered fight is a 2-4 minute activity, so a Seal is spent about as fast as it is dug. Owner decision 3 Oct: Tomb 1 in 80, Crypt Collapse and Coelacanth unchanged.
+
 ## Necro pressure pass (3 Oct 2026, `claude/necro-pressure-balance`): re-measure, no tuning needed
 
 Brief: re-check the three ROADMAP P3 findings on current master (8bb1bd3) before touching numbers. Four necromancers x nine grounds x `intended,push,max`, kit `none`, medium, **8 seeds, 3 sim-minutes** (`BALANCE_AREAS=graves,warren,ossuary,coliseum,nave,sanctum,cloister,pyre,fen BALANCE_DISCIPLINES=1,2,3,4 BALANCE_SEEDS=8 BALANCE_BANDS=intended,push,max npm run balance`).
@@ -16,6 +47,38 @@ Band means (kills / gold / XP per minute, deaths per 3 min): intended 96 / 1,740
 Note on (c): kills/min dip slightly from tier 6 to tier 8 while gold and XP climb. That is by design from the necro pass (density levels off past tier 3, rewards keep rising); I did not retune because the pay still rises where it counts and the bot (no dodging, no flasks) over-dies there. A human playtest of tiers 6-8 remains the open question, as before.
 
 Checks: `npx tsc --noEmit` clean; `npm test` 1,153 tests green (`runes.test.ts` needs `npm ci --prefix server/realtime` first or it fails on a missing `dotenv`). No server-mirrored file changed, so no `build:server-rules` or `test:server` run was required.
+
+## New Blood kit polish (3 Oct 2026, branch `claude/newblood-kit-polish`, not deployed)
+
+Owner brief: no new classes or content, polish the five New Blood kits. Three parts.
+
+**1. The five rites the bot never cast, verified end to end.** Chain Pull, Hook Pull, Butcher, Echo and Crossing were read from the client (`NewBloodSystem.cast`) through the host (`WorldSim.applyNewBlood`) and driven through the real `AbilitySystem` -> `WorldSim` wiring in `src/gameplay/__tests__/newblood-rites-e2e.test.ts`. **No bug found:** pulls drag, damage and root the target, are refused beyond 10 m / on a boss, and charge their cost; Butcher spends one real corpse (never an echo) into three charms that heal 5% on touch; Echo raises only an echo corpse into a 10 s wraith; Crossing blinks to an echo within 12 m and keeps the echo. The harness bot now casts all five through the same host paths (`balance-newblood.test.ts` pins it): pulls on a body that stands off (> 3.5 m Warden, > 4 m Witch), Butcher under 75% HP with a corpse within 3 m (credits the 5% charm), Echo on the nearest echo corpse with an enemy within 9 m, Crossing under 50% HP to the echo furthest from the fight (the bot then moves to the event's landing point). That alone lifted Veilwalker (326 -> 432 XP/min at Graves) and left the others unchanged.
+
+**2. Knell text.** The sim has always been three independent damage beats 1.2 s apart (`knellDamage` each); the tooltip said "the next three tolls hurt it harder". Now: "Mark a target. Three bell beats, 1.2 s apart, each strike it for damage of their own." The Codex reads the same string; the README does not mention Knell.
+
+**3. Per-class tuning** (only existing numbers; the x1.5 damage and x2 XP catch-up are untouched). Measured `BALANCE_SEEDS=8 BALANCE_AREAS=graves,ossuary,nave,sanctum BALANCE_BANDS=intended BALANCE_KIT=none npm run balance` (XP/min, deaths per 3 min). Necromancer mean 376 Graves / 1,983 Nave (unchanged). "Before" = master 14ad4db.
+
+| Class | Graves XP before -> after | Nave XP before -> after | Graves / Nave deaths before -> after |
+|---|---|---|---|
+| Grave Warden | 431 -> 384 | 1,005 -> 931 | 2.3 -> 2.6 / 4.0 -> 4.3 |
+| Bell Monk | 407 -> 321 | 1,061 -> 955 | 3.5 -> 4.3 / 5.0 -> 5.0 |
+| Carrion Witch | 412 -> 363 | 755 -> 812 | 0.6 -> 1.9 / 3.6 -> 3.1 |
+| Hollow Knight | 364 -> 365 | 725 -> 838 | 2.6 -> 2.9 / 5.0 -> 4.6 |
+| Veilwalker | 326 -> 376 | 725 -> 837 | 1.3 -> 0.8 / 2.0 -> 2.0 |
+| Spread (max/min) | 1.32x -> 1.20x | 1.46x -> 1.18x | |
+
+Ossuary / Sanctum after: Warden 643 / 1,010, Monk 599 / 1,167, Witch 506 / 893, Knight 577 / 892, Veilwalker 509 / 825 (Monk leads at Sanctum, 1.4x the Veilwalker).
+
+Changes (the Graves ceiling is spawn-limited, so the three leaders were cut and the three laggards were lifted with Nave-heavy levers):
+- Grave Warden: Flail Swing cooldown 0.6 -> 0.7 s.
+- Bell Monk: Palm Strike cooldown 0.4 -> 0.43 s and power 1.0 -> 0.9; Toll power 1.2 -> 1.0.
+- Carrion Witch: Hook Throw power 1.0 -> 1.05; Crow Swarm power 0.4 -> 0.1 (it was the Graves-only engine; the lever that let the Witch drop under the necromancer mean); Hook Pull and Hex Charm cost 10 -> 5 and 20 -> 10 Offal (the Witch starved her own rites at Nave: +17% XP there).
+- Hollow Knight: Bulwark 12 -> 9 s, Corpse Vigil 15 -> 12 s, Grave Slam 9 -> 8 s, Oath Unbroken 60 -> 45 s (all rites unlocked after the first levels, so Graves barely moves).
+- Veilwalker: Spirit Bolt power 1.0 -> 0.72; Veil Tear cooldown 10 -> 8 s and power 0.4 -> 0.75; Lay to Rest 6 -> 5 s; Between Worlds 60 -> 45 s.
+
+No tooltip or Codex line quotes any of these numbers (they print cooldown, cost and range from the definitions), so none went stale. No `*-rules.cjs` source changed.
+
+Still open: the melee three still die 2.6-5 times per 3 minutes; the Witch at Graves is pinned by Crow Swarm now being near-decorative at 0.1 (a human-play question: if it feels dead, raise it and accept ~390 XP/min at Graves, 4% over the necromancer mean); Monk at Sanctum is the one row more than 20% above its siblings. Bot, not player, numbers; a human playtest of the five is still the real test.
 
 ## New Blood leveling audit (2026-10-03, branch `claude/newblood-leveling-audit`, harness only, not deployed)
 
@@ -1004,3 +1067,45 @@ The scythe's arc reaches **4 m against a boss** (3 m against everything else), s
 | 4.5 m | 7 | 2,849 | 3,375 |
 
 Biggest moves: Prelate Mourner (intended) 7/8 -> 3/8 wipes; Mire Mother 5 wipes -> 0; Plague Saint damage taken roughly halved. The scythe is still about 1.4x slower than a staff on every boss: that is the style's trade (souls and essence from the arc), not changed here.
+
+## New Blood catch-up (3 Oct 2026, owner: "apply the 1.5x damage and early xp for new blood")
+`src/gameplay/newBloodTuning.ts`: every New Blood primary, rite and signature hits **x1.5** (`NewBloodSystem.power`), and experience is
+multiplied **x2 at level 1, fading linearly to x1 at level 15** (`WorldScene.gainXp`; the harness mirrors both). x2.5 was measured first and
+overshot: with the damage boost New Blood out-levelled the necromancers at Graves (412-562 XP/min vs ~375), so the start was lowered to x2.
+Necromancer rows are byte-identical. `BALANCE_SEEDS=4 BALANCE_AREAS=graves,nave BALANCE_BANDS=intended BALANCE_KIT=none npm run balance`:
+
+| Class (intended) | Graves kills/min | Graves XP/min | Graves deaths/3 min | Nave kills/min | Nave XP/min | Nave deaths/3 min |
+|---|---|---|---|---|---|---|
+| Necromancers (mean, unchanged) | 91 | 376 | 0.0 | 110 | 1,983 | 0.2 |
+| Grave Warden | 37.7 -> 56.6 | 138 -> 434 | 3.8 -> 2.3 | 28.2 -> 46.5 | 384 -> 975 | 5.8 -> 4.0 |
+| Bell Monk | 36.8 -> 56.7 | 130 -> 425 | 4.8 -> 3.3 | 31.8 -> 56.1 | 478 -> 1,161 | 6.3 -> 4.8 |
+| Carrion Witch | 29.3 -> 57.8 | 112 -> 410 | 3.3 -> 0.3 | 25.0 -> 37.0 | 319 -> 843 | 5.0 -> 3.0 |
+| Hollow Knight | 37.3 -> 51.2 | 124 -> 343 | 5.0 -> 3.0 | 28.4 -> 37.0 | 352 -> 711 | 5.3 -> 4.8 |
+| Veilwalker | 26.5 -> 45.3 | 100 -> 312 | 2.0 -> 1.5 | 23.9 -> 35.6 | 260 -> 776 | 4.3 -> 1.8 |
+
+Graves (early levels): New Blood now level about as fast as a necromancer. Nave (past the catch-up): the gap closes from about 6x to about 2x
+XP/min; the rest is the legion (thralls) and survival, still worth a human playtest of the melee three (Warden, Monk, Knight die most).
+
+## Achievable drops pass (3 Oct 2026, branch `dm/loot-achievable`)
+
+Owner: "less grinding", "within the atlas it looks like ideal is only +2%", "drop rates are like 3% or low", "drops get better as you descend". Instruments: `npm run balance:affix`, `npm run balance` (typical kit), `gear-balance.test.ts`, and a rate script over `smartTable` (kills per own piece).
+
+### Affix rolls (`affixRules.ts`, ranges only; old ranges kept as `legacy`, so stored items stay legal)
+Roll range (tenths of a percent for the lever affixes), previous build -> now:
+| Affix | ilvl 12 | ilvl 47 |
+|---|---|---|
+| stat affixes (INT etc.) | 1-2 -> 2-3 | 2-5 -> 3-7 |
+| Gravebound (thrall damage) | 5.4-10% -> 6.8-14% | 7.8-14.6% -> 9-18.8% |
+| of the Legion (thrall health) | 9.5-17.7% -> 10.5-21.7% | 17.8-33.1% -> 17.3-35.9% |
+| Whispering (essence regen) | 11-21% -> 13-27% | 23-44% -> 25-52% |
+| of the Rotting Mist (Miasma) | 4.6-8.6% -> 6.3-13% | 7.6-14.1% -> 10-21% |
+| Blighted (Withered stacks) | 1-3 -> 1-4 | 1-4 -> 1-4 |
+| of the Ossuary Wall | 1.3-2.4% -> 1.7-3.6% | 2.6-4.9% -> 2.4-4.6% |
+The window around the middle is +-35% (was +-30%). Ossuary Wall and Legion barely move at ilvl 47 on purpose: the "three maxed affixes stay within 10% of an ascended set" rule binds them there.
+
+Power score (mean over the four necromancers, one affix on a chest): best stat median 2.1 / 3.0% -> 3.2 / 3.8%; a top roll is about 1.35x a median one. Good drop (two affixes at 75% on one piece): 2.9-4.9% / 3.6-7.6% -> 4.2-6.8% / 4.5-9.9% (ilvl 12 / 47). Rolled 7-piece kit: 7.0-9.1% -> 9.1-12.1% mean at the Nave, 9.1-12.4% -> 11.7-16.6% at the Pyre (p90 up to 25%). Test bounds raised to match (`gear-balance.test.ts`: best stat median under 7%, no max roll over 12%, good drop 3-14%, rolled kit 5-19% mean and 30% p90, three maxed affixes within 10% of an ascended set's bonus lines: the weakest set, Mourner at ilvl 70, is the binding case). Legendary full-set lines are unchanged (24-47% of power), so a set still outclasses any roll. In the Atlas, `rollPotential` shows a piece's bare value and its value with two ideal rolls (Gravecaller Hollow Graves helm at ilvl 3: +3.3% -> +7.7%; Vestment at ilvl 9: +13.5% -> +19.6%).
+
+Harness check (`BALANCE_SEEDS=3 BALANCE_AREAS=nave,sanctum BALANCE_BANDS=intended,push BALANCE_KIT=typical`, four necromancers, old vs new ranges): kills/min and damage taken move within the noise floor on every row (Nave push Rotweaver 188 -> 172 and Mourner 170 -> 173 kills/min, hurt 30 -> 17 and 48 -> 37; Sanctum intended and push within 2-5%). The bot cannot resolve a single affix, as in the earlier passes.
+
+### Drops (`areas.ts` CHASE_WEIGHT, `smartLoot.ts`, `runes.ts`, `legendarySets.ts`, `depths.ts`)
+Kills per piece of your own set (Gravecaller, blended ordinary and elite kills), before -> after: Graves 497 -> 274, Ossuary 344 -> 145, Nave 246 -> 110, Sanctum 211 -> 108, Cloister 220 -> 109, Pyre 237 -> 115, Fen 188 -> 82 (per ANY own piece: Graves 137, Nave 55, Sanctum 36, Cloister 22, Pyre 19, Fen 16). Items per kill are unchanged (5.5-16 per 100 kills); gear share of the drops: Graves 29 -> 34%, Nave 35 -> 46%, Sanctum 50 -> 69%, Fen 36 -> 59%. Runes: one per 2,000-4,700 kills before; now 5-12% of elites (Graves one per ~570 kills, Fen one per ~90). Legendary per boss kill: 15 flat (Gravedigger 3) -> 20/22/25/28/30/33 (Gravedigger 6); elites 0.3% -> 0.5/0.7/0.9% (Cloister/Pyre/Fen). Not changed: item chance per kill, gold, XP, shards.

@@ -6,7 +6,8 @@ import { BED_FILES, ZONE_ACCENTS, ZONE_BEDS, accentGap, bedReady, pickAccent } f
 import {
   CombatActivity, PROFILES, accentsAllowed, activityWeight, bedDuckGain, lootSfx, profileOf,
 } from '../mixer';
-import { SAMPLE_MAP, allSampleNames, sampleUrl } from '../samples';
+import { LEGACY, legacyNames, legacyUrl } from '../samples';
+import { clipFile, packClips, ALL_PACKS } from '../packs';
 
 const AREA_IDS = Object.keys(AREAS) as AreaId[];
 
@@ -59,29 +60,33 @@ describe('zone ambience data', () => {
 });
 
 describe('sample files', () => {
-  it('resolve to folders by prefix', () => {
-    expect(sampleUrl('bed_wind')).toBe('audio/ambience/bed_wind.ogg');
-    expect(sampleUrl('gather_chop_1')).toBe('audio/world/gather_chop_1.ogg');
-    expect(sampleUrl('rite_frost_2')).toBe('audio/world/rite_frost_2.ogg');
-    expect(sampleUrl('ui_open_1')).toBe('audio/world/ui_open_1.ogg');
-    expect(sampleUrl('amb_bell_1')).toBe('audio/world/amb_bell_1.ogg');
-    expect(sampleUrl('hurt_1')).toBe('audio/combat/hurt_1.ogg');
+  it('older clips resolve to folders by prefix', () => {
+    expect(legacyUrl('bed_wind')).toBe('audio/ambience/bed_wind.ogg');
+    expect(legacyUrl('amb_bell_1')).toBe('audio/world/amb_bell_1.ogg');
+    expect(legacyUrl('boss_toll_1')).toBe('audio/combat/boss_toll_1.ogg');
   });
-  it('every referenced clip exists on disk and is credited in AUDIO-SOURCES.md', () => {
+  it('every older clip still referenced exists on disk and is credited in AUDIO-SOURCES.md', () => {
     const credits = readFileSync(resolve(__dirname, '../../../docs/AUDIO-SOURCES.md'), 'utf8') as string;
-    for (const name of allSampleNames()) {
-      const file = resolve(__dirname, '../../../public', sampleUrl(name));
+    for (const name of legacyNames()) {
+      const file = resolve(__dirname, '../../../public', legacyUrl(name));
       expect(existsSync(file), file).toBe(true);
       const base = name.replace(/_\d+$/, '');
       expect(credits.includes(name) || credits.includes(base), `${name} credited`).toBe(true);
     }
   });
-  it('every sample entry has a profile and sane gain', () => {
-    for (const [name, spec] of Object.entries(SAMPLE_MAP)) {
-      expect(PROFILES[name as keyof typeof PROFILES], name).toBeDefined();
+  it('every pack clip exists on disk', () => {
+    for (const pack of ALL_PACKS) {
+      for (const name of packClips(pack)) {
+        expect(existsSync(resolve(__dirname, '../../../public', clipFile(name))), name).toBe(true);
+      }
+    }
+  });
+  it('every older-clip entry has a profile and sane gain', () => {
+    for (const [name, spec] of Object.entries(LEGACY)) {
+      expect(profileOf(name as Parameters<typeof profileOf>[0]).bus, name).toBeDefined();
       expect(spec!.gain).toBeGreaterThan(0);
       expect(spec!.gain).toBeLessThanOrEqual(1);
-      if (spec!.mode === 'layer') expect(spec!.synthMix).toBeDefined();
+      expect(spec!.synthMix).toBeGreaterThanOrEqual(0);
     }
   });
 });

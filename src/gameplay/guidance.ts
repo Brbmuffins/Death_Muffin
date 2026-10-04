@@ -257,7 +257,7 @@ export function newsFor(npc: NpcId, s: GuidanceState): NewsItem[] {
   if (npc === 'prior') {
     if (s.canAscend) p(`ascend:ready:${s.ascension}`);
     for (const id of BOSS_IDS) if (bossBeaten(s, id)) p(`boss:${id}:${id === 'prelate' ? s.ascension : 0}`);
-    for (const a of AREA_ORDER) if (AREAS[a].unlock && s.unlocked.includes(a)) p(`seal:${a}:${s.ascension}`);
+    for (const a of AREA_ORDER) if (AREAS[a].unlock && s.unlocked.includes(a)) p(`seal:${a}:0`);
     if (s.ascension > 0) p(`rank:${s.ascension}`);
   } else if (npc === 'sexton') {
     if (s.labor && s.labor.ready > 0) t('labor:ready');

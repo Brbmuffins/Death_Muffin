@@ -1054,3 +1054,27 @@ Alchemy now has a way in that does not start with farming: mobs drop reagents, b
 - **Help:** counsel tip `reagent` (first reagent pickup), Codex "Reagents" card (sources, recipes, numbers generated), Professions counsel text, README.
 - **Tests:** `reagents.test.ts` (dead-end, ids, drop rates, ichor in every boss spoil, starter needs only mob drops, recipes/brews valid, patches placed, migration + icons check). Existing acre/alchemy/processing/gathering tests updated for zone-only gardening nodes and the 014 migration. `tools/qa/reagents-smoke.cjs`, screenshots in `docs/screenshots/reagents/`.
 - **Not done:** auto-combat does not drink brews; no bespoke herb-patch GLB (code-built stand-in).
+
+## HUD UX pass: bug button, self-explanatory belt, key-art splash (2026-10-03, branch dm/hud-ux)
+
+Owner feedback: the report form was buried in Settings; the elixir belt was hard to recognise and "put on belt" hard to find; the web loading screen should wear the launcher's art.
+- **Report a bug:** a small button just above the chat input (bottom left, `.hud-bugbtn`) calls `HudCallbacks.reportBug` -> `closePanels()` + `SettingsPanel.openBugReport()`. No per-frame work.
+- **Belt:** `.hud-brews` now has a "Belt" header; empty Z/X slots are dashed with "+ add" and a hint tooltip; clicking a Z/X slot opens `BeltPicker` (brews of that kind in the bag, the one on the belt flagged, a "brew it in the Alchemist's Wing" line when none); a brew dragged from the Reliquary (`draggable`, `BELT_DRAG_TYPE`) drops onto the slot; the "Put on belt (key Z)" detail button is `primary` and the bag tooltip names the belt key. Escape closes the picker first. The Heal slot stays automatic (best flask first). Counsel: `belt` tip rewritten and now fires the first time the bag holds a healing flask or brew (`tickOnboarding`); `brew` tip, Codex line and README updated; `tips-desktop.fixture.json` refreshed for those two tips.
+- **Splash:** `public/art/loading/keyart-960.webp` and `keyart-1600.webp` (from `death-muffin-key-art.png`, WebP q58) replace the covenant art; `index.html` inline CSS and `LoadVeil` share the markup: title bottom-left (Georgia bold, violet glow), gold status line, thin violet bar that slides while the page splash waits, scrim from the bottom and left so the necromancer (right of centre) stays clear; `object-position: 68% 50%` keeps him in frame on narrow windows.
+- **Tests:** `beltPicker.test.ts`, `beltRules.test.ts` (new hint), onboarding fixture; browser: `tools/qa/hud-ux-smoke.cjs`.
+
+## Progressive HUD, merged panels, NEW cues (2026-10-03, branch dm/hud-progressive)
+
+- **Gated (stays revealed, per character):** Upgrades plate (first gold gained in a hunting ground), its Active wave dial (a Wave tier owned), Soul Shards counter (first shard), Omen chip (hidden in safe areas, a one-time NEW cue on the first hunt), hotbar "Swap spells" + Menu Spells (first learned alternative rite, the old SWAP rule), Menu Atlas (first gear piece), Menu Acre (first skill XP), thrall counter (necromancers or a standing thrall). Keys always work. Existing characters are seeded silently from level / gold / tiers / shards / areas.
+- **Merged:** Acre ledger = Skills + Garden + Laborers + Contracts; Character = Stats + Capes & Pets; Grimoire = Grimoire + Legion. Panels are hosted unchanged in `TabbedWindow` slots (CSS flattens their plate); only the visible tab's panel is open.
+- **NEW cue:** `HudReveal` (store), `CueQueue` (one toast at a time), `setNew` on the HUD / windows. Pip + glow stay until hover (HUD readouts) or open (menu buttons, tabs); a used cue never returns.
+- **Tests:** `progressiveHud.test.ts`; browser: `tools/qa/hud-progressive-smoke.cjs`. Screenshots: `docs/screenshots/hud-progressive/`.
+
+## Loadout presets (2026-10-03, branch `dm/loadouts`, not deployed, migration 037)
+
+Necromancers save rites + runes + weapon/off-hand under a name and apply them in one click (Grimoire, under the rite bar).
+- **Data:** table `character_loadouts (character_id, slot 0-5, name VARCHAR(24), data JSON)`; `data` = `{ rites: { primary, keys[5] }, runes: { <rite>: <rune> }, weapon, offhand }`, weapon/off-hand = `{ itemId, instanceId|null }` (a rolled piece is matched by its roll, never by item id alone); `null` hand = left as it is on apply.
+- **Rules:** `src/gameplay/loadoutRules.ts` (validation, `captureGear`, pure `applyLoadout` over inventory rows); bundled for the backend as `gathering/loadout-rules.cjs`. The server applies from the stored preset (the client sends only the slot), inside one transaction over every locked row, and writes the row difference. Each step is all-or-nothing: missing piece -> `missing`, no free bag slot for what leaves a hand/socket -> `no_room` (nothing moves), the rest still applies. The rites half is applied by the client (rites live in browser storage); unlearned rites fall back like any saved bar.
+- **Offline mock:** `/api/loadouts/*` in `mockBackend.ts` use the same rules module.
+- **Help:** counsel tip `loadouts` (calm, in the `gear` group; at >= 6 rites learned or >= 2 runes), Codex entry under Relic Runes, README "Loadouts". Hotkeys: `keybinds.ts`, unbound by default, bound in Settings → Controls (click, press a key, Esc clears; refuses game keys and duplicates), shown on the cards; `keybinds.test.ts`.
+- **Tests:** `loadout-rules.test.ts`, `mockLoadouts.test.ts`, `loadoutPresets.test.ts`, server `loadouts.test.cjs` (save/validate/ownership, apply, missing pieces, full bag). QA: `tools/qa/loadouts-smoke.cjs`.

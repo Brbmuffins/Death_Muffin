@@ -151,7 +151,7 @@ const NODE_LIST: NodeDef[] = [
   node({
     id: 'grave_crypt', skill: 'gravedigging', name: 'Crypt Collapse', kind: 'grave', level: 40, xp: 34, ticks: 6, item: 'bones_crypt',
     yields: [3, 6], respawnS: 30, gold: [2, 6], tint: 0x5a5650,
-    extras: [{ item: 'ore_silver', chance: 1 / 8 }, { item: 'reliquary_fragment', chance: 1 / 60 }, { item: 'seed_corpse_lily', chance: 1 / 25 }, { item: 'seed_wolfsbane', chance: 1 / 40 }],
+    extras: [{ item: 'ore_silver', chance: 1 / 8 }, { item: 'reliquary_fragment', chance: 1 / 60 }, { item: 'covenant_seal', chance: 1 / 200 }, { item: 'seed_corpse_lily', chance: 1 / 25 }, { item: 'seed_wolfsbane', chance: 1 / 40 }],
   }),
   // ...and the drowned lotus in the open water.
   node({
@@ -162,7 +162,7 @@ const NODE_LIST: NodeDef[] = [
     id: 'grave_barrow_king', skill: 'gravedigging', name: "Barrow-King's Tomb", kind: 'grave', level: 70, xp: 70, ticks: 8, item: 'bones_ancient',
     yields: [4, 8], respawnS: 60, gold: [4, 12], tint: 0x6a5a3a,
     extras: [
-      { item: 'covenant_seal', chance: 1 / 40 },
+      { item: 'covenant_seal', chance: 1 / 80 },
       { item: 'reliquary_fragment', chance: 1 / 25 },
       { item: 'seed_bloodroot', chance: 1 / 20 },
       { item: 'seed_moonpetal', chance: 1 / 30 },

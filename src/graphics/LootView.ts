@@ -23,6 +23,8 @@ interface Drop {
   glow?: Handle;
   /** Binbun ground marker (items) or soul glow (shards). */
   marker?: Handle;
+  /** Item that does not fit the bag: it stays where it lies (never drifts after the hero) until the bag changes (unpark). */
+  parked?: boolean;
 }
 
 const coinGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.025, 10);
@@ -52,8 +54,10 @@ const shardGeo = new THREE.OctahedronGeometry(0.18).scale(0.6, 1.4, 0.6);
 const shardMat = new THREE.MeshStandardMaterial({ color: 0xb58cff, emissive: 0x7c3aed, emissiveIntensity: 2.2, roughness: 0.2, metalness: 0.1 });
 /**
  * Ground clutter control (perf pass, 2026-10-03): drops never expired, so a long hunt left hundreds of sprites, light pillars, glow
- * decals and soul markers lying in the area. Anything left alone drifts to the hero and is collected (loot is never lost; a full bag
- * simply leaves the item where it is), and past ITEM_CAP items on the ground the oldest are called in at once.
+ * decals and soul markers lying in the area. Anything left alone drifts to the hero and is collected (loot is never lost), and past
+ * ITEM_CAP items on the ground the oldest are called in at once. An item that does not fit the bag is never called in: it is parked
+ * where it lies (surplus ones lose their pillar and glow) until the bag changes. Calling it in anyway made a full bag's drops trail
+ * the hero forever: they arrived, were refused, and were called in again.
  */
 export const LOOT_VACUUM_S = { gold: 30, shard: 30, item: 75 } as const;
 export const LOOT_ITEM_CAP = 60;
@@ -154,12 +158,16 @@ export class LootView {
     return this.drops.map((d) => ({ kind: d.kind, id: d.item?.item_id ?? null, x: d.x, z: d.z }));
   }
 
+  /** Set by the scene: a rarity-keyed clatter when a gear piece lands (kept out of here so the view stays free of the audio engine). */
+  dropSound: ((id: 'lootDrop' | 'lootDropRare' | 'lootDropEpic' | 'lootDropLegendary', x: number, z: number) => void) | null = null;
+
   item(x: number, z: number, drop: LootDrop) {
     const [px, pz] = this.scatter(x, z, 0.7);
     const meta = itemMeta(drop.item_id);
     // A rolled piece glows in the colour of its affix count (green, blue, purple), so a three-affix drop reads from across the room.
     const rarity = (drop.instance ? effectiveRarity(meta.rarity, drop.instance.affixes.length) : meta.rarity) as typeof meta.rarity;
     const color = new THREE.Color(RARITY_COLOR[rarity]);
+    this.dropSound?.(rarity === 'legendary' ? 'lootDropLegendary' : rarity === 'epic' ? 'lootDropEpic' : rarity === 'rare' ? 'lootDropRare' : 'lootDrop', px, pz);
     const url = meta.icon ?? `art/items/${drop.item_id}.webp`;
     const icon = new THREE.Sprite(this.materialFor(url));
     icon.scale.setScalar(0.62);
@@ -184,7 +192,13 @@ export class LootView {
    * Advance drops; returns what the player collected this frame.
    * `tryTakeItem` returns false when the bag is full (the item stays).
    */
-  update(dt: number, px: number, pz: number, tryTakeItem: (d: LootDrop) => boolean) {
+  update(dt: number, px: number, pz: number, tryTakeItem: (d: LootDrop) => boolean, canFit: (d: LootDrop) => boolean = () => true) {
+    // Called in only if the bag can take it; otherwise parked where it lies (checked once, not per frame).
+    const tryCallIn = (d: Drop, surplus: boolean) => {
+      if (!d.parked && canFit(d.item!)) return this.callIn(d);
+      d.parked = true;
+      if (surplus) this.bare(d);
+    };
     let gold = 0;
     let shards = 0;
     const items: LootDrop[] = [];
@@ -195,7 +209,7 @@ export class LootView {
       const d = this.drops[i];
       if (surplus > 0 && d.kind === 'item') {
         surplus--;
-        if (!d.flying && d.t > 0.35) this.callIn(d);
+        if (!d.flying && d.t > 0.35) tryCallIn(d, true);
       }
     }
     for (let i = this.drops.length - 1; i >= 0; i--) {
@@ -213,10 +227,10 @@ export class LootView {
             }
             continue;
           }
-          if (d.t > LOOT_VACUUM_S.item) this.callIn(d);
-          else continue;
+          if (d.t > LOOT_VACUUM_S.item && !d.parked) tryCallIn(d, false);
+          if (!d.flying) continue;
         }
-        // Called in: drifts to the hero; a full bag leaves it where it is (and it waits another round).
+        // Called in: drifts to the hero; if the bag filled up meanwhile it is parked where it is.
         const k = Math.min(1, dt * (6 + d.t * 0.2));
         d.x += (px - d.x) * k;
         d.z += (pz - d.z) * k;
@@ -228,6 +242,7 @@ export class LootView {
           } else {
             d.flying = false;
             d.t = 0;
+            d.parked = true;
           }
         }
         continue;
@@ -255,10 +270,19 @@ export class LootView {
     return { gold, shards, items };
   }
 
+  /** The bag changed (sold, stored, used something): parked items may fit now and get called in again when due. */
+  unpark() {
+    for (const d of this.drops) d.parked = false;
+  }
+
   /** Start an item drifting to the hero: its pillar, glow and marker go now (they cost a draw each and mean "lying here"). */
   private callIn(d: Drop) {
     d.flying = true;
     d.t = Math.max(d.t, 1);
+    this.bare(d);
+  }
+
+  private bare(d: Drop) {
     d.glow?.kill();
     d.marker?.kill();
     d.glow = d.marker = undefined;

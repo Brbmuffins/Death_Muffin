@@ -51,16 +51,35 @@ export const legendarySetFor = (disciplineId: string): string | undefined => LEG
 
 // --- Drop rules ----------------------------------------------------------------------------------------------------------------------
 export const LEGENDARY_DROP = {
-  /** Per boss kill (every area boss except the starter Gravedigger King). */
-  bossChance: 0.07,
-  /** Per elite kill in a level-scaled area (Plague Cloister, Cinder Pyre, Mourning Fen). */
-  eliteChance: 0.003,
+  /**
+   * Per boss kill, the SHALLOWEST rolling boss (the Bone Abbess); deeper bosses climb from here (`LEGENDARY_BOSS_CHANCE`). Owner, 3 Oct 2026:
+   * "drop rates are like 3%... let's make it more achievable": it was a flat 15% (and 3% for the Gravedigger King), which the Atlas
+   * showed as about 2% per piece.
+   */
+  bossChance: 0.2,
+  /** Per Gravedigger King kill (the starter boss, Hollow Graves): lower, so the first legendary can be seen early (owner, 3 Oct 2026). */
+  starterBossChance: 0.06,
+  /** Per elite kill in the SHALLOWEST level-scaled area (Plague Cloister); the Pyre and the Fen climb from here (`LEGENDARY_ELITE_CHANCE`). */
+  eliteChance: 0.005,
   /** Smart loot: the share of legendary drops that is the player's own discipline's set (the rest splits evenly over the others). */
   ownShare: 0.7,
 } as const;
 
 /** Bosses roll from every area but the first (the Hollow Graves are too early for build-defining gear). */
 export const LEGENDARY_BOSS_AREAS: readonly AreaId[] = ['ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'fen'];
+/** The starter boss's area: legendaries drop there at the lower starterBossChance. */
+export const LEGENDARY_STARTER_AREA: AreaId = 'graves';
+
+/** Legendary chance per boss kill, by area: deeper bosses leave more (drops get better as you descend). */
+export const LEGENDARY_BOSS_CHANCE: Partial<Record<AreaId, number>> = { ossuary: 0.2, nave: 0.22, sanctum: 0.25, cloister: 0.28, pyre: 0.3, fen: 0.33 };
+/** Legendary chance per elite kill, by level-scaled ground. */
+export const LEGENDARY_ELITE_CHANCE: Partial<Record<AreaId, number>> = { cloister: 0.005, pyre: 0.007, fen: 0.009 };
+
+/** Legendary chance for one boss kill in `area` (owner, 3 Oct 2026: 20% at the Abbess rising to 33% in the Fen, 6% for the Gravedigger King). */
+export const legendaryBossChance = (area: AreaId): number =>
+  LEGENDARY_BOSS_AREAS.includes(area) ? LEGENDARY_BOSS_CHANCE[area] ?? LEGENDARY_DROP.bossChance : area === LEGENDARY_STARTER_AREA ? LEGENDARY_DROP.starterBossChance : 0;
+/** Legendary chance for one elite kill in `area` (0 outside the level-scaled grounds). */
+export const legendaryEliteChance = (area: AreaId): number => LEGENDARY_ELITE_CHANCE[area] ?? 0;
 
 /** Which set a legendary drop is, for a player of `disciplineId`: 70% their own, the rest shared evenly (even split with no own set). */
 export function pickLegendarySet(disciplineId: string, rand: () => number): string {

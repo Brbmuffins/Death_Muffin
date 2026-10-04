@@ -46,8 +46,10 @@ cat > "$DIR/server.js" <<'CWEOF_SERVER'
  * production sets REALTIME_PORT=5191.
  *
  * World model (audit Phase 0): players join instanced worlds of ≤10. Without an
- * invite code you are matched into any public world with space (or a new one);
- * with a code you join/create that world. The oldest member is the host: it
+ * invite code you get a PRIVATE SOLO world of your own (being logged in at the
+ * same time as someone else never puts you in their party); with a code you
+ * join/create that party world. Public matchmaking exists only on request
+ * (`match: true`), which no shipped client sends. The oldest member is the host: it
  * simulates enemies and is the ONLY socket allowed to publish snapshots and
  * events. Everyone else sends bounded intents, which are validated, stamped
  * with the real sender id, and delivered to the host only. The latest
@@ -80,6 +82,8 @@ const LIMITS = {
   snapshotBytes: 96 * 1024,
   eventsBytes: 64 * 1024,
   intentBytes: 2 * 1024,
+  /** Most ids one `hit` may name: the world's enemy cap (GLOBAL_ENEMY_CAP in src/content/areas.ts; a unit test keeps them equal). A rite sweeping every body must not be dropped whole. */
+  hitIds: 72,
   moveBytes: 256,
   gearBytes: 512,
   perfBytes: 2 * 1024,
@@ -104,6 +108,10 @@ const SIGNATURES = new Set(['wall', 'rend', 'dirge', 'bloom', 'mantle', 'offerin
   'toll', 'resonant_step', 'knell', 'sound_the_corpse', 'great_toll',
   'hook_throw', 'harvest', 'crow_swarm', 'hook_pull', 'hex_charm', 'butcher', 'murder_of_crows',
   'echo', 'veil_tear', 'crossing', 'lay_to_rest']);
+/** Intents that need an x/z. */
+const POINT_INTENTS = new Set(['recallThralls', 'miasma', 'litany', 'exhume']);
+/** ThrallKind (src/content/disciplines.ts): the host sim looks the kind up in THRALL_BASE and throws on anything else. */
+const THRALL_KINDS = new Set(['warrior', 'shieldbearer', 'hound', 'wraith', 'archer', 'bonemage', 'plaguebearer', 'colossus']);
 const WORLD_BOUND = 400; // |x|,|z| sanity bound in world units
 
 if (DEV_TRUST_TOKENS && process.env.NODE_ENV === 'production') {
@@ -219,9 +227,11 @@ function validIntent(intent) {
   if (bytes(intent) > LIMITS.intentBytes) return null;
   const out = { ...intent };
   for (const k of ['x', 'z']) if (k in out && !inWorld(out[k])) return null;
+  // These act at a point: without one the host sim would read NaN (a recall without x/z made every neighbour's position NaN in separate()).
+  if (POINT_INTENTS.has(out.t) && !(typeof out.x === 'number' && typeof out.z === 'number')) return null;
   switch (out.t) {
     case 'hit':
-      if (!Array.isArray(out.ids) || out.ids.length > 64 || !out.ids.every(Number.isInteger)) return null;
+      if (!Array.isArray(out.ids) || out.ids.length > LIMITS.hitIds || !out.ids.every(Number.isInteger)) return null;
       out.dmg = Math.min(Math.max(0, num(out.dmg)), 100000);
       out.fracture = Math.min(3, Math.max(0, num(out.fracture)));
       out.boss = !!out.boss;
@@ -272,6 +282,7 @@ function validIntent(intent) {
     case 'exhume':
       // Bone Colossus looks for corpses within 6 m of the point, Mass Grave within 4 m, a plain exhume within 4 m of a corpse it already named.
       out.colossus = !!out.colossus;
+      out.kind = THRALL_KINDS.has(out.kind) ? out.kind : 'warrior';
       out.r = Math.min(out.colossus ? 6 : 4, Math.max(0.2, num(out.r, 1)));
       // Mass Grave rune: up to three corpses at once (the host applies the weaker stats itself).
       if ('count' in out) out.count = Math.min(3, Math.max(1, Math.floor(num(out.count, 1))));
@@ -395,6 +406,12 @@ const io = new Server(httpServer, {
   ...(process.env.REALTIME_PATH ? { path: process.env.REALTIME_PATH } : {}),
 });
 
+/** Mint time (ms) encoded at the front of a session id, or 0 when there is none (older tokens: never evicted, never evicting). */
+function sidStamp(sid) {
+  const n = Number(String(sid).split('-')[0]);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
 // JWT handshake — same tokens the auth server issues on /login.
 io.use((socket, next) => {
   const token = socket.handshake.auth && socket.handshake.auth.token;
@@ -410,16 +427,40 @@ io.use((socket, next) => {
     if (!payload || !payload.accountId) return next(new Error('Not authenticated'));
     socket.data.accountId = payload.accountId;
     socket.data.username = payload.username || `player${payload.accountId}`;
+    // One active session per account (auth server session.cjs): a sid starts with its mint time in ms, so the relay needs no database to
+    // tell which of two sockets belongs to the newer login. The older one is told and dropped; a reconnect of the same session is untouched.
+    const sid = typeof payload.sid === 'string' ? payload.sid : '';
+    const stamp = sidStamp(sid);
+    if (stamp) {
+      for (const other of io.sockets.sockets.values()) {
+        if (other.data.accountId !== payload.accountId || !other.data.sidStamp) continue;
+        if (other.data.sidStamp > stamp) return next(new Error('Not authenticated: this account was opened somewhere else'));
+      }
+      for (const other of [...io.sockets.sockets.values()]) {
+        if (other.data.accountId === payload.accountId && other.data.sidStamp && other.data.sidStamp < stamp) {
+          other.emit('session:replaced', { message: 'This account was opened somewhere else.' });
+          other.disconnect(true);
+        }
+      }
+      socket.data.sidStamp = stamp;
+    }
     next();
   } catch {
     next(new Error('Not authenticated'));
   }
 });
 
-function pickWorld(code) {
+/** `code`: a party invite code. No code: a private solo world, unless `match` asks for the public matchmaking pool. */
+function pickWorld(code, match) {
   if (code) {
     const id = `w:${String(code).replace(/[^a-z0-9-]/gi, '').slice(0, 12).toLowerCase()}`;
     if (!worlds.has(id)) worlds.set(id, { players: new Map(), public: false, snapshot: null });
+    return id;
+  }
+  if (!match) {
+    // Solo: its own world, unreachable by any code ('s:' never collides with a party's 'w:').
+    const id = `s:${(worldCounter++).toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+    worlds.set(id, { players: new Map(), public: false, solo: true, snapshot: null });
     return id;
   }
   for (const [id, w] of worlds) if (w.public && w.players.size < MAX_PARTY_SIZE) return id;
@@ -442,7 +483,7 @@ io.on('connection', (socket) => {
   on('world:join', (info, ack) => {
     if (typeof ack !== 'function') return;
     if (socket.data.worldId) return ack({ success: false, error: 'Already in a world' });
-    const worldId = pickWorld(info && info.instance);
+    const worldId = pickWorld(info && info.instance, !!(info && info.match));
     const world = worlds.get(worldId);
     if (world.players.size >= MAX_PARTY_SIZE) {
       console.log(`[realtime] ${socket.data.username} rejected from ${worldId} (full)`);
@@ -481,6 +522,7 @@ io.on('connection', (socket) => {
         players: [...world.players.values()].map(({ accountId: _a, ...p }) => p),
         hostId: hostOf(world),
         instance: worldId.slice(2),
+        solo: !!world.solo,
         snapshot: world.snapshot,
       },
     });
@@ -594,7 +636,7 @@ if (require.main === module) {
   });
 }
 
-module.exports = { io, validIntent, pickWorld, worlds, LIMITS, httpServer, cleanGear, acceptPerf, perfReports, storePerf, perfLine, snapshotBytes, snapshotFor, drops, SNAPSHOT_INTEREST_RADIUS };
+module.exports = { sidStamp, io, validIntent, pickWorld, worlds, LIMITS, httpServer, cleanGear, acceptPerf, perfReports, storePerf, perfLine, snapshotBytes, snapshotFor, drops, SNAPSHOT_INTEREST_RADIUS };
 CWEOF_SERVER
 
 cat > "$DIR/package.json" <<'CWEOF_PKG'

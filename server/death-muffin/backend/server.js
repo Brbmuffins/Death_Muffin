@@ -15,6 +15,9 @@ const runeRules = require('./gathering/rune-rules.cjs');
 const BAG_SLOTS = gatheringRules.BAG_SLOTS;
 const inventorySave = require('./inventory-save.cjs');
 const authority = require('./authority.cjs');
+const kills = require('./kills.cjs');
+const session = require('./session.cjs');
+const { LEVEL_CAP: MAX_CHARACTER_LEVEL } = require('./gathering/authority-rules.cjs');
 
 const app  = express();
 const PORT = process.env.PORT || 5190;
@@ -113,7 +116,9 @@ app.post('/login', loginLimiter, async (req, res) => {
     const account = rows[0];
     if (!account || !account.active || !(await bcrypt.compare(password, account.password_hash)))
       return res.status(401).json({ error: 'Invalid username or password.' });
-    res.json({ token: jwt.sign({ accountId: account.id, username: account.username }, process.env.JWT_SECRET, { expiresIn: '24h' }) });
+    // Newest login wins: this token's session becomes the account's active one (session.cjs); older windows stop saving.
+    const sid = await session.claimSession(pool, account.id);
+    res.json({ token: jwt.sign({ accountId: account.id, username: account.username, ...(sid ? { sid } : {}) }, process.env.JWT_SECRET, { expiresIn: '24h' }) });
   } catch (err) {
     console.error('Login error:', err.code || err.message);
     res.status(500).json({ error: 'Account service is unavailable.' });
@@ -132,7 +137,8 @@ app.post('/register', registerLimiter, async (req, res) => {
   try {
     const hash = await bcrypt.hash(password, SALT_ROUNDS);
     const [result] = await pool.execute('INSERT INTO accounts (username, email, password_hash, active, alpha_access) VALUES (?, ?, ?, 1, 1)', [username, wantsEmail ? trimmedEmail : null, hash]);
-    res.status(201).json({ token: jwt.sign({ accountId: result.insertId, username }, process.env.JWT_SECRET, { expiresIn: '24h' }) });
+    const sid = await session.claimSession(pool, result.insertId);
+    res.status(201).json({ token: jwt.sign({ accountId: result.insertId, username, ...(sid ? { sid } : {}) }, process.env.JWT_SECRET, { expiresIn: '24h' }) });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Username or email is already registered.' });
     console.error('Registration error:', err.code || err.message);
@@ -140,6 +146,24 @@ app.post('/register', registerLimiter, async (req, res) => {
   }
 });
 app.get('/health', (_, res) => res.json({ status: 'ok' }));
+// "Play here": a window that was replaced by a newer login takes the account back. The (replaced) token is still signed and unexpired, so it
+// proves who is asking; the reply is a fresh token on a new session, and the other window is the stale one from now on.
+app.post('/api/session/claim', async (req, res) => {
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'missing or invalid Authorization header' });
+  let payload;
+  try { payload = jwt.verify(auth.slice(7), process.env.JWT_SECRET); } catch { return res.status(401).json({ error: 'invalid or expired token' }); }
+  try {
+    const [[acct]] = await pool.execute('SELECT active FROM accounts WHERE id = ? LIMIT 1', [payload.accountId]);
+    if (!acct || !acct.active) return res.status(401).json({ error: 'invalid or expired token' });
+    const sid = await session.claimSession(pool, payload.accountId);
+    const { iat, exp, sid: _old, ...claims } = payload;
+    res.json({ token: jwt.sign({ ...claims, ...(sid ? { sid } : {}) }, process.env.JWT_SECRET, { expiresIn: '24h' }) });
+  } catch (err) {
+    console.error('Session claim error:', err.code || err.message);
+    res.status(500).json({ error: 'Account service is unavailable.' });
+  }
+});
 // ─── Character system ─────────────────────────────────────────────────────────
 
 const CLASS_NAMES = ['Engineer', 'Guardian', 'Shadowblade', 'Cleric', 'Arcanist', 'Necromancer'];
@@ -171,6 +195,7 @@ async function verifyJWT(req, res, next) {
   }
 
   req.user = payload;
+  if (!(await session.checkWrite(pool, req, res))) return;
 
   try {
     // Character-bound tokens are authoritative. Account-only tokens remain valid
@@ -282,13 +307,13 @@ function characterXpToNext(level) {
   return Math.max(1, Number(level) || 1) * 100;
 }
 
-const MAX_CHARACTER_LEVEL = 255;
+// MAX_CHARACTER_LEVEL (999) comes from src/gameplay/authorityRules.ts LEVEL_CAP via gathering/authority-rules.cjs, the same constant the client rules use.
 
 async function normalizeCharacterProgress(char) {
   let level = Math.max(1, Number(char.level) || 1);
   let experience = Math.max(0, Number(char.experience) || 0);
   let xpToNext = characterXpToNext(level);
-  // 255 is the level every save path caps at (save-progress, offline sync); XP left over at the cap is trimmed, not turned into levels.
+  // The cap is the level every save path caps at (save-progress, offline sync); XP left over at the cap is trimmed, not turned into levels.
   while (experience >= xpToNext && level < MAX_CHARACTER_LEVEL) {
     experience -= xpToNext;
     level++;
@@ -368,7 +393,7 @@ app.post('/character', verifyJWT, async (req, res) => {
     await conn.commit();
 
     const characterToken = jwt.sign(
-      { accountId: req.user.accountId, username: req.user.username, characterId },
+      { accountId: req.user.accountId, username: req.user.username, characterId, ...(req.user.sid ? { sid: req.user.sid } : {}) },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
@@ -524,7 +549,7 @@ app.use((err, req, res, next) => {
 
 // ─── Lightweight JWT middleware (no character prefetch) ───────────────────────
 
-function requireJWT(req, res, next) {
+async function requireJWT(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Bearer '))
     return res.status(401).json({ success: false, error: 'missing or invalid Authorization header' });
@@ -533,8 +558,14 @@ function requireJWT(req, res, next) {
   } catch {
     return res.status(401).json({ success: false, error: 'invalid or expired token' });
   }
+  if (!(await session.checkWrite(pool, req, res))) return;
   next();
 }
+
+// Cheap "am I still the active window?" probe for the client (reads are never refused, so a quiet stale window would not otherwise learn it).
+app.get('/api/session', requireJWT, async (req, res) => {
+  res.json({ success: true, active: !(await session.isReplaced(pool, req.user)) });
+});
 
 function requireGameServerToken(req, res, next) {
   const provided = req.get('X-Game-Server-Token') || '';
@@ -687,6 +718,8 @@ async function loadOfflineVersion(req, res, source, account, expectedFingerprint
     await offlineFull.pruneVersions(conn, locked.id);
     const after = await offlineFull.capture(conn, locked.id, req.user.username);
     await conn.commit();
+    // The load rewrote level, XP, necromancer kills and the Chronicle: the kill ledger starts again from them (step 2).
+    if (kills.killsMode() !== 'off') await kills.rebase(pool, locked.id);
     res.json({ summary: offlineFull.summary(after), fingerprint: offlineFull.fingerprint(after) });
   } catch (err) {
     await conn.rollback().catch(() => {});
@@ -762,12 +795,19 @@ app.post('/api/character/save-progress', requireJWT, async (req, res) => {
       return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.trunc(n))) : fallback;
     };
     const next = {
-      level: bounded(req.body.level, char.level, 1, 255), xp: bounded(req.body.xp, char.experience, 0, 2147483647), gold: bounded(req.body.gold, char.gold, 0, 2147483647),
+      level: bounded(req.body.level, char.level, 1, MAX_CHARACTER_LEVEL), xp: bounded(req.body.xp, char.experience, 0, 2147483647), gold: bounded(req.body.gold, char.gold, 0, 2147483647),
       stat_str: bounded(req.body.stat_str, char.stat_str, 0, 65535), stat_agi: bounded(req.body.stat_agi, char.stat_agi, 0, 65535),
       stat_int: bounded(req.body.stat_int, char.stat_int, 0, 65535), stat_vit: bounded(req.body.stat_vit, char.stat_vit, 0, 65535),
     };
+    // Step 2: kill reports ride along with the save (one request, so the credits are there before the gain is judged); AUTHORITY_KILLS=off ignores them.
+    const staff = await isStaffAccount(req).catch(() => false);
+    let reportNotice = '';
+    if (Array.isArray(req.body.killReports) && req.body.killReports.length && kills.killsMode() !== 'off') {
+      reportNotice = (await kills.handleReports(pool, { char, accountId: req.user.accountId, reports: req.body.killReports, account: { staff } })).message;
+    }
     // Plausibility guard (authority.cjs): AUTHORITY_MODE=report logs and changes nothing; enforce holds back what play cannot explain.
-    const verdict = await authority.guardProgress(pool, { char, next, account: { staff: await isStaffAccount(req).catch(() => false) } });
+    const verdict = await authority.guardProgress(pool, { char, next, account: { staff } });
+    if (reportNotice) verdict.message = [reportNotice, verdict.message].filter(Boolean).join(' ');
     const w = verdict.write;
     await pool.execute(
       'UPDATE characters SET level=?, experience=?, gold=?, stat_str=?, stat_agi=?, stat_int=?, stat_vit=? WHERE id=?',
@@ -1960,6 +2000,32 @@ const isStaffAccount = async (req) => {
   const [[acct]] = await pool.execute('SELECT role, gm_enabled FROM accounts WHERE id = ? LIMIT 1', [req.user.accountId]);
   return !!acct && (acct.role === 'admin' || acct.role === 'gm' || !!acct.gm_enabled);
 };
+// Server authority, step 2 (kills.cjs, AUTHORITY_KILLS=off|audit|enforce, default off): the browser reports its kills in batches; the ledger turns the
+// believable part into credits that the save routes pay out of. 'off' acknowledges and ignores a report, so this is safe to ship before it is switched on.
+const killReportLimiter = rateLimit({ windowMs: 60 * 1000, max: 40, standardHeaders: true, legacyHeaders: false });
+app.post('/api/kills/report', killReportLimiter, requireJWT, async (req, res) => {
+  try {
+    const char = await ownedCharacter(req, res, req.body && req.body.characterId);
+    if (!char) return;
+    const reports = Array.isArray(req.body.reports) ? req.body.reports : [req.body];
+    const out = await kills.handleReports(pool, { char, accountId: req.user.accountId, reports, account: { staff: await isStaffAccount(req).catch(() => false) } });
+    res.status(out.status).json(out.body);
+  } catch (err) {
+    console.error(`POST /api/kills/report: ${err.message}`);
+    res.status(500).json({ success: false, error: 'internal server error' });
+  }
+});
+const ownsCharacterRow = async (req, characterId) => {
+  const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
+  return rows.length === 1;
+};
+// Necromancer saves claim kills and shards: in enforce mode only what the ledger backs is accepted (registered before the routes it guards).
+app.post('/api/necro-progress/save', requireJWT, kills.necroGuard({ pool, ownsCharacter: ownsCharacterRow, isStaff: isStaffAccount }));
+// A one-time browser-save import rewrites the necromancer record outside the ledger: take the imported kills as the new base.
+app.post('/api/necro-progress/import', requireJWT, (req, res, next) => {
+  res.on('finish', () => { if (res.statusCode < 400 && Number(req.body && req.body.characterId) > 0 && kills.killsMode() !== 'off') kills.rebase(pool, Number(req.body.characterId)); });
+  next();
+});
 const { mountNecroProgress } = require('./necro-progress/necro-progress-routes.cjs');
 const { createMysqlStore } = require('./necro-progress/mysql-store.cjs');
 mountNecroProgress(app, {
@@ -1983,7 +2049,7 @@ mountGathering(app, {
     return rows.length === 1;
   },
 });
-const invalidateLeaderboard = require('./leaderboard.cjs')(app, pool);
+const invalidateLeaderboard = require('./leaderboard.cjs')(app, pool, { killsMode: () => kills.killsMode() });
 require('./chronicle.cjs')(app, pool, {
   requireAuth: requireJWT,
   ownsCharacter: async (req, characterId) => {
@@ -1991,6 +2057,9 @@ require('./chronicle.cjs')(app, pool, {
     return rows.length === 1;
   },
   invalidateLeaderboard,
+  // Step 2: play time, deepest floor and run count may only rise as far as real time, the kill ledger and the Ascension record allow.
+  guardAdd: async (req, conn, args) => kills.guardChronicleAdd(conn, { ...args, accountId: req.user.accountId, account: { staff: await isStaffAccount(req).catch(() => false) } }),
+  guardAscend: async (req, conn, args) => kills.mayArchiveRun(conn, { ...args, accountId: req.user.accountId, account: { staff: await isStaffAccount(req).catch(() => false) } }),
 });
 require('./cosmetics.cjs')(app, pool, {
   requireAuth: requireJWT,
@@ -2051,6 +2120,13 @@ require('./runes.cjs')(app, pool, {
     return rows.length === 1;
   },
 });
+require('./loadouts.cjs')(app, pool, {
+  requireAuth: requireJWT,
+  ownsCharacter: async (req, characterId) => {
+    const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
+    return rows.length === 1;
+  },
+});
 require('./salvage.cjs')(app, pool, {
   requireAuth: requireJWT,
   ownsCharacter: async (req, characterId) => {
@@ -2058,7 +2134,31 @@ require('./salvage.cjs')(app, pool, {
     return rows.length === 1;
   },
 });
+require('./reforge.cjs')(app, pool, {
+  requireAuth: requireJWT,
+  ownsCharacter: async (req, characterId) => {
+    const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
+    return rows.length === 1;
+  },
+});
+const mountBossKey = require('./boss-key.cjs');
+mountBossKey(app, pool, {
+  requireAuth: requireJWT,
+  isStaff: isStaffAccount,
+  areaOpen: mountBossKey.areaOpenFromRecord,
+  ownsCharacter: async (req, characterId) => {
+    const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
+    return rows.length === 1;
+  },
+});
 require('./contracts.cjs')(app, pool, {
+  requireAuth: requireJWT,
+  ownsCharacter: async (req, characterId) => {
+    const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);
+    return rows.length === 1;
+  },
+});
+require('./bug-reports.cjs')(app, pool, {
   requireAuth: requireJWT,
   ownsCharacter: async (req, characterId) => {
     const [rows] = await pool.execute('SELECT id FROM characters WHERE id = ? AND account_id = ?', [characterId, req.user.accountId]);

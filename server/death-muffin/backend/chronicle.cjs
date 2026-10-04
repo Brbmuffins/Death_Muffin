@@ -1,7 +1,8 @@
 /**
  * The Chronicle: lifetime stats that Ascension never resets, plus one archived row per finished run.
  * The client accumulates counters and posts them as deltas; this module validates and merges them. The numbers are
- * cosmetic (a friends-only leaderboard), so validation is about bounds and shape, not anti-cheat.
+ * cosmetic for everything but the leaderboard's play time, deepest floor and run count; those three are also bounded by real time, the
+ * kill ledger and the Ascension record when AUTHORITY_KILLS is on (kills.cjs). The rest is bounds and shape only.
  *
  *   GET  /api/chronicle/:characterId   -> { life, run, runNo, runStartedAt, runs: [...] }
  *   POST /api/chronicle/add            -> { characterId, deltas: {key: n}, maxes: {key: n} }
@@ -62,7 +63,7 @@ function merge(base, deltas, maxes) {
 
 const parse = (v) => (typeof v === 'string' ? JSON.parse(v) : v) || {};
 
-module.exports = function mountChronicle(app, pool, { requireAuth, ownsCharacter, invalidateLeaderboard }) {
+module.exports = function mountChronicle(app, pool, { requireAuth, ownsCharacter, invalidateLeaderboard, guardAdd, guardAscend }) {
   const ownedId = async (req, res, raw) => {
     const id = parseInt(raw, 10);
     if (!id || !(await ownsCharacter(req, id))) {
@@ -106,13 +107,23 @@ module.exports = function mountChronicle(app, pool, { requireAuth, ownsCharacter
   });
 
   app.post('/api/chronicle/add', requireAuth, async (req, res) => {
+    // Ownership before taking a connection (ownsCharacter uses the same pool; see salvage.cjs).
+    let id;
+    try {
+      id = await ownedId(req, res, req.body && req.body.characterId);
+    } catch (err) {
+      console.error('POST /api/chronicle/add:', err.code || err.message);
+      if (!res.headersSent) res.status(500).json({ success: false, error: 'internal server error' });
+      return;
+    }
+    if (!id) return;
     const conn = await pool.getConnection();
     try {
-      const id = await ownedId(req, res, req.body && req.body.characterId);
-      if (!id) return;
-      const deltas = sanitize(req.body.deltas, SUM_KEYS);
-      const maxes = sanitize(req.body.maxes, MAX_KEYS);
+      let deltas = sanitize(req.body.deltas, SUM_KEYS);
+      let maxes = sanitize(req.body.maxes, MAX_KEYS);
       await conn.beginTransaction();
+      // Server authority step 2 (kills.cjs): the numbers the leaderboard shows (play time, deepest floor) are bounded by real time and the kill ledger.
+      if (guardAdd) ({ deltas, maxes } = await guardAdd(req, conn, { characterId: id, deltas, maxes }));
       await withRow(conn, id, async (row) => {
         await conn.execute('UPDATE character_chronicle SET life = ?, run = ? WHERE character_id = ?', [
           JSON.stringify(merge(row.life, deltas, maxes)),
@@ -133,15 +144,25 @@ module.exports = function mountChronicle(app, pool, { requireAuth, ownsCharacter
   });
 
   app.post('/api/chronicle/ascend', requireAuth, async (req, res) => {
+    // Ownership before taking a connection (ownsCharacter uses the same pool; see salvage.cjs).
+    let id;
+    try {
+      id = await ownedId(req, res, req.body && req.body.characterId);
+    } catch (err) {
+      console.error('POST /api/chronicle/ascend:', err.code || err.message);
+      if (!res.headersSent) res.status(500).json({ success: false, error: 'internal server error' });
+      return;
+    }
+    if (!id) return;
     const conn = await pool.getConnection();
     try {
-      const id = await ownedId(req, res, req.body && req.body.characterId);
-      if (!id) return;
       const ascension = Math.min(255, Math.max(0, Math.trunc(Number(req.body.ascension)) || 0));
       await conn.beginTransaction();
       const archived = await withRow(conn, id, async (row) => {
         // A double-tap (or a retry) must not archive an empty run: the run needs some activity to count.
         if (!Object.keys(row.run).length) return false;
+        // The leaderboard's "runs" is the number of archived runs: it may not outrun the Ascension record (kills.cjs mayArchiveRun).
+        if (guardAscend && !(await guardAscend(req, conn, { characterId: id, runNo: row.runNo }))) return false;
         await conn.execute(
           'INSERT INTO character_runs (character_id, run_no, started_at, ascension_after, stats) VALUES (?, ?, ?, ?, ?)',
           [id, row.runNo, row.runStartedAt, ascension, JSON.stringify(row.run)],

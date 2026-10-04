@@ -27,7 +27,7 @@ export interface RemotePlayer {
 }
 
 export interface JoinRequest {
-  /** Invite code; omit to be matched into any public world with space. */
+  /** Party invite code: joins (or creates) that party's world. Omit for a private solo world. */
   instance?: string;
   characterId: number;
   classIndex: number;
@@ -43,6 +43,8 @@ export interface JoinResult {
   players: RemotePlayer[];
   hostId: string;
   instance: string;
+  /** True when the world is your private solo world (older servers omit it and matchmake: treat absent as unknown). */
+  solo?: boolean;
   snapshot: WorldSnapshot | null;
 }
 
@@ -60,9 +62,9 @@ export interface PlayerMove {
  * Compact enemy row: [id, def, x, z, facing, hp, maxHp, stateIdx, flags, stateT, speed, scale, area, affix]
  * `affix` = AFFIX_ORDER index + 1 (0 = none). Appended last so older rows (13 fields) still parse.
  */
-export type EnemyRow = [number, EnemyId, number, number, number, number, number, number, number, number, number, number, string, number?];
-/** [id, owner, kind, x, z, facing, hp, maxHp, stateIdx, stateT, empowered, speed] */
-export type ThrallRow = [number, string, ThrallKind, number, number, number, number, number, number, number, number, number];
+export type EnemyRow = [number, EnemyId, number, number, number, number, number, number, number, number, number, number, string, number?, number?];
+/** [id, owner, kind, x, z, facing, hp, maxHp, stateIdx, stateT, empowered, speed, damage?, attackInterval?] (the last two let a new host keep the legion's real strength). */
+export type ThrallRow = [number, string, ThrallKind, number, number, number, number, number, number, number, number, number, number?, number?];
 
 export interface WorldSnapshot {
   t: number;
@@ -71,6 +73,8 @@ export interface WorldSnapshot {
   difficulty?: Difficulty;
   /** Host's Ascension rank (absent from older hosts → 0). */
   ascension?: number;
+  /** Host's sworn Vows (absent when none, and from older hosts: `ascension` then means that many steps of Elder Dead). */
+  vows?: Partial<Record<string, number>>;
   enemies: EnemyRow[];
   thralls: ThrallRow[];
   /** Full corpse + zone lists ride along every Nth snapshot for resync. */

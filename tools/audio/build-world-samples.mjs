@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 /**
+ * NOTE (2026-10): the pack clips replaced most of these outputs (see docs/AUDIO-SOURCES.md). Only boss_toll_*, amb_bell_*, amb_gust_*,
+ * amb_ember_*, amb_moan_* and amb_crow_* are still shipped; do not re-run this over public/audio/.
+ *
  * Builds the second audio pass (see docs/AUDIO-SOURCES.md):
  *   public/audio/world/*.ogg     gathering, processing, rites, interface and ambient one-shots
  *   public/audio/ambience/*.ogg  seamless zone-bed loops (generated noise, no source recording)

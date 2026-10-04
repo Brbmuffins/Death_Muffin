@@ -34,13 +34,11 @@ export const DEPTHS = {
 } as const;
 
 /**
- * Why the stair will not take a hero down right now, in the words the stair says (null = it will). The Depths are solo for now: the
- * floors live in the keeper's sim and the realtime relay does not carry a layout, so a party (or a guest, who only mirrors the world)
- * is told so instead of being taken down alone.
+ * Why the stair will not take a hero down right now, in the words the stair says (null = it will). Being in a party never blocks it:
+ * the floors live in one keeper's sim and the relay carries no layout, so a party member steps out of the party for the descent (the
+ * scene disconnects them, they keep their own world, and they rejoin the party when the run ends). Only a fallen hero is refused.
  */
-export function depthsEntryBlock(o: { partySize: number; keeper: boolean; alive: boolean }): string | null {
-  if (o.partySize > 0) return 'The Depths are solo for now: leave your party to go down.';
-  if (!o.keeper) return 'The Depths are solo for now: only the keeper of the world can go down.';
+export function depthsEntryBlock(o: { alive: boolean }): string | null {
   if (!o.alive) return 'You are in no state to descend.';
   return null;
 }
@@ -151,8 +149,8 @@ export function chestBonus(depth: number, level: number): { gold: number; xp: nu
 /** A chest holds this many drops (the first is always a piece of gear): 3 at depth 5, one more every 10 floors. */
 export const chestDrops = (depth: number): number => 3 + Math.floor(Math.max(0, depth - 5) / 10);
 
-/** Runes: a chest may hold one (10% at depth 5, +2% per chest, 35% at most); the uncommon and rare kinds, and from depth 10 the epic ones too. */
-export const chestRuneChance = (depth: number): number => Math.min(0.35, 0.1 + 0.02 * (Math.floor(depth / DEPTHS.chestEvery) - 1));
+/** Runes: a chest may hold one (25% at depth 5, +4% per chest, 70% at most; was 10%, +2%, 35%); the uncommon and rare kinds, and from depth 10 the epic ones too. */
+export const chestRuneChance = (depth: number): number => Math.min(0.7, 0.25 + 0.04 * (Math.floor(depth / DEPTHS.chestEvery) - 1));
 export function chestRunePool(depth: number): RuneId[] {
   return RUNE_ORDER.filter((id) => RUNES[id].rarity !== 'epic' || depth >= 10);
 }

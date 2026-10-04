@@ -14,10 +14,10 @@ function view() {
   (v as unknown as { loader: { load: () => THREE.Texture } }).loader = { load: () => new THREE.Texture() };
   return v;
 }
-const step = (v: LootView, seconds: number, take: (d: unknown) => boolean = () => true, at: [number, number] = [0, 0]) => {
+const step = (v: LootView, seconds: number, take: (d: unknown) => boolean = () => true, at: [number, number] = [0, 0], fit: (d: unknown) => boolean = take) => {
   const got = { gold: 0, shards: 0, items: 0 };
   for (let t = 0; t < seconds; t += 0.1) {
-    const r = v.update(0.1, at[0], at[1], take as never);
+    const r = v.update(0.1, at[0], at[1], take as never, fit as never);
     got.gold += r.gold;
     got.shards += r.shards;
     got.items += r.items.length;
@@ -44,6 +44,7 @@ describe('ground loot does not pile up', () => {
     expect(step(v, 15, () => !full).items).toBe(0);
     expect(v.count).toBe(1); // a full bag keeps it on the ground
     full = false;
+    v.unpark(); // the bag changed
     expect(step(v, LOOT_VACUUM_S.item + 5, () => !full).items).toBe(1);
     expect(v.count).toBe(0);
   });
@@ -54,5 +55,17 @@ describe('ground loot does not pile up', () => {
     const got = step(v, 10);
     expect(got.items).toBeGreaterThanOrEqual(10);
     expect(v.count).toBeLessThanOrEqual(LOOT_ITEM_CAP);
+  });
+
+  it('a full bag never makes drops trail the hero, even past the cap', () => {
+    const v = view();
+    for (let i = 0; i < LOOT_ITEM_CAP + 10; i++) v.item(40, 0, { item_id: 'bone_meal', quantity: 1 });
+    // The hero walks around far from the pile with a full bag for longer than the vacuum time.
+    for (let t = 0; t < LOOT_VACUUM_S.item + 20; t += 0.1) v.update(0.1, -40 + (t % 20), 10, () => false, () => false);
+    expect(v.count).toBe(LOOT_ITEM_CAP + 10);
+    for (const d of v.debugDrops()) expect(Math.hypot(d.x - 40, d.z)).toBeLessThan(2);
+    // Room again: the next bag change lets them come in.
+    v.unpark();
+    expect(step(v, LOOT_VACUUM_S.item + 5).items).toBe(LOOT_ITEM_CAP + 10);
   });
 });

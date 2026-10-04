@@ -297,6 +297,20 @@ export class PropBatch {
     }).catch(() => undefined);
   }
 
+  /**
+   * One geometry per distinct material among this batch's cells, for warming the moon-shadow depth programs (WorldView.warmShadows). Only tall
+   * props ever cast, and a depth program is chosen by the material (its map, side, instancing), so one probe per material covers every cell.
+   */
+  shadowProbes(): { geometry: THREE.BufferGeometry; material: THREE.Material }[] {
+    if (!this.tall) return [];
+    const out = new Map<string, { geometry: THREE.BufferGeometry; material: THREE.Material }>();
+    for (const c of this.cells) {
+      const material = c.mesh.material as THREE.Material;
+      if (!out.has(material.uuid)) out.set(material.uuid, { geometry: c.mesh.geometry, material });
+    }
+    return [...out.values()];
+  }
+
   private castsAt(x: number, z: number, r: number) {
     const f = this.shadowFocus;
     return !f || Math.hypot(x - f.x, z - f.z) - r <= f.range;
@@ -627,7 +641,11 @@ export class WorldView {
   private chunkReady(chunk: Chunk): Promise<void> {
     if (!chunk.warm) {
       chunk.warm = Promise.all(chunk.batches.map((b) => b.ready))
-        .then(() => this.compileChunk(chunk))
+        .then(() => {
+          // The real materials are in: queue the shadow-depth warm (it needs no compile wait, see warmShadows).
+          this.shadowPending.push(chunk);
+          return this.compileChunk(chunk);
+        })
         .catch((err) => console.warn('[graphics] area warm failed', err));
     }
     return chunk.warm;
@@ -688,6 +706,9 @@ export class WorldView {
       onProgress?.(loadProgress(startLeft - need.length + warmed, startLeft));
       await new Promise((r) => setTimeout(r, 30));
     }
+    // Their moon-shadow depth programs too (a synchronous compile: do it behind the veil, not when the first prop switches on).
+    for (const c of need) this.warmShadows(c);
+    this.warmShadowKinds();
     this.primeStats.totalMs = Math.round(performance.now() - t0);
     onProgress?.(1);
   }
@@ -716,6 +737,184 @@ export class WorldView {
       for (const c of this.chunks.values()) if (c.group.visible) for (const b of c.batches) b.updateShadows(x, z, range);
     }
     if (this.queue.size) this.queue.runSlice(1.5);
+    else if (this.shadowPending.length) this.dripShadowWarm();
+  }
+
+  /** Chunks whose models are in and whose shadow-depth programs are not warmed yet. */
+  private shadowPending: Chunk[] = [];
+  private shadowWarmAt = 0;
+
+  /** One chunk's shadow warm every half second once the build queue is empty, drawn-or-near areas first. */
+  private dripShadowWarm() {
+    const t = performance.now();
+    if (t - this.shadowWarmAt < 500) return;
+    this.shadowWarmAt = t;
+    let i = this.shadowPending.findIndex((c) => this.wanted.has(c.id));
+    if (i < 0) i = 0;
+    const [chunk] = this.shadowPending.splice(i, 1);
+    this.warmShadows(chunk);
+  }
+
+  /** Depth-program flavours (side / map / alpha-cut) already warmed this session: programs are shared by key, so each flavour is probed once. */
+  private shadowWarmed = new Set<string>();
+
+  /**
+   * Compiles the moon-shadow depth programs of an area's tall props before the player walks in range. compileAsync only builds each material's
+   * colour program; the depth variant (instanced, textured, double-sided...) is made the first time a prop actually casts, which is the moment
+   * the player crosses an arch and the next room's props switch on (updateShadows): a first-use compile in the middle of a frame. So draw one
+   * invisible one-instance probe per flavour, casting, once, into the same tiny target the other warm-ups use. The rest of the world is hidden
+   * for that draw so it costs a shadow pass of a few probes, not a second frame.
+   *
+   * Order matters: WebGLShadowMap shares ONE depth material and only re-picks its program when the object kind changes (plain <-> instanced <->
+   * skinned), reading the side / map it holds at that moment. A probe therefore compiles only if it follows a plain mesh: each one is preceded by a
+   * tiny non-instanced caster, exactly the transition the first real draw of that flavour makes.
+   */
+  private warmShadows(chunk: Chunk) {
+    const ctx = this.warmCtx;
+    if (!ctx || !ctx.renderer.shadowMap.enabled || (typeof document !== 'undefined' && document.hidden)) return;
+    const probes: { geometry: THREE.BufferGeometry; material: THREE.Material }[] = [];
+    for (const b of chunk.batches) {
+      for (const p of b.shadowProbes()) {
+        const m = p.material as THREE.MeshStandardMaterial;
+        const flavour = `${m.side}|${m.map ? 1 : 0}|${m.alphaTest > 0 ? 1 : 0}|${m.alphaMap ? 1 : 0}`;
+        if (this.shadowWarmed.has(flavour)) continue;
+        this.shadowWarmed.add(flavour);
+        probes.push(p);
+      }
+    }
+    if (!probes.length) return;
+    const r = ctx.renderer;
+    const group = new THREE.Group();
+    group.name = 'warm-shadow-probes';
+    const at = new THREE.Matrix4().makeScale(1e-3, 1e-3, 1e-3);
+    if (this.shadowAt) at.setPosition(this.shadowAt.x, 0, this.shadowAt.z);
+    const meshes: THREE.InstancedMesh[] = [];
+    const plainGeo = new THREE.BoxGeometry(1e-3, 1e-3, 1e-3);
+    const plainMat = new THREE.MeshBasicMaterial();
+    for (const p of probes) {
+      const plain = new THREE.Mesh(plainGeo, plainMat);
+      plain.castShadow = true;
+      plain.frustumCulled = false;
+      const m = new THREE.InstancedMesh(p.geometry, p.material, 1);
+      m.setMatrixAt(0, at);
+      m.castShadow = true;
+      m.frustumCulled = false;
+      group.add(plain, m);
+      meshes.push(m);
+    }
+    const hidden: THREE.Object3D[] = [];
+    for (const c of this.chunks.values()) if (c.group.visible) hidden.push(c.group);
+    if (this.fixed.visible) hidden.push(this.fixed);
+    for (const o of hidden) o.visible = false;
+    this.scene.add(group);
+    const rt = ctx.target?.() ?? null;
+    try {
+      r.shadowMap.needsUpdate = true;
+      if (rt) {
+        r.setRenderTarget(rt);
+        r.render(this.scene, ctx.camera);
+      } else {
+        r.setScissorTest(true);
+        r.setScissor(0, 0, 1, 1);
+        r.render(this.scene, ctx.camera);
+      }
+    } catch (err) {
+      console.warn('[graphics] shadow warm failed', err);
+    } finally {
+      if (rt) r.setRenderTarget(null);
+      else r.setScissorTest(false);
+      this.scene.remove(group);
+      for (const o of hidden) o.visible = true;
+      for (const m of meshes) m.dispose();
+      plainGeo.dispose();
+      plainMat.dispose();
+    }
+  }
+
+  private shadowKindsDone = false;
+
+  /**
+   * The depth programs the bodies need (see warmShadows for why order matters): skinned and plain meshes, with and without a map, front-sided
+   * and double-sided. The creature stage draws every body in one pass, so only the first transition of each kind compiles; a body that first
+   * casts later (an NPC or thrall stepping into the shadow range as the hero crosses an arch) then compiled its flavour mid-frame. One tiny
+   * probe per kind and flavour, each after a different kind, makes every transition happen once, behind the veil.
+   */
+  private warmShadowKinds() {
+    const ctx = this.warmCtx;
+    if (this.shadowKindsDone || !ctx || !ctx.renderer.shadowMap.enabled || (typeof document !== 'undefined' && document.hidden)) return;
+    this.shadowKindsDone = true;
+    const r = ctx.renderer;
+    const tex = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+    tex.needsUpdate = true;
+    const geo = new THREE.BoxGeometry(1e-3, 1e-3, 1e-3);
+    const skinned = geo.clone();
+    const n = skinned.attributes.position.count;
+    skinned.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(new Uint16Array(n * 4), 4));
+    skinned.setAttribute('skinWeight', new THREE.Float32BufferAttribute(new Float32Array(n * 4).map((_, i) => (i % 4 === 0 ? 1 : 0)), 4));
+    const mats: THREE.Material[] = [];
+    const group = new THREE.Group();
+    group.name = 'warm-shadow-kinds';
+    const kinds = ['plain', 'instanced', 'skinned'] as const;
+    const make = (kind: (typeof kinds)[number], mat: THREE.Material): THREE.Mesh => {
+      let m: THREE.Mesh;
+      if (kind === 'instanced') {
+        const im = new THREE.InstancedMesh(geo, mat, 1);
+        im.setMatrixAt(0, new THREE.Matrix4().makeScale(1, 1, 1));
+        m = im;
+      } else if (kind === 'skinned') {
+        const bone = new THREE.Bone();
+        const sm = new THREE.SkinnedMesh(skinned, mat);
+        sm.add(bone);
+        sm.bind(new THREE.Skeleton([bone]));
+        m = sm;
+      } else m = new THREE.Mesh(geo, mat);
+      m.castShadow = true;
+      m.frustumCulled = false;
+      return m;
+    };
+    kinds.forEach((kind, ki) => {
+      for (const withMap of [false, true]) {
+        for (const side of [THREE.FrontSide, THREE.DoubleSide]) {
+          const mat = new THREE.MeshStandardMaterial({ side, map: withMap ? tex : null });
+          mats.push(mat);
+          // A different kind first, so the shared depth material re-picks its program for this one.
+          group.add(make(kinds[(ki + 1) % kinds.length], mat), make(kind, mat));
+        }
+      }
+    });
+    const hidden: THREE.Object3D[] = [];
+    for (const c of this.chunks.values()) if (c.group.visible) hidden.push(c.group);
+    if (this.fixed.visible) hidden.push(this.fixed);
+    for (const o of hidden) o.visible = false;
+    this.scene.add(group);
+    const rt = ctx.target?.() ?? null;
+    try {
+      r.shadowMap.needsUpdate = true;
+      if (rt) {
+        r.setRenderTarget(rt);
+        r.render(this.scene, ctx.camera);
+      } else {
+        r.setScissorTest(true);
+        r.setScissor(0, 0, 1, 1);
+        r.render(this.scene, ctx.camera);
+      }
+    } catch (err) {
+      console.warn('[graphics] shadow kinds warm failed', err);
+    } finally {
+      if (rt) r.setRenderTarget(null);
+      else r.setScissorTest(false);
+      this.scene.remove(group);
+      for (const o of hidden) o.visible = true;
+      group.traverse((o) => {
+        const sm = o as THREE.SkinnedMesh;
+        if (sm.isSkinnedMesh) sm.skeleton.dispose();
+        if ((o as THREE.InstancedMesh).isInstancedMesh) (o as THREE.InstancedMesh).dispose();
+      });
+      for (const m of mats) m.dispose();
+      geo.dispose();
+      skinned.dispose();
+      tex.dispose();
+    }
   }
 
   /** QA: which areas are built and drawn. */

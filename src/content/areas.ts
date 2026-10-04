@@ -1,6 +1,6 @@
 import type { EnemyId } from './enemies';
-import { armorLoot } from './armorSets';
-import { necroWeaponLoot } from './necroWeapons';
+import { ARMOR_BY_ID, armorLoot } from './armorSets';
+import { NECRO_WEAPON_BY_ID, necroWeaponLoot } from './necroWeapons';
 import { NPC_IDS, NPC_SPOTS, npcInteractableId } from './npcSpots';
 
 /**
@@ -621,7 +621,42 @@ export const AREAS: Record<AreaId, AreaDef> = {
   },
 };
 
-export const AREA_ORDER: AreaId[] = ['chapterhouse', 'acre', 'graves', 'ossuary', 'nave', 'sanctum', 'cloister', 'pyre', 'warren', 'coliseum', 'fen', 'alchemist_wing', 'depths'];
+/**
+ * THE descent order: the one list every menu, map, waystone list, Atlas section and Codex page reads. Safe halls first (home, then the
+ * Acre and the Alchemist's Wing), then the hunting grounds from the shallowest to the deepest by level, so the side halls sit where
+ * their level puts them: Hollow Graves 1, Warren 4, Marrow Ossuary 5, Drowned Nave 9, Coliseum 11, Catacomb Depths 12, Bell Sanctum 13,
+ * Plague Cloister 20, Cinder Pyre 30, Mourning Fen 45. `areas.test.ts` fails if a new area breaks the descent.
+ */
+export const AREA_ORDER: AreaId[] = ['chapterhouse', 'acre', 'alchemist_wing', 'graves', 'warren', 'ossuary', 'nave', 'coliseum', 'depths', 'sanctum', 'cloister', 'pyre', 'fen'];
+
+/** The hunting grounds in descent order (no safe hall, no instance): the ladder drop quality climbs. */
+export const HUNT_ORDER: AreaId[] = AREA_ORDER.filter((id) => !AREAS[id].safe && !AREAS[id].instance);
+/** How deep a ground is: 0 for the Hollow Graves, up to HUNT_ORDER.length - 1 for the Mourning Fen; -1 for halls and instances. */
+export const huntRank = (id: AreaId): number => HUNT_ORDER.indexOf(id);
+
+/**
+ * Drop quality by depth (owner, 3 Oct 2026: "drops get better as you descend", "make it more achievable"). Build gear (set armour,
+ * necromancer weapons, rare-or-better generic pieces) is weighted up in a ground's loot table by this factor, and the deeper the ground the
+ * more: x1.4 in the Hollow Graves, +0.05 per rung, x1.8 in the Mourning Fen. Item chance per kill, and so the NUMBER of drops, is untouched:
+ * the same drops are simply likelier to be the ones worth wearing. It is baked into `AREAS[x].loot` once, below, so the Atlas, the smart-loot
+ * tables, the server's rate ceilings and the generated LOOT-TABLES.md all read the same weights.
+ */
+export const CHASE_WEIGHT = { base: 1.4, perRung: 0.05 } as const;
+export const chaseMult = (id: AreaId): number => CHASE_WEIGHT.base + CHASE_WEIGHT.perRung * Math.max(0, huntRank(id));
+const GENERIC_CHASE = /^(chest_iron|helm_gold|kit_iron_warden)$/;
+/** Is this table entry a piece worth chasing (and so scaled by chaseMult)? Materials, flasks, ordinary rings and starter gear are not. */
+export const isChaseItem = (item: string): boolean => !!ARMOR_BY_ID[item] || !!NECRO_WEAPON_BY_ID[item] || GENERIC_CHASE.test(item);
+const RARITY_CHASE: Record<string, number> = { common: 1, uncommon: 1, rare: 1.25, epic: 1.5, legendary: 1.5 };
+for (const id of AREA_ORDER) {
+  const area = AREAS[id];
+  if (!area.loot.length) continue;
+  const m = chaseMult(id);
+  area.loot = area.loot.map((e) => {
+    if (!isChaseItem(e.item)) return e;
+    const rarity = ARMOR_BY_ID[e.item]?.rarity ?? NECRO_WEAPON_BY_ID[e.item]?.rarity ?? 'rare';
+    return { item: e.item, weight: e.weight * m * (RARITY_CHASE[rarity] ?? 1) };
+  });
+}
 
 /** Areas with no seal (`unlock`) are open to everyone from the start. An instance (the Depths) is open only while a run is. */
 export const isAlwaysOpen = (id: AreaId) => !AREAS[id].unlock && !AREAS[id].instance;

@@ -80,6 +80,11 @@ kbd {
 .hud-slot.alt .key { font-size: 11px; }
 .cw-slot .rm { font-size: 11px; }
 .cw-slot .eq { font-size: 11px; }
+/* The 2026-09-27 rule says nothing player-facing is under 11px; these captions were still 7-9px (and the brew chip label was in the display serif). */
+.cw-tip .move-hint { font-size: 11px; }
+.brew-chip .lbl { font-family: var(--cw-font-body); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; }
+.cw-equip-slot .slot-label { font-size: 10px; letter-spacing: 0; }
+.cw-belt-slot .slot-label { font-size: 9px; letter-spacing: 0; }
 
 /* --- Upgrade / dial controls: prices stay readable while you can't afford them -------------- */
 .hud-up .buy:disabled { opacity: 0.62; }

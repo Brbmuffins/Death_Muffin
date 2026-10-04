@@ -13,6 +13,12 @@ set -euo pipefail
 
 REPO=/home/ubuntu/vps-handoffs/DeathMuffin/game
 RUNTIME=/home/ubuntu/death-muffin
+# One deploy at a time, shared with the Discord dev agent's ship helper (which sets DEPLOY_LOCK_HELD=1 because it already holds the lock).
+if [ -z "${DEPLOY_LOCK_HELD:-}" ]; then
+  mkdir -p "$RUNTIME/deploy"
+  exec 9>"$RUNTIME/deploy/.deploy.lock"
+  flock -w 1800 9 || { echo "another deploy holds $RUNTIME/deploy/.deploy.lock" >&2; exit 1; }
+fi
 PUBLIC=/var/www/death-muffin
 REV="${1:-HEAD}"
 shift || true
@@ -94,13 +100,28 @@ for d in assets art models fx audio; do [ -d "$SRC/dist/$d" ] && sudo cp -a "$SR
 # Launcher "update before play" helpers: static, no game code; the manifest lists the files just published above.
 sudo cp -a "$SRC/dist/precache.html" "$SRC/dist/asset-manifest.json" "$PUBLIC/play/"
 sudo cp -a "$SRC/dist/index.html" "$PUBLIC/play/index.html"
-# release-notes.json (news panel of the Windows launcher): same commit range as the Discord notice, published after index.html.
+# release-notes.json (news panel of the Windows launcher), published after index.html. Player-facing notes come from PATCH_NOTES.json
+# (newest entry first, written by hand for each release); without it the commit subjects since the previous live release are used.
+# patch-notes.json (the whole PATCH_NOTES.json history) feeds the site's patch-notes page and the launcher's "All patch notes".
 RANGE="$SHA"; [ -n "$PREV" ] && git -C "$REPO" cat-file -e "$PREV^{commit}" 2>/dev/null && RANGE="$PREV..$SHA"
 git -C "$REPO" log --no-merges --format='%s' -n 12 $RANGE | python3 -c '
-import json, sys, datetime
-items = [l.strip()[:150] for l in sys.stdin if l.strip()]
-print(json.dumps({"sha": sys.argv[1], "date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "items": items}))
-' "$SHA" > "$CAND/release-notes.json" || echo '{"sha":"'"$SHA"'","date":"","items":[]}' > "$CAND/release-notes.json"
+import json, os, sys, datetime
+sha, notes_path, out_dir = sys.argv[1], sys.argv[2], sys.argv[3]
+now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+commits = [l.strip()[:150] for l in sys.stdin if l.strip()]
+history = []
+if os.path.exists(notes_path):
+    try:
+        history = [e for e in json.load(open(notes_path)) if e.get("items")]
+    except Exception as e:
+        print("PATCH_NOTES.json unreadable, using commit subjects:", e, file=sys.stderr)
+top = history[0] if history else None
+notes = {"sha": sha, "date": now, "title": top["title"] if top else "", "items": top["items"] if top else commits, "commits": commits}
+json.dump(notes, open(os.path.join(out_dir, "release-notes.json"), "w"))
+json.dump({"sha": sha, "date": now, "releases": history[:30]}, open(os.path.join(out_dir, "patch-notes.json"), "w"))
+' "$SHA" "$SRC/PATCH_NOTES.json" "$CAND" || echo '{"sha":"'"$SHA"'","date":"","items":[]}' > "$CAND/release-notes.json"
+[ -f "$CAND/patch-notes.json" ] || echo '{"releases":[]}' > "$CAND/patch-notes.json"
+sudo cp "$CAND/patch-notes.json" "$PUBLIC/play/patch-notes.json"
 sudo cp "$CAND/release-notes.json" "$PUBLIC/play/release-notes.json"
 # release.txt goes after index.html: open tabs auto-reload when it changes, and must then fetch the new page.
 echo "$SHA $(date -u +%FT%TZ)" > "$CAND/release.txt"
@@ -118,7 +139,9 @@ curl -sSf https://muffindevelopment.com/death-muffin/api/health; echo
 echo "Release $SHA published. Rollback: $BK/ROLLBACK.sh"
 
 # Discord notice (optional): the webhook URL lives outside the repo (the repo is public). Never fails the deploy.
-HOOK_FILE="$RUNTIME/private/discord-github-webhook.url"
+# The Death Muffin channel's webhook wins when it is set up; otherwise the older MuffinCore alerts webhook.
+HOOK_FILE="$RUNTIME/private/discord-deathmuffin-webhook.url"
+[ -r "$HOOK_FILE" ] || HOOK_FILE="$RUNTIME/private/discord-github-webhook.url"
 if [ -r "$HOOK_FILE" ]; then
   git -C "$REPO" log --no-merges --format='%s' -n 12 $RANGE | python3 -c '
 import json, sys, urllib.request
@@ -132,4 +155,29 @@ req = urllib.request.Request(url, data=json.dumps({"username": "Death Muffin", "
                              headers={"Content-Type": "application/json", "User-Agent": "death-muffin-deploy"})
 urllib.request.urlopen(req, timeout=10)
 ' "$SHA" "${PREV:-}" "$HOOK_FILE" && echo "Discord: release notice sent" || echo "Discord: notice failed (deploy is fine)"
+fi
+
+# Player bug reports fixed by this release (commits "Bug report #<id>: ..."): mark them 'released' so the reporter sees
+# "Fixed — live now" in Settings → Report a bug, and announce them. Never fails the deploy.
+FIXES=$(git -C "$REPO" log --no-merges --format='%s' $RANGE | grep -E '^Bug report #[0-9]+: ' || true)
+if [ -n "$FIXES" ]; then
+  IDS=$(printf '%s\n' "$FIXES" | sed -E 's/^Bug report #([0-9]+):.*/\1/' | sort -un | paste -sd, -)
+  NEWLY=$(node "$SRC/server/death-muffin/bug-agent/reports-cli.cjs" release "$IDS" 2>/dev/null || echo '[]')
+  echo "Bug reports released: $NEWLY"
+  if [ -r "$HOOK_FILE" ] && [ "$NEWLY" != "[]" ]; then
+    printf '%s\n' "$FIXES" | python3 -c '
+import json, sys, urllib.request
+sha, newly, url = sys.argv[1], {r["id"] for r in json.loads(sys.argv[2])}, open(sys.argv[3]).read().strip()
+lines = []
+for l in sys.stdin:
+    head, _, text = l.strip().partition(": ")
+    rid = int(head.split("#")[1])
+    if rid in newly: lines.append(f"• **#{rid}** {text[:150]}")
+embed = {"title": f"\U0001F41E Player-reported bugs fixed — live now", "url": "https://muffindevelopment.com/death-muffin/play/",
+         "description": "\n".join(lines)[:3800] + f"\n\nRelease {sha[:7]}. Thanks for the reports! Send more from Settings → Report a bug.", "color": 0x16A34A}
+req = urllib.request.Request(url, data=json.dumps({"username": "Death Muffin", "embeds": [embed], "allowed_mentions": {"parse": []}}).encode(),
+                             headers={"Content-Type": "application/json", "User-Agent": "death-muffin-deploy"})
+urllib.request.urlopen(req, timeout=10)
+' "$SHA" "$NEWLY" "$HOOK_FILE" && echo "Discord: bug-fix notice sent" || echo "Discord: bug-fix notice failed (deploy is fine)"
+  fi
 fi

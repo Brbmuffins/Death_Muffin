@@ -39,7 +39,8 @@ test('experience arithmetic matches the game curve and round-trips', () => {
   assert.equal(rules.totalXp(2, 0), 100);
   assert.equal(rules.totalXp(3, 50), 350);
   for (const t of [0, 99, 100, 5000, 904520, 3_000_000]) assert.equal(rules.totalXp(rules.splitXp(t).level, rules.splitXp(t).xp), t);
-  assert.equal(rules.splitXp(1e12).level, 255);
+  assert.equal(rules.splitXp(1e12).level, 999);
+  assert.equal(rules.LEVEL_CAP, 999);
 });
 
 // ── XP and level ─────────────────────────────────────────────────────────────────────────────────────────────────────

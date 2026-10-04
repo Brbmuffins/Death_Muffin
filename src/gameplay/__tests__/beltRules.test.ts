@@ -25,7 +25,7 @@ describe('belt rules', () => {
     expect(beltState({ hasItem: false, active: true })).toBe('active');
   });
   it('empty hints say how to fill the slot, with touch wording on phones', () => {
-    expect(emptyHint('tonic', false)).toMatch(/Alchemist's Wing.*right-click.*Press X/);
+    expect(emptyHint('tonic', false)).toMatch(/Click it.*Alchemist's Wing.*Press X/);
     expect(emptyHint('tonic', true)).toMatch(/select.*Tap this slot/);
     expect(emptyHint('tonic', true)).not.toMatch(/right-click|press X/);
     expect(emptyHint('heal', false)).toMatch(/Moss Tonic.*Press Q/);

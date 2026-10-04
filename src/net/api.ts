@@ -1,8 +1,11 @@
 import { API_BASE } from './config';
+import { isReplacedReply, isSessionReplaced, notifySessionReplaced, SESSION_REPLACED_MESSAGE } from './session';
 import type { Character, InventorySlot, Profession, Recipe } from './types';
 import type { NecroState, SaveInput } from '../gameplay/necroRules';
+import type { KillReport } from '../gameplay/killRules';
 import { decorateSlots, type DropInstance } from '../gameplay/affixes';
 import type { DropSource } from '../gameplay/affixRules';
+import type { ApplyReport, LoadoutPreset } from '../gameplay/loadoutRules';
 
 /**
  * REST client for the existing Node/Express auth server.
@@ -77,6 +80,8 @@ async function request<T>(
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> | undefined),
   };
+  // A replaced window stops writing: nothing it sends would be accepted, and a save loop would only hammer the server.
+  if (auth && isSessionReplaced() && String(options.method ?? 'GET').toUpperCase() !== 'GET') throw new ApiError(SESSION_REPLACED_MESSAGE, 409);
   if (auth) {
     const token = getToken();
     if (!token) throw new ApiError('Not authenticated', 401);
@@ -100,6 +105,7 @@ async function request<T>(
   }
   const body = await res.json().catch(() => null);
   if (!res.ok) {
+    if (isReplacedReply(res.status, body)) notifySessionReplaced();
     throw new ApiError(body?.error ?? `Request failed: ${res.status}`, res.status);
   }
   return body;
@@ -165,12 +171,13 @@ export async function getInventory(characterId: number) {
 }
 
 /** `bagSize` tells the server which bag slots this save speaks for; without it a server assumes the old 24-slot bag. */
-export async function saveInventory(characterId: number, slots: unknown[], bagSize?: number) {
+/** `keepalive` lets the final save on tab close finish after the page is gone. */
+export async function saveInventory(characterId: number, slots: unknown[], bagSize?: number, keepalive = false) {
   return decorateSlots(
     await unwrap<InventorySlot[]>(
       request(
         '/api/inventory/save',
-        { method: 'POST', body: JSON.stringify({ characterId, slots, bagSize }) },
+        { method: 'POST', body: JSON.stringify({ characterId, slots, bagSize }), keepalive },
         true,
       ),
     ),
@@ -241,6 +248,23 @@ export async function runeSocket(characterId: number, rite: string, itemId: stri
   );
 }
 
+/** Loadout presets (rites + runes + weapon/off-hand under one name, up to six per character). */
+export interface LoadoutSlotRow {
+  slot: number;
+  preset: LoadoutPreset;
+}
+export const listLoadouts = (characterId: number) => unwrap<LoadoutSlotRow[]>(request(`/api/loadouts/${characterId}`, {}, true));
+export const saveLoadout = (characterId: number, slot: number, preset: LoadoutPreset) =>
+  unwrap<LoadoutSlotRow[]>(request('/api/loadouts/save', { method: 'POST', body: JSON.stringify({ characterId, slot, preset }) }, true));
+export const deleteLoadout = (characterId: number, slot: number) =>
+  unwrap<LoadoutSlotRow[]>(request('/api/loadouts/delete', { method: 'POST', body: JSON.stringify({ characterId, slot }) }, true));
+/** Put a saved loadout's weapon, off-hand and runes on (the server does it in one transaction). The bag comes back with what was skipped. */
+export async function applyLoadoutPreset(characterId: number, slot: number) {
+  const body = await request<ApiResponse<InventorySlot[]> & { report?: ApplyReport; preset?: LoadoutPreset }>('/api/loadouts/apply', { method: 'POST', body: JSON.stringify({ characterId, slot }) }, true);
+  if (!body.success) throw new ApiError(body.error ?? 'Unknown server error', 200);
+  return { slots: decorateSlots(body.data as InventorySlot[]), report: body.report as ApplyReport, preset: body.preset as LoadoutPreset };
+}
+
 // --- Professions & crafting ---
 export function getProfessions(characterId: number) {
   return unwrap<Profession[]>(request(`/api/professions/${characterId}`, {}, true));
@@ -300,6 +324,8 @@ export interface ProgressPayload {
   stat_agi: number;
   stat_int: number;
   stat_vit: number;
+  /** Server authority step 2: sealed kill batches that ride along with the save (see net/killReporter.ts). Servers that do not know the field ignore it. */
+  killReports?: KillReport[];
 }
 
 /**
@@ -312,6 +338,11 @@ export function saveProgress(payload: ProgressPayload, keepalive = false) {
     { method: 'POST', body: JSON.stringify(payload), keepalive },
     true,
   ));
+}
+
+/** Post kill batches on their own (a floor was cleared, a necromancer save is about to claim kills). Resolves with the server's mode. */
+export function reportKills(characterId: number, reports: KillReport[], keepalive = false) {
+  return unwrap<{ mode: string }>(request('/api/kills/report', { method: 'POST', body: JSON.stringify({ characterId, reports }), keepalive }, true));
 }
 
 // --- Necromancer progression (server storage; see server/VPS_HANDOFF.md) ---
@@ -339,6 +370,8 @@ export const necroApi = {
   summonPrelate: (characterId: number) => necroPost('summon-prelate', { characterId }),
   summonBoss: (characterId: number, boss: string) => necroPost('summon-boss', { characterId, boss }),
   ascend: (characterId: number) => necroPost('ascend', { characterId }),
+  vows: (characterId: number, vows: object) => necroPost('vows', { characterId, vows }),
+  unlock: (characterId: number, key: string) => necroPost('unlock', { characterId, key }),
   boon: (characterId: number, boonId: string) => necroPost('boon', { characterId, boonId }),
   importLocal: (characterId: number, record: object) => necroPost('import', { characterId, record }),
 };
@@ -581,4 +614,85 @@ export interface SalvageReply {
 export async function salvageGear(characterId: number, slots: number[]) {
   const r = await unwrap<SalvageReply>(request('/api/salvage', { method: 'POST', body: JSON.stringify({ characterId, slots }) }, true));
   return { ...r, bag: decorateSlots(r.bag) };
+}
+
+// --- Gold sinks (reforge.cjs, boss-key.cjs; rules in gameplay/goldSinkRules.ts) ---
+export interface ReforgeQuote {
+  gold: number;
+  pieces: { slot_index: number; instance_id: number; rerolls: number }[];
+}
+export interface ReforgeReply {
+  /** The character's gold after paying: the server's number, adopt it. */
+  gold: number;
+  cost: number;
+  from: number;
+  to: number;
+  rerolls: number;
+  bag: InventorySlot[];
+}
+export function reforgeQuote(characterId: number) {
+  return unwrap<ReforgeQuote>(request('/api/reforge/quote', { method: 'POST', body: JSON.stringify({ characterId }) }, true));
+}
+/** Re-roll the value of one affix. `expectCost` is the price the player saw; the server prices again and refuses a stale one. */
+export async function reforgeAffix(characterId: number, slotIndex: number, affixIndex: number, expectCost: number) {
+  const r = await unwrap<ReforgeReply>(request('/api/reforge', { method: 'POST', body: JSON.stringify({ characterId, slot_index: slotIndex, affix_index: affixIndex, expect_cost: expectCost }) }, true));
+  return { ...r, bag: decorateSlots(r.bag) };
+}
+
+export interface BossKeyReply {
+  gold: number;
+  /** Gold taken (0 when a bound summon was reused or the call was a refund). */
+  cost?: number;
+  reused?: boolean;
+  /** The bound summon's id (empowered_summons): the boss's kill report names it so the prize claim has a reported kill behind it. */
+  summon_id?: number;
+  bag: InventorySlot[];
+}
+async function bossKey(name: 'summon' | 'refund', characterId: number, boss: string) {
+  const r = await unwrap<BossKeyReply>(request(`/api/boss-key/${name}`, { method: 'POST', body: JSON.stringify({ characterId, boss }) }, true));
+  return { ...r, bag: decorateSlots(r.bag) };
+}
+/** Bosses this character holds a paid, unclaimed Empowered summon for (survives a reload: it is the server's row). */
+export function bossKeyStatus(characterId: number) {
+  return unwrap<{ bound: string[]; summons: { id: number; boss: string }[] }>(request('/api/boss-key/status', { method: 'POST', body: JSON.stringify({ characterId }) }, true));
+}
+export const bossKeySummon = (characterId: number, boss: string) => bossKey('summon', characterId, boss);
+export const bossKeyRefund = (characterId: number, boss: string) => bossKey('refund', characterId, boss);
+export interface BossKeyPrize {
+  item_id: string;
+  instance_id: number;
+  ilvl: number;
+  affixes: { id: string; v: number }[];
+  legendary: boolean;
+}
+export function bossKeyClaim(characterId: number, boss: string, discipline: string, level: number) {
+  return unwrap<BossKeyPrize>(request('/api/boss-key/claim', { method: 'POST', body: JSON.stringify({ characterId, boss, discipline, level }) }, true));
+}
+
+// --- Bug reports (Settings → Report a bug; read daily by server/death-muffin/bug-agent) ---
+export type BugCategory = 'bug' | 'combat' | 'ui' | 'performance' | 'balance' | 'other';
+
+export interface BugReportInput {
+  category: BugCategory;
+  message: string;
+  characterId?: number;
+  context?: Record<string, string | number | boolean | string[]>;
+}
+
+export interface MyBugReport {
+  id: number;
+  category: BugCategory;
+  message: string;
+  /** Player-facing status ("Received", "Fixed in an upcoming update", ...). */
+  status: string;
+  note: string | null;
+  createdAt: string;
+}
+
+export function sendBugReport(report: BugReportInput) {
+  return unwrap<{ id: number }>(request('/api/bug-reports', { method: 'POST', body: JSON.stringify(report) }, true));
+}
+
+export function getMyBugReports() {
+  return unwrap<MyBugReport[]>(request('/api/bug-reports/mine', {}, true));
 }

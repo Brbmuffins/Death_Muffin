@@ -8,11 +8,26 @@ The Ossuary Covenant stands in a diocese overrun by the dead. Choose one of nine
 
 **Play:** [muffindevelopment.com/death-muffin](https://muffindevelopment.com/death-muffin/). Create an account or sign in, then choose a discipline. You can change class later in **Settings** while keeping the same character's level, gold, items, and permanent progress.
 
-**Release status:** This guide matches the live game as of **3 October 2026**: a performance pass (smoother fights and big waves, a lighter download, one load screen at login, co-op that reconnects by itself and a game that refreshes when a release goes live), the always-visible belt, the 48-slot bag, Ossuary Vault and salvage, readable gear with upgrade arrows and the Character sheet, new combat audio, plus everything from 1 October (armor sets, Cinder Pyre and Mourning Fen, necromancer weapons and brews, five swappable rite slots, the Offline Edition). See the **[visual roadmap](ROADMAP.md)** for what is coming next, and [the handoff](HANDOFF.md) for development status.
+**Release status:** This guide matches the live game as of **4 October 2026** (the *Smoother, Clearer, Deeper* release, see **What's new** below). See the **[visual roadmap](ROADMAP.md)** for what is coming next, and [the handoff](HANDOFF.md) for development status.
 
 ## ✨ Highlights
 
-Some of the most polished corners of the game right now (updated 3 October 2026):
+### What's new (4 October 2026: Smoother, Clearer, Deeper)
+
+- **Smoother.** A graphics memory leak that grew with every kill is fixed, thralls no longer stutter while following you, and walking under the arches no longer hitches. See [Smooth play and loading](#smooth-play-and-loading).
+- **Better loot.** Stronger affix rolls, far more drops from your own set, better drops the deeper you go, and more runes and legendaries. The **Atlas** shows your real odds, and every list of areas now runs in descent order. See [Getting better gear](#getting-better-gear-upgrade-guide) and [Loot tables and the Gear Atlas](#-loot-tables--gear-atlas).
+- **Vows replace the old Ascension grind.** Choose your own curses at the Altar; your rank is the heat you swear, soul shards unlock vows and playstyle boons, and **seals never reset**. See [Ascension](#ascension).
+- **Gold sinks.** Reforge an affix at the Workbench, or spend a Covenant Seal to wake an **Empowered boss**. See [Gold sinks](#gold-sinks-reforge-and-empowered-bosses).
+- **Loadouts.** Save rites, runes and weapons together and swap with one click, with optional hotkeys. See [Loadouts](#loadouts).
+- **Co-op is solo by default.** You only share a world after making or joining a **party code** (Settings → Play together, or `/party`). Partied players can still go down the Depths. See [Playing together](#playing-together-and-getting-help).
+- **Cleaner fights.** Other players' spell areas are faint and tinted, lingering areas fade to outlines, and danger warnings always draw on top. See [Combat and corpses](#combat-and-corpses).
+- **A tidier HUD.** A Report a bug button above chat, a clearer elixir belt, a key-art loading screen, fewer panels (Acre ledger, Character, Grimoire) and **NEW** markers when something unlocks. See [A HUD that grows with you](#a-hud-that-grows-with-you).
+- **Gear that fits.** Helms tint your own hood or helmet, capes no longer clip on death, there is a set summary under the paper doll and a **Hide helms** setting. See [Gear, stats and the character sheet](#gear-stats-and-the-character-sheet).
+- **Levels go to 999,** and signing in somewhere new stops the old window saving over you. See [One login at a time](#one-login-at-a-time).
+
+### Gallery
+
+Some of the most polished corners of the game right now (updated 4 October 2026):
 
 <table><tr>
 <td width="50%"><img src="docs/screenshots/gear-set-tooltip.webp" alt="An item tooltip that says whether it is an upgrade for your discipline and which set bonus it completes" /><br /><sub><b>Gear you can read.</b> Green ▲ / red ▼ on every bag item, a verdict for <i>your</i> discipline, and armor set bonuses that light up as you complete them.</sub></td>
@@ -39,22 +54,29 @@ Some of the most polished corners of the game right now (updated 3 October 2026)
 
 ## Contents
 
-- [Highlights](#-highlights)
+- [Highlights and what's new](#-highlights)
 - [Your first hour](#your-first-hour)
 - [What to explore next](#what-to-explore-next)
 - [Finding your way](#finding-your-way)
-- [Controls](#controls) (and [on a phone or tablet](#on-a-phone-or-tablet))
+- [Controls](#controls)
+  - [A HUD that grows with you](#a-hud-that-grows-with-you)
+  - [Smooth play and loading](#smooth-play-and-loading)
+  - [Phones and tablets](#phones-and-tablets)
 - [Choose a discipline](#choose-a-discipline)
 - [Combat and corpses](#combat-and-corpses)
 - [Relic runes](#relic-runes)
+- [Loadouts](#loadouts)
 - [The world and its bosses](#the-world-and-its-bosses)
 - [The Catacomb Depths](#the-catacomb-depths)
 - [Gold, gear, and difficulty](#gold-gear-and-difficulty)
+  - [Gold sinks: Reforge and Empowered bosses](#gold-sinks-reforge-and-empowered-bosses)
 - [Gear, stats and the character sheet](#gear-stats-and-the-character-sheet)
+- [Getting better gear (upgrade guide)](#getting-better-gear-upgrade-guide)
 - [Loot tables and the Gear Atlas](#-loot-tables--gear-atlas)
 - [Gathering and crafting](#gathering-and-crafting)
 - [Ascension](#ascension)
 - [Playing together and getting help](#playing-together-and-getting-help)
+  - [One login at a time](#one-login-at-a-time)
 - [Offline play status](#offline-play-status)
 
 ## Your first hour
@@ -66,7 +88,7 @@ Nothing in the first hour is a quest, and nothing can be failed or missed. This 
 1. **Minutes 0-2: the Sexton's Acre.** You start in a safe gathering yard with no enemies. One Covenant counsel card ("Take your time") explains the controls, and the **Next** line under the minimap offers a single optional suggestion: *Walk east to the Chapterhouse, then north to the Hollow Graves*. The Sexton (a gold **!** over his head; click him or press **E**) explains gathering, Grave Laborers and the daily Contracts when you ask. To begin a skill, click a Coffin-Oak, Copper or Tin Seam, Still Pool or Pauper's Grave; **P** shows your skills. You can leave gathering for later.
 2. **Minutes 2-3: the Chapterhouse.** East of the Acre, a safe hub with the Reliquary for your bag, the Workbench for smelting and tools, the Altar of Ascension, a Waystone and the Prior, who points the way when asked. The east door leads to the **Alchemist's Wing**, where the Apothecary brews. **T** channels a return here whenever you want a break.
 3. **Minutes 3-15: the Hollow Graves.** Go north through the Chapterhouse. Move with **WASD** or by clicking the ground, click an enemy for your basic attack, and use **1-4** and **Right-click** for rites. The first dead you meet bring one short fight card ("Walk among the dead"), and the first corpse brings the necromancer's main lesson: **Exhume** raises it as a thrall. A card about one kind of enemy appears the first time you see it, and **Hurt?** appears when your health drops below half. The first levels come quickly (level 4 after a couple of minutes of fighting in our test runs), and each level can unlock a new rite for the **Grimoire (L)**.
-4. **Minutes 5-20: loot and the first seal.** Loot goes to the **Reliquary (I)**, a 48-slot bag. A green **▲** on a bag item means it beats what you wear; **J** is the Character sheet. When the bag fills, **Sell all junk**, the **Vault (V)** and the **Bone Grinder** make room. The count under the minimap (and the Next line) tracks your first seal: 300 kills in the Graves open the **Marrow Ossuary**, whose dead are tougher and whose loot is better. Elites carry **soul shards**; two wake the Gravedigger King.
+4. **Minutes 5-20: loot and the first seal.** Loot goes to the **Reliquary (I)**, a 48-slot bag. A green **▲** on a bag item means it beats what you wear; under the paper doll a **set summary** shows the pieces you wear of a set, the bonus tiers that are on and what the next one needs; **J** is the Character sheet. When the bag fills, **Sell all junk**, the **Vault (V)** and the **Bone Grinder** make room. The count under the minimap (and the Next line) tracks your first seal: 300 kills in the Graves open the **Marrow Ossuary**, whose dead are tougher and whose loot is better. Elites carry **soul shards**; two wake the Gravedigger King.
 5. **Whenever you like: brewing.** The dead drop **Grave Dust**; four brew a first tonic at the Great Cauldron in the Alchemist's Wing. The Apothecary tells you what to brew and where each reagent falls.
 6. **Read what you meet.** Hover a rite for its cost and targeting advice, and open the **Codex (K)** for enemies, rites and professions.
 
@@ -119,12 +141,14 @@ Nothing in Death Muffin is a quest, and nothing can be failed or missed. If you 
 | Right click | Also uses your fifth equipped rite, which you can change in the Grimoire |
 | **R** or **6** | Use your class's signature rite after level 10 |
 | **Q** | Drink a healing flask |
-| **Z** / **X** | Drink the elixir / tonic on your belt (**F** is reserved for throwables) |
+| **Z** / **X** | Drink the elixir / tonic on your belt (**F** is reserved for throwables); these are your elixir belt, not the tool belt |
 | **T** | Recall to the Chapterhouse |
-| **L** | Open the Grimoire to inspect rites and set all five slots |
-| **I** or **B** / **C** / **P** / **O** / **U** / **H** / **N** | Reliquary / Workbench / Skills and AFK gathering / Sexton’s Contracts / Grave Gardening / Grave Laborers / Capes & Pets |
-| **J** | Character sheet: your numbers and where each comes from |
-| **Y** | Legion (necromancers): spare weapon and armour for your thralls, and Reinforce |
+| **Loadout keys** | Unbound by default: **Settings → Controls** lists **Next loadout** and **Loadout 1** to **6** (see [Loadouts](#loadouts)) |
+| **L** | Open the Grimoire to inspect rites and set all five slots (necromancers get a **Legion** tab beside it) |
+| **I** or **B** / **C** | Reliquary / Workbench |
+| **P** (also **U** / **H** / **O**) | **Acre ledger**: one window with tabs for Skills and AFK gathering, Grave Gardening, Grave Laborers and Sexton’s Contracts. The old keys U, H and O open the matching tab. |
+| **J** (also **N**) | Character window: your numbers and where each comes from, plus a **Capes & Pets** tab (N opens it) |
+| **Y** | Legion tab beside the Grimoire (necromancers): spare weapon and armour for your thralls, and Reinforce |
 | **M** / **K** | Waystone map / Codex |
 | **.** (period) | Gear Atlas: where every piece drops and how often, how to craft it, and what suits your discipline (also **Atlas** in the Menu) |
 | **E** | Talk to the Prior, the Sexton or the Apothecary when you stand beside them |
@@ -133,17 +157,23 @@ Nothing in Death Muffin is a quest, and nothing can be failed or missed. If you 
 | **Enter** | Chat |
 | **Esc** | Close an open panel, then open Settings |
 
-You can also click hotbar icons. Once you have learned a second rite (a few levels in), small swap arrows appear under each spell icon: click them to open the Grimoire with that slot selected; right click a hotbar slot also works. In **Settings**, you can change class, difficulty, graphics, frame rate (**Max**, 60 or 30 fps), **Auto resolution**, volume (Master, plus separate **Combat**, **Ambience** and **Interface** sliders), reduced motion, damage numbers, gathering behavior, counsel tips, and the Next suggestion with its minimap marker.
+You can also click hotbar icons. Once you have learned a second rite (a few levels in), small swap arrows appear under each spell icon: click them to open the Grimoire with that slot selected; right click a hotbar slot also works. In **Settings**, you can change class, difficulty, graphics, frame rate (**Max**, 60 or 30 fps), **Auto resolution**, volume (Master, plus separate **Combat**, **Ambience** and **Interface** sliders), reduced motion, damage numbers, **Hide helms** (draw heroes without their helm look), gathering behavior, counsel tips, and the Next suggestion with its minimap marker.
+
+### A HUD that grows with you
+
+The screen starts small and shows things as they start to matter. A fresh character sees no Upgrades box (Empower / Quicken / the wave dial) until the first gold drops in a hunting ground, no Omen chip in the safe rooms (the Chapterhouse, the Acre, the Alchemist's Wing), no Soul Shards counter until a shard drops, and no Spells, Acre or Atlas button in the Menu until you learn a second rite, start gathering or find your first gear piece. The first time something appears it glows with a small gold **NEW** tag and a single line in the toast area says what it is and which key opens it; the tag clears when you hover or open it, and once revealed it stays. Characters that already have the progress simply keep their HUD. The keys always work, even before the button shows.
+
+Panels are merged to keep the key list short: **P** opens the **Acre ledger** (tabs: Skills, Garden **U**, Laborers **H**, Contracts **O**), **J** opens the **Character** window (tabs: Stats, Capes & Pets **N**) and **L** opens the **Grimoire** (necromancers get a **Legion** tab, **Y**). The old keys U, H, O, N and Y still open the right tab.
 
 ### Smooth play and loading
 
 - **One load screen.** The game loads and warms everything once at login; walking through doors and teleports never shows another load screen.
 - **Frame rate and resolution.** In **Settings**, **Frame rate** can be **Max** (no cap, the default on a computer until you choose), 60 or 30 fps. **Auto resolution** lowers the picture's resolution only when the machine keeps missing its frame rate; turn it off for a constant sharp picture.
-- **Belt.** Three slots at the left edge are always visible: **Q** Heal, **Z** Elixir, **X** Tonic. Empty ones say how to fill them.
+- **Belt.** A labelled **Belt** at the left edge always shows three slots: **Q** Heal, **Z** Elixir, **X** Tonic. Healing flasks fill Heal by themselves. **Click an empty Elixir or Tonic slot** to pick a brew from your bag, or drag a brew from the Reliquary onto it (the **Put on belt** button on a brew works too). Hover any slot for the item, its effect and its key.
 - **Co-op and updates.** If the connection drops, the game retries on its own and returns you to the same world. When a new release goes live it saves, waits for any boss fight to end, and reloads you in.
 - **Computer first.** The desktop HUD stays at any window size; the phone and tablet layout appears only on touch devices.
 
-### On a phone or tablet
+### Phones and tablets
 
 The HUD rearranges itself for phones (portrait and landscape) and tablets, and every panel fits the screen.
 
@@ -183,6 +213,8 @@ Every class has a basic attack, five swappable rites on **1–5** (slot 5 also u
 | <img src="public/art/portraits/carrion_witch.webp" alt="" width="64" /> | **Carrion Witch** | Harvest bodies for Offal; use hooks, crows, and hexes to control a pack. Offal does not refill on its own. |
 | <img src="public/art/portraits/hollow_knight.webp" alt="" width="64" /> | **Hollow Knight** | Build Rage by fighting and taking hits, especially with a well-timed block; spend it on a leap and slam. |
 | <img src="public/art/portraits/veilwalker.webp" alt="" width="64" /> | **Veilwalker** | Veil refills in Life form and drains in Veil form. Move between forms and make temporary spectral allies from fallen enemies. |
+
+**Fighting without a legion.** The five classes above that raise no thralls (Grave Warden, Bell Monk, Carrion Witch, Hollow Knight, Veilwalker) hit 1.5x harder than their spell power alone would give, and they earn extra experience while young: 2x at level 1, easing down to normal at level 15.
 
 **New player picks:** the picker marks **Gravecaller** *Recommended for your first run* (the largest legion and the simplest loop; it appears only when you have no character yet, and every discipline is still one click away). Ossuary gives you a sturdy front line; Mourner has forgiving sustain; Hollow Knight suits players who want to stand close and time blocks. Any discipline can change later through Settings.
 
@@ -235,7 +267,7 @@ Runes are the build-depth layer for the four necromancer disciplines. A rune doe
 
 ![The Grimoire with the Bone Colossus rune socketed in Exhume](docs/screenshots/runes/grimoire-colossus.webp)
 
-**Getting and using them.** Runes drop from **elites** (about 1 elite in 170), from **Grave Surge** offerings (a quarter of them), and from **bosses**: the Prelate and the *first* kill of every other boss always leave one, repeat kills do about a third of the time. The first hunting grounds shed only uncommon runes; rare ones start in the Marrow Ossuary and epic ones in the Bell Sanctum. They stack in the Reliquary, rest in the Ossuary Vault, sell for gold and can be ground at the Bone Grinder (one at a time, into reagents only). Select one in the Reliquary and its detail strip says exactly what it changes, what it costs and where it drops; **Socket into ...** moves one into its rite. The **Grimoire (L)** shows a socket under the bar for whichever rite you select: click a rune to set it, **Take the rune out** to free it (or set another and the old one returns to your bag; nothing is ever lost). A jade badge on the hotbar slot shows a rite wearing a rune, and hovering the slot lists the change. The **Codex's Relic Runes tab** lists all eleven.
+**Getting and using them.** The sockets are already yours (one per rite, from the start): what you hunt for is the runes. They drop from **elites** (5% of elite kills in the Hollow Graves, one point more per rung of the descent, 12% in the Mourning Fen), from **Grave Surge** offerings (35% of them), from **bosses**: the Prelate and the *first* kill of every other boss always leave one, repeat kills half the time, and from **Catacomb Depths chests** (a quarter of the fifth-floor chests, rising to 70%). The Grimoire's rune box, the Gear Atlas and a Covenant counsel tip all say so. The first hunting grounds shed only uncommon runes; rare ones start in the Marrow Ossuary and epic ones in the Bell Sanctum. They stack in the Reliquary, rest in the Ossuary Vault, sell for gold and can be ground at the Bone Grinder (one at a time, into reagents only). Select one in the Reliquary and its detail strip says exactly what it changes, what it costs and where it drops; **Socket into ...** moves one into its rite. The **Grimoire (L)** shows a socket under the bar for whichever rite you select: click a rune to set it, **Take the rune out** to free it (or set another and the old one returns to your bag; nothing is ever lost). A jade badge on the hotbar slot shows a rite wearing a rune, and hovering the slot lists the change. The **Codex's Relic Runes tab** lists all eleven.
 
 | Rite | Rune | What it does | What it costs |
 |---|---|---|---|
@@ -256,6 +288,12 @@ Runes are the build-depth layer for the four necromancer disciplines. A rune doe
 The Bone Colossus rising from five corpses, Mass Grave's three weaker thralls, and Requiem's warning sigil.
 
 Bone Needle runes also ride a scythe's reaping arc, once per swing (not once per enemy hit): **Marrow-Tap** softens the swing and returns its bonus essence once, **Splinters** throws one shard from the nearest enemy struck to the nearest one the arc missed; the **Volley** is needle-only. In co-op a rune changes your own casts: your friends see the effect (the creeping circle, the Colossus, the Requiem warning ring, the contagion arcs) but not your badges.
+
+## Loadouts
+
+Twenty-odd rites, eleven runes and four weapon lines make swapping builds by hand a chore, so the necromancer disciplines can **save a loadout**: the primary and the five rites on keys 1-5, the **rune socketed in each rite**, and the **weapon and off-hand** you wear, under one name. Open the **Grimoire (L)**, set things up and press **Save what I have now** under the bar. You can keep **six per character**, stored on the server so they follow the character to any device.
+
+**Apply** puts one on in a click: the weapon and off-hand are swapped in from your bag, each rune moves into its rite (the old one goes back to your bag), and the rites are placed. The loadout you are wearing is marked **on now**; **Update** overwrites one with what you have on, **Rename** and **Delete** do what they say. Nothing is lost: a weapon or rune you no longer have (sold, ground, resting in the Vault) is left out and named, a rite you have not learned yet is replaced by another, and a swap that needs a free bag slot you do not have is refused while the rest still applies. A hand the loadout was saved with nothing in is left as it is (the card says "keep current"). **Hotkeys:** Settings → Controls lists **Next loadout** and **Loadout 1** to **6**, all unbound until you pick a key (click the action, press a key; Esc clears it). Keys the game already uses are refused, and a bound key shows on its loadout card.
 
 ## The world and its bosses
 
@@ -281,7 +319,7 @@ The diocese is one connected world. Kill enough enemies in the preceding area to
 <td><img src="docs/screenshots/drowned-nave.webp" alt="The Drowned Nave" /><br /><sub>The Drowned Nave</sub></td>
 </tr></table>
 
-Every hunting ground has a boss summon object. Bosses cost **soul shards**, and only one can be active in a shared world at a time. Waves in that boss's area pause during the fight. Their first defeat per character awards extra shards, a rare or better relic, and a Codex trophy.
+Every hunting ground has a boss summon object. Bosses cost **soul shards**, and only one can be active in a shared world at a time. Carry a **Covenant Seal** and the altar also offers an **Empowered** summon (a Seal and gold instead of shards): see *Gold sinks* under Gold, gear, and difficulty. Waves in that boss's area pause during the fight. Their first defeat per character awards extra shards, a rare or better relic, and a Codex trophy.
 
 | Boss | Where and cost | Fight clue |
 |---|---|---|
@@ -354,13 +392,13 @@ An endless descent. Behind the **Catacomb Warren's west chamber** a glowing stai
 
 ![The stair open and glowing](docs/screenshots/depths/stair-open.webp)
 
-**Chests and loot.** Kills drop from the hunting ground whose gear matches the depth: the Marrow Ossuary's on depths 1-4, the Bone Coliseum's on 5-9, the Bell Sanctum's on 10-14, the Cloister's on 15-19, the Pyre's on 20-29 and the Fen's from 30 (armour sets, necromancer weapons, ores, gems and reagents included). **Every fifth floor holds a chest** in a side chamber, marked on the minimap: it gives gear with at least one affix, finds from that ground (more of them deeper), gold and experience, and one time in ten (rising to one in three) a **Relic rune**.
+**Chests and loot.** Kills drop from the hunting ground whose gear matches the depth: the Marrow Ossuary's on depths 1-4, the Bone Coliseum's on 5-9, the Bell Sanctum's on 10-14, the Cloister's on 15-19, the Pyre's on 20-29 and the Fen's from 30 (armour sets, necromancer weapons, ores, gems and reagents included). **Every fifth floor holds a chest** in a side chamber, marked on the minimap: it gives gear with at least one affix, finds from that ground (more of them deeper), gold and experience, and one time in four (rising to seven in ten) a **Relic rune**.
 
 ![A chest on the fifth floor and what it left behind](docs/screenshots/depths/chest-open.webp)
 
 **Ending a run.** Dying ends it, and so does the way up (the stair at your feet when you arrive; it asks twice, so a stray click cannot end a run) or leaving by any other road (recall, a class change). Everything you looted is already yours. The deepest floor you reach is written to the **Chronicle** (Codex **K**, Chronicle tab, "Deepest descent") and shown on the public leaderboard; Ascension never resets it.
 
-**Solo for now.** The floors live in the world keeper's simulation and the realtime relay does not carry a layout, so the Depths are a descent for one. If you are in a party, the stair says so and stays shut; if a friend joins while you are down, the stair closes behind you. Playing together on a floor is on the list.
+**A descent for one.** The floors live in one player's world, so a run is solo. If you are in a party, the stair says so when you hover it: you **step out of the party** for the run and rejoin it automatically when the run ends. If a friend appears while you are down, the stair closes behind you. Playing together on a floor is on the list.
 
 On a phone or tablet it works the same way: tap the stair, tap the chest. The depth readout sits under the minimap.
 
@@ -382,7 +420,7 @@ Omens only act in combat areas. The sky tint is half-way, so each place keeps it
 
 **Milestones.** One-off gold purses for kill counts (100 up to 25,000), kills in each hunting ground (100 up to 2,500) and your best chain (10 up to 100). Each pays once per character in this browser.
 
-Gold and experience come from fighting. Open the **Reliquary (I)** to equip gear, use consumables, and see your inventory: a **48-slot bag** (8 × 6). Click an item's **padlock** to lock it; locked items are skipped by every bulk action. **Sell all junk** sells your unlocked common and uncommon gear after a confirmation that shows the count and the gold; it keeps any piece that would be an upgrade for you (the green ▲, an empty slot counts) or that completes a set bonus, and any gear with a necromancer affix. When the bag fills, store things in the **Vault** or grind spare gear at the **Bone Grinder** (see Gathering and crafting). Loot pillars mark better drops; item rarity is shown by color and marks. Drops you leave behind do not pile up: after about 30 seconds gold and shards, and after about 75 seconds items, drift to you and are collected (with a full bag an item simply waits), and past 60 items on the ground the oldest are called in at once. The Empower and Quicken buttons in the Upgrades panel say, on hover, exactly what the next tier gives. The **Workbench (C)** turns materials into equipment and tools. Healing flasks are used with **Q**. **Brews** are two slots: one **elixir** (combat: damage, ward, lifesteal, haste, fire/rot resist) and one **tonic** (utility: speed, essence, wisdom, fortune). A new elixir replaces the active one; drinking the same brew extends it (up to twice its length). Right-click a brew in the Reliquary to put it on your belt, then press **Z** (elixir) or **X** (tonic). The **belt** at the left edge always shows three slots (**Q** Heal, **Z** Elixir, **X** Tonic): empty ones are faint and say how to fill them, full ones show a count and timer and a click or tap drinks them. Lifesteal heals a share of the damage of each hit (at most 3 targets count, and one hit heals at most 1.5% of max health). Brews are local and never sent to other players; cooked meals can be eaten from the bag for healing over time.
+Gold and experience come from fighting. Open the **Reliquary (I)** to equip gear, use consumables, and see your inventory: a **48-slot bag** (8 × 6). Click an item's **padlock** to lock it; locked items are skipped by every bulk action. **Sell all junk** sells your unlocked common and uncommon gear after a confirmation that shows the count and the gold; it keeps any piece that would be an upgrade for you (the green ▲, an empty slot counts) or that completes a set bonus, and any gear with a necromancer affix. When the bag fills, store things in the **Vault** or grind spare gear at the **Bone Grinder** (see Gathering and crafting). Loot pillars mark better drops; item rarity is shown by color and marks. Drops you leave behind do not pile up: after about 30 seconds gold and shards, and after about 75 seconds items, drift to you and are collected (with a full bag an item simply waits), and past 60 items on the ground the oldest are called in at once. The Empower and Quicken buttons in the Upgrades panel say, on hover, exactly what the next tier gives. The **Workbench (C)** turns materials into equipment and tools. Healing flasks are used with **Q**. **Brews** are two slots: one **elixir** (combat: damage, ward, lifesteal, haste, fire/rot resist) and one **tonic** (utility: speed, essence, wisdom, fortune). A new elixir replaces the active one; drinking the same brew extends it (up to twice its length). Right-click a brew in the Reliquary to put it on your belt, then press **Z** (elixir) or **X** (tonic). The **belt** at the left edge always shows three slots (**Q** Heal, **Z** Elixir, **X** Tonic): empty ones are faint and say how to fill them, full ones show a count and timer and a click drinks them. Lifesteal heals a share of the damage of each hit (at most 3 targets count, and one hit heals at most 1.5% of max health). Brews are local and never sent to other players; cooked meals can be eaten from the bag for healing over time.
 
 Each discipline has two five-piece armor sets with matching icons and visible colors on the hero. The first collection begins in the Hollow Graves and completes in the Bell Sanctum; the stronger ascended collection begins in the Sanctum and completes in the Cinder Pyre. Any class can wear any set, but the ground favours yours: about half of the armor an area drops (and most boss first-kill trophies) is your own discipline's set, and the necromancer weapons drop a third as often for the other classes. **Set bonuses:** wear 2, 4 or 5 pieces of the same set for a bonus; they stack, and the ascended sets are one step stronger. Necromancer sets scale their rites and thralls (Ossuary: thrall health, ward and maximum health; Gravecaller: thrall damage, attack speed and +1 thrall cap; Mourner: essence regeneration, corpse healing, wraith damage and maximum health; Rotweaver: Miasma radius, Withered stacks and a little health); the other sets give stats, health or essence regeneration. Hover a piece to see its set (green lines are active, grey need more pieces), press **J** for the Set bonuses block (what you have, what is next, which piece you still need and where it drops), and watch the bag arrows: an item that finishes a set says so ("completes Ivory Reliquary 4-piece"), one that breaks a set says that too. Worn pieces of an active set glow faintly on the paper doll. The Codex (**K**, Armor sets tab) lists every bonus. See [the armor set guide](docs/ARMOR-SETS.md) for the full table, names and drop areas.
 
@@ -419,6 +457,14 @@ The HUD has two gold upgrades:
 
 Choose difficulty in **Settings (Esc)**. **Medium** is the starting balance for each character. **Easy** reduces enemy health and damage and pays less gold and XP; the Brbmuffins developer account can also use auto combat on Easy. **Hard** raises enemy health and damage, adds elites, and pays more gold and XP. In a shared world, the world keeper's difficulty and Ascension rank govern the enemies.
 
+### Gold sinks: Reforge and Empowered bosses
+
+Once the Damage tiers are bought, gold has two more places to go.
+
+**Reforge (Workbench, C, Reforge tab).** Pick a piece you carry or wear, pick one of its affixes, and pay gold to draw that affix's number again. The affix stays; only its value changes, anywhere in the range the piece's item level allows, and it can come out lower. The price is shown before you confirm: 40 gold per item level (x1.5 for a piece that shows rare, x2.5 epic, x4 legendary), and every reforge of the same piece costs 25% more than the last (it stops rising after 20; an ilvl-99 epic costs 9,900 for the first and about 860,000 for the twenty-first). A roll already at the top of its range cannot be reforged. The server takes the gold and rolls the number.
+
+**Empowered bosses (boss altars).** Click an area boss's altar with a **Covenant Seal** in your bag and choose *Call it Empowered*: the Seal and gold are taken (7,500 x shards squared: 30,000 for the Gravedigger King, 67,500 Abbess, 120,000 Drowned Congregation, 187,500 Plague Saint, 270,000 Cinder Regent, 367,500 Mire Mother). The boss wakes bigger and red-gold, six levels (plus 15%) stronger with 40% more health, and its kill pays one extra prize the server rolls: an epic-or-better piece (three affixes) or, at 2.5 times that boss's usual legendary odds (15% for the King, 50% for the Abbess, rising to a 60% cap in the deep grounds), a legendary set piece. The prize drops at the boss's feet. A summon you lose to a wipe is not wasted: call it again within three hours for free (the server remembers it, so a reload does not lose it); if another boss was already awake the Seal and gold come back. Seals come from digging **Crypt Collapses** (Gravedigging 40, 1 in 200), the **Barrow-King's Tomb** (70, 1 in 80) and the **Abyssal Coelacanth** pools (Fishing 80), and the Sexton sometimes orders them. The Prelate cannot be Empowered. The **Codex (K, Professions)** lists the prices.
+
 ## Gear, stats and the character sheet
 
 <img src="docs/screenshots/character-sheet.webp" alt="Character sheet" width="420" align="right" />
@@ -431,7 +477,7 @@ Gear carries four stats. Each one feeds a few numbers you can feel, and the game
 | **INT** (Intellect) | +1.3 spell power, +2 max essence, +0.1 essence per second |
 | **STR** (Strength) | +0.4 spell power |
 | **AGI** (Agility) | +0.3% move speed, +0.2 spell power |
-| **Each level** | +14 health, +1.6 spell power, +2 max essence |
+| **Each level** (up to 999) | +14 health, +1.6 spell power, +2 max essence |
 
 Your discipline then scales the result (an Ossuary necromancer has extra health, a Mourner regains essence faster), Covenant boons add their own share, **Damage upgrades** raise spell power by 8% per tier, and a necromancer's **staff** adds 10% spell power. A thrall hits for 40% of your spell power, before the staff's boost.
 
@@ -443,7 +489,7 @@ Your discipline then scales the result (an Ossuary necromancer has extra health,
 
 **Comparing.** Select a bag item you can wear and the Reliquary shows what changes if you equip it instead of what you wear now: health, spell power, essence, essence per second, move speed, thrall health and thrall damage. **Green** is a gain and **red** is a loss. A two-handed weapon is compared against both your main hand and your off-hand, since both leave your hands. For necromancer weapons it also says what changes about your left click ("Left click becomes a reaping arc").
 
-**Item level and affixes.** Gear you find now drops *rolled*. Each piece has an **item level** (the level of what dropped it, +2 from an elite, +4 from a boss, +5 from a boss's first kill) and up to **three affixes**. The server rolls them the moment the piece drops, so they cannot be edited in a save. Affixes name the item (`Gravebound Iron Helm of the Legion`) and change its colour: one affix is green, two blue, three purple (a rarer base item keeps its own colour). Bosses always leave at least one affix and a first kill at least two. An affix is either a stat (`+6 INT`, as a prefix like *Occult* or a suffix like *of the Seer*) or a **necromancer lever**, marked with a violet **†**: *Gravebound* (thralls hit harder), *of the Legion* (thrall health), *Whispering* (essence regeneration), *of the Rotting Mist* (wider Miasma), *Blighted* (more Withered stacks) and *of the Ossuary Wall* (less damage taken per thrall). The levers work for any class but only matter to the four necromancer disciplines; on another class the tooltip says "no effect for you". Hover a piece to see its item level, every affix and what each one does for *you*. The ▲/▼ arrow, the power score and the Character sheet all count affixes (the sheet has an **Item affixes** block and an "Item affixes" row inside the formulas they feed). Higher item levels and more affixes also sell for more and salvage a little richer (an extra-material chance and more Salvaging XP). **Sell all junk** and **Salvage all below rare** skip any piece with a necromancer affix. The Codex (**K**, Item affixes tab) lists every affix and its range at item levels 10 and 40. Pieces from before this update stay as they are, with their base stats and no item level.
+**Item level and affixes.** Gear you find now drops *rolled*, and a good roll is a real upgrade: since 3 Oct 2026 affix numbers are about 1.45 times what they were and each range is +-35% around its middle, so an ideal (top) roll adds roughly twice what a median one does (the Gear Atlas's "For you" shows a piece's bare value and its value with ideal rolls). Each piece has an **item level** (the level of what dropped it, +2 from an elite, +4 from a boss, +5 from a boss's first kill) and up to **three affixes**. The server rolls them the moment the piece drops, so they cannot be edited in a save. Affixes name the item (`Gravebound Iron Helm of the Legion`) and change its colour: one affix is green, two blue, three purple (a rarer base item keeps its own colour). Bosses always leave at least one affix and a first kill at least two. An affix is either a stat (`+6 INT`, as a prefix like *Occult* or a suffix like *of the Seer*) or a **necromancer lever**, marked with a violet **†**: *Gravebound* (thralls hit harder), *of the Legion* (thrall health), *Whispering* (essence regeneration), *of the Rotting Mist* (wider Miasma), *Blighted* (more Withered stacks) and *of the Ossuary Wall* (less damage taken per thrall). The levers work for any class but only matter to the four necromancer disciplines; on another class the tooltip says "no effect for you". Hover a piece to see its item level, every affix and what each one does for *you*. The ▲/▼ arrow, the power score and the Character sheet all count affixes (the sheet has an **Item affixes** block and an "Item affixes" row inside the formulas they feed). Higher item levels and more affixes also sell for more and salvage a little richer (an extra-material chance and more Salvaging XP). **Sell all junk** and **Salvage all below rare** skip any piece with a necromancer affix. The Codex (**K**, Item affixes tab) lists every affix and its range at item levels 10 and 40. Pieces from before this update stay as they are, with their base stats and no item level.
 
 <img src="docs/screenshots/affix-tooltip.webp" alt="An affixed ring tooltip" width="300" />
 
@@ -459,15 +505,49 @@ Three thralls without the kit (left) and with it (right): the archer's baked bow
 
 **The character sheet (J, or the Sheet button beside the paper doll).** Lists your final Health, Spell power, Max essence, Essence per second, Move speed, Thrall health, Thrall damage and Damage upgrade, plus your STR, AGI, INT and VIT totals. Click any line to open its breakdown: the base, your level, each worn piece, your discipline, boons, Damage tiers and the weapon line. Brews and other timed effects are not included. The Codex (**K**, Stats tab) carries the same table. The Set bonuses block lists each worn set and its bonuses.
 
+## Getting better gear (upgrade guide)
+
+*The short version: kill bosses for legendaries, follow the green ▲ for everything else, and open the Gear Atlas (**.**) → **Best for me** when you are not sure what to chase next.*
+
+**1. Follow the arrows.** Every gear item in your bag shows a **green ▲** when it beats what you wear in that slot for *your* discipline, and a **red ▼** when it is worse. Hover it to see why (`+12% (more thrall damage)`). The Character sheet (**J**) lists your **weakest slots**, so you know which slot to fill first.
+
+**2. Hunt where your gear is.** Every ground drops gear of its own material: **Bone** in the Hollow Graves and Bone Warren, **Iron** in the Ossuary and Coliseum, **Gold** in the Nave and Sanctum, **Hell** in the Cloister and Pyre, and **Moon** (rarely) in the Pyre. Gear from a stronger ground has a higher **item level** and up to **three affixes**:
+- an elite adds +2 item levels, a boss +4, and a boss's first kill +5;
+- **Wave Speed** and the **Hard** difficulty raise loot chances and the number of elites;
+- the ground favours your own discipline, so about half the armour it drops is from your sets.
+
+**3. Finish your armour sets.** Each discipline has two five-piece sets: the **first collection** (Hollow Graves → Bell Sanctum) and the stronger **ascended collection** (Bell Sanctum → Cinder Pyre). Set bonuses switch on at 2, 4 and 5 pieces. An item that completes a set says so on its tooltip, and **Sell all junk** never sells it.
+
+**4. Craft the gaps.** The **Workbench** makes every necromancer weapon in all five materials from planks and ingots (Carpentry: staff, wand, grimoire; Smithing: scythe, sickle, skull focus, bell). Gathering skills (Woodcutting, Mining and the rest) feed it. The Gear Atlas shows the recipe for any craftable piece.
+
+**5. Chase legendaries (the end-game sets).** There is one legendary set per necromancer discipline, five pieces each: two pieces are a nudge, four change a mechanic, and five define the build. **How to get them:**
+
+| Source | Chance of a legendary piece |
+|---|---|
+| Any area boss from the **Bone Abbess** onward (Abbess, Drowned Congregation, Bell-Sworn Prelate, Plague Saint, Cinder Regent, Mire Mother) | **20% per kill at the Abbess, rising with depth to 33% at the Mire Mother** |
+| The **Gravedigger King** (Hollow Graves, the first boss) | **6% per kill** |
+| An **elite** in a level-scaled ground (Plague Cloister, Cinder Pyre, Mourning Fen) or a deep Catacomb Depths floor | 0.5% per elite in the Cloister, 0.7% in the Pyre, 0.9% in the Fen |
+
+- **Your own set comes first:** 70% of the legendaries that drop for a necromancer are their own discipline's set. The five New Blood classes have no set of their own, so they get one of the four necromancer sets.
+- **Duplicates are rare:** a drop favours the pieces you don't hold yet, so a full set takes about 5 drops. That is about 25 boss kills at the Abbess for any set (36 for your own discipline's full set), and fewer the deeper the boss.
+- **Bosses cost soul shards** to summon (elites drop them, and bosses hand some back). Boss loot, legendaries included, goes only to players who are **alive and within 38 m** when the boss dies, the same rule as ordinary kills.
+- Hover a legendary piece to read each tier of its bonus; the Codex has a Legendary sets section.
+
+**6. Socket runes.** Relic runes (from elites, surges and bosses) change how a rite behaves; socket them in the Grimoire (**L**). See [Relic runes](#relic-runes).
+
+**7. Spend gold on power that stays.** **Damage** tiers (+8% spell power each) and the Legion's **Reinforce** tiers (thrall health, damage and speed) both strengthen thralls already standing the moment you buy. They reset on Ascension.
+
+**8. Keep the bag clean.** Lock (padlock) anything you want to keep. **Salvage** spare gear at the Bone Grinder for reagents, park pieces in the **Ossuary Vault**, or give spares to your thralls in the **Legion** panel (**Y**).
+
 ## 📖 Loot tables & gear atlas
 
 *What can drop, how often, where, and what is worth wearing.* The full tables are in **[docs/LOOT-TABLES.md](docs/LOOT-TABLES.md)**, generated from the same tables the game rolls (`npm run gen:loot`; a test fails if the file goes stale): every hunting ground's drop table with ordinary-kill, elite and Grave Surge chances, each boss's spoils and first-kill trophy, runes, reagents, legendary armor by discipline, the Catacomb Depths, gathering finds, every recipe, salvage yields and how affixes and item level work.
 
-In game, the **Gear Atlas** (press **.**, or **Atlas** in the Menu on a phone) is the same data as an AtlasLoot-and-Pawn-style browser: browse by slot, by area or boss, by set, or by materials and brews; every row shows where it drops with its chance, how to craft it, a fit badge for *your* discipline and a green ▲ / red ▼ against what you wear in that slot. **Best for me** lists the top upgrades you do not own yet. Tap or hover a row for the full source list, the recipe tree one level deep, what the item is used in, its set bonuses and the odds of rolled affixes. Percentages are per kill at default settings (Medium difficulty, Wave Speed 0, no fortune tonic); the page says what moves them.
+In game, the **Gear Atlas** (press **.**, or **Atlas** in the Menu) is the same data as an AtlasLoot-and-Pawn-style browser: browse by slot, by area or boss, by set, or by materials and brews; every row shows where it drops with its chance, how to craft it, a fit badge for *your* discipline and a green ▲ / red ▼ against what you wear in that slot. **Best for me** lists the top upgrades you do not own yet. The percentages are *your* odds (your own armour set drops far more often than the other eight), and under **By area & boss** each hunting ground shows a **drop quality** rung from 1 to 9: the deeper the ground, the likelier the pieces worth wearing, runes and legendaries, and the higher their item level. Areas, the map, waystones and the Codex all list the world in descent order: Chapterhouse, Sexton's Acre, Alchemist's Wing, Hollow Graves, Bone Warren, Marrow Ossuary, Drowned Nave, Bone Coliseum, Catacomb Depths, Bell Sanctum, Plague Cloister, Cinder Pyre, Mourning Fen. Hover or click a row for the full source list, the recipe tree one level deep, what the item is used in, its set bonuses and the odds of rolled affixes. Percentages are per kill at default settings (Medium difficulty, Wave Speed 0, no fortune tonic); the page says what moves them.
 
 <p><img src="docs/screenshots/atlas/atlas-slot-detail.webp" alt="The Gear Atlas by slot: Colossus Mantle with an Ideal fit badge, an upgrade arrow and its drop sources" /><br /><sub>The Gear Atlas: every chest piece for your discipline with a fit badge and an upgrade arrow; the detail pane lists each source with its chance.</sub></p>
 
-**Capes & pets.** There are no legendary (or any rarer) capes: all ten capes are one tier, earned purely by skill levels, with no drop, shop or crafting route. The seven **mastery capes** need level 99 in their skill (Woodcutting, Mining, Fishing, Gravedigging, Grave Gardening, Alchemy, Salvaging); the **Apprentice's Mantle** needs a total level of 100, the **Journeyman's Mantle** 300 and **The Sexton's Mantle** 693 (99 in all seven). Five **pets** (Tithe Bat, Grave Rat, Drowned Pup rare; Wee Thrall, Shroud Moth epic) come from a charm, a rare find while you work its skill (about 1 in 3,500 successful actions, a little likelier on higher-tier nodes; the Shroud Moth's charm also drops about once per 35 Mourning Bed harvests). Capes and pets are **purely cosmetic**: no stats, no combat effect. Open **Capes & Pets** (**N**, or the Menu), press **Wear** on an unlocked cape, **Adopt** on a charm in your bag, then **Call** on a pet. [docs/LOOT-TABLES.md](docs/LOOT-TABLES.md#capes-and-pets) has the full list, and the Atlas has a Capes & pets view under Materials & brews.
+**Capes & pets.** There are no legendary (or any rarer) capes: all ten capes are one tier, earned purely by skill levels, with no drop, shop or crafting route. The seven **mastery capes** need level 99 in their skill (Woodcutting, Mining, Fishing, Gravedigging, Grave Gardening, Alchemy, Salvaging); the **Apprentice's Mantle** needs a total level of 100, the **Journeyman's Mantle** 300 and **The Sexton's Mantle** 693 (99 in all seven). Five **pets** (Tithe Bat, Grave Rat, Drowned Pup rare; Wee Thrall, Shroud Moth epic) come from a charm, a rare find while you work its skill (about 1 in 3,500 successful actions, a little likelier on higher-tier nodes; the Shroud Moth's charm also drops about once per 35 Mourning Bed harvests). Capes and pets are **purely cosmetic**: no stats, no combat effect. Open the **Capes & Pets** tab of the Character window (**J**, or **N** to jump straight to it), press **Wear** on an unlocked cape, **Adopt** on a charm in your bag, then **Call** on a pet. [docs/LOOT-TABLES.md](docs/LOOT-TABLES.md#capes-and-pets) has the full list, and the Atlas has a Capes & pets view under Materials & brews.
 
 ## Gathering and crafting
 
@@ -486,7 +566,7 @@ Carry a matching hatchet, pickaxe, rod, or spade to improve gathering success; t
 
 With **Auto gathering** enabled in Settings, clicking a node can continue to another of the same kind. For longer sessions, use **P → choose a node tier → Start AFK** while in the Acre. Your character keeps working while the game is open. A full bag pauses work; movement, casting, or **Pause AFK** stops it. Closing the game ends the session, so it does not earn rewards while offline. When work stops, **the Sexton’s Ledger** shows your finds, their worth, skill gains and personal bests.
 
-**Sexton’s Contracts (O)** offers three delivery orders a day, based on what your skills can make. Deliver from your bag for gold and sometimes an item; completing all three gives a bonus and builds a daily streak. Tin and Bronze Ingots are ordered like any other smelted good, and about one day in five the hard order is a **relic order**: two or three Grave Garnets, Bone Opals, Reliquary Fragments or Covenant Seals (one Void Sapphire), whichever your levels can find, paid at twice their sell price. That is where the gems, fragments and seals go. **Grave Gardening (U)** gives you four Mourning Beds and two Coffin Patches. Plant seeds or saplings and return later; plots grow in real time even while you are away, and bone meal makes them grow faster.
+**Sexton’s Contracts (O)** offers three delivery orders a day, based on what your skills can make. Deliver from your bag for gold and sometimes an item; completing all three gives a bonus and builds a daily streak. Tin and Bronze Ingots are ordered like any other smelted good, and the **Workbench** turns the old trade goods into gear: **Tin Augment** (2 Tin Ingots, Mining 5), **Garnet Ring** (a Grave Garnet and 2 Copper Bars, Mining 8), **Bronze Warden Kit** (6 Bronze Ingots and 2 Oak Planks, Mining 12) and **Opal Flask** (a Bone Opal and 3 River Fillets make 2 Forge-Tempered Flasks, Fishing 20); each is worth no more at the vendor than what it eats. About one day in five the hard order is a **relic order**: two or three Grave Garnets, Bone Opals, Reliquary Fragments or Covenant Seals (one Void Sapphire), whichever your levels can find, paid at twice their sell price. That is where the gems, fragments and seals go. **Grave Gardening (U)** gives you four Mourning Beds and two Coffin Patches. Plant seeds or saplings and return later; plots grow in real time even while you are away, and bone meal makes them grow faster.
 
 **Ossuary Vault (V).** A sarcophagus in the Chapterhouse holds a **120-slot shared stash** (three tabs of 40) for every character on your account. Press **V** in the Chapterhouse or the Acre. Click an item to move its whole stack across; **Deposit materials** stores every unlocked material and consumable, **Deposit all** stores everything unlocked that you are not wearing, and **Sort** merges stacks and orders the Vault by type, rarity and name. Moves stack first, then fill free slots, and a move that will not fit changes nothing. Worn gear and locked items are never stored by the bulk buttons.
 
@@ -513,23 +593,56 @@ With **Auto gathering** enabled in Settings, clicking a node can continue to ano
 
 ## Ascension
 
-After defeating the **Bell-Sworn Prelate** during a run, visit the **Altar of Ascension** in the Chapterhouse. Ascending trades your current run for **Ashes** and one Ascension rank. The Altar shows the reward and asks you to confirm the reset.
+Ascension is chosen difficulty. At the **Altar of Ascension** in the Chapterhouse you swear **Vows** before a run: curses that make it harder, like Hades' Pact of Punishment. Every vow carries **heat**, and **the heat of the vows you swear is the run's Ascension rank**. When the **Bell-Sworn Prelate** falls, burn the run at the Altar for **Ashes**: each point of heat adds 20% to the payout, and the older, tougher dead also pay more gold and XP (+5% per point of world heat, up to 30). Your **best rank** (the hottest run you ever burned) is kept for the leaderboard.
 
-| Reset on Ascension | Kept on Ascension |
-|---|---|
-| Damage and Wave Speed tiers, soul shards, area kill counts, and opened seals | Character level and XP, gold, items, profession progress, Ashes, purchased Covenant Boons, and Ascension rank |
+**Seals never reset.** Opened seals, kill counts and soul shards all stay when you Ascend. Only your Damage, Wave Speed and Legion tiers and the run's tally reset. The difficulty comes from the vows you choose, so no run has to repeat the same seal grind.
 
-Ashes buy permanent **Covenant Boons** at the Altar, including more health, cheaper upgrades, a stronger start, faster seals, and an extra thrall. More Prelate kills, a higher peak Wave Speed, and more kills during a run increase its Ashes reward. Each Ascension rank makes enemies and bosses three levels older and raises gold and XP rewards. The rank cap is **20**.
+| Vow | Heat | What it does | Unlock |
+|---|---|---|---|
+| **Elder Dead** | 1 per step, up to 20 | The dead rise 3 levels older per step | known |
+| **Iron Dead** | 1 per step, up to 3 | Enemies have 25% more health per step | known |
+| **Frail Vessel** | 1 per step, up to 3 | You have 12% less maximum health per step (only you) | known |
+| **Famished Rites** | 1 per step, up to 2 | Grave Essence returns 20% slower per step (only you) | 100 shards |
+| **Thin Graves** | 1 per step, up to 2 | Corpses rot 25% sooner per step | 120 shards |
+| **Brittle Dead** | 1 per step, up to 2 | Your thralls have 20% less health per step (only you) | 150 shards |
+| **Swollen Waves** | 1 per step, up to 3 | Every wave brings 25% more of the dead per step | 200 shards |
+| **Dry Cellar** | 2 | Healing flasks no longer work for you (brews and meals still do) | 250 shards |
+| **Bloodied Elites** | 1 per step, up to 3 | Elites are 8% more common per step | 300 shards |
+| **Deacon Host** | 2 per step, up to 2 | Crypt Deacons are twice as common (step 2: three times) | 400 shards |
+| **Prelate Echoes** | 2 per step, up to 3 | The Prelate learns a trick per step: a second bell that tolls on whoever stands farthest, an elite procession, and rain that chases where you run | 600 shards |
+
+The Altar's vow screen shows the heat total, the Ashes multiplier and the gold and XP bonus as you choose, and nothing changes until you press **Swear these vows**. Vows stay sworn from run to run until you change them. **Changing vows while a run has kills on its tally restarts that tally** (kills, and any Prelate kill), so a run's Ashes always match the heat it was fought at. Tiers, seals and shards are never touched.
+
+Ashes buy permanent **Covenant Boons**. Nine are small baselines (more health, cheaper upgrades, a stronger start, faster seals, an extra thrall). Six change how you play, and **soul shards unlock them** at the Altar first:
+
+| Boon | Ranks and Ashes | What it does | Unlock |
+|---|---|---|---|
+| **Lingering Dead** | 2 (8, 18) | Corpses last 50% longer per rank (the room keeper's boon) | 150 shards |
+| **Grave Feast** | 2 (8, 16) | Each corpse you consume heals 3% of your health per rank | 200 shards |
+| **Bonded Dead** | 1 (10) | A thrall rises beside you whenever you enter a hunting ground with none | 300 shards |
+| **Hollow Sacrifice** | 1 (14) | A thrall you sacrifice leaves a fresh corpse | 350 shards |
+| **Bone Ward** | 2 (10, 20) | Each standing thrall turns away 2% more damage per rank | 400 shards |
+| **Carrion Bloom** | 1 (16) | Corpses caught inside your Miasma burst | 500 shards |
+
+Soul shards come from elites (about 7 per 100 kills), so unlocks take hours rather than minutes; everything together is about 3,700 shards. Keep 5 back for the Sundered Bell. Counsel cards in the Chapterhouse tell you about the vows and the first time you can afford an unlock, and the Codex tab **Altar & Vows** lists everything.
+
+**Existing characters** keep their rank (now their best rank), Ashes, boons and shards. Their old Ascension rank N is swapped for **N steps of Elder Dead**, the same older world they were playing in, which they can lower at any time at the Altar.
 
 ![The Altar of Ascension and its Covenant Boons](docs/screenshots/altar-of-ascension.webp)
 
 ## Playing together and getting help
 
-When co-op is available, joining places you in a world with room for up to **10 players**. Players in the same world share chat, combat, gathering node depletion, and boss activity; each character receives their own finds and progression. Press **Enter** to chat. If the realtime service is unavailable, the game continues as a solo world. If the link drops (a deploy, a bad connection) you keep playing solo while the game retries on its own and puts you back in the same world; when a new release goes live the game saves, shows a short countdown with a **Reload now** button (waiting for a boss fight to end) and reloads straight back into your world. The one exception is the [Catacomb Depths](#the-catacomb-depths), which are solo for now: the stair tells a party so.
+You play **solo by default**: being online at the same time as someone else never puts you in their world. To play together, open **Settings → Play together** and **Make a party**, then share its short **party code**; friends type it under **Join a friend** (or use `/party CODE` in chat). Leave with **Leave party (play solo)** or `/solo`. A party is one shared world for up to **10 players**: you share chat, combat, gathering node depletion and boss activity, and each character receives their own finds and progression. Press **Enter** to chat. If the realtime service is unavailable, the game continues as a solo world. If the link drops (a deploy, a bad connection) you keep playing while the game retries on its own and puts you back in the same party; when a new release goes live the game saves, shows a short countdown with a **Reload now** button (waiting for a boss fight to end) and reloads straight back in. A reload remembers your party for ten minutes. The [Catacomb Depths](#the-catacomb-depths) are a solo run: partied players step out for the descent and rejoin after.
 
 **Covenant counsel** cards appear when you first encounter important systems, one at a time and at a calm moment (see *Your first hour*). You can move them, turn them off in Settings, or choose **Show tips again** there. Hover or focus an ability icon for its cost, target, effects, and combat tip. The **Codex (K)** records rites, enemies, bosses, and professions you have encountered.
 
 ![A Covenant counsel tip in game](docs/screenshots/covenant-counsel.webp)
+
+**Found a bug?** Click **Report a bug** just above the chat (bottom left), or open **Settings → Report a bug**, pick what kind of problem it is and describe what happened. Your area, level, discipline and game version are attached for you. Reports are read every day; the same screen lists your recent reports and what became of each one (for example *Fixed in an upcoming update*, or *Need more detail* with a note). How the daily triage works: [server/death-muffin/bug-agent/README.md](server/death-muffin/bug-agent/README.md).
+
+### One login at a time
+
+Only one window can play a character at a time, and the newest login wins. If you sign in somewhere else, the older window stops saving and shows **Logged in elsewhere**; your progress is safe in the newer one. Press **Play here** in the old window to take the session back. When the game reloads itself after a release, it never steals the session. Levels now go up to **999**.
 
 For technical setup and deployment, see [docs/README.md](docs/README.md) and the [VPS handoff](docs/DEATH-MUFFIN-HANDOFF.md).
 

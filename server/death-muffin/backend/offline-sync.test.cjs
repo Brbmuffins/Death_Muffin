@@ -15,9 +15,15 @@ test('offline stats cannot roll back online level or XP', () => {
     { level: 5, experience: 20, improved: false });
 });
 
+test('offline levels past the old 255 cap merge, 999 is the ceiling', () => {
+  assert.deepEqual(mergeOfflineStats({ level: 255, experience: 0 }, { level: 300, experience: 50 }), { level: 300, experience: 50, improved: true });
+  assert.equal(mergeOfflineStats({ level: 5, experience: 0 }, { level: 999, experience: 0 }).level, 999);
+  assert.throws(() => mergeOfflineStats({ level: 5, experience: 0 }, { level: 1000, experience: 0 }), RangeError);
+});
+
 test('rejects invalid and non-normalized offline XP', () => {
   for (const stats of [{ level: 0, experience: 0 }, { level: 2, experience: -1 },
-    { level: 2, experience: 200 }, { level: 300, experience: 0 },
+    { level: 2, experience: 200 }, { level: 1000, experience: 0 },
     { level: '2', experience: 1 }]) {
     assert.throws(() => mergeOfflineStats({ level: 1, experience: 0 }, stats), RangeError);
   }

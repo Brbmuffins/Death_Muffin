@@ -89,3 +89,7 @@ For what the spell effects cost (draw calls, transparent overdraw, particles, CP
 ## Culling diff
 
 `tools/qa/culling-diff.cjs` renders each frame as the game draws it, then again back-to-back with all culling off (every built area group shown, `frustumCulled=false`, tall props forced to cast shadows) and pixel-diffs the two; a second pass turns the occlusion dither off and diffs outside the hero's cut-out; a positive control (hide the hero's area) proves the diff can see. It also prints geometry-only coverage (share of the screen's ground outside the moon's shadow box / inside a hidden area). Env: `DM_QA_AREAS`, `DM_QA_ZOOMS`, `DM_QA_GRID`, `DM_QA_VIEWPORT`, `DM_QA_ENEMIES=1`, `DM_QA_SAVE=1|all`, `DM_QA_OUT`. Exit 1 when any case differs.
+
+# GPU leak smoke
+
+`node tools/qa/gpu-leak-smoke.cjs` (offline preview, `DM_QA_URL`) fights N waves with auto-combat (`DM_QA_WAVES` 12, `DM_QA_WARMUP` 8) and prints `renderer.info.memory` textures/geometries after each wave (area cleared first so live bodies don't count). Fails if they keep growing after warm-up. First-use loads (new models, loot icons) plateau within ~10 waves. To find creators, temporarily patch the `Texture` constructor in `node_modules/three/build/three.module.js` to push `{t:this,s:new Error().stack}` into `globalThis.__texLog`, restart vite with `--force`, and run with `DM_QA_TEXLOG=1`.

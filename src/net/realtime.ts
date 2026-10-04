@@ -1,6 +1,7 @@
 import { io, type Socket } from 'socket.io-client';
 import { WS_BASE, WS_PATH } from './config';
 import { getToken } from './api';
+import { notifySessionReplaced } from './session';
 import type {
   ChatMessage,
   EventBatch,
@@ -12,6 +13,9 @@ import type {
   WorldSnapshot,
 } from './contracts';
 import type { Intent } from '../gameplay/sim/types';
+
+/** How long a join may wait for its answer once the socket is up. */
+const JOIN_TIMEOUT_MS = 8000;
 
 export interface RealtimeHandlers {
   onPlayerJoin(p: RemotePlayer): void;
@@ -74,7 +78,20 @@ export class RealtimeClient {
         socket.disconnect();
       });
       socket.on('connect', () => {
+        // A link that drops (a service restart) or a join that is never answered used to leave this promise pending for good: the
+        // Reconnector's attempt never finished, so no retry followed and the player stayed solo until a reload.
+        const unreachable = () => {
+          clearTimeout(timer);
+          reject(new Error('Co-op service unreachable — playing solo'));
+        };
+        const timer = setTimeout(() => {
+          unreachable();
+          socket.disconnect();
+        }, JOIN_TIMEOUT_MS);
+        socket.once('disconnect', unreachable);
         socket.emit('world:join', req, (res: { success: boolean; data?: JoinResult; error?: string }) => {
+          clearTimeout(timer);
+          socket.off('disconnect', unreachable);
           if (!res?.success || !res.data) {
             reject(new Error(res?.error ?? 'Could not join the world'));
             socket.disconnect();
@@ -104,6 +121,7 @@ export class RealtimeClient {
             this.hostId = hostId;
             h.onHostChange(hostId, snapshot);
           });
+          socket.on('session:replaced', () => notifySessionReplaced());
           socket.on('disconnect', () => h.onDisconnect());
           this.hostId = res.data.hostId;
           this.instance = res.data.instance;

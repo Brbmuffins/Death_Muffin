@@ -99,6 +99,18 @@ test('save-progress: a null, blank or non-numeric field keeps the stored value i
   assert.deepEqual(update.params, [7, 42, 900, 6, 5, 5, 10, 1]);
 });
 
+test('save-progress: levels past the old 255 cap are saved, and anything past 999 is clamped to 999', async () => {
+  for (const [sent, stored] of [[258, 258], [999, 999], [5000, 999]]) {
+    const f = fakePool({ character: { level: 255, experience: 10 }, onQuery: (sql) => {
+      if (/^SELECT \* FROM characters WHERE id = \?$/.test(sql)) return [[{ ...f.owned }]];
+      if (/^UPDATE characters SET level/.test(sql)) return [{ affectedRows: 1 }];
+    } });
+    const r = await loadServer({ pool: f.pool }).call('POST /api/character/save-progress', { body: { characterId: 1, level: sent, xp: 120 } });
+    assert.equal(r.json.success, true);
+    assert.equal(f.log.find((q) => /^UPDATE characters SET level/.test(q.sql)).params[0], stored, `level ${sent}`);
+  }
+});
+
 // ── legacy loot routes: a full bag stays full ───────────────────────────────────────────────────────────────────────────
 
 /** Bag slots 0-47 full, plus a worn helmet in 100 and a belt tool in 110; the next "free" index past the bag must NOT be used. */
@@ -163,9 +175,9 @@ test('body-parser and unexpected errors answer readable JSON, not an HTML page',
 
 // ── GET /character ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
-test('GET /character: leftover XP past the last level cannot push the level over the 255 cap', async () => {
+test('GET /character: leftover XP past the last level cannot push the level over the 999 cap', async () => {
   // save-progress accepts any XP up to 2^31, so a saved row can hold far more than level * 100; normalising used to level it to ~20,000.
-  const f = fakePool({ character: { level: 250, experience: 2_000_000_000 }, onQuery: (sql) => {
+  const f = fakePool({ character: { level: 990, experience: 2_000_000_000 }, onQuery: (sql) => {
     if (/FROM accounts WHERE id/.test(sql)) return [[{ username: 'tester', role: 'player', gm_enabled: 0, gm_level: 0, gm_permissions: '' }]];
     if (/^UPDATE characters SET level = \?, experience = \? WHERE id = \?$/.test(sql)) return [{ affectedRows: 1 }];
     if (/^UPDATE characters SET online/.test(sql)) return [{ affectedRows: 1 }];
@@ -177,8 +189,8 @@ test('GET /character: leftover XP past the last level cannot push the level over
   assert.equal(r.status, 200, JSON.stringify(r.json));
   const fix = f.log.find((q) => /^UPDATE characters SET level = \?, experience = \?/.test(q.sql));
   assert.ok(fix, 'the row was normalised');
-  assert.equal(fix.params[0], 255, 'level stops at the cap');
-  assert.ok(fix.params[1] < 255 * 100, 'the leftover experience is below one level at the cap');
+  assert.equal(fix.params[0], 999, 'level stops at the cap');
+  assert.ok(fix.params[1] < 999 * 100, 'the leftover experience is below one level at the cap');
 });
 
 // ── POST /character ─────────────────────────────────────────────────────────────────────────────────────────────────────

@@ -19,7 +19,7 @@ const BLURB: Record<SkillId, string> = {
 };
 
 /**
- * The Skills panel (the Rite Niches, key P): a RuneScape-style grid with each
+ * The Skills tab of the Acre ledger (the Rite Niches, key P; hosted by TabbedWindow with Garden, Laborers and Contracts): a RuneScape-style grid with each
  * skill's level, XP bar, XP to next level, what the next level opens, and the
  * total level. Numbers come from gatheringRules, so they can't drift.
  */
@@ -98,7 +98,7 @@ export class ProfessionsPanel {
         : nextNode
           ? `Level ${nextNode.level}: ${nextNode.name}`
           : id === 'gardening'
-            ? 'Plant in the Garden (U).'
+            ? 'Plant in the ledger’s Garden tab (U).'
             : id === 'alchemy'
               ? 'Brew at the Great Cauldron in the Alchemist\'s Wing.'
               : id === 'salvaging'
@@ -129,12 +129,12 @@ export class ProfessionsPanel {
         <span class="cw-skill-total">Total level <b>${skills.total()}</b></span>
         <button class="cw-icon-btn" data-close aria-label="Close skills">✕</button>
       </div>
-      <div class="cw-panel-actions" aria-label="Professions and rewards">
+      ${this.onContracts || this.onGarden || this.onLabor || this.onCosmetics ? `<div class="cw-panel-actions" aria-label="Professions and rewards">
         ${this.onCosmetics ? '<button class="cw-button small" data-cosmetics title="Capes and pets (N)">Capes</button>' : ''}
         ${this.onLabor ? '<button class="cw-button small" data-labor title="Grave Laborers (H)">Laborers</button>' : ''}
         ${this.onGarden ? '<button class="cw-button small" data-garden title="Grave Gardening (U)">Garden</button>' : ''}
         ${this.onContracts ? '<button class="cw-button small" data-contracts title="Daily delivery orders (O)">Contracts</button>' : ''}
-      </div>
+      </div>` : ''}
       <h3 class="cw-panel-section-title">AFK gathering</h3>
       <p class="cw-hint-text">Choose a node and Start AFK in the Sexton’s Acre. Keep the game open; your hero repeats, changes nodes and waits for respawns until the bag fills. Skills can stay open. Moving, casting or other panels pause work.</p>
       ${status ? `<div class="cw-afk-status"><span data-afk-status></span><button class="cw-button small" data-pause-afk ${!status.active || this.busy ? 'disabled' : ''}>Pause AFK</button></div>` : ''}

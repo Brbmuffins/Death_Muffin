@@ -33,8 +33,11 @@ __export(necroRules_exports, {
   legionCost: () => legionCost,
   normalise: () => normalise,
   purchase: () => purchase,
+  runHeat: () => runHeat,
   summonAreaBoss: () => summonAreaBoss,
   summonPrelate: () => summonPrelate,
+  swearVows: () => swearVows,
+  unlockEntry: () => unlockEntry,
   unlockKills: () => unlockKills,
   waveCost: () => waveCost
 });
@@ -988,7 +991,24 @@ var AREAS = {
     ambient: { fog: 657415, hemiSky: 3156516, hemiGround: 525829, moon: 10128496 }
   }
 };
-var AREA_ORDER = ["chapterhouse", "acre", "graves", "ossuary", "nave", "sanctum", "cloister", "pyre", "warren", "coliseum", "fen", "alchemist_wing", "depths"];
+var AREA_ORDER = ["chapterhouse", "acre", "alchemist_wing", "graves", "warren", "ossuary", "nave", "coliseum", "depths", "sanctum", "cloister", "pyre", "fen"];
+var HUNT_ORDER = AREA_ORDER.filter((id) => !AREAS[id].safe && !AREAS[id].instance);
+var huntRank = (id) => HUNT_ORDER.indexOf(id);
+var CHASE_WEIGHT = { base: 1.4, perRung: 0.05 };
+var chaseMult = (id) => CHASE_WEIGHT.base + CHASE_WEIGHT.perRung * Math.max(0, huntRank(id));
+var GENERIC_CHASE = /^(chest_iron|helm_gold|kit_iron_warden)$/;
+var isChaseItem = (item) => !!ARMOR_BY_ID[item] || !!NECRO_WEAPON_BY_ID[item] || GENERIC_CHASE.test(item);
+var RARITY_CHASE = { common: 1, uncommon: 1, rare: 1.25, epic: 1.5, legendary: 1.5 };
+for (const id of AREA_ORDER) {
+  const area = AREAS[id];
+  if (!area.loot.length) continue;
+  const m = chaseMult(id);
+  area.loot = area.loot.map((e) => {
+    if (!isChaseItem(e.item)) return e;
+    const rarity = ARMOR_BY_ID[e.item]?.rarity ?? NECRO_WEAPON_BY_ID[e.item]?.rarity ?? "rare";
+    return { item: e.item, weight: e.weight * m * (RARITY_CHASE[rarity] ?? 1) };
+  });
+}
 var WING_APOTHECARY_SPOT = { x: 45.1, z: 20, facing: -Math.PI / 2 };
 var BOSS_SUMMON_SHARDS = 5;
 
@@ -996,22 +1016,89 @@ var BOSS_SUMMON_SHARDS = 5;
 var ASCENSION = {
   /** Prelate kills this run needed before the Altar will take the run. */
   prelateKillsRequired: 1,
-  /** Every enemy (and the Prelate) is this many levels older per rank. */
+  /** Every enemy (and the Prelate) is this many levels older per step of the Elder Dead vow. */
   levelsPerRank: 3,
-  /** Gold and XP bonus per rank, on top of what the older enemies already pay. */
+  /** Gold and XP bonus per point of heat, on top of what the older enemies already pay. */
   rewardPerRank: 0.05,
-  maxRank: 20
+  /** Heat past this earns no further gold / XP bonus (Ashes keep rising). */
+  rewardHeatCap: 30,
+  /** Largest heat a character can swear (the sum of every vow at its top step). Informational; vows enforce their own caps. */
+  maxRank: 50,
+  /** Ashes: +20% per point of heat on the run's base payout. */
+  ashesPerHeat: 0.2
 };
+var VOWS = {
+  elder_dead: { id: "elder_dead", name: "Elder Dead", blurb: "The dead rise 3 levels older per step.", maxRank: 20, heat: 1, unlockShards: 0, scope: "world" },
+  iron_dead: { id: "iron_dead", name: "Iron Dead", blurb: "Enemies have 25% more health per step.", maxRank: 3, heat: 1, unlockShards: 0, scope: "world" },
+  frail_vessel: { id: "frail_vessel", name: "Frail Vessel", blurb: "You have 12% less maximum health per step.", maxRank: 3, heat: 1, unlockShards: 0, scope: "self" },
+  famished: { id: "famished", name: "Famished Rites", blurb: "Grave Essence returns 20% slower per step.", maxRank: 2, heat: 1, unlockShards: 100, scope: "self" },
+  thin_graves: { id: "thin_graves", name: "Thin Graves", blurb: "Corpses rot 25% sooner per step.", maxRank: 2, heat: 1, unlockShards: 120, scope: "world" },
+  brittle_thralls: { id: "brittle_thralls", name: "Brittle Dead", blurb: "Your thralls have 20% less health per step.", maxRank: 2, heat: 1, unlockShards: 150, scope: "self" },
+  swollen_waves: { id: "swollen_waves", name: "Swollen Waves", blurb: "Every wave brings 25% more of the dead per step.", maxRank: 3, heat: 1, unlockShards: 200, scope: "world" },
+  dry_cellar: { id: "dry_cellar", name: "Dry Cellar", blurb: "Healing flasks no longer work for you (brews and meals still do).", maxRank: 1, heat: 2, unlockShards: 250, scope: "self" },
+  elite_surge: { id: "elite_surge", name: "Bloodied Elites", blurb: "Elites are 8% more common per step.", maxRank: 3, heat: 1, unlockShards: 300, scope: "world" },
+  deacon_host: { id: "deacon_host", name: "Deacon Host", blurb: "Crypt Deacons are twice as common (step 2: three times).", maxRank: 2, heat: 2, unlockShards: 400, scope: "world" },
+  prelate_echo: { id: "prelate_echo", name: "Prelate Echoes", blurb: "The Prelate learns a new trick per step: a second bell, an elite procession, chasing rain.", maxRank: 3, heat: 2, unlockShards: 600, scope: "world" }
+};
+var VOW_ORDER = [
+  "elder_dead",
+  "iron_dead",
+  "swollen_waves",
+  "deacon_host",
+  "elite_surge",
+  "prelate_echo",
+  "thin_graves",
+  "frail_vessel",
+  "famished",
+  "brittle_thralls",
+  "dry_cellar"
+];
+function vowSteps(vows, id) {
+  return Math.max(0, Math.min(VOWS[id].maxRank, Math.floor(Number(vows?.[id])) || 0));
+}
+function vowHeat(vows) {
+  let h = 0;
+  for (const id of VOW_ORDER) h += vowSteps(vows, id) * VOWS[id].heat;
+  return h;
+}
+function legacyVows(rank) {
+  const n = Math.max(0, Math.min(VOWS.elder_dead.maxRank, Math.floor(Number(rank)) || 0));
+  return n ? { elder_dead: n } : {};
+}
+var vowKey = (id) => `vow:${id}`;
+var boonKey = (id) => `boon:${id}`;
+function isUnlocked(unlocks, key) {
+  if (key.startsWith("vow:")) {
+    const d = VOWS[key.slice(4)];
+    return !!d && (d.unlockShards === 0 || !!unlocks?.includes(key));
+  }
+  if (key.startsWith("boon:")) {
+    const d = BOONS[key.slice(5)];
+    return !!d && (d.unlockShards === 0 || !!unlocks?.includes(key));
+  }
+  return false;
+}
+function unlockCost(key) {
+  if (key.startsWith("vow:")) return VOWS[key.slice(4)]?.unlockShards ?? null;
+  if (key.startsWith("boon:")) return BOONS[key.slice(5)]?.unlockShards ?? null;
+  return null;
+}
 var BOONS = {
-  vigil: { id: "vigil", name: "Vigil of Bone", blurb: "+8% maximum health.", maxRank: 3, cost: [4, 8, 14] },
-  marrow_font: { id: "marrow_font", name: "Marrow Font", blurb: "+12% Grave Essence regeneration.", maxRank: 3, cost: [4, 8, 14] },
-  bone_tithe: { id: "bone_tithe", name: "Bone Tithe", blurb: "Damage upgrades cost 10% less.", maxRank: 3, cost: [3, 6, 10] },
-  quickened_coin: { id: "quickened_coin", name: "Quickened Coin", blurb: "Wave Speed upgrades cost 12% less.", maxRank: 2, cost: [4, 9] },
-  first_rites: { id: "first_rites", name: "First Rites", blurb: "Begin each run with 2 Damage tiers already bought.", maxRank: 2, cost: [6, 12] },
-  shard_keeper: { id: "shard_keeper", name: "Shard Keeper", blurb: "Begin each run holding 2 soul shards.", maxRank: 2, cost: [5, 10] },
-  soul_hunger: { id: "soul_hunger", name: "Soul Hunger", blurb: "Soul Harvest fills 8 souls sooner.", maxRank: 2, cost: [6, 12], requires: 1 },
-  swift_seals: { id: "swift_seals", name: "Swift Seals", blurb: "Sealed doors open after 20% fewer kills.", maxRank: 2, cost: [6, 12], requires: 2 },
-  legion_pact: { id: "legion_pact", name: "Legion Pact", blurb: "Command one more thrall.", maxRank: 1, cost: [25], requires: 3 }
+  vigil: { id: "vigil", name: "Vigil of Bone", blurb: "+8% maximum health.", maxRank: 3, cost: [4, 8, 14], unlockShards: 0 },
+  marrow_font: { id: "marrow_font", name: "Marrow Font", blurb: "+12% Grave Essence regeneration.", maxRank: 3, cost: [4, 8, 14], unlockShards: 0 },
+  bone_tithe: { id: "bone_tithe", name: "Bone Tithe", blurb: "Damage upgrades cost 10% less.", maxRank: 3, cost: [3, 6, 10], unlockShards: 0 },
+  quickened_coin: { id: "quickened_coin", name: "Quickened Coin", blurb: "Wave Speed upgrades cost 12% less.", maxRank: 2, cost: [4, 9], unlockShards: 0 },
+  first_rites: { id: "first_rites", name: "First Rites", blurb: "Begin each run with 2 Damage tiers already bought.", maxRank: 2, cost: [6, 12], unlockShards: 0 },
+  shard_keeper: { id: "shard_keeper", name: "Shard Keeper", blurb: "Never begin a run holding fewer than 2 soul shards.", maxRank: 2, cost: [5, 10], unlockShards: 0 },
+  soul_hunger: { id: "soul_hunger", name: "Soul Hunger", blurb: "Soul Harvest fills 8 souls sooner.", maxRank: 2, cost: [6, 12], requires: 1, unlockShards: 0 },
+  swift_seals: { id: "swift_seals", name: "Swift Seals", blurb: "Sealed doors not yet opened need 20% fewer kills.", maxRank: 2, cost: [6, 12], requires: 2, unlockShards: 0 },
+  legion_pact: { id: "legion_pact", name: "Legion Pact", blurb: "Command one more thrall.", maxRank: 1, cost: [25], requires: 3, unlockShards: 0 },
+  lingering_dead: { id: "lingering_dead", name: "Lingering Dead", blurb: "Corpses last 50% longer.", maxRank: 2, cost: [8, 18], unlockShards: 150, shape: true },
+  grave_feast: { id: "grave_feast", name: "Grave Feast", blurb: "Every corpse you consume heals you for 3% of your maximum health.", maxRank: 2, cost: [8, 16], unlockShards: 200, shape: true },
+  bonded_dead: { id: "bonded_dead", name: "Bonded Dead", blurb: "A thrall rises beside you whenever you enter a hunting ground with none.", maxRank: 1, cost: [10], unlockShards: 300, shape: true },
+  hollow_sacrifice: { id: "hollow_sacrifice", name: "Hollow Sacrifice", blurb: "A thrall you sacrifice leaves a fresh corpse behind.", maxRank: 1, cost: [14], unlockShards: 350, shape: true },
+  bone_ward: { id: "bone_ward", name: "Bone Ward", blurb: "Each thrall standing beside you turns away 2% more of the damage you take.", maxRank: 2, cost: [10, 20], unlockShards: 400, shape: true },
+  carrion_bloom: { id: "carrion_bloom", name: "Carrion Bloom", blurb: "Corpses caught inside your Miasma burst.", maxRank: 1, cost: [16], unlockShards: 500, shape: true }
 };
 function boonEffects(ranks) {
   const r = (id) => Math.max(0, Math.min(BOONS[id].maxRank, ranks[id] ?? 0));
@@ -1024,19 +1111,26 @@ function boonEffects(ranks) {
     startShards: 2 * r("shard_keeper"),
     soulsDiscount: 8 * r("soul_hunger"),
     unlockKillsMult: 1 - 0.2 * r("swift_seals"),
-    extraThralls: r("legion_pact")
+    extraThralls: r("legion_pact"),
+    corpseLifeMult: 1 + 0.5 * r("lingering_dead"),
+    corpseHeal: 0.03 * r("grave_feast"),
+    wardPerThrall: 0.02 * r("bone_ward"),
+    bondedDead: r("bonded_dead") > 0,
+    sacrificeLeavesCorpse: r("hollow_sacrifice") > 0,
+    miasmaBurstsCorpses: r("carrion_bloom") > 0
   };
 }
-function ashesForRun(run, rank) {
+function ashesForRun(run, heat) {
   if (run.prelateKills < ASCENSION.prelateKillsRequired) return 0;
   const base = 10 + 5 * Math.min(4, run.prelateKills - 1) + 2 * Math.max(0, Math.min(8, run.peakWaveTier)) + Math.min(15, Math.floor(run.kills / 300));
-  return Math.round(base * (1 + 0.25 * rank));
+  return Math.round(base * (1 + ASCENSION.ashesPerHeat * Math.max(0, Math.floor(heat) || 0)));
 }
-function boonBlocked(id, ranks, ascension) {
+function boonBlocked(id, ranks, bestRank, unlocks) {
   const def = BOONS[id];
   const owned = ranks[id] ?? 0;
   if (owned >= def.maxRank) return "Mastered";
-  if (def.requires && ascension < def.requires) return `Ascension ${roman(def.requires)}`;
+  if (unlocks && !isUnlocked(unlocks, boonKey(id))) return `Unlock it with ${def.unlockShards} soul shards`;
+  if (def.requires && bestRank < def.requires) return `Ascension ${roman(def.requires)}`;
   return null;
 }
 function boonCost(id, ranks) {
@@ -1046,6 +1140,8 @@ function boonCost(id, ranks) {
 function roman(n) {
   if (n <= 0) return "0";
   const map = [
+    [50, "L"],
+    [40, "XL"],
     [10, "X"],
     [9, "IX"],
     [5, "V"],
@@ -1238,6 +1334,8 @@ function blankState() {
     ascension: 0,
     ashes: 0,
     boons: {},
+    vows: {},
+    unlocks: [],
     run: { prelateKills: 0, peakWaveTier: 0, kills: 0 },
     summonsPending: 0,
     migrated: false
@@ -1248,6 +1346,8 @@ var copy = (s) => ({
   areaKills: { ...s.areaKills },
   unlockedAreas: [...s.unlockedAreas],
   boons: { ...s.boons },
+  vows: { ...s.vows },
+  unlocks: [...s.unlocks],
   run: { ...s.run }
 });
 function damageCost(s) {
@@ -1332,31 +1432,66 @@ function summonAreaBoss(state, boss, opts) {
   s.soulShards -= def.shards;
   return { ok: true, state: s };
 }
+function runHeat(state) {
+  return vowHeat(state.vows);
+}
 function ashesOnAscend(state) {
-  return state.ascension >= ASCENSION.maxRank ? 0 : ashesForRun(state.run, state.ascension);
+  return ashesForRun(state.run, runHeat(state));
 }
 function ascend(state) {
   const earned = ashesOnAscend(state);
   if (!earned) return { ok: false, error: "Slay the Prelate this run before you Ascend." };
   const s = copy(state);
   const fx = boonEffects(s.boons);
-  s.ascension += 1;
+  const heat = runHeat(s);
+  s.ascension = Math.max(s.ascension, heat);
   s.ashes += earned;
   s.damageTier = fx.startDamageTier;
   s.waveTierOwned = 0;
   s.waveTierActive = 0;
   s.legionTier = 0;
-  s.soulShards = fx.startShards;
-  s.areaKills = {};
-  s.unlockedAreas = ["chapterhouse", "graves"];
+  s.soulShards = Math.max(s.soulShards, fx.startShards);
   s.run = { prelateKills: 0, peakWaveTier: 0, kills: 0 };
   s.summonsPending = 0;
-  return { ok: true, state: s, earned };
+  return { ok: true, state: s, earned, heat };
+}
+var sameVows = (a, b) => VOW_ORDER.every((id) => vowSteps(a, id) === vowSteps(b, id));
+function swearVows(state, input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return { ok: false, error: "Unknown vows." };
+  const raw = input;
+  const next = {};
+  for (const key of Object.keys(raw)) {
+    if (!Object.prototype.hasOwnProperty.call(VOWS, key)) return { ok: false, error: "Unknown vow." };
+    const id = key;
+    const n = Number(raw[id]);
+    if (!Number.isInteger(n) || n < 0 || n > VOWS[id].maxRank) return { ok: false, error: `${VOWS[id].name} can be sworn 0 to ${VOWS[id].maxRank} times.` };
+    if (!n) continue;
+    if (!isUnlocked(state.unlocks, vowKey(id))) return { ok: false, error: `${VOWS[id].name} is not unlocked yet (${VOWS[id].unlockShards} soul shards at the Altar).` };
+    next[id] = n;
+  }
+  const s = copy(state);
+  const changed = !sameVows(state.vows, next);
+  s.vows = next;
+  const t = s.run;
+  const restarted = changed && (t.kills > 0 || t.prelateKills > 0 || t.peakWaveTier > 0);
+  if (restarted) s.run = { prelateKills: 0, peakWaveTier: 0, kills: 0 };
+  return { ok: true, state: s, heat: vowHeat(next), restarted };
+}
+function unlockEntry(state, key) {
+  if (typeof key !== "string") return { ok: false, error: "Unknown unlock." };
+  const cost = unlockCost(key);
+  if (cost === null || cost === 0) return { ok: false, error: "Nothing to unlock." };
+  if (state.unlocks.includes(key)) return { ok: false, error: "Already unlocked." };
+  if (state.soulShards < cost) return { ok: false, error: `The Altar asks ${cost} soul shards for that (you have ${state.soulShards}).` };
+  const s = copy(state);
+  s.soulShards -= cost;
+  s.unlocks.push(key);
+  return { ok: true, state: s, cost };
 }
 function buyBoon(state, id) {
-  if (!(id in BOONS)) return { ok: false, error: "Unknown boon" };
-  const blocked = boonBlocked(id, state.boons, state.ascension);
-  if (blocked) return { ok: false, error: blocked === "Mastered" ? "That boon is already mastered." : `Requires ${blocked}.` };
+  if (typeof id !== "string" || !Object.prototype.hasOwnProperty.call(BOONS, id)) return { ok: false, error: "Unknown boon" };
+  const blocked = boonBlocked(id, state.boons, state.ascension, state.unlocks);
+  if (blocked) return { ok: false, error: blocked === "Mastered" ? "That boon is already mastered." : blocked.startsWith("Unlock") ? `${BOONS[id].name} is not unlocked yet. ${blocked}.` : `Requires ${blocked}.` };
   const cost = boonCost(id, state.boons);
   if (state.ashes < cost) return { ok: false, error: `Not enough Ashes (need ${cost})` };
   const s = copy(state);
@@ -1372,11 +1507,12 @@ function importLocal(state, raw) {
   const s = blankState();
   s.migrated = true;
   s.ascension = clampInt(r.ascension, 0, L.importMaxAscension);
+  s.vows = legacyVows(s.ascension);
   s.ashes = clampInt(r.ashes, 0, L.importMaxAshes);
   const boons = r.boons && typeof r.boons === "object" ? r.boons : {};
   for (const id of Object.keys(BOONS)) {
     const want = clampInt(boons[id], 0, BOONS[id].maxRank);
-    for (let i = 0; i < want && !boonBlocked(id, s.boons, s.ascension); i++) s.boons[id] = (s.boons[id] ?? 0) + 1;
+    for (let i = 0; i < want && !boonBlocked(id, s.boons, s.ascension, s.unlocks); i++) s.boons[id] = (s.boons[id] ?? 0) + 1;
   }
   s.damageTier = clampInt(r.damageTier, 0, DAMAGE_UPGRADE.maxTier);
   s.waveTierOwned = clampInt(r.waveTierOwned, 0, WAVE_UPGRADE.maxTier);
@@ -1404,13 +1540,23 @@ function importLocal(state, raw) {
 function normalise(raw) {
   const b = blankState();
   const r = raw && typeof raw === "object" ? raw : {};
+  const hasVows = !!r.vows && typeof r.vows === "object" && !Array.isArray(r.vows);
+  const best = clampInt(r.ascension, 0, 255);
+  const vows = {};
+  if (hasVows) {
+    for (const id of VOW_ORDER) if (vowSteps(r.vows, id)) vows[id] = vowSteps(r.vows, id);
+  }
+  const unlocks = Array.isArray(r.unlocks) ? [...new Set(r.unlocks.filter((k) => typeof k === "string" && unlockCost(k) !== null && unlockCost(k) > 0))] : [];
   return {
     ...b,
     ...r,
+    ascension: best,
     legionTier: clampInt(r.legionTier, 0, LEGION_UPGRADE.maxTier),
     areaKills: { ...r.areaKills ?? {} },
     unlockedAreas: Array.isArray(r.unlockedAreas) && r.unlockedAreas.length ? [...r.unlockedAreas] : b.unlockedAreas,
     boons: { ...r.boons ?? {} },
+    vows: hasVows ? vows : legacyVows(best),
+    unlocks,
     run: { ...b.run, ...r.run ?? {} }
   };
 }
@@ -1427,8 +1573,11 @@ function normalise(raw) {
   legionCost,
   normalise,
   purchase,
+  runHeat,
   summonAreaBoss,
   summonPrelate,
+  swearVows,
+  unlockEntry,
   unlockKills,
   waveCost
 });

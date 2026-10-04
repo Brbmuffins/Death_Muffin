@@ -83,14 +83,25 @@ var LEGENDARY_SETS = {
 var LEGENDARY_SET_IDS = Object.keys(LEGENDARY_SETS);
 var legendaryItemId = (setId, part) => `leg_${setId}_${part}`;
 var LEGENDARY_DROP = {
-  /** Per boss kill (every area boss except the starter Gravedigger King). */
-  bossChance: 0.07,
-  /** Per elite kill in a level-scaled area (Plague Cloister, Cinder Pyre, Mourning Fen). */
-  eliteChance: 3e-3,
+  /**
+   * Per boss kill, the SHALLOWEST rolling boss (the Bone Abbess); deeper bosses climb from here (`LEGENDARY_BOSS_CHANCE`). Owner, 3 Oct 2026:
+   * "drop rates are like 3%... let's make it more achievable": it was a flat 15% (and 3% for the Gravedigger King), which the Atlas
+   * showed as about 2% per piece.
+   */
+  bossChance: 0.2,
+  /** Per Gravedigger King kill (the starter boss, Hollow Graves): lower, so the first legendary can be seen early (owner, 3 Oct 2026). */
+  starterBossChance: 0.06,
+  /** Per elite kill in the SHALLOWEST level-scaled area (Plague Cloister); the Pyre and the Fen climb from here (`LEGENDARY_ELITE_CHANCE`). */
+  eliteChance: 5e-3,
   /** Smart loot: the share of legendary drops that is the player's own discipline's set (the rest splits evenly over the others). */
   ownShare: 0.7
 };
 var LEGENDARY_BOSS_AREAS = ["ossuary", "nave", "sanctum", "cloister", "pyre", "fen"];
+var LEGENDARY_STARTER_AREA = "graves";
+var LEGENDARY_BOSS_CHANCE = { ossuary: 0.2, nave: 0.22, sanctum: 0.25, cloister: 0.28, pyre: 0.3, fen: 0.33 };
+var LEGENDARY_ELITE_CHANCE = { cloister: 5e-3, pyre: 7e-3, fen: 9e-3 };
+var legendaryBossChance = (area) => LEGENDARY_BOSS_AREAS.includes(area) ? LEGENDARY_BOSS_CHANCE[area] ?? LEGENDARY_DROP.bossChance : area === LEGENDARY_STARTER_AREA ? LEGENDARY_DROP.starterBossChance : 0;
+var legendaryEliteChance = (area) => LEGENDARY_ELITE_CHANCE[area] ?? 0;
 
 // src/content/armorSets.ts
 var ARMOR_PARTS = ["head", "chest", "hands", "legs", "feet"];
@@ -994,7 +1005,24 @@ var AREAS = {
     ambient: { fog: 657415, hemiSky: 3156516, hemiGround: 525829, moon: 10128496 }
   }
 };
-var AREA_ORDER = ["chapterhouse", "acre", "graves", "ossuary", "nave", "sanctum", "cloister", "pyre", "warren", "coliseum", "fen", "alchemist_wing", "depths"];
+var AREA_ORDER = ["chapterhouse", "acre", "alchemist_wing", "graves", "warren", "ossuary", "nave", "coliseum", "depths", "sanctum", "cloister", "pyre", "fen"];
+var HUNT_ORDER = AREA_ORDER.filter((id) => !AREAS[id].safe && !AREAS[id].instance);
+var huntRank = (id) => HUNT_ORDER.indexOf(id);
+var CHASE_WEIGHT = { base: 1.4, perRung: 0.05 };
+var chaseMult = (id) => CHASE_WEIGHT.base + CHASE_WEIGHT.perRung * Math.max(0, huntRank(id));
+var GENERIC_CHASE = /^(chest_iron|helm_gold|kit_iron_warden)$/;
+var isChaseItem = (item2) => !!ARMOR_BY_ID[item2] || !!NECRO_WEAPON_BY_ID[item2] || GENERIC_CHASE.test(item2);
+var RARITY_CHASE = { common: 1, uncommon: 1, rare: 1.25, epic: 1.5, legendary: 1.5 };
+for (const id of AREA_ORDER) {
+  const area = AREAS[id];
+  if (!area.loot.length) continue;
+  const m = chaseMult(id);
+  area.loot = area.loot.map((e) => {
+    if (!isChaseItem(e.item)) return e;
+    const rarity = ARMOR_BY_ID[e.item]?.rarity ?? NECRO_WEAPON_BY_ID[e.item]?.rarity ?? "rare";
+    return { item: e.item, weight: e.weight * m * (RARITY_CHASE[rarity] ?? 1) };
+  });
+}
 var WING_APOTHECARY_SPOT = { x: 45.1, z: 20, facing: -Math.PI / 2 };
 
 // src/content/runes.ts
@@ -1186,8 +1214,20 @@ var AREA_RUNE_POOL = {
   coliseum: byRarity("uncommon", "rare", "epic")
 };
 var RUNE_WEIGHT = { uncommon: 3, rare: 2, epic: 1 };
-var ELITE_RUNE_CHANCE = 6e-3;
-var SURGE_RUNE_CHANCE = 0.25;
+var ELITE_RUNE_CHANCE_BY_AREA = {
+  graves: 0.05,
+  warren: 0.055,
+  ossuary: 0.06,
+  nave: 0.07,
+  coliseum: 0.08,
+  sanctum: 0.09,
+  cloister: 0.1,
+  pyre: 0.11,
+  fen: 0.12
+};
+var ELITE_RUNE_CHANCE = ELITE_RUNE_CHANCE_BY_AREA.graves;
+var eliteRuneChance = (area) => ELITE_RUNE_CHANCE_BY_AREA[area] ?? ELITE_RUNE_CHANCE;
+var SURGE_RUNE_CHANCE = 0.35;
 var BOSS_RUNE_POOL = {
   gravedigger: ["rune_splinter", "rune_marrow_tap", "rune_mass_grave"],
   abbess: ["rune_ossuary_ring", "rune_impale", "rune_bone_colossus", "rune_volley"],
@@ -1253,12 +1293,74 @@ var FLOORS_PER_MIN_CEILING = 3;
 var ASCENSION = {
   /** Prelate kills this run needed before the Altar will take the run. */
   prelateKillsRequired: 1,
-  /** Every enemy (and the Prelate) is this many levels older per rank. */
+  /** Every enemy (and the Prelate) is this many levels older per step of the Elder Dead vow. */
   levelsPerRank: 3,
-  /** Gold and XP bonus per rank, on top of what the older enemies already pay. */
+  /** Gold and XP bonus per point of heat, on top of what the older enemies already pay. */
   rewardPerRank: 0.05,
-  maxRank: 20
+  /** Heat past this earns no further gold / XP bonus (Ashes keep rising). */
+  rewardHeatCap: 30,
+  /** Largest heat a character can swear (the sum of every vow at its top step). Informational; vows enforce their own caps. */
+  maxRank: 50,
+  /** Ashes: +20% per point of heat on the run's base payout. */
+  ashesPerHeat: 0.2
 };
+var VOWS = {
+  elder_dead: { id: "elder_dead", name: "Elder Dead", blurb: "The dead rise 3 levels older per step.", maxRank: 20, heat: 1, unlockShards: 0, scope: "world" },
+  iron_dead: { id: "iron_dead", name: "Iron Dead", blurb: "Enemies have 25% more health per step.", maxRank: 3, heat: 1, unlockShards: 0, scope: "world" },
+  frail_vessel: { id: "frail_vessel", name: "Frail Vessel", blurb: "You have 12% less maximum health per step.", maxRank: 3, heat: 1, unlockShards: 0, scope: "self" },
+  famished: { id: "famished", name: "Famished Rites", blurb: "Grave Essence returns 20% slower per step.", maxRank: 2, heat: 1, unlockShards: 100, scope: "self" },
+  thin_graves: { id: "thin_graves", name: "Thin Graves", blurb: "Corpses rot 25% sooner per step.", maxRank: 2, heat: 1, unlockShards: 120, scope: "world" },
+  brittle_thralls: { id: "brittle_thralls", name: "Brittle Dead", blurb: "Your thralls have 20% less health per step.", maxRank: 2, heat: 1, unlockShards: 150, scope: "self" },
+  swollen_waves: { id: "swollen_waves", name: "Swollen Waves", blurb: "Every wave brings 25% more of the dead per step.", maxRank: 3, heat: 1, unlockShards: 200, scope: "world" },
+  dry_cellar: { id: "dry_cellar", name: "Dry Cellar", blurb: "Healing flasks no longer work for you (brews and meals still do).", maxRank: 1, heat: 2, unlockShards: 250, scope: "self" },
+  elite_surge: { id: "elite_surge", name: "Bloodied Elites", blurb: "Elites are 8% more common per step.", maxRank: 3, heat: 1, unlockShards: 300, scope: "world" },
+  deacon_host: { id: "deacon_host", name: "Deacon Host", blurb: "Crypt Deacons are twice as common (step 2: three times).", maxRank: 2, heat: 2, unlockShards: 400, scope: "world" },
+  prelate_echo: { id: "prelate_echo", name: "Prelate Echoes", blurb: "The Prelate learns a new trick per step: a second bell, an elite procession, chasing rain.", maxRank: 3, heat: 2, unlockShards: 600, scope: "world" }
+};
+var VOW_ORDER = [
+  "elder_dead",
+  "iron_dead",
+  "swollen_waves",
+  "deacon_host",
+  "elite_surge",
+  "prelate_echo",
+  "thin_graves",
+  "frail_vessel",
+  "famished",
+  "brittle_thralls",
+  "dry_cellar"
+];
+function vowSteps(vows, id) {
+  return Math.max(0, Math.min(VOWS[id].maxRank, Math.floor(Number(vows?.[id])) || 0));
+}
+function vowHeat(vows) {
+  let h = 0;
+  for (const id of VOW_ORDER) h += vowSteps(vows, id) * VOWS[id].heat;
+  return h;
+}
+function vowEffects(vows) {
+  const s = (id) => vowSteps(vows, id);
+  return {
+    levels: ASCENSION.levelsPerRank * s("elder_dead"),
+    enemyHpMult: 1 + 0.25 * s("iron_dead"),
+    waveSizeMult: 1 + 0.25 * s("swollen_waves"),
+    deaconMult: 1 + s("deacon_host"),
+    eliteBonus: 0.08 * s("elite_surge"),
+    echoes: s("prelate_echo"),
+    corpseLifeMult: 1 - 0.25 * s("thin_graves"),
+    maxHpMult: 1 - 0.12 * s("frail_vessel"),
+    essenceRegenMult: 1 - 0.2 * s("famished"),
+    thrallHpMult: 1 - 0.2 * s("brittle_thralls"),
+    noFlasks: s("dry_cellar") > 0
+  };
+}
+function ascensionRewardMult(heat) {
+  return 1 + ASCENSION.rewardPerRank * Math.max(0, Math.min(ASCENSION.rewardHeatCap, Math.floor(heat) || 0));
+}
+function legacyVows(rank) {
+  const n = Math.max(0, Math.min(VOWS.elder_dead.maxRank, Math.floor(Number(rank)) || 0));
+  return n ? { elder_dead: n } : {};
+}
 
 // src/content/reagents.ts
 var item = (name, rarity, sell, lore, art) => ({ name, rarity, sell, lore, stack: 250, art });
@@ -1607,7 +1709,7 @@ var PLAYABLE_DISCIPLINES = [
 ];
 
 // src/gameplay/smartLoot.ts
-var SMART_LOOT = { ownArmorShare: 0.5, foreignWeaponMult: 1 / 3 };
+var SMART_LOOT = { ownArmorShare: 0.7, foreignWeaponMult: 1 / 3 };
 var smartCache = /* @__PURE__ */ new Map();
 function smartTable(area, disciplineId) {
   const key = `${area}|${disciplineId}`;
@@ -1633,7 +1735,7 @@ function smartTable(area, disciplineId) {
 }
 
 // src/gameplay/authorityRules.ts
-var LEVEL_CAP = 255;
+var LEVEL_CAP = 999;
 function totalXp(level, xp) {
   const l = Math.max(1, Math.trunc(Number(level) || 1));
   return 50 * l * (l - 1) + Math.max(0, Math.trunc(Number(xp) || 0));
@@ -1695,14 +1797,15 @@ var AUTHORITY = {
 };
 var XP_LEVEL_STEP = 0.25;
 var GOLD_LEVEL_STEP = 0.15;
-function enemyLevel(area, characterLevel, rank) {
+function enemyLevel(area, characterLevel, levels) {
   const a = AREAS[area];
   const base = a.scaling ? Math.max(a.scaling.minLevel, characterLevel) : a.level;
-  return base + rank * ASCENSION.levelsPerRank;
+  return base + levels;
 }
 function ceilingsFor(unlocked, ascension, characterLevel, deepest = 0) {
-  const rank = Math.min(ASCENSION.maxRank, Math.max(0, Math.trunc(ascension) || 0) + AUTHORITY.COOP_RANK_ALLOWANCE);
-  const rankMult = 1 + ASCENSION.rewardPerRank * rank;
+  const vows = typeof ascension === "number" ? legacyVows(Math.max(0, Math.trunc(ascension) || 0)) : ascension ?? {};
+  const levels = vowEffects(vows).levels + AUTHORITY.COOP_RANK_ALLOWANCE * ASCENSION.levelsPerRank;
+  const rankMult = ascensionRewardMult(vowHeat(vows) + AUTHORITY.COOP_RANK_ALLOWANCE);
   let xp = 0;
   let gold = 0;
   let best = null;
@@ -1711,7 +1814,7 @@ function ceilingsFor(unlocked, ascension, characterLevel, deepest = 0) {
     if (!peak || !unlocked.includes(id === "depths" ? DEPTHS_GATE : id)) continue;
     const depths = id === "depths";
     const baseLevel = depths ? depthEnemyLevel(DEPTHS_AUTHORITY.refDepth, DEPTHS_AUTHORITY.refHero) : AREAS[id].scaling ? AREAS[id].scaling.minLevel : AREAS[id].level;
-    const lvl = depths ? depthEnemyLevel(depthBound(deepest), characterLevel) + rank * ASCENSION.levelsPerRank : enemyLevel(id, characterLevel, rank);
+    const lvl = depths ? depthEnemyLevel(depthBound(deepest), characterLevel) + levels : enemyLevel(id, characterLevel, levels);
     const x = peak.xp * (1 + XP_LEVEL_STEP * (lvl - 1)) / (1 + XP_LEVEL_STEP * (baseLevel - 1)) * rankMult * AUTHORITY.CHAIN * AUTHORITY.OMEN * AUTHORITY.WISDOM;
     const g = peak.gold * (1 + GOLD_LEVEL_STEP * (lvl - 1)) / (1 + GOLD_LEVEL_STEP * (baseLevel - 1)) * rankMult * AUTHORITY.CHAIN * AUTHORITY.OMEN;
     if (x > xp) {
@@ -1758,7 +1861,7 @@ function buildGroundRates() {
     const poolWeight = pool.reduce((n, r) => n + RUNE_WEIGHT[RUNES[r].rarity], 0) || 1;
     for (const r of pool) {
       const share = RUNE_WEIGHT[RUNES[r].rarity] / poolWeight;
-      add(r, (kills * elite * ELITE_RUNE_CHANCE * ITEM_CHANCE_PEAK * FORTUNE_PEAK + 0.5 * SURGE_RUNE_CHANCE) * share);
+      add(r, (kills * elite * eliteRuneChance(lootId) * ITEM_CHANCE_PEAK * FORTUNE_PEAK + 0.5 * SURGE_RUNE_CHANCE) * share);
     }
   };
   for (const id of AREA_ORDER) {
@@ -1781,9 +1884,9 @@ function buildGroundRates() {
     let elitePerMin = 0;
     for (const id of AREA_ORDER) {
       const peak = AREA_PEAK[id];
-      if (peak && AREAS[id].scaling) elitePerMin = Math.max(elitePerMin, peak.kills * Math.min(1, AREAS[id].eliteChance + 4e-3 * 8) * LEGENDARY_DROP.eliteChance);
+      if (peak && AREAS[id].scaling) elitePerMin = Math.max(elitePerMin, peak.kills * Math.min(1, AREAS[id].eliteChance + 4e-3 * 8) * legendaryEliteChance(id));
     }
-    const perMin = (ICHOR_PER_MIN * LEGENDARY_DROP.bossChance + elitePerMin) * FORTUNE_PEAK;
+    const perMin = (ICHOR_PER_MIN * Math.max(...LEGENDARY_BOSS_AREAS.map(legendaryBossChance)) + elitePerMin) * FORTUNE_PEAK;
     for (const set of LEGENDARY_SET_IDS) for (const part of ["head", "chest", "hands", "legs", "feet"]) add(legendaryItemId(set, part), perMin * Math.max(LEGENDARY_DROP.ownShare, 1 / LEGENDARY_SET_IDS.length));
   }
   return rates;

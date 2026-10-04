@@ -179,7 +179,8 @@ export class AbilitySystem {
   /** Layer a Binbun effect (presets.ts). A no-op without the runtime (unit tests stub Effects). */
   private bb(id: BinbunId, x: number, z: number, o: Omit<BinbunSpawn, 'x' | 'z'> = {}): BinbunHandle | null {
     const b = this.ctx.effects.binbun;
-    return b ? playFx(b, id, { x, z, ...o }) : null;
+    // A partner's cast (Effects.role = 'other', set by WorldScene.handleEvent) plays dimmed and smaller; ours is untouched.
+    return b ? playFx(b, id, this.ctx.effects.partnerBinbun?.({ x, z, ...o }) ?? { x, z, ...o }) : null;
   }
 
   private get sp() {
@@ -833,6 +834,7 @@ export class AbilitySystem {
         this.ctx.send(intent);
         effects.decal({ tex: fx.ring(), color: M.rot, x, z, r, duration: 0.45, opacity: 0.7, growFrom: 0.2 });
         audio.play('miasma', x, z);
+        audio.loop('miasmaLoop', 6000, x, z);
         effects.emitSmoke({ x, y: 0.4, z, count: 6, color: M.spore, spread: r * 0.6, speed: 0.5, up: 0.3, life: 0.9, size: 1.1, shrink: -0.3, drag: 0.8 });
         effects.emit({ x, y: 0.3, z, count: 16, color: M.rot, spread: r * 0.5, speed: 1.1, up: 0.6, life: 0.65, size: 0.18 });
         // Rot spores drift up out of the cloud and hang in the air.
@@ -1168,6 +1170,7 @@ export class AbilitySystem {
     const core = first ? this.bb('soul_orb', first.x, first.z, { follow: () => target(), duration: S.durationS, colors: [SI.jade, SI.pale, SI.deep] }) : null;
     this.bb('soul_siphon_beam', p.x, p.z, { follow: () => caster(), duration: S.durationS });
     audio.play('siphon', p.x, p.z);
+    audio.loop('siphonLoop', S.durationS * 1000, p.x, p.z, () => caster());
     const dmg = this.sp * def.power;
     let drains = 0;
     this.timed.push({
@@ -1259,6 +1262,7 @@ export class AbilitySystem {
     }
     this.bb('grave_hands_pulse', x, z, { scale: r / 3.5 });
     audio.play('hands', x, z);
+    audio.loop('handsLoop', 3000, x, z);
     const dmg = this.sp * def.power * (1 + G.perCorpse * corpses);
     this.timed.push({
       until: now + G.durationS * 1000,
@@ -1304,6 +1308,7 @@ export class AbilitySystem {
     const dust = this.bb('bone_storm_dust', c.x, c.z, { follow, duration: life, colors: [BS.bone, BS.ash, BS.dust] });
     const ring = effects.decal({ tex: fx.ring(), color: BS.ash, x: c.x, z: c.z, r, duration: life, opacity: 0.35, spin: 2, fadeOut: 0.4, follow });
     audio.play('storm', c.x, c.z);
+    audio.loop('boneStormLoop', life * 1000, c.x, c.z);
     const dmg = this.sp * def.power;
     let last = now;
     this.timed.push({
@@ -1643,7 +1648,7 @@ export class AbilitySystem {
     picks.push(...others.slice(0, BONE_FAN.slivers - 1));
     const from = avatar.tip();
     effects.flash({ x: from.x, y: from.y, z: from.z, color: N.trail, size: 0.8, duration: 0.14 });
-    audio.play('needleCast', p.x, p.z);
+    audio.play('boneFan', p.x, p.z);
     const dmg = this.sp * def.power;
     let refunded = 0;
     const spread = (BONE_FAN.spreadDeg * Math.PI) / 180;
@@ -1709,7 +1714,7 @@ export class AbilitySystem {
     const dmg = this.sp * def.power;
     const cap = effectiveWitheredCap(discipline.mods) ?? DETONATE.rotWitheredCap;
     effects.flash({ x: tip.x, y: tip.y, z: tip.z, color: LN.rot, size: 0.7, duration: 0.14 });
-    audio.play('needleCast', p.x, p.z, 0.8);
+    audio.play('rotLance', p.x, p.z, 0.8);
     effects.beam(tip, () => end, LN.deep, 0.03, 0.18);
     const lanceShot = effects.projectile({
       from: tip, to: () => end, kind: 'orb', color: LN.rot, speed: ROT_LANCE.speed,
@@ -1783,10 +1788,10 @@ export class AbilitySystem {
         p.essence = Math.min(p.stats.maxEssence, p.essence + essence);
         const heal = p.stats.maxHp * (GRAVE_OFFERING.healFrac + (discipline.mods.corpseHeal ?? 0));
         p.hp = Math.min(p.stats.maxHp, p.hp + heal);
-        audio.play('shard', pos.x, pos.z);
+        audio.play('graveOffering', pos.x, pos.z);
       },
     });
-    audio.play('exhume', ev.x, ev.z);
+    audio.play('graveOffering', ev.x, ev.z);
   }
 
   /** Ivory Cleave: a 120° crescent resolved instantly (client-resolved like Grave Frost), Fracturing what it cuts. */
@@ -1829,7 +1834,7 @@ export class AbilitySystem {
     effects.decal({ tex: fxImage('crescent'), color: S.bone, x: p.x + dx * 1.5, z: p.z + dz * 1.5, r: 2.2, rot: Math.atan2(dx, dz), duration: 0.45, opacity: 1, growFrom: 0.6, fadeOut: 0.3 });
     effects.decal({ tex: fxImage('crescent'), color: S.crack, x: p.x + dx * 1.6, z: p.z + dz * 1.6, r: 2.4, rot: Math.atan2(dx, dz), duration: 0.35, opacity: 0.6, growFrom: 0.7 });
     effects.lightFlash(p.x + dx * 1.5, 1, p.z + dz * 1.5, S.crack, 14, 0.2);
-    audio.play('spear', p.x, p.z, 1.3);
+    audio.play('ivoryCleave', p.x, p.z, 1.3);
     if (ids.length) audio.play('boneHit', p.x + dx * 2, p.z + dz * 2);
     this.ctx.shake(0.05);
     return 'ok';
@@ -1861,7 +1866,7 @@ export class AbilitySystem {
     this.bb('veil_step_trail', from.x, from.z, { duration: 0.6, rot: Math.atan2(to.x - from.x, to.z - from.z) });
     effects.decal({ tex: fx.ring(), color: VL.jade, x: to.x, z: to.z, r: 1, duration: 0.45, opacity: 0.9, growFrom: 0.2 });
     effects.lightFlash(to.x, 1.2, to.z, VL.jade, 14, 0.25);
-    audio.play('bloodStep', from.x, from.z, 1.3);
+    audio.play('veilStep', from.x, from.z, 1.3);
     return 'ok';
   }
 
@@ -1902,7 +1907,7 @@ export class AbilitySystem {
     }
     effects.lightFlash(ev.x, 1.2, ev.z, RD.jade, 18, 0.3);
     this.bb('rally_area', ev.x, ev.z);
-    audio.play('thrallRise', ev.x, ev.z);
+    audio.play('rallyDead', ev.x, ev.z);
   }
 
   /** Carrion Seed: plant on the corpse nearest the cursor; the host arms and bursts it. */
@@ -1915,7 +1920,7 @@ export class AbilitySystem {
     avatar.cast('cast', 2.4, p.facing, CAST_FLOW.carrion_seed.gestureSeconds, 'carrion_seed');
     const cap = discipline.mods.miasmaBurstsCorpses ? Math.max(CARRION_SEED.witheredCap, effectiveWitheredCap(discipline.mods)) : CARRION_SEED.witheredCap;
     this.ctx.send({ t: 'signature', by: this.ctx.selfId, sig: 'seed', x: c.x, z: c.z, dx: 0, dz: 0, sp: this.sp, cap });
-    audio.play('miasma', c.x, c.z, 1.2);
+    audio.play('carrionSeed', c.x, c.z, 1.2);
     return 'ok';
   }
 
@@ -1946,7 +1951,7 @@ export class AbilitySystem {
     effects.lightFlash(ev.x, 1, ev.z, BL.petal, 22, 0.3);
     this.bb('carrion_seed_burst', ev.x, ev.z, { scale: ev.r / 3 });
     this.bb('toxic_puddle', ev.x, ev.z, { scale: ev.r / 3, duration: 1.5 });
-    audio.play('burst', ev.x, ev.z);
+    audio.play('seedBurst', ev.x, ev.z);
     this.ctx.shake(0.06);
   }
 
@@ -1996,7 +2001,7 @@ export class AbilitySystem {
     p.addResource(HOLLOW_CUT.rage * ids.length);
     effects.decal({ tex: fxImage('crescent'), color: KN.steel, x: p.x + dx * 1.2, z: p.z + dz * 1.2, r: HOLLOW_CUT.reach, rot: Math.atan2(dx, dz), duration: 0.32, opacity: 0.95, growFrom: 0.7, fadeOut: 0.22 });
     effects.lightFlash(p.x + dx * 1.2, 1, p.z + dz * 1.2, KN.pale, 10, 0.16);
-    audio.play('spear', p.x, p.z, 1.45);
+    audio.play('hollowCut', p.x, p.z, 1.45);
     if (ids.length) audio.play('boneHit', p.x + dx * 1.6, p.z + dz * 1.6);
     return 'ok';
   }
@@ -2022,7 +2027,7 @@ export class AbilitySystem {
     const mid = { x: (from.x + to.x) / 2, z: (from.z + to.z) / 2 };
     effects.decal({ tex: fx.glow(), color: KN.steel, x: mid.x, z: mid.z, r: 1.3, duration: 0.3, opacity: 0.7, fadeOut: 0.2 });
     effects.emitSmoke({ x: from.x, y: 0.4, z: from.z, count: 4, color: KN.dust, spread: 0.4, speed: 0.6, up: 0.3, life: 0.5, size: 0.8 });
-    audio.play('bloodStep', from.x, from.z, 1.2);
+    audio.play('shieldBash', from.x, from.z, 1.2);
     this.ctx.shake(0.04);
     return 'ok';
   }
@@ -2052,7 +2057,7 @@ export class AbilitySystem {
       onArrive: () => this.slamLanding(to, dmg),
     };
     effects.emitSmoke({ x: from.x, y: 0.4, z: from.z, count: 5, color: KN.dust, spread: 0.5, speed: 0.8, up: 0.6, life: 0.5, size: 0.9 });
-    audio.play('bloodStep', from.x, from.z, 0.9);
+    audio.play('graveSlam', from.x, from.z, 0.9);
     return 'ok';
   }
 
@@ -2079,7 +2084,7 @@ export class AbilitySystem {
     effects.emit({ x: at.x, y: 0.4, z: at.z, count: 20, color: KN.dust, spread: 0.6, speed: 3.4, up: 1.6, life: 0.5, size: 0.18, gravity: 10 });
     effects.lightFlash(at.x, 1, at.z, KN.pale, 18, 0.22);
     this.bb('rend_impact', at.x, at.z);
-    audio.play('boneHit', at.x, at.z, 0.8);
+    audio.play('graveSlamLand', at.x, at.z, 0.8);
     this.ctx.shake(0.12);
   }
 
@@ -2092,7 +2097,7 @@ export class AbilitySystem {
     const follow = () => ({ x: p.x, z: p.z });
     effects.decal({ tex: fx.ring(), color: KN.steel, x: p.x, z: p.z, r: 1.15, duration: BULWARK.holdS, opacity: 0.8, growFrom: 0.4, follow });
     effects.emit({ x: p.x, y: 1.1, z: p.z, count: 12, color: KN.pale, spread: 0.4, speed: 1.2, up: 0.8, life: 0.4, size: 0.16 });
-    audio.play('shard', p.x, p.z, 0.8);
+    audio.play('bulwarkRaise', p.x, p.z, 0.8);
     return 'ok';
   }
 
@@ -2131,7 +2136,7 @@ export class AbilitySystem {
     effects.decal({ tex: fx.glow(), color: KN.oath, x: p.x, z: p.z, r: 2.4, duration: OATH_UNBROKEN.durationS, opacity: 0.3, growFrom: 0.5, follow });
     effects.emit({ x: p.x, y: 1.3, z: p.z, count: 24, color: KN.oath, spread: 0.5, speed: 2, up: 1.4, life: 0.7, size: 0.2 });
     effects.lightFlash(p.x, 1.4, p.z, KN.oath, 22, 0.35);
-    audio.play('litany', p.x, p.z, 0.9);
+    audio.play('oathUnbroken', p.x, p.z, 0.9);
     this.ctx.shake(0.08);
     return 'ok';
   }
@@ -2145,7 +2150,7 @@ export class AbilitySystem {
     if (ev.ok === false) return;
     effects.decal({ tex: fx.ring(), color: KN.pale, x: ev.x, z: ev.z, r: 1.2, duration: 0.6, opacity: 0.9, growFrom: 0.3 });
     effects.emit({ x: ev.x, y: 0.6, z: ev.z, count: 14, color: KN.pale, spread: 0.3, speed: 1, up: 2, life: 0.7, size: 0.16 });
-    audio.play('exhume', ev.x, ev.z, 0.9);
+    audio.play('corpseVigil', ev.x, ev.z, 0.9);
     if (!mine || !p.alive) return;
     this.vigilUntil = this.ctx.now() + CORPSE_VIGIL.durationS * 1000;
     const f = follow();
@@ -2164,12 +2169,12 @@ export class AbilitySystem {
     if (ev.sprung) {
       effects.decal({ tex: fx.ring(), color: KN.oath, x: ev.x, z: ev.z, r: GRAVE_BRAND.triggerR, duration: 0.45, opacity: 1, growFrom: 0.3 });
       effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 16, color: KN.oath, spread: 0.4, speed: 2.4, up: 1, life: 0.5, size: 0.16, gravity: 8 });
-      audio.play('boneHit', ev.x, ev.z, 1.1);
+      audio.play('graveBrand', ev.x, ev.z, 1.1);
       return;
     }
     effects.decal({ tex: fxImage('graveOutline'), color: KN.oath, x: ev.x, z: ev.z, r: GRAVE_BRAND.triggerR, duration: GRAVE_BRAND.lifeS, opacity: 0.5, growFrom: 0.6, fadeOut: 0.5 });
     effects.emit({ x: ev.x, y: 0.4, z: ev.z, count: 10, color: KN.oath, spread: 0.3, speed: 1, up: 0.6, life: 0.5, size: 0.14 });
-    audio.play('shard', ev.x, ev.z, 0.7);
+    audio.play('graveBrand', ev.x, ev.z, 0.7);
   }
 
   onNewBlood(ev: Extract<SimEvent, { t: 'newBlood' }>, mine: boolean) {
@@ -2197,6 +2202,8 @@ export class AbilitySystem {
     effects.emit({ x: p.x, y: 1.4, z: p.z, count: 24, color, spread: 0.4, speed: 1.6, up: 1.2, life: 0.6, size: 0.24 });
     effects.lightFlash(p.x, 1.8, p.z, color, 24, 0.4);
     audio.play(sig === 'wall' ? 'sigWall' : sig === 'rend' ? 'sigRend' : sig === 'dirge' ? 'sigDirge' : 'sigBloom', p.x, p.z);
+    if (sig === 'dirge') audio.loop('dirgeLoop', 4000, p.x, p.z);
+    else if (sig === 'bloom') audio.loop('bloomPulse', 6000, p.x, p.z);
     return 'ok';
   }
 
@@ -2242,7 +2249,7 @@ export class AbilitySystem {
     if (!ev.ok) return;
     const { effects } = this.ctx;
     const { x, z, r } = ev;
-    audio.play('burst', x, z);
+    audio.play('corpseExplode', x, z);
     effects.flash({ x, y: 0.7, z, color: D.hot, size: r * 0.8, duration: 0.2 });
     effects.decal({ tex: fx.ring(), color: D.ember, x, z, r, duration: 0.45, opacity: 1, growFrom: 0.15 });
     effects.decal({ tex: fx.glow(), color: D.crimson, x, z, r: r * 0.9, duration: 0.7, opacity: 0.85, growFrom: 0.4 });

@@ -12,7 +12,7 @@ import type { Enemy, Intent } from '../sim/types';
 import { resolveWeaponLoadout } from '../weaponLine';
 import { CODEX_RUNES_COUNSEL } from '../../content/codex';
 
-vi.mock('../../audio/Audio', () => ({ audio: { play: vi.fn() } }));
+vi.mock('../../audio/Audio', () => ({ audio: { play: vi.fn(), loop: vi.fn(() => () => undefined) } }));
 vi.mock('../../graphics/fxTextures', () => ({
   fx: Object.fromEntries(['glow', 'smoke', 'disc', 'ring', 'cracks', 'sigil'].map((name) => [name, () => new THREE.Texture()])),
 }));

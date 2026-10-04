@@ -39,6 +39,9 @@ dead, **chartreuse/olive** = rot & poison, **violet** = signature ritual magic,
 - Black Litany: *Hollow Choir* (no thrall sacrifice; smaller burst), *Requiem* (delayed 2 s, wider).
 Not built: rune upgrades, a second socket per rite, runes for the other families' rites, rune crafting, a socket UI drag-and-drop, co-op friends seeing your rune badges. `server/proposals/relic-runes.md` is superseded (no socket table: sockets are reserved inventory rows).
 
+### Loadout presets for the other families
+Necromancer loadouts (rites + runes + weapon/off-hand, six per character, optional hotkeys) shipped on `dm/loadouts`. Next: the New Blood disciplines get the same strip: skills plus gear sets (weapon, off-hand, armor), see ROADMAP L6.
+
 ### Thrall variety
 - ✅ *shipped 2026-09-26* — Skeleton archer (from Bellbound corpses), bone mage (from Deacon corpses — its Bone Hex makes enemy blows 25% softer), plague bearer (from Carrion Sacs — bursts into a friendly rot pool when killed or sacrificed). The Mourner's wraiths still override. Bow/staff are code-built stand-ins.
 - ✅ *built 2026-10-02 (branch `dm/thrall-gear`, not deployed)* — **Thrall gear: the Legion kit.** Two slots for the whole legion (Weapon, Armour; reserved inventory slots 120-121) take the spare gear you'd otherwise salvage; stat points become thrall damage, health and attack speed through the existing mods, **Reinforce** (12 tiers of gold) is the sink. Archers and bone mages carry the baked `gear_thrall_bow` / `gear_bone_staff`. Press **Y**. See HANDOFF and README ("Thrall gear").
@@ -136,6 +139,10 @@ nothing left to chase. Ranked by replay value per effort; ★ = buildable client
      This is Diablo's Torment idea. It stacks with Easy/Medium/Hard and gives the balance harness a
      new band.
    - Server later: add `ascension_rank`, `ashes` and `boons` columns to the necro-progress proposal.
+   - **Reworked 2026-10-03 (branch `dm/ascension-vows`): Vows.** The seal grind no longer repeats: seals never reset, the +3-levels-per-rank aging became the
+     **Elder Dead** vow (step 1 of 20), and the player swears 11 chosen curses before a run (Iron Dead, Swollen Waves, Deacon Host, Bloodied Elites,
+     Prelate Echoes, Thin Graves, Frail Vessel, Famished Rites, Brittle Dead, Dry Cellar). Heat sums to the run's rank and multiplies Ashes. Six
+     play-changing boons (Lingering Dead, Grave Feast, Bonded Dead, Hollow Sacrifice, Bone Ward, Carrion Bloom) are unlocked with soul shards. See README "Ascension".
 2. **★ Daily rites (bounties).** Three objectives a day, seeded from the date so every player gets the
    same ones, e.g. "Slay 60 in the Nave at Wave Speed ≥ 3", "Win a Grave Surge without a thrall
    dying", "Kill the Prelate on Hard". They pay shards and Ashes, and give a reason to revisit
@@ -150,8 +157,8 @@ nothing left to chase. Ranked by replay value per effort; ★ = buildable client
 5. **Catacomb Depths (endless descent) — BUILT 2 Oct 2026 (`dm/depths`, see README "The Catacomb Depths" and HANDOFF).** A procedural endless area below the Nave: each depth
    is +1 enemy level and a new affix, with a depth leaderboard. The leaderboard needs server
    storage; the descent itself doesn't.
-6. **Prelate Echoes.** Each Ascension rank gives the Prelate one extra mechanic from a pool (a second
-   bell, procession elites, rain that chases). The boss fight changes as you prestige.
+6. ✅ *built 2026-10-03 as the **Prelate Echoes** vow (`dm/ascension-vows`)* — three steps: a second bell, a procession with elites, rain that chases.
+   Still open: a pool of more echoes, and the same idea for the area bosses.
 7. **Collection goals.** Codex completion and per-discipline mastery unlock cosmetic thrall tints
    and portrait frames. This is low effort and rewards long-term players.
 

@@ -37,14 +37,17 @@ describe('legendary drops', () => {
     for (const s of LEGENDARY_SET_IDS) expect(even[s] / n).toBeGreaterThan(0.22);
   });
 
-  it('bosses roll about 7% from the Ossuary on, never in the Hollow Graves, and only when a discipline is given', () => {
+  it('bosses roll about 22% in the Nave (20% at the Ossuary rising to 33%), 6% at the Gravedigger King, and only when a discipline is given', () => {
     const rand = seeded(5);
     let hits = 0;
     const n = 20000;
     for (let i = 0; i < n; i++) if (rollBoss(0, rand, 'medium', 'nave', 4, 'abbess', 'gravecaller').items.some((d) => isLegendary(d.item_id))) hits++;
-    expect(hits / n).toBeGreaterThan(0.06);
-    expect(hits / n).toBeLessThan(0.08);
-    for (let i = 0; i < 3000; i++) expect(rollBoss(0, rand, 'medium', 'graves', 2, 'gravedigger', 'gravecaller').items.some((d) => isLegendary(d.item_id))).toBe(false);
+    expect(hits / n).toBeGreaterThan(0.205);
+    expect(hits / n).toBeLessThan(0.235);
+    let starter = 0;
+    for (let i = 0; i < n; i++) if (rollBoss(0, rand, 'medium', 'graves', 2, 'gravedigger', 'gravecaller').items.some((d) => isLegendary(d.item_id))) starter++;
+    expect(starter / n).toBeGreaterThan(0.05);
+    expect(starter / n).toBeLessThan(0.07);
     for (let i = 0; i < 3000; i++) expect(rollBoss(0, rand, 'medium', 'nave', 4).items.some((d) => isLegendary(d.item_id))).toBe(false);
   });
 
@@ -59,10 +62,10 @@ describe('legendary drops', () => {
       if (rollKill('robber', 'nave', 20, true, 0, rand, 'medium', 1, rand, Math.random, 'rotweaver').items.some((d) => isLegendary(d.item_id))) flat++;
       if (rollKill('robber', 'cloister', 20, false, 0, rand, 'medium', 1, rand, Math.random, 'rotweaver').items.some((d) => isLegendary(d.item_id))) plain++;
     }
-    expect(scaled / n).toBeGreaterThan(0.002);
-    expect(scaled / n).toBeLessThan(0.004);
+    expect(scaled / n).toBeGreaterThan(0.0035);
+    expect(scaled / n).toBeLessThan(0.0065);
     expect(flat + plain).toBe(0);
-    expect(rollLegendary('rotweaver', LEGENDARY_DROP.eliteChance, () => 0.999)).toBeNull();
+    expect(rollLegendary('rotweaver', 0.005, () => 0.999)).toBeNull();
     expect(Object.keys(LEGENDARY_SETS)).toHaveLength(4);
   });
 

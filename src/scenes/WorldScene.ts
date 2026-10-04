@@ -6,8 +6,13 @@ import { Scope } from '../app/Scope';
 import { ABILITIES, FRACTURE, PRIMARIES, BULWARK, SIGNATURE_LEVEL, SOUL_HARVEST, SPELL_FX, unlockLevel, type AbilityId, type HotbarSlot } from '../content/abilities';
 import { CAST_FLOW } from '../content/combatFlow';
 import { swapReady } from '../ui/firstHourRules';
+import { TabbedWindow } from '../ui/TabbedWindow';
+import { CueQueue, HudReveal, isVeteran, veteranReveals, type RevealId } from '../ui/progressiveHud';
 import { kitFor, type Kit } from '../content/kits';
-import { assignableRites, assignRite, LOADOUT_SLOTS, loadRites, loadSeen, saveRites, saveSeen, unseenRites } from '../gameplay/loadout';
+import { assignableRites, assignRite, LOADOUT_SLOTS, loadRites, loadSeen, sanitizeLoadout, sanitizePrimary, saveRites, saveSeen, unseenRites } from '../gameplay/loadout';
+import { LoadoutPresets, reportLines, sameLoadout, type LoadoutBody } from '../ui/LoadoutPresets';
+import { captureGear, type LoadoutPreset } from '../gameplay/loadoutRules';
+import { actionForKey, label as keyLabel, loadBinds, nextSlot, saveBinds, checkBind, LOADOUT_ACTIONS, type ActionId, type Binds } from '../gameplay/keybinds';
 import { devAccess, devPreference, isDevAccount, riteLevel, setDevPreference, tokenUsername } from '../gameplay/devAccess';
 import { GrimoirePanel } from '../ui/GrimoirePanel';
 import { hitstop } from '../graphics/hitstop';
@@ -23,7 +28,10 @@ import { BREWS, BREW_KEYS, BREW_SLOTS, applyBrew, brewEffectsText, brewWard, lif
 import { MEALS } from '../content/processing';
 import { generateLayout, PROPS, type NodePlacement } from '../content/layout';
 import { GatherLoop, Skills } from '../gameplay/Gathering';
-import { NODES, SKILLS, isBeltSlot, nodesForSkill, toolTierFor, type SkillId } from '../gameplay/gatheringRules';
+import { gatherSfx } from '../audio/gatherSfx';
+import { ALL_SKILLS, NODES, SKILLS, isBeltSlot, nodesForSkill, toolTierFor, type SkillId } from '../gameplay/gatheringRules';
+import { AREA_SURFACE, AREA_STEP_GAIN, BOSS_TELL, ENEMY_VOICE, STEP_SOUND, VOICE_ATTACK, VOICE_DEATH, type SoundId, type VoiceFamily } from '../content/audioMap';
+import { FootstepTracker } from '../audio/footsteps';
 import type { LiveNode } from '../gameplay/gatherPlan';
 import { STOP_TEXT } from '../gameplay/gatherPlan';
 import { NodeViews } from '../graphics/NodeViews';
@@ -35,7 +43,7 @@ import { Guidance, formatSealProgress, bossTrophyKey, nextSuggestion, readTrophi
 import { addToSlots } from '../gameplay/loot';
 import { WAVE_MILESTONES, damageBonusPct, milestoneActive, waveModifiers } from '../content/upgrades';
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
-import { BOONS, ascensionLevels, ascensionRewardMult, roman } from '../content/ascension';
+import { BOONS, BOON_ORDER, VOWS, VOW_ORDER, ascensionRewardMult, boonKey, isUnlocked, roman, unlockCost, vowEffects, vowKey, worldVows } from '../content/ascension';
 import { AscensionPanel } from '../ui/AscensionPanel';
 import { ClassPanel } from '../ui/ClassPanel';
 import { changeDiscipline, getContracts, getCosmetics, getGarden, getLabor, type LaborView, type ContractDelivery, type CosmeticsView, type GardenResult, type LaborResult } from '../net/api';
@@ -71,7 +79,7 @@ import { isBinbunImpact, type BinbunId } from '../graphics/binbun/catalog';
 import type { Gallery } from '../graphics/binbun/gallery';
 import { playFx } from '../graphics/binbun/presets';
 import type { BinbunHandle } from '../graphics/binbun/BinbunFX';
-import { EntityViews, preloadAreaModels, stageSpecs } from '../graphics/EntityViews';
+import { EntityViews, preloadAreaGlbs, preloadAreaModels, stageSpecs } from '../graphics/EntityViews';
 import { warmColdPaths } from '../graphics/coldWarm';
 import { LoadVeil } from '../ui/LoadVeil';
 import { areasWithin, doorNeighbours } from '../graphics/areaStreaming';
@@ -88,7 +96,7 @@ import { applySetMods, outfitSignature, resolveSetBonuses, setSignature } from '
 import { loadRunesFound, recordRunesFound } from '../gameplay/runeJournal';
 import { ownedRunes, socketsOf, socketsSignature, type RuneSockets } from '../gameplay/runeRules';
 import { RUNES, type RuneId, type RuneRite } from '../content/runes';
-import { runeSocket } from '../net/api';
+import { applyLoadoutPreset, deleteLoadout, listLoadouts, runeSocket, saveLoadout } from '../net/api';
 import { applyLegionMods, kitCandidates, kitPieces, legionOf, legionSignature, thrallRefresh, type ThrallNumbers } from '../gameplay/legionKit';
 import { LegionPanel } from '../ui/LegionPanel';
 import { LootRoller } from '../gameplay/lootRoll';
@@ -112,14 +120,19 @@ import { isCape, isPet } from '../gameplay/cosmeticRules';
 import { beginAfkGather, gather, getInventory, getProfessions, getToken, OFFLINE, onServerNotice, type GatherReply, type SalvageReply } from '../net/api';
 import type { RemotePlayer, WorldSnapshot } from '../net/contracts';
 import { RealtimeClient, type RealtimeHandlers } from '../net/realtime';
+import { EventCoalescer } from '../net/eventCoalescer';
 import { PerfBeacon, perfBeaconWanted, perfNote, perfSessionInfo, setPerfBeacon } from '../net/perfBeacon';
 import { isRetryableError, Reconnector, type ReconnectMode } from '../net/reconnect';
 import { clearRejoin, loadRejoin, saveRejoin } from '../net/rejoinStore';
 import { releaseWatch } from '../net/releaseWatch';
 import { UpdateNotice } from '../ui/UpdateNotice';
+import { markAutoReload } from '../net/session';
 import type { Character, Profession } from '../net/types';
 import { FloatingText } from '../ui/FloatingText';
 import { ForgePanel } from '../ui/ForgePanel';
+import { BossKeyPrompt } from '../ui/BossKeyPrompt';
+import { bossKeyClaim, bossKeyRefund, bossKeyStatus, bossKeySummon } from '../net/api';
+import { COVENANT_SEAL, canEmpower } from '../gameplay/goldSinkRules';
 import { ReagentShelfPanel } from '../ui/ReagentShelfPanel';
 import { recordFound } from '../content/wing';
 import { HUD, type HudFrame } from '../ui/HUD';
@@ -127,6 +140,7 @@ import { InventoryPanel } from '../ui/InventoryPanel';
 import { CharacterSheetPanel } from '../ui/CharacterSheet';
 import type { StatContext } from '../gameplay/gearStats';
 import { SettingsPanel, WaystonePanel } from '../ui/MiscPanels';
+import type { BeltChoice } from '../ui/BeltPicker';
 import { ProfessionsPanel } from '../ui/ProfessionsPanel';
 import { CodexPanel } from '../ui/CodexPanel';
 import { AtlasLauncher } from '../ui/AtlasLauncher';
@@ -141,6 +155,8 @@ import { CURSOR } from '../ui/cursors';
 import { audio } from '../audio/Audio';
 import { lootSfx } from '../audio/mixer';
 import { snapShadowTarget } from '../graphics/shadowCadence';
+import { newBloodXpMult } from '../gameplay/newBloodTuning';
+import { bossRewardEligible } from '../gameplay/killCredit';
 
 /** Minimum gap between HUD readout redraws (~20 Hz). */
 /** The moon's offset from the hero, its shadow-map size and the world size of one shadow texel (60 m frustum). */
@@ -237,7 +253,37 @@ function doorDirection(d: DoorDef): string {
 }
 
 
+/** The line a NEW cue puts in its one-at-a-time toast, and the panel the toast opens when clicked. */
+const CUE_TEXT: Partial<Record<RevealId, string>> = {
+  'hud.upgrades': 'Upgrades unlocked: spend gold on Empower (damage) and Quicken (wave speed), bottom right.',
+  'hud.dial': 'The wave dial appeared in the Upgrades box: choose how fast the waves you face run.',
+  'hud.shards': 'Soul Shards counter: kept from bosses, spent on boons at the Altar of Ascension.',
+  'menu.spells': 'You can swap rites now: open the Grimoire (L).',
+  'menu.atlas': 'Gear Atlas (.): every item, set and recipe in the game, with where to find it.',
+  'menu.skills': 'The Acre ledger (P): your skills, garden, laborers and contracts in one place.',
+  'tab.acre.garden': 'Garden, Laborers and Contracts are tabs of the Acre ledger now (P). U, H and O still open them.',
+  'tab.sheet.pets': 'Capes & Pets moved into the Character sheet (J). N still opens them.',
+  'tab.grimoire.legion': 'The Legion now sits beside the Grimoire (L). Y still opens it.',
+};
+const CUE_OPENS: Partial<Record<RevealId, 'professions' | 'grimoire' | 'atlas' | 'garden' | 'cosmetics' | 'legion'>> = {
+  'menu.skills': 'professions', 'menu.spells': 'grimoire', 'hud.spells': 'grimoire', 'menu.atlas': 'atlas',
+  'tab.acre.garden': 'garden', 'tab.sheet.pets': 'cosmetics', 'tab.grimoire.legion': 'legion',
+};
+const TAB_CUES: ReadonlySet<string> = new Set(['tab.acre.garden', 'tab.acre.labor', 'tab.acre.contracts', 'tab.sheet.pets', 'tab.grimoire.legion']);
+
 type PanelKey = 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'ascension' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'salvage' | 'sheet' | 'legion' | 'atlas';
+/**
+ * Keys a focused form control needs for itself: a <select> uses the arrows/Enter/Space/Home/End, and a button or link the
+ * player reached with Tab (`tabbed`; never one they just clicked, or Enter after 'click Empower' would buy another tier) is activated by Enter/Space. Without
+ * this the hotkey handler swallowed them (preventDefault on arrows and Space, Enter sent focus to the chat box), so
+ * Settings could not be driven from the keyboard. Esc and the letter hotkeys still pass through.
+ */
+export function focusOwnsKey(el: Element | null, k: string, tabbed: boolean): boolean {
+  if (!(el instanceof HTMLElement)) return false;
+  if (el instanceof HTMLSelectElement) return ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'enter', ' ', 'home', 'end', 'pageup', 'pagedown'].includes(k);
+  return tabbed && (k === 'enter' || k === ' ') && el.matches('button, a[href], summary, [role="button"]');
+}
+
 export class WorldScene implements GameScene, RuntimeView {
   readonly scene = new THREE.Scene();
   readonly bloom = { strength: 0.75, radius: 0.55, threshold: 0.85 };
@@ -268,6 +314,10 @@ export class WorldScene implements GameScene, RuntimeView {
   private hotbar: AbilityId[] = kitFor('necromancer').hotbar;
   /** The five rites on keys 1–5 (Grimoire, L); remembered per character in browser storage. */
   private loadout: AbilityId[];
+  /** Rebindable loadout hotkeys (gameplay/keybinds.ts), per browser; all unbound by default. */
+  private binds: Binds = loadBinds(browserStorage());
+  private loadoutBusy = false;
+  private lastLoadoutSlot: number | null = null;
   /** The left-click primary (Grimoire LMB socket). */
   private primary: AbilityId = 'bone_needle';
   /** Rites seen in the Grimoire (a learned rite outside this set wears NEW). */
@@ -296,6 +346,11 @@ export class WorldScene implements GameScene, RuntimeView {
   private gatherSession: GatherSession | null = null;
   private gatherReportPanel!: GatherReportPanel;
   private contractsPanel!: ContractsPanel;
+  private bossKeyPrompt!: BossKeyPrompt;
+  /** The boss this hero called Empowered and has not been paid for yet (its prize is claimed from the server on the kill). */
+  private empowerPending: BossId | null = null;
+  /** The bound summon's id for the Empowered boss being fought (empowered_summons): the kill report names it. */
+  private empowerSummonId = 0;
   private vaultPanel!: VaultPanel;
   private salvagePanel!: SalvagePanel;
   private locks!: ItemLocks;
@@ -333,18 +388,21 @@ export class WorldScene implements GameScene, RuntimeView {
   private ownedItemIds = (): ReadonlySet<string> => new Set(this.inventory.all.map((s) => s.item_id));
   /** When the 'Reliquary full' call-out last showed (loot is retried every frame under the player's feet). */
   private bagFullAt = -1e9;
-  private bagFullToastAt = -1e9;
+  /** The "bag is full" toast was shown and the bag has not had room since: it is said once per filling, not per pickup/swing. */
+  private bagFullNoticed = false;
   private lastSnapshot = 0;
   /** World wave tier last frame (milestone banners) and the Nightfall light blend 0..1. */
   private seenWaveTier = -1;
   private nightK = 0;
   private snapshotCount = 0;
   private lastMoveSent = 0;
+  /** Host event batches, held under the relay's 60/s budget (see EventCoalescer). */
+  private eventOut = new EventCoalescer((b) => this.realtime.sendEvents(b));
   private lastPrune = 0;
   private lineupTicks: ((dt: number) => void)[] = [];
   /** DEV: the BinbunVFX review grid, if open. */
   private vfxGallery: Gallery | null = null;
-  private stepT = 0;
+  private foot = new FootstepTracker();
   private rippleT = 0;
   private rippleCursor = 0;
   private zoneFx = new Map<number, Handle[]>();
@@ -424,6 +482,14 @@ export class WorldScene implements GameScene, RuntimeView {
   private forgePanel!: ForgePanel;
   private shelfPanel!: ReagentShelfPanel;
   private professionsPanel!: ProfessionsPanel;
+  /** Progressive HUD (ui/progressiveHud.ts): what has been revealed and what still wears a NEW cue, per character. */
+  private hudReveal!: HudReveal;
+  private cues!: CueQueue;
+  private acreWin!: TabbedWindow;
+  private charWin!: TabbedWindow;
+  private grimWin!: TabbedWindow;
+  private grimSelect: number | 'primary' | undefined;
+  private lastGold = 0;
   private settingsPanel!: SettingsPanel;
   private classPanel!: ClassPanel;
   private waystonePanel!: WaystonePanel;
@@ -454,6 +520,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.progression = new Progression(character);
     this.applyBoons();
     this.inventory = new Inventory(character.id);
+    this.hudReveal = new HudReveal(character.id);
     this.lootRoller = new LootRoller(character.id);
     this.locks = new ItemLocks(character.id);
     this.chronicle = new Chronicle(character.id);
@@ -499,8 +566,17 @@ export class WorldScene implements GameScene, RuntimeView {
     audio.play('click');
     this.closePanels();
     this.gathering?.stop('panel');
-    this.grimoirePanel.open(select);
+    this.clearCuesFor('grimoire');
+    this.grimSelect = select;
+    this.grimWin.open('grimoire');
+    this.grimSelect = undefined;
     this.onboarding.show('grimoire', 0, { kind: 'asked' });
+    this.runeHuntTip();
+  }
+
+  /** A necromancer who opens the Grimoire holding no rune learns where runes come from (the sockets are theirs from the start). */
+  private runeHuntTip() {
+    if (this.discipline.family === 'necromancer' && Object.keys(ownedRunes(this.inventory.all)).length === 0 && Object.keys(this.player?.runes ?? {}).length === 0) this.onboarding.show('runeHunt', 2500, { kind: 'asked' });
   }
 
   /** Areas the nav may walk: the saved seals, or everything under dev access. */
@@ -596,6 +672,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.bossViews.set('prelate', prelate);
     this.scope.add(prewarmCreature(prelate.c, getRuntime().renderer, this.rig.camera, this.scene, () => getRuntime().frameTarget()));
     this.loot = new LootView(this.scene, this.effects);
+    this.loot.dropSound = (id, x, z) => audio.play(id, x, z);
 
     const stats = deriveStats(this.character, [], this.discipline, this.progression.local.damageTier);
     this.player = new Player(stats, this.nav, this.discipline.family);
@@ -655,7 +732,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.sim.setNodes(this.layout.nodes);
     this.sim.waveTier = this.progression.local.waveTierActive;
     this.sim.difficulty = settings.difficulty;
-    this.sim.ascension = this.progression.local.ascension;
+    this.syncWorldVows();
 
     const scene = this;
     this.abilities = new AbilitySystem({
@@ -734,7 +811,9 @@ export class WorldScene implements GameScene, RuntimeView {
       sim: () => this.sim,
       selfId: () => this.selfId,
       partySize: () => this.remotes.size,
-      isAuthority: () => !this.mirror && this.isAuthority(),
+      inParty: () => this.partyCode !== null,
+      stepOutOfParty: () => this.pauseCoop(),
+      stepBackIntoParty: () => this.resumeCoop(),
       level: () => this.character.level,
       disciplineId: () => this.discipline.id,
       rewardMult: () => ascensionRewardMult(this.worldAscension()) * this.omen.rewardMult,
@@ -742,6 +821,7 @@ export class WorldScene implements GameScene, RuntimeView {
       dropItems: (x, z, items, level, source) => this.dropItems(x, z, items, level, source),
       gainXp: (xp, x, z) => this.gainXp(xp, x, z),
       giveGold: (x, z, amount) => this.loot.gold(x, z, amount),
+      reportFloor: (f) => this.progression.reportFloor(f),
       tip: (id, delayMs, opts) => this.onboarding.show(id, delayMs, opts),
     });
     this.scope.add(() => this.depths.dispose());
@@ -755,12 +835,17 @@ export class WorldScene implements GameScene, RuntimeView {
       if (this.effects.binbun.enabled) preloadBinbun(GROUND_FX_PRELOAD);
     }));
     this.scope.add(this.inventory.onChange(() => this.refreshStats()));
+    this.scope.add(this.inventory.onChange((slots) => {
+      this.loot.unpark();
+      // Room again (a free bag slot): the next time something does not fit, say so once more.
+      if (slots.filter((x) => x.slot_index < BAG_SIZE).length < BAG_SIZE) this.bagFullNoticed = false;
+    }));
     this.scope.add(this.inventory.onChange(() => { this.brewRev++; }));
     this.scope.on(window, 'pagehide', () => {
       void this.progression.flush(true);
-      void this.inventory.flush();
+      void this.inventory.flush(true);
       void this.gathering.flush(true);
-      if (this.worldCode) saveRejoin(this.worldCode); // refreshes the 10-minute window for a reload rejoin
+      if (this.partyCode) saveRejoin(this.partyCode); // refreshes the 10-minute window for a reload rejoin
     });
     // Co-op: the network came back or the tab woke up — don't wait out the backoff.
     this.scope.on(window, 'online', () => this.reconnector?.kick());
@@ -787,15 +872,14 @@ export class WorldScene implements GameScene, RuntimeView {
     this.scope.add(this.progression.onSynced(() => this.onProgressSynced()));
     this.dataReady = Promise.all([inventoryReady, this.progression.connect()]);
     // The garden grows on the server's clock: say what is waiting on arrival, and as plots come ready.
-    void this.dataReady.then(() => window.setTimeout(() => void this.checkGarden(true), 4000));
+    void this.dataReady.then(() => this.scope.timeout(() => void this.checkGarden(true), 4000));
     this.scope.interval(() => void this.checkGarden(false), 60_000);
-    void this.dataReady.then(() => window.setTimeout(() => void this.checkLabor(true), 6000));
+    void this.dataReady.then(() => this.scope.timeout(() => void this.checkLabor(true), 6000));
     void this.dataReady.then(() => this.refreshContracts());
     this.scope.add(onSettingsChange(() => { this.guideDirty = true; }));
     void this.dataReady.then(() => getCosmetics(this.character.id)).then((v) => this.applyCosmetics(v.selected)).catch(() => {});
     this.scope.interval(() => void this.checkLabor(false), 5 * 60_000);
     this.onboarding.show('welcome', 900);
-    this.onboarding.show('belt', 90_000);
     // First time in the world as a Knight: Rage works nothing like essence.
     if (this.discipline.family === 'knight') this.onboarding.show('knight_rage', 2600);
     if (this.discipline.family === 'warden') this.onboarding.show('warden_oil', 2600);
@@ -837,6 +921,11 @@ export class WorldScene implements GameScene, RuntimeView {
     rim.position.set(6, 10, -24);
     s.add(rim);
     this.effects = new Effects(s);
+    // The hero stays findable under a crowd of circles: a soft dark contact shadow (above friendly ground effects, below telegraphs)
+    // and a crisp pale ring (additive, so it shares the danger ring layer: no extra draw call).
+    const heroAt = () => (this.player ? { x: this.player.x, z: this.player.z } : null);
+    this.effects.decal({ hero: true, persistent: true, tex: fx.glow(), blending: THREE.NormalBlending, color: 0x07040d, x: 0, z: 0, r: 1.25, y: 0.045, duration: 1e9, opacity: 0.5, fadeIn: 0.5, follow: heroAt });
+    this.effects.decal({ hero: true, persistent: true, tex: fx.ring(), color: 0xf0e8ff, x: 0, z: 0, r: 0.8, y: 0.05, duration: 1e9, opacity: 0.6, fadeIn: 0.5, follow: heroAt });
   }
 
   private async loadData() {
@@ -852,6 +941,7 @@ export class WorldScene implements GameScene, RuntimeView {
         if (this.discipline.family === 'necromancer' && kitCandidates(bag).length > 0) this.onboarding.show('legion');
         // The first Relic rune in the bag (picked up, or already there): how to socket it.
         if (this.discipline.family === 'necromancer' && Object.keys(ownedRunes(bag)).length > 0) this.onboarding.show('rune');
+        this.maybeLoadoutTip(bag);
       });
       this.professions = professions;
       for (const r of professions) this.skillLevels.set(r.profession_id as SkillId, r.skill_level);
@@ -862,12 +952,97 @@ export class WorldScene implements GameScene, RuntimeView {
     }
   }
 
+  /**
+   * Loadout presets (Grimoire): what the section needs from the scene. Saving reads the rites, the sockets and the worn weapon/off-hand as they
+   * stand; applying has the server put the gear on (one transaction, ownership checked there), then sets the rites here.
+   */
+  private loadoutHost() {
+    return {
+      list: () => listLoadouts(this.character.id),
+      save: (slot: number, preset: LoadoutPreset) => saveLoadout(this.character.id, slot, preset),
+      remove: (slot: number) => deleteLoadout(this.character.id, slot),
+      current: (): LoadoutBody => {
+        const gear = captureGear(this.inventory.all);
+        return { rites: { primary: this.primary, keys: [...this.loadout] }, runes: gear.runes, weapon: gear.weapon, offhand: gear.offhand };
+      },
+      itemName: (id: string) => itemMeta(id).name,
+      keyFor: (slot: number) => (this.binds[`loadout_${slot + 1}` as ActionId] ? keyLabel(this.binds[`loadout_${slot + 1}` as ActionId]!) : null),
+      nextKey: () => (this.binds.loadout_next ? keyLabel(this.binds.loadout_next) : null),
+      apply: async (slot: number, preset: LoadoutPreset): Promise<string[]> => {
+        let lines: string[] = [];
+        await this.inventory.exclusive(async () => {
+          const r = await applyLoadoutPreset(this.character.id, slot);
+          this.inventory.replace(r.slots);
+          lines = reportLines(r.report, (id) => itemMeta(id).name);
+        });
+        lines.push(...this.applyRitesPreset(preset.rites));
+        this.hud.toast(lines.length ? `${preset.name} is on, with ${lines.length} thing${lines.length > 1 ? 's' : ''} left out` : `${preset.name} is on`, lines.length ? '' : 'good');
+        audio.play('shard');
+        return lines;
+      },
+    };
+  }
+
+  /** A loadout hotkey: "Loadout N" applies slot N, "Next loadout" cycles the saved ones (after the one on now, or the last one used). */
+  private async loadoutHotkey(action: ActionId) {
+    if (this.loadoutBusy || !LOADOUT_ACTIONS.includes(action)) return;
+    this.loadoutBusy = true;
+    try {
+      const rows = await listLoadouts(this.character.id);
+      let slot: number | null;
+      if (action === 'loadout_next') {
+        const host = this.loadoutHost();
+        const now = host.current();
+        const active = rows.find((r) => sameLoadout(r.preset, now))?.slot ?? null;
+        slot = nextSlot(rows.map((r) => r.slot), active, this.lastLoadoutSlot);
+        if (slot === null) return void this.hud.toast('No saved loadouts yet: save one in the Grimoire (L)', '');
+        if (active === slot) return void this.hud.toast(`${rows.find((r) => r.slot === slot)!.preset.name} is your only loadout`, '');
+      } else slot = Number(action.slice(-1)) - 1;
+      const row = rows.find((r) => r.slot === slot);
+      if (!row) return void this.hud.toast(`Loadout ${slot! + 1} is empty: save one in the Grimoire (L)`, '');
+      await this.loadoutHost().apply(row.slot, row.preset);
+      this.lastLoadoutSlot = row.slot;
+    } catch (e) {
+      this.hud.toast(e instanceof Error ? e.message : 'The loadout would not go on', 'err');
+    } finally {
+      this.loadoutBusy = false;
+    }
+  }
+
+  /** Set the primary and the five keys from a preset; a rite not learned yet is replaced like any saved bar would be. Returns lines about what was swapped out. */
+  private applyRitesPreset(rites: { primary: string; keys: string[] }): string[] {
+    const level = riteLevel(this.character.level);
+    const keys = sanitizeLoadout(rites.keys, level, this.kit);
+    const primary = sanitizePrimary(rites.primary, level, this.kit);
+    const lines: string[] = [];
+    const lost = [rites.primary, ...rites.keys].filter((id) => !(keys.includes(id as AbilityId) || id === primary) && ABILITIES[id as AbilityId]);
+    if (lost.length) lines.push(`${lost.map((id) => ABILITIES[id as AbilityId].name).join(', ')} ${lost.length > 1 ? 'are' : 'is'} not learned yet, so other rites fill ${lost.length > 1 ? 'those keys' : 'that key'}.`);
+    this.primary = primary;
+    this.loadout = keys;
+    saveRites(browserStorage(), this.character.id, { primary, keys });
+    this.markSeen([primary, ...keys]);
+    this.hud.setPrimary(primary);
+    this.hotbar = this.buildHotbar();
+    this.hud.setHotbar(this.hotbar);
+    this.queuedCast = null;
+    this.grimoirePanel.render();
+    return lines;
+  }
+
+  /** Counsel: the first time a necromancer has six rites to juggle or two runes to set, loadouts save the shuffling. */
+  private maybeLoadoutTip(bag: readonly { slot_index: number; item_id: string; quantity: number; equipped?: number }[] = this.inventory.all) {
+    if (this.discipline.family !== 'necromancer') return;
+    const learned = assignableRites(this.kit).filter((id) => unlockLevel(id) <= riteLevel(this.character.level)).length;
+    const runes = Object.values(ownedRunes(bag)).reduce((a, b) => a + (b ?? 0), 0) + Object.keys(socketsOf(bag as never)).length;
+    if (learned >= 6 || runes >= 2) this.onboarding.show('loadouts');
+  }
+
   /** Socket a rune into a rite (or take it out): the server moves it and answers with the whole bag. Returns a player-readable error, or null. */
   private async socketRune(rite: RuneRite, itemId: RuneId | null): Promise<string | null> {
     try {
       await this.inventory.exclusive(async () => this.inventory.replace(await runeSocket(this.character.id, rite, itemId)));
       if (itemId) {
-        audio.play('shard');
+        audio.play('runeSocket');
         this.hud.toast(`${RUNES[itemId].name}: ${RUNES[itemId].short}`, 'good');
         // Calm on purpose: it waits for the Grimoire to close instead of covering its first socket.
         this.onboarding.show('runeSocketed', 1200);
@@ -1014,17 +1189,38 @@ export class WorldScene implements GameScene, RuntimeView {
       flask: () => this.drinkFlask(),
       recall: () => this.startRecall(),
       drinkBelt: (slot) => (slot === 'heal' ? this.drinkFlask() : this.drinkBelt(slot as BrewSlot)),
+      reportBug: () => { this.closePanels(); this.gathering?.stop('panel'); this.settingsPanel.openBugReport(); },
+      beltChoices: (slot) => this.beltChoices(slot),
+      beltPick: (id) => this.setBelt(id),
       toggleAutoCombat: () => this.toggleAutoCombat(),
       chat: (text) => {
+        if (this.chatCommand(text)) return;
         if (this.realtime.connected) this.realtime.sendChat(text);
         else this.hud.chatLine('(solo) Nobody hears you in the dark.');
       },
       openGrimoire: (select) => this.openGrimoire(select),
+      cueUsed: (id) => this.useCue(id),
       dismissNext: () => { this.nextDismissed = this.nextNow?.id ?? null; this.guideDirty = true; },
     }, this.hotbar, this.discipline, this.primary);
     this.hud.setSwapReady(this.grimoireUnlocked());
     this.hud.minimap.onNavigate = (x, z) => this.navigateFromMinimap(x, z);
     this.loadBelt();
+    // Merged windows (owner, 3 Oct 2026): each hosts existing panels as tabs; the old keys open the right tab.
+    this.acreWin = new TabbedWindow(this.root, {
+      title: 'Acre ledger', aria: 'Acre ledger', className: 'cw-tabwin-acre',
+      tabs: [{ id: 'skills', label: 'Skills', key: 'P' }, { id: 'garden', label: 'Garden', key: 'U', newId: 'tab.acre.garden' }, { id: 'labor', label: 'Laborers', key: 'H', newId: 'tab.acre.labor' }, { id: 'contracts', label: 'Contracts', key: 'O', newId: 'tab.acre.contracts' }],
+      onTab: (id) => this.useTabCue('acre', id),
+    });
+    this.charWin = new TabbedWindow(this.root, {
+      title: 'Character', aria: 'Character', className: 'cw-tabwin-sheet',
+      tabs: [{ id: 'stats', label: 'Stats', key: 'J' }, { id: 'pets', label: 'Capes & Pets', key: 'N', newId: 'tab.sheet.pets' }],
+      onTab: (id) => this.useTabCue('sheet', id),
+    });
+    this.grimWin = new TabbedWindow(this.root, {
+      title: 'Grimoire', aria: 'Grimoire', className: 'cw-tabwin-grim',
+      tabs: [{ id: 'grimoire', label: 'Grimoire', key: 'L' }, { id: 'legion', label: 'Legion', key: 'Y', newId: 'tab.grimoire.legion', hidden: this.discipline.family !== 'necromancer' }],
+      onTab: (id) => this.useTabCue('grimoire', id),
+    });
     this.inventoryPanel = new InventoryPanel(this.root, this.character.id, this.inventory, this.statsLine, (id) => this.drinkFlask(id), (id) => this.setBelt(id), (gold, name, n) => {
       this.progression.addGold(gold);
       audio.play('coin');
@@ -1043,7 +1239,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.onboarding.show('gearEquip');
     };
     this.inventoryPanel.onToolBelted = () => this.onboarding.show('toolBelt', 0, true);
-    this.sheetPanel = new CharacterSheetPanel(this.root, this.statContext, () => this.onboarding.show('statSheet'));
+    this.sheetPanel = new CharacterSheetPanel(this.charWin.slot('stats'), this.statContext, () => this.onboarding.show('statSheet'));
     this.atlasPanel = new AtlasLauncher(this.root, {
       statContext: this.statContext,
       slots: () => this.inventory.all,
@@ -1051,7 +1247,7 @@ export class WorldScene implements GameScene, RuntimeView {
       area: () => this.area,
     }, () => this.hud.toast('The Gear Atlas could not load. Check your connection and try again.', 'err'));
     // The Legion (Y): spare weapon and armour for the thralls, and the gold sink that reinforces them. Necromancers only.
-    this.legionPanel = new LegionPanel(this.root, this.character.id, this.inventory, {
+    this.legionPanel = new LegionPanel(this.grimWin.slot('legion'), this.character.id, this.inventory, {
       tier: () => this.progression.local.legionTier ?? 0,
       cost: () => this.progression.legionCost(),
       gold: () => this.character.gold ?? 0,
@@ -1079,33 +1275,46 @@ export class WorldScene implements GameScene, RuntimeView {
       this.skills.adopt(profs);
       this.chronicle.add('crafted');
       const station = this.forgePanel.station;
-      audio.play(station === 'sawpit' ? 'sawpit' : station === 'kiln' ? 'kiln' : station === 'fire' ? 'cook' : 'craft');
+      audio.play(station === 'sawpit' ? 'sawpit' : station === 'kiln' ? 'kiln' : station === 'fire' ? 'cook' : station === 'cauldron' || station === 'alembic' ? 'brewCraft' : 'craft');
       this.hud.toast('Crafted', 'good');
+    }, {
+      characterId: this.character.id,
+      inventory: this.inventory,
+      gold: () => this.character.gold ?? 0,
+      spend: (call) => this.progression.spendOnServer(call),
+      onDone: (r) => {
+        audio.play('craft');
+        this.hud.toast(`Reforged: ${r.from} became ${r.to} (${r.cost.toLocaleString()} gold)`, r.to >= r.from ? 'good' : '');
+        this.onboarding.show('reforge', 0, { kind: 'asked' });
+      },
     });
+    this.bossKeyPrompt = new BossKeyPrompt(this.root, (id) => this.summonBossNormal(id), (id) => void this.callEmpowered(id));
     this.shelfPanel = new ReagentShelfPanel(this.root, this.character.id, this.inventory);
     this.inventory.onChange((slots) => {
       recordFound(browserStorage(), this.character.id, slots.map((s) => s.item_id));
       if (recordRunesFound(browserStorage(), this.character.id, slots.map((s) => s.item_id)).grew) this.codexPanel?.refresh?.();
     });
-    this.professionsPanel = new ProfessionsPanel(this.root, {
+    this.professionsPanel = new ProfessionsPanel(this.acreWin.slot('skills'), {
       start: type => this.startAfkGathering(type),
       pause: () => this.gathering.stop('moved'),
       status: () => ({ active: this.gathering.afk, text: this.gathering.status, allowed: this.player.area === 'acre' }),
-    }, () => this.inventory.all.map((s) => s.item_id), () => this.togglePanel('contracts'), () => this.togglePanel('garden'), () => this.togglePanel('labor'), () => this.togglePanel('cosmetics'));
+    }, () => this.inventory.all.map((s) => s.item_id));
     this.professionsPanel.beltItems = () => this.inventory.all.filter((s) => isBeltSlot(s.slot_index)).map((s) => s.item_id);
-    this.cosmeticsPanel = new CosmeticsPanel(this.root, this.character.id, this.inventory, (v) => this.applyCosmetics(v.selected));
-    this.laborPanel = new LaborPanel(this.root, this.character.id, this.inventory, (skill) => this.skills.level(skill), (r) => this.onLaborCollected(r));
+    this.cosmeticsPanel = new CosmeticsPanel(this.charWin.slot('pets'), this.character.id, this.inventory, (v) => this.applyCosmetics(v.selected));
+    this.laborPanel = new LaborPanel(this.acreWin.slot('labor'), this.character.id, this.inventory, (skill) => this.skills.level(skill), (r) => this.onLaborCollected(r));
     this.laborPanel.onView = (v) => { this.laborers.apply(v); this.noteLabor(v); };
-    this.gardenPanel = new GardenPanel(this.root, this.character.id, this.inventory, (kind, r) => this.onGardenResult(kind, r));
-    this.contractsPanel = new ContractsPanel(this.root, this.character.id, this.inventory, (d) => this.onContractDelivered(d));
-    this.dialogue = new DialoguePanel(this.root, this.guidance, () => this.guidanceState(), { onChange: (npc) => { this.npcViews.setTalking(npc); this.guideDirty = true; }, sound: () => audio.play('click') });
+    this.gardenPanel = new GardenPanel(this.acreWin.slot('garden'), this.character.id, this.inventory, (kind, r) => this.onGardenResult(kind, r));
+    this.contractsPanel = new ContractsPanel(this.acreWin.slot('contracts'), this.character.id, this.inventory, (d) => this.onContractDelivered(d));
+    this.dialogue = new DialoguePanel(this.root, this.guidance, () => this.guidanceState(), { onChange: (npc) => { this.npcViews.setTalking(npc); this.guideDirty = true; if (npc) audio.play('dialogueOpen'); }, sound: () => audio.play('uiSelect') });
     this.vaultPanel = new VaultPanel(this.root, this.character.id, this.inventory, this.locks, () => this.onboarding.show('vault'));
     this.salvagePanel = new SalvagePanel(this.root, this.character.id, this.inventory, this.locks, this.skills, (r) => this.onSalvaged(r), () => this.onboarding.show('salvage'));
+    // Tab buttons in any panel share one soft tick.
+    this.root.addEventListener('click', (e) => { if ((e.target as Element | null)?.closest?.('[data-tab]')) audio.play('uiTab'); });
     this.salvagePanel.statContext = this.statContext;
     this.settingsPanel = new SettingsPanel(
       this.root,
       () => this.onLeave(),
-      () => this.realtime.instance,
+      () => this.partyCode,
       () => {
         this.onboarding.reset();
         this.hud.toast('Covenant counsel will guide you again', 'good');
@@ -1123,6 +1332,33 @@ export class WorldScene implements GameScene, RuntimeView {
         corpseAction: ABILITIES[this.kit.rmb].name,
         legion: this.discipline.family === 'necromancer',
       },
+      () => ({
+        characterId: this.character.id,
+        area: this.area,
+        level: this.character.level,
+        discipline: this.discipline.name,
+        release: releaseWatch()?.known ?? null,
+        coop: !!this.partyCode,
+      }),
+      { create: () => this.createParty(), join: (code) => void this.joinParty(code), leave: () => void this.leaveParty() },
+      this.discipline.family === 'necromancer'
+        ? {
+          get: () => this.binds,
+          set: (action: ActionId, key: string | null) => {
+            if (key !== null) {
+              const c = checkBind(this.binds, action, key);
+              if (!c.ok) return c.error;
+            }
+            const next = { ...this.binds };
+            if (key === null) delete next[action];
+            else next[action] = key;
+            this.binds = next;
+            saveBinds(browserStorage(), next);
+            this.grimoirePanel?.render();
+            return null;
+          },
+        }
+        : undefined,
     );
     this.classPanel = new ClassPanel(this.root, () => this.character.class_index, (index) => this.changeClass(index));
     this.scope.add(() => this.classPanel.dispose());
@@ -1139,7 +1375,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.codexPanel.onAtlas = () => this.togglePanel('atlas');
     this.codexPanel.runesFound = () => loadRunesFound(browserStorage(), this.character.id);
     this.grimoirePanel = new GrimoirePanel(
-      this.root,
+      this.grimWin.slot('grimoire'),
       () => ({ rites: { primary: this.primary, keys: this.loadout }, level: riteLevel(this.character.level), unseen: unseenRites(this.seen, riteLevel(this.character.level), this.kit), kit: this.kit }),
       (slot, id) => this.setRite(slot, id),
       (id) => this.setPrimary(id),
@@ -1148,6 +1384,7 @@ export class WorldScene implements GameScene, RuntimeView {
         state: () => ({ sockets: this.player?.runes ?? socketsOf(this.inventory.all), owned: ownedRunes(this.inventory.all) }),
         socket: (rite, itemId) => this.socketRune(rite, itemId),
       },
+      this.discipline.family === 'necromancer' ? new LoadoutPresets(this.loadoutHost()) : undefined,
     );
     this.ascensionPanel = new AscensionPanel(
       this.root,
@@ -1157,9 +1394,22 @@ export class WorldScene implements GameScene, RuntimeView {
         if (!this.progression.buyBoon(id)) return;
         audio.play('shard');
         this.applyBoons();
+        this.syncWorldVows();
         this.hud.toast(`${BOONS[id].name} — ${BOONS[id].blurb}`, 'good');
       },
+      (next) => this.doSwear(next),
+      (key) => this.doOpen(key),
     );
+    const host = (open: () => void | Promise<void>, panel: { close(): void; readonly isOpen: boolean }) => ({ open, close: () => panel.close(), get isOpen() { return panel.isOpen; } });
+    this.acreWin.attach('skills', host(() => this.professionsPanel.open(this.skills), this.professionsPanel));
+    this.acreWin.attach('garden', host(() => this.gardenPanel.open(), this.gardenPanel));
+    this.acreWin.attach('labor', host(() => this.laborPanel.open(), this.laborPanel));
+    this.acreWin.attach('contracts', host(() => this.contractsPanel.open(), this.contractsPanel));
+    this.charWin.attach('stats', host(() => this.sheetPanel.open(), this.sheetPanel));
+    this.charWin.attach('pets', host(() => this.cosmeticsPanel.open(), this.cosmeticsPanel));
+    this.grimWin.attach('grimoire', host(() => this.grimoirePanel.open(this.grimSelect), this.grimoirePanel));
+    this.grimWin.attach('legion', host(() => this.legionPanel.open(), this.legionPanel));
+    this.initProgressive();
     this.onboarding = new Onboarding(this.root, this.character.id, undefined, () => this.now);
     this.onboarding.busy = () => this.counselBusy();
     // A returning "first thrall" card is dropped when no thrall of yours stands (a respawn), not shown over an empty field.
@@ -1171,6 +1421,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.scope.add(() => {
       this.codexPanel.dispose();
       this.onboarding.dispose();
+      this.acreWin.dispose();
+      this.charWin.dispose();
+      this.grimWin.dispose();
     });
     const rmb = 'Right-click or 5 casts your fifth rite';
     const rmbTouch = 'Tap your fifth rite to cast it';
@@ -1189,12 +1442,16 @@ export class WorldScene implements GameScene, RuntimeView {
     this.forgePanel.close();
     this.shelfPanel?.close();
     this.professionsPanel.close();
+    this.acreWin?.close();
+    this.charWin?.close();
+    this.grimWin?.close();
     this.settingsPanel.close();
     this.waystonePanel.close();
     this.codexPanel.close();
     this.grimoirePanel.close();
     this.gatherReportPanel?.close();
     this.contractsPanel?.close();
+    this.bossKeyPrompt?.close();
     this.vaultPanel?.close();
     this.salvagePanel?.close();
     this.gardenPanel?.close();
@@ -1363,6 +1620,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private async checkLabor(arrival: boolean) {
     try {
       const v = await getLabor(this.character.id);
+      if (this.scope.isDisposed) return; // the class changed while the request flew: this scene's views and HUD are gone
       this.laborers.apply(v);
       this.noteLabor(v);
       void this.refreshContracts();
@@ -1380,7 +1638,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   /** Plant / harvest finished: credit the skill, count the crop, and tell the player. */
   private onGardenResult(kind: 'plant' | 'harvest', r: GardenResult) {
-    audio.play(kind === 'harvest' ? 'coin' : 'click');
+    audio.play(kind === 'harvest' ? 'gardenHarvest' : 'gardenPlant');
     void getProfessions(this.character.id).then((rows) => this.skills.adopt(rows)).catch(() => {});
     if (kind === 'harvest' && r.items?.length) {
       this.celebrateCharms(r.items);
@@ -1397,6 +1655,7 @@ export class WorldScene implements GameScene, RuntimeView {
   private async checkGarden(arrival: boolean) {
     try {
       const v = await getGarden(this.character.id);
+      if (this.scope.isDisposed) return;
       const ready = v.plots.filter((p) => p.state === 'ready').length;
       const growing = v.plots.filter((p) => p.state === 'growing').length;
       if (ready > 0 && (arrival || ready > this.gardenReady)) {
@@ -1433,6 +1692,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.chronicle.add('contracts');
     this.contractSummary = summarizeContracts(d);
     this.guideDirty = true;
+    audio.play('orderFilled');
     this.hud.toast(d.paidBonus ? `Order filled, and the day’s bonus is yours: +${d.paidBonus.gold.toLocaleString()}g` : 'Order filled', 'good');
   }
 
@@ -1499,27 +1759,149 @@ export class WorldScene implements GameScene, RuntimeView {
     }
   }
 
+  /** The merged window and tab a panel key lives in (the old keys O U H N Y still work). */
+  private hostOf(p: PanelKey): { win: TabbedWindow; tab: string } | null {
+    switch (p) {
+      case 'professions': return { win: this.acreWin, tab: 'skills' };
+      case 'garden': return { win: this.acreWin, tab: 'garden' };
+      case 'labor': return { win: this.acreWin, tab: 'labor' };
+      case 'contracts': return { win: this.acreWin, tab: 'contracts' };
+      case 'sheet': return { win: this.charWin, tab: 'stats' };
+      case 'cosmetics': return { win: this.charWin, tab: 'pets' };
+      case 'grimoire': return { win: this.grimWin, tab: 'grimoire' };
+      case 'legion': return { win: this.grimWin, tab: 'legion' };
+      default: return null;
+    }
+  }
+
+
+  // -------------------------------------------------------------------------
+  // Progressive HUD + NEW cues (ui/progressiveHud.ts)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Called once the panels exist. Applies what this character has already revealed; a character with no stored state is seeded
+   * silently with whatever obviously already matters (a veteran keeps their HUD) and, if it is an existing player, told once where
+   * the merged panels went.
+   */
+  private initProgressive() {
+    const r = this.hudReveal;
+    this.cues = new CueQueue(
+      (text, key) => {
+        const open = CUE_OPENS[key as RevealId];
+        this.hud.toast(text, 'new', open ? () => this.togglePanel(open) : undefined);
+      },
+      (fn, ms) => window.setTimeout(fn, ms),
+      7500,
+      () => !this.ready || this.hud.bannerActive || !!this.dialogue?.isOpen,
+    );
+    const level = this.character.level ?? 1;
+    const loc = this.progression.local;
+    if (r.fresh) {
+      for (const id of veteranReveals({
+        level, gold: Math.floor(this.character.gold ?? 0), damageTier: loc.damageTier, waveOwned: loc.waveTierOwned, shards: loc.shards,
+        knowsAcre: false, swapReady: this.grimoireUnlocked(), hasGear: level >= 3, hasHunted: this.codex.has('area', 'graves'),
+      })) r.reveal(id, false);
+      if (isVeteran(level)) {
+        // They knew the old layout: point at where Skills, Garden, Laborers, Contracts, Capes & Pets and the Legion went.
+        r.flag('menu.skills');
+        r.flag('tab.acre.labor');
+        r.flag('tab.acre.contracts');
+        for (const id of ['tab.acre.garden', 'tab.sheet.pets', ...(this.discipline.family === 'necromancer' ? ['tab.grimoire.legion' as const] : [])] as RevealId[]) {
+          if (r.flag(id)) this.cues.push(id, CUE_TEXT[id]!);
+        }
+      }
+    }
+    for (const id of ['hud.upgrades', 'hud.dial', 'hud.shards', 'hud.spells', 'menu.spells', 'menu.atlas', 'menu.skills'] as RevealId[]) this.hud.setReveal(id, r.has(id));
+    this.hud.setOmenVisible(!AREAS[this.area].safe);
+    for (const id of r.newIds()) this.showCue(id as RevealId, true);
+    this.lastGold = Math.floor(this.character.gold ?? 0);
+  }
+
+  private showCue(id: RevealId, on: boolean) {
+    this.hud.setNew(id, on);
+    for (const w of [this.acreWin, this.charWin, this.grimWin]) w?.setNew(id, on);
+  }
+
+  /** Reveal a held-back element for good, flag it NEW and queue its one toast. No-op after the first time. */
+  private revealHud(id: RevealId, toast = true) {
+    if (!this.hudReveal.reveal(id, true)) return;
+    this.hud.setReveal(id, true);
+    this.showCue(id, true);
+    const text = CUE_TEXT[id];
+    if (toast && text) this.cues.push(id, text);
+  }
+
+  /** The player used a NEW thing (hovered, clicked, opened): the pip, glow and any queued toast for it go. */
+  private useCue(id: RevealId) {
+    this.hudReveal.clear(id);
+    this.showCue(id, false);
+    this.cues?.drop(id);
+  }
+
+  private useTabCue(win: string, tab: string) {
+    const id = `tab.${win}.${tab}`;
+    if (TAB_CUES.has(id)) this.useCue(id as RevealId);
+  }
+
+  /** Opening a panel counts as using what flagged it. */
+  private clearCuesFor(p: PanelKey) {
+    if (p === 'professions') this.useCue('menu.skills');
+    else if (p === 'grimoire') { this.useCue('menu.spells'); this.useCue('hud.spells'); }
+    else if (p === 'atlas') this.useCue('menu.atlas');
+  }
+
+  /** Low-rate reveal checks (the 20 Hz HUD tick). Each is a cheap comparison and stops once its element is revealed. */
+  private progressiveTick(gold: number, loc: { shards: number; waveTierOwned: number }) {
+    const r = this.hudReveal;
+    // First gold in a hunting ground (a kill or a drop; selling in the Chapterhouse does not count).
+    if (!r.has('hud.upgrades') && gold > this.lastGold && !AREAS[this.area].safe) this.revealHud('hud.upgrades');
+    this.lastGold = gold;
+    if (!r.has('hud.dial') && loc.waveTierOwned > 0) this.revealHud('hud.dial');
+    if (!r.has('hud.shards') && loc.shards > 0) this.revealHud('hud.shards');
+    if (!r.has('menu.spells') && this.grimoireUnlocked()) {
+      this.revealHud('hud.spells', false);
+      this.revealHud('menu.spells');
+    }
+    if (!r.has('menu.skills') && ALL_SKILLS.some((id) => this.skills.shown(id).xp > 0 || this.skills.level(id) > 1)) this.revealHud('menu.skills');
+  }
+
   private togglePanel(p: PanelKey) {
     const from = this.openPanelKey();
     const panel = { inventory: this.inventoryPanel, forge: this.forgePanel, professions: this.professionsPanel, settings: this.settingsPanel, map: this.waystonePanel, codex: this.codexPanel, ascension: this.ascensionPanel, grimoire: this.grimoirePanel, contracts: this.contractsPanel, garden: this.gardenPanel, labor: this.laborPanel, cosmetics: this.cosmeticsPanel, vault: this.vaultPanel, salvage: this.salvagePanel, sheet: this.sheetPanel, legion: this.legionPanel, atlas: this.atlasPanel }[p];
-    const wasOpen = panel.isOpen;
+    const host = this.hostOf(p);
+    // Another tab of the open merged window: switch, do not close and reopen.
+    const switching = !!host && host.win.isOpen && host.win.activeTab !== host.tab;
+    const wasOpen = host ? host.win.isOpen && host.win.activeTab === host.tab : panel.isOpen;
     if (wasOpen || !from) this.panelStack = [];
-    else if (from !== p) {
+    else if (from !== p && !switching) {
       const at = this.panelStack.indexOf(p);
       if (at >= 0) this.panelStack.length = at;
       else this.panelStack.push(from);
     }
     const vault = p === 'vault';
-    if (!(vault && !wasOpen && !AREAS[this.area].safe)) audio.play(wasOpen ? (vault ? 'vaultClose' : 'panelClose') : vault ? 'vaultOpen' : 'panelOpen');
-    this.closePanels();
+    if (!switching && !(vault && !wasOpen && !AREAS[this.area].safe)) {
+      const open = p === 'inventory' ? 'panelOpenInventory' : p === 'forge' || p === 'salvage' ? 'panelOpenForge' : p === 'codex' || p === 'grimoire' || p === 'ascension' || p === 'atlas' || p === 'contracts' ? 'panelOpenBook' : 'panelOpen';
+      audio.play(wasOpen ? (vault ? 'vaultClose' : 'panelClose') : vault ? 'vaultOpen' : open);
+    }
+    if (!switching) this.closePanels();
     if (wasOpen) return;
+    this.clearCuesFor(p);
+    if (host) {
+      if (!(p === 'professions' && this.gathering?.afk)) this.gathering?.stop('panel');
+      this.grimSelect = undefined;
+      host.win.open(host.tab);
+      if (p === 'grimoire') {
+        this.onboarding.show('grimoire', 0, { kind: 'asked' });
+        this.runeHuntTip();
+      }
+      return;
+    }
     if (!(p === 'professions' && this.gathering?.afk)) this.gathering?.stop('panel');
-    if (p === 'professions') this.professionsPanel.open(this.skills);
-    else if (p === 'inventory') this.inventoryPanel.open();
+    if (p === 'inventory') this.inventoryPanel.open();
     else if (p === 'forge') void this.forgePanel.open();
     else if (p === 'settings') this.settingsPanel.open();
     else if (p === 'codex') this.codexPanel.open();
-    else if (p === 'contracts') void this.contractsPanel.open();
     else if (p === 'vault') {
       if (!AREAS[this.area].safe) {
         this.hud.toast('The Vault is in the Chapterhouse', 'err');
@@ -1527,17 +1909,9 @@ export class WorldScene implements GameScene, RuntimeView {
       }
       void this.vaultPanel.open();
     } else if (p === 'salvage') this.salvagePanel.open();
-    else if (p === 'garden') void this.gardenPanel.open();
-    else if (p === 'labor') void this.laborPanel.open();
-    else if (p === 'cosmetics') void this.cosmeticsPanel.open();
-    else if (p === 'sheet') this.sheetPanel.open();
-    else if (p === 'legion') this.legionPanel.open();
     else if (p === 'atlas') this.atlasPanel.open();
     else if (p === 'ascension') this.ascensionPanel.open();
-    else if (p === 'grimoire') {
-      this.grimoirePanel.open();
-      this.onboarding.show('grimoire', 0, { kind: 'asked' });
-    } else this.waystonePanel.open();
+    else this.waystonePanel.open();
   }
 
   private applyWaveTier() {
@@ -1567,14 +1941,27 @@ export class WorldScene implements GameScene, RuntimeView {
     this.mouse.x = window.innerWidth / 2;
     this.mouse.y = window.innerHeight / 2;
     this.scope.on(window, 'blur', () => { this.keys.clear(); this.mouse.shift = false; this.mouse.aiming = false; if (!this.gathering.afk) this.player.stop(); });
+    // Focus that arrived by Tab (not by a click) may be activated with Enter/Space; see focusOwnsKey.
+    this.scope.on(window, 'pointerdown', () => { this.tabbed = false; }, { capture: true });
     this.scope.on<KeyboardEvent>(window, 'keydown', (e) => {
       if (!this.ready) return;
       if (document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement) return;
       const k = e.key.toLowerCase();
+      if (k === 'tab') this.tabbed = true;
+      if (focusOwnsKey(document.activeElement, k, this.tabbed)) return;
       if (/^[1-4]$/.test(k)) this.keys.add(k);
       if (k === 'enter') {
         this.hud.focusChat();
         return;
+      }
+      // Loadout hotkeys: unbound until the player assigns them in Settings, and never a key the game already uses.
+      if (this.discipline.family === 'necromancer' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const action = actionForKey(this.binds, e.key);
+        if (action) {
+          e.preventDefault();
+          if (!e.repeat) void this.loadoutHotkey(action);
+          return;
+        }
       }
       if (/^[1-6]$/.test(k) || ['r', 'q', 't', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
       if (e.repeat && !['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) return;
@@ -1689,6 +2076,7 @@ export class WorldScene implements GameScene, RuntimeView {
     });
   }
 
+  private tabbed = false;
   private canvasRect: DOMRect | null = null;
   private canvasRectAt = 0;
 
@@ -1753,7 +2141,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private panelOpen() {
-    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || !!this.shelfPanel?.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.vaultPanel?.isOpen || !!this.salvagePanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen || !!this.sheetPanel?.isOpen || !!this.legionPanel?.isOpen || !!this.atlasPanel?.isOpen || !!this.dialogue?.isOpen;
+    return this.classPanel.isOpen || this.settingsPanel.isOpen || this.inventoryPanel.isOpen || this.forgePanel.isOpen || !!this.shelfPanel?.isOpen || this.professionsPanel.isOpen || this.codexPanel.isOpen || this.grimoirePanel.isOpen || this.ascensionPanel.isOpen || this.waystonePanel.isOpen || !!this.gatherReportPanel?.isOpen || !!this.contractsPanel?.isOpen || !!this.bossKeyPrompt?.isOpen || !!this.vaultPanel?.isOpen || !!this.salvagePanel?.isOpen || !!this.gardenPanel?.isOpen || !!this.laborPanel?.isOpen || !!this.cosmeticsPanel?.isOpen || !!this.sheetPanel?.isOpen || !!this.legionPanel?.isOpen || !!this.atlasPanel?.isOpen || !!this.dialogue?.isOpen;
   }
 
   private interactablesNear(): Interactable[] {
@@ -1927,7 +2315,7 @@ export class WorldScene implements GameScene, RuntimeView {
     if (now < this.nextAutoCombatAt) return;
     this.nextAutoCombatAt = now + 180;
     const thralls = this.legionPlaces();
-    if (p.hp < p.stats.maxHp * 0.42 && now >= this.flaskCdUntil &&
+    if (p.hp < p.stats.maxHp * 0.42 && now >= this.flaskCdUntil && !this.progression.vowFx.noFlasks &&
         (this.inventory.count('flask_hp_grand') || this.inventory.count('flask_hp_major') || this.inventory.count('flask_hp_minor'))) this.drinkFlask();
     const action = selectAutoCombatAction({ player: { x: p.x, z: p.z, area: p.area, essence: p.essence, maxEssence: p.resource.max,
       hp: p.hp, maxHp: p.stats.maxHp, veilForm: p.veilForm, bulwarkUntil: p.bulwarkUntil,
@@ -1980,6 +2368,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const meal = MEALS[id];
     const now = this.now;
     if (!meal || !this.player.alive) return;
+    if (now >= this.mealUntil && this.inventory.count(id)) audio.play('eatMeal');
     if (now < this.mealUntil) {
       this.floating.spawn(this.player.x, 2.4, this.player.z, 'Still eating', 'info');
       return;
@@ -2002,7 +2391,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const text = r.replaced && prev ? `${b.label} replaces ${prev.label}` : r.extended ? `${b.label} extended · ${Math.round((r.until - this.now) / 1000)}s` : `${b.label} · ${b.seconds}s`;
     this.floating.spawn(this.player.x, 2.2, this.player.z, text, 'gold');
     this.effects.emit({ x: this.player.x, y: 0.8, z: this.player.z, count: 18, color: b.color, spread: 0.4, speed: 0.6, up: 1.8, life: 0.8, size: 0.24 });
-    audio.play('shard');
+    audio.play('drinkElixir');
     this.onboarding.show('brew');
   }
 
@@ -2033,6 +2422,14 @@ export class WorldScene implements GameScene, RuntimeView {
       for (const slot of BREW_SLOTS) this.belt[slot] = raw[slot] && BREWS[raw[slot]!]?.slot === slot ? raw[slot]! : null;
       this.brewRev++;
     } catch { /* storage unavailable: the belt auto-fills */ }
+  }
+
+  /** What the HUD belt picker lists for a slot: every brew of that kind in the bag, the one on the belt flagged. */
+  private beltChoices(slot: BrewSlot): BeltChoice[] {
+    const on = this.beltBrew(slot);
+    return Object.keys(BREWS)
+      .filter((id) => BREWS[id].slot === slot && this.inventory.count(id) > 0)
+      .map((id) => ({ id, label: BREWS[id].label, glyph: BREWS[id].glyph, color: BREWS[id].color, effect: `${brewEffectsText(BREWS[id])} · ${BREWS[id].seconds}s`, count: this.inventory.count(id), current: id === on }));
   }
 
   private setBelt(id: string) {
@@ -2076,7 +2473,9 @@ export class WorldScene implements GameScene, RuntimeView {
       return {
         slot: 'heal', key: 'Q', label: 'Heal', glyph: '✚', color: 0xe0709c, active: false, left: 0,
         frac: state === 'cooling' ? cdLeft / (HEAL_COOLDOWN_S * 1000) : 0, count: total, empty: state === 'empty',
-        tip: id
+        tip: this.progression.vowFx.noFlasks
+          ? 'Dry Cellar: your vow forbids healing flasks. Break it at the Altar of Ascension.'
+          : id
           ? `Healing: ${itemMeta(id).name} restores ${pct}% of your health (${total} carried). ${touch ? 'Tap to drink' : 'Press Q to drink'}; sips are ${HEAL_COOLDOWN_S}s apart.`
           : emptyHint('heal', touch),
       };
@@ -2110,6 +2509,11 @@ export class WorldScene implements GameScene, RuntimeView {
     if (prefer && prefer in BREWS) return this.drinkBuff(prefer);
     const now = this.now;
     if (!this.player.alive || now < this.flaskCdUntil) return;
+    if (this.progression.vowFx.noFlasks) {
+      this.floating.spawn(this.player.x, 2.4, this.player.z, 'Dry Cellar', 'info');
+      this.hud.toast('Your Dry Cellar vow forbids healing flasks. Brews and meals still work.');
+      return;
+    }
     const id = prefer && prefer in HEALING_FLASKS ? prefer : healPick((f) => this.inventory.count(f));
     if (!id || !this.inventory.consume(id)) {
       this.floating.spawn(this.player.x, 2.4, this.player.z, emptyPressText('heal', touchNow()), 'info');
@@ -2120,6 +2524,7 @@ export class WorldScene implements GameScene, RuntimeView {
     const amount = this.player.stats.maxHp * HEALING_FLASKS[id];
     this.player.heal(amount);
     this.floating.spawn(this.player.x, 2.2, this.player.z, `+${Math.round(amount)}`, 'heal');
+    audio.play('drinkFlask');
     this.effects.emit({ x: this.player.x, y: 0.5, z: this.player.z, count: 26, color: 0xc85a8a, spread: 0.5, speed: 0.6, up: 2.2, life: 0.9, size: 0.3 });
   }
 
@@ -2132,12 +2537,14 @@ export class WorldScene implements GameScene, RuntimeView {
     }
     this.player.stop();
     this.recallAt = this.now + RECALL_MS;
+    audio.play('recallStart');
     this.recallFx = this.effects.decal({ tex: fx.sigil(), color: 0x8f9ed1, x: this.player.x, z: this.player.z, r: 1.4, duration: RECALL_MS / 1000, opacity: 0.9, growFrom: 0.2, spin: 3 });
     this.avatar.cast('cast', 1);
   }
 
   private cancelRecall() {
     if (!this.recallAt) return;
+    audio.play('recallCancel');
     this.recallAt = 0;
     this.recallFx?.kill();
     this.recallFx = null;
@@ -2157,6 +2564,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private teleportTo(x: number, z: number) {
+    audio.play('waystoneTravel');
     this.gathering?.stop('left');
     this.effects.emit({ x: this.player.x, y: 1, z: this.player.z, count: 50, color: 0x8f9ed1, spread: 0.6, speed: 1.5, up: 2.5, life: 1, size: 0.35 });
     this.player.teleport(x, z);
@@ -2236,12 +2644,76 @@ export class WorldScene implements GameScene, RuntimeView {
           if (awake.id !== id) this.hud.toast(`${awake.name} already stirs in ${AREAS[awake.area].name}.`, 'err');
           return;
         }
-        if (!(id === 'prelate' ? this.progression.spendShards(def.shards) : this.progression.spendBossShards(id))) {
-          this.hud.toast(`${def.summonLabel} demands ${def.shards} soul shards (you have ${this.progression.local.shards}). Elites carry them.`, 'err');
+        // A Covenant Seal (or a summon already paid for) offers the Empowered choice; everyone else wakes it the old way.
+        if (canEmpower(id)) {
+          void this.openAltar(id);
           return;
         }
-        this.sendIntent({ t: 'summonBoss', by: this.selfId, boss: id });
+        this.summonBossNormal(id);
       }
+    }
+  }
+
+  /** An area boss's altar: ask the server whether a paid summon is still bound (it survives a reload), then offer the Empowered choice if a Seal or a bound summon is at hand. */
+  private async openAltar(id: BossId) {
+    let bound = false;
+    try {
+      bound = (await bossKeyStatus(this.character.id)).bound.includes(id);
+    } catch { /* an older server or no network: the Seal in the bag decides */ }
+    if (this.bossState().active) return;
+    if (this.inventory.count(COVENANT_SEAL) > 0 || bound) {
+      this.bossKeyPrompt.open({ boss: id, seals: this.inventory.count(COVENANT_SEAL), gold: this.character.gold ?? 0, shards: this.progression.local.shards, bound });
+    } else this.summonBossNormal(id);
+  }
+
+  /** Wake a boss with soul shards (the original way). */
+  private summonBossNormal(id: BossId) {
+    const def = BOSSES[id];
+    if (this.bossState().active) return;
+    if (!(id === 'prelate' ? this.progression.spendShards(def.shards) : this.progression.spendBossShards(id))) {
+      this.hud.toast(`${def.summonLabel} demands ${def.shards} soul shards (you have ${this.progression.local.shards}). Elites carry them.`, 'err');
+      return;
+    }
+    this.sendIntent({ t: 'summonBoss', by: this.selfId, boss: id });
+  }
+
+  /**
+   * Call an area boss Empowered: the server takes the Covenant Seal and the gold (or reuses a summon already paid for), then the host wakes
+   * the boss with the flag. The prize is claimed from the server when it dies (see the 'defeated' event).
+   */
+  private async callEmpowered(id: BossId) {
+    if (this.bossState().active) {
+      const awake = BOSSES[this.bossState().id ?? 'prelate'];
+      this.hud.toast(`${awake.name} already stirs in ${AREAS[awake.area].name}.`, 'err');
+      return;
+    }
+    try {
+      const reply = await this.inventory.exclusive(async () => {
+        const r = await this.progression.spendOnServer(() => bossKeySummon(this.character.id, id));
+        this.inventory.replace(r.bag);
+        return r;
+      });
+      this.empowerPending = id;
+      this.empowerSummonId = reply.summon_id ?? 0;
+      this.hud.toast(reply.reused ? 'Your bound summon answers, free.' : `The Seal is spent (${(reply.cost ?? 0).toLocaleString()} gold).`, 'good');
+      this.sendIntent({ t: 'summonBoss', by: this.selfId, boss: id, empowered: true });
+    } catch (err) {
+      this.hud.toast(err instanceof Error ? err.message : 'The Seal would not take.', 'err');
+    }
+  }
+
+  /** The kill of an Empowered boss this hero called: one server-rolled prize, dropped at the corpse like any loot. */
+  private async claimEmpowered(id: BossId, x: number, z: number, level: number) {
+    this.empowerPending = null;
+    try {
+      // The server wants a reported kill behind the prize (AUTHORITY_KILLS): send the report now rather than with the next save.
+      await this.progression.flushReports();
+      const prize = await bossKeyClaim(this.character.id, id, this.discipline.id, level);
+      if (!this.lootAlive) return;
+      this.loot.item(x, z, { item_id: prize.item_id, quantity: 1, instance: { id: prize.instance_id, ilvl: prize.ilvl, affixes: prize.affixes } });
+      this.hud.toast(prize.legendary ? `The Seal's prize: ${itemMeta(prize.item_id).name}, a legendary` : `The Seal's prize: ${itemMeta(prize.item_id).name}`, 'good');
+    } catch (err) {
+      this.hud.toast(err instanceof Error ? err.message : 'The Seal\'s prize could not be rolled.', 'err');
     }
   }
 
@@ -2363,8 +2835,13 @@ export class WorldScene implements GameScene, RuntimeView {
     };
   }
 
-  /** The world code we are in (or were last in): what a rejoin or a reload asks the server for. */
-  private worldCode: string | null = null;
+  /**
+   * The party we belong to (its invite code), or null when playing in our own solo world. Parties are explicit: made or joined with
+   * Settings -> Play together or /party. It is what a rejoin or a reload asks the server for. It survives a descent into the Depths
+   * (`coopPaused`), which is a solo run: the hero steps out for it and the party is rejoined when the run ends.
+   */
+  private partyCode: string | null = null;
+  private coopPaused = false;
   private reconnector: Reconnector | null = null;
   private reconnectToasted = false;
 
@@ -2408,14 +2885,15 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private async connectRealtime() {
-    // A reload (e.g. after a deploy) keeps the world code for 10 minutes so partners regroup instead of matchmaking apart.
+    // A reload (e.g. after a deploy) keeps the party code for 10 minutes so partners regroup. No saved party = your own solo world:
+    // being online at the same time as someone else never puts you in their party.
     const saved = loadRejoin();
     try {
       await this.joinWorld(saved ?? undefined, 'first');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Co-op unavailable — playing solo';
       if (saved && !isRetryableError(err, 'first') && !/not configured/i.test(msg)) {
-        // The saved world is gone or full: forget it and matchmake like a fresh start.
+        // The saved party is gone or full: forget it and carry on in a solo world.
         clearRejoin();
         try {
           await this.joinWorld(undefined, 'first');
@@ -2443,7 +2921,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.reconnector?.stop();
     const r = new Reconnector({
       mode,
-      attempt: () => this.joinWorld(mode === 'rejoin' ? this.worldCode ?? undefined : loadRejoin() ?? undefined, mode).then(() => undefined),
+      attempt: () => this.joinWorld(mode === 'rejoin' ? this.partyCode ?? undefined : loadRejoin() ?? undefined, mode).then(() => undefined),
       onGiveUp: (err) => {
         this.hud.chatLine(err.message);
         if (mode === 'rejoin') this.hud.toast(`${err.message} — the world continues solo`, 'err');
@@ -2476,7 +2954,8 @@ export class WorldScene implements GameScene, RuntimeView {
     this.selfId = this.realtime.selfId ?? 'self';
     this.retagSelf(oldSelf);
     // A rejoin starts from a clean slate: any avatar left from before the drop is replaced by the server's roster.
-    for (const r of this.remotes.values()) { r.avatar.dispose(); r.pet?.dispose(); }
+    const roster = new Set(res.players.map((p) => p.id));
+    for (const [id, r] of this.remotes) { r.avatar.dispose(); r.pet?.dispose(); if (!roster.has(id)) this.sim?.removePlayer(id); }
     this.remotes.clear();
     for (const p of res.players) if (p.id !== this.selfId) this.addRemote(p);
     if (!this.realtime.isHost) {
@@ -2485,18 +2964,22 @@ export class WorldScene implements GameScene, RuntimeView {
       if (res.snapshot) this.mirror.applySnapshot(res.snapshot);
       this.sim = null;
     }
-    this.worldCode = res.instance;
-    saveRejoin(res.instance);
+    // A solo world has no code worth keeping; a party's code is what a rejoin or a reload asks for.
+    this.partyCode = res.solo ? null : res.instance;
+    if (this.partyCode) saveRejoin(this.partyCode);
+    else clearRejoin();
     this.reconnector = null;
     if (mode === 'rejoin') {
       this.reconnectToasted = false;
-      const msg = `Back in world ${res.instance} (${this.remotes.size + 1} player${this.remotes.size ? 's' : ''})`;
-      this.hud.chatLine(msg + (this.realtime.isHost ? ' — you keep the world' : ''));
-      this.hud.toast(msg, 'good');
+      if (this.partyCode) {
+        const msg = `Back in party ${this.partyCode} (${this.remotes.size + 1} player${this.remotes.size ? 's' : ''})`;
+        this.hud.chatLine(msg + (this.realtime.isHost ? ' — you keep the world' : ''));
+        this.hud.toast(msg, 'good');
+      } else this.hud.toast('Back online (playing solo)', 'good');
       this.broadcastGear(equippedBySlot(this.inventory.all), true);
       void this.checkRelease(); // a deploy is the usual reason the link dropped
-    } else {
-      this.hud.chatLine(`Joined world ${res.instance}${this.realtime.isHost ? ' (you keep the world)' : ''}`);
+    } else if (this.partyCode) {
+      this.hud.chatLine(`Joined party ${this.partyCode} (${this.remotes.size + 1} player${this.remotes.size ? 's' : ''})${this.realtime.isHost ? ' — you keep the world' : ''}`);
     }
   }
 
@@ -2545,15 +3028,108 @@ export class WorldScene implements GameScene, RuntimeView {
         new Promise((r) => window.setTimeout(r, 4000)),
       ]);
     } catch { /* pagehide flushes once more with keepalive */ }
-    if (this.worldCode) saveRejoin(this.worldCode);
+    if (this.partyCode) saveRejoin(this.partyCode);
+    markAutoReload(); // a programmatic reload must not claim the session (net/session.ts)
     location.reload();
+  }
+
+  /** Everyone else leaves our world (their bodies too: nobody left in the sim holds areas open) and we keep it ourselves. */
+  private dropCoopState() {
+    for (const [id, r] of this.remotes) { r.avatar.dispose(); r.pet?.dispose(); this.sim?.removePlayer(id); }
+    this.remotes.clear();
+    this.becomeAuthority(null);
+  }
+
+  /** Step out of the party for a solo-only activity (the Depths): leave its world, keep the code, become keeper of our own. */
+  private pauseCoop() {
+    if (!this.partyCode || this.coopPaused) return;
+    this.coopPaused = true;
+    this.reconnector?.stop();
+    this.reconnector = null;
+    this.realtime.disconnect();
+    this.dropCoopState();
+    this.hud.chatLine(`You step out of party ${this.partyCode} for the descent; you rejoin when it ends.`);
+  }
+
+  /** The solo activity is over: go back to the party we stepped out of. */
+  private resumeCoop() {
+    if (!this.coopPaused) return;
+    this.coopPaused = false;
+    if (this.scope.isDisposed || !this.partyCode) return;
+    this.reconnectToasted = true; // the rejoin says so itself ("Back in party ...")
+    this.startReconnector('rejoin');
+  }
+
+  /** Make a new party: a short code friends type in (Settings -> Play together, or /party <code>). */
+  private createParty() {
+    const abc = 'abcdefghjkmnpqrstuvwxyz23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) code += abc[Math.floor(Math.random() * abc.length)];
+    void this.joinParty(code, true);
+  }
+
+  /** Join (or make) the party with this invite code. Leaves the current world first; on failure carries on where we were. */
+  private async joinParty(raw: string, created = false) {
+    const code = raw.trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 12);
+    if (!code) return void this.hud.toast('Enter a party code (letters and numbers).', 'err');
+    if (this.depths.active) return void this.hud.toast('Finish your descent first: the Depths are a solo run.', 'err');
+    if (code === this.partyCode && this.realtime.connected) return void this.hud.toast(`You are already in party ${code}.`, 'err');
+    const before = this.partyCode;
+    this.reconnector?.stop();
+    this.reconnector = null;
+    this.realtime.disconnect();
+    this.dropCoopState();
+    this.partyCode = null;
+    try {
+      await this.joinWorld(code, 'first');
+      this.hud.toast(created ? `Party ${code} made: tell your friends to join with this code` : `Joined party ${code}`, 'good');
+      if (created) this.hud.chatLine(`Your party code is ${code}. Friends join it in Settings -> Play together, or by typing /party ${code}.`);
+    } catch (err) {
+      this.hud.toast(err instanceof Error ? err.message : 'Could not join that party', 'err');
+      // Back to where we were: the old party (if any), else a solo world.
+      try {
+        await this.joinWorld(before ?? undefined, 'first');
+      } catch (err2) {
+        this.partyCode = before;
+        this.coopFirstFailed(err2);
+      }
+    }
+  }
+
+  /** Leave the party and play in our own world again. */
+  private async leaveParty() {
+    if (!this.partyCode) return void this.hud.toast('You are not in a party.', 'err');
+    if (this.depths.active) return void this.hud.toast('Finish your descent first.', 'err');
+    this.reconnector?.stop();
+    this.reconnector = null;
+    this.realtime.disconnect();
+    this.dropCoopState();
+    this.partyCode = null;
+    clearRejoin();
+    this.hud.chatLine('You left the party and play solo.');
+    try {
+      await this.joinWorld(undefined, 'first');
+    } catch (err) {
+      this.coopFirstFailed(err);
+    }
+  }
+
+  /** `/party [code]`, `/solo`: the chat-line way to the same three actions. True when the line was a command. */
+  private chatCommand(text: string): boolean {
+    const m = /^\/(party|solo|leave)(?:\s+(\S+))?\s*$/i.exec(text.trim());
+    if (!m) return false;
+    const cmd = m[1].toLowerCase();
+    if (cmd !== 'party') void this.leaveParty();
+    else if (m[2]) void this.joinParty(m[2]);
+    else if (this.partyCode) this.hud.chatLine(`Your party code is ${this.partyCode}. Friends join with /party ${this.partyCode}. /solo leaves it.`);
+    else this.createParty();
+    return true;
   }
 
   /** The link dropped unexpectedly: carry on solo and keep trying to get back to the same world. */
   private onCoopDisconnect() {
-    for (const r of this.remotes.values()) { r.avatar.dispose(); r.pet?.dispose(); }
-    this.remotes.clear();
-    this.becomeAuthority(null);
+    // Their bodies leave the sim too (no player:leave ever arrives): left behind they stayed "alive" forever, holding areas open, scaling bosses and keeping their thralls up.
+    this.dropCoopState();
     if (this.scope.isDisposed) return;
     if (!this.reconnectToasted) {
       this.reconnectToasted = true;
@@ -2566,8 +3142,8 @@ export class WorldScene implements GameScene, RuntimeView {
   private retagSelf(old: string) {
     this.abilities.setSelf(this.selfId);
     if (!this.sim) return;
-    this.sim.removePlayer(old);
-    for (const t of this.sim.thralls.values()) if (t.owner === old) t.owner = this.selfId;
+    // Not removePlayer(): that crumbles every thrall the old id owns (the whole legion vanished on each rejoin).
+    this.sim.retagPlayer(old, this.selfId);
   }
 
   private becomeAuthority(snapshot: WorldSnapshot | null) {
@@ -2586,7 +3162,8 @@ export class WorldScene implements GameScene, RuntimeView {
     for (const e of sim.enemies.values()) sim.markVisited(e.area);
     // The new keeper's difficulty runs the world from here on (new spawns).
     sim.difficulty = settings.difficulty;
-    sim.ascension = this.progression.local.ascension;
+    sim.vows = worldVows(this.progression.vows);
+    sim.corpseLifeMult = this.progression.boons.corpseLifeMult;
     this.sim = sim;
     this.mirror = null;
     this.hud.chatLine(`You now keep the world (${DIFFICULTIES[sim.difficulty].name})`);
@@ -2627,7 +3204,7 @@ export class WorldScene implements GameScene, RuntimeView {
     for (const g of items) {
       const pet = petForCharm(g.itemId);
       if (!pet) continue;
-      this.hud.banner('A rare find!', `${itemMeta(g.itemId).name}: adopt it in Capes & Pets (N)`, 4200);
+      this.hud.banner('A rare find!', `${itemMeta(g.itemId).name}: adopt it in Character → Capes & Pets (N)`, 4200);
       audio.play('skillUp');
     }
   }
@@ -2683,7 +3260,7 @@ export class WorldScene implements GameScene, RuntimeView {
 
   private onGatherCycle(def: (typeof NODES)[string], success: boolean, node: NodePlacement) {
     const p = this.player;
-    audio.play(success && def.skill === 'fishing' ? 'reel' : SKILLS[def.skill].sfx, node.x, node.z);
+    audio.play(success && def.skill === 'fishing' ? 'reel' : gatherSfx(def.skill, def.kind), node.x, node.z);
     if (!success) return;
     const color = SKILLS[def.skill].color;
     this.floating.spawn(p.x, 2.3, p.z, `+${def.xp} ${SKILLS[def.skill].name} XP`, 'skill', color);
@@ -2746,6 +3323,16 @@ export class WorldScene implements GameScene, RuntimeView {
     await this.gathering.flush();
   }
 
+  /**
+   * Owner, 2026-10-03: the full-bag toasts felt spammy (one per gathering swing, listing different items each time, plus one a minute
+   * from loot). Now it is one toast per filling: shown the first time something does not fit, then quiet until the bag has room again.
+   */
+  private bagFullNotice() {
+    if (this.bagFullNoticed) return;
+    this.bagFullNoticed = true;
+    this.hud.toast('Your Reliquary is full. Sell spare gear (Sell all junk) or, back in the Chapterhouse or the Acre, store materials in the Vault (V). What you cannot carry waits on the ground.', 'err');
+  }
+
   private onGatherReply(r: GatherReply) {
     this.gatherSession?.record(r);
     this.celebrateCharms(r.items);
@@ -2756,7 +3343,7 @@ export class WorldScene implements GameScene, RuntimeView {
       this.floating.spawn(this.player.x, 2.1, this.player.z, `+${r.gold}g`, 'gold');
     }
     if (r.rejected.length) {
-      this.hud.toast(`Your bag is full: ${r.rejected.map((g) => `${g.qty}× ${itemMeta(g.itemId).name}`).join(', ')} left behind.`, 'err');
+      this.bagFullNotice();
       if (this.gathering.afk) this.gathering.stop('bagFull');
     }
     const rare = r.items.filter((g) => g.itemId !== NODES[r.node]?.item);
@@ -2871,7 +3458,8 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private bb(id: BinbunId, x: number, z: number, o: Omit<BinbunSpawn, 'x' | 'z'> = {}) {
-    return playFx(this.effects.binbun, id, { x, z, ...o });
+    // A partner's effects (Effects.role) keep their hue but are dimmed and smaller, so ten players' rings do not bury ours.
+    return playFx(this.effects.binbun, id, this.effects.partnerBinbun({ x, z, ...o }));
   }
 
   /** Effects that must land after a telegraph (processed in update, so QA stepping stays deterministic). */
@@ -2909,11 +3497,17 @@ export class WorldScene implements GameScene, RuntimeView {
     const who = 'by' in ev ? ev.by : 'owner' in ev ? ev.owner : ev.t === 'zone' ? ev.zone.owner : undefined;
     if (typeof who !== 'string' || who === this.selfId || !this.remotes.has(who)) return this.handleEventNow(ev);
     const prev = this.effects.particleScale;
+    const prevRole = this.effects.role;
     this.effects.particleScale = prev * PARTNER_FX_SCALE;
+    // Their ground circles draw faint and outline-only (Effects.role); danger telegraphs inside still draw on top, in full.
+    this.effects.role = 'other';
+    audio.partner = true;
     try {
       this.handleEventNow(ev);
     } finally {
       this.effects.particleScale = prev;
+      this.effects.role = prevRole;
+      audio.partner = false;
     }
   }
 
@@ -2927,6 +3521,7 @@ export class WorldScene implements GameScene, RuntimeView {
         this.auraFx.get(`e${ev.id}`)?.kill();
         this.auraFx.delete(`e${ev.id}`);
         audio.play(ev.elite ? 'eliteDeath' : 'enemyDeath', ev.x, ev.z);
+        this.foeVoice(VOICE_DEATH, ev.def, ev.x, ev.z, 26);
         if (ev.elite && Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 16) hitstop.request(0.8);
         this.worldView.addRipple(ev.x, ev.z, ev.elite ? 2 : 1.4);
         this.fireDeath(ev);
@@ -2943,9 +3538,10 @@ export class WorldScene implements GameScene, RuntimeView {
         this.nodeViews.setLive(ev.id, true);
         break;
       case 'telegraph':
-        this.telegraph(ev);
+        this.effects.danger(() => this.telegraph(ev));
         break;
       case 'melee': {
+        this.foeVoice(VOICE_ATTACK, this.enemiesMap().get(ev.id)?.def, ev.x, ev.z, 18);
         this.effects.emitSmoke({ x: ev.tx, y: 0.3, z: ev.tz, count: 2, color: 0x3a3340, spread: 0.3, speed: 0.8, up: 0.3, life: 0.5, size: 0.6 });
         // The Pyre's dead strike in a shower of sparks.
         const def = this.enemiesMap().get(ev.id)?.def;
@@ -2967,7 +3563,7 @@ export class WorldScene implements GameScene, RuntimeView {
         break;
       }
       case 'zone':
-        this.zoneVisual(ev.zone);
+        this.effects.danger(() => this.zoneVisual(ev.zone), ev.zone.hostile);
         break;
       case 'zoneGone':
         this.zoneFx.get(ev.id)?.forEach((h) => h.kill());
@@ -3129,11 +3725,18 @@ export class WorldScene implements GameScene, RuntimeView {
         }
         break;
       case 'bossBusy':
-        // The host refused our summon (another boss woke first): refund the shards we spent.
+        // The host refused our summon (another boss woke first): refund the shards, or the Seal and gold, we spent.
         if (ev.by === this.selfId) {
+          const empowered = ev.boss !== 'prelate' && this.empowerPending === ev.boss;
           if (ev.boss === 'prelate') this.progression.addShards(BOSSES.prelate.shards);
-          else this.progression.refundBossShards(ev.boss);
-          this.hud.toast(`${BOSSES[ev.awake].name} already stirs in ${AREAS[BOSSES[ev.awake].area].name}. Your shards are returned.`, 'err');
+          else if (empowered) {
+            this.empowerPending = null;
+            void this.inventory.exclusive(async () => {
+              const r = await this.progression.spendOnServer(() => bossKeyRefund(this.character.id, ev.boss));
+              this.inventory.replace(r.bag);
+            }).catch(() => undefined);
+          } else this.progression.refundBossShards(ev.boss);
+          this.hud.toast(`${BOSSES[ev.awake].name} already stirs in ${AREAS[BOSSES[ev.awake].area].name}. ${empowered ? 'Your Seal and gold are returned.' : 'Your shards are returned.'}`, 'err');
         }
         break;
       case 'sanctify': {
@@ -3146,17 +3749,21 @@ export class WorldScene implements GameScene, RuntimeView {
         break;
       }
       case 'affix':
+        audio.play('affixTell', ev.x, ev.z);
         if (ev.affix === 'hungering' && ev.amount) this.floating.spawn(ev.x, 2.4, ev.z, `+${ev.amount}`, 'dot');
         else if (ev.affix === 'bellTolled') this.bb('bell_toll_ring', ev.x, ev.z, { scale: (ev.r ?? 3) / 3 });
         else if (ev.affix === 'vengeful') this.bb('vengeful_burst', ev.x, ev.z);
         break;
       case 'surge':
+        audio.play('surgeStart');
         this.onSurge(ev);
         break;
       case 'surgeCleared':
+        audio.play('surgeCleared');
         this.onSurgeCleared(ev);
         break;
       case 'surgeFailed':
+        audio.play('surgeFailed');
         this.surgeFx?.kill();
         this.surgeFx = null;
         if (ev.area === this.area) this.hud.banner('The Surge Recedes', 'The crypt seals itself — its offering lost', 2600);
@@ -3182,9 +3789,10 @@ export class WorldScene implements GameScene, RuntimeView {
         else if (ev.kind === 'litany' && ev.by === me) this.floating.spawn(ev.x, 2.6, ev.z, `${ev.amount.toLocaleString()}`, 'big');
         break;
       case 'boss':
-        this.onBossEvent(ev);
+        this.effects.danger(() => this.onBossEvent(ev));
         break;
       case 'spawn':
+        if (ev.elite && Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 40) audio.play('eliteAggro', ev.x, ev.z);
         // Codex + onboarding: only what this player actually encounters.
         if (ev.def === 'censer') {
           const id = ev.id;
@@ -3296,11 +3904,22 @@ export class WorldScene implements GameScene, RuntimeView {
     if (this.discipline.family === 'necromancer' && packOnCorpse && this.progression.local.totalKills >= 15) this.onboarding.show('burst');
     if (this.progression.local.totalKills >= 40) this.onboarding.show('codex');
     if (this.inventory.all.some((s) => s.item_id.startsWith('tool_'))) this.onboarding.show('tool');
+    // The belt tip waits for the first belt-eligible item (a healing flask or a brew), so it explains something the player can use.
+    if (this.inventory.all.some((s) => s.item_id in BREWS || s.item_id in HEALING_FLASKS)) this.onboarding.show('belt');
     if (this.progression.local.shards >= BOSS_SUMMON_SHARDS) this.onboarding.show('prelate');
     // Area bosses: counsel the first time a summon object is within 12 m.
     for (const id of ['gravedigger', 'abbess', 'congregation', 'saint', 'regent', 'mire'] as BossId[]) {
       const it = AREAS[BOSSES[id].area].interactables.find((i) => i.id === BOSSES[id].summonId);
-      if (it && this.player.area === BOSSES[id].area && Math.hypot(it.x - this.player.x, it.z - this.player.z) < 12) this.onboarding.show(`boss_${id}` as TipId);
+      if (it && this.player.area === BOSSES[id].area && Math.hypot(it.x - this.player.x, it.z - this.player.z) < 12) {
+        this.onboarding.show(`boss_${id}` as TipId);
+        if (this.inventory.count(COVENANT_SEAL) > 0) this.onboarding.show('boss_seal');
+      }
+    }
+    if (this.area === 'chapterhouse') {
+      const loc = this.progression.local;
+      const cheapest = Math.min(...[...VOW_ORDER.map(vowKey), ...BOON_ORDER.map(boonKey)].filter((k) => !isUnlocked(loc.unlocks, k)).map((k) => unlockCost(k) ?? Infinity));
+      if (cheapest !== Infinity && loc.shards >= cheapest + BOSS_SUMMON_SHARDS && loc.totalKills >= 200) this.onboarding.show('altar_unlocks');
+      if (loc.bossKills >= 1 || loc.totalKills >= 400) this.onboarding.show('vows');
     }
     if (this.progression.local.ascension > 0 && this.progression.local.ashes > 0 && this.area === 'chapterhouse') this.onboarding.show('boons');
     const { x, z } = this.player;
@@ -3315,9 +3934,16 @@ export class WorldScene implements GameScene, RuntimeView {
     }
   }
 
+  /** An enemy's own voice (attack grunt, death cry): only the ones near the hero, by the map's family table. */
+  private foeVoice(table: Record<VoiceFamily, SoundId>, def: EnemyId | undefined, x: number, z: number, range: number) {
+    const fam = def ? ENEMY_VOICE[def] : null;
+    if (!fam || Math.hypot(x - this.player.x, z - this.player.z) > range) return;
+    audio.play(table[fam], x, z);
+  }
+
   private telegraph(ev: Extract<SimEvent, { t: 'telegraph' }>) {
     const ms = ev.ms / 1000;
-    audio.play(ev.kind === 'cone' || ev.kind === 'toll' ? 'tollSmall' : ev.kind === 'raise' ? 'raise' : ev.kind === 'curse' ? 'curse' : 'boneHit', ev.x, ev.z);
+    audio.play(ev.kind === 'cone' || ev.kind === 'toll' ? 'tollSmall' : ev.kind === 'raise' ? 'raise' : ev.kind === 'curse' ? 'curse' : 'tellStrike', ev.x, ev.z);
     if (ev.kind === 'toll') {
       // Bell-Tolled elite: a bronze ring fills in; step out before it sounds.
       const r = ev.r ?? AFFIX_TUNING.bellTolled.r;
@@ -3599,7 +4225,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.hud.banner('Surge Quelled', 'The crypt yields its offering', 3200);
     audio.play('levelUp');
     // Personal reward: a guaranteed item from the area's table plus bonus gold.
-    const level = AREAS[ev.area].level + ascensionLevels(this.worldAscension());
+    const level = AREAS[ev.area].level + this.worldLevels();
     const gold = Math.round((24 + 10 * level) * waveModifiers(this.bossWaveTier()).rewardMult * DIFFICULTIES[this.worldDifficulty()].rewardMult);
     this.dropItems(ev.x, ev.z, [rollSurgeItem(ev.area, Math.random, this.discipline.id)], level, 'surge');
     this.loot.gold(ev.x, ev.z, gold);
@@ -3616,8 +4242,7 @@ export class WorldScene implements GameScene, RuntimeView {
     // Soul Harvest: kills credited to you (thralls and DoTs credit their owner).
     if (ev.killer === this.selfId && this.player.alive && this.player.addSouls(1 + this.abilities.reapedSouls(ev.id))) this.onSoulsCharged();
     // Personal rewards for kills in (or right next to) your area.
-    const near = Math.hypot(ev.x - this.player.x, ev.z - this.player.z) < 38;
-    if (!this.player.alive || !near) return;
+    if (!bossRewardEligible(this.player.alive, Math.hypot(ev.x - this.player.x, ev.z - this.player.z))) return;
     // The Depths drop from the hunting ground whose gear matches the floor's depth.
     const lootArea = this.depths.lootArea(ev.area) ?? ev.area;
     const reward = rollKill(ev.def, lootArea, ev.level, ev.elite, this.bossWaveTier(), Math.random, this.worldDifficulty(), 1 + this.player.brewValue('fortune', this.now), Math.random, Math.random, this.discipline.id, this.ownedItemIds);
@@ -3645,6 +4270,15 @@ export class WorldScene implements GameScene, RuntimeView {
     if (reward.shards) this.loot.shard(ev.x, ev.z, reward.shards);
     // Ordinary kills drop half as often (KILL_LOOT), so their gear rolls at elite quality.
     this.dropItems(ev.x, ev.z, reward.items, ev.level, 'elite');
+    // Server authority step 2: report the kill (before the XP is added: a level-up saves at once and the server must already hold the kill).
+    // The multipliers are the ones this reward used on top of rollKill; the server caps each at what play could honestly reach.
+    if (combatArea) {
+      this.progression.reportKill({
+        area: ev.area, def: ev.def, level: ev.level, elite: ev.elite, tier: this.bossWaveTier(), diff: this.worldDifficulty(), rank: this.worldAscension(),
+        xpMult: asc * (1 + this.player.brewValue('wisdom', this.now)) * newBloodXpMult(this.discipline.family, this.character.level), goldMult: asc,
+        shardMult: this.omen.shardMult,
+      });
+    }
     this.gainXp(reward.xp, ev.x, ev.z);
     if (ev.area === 'depths') this.depths.recordKill();
     else this.progression.recordKill(ev.area, this.bossWaveTier());
@@ -3733,25 +4367,25 @@ export class WorldScene implements GameScene, RuntimeView {
     for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d));
     this.checkUnlocks();
     if (this.sim && this.isAuthority()) {
-      this.sim.ascension = this.progression.local.ascension;
+      this.syncWorldVows();
       this.sim.waveTier = this.progression.local.waveTierActive;
     }
     this.applyBoons();
   }
 
-  /** Burn the run at the Altar: reset the local layer, raise the rank, age the world. */
+  /** The room's Vows and the corpse boon follow the world keeper's record (solo: yours). Only vows that reshape the world run in the sim; the heat of the rest pays Ashes. */
+  private syncWorldVows() {
+    if (!this.sim || !this.isAuthority()) return;
+    this.sim.vows = worldVows(this.progression.vows);
+    this.sim.corpseLifeMult = this.progression.boons.corpseLifeMult;
+  }
+
+  /** Burn the run at the Altar: tiers reset, Ashes are paid for the heat sworn. Seals, shards and vows stay. */
   private doAscend() {
+    const heat = this.progression.heat;
     const earned = this.progression.ascend();
     if (!earned) return;
-    const rank = this.progression.local.ascension;
-    this.nav.setUnlocked(this.openAreas());
-    for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d));
-    if (this.sim && this.isAuthority()) {
-      this.sim.ascension = rank;
-      this.sim.waveTier = 0;
-      // The younger dead crumble; older ones climb out on the next visit.
-      for (const a of AREA_ORDER) if (!AREAS[a].safe) this.sim.clearArea(a);
-    }
+    if (this.sim && this.isAuthority()) this.sim.waveTier = 0;
     this.applyBoons();
     const altar = AREAS.chapterhouse.interactables.find((i) => i.kind === 'upgrades')!;
     this.effects.emit({ x: altar.x, y: 0.4, z: altar.z, count: 120, color: 0xd9a441, spread: 1.2, speed: 1.4, up: 5, life: 1.8, size: 0.34 });
@@ -3759,13 +4393,40 @@ export class WorldScene implements GameScene, RuntimeView {
     this.effects.lightFlash(altar.x, 3, altar.z, 0xd9a441, 90, 1.6);
     this.rig.shake(0.4);
     audio.play('levelUp');
-    this.hud.banner(`Ascension ${roman(rank)}`, `The dead rise ${ascensionLevels(rank)} levels older · +${earned} Ashes`, 4200);
+    this.hud.banner(`Ascended at heat ${heat}`, `+${earned} Ashes${heat > 0 && heat >= this.progression.local.ascension ? ' · a new best rank' : ''} · swear your vows for the next run`, 4200);
     void this.progression.flush();
+  }
+
+  /** The Altar's vow screen: swear the whole set, then let the world follow. */
+  private doSwear(next: import('../content/ascension').VowRanks) {
+    const before = JSON.stringify(worldVows(this.progression.vows));
+    const restarted = this.progression.vowsRestartRun(next);
+    if (!this.progression.swearVows(next)) return this.hud.toast(this.progression.vowsProblem(next) ?? 'The Altar refuses.', 'err');
+    this.syncWorldVows();
+    this.applyBoons();
+    this.brewRev++;
+    // Older / tougher dead only show on the next rise: clear what stands so the new world is the one you meet.
+    if (this.sim && this.isAuthority() && before !== JSON.stringify(worldVows(this.progression.vows))) for (const a of AREA_ORDER) if (!AREAS[a].safe) this.sim.clearArea(a);
+    audio.play('shard');
+    this.hud.toast(`Vows sworn: heat ${this.progression.heat}${restarted ? ' · this run\'s tally restarts' : ''}`, 'good');
+  }
+
+  /** Spend soul shards at the Altar to open a vow or boon. */
+  private doOpen(key: string) {
+    if (!this.progression.unlockAtAltar(key)) return this.hud.toast(this.progression.unlockProblem(key) ?? 'The Altar refuses.', 'err');
+    audio.play('levelUp');
+    const name = key.startsWith('vow:') ? VOWS[key.slice(4) as keyof typeof VOWS].name : BOONS[key.slice(5) as keyof typeof BOONS].name;
+    this.hud.toast(`${name} unlocked`, 'good');
   }
 
   /** The Ascension rank the world runs at: yours solo/as host, the host's as a guest. */
   private worldAscension(): number {
-    return this.sim?.ascension ?? this.mirror?.ascension ?? this.progression.local.ascension;
+    return this.sim?.ascension ?? this.mirror?.ascension ?? this.progression.heat;
+  }
+
+  /** How many levels older the world's dead run: the keeper's Elder Dead vow. */
+  private worldLevels(): number {
+    return (this.sim?.vowFx ?? this.mirror?.vowFx ?? vowEffects(worldVows(this.progression.vows))).levels;
   }
 
   /**
@@ -3775,13 +4436,21 @@ export class WorldScene implements GameScene, RuntimeView {
   private applyBoons() {
     const base = disciplineFor(this.character.class_index);
     const fx = this.progression.boons;
+    // Vows that curse the one who swore them (Frail Vessel, Famished Rites, Brittle Dead) fold in beside the boons, beneath the sets.
+    const vow = this.progression.vowFx;
     this.discipline = {
       ...base,
       mods: {
         ...base.mods,
         thrallCap: base.mods.thrallCap + fx.extraThralls + this.weaponThrallBonus,
-        maxHpMult: base.mods.maxHpMult * fx.maxHpMult,
-        essenceRegenMult: base.mods.essenceRegenMult * fx.essenceRegenMult,
+        maxHpMult: base.mods.maxHpMult * fx.maxHpMult * vow.maxHpMult,
+        essenceRegenMult: base.mods.essenceRegenMult * fx.essenceRegenMult * vow.essenceRegenMult,
+        thrallHpMult: base.mods.thrallHpMult * vow.thrallHpMult,
+        // The boons that change how you play.
+        corpseHeal: base.mods.corpseHeal + fx.corpseHeal,
+        wardPerThrall: base.mods.wardPerThrall + fx.wardPerThrall,
+        sacrificeLeavesCorpse: base.mods.sacrificeLeavesCorpse || fx.sacrificeLeavesCorpse,
+        miasmaBurstsCorpses: base.mods.miasmaBurstsCorpses || fx.miasmaBurstsCorpses,
       },
     };
     // The Legion kit and its reinforcement fold in before the armor sets (withSetBonuses peels the sets off again, so the legion must sit beneath them).
@@ -3836,6 +4505,7 @@ export class WorldScene implements GameScene, RuntimeView {
   }
 
   private gainXp(xp: number, x: number, z: number) {
+    xp = Math.round(xp * newBloodXpMult(this.discipline.family, this.character.level)); // New Blood early-level catch-up (newBloodTuning.ts)
     const gained = this.progression.addXp(xp);
     if (Math.random() < 0.35) this.floating.spawn(x, 2, z, `+${xp} xp`, 'xp');
     if (gained > 0) {
@@ -3855,6 +4525,7 @@ export class WorldScene implements GameScene, RuntimeView {
         this.hud.pulseGrimoire();
       }
       if (this.grimoireUnlocked()) this.onboarding.show('grimoire', 3200);
+      this.maybeLoadoutTip();
       audio.play('levelUp');
       perfNote(`level ${this.character.level}`);
       this.effects.emit({ x: this.player.x, y: 0.2, z: this.player.z, count: 90, color: 0xf1d9a8, spread: 0.8, speed: 0.8, up: 5, life: 1.5, size: 0.35 });
@@ -3919,6 +4590,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.lastCombatAt = this.lastHurtAt = this.now;
     this.hud.hitFlash();
     audio.play('hurt');
+    if (this.player.alive && this.player.hp < this.player.stats.maxHp * 0.3) audio.play('lowHealth');
     this.rig.shake(from === 'boss' ? 0.35 : 0.12);
     if (Math.random() < 0.35) this.avatar.c.playOnce('hurt', 1.6);
     if (from === 'cone' || from === 'boss') {
@@ -4093,6 +4765,8 @@ export class WorldScene implements GameScene, RuntimeView {
   /** Area-boss telegraphs (ms > 0) and impacts (ms = 0). Enemy colour language only. */
   private areaBossEvent(ev: Extract<SimEvent, { t: 'boss' }>, ms: number) {
     const def = BOSSES[ev.boss ?? 'prelate'];
+    // The danger channel: the element's tell sounds once at the START of a telegraph, while it can still be dodged.
+    if (ms > 0 && ev.boss && ev.boss !== 'prelate') audio.play(BOSS_TELL[ev.boss] ?? 'bossTell', ev.x, ev.z);
     const dirt = SPELL_FX.enemy.dirt;
     const curse = SPELL_FX.enemy.curse;
     const tide = 0x5f8f8a;
@@ -4373,7 +5047,7 @@ export class WorldScene implements GameScene, RuntimeView {
       case 'nicheBreak':
         this.effects.emit({ x: ev.x, y: 1.6, z: ev.z, count: 40, color: 0xe0d6c2, spread: 1, speed: 3.5, up: 2.5, life: 0.9, size: 0.25, gravity: 8 });
         this.effects.lightFlash(ev.x, 2, ev.z, SPELL_FX.boss.shard, 40, 0.5);
-        audio.play('bossSlam', ev.x, ev.z);
+        audio.play('nicheBreak', ev.x, ev.z);
         break;
     }
   }
@@ -4401,14 +5075,15 @@ export class WorldScene implements GameScene, RuntimeView {
           this.saintRainTold = false;
           this.saintLinkTold = false;
         }
-        this.hud.banner(def.name, def.awaken, 3500);
-        this.effects.lightFlash(ev.x, 3, ev.z, def.color, 90, 1.6);
+        this.hud.banner(ev.empowered ? `Empowered ${def.name}` : def.name, ev.empowered ? 'Bound by a Covenant Seal: stronger, and it pays better' : def.awaken, 3500);
+        this.effects.lightFlash(ev.x, 3, ev.z, ev.empowered ? 0xff6a2a : def.color, 90, 1.6);
         this.effects.emit({ x: ev.x, y: 0.5, z: ev.z, count: 160, color: def.id === 'prelate' ? 0xb58cff : def.color, spread: 3, speed: 4, up: 4, life: 1.6, size: 0.5 });
         this.rig.shake(0.6);
         if (def.id === 'prelate') for (const g of ['west', 'east', 'north']) this.worldView.setCandleGroup(g, true);
         break;
       }
       case 'phase':
+        audio.play('bossPhase', ev.x, ev.z);
         if ((ev.boss ?? 'prelate') === 'prelate') {
           this.hud.banner(ev.phase === 2 ? 'The Procession' : 'The Bell Breaks', ev.phase === 2 ? 'Penitents file in from the aisles' : 'The Prelate is enraged', 2600);
           this.worldView.setCandleGroup(ev.phase === 2 ? 'west' : 'east', false);
@@ -4503,9 +5178,15 @@ export class WorldScene implements GameScene, RuntimeView {
         if (def.id === 'prelate') for (const g of ['west', 'east', 'north']) this.worldView.setCandleGroup(g, true);
         if (ev.killer) {
           audio.play('bossDefeat', ev.x, ev.z);
-          this.chronicle.add(`boss.${def.id}`);
           this.hud.banner(def.defeated[0], def.defeated[1], 4200);
+        }
+        // Rewards follow the normal-kill rule (owner, 3 Oct 2026): only a living hero within 38 m of the boss is paid
+        // (loot, XP, shards, rune, trophy, Chronicle and the Prelate's Ascension credit).
+        if (ev.killer && bossRewardEligible(this.player.alive, Math.hypot(ev.x - this.player.x, ev.z - this.player.z))) {
+          this.chronicle.add(`boss.${def.id}`);
           if (def.id === 'prelate') {
+            // Report it before the claim: the necromancer save that carries this kill is only paid out of a reported Prelate (server authority step 2).
+            this.progression.reportBoss({ boss: def.id, tier: this.bossWaveTier(), diff: this.worldDifficulty(), first: false });
             this.progression.recordPrelateKill();
             if (this.progression.canAscend()) this.onboarding.show('ascend', 5000);
           }
@@ -4522,11 +5203,13 @@ export class WorldScene implements GameScene, RuntimeView {
           // Relic rune: the Prelate and every first kill always leave one, repeats 35% (content/runes.ts).
           const bossRune = rollBossRune(def.id, firstTrophy);
           if (bossRune) reward.items.push(bossRune);
+          if (def.id !== 'prelate') this.progression.reportBoss({ boss: def.id, tier: this.bossWaveTier(), diff: this.worldDifficulty(), first: firstTrophy, ...(ev.empowered && this.empowerPending === def.id && this.empowerSummonId ? { summon: this.empowerSummonId } : {}) });
           this.loot.gold(ev.x, ev.z, reward.gold);
           this.loot.shard(ev.x, ev.z, reward.shards);
-          const bossLevel = AREAS[def.area].level + ascensionLevels(this.worldAscension());
+          const bossLevel = AREAS[def.area].level + this.worldLevels();
           this.dropItems(ev.x, ev.z, reward.items, bossLevel, 'boss');
           if (firstKill) this.dropItems(ev.x, ev.z, [firstKill], bossLevel, 'first_kill');
+          if (ev.empowered && this.empowerPending === def.id) void this.claimEmpowered(def.id, ev.x, ev.z, bossLevel);
           this.gainXp(reward.xp, ev.x, ev.z);
           this.effects.lightFlash(ev.x, 3, ev.z, 0xc6a4ff, 100, 2);
           this.rig.shake(0.7);
@@ -4646,14 +5329,17 @@ export class WorldScene implements GameScene, RuntimeView {
       const events = this.sim.step(dt);
       for (const ev of events) this.handleEvent(ev);
       if (this.realtime.connected) {
-        this.realtime.sendEvents(events);
+        this.eventOut.push(events, now);
         if (now - this.lastSnapshot >= SNAPSHOT_MS) {
           this.lastSnapshot = now;
           this.snapshotCount++;
           this.realtime.sendSnapshot(makeSnapshot(this.sim, this.snapshotCount % 20 === 0));
         }
-      }
-    } else this.mirror?.update(dt);
+      } else this.eventOut.clear();
+    } else {
+      this.eventOut.clear();
+      this.mirror?.update(dt);
+    }
 
     if (this.realtime.connected && now - this.lastMoveSent >= MOVE_SEND_MS) {
       this.lastMoveSent = now;
@@ -4664,19 +5350,16 @@ export class WorldScene implements GameScene, RuntimeView {
     const got = this.loot.update(dt, p.x, p.z, (d) => {
       if (!this.inventory.add(d)) {
         // Asked every frame while standing on the drop: say it once in a while, not 60 times a second.
-        if (now - this.bagFullAt > 2500) {
+        // The call-out over the hero is the quiet reminder; the toast that says what to do comes once per filling.
+        if (now - this.bagFullAt > 8000) {
           this.bagFullAt = now;
           this.floating.spawn(p.x, 2.4, p.z, 'Reliquary full', 'info');
-          // Say what to do about it, but only now and then (the call-out above is the reminder).
-          if (now - this.bagFullToastAt > 60000) {
-            this.bagFullToastAt = now;
-            this.hud.toast('Your Reliquary is full. Sell spare gear (Sell all junk) or, back in the Chapterhouse or the Acre, store materials in the Vault (V). What you cannot carry waits on the ground.', 'err');
-          }
         }
+        this.bagFullNotice();
         return false;
       }
       return true;
-    });
+    }, (d) => addToSlots(this.inventory.all, d) !== null);
     if (got.gold) {
       audio.play('coin');
       this.progression.addGold(got.gold);
@@ -4691,7 +5374,10 @@ export class WorldScene implements GameScene, RuntimeView {
       audio.play(lootSfx(got.items.map((item) => itemMeta(item.item_id).rarity)));
       this.onboarding.show('relic');
       // The first piece of gear: point at the Atlas (a calm tip; it waits for a quiet moment).
-      if (got.items.some((item) => isAffixGear(itemMeta(item.item_id).type))) this.onboarding.show('atlas', 2500);
+      if (got.items.some((item) => isAffixGear(itemMeta(item.item_id).type))) {
+        this.onboarding.show('atlas', 2500);
+        this.revealHud('menu.atlas');
+      }
     }
     const legendary = got.items.filter((item) => itemMeta(item.item_id).rarity === 'legendary');
     if (legendary.length) this.onboarding.show('legendary', 600);
@@ -4732,12 +5418,13 @@ export class WorldScene implements GameScene, RuntimeView {
     this.rig.update(dt, talkFocus ? talkFocus.x : p.x, talkFocus ? talkFocus.z : p.z);
     audio.setListener(p.x, p.z);
     if (p.moving) {
-      this.stepT -= dt * p.stats.moveSpeed;
-      if (this.stepT <= 0) {
-        this.stepT = 1.6;
-        audio.play('step', p.x, p.z, this.area === 'graves' ? 0.8 : 1.2);
+      // Footfalls come from the walk loop's own phase, on the surface of the area (water where the hero wades).
+      const c = this.avatar.c;
+      if (this.foot.step(c.loopPhase(), p.x, p.z)) {
+        const surface = this.worldView.isWet(p.x, p.z) ? 'water' : AREA_SURFACE[this.area];
+        audio.footstep(STEP_SOUND[surface], p.x, p.z, (AREA_STEP_GAIN[this.area] ?? 1) * (c.lastPlan?.clip === 'run' ? 1.25 : 1));
       }
-    }
+    } else this.foot.reset();
     this.rig.camera.updateMatrixWorld();
     this.occlusionFocus.set(p.x, 1.1, p.z);
     updateOcclusion(this.rig.camera, this.occlusionFocus);
@@ -4756,6 +5443,7 @@ export class WorldScene implements GameScene, RuntimeView {
     this.effects.update(dt, this.rig.camera, vh);
     this.floating.update(dt, this.rig.camera);
     this.tickOnboarding(now);
+    this.tickBond(now);
     this.updateHud(now);
   }
 
@@ -4926,8 +5614,25 @@ export class WorldScene implements GameScene, RuntimeView {
     };
   }
 
+  /** Bonded Dead: set on entering a hunting ground; the check below raises the thrall a moment after arrival if none stands. */
+  private bondAt = 0;
+
+  /** The Bonded Dead boon: a thrall rises beside you whenever you enter a hunting ground with none. */
+  private tickBond(now: number) {
+    if (!this.bondAt || now < this.bondAt || !this.player.alive || this.area === 'depths') return;
+    this.bondAt = 0;
+    if (!this.progression.boons.bondedDead || AREAS[this.area].safe || this.discipline.family !== 'necromancer') return;
+    if ([...this.thrallsMap().values()].some((t) => t.owner === this.selfId)) return;
+    const m = this.discipline.mods;
+    const x = this.player.x + Math.sin(this.player.facing) * 1.4;
+    const z = this.player.z + Math.cos(this.player.facing) * 1.4;
+    this.sendIntent({ t: 'exhume', by: this.selfId, x, z, r: 0.8, kind: m.thrallKind, cap: m.thrallCap, hp: this.player.stats.thrallHp, damage: this.player.stats.thrallDamage, attackSpeedMult: m.thrallAttackSpeedMult, bond: true });
+    this.hud.toast('Your bonded dead rises beside you', 'good');
+  }
+
   private enterArea(area: AreaId) {
     this.area = area;
+    this.bondAt = this.now + 1500;
     perfNote(`area ${area}`);
     // Loading frames are slow for reasons that pass: the resolution governor stands down for a few seconds.
     getRuntime().resolution.hold();
@@ -4937,9 +5642,16 @@ export class WorldScene implements GameScene, RuntimeView {
     // Bodies of this area and its door neighbours not yet staged at login are drawn once, a couple per idle turn, in a tiny target (warmRender.ts).
     const warmOn = !/[?&]nowarmrender\b/.test(location.search);
     const cancelStage = warmOn
-      ? stageInSlices(this.stageHost(), stageSpecs([area, ...doorNeighbours(area)], this.discipline.id).filter((s) => claimKeys(stagedKeys, [s.key]).length))
+      ? stageInSlices(
+          this.stageHost(),
+          // This room and its doors first; then the rooms one door further (a player who walks through the Graves in fifteen seconds
+          // arrives at the Ossuary with its bodies already drawn once, instead of compiling them in its first wave).
+          [...stageSpecs([area, ...doorNeighbours(area)], this.discipline.id), ...stageSpecs(areasWithin(area, 2), this.discipline.id)].filter((s) => claimKeys(stagedKeys, [s.key]).length),
+        )
       : null;
-    const cancelModels = warmOn ? () => cancelStage?.() : preloadAreaModels(area, this.discipline.id);
+    // Parse the GLBs of this area and the next hop ahead of need (one per idle turn), so entering a room never parses a model in its first frames.
+    const cancelGlbs = preloadAreaGlbs(areasWithin(area, 2), this.discipline.id);
+    const cancelModels = warmOn ? () => (cancelStage?.(), cancelGlbs()) : () => (preloadAreaModels(area, this.discipline.id)(), cancelGlbs());
     // Cold paths (loot kit + icons, FX textures, Binbun effects) after the bodies: idle-time, one piece per turn.
     const cancelCold = warmColdPaths({ area, binbun: this.effects.binbun, loot: this.loot });
     this.cancelPreload = () => (cancelModels(), cancelCold());
@@ -4965,6 +5677,9 @@ export class WorldScene implements GameScene, RuntimeView {
     this.moon.color.set(def.ambient.moon).lerp(new THREE.Color(this.omen.sky.moon), 0.5);
     const fog = this.scene.fog as THREE.FogExp2;
     fog.density = 0.014 * (def.safe ? 1 : this.omen.sky.fogMult) * (def.ambient.fogMult ?? 1);
+    // The Omen only means something in hunting grounds: hidden in the Chapterhouse, Acre and Alchemist's Wing.
+    this.hud.setOmenVisible(!def.safe);
+    if (!def.safe) this.revealHud('hud.omen', false);
     if (!this.omenTold) {
       this.omenTold = true;
       this.hud.setOmen({ name: this.omen.name, icon: this.omen.icon, blurb: `${this.omen.blurb} Changes in ${omenLeft()}.` });
@@ -5029,7 +5744,7 @@ export class WorldScene implements GameScene, RuntimeView {
         ? 'The Prelate walks.'
         : `Offer <b>${this.progression.local.shards}/${BOSS_SUMMON_SHARDS}</b> soul shards at the Sundered Bell`;
     }
-    return `<b>${this.progression.kills(here)}</b> slain here · Level ${AREAS[here].level + ascensionLevels(this.worldAscension())} dead`;
+    return `<b>${this.progression.kills(here)}</b> slain here · Level ${AREAS[here].level + this.worldLevels()} dead`;
   }
 
   private interactPrompt(it: Interactable): string {
@@ -5135,6 +5850,7 @@ export class WorldScene implements GameScene, RuntimeView {
       : null);
 
     this.hud.setDepths(this.depths.hudState());
+    this.progressiveTick(Math.floor(this.character.gold ?? 0), loc);
     this.hud.update({
       autoCombat: settings.autoCombat,
       autoCombatAvailable: canUseAutoCombat() && settings.difficulty === 'easy',
@@ -5180,7 +5896,7 @@ export class WorldScene implements GameScene, RuntimeView {
       brews: this.brewTray(),
       save: saveText,
       target,
-      boss: b.active ? { name: BOSSES[b.id ?? 'prelate'].name, phase: b.phase, hp: b.hp, maxHp: b.maxHp, phases: BOSSES[b.id ?? 'prelate'].phases } : null,
+      boss: b.active ? { name: (b.empowered ? 'Empowered ' : '') + BOSSES[b.id ?? 'prelate'].name, phase: b.phase, hp: b.hp, maxHp: b.maxHp, phases: BOSSES[b.id ?? 'prelate'].phases } : null,
     });
 
     if (now - this.lastMapDraw > 100) {
@@ -5247,6 +5963,8 @@ export class WorldScene implements GameScene, RuntimeView {
         return ids;
       },
       advance: (seconds: number, render = true) => getRuntime().advance(seconds, 1 / 60, render),
+      /** Co-op QA: parties are explicit (Settings -> Play together), so the smokes make and join them here. */
+      party: { create: () => this.createParty(), join: (c: string) => this.joinParty(c), leave: () => this.leaveParty(), code: () => this.partyCode, paused: () => this.coopPaused },
       net: () => ({ id: this.realtime.selfId, ...this.realtime.stats, connected: this.realtime.connected, host: this.realtime.isHost, instance: this.realtime.instance, mirror: this.mirror ? { enemies: this.mirror.enemies.size, corpses: this.mirror.corpses.size } : null }),
       zoom: (z: number) => this.rig.setZoom(z),
       clear: () => {
@@ -5356,6 +6074,9 @@ export class WorldScene implements GameScene, RuntimeView {
         for (const d of DOORS) this.worldView.setDoorOpen(d.id, this.nav.isDoorOpen(d));
       },
       gold: (n: number) => this.progression.addGold(n),
+      /** QA: call an area boss Empowered (a Seal and gold, as the altar's prompt would), and what the scene remembers of it. */
+      empowered: (id: BossId) => this.callEmpowered(id),
+      empowerState: () => ({ pending: this.empowerPending, summon: this.empowerSummonId }),
       /** Legion QA: the legion's bonus as the scene folded it into the discipline, and the mods the thralls are raised with. */
       legion: () => ({ bonus: this.legionBonus(), mods: this.discipline.mods, tier: this.progression.local.legionTier ?? 0 }),
       /** Legion QA: lay a corpse of `enemy` beside the hero and raise it exactly as the Exhume rite would (same stats, same intent). */
@@ -5367,6 +6088,8 @@ export class WorldScene implements GameScene, RuntimeView {
         this.sendIntent({ t: 'exhume', by: this.selfId, x, z, r: 0.8, kind: m.thrallKind, cap: 12, hp: this.player.stats.thrallHp, damage: this.player.stats.thrallDamage, attackSpeedMult: m.thrallAttackSpeedMult });
       },
       shards: (n: number) => this.progression.addShards(n),
+      /** QA: send the pending progress to the server now (the server clamps shards to 30 per save, so a big grant is `shards(30)` + `flushProgress()` repeated). */
+      flushProgress: () => this.progression.flush(),
       xp: (n: number) => this.gainXp(n, this.player.x, this.player.z),
       spawn: (def: keyof typeof ENEMIES, elite = false, affix?: EliteAffix) => {
         const a = this.player.area ?? 'graves';
@@ -5394,11 +6117,11 @@ export class WorldScene implements GameScene, RuntimeView {
         this.sim?.addCorpse(this.groundPoint.x, this.groundPoint.z, kind, enemy, elite, 0, 1, a);
       },
       /** Summon a boss (default the Prelate) and stand at the edge of its arena. */
-      boss: (id: BossId = 'prelate') => {
+      boss: (id: BossId = 'prelate', empowered = false) => {
         const a = BOSSES[id].arena;
         if (id === 'prelate') this.teleportTo(BOSS_ARENA.x, BOSS_ARENA.z + 8);
         else this.teleportTo(a.x, a.z + a.r * 0.7);
-        this.sendIntent(id === 'prelate' ? { t: 'summonBoss', by: this.selfId } : { t: 'summonBoss', by: this.selfId, boss: id });
+        this.sendIntent(id === 'prelate' ? { t: 'summonBoss', by: this.selfId } : { t: 'summonBoss', by: this.selfId, boss: id, ...(empowered ? { empowered: true } : {}) });
       },
       god: (on = true) => (this.player.god = on),
       /** Legendary-set QA: merge mods over the discipline's (e.g. forceMods({ thrallDeathBurst: 0.6 })); forceMods({}) keeps them, forceMods(null) clears. */

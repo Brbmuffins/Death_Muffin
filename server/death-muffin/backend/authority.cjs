@@ -65,7 +65,7 @@ async function necroSummary(db, characterId) {
   try {
     const [[row]] = await db.execute('SELECT state FROM character_necro_progress WHERE character_id = ?', [characterId]);
     const s = parseJson(row && row.state, null) || {};
-    out = { unlocked: Array.isArray(s.unlockedAreas) && s.unlockedAreas.length ? s.unlockedAreas : ['chapterhouse', 'graves'], ascension: num(s.ascension) };
+    out = { unlocked: Array.isArray(s.unlockedAreas) && s.unlockedAreas.length ? s.unlockedAreas : ['chapterhouse', 'graves'], ascension: s.vows && typeof s.vows === 'object' ? s.vows : num(s.ascension) };
   } catch {
     out = { unlocked: ['chapterhouse', 'graves'], ascension: 0 };
   }
@@ -171,7 +171,10 @@ async function guardProgress(db, { char, next, account, now = Date.now(), env = 
   try {
     const state = await loadState(db, char.id);
     const necro = await necroSummary(db, char.id);
-    const out = evaluateProgress({ prev: char, next, state, necro, now, enforce: mode === 'enforce' });
+    // AUTHORITY_KILLS=enforce implies the step-1 clamp on XP and gold too: the ledger bounds a claim by what its kills were worth, step 1 by the
+    // best honest rate, and a save must satisfy both (step 2 alone would be looser than step 1 for a claim built from the richest allowed kills).
+    const enforce1 = mode === 'enforce' || require('./kills.cjs').killsMode(env) === 'enforce';
+    const out = evaluateProgress({ prev: char, next, state, necro, now, enforce: enforce1 });
     const flagged = out.findings.length > 0;
     await db.execute(
       `UPDATE character_authority SET xp_bucket = ?, gold_bucket = ?, bucket_at = ?, last_progress_at = ?,
@@ -180,10 +183,12 @@ async function guardProgress(db, { char, next, account, now = Date.now(), env = 
       [out.state.xpBucket, out.state.goldBucket, now, now, Math.floor(out.state.creditUsed), Math.floor(out.state.accepted.xp), Math.floor(out.state.accepted.gold), flagged ? 1 : 0, char.id]);
     for (const f of out.findings) {
       const { kind, ...detail } = f;
-      await audit(db, { characterId: char.id, accountId: char.account_id, kind, mode, action: mode === 'enforce' ? 'clamp' : 'report', detail }, log);
+      await audit(db, { characterId: char.id, accountId: char.account_id, kind, mode: enforce1 ? 'enforce' : mode, action: enforce1 ? 'clamp' : 'report', detail }, log);
     }
-    if (mode !== 'enforce') return { write: next, message: '', findings: out.findings };
-    return { write: out.write, message: out.message, findings: out.findings };
+    const step1 = enforce1 ? { write: out.write, message: out.message } : { write: next, message: '' };
+    // Step 2 (kills.cjs, AUTHORITY_KILLS): pay the gain out of the kill ledger's credits. Off by default; fails open on its own.
+    const step2 = await require('./kills.cjs').creditPass(db, { char, write: step1.write, saleCredit: state.goldCredit, account, now, env, log });
+    return { write: step2.write, message: [step1.message, step2.message].filter(Boolean).join(' '), findings: [...out.findings, ...step2.findings] };
   } catch (err) {
     log.error(`[AUTHORITY] progress guard unavailable, saving unchecked: ${err.code || err.message}`);
     return { write: next, message: '', findings: [], failedOpen: true };
@@ -348,7 +353,7 @@ function evaluateOffline({ online, offline }) {
   const playMin = (snap) => num(snap.chronicle && snap.chronicle.life && snap.chronicle.life.playSeconds) / 60;
   const minutes = Math.min(A.OFFLINE_MAX_MINUTES, Math.max(A.OFFLINE_MIN_MINUTES, playMin(offline) - playMin(online)));
   const necro = offline.necro || {};
-  const ceil = rules.ceilingsFor(Array.isArray(necro.unlockedAreas) ? necro.unlockedAreas : ['chapterhouse', 'graves'], num(necro.ascension), num(fc.level, 1),
+  const ceil = rules.ceilingsFor(Array.isArray(necro.unlockedAreas) ? necro.unlockedAreas : ['chapterhouse', 'graves'], necro.vows && typeof necro.vows === 'object' ? necro.vows : num(necro.ascension), num(fc.level, 1),
     num(offline.chronicle && offline.chronicle.life && offline.chronicle.life['peak.depth']));
   const findings = [];
   const xpGain = rules.totalXp(fc.level, fc.experience) - rules.totalXp(oc.level, oc.experience);

@@ -24,8 +24,10 @@ export function emptyHint(id: BeltSlotId, touch: boolean): string {
     return `Healing: no potions yet. Brew Moss Tonic from Mourning Moss in the Alchemist's Wing (east door of the Chapterhouse), or loot them from the dead. ${touch ? 'Tap this slot to drink one.' : 'Press Q to drink one.'}`;
   }
   const kind = id === 'elixir' ? 'elixir' : 'tonic';
-  const use = touch ? 'Tap this slot' : `Press ${BREW_KEY_LABEL[id]}`;
-  return `Empty ${kind} slot. Brew ${id === 'elixir' ? 'an' : 'a'} ${kind} in the Alchemist's Wing, then ${touch ? 'select' : 'right-click'} it in your bag to belt it. ${use} to drink it.`;
+  if (touch) {
+    return `Empty ${kind} slot. Brew ${id === 'elixir' ? 'an' : 'a'} ${kind} in the Alchemist's Wing, then select it in your bag to belt it. Tap this slot to drink it.`;
+  }
+  return `Empty ${kind} slot. Click it to pick ${id === 'elixir' ? 'an' : 'a'} ${kind} from your bag, or drag one here from the Reliquary. Brew them in the Alchemist's Wing. Press ${BREW_KEY_LABEL[id]} to drink it.`;
 }
 const BREW_KEY_LABEL: Record<BrewSlot, string> = { elixir: 'Z', tonic: 'X' };
 

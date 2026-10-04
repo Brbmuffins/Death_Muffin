@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { AREAS } from '../../content/areas';
 import { BOSS_ICHOR } from '../../content/reagents';
 import { ITEMS } from '../../content/items';
-import { AREA_PEAK, AUTHORITY, GROUND_RATES, ceilingsFor, isGroundItem, itemCap, itemRatePerMin, splitXp, totalXp } from '../authorityRules';
+import { AREA_PEAK, AUTHORITY, GROUND_RATES, LEVEL_CAP, ceilingsFor, isGroundItem, itemCap, itemRatePerMin, splitXp, totalXp } from '../authorityRules';
 import { xpToNext } from '../characterStats';
 
 describe('authority rules: experience arithmetic', () => {
@@ -16,9 +16,10 @@ describe('authority rules: experience arithmetic', () => {
     }
   });
 
-  it('splitXp inverts totalXp and caps at level 255', () => {
+  it('splitXp inverts totalXp and caps at level 999', () => {
     for (const [l, x] of [[1, 0], [1, 99], [2, 0], [40, 3999], [135, 20]] as const) expect(splitXp(totalXp(l, x))).toEqual({ level: l, xp: x });
-    expect(splitXp(1e12).level).toBe(255);
+    expect(splitXp(1e12).level).toBe(LEVEL_CAP);
+    expect(LEVEL_CAP).toBe(999);
   });
 });
 

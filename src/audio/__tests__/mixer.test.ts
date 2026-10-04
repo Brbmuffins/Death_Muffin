@@ -3,7 +3,6 @@ import {
   BUS_CAP, BUS_IDS, BUS_TRIM, GLOBAL_CAP, PROFILES, VoiceLimiter, WindowCounter, busGain, culled, distanceGain,
   effectiveCap, masterGain, pickVariant, profileOf, repeatDropped, repeatGain, sliderGain,
 } from '../mixer';
-import { SAMPLE_MAP } from '../samples';
 
 const vol = { volume: 1, combatVolume: 1, ambienceVolume: 1, interfaceVolume: 1 };
 
@@ -46,14 +45,14 @@ describe('profiles', () => {
   });
   it('puts thrall hits on the thinned thralls bus and only duck for hurt and boss tells', () => {
     for (const n of ['thrallMelee', 'thrallShot', 'thrallMagic'] as const) {
-      expect(PROFILES[n].bus).toBe('thralls');
-      expect(PROFILES[n].thin?.max).toBeGreaterThan(0);
+      expect(PROFILES[n]!.bus).toBe('thralls');
+      expect(PROFILES[n]!.thin?.max).toBeGreaterThan(0);
     }
-    const ducking = Object.entries(PROFILES).filter(([, v]) => v.duck).map(([k]) => k).sort();
+    const ducking = Object.keys(PROFILES).filter((k) => profileOf(k as Parameters<typeof profileOf>[0]).duck).sort();
+    // The map's MIX_RULES add the boss wind-ups and the surge to the list; nothing else ducks.
     expect(ducking).toEqual(['bossAwaken', 'bossDefeat', 'bossSlam', 'bossToll', 'hurt', 'playerDeath']);
-  });
-  it('every sample entry targets a sound that has a profile', () => {
-    for (const name of Object.keys(SAMPLE_MAP)) expect(PROFILES[name as keyof typeof PROFILES]).toBeDefined();
+    const mapped = ['bossTell', 'bossTellEarth', 'bossTellWater', 'bossTellRot', 'bossTellFire', 'surgeStart'] as const;
+    for (const n of mapped) expect(profileOf(n).duck, n).toBeDefined();
   });
 });
 
@@ -139,7 +138,7 @@ describe('voice caps and priority', () => {
     let thrallPlays = 0;
     for (let tick = 0; tick < 200; tick++, t += 0.025) {
       for (let k = 0; k < 6; k++) {
-        const { thin } = PROFILES.thrallMelee;
+        const { thin } = PROFILES.thrallMelee!;
         if (rate.count('thin:thralls', t, thin!.window) >= thin!.max) continue;
         if (l.request('thralls', 3, t, 0.3).ok) {
           rate.add('thin:thralls', t);

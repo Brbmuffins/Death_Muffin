@@ -45,8 +45,13 @@ test('an empowered litany fits the radius clamp', () => {
   assert.equal(validIntent({ t: 'litany', x: 0, z: 0, r: 99, spellPower: 10 }).r, 11);
 });
 
+test('a hit naming every body the world can hold (the enemy cap) is accepted whole', () => {
+  const ids = Array.from({ length: LIMITS.hitIds }, (_, i) => 100000 + i);
+  assert.deepEqual(validIntent({ t: 'hit', ids, dmg: 1 }).ids, ids);
+});
+
 test('oversized intents are dropped', () => {
-  assert.equal(validIntent({ t: 'hit', ids: Array.from({ length: 65 }, (_, i) => i), dmg: 1 }), null);
+  assert.equal(validIntent({ t: 'hit', ids: Array.from({ length: LIMITS.hitIds + 1 }, (_, i) => i), dmg: 1 }), null);
   assert.equal(validIntent({ t: 'summonBoss', junk: 'x'.repeat(5000) }), null);
 });
 
@@ -56,20 +61,32 @@ test('summonBoss names a known boss; unknown or missing means the Prelate', () =
   assert.equal(validIntent({ t: 'summonBoss', by: 'p1' }).boss, 'prelate');
 });
 
-test('matchmaking fills public worlds and isolates invite codes', () => {
+test('opt-in matchmaking fills public worlds and isolates invite codes', () => {
   worlds.clear();
-  const a = pickWorld();
+  const a = pickWorld(undefined, true);
   worlds.get(a).players.set('p1', {});
-  assert.equal(pickWorld(), a, 'joins the public world with space');
+  assert.equal(pickWorld(undefined, true), a, 'joins the public world with space');
   for (let i = 2; i <= 9; i++) worlds.get(a).players.set(`p${i}`, {});
-  assert.equal(pickWorld(), a, 'the tenth player joins the same world');
+  assert.equal(pickWorld(undefined, true), a, 'the tenth player joins the same world');
   worlds.get(a).players.set('p10', {});
-  const b = pickWorld();
+  const b = pickWorld(undefined, true);
   assert.notEqual(b, a, 'a full world spawns a new instance');
   const party = pickWorld('Crypt-42');
   assert.equal(party, 'w:crypt-42');
   assert.equal(worlds.get(party).public, false, 'invite worlds are never auto-filled');
-  assert.notEqual(pickWorld(), party);
+  assert.notEqual(pickWorld(undefined, true), party);
+});
+
+test('no code means a private solo world: two logged-in players are never auto-partied', () => {
+  worlds.clear();
+  const a = pickWorld();
+  worlds.get(a).players.set('p1', {});
+  const b = pickWorld();
+  assert.notEqual(a, b, 'a second player without a code gets their own world');
+  assert.equal(worlds.get(a).solo, true);
+  assert.equal(worlds.get(a).public, false);
+  assert.match(a, /^s:/, 'solo ids never collide with a party code (w:)');
+  assert.notEqual(pickWorld('s:' + a.slice(2)), a, 'a code cannot reach a solo world');
 });
 
 test('hit bleed (Hemorrhage) is clamped to a quarter of the hit', () => {
@@ -257,7 +274,7 @@ const { httpServer, io: realtimeIo } = require('./server');
 test.after(() => { realtimeIo.close(); });
 
 async function listen() {
-  await new Promise((resolve) => httpServer.listen(0, '127.0.0.1', resolve));
+  if (!httpServer.listening) await new Promise((resolve) => httpServer.listen(0, '127.0.0.1', resolve));
   return `http://127.0.0.1:${httpServer.address().port}`;
 }
 const open = (url, name) =>
@@ -290,10 +307,90 @@ test('null payloads on world:join and player:move are ignored, not fatal', async
   }
 });
 
+test('live: two players with no code are each solo; a shared code parties them; leaving to go solo and back works', async () => {
+  const url = await listen();
+  const a = await open(url, 'party_a');
+  const b = await open(url, 'party_b');
+  try {
+    const ra = await join(a, { characterId: 1 });
+    const rb = await join(b, { characterId: 2 });
+    assert.equal(ra.data.solo, true);
+    assert.equal(rb.data.solo, true);
+    assert.notEqual(ra.data.instance, rb.data.instance, 'logged in together, still not partied');
+    assert.equal(ra.data.players.length, 1);
+    assert.equal(rb.data.players.length, 1);
+    a.close();
+    b.close();
+    // Party by code (case-insensitive), then a member steps out (disconnect) and comes back with the same code.
+    const c = await open(url, 'party_c');
+    const d = await open(url, 'party_d');
+    const pc = await join(c, { instance: 'Fri-End', characterId: 3 });
+    const pd = await join(d, { instance: 'fri-end', characterId: 4 });
+    assert.equal(pc.data.solo, false);
+    assert.equal(pd.data.players.length, 2, 'same code, same party');
+    assert.equal(pd.data.instance, 'fri-end');
+    const left = new Promise((r) => c.once('player:leave', r));
+    d.close();
+    await left;
+    const d2 = await open(url, 'party_d');
+    const back = await join(d2, { instance: pd.data.instance, characterId: 4 });
+    assert.equal(back.success, true, 'rejoining the party after a solo stretch works');
+    assert.equal(back.data.players.length, 2);
+    c.close();
+    d2.close();
+  } finally {
+    a.close();
+  }
+});
+
 test('snapshotFor tolerates malformed rows from a host instead of throwing', () => {
   const snap = { enemies: [null, 'x', [1, 1, 500, 500], [2, 1, 1, 1]], thralls: [undefined, [1, 'me', 0, 1, 1]], corpses: [] };
   let out;
   assert.doesNotThrow(() => { out = snapshotFor(snap, 0, 0, 'me'); });
   assert.deepEqual(out.enemies, [[2, 1, 1, 1]], 'only well-formed rows within range survive');
   assert.deepEqual(out.thralls, [[1, 'me', 0, 1, 1]]);
+});
+
+test('intents that act at a point must carry one (a missing x/z used to reach the host sim as NaN)', () => {
+  for (const t of ['recallThralls', 'miasma', 'litany', 'exhume']) {
+    assert.equal(validIntent({ t }), null, `${t} without a point`);
+    assert.equal(validIntent({ t, x: 1 }), null, `${t} without z`);
+    assert.equal(validIntent({ t, x: 'a', z: 2 }), null, `${t} with a non-numeric x`);
+    assert.ok(validIntent({ t, x: 1, z: 2 }), `${t} with a point`);
+  }
+});
+
+test('exhume names a known thrall kind (an unknown one made the host sim throw)', () => {
+  for (const kind of ['warrior', 'shieldbearer', 'hound', 'wraith', 'archer', 'bonemage', 'plaguebearer', 'colossus']) {
+    assert.equal(validIntent({ t: 'exhume', x: 0, z: 0, kind }).kind, kind);
+  }
+  assert.equal(validIntent({ t: 'exhume', x: 0, z: 0, kind: 'dragon' }).kind, 'warrior');
+  assert.equal(validIntent({ t: 'exhume', x: 0, z: 0, kind: { a: 1 } }).kind, 'warrior');
+  assert.equal(validIntent({ t: 'exhume', x: 0, z: 0 }).kind, 'warrior');
+});
+
+test('a newer login of the same account drops the older socket; the older session cannot reconnect over it', async () => {
+  const jwt = require('jsonwebtoken');
+  const url = await listen();
+  const tok = (sid) => jwt.sign({ accountId: 777, username: 'twice', sid }, 'x');
+  const connectWith = (sid) => new Promise((resolve, reject) => {
+    const c = connectClient(url, { auth: { token: tok(sid) }, transports: ['websocket'], forceNew: true });
+    c.on('connect', () => resolve(c));
+    c.on('connect_error', reject);
+  });
+  const oldSid = `${Date.now() - 5000}-aaaa`;
+  const newSid = `${Date.now()}-bbbb`;
+  const oldSock = await connectWith(oldSid);
+  let replaced = false, closed = false;
+  oldSock.on('session:replaced', () => { replaced = true; });
+  oldSock.on('disconnect', () => { closed = true; });
+  const again = await connectWith(oldSid); // same session reconnecting: allowed, nobody is evicted
+  await settle();
+  assert.equal(replaced, false, 'same session never evicts');
+  const fresh = await connectWith(newSid);
+  await settle();
+  assert.equal(replaced, true, 'the older session is told');
+  assert.equal(closed, true, 'and dropped');
+  await assert.rejects(connectWith(oldSid), /opened somewhere else/, 'the stale session cannot take the socket back');
+  again.close(); fresh.close(); oldSock.close();
 });

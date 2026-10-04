@@ -5,6 +5,7 @@ import { fx } from '../graphics/fxTextures';
 import { fxImage } from '../graphics/fxImages';
 import type { AbilityContext, CastResult, CastTarget } from './AbilitySystem';
 import type { Corpse, Enemy, Intent, SimEvent } from './sim/types';
+import { NEW_BLOOD_DAMAGE_MULT } from './newBloodTuning';
 
 const CAST_SFX: Record<NewBloodId, Sfx> = {
   flail_swing: 'flail', lantern_cone: 'lantern', chain_pull: 'chain',
@@ -38,7 +39,7 @@ export class NewBloodSystem {
 
   private get power() {
     const p = this.ctx.player;
-    return p.stats.spellPower * (p.veilForm && this.ctx.now() >= p.betweenUntil ? 0.7 : 1);
+    return p.stats.spellPower * NEW_BLOOD_DAMAGE_MULT * (p.veilForm && this.ctx.now() >= p.betweenUntil ? 0.7 : 1);
   }
 
   private gesture(id: AbilityId, t: CastTarget, attack = false) {
@@ -200,6 +201,7 @@ export class NewBloodSystem {
       case 'murder_of_crows':
         if (Math.hypot(t.x - p.x, t.z - p.z) > def.range) return 'range';
         this.murderUntil = now + 8000; this.nextMurderTick = now;
+        audio.loop('crowSwarmLoop', 8000, p.x, p.z, () => this.ctx.player);
         this.ctx.effects.orbit({ tex: fxImage('crow'), color: SPELL_FX.witch.blood,
           count: 6, radius: 2.5, y: 1.5, size: 0.75, duration: 8, speed: 3.8,
           follow: () => this.ctx.aim?.() ?? { x: t.x, z: t.z } });
@@ -230,7 +232,11 @@ export class NewBloodSystem {
 
   update(now: number) {
     const p = this.ctx.player;
-    if (!p.alive) return;
+    if (!p.alive) {
+      // Timed rites end with their caster: the choir, the crows and the murder used to resume after the respawn for whatever was left of their window.
+      this.choirUntil = this.crowsUntil = this.murderUntil = 0;
+      return;
+    }
     if (now < this.choirUntil && now >= this.nextChoirBeat) {
       this.nextChoirBeat += 1200;
       this.sendSig('toll', p.x, p.z, this.power * 0.5);
@@ -262,6 +268,7 @@ export class NewBloodSystem {
     if (ev.kind === 'harvest') {
       this.crowsUntil = this.ctx.now() + 6000;
       this.nextCrowPeck = this.ctx.now();
+      audio.loop('crowSwarmLoop', 6000, p.x, p.z, () => this.ctx.player);
       this.ctx.effects.orbit({ tex: fxImage('crow'), color: SPELL_FX.witch.blood,
         count: 3, radius: 1.1, y: 1.8, size: 0.55, duration: 6, speed: 2.7,
         follow: () => p.alive ? { x: p.x, z: p.z } : null });

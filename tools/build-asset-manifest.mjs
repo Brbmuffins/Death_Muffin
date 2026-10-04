@@ -8,8 +8,8 @@ const dir = path.resolve(process.argv[2] || 'dist');
 const base = process.argv[3] || '/death-muffin/play/';
 if (!base.startsWith('/') || !base.endsWith('/')) throw new Error('Base must be an absolute path ending in /');
 
-// Entry pages and release markers change on every deploy and are not worth warming.
-const SKIP = new Set(['index.html', 'precache.html', 'asset-manifest.json', 'release.txt', 'release-notes.json']);
+// Entry pages, release markers and the owner-only sound board (not part of the game) change on every deploy and are not worth warming.
+const SKIP = new Set(['index.html', 'precache.html', 'asset-manifest.json', 'release.txt', 'release-notes.json', 'soundboard.html']);
 
 async function walk(folder, prefix = '') {
   const out = [];

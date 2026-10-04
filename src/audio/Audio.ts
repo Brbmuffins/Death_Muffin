@@ -1,11 +1,13 @@
 import { onSettingsChange, settings } from '../app/settings';
 import type { AreaId } from '../content/areas';
 import {
-  BUS_IDS, CombatActivity, REPEAT_WINDOW, VoiceLimiter, WindowCounter, accentsAllowed, activityWeight, bedDuckGain, busGain,
-  distanceGain, culled, masterGain, panFor, profileOf, repeatDropped, repeatGain, type BusId, type Duck,
+  BUS_IDS, CombatActivity, IdLimiter, REPEAT_WINDOW, VoiceLimiter, WindowCounter, accentsAllowed, activityWeight, bedDuckGain, busGain,
+  distanceGain, culled, masterGain, panFor, partnerAudible, partnerGain, profileOf, repeatDropped, repeatGain, type BusId, type Duck,
 } from './mixer';
 import { LOOP_TRIM, ZONE_BEDS, accentGap, bedReady, pickAccent } from './ambience';
-import { SAMPLE_MAP, SampleBank, allSampleNames } from './samples';
+import { SampleBank, defOf, isKept, isPartial, type LegacySpec } from './samples';
+import { GLOBAL_PACKS, areaPacks, capSeconds, type Pack } from './packs';
+import { AUDIO_MAP, type SoundDef, type SoundId } from '../content/audioMap';
 
 /**
  * Procedural sound with a recorded-sample layer (CC0, `public/audio/combat/`) on
@@ -16,6 +18,7 @@ import { SAMPLE_MAP, SampleBank, allSampleNames } from './samples';
  * The context starts on the first user gesture, as browsers require.
  */
 export type Sfx =
+  | SoundId
   | 'needleCast'
   | 'needleHit'
   | 'spear'
@@ -171,16 +174,20 @@ class AudioEngine {
   private verbSend!: GainNode;
   private noise!: AudioBuffer;
   private brown!: AudioBuffer;
-  private footsteps: AudioBuffer[] = [];
-  private footstepCursor = 0;
   private samples = new SampleBank();
+  private idLimiter = new IdLimiter();
+  private packQueue: Promise<void> = Promise.resolve();
+  private areaTrail: AreaId[] = [];
+  /** Set around a remote player's events (WorldScene.handleEvent): their sounds are quieter, near-only and capped. */
+  partner = false;
+  private partnerWin = new WindowCounter();
   private voices = 0;
   private limiter = new VoiceLimiter();
   private repeats = new WindowCounter();
   private thin = new WindowCounter();
   private duckState = { depth: 0, until: 0 };
   private played = 0;
-  private dropReasons = { far: 0, repeat: 0, thin: 0, bus: 0, global: 0, gap: 0 };
+  private dropReasons = { far: 0, repeat: 0, thin: 0, bus: 0, global: 0, gap: 0, id: 0, partner: 0 };
   private duckCount = 0;
   private sampleHits = 0;
   private analysers: { node: AnalyserNode; buf: Float32Array<ArrayBuffer>; pre: boolean }[] = [];
@@ -304,11 +311,12 @@ class AudioEngine {
     for (const id of BUS_IDS) this.buses[id].hub.connect(this.verbSend);
     this.noise = this.makeNoise(false);
     this.brown = this.makeNoise(true);
-    void this.loadFootsteps();
-    void this.samples.load(this.ctx).then(() => {
+    void this.samples.loadLegacy(this.ctx).then(() => {
       // The recorded beds arrived after the synthesised one started: crossfade to them.
       if (this.wantArea && this.ctx) this.setArea(this.wantArea, true);
     });
+    // Pack order: the hits and hurt first, then the area the player stands in, then the rest, all off the critical path.
+    this.queuePacks(['core', ...(this.wantArea ? areaPacks(this.wantArea) : []), ...GLOBAL_PACKS.filter((p) => p !== 'core')]);
     this.applyVolume();
     if (this.wantArea) this.setArea(this.wantArea);
   }
@@ -324,18 +332,24 @@ class AudioEngine {
     }
   }
 
-  private async loadFootsteps() {
-    const ctx = this.ctx!;
-    const clips = await Promise.all(['footstep06.ogg', 'footstep09.ogg'].map(async (name) => {
-      try {
-        const response = await fetch(new URL(`audio/kenney/${name}`, document.baseURI));
-        if (!response.ok) return null;
-        return await ctx.decodeAudioData(await response.arrayBuffer());
-      } catch {
-        return null;
+  /** Load packs one after another (each pack's clips decode in parallel, off the main thread). */
+  private queuePacks(packs: Pack[]) {
+    this.packQueue = this.packQueue.then(async () => {
+      for (const pack of packs) {
+        if (!this.ctx) return;
+        await this.samples.loadPack(this.ctx, pack);
       }
-    }));
-    this.footsteps = clips.filter((clip): clip is AudioBuffer => clip !== null);
+    }).catch(() => undefined);
+  }
+
+  /** Keep this area's and the previous area's floor / voice / boss packs; release the rest, load what is new. */
+  private syncAreaPacks(area: AreaId) {
+    if (this.areaTrail[0] !== area) this.areaTrail = [area, ...this.areaTrail.filter((a) => a !== area)].slice(0, 2);
+    const keep = new Set<Pack>(this.areaTrail.flatMap((a) => areaPacks(a)));
+    for (const pack of this.samples.loadedPacks()) {
+      if ((pack.startsWith('foot_') || pack.startsWith('fam_') || pack === 'boss') && !keep.has(pack)) this.samples.releasePack(pack);
+    }
+    this.queuePacks(areaPacks(area));
   }
 
   private makeNoise(brown: boolean) {
@@ -404,21 +418,81 @@ class AudioEngine {
     node.stop(stopAt);
   }
 
-  /** Start one recorded variant (random pick, small pitch and gain jitter). Returns false if none loaded. */
-  private sample(name: Sfx, x: number | undefined, z: number | undefined, t: number, intensity: number): boolean {
-    const hit = this.samples.pick(name);
-    if (!hit) return false;
-    const { buffer, spec } = hit;
-    const j = spec.jitter ?? 0.06;
+  /** Start one decoded clip: gain (map volume, jitter, intensity), pitch jitter, a tail fade at the id's cap, then the bus. */
+  private startClip(buffer: AudioBuffer, vol: number, rate: number, jitter: number, x: number | undefined, z: number | undefined, t: number, capS: number, wet: number) {
     const source = this.ctx!.createBufferSource();
     source.buffer = buffer;
-    source.playbackRate.value = (spec.rate ?? 1) * (1 + (Math.random() * 2 - 1) * j);
-    const o = this.out(x, z, spec.gain * (0.88 + Math.random() * 0.12) * Math.min(1.5, intensity), 0.3);
+    const r = rate * (1 + (Math.random() * 2 - 1) * jitter);
+    source.playbackRate.value = r;
+    const o = this.out(x, z, vol, wet);
     source.connect(o);
     source.start(t);
-    this.track(source, t + buffer.duration / source.playbackRate.value + 0.02);
+    let len = buffer.duration / r;
+    if (len > capS + 0.05) {
+      // The file is long for this id (a clip shared with a boss moment): fade it out at the id's own cap.
+      const base = o.gain.value;
+      o.gain.setValueAtTime(base, t + capS - 0.12);
+      o.gain.linearRampToValueAtTime(0.0001, t + capS);
+      len = capS;
+    }
+    this.track(source, t + len + 0.02);
     this.sampleHits++;
-    return true;
+  }
+
+  /**
+   * Play the recorded layer of a sound. Returns how much of the synthesised sound is still wanted underneath:
+   * 0 = the clip is the sound, a fraction = layer that share of the synth, 1 = no clip played (synth alone).
+   * Mapped ids replace the synth; `partial` ids keep it under the clip; `keep` ids use their older clip or the synth.
+   */
+  private recorded(name: Sfx, def: SoundDef | undefined, x: number | undefined, z: number | undefined, t: number, intensity: number, pg: number): number {
+    const legacy = (mix: number): number => {
+      const l = this.samples.pickLegacy(name);
+      if (!l) return 1;
+      const spec: LegacySpec = l.spec;
+      this.startClip(l.buffer, spec.gain * (0.88 + Math.random() * 0.12) * Math.min(1.5, intensity) * pg, spec.rate ?? 1, spec.jitter ?? 0.06, x, z, t, 4, 0.3);
+      return mix >= 0 ? mix : spec.synthMix;
+    };
+    if (!def || isKept(name)) return legacy(-1);
+    const hit = this.samples.pick(name);
+    if (!hit) return legacy(-1);
+    const vol = def.volume * (0.88 + Math.random() * 0.12) * Math.min(1.5, intensity) * pg;
+    const cap = capSeconds(name as SoundId);
+    this.startClip(hit.buffer, vol, def.rate ?? 1, def.pitchJitter, x, z, t, cap, 0.3);
+    if (def.layer) {
+      const lb = this.samples.pickLayer(name);
+      if (lb) this.startClip(lb, def.layer.volume * Math.min(1.5, intensity) * pg, def.rate ?? 1, def.pitchJitter, x, z, t + def.layer.delayMs / 1000, cap, 0.3);
+    }
+    if (!isPartial(name)) return 0;
+    // Partial fit: the older sound (kept bell / generated accent / synth) stays underneath.
+    const l = this.samples.pickLegacy(name);
+    if (l) {
+      this.startClip(l.buffer, l.spec.gain * 0.8 * pg * Math.min(1.5, intensity), l.spec.rate ?? 1, l.spec.jitter ?? 0.06, x, z, t, 4, 0.3);
+      return Math.max(l.spec.synthMix, 0.3);
+    }
+    return 0.45;
+  }
+
+  /**
+   * A rite bed made of re-triggered one-shots (the pack has no loops): plays `name` every `loopMs` for `ms`.
+   * Returns a function that ends it early (the matching `*Gone` event).
+   */
+  loop(name: Sfx, ms: number, x?: number, z?: number, follow?: () => { x: number; z: number } | null): () => void {
+    const every = AUDIO_MAP[name as SoundId]?.loopMs ?? 1500;
+    const end = performance.now() + ms;
+    const tick = () => {
+      const at = follow?.();
+      if (follow && !at) return stop();
+      this.play(name, at?.x ?? x, at?.z ?? z);
+    };
+    const timer = setInterval(() => (performance.now() >= end ? stop() : tick()), every);
+    const stop = () => clearInterval(timer);
+    tick();
+    return stop;
+  }
+
+  /** A footstep for a surface (`step<Surface>` ids), quieter in some areas, at the player's feet. */
+  footstep(id: Sfx, x: number, z: number, gain: number) {
+    this.play(id, x, z, gain);
   }
 
   /** Pull thralls and enemies down for a moment so the player's hurt / a boss tell cuts through. */
@@ -426,14 +500,17 @@ class AudioEngine {
     if (now < this.duckState.until && d.depth < this.duckState.depth) return;
     this.duckState = { depth: d.depth, until: now + d.hold };
     this.duckCount++;
-    for (const id of ['thralls', 'enemies'] as const) {
+    const apply = (id: BusId, depth: number) => {
       for (const node of [this.buses[id].dkDry, this.buses[id].dkWet]) {
         const prm = node.gain;
         prm.cancelScheduledValues(now);
-        prm.setTargetAtTime(1 - d.depth, now, 0.03);
+        prm.setTargetAtTime(1 - depth, now, 0.03);
         prm.setTargetAtTime(1, now + d.hold, d.release);
       }
-    }
+    };
+    apply('thralls', d.depth);
+    apply('enemies', d.voice ?? d.depth);
+    if (d.ambience) apply('ambience', d.ambience);
   }
 
   /** Pull the zone bed down while a fight is on, and let it back up when it ends. */
@@ -456,12 +533,13 @@ class AudioEngine {
       state: this.ctx?.state ?? 'none',
       played: this.played,
       samplesLoaded: this.samples.loaded,
-      samplesExpected: allSampleNames().length,
+      samplesExpected: this.samples.requested,
+      packs: this.samples.loadedPacks(),
       samplesFailed: this.samples.failed,
       samplePlays: this.sampleHits,
       active,
       peakVoices: { ...this.limiter.peak },
-      dropped: this.limiter.dropped + this.dropReasons.far + this.dropReasons.repeat + this.dropReasons.thin + this.dropReasons.gap,
+      dropped: this.limiter.dropped + this.dropReasons.far + this.dropReasons.repeat + this.dropReasons.thin + this.dropReasons.gap + this.dropReasons.id + this.dropReasons.partner,
       droppedByReason: { ...this.dropReasons },
       droppedByBus: { ...this.limiter.droppedByBus },
       ducks: this.duckCount,
@@ -489,6 +567,7 @@ class AudioEngine {
       this.busSq[id] = 0;
     }
     this.limiter = new VoiceLimiter();
+    this.idLimiter.reset();
     for (const k of Object.keys(this.dropReasons) as (keyof AudioEngine['dropReasons'])[]) this.dropReasons[k] = 0;
   }
 
@@ -555,14 +634,30 @@ class AudioEngine {
     if (!this.ctx || this.ctx.state !== 'running' || this.voices > MAX_VOICES) return;
     const now = this.ctx.currentTime;
     const prof = profileOf(name);
-    const gap = MIN_GAP[name];
+    const def = defOf(name);
+    if (def && !def.spatial) {
+      x = undefined;
+      z = undefined;
+    }
+    const gap = def ? def.cooldownMs / 1000 : MIN_GAP[name];
     if (gap && now - (this.last.get(name) ?? -1) < gap) {
       this.drop('gap');
       return;
     }
-    if (x !== undefined && z !== undefined && culled(Math.hypot(x - this.listener.x, z - this.listener.z), prof.bus, prof.priority)) {
+    const distance = x !== undefined && z !== undefined ? Math.hypot(x - this.listener.x, z - this.listener.z) : 0;
+    if (x !== undefined && z !== undefined && culled(distance, prof.bus, prof.priority)) {
       this.drop('far');
       return;
+    }
+    let pg = 1;
+    if (this.partner) {
+      // A co-op partner's sounds: faint, only nearby, and a handful at a time.
+      if (!partnerAudible(distance) || this.partnerWin.count('p', now, 0.5) >= 4) {
+        this.drop('partner');
+        return;
+      }
+      pg = partnerGain(name.startsWith('step') ? 'step' : 'spell');
+      this.partnerWin.add('p', now);
     }
     const repeats = this.repeats.count(name, now, REPEAT_WINDOW);
     if (repeatDropped(repeats, prof.priority)) {
@@ -572,6 +667,10 @@ class AudioEngine {
     const thinKey = prof.thin ? `thin:${prof.bus}` : '';
     if (prof.thin && this.thin.count(thinKey, now, prof.thin.window) >= prof.thin.max) {
       this.drop('thin');
+      return;
+    }
+    if (def && !this.idLimiter.request(name, now, Math.min(prof.dur, capSeconds(name as SoundId)), def.maxVoices, 0)) {
+      this.drop('id');
       return;
     }
     if (!this.limiter.request(prof.bus, prof.priority, now, prof.dur).ok) return; // counted by the limiter
@@ -587,14 +686,13 @@ class AudioEngine {
         this.applyBedDuck();
       }
     }
-    if (prof.duck) this.duck(prof.duck, now);
+    if (prof.duck && !this.partner) this.duck(prof.duck, now);
     const t = now + 0.005;
     this.cur = { bus: prof.bus, gain: repeatGain(repeats), trim: 1 };
-    const spec = SAMPLE_MAP[name];
-    if (spec && this.sample(name, x, z, t, intensity)) {
-      if (spec.mode === 'replace') return;
-      this.cur.trim = spec.synthMix ?? 0.4;
-    }
+    const synthShare = this.recorded(name, def, x, z, t, intensity, pg);
+    if (synthShare === 0) return;
+    this.cur.trim = synthShare;
+    this.cur.gain *= pg;
     const r = () => 0.9 + Math.random() * 0.2;
     switch (name) {
       case 'needleCast': {
@@ -876,21 +974,15 @@ class AudioEngine {
         break;
       }
       case 'step': {
-        const clip = this.wantArea === 'nave' || this.footsteps.length === 0
-          ? undefined
-          : this.footsteps[this.footstepCursor++ % this.footsteps.length];
-        if (clip) {
-          const o = this.out(undefined, undefined, 0.09 * intensity, 0.04);
-          const source = this.ctx.createBufferSource();
-          source.buffer = clip;
-          source.playbackRate.value = 0.94 + Math.random() * 0.12;
-          source.connect(o);
-          source.start(t);
-          this.track(source, t + clip.duration / source.playbackRate.value + 0.02);
-        } else {
-          const o = this.out(undefined, undefined, 0.07 * intensity, 0.05);
-          this.burst(o, t, 0.05, 0.9, 'lowpass', 700 * r(), 200, 1);
-        }
+        const o = this.out(undefined, undefined, 0.07 * intensity, 0.05);
+        this.burst(o, t, 0.05, 0.9, 'lowpass', 700 * r(), 200, 1);
+        break;
+      }
+      case 'lowHealth': {
+        // No pulse in the pack: a low double thump, like a heartbeat heard from inside.
+        const o = this.out(undefined, undefined, 0.5 * intensity, 0.1);
+        this.tone(o, 'sine', 62, 38, t, 0.004, 0.16, 0.7);
+        this.tone(o, 'sine', 56, 34, t + 0.2, 0.004, 0.18, 0.5);
         break;
       }
       case 'wail': {
@@ -1183,6 +1275,7 @@ class AudioEngine {
    */
   setArea(area: AreaId, force = false) {
     this.wantArea = area;
+    if (this.ctx && !force) this.syncAreaPacks(area);
     if (!this.ctx || (this.ambience.area === area && !force)) return;
     if (this.ambienceAccentTimer) clearTimeout(this.ambienceAccentTimer);
     const c = this.ctx;

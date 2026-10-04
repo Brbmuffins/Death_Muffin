@@ -21,7 +21,7 @@ installer, no separate Java or .NET download.
   the one it last prepared, it shows **Update available** with a progress bar while a hidden page
   (`play/precache.html`) downloads the game's files into the launcher's cache. **Play is usable the whole time**; this only
   makes the first load after an update faster. If it fails or you are offline, nothing is lost.
-- **Latest news** shows the newest release notes (`play/release-notes.json`, written by the deploy script) with a link to
+- **Latest news** shows the newest release's patch notes (`play/release-notes.json`, written by the deploy script from the hand-written `PATCH_NOTES.json` at the repo root) in a scrollable box, with an **All patch notes** link to the site's patch-notes page. Releases without notes fall back to the commit subjects.
   the commit list on GitHub.
 - **Download Offline / Open Offline** use the existing offline edition (`/death-muffin/offline/`). Download Offline starts
   its asset download (about 105 MB); wait for "Ready to play without a network" before disconnecting.
@@ -43,10 +43,17 @@ change between Edge versions), so every flag here is harmless if a future runtim
 keeps the shader cache and HTTP cache between sessions, which is where most of the "second launch is faster" comes from.
 Nothing here changes the game itself: the launcher adds no code to the web bundle.
 
-### WebView2 Runtime
+### WebView2 Runtime (and the browser fallback)
 
-Windows 11 and current Windows 10 already include it. If the launcher says it is missing, install the **Evergreen
-Standalone/Bootstrapper** from <https://developer.microsoft.com/en-us/microsoft-edge/webview2/> and start the launcher again.
+Windows 11 and current Windows 10 already include it. The launcher only reports it missing when WebView2 itself says so *and*
+the registry (EdgeUpdate) has no runtime either; any other failure (usually the exe run from inside the zip, so its DLLs are
+not next to it) is reported as **launcher files missing - unzip the whole folder**.
+
+Without a working WebView2 the launcher still plays: **Play Online / Download / Open Offline open the game in Chrome, Edge or
+Brave as an app window (`--app`), or in the default browser (e.g. Firefox)** if none of those is installed. The same happens
+if the game window fails to start WebView2. In that mode there is no update pre-download and the performance flags below do
+not apply (the browser uses its own settings). To get the dedicated game window, install the **Evergreen
+Standalone/Bootstrapper** from <https://developer.microsoft.com/en-us/microsoft-edge/webview2/> and restart the launcher.
 
 ### Where things live
 
@@ -84,7 +91,9 @@ run, attaches it to a GitHub Release tagged `launcher-v<version>`. Bump `<Versio
   mode, so unchanged files are revalidated (the server sends `no-cache` + ETag) and answer 304 instead of re-downloading.
   It does not touch the game's own release auto-refresh.
 - `server/death-muffin/deploy-release.sh` publishes `precache.html` and `asset-manifest.json` with the assets, and
-  `release-notes.json` (`{ sha, date, items }`: commit subjects since the previous live release, at most 12) after
+  `release-notes.json` (`{ sha, date, title, items, commits }`: the newest `PATCH_NOTES.json` entry, or the commit subjects since the previous live release) and `patch-notes.json` (the notes history, for `site/patch-notes.html`) after `index.html`, next to `release.txt`.
+- **Every release: add an entry at the top of `PATCH_NOTES.json`** (`date`, `title`, short player-facing `items`) before running `deploy-release.sh`.
   `index.html`, next to `release.txt`.
 
-Launcher source is this folder only; the old prototype's source was lost, so this is a clean rebuild with the same look and behaviour.
+Launcher source is this folder only; the old prototype's source was lost, so this is a clean rebuild of its behaviour. Since 0.3.0 the
+window uses the game's key art (`Resources/keyart.jpg`, embedded) as a full-window backdrop, with the controls on its dark left half.

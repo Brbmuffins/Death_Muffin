@@ -19,7 +19,7 @@ import { AREAS, AREA_ORDER } from '../../content/areas';
 import { BOSS_IDS } from '../../content/bosses';
 import { ITEMS, RARITY_COLOR } from '../../content/items';
 import {
-  AREA_RUNE_POOL, BOSS_RUNE_POOL, ELITE_RUNE_CHANCE, RUNES, RUNE_IDS, RUNE_RITES, RUNE_TUNING, SURGE_RUNE_CHANCE, isRuneId, pickRune, runeSources, runesFor,
+  AREA_RUNE_POOL, BOSS_RUNE_POOL, ELITE_RUNE_CHANCE_BY_AREA, eliteRuneChance, RUNES, RUNE_IDS, RUNE_RITES, RUNE_TUNING, SURGE_RUNE_CHANCE, isRuneId, pickRune, runeSources, runesFor,
   type RuneId, type RuneRite,
 } from '../../content/runes';
 import { RUNE_BASE, RUNE_SLOT_COUNT, isRuneSlot, ownedRunes, runeEquippedSlot, runeFits, runeSlotIndex, runeSlotRite, socketsOf, socketsSignature } from '../runeRules';
@@ -35,7 +35,7 @@ import { kindOf } from '../../ui/counselCadence';
 import { MOCK_ITEMS } from '../../net/mockBackend';
 import type { InventorySlot } from '../../net/types';
 
-vi.mock('../../audio/Audio', () => ({ audio: { play: vi.fn() } }));
+vi.mock('../../audio/Audio', () => ({ audio: { play: vi.fn(), loop: vi.fn(() => () => undefined) } }));
 vi.mock('../../graphics/fxTextures', () => ({
   fx: Object.fromEntries(['glow', 'smoke', 'disc', 'ring', 'cracks', 'sigil'].map((name) => [name, () => new THREE.Texture()])),
 }));
@@ -136,12 +136,12 @@ describe('where runes drop', () => {
     const everywhere = new Set(Object.values(AREA_RUNE_POOL).flat());
     for (const id of RUNE_IDS) expect(everywhere.has(id), id).toBe(true);
   });
-  it('an elite sheds a rune about once in 1/ELITE_RUNE_CHANCE kills, a plain kill never', () => {
+  it('an elite sheds a rune about once in 1/eliteRuneChance(area) elite kills, a plain kill never', () => {
     const r = mulberry32(7);
     let drops = 0;
     for (let i = 0; i < 20000; i++) if (rollEliteRune('sanctum', 1, r)) drops++;
-    expect(drops / 20000).toBeGreaterThan(ELITE_RUNE_CHANCE * 0.7);
-    expect(drops / 20000).toBeLessThan(ELITE_RUNE_CHANCE * 1.3);
+    expect(drops / 20000).toBeGreaterThan(eliteRuneChance('sanctum') * 0.7);
+    expect(drops / 20000).toBeLessThan(eliteRuneChance('sanctum') * 1.3);
     expect(rollEliteRune('chapterhouse', 1000, r)).toBeNull();
     const plain = mulberry32(3);
     for (let i = 0; i < 3000; i++) expect(rollKill('robber', 'graves', 1, false, 0, plain).items.some((d) => isRuneId(d.item_id))).toBe(false);
@@ -169,7 +169,7 @@ describe('where runes drop', () => {
     // ...and still gives an ordinary item otherwise
     expect(rollSurgeItem('graves', () => 0.9).item_id).toBeTruthy();
   });
-  it('the Prelate and a first kill always leave a rune from that boss pool; repeats roll about a third', () => {
+  it('the Prelate and a first kill always leave a rune from that boss pool; repeats roll about half', () => {
     for (const boss of BOSS_IDS) {
       const pool = BOSS_RUNE_POOL[boss];
       expect(pool?.length, boss).toBeGreaterThan(0);
@@ -179,8 +179,8 @@ describe('where runes drop', () => {
     const r = mulberry32(2);
     let n = 0;
     for (let i = 0; i < 3000; i++) if (rollBossRune('abbess', false, r)) n++;
-    expect(n / 3000).toBeGreaterThan(0.3);
-    expect(n / 3000).toBeLessThan(0.4);
+    expect(n / 3000).toBeGreaterThan(0.45);
+    expect(n / 3000).toBeLessThan(0.55);
     expect(BOSS_RUNE_POOL.abbess).toContain('rune_bone_colossus');
   });
   it('every rune can be sourced in words for the Codex', () => {

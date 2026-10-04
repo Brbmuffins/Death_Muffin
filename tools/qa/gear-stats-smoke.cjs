@@ -87,7 +87,7 @@ async function main() {
     // Character sheet from the Reliquary button, then the J key.
     await page.locator('.cw-equip-sheet').click();
     await page.locator('.gs-sheet').waitFor();
-    assert.equal(await page.locator('.cw-panel-float.wide').count(), 0, 'sheet replaces the reliquary');
+    assert.equal(await page.locator('.cw-panel-float.wide:not(.cw-tabwin)').count(), 0, 'sheet replaces the reliquary');
     const sheet = await page.locator('.gs-sheet').innerText();
     assert.match(sheet, /what you're looking for/i, 'priority block');
     assert.match(sheet, /VIT > INT > STR > AGI/, 'Ossuary priority');

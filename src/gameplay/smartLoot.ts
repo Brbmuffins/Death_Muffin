@@ -10,7 +10,7 @@ import { NECRO_WEAPON_BY_ID } from '../content/necroWeapons';
  * armour in the table does not change), and necromancer weapons drop at a third of their weight for the other families.
  * Without a discipline (the balance harness, tests, the Depths) the table is used as listed.
  */
-export const SMART_LOOT = { ownArmorShare: 0.5, foreignWeaponMult: 1 / 3 } as const;
+export const SMART_LOOT = { ownArmorShare: 0.7, foreignWeaponMult: 1 / 3 } as const;
 
 export type LootEntry = { item: string; weight: number };
 const smartCache = new Map<string, LootEntry[]>();

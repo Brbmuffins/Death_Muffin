@@ -14,6 +14,9 @@ async function main(){
   await page.goto(process.env.DM_QA_URL || 'http://127.0.0.1:5201/?offline&coop');await page.getByRole('button',{name:'New to the Covenant? Create an account'}).click();
   await page.fill('#cw-user','coop_host');await page.fill('#cw-email','test@example.invalid');await page.fill('#cw-pass','TestingControls');await page.locator('#cw-login-btn').click();await page.locator('.cw-disc').first().click();
   await page.waitForFunction(()=>window.__cwDebug?.avatar.c.loaded&&window.__cwDebug.net().connected);
+  // Parties are explicit now: the host makes one and the nine socket peers join its code.
+  await page.evaluate(()=>window.__cwDebug.party.create());
+  await page.waitForFunction(()=>window.__cwDebug.party.code()&&window.__cwDebug.net().connected);
   const instance=await page.evaluate(()=>window.__cwDebug.net().instance);
   await page.evaluate(()=>{const d=window.__cwDebug;d.god(true);d.goto('graves');d.clear();d.sim().waveTimers.set('graves',Infinity);d.ring('robber',40,6);d.freeze();for(const e of d.sim().enemies.values())e.hp=e.maxHp=1e8;d.advance(.5,false);});
   await wait(1500);

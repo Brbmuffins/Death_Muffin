@@ -1,17 +1,19 @@
-import { equipItem } from '../net/api';
+import { adoptPet, equipItem, getInventory } from '../net/api';
+import { petForCharm } from '../content/cosmetics';
 import type { InventorySlot } from '../net/types';
 import { BAG_SIZE, type Inventory } from '../gameplay/loot';
 import { BREWS, BREW_KEYS, brewSummary } from '../content/brews';
 import { BUFF_FLASKS, HEALING_FLASKS, RARITY_COLOR, RARITY_MARK, itemMeta } from '../content/items';
 import { MEALS } from '../content/processing';
 import { EQUIP_SLOTS, equipSlotOf, equippedBySlot, type EquipSlot } from '../content/gear';
-import { ARMOR_BY_ID } from '../content/armorSets';
+import { ARMOR_BY_ID, ARMOR_PARTS } from '../content/armorSets';
 import { necroWeaponTooltip } from '../content/necroWeapons';
 import { ItemLocks, junkSlots } from '../gameplay/itemLocks';
 import { isSalvageable } from '../gameplay/salvageRules';
 import { ABILITIES } from '../content/abilities';
 import { RUNES, isRuneId, runeSources, type RuneId, type RuneRite } from '../content/runes';
 import './runes.css';
+import { BELT_DRAG_TYPE } from './BeltPicker';
 import { BELT_KINDS, toolKindOf } from '../gameplay/gatheringRules';
 import { kitCandidate } from '../gameplay/legionKit';
 import { KIT_LABEL } from '../gameplay/legionRules';
@@ -21,7 +23,8 @@ import { BELT_LABEL, beltOffer, beltTools, dismissOffer, isOnBelt, moveTools, of
 /** A small padlock for locked cells and the Lock button (inline SVG: no font or emoji dependency). */
 export const LOCK_SVG = '<svg viewBox="0 0 12 14" width="11" height="13" aria-hidden="true"><path d="M3 6V4.2a3 3 0 0 1 6 0V6" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="6" width="9" height="7" rx="1" fill="currentColor"/></svg>';
 import { badgeHtml, compareChipsHtml, compareTableHtml, itemLevelHtml, itemStatsHtml, itemTypeLabel, keepsForYou, setTooltipHtml, verdictHtml, type StatContextSource } from './gearText';
-import { resolveSetBonuses } from '../gameplay/setBonuses';
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+import { effectRelevant, resolveSetBonuses } from '../gameplay/setBonuses';
 
 const TYPE_GLYPH: Record<string, string> = {
   weapon: '⚔',
@@ -107,6 +110,7 @@ export class InventoryPanel {
       <div class="cw-inv-body">
         <div class="cw-equip-col">
           <div class="cw-equip" role="group" aria-label="Equipment"></div>
+          <div class="cw-setsum" role="group" aria-label="Set bonuses" hidden></div>
           <div class="cw-toolbelt" role="group" aria-label="Tool belt"></div>
           <button type="button" class="cw-button small cw-legion-btn" data-legion hidden aria-label="Open the Legion: gear for your thralls (Y)" title="Spare weapons and armour for your thralls (Y)">Legion · Y</button>
         </div>
@@ -183,6 +187,15 @@ export class InventoryPanel {
           this.render();
         });
         cell.addEventListener('dblclick', () => this.primaryAction(slot));
+        if (this.onBelt && slot.item_id in BREWS) {
+          // Drag a brew onto its slot on the HUD belt (the HUD listens for this type).
+          cell.draggable = true;
+          cell.addEventListener('dragstart', (e) => {
+            e.dataTransfer?.setData(BELT_DRAG_TYPE, slot.item_id);
+            if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copy';
+            this.hideTooltip();
+          });
+        }
         cell.addEventListener('contextmenu', (e) => {
           if (toolKindOf(slot.item_id)) {
             e.preventDefault();
@@ -198,6 +211,7 @@ export class InventoryPanel {
       grid.appendChild(cell);
     }
     this.renderEquipment();
+    this.renderSetSummary();
     this.renderLegionButton();
     this.renderToolBelt();
     this.renderTools();
@@ -309,6 +323,28 @@ export class InventoryPanel {
       }
       doll.appendChild(cell);
     }
+  }
+
+  /** Under the paper doll: for each set you wear (best two), five pips for its pieces, the tiers that are on, and what the next tier needs. */
+  private renderSetSummary() {
+    const box = this.el!.querySelector<HTMLDivElement>('.cw-setsum')!;
+    const sets = resolveSetBonuses(this.inventory.all).sets.slice(0, 2);
+    box.hidden = sets.length === 0;
+    box.innerHTML = sets.map((s) => {
+      const color = `#${s.accent.toString(16).padStart(6, '0')}`;
+      const family = this.statContext?.()?.discipline ?? { family: 'necromancer' as const };
+      const pips = ARMOR_PARTS.map((part) => `<i class="${s.wornParts.includes(part) ? 'on' : ''}" title="${part}${s.wornParts.includes(part) ? ' (worn)' : ''}"></i>`).join('');
+      const on = s.bonuses.filter((b) => b.active).map((b) => `<div class="on"><span class="n">${b.pieces}</span>${esc(b.name ? `${b.name}: ` : '')}${esc(b.lines.join(' \u00B7 '))}${effectRelevant(b.effect, family) ? '' : ' <i>(no effect for your class)</i>'}</div>`).join('');
+      const nextB = s.bonuses.find((b) => !b.active);
+      let next = '<div class="done">Set complete</div>';
+      if (nextB) {
+        const need = nextB.pieces - s.worn;
+        const miss = s.missing.map((m) => m.part).join(' or ');
+        const where = s.missing.length === 1 || need === s.missing.length ? s.missing.map((m) => m.where).filter((w, i, a) => a.indexOf(w) === i).join(', ') : '';
+        next = `<div class="nx"><span class="n">${nextB.pieces}</span>${esc(nextB.name ? `${nextB.name}: ` : '')}${esc(nextB.lines.join(' \u00B7 '))}<em>Need ${need} more: ${esc(need === s.missing.length ? miss.replace(/ or /g, ', ') : miss)}${where ? ` \u00B7 ${esc(where)}` : ''}</em></div>`;
+      }
+      return `<div class="ss" style="--set:${color}"><div class="hd"><b>${esc(s.setName)}</b><span class="pips">${pips}</span></div>${on}${next}</div>`;
+    }).join('');
   }
 
   /** The Legion button under the tool belt: a dot when a spare piece would beat what the legion wears. */
@@ -450,6 +486,7 @@ export class InventoryPanel {
       ${this.setLine(slot)}
       ${compareChipsHtml(this.statContext?.() ?? null, slot)}
       ${brewSummary(slot.item_id) ? `<div class="brew-line">${brewSummary(slot.item_id)}</div>` : ''}
+      ${this.onBelt && slot.item_id in BREWS ? `<div class="brew-line">Belt key ${BREW_KEYS[BREWS[slot.item_id].slot].toUpperCase()}: right-click or drag it onto the Belt at the left edge.</div>` : ''}
       ${meta.lore ? `<div class="lore">${meta.lore}</div>` : ''}
       <div class="sell">Worth ${slot.sell_value}g</div>
     `;
@@ -485,6 +522,7 @@ export class InventoryPanel {
     const locked = this.locks.isLocked(slot);
     const atGrinder = this.grinder?.near() ?? false;
     const compare = this.compareLines(slot);
+    const pet = petForCharm(slot.item_id);
     const legion = this.onLegion ? kitCandidate(this.inventory.all, slot) : null;
     detail.innerHTML = `
       <div class="info${compare ? ' gs-wide' : ''}">
@@ -507,8 +545,9 @@ export class InventoryPanel {
       ${legion ? `<button class="cw-button small" data-legiongive title="Move it to the legion's ${KIT_LABEL[legion.kit]} slot; a piece already there returns to your bag">Give to legion</button>` : ''}
       ${toolKindOf(slot.item_id) ? `<button class="cw-button small" data-toolbelt>${isOnBelt(slot) ? 'Take off belt' : 'Put on belt'}</button>` : ''}
       ${drinkable ? `<button class="cw-button small" data-act>Drink</button>` : ''}
-      ${this.onBelt && slot.item_id in BREWS ? `<button class="cw-button small" data-belt>Put on belt (${BREW_KEYS[BREWS[slot.item_id].slot].toUpperCase()})</button>` : ''}
+      ${this.onBelt && slot.item_id in BREWS ? `<button class="cw-button small primary" data-belt title="Puts it in the ${BREW_KEYS[BREWS[slot.item_id].slot] === 'z' ? 'Elixir' : 'Tonic'} slot of the Belt at the left edge">Put on belt (key ${BREW_KEYS[BREWS[slot.item_id].slot].toUpperCase()})</button>` : ''}
       ${edible ? `<button class="cw-button small" data-act>Eat</button>` : ''}
+      ${pet ? `<button class="cw-button small" data-adopt title="The ${pet.name} joins you for good and the charm is spent. Call it from Capes &amp; Pets (N)">Adopt ${pet.name}</button>` : ''}
       ${!slot.equipped ? `<button class="cw-button small ${locked ? 'on' : ''}" data-lock title="${locked ? 'Unlock: bulk actions may take it again' : 'Lock: Sell all junk, Deposit and Salvage all will skip it'}">${LOCK_SVG} ${locked ? 'Unlock' : 'Lock'}</button>` : ''}
       ${slot.item_type === 'rune' && isRuneId(slot.item_id) && this.onRune ? `<button class="cw-button small" data-runesocket title="Move one into the ${ABILITIES[RUNES[slot.item_id].rite].name} socket">Socket into ${ABILITIES[RUNES[slot.item_id].rite].name}</button>` : ''}
       ${this.grinder && !slot.equipped && isSalvageable(slot.item_type) ? `<button class="cw-button small" data-salvage ${atGrinder ? '' : 'disabled'} title="${atGrinder ? 'Break it down for materials and reagents' : 'Stand at the Bone Grinder in the Sexton’s Acre to salvage'}">Salvage</button>${atGrinder ? '' : '<span class="cw-hint-text small">Needs the Bone Grinder (Acre)</span>'}` : ''}
@@ -519,6 +558,7 @@ export class InventoryPanel {
       </div>
     `;
     detail.querySelector('[data-runesocket]')?.addEventListener('click', () => void this.socketRune(slot));
+    detail.querySelector('[data-adopt]')?.addEventListener('click', () => pet && void this.adoptCharm(pet.id));
     detail.querySelector('[data-lock]')?.addEventListener('click', () => this.locks.toggle(slot));
     detail.querySelector('[data-salvage]')?.addEventListener('click', () => void this.salvageOne(slot));
     detail.querySelector('[data-act]')?.addEventListener('click', () => this.primaryAction(slot));
@@ -530,6 +570,22 @@ export class InventoryPanel {
     // On a phone the bag detail sits at the bottom of a scrolled panel: keep the confirm buttons in view.
     detail.querySelector('[data-sellall-no]')?.scrollIntoView({ block: 'nearest' });
     detail.querySelectorAll<HTMLButtonElement>('[data-sell]').forEach((b) => b.addEventListener('click', () => this.sell(slot, Number(b.dataset.sell))));
+  }
+
+  /** Adopt a pet from its charm in the bag: the same server call as Capes & Pets, run under exclusiveAction so saves stay race-safe. */
+  private async adoptCharm(petId: string) {
+    if (this.busy) return;
+    this.busy = true;
+    this.setError('');
+    try {
+      await this.inventory.exclusiveAction(() => adoptPet(this.characterId, petId), () => getInventory(this.characterId));
+      if (this.selected !== null && !this.slotAt(this.selected)) this.selected = null;
+    } catch (err) {
+      this.setError(err instanceof Error ? err.message : 'The Sexton refuses.');
+    } finally {
+      this.busy = false;
+      this.render();
+    }
   }
 
   private async socketRune(slot: InventorySlot) {

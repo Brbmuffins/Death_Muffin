@@ -12,8 +12,8 @@ import { ARMOR_BY_ID } from '../content/armorSets';
 import { DIFFICULTIES, type Difficulty } from '../content/difficulty';
 import { AREA_REAGENT_DROPS, ELITE_REAGENT_MULT, ENEMY_REAGENT_DROPS, bossIchor } from '../content/reagents';
 import type { BossId } from '../content/bosses';
-import { AREA_RUNE_POOL, BOSS_REPEAT_RUNE_CHANCE, BOSS_RUNE_POOL, ELITE_RUNE_CHANCE, SURGE_RUNE_CHANCE, pickRune } from '../content/runes';
-import { LEGENDARY_BOSS_AREAS, LEGENDARY_DROP, rollLegendary } from '../content/legendarySets';
+import { AREA_RUNE_POOL, BOSS_REPEAT_RUNE_CHANCE, BOSS_RUNE_POOL, SURGE_RUNE_CHANCE, eliteRuneChance, pickRune } from '../content/runes';
+import { legendaryBossChance, legendaryEliteChance, rollLegendary } from '../content/legendarySets';
 
 /** One source of truth: gatheringRules.BAG_SLOTS (also bundled for the server). 8 columns × 6 rows = 48. */
 export const BAG_SIZE = BAG_SLOTS;
@@ -61,7 +61,7 @@ export function rollKill(def: EnemyId, area: AreaId, level: number, elite: boole
   // Legendary armor (content/legendarySets.ts): a very rare elite drop in the level-scaled areas, weighted to the player's discipline.
   // Rolled only when a discipline is passed, so seeded runs (balance harness, tests) keep their sequence.
   if (disciplineId && elite && a.scaling) {
-    const id = rollLegendary(disciplineId, LEGENDARY_DROP.eliteChance, rand, ownedIds);
+    const id = rollLegendary(disciplineId, legendaryEliteChance(area), rand, ownedIds);
     if (id) items.push({ item_id: id, quantity: 1 });
   }
   // Reagents use their own stream: a seeded `rand` (balance harness, tests) keeps the same sequence it always had.
@@ -89,10 +89,10 @@ export function rollReagents(def: EnemyId, area: AreaId, elite: boolean, itemCha
   return out;
 }
 
-/** An elite's rune: ELITE_RUNE_CHANCE (times the item-chance multipliers), from the area's pool; null where the ground sheds none. */
+/** An elite's rune: eliteRuneChance(area) (times the item-chance multipliers), from the area's pool; null where the ground sheds none. */
 export function rollEliteRune(area: AreaId, itemChanceMult = 1, rand: () => number = Math.random): LootDrop | null {
   const pool = AREA_RUNE_POOL[area];
-  if (!pool?.length || rand() >= Math.min(1, ELITE_RUNE_CHANCE * itemChanceMult)) return null;
+  if (!pool?.length || rand() >= Math.min(1, eliteRuneChance(area) * itemChanceMult)) return null;
   const id = pickRune(pool, rand);
   return id ? { item_id: id, quantity: 1 } : null;
 }
@@ -137,9 +137,9 @@ export function rollBoss(waveTier: number, rand = Math.random, difficulty: Diffi
   const diff = DIFFICULTIES[difficulty].rewardMult;
   const k = costShards / 5;
   const items = [rollItem(area, rand, 1, disciplineId), rollItem(area, rand, 1, disciplineId), rollItem(area, rand, 1, disciplineId)];
-  // Legendary armor: each area boss (past the Hollow Graves) has a chance, weighted to the player's discipline ("smart loot").
-  if (disciplineId && LEGENDARY_BOSS_AREAS.includes(area)) {
-    const id = rollLegendary(disciplineId, LEGENDARY_DROP.bossChance, rand, ownedIds);
+  // Legendary armor: every area boss has a chance (15%; the Gravedigger King 3%), weighted to the player's discipline ("smart loot").
+  if (disciplineId && legendaryBossChance(area) > 0) {
+    const id = rollLegendary(disciplineId, legendaryBossChance(area), rand, ownedIds);
     if (id) items.push({ item_id: id, quantity: 1 });
   }
   // Every boss leaves exactly one ichor: the top-tier Alchemy reagent (content/reagents.ts).
@@ -422,8 +422,19 @@ export class Inventory {
     });
   }
 
-  async flush(): Promise<void> {
-    if (!this.dirty || this.inFlight || this.held) return;
+  async flush(keepalive = false): Promise<void> {
+    if (!this.dirty || this.held) return;
+    if (this.inFlight) {
+      // The tab is closing with a save already out (it may be cut off): send the newest bag now rather than skip it.
+      if (!keepalive) return;
+      this.dirty = false;
+      try {
+        await saveInventory(this.characterId, toSavePayload(this.slots), BAG_SIZE, true);
+      } catch {
+        this.dirty = true;
+      }
+      return;
+    }
     this.inFlight = true;
     this.dirty = false;
     this.state = 'saving';
@@ -432,7 +443,7 @@ export class Inventory {
     this.pendingMutations = [];
     this.inFlightMutations = sentMutations;
     try {
-      const saved = await saveInventory(this.characterId, toSavePayload(sent), BAG_SIZE);
+      const saved = await (keepalive ? saveInventory(this.characterId, toSavePayload(sent), BAG_SIZE, true) : saveInventory(this.characterId, toSavePayload(sent), BAG_SIZE));
       // Only adopt the server rows if nothing changed while the request flew.
       if (this.slots === sent) this.slots = saved;
       else this.dirty = true;

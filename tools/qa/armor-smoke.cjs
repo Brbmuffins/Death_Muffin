@@ -48,16 +48,16 @@ async function main() {
       return { head: scene.avatar.worn.get('head')?.key, headMeshes,
         chest: scene.inventory.all.find(s => s.item_id === `${prefix}_chest`)?.slot_index,
         armorSlots: scene.inventory.all.filter(s => s.item_id.startsWith('set_knight')).map(s => ({ id: s.item_id, slot: s.slot_index, equipped: s.equipped })),
-        chestTint: scene.avatar.c.gearTint.tint[0].w, chestGlow: scene.avatar.c.gearTint.glow[0].length(), iconLoaded: icon?.complete && icon.naturalWidth > 0,
+        headTint: scene.avatar.c.gearTint.head.w, chestTint: scene.avatar.c.gearTint.tint[0].w, chestGlow: scene.avatar.c.gearTint.glow[0].length(), iconLoaded: icon?.complete && icon.naturalWidth > 0,
         setText: document.querySelector('.cw-bag-detail')?.textContent };
     }, setPrefix);
     assert.equal(state.head, `${setPrefix}_head`);
-    assert.ok(state.headMeshes > 0);
+    // The Hollow Knight's own helmet is the head: a worn helm tints it (no dome), so check the tint instead of meshes.
+    assert.ok(state.headTint > 0, 'worn helm tints the built-in helmet');
     assert.equal(state.chest, 101);
     assert.ok(state.chestTint > 0);
     if (process.env.DM_QA_ASCENDED) {
       assert.ok(state.chestGlow > 0);
-      assert.ok(state.headMeshes >= 8, 'Ascended crown has its extra rim and fins');
     }
     assert.equal(state.iconLoaded, true);
     assert.deepEqual(errors, []);

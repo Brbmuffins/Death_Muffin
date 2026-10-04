@@ -221,6 +221,38 @@ export interface DecalOptions {
   delay?: number;
   /** Scenery decals stay in place when combat fills the transient effect pool. */
   persistent?: boolean;
+  /** A ground marker that hurts the player (windup ring, cone, hostile pool): drawn above every friendly decal, never faded. Also set for everything made inside `Effects.danger()`. */
+  danger?: boolean;
+  /** The hero's own ground marker: above friendly decals, below danger ones. */
+  hero?: boolean;
+  /** Draw as another player's decal (faint, outline-only) even outside their events: their thralls' rings. */
+  other?: boolean;
+}
+
+/** How a decal reads on the floor (see `Effects.decal`). */
+export type DecalRole = 'self' | 'other';
+
+/** Render order of the decal layers: friendly ground effects, then the hero marker, then danger telegraphs (particles are 5). */
+export const DECAL_ORDER = { friendly: 2, hero: 3, danger: 4 } as const;
+/** Own long-lasting areas keep their full look this long, then ease to an outline over FADE_S. */
+export const OUTLINE_AFTER_S = 0.6;
+export const OUTLINE_FADE_S = 0.7;
+/** A disc's outline is the ring texture drawn this much larger (ring peaks at 0.71 of its half-width, the disc's rim at 0.94). */
+const RING_FOR_DISC = 1.32;
+/** Only decals that last longer than this go outline-only. */
+export const LONG_DECAL_S = 1.5;
+/** Another player's decals: opacity multiplier (fills are dropped entirely, outline only). */
+export const OTHER_DECAL_ALPHA = 0.28;
+/** Another player's Binbun effects: alpha and scale. */
+export const OTHER_BINBUN_ALPHA = 0.35;
+export const OTHER_BINBUN_SCALE = 0.75;
+/**
+ * Per-texture outline profile: radius (0..1 of the texture) from which the texture is its "edge"; the interior left
+ * behind keeps `floor` of its opacity (0 = outline only). Textures with no edge (glow, cracks) just dim to `floor`.
+ */
+interface OutlineProfile {
+  edge: number;
+  floor: number;
 }
 
 interface Transient {
@@ -244,6 +276,8 @@ interface DecalInstance {
   sz: number;
   color: THREE.Color;
   opacity: number;
+  /** 0 = the full texture, 1 = outline only (see OutlineProfile). */
+  rim: number;
 }
 
 /**
@@ -257,6 +291,7 @@ class DecalLayer {
   mesh: THREE.InstancedMesh;
   private readonly material: THREE.MeshBasicMaterial;
   private opacity!: THREE.InstancedBufferAttribute;
+  private rimAttr!: THREE.InstancedBufferAttribute;
   private static readonly geometry = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
   private static discGeometry: THREE.BufferGeometry | null = null;
   private static ringGeometry: THREE.BufferGeometry | null = null;
@@ -267,20 +302,35 @@ class DecalLayer {
   private static readonly up = new THREE.Vector3(0, 1, 0);
 
   /** `shape`: radial textures (disc / glow / sigil / cracks) draw on a 16-gon, the ring texture on its annulus: same lit pixels, a fraction of the fill. */
-  constructor(private readonly parent: THREE.Group, map: THREE.Texture, blending: THREE.Blending, private readonly shape: 'quad' | 'disc' | 'ring' = 'quad', private capacity = 32) {
+  constructor(private readonly parent: THREE.Group, map: THREE.Texture, blending: THREE.Blending, private readonly shape: 'quad' | 'disc' | 'ring' = 'quad', order: number = DECAL_ORDER.friendly, private readonly outline: OutlineProfile | null = null, private capacity = 32) {
+    this.order = order;
     this.material = new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending });
-    // Per-instance opacity (instanceColor already carries the tint).
+    // Per-instance opacity (instanceColor already carries the tint) and, on the radial textures, a per-instance outline amount.
+    const edge = outline?.edge ?? 2;
+    const floor = outline?.floor ?? 1;
     this.material.onBeforeCompile = (shader) => {
+      // The edge radius and interior floor are per-layer uniforms, so every decal layer shares ONE shader program.
+      shader.uniforms.uRimEdge = { value: edge };
+      shader.uniforms.uRimFloor = { value: floor };
       shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nattribute float aDecalOpacity;\nvarying float vDecalOpacity;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvDecalOpacity = aDecalOpacity;');
+        .replace('#include <common>', '#include <common>\nattribute float aDecalOpacity;\nattribute float aDecalRim;\nvarying float vDecalOpacity;\nvarying float vDecalRim;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvDecalOpacity = aDecalOpacity;\nvDecalRim = aDecalRim;');
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying float vDecalOpacity;')
-        .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.a *= vDecalOpacity;');
+        .replace('#include <common>', '#include <common>\nvarying float vDecalOpacity;\nvarying float vDecalRim;\nuniform float uRimEdge;\nuniform float uRimFloor;')
+        .replace('#include <map_fragment>', `#include <map_fragment>
+diffuseColor.a *= vDecalOpacity;
+if (vDecalRim > 0.0) {
+  float rr = length(vMapUv - 0.5) * 2.0;
+  float inner = 1.0 - smoothstep(uRimEdge - 0.06, uRimEdge + 0.03, rr);
+  diffuseColor.a *= 1.0 - vDecalRim * inner * (1.0 - uRimFloor);
+  if (diffuseColor.a < 0.004) discard;
+}`);
     };
-    this.material.customProgramCacheKey = () => 'dm-decal-layer';
+    this.material.customProgramCacheKey = () => 'dm-decal-layer-rim';
     this.mesh = this.make();
   }
+
+  private readonly order: number;
 
   private make() {
     const base = this.shape === 'disc' ? (DecalLayer.discGeometry ??= footprintGeometry('disc', 'xz')) : this.shape === 'ring' ? (DecalLayer.ringGeometry ??= footprintGeometry('ring', 'xz')) : DecalLayer.geometry;
@@ -288,6 +338,9 @@ class DecalLayer {
     this.opacity = new THREE.InstancedBufferAttribute(new Float32Array(this.capacity), 1);
     this.opacity.setUsage(THREE.DynamicDrawUsage);
     geo.setAttribute('aDecalOpacity', this.opacity);
+    this.rimAttr = new THREE.InstancedBufferAttribute(new Float32Array(this.capacity), 1);
+    this.rimAttr.setUsage(THREE.DynamicDrawUsage);
+    geo.setAttribute('aDecalRim', this.rimAttr);
     const mesh = new THREE.InstancedMesh(geo, this.material, this.capacity);
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     mesh.setColorAt(0, new THREE.Color());
@@ -295,7 +348,7 @@ class DecalLayer {
     mesh.count = 0;
     // A few hundred triangles spread around the player: cheaper to draw than to bound every frame.
     mesh.frustumCulled = false;
-    mesh.renderOrder = 2;
+    mesh.renderOrder = this.order;
     this.parent.add(mesh);
     return mesh;
   }
@@ -327,6 +380,7 @@ class DecalLayer {
       mesh.setMatrixAt(n, m);
       mesh.setColorAt(n, d.color);
       this.opacity.setX(n, d.opacity);
+      this.rimAttr.setX(n, d.rim);
       n++;
     }
     mesh.count = n;
@@ -335,6 +389,7 @@ class DecalLayer {
       mesh.instanceMatrix.needsUpdate = true;
       mesh.instanceColor!.needsUpdate = true;
       this.opacity.needsUpdate = true;
+      this.rimAttr.needsUpdate = true;
     }
   }
 
@@ -501,6 +556,43 @@ export class Effects {
    */
   particleScale = 1;
 
+  /**
+   * Whose ground effects are being drawn: our own read in full, another player's faint and outline-only (their hue is kept so
+   * an ally's circle still reads). WorldScene sets it around a remote player's events, like `particleScale`.
+   */
+  role: DecalRole = 'self';
+  private dangerDepth = 0;
+
+  /** Everything decal()-ed inside `fn` is a danger telegraph: drawn above all friendly ground effects and never faded. */
+  danger<T>(fn: () => T, when = true): T {
+    if (!when) return fn();
+    this.dangerDepth++;
+    try {
+      return fn();
+    } finally {
+      this.dangerDepth--;
+    }
+  }
+
+  /** Another player's Binbun effect: same hue, ~0.35 alpha and 3/4 scale, unless it is a danger telegraph. */
+  get dimsBinbun(): boolean {
+    return this.role === 'other' && this.dangerDepth === 0;
+  }
+
+  /** `o` as a partner's Binbun spawn: dimmed and smaller while a partner's event is handled, untouched otherwise (our own casts). */
+  partnerBinbun<T extends { alpha?: number; scale?: number }>(o: T): T {
+    return this.dimsBinbun ? { ...o, alpha: (o.alpha ?? 1) * OTHER_BINBUN_ALPHA, scale: (o.scale ?? 1) * OTHER_BINBUN_SCALE } : o;
+  }
+
+  /** The long-lasting "fill" textures that go outline-only (edge radius, interior opacity left); ring and cone are already edges. */
+  private outlineOf(tex: THREE.Texture): OutlineProfile | null {
+    if (tex === fx.disc()) return { edge: 0.86, floor: 0 };
+    if (tex === fx.sigil()) return { edge: 0.8, floor: 0 };
+    if (tex === fx.cracks()) return { edge: 2, floor: 0.25 };
+    if (tex === fx.glow()) return { edge: 2, floor: 0.12 };
+    return null;
+  }
+
   private scaled(o: EmitOptions): EmitOptions {
     // Graphics: Low keeps three quarters of every burst (it has no Binbun layer or motifs, so these motes are its whole look).
     const k = this.particleScale * (settings.quality === 'low' ? LOW_PARTICLE_SCALE : 1);
@@ -569,19 +661,52 @@ export class Effects {
     return tex === fx.disc() || tex === fx.glow() || tex === fx.sigil() || tex === fx.cracks() ? 'disc' : 'quad';
   }
 
+  /** Our own long-lasting areas still in their full-strength window, so a newer cast on top of one can send it to outline early. */
+  private ownAreas: { tex: THREE.Texture; x: number; z: number; r: number; alive: boolean; force: () => void }[] = [];
+
   decal(o: DecalOptions): Handle {
     const tex = o.tex ?? fx.disc();
     const blending = o.blending ?? THREE.AdditiveBlending;
-    const key = `${tex.uuid}|${blending}`;
-    let layer = this.decalLayers.get(key);
-    if (!layer) this.decalLayers.set(key, (layer = new DecalLayer(this.group, tex, blending, this.footprintOf(tex))));
-    const d: DecalInstance = { x: 0, y: 0, z: 0, rotY: o.rot ?? 0, sx: 0, sz: 0, color: new THREE.Color(o.color), opacity: 0 };
+    const danger = !!o.danger || this.dangerDepth > 0;
+    const hero = !danger && !!o.hero;
+    // The hero's additive ring joins the friendly ring layer (additive blending is order-free: no extra draw call); only its dark
+    // contact shadow (normal blending) is its own layer, above friendly decals and below the telegraphs.
+    const order = danger ? DECAL_ORDER.danger : hero && blending !== THREE.AdditiveBlending ? DECAL_ORDER.hero : DECAL_ORDER.friendly;
+    const outline = this.outlineOf(tex);
+    const layerFor = (t: THREE.Texture) => {
+      const prof = t === tex ? outline : null;
+      const key = `${t.uuid}|${blending}|${order}`;
+      let l = this.decalLayers.get(key);
+      if (!l) this.decalLayers.set(key, (l = new DecalLayer(this.group, t, blending, this.footprintOf(t), order, prof)));
+      return l;
+    };
+    // Another player's ground effects (never a danger telegraph, never scenery): faint, outline only. `o.other` marks their thralls.
+    const other = (this.role === 'other' || !!o.other) && !danger && !o.persistent && !hero;
+    // The disc's outline is the ring texture drawn a little larger (the existing ring layer, whose annulus geometry rasterises only
+    // the ring: no extra draw call, ~60 % less fill); the sigil keeps its runes and fades in its own shader; glow and cracks just dim.
+    const viaRing = !!outline && tex === fx.disc();
+    const layer = viaRing && other ? layerFor(fx.ring()) : layerFor(tex);
+    const d: DecalInstance = { x: 0, y: 0, z: 0, rotY: o.rot ?? 0, sx: 0, sz: 0, color: new THREE.Color(o.color), opacity: 0, rim: 0 };
     layer.add(d);
-    const base = o.opacity ?? 1;
+    if (other) {
+      // Near-white highlights (a Litany's pale ring) bloom hot even when dim: keep the hue, cap the lightness.
+      const hsl = { h: 0, s: 0, l: 0 };
+      d.color.getHSL(hsl);
+      if (hsl.s > 0.08 && hsl.l > 0.55) d.color.setHSL(hsl.h, Math.max(hsl.s, 0.6), 0.5);
+    }
+    // Disc crossfade partner: the ring-textured outline that takes over as the disc's interior fades.
+    let ring: DecalInstance | null = null;
+    let ringLayer: DecalLayer | null = null;
+    const settles = !danger && !other && !o.persistent && !hero && !!outline && o.duration > LONG_DECAL_S;
+    const base = (o.opacity ?? 1) * (other ? OTHER_DECAL_ALPHA : 1);
     const fadeIn = o.fadeIn ?? 0.12;
     const fadeOut = o.fadeOut ?? 0.25;
     const anchor = o.anchor ?? 0;
     let hidden = false;
+    let outlineAt = OUTLINE_AFTER_S;
+    let outlineFade = OUTLINE_FADE_S;
+    let tNow = 0;
+    let ended = false;
     const place = () => {
       const f = o.follow?.();
       hidden = !!o.follow && !f;
@@ -592,27 +717,65 @@ export class Effects {
       d.z = z + Math.cos(o.rot ?? 0) * anchor * o.r;
     };
     place();
+    if (settles) {
+      // Repeated casts on the same spot: only the newest stays at full strength, the older overlapping ones go to outline now.
+      this.ownAreas = this.ownAreas.filter((a) => a.alive);
+      for (const a of this.ownAreas) if (a.tex === tex && Math.hypot(a.x - d.x, a.z - d.z) < Math.max(a.r, o.r)) a.force();
+      this.ownAreas.push({ tex, x: d.x, z: d.z, r: o.r, alive: true, force: () => { outlineAt = Math.min(outlineAt, tNow); outlineFade = Math.min(outlineFade, 0.4); } });
+    }
+    const entry = settles ? this.ownAreas[this.ownAreas.length - 1] : null;
     const delay = o.delay ?? 0;
     return this.add({
       t: -delay,
       duration: o.duration,
-      release: () => layer.remove(d),
+      release: () => {
+        ended = true;
+        if (entry) entry.alive = false;
+        layer.remove(d);
+        if (ring) ringLayer!.remove(ring);
+      },
       persistent: o.persistent,
       update: (t, k) => {
         if (t < 0) {
           d.opacity = 0;
           return;
         }
+        tNow = t;
+        if (ended) return;
         if (o.follow) place();
         const grow = o.growFrom !== undefined ? o.growFrom + (1 - o.growFrom) * Math.min(1, k * 1.2) : 1;
         const s = o.r * 2 * grow;
         d.sx = s * (o.sx ?? 1);
         d.sz = s * (o.sz ?? 1);
+        // The ring texture peaks at 0.71 of its half-width, the disc's rim at 0.94.
+        const rs = viaRing && other ? RING_FOR_DISC : 1;
+        if (rs !== 1) { d.sx *= rs; d.sz *= rs; }
         if (o.spin) d.rotY = (o.rot ?? 0) + o.spin * t;
         const inA = Math.min(1, t / fadeIn);
         const outA = Math.min(1, (o.duration - t) / fadeOut);
-        const pulse = o.pulse ? 0.75 + 0.25 * Math.sin(t * o.pulse) : 1;
-        d.opacity = hidden ? 0 : base * Math.max(0, Math.min(inA, outA)) * pulse;
+        let pulse = o.pulse ? 0.75 + 0.25 * Math.sin(t * o.pulse) : 1;
+        let op = hidden ? 0 : base * Math.max(0, Math.min(inA, outA)) * pulse;
+        if (other && outline) d.rim = 1;
+        else if (settles) {
+          const rim = Math.max(0, Math.min(1, (t - outlineAt) / outlineFade));
+          d.rim = rim;
+          if (!o.pulse && rim > 0) pulse *= 1 - 0.18 * rim * (0.5 + 0.5 * Math.sin(t * 2.2 + o.x));
+          op = hidden ? 0 : base * Math.max(0, Math.min(inA, outA)) * pulse;
+          if (rim > 0 && viaRing) {
+            if (!ring) {
+              ringLayer = layerFor(fx.ring());
+              ring = { x: d.x, y: d.y, z: d.z, rotY: 0, sx: 0, sz: 0, color: d.color, opacity: 0, rim: 0 };
+              ringLayer.add(ring);
+            }
+            ring.x = d.x; ring.y = d.y; ring.z = d.z;
+            ring.sx = d.sx * RING_FOR_DISC;
+            ring.sz = d.sz * RING_FOR_DISC;
+            ring.opacity = op * rim;
+            d.opacity = op * (1 - rim);
+            return;
+          }
+        }
+        d.opacity = op;
       },
     });
   }

@@ -80,7 +80,7 @@ export const HERE: Record<string, string[]> = {
   welcome: ['acre'], acre: ['acre'], laborers_working: ['acre'], wing: ['alchemist_wing'],
   cloister: ['cloister'], pyre: ['pyre'], fen: ['fen'], warren: ['warren'], coliseum: ['coliseum'],
   boss_gravedigger: ['graves'], boss_abbess: ['ossuary'], boss_congregation: ['nave'], boss_saint: ['cloister'], boss_regent: ['pyre'], boss_mire: ['fen'],
-  boons: ['chapterhouse'],
+  boons: ['chapterhouse'], altar_unlocks: ['chapterhouse'], vows: ['chapterhouse'],
   // The stair is in the Warren; the floors' own cards are shown by what the player just did.
   depths: ['warren'],
 };
@@ -105,9 +105,9 @@ const DANGER = [
 const ASKED = [
   'rite_skull', 'rite_step', 'rite_frost', 'rite_mantle', 'rite_siphon', 'rite_prison', 'rite_hands', 'rite_storm',
   'rite_fan', 'rite_lance', 'rite_offering', 'rite_cleave', 'rite_veil', 'rite_rally', 'rite_seed',
-  'gearEquip', 'statSheet', 'setBonus', 'legendary', 'necroWeapon', 'toolBelt', 'vault', 'salvage', 'bag_full', 'essence',
+  'gearEquip', 'statSheet', 'setBonus', 'legendary', 'necroWeapon', 'toolBelt', 'vault', 'salvage', 'reforge', 'boss_seal', 'bag_full', 'essence',
   'minimap', 'auto_combat', 'change_class', 'station', 'gather', 'wing',
-  'depths_floor', 'depths_affix', 'depths_chest', 'depths_solo',
+  'depths_floor', 'depths_affix', 'depths_chest', 'depths_solo', 'runeHunt',
 ];
 
 /** Fight-time tips that teach the kit itself (not one enemy's telegraph): they wait their turn instead of going stale. */
@@ -118,7 +118,7 @@ const GROUPS: Record<string, string[]> = {
   lesson: LESSONS,
   enemy: ['deacon', 'elite', 'surge', 'sanctify', 'procession', 'censer', 'wraith', 'swarm', 'golem', 'gargoyle', 'moth', 'bats', 'seraph', 'ghoul', 'acolyte', 'templar',
     'plague_doctor', 'flagellant', 'cinder_husk', 'pyre_priest', 'cinderhound', 'slag_brute', 'bog_hag', 'mire_leech', 'fen_wisp', 'drowned_sexton'],
-  gear: ['relic', 'armor', 'legendary', 'affix', 'atlas', 'tool', 'legion', 'rune'],
+  gear: ['relic', 'armor', 'legendary', 'affix', 'atlas', 'tool', 'legion', 'rune', 'runeHunt', 'reforge', 'loadouts'],
   bag: ['bag_filling'],
   brew: ['reagent', 'brew', 'meal', 'belt'],
   acre: ['acre', 'rich_node', 'skill_up', 'laborers_working'],

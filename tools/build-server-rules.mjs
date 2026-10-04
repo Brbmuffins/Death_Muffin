@@ -60,6 +60,11 @@ const TARGETS = {
     out: join(root, 'server/death-muffin/backend/gathering/authority-rules.cjs'),
     about: 'Server authority plausibility numbers (XP/gold ceilings, ground-drop rates) shared by the Death Muffin backend and the tests.',
   },
+  kills: {
+    entry: 'src/gameplay/killRules.ts',
+    out: join(root, 'server/death-muffin/backend/gathering/kill-rules.cjs'),
+    about: 'Server authority step 2: kill report validation and what a kill is worth, shared by the web client, the tests and the Death Muffin backend.',
+  },
   vault: {
     entry: 'src/gameplay/vaultRules.ts',
     out: join(root, 'server/death-muffin/backend/gathering/vault-rules.cjs'),
@@ -70,10 +75,20 @@ const TARGETS = {
     out: join(root, 'server/death-muffin/backend/gathering/legion-rules.cjs'),
     about: 'Legion kit (thrall gear) slots, eligibility and bonus rules shared by the web client, the offline mock and the Death Muffin backend.',
   },
+  goldSinks: {
+    entry: 'src/gameplay/goldSinkRules.ts',
+    out: join(root, 'server/death-muffin/backend/gathering/gold-sink-rules.cjs'),
+    about: 'Gold sinks (affix reforge prices and rolls, Empowered boss summons and their prize) shared by the web client, the offline mock and the Death Muffin backend.',
+  },
   runes: {
     entry: 'src/gameplay/runeRules.ts',
     out: join(root, 'server/death-muffin/backend/gathering/rune-rules.cjs'),
     about: 'Relic rune sockets (slots, which rune fits which rite) shared by the web client, the offline mock and the Death Muffin backend.',
+  },
+  loadouts: {
+    entry: 'src/gameplay/loadoutRules.ts',
+    out: join(root, 'server/death-muffin/backend/gathering/loadout-rules.cjs'),
+    about: 'Loadout presets (validation, capture and apply over inventory rows) shared by the web client, the offline mock and the Death Muffin backend.',
   },
 };
 

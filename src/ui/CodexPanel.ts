@@ -9,6 +9,9 @@ import {
   CODEX_BREWS_COUNSEL,
   CODEX_REAGENTS_COUNSEL,
   CODEX_SALVAGE_COUNSEL,
+  CODEX_REFORGE_COUNSEL,
+  CODEX_EMPOWER_COUNSEL,
+  codexEmpowerRows,
   CODEX_VAULT_COUNSEL,
   codexSalvageRows,
   codexReagentRecipes,
@@ -30,11 +33,14 @@ import {
   CODEX_STATS_COUNSEL,
   CODEX_AFFIX_COUNSEL,
   CODEX_LEGION_COUNSEL,
+  CODEX_ALTAR_COUNSEL,
+  codexAltarRows,
   codexLegionExamples,
   codexLegionTiers,
   codexAffixRows,
   codexRuneRows,
   CODEX_RUNES_COUNSEL,
+  CODEX_LOADOUTS_COUNSEL,
   CODEX_WEAPON_TIERS,
   COVENANT_LORE,
   DEAD_ORDER,
@@ -63,6 +69,7 @@ const TABS = [
   { id: 'atlas', label: 'Gear Atlas' },
   { id: 'affixes', label: 'Item affixes' },
   { id: 'runes', label: 'Relic Runes' },
+  { id: 'altar', label: 'Altar & Vows' },
   { id: 'stats', label: 'Stats' },
   { id: 'dead', label: 'The Dead' },
   { id: 'diocese', label: 'The Diocese' },
@@ -166,6 +173,8 @@ export class CodexPanel {
             ? this.affixes()
           : this.tab === 'runes'
             ? this.runes()
+          : this.tab === 'altar'
+            ? this.altar()
           : this.tab === 'stats'
             ? this.stats()
           : this.tab === 'dead'
@@ -265,6 +274,11 @@ export class CodexPanel {
   /** Runes you have not held yet show their name and where they drop, not what they do (the sealed-page rule of the bestiary). */
   runesFound: () => ReadonlySet<string> = () => new Set();
 
+  private altar() {
+    const rows = codexAltarRows().map((r) => `<tr><td>${r.name}</td><td>${r.kind}</td><td>${r.effect}</td><td>${r.cost}</td><td>${r.unlock}</td></tr>`).join('');
+    return `<p class="tip">${CODEX_ALTAR_COUNSEL}</p><table class="cw-codex-table"><thead><tr><th>Name</th><th>Kind</th><th>Effect</th><th>Heat / cost</th><th>Unlock</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
   private runes() {
     const found = this.runesFound();
     const rows = codexRuneRows().map((g) => `
@@ -276,7 +290,7 @@ export class CodexPanel {
             : `<div class="cw-rune-opt sealed" style="grid-template-columns:44px 1fr;margin-top:8px"><img src="art/items/${r.id}.webp" alt="" style="width:44px;height:44px;filter:grayscale(1) brightness(0.55)" /><span><span class="nm">${r.name}<i>${r.rarity}</i></span><span class="sh">Not found yet. Drops from ${r.sources}.</span></span></div>`).join('')}
         </div>
       </article>`).join('');
-    return `<p class="tip">${CODEX_RUNES_COUNSEL}</p>${rows}`;
+    return `<p class="tip">${CODEX_RUNES_COUNSEL}</p><article class="cw-codex-entry"><div class="txt"><div class="hd"><h3>Loadouts</h3><span class="meta">Grimoire (L)</span></div><p>${CODEX_LOADOUTS_COUNSEL}</p></div></article>${rows}`;
   }
 
   private affixes() {
@@ -462,7 +476,19 @@ export class CodexPanel {
           <p>${CODEX_VAULT_COUNSEL}</p>
         </div>
       </article>`;
-    return `<p class="tip">${CODEX_PROFESSIONS_COUNSEL}</p>${sections}${stations}${vault}${salvage}${brews}${reagents}`;
+    const sinks = `
+      <article class="cw-codex-entry">
+        <div class="txt">
+          <div class="hd"><h3>Reforge and Empowered bosses</h3><span class="meta">Gold sinks · Workbench (C) · boss altars</span></div>
+          <p>${CODEX_REFORGE_COUNSEL}</p>
+          <p>${CODEX_EMPOWER_COUNSEL}</p>
+          <table class="cw-codex-table">
+            <thead><tr><th>Boss</th><th>Seal and gold</th><th>Legendary in the prize</th></tr></thead>
+            <tbody>${codexEmpowerRows().map((r) => `<tr><td>${r.boss}</td><td>1 Seal + ${r.gold.toLocaleString()}</td><td>${r.legendary}%</td></tr>`).join('')}</tbody>
+          </table>
+        </div>
+      </article>`;
+    return `<p class="tip">${CODEX_PROFESSIONS_COUNSEL}</p>${sections}${stations}${vault}${salvage}${sinks}${brews}${reagents}`;
   }
 
   /** Who has been spoken to (set by the scene from the guidance memory). */

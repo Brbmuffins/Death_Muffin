@@ -28,6 +28,8 @@ import { isDevAccount } from '../gameplay/devAccess';
 import * as vaultRules from '../gameplay/vaultRules';
 import * as salvageRules from '../gameplay/salvageRules';
 import * as affixRules from '../gameplay/affixRules';
+import * as sinks from '../gameplay/goldSinkRules';
+import * as loadoutRules from '../gameplay/loadoutRules';
 
 const BAG = gather.BAG_SLOTS;
 /** Mirrors inventory-save.cjs CANT_VERIFY. */
@@ -99,12 +101,18 @@ interface MockAccount {
   /** Sexton's Contracts: which of today's orders are filled (mirrors character_contracts). */
   contracts?: { day: string; done: number[]; bonus: boolean; days: string[] };
   /** The Chronicle (mirrors character_chronicle + character_runs). */
+  bugReports?: { id: number; category: string; message: string; createdAt: string }[];
   chronicle?: { life: Record<string, number>; run: Record<string, number>; runNo: number; runStartedAt: string; runs: { runNo: number; startedAt: string; endedAt: string; ascensionAfter: number; stats: Record<string, number> }[] };
+  /** Loadout presets (mirrors character_loadouts): slot -> preset. */
+  loadouts?: Record<string, loadoutRules.LoadoutPreset>;
   /** The Ossuary Vault (mirrors account_vault; the mock has one account per character). */
   vault?: { slot_index: number; item_id: string; quantity: number; instance_id?: number }[];
   /** Rolled loot (mirrors loot_instances) and the next id. Only POST /api/loot/roll-gear writes it. */
   instances?: Record<string, { item_id: string; ilvl: number; affixes: affixRules.AffixRoll[] }>;
   nextInstance?: number;
+  /** Reforges done per instance id, and Empowered summons (mirror loot_reforges and empowered_summons, migration 035). */
+  reforges?: Record<string, number>;
+  empowered?: { id: number; boss: string; gold: number; status: string; made: number }[];
   /** POST /api/gather time budget (mirrors gather_ledger). */
   gatherLedger?: gather.GatherLedger;
   username: string;
@@ -513,6 +521,47 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     return ok(acc.slots.map(join));
   }
 
+  // Loadout presets: the same routes and rules as server/death-muffin/backend/loadouts.cjs.
+  if (p.startsWith('/api/loadouts')) {
+    const list = () => Object.entries(acc.loadouts ?? {}).map(([slot, preset]) => ({ slot: Number(slot), preset })).sort((a, b) => a.slot - b.slot);
+    if ((m = p.match(/^\/api\/loadouts\/(\d+)$/)) && method === 'GET') {
+      ownCharacter(acc, m[1]);
+      return ok(list());
+    }
+    if (method === 'POST' && ['/api/loadouts/save', '/api/loadouts/delete', '/api/loadouts/apply'].includes(p)) {
+      ownCharacter(acc, body.characterId);
+      const slot = body.slot;
+      if (!Number.isInteger(slot) || slot < 0 || slot >= loadoutRules.MAX_PRESETS) throw new MockError(`slot must be 0 to ${loadoutRules.MAX_PRESETS - 1}`, 400);
+      const store = (acc.loadouts ??= {});
+      if (p === '/api/loadouts/save') {
+        const v = loadoutRules.normalizePreset(body.preset);
+        if (!v.ok) return fail(v.error);
+        store[slot] = v.preset;
+        return ok(list());
+      }
+      if (p === '/api/loadouts/delete') {
+        delete store[slot];
+        return ok(list());
+      }
+      const preset = store[slot];
+      if (!preset) return fail('That loadout is empty.');
+      const rows = acc.slots.map((x, i) => ({ ...x, i }));
+      const info = (id: string): loadoutRules.ItemInfo => {
+        const def = MOCK_ITEMS[id];
+        const equipSlot = def ? (equipSlotOf({ item_type: def.item_type, equipped_slot: null, item_equipment_slot: null }) ?? null) : null;
+        return { maxStack: mockStackCap(id), equipSlot, twoHanded: isTwoHanded(id) };
+      };
+      const { rows: after, report } = loadoutRules.applyLoadout(rows, info, preset);
+      acc.slots = after.map((x) => {
+        const { i: _i, equipped_slot: _e, ...rest } = x as typeof x & { i?: number };
+        const out: StoredSlot = { slot_index: x.slot_index, item_id: x.item_id, quantity: x.quantity, equipped: x.equipped ? 1 : 0 };
+        if (rest.instance_id !== undefined && rest.instance_id !== null) out.instance_id = rest.instance_id as number;
+        return out;
+      });
+      return { success: true, data: acc.slots.map(join), report, preset } as unknown as { success: true; data: InventorySlot[] };
+    }
+  }
+
   // --- The Ossuary Vault and Salvaging: the same pure rules the Death Muffin backend uses (vault-rules, salvage-rules). ---
   const mockInfo: vaultRules.VaultInfo = (id) => {
     const d = MOCK_ITEMS[id];
@@ -607,6 +656,84 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     prof.skill_level = next.level;
     prof.skill_xp = next.xp;
     return ok({ bag: acc.slots.map(join), salvaged, gained, xp, level: next.level, leveledUp: next.leveled > 0, skillXp: next.xp, xpToNext: gather.xpToNext(next.level) });
+  }
+
+  // --- Gold sinks (reforge.cjs, boss-key.cjs): the same rules, the same refusals, Math.random for the rolls. ---
+  const goldNow = () => Math.max(0, Math.round(Number(acc.character?.gold) || 0));
+  const setGold = (g: number) => { if (acc.character) acc.character.gold = g; };
+  if (p === '/api/reforge/quote' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    return ok({ gold: goldNow(), pieces: acc.slots.filter((x) => x.instance_id !== undefined && x.instance_id !== null).map((x) => ({ slot_index: x.slot_index, instance_id: x.instance_id, rerolls: acc.reforges?.[x.instance_id!] ?? 0 })) });
+  }
+  if (p === '/api/reforge' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const slot = acc.slots.find((x) => x.slot_index === Number(body.slot_index));
+    const index = Number(body.affix_index);
+    if (!Number.isInteger(Number(body.slot_index)) || !Number.isInteger(index)) return fail('Choose a piece and one of its affixes.');
+    if (!slot) return fail('There is nothing in that slot.');
+    const roll = slot.instance_id !== undefined && slot.instance_id !== null ? acc.instances?.[slot.instance_id] : undefined;
+    if (!roll) return fail('Only rolled gear (a piece with affixes) can be reforged.');
+    if (!roll.affixes.length) return fail('This piece has no affixes to reforge.');
+    const problem = sinks.reforgeProblem(roll, index);
+    if (problem) return fail(problem);
+    const rerolls = acc.reforges?.[slot.instance_id!] ?? 0;
+    const cost = sinks.reforgeCost(roll.ilvl, MOCK_ITEMS[slot.item_id]?.rarity ?? 'common', roll.affixes.length, rerolls);
+    if (body.expect_cost !== undefined && Number(body.expect_cost) !== cost) return fail(`The price is now ${cost.toLocaleString('en-US')} gold. Check it and try again.`);
+    if (goldNow() < cost) return fail(`Reforging this piece costs ${cost.toLocaleString('en-US')} gold (you have ${goldNow().toLocaleString('en-US')}).`);
+    const from = roll.affixes[index].v;
+    const to = sinks.reforgeValue(roll.affixes[index].id, roll.ilvl, Math.random);
+    roll.affixes = roll.affixes.map((a, i) => (i === index ? { id: a.id, v: to } : a));
+    (acc.reforges ?? (acc.reforges = {}))[slot.instance_id!] = rerolls + 1;
+    setGold(goldNow() - cost);
+    return ok({ gold: goldNow(), cost, from, to, rerolls: rerolls + 1, bag: acc.slots.map(join) });
+  }
+  if (p === '/api/boss-key/status' && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    const live = (acc.empowered ?? []).filter((x) => x.status === 'open' && Date.now() - x.made < sinks.EMPOWER.claimWindowMs);
+    return ok({ bound: [...new Set(live.map((x) => x.boss))], summons: live.map((x) => ({ id: x.id, boss: x.boss })) });
+  }
+  if ((m = p.match(/^\/api\/boss-key\/(summon|refund|claim)$/)) && method === 'POST') {
+    ownCharacter(acc, body.characterId);
+    if (!sinks.canEmpower(body.boss)) return fail('That boss cannot be called with a Seal.');
+    const boss = body.boss as string;
+    const list = acc.empowered ?? (acc.empowered = []);
+    const open = list.filter((x) => x.boss === boss && x.status === 'open' && Date.now() - x.made < sinks.EMPOWER.claimWindowMs);
+    if (m[1] === 'summon') {
+      if (open.length) return ok({ gold: goldNow(), cost: 0, reused: true, summon_id: open[0].id, bag: acc.slots.map(join) });
+      const cost = sinks.empowerGold(boss as sinks.EmpowerableBoss);
+      const bag = bagRows();
+      const seal = bag.find((r) => r.itemId === sinks.COVENANT_SEAL && !r.fixed && r.qty > 0);
+      if (!seal) return fail('You need a Covenant Seal in your bag to call an Empowered boss.');
+      if (goldNow() < cost) return fail(`The Seal demands ${cost.toLocaleString('en-US')} gold (you have ${goldNow().toLocaleString('en-US')}).`);
+      storeBag(bag.map((r) => (r === seal ? { ...r, qty: r.qty - 1 } : r)).filter((r) => r.qty > 0));
+      setGold(goldNow() - cost);
+      const made = { id: list.length + 1, boss, gold: cost, status: 'open', made: Date.now() };
+      list.push(made);
+      return ok({ gold: goldNow(), cost, reused: false, summon_id: made.id, bag: acc.slots.map(join) });
+    }
+    if (m[1] === 'refund') {
+      const row = [...open].reverse()[0];
+      if (!row || Date.now() - row.made > sinks.EMPOWER.refundWindowMs) return fail('There is no recent summon to take back.');
+      const after = vaultRules.addGrants(bagRows(), [{ itemId: sinks.COVENANT_SEAL, qty: 1 }], mockInfo);
+      if (!after) return fail('Make room in your bag for the Seal, then try again.');
+      storeBag(after);
+      setGold(goldNow() + row.gold);
+      row.status = 'refunded';
+      return ok({ gold: goldNow(), bag: acc.slots.map(join) });
+    }
+    const row = open[0];
+    if (!row) return fail('No Empowered summon of that boss is waiting for a prize.');
+    if (Date.now() - row.made < 10_000) return fail('The boss has barely woken. Finish the fight first.');
+    const owned = new Set(acc.slots.map((x) => x.item_id));
+    const prize = sinks.rollEmpoweredPrize(boss as sinks.EmpowerableBoss, typeof body.discipline === 'string' ? body.discipline : '', Math.random, owned);
+    const def = MOCK_ITEMS[prize.item_id];
+    if (!def || !affixRules.isAffixGear(def.item_type)) return fail('The prize could not be rolled. Try again.');
+    const inst = sinks.rollEmpoweredInstance(prize, def.rarity, affixRules.clampDropLevel(body.level, Number(acc.character?.level) || 1), Math.random);
+    const id = acc.nextInstance ?? 1;
+    acc.nextInstance = id + 1;
+    (acc.instances ?? (acc.instances = {}))[id] = { item_id: prize.item_id, ilvl: inst.ilvl, affixes: inst.affixes };
+    row.status = 'claimed';
+    return ok({ item_id: prize.item_id, instance_id: id, ilvl: inst.ilvl, affixes: inst.affixes, legendary: prize.legendary });
   }
 
   if ((m = p.match(/^\/api\/professions\/(\d+)$/)) && method === 'GET') {
@@ -723,6 +850,9 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     }
     return ok({ updatedInventory: acc.slots.map(join), updatedProfession: earner });
   }
+
+  // Server authority step 2: the mock keeps no ledger (there is no authority to enforce offline); it just acknowledges.
+  if (p === '/api/kills/report' && method === 'POST') return ok({ mode: 'off' });
 
   if (p === '/api/character/save-progress' && method === 'POST') {
     ownCharacter(acc, body.characterId);
@@ -976,6 +1106,18 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     return ok({ ...contractView().view, gold, items, paidBonus });
   }
 
+  // --- Bug reports: the offline edition keeps them on the device (there is no agent to read them). ---
+  if (p === '/api/bug-reports' && method === 'POST') {
+    const message = String(body.message ?? '').trim();
+    if (message.length < 10) return fail('Please describe the problem in at least 10 characters.');
+    const list = (acc.bugReports ??= []);
+    list.push({ id: list.length + 1, category: String(body.category ?? 'bug'), message: message.slice(0, 2000), createdAt: new Date().toISOString() });
+    return ok({ id: list.length });
+  }
+  if (p === '/api/bug-reports/mine' && method === 'GET') {
+    return ok([...(acc.bugReports ?? [])].reverse().slice(0, 10).map((r) => ({ ...r, status: 'Saved on this device', note: null })));
+  }
+
   // --- Chronicle: lifetime stats and archived runs (the real server whitelists keys; the mock trusts them). ---
   const chron = () => (acc.chronicle ??= { life: {}, run: {}, runNo: 1, runStartedAt: new Date().toISOString(), runs: [] });
   if ((m = p.match(/^\/api\/chronicle\/(\d+)$/)) && method === 'GET') {
@@ -1007,7 +1149,7 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
     acc.necro = necro.normalise(acc.necro ?? necro.blankState());
     return ok({ progress: acc.necro, gold: acc.character!.gold });
   }
-  if ((m = p.match(/^\/api\/necro-progress\/(save|purchase|summon-prelate|summon-boss|ascend|boon|import)$/)) && method === 'POST') {
+  if ((m = p.match(/^\/api\/necro-progress\/(save|purchase|summon-prelate|summon-boss|ascend|vows|unlock|boon|import)$/)) && method === 'POST') {
     ownCharacter(acc, body.characterId);
     const c = acc.character!;
     const state = necro.normalise(acc.necro ?? necro.blankState());
@@ -1020,6 +1162,10 @@ function route(db: MockDb, method: string, url: URL, body: any, token: string | 
             ? necro.summonPrelate(state)
             : m[1] === 'summon-boss'
               ? necro.summonAreaBoss(state, body.boss)
+            : m[1] === 'vows'
+              ? necro.swearVows(state, body.vows)
+            : m[1] === 'unlock'
+              ? necro.unlockEntry(state, body.key)
             : m[1] === 'ascend'
               ? necro.ascend(state)
               : m[1] === 'boon'

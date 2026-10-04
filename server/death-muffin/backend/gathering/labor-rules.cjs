@@ -154,7 +154,7 @@ var NODE_LIST = [
     respawnS: 30,
     gold: [2, 6],
     tint: 5920336,
-    extras: [{ item: "ore_silver", chance: 1 / 8 }, { item: "reliquary_fragment", chance: 1 / 60 }, { item: "seed_corpse_lily", chance: 1 / 25 }, { item: "seed_wolfsbane", chance: 1 / 40 }]
+    extras: [{ item: "ore_silver", chance: 1 / 8 }, { item: "reliquary_fragment", chance: 1 / 60 }, { item: "covenant_seal", chance: 1 / 200 }, { item: "seed_corpse_lily", chance: 1 / 25 }, { item: "seed_wolfsbane", chance: 1 / 40 }]
   }),
   // ...and the drowned lotus in the open water.
   node({
@@ -185,7 +185,7 @@ var NODE_LIST = [
     gold: [4, 12],
     tint: 6969914,
     extras: [
-      { item: "covenant_seal", chance: 1 / 40 },
+      { item: "covenant_seal", chance: 1 / 80 },
       { item: "reliquary_fragment", chance: 1 / 25 },
       { item: "seed_bloodroot", chance: 1 / 20 },
       { item: "seed_moonpetal", chance: 1 / 30 },

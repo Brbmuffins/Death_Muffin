@@ -138,6 +138,11 @@ const summarize = (frames, t0, t1) => {
     await H.page.waitForFunction(() => window.__cwDebug.net().connected);
     const G = await login(browser, `cpG_${n}`);
     await G.page.waitForFunction(() => window.__cwDebug.net().connected);
+    // Parties are explicit: the host makes one, the guest joins its code.
+    await H.page.evaluate(() => window.__cwDebug.party.create());
+    await H.page.waitForFunction(() => window.__cwDebug.party.code() && window.__cwDebug.net().connected);
+    const partyCode = await H.page.evaluate(() => window.__cwDebug.party.code());
+    await G.page.evaluate((c) => window.__cwDebug.party.join(c), partyCode);
     await H.page.waitForFunction(() => window.__cwDebug.counts().remotes === 1);
     const nets = [await H.page.evaluate(() => window.__cwDebug.net()), await G.page.evaluate(() => window.__cwDebug.net())];
     if (!nets[0].host || nets[1].host) throw new Error('expected first client to be the host');

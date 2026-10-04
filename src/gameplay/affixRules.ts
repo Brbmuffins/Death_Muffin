@@ -71,10 +71,12 @@ export interface AffixDef {
 
 const clampInt = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.round(x)));
 /** A +-30% window around the centre for this item level, as whole numbers. */
-const around = (centre: number, cap: number, floor = 1): [number, number] => {
-  const lo = clampInt(centre * 0.7, floor, cap);
-  return [lo, clampInt(Math.max(centre * 1.3, lo), lo, cap)];
+const around = (centre: number, cap: number, floor = 1, spread = 0.3): [number, number] => {
+  const lo = clampInt(centre * (1 - spread), floor, cap);
+  return [lo, clampInt(Math.max(centre * (1 + spread), lo), lo, cap)];
 };
+/** The window since 2026-10-03 "achievable" pass: +-35%, so the ideal (top) roll is a clear step above a median one. */
+const WIDE = 0.35;
 const tenths = (v: number) => `${+(v / 10).toFixed(1)}%`;
 
 const STAT_NAME: Record<AffixStat, string> = { stat_str: 'STR', stat_agi: 'AGI', stat_int: 'INT', stat_vit: 'VIT' };
@@ -86,8 +88,8 @@ const statDef = (stat: AffixStat, kind: AffixKind, word: string): AffixDef => ({
   necro: false,
   weight: 9,
   unit: 'stat',
-  range: (L) => around(0.8 + 0.07 * Math.min(L, 25) + 0.045 * Math.max(0, L - 25), 14),
-  legacy: [(L) => around(0.8 + 0.07 * L, 14)],
+  range: (L) => around(1.2 + 0.1 * Math.min(L, 25) + 0.052 * Math.max(0, L - 25), 20, 1, WIDE),
+  legacy: [(L) => around(0.8 + 0.07 * L, 14), (L) => around(0.8 + 0.07 * Math.min(L, 25) + 0.045 * Math.max(0, L - 25), 14)],
   effect: (v) => ({ stats: { [stat]: v } }),
   text: (v) => `+${v} ${STAT_NAME[stat]}`,
 });
@@ -112,43 +114,43 @@ export const AFFIXES: readonly AffixDef[] = [
   statDef('stat_vit', 'suffix', 'of the Tomb'),
   {
     id: 'p_thrall_dmg', kind: 'prefix', word: 'Gravebound', group: 'thrall_dmg', necro: true, weight: 13, unit: 'pct',
-    range: (L) => around(10 * (6.5 + 0.1 * L), 300),
-    legacy: [(L) => around(10 * (5.5 + 0.2 * L), 300)],
+    range: (L) => around(10 * (9.2 + 0.1 * L), 340, 1, WIDE),
+    legacy: [(L) => around(10 * (5.5 + 0.2 * L), 300), (L) => around(10 * (6.5 + 0.1 * L), 300)],
     effect: (v) => ({ mult: { thrallDamageMult: 1 + v / 1000 } }),
     text: (v) => `Thralls hit +${tenths(v)} harder`,
   },
   {
     id: 's_thrall_hp', kind: 'suffix', word: 'of the Legion', group: 'thrall_hp', necro: true, weight: 13, unit: 'pct',
-    range: (L) => around(10 * (9.5 + 0.34 * L), 500),
-    legacy: [(L) => around(10 * (10.6 + 0.38 * L), 500)],
+    range: (L) => around(10 * (12.5 + 0.3 * L), 540, 1, WIDE),
+    legacy: [(L) => around(10 * (10.6 + 0.38 * L), 500), (L) => around(10 * (9.5 + 0.34 * L), 500)],
     effect: (v) => ({ mult: { thrallHpMult: 1 + v / 1000 } }),
     text: (v) => `Thralls have +${tenths(v)} health`,
   },
   {
     id: 'p_essence_regen', kind: 'prefix', word: 'Whispering', group: 'essence_regen', necro: true, weight: 11, unit: 'pct',
-    range: (L) => around(10 * (10 + 0.5 * L), 600),
-    legacy: [(L) => around(10 * (10 + 0.42 * L), 600)],
+    range: (L) => around(10 * (13 + 0.55 * L), 760, 1, WIDE),
+    legacy: [(L) => around(10 * (10 + 0.42 * L), 600), (L) => around(10 * (10 + 0.5 * L), 600)],
     effect: (v) => ({ mult: { essenceRegenMult: 1 + v / 1000 } }),
     text: (v) => `+${tenths(v)} essence regeneration`,
   },
   {
     id: 's_miasma', kind: 'suffix', word: 'of the Rotting Mist', group: 'miasma', necro: true, weight: 9, unit: 'pct',
-    range: (L) => around(10 * (5.2 + 0.12 * L), 400),
-    legacy: [(L) => around(10 * (5.2 + 0.22 * L), 400)],
+    range: (L) => around(10 * (7.6 + 0.17 * L), 550, 1, WIDE),
+    legacy: [(L) => around(10 * (5.2 + 0.22 * L), 400), (L) => around(10 * (5.2 + 0.12 * L), 400)],
     effect: (v) => ({ mult: { miasmaRadiusMult: 1 + v / 1000 } }),
     text: (v) => `Miasma is +${tenths(v)} wider`,
   },
   {
     id: 'p_withered', kind: 'prefix', word: 'Blighted', group: 'withered', necro: true, weight: 8, unit: 'count',
-    range: (L) => [1, clampInt(2 + Math.floor(L / 9), 2, 4)],
-    legacy: [(L) => [1, clampInt(2 + Math.floor(L / 7), 2, 6)]],
+    range: (L) => [1, clampInt(3 + Math.floor(L / 12), 3, 4)],
+    legacy: [(L) => [1, clampInt(2 + Math.floor(L / 7), 2, 6)], (L) => [1, clampInt(2 + Math.floor(L / 9), 2, 4)]],
     effect: (v) => ({ add: { witheredMaxStacks: v } }),
     text: (v) => `+${v} max Withered stack${v === 1 ? '' : 's'}`,
   },
   {
     id: 's_ward', kind: 'suffix', word: 'of the Ossuary Wall', group: 'ward', necro: true, weight: 9, unit: 'wardPct',
-    range: (L) => around(12 + 0.55 * L, 55),
-    legacy: [(L) => around(9 + 0.7 * L, 60)],
+    range: (L) => around(23 + 0.3 * L, 46, 1, WIDE),
+    legacy: [(L) => around(9 + 0.7 * L, 60), (L) => around(12 + 0.55 * L, 55)],
     effect: (v) => ({ add: { wardPerThrall: v / 1000 } }),
     text: (v) => `${tenths(v)} less damage taken per thrall`,
   },

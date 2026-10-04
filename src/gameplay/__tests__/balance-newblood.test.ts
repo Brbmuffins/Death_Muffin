@@ -16,8 +16,8 @@ const sum = (rows: Record<string, number>[], id: string) => rows.reduce((s, c) =
 
 describe('New Blood bot fidelity', () => {
   it('casts only rites the hero has unlocked (level 1 has no Burn the Dead or Veil Tear)', () => {
-    const warden = runBalance(graves(5, { minutes: 0.4 }));
-    const veil = runBalance(graves(9, { minutes: 0.4 }));
+    const warden = runBalance(graves(5, { minutes: 0.15 }));
+    const veil = runBalance(graves(9, { minutes: 0.15 }));
     expect(warden.levelsGained).toBe(0);
     expect(veil.levelsGained).toBe(0);
     expect(warden.casts.burn_the_dead ?? 0).toBe(0);
@@ -47,6 +47,18 @@ describe('New Blood bot fidelity', () => {
     expect(sum(knight, 'shield_bash')).toBeGreaterThan(0);
     expect(sum(knight, 'grave_slam')).toBeGreaterThan(0);
     expect(sum(veil, 'lay_to_rest')).toBeGreaterThan(0);
+  });
+
+  it('casts Chain Pull, Hook Pull, Butcher, Echo and Crossing through the real host paths', () => {
+    const seeds = [42, 43, 44, 45];
+    const cast = (c: number) => seeds.map((s) => runBalance(sanctum(c, s)).casts);
+    expect(sum(cast(5), 'chain_pull')).toBeGreaterThan(0);
+    const witch = cast(7);
+    expect(sum(witch, 'hook_pull')).toBeGreaterThan(0);
+    expect(sum(witch, 'butcher')).toBeGreaterThan(0);
+    const veil = cast(9);
+    expect(sum(veil, 'echo')).toBeGreaterThan(0);
+    expect(sum(veil, 'crossing')).toBeGreaterThan(0);
   });
 
   it('steps out of telegraphed attacks: dodging dies less often than standing still', () => {

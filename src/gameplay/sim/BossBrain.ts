@@ -5,6 +5,7 @@ import { DIFFICULTIES } from '../../content/difficulty';
 import { ABBESS, ABBESS_NICHE_SPOTS, BOSSES, CONGREGATION, GRAVEDIGGER, GRAVEDIGGER_PITS, MIRE, REGENT, SAINT, type BossId } from '../../content/bosses';
 import { FEN_FLOOD_SCALE, FEN_HUMMOCKS, FEN_SURFACE_SPOTS, inBog, hummockAt } from '../../content/fen';
 import type { EnemyId } from '../../content/enemies';
+import { EMPOWER, empoweredLevel } from '../goldSinkRules';
 import type { WorldSim } from './WorldSim';
 import type { BossPhase, BossState, PlayerBody } from './types';
 
@@ -111,13 +112,16 @@ export abstract class BossBrain {
     return this.def.arena;
   }
 
-  awaken(by: string) {
+  /** `empowered`: a Covenant Seal summon (goldSinkRules): the level knob goes up and so does the health. */
+  awaken(by: string, empowered = false) {
     if (this.state.active) return;
     const s = this.state;
     const party = Math.max(1, this.sim.players.size);
     s.active = true;
+    s.empowered = empowered;
     s.level = this.sim.areaLevel(this.def.area);
-    s.maxHp = this.def.baseHp * enemyHpScale(s.level) * (1 + 0.8 * (party - 1)) * DIFFICULTIES[this.sim.difficulty].enemyHpMult;
+    if (empowered) s.level = empoweredLevel(s.level);
+    s.maxHp = this.def.baseHp * enemyHpScale(s.level) * (empowered ? EMPOWER.hpMult : 1) * (1 + 0.8 * (party - 1)) * DIFFICULTIES[this.sim.difficulty].enemyHpMult;
     s.hp = s.maxHp;
     s.phase = 1;
     s.state = 'idle';
@@ -136,7 +140,7 @@ export abstract class BossBrain {
     this.adds.clear();
     this.lastHitBy = by;
     this.onAwaken();
-    this.sim.emit({ t: 'boss', kind: 'awaken', x: s.x, z: s.z, phase: 1, boss: this.id });
+    this.sim.emit({ t: 'boss', kind: 'awaken', x: s.x, z: s.z, phase: 1, boss: this.id, ...(empowered ? { empowered: true } : {}) });
   }
 
   protected abstract onAwaken(): void;
@@ -197,7 +201,8 @@ export abstract class BossBrain {
     if (s.fractureT > 0 && (s.fractureT -= dt) <= 0) s.fracture = 0;
     if (s.witheredT > 0 && s.withered > 0) {
       s.witheredT -= dt;
-      s.hp -= s.withered * s.witheredDps * dt;
+      // The Mire Mother is untouchable while sunk (damage() refuses her): rot ticks run out but do not bite.
+      if (s.state !== 'sunk') s.hp -= s.withered * s.witheredDps * dt;
       if (s.witheredT <= 0) s.withered = 0;
     }
 
@@ -207,7 +212,7 @@ export abstract class BossBrain {
       this.pending = [];
       this.onDefeat();
       this.clearAdds();
-      this.sim.emit({ t: 'boss', kind: 'defeated', x: s.x, z: s.z, phase: s.phase, killer: this.lastHitBy, boss: this.id });
+      this.sim.emit({ t: 'boss', kind: 'defeated', x: s.x, z: s.z, phase: s.phase, killer: this.lastHitBy, boss: this.id, ...(s.empowered ? { empowered: true } : {}) });
       return;
     }
     const ratio = s.hp / s.maxHp;
@@ -354,9 +359,18 @@ export class PrelateBrain extends BossBrain {
   private tollCd = 4;
   private slamCd = 2;
   private rainCd = 6;
+  /** Prelate Echoes III: when the chasing volley is aimed (0 = none pending). */
+  private chaseAt = 0;
 
   constructor(sim: WorldSim) {
     super(sim, 'prelate');
+  }
+
+  protected tick(_dt: number, players: PlayerBody[]) {
+    if (this.chaseAt && this.sim.time >= this.chaseAt) {
+      this.chaseAt = 0;
+      if (players.length) this.telegraph('rain', this.state.x, this.state.z, 2.3, 1100, { targets: players.map((p) => [p.x, p.z] as [number, number]), side: true });
+    }
   }
 
   protected onAwaken() {
@@ -364,6 +378,7 @@ export class PrelateBrain extends BossBrain {
     this.tollCd = 3.5;
     this.slamCd = 2;
     this.rainCd = 7;
+    this.chaseAt = 0;
   }
 
   protected circleDamage(kind: string) {
@@ -379,10 +394,12 @@ export class PrelateBrain extends BossBrain {
       [-11, -123],
       [11, -123],
     ];
-    const count = p === 2 ? 4 : 6;
+    // Prelate Echoes II: the procession is longer and its first two walkers are elite.
+    const echoes = this.sim.vowFx.echoes;
+    const count = (p === 2 ? 4 : 6) + (echoes >= 2 ? 2 : 0);
     for (let i = 0; i < count; i++) {
       const [x, z] = spawns[i % spawns.length];
-      this.spawnAdd(i % 2 ? 'penitent' : 'risen', x + (i > 3 ? 1.5 : 0), z);
+      this.spawnAdd(i % 2 ? 'penitent' : 'risen', x + (i > 3 ? 1.5 : 0), z, echoes >= 2 && i < 2);
     }
     this.sim.emit({ t: 'boss', kind: 'summon', x: s.x, z: s.z, phase: p, targets: spawns, boss: this.id });
   }
@@ -400,6 +417,11 @@ export class PrelateBrain extends BossBrain {
         this.tollCd = 9 * fast;
         const ms = 1500 * (s.phase === 3 ? 0.8 : 1);
         this.telegraph('toll', s.x, s.z, 6.5, ms);
+        // Prelate Echoes I, the second bell: a smaller toll answers on whoever stands farthest from the first, a moment later.
+        if (this.sim.vowFx.echoes >= 1 && players.length) {
+          const far = players.reduce((a, b) => (Math.hypot(b.x - s.x, b.z - s.z) > Math.hypot(a.x - s.x, a.z - s.z) ? b : a));
+          this.telegraph('toll', far.x, far.z, 3.6, 1300, { side: true }, ms + 600);
+        }
       } else if (this.rainCd <= 0 && s.phase >= 2) {
         this.rainCd = 8 * fast;
         const targets: [number, number][] = players.map((p) => [p.x, p.z]);
@@ -410,6 +432,8 @@ export class PrelateBrain extends BossBrain {
           targets.push([BOSS_ARENA.x + Math.cos(a) * r, BOSS_ARENA.z + Math.sin(a) * r]);
         }
         this.telegraph('rain', s.x, s.z, 2.3, 1400, { targets });
+        // Prelate Echoes III, chasing rain: a second volley is aimed at wherever each player has run to a moment later (see tick).
+        if (this.sim.vowFx.echoes >= 3) this.chaseAt = this.sim.time + 1.6;
       } else if (this.slamCd <= 0 && nd < 4.5) {
         this.slamCd = 3.2 * fast;
         const dirX = (nearest.x - s.x) / (nd || 1);

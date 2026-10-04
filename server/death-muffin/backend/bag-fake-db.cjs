@@ -55,6 +55,7 @@ function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot =
     ...bag.map((b, i) => ({ id: i + 1, equipped: 0, equipped_slot: null, character_id: 1, ...b })),
     ...equipped.map((e, i) => ({ id: 800 + i, equipped: 1, equipped_slot: e.equipped_slot || 'main_hand', character_id: 1, ...e })),
   ];
+  let loadouts = [];
   let vlt = vault.map((v) => ({ account_id: 7, ...v }));
   // loot_instances: { id, account_id, item_id, ilvl, affixes, created_at }. inventory/account_vault rows point at them with instance_id.
   let lootRows = loot.map((l) => ({ account_id: 7, ilvl: 5, affixes: [], created_at: Date.now(), ...l }));
@@ -115,6 +116,16 @@ function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot =
     if (sql.includes('FROM inventory inv')) return [inv.filter((r) => r.character_id === p[0]).sort((a, b) => a.slot_index - b.slot_index).map(joined)];
     if (sql.includes('FROM account_vault v')) return [vlt.filter((r) => r.account_id === p[0]).sort((a, b) => a.slot_index - b.slot_index).map(joined)];
     if (sql.startsWith('DELETE FROM inventory WHERE character_id = ? AND slot_index = ?')) { inv = inv.filter((r) => !(r.character_id === p[0] && r.slot_index === p[1])); return [{}]; }
+    if (sql.startsWith('UPDATE inventory SET quantity = ? WHERE id = ?')) { inv.find((r) => r.id === p[1]).quantity = p[0]; return [{}]; }
+    // Loadout presets (loadouts.cjs): every row of the character with its equipped_slot, and the presets table.
+    if (sql.startsWith('SELECT id, slot_index, item_id, quantity, equipped, equipped_slot, instance_id FROM inventory')) return [inv.filter((r) => r.character_id === p[0]).map((r) => ({ equipped_slot: null, instance_id: null, ...r }))];
+    if (sql.startsWith('SELECT slot, name, data FROM character_loadouts')) return [loadouts.filter((l) => l.character_id === p[0]).sort((a, b) => a.slot - b.slot).map((l) => ({ ...l }))];
+    if (sql.startsWith('INSERT INTO character_loadouts')) {
+      const row = loadouts.find((l) => l.character_id === p[0] && l.slot === p[1]);
+      if (row) Object.assign(row, { name: p[2], data: p[3] }); else loadouts.push({ character_id: p[0], slot: p[1], name: p[2], data: p[3] });
+      return [{}];
+    }
+    if (sql.startsWith('DELETE FROM character_loadouts')) { loadouts = loadouts.filter((l) => !(l.character_id === p[0] && l.slot === p[1])); return [{}]; }
     if (sql.startsWith('UPDATE inventory SET quantity = ?')) { inv.find((r) => r.character_id === p[1] && r.slot_index === p[2]).quantity = p[0]; return [{}]; }
     if (sql.startsWith('INSERT INTO inventory (character_id, slot_index, item_id, quantity, instance_id, equipped, equipped_slot) VALUES (?, ?, ?, ?, ?, ?, ?)')) {
       if (inv.some((r) => r.character_id === p[0] && r.slot_index === p[1])) throw new Error('Duplicate entry for uq_char_slot');
@@ -176,19 +187,19 @@ function fakeDb({ bag = [], vault = [], equipped = [], level = 1, xp = 0, loot =
     if (sql.startsWith('SELECT instance_id FROM account_vault')) return [vlt.filter((r) => p[0].includes(r.instance_id)).map((r) => ({ instance_id: r.instance_id }))];
     if (sql.startsWith('DELETE FROM loot_instances WHERE id IN')) { for (const id of p[0]) dropInstance(id); return [{}]; }
     if (sql.startsWith('SELECT id, item_type, rarity FROM items')) return [p[0].filter((id) => ITEMS[id]).map((id) => ({ id, item_type: ITEMS[id].type, rarity: ITEMS[id].rarity }))];
-    if (sql.startsWith('SELECT id, stackable')) return [p[0].filter((id) => ITEMS[id]).map((id) => ({ id, stackable: ITEMS[id].stack > 1 ? 1 : 0, max_stack_size: ITEMS[id].stack, item_type: ITEMS[id].type, rarity: ITEMS[id].rarity }))];
+    if (sql.startsWith('SELECT id, stackable')) return [p[0].filter((id) => ITEMS[id]).map((id) => ({ equipment_slot: ITEMS[id].type === 'weapon' ? 'main_hand' : ITEMS[id].type === 'offhand' ? 'off_hand' : null, two_handed: id.startsWith('staff_') ? 1 : 0, id, stackable: ITEMS[id].stack > 1 ? 1 : 0, max_stack_size: ITEMS[id].stack, item_type: ITEMS[id].type, rarity: ITEMS[id].rarity }))];
     if (extra) { const r = extra(sql, p); if (r) return r; }
     throw new Error(`unexpected query: ${sql.slice(0, 80)}`);
   };
   let snap = null;
   const conn = {
     execute, query, release: () => {},
-    beginTransaction: async () => { snap = { inv: JSON.parse(JSON.stringify(inv)), vlt: JSON.parse(JSON.stringify(vlt)), prof: { ...prof }, loot: JSON.parse(JSON.stringify(lootRows)) }; },
+    beginTransaction: async () => { snap = { loadouts: JSON.parse(JSON.stringify(loadouts)), inv: JSON.parse(JSON.stringify(inv)), vlt: JSON.parse(JSON.stringify(vlt)), prof: { ...prof }, loot: JSON.parse(JSON.stringify(lootRows)) }; },
     commit: async () => { snap = null; },
-    rollback: async () => { if (snap) { inv = snap.inv; vlt = snap.vlt; prof = snap.prof; lootRows = snap.loot; snap = null; } },
+    rollback: async () => { if (snap) { loadouts = snap.loadouts; inv = snap.inv; vlt = snap.vlt; prof = snap.prof; lootRows = snap.loot; snap = null; } },
   };
   return {
-    get inv() { return inv; }, get vault() { return vlt; }, get prof() { return prof; }, get loot() { return lootRows; }, calls, conn,
+    get inv() { return inv; }, get loadouts() { return loadouts; }, get vault() { return vlt; }, get prof() { return prof; }, get loot() { return lootRows; }, calls, conn,
     pool: { getConnection: async () => conn, execute: (...a) => execute(...a), query },
   };
 }

@@ -36,6 +36,7 @@ import { hipAnchor, inPlaceHeroClip, landingTime, stripRootTravel } from './inPl
 import { planLocomotion, STRIDES, type LocomotionPlan } from './locomotion';
 import { applyWingFlap, type WingOpts } from './wingFlap';
 import { applyFriendRim, type FriendRim } from './friendRim';
+import { MaterialVariant, variantFor, applyFlash, FLASH_LEVELS } from './creatureMaterials';
 import { applyGearTint, GEAR_REGIONS, makeGearTintState, type GearRegion } from './gearTint';
 
 export type CreatureAnim = 'idle' | 'walk' | 'run' | 'attack' | 'cast' | 'hurt' | 'death' | 'dig' | 'chop' | 'dive' | 'talk' | 'talk2' | CombatAnim;
@@ -146,6 +147,19 @@ function pinFirst(template: object, sig: string, mats: THREE.Material[]) {
   for (const m of mats) pinned.add(m);
 }
 
+/**
+ * Free the per-instance bone texture of every skinned mesh under `root`. A SkinnedMesh clone owns its own Skeleton, and
+ * the bone texture (a DataTexture) is created on first draw and only released by skeleton.dispose(); material and
+ * geometry disposal never reach it, so every dead body leaked one GPU texture (measured ~4 per kill in a fight).
+ * Geometry and materials are handled elsewhere (geometry is shared with the template).
+ */
+export function disposeSkeletons(root: THREE.Object3D) {
+  root.traverse((o) => (o as THREE.SkinnedMesh).skeleton?.dispose());
+}
+
+export interface HeadFit { cx: number; cz: number; top: number; radius: number }
+const HEAD_FIT = new Map<string, HeadFit>();
+
 export class Creature {
   readonly root = new THREE.Group();
   /** Resolves after the model has been cloned and attached (or its load failed). */
@@ -156,6 +170,12 @@ export class Creature {
   private mixer: THREE.AnimationMixer | null = null;
   private actions = new Map<string, THREE.AnimationAction>();
   private mats: THREE.MeshStandardMaterial[] = [];
+  /** Shared-material mode (see creatureMaterials.ts): this body's meshes draw with its look's shared materials; null when it owns its own. */
+  private variant: MaterialVariant | null = null;
+  private meshSrc: { mesh: THREE.Mesh; src: THREE.Material }[] = [];
+  /** Shared mode: the pooled transparent materials this body fades with (null while it is drawn with the shared ones). */
+  private fadeMats: THREE.MeshStandardMaterial[] | null = null;
+  private flashLevel = 0;
   private baseEmissive = new THREE.Color(0);
   private baseEmissiveIntensity = 0;
   private loop: CreatureAnim = 'idle';
@@ -213,12 +233,11 @@ export class Creature {
       // same one, so enemies, thralls and bosses face (and swing their legs) along their heading instead of sideways.
       model.rotation.y += opts.modelYaw ?? RIG_YAW[this.rigSlug] ?? (model.getObjectByName('Hip') ? BIPED_YAW : 0);
       const wingPhase = Math.random() * Math.PI * 2;
-      model.traverse((o) => {
-        const mesh = o as THREE.Mesh;
-        if (!mesh.isMesh) return;
-        mesh.castShadow = this.shadowOn;
-        const src = mesh.material as THREE.MeshStandardMaterial;
-        const mat = src.clone();
+      const wings = !!opts.wings && !usedFallback;
+      // Bodies of the same template and look draw with the same materials, unless the material carries state of its own (gear tint, wing phase).
+      const share = !opts.gearTint && !wings;
+      const style = (src: THREE.Material) => {
+        const mat = (src as THREE.MeshStandardMaterial).clone();
         if (opts.tint) mat.color.multiply(new THREE.Color(opts.tint));
         if (opts.emissive) {
           mat.emissive = new THREE.Color(opts.emissive);
@@ -230,15 +249,41 @@ export class Creature {
           mat.depthWrite = false;
           mat.emissive = new THREE.Color(opts.emissive ?? 0x8f9ed1);
           mat.emissiveIntensity = opts.emissiveIntensity ?? 0.9;
-          mesh.castShadow = false;
         }
+        return mat;
+      };
+      const hex = (c: THREE.ColorRepresentation | undefined) => (c === undefined ? '-' : new THREE.Color(c).getHexString());
+      const look = `${hex(opts.tint)}|${hex(opts.emissive)}|${opts.emissiveIntensity ?? '-'}|${!!opts.spectral}|${opts.rim ? `${hex(opts.rim.color)}:${opts.rim.strength}` : '-'}`;
+      const variant = share
+        ? variantFor(t.base ?? t, look, (src) => {
+            const mat = style(src);
+            if (opts.rim) applyFriendRim(mat, opts.rim);
+            return mat;
+          })
+        : null;
+      model.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        mesh.castShadow = this.shadowOn;
+        const src = mesh.material as THREE.MeshStandardMaterial;
+        if (variant) {
+          const mat = variant.get(src);
+          if (opts.spectral) mesh.castShadow = false;
+          mesh.material = mat;
+          this.meshSrc.push({ mesh, src });
+          if (!this.mats.includes(mat)) this.mats.push(mat);
+          return;
+        }
+        const mat = style(src);
+        if (opts.spectral) mesh.castShadow = false;
         // Only the requested model flaps; a fallback stand-in (older deploy) keeps still.
-        if (opts.wings && !usedFallback) applyWingFlap(mesh, mat, opts.wings, wingPhase);
+        if (wings) applyWingFlap(mesh, mat, opts.wings!, wingPhase);
         if (opts.gearTint) applyGearTint(mesh, mat, this.gearTint);
         if (opts.rim) applyFriendRim(mat, opts.rim);
         mesh.material = mat;
         this.mats.push(mat);
       });
+      this.variant = variant;
       if (this.mats[0]) {
         this.baseEmissive.copy(this.mats[0].emissive);
         this.baseEmissiveIntensity = this.mats[0].emissiveIntensity;
@@ -247,16 +292,18 @@ export class Creature {
       });
       // First draw of a new body compiles shaders and uploads textures; do both off the frame, then attach.
       const sig = `${!!opts.spectral}${!!opts.wings && !usedFallback}${!!opts.gearTint}${!!opts.rim}`;
-      pinFirst(t, sig, this.mats);
-      await warmModel(model, this.mats, t, sig);
+      if (!this.variant) pinFirst(t.base ?? t, sig, this.mats);
+      await warmModel(model, this.mats, t.base ?? t, sig);
       if (this.disposed) {
         this.disposeMats();
+        disposeSkeletons(model);
         return;
       }
       // Mixer + one action per clip: a second budgeted chunk (visual only; logic never waits on `loaded`).
       await buildBudget.run(() => {
       if (this.disposed) {
         this.disposeMats();
+        disposeSkeletons(model);
         return;
       }
       this.model = model;
@@ -274,11 +321,61 @@ export class Creature {
         }
       });
       this.loaded = true;
+      for (const cb of this.loadedCbs.splice(0)) cb();
       for (const [bone, obj, dir, follow, fit] of this.pendingAttach) this.attach(bone, obj, dir, follow, fit);
       this.pendingAttach = [];
       this.startLoop(false);
       });
     });
+  }
+
+  private loadedCbs: (() => void)[] = [];
+
+  /** Run `cb` once the model is built (now, if it already is). */
+  afterLoad(cb: () => void) {
+    if (this.loaded) cb();
+    else this.loadedCbs.push(cb);
+  }
+
+  /**
+   * The skull and hood of a hero, measured once per rig in the rest pose (vertices owned by the Head bone), in the
+   * character frame (root-local metres): `off` = from the Head bone to where a helm's origin should sit so its dome tops
+   * the head, `radius` = horizontal reach of skull plus hood. Null until loaded or when the rig has no Head bone.
+   */
+  headFit(): HeadFit | null {
+    if (!this.model) return null;
+    const cached = HEAD_FIT.get(this.rigSlug);
+    if (cached) return cached;
+    this.root.updateMatrixWorld(true);
+    let bone: THREE.Object3D | undefined;
+    this.model.traverse((o) => { if (!bone && o.name === 'Head') bone = o; });
+    if (!bone) return null;
+    const boneP = this.root.worldToLocal(bone.getWorldPosition(new THREE.Vector3()));
+    const xs: number[] = [], zs: number[] = [], ys: number[] = [];
+    const v = new THREE.Vector3();
+    this.model.traverse((o) => {
+      const m = o as THREE.SkinnedMesh;
+      if (!m.isSkinnedMesh) return;
+      const bi = m.skeleton.bones.findIndex((b) => b.name === 'Head');
+      if (bi < 0) return;
+      const idx = m.geometry.getAttribute('skinIndex'), wgt = m.geometry.getAttribute('skinWeight');
+      m.skeleton.update();
+      for (let i = 0; i < idx.count; i++) {
+        let w = 0;
+        for (let k = 0; k < 4; k++) if (idx.getComponent(i, k) === bi) w += wgt.getComponent(i, k);
+        if (w < 0.6) continue;
+        m.getVertexPosition(i, v).applyMatrix4(m.matrixWorld);
+        this.root.worldToLocal(v);
+        xs.push(v.x); ys.push(v.y); zs.push(v.z);
+      }
+    });
+    if (xs.length < 30) return null;
+    const q = (a: number[], f: number) => { const b = [...a].sort((x, y) => x - y); return b[Math.min(b.length - 1, Math.max(0, Math.round(f * (b.length - 1))))]; };
+    const cx = (q(xs, 0.02) + q(xs, 0.98)) / 2, cz = (q(zs, 0.02) + q(zs, 0.98)) / 2;
+    const rxz = Math.max(q(xs, 0.98) - q(xs, 0.02), q(zs, 0.98) - q(zs, 0.02)) / 2;
+    const fit: HeadFit = { cx: cx - boneP.x, cz: cz - boneP.z, top: q(ys, 0.995) - boneP.y, radius: rxz };
+    HEAD_FIT.set(this.rigSlug, fit);
+    return fit;
   }
 
   has(anim: CreatureAnim) {
@@ -368,6 +465,19 @@ export class Creature {
   /** True while a one-shot (swing, cast, death) is playing: the view layer never throttles those. */
   get busy(): boolean {
     return this.oneShot !== null;
+  }
+
+  /**
+   * Phase (0..1) of the walk / run loop, or null while another clip plays. The footstep sounds read it so they land
+   * with the feet (audio/footsteps.ts), at whatever playback speed the stride matching set.
+   */
+  loopPhase(): number | null {
+    const a = this.current;
+    if (!a || (this.loop !== 'walk' && this.loop !== 'run') || this.oneShot) return null;
+    const d = a.getClip().duration;
+    if (!(d > 0)) return null;
+    const ph = (a.time % d) / d;
+    return ph < 0 ? ph + 1 : ph;
   }
 
   /** The last locomotion plan (QA and tests read it; null until setGroundSpeed has run). */
@@ -548,6 +658,26 @@ export class Creature {
     } else g.set(0, 0, 0);
   }
 
+  /** Tint the head's skin region (the hood, cowl or built-in helmet) as worn-helm trim; null clears it. */
+  setHeadTint(tint: { color: number; glow?: number; strength?: number } | null) {
+    const t = this.gearTint.head;
+    const g = this.gearTint.headGlow;
+    if (!tint) {
+      t.set(1, 1, 1, 0);
+      g.set(0, 0, 0);
+      return;
+    }
+    const c = new THREE.Color(tint.color);
+    t.set(c.r, c.g, c.b, tint.strength ?? 0.55);
+    if (tint.glow) g.set(...new THREE.Color(tint.glow).toArray() as [number, number, number]).multiplyScalar(0.6);
+    else g.set(0, 0, 0);
+  }
+
+  /** Name of the one-shot clip now playing ('death', 'hurt2', ...), or null while a loop plays. */
+  get oneShotName(): string | null {
+    return this.oneShot?.getClip().name ?? null;
+  }
+
   /** Remove an attached prop (equipment swaps). Does not dispose it. */
   detach(obj: THREE.Object3D) {
     this.pendingAttach = this.pendingAttach.filter(([, o]) => o !== obj);
@@ -559,16 +689,23 @@ export class Creature {
   set flash(v: number) {
     if (Math.abs(v - this.flashV) < 0.02) return;
     this.flashV = v;
-    for (const m of this.mats) {
-      if (v > 0.01) {
-        m.emissive.copy(this.baseEmissive).lerp(FLASH_COLOR, Math.min(1, v));
-        // PBR Tripo materials are largely metallic: keep the pulse faint or it whites out.
-        m.emissiveIntensity = this.baseEmissiveIntensity + v * 0.16;
-      } else {
-        m.emissive.copy(this.baseEmissive);
-        m.emissiveIntensity = this.baseEmissiveIntensity;
+    if (this.variant && !this.fadeMats) {
+      // Shared materials: swap to the look's flashed copy for this strength (same program, only the emissive differs).
+      const level = Math.round(Math.min(1, Math.max(0, v)) * FLASH_LEVELS);
+      if (level !== this.flashLevel) {
+        this.flashLevel = level;
+        this.showShared();
       }
+      return;
     }
+    for (const m of this.fadeMats ?? this.mats) applyFlash(m, this.baseEmissive, this.baseEmissiveIntensity, v, FLASH_COLOR);
+  }
+
+  /** Shared mode: put the look's plain (or flashed) materials on every mesh. */
+  private showShared() {
+    const vr = this.variant;
+    if (!vr) return;
+    for (const { mesh, src } of this.meshSrc) mesh.material = this.flashLevel ? vr.flash(src, this.flashLevel, FLASH_COLOR) : vr.get(src);
   }
 
   /** Toggle moon shadows for every mesh (shadow LOD); remembered until the model loads. */
@@ -581,6 +718,32 @@ export class Creature {
   }
 
   setOpacity(o: number) {
+    const vr = this.variant;
+    if (vr) {
+      // Shared materials stay opaque and shared; a fade borrows pooled transparent copies until it ends.
+      if (o >= 1) {
+        if (this.fadeMats) {
+          this.meshSrc.forEach(({ src }, i) => vr.giveFade(src, this.fadeMats![i]));
+          this.fadeMats = null;
+          this.showShared();
+        }
+        return;
+      }
+      if (!this.fadeMats) {
+        this.fadeMats = this.meshSrc.map(({ mesh, src }) => {
+          const m = vr.takeFade(src);
+          applyFlash(m, this.baseEmissive, this.baseEmissiveIntensity, this.flashV, FLASH_COLOR);
+          mesh.material = m;
+          return m;
+        });
+      }
+      for (const m of this.fadeMats) {
+        m.transparent = true;
+        m.opacity = (this.opts.spectral ? 0.55 : 1) * o;
+        m.depthWrite = false;
+      }
+      return;
+    }
     for (const m of this.mats) {
       m.transparent = o < 1 || !!this.opts.spectral;
       m.opacity = (this.opts.spectral ? 0.55 : 1) * o;
@@ -712,6 +875,13 @@ export class Creature {
 
   /** Pinned materials (see pinFirst) are kept: disposing them would free their shader programs. */
   private disposeMats() {
+    const vr = this.variant;
+    if (vr) {
+      // Shared materials are never disposed; a fade's pooled copies go back for the next one.
+      if (this.fadeMats) this.meshSrc.forEach(({ src }, i) => vr.giveFade(src, this.fadeMats![i]));
+      this.fadeMats = null;
+      return;
+    }
     for (const m of this.mats) if (!pinned.has(m)) m.dispose();
   }
 
@@ -719,6 +889,7 @@ export class Creature {
     this.disposed = true;
     this.mixer?.stopAllAction();
     this.disposeMats();
+    if (this.model) disposeSkeletons(this.model);
     this.root.removeFromParent();
     this.root.clear();
     this.mixer = null;

@@ -161,7 +161,7 @@ var NODE_LIST = [
     respawnS: 30,
     gold: [2, 6],
     tint: 5920336,
-    extras: [{ item: "ore_silver", chance: 1 / 8 }, { item: "reliquary_fragment", chance: 1 / 60 }, { item: "seed_corpse_lily", chance: 1 / 25 }, { item: "seed_wolfsbane", chance: 1 / 40 }]
+    extras: [{ item: "ore_silver", chance: 1 / 8 }, { item: "reliquary_fragment", chance: 1 / 60 }, { item: "covenant_seal", chance: 1 / 200 }, { item: "seed_corpse_lily", chance: 1 / 25 }, { item: "seed_wolfsbane", chance: 1 / 40 }]
   }),
   // ...and the drowned lotus in the open water.
   node({
@@ -192,7 +192,7 @@ var NODE_LIST = [
     gold: [4, 12],
     tint: 6969914,
     extras: [
-      { item: "covenant_seal", chance: 1 / 40 },
+      { item: "covenant_seal", chance: 1 / 80 },
       { item: "reliquary_fragment", chance: 1 / 25 },
       { item: "seed_bloodroot", chance: 1 / 20 },
       { item: "seed_moonpetal", chance: 1 / 30 },
@@ -1090,6 +1090,18 @@ var AREA_RUNE_POOL = {
   warren: byRarity("uncommon", "rare"),
   coliseum: byRarity("uncommon", "rare", "epic")
 };
+var ELITE_RUNE_CHANCE_BY_AREA = {
+  graves: 0.05,
+  warren: 0.055,
+  ossuary: 0.06,
+  nave: 0.07,
+  coliseum: 0.08,
+  sanctum: 0.09,
+  cloister: 0.1,
+  pyre: 0.11,
+  fen: 0.12
+};
+var ELITE_RUNE_CHANCE = ELITE_RUNE_CHANCE_BY_AREA.graves;
 var BOSS_RUNE_POOL = {
   gravedigger: ["rune_splinter", "rune_marrow_tap", "rune_mass_grave"],
   abbess: ["rune_ossuary_ring", "rune_impale", "rune_bone_colossus", "rune_volley"],

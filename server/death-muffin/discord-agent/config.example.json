@@ -1,0 +1,19 @@
+{
+  "channelId": "1553896227186282546",
+  "guildId": "1470926087616991428",
+  "ownerIds": ["__OWNER_DISCORD_ID__"],
+  "projects": {
+    "deathmuffin": {
+      "requesters": ["142812688358178816"],
+      "approvers": {
+        "casual": ["142812688358178816"],
+        "gameplay": ["142812688358178816"],
+        "sensitive": ["142812688358178816"]
+      }
+    }
+  },
+  "names": { "142812688358178816": "Helix" },
+  "defaultModel": "sonnet",
+  "maxConcurrentJobs": 1,
+  "threadReplyRequiresMention": false
+}

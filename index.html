@@ -11,21 +11,22 @@
     /* Instant splash: paints from the HTML alone (placeholder, then the painted art), before any module loads. Shared with the in-game
        LoadVeil (src/ui/LoadVeil.ts) so page open -> login -> world is one continuous loading screen. Removed by src/ui/splash.ts. */
     html, body { background: #07060a; }
-    .dm-splash { position: fixed; inset: 0; z-index: 9500; overflow: hidden; background: #07060a url(data:image/webp;base64,UklGRo4AAABXRUJQVlA4IIIAAADQBQCdASooABcAPs1QoUunpKMhtVgIAPAZiWcA0FQWbaljSEYP5OgrxVKncHWIXs4WuZtO8xYgAP70aqRQ0eNrbu5FUqBpLxddWQXx+Pt7wtJ3HOKMdEo3Ip3YyK64aEZRiAKNYwxU2TRgQa4NXVJtMgFd9x+fdfprqrkISGanAAAA) center / cover no-repeat; color: #f0e9dc; opacity: 1; transition: opacity 0.45s ease; }
+    .dm-splash { position: fixed; inset: 0; z-index: 9500; overflow: hidden; background: #07060a url(data:image/webp;base64,UklGRrgAAABXRUJQVlA4IKwAAABwBgCdASooABcAPyV8tlKuJ6UiqrgN+cAkiUAXYAob9j0FEZjFVpXS2pKe/53fT1B2z8jrQrwGwPmy2AAA/vVrovbRyjvUceF00kYOPEoWmNty063wKhx24IZQSJ8QgatuMdb1y4EfNcJltSesOh7Cf22WdbVtOzIfc0HG/esuDoPJhfcXJEu9GbcRJdtBw9eR7oqyLFxYgDfjdb3fQy3Kv+WFNlNHTtUGgAAA) center / cover no-repeat; color: #f0e9dc; opacity: 1; transition: opacity 0.45s ease; }
     .dm-splash.out { opacity: 0; pointer-events: none; }
-    .dm-splash-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 38% 50%; opacity: 0; transition: opacity 0.6s ease; }
+    .dm-splash-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 68% 50%; opacity: 0; transition: opacity 0.6s ease; }
     .dm-splash-art.in { opacity: 1; }
-    .dm-splash-shade { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, transparent 35%, rgba(7, 6, 10, 0.55) 100%), linear-gradient(to top, rgba(7, 6, 10, 0.92) 0%, rgba(7, 6, 10, 0.55) 26%, transparent 52%); }
-    .dm-splash-copy { position: absolute; left: 0; right: 0; bottom: max(9vh, env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 0 16px; text-align: center; }
-    .dm-splash-title { margin: 0; font: 400 clamp(32px, 6.4vw, 72px)/1 Georgia, 'Times New Roman', serif; letter-spacing: 0.16em; text-transform: uppercase; color: #f0e9dc; text-shadow: 0 0 22px rgba(155, 92, 255, 0.55), 0 2px 12px #000; }
-    .dm-splash-tag { margin: 0; font: italic 400 clamp(14px, 1.9vw, 22px)/1.3 Georgia, 'Times New Roman', serif; letter-spacing: 0.08em; color: #c6a4ff; text-shadow: 0 1px 8px #000; }
-    .dm-splash-track { width: min(340px, 70vw); height: 3px; margin-top: 14px; background: rgba(216, 207, 189, 0.16); border-radius: 2px; overflow: hidden; }
-    .dm-splash-bar { height: 100%; width: 100%; transform: scaleX(0.04); transform-origin: left; background: linear-gradient(90deg, #7c3aed, #c6a4ff); box-shadow: 0 0 12px rgba(155, 92, 255, 0.6); transition: transform 0.25s ease-out; }
-    .dm-splash-status { font: 400 14px/1.3 'Segoe UI', system-ui, -apple-system, sans-serif; letter-spacing: 0.1em; color: rgba(216, 207, 189, 0.8); text-shadow: 0 1px 6px #000; }
-    .dm-splash:not(.dm-loadveil) .dm-splash-bar { animation: dm-splash-pulse 2.4s ease-in-out infinite alternate; }
-    @keyframes dm-splash-pulse { from { transform: scaleX(0.04); } to { transform: scaleX(0.38); } }
-    @media (min-width: 900px) and (min-aspect-ratio: 5/4) { .dm-splash-copy { left: auto; right: 6vw; width: min(46vw, 640px); } }
-    @media (prefers-reduced-motion: reduce) { .dm-splash, .dm-splash-art { transition: none; } .dm-splash:not(.dm-loadveil) .dm-splash-bar { animation: none; transform: scaleX(0.3); } }
+    /* Same composition as the launcher: the hooded necromancer stays right of centre, a dark scrim rises from the bottom and the left. */
+    .dm-splash-shade { position: absolute; inset: 0; background: radial-gradient(ellipse at 62% 45%, transparent 40%, rgba(7, 6, 10, 0.5) 100%), linear-gradient(to top, rgba(7, 6, 10, 0.94) 0%, rgba(7, 6, 10, 0.6) 24%, transparent 48%), linear-gradient(to right, rgba(7, 6, 10, 0.55) 0%, transparent 42%); }
+    .dm-splash-copy { position: absolute; left: 6vw; bottom: max(8vh, env(safe-area-inset-bottom)); width: min(52vw, 560px); display: flex; flex-direction: column; align-items: flex-start; gap: 8px; text-align: left; }
+    .dm-splash-title { margin: 0; font: 700 clamp(30px, 5.4vw, 64px)/1 Georgia, 'Times New Roman', serif; letter-spacing: 0.12em; text-transform: uppercase; color: #f0e9dc; text-shadow: 0 0 22px rgba(155, 92, 255, 0.6), 0 0 6px rgba(155, 92, 255, 0.35), 0 2px 12px #000; }
+    .dm-splash-tag { margin: 0; font: 400 14px/1.3 'Segoe UI', system-ui, -apple-system, sans-serif; letter-spacing: 0.1em; color: #e6c46a; text-shadow: 0 1px 8px #000; }
+    .dm-splash-track { width: min(340px, 70vw); height: 3px; margin-top: 8px; background: rgba(44, 34, 62, 0.9); border-radius: 2px; overflow: hidden; }
+    .dm-splash-bar { height: 100%; width: 100%; transform: scaleX(0.04); transform-origin: left; background: #c6a4ff; box-shadow: 0 0 12px rgba(155, 92, 255, 0.6); transition: transform 0.25s ease-out; }
+    .dm-splash-status { font: italic 400 clamp(13px, 1.4vw, 16px)/1.3 Georgia, 'Times New Roman', serif; letter-spacing: 0.06em; color: rgba(216, 207, 189, 0.75); text-shadow: 0 1px 6px #000; }
+    .dm-splash:not(.dm-loadveil) .dm-splash-bar { animation: dm-splash-slide 1.6s ease-in-out infinite alternate; width: 36%; transform: none; }
+    @keyframes dm-splash-slide { from { margin-left: 0; } to { margin-left: 64%; } }
+    @media (max-aspect-ratio: 1/1) { .dm-splash-copy { left: 6vw; right: 6vw; width: auto; } }
+    @media (prefers-reduced-motion: reduce) { .dm-splash, .dm-splash-art { transition: none; } .dm-splash:not(.dm-loadveil) .dm-splash-bar { animation: none; margin-left: 0; } }
   </style>
   <link rel="stylesheet" href="/src/ui/ui.css" />
   <link rel="stylesheet" href="/src/ui/readability.css" />
@@ -33,7 +34,7 @@
 </head>
 <body>
   <div id="dm-splash" class="dm-splash" role="status" aria-label="Loading Death Muffin">
-    <img class="dm-splash-art" src="/art/loading/covenant-1600.webp" srcset="/art/loading/covenant-960.webp 960w, /art/loading/covenant-1600.webp 1600w" sizes="100vw" alt="" decoding="async" fetchpriority="high" onload="this.classList.add('in')" />
+    <img class="dm-splash-art" src="/art/loading/keyart-1600.webp" srcset="/art/loading/keyart-960.webp 960w, /art/loading/keyart-1600.webp 1600w" sizes="100vw" alt="" decoding="async" fetchpriority="high" onload="this.classList.add('in')" />
     <div class="dm-splash-shade"></div>
     <div class="dm-splash-copy">
       <h1 class="dm-splash-title">Death Muffin</h1>

@@ -39,15 +39,7 @@ namespace DeathMuffinLauncher
 })();";
 
         readonly WebView2 web = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = Color.FromArgb(7, 6, 10) };
-        readonly Label loading = new Label
-        {
-            Text = "Loading Death Muffin",
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter,
-            ForeColor = Color.FromArgb(198, 164, 255),
-            BackColor = Color.FromArgb(7, 6, 10),
-            Font = new Font("Georgia", 18f),
-        };
+        readonly LoadingScreen loading = new LoadingScreen { Text = "Opening the Covenant", Dock = DockStyle.Fill };
         readonly Settings settings;
         readonly string url;
         readonly bool offline;
@@ -57,6 +49,8 @@ namespace DeathMuffinLauncher
         public event Action<string> OfflineStatus;
         /// <summary>Raised if the window could not start or navigate.</summary>
         public event Action<string> Failed;
+        /// <summary>Raised (instead of Failed) when WebView2 itself could not start; the launcher then uses a browser. The window closes.</summary>
+        public event Action WebViewUnavailable;
 
         public GameWindow(Settings settings, string url, bool offline, bool install)
         {
@@ -112,6 +106,7 @@ namespace DeathMuffinLauncher
                             : "Online game unavailable. Check your connection.");
                         loading.Text = "Online game unavailable. Check your connection.";
                         if (offline) loading.Text = "Offline game unavailable. Connect once and download the offline edition.";
+                        loading.Failed = true;
                         loading.Visible = true;
                         return;
                     }
@@ -123,7 +118,8 @@ namespace DeathMuffinLauncher
             }
             catch (Exception ex)
             {
-                if (Failed != null) Failed("Game window could not start. " + ex.Message);
+                if (WebViewUnavailable != null) WebViewUnavailable();
+                else if (Failed != null) Failed("Game window could not start. " + ex.Message);
                 Close();
             }
         }
@@ -137,5 +133,79 @@ namespace DeathMuffinLauncher
 
         /// <summary>Navigate again (used when Download/Open Offline is pressed while the window is already open).</summary>
         public void Reload() { if (web.CoreWebView2 != null) web.CoreWebView2.Reload(); }
+    }
+
+    /// <summary>
+    /// Shown over the game window until the page has loaded: the key art with the title and status near the bottom and a thin
+    /// sliding bar. The art + scrim + title are composed once per size; only the bar animates.
+    /// </summary>
+    internal sealed class LoadingScreen : Control
+    {
+        readonly Timer tick = new Timer { Interval = 33 };
+        Bitmap frame;
+        float phase;
+        bool failed;
+
+        public LoadingScreen()
+        {
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
+            BackColor = Art.Bg;
+            tick.Tick += (s, e) => { phase = (phase + 0.012f) % 1f; Invalidate(BarRect()); };
+        }
+
+        /// <summary>Error state: the bar stops and the status turns warm orange.</summary>
+        public bool Failed { get { return failed; } set { failed = value; Invalidate(); SyncTimer(); } }
+
+        protected override void OnTextChanged(EventArgs e) { Invalidate(); base.OnTextChanged(e); }
+        protected override void OnVisibleChanged(EventArgs e) { SyncTimer(); base.OnVisibleChanged(e); }
+        protected override void OnHandleCreated(EventArgs e) { SyncTimer(); base.OnHandleCreated(e); }
+        void SyncTimer() { tick.Enabled = Visible && IsHandleCreated && !failed; }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) { tick.Dispose(); if (frame != null) frame.Dispose(); }
+            base.Dispose(disposing);
+        }
+
+        Rectangle BarRect() { return new Rectangle(Width / 2 - 160, Height - 74, 320, 3); }
+
+        void Compose()
+        {
+            if (frame != null) frame.Dispose();
+            frame = new Bitmap(Width, Height);
+            using (var g = Graphics.FromImage(frame))
+            {
+                Art.Quality(g);
+                g.Clear(Art.Bg);
+                Art.DrawCover(g, ClientSize);
+                // Darken the lower third so the title and status read over the graveyard.
+                var band = new Rectangle(0, Height * 55 / 100, Width, Height - Height * 55 / 100);
+                using (var br = new System.Drawing.Drawing2D.LinearGradientBrush(new Rectangle(band.X, band.Y - 1, band.Width, band.Height + 1), Color.FromArgb(0, Art.Bg), Color.FromArgb(235, Art.Bg), 90f))
+                    g.FillRectangle(br, band);
+                using (var title = new Font("Georgia", 38f, FontStyle.Bold))
+                using (var center = new StringFormat { Alignment = StringAlignment.Center })
+                    Art.DrawTitle(g, title, Width / 2f, Height - 178, center);
+            }
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            if (Width <= 0 || Height <= 0) return;
+            if (frame == null || frame.Size != ClientSize) Compose();
+            var g = e.Graphics;
+            g.DrawImageUnscaled(frame, 0, 0);
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            using (var f = new Font("Segoe UI", 11f, FontStyle.Bold))
+            using (var b = new SolidBrush(failed ? Color.FromArgb(244, 176, 128) : Art.Gold))
+            using (var center = new StringFormat { Alignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter })
+                g.DrawString(Text.ToUpperInvariant(), f, b, new RectangleF(20, Height - 106, Width - 40, 24), center);
+            if (failed) return;
+            var bar = BarRect();
+            using (var back = new SolidBrush(Color.FromArgb(44, 34, 62))) g.FillRectangle(back, bar);
+            // A violet highlight sliding across the track (indeterminate: the page gives no progress until it has loaded).
+            int seg = 90, x = bar.X - seg + (int)((bar.Width + seg) * phase);
+            var hl = Rectangle.Intersect(bar, new Rectangle(x, bar.Y, seg, bar.Height));
+            if (hl.Width > 0) using (var fill = new SolidBrush(Art.VioletLight)) g.FillRectangle(fill, hl);
+        }
     }
 }

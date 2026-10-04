@@ -21,30 +21,39 @@ export interface GearTintState {
   tint: THREE.Vector4[];
   /** Emissive tell for the rare tiers, per region. */
   glow: THREE.Vector3[];
+  /** The head (hood, cowl or built-in helmet): rgb = tint, w = strength; and its glow. Driven by Creature.setHeadTint. */
+  head: THREE.Vector4;
+  headGlow: THREE.Vector3;
 }
 
 export function makeGearTintState(): GearTintState {
-  return { tint: GEAR_REGIONS.map(() => new THREE.Vector4(1, 1, 1, 0)), glow: GEAR_REGIONS.map(() => new THREE.Vector3()) };
+  return { tint: GEAR_REGIONS.map(() => new THREE.Vector4(1, 1, 1, 0)), glow: GEAR_REGIONS.map(() => new THREE.Vector3()), head: new THREE.Vector4(1, 1, 1, 0), headGlow: new THREE.Vector3() };
 }
 
 const MASK = 'gearMask';
+const HEAD = 'gearHead';
 
 /** Bake the four region weights per vertex (idempotent: geometry is shared by every instance). */
 function bakeMask(mesh: THREE.SkinnedMesh) {
   const geo = mesh.geometry;
-  if (geo.getAttribute(MASK)) return true;
+  if (geo.getAttribute(MASK) && geo.getAttribute(HEAD)) return true;
   const idx = geo.getAttribute('skinIndex');
   const wgt = geo.getAttribute('skinWeight');
   if (!idx || !wgt) return false;
   const region = mesh.skeleton.bones.map((b) => REGION_OF_BONE.find(([re]) => re.test(b.name))?.[1] ?? -1);
+  const headBone = mesh.skeleton.bones.findIndex((b) => b.name === 'Head');
   const out = new Float32Array(idx.count * 4);
+  const head = new Float32Array(idx.count);
   for (let v = 0; v < idx.count; v++) {
     for (let k = 0; k < 4; k++) {
-      const r = region[idx.getComponent(v, k)];
+      const bi = idx.getComponent(v, k);
+      const r = region[bi];
       if (r >= 0) out[v * 4 + r] += wgt.getComponent(v, k);
+      if (bi === headBone) head[v] += wgt.getComponent(v, k);
     }
   }
   geo.setAttribute(MASK, new THREE.BufferAttribute(out, 4));
+  geo.setAttribute(HEAD, new THREE.BufferAttribute(head, 1));
   return true;
 }
 
@@ -58,11 +67,13 @@ export function applyGearTint(mesh: THREE.Mesh, material: THREE.Material, state:
     prev?.call(material, shader, renderer);
     shader.uniforms.uGearTint = { value: state.tint };
     shader.uniforms.uGearGlow = { value: state.glow };
+    shader.uniforms.uHeadTint = { value: state.head };
+    shader.uniforms.uHeadGlow = { value: state.headGlow };
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', `#include <common>\nattribute vec4 ${MASK};\nvarying vec4 vGearMask;`)
-      .replace('#include <begin_vertex>', `#include <begin_vertex>\nvGearMask = ${MASK};`);
+      .replace('#include <common>', `#include <common>\nattribute vec4 ${MASK};\nattribute float ${HEAD};\nvarying vec4 vGearMask;\nvarying float vGearHead;`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>\nvGearMask = ${MASK};\nvGearHead = ${HEAD};`);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec4 vGearMask;\nuniform vec4 uGearTint[4];\nuniform vec3 uGearGlow[4];')
+      .replace('#include <common>', '#include <common>\nvarying vec4 vGearMask;\nvarying float vGearHead;\nuniform vec4 uGearTint[4];\nuniform vec3 uGearGlow[4];\nuniform vec4 uHeadTint;\nuniform vec3 uHeadGlow;')
       .replace(
         '#include <color_fragment>',
         `#include <color_fragment>
@@ -73,12 +84,15 @@ export function applyGearTint(mesh: THREE.Mesh, material: THREE.Material, state:
             float gm = clamp(vGearMask[gi] * uGearTint[gi].w, 0.0, 1.0);
             diffuseColor.rgb = mix(diffuseColor.rgb, uGearTint[gi].rgb * (0.22 + gearLum * 1.5), gm);
           }
+          float gh = clamp(vGearHead * uHeadTint.w, 0.0, 1.0);
+          diffuseColor.rgb = mix(diffuseColor.rgb, uHeadTint.rgb * (0.22 + gearLum * 1.5), gh);
         }`,
       )
       .replace(
         '#include <emissivemap_fragment>',
         `#include <emissivemap_fragment>
-        for (int ge = 0; ge < 4; ge++) totalEmissiveRadiance += uGearGlow[ge] * vGearMask[ge] * uGearTint[ge].w;`,
+        for (int ge = 0; ge < 4; ge++) totalEmissiveRadiance += uGearGlow[ge] * vGearMask[ge] * uGearTint[ge].w;
+        totalEmissiveRadiance += uHeadGlow * vGearHead * uHeadTint.w;`,
       );
   };
   material.needsUpdate = true;

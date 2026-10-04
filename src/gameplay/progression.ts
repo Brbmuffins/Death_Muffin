@@ -1,9 +1,11 @@
 import { isAlwaysOpen, type AreaId } from '../content/areas';
 import { devAccess } from './devAccess';
 import type { Chronicle } from './chronicle';
-import { ashesForRun, boonBlocked, boonCost, boonEffects, ASCENSION, type BoonId, type BoonEffects, type BoonRanks, type RunRecord } from '../content/ascension';
+import { ashesForRun, boonBlocked, boonCost, boonEffects, isUnlocked, unlockCost, vowEffects, vowHeat, vowKey, legacyVows, VOWS, type BoonId, type BoonEffects, type BoonRanks, type RunRecord, type VowEffects, type VowId, type VowRanks } from '../content/ascension';
 import { DAMAGE_UPGRADE, LEGION_UPGRADE, WAVE_UPGRADE } from '../content/upgrades';
-import { ApiError, necroApi, saveProgress, type NecroReply } from '../net/api';
+import { ApiError, necroApi, reportKills, saveProgress, type NecroReply } from '../net/api';
+import { KillReporter, type KillInput } from '../net/killReporter';
+import type { BossKill, FloorClear } from './killRules';
 import { applySave, normalise, type NecroState, type SaveInput } from './necroRules';
 import type { Character } from '../net/types';
 import { xpToNext } from './characterStats';
@@ -36,6 +38,9 @@ export interface LocalProgress {
   ascension: number;
   ashes: number;
   boons: BoonRanks;
+  /** Vows sworn for the run in progress, and the vows / boons opened with soul shards. A save without `vows` is a pre-Vows save (rank N = N steps of Elder Dead). */
+  vows?: VowRanks;
+  unlocks?: string[];
   run: RunRecord;
   /** Server mode: paid Prelate summons not yet reported as kills. */
   summonsPending?: number;
@@ -58,6 +63,8 @@ export function toNecro(l: LocalProgress): NecroState {
     ascension: l.ascension,
     ashes: l.ashes,
     boons: l.boons,
+    vows: l.vows ?? legacyVows(l.ascension),
+    unlocks: l.unlocks ?? [],
     run: l.run,
     summonsPending: l.summonsPending ?? 0,
     migrated: !!l.serverBacked,
@@ -77,6 +84,8 @@ function copyInto(l: LocalProgress, s: NecroState) {
   l.ascension = s.ascension;
   l.ashes = s.ashes;
   l.boons = { ...s.boons };
+  l.vows = { ...s.vows };
+  l.unlocks = [...s.unlocks];
   l.run = { ...s.run };
   l.summonsPending = s.summonsPending;
   l.serverBacked = true;
@@ -103,6 +112,8 @@ const blank = (): LocalProgress => ({
   ascension: 0,
   ashes: 0,
   boons: {},
+  vows: {},
+  unlocks: [],
   run: { prelateKills: 0, peakWaveTier: 0, kills: 0 },
 });
 
@@ -115,6 +126,7 @@ export function loadLocalProgress(characterId: number): LocalProgress {
       const saved = JSON.parse(raw) as Partial<LocalProgress>;
       const p = { ...blank(), ...saved };
       // Saves from before Ascension: everything so far counts as the current run.
+      if (!saved.vows) p.vows = legacyVows(p.ascension);
       if (!saved.run) p.run = { prelateKills: p.bossKills, peakWaveTier: p.waveTierOwned, kills: p.totalKills };
       return p;
     }
@@ -140,11 +152,15 @@ export class Progression {
   private timer = 0;
   private inFlight = false;
   private remoteInFlight = 0;
+  /** Necro-progress requests run one at a time, so their replies are adopted in the order the server applied them. */
+  private necroChain: Promise<unknown> = Promise.resolve();
   private listeners = new Set<() => void>();
   /** Lifetime stats (set by the scene): kills, gold and Ascension runs feed it from here. */
   chronicle: Chronicle | null = null;
   /** 'server' once the necro-progress routes answered; 'local' otherwise. */
   mode: 'local' | 'server' = 'local';
+  /** Server authority step 2: what was killed, sent with the saves (net/killReporter.ts). */
+  readonly reporter = new KillReporter();
   /** Deltas gathered since the last necro save (server mode). */
   private pending = emptyPending();
   private pendingWaveActive = false;
@@ -205,20 +221,32 @@ export class Progression {
     this.syncListeners.forEach((fn) => fn());
   }
 
+  /**
+   * Run a necro-progress request after every earlier one has been answered. Overlapping requests used to be adopted in
+   * whatever order the replies arrived: an older reply (computed before a newer save) landed last and rolled kills,
+   * a just-opened seal or a boon back for a moment.
+   */
+  private serial<T>(task: () => Promise<T>): Promise<T> {
+    const run = this.necroChain.then(task);
+    this.necroChain = run.then(() => undefined, () => undefined);
+    return run;
+  }
+
   /** Fire a server mutation; on success adopt its state, on failure report and resync. */
   private remote(call: () => Promise<NecroReply>) {
     if (this.mode !== 'server') return;
     this.remoteInFlight++;
-    call()
-      .then((r) => this.adopt(r.progress))
-      .catch((err) => {
-        this.errorListeners.forEach((fn) => fn(err instanceof Error ? err.message : 'Progress could not be saved'));
-        return necroApi
-          .get(this.character.id)
-          .then((r) => this.adopt(r.progress))
-          .catch(() => undefined);
-      })
-      .finally(() => { this.remoteInFlight--; });
+    void this.serial(() =>
+      call()
+        .then((r) => this.adopt(r.progress))
+        .catch((err) => {
+          this.errorListeners.forEach((fn) => fn(err instanceof Error ? err.message : 'Progress could not be saved'));
+          return necroApi
+            .get(this.character.id)
+            .then((r) => this.adopt(r.progress))
+            .catch(() => undefined);
+        }),
+    ).finally(() => { this.remoteInFlight--; });
   }
 
   private get hasPending() {
@@ -289,9 +317,24 @@ export class Progression {
     return boonEffects(this.local.boons);
   }
 
+  /** The vows sworn for this run. */
+  get vows(): VowRanks {
+    return this.local.vows ?? (this.local.vows = legacyVows(this.local.ascension));
+  }
+
+  /** What the sworn vows change. */
+  get vowFx(): VowEffects {
+    return vowEffects(this.vows);
+  }
+
+  /** The rank this run plays at: the heat of the vows sworn. */
+  get heat(): number {
+    return vowHeat(this.vows);
+  }
+
   /** Ashes the Altar would pay for this run right now (0 = not yet ready). */
   ashesOnAscend() {
-    return this.local.ascension >= ASCENSION.maxRank ? 0 : ashesForRun(this.local.run, this.local.ascension);
+    return ashesForRun(this.local.run, this.heat);
   }
 
   canAscend() {
@@ -299,25 +342,24 @@ export class Progression {
   }
 
   /**
-   * Burn the run: tiers, shards, kills and seals reset; Ashes and rank rise;
-   * starting boons apply. Level, XP, gold and items are untouched.
+   * Burn the run: tiers and the run tally reset; Ashes rise and the best rank with them if this run was hotter. Seals, kill
+   * counts and soul shards stay, and so do the sworn vows. Level, XP, gold and items are untouched.
    */
   ascend(): number {
     const earned = this.ashesOnAscend();
     if (!earned) return 0;
     const l = this.local;
     const fx = this.boons;
-    l.ascension += 1;
+    const heat = this.heat;
+    l.ascension = Math.max(l.ascension, heat);
     l.ashes += earned;
     l.damageTier = fx.startDamageTier;
     l.waveTierOwned = 0;
     l.waveTierActive = 0;
     l.legionTier = 0;
-    l.shards = fx.startShards;
-    l.areaKills = {};
-    l.unlocked = ['chapterhouse', 'graves'];
+    l.shards = Math.max(l.shards, fx.startShards);
     l.run = { prelateKills: 0, peakWaveTier: 0, kills: 0 };
-    void this.chronicle?.ascend(l.ascension);
+    void this.chronicle?.ascend(heat);
     l.summonsPending = 0;
     this.pending = emptyPending();
     this.saveLocal();
@@ -326,9 +368,72 @@ export class Progression {
     return earned;
   }
 
+  /** Why these vows can't be sworn (null = they can). Mirrors the server rule. */
+  vowsProblem(next: VowRanks): string | null {
+    for (const id of Object.keys(next) as VowId[]) {
+      const n = next[id] ?? 0;
+      if (!VOWS[id] || n < 0 || n > VOWS[id].maxRank) return 'Unknown vow.';
+      if (n && !isUnlocked(this.local.unlocks, vowKey(id))) return `${VOWS[id].name} is not unlocked yet.`;
+    }
+    return null;
+  }
+
+  /** Would swearing `next` restart this run's tally (it has kills or a Prelate kill, and the vows differ)? */
+  vowsRestartRun(next: VowRanks): boolean {
+    const r = this.local.run;
+    const differs = (Object.keys(VOWS) as VowId[]).some((id) => (next[id] ?? 0) !== (this.vows[id] ?? 0));
+    return differs && (r.kills > 0 || r.prelateKills > 0 || r.peakWaveTier > 0);
+  }
+
+  /** Swear the whole set of vows for the next run. Returns false if refused. */
+  swearVows(next: VowRanks): boolean {
+    if (this.vowsProblem(next)) return false;
+    const clean: VowRanks = {};
+    for (const id of Object.keys(next) as VowId[]) if (next[id]) clean[id] = next[id];
+    const restart = this.vowsRestartRun(clean);
+    this.local.vows = clean;
+    if (restart) {
+      this.local.run = { prelateKills: 0, peakWaveTier: 0, kills: 0 };
+    }
+    this.saveLocal();
+    if (this.mode === 'server') {
+      // Kills gathered since the last save must reach the server before it decides whether the run restarts.
+      this.remote(async () => {
+        await this.sendNecro();
+        return necroApi.vows(this.character.id, clean);
+      });
+    } else this.markServerDirty(true);
+    this.emit();
+    return true;
+  }
+
+  /** Why a vow or boon can't be unlocked with shards (null = it can). */
+  unlockProblem(key: string): string | null {
+    const cost = unlockCost(key);
+    if (!cost) return 'Nothing to unlock.';
+    if (this.local.unlocks?.includes(key)) return 'Already unlocked.';
+    return this.local.shards < cost ? `Needs ${cost} soul shards` : null;
+  }
+
+  /** Spend soul shards at the Altar to open a vow or a boon. */
+  unlockAtAltar(key: string): boolean {
+    if (this.unlockProblem(key)) return false;
+    this.local.shards -= unlockCost(key)!;
+    (this.local.unlocks ??= []).push(key);
+    this.saveLocal();
+    if (this.mode === 'server') {
+      this.remote(async () => {
+        await this.sendNecro();
+        return necroApi.unlock(this.character.id, key);
+      });
+    } else this.markServerDirty(true);
+    this.emit();
+    return true;
+  }
+
   /** Why a boon can't be bought (null = it can). */
   boonProblem(id: BoonId): string | null {
-    const blocked = boonBlocked(id, this.local.boons, this.local.ascension);
+    const blocked = boonBlocked(id, this.local.boons, this.local.ascension, this.local.unlocks ?? []);
     if (blocked) return blocked;
     const cost = boonCost(id, this.local.boons)!;
     return this.local.ashes < cost ? `Needs ${cost} Ashes` : null;
@@ -381,7 +486,9 @@ export class Progression {
     if (this.mode !== 'server') return this.markServerDirty(true);
     const goldBefore = (this.character.gold ?? 0) + cost;
     this.remote(async () => {
-      await saveProgress({ ...this.payload(), gold: Math.max(0, Math.round(goldBefore)) });
+      const sent = { ...this.payload(), gold: Math.max(0, Math.round(goldBefore)) };
+      await saveProgress(sent);
+      this.ackReports(sent);
       const r = await necroApi.purchase(this.character.id, upgrade);
       this.markServerDirty(false);
       return r;
@@ -398,6 +505,25 @@ export class Progression {
     this.saveLocal();
     this.serverPurchase('wave', cost);
     return true;
+  }
+
+  /**
+   * A gold spend the server prices and takes (Workbench reforge, Empowered summons). Gold is client-saved, so first bring the server's
+   * copy up to ours (as a Damage tier does), then make the call, then adopt the gold in its reply, keeping anything picked up meanwhile.
+   * Runs in the same queue as the other server mutations, one at a time. Throws the server's readable error unchanged.
+   */
+  spendOnServer<T extends { gold: number; cost?: number }>(call: () => Promise<T>): Promise<T> {
+    return this.serial(async () => {
+      await saveProgress(this.payload());
+      const before = this.character.gold ?? 0;
+      const reply = await call();
+      const gained = (this.character.gold ?? 0) - before;
+      this.character.gold = Math.max(0, Math.round(reply.gold + gained));
+      if (reply.cost) this.chronicle?.add('gold.spent', reply.cost);
+      if (gained !== 0) this.markServerDirty(false);
+      this.emit();
+      return reply;
+    });
   }
 
   /** Reinforce the Legion one tier for gold (the thrall kit's gold sink). */
@@ -420,6 +546,35 @@ export class Progression {
   }
 
   // --- Kills / unlocks / shards (local) ---
+
+  /** Report a paid kill to the server (what died, where, how old, and the multipliers the reward used). Call it BEFORE the XP is added: a level-up saves at once. */
+  reportKill(k: KillInput) {
+    this.reporter.kill(k);
+    if (this.reporter.crowded) void this.flushReports();
+  }
+
+  reportBoss(b: Omit<BossKill, 'n'>) {
+    this.reporter.boss(b);
+  }
+
+  /** A Depths floor was cleared: the stair proves the next depth, so this goes out at once (the Chronicle's deepest-floor flush follows within seconds). */
+  reportFloor(f: FloorClear) {
+    this.reporter.floor(f);
+    void this.flushReports();
+  }
+
+  /** Post whatever the reporter holds on its own. Never rejects: a failure keeps the batches for the next save. */
+  async flushReports(keepalive = false): Promise<void> {
+    const reports = this.reporter.batches();
+    if (!reports.length) return;
+    try {
+      await reportKills(this.character.id, reports, keepalive);
+      this.reporter.ack(reports[reports.length - 1].seq);
+    } catch (err) {
+      // An older server has no route (or the account cannot report): stop holding batches. Anything else is retried with the next save.
+      if (err instanceof ApiError && (err.status === 404 || err.status === 400)) this.reporter.discard();
+    }
+  }
 
   recordKill(area: AreaId, waveTier = this.local.waveTierActive) {
     // Dev access walks into sealed halls and its kills are banked like anyone's (the server accepts staff kills past every seal).
@@ -475,7 +630,7 @@ export class Progression {
     if (this.mode === 'server') {
       // Shards picked up since the last save must reach the server before it charges them.
       this.remote(async () => {
-        await this.flushNecro();
+        await this.sendNecro();
         return necroApi.summonPrelate(this.character.id);
       });
     }
@@ -490,7 +645,7 @@ export class Progression {
     this.saveLocal();
     if (this.mode === 'server') {
       this.remote(async () => {
-        await this.flushNecro();
+        await this.sendNecro();
         return necroApi.summonBoss(this.character.id, boss);
       });
     }
@@ -502,9 +657,16 @@ export class Progression {
     this.addShards(BOSSES[boss].shards);
   }
 
-  /** Send gathered deltas now (server mode). Failures put them back for the next try. */
-  private async flushNecro(keepalive = false) {
+  /** Send gathered deltas now (server mode), after any request already out. A keepalive flush (tab closing) goes at once. */
+  private flushNecro(keepalive = false): Promise<void> {
+    return keepalive ? this.sendNecro(true) : this.serial(() => this.sendNecro());
+  }
+
+  /** The save itself, outside the queue (for callers already inside it). Failures put the unsent deltas back for the next try. */
+  private async sendNecro(keepalive = false) {
     if (this.mode !== 'server' || !this.hasPending) return;
+    // The kills this save claims must already be on the server's ledger (a keepalive flush is preceded by the progress save that carries them).
+    if (!keepalive && this.reporter.hasPending) await this.flushReports();
     const sent = this.pending;
     const wave = this.pendingWaveActive;
     this.pending = emptyPending();
@@ -547,13 +709,19 @@ export class Progression {
     this.dirtyServer = true;
     if (this.saveState === 'saved') this.saveState = 'dirty';
     this.emit();
-    if (urgent) this.flush();
-    else if (!this.timer) this.timer = window.setTimeout(() => this.flush(), 45000);
+    if (urgent) {
+      // An urgent save asked for while one is already in flight is not lost: flush() runs again the moment that one lands (it used to wait out the 45 s timer).
+      if (this.inFlight) this.urgentAgain = true;
+      else void this.flush();
+    } else if (!this.timer) this.timer = window.setTimeout(() => this.flush(), 45000);
   }
+  private urgentAgain = false;
 
   private payload() {
     const c = this.character;
+    const killReports = this.reporter.batches();
     return {
+      ...(killReports.length ? { killReports } : {}),
       characterId: c.id,
       level: c.level,
       xp: c.experience ?? 0,
@@ -565,16 +733,38 @@ export class Progression {
     };
   }
 
+  /** The server has the kill batches a save carried: forget them (a failed save keeps them, and the retry repeats them with the same numbers). */
+  private ackReports(sent: { killReports?: { seq: number }[] }) {
+    const reports = sent.killReports;
+    if (reports && reports.length) this.reporter.ack(reports[reports.length - 1].seq);
+  }
+
   async flush(keepalive = false): Promise<void> {
     window.clearTimeout(this.timer);
     this.timer = 0;
-    if (!this.dirtyServer || this.inFlight) return;
+    if (!this.dirtyServer) return;
+    if (this.inFlight) {
+      // The tab is closing and a save is already out (it may be cut off): push the newest gains now rather than skip them.
+      if (!keepalive) return;
+      this.dirtyServer = false;
+      try {
+        const sent = this.payload();
+        await saveProgress(sent, true);
+        this.ackReports(sent);
+        await this.flushNecro(true);
+      } catch {
+        this.dirtyServer = true;
+      }
+      return;
+    }
     this.inFlight = true;
     this.dirtyServer = false;
     this.saveState = 'saving';
     this.emit();
     try {
-      await saveProgress(this.payload(), keepalive);
+      const sent = this.payload();
+      await saveProgress(sent, keepalive);
+      this.ackReports(sent);
       await this.flushNecro(keepalive);
       this.retryDelay = 4000;
       this.saveState = this.dirtyServer ? 'dirty' : 'saved';
@@ -587,7 +777,10 @@ export class Progression {
     } finally {
       this.inFlight = false;
       this.emit();
-      if (this.dirtyServer && this.saveState === 'dirty' && !this.timer) {
+      const again = this.urgentAgain;
+      this.urgentAgain = false;
+      if (again && this.dirtyServer && this.saveState === 'dirty') void this.flush();
+      else if (this.dirtyServer && this.saveState === 'dirty' && !this.timer) {
         this.timer = window.setTimeout(() => this.flush(), 45000);
       }
     }

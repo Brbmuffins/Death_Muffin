@@ -82,13 +82,10 @@ describe('Depths scaling', () => {
   });
 });
 
-describe('Depths co-op: solo for now, and the stair says so', () => {
-  it('lets a lone keeper down and tells a party, a guest or a fallen hero why not', () => {
-    expect(depthsEntryBlock({ partySize: 0, keeper: true, alive: true })).toBeNull();
-    expect(depthsEntryBlock({ partySize: 1, keeper: true, alive: true })).toMatch(/solo for now: leave your party/);
-    expect(depthsEntryBlock({ partySize: 3, keeper: false, alive: true })).toMatch(/solo for now/);
-    expect(depthsEntryBlock({ partySize: 0, keeper: false, alive: true })).toMatch(/only the keeper of the world/);
-    expect(depthsEntryBlock({ partySize: 0, keeper: true, alive: false })).toMatch(/no state to descend/);
+describe('Depths and parties: a party never blocks the stair', () => {
+  it('only refuses a fallen hero (party members step out for the descent instead)', () => {
+    expect(depthsEntryBlock({ alive: true })).toBeNull();
+    expect(depthsEntryBlock({ alive: false })).toMatch(/no state to descend/);
   });
 });
 
@@ -135,11 +132,11 @@ describe('Depths rewards', () => {
         if (depth < 10) expect(RUNES[rune.item_id as keyof typeof RUNES].rarity).not.toBe('epic');
       }
     }
-    // About 10-35% of chests hold a rune.
-    expect(runes / N).toBeGreaterThan(0.08);
-    expect(runes / N).toBeLessThan(0.4);
-    expect(chestRuneChance(5)).toBeCloseTo(0.1);
-    expect(chestRuneChance(500)).toBe(0.35);
+    // About 25-70% of chests hold a rune.
+    expect(runes / N).toBeGreaterThan(0.2);
+    expect(runes / N).toBeLessThan(0.6);
+    expect(chestRuneChance(5)).toBeCloseTo(0.25);
+    expect(chestRuneChance(500)).toBe(0.7);
     expect(chestRunePool(5).every((id) => RUNES[id].rarity !== 'epic')).toBe(true);
     expect(chestRunePool(10).some((id) => RUNES[id].rarity === 'epic')).toBe(true);
   });

@@ -38,6 +38,8 @@ vi.mock('../../net/api', () => {
       summonPrelate: async () => (guard('summon'), reply(rules.summonPrelate(st()))),
       ascend: async () => (guard('ascend'), reply(rules.ascend(st()))),
       boon: async (_id: number, b: string) => (guard('boon'), reply(rules.buyBoon(st(), b as never))),
+      vows: async (_id: number, v: object) => (guard('vows'), reply(rules.swearVows(st(), v))),
+      unlock: async (_id: number, k: string) => (guard('unlock'), reply(rules.unlockEntry(st(), k))),
     },
   };
 });
@@ -145,13 +147,42 @@ describe('Progression server mode', () => {
     await settle();
     await settle();
     expect(server.state!.summonsPending).toBe(1);
-    p.recordPrelateKill();
+    p.recordPrelateKill(); // urgent: its own save is already out, so flush() below returns at once
     await p.flush();
+    await settle();
+    await settle();
     expect(server.state!.run.prelateKills).toBe(1);
     expect(p.ascend()).toBeGreaterThan(0);
     await settle();
-    expect(server.state!.ascension).toBe(1);
-    expect(p.local.ascension).toBe(1);
-    expect(p.local.unlocked).toEqual(['chapterhouse', 'graves']);
+    // No vows sworn: heat 0, so the best rank stays 0, and the seals the run opened stay open.
+    expect(server.state!.ascension).toBe(0);
+    expect(p.local.ascension).toBe(0);
+    expect(p.local.unlocked).toContain('sanctum');
+    expect(server.state!.unlockedAreas).toContain('sanctum');
+  });
+
+  it('vows and unlocks go through the server rules, and the server wins on a refusal', async () => {
+    const p = await progression();
+    server.state = { ...rules.blankState(), soulShards: 700, migrated: true };
+    await p.connect();
+    expect(p.unlockAtAltar('vow:prelate_echo')).toBe(true);
+    await settle();
+    await settle();
+    expect(server.state!.unlocks).toContain('vow:prelate_echo');
+    expect(server.state!.soulShards).toBe(700 - 600);
+    expect(p.swearVows({ prelate_echo: 2, elder_dead: 3 })).toBe(true);
+    await settle();
+    await settle();
+    expect(server.state!.vows).toEqual({ prelate_echo: 2, elder_dead: 3 });
+    expect(p.heat).toBe(7);
+    expect(server.calls).toContain('vows');
+    // A client that lies about an unlock is corrected by the server's record.
+    p.local.unlocks = ['vow:prelate_echo', 'vow:deacon_host'];
+    p.swearVows({ deacon_host: 1 });
+    await settle();
+    await settle();
+    expect(server.state!.vows).toEqual({ prelate_echo: 2, elder_dead: 3 });
+    expect(p.local.vows).toEqual({ prelate_echo: 2, elder_dead: 3 });
+    expect(p.local.unlocks).toEqual(['vow:prelate_echo']);
   });
 });

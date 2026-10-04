@@ -1,3 +1,4 @@
+import { BeltPicker, BELT_DRAG_TYPE, type BeltChoice } from './BeltPicker';
 import { ABILITIES, HOTBAR, type AbilityId, type HotbarSlot } from '../content/abilities';
 import { touchNow } from './touchText';
 import type { Discipline } from '../content/disciplines';
@@ -11,6 +12,7 @@ import { Minimap, type MinimapFrame } from './Minimap';
 import { spellTooltip } from './spellTooltip';
 import { RUNES, isRuneRite, type RuneRite } from '../content/runes';
 import type { RuneSockets } from '../gameplay/runeRules';
+import type { RevealId } from './progressiveHud';
 
 /** Key caps under each hotbar slot (slot 5 is the right-click action). */
 const SLOT_KEYS = ['1', '2', '3', '4', 'RMB', 'R'];
@@ -20,13 +22,14 @@ const SWAP_ICON = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" s
 
 export type HudPanel = 'inventory' | 'forge' | 'professions' | 'settings' | 'map' | 'codex' | 'grimoire' | 'contracts' | 'garden' | 'labor' | 'cosmetics' | 'vault' | 'sheet' | 'legion' | 'atlas';
 /** Desktop row: icon + short label. Tiles of the phone menu sheet: icon + full name. */
-const MENU_ROW: Array<[HudPanel, keyof typeof ICON, string, string, string]> = [
+const MENU_ROW: Array<[HudPanel, keyof typeof ICON, string, string, string, RevealId?]> = [
   ['inventory', 'bag', 'Bag', 'Reliquary (I)', 'Reliquary'],
   ['forge', 'anvil', 'Craft', 'Workbench (C)', 'Workbench'],
-  ['professions', 'skills', 'Skills', 'Skills (P)', 'Skills'],
+  // Progressive: these three appear when they first matter (ui/progressiveHud.ts) and carry a NEW pip until used.
+  ['professions', 'skills', 'Acre', 'Acre ledger: Skills, Garden, Laborers, Contracts (P)', 'Acre ledger', 'menu.skills'],
   ['map', 'waymap', 'Map', 'Waystones (M)', 'Waystones'],
-  ['grimoire', 'grimoire', 'Spells', 'Grimoire (L)', 'Grimoire'],
-  ['atlas', 'atlas', 'Atlas', 'Gear Atlas (.)', 'Gear Atlas'],
+  ['grimoire', 'grimoire', 'Spells', 'Grimoire and Legion (L)', 'Grimoire', 'menu.spells'],
+  ['atlas', 'atlas', 'Atlas', 'Gear Atlas (.)', 'Gear Atlas', 'menu.atlas'],
   ['codex', 'book', 'Codex', 'Codex (K)', 'Codex'],
   ['settings', 'gear', 'Settings', 'Settings (Esc)', 'Settings'],
 ];
@@ -37,6 +40,8 @@ const MENU_SHEET: Array<[HudPanel, keyof typeof ICON, string]> = [
   ['cosmetics', 'cape', 'Capes & Pets'], ['vault', 'chest', 'Vault'], ['map', 'waymap', 'Map'], ['atlas', 'atlas', 'Gear Atlas'],
   ['codex', 'book', 'Codex'], ['settings', 'gear', 'Settings'],
 ];
+/** Markup for an element that starts hidden until `setReveal(id, true)`; the NEW pip is inside it. */
+const gated = (id: RevealId) => `data-reveal="${id}"`;
 export interface HudCallbacks {
   cast(slot: HotbarSlot): void;
   buyDamage(): void;
@@ -54,6 +59,14 @@ export interface HudCallbacks {
   /** Touch: Recall to the Chapterhouse (T on a keyboard). */
   recall?(): void;
   drinkBelt?(slot: string): void;
+  /** Report a bug button above the chat: opens the report form (Settings → Report a bug). */
+  reportBug?(): void;
+  /** Brews in the bag that fit a belt slot, for the click-to-fill picker. */
+  beltChoices?(slot: 'elixir' | 'tonic'): BeltChoice[];
+  /** The player chose (or dropped from the bag) a brew for the belt. */
+  beltPick?(itemId: string): void;
+  /** The player used a thing flagged NEW (hovered, clicked or opened it): the scene clears the cue. */
+  cueUsed?(id: RevealId): void;
 }
 
 export interface SlotFrame {
@@ -184,9 +197,9 @@ export class HUD {
     this.el.innerHTML = `
       <div class="hud-vignette passive" data-vig></div>
       <div class="hud-party" data-party></div>
-      <div class="hud-omen" data-omen hidden><img alt="" data-omen-img /><span data-omen-name></span></div>
+      <div class="hud-omen" data-omen data-reveal="hud.omen" hidden><img alt="" data-omen-img /><span data-omen-name></span><i class="dm-pip" data-new="hud.omen" hidden>NEW</i></div>
       <div class="hud-ward" data-ward hidden></div>
-      <div class="hud-brews" data-brews hidden></div>
+      <div class="hud-brews" data-brews hidden><div class="belt-head" aria-hidden="true">Belt</div><div class="belt-row" data-beltrow></div></div>
       <div class="hud-chain passive" data-chain hidden aria-live="off">
         <div class="n" data-chain-n></div>
         <div class="lbl" data-chain-lbl></div>
@@ -215,7 +228,7 @@ export class HUD {
         </div>
         <div class="hud-next" data-next hidden role="status"><div class="txt"><span class="kick">Next</span><span data-nexttxt></span></div><button type="button" data-nextx aria-label="Hide this suggestion" title="Hide this suggestion (turn the line off in Settings)">×</button></div>
         <div class="hud-menu">
-          ${MENU_ROW.map(([k, i, l, t, n]) => `<button class="hud-mi" data-open="${k}" title="${t}" aria-label="${n}">${ICON[i]}<span class="lbl">${l}</span></button>`).join('')}
+          ${MENU_ROW.map(([k, i, l, t, n, g]) => `<button class="hud-mi${g ? ' dm-gone' : ''}" data-open="${k}" ${g ? gated(g) : ''} title="${t}" aria-label="${n}">${ICON[i]}<span class="lbl">${l}</span>${g ? `<i class="dm-pip" data-new="${g}" hidden>NEW</i>` : ''}</button>`).join('')}
           <button class="hud-menubtn" data-menu aria-haspopup="dialog" aria-expanded="false" aria-label="Open menu">${ICON.menu}<span>Menu</span></button>
           <button class="hud-fullscreen" data-fullscreen title="Full screen" aria-label="Full screen">${ICON.expand}</button>
           <button class="hud-auto" data-auto hidden aria-label="Auto combat" title="Available on Easy difficulty" aria-pressed="false">Auto: Easy only</button>
@@ -227,6 +240,7 @@ export class HUD {
       <div class="hud-prompt passive" data-prompt hidden></div>
       <div class="hud-hint passive" data-hint></div>
       <div class="cw-chat">
+        <button type="button" class="hud-bugbtn" data-bugbtn title="Something wrong? Tell us. Your area, level and game version are attached for you." aria-label="Report a bug">⚑ Report a bug</button>
         <div class="log" data-chatlog aria-live="polite"></div>
         <input data-chatin type="text" maxlength="240" placeholder="Enter to speak" aria-label="Chat message" />
       </div>
@@ -253,7 +267,7 @@ export class HUD {
           <div class="hud-slots-wrap">
             <div class="hud-slot primary" data-primarywrap>${this.primaryHtml()}</div>
             <div class="hud-slots">${slots}</div>
-            <button class="hud-grimoire-btn" data-grimbtn aria-label="Swap spells in the Grimoire (L)">${ICON.grimoire}<span>Swap spells · L</span><span class="pip" data-grimpip hidden>NEW</span></button>
+            <button class="hud-grimoire-btn dm-gone" data-grimbtn data-reveal="hud.spells" aria-label="Swap spells in the Grimoire (L)">${ICON.grimoire}<span>Swap spells · L</span><span class="pip" data-grimpip hidden>NEW</span></button>
           </div>
           <div class="hud-thralls" data-thralls aria-label="Thralls"></div>
         </div>
@@ -264,7 +278,7 @@ export class HUD {
       </div>
       <div class="hud-right">
         <button class="hud-up-toggle" data-uptoggle aria-expanded="false" aria-label="Damage and Wave Speed upgrades">${ICON.crown}<span>Upgrades</span></button>
-        <div class="hud-upgrades cw-plate">
+        <div class="hud-upgrades cw-plate dm-gone" data-reveal="hud.upgrades"><i class="dm-pip" data-new="hud.upgrades" hidden>NEW</i>
           <div class="hud-up">
             <div class="icon">${ICON.crown}</div>
             <div class="row"><span class="pct" data-dmgpct></span><span class="lbl">Damage</span></div>
@@ -277,7 +291,7 @@ export class HUD {
             <button class="buy" data-buywave><span>Quicken</span><b data-wavecost></b></button>
             <div class="row" style="gap:8px"><div class="bar" style="flex:1"><div class="fill" data-wavebar></div></div><div class="gems" data-wavegems></div></div>
           </div>
-          <div class="hud-wave-dial">
+          <div class="hud-wave-dial dm-gone" data-reveal="hud.dial"><i class="dm-pip" data-new="hud.dial" hidden>NEW</i>
             <span>Active</span>
             <button data-dial="-1" aria-label="Lower active wave speed">−</button>
             <span class="tier" data-wavetier></span>
@@ -287,8 +301,8 @@ export class HUD {
         </div>
         <div class="hud-currency">
           <span title="Gold"><img src="art/ui/gold.webp" alt="Gold" /><b data-gold></b></span>
-          <span title="Thralls"><span class="thrall-ico" style="color:var(--cw-bone-300)">${ICON.skull}</span><b data-thrallnum></b></span>
-          <span title="Soul Shards"><img src="art/ui/soul_shard.webp" alt="Soul shards" /><b data-shards></b></span>
+          <span title="Thralls" data-thrchip><span class="thrall-ico" style="color:var(--cw-bone-300)">${ICON.skull}</span><b data-thrallnum></b></span>
+          <span title="Soul Shards" class="dm-gone" data-reveal="hud.shards"><img src="art/ui/soul_shard.webp" alt="Soul shards" /><b data-shards></b><i class="dm-pip" data-new="hud.shards" hidden>NEW</i></span>
         </div>
         <div class="hud-save" data-save></div>
       </div>
@@ -310,6 +324,15 @@ export class HUD {
       b.addEventListener('click', () => { this.hideTooltip(); this.cb.open(b.dataset.open as HudPanel); }),
     );
     this.buildMenuSheet();
+    this.$('[data-bugbtn]').addEventListener('click', () => { this.hideTooltip(); this.cb.reportBug?.(); });
+    this.bindBelt();
+    // A thing flagged NEW counts as used when it is hovered (HUD readouts) or clicked (menu buttons).
+    this.el.querySelectorAll<HTMLElement>('[data-reveal]').forEach((n) => {
+      const id = n.dataset.reveal as RevealId;
+      const used = () => { if (this.newOn.has(id)) this.cb.cueUsed?.(id); };
+      n.addEventListener('click', used);
+      if (!n.classList.contains('hud-mi')) n.addEventListener('pointerenter', used);
+    });
     this.$('[data-nextx]').addEventListener('click', () => this.cb.dismissNext?.());
     this.$('[data-buydmg]').addEventListener('click', () => this.cb.buyDamage());
     this.$('[data-auto]').addEventListener('click', () => this.cb.toggleAutoCombat());
@@ -392,6 +415,20 @@ export class HUD {
     this.refreshTooltip();
   }
 
+  private newOn = new Set<string>();
+
+  /** Show or hold back a progressive element (its `data-reveal` id). Event-driven: the scene calls it on a change, never per frame. */
+  setReveal(id: RevealId, on: boolean) {
+    this.el.querySelectorAll<HTMLElement>(`[data-reveal="${id}"]`).forEach((n) => n.classList.toggle('dm-gone', !on));
+  }
+
+  /** The NEW cue on a progressive element: a glow on it and the pip on it; off when the player uses it. */
+  setNew(id: RevealId, on: boolean) {
+    if (on) this.newOn.add(id); else this.newOn.delete(id);
+    this.el.querySelectorAll<HTMLElement>(`[data-new="${id}"]`).forEach((n) => (n.hidden = !on));
+    this.el.querySelectorAll<HTMLElement>(`[data-reveal="${id}"]`).forEach((n) => n.classList.toggle('dm-glow', on));
+  }
+
   /** The hotbar Grimoire button's NEW pip: a learned rite nobody has looked at yet. */
   setGrimoireNew(on: boolean) {
     this.set('grimnew', on, () => (this.$('[data-grimpip]').hidden = !on));
@@ -437,6 +474,35 @@ export class HUD {
    * readable while the button or card is hovered or keyboard-focused; opening one never casts.
    * Bound here, not once in the constructor, because a Grimoire swap rebuilds the buttons.
    */
+  private beltPicker: BeltPicker | null = null;
+
+  /** Click a Z / X belt slot to pick a brew from the bag; drop a brew dragged from the Reliquary onto it. Delegated: no per-frame work. */
+  private bindBelt() {
+    const row = this.$('[data-beltrow]');
+    this.beltPicker = new BeltPicker(this.$('[data-brews]'), (id) => this.cb.beltPick?.(id));
+    row.addEventListener('click', (e) => {
+      const chip = (e.target as HTMLElement).closest<HTMLElement>('[data-brew]');
+      const slot = chip?.dataset.brew;
+      if (!chip || (slot !== 'elixir' && slot !== 'tonic') || !this.cb.beltChoices) return;
+      if (this.beltPicker!.isOpen) { this.beltPicker!.close(); return; }
+      this.hideTooltip();
+      this.beltPicker!.open(slot === 'elixir' ? 'Elixir' : 'Tonic', slot === 'elixir' ? 'Z' : 'X', this.cb.beltChoices(slot));
+    });
+    row.addEventListener('dragover', (e) => {
+      const chip = (e.target as HTMLElement).closest<HTMLElement>('[data-brew]');
+      if (chip && chip.dataset.brew !== 'heal' && e.dataTransfer?.types.includes(BELT_DRAG_TYPE)) { e.preventDefault(); chip.classList.add('drop'); }
+    });
+    row.addEventListener('dragleave', (e) => (e.target as HTMLElement).closest('[data-brew]')?.classList.remove('drop'));
+    row.addEventListener('drop', (e) => {
+      const chip = (e.target as HTMLElement).closest<HTMLElement>('[data-brew]');
+      chip?.classList.remove('drop');
+      const id = e.dataTransfer?.getData(BELT_DRAG_TYPE);
+      if (!chip || !id || chip.dataset.brew === 'heal') return;
+      e.preventDefault();
+      this.cb.beltPick?.(id);
+    });
+  }
+
   private bindSlots() {
     // i = -1 is LMB; 0–4 are the five swappable rites; 5 is the signature.
     for (let i = -1; i < this.hotbar.length; i++) {
@@ -659,6 +725,12 @@ export class HUD {
       this.$('[data-soultxt]').textContent = f.souls >= f.soulsMax ? 'Harvest' : `${f.souls} / ${f.soulsMax}`;
     });
 
+    // Only a thrall-raising class (or anyone with one standing) sees the thrall pips and counter.
+    const thrOn = !!f.raisesThralls || f.thralls > 0;
+    this.set('thrOn', thrOn, () => {
+      this.$('[data-thralls]').hidden = !thrOn;
+      this.$('[data-thrchip]').classList.toggle('dm-gone', !thrOn);
+    });
     this.set('thr', `${f.thralls}/${f.thrallCap}`, () => {
       this.$('[data-thralls]').innerHTML = Array.from({ length: f.thrallCap }, (_, i) => `<i class="${i < f.thralls ? 'on' : ''}"></i>`).join('');
       this.$('[data-thrallnum]').textContent = `${f.thralls}/${f.thrallCap}`;
@@ -724,16 +796,17 @@ export class HUD {
     this.set('brews', f.brews.map((b) => `${b.slot}|${b.label}|${b.active}|${b.left}|${b.count}|${b.empty}|${Math.round(b.frac * 8)}|${b.tip.length}`).join(';'), () => {
       const el = this.$('[data-brews]');
       el.hidden = !f.brews.length;
+      const row = this.$('[data-beltrow]');
       // Update the three slots in place: replacing them would swallow a tap that lands while a timer redraws.
       for (const b of f.brews) {
-        let chip = el.querySelector<HTMLElement>(`[data-brew="${b.slot}"]`);
+        let chip = row.querySelector<HTMLElement>(`[data-brew="${b.slot}"]`);
         if (!chip) {
           chip = document.createElement('div');
           chip.dataset.brew = b.slot;
           chip.setAttribute('role', 'button');
           chip.tabIndex = -1;
           chip.innerHTML = '<kbd></kbd><span class="glyph"></span><span class="txt"><span class="lbl"></span><span class="sub"></span></span><span class="bar"><i></i></span>';
-          el.appendChild(chip);
+          row.appendChild(chip);
         }
         chip.className = `brew-chip${b.active ? ' on' : ''}${b.empty ? ' empty' : ''}${b.frac && !b.active ? ' cd' : ''}`;
         chip.style.setProperty('--brew', `#${b.color.toString(16).padStart(6, '0')}`);
@@ -743,7 +816,7 @@ export class HUD {
         q('kbd').textContent = b.key;
         q('.glyph').textContent = b.glyph;
         q('.lbl').textContent = b.label;
-        q('.sub').textContent = b.empty ? '' : b.active ? `${b.left}s` : b.count ? `×${b.count}` : 'ready';
+        q('.sub').textContent = b.empty ? (b.slot === 'heal' ? 'none' : '+ add') : b.active ? `${b.left}s` : b.count ? `×${b.count}` : 'ready';
         q('.bar i').style.width = `${Math.round(b.frac * 100)}%`;
       }
     });
@@ -803,9 +876,20 @@ export class HUD {
 
   /** `onClick` makes the toast a button (e.g. a new rite opens the Grimoire). */
   /** The week's Omen chip under the party list (its blurb is the tooltip). */
+  private omenOn = false;
+  private omenData: { name: string; icon: string; blurb: string } | null = null;
+
+  /** The chip only shows in hunting grounds: the Omen shapes what drops, so it means nothing in the Chapterhouse, Acre or Alchemist's Wing. */
+  setOmenVisible(on: boolean) {
+    if (this.omenOn === on) return;
+    this.omenOn = on;
+    this.setOmen(this.omenData);
+  }
+
   setOmen(o: { name: string; icon: string; blurb: string } | null) {
+    this.omenData = o;
     const el = this.$('[data-omen]');
-    el.hidden = o === null;
+    el.hidden = o === null || !this.omenOn;
     if (!o) return;
     (this.$('[data-omen-img]') as HTMLImageElement).src = o.icon;
     this.$('[data-omen-name]').textContent = o.name;
@@ -847,9 +931,10 @@ export class HUD {
     el.classList.add('pop');
   }
 
-  toast(text: string, kind: '' | 'err' | 'good' = '', onClick?: () => void) {
+  toast(text: string, kind: '' | 'err' | 'good' | 'new' = '', onClick?: () => void) {
     const el = document.createElement('div');
-    el.className = `hud-toast ${kind}${onClick ? ' clickable' : ''}`;
+    // 'new' is the progressive-HUD cue line (a NEW tag before the text); it reads as a good toast.
+    el.className = `hud-toast ${kind === 'new' ? 'good new-cue' : kind}${onClick ? ' clickable' : ''}`;
     el.textContent = text;
     if (onClick) {
       el.setAttribute('role', 'button');
@@ -993,6 +1078,7 @@ export class HUD {
   }
 
   dispose() {
+    this.beltPicker?.close();
     this.hideTooltip();
     window.removeEventListener('resize', this.resizeTooltip);
     window.removeEventListener('keydown', this.tooltipKeydown, true);

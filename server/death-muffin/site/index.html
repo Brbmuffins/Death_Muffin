@@ -23,7 +23,7 @@
     <link rel="preload" href="assets/covenant-pyre.webp" as="image" />
     <!-- ?v= is a cache buster: Cloudflare overrides nginx's no-cache on .css/.js with a 4h
          browser TTL, so a deploy is invisible until the URL changes. Bump on every site edit. -->
-    <link rel="stylesheet" href="styles.css?v=4" />
+    <link rel="stylesheet" href="styles.css?v=8" />
     <script src="app.js?v=3" defer></script>
   </head>
   <body>
@@ -47,10 +47,39 @@
           <p id="form-kicker">Muffin Developed</p>
         </header>
 
-        <div class="account__dispatch">
-          <span>THE CINDER PYRE IS OPEN</span>
-          <p>Raise the fallen. Evade the Pyre Priests' coals. Survive cinderhounds hunting through the fire.</p>
+        <!-- Latest patch: filled from play/patch-notes.json (the same notes as the launcher); the static line stays if it cannot load. -->
+        <div class="account__dispatch" data-latest-patch>
+          <!-- Known issue line: remove this <p> (and bump styles.css?v) once the owner confirms the web lag is gone. -->
+          <p class="account__known" role="status"><b>Known issue:</b> some web players have seen lag. Performance fixes are in this patch; if the web version still lags for you, try the
+            <a class="footer-link" href="https://github.com/Brbmuffins/Death_Muffin/releases/latest/download/DeathMuffinLauncher-win-x64.zip" rel="noopener">Windows launcher</a>.</p>
+          <span data-patch-head>LATEST PATCH</span>
+          <p data-patch-fallback>Raise the fallen, read the omens, and descend. <a class="footer-link" href="patch-notes.html">See what changed</a>.</p>
         </div>
+        <script>
+          (async () => {
+            const box = document.querySelector('[data-latest-patch]');
+            if (!box) return;
+            try {
+              const r = await fetch('play/patch-notes.json?t=' + Date.now(), { cache: 'no-store' });
+              const rel = ((await r.json()).releases || [])[0];
+              if (!rel || !rel.items || !rel.items.length) return;
+              box.querySelector('[data-patch-head]').textContent = 'LATEST PATCH \u00b7 ' + (rel.title || '').toUpperCase();
+              const ul = document.createElement('ul');
+              ul.className = 'account__patch';
+              for (const item of rel.items.slice(0, 4)) {
+                const li = document.createElement('li');
+                // The part before the first colon is the topic ("Loot: ..."): bold it, keep the rest short.
+                const m = /^([^:]{2,24}):\s*(.*)$/.exec(item);
+                if (m) { const b = document.createElement('b'); b.textContent = m[1] + ': '; li.append(b, m[2]); } else li.textContent = item;
+                ul.appendChild(li);
+              }
+              const more = document.createElement('p');
+              more.className = 'account__patch-more';
+              more.innerHTML = '<a class="footer-link" href="patch-notes.html">All patch notes' + (rel.items.length > 4 ? ' (+' + (rel.items.length - 4) + ' more)' : '') + '</a>';
+              box.querySelector('[data-patch-fallback]').replaceWith(ul, more);
+            } catch (e) { /* keep the static line */ }
+          })();
+        </script>
 
         <div class="reliquary">
           <span class="corner corner--tl" aria-hidden="true"></span>
@@ -184,6 +213,7 @@
           <a class="text-action" href="offline/">Offline edition</a>
           <span aria-hidden="true">◆</span>
           <a class="text-action" href="https://github.com/Brbmuffins/Death_Muffin/releases/latest/download/DeathMuffinLauncher-win-x64.zip" rel="noopener">Download the Windows launcher</a>
+          <a class="text-action" href="patch-notes.html">Patch notes</a>
           <span aria-hidden="true">◆</span>
           <button class="text-action sound-toggle" type="button" aria-pressed="true">
             Sound effects: on

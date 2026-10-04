@@ -5,6 +5,7 @@ import { assignableRites, LOADOUT_SLOTS, type Rites } from '../gameplay/loadout'
 import { SimplePanel } from './MiscPanels';
 import { RUNES, isRuneRite, runeSources, runesFor, type RuneId, type RuneRite } from '../content/runes';
 import type { RuneSockets } from '../gameplay/runeRules';
+import type { LoadoutPresets } from './LoadoutPresets';
 import './runes.css';
 
 const esc = (x: string) => x.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -36,6 +37,8 @@ export class GrimoirePanel extends SimplePanel {
       state: () => { sockets: RuneSockets; owned: Partial<Record<RuneId, number>> };
       socket: (rite: RuneRite, itemId: RuneId | null) => Promise<string | null>;
     },
+    /** Loadout presets (necromancers): a self-contained strip, mounted under the bar on every redraw. */
+    private loadouts?: LoadoutPresets,
   ) {
     super(root);
   }
@@ -78,11 +81,14 @@ export class GrimoirePanel extends SimplePanel {
         ${socket(rites.primary, 'primary', 'LMB')}
         ${rites.keys.map((id, i) => socket(id, i, i === 4 ? 'RMB · 5' : String(i + 1))).join('')}
       </div>
+      ${this.loadouts ? '<div data-loadouts></div>' : ''}
       ${this.runeSection(primaryMode ? rites.primary : rites.keys[this.selected as number])}
       ${primaryMode ? '<p class="cw-settings-note">Primaries cost nothing and fire on left-click.</p>' : `<div class="cw-grim-roles" role="group" aria-label="Filter by role">${['all', ...ROLES]
         .map((r) => `<button type="button" class="cw-chip${this.role === r ? ' on' : ''}" data-role="${r}" aria-pressed="${this.role === r}">${r === 'all' ? 'All' : ROLE_LABEL[r as RiteRole]}</button>`)
         .join('')}</div>`}
       <div class="cw-codex-body">${list.map((id) => this.entry(id, rites, level, primaryMode)).join('')}</div>`;
+    const loadoutEl = body.querySelector<HTMLElement>('[data-loadouts]');
+    if (loadoutEl) this.loadouts?.mount(loadoutEl);
     body.querySelectorAll<HTMLButtonElement>('[data-socket]').forEach((b) =>
       b.addEventListener('click', () => {
         this.selected = b.dataset.socket === 'primary' ? 'primary' : Number(b.dataset.socket);
@@ -150,11 +156,12 @@ export class GrimoirePanel extends SimplePanel {
       if (n > 0) {
         return `<button type="button" class="cw-rune-opt" data-rune="${r.id}" ${this.runeBusy ? 'disabled' : ''} aria-label="Socket ${esc(r.name)} into ${esc(name)}"><img src="art/items/${r.id}.webp" alt="" /><span><span class="nm">${esc(r.name)}<i>${r.rarity} · you have ${n}</i></span><span class="sh">${esc(r.short)}</span></span><span class="go">${cur ? 'Swap in' : 'Socket'}</span></button>`;
       }
-      return `<div class="cw-rune-opt sealed" title="${esc(runeSources(r.id))}"><img src="art/items/${r.id}.webp" alt="" style="filter:grayscale(1) brightness(0.6)" /><span><span class="nm">${esc(r.name)}<i>${r.rarity}</i></span><span class="sh">${esc(r.short)}</span></span><span class="go">Not found yet</span></div>`;
+      return `<div class="cw-rune-opt sealed" title="${esc(runeSources(r.id))}"><img src="art/items/${r.id}.webp" alt="" style="filter:grayscale(1) brightness(0.6)" /><span><span class="nm">${esc(r.name)}<i>${r.rarity}</i></span><span class="sh">${esc(r.short)}</span><span class="sh src">Drops from ${esc(runeSources(r.id))}</span></span><span class="go">Not found yet</span></div>`;
     });
     return `<div class="cw-rune-box" data-runebox><h3>Rune socket <small>${esc(name)}</small></h3>
       <div class="cw-rune-now">${now}</div>
       <div class="cw-rune-list">${list.join('')}</div>
+      <p class="cw-rune-where">This socket is already yours. <b>Runes</b> drop from elites (more often the deeper the ground), Grave Surge offerings, bosses (the first kill of each always leaves one) and Catacomb Depths chests. The Gear Atlas (<kbd>.</kbd>) lists the chances.</p>
       <div class="cw-rune-err" role="status" data-rune-err>${esc(this.runeError)}</div></div>`;
   }
 

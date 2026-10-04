@@ -171,3 +171,17 @@
 .cw-detail-actions > [data-sellall], .cw-detail-actions > [data-sellall-no], .cw-detail-actions > [data-sell]:not([data-sell='1']) { min-height: 40px; }
 .cw-detail-actions > .cw-tools-confirm { font-size: 13px; color: var(--cw-bone-100); }
 .cw-detail-actions > .cw-tools-confirm b { color: #e2c98f; }
+
+/* Set summary under the paper doll: pips for the five pieces, tiers that are on, and what the next one needs. */
+.cw-setsum { display: flex; flex-direction: column; gap: 6px; font-size: 11px; line-height: 1.3; }
+.cw-setsum[hidden] { display: none; }
+.cw-setsum .ss { padding: 5px 6px; background: var(--cw-inset); border: 1px solid var(--cw-border); border-left: 3px solid var(--set); }
+.cw-setsum .hd { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 3px; color: var(--cw-bone-100); }
+.cw-setsum .pips { display: inline-flex; gap: 3px; flex: none; }
+.cw-setsum .pips i { width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--set); opacity: .55; }
+.cw-setsum .pips i.on { background: var(--set); opacity: 1; box-shadow: 0 0 4px var(--set); }
+.cw-setsum .on { display: flex; gap: 5px; color: var(--cw-ok); }
+.cw-setsum .nx { display: block; color: var(--cw-text-faint); }
+.cw-setsum .nx em { display: block; font-style: normal; color: var(--cw-gold-300, #e2c98f); }
+.cw-setsum .n { flex: none; width: 12px; display: inline-block; text-align: center; font-family: var(--cw-font-numeric); opacity: .85; }
+.cw-setsum .done { color: var(--cw-ok); }

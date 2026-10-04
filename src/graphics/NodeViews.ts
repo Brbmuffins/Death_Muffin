@@ -137,6 +137,9 @@ function standIn(def: NodeDef, spent: boolean): Part[] {
   return out;
 }
 
+/** How far node models stand above the floor plane (m): clear of every floor layer, well under what the eye can see as floating. */
+const NODE_LIFT = 0.04;
+
 class NodeBatch {
   readonly group = new THREE.Group();
   private meshes: THREE.InstancedMesh[] = [];
@@ -195,7 +198,9 @@ class NodeBatch {
   private write(i: number) {
     const p = this.placements[i];
     const d = this.dummy;
-    d.position.set(p.x, 0, p.z);
+    // Lifted a hair off y=0: the flagstone lanes and door thresholds are laid 4-8 mm above the earth floor, which buried the lowest 8 mm of every
+    // flat-lying root and rock base wherever a node stands at a lane's edge (roots read as cut off, bases as sunk). Fishing cues sit on the water already.
+    d.position.set(p.x, this.def.kind === 'pool' ? 0 : NODE_LIFT, p.z);
     d.rotation.set(0, p.rot, 0);
     d.scale.setScalar(this.visible[i] ? (p.rich ? 1.12 : 1) : 0);
     d.updateMatrix();

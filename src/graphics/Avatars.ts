@@ -13,14 +13,21 @@ import { buildCape, buildHelm, buildOffhand, buildWeapon, disposeProp, gripFor }
 import { capeDef } from '../content/cosmetics';
 import { gearTier, legendaryAura, weaponKind } from '../content/gear';
 import type { GearRegion } from './gearTint';
+import { onSettingsChange, settings } from '../app/settings';
+import { RIG_HEAD, RIG_HEAD_STRENGTH } from './rigHeads';
+import { ARMOR_BY_ID } from '../content/armorSets';
 import { smoothSpeed, stepSpeed, turnToward } from './locomotion';
 
 /** Heroes ease toward a new heading (1/s) but never faster than this (rad/s), so a flip of direction is a visible turn. */
 const HERO_TURN_RATE = 12;
 const HERO_TURN_MAX = 13;
+/** Helm fit: the dome (radius 0.15, apex 0.19 above its origin) grows to cover the head's reach plus a margin, within sane bounds. */
+const HELM_APEX = 0.19;
+const HELM_OVER = 0.01;
+const helmScale = (reach: number) => Math.min(1.6, Math.max(0.9, (reach * 1.08) / 0.15));
 
 /** How much a held staff follows the wrist (0 = pinned upright, 1 = fully hand-driven). */
-const STAFF_FOLLOW = 0.15;
+const STAFF_FOLLOW = 0.6;
 
 /** Coffin-oak staff with a skull finial and a violet soul-light. */
 function skullStaff(accent: THREE.ColorRepresentation) {
@@ -52,6 +59,10 @@ function skullStaff(accent: THREE.ColorRepresentation) {
 const TOOL_GRIP: Record<GatherSkill, number> = { woodcutting: -0.3, mining: -0.15, fishing: -0.3, gravedigging: -0.3, gardening: -0.3 };
 const TOOL_TINT = [0xb87333, 0x9097a0, 0xdfe4ee, 0x7a98b0, 0xd0452f, 0xaec8ff];
 
+/** Every live hero, so the Hide helms setting reaches them (own and remote) without a per-avatar listener. */
+const LIVE = new Set<{ applyGearVisibility(): void }>();
+onSettingsChange(() => LIVE.forEach((a) => a.applyGearVisibility()));
+
 export class NecromancerAvatar {
   readonly c: Creature;
   readonly lantern: THREE.PointLight | null;
@@ -65,6 +76,12 @@ export class NecromancerAvatar {
   /** The mastery cape on the back (a cosmetic: content/cosmetics.ts), and how far it has swung. */
   private cape: { obj: THREE.Object3D; id: string } | null = null;
   private swayT = Math.random() * 6;
+  /** Trim colour the worn helm gives a rig's own hood or helmet (null = none); see mountHelm. */
+  private headTint: { color: number; glow?: number; strength?: number } | null = null;
+  /** A death (or hurt) one-shot is playing: the cape fades out and held props hide until it ends. */
+  private downed = false;
+  private capeFade = 1;
+  private capeMats: { m: THREE.Material; base: number }[] = [];
   private gatheringSkill: GatherSkill | null = null;
   private gatheringTools = new Map<GatherSkill, THREE.Object3D>();
   private loadingTools = new Set<GatherSkill>();
@@ -81,7 +98,7 @@ export class NecromancerAvatar {
   private groundSpeed = 0;
   castLock = 0;
 
-  constructor(scene: THREE.Scene, accent: string, withLight: boolean, slug: CreatureSlug = 'necromancer') {
+  constructor(scene: THREE.Scene, accent: string, withLight: boolean, private readonly slug: CreatureSlug = 'necromancer') {
     // Generated heroes face +X; gameplay headings use +Z.
     this.c = new Creature(slug, { inPlace: true, gearTint: true, modelYaw: -Math.PI / 2, emissive: accent, emissiveIntensity: 0.04, fallback: 'necromancer', locomotionFade: 0.16 });
     if (slug === 'hero_hollow_knight' || slug === 'hero_grave_warden' || slug === 'hero_bell_monk' || slug === 'hero_carrion_witch' || slug === 'hero_veilwalker') {
@@ -95,6 +112,7 @@ export class NecromancerAvatar {
       this.defaultHand.set(this.staff, 'main_hand');
     }
     scene.add(this.c.root);
+    LIVE.add(this as unknown as { applyGearVisibility(): void });
     this.lantern = withLight ? new THREE.PointLight(accent, 18, 10, 1.4) : null;
     if (this.lantern) {
       this.lantern.position.set(0, 3.2, 0.6);
@@ -202,15 +220,16 @@ export class NecromancerAvatar {
   }
 
   /** Default props show unless a gathering tool is out or an equipped item took their hand; worn gear hides while gathering. */
-  private applyGearVisibility() {
+  applyGearVisibility() {
     const idle = this.gatheringSkill === null;
     const defaults = this.staff ? [this.staff, ...this.classGear] : this.classGear;
     for (const obj of defaults) {
       const hand = this.defaultHand.get(obj);
-      obj.visible = idle && !(hand && this.worn.has(hand));
+      obj.visible = idle && !this.downed && !(hand && this.worn.has(hand));
     }
-    for (const w of this.worn.values()) w.obj.visible = idle;
-    if (this.cape) this.cape.obj.visible = idle;
+    for (const [slot, w] of this.worn) w.obj.visible = idle && !(slot === 'head' ? settings.hideHelm : this.downed);
+    this.c.setHeadTint(idle && !settings.hideHelm ? this.headTint : null);
+    if (this.cape) this.cape.obj.visible = idle && this.capeFade > 0.01;
   }
 
   /**
@@ -227,19 +246,25 @@ export class NecromancerAvatar {
     ];
     for (const [slot, bone, item] of want) {
       const cur = this.worn.get(slot);
+      if (slot === 'head' && !item) this.helmWant = null;
       if (cur?.key === item?.item_id) continue;
+      if (slot === 'head') this.headTint = null; // only when the helm changes: any later inventory change calls this again and must keep the worn helm's tint
       if (cur) {
         this.c.detach(cur.obj);
         disposeProp(cur.obj);
         this.worn.delete(slot);
       }
       if (!item) continue;
-      const obj = slot === 'head' ? buildHelm(item.item_id, item.rarity) : slot === 'off_hand' ? buildOffhand(item.item_id, item.rarity) : buildWeapon(item.item_id, item.rarity);
-      if (slot === 'head') this.c.attach(bone, obj, new THREE.Vector3(0, 1, 0));
-      else {
-        const grip = gripFor(slot, item.item_id, !!obj.userData.tip);
-        this.c.attach(bone, obj, grip.dir, grip.follow, grip.fit);
+      if (slot === 'head') {
+        // Sized to this rig's skull and hood once the model is up (see mountHelm).
+        this.helmWant = item.item_id;
+        const it = item;
+        this.c.afterLoad(() => this.mountHelm(it));
+        continue;
       }
+      const obj = slot === 'off_hand' ? buildOffhand(item.item_id, item.rarity) : buildWeapon(item.item_id, item.rarity);
+      const grip = gripFor(slot, item.item_id, !!obj.userData.tip);
+      this.c.attach(bone, obj, grip.dir, grip.follow, grip.fit);
       this.worn.set(slot, { obj, key: item.item_id });
     }
     // Body slots have no prop: they recolour their region of the body by material tier.
@@ -257,6 +282,41 @@ export class NecromancerAvatar {
     this.applyGearVisibility();
   }
 
+  private helmWant: string | null = null;
+
+  /** Build the helm and seat it on this rig's head: its dome is scaled to cover the skull and hood and its apex lands on the crown. */
+  private mountHelm(item: { item_id: string; rarity?: string }) {
+    if (this.disposed || this.helmWant !== item.item_id || this.worn.get('head')?.key === item.item_id) return;
+    if (RIG_HEAD[this.slug] === 'covered') {
+      // The rig already has a hood, cowl or helmet: no dome. The helm shows as trim on that head region (set accent, or the metal's colour).
+      const t = gearTier(item.item_id, item.rarity);
+      const set = ARMOR_BY_ID[item.item_id];
+      this.headTint = { color: set ? set.accent : t.color, glow: t.glow, strength: RIG_HEAD_STRENGTH[this.slug] };
+      this.worn.set('head', { obj: new THREE.Group(), key: item.item_id });
+      this.applyGearVisibility();
+      return;
+    }
+    this.mountDome(item);
+  }
+
+  /** The helm dome seated on this rig's measured head. QA hook (gear-clip) as well as the bare-headed path of mountHelm. */
+  mountDome(item: { item_id: string; rarity?: string }) {
+    const old = this.worn.get('head');
+    if (old) { this.c.detach(old.obj); disposeProp(old.obj); this.worn.delete('head'); }
+    this.headTint = null;
+    const fit = this.c.headFit();
+    const obj = buildHelm(item.item_id, item.rarity, fit ? helmScale(fit.radius) : 1);
+    let offset: THREE.Vector3 | undefined;
+    if (fit) {
+      const s = obj.scale.x;
+      // The dome's apex is at 0.19 x scale above the helm origin; put it just over the crown.
+      offset = new THREE.Vector3(fit.cx, fit.top + HELM_OVER - HELM_APEX * s, fit.cz);
+    }
+    this.c.attach('Head', obj, new THREE.Vector3(0, 1, 0), undefined, offset ? { offset } : undefined);
+    this.worn.set('head', { obj, key: item.item_id });
+    this.applyGearVisibility();
+  }
+
   /** Put a cape on (or take it off with null). Hidden while a gathering tool is out, like the rest of the worn gear. */
   setCape(id: string | null) {
     if (this.disposed || (this.cape?.id ?? null) === id) return;
@@ -270,7 +330,23 @@ export class NecromancerAvatar {
     const obj = buildCape(def.color, def.trim);
     this.c.attach('Spine02', obj);
     this.cape = { obj, id: def.id };
-    obj.visible = this.gatheringSkill === null;
+    this.capeMats = [];
+    obj.traverse((o) => {
+      const mat = (o as THREE.Mesh).material as THREE.Material | undefined;
+      if (mat) this.capeMats.push({ m: mat, base: mat.opacity });
+    });
+    this.capeFade = this.downed ? 0 : 1;
+    this.applyCapeFade();
+    obj.visible = this.gatheringSkill === null && this.capeFade > 0.01;
+  }
+
+  /** Cloth opacity from the fade (transparent only while fading, so the settled cape draws opaque as before). */
+  private applyCapeFade() {
+    for (const { m, base } of this.capeMats) {
+      const t = this.capeFade < 1;
+      if (m.transparent !== t && !(m as THREE.SpriteMaterial).isSpriteMaterial) { m.transparent = t; m.needsUpdate = true; }
+      m.opacity = base * this.capeFade;
+    }
   }
 
   /** World position of the staff tip (spell origin). */
@@ -299,6 +375,17 @@ export class NecromancerAvatar {
     } else if (moving) this.c.setGroundSpeed(this.groundSpeed);
     this.castLock = Math.max(0, this.castLock - dt);
     this.c.update(dt);
+    const clip = this.c.oneShotName;
+    const down = !!clip && /^(death|hurt)\d?$/.test(clip);
+    if (down !== this.downed) {
+      this.downed = down;
+      this.applyGearVisibility();
+    }
+    if (this.cape && this.capeFade !== (down ? 0 : 1)) {
+      this.capeFade = down ? Math.max(0, this.capeFade - dt / 0.12) : Math.min(1, this.capeFade + dt / 0.25);
+      this.applyCapeFade();
+      this.cape.obj.visible = this.gatheringSkill === null && this.capeFade > 0.01;
+    }
     if (this.cape) {
       // The cloth trails a little behind a moving hero and breathes when still.
       this.swayT += dt * (moving ? 5 : 1.6);
@@ -336,6 +423,7 @@ export class NecromancerAvatar {
 
   dispose() {
     this.disposed = true;
+    LIVE.delete(this as unknown as { applyGearVisibility(): void });
     for (const w of this.worn.values()) disposeProp(w.obj);
     this.worn.clear();
     if (this.cape) disposeProp(this.cape.obj);
@@ -399,7 +487,12 @@ export class BossView {
     this.c.flash = b.active ? b.flash : 0;
     // The Regent's pale cape and molten plate white out under a close 16-24 light: a warm, low glow instead.
     const glow = this.regent || this.mire ? 4 + b.phase * 2 : 16 + b.phase * 8;
-    this.light.intensity = b.active ? glow + Math.sin(performance.now() / 200) * (this.regent || this.mire ? 1 : 4) : Math.max(0, this.light.intensity - dt * 30);
+    // An Empowered boss (Covenant Seal summon) is bigger and burns red-gold: the tell that this fight pays more and hits harder.
+    const emp = b.active && !!b.empowered;
+    this.light.color.setHex(emp ? 0xff6a2a : this.color);
+    this.light.intensity = b.active ? (glow + Math.sin(performance.now() / 200) * (this.regent || this.mire ? 1 : 4)) * (emp ? 1.35 : 1) : Math.max(0, this.light.intensity - dt * 30);
+    const grow = emp ? 1.12 : 1;
+    this.c.root.scale.setScalar(grow);
     if (b.state !== this.lastState) {
       this.lastState = b.state;
       if (b.state === 'toll' || b.state === 'rain' || b.state === 'summon') this.c.playOnce('cast', 1.1);
@@ -412,7 +505,7 @@ export class BossView {
       // Her clip set is small (idle/walk/attack/cast), so the blight itself is the tell: she swells and
       // sheds more rot each phase.
       const ph = b.phase;
-      this.c.root.scale.setScalar(1 + Math.sin(performance.now() / 1000 * (1.6 + ph * 0.9)) * 0.012 * ph);
+      this.c.root.scale.setScalar(grow * (1 + Math.sin(performance.now() / 1000 * (1.6 + ph * 0.9)) * 0.012 * ph));
       if (Math.random() < dt * (2 + ph * 3)) {
         this.effects.emitSmoke({ x: b.x + (Math.random() - 0.5) * 2, y: 0.3, z: b.z + (Math.random() - 0.5) * 2, count: 1, color: 0x4a5a22, spread: 0.8, speed: 0.3, up: 0.5, life: 1.4, size: 1.2 });
       }
@@ -420,11 +513,14 @@ export class BossView {
     if (this.regent && b.active) {
       // The Regent burns hotter each phase: embers stream off the crown and pauldrons, soot rolls off the cape.
       const ph = b.phase;
-      this.c.root.scale.setScalar(1 + Math.sin(performance.now() / 1000 * (1.4 + ph * 0.8)) * 0.01 * ph);
+      this.c.root.scale.setScalar(grow * (1 + Math.sin(performance.now() / 1000 * (1.4 + ph * 0.8)) * 0.01 * ph));
       if (Math.random() < dt * (10 + ph * 10)) {
         this.effects.emit({ x: b.x + (Math.random() - 0.5) * 1.6, y: 2 + Math.random() * 2.4, z: b.z + (Math.random() - 0.5) * 1.6, count: 1, color: Math.random() < 0.5 ? 0xff7a2a : 0xffc45a, spread: 0.5, speed: 0.4, up: 1.2 + ph * 0.3, life: 1.1, size: 0.14, drag: 0.4 });
       }
       if (Math.random() < dt * (2 + ph * 2)) this.effects.emitSmoke({ x: b.x + (Math.random() - 0.5) * 2, y: 1.2, z: b.z + (Math.random() - 0.5) * 2, count: 1, color: 0x2a1408, spread: 0.7, speed: 0.3, up: 0.7, life: 1.6, size: 1.3, shrink: -0.5 });
+    }
+    if (emp && Math.random() < dt * 14) {
+      this.effects.emit({ x: b.x + (Math.random() - 0.5) * 2.2, y: 0.4 + Math.random() * 3.2, z: b.z + (Math.random() - 0.5) * 2.2, count: 1, color: Math.random() < 0.5 ? 0xff7a2a : 0xffc45a, spread: 0.4, speed: 0.4, up: 1.4, life: 1.1, size: 0.16, drag: 0.4 });
     }
     if (b.active && Math.random() < dt * (this.saint ? 8 + b.phase * 8 : 10)) {
       this.effects.emit({ x: b.x, y: 2.5, z: b.z, count: 1, color: this.color === 0xa26bff ? 0x9d6bff : this.color, spread: 1, speed: 0.4, up: 0.8, life: 1.2, size: 0.4 });

@@ -1,6 +1,8 @@
 import { canUseAutoCombat, isTouchFirst, settings, updateSettings, type Quality } from '../app/settings';
 import { AREAS, type AreaId } from '../content/areas';
 import { DIFFICULTIES, DIFFICULTY_ORDER, isDifficulty } from '../content/difficulty';
+import { ACTION_LABEL, LOADOUT_ACTIONS, checkBind, label as keyLabel, type ActionId, type Binds } from '../gameplay/keybinds';
+import { BugReportView, type BugReportContext } from './BugReportView';
 
 export abstract class SimplePanel {
   protected el: HTMLDivElement | null = null;
@@ -40,6 +42,12 @@ export class SettingsPanel extends SimplePanel {
     private kitHelp: { primary: string; rites: string[]; corpseAction: string; legion?: boolean } = {
       primary: 'Bone Needle', rites: ['Marrow Spear', 'Exhume', 'Miasma', 'Black Litany'], corpseAction: 'Corpse Explosion', legion: true,
     },
+    /** Settings → Report a bug: what the report attaches on its own. */
+    private bugContext?: () => BugReportContext,
+    /** Settings -> Play together: make, join or leave a party. Absent = no co-op section. */
+    private party?: { create(): void; join(code: string): void; leave(): void },
+    /** Rebindable hotkeys (loadouts, necromancers): the current keys, and a setter that answers a readable refusal or null. */
+    private keybinds?: { get(): Binds; set(action: ActionId, key: string | null): string | null },
   ) {
     super(root);
   }
@@ -74,35 +82,50 @@ export class SettingsPanel extends SimplePanel {
         <label class="row">Interface<input type="range" min="0" max="1" step="0.05" data-vol-ui aria-label="Interface volume: clicks, coins and level-up chimes" /></label>
         <label class="row">Reduce motion (no camera shake)<input type="checkbox" data-rm /></label>
         <label class="row">Damage numbers<input type="checkbox" data-dn /></label>
+        <label class="row">Hide helms<input type="checkbox" data-hidehelm /></label>
         <label class="row">Don't show tips<input type="checkbox" data-tips /></label>
         <label class="row">Show the “Next” suggestion under the minimap<input type="checkbox" data-guidance aria-label="Show the Next suggestion under the minimap" /></label>
         <label class="row">Point to it on the minimap<input type="checkbox" data-guideping aria-label="Point the Next suggestion out on the minimap" /></label>
         </section>
         <section class="cw-settings-section"><h3>Character and help</h3>
         ${this.dev ? '<label class="row">Dev access (preview as a normal player when off)<input type="checkbox" data-dev aria-label="Dev access" /></label>' : ''}
+        ${this.bugContext ? '<label class="row">Found a bug or something odd?<button type="button" class="cw-button" data-bugreport>Report a bug</button></label>' : ''}
         ${this.onResetTips ? '<label class="row">New to the Covenant?<button type="button" class="cw-button" data-resettips>Show tips again</button></label>' : ''}
         ${this.onChangeClass ? '<label class="row">Class<button type="button" class="cw-button" aria-label="Change class" data-changeclass>Change class</button></label>' : ''}
-        ${code ? `<label class="row">Party world code<b style="font-family:var(--cw-font-numeric)">${code}</b></label>` : ''}
         </section>
+        ${this.party ? `<section class="cw-settings-section"><h3>Play together</h3>
+        ${code
+          ? `<label class="row">Your party code<b data-partycode style="font-family:var(--cw-font-numeric)">${code}</b></label>
+             <p class="cw-settings-note">Friends enter this code under Play together (or type /party ${code}) to join you. You choose who plays with you: being online at the same time never makes a party.</p>
+             <label class="row">Done playing together?<button type="button" class="cw-button" data-partyleave>Leave party (play solo)</button></label>`
+          : `<p class="cw-settings-note">You are playing solo. Make a party and share its code, or enter a friend's code. In a party you share one world and its enemies; the Catacomb Depths stay a solo descent (you step out, then rejoin).</p>
+             <label class="row">Start a party<button type="button" class="cw-button" data-partymake>Make a party</button></label>
+             <label class="row">Join a friend<span><input type="text" maxlength="12" size="10" data-partycode-in placeholder="code" aria-label="Party code" autocomplete="off" /> <button type="button" class="cw-button" data-partyjoin>Join</button></span></label>`}
+        </section>` : ''}
         <section class="cw-settings-section"><h3>Controls</h3>
+        ${this.keybinds ? `<h4 class="cw-keys-h">Loadout hotkeys <small>unbound until you pick a key</small></h4>
+        <div class="cw-keybinds" data-keybinds>${LOADOUT_ACTIONS.map((a) => `<span>${ACTION_LABEL[a]}</span><button type="button" class="cw-button small" data-bind="${a}"></button>`).join('')}</div>
+        <p class="cw-settings-note" data-bindnote role="status" aria-live="polite">Click an action, then press a key. Esc clears it. Keys the game already uses are refused.</p>` : ''}
         <div class="cw-keys">
+          ${this.keybinds ? '<kbd>Loadout keys</kbd><span>Next loadout and Loadout 1-6: unbound until you assign them above (necromancers). They apply a saved Grimoire loadout</span>' : ''}
           <kbd>WASD</kbd><span>Walk freely; holding a direction takes over from click-to-move</span>
           <kbd>Click</kbd><span>Move · attack target (${this.kitHelp.primary}) · use</span>
           <kbd>Minimap</kbd><span>Click a walkable spot to travel there</span>
           <kbd>Hover / focus</kbd><span>Spell icon: cost, targeting, effects and combat counsel</span>
           <kbd>Shift+Click</kbd><span>Cast ${this.kitHelp.primary} without moving</span>
           <kbd>1–5 (hold)</kbd><span>Cast your equipped rites at the cursor</span>
-          <kbd>L</kbd><span>Grimoire · click the swap arrows below a hotbar spell (they appear once you learn a second rite) to choose any unlocked class rite</span>
+          <kbd>L</kbd><span>Grimoire (with the Legion beside it for necromancers) · click the swap arrows below a hotbar spell (they appear once you learn a second rite) to choose any unlocked class rite</span>
           <kbd>RMB · 5</kbd><span>Cast your fifth equipped rite (starts as ${this.kitHelp.corpseAction})</span>
           <kbd>R · 6</kbd><span>Signature rite (unlocks at level 10)</span>
           <kbd>Q</kbd><span>Drink a healing flask</span>
           <kbd>Z · X</kbd><span>Drink the elixir · tonic on your belt (right-click a brew in the Reliquary to belt it)</span>
           <kbd>T</kbd><span>Return to the Chapterhouse</span>
           <kbd>Click a node</kbd><span>Gather: chop a tree, mine a seam, fish a pool, dig a grave (it keeps working until the node is spent)</span>
-          <kbd>I C P M</kbd><span>Reliquary · Workbench · Skills · Waystones</span>
-          <kbd>O U H N</kbd><span>Contracts · Garden · Laborers · Capes and Pets (also reached from Skills and the Menu)</span>
-          <kbd>J</kbd><span>Character sheet: your stats, and where each number comes from</span>
-          ${this.kitHelp.legion ? '<kbd>Y</kbd><span>Legion: spare weapon and armour for your thralls, and Reinforce (necromancers)</span>' : ''}
+          <kbd>I C M</kbd><span>Reliquary · Workbench · Waystones</span>
+          <kbd>P</kbd><span>Acre ledger: Skills, then tabs for Garden, Laborers and Contracts (the Acre button appears once you start gathering)</span>
+          <kbd>U H O</kbd><span>The Acre ledger's Garden · Laborers · Contracts tabs (old keys, they open the right tab)</span>
+          <kbd>J N</kbd><span>Character window: your stats and where each number comes from, and a Capes &amp; Pets tab (N opens it)</span>
+          ${this.kitHelp.legion ? '<kbd>Y</kbd><span>Legion tab beside the Grimoire: spare weapon and armour for your thralls, and Reinforce (necromancers)</span>' : ''}
           <kbd>.</kbd><span>Gear Atlas: where every piece drops and how often, how to craft it, and what suits your discipline</span>
           <kbd>K</kbd><span>Codex</span>
           <kbd>E</kbd><span>Talk to the Prior, the Sexton or the Apothecary when you stand close (or click them)</span>
@@ -155,6 +178,9 @@ export class SettingsPanel extends SimplePanel {
     const rm = this.el!.querySelector<HTMLInputElement>('[data-rm]')!;
     rm.checked = settings.reducedMotion;
     rm.addEventListener('change', () => updateSettings({ reducedMotion: rm.checked }));
+    const hh = this.el!.querySelector<HTMLInputElement>('[data-hidehelm]')!;
+    hh.checked = settings.hideHelm;
+    hh.addEventListener('change', () => updateSettings({ hideHelm: hh.checked }));
     const dn = this.el!.querySelector<HTMLInputElement>('[data-dn]')!;
     dn.checked = settings.damageNumbers;
     dn.addEventListener('change', () => updateSettings({ damageNumbers: dn.checked }));
@@ -182,8 +208,84 @@ export class SettingsPanel extends SimplePanel {
       tips.checked = false;
       this.onResetTips?.();
     });
+    const partyDo = (fn: () => void) => () => { fn(); this.close(); };
+    this.el!.querySelector('[data-partymake]')?.addEventListener('click', partyDo(() => this.party?.create()));
+    this.el!.querySelector('[data-partyleave]')?.addEventListener('click', partyDo(() => this.party?.leave()));
+    const codeIn = this.el!.querySelector<HTMLInputElement>('[data-partycode-in]');
+    const doJoin = () => { if (codeIn?.value.trim()) { this.party?.join(codeIn.value); this.close(); } };
+    this.el!.querySelector('[data-partyjoin]')?.addEventListener('click', doJoin);
+    codeIn?.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') doJoin(); });
+    if (this.keybinds) this.bindKeybinds(this.keybinds);
     this.el!.querySelector('[data-leave]')!.addEventListener('click', () => this.onLeave());
     this.el!.querySelector('[data-changeclass]')?.addEventListener('click', () => this.onChangeClass?.());
+    this.el!.querySelector('[data-bugreport]')?.addEventListener('click', () => this.openBugReport());
+  }
+
+  /** Settings → Controls: click an action, press a key (Esc clears). Capture phase, so the press never reaches the game's own key handler. */
+  private bindKeybinds(kb: { get(): Binds; set(action: ActionId, key: string | null): string | null }) {
+    const root = this.el!;
+    const note = root.querySelector<HTMLElement>('[data-bindnote]')!;
+    const buttons = [...root.querySelectorAll<HTMLButtonElement>('[data-bind]')];
+    let listening: { action: ActionId; off: () => void } | null = null;
+    const paint = () => {
+      const binds = kb.get();
+      for (const b of buttons) {
+        const a = b.dataset.bind as ActionId;
+        const on = listening?.action === a;
+        b.textContent = on ? 'Press a key…' : binds[a] ? keyLabel(binds[a]!) : 'Unbound';
+        b.setAttribute('aria-pressed', String(on));
+        b.setAttribute('aria-label', `${ACTION_LABEL[a]}: ${binds[a] ? keyLabel(binds[a]!) : 'unbound'}. Click, then press a key.`);
+      }
+    };
+    const stop = () => { listening?.off(); listening = null; paint(); };
+    for (const b of buttons) {
+      b.addEventListener('click', () => {
+        const action = b.dataset.bind as ActionId;
+        const was = listening?.action;
+        stop();
+        if (was === action) return;
+        note.textContent = `Press a key for ${ACTION_LABEL[action]} (Esc clears it).`;
+        const onKey = (e: KeyboardEvent) => {
+          if (['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return;
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          if (e.key === 'Escape') {
+            kb.set(action, null);
+            note.textContent = `${ACTION_LABEL[action]} is unbound.`;
+            return stop();
+          }
+          const err = checkBind(kb.get(), action, e.key) as { ok: boolean; error?: string };
+          const refused = err.ok ? kb.set(action, e.key.toLowerCase()) : err.error!;
+          note.textContent = refused ?? `${ACTION_LABEL[action]} is now ${keyLabel(e.key.toLowerCase())}.`;
+          stop();
+        };
+        window.addEventListener('keydown', onKey, true);
+        listening = { action, off: () => window.removeEventListener('keydown', onKey, true) };
+        paint();
+      });
+    }
+    this.stopBindCapture = stop;
+    paint();
+  }
+  private stopBindCapture: (() => void) | null = null;
+  close() {
+    this.stopBindCapture?.();
+    this.stopBindCapture = null;
+    super.close();
+  }
+
+  /** Swap the Settings body for the report form; Back restores Settings. The panel stays open, so hotkeys stay blocked. */
+  openBugReport() {
+    if (!this.bugContext) return;
+    if (!this.el) this.open();
+    const body = this.el!.querySelector<HTMLElement>('.cw-settings');
+    if (!body) return;
+    const host = document.createElement('div');
+    body.replaceWith(host);
+    new BugReportView(host, this.bugContext, () => {
+      this.close();
+      this.open();
+    }).render();
   }
 }
 

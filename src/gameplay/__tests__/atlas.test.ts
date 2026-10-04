@@ -5,7 +5,7 @@ import { ITEMS } from '../../content/items';
 import { ARMOR_BY_ID } from '../../content/armorSets';
 import { LEGENDARY_BOSS_AREAS, LEGENDARY_DROP, LEGENDARY_SET_IDS, legendaryItemId, legendarySetFor } from '../../content/legendarySets';
 import { AREA_REAGENT_DROPS, BOSS_ICHOR } from '../../content/reagents';
-import { ELITE_RUNE_CHANCE, RUNES } from '../../content/runes';
+import { BOSS_REPEAT_RUNE_CHANCE, eliteRuneChance, RUNES } from '../../content/runes';
 import { ALL_RECIPE_ROWS } from '../../content/recipes';
 import { FLOOR_DROP_CHANCE, chestRuneChance, depthLootArea } from '../../content/depths';
 import { DISCIPLINES, type DisciplineId } from '../../content/disciplines';
@@ -159,7 +159,7 @@ describe('atlas: the percentages match the real rolls', () => {
       const s = src(id, (x) => x.placeId === 'abbess' && x.kind === 'first_kill')!;
       expect(near(c / N, s.chance, N), `first kill ${id}`).toBe(true);
     }
-    expect(near(tally.runeAll / N, 0.35, N)).toBe(true);
+    expect(near(tally.runeAll / N, BOSS_REPEAT_RUNE_CHANCE, N)).toBe(true);
     for (const [id, c] of tally.rune) {
       const s = src(id, (x) => x.placeId === 'abbess' && x.event === 'Boss kill (repeat)')!;
       expect(near(c / N, s.chance, N), `boss rune ${id}`).toBe(true);
@@ -196,7 +196,7 @@ describe('atlas: the percentages match the real rolls', () => {
     const M = 400_000;
     for (let i = 0; i < M; i++) { const r = rollEliteRune('ossuary', 1, rr); if (r) runes.set(r.item_id, (runes.get(r.item_id) ?? 0) + 1); }
     const total = [...runes.values()].reduce((a, b) => a + b, 0);
-    expect(near(total / M, ELITE_RUNE_CHANCE, M)).toBe(true);
+    expect(near(total / M, eliteRuneChance('ossuary'), M)).toBe(true);
     for (const [id, c] of runes) expect(near(c / M, src(id, (x) => x.placeId === 'ossuary' && x.kind === 'elite')!.chance, M), id).toBe(true);
   });
 
@@ -210,8 +210,9 @@ describe('atlas: the percentages match the real rolls', () => {
       expect(s.chance).toBeCloseTo((LEGENDARY_DROP.bossChance * legendaryShare(id.includes('legion') ? 'legion_unburied' : 'requiem_wraiths', disc)) / 5, 12);
       expect(near(boss / N, s.chance, N), `${disc} ${id} boss: ${boss / N} vs ${s.chance}`).toBe(true);
     }
-    // No legendary in the Hollow Graves, and a boss kill's chances over the 20 pieces add up to the 7% roll.
-    expect(src('leg_legion_unburied_chest', (x) => x.placeId === 'gravedigger')).toBeUndefined();
+    // The Gravedigger King rolls the lower starter chance, and a boss kill's chances over the 20 pieces add up to the boss roll.
+    const gd = src('leg_legion_unburied_chest', (x) => x.placeId === 'gravedigger' && x.kind === 'boss', 'gravecaller')!;
+    expect(gd.chance).toBeCloseTo((LEGENDARY_DROP.starterBossChance * legendaryShare('legion_unburied', 'gravecaller')) / 5, 12);
     const parts = ['head', 'chest', 'hands', 'legs', 'feet'] as const;
     const all = LEGENDARY_SET_IDS.flatMap((set) => parts.map((p) => src(legendaryItemId(set, p), (x) => x.placeId === 'abbess' && x.kind === 'boss', 'rotweaver')!.chance));
     expect(all.reduce((a, b) => a + b, 0)).toBeCloseTo(LEGENDARY_DROP.bossChance, 12);
@@ -254,7 +255,7 @@ describe('atlas: the percentages match the real rolls', () => {
     const s10 = src('rune_requiem', (s) => s.placeId === 'depths:10' && s.event.startsWith('Chest'))!;
     expect(s10.chance).toBeGreaterThan(0);
     expect(FLOOR_DROP_CHANCE).toBeGreaterThan(0);
-    expect(chestRuneChance(5)).toBeCloseTo(0.1, 9);
+    expect(chestRuneChance(5)).toBeCloseTo(0.25, 9);
   });
 
   it('gathering finds are per successful action', () => {
@@ -327,5 +328,48 @@ describe('atlas: upgrading and fit', () => {
 
   it('every armor piece the atlas lists is in the armor catalogue with the stats the item shows', () => {
     for (const [id, p] of Object.entries(ARMOR_BY_ID)) expect(atlas.items.get(id)!.stats).toEqual(p.stats);
+  });
+});
+
+describe('atlas: drop quality, your own odds and the roll (3 Oct 2026 achievable pass)', () => {
+  it('your own armour set drops far more often than the neutral share, and every other set less', async () => {
+    const { sourcesFor: sf, getAtlas: ga } = await import('../atlas');
+    const own = 'set_gravecaller_head';
+    const other = 'set_monk_head';
+    const neutral = ga().sources.get(own)!.find((s) => s.placeId === 'graves' && s.kind === 'kill')!.chance;
+    const mine = sf(own, 'gravecaller').find((s) => s.placeId === 'graves' && s.kind === 'kill')!.chance;
+    const theirs = sf(other, 'gravecaller').find((s) => s.placeId === 'graves' && s.kind === 'kill')!.chance;
+    expect(mine).toBeGreaterThan(neutral * 3);
+    expect(theirs).toBeLessThan(neutral);
+  });
+  it('the Atlas chance for your own piece matches the real roll', () => {
+    const rand = mulberry32(77);
+    const N = 400_000;
+    let n = 0;
+    for (let i = 0; i < N; i++) if (rollKill('robber', 'graves', 1, true, 0, rand, 'medium', 1, mulberry32(i), mulberry32(i + 1), 'gravecaller').items.some((x) => x.item_id === 'set_gravecaller_head')) n++;
+    const s = src('set_gravecaller_head', (x) => x.placeId === 'graves' && x.kind === 'elite')!;
+    expect(near(n / N, s.chance, N), `${n / N} vs ${s.chance}`).toBe(true);
+  });
+  it('places list in descent order, and each deeper ground rates higher quality', async () => {
+    const { getAtlas: ga, areaQuality: aq } = await import('../atlas');
+    const { AREA_ORDER: order, HUNT_ORDER: hunts } = await import('../../content/areas');
+    const areaPlaces = ga().places.filter((p) => p.kind === 'area').map((p) => p.id);
+    expect(areaPlaces).toEqual(order.filter((id) => areaPlaces.includes(id)));
+    let prev = 0;
+    for (const id of hunts) {
+      const q = aq(id, 'gravecaller');
+      if (!q) continue;
+      expect(q.ilvlKill).toBeGreaterThanOrEqual(prev);
+      prev = q.ilvlKill;
+    }
+    expect(aq('fen', 'gravecaller')!.runePerElite).toBeGreaterThan(aq('graves', 'gravecaller')!.runePerElite);
+    expect(aq('fen', 'gravecaller')!.bossLegendary).toBeGreaterThan(aq('ossuary', 'gravecaller')!.bossLegendary);
+    expect(aq('chapterhouse', 'gravecaller')).toBeNull();
+  });
+  it('an ideal affix roll is a clear step above the bare piece', async () => {
+    const { rollPotential: rp } = await import('../atlas');
+    const p = rp('set_gravecaller_chest', 'gravecaller', 9)!;
+    expect(p.ideal).toBeGreaterThan(p.plain * 1.3);
+    expect(p.picks).toHaveLength(2);
   });
 });

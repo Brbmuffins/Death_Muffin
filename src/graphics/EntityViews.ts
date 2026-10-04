@@ -9,7 +9,6 @@ import { fx } from './fxTextures';
 import * as nf from './necroFx';
 import { SPELL_FX } from '../content/abilities';
 import { audio } from '../audio/Audio';
-import type { CreatureSlug } from './modelPaths';
 import { AREAS, type AreaId } from '../content/areas';
 import { BOSSES } from '../content/bosses';
 import { runIdleSequence } from './warmModel';
@@ -23,6 +22,8 @@ import { allowBurst, animInterval } from './animLod';
 import { disposeProp, upgradeThrallProp } from './gearProps';
 import { gearTier } from '../content/gear';
 import { depthRoster } from '../content/depths';
+import { assets } from './AssetCache';
+import { CREATURE_MODELS, type CreatureSlug } from './modelPaths';
 import { knockActive, knockImpulse, settleDepth, stepKnock, type Knock } from './knockback';
 
 const ENEMY_SLUG: Record<EnemyId, CreatureSlug> = {
@@ -134,8 +135,12 @@ const KIT_BODIES = new Set<ThrallKind>(['warrior', 'shieldbearer', 'archer', 'bo
 /** How much of the kit armour's colour washes over the chest and hands: enough to read as plate or leather, far short of a recolour. */
 const KIT_ARMOR_STRENGTH = 0.32;
 
+const THRALL_MOVE_HOLD_S = 0.18;
+
 interface View {
   c: Creature;
+  /** Thralls: seconds left to keep walking after the sim says it stopped (see sync). */
+  moveHoldT?: number;
   x: number;
   z: number;
   facing: number;
@@ -349,6 +354,7 @@ export class EntityViews {
     const v: View = { c, x: e.x, z: e.z, facing: e.facing, lastState: '', def: e.def, animSkip: 0, animDt: 0 };
     if (e.elite) {
       v.eliteAura = this.effects.decal({
+        danger: true,
         tex: fx.ring(),
         color: 0x9b5cff,
         x: e.x,
@@ -373,20 +379,20 @@ export class EntityViews {
     for (const affix of affixesOf(e)) switch (affix) {
       case 'bellTolled':
         // Bronze bell-ring pulse around the feet.
-        fxs.push(this.effects.decal({ tex: fx.ring(), color: A.bell, x: e.x, z: e.z, r: 1.55 * e.scale, duration: 1e9, opacity: 0.6, pulse: 2.5, follow }));
+        fxs.push(this.effects.decal({ danger: true, tex: fx.ring(), color: A.bell, x: e.x, z: e.z, r: 1.55 * e.scale, duration: 1e9, opacity: 0.6, pulse: 2.5, follow }));
         break;
       case 'hungering':
         // Olive slick where it slavers.
-        fxs.push(this.effects.decal({ tex: fx.glow(), color: A.drool, x: e.x, z: e.z, r: 1.2 * e.scale, duration: 1e9, opacity: 0.45, follow }));
+        fxs.push(this.effects.decal({ danger: true, tex: fx.glow(), color: A.drool, x: e.x, z: e.z, r: 1.2 * e.scale, duration: 1e9, opacity: 0.45, follow }));
         break;
       case 'shrouded':
         // Grave-dusk pall; the body itself is dimmed in sync().
-        fxs.push(this.effects.decal({ tex: fx.glow(), color: A.shroud, x: e.x, z: e.z, r: 1.5 * e.scale, duration: 1e9, opacity: 0.7, blending: THREE.NormalBlending, follow }));
+        fxs.push(this.effects.decal({ danger: true, tex: fx.glow(), color: A.shroud, x: e.x, z: e.z, r: 1.5 * e.scale, duration: 1e9, opacity: 0.7, blending: THREE.NormalBlending, follow }));
         v.shroud = 1;
         break;
       case 'vengeful':
         // Ember cracks spreading under it.
-        fxs.push(this.effects.decal({ tex: fx.cracks(), color: A.vengeful, x: e.x, z: e.z, r: 1.3 * e.scale, duration: 1e9, opacity: 0.75, pulse: 3, spin: 0.2, follow }));
+        fxs.push(this.effects.decal({ danger: true, tex: fx.cracks(), color: A.vengeful, x: e.x, z: e.z, r: 1.3 * e.scale, duration: 1e9, opacity: 0.75, pulse: 3, spin: 0.2, follow }));
         break;
     }
     v.affixFx = fxs;
@@ -467,6 +473,7 @@ export class EntityViews {
     this.group.add(c.root);
     const v: View = { c, x: t.x, z: t.z, facing: t.facing, lastState: '', kind: t.kind, animSkip: 0, animDt: 0, float: wraith };
     v.ring = this.effects.decal({
+      other: this.isOwn?.(t.owner) === false,
       tex: fx.ring(),
       color: t.champion ? 0xd9a441 : wraith ? 0x8fb4ff : SPELL_FX.exhume.spirit,
       x: t.x,
@@ -707,7 +714,7 @@ export class EntityViews {
         this.effects.emit({ x: ev.x, y: 0.8, z: ev.z, count: ev.reason === 'sacrificed' ? 30 : 14, color: 0xd8cfbd, spread: 0.5, speed: 2, up: 1.2, life: 0.8, size: 0.25, gravity: 3 });
         // A thrall that falls comes apart: bone chips and a pale soul-light that lets go (quiet; thralls die constantly).
         // Killed ones also get a soft crack, so you hear the legion thin out (the mixer thins a rush of them to a few).
-        if (ev.reason === 'killed' && Math.hypot(ev.x - this.focusX, ev.z - this.focusZ) < 24) audio.play('boneHit', ev.x, ev.z, 0.6);
+        if (ev.reason === 'killed' && Math.hypot(ev.x - this.focusX, ev.z - this.focusZ) < 24) audio.play('thrallDeath', ev.x, ev.z);
         if (ev.reason !== 'sacrificed') {
           nf.boneSplinters(this.effects, ev.x, 0.7, ev.z, { n: 4, origin: 'thrall' });
           nf.soulMotes(this.effects, ev.x, ev.z, 0xd8cfbd, { r: 0.3, n: 3, y: 0.6, up: 1.2, origin: 'thrall' });
@@ -1019,7 +1026,7 @@ export class EntityViews {
       }
       // The Censer Bearer itself trails incense smoke and wears its aura on the ground.
       if (ENEMIES[e.def].aura) {
-        if (!v.auraFx) v.auraFx = this.effects.decal({ tex: fx.ring(), color: STATUS_FX.incensed.bronze, x: e.x, z: e.z, r: CENSER.radius, duration: 1e9, opacity: 0.22, pulse: 2.5, follow: () => ({ x: v!.x + (v!.ox ?? 0), z: v!.z + (v!.oz ?? 0) }) });
+        if (!v.auraFx) v.auraFx = this.effects.decal({ danger: true, tex: fx.ring(), color: STATUS_FX.incensed.bronze, x: e.x, z: e.z, r: CENSER.radius, duration: 1e9, opacity: 0.22, pulse: 2.5, follow: () => ({ x: v!.x + (v!.ox ?? 0), z: v!.z + (v!.oz ?? 0) }) });
         if (nearFx && Math.random() < dt * 2) this.effects.emitSmoke({ x: e.x, y: 1.1, z: e.z, count: 1, color: STATUS_FX.incensed.smoke, spread: 0.3, speed: 0.3, up: 0.5, life: 1.4, size: 0.9, shrink: -0.5 });
       }
       if (nearFx && hover && Math.random() < dt * 4) {
@@ -1045,7 +1052,7 @@ export class EntityViews {
       if (ENEMIES[e.def].unbind) {
         let near = false;
         for (const t of thralls.values()) if (Math.abs(t.x - e.x) < UNBIND.range && Math.hypot(t.x - e.x, t.z - e.z) <= UNBIND.range) { near = true; break; }
-        if (near && !v.auraFx) v.auraFx = this.effects.decal({ tex: fx.ring(), color: SPELL_FX.enemy.curse, x: e.x, z: e.z, r: UNBIND.range, duration: 1e9, opacity: 0.15, pulse: 1.5, follow: () => ({ x: v!.x + (v!.ox ?? 0), z: v!.z + (v!.oz ?? 0) }) });
+        if (near && !v.auraFx) v.auraFx = this.effects.decal({ danger: true, tex: fx.ring(), color: SPELL_FX.enemy.curse, x: e.x, z: e.z, r: UNBIND.range, duration: 1e9, opacity: 0.15, pulse: 1.5, follow: () => ({ x: v!.x + (v!.ox ?? 0), z: v!.z + (v!.oz ?? 0) }) });
         else if (!near && v.auraFx) (v.auraFx.kill(), (v.auraFx = undefined));
       }
       if (nearFx && e.state === 'rising' && Math.random() < dt * 8) {
@@ -1083,7 +1090,9 @@ export class EntityViews {
       v.c.root.position.set(t.x, -1.8 * (1 - rise) * (1 - rise) + hover, t.z);
       v.c.root.rotation.y = v.facing;
       v.c.flash = t.flash;
-      const key = t.state === 'attack' && t.stateT < 0.1 ? 'attack' : t.moving ? 'move' : 'idle';
+      // A snapshot-mirrored legion (co-op guest) can still blink `moving` for a tick; walk -> idle needs it to stay off for a moment.
+      v.moveHoldT = t.moving ? THRALL_MOVE_HOLD_S : Math.max(0, (v.moveHoldT ?? 0) - dt);
+      const key = t.state === 'attack' && t.stateT < 0.1 ? 'attack' : t.moving || (v.moveHoldT > 0 && v.lastState === 'move') ? 'move' : 'idle';
       // A thrall's hit applies the instant its attack starts: open the swing just before its impact frame.
       if (key === 'attack' && v.lastState !== 'attack') v.c.playStrike('attack', 0.12);
       else if (key === 'move' && v.lastState !== 'move') {
@@ -1094,7 +1103,7 @@ export class EntityViews {
       v.lastState = key;
       // A Bog Hag's hex: a magenta sigil ring follows the thrall and sickly motes drip off it while it lasts.
       if ((t.cursedT ?? 0) > 0) {
-        if (!v.hexFx?.alive) v.hexFx = this.effects.decal({ tex: fx.sigil(), color: SPELL_FX.enemy.hex, x: t.x, z: t.z, r: 0.95, duration: 1e9, opacity: 0.9, spin: 2, follow: () => ({ x: v!.x + (v!.ox ?? 0), z: v!.z + (v!.oz ?? 0) }) });
+        if (!v.hexFx?.alive) v.hexFx = this.effects.decal({ danger: true, tex: fx.sigil(), color: SPELL_FX.enemy.hex, x: t.x, z: t.z, r: 0.95, duration: 1e9, opacity: 0.9, spin: 2, follow: () => ({ x: v!.x + (v!.ox ?? 0), z: v!.z + (v!.oz ?? 0) }) });
         if (Math.abs(t.x - focusX) < 24 && Math.abs(t.z - focusZ) < 20 && Math.random() < dt * 5) this.effects.emit({ x: t.x, y: 0.9 + Math.random() * 0.8, z: t.z, count: 1, color: SPELL_FX.enemy.hex, spread: 0.25, speed: 0.15, up: -0.5, life: 0.7, size: 0.12, gravity: 4 });
       } else if (v.hexFx) {
         v.hexFx.kill();
@@ -1231,6 +1240,31 @@ export function preloadAreaModels(area: AreaId, legion?: DisciplineId | null): (
   return runIdleSequence(tasks);
 }
 
+/**
+ * GLB urls of every body kind `areas` can show (rosters, bosses, legion, thralls, guide NPCs), nearest first by listing order.
+ * Parsing a model is the first-use cost of a creature type; doing it here, one per idle turn, keeps it out of the frame that needs it.
+ */
+export function areaModelUrls(areas: readonly AreaId[], legion?: DisciplineId | null): string[] {
+  const slugs: CreatureSlug[] = [];
+  const add = (s: CreatureSlug | undefined) => s && !slugs.includes(s) && slugs.push(s);
+  const enemy = (id: EnemyId) => add(ENEMY_SLUG[id]);
+  for (const a of areas) {
+    for (const { id } of AREAS[a].enemies) enemy(id);
+    if (a === 'depths') for (const { id } of [...depthRoster(1), ...depthRoster(5)]) enemy(id);
+    for (const b of Object.values(BOSSES)) if (b.area === a) add(b.modelSlug);
+    for (const id of NPC_IDS) if (NPCS[id].area === a) add(NPC_LOOKS[id].slug);
+  }
+  if (legion && LEGION[legion]) add(LEGION[legion].slug);
+  add('skeleton_thrall');
+  return slugs.map((s) => CREATURE_MODELS[s].url).filter((u, i, a) => a.indexOf(u) === i);
+}
+
+/** Parses the models of `areas` ahead of need, one per idle turn, skipping what is already loaded. Returns a cancel function. */
+export function preloadAreaGlbs(areas: readonly AreaId[], legion?: DisciplineId | null): () => void {
+  const tasks = areaModelUrls(areas, legion).filter((u) => !assets.hasModel(u)).map((u) => () => assets.preload(u));
+  return runIdleSequence(tasks);
+}
+
 /** One body the warm-up stage can draw: `make` builds a fresh Creature with the options its real spawn uses. */
 export interface BodySpec {
   key: string;
@@ -1251,7 +1285,12 @@ export function stageSpecs(areas: readonly AreaId[], legion?: DisciplineId | nul
     seen.add(key);
     out.push({ key, make });
   };
-  const enemy = (id: EnemyId) => add(`enemy:${id}`, () => new Creature(ENEMY_SLUG[id], { spectral: id === 'wraith', fallback: ENEMY_FALLBACK[id], wings: WINGS[id], tint: id === 'risen' ? 0x8a8078 : 0xffffff }));
+  const enemy = (id: EnemyId) => add(`enemy:${id}`, () => {
+    const c = new Creature(ENEMY_SLUG[id], { spectral: id === 'wraith', fallback: ENEMY_FALLBACK[id], wings: WINGS[id], tint: id === 'risen' ? 0x8a8078 : 0xffffff });
+    // A burrowing ghoul draws a dirt mound, a material of its own: its first burrow compiled that shader in the middle of a fight. Stage one with the body.
+    if (ENEMIES[id].burrow) c.root.add(makeMound());
+    return c;
+  });
   for (const a of areas) {
     for (const { id } of AREAS[a].enemies) enemy(id);
     if (a === 'depths') for (const { id } of [...depthRoster(1), ...depthRoster(5)]) enemy(id);

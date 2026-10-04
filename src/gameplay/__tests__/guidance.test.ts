@@ -215,11 +215,11 @@ describe('something new to say', () => {
     expect(g.unheard('prior', s3).map((x) => x.key)).toContain('ascend:ready:0');
   });
 
-  it('seals opened again after an Ascension are news again', () => {
+  it('seals do not close on Ascension, so an old seal is not news again; only the new best rank is', () => {
     const g = new Guidance(1, memStore());
     g.told('prior', baseState({ unlocked: ['ossuary'] }));
     const again = baseState({ ascension: 1, unlocked: ['ossuary'] });
-    expect(g.unheard('prior', again).map((x) => x.key).sort()).toEqual(['rank:1', 'seal:ossuary:1']);
+    expect(g.unheard('prior', again).map((x) => x.key).sort()).toEqual(['rank:1']);
   });
 
   it('transient news (bag, laborers) returns after a new session but not while you are in this one', () => {
