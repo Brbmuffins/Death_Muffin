@@ -44,8 +44,9 @@ test('prices: 7,500 x shards squared, Prelate excluded', () => {
   assert.equal(sinks.empowerGold('mire'), 367500);
   assert.equal(sinks.canEmpower('prelate'), false);
   assert.equal(sinks.canEmpower('nope'), false);
-  assert.equal(sinks.empoweredLegendaryChance('gravedigger'), 0.075);
-  assert.equal(sinks.empoweredLegendaryChance('abbess'), 0.375);
+  assert.ok(Math.abs(sinks.empoweredLegendaryChance('gravedigger') - 0.15) < 1e-9);
+  assert.ok(Math.abs(sinks.empoweredLegendaryChance('abbess') - 0.5) < 1e-9);
+  assert.ok(Math.abs(sinks.empoweredLegendaryChance('mire') - 0.6) < 1e-9);
 });
 
 test('a summon takes one Seal and the boss price and binds a summon', async () => {

@@ -95,8 +95,10 @@ describe('Empowered summons', () => {
       expect(legendary / N).toBeGreaterThan(empoweredLegendaryChance(boss) - 0.04);
       expect(legendary / N).toBeLessThan(empoweredLegendaryChance(boss) + 0.04);
     }
-    expect(empoweredLegendaryChance('gravedigger')).toBe(0.075);
-    expect(empoweredLegendaryChance('abbess')).toBe(0.375);
+    // 2.5x the area boss's own legendary chance (which rises with depth), capped.
+    expect(empoweredLegendaryChance('gravedigger')).toBeCloseTo(0.15);
+    expect(empoweredLegendaryChance('abbess')).toBeCloseTo(0.5);
+    expect(empoweredLegendaryChance('mire')).toBeCloseTo(0.6);
   });
 
   it('a non-legendary prize always carries three affixes (it shows epic) and a legal roll', () => {

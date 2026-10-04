@@ -20,12 +20,12 @@ Against the wallets: the level-119 hero (174k) can reforge one mid piece about t
 
 | boss | shards | gold | boss level -> Empowered | health | damage | legendary in the prize |
 |---|---|---|---|---|---|---|
-| Gravedigger King | 2 | 30,000 | 1 -> 7 | x3.25 | x1.90 | 7.5% (3% x2.5) |
-| Bone Abbess | 3 | 67,500 | 5 -> 12 | x2.55 | x1.66 | 37.5% (15% x2.5) |
-| Drowned Congregation | 4 | 120,000 | 9 -> 16 | x2.18 | x1.48 | 37.5% |
-| Plague Saint (level 50 shown) | 5 | 187,500 | 50 -> 64 | x1.77 | x1.25 | 37.5% |
-| Cinder Regent (level 50 shown) | 6 | 270,000 | 50 -> 64 | x1.77 | x1.25 | 37.5% |
-| Mire Mother (level 50 shown) | 7 | 367,500 | 50 -> 64 | x1.77 | x1.25 | 37.5% |
+| Gravedigger King | 2 | 30,000 | 1 -> 7 | x3.25 | x1.90 | 15% (6% x2.5) |
+| Bone Abbess | 3 | 67,500 | 5 -> 12 | x2.55 | x1.66 | 50% (20% x2.5) |
+| Drowned Congregation | 4 | 120,000 | 9 -> 16 | x2.18 | x1.48 | 55% (22% x2.5) |
+| Plague Saint (level 50 shown) | 5 | 187,500 | 50 -> 64 | x1.77 | x1.25 | 60% (cap) |
+| Cinder Regent (level 50 shown) | 6 | 270,000 | 50 -> 64 | x1.77 | x1.25 | 60% (cap) |
+| Mire Mother (level 50 shown) | 7 | 367,500 | 50 -> 64 | x1.77 | x1.25 | 60% (cap) |
 
 The level-scaled grounds (Saint, Regent, Mire) follow the hero's level, so their relative bump shrinks as the hero grows (x1.6 health at level 255): the flat x1.4 keeps them meaningfully tougher. The prize is one gear piece from the boss's own area table (smart loot, rare-or-better bases x4 weight) with three affixes (it shows epic), or a legendary set piece (favouring pieces the hero lacks); the ordinary kill rolls still happen, so an Empowered kill is the normal spoils plus the prize. The wallets: the 174k hero can afford the first three bosses (30k, 67.5k, 120k); the owner can afford all of them about 20 times over, so for the owner the Seal supply (below) is the limiter.
 
