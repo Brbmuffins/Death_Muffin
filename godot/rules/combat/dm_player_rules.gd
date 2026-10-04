@@ -112,7 +112,7 @@ static func blow_is_frontal(p: Dictionary, from: Variant) -> bool:
 		return false
 	var dx: float = from["x"] - p["x"]
 	var dz: float = from["z"] - p["z"]
-	var l := sqrt(dx * dx + dz * dz)
+	var l := DmWeaponLine.hypot2(dx, dz)
 	if l < 1e-6:
 		return true
 	var dot := (sin(p["facing"]) * dx + cos(p["facing"]) * dz) / l

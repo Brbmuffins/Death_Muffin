@@ -9,7 +9,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { mulberry32 } from '../../src/gameplay/rng';
 import { DISCIPLINES, disciplineFor } from '../../src/content/disciplines';
 import { ARMOR_PIECES } from '../../src/content/armorSets';
-import { NECRO_WEAPONS } from '../../src/content/necroWeapons';
+import { NECRO_WEAPONS, NECRO_WEAPON_TUNING } from '../../src/content/necroWeapons';
 import { AFFIXES, affixAcceptRange, affixRange, affixEffect, addInstanceTotals, emptyAffixTotals } from '../../src/gameplay/affixRules';
 import { deriveStats, xpToNext } from '../../src/gameplay/characterStats';
 import { computeStats } from '../../src/gameplay/stats';
@@ -343,3 +343,302 @@ function build(c: ReturnType<typeof character>, slots: InventorySlot[], l: Retur
   }
   w('player', cases);
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Legend maths, rune geometry / sockets, kill rewards, scaling helpers (all real exports)
+// ---------------------------------------------------------------------------------------------------------------------
+{
+  const cases = [];
+  for (let i = 0; i < 400; i++) {
+    const raw = chance(0.2) ? undefined : { thrallDeathBurst: pick([0, 0.8, 5, -1, NaN as never, 1.5]), championEvery: pick([0, 4, 25, -3, 7.9]), spearRally: pick([0, 1, 9]), miasmaSpreadsWithered: pick([0, 1, 0.4, 7]), witheredBurstAt: pick([0, 8, 40, 3.7]) };
+    const mods = { ...J(disciplineFor(range(1, 4)).mods), colossusGuard: pick([0, 0.2, 0.3]), witheredBurstAt: pick([0, 8, 10]), litanyShatter: pick([0, 4]) };
+    const ward = rand() * 1.3; const guard = pick([0, rand(), 2, -1]);
+    const thr = range(0, 6); const raw2 = rand() * 500;
+    cases.push({ in: J({ raw: raw === undefined ? null : J(raw), mods, ward, guard, thr, raw2, bw: rand() * 1.2, refl: pick([0, 0.4, 0.6]), barrier: pick([0, rand() * 300]), shat: pick([0, 4]) }), out: J({
+      clamp: clampSimLegend(raw as never), simOf: simLegendOf(mods), dtm: damageTakenMult(ward, guard), cap: effectiveWitheredCap(mods), col: colossusActive(mods, thr),
+      refl: wardReflectDamage(raw2, 0, 0),
+    }) });
+  }
+  for (const c of cases) { const i = c.in as { raw2: number; bw: number; refl: number; barrier: number; shat: number }; (c.out as Record<string, unknown>).refl = wardReflectDamage(i.raw2, i.bw, i.refl); (c.out as Record<string, unknown>).shatter = shatterDamage(i.barrier, i.shat); }
+  w('legend', cases);
+}
+{
+  const cases = [];
+  for (let i = 0; i < 300; i++) {
+    const caster = { x: rand() * 8 - 4, z: rand() * 8 - 4 }, aim = { x: rand() * 20 - 10, z: rand() * 20 - 10 };
+    const foes = Array.from({ length: range(0, 10) }, (_, k) => ({ id: k + 1, x: Math.round((rand() * 16 - 8) * 2) / 2, z: Math.round((rand() * 16 - 8) * 2) / 2, radius: pick([0.4, 0.6, 1]) }));
+    const first = foes.length ? pick(foes) : { id: 99, x: 1, z: 1, radius: 0.5 };
+    const corpses = foes.map((f, k) => ({ ...f, echoOwner: chance(0.2) ? 'p' : undefined, id: 100 + k }));
+    const ang = rand() * Math.PI * 2; const d = { dx: Math.sin(ang), dz: Math.cos(ang) };
+    const rows = [
+      ...Array.from({ length: range(0, 8) }, () => ({ slot_index: range(125, 136), item_id: pick(['rune_splinter', 'rune_marrow_tap', 'rune_volley', 'rune_impale', 'rune_mass_grave', 'rune_requiem', 'junk']), quantity: pick([0, 1, 3]) })),
+      ...Array.from({ length: range(0, 5) }, () => ({ slot_index: range(-1, 110), item_id: pick(['rune_splinter', 'rune_volley', 'junk']), quantity: range(1, 5), equipped: pick([0, 1]) })),
+    ];
+    const rite = pick(RUNE_RITES); const rid = pick(['rune_splinter', 'rune_impale', 'rune_requiem', 'junk']);
+    cases.push({ in: J({ caster, aim, foes, first, corpses, d, rows, rite, rid, ringR: rand() * 5, reach: pick([6, 12, 18]), pt: { x: rand() * 8 - 4, z: rand() * 8 - 4 }, r: rand() * 8 }), out: J({
+      splinter: splinterTarget(first, foes)?.id ?? null, volley: volleyTargets(caster, first, foes).map((e) => e.id), ring: ringHits(caster, 3, foes).map((e) => e.id),
+      centre: ringCenter(caster, aim, 12), impale: ((r) => (r ? { id: r.foe.id, along: r.along } : null))(impaleTarget(caster, d.dx, d.dz, 12, 1.1, foes)),
+      within: corpsesWithin(caster, 6, corpses).map((e) => e.id), sockets: socketsOf(rows), owned: ownedRunes(rows as never), fits: runeFits(rid, rite),
+    }) });
+  }
+  for (const c of cases) { const i = c.in as { caster: never; aim: never; reach: number; pt: never; r: number; ringR: number; foes: never[]; corpses: never[] }; Object.assign(c.out as object, { centre2: ringCenter(i.caster, i.aim, i.reach), ring2: ringHits(i.pt, i.ringR, i.foes).map((e: { id: number }) => e.id), within2: corpsesWithin(i.pt, i.r, i.corpses).map((e: { id: number }) => e.id) }); }
+  w('runes', cases);
+}
+{
+  const cases = [];
+  const ids = Object.keys(ENEMIES) as EnemyId[];
+  for (let i = 0; i < 600; i++) {
+    const def = pick(ids); const lvl = range(1, 150); const elite = chance(0.4); const tier = range(0, 8) + (chance(0.3) ? 0.5 : 0); const diff = pick(Object.keys(DIFFICULTIES));
+    const fam = pick(['necromancer', 'knight', 'warden', 'monk', 'witch', 'veil']);
+    const f = { fracture: range(0, 3), sanct: chance(0.5), shrouded: chance(0.5), rot: chance(0.5) };
+    cases.push({ in: J({ def, lvl, elite, tier, diff, fam, f, depth: range(0, 60), hero: range(0, 150), amount: rand() * 900 }), out: J({
+      xp: killXpBase(def, lvl, elite, tier, diff as never), gold: killGoldMax(def, lvl, elite, tier, diff as never), nbx: newBloodXpMult(fam, lvl + (chance(0.5) ? 0.7 : 0)), nbd: newBloodDamageMult(fam),
+      hp: enemyHpScale(lvl), dm: enemyDamageScale(lvl), dl: depthEnemyLevel(range(0, 60), range(0, 150)),
+      hn: damageTakenScale({ fracture: f.fracture, sanctT: f.sanct ? 2 : 0, affix: f.shrouded ? 'shrouded' : undefined }, f.rot),
+    }) });
+  }
+  for (const c of cases) {
+    const i = c.in as { depth: number; hero: number; fam: string; lvl: number };
+    Object.assign(c.out as object, { dl: depthEnemyLevel(i.depth, i.hero), nbx: newBloodXpMult(i.fam, i.lvl) });
+  }
+  w('scaling', cases);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The real WorldSim: enemy spawns, thrall raising, Litany, Corpse Explosion, damageEnemy
+// ---------------------------------------------------------------------------------------------------------------------
+type Any = any; // eslint-disable-line @typescript-eslint/no-explicit-any
+const areaIds = (Object.keys(AREAS) as AreaId[]).filter((a) => a !== 'depths');
+{
+  const cases = [];
+  for (let i = 0; i < 700; i++) {
+    const sim: Any = new WorldSim(new Nav(), mulberry32(range(1, 1e6)));
+    const area = pick(areaIds); const def = pick(Object.keys(ENEMIES) as EnemyId[]); const elite = chance(0.4);
+    sim.difficulty = pick(Object.keys(DIFFICULTIES)); sim.waveTier = pick([0, 1, 3, 5, 8]);
+    const vows = Object.fromEntries(VOW_ORDER.filter(() => chance(0.3)).map((v) => [v, range(0, VOWS[v].maxRank)]));
+    sim.vows = vows;
+    const since = chance(0.3) ? range(0, 40) : 1e9;
+    sim.arrivedAt.set(area, sim.time - since);
+    const players = Array.from({ length: range(0, 4) }, (_, k) => ({ id: `p${k}`, x: 0, z: 0, alive: chance(0.8), area: chance(0.8) ? area : pick(areaIds), level: range(1, 150) }));
+    for (const p of players) sim.setPlayer(p);
+    const e = sim.spawnEnemy(def, area, 0, 0, elite, false);
+    const hero = players.filter((p) => p.alive && p.area === area).map((p) => p.level);
+    const adopt = sim.adoptEnemy({ ...e, level: chance(0.5) ? 1 : e.level });
+    cases.push({ in: J({ def, area, elite, difficulty: sim.difficulty, waveTier: sim.waveTier, vows, since: since > 1e8 ? null : since, nplayers: Math.max(1, players.length), hero, adoptLevel: adopt.level }), out: J({
+      level: e.level, hp: e.hp, damage: e.damage, radius: e.radius, scale: e.scale, areaLevel: sim.areaLevel(area), ramp: sim.rampTier(area), adoptDamage: adopt.damage, adoptRadius: adopt.radius, blow: sim.blow({ damage: e.damage, hexT: 1 }), blow0: sim.blow({ damage: e.damage }),
+    }) });
+  }
+  w('enemy_spawn', cases);
+}
+{
+  const cases = [];
+  for (let i = 0; i < 500; i++) {
+    const sim: Any = new WorldSim(new Nav(), mulberry32(range(1, 1e6)));
+    const def = pick(['robber', 'templar', 'penitent', 'wraith', 'risen']) as EnemyId;
+    const e = sim.spawnEnemy(def, 'graves', 3, 4, chance(0.3), false);
+    e.hp = e.maxHp = 1e8;
+    e.fracture = range(0, 3); if (chance(0.4)) e.sanctT = 3; if (chance(0.4)) e.affix = 'shrouded';
+    e.facing = rand() * 12 - 6;
+    const rot = chance(0.5);
+    if (rot) sim.zones.set(999, { id: 999, kind: chance(0.5) ? 'miasma' : 'rot', owner: 'p', hostile: false, x: 3, z: 4, r: 2, until: 1e9, bornAt: 0, tick: 0, dps: 1, slow: 1, witheredCap: 5, bloom: false });
+    const from = chance(0.7) ? { x: rand() * 10 - 5, z: rand() * 10 - 5 } : undefined;
+    const amount = rand() * 800;
+    const dealt = sim.damageEnemy(e, amount, 'p', from);
+    cases.push({ in: J({ def, ex: e.x, ez: e.z, facing: e.facing, fracture: e.fracture, sanct: !!e.sanctT, shrouded: e.affix === 'shrouded', rot, from, amount }), out: J({ dealt, takenMult: sim.damageTakenMult(e) }) });
+  }
+  w('damage_enemy', cases);
+}
+{
+  const cases = [];
+  const kindsC = ['normal', 'normal', 'resonant', 'swift', 'toxic'] as const;
+  const enemiesC = ['robber', 'robber', 'penitent', 'deacon', 'sac', 'risen'] as const;
+  for (let i = 0; i < 400; i++) {
+    const sim: Any = new WorldSim(new Nav(), mulberry32(range(1, 1e6)));
+    sim.setPlayer({ id: 'p1', x: 0, z: 0, alive: true, area: 'graves' });
+    const every = chance(0.4) ? pick([0, 3, 4]) : 0;
+    if (every) sim.apply({ t: 'legend', by: 'p1', mods: { championEvery: every } });
+    const ncorp = range(1, 12);
+    const corpses = [];
+    for (let k = 0; k < ncorp; k++) {
+      const x = Math.round((rand() * 8 - 4) * 4) / 4, z = Math.round((rand() * 8 - 4) * 4) / 4;
+      const kind = pick(kindsC), enemy = pick(enemiesC), elite = chance(0.2);
+      sim.addCorpse(x, z, kind, enemy, elite, 0, 1, 'graves');
+      corpses.push({ x, z, kind, enemy, elite, echoOwner: null });
+    }
+    const steps = [];
+    for (let s = 0, n = range(1, 8); s < n; s++) {
+      const kind = pick(['warrior', 'shieldbearer', 'wraith', 'bogus', 'hound']);
+      const intent: Any = { t: 'exhume', by: 'p1', x: Math.round((rand() * 8 - 4) * 4) / 4, z: Math.round((rand() * 8 - 4) * 4) / 4, r: pick([0.8, 3, 0.2]), kind, cap: range(1, 7), hp: 10 + rand() * 900, damage: 5 + rand() * 300, attackSpeedMult: 1 + rand() * 0.5 };
+      if (chance(0.3)) intent.count = pick([1, 2, 3, 9, -2, 2.7]);
+      if (kind === 'wraith' && chance(0.5)) intent.allyHeal = rand() * 0.06;
+      if (chance(0.2)) { intent.colossus = true; intent.r = pick([6, 3, 10]); }
+      const refresh = chance(0.2) ? { t: 'refreshThralls', by: 'p1', hpMult: pick([1, 1.1, 2, 0.5, NaN as never]), damageMult: pick([1, 1.2, 3]), speedMult: pick([1, 1.05]) } : null;
+      sim.apply(intent);
+      if (refresh) sim.apply(refresh);
+      const th = [...sim.thralls.values()].filter((t: Any) => t.state !== 'dead').map((t: Any) => ({ id: t.id, kind: t.kind, hp: t.hp, maxHp: t.maxHp, damage: t.damage, attackInterval: t.attackInterval, range: t.range, speed: t.speed, empowered: t.empowered, champion: !!t.champion, allyHeal: t.allyHeal ?? 0 }));
+      steps.push({ intent, refresh, after: th });
+    }
+    cases.push({ in: J({ corpses, every, steps: steps.map((s) => ({ intent: s.intent, refresh: s.refresh })) }), out: J({ steps: steps.map((s) => s.after.map(({ id: _id, ...rest }: Any) => rest)) }) });
+  }
+  w('thralls', cases);
+}
+{
+  const cases = [];
+  for (let i = 0; i < 400; i++) {
+    const sim: Any = new WorldSim(new Nav(), mulberry32(range(1, 1e6)));
+    sim.setPlayer({ id: 'p1', x: 0, z: 0, alive: true, area: 'graves' });
+    const corpses = Array.from({ length: range(0, 10) }, () => ({ x: rand() * 12 - 6, z: rand() * 12 - 6, kind: pick(['normal', 'resonant', 'toxic', 'swift']), elite: chance(0.2) }));
+    const ids: number[] = [];
+    for (const c of corpses) { sim.addCorpse(c.x, c.z, c.kind, 'robber', c.elite, 0, pick([1, 1, 1.6]), 'graves'); ids.push([...sim.corpses.values()].at(-1).id); }
+    const nth = range(0, 6);
+    const thr = [];
+    for (let k = 0; k < nth; k++) { sim.addCorpse(7 + k, 0, 'normal', 'robber', false, 0, 1, 'graves'); const c = [...sim.corpses.values()].at(-1); sim.apply({ t: 'exhume', by: 'p1', x: c.x, z: c.z, r: 1, kind: 'warrior', cap: 9, hp: 50, damage: 5, attackSpeedMult: 1 }); }
+    for (const t of sim.thralls.values()) { t.x = rand() * 8 - 4; t.z = rand() * 8 - 4; t.state = 'idle'; thr.push({ x: t.x, z: t.z }); }
+    for (const c of [...sim.corpses.values()].filter((c: Any) => c.x >= 7)) sim.removeCorpse(c, 'expired', 'p1');
+    const foes = Array.from({ length: range(1, 5) }, () => { const e = sim.spawnEnemy('robber', 'graves', rand() * 10 - 5, rand() * 10 - 5, false, false); e.hp = e.maxHp = 1e6; return e; });
+    const spell = 1 + rand() * 60; const lit = { t: 'litany', by: 'p1', x: rand() * 4 - 2, z: rand() * 4 - 2, r: pick([7, 7 * 1.5, 3]), spellPower: spell, leaveCorpses: chance(0.5), spare: chance(0.2) };
+    const foePos = foes.map((e: Any) => ({ x: e.x, z: e.z, radius: e.radius }));
+    sim.apply(lit);
+    const res = sim.drain().find((e: Any) => e.t === 'litanyResult');
+    const litDmg = foes.map((e: Any) => 1e6 - e.hp);
+    // Corpse Explosion on the first corpse (if any), after resetting enemy hp
+    let det = null;
+    if (ids.length && sim.corpses.has(ids[0])) {
+      for (const e of foes) e.hp = e.maxHp = 1e8;
+      const claim = pick([rand() * 900, 5e5, -4, NaN as never]);
+      const c0 = sim.corpses.get(ids[0]);
+      sim.apply({ t: 'detonate', by: 'p1', corpseId: c0.id, dmg: claim });
+      const ev = sim.drain().find((e: Any) => e.t === 'detonated');
+      const zone = [...sim.zones.values()].find((z: Any) => z.kind === 'rot');
+      det = { claim, corpse: { kind: c0.kind, elite: c0.elite, scale: c0.scale, x: c0.x, z: c0.z }, r: ev.r, targets: ev.targets, dmg: ev.dmg, zone: zone ? { r: zone.r, dps: zone.dps } : null };
+    }
+    cases.push({ in: J({ corpses, thr, foePos, lit, det: det && { claim: det.claim, corpse: det.corpse } }), out: J({ res: res && { corpses: res.corpses, resonant: res.resonant, thralls: res.thralls, spared: res.spared ?? 0, targets: res.targets }, litDmg, det: det && { r: det.r, targets: det.targets, dmg: det.dmg, zone: det.zone } }) });
+  }
+  w('litany_detonate', cases);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Ability bookkeeping and damage expressions (transcribed from AbilitySystem / NewBloodSystem over the real constants)
+// ---------------------------------------------------------------------------------------------------------------------
+{
+  const cases = [];
+  const ids = Object.keys(ABILITIES);
+  for (let i = 0; i < 800; i++) {
+    const stats = { level: range(1, 60), maxHp: range(60, 3000), spellPower: 10 + rand() * 300, maxEssence: range(80, 600), essenceRegen: 5, moveSpeed: 5.4, thrallHp: 50, thrallDamage: 10, damageBonusPct: 0 };
+    const fam = pick(['necromancer', 'knight', 'warden', 'monk', 'witch', 'veil'] as const);
+    const worn: Record<string, { item_id: string }> = {};
+    if (chance(0.7)) worn.main_hand = { item_id: pick(NECRO_MAIN).id };
+    if (chance(0.5)) worn.off_hand = { item_id: pick(NECRO_OFF).id };
+    const loadout = resolveWeaponLoadout(worn, pick(['ossuary', 'mourner', 'gravecaller', 'rotweaver']));
+    const p: Any = new Player(stats, new Nav(), fam);
+    p.loadout = loadout;
+    const now = range(1000, 100000);
+    p.resource.value = rand() * stats.maxEssence;
+    if (chance(0.3)) p.castUntil = now + range(-50, 50);
+    const id = pick(ids) as never as keyof typeof ABILITIES;
+    if (chance(0.3)) p.cooldowns.set(id, now + range(-100, 100));
+    p.souls = chance(0.3) ? p.soulsMax : range(0, 10);
+    if (chance(0.3)) p.brews.elixir = { id: 'flask_damage', until: now + 1000 };
+    if (chance(0.3)) { p.brews.tonic = null; p.brews.elixir = Object.keys(BREWS).find((k) => BREWS[k].effects[0].kind === 'haste') ? { id: Object.keys(BREWS).find((k) => BREWS[k].effects[0].kind === 'haste')!, until: now + 5000 } : null; }
+    p.unbreakableUntil = chance(0.2) ? now + 100 : 0;
+    p.alive = chance(0.95);
+    const level = range(1, 40);
+    // checks: AbilitySystem.cast (transcribed)
+    const check = () => {
+      const def = ABILITIES[id];
+      if (!p.alive) return 'dead';
+      if (level < unlockLevel(id)) return 'locked';
+      if (now < p.castUntil) return 'busy';
+      if (p.onCooldown(id, now)) return 'cooldown';
+      const empowered = p.soulsCharged && SOUL_HARVEST.spells.includes(id);
+      if (!empowered && p.essence < def.essenceCost) return 'essence';
+      return 'ok';
+    };
+    const verdict = check();
+    const empowered = p.soulsCharged && SOUL_HARVEST.spells.includes(id);
+    const colossus = chance(0.3);
+    const before = { essence: p.essence };
+    const inState = J({ stats, fam, worn, now, resource: p.resource.value, castUntil: p.castUntil, cooldown: p.cooldowns.get(id) ?? 0, souls: p.souls, brews: p.brews, unbreakableUntil: p.unbreakableUntil, alive: p.alive, rooted: p.rootedUntil, id, level, colossus, disc: p.loadout.main });
+    const sp = stats.spellPower * (now < p.unbreakableUntil ? 1.3 : 1) * (1 + p.brewValue('damage', now));
+    const nbPower = stats.spellPower * 1.5 * (p.veilForm && now >= p.betweenUntil ? 0.7 : 1);
+    if (verdict === 'ok') {
+      p.castUntil = now + abilityLockMs(id, CAST_FLOW[id].lockMs, p.loadout);
+      p.rootedUntil = Math.max(p.rootedUntil, p.castUntil);
+      if (empowered) p.spendSouls(); else p.essence -= ABILITIES[id].essenceCost;
+      if (id === 'exhume' && !empowered && p.loadout.exhumeRefund > 0) p.essence = Math.min(p.stats.maxEssence, p.essence + ABILITIES[id].essenceCost * p.loadout.exhumeRefund);
+      const runeCool = id === 'exhume' && colossus ? RUNE_TUNING.colossus.cooldownMult : 1;
+      p.cooldowns.set(id, now + (abilityCooldownMs(id, ABILITIES[id].cooldownMs, p.loadout, PRIMARIES.includes(id)) * runeCool) / (1 + p.brewValue('haste', now)));
+    }
+    cases.push({ in: { ...inState, worn, loadout }, out: J({ verdict, empowered, castUntil: p.castUntil, rootedUntil: p.rootedUntil, essence: p.essence, cooldown: p.cooldowns.get(id) ?? 0, souls: p.souls, sp, nbPower, unlock: unlockLevel(id), before }) });
+  }
+  w('ability_cast', cases);
+}
+{
+  const cases = [];
+  for (let i = 0; i < 500; i++) {
+    const sp = 5 + rand() * 600; const jitter = rand();
+    const worn: Record<string, { item_id: string }> = {};
+    if (chance(0.7)) worn.main_hand = { item_id: pick(NECRO_MAIN).id };
+    const loadout = resolveWeaponLoadout(worn, 'ossuary');
+    const rune = pick(['', 'rune_volley', 'rune_marrow_tap', 'rune_splinter', 'rune_ossuary_ring', 'rune_impale', 'rune_creeping_rot', 'rune_hollow_choir']);
+    const castIdx = range(1, 12);
+    const T = RUNE_TUNING; const D = ABILITIES;
+    const volley = rune === 'rune_volley' && castIdx % T.volley.every === 0;
+    const runeMult = rune === 'rune_marrow_tap' ? T.marrowTap.damageMult : volley ? T.volley.damageFrac : 1;
+    const dmg = sp * D.bone_needle.power * loadout.needleDamageMult * runeMult * (0.9 + jitter * 0.2);
+    const essence = NEEDLE_ESSENCE + (rune === 'rune_marrow_tap' ? T.marrowTap.essenceBonus : 0);
+    const scythe = NECRO_WEAPON_TUNING.scythe;
+    const landed = range(0, 4);
+    const reapDmg = sp * D.bone_needle.power * scythe.damageMult * (rune === 'rune_marrow_tap' ? T.marrowTap.damageMult : 1) * (0.9 + jitter * 0.2);
+    const reapEss = landed ? scythe.essencePerHit * landed + (rune === 'rune_marrow_tap' ? T.marrowTap.essenceBonus : 0) : 0;
+    const mult = chance(0.5) ? 1 : SOUL_HARVEST.areaMult;
+    const mods = { ...J(disciplineFor(range(1, 4)).mods) };
+    const caster = { x: rand() * 6, z: rand() * 6 }; const aim = { x: rand() * 30 - 10, z: rand() * 30 - 10 };
+    let mx = aim.x, mz = aim.z; const md = Math.hypot(mx - caster.x, mz - caster.z);
+    if (md > D.miasma.range) { mx = caster.x + ((mx - caster.x) / md) * D.miasma.range; mz = caster.z + ((mz - caster.z) / md) * D.miasma.range; }
+    const mr = D.miasma.radius * mods.miasmaRadiusMult * mult * (rune === 'rune_creeping_rot' ? T.creepingRot.radiusMult : 1);
+    const corp = range(0, 12), res = range(0, 4), thr = range(0, 8);
+    const litMult = Math.min(LITANY_MAX_MULT, D.black_litany.power + LITANY_PER_CORPSE * corp + LITANY_PER_RESONANT * res + LITANY_PER_THRALL * thr);
+    const mm = { ...mods, litanyBarrier: pick([0, 0.04, 0.06]), corpseHeal: pick([0, 0.03, 0.1]) };
+    const maxHp = range(60, 3000);
+    const gcorp = range(0, 9);
+    const G = GRAVE_HANDS; const gc = Math.min(G.maxCorpses, gcorp);
+    const M = BONE_MANTLE; const mantleCorp = range(0, 8);
+    const hop = range(1, 5);
+    const claim = sp * D.corpse_explosion.power;
+    cases.push({ in: J({ sp, jitter, loadout, rune, castIdx, landed, mult, mods, caster, aim, corp, res, thr, mm, maxHp, gcorp, mantleCorp, hop }), out: J({
+      needle: { volley, runeMult, dmg, essence }, reap: { dmg: reapDmg, essence: reapEss },
+      spear: { range: D.marrow_spear.range * mult, radius: D.marrow_spear.radius * mult, dmg: sp * D.marrow_spear.power, ring: rune === 'rune_ossuary_ring' ? { radius: T.ring.radius * mult, dmg: sp * D.marrow_spear.power * T.ring.damageMult, maxCastRange: T.ring.maxCastRange * mult } : null, impaleDmg: sp * D.marrow_spear.power * T.impale.damageMult },
+      miasma: { x: mx, z: mz, r: mr, dps: sp * D.miasma.power, durationMs: 6000, witheredCap: Math.max(mods.witheredMaxStacks, mods.witheredBurstAt ?? 0), bloom: mods.miasmaBurstsCorpses },
+      litMult, litDmg: sp * litMult, litSp: sp * (rune === 'rune_hollow_choir' ? T.hollowChoir.powerMult : 1),
+      gains: { barrier: mm.litanyBarrier ? maxHp * mm.litanyBarrier * (corp + res + thr) : 0, heal: mm.corpseHeal ? maxHp * mm.corpseHeal * (corp + res) * 0.5 : 0 },
+      hands: { corpses: gc, hands: Math.min(G.maxHands, G.hands + gc * G.handsPerCorpse), dmg: sp * D.grave_hands.power * (1 + G.perCorpse * gc) },
+      storm: BONE_STORM.durationS + Math.min(BONE_STORM.maxExtraS, gcorp * BONE_STORM.perCorpseS),
+      mantle: Math.min(M.barrierCap, M.barrierBase + M.barrierPerCorpse * mantleCorp),
+      skull: sp * D.wailing_skull.power * Math.pow(WAILING_SKULL.falloff, hop - 1) * 1, claim,
+    }) });
+  }
+  w('ability_damage', cases);
+}
+{
+  const cases = [];
+  for (let i = 0; i < 300; i++) {
+    const stats = { level: 10, maxHp: range(60, 3000), spellPower: 10 + rand() * 300, maxEssence: 100, essenceRegen: 5, moveSpeed: 5.4, thrallHp: 50, thrallDamage: 10, damageBonusPct: 0 };
+    const fam = pick(['warden', 'monk', 'witch', 'veil', 'knight'] as const);
+    const p: Any = new Player(stats, new Nav(), fam);
+    p.veilForm = chance(0.4); p.betweenUntil = chance(0.4) ? range(0, 200) : 0;
+    p.resource.value = rand() * 100;
+    const now = range(0, 5000);
+    const power = p.stats.spellPower * 1.5 * (p.veilForm && now >= p.betweenUntil ? 0.7 : 1);
+    const id = pick(['toll', 'great_toll', 'last_light']);
+    const spend = id === 'toll' && p.resource.value >= 25 ? 25 : id === 'great_toll' ? p.resource.value : 0;
+    const phase = ((now % 1200) + 1200) % 1200; const beat = phase <= 150 || phase >= 1050;
+    cases.push({ in: J({ stats, fam, veilForm: p.veilForm, between: p.betweenUntil, value: p.resource.value, now, id }), out: J({
+      power, toll: { spend, power: power * (1 + spend / 100), duration: id === 'toll' && spend ? 0.6 : -1 },
+      palm: { beat, damage: power * ABILITIES.palm_strike.power * (beat ? 1.4 : 1), resonance: beat ? 12 : 8 },
+      hook: { damage: power * ABILITIES.hook_throw.power, bleed: power * 0.14 }, choir: power * 0.5, crow: power * 0.35,
+    }) });
+  }
+  w('new_blood', cases);
+}
+console.log('fixtures written', counts);

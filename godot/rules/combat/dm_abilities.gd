@@ -246,6 +246,8 @@ static func detonate_blast(claim: float, corpse: Dictionary) -> Dictionary:
 	return {
 		"radius": float(D["radius"]) * (float(D["resonantRadiusMult"]) if corpse.get("kind") == "resonant" else 1.0),
 		"dmg": base * (float(D["eliteDamageMult"]) if corpse.get("elite", false) else 1.0),
+		# toxic corpses leave a friendly rot pool: radius grows with the body's scale (never below 1x), dps is a share of the unboosted blast
+		"rotRadius": float(D["rotRadius"]) * maxf(1.0, float(corpse.get("scale", 1.0))),
 		"rotDps": base * float(D["rotDpsShare"]),
 	}
 

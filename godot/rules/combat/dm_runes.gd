@@ -75,7 +75,7 @@ static func sockets_signature(s: Dictionary) -> String:
 static func _dist(a: Dictionary, b: Dictionary) -> float:
 	var dx: float = a["x"] - b["x"]
 	var dz: float = a["z"] - b["z"]
-	return sqrt(dx * dx + dz * dz)
+	return DmWeaponLine.hypot2(dx, dz)
 
 
 ## Splinters: the living enemy nearest the struck one (other than it) within the rune's reach, or null.

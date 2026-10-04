@@ -164,6 +164,18 @@ static func pierce_targets(from: Dictionary, target: Dictionary, candidates: Arr
 	return out
 
 
-## Math.hypot for two args.
+## Math.hypot for two args, using V8's algorithm (scale by the max, compensated sum) so distance TIES break exactly as in the web build.
 static func hypot2(a: float, b: float) -> float:
-	return sqrt(a * a + b * b)
+	var ax := absf(a)
+	var ay := absf(b)
+	var mx := maxf(ax, ay)
+	if mx == 0.0:
+		return 0.0
+	var sum := 0.0
+	var comp := 0.0
+	for v in [ax / mx, ay / mx]:
+		var summand: float = v * v - comp
+		var prelim := sum + summand
+		comp = (prelim - sum) - summand
+		sum = prelim
+	return sqrt(sum) * mx
