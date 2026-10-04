@@ -134,11 +134,15 @@ export class VaultPanel {
         </section>
       </div>
       <div class="cw-vault-actions">
-        <button class="cw-button small" data-all="materials" ${this.busy || !st ? 'disabled' : ''} title="Stores every unlocked material and consumable in the Vault">Deposit materials</button>
-        <button class="cw-button small" data-all="all" ${this.busy || !st ? 'disabled' : ''} title="Stores everything unlocked and not worn">Deposit all</button>
-        <button class="cw-button small" data-take="materials" ${this.busy || !st ? 'disabled' : ''} title="Takes every material and consumable from all Vault tabs into your bag, as far as it fits">Take materials</button>
-        <button class="cw-button small" data-take="all" ${this.busy || !st ? 'disabled' : ''} title="Takes everything from all Vault tabs into your bag, as far as it fits">Take all</button>
-        <button class="cw-button small" data-sort${this.busy || !st ? 'disabled' : ''} title="Merges stacks, then orders by type, rarity and name">Sort</button>
+        <div class="cw-vault-actcol">
+          <button class="cw-button small" data-all="materials" ${this.busy || !st ? 'disabled' : ''} title="Stores every unlocked material and consumable in the Vault">Deposit materials</button>
+          <button class="cw-button small" data-take="materials" ${this.busy || !st ? 'disabled' : ''} title="Takes every material and consumable from all Vault tabs into your bag, as far as it fits">Take materials</button>
+        </div>
+        <div class="cw-vault-actcol">
+          <button class="cw-button small" data-all="all" ${this.busy || !st ? 'disabled' : ''} title="Stores everything unlocked and not worn">Deposit all</button>
+          <button class="cw-button small" data-take="all" ${this.busy || !st ? 'disabled' : ''} title="Takes everything from all Vault tabs into your bag, as far as it fits">Take all</button>
+        </div>
+        <button class="cw-button small" data-sort ${this.busy || !st ? 'disabled' : ''} title="Merges stacks, then orders by type, rarity and name">Sort</button>
         <span class="cw-hint-text small">${lockedSlots.length ? `${lockedSlots.length} locked item${lockedSlots.length === 1 ? '' : 's'} stay${lockedSlots.length === 1 ? 's' : ''} put` : 'Lock items in the Reliquary (I) to keep them out of the bulk buttons'}</span>
       </div>
       <div class="cw-vault-note" data-note>${esc(this.note)}</div>

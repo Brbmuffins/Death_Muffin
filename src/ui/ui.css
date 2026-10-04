@@ -1496,6 +1496,7 @@ body:not(.touch):has(.cw-panel-float) .cw-tip:not(.dragging):not([data-kind='urg
 .cw-vault-tabs button.on { color: var(--cw-bone-100); border-color: var(--cw-border-active); background: var(--cw-accent-soft); }
 .cw-vault-tabs button small { font-family: var(--cw-font-numeric); letter-spacing: 0; opacity: .75; }
 .cw-vault-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
+.cw-vault-actcol { display: flex; flex-direction: column; gap: 6px; }
 .cw-vault-actions .cw-button:disabled { opacity: .5; }
 .cw-vault-note { min-height: 18px; margin-top: 6px; font-size: 12px; color: var(--cw-ok); }
 @media (max-width: 900px) { .cw-vault-cols { grid-template-columns: 1fr; } .cw-panel-float.wide.cw-vault { width: 560px; } }
